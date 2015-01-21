@@ -1,4 +1,4 @@
-# IBMulator, the IBM PS/1 model 2011 emulator.
+# IBMulator
 
 
 ## WHAT IS IBMULATOR?
@@ -18,6 +18,7 @@ work with a BIOS from that particular model.
 ## LICENSE
 
 IBMulator is distributed under the GNU GPLv3. See COPYING for details.
+
 To obtain the source code go to github.com/barotto/IBMulator
 
 
@@ -41,8 +42,8 @@ CPU wise, unfortunately, due to the lack of optimizations you need a good one.
 I have tested IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I 
 see I can assume the program can run on a 2GHz dual core processor. 
 Never tested the code on a 32bit o.s., maybe it will compile and run, maybe it 
-won't.
-I didn't have the time to port to Windows, sorry.
+won't.  
+I didn't have the time to port to Windows, sorry.  
 I will never have the means nor the time to port to OS X, iOS, Android, WinRT.
 Patches are welcome!
 
@@ -50,6 +51,7 @@ Patches are welcome!
 ## USAGE
 
 Obtain the original ROM. You have the following options:
+
 1. if you got a real PS/1 model 2011, take the program ROMDUMP.EXE in the 
 'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
 your PS/1 and launch the executable: it will create the ROM image on the floppy 
@@ -95,22 +97,22 @@ are copyright IBM and you have to search the Internet in order to obtain them.
 
 ### Key bindings
 
-CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
-CTRL+F4: show/hide the debug windows
-CTRL+F5: take a screenshot
-CTRL+F6: start/stop audio capture
-CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
-CTRL+F11: emulation speed up
-CTRL+F12: emulation speed down
+* CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
+* CTRL+F4: show/hide the debug windows
+* CTRL+F5: take a screenshot
+* CTRL+F6: start/stop audio capture
+* CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
+* CTRL+F11: emulation speed up
+* CTRL+F12: emulation speed down
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
 
 ### Command line options
 
--c PATH  Specify a configuration file to use
+-c PATH  Specify a configuration file to use  
 -u PATH  Specify a user directory where the program read the ini file from and 
-store new files, like screenshots and the savestate
+store new files, like screenshots and the savestate  
 -v NUM  Sets the verbosity level (from 0 to 2)
 
 
@@ -140,8 +142,8 @@ it to Performance (this is a known issue with the Linux CPUfreq governors).
 
 ### General instructions
 
-$ ./configure
-$ make -j5
+$ ./configure  
+$ make -j5  
 $ make install
 
 Use './configure --help' to read the variuous compilation options.
@@ -163,7 +165,7 @@ No support for these operating systems yet. Patches are welcome!
 
 IBMulator is written in C++11 and uses std::regex to filter out unwanted 
 file types from the floppy selection window. GCC added proper support to
-std::regex only from the 4.9 version.
+std::regex only from the 4.9 version.  
 If you are using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA, as
 I did.
 
