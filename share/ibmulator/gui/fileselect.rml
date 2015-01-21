@@ -1,0 +1,150 @@
+<rml>
+	<head>
+		<title>File select</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 90%;
+				max-width: 1024px;
+				min-width: 640px;
+				height: 90%;
+				min-height: 440px;
+				max-height: 768px;
+				margin: auto;
+				background-color: #3C5464FF;
+				
+			}
+			div#window
+			{
+				padding: 5px 15px 5px 15px;
+			}
+			div#title_bar
+			{
+				background-color: #FFFFFFFF;
+			}
+			#cwd {
+				width: 95%;
+				margin: 0 auto 0 auto;
+				/*font-family: "Nouveau IBM";*/
+				font-size: 20px;
+				text-align: right;
+				shadow-font-effect: shadow;
+    			shadow-offset: -2px 2px;
+			    shadow-color: black;
+			    overflow: hidden auto;
+			}
+			#list {
+				background-color: #FCFCA8FF;
+				/*width: 95%;*/
+				width: 100%;
+				height: 85%;
+				margin: 0 auto 20px auto;
+			}
+			datagrid
+			{
+				width: 80%;
+				height: 85%;
+				padding: 2% 28px 2% 4px;
+				margin: auto;
+				/*font-family: "Nouveau IBM";*/
+				font-size: 20px;
+				color: black;
+				min-rows: 10;
+				
+				background-decorator: tiled-box;
+				
+				background-top-left-image: images/romshell_datagrid_rl.png 0px 0px 6px 6px;
+				background-top-image: images/romshell_datagrid_rl.png stretch 7px 0px 528px 6px;
+				background-top-right-image: images/romshell_datagrid_rl.png 528px 0px 535px 6px;
+				
+				background-bottom-left-image: images/romshell_datagrid_rl.png 0px 184px 28px 191px;
+				background-bottom-image: images/romshell_datagrid_rl.png stretch 28px 184px 528px 191px;
+				background-bottom-right-image: images/romshell_datagrid_rl.png 528px 184px 535px 191px;
+				
+				background-left-image: images/romshell_datagrid_rl.png stretch 0px 11px 28px 184px;
+				background-center-image: images/romshell_datagrid_rl.png stretch 28px 11px 528px 184px;
+				background-right-image: images/romshell_datagrid_rl.png stretch 528px 6px 535px 184px;
+
+			}
+			datagrid datagridheader
+			{
+				height: 0;
+			}
+			datagrid datagridrow
+			{
+				padding-left: 26px;
+				padding-top: 1px;
+				height: 34px;
+				background-decorator: image;
+				background-image: images/romshell_datagridcell.png 26px 0px 28px 22px;
+			}
+			datagrid datagridcell
+			{
+				/*
+				width: auto;
+				height: 22px;
+				padding: 0px 0px 0px 26px;
+				
+				background-decorator: tiled-horizontal;
+				background-left-image: images/romshell_datagridcell.png 0px 0px 25px 23px;
+				background-center-image: images/romshell_datagridcell.png stretch 26px 0px 28px 23px;
+				background-right-image: images/romshell_datagridcell.png 194px 0px 196px 23px;
+				*/
+			}
+			#buttons {
+				position:absolute;
+				bottom: 2%;
+				right: 40px;
+				width: 20em;
+				height: 25px;
+			}
+			
+			#wprotect {
+				position: absolute;
+				left:0;
+			}
+			#cancel {
+				position: absolute;
+				right:0;
+			}
+			.DIR {
+				height: 32px;
+				width: 32px;
+				background-decorator: image;
+				background-image: icons/file_select.png 64px 0px 96px 32px;
+			}
+			.floppy_720,
+			.floppy_1_44 {
+				height: 32px;
+				width: 32px;
+				background-decorator: image;
+				background-image: icons/file_select.png 0px 0px 32px 32px;
+			}
+			.floppy_160,
+			.floppy_180,
+			.floppy_320,
+			.floppy_360,
+			.floppy_1_20 {
+				height: 32px;
+				width: 32px;
+				background-decorator: image;
+				background-image: icons/file_select.png 32px 0px 64px 32px;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="cwd"></div>
+		<div id="list">
+		<datagrid id="files" source="file_select.files">
+			<col fields="type" formatter="file_type" width="40px"></col>
+			<col fields="name"></col>
+			<!-- <col fields="label" width="30%"></col> -->
+		</datagrid>
+		</div>
+		<div id="buttons">
+			<input id="wprotect" type="checkbox" class="romshell" style="width: 10em;">Write protect</input>
+			<button id="cancel" class="romshell" style="width: 6em;">Cancel</button>
+		</div>
+	</body>
+</rml>

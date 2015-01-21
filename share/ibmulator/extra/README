@@ -1,0 +1,29 @@
+Useful programs.
+Use Turbo C to compile the source files.
+
+
+## ROMDUMP
+Dumps the PS/1 model 2011 ROM in one (US version) or two (international version) 
+files.
+Usage: ROMDUMP us|intl
+Use 'us' to dump a US model, otherwise use 'intl' to dump a international model.
+It will create the files FC0000.bin (the ROM BIOS) and F80000.bin (the regional 
+extra file). 
+Needs at least 256KB (512KB for intl) of disk space.
+
+
+## CMOSDUMP
+A program to dump the content of the CMOS to a file called CMOS.BIN.
+Usage: CMOSDUMP
+
+
+## SPKRTONE
+Plays a continuous tone through the PC speaker.
+Usage: SPKRTONE frequency
+
+
+## SPKRWAV
+Plays a 8bit PCM mono WAV or VOC file through the PC speaker.
+Usage: SPKRWAV audiofile [frequency]
+If the audio file is a VOC you need the specify the frequency, otherwise the 
+default value of 16000Hz will be used.

@@ -1,0 +1,105 @@
+button,
+input.submit,
+input.checkbox
+{
+	display: inline-block;
+
+	height: 20px;
+
+	padding-top: 1px;
+	/*vertical-align: -18px;*/
+
+	font-size: 18px;
+	text-align: center;
+	tab-index: auto;
+
+	color: #000000ff;
+	background-color: #FFFFFFA0;
+}
+
+button.romshell,
+input.checkbox.romshell
+{
+	font-family: "Nouveau IBM";
+	font-size: 16px;
+	/*padding-top: 2px;*/
+	height: 22px;
+	background-color: #FFFFFF00;
+	color: white;
+}
+
+button.romshell
+{
+	background-decorator: tiled-horizontal;
+	background-left-image: images/romshell_button.png 0px 0px 4px 23px;
+	background-center-image: images/romshell_button.png stretch 5px 0px 118px 23px;
+	background-right-image: images/romshell_button.png 118px 0px 122px 23px;
+}
+
+input.checkbox.romshell
+{
+	height: 23px;
+	padding-left: 20px;
+	background-decorator: tiled-horizontal;
+	background-left-image: images/romshell_button.png 122px 0px 143px 23px;
+	background-center-image: images/romshell_button.png stretch 5px 0px 118px 23px;
+	background-right-image: images/romshell_button.png 118px 0px 122px 23px;
+}
+
+input.checkbox.romshell:checked
+{
+	background-left-image-s: 143px 164px;
+}
+
+input.text
+{
+	background-color: #5555FFA0;
+	padding-top: 2px;
+	padding-left: 4px;
+}
+
+scrollbarvertical
+{
+	margin-top: 0px;
+	margin-bottom: 0px;
+	margin-right: 0px;
+	width: 26px;
+}
+
+scrollbarvertical slidertrack
+{
+	background-decorator: tiled-vertical;
+	background-top-image: images/romshell_scroller.png 0px 24px 26px 27px;
+	background-center-image: images/romshell_scroller.png stretch 0px 28px 26px 34px;
+	background-bottom-image: images/romshell_scroller.png 0px 77px 26px 78px;
+}
+
+scrollbarvertical sliderbar
+{
+	margin-left: 0px;
+	width: 26px;
+	min-height: 24px;
+
+	background-decorator: tiled-vertical;
+	background-top-image: images/romshell_scroller.png 0px 35px 26px 37px;
+	background-center-image: images/romshell_scroller.png stretch 0px 38px 26px 55px;
+	background-bottom-image: images/romshell_scroller.png 0px 57px 26px 60px;
+}
+
+scrollbarvertical sliderarrowdec
+{
+	width: 26px;
+	height: 24px;
+	
+	icon-decorator: image;
+	icon-image: images/romshell_scroller.png 0px 0px 26px 24px;
+}
+
+scrollbarvertical sliderarrowinc
+{
+	width: 26px;
+	height: 26px;
+	
+	icon-decorator: image;
+	icon-image: images/romshell_scroller.png 0px 78px 26px 104px;
+}

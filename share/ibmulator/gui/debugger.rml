@@ -1,0 +1,83 @@
+<rml>
+	<head>
+		<title>Debugger</title>
+		<link type="text/template" href="default.rml" />
+		<link type="text/rcss" href="debugger.rcss"/>
+		<style>
+			body
+			{
+				width: 440px;
+				height: 550px;
+				position: absolute;
+				bottom: 0;
+				right: 0;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="POST">	</div>
+		<div id="tools">
+			<button id="CPU_step" style="width:20px;">&gt;</button>
+			<button id="CPU_skip" style="width:20px;">+</button>
+			<input type="text" id="CS_ff" size=8 />
+			<input type="text" id="IP_ff" size=8 />
+			<button id="CPU_ff_btn" style="width:20px;">&gt;&gt;</button>
+			<button id="machine_cmd0" style="width:20px;">!</button>
+			<button id="machine_cmd1" style="width:20px;">p</button>
+			<button id="machine_cmd2" style="width:20px;">r</button>
+			<button id="machine_cmd3" style="width:20px;">d</button>
+			<button id="machine_cmd4" style="width:38px;">dcs</button>
+			<button id="machine_cmd5" style="width:38px;">log</button>
+			<button id="machine_cmd6" style="width:38px;">ss</button>
+			<button id="machine_cmd7" style="width:38px;">rs</button>
+		</div>
+		<div id="cpucore">
+			<table id="generalregs">
+			<tr><th>AX</th><td id="AX">1234</td> <th>BP</th><td id="BP">1234</td></tr>
+			<tr><th>BX</th><td id="BX">1234</td> <th>SI</th><td id="SI">1234</td></tr>
+			<tr><th>CX</th><td id="CX">1234</td> <th>DI</th><td id="DI">1234</td></tr>
+			<tr><th>DX</th><td id="DX">1234</td> <th>SP</th><td id="SP">1234</td></tr>
+			</table>
+			
+			<table id="segmentregs">
+			<tr><th>CS</th><td id="CS">1234</td><td id="CSbase">4567</td><td id="CSlimit">8901</td></tr>
+			<tr><th>DS</th><td id="DS">1234</td><td id="DSbase">4567</td><td id="DSlimit">8901</td></tr>
+			<tr><th>SS</th><td id="SS">1234</td><td id="SSbase">4567</td><td id="SSlimit">8901</td></tr>
+			<tr><th>ES</th><td id="ES">1234</td><td id="ESbase">4567</td><td id="ESlimit">8901</td></tr>
+			<tr><th>TR</th><td id="TR">1234</td><td id="TRbase">4567</td><td id="TRlimit">8901</td></tr>
+			</table>
+			
+			<table id="statusregs">
+			<tr><th>IP</th><td id="IP">1234</td></tr>
+			<tr><th>F</th><td id="F">0123456789012345</td></tr>
+			<tr><th>MSW</th><td id="MSW">0123456789012345</td></tr>
+			</table>
+			
+			<table id="desctables">
+			<tr><th>LDT</th><td id="LDT">1234</td><td id="LDTbase">4567</td><td id="LDTlimit">8901</td></tr>
+			<tr><th>IDT</th><td id="IDTbase">4567</td><td id="IDTlimit">8901</td></tr>
+			<tr><th>GDT</th><td id="GDTbase">4567</td><td id="GDTlimit">8901</td></tr>
+			</table>
+
+			<table id="flags">
+			<tr><th>CF</th><td id="CF">1</td> <th>PF</th><td id="PF">1</td> <th>AF</th><td id="AF">1</td></tr>
+			<tr><th>ZF</th><td id="ZF">1</td> <th>SF</th><td id="SF">1</td> <th>TF</th><td id="TF">1</td></tr>
+			<tr><th>IF</th><td id="IF">1</td> <th>DF</th><td id="DF">1</td> <th>OF</th><td id="OF">1</td></tr>
+			<tr><th>PL</th><td id="PL">1</td> <th>NT</th><td id="NT">1</td> </tr>
+			</table>
+		</div>
+		
+		<div id="memory">
+			<table id="segments">
+			<tr><th>CS:IP</th><td id="CS_IP">1234 4567 8901 2345 6789 0123</td><td id="CS_IP_str">............</td></tr>
+			<tr><th>DS:SI</th><td id="DS_SI">1234 4567 8901 2345 6789 0123</td><td id="DS_SI_str">............</td></tr>
+			<tr><th>ES:DI</th><td id="ES_DI">1234 4567 8901 2345 6789 0123</td><td id="ES_DI_str">............</td></tr>
+			<tr><th>SS:SP</th><td id="SS_SP">1234 4567 8901 2345 6789 0123</td><td id="SS_SP_str">............</td></tr>
+			</table>
+		</div>
+		
+		<div id="disasm">
+		disasm
+		</div>
+	</body>
+</rml>

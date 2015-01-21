@@ -1,0 +1,53 @@
+/*
+* Default styles for all the basic elements.
+*/
+
+body
+{
+	font-family: "ProFontWindows";
+	font-weight: normal;
+	font-style: normal;
+	font-size: 15;
+	color: white;
+}
+
+div
+{
+	display: block;
+}
+
+p
+{
+	display: block;
+}
+
+h1
+{
+	display: block;
+}
+
+em
+{
+	font-style: italic;
+}
+
+strong
+{
+	font-weight: bold;
+}
+
+datagrid
+{
+	display: block;
+}
+
+select, dataselect, datacombo
+{
+	text-align: left;
+}
+
+tabset tabs
+{
+	display: block;
+}
+

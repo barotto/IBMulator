@@ -1,0 +1,139 @@
+
+#tools,
+#cpucore,
+#memory,
+#disasm
+{
+	position: relative;
+}
+
+#tools
+{
+	margin-bottom: 8px;
+}
+
+table th
+{
+	display: inline-block;
+	padding: 5px;
+	background-color: #FF5555d0;
+	font-weight: bold;
+	width: 20px;
+	text-align: center;
+}
+
+table td
+{
+	display: inline-block;
+	padding: 5px;
+	background-color: #38A838d0;
+	width: 40px;
+	text-align: center;
+}
+
+table#generalregs
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+table#segmentregs
+{
+	position: absolute;
+	top: 0px;
+	left: 175px;
+}
+
+#CSbase,#DSbase,
+#ESbase,#SSbase,
+#TRbase
+{
+	width: 50px;
+}
+
+table#statusregs
+{
+	position: absolute;
+	top: 130px;
+	left: 0px;
+}
+
+table#flags
+{
+	position: absolute;
+	top: 160px;
+	left: 200px;
+}
+
+table#flags td
+{
+	width: 10px;
+}
+
+#F,
+#MSW
+{
+	width: 140px;
+}
+
+table#desctables
+{
+	position: absolute;
+	top: 230px;
+	left: 0px;
+}
+
+#memory
+{
+	top: 330px;
+}
+
+table#segments
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+table#segments th
+{
+	width: 40px;
+}
+
+table#segments td
+{
+	width: 240px;
+}
+
+table#segments td#CS_IP_str,
+table#segments td#DS_SI_str,
+table#segments td#ES_DI_str,
+table#segments td#SS_SP_str,
+{
+	width: 100px;
+}
+
+table tr
+{
+	display: block;
+	margin-top: 1px;
+}
+
+#disasm
+{
+	font-size: 12px;
+	top: 450px;
+	background-color: #000000ff;
+	padding: 4px;
+}
+
+#POST
+{
+	position: absolute;
+	width: 15px;
+	top: 10px;
+	right: 10px;
+	padding: 5px;
+	background-color: #000000ff;
+}

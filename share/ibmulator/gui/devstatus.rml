@@ -1,0 +1,139 @@
+<rml>
+	<head>
+		<title>Devices</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 350px;
+				height: 300px;
+				position: absolute;
+				bottom: 0;
+				left: 0;
+			}
+			div#window
+			{
+				
+			}
+			table { display: block; }
+			table tr
+			{
+				display: block;
+				margin-top: 1px;
+			}
+			tr th
+			{
+				display: inline-block;
+				padding: 5px;
+				text-align: center;
+				margin: 1px;
+				font-size: 10px;
+			}
+			
+			tr td
+			{
+				display: inline-block;
+				padding: 2px;
+				text-align: center;
+				margin: 1px;
+				font-size: 9px;
+			}
+			
+			#pic tr td {
+				width: 10px;
+			}
+			#pic tr th {
+				width: 20px;
+				background-color: #FF5555d0;
+			}
+			#pit tr th {
+				display: inline-block;
+				padding: 5px;
+				background-color: #FF5555d0;
+				font-size: 10px;
+				width: 40px;
+				text-align: center;
+			}	
+			#pit tr td {
+				display: inline-block;
+				padding: 5px;
+				background-color: #38A838d0;
+				font-size: 10px;
+				width: 40px;
+				text-align: center;
+			}
+	
+			td.led
+			{
+				background-color: #564300FF;
+			}
+			td.led_active
+			{
+				background-color: #FFE600FF;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="pic">
+			<p>PIC</p>
+			<table>
+			<tr>
+				<th>IRQ</th>
+				<td id="pic_irq_0" class="led">0</td><td id="pic_irq_1" class="led">1</td>
+				<td id="pic_irq_2" class="led">2</td><td id="pic_irq_3" class="led">3</td>
+				<td id="pic_irq_4" class="led">4</td><td id="pic_irq_5" class="led">5</td>
+				<td id="pic_irq_6" class="led">6</td><td id="pic_irq_7" class="led">7</td>
+				<td id="pic_irq_8" class="led">8</td><td id="pic_irq_9" class="led">9</td>
+				<td id="pic_irq_10" class="led">10</td><td id="pic_irq_11" class="led">11</td>
+				<td id="pic_irq_12" class="led">12</td><td id="pic_irq_13" class="led">13</td>
+				<td id="pic_irq_14" class="led">14</td><td id="pic_irq_15" class="led">15</td>
+			</tr>
+			<tr>
+				<th>IRR</th>
+				<td id="pic_irr_0" class="led">0</td><td id="pic_irr_1" class="led">1</td>
+				<td id="pic_irr_2" class="led">2</td><td id="pic_irr_3" class="led">3</td>
+				<td id="pic_irr_4" class="led">4</td><td id="pic_irr_5" class="led">5</td>
+				<td id="pic_irr_6" class="led">6</td><td id="pic_irr_7" class="led">7</td>
+				<td id="pic_irr_8" class="led">8</td><td id="pic_irr_9" class="led">9</td>
+				<td id="pic_irr_10" class="led">10</td><td id="pic_irr_11" class="led">11</td>
+				<td id="pic_irr_12" class="led">12</td><td id="pic_irr_13" class="led">13</td>
+				<td id="pic_irr_14" class="led">14</td><td id="pic_irr_15" class="led">15</td>
+			</tr>
+			<tr>
+				<th>IMR</th>
+				<td id="pic_imr_0" class="led">0</td><td id="pic_imr_1" class="led">1</td>
+				<td id="pic_imr_2" class="led">2</td><td id="pic_imr_3" class="led">3</td>
+				<td id="pic_imr_4" class="led">4</td><td id="pic_imr_5" class="led">5</td>
+				<td id="pic_imr_6" class="led">6</td><td id="pic_imr_7" class="led">7</td>
+				<td id="pic_imr_8" class="led">8</td><td id="pic_imr_9" class="led">9</td>
+				<td id="pic_imr_10" class="led">10</td><td id="pic_imr_11" class="led">11</td>
+				<td id="pic_imr_12" class="led">12</td><td id="pic_imr_13" class="led">13</td>
+				<td id="pic_imr_14" class="led">14</td><td id="pic_imr_15" class="led">15</td>
+			</tr>
+			<tr>
+				<th>ISR</th>
+				<td id="pic_isr_0" class="led">0</td><td id="pic_isr_1" class="led">1</td>
+				<td id="pic_isr_2" class="led">2</td><td id="pic_isr_3" class="led">3</td>
+				<td id="pic_isr_4" class="led">4</td><td id="pic_isr_5" class="led">5</td>
+				<td id="pic_isr_6" class="led">6</td><td id="pic_isr_7" class="led">7</td>
+				<td id="pic_isr_8" class="led">8</td><td id="pic_isr_9" class="led">9</td>
+				<td id="pic_isr_10" class="led">10</td><td id="pic_isr_11" class="led">11</td>
+				<td id="pic_isr_12" class="led">12</td><td id="pic_isr_13" class="led">13</td>
+				<td id="pic_isr_14" class="led">14</td><td id="pic_isr_15" class="led">15</td>
+			</tr>
+			</table>
+		</div>
+		<div id="pit">
+		<p>PIT</p>
+		<table>
+			<tr><th>&nbsp;</th>   <th>C0</th>                <th>C1</th>                <th>C2</th></tr>
+			<tr><th>mode</th>     <td id="pit_0_mode">0</td> <td id="pit_1_mode">0</td> <td id="pit_2_mode">0</td> </tr>
+			<tr><th>CNT</th>      <td id="pit_0_cnt">0</td>  <td id="pit_1_cnt">0</td>  <td id="pit_2_cnt">0</td>  </tr>
+			<tr><th>GATE</th>    <td id="pit_0_gate">0</td> <td id="pit_1_gate">0</td> <td id="pit_2_gate">0</td> </tr>
+			<tr><th>OUT</th>     <td id="pit_0_out">0</td>  <td id="pit_1_out">0</td>  <td id="pit_2_out">0</td>  </tr>
+			<tr><th>in</th>      <td id="pit_0_in">0</td>  <td id="pit_1_in">0</td>  <td id="pit_2_in">0</td>  </tr>
+		</table>
+		
+		</div>
+	</body>
+</rml>

@@ -1,0 +1,44 @@
+AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src -DDATA_PATH=\"$(pkgdatadir)\" 
+
+SUBDIRS = hardware gui
+
+bin_PROGRAMS = ibmulator
+
+ibmulator_SOURCES = \
+	main.cpp \
+	appconfig.cpp \
+	program.cpp \
+	machine.cpp \
+	statebuf.cpp \
+	chrono.cpp \
+	bench.cpp \
+	hwbench.cpp \
+	syslog.cpp \
+	ini/ini.cpp \
+	mixer.cpp \
+	wav.cpp \
+	ring_buffer.cpp
+	
+noinst_HEADERS = \
+	ibmulator.h \
+	appconfig.h \
+	bench.h \
+	chrono.h \
+	circular_fifo.h \
+	hwbench.h \
+	interval_tree.h \
+	keys.h \
+	machine.h \
+	mixer.h \
+	program.h \
+	ring_buffer.h \
+	shared_queue.h \
+	statebuf.h \
+	syslog.h \
+	ini/ini.h \
+	wav.h
+	
+ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
+ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS)
+
+

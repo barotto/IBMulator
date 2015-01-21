@@ -1,0 +1,97 @@
+body
+{
+	font-family: "ProFontWindows";
+	font-weight: normal;
+	font-style: normal;
+	font-size: 15;
+	color: white;
+	background-color: #3C5464A0;
+}
+
+body.window
+{
+	padding-top: 20px;
+	padding-bottom: 10px;
+	
+	/*min-width: 250px;*/
+	/*max-width: 800px;*/
+	
+	/*min-height: 135px;*/
+	/*max-height: 700px;*/
+}
+
+div#title_bar
+{
+	z-index: 1;
+
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	
+	text-align: center;
+	
+	background-color: #FFFFFFA0;
+}
+
+#resize
+{
+	position: absolute; 
+	width: 16px; 
+	height: 16px; 
+	bottom: 0px; 
+	right: 0px;
+	background-color: #FFFFFFA0;
+	z-index: top;
+}
+
+#title
+{
+	padding-left: 0px;
+	padding-right: 0px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+
+	font-family: "Nouveau IBM";
+	font-size: 21;
+	color: black;
+	width: 100%;
+
+/*
+	outline-font-effect: outline;
+	outline-width: 1px;
+	outline-color: black;
+*/
+}
+
+div#window
+{
+	width: auto;
+	padding: 10px 15px;
+}
+
+div#content
+{
+	z-index: 2;
+
+	width: auto;
+	height: 100%;
+
+	overflow: hidden auto;
+
+	text-align: left;
+}
+
+h2
+{
+	font-size: 18;
+}
+
+
+
+
+
+scrollbarhorizontal
+{
+	width: 0px;
+	height: 0px;
+}

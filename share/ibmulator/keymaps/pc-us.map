@@ -1,0 +1,188 @@
+# IBMulator Keymap file
+# Target: PC(x86) keyboard, IT keymap
+# Author: Marco Bortolin
+#
+# The format is derived from Bochs keymaps.
+# 
+# The keymap file describes the layout of a keyboard, and how it translates
+# into IBMulator key codes.
+#
+# Format:
+#  Keysym             ASCII_equivalent     SDLK_KEYSYM or HEX number
+#
+# Or, for keys that require modifiers:
+#  Keysym+Modifier    ASCII_equivalent     SDLK_KEYSYM or HEX number
+#
+# Keysym and Modifier must be present in the g_key_symbol[] list in
+# gui/keymap.cpp.  The Modifier is usually a shift key press, but it
+# could be any key.  Presently a maximum of one modifier is supported, but this
+# could be changed in keymap.h (structure def has only one slot for modifier),
+# keymap.cpp (parsing code), and devices/keyboard.cpp (simulate keypresses for 
+# >1 modifier).
+#
+# The ASCII_equivalent must be either apostrophe + one character + apostrophe,
+# or one of these keywords: space, return, tab, backslash, apostrophe, none.
+# This format is designed to look like a char constant in C, but it's a very
+# simple parser.  There's no concept of backslash being an escape char.  The
+# backslash and apostrophe entries are provided for aesthetic purposes only: no
+# C++ programmer wants to see '\' or '''. The parser doesn't care, but they are
+# ugly.
+#
+# SDLK_KEYSYM is the SDL 2 equivalent of the key combination.  These
+# codes should match whatever you find in 
+# http://hg.libsdl.org/SDL/file/default/include/SDL_keycode.h.
+# If the SDL lookup fails, you will get a panic and you need
+# to edit the keymap file.
+#
+# For international symbols (the old SDL 1 SDLK_WORLD_XX enums) you need to use
+# a HEX number. To find out the right code you can use the program checkkeys in 
+# the SDL2source/test directory: the hex number is the first two digits of the
+# "keycode" field.
+
+KEY_0                                      '0'        SDLK_0
+KEY_0+KEY_SHIFT_L                       ')'        SDLK_RIGHTPAREN
+KEY_1                                      '1'        SDLK_1
+KEY_1+KEY_SHIFT_L                       '!'        SDLK_EXCLAIM
+KEY_2                                      '2'        SDLK_2
+KEY_2+KEY_SHIFT_L                       '@'        SDLK_AT
+KEY_3                                      '3'        SDLK_3
+KEY_3+KEY_SHIFT_L                       '#'        SDLK_HASH
+KEY_4                                      '4'        SDLK_4
+KEY_4+KEY_SHIFT_L                       '$'        SDLK_DOLLAR
+KEY_5                                      '5'        SDLK_5
+KEY_6                                      '6'        SDLK_6
+KEY_6+KEY_SHIFT_L                       '^'        SDLK_CARET
+KEY_7                                      '7'        SDLK_7
+KEY_7+KEY_SHIFT_L                       '&'        SDLK_AMPERSAND
+KEY_8                                      '8'        SDLK_8
+KEY_8+KEY_SHIFT_L                       '*'        SDLK_ASTERISK
+KEY_9                                      '9'        SDLK_9
+KEY_9+KEY_SHIFT_L                       '('        SDLK_LEFTPAREN
+KEY_A+KEY_SHIFT_L                       'A'        SDLK_a
+KEY_A                                      'a'        SDLK_a
+KEY_B+KEY_SHIFT_L                       'B'        SDLK_b
+KEY_B                                      'b'        SDLK_b
+KEY_C+KEY_SHIFT_L                       'C'        SDLK_c
+KEY_C                                      'c'        SDLK_c
+KEY_D+KEY_SHIFT_L                       'D'        SDLK_d
+KEY_D                                      'd'        SDLK_d
+KEY_E+KEY_SHIFT_L                       'E'        SDLK_e
+KEY_E                                      'e'        SDLK_e
+KEY_F+KEY_SHIFT_L                       'F'        SDLK_f
+KEY_F                                      'f'        SDLK_f
+KEY_G+KEY_SHIFT_L                       'G'        SDLK_g
+KEY_G                                      'g'        SDLK_g
+KEY_H+KEY_SHIFT_L                       'H'        SDLK_h
+KEY_H                                      'h'        SDLK_h
+KEY_I+KEY_SHIFT_L                       'I'        SDLK_i
+KEY_I                                      'i'        SDLK_i
+KEY_J+KEY_SHIFT_L                       'J'        SDLK_j
+KEY_J                                      'j'        SDLK_j
+KEY_K+KEY_SHIFT_L                       'K'        SDLK_k
+KEY_K                                      'k'        SDLK_k
+KEY_L+KEY_SHIFT_L                       'L'        SDLK_l
+KEY_L                                      'l'        SDLK_l
+KEY_M+KEY_SHIFT_L                       'M'        SDLK_m
+KEY_M                                      'm'        SDLK_m
+KEY_N+KEY_SHIFT_L                       'N'        SDLK_n
+KEY_N                                      'n'        SDLK_n
+KEY_O+KEY_SHIFT_L                       'O'        SDLK_o
+KEY_O                                      'o'        SDLK_o
+KEY_P+KEY_SHIFT_L                       'P'        SDLK_p
+KEY_P                                      'p'        SDLK_p
+KEY_Q+KEY_SHIFT_L                       'Q'        SDLK_q
+KEY_Q                                      'q'        SDLK_q
+KEY_R+KEY_SHIFT_L                       'R'        SDLK_r
+KEY_R                                      'r'        SDLK_r
+KEY_S+KEY_SHIFT_L                       'S'        SDLK_s
+KEY_S                                      's'        SDLK_s
+KEY_T+KEY_SHIFT_L                       'T'        SDLK_t
+KEY_T                                      't'        SDLK_t
+KEY_U+KEY_SHIFT_L                       'U'        SDLK_u
+KEY_U                                      'u'        SDLK_u
+KEY_V+KEY_SHIFT_L                       'V'        SDLK_v
+KEY_V                                      'v'        SDLK_v
+KEY_W+KEY_SHIFT_L                       'W'        SDLK_w
+KEY_W                                      'w'        SDLK_w
+KEY_X+KEY_SHIFT_L                       'X'        SDLK_x
+KEY_X                                      'x'        SDLK_x
+KEY_Y+KEY_SHIFT_L                       'Y'        SDLK_y
+KEY_Y                                      'y'        SDLK_y
+KEY_Z+KEY_SHIFT_L                       'Z'        SDLK_z
+KEY_Z                                      'z'        SDLK_z
+KEY_F1                                     none       SDLK_F1
+KEY_F2                                     none       SDLK_F2
+KEY_F3                                     none       SDLK_F3
+KEY_F4                                     none       SDLK_F4
+KEY_F5                                     none       SDLK_F5
+KEY_F6                                     none       SDLK_F6
+KEY_F7                                     none       SDLK_F7
+KEY_F8                                     none       SDLK_F8
+KEY_F9                                     none       SDLK_F9
+KEY_F10                                    none       SDLK_F10
+KEY_F11                                    none       SDLK_F11
+KEY_F12                                    none       SDLK_F12
+KEY_ALT_L                                  none       SDLK_LALT
+KEY_ALT_R                                  none       SDLK_MODE
+KEY_BACKSLASH                              backslash  SDLK_BACKSLASH
+KEY_BACKSPACE                              none       SDLK_BACKSPACE
+KEY_CAPS_LOCK                              none       SDLK_CAPSLOCK
+KEY_COMMA                                  ','        SDLK_COMMA
+KEY_COMMA+KEY_SHIFT_L                   '<'        SDLK_LESS
+KEY_CTRL_L                                 none       SDLK_LCTRL
+KEY_CTRL_R                                 none       SDLK_RCTRL
+KEY_DELETE                                 none       SDLK_DELETE
+KEY_DOWN                                   none       SDLK_DOWN
+KEY_END                                    none       SDLK_END
+KEY_ENTER                                  return     SDLK_RETURN
+KEY_EQUALS                                 '='        SDLK_EQUALS
+KEY_EQUALS+KEY_SHIFT_L                  '+'        SDLK_PLUS
+KEY_ESC                                    none       SDLK_ESCAPE
+KEY_GRAVE                                  '`'        SDLK_BACKQUOTE
+KEY_HOME                                   none       SDLK_HOME
+KEY_INSERT                                 none       SDLK_INSERT
+KEY_KP_5                                   none       SDLK_KP_5
+KEY_KP_ADD                                 none       SDLK_KP_PLUS
+KEY_KP_DELETE                              none       SDLK_KP_PERIOD
+KEY_KP_DIVIDE                              none       SDLK_KP_DIVIDE
+KEY_KP_DOWN                                none       SDLK_KP_2
+KEY_KP_END                                 none       SDLK_KP_1
+KEY_KP_ENTER                               none       SDLK_KP_ENTER
+KEY_KP_HOME                                none       SDLK_KP_7
+KEY_KP_INSERT                              none       SDLK_KP_0
+KEY_KP_LEFT                                none       SDLK_KP_4
+KEY_KP_MULTIPLY                            none       SDLK_KP_MULTIPLY
+KEY_KP_PAGE_DOWN                           none       SDLK_KP_3
+KEY_KP_PAGE_UP                             none       SDLK_KP_9
+KEY_KP_RIGHT                               none       SDLK_KP_6
+KEY_KP_SUBTRACT                            none       SDLK_KP_MINUS
+KEY_KP_UP                                  none       SDLK_KP_8
+KEY_LEFT                                   none       SDLK_LEFT
+KEY_LEFT_BRACKET                           '['        SDLK_LEFTBRACKET
+KEY_MENU                                   none       SDLK_MENU
+KEY_MINUS                                  '-'        SDLK_MINUS
+KEY_MINUS+KEY_SHIFT_L                   '_'        SDLK_UNDERSCORE
+KEY_NUM_LOCK                               none       SDLK_NUMLOCKCLEAR
+KEY_PAGE_DOWN                              none       SDLK_PAGEDOWN
+KEY_PAGE_UP                                none       SDLK_PAGEUP
+KEY_PAUSE                                  none       SDLK_PAUSE
+KEY_PERIOD+KEY_SHIFT_L                  '>'        SDLK_GREATER
+KEY_PERIOD                                 '.'        SDLK_PERIOD
+KEY_PRINT                                  none       SDLK_PRINTSCREEN
+KEY_PRINT                                  none       SDLK_SYSREQ
+KEY_RIGHT                                  none       SDLK_RIGHT
+KEY_RIGHT_BRACKET                          ']'        SDLK_RIGHTBRACKET
+KEY_SCRL_LOCK                              none       SDLK_SCROLLLOCK
+KEY_SEMICOLON+KEY_SHIFT_L               ':'        SDLK_COLON
+KEY_SEMICOLON                              ';'        SDLK_SEMICOLON
+KEY_SHIFT_L                                none       SDLK_LSHIFT
+KEY_SHIFT_R                                none       SDLK_RSHIFT
+KEY_SINGLE_QUOTE                           apostrophe SDLK_QUOTE
+KEY_SINGLE_QUOTE+KEY_SHIFT_L            '"'        SDLK_QUOTEDBL
+KEY_SLASH+KEY_SHIFT_L                   '?'        SDLK_QUESTION
+KEY_SLASH                                  '/'        SDLK_SLASH
+KEY_SPACE                                  space      SDLK_SPACE
+KEY_TAB                                    tab        SDLK_TAB
+KEY_UP                                     none       SDLK_UP
+KEY_WIN_L                                  none       SDLK_LGUI
+KEY_WIN_R                                  none       SDLK_RGUI

@@ -1,0 +1,24 @@
+<rml>
+	<head>
+		<title>Stats</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 270px;
+				height: 480px;
+				position: absolute;
+				top: 0;
+				right: 0;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<h2>Main process</h2>
+		<p id="FPS"></p>
+		<h2>Machine</h2>
+		<p id="machine"></p>
+		<h2>Mixer</h2>
+		<p id="mixer"></p>
+	</body>
+</rml>

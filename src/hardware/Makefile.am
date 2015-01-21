@@ -1,0 +1,60 @@
+AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src
+	
+noinst_LIBRARIES = libhardware.a
+libhardware_a_SOURCES = \
+	cpu.cpp \
+	cpu/core.cpp \
+	cpu/bus.cpp \
+	cpu/decoder/prefix_none.cpp \
+	cpu/decoder/prefix_0F.cpp \
+	cpu/decoder.cpp \
+	cpu/executor.cpp \
+	cpu/disasm.cpp \
+	cpu/debugger.cpp \
+	memory.cpp \
+	devices.cpp \
+	devices/systemboard.cpp \
+	devices/keyboard.cpp \
+	devices/scancodes.cpp \
+	devices/pic.cpp \
+	devices/cmos.cpp \
+	devices/dma.cpp \
+	devices/pit.cpp \
+	devices/pit82c54.cpp \
+	devices/vga.cpp \
+	devices/vgadisplay.cpp \
+	devices/floppy.cpp \
+	devices/mediaimage.cpp \
+	devices/vvfat.cpp \
+	devices/serial.cpp \
+	devices/parallel.cpp \
+	devices/pcspeaker.cpp
+
+noinst_HEADERS = \
+	cpu.h \
+	cpu/core.h \
+	cpu/bus.h \
+	cpu/decoder.h \
+	cpu/descriptor.h \
+	cpu/selector.h \
+	cpu/executor.h \
+	cpu/disasm.h \
+	cpu/debugger.h \
+	memory.h \
+	devices.h \
+	devices/systemboard.h \
+	devices/keyboard.h \
+	devices/scancodes.h \
+	devices/pic.h \
+	devices/cmos.h \
+	devices/dma.h \
+	devices/pit.h \
+	devices/pit82c54.h \
+	devices/vga.h \
+	devices/vgadisplay.h \
+	devices/floppy.h \
+	devices/mediaimage.h \
+	devices/vvfat.h \
+	devices/serial.h \
+	devices/parallel.h \
+	devices/pcspeaker.h
