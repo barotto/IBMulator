@@ -254,12 +254,12 @@ bool Program::initialize(int argc, char** argv)
 		if(!is_directory(m_user_dir.c_str()) || access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
 			PERRF_ABORT(LOG_PROGRAM, "Unable to access the user directory!\n");
 		}
-		m_user_dir += FS_SEP PACKAGE_NAME;
+		m_user_dir += FS_SEP PACKAGE;
 	}
 	create_dir(m_user_dir);
 	PINFO(LOG_V1,"user directory: %s\n", m_user_dir.c_str());
 
-	cfgfile = m_user_dir + FS_SEP PACKAGE_NAME ".ini";
+	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
 	if(m_cfg_file.empty()) {
 		m_cfg_file = cfgfile;
 	}
@@ -269,7 +269,7 @@ bool Program::initialize(int argc, char** argv)
 		PWARNF(LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
 		try {
 			m_config.create_file(m_cfg_file,true);
-			std::string message = "The configuration file " PACKAGE_NAME ".ini has been created in " +
+			std::string message = "The configuration file " PACKAGE ".ini has been created in " +
 					m_user_dir + "\n";
 			message += "Open it and configure the program as you like.";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Configuration file",
@@ -278,7 +278,7 @@ bool Program::initialize(int argc, char** argv)
 			return false;
 		} catch(std::exception &e) {
 			PWARNF(LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
-			std::string message = "A problem occurred trying to create " PACKAGE_NAME ".ini in " +
+			std::string message = "A problem occurred trying to create " PACKAGE ".ini in " +
 					m_user_dir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",
 					message.c_str(),
@@ -349,8 +349,8 @@ std::string Program::get_assets_dir(int argc, char** argv)
 	/*
 	 * DATA dir priorities:
 	 * 1. DATA_HOME env variable
-	 * 2. dirname(argv[0]) + /../share/PACKAGE_NAME
-	 * 3. XGD_DATA_HOME env + PACKAGE_NAME define
+	 * 2. dirname(argv[0]) + /../share/PACKAGE
+	 * 3. XGD_DATA_HOME env + PACKAGE define
 	 * 4. DATA_PATH define
 	 */
 	char rpbuf[PATH_MAX];
@@ -362,19 +362,19 @@ std::string Program::get_assets_dir(int argc, char** argv)
 		return std::string(edatapath);
 	}
 
-	//2. dirname(argv[0]) + /../share/PACKAGE_NAME
+	//2. dirname(argv[0]) + /../share/PACKAGE
 	char *buf = strdup(argv[0]); //dirname modifies the string!
 	datapath = dirname(buf);
 	free(buf);
-	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE_NAME;
+	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE;
 	if(realpath(datapath.c_str(), rpbuf) != NULL && is_directory(rpbuf)) {
 		return std::string(rpbuf);
 	}
 
-	//3. XGD_DATA_HOME env + PACKAGE_NAME define
+	//3. XGD_DATA_HOME env + PACKAGE define
 	edatapath = getenv("XDG_DATA_HOME");
 	if(edatapath != NULL) {
-		datapath = std::string(edatapath) + FS_SEP PACKAGE_NAME;
+		datapath = std::string(edatapath) + FS_SEP PACKAGE;
 		if(is_directory(datapath.c_str())) {
 			return datapath;
 		}

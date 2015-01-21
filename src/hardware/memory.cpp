@@ -108,7 +108,7 @@ void Memory::config_changed()
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_MEM,"unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
-				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE_NAME ".ini with the correct paths.",
+				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct paths.",
 		        NULL);
 		throw;
 	}

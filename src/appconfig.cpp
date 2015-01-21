@@ -174,7 +174,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ MEM_SECTION,
 "#   FC0000: Path of the BIOS ROM\n"
-"#   F80000: Path of the regional ROM (optional, use only for non US versions\n"
+"#   F80000: Path of the regional ROM (optional, use only for non US versions)\n"
 "#     base: Size of the base RAM in kebibytes\n"
 "# extended: Size of the extended RAM in kebibytes\n"
 		},
