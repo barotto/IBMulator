@@ -3,7 +3,8 @@
 /docs/
 /debug/
 /autom4te.cache/
-/ibmulator-0.1.tar.gz
+/ibmulator-*.tar.gz
+/IBMulator-*.tar.gz
 .deps
 *.o
 Makefile

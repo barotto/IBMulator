@@ -419,6 +419,7 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf
 
+EXTRA_DIST = README.md
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

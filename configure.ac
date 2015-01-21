@@ -3,7 +3,7 @@
 #######################################################################
 define([IBMULATOR_VERSION],[0.1])
 
-AC_INIT([ibmulator], IBMULATOR_VERSION, [barotto@gmail.com])
+AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
