@@ -18,7 +18,7 @@ work with a BIOS from that particular model.
 ## LICENSE
 
 IBMulator is distributed under the GNU GPLv3. See COPYING for details.
-To obtain the source code go to ...
+To obtain the source code go to github.com/barotto/IBMulator
 
 
 ## WHAT'S MISSING
@@ -50,12 +50,14 @@ Patches are welcome!
 ## USAGE
 
 Obtain the original ROM. You have the following options:
-1. if you got a PS/1 model 2011, take the program ROMDUMP.EXE in the 'extra' 
-folder and put it in an empty floppy disk; insert the floppy disk in your PS/1 
-and launch the executable: it will create the ROM image on the floppy disk
-2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
-reader
-3. or scour the Internet (I know that there is at least the italian version of 
+1. if you got a real PS/1 model 2011, take the program ROMDUMP.EXE in the 
+'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
+your PS/1 and launch the executable: it will create the ROM image on the floppy 
+disk
+2. open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
+reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you got an 
+non-US model)
+3. scour the Internet (I know that there is at least the italian version of 
 the ROM out there...).
 
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
