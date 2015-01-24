@@ -1208,7 +1208,8 @@ GLuint GUI::load_GLSL_program(const std::string &_vs_path, const std::string &_f
 	if(!result && infologlen > 1) {
 		std::vector<char> vserr(infologlen+1);
 		GLCALL( glGetShaderInfoLog(vsid, infologlen, NULL, &vserr[0]) );
-		PERRF(LOG_GUI, "VS error: '%s'\n", &vserr[0]);
+		PERRF(LOG_GUI, "GLSL error in '%s'\n", _vs_path.c_str());
+		PERRF(LOG_GUI, "%s\n", &vserr[0]);
 	}
 
 	// Compile Fragment Shader
@@ -1222,7 +1223,8 @@ GLuint GUI::load_GLSL_program(const std::string &_vs_path, const std::string &_f
 	if(!result && infologlen > 1) {
 		std::vector<char> fserr(infologlen+1);
 		GLCALL( glGetShaderInfoLog(fsid, infologlen, NULL, &fserr[0]) );
-		PERRF(LOG_GUI, "FS error: '%s'\n", &fserr[0]);
+		PERRF(LOG_GUI, "GLSL error in '%s'\n", _fs_path.c_str());
+		PERRF(LOG_GUI, "%s\n", &fserr[0]);
 	}
 
 	// Link the program
