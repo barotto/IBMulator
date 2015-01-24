@@ -82,11 +82,11 @@ subdir = .
 DIST_COMMON = INSTALL NEWS README AUTHORS ChangeLog \
 	$(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) \
-	$(srcdir)/config.h.in $(dist_gui_DATA) $(dist_guifonts_DATA) \
-	$(dist_guiicons_DATA) $(dist_guiimages_DATA) \
-	$(dist_guishaders_DATA) $(dist_keymaps_DATA) \
-	$(dist_pkgdata_DATA) COPYING compile config.guess config.sub \
-	depcomp install-sh missing ltmain.sh
+	$(srcdir)/config.h.in $(dist_extraprogs_DATA) $(dist_gui_DATA) \
+	$(dist_guifonts_DATA) $(dist_guiicons_DATA) \
+	$(dist_guiimages_DATA) $(dist_guishaders_DATA) \
+	$(dist_keymaps_DATA) $(dist_pkgdata_DATA) COPYING compile \
+	config.guess config.sub depcomp install-sh missing ltmain.sh
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/librocket.m4 \
 	$(top_srcdir)/m4/opengl.m4 $(top_srcdir)/m4/sdl.m4 \
@@ -153,13 +153,14 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(guidir)" "$(DESTDIR)$(guifontsdir)" \
-	"$(DESTDIR)$(guiiconsdir)" "$(DESTDIR)$(guiimagesdir)" \
-	"$(DESTDIR)$(guishadersdir)" "$(DESTDIR)$(keymapsdir)" \
-	"$(DESTDIR)$(pkgdatadir)"
-DATA = $(dist_gui_DATA) $(dist_guifonts_DATA) $(dist_guiicons_DATA) \
-	$(dist_guiimages_DATA) $(dist_guishaders_DATA) \
-	$(dist_keymaps_DATA) $(dist_pkgdata_DATA)
+am__installdirs = "$(DESTDIR)$(extraprogsdir)" "$(DESTDIR)$(guidir)" \
+	"$(DESTDIR)$(guifontsdir)" "$(DESTDIR)$(guiiconsdir)" \
+	"$(DESTDIR)$(guiimagesdir)" "$(DESTDIR)$(guishadersdir)" \
+	"$(DESTDIR)$(keymapsdir)" "$(DESTDIR)$(pkgdatadir)"
+DATA = $(dist_extraprogs_DATA) $(dist_gui_DATA) $(dist_guifonts_DATA) \
+	$(dist_guiicons_DATA) $(dist_guiimages_DATA) \
+	$(dist_guishaders_DATA) $(dist_keymaps_DATA) \
+	$(dist_pkgdata_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 am__recursive_targets = \
@@ -419,6 +420,19 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf
 
+extraprogsdir = $(pkgdatadir)/extra
+dist_extraprogs_DATA = \
+share/ibmulator/extra/CMOSDUMP.C \
+share/ibmulator/extra/CMOSDUMP.EXE \
+share/ibmulator/extra/COPYING \
+share/ibmulator/extra/README \
+share/ibmulator/extra/ROMDUMP.C \
+share/ibmulator/extra/ROMDUMP.EXE \
+share/ibmulator/extra/SPKRTONE.C \
+share/ibmulator/extra/SPKRTONE.EXE \
+share/ibmulator/extra/SPKRWAV.C \
+share/ibmulator/extra/SPKRWAV.EXE 
+
 EXTRA_DIST = README.md
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
@@ -473,6 +487,27 @@ $(srcdir)/config.h.in:  $(am__configure_deps)
 
 distclean-hdr:
 	-rm -f config.h stamp-h1
+install-dist_extraprogsDATA: $(dist_extraprogs_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(dist_extraprogs_DATA)'; test -n "$(extraprogsdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(extraprogsdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(extraprogsdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(extraprogsdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(extraprogsdir)" || exit $$?; \
+	done
+
+uninstall-dist_extraprogsDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(dist_extraprogs_DATA)'; test -n "$(extraprogsdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(extraprogsdir)'; $(am__uninstall_files_from_dir)
 install-dist_guiDATA: $(dist_gui_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(dist_gui_DATA)'; test -n "$(guidir)" || list=; \
@@ -920,7 +955,7 @@ check: check-recursive
 all-am: Makefile $(DATA) config.h
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(guidir)" "$(DESTDIR)$(guifontsdir)" "$(DESTDIR)$(guiiconsdir)" "$(DESTDIR)$(guiimagesdir)" "$(DESTDIR)$(guishadersdir)" "$(DESTDIR)$(keymapsdir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(extraprogsdir)" "$(DESTDIR)$(guidir)" "$(DESTDIR)$(guifontsdir)" "$(DESTDIR)$(guiiconsdir)" "$(DESTDIR)$(guiimagesdir)" "$(DESTDIR)$(guishadersdir)" "$(DESTDIR)$(keymapsdir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -974,10 +1009,10 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-dist_guiDATA install-dist_guifontsDATA \
-	install-dist_guiiconsDATA install-dist_guiimagesDATA \
-	install-dist_guishadersDATA install-dist_keymapsDATA \
-	install-dist_pkgdataDATA
+install-data-am: install-dist_extraprogsDATA install-dist_guiDATA \
+	install-dist_guifontsDATA install-dist_guiiconsDATA \
+	install-dist_guiimagesDATA install-dist_guishadersDATA \
+	install-dist_keymapsDATA install-dist_pkgdataDATA
 
 install-dvi: install-dvi-recursive
 
@@ -1023,10 +1058,10 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-dist_guiDATA uninstall-dist_guifontsDATA \
-	uninstall-dist_guiiconsDATA uninstall-dist_guiimagesDATA \
-	uninstall-dist_guishadersDATA uninstall-dist_keymapsDATA \
-	uninstall-dist_pkgdataDATA
+uninstall-am: uninstall-dist_extraprogsDATA uninstall-dist_guiDATA \
+	uninstall-dist_guifontsDATA uninstall-dist_guiiconsDATA \
+	uninstall-dist_guiimagesDATA uninstall-dist_guishadersDATA \
+	uninstall-dist_keymapsDATA uninstall-dist_pkgdataDATA
 
 .MAKE: $(am__recursive_targets) all install-am install-strip
 
@@ -1037,20 +1072,22 @@ uninstall-am: uninstall-dist_guiDATA uninstall-dist_guifontsDATA \
 	distcheck distclean distclean-generic distclean-hdr \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dist_guiDATA \
-	install-dist_guifontsDATA install-dist_guiiconsDATA \
-	install-dist_guiimagesDATA install-dist_guishadersDATA \
-	install-dist_keymapsDATA install-dist_pkgdataDATA install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am tags \
-	tags-am uninstall uninstall-am uninstall-dist_guiDATA \
-	uninstall-dist_guifontsDATA uninstall-dist_guiiconsDATA \
-	uninstall-dist_guiimagesDATA uninstall-dist_guishadersDATA \
-	uninstall-dist_keymapsDATA uninstall-dist_pkgdataDATA
+	install-data install-data-am install-dist_extraprogsDATA \
+	install-dist_guiDATA install-dist_guifontsDATA \
+	install-dist_guiiconsDATA install-dist_guiimagesDATA \
+	install-dist_guishadersDATA install-dist_keymapsDATA \
+	install-dist_pkgdataDATA install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-dist_extraprogsDATA \
+	uninstall-dist_guiDATA uninstall-dist_guifontsDATA \
+	uninstall-dist_guiiconsDATA uninstall-dist_guiimagesDATA \
+	uninstall-dist_guishadersDATA uninstall-dist_keymapsDATA \
+	uninstall-dist_pkgdataDATA
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

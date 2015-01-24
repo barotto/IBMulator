@@ -68,4 +68,17 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf
 
+extraprogsdir = $(pkgdatadir)/extra
+dist_extraprogs_DATA = \
+share/ibmulator/extra/CMOSDUMP.C \
+share/ibmulator/extra/CMOSDUMP.EXE \
+share/ibmulator/extra/COPYING \
+share/ibmulator/extra/README \
+share/ibmulator/extra/ROMDUMP.C \
+share/ibmulator/extra/ROMDUMP.EXE \
+share/ibmulator/extra/SPKRTONE.C \
+share/ibmulator/extra/SPKRTONE.EXE \
+share/ibmulator/extra/SPKRWAV.C \
+share/ibmulator/extra/SPKRWAV.EXE 
+
 EXTRA_DIST = README.md
