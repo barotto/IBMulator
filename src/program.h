@@ -96,6 +96,7 @@ public:
 	static bool is_directory(const char *_path);
 	static bool file_exists(const char *_path);
 	static bool is_file_readable(const char *_path);
+	static size_t get_file_size(const char *_path);
 };
 
 #endif

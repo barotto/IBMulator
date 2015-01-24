@@ -38,7 +38,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ GUI_SECTION, {
-		{ GUI_KEYMAP, "keymaps/pc-it.map"},
+		{ GUI_KEYMAP, "keymaps/pc-us.map"},
 		{ GUI_MOUSE_TYPE, "ps2" },
 		{ GUI_MOUSE_GRAB, "yes" },
 		{ GUI_GRAB_METHOD, "MOUSE3" }, //CTRL-F10 or MOUSE3
@@ -173,10 +173,12 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
-"#   FC0000: Path of the BIOS ROM\n"
-"#   F80000: Path of the regional ROM (optional, use only for non US versions)\n"
-"#     base: Size of the base RAM in kebibytes\n"
-"# extended: Size of the extended RAM in kebibytes\n"
+"#   FC0000: Path of the BIOS ROM (256KiB); can be empty if a combined 512KiB BIOS+regional ROM is used (see F80000)\n"
+"#   F80000: Path of the regional ROM (optional, 256KiB, only for non US versions),"
+" or path of the combined BIOS+regional ROM (if FC0000 is empty and this ROM has"
+" size 512KiB)\n"
+"#     base: Size of the base RAM in KiB\n"
+"# extended: Size of the extended RAM in KiB\n"
 		},
 
 		{ DRIVES_SECTION,

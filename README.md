@@ -40,7 +40,7 @@ incorrect timing values for some opcode.
 A 64bit Linux operating system with an OpenGL 3.3 video card.
 CPU wise, unfortunately, due to the lack of optimizations you need a good one. 
 I have tested IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I 
-see I can assume the program can run on a 2GHz dual core processor. 
+see I think the program can run on a 2GHz dual core processor. 
 Never tested the code on a 32bit o.s., maybe it will compile and run, maybe it 
 won't.  
 I didn't have the time to port to Windows, sorry.  
@@ -56,10 +56,10 @@ Obtain the original ROM. You have the following options:
 'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
 your PS/1 and launch the executable: it will create the ROM image on the floppy 
 disk
-2. open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
+2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
 reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you got an 
 non-US model)
-3. scour the Internet (I know that there is at least the italian version of 
+3. or scour the Internet (I know that there is at least the italian version of 
 the ROM out there...).
 
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
@@ -68,10 +68,10 @@ been created and where it is placed.
 Put the original ROM anywhere you like (inside the same directory of 
 ibmulator.ini is a good place). 
 Update ibmulator.ini with the file name of the ROM files. Under the 'memory' 
-section there are 2 entries: 'FC0000' for the system BIOS ROM (required) and 
-'F80000' for the regional ROM (optional, only for non US versions). Or rename 
-your ROM files with the same name suggested in the ini file. Both ROM files must
-be 256KiB in size.
+section there are 2 entries: 'FC0000' for the system BIOS ROM (256KiB) and 
+'F80000' for the regional ROM (optional, 256KiB, only for non US versions). If 
+you have got a single ROM file of 512KiB, keep 'FC0000' empty and specify the
+correct path for 'F80000' only.
 
 You also want to select (or create) the correct keyboard mapping.
 

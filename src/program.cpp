@@ -206,6 +206,18 @@ bool Program::file_exists(const char *_path)
 	return (access(_path, F_OK) == 0);
 }
 
+size_t Program::get_file_size(const char *_path)
+{
+	if(_path == NULL) {
+		return 0;
+	}
+	struct stat sb;
+	if(stat(_path, &sb) != 0) {
+		return 0;
+	}
+	return sb.st_size;
+}
+
 std::string Program::get_next_filename(const std::string &_dir,
 		const std::string &_basename, const std::string &_ext)
 {

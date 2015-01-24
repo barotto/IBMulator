@@ -94,14 +94,34 @@ void Memory::config_changed()
 
 	PINFOF(LOG_V1, LOG_MEM, "Loading the SYSTEM ROM\n");
 	try {
+		bool fc0000load = true;
+		size_t romsize;
 		std::string f80000 = g_program.config().find_file(MEM_SECTION, MEM_F80000_IMAGE_FILE);
 		if(Program::file_exists(f80000.c_str())) {
 			//this eprom is optional (non US versions only)
+			romsize = Program::get_file_size(f80000.c_str());
+			if(romsize == 512*1024) {
+				//but if this ROM has size 512KiB then it's a combined BIOS+regional
+				fc0000load = false;
+			} else if(romsize != 256*1024) {
+				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", f80000.c_str());
+				throw std::exception();
+			}
 			load(0xF80000, f80000);
 		}
-
-		std::string fc0000 = g_program.config().find_file(MEM_SECTION, MEM_FC0000_IMAGE_FILE);
-		load(0xFC0000, fc0000);
+		if(fc0000load) {
+			std::string fc0000 = g_program.config().find_file(MEM_SECTION, MEM_FC0000_IMAGE_FILE);
+			if(!Program::file_exists(fc0000.c_str())) {
+				PERRF(LOG_MEM, "Unable to find the BIOS ROM file '%s'\n", fc0000.c_str());
+				throw std::exception();
+			}
+			romsize = Program::get_file_size(fc0000.c_str());
+			if(romsize != 256*1024) {
+				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", fc0000.c_str());
+				throw std::exception();
+			}
+			load(0xFC0000, fc0000);
+		}
 
 		//copy SYS BIOS from the ROM
 		memcpy(&m_buffer[0xE0000], &m_sysrom[SYS_ROM_SIZE-0x20000], 0x20000);
