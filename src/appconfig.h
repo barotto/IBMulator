@@ -121,10 +121,9 @@ public:
 #define CMOS_IMAGE_SAVE     "image_save"
 
 #define MEM_SECTION           "memory"
+#define MEM_ROMSET            "romset"
 #define MEM_BASE_SIZE         "base"
 #define MEM_EXT_SIZE          "extended"
-#define MEM_F80000_IMAGE_FILE "F80000"
-#define MEM_FC0000_IMAGE_FILE "FC0000"
 
 #define DRIVES_SECTION  "drives"
 #define DRIVES_FDD_A    "floppy_a"

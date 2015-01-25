@@ -82,9 +82,9 @@ subdir = src/gui/rocket
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(noinst_HEADERS)
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/librocket.m4 \
-	$(top_srcdir)/m4/opengl.m4 $(top_srcdir)/m4/sdl.m4 \
-	$(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/libarchive.m4 \
+	$(top_srcdir)/m4/librocket.m4 $(top_srcdir)/m4/opengl.m4 \
+	$(top_srcdir)/m4/sdl.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -167,6 +167,8 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
+LIBARCHIVE_CFLAGS = @LIBARCHIVE_CFLAGS@
+LIBARCHIVE_LIBS = @LIBARCHIVE_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBROCKET_CFLAGS = @LIBROCKET_CFLAGS@
 LIBROCKET_LIBS = @LIBROCKET_LIBS@

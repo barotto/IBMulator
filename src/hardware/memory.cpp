@@ -20,15 +20,16 @@
 #include "ibmulator.h"
 #include "memory.h"
 #include "program.h"
-#include "hardware/devices/vga.h"
-
 #include "machine.h"
+#include "hardware/devices/vga.h"
 #include "hardware/cpu/core.h"
 
 #include <algorithm>
 #include <fstream>
 #include <cstring>
 #include "SDL.h"
+#include <archive.h>
+#include <archive_entry.h>
 
 Memory g_memory;
 
@@ -94,43 +95,96 @@ void Memory::config_changed()
 
 	PINFOF(LOG_V1, LOG_MEM, "Loading the SYSTEM ROM\n");
 	try {
-		bool fc0000load = true;
-		size_t romsize;
-		std::string f80000 = g_program.config().find_file(MEM_SECTION, MEM_F80000_IMAGE_FILE);
-		if(Program::file_exists(f80000.c_str())) {
-			//this eprom is optional (non US versions only)
-			romsize = Program::get_file_size(f80000.c_str());
-			if(romsize == 512*1024) {
-				//but if this ROM has size 512KiB then it's a combined BIOS+regional
-				fc0000load = false;
-			} else if(romsize != 256*1024) {
-				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", f80000.c_str());
-				throw std::exception();
-			}
-			load(0xF80000, f80000);
+		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
+		if(!Program::file_exists(romset.c_str())) {
+			PERRF(LOG_MEM, "Unable to find the ROM set '%s'\n", romset.c_str());
+			throw std::exception();
 		}
-		if(fc0000load) {
-			std::string fc0000 = g_program.config().find_file(MEM_SECTION, MEM_FC0000_IMAGE_FILE);
-			if(!Program::file_exists(fc0000.c_str())) {
-				PERRF(LOG_MEM, "Unable to find the BIOS ROM file '%s'\n", fc0000.c_str());
-				throw std::exception();
-			}
-			romsize = Program::get_file_size(fc0000.c_str());
-			if(romsize != 256*1024) {
-				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", fc0000.c_str());
-				throw std::exception();
-			}
-			load(0xFC0000, fc0000);
-		}
+		PINFOF(LOG_V0, LOG_MEM, "Loading the ROM set '%s'\n", romset.c_str());
+		load_rom_set(romset);
 
 		//copy SYS BIOS from the ROM
 		memcpy(&m_buffer[0xE0000], &m_sysrom[SYS_ROM_SIZE-0x20000], 0x20000);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_MEM,"unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
-				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct paths.",
+				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
 		        NULL);
 		throw;
+	}
+}
+
+void Memory::load_rom_set(const std::string &_filename)
+{
+	//TODO add support for splitted 128K EPROMs
+
+	struct archive *ar;
+	struct archive_entry *entry;
+	int res;
+
+	ar = archive_read_new();
+	archive_read_support_filter_all(ar);
+	archive_read_support_format_all(ar);
+	res = archive_read_open_filename(ar, _filename.c_str(), 10240);
+	if(res != ARCHIVE_OK) {
+		PERRF(LOG_MEM, "Error opening ROM set '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
+	bool f80000found = false;
+	bool singlerom = false;
+	bool fc0000found = false;
+	int64_t size;
+	uint8_t *dest;
+	while(archive_read_next_header(ar, &entry) == ARCHIVE_OK) {
+		std::string name = archive_entry_pathname(entry);
+		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+		if(!fc0000found && name.compare("fc0000.bin")==0) {
+			fc0000found = true;
+			size = archive_entry_size(entry);
+			if(size != 256*1024) {
+				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
+				throw std::exception();
+			}
+			if(f80000found && singlerom) {
+				PWARNF(LOG_MEM, "Single ROM file F80000.BIN already loaded\n");
+				break;
+			}
+			//read the rom
+			dest = m_sysrom + (0xFC0000 - SYS_ROM_ADDR);
+			size = archive_read_data(ar, dest, size);
+			if(size <= 0) {
+				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
+				throw std::exception();
+			}
+		} else if(!f80000found && name.compare("f80000.bin")==0) {
+			f80000found = true;
+			size = archive_entry_size(entry);
+			if(size != 512*1024 && size != 256*1024) {
+				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
+				throw std::exception();
+			}
+
+			if(size == 512*1024) {
+				if(fc0000found) {
+					PERRF(LOG_MEM, "ROM file FC0000.BIN already loaded\n");
+					throw std::exception();
+				}
+				fc0000found = true;
+				singlerom = true;
+			}
+			//read the rom
+			dest = m_sysrom + (0xF80000 - SYS_ROM_ADDR);
+			size = archive_read_data(ar, dest, size);
+			if(size <= 0) {
+				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
+				throw std::exception();
+			}
+		}
+	}
+	archive_read_free(ar);
+	if(!fc0000found) {
+		PERRF(LOG_MEM, "Required file FC0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
+		throw std::exception();
 	}
 }
 

@@ -1307,6 +1307,7 @@ AC_SUBST([am__tar])
 AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
+m4_include([m4/libarchive.m4])
 m4_include([m4/librocket.m4])
 m4_include([m4/opengl.m4])
 m4_include([m4/sdl.m4])

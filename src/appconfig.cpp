@@ -69,8 +69,7 @@ ini_file_t AppConfig::ms_def_values = {
 	{ MEM_SECTION, {
 		{ MEM_BASE_SIZE, "640" },
 		{ MEM_EXT_SIZE, "384" },
-		{ MEM_F80000_IMAGE_FILE, "F80000.BIN" },
-		{ MEM_FC0000_IMAGE_FILE, "FC0000.BIN" }
+		{ MEM_ROMSET, "ps1_2011.zip" }
 	} },
 
 	{ DRIVES_SECTION, {
@@ -173,10 +172,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
-"#   FC0000: Path of the BIOS ROM (256KiB); can be empty if a combined 512KiB BIOS+regional ROM is used (see F80000)\n"
-"#   F80000: Path of the regional ROM (optional, 256KiB, only for non US versions),"
-" or path of the combined BIOS+regional ROM (if FC0000 is empty and this ROM has"
-" size 512KiB)\n"
+"#   romset: Path to a zip file containing the rom set to use (for the correct format see the README)\n"
 "#     base: Size of the base RAM in KiB\n"
 "# extended: Size of the extended RAM in KiB\n"
 		},

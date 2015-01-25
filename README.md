@@ -52,26 +52,24 @@ Patches are welcome!
 
 Obtain the original ROM. You have the following options:
 
-1. if you got a real PS/1 model 2011, take the program ROMDUMP.EXE in the 
+1. if you have a real PS/1 model 2011, take the program ROMDUMP.EXE in the 
 'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
 your PS/1 and launch the executable: it will create the ROM image on the floppy 
 disk
 2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
-reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you got an 
+reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
 non-US model)
-3. or scour the Internet (I know that there is at least the italian version of 
-the ROM out there...).
+3. or scour the Internet (I know that there are various rom sets available...).
+
+If you have the single bin files, create a rom set first (see below for the 
+correct format).
 
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
 been created and where it is placed.
 
-Put the original ROM anywhere you like (inside the same directory of 
-ibmulator.ini is a good place). 
-Update ibmulator.ini with the file name of the ROM files. Under the 'memory' 
-section there are 2 entries: 'FC0000' for the system BIOS ROM (256KiB) and 
-'F80000' for the regional ROM (optional, 256KiB, only for non US versions). If 
-you have got a single ROM file of 512KiB, keep 'FC0000' empty and specify the
-correct path for 'F80000' only.
+Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is 
+a good place) and update ibmulator.ini with the file name of the ROM set you 
+want to use.
 
 You also want to select (or create) the correct keyboard mapping.
 
@@ -84,8 +82,8 @@ I hope the various icons of the interface are self-explanatory enough.
 
 If you want to experiment with VGA shaders, set 'fb-scanlines.fs' in the ini 
 file. It will try to emulate the VGA monitor. You should also use the compact
-GUI mode and go fullscreen, otherwise the high res VGA modes can be a bit blurry
-(or maybe use a 4K high dpi monitor?)
+GUI mode and go fullscreen, otherwise the higher res VGA modes can be a bit 
+blurry (or maybe use a 4K high dpi monitor?)
 
 Being a faithful emulator of the PS/1 model 2011, to configure the system (ie. 
 the PS/1, not the emulator) after a configuration change (for instance, if you 
@@ -94,6 +92,18 @@ otherwise you'll get various POST errors. Likewise, if you want to customize
 the way the system operate, you need to use the program CUSTOMIZ.EXE. Both files 
 are copyright IBM and you have to search the Internet in order to obtain them.
 
+### ROM set
+
+A ROM set is a compressed file in the zip format, containing the binary files of
+the original ROM. Inside the zip file there must be (case insensitive):
+
+* FC0000.BIN : the system BIOS ROM, 256KiB
+* F80000.BIN : the regional ROM, 256KiB, optional, only for the non-US version. 
+For international models, this bin file can be merged with FC0000.BIN
+to form a single 512KiB bin file. In this case FC0000.BIN, if present, is 
+ignored.
+
+Any other file present in the archive is ignored.
 
 ### Key bindings
 
@@ -110,9 +120,9 @@ mouse.
 
 ### Command line options
 
--c PATH  Specify a configuration file to use  
--u PATH  Specify a user directory where the program read the ini file from and 
-store new files, like screenshots and the savestate  
+-c PATH  Sets a configuration file to use  
+-u PATH  Sets a user directory from where the program reads the ini file and 
+stores new files, like screenshots and savestates  
 -v NUM  Sets the verbosity level (from 0 to 2)
 
 
@@ -139,6 +149,7 @@ it to Performance (this is a known issue with the Linux CPUfreq governors).
 * SDL 2.0.2
 * libRocket (latest version with a patch applied, see notes below)
 * GLEW
+* libarchive
 
 ### General instructions
 

@@ -1,7 +1,7 @@
 #######################################################################
 # Initial configuration                                               #
 #######################################################################
-define([IBMULATOR_VERSION],[0.1])
+define([IBMULATOR_VERSION],[0.2])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
@@ -53,18 +53,16 @@ AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
 SDL_VERSION=2.0.0
 AM_PATH_SDL2($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
 AX_CHECK_SDLIMAGE
-#AX_CHECK_FREETYPE
 AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_LIBROCKET
+AX_CHECK_LIBARCHIVE
 
 
-#BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $FREETYPE_LIBS -lrt"
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS -lrt"
-
+BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS -lrt"
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS"
+BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -129,14 +127,15 @@ AC_CONFIG_FILES([
 AC_OUTPUT
 
 echo ""
-echo "${PACKAGE} build summary"
+echo "${PACKAGE_NAME} build summary"
 echo "------------------------"
 if test "x$debug" = "xyes"; then
 	echo "- configured for debugging"
 fi
 echo "- SDL       : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
 echo "- SDL_image : $SDLIMAGE_LIBS"
-#echo "- FreeType  : $FREETYPE_LIBS"
 echo "- libRocket : $LIBROCKET_LIBS"
-echo "- prefix=${prefix}"
+echo "- libarchive: $LIBARCHIVE_LIBS"
+echo "- GLEW      : $GLEW_LIBS"
+echo "- prefix    : ${prefix}"
 
