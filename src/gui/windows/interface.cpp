@@ -297,7 +297,7 @@ void Interface::on_fdd_mount(RC::Event &)
 	if(floppy_dir.empty()) {
 		floppy_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, false);
 		if(floppy_dir.empty()) {
-			floppy_dir = g_program.config().get_user_home();
+			floppy_dir = g_program.config().get_cfg_home();
 		}
 	}
 	try {
