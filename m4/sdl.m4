@@ -17,7 +17,7 @@ AC_DEFUN([AM_PATH_SDL2],
 dnl Get the cflags and libraries from the sdl2-config script
 dnl
 AC_ARG_WITH(sdl-prefix,[  --with-sdl-prefix=PFX   Prefix where SDL is installed (optional)],
-            sdl_prefix="$withval", sdl_prefix="/usr")
+            sdl_prefix="$withval", sdl_prefix="")
 AC_ARG_WITH(sdl-exec-prefix,[  --with-sdl-exec-prefix=PFX Exec prefix where SDL is installed (optional)],
             sdl_exec_prefix="$withval", sdl_exec_prefix="")
 AC_ARG_ENABLE(sdltest, [  --disable-sdltest       Do not try to compile and run a test SDL program],
@@ -34,37 +34,26 @@ AC_ARG_ENABLE([static-sdl],
 		sdl_config_libs="--static-libs"
 	fi
 	
-  min_sdl_version=ifelse([$1], ,2.0.0,$1)
+	min_sdl_version=ifelse([$1], ,2.0.0,$1)
 
-  if test "x$sdl_prefix$sdl_exec_prefix" = x ; then
-    PKG_CHECK_MODULES([SDL], [sdl2 >= $min_sdl_version],
-           [sdl_pc=yes],
-           [sdl_pc=no])
-  else
-    sdl_pc=no
-    if test x$sdl_exec_prefix != x ; then
-      sdl_config_args="$sdl_config_args --exec-prefix=$sdl_exec_prefix"
-      if test x${SDL2_CONFIG+set} != xset ; then
-        SDL2_CONFIG=$sdl_exec_prefix/bin/sdl2-config
-      fi
-    fi
-    if test x$sdl_prefix != x ; then
-      sdl_config_args="$sdl_config_args --prefix=$sdl_prefix"
-      if test x${SDL2_CONFIG+set} != xset ; then
-        SDL2_CONFIG=$sdl_prefix/bin/sdl2-config
-      fi
-    fi
-  fi
+	if test x$sdl_exec_prefix != x ; then
+	  sdl_config_args="$sdl_config_args --exec-prefix=$sdl_exec_prefix"
+	  if test x${SDL2_CONFIG+set} != xset ; then
+	    SDL2_CONFIG=$sdl_exec_prefix/bin/sdl2-config
+	  fi
+	fi
+	if test x$sdl_prefix != x ; then
+	  sdl_config_args="$sdl_config_args --prefix=$sdl_prefix"
+	  if test x${SDL2_CONFIG+set} != xset ; then
+	    SDL2_CONFIG=$sdl_prefix/bin/sdl2-config
+	  fi
+	fi
 
-  if test "x$sdl_pc" = xyes ; then
-    no_sdl=""
-    SDL2_CONFIG="pkg-config sdl2"
-  else
     as_save_PATH="$PATH"
     if test "x$prefix" != xNONE && test "$cross_compiling" != yes; then
       PATH="$prefix/bin:$prefix/usr/bin:$PATH"
     fi
-    AC_PATH_PROG(SDL2_CONFIG, sdl2-config, no, [$PATH])
+    AC_CHECK_TOOL(SDL2_CONFIG, sdl2-config, no, [$PATH])
     PATH="$as_save_PATH"
     AC_MSG_CHECKING(for SDL - version >= $min_sdl_version)
     no_sdl=""
@@ -161,7 +150,7 @@ int main (int argc, char *argv[])
     else
       AC_MSG_RESULT(no)
     fi
-  fi
+
   if test "x$no_sdl" = x ; then
      ifelse([$2], , :, [$2])
   else
