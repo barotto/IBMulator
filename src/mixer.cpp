@@ -23,6 +23,7 @@
 #include "machine.h"
 #include "SDL.h"
 #include "wav.h"
+#include <cmath>
 
 Mixer g_mixer;
 

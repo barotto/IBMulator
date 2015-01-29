@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "pcspeaker.h"
 #include "program.h"
+#include <cmath>
 
 PCSpeaker g_pcspeaker;
 
