@@ -111,8 +111,8 @@ class CPU
 friend class Machine;
 protected:
 
-	ulong m_freq;
-	ulong m_cycle_time;
+	uint32_t m_freq;
+	uint32_t m_cycle_time;
 	Instruction *m_instr;
 
 	struct {
@@ -175,9 +175,9 @@ public:
 
 	ulong step();
 
-	inline ulong get_freq() { return m_freq; }
+	inline uint32_t get_freq() { return m_freq; }
 	GCC_ATTRIBUTE(always_inline)
-	inline ulong get_cycle_time_ns() { return m_cycle_time; }
+	inline uint32_t get_cycle_time_ns() { return m_cycle_time; }
 
 	void clear_INTR();
 	void raise_INTR();

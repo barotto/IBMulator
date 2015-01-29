@@ -645,6 +645,7 @@ SDL2_CONFIG
 static_sdl
 separator
 CXX_DEFAULTS
+have_windows
 GCC_FALSE
 GCC_TRUE
 RANLIB
@@ -5053,6 +5054,14 @@ else
 fi
 
 
+have_windows="no"
+case "$host_os" in
+   mingw*)
+      have_windows="yes"
+   ;;
+esac
+
+
 #######################################################################
 # Some configuration options                                          #
 #######################################################################
@@ -5073,7 +5082,11 @@ fi
 
 
 
-separator="/"
+if test x$have_windows = xno ; then
+	separator="/"
+else
+	separator="\\\\"
+fi
 
 
 cat >>confdefs.h <<_ACEOF
@@ -5744,8 +5757,11 @@ if test "$HAVE_OPENGL" = "no" ; then
 *** Unable to find OpenGL
 " "$LINENO" 5
 else
-    #OPENGL_LIBS="-lGL -lGLU"
-    OPENGL_LIBS="-lGL"
+	if test x$have_windows = xyes ; then
+		OPENGL_LIBS="-lopengl32"
+	else
+    	OPENGL_LIBS="-lGL"
+    fi
 fi
 
 
@@ -5776,7 +5792,12 @@ else
 fi
 
 
-	GLEW_LIBS="$glew_prefix/lib/libGLEW.a"
+	if test x$have_windows = xyes ; then
+		GLEW_LIBS="$glew_prefix/lib/libglew32.a"
+	else
+    	GLEW_LIBS="$glew_prefix/lib/libGLEW.a"
+    fi
+
 else
 	ac_fn_c_check_header_mongrel "$LINENO" "GL/glew.h" "ac_cv_header_GL_glew_h" "$ac_includes_default"
 if test "x$ac_cv_header_GL_glew_h" = xyes; then :
@@ -5786,7 +5807,12 @@ else
 fi
 
 
-	GLEW_LIBS="-lGLEW"
+	if test x$have_windows = xyes ; then
+		GLEW_LIBS="-lglew32"
+	else
+    	GLEW_LIBS="-lGLEW"
+    fi
+
 fi
 
 
@@ -6067,7 +6093,12 @@ fi
 
 
 
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS -lrt"
+BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS"
+if test x$have_windows = xno ; then
+	BASELIBS="$BASELIBS -lrt"
+else
+	BASELIBS="$BASELIBS -lws2_32 -liconv"
+fi
 
 
 BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS"
@@ -7073,39 +7104,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-# The cast to long int works around a bug in the HP C Compiler
-# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
-# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
-# This bug is HP SR number 8606223364.
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of void*" >&5
-$as_echo_n "checking size of void*... " >&6; }
-if ${ac_cv_sizeof_voidp+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  if ac_fn_c_compute_int "$LINENO" "(long int) (sizeof (void*))" "ac_cv_sizeof_voidp"        "$ac_includes_default"; then :
-
-else
-  if test "$ac_cv_type_voidp" = yes; then
-     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error 77 "cannot compute sizeof (void*)
-See \`config.log' for more details" "$LINENO" 5; }
-   else
-     ac_cv_sizeof_voidp=0
-   fi
-fi
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_voidp" >&5
-$as_echo "$ac_cv_sizeof_voidp" >&6; }
-
-
-
-cat >>confdefs.h <<_ACEOF
-#define SIZEOF_VOIDP $ac_cv_sizeof_voidp
-_ACEOF
-
-
+#AC_CHECK_SIZEOF(void*)
 ac_fn_c_check_type "$LINENO" "uchar" "ac_cv_type_uchar" "$ac_includes_default"
 if test "x$ac_cv_type_uchar" = xyes; then :
 
@@ -8667,6 +8666,6 @@ echo "- SDL       : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($S
 echo "- SDL_image : $SDLIMAGE_LIBS"
 echo "- libRocket : $LIBROCKET_LIBS"
 echo "- libarchive: $LIBARCHIVE_LIBS"
-echo "- GLEW      : $GLEW_LIBS"
+echo "- OpenGL    : $OPENGL_LIBS $GLEW_LIBS"
 echo "- prefix    : ${prefix}"
 

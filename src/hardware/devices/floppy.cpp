@@ -41,12 +41,21 @@ extern "C" {
 #ifdef __linux__
 extern "C" {
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <linux/fd.h>
-#include <fcntl.h>
 #include <unistd.h>
 }
 #endif
+
+#ifdef _WIN32
+#include "wincompat.h"
+extern "C" {
+#include <winioctl.h>
+#include <io.h>
+}
+#endif
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "ibmulator.h"
 #include "program.h"
 #include "machine.h"
@@ -57,12 +66,8 @@ extern "C" {
 #include "hardware/devices/systemboard.h"
 #include "floppy.h"
 #include "vvfat.h"
-// windows.h included by ibmulator.h
-#ifdef WIN32
-extern "C" {
-#include <winioctl.h>
-}
-#endif
+
+
 
 #include <cstring>
 #include <functional>
@@ -1638,7 +1643,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 #ifdef __linux__
 	struct floppy_struct floppy_geom;
 #endif
-#ifdef WIN32
+#ifdef _WIN32
 	char sTemp[1024];
 	bool raw_floppy = 0;
 	HANDLE hFile;
@@ -1692,7 +1697,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 
 	// open media file (image file or device)
 
-#ifdef WIN32
+#ifdef _WIN32
 	if((isalpha(_path[0])) && (_path[1] == ':') && (strlen(_path) == 2)) {
 		raw_floppy = 1;
 		wsprintf(sTemp, "\\\\.\\%s", _path);
@@ -1730,7 +1735,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 		PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read/write: %s\n", _path, strerror(errno));
 		// try opening the file read-only
 		write_protected = true;
-#ifdef WIN32
+#ifdef _WIN32
 		if(raw_floppy == 1)
 			fd = ::open(sTemp, RDONLY);
 		else
@@ -1745,7 +1750,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 		}
 	}
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	if(raw_floppy) {
 		memset (&stat_buf, 0, sizeof(stat_buf));
 		stat_buf.st_mode = S_IFCHR;
@@ -1834,7 +1839,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 		heads             = floppy_geom.head;
 		sectors_per_track = floppy_geom.sect;
 		sectors           = floppy_geom.size;
-#elif defined(WIN32)
+#elif defined(_WIN32)
 		tracks            = wtracks;
 		heads             = wheads;
 		sectors_per_track = wspt;

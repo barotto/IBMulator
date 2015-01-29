@@ -34,6 +34,10 @@
 #include <stdlib.h>
 #include <sstream>
 
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
+
 Program g_program;
 
 std::mutex Program::ms_lock;
@@ -172,7 +176,11 @@ void Program::create_dir(const std::string &_path)
 {
 	if(!file_exists(_path.c_str())) {
 		PDEBUGF(LOG_V0, LOG_PROGRAM, "Creating '%s'\n", _path.c_str());
-		if(mkdir(_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0) {
+		if(mkdir(_path.c_str()
+#ifndef _WIN32
+			, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH
+#endif
+		) != 0) {
 			PERRF(LOG_PROGRAM, "Unable to create '%s'\n", _path.c_str());
 			throw std::exception();
 		}
@@ -241,28 +249,49 @@ std::string Program::get_next_filename(const std::string &_dir,
 
 bool Program::initialize(int argc, char** argv)
 {
-	std::string cfgfile, datapath;
+	std::string home, cfgfile, datapath;
 	char *str;
-
 	parse_arguments(argc, argv);
 
-	//TODO Port to WINDOWS, it uses APPDATA\{DeveloperName\AppName}
-	//actually, it should be user home, not app home
+#ifndef _WIN32
 	str = getenv("HOME");
-	if(str == NULL) {
+	if(str) {
+		home = str;
+	}
+#else
+	str = getenv("USERPROFILE");
+	if(str) {
+		home = str;
+	} else {
+		str = getenv("HOMEDRIVE");
+		char *hpath = getenv("HOMEPATH");
+		if(str && hpath) {
+			home = str;
+			home += hpath;
+		}
+	}
+#endif
+	if(home.empty()) {
 		PERRF(LOG_PROGRAM, "Unable to determine the home directory!\n");
 		throw std::exception();
 	}
-	std::string home = str;
 
 	if(m_user_dir.empty()) {
-
+#ifndef _WIN32
 		str = getenv("XDG_CONFIG_HOME");
 		if(str == NULL) {
 			m_user_dir = home + FS_SEP ".config";
 		} else {
 			m_user_dir = str;
 		}
+#else
+		//WINDOWS uses LOCALAPPDATA\{DeveloperName\AppName}
+		str = getenv("LOCALAPPDATA");
+		if(str == NULL) {
+			PERRF_ABORT(LOG_PROGRAM, "Unable to determine the LOCALAPPDATA directory!\n");
+		}
+		m_user_dir = str;
+#endif
 		if(!is_directory(m_user_dir.c_str()) || access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
 			PERRF_ABORT(LOG_PROGRAM, "Unable to access the user directory!\n");
 		}

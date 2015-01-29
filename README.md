@@ -37,13 +37,12 @@ incorrect timing values for some opcode.
 
 ## HARDWARE REQUIREMENTS
 
-A 64bit Linux operating system with an OpenGL 3.3 video card.
+A 64bit Linux or Windows operating system with an OpenGL 3.3 video card.
 CPU wise, unfortunately, due to the lack of optimizations you need a good one. 
 I have tested IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I 
-see I think the program can run on a 2GHz dual core processor. 
+see I think the program can run on a 2GHz dual core processor.  
 Never tested the code on a 32bit o.s., maybe it will compile and run, maybe it 
-won't.  
-I didn't have the time to port to Windows, sorry.  
+won't.   
 I will never have the means nor the time to port to OS X, iOS, Android, WinRT.
 Patches are welcome!
 
@@ -147,6 +146,7 @@ it to Performance (this is a known issue with the Linux CPUfreq governors).
 
 * GCC 4.9
 * SDL 2.0.2
+* SDL_image 2.0.0
 * libRocket (latest version with a patch applied, see notes below)
 * GLEW
 * libarchive
@@ -159,7 +159,7 @@ $ make install
 
 Use './configure --help' to read the variuous compilation options.
 
-### Under Linux
+### Linux
 
 Just follow the general instructions. Any missing library will be pointed out;
 use your distributon's software manager to install them (except libRocket).
@@ -168,9 +168,15 @@ If you are going to compile using your own version of SDL2, you should compile
 SDL2 with xinerama and xrandr, otherwise you could experience many problems 
 switching to fullscreen.
 
-### Under Windows and OS X
+### Windows
 
-No support for these operating systems yet. Patches are welcome!
+Currently you have two options:
+
+1. under Linux, cross compile with MinGW
+2. under Windows, compile with MinGW + MSYS
+
+Follow the general instructions using this additional 'configure' option: 
+--host=x86_64-w64-mingw32
 
 ### Why GCC 4.9? Isn't the 4.8 version included with Ubuntu 14.04 enough?
 

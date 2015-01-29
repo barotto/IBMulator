@@ -49,6 +49,11 @@
 	typedef int SOCKET;
 #endif
 
+#if SER_WIN32
+	#include "wincompat.h"
+	#include <winsock2.h>
+#endif
+
 #include "keyboard.h"
 
 #define SERIAL_MAXDEV   2

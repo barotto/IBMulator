@@ -235,7 +235,7 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 		case 0x0092: {
 			bool a20 = (_value & 0x02);
 			g_memory.set_A20_line(a20);
-			PDEBUGF(LOG_V2, LOG_MACHINE, "A20: now %u\n", uint(a20));
+			PDEBUGF(LOG_V2, LOG_MACHINE, "A20: now %u\n", (uint)a20);
 			#if (1) // does the PS/1 support this?
 			if(_value & 0x01) { /* high speed reset */
 				PDEBUGF(LOG_V2, LOG_MACHINE, "iowrite to port 0x92 : reset resquested\n");

@@ -1504,7 +1504,7 @@ void VGA::update()
 		iHeight = VDE+1;
 		if((iWidth != m_s.last_xres) || (iHeight != m_s.last_yres) || (MSL != m_s.last_msl) || (m_s.last_bpp > 8))
 		{
-			m_display->dimension_update(iWidth, iHeight, uint(MSL+1), cWidth);
+			m_display->dimension_update(iWidth, iHeight, (uint)MSL+1, cWidth);
 			m_s.last_xres = iWidth;
 			m_s.last_yres = iHeight;
 			m_s.last_msl = MSL;

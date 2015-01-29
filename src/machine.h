@@ -69,7 +69,7 @@ private:
 	bool m_on;
 	bool m_cpu_single_step;
 	uint32_t m_step_to_addr;
-	ulong m_cpu_cycles;
+	uint32_t m_cpu_cycles;
 	uint m_cpu_cycle_time;
 	double m_cycles_factor;
 	double m_skipped_cycles;

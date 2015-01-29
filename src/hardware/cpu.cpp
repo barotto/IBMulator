@@ -56,8 +56,8 @@ void CPU::init()
 
 void CPU::config_changed()
 {
-	m_freq = ulong(g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY) * 1000000.0);
-	m_cycle_time = 1.0e9/double(m_freq);
+	m_freq = uint32_t(g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY) * 1000000.0);
+	m_cycle_time = uint32_t(1.0e9/double(m_freq));
 	PINFOF(LOG_V0, LOG_CPU, "Frequency: %.1f MHz\n", float(m_freq) / 1.0e6);
 	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
 

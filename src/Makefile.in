@@ -100,7 +100,8 @@ am_ibmulator_OBJECTS = main.$(OBJEXT) appconfig.$(OBJEXT) \
 	program.$(OBJEXT) machine.$(OBJEXT) statebuf.$(OBJEXT) \
 	chrono.$(OBJEXT) bench.$(OBJEXT) hwbench.$(OBJEXT) \
 	syslog.$(OBJEXT) ini/ini.$(OBJEXT) mixer.$(OBJEXT) \
-	wav.$(OBJEXT) ring_buffer.$(OBJEXT)
+	wav.$(OBJEXT) ring_buffer.$(OBJEXT) \
+	wincompat/mkstemp.$(OBJEXT) wincompat/realpath.$(OBJEXT)
 ibmulator_OBJECTS = $(am_ibmulator_OBJECTS)
 am__DEPENDENCIES_1 =
 ibmulator_DEPENDENCIES = gui/libgui.a hardware/libhardware.a \
@@ -294,6 +295,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+have_windows = @have_windows@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -339,7 +341,9 @@ ibmulator_SOURCES = \
 	ini/ini.cpp \
 	mixer.cpp \
 	wav.cpp \
-	ring_buffer.cpp
+	ring_buffer.cpp \
+	wincompat/mkstemp.cpp \
+	wincompat/realpath.cpp
 
 noinst_HEADERS = \
 	ibmulator.h \
@@ -358,7 +362,8 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	ini/ini.h \
-	wav.h
+	wav.h \
+	wincompat.h
 
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS)
@@ -445,6 +450,16 @@ ini/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) ini/$(DEPDIR)
 	@: > ini/$(DEPDIR)/$(am__dirstamp)
 ini/ini.$(OBJEXT): ini/$(am__dirstamp) ini/$(DEPDIR)/$(am__dirstamp)
+wincompat/$(am__dirstamp):
+	@$(MKDIR_P) wincompat
+	@: > wincompat/$(am__dirstamp)
+wincompat/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) wincompat/$(DEPDIR)
+	@: > wincompat/$(DEPDIR)/$(am__dirstamp)
+wincompat/mkstemp.$(OBJEXT): wincompat/$(am__dirstamp) \
+	wincompat/$(DEPDIR)/$(am__dirstamp)
+wincompat/realpath.$(OBJEXT): wincompat/$(am__dirstamp) \
+	wincompat/$(DEPDIR)/$(am__dirstamp)
 
 ibmulator$(EXEEXT): $(ibmulator_OBJECTS) $(ibmulator_DEPENDENCIES) $(EXTRA_ibmulator_DEPENDENCIES) 
 	@rm -f ibmulator$(EXEEXT)
@@ -453,6 +468,7 @@ ibmulator$(EXEEXT): $(ibmulator_OBJECTS) $(ibmulator_DEPENDENCIES) $(EXTRA_ibmul
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f ini/*.$(OBJEXT)
+	-rm -f wincompat/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -470,6 +486,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syslog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wav.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ini/$(DEPDIR)/ini.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@wincompat/$(DEPDIR)/mkstemp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@wincompat/$(DEPDIR)/realpath.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -677,6 +695,8 @@ distclean-generic:
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
 	-rm -f ini/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ini/$(am__dirstamp)
+	-rm -f wincompat/$(DEPDIR)/$(am__dirstamp)
+	-rm -f wincompat/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -686,7 +706,7 @@ clean: clean-recursive
 clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) ini/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) ini/$(DEPDIR) wincompat/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -732,7 +752,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) ini/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) ini/$(DEPDIR) wincompat/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -21,6 +21,9 @@
 #ifndef IBMULATOR_HW_HDIMAGE_H
 #define IBMULATOR_HW_HDIMAGE_H
 
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
 
 enum {
   HDIMAGE_MODE_FLAT,
@@ -88,7 +91,7 @@ class MediaImage;
 
 int read_image(int fd, int64_t offset, void *buf, int count);
 int write_image(int fd, int64_t offset, void *buf, int count);
-#ifndef WIN32
+#ifndef _WIN32
 int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, time_t *mtime);
 #else
 int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME *mtime);
@@ -96,7 +99,7 @@ int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME
 int hdimage_detect_image_mode(const char *pathname);
 bool hdimage_backup_file(int fd, const char *backup_fname);
 bool hdimage_copy_file(const char *src, const char *dst);
-#ifndef WIN32
+#ifndef _WIN32
 uint16_t fat_datetime(time_t time, int return_time);
 #else
 uint16_t fat_datetime(FILETIME time, int return_time);
@@ -107,7 +110,7 @@ class MediaImage
 {
 protected:
 
-#ifndef WIN32
+#ifndef _WIN32
 	time_t mtime;
 #else
 	FILETIME mtime;

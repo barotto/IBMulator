@@ -265,7 +265,7 @@ void PCSpeaker::create_samples(uint64_t _time)
 		m_s.samples += (duration * m_samples_per_nsec);
 
 		uint j;
-		for(j=0; j<uint(m_s.samples); j++) {
+		for(j=0; j<(uint)m_s.samples; j++) {
 
 			if(samples_cnt < m_samples_buffer.size()) {
 				m_samples_buffer[samples_cnt] = int16_t(round(l));

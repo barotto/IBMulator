@@ -17,7 +17,9 @@ ibmulator_SOURCES = \
 	ini/ini.cpp \
 	mixer.cpp \
 	wav.cpp \
-	ring_buffer.cpp
+	ring_buffer.cpp \
+	wincompat/mkstemp.cpp \
+	wincompat/realpath.cpp
 	
 noinst_HEADERS = \
 	ibmulator.h \
@@ -36,7 +38,8 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	ini/ini.h \
-	wav.h
+	wav.h \
+	wincompat.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS)

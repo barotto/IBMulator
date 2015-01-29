@@ -291,7 +291,7 @@ bool Machine::main_loop()
 		if(m_on) {
 			if(!m_cpu_single_step) {
 				double dcycles = double(m_cpu_cycles) * m_cycles_factor;
-				ulong cycles = uint(dcycles) + uint(m_skipped_cycles);
+				uint cycles = (uint)dcycles + (uint)m_skipped_cycles;
 				if(cycles==0) {
 					m_skipped_cycles += dcycles;
 				} else {
@@ -316,7 +316,7 @@ void Machine::core_step(int32_t _cpu_cycles)
 	ASSERT(_cpu_cycles > 0);
 	uint64_t start_time = m_s.virt_time;
 	int32_t cycles_left = _cpu_cycles + m_s.cycles_left;
-	ulong cycle_time = g_cpu.get_cycle_time_ns();
+	uint32_t cycle_time = g_cpu.get_cycle_time_ns();
 	while(cycles_left>0) {
 
 		int32_t c = g_cpu.step();
@@ -324,7 +324,7 @@ void Machine::core_step(int32_t _cpu_cycles)
 			//c is 0 only if (REP && CX==0)
 			m_bench.cpu_step();
 
-			ulong elapsed_ns = c * cycle_time;
+			uint32_t elapsed_ns = c * cycle_time;
 			uint64_t cpu_time = m_s.virt_time + elapsed_ns;
 			//if(m_s.virt_time==2772557000) {
 			//	PERR("diocan\n");

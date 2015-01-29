@@ -1,10 +1,8 @@
-/release/
-/release32/
+/release*
 /docs/
 /debug/
 /autom4te.cache/
 /ibmulator-*.tar.gz
-/IBMulator-*.tar.gz
 .deps
 *.o
 Makefile

@@ -75,10 +75,10 @@ void Memory::reset()
 void Memory::config_changed()
 {
 	m_base_size = std::min(
-			uint(g_program.config().get_int(MEM_SECTION, MEM_BASE_SIZE))* KEBIBYTE,
+			(uint)(g_program.config().get_int(MEM_SECTION, MEM_BASE_SIZE))* KEBIBYTE,
 			MAX_BASE_MEM_SIZE);
 	m_ext_size = std::min(
-			uint(g_program.config().get_int(MEM_SECTION, MEM_EXT_SIZE))* KEBIBYTE,
+			(uint)(g_program.config().get_int(MEM_SECTION, MEM_EXT_SIZE))* KEBIBYTE,
 			MAX_EXT_MEM_SIZE);
 
 	m_mainbuf_size = MEBIBYTE + m_ext_size;

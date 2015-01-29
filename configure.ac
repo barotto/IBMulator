@@ -25,6 +25,14 @@ AC_PROG_RANLIB
 
 AM_CONDITIONAL([GCC], [test x$GXX = xyes])
 
+have_windows="no"
+case "$host_os" in
+   mingw*)
+      have_windows="yes"
+   ;;
+esac 
+AC_SUBST(have_windows)
+
 #######################################################################
 # Some configuration options                                          #
 #######################################################################
@@ -41,8 +49,12 @@ else
 fi
 
 AC_SUBST(CXX_DEFAULTS)
-	      
-separator="/"
+
+if test x$have_windows = xno ; then
+	separator="/"
+else
+	separator="\\\\"
+fi
 AC_SUBST(separator)
 AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
 	
@@ -59,7 +71,12 @@ AX_CHECK_LIBROCKET
 AX_CHECK_LIBARCHIVE
 
 
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS -lrt"
+BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS"
+if test x$have_windows = xno ; then
+	BASELIBS="$BASELIBS -lrt"
+else
+	BASELIBS="$BASELIBS -lws2_32 -liconv"
+fi
 AC_SUBST([BASELIBS])
 
 BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS"
@@ -104,7 +121,7 @@ AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(unsigned long)
 AC_CHECK_SIZEOF(long long)
 AC_CHECK_SIZEOF(unsigned long long)
-AC_CHECK_SIZEOF(void*)
+#AC_CHECK_SIZEOF(void*)
 dnl AC_CHECK_TYPE(bool, int)
 AC_CHECK_TYPE(uchar, unsigned char)
 AC_CHECK_TYPE(ushort, unsigned short)
@@ -136,6 +153,6 @@ echo "- SDL       : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($S
 echo "- SDL_image : $SDLIMAGE_LIBS"
 echo "- libRocket : $LIBROCKET_LIBS"
 echo "- libarchive: $LIBARCHIVE_LIBS"
-echo "- GLEW      : $GLEW_LIBS"
+echo "- OpenGL    : $OPENGL_LIBS $GLEW_LIBS"
 echo "- prefix    : ${prefix}"
 

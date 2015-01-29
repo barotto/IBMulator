@@ -232,7 +232,7 @@ void Mixer::main_loop()
 				if(m_start == 0) {
 					m_start = m_main_chrono.get_usec();
 					PINFOF(LOG_V1, LOG_MIXER, "prebuffering %llu usecs\n", m_prebuffer);
-				} else if(elapsed > uint(m_prebuffer)) {
+				} else if(elapsed > (uint)m_prebuffer) {
 					SDL_PauseAudioDevice(m_device, 0);
 					PINFOF(LOG_V1, LOG_MIXER, "playing (%llu usecs elapsed)\n", elapsed);
 					m_start = 0;

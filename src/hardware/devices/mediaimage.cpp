@@ -53,13 +53,13 @@ int write_image(int fd, int64_t offset, void *buf, int count)
 	return write(fd, buf, count);
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, time_t *mtime)
 #else
 int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME *mtime)
 #endif
 {
-#ifdef WIN32
+#ifdef _WIN32
   if(fsize != NULL) {
     HANDLE hFile = CreateFile(pathname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
     if(hFile != INVALID_HANDLE_VALUE) {
@@ -90,7 +90,7 @@ int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME
     return fd;
   }
 
-#ifndef WIN32
+#ifndef _WIN32
   if(fsize != NULL) {
     struct stat stat_buf;
     if(fstat(fd, &stat_buf)) {
@@ -133,7 +133,7 @@ int hdimage_detect_image_mode(const char *pathname)
 }
 
 // if return_time==0, this returns the fat_date, else the fat_time
-#ifndef WIN32
+#ifndef _WIN32
 uint16_t fat_datetime(time_t time, int return_time)
 {
   struct tm* t;
@@ -171,7 +171,11 @@ bool hdimage_backup_file(int fd, const char *backup_fname)
 #ifdef O_BINARY
     | O_BINARY
 #endif
-    , S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
+    , S_IWUSR | S_IRUSR
+#ifdef S_IRGRP
+	| S_IRGRP | S_IWGRP
+#endif
+	);
   if(backup_fd >= 0) {
     offset = 0;
     size = 0x20000;
@@ -203,9 +207,9 @@ bool hdimage_backup_file(int fd, const char *backup_fname)
 
 bool hdimage_copy_file(const char *src, const char *dst)
 {
-#ifdef WIN32
+#ifdef _WIN32
   return (bool)CopyFile(src, dst, FALSE);
-#elif defined(linux)
+#elif defined(__linux__)
   pid_t pid, ws;
 
   if((src == NULL) || (dst == NULL)) {
@@ -470,7 +474,11 @@ int RedoLog::create(const char* filename, const char* type, uint64_t size)
 #ifdef O_BINARY
             | O_BINARY
 #endif
-            , S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP);
+            , S_IWUSR | S_IRUSR
+#ifdef S_IRGRP
+			| S_IRGRP | S_IWGRP
+#endif
+  );
 
   return create(filedes, type, size);
 }
@@ -507,7 +515,7 @@ int RedoLog::open(const char* filename, const char *type)
 int RedoLog::open(const char* filename, const char *type, int flags)
 {
   uint64_t imgsize = 0;
-#ifndef WIN32
+#ifndef _WIN32
   time_t mtime;
 #else
   FILETIME mtime;

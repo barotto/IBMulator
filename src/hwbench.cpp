@@ -135,8 +135,8 @@ void operator<<(std::ostream& _os, const HWBench &_bench)
 	else
 		_os << "max btime: " << _bench.max_beat_time << " (+inf bps)"<< _bench.endl;
 
-	_os << "avg IPS: " << ulong(_bench.avg_ips) << _bench.endl;
-	_os << "avg CPS: " << ulong(_bench.avg_cps) << _bench.endl;
+	_os << "avg IPS: " << (ulong)_bench.avg_ips << _bench.endl;
+	_os << "avg CPS: " << (ulong)_bench.avg_cps << _bench.endl;
 }
 
 

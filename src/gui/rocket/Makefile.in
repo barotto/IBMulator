@@ -219,6 +219,7 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+have_windows = @have_windows@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@

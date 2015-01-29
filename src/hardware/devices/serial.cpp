@@ -44,17 +44,19 @@
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <netdb.h>
-	#include <fcntl.h>
 	#include <unistd.h>
 	#define closesocket(s) ::close(s)
 #endif
 #if SER_WIN32
-	#include <winsock2.h>
+	//#include <winioctl.h>
+	//#include <io.h>
+	#if !defined(FILE_FLAG_FIRST_PIPE_INSTANCE)
+		#define FILE_FLAG_FIRST_PIPE_INSTANCE 0
+	#endif
 #endif
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#if defined(_WIN32) && !defined(FILE_FLAG_FIRST_PIPE_INSTANCE)
-	#define FILE_FLAG_FIRST_PIPE_INSTANCE 0
-#endif
 
 #if USE_RAW_SERIAL
 	#include "serial_raw.h"
@@ -286,7 +288,7 @@ void Serial::init_mode_term(uint comn, std::string dev)
 	if(!SERIAL_ENABLE || SER_WIN32) {
 		PERRF_ABORT(LOG_COM, "serial terminal support not available\n");
 	}
-
+#if !SER_WIN32
 	if(dev.empty())
 		return;
 
@@ -322,6 +324,7 @@ void Serial::init_mode_term(uint comn, std::string dev)
 		//m_s[comn].term_new.c_iflag |= IXOFF;
 		tcsetattr(m_s[comn].tty_id, TCSAFLUSH, &m_s[comn].term_new);
 	}
+#endif
 }
 
 void Serial::init_mode_raw(uint, std::string)
@@ -443,7 +446,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	}
 }
 
-void Serial::init_mode_pipe(uint, std::string dev, uint mode)
+void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
 {
 	if(dev.empty()) {
 		return;
@@ -452,7 +455,7 @@ void Serial::init_mode_pipe(uint, std::string dev, uint mode)
 	bool server = (mode == SER_MODE_PIPE_SERVER);
 	#if SER_WIN32
 		HANDLE pipe;
-		s[comn].io_mode = mode;
+		m_s[comn].io_mode = mode;
 		// server mode
 		if(server) {
 			pipe = CreateNamedPipe( dev.c_str(),
@@ -460,9 +463,9 @@ void Serial::init_mode_pipe(uint, std::string dev, uint mode)
 					PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 					1, 4096, 4096, 0, NULL);
 
-			if(pipe == INVALID_HANDLE_VALUE)
+			if(pipe == INVALID_HANDLE_VALUE) {
 				PERRF_ABORT(LOG_COM, "COM%d: CreateNamedPipe(%s) failed\n", comn+1, dev.c_str());
-
+			}
 			PINFOF(LOG_V0, LOG_COM, "COM%d: waiting for client to connect to %s\n", comn+1, dev.c_str());
 			if(!ConnectNamedPipe(pipe, NULL) && GetLastError() != ERROR_PIPE_CONNECTED) {
 				CloseHandle(pipe);
@@ -473,12 +476,14 @@ void Serial::init_mode_pipe(uint, std::string dev, uint mode)
 			pipe = CreateFile( dev.c_str(), GENERIC_READ | GENERIC_WRITE,
 					0, NULL, OPEN_EXISTING, 0, NULL);
 
-			if(pipe == INVALID_HANDLE_VALUE)
+			if(pipe == INVALID_HANDLE_VALUE) {
 				PERRF(LOG_COM, "COM%d: failed to open pipe %s", comn+1, dev.c_str());
+			}
 		}
 
-		if(pipe != INVALID_HANDLE_VALUE)
-			s[comn].pipe = pipe;
+		if(pipe != INVALID_HANDLE_VALUE) {
+			m_s[comn].pipe = pipe;
+		}
 	#else
 		PERRF_ABORT(LOG_COM, "support for serial mode 'pipe-%s' not available\n", server?"server":"client");
 	#endif
@@ -1431,7 +1436,7 @@ void Serial::tx_timer(uint8_t port)
 				#if SER_WIN32
 				if(m_s[port].pipe) {
 					DWORD written;
-					WriteFile(m_s[port].pipe, (bx_ptr_t)& m_s[port].tsrbuffer, 1, &written, NULL);
+					WriteFile(m_s[port].pipe, (void*)& m_s[port].tsrbuffer, 1, &written, NULL);
 				}
 				#endif
 				break;

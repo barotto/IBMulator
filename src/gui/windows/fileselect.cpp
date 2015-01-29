@@ -30,6 +30,9 @@
 #include <Rocket/Controls.h>
 #include <Rocket/Core/TypeConverter.h>
 
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
 
 event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "cancel", "click", FileSelect::on_cancel ),

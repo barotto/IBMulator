@@ -21,6 +21,7 @@
 #include "appconfig.h"
 #include "program.h"
 #include <algorithm>
+#include <regex>
 #include <cctype>
 #include <cstdlib>
 #include "ini/ini.h"
@@ -392,8 +393,8 @@ void AppConfig::set_string(const string &_section, const string &_name, string _
 
 string AppConfig::get_file_path(const string &_filename, bool _asset)
 {
-	//TODO: Windows?
 	string fpath = _filename;
+#ifndef _WIN32
 	if(_filename.at(0) == '~') {
 		fpath = m_user_home + _filename.substr(1);
 	} else if(_filename.at(0) != '/') {
@@ -403,6 +404,16 @@ string AppConfig::get_file_path(const string &_filename, bool _asset)
 			fpath = m_cfg_home + FS_SEP + _filename;
 		}
 	}
+#else
+	std::regex re("^([A-Z]):(\\\\|\\/)", std::regex::ECMAScript|std::regex::icase);
+	if(!std::regex_search(_filename, re)) {
+		if(_asset) {
+			fpath = m_assets_home + FS_SEP + _filename;
+		} else {
+			fpath = m_cfg_home + FS_SEP + _filename;
+		}
+	}
+#endif
 	return fpath;
 }
 

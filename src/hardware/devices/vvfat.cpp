@@ -39,7 +39,7 @@
 // - vvfat floppy support (1.44 MB media only)
 
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <dirent.h>
 #include <utime.h>
 #endif
@@ -52,6 +52,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
+
 #define VVFAT_MBR  "vvfat_mbr.bin"
 #define VVFAT_BOOT "vvfat_boot.bin"
 #define VVFAT_ATTR "vvfat_attr.cfg"
@@ -60,7 +64,7 @@
 // portable mkdir / rmdir
 int VVFATMediaImage::mkdir(const char *path)
 {
-#ifndef WIN32
+#ifndef _WIN32
 	return ::mkdir(path, 0755);
 #else
 	return (CreateDirectory(path, NULL) != 0) ? 0 : -1;
@@ -69,7 +73,7 @@ int VVFATMediaImage::mkdir(const char *path)
 
 int VVFATMediaImage::rmdir(const char *path)
 {
-#ifndef WIN32
+#ifndef _WIN32
 	return ::rmdir(path);
 #else
 	return (RemoveDirectory(path) != 0) ? 0 : -1;
@@ -592,7 +596,7 @@ int VVFATMediaImage::read_directory(int mapping_index)
   int first_cluster_of_parent = parent_mapping ? (int)parent_mapping->begin : -1;
   int count = 0;
 
-#ifndef WIN32
+#ifndef _WIN32
   DIR* dir = opendir(dirname);
   struct dirent* entry;
   int i;
@@ -729,7 +733,7 @@ int VVFATMediaImage::read_directory(int mapping_index)
   // actually read the directory, and allocate the mappings
   do {
     if ((first_cluster == 0) && (directory.next >= (uint16_t)(root_entries - 1))) {
-      PERRF(LOG_HDD, "Too many entries in root directory, using only %d", count));
+      PERRF(LOG_HDD, "Too many entries in root directory, using only %d", count);
       FindClose(hFind);
       return -2;
     }
@@ -773,7 +777,7 @@ int VVFATMediaImage::read_directory(int mapping_index)
     else
       direntry->begin = 0; // do that later
     if (finddata.nFileSizeLow > 0x7fffffff) {
-      PERRF(LOG_HDD, "File '%s' is larger than 2GB", buffer));
+      PERRF(LOG_HDD, "File '%s' is larger than 2GB", buffer);
       free(buffer);
       FindClose(hFind);
       return -3;
@@ -1313,7 +1317,7 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
     return -1;
   }
 
-#if (!defined(WIN32)) && !BX_WITH_MACOS
+#if (!defined(_WIN32))
   // on unix it is legal to delete an open file
   unlink(redolog_temp);
 #endif
@@ -1404,7 +1408,7 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
   uint32_t csize, fsize, fstart, cur, next, rsvd_clusters, bad_cluster;
   uint64_t offset;
   uint8_t *buffer;
-#ifndef WIN32
+#ifndef _WIN32
   struct tm tv;
   struct utimbuf ut;
 #else
@@ -1459,7 +1463,7 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
   } while (next < rsvd_clusters);
   ::close(fd);
 
-#ifndef WIN32
+#ifndef _WIN32
   tv.tm_year = (entry->mdate >> 9) + 80;
   tv.tm_mon = ((entry->mdate >> 5) & 0x0f) - 1;
   tv.tm_mday = entry->mdate & 0x1f;
@@ -1694,7 +1698,7 @@ void VVFATMediaImage::close(void)
 
   redolog->close();
 
-#if defined(WIN32) || BX_WITH_MACOS
+#if defined(_WIN32)
   // on non-unix we have to wait till the file is closed to delete it
   unlink(redolog_temp);
 #endif

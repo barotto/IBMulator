@@ -172,7 +172,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	/*** WINDOW CREATION ***/
 	create_window(PACKAGE_STRING, w, h, flags);
-
+	try {
+		check_device_caps();
+	} catch(std::exception &e) {
+		shutdown_SDL();
+		throw;
+	}
 
 	glewExperimental = GL_TRUE;
 	GLenum err = glewInit();
@@ -185,7 +190,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	glGetError();
 
 	try {
-		check_device_caps();
 		init_Rocket();
 	} catch(std::exception &e) {
 		shutdown_SDL();
