@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_GUI_H
 #define IBMULATOR_GUI_H
 
-#include "SDL.h"
+#include <SDL2/SDL.h>
 #include <GL/glew.h>
 #include <Rocket/Core/Input.h>
 #include <Rocket/Core/Types.h>

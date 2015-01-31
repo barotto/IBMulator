@@ -33,7 +33,7 @@
 #include "gui/rocket/sys_interface.h"
 #include "gui/rocket/rend_interface.h"
 #include "gui/rocket/file_interface.h"
-#include <SDL_image.h>
+#include <SDL2/SDL_image.h>
 
 #include <algorithm>
 
@@ -172,17 +172,11 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	/*** WINDOW CREATION ***/
 	create_window(PACKAGE_STRING, w, h, flags);
-	try {
-		check_device_caps();
-	} catch(std::exception &e) {
-		shutdown_SDL();
-		throw;
-	}
 
-	glewExperimental = GL_TRUE;
-	GLenum err = glewInit();
-	if(GLEW_OK != err)	{
-		PERRF(LOG_GUI,"GLEW ERROR: %s\n", glewGetErrorString(err));
+	glewExperimental = GL_FALSE;
+	GLenum res = glewInit();
+	if(res != GLEW_OK)	{
+		PERRF(LOG_GUI,"GLEW ERROR: %s\n", glewGetErrorString(res));
 		shutdown_SDL();
 		throw std::exception();
 	}
@@ -190,6 +184,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	glGetError();
 
 	try {
+		check_device_caps();
 		init_Rocket();
 	} catch(std::exception &e) {
 		shutdown_SDL();
@@ -453,7 +448,7 @@ void GUI::check_device_caps()
 
 	const GLubyte* extension;
 	for(int ext_count=0; ext_count<num_extensions; ext_count++) {
-		extension = glGetStringi( GL_EXTENSIONS, ext_count );
+		GLCALL( extension = glGetStringi( GL_EXTENSIONS, ext_count ) );
 		if(!extension) break;
 		if(strcmp("GL_ARB_debug_output",(const char*)extension) == 0) {
 			debug_output = true;
