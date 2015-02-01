@@ -235,7 +235,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 		temp << setfill('0') << setw(10) << g_machine.get_virt_time_us_mt() << " ";
 		temp << std::hex << std::uppercase << internal << setfill('0');
 		temp << setw(4) << REG_CS.sel.value << ":" << setw(4) << REG_IP << " ";
-		temp << setw(2) << uint(g_machine.get_POST_code()) << " ";
+		temp << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
 		toprint += temp.str();
 #endif
 		toprint += m_pri_prefixes[_verbosity][_priority];
