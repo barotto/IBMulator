@@ -29,13 +29,13 @@
 class HWBench
 {
 protected:
-	ulong m_min_btime;
-	ulong m_max_btime;
-	ulong m_beat_count;
+	uint m_min_btime;
+	uint m_max_btime;
+	uint m_beat_count;
 	uint64_t m_upd_interval;
 	bool m_reset;
-	ulong m_icount;
-	ulong m_ccount;
+	uint64_t m_icount;
+	uint64_t m_ccount;
 
 	const Chrono *m_chrono;
 
@@ -48,11 +48,11 @@ public:
 
 	uint64_t bstart; //!< heart beat start
 	uint64_t bend;
-	ulong  beat_count;
-	ulong  min_beat_time;
-	ulong  max_beat_time;
-	ulong  min_bps;
-	ulong  max_bps;
+	uint  beat_count;
+	uint  min_beat_time;
+	uint  max_beat_time;
+	uint  min_bps;
+	uint  max_bps;
 	double avg_bps;
 	double avg_ips;
 	double avg_cps;
@@ -69,7 +69,7 @@ public:
 	void beat_start();
 	void beat_end();
 	inline void cpu_step() { m_icount++; }
-	inline void cpu_cycles(ulong _cycles) { m_ccount += _cycles; }
+	inline void cpu_cycles(uint _cycles) { m_ccount += _cycles; }
 
 	void data_update();
 };

@@ -88,7 +88,7 @@ public:
 	void dimension_update(uint x, uint y, uint fheight=0, uint fwidth=0, uint bpp=8);
 	void graphics_tile_update(uint8_t *snapshot, uint x, uint y);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
-			ulong _cursor_x, ulong _cursor_y, TextModeInfo *_tm_info);
+			uint _cursor_x, uint _cursor_y, TextModeInfo *_tm_info);
 	void clear_screen();
 
 	void copy_screen(uint8_t *_buffer);

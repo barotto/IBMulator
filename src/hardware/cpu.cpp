@@ -123,9 +123,9 @@ void CPU::power_off()
 	enter_sleep_state(CPU_STATE_SHUTDOWN);
 }
 
-ulong CPU::step()
+uint CPU::step()
 {
-	ulong cycles = 0;
+	uint cycles = 0;
 
 	g_cpubus.reset_counters();
 

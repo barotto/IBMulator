@@ -173,7 +173,7 @@ public:
 	void power_off();
 	void config_changed();
 
-	ulong step();
+	uint step();
 
 	inline uint32_t get_freq() { return m_freq; }
 	GCC_ATTRIBUTE(always_inline)

@@ -799,7 +799,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 	} else if(_event.type == SDL_USEREVENT) {
 		//the 1-second timer
 		uint expected, current = m_machine->get_bench().beat_count;
-		static ulong previous = UINT_MAX;
+		static uint previous = UINT_MAX;
 		if(!MULTITHREADED) {
 			expected = 1.0e6 / g_program.get_beat_time_usec();
 		} else {

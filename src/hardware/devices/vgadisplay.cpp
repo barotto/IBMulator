@@ -245,7 +245,7 @@ void VGADisplay::graphics_tile_update(uint8_t *_snapshot, uint _x, uint _y)
 // _tm_info:  this structure contains information for additional
 //           features in text mode (cursor shape, line offset,...)
 void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
-		ulong _cursor_x, ulong _cursor_y, TextModeInfo *_tm_info)
+		uint _cursor_x, uint _cursor_y, TextModeInfo *_tm_info)
 {
 	//PDEBUGF(LOG_V2, LOG_VGA, "text update\n");
 

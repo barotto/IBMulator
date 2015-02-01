@@ -88,7 +88,7 @@ void HWBench::beat_end()
 {
 	bend = m_chrono->get_nsec();
 
-	ulong btime = bend - bstart;
+	uint btime = bend - bstart;
 
 	m_min_btime = std::min(btime,m_min_btime);
 	m_max_btime = std::max(btime,m_max_btime);
@@ -135,8 +135,8 @@ void operator<<(std::ostream& _os, const HWBench &_bench)
 	else
 		_os << "max btime: " << _bench.max_beat_time << " (+inf bps)"<< _bench.endl;
 
-	_os << "avg IPS: " << (ulong)_bench.avg_ips << _bench.endl;
-	_os << "avg CPS: " << (ulong)_bench.avg_cps << _bench.endl;
+	_os << "avg IPS: " << (uint)_bench.avg_ips << _bench.endl;
+	_os << "avg CPS: " << (uint)_bench.avg_cps << _bench.endl;
 }
 
 

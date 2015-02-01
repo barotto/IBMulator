@@ -1214,7 +1214,7 @@ void VGA::update()
 		uint8_t color;
 		uint16_t x, y, start_addr;
 		uint bit_no, r, c;
-		ulong byte_offset;
+		uint byte_offset;
 		uint xc, yc, xti, yti;
 
 		start_addr = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
@@ -1353,7 +1353,7 @@ void VGA::update()
 				// FIXME: is this really the same ???
 
 				if(m_s.CRTC.reg[0x14] & 0x40) { // DW set: doubleword mode
-					ulong pixely, pixelx, plane;
+					uint pixely, pixelx, plane;
 
 					if(m_s.misc_output.select_high_bank != 1) {
 						PERRF(LOG_VGA, "update: select_high_bank != 1\n");
@@ -1379,7 +1379,7 @@ void VGA::update()
 						}
 					}
 				} else if(m_s.CRTC.reg[0x17] & 0x40) { // B/W set: byte mode, modeX
-					ulong pixely, pixelx, plane;
+					uint pixely, pixelx, plane;
 
 					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
 						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
@@ -1403,7 +1403,7 @@ void VGA::update()
 						}
 					}
 				} else { // word mode
-					ulong pixely, pixelx, plane;
+					uint pixely, pixelx, plane;
 
 					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
 						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
@@ -1442,8 +1442,8 @@ void VGA::update()
 		 * text mode
 		 */
 
-		ulong start_address;
-		ulong cursor_address, cursor_x, cursor_y;
+		uint start_address;
+		uint cursor_address, cursor_x, cursor_y;
 		TextModeInfo tm_info;
 		uint VDE, cols, rows, cWidth;
 		uint8_t MSL;
