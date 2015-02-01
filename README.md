@@ -161,9 +161,8 @@ $ make install
 
 Use './configure --help' to read the variuous compilation options.
 
-If you cloned the code from GitHub you also must launch  
-$ autoreconf  
-before the 'configure' script.
+If you cloned the code from GitHub, before the 'configure' script you must run:  
+$ autoreconf --install
 
 ### Linux
 
