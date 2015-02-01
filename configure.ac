@@ -43,7 +43,10 @@ AC_ARG_ENABLE([debug],
 
 if test "x$debug" = "xyes"
 then
-	CXX_DEFAULTS="-O0 -g -Wextra -Wall -ansi -pthread -std=c++11 -rdynamic"
+	CXX_DEFAULTS="-O0 -g -Wextra -Wall -ansi -pthread -std=c++11"
+	if test x$have_windows = xno ; then
+		CXX_DEFAULTS="$CXX_DEFAULTS -rdynamic"
+	fi
 else
 	CXX_DEFAULTS="-O3 -pthread -std=c++11 -fomit-frame-pointer -finline-functions -DNDEBUG" 
 fi
@@ -111,26 +114,14 @@ AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
 	[],
 	[#include <netinet/in.h>])
 AC_CHECK_SIZEOF(char)
-AC_CHECK_SIZEOF(unsigned char)
 AC_CHECK_SIZEOF(wchar_t)
 AC_CHECK_SIZEOF(short)
-AC_CHECK_SIZEOF(unsigned short)
 AC_CHECK_SIZEOF(int)
-AC_CHECK_SIZEOF(unsigned int)
 AC_CHECK_SIZEOF(long)
-AC_CHECK_SIZEOF(unsigned long)
 AC_CHECK_SIZEOF(long long)
-AC_CHECK_SIZEOF(unsigned long long)
-#AC_CHECK_SIZEOF(void*)
-dnl AC_CHECK_TYPE(bool, int)
-AC_CHECK_TYPE(uchar, unsigned char)
+AC_CHECK_SIZEOF(void*)
 AC_CHECK_TYPE(ushort, unsigned short)
 AC_CHECK_TYPE(uint, unsigned int)
-AC_CHECK_TYPE(ulong, unsigned long)
-AC_CHECK_TYPE(longlong, long long)
-AC_CHECK_TYPE(ulonglong, unsigned long long)
-AC_CHECK_TYPE(ssize_t, int)
-#
 
 
 AC_CONFIG_FILES([
@@ -155,4 +146,3 @@ echo "- libRocket : $LIBROCKET_LIBS"
 echo "- libarchive: $LIBARCHIVE_LIBS"
 echo "- OpenGL    : $OPENGL_LIBS $GLEW_LIBS"
 echo "- prefix    : ${prefix}"
-
