@@ -175,8 +175,8 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 	size_t buffer_size = file_interface->Tell(file_handle);
 	file_interface->Seek(file_handle, 0, SEEK_SET);
 
-	char* buffer = new char[buffer_size];
-	file_interface->Read(buffer, buffer_size, file_handle);
+	vector<uint8_t> buffer(buffer_size);
+	file_interface->Read(&buffer[0], buffer_size, file_handle);
 	file_interface->Close(file_handle);
 
 	size_t i;
@@ -188,7 +188,7 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 
 	String extension = source.Substring(i+1, source.Length()-i);
 
-	SDL_Surface* surface = IMG_LoadTyped_RW(SDL_RWFromMem(buffer, buffer_size), 1,
+	SDL_Surface* surface = IMG_LoadTyped_RW(SDL_RWFromMem(&buffer[0], buffer_size), 1,
 			extension.CString());
 
 	if(!surface) {
