@@ -421,10 +421,12 @@ std::string Program::get_assets_dir(int argc, char** argv)
 		}
 	}
 
+#ifdef DATA_PATH
 	//4. DATA_PATH define
 	if(is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != NULL) {
 		return std::string(rpbuf);
 	}
+#endif
 
 	PERRF(LOG_PROGRAM, "unable to find the assets!\n");
 	throw std::exception();
