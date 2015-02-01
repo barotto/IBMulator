@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_MIXER_H
 #define IBMULATOR_MIXER_H
 
-#include "SDL.h"
+#include <SDL2/SDL.h>
 #include "shared_queue.h"
 #include "chrono.h"
 #include "hwbench.h"

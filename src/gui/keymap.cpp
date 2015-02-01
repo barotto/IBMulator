@@ -22,7 +22,7 @@
 #include "program.h"
 #include "keys.h"
 #include "keymap.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 
 Keymap g_keymap;
 

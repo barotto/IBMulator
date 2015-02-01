@@ -21,7 +21,7 @@
 #include "mixer.h"
 #include "program.h"
 #include "machine.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 #include "wav.h"
 #include <cmath>
 

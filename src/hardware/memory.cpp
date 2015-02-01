@@ -27,7 +27,7 @@
 #include <algorithm>
 #include <fstream>
 #include <cstring>
-#include "SDL.h"
+#include <SDL2/SDL.h>
 #include <archive.h>
 #include <archive_entry.h>
 
