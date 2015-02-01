@@ -344,6 +344,7 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 		throw std::exception();
 	}
 
+#ifndef _WIN32
 	//the program icon
 	std::string iconfile = g_program.config().get_assets_home() + FS_SEP "icon.png";
 	SDL_Surface* icon = IMG_Load(iconfile.c_str());
@@ -354,6 +355,7 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	} else {
 		PERRF(LOG_GUI, "unable to load app icon '%s'\n", iconfile.c_str());
 	}
+#endif
 
 	PINFOF(LOG_V0,LOG_GUI,"Selected video mode: %dx%d @ %dHz\n", m_width, m_height, dm.refresh_rate);
 

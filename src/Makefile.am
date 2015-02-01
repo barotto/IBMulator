@@ -42,6 +42,6 @@ noinst_HEADERS = \
 	wincompat.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
-ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS)
+ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS) ibmulator.res
 
 
