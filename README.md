@@ -151,6 +151,8 @@ it to Performance (this is a known issue with the Linux CPUfreq governors).
 * GLEW
 * libarchive
 
+If you cloned the code from the GitHub repo you also need the GNU Autotools. 
+
 ### General instructions
 
 $ ./configure  
@@ -158,6 +160,10 @@ $ make -j5
 $ make install
 
 Use './configure --help' to read the variuous compilation options.
+
+If you cloned the code from GitHub you also must launch  
+$ autoreconf  
+before the 'configure' script.
 
 ### Linux
 
