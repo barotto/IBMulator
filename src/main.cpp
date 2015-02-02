@@ -41,8 +41,14 @@ int main(int argc, char** argv)
 	} catch(std::exception &e) {
 		PERR("exception caught during initialization! giving up :(\n");
 		std::string message = "A problem occurred during initialisation.\n"
-				"See the log file for more info, or start the program in a terminal.\n"
-				"Use the -v NUM command line switch to enable verbose logging.";
+				"See the log file for more info"
+#ifndef _WIN32
+				", or start the program in a terminal"
+#endif
+				".\n"
+				"Use the -v NUM command line switch to enable verbose logging.\n\n"
+				"The log file is located at:\n" + g_program.config().get_cfg_home();
+
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				message.c_str(),
 		        NULL);

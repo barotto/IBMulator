@@ -275,6 +275,7 @@ bool Program::initialize(int argc, char** argv)
 		PERRF(LOG_PROGRAM, "Unable to determine the home directory!\n");
 		throw std::exception();
 	}
+	m_config.set_user_home(home);
 
 	if(m_user_dir.empty()) {
 #ifndef _WIN32
@@ -299,6 +300,7 @@ bool Program::initialize(int argc, char** argv)
 	}
 	create_dir(m_user_dir);
 	PINFO(LOG_V1,"user directory: %s\n", m_user_dir.c_str());
+	m_config.set_cfg_home(m_user_dir);
 
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
 	if(m_cfg_file.empty()) {
@@ -341,8 +343,6 @@ bool Program::initialize(int argc, char** argv)
 			throw;
 		}
 	}
-	m_config.set_user_home(home);
-	m_config.set_cfg_home(m_user_dir);
 
 	m_datapath = get_assets_dir(argc,argv);
 	m_config.set_assets_home(m_datapath);
