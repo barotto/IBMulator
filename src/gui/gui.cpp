@@ -394,12 +394,6 @@ void GUI::toggle_fullscreen()
         PERRF(LOG_GUI, "Toggling fullscreen mode failed: %s\n", SDL_GetError());
         return;
     }
-
-    if(flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
-    	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    	SDL_RenderSetLogicalSize(m_SDL_renderer, m_SDL_fullmode.w, m_SDL_fullmode.h);
-    }
-    //SDL_SetWindowSize(m_SDL_window, m_SDL_windowmode.w, m_SDL_windowmode.h);
 }
 
 void GUI::check_device_caps()
