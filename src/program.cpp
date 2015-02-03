@@ -66,7 +66,8 @@ void Program::save_state(std::string _name)
 	if(_name.empty()) {
 		_name = "state";
 	}
-	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, false) + FS_SEP + _name;
+	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+			+ FS_SEP + _name;
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "saving current state in '%s'...\n", path.c_str());
 
@@ -96,7 +97,8 @@ void Program::restore_state(std::string _name)
 	if(_name.empty()) {
 		_name = "state";
 	}
-	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, false) + FS_SEP + _name;
+	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+			+ FS_SEP + _name;
 	std::string ini = path + ".ini";
 	std::string bin = path + ".bin";
 
@@ -349,7 +351,7 @@ bool Program::initialize(int argc, char** argv)
 	PINFO(LOG_V1,"assets directory: %s\n", m_datapath.c_str());
 
 	//Capture dir, create if not exists
-	std::string capture_dir = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, false);
+	std::string capture_dir = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 	if(capture_dir.empty()) {
 		capture_dir = m_user_dir + FS_SEP "capture";
 	}
@@ -357,7 +359,7 @@ bool Program::initialize(int argc, char** argv)
 	m_config.set_string(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, capture_dir);
 	PINFO(LOG_V1,"capture directory: %s\n", capture_dir.c_str());
 
-	std::string dumplog = m_config.get_file_path("log.txt", false);
+	std::string dumplog = m_config.get_file_path("log.txt", FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
 
 	init_SDL();

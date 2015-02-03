@@ -302,7 +302,7 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 	}
 	bool inserted = g_program.config().get_bool(section, DISK_INSERTED);
 	if(disktype != FLOPPY_NONE && inserted) {
-		std::string diskpath = g_program.config().find_file(section, DISK_PATH);
+		std::string diskpath = g_program.config().find_media(section, DISK_PATH);
 		insert_media(drive, disktype, diskpath.c_str(), g_program.config().get_bool(section, DISK_READONLY));
 	}
 }

@@ -111,7 +111,7 @@ void Mixer::init(Machine *_machine)
 
 void Mixer::start_capture()
 {
-	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, false);
+	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 	path = Program::get_next_filename(path, "sound_", ".wav");
 
 	if(!path.empty()) {

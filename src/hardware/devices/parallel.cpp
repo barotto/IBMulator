@@ -174,7 +174,7 @@ void Parallel::virtual_printer()
 	}
 
 	if(m_s.output == NULL) {
-		std::string filename = g_program.config().get_file(LPT_SECTION, LPT_FILE, false);
+		std::string filename = g_program.config().get_file(LPT_SECTION, LPT_FILE, FILE_TYPE_USER);
 		if(!filename.empty()) {
 			m_s.output = fopen(filename.c_str(), "wb");
 			if(!m_s.output) {

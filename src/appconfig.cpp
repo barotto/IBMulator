@@ -125,8 +125,10 @@ ini_filehelp_t AppConfig::ms_help = {
 "# Lines starting with a # are comment lines and are ignored. "
 " They are used to document the effect of each option.\n"
 "# Anywhere a path is involved, it can be absolute or relative.\n"
-"# Relative paths are relative to the user directory (the folder where this file should be located)"
-" or the program assets directory. Files and directories are searched in this order.\n"
+"# Relative paths are searched in this order:\n"
+"# 1. the media directory (in case of floppy/hdd images)\n"
+"# 2. the user directory (the folder where this file is normally located)\n"
+"# 3. the program's assets directory\n"
 		},
 		{ PROGRAM_SECTION,
 "#   media_dir: The default directory path used to search for floppy/hdd images.\n"
@@ -391,33 +393,37 @@ void AppConfig::set_string(const string &_section, const string &_name, string _
 	m_values[make_key(_section)][make_key(_name)] = _value;
 }
 
-string AppConfig::get_file_path(const string &_filename, bool _asset)
+string AppConfig::get_file_path(const string &_filename, FileType _type)
 {
-	string fpath = _filename;
 #ifndef _WIN32
 	if(_filename.at(0) == '~') {
-		fpath = m_user_home + _filename.substr(1);
-	} else if(_filename.at(0) != '/') {
-		if(_asset) {
-			fpath = m_assets_home + FS_SEP + _filename;
-		} else {
-			fpath = m_cfg_home + FS_SEP + _filename;
-		}
+		return m_user_home + _filename.substr(1);
+	} else if(_filename.at(0) == '/') {
+		return _filename;
 	}
 #else
 	std::regex re("^([A-Z]):(\\\\|\\/)", std::regex::ECMAScript|std::regex::icase);
-	if(!std::regex_search(_filename, re)) {
-		if(_asset) {
-			fpath = m_assets_home + FS_SEP + _filename;
-		} else {
-			fpath = m_cfg_home + FS_SEP + _filename;
-		}
+	if(std::regex_search(_filename, re)) {
+		return _filename;
 	}
 #endif
-	return fpath;
+
+	switch(_type) {
+		case FILE_TYPE_ASSET: {
+			return m_assets_home + FS_SEP + _filename;
+		}
+		case FILE_TYPE_USER: {
+			return m_cfg_home + FS_SEP + _filename;
+		}
+		case FILE_TYPE_MEDIA: {
+			return get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER)
+					+ FS_SEP + _filename;
+		}
+	}
+	return _filename;
 }
 
-string AppConfig::get_file(const string &_section, const string &_name, bool _asset)
+string AppConfig::get_file(const string &_section, const string &_name, FileType _type)
 {
 	string filename;
 	try {
@@ -430,14 +436,26 @@ string AppConfig::get_file(const string &_section, const string &_name, bool _as
 		return filename;
 	}
 
-	return get_file_path(filename, _asset);
+	return get_file_path(filename, _type);
 }
 
 string AppConfig::find_file(const string &_section, const string &_name)
 {
-	string path = get_file(_section, _name, false);
+	string path = get_file(_section, _name, FILE_TYPE_USER);
 	if(!Program::file_exists(path.c_str())) {
-		path = get_file(_section, _name, true);
+		path = get_file(_section, _name, FILE_TYPE_ASSET);
+	}
+	if(!Program::file_exists(path.c_str())) {
+		path = get_file(_section, _name, FILE_TYPE_MEDIA);
+	}
+	return path;
+}
+
+string AppConfig::find_media(const string &_section, const string &_name)
+{
+	string path = get_file(_section, _name, FILE_TYPE_MEDIA);
+	if(!Program::file_exists(path.c_str())) {
+		path = get_file(_section, _name, FILE_TYPE_USER);
 	}
 	return path;
 }

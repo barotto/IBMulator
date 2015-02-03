@@ -73,7 +73,7 @@ Window(_gui, "interface.rml")
 	m_floppy_present = g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED);
 	m_sysunit->SetClass("disk", m_floppy_present);
 	if(m_floppy_present) {
-		update_floppy_disk(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, false));
+		update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH, FILE_TYPE_USER));
 	}
 	m_floppy_changed = g_floppy.get_disk_changed(0);
 
@@ -111,7 +111,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		//check if the same image file is already mounted on drive A
 		const char *section = m_curr_drive?DISK_A_SECTION:DISK_B_SECTION;
 		if(g_program.config().get_bool(section,DISK_INSERTED)) {
-			std::string other = g_program.config().get_file(section,DISK_PATH, false);
+			std::string other = g_program.config().get_file(section,DISK_PATH, FILE_TYPE_USER);
 			struct stat other_s;
 			if(stat(other.c_str(), &other_s) == 0) {
 				if(other_s.st_dev == sb.st_dev && other_s.st_ino == sb.st_ino) {
@@ -195,7 +195,7 @@ void Interface::update()
 		m_floppy_present = true;
 		m_sysunit->SetClass("disk", true);
 		const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
-		update_floppy_disk(g_program.config().get_file(section,DISK_PATH,false));
+		update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
 	} else if(!present && m_floppy_present==true) {
 		m_floppy_present = false;
 		m_sysunit->SetClass("disk", false);
@@ -258,7 +258,7 @@ void Interface::on_fdd_select(RC::Event &)
 		m_buttons.fdd_select->SetClass("a", false);
 		m_buttons.fdd_select->SetClass("b", true);
 		if(g_program.config().get_bool(DISK_B_SECTION,DISK_INSERTED)) {
-			update_floppy_disk(g_program.config().get_file(DISK_B_SECTION,DISK_PATH, false));
+			update_floppy_disk(g_program.config().get_file(DISK_B_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	} else {
 		m_curr_drive = 0;
@@ -266,7 +266,7 @@ void Interface::on_fdd_select(RC::Event &)
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
 		if(g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED)) {
-			update_floppy_disk(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, false));
+			update_floppy_disk(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	}
 }
@@ -281,9 +281,9 @@ void Interface::on_fdd_mount(RC::Event &)
 	std::string floppy_dir;
 
 	if(m_curr_drive==0) {
-		floppy_dir = g_program.config().get_file(DISK_A_SECTION, DISK_PATH, false);
+		floppy_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
 	} else {
-		floppy_dir = g_program.config().get_file(DISK_B_SECTION, DISK_PATH, false);
+		floppy_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
 	}
 
 	if(!floppy_dir.empty()) {
@@ -295,7 +295,7 @@ void Interface::on_fdd_mount(RC::Event &)
 		}
 	}
 	if(floppy_dir.empty()) {
-		floppy_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, false);
+		floppy_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
 		if(floppy_dir.empty()) {
 			floppy_dir = g_program.config().get_cfg_home();
 		}

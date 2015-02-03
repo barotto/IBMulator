@@ -29,6 +29,12 @@ typedef std::map<std::string, std::string> ini_section_t;
 typedef std::map<std::string, ini_section_t> ini_file_t;
 typedef std::map<std::string, std::string> ini_filehelp_t;
 
+enum FileType {
+	FILE_TYPE_ASSET,
+	FILE_TYPE_USER,
+	FILE_TYPE_MEDIA
+};
+
 class AppConfig
 {
 private:
@@ -72,9 +78,10 @@ public:
 	bool get_bool(const std::string &section, const std::string &name);
 	string get_string(const string &_section, const string &_name);
 	uint get_enum(const string &_section, const string &_name, ini_enum_map_t &_enum_map);
-	std::string get_file(const std::string &_section, const std::string &_name, bool _asset);
-	string get_file_path(const string &_filename, bool _asset);
+	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
+	string get_file_path(const string &_filename, FileType _type);
 	string find_file(const string &_section, const string &_name);
+	string find_media(const string &_section, const string &_name);
 
 	void set_bool(const std::string &section, const std::string &name, bool _value);
 	void set_string(const std::string &_section, const std::string &_name, std::string _value);

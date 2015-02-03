@@ -225,7 +225,7 @@ void CMOS::power_off()
 
 void CMOS::save_image()
 {
-	std::string binfile = g_program.config().get_file(CMOS_SECTION, CMOS_IMAGE_FILE, false);
+	std::string binfile = g_program.config().get_file(CMOS_SECTION, CMOS_IMAGE_FILE, FILE_TYPE_USER);
 	std::ofstream fd(binfile.c_str(), std::ofstream::binary);
 	if(!fd.is_open()) {
 		PERRF(LOG_CMOS,"unable to open CMOS image file '%s' for writing\n", binfile.c_str());
