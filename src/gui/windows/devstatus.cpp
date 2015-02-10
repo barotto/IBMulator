@@ -181,8 +181,15 @@ void DevStatus::update_pit(uint cnt)
 
 	m_pit.mode[cnt]->SetInnerRML(format_uint16(timer.read_mode(cnt)));
 	m_pit.cnt[cnt]->SetInnerRML(format_hex32(timer.read_CNT(cnt)));
-	m_pit.gate[cnt]->SetInnerRML(format_bit(timer.read_GATE(cnt)));
-	m_pit.out[cnt]->SetInnerRML(format_bit(timer.read_OUT(cnt)));
+	bool gate = timer.read_GATE(cnt);
+	bool out = timer.read_OUT(cnt);
+	m_pit.gate[cnt]->SetInnerRML(format_bit(gate));
+	m_pit.out[cnt]->SetInnerRML(format_bit(out));
+	if(gate && out) {
+		m_pit.out[cnt]->SetClass("led_active", true);
+	} else {
+		m_pit.out[cnt]->SetClass("led_active", false);
+	}
 	m_pit.in[cnt]->SetInnerRML(format_hex16(timer.read_inlatch(cnt)));
 }
 

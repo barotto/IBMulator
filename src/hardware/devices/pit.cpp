@@ -237,11 +237,12 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 			new_speaker_active = (spkr == 3);
 			if(m_s.speaker_active != new_speaker_active) {
 				if(new_speaker_active) {
-					g_pcspeaker.add_event(my_time_nsec, true, false);
+					g_pcspeaker.add_event(my_time_nsec, true, m_s.timer.read_OUT(2));
 					g_pcspeaker.activate();
-					PDEBUGF(LOG_V1, LOG_PIT, "pc speaker enabled\n");
+					PINFOF(LOG_V2, LOG_PIT, "pc speaker enable\n");
 				} else {
 					//the pc speaker mixer channel is disabled by the speaker
+					PINFOF(LOG_V2, LOG_PIT, "pc speaker disable\n");
 					g_pcspeaker.add_event(my_time_nsec, false, false);
 				}
 				m_s.speaker_active = new_speaker_active;

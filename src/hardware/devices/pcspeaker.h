@@ -51,6 +51,12 @@ private:
 	double m_samples_per_nsec;
 	std::mutex m_lock;
 	std::shared_ptr<MixerChannel> m_channel;
+	uint64_t m_last_time;
+	uint64_t m_disable_time;
+	double m_samples_rem;
+
+	size_t fill_samples_buffer_t(int _duration, int _bstart, int16_t _value);
+	void fill_samples_buffer(int _bstart, int _samples, int16_t _value);
 
 public:
 
@@ -65,7 +71,7 @@ public:
 
 	void add_event(uint64_t _time, bool _active, bool _out);
 	void activate();
-	void create_samples(uint64_t _time);
+	int create_samples(uint64_t _machine_time, int _mix_slice, bool _prebuffering);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

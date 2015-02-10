@@ -38,10 +38,10 @@ m_callback(_callback)
 }
 
 
-void MixerChannel::update(uint64_t _time)
+int MixerChannel::update(uint64_t _machine_time, int _mix_tslice, bool _prebuffering)
 {
 	ASSERT(m_callback);
-	m_callback(_time);
+	return m_callback(_machine_time, _mix_tslice, _prebuffering);
 }
 
 void MixerChannel::add_samples(uint8_t *_data, size_t _size)
@@ -138,7 +138,7 @@ void Mixer::config_changed()
 {
 	//before the config can change the audio playback must be stopped
 	if(m_device) {
-		RASSERT(SDL_GetAudioDeviceStatus(m_device)!=SDL_AUDIO_PLAYING);
+		SDL_PauseAudioDevice(m_device, 0);
 		stop_wave_playback();
 	}
 	if(m_audio_capture) {
@@ -170,8 +170,6 @@ void Mixer::config_changed()
 
 	PDEBUGF(LOG_V1, LOG_MIXER, "prebuffer: %d msec., ring buffer: %d bytes\n",
 			m_prebuffer, buf_size);
-
-	m_prebuffer *= 1000; //msec to usec
 }
 
 void Mixer::start()
@@ -189,14 +187,16 @@ void Mixer::main_loop()
 {
 	#if MULTITHREADED
 	while(true) {
-		uint64_t time = m_main_chrono.elapsed_usec();
-		if(time < m_heartbeat) {
-			uint64_t sleep = m_heartbeat - time;
+		int time_slice = m_main_chrono.elapsed_usec();
+		if(time_slice < m_heartbeat) {
+			uint64_t sleep = m_heartbeat - time_slice;
 			uint64_t t0 = m_main_chrono.get_usec();
 			std::this_thread::sleep_for( std::chrono::microseconds(sleep + m_next_beat_diff) );
 			m_main_chrono.start();
 			uint64_t t1 = m_main_chrono.get_usec();
-			m_next_beat_diff = (sleep+m_next_beat_diff) - (t1 - t0);
+			int time_slept = (t1 - t0);
+			time_slice += time_slept;
+			m_next_beat_diff = (sleep+m_next_beat_diff) - time_slept;
 		} else {
 			m_main_chrono.start();
 		}
@@ -214,46 +214,47 @@ void Mixer::main_loop()
 		}
 
 		bool enable_audio = false;
-		bool mixer_enabled = m_enabled.load();
-		if(mixer_enabled) {
-			//update the registered channels
-			uint64_t time = m_machine->get_virt_time_ns_mt();
+		if(!m_enabled.load()) {
+			if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
+				SDL_PauseAudioDevice(m_device, 0);
+			}
+			continue;
+		}
 
-			for(auto ch : m_mix_channels) {
-				if(ch.second->is_enabled()) {
-					enable_audio = true;
-					ch.second->update(time);
-				}
+		SDL_AudioStatus audio_status = SDL_GetAudioDeviceStatus(m_device);
+
+		//update the registered channels
+		uint64_t machine_time = m_machine->get_virt_time_ns_mt();
+
+		for(auto ch : m_mix_channels) {
+			if(ch.second->is_enabled()) {
+				enable_audio = true;
+				ch.second->update(machine_time, time_slice, audio_status == SDL_AUDIO_PAUSED);
 			}
 		}
+
 		if(enable_audio) {
-			if(SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PAUSED) {
-				uint64_t now = m_main_chrono.get_usec();
-				uint64_t elapsed = now - m_start;
+			if(audio_status == SDL_AUDIO_PAUSED) {
+				int elapsed = m_main_chrono.get_msec() - m_start;
 				if(m_start == 0) {
-					m_start = m_main_chrono.get_usec();
-					PINFOF(LOG_V1, LOG_MIXER, "prebuffering %llu usecs\n", m_prebuffer);
-				} else if(elapsed > (uint)m_prebuffer) {
+					m_start = m_main_chrono.get_msec();
+					PINFOF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
+				} else if(elapsed+(MIXER_HEARTBEAT/1000) > m_prebuffer) {
 					SDL_PauseAudioDevice(m_device, 0);
-					PINFOF(LOG_V1, LOG_MIXER, "playing (%llu usecs elapsed)\n", elapsed);
+					PINFOF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed)\n", elapsed);
 					m_start = 0;
 				}
+			} else {
+				ASSERT(m_start==0);
 			}
 		} else {
-			if(!mixer_enabled) {
-				if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
-					SDL_PauseAudioDevice(m_device, 0);
-				}
-			} else {
-				m_start = 0;
-				SDL_AudioStatus audio_status = SDL_GetAudioDeviceStatus(m_device);
-				if(audio_status==SDL_AUDIO_PLAYING && m_buffer.get_read_avail() == 0) {
-					SDL_PauseAudioDevice(m_device, 1);
-					PINFOF(LOG_V1, LOG_MIXER, "paused\n");
-				} else if(audio_status==SDL_AUDIO_PAUSED && m_buffer.get_read_avail() != 0) {
-					SDL_PauseAudioDevice(m_device, 0);
-					PINFOF(LOG_V1, LOG_MIXER, "playing\n");
-				}
+			m_start = 0;
+			if(audio_status==SDL_AUDIO_PLAYING && m_buffer.get_read_avail() == 0) {
+				SDL_PauseAudioDevice(m_device, 1);
+				PINFOF(LOG_V1, LOG_MIXER, "paused\n");
+			} else if(audio_status==SDL_AUDIO_PAUSED && m_buffer.get_read_avail() != 0) {
+				SDL_PauseAudioDevice(m_device, 0);
+				PINFOF(LOG_V1, LOG_MIXER, "playing\n");
 			}
 		}
 
@@ -326,6 +327,8 @@ bool Mixer::send_wave_packet(uint8_t *_data, size_t _len)
 	}
 	bool ret = true;
 	SDL_LockAudioDevice(m_device);
+	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d bytes, buf fullness: %d\n",
+			_len, m_buffer.get_read_avail() + _len);
 	if(m_buffer.write(_data, _len) < _len) {
 		PERRF(LOG_MIXER, "audio buffer overflow\n");
 		ret = false;

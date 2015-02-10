@@ -776,17 +776,34 @@ void PIT_82C54::PIT_counter::write(uint8_t data)
 	}
 	if(count_written && write_state != MSByte_multiple) {
 		null_count = true;
-		set_count(inlatch);
+		/*
+		MODE 1,2,3,5:
+		The current counting sequence is not affected by a new count being
+		written to the counter. If the counter receives a trigger after a new
+		count is written, and before the end of the current count
+		cycle/half-cycle, the new count is loaded on the next CLK pulse, and
+		counting continues from the new count. If the trigger is not received
+		by the counter, the new count is loaded following the current
+		cycle/half-cycle.
+		The original Bochs code doesn't take this into account.
+		*/
+		if(mode==0 || mode==4) {
+			set_count(inlatch);
+		}
 	}
 	switch(mode) {
 		case 0:
-			/* original Bochs code:
-			if(write_state == MSByte_multiple) {
-				set_OUT(false,0);
-			}
-			problem is, pc speaker wav players like realsound use mode 0 low byte only
+			/*
+			If a new count is written to a counter while counting, it is loaded on
+			the next CLK pulse, and counting continues from the new count.
+			If a 2-byte count is written to the counter, the following occurs:
+			1. The first byte written to the counter disables the counting. OUT
+			goes low immediately and there is no delay for the CLK pulse.
+			2. When the second byte is written to the counter, the new count is
+			loaded on the next CLK pulse. OUT goes high when the counter
+			reaches 0.
 			*/
-			if(count_written) {
+			if(write_state != LSByte_multiple) {
 				set_OUT(false,0);
 			}
 			next_change_time = 1;

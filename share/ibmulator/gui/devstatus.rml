@@ -37,6 +37,7 @@
 				text-align: center;
 				margin: 1px;
 				font-size: 9px;
+				background-color: #38A838d0;
 			}
 			
 			#pic tr td {
@@ -57,7 +58,7 @@
 			#pit tr td {
 				display: inline-block;
 				padding: 5px;
-				background-color: #38A838d0;
+				/*background-color: #38A838d0;*/
 				font-size: 10px;
 				width: 40px;
 				text-align: center;
@@ -130,7 +131,7 @@
 			<tr><th>mode</th>     <td id="pit_0_mode">0</td> <td id="pit_1_mode">0</td> <td id="pit_2_mode">0</td> </tr>
 			<tr><th>CNT</th>      <td id="pit_0_cnt">0</td>  <td id="pit_1_cnt">0</td>  <td id="pit_2_cnt">0</td>  </tr>
 			<tr><th>GATE</th>    <td id="pit_0_gate">0</td> <td id="pit_1_gate">0</td> <td id="pit_2_gate">0</td> </tr>
-			<tr><th>OUT</th>     <td id="pit_0_out">0</td>  <td id="pit_1_out">0</td>  <td id="pit_2_out">0</td>  </tr>
+			<tr><th>OUT</th>     <td id="pit_0_out" class="led">0</td>  <td id="pit_1_out" class="led">0</td>  <td id="pit_2_out" class="led">0</td>  </tr>
 			<tr><th>in</th>      <td id="pit_0_in">0</td>  <td id="pit_1_in">0</td>  <td id="pit_2_in">0</td>  </tr>
 		</table>
 		

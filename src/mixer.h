@@ -39,7 +39,7 @@ extern Mixer g_mixer;
 //#define MIXER_BUFSIZE (16*1024)
 
 typedef std::function<void()> Mixer_fun_t;
-typedef std::function<void(uint64_t time)> MixerChannel_handler;
+typedef std::function<int(uint64_t _machine_time, int _mix_tslice, bool _prebuffering)> MixerChannel_handler;
 
 class MixerChannel
 {
@@ -54,12 +54,12 @@ public:
 
 	MixerChannel(MixerChannel_handler _callback, uint16_t _rate, const std::string &_name);
 
-	inline void enable(bool _enabled) { m_enabled = _enabled; }
-	inline bool is_enabled() { return m_enabled; }
+	inline void enable(bool _enabled) { m_enabled.store(_enabled); }
+	inline bool is_enabled() { return m_enabled.load(); }
 
 	void add_samples(uint8_t *_data, size_t _len);
 
-	void update(uint64_t _time);
+	int update(uint64_t _machine_time, int _mix_tslice, bool _prebuffering);
 };
 
 class Mixer
@@ -68,7 +68,7 @@ private:
 
 	RingBuffer m_buffer;
 	WAVFile m_wav;
-	uint64_t m_start;
+	int m_start;
 
 	int m_frequency;
 	int m_bit_depth;

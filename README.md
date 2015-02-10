@@ -26,13 +26,9 @@ To obtain the source code go to github.com/barotto/IBMulator
 
 * HDD emulation: the PS/1 model 2011 uses a proprietary 8-bit interface which is
 poorly documented.
-* PS/1 Audio Card emulation. Also, the PC speaker emulation is incomplete and 
-lacks proper PWM sound generation (realsound); it works but is of low quality.
+* PS/1 Audio Card emulation.
 * Optimizations: there are virtually none, and a lot can be done to speed up the
 emulation.
-* The CPU speed is a bit faster than the original (enjoy the overclock.) This 
-is due to the lack of emulation of the DRAM refresh cycle-eater and, I suspect,
-incorrect timing values for some opcode.
 
 
 ## HARDWARE REQUIREMENTS
@@ -111,8 +107,8 @@ Any other file present in the archive is ignored.
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
 * CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
-* CTRL+F11: emulation speed up
-* CTRL+F12: emulation speed down
+* CTRL+F11: emulation speed down
+* CTRL+F12: emulation speed up
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
@@ -130,6 +126,9 @@ stores new files, like screenshots and savestates
 ### Emulation
 
 * VGA scrolling does't work properly
+* The CPU speed is a bit faster than the original. This is  due to the lack of 
+emulation of the DRAM refresh cycle-eater and probably incorrect timing values 
+for some opcode.
 
 ### Linux
 
