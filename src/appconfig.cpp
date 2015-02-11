@@ -402,7 +402,7 @@ string AppConfig::get_file_path(const string &_filename, FileType _type)
 		return _filename;
 	}
 #else
-	std::regex re("^([A-Z]):(\\\\|\\/)", std::regex::ECMAScript|std::regex::icase);
+	std::regex re("^([A-Za-z]):(\\\\|\\/)", std::regex::ECMAScript|std::regex::icase);
 	if(std::regex_search(_filename, re)) {
 		return _filename;
 	}
