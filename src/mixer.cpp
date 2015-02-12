@@ -38,10 +38,10 @@ m_callback(_callback)
 }
 
 
-int MixerChannel::update(uint64_t _machine_time, int _mix_tslice, bool _prebuffering)
+int MixerChannel::update(int _mix_tslice, bool _prebuffering)
 {
 	ASSERT(m_callback);
-	return m_callback(_machine_time, _mix_tslice, _prebuffering);
+	return m_callback(_mix_tslice, _prebuffering);
 }
 
 void MixerChannel::add_samples(uint8_t *_data, size_t _size)
@@ -224,12 +224,10 @@ void Mixer::main_loop()
 		SDL_AudioStatus audio_status = SDL_GetAudioDeviceStatus(m_device);
 
 		//update the registered channels
-		uint64_t machine_time = m_machine->get_virt_time_ns_mt();
-
 		for(auto ch : m_mix_channels) {
 			if(ch.second->is_enabled()) {
 				enable_audio = true;
-				ch.second->update(machine_time, time_slice, audio_status == SDL_AUDIO_PAUSED);
+				ch.second->update(time_slice, audio_status == SDL_AUDIO_PAUSED);
 			}
 		}
 

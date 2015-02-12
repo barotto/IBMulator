@@ -71,7 +71,7 @@ public:
 
 	void add_event(uint64_t _time, bool _active, bool _out);
 	void activate();
-	int create_samples(uint64_t _machine_time, int _mix_slice, bool _prebuffering);
+	int create_samples(int _mix_slice, bool _prebuffering);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

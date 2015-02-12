@@ -39,7 +39,7 @@ extern Mixer g_mixer;
 //#define MIXER_BUFSIZE (16*1024)
 
 typedef std::function<void()> Mixer_fun_t;
-typedef std::function<int(uint64_t _machine_time, int _mix_tslice, bool _prebuffering)> MixerChannel_handler;
+typedef std::function<int(int _mix_tslice, bool _prebuffering)> MixerChannel_handler;
 
 class MixerChannel
 {
@@ -59,7 +59,7 @@ public:
 
 	void add_samples(uint8_t *_data, size_t _len);
 
-	int update(uint64_t _machine_time, int _mix_tslice, bool _prebuffering);
+	int update(int _mix_tslice, bool _prebuffering);
 };
 
 class Mixer
