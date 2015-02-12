@@ -35,7 +35,6 @@ private:
 	struct {
 		PIT_82C54 timer;
 		bool speaker_data_on;
-		bool speaker_active;
 		uint64_t  last_nsec;
 		uint32_t  last_next_event_time;
 		uint64_t  total_ticks;

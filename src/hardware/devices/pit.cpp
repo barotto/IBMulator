@@ -81,8 +81,7 @@ void PIT::reset(unsigned type)
 	}
 
 	if(type == MACHINE_POWER_ON) {
-		m_s.speaker_data_on = 0;
-		m_s.speaker_active = 0;
+		m_s.speaker_data_on = false;
 
 		uint64_t my_time_nsec = g_machine.get_virt_time_ns();
 
@@ -204,7 +203,6 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 	uint8_t  value;
 	uint64_t my_time_nsec = g_machine.get_virt_time_ns();
 	uint64_t time_passed = my_time_nsec - m_s.last_nsec;
-	bool new_speaker_active;
 
 	if(time_passed) {
 		periodic(my_time_nsec, time_passed);
@@ -232,24 +230,20 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 
 		case 0x61:
 			m_s.timer.set_GATE(2, value & 0x01);
-			m_s.speaker_data_on = (value >> 1) & 0x01;
-			uint8_t spkr = value & 3;
-			new_speaker_active = (spkr == 3);
-			if(m_s.speaker_active != new_speaker_active) {
-				if(new_speaker_active) {
+			bool speaker_data_on = (value >> 1) & 0x01;
+			if(m_s.speaker_data_on != speaker_data_on) {
+				if(speaker_data_on) {
 					g_pcspeaker.add_event(my_time_nsec, true, m_s.timer.read_OUT(2));
 					g_pcspeaker.activate();
-					PINFOF(LOG_V2, LOG_PIT, "pc speaker enable\n");
+					PDEBUGF(LOG_V2, LOG_PIT, "pc speaker enable\n");
 				} else {
 					//the pc speaker mixer channel is disabled by the speaker
-					PINFOF(LOG_V2, LOG_PIT, "pc speaker disable\n");
+					PDEBUGF(LOG_V2, LOG_PIT, "pc speaker disable\n");
 					g_pcspeaker.add_event(my_time_nsec, false, false);
 				}
-				m_s.speaker_active = new_speaker_active;
+				m_s.speaker_data_on = speaker_data_on;
 			}
-			if((spkr != 3) && (spkr != 0)) {
-				PDEBUGF(LOG_V1, LOG_PIT, "pc speaker: %u ?\n", spkr);
-			}
+
 			break;
 	}
 
@@ -319,7 +313,7 @@ void PIT::irq0_handler(bool value, uint32_t)
 
 void PIT::speaker_handler(bool value, uint32_t _remaining_ticks)
 {
-	if(!g_pit.m_s.speaker_active) {
+	if(!g_pit.m_s.speaker_data_on) {
 		return;
 	}
 

@@ -163,7 +163,7 @@ void PCSpeaker::add_event(uint64_t _time, bool _active, bool _out)
 		//already checked.
 		_time = m_events.back().time;
 		//ASSERT(_time > m_events.back().time);
-		PINFOF(LOG_V2, LOG_PIT, "_time > m_events.back().time\n");
+		PDEBUGF(LOG_V2, LOG_PIT, "_time > m_events.back().time\n");
 	}
 
 	SpeakerEvent event;
