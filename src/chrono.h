@@ -70,10 +70,6 @@ public:
 
 	inline uint64_t get_freq() const { return m_freq_hz; }
 
-	inline uint64_t get_nsec() const {
-		return uint64_t(double(get_ticks())*m_cyc_ns_inv);
-	}
-
 	inline uint64_t get_usec() const {
 		return uint64_t(double(get_ticks())*m_cyc_us_inv);
 	}
@@ -99,9 +95,6 @@ public:
 		return m_last_ticks;
 	}
 
-	inline uint64_t elapsed_nsec() const {
-		return get_nsec(elapsed_ticks());
-	}
 	inline uint64_t elapsed_usec() const {
 		return get_usec(elapsed_ticks());
 	}
@@ -130,13 +123,6 @@ public:
 
 	uint64_t get_freq() const { return 0; }
 
-
-	inline uint64_t get_nsec() const {
-		tick now = std::chrono::high_resolution_clock::now();
-		std::chrono::nanoseconds elapsed =
-				std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_start);
-		return static_cast<uint64_t>(elapsed.count());
-	}
 	inline uint64_t get_usec() const {
 		tick now = std::chrono::high_resolution_clock::now();
 		std::chrono::microseconds elapsed =
@@ -167,12 +153,6 @@ public:
 		return m_last_ticks;
 	}
 
-	inline uint64_t elapsed_nsec() const {
-		tick now = std::chrono::high_resolution_clock::now();
-		std::chrono::nanoseconds elapsed =
-				std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_last_ticks);
-		return static_cast<uint64_t>(elapsed.count());
-	}
 	inline uint64_t elapsed_usec() const {
 		tick now = std::chrono::high_resolution_clock::now();
 		std::chrono::microseconds elapsed =

@@ -28,7 +28,7 @@
 
 HWBench::HWBench()
 :
-m_min_btime(ULONG_MAX),
+m_min_btime(UINT_MAX),
 m_max_btime(0),
 m_beat_count(0),
 m_upd_interval(1000),
@@ -43,7 +43,7 @@ update_interval(1000),
 bstart(0),
 bend(0),
 beat_count(0),
-min_beat_time(ULONG_MAX),
+min_beat_time(UINT_MAX),
 max_beat_time(0),
 min_bps(0.f),
 max_bps(0),
@@ -63,9 +63,9 @@ HWBench::~HWBench()
 void HWBench::init(const Chrono *_chrono, uint _update_interval)
 {
 	m_chrono = _chrono;
-	init_time = m_chrono->get_nsec();
+	init_time = m_chrono->get_usec();
 	ustart = init_time;
-	update_interval = m_upd_interval = (_update_interval * 1.0e6);
+	update_interval = m_upd_interval = (_update_interval * 1.0e3);
 }
 
 
@@ -73,20 +73,20 @@ void HWBench::beat_start()
 {
 	if(m_reset) {
 		m_beat_count = 0;
-		m_min_btime = LONG_MAX;
+		m_min_btime = UINT_MAX;
 		m_max_btime = 0;
 		m_icount = 0;
 		m_ccount = 0;
 		m_reset = false;
 	}
 
-	bstart = m_chrono->get_nsec();
+	bstart = m_chrono->get_usec();
 }
 
 //GCC_ATTRIBUTE(optimize("O0")) <- it seems for gcc 4.8+ is not needed anymore
 void HWBench::beat_end()
 {
-	bend = m_chrono->get_nsec();
+	bend = m_chrono->get_usec();
 
 	uint btime = bend - bstart;
 
@@ -114,12 +114,12 @@ void HWBench::data_update()
 	max_beat_time = m_max_btime;
 	min_beat_time = m_min_btime;
 
-	avg_bps = double(beat_count) * 1.0e9 / uea;
-	min_bps = 1.0e9 / max_beat_time;
-	max_bps = 1.0e9 / min_beat_time;
+	avg_bps = double(beat_count) * 1.0e6 / uea;
+	min_bps = 1.0e6 / max_beat_time;
+	max_bps = 1.0e6 / min_beat_time;
 
-	avg_ips = double(m_icount) * 1.0e9 / uea;
-	avg_cps = double(m_ccount) * 1.0e9 / uea;
+	avg_ips = double(m_icount) * 1.0e6 / uea;
+	avg_cps = double(m_ccount) * 1.0e6 / uea;
 }
 
 
