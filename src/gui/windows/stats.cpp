@@ -61,8 +61,8 @@ void Stats::update()
 	uint64_t vtime = m_machine->get_virt_time_ns();
 	ss << "vtime: " <<  vtime << "<br />";
 	HWBench &hwb = m_machine->get_bench();
-	int64_t vdiff = int64_t(hwb.time_elapsed) - int64_t(vtime);
-	ss << "vdiff: " << int64_t(vdiff/1.0e6) << "<br />";
+	int64_t vdiff = int64_t(hwb.time_elapsed) - int64_t(vtime)/1000;
+	ss << "vdiff: " << int64_t(vdiff/1.0e3) << "<br />";
 	ss << hwb;
 
 	//read the DOS clock from MEM 0040h:006Ch
