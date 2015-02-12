@@ -390,6 +390,7 @@ int PCSpeaker::create_samples(uint64_t _mtime_ns, int _mix_slice_us, bool _prebu
 		m_samples_rem = std::min(0.0, m_samples_rem);
 	} else {
 		PDEBUGF(LOG_V2, LOG_AUDIO, ", remainder: %.1f", m_samples_rem);
+#if 0 //stutters generator. buffer fills shouldn't be done here
 		if(m_samples_rem>0.0) {
 			//this shouldn't happen bc it generates stutters
 			int isamples = m_samples_rem;
@@ -398,6 +399,7 @@ int PCSpeaker::create_samples(uint64_t _mtime_ns, int _mix_slice_us, bool _prebu
 			samples_cnt += isamples;
 			m_samples_rem -= isamples;
 		}
+#endif
 	}
 	PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 
