@@ -26,6 +26,7 @@
 #include <sstream>
 
 #include "hardware/devices/floppy.h"
+#include "hardware/devices/harddrv.h"
 
 Status::Status(GUI * _gui)
 :
@@ -65,6 +66,15 @@ void Status::update()
 	} else if(!motor && m_leds.floppy_b==true) {
 		m_leds.floppy_b = false;
 		m_status.floppy_b_led->SetClass("led_active", false);
+	}
+
+	bool hdd_busy = g_harddrv.is_busy();
+	if(hdd_busy && m_leds.hdd==false) {
+		m_leds.hdd = true;
+		m_status.hdd_led->SetClass("led_active", true);
+	} else if(!hdd_busy && m_leds.hdd==true) {
+		m_leds.hdd = false;
+		m_status.hdd_led->SetClass("led_active", false);
 	}
 
 	if(g_machine.is_on() && m_leds.power==false) {

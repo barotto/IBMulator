@@ -161,6 +161,9 @@ public:
 	// Save/restore support
 	virtual bool save_state(const char *) {return 0;}
 	virtual void restore_state(const char *) {}
+
+	//Create a new image
+	virtual void create(const char*, unsigned) {}
 };
 
 
@@ -175,6 +178,9 @@ private:
 	const char *pathname;
 
 public:
+
+	FlatMediaImage();
+	~FlatMediaImage();
 
 	// Open an image with specific flags. Returns non-negative if successful.
 	int open(const char* pathname, int flags);
@@ -200,6 +206,9 @@ public:
 	// Save/restore support
 	bool save_state(const char *backup_fname);
 	void restore_state(const char *backup_fname);
+
+	//Create a new flat image
+	void create(const char *_pathname, unsigned _sectors);
 
 };
 

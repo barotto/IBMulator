@@ -31,6 +31,7 @@
 #include "hardware/devices/vga.h"
 #include "hardware/devices/keyboard.h"
 #include "hardware/devices/floppy.h"
+#include "hardware/devices/harddrv.h"
 #include "hardware/devices/serial.h"
 #include "hardware/devices/parallel.h"
 #include "hardware/devices/systemboard.h"
@@ -193,6 +194,7 @@ void Machine::init()
 	g_devices.register_device(&g_vga);
 	g_devices.register_device(&g_keyboard);
 	g_devices.register_device(&g_floppy);
+	g_devices.register_device(&g_harddrv);
 	g_devices.register_device(&g_serial);
 	g_devices.register_device(&g_parallel);
 
@@ -313,9 +315,13 @@ bool Machine::main_loop()
 
 void Machine::core_step(int32_t _cpu_cycles)
 {
-	ASSERT(_cpu_cycles > 0);
 	uint64_t start_time = m_s.virt_time;
-	int32_t cycles_left = _cpu_cycles + m_s.cycles_left;
+	int32_t cycles_left = _cpu_cycles;
+	if(_cpu_cycles>0) {
+		cycles_left = _cpu_cycles + m_s.cycles_left;
+	} else {
+		cycles_left = 1;
+	}
 	uint32_t cycle_time = g_cpu.get_cycle_time_ns();
 	while(cycles_left>0) {
 
@@ -599,7 +605,7 @@ void Machine::cmd_power_off()
 void Machine::cmd_cpu_step()
 {
 	m_cmd_fifo.push([this] () {
-		core_step(1);
+		core_step(0);
 	});
 }
 

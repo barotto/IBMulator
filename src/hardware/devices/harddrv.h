@@ -1,5 +1,4 @@
 /*
- * 	Copyright (c) 2001-2014  The Bochs Project
  * 	Copyright (c) 2015  Marco Bortolin
  *
  *	This file is part of IBMulator
@@ -21,162 +20,157 @@
 #ifndef IBMULATOR_HW_HDDRIVE_H
 #define IBMULATOR_HW_HDDRIVE_H
 
-#define MAX_MULTIPLE_SECTORS 16
+#include "hardware/iodevice.h"
+#include "mediaimage.h"
+#include <memory>
 
-typedef enum _sense {
-      SENSE_NONE = 0, SENSE_NOT_READY = 2, SENSE_ILLEGAL_REQUEST = 5,
-      SENSE_UNIT_ATTENTION = 6
-} sense_t;
-
-typedef enum _asc {
-      ASC_ILLEGAL_OPCODE = 0x20,
-      ASC_LOGICAL_BLOCK_OOR = 0x21,
-      ASC_INV_FIELD_IN_CMD_PACKET = 0x24,
-      ASC_MEDIUM_MAY_HAVE_CHANGED = 0x28,
-      ASC_SAVING_PARAMETERS_NOT_SUPPORTED = 0x39,
-      ASC_MEDIUM_NOT_PRESENT = 0x3a
-} asc_t;
-
-
-typedef struct {
-  struct {
-    bool busy;
-    bool drive_ready;
-    bool write_fault;
-    bool seek_complete;
-    bool drq;
-    bool corrected_data;
-    bool index_pulse;
-    unsigned index_pulse_count;
-    bool err;
-  } status;
-  uint8_t    error_register;
-  uint8_t    head_no;
-  union {
-    uint8_t    sector_count;
-    struct {
-#ifdef BX_LITTLE_ENDIAN
-      unsigned c_d : 1;
-      unsigned i_o : 1;
-      unsigned rel : 1;
-      unsigned tag : 5;
-#else  /* BX_BIG_ENDIAN */
-      unsigned tag : 5;
-      unsigned rel : 1;
-      unsigned i_o : 1;
-      unsigned c_d : 1;
-#endif
-    } interrupt_reason;
-  };
-  uint8_t    sector_no;
-  union {
-    uint16_t   cylinder_no;
-    uint16_t   byte_count;
-  };
-  uint8_t    buffer[MAX_MULTIPLE_SECTORS*512 + 4];
-  uint32_t   buffer_size;
-  uint32_t   buffer_index;
-  uint32_t   drq_index;
-  uint8_t    current_command;
-  uint8_t    multiple_sectors;
-  bool  lba_mode;
-  bool  packet_dma;
-  uint8_t    mdma_mode;
-  uint8_t    udma_mode;
-  struct {
-    bool reset;       // 0=normal, 1=reset controller
-    bool disable_irq; // 0=allow irq, 1=disable irq
-  } control;
-  uint8_t    reset_in_progress;
-  uint8_t    features;
-  struct {
-    uint8_t  feature;
-    uint8_t  nsector;
-    uint8_t  sector;
-    uint8_t  lcyl;
-    uint8_t  hcyl;
-  } hob;
-  uint32_t   num_sectors;
-  bool  lba48;
-} controller_t;
-
-struct sense_info_t {
-  sense_t sense_key;
-  struct {
-    uint8_t arr[4];
-  } information;
-  struct {
-    uint8_t arr[4];
-  } specific_inf;
-  struct {
-    uint8_t arr[3];
-  } key_spec;
-  uint8_t fruc;
-  uint8_t asc;
-  uint8_t ascq;
-};
-
-struct error_recovery_t {
-  unsigned char data[8];
-
-  error_recovery_t ();
-};
-
-uint16_t read_16bit(const uint8_t* buf);
-uint32_t read_32bit(const uint8_t* buf);
-
-
-typedef enum {
-      XT_NONE,
-      XT_DISK
-} device_type_t;
+class HardDrive;
+extern HardDrive g_harddrv;
 
 class HardDrive : public IODevice
 {
-
 private:
 
-	struct drive_t {
+	struct State {
+		uint8_t attch_ctrl_reg;   //Attachment Control Reg
+		uint8_t attch_status_reg; //Attachment Status Reg
+		uint8_t int_status_reg;   //Interrupt Status Register
+		uint8_t attention_reg;    //Attention Register
 
-		device_type_t device_type;
-		// 512 byte buffer for ID drive command
-		// These words are stored in native word endian format, as
-		// they are fetched and returned via a return(), so
-		// there's no need to keep them in x86 endian format.
-		uint16_t id_drive[256];
-		bool identify_set;
+		bool    pending_irq;
 
-		controller_t controller;
+		struct SSB {
+			//Sense Summary Block
+			/*
+			The sense summary block contains the current status of the drive.
+			The information in the summary block is updated after each
+			command is completed, after an error, or before the block is
+			transferred.
+			*/
+			/*
+				   7   6   5   4   3   2   1   0
+			ByteO  -R  SE  0   WF  CE  0   0   T0
+			Byte1  EF  ET  AM  BT  WC  0   0   ID
+			Byte2   0  RR  RG  DS   Hd Sel State
+			Byte3  Cylinder Low
+			Byte4  DS Cyl High 0    Hd Number
+			Byte5  Sector Number
+			Byte6  Sector Size (hex 02)
+			Byte7  Hd Number       0   0  Cyl High
+			Byte8  Cylinder Low
+			Byte9  Number of Sectors Corrected
+			Byte10 Number of Retries
+			Byte11 Command Syndrome
+			Byte12 Drive Type Identifier
+			Byte13 Reserved
+			*/
+			//uint8_t bytes[14];
+			bool valid;
+			bool not_ready;    //NR
+			bool seek_end;     //SE
+			bool cylinder_err; //CE
+			bool track_0;      //T0
+			bool reset;        //RR
+			int present_head;
+			int present_cylinder;
+			int last_head;
+			int last_cylinder;
+			int last_sector;
+			int command_syndrome;
+			int drive_type;
+			void copy_to(uint8_t *_dest);
+			void clear();
+		} ssb;
 
-		sense_info_t sense;
+		struct CCB {
+			//Command Control Block
+			/*
+			The system specifies the operation by sending the 6-byte command
+			control block to the controller. It can be sent through a DMA or l/O
+			operation.
+			*/
+			/*
+				   7   6   5   4   3   2   1   0
+			ByteO  Command Code    ND  AS  0   EC/P
+			Byte1  Head Number     0   0   Cyl High
+			Byte2  CyHnderLow
+			Byte3  Sector Number
+			Byte4  0   0   0   0   0   0   1   0
+			Byte5  Number of Sectors
+			*/
+			bool valid;
+			int command;
+			bool no_data; //ND
+			bool auto_seek; //AS
+			bool park; //P
+			int head;
+			int cylinder;
+			int sector;
+			int num_sectors;
+			void set(uint8_t* _data);
+		} ccb;
 
-		MediaImage* hdimage;
+		uint8_t  data_stack[512];
+		unsigned data_ptr;
+		unsigned data_size;
 
-		int64_t curr_lsector;
-		int64_t next_lsector;
+		int cur_head;
+		int cur_cylinder;
+		int cur_sector; //warning: sectors are 1-based
+		bool eoc;
+		int reset_phase;
+		uint32_t time;
+	} m_s;
 
-		uint8_t model_no[41];
-		int seek_timer_index;
+	int m_cmd_timer;
+	int m_dma_timer;
+	int m_drive_type;
+	int m_sectors;
+	double m_rpm;
+	uint32_t m_trk2trk_us;
+	uint32_t m_avg_trk_lat_us;
+	double m_sec_tx_us;
+	uint32_t m_exec_time_us;
+	uint32_t m_avg_rot_lat;
 
-	} drive;
+	std::unique_ptr<MediaImage> m_disk;
 
-	unsigned drive_select;
+	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
+	inline int chs_to_lba(int _c, int _h, int _s) const;
+	inline void lba_to_chs(int _lba, int &_c, int &_h, int &_s) const;
 
-	uint16_t ioaddr1;
-	uint16_t ioaddr2;
-	uint8_t  irq;
+	void cmd_timer();
+	void dma_timer();
+	void attention();
+	void command();
+	void raise_interrupt();
+	void lower_interrupt();
+	void fill_data_stack(uint8_t *_source, unsigned _len);
 
+	uint16_t dma_write(uint8_t *_buffer, uint16_t _maxlen);
+	uint16_t dma_read(uint8_t *_buffer, uint16_t _maxlen);
 
-	bool calculate_logical_address(uint8_t channel, int64_t *sector);
-	void increment_address(uint8_t channel, int64_t *sector);
-	void identify_drive(uint8_t channel);
-	void command_aborted(uint8_t channel, unsigned command);
-	void raise_interrupt(uint8_t channel);
-	void init_mode_sense_single(uint8_t channel, const void* src, int size);
-	void set_signature(uint8_t channel, uint8_t id);
-	bool ide_read_sector(uint8_t channel, uint8_t *buffer, uint32_t buffer_size);
-	bool ide_write_sector(uint8_t channel, uint8_t *buffer, uint32_t buffer_size);
-	void start_seek(uint8_t channel);
+	void increment_sector();
+	void cylinder_error();
+	bool seek(int _c);
+	void set_cur_sector(int _h, int _s);
+	void advance(int _sectors);
+	void read_sector(int _c, int _h, int _s);
+	void write_sector(int _c, int _h, int _s);
+	uint32_t get_seek_time(int _c);
+
+	void read_data_cmd();
+	void read_check_cmd();
+	void read_ext_cmd();
+	void read_id_cmd();
+	void recalibrate_cmd();
+	void write_data_cmd();
+	void write_vfy_cmd();
+	void write_ext_cmd();
+	void format_disk_cmd();
+	void seek_cmd();
+	void format_trk_cmd();
+	void undefined_cmd();
 
 public:
 
@@ -185,14 +179,16 @@ public:
 
 	void init();
 	void reset(unsigned type);
+	void config_changed();
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);
 	const char *get_name() { return "Hard Drive"; }
 
-	void seek_timer(void);
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
 
-	void save_state(uint8_t * &buf_, size_t &size_);
-	size_t restore_state(uint8_t * _buf, size_t _size);
+	inline bool is_busy() { return m_s.attch_status_reg & 0x4; }
 };
 
 #endif
+

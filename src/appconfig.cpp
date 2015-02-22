@@ -94,7 +94,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DISK_C_SECTION, {
-		{ DISK_TYPE, "30M" },
+		{ DISK_TYPE, "35" },
 		{ DISK_INSERTED, "no" },
 		{ DISK_READONLY, "yes" },
 		{ DISK_PATH, "hdd.img" }

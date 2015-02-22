@@ -278,8 +278,12 @@ bool hdimage_copy_file(const char *src, const char *dst)
  */
 
 MediaImage::MediaImage()
+:
+cylinders(0),
+heads(0),
+spt(0),
+hd_size(0)
 {
-	hd_size = 0;
 }
 
 int MediaImage::open(const char* _pathname)
@@ -302,19 +306,33 @@ uint32_t MediaImage::get_timestamp()
  * FlatMediaImage
  */
 
+FlatMediaImage::FlatMediaImage()
+{
+
+}
+
+FlatMediaImage::~FlatMediaImage()
+{
+	close();
+}
+
 int FlatMediaImage::open(const char* _pathname, int flags)
 {
 	pathname = _pathname;
 	if((fd = hdimage_open_file(pathname, flags, &hd_size, &mtime)) < 0) {
 		return -1;
 	}
-	PINFOF(LOG_V0, LOG_HDD, "hd_size: %llu\n", hd_size);
+	PINFOF(LOG_V2, LOG_HDD, "image size: %llu\n", hd_size);
 
 	if(hd_size <= 0) {
-		PERRF_ABORT(LOG_HDD, "size of disk image not detected / invalid\n");
+		close();
+		PERRF(LOG_HDD, "size of disk image not detected / invalid\n");
+		return -1;
 	}
 	if((hd_size % 512) != 0) {
-		PERRF_ABORT(LOG_HDD, "size of disk image must be multiple of 512 bytes\n");
+		close();
+		PERRF(LOG_HDD, "size of disk image must be multiple of 512 bytes\n");
+		return -1;
 	}
 
 	return fd;
@@ -324,6 +342,7 @@ void FlatMediaImage::close()
 {
 	if(fd > -1) {
 		::close(fd);
+		fd = -1;
 	}
 }
 
@@ -364,12 +383,24 @@ void FlatMediaImage::restore_state(const char *backup_fname)
 {
 	close();
 	if(!hdimage_copy_file(backup_fname, pathname)) {
-		PERRF_ABORT(LOG_HDD, "Failed to restore image '%s'\n", pathname);
-		return;
+		PERRF(LOG_HDD, "Failed to restore image '%s'\n", pathname);
+		throw std::exception();
 	}
 	if(MediaImage::open(pathname) < 0) {
-		PERRF_ABORT(LOG_HDD, "Failed to open restored image '%s'\n", pathname);
+		PERRF(LOG_HDD, "Failed to open restored image '%s'\n", pathname);
+		throw std::exception();
 	}
+}
+
+void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
+{
+    std::ofstream ofs(_pathname, std::ios::binary | std::ios::out);
+    if(!ofs.is_open()) {
+    	throw std::exception();
+    }
+    ofs.seekp((_sectors*512) - 1);
+    ofs.write("", 1);
+    ofs.close();
 }
 
 

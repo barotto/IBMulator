@@ -61,6 +61,7 @@ protected:
 	static void INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_0E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_12(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_13_02_3_4(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_15_86(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_15_87(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_1A_00(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);

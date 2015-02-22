@@ -54,7 +54,8 @@ inline uint popcnt(uint _value)
 
 CPUExecutor::CPUExecutor()
 {
-	register_INT_trap(0x00, 0xFF, &CPUExecutor::INT_debug);
+	//register_INT_trap(0x00, 0xFF, &CPUExecutor::INT_debug);
+	register_INT_trap(0x13, 0x13, &CPUExecutor::INT_debug);
 }
 
 inline SegReg & CPUExecutor::EA_get_segreg()

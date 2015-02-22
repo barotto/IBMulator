@@ -25,6 +25,7 @@
 
 #include <Rocket/Core.h>
 #include "hardware/devices/floppy.h"
+#include "hardware/devices/harddrv.h"
 
 event_map_t Interface::ms_evt_map = {
 	GUI_EVT( "power",     "click", Interface::on_power ),
@@ -177,16 +178,15 @@ void Interface::update()
 		m_leds.fdd = false;
 		m_status.fdd_led->SetClass("active", false);
 	}
-	/* TODO
-	bool act = g_harddrive.get_access_activity();
-	if(act && m_leds.hdd==false) {
+
+	bool hdd_busy = g_harddrv.is_busy();
+	if(hdd_busy && m_leds.hdd==false) {
 		m_leds.hdd = true;
 		m_status.hdd_led->SetClass("active", true);
-	} else if(!act && m_leds.hdd==true) {
+	} else if(!hdd_busy && m_leds.hdd==true) {
 		m_leds.hdd = false;
 		m_status.hdd_led->SetClass("active", false);
 	}
-	*/
 
 	bool present = g_floppy.is_media_present(m_curr_drive);
 	bool changed = g_floppy.get_disk_changed(m_curr_drive);

@@ -511,6 +511,31 @@ void CPUDebugger::INT_10_12(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	buflen -= len;
 }
 
+void CPUDebugger::INT_13_02_3_4(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		INT_def_ret(core, buf, buflen);
+		return;
+	}
+	bool hd = core->get_DL() & 0x80;
+	int C = core->get_CH();
+	int H = core->get_DH();
+	int S = core->get_CL() & 0x3F;
+	if(hd) {
+		C = C | ((int(core->get_CL()) & 0xC0) << 2);
+		snprintf(buf, buflen, " HDD");
+	} else {
+		snprintf(buf, buflen, " F=%d",core->get_DL()&0x1);
+	}
+	buf += 4;
+	if(buflen<=4) return;
+	buflen -= 4;
+	snprintf(buf, buflen, ",C=%d,H=%d,S=%d,nS=%d", C,H,S,ax&0xFF);
+}
+
+
+
 void CPUDebugger::INT_15_86(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
@@ -739,7 +764,10 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x10, 0xF000, 1), { true,  NULL,                    "EGA - READ ONE REGISTER" } },
 	{ MAKE_INT_SEL(0x11, 0x0000, 0), { true,  NULL,                    "GET EQUIPMENT LIST" } },
 	{ MAKE_INT_SEL(0x13, 0x0000, 1), { true,  NULL,                    "DISK - RESET DISK SYSTEM" } },
-	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  NULL,                    "DISK - READ SECTOR(S) INTO MEMORY" } },
+	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - READ SECTOR(S) INTO MEMORY" } },
+	{ MAKE_INT_SEL(0x13, 0x0300, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - WRITE DISK SECTOR(S)" } },
+	{ MAKE_INT_SEL(0x13, 0x0400, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - VERIFY DISK SECTOR(S)" } },
+	{ MAKE_INT_SEL(0x13, 0x0800, 1), { true,  NULL,                    "DISK - GET DRIVE PARAMETERS" } },
 	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  NULL,                    "FLOPPY - DETECT DISK CHANGE" } },
 	{ MAKE_INT_SEL(0x15, 0x2100, 1), { false, NULL,                    "POWER-ON SELF-TEST ERROR LOG" } },
 	{ MAKE_INT_SEL(0x15, 0x2300, 2), { true,  NULL,                    "IBM - GET CMOS 2D-2E DATA" } },

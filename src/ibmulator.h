@@ -70,7 +70,7 @@ void size_check()
 
 	#define CONFIG_PARSE 1
 	#define MEMORY_TRAPS 0
-	#define INT_TRAPS 0
+	#define INT_TRAPS 1
 	#define STOP_AT_EXC 0
 	#define UD6_AUTO_DUMP 0
 
