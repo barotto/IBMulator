@@ -64,6 +64,10 @@ void CPUBus::restore_state(StateBuf &_state)
 
 void CPUBus::pq_fill(uint free_space, uint btoread)
 {
+	if(!USE_PREFETCH_QUEUE) {
+		return;
+	}
+
 	ASSERT(free_space<=CPU_PQ_SIZE);
 
 	if(btoread < CPU_PQ_READS_PER_FETCH)
@@ -88,6 +92,9 @@ void CPUBus::pq_fill(uint free_space, uint btoread)
 
 void CPUBus::update_pq(uint _cycles)
 {
+	if(!USE_PREFETCH_QUEUE) {
+		return;
+	}
 	if(!m_s.pq_valid) {
 		//csip will always be >CPU_PQ_SIZE
 		//ASSERT(m_s.csip>CPU_PQ_SIZE);
@@ -114,8 +121,8 @@ void CPUBus::update_pq(uint _cycles)
 
 uint8_t CPUBus::fetchb()
 {
-	ASSERT(m_s.csip<=m_s.pq_tail);
-	if(m_s.csip == m_s.pq_tail) {
+	ASSERT(!USE_PREFETCH_QUEUE || m_s.csip<=m_s.pq_tail);
+	if(USE_PREFETCH_QUEUE && m_s.csip == m_s.pq_tail) {
 		//the pq is empty
 		if(!m_s.pq_valid && (m_s.csip & 1)) {
 			/*
@@ -128,7 +135,13 @@ uint8_t CPUBus::fetchb()
 		pq_fill(CPU_PQ_SIZE, CPU_PQ_READS_PER_FETCH);
 		m_read_tx++;
 	}
-	uint8_t b = m_s.pq[get_pq_cur_index()];
+	uint8_t b;
+	if(USE_PREFETCH_QUEUE) {
+		b = m_s.pq[get_pq_cur_index()];
+	} else {
+		b = g_memory.read_byte(m_s.csip);
+		m_read_tx++;
+	}
 	m_s.csip++;
 	m_s.ip++;
 	return b;
@@ -136,8 +149,8 @@ uint8_t CPUBus::fetchb()
 
 uint16_t CPUBus::fetchw()
 {
-	ASSERT(m_s.csip<=m_s.pq_tail);
-	if(m_s.csip >= m_s.pq_tail - 1) {
+	ASSERT(!USE_PREFETCH_QUEUE || m_s.csip<=m_s.pq_tail);
+	if(USE_PREFETCH_QUEUE && (m_s.csip >= m_s.pq_tail - 1)) {
 		//the pq is empty or not full enough
 		if(!m_s.pq_valid && (m_s.csip & 1)) {
 			m_read_tx++;
@@ -145,10 +158,21 @@ uint16_t CPUBus::fetchw()
 		pq_fill(get_pq_free_space(), CPU_PQ_READS_PER_FETCH);
 		m_read_tx++;
 	}
-	uint8_t b0 = m_s.pq[get_pq_cur_index()];
-	m_s.csip++;
-	uint8_t b1 = m_s.pq[get_pq_cur_index()];
-	m_s.csip++;
+	uint8_t b0, b1;
+	if(USE_PREFETCH_QUEUE) {
+		b0 = m_s.pq[get_pq_cur_index()];
+		m_s.csip++;
+		b1 = m_s.pq[get_pq_cur_index()];
+		m_s.csip++;
+	} else {
+		b0 = g_memory.read_byte(m_s.csip);
+		b1 = g_memory.read_byte(m_s.csip+1);
+		m_s.csip += 2;
+		if(m_s.csip & 1) {
+			m_read_tx++;
+		}
+		m_read_tx++;
+	}
 	m_s.ip += 2;
 	return uint16_t(b1)<<8 | b0;
 }
