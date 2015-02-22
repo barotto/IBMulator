@@ -339,23 +339,21 @@ void HardDrive::config_changed()
 void HardDrive::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "saving state\n");
-	/*
+
 	StateHeader h;
 	h.name = get_name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
-	*/
 }
 
 void HardDrive::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "restoring state\n");
-	/*
+
 	StateHeader h;
 	h.name = get_name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
-	*/
 }
 
 uint16_t HardDrive::read(uint16_t _address, unsigned)
@@ -562,8 +560,7 @@ void HardDrive::command()
 	}
 	set_cur_sector(h, s);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
-	//g_machine.activate_timer(m_cmd_timer, time_us, 0);
-	g_machine.activate_timer(m_cmd_timer, 1, 0);
+	g_machine.activate_timer(m_cmd_timer, time_us, 0);
 
 	PDEBUGF(LOG_V2, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
 }
@@ -676,8 +673,7 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 			raise_interrupt();
 		} else { // more data to transfer
 			m_s.attch_status_reg |= HDD_ASR_BUSY;
-			//g_machine.activate_timer(m_cmd_timer, m_sec_tx_us, 0);
-			g_machine.activate_timer(m_cmd_timer, 1, 0);
+			g_machine.activate_timer(m_cmd_timer, m_sec_tx_us, 0);
 		}
 		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
@@ -719,8 +715,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 			if(c != m_s.cur_cylinder) {
 				time += m_trk2trk_us;
 			}
-			//g_machine.activate_timer(m_dma_timer, time, 0);
-			g_machine.activate_timer(m_dma_timer, 1, 0);
+			g_machine.activate_timer(m_dma_timer, time, 0);
 		}
 		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
@@ -848,6 +843,7 @@ void HardDrive::read_data_cmd()
 			raise_interrupt();
 			return;
 		}
+		//set_cur_sector(m_s.ccb.head, m_s.ccb.sector);
 		m_s.ccb.auto_seek = false;
 	}
 	ASSERT(m_s.ccb.num_sectors>0);
@@ -879,8 +875,7 @@ void HardDrive::read_data_cmd()
 	}
 
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		//g_machine.activate_timer(m_dma_timer, time , 0);
-		g_machine.activate_timer(m_dma_timer, 1 , 0);
+		g_machine.activate_timer(m_dma_timer, time , 0);
 	} else {
 		raise_interrupt();
 	}
@@ -935,6 +930,7 @@ void HardDrive::write_data_cmd()
 			raise_interrupt();
 			return;
 		}
+		//set_cur_sector(m_s.ccb.head, m_s.ccb.sector);
 		m_s.ccb.auto_seek = false;
 	}
 	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
