@@ -70,7 +70,9 @@ protected:
 	static void INT_21_0E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_2C(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_21_39_A_B_4E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_3D(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_5F03(bool call, uint16_t ax, CPUCore *core, Memory *mem,char* buf, uint buflen);
 	static void INT_2B_01(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_2F_1116(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);

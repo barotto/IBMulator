@@ -695,6 +695,50 @@ void CPUDebugger::INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
+void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			const char * errstr = ms_dos_errors[core->get_AX()];
+			snprintf(buf, buflen, " ret CF=1: %s", errstr);
+		} else {
+			INT_def_ret(core, buf, buflen);
+		}
+		return;
+	}
+	//DS:DX -> ASCIZ program name
+	char * name = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	const char * type = "";
+	switch(core->get_AL()) {
+		case 0x0: type = "load and execute"; break;
+		case 0x1: type = "load but do not execute"; break;
+		case 0x3: type = "load overlay"; break;
+		case 0x4: type = "load and execute in background"; break;
+		default: type = ""; break;
+	}
+	snprintf(buf, buflen, " : '%s' %s", name, type);
+}
+
+void CPUDebugger::INT_21_39_A_B_4E(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			const char * errstr = ms_dos_errors[core->get_AX()];
+			snprintf(buf, buflen, " ret CF=1: %s", errstr);
+		} else {
+			INT_def_ret(core, buf, buflen);
+		}
+		return;
+	}
+	//DS:DX -> ASCIZ pathname
+	char * pathname = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	snprintf(buf, buflen, " : '%s'", pathname);
+}
+
 void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
@@ -752,23 +796,40 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 }
 
 int_map_t CPUDebugger::ms_interrupts = {
+	/* INT 10 */
 	{ MAKE_INT_SEL(0x10, 0x0000, 1), { true,  &CPUDebugger::INT_10_00, "VIDEO - SET VIDEO MODE" } },
 	{ MAKE_INT_SEL(0x10, 0x0100, 1), { true,  NULL,                    "VIDEO - SET TEXT-MODE CURSOR SHAPE" } },
 	{ MAKE_INT_SEL(0x10, 0x0E00, 1), { false, NULL,                    "TELETYPE OUTPUT" } },
 	{ MAKE_INT_SEL(0x10, 0x0200, 1), { false, NULL,                    "SET CURSOR POS" } },
 	{ MAKE_INT_SEL(0x10, 0x0900, 1), { false, &CPUDebugger::INT_10_0E, "WRITE CHAR AND ATTR AT CURSOR POS" } },
+	{ MAKE_INT_SEL(0x10, 0x0F00, 1), { true,  NULL,                    "VIDEO - GET CURRENT VIDEO MODE" } },
+	{ MAKE_INT_SEL(0x10, 0x1003, 2), { true,  NULL,                    "VIDEO - TOGGLE INTENSITY/BLINKING BIT" } },
+	{ MAKE_INT_SEL(0x10, 0x1007, 2), { true,  NULL,                    "VIDEO - GET INDIVIDUAL PALETTE REGISTER" } },
+	{ MAKE_INT_SEL(0x10, 0x101A, 2), { true,  NULL,                    "VIDEO - GET VIDEO DAC COLOR-PAGE STATE (VGA)" } },
+	{ MAKE_INT_SEL(0x10, 0x1100, 2), { true,  NULL,                    "VIDEO - TEXT-MODE CHARGEN - LOAD USER-SPECIFIED PATTERNS" } },
+	{ MAKE_INT_SEL(0x10, 0x1103, 2), { true,  NULL,                    "VIDEO - TEXT-MODE CHARGEN - SET BLOCK SPECIFIER" } },
+	{ MAKE_INT_SEL(0x10, 0x1122, 2), { true,  NULL,                    "VIDEO - GRAPH-MODE CHARGEN - SET ROM 8x14 GRAPHICS CHARS" } },
+	{ MAKE_INT_SEL(0x10, 0x1130, 2), { true,  NULL,                    "VIDEO - GET FONT INFORMATION" } },
 	{ MAKE_INT_SEL(0x10, 0x1200, 1), { true,  &CPUDebugger::INT_10_12, "" } },
 	{ MAKE_INT_SEL(0x10, 0x1300, 1), { true,  NULL,                    "WRITE STRING" } },
 	{ MAKE_INT_SEL(0x10, 0x1A00, 2), { true,  NULL,                    "VIDEO - GET DISPLAY COMBINATION CODE" } },
 	{ MAKE_INT_SEL(0x10, 0x1B00, 2), { true,  NULL,                    "VIDEO - FUNCTIONALITY/STATE INFORMATION" } },
+	{ MAKE_INT_SEL(0x10, 0x6F00, 2), { true,  NULL,                    "VIDEO - Video7 VGA,VEGA VGA - INSTALLATION CHECK" } },
 	{ MAKE_INT_SEL(0x10, 0xF000, 1), { true,  NULL,                    "EGA - READ ONE REGISTER" } },
+	{ MAKE_INT_SEL(0x10, 0xF100, 1), { true,  NULL,                    "EGA - WRITE ONE REGISTER" } },
+	{ MAKE_INT_SEL(0x10, 0xF200, 1), { true,  NULL,                    "EGA - READ REGISTER RANGE" } },
+	{ MAKE_INT_SEL(0x10, 0xF300, 1), { true,  NULL,                    "EGA - WRITE REGISTER RANGE" } },
+	{ MAKE_INT_SEL(0x10, 0xFA00, 1), { true,  NULL,                    "EGA - INTERROGATE DRIVER" } },
+	/* INT 11 */
 	{ MAKE_INT_SEL(0x11, 0x0000, 0), { true,  NULL,                    "GET EQUIPMENT LIST" } },
+	/* INT 13 */
 	{ MAKE_INT_SEL(0x13, 0x0000, 1), { true,  NULL,                    "DISK - RESET DISK SYSTEM" } },
 	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - READ SECTOR(S) INTO MEMORY" } },
 	{ MAKE_INT_SEL(0x13, 0x0300, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - WRITE DISK SECTOR(S)" } },
 	{ MAKE_INT_SEL(0x13, 0x0400, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - VERIFY DISK SECTOR(S)" } },
 	{ MAKE_INT_SEL(0x13, 0x0800, 1), { true,  NULL,                    "DISK - GET DRIVE PARAMETERS" } },
 	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  NULL,                    "FLOPPY - DETECT DISK CHANGE" } },
+	/* INT 15 */
 	{ MAKE_INT_SEL(0x15, 0x2100, 1), { false, NULL,                    "POWER-ON SELF-TEST ERROR LOG" } },
 	{ MAKE_INT_SEL(0x15, 0x2300, 2), { true,  NULL,                    "IBM - GET CMOS 2D-2E DATA" } },
 	{ MAKE_INT_SEL(0x15, 0x2301, 2), { true,  NULL,                    "IBM - SET CMOS 2D-2E DATA" } },
@@ -795,45 +856,87 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x15, 0xC209, 2), { true,  NULL,                    "POINTING DEV - READ FROM POINTER PORT" } },
 	{ MAKE_INT_SEL(0x15, 0xC500, 1), { false, NULL,                    "IBM - ROM BIOS TRACING CALLOUT" } },
 	{ MAKE_INT_SEL(0x15, 0x8800, 1), { false, NULL,                    "GET EXTENDED MEMORY SIZE" } },
-	{ MAKE_INT_SEL(0x16, 0x0300, 1), { false, NULL,                    "SET KB TYPEMATIC RATE AND DELAY" } },
-	{ MAKE_INT_SEL(0x16, 0x1100, 1), { false, NULL,                    "CHECK KB FOR ENHANCED KEYSTROKE" } },
+	/* INT 16 */
+	{ MAKE_INT_SEL(0x16, 0x0300, 1), { false, NULL,                    "KEYB - SET TYPEMATIC RATE AND DELAY" } },
+	{ MAKE_INT_SEL(0x16, 0x1100, 1), { false, NULL,                    "KEYB - CHECK FOR ENHANCED KEYSTROKE" } },
+	{ MAKE_INT_SEL(0x16, 0x1200, 1), { false, NULL,                    "KEYB - GET EXTENDED SHIFT STATES" } },
+	/* INT 1A */
 	{ MAKE_INT_SEL(0x1A, 0x0000, 1), { false, &CPUDebugger::INT_1A_00, "TIME - GET SYSTEM TIME" } },
+	/* INT 1C */
 	{ MAKE_INT_SEL(0x1C, 0x0000, 0), { false, NULL,                    "SYSTEM TIMER TICK" } },
+	/* INT 21 */
 	{ MAKE_INT_SEL(0x21, 0x0600, 1), { false, NULL,                    "DOS - DIRECT CONSOLE OUTPUT" } },
 	{ MAKE_INT_SEL(0x21, 0x0900, 1), { true,  &CPUDebugger::INT_21_09, "DOS - WRITE STRING TO STDOUT" } },
+	{ MAKE_INT_SEL(0x21, 0x0D00, 1), { true,  NULL,                    "DOS - DISK RESET" } },
 	{ MAKE_INT_SEL(0x21, 0x0E00, 1), { true,  &CPUDebugger::INT_21_0E, "DOS - SELECT DEFAULT DRIVE" } },
 	{ MAKE_INT_SEL(0x21, 0x1900, 1), { true,  NULL,                    "DOS - GET CURRENT DEFAULT DRIVE" } },
+	{ MAKE_INT_SEL(0x21, 0x1A00, 1), { true,  NULL,                    "DOS - SET DISK TRANSFER AREA ADDRESS" } },
+	{ MAKE_INT_SEL(0x21, 0x2100, 1), { true,  NULL,                    "DOS - READ RANDOM RECORD FROM FCB FILE" } },
 	{ MAKE_INT_SEL(0x21, 0x2500, 1), { true,  &CPUDebugger::INT_21_25, "DOS - SET INTERRUPT VECTOR" } },
-	{ MAKE_INT_SEL(0x21, 0x2C00, 1), { true,  &CPUDebugger::INT_21_2C, "DOS - GET SYSTEM TIME" } },
+	{ MAKE_INT_SEL(0x21, 0x2900, 1), { true,  NULL,                    "DOS - PARSE FILENAME INTO FCB" } },
+	{ MAKE_INT_SEL(0x21, 0x2A00, 1), { true,  NULL,                    "DOS - GET SYSTEM DATE" } },
+	{ MAKE_INT_SEL(0x21, 0x2C00, 1), { false, &CPUDebugger::INT_21_2C, "DOS - GET SYSTEM TIME" } },
 	{ MAKE_INT_SEL(0x21, 0x3000, 1), { true,  &CPUDebugger::INT_21_30, "DOS - GET DOS VERSION" } },
+	{ MAKE_INT_SEL(0x21, 0x3300, 2), { false, NULL,                    "DOS - EXTENDED BREAK CHECKING (0)" } },
+	{ MAKE_INT_SEL(0x21, 0x3301, 2), { false, NULL,                    "DOS - EXTENDED BREAK CHECKING (1)" } },
+	{ MAKE_INT_SEL(0x21, 0x3400, 1), { false, NULL,                    "DOS - GET ADDRESS OF INDOS FLAG" } },
 	{ MAKE_INT_SEL(0x21, 0x3500, 1), { false, NULL,                    "DOS - GET INTERRUPT VECTOR" } },
 	{ MAKE_INT_SEL(0x21, 0x3700, 2), { true,  NULL,                    "DOS - GET SWITCH CHARACTER" } },
 	{ MAKE_INT_SEL(0x21, 0x3701, 2), { true,  NULL,                    "DOS - SET SWITCH CHARACTER" } },
 	{ MAKE_INT_SEL(0x21, 0x3800, 1), { true,  NULL,                    "DOS - GET COUNTRY-SPECIFIC INFORMATION" } },
-	{ MAKE_INT_SEL(0x21, 0x3900, 1), { true,  NULL,                    "DOS - MKDIR" } },
+	{ MAKE_INT_SEL(0x21, 0x3900, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - MKDIR" } },
+	{ MAKE_INT_SEL(0x21, 0x3A00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - RMDIR" } },
+	{ MAKE_INT_SEL(0x21, 0x3B00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - CHDIR" } },
 	{ MAKE_INT_SEL(0x21, 0x3D00, 1), { true,  &CPUDebugger::INT_21_3D, "DOS - FILE OPEN" } },
 	{ MAKE_INT_SEL(0x21, 0x3E00, 1), { true,  NULL,                    "DOS - FILE CLOSE" } },
 	{ MAKE_INT_SEL(0x21, 0x3F00, 1), { true,  NULL,                    "DOS - FILE READ" } },
+	{ MAKE_INT_SEL(0x21, 0x4000, 1), { true,  NULL,                    "DOS - FILE WRITE" } },
+	{ MAKE_INT_SEL(0x21, 0x4100, 1), { true,  NULL,                    "DOS - FILE UNLINK" } },
 	{ MAKE_INT_SEL(0x21, 0x4200, 1), { true,  NULL,                    "DOS - FILE SEEK" } },
+	{ MAKE_INT_SEL(0x21, 0x4300, 2), { true,  NULL,                    "DOS - GET FILE ATTRIBUTES" } },
 	{ MAKE_INT_SEL(0x21, 0x4400, 2), { true,  NULL,                    "DOS - GET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4401, 2), { true,  NULL,                    "DOS - SET DEVICE INFORMATION" } },
+	{ MAKE_INT_SEL(0x21, 0x4408, 2), { true,  NULL,                    "DOS - IOCTL - CHECK IF BLOCK DEVICE REMOVABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x440E, 2), { true,  NULL,                    "DOS - IOCTL - GET LOGICAL DRIVE MAP" } },
+	{ MAKE_INT_SEL(0x21, 0x440F, 2), { true,  NULL,                    "DOS - IOCTL - SET LOGICAL DRIVE MAP" } },
+	{ MAKE_INT_SEL(0x21, 0x4700, 1), { true,  NULL,                    "DOS - CWD - GET CURRENT DIRECTORY" } },
 	{ MAKE_INT_SEL(0x21, 0x4800, 1), { true,  NULL,                    "DOS - ALLOCATE MEMORY" } },
+	{ MAKE_INT_SEL(0x21, 0x4900, 1), { true,  NULL,                    "DOS - FREE MEMORY" } },
+	{ MAKE_INT_SEL(0x21, 0x4A00, 1), { true,  NULL,                    "DOS - RESIZE MEMORY BLOCK" } },
+	{ MAKE_INT_SEL(0x21, 0x4B00, 1), { true,  &CPUDebugger::INT_21_4B, "DOS - EXEC" } },
+	{ MAKE_INT_SEL(0x21, 0x4C00, 1), { true,  NULL,                    "DOS - EXIT - TERMINATE WITH RETURN CODE" } },
+	{ MAKE_INT_SEL(0x21, 0x4D00, 1), { true,  NULL,                    "DOS - GET RETURN CODE (ERRORLEVEL)" } },
+	{ MAKE_INT_SEL(0x21, 0x4E00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - FINDFIRST" } },
 	{ MAKE_INT_SEL(0x21, 0x5000, 1), { true,  NULL,                    "DOS - SET CURRENT PROCESS ID" } },
 	{ MAKE_INT_SEL(0x21, 0x5200, 1), { false, NULL,                    "DOS - GET LIST OF LISTS" } },
+	{ MAKE_INT_SEL(0x21, 0x5D08, 2), { false, NULL,                    "DOS NET - SET REDIRECTED PRINTER MODE" } },
+	{ MAKE_INT_SEL(0x21, 0x5D09, 2), { false, NULL,                    "DOS NET - FLUSH REDIRECTED PRINTER OUTPUT" } },
+	{ MAKE_INT_SEL(0x21, 0x5F02, 2), { true,  NULL,                    "DOS NET - SET NETWORK PRINTER SETUP STRING" } },
 	{ MAKE_INT_SEL(0x21, 0x5F03, 2), { true,  &CPUDebugger::INT_21_5F03,"DOS NET - REDIRECT DEVICE" } },
 	{ MAKE_INT_SEL(0x21, 0x6300, 2), { false, NULL,                    "DOS - GET DOUBLE BYTE CHARACTER SET LEAD-BYTE TABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x6601, 2), { false, NULL,                    "DOS - GET GLOBAL CODE PAGE TABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x6602, 2), { false, NULL,                    "DOS - SET GLOBAL CODE PAGE TABLE" } },
+	/* INT 28 */
 	{ MAKE_INT_SEL(0x28, 0x0000, 0), { false, NULL,                    "DOS - IDLE INTERRUPT" } },
+	/* INT 29 */
 	{ MAKE_INT_SEL(0x29, 0x0000, 0), { false, &CPUDebugger::INT_10_0E, "DOS - FAST CONSOLE OUTPUT" } },
+	/* INT 2A */
 	{ MAKE_INT_SEL(0x2A, 0x8100, 1), { false, NULL,                    "DOS NET - END CRITICAL SECTION" } },
 	{ MAKE_INT_SEL(0x2A, 0x8200, 1), { false, NULL,                    "DOS NET - END CRITICAL SECTIONS 0-7" } },
+	/* INT 2B */
 	{ MAKE_INT_SEL(0x2B, 0x0000, 1), { true,  NULL,                    "IBM - RAM LOADER - fn0" } },
 	{ MAKE_INT_SEL(0x2B, 0x0100, 1), { true,  &CPUDebugger::INT_2B_01, "IBM - RAM LOADER - FIND FILE IN ROMDRV" } },
 	{ MAKE_INT_SEL(0x2B, 0x0200, 1), { true,  NULL,                    "IBM - RAM LOADER - COPY FILE FROM ROMDRV" } },
 	{ MAKE_INT_SEL(0x2B, 0x0300, 1), { true,  NULL,                    "IBM - RAM LOADER - fn3" } },
+	/* INT 2F */
 	{ MAKE_INT_SEL(0x2F, 0x1106, 2), { true,  NULL,                    "NET REDIR - CLOSE REMOTE FILE" } },
 	{ MAKE_INT_SEL(0x2F, 0x1108, 2), { true,  NULL,                    "NET REDIR - READ FROM REMOTE FILE" } },
 	{ MAKE_INT_SEL(0x2F, 0x1116, 2), { true,  &CPUDebugger::INT_2F_1116,"NET REDIR - OPEN EXISTING REMOTE FILE" } },
+	{ MAKE_INT_SEL(0x2F, 0x111D, 2), { true,  NULL,                    "NET REDIR - CLOSE ALL REMOTE FILES FOR PROCESS (ABORT)" } },
 	{ MAKE_INT_SEL(0x2F, 0x111E, 2), { true,  NULL,                    "NET REDIR - DO REDIRECTION" } },
+	{ MAKE_INT_SEL(0x2F, 0x1120, 2), { true,  NULL,                    "NET REDIR - FLUSH ALL DISK BUFFERS" } },
+	{ MAKE_INT_SEL(0x2F, 0x1122, 2), { true,  NULL,                    "NET REDIR - PROCESS TERMINATION HOOK" } },
+	{ MAKE_INT_SEL(0x2F, 0x1125, 2), { true,  NULL,                    "NET REDIR - REDIRECTED PRINTER MODE" } },
 	{ MAKE_INT_SEL(0x2F, 0x1123, 2), { true,  &CPUDebugger::INT_2F_1123,"NET REDIR - QUALIFY REMOTE FILENAME" } },
 	{ MAKE_INT_SEL(0x2F, 0x1208, 2), { true,  NULL,                    "DOS - DECREMENT SFT REFERENCE COUNT" } },
 	{ MAKE_INT_SEL(0x2F, 0x120C, 2), { true,  NULL,                    "DOS - OPEN DEVICE AND SET SFT OWNER/MODE" } },
@@ -842,7 +945,29 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x2F, 0x122F, 2), { true,  NULL,                    "DOS - SET DOS VERSION NUMBER TO RETURN" } },
 	{ MAKE_INT_SEL(0x2F, 0x1230, 2), { true,  NULL,                    "W95 - FIND SFT ENTRY IN INTERNAL FILE TABLES" } },
 	{ MAKE_INT_SEL(0x2F, 0x1902, 2), { true,  NULL,                    "SHELLB.COM - COMMAND.COM INTERFACE" } },
+	{ MAKE_INT_SEL(0x2F, 0x1980, 2), { true,  NULL,                    "IBM ROM-DOS v4.0 - INSTALLATION CHECK" } },
+	{ MAKE_INT_SEL(0x2F, 0x1981, 2), { true,  NULL,                    "IBM ROM-DOS v4.0 - GET ??? STRING" } },
+	{ MAKE_INT_SEL(0x2F, 0x1982, 2), { true,  NULL,                    "IBM ROM-DOS v4.0 - GET ??? TABLE" } },
+	{ MAKE_INT_SEL(0x2F, 0x1A01, 2), { true,  NULL,                    "DOS 4.0+ ANSI.SYS internal - GET/SET DISPLAY INFORMATION" } },
+	{ MAKE_INT_SEL(0x2F, 0x1A02, 2), { true,  NULL,                    "DOS 4.0+ ANSI.SYS internal - MISCELLANEOUS REQUESTS" } },
+	{ MAKE_INT_SEL(0x2F, 0xAE00, 2), { true,  NULL,                    "DOS - INSTALLABLE COMMAND - INSTALLATION CHECK" } },
+	{ MAKE_INT_SEL(0x2F, 0xB000, 2), { true,  NULL,                    "DOS 3.3+ GRAFTABL.COM - INSTALLATION CHECK" } },
+	{ MAKE_INT_SEL(0x2F, 0xB711, 2), { true,  NULL,                    "DOS - SET RETURN FOUND NAME STATE" } },
+	/* INT 33 */
+	{ MAKE_INT_SEL(0x33, 0x0000, 2), { true,  NULL,                    "MS MOUSE - RESET DRIVER AND READ STATUS" } },
+	{ MAKE_INT_SEL(0x33, 0x0001, 2), { true,  NULL,                    "MS MOUSE - SHOW MOUSE CURSOR" } },
+	{ MAKE_INT_SEL(0x33, 0x0002, 2), { true,  NULL,                    "MS MOUSE - HIDE MOUSE CURSOR" } },
+	{ MAKE_INT_SEL(0x33, 0x0003, 2), { true,  NULL,                    "MS MOUSE - RETURN POSITION AND BUTTON STATUS" } },
+	{ MAKE_INT_SEL(0x33, 0x0007, 2), { true,  NULL,                    "MS MOUSE - DEFINE HORIZONTAL CURSOR RANGE" } },
+	{ MAKE_INT_SEL(0x33, 0x0008, 2), { true,  NULL,                    "MS MOUSE - DEFINE VERTICAL CURSOR RANGE" } },
+	{ MAKE_INT_SEL(0x33, 0x0009, 2), { true,  NULL,                    "MS MOUSE - DEFINE GRAPHICS CURSOR" } },
+	{ MAKE_INT_SEL(0x33, 0x000A, 2), { true,  NULL,                    "MS MOUSE - DEFINE TEXT CURSOR" } },
+	{ MAKE_INT_SEL(0x33, 0x000C, 2), { true,  NULL,                    "MS MOUSE - DEFINE INTERRUPT SUBROUTINE PARAMETERS" } },
+	{ MAKE_INT_SEL(0x33, 0x0021, 2), { true,  NULL,                    "MS MOUSE - SOFTWARE RESET" } },
+	{ MAKE_INT_SEL(0x33, 0x0024, 2), { true,  NULL,                    "MS MOUSE - GET SOFTWARE VERSION, MOUSE TYPE, AND IRQ NUMBER" } },
+	{ MAKE_INT_SEL(0x33, 0x0026, 2), { true,  NULL,                    "MS MOUSE - GET MAXIMUM VIRTUAL COORDINATES" } },
 	{ MAKE_INT_SEL(0x33, 0x006D, 2), { true,  NULL,                    "MS MOUSE - GET VERSION STRING" } }
+
 };
 
 doserr_map_t CPUDebugger::ms_dos_errors = {
