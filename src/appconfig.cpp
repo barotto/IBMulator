@@ -70,13 +70,12 @@ ini_file_t AppConfig::ms_def_values = {
 	{ MEM_SECTION, {
 		{ MEM_BASE_SIZE, "640" },
 		{ MEM_EXT_SIZE, "384" },
-		{ MEM_ROMSET, "ps1_2011.zip" }
+		{ MEM_ROMSET, "PS1_2011_ROM.zip" }
 	} },
 
 	{ DRIVES_SECTION, {
 		{ DRIVES_FDD_A, "3.5" },
-		{ DRIVES_FDD_B, "3.5" },
-		{ DRIVES_HDD, "none" }
+		{ DRIVES_FDD_B, "3.5" }
 	} },
 
 	{ DISK_A_SECTION, {
@@ -95,15 +94,14 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE, "35" },
-		{ DISK_INSERTED, "no" },
-		{ DISK_READONLY, "yes" },
+		{ DISK_INSERTED, "yes" },
 		{ DISK_PATH, "hdd.img" }
 	} },
 
 	{ MIXER_SECTION, {
 		{ MIXER_RATE, "44100" },
 		{ MIXER_SAMPLES, "1024" },
-		{ MIXER_PREBUFFER, "25" }
+		{ MIXER_PREBUFFER, "50" }
 	} },
 
 	{ COM_SECTION, {
@@ -185,8 +183,6 @@ ini_filehelp_t AppConfig::ms_help = {
 "#           Possible values: none, 3.5, 5.25\n"
 "# floppy_b: The type of floppy drive B.\n"
 "#           Possible values: none, 3.5, 5.25\n"
-"#      hdd: The type of the HDD\n"
-"#           Possible values: none\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -207,7 +203,13 @@ ini_filehelp_t AppConfig::ms_help = {
 "#           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
-		{ DISK_C_SECTION, "# HDD emulation is not yet implemented. Do not use.\n"},
+		{ DISK_C_SECTION,
+"# These options are used to mount a fixed disk drive.\n"
+"#     path: Path of the image file to mount\n"
+"# inserted: Yes if the disk is mounted at program lauch\n"
+"#     type: The type of the disk.\n"
+"#           Possible values: 35, 38\n"
+		},
 
 		{ MIXER_SECTION,
 "# prebuffer: How many milliseconds of data to prebuffer before audio start to be emitted.\n"

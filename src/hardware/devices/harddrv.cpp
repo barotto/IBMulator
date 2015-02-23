@@ -260,12 +260,12 @@ void HardDrive::config_changed()
 	m_disk.reset(nullptr);
 	m_drive_type = 0;
 
-	if(!g_program.config().get_bool(DRIVES_HDD, DISK_INSERTED)) {
+	if(!g_program.config().get_bool(DISK_C_SECTION, DISK_INSERTED)) {
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 		return;
 	}
 
-	m_drive_type = g_program.config().get_int(DRIVES_HDD, DISK_TYPE);
+	m_drive_type = g_program.config().get_int(DISK_C_SECTION, DISK_TYPE);
 	unsigned spt,cyl,heads=2;
 	uint32_t seek_max;
 	double tx_rate_mbps;
@@ -300,9 +300,9 @@ void HardDrive::config_changed()
 	m_avg_rot_lat = 30000000/rpm; //average, the maximum is twice this value
 	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / cyl;
 
-	std::string imgpath = g_program.config().find_media(DRIVES_HDD, DISK_PATH);
+	std::string imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
 	if(imgpath.empty()) {
-		PERRF(LOG_HDD, "You need to specify an HDD image file\n");
+		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
 		throw std::exception();
 	}
 	m_disk = std::unique_ptr<MediaImage>(new FlatMediaImage());
@@ -332,7 +332,7 @@ void HardDrive::config_changed()
 		throw std::exception();
 	}
 
-	PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMB)\n",
+	PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
 			m_drive_type, double(m_disk->hd_size)/(1024.0*1024.0));
 }
 
