@@ -24,8 +24,6 @@ To obtain the source code go to github.com/barotto/IBMulator
 
 ## WHAT'S MISSING
 
-* HDD emulation: the PS/1 model 2011 uses a proprietary 8-bit interface which is
-poorly documented.
 * PS/1 Audio Card emulation.
 * Optimizations: there are virtually none, and a lot can be done to speed up the
 emulation.
@@ -54,9 +52,9 @@ disk
 2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
 reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
 non-US model)
-3. or scour the Internet (I know that there are various rom sets available...).
+3. or scour the Internet (I know that there are various ROM sets available...).
 
-If you have the single bin files, create a rom set first (see below for the 
+If you have the single bin files, create a ROM set first (see below for the 
 correct format).
 
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
@@ -100,6 +98,19 @@ ignored.
 
 Any other file present in the archive is ignored.
 
+### HDD image
+
+To create a new fixed disk drive image:
+1. start IBMulator, a new 0-filled image file will be created using the path
+specified in ibmulator.ini
+2. using customiz.exe, verify that the machine is set to boot with the FDD first
+(the default CMOS image is already set this way)
+3. restart the machine with a bootable PC-DOS 4.0 floppy disk inserted into
+drive A
+4. at the DOS prompt run "fdisk" and create a new primary partition
+5. then run "format c: /s"
+6. if you have an original PS/1 backup disk-set run "restore a: c: /s"
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
@@ -125,10 +136,14 @@ stores new files, like screenshots and savestates
 
 ### Emulation
 
-* VGA scrolling does't work properly
-* The CPU speed is a bit faster than the original. This is  due to the lack of 
+* VGA scrolling does't work properly.
+* VGA palette updates fail with some games (Civilization).
+* The CPU speed is a bit faster than the original. This is due to the lack of 
 emulation of the DRAM refresh cycle-eater and probably incorrect timing values 
 for some opcode.
+* Some programs (MS Works, CheckIt) fail to run if launched from ROMSHELL.
+* Some Sierra's adventures (King's Quest 5, Space Quest 4) fail to run 
+regardless of the way they are started.
 
 ### Linux
 
@@ -227,6 +242,7 @@ More info on this issue at https://github.com/libRocket/libRocket/issues/113
 
 I would like to thank the Bochs team. I "borrowed" (flat out copied) a 
 huge amount of code from the project. Thank you guys, you made a terrific job! 
-Without your work IBMulator would have taken at least a decade to complete.
+Without your work IBMulator would have taken at least a decade to reach the 
+point where it is now.
 Also thanks to the DosBox team. Only a little bit of code from them but a lot of 
 information and inspiration.
