@@ -37,8 +37,6 @@ private:
 		uint8_t int_status_reg;   //Interrupt Status Register
 		uint8_t attention_reg;    //Attention Register
 
-		bool    pending_irq;
-
 		struct SSB {
 			//Sense Summary Block
 			/*

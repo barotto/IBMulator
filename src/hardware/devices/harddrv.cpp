@@ -610,16 +610,12 @@ void HardDrive::raise_interrupt()
 	if(m_s.attch_ctrl_reg & HDD_ACR_INT_EN) {
 		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDD_IRQ);
 		g_pic.raise_irq(HDD_IRQ);
-		m_s.pending_irq = true;
 	}
 }
 
 void HardDrive::lower_interrupt()
 {
-	//if(m_s.pending_irq) {
-		g_pic.lower_irq(HDD_IRQ);
-		m_s.pending_irq = false;
-	//}
+	g_pic.lower_irq(HDD_IRQ);
 }
 
 void HardDrive::fill_data_stack(uint8_t *_source, unsigned _len)
@@ -749,17 +745,19 @@ void HardDrive::cmd_timer()
 
 void HardDrive::set_cur_sector(int _h, int _s)
 {
+	m_s.cur_head = _h;
 	if(_h >= m_disk->heads) {
 		PDEBUGF(LOG_V2, LOG_HDD, "seek: head %d >= %d\n", _h, m_disk->heads);
+		m_s.cur_head %= m_disk->heads;
 	}
-	m_s.cur_head = _h % m_disk->heads;
 
 	//warning: sectors are 1-based
 	if(_s > 0) {
-		m_s.cur_sector = _s;
 		if(_s > m_disk->spt) {
 			PDEBUGF(LOG_V2, LOG_HDD, "seek: sector %d > %d\n", _s, m_disk->spt);
-			m_s.cur_sector = _s % (m_disk->spt);
+			m_s.cur_sector = (_s - 1)%m_disk->spt + 1;
+		} else {
+			m_s.cur_sector = _s;
 		}
 	}
 }
@@ -843,7 +841,6 @@ void HardDrive::read_data_cmd()
 			raise_interrupt();
 			return;
 		}
-		//set_cur_sector(m_s.ccb.head, m_s.ccb.sector);
 		m_s.ccb.auto_seek = false;
 	}
 	ASSERT(m_s.ccb.num_sectors>0);
