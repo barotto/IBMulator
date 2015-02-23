@@ -101,6 +101,7 @@ Any other file present in the archive is ignored.
 ### HDD image
 
 To create a new fixed disk drive image:
+
 1. start IBMulator, a new 0-filled image file will be created using the path
 specified in ibmulator.ini
 2. using customiz.exe, verify that the machine is set to boot with the FDD first
