@@ -58,7 +58,6 @@ class Program
 
 	std::string get_assets_dir(int argc, char** argv);
 	void parse_arguments(int argc, char** argv);
-	void create_dir(const std::string &_path);
 
 public:
 
@@ -89,14 +88,6 @@ public:
 	void restore_state(std::string _path);
 
 	static void check_state_bufsize(uint8_t *_buf, size_t _exp_size);
-
-	static std::string get_next_filename(const std::string &_dir,
-			const std::string &_basename, const std::string &_ext);
-
-	static bool is_directory(const char *_path);
-	static bool file_exists(const char *_path);
-	static bool is_file_readable(const char *_path);
-	static size_t get_file_size(const char *_path);
 };
 
 #endif

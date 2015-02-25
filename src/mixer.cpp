@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "filesys.h"
 #include "mixer.h"
 #include "program.h"
 #include "machine.h"
@@ -112,7 +113,7 @@ void Mixer::init(Machine *_machine)
 void Mixer::start_capture()
 {
 	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
-	path = Program::get_next_filename(path, "sound_", ".wav");
+	path = FileSys::get_next_filename(path, "sound_", ".wav");
 
 	if(!path.empty()) {
 		path += ".wav";

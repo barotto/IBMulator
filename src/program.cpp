@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "filesys.h"
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
 #include "gui/gui.h"
@@ -30,13 +31,9 @@
 #include <thread>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <sstream>
+#include <unistd.h>
 
-#ifdef _WIN32
-#include "wincompat.h"
-#endif
 
 Program g_program;
 
@@ -102,12 +99,12 @@ void Program::restore_state(std::string _name)
 	std::string ini = path + ".ini";
 	std::string bin = path + ".bin";
 
-	if(!file_exists(ini.c_str())) {
+	if(!FileSys::file_exists(ini.c_str())) {
 		PERRF(LOG_PROGRAM, "state ini file missing!\n");
 		return;
 	}
 
-	if(!file_exists(bin.c_str())) {
+	if(!FileSys::file_exists(bin.c_str())) {
 		PERRF(LOG_PROGRAM, "state bin file missing!\n");
 		return;
 	}
@@ -174,81 +171,6 @@ void Program::init_SDL()
 	}
 }
 
-void Program::create_dir(const std::string &_path)
-{
-	if(!file_exists(_path.c_str())) {
-		PDEBUGF(LOG_V0, LOG_PROGRAM, "Creating '%s'\n", _path.c_str());
-		if(mkdir(_path.c_str()
-#ifndef _WIN32
-			, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH
-#endif
-		) != 0) {
-			PERRF(LOG_PROGRAM, "Unable to create '%s'\n", _path.c_str());
-			throw std::exception();
-		}
-	}
-}
-
-bool Program::is_directory(const char *_path)
-{
-	if(_path == NULL) {
-		return false;
-	}
-
-	struct stat sb;
-
-	if(stat(_path, &sb) != 0) {
-		return false;
-	}
-
-	return (S_ISDIR(sb.st_mode));
-}
-
-bool Program::is_file_readable(const char *_path)
-{
-	if(_path == NULL) return false;
-	return (access(_path, R_OK) == 0);
-}
-
-bool Program::file_exists(const char *_path)
-{
-	if(_path == NULL) return false;
-	return (access(_path, F_OK) == 0);
-}
-
-size_t Program::get_file_size(const char *_path)
-{
-	if(_path == NULL) {
-		return 0;
-	}
-	struct stat sb;
-	if(stat(_path, &sb) != 0) {
-		return 0;
-	}
-	return sb.st_size;
-}
-
-std::string Program::get_next_filename(const std::string &_dir,
-		const std::string &_basename, const std::string &_ext)
-{
-	std::stringstream ss;
-	int counter = 0;
-	std::string fname;
-	do {
-		ss.str("");
-		ss << _dir << FS_SEP << _basename;
-		ss.width(4);
-		ss.fill('0');
-		ss << counter;
-		counter++;
-		fname = ss.str() + _ext;
-	} while( file_exists(fname.c_str()) && counter<10000);
-	if(counter>=10000) {
-		return "";
-	}
-	return ss.str();
-}
-
 bool Program::initialize(int argc, char** argv)
 {
 	std::string home, cfgfile, datapath;
@@ -295,12 +217,13 @@ bool Program::initialize(int argc, char** argv)
 		}
 		m_user_dir = str;
 #endif
-		if(!is_directory(m_user_dir.c_str()) || access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
+		if(!FileSys::is_directory(m_user_dir.c_str())
+		|| access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
 			PERRF_ABORT(LOG_PROGRAM, "Unable to access the user directory!\n");
 		}
 		m_user_dir += FS_SEP PACKAGE;
 	}
-	create_dir(m_user_dir);
+	FileSys::create_dir(m_user_dir.c_str());
 	PINFO(LOG_V1,"user directory: %s\n", m_user_dir.c_str());
 	m_config.set_cfg_home(m_user_dir);
 
@@ -310,7 +233,7 @@ bool Program::initialize(int argc, char** argv)
 	}
 	PINFO(LOG_V1,"ini file: %s\n", m_cfg_file.c_str());
 
-	if(!file_exists(m_cfg_file.c_str())) {
+	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
 		try {
 			m_config.create_file(m_cfg_file,true);
@@ -355,7 +278,7 @@ bool Program::initialize(int argc, char** argv)
 	if(capture_dir.empty()) {
 		capture_dir = m_user_dir + FS_SEP "capture";
 	}
-	create_dir(capture_dir);
+	FileSys::create_dir(capture_dir.c_str());
 	m_config.set_string(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, capture_dir);
 	PINFO(LOG_V1,"capture directory: %s\n", capture_dir.c_str());
 
@@ -383,6 +306,8 @@ bool Program::initialize(int argc, char** argv)
 	//g_syslog.set_verbosity(LOG_V2, LOG_DMA);
 	//g_syslog.set_verbosity(LOG_V2, LOG_MACHINE);
 	//g_syslog.set_verbosity(LOG_V2, LOG_LPT);
+	g_syslog.set_verbosity(LOG_V1, LOG_HDD);
+	g_syslog.set_verbosity(LOG_V1, LOG_PIC);
 
 	return true;
 }
@@ -410,7 +335,7 @@ std::string Program::get_assets_dir(int argc, char** argv)
 	datapath = dirname(buf);
 	free(buf);
 	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE;
-	if(realpath(datapath.c_str(), rpbuf) != NULL && is_directory(rpbuf)) {
+	if(realpath(datapath.c_str(), rpbuf) != NULL && FileSys::is_directory(rpbuf)) {
 		return std::string(rpbuf);
 	}
 
@@ -418,14 +343,14 @@ std::string Program::get_assets_dir(int argc, char** argv)
 	edatapath = getenv("XDG_DATA_HOME");
 	if(edatapath != NULL) {
 		datapath = std::string(edatapath) + FS_SEP PACKAGE;
-		if(is_directory(datapath.c_str())) {
+		if(FileSys::is_directory(datapath.c_str())) {
 			return datapath;
 		}
 	}
 
 #ifdef DATA_PATH
 	//4. DATA_PATH define
-	if(is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != NULL) {
+	if(FileSys::is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != NULL) {
 		return std::string(rpbuf);
 	}
 #endif
@@ -443,14 +368,14 @@ void Program::parse_arguments(int argc, char** argv)
 	while((c = getopt(argc, argv, "v:c:u:")) != -1) {
 		switch(c) {
 			case 'c':
-				if(!file_exists(optarg)) {
+				if(!FileSys::file_exists(optarg)) {
 					PERRF(LOG_PROGRAM, "The specified config file doesn't exists\n");
 				} else {
 					m_cfg_file = optarg;
 				}
 				break;
 			case 'u':
-				if(!is_directory(optarg) || access(optarg, R_OK | W_OK | X_OK) == -1) {
+				if(!FileSys::is_directory(optarg) || access(optarg, R_OK | W_OK | X_OK) == -1) {
 					PERRF(LOG_PROGRAM, "Can't access the specified user directory\n");
 				} else {
 					m_user_dir = optarg;

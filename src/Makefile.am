@@ -6,6 +6,7 @@ bin_PROGRAMS = ibmulator
 
 ibmulator_SOURCES = \
 	main.cpp \
+	filesys.cpp \
 	appconfig.cpp \
 	program.cpp \
 	machine.cpp \
@@ -23,6 +24,7 @@ ibmulator_SOURCES = \
 	
 noinst_HEADERS = \
 	ibmulator.h \
+	filesys.h \
 	appconfig.h \
 	bench.h \
 	chrono.h \

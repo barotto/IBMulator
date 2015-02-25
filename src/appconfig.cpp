@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "filesys.h"
 #include "appconfig.h"
 #include "program.h"
 #include <algorithm>
@@ -444,10 +445,10 @@ string AppConfig::get_file(const string &_section, const string &_name, FileType
 string AppConfig::find_file(const string &_section, const string &_name)
 {
 	string path = get_file(_section, _name, FILE_TYPE_USER);
-	if(!Program::file_exists(path.c_str())) {
+	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_ASSET);
 	}
-	if(!Program::file_exists(path.c_str())) {
+	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_MEDIA);
 	}
 	return path;
@@ -456,7 +457,7 @@ string AppConfig::find_file(const string &_section, const string &_name)
 string AppConfig::find_media(const string &_section, const string &_name)
 {
 	string path = get_file(_section, _name, FILE_TYPE_MEDIA);
-	if(!Program::file_exists(path.c_str())) {
+	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_USER);
 	}
 	return path;

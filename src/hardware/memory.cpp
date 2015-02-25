@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "filesys.h"
 #include "memory.h"
 #include "program.h"
 #include "machine.h"
@@ -96,7 +97,7 @@ void Memory::config_changed()
 	PINFOF(LOG_V1, LOG_MEM, "Loading the SYSTEM ROM\n");
 	try {
 		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
-		if(!Program::file_exists(romset.c_str())) {
+		if(!FileSys::file_exists(romset.c_str())) {
 			PERRF(LOG_MEM, "Unable to find the ROM set '%s'\n", romset.c_str());
 			throw std::exception();
 		}
