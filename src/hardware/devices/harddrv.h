@@ -132,6 +132,7 @@ private:
 	uint32_t m_avg_rot_lat;
 
 	std::unique_ptr<MediaImage> m_disk;
+	bool m_tmp_disk;
 
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
 	inline int chs_to_lba(int _c, int _h, int _s) const;

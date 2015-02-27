@@ -98,6 +98,7 @@ int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME
 #endif
 int hdimage_detect_image_mode(const char *pathname);
 bool hdimage_backup_file(int fd, const char *backup_fname);
+bool hdimage_backup_file(int _from_fd, int _backup_fd);
 bool hdimage_copy_file(const char *src, const char *dst);
 #ifndef _WIN32
 uint16_t fat_datetime(time_t time, int return_time);
@@ -164,6 +165,9 @@ public:
 
 	//Create a new image
 	virtual void create(const char*, unsigned) {}
+
+	//Get the image name
+	virtual const char* get_name() { return ""; }
 };
 
 
@@ -175,7 +179,9 @@ class FlatMediaImage : public MediaImage
 private:
 
 	int fd;
-	const char *pathname;
+	std::string pathname;
+
+	bool is_valid();
 
 public:
 
@@ -184,6 +190,9 @@ public:
 
 	// Open an image with specific flags. Returns non-negative if successful.
 	int open(const char* pathname, int flags);
+
+	// Open a temporary read-write copy of _pathname image file.
+	int open_temp(const char *_pathname, char *_template);
 
 	// Close the image.
 	void close();
@@ -209,6 +218,9 @@ public:
 
 	//Create a new flat image
 	void create(const char *_pathname, unsigned _sectors);
+
+	//Get the image name
+	const char* get_name() { return pathname.c_str(); }
 
 };
 

@@ -27,7 +27,7 @@ static const char letters[] =
    does not exist at the time of the call to mkstemp.  TMPL is
    overwritten with the result.  */
 int
-mkstemp (char *tmpl)
+mkostemp (char *tmpl, int flags)
 {
   int len;
   char *XXXXXX;
@@ -99,7 +99,7 @@ mkstemp (char *tmpl)
       v /= 62;
       XXXXXX[5] = letters[v % 62];
 
-      fd = open (tmpl, O_RDWR | O_CREAT | O_EXCL, _S_IREAD | _S_IWRITE);
+      fd = open (tmpl, flags | O_CREAT | O_EXCL, _S_IREAD | _S_IWRITE);
       if (fd >= 0)
     {
       errno = save_errno;
@@ -112,6 +112,12 @@ mkstemp (char *tmpl)
   /* We got out of the loop because we ran out of combinations to try.  */
   errno = EEXIST;
   return -1;
+}
+
+int
+mkstemp (char *tmpl)
+{
+	return mkostemp(tmpl, O_RDWR);
 }
 
 #endif

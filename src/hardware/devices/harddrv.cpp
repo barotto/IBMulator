@@ -25,6 +25,7 @@
  */
 
 #include "ibmulator.h"
+#include "filesys.h"
 #include "harddrv.h"
 #include "program.h"
 #include "machine.h"
@@ -211,6 +212,14 @@ HardDrive::HardDrive()
 
 HardDrive::~HardDrive()
 {
+	if(m_disk) {
+		m_disk->close();
+
+		if(m_tmp_disk) {
+			remove(m_disk->get_name());
+		}
+		m_disk.reset(nullptr);
+	}
 }
 
 void HardDrive::init()
@@ -259,13 +268,14 @@ void HardDrive::config_changed()
 {
 	m_disk.reset(nullptr);
 	m_drive_type = 0;
+	m_tmp_disk = false;
 
-	if(!g_program.config().get_bool(DISK_C_SECTION, DISK_INSERTED)) {
+	if(g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD) == "none") {
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 		return;
 	}
 
-	m_drive_type = g_program.config().get_int(DISK_C_SECTION, DISK_TYPE);
+	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
 	unsigned spt,cyl,heads=2;
 	uint32_t seek_max;
 	double tx_rate_mbps;
@@ -305,11 +315,15 @@ void HardDrive::config_changed()
 		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
 		throw std::exception();
 	}
-	m_disk = std::unique_ptr<MediaImage>(new FlatMediaImage());
+	if(FileSys::is_directory(imgpath.c_str())) {
+		PERRF(LOG_HDD, "Invalid HDD image file\n");
+		throw std::exception();
+	}
+	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
 	m_disk->spt = spt;
 	m_disk->cylinders = cyl;
 	m_disk->heads = heads;
-	if(!Program::file_exists(imgpath.c_str())) {
+	if(!FileSys::file_exists(imgpath.c_str())) {
 		//create a new image
 		try {
 			PINFOF(LOG_V0, LOG_HDD, "creating new image file '%s'\n", imgpath.c_str());
@@ -321,15 +335,33 @@ void HardDrive::config_changed()
 	} else {
 		PINFOF(LOG_V0, LOG_HDD, "using the image file '%s'\n", imgpath.c_str());
 	}
-	if(m_disk->open(imgpath.c_str()) < 0) {
-		PERRF(LOG_HDD, "Unable to open the image file\n");
+	if(!FileSys::file_exists(imgpath.c_str())) {
+		PERRF(LOG_HDD, "The image file '%s' doesn't exists\n");
 		throw std::exception();
 	}
-	if(m_disk->hd_size != 512 * m_sectors) {
-		PERRF(LOG_HDD, "The image file size is wrong, %d bytes instead of %d bytes\n",
-				m_disk->hd_size, (512 * m_sectors));
-		m_disk.reset(nullptr);
-		throw std::exception();
+	if(g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY)
+	   || !FileSys::is_file_writeable(imgpath.c_str()))
+	{
+		PINFOF(LOG_V1, LOG_HDD, "The image file is read-only, using a replica\n");
+
+		std::string dir, base, ext;
+		if(!FileSys::get_path_parts(imgpath.c_str(), dir, base, ext)) {
+			PERRF(LOG_HDD, "Error while determining the image file path\n");
+			throw std::exception();
+		}
+		std::string tpl = g_program.config().get_cfg_home()
+		                + FS_SEP + base + "-XXXXXX";
+		//this works in C++11, where strings are guaranteed to be contiguous:
+		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(imgpath.c_str(), &tpl[0]) < 0) {
+			PERRF(LOG_HDD, "Can't open the image file\n");
+			throw std::exception();
+		}
+		m_tmp_disk = true;
+	} else {
+		if(m_disk->open(imgpath.c_str()) < 0) {
+			PERRF(LOG_HDD, "Error opening the image file\n");
+			throw std::exception();
+		}
 	}
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",

@@ -76,7 +76,8 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DRIVES_SECTION, {
 		{ DRIVES_FDD_A, "3.5" },
-		{ DRIVES_FDD_B, "3.5" }
+		{ DRIVES_FDD_B, "none" },
+		{ DRIVES_HDD, "35" }
 	} },
 
 	{ DISK_A_SECTION, {
@@ -89,13 +90,12 @@ ini_file_t AppConfig::ms_def_values = {
 	{ DISK_B_SECTION, {
 		{ DISK_TYPE, "1.44M" },
 		{ DISK_INSERTED, "no" },
-		{ DISK_READONLY, "yes" },
+		{ DISK_READONLY, "no" },
 		{ DISK_PATH, "" }
 	} },
 
 	{ DISK_C_SECTION, {
-		{ DISK_TYPE, "35" },
-		{ DISK_INSERTED, "yes" },
+		{ DISK_READONLY, "no" },
 		{ DISK_PATH, "hdd.img" }
 	} },
 
@@ -184,6 +184,8 @@ ini_filehelp_t AppConfig::ms_help = {
 "#           Possible values: none, 3.5, 5.25\n"
 "# floppy_b: The type of floppy drive B.\n"
 "#           Possible values: none, 3.5, 5.25\n"
+"#      hdd: The type of fixed disk drive C.\n"
+"#           Possible values: none, 35, 38\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -207,9 +209,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ DISK_C_SECTION,
 "# These options are used to mount a fixed disk drive.\n"
 "#     path: Path of the image file to mount\n"
-"# inserted: Yes if the disk is mounted at program lauch\n"
-"#     type: The type of the disk.\n"
-"#           Possible values: 35, 38\n"
+"# readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
 		},
 
 		{ MIXER_SECTION,

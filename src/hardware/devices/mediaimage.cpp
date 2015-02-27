@@ -20,6 +20,7 @@
 
 #include "ibmulator.h"
 #include "mediaimage.h"
+#include "filesys.h"
 
 #if HAVE_SYS_MMAN_H
 #include <sys/mman.h>
@@ -29,6 +30,9 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
+#ifdef _WIN32
+#include "wincompat.h"
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -53,65 +57,53 @@ int write_image(int fd, int64_t offset, void *buf, int count)
 	return write(fd, buf, count);
 }
 
-#ifndef _WIN32
-int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, time_t *mtime)
-#else
-int hdimage_open_file(const char *pathname, int flags, uint64_t *fsize, FILETIME *mtime)
-#endif
+int hdimage_open_file(const char *_pathname, int _flags, uint64_t *_fsize, FILETIME *_mtime)
 {
-#ifdef _WIN32
-  if(fsize != NULL) {
-    HANDLE hFile = CreateFile(pathname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
-    if(hFile != INVALID_HANDLE_VALUE) {
-      ULARGE_INTEGER FileSize;
-      FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
-      if(mtime != NULL) {
-        GetFileTime(hFile, NULL, NULL, mtime);
-      }
-      CloseHandle(hFile);
-      if((FileSize.LowPart != INVALID_FILE_SIZE) || (GetLastError() == NO_ERROR)) {
-        *fsize = FileSize.QuadPart;
-      } else {
-        return -1;
-      }
-    } else {
-      return -1;
-    }
-  }
-#endif
+	if(FileSys::get_file_stats(_pathname,_fsize,_mtime) < 0) {
+		return -1;
+	}
 
-  int fd = ::open(pathname, flags
+	int fd = ::open(_pathname, _flags
 #ifdef O_BINARY
-              | O_BINARY
+			| O_BINARY
 #endif
-              );
+	);
 
-  if(fd < 0) {
-    return fd;
-  }
+	if(fd < 0) {
+		return fd;
+	}
 
-#ifndef _WIN32
-  if(fsize != NULL) {
-    struct stat stat_buf;
-    if(fstat(fd, &stat_buf)) {
-      PERRF_ABORT(LOG_HDD, "fstat() returns error!\n");
-      return -1;
-    }
-#ifdef __linux__
-    if(stat_buf.st_rdev) { // Is this a special device file (e.g. /dev/sde) ?
-      ioctl(fd, BLKGETSIZE64, fsize); // yes it's!
-    }
-    else
+	return fd;
+}
+
+int hdimage_open_temp(const char *_pathname, char *_template, int _flags,
+		uint64_t *_fsize, FILETIME *_mtime)
+{
+	if(FileSys::get_file_stats(_pathname,_fsize,_mtime) < 0) {
+		return -1;
+	}
+
+	int tmpfd = ::mkostemp(_template, _flags
+#ifdef O_BINARY
+			| O_BINARY
 #endif
-    {
-      *fsize = (uint64_t)stat_buf.st_size; // standard unix procedure to get size of regular files
-    }
-    if(mtime != NULL) {
-      *mtime = stat_buf.st_mtime;
-    }
-  }
-#endif
-  return fd;
+	);
+	int srcfd;
+	if(tmpfd >= 0) {
+		srcfd = hdimage_open_file(_pathname, O_RDONLY, _fsize, NULL);
+		if(srcfd >= 0) {
+			if(!hdimage_backup_file(srcfd, tmpfd)) {
+				::close(tmpfd);
+				tmpfd = -1;
+			}
+			::close(srcfd);
+		} else {
+			::close(tmpfd);
+			tmpfd = -1;
+		}
+	}
+
+	return tmpfd;
 }
 
 int hdimage_detect_image_mode(const char *pathname)
@@ -160,13 +152,39 @@ uint16_t fat_datetime(FILETIME time, int return_time)
 }
 #endif
 
+bool hdimage_backup_file(int _from_fd, int _backup_fd)
+{
+	char *buf;
+	off_t offset;
+	int nread, size;
+	bool ret = true;
+
+	offset = 0;
+	size = 0x20000;
+	buf = (char*)malloc(size);
+	if(buf == NULL) {
+		return false;
+	}
+	while((nread = read_image(_from_fd, offset, buf, size)) > 0) {
+		if(write_image(_backup_fd, offset, buf, nread) < 0) {
+			ret = false;
+			break;
+		}
+		if(nread < size) {
+			break;
+		}
+		offset += size;
+	};
+	if(nread < 0) {
+		ret = false;
+	}
+	free(buf);
+
+	return ret;
+}
+
 bool hdimage_backup_file(int fd, const char *backup_fname)
 {
-  char *buf;
-  off_t offset;
-  int nread, size;
-  bool ret = 1;
-
   int backup_fd = ::open(backup_fname, O_RDWR | O_CREAT | O_TRUNC
 #ifdef O_BINARY
     | O_BINARY
@@ -177,29 +195,9 @@ bool hdimage_backup_file(int fd, const char *backup_fname)
 #endif
 	);
   if(backup_fd >= 0) {
-    offset = 0;
-    size = 0x20000;
-    buf = (char*)malloc(size);
-    if(buf == NULL) {
-      ::close(backup_fd);
-      return 0;
-    }
-    while ((nread = read_image(fd, offset, buf, size)) > 0) {
-      if(write_image(backup_fd, offset, buf, nread) < 0) {
-        ret = 0;
-        break;
-      }
-      if(nread < size) {
-        break;
-      }
-      offset += size;
-    };
-    if(nread < 0) {
-      ret = 0;
-    }
-    free(buf);
-    ::close(backup_fd);
-    return ret;
+	  bool ret = hdimage_backup_file(fd, backup_fd);
+	  ::close(backup_fd);
+	  return ret;
   }
   return 0;
 }
@@ -316,25 +314,33 @@ FlatMediaImage::~FlatMediaImage()
 	close();
 }
 
-int FlatMediaImage::open(const char* _pathname, int flags)
+int FlatMediaImage::open(const char* _pathname, int _flags)
 {
 	pathname = _pathname;
-	if((fd = hdimage_open_file(pathname, flags, &hd_size, &mtime)) < 0) {
-		return -1;
-	}
-	PINFOF(LOG_V2, LOG_HDD, "image size: %llu\n", hd_size);
-
-	if(hd_size <= 0) {
-		close();
-		PERRF(LOG_HDD, "size of disk image not detected / invalid\n");
-		return -1;
-	}
-	if((hd_size % 512) != 0) {
-		close();
-		PERRF(LOG_HDD, "size of disk image must be multiple of 512 bytes\n");
+	if((fd = hdimage_open_file(_pathname, _flags, &hd_size, &mtime)) < 0) {
 		return -1;
 	}
 
+	if(!is_valid()) {
+		close();
+		return -1;
+	}
+	return fd;
+}
+
+int FlatMediaImage::open_temp(const char* _pathname, char *_template)
+{
+	if((fd = hdimage_open_temp(_pathname, _template, O_RDWR, &hd_size, &mtime)) < 0) {
+		return -1;
+	}
+
+	pathname = _template;
+
+	if(!is_valid()) {
+		remove(_template);
+		close();
+		return -1;
+	}
 	return fd;
 }
 
@@ -382,12 +388,12 @@ bool FlatMediaImage::save_state(const char *backup_fname)
 void FlatMediaImage::restore_state(const char *backup_fname)
 {
 	close();
-	if(!hdimage_copy_file(backup_fname, pathname)) {
-		PERRF(LOG_HDD, "Failed to restore image '%s'\n", pathname);
+	if(!hdimage_copy_file(backup_fname, pathname.c_str())) {
+		PERRF(LOG_HDD, "Failed to restore image '%s'\n", pathname.c_str());
 		throw std::exception();
 	}
-	if(MediaImage::open(pathname) < 0) {
-		PERRF(LOG_HDD, "Failed to open restored image '%s'\n", pathname);
+	if(MediaImage::open(pathname.c_str()) < 0) {
+		PERRF(LOG_HDD, "Failed to open restored image '%s'\n", pathname.c_str());
 		throw std::exception();
 	}
 }
@@ -401,6 +407,25 @@ void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
     ofs.seekp((_sectors*512) - 1);
     ofs.write("", 1);
     ofs.close();
+}
+
+bool FlatMediaImage::is_valid()
+{
+	PINFOF(LOG_V2, LOG_HDD, "image size: %llu\n", hd_size);
+
+	if(hd_size <= 0) {
+		PERRF(LOG_HDD, "size of disk image not detected / invalid\n");
+		return false;
+	}
+
+	unsigned sectors = cylinders * heads * spt;
+	if(hd_size != 512 * sectors) {
+		PERRF(LOG_HDD, "size of disk image is wrong, %d bytes instead of %d bytes\n",
+				hd_size, (512 * sectors));
+		return false;
+	}
+
+	return true;
 }
 
 
