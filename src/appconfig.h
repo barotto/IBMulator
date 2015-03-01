@@ -144,6 +144,7 @@ public:
 #define DISK_INSERTED   "inserted"
 #define DISK_READONLY   "readonly"
 #define DISK_PATH       "path"
+#define DISK_SAVE		"save"
 
 #define MIXER_SECTION   "mixer"
 #define MIXER_RATE      "rate"

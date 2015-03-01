@@ -132,11 +132,18 @@ private:
 	uint32_t m_avg_rot_lat;
 
 	std::unique_ptr<MediaImage> m_disk;
+	std::string m_original_path;
+	int  m_original_type;
+	bool m_write_protect;
+	bool m_save_on_close;
 	bool m_tmp_disk;
 
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
 	inline int chs_to_lba(int _c, int _h, int _s) const;
 	inline void lba_to_chs(int _lba, int &_c, int &_h, int &_s) const;
+
+	void mount(std::string _imgpath);
+	void unmount();
 
 	void cmd_timer();
 	void dma_timer();

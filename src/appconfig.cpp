@@ -96,6 +96,7 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DISK_C_SECTION, {
 		{ DISK_READONLY, "no" },
+		{ DISK_SAVE, "yes" },
 		{ DISK_PATH, "hdd.img" }
 	} },
 
@@ -207,9 +208,11 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DISK_C_SECTION,
-"# These options are used to mount a fixed disk drive.\n"
 "#     path: Path of the image file to mount\n"
 "# readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
+"#     save: When you restore a savestate the disk is restored as well, as a temporary read-write image. "
+"Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
+"(unless it is write-protected, also the type must be the same.)\n"
 		},
 
 		{ MIXER_SECTION,
@@ -237,7 +240,19 @@ void AppConfig::reset()
 
 void AppConfig::merge(AppConfig &_config)
 {
-	m_values.insert(_config.m_values.begin(), _config.m_values.end());
+	//deep merge
+	for(auto section : _config.m_values) {
+		//is the current section already present?
+		if(m_values.count(section.first)) {
+			//if so, merge the 2 sections
+			for(auto secval : section.second) {
+				m_values[section.first][secval.first] = secval.second;
+			}
+		} else {
+			//otherwise just copy it
+			m_values[section.first] = section.second;
+		}
+	}
 }
 
 long AppConfig::parse_int(const string &_str)

@@ -112,6 +112,9 @@ drive A
 5. then run "format c: /s"
 6. if you have an original PS/1 backup disk-set run "restore a: c: /s"
 
+If you are on Linux, you can mount the image file using this command:  
+$ mount -o loop,offset=16896 hdd.img /mnt/loop
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)

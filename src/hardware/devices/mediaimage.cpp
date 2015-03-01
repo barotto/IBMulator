@@ -305,6 +305,8 @@ uint32_t MediaImage::get_timestamp()
  */
 
 FlatMediaImage::FlatMediaImage()
+:
+fd(-1)
 {
 
 }
@@ -316,15 +318,14 @@ FlatMediaImage::~FlatMediaImage()
 
 int FlatMediaImage::open(const char* _pathname, int _flags)
 {
-	pathname = _pathname;
 	if((fd = hdimage_open_file(_pathname, _flags, &hd_size, &mtime)) < 0) {
 		return -1;
 	}
-
 	if(!is_valid()) {
 		close();
 		return -1;
 	}
+	pathname = _pathname;
 	return fd;
 }
 
@@ -333,14 +334,12 @@ int FlatMediaImage::open_temp(const char* _pathname, char *_template)
 	if((fd = hdimage_open_temp(_pathname, _template, O_RDWR, &hd_size, &mtime)) < 0) {
 		return -1;
 	}
-
-	pathname = _template;
-
 	if(!is_valid()) {
 		remove(_template);
 		close();
 		return -1;
 	}
+	pathname = _template;
 	return fd;
 }
 
@@ -350,6 +349,7 @@ void FlatMediaImage::close()
 		::close(fd);
 		fd = -1;
 	}
+	hd_size = 0;
 }
 
 int64_t FlatMediaImage::lseek(int64_t offset, int whence)
@@ -406,7 +406,9 @@ void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
     }
     ofs.seekp((_sectors*512) - 1);
     ofs.write("", 1);
-    ofs.close();
+    if(!ofs.good()) {
+    	throw std::exception();
+    }
 }
 
 bool FlatMediaImage::is_valid()

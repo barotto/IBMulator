@@ -163,11 +163,14 @@ public:
 	virtual bool save_state(const char *) {return 0;}
 	virtual void restore_state(const char *) {}
 
-	//Create a new image
+	//Create a new image; doesn't open it
 	virtual void create(const char*, unsigned) {}
 
 	//Get the image name
-	virtual const char* get_name() { return ""; }
+	virtual std::string get_name() { return ""; }
+
+	// Tells if the image is open
+	virtual bool is_open() { return false; }
 };
 
 
@@ -216,12 +219,13 @@ public:
 	bool save_state(const char *backup_fname);
 	void restore_state(const char *backup_fname);
 
-	//Create a new flat image
+	//Create a new flat image; doesn't open it
 	void create(const char *_pathname, unsigned _sectors);
 
 	//Get the image name
-	const char* get_name() { return pathname.c_str(); }
+	std::string get_name() { return pathname; }
 
+	bool is_open() { return (fd > -1); }
 };
 
 

@@ -39,6 +39,7 @@ class StateBuf
 {
 private:
 
+	std::string m_basename;
 	uint8_t *m_buf;
 	size_t m_size;
 	uint8_t *m_curptr;
@@ -47,7 +48,7 @@ public:
 
 	bool m_last_restore;
 
-	StateBuf();
+	StateBuf(const std::string &_basename);
 	~StateBuf();
 
 	void write(const void *_data, const StateHeader &_header);
@@ -57,6 +58,7 @@ public:
 	void advance(size_t _off);
 	void skip();
 	void get_next_lump_header(StateHeader &);
+	std::string get_basename() { return m_basename; }
 
 	inline uint8_t * get_buf() { return m_curptr; }
 	inline size_t get_size() { return m_size; }

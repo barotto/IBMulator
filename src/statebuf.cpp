@@ -136,8 +136,9 @@ size_t StateHeader::write(uint8_t *_dest, size_t _dest_size) const
  * StateBuf
  */
 
-StateBuf::StateBuf()
+StateBuf::StateBuf(const std::string &_basename)
 :
+m_basename(_basename),
 m_buf(NULL),
 m_size(0),
 m_curptr(NULL),

@@ -41,6 +41,16 @@ HardDrive g_harddrv;
 #define HDD_DMA_CHAN 3
 #define HDD_IRQ      14
 
+#define HDD_NONE -1
+#define HDD_35   35
+#define HDD_38   38
+
+static std::map<std::string, uint> disk_types = {
+	{ "none", HDD_NONE },
+	{ "35",   HDD_35 },
+	{ "38",   HDD_38 }
+};
+
 //Attachment Status Reg bits
 #define HDD_ASR_TX_EN    0x1
 #define HDD_ASR_INT_REQ  0x2
@@ -212,14 +222,7 @@ HardDrive::HardDrive()
 
 HardDrive::~HardDrive()
 {
-	if(m_disk) {
-		m_disk->close();
-
-		if(m_tmp_disk) {
-			remove(m_disk->get_name());
-		}
-		m_disk.reset(nullptr);
-	}
+	unmount();
 }
 
 void HardDrive::init()
@@ -251,7 +254,21 @@ void HardDrive::init()
 			false,  // active
 			"HDD-dma"//name
 	);
-	config_changed();
+
+	//get_enum throws if value is not allowed:
+	m_drive_type = g_program.config().get_enum(DRIVES_SECTION, DRIVES_HDD, disk_types);
+	m_original_type = m_drive_type;
+	if(m_drive_type != HDD_NONE) {
+		std::string imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
+		mount(imgpath);
+		m_write_protect = g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY);
+		m_original_path = m_disk->get_name();
+		m_save_on_close = g_program.config().get_bool(DISK_C_SECTION, DISK_SAVE);
+		PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
+				m_drive_type, double(m_disk->hd_size)/(1024.0*1024.0));
+	} else {
+		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
+	}
 }
 
 void HardDrive::reset(unsigned _type)
@@ -266,106 +283,10 @@ void HardDrive::reset(unsigned _type)
 
 void HardDrive::config_changed()
 {
-	m_disk.reset(nullptr);
-	m_drive_type = 0;
-	m_tmp_disk = false;
-
-	if(g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD) == "none") {
-		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
-		return;
-	}
-
-	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
-	unsigned spt,cyl,heads=2;
-	uint32_t seek_max;
-	double tx_rate_mbps;
-	const int sec_idfield_size = 30; //>25 but what is the real value? TODO
-	int rpm,interleave;
-
-	if(m_drive_type == 35) {
-		spt = 33;
-		cyl = 921;
-		tx_rate_mbps = 10.2; //disk-to-buffer?
-		m_trk2trk_us = 8000;
-		rpm = 3600;
-		seek_max = 40000;
-		interleave = 4;
-	} else if(m_drive_type == 38) {
-		spt = 36;
-		cyl = 845;
-		tx_rate_mbps = 10.8;
-		m_trk2trk_us = 9000;
-		rpm = 3700;
-		seek_max = 40000;
-		interleave = 4;
-	} else {
-		PERRF(LOG_HDD, "Invalid drive type %d (only 35 or 38 allowed)\n", m_drive_type);
-		throw std::exception();
-	}
-	//equivalent to x / ((tx_rate_mbps*1e6)/8.0) / 1e6 :
-	m_sec_tx_us = ((512.0+sec_idfield_size)*interleave) / (tx_rate_mbps/8.0);
-	m_sec_tx_us = 400;
-	m_exec_time_us = 100;
-	m_sectors = spt * cyl * heads;
-	m_avg_rot_lat = 30000000/rpm; //average, the maximum is twice this value
-	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / cyl;
-
-	std::string imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
-	if(imgpath.empty()) {
-		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
-		throw std::exception();
-	}
-	if(FileSys::is_directory(imgpath.c_str())) {
-		PERRF(LOG_HDD, "Invalid HDD image file\n");
-		throw std::exception();
-	}
-	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
-	m_disk->spt = spt;
-	m_disk->cylinders = cyl;
-	m_disk->heads = heads;
-	if(!FileSys::file_exists(imgpath.c_str())) {
-		//create a new image
-		try {
-			PINFOF(LOG_V0, LOG_HDD, "creating new image file '%s'\n", imgpath.c_str());
-			m_disk->create(imgpath.c_str(), m_sectors);
-		} catch(std::exception &e) {
-			PERRF(LOG_HDD, "Unable to create the image file\n");
-			throw;
-		}
-	} else {
-		PINFOF(LOG_V0, LOG_HDD, "using the image file '%s'\n", imgpath.c_str());
-	}
-	if(!FileSys::file_exists(imgpath.c_str())) {
-		PERRF(LOG_HDD, "The image file '%s' doesn't exists\n");
-		throw std::exception();
-	}
-	if(g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY)
-	   || !FileSys::is_file_writeable(imgpath.c_str()))
-	{
-		PINFOF(LOG_V1, LOG_HDD, "The image file is read-only, using a replica\n");
-
-		std::string dir, base, ext;
-		if(!FileSys::get_path_parts(imgpath.c_str(), dir, base, ext)) {
-			PERRF(LOG_HDD, "Error while determining the image file path\n");
-			throw std::exception();
-		}
-		std::string tpl = g_program.config().get_cfg_home()
-		                + FS_SEP + base + "-XXXXXX";
-		//this works in C++11, where strings are guaranteed to be contiguous:
-		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(imgpath.c_str(), &tpl[0]) < 0) {
-			PERRF(LOG_HDD, "Can't open the image file\n");
-			throw std::exception();
-		}
-		m_tmp_disk = true;
-	} else {
-		if(m_disk->open(imgpath.c_str()) < 0) {
-			PERRF(LOG_HDD, "Error opening the image file\n");
-			throw std::exception();
-		}
-	}
-
-	PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
-			m_drive_type, double(m_disk->hd_size)/(1024.0*1024.0));
+	unmount();
+	//get_enum throws if value is not allowed:
+	m_drive_type = g_program.config().get_enum(DRIVES_SECTION, DRIVES_HDD, disk_types);
+	//disk mount is performed at restore_state
 }
 
 void HardDrive::save_state(StateBuf &_state)
@@ -376,6 +297,11 @@ void HardDrive::save_state(StateBuf &_state)
 	h.name = get_name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
+
+	if(m_disk) {
+		std::string path = _state.get_basename() + "-hdd.img";
+		m_disk->save_state(path.c_str());
+	}
 }
 
 void HardDrive::restore_state(StateBuf &_state)
@@ -386,6 +312,129 @@ void HardDrive::restore_state(StateBuf &_state)
 	h.name = get_name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
+
+	if(m_drive_type != HDD_NONE) {
+		//the saved state is read only
+		g_program.config().set_bool(DISK_C_SECTION, DISK_READONLY, true);
+		mount(_state.get_basename() + "-hdd.img");
+	}
+}
+
+void HardDrive::mount(std::string _imgpath)
+{
+	ASSERT(m_drive_type != HDD_NONE);
+
+	if(_imgpath.empty()) {
+		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
+		throw std::exception();
+	}
+	if(FileSys::is_directory(_imgpath.c_str())) {
+		PERRF(LOG_HDD, "Invalid HDD image file\n");
+		throw std::exception();
+	}
+
+	m_tmp_disk = false;
+
+	unsigned spt,cyl,heads=2;
+	uint32_t seek_max;
+	double tx_rate_mbps;
+	const int sec_idfield_size = 30; //>25 but what is the real value? TODO
+	int rpm,interleave;
+
+	if(m_drive_type == HDD_35) {
+		spt = 33;
+		cyl = 921;
+		tx_rate_mbps = 10.2; //disk-to-buffer?
+		m_trk2trk_us = 8000;
+		rpm = 3600;
+		seek_max = 40000;
+		interleave = 4;
+	} else if(m_drive_type == HDD_38) {
+		spt = 36;
+		cyl = 845;
+		tx_rate_mbps = 10.8;
+		m_trk2trk_us = 9000;
+		rpm = 3700;
+		seek_max = 40000;
+		interleave = 4;
+	} else {
+		PERRF(LOG_HDD, "Invalid drive type %d!\n", m_drive_type);
+		throw std::exception();
+	}
+	//equivalent to x / ((tx_rate_mbps*1e6)/8.0) / 1e6 :
+	m_sec_tx_us = ((512.0+sec_idfield_size)*interleave) / (tx_rate_mbps/8.0);
+	m_sec_tx_us = 400;
+	m_exec_time_us = 100;
+	m_sectors = spt * cyl * heads;
+	m_avg_rot_lat = 30000000/rpm; //average, the maximum is twice this value
+	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / cyl;
+
+	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
+	m_disk->spt = spt;
+	m_disk->cylinders = cyl;
+	m_disk->heads = heads;
+
+	if(!FileSys::file_exists(_imgpath.c_str())) {
+		//create a new image
+		try {
+			PINFOF(LOG_V0, LOG_HDD, "creating new image file '%s'\n", _imgpath.c_str());
+			m_disk->create(_imgpath.c_str(), m_sectors);
+		} catch(std::exception &e) {
+			PERRF(LOG_HDD, "Unable to create the image file\n");
+			throw;
+		}
+	} else {
+		PINFOF(LOG_V0, LOG_HDD, "Using image file '%s'\n", _imgpath.c_str());
+	}
+
+	if(g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY)
+	   || !FileSys::is_file_writeable(_imgpath.c_str()))
+	{
+		PINFOF(LOG_V1, LOG_HDD, "The image file is read-only, using a replica\n");
+
+		std::string dir, base, ext;
+		if(!FileSys::get_path_parts(_imgpath.c_str(), dir, base, ext)) {
+			PERRF(LOG_HDD, "Error while determining the image file path\n");
+			throw std::exception();
+		}
+		std::string tpl = g_program.config().get_cfg_home()
+		                + FS_SEP + base + "-XXXXXX";
+
+		//opening a temp image
+		//this works in C++11, where strings are guaranteed to be contiguous:
+		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(_imgpath.c_str(), &tpl[0]) < 0) {
+			PERRF(LOG_HDD, "Can't open the image file\n");
+			throw std::exception();
+		}
+		m_tmp_disk = true;
+	} else {
+		if(m_disk->open(_imgpath.c_str()) < 0) {
+			PERRF(LOG_HDD, "Error opening the image file\n");
+			throw std::exception();
+		}
+	}
+}
+
+void HardDrive::unmount()
+{
+	if(!m_disk || !m_disk->is_open()) {
+		return;
+	}
+
+	if(m_tmp_disk && m_save_on_close && m_drive_type==m_original_type && !m_write_protect) {
+		if(!FileSys::file_exists(m_original_path.c_str())
+		   || FileSys::is_file_writeable(m_original_path.c_str()))
+		{
+			//make the current disk state permanent.
+			m_disk->save_state(m_original_path.c_str());
+		}
+	}
+
+	m_disk->close();
+	if(m_tmp_disk) {
+		remove(m_disk->get_name().c_str());
+	}
+	m_disk.reset(nullptr);
 }
 
 uint16_t HardDrive::read(uint16_t _address, unsigned)

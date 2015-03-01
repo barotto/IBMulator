@@ -76,7 +76,7 @@ void Program::save_state(std::string _name)
 		throw std::exception();
 	}
 
-	StateBuf state;
+	StateBuf state(path);
 
 	std::unique_lock<std::mutex> lock(ms_lock);
 	m_machine->cmd_save_state(state);
@@ -120,13 +120,13 @@ void Program::restore_state(std::string _name)
 		throw std::exception();
 	}
 
-	StateBuf state;
+	StateBuf state(path);
 
 	state.load(bin);
 
 	//from this point, any error in the restore procedure will render the
 	//machine inconsistent and it should be terminated
-	m_config.reset(); //TODO the config object needs a mutex!
+	//TODO the config object needs a mutex!
 	m_config.merge(conf);
 
 	std::unique_lock<std::mutex> restore_lock(ms_lock);
