@@ -922,9 +922,11 @@ void GUI::update_display_size()
 {
 	float xs = 1.f, ys = 1.f;
 	float xt = 0.f, yt = 0.f;
-	uint sysunit_h = m_width/4; //the sysunit proportions are 4:1
+	uint sysunit_h = m_height/4;
 	sysunit_h = std::min(256u, sysunit_h);
 	uint sysunit_w = sysunit_h*4;
+	sysunit_w = std::min(sysunit_w, (uint)m_width);
+	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
 
 	int disp_w, disp_h;
 	int disp_area_w = m_width, disp_area_h = m_height;
