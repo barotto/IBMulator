@@ -179,7 +179,7 @@ private:
 	void   timer();
 	int    m_timer_handle;
 
-
+	bool m_mouse_acc;
 
 public:
 	Keyboard();

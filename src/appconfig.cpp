@@ -43,6 +43,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ GUI_KEYMAP, "keymaps/pc-us.map"},
 		{ GUI_MOUSE_TYPE, "ps2" },
 		{ GUI_MOUSE_GRAB, "yes" },
+		{ GUI_MOUSE_ACCELERATION, "no" },
 		{ GUI_GRAB_METHOD, "MOUSE3" }, //CTRL-F10 or MOUSE3
 		{ GUI_FB_VERTEX_SHADER, "gui/shaders/fb-passthrough.vs" },
 		{ GUI_FB_FRAGMENT_SHADER, "gui/shaders/fb-nearest.fs" },
@@ -152,8 +153,8 @@ ini_filehelp_t AppConfig::ms_help = {
 "#              Possible values: MOUSE3, CTRL-F10\n"
 "# guifragment: GLSL fragment shader for GUI rendering\n"
 "#   guivertex: GLSL vertex shader for GUI rendering\n"
-"#       width: VGA window width\n"
-"#      height: VGA window height\n"
+"#       width: VGA window width in pixel\n"
+"#      height: VGA window height in pixel\n"
 "#      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
 "#              Open a .map file to read comments on how to edit it.\n"
 "#        mode: Possible values: normal, compact.\n"
@@ -161,9 +162,10 @@ ini_filehelp_t AppConfig::ms_help = {
 "#              compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
 "#       mouse: Mouse type.\n"
 "#              Possible values: none, ps2, serial\n"
+"# mouse_accel: Enable mouse acceleration\n"
 "#     sampler: VGA scaling quality.\n"
 "#              Possible values: linear, nearest\n"
-"#   show_leds: Show or hides the drives motor activity led at the bottom-right (useful in compact mode)\n"
+"#   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
 "# start_image: An optional PNG file to load at program start\n"
 
 		},

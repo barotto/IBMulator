@@ -171,7 +171,12 @@ void Keyboard::config_changed()
 		PINFOF(LOG_V0, LOG_KEYB, "Installed PS/2 mouse\n");
 	}
 
-	m_s.screen_mmpd = 25.4f/float(g_program.config().get_int(GUI_SECTION, GUI_SCREEN_DPI));
+	m_mouse_acc = g_program.config().get_bool(GUI_SECTION, GUI_MOUSE_ACCELERATION);
+	int dpi = g_program.config().get_int(GUI_SECTION, GUI_SCREEN_DPI);
+	m_s.screen_mmpd = 25.4f/float(dpi);
+	if(m_mouse_acc) {
+		PINFOF(LOG_V1, LOG_KEYB, "Mouse acceleration: ON (%.1fmmpd)\n", m_s.screen_mmpd);
+	}
 }
 
 void Keyboard::save_state(StateBuf &_state)
@@ -1398,13 +1403,14 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 		return;
 	}
 
-	//deltas are in pixels
-	//calc the counters value taking the mouse resolution in consideration
-	float x_mm = (delta_x * m_s.screen_mmpd);
-	float y_mm = (delta_y * m_s.screen_mmpd);
-	delta_x = m_s.mouse.resolution_cpmm * x_mm;
-	delta_y = m_s.mouse.resolution_cpmm * y_mm;
-
+	if(m_mouse_acc) {
+		//deltas are in pixels
+		//calc the counters value taking the mouse resolution in consideration
+		float x_mm = (delta_x * m_s.screen_mmpd);
+		float y_mm = (delta_y * m_s.screen_mmpd);
+		delta_x = m_s.mouse.resolution_cpmm * x_mm;
+		delta_y = m_s.mouse.resolution_cpmm * y_mm;
+	}
 
 	if((m_s.mouse.button_status != button_state) || delta_z) {
 		force_enq = true;

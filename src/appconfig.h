@@ -104,6 +104,7 @@ public:
 #define GUI_KEYMAP              "keymap"
 #define GUI_MOUSE_TYPE          "mouse"
 #define GUI_MOUSE_GRAB          "grab"
+#define GUI_MOUSE_ACCELERATION  "mouse_accel"
 #define GUI_GRAB_METHOD         "grab_method"
 #define GUI_FB_VERTEX_SHADER    "fbvertex"
 #define GUI_FB_FRAGMENT_SHADER  "fbfragment"
