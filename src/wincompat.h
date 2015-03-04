@@ -7,6 +7,7 @@
 #include <windows.h>
 
 int mkstemp(char *tmpl);
+int mkostemp(char *tmpl, int flags);
 char * realpath(const char *name, char *resolved);
 
 #endif

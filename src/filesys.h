@@ -20,6 +20,13 @@
 #ifndef IBMULATOR_FILESYS_H
 #define IBMULATOR_FILESYS_H
 
+#ifndef _WIN32
+	#define FILETIME time_t
+#else
+	#define WIN32_LEAN_AND_MEAN
+	#include <windows.h>
+#endif
+
 class FileSys
 {
 public:

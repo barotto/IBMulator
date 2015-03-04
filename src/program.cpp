@@ -33,7 +33,9 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
 
 Program g_program;
 

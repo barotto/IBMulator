@@ -57,9 +57,6 @@
 	#define MSC_ALIGN(x)
 #endif
 
-#ifndef _WIN32
-	#define FILETIME time_t
-#endif
 
 template <typename _to_check, std::size_t _expected, std::size_t _real = sizeof(_to_check)>
 void size_check()
