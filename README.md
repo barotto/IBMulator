@@ -82,7 +82,7 @@ Being a faithful emulator of the PS/1 model 2011, to configure the system (ie.
 the PS/1, not the emulator) after a configuration change (for instance, if you 
 add or remove a floppy drive), you need a DOS program called CONFIGUR.EXE, 
 otherwise you'll get various POST errors. Likewise, if you want to customize 
-the way the system operate, you need to use the program CUSTOMIZ.EXE. Both files 
+the way the system works, you need to use the program CUSTOMIZ.EXE. Both files 
 are copyright IBM and you have to search the Internet in order to obtain them.
 
 ### ROM set
@@ -100,20 +100,24 @@ Any other file present in the archive is ignored.
 
 ### HDD image
 
-To create a new fixed disk drive image:
+The first time you launch IBMulator, an empty pre-formatted bootable hard disk 
+image will be created.
+ 
+If you have an original PS/1 backup disk-set you can restore the machine to its 
+factory state. In order to do so:
 
-1. start IBMulator, a new 0-filled image file will be created using the path
-specified in ibmulator.ini
-2. using customiz.exe, verify that the machine is set to boot with the FDD first
-(the default CMOS image is already set this way)
-3. restart the machine with a bootable PC-DOS 4.0 floppy disk inserted into
-drive A
-4. at the DOS prompt run "fdisk" and create a new primary partition
-5. then run "format c: /s"
-6. if you have an original PS/1 backup disk-set run "restore a: c: /s"
+1. insert a PC-DOS 4.0 floppy disk in drive A
+2. go to the DOS prompt
+4. run "a:restore a: c: /s"
 
-If you are on Linux, you can mount the image file using this command:  
+Under Linux you can mount the HDD image using this command:  
 $ mount -o loop,offset=16896 hdd.img /mnt/loop
+
+*Nota bene*: if you change the disk type from the default 35 (WDL-330P) to any 
+other type, the automatically created image will be 0-filled and you'll need to 
+use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have 
+accurate performance emulation; any other type have the same performance as type
+35.
 
 ### Key bindings
 

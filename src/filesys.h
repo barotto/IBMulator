@@ -43,6 +43,8 @@ public:
 	static const char* get_temp_dir();
 	static bool get_path_parts(const char *_path,
 			std::string &_dir, std::string &_base, std::string &_ext);
+	static bool extract_file(const char *_archive, const char *_filename,
+			const char *_extract_to);
 };
 
 #endif

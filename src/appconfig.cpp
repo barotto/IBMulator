@@ -122,107 +122,108 @@ ini_file_t AppConfig::ms_def_values = {
 
 ini_filehelp_t AppConfig::ms_help = {
 		{ "HEADER",
-"# This is the configuration file for " PACKAGE_STRING "\n"
-"# Lines starting with a # are comment lines and are ignored. "
+"; This is the configuration file for " PACKAGE_STRING "\n"
+"; Lines starting with a ; are comment lines and are ignored. "
 " They are used to document the effect of each option.\n"
-"# Anywhere a path is involved, it can be absolute or relative.\n"
-"# Relative paths are searched in this order:\n"
-"# 1. the media directory (in case of floppy/hdd images)\n"
-"# 2. the user directory (the folder where this file is normally located)\n"
-"# 3. the program's assets directory\n"
+"; Anywhere a path is involved, it can be absolute or relative.\n"
+"; Relative paths are searched in this order:\n"
+"; 1. the media directory (in case of floppy/hdd images)\n"
+"; 2. the user directory (the folder where this file is normally located)\n"
+"; 3. the program's assets directory\n"
 		},
 		{ PROGRAM_SECTION,
-"#   media_dir: The default directory path used to search for floppy/hdd images.\n"
-"# capture_dir: Directory where things like wave, savestate and screenshot get captured.\n"
+";   media_dir: The default directory path used to search for floppy/hdd images.\n"
+"; capture_dir: Directory where things like wave, savestate and screenshot get captured.\n"
 		},
 
 		{ CPU_SECTION,
-"# frequency: The CPU frequency in MHz.\n"
+"; frequency: The CPU frequency in MHz.\n"
 		},
 
 		{ GUI_SECTION,
-"#      aspect: VGA aspect ratio.\n"
-"#              Possible values: original, adaptive, scaled.\n"
-"#      bg_XXX: Background window color\n"
-"#         dpi: Resolution of the host display in DPI (currently used for mouse acceleration).\n"
-"#  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
-"#    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
-"#  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
-"#        grab: If no then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
-"# grab_method: Method to use for mouse grabbing\n"
-"#              Possible values: MOUSE3, CTRL-F10\n"
-"# guifragment: GLSL fragment shader for GUI rendering\n"
-"#   guivertex: GLSL vertex shader for GUI rendering\n"
-"#       width: VGA window width in pixel\n"
-"#      height: VGA window height in pixel\n"
-"#      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
-"#              Open a .map file to read comments on how to edit it.\n"
-"#        mode: Possible values: normal, compact.\n"
-"#               normal: the system unit places itself at the bottom of the display and is always visible\n"
-"#              compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
-"#       mouse: Mouse type.\n"
-"#              Possible values: none, ps2, serial\n"
-"# mouse_accel: Enable mouse acceleration\n"
-"#     sampler: VGA scaling quality.\n"
-"#              Possible values: linear, nearest\n"
-"#   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
-"# start_image: An optional PNG file to load at program start\n"
+";      aspect: VGA aspect ratio.\n"
+";              Possible values: original, adaptive, scaled.\n"
+";      bg_XXX: Background window color\n"
+";         dpi: Resolution of the host display in DPI (currently used for mouse acceleration).\n"
+";  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
+";    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
+";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
+";        grab: If no then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
+"; grab_method: Method to use for mouse grabbing\n"
+";              Possible values: MOUSE3, CTRL-F10\n"
+"; guifragment: GLSL fragment shader for GUI rendering\n"
+";   guivertex: GLSL vertex shader for GUI rendering\n"
+";       width: VGA window width in pixel\n"
+";      height: VGA window height in pixel\n"
+";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
+";              Open a .map file to read comments on how to edit it.\n"
+";        mode: Possible values: normal, compact.\n"
+";               normal: the system unit places itself at the bottom of the display and is always visible\n"
+";              compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
+";       mouse: Mouse type.\n"
+";              Possible values: none, ps2, serial\n"
+"; mouse_accel: Enable mouse acceleration\n"
+";     sampler: VGA scaling quality.\n"
+";              Possible values: linear, nearest\n"
+";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
+"; start_image: An optional PNG file to load at program start\n"
 
 		},
 
 		{ CMOS_SECTION, ""
-"#      image: Path of the binary file to use for the CMOS initialisation values.\n"
-"# image_init: Yes if you want to initialise the RTC with the values in the CMOS image\n"
-"# image_save: Yes if you want to save the CMOS in the image file when the machine is powered off\n"
+";      image: Path of the binary file to use for the CMOS initialisation values.\n"
+"; image_init: Yes if you want to initialise the RTC with the values in the CMOS image\n"
+"; image_save: Yes if you want to save the CMOS in the image file when the machine is powered off\n"
 		},
 
 		{ MEM_SECTION,
-"#   romset: Path to a zip file containing the rom set to use (for the correct format see the README)\n"
-"#     base: Size of the base RAM in KiB\n"
-"# extended: Size of the extended RAM in KiB\n"
+";   romset: Path to a zip file containing the rom set to use (for the correct format see the README)\n"
+";     base: Size of the base RAM in KiB\n"
+"; extended: Size of the extended RAM in KiB\n"
 		},
 
 		{ DRIVES_SECTION,
-"# floppy_a: The type of floppy drive A.\n"
-"#           Possible values: none, 3.5, 5.25\n"
-"# floppy_b: The type of floppy drive B.\n"
-"#           Possible values: none, 3.5, 5.25\n"
-"#      hdd: The type of fixed disk drive C.\n"
-"#           Possible values: none, 35, 38\n"
+"; floppy_a: The type of floppy drive A.\n"
+";           Possible values: none, 3.5, 5.25\n"
+"; floppy_b: The type of floppy drive B.\n"
+";           Possible values: none, 3.5, 5.25\n"
+";      hdd: The type of fixed disk drive C.\n"
+";           Possible values: any number between 0 and 44, 15 excluded, where 0 means no disk installed. "
+"35 is the type of the original WDL-330P 30MB disk drive. For more info read the README.\n"
 		},
 
 		{ DISK_A_SECTION,
-"# These options are used to mount a floppy at program launch.\n"
-"#     path: Path of a floppy image file to mount at program lauch\n"
-"# inserted: Yes if the floppy is inserted at program lauch\n"
-"# readonly: Yes if the floppy image should be write protected\n"
-"#     type: The type of the inserted floppy.\n"
-"#           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
+"; These options are used to mount a floppy at program launch.\n"
+";     path: Path of a floppy image file to mount at program lauch\n"
+"; inserted: Yes if the floppy is inserted at program lauch\n"
+"; readonly: Yes if the floppy image should be write protected\n"
+";     type: The type of the inserted floppy.\n"
+";           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_B_SECTION,
-"# These options are used to mount a floppy at program launch.\n"
-"#     path: Path of a floppy image file to mount at program lauch\n"
-"# inserted: Yes if the floppy is inserted at program lauch\n"
-"# readonly: Yes if the floppy image should be write protected\n"
-"#     type: The type of the inserted floppy.\n"
-"#           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
+"; These options are used to mount a floppy at program launch.\n"
+";     path: Path of a floppy image file to mount at program lauch\n"
+"; inserted: Yes if the floppy is inserted at program lauch\n"
+"; readonly: Yes if the floppy image should be write protected\n"
+";     type: The type of the inserted floppy.\n"
+";           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_C_SECTION,
-"#     path: Path of the image file to mount\n"
-"# readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
-"#     save: When you restore a savestate the disk is restored as well, as a temporary read-write image. "
+";     path: Path of the image file to mount\n"
+"; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
+";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image. "
 "Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
-"(unless it is write-protected, also the type must be the same.)\n"
+"(unless it is write-protected)\n"
 		},
 
 		{ MIXER_SECTION,
-"# prebuffer: How many milliseconds of data to prebuffer before audio start to be emitted.\n"
-"#   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
-"#            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
-"#      rate: Sample rate.\n"
-"#            Possible values: 44100, 48000, 32000, 22050.\n"
+"; prebuffer: How many milliseconds of data to prebuffer before audio start to be emitted.\n"
+";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
+";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
+";      rate: Sample rate.\n"
+";            Possible values: 44100, 48000, 32000, 22050.\n"
 		},
 
 		{ COM_SECTION, "" },

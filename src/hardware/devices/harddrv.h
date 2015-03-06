@@ -27,6 +27,15 @@
 class HardDrive;
 extern HardDrive g_harddrv;
 
+struct HDDType
+{
+	int cylinders;
+	int heads;
+	int spt;
+	int wpcomp;
+	int lzone;
+};
+
 class HardDrive : public IODevice
 {
 private:
@@ -139,6 +148,8 @@ private:
 	bool m_tmp_disk;
 
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
+	static const HDDType ms_hdd_types[45];
+
 	inline int chs_to_lba(int _c, int _h, int _s) const;
 	inline void lba_to_chs(int _lba, int &_c, int &_h, int &_s) const;
 

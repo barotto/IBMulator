@@ -28,7 +28,9 @@
 #include <vector>
 #include <climits>
 #include <libgen.h>
-
+#include <archive.h>
+#include <archive_entry.h>
+#include <algorithm>
 
 
 void FileSys::create_dir(const char *_path)
@@ -169,4 +171,42 @@ std::string FileSys::get_next_filename(const std::string &_dir,
 		return "";
 	}
 	return ss.str();
+}
+
+bool FileSys::extract_file(const char *_archive, const char *_filename, const char *_extract_to)
+{
+	struct archive *ar;
+	struct archive_entry *entry;
+	int res;
+
+	ar = archive_read_new();
+	archive_read_support_filter_all(ar);
+	archive_read_support_format_all(ar);
+	res = archive_read_open_filename(ar, _archive, 10240);
+	if(res != ARCHIVE_OK) {
+		PERRF(LOG_FS, "Error opening archive '%s'\n", _archive);
+		archive_read_free(ar);
+		throw std::exception();
+	}
+
+	bool found = false;
+	std::string fname = _filename;
+	std::transform(fname.begin(), fname.end(), fname.begin(), ::tolower);
+	while(archive_read_next_header(ar, &entry) == ARCHIVE_OK) {
+		std::string name = archive_entry_pathname(entry);
+		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+		if(name.compare(fname)==0) {
+			found = true;
+			archive_entry_set_pathname(entry, _extract_to);
+			if(archive_read_extract(ar, entry, 0) != 0) {
+				PERRF(LOG_FS, "Error extracting '%s' from archive: %s\n",
+						_filename,
+						archive_error_string(ar));
+				archive_read_free(ar);
+				throw std::exception();
+			}
+		}
+	}
+	archive_read_free(ar);
+	return found;
 }

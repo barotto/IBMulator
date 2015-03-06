@@ -17,7 +17,7 @@
  *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* WDL-330P on IBM's proprietary XT-derived 8-bit interface.
+/* IBM's proprietary XT-derived 8-bit interface.
  * It emulates only the commands and data transfer modes needed by the PS/1
  * model 2011 BIOS. Almost no error checking is performed, guest code is
  * supposed to be bug free and well behaving.
@@ -41,14 +41,58 @@ HardDrive g_harddrv;
 #define HDD_DMA_CHAN 3
 #define HDD_IRQ      14
 
-#define HDD_NONE -1
-#define HDD_35   35
-#define HDD_38   38
+/*
+   IBM HDD types 1-44
 
-static std::map<std::string, uint> disk_types = {
-	{ "none", HDD_NONE },
-	{ "35",   HDD_35 },
-	{ "38",   HDD_38 }
+   Cyl.    Head    Sect.   Write    Land
+                           p-comp   Zone
+*/
+const HDDType HardDrive::ms_hdd_types[45] = {
+{   0,     0,       0,          0,      0}, //0 (none)
+{ 306,     4,      17,        128,    305}, //1
+{ 615,     4,      17,        300,    615}, //2
+{ 615,     6,      17,        300,    615}, //3
+{ 940,     8,      17,        512,    940}, //4
+{ 940,     6,      17,        512,    940}, //5
+{ 615,     4,      17,         -1,    615}, //6
+{ 462,     8,      17,        256,    511}, //7
+{ 733,     5,      17,         -1,    733}, //8
+{ 900,    15,      17,         -1,    901}, //9
+{ 820,     3,      17,         -1,    820}, //10
+{ 855,     5,      17,         -1,    855}, //11
+{ 855,     7,      17,         -1,    855}, //12
+{ 306,     8,      17,        128,    319}, //13
+{ 733,     7,      17,         -1,    733}, //14
+{   0,     0,       0,          0,      0}, //15 (reserved)
+{ 612,     4,      17,          0,    663}, //16
+{ 977,     5,      17,        300,    977}, //17
+{ 977,     7,      17,         -1,    977}, //18
+{ 1024,    7,      17,        512,   1023}, //19
+{ 733,     5,      17,        300,    732}, //20
+{ 733,     7,      17,        300,    732}, //21
+{ 733,     5,      17,        300,    733}, //22
+{ 306,     4,      17,          0,    336}, //23
+{ 612,     4,      17,        305,    663}, //24
+{ 306,     4,      17,         -1,    340}, //25
+{ 612,     4,      17,         -1,    670}, //26
+{ 698,     7,      17,        300,    732}, //27
+{ 976,     5,      17,        488,    977}, //28
+{ 306,     4,      17,          0,    340}, //29
+{ 611,     4,      17,        306,    663}, //30
+{ 732,     7,      17,        300,    732}, //31
+{ 1023,    5,      17,         -1,   1023}, //32
+{ 614,     4,      25,         -1,    663}, //33
+{ 775,     2,      27,         -1,    900}, //34
+{ 921,     2,      33,         -1,   1000}, //35
+{ 402,     4,      26,         -1,    460}, //36
+{ 580,     6,      26,         -1,    640}, //37
+{ 845,     2,      36,         -1,   1023}, //38
+{ 769,     3,      36,         -1,   1023}, //39
+{ 531,     4,      39,         -1,    532}, //40
+{ 577,     2,      36,         -1,   1023}, //41
+{ 654,     2,      32,         -1,    674}, //42
+{ 923,     5,      36,         -1,   1023}, //43
+{ 531,     8,      39,         -1,    532}  //44
 };
 
 //Attachment Status Reg bits
@@ -256,9 +300,13 @@ void HardDrive::init()
 	);
 
 	//get_enum throws if value is not allowed:
-	m_drive_type = g_program.config().get_enum(DRIVES_SECTION, DRIVES_HDD, disk_types);
+	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
+	if(m_drive_type<0 || m_drive_type == 15 || m_drive_type > 44) {
+		PERRF(LOG_HDD, "Invalid HDD type %d\n", m_drive_type);
+		throw std::exception();
+	}
 	m_original_type = m_drive_type;
-	if(m_drive_type != HDD_NONE) {
+	if(m_drive_type > 0) {
 		std::string imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
 		mount(imgpath);
 		m_write_protect = g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY);
@@ -285,7 +333,11 @@ void HardDrive::config_changed()
 {
 	unmount();
 	//get_enum throws if value is not allowed:
-	m_drive_type = g_program.config().get_enum(DRIVES_SECTION, DRIVES_HDD, disk_types);
+	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
+	if(m_drive_type<0 || m_drive_type == 15 || m_drive_type > 44) {
+		PERRF(LOG_HDD, "Invalid HDD type %d\n", m_drive_type);
+		throw std::exception();
+	}
 	//disk mount is performed at restore_state
 }
 
@@ -313,7 +365,7 @@ void HardDrive::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	if(m_drive_type != HDD_NONE) {
+	if(m_drive_type != 0) {
 		//the saved state is read only
 		g_program.config().set_bool(DISK_C_SECTION, DISK_READONLY, true);
 		mount(_state.get_basename() + "-hdd.img");
@@ -322,8 +374,6 @@ void HardDrive::restore_state(StateBuf &_state)
 
 void HardDrive::mount(std::string _imgpath)
 {
-	ASSERT(m_drive_type != HDD_NONE);
-
 	if(_imgpath.empty()) {
 		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
 		throw std::exception();
@@ -336,52 +386,59 @@ void HardDrive::mount(std::string _imgpath)
 	m_tmp_disk = false;
 
 	unsigned spt,cyl,heads=2;
-	uint32_t seek_max;
+	uint32_t seek_max=40000;
 	double tx_rate_mbps;
 	const int sec_idfield_size = 30; //>25 but what is the real value? TODO
-	int rpm,interleave;
+	int rpm,interleave=4;
 
-	if(m_drive_type == HDD_35) {
-		spt = 33;
-		cyl = 921;
-		tx_rate_mbps = 10.2; //disk-to-buffer?
-		m_trk2trk_us = 8000;
-		rpm = 3600;
-		seek_max = 40000;
-		interleave = 4;
-	} else if(m_drive_type == HDD_38) {
-		spt = 36;
-		cyl = 845;
-		tx_rate_mbps = 10.8;
+	//the only performance values I have are those of type 35 and 38
+	if(m_drive_type == 38) {
+		tx_rate_mbps = 10.8; //disk-to-buffer?
 		m_trk2trk_us = 9000;
 		rpm = 3700;
-		seek_max = 40000;
-		interleave = 4;
+	} else if(m_drive_type>0 && m_drive_type!=15 && m_drive_type<45) {
+		//disk type 35 values
+		tx_rate_mbps = 10.2;
+		m_trk2trk_us = 8000;
+		rpm = 3600;
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type %d!\n", m_drive_type);
 		throw std::exception();
 	}
+	const HDDType &type = ms_hdd_types[m_drive_type];
 	//equivalent to x / ((tx_rate_mbps*1e6)/8.0) / 1e6 :
 	m_sec_tx_us = ((512.0+sec_idfield_size)*interleave) / (tx_rate_mbps/8.0);
 	m_sec_tx_us = 400;
 	m_exec_time_us = 100;
-	m_sectors = spt * cyl * heads;
+	m_sectors = type.spt * type.cylinders * type.heads;
 	m_avg_rot_lat = 30000000/rpm; //average, the maximum is twice this value
-	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / cyl;
+	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / type.cylinders;
 
 	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
-	m_disk->spt = spt;
-	m_disk->cylinders = cyl;
-	m_disk->heads = heads;
+	m_disk->spt = type.spt;
+	m_disk->cylinders = type.cylinders;
+	m_disk->heads = type.heads;
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
-		//create a new image
-		try {
-			PINFOF(LOG_V0, LOG_HDD, "creating new image file '%s'\n", _imgpath.c_str());
-			m_disk->create(_imgpath.c_str(), m_sectors);
-		} catch(std::exception &e) {
-			PERRF(LOG_HDD, "Unable to create the image file\n");
-			throw;
+		PINFOF(LOG_V0, LOG_HDD, "Creating new image file '%s'\n", _imgpath.c_str());
+		if(m_drive_type == 35) {
+			std::string imgsrc = g_program.config().get_file_path("hdd.img.zip",FILE_TYPE_ASSET);
+			if(!FileSys::file_exists(imgsrc.c_str())) {
+				PERRF(LOG_HDD, "Cannot find the image file archive\n");
+				throw std::exception();
+			}
+			if(!FileSys::extract_file(imgsrc.c_str(), "hdd.img", _imgpath.c_str())) {
+				PERRF(LOG_HDD, "Cannot find the image file in the archive\n");
+				throw std::exception();
+			}
+		} else {
+			//create a new image
+			try {
+				m_disk->create(_imgpath.c_str(), m_sectors);
+			} catch(std::exception &e) {
+				PERRF(LOG_HDD, "Unable to create the image file\n");
+				throw;
+			}
 		}
 	} else {
 		PINFOF(LOG_V0, LOG_HDD, "Using image file '%s'\n", _imgpath.c_str());
