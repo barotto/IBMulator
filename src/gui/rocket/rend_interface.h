@@ -55,6 +55,11 @@ private:
     GLuint m_program;
     GLuint m_vb;
     GLuint m_sampler;
+
+    struct uniforms {
+    	GLint textured, guitex, P, MV;
+    	uniforms() : textured(-1), guitex(-1), P(-1), MV(-1) {}
+    } m_uniforms;
 };
 
 #endif

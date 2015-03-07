@@ -44,6 +44,10 @@ RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 				g_program.config().find_file(GUI_SECTION,GUI_GUI_VERTEX_SHADER),
 				g_program.config().find_file(GUI_SECTION,GUI_GUI_FRAGMENT_SHADER)
 		);
+		GLCALL( m_uniforms.textured = glGetUniformLocation(m_program, "textured") );
+		GLCALL( m_uniforms.guitex = glGetUniformLocation(m_program, "guitex") );
+		GLCALL( m_uniforms.P = glGetUniformLocation(m_program, "P") );
+		GLCALL( m_uniforms.MV = glGetUniformLocation(m_program, "MV") );
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to load the GUI renderer shader program!\n");
 	}
@@ -70,33 +74,17 @@ void RocketRenderer::RenderGeometry(Vertex* vertices,
 	mat4f mv = mat4f::I;
 	mv.load_translation(translation.x, translation.y, 0);
 
-	if(texture)
-	{
-		GLCALL( uniformLoc = glGetUniformLocation(m_program, "textured") );
-		if(uniformLoc != -1) {
-			GLCALL( glUniform1i(uniformLoc, 1) );
-		}
+	if(texture)	{
+		GLCALL( glUniform1i(m_uniforms.textured, 1) );
 		GLCALL( glActiveTexture(GL_TEXTURE0) );
 		GLCALL( glBindTexture(GL_TEXTURE_2D, texture) );
-		GLCALL( uniformLoc = glGetUniformLocation(m_program, "guitex") );
-		if(uniformLoc != -1) {
-			GLCALL( glUniform1i(uniformLoc, 0) );
-		}
+		GLCALL( glUniform1i(m_uniforms.guitex, 0) );
 	} else {
-		GLCALL( uniformLoc = glGetUniformLocation(m_program, "textured") );
-		if(uniformLoc != -1) {
-			GLCALL( glUniform1i(uniformLoc, 0) );
-		}
+		GLCALL( glUniform1i(m_uniforms.textured, 0) );
 	}
 
-	GLCALL( uniformLoc = glGetUniformLocation(m_program, "P") );
-	if(uniformLoc != -1) {
-		GLCALL( glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, g_gui.get_proj_matrix().data()) );
-	}
-	GLCALL( uniformLoc = glGetUniformLocation(m_program, "MV") );
-	if(uniformLoc != -1) {
-		GLCALL( glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, mv.data()) );
-	}
+	GLCALL( glUniformMatrix4fv(m_uniforms.P, 1, GL_FALSE, g_gui.get_proj_matrix().data()) );
+	GLCALL( glUniformMatrix4fv(m_uniforms.MV, 1, GL_FALSE, mv.data()) );
 
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vb) );
 	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * num_vertices, vertices, GL_DYNAMIC_DRAW) );
