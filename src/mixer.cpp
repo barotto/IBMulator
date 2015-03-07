@@ -237,10 +237,10 @@ void Mixer::main_loop()
 				int elapsed = m_main_chrono.get_msec() - m_start;
 				if(m_start == 0) {
 					m_start = m_main_chrono.get_msec();
-					PINFOF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
+					PDEBUGF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
 				} else if(elapsed+(MIXER_HEARTBEAT/1000) > m_prebuffer) {
 					SDL_PauseAudioDevice(m_device, 0);
-					PINFOF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed)\n", elapsed);
+					PDEBUGF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed)\n", elapsed);
 					m_start = 0;
 				}
 			} else {
@@ -250,10 +250,10 @@ void Mixer::main_loop()
 			m_start = 0;
 			if(audio_status==SDL_AUDIO_PLAYING && m_buffer.get_read_avail() == 0) {
 				SDL_PauseAudioDevice(m_device, 1);
-				PINFOF(LOG_V1, LOG_MIXER, "paused\n");
+				PDEBUGF(LOG_V1, LOG_MIXER, "paused\n");
 			} else if(audio_status==SDL_AUDIO_PAUSED && m_buffer.get_read_avail() != 0) {
 				SDL_PauseAudioDevice(m_device, 0);
-				PINFOF(LOG_V1, LOG_MIXER, "playing\n");
+				PDEBUGF(LOG_V1, LOG_MIXER, "playing\n");
 			}
 		}
 

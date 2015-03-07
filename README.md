@@ -163,8 +163,7 @@ it to Performance (this is a known issue with the Linux CPUfreq governors).
 
 ### Windows
 
-* Sometimes, at program close, Windows reports that the program has stopped
-working. 
+* High CPU usage when moving the mouse. 
 
 
 ## COMPILING
