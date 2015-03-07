@@ -3,8 +3,10 @@ SUBDIRS = src
 ACLOCAL_AMFLAGS = -I m4
 
 dist_pkgdata_DATA = \
+share/ibmulator/icon.ico \
 share/ibmulator/icon.png \
-share/ibmulator/cmos.bin
+share/ibmulator/cmos.bin \
+share/ibmulator/hdd.img.zip
 
 keymapsdir = $(pkgdatadir)/keymaps
 dist_keymaps_DATA = \
