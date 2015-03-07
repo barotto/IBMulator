@@ -54,7 +54,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ GUI_WIDTH, "640" },
 		{ GUI_HEIGHT, "480" },
 		{ GUI_FULLSCREEN, "no" },
-		{ GUI_SHOW_LEDS, "yes" },
+		{ GUI_SHOW_LEDS, "no" },
 		{ GUI_MODE, "normal" },
 		{ GUI_SAMPLER, "linear" },
 		{ GUI_ASPECT, "original" },
@@ -125,15 +125,15 @@ ini_filehelp_t AppConfig::ms_help = {
 "; This is the configuration file for " PACKAGE_STRING "\n"
 "; Lines starting with a ; are comment lines and are ignored. "
 " They are used to document the effect of each option.\n"
-"; Anywhere a path is involved, it can be absolute or relative.\n"
+"; Paths can be absolute or relative.\n"
 "; Relative paths are searched in this order:\n"
 "; 1. the media directory (in case of floppy/hdd images)\n"
 "; 2. the user directory (the folder where this file is normally located)\n"
 "; 3. the program's assets directory\n"
 		},
 		{ PROGRAM_SECTION,
-";   media_dir: The default directory path used to search for floppy/hdd images.\n"
-"; capture_dir: Directory where things like wave, savestate and screenshot get captured.\n"
+";   media_dir: The default directory used to search for floppy and hdd images.\n"
+"; capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
 		},
 
 		{ CPU_SECTION,
@@ -148,7 +148,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
 ";    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
 ";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
-";        grab: If no then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
+";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
 "; grab_method: Method to use for mouse grabbing\n"
 ";              Possible values: MOUSE3, CTRL-F10\n"
 "; guifragment: GLSL fragment shader for GUI rendering\n"
@@ -188,8 +188,8 @@ ini_filehelp_t AppConfig::ms_help = {
 "; floppy_b: The type of floppy drive B.\n"
 ";           Possible values: none, 3.5, 5.25\n"
 ";      hdd: The type of fixed disk drive C.\n"
-";           Possible values: any number between 0 and 44, 15 excluded, where 0 means no disk installed. "
-"35 is the type of the original WDL-330P 30MB disk drive. For more info read the README.\n"
+";           Possible values: any number between 0 and 44, 15 excluded, where 0 means no disk installed.\n"
+";           Type 35 is the original WDL-330P 30MB disk drive. For more info read the README.\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -213,8 +213,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ DISK_C_SECTION,
 ";     path: Path of the image file to mount\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
-";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image. "
-"Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
+";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
+";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
 "(unless it is write-protected)\n"
 		},
 
