@@ -136,7 +136,7 @@ private:
 	double m_rpm;
 	uint32_t m_trk2trk_us;
 	uint32_t m_avg_trk_lat_us;
-	double m_sec_tx_us;
+	uint32_t m_sec_tx_us;
 	uint32_t m_exec_time_us;
 	uint32_t m_avg_rot_lat;
 

@@ -41,6 +41,9 @@ HardDrive g_harddrv;
 #define HDD_DMA_CHAN 3
 #define HDD_IRQ      14
 
+#define HDD_EXEC_TIME_US 500
+#define HDD_SECT_IDFIELD_BYTES 59
+
 /*
    IBM HDD types 1-44
 
@@ -388,7 +391,7 @@ void HardDrive::mount(std::string _imgpath)
 	unsigned spt,cyl,heads=2;
 	uint32_t seek_max=40000;
 	double tx_rate_mbps;
-	const int sec_idfield_size = 30; //>25 but what is the real value? TODO
+	const int sec_idfield_size = 59; //>25 but what is the real value? TODO
 	int rpm,interleave=4;
 
 	//the only performance values I have are those of type 35 and 38
@@ -407,9 +410,8 @@ void HardDrive::mount(std::string _imgpath)
 	}
 	const HDDType &type = ms_hdd_types[m_drive_type];
 	//equivalent to x / ((tx_rate_mbps*1e6)/8.0) / 1e6 :
-	m_sec_tx_us = ((512.0+sec_idfield_size)*interleave) / (tx_rate_mbps/8.0);
-	m_sec_tx_us = 400;
-	m_exec_time_us = 100;
+	m_sec_tx_us = ((512+HDD_SECT_IDFIELD_BYTES)*interleave) / (tx_rate_mbps/8.0);
+	m_exec_time_us = HDD_EXEC_TIME_US;
 	m_sectors = type.spt * type.cylinders * type.heads;
 	m_avg_rot_lat = 30000000/rpm; //average, the maximum is twice this value
 	m_avg_trk_lat_us = (seek_max - m_avg_rot_lat) / type.cylinders;
