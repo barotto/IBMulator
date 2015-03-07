@@ -172,8 +172,8 @@ void FileSelect::GetRow(RC::StringList& row, const RC::String& table, int row_in
 					formatted += "floppy_1_44";
 					break;
 				default:
-					row.push_back("???");
-					return;
+					formatted += "hdd";
+					break;
 				}
 			}
 			formatted += "\"></div>";
@@ -245,6 +245,14 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 		if(stat(fullpath.c_str(), &sb) != 0) {
 			continue;
 		}
+#ifndef _WIN32
+		//skip hidden files
+		if(ent->d_name[0]=='.' &&
+		  (!S_ISDIR(sb.st_mode) || (S_ISDIR(sb.st_mode) && de.name != "..")))
+		{
+			continue;
+		}
+#endif
 		de.size = sb.st_size;
 		if(S_ISDIR(sb.st_mode)) {
 			if(de.name == ".") {

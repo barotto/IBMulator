@@ -131,6 +131,12 @@
 				background-decorator: image;
 				background-image: icons/file_select.png 32px 0px 64px 32px;
 			}
+			.hdd {
+				height: 32px;
+				width: 32px;
+				background-decorator: image;
+				background-image: icons/file_select.png 96px 0px 128px 32px;
+			}
 		</style>
 	</head>
 	<body template="default">
