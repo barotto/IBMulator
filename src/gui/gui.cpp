@@ -241,15 +241,15 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
 	}
 
-	m_display.glintf = GL_RGBA8;
+	m_display.glintf = GL_RGBA;
 	m_display.glf = GL_RGBA;
-	m_display.gltype = GL_UNSIGNED_INT_8_8_8_8_REV;
+	m_display.gltype = GL_UNSIGNED_BYTE;
 	GLCALL( glGenTextures(1, &m_display.tex) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
 	/* OpenGL 4.2+
-	GLCALL( glTexStorage2D(GL_TEXTURE_2D, 0, m_display_glintf,
-			m_display.get_fb_xsize(),
-			m_display.get_fb_ysize())
+	GLCALL( glTexStorage2D(GL_TEXTURE_2D, 1, m_display.glintf,
+			m_display.vga.get_fb_xsize(),
+			m_display.vga.get_fb_ysize())
 	);
 	*/
 
@@ -258,6 +258,8 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 			m_display.vga.get_fb_xsize(), m_display.vga.get_fb_ysize(),
 			0, m_display.glf, m_display.gltype, NULL)
 	);
+
+	m_display.tex_buf.resize(m_display.vga.get_framebuffer_data_size());
 
 	GLCALL( glGenSamplers(1, &m_display.sampler) );
 	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) );
@@ -617,14 +619,20 @@ void GUI::render_vga()
 		m_display.vga.lock();
 		m_display.vga_size = vec2i(m_display.vga.get_fb_xsize(),m_display.vga.get_fb_ysize());
 		m_display.vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
+		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
+		//when the program runs with the default shaders, the load on the GPU is very low
+		//so the drivers lower the clock of the GPU to the minimum value;
+		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
+		//a lot of time to complete, bloking the machine emulation thread.
+		//PBOs are a possible alternative, but a memcpy is way simpler.
+		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),VGA_MAX_XRES*VGA_MAX_YRES*4);
+		m_display.vga.unlock();
 
 		GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
 				0, 0,
 				m_display.vga_size.x, m_display.vga_size.y,
 				m_display.glf, m_display.gltype,
-				m_display.vga.get_framebuffer()) );
-
-		m_display.vga.unlock();
+				&m_display.tex_buf[0]) );
 	}
 
 	GLCALL( glBindSampler(0, m_display.sampler) );
@@ -657,6 +665,7 @@ void GUI::render_vga()
 	GLCALL( glDisableVertexAttribArray(0) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
+
 }
 
 void GUI::input_grab(bool _value)

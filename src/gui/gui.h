@@ -156,6 +156,7 @@ private:
 		vec2i vga_size;
 		std::atomic<bool> vga_updated;
 		GLuint tex;
+		std::vector<uint32_t> tex_buf;
 		GLuint sampler;
 		GLint  glintf;
 		GLenum glf;

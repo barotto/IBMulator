@@ -161,10 +161,6 @@ prevents the program to know when the window is maximized.
 * Performance can be low if an On Demand CPU scaling governor is in use. Switch 
 it to Performance (this is a known issue with the Linux CPUfreq governors).
 
-### Windows
-
-* High CPU usage when moving the mouse. 
-
 
 ## COMPILING
 
