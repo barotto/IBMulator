@@ -160,6 +160,8 @@ displaced when VGA resolution changes. This is due to a bug in SDL 2 that
 prevents the program to know when the window is maximized.
 * Performance can be low if an On Demand CPU scaling governor is in use. Switch 
 it to Performance (this is a known issue with the Linux CPUfreq governors).
+* Under Ubuntu, the Unity desktop environment can become sluggish (known
+bug: https://bugs.launchpad.net/unity/+bug/1415195)
 
 
 ## COMPILING

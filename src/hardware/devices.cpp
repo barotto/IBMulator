@@ -183,7 +183,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 	io_handler_t &iohdl = m_read_handlers[_port];
 
 	if(iohdl.device == NULL || !(iohdl.mask & 1)) {
-		PWARNF(LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
+		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return 0xFF;
 	}
@@ -212,7 +212,7 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 	io_handler_t &iohdl = m_write_handlers[_port];
 
 	if(iohdl.device == NULL || !(iohdl.mask & 1)) {
-		PWARNF(LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
+		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return;
 	}
