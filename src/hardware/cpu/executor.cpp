@@ -2778,7 +2778,7 @@ void CPUExecutor::IRET()
 		}
 		SET_CS(cs_raw);
 		SET_IP(ip);
-		SET_FLAGS(flags);
+		write_flags(flags,false,true,false);
 	}
 	g_cpubus.invalidate_pq();
 }
