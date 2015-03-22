@@ -157,6 +157,7 @@ protected:
 		bool  *vga_tile_updated;
 		uint8_t *memory;
 		uint32_t memsize;
+		uint32_t planesize;
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint8_t tile[VGA_X_TILESIZE * VGA_Y_TILESIZE * 4]; /**< Currently allocates the tile as large as needed. */
 		uint16_t charmap_address;
@@ -187,7 +188,6 @@ protected:
 	} m_s;  // state information
 
 	int timer_id;
-	uint32_t update_interval;
 
 	VGADisplay * m_display;
 

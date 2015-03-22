@@ -144,12 +144,11 @@ stores new files, like screenshots and savestates
 
 ### Emulation
 
-* VGA scrolling does't work properly.
 * VGA palette updates fail with some games (Civilization).
 * The CPU speed is a bit faster than the original. This is due to the lack of 
 emulation of the DRAM refresh cycle-eater and probably incorrect timing values 
 for some opcode.
-* Some programs (MS Works, CheckIt) fail to run if launched from ROMSHELL.
+* Some programs (MS Works) fail to run if launched from ROMSHELL.
 * Some Sierra's adventures (King's Quest 5, Space Quest 4) fail to run 
 regardless of the way they are started.
 
