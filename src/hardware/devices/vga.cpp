@@ -1361,7 +1361,7 @@ void VGA::update()
 				pan = mode13_pan_values[pan];
 				if(m_s.CRTC.reg[0x14] & 0x40) { // DW set: doubleword mode
 					uint pixely, pixelx, plane;
-
+					start_addr *= 4;
 					if(m_s.misc_output.select_high_bank != 1) {
 						PERRF(LOG_VGA, "update: select_high_bank != 1\n");
 					}
@@ -1412,7 +1412,7 @@ void VGA::update()
 					}
 				} else { // word mode
 					uint pixely, pixelx, plane;
-
+					start_addr *= 2;
 					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
 						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
 							if(GET_TILE_UPDATED (xti, yti)) {
