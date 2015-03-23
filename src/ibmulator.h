@@ -75,6 +75,7 @@ void size_check()
 	#define INT_TRAPS 1
 	#define STOP_AT_EXC 0
 	#define UD6_AUTO_DUMP 0
+	#define HDD_TIMING 0 //used to speed up the HDD and ease the debugging
 
 	#define DEFAULT_LOG_VERBOSITY LOG_V1
 
@@ -88,6 +89,7 @@ void size_check()
 	#define INT_TRAPS 0
 	#define STOP_AT_EXC 0
 	#define UD6_AUTO_DUMP 0
+	#define HDD_TIMING 1
 
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 

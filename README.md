@@ -113,10 +113,14 @@ factory state. In order to do so:
 Under Linux you can mount the HDD image using this command:  
 $ mount -o loop,offset=16896 hdd.img /mnt/loop
 
+The offset value is equal to "start sector"*512. The start sector value can be 
+determined with:
+$ fdisk -l hdd.img
+
 *Nota bene*: if you change the disk type from the default 35 (WDL-330P) to any 
 other type, the automatically created image will be 0-filled and you'll need to 
 use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have 
-accurate performance emulation; any other type have the same performance as type
+accurate timings emulation; any other type have the same performance as type
 35.
 
 ### Key bindings

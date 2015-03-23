@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 	int cmd,c,result;
 
 	printf("HDDTEST - Tests the HDD's sectors by writing and reading a data pattern.\n");
-	printf("This program has been created to aid the development af IBMulator.\n"
+	printf("This program has been created to aid the development of IBMulator.\n"
 			"It is NOT a proper HDD tester! Don't use it on real hardware!\n");
 
 	switch(argc) {

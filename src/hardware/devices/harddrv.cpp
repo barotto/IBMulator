@@ -44,6 +44,8 @@ HardDrive g_harddrv;
 #define HDD_EXEC_TIME_US 500
 #define HDD_SECT_IDFIELD_BYTES 59
 
+#define HDD_DEFTIME_US 100
+
 /*
    IBM HDD types 1-44
 
@@ -51,51 +53,51 @@ HardDrive g_harddrv;
                            p-comp   Zone
 */
 const HDDType HardDrive::ms_hdd_types[45] = {
-{   0,     0,       0,          0,      0}, //0 (none)
-{ 306,     4,      17,        128,    305}, //1
-{ 615,     4,      17,        300,    615}, //2
-{ 615,     6,      17,        300,    615}, //3
-{ 940,     8,      17,        512,    940}, //4
-{ 940,     6,      17,        512,    940}, //5
-{ 615,     4,      17,         -1,    615}, //6
-{ 462,     8,      17,        256,    511}, //7
-{ 733,     5,      17,         -1,    733}, //8
-{ 900,    15,      17,         -1,    901}, //9
-{ 820,     3,      17,         -1,    820}, //10
-{ 855,     5,      17,         -1,    855}, //11
-{ 855,     7,      17,         -1,    855}, //12
-{ 306,     8,      17,        128,    319}, //13
-{ 733,     7,      17,         -1,    733}, //14
+{   0,     0,       0,          0,      0}, // 0 (none)
+{ 306,     4,      17,        128,    305}, // 1 10MB
+{ 615,     4,      17,        300,    615}, // 2 20MB
+{ 615,     6,      17,        300,    615}, // 3 31MB
+{ 940,     8,      17,        512,    940}, // 4 62MB
+{ 940,     6,      17,        512,    940}, // 5 47MB
+{ 615,     4,      17,         -1,    615}, // 6 20MB
+{ 462,     8,      17,        256,    511}, // 7 31MB
+{ 733,     5,      17,         -1,    733}, // 8 30MB
+{ 900,    15,      17,         -1,    901}, // 9 112MB
+{ 820,     3,      17,         -1,    820}, //10 20MB
+{ 855,     5,      17,         -1,    855}, //11 35MB
+{ 855,     7,      17,         -1,    855}, //12 50MB
+{ 306,     8,      17,        128,    319}, //13 20MB
+{ 733,     7,      17,         -1,    733}, //14 43MB
 {   0,     0,       0,          0,      0}, //15 (reserved)
-{ 612,     4,      17,          0,    663}, //16
-{ 977,     5,      17,        300,    977}, //17
-{ 977,     7,      17,         -1,    977}, //18
-{ 1024,    7,      17,        512,   1023}, //19
-{ 733,     5,      17,        300,    732}, //20
-{ 733,     7,      17,        300,    732}, //21
-{ 733,     5,      17,        300,    733}, //22
-{ 306,     4,      17,          0,    336}, //23
-{ 612,     4,      17,        305,    663}, //24
-{ 306,     4,      17,         -1,    340}, //25
-{ 612,     4,      17,         -1,    670}, //26
-{ 698,     7,      17,        300,    732}, //27
-{ 976,     5,      17,        488,    977}, //28
-{ 306,     4,      17,          0,    340}, //29
-{ 611,     4,      17,        306,    663}, //30
-{ 732,     7,      17,        300,    732}, //31
-{ 1023,    5,      17,         -1,   1023}, //32
-{ 614,     4,      25,         -1,    663}, //33
-{ 775,     2,      27,         -1,    900}, //34
-{ 921,     2,      33,         -1,   1000}, //35
-{ 402,     4,      26,         -1,    460}, //36
-{ 580,     6,      26,         -1,    640}, //37
-{ 845,     2,      36,         -1,   1023}, //38
-{ 769,     3,      36,         -1,   1023}, //39
-{ 531,     4,      39,         -1,    532}, //40
-{ 577,     2,      36,         -1,   1023}, //41
-{ 654,     2,      32,         -1,    674}, //42
-{ 923,     5,      36,         -1,   1023}, //43
-{ 531,     8,      39,         -1,    532}  //44
+{ 612,     4,      17,          0,    663}, //16 20MB
+{ 977,     5,      17,        300,    977}, //17 41MB
+{ 977,     7,      17,         -1,    977}, //18 57MB
+{ 1024,    7,      17,        512,   1023}, //19 59MB
+{ 733,     5,      17,        300,    732}, //20 30MB
+{ 733,     7,      17,        300,    732}, //21 43MB
+{ 733,     5,      17,        300,    733}, //22 30MB
+{ 306,     4,      17,          0,    336}, //23 10MB
+{ 612,     4,      17,        305,    663}, //24 20MB
+{ 306,     4,      17,         -1,    340}, //25 10MB
+{ 612,     4,      17,         -1,    670}, //26 20MB
+{ 698,     7,      17,        300,    732}, //27 41MB
+{ 976,     5,      17,        488,    977}, //28 40MB
+{ 306,     4,      17,          0,    340}, //29 10MB
+{ 611,     4,      17,        306,    663}, //30 20MB
+{ 732,     7,      17,        300,    732}, //31 43MB
+{ 1023,    5,      17,         -1,   1023}, //32 42MB
+{ 614,     4,      25,         -1,    663}, //33 30MB
+{ 775,     2,      27,         -1,    900}, //34 20MB
+{ 921,     2,      33,         -1,   1000}, //35 30MB
+{ 402,     4,      26,         -1,    460}, //36 20MB
+{ 580,     6,      26,         -1,    640}, //37 44MB
+{ 845,     2,      36,         -1,   1023}, //38 30MB
+{ 769,     3,      36,         -1,   1023}, //39 41MB
+{ 531,     4,      39,         -1,    532}, //40 40MB
+{ 577,     2,      36,         -1,   1023}, //41 20MB
+{ 654,     2,      32,         -1,    674}, //42 20MB
+{ 923,     5,      36,         -1,   1023}, //43 81MB
+{ 531,     8,      39,         -1,    532}  //44 81MB
 };
 
 //Attachment Status Reg bits
@@ -648,7 +650,7 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 					PERRF_ABORT(LOG_HDD, "data not ready\n");
 				}
 				if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-					g_machine.activate_timer(m_dma_timer, m_exec_time_us , 0);
+					g_machine.activate_timer(m_dma_timer, HDD_TIMING?m_exec_time_us:HDD_DEFTIME_US, 0);
 				}
 			} else if(_value & HDD_ATT_SSB) {
 				m_s.attention_reg |= HDD_ATT_SSB;
@@ -700,7 +702,7 @@ void HardDrive::command()
 	}
 	set_cur_sector(h, s);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
-	g_machine.activate_timer(m_cmd_timer, time_us, 0);
+	g_machine.activate_timer(m_cmd_timer, HDD_TIMING?time_us:HDD_DEFTIME_US, 0);
 
 	PDEBUGF(LOG_V2, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
 }
@@ -809,7 +811,7 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 			raise_interrupt();
 		} else { // more data to transfer
 			m_s.attch_status_reg |= HDD_ASR_BUSY;
-			g_machine.activate_timer(m_cmd_timer, m_sec_tx_us, 0);
+			g_machine.activate_timer(m_cmd_timer, HDD_TIMING?m_sec_tx_us:HDD_DEFTIME_US, 0);
 		}
 		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
@@ -851,7 +853,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 			if(c != m_s.cur_cylinder) {
 				time += m_trk2trk_us;
 			}
-			g_machine.activate_timer(m_dma_timer, time, 0);
+			g_machine.activate_timer(m_dma_timer, HDD_TIMING?time:HDD_DEFTIME_US, 0);
 		}
 		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
@@ -1012,7 +1014,7 @@ void HardDrive::read_data_cmd()
 	}
 
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		g_machine.activate_timer(m_dma_timer, time , 0);
+		g_machine.activate_timer(m_dma_timer, HDD_TIMING?time:HDD_DEFTIME_US, 0);
 	} else {
 		raise_interrupt();
 	}
