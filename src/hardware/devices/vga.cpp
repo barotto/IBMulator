@@ -166,6 +166,7 @@ void VGA::reset(uint type)
 		memset(&m_s, 0, sizeof(m_s));
 
 		m_s.vga_enabled = 1;
+		m_s.blink_counter = 1;
 		m_s.misc_output.color_emulation  = 1;
 		m_s.misc_output.enable_ram  = 1;
 		m_s.misc_output.horiz_sync_pol   = 1;
