@@ -72,6 +72,7 @@ protected:
 			uint8_t address;
 			uint8_t reg[0x19];
 			bool write_protect;
+			bool interrupt;
 		} CRTC;
 
 		struct {
@@ -198,6 +199,8 @@ protected:
 	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
 	void calculate_retrace_timing();
 	bool skip_update();
+	void raise_interrupt();
+	void lower_interrupt();
 
 public:
 	VGA();

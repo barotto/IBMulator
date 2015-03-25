@@ -24,8 +24,11 @@
 #include "machine.h"
 #include "hardware/devices.h"
 #include "hardware/memory.h"
+#include "hardware/devices/pic.h"
 #include "gui/gui.h"
 #include <cstring>
+
+#define VGA_IRQ 9
 
 VGA g_vga;
 
@@ -91,6 +94,8 @@ VGA::~VGA()
 void VGA::init()
 {
 	uint addr, i;
+
+	g_machine.register_irq(VGA_IRQ, get_name());
 
 	for(addr=0x03B4; addr<=0x03B5; addr++) {
 		g_devices.register_read_handler(this, addr, 1);
@@ -472,7 +477,9 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 
 		case 0x03c2: /* Input Status 0 */
 			PDEBUGF(LOG_V2, LOG_VGA, "io read 0x3c2: input status #0\n");
-			retval = m_s.pel.dac_sense << 4;
+			retval =
+				(m_s.pel.dac_sense << 4) |
+				(m_s.CRTC.interrupt << 7);
 			return retval;
 
 		case 0x03c3: /* VGA Enable Register */
@@ -1003,6 +1010,7 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 				}
 			}
 			if(value != m_s.CRTC.reg[m_s.CRTC.address]) {
+				uint8_t oldvalue = m_s.CRTC.reg[m_s.CRTC.address];
 				m_s.CRTC.reg[m_s.CRTC.address] = value;
 				switch (m_s.CRTC.address) {
 					case 0x00:
@@ -1050,8 +1058,13 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 						}
 						break;
 					case 0x11:
+						if(!(m_s.CRTC.reg[0x11] & 0x10)) {
+							lower_interrupt();
+						}
 						m_s.CRTC.write_protect = ((m_s.CRTC.reg[0x11] & 0x80) > 0);
-						calculate_retrace_timing();
+						if(oldvalue&0xF != m_s.CRTC.reg[0x11]&0xF) {
+							calculate_retrace_timing();
+						}
 						break;
 					case 0x12:
 						m_s.vertical_display_end &= 0x300;
@@ -1146,6 +1159,21 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 	return DAC_regno;
 }
 
+void VGA::raise_interrupt()
+{
+	if(m_s.CRTC.reg[0x11] & 0x10) {
+		PINFOF(LOG_V1, LOG_VGA, "raising IRQ %d\n", VGA_IRQ);
+		g_pic.raise_irq(VGA_IRQ);
+		m_s.CRTC.interrupt = true;
+	}
+}
+
+void VGA::lower_interrupt()
+{
+	g_pic.lower_irq(VGA_IRQ);
+	m_s.CRTC.interrupt = false;
+}
+
 bool VGA::skip_update()
 {
 	/* skip screen update when vga/video is disabled or the sequencer is in reset mode */
@@ -1171,9 +1199,12 @@ void VGA::update()
 	static uint cs_counter = 1; //cursor blink counter
 	static bool cs_visible = false;
 	bool cs_toggle = false;
+	bool skip = skip_update();
 
-	//gui should render the display texture now
-	//g_gui.vga_flush();
+	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip) {
+		//interrupt enabled
+		raise_interrupt();
+	}
 
 	cs_counter--;
 	/* no screen update necessary */
@@ -1240,7 +1271,7 @@ void VGA::update()
 			m_s.sequencer.clear_screen = false;
 		}
 
-		if(skip_update()) {
+		if(skip) {
 			m_display->unlock();
 			return;
 		}
@@ -1526,7 +1557,7 @@ void VGA::update()
 			m_s.sequencer.clear_screen = false;
 		}
 
-		if(skip_update()) {
+		if(skip) {
 			m_display->unlock();
 			return;
 		}
