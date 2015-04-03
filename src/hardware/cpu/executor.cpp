@@ -2194,23 +2194,17 @@ void CPUExecutor::CMPSW()
 
 void CPUExecutor::DAA()
 {
-	if(((REG_AL & 0x0F) > 0x09) || FLAG_AF) {
-		if((REG_AL > 0x99) || FLAG_CF) {
-			REG_AL += 0x60;
-			SET_FLAG(CF, true);
-		} else {
-			SET_FLAG(CF, false);
-		}
-		REG_AL += 0x06;
+	if(((REG_AL & 0x0F) > 9) || FLAG_AF) {
+		REG_AL += 6;
 		SET_FLAG(AF, true);
 	} else {
-		if((REG_AL > 0x99) || FLAG_CF) {
-			REG_AL += 0x60;
-			SET_FLAG(CF, true);
-		} else {
-			SET_FLAG(CF, false);
-		}
 		SET_FLAG(AF, false);
+	}
+	if((REG_AL > 0x9F) || FLAG_CF) {
+		REG_AL += 0x60;
+		SET_FLAG(CF, true);
+	} else {
+		SET_FLAG(CF, false);
 	}
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
@@ -2219,26 +2213,18 @@ void CPUExecutor::DAA()
 
 void CPUExecutor::DAS()
 {
-	uint8_t osigned = REG_AL & 0x80;
-	if(((REG_AL & 0x0f) > 9) || FLAG_AF) {
-		if((REG_AL > 0x99) || FLAG_CF) {
-			REG_AL -= 0x60;
-			SET_FLAG(CF, true);
-		} else {
-			SET_FLAG(CF, REG_AL <= 0x05);
-		}
+	if(((REG_AL & 0x0F) > 9) || FLAG_AF) {
 		REG_AL -= 6;
 		SET_FLAG(AF, true);
 	} else {
-		if((REG_AL > 0x99) || FLAG_CF) {
-			REG_AL -= 0x60;
-			SET_FLAG(CF, true);
-		} else {
-			SET_FLAG(CF, false);
-		}
 		SET_FLAG(AF, false);
 	}
-	SET_FLAG(OF, osigned && ((REG_AL & 0x80) == 0));
+	if((REG_AL > 0x9F) || FLAG_CF) {
+		REG_AL -= 0x60;
+		SET_FLAG(CF, true);
+	} else {
+		SET_FLAG(CF, false);
+	}
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
@@ -2707,7 +2693,7 @@ bool CPUExecutor::INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *cor
 {
 	const char * str = CPUDebugger::INT_decode(call, vector, ax, core, mem);
 	if(str != NULL) {
-		PDEBUGF(LOG_V1, LOG_CPU, "%s\n", str);
+		PINFOF(LOG_V1, LOG_CPU, "%s\n", str);
 	}
 	return true;
 }
