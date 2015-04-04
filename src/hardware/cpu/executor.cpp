@@ -3866,7 +3866,6 @@ uint8_t CPUExecutor::OR_b(uint8_t op1, uint8_t op2)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, false);
-	SET_FLAG(AF, false); //unknown
 
 	return res;
 }
@@ -3880,7 +3879,6 @@ uint16_t CPUExecutor::OR_w(uint16_t op1, uint16_t op2)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, false);
-	SET_FLAG(AF, false); //unknown
 
 	return res;
 }
@@ -3890,9 +3888,9 @@ void CPUExecutor::OR_ew_rw() { store_ew(OR_w(load_ew(), load_rw())); }
 void CPUExecutor::OR_rb_eb() { store_rb(OR_b(load_rb(), load_eb())); }
 void CPUExecutor::OR_rw_ew() { store_rw(OR_w(load_rw(), load_ew())); }
 void CPUExecutor::OR_AL_db(uint8_t imm) { REG_AL = OR_b(REG_AL, imm); }
-void CPUExecutor::OR_AX_dw(uint16_t imm) { REG_AX = OR_w(REG_AX, imm); }
+void CPUExecutor::OR_AX_dw(uint16_t imm){ REG_AX = OR_w(REG_AX, imm); }
 void CPUExecutor::OR_eb_db(uint8_t imm) { store_eb(OR_b(load_eb(), imm)); }
-void CPUExecutor::OR_ew_dw(uint16_t imm) { store_ew(OR_w(load_ew(), imm)); }
+void CPUExecutor::OR_ew_dw(uint16_t imm){ store_ew(OR_w(load_ew(), imm)); }
 void CPUExecutor::OR_ew_db(uint8_t imm) { store_ew(OR_w(load_ew(), int8_t(imm))); }
 
 
