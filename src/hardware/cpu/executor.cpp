@@ -4547,7 +4547,6 @@ uint8_t CPUExecutor::SHL_b(uint8_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
-	SET_FLAG(AF, _times); // undefined
 
 	return res;
 }
@@ -4577,7 +4576,6 @@ uint16_t CPUExecutor::SHL_w(uint16_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
-	SET_FLAG(AF, _times); //undefined
 
 	return res;
 }
@@ -4586,8 +4584,8 @@ void CPUExecutor::SAL_eb_db(uint8_t data) { store_eb(SHL_b(load_eb(), data)); }
 void CPUExecutor::SAL_ew_db(uint8_t data) { store_ew(SHL_w(load_ew(), data));  }
 void CPUExecutor::SAL_eb_1() { store_eb(SHL_b(load_eb(), 1)); }
 void CPUExecutor::SAL_ew_1() { store_ew(SHL_w(load_ew(), 1)); }
-void CPUExecutor::SAL_eb_CL() { store_eb(SHL_b(load_eb(), REG_CL)); }
-void CPUExecutor::SAL_ew_CL() { store_ew(SHL_w(load_ew(), REG_CL)); }
+void CPUExecutor::SAL_eb_CL(){ store_eb(SHL_b(load_eb(), REG_CL)); }
+void CPUExecutor::SAL_ew_CL(){ store_ew(SHL_w(load_ew(), REG_CL)); }
 
 uint8_t CPUExecutor::SHR_b(uint8_t _value, uint8_t _times)
 {
@@ -4605,7 +4603,6 @@ uint8_t CPUExecutor::SHR_b(uint8_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
-	SET_FLAG(AF, _times); //undefined
 
 	return res;
 }
@@ -4626,7 +4623,6 @@ uint16_t CPUExecutor::SHR_w(uint16_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
-	SET_FLAG(AF, _times); //undefined
 
 	return res;
 }
@@ -4635,8 +4631,8 @@ void CPUExecutor::SHR_eb_db(uint8_t data) { store_eb(SHR_b(load_eb(), data)); }
 void CPUExecutor::SHR_ew_db(uint8_t data) { store_ew(SHR_w(load_ew(), data)); }
 void CPUExecutor::SHR_eb_1() { store_eb(SHR_b(load_eb(), 1)); }
 void CPUExecutor::SHR_ew_1() { store_ew(SHR_w(load_ew(), 1)); }
-void CPUExecutor::SHR_eb_CL() { store_eb(SHR_b(load_eb(), REG_CL)); }
-void CPUExecutor::SHR_ew_CL() { store_ew(SHR_w(load_ew(), REG_CL)); }
+void CPUExecutor::SHR_eb_CL(){ store_eb(SHR_b(load_eb(), REG_CL)); }
+void CPUExecutor::SHR_ew_CL(){ store_ew(SHR_w(load_ew(), REG_CL)); }
 
 uint8_t CPUExecutor::SAR_b(uint8_t _value, uint8_t _times)
 {
@@ -4646,7 +4642,7 @@ uint8_t CPUExecutor::SAR_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 
-    uint8_t res = ((int8_t) _value) >> _times;
+	uint8_t res = ((int8_t) _value) >> _times;
 
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, (((int8_t) _value) >> (_times - 1)) & 1);
@@ -4654,7 +4650,6 @@ uint8_t CPUExecutor::SAR_b(uint8_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(AF, _times); //undefined
 
 	return res;
 }
@@ -4667,7 +4662,7 @@ uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
 		return _value;
 	}
 
-	 uint16_t res = ((int16_t) _value) >> _times;
+	uint16_t res = ((int16_t) _value) >> _times;
 
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, (((int16_t) _value) >> (_times - 1)) & 1);
@@ -4675,7 +4670,6 @@ uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(AF, _times); //undefined
 
 	return res;
 }
@@ -4684,8 +4678,8 @@ void CPUExecutor::SAR_eb_db(uint8_t data) { store_eb(SAR_b(load_eb(), data)); }
 void CPUExecutor::SAR_ew_db(uint8_t data) { store_ew(SAR_w(load_ew(), data)); }
 void CPUExecutor::SAR_eb_1() { store_eb(SAR_b(load_eb(), 1)); }
 void CPUExecutor::SAR_ew_1() { store_ew(SAR_w(load_ew(), 1)); }
-void CPUExecutor::SAR_eb_CL() { store_eb(SAR_b(load_eb(), REG_CL)); }
-void CPUExecutor::SAR_ew_CL() { store_ew(SAR_w(load_ew(), REG_CL)); }
+void CPUExecutor::SAR_eb_CL(){ store_eb(SAR_b(load_eb(), REG_CL)); }
+void CPUExecutor::SAR_ew_CL(){ store_ew(SAR_w(load_ew(), REG_CL)); }
 
 
 /*******************************************************************************
