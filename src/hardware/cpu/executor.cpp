@@ -3268,9 +3268,8 @@ void CPUExecutor::LEA_rw_m()
 
 void CPUExecutor::LEAVE()
 {
-	uint16_t value16 = stack_read(REG_BP);
-	REG_SP = REG_BP + 2;
-	REG_BP = value16;
+	REG_SP = REG_BP;
+	REG_BP = stack_pop();
 }
 
 
