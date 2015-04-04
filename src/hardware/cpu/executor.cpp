@@ -3750,10 +3750,10 @@ void CPUExecutor::MOVSW()
 
 void CPUExecutor::MUL_eb()
 {
-	uint8_t op1 = REG_AL;
-	uint8_t op2 = load_eb();
+	uint8_t op1_8 = REG_AL;
+	uint8_t op2_8 = load_eb();
 
-	uint32_t product_16 = uint16_t(op1) * uint16_t(op2);
+	uint16_t product_16 = uint16_t(op1_8) * uint16_t(op2_8);
 
 	uint8_t product_8l = product_16 & 0xFF;
 	uint8_t product_8h = product_16 >> 8;
@@ -3761,7 +3761,6 @@ void CPUExecutor::MUL_eb()
 	/* now write product back to destination */
 	REG_AX = product_16;
 
-	SET_FLAG(ZF, product_8l == 0);
 	if(product_8h) {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
@@ -3777,6 +3776,7 @@ void CPUExecutor::MUL_ew()
 	uint16_t op2_16 = load_ew();
 
 	uint32_t product_32  = uint32_t(op1_16) * uint32_t(op2_16);
+
 	uint16_t product_16l = product_32 & 0xFFFF;
 	uint16_t product_16h = product_32 >> 16;
 
@@ -3784,7 +3784,6 @@ void CPUExecutor::MUL_ew()
 	REG_AX = product_16l;
 	REG_DX = product_16h;
 
-	SET_FLAG(ZF, product_16l == 0);
 	if(product_16h) {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
