@@ -4945,11 +4945,10 @@ void CPUExecutor::TEST_b(uint8_t _value1, uint8_t _value2)
 {
 	uint8_t res = _value1 & _value2;
 
-	SET_FLAG(CF, false);
-	SET_FLAG(AF, false); //unknown
-	SET_FLAG(ZF, res == 0);
-	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(OF, false);
+	SET_FLAG(CF, false);
+	SET_FLAG(SF, res & 0x80);
+	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 }
 
@@ -4957,18 +4956,17 @@ void CPUExecutor::TEST_w(uint16_t _value1, uint16_t _value2)
 {
 	uint16_t res = _value1 & _value2;
 
-	SET_FLAG(CF, false);
-	SET_FLAG(AF, false); //unknown
-	SET_FLAG(ZF, res == 0);
-	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(OF, false);
+	SET_FLAG(CF, false);
+	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 }
 
 void CPUExecutor::TEST_eb_rb() { TEST_b(load_eb(), load_rb()); }
 void CPUExecutor::TEST_ew_rw() { TEST_w(load_ew(), load_rw()); }
 void CPUExecutor::TEST_AL_db(uint8_t db) { TEST_b(REG_AL, db); }
-void CPUExecutor::TEST_AX_dw(uint16_t dw) { TEST_w(REG_AX, dw); }
+void CPUExecutor::TEST_AX_dw(uint16_t dw){ TEST_w(REG_AX, dw); }
 void CPUExecutor::TEST_eb_db(uint8_t db) { TEST_b(load_eb(), db); }
 void CPUExecutor::TEST_ew_dw(uint16_t dw){ TEST_w(load_ew(), dw); }
 
@@ -5184,10 +5182,9 @@ uint8_t CPUExecutor::XOR_b(uint8_t _op1, uint8_t _op2)
 	uint8_t res = _op1 ^ _op2;
 
 	SET_FLAG(CF, false);
-	SET_FLAG(AF, false);  //unknown
-	SET_FLAG(ZF, res == 0);
-	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(OF, false);
+	SET_FLAG(SF, res & 0x80);
+	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 
 	return res;
@@ -5198,10 +5195,9 @@ uint16_t CPUExecutor::XOR_w(uint16_t _op1, uint16_t _op2)
 	uint16_t res = _op1 ^ _op2;
 
 	SET_FLAG(CF, false);
-	SET_FLAG(AF, false); //unknown
-	SET_FLAG(ZF, res == 0);
-	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(OF, false);
+	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 
 	return res;
@@ -5211,9 +5207,9 @@ void CPUExecutor::XOR_rb_eb() { store_rb(XOR_b(load_rb(), load_eb())); }
 void CPUExecutor::XOR_rw_ew() { store_rw(XOR_w(load_rw(), load_ew())); }
 void CPUExecutor::XOR_eb_rb() { store_eb(XOR_b(load_eb(), load_rb())); }
 void CPUExecutor::XOR_ew_rw() { store_ew(XOR_w(load_ew(), load_rw())); }
-void CPUExecutor::XOR_AL_db(uint8_t db)  { REG_AL = XOR_b(REG_AL, db); }
-void CPUExecutor::XOR_AX_dw(uint16_t dw) { REG_AX = XOR_w(REG_AX, dw); }
+void CPUExecutor::XOR_AL_db(uint8_t db) { REG_AL = XOR_b(REG_AL, db); }
+void CPUExecutor::XOR_AX_dw(uint16_t dw){ REG_AX = XOR_w(REG_AX, dw); }
 void CPUExecutor::XOR_eb_db(uint8_t db) { store_eb(XOR_b(load_eb(), db)); }
-void CPUExecutor::XOR_ew_dw(uint16_t dw) { store_ew(XOR_w(load_ew(), dw)); }
+void CPUExecutor::XOR_ew_dw(uint16_t dw){ store_ew(XOR_w(load_ew(), dw)); }
 void CPUExecutor::XOR_ew_db(uint8_t db) { store_ew(XOR_w(load_ew(), int8_t(db))); }
 
