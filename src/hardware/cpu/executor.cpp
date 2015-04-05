@@ -1859,10 +1859,10 @@ void CPUExecutor::ADC_eb_rb() { store_eb(ADC_b(load_eb(), load_rb())); }
 void CPUExecutor::ADC_ew_rw() { store_ew(ADC_w(load_ew(), load_rw())); }
 void CPUExecutor::ADC_rb_eb() { store_rb(ADC_b(load_rb(), load_eb())); }
 void CPUExecutor::ADC_rw_ew() { store_rw(ADC_w(load_rw(), load_ew())); }
-void CPUExecutor::ADC_AL_db(uint8_t imm)  { REG_AL = ADC_b(REG_AL, imm); }
-void CPUExecutor::ADC_AX_dw(uint16_t imm) { REG_AX = ADC_w(REG_AX, imm); }
+void CPUExecutor::ADC_AL_db(uint8_t imm) { REG_AL = ADC_b(REG_AL, imm); }
+void CPUExecutor::ADC_AX_dw(uint16_t imm){ REG_AX = ADC_w(REG_AX, imm); }
 void CPUExecutor::ADC_eb_db(uint8_t imm) { store_eb(ADC_b(load_eb(), imm)); }
-void CPUExecutor::ADC_ew_dw(uint16_t imm) { store_ew(ADC_w(load_ew(), imm)); }
+void CPUExecutor::ADC_ew_dw(uint16_t imm){ store_ew(ADC_w(load_ew(), imm)); }
 void CPUExecutor::ADC_ew_db(uint8_t imm) { store_ew(ADC_w(load_ew(), int8_t(imm))); }
 
 uint8_t CPUExecutor::ADD_b(uint8_t op1, uint8_t op2)
@@ -1897,10 +1897,10 @@ void CPUExecutor::ADD_eb_rb()  { store_eb(ADD_b(load_eb(), load_rb())); }
 void CPUExecutor::ADD_ew_rw()  { store_ew(ADD_w(load_ew(), load_rw())); }
 void CPUExecutor::ADD_rb_eb()  { store_rb(ADD_b(load_rb(), load_eb())); }
 void CPUExecutor::ADD_rw_ew()  { store_rw(ADD_w(load_rw(), load_ew())); }
-void CPUExecutor::ADD_AL_db(uint8_t imm)  { REG_AL = ADD_b(REG_AL, imm); }
-void CPUExecutor::ADD_AX_dw(uint16_t imm) { REG_AX = ADD_w(REG_AX, imm); }
+void CPUExecutor::ADD_AL_db(uint8_t imm) { REG_AL = ADD_b(REG_AL, imm); }
+void CPUExecutor::ADD_AX_dw(uint16_t imm){ REG_AX = ADD_w(REG_AX, imm); }
 void CPUExecutor::ADD_eb_db(uint8_t imm) { store_eb(ADD_b(load_eb(), imm)); }
-void CPUExecutor::ADD_ew_dw(uint16_t imm) { store_ew(ADD_w(load_ew(), imm)); }
+void CPUExecutor::ADD_ew_dw(uint16_t imm){ store_ew(ADD_w(load_ew(), imm)); }
 void CPUExecutor::ADD_ew_db(uint8_t imm) { store_ew(ADD_w(load_ew(), int8_t(imm))); }
 
 
@@ -1941,9 +1941,9 @@ void CPUExecutor::AND_ew_rw() { store_ew(AND_w(load_ew(),load_rw())); }
 void CPUExecutor::AND_rb_eb() { store_rb(AND_b(load_rb(),load_eb())); }
 void CPUExecutor::AND_rw_ew() { store_rw(AND_w(load_rw(),load_ew())); }
 void CPUExecutor::AND_AL_db(uint8_t imm) { REG_AL = AND_b(REG_AL, imm); }
-void CPUExecutor::AND_AX_dw(uint16_t imm) { REG_AX = AND_w(REG_AX, imm); }
+void CPUExecutor::AND_AX_dw(uint16_t imm){ REG_AX = AND_w(REG_AX, imm); }
 void CPUExecutor::AND_eb_db(uint8_t imm) { store_eb(AND_b(load_eb(),imm)); }
-void CPUExecutor::AND_ew_dw(uint16_t imm) { store_ew(AND_w(load_ew(),imm)); }
+void CPUExecutor::AND_ew_dw(uint16_t imm){ store_ew(AND_w(load_ew(),imm)); }
 void CPUExecutor::AND_ew_db(uint8_t imm) { store_ew(AND_w(load_ew(), int8_t(imm))); }
 
 
@@ -2145,9 +2145,9 @@ void CPUExecutor::CMP_ew_rw() { CMP_w(load_ew(), load_rw()); }
 void CPUExecutor::CMP_rb_eb() { CMP_b(load_rb(), load_eb()); }
 void CPUExecutor::CMP_rw_ew() { CMP_w(load_rw(), load_ew()); }
 void CPUExecutor::CMP_AL_db(uint8_t imm) { CMP_b(REG_AL, imm); }
-void CPUExecutor::CMP_AX_dw(uint16_t imm) { CMP_w(REG_AX, imm); }
+void CPUExecutor::CMP_AX_dw(uint16_t imm){ CMP_w(REG_AX, imm); }
 void CPUExecutor::CMP_eb_db(uint8_t imm) { CMP_b(load_eb(), imm); }
-void CPUExecutor::CMP_ew_dw(uint16_t imm) { CMP_w(load_ew(), imm); }
+void CPUExecutor::CMP_ew_dw(uint16_t imm){ CMP_w(load_ew(), imm); }
 void CPUExecutor::CMP_ew_db(uint8_t imm) { CMP_w(load_ew(), int8_t(imm)); }
 
 
@@ -3755,7 +3755,6 @@ void CPUExecutor::MUL_eb()
 
 	uint16_t product_16 = uint16_t(op1_8) * uint16_t(op2_8);
 
-	uint8_t product_8l = product_16 & 0xFF;
 	uint8_t product_8h = product_16 >> 8;
 
 	/* now write product back to destination */
@@ -4167,8 +4166,8 @@ void CPUExecutor::ROL_eb_db(uint8_t times) { store_eb(ROL_b(load_eb(), times)); 
 void CPUExecutor::ROL_ew_db(uint8_t times) { store_ew(ROL_w(load_ew(), times)); }
 void CPUExecutor::ROL_eb_1() { store_eb(ROL_b(load_eb(), 1)); }
 void CPUExecutor::ROL_ew_1() { store_ew(ROL_w(load_ew(), 1)); }
-void CPUExecutor::ROL_eb_CL() { store_eb(ROL_b(load_eb(), REG_CL)); }
-void CPUExecutor::ROL_ew_CL() { store_ew(ROL_w(load_ew(), REG_CL)); }
+void CPUExecutor::ROL_eb_CL(){ store_eb(ROL_b(load_eb(), REG_CL)); }
+void CPUExecutor::ROL_ew_CL(){ store_ew(ROL_w(load_ew(), REG_CL)); }
 
 uint8_t CPUExecutor::ROR_b(uint8_t _value, uint8_t _times)
 {
@@ -4210,8 +4209,8 @@ void CPUExecutor::ROR_eb_db(uint8_t times) { store_eb(ROR_b(load_eb(), times)); 
 void CPUExecutor::ROR_ew_db(uint8_t times) { store_ew(ROR_w(load_ew(), times)); }
 void CPUExecutor::ROR_eb_1() { store_eb(ROR_b(load_eb(), 1)); }
 void CPUExecutor::ROR_ew_1() { store_ew(ROR_w(load_ew(), 1)); }
-void CPUExecutor::ROR_eb_CL() { store_eb(ROR_b(load_eb(), REG_CL)); }
-void CPUExecutor::ROR_ew_CL() { store_ew(ROR_w(load_ew(), REG_CL)); }
+void CPUExecutor::ROR_eb_CL(){ store_eb(ROR_b(load_eb(), REG_CL)); }
+void CPUExecutor::ROR_ew_CL(){ store_ew(ROR_w(load_ew(), REG_CL)); }
 
 uint8_t CPUExecutor::RCL_b(uint8_t _value, uint8_t _times)
 {
@@ -4268,8 +4267,8 @@ void CPUExecutor::RCL_eb_db(uint8_t times) { store_eb(RCL_b(load_eb(), times)); 
 void CPUExecutor::RCL_ew_db(uint8_t times) { store_ew(RCL_w(load_ew(), times)); }
 void CPUExecutor::RCL_eb_1() { store_eb(RCL_b(load_eb(), 1)); }
 void CPUExecutor::RCL_ew_1() { store_ew(RCL_w(load_ew(), 1)); }
-void CPUExecutor::RCL_eb_CL() { store_eb(RCL_b(load_eb(), REG_CL)); }
-void CPUExecutor::RCL_ew_CL() { store_ew(RCL_w(load_ew(), REG_CL)); }
+void CPUExecutor::RCL_eb_CL(){ store_eb(RCL_b(load_eb(), REG_CL)); }
+void CPUExecutor::RCL_ew_CL(){ store_ew(RCL_w(load_ew(), REG_CL)); }
 
 uint8_t CPUExecutor::RCR_b(uint8_t _value, uint8_t _times)
 {
@@ -4311,8 +4310,8 @@ void CPUExecutor::RCR_eb_db(uint8_t times) { store_eb(RCR_b(load_eb(), times)); 
 void CPUExecutor::RCR_ew_db(uint8_t times) { store_ew(RCR_w(load_ew(), times)); }
 void CPUExecutor::RCR_eb_1() { store_eb(RCR_b(load_eb(), 1)); }
 void CPUExecutor::RCR_ew_1() { store_ew(RCR_w(load_ew(), 1)); }
-void CPUExecutor::RCR_eb_CL() { store_eb(RCR_b(load_eb(), REG_CL)); }
-void CPUExecutor::RCR_ew_CL() { store_ew(RCR_w(load_ew(), REG_CL)); }
+void CPUExecutor::RCR_eb_CL(){ store_eb(RCR_b(load_eb(), REG_CL)); }
+void CPUExecutor::RCR_ew_CL(){ store_ew(RCR_w(load_ew(), REG_CL)); }
 
 
 /*******************************************************************************
@@ -4721,9 +4720,9 @@ void CPUExecutor::SBB_ew_rw() { store_ew(SBB_w(load_ew(), load_rw())); }
 void CPUExecutor::SBB_rb_eb() { store_rb(SBB_b(load_rb(), load_eb())); }
 void CPUExecutor::SBB_rw_ew() { store_rw(SBB_w(load_rw(), load_ew())); }
 void CPUExecutor::SBB_AL_db(uint8_t imm) { REG_AL = SBB_b(REG_AL, imm); }
-void CPUExecutor::SBB_AX_dw(uint16_t imm) { REG_AX = SBB_w(REG_AX, imm); }
+void CPUExecutor::SBB_AX_dw(uint16_t imm){ REG_AX = SBB_w(REG_AX, imm); }
 void CPUExecutor::SBB_eb_db(uint8_t imm) { store_eb(SBB_b(load_eb(), imm)); }
-void CPUExecutor::SBB_ew_dw(uint16_t imm) { store_ew(SBB_w(load_ew(), imm)); }
+void CPUExecutor::SBB_ew_dw(uint16_t imm){ store_ew(SBB_w(load_ew(), imm)); }
 void CPUExecutor::SBB_ew_db(uint8_t imm) { store_ew(SBB_w(load_ew(), int8_t(imm))); }
 
 
@@ -4931,9 +4930,9 @@ void CPUExecutor::SUB_ew_rw() { store_ew(SUB_w(load_ew(), load_rw())); }
 void CPUExecutor::SUB_rb_eb() { store_rb(SUB_b(load_rb(), load_eb())); }
 void CPUExecutor::SUB_rw_ew() { store_rw(SUB_w(load_rw(), load_ew())); }
 void CPUExecutor::SUB_AL_db(uint8_t imm) { REG_AL = SUB_b(REG_AL, imm); }
-void CPUExecutor::SUB_AX_dw(uint16_t imm)  { REG_AX = SUB_w(REG_AX, imm); }
+void CPUExecutor::SUB_AX_dw(uint16_t imm){ REG_AX = SUB_w(REG_AX, imm); }
 void CPUExecutor::SUB_eb_db(uint8_t imm) { store_eb(SUB_b(load_eb(), imm)); }
-void CPUExecutor::SUB_ew_dw(uint16_t imm) { store_ew(SUB_w(load_ew(), imm)); }
+void CPUExecutor::SUB_ew_dw(uint16_t imm){ store_ew(SUB_w(load_ew(), imm)); }
 void CPUExecutor::SUB_ew_db(uint8_t imm) { store_ew(SUB_w(load_ew(), int8_t(imm))); }
 
 
