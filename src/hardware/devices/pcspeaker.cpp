@@ -27,8 +27,8 @@ PCSpeaker g_pcspeaker;
 
 PCSpeaker::PCSpeaker()
 :
-m_disable_time(0),
 m_last_time(0),
+m_disable_time(0),
 m_samples_rem(0.0)
 {
 }

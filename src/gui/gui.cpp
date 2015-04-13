@@ -92,10 +92,10 @@ std::map<std::string, uint> display_aspect = {
 
 GUI::GUI()
 :
+m_symspeed_factor(1.0),
 m_rocket_renderer(NULL),
 m_rocket_sys_interface(NULL),
-m_rocket_file_interface(NULL),
-m_symspeed_factor(1.0)
+m_rocket_file_interface(NULL)
 {
 
 }
@@ -1339,7 +1339,7 @@ void GUI::load_splash_image()
 	}
 }
 
-Uint32 GUI::every_second(Uint32 interval, void *param)
+Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 {
 	SDL_Event event;
 	SDL_UserEvent userevent;

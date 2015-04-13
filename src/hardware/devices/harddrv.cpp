@@ -41,8 +41,8 @@ HardDrive g_harddrv;
 #define HDD_DMA_CHAN 3
 #define HDD_IRQ      14
 
-#define HDD_EXEC_TIME_US 500
-#define HDD_SECT_IDFIELD_BYTES 59
+#define HDD_EXEC_TIME_US        500
+#define HDD_SECT_IDFIELD_BYTES  59   //>25 but what is the real value?
 
 #define HDD_DEFTIME_US 100
 
@@ -253,12 +253,13 @@ void HardDrive::State::SSB::clear()
 	//drive_type is static
 }
 
-int HardDrive::chs_to_lba(int _c, int _h, int _s) const
+unsigned HardDrive::chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const
 {
+	ASSERT(_s>0);
 	return (_c * m_disk->heads + _h ) * m_disk->spt + (_s-1);
 }
 
-void HardDrive::lba_to_chs(int _lba, int &_c, int &_h, int &_s) const
+void HardDrive::lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const
 {
 	_c = _lba / (m_disk->heads * m_disk->spt);
 	_h = (_lba / m_disk->spt) % m_disk->heads;
@@ -390,10 +391,8 @@ void HardDrive::mount(std::string _imgpath)
 
 	m_tmp_disk = false;
 
-	unsigned spt,cyl,heads=2;
 	uint32_t seek_max=40000;
 	double tx_rate_mbps;
-	const int sec_idfield_size = 59; //>25 but what is the real value? TODO
 	int rpm,interleave=4;
 
 	//the only performance values I have are those of type 35 and 38
@@ -676,8 +675,7 @@ void HardDrive::command()
 	if(m_s.ccb.auto_seek) {
 		time_us += get_seek_time(m_s.ccb.cylinder);
 	}
-	int h = m_s.ccb.head;
-	int s = m_s.ccb.sector;
+	unsigned s = m_s.ccb.sector;
 	switch(m_s.ccb.command) {
 		case HDD_CMD::WRITE_DATA:
 			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
@@ -700,18 +698,18 @@ void HardDrive::command()
 			time_us += m_sec_tx_us;
 			break;
 	}
-	set_cur_sector(h, s);
+	set_cur_sector(m_s.ccb.head, s);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
 	g_machine.activate_timer(m_cmd_timer, HDD_TIMING?time_us:HDD_DEFTIME_US, 0);
 
 	PDEBUGF(LOG_V2, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
 }
 
-uint32_t HardDrive::get_seek_time(int _c)
+uint32_t HardDrive::get_seek_time(unsigned _c)
 {
 	uint32_t time = 0;
 	if(m_s.cur_cylinder != _c) {
-		int dc = abs(m_s.cur_cylinder - _c);
+		int dc = abs(int(m_s.cur_cylinder) - int(_c));
 		time = m_trk2trk_us + dc*m_avg_trk_lat_us;
 	}
 	return time;
@@ -841,7 +839,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	bool TC = g_dma.get_TC() && (len == _maxlen);
 	if((m_s.data_ptr >= m_s.data_size) || TC) {
 		m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
-		int c = m_s.cur_cylinder;
+		unsigned c = m_s.cur_cylinder;
 		cmd_timer();
 		if(TC) { // Terminal Count line, done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA READ TC>> C:%d,H:%d,S:%d,nS:%d\n",
@@ -885,7 +883,7 @@ void HardDrive::cmd_timer()
 	g_machine.deactivate_timer(m_cmd_timer);
 }
 
-void HardDrive::set_cur_sector(int _h, int _s)
+void HardDrive::set_cur_sector(unsigned _h, unsigned _s)
 {
 	m_s.cur_head = _h;
 	if(_h >= m_disk->heads) {
@@ -904,7 +902,7 @@ void HardDrive::set_cur_sector(int _h, int _s)
 	}
 }
 
-bool HardDrive::seek(int _c)
+bool HardDrive::seek(unsigned _c)
 {
 	if(_c >= m_disk->cylinders) {
 		//TODO is it a temination error?
@@ -940,11 +938,11 @@ void HardDrive::increment_sector()
 	}
 }
 
-void HardDrive::read_sector(int _c, int _h, int _s)
+void HardDrive::read_sector(unsigned _c, unsigned _h, unsigned _s)
 {
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ\n");
 
-	int lba = chs_to_lba(_c,_h,_s);
+	unsigned lba = chs_to_lba(_c,_h,_s);
 	ASSERT(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
@@ -953,11 +951,11 @@ void HardDrive::read_sector(int _c, int _h, int _s)
 	ASSERT(res == 512);
 }
 
-void HardDrive::write_sector(int _c, int _h, int _s)
+void HardDrive::write_sector(unsigned _c, unsigned _h, unsigned _s)
 {
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE\n");
 
-	int lba = chs_to_lba(_c,_h,_s);
+	unsigned lba = chs_to_lba(_c,_h,_s);
 	ASSERT(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
@@ -1006,7 +1004,7 @@ void HardDrive::read_data_cmd()
 	if(m_s.ccb.num_sectors == 0) {
 		m_s.attention_reg &= ~HDD_ATT_CCB;
 	} else {
-		int s = m_s.cur_cylinder;
+		unsigned s = m_s.cur_cylinder;
 		increment_sector();
 		if(s != m_s.cur_cylinder) {
 			time += m_trk2trk_us;

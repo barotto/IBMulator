@@ -446,7 +446,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	}
 }
 
-void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
+void Serial::init_mode_pipe(uint /*comn*/, std::string dev, uint mode)
 {
 	if(dev.empty()) {
 		return;
@@ -1406,7 +1406,8 @@ void Serial::tx_timer(uint8_t port)
 				#if SERIAL_ENABLE
 				PDEBUGF(LOG_V2, LOG_COM, "COM%d: write: '%c'\n", port+1, m_s[port].tsrbuffer);
 				if(m_s[port].tty_id >= 0) {
-					::write(m_s[port].tty_id, (void*) & m_s[port].tsrbuffer, 1);
+					ssize_t res = ::write(m_s[port].tty_id, (void*) & m_s[port].tsrbuffer, 1);
+					ASSERT(res==1);
 				}
 				#endif
 				break;
@@ -1427,7 +1428,8 @@ void Serial::tx_timer(uint8_t port)
 					PDEBUGF(LOG_V2, LOG_COM, "attempting to write win32 : %c\n", m_s[port].tsrbuffer);
 					::send(m_s[port].socket_id, (const char*) & m_s[port].tsrbuffer, 1, 0);
 					#else
-					::write(m_s[port].socket_id, (void*)&m_s[port].tsrbuffer, 1);
+					ssize_t res = ::write(m_s[port].socket_id, (void*)&m_s[port].tsrbuffer, 1);
+					ASSERT(res==1);
 					#endif
 				}
 				break;
@@ -1560,7 +1562,8 @@ void Serial::rx_timer(uint8_t port)
 			case SER_MODE_TERM:
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
 				if((m_s[port].tty_id >= 0) && (select(m_s[port].tty_id + 1, &fds, NULL, NULL, &tval) == 1)) {
-					::read(m_s[port].tty_id, &chbuf, 1);
+					ssize_t res = ::read(m_s[port].tty_id, &chbuf, 1);
+					ASSERT(res==1);
 					PDEBUGF(LOG_V2, LOG_COM, "COM%d: read: '%c'\n", port+1, chbuf);
 					data_ready = 1;
 				}

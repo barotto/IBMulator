@@ -52,8 +52,8 @@ void MixerChannel::add_samples(uint8_t *_data, size_t _size)
 
 Mixer::Mixer()
 :
-m_device(0),
 m_heartbeat(MIXER_HEARTBEAT),
+m_device(0),
 m_audio_capture(false)
 {
 	m_buffer.set_size(MIXER_BUFSIZE);
@@ -188,7 +188,7 @@ void Mixer::main_loop()
 {
 	#if MULTITHREADED
 	while(true) {
-		int time_slice = m_main_chrono.elapsed_usec();
+		unsigned time_slice = m_main_chrono.elapsed_usec();
 		if(time_slice < m_heartbeat) {
 			uint64_t sleep = m_heartbeat - time_slice;
 			uint64_t t0 = m_main_chrono.get_usec();

@@ -711,7 +711,7 @@ void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 	//DS:DX -> ASCIZ program name
 	char * name = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
 	const char * type = "";
-	switch(core->get_AL()) {
+	switch(ax & 0xFF) {
 		case 0x0: type = "load and execute"; break;
 		case 0x1: type = "load but do not execute"; break;
 		case 0x3: type = "load overlay"; break;
@@ -763,7 +763,7 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	snprintf(buf, buflen, " : '%s' %s", filename, mode);
 }
 
-void CPUDebugger::INT_21_3E(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+void CPUDebugger::INT_21_3E(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {
@@ -774,7 +774,7 @@ void CPUDebugger::INT_21_3E(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	snprintf(buf, buflen, " : handle=%d", core->get_BX());
 }
 
-void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {
@@ -791,7 +791,7 @@ void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 			core->get_BX(), core->get_CX(), core->get_DS().sel.value, core->get_DX());
 }
 
-void CPUDebugger::INT_21_42(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+void CPUDebugger::INT_21_42(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {
@@ -806,7 +806,7 @@ void CPUDebugger::INT_21_42(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	}
 
 	const char *origin = "";
-	switch(core->get_AL()) {
+	switch(ax & 0xFF) {
 		case 0x0: origin = "start of file"; break;
 		case 0x1: origin = "current file position"; break;
 		case 0x2: origin = "end of file"; break;

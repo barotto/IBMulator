@@ -66,8 +66,6 @@ void RocketRenderer::RenderGeometry(Vertex* vertices,
 		const TextureHandle texture,
 		const Vector2f& translation)
 {
-	GLint uniformLoc;
-
 	GLCALL( glBindSampler(0, m_sampler) );
 	GLCALL( glUseProgram(m_program) );
 

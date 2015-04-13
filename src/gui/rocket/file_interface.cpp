@@ -33,7 +33,7 @@ root(_root)
 // Opens a file.
 FileHandle RocketFileInterface::Open(const String& path)
 {
-	if(path == "") return NULL;
+	if(path == "") return 0;
 
 	// Attempt to open the file relative to the application's root.
 	FILE* fp = fopen((root + path).CString(), "rb");

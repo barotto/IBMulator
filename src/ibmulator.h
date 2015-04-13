@@ -35,7 +35,7 @@
 #define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
 #define CPULOG_WRITE_HEX     false   // write instruction as hex codes?
 #define CPULOG_WRITE_CORE    true    // write the CPU registers?
-#define CPULOG_START_ADDR    0x0     // lower bound, instr. before this address are not logged
+#define CPULOG_START_ADDR    0x500   // lower bound, instr. before this address are not logged
 #define CPULOG_END_ADDR      0x9FFFF // upper bound, instr. after this address are not logged
 #define CPULOG_LOG_INTS      false   // log INTs' instructions?
 #define CPULOG_INT21_EXIT_IP 0x7782  // the IP of the last instr. of INT 21/4B

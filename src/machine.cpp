@@ -315,7 +315,6 @@ bool Machine::main_loop()
 
 void Machine::core_step(int32_t _cpu_cycles)
 {
-	uint64_t start_time = m_s.virt_time;
 	int32_t cycles_left = _cpu_cycles;
 	if(_cpu_cycles>0) {
 		cycles_left = _cpu_cycles + m_s.cycles_left;
@@ -332,9 +331,7 @@ void Machine::core_step(int32_t _cpu_cycles)
 
 			uint32_t elapsed_ns = c * cycle_time;
 			uint64_t cpu_time = m_s.virt_time + elapsed_ns;
-			//if(m_s.virt_time==2772557000) {
-			//	PERR("diocan\n");
-			//}
+
 			if(cpu_time >= m_s.next_timer_time) {
 				while(!update_timers(cpu_time));
 			}

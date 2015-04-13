@@ -1450,11 +1450,14 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
     offset = cluster2sector(cur);
     lseek(offset * 0x200, SEEK_SET);
     read(buffer, csize);
+    ssize_t res;
     if (fsize > csize) {
-      ::write(fd, buffer, csize);
+      res = ::write(fd, buffer, csize);
+      ASSERT(res==csize);
       fsize -= csize;
     } else {
-      ::write(fd, buffer, fsize);
+      res = ::write(fd, buffer, fsize);
+      ASSERT(res==fsize);
     }
     next = fat_get_next(cur);
     if ((next >= rsvd_clusters) && (next < bad_cluster)) {

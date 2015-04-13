@@ -555,12 +555,15 @@ int RedoLog::create(int filedes, const char* type, uint64_t size)
     return -1;
   }
 
+  ssize_t res;
   // Write header
-  ::write(fd, &header, dtoh32(header.standard.header));
+  res = ::write(fd, &header, dtoh32(header.standard.header));
+  ASSERT(res==dtoh32(header.standard.header));
 
   // Write catalog
   // FIXME could mmap
-  ::write(fd, catalog, dtoh32(header.specific.catalog) * sizeof (uint32_t));
+  res = ::write(fd, catalog, dtoh32(header.specific.catalog) * sizeof (uint32_t));
+  ASSERT(res==dtoh32(header.specific.catalog) * sizeof (uint32_t));
 
   return 0;
 }
@@ -799,12 +802,15 @@ ssize_t RedoLog::write(const void* buf, size_t count)
     bitmap_offset  = (int64_t)STANDARD_HEADER_SIZE + (dtoh32(header.specific.catalog) * sizeof(uint32_t));
     bitmap_offset += (int64_t)512 * dtoh32(catalog[extent_index]) * (extent_blocks + bitmap_blocks);
     ::lseek(fd, (off_t)bitmap_offset, SEEK_SET);
+    ssize_t res;
     for (i=0; i<bitmap_blocks; i++) {
-      ::write(fd, zerobuffer, 512);
+      res = ::write(fd, zerobuffer, 512);
+      ASSERT(res==512);
     }
     // Write extent
     for (i=0; i<extent_blocks; i++) {
-      ::write(fd, zerobuffer, 512);
+      res = ::write(fd, zerobuffer, 512);
+      ASSERT(res==512);
     }
 
     free(zerobuffer);

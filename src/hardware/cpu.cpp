@@ -645,7 +645,7 @@ void CPU::disable_prg_log()
 	enable_prg_log("");
 }
 
-void CPU::DOS_program_launch(std::string _name)
+void CPU::DOS_program_launch(std::string /*_name*/)
 {
 }
 

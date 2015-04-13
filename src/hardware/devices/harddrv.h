@@ -29,11 +29,11 @@ extern HardDrive g_harddrv;
 
 struct HDDType
 {
-	int cylinders;
-	int heads;
-	int spt;
-	int wpcomp;
-	int lzone;
+	unsigned cylinders;
+	unsigned heads;
+	unsigned spt;
+	int      wpcomp;
+	unsigned lzone;
 };
 
 class HardDrive : public IODevice
@@ -78,11 +78,11 @@ private:
 			bool cylinder_err; //CE
 			bool track_0;      //T0
 			bool reset;        //RR
-			int present_head;
-			int present_cylinder;
-			int last_head;
-			int last_cylinder;
-			int last_sector;
+			unsigned present_head;
+			unsigned present_cylinder;
+			unsigned last_head;
+			unsigned last_cylinder;
+			unsigned last_sector;
 			int command_syndrome;
 			int drive_type;
 			void copy_to(uint8_t *_dest);
@@ -110,10 +110,10 @@ private:
 			bool no_data; //ND
 			bool auto_seek; //AS
 			bool park; //P
-			int head;
-			int cylinder;
-			int sector;
-			int num_sectors;
+			unsigned head;
+			unsigned cylinder;
+			unsigned sector;
+			unsigned num_sectors;
 			void set(uint8_t* _data);
 		} ccb;
 
@@ -121,9 +121,9 @@ private:
 		unsigned data_ptr;
 		unsigned data_size;
 
-		int cur_head;
-		int cur_cylinder;
-		int cur_sector; //warning: sectors are 1-based
+		unsigned cur_head;
+		unsigned cur_cylinder;
+		unsigned cur_sector; //warning: sectors are 1-based
 		bool eoc;
 		int reset_phase;
 		uint32_t time;
@@ -132,8 +132,8 @@ private:
 	int m_cmd_timer;
 	int m_dma_timer;
 	int m_drive_type;
-	int m_sectors;
-	double m_rpm;
+	uint32_t m_sectors;
+	double   m_rpm;
 	uint32_t m_trk2trk_us;
 	uint32_t m_avg_trk_lat_us;
 	uint32_t m_sec_tx_us;
@@ -150,8 +150,8 @@ private:
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
 	static const HDDType ms_hdd_types[45];
 
-	inline int chs_to_lba(int _c, int _h, int _s) const;
-	inline void lba_to_chs(int _lba, int &_c, int &_h, int &_s) const;
+	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const;
+	inline void lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const;
 
 	void mount(std::string _imgpath);
 	void unmount();
@@ -169,12 +169,11 @@ private:
 
 	void increment_sector();
 	void cylinder_error();
-	bool seek(int _c);
-	void set_cur_sector(int _h, int _s);
-	void advance(int _sectors);
-	void read_sector(int _c, int _h, int _s);
-	void write_sector(int _c, int _h, int _s);
-	uint32_t get_seek_time(int _c);
+	bool seek(unsigned _c);
+	void set_cur_sector(unsigned _h, unsigned _s);
+	void read_sector(unsigned _c, unsigned _h, unsigned _s);
+	void write_sector(unsigned _c, unsigned _h, unsigned _s);
+	uint32_t get_seek_time(unsigned _c);
 
 	void read_data_cmd();
 	void read_check_cmd();

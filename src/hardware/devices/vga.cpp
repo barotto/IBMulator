@@ -1062,7 +1062,7 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 							lower_interrupt();
 						}
 						m_s.CRTC.write_protect = ((m_s.CRTC.reg[0x11] & 0x80) > 0);
-						if(oldvalue&0xF != m_s.CRTC.reg[0x11]&0xF) {
+						if((oldvalue&0xF) != (m_s.CRTC.reg[0x11]&0xF)) {
 							calculate_retrace_timing();
 						}
 						break;
