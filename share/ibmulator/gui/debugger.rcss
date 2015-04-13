@@ -7,7 +7,7 @@
 	position: relative;
 }
 
-#tools
+#tools, #tools2
 {
 	margin-bottom: 8px;
 }

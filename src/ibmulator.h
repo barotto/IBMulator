@@ -24,10 +24,23 @@
 #define MACHINE_HEARTBEAT 10000
 #define GUI_HEARTBEAT 16666
 #define MIXER_HEARTBEAT 10000
-#define CPULOG 0
-#define CPULOG_MAX_SIZE 400000u
 #define CHRONO_RDTSC 0
 #define USE_PREFETCH_QUEUE 1
+
+/////////////
+//CPU logging
+#define CPULOG               false   // activate CPU logging?
+#define CPULOG_MAX_SIZE      400000u // number of instruction to log
+#define CPULOG_WRITE_TIME    false   // write instruction machine time?
+#define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
+#define CPULOG_WRITE_HEX     false   // write instruction as hex codes?
+#define CPULOG_WRITE_CORE    true    // write the CPU registers?
+#define CPULOG_START_ADDR    0x0     // lower bound, instr. before this address are not logged
+#define CPULOG_END_ADDR      0x9FFFF // upper bound, instr. after this address are not logged
+#define CPULOG_LOG_INTS      false   // log INTs' instructions?
+#define CPULOG_INT21_EXIT_IP 0x7782  // the IP of the last instr. of INT 21/4B
+                                     // OS dependent, for PC-DOS 4.0 is 0x7782
+                                     // use -1 to disable
 
 #define PATHNAME_LEN 512
 
@@ -70,12 +83,12 @@ void size_check()
 	#define ASSERT(T) assert(T)
 	#define RASSERT(T) assert(T)
 
-	#define CONFIG_PARSE 1
-	#define MEMORY_TRAPS 0
-	#define INT_TRAPS 1
-	#define STOP_AT_EXC 0
-	#define UD6_AUTO_DUMP 0
-	#define HDD_TIMING 0 //used to speed up the HDD and ease the debugging
+	#define CONFIG_PARSE  true
+	#define MEMORY_TRAPS  false
+	#define INT_TRAPS     true
+	#define STOP_AT_EXC   false
+	#define UD6_AUTO_DUMP false
+	#define HDD_TIMING    false //used to speed up the HDD and ease the debugging
 
 	#define DEFAULT_LOG_VERBOSITY LOG_V1
 
@@ -84,12 +97,12 @@ void size_check()
 	#define ASSERT(T)
 	#define RASSERT(T) assert(T)
 
-	#define CONFIG_PARSE 1
-	#define MEMORY_TRAPS 0
-	#define INT_TRAPS 0
-	#define STOP_AT_EXC 0
-	#define UD6_AUTO_DUMP 0
-	#define HDD_TIMING 1
+	#define CONFIG_PARSE  true
+	#define MEMORY_TRAPS  false
+	#define INT_TRAPS     false
+	#define STOP_AT_EXC   false
+	#define UD6_AUTO_DUMP false
+	#define HDD_TIMING    true
 
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 

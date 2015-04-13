@@ -41,7 +41,8 @@ noinst_HEADERS = \
 	syslog.h \
 	ini/ini.h \
 	wav.h \
-	wincompat.h
+	wincompat.h \
+	utils.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS) ibmulator.res

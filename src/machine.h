@@ -115,6 +115,8 @@ private:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	void set_DOS_program_name(const char *_name);
+
 public:
 	bool ms_restore_fail;
 	//used for machine-gui synchronization
@@ -172,6 +174,7 @@ public:
 	void cmd_resume();
 	void cmd_memdump(uint32_t base=0, uint32_t len=0);
 	void cmd_cpulog();
+	void cmd_prg_cpulog(std::string _prg_name);
 	void cmd_cycles_adjust(double _factor);
 	void cmd_save_state(StateBuf &_state);
 	void cmd_restore_state(StateBuf &_state);
@@ -185,8 +188,9 @@ public:
 	void register_mouse_fun(mouse_fun_t mouse_fun);
 	void mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _button_state);
 
-	//used by the gui to show the current executing program (INT 21/AH=4B)
-	void set_current_program_name(const char *_name);
+	void DOS_program_launch(std::string _name);
+	void DOS_program_start(std::string _name);
+	void DOS_program_finish(std::string _name, std::string _newname);
 	inline bool is_current_program_name_changed() {
 		// caller must gain a lock on ms_gui_lock
 		bool changed = m_curr_prgname_changed;

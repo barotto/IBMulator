@@ -114,22 +114,27 @@ Window(_gui, "debugger.rml")
 	m_tools.ip_ff->SetValue(format_hex16(REG_IP));
 	m_tools.ff->AddEventListener("click", this, false);
 
-	m_tools.mcmd0 = get_element("machine_cmd0");
-	m_tools.mcmd1 = get_element("machine_cmd1");
-	m_tools.mcmd2 = get_element("machine_cmd2");
-	m_tools.mcmd3 = get_element("machine_cmd3");
-	m_tools.mcmd4 = get_element("machine_cmd4");
-	m_tools.mcmd5 = get_element("machine_cmd5");
-	m_tools.mcmd6 = get_element("machine_cmd6");
-	m_tools.mcmd7 = get_element("machine_cmd7");
-	m_tools.mcmd0->AddEventListener("click", this, false);
-	m_tools.mcmd1->AddEventListener("click", this, false);
-	m_tools.mcmd2->AddEventListener("click", this, false);
-	m_tools.mcmd3->AddEventListener("click", this, false);
-	m_tools.mcmd4->AddEventListener("click", this, false);
-	m_tools.mcmd5->AddEventListener("click", this, false);
-	m_tools.mcmd6->AddEventListener("click", this, false);
-	m_tools.mcmd7->AddEventListener("click", this, false);
+	m_tools.cmd_switch_power = get_element("cmd_switch_power");
+	m_tools.cmd_pause = get_element("cmd_pause");
+	m_tools.cmd_resume = get_element("cmd_resume");
+	m_tools.cmd_memdump = get_element("cmd_memdump");
+	m_tools.cmd_csdump = get_element("cmd_csdump");
+	m_tools.cmd_save_state = get_element("cmd_save_state");
+	m_tools.cmd_restore_state = get_element("cmd_restore_state");
+	m_tools.cmd_switch_power->AddEventListener("click", this, false);
+	m_tools.cmd_pause->AddEventListener("click", this, false);
+	m_tools.cmd_resume->AddEventListener("click", this, false);
+	m_tools.cmd_memdump->AddEventListener("click", this, false);
+	m_tools.cmd_csdump->AddEventListener("click", this, false);
+	m_tools.cmd_save_state->AddEventListener("click", this, false);
+	m_tools.cmd_restore_state->AddEventListener("click", this, false);
+
+	m_tools2.log_prg_name =
+		dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("log_prg_name"));
+	m_tools2.log_prg_toggle = get_element("log_prg_toggle");
+	m_tools2.log_write = get_element("log_write");
+	m_tools2.log_prg_toggle->AddEventListener("click", this, false);
+	m_tools2.log_write->AddEventListener("click", this, false);
 
 	m_disasm.line0 = get_element("disasm");
 
@@ -274,17 +279,10 @@ void SysDebugger::ProcessEvent(Rocket::Core::Event & event)
 {
 	Rocket::Core::Element * el = event.GetTargetElement();
 
-	/*
-	PDEBUGF(LOG_V2,LOG_GUI,"Processing event %s on %s\n",
-			event.GetType().CString(),
-			el->GetId().CString()
-	);
-	*/
-
 	if(el == m_tools.step) {
 		m_machine->cmd_cpu_step();
 	}
-	if(el == m_tools.ff) {
+	else if(el == m_tools.ff) {
 		Rocket::Core::String str = m_tools.cs_ff->GetValue();
 		uint cs,ip;
 		if(!sscanf(str.CString(), "%x", &cs))
@@ -297,36 +295,46 @@ void SysDebugger::ProcessEvent(Rocket::Core::Event & event)
 
 		m_machine->cmd_cpu_step_to(phy);
 	}
-	if(el == m_tools.skip) {
+	else if(el == m_tools.skip) {
 		uint size;
 		disasm(REG_CS.sel.value, REG_IP, false, &size);
 		uint32_t curphy = GET_PHYADDR(CS, REG_IP);
 		m_machine->cmd_cpu_step_to(curphy+size);
 	}
-	if(el == m_tools.mcmd0) {
+	else if(el == m_tools.cmd_switch_power) {
 		m_machine->cmd_switch_power();
 	}
-	if(el == m_tools.mcmd1) {
+	else if(el == m_tools.cmd_pause) {
 		m_machine->cmd_pause();
 	}
-	if(el == m_tools.mcmd2) {
+	else if(el == m_tools.cmd_resume) {
 		m_machine->cmd_resume();
 	}
-	if(el == m_tools.mcmd3) {
+	else if(el == m_tools.cmd_memdump) {
 		m_machine->cmd_memdump(0, 524287);
 	}
-	if(el == m_tools.mcmd4) {
+	else if(el == m_tools.cmd_csdump) {
 		m_machine->cmd_memdump(REG_CS.desc.base, 0xFFFF);
 	}
-	if(el == m_tools.mcmd5) {
-		m_machine->cmd_cpulog();
-	}
-
-	if(el == m_tools.mcmd6) {
+	else if(el == m_tools.cmd_save_state) {
 		g_program.save_state("");
 	}
-
-	if(el == m_tools.mcmd7) {
+	else if(el == m_tools.cmd_restore_state) {
 		g_program.restore_state("");
+	}
+	else if(el == m_tools2.log_prg_toggle) {
+		if(m_tools2.log_prg_toggle->IsClassSet("on")) {
+			m_tools2.log_prg_toggle->SetClass("on", false);
+			m_machine->cmd_prg_cpulog("");
+		} else {
+			Rocket::Core::String str = m_tools2.log_prg_name->GetValue();
+			if(str != "") {
+				m_tools2.log_prg_toggle->SetClass("on", true);
+				m_machine->cmd_prg_cpulog(str.CString());
+			}
+		}
+	}
+	else if(el == m_tools2.log_write) {
+		m_machine->cmd_cpulog();
 	}
 }

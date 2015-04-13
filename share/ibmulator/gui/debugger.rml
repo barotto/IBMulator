@@ -7,7 +7,7 @@
 			body
 			{
 				width: 440px;
-				height: 550px;
+				height: 570px;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -22,14 +22,18 @@
 			<input type="text" id="CS_ff" size=8 />
 			<input type="text" id="IP_ff" size=8 />
 			<button id="CPU_ff_btn" style="width:20px;">&gt;&gt;</button>
-			<button id="machine_cmd0" style="width:20px;">!</button>
-			<button id="machine_cmd1" style="width:20px;">p</button>
-			<button id="machine_cmd2" style="width:20px;">r</button>
-			<button id="machine_cmd3" style="width:20px;">d</button>
-			<button id="machine_cmd4" style="width:38px;">dcs</button>
-			<button id="machine_cmd5" style="width:38px;">log</button>
-			<button id="machine_cmd6" style="width:38px;">ss</button>
-			<button id="machine_cmd7" style="width:38px;">rs</button>
+			<button id="cmd_switch_power" style="width:20px;">!</button>
+			<button id="cmd_pause" style="width:20px;">p</button>
+			<button id="cmd_resume" style="width:20px;">r</button>
+			<button id="cmd_memdump" style="width:40px;">memd</button>
+			<button id="cmd_csdump" style="width:38px;">csd</button>
+			<button id="cmd_save_state" style="width:38px;">ss</button>
+			<button id="cmd_restore_state" style="width:38px;">rs</button>
+		</div>
+		<div id="tools2">
+			<input type="text" id="log_prg_name" size=32 />
+			<button id="log_prg_toggle" style="width:80px;">prg.log</button>
+			<button id="log_write" style="width:58px;">wr.log</button>
 		</div>
 		<div id="cpucore">
 			<table id="generalregs">

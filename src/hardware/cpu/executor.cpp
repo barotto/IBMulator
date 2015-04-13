@@ -53,9 +53,26 @@ inline uint popcnt(uint _value)
 
 
 CPUExecutor::CPUExecutor()
+:
+m_dos_prg_int_exit(0)
 {
 	//register_INT_trap(0x00, 0xFF, &CPUExecutor::INT_debug);
 	register_INT_trap(0x13, 0x13, &CPUExecutor::INT_debug);
+	register_INT_trap(0x21, 0x21, &CPUExecutor::INT_debug);
+}
+
+void CPUExecutor::reset(uint _signal)
+{
+	m_instr = nullptr;
+	m_base_ds = REGI_DS;
+	m_base_ss = REGI_SS;
+
+	if(_signal == MACHINE_HARD_RESET || _signal == MACHINE_POWER_ON) {
+		m_inttraps_ret.clear();
+		while(!m_dos_prg.empty()) {
+			m_dos_prg.pop();
+		}
+	}
 }
 
 inline SegReg & CPUExecutor::EA_get_segreg()
@@ -84,23 +101,23 @@ inline SegReg & CPUExecutor::EA_get_segreg()
 
 uint16_t CPUExecutor::EA_get_offset()
 {
-	int16_t disp = int16_t(m_instr->modrm.disp);
+	uint16_t disp = m_instr->modrm.disp;
 	switch(m_instr->modrm.rm) {
 		case 0:
-			return (REG_BX + int16_t(REG_SI) + disp);
+			return (REG_BX + REG_SI + disp);
 		case 1:
-			return (REG_BX + int16_t(REG_DI) + disp);
+			return (REG_BX + REG_DI + disp);
 		case 2:
-			return (REG_BP + int16_t(REG_SI) + disp);
+			return (REG_BP + REG_SI + disp);
 		case 3:
-			return (REG_BP + int16_t(REG_DI) + disp);
+			return (REG_BP + REG_DI + disp);
 		case 4:
 			return (REG_SI + disp);
 		case 5:
 			return (REG_DI + disp);
 		case 6:
 			if(m_instr->modrm.mod==0)
-				return m_instr->modrm.disp;
+				return disp;
 			return (REG_BP + disp);
 		case 7:
 			return (REG_BX + disp);
@@ -466,6 +483,13 @@ void CPUExecutor::execute(Instruction * _instr)
 				fn();
 			}
 			m_inttraps_ret.erase(ret);
+		}
+	}
+
+	if(CPULOG && m_dos_prg_int_exit) {
+		if(m_instr->csip == m_dos_prg_int_exit) {
+			//logging starts at the next instruction
+			g_machine.DOS_program_start(m_dos_prg.top().second);
 		}
 	}
 
@@ -2700,12 +2724,14 @@ bool CPUExecutor::INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *cor
 
 void CPUExecutor::INT(uint8_t _vector)
 {
+	uint8_t ah = REG_AH;
+	uint32_t retaddr = GET_PHYADDR(CS, REG_IP);
+
 	if(INT_TRAPS) {
 		std::vector<inttrap_interval_t> results;
 		m_inttraps_tree.findOverlapping(_vector, _vector, results);
 		if(!results.empty()) {
 			bool res = false;
-			uint32_t retaddr = GET_PHYADDR(CS, REG_IP);
 			auto retinfo = m_inttraps_ret.insert(
 				pair<uint32_t, std::vector<std::function<bool()>>>(
 					retaddr, std::vector<std::function<bool()>>()
@@ -2723,10 +2749,42 @@ void CPUExecutor::INT(uint8_t _vector)
 		}
 	}
 
-	if(_vector == 0x21 && REG_AH == 0x4B) {
+	if(CPULOG) {
+		g_cpu.INT(retaddr);
+	}
+
+	//DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
+	if(_vector == 0x21 && ah == 0x4B) {
 		char * pname = (char*)g_memory.get_phy_ptr(GET_PHYADDR(DS, REG_DX));
 		PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
-		g_machine.set_current_program_name(pname);
+		g_machine.DOS_program_launch(pname);
+		m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
+		//can the cpu be in pmode?
+		if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
+			g_machine.DOS_program_start(pname);
+		} else {
+			//find the INT exit point
+			uint32_t cs = g_cpubus.mem_read_word(0x21*4 + 2);
+			m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
+		}
+	}
+	else if((_vector == 0x21 && (
+			ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
+			ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
+		)) ||
+			_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
+	)
+	{
+		std::string oldprg,newprg;
+		if(!m_dos_prg.empty()) {
+			oldprg = m_dos_prg.top().second;
+			m_dos_prg.pop();
+			if(!m_dos_prg.empty()) {
+				newprg = m_dos_prg.top().second;
+			}
+		}
+		g_machine.DOS_program_finish(oldprg,newprg);
+		m_dos_prg_int_exit = 0;
 	}
 
 	if(IS_PMODE()) {

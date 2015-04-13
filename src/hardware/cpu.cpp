@@ -28,6 +28,7 @@
 #include "devices/pic.h"
 #include "devices/dma.h"
 #include "program.h"
+#include "utils.h"
 #include <cstring>
 
 CPU g_cpu;
@@ -36,14 +37,20 @@ CPU::CPU()
 :
 m_instr(NULL),
 m_log_idx(0),
-m_log_size(0)
+m_log_size(0),
+m_log_file(NULL)
 {
 
 }
 
 CPU::~CPU()
 {
-
+	if(m_log_file) {
+		fclose(m_log_file);
+	}
+	if(m_log_prg_file) {
+		fclose(m_log_prg_file);
+	}
 }
 
 void CPU::init()
@@ -52,6 +59,12 @@ void CPU::init()
 	config_changed();
 	m_s.icount = 0;
 	m_s.ccount = 0;
+
+	if(CPULOG) {
+		std::string filename = g_program.config().get_cfg_home() + FS_SEP "cpulog.log";
+		//i use the C stdlib because i hate C++ streams with a passion
+		m_log_file = fopen(filename.c_str(), "w");
+	}
 }
 
 void CPU::config_changed()
@@ -74,12 +87,16 @@ void CPU::reset(uint _signal)
 	m_s.async_event = 0;
 	m_s.debug_trap = false;
 	m_s.EXT = false;
-	if(_signal == MACHINE_POWER_ON) {
+	if(_signal==MACHINE_POWER_ON || _signal==MACHINE_HARD_RESET) {
 		m_s.icount = 0;
 		m_s.ccount = 0;
 		m_s.HRQ = false;
 		m_s.inhibit_mask = 0;
 		m_s.inhibit_icount = 0;
+		m_log_prg_iret = 0;
+		if(m_log_prg_file) {
+			disable_prg_log();
+		}
 	} else {
 		if(irqwaiting) {
 			raise_INTR();
@@ -88,6 +105,7 @@ void CPU::reset(uint _signal)
 	}
 
 	g_cpucore.reset();
+	g_cpuexecutor.reset(_signal);
 	g_cpubus.invalidate_pq();
 	g_cpubus.update_pq(0);
 }
@@ -116,11 +134,17 @@ void CPU::restore_state(StateBuf &_state)
 
 	g_cpubus.restore_state(_state);
 	g_cpucore.restore_state(_state);
+
+	m_log_prg_iret = 0;
+	if(m_log_prg_file) {
+		disable_prg_log();
+	}
 }
 
 void CPU::power_off()
 {
 	enter_sleep_state(CPU_STATE_SHUTDOWN);
+	disable_prg_log();
 }
 
 uint CPU::step()
@@ -142,11 +166,7 @@ uint CPU::step()
 			//if the prev instr is the same as the next (REP), don't decode
 			m_instr = g_cpudecoder.decode();
 			if(CPULOG) {
-				m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
-				m_log[m_log_idx].time = g_machine.get_virt_time_us();
-				m_log[m_log_idx].core = g_cpucore;
-				m_log[m_log_idx].instr = *m_instr;
-				m_log_idx = (m_log_idx+1) % CPULOG_MAX_SIZE;
+				add_to_log(*m_instr, g_machine.get_virt_time_us(), g_cpucore);
 			}
 		}
 		try {
@@ -583,24 +603,92 @@ bool CPU::interrupts_inhibited(unsigned mask)
 	return (m_s.icount <= m_s.inhibit_icount) && (m_s.inhibit_mask & mask) == mask;
 }
 
-const std::string & CPU::disasm(uint _log_idx)
+void CPU::add_to_log(const Instruction &_instr, uint64_t _time, const CPUCore &_core)
 {
-	ASSERT(_log_idx<CPULOG_MAX_SIZE);
+	//don't log outside fixed boundaries
+	if(_instr.csip<CPULOG_START_ADDR || _instr.csip>CPULOG_END_ADDR) {
+		return;
+	}
+	//don't log IRQ routines
+	if(g_pic.get_isr()) {
+		return;
+	}
 
+	m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
+	m_log[m_log_idx].time = _time;
+	m_log[m_log_idx].core = _core;
+	m_log[m_log_idx].instr = _instr;
+	if(m_log_prg_file) {
+		if(CPULOG_LOG_INTS || m_log_prg_iret==0 || (m_log_prg_iret==_instr.csip)) {
+			m_log_prg_iret = 0;
+			write_log_entry(m_log_prg_file, m_log[m_log_idx]);
+		}
+	}
+	m_log_idx = (m_log_idx+1) % CPULOG_MAX_SIZE;
+}
+
+void CPU::enable_prg_log(std::string _prg_name)
+{
+	if(m_log_prg_file) {
+		fclose(m_log_prg_file);
+		m_log_prg_file = NULL;
+	}
+	m_log_prg_name = _prg_name;
+	if(!_prg_name.empty()) {
+		str_replace_all(_prg_name,".","\\.");
+		m_log_prg_regex.assign(_prg_name+"$", std::regex::ECMAScript|std::regex::icase);
+	}
+}
+
+void CPU::disable_prg_log()
+{
+	enable_prg_log("");
+}
+
+void CPU::DOS_program_launch(std::string _name)
+{
+}
+
+void CPU::DOS_program_start(std::string _name)
+{
+	if(!m_log_prg_name.empty() && std::regex_search(_name, m_log_prg_regex)) {
+		if(m_log_prg_file) {
+			fclose(m_log_prg_file);
+		}
+		std::string filename = g_program.config().get_cfg_home() + FS_SEP + m_log_prg_name + ".log";
+		m_log_prg_file = fopen(filename.c_str(), "w");
+	}
+}
+
+void CPU::DOS_program_finish(std::string _name)
+{
+	if(m_log_prg_file && (std::regex_search(_name, m_log_prg_regex) || _name.empty())) {
+		fclose(m_log_prg_file);
+		m_log_prg_file = NULL;
+	}
+}
+
+void CPU::INT(uint32_t _retaddr)
+{
+	if(m_log_prg_file && m_log_prg_iret==0 && g_pic.get_isr()==0) {
+		m_log_prg_iret = _retaddr;
+	}
+}
+
+const std::string & CPU::disasm(CPULogEntry &_log_entry)
+{
 	CPUDebugger debugger;
-	CPUCore *core = &m_log[_log_idx].core;
-	debugger.set_core(core);
+	debugger.set_core(&_log_entry.core);
 
 	static std::string str;
 	str = "";
 
 	static char empty[23] = { 32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,0 };
 
-	Instruction * instr = &m_log[_log_idx].instr;
 	char dline[200];
 	debugger.disasm(dline, 200u,
-		instr->csip, instr->ip,
-		instr->bytes, instr->size
+		_log_entry.instr.csip, _log_entry.instr.ip,
+		_log_entry.instr.bytes, _log_entry.instr.size
 	);
 	char *analize = empty;
 
@@ -631,12 +719,47 @@ const std::string & CPU::disasm(uint _log_idx)
 	return str;
 };
 
+void CPU::write_log_entry(FILE *_dest, CPULogEntry &_entry)
+{
+	if(CPULOG_WRITE_TIME) {
+		fprintf(_dest, "%010lu ", _entry.time);
+	}
+
+	if(CPULOG_WRITE_CSIP) {
+		fprintf(_dest, "%04X:%04X ",
+				_entry.core.get_CS().sel.value, _entry.core.get_IP());
+	}
+
+	if(CPULOG_WRITE_HEX) {
+		for(uint j=0; j<CPU_MAX_INSTR_SIZE; j++) {
+			if(j<_entry.instr.size) {
+				fprintf(_dest, "%02X ", _entry.instr.bytes[j]);
+			} else {
+				fprintf(_dest, "   ");
+			}
+		}
+	}
+
+	//the instruction
+	fprintf(_dest, "%s  ", disasm(_entry).c_str());
+
+	if(CPULOG_WRITE_CORE) {
+		fprintf(_dest, "AX=%04X BX=%04X CX=%04X DX=%04X ",
+				_entry.core.get_AX(), _entry.core.get_BX(),
+				_entry.core.get_CX(), _entry.core.get_DX());
+		fprintf(_dest, "SI=%04X DI=%04X ",
+				_entry.core.get_SI(), _entry.core.get_DI());
+		fprintf(_dest, "ES=%04X DS=%04X SS=%04X ",
+				_entry.core.get_ES().sel.value,
+				_entry.core.get_DS().sel.value,
+				_entry.core.get_SS().sel.value);
+	}
+	fprintf(_dest, "\n");
+}
+
 void CPU::write_log()
 {
-	std::string filename = g_program.config().get_cfg_home() + FS_SEP "cpulog.log";
-	//i use the C stdlib because i hate C++ streams with a passion
-	FILE * file = fopen(filename.c_str(), "w");
-	if(!file) {
+	if(!m_log_file) {
 		return;
 	}
 	uint idx;
@@ -645,32 +768,10 @@ void CPU::write_log()
 	} else {
 		idx = m_log_idx; //the index is already advanced to the next element
 	}
-	PINFOF(LOG_V0, LOG_CPU, "writing log to %s ... ", filename.c_str());
+	PINFOF(LOG_V0, LOG_CPU, "writing log ... ");
 	for(uint i=0; i<m_log_size; i++) {
-		CPUCore * core = &m_log[idx].core;
-		fprintf(file, "%010lu ", m_log[idx].time);
-		fprintf(file, "%04X:%04X ", core->get_CS().sel.value, core->get_IP());
-		for(uint j=0; j<CPU_MAX_INSTR_SIZE; j++) {
-			if(j<m_log[idx].instr.size) {
-				fprintf(file, "%02X ", m_log[idx].instr.bytes[j]);
-			} else {
-				fprintf(file, "   ");
-			}
-		}
-		fprintf(file, "%s  ", disasm(idx).c_str());
-		fprintf(file, "AX=%04X ", core->get_AX());
-		fprintf(file, "BX=%04X ", core->get_BX());
-		fprintf(file, "CX=%04X ", core->get_CX());
-		fprintf(file, "DX=%04X ", core->get_DX());
-		fprintf(file, "SI=%04X ", core->get_SI());
-		fprintf(file, "DI=%04X ", core->get_DI());
-		fprintf(file, "ES=%04X ", core->get_ES().sel.value);
-		fprintf(file, "DS=%04X ", core->get_DS().sel.value);
-		fprintf(file, "SS=%04X ", core->get_SS().sel.value);
-		fprintf(file, "\n");
+		write_log_entry(m_log_file, m_log[idx]);
 		idx = (idx+1)%CPULOG_MAX_SIZE;
 	}
 	PINFOF(LOG_V0, LOG_CPU, "done\n");
-
-	fclose(file);
 }

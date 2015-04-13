@@ -23,6 +23,7 @@
 #include "cpu/core.h"
 #include "cpu/decoder.h"
 #include "cpu/executor.h"
+#include <regex>
 
 class CPU;
 extern CPU g_cpu;
@@ -122,7 +123,7 @@ protected:
 		uint32_t pending_event;
 		uint32_t event_mask;
 		bool     async_event;
-		bool debug_trap;
+		bool     debug_trap;
 
 		// What events to inhibit at any given time.  Certain instructions
 		// inhibit interrupts, some debug exceptions and single-step traps.
@@ -158,8 +159,15 @@ protected:
 	uint m_log_idx;
 	uint m_log_size;
 	CPULogEntry m_log[CPULOG_MAX_SIZE];
+	FILE *m_log_file;
+	std::string m_log_prg_name;
+	std::regex m_log_prg_regex;
+	FILE *m_log_prg_file;
+	uint32_t m_log_prg_iret;
 
-	const std::string & disasm(uint _log_idx);
+	void add_to_log(const Instruction &_instr, uint64_t _time, const CPUCore &_core);
+	void write_log_entry(FILE *_dest, CPULogEntry &_entry);
+	const std::string & disasm(CPULogEntry &_log_entry);
 
 	uint get_execution_cycles();
 
@@ -196,6 +204,12 @@ public:
 	void exception(CPUException _exc);
 
 	void write_log();
+	void enable_prg_log(std::string _prg_name);
+	void disable_prg_log();
+	void INT(uint32_t _retaddr);
+	void DOS_program_launch(std::string _name);
+	void DOS_program_start(std::string _name);
+	void DOS_program_finish(std::string _name);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

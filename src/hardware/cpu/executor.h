@@ -25,7 +25,7 @@ extern CPUExecutor g_cpuexecutor;
 
 #include "decoder.h"
 #include "interval_tree.h"
-
+#include <stack>
 
 
 enum {
@@ -57,8 +57,10 @@ private:
 
 	inttrap_intervalTree_t m_inttraps_tree;
 	std::vector<inttrap_interval_t> m_inttraps_intervals;
+	//TODO change this map to a stack
 	std::map<uint32_t, std::vector<std::function<bool()>>> m_inttraps_ret;
-
+	std::stack<pair<uint32_t,std::string>> m_dos_prg;
+	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
 
 	uint8_t load_eb();
 	uint8_t load_rb();
@@ -177,6 +179,8 @@ private:
 public:
 
 	CPUExecutor();
+
+	void reset(uint _signal);
 
 	void execute(Instruction * _instr);
 	Instruction * get_current_instruction() { return m_instr; }

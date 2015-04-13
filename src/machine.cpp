@@ -225,12 +225,12 @@ void Machine::reset(uint _signal)
 	} else if(_signal == MACHINE_HARD_RESET) {
 		PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
 		g_memory.reset();
-		set_current_program_name("");
+		set_DOS_program_name("");
 		m_s.cycles_left = 0;
 	} else { // MACHINE_POWER_ON
 		PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
 		g_memory.reset();
-		set_current_program_name("");
+		set_DOS_program_name("");
 		m_s.cycles_left = 0;
 	}
 	g_cpu.reset(_signal);
@@ -250,7 +250,7 @@ void Machine::power_off()
 	g_cpu.power_off();
 	g_devices.power_off();
 
-	set_current_program_name("");
+	set_DOS_program_name("");
 }
 
 void Machine::config_changed()
@@ -671,6 +671,13 @@ void Machine::cmd_cpulog()
 	});
 }
 
+void Machine::cmd_prg_cpulog(std::string _prg_name)
+{
+	m_cmd_fifo.push([=] () {
+		g_cpu.enable_prg_log(_prg_name);
+	});
+}
+
 void Machine::cmd_cycles_adjust(double _factor)
 {
 	m_cmd_fifo.push([=] () {
@@ -755,7 +762,7 @@ uint8_t Machine::get_POST_code()
 	return g_sysboard.read(0x0190,1);
 }
 
-void Machine::set_current_program_name(const char *_name)
+void Machine::set_DOS_program_name(const char *_name)
 {
 	std::unique_lock<std::mutex> lock(ms_gui_lock);
 	strncpy(m_s.curr_prgname, _name, PRG_NAME_LEN);
@@ -763,4 +770,19 @@ void Machine::set_current_program_name(const char *_name)
 	m_curr_prgname_changed = true;
 }
 
+void Machine::DOS_program_launch(std::string _name)
+{
+	g_cpu.DOS_program_launch(_name);
+	set_DOS_program_name(_name.c_str());
+}
 
+void Machine::DOS_program_start(std::string _name)
+{
+	g_cpu.DOS_program_start(_name);
+}
+
+void Machine::DOS_program_finish(std::string _name, std::string _newname)
+{
+	g_cpu.DOS_program_finish(_name);
+	set_DOS_program_name(_newname.c_str());
+}

@@ -56,8 +56,20 @@ private:
 	struct s_tools {
 		Rocket::Core::Element *step, *skip, *ff;
 		Rocket::Controls::ElementFormControl *cs_ff,*ip_ff;
-		Rocket::Core::Element *mcmd0, *mcmd1, *mcmd2, *mcmd3, *mcmd4, *mcmd5, *mcmd6, *mcmd7;
+		Rocket::Core::Element *cmd_switch_power;
+		Rocket::Core::Element *cmd_pause;
+		Rocket::Core::Element *cmd_resume;
+		Rocket::Core::Element *cmd_memdump;
+		Rocket::Core::Element *cmd_csdump;
+		Rocket::Core::Element *cmd_save_state;
+		Rocket::Core::Element *cmd_restore_state;
 	} m_tools;
+
+	struct s_tools2 {
+		Rocket::Controls::ElementFormControl *log_prg_name;
+		Rocket::Core::Element *log_prg_toggle;
+		Rocket::Core::Element *log_write;
+	} m_tools2;
 
 	struct s_disasm {
 		Rocket::Core::Element *line0;

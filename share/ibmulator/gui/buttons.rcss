@@ -17,6 +17,11 @@ input.checkbox
 	background-color: #FFFFFFA0;
 }
 
+button.on
+{
+	background-color: #50FF50A0;
+}
+
 button.romshell,
 input.checkbox.romshell
 {
