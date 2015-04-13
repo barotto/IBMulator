@@ -62,35 +62,24 @@ uint32_t CPUDebugger::get_hex_value(char* str, char * &hex)
 	uint32_t regval = 0;
 	hex = str;
 	while (*hex==' ') hex++;
-	//no 386
-	if(strstr(hex,"EAX")==hex) { ASSERT(false); /*hex+=3; regval = reg_eax;*/ };
-	if(strstr(hex,"EBX")==hex) { ASSERT(false); /*hex+=3; regval = reg_ebx;*/ };
-	if(strstr(hex,"ECX")==hex) { ASSERT(false); /*hex+=3; regval = reg_ecx;*/ };
-	if(strstr(hex,"EDX")==hex) { ASSERT(false); /*hex+=3; regval = reg_edx;*/ };
-	if(strstr(hex,"ESI")==hex) { ASSERT(false); /*hex+=3; regval = reg_esi;*/ };
-	if(strstr(hex,"EDI")==hex) { ASSERT(false); /*hex+=3; regval = reg_edi;*/ };
-	if(strstr(hex,"EBP")==hex) { ASSERT(false); /*hex+=3; regval = reg_ebp;*/ };
-	if(strstr(hex,"ESP")==hex) { ASSERT(false); /*hex+=3; regval = reg_esp;*/ };
-	if(strstr(hex,"EIP")==hex) { ASSERT(false); /*hex+=3; regval = reg_eip;*/ };
-	////
-	if(strstr(hex,"AX")==hex) { hex+=2; regval = m_core->get_AX(); };
-	if(strstr(hex,"BX")==hex) { hex+=2; regval = m_core->get_BX(); };
-	if(strstr(hex,"CX")==hex) { hex+=2; regval = m_core->get_CX(); };
-	if(strstr(hex,"DX")==hex) { hex+=2; regval = m_core->get_DX(); };
-	if(strstr(hex,"SI")==hex) { hex+=2; regval = m_core->get_SI(); };
-	if(strstr(hex,"DI")==hex) { hex+=2; regval = m_core->get_DI(); };
-	if(strstr(hex,"BP")==hex) { hex+=2; regval = m_core->get_BP(); };
-	if(strstr(hex,"SP")==hex) { hex+=2; regval = m_core->get_SP(); };
-	if(strstr(hex,"IP")==hex) { hex+=2; regval = m_core->get_IP(); };
-	if(strstr(hex,"CS")==hex) { hex+=2; regval = m_core->get_CS().sel.value; };
-	if(strstr(hex,"DS")==hex) { hex+=2; regval = m_core->get_DS().sel.value; };
-	if(strstr(hex,"ES")==hex) { hex+=2; regval = m_core->get_ES().sel.value; };
-	//don't assert false. return a fake value. the debugger gui disassembles 2 instructions ahead.
+	     if(strstr(hex,"AX")==hex) { hex+=2; regval = m_core->get_AX(); }
+	else if(strstr(hex,"BX")==hex) { hex+=2; regval = m_core->get_BX(); }
+	else if(strstr(hex,"CX")==hex) { hex+=2; regval = m_core->get_CX(); }
+	else if(strstr(hex,"DX")==hex) { hex+=2; regval = m_core->get_DX(); }
+	else if(strstr(hex,"SI")==hex) { hex+=2; regval = m_core->get_SI(); }
+	else if(strstr(hex,"DI")==hex) { hex+=2; regval = m_core->get_DI(); }
+	else if(strstr(hex,"BP")==hex) { hex+=2; regval = m_core->get_BP(); }
+	else if(strstr(hex,"SP")==hex) { hex+=2; regval = m_core->get_SP(); }
+	else if(strstr(hex,"IP")==hex) { hex+=2; regval = m_core->get_IP(); }
+	else if(strstr(hex,"CS")==hex) { hex+=2; regval = m_core->get_CS().sel.value; }
+	else if(strstr(hex,"DS")==hex) { hex+=2; regval = m_core->get_DS().sel.value; }
+	else if(strstr(hex,"ES")==hex) { hex+=2; regval = m_core->get_ES().sel.value; }
+	else if(strstr(hex,"SS")==hex) { hex+=2; regval = m_core->get_SS().sel.value; }
+	//return a fake value. the debugger gui disassembles 2 instructions ahead.
 	//if those "instructions" are not code but data, they can be interpreted as anything,
 	//like bogus 386's prefixes fs: and gs:
-	if(strstr(hex,"FS")==hex) { hex+=2; regval = 0; };
-	if(strstr(hex,"GS")==hex) { hex+=2; regval = 0; };
-	if(strstr(hex,"SS")==hex) { hex+=2; regval = m_core->get_SS().sel.value; };
+	else if(strstr(hex,"FS")==hex) { hex+=2; regval = 0; }
+	else if(strstr(hex,"GS")==hex) { hex+=2; regval = 0; };
 
 	while(*hex) {
 		if((*hex>='0') && (*hex<='9')) value = (value<<4)+*hex-'0';
@@ -436,6 +425,17 @@ void CPUDebugger::INT_def_ret(CPUCore *core, char* buf, uint buflen)
 	snprintf(buf, buflen, " ret CF=%u", core->get_F(FMASK_CF)>>FBITN_CF);
 }
 
+void CPUDebugger::INT_def_ret_errcode(CPUCore *core, char* buf, uint buflen)
+{
+	uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+	if(cf) {
+		const char * errstr = ms_dos_errors[core->get_AX()];
+		snprintf(buf, buflen, " ret CF=1: %s", errstr);
+	} else {
+		snprintf(buf, buflen, " ret CF=0");
+	}
+}
+
 void CPUDebugger::INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
@@ -745,10 +745,9 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	if(!call) {
 		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
 		if(cf) {
-			const char * errstr = ms_dos_errors[core->get_AX()];
-			snprintf(buf, buflen, " ret CF=1: %s", errstr);
+			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
 		} else {
-			INT_def_ret(core, buf, buflen);
+			snprintf(buf, buflen, " ret : handle=%d", core->get_AX());
 		}
 		return;
 	}
@@ -762,6 +761,85 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		case 0x3: mode = ""; break;
 	}
 	snprintf(buf, buflen, " : '%s' %s", filename, mode);
+}
+
+void CPUDebugger::INT_21_3E(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		INT_def_ret_errcode(core, buf, buflen);
+		return;
+	}
+
+	snprintf(buf, buflen, " : handle=%d", core->get_BX());
+}
+
+void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
+		} else {
+			snprintf(buf, buflen, " ret : %d bytes read", core->get_AX());
+		}
+		return;
+	}
+
+	snprintf(buf, buflen, " : handle=%d, %d bytes, dest buf %04X:%04X",
+			core->get_BX(), core->get_CX(), core->get_DS().sel.value, core->get_DX());
+}
+
+void CPUDebugger::INT_21_42(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
+		} else {
+			uint32_t position = uint32_t(core->get_DX())<<16 | core->get_AX();
+			snprintf(buf, buflen, " ret : %d bytes from start", position);
+		}
+		return;
+	}
+
+	const char *origin = "";
+	switch(core->get_AL()) {
+		case 0x0: origin = "start of file"; break;
+		case 0x1: origin = "current file position"; break;
+		case 0x2: origin = "end of file"; break;
+		default: origin = "???"; break;
+	}
+	uint32_t offset = uint32_t(core->get_CX())<<16 | core->get_DX();
+	snprintf(buf, buflen, " : handle=%d, %s, offset=%d",
+			core->get_BX(), origin, offset);
+}
+
+void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
+		} else {
+			uint16_t cx = core->get_CX();
+			std::string attr;
+			if(cx & 32) attr += "archive ";
+			if(cx & 16) attr += "directory ";
+			if(cx &  8) attr += "volume-label ";
+			if(cx &  4) attr += "system ";
+			if(cx &  2) attr += "hidden ";
+			if(cx &  1) attr += "read-only";
+			snprintf(buf, buflen, " ret : %s", attr.c_str());
+		}
+		return;
+	}
+	//DS:DX -> ASCIZ filename
+	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	snprintf(buf, buflen, " : '%s'", filename);
 }
 
 void CPUDebugger::INT_21_5F03(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
@@ -888,12 +966,12 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x3A00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - RMDIR" } },
 	{ MAKE_INT_SEL(0x21, 0x3B00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - CHDIR" } },
 	{ MAKE_INT_SEL(0x21, 0x3D00, 1), { true,  &CPUDebugger::INT_21_3D, "DOS - FILE OPEN" } },
-	{ MAKE_INT_SEL(0x21, 0x3E00, 1), { true,  NULL,                    "DOS - FILE CLOSE" } },
-	{ MAKE_INT_SEL(0x21, 0x3F00, 1), { true,  NULL,                    "DOS - FILE READ" } },
+	{ MAKE_INT_SEL(0x21, 0x3E00, 1), { true,  &CPUDebugger::INT_21_3E, "DOS - FILE CLOSE" } },
+	{ MAKE_INT_SEL(0x21, 0x3F00, 1), { true,  &CPUDebugger::INT_21_3F, "DOS - FILE READ" } },
 	{ MAKE_INT_SEL(0x21, 0x4000, 1), { true,  NULL,                    "DOS - FILE WRITE" } },
 	{ MAKE_INT_SEL(0x21, 0x4100, 1), { true,  NULL,                    "DOS - FILE UNLINK" } },
-	{ MAKE_INT_SEL(0x21, 0x4200, 1), { true,  NULL,                    "DOS - FILE SEEK" } },
-	{ MAKE_INT_SEL(0x21, 0x4300, 2), { true,  NULL,                    "DOS - GET FILE ATTRIBUTES" } },
+	{ MAKE_INT_SEL(0x21, 0x4200, 1), { true,  &CPUDebugger::INT_21_42, "DOS - FILE SEEK" } },
+	{ MAKE_INT_SEL(0x21, 0x4300, 2), { true,  &CPUDebugger::INT_21_43, "DOS - GET FILE ATTRIBUTES" } },
 	{ MAKE_INT_SEL(0x21, 0x4400, 2), { true,  NULL,                    "DOS - GET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4401, 2), { true,  NULL,                    "DOS - SET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4408, 2), { true,  NULL,                    "DOS - IOCTL - CHECK IF BLOCK DEVICE REMOVABLE" } },
@@ -911,7 +989,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x5200, 1), { false, NULL,                    "DOS - GET LIST OF LISTS" } },
 	{ MAKE_INT_SEL(0x21, 0x5D08, 2), { false, NULL,                    "DOS NET - SET REDIRECTED PRINTER MODE" } },
 	{ MAKE_INT_SEL(0x21, 0x5D09, 2), { false, NULL,                    "DOS NET - FLUSH REDIRECTED PRINTER OUTPUT" } },
-	{ MAKE_INT_SEL(0x21, 0x5F02, 2), { true,  NULL,                    "DOS NET - SET NETWORK PRINTER SETUP STRING" } },
+	{ MAKE_INT_SEL(0x21, 0x5F02, 2), { true,  NULL,                    "DOS NET - GET REDIRECTION LIST ENTRY" } },
 	{ MAKE_INT_SEL(0x21, 0x5F03, 2), { true,  &CPUDebugger::INT_21_5F03,"DOS NET - REDIRECT DEVICE" } },
 	{ MAKE_INT_SEL(0x21, 0x6300, 2), { false, NULL,                    "DOS - GET DOUBLE BYTE CHARACTER SET LEAD-BYTE TABLE" } },
 	{ MAKE_INT_SEL(0x21, 0x6601, 2), { false, NULL,                    "DOS - GET GLOBAL CODE PAGE TABLE" } },
