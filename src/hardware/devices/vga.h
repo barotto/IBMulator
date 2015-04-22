@@ -165,6 +165,7 @@ protected:
 		bool x_dotclockdiv2;
 		bool y_doublescan;
 		// h/v retrace timing
+		uint64_t display_usec;
 		uint32_t htotal_usec;
 		uint32_t hbstart_usec;
 		uint32_t hbend_usec;

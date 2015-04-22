@@ -404,7 +404,7 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 			//           horizontal or vertical retrace period is active
 
 			retval = 0;
-			display_usec = g_machine.get_virt_time_us() % m_s.vtotal_usec;
+			display_usec = g_machine.get_virt_time_us() - m_s.display_usec;
 			if((display_usec >= m_s.vrstart_usec) && (display_usec <= m_s.vrend_usec)) {
 				retval |= 0x08;
 			}
@@ -1200,6 +1200,8 @@ void VGA::update()
 	static bool cs_visible = false;
 	bool cs_toggle = false;
 	bool skip = skip_update();
+
+	m_s.display_usec = g_machine.get_virt_time_us();
 
 	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip) {
 		//interrupt enabled
