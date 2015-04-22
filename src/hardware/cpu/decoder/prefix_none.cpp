@@ -722,6 +722,7 @@ case 0x6B:
 /* 6C      INSB           5         Input byte from port DX into ES:[DI] */
 case 0x6C:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::INSB, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -731,6 +732,7 @@ case 0x6C:
 /* 6D      INSW           5         Input word from port DX into ES:[DI] */
 case 0x6D:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::INSW, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -740,6 +742,7 @@ case 0x6D:
 /* 6E      OUTSB          5          Output byte DS:[SI] to port number DX */
 case 0x6E:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::OUTSB, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -749,6 +752,7 @@ case 0x6E:
 /* 6F      OUTSW          5          Output word DS:[SI] to port number DX */
 case 0x6F:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::OUTSW, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -1366,6 +1370,7 @@ case 0xA3:
 /* A4        MOVSB         5        Move byte DS:[SI] to ES:[DI] */
 case 0xA4:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::MOVSB, _1);
 	CYCLES(1,1);
 	m_instr.cycles.base_rep = 0;
@@ -1375,6 +1380,7 @@ case 0xA4:
 /* A5        MOVSW         5        Move word DS:[SI] to ES:[DI] */
 case 0xA5:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::MOVSW, _1);
 	CYCLES(1,1);
 	m_instr.cycles.base_rep = 0;
@@ -1384,6 +1390,7 @@ case 0xA5:
 /* A6        CMPSB         8         Compare bytes ES:[DI] from DS:[SI] */
 case 0xA6:
 {
+	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = std::bind(&CPUExecutor::CMPSB, _1);
 	CYCLES(4,4);
@@ -1394,6 +1401,7 @@ case 0xA6:
 /* A7        CMPSW         8         Compare words ES:[DI] from DS:[SI] */
 case 0xA7:
 {
+	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = std::bind(&CPUExecutor::CMPSW, _1);
 	CYCLES(4,4);
@@ -1422,6 +1430,7 @@ case 0xA9:
 /* AA       STOSB           3          Store AL to byte ES:[DI], advance DI */
 case 0xAA:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::STOSB, _1);
 	CYCLES(1,1);
 	m_instr.cycles.rep = 4;
@@ -1432,6 +1441,7 @@ case 0xAA:
 /* AB       STOSW           3          Store AX to word ES:[DI], advance DI */
 case 0xAB:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::STOSW, _1);
 	CYCLES(1,1);
 	m_instr.cycles.rep = 4;
@@ -1442,6 +1452,7 @@ case 0xAB:
 /* AC         LODSB             5         Load byte DS:[SI] into AL */
 case 0xAC:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::LODSB, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -1451,6 +1462,7 @@ case 0xAC:
 /* AD         LODSW             5         Load word DS:[SI] into AX */
 case 0xAD:
 {
+	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::LODSW, _1);
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
@@ -1460,6 +1472,7 @@ case 0xAD:
 /*  AE       SCASB         7        Compare bytes AL - ES:[DI], advance DI */
 case 0xAE:
 {
+	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = std::bind(&CPUExecutor::SCASB, _1);
 	CYCLES(5,5);
@@ -1470,6 +1483,7 @@ case 0xAE:
 /*  AF       SCASW         7        Compare words AX - ES:[DI], advance DI */
 case 0xAF:
 {
+	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = std::bind(&CPUExecutor::SCASW, _1);
 	CYCLES(5,5);

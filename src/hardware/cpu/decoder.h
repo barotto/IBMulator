@@ -100,6 +100,7 @@ friend class ModRM;
 private:
 	uint32_t m_ilen;
 	Instruction m_instr;
+	bool m_rep;
 
 	void prefix_none(uint8_t);
 	void prefix_0F(uint8_t next_opcode);

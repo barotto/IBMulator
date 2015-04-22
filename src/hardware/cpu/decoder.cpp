@@ -32,6 +32,7 @@ Instruction * CPUDecoder::decode()
 	uint8_t opcode;
 
 	m_ilen = 0;
+	m_rep = false;
 	m_instr.valid = true;
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
@@ -77,13 +78,13 @@ restart_opcode:
 			goto restart_opcode;
 		}
 		case 0xF2: { // REPNE
-			m_instr.rep = true;
+			m_rep = true;
 			m_instr.rep_equal = false;
 			m_instr.cycles.rep = 5;
 			goto restart_opcode;
 		}
 		case 0xF3: { // REP/REPE
-			m_instr.rep = true;
+			m_rep = true;
 			m_instr.rep_equal = true;
 			m_instr.cycles.rep = 5;
 			goto restart_opcode;
