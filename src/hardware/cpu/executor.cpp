@@ -496,6 +496,15 @@ void CPUExecutor::execute(Instruction * _instr)
 	if(!m_instr->valid) {
 		illegal_opcode();
 	}
+	if(m_instr->size > CPU_MAX_INSTR_SIZE) {
+		/*
+		 * When the CPU detects an instruction that is illegal due to being
+		 * greater than 10 bytes in length, it generates an exception
+		 * #13 (General Protection Violation)
+		 * [80286 ARPL and Overlength Instructions, 15 October 1984]
+		 */
+		throw CPUException(CPU_GP_EXC, 0);
+	}
 	if(old_ip + m_instr->size > GET_LIMIT(CS)) {
 		PERRF(LOG_CPU, "CS limit violation!\n");
 		throw CPUException(CPU_GP_EXC, 0);

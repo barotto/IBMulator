@@ -107,17 +107,19 @@ private:
 	void illegal_opcode();
 
 	inline uint8_t fetchb() {
-		ASSERT(m_ilen < CPU_MAX_INSTR_SIZE);
 		uint8_t b = g_cpubus.fetchb();
-		m_instr.bytes[m_ilen] = b;
+		if(m_ilen < CPU_MAX_INSTR_SIZE) {
+			m_instr.bytes[m_ilen] = b;
+		}
 		m_ilen += 1;
 		return b;
 	}
 
 	inline uint16_t fetchw() {
-		ASSERT(m_ilen+1 < CPU_MAX_INSTR_SIZE);
 		uint16_t w = g_cpubus.fetchw();
-		*(uint16_t*)(&m_instr.bytes[m_ilen]) = w;
+		if(m_ilen+1 < CPU_MAX_INSTR_SIZE) {
+			*(uint16_t*)(&m_instr.bytes[m_ilen]) = w;
+		}
 		m_ilen += 2;
 		return w;
 	}
