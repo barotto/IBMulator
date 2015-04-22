@@ -33,8 +33,10 @@
 #define CPULOG_MAX_SIZE      400000u // number of instruction to log
 #define CPULOG_WRITE_TIME    false   // write instruction machine time?
 #define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
-#define CPULOG_WRITE_HEX     false   // write instruction as hex codes?
-#define CPULOG_WRITE_CORE    true    // write the CPU registers?
+#define CPULOG_WRITE_HEX     true    // write instruction as hex codes?
+#define CPULOG_WRITE_CORE    false   // write the CPU registers?
+#define CPULOG_WRITE_PQ      true    // write the prefetch queue?
+#define CPULOG_WRITE_TIMINGS true    // write various timing values?
 #define CPULOG_START_ADDR    0x500   // lower bound, instr. before this address are not logged
 #define CPULOG_END_ADDR      0x9FFFF // upper bound, instr. after this address are not logged
 #define CPULOG_LOG_INTS      false   // log INTs' instructions?

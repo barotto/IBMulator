@@ -34,7 +34,9 @@ struct CPULogEntry
 {
 	uint64_t time;
 	CPUCore core;
+	CPUBus bus;
 	Instruction instr;
+	unsigned cycles;
 };
 
 #define CPU_EVENT_NMI           (1 << 0)
@@ -165,7 +167,8 @@ protected:
 	FILE *m_log_prg_file;
 	uint32_t m_log_prg_iret;
 
-	void add_to_log(const Instruction &_instr, uint64_t _time, const CPUCore &_core);
+	void add_to_log(const Instruction &_instr, uint64_t _time,
+			const CPUCore &_core, const CPUBus &_bus, unsigned _cycles);
 	void write_log_entry(FILE *_dest, CPULogEntry &_entry);
 	const std::string & disasm(CPULogEntry &_log_entry);
 

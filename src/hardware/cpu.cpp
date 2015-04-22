@@ -149,9 +149,14 @@ void CPU::power_off()
 
 uint CPU::step()
 {
-	uint cycles = 0;
+	uint cycles, decode_cycles;
+	uint32_t csip, prev_csip;
+	CPUCore core_log;
 
 	g_cpubus.reset_counters();
+	decode_cycles = 0;
+	csip = 0;
+	prev_csip = 0;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -162,11 +167,22 @@ uint CPU::step()
 			//an interrupt could have invalidated the pq, we must update
 			g_cpubus.update_pq(0);
 		}
-		if(m_instr==NULL || m_instr->csip != GET_PHYADDR(CS,REG_IP)) {
+		csip = GET_PHYADDR(CS,REG_IP);
+		prev_csip = (m_instr!=NULL)?m_instr->csip:0;
+		if(m_instr==NULL || !(m_instr->rep && prev_csip==csip)) {
 			//if the prev instr is the same as the next (REP), don't decode
+			if(!g_cpubus.is_pq_valid()) {
+				/*
+				According to various sources, the decoding time should be
+				proportional to the size of the next instruction (1 cycle per
+				decoded byte). But after some empirical tests, 1 cycle seems
+				more appropriate.
+				*/
+				decode_cycles = 1;
+			}
 			m_instr = g_cpudecoder.decode();
 			if(CPULOG) {
-				add_to_log(*m_instr, g_machine.get_virt_time_us(), g_cpucore);
+				core_log = g_cpucore;
 			}
 		}
 		try {
@@ -194,20 +210,17 @@ uint CPU::step()
 	}
 
 	g_cpubus.update_pq(cycles);
-	uint memtx = g_cpubus.get_mem_tx() * MEMORY_TX_CYCLES;
-	cycles += memtx;
-	cycles += g_cpubus.get_cycles_penalty();
-	/*
-	if((memtx || g_cpubus.get_pq_fetches()) && (m_s.icount%(60/cycles))==0) {
-		cycles += MEMORY_TX_CYCLES;
+
+	uint dramtx = g_cpubus.get_dram_tx();
+	uint vramtx = g_cpubus.get_vram_tx();
+	uint penalty = g_cpubus.get_cycles_penalty();
+	cycles += decode_cycles + dramtx*DRAM_TX_CYCLES + penalty + vramtx*VRAM_TX_CYCLES;
+	if((dramtx||penalty) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
+		cycles += DRAM_REFRESH_CYCLES;
 	}
-	*/
-	/*
-	if( memtx || g_cpubus.get_pq_fetches() ) {
-		if(m_s.ccount + (60-m_s.ccount%60) < m_s.ccount + cycles)
-			cycles += MEMORY_TX_CYCLES;
+	if(CPULOG && prev_csip!=csip && !g_pic.get_isr()) {
+		add_to_log(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
 	}
-	*/
 	m_s.icount++;
 	m_s.ccount += cycles;
 	ASSERT(cycles>0 || (m_instr->rep && REG_CX==0));
@@ -603,21 +616,21 @@ bool CPU::interrupts_inhibited(unsigned mask)
 	return (m_s.icount <= m_s.inhibit_icount) && (m_s.inhibit_mask & mask) == mask;
 }
 
-void CPU::add_to_log(const Instruction &_instr, uint64_t _time, const CPUCore &_core)
+void CPU::add_to_log(const Instruction &_instr, uint64_t _time,
+		const CPUCore &_core, const CPUBus &_bus, unsigned _cycles)
 {
 	//don't log outside fixed boundaries
 	if(_instr.csip<CPULOG_START_ADDR || _instr.csip>CPULOG_END_ADDR) {
-		return;
-	}
-	//don't log IRQ routines
-	if(g_pic.get_isr()) {
 		return;
 	}
 
 	m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
 	m_log[m_log_idx].time = _time;
 	m_log[m_log_idx].core = _core;
+	m_log[m_log_idx].bus = _bus;
 	m_log[m_log_idx].instr = _instr;
+	m_log[m_log_idx].cycles = _cycles;
+
 	if(m_log_prg_file) {
 		if(CPULOG_LOG_INTS || m_log_prg_iret==0 || (m_log_prg_iret==_instr.csip)) {
 			m_log_prg_iret = 0;
@@ -754,6 +767,17 @@ void CPU::write_log_entry(FILE *_dest, CPULogEntry &_entry)
 				_entry.core.get_DS().sel.value,
 				_entry.core.get_SS().sel.value);
 	}
+
+	if(CPULOG_WRITE_TIMINGS) {
+		fprintf(_dest, "c=%2u,mtx=%2u,p=%2u ", _entry.cycles,
+				_entry.bus.get_dram_tx(), _entry.bus.get_cycles_penalty());
+	}
+
+	if(USE_PREFETCH_QUEUE && CPULOG_WRITE_PQ) {
+		fprintf(_dest, "pq=");
+		_entry.bus.write_pq_to_logfile(_dest);
+	}
+
 	fprintf(_dest, "\n");
 }
 
