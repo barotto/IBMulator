@@ -3462,6 +3462,95 @@ void CPUExecutor::LMSW_ew()
 
 
 /*******************************************************************************
+ * LOADALL-Load registers from memory
+ */
+
+void CPUExecutor::LOADALL()
+{
+	/* Undocumented
+	 * From 15-page Intel document titled "Undocumented iAPX 286 Test Instruction"
+	 * http://www.rcollins.org/articles/loadall/tspec_a3_doc.html
+	 */
+
+	uint16_t word_reg;
+	uint16_t desc_cache[3];
+	uint32_t base;
+
+	if(IS_PMODE() && (CPL != 0)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "LOADALL: CPL != 0 causes #GP\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	word_reg = g_cpubus.mem_read_word(0x806);
+	if(GET_MSW(MSW_PE)) {
+		word_reg |= MSW_PE; // adjust PE bit to current value of 1
+	}
+	SET_MSW(word_reg);
+
+	REG_TR.sel.set(g_cpubus.mem_read_word(0x816));
+	SET_FLAGS(g_cpubus.mem_read_word(0x818));
+	SET_IP(g_cpubus.mem_read_word(0x81A));
+	REG_LDTR.sel.set(g_cpubus.mem_read_word(0x81C));
+	REG_DS.sel.set(g_cpubus.mem_read_word(0x81E));
+	REG_SS.sel.set(g_cpubus.mem_read_word(0x820));
+	REG_CS.sel.set(g_cpubus.mem_read_word(0x822));
+	REG_ES.sel.set(g_cpubus.mem_read_word(0x824));
+	REG_DI = g_cpubus.mem_read_word(0x826);
+	REG_SI = g_cpubus.mem_read_word(0x828);
+	REG_BP = g_cpubus.mem_read_word(0x82A);
+	REG_SP = g_cpubus.mem_read_word(0x82C);
+	REG_BX = g_cpubus.mem_read_word(0x82E);
+	REG_DX = g_cpubus.mem_read_word(0x830);
+	REG_CX = g_cpubus.mem_read_word(0x832);
+	REG_AX = g_cpubus.mem_read_word(0x834);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x836);
+	desc_cache[1] = g_cpubus.mem_read_word(0x838);
+	desc_cache[2] = g_cpubus.mem_read_word(0x83A);
+	REG_ES.desc.set_from_cache(desc_cache);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x83C);
+	desc_cache[1] = g_cpubus.mem_read_word(0x83E);
+	desc_cache[2] = g_cpubus.mem_read_word(0x840);
+	REG_CS.desc.set_from_cache(desc_cache);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x842);
+	desc_cache[1] = g_cpubus.mem_read_word(0x844);
+	desc_cache[2] = g_cpubus.mem_read_word(0x846);
+	REG_SS.desc.set_from_cache(desc_cache);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x848);
+	desc_cache[1] = g_cpubus.mem_read_word(0x84A);
+	desc_cache[2] = g_cpubus.mem_read_word(0x84C);
+	REG_DS.desc.set_from_cache(desc_cache);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x84E);
+	desc_cache[1] = g_cpubus.mem_read_word(0x850);
+	desc_cache[2] = g_cpubus.mem_read_word(0x852);
+	base = (uint32_t(desc_cache[1]&0xFF)<<16) | desc_cache[0];
+	SET_GDTR(base, desc_cache[2]);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x854);
+	desc_cache[1] = g_cpubus.mem_read_word(0x856);
+	desc_cache[2] = g_cpubus.mem_read_word(0x858);
+	REG_LDTR.desc.set_from_cache(desc_cache);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x85A);
+	desc_cache[1] = g_cpubus.mem_read_word(0x85C);
+	desc_cache[2] = g_cpubus.mem_read_word(0x85E);
+	base = (uint32_t(desc_cache[1]&0xFF)<<16) | desc_cache[0];
+	SET_IDTR(base, desc_cache[2]);
+
+	desc_cache[0] = g_cpubus.mem_read_word(0x860);
+	desc_cache[1] = g_cpubus.mem_read_word(0x862);
+	desc_cache[2] = g_cpubus.mem_read_word(0x864);
+	REG_TR.desc.set_from_cache(desc_cache);
+
+	g_cpubus.invalidate_pq();
+}
+
+
+/*******************************************************************************
  * LODSB/LODSW-Load String Operand
  */
 

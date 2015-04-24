@@ -129,6 +129,19 @@ struct Descriptor
 		set_AR(uint8_t(_data>>40));
 	}
 
+	void set_from_cache(uint16_t _data[3]) {
+		set_LIMIT(_data[2]);
+		set_BASE(_data[0], _data[1]&0xFF);
+		/*
+		 * Access rights byte is in the format of the access byte in a descriptor.
+		 * The only difference is that the present bit becomes a valid bit.
+		 * If zero, the descriptor is considered invalid and any memory reference
+		 * using the descriptor will cause exception 13 with an error code of zero.
+		 */
+		set_AR(_data[1] >> 8);
+		valid = (_data[1]>>8) & 0x80;
+	}
+
 	inline bool is_code_segment() { return (ar & SEG_CODE); }
 	inline bool is_code_segment_conforming() { return (ar & SEG_CONFORMING); }
 	inline bool is_data_segment_expand_down() { return (ar & SEG_EXP_DOWN); }

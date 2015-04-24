@@ -250,7 +250,7 @@ static char const * op386map1[256] = {
 static char const *second[] = {
 /* 0 */
   "%g5",              "%g6",             "lar %Gv,%Ew",    "lsl %Gv,%Ew",
-  0,                  "[loadall]",       "clts",           "[loadall]",
+  0,                  "286 loadall",     "clts",           "386 loadall",
   "invd",             "wbinvd",          0,                "UD2",
   0,                  0,                 0,                0,
 /* 1 */

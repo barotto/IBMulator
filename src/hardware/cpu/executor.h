@@ -332,6 +332,7 @@ public:
 	void LIDT();
 	void LLDT_ew();
 	void LMSW_ew();
+	void LOADALL();
 	void LODSB();
 	void LODSW();
 

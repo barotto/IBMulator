@@ -131,6 +131,14 @@ case 0x03:
 	break;
 }
 
+/*  0F 05      LOADALL         195        Load CPU registers from memory */
+case 0x05:
+{
+	m_instr.fn = std::bind(&CPUExecutor::LOADALL, _1);
+	CYCLES(93,93);
+	break;
+}
+
 /*  0F 06      CLTS            2          Clear task switched flag */
 case 0x06:
 {
