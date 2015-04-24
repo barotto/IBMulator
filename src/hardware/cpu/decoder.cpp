@@ -77,6 +77,12 @@ restart_opcode:
 			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
+		case 0xF1: {
+			/* The 0xF1 opcode is a prefix which performs no function. It counts
+			 * like any other prefix towards the maximum instruction length.
+			 */
+			goto restart_opcode;
+		}
 		case 0xF2: { // REPNE
 			m_rep = true;
 			m_instr.rep_equal = false;
