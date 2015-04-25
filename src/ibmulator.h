@@ -26,6 +26,7 @@
 #define MIXER_HEARTBEAT 10000
 #define CHRONO_RDTSC 0
 #define USE_PREFETCH_QUEUE 1
+#define PIT_CNT1_AUTO_UPDATE false
 
 /////////////
 //CPU logging

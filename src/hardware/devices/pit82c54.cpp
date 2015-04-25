@@ -932,7 +932,7 @@ uint32_t PIT_82C54::get_next_event_time()
 	uint32_t time2 = counter[2].next_change_time;
 
 	uint32_t out = time0;
-	if(time1 && (time1<out)) {
+	if(PIT_CNT1_AUTO_UPDATE && time1 && (time1<out)) {
 		out = time1;
 		//PDEBUGF(LOG_V2, LOG_PIT, "next counter=1 %u\n",time1);
 	}
