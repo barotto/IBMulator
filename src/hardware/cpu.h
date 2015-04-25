@@ -117,6 +117,7 @@ protected:
 	uint32_t m_freq;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
+	std::function<void(void)> m_shutdown_trap;
 
 	struct {
 		uint64_t icount;
@@ -153,6 +154,7 @@ protected:
 	bool is_pending(uint32_t _event);
 	bool is_unmasked_event_pending(uint32_t _event);
 	uint32_t unmasked_events_pending();
+	void default_shutdown_trap() {}
 
 	bool interrupts_inhibited(unsigned mask);
 
@@ -203,6 +205,7 @@ public:
 	void set_HRQ(bool _val);
 	bool get_HRQ() { return m_s.HRQ; }
 
+	void set_shutdown_trap(std::function<void(void)> _fn);
 	void enter_sleep_state(CPUActivityState _state);
 	void exception(CPUException _exc);
 

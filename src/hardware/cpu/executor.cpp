@@ -663,7 +663,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// interrupt vector must be within IDT table limits,
 	// else #GP(vector*8 + 2 + EXT)
 	if((vector*8 + 7) > GET_LIMIT(IDTR)) {
-		PERRF(LOG_CPU,
+		PDEBUGF(LOG_V2,LOG_CPU,
 			"interrupt(): vector must be within IDT table limits, IDT.limit = 0x%x\n",
 			GET_LIMIT(IDTR));
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
@@ -673,7 +673,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	gate_descriptor.set(descdata);
 
 	if(!gate_descriptor.valid || gate_descriptor.segment) {
-		PERRF(LOG_CPU,
+		PDEBUGF(LOG_V2,LOG_CPU,
 				"interrupt(): gate descriptor is not valid sys seg (vector=0x%02x)\n",
 				vector);
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
@@ -687,7 +687,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		case DESC_TYPE_TRAP_GATE:
 			break;
 		default:
-			PERRF(LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7}\n",
+			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7}\n",
 					(unsigned) gate_descriptor.type);
 			throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
@@ -695,13 +695,13 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// if software interrupt, then gate descripor DPL must be >= CPL,
 	// else #GP(vector * 8 + 2 + EXT)
 	if(soft_int && gate_descriptor.dpl < CPL) {
-		PERRF(LOG_CPU, "interrupt(): soft_int && (gate.dpl < CPL)\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): soft_int && (gate.dpl < CPL)\n");
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 
 	// Gate must be present, else #NP(vector * 8 + 2 + EXT)
 	if(!gate_descriptor.present) {
-		PERRF(LOG_CPU, "interrupt(): gate not present\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate not present\n");
 		throw CPUException(CPU_NP_EXC, vector*8 + 2);
 	}
 
@@ -713,7 +713,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// must specify global in the local/global bit,
 			//      else #GP(TSS selector)
 			if(tss_selector.ti) {
-				PERRF(LOG_CPU,
+				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): tss_selector.ti=1 from gate descriptor - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
 			}
@@ -722,7 +722,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			try {
 				descdata = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
-				PERRF(LOG_CPU, "interrupt_pmode: bad tss_selector fetch\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad tss_selector fetch\n");
 				throw;
 			}
 			tss_descriptor.set(descdata);
@@ -730,20 +730,20 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// AR byte must specify available TSS,
 			//   else #GP(TSS selector)
 			if(tss_descriptor.valid==0 || tss_descriptor.segment) {
-				PERRF(LOG_CPU,
+				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
 			}
 
 			if(tss_descriptor.type != DESC_TYPE_AVAIL_TSS) {
-				PERRF(LOG_CPU,
+				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
 			}
 
 			// TSS must be present, else #NP(TSS selector)
 			if(!tss_descriptor.present) {
-				PERRF(LOG_CPU, "interrupt(): TSS descriptor.p == 0\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): TSS descriptor.p == 0\n");
 				throw CPUException(CPU_NP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
 			}
 
@@ -760,7 +760,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// examine CS selector and descriptor given in gate descriptor
 			// selector must be non-null else #GP(EXT)
 			if((gate_dest_selector & SELECTOR_RPL_MASK) == 0) {
-				PERRF(LOG_CPU,"int_trap_gate(): selector null\n");
+				PDEBUGF(LOG_V1,LOG_CPU,"int_trap_gate(): selector null\n");
 				throw CPUException(CPU_GP_EXC, 0);
 			}
 			cs_selector.set(gate_dest_selector);
@@ -770,7 +770,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			try {
 				descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
-				PERRF(LOG_CPU, "interrupt_pmode: bad cs_selector fetch\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad cs_selector fetch\n");
 				throw;
 			}
 			cs_descriptor.set(descdata);
@@ -780,14 +780,14 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			if(!cs_descriptor.valid || cs_descriptor.segment==0 ||
 				!(cs_descriptor.type & SEG_TYPE_EXECUTABLE) || cs_descriptor.dpl > CPL)
 			{
-				PERRF(LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
 						cs_selector.value);
 				throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// segment must be present, else #NP(selector + EXT)
 			if(!cs_descriptor.present) {
-				PERRF(LOG_CPU,"interrupt(): segment not present\n");
+				PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): segment not present\n");
 				throw CPUException(CPU_NP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
@@ -806,7 +806,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 				// Selector must be non-null else #TS(EXT)
 				if((SS_for_cpl_x & SELECTOR_RPL_MASK) == 0) {
-					PERRF(LOG_CPU, "interrupt(): SS selector null\n");
+					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS selector null\n");
 					throw CPUException(CPU_TS_EXC, 0); /* TS(ext) */
 				}
 
@@ -818,7 +818,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				try {
 					descdata = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
 				} catch(CPUException &e) {
-					PERRF(LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
+					PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
 					throw;
 				}
 				ss_descriptor.set(descdata);
@@ -826,14 +826,14 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				// selector rpl must = dpl of code segment,
 				// else #TS(SS selector + ext)
 				if(ss_selector.rpl != cs_descriptor.dpl) {
-					PERRF(LOG_CPU, "interrupt(): SS.rpl != CS.dpl\n");
+					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.rpl != CS.dpl\n");
 					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 				}
 
 				// stack seg DPL must = DPL of code segment,
 				// else #TS(SS selector + ext)
 				if(ss_descriptor.dpl != cs_descriptor.dpl) {
-					PERRF(LOG_CPU, "interrupt(): SS.dpl != CS.dpl\n");
+					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.dpl != CS.dpl\n");
 					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 				}
 
@@ -843,19 +843,19 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 					(ss_descriptor.type & SEG_TYPE_EXECUTABLE) ||
 					!(ss_descriptor.type & SEG_TYPE_WRITABLE))
 				{
-					PERRF(LOG_CPU,"interrupt(): SS is not writable data segment\n");
+					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): SS is not writable data segment\n");
 					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 				}
 
 				// seg must be present, else #SS(SS selector + ext)
 				if(!ss_descriptor.present) {
-					PERRF(LOG_CPU, "interrupt(): SS not present\n");
+					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS not present\n");
 					throw CPUException(CPU_SS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 				}
 
 				// IP must be within CS segment boundaries, else #GP(0)
 				if(gate_dest_offset > cs_descriptor.limit) {
-					PERRF(LOG_CPU,"interrupt(): gate EIP > CS.limit\n");
+					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate EIP > CS.limit\n");
 					throw CPUException(CPU_GP_EXC, 0);
 				}
 
@@ -908,7 +908,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 				// IP must be in CS limit else #GP(0)
 				if(gate_dest_offset > cs_descriptor.limit) {
-					PERRF(LOG_CPU,"interrupt(): IP > CS descriptor limit\n");
+					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): IP > CS descriptor limit\n");
 					throw CPUException(CPU_GP_EXC, 0);
 				}
 

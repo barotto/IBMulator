@@ -40,7 +40,7 @@ m_log_idx(0),
 m_log_size(0),
 m_log_file(NULL)
 {
-
+	m_shutdown_trap = std::bind(&CPU::default_shutdown_trap,this);
 }
 
 CPU::~CPU()
@@ -164,6 +164,11 @@ uint CPU::step()
 			// check on events which occurred for previous instructions (traps)
 			// and ones which are asynchronous to the CPU (hardware interrupts)
 			handle_async_event();
+			if(m_s.activity_state != CPU_STATE_ACTIVE) {
+				// something (eg. triple-fault) put the CPU in non active state
+				// return a non zero number of elapsed cycles anyway
+				return 1;
+			}
 			//an interrupt could have invalidated the pq, we must update
 			g_cpubus.update_pq(0);
 		}
@@ -258,8 +263,17 @@ uint CPU::get_execution_cycles()
 	return cycles_spent;
 }
 
+void CPU::set_shutdown_trap(std::function<void(void)> _fn)
+{
+	m_shutdown_trap = _fn;
+}
+
 void CPU::enter_sleep_state(CPUActivityState _state)
 {
+	// artificial trap bit, why use another variable.
+	m_s.activity_state = _state;
+	m_s.async_event = true; // so processor knows to check
+
 	switch(_state) {
 		case CPU_STATE_ACTIVE:
 			ASSERT(false); // should not be used for entering active CPU state
@@ -270,17 +284,14 @@ void CPU::enter_sleep_state(CPUActivityState _state)
 
 		case CPU_STATE_SHUTDOWN:
 			SET_FLAG(IF,0); // masking interrupts
-			PINFO(LOG_CPU, "Shutdown\n");
+			PDEBUGF(LOG_V2,LOG_CPU, "Shutdown\n");
+			m_shutdown_trap();
 			break;
 
 		default:
 			PERRF_ABORT(LOG_CPU,"enter_sleep_state: unknown state %d\n", _state);
 			break;
 	}
-
-	// artificial trap bit, why use another variable.
-	m_s.activity_state = _state;
-	m_s.async_event = true; // so processor knows to check
 	// Execution completes.  The processor will remain in a sleep
 	// state until one of the wakeup conditions is met.
 }
@@ -501,7 +512,7 @@ void CPU::exception(CPUException _exc)
 		 * instructions or exceptions are processed.
 		 */
 		if(_exc.vector == CPU_DF_EXC) {
-			PERRF(LOG_CPU,"exception(): 3rd (%d) exception with no resolution\n", e.vector);
+			PDEBUGF(LOG_V1,LOG_CPU,"exception(): 3rd (%d) exception with no resolution\n", e.vector);
 			enter_sleep_state(CPU_STATE_SHUTDOWN);
 			return;
 		}
@@ -513,7 +524,7 @@ void CPU::exception(CPUException _exc)
 		{
 			exception(CPUException(CPU_DF_EXC,0));
 		} else {
-			PERRF(LOG_CPU,"exception(): #GP while resolving exc %d\n", _exc.vector);
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): #GP while resolving exc %d\n", _exc.vector);
 			exception(e);
 		}
 	}

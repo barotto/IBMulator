@@ -205,6 +205,9 @@ void Machine::init()
 	config_changed();
 
 	g_cpu.set_HRQ(false);
+	g_cpu.set_shutdown_trap([this] () {
+		reset(MACHINE_SOFT_RESET);
+	});
 }
 
 void Machine::start()
