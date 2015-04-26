@@ -143,7 +143,7 @@ void CPU::restore_state(StateBuf &_state)
 
 void CPU::power_off()
 {
-	enter_sleep_state(CPU_STATE_SHUTDOWN);
+	enter_sleep_state(CPU_STATE_POWEROFF);
 	disable_prg_log();
 }
 
@@ -280,6 +280,7 @@ void CPU::enter_sleep_state(CPUActivityState _state)
 			break;
 
 		case CPU_STATE_HALT:
+		case CPU_STATE_POWEROFF:
 			break;
 
 		case CPU_STATE_SHUTDOWN:
