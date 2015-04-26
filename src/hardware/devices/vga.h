@@ -73,6 +73,7 @@ protected:
 			uint8_t reg[0x19];
 			bool write_protect;
 			bool interrupt;
+			uint16_t start_address;
 		} CRTC;
 
 		struct {
@@ -165,14 +166,17 @@ protected:
 		bool x_dotclockdiv2;
 		bool y_doublescan;
 		// h/v retrace timing
-		uint64_t display_usec;
+		uint64_t vblank_time_usec;
+		uint64_t vretrace_time_usec;
 		uint32_t htotal_usec;
 		uint32_t hbstart_usec;
 		uint32_t hbend_usec;
 		uint32_t vtotal_usec;
 		uint32_t vblank_usec;
+		uint32_t vbspan_usec;
 		uint32_t vrstart_usec;
 		uint32_t vrend_usec;
+		uint32_t vrspan_usec;
 		// shift values for extensions
 		uint8_t  plane_shift;
 		uint32_t plane_offset;
@@ -189,7 +193,7 @@ protected:
 		uint16_t num_y_tiles;
 	} m_s;  // state information
 
-	int timer_id;
+	int m_timer_id;
 
 	VGADisplay * m_display;
 
@@ -197,6 +201,7 @@ protected:
 	void init_systemtimer();
 	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t **plane);
 	void update();
+	void vertical_retrace();
 	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
 	void calculate_retrace_timing();
 	bool skip_update();

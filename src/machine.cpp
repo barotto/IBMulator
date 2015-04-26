@@ -537,7 +537,13 @@ void Machine::deactivate_timer(unsigned _timer)
 	m_timers[_timer].active = false;
 }
 
+void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func)
+{
+	ASSERT(_timer>0);
+	ASSERT(_timer<m_num_timers);
 
+	m_timers[_timer].fire = _func;
+}
 
 void Machine::register_irq(uint8_t _irq, const char* _name)
 {

@@ -76,7 +76,7 @@ VGA::VGA()
 {
 	m_s.memory = NULL;
 	m_s.vga_tile_updated = NULL;
-	timer_id = NULL_TIMER_HANDLE;
+	m_timer_id = NULL_TIMER_HANDLE;
 }
 
 VGA::~VGA()
@@ -133,21 +133,10 @@ void VGA::init()
 		g_devices.register_write_handler(this, addr, 3);
 	}
 
-	/* original Bochs comment:
-	The VGA update frequency is based on the emulated clock and the default
-	value is 5. Keep in mind that you must tweak the 'cpu: ips=N' directive
-	to be as close to the number of emulated instructions-per-second your
-	workstation can do, for this to be accurate. If the realtime sync is
-	enabled with the 'clock' option, the value is based on the real time.
-	*/
-	//int vga_update_freq = 5;
-	uint32_t update_interval = (uint32_t)(1000000 / 60);
-	PDEBUGF(LOG_V1, LOG_VGA, "interval=%u\n", update_interval);
-
-	timer_id = g_machine.register_timer(
-		std::bind(&VGA::update,this),
-		update_interval,
-		true, //continuous
+	m_timer_id = g_machine.register_timer(
+		nullptr,
+		0,
+		false, //continuous
 		false, //active
 		get_name()
 	);
@@ -171,7 +160,7 @@ void VGA::reset(uint type)
 		memset(&m_s, 0, sizeof(m_s));
 
 		m_s.vga_enabled = 1;
-		m_s.blink_counter = 1;
+		m_s.blink_counter = 16;
 		m_s.misc_output.color_emulation  = 1;
 		m_s.misc_output.enable_ram  = 1;
 		m_s.misc_output.horiz_sync_pol   = 1;
@@ -280,6 +269,14 @@ void VGA::restore_state(StateBuf &_state)
 
 	//display
 	m_display->restore_state(_state);
+
+	double vfreq = 1000000.0 / m_s.vtotal_usec;
+	if(vfreq >= 35.0 && vfreq <= 75.0) {
+		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
+		g_machine.activate_timer(m_timer_id, m_s.vtotal_usec, false);
+	} else {
+		g_machine.deactivate_timer(m_timer_id);
+	}
 }
 
 void VGA::determine_screen_dimensions(uint *piHeight, uint *piWidth)
@@ -348,30 +345,27 @@ void VGA::calculate_retrace_timing()
 	vfreq = hfreq / vtotal;
 	m_s.vtotal_usec = 1000000.0 / vfreq;
 	m_s.vblank_usec = m_s.htotal_usec * m_s.vertical_display_end;
+	m_s.vbspan_usec = m_s.vtotal_usec - m_s.vblank_usec;
 	m_s.vrstart_usec = m_s.htotal_usec * vrstart;
 	m_s.vrend_usec = m_s.htotal_usec * vrend;
+	m_s.vrspan_usec = m_s.vrend_usec - m_s.vrstart_usec;
 
 	PDEBUGF(LOG_V1, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
 
-	if(vfreq <= 100.0) {
-		// VGA text mode cursor blink frequency 1.875 Hz
-		if(m_s.vtotal_usec < 266666) {
-			m_s.blink_counter = 266666 / m_s.vtotal_usec;
-		} else {
-			m_s.blink_counter = 1;
-		}
-		g_machine.activate_timer(timer_id, m_s.vtotal_usec, true);
-		//g_machine.activate_timer(timer_id, 16666, true);
+	if(vfreq >= 35.0 && vfreq <= 75.0) {
+		//the first update is "vblank start"
+		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
+		g_machine.activate_timer(m_timer_id, m_s.vtotal_usec, false);
 		PINFOF(LOG_V1, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
 	} else {
-		g_machine.deactivate_timer(timer_id);
+		g_machine.deactivate_timer(m_timer_id);
 		PWARNF(LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
 	}
 }
 
 uint16_t VGA::read(uint16_t address, uint io_len)
 {
-	uint64_t display_usec, line_usec;
+	uint64_t display_usec, line_usec, now_usec;
 	uint16_t ret16;
 	uint8_t retval;
 
@@ -404,15 +398,17 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 			//           horizontal or vertical retrace period is active
 
 			retval = 0;
-			display_usec = g_machine.get_virt_time_us() - m_s.display_usec;
-			if((display_usec >= m_s.vrstart_usec) && (display_usec <= m_s.vrend_usec)) {
+			now_usec = g_machine.get_virt_time_us();
+
+			if(now_usec <= m_s.vretrace_time_usec+m_s.vrspan_usec) {
 				retval |= 0x08;
 			}
-			if(display_usec >= m_s.vblank_usec) {
+			if(now_usec <= m_s.vblank_time_usec+m_s.vbspan_usec) {
 				retval |= 0x01;
 			} else {
+				display_usec = now_usec - (m_s.vblank_time_usec+m_s.vbspan_usec);
 				line_usec = display_usec % m_s.htotal_usec;
-				if((line_usec >= m_s.hbstart_usec) &&	(line_usec <= m_s.hbend_usec)) {
+				if((line_usec >= m_s.hbstart_usec) && (line_usec <= m_s.hbend_usec)) {
 					retval |= 0x01;
 				}
 			}
@@ -424,7 +420,6 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 			/* reading this port resets the flip-flop to address mode */
 			m_s.attribute_ctrl.flip_flop = false;
 			return retval;
-			break;
 
 		case 0x03c0: /* */
 			if(!m_s.attribute_ctrl.flip_flop) {
@@ -1162,7 +1157,7 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 void VGA::raise_interrupt()
 {
 	if(m_s.CRTC.reg[0x11] & 0x10) {
-		PINFOF(LOG_V1, LOG_VGA, "raising IRQ %d\n", VGA_IRQ);
+		PDEBUGF(LOG_V2, LOG_VGA, "raising IRQ %d\n", VGA_IRQ);
 		g_pic.raise_irq(VGA_IRQ);
 		m_s.CRTC.interrupt = true;
 	}
@@ -1201,12 +1196,12 @@ void VGA::update()
 	bool cs_toggle = false;
 	bool skip = skip_update();
 
-	m_s.display_usec = g_machine.get_virt_time_us();
+	m_s.vblank_time_usec = g_machine.get_virt_time_us();
 
-	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip) {
-		//interrupt enabled
-		raise_interrupt();
-	}
+	//next is the "vertical retrace start"
+	uint64_t vrstart = m_s.vrstart_usec - m_s.vblank_usec;
+	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this));
+	g_machine.activate_timer(m_timer_id, vrstart, false);
 
 	cs_counter--;
 	/* no screen update necessary */
@@ -1248,15 +1243,12 @@ void VGA::update()
 		 */
 
 		uint8_t color;
-		uint16_t x, y, start_addr;
+		uint16_t x, y;
 		uint bit_no, r, c;
 		uint byte_offset;
 		uint xc, yc, xti, yti, pan = m_s.attribute_ctrl.horiz_pel_panning;
 		const uint mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
 		if(pan>=8) { pan = 0; }
-
-		//the start address is latched at vretrace
-		start_addr = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
 
 		determine_screen_dimensions(&iHeight, &iWidth);
 		if((iWidth != m_s.last_xres) || (iHeight != m_s.last_yres) || (m_s.last_bpp > 8))
@@ -1297,7 +1289,7 @@ void VGA::update()
 
 										x = xc + c + pan;
 										/* 0 or 0x2000 */
-										byte_offset = start_addr + ((y & 1) << 13);
+										byte_offset = m_s.CRTC.start_address + ((y & 1) << 13);
 										/* to the start of the line */
 										byte_offset += (320 / 4) * (y / 2);
 										/* to the byte start */
@@ -1334,7 +1326,7 @@ void VGA::update()
 									for(c=0; c<VGA_X_TILESIZE; c++) {
 										x = xc + c;
 										m_s.tile[r*VGA_X_TILESIZE + c] =
-												get_vga_pixel(x, y, start_addr,
+												get_vga_pixel(x, y, m_s.CRTC.start_address,
 														line_compare, cs_visible, plane);
 									}
 								}
@@ -1364,7 +1356,7 @@ void VGA::update()
 									if(m_s.x_dotclockdiv2) { x >>= 1; }
 									x += pan;
 									/* 0 or 0x2000 */
-									byte_offset = start_addr + ((y & 1) << 13);
+									byte_offset = m_s.CRTC.start_address + ((y & 1) << 13);
 									/* to the start of the line */
 									byte_offset += (320 / 4) * (y / 2);
 									/* to the byte start */
@@ -1395,7 +1387,7 @@ void VGA::update()
 				pan = mode13_pan_values[pan];
 				if(m_s.CRTC.reg[0x14] & 0x40) { // DW set: doubleword mode
 					uint pixely, pixelx, plane;
-					start_addr *= 4;
+					m_s.CRTC.start_address *= 4;
 					if(m_s.misc_output.select_high_bank != 1) {
 						PERRF(LOG_VGA, "update: select_high_bank != 1\n");
 					}
@@ -1411,7 +1403,7 @@ void VGA::update()
 										byte_offset = (plane * 65536) +
 												(pixely * m_s.line_offset)
 												+ (pixelx & ~0x03);
-										color = m_s.memory[(start_addr + byte_offset)%m_s.memsize];
+										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
 										m_s.tile[r*VGA_X_TILESIZE + c] = color;
 									}
 								}
@@ -1435,7 +1427,7 @@ void VGA::update()
 										byte_offset = (plane * 65536) +
 												(pixely * m_s.line_offset)
 												+ (pixelx >> 2);
-										color = m_s.memory[(start_addr + byte_offset)%m_s.memsize];
+										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
 										m_s.tile[r*VGA_X_TILESIZE + c] = color;
 									}
 								}
@@ -1446,7 +1438,7 @@ void VGA::update()
 					}
 				} else { // word mode
 					uint pixely, pixelx, plane;
-					start_addr *= 2;
+					m_s.CRTC.start_address *= 2;
 					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
 						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
 							if(GET_TILE_UPDATED (xti, yti)) {
@@ -1459,7 +1451,7 @@ void VGA::update()
 										byte_offset = (plane * 65536) +
 												(pixely * m_s.line_offset)
 												+ ((pixelx >> 1) & ~0x01);
-										color = m_s.memory[(start_addr + byte_offset)%m_s.memsize];
+										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
 										m_s.tile[r*VGA_X_TILESIZE + c] = color;
 									}
 								}
@@ -1586,6 +1578,22 @@ void VGA::update()
 	g_gui.vga_update();
 }
 
+void VGA::vertical_retrace()
+{
+	m_s.vretrace_time_usec = g_machine.get_virt_time_us();
+
+	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip_update()) {
+		raise_interrupt();
+	}
+	//the start address is latched at vretrace
+	m_s.CRTC.start_address = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
+
+	//next is the "vblank start"
+	uint64_t vbstart = (m_s.vtotal_usec - m_s.vrstart_usec) + m_s.vblank_usec;
+	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
+	g_machine.activate_timer(m_timer_id, vbstart, false);
+}
+
 uint8_t VGA::mem_read(uint32_t addr)
 {
 	uint32_t offset;
@@ -1665,7 +1673,6 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 {
 	uint32_t offset;
 	uint8_t new_val[4] = {0,0,0,0};
-	uint start_addr;
 	uint8_t *plane0, *plane1, *plane2, *plane3;
 
 	switch (m_s.graphics_ctrl.memory_mapping) {
@@ -1687,15 +1694,13 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			break;
 	}
 
-	start_addr = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
-
 	if(m_s.graphics_ctrl.graphics_alpha) {
 		if(m_s.graphics_ctrl.memory_mapping == 3) { // 0xB8000 .. 0xBFFFF
 			uint x_tileno, x_tileno2, y_tileno;
 
 			/* CGA 320x200x4 / 640x200x2 start */
 			m_s.memory[offset] = value;
-			offset -= start_addr;
+			offset -= m_s.CRTC.start_address;
 			if(offset>=0x2000) {
 				y_tileno = offset - 0x2000;
 				y_tileno /= (320/4);
@@ -1749,7 +1754,7 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			// 320 x 200 256 color mode: chained pixel representation
 			m_s.memory[(offset & ~0x03) + (offset % 4)*65536] = value;
 			if(m_s.line_offset > 0) {
-				offset -= start_addr;
+				offset -= m_s.CRTC.start_address;
 				x_tileno = (offset % m_s.line_offset) / (VGA_X_TILESIZE/2);
 				if(m_s.y_doublescan) {
 					y_tileno = (offset / m_s.line_offset) / (VGA_Y_TILESIZE/2);
@@ -2033,7 +2038,7 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 		uint x_tileno, y_tileno;
 
 		if(m_s.graphics_ctrl.shift_reg == 2) {
-			offset -= start_addr;
+			offset -= m_s.CRTC.start_address;
 			x_tileno = (offset % m_s.line_offset) * 4 / (VGA_X_TILESIZE / 2);
 			if(m_s.y_doublescan) {
 				y_tileno = (offset / m_s.line_offset) / (VGA_Y_TILESIZE / 2);
@@ -2057,8 +2062,8 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 					SET_TILE_UPDATED(x_tileno, y_tileno, true);
 				}
 			}
-			if(offset >= start_addr) {
-				offset -= start_addr;
+			if(offset >= m_s.CRTC.start_address) {
+				offset -= m_s.CRTC.start_address;
 				if(m_s.line_offset > 0) {
 					if(m_s.x_dotclockdiv2) {
 						x_tileno = (offset % m_s.line_offset) / (VGA_X_TILESIZE / 16);
