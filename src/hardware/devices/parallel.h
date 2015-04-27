@@ -23,12 +23,6 @@
 
 #include "hardware/iodevice.h"
 
-#define PARPORT_MAXDEV   3
-
-#define PAR_DATA  0
-#define PAR_STAT  1
-#define PAR_CTRL  2
-
 enum ParportModes {
 	PARPORT_EXTENDED = 0,
 	PARPORT_COMPATIBLE = 1
@@ -51,7 +45,6 @@ typedef struct {
 		bool irq;
 		bool input;
 	} CONTROL;
-	uint8_t IRQ;
 	FILE *output;
 	bool initmode;
 	uint8_t mode;
@@ -66,6 +59,7 @@ class Parallel : public IODevice
 private:
 	parport_t m_s;
 	static uint16_t ms_ports[3];
+	static uint16_t ms_irqs[3];
 	bool m_enabled;
 	void virtual_printer();
 

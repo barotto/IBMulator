@@ -29,7 +29,13 @@
 #include "parallel.h"
 #include <cstring>
 
+#define LPT_MAXDEV 3
+#define LPT_DATA   0
+#define LPT_STAT   1
+#define LPT_CTRL   2
+
 uint16_t Parallel::ms_ports[3] = {0x03BC, 0x0378, 0x0278};
+uint16_t Parallel::ms_irqs[3]  = {7, 7, 5};
 
 Parallel g_parallel;
 
@@ -53,15 +59,11 @@ Parallel::~Parallel()
 
 void Parallel::init(void)
 {
-	//on the PS/1 there'm_s only 1 port and it'm_s address assignment is
+	//on the PS/1 there'm_s only 1 port and it's address assignment is
 	//controlled by POS register 2.
 
-	ASSERT(N_PARALLEL_PORTS == 1);
-	const uint IRQ = 7;
-
 	/* parallel interrupt and i/o ports */
-	m_s.IRQ = IRQ;
-	for(uint i=0; i<PARPORT_MAXDEV; i++) {
+	for(uint i=0; i<LPT_MAXDEV; i++) {
 		for(int addr=ms_ports[i]; addr<=ms_ports[i]+2; addr++) {
 			g_devices.register_read_handler(this, addr, 1);
 		}
@@ -109,7 +111,7 @@ void Parallel::config_changed()
 	m_enabled = g_program.config().get_bool(LPT_SECTION, LPT_ENABLED);
 
 	PINFOF(LOG_V0, LOG_LPT, "Parallel port at 0x%04X (LPT%d), irq %d, mode %s\n",
-			ms_ports[m_s.port], m_s.port+1, m_s.IRQ,
+			ms_ports[m_s.port], m_s.port+1, ms_irqs[m_s.port],
 			m_s.mode==PARPORT_COMPATIBLE?"COMPATIBLE":"EXTENDED");
 }
 
@@ -154,7 +156,7 @@ void Parallel::set_port(uint8_t _port)
 	if(m_s.port != _port) {
 		m_s.port = _port;
 		PINFOF(LOG_V0, LOG_LPT, "Parallel port at 0x%04X (LPT%d), irq %d, mode %s\n",
-				ms_ports[m_s.port], m_s.port+1, m_s.IRQ,
+				ms_ports[m_s.port], m_s.port+1, ms_irqs[m_s.port],
 				m_s.mode==PARPORT_COMPATIBLE?"COMPATIBLE":"EXTENDED");
 	}
 }
@@ -189,7 +191,7 @@ void Parallel::virtual_printer()
 				fflush (m_s.output);
 			}
 			if(m_s.CONTROL.irq == 1) {
-				g_pic.raise_irq(m_s.IRQ);
+				g_pic.raise_irq(ms_irqs[m_s.port]);
 			}
 			m_s.STATUS.ack = 0;
 			m_s.STATUS.busy = 1;
@@ -211,7 +213,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 	address = address - ms_ports[m_s.port];
 
 	switch(address) {
-		case PAR_DATA:
+		case LPT_DATA:
 			if(m_enabled) {
 				if(m_s.mode == PARPORT_EXTENDED) {
 					if(!m_s.CONTROL.input) {
@@ -224,7 +226,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 				}
 			}
 			break;
-		case PAR_STAT: {
+		case LPT_STAT: {
 			if(m_enabled) {
 				retval = ((m_s.STATUS.busy<< 7) |
 						(m_s.STATUS.ack   << 6) |
@@ -234,7 +236,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 				if(m_s.STATUS.ack == 0) {
 					m_s.STATUS.ack = 1;
 					if(m_s.CONTROL.irq == 1) {
-						g_pic.lower_irq(m_s.IRQ);
+						g_pic.lower_irq(ms_irqs[m_s.port]);
 					}
 				}
 				if(m_s.initmode == 1) {
@@ -242,7 +244,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 					m_s.STATUS.slct  = 1;
 					m_s.STATUS.ack  = 0;
 					if(m_s.CONTROL.irq == 1) {
-						g_pic.raise_irq(m_s.IRQ);
+						g_pic.raise_irq(ms_irqs[m_s.port]);
 					}
 					m_s.initmode = 0;
 				}
@@ -250,7 +252,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 			}
 			break;
 		}
-		case PAR_CTRL: {
+		case LPT_CTRL: {
 			if(m_enabled) {
 				retval = ((m_s.CONTROL.input  << 5) |
 						(m_s.CONTROL.irq      << 4) |
@@ -263,7 +265,6 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 			break;
 		}
 		default:
-			retval = m_s.data;
 			break;
 	}
 	return retval;
@@ -274,14 +275,14 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	address = address - ms_ports[m_s.port];
 
 	switch(address) {
-		case PAR_DATA:
+		case LPT_DATA:
 			m_s.data = (uint8_t)value;
 			PDEBUGF(LOG_V2, LOG_LPT, "write: data output register = 0x%02x\n", (uint8_t)value);
 			if(m_s.mode == PARPORT_COMPATIBLE) {
 				virtual_printer();
 			}
 			break;
-		case PAR_CTRL: {
+		case LPT_CTRL: {
 			if((value & 0x01) == 0x01) {
 				if(m_s.CONTROL.strobe == 0) {
 					m_s.CONTROL.strobe = 1;
@@ -321,13 +322,13 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if((value & 0x10) == 0x10) {
 				if(m_s.CONTROL.irq == 0) {
 					m_s.CONTROL.irq = 1;
-					g_machine.register_irq(m_s.IRQ, get_name());
+					g_machine.register_irq(ms_irqs[m_s.port], get_name());
 					PDEBUGF(LOG_V2, LOG_LPT, "irq mode selected\n");
 				}
 			} else {
 				if(m_s.CONTROL.irq == 1) {
 					m_s.CONTROL.irq = 0;
-					g_machine.unregister_irq(m_s.IRQ);
+					g_machine.unregister_irq(ms_irqs[m_s.port]);
 					PDEBUGF(LOG_V2, LOG_LPT, "polling mode selected\n");
 				}
 			}
@@ -348,7 +349,6 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			break;
 		}
 		default:
-			m_s.data = (uint8_t)value;
 			break;
 	}
 }
