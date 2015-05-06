@@ -79,7 +79,8 @@ struct Instruction
 	struct {
 		uint8_t base;  //!< CPU cycles for execution
 		uint8_t memop; //!< CPU cycles for execution if memory operand
-		uint8_t rep;   //!< execution cycles for the 1st iteration or a rep loop
+		uint8_t extra; //!< any run-time dependent extra amount (like shifts and rotates)
+		uint8_t rep;   //!< execution cycles for the rep warmup
 		uint8_t base_rep; //!< CPU cycles for execution if inside a rep loop
 		uint8_t pmode; //!< CPU cycles if protected mode
 		uint8_t noj;   //!< for jumps if jump not taken
@@ -87,6 +88,7 @@ struct Instruction
 		uint8_t samep; //!< for jmps and calls
 		uint8_t morep; //!< for calls
 		uint8_t tss;   //!< for jmps and calls
+		uint8_t pq;    //!< cycles that the pq can use (if 255 then normal instr cycles are used)
 	} cycles;
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; //!< the instruction bytes (prefixes included)
 };

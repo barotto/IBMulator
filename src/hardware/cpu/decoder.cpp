@@ -40,7 +40,20 @@ Instruction * CPUDecoder::decode()
 	m_instr.seg = REGI_NONE;
 	m_instr.ip = g_cpubus.get_ip();
 	m_instr.csip = g_cpubus.get_csip();
-	m_instr.cycles = { 0,0,0,0,0,0,0,0,0,0 };
+	m_instr.cycles = {
+		0,  //base
+		0,  //memop
+		0,  //extra
+		0,  //rep
+		0,  //base_rep
+		0,  //pmode
+		0,  //noj
+		0,  //tgate
+		0,  //samep
+		0,  //morep
+		0,  //tss
+		255,//pq
+	};
 
 restart_opcode:
 
@@ -48,33 +61,22 @@ restart_opcode:
 	switch(opcode) {
 		case 0x26: { // segment ovr: ES
 			m_instr.seg = REGI_ES;
-			//TODO are these number correct? probably not
-			m_instr.cycles.base = 1;
-			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
 		case 0x2E: { // segment ovr: CS
 			m_instr.seg = REGI_CS;
-			m_instr.cycles.base = 1;
-			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
 		case 0x36: { // segment ovr: SS
 			m_instr.seg = REGI_SS;
-			m_instr.cycles.base = 1;
-			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
 		case 0x3E: { // segment ovr: DS
 			m_instr.seg = REGI_DS;
-			m_instr.cycles.base = 1;
-			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
 		case 0xF0: { // LOCK
 			PDEBUGF(LOG_V2, LOG_CPU, "LOCK\n");
-			m_instr.cycles.base = 1;
-			m_instr.cycles.memop = 1;
 			goto restart_opcode;
 		}
 		case 0xF1: {
@@ -102,22 +104,6 @@ restart_opcode:
 		}
 		default: {
 			prefix_none(opcode);
-			/*
-			//simple binary search to reduce the switch..case
-			if(opcode<0x80) {
-				if(opcode<0x40) {
-					prefix_none_00_3F(opcode);
-				} else {
-					prefix_none_40_7F(opcode);
-				}
-			} else {
-				if(opcode<0xC0) {
-					prefix_none_80_BF(opcode);
-				} else {
-					prefix_none_C0_FF(opcode);
-				}
-			}
-			*/
 			break;
 		}
 	}

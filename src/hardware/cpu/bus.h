@@ -30,14 +30,14 @@
 #define DRAM_ACCESS_CYCLES   2
 #define DRAM_WAIT_STATES     1
 #define DRAM_TX_CYCLES (DRAM_ACCESS_CYCLES+DRAM_WAIT_STATES)
-#define DRAM_REFRESH_CYCLES  5
+#define DRAM_REFRESH_CYCLES  DRAM_TX_CYCLES*2
 /*TODO
  * The following is an oversimplification of the video memory access time.
  * Also, the video ram wait states depend on the CPU frequency.
  * For an in depth explanation of the Display Adapter Cycle-Eater read Michael
  * Abrash's Graphics Programming Black Book, Ch.4
  */
-#define VRAM_WAIT_STATES     20
+#define VRAM_WAIT_STATES     14
 #define VRAM_TX_CYCLES (DRAM_ACCESS_CYCLES+VRAM_WAIT_STATES)
 
 
@@ -61,10 +61,9 @@ private:
 	uint m_dram_tx;
 	uint m_vram_tx;
 	uint m_pq_fetches;
-	uint m_cycles_penalty;
 	uint m_cycles_surplus;
 
-	void pq_fill(uint free_space, uint toread);
+	void pq_fill(uint toread);
 	GCC_ATTRIBUTE(always_inline)
 	inline uint get_pq_free_space() {
 		return CPU_PQ_SIZE - (m_s.pq_tail-m_s.pq_head) + (m_s.csip - m_s.pq_head);
@@ -90,16 +89,12 @@ public:
 	inline void reset_counters() {
 		m_dram_tx = 0;
 		m_vram_tx = 0;
-		m_cycles_penalty = 0;
-		m_pq_fetches = 0;
 	}
 
 	inline uint get_dram_tx() { return m_dram_tx; }
 	inline uint get_vram_tx() { return m_vram_tx; }
-	inline uint get_cycles_penalty() { return m_cycles_penalty; }
-	inline uint get_pq_fetches() { return m_pq_fetches; }
 	inline bool is_pq_valid() { return m_s.pq_valid; }
-	void update_pq(uint _cycles);
+	void update_pq(int _cycles);
 
 	//instruction fetching
 	uint8_t fetchb();
@@ -131,7 +126,7 @@ public:
 		 * all word-sized accesses.
 		 */
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_tx += 1 + (_addr & 1);
+			m_vram_tx += 2; //apparently, the VGA has a 8-bit data bus
 		} else {
 			m_dram_tx += 1 + (_addr & 1);
 		}
@@ -161,7 +156,7 @@ public:
 	}
 	inline void mem_write_word(uint32_t _addr, uint16_t _data) {
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_tx += 1 + (_addr & 1);
+			m_vram_tx += 2; //apparently, the VGA has a 8-bit data bus
 		} else {
 			m_dram_tx += 1 + (_addr & 1);
 		}

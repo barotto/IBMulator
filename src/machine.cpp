@@ -342,15 +342,6 @@ void Machine::core_step(int32_t _cpu_cycles)
 			cycles_left -= c;
 			m_s.virt_time = cpu_time;
 			m_mt_virt_time.store(cpu_time);
-
-			/*
-			for(uint i = 0; i < m_num_timers; i++) {
-				if(m_timers[i].active) {
-					ASSERT(m_timers[i].time_to_fire > m_s.virt_time);
-				}
-			}
-			*/
-
 		}
 
 		if(m_step_to_addr>0) {
@@ -366,8 +357,6 @@ void Machine::core_step(int32_t _cpu_cycles)
 		}
 	}
 	m_s.cycles_left = cycles_left;
-	//m_s.virt_time = start_time + ((_cpu_cycles + cycles_left*(-1)) * cycle_time);
-	//m_mt_virt_time.store(m_s.virt_time);
 }
 
 bool Machine::update_timers(uint64_t _cpu_time)

@@ -149,14 +149,28 @@ void CPU::power_off()
 
 uint CPU::step()
 {
-	uint cycles, decode_cycles;
+	/*
+	 * The 80286 is a pipelined processor. To precisely determine the timings
+	 * you must emulate the single clock ticks. Unfortunately this would be
+	 * overkill as for a 100ns cycle time this would amount to 10 million
+	 * calls of this method per second. Instead, we'll try to find a compromise
+	 * and simulate the real hardware as best as it's possible reducing the call
+	 * rate by an order of magnitude.
+	 */
+	uint cycles, decode_cycles, dramtx, vramtx, decode_fetches;
+	int pqcycles;
 	uint32_t csip, prev_csip;
 	CPUCore core_log;
 
 	g_cpubus.reset_counters();
+	cycles = 0;
 	decode_cycles = 0;
+	decode_fetches = 0;
+	dramtx = 0;
+	vramtx = 0;
 	csip = 0;
 	prev_csip = 0;
+	pqcycles = 255;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -174,26 +188,30 @@ uint CPU::step()
 		}
 		csip = GET_PHYADDR(CS,REG_IP);
 		prev_csip = (m_instr!=NULL)?m_instr->csip:0;
+		//if the prev instr is the same as the next (REP), don't decode
 		if(m_instr==NULL || !(m_instr->rep && prev_csip==csip)) {
-			//if the prev instr is the same as the next (REP), don't decode
-			if(!g_cpubus.is_pq_valid()) {
+			m_instr = g_cpudecoder.decode();
+			if(!m_pq_valid) {
 				/*
 				According to various sources, the decoding time should be
 				proportional to the size of the next instruction (1 cycle per
-				decoded byte). But after some empirical tests, 1 cycle seems
-				more appropriate.
+				decoded byte). But after some empirical tests, 1 cycle is the
+				best value given the current setup.
 				*/
-				decode_cycles = 1;
+				decode_cycles = (m_instr->size > 1);
 			}
-			m_instr = g_cpudecoder.decode();
 			if(CPULOG) {
 				core_log = g_cpucore;
 			}
 		}
 		try {
+			decode_fetches = g_cpubus.get_dram_tx(); // instruction decode fetches
 			g_cpuexecutor.execute(m_instr);
-			cycles = get_execution_cycles();
+			dramtx = g_cpubus.get_dram_tx() - decode_fetches; // instruction execution transfers
+			vramtx = g_cpubus.get_vram_tx();
+			cycles = get_execution_cycles(dramtx||vramtx);
 			m_instr->cycles.rep = 0;
+			pqcycles = m_instr->cycles.pq;
 		} catch(CPUException &e) {
 			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %u\n", e.vector);
 			if(STOP_AT_EXC) {
@@ -214,15 +232,22 @@ uint CPU::step()
 		cycles = 1;
 	}
 
-	g_cpubus.update_pq(cycles);
+	m_pq_valid = g_cpubus.is_pq_valid();
+	if(pqcycles == 255) {
+		if(m_pq_valid) {
+			pqcycles = cycles;
+		} else {
+			pqcycles = 0;
+		}
+	}
 
-	uint dramtx = g_cpubus.get_dram_tx();
-	uint vramtx = g_cpubus.get_vram_tx();
-	uint penalty = g_cpubus.get_cycles_penalty();
-	cycles += decode_cycles + dramtx*DRAM_TX_CYCLES + penalty + vramtx*VRAM_TX_CYCLES;
-	if((dramtx||penalty) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
+	g_cpubus.update_pq(pqcycles);
+
+	cycles += decode_cycles + (decode_fetches+dramtx)*DRAM_TX_CYCLES + vramtx*VRAM_TX_CYCLES;
+	if((dramtx||decode_fetches) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
 		cycles += DRAM_REFRESH_CYCLES;
 	}
+
 	if(CPULOG && prev_csip!=csip && !g_pic.get_isr()) {
 		add_to_log(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
 	}
@@ -233,15 +258,23 @@ uint CPU::step()
 	return cycles;
 }
 
-uint CPU::get_execution_cycles()
+uint CPU::get_execution_cycles(bool _memtx)
 {
-	uint cycles_spent = m_instr->cycles.rep;
-	uint base;
+	uint cycles_spent = 0;
+	uint base = 0;
+
 	if(m_instr->rep) {
+		cycles_spent = m_instr->cycles.rep;
 		base = m_instr->cycles.base_rep;
 	} else {
-		base = m_instr->cycles.base;
+		if(_memtx) {
+			base = m_instr->cycles.memop;
+		} else {
+			base = m_instr->cycles.base;
+		}
 	}
+	base += m_instr->cycles.extra;
+
 	if(IS_PMODE() && m_instr->cycles.pmode>0) {
 		//cycles_spent += m_instr->cycles.pmode;
 		//TODO pmode values are with mem tx
@@ -781,8 +814,7 @@ void CPU::write_log_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_TIMINGS) {
-		fprintf(_dest, "c=%2u,mtx=%2u,p=%2u ", _entry.cycles,
-				_entry.bus.get_dram_tx(), _entry.bus.get_cycles_penalty());
+		fprintf(_dest, "c=%2u,mtx=%2u ", _entry.cycles,	_entry.bus.get_dram_tx());
 	}
 
 	if(USE_PREFETCH_QUEUE && CPULOG_WRITE_PQ) {

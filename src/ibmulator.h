@@ -20,12 +20,12 @@
 #ifndef IBMULATOR_H
 #define IBMULATOR_H
 
-#define MULTITHREADED 1
-#define MACHINE_HEARTBEAT 10000
-#define GUI_HEARTBEAT 16666
-#define MIXER_HEARTBEAT 10000
-#define CHRONO_RDTSC 0
-#define USE_PREFETCH_QUEUE 1
+#define MULTITHREADED        true
+#define MACHINE_HEARTBEAT    10000
+#define GUI_HEARTBEAT        16666
+#define MIXER_HEARTBEAT      10000
+#define CHRONO_RDTSC         false
+#define USE_PREFETCH_QUEUE   true
 #define PIT_CNT1_AUTO_UPDATE false
 
 /////////////

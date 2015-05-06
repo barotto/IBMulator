@@ -25,9 +25,8 @@ CPUBus g_cpubus;
 
 #define CPUBUS_STATE_NAME "CPUBus"
 
-#define CPU_PQ_READS_PER_FETCH 2
-#define CPU_PQ_THRESHOLD       2
-
+#define CPU_PQ_THRESHOLD   2
+#define CPU_PQ_ODDPENALTY  ((!m_s.pq_valid) && (m_s.pq_tail & 1))
 
 
 CPUBus::CPUBus()
@@ -44,7 +43,6 @@ void CPUBus::init()
 
 void CPUBus::config_changed()
 {
-	//m_cycle_time = g_cpu.get_cycle_time_ns();
 }
 
 void CPUBus::save_state(StateBuf &_state)
@@ -63,19 +61,12 @@ void CPUBus::restore_state(StateBuf &_state)
 	_state.read(&m_s,h);
 }
 
-void CPUBus::pq_fill(uint free_space, uint btoread)
+void CPUBus::pq_fill(uint btoread)
 {
 	if(!USE_PREFETCH_QUEUE) {
 		return;
 	}
 
-	ASSERT(free_space<=CPU_PQ_SIZE);
-
-	if(btoread < CPU_PQ_READS_PER_FETCH)
-		btoread = CPU_PQ_READS_PER_FETCH;
-	if(btoread > free_space)
-		btoread = free_space;
-	m_pq_fetches = btoread;
 	uint pos = (get_pq_cur_index() + get_pq_cur_size()) % CPU_PQ_SIZE;
 	while(btoread--) {
 		uint32_t addr = m_s.pq_tail;
@@ -91,60 +82,51 @@ void CPUBus::pq_fill(uint free_space, uint btoread)
 	m_s.pq_valid = true;
 }
 
-void CPUBus::update_pq(uint _cycles)
+void CPUBus::update_pq(int _cycles)
 {
 	if(!USE_PREFETCH_QUEUE) {
 		return;
 	}
+	_cycles -= m_cycles_surplus;
+	m_cycles_surplus = 0;
 	if(!m_s.pq_valid) {
-		//csip will always be >CPU_PQ_SIZE
-		//ASSERT(m_s.csip>CPU_PQ_SIZE);
 		m_s.pq_head = m_s.csip;
 		m_s.pq_headpos = 0;
 		m_s.pq_tail = m_s.csip;
-		m_cycles_penalty = 0;
-		m_cycles_surplus = 0;
-	} else if(_cycles>0) {
+	}
+	if(_cycles>0) {
 		uint free_space = get_pq_free_space();
-		if(free_space==CPU_PQ_SIZE) {
-			m_cycles_penalty = m_cycles_surplus;
-		}
-		m_cycles_surplus = 0;
-		if(free_space>=CPU_PQ_THRESHOLD) {
-			//round up the int division
-			uint wtoread = (_cycles + DRAM_TX_CYCLES-1) / DRAM_TX_CYCLES;
-			if(wtoread>0) {
-				//the pq can fetch during the instuction execution
-				pq_fill(free_space,wtoread*2);
-				uint free_reads = _cycles/DRAM_TX_CYCLES;
-				if(wtoread > free_reads) {
-					//read too much
-					m_cycles_surplus = wtoread*DRAM_TX_CYCLES - _cycles;
-				}
+		if(free_space >= CPU_PQ_THRESHOLD) {
+			uint bytes = CPU_PQ_ODDPENALTY;
+			_cycles -= DRAM_TX_CYCLES*bytes;
+			while(_cycles>0) {
+				bytes += 2;
+				_cycles -= DRAM_TX_CYCLES;
 			}
+			if(bytes>free_space) {
+				bytes = free_space;
+			} else {
+				m_cycles_surplus = (uint)(-1 * _cycles);
+			}
+			pq_fill(bytes);
 		}
 	}
 }
 
 uint8_t CPUBus::fetchb()
 {
-	ASSERT(!USE_PREFETCH_QUEUE || m_s.csip<=m_s.pq_tail);
-	if(USE_PREFETCH_QUEUE && m_s.csip == m_s.pq_tail) {
-		//the pq is empty
-		if(!m_s.pq_valid && (m_s.csip & 1)) {
-			/*
-			 * lack of word alignment of the target instruction for any branch
-			 * effectively cuts the instruction-fetching power of the 286 in half
-			 * for the first instruction fetch after that branch.
-			 */
-			m_dram_tx++;
-		}
-		pq_fill(CPU_PQ_SIZE, CPU_PQ_READS_PER_FETCH);
-		m_dram_tx++;
-		m_cycles_penalty = m_cycles_surplus;
-	}
 	uint8_t b;
 	if(USE_PREFETCH_QUEUE) {
+		ASSERT(m_s.csip<=m_s.pq_tail);
+		if(m_s.csip == m_s.pq_tail) {
+			//the pq is empty
+			if(CPU_PQ_ODDPENALTY) {
+				pq_fill(1);
+			} else {
+				pq_fill(2);
+			}
+			m_dram_tx += 1;
+		}
 		b = m_s.pq[get_pq_cur_index()];
 	} else {
 		b = g_memory.read_byte(m_s.csip);
@@ -157,18 +139,19 @@ uint8_t CPUBus::fetchb()
 
 uint16_t CPUBus::fetchw()
 {
-	ASSERT(!USE_PREFETCH_QUEUE || m_s.csip<=m_s.pq_tail);
-	if(USE_PREFETCH_QUEUE && (m_s.csip >= m_s.pq_tail - 1)) {
-		//the pq is empty or not full enough
-		if(!m_s.pq_valid && (m_s.csip & 1)) {
-			m_dram_tx++;
-		}
-		pq_fill(get_pq_free_space(), CPU_PQ_READS_PER_FETCH);
-		m_dram_tx++;
-		m_cycles_penalty = m_cycles_surplus;
-	}
 	uint8_t b0, b1;
 	if(USE_PREFETCH_QUEUE) {
+		ASSERT(m_s.csip<=m_s.pq_tail);
+		if(m_s.csip >= m_s.pq_tail - 1) {
+			//the pq is empty or not full enough
+			if(CPU_PQ_ODDPENALTY) {
+				m_dram_tx += 2;
+				pq_fill(3);
+			} else {
+				m_dram_tx += 1;
+				pq_fill(2);
+			}
+		}
 		b0 = m_s.pq[get_pq_cur_index()];
 		m_s.csip++;
 		b1 = m_s.pq[get_pq_cur_index()];
@@ -176,11 +159,8 @@ uint16_t CPUBus::fetchw()
 	} else {
 		b0 = g_memory.read_byte(m_s.csip);
 		b1 = g_memory.read_byte(m_s.csip+1);
+		m_dram_tx += 1+(m_s.csip & 1);
 		m_s.csip += 2;
-		if(m_s.csip & 1) {
-			m_dram_tx++;
-		}
-		m_dram_tx++;
 	}
 	m_s.ip += 2;
 	return uint16_t(b1)<<8 | b0;

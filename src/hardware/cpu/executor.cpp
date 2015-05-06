@@ -4292,6 +4292,9 @@ uint8_t CPUExecutor::ROL_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 	_times %= 8;
+
+	m_instr->cycles.extra = _times;
+
 	_value = (_value << _times) | (_value >> (8 - _times));
 
 	SET_FLAG(CF, _value & 1);
@@ -4310,6 +4313,9 @@ uint16_t CPUExecutor::ROL_w(uint16_t _value, uint8_t _times)
 		return _value;
 	}
 	_times %= 16;
+
+	m_instr->cycles.extra = _times;
+
 	_value = (_value << _times) | (_value >> (16 - _times));
 
 	SET_FLAG(CF, _value & 1);
@@ -4335,6 +4341,9 @@ uint8_t CPUExecutor::ROR_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 	_times %= 8;
+
+	m_instr->cycles.extra = _times;
+
 	_value = (_value >> _times) | (_value << (8 - _times));
 
 	SET_FLAG(CF, _value >> 7);
@@ -4353,6 +4362,9 @@ uint16_t CPUExecutor::ROR_w(uint16_t _value, uint8_t _times)
 		return _value;
 	}
 	_times %= 16;
+
+	m_instr->cycles.extra = _times;
+
 	_value = (_value >> _times) | (_value << (16 - _times));
 
 	SET_FLAG(CF, _value >> 15);
@@ -4375,6 +4387,8 @@ uint8_t CPUExecutor::RCL_b(uint8_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = _times;
 
 	uint8_t res;
 	uint8_t cf = FLAG_CF;
@@ -4400,6 +4414,8 @@ uint16_t CPUExecutor::RCL_w(uint16_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = _times;
 
 	uint16_t res;
 	uint16_t cf = FLAG_CF;
@@ -4434,6 +4450,8 @@ uint8_t CPUExecutor::RCR_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 
+	m_instr->cycles.extra = _times;
+
 	uint8_t cf = FLAG_CF;
 	uint8_t res = (_value >> _times) | (cf << (8-_times)) | (_value << (9-_times));
 
@@ -4451,6 +4469,8 @@ uint16_t CPUExecutor::RCR_w(uint16_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = _times;
 
 	uint16_t cf = FLAG_CF;
 	uint16_t res = (_value >> _times) | (cf << (16-_times)) | (_value << (17-_times));
@@ -4685,6 +4705,8 @@ uint8_t CPUExecutor::SHL_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 
+	m_instr->cycles.extra = _times;
+
 	uint of = 0, cf = 0;
 	uint8_t res;
 
@@ -4713,6 +4735,8 @@ uint16_t CPUExecutor::SHL_w(uint16_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = _times;
 
 	uint16_t res;
 	uint of = 0, cf = 0;
@@ -4750,6 +4774,8 @@ uint8_t CPUExecutor::SHR_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 
+	m_instr->cycles.extra = _times;
+
 	uint8_t res = _value >> _times;
 
 	SET_FLAG(OF, (((res << 1) ^ res) >> 7) & 0x1);
@@ -4769,6 +4795,8 @@ uint16_t CPUExecutor::SHR_w(uint16_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = _times;
 
 	uint16_t res = _value >> _times;
 
@@ -4797,6 +4825,8 @@ uint8_t CPUExecutor::SAR_b(uint8_t _value, uint8_t _times)
 		return _value;
 	}
 
+	m_instr->cycles.extra = _times;
+
 	uint8_t res = ((int8_t) _value) >> _times;
 
 	SET_FLAG(OF, false);
@@ -4816,6 +4846,8 @@ uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
 	if(_times == 0) {
 		return _value;
 	}
+
+	m_instr->cycles.extra = (_value)?_times:0;
 
 	uint16_t res = ((int16_t) _value) >> _times;
 

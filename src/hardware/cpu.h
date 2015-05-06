@@ -118,6 +118,7 @@ protected:
 	uint32_t m_freq;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
+	bool m_pq_valid;
 	std::function<void(void)> m_shutdown_trap;
 
 	struct {
@@ -175,7 +176,7 @@ protected:
 	void write_log_entry(FILE *_dest, CPULogEntry &_entry);
 	const std::string & disasm(CPULogEntry &_log_entry);
 
-	uint get_execution_cycles();
+	uint get_execution_cycles(bool _memtx);
 
 public:
 
