@@ -44,6 +44,7 @@
 #define CPULOG_INT21_EXIT_IP 0x7782  // the IP of the last instr. of INT 21/4B
                                      // OS dependent, for PC-DOS 4.0 is 0x7782
                                      // use -1 to disable
+#define CPULOG_UNFOLD_REPS   false   // write a log line for every repetition
 
 #define PATHNAME_LEN 512
 

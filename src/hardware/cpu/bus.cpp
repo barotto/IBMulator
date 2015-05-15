@@ -30,7 +30,7 @@ CPUBus g_cpubus;
 
 
 CPUBus::CPUBus()
-: m_cycles_surplus(0)
+: m_cycles_ahead(0)
 {
 	memset(&m_s,0,sizeof(m_s));
 	reset_counters();
@@ -38,7 +38,14 @@ CPUBus::CPUBus()
 
 void CPUBus::init()
 {
+	m_write_queue.reserve(10);
+}
 
+void CPUBus::reset()
+{
+	invalidate_pq();
+	update(0);
+	m_cycles_ahead = 0;
 }
 
 void CPUBus::config_changed()
@@ -63,10 +70,6 @@ void CPUBus::restore_state(StateBuf &_state)
 
 void CPUBus::pq_fill(uint btoread)
 {
-	if(!USE_PREFETCH_QUEUE) {
-		return;
-	}
-
 	uint pos = (get_pq_cur_index() + get_pq_cur_size()) % CPU_PQ_SIZE;
 	while(btoread--) {
 		uint32_t addr = m_s.pq_tail;
@@ -82,19 +85,18 @@ void CPUBus::pq_fill(uint btoread)
 	m_s.pq_valid = true;
 }
 
-void CPUBus::update_pq(int _cycles)
+void CPUBus::update(int _cycles)
 {
-	if(!USE_PREFETCH_QUEUE) {
-		return;
-	}
-	_cycles -= m_cycles_surplus;
-	m_cycles_surplus = 0;
 	if(!m_s.pq_valid) {
 		m_s.pq_head = m_s.csip;
 		m_s.pq_headpos = 0;
 		m_s.pq_tail = m_s.csip;
+		m_cycles_ahead = 0;
+	} else {
+		_cycles -= m_cycles_ahead;
 	}
 	if(_cycles>0) {
+		m_cycles_ahead = 0;
 		uint free_space = get_pq_free_space();
 		if(free_space >= CPU_PQ_THRESHOLD) {
 			uint bytes = CPU_PQ_ODDPENALTY;
@@ -106,11 +108,23 @@ void CPUBus::update_pq(int _cycles)
 			if(bytes>free_space) {
 				bytes = free_space;
 			} else {
-				m_cycles_surplus = (uint)(-1 * _cycles);
+				m_cycles_ahead = (uint)(-1 * _cycles);
 			}
 			pq_fill(bytes);
 		}
+	} else {
+		m_cycles_ahead = (uint)(-1 * _cycles);
 	}
+	//flush the write queue
+	for(wq_data& data : m_write_queue) {
+		if(data.len==1) {
+			g_memory.write_byte(data.address, data.value);
+		} else {
+			g_memory.write_word(data.address, data.value);
+		}
+		m_cycles_ahead += data.cycles;
+	}
+	m_write_queue.clear();
 }
 
 uint8_t CPUBus::fetchb()
@@ -125,12 +139,16 @@ uint8_t CPUBus::fetchb()
 			} else {
 				pq_fill(2);
 			}
-			m_dram_tx += 1;
+			m_dram_r += 1;
+			if(m_cycles_ahead) {
+				m_fetch_cycles += m_cycles_ahead;
+				m_cycles_ahead = 0;
+			}
 		}
 		b = m_s.pq[get_pq_cur_index()];
 	} else {
 		b = g_memory.read_byte(m_s.csip);
-		m_dram_tx++;
+		m_dram_r++;
 	}
 	m_s.csip++;
 	m_s.ip++;
@@ -145,11 +163,15 @@ uint16_t CPUBus::fetchw()
 		if(m_s.csip >= m_s.pq_tail - 1) {
 			//the pq is empty or not full enough
 			if(CPU_PQ_ODDPENALTY) {
-				m_dram_tx += 2;
+				m_dram_r += 2;
 				pq_fill(3);
 			} else {
-				m_dram_tx += 1;
+				m_dram_r += 1;
 				pq_fill(2);
+			}
+			if(m_cycles_ahead) {
+				m_fetch_cycles += m_cycles_ahead;
+				m_cycles_ahead = 0;
 			}
 		}
 		b0 = m_s.pq[get_pq_cur_index()];
@@ -159,7 +181,7 @@ uint16_t CPUBus::fetchw()
 	} else {
 		b0 = g_memory.read_byte(m_s.csip);
 		b1 = g_memory.read_byte(m_s.csip+1);
-		m_dram_tx += 1+(m_s.csip & 1);
+		m_dram_r += 1+(m_s.csip & 1);
 		m_s.csip += 2;
 	}
 	m_s.ip += 2;

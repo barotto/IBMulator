@@ -21,17 +21,16 @@
 #include "hardware/cpu/decoder.h"
 #include "hardware/cpu/executor.h"
 
+//should be 7, but i try to compensate the 2 decode cycles when the pq is invalid
+#define JUMP_CYCLES 6
+#define LOOP_CYCLES 7
 
 using std::placeholders::_1;
 
 void CPUDecoder::prefix_none(uint8_t _opcode)
 {
-
-	/*
-	 * Just a big switch..case statement because I hate tables.
+	/* Just a big switch..case statement because I hate tables.
 	 * The compiler will optimize it as a jump table anyway.
-	 * I suspect the std binds are a tad slower than normal function pointers...
-	 * Optimization opportunity?
 	 */
 
 switch(_opcode) {
@@ -41,7 +40,7 @@ case 0x00:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -50,7 +49,7 @@ case 0x01:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -59,7 +58,7 @@ case 0x02:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_rb_eb, _1);
-	CYCLES(2, 3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -68,7 +67,7 @@ case 0x03:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_rw_ew, _1);
-	CYCLES(2, 3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -77,7 +76,7 @@ case 0x04:
 {
 	uint8_t imm = fetchb();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_AL_db, _1, imm);
-	CYCLES(3, 3);
+	CYCLES(3,3);
 	break;
 }
 
@@ -86,7 +85,7 @@ case 0x05:
 {
 	uint16_t imm = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::ADD_AX_dw, _1, imm);
-	CYCLES(3, 3);
+	CYCLES(3,3);
 	break;
 }
 
@@ -94,7 +93,7 @@ case 0x05:
 case 0x06:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_ES, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -112,7 +111,7 @@ case 0x08:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::OR_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -121,7 +120,7 @@ case 0x09:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::OR_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -130,7 +129,7 @@ case 0x0A:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::OR_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -139,7 +138,7 @@ case 0x0B:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::OR_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -165,7 +164,7 @@ case 0x0D:
 case 0x0E:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_CS, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -176,7 +175,7 @@ case 0x10:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADC_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -185,7 +184,7 @@ case 0x11:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADC_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -194,7 +193,7 @@ case 0x12:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADC_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -203,7 +202,7 @@ case 0x13:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ADC_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -229,7 +228,7 @@ case 0x15:
 case 0x16:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_SS, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -237,7 +236,7 @@ case 0x16:
 case 0x17:
 {
 	m_instr.fn = std::bind(&CPUExecutor::POP_SS, _1);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	CYCLES_PM(20);
 	break;
 }
@@ -247,7 +246,7 @@ case 0x18:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SBB_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -256,7 +255,7 @@ case 0x19:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SBB_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -265,7 +264,7 @@ case 0x1A:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SBB_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -274,7 +273,7 @@ case 0x1B:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SBB_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -300,7 +299,7 @@ case 0x1D:
 case 0x1E:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_DS, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -308,7 +307,7 @@ case 0x1E:
 case 0x1F:
 {
 	m_instr.fn = std::bind(&CPUExecutor::POP_DS, _1);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	CYCLES_PM(20);
 	break;
 }
@@ -318,7 +317,7 @@ case 0x20:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::AND_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -327,7 +326,7 @@ case 0x21:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::AND_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -336,7 +335,7 @@ case 0x22:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::AND_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -345,7 +344,7 @@ case 0x23:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::AND_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -382,7 +381,7 @@ case 0x28:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SUB_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -391,7 +390,7 @@ case 0x29:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SUB_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -400,7 +399,7 @@ case 0x2A:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SUB_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -409,7 +408,7 @@ case 0x2B:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SUB_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -446,7 +445,7 @@ case 0x30:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XOR_eb_rb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -455,7 +454,7 @@ case 0x31:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XOR_ew_rw, _1);
-	CYCLES(2,3);
+	CYCLES(2,8);
 	break;
 }
 
@@ -464,7 +463,7 @@ case 0x32:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XOR_rb_eb, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -473,7 +472,7 @@ case 0x33:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XOR_rw_ew, _1);
-	CYCLES(2,3);
+	CYCLES(2,5);
 	break;
 }
 
@@ -613,7 +612,7 @@ case 0x57: //DI
 {
 	m_instr.reg = _opcode - 0x50;
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_rw, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -630,6 +629,7 @@ case 0x5F: //DI
 	m_instr.reg = _opcode - 0x58;
 	m_instr.fn = std::bind(&CPUExecutor::POP_rw, _1);
 	CYCLES(3,3);
+	m_instr.cycles.bu = -3;
 	break;
 }
 
@@ -637,7 +637,7 @@ case 0x5F: //DI
 case 0x60:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSHA, _1);
-	CYCLES(0,0);
+	CYCLES(17,17);
 	break;
 }
 
@@ -666,7 +666,7 @@ case 0x63:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::ARPL_ew_rw, _1);
-	CYCLES(10,7);
+	CYCLES(10,9);
 	break;
 }
 
@@ -686,7 +686,7 @@ case 0x68:
 {
 	uint16_t imm = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_dw, _1, imm);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -705,7 +705,7 @@ case 0x6A:
 {
 	uint8_t imm = fetchb();
 	m_instr.fn = std::bind(&CPUExecutor::PUSH_db, _1, imm);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -724,8 +724,8 @@ case 0x6C:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::INSB, _1);
-	CYCLES(3,3);
-	m_instr.cycles.base_rep = 2;
+	CYCLES(5,5);
+	m_instr.cycles.base_rep = 4;
 	break;
 }
 
@@ -734,8 +734,8 @@ case 0x6D:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::INSW, _1);
-	CYCLES(3,3);
-	m_instr.cycles.base_rep = 2;
+	CYCLES(5,5);
+	m_instr.cycles.base_rep = 4;
 	break;
 }
 
@@ -745,7 +745,7 @@ case 0x6E:
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::OUTSB, _1);
 	CYCLES(3,3);
-	m_instr.cycles.base_rep = 2;
+	m_instr.cycles.base_rep = 4;
 	break;
 }
 
@@ -755,7 +755,7 @@ case 0x6F:
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::OUTSW, _1);
 	CYCLES(3,3);
-	m_instr.cycles.base_rep = 2;
+	m_instr.cycles.base_rep = 4;
 	break;
 }
 
@@ -764,7 +764,7 @@ case 0x70:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JO_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -774,7 +774,7 @@ case 0x71:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNO_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -784,7 +784,7 @@ case 0x72:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JC_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -794,7 +794,7 @@ case 0x73:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNC_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -804,7 +804,7 @@ case 0x74:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -814,7 +814,7 @@ case 0x75:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -824,7 +824,7 @@ case 0x76:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JBE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -834,7 +834,7 @@ case 0x77:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JA_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -844,7 +844,7 @@ case 0x78:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JS_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -854,7 +854,7 @@ case 0x79:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNS_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -864,7 +864,7 @@ case 0x7A:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JPE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -874,7 +874,7 @@ case 0x7B:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JPO_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -884,7 +884,7 @@ case 0x7C:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JL_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -894,7 +894,7 @@ case 0x7D:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNL_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -904,7 +904,7 @@ case 0x7E:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JLE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -914,7 +914,7 @@ case 0x7F:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JNLE_cb, _1, disp);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
 }
@@ -937,35 +937,35 @@ case 0x82:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = std::bind(&CPUExecutor::ADD_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 1:
 			m_instr.fn = std::bind(&CPUExecutor::OR_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::ADC_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::SBB_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::AND_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 5:
 			m_instr.fn = std::bind(&CPUExecutor::SUB_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 6:
 			m_instr.fn = std::bind(&CPUExecutor::XOR_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,5);
 			break;
 		case 7:
 			m_instr.fn = std::bind(&CPUExecutor::CMP_eb_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,4);
 			break;
 		default:
 			illegal_opcode();
@@ -990,35 +990,35 @@ case 0x81:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = std::bind(&CPUExecutor::ADD_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 1:
 			m_instr.fn = std::bind(&CPUExecutor::OR_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::ADC_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::SBB_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::AND_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 5:
 			m_instr.fn = std::bind(&CPUExecutor::SUB_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 6:
 			m_instr.fn = std::bind(&CPUExecutor::XOR_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 7:
 			m_instr.fn = std::bind(&CPUExecutor::CMP_ew_dw, _1, dw);
-			CYCLES(3,3);
+			CYCLES(3,4);
 			break;
 		default:
 			illegal_opcode();
@@ -1045,35 +1045,35 @@ case 0x83:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = std::bind(&CPUExecutor::ADD_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 1:
 			m_instr.fn = std::bind(&CPUExecutor::OR_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::ADC_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::SBB_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::AND_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 5:
 			m_instr.fn = std::bind(&CPUExecutor::SUB_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 6:
 			m_instr.fn = std::bind(&CPUExecutor::XOR_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,8);
 			break;
 		case 7:
 			m_instr.fn = std::bind(&CPUExecutor::CMP_ew_db, _1, db);
-			CYCLES(3,3);
+			CYCLES(3,4);
 			break;
 		default:
 			// according to the Intel's 286 user manual and http://ref.x86asm.net
@@ -1107,7 +1107,7 @@ case 0x86:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XCHG_eb_rb, _1);
-	CYCLES(3,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1116,7 +1116,7 @@ case 0x87:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XCHG_ew_rw, _1);
-	CYCLES(3,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1125,7 +1125,7 @@ case 0x88:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::MOV_eb_rb, _1);
-	CYCLES(2,0);
+	CYCLES(2,3);
 	break;
 }
 
@@ -1134,18 +1134,7 @@ case 0x89:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::MOV_ew_rw, _1);
-	/* TODO
-	 * when the destination is a memory location, the pipelined nature of the CPU
-	 * allows for a "fire-and-forget" mechanism: the result is sent by the EU to
-	 * the BU, and the EU is ready to execute the next instruction. To simulate
-	 * this I set the number of cycles for the mem version to 0, so at the end
-	 * the actually spent cycles are 3 (i.e. DRAM_TX_CYCLES).
-	 * The result is correct but the way to obtain it is a coincidence (the
-	 * value of DRAM_TX_CYCLES). To solve we must refactor CPU::step() and the
-	 * prefetch queue/decoder mechanism.
-	 * The same consideration holds for many other opcodes.
-	 */
-	CYCLES(2,0);
+	CYCLES(2,3);
 	break;
 }
 
@@ -1192,7 +1181,7 @@ case 0x8C:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(2,0);
+	CYCLES(2,3);
 	break;
 }
 
@@ -1247,7 +1236,7 @@ case 0x8F:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1297,9 +1286,8 @@ case 0x9A:
 	uint16_t newip = fetchw();
 	uint16_t newcs = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::CALL_cd, _1, newip, newcs);
-	CYCLES(9,9);
+	CYCLES(5,5);
 	CYCLES_PM(26);
-	m_instr.cycles.pq = 1;
 	break;
 }
 
@@ -1315,7 +1303,7 @@ case 0x9B:
 case 0x9C:
 {
 	m_instr.fn = std::bind(&CPUExecutor::PUSHF, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1366,7 +1354,7 @@ case 0xA2:
 {
 	uint16_t dw = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::MOV_xb_AL, _1, dw);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1375,7 +1363,7 @@ case 0xA3:
 {
 	uint16_t dw = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::MOV_xw_AX, _1, dw);
-	CYCLES(1,0);
+	CYCLES(3,3);
 	break;
 }
 
@@ -1384,7 +1372,7 @@ case 0xA4:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::MOVSB, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	m_instr.cycles.base_rep = 0;
 	break;
 }
@@ -1394,7 +1382,7 @@ case 0xA5:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::MOVSW, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	m_instr.cycles.base_rep = 0;
 	break;
 }
@@ -1444,7 +1432,7 @@ case 0xAA:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::STOSB, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	m_instr.cycles.rep = 4;
 	m_instr.cycles.base_rep = 0;
 	break;
@@ -1455,7 +1443,7 @@ case 0xAB:
 {
 	m_instr.rep = m_rep;
 	m_instr.fn = std::bind(&CPUExecutor::STOSW, _1);
-	CYCLES(0,0);
+	CYCLES(3,3);
 	m_instr.cycles.rep = 4;
 	m_instr.cycles.base_rep = 0;
 	break;
@@ -1576,7 +1564,7 @@ case 0xC0: //eb,db
 		default:
 			illegal_opcode();
 	}
-	CYCLES(5,3);
+	CYCLES(5,6);
 	break;
 }
 
@@ -1619,7 +1607,7 @@ case 0xC1:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(5,3);
+	CYCLES(5,6);
 	break;
 }
 
@@ -1628,7 +1616,7 @@ case 0xC2:
 {
 	uint16_t popbytes = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::RET_near, _1, popbytes);
-	CYCLES(9,9);
+	CYCLES(7,7);
 	break;
 }
 
@@ -1636,8 +1624,7 @@ case 0xC2:
 case 0xC3:
 {
 	m_instr.fn = std::bind(&CPUExecutor::RET_near, _1, 0);
-	CYCLES(9,9);
-	//m_instr.cycles.pq = 1;
+	CYCLES(7,7);
 	break;
 }
 
@@ -1680,7 +1667,7 @@ case 0xC6:
 			illegal_opcode();
 			break;
 	}
-	CYCLES(2,0);
+	CYCLES(2,3);
 	break;
 }
 
@@ -1697,7 +1684,7 @@ case 0xC7:
 			illegal_opcode();
 			break;
 	}
-	CYCLES(2,0);
+	CYCLES(2,3);
 	break;
 }
 
@@ -1837,7 +1824,8 @@ case 0xD0:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(1,2);
+	//compensate the m_instr->cycles.extra = 1 in CPUExecutor
+	CYCLES(1,7);
 	break;
 }
 
@@ -1879,7 +1867,8 @@ case 0xD1:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(1,2);
+	//compensate the m_instr->cycles.extra = 1 in CPUExecutor
+	CYCLES(1,7);
 	break;
 }
 
@@ -1921,7 +1910,7 @@ case 0xD2:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(5,3);
+	CYCLES(5,6);
 	break;
 }
 
@@ -1963,7 +1952,7 @@ case 0xD3:
 		default:
 			illegal_opcode();
 	}
-	CYCLES(5,3);
+	CYCLES(5,6);
 	break;
 }
 
@@ -2023,7 +2012,7 @@ case 0xE0:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::LOOPNZ, _1, disp);
-	CYCLES(8,8);
+	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
 }
@@ -2033,7 +2022,7 @@ case 0xE1:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::LOOPZ, _1, disp);
-	CYCLES(8,8);
+	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
 }
@@ -2043,7 +2032,7 @@ case 0xE2:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::LOOP, _1, disp);
-	CYCLES(8,8);
+	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
 }
@@ -2053,7 +2042,7 @@ case 0xE3:
 {
 	int8_t disp = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JCXZ_cb, _1, disp);
-	CYCLES(8,8);
+	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
 }
@@ -2081,7 +2070,7 @@ case 0xE6:
 {
 	uint8_t port = fetchb();
 	m_instr.fn = std::bind(&CPUExecutor::OUT_db_AL, _1, port);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -2090,7 +2079,7 @@ case 0xE7:
 {
 	uint8_t port = fetchb();
 	m_instr.fn = std::bind(&CPUExecutor::OUT_db_AX, _1, port);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -2099,8 +2088,10 @@ case 0xE8:
 {
 	uint16_t offset = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::CALL_cw, _1, offset);
-	CYCLES(5,5);
-	m_instr.cycles.pq = 1;
+	//TODO
+	//are the cycles given in the intel docs inclusive of the time needed
+	//to replenish the prefetch queue?
+	CYCLES(1,1);
 	break;
 }
 
@@ -2109,7 +2100,7 @@ case 0xE9:
 {
 	uint16_t offset = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::JMP_cw, _1, offset);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	break;
 }
 
@@ -2119,7 +2110,7 @@ case 0xEA:
 	uint16_t offset = fetchw();
 	uint16_t selector = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::JMP_cd, _1, selector, offset);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_PM(23);
 	CYCLES_CALL(38,38,180,175);
 	break;
@@ -2130,7 +2121,7 @@ case 0xEB:
 {
 	int8_t offset = int8_t(fetchb());
 	m_instr.fn = std::bind(&CPUExecutor::JMP_cb, _1, offset);
-	CYCLES(7,7);
+	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	break;
 }
 
@@ -2138,7 +2129,7 @@ case 0xEB:
 case 0xEC:
 {
 	m_instr.fn = std::bind(&CPUExecutor::IN_AL_DX, _1);
-	CYCLES(3,3);
+	CYCLES(5,5);
 	break;
 }
 
@@ -2146,7 +2137,7 @@ case 0xEC:
 case 0xED:
 {
 	m_instr.fn = std::bind(&CPUExecutor::IN_AX_DX, _1);
-	CYCLES(3,3);
+	CYCLES(5,5);
 	break;
 }
 
@@ -2154,7 +2145,7 @@ case 0xED:
 case 0xEE:
 {
 	m_instr.fn = std::bind(&CPUExecutor::OUT_DX_AL, _1);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
@@ -2162,19 +2153,13 @@ case 0xEE:
 case 0xEF:
 {
 	m_instr.fn = std::bind(&CPUExecutor::OUT_DX_AX, _1);
-	CYCLES(1,1);
+	CYCLES(3,3);
 	break;
 }
 
 /* F0  LOCK prefix */
 
-/* F1 undefined, does not generate #UD; ICEBP on 386+ */
-case 0xF1:
-{
-	m_instr.fn = std::bind(&CPUExecutor::NOP, _1);
-	CYCLES(1,1);
-	break;
-}
+/* F1 prefix, does not generate #UD; ICEBP on 386+ */
 
 /* F2 REP/REPE prefix */
 
@@ -2184,7 +2169,7 @@ case 0xF1:
 case 0xF4:
 {
 	m_instr.fn = std::bind(&CPUExecutor::HLT, _1);
-	CYCLES(1,1);
+	CYCLES(2,2);
 	break;
 }
 
@@ -2219,11 +2204,11 @@ case 0xF6:
 		}
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::NOT_eb, _1);
-			CYCLES(2,3);
+			CYCLES(2,5);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::NEG_eb, _1);
-			CYCLES(2,3);
+			CYCLES(2,5);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::MUL_eb, _1);
@@ -2270,27 +2255,27 @@ case 0xF7:
 		}
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::NOT_ew, _1);
-			CYCLES(2,3);
+			CYCLES(2,8);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::NEG_ew, _1);
-			CYCLES(2,7);
+			CYCLES(2,8);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::MUL_ew, _1);
-			CYCLES(21,21);
+			CYCLES(21,22);
 			break;
 		case 5:
 			m_instr.fn = std::bind(&CPUExecutor::IMUL_ew, _1);
-			CYCLES(21,21);
+			CYCLES(21,22);
 			break;
 		case 6:
 			m_instr.fn = std::bind(&CPUExecutor::DIV_ew, _1);
-			CYCLES(22,22);
+			CYCLES(22,23);
 			break;
 		case 7:
 			m_instr.fn = std::bind(&CPUExecutor::IDIV_ew, _1);
-			CYCLES(25,25);
+			CYCLES(25,26);
 			break;
 		default:
 			illegal_opcode();
@@ -2356,11 +2341,11 @@ case 0xFE:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = std::bind(&CPUExecutor::INC_eb, _1);
-			CYCLES(2,3);
+			CYCLES(2,5);
 			break;
 		case 1:
 			m_instr.fn = std::bind(&CPUExecutor::DEC_eb, _1);
-			CYCLES(2,3);
+			CYCLES(2,5);
 			break;
 		default:
 			illegal_opcode();
@@ -2392,29 +2377,27 @@ case 0xFF:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = std::bind(&CPUExecutor::INC_ew, _1);
-			CYCLES(2,3);
+			CYCLES(2,8);
 			break;
 		case 1:
 			m_instr.fn = std::bind(&CPUExecutor::DEC_ew, _1);
-			CYCLES(2,3);
+			CYCLES(2,8);
 			break;
 		case 2:
 			m_instr.fn = std::bind(&CPUExecutor::CALL_ew, _1);
-			CYCLES(5,7);
-			m_instr.cycles.pq = 1;
+			CYCLES(1,3);
 			break;
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::CALL_ed, _1);
-			CYCLES(9,8);
+			CYCLES(3,5);
 			CYCLES_CALL(44,90,185,180);
-			m_instr.cycles.pq = 1;
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::JMP_ew, _1);
-			CYCLES(7,9);
+			CYCLES(JUMP_CYCLES,JUMP_CYCLES+2);
 			break;
 		case 5:
-			CYCLES(11,11);
+			CYCLES(JUMP_CYCLES+4,JUMP_CYCLES+4);
 			CYCLES_PM(22);
 			CYCLES_CALL(41,41,183,178);
 			if(m_instr.modrm.mod == 3) {
@@ -2424,8 +2407,8 @@ case 0xFF:
 			m_instr.fn = std::bind(&CPUExecutor::JMP_ed, _1);
 			break;
 		case 6:
-			CYCLES(3,3);
 			m_instr.fn = std::bind(&CPUExecutor::PUSH_mw, _1);
+			CYCLES(5,5);
 			break;
 		default:
 			illegal_opcode();

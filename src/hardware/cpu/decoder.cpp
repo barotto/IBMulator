@@ -52,7 +52,7 @@ Instruction * CPUDecoder::decode()
 		0,  //samep
 		0,  //morep
 		0,  //tss
-		255,//pq
+		0   //bu
 	};
 
 restart_opcode:

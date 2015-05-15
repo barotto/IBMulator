@@ -88,7 +88,8 @@ struct Instruction
 		uint8_t samep; //!< for jmps and calls
 		uint8_t morep; //!< for calls
 		uint8_t tss;   //!< for jmps and calls
-		uint8_t pq;    //!< cycles that the pq can use (if 255 then normal instr cycles are used)
+		int8_t  bu;    //!< cycles added to or reduced from the bu cycles count
+		               //   this is a hack, to account for proper bu operations ordering
 	} cycles;
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; //!< the instruction bytes (prefixes included)
 };

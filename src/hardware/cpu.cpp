@@ -106,8 +106,7 @@ void CPU::reset(uint _signal)
 
 	g_cpucore.reset();
 	g_cpuexecutor.reset(_signal);
-	g_cpubus.invalidate_pq();
-	g_cpubus.update_pq(0);
+	g_cpubus.reset();
 }
 
 #define CPU_STATE_NAME "CPU"
@@ -149,28 +148,22 @@ void CPU::power_off()
 
 uint CPU::step()
 {
-	/*
-	 * The 80286 is a pipelined processor. To precisely determine the timings
-	 * you must emulate the single clock ticks. Unfortunately this would be
-	 * overkill as for a 100ns cycle time this would amount to 10 million
-	 * calls of this method per second. Instead, we'll try to find a compromise
-	 * and simulate the real hardware as best as it's possible reducing the call
-	 * rate by an order of magnitude.
-	 */
-	uint cycles, decode_cycles, dramtx, vramtx, decode_fetches;
-	int pqcycles;
+	int cycles, bu_cycles, eu_cycles, decode_cycles, dramtx, vramtx, bu_rops;
+	int bu_update;
 	uint32_t csip, prev_csip;
 	CPUCore core_log;
 
 	g_cpubus.reset_counters();
 	cycles = 0;
+	eu_cycles = 0;
+	bu_cycles = 0;
 	decode_cycles = 0;
-	decode_fetches = 0;
+	bu_rops = 0;
 	dramtx = 0;
 	vramtx = 0;
 	csip = 0;
 	prev_csip = 0;
-	pqcycles = 255;
+	bu_update = 0;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -184,7 +177,7 @@ uint CPU::step()
 				return 1;
 			}
 			//an interrupt could have invalidated the pq, we must update
-			g_cpubus.update_pq(0);
+			g_cpubus.update(0);
 		}
 		csip = GET_PHYADDR(CS,REG_IP);
 		prev_csip = (m_instr!=NULL)?m_instr->csip:0;
@@ -195,23 +188,24 @@ uint CPU::step()
 				/*
 				According to various sources, the decoding time should be
 				proportional to the size of the next instruction (1 cycle per
-				decoded byte). But after some empirical tests, 1 cycle is the
+				decoded byte). But after some empirical tests, 2 cycles is the
 				best value given the current setup.
 				*/
-				decode_cycles = (m_instr->size > 1);
+				//decode_cycles = 1;
+				decode_cycles = 2;
+				//decode_cycles = m_instr->size;
 			}
 			if(CPULOG) {
 				core_log = g_cpucore;
 			}
 		}
 		try {
-			decode_fetches = g_cpubus.get_dram_tx(); // instruction decode fetches
+			bu_rops = g_cpubus.get_dram_r();
 			g_cpuexecutor.execute(m_instr);
-			dramtx = g_cpubus.get_dram_tx() - decode_fetches; // instruction execution transfers
+			dramtx = g_cpubus.get_dram_tx() - bu_rops; // instruction execution transfers
 			vramtx = g_cpubus.get_vram_tx();
-			cycles = get_execution_cycles(dramtx||vramtx);
+			eu_cycles = get_execution_cycles(dramtx||vramtx);
 			m_instr->cycles.rep = 0;
-			pqcycles = m_instr->cycles.pq;
 		} catch(CPUException &e) {
 			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %u\n", e.vector);
 			if(STOP_AT_EXC) {
@@ -222,38 +216,49 @@ uint CPU::step()
 				}
 			}
 			exception(e);
-			cycles = 15; //just a random number
+			eu_cycles = 15; //just a random number
 		}
 
 	} else {
 		// the CPU is idle and waiting for an external event
 		wait_for_event();
 		//we need to spend at least 1 cycle, otherwise the timers will never fire
-		cycles = 1;
+		eu_cycles = 1;
 	}
 
 	m_pq_valid = g_cpubus.is_pq_valid();
-	if(pqcycles == 255) {
-		if(m_pq_valid) {
-			pqcycles = cycles;
-		} else {
-			pqcycles = 0;
-		}
+	if(m_pq_valid) {
+		bu_update = eu_cycles + decode_cycles;
+	} else {
+		bu_update = 0;
 	}
+	g_cpubus.update(bu_update);
 
-	g_cpubus.update_pq(pqcycles);
+	bu_cycles = g_cpubus.get_mem_cycles() + m_instr->cycles.bu;
+	if(bu_cycles < 0) {
+		bu_cycles = 0;
+	}
+	bu_cycles += g_cpubus.get_fetch_cycles();
 
-	cycles += decode_cycles + (decode_fetches+dramtx)*DRAM_TX_CYCLES + vramtx*VRAM_TX_CYCLES;
-	if((dramtx||decode_fetches) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
+	dramtx = g_cpubus.get_dram_r() - bu_rops;
+	vramtx = g_cpubus.get_vram_r();
+	cycles += eu_cycles + bu_cycles + decode_cycles +
+			(bu_rops+dramtx)*DRAM_TX_CYCLES +
+			vramtx*VRAM_TX_CYCLES;
+	if((dramtx||bu_rops) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
 		cycles += DRAM_REFRESH_CYCLES;
 	}
 
-	if(CPULOG && prev_csip!=csip && !g_pic.get_isr()) {
-		add_to_log(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
+	if(CPULOG && !g_pic.get_isr()) {
+		if(CPULOG_UNFOLD_REPS || prev_csip!=csip) {
+			add_to_log(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
+		}
 	}
+
+	ASSERT(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
+
 	m_s.icount++;
 	m_s.ccount += cycles;
-	ASSERT(cycles>0 || (m_instr->rep && REG_CX==0));
 
 	return cycles;
 }
@@ -814,7 +819,11 @@ void CPU::write_log_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_TIMINGS) {
-		fprintf(_dest, "c=%2u,mtx=%2u ", _entry.cycles,	_entry.bus.get_dram_tx());
+		fprintf(_dest, "c=%2u(b=%u,%u,%u),m=%2u ",
+				_entry.cycles,
+				_entry.bus.get_mem_cycles(), _entry.bus.get_fetch_cycles(),
+				_entry.bus.get_cycles_ahead(),
+				_entry.bus.get_dram_tx());
 	}
 
 	if(USE_PREFETCH_QUEUE && CPULOG_WRITE_PQ) {
