@@ -277,14 +277,14 @@ void CPUExecutor::write_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
 
 void CPUExecutor::read_check_rmode(SegReg & /*_seg*/, uint16_t _offset, uint _len)
 {
-	if(_len==2 && _offset==0xFFFF) {
+	if(_len>1 && _offset==0xFFFF) {
 		throw CPUException(CPU_SEG_OVR_EXC, 0);
 	}
 }
 
 void CPUExecutor::write_check_rmode(SegReg & /*_seg*/, uint16_t _offset, uint _len)
 {
-	if(_len==2 && _offset==0xFFFF) {
+	if(_len>1 && _offset==0xFFFF) {
 		throw CPUException(CPU_SEG_OVR_EXC, 0);
 	}
 }
@@ -3454,8 +3454,11 @@ void CPUExecutor::LMSW_ew()
 	msw = load_ew();
 
 	// LMSW cannot clear PE
-	if(GET_MSW(MSW_PE))
+	if(GET_MSW(MSW_PE)) {
 		msw |= MSW_PE; // adjust PE bit to current value of 1
+	} else if(msw & MSW_PE) {
+		PDEBUGF(LOG_V2, LOG_CPU, "now in Protected Mode\n");
+	}
 
 	SET_MSW(msw);
 }
