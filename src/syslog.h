@@ -51,7 +51,7 @@ extern Syslog g_syslog;
 
 #define ICONV(from,to,str,len) g_syslog.convert(from,to,str,len)
 
-#ifndef NDEBUG
+#if LOG_DEBUG_MESSAGES
 	//#define PDEBUG(format,...)	LOG_FUNC(__FILE__,__LINE__,LOG_DEBUG,LOG_GENERAL,format, ## __VA_ARGS__)
 	#define PDEBUGEX(verb,format,...)	LOG(LOG_DEBUG,LOG_PROGRAM,verb,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__)
 	#define PDEBUG(verb,format,...)		LOG(LOG_DEBUG,LOG_PROGRAM,verb,format, ## __VA_ARGS__)

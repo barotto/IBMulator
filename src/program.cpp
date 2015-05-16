@@ -304,12 +304,28 @@ bool Program::initialize(int argc, char** argv)
 	m_next_beat = m_main_chrono.get_usec();
 	m_bench.init(&m_main_chrono, 1000, 1000);
 
-	//g_syslog.set_verbosity(LOG_V2, LOG_FDC);
-	//g_syslog.set_verbosity(LOG_V2, LOG_DMA);
-	//g_syslog.set_verbosity(LOG_V2, LOG_MACHINE);
-	//g_syslog.set_verbosity(LOG_V2, LOG_LPT);
-	g_syslog.set_verbosity(LOG_V1, LOG_HDD);
-	g_syslog.set_verbosity(LOG_V1, LOG_PIC);
+	if(OVERRIDE_VERBOSITY_LEVEL) {
+		g_syslog.set_verbosity(LOG_PROGRAM_VERBOSITY,LOG_PROGRAM);
+		g_syslog.set_verbosity(LOG_FS_VERBOSITY,     LOG_FS);
+		g_syslog.set_verbosity(LOG_GFX_VERBOSITY,    LOG_GFX);
+		g_syslog.set_verbosity(LOG_INPUT_VERBOSITY,  LOG_INPUT);
+		g_syslog.set_verbosity(LOG_GUI_VERBOSITY,    LOG_GUI);
+		g_syslog.set_verbosity(LOG_MACHINE_VERBOSITY,LOG_MACHINE);
+		g_syslog.set_verbosity(LOG_MIXER_VERBOSITY,  LOG_MIXER);
+		g_syslog.set_verbosity(LOG_MEM_VERBOSITY,    LOG_MEM);
+		g_syslog.set_verbosity(LOG_CPU_VERBOSITY,    LOG_CPU);
+		g_syslog.set_verbosity(LOG_PIT_VERBOSITY,    LOG_PIT);
+		g_syslog.set_verbosity(LOG_PIC_VERBOSITY,    LOG_PIC);
+		g_syslog.set_verbosity(LOG_DMA_VERBOSITY,    LOG_DMA);
+		g_syslog.set_verbosity(LOG_KEYB_VERBOSITY,   LOG_KEYB);
+		g_syslog.set_verbosity(LOG_VGA_VERBOSITY,    LOG_VGA);
+		g_syslog.set_verbosity(LOG_CMOS_VERBOSITY,   LOG_CMOS);
+		g_syslog.set_verbosity(LOG_FDC_VERBOSITY,    LOG_FDC);
+		g_syslog.set_verbosity(LOG_HDD_VERBOSITY,    LOG_HDD);
+		g_syslog.set_verbosity(LOG_AUDIO_VERBOSITY,  LOG_AUDIO);
+		g_syslog.set_verbosity(LOG_LPT_VERBOSITY,    LOG_LPT);
+		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
+	}
 
 	return true;
 }

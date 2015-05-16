@@ -773,11 +773,13 @@ void Machine::DOS_program_launch(std::string _name)
 
 void Machine::DOS_program_start(std::string _name)
 {
+	PINFOF(LOG_V2, LOG_MACHINE, "program start: %s\n", _name.c_str());
 	g_cpu.DOS_program_start(_name);
 }
 
 void Machine::DOS_program_finish(std::string _name, std::string _newname)
 {
+	PINFOF(LOG_V2, LOG_MACHINE, "program finish: %s\n", _name.c_str());
 	g_cpu.DOS_program_finish(_name);
 	set_DOS_program_name(_newname.c_str());
 }

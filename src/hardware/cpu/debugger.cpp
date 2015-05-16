@@ -695,6 +695,37 @@ void CPUDebugger::INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
+void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	uint16_t bx = core->get_BX();
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			const char * errstr = ms_dos_errors[core->get_AX()];
+			snprintf(buf, buflen, " ret CF=1: %s, %d paragraphs available (%d bytes)",
+					errstr, bx, uint32_t(bx)*16);
+		} else {
+			snprintf(buf, buflen, " ret CF=0: segment=%04X", core->get_AX());
+		}
+		return;
+	}
+	snprintf(buf, buflen, " : %d paragraphs (%d bytes)", bx, uint32_t(bx)*16);
+}
+
+void CPUDebugger::INT_21_4A(bool call, uint16_t ax, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		INT_def_ret(core, buf, buflen);
+		return;
+	}
+	uint16_t bx = core->get_BX();
+	uint16_t es = core->get_ES().sel.value;
+	snprintf(buf, buflen, " : segment=%04X, paragraphs=%d (%d bytes)",
+			es,	bx, uint32_t(bx)*16);
+}
+
 void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
@@ -978,9 +1009,9 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x440E, 2), { true,  NULL,                    "DOS - IOCTL - GET LOGICAL DRIVE MAP" } },
 	{ MAKE_INT_SEL(0x21, 0x440F, 2), { true,  NULL,                    "DOS - IOCTL - SET LOGICAL DRIVE MAP" } },
 	{ MAKE_INT_SEL(0x21, 0x4700, 1), { true,  NULL,                    "DOS - CWD - GET CURRENT DIRECTORY" } },
-	{ MAKE_INT_SEL(0x21, 0x4800, 1), { true,  NULL,                    "DOS - ALLOCATE MEMORY" } },
+	{ MAKE_INT_SEL(0x21, 0x4800, 1), { true,  &CPUDebugger::INT_21_48, "DOS - ALLOCATE MEMORY" } },
 	{ MAKE_INT_SEL(0x21, 0x4900, 1), { true,  NULL,                    "DOS - FREE MEMORY" } },
-	{ MAKE_INT_SEL(0x21, 0x4A00, 1), { true,  NULL,                    "DOS - RESIZE MEMORY BLOCK" } },
+	{ MAKE_INT_SEL(0x21, 0x4A00, 1), { true,  &CPUDebugger::INT_21_4A, "DOS - RESIZE MEMORY BLOCK" } },
 	{ MAKE_INT_SEL(0x21, 0x4B00, 1), { true,  &CPUDebugger::INT_21_4B, "DOS - EXEC" } },
 	{ MAKE_INT_SEL(0x21, 0x4C00, 1), { true,  NULL,                    "DOS - EXIT - TERMINATE WITH RETURN CODE" } },
 	{ MAKE_INT_SEL(0x21, 0x4D00, 1), { true,  NULL,                    "DOS - GET RETURN CODE (ERRORLEVEL)" } },

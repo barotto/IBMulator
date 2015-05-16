@@ -249,7 +249,7 @@ uint CPU::step()
 		cycles += DRAM_REFRESH_CYCLES;
 	}
 
-	if(CPULOG && !g_pic.get_isr()) {
+	if(CPULOG && (CPULOG_LOG_INTS || !g_pic.get_isr())) {
 		if(CPULOG_UNFOLD_REPS || prev_csip!=csip) {
 			add_to_log(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
 		}

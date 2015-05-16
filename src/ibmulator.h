@@ -41,9 +41,10 @@
 #define CPULOG_START_ADDR    0x500   // lower bound, instr. before this address are not logged
 #define CPULOG_END_ADDR      0x9FFFF // upper bound, instr. after this address are not logged
 #define CPULOG_LOG_INTS      false   // log INTs' instructions?
-#define CPULOG_INT21_EXIT_IP 0x7782  // the IP of the last instr. of INT 21/4B
-                                     // OS dependent, for PC-DOS 4.0 is 0x7782
-                                     // use -1 to disable
+#define CPULOG_INT21_EXIT_IP -1      // the OS dependent IP of the last instr. of INT 21/4B
+                                     // For PC-DOS 4.0 under ROMSHELL is 0x7782,
+                                     //                under plain DOS is 0x7852
+                                     // use -1 to disable (logging starts at INT call)
 #define CPULOG_UNFOLD_REPS   false   // write a log line for every repetition
 
 #define PATHNAME_LEN 512
@@ -94,6 +95,7 @@ void size_check()
 	#define UD6_AUTO_DUMP false
 	#define HDD_TIMING    false //used to speed up the HDD and ease the debugging
 
+	#define LOG_DEBUG_MESSAGES    true
 	#define DEFAULT_LOG_VERBOSITY LOG_V1
 
 #else
@@ -108,9 +110,32 @@ void size_check()
 	#define UD6_AUTO_DUMP false
 	#define HDD_TIMING    true
 
+	#define LOG_DEBUG_MESSAGES    false
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 #endif
+
+#define OVERRIDE_VERBOSITY_LEVEL false
+#define LOG_PROGRAM_VERBOSITY  LOG_V1
+#define LOG_FS_VERBOSITY       LOG_V1
+#define LOG_GFX_VERBOSITY      LOG_V1
+#define LOG_INPUT_VERBOSITY    LOG_V1
+#define LOG_GUI_VERBOSITY      LOG_V1
+#define LOG_MACHINE_VERBOSITY  LOG_V1
+#define LOG_MIXER_VERBOSITY    LOG_V1
+#define LOG_MEM_VERBOSITY      LOG_V1
+#define LOG_CPU_VERBOSITY      LOG_V1
+#define LOG_PIT_VERBOSITY      LOG_V1
+#define LOG_PIC_VERBOSITY      LOG_V1
+#define LOG_DMA_VERBOSITY      LOG_V1
+#define LOG_KEYB_VERBOSITY     LOG_V1
+#define LOG_VGA_VERBOSITY      LOG_V1
+#define LOG_CMOS_VERBOSITY     LOG_V1
+#define LOG_FDC_VERBOSITY      LOG_V1
+#define LOG_HDD_VERBOSITY      LOG_V1
+#define LOG_AUDIO_VERBOSITY    LOG_V1
+#define LOG_LPT_VERBOSITY      LOG_V1
+#define LOG_COM_VERBOSITY      LOG_V1
 
 #include "syslog.h"
 
