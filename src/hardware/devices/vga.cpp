@@ -217,6 +217,7 @@ void VGA::power_off()
 	m_display->clear_screen();
 	m_display->unlock();
 	g_gui.vga_update();
+	g_machine.deactivate_timer(m_timer_id);
 }
 
 void VGA::save_state(StateBuf &_state)
@@ -353,10 +354,8 @@ void VGA::calculate_retrace_timing()
 	PDEBUGF(LOG_V1, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
 
 	if(vfreq >= 35.0 && vfreq <= 75.0) {
-		//the first update is "vblank start"
-		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
-		g_machine.activate_timer(m_timer_id, m_s.vtotal_usec, false);
 		PINFOF(LOG_V1, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
+		vertical_retrace();
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 		PWARNF(LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
@@ -399,17 +398,20 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 
 			retval = 0;
 			now_usec = g_machine.get_virt_time_us();
-
-			if(now_usec <= m_s.vretrace_time_usec+m_s.vrspan_usec) {
-				retval |= 0x08;
-			}
 			if(now_usec <= m_s.vblank_time_usec+m_s.vbspan_usec) {
 				retval |= 0x01;
+				if(now_usec <= m_s.vretrace_time_usec+m_s.vrspan_usec) {
+					retval |= 0x08;
+				}
+				PDEBUGF(LOG_V2, LOG_VGA, "ISR1: %02X vert.\n", retval);
 			} else {
 				display_usec = now_usec - (m_s.vblank_time_usec+m_s.vbspan_usec);
 				line_usec = display_usec % m_s.htotal_usec;
 				if((line_usec >= m_s.hbstart_usec) && (line_usec <= m_s.hbend_usec)) {
 					retval |= 0x01;
+					PDEBUGF(LOG_V2, LOG_VGA, "ISR1: %02X horiz.\n", retval);
+				} else {
+					PDEBUGF(LOG_V2, LOG_VGA, "ISR1: 0 display\n");
 				}
 			}
 
@@ -1051,6 +1053,8 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 						} else {
 							m_s.vga_mem_updated = 1;
 						}
+						PDEBUGF(LOG_V2, LOG_VGA, "start address 0x%02X=%02X\n",
+								m_s.CRTC.address, value);
 						break;
 					case 0x11:
 						if(!(m_s.CRTC.reg[0x11] & 0x10)) {
@@ -1190,6 +1194,8 @@ bool VGA::skip_update()
 
 void VGA::update()
 {
+	//this is "vertical blank start"
+
 	uint iHeight, iWidth;
 	static uint cs_counter = 1; //cursor blink counter
 	static bool cs_visible = false;
@@ -1199,9 +1205,9 @@ void VGA::update()
 	m_s.vblank_time_usec = g_machine.get_virt_time_us();
 
 	//next is the "vertical retrace start"
-	uint64_t vrstart = m_s.vrstart_usec - m_s.vblank_usec;
+	uint64_t vrdist = m_s.vrstart_usec - m_s.vblank_usec;
 	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this));
-	g_machine.activate_timer(m_timer_id, vrstart, false);
+	g_machine.activate_timer(m_timer_id, vrdist, false);
 
 	cs_counter--;
 	/* no screen update necessary */
@@ -1270,7 +1276,8 @@ void VGA::update()
 			return;
 		}
 
-		PDEBUGF(LOG_V2, LOG_VGA, "\n");
+		PDEBUGF(LOG_V2, LOG_VGA, "graphical update\n");
+
 		switch (m_s.graphics_ctrl.shift_reg) {
 			case 0: // interleaved shift
 				uint8_t attribute, palette_reg_val, DAC_regno;
@@ -1556,6 +1563,8 @@ void VGA::update()
 			return;
 		}
 
+		PDEBUGF(LOG_V2, LOG_VGA, "text update\n");
+
 		// pass old text snapshot & new VGA memory contents
 		start_address = tm_info.start_address;
 		cursor_address = 2*((m_s.CRTC.reg[0x0e] << 8) + m_s.CRTC.reg[0x0f]);
@@ -1586,6 +1595,7 @@ void VGA::vertical_retrace()
 		raise_interrupt();
 	}
 	//the start address is latched at vretrace
+	PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address latch\n");
 	m_s.CRTC.start_address = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
 
 	//next is the "vblank start"
@@ -2135,10 +2145,3 @@ void VGA::redraw_area(uint x0, uint y0, uint width, uint height)
 	}
 }
 
-void VGA::refresh_display(bool redraw)
-{
-	if(redraw) {
-		redraw_area(0, 0, m_s.last_xres, m_s.last_yres);
-	}
-	update();
-}

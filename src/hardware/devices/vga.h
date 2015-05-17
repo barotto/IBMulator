@@ -224,7 +224,6 @@ public:
 	void set_override(bool enabled, void *dev);
 	void redraw_area(uint x0, uint y0, uint width, uint height);
 	void get_text_snapshot(uint8_t **text_snapshot, uint *txHeight, uint *txWidth);
-	void refresh_display(bool redraw);
 	void attach_display(VGADisplay *_display) { m_display = _display; }
 
 	void save_state(StateBuf &_state);
