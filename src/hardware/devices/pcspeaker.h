@@ -45,6 +45,7 @@ private:
 		size_t events_cnt;
 	} m_s;
 
+	bool m_enabled;
 	std::vector<int16_t> m_samples_buffer;
 	uint32_t m_rate;
 	double m_nsec_per_sample;

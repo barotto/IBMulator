@@ -104,7 +104,8 @@ ini_file_t AppConfig::ms_def_values = {
 	{ MIXER_SECTION, {
 		{ MIXER_RATE, "44100" },
 		{ MIXER_SAMPLES, "1024" },
-		{ MIXER_PREBUFFER, "50" }
+		{ MIXER_PREBUFFER, "50" },
+		{ MIXER_PCSPEAKER, "yes" }
 	} },
 
 	{ COM_SECTION, {
@@ -224,6 +225,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
 ";      rate: Sample rate.\n"
 ";            Possible values: 44100, 48000, 32000, 22050.\n"
+"; pcspeaker: Enable PC-Speaker emulation."
 		},
 
 		{ COM_SECTION, "" },

@@ -27,6 +27,7 @@ PCSpeaker g_pcspeaker;
 
 PCSpeaker::PCSpeaker()
 :
+m_enabled(false),
 m_last_time(0),
 m_disable_time(0),
 m_samples_rem(0.0)
@@ -44,6 +45,7 @@ void PCSpeaker::init()
 
 void PCSpeaker::config_changed()
 {
+	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PCSPEAKER);
 	m_rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	if(m_channel) {
 		g_mixer.unregister_channel(get_name());
@@ -145,6 +147,9 @@ void PCSpeaker::restore_state(StateBuf &_state)
 
 void PCSpeaker::activate()
 {
+	if(!m_enabled) {
+		return;
+	}
 	if(!m_channel->is_enabled()) {
 		m_disable_time = 0;
 		m_last_time = 0;
@@ -155,6 +160,10 @@ void PCSpeaker::activate()
 
 void PCSpeaker::add_event(uint64_t _time, bool _active, bool _out)
 {
+	if(!m_enabled) {
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock(m_lock);
 
 	if(m_events.size() && (m_events.back().time > _time)) {
