@@ -323,6 +323,9 @@ int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuffering)
 			m_events.pop_front();
 		} else {
 			//this is the last event
+			if(begin > mtime_ns) {
+				break;
+			}
 			end = mtime_ns;
 			if(front.active) {
 				m_events[0].time = mtime_ns;

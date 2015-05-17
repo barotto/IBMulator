@@ -328,8 +328,12 @@ bool Mixer::send_wave_packet(uint8_t *_data, size_t _len)
 	SDL_LockAudioDevice(m_device);
 	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d bytes, buf fullness: %d\n",
 			_len, m_buffer.get_read_avail() + _len);
-	if(m_buffer.write(_data, _len) < _len) {
+	if(m_buffer.get_size()>=_len && m_buffer.get_write_avail()<_len) {
 		PERRF(LOG_MIXER, "audio buffer overflow\n");
+		m_buffer.clear();
+	}
+	if(m_buffer.write(_data, _len) < _len) {
+		PERRF(LOG_MIXER, "audio packet too big\n");
 		ret = false;
 	}
 	SDL_UnlockAudioDevice(m_device);
