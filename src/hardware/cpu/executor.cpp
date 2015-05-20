@@ -4938,9 +4938,9 @@ void CPUExecutor::SCASB()
 
 void CPUExecutor::SCASW()
 {
-	uint16_t op1 = REG_AL;
+	uint16_t op1 = REG_AX;
 	//no segment override is possible.
-	uint16_t op2 = read_byte(REG_ES, REG_DI);
+	uint16_t op2 = read_word(REG_ES, REG_DI);
 
 	CMP_w(op1, op2);
 
