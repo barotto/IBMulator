@@ -23,21 +23,12 @@
 #include "cpu/core.h"
 #include "cpu/decoder.h"
 #include "cpu/executor.h"
+#include "cpu/logger.h"
 #include <regex>
 
 class CPU;
 extern CPU g_cpu;
 
-
-
-struct CPULogEntry
-{
-	uint64_t time;
-	CPUCore core;
-	CPUBus bus;
-	Instruction instr;
-	unsigned cycles;
-};
 
 #define CPU_EVENT_NMI           (1 << 0)
 #define CPU_EVENT_PENDING_INTR  (1 << 1)
@@ -162,19 +153,10 @@ protected:
 
 	void wait_for_event();
 
-	uint m_log_idx;
-	uint m_log_size;
-	CPULogEntry m_log[CPULOG_MAX_SIZE];
-	FILE *m_log_file;
+	CPULogger m_logger;
+	uint32_t m_iret_address;
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
-	FILE *m_log_prg_file;
-	uint32_t m_log_prg_iret;
-
-	void add_to_log(const Instruction &_instr, uint64_t _time,
-			const CPUCore &_core, const CPUBus &_bus, unsigned _cycles);
-	void write_log_entry(FILE *_dest, CPULogEntry &_entry);
-	const std::string & disasm(CPULogEntry &_log_entry);
 
 	uint get_execution_cycles(bool _memtx);
 

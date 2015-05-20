@@ -46,6 +46,7 @@
                                      //                under plain DOS is 0x7852
                                      // use -1 to disable (logging starts at INT call)
 #define CPULOG_UNFOLD_REPS   false   // write a log line for every repetition
+#define CPULOG_COUNTERS      false   // count every instruction executed
 
 #define PATHNAME_LEN 512
 

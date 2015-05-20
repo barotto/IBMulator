@@ -575,9 +575,6 @@ void Machine::cmd_quit()
 {
 	m_cmd_fifo.push([this] () {
 		m_quit = true;
-		if(CPULOG) {
-			g_cpu.write_log();
-		}
 	});
 }
 

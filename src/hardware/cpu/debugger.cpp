@@ -46,71 +46,69 @@ char * skip_blanks(char * str) {
 	return str;
 }
 
-uint CPUDebugger::disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip,
-		const uint8_t *_instr_buf, uint _instr_buf_len)
+uint CPUDebugger::disasm(char *_buf, uint _buflen, uint32_t _addr, uint32_t _ip,
+		Memory *_mem, const uint8_t *_instr_buf, uint _instr_buf_len)
 {
-	if(m_core == NULL) {
-		m_core = &g_cpucore;
-	}
-
-	return m_dasm.disasm(_buf, _buflen, _addr, _ip, _instr_buf, _instr_buf_len);
+	Disasm dasm;
+	return dasm.disasm(_buf, _buflen, _addr, _ip, _mem, _instr_buf, _instr_buf_len);
 }
 
-uint32_t CPUDebugger::get_hex_value(char* str, char * &hex)
+uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 {
 	uint32_t value = 0;
 	uint32_t regval = 0;
-	hex = str;
-	while (*hex==' ') hex++;
-	     if(strstr(hex,"AX")==hex) { hex+=2; regval = m_core->get_AX(); }
-	else if(strstr(hex,"BX")==hex) { hex+=2; regval = m_core->get_BX(); }
-	else if(strstr(hex,"CX")==hex) { hex+=2; regval = m_core->get_CX(); }
-	else if(strstr(hex,"DX")==hex) { hex+=2; regval = m_core->get_DX(); }
-	else if(strstr(hex,"SI")==hex) { hex+=2; regval = m_core->get_SI(); }
-	else if(strstr(hex,"DI")==hex) { hex+=2; regval = m_core->get_DI(); }
-	else if(strstr(hex,"BP")==hex) { hex+=2; regval = m_core->get_BP(); }
-	else if(strstr(hex,"SP")==hex) { hex+=2; regval = m_core->get_SP(); }
-	else if(strstr(hex,"IP")==hex) { hex+=2; regval = m_core->get_IP(); }
-	else if(strstr(hex,"CS")==hex) { hex+=2; regval = m_core->get_CS().sel.value; }
-	else if(strstr(hex,"DS")==hex) { hex+=2; regval = m_core->get_DS().sel.value; }
-	else if(strstr(hex,"ES")==hex) { hex+=2; regval = m_core->get_ES().sel.value; }
-	else if(strstr(hex,"SS")==hex) { hex+=2; regval = m_core->get_SS().sel.value; }
+	_hex = _str;
+	while (*_hex==' ') _hex++;
+	     if(strstr(_hex,"AX")==_hex) { _hex+=2; regval = _core->get_AX(); }
+	else if(strstr(_hex,"BX")==_hex) { _hex+=2; regval = _core->get_BX(); }
+	else if(strstr(_hex,"CX")==_hex) { _hex+=2; regval = _core->get_CX(); }
+	else if(strstr(_hex,"DX")==_hex) { _hex+=2; regval = _core->get_DX(); }
+	else if(strstr(_hex,"SI")==_hex) { _hex+=2; regval = _core->get_SI(); }
+	else if(strstr(_hex,"DI")==_hex) { _hex+=2; regval = _core->get_DI(); }
+	else if(strstr(_hex,"BP")==_hex) { _hex+=2; regval = _core->get_BP(); }
+	else if(strstr(_hex,"SP")==_hex) { _hex+=2; regval = _core->get_SP(); }
+	else if(strstr(_hex,"IP")==_hex) { _hex+=2; regval = _core->get_IP(); }
+	else if(strstr(_hex,"CS")==_hex) { _hex+=2; regval = _core->get_CS().sel.value; }
+	else if(strstr(_hex,"DS")==_hex) { _hex+=2; regval = _core->get_DS().sel.value; }
+	else if(strstr(_hex,"ES")==_hex) { _hex+=2; regval = _core->get_ES().sel.value; }
+	else if(strstr(_hex,"SS")==_hex) { _hex+=2; regval = _core->get_SS().sel.value; }
 	//return a fake value. the debugger gui disassembles 2 instructions ahead.
 	//if those "instructions" are not code but data, they can be interpreted as anything,
 	//like bogus 386's prefixes fs: and gs:
-	else if(strstr(hex,"FS")==hex) { hex+=2; regval = 0; }
-	else if(strstr(hex,"GS")==hex) { hex+=2; regval = 0; };
+	else if(strstr(_hex,"FS")==_hex) { _hex+=2; regval = 0; }
+	else if(strstr(_hex,"GS")==_hex) { _hex+=2; regval = 0; };
 
-	while(*hex) {
-		if((*hex>='0') && (*hex<='9')) value = (value<<4)+*hex-'0';
-		else if((*hex>='A') && (*hex<='F')) value = (value<<4)+*hex-'A'+10;
+	while(*_hex) {
+		if((*_hex>='0') && (*_hex<='9')) value = (value<<4)+*_hex-'0';
+		else if((*_hex>='A') && (*_hex<='F')) value = (value<<4)+*_hex-'A'+10;
 		else {
-			if(*hex == '+') { hex++; return regval + value + get_hex_value(hex,hex); };
-			if(*hex == '-') { hex++; return regval + value - get_hex_value(hex,hex); };
+			if(*_hex == '+') { _hex++; return regval + value + get_hex_value(_hex,_hex,_core); };
+			if(*_hex == '-') { _hex++; return regval + value - get_hex_value(_hex,_hex,_core); };
 			break; // No valid char
 		}
-		hex++;
+		_hex++;
 	};
 	return regval + value;
 };
 
-uint32_t CPUDebugger::get_address(uint16_t seg, uint32_t offset)
+uint32_t CPUDebugger::get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core)
 {
-	if(seg == m_core->get_CS().sel.value) {
-		return m_core->get_CS_phyaddr(offset);
+	if(_seg == _core->get_CS().sel.value) {
+		return _core->get_CS_phyaddr(_offset);
 	}
-	if(seg == m_core->get_DS().sel.value) {
-		return m_core->get_DS_phyaddr(offset);
+	if(_seg == _core->get_DS().sel.value) {
+		return _core->get_DS_phyaddr(_offset);
 	}
-	if(seg == m_core->get_ES().sel.value) {
-		return m_core->get_ES_phyaddr(offset);
+	if(_seg == _core->get_ES().sel.value) {
+		return _core->get_ES_phyaddr(_offset);
 	}
 
-	//if (seg==GETREG(SS))
-	return m_core->get_SS_phyaddr(offset);
+	//if (_seg==GETREG(SS))
+	return _core->get_SS_phyaddr(_offset);
 }
 
-char * CPUDebugger::analyze_instruction(char * _dasm_inst, bool _mem_read, uint _opsize)
+char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
+		CPUCore *_core, Memory *_memory, uint _opsize)
 {
 	static char result[256];
 
@@ -130,47 +128,48 @@ char * CPUDebugger::analyze_instruction(char * _dasm_inst, bool _mem_read, uint 
 			prefix[0] = tolower(*segpos);
 			prefix[1] = tolower(*(segpos+1));
 			prefix[2] = 0;
-			seg = (uint16_t)get_hex_value(segpos,segpos);
+			seg = (uint16_t)get_hex_value(segpos, segpos, _core);
 		} else {
 			if (strstr(pos,"SP") || strstr(pos,"BP")) {
-				seg = m_core->get_SS().sel.value;
+				seg = _core->get_SS().sel.value;
 				strcpy(prefix,"ss");
 			} else {
-				seg = m_core->get_DS().sel.value;
+				seg = _core->get_DS().sel.value;
 				strcpy(prefix,"ds");
 			};
 		};
 
 		pos++;
-		uint32_t adr = get_hex_value(pos,pos);
+		uint32_t adr = get_hex_value(pos, pos, _core);
 		while (*pos!=']') {
 			if (*pos=='+') {
 				pos++;
-				adr += get_hex_value(pos,pos);
+				adr += get_hex_value(pos, pos, _core);
 			} else if (*pos=='-') {
 				pos++;
-				adr -= get_hex_value(pos,pos);
+				adr -= get_hex_value(pos, pos, _core);
 			} else
 				pos++;
 		};
-		uint32_t address = get_address(seg,adr);
+		uint32_t address = get_address(seg, adr, _core);
 
 		static char outmask[] = "%s:[%04X]=%02X";
 
-		if (m_core->is_pmode())
+		if(_core->is_pmode()) {
 			outmask[6] = '8';
+		}
 
 		if(_mem_read) {
 			switch (_opsize) {
-				case 8 : {	uint8_t val = g_memory.read_byte_notraps(address);
+				case 8 : {	uint8_t val = _memory->read_byte_notraps(address);
 							outmask[12] = '2';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;
-				case 16: {	uint16_t val = g_memory.read_word_notraps(address);
+				case 16: {	uint16_t val = _memory->read_word_notraps(address);
 							outmask[12] = '4';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;
-				case 32: {	uint32_t val = g_memory.read_dword_notraps(address);
+				case 32: {	uint32_t val = _memory->read_dword_notraps(address);
 							outmask[12] = '8';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;
@@ -217,63 +216,63 @@ char * CPUDebugger::analyze_instruction(char * _dasm_inst, bool _mem_read, uint 
 	{
 		bool jmp = false;
 		switch (instu[1]) {
-		case 'A' :	{	jmp = (m_core->get_F(FMASK_CF)?false:true) && (m_core->get_F(FMASK_ZF)?false:true); // JA
+		case 'A' :	{	jmp = (_core->get_F(FMASK_CF)?false:true) && (_core->get_F(FMASK_ZF)?false:true); // JA
 					}	break;
 		case 'B' :	{	if (instu[2] == 'E') {
-							jmp = (m_core->get_F(FMASK_CF)?true:false) || (m_core->get_F(FMASK_ZF)?true:false); // JBE
+							jmp = (_core->get_F(FMASK_CF)?true:false) || (_core->get_F(FMASK_ZF)?true:false); // JBE
 						} else {
-							jmp = m_core->get_F(FMASK_CF)?true:false; // JB
+							jmp = _core->get_F(FMASK_CF)?true:false; // JB
 						}
 					}	break;
 		case 'C' :	{	if (instu[2] == 'X') {
-							jmp = m_core->get_CX() == 0; // JCXZ
+							jmp = _core->get_CX() == 0; // JCXZ
 						} else {
-							jmp = m_core->get_F(FMASK_CF)?true:false; // JC
+							jmp = _core->get_F(FMASK_CF)?true:false; // JC
 						}
 					}	break;
-		case 'E' :	{	jmp = m_core->get_F(FMASK_ZF)?true:false; // JE
+		case 'E' :	{	jmp = _core->get_F(FMASK_ZF)?true:false; // JE
 					}	break;
 		case 'G' :	{	if (instu[2] == 'E') {
-							jmp = (m_core->get_F(FMASK_SF)?true:false)==(m_core->get_F(FMASK_OF)?true:false); // JGE
+							jmp = (_core->get_F(FMASK_SF)?true:false)==(_core->get_F(FMASK_OF)?true:false); // JGE
 						} else {
-							jmp = (m_core->get_F(FMASK_ZF)?false:true) && ((m_core->get_F(FMASK_SF)?true:false)==(m_core->get_F(FMASK_OF)?true:false)); // JG
+							jmp = (_core->get_F(FMASK_ZF)?false:true) && ((_core->get_F(FMASK_SF)?true:false)==(_core->get_F(FMASK_OF)?true:false)); // JG
 						}
 					}	break;
 		case 'L' :	{	if (instu[2] == 'E') {
-							jmp = (m_core->get_F(FMASK_ZF)?true:false) || ((m_core->get_F(FMASK_SF)?true:false)!=(m_core->get_F(FMASK_OF)?true:false)); // JLE
+							jmp = (_core->get_F(FMASK_ZF)?true:false) || ((_core->get_F(FMASK_SF)?true:false)!=(_core->get_F(FMASK_OF)?true:false)); // JLE
 						} else {
-							jmp = (m_core->get_F(FMASK_SF)?true:false)!=(m_core->get_F(FMASK_OF)?true:false); // JL
+							jmp = (_core->get_F(FMASK_SF)?true:false)!=(_core->get_F(FMASK_OF)?true:false); // JL
 						}
 					}	break;
 		case 'M' :	{	jmp = true; // JMP
 					}	break;
 		case 'N' :	{	switch (instu[2]) {
 						case 'B' :
-						case 'C' :	{	jmp = m_core->get_F(FMASK_CF)?false:true;	// JNB / JNC
+						case 'C' :	{	jmp = _core->get_F(FMASK_CF)?false:true;	// JNB / JNC
 									}	break;
-						case 'E' :	{	jmp = m_core->get_F(FMASK_ZF)?false:true;	// JNE
+						case 'E' :	{	jmp = _core->get_F(FMASK_ZF)?false:true;	// JNE
 									}	break;
-						case 'O' :	{	jmp = m_core->get_F(FMASK_OF)?false:true;	// JNO
+						case 'O' :	{	jmp = _core->get_F(FMASK_OF)?false:true;	// JNO
 									}	break;
-						case 'P' :	{	jmp = m_core->get_F(FMASK_PF)?false:true;	// JNP
+						case 'P' :	{	jmp = _core->get_F(FMASK_PF)?false:true;	// JNP
 									}	break;
-						case 'S' :	{	jmp = m_core->get_F(FMASK_SF)?false:true;	// JNS
+						case 'S' :	{	jmp = _core->get_F(FMASK_SF)?false:true;	// JNS
 									}	break;
-						case 'Z' :	{	jmp = m_core->get_F(FMASK_ZF)?false:true;	// JNZ
+						case 'Z' :	{	jmp = _core->get_F(FMASK_ZF)?false:true;	// JNZ
 									}	break;
 						}
 					}	break;
-		case 'O' :	{	jmp = m_core->get_F(FMASK_OF)?true:false; // JO
+		case 'O' :	{	jmp = _core->get_F(FMASK_OF)?true:false; // JO
 					}	break;
 		case 'P' :	{	if (instu[2] == 'O') {
-							jmp = m_core->get_F(FMASK_PF)?false:true; // JPO
+							jmp = _core->get_F(FMASK_PF)?false:true; // JPO
 						} else {
-							jmp = m_core->get_F(FMASK_SF)?true:false; // JP / JPE
+							jmp = _core->get_F(FMASK_SF)?true:false; // JP / JPE
 						}
 					}	break;
-		case 'S' :	{	jmp = m_core->get_F(FMASK_SF)?true:false; // JS
+		case 'S' :	{	jmp = _core->get_F(FMASK_SF)?true:false; // JS
 					}	break;
-		case 'Z' :	{	jmp = m_core->get_F(FMASK_ZF)?true:false; // JZ
+		case 'Z' :	{	jmp = _core->get_F(FMASK_ZF)?true:false; // JZ
 					}	break;
 		}
 		pos = strchr(instu,' ');
@@ -283,7 +282,7 @@ char * CPUDebugger::analyze_instruction(char * _dasm_inst, bool _mem_read, uint 
 		pos = skip_blanks(pos);
 		if(sscanf(pos, "%x:%x",&seg,&off)==2) {
 			//eg: JMP  F000:E05B
-			addr = get_address(seg,off);
+			addr = get_address(seg,off,_core);
 		} else if(sscanf(pos, "%x",&addr)==1) {
 			//absolute address
 		} else if(strstr(pos,"NEAR") == pos) {
@@ -291,7 +290,7 @@ char * CPUDebugger::analyze_instruction(char * _dasm_inst, bool _mem_read, uint 
 			pos = strchr(pos,' ');
 			pos = skip_blanks(pos);
 			if(pos[0]=='B' && pos[1]=='X') {
-				addr = get_address(m_core->get_CS().sel.value,m_core->get_BX());
+				addr = get_address(_core->get_CS().sel.value, _core->get_BX(), _core);
 			}
 		}
 		if(addr!=0) {

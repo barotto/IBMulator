@@ -20,11 +20,14 @@
 #ifndef IBMULATOR_CPU_DISASM_H
 #define IBMULATOR_CPU_DISASM_H
 
-
+class Memory;
 
 class Disasm
 {
 private:
+
+	Memory *m_memory;
+
 	uint8_t must_do_size;   /* used with size of operand */
 	int wordop;           /* dealing with word or byte operand */
 
@@ -74,7 +77,7 @@ private:
 
 public:
 	uint32_t disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
-			const uint8_t *_instr_buf=NULL, uint _instr_buf_len=0,
+			Memory *_memory, const uint8_t *_instr_buf=NULL, uint _instr_buf_len=0,
 			bool bit32=false);
 
 	int last_operand_size();

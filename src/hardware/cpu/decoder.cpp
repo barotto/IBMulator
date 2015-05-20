@@ -100,10 +100,16 @@ restart_opcode:
 		case 0x0F: {
 			opcode = fetchb();
 			prefix_0F(opcode);
+			if(CPULOG) {
+				m_instr.opcode = 0xF00 + opcode;
+			}
 			break;
 		}
 		default: {
 			prefix_none(opcode);
+			if(CPULOG) {
+				m_instr.opcode = opcode;
+			}
 			break;
 		}
 	}

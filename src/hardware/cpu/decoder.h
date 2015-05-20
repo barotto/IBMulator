@@ -92,6 +92,7 @@ struct Instruction
 		               //   this is a hack, to account for proper bu operations ordering
 	} cycles;
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; //!< the instruction bytes (prefixes included)
+	uint16_t opcode; //!< main opcode (used only when CPULOG is true)
 };
 
 

@@ -446,7 +446,10 @@ uint8_t Disasm::getbyte(void)
 		getbyte_mac++;
 		return instr_buffer[idx];
 	}
-	return g_memory.read_byte(getbyte_mac++);
+	if(m_memory == nullptr) {
+		return 0;
+	}
+	return m_memory->read_byte_notraps(getbyte_mac++);
 }
 
 /*
@@ -1086,10 +1089,12 @@ void Disasm::ua_str(char const *str)
  * _instr_buf_len = the length of _instr_buf
  */
 uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
-		const uint8_t *_instr_buf, uint _instr_buf_len,
+		Memory *_memory, const uint8_t *_instr_buf, uint _instr_buf_len,
 		bool bit32)
 {
   	uint32_t c;
+
+  	m_memory = _memory;
 
 	instruction_offset = _rip;
 	instruction_segment = _addr - _rip;
@@ -1119,6 +1124,8 @@ uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_
 	invalid_opcode = 0;
 	opmap1=&op386map1;
 	ua_str(op386map1[c]);
+
+	m_memory = nullptr;
 
   	if (invalid_opcode) {
 		/* restart output buffer */

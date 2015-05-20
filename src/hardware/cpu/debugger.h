@@ -48,14 +48,13 @@ class CPUDebugger
 {
 protected:
 
-	uint32_t get_hex_value(char* str, char*& hex);
-
-	CPUCore * m_core;
 	Disasm m_dasm;
 
 	static std::map<uint32_t, const char*> ms_addrnames;
 	static int_map_t ms_interrupts;
 	static doserr_map_t ms_dos_errors;
+
+	static uint32_t get_hex_value(char *_str, char *&_hex, CPUCore *_core);
 
 	static void INT_def_ret(CPUCore *core, char* buf, uint buflen);
 	static void INT_def_ret_errcode(CPUCore *core, char* buf, uint buflen);
@@ -84,15 +83,16 @@ protected:
 	static void INT_2B_01(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_2F_1116(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_2F_1123(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+
 public:
 
-	CPUDebugger() : m_core(NULL) {}
+	CPUDebugger() {}
 
-	void set_core(CPUCore * _core) { m_core = _core; }
-	uint disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip,
+	uint disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip, Memory *_mem,
 			const uint8_t *_instr_buf=NULL, uint _instr_buf_len=0);
-	char * analyze_instruction(char * _inst, bool _mem_read, uint _opsize=16);
-	uint32_t get_address(uint16_t seg, uint32_t offset);
+	char * analyze_instruction(char * _inst, bool _mem_read,
+			CPUCore *_core, Memory *_mem, uint _opsize=16);
+	uint32_t get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core);
 
 	static const char * INT_decode(bool call, uint8_t vector, uint16_t ax,
 			CPUCore *core, Memory *mem);

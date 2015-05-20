@@ -9,6 +9,7 @@ libhardware_a_SOURCES = \
 	cpu/decoder/prefix_0F.cpp \
 	cpu/decoder.cpp \
 	cpu/executor.cpp \
+	cpu/logger.cpp \
 	cpu/disasm.cpp \
 	cpu/debugger.cpp \
 	memory.cpp \
@@ -39,6 +40,7 @@ noinst_HEADERS = \
 	cpu/descriptor.h \
 	cpu/selector.h \
 	cpu/executor.h \
+	cpu/logger.h \
 	cpu/disasm.h \
 	cpu/debugger.h \
 	memory.h \

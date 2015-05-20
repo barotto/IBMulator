@@ -188,23 +188,38 @@ uint16_t CPUBus::fetchw()
 	return uint16_t(b1)<<8 | b0;
 }
 
-void CPUBus::write_pq_to_logfile(FILE *_dest)
+int CPUBus::write_pq_to_logfile(FILE *_dest)
 {
+	int res = 0;
 	if(m_s.pq_valid) {
-		fprintf(_dest, "v");
+		res = fprintf(_dest, "v");
 	} else {
-		fprintf(_dest, " ");
+		res = fprintf(_dest, " ");
 	}
-	if(is_pq_empty()) {
-		fprintf(_dest, "e");
-	} else {
-		fprintf(_dest, " ");
+	if(res<0) {
+		return -1;
 	}
 
-	fprintf(_dest, " ");
+	if(is_pq_empty()) {
+		res = fprintf(_dest, "e");
+	} else {
+		res = fprintf(_dest, " ");
+	}
+	if(res<0) {
+		return -1;
+	}
+
+	if(fprintf(_dest, " ") < 0) {
+		return -1;
+	}
+
 	uint idx = get_pq_cur_index();
 	for(uint i=0; i<get_pq_cur_size(); i++) {
-		fprintf(_dest, "%02X ", m_s.pq[idx]);
+		if(fprintf(_dest, "%02X ", m_s.pq[idx]) < 0) {
+			return -1;
+		}
 		idx = (idx+1)%CPU_PQ_SIZE;
 	}
+
+	return 0;
 }

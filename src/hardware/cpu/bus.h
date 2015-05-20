@@ -216,7 +216,7 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	void write_pq_to_logfile(FILE *_dest);
+	int write_pq_to_logfile(FILE *_dest);
 };
 
 #endif

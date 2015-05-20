@@ -158,17 +158,15 @@ const Rocket::Core::String & SysDebugger::disasm(uint16_t _selector, uint16_t _i
 {
 	CPUDebugger debugger;
 
-	debugger.set_core(&g_cpucore);
-
 	static Rocket::Core::String str;
 
 	str = "";
 
 	static char empty = 0;
 
-	uint32_t start = debugger.get_address(_selector,_ip);
+	uint32_t start = debugger.get_address(_selector, _ip, &g_cpucore);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _ip);
+	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory);
 	if(_size!=NULL) {
 		*_size = size;
 	}
@@ -176,7 +174,7 @@ const Rocket::Core::String & SysDebugger::disasm(uint16_t _selector, uint16_t _i
 	char *res = &empty;
 
 	if(_analyze) {
-		res = debugger.analyze_instruction(dline, true);
+		res = debugger.analyze_instruction(dline, true, &g_cpucore, &g_memory);
 		if(!res || !(*res))
 			res = &empty;
 	}
