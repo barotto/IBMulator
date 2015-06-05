@@ -17,6 +17,7 @@ ibmulator_SOURCES = \
 	syslog.cpp \
 	ini/ini.cpp \
 	mixer.cpp \
+	vgm.cpp \
 	wav.cpp \
 	ring_buffer.cpp \
 	wincompat/mkstemp.cpp \
@@ -40,6 +41,7 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	ini/ini.h \
+	vgm.h \
 	wav.h \
 	wincompat.h \
 	utils.h

@@ -170,7 +170,7 @@ std::string FileSys::get_next_filename(const std::string &_dir,
 	if(counter>=10000) {
 		return "";
 	}
-	return ss.str();
+	return fname;
 }
 
 bool FileSys::extract_file(const char *_archive, const char *_filename, const char *_extract_to)
@@ -209,4 +209,16 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 	}
 	archive_read_free(ar);
 	return found;
+}
+
+shared_file_ptr FileSys::make_shared_file(const char *_filename, const char *_flags)
+{
+	FILE * const fp = fopen(_filename, _flags);
+	return fp ? shared_file_ptr(fp, fclose) : shared_file_ptr();
+}
+
+unique_file_ptr FileSys::make_file(const char *_filename, const char *_flags)
+{
+	//unique_ptr only invokes the deleter if the pointer is non-zero
+	return unique_file_ptr(fopen(_filename, _flags), fclose);
 }

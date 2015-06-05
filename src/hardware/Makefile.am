@@ -30,7 +30,9 @@ libhardware_a_SOURCES = \
 	devices/vvfat.cpp \
 	devices/serial.cpp \
 	devices/parallel.cpp \
-	devices/pcspeaker.cpp
+	devices/pcspeaker.cpp \
+	devices/ps1audio.cpp \
+	devices/sn76496.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -61,4 +63,6 @@ noinst_HEADERS = \
 	devices/vvfat.h \
 	devices/serial.h \
 	devices/parallel.h \
-	devices/pcspeaker.h
+	devices/pcspeaker.h \
+	devices/ps1audio.h \
+	devices/sn76496.h

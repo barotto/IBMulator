@@ -105,7 +105,8 @@ ini_file_t AppConfig::ms_def_values = {
 		{ MIXER_RATE, "44100" },
 		{ MIXER_SAMPLES, "1024" },
 		{ MIXER_PREBUFFER, "50" },
-		{ MIXER_PCSPEAKER, "yes" }
+		{ MIXER_PCSPEAKER, "yes" },
+		{ MIXER_PS1AUDIO, "yes" }
 	} },
 
 	{ COM_SECTION, {
@@ -226,6 +227,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";      rate: Sample rate.\n"
 ";            Possible values: 44100, 48000, 32000, 22050.\n"
 "; pcspeaker: Enable PC-Speaker emulation."
+";  ps1audio: Enable PS/1 Audio Card emulation"
 		},
 
 		{ COM_SECTION, "" },

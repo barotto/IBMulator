@@ -147,6 +147,10 @@ public:
 	void activate_timer_ns(unsigned _timer, uint32_t _nsecs, bool _continuous);
 	void deactivate_timer(unsigned _timer);
 	void set_timer_callback(unsigned _timer, timer_fun_t _func);
+	inline bool is_timer_active(unsigned _timer) {
+		ASSERT(_timer!=0 && _timer<m_num_timers);
+		return m_timers[_timer].active;
+	}
 
 	void register_irq(uint8_t irq, const char* name);
 	void unregister_irq(uint8_t _irq);

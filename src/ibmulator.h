@@ -97,7 +97,9 @@ void size_check()
 	#define HDD_TIMING    false //used to speed up the HDD and ease the debugging
 
 	#define LOG_DEBUG_MESSAGES    true
-	#define DEFAULT_LOG_VERBOSITY LOG_V1
+	#define LOG_MACHINE_TIME      true
+	#define LOG_CSIP              true
+	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 #else
 	//RELEASE
@@ -112,6 +114,8 @@ void size_check()
 	#define HDD_TIMING    true
 
 	#define LOG_DEBUG_MESSAGES    false
+	#define LOG_MACHINE_TIME      false
+	#define LOG_CSIP              false
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 #endif

@@ -28,26 +28,217 @@
 
 Mixer g_mixer;
 
-MixerChannel::MixerChannel(MixerChannel_handler _callback, uint16_t _rate, const std::string &_name)
+MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
+		const std::string &_name)
 :
+m_mixer(_mixer),
 m_enabled(false),
-m_rate(_rate),
 m_name(_name),
-m_callback(_callback)
+m_update_clbk(_callback),
+m_disable_time(0),
+m_disable_timeout(0),
+m_first_update(true),
+m_out_frames(0),
+m_SRC_state(NULL),
+m_capture_clbk([](bool){})
 {
-
+	m_in_buffer.reserve(MIXER_BUFSIZE);
+	m_out_buffer.resize(MIXER_BUFSIZE);
 }
 
+MixerChannel::~MixerChannel()
+{
+	if(m_SRC_state != NULL) {
+		src_delete(m_SRC_state);
+	}
+}
+
+void MixerChannel::enable(bool _enabled)
+{
+	m_enabled.store(_enabled);
+	m_disable_time.store(0);
+	if(_enabled) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel enabled\n", m_name.c_str());
+	} else {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel disabled\n", m_name.c_str());
+		if(m_SRC_state != NULL) {
+			src_reset(m_SRC_state);
+		}
+		m_out_frames = 0;
+		m_in_buffer.clear();
+		m_first_update = true;
+	}
+}
 
 int MixerChannel::update(int _mix_tslice, bool _prebuffering)
 {
-	ASSERT(m_callback);
-	return m_callback(_mix_tslice, _prebuffering);
+	ASSERT(m_update_clbk);
+	int samples = m_update_clbk(_mix_tslice, _prebuffering, m_first_update);
+	m_first_update = false;
+	return samples;
 }
 
 void MixerChannel::add_samples(uint8_t *_data, size_t _size)
 {
-	g_mixer.send_wave_packet(_data, _size);
+	if(_size > 0) {
+		m_in_buffer.insert(m_in_buffer.end(), _data, _data+_size);
+	}
+}
+
+int MixerChannel::fill_samples_fade_u8m(int _samples, uint8_t _start, uint8_t _end)
+{
+	if(_samples == 0) {
+		return 0;
+	}
+	double value = _start;
+	double step = (double(_end) - value) / _samples;
+	for(int i=0; i<_samples; i++,value+=step) {
+		m_in_buffer.push_back(uint8_t(value));
+	}
+	return _samples;
+}
+
+void MixerChannel::mix_samples(int _rate, uint16_t _format, uint16_t _channels)
+{
+	const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
+	int in_size = m_in_buffer.size();
+
+	if(in_size == 0) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "channel active but empty\n");
+		return;
+	}
+
+	//to floats in [-1,1]
+	std::vector<float> in_buf, SRC_in_buf;
+	switch(_format) {
+		case MIXER_FORMAT_U8:
+			in_buf.resize(in_size);
+			for(int i=0; i<in_size; i++) {
+				float fvalue = float(m_in_buffer[i]);
+				in_buf[i] = (fvalue - 128.f) / 128.f;
+			}
+			break;
+		case MIXER_FORMAT_S16:
+			in_size = in_size / 2;
+			in_buf.resize(in_size);
+			for(int i=0; i<in_size; i++) {
+				float fvalue = float(*(int16_t*)(&m_in_buffer[i*2]));
+				in_buf[i] = fvalue / 32768.f;
+			}
+			break;
+		default:
+			PERRF_ABORT(LOG_MIXER, "unsupported sample format\n");
+			return;
+	}
+
+	m_in_buffer.clear();
+
+	int in_frames = in_size / _channels;
+
+	if(spec.channels != _channels) {
+		int SRC_in_size = in_frames * spec.channels;
+		SRC_in_buf.resize(SRC_in_size);
+		if(_channels==1 && spec.channels==2) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "from mono to stereo\n");
+			for(int i=0; i<in_size; i++) {
+				float v = in_buf[i];
+				SRC_in_buf[i*2]   = v;
+				SRC_in_buf[i*2+1] = v;
+			}
+		} else if(_channels==2 && spec.channels==1) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "from stereo to mono\n");
+			for(int i=0; i<SRC_in_size; i++) {
+				SRC_in_buf[i] = (in_buf[i*2] + in_buf[i*2+1]) / 2.f;
+			}
+		} else {
+			PERRF_ABORT(LOG_MIXER, "unsupported number of channels\n");
+			return;
+		}
+	} else {
+		SRC_in_buf = in_buf;
+	}
+
+	if(spec.freq != _rate) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "resampling from %dHz to %dHz\n", _rate, spec.freq);
+		double ratio = double(spec.freq) / double(_rate);
+		int offset = m_out_frames * spec.channels;
+		int out_frames = int(ceil(double(in_frames) * ratio));
+		int out_size = out_frames * spec.channels;
+		if(m_SRC_state == NULL) {
+			int err;
+			m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, spec.channels, &err);
+			if(m_SRC_state == NULL) {
+				PERRF_ABORT(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
+				return;
+			}
+		}
+		if(m_out_buffer.size() < unsigned(offset+out_size)) {
+			m_out_buffer.resize(offset+out_size);
+		}
+		SRC_DATA srcdata;
+		srcdata.data_in = &SRC_in_buf[0];
+		srcdata.data_out = &m_out_buffer[offset];
+		srcdata.input_frames = in_frames;
+		srcdata.output_frames = out_frames;
+		srcdata.src_ratio = double(spec.freq) / double(_rate);
+		srcdata.end_of_input = 0;
+		int result = src_process(m_SRC_state, &srcdata);
+		if(result != 0) {
+			PERRF(LOG_MIXER, "error resampling: %s (%d)\n", src_strerror(result), result);
+			return;
+		}
+		if(srcdata.output_frames_gen != out_frames) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "frames in=%d, frames out=%d\n",
+					m_out_frames, srcdata.output_frames_gen);
+			ASSERT(srcdata.output_frames_gen < out_frames);
+			out_frames = srcdata.output_frames_gen;
+		}
+		m_out_frames += out_frames;
+	} else {
+		int offset = m_out_frames * spec.channels;
+		int out_size = (in_frames+m_out_frames) * spec.channels;
+		if(m_out_buffer.size() < unsigned(out_size)) {
+			m_out_buffer.resize(out_size);
+		}
+		std::copy(SRC_in_buf.begin(), SRC_in_buf.end(), m_out_buffer.begin() + offset);
+		m_out_frames += in_frames;
+	}
+}
+
+void MixerChannel::pop_frames(int _frames_to_pop)
+{
+	const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
+	int leftover = m_out_frames - _frames_to_pop;
+	if(leftover > 0) {
+		auto start = m_out_buffer.begin() + _frames_to_pop*spec.channels;
+		auto end = start + leftover*spec.channels;
+		std::copy(start, end, m_out_buffer.begin());
+		m_out_frames = leftover;
+	} else {
+		m_out_frames = 0;
+	}
+}
+
+bool MixerChannel::check_disable_time(uint64_t _now_us)
+{
+	if(m_disable_time && (_now_us - m_disable_time >= m_disable_timeout)) {
+		enable(false);
+		PDEBUGF(LOG_V2, LOG_MIXER, "%s channel disabled, after %d usec of silence\n",
+				m_name.c_str(), (_now_us - m_disable_time));
+		m_disable_time = 0;
+		return true;
+	}
+	return false;
+}
+
+void MixerChannel::register_capture_clbk(std::function<void(bool _enable)> _fn)
+{
+	m_capture_clbk = _fn;
+}
+
+void MixerChannel::on_capture(bool _enable)
+{
+	m_capture_clbk(_enable);
 }
 
 Mixer::Mixer()
@@ -56,7 +247,7 @@ m_heartbeat(MIXER_HEARTBEAT),
 m_device(0),
 m_audio_capture(false)
 {
-	m_buffer.set_size(MIXER_BUFSIZE);
+	m_out_buffer.set_size(MIXER_BUFSIZE);
 }
 
 Mixer::~Mixer()
@@ -66,12 +257,10 @@ Mixer::~Mixer()
 void Mixer::sdl_callback(void *userdata, Uint8 *stream, int len)
 {
 	Mixer * mixer = static_cast<Mixer*>(userdata);
-
-	memset(stream, mixer->m_device_spec.silence, len);
-
-	mixer->m_buffer.read(stream, len);
-	if(mixer->m_wav.is_open()) {
-		mixer->m_wav.save(stream,len);
+	size_t bytes = mixer->m_out_buffer.read(stream, len);
+	if(bytes<unsigned(len)) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "buffer underrun\n");
+		memset(&stream[bytes], mixer->m_device_spec.silence, len-bytes);
 	}
 }
 
@@ -114,24 +303,25 @@ void Mixer::start_capture()
 {
 	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 	path = FileSys::get_next_filename(path, "sound_", ".wav");
-
 	if(!path.empty()) {
-		path += ".wav";
-		SDL_LockAudioDevice(m_device);
-		m_wav.open(path.c_str(), m_frequency, m_bit_depth, m_channels);
-		SDL_UnlockAudioDevice(m_device);
-		m_audio_capture = true;
-		PINFOF(LOG_V0, LOG_MIXER, "started audio capturing to '%s'\n", path.c_str());
+		try {
+			m_wav.open(path.c_str(), m_device_spec.freq, SDL_AUDIO_BITSIZE(m_device_spec.format), m_device_spec.channels);
+			PINFOF(LOG_V0, LOG_MIXER, "started audio capturing to '%s'\n", path.c_str());
+		} catch(std::exception &e) { }
 	}
+	for(auto ch : m_mix_channels) {
+		ch.second->on_capture(true);
+	}
+	m_audio_capture = true;
 }
 
 void Mixer::stop_capture()
 {
-	SDL_LockAudioDevice(m_device);
 	m_wav.close();
-	SDL_UnlockAudioDevice(m_device);
-
 	m_audio_capture = false;
+	for(auto ch : m_mix_channels) {
+		ch.second->on_capture(false);
+	}
 	PINFOF(LOG_V0, LOG_MIXER, "stopped audio capturing\n");
 }
 
@@ -142,35 +332,33 @@ void Mixer::config_changed()
 		SDL_PauseAudioDevice(m_device, 0);
 		stop_wave_playback();
 	}
+	bool capture = m_audio_capture;
 	if(m_audio_capture) {
 		stop_capture();
 	}
 
 	m_frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_bit_depth = 16;
-	m_channels = 1;
-	RASSERT(m_bit_depth == 8 || m_bit_depth == 16);
-	m_bytes_per_sample = m_channels * (m_bit_depth==8?1:2);
 	int samples = g_program.config().get_int(MIXER_SECTION, MIXER_SAMPLES);
-
 	m_prebuffer = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); //msecs
 	int buf_len = std::max(m_prebuffer*2, 1000); //msecs
-	int buf_size = (m_bytes_per_sample * m_frequency * buf_len) / 1000;
-
-	m_buffer.set_size(buf_size);
+	int buf_frames = (m_frequency * buf_len) / 1000;
+	m_bytes_per_frame = 0;
 
 	try {
-		start_wave_playback(m_frequency, m_bit_depth, m_channels, samples);
+		start_wave_playback(m_frequency, MIXER_BIT_DEPTH, MIXER_CHANNELS, samples);
+		m_bytes_per_frame = m_device_spec.channels * (SDL_AUDIO_BITSIZE(m_device_spec.format) / 8);
+		m_out_buffer.set_size(buf_frames * m_bytes_per_frame);
+		m_mix_buffer.resize(buf_frames * m_device_spec.channels);
 	} catch(std::exception &e) {
 		PERRF(LOG_MIXER, "wave audio output disabled\n");
 	}
 
-	if(m_audio_capture) {
+	if(capture) {
 		start_capture();
 	}
 
 	PDEBUGF(LOG_V1, LOG_MIXER, "prebuffer: %d msec., ring buffer: %d bytes\n",
-			m_prebuffer, buf_size);
+			m_prebuffer, buf_frames * m_bytes_per_frame);
 }
 
 void Mixer::start()
@@ -186,9 +374,12 @@ void Mixer::start()
 
 void Mixer::main_loop()
 {
+	std::vector<MixerChannel*> active_channels;
+	unsigned time_slice;
+
 	#if MULTITHREADED
 	while(true) {
-		unsigned time_slice = m_main_chrono.elapsed_usec();
+		time_slice = m_main_chrono.elapsed_usec();
 		if(time_slice < m_heartbeat) {
 			uint64_t sleep = m_heartbeat - time_slice;
 			uint64_t t0 = m_main_chrono.get_usec();
@@ -201,6 +392,9 @@ void Mixer::main_loop()
 		} else {
 			m_main_chrono.start();
 		}
+	#else
+		time_slice = m_main_chrono.elapsed_usec();
+		m_main_chrono.start();
 	#endif
 
 		m_bench.beat_start();
@@ -214,12 +408,16 @@ void Mixer::main_loop()
 			return;
 		}
 
-		bool enable_audio = false;
+		active_channels.clear();
 		if(!m_enabled.load()) {
 			if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
 				SDL_PauseAudioDevice(m_device, 0);
 			}
+#if MULTITHREADED
 			continue;
+#else
+			return;
+#endif
 		}
 
 		SDL_AudioStatus audio_status = SDL_GetAudioDeviceStatus(m_device);
@@ -227,12 +425,18 @@ void Mixer::main_loop()
 		//update the registered channels
 		for(auto ch : m_mix_channels) {
 			if(ch.second->is_enabled()) {
-				enable_audio = true;
 				ch.second->update(time_slice, audio_status == SDL_AUDIO_PAUSED);
+				if(ch.second->is_enabled() && ch.second->get_out_frames()>0) {
+					active_channels.push_back(ch.second.get());
+				}
 			}
 		}
 
-		if(enable_audio) {
+		if(!active_channels.empty()) {
+			size_t mix_size = mix_channels(active_channels);
+			if(mix_size>0) {
+				send_packet(&m_mix_buffer[0], mix_size);
+			}
 			if(audio_status == SDL_AUDIO_PAUSED) {
 				int elapsed = m_main_chrono.get_msec() - m_start;
 				if(m_start == 0) {
@@ -240,7 +444,8 @@ void Mixer::main_loop()
 					PDEBUGF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
 				} else if(elapsed+(MIXER_HEARTBEAT/1000) > m_prebuffer) {
 					SDL_PauseAudioDevice(m_device, 0);
-					PDEBUGF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed)\n", elapsed);
+					PDEBUGF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed, %d bytes/%d usecs of data)\n",
+							elapsed, m_out_buffer.get_read_avail(), get_buffer_len());
 					m_start = 0;
 				}
 			} else {
@@ -248,10 +453,10 @@ void Mixer::main_loop()
 			}
 		} else {
 			m_start = 0;
-			if(audio_status==SDL_AUDIO_PLAYING && m_buffer.get_read_avail() == 0) {
+			if(audio_status==SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
 				SDL_PauseAudioDevice(m_device, 1);
 				PDEBUGF(LOG_V1, LOG_MIXER, "paused\n");
-			} else if(audio_status==SDL_AUDIO_PAUSED && m_buffer.get_read_avail() != 0) {
+			} else if(audio_status==SDL_AUDIO_PAUSED && m_out_buffer.get_read_avail() != 0) {
 				SDL_PauseAudioDevice(m_device, 0);
 				PDEBUGF(LOG_V1, LOG_MIXER, "playing\n");
 			}
@@ -319,33 +524,91 @@ void Mixer::stop_wave_playback()
 	}
 }
 
-bool Mixer::send_wave_packet(uint8_t *_data, size_t _len)
+size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
+{
+	size_t mixlen = std::numeric_limits<size_t>::max();
+	int frames;
+	for(auto ch : _channels) {
+		frames = ch->get_out_frames();
+		ASSERT(frames > 0);
+		mixlen = std::min(mixlen, size_t(frames*m_device_spec.channels));
+	}
+	mixlen = std::min(mixlen, m_mix_buffer.size());
+	frames = mixlen / m_device_spec.channels;
+	auto ch = _channels.begin();
+	auto chdata = (*ch)->get_out_buffer();
+	std::copy(chdata.begin(), chdata.begin()+mixlen, m_mix_buffer.begin());
+	(*ch)->pop_frames(frames);
+	ch++;
+	for(; ch != _channels.end(); ch++) {
+		chdata = (*ch)->get_out_buffer();
+		for(size_t i=0; i<mixlen; i++) {
+			float v1 = chdata[i];
+			float v2 = m_mix_buffer[i];
+			m_mix_buffer[i] = v1 + v2;
+		}
+		(*ch)->pop_frames(frames);
+	}
+
+	return mixlen;
+}
+
+bool Mixer::send_packet(float *_data, size_t _len)
 {
 	if(m_device == 0) {
 		return false;
 	}
 	bool ret = true;
-	SDL_LockAudioDevice(m_device);
-	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d bytes, buf fullness: %d\n",
-			_len, m_buffer.get_read_avail() + _len);
-	if(m_buffer.get_size()>=_len && m_buffer.get_write_avail()<_len) {
-		PERRF(LOG_MIXER, "audio buffer overflow\n");
-		m_buffer.clear();
+	std::vector<int16_t> buf(_len);
+	size_t bytes = _len;
+	//convert from float
+	switch(SDL_AUDIO_BITSIZE(m_device_spec.format)) {
+		case 16:
+			for(size_t i=0; i<_len; i++) {
+				int32_t ival = _data[i] * 32768.f;
+				if(ival < -32768) {
+					ival = -32768;
+				}
+				if(ival > 32767) {
+					ival = 32767;
+				}
+				buf[i] = ival;
+			}
+			bytes = _len*2;
+			break;
+		default:
+			PERRF_ABORT(LOG_MIXER, "unsupported bit depth\n");
+			return false;
 	}
-	if(m_buffer.write(_data, _len) < _len) {
+
+	SDL_LockAudioDevice(m_device);
+	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d frames, %d bytes, buf fullness: %d\n",
+			_len / m_device_spec.channels, bytes, m_out_buffer.get_read_avail() + bytes);
+	if(m_out_buffer.get_size()>=bytes && m_out_buffer.get_write_avail()<bytes) {
+		PERRF(LOG_MIXER, "audio buffer overflow\n");
+		m_out_buffer.clear();
+	}
+	if(m_out_buffer.write((uint8_t*)&buf[0], bytes) < bytes) {
 		PERRF(LOG_MIXER, "audio packet too big\n");
 		ret = false;
 	}
 	SDL_UnlockAudioDevice(m_device);
+
+	if(m_wav.is_open()) {
+		try {
+			m_wav.save((uint8_t*)&buf[0], bytes);
+		} catch(std::exception &e) {
+			cmd_stop_capture();
+		}
+	}
+
 	return ret;
 }
 
 std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
-		uint16_t _rate, const std::string &_name)
+		const std::string &_name)
 {
-	std::shared_ptr<MixerChannel> ch = std::make_shared<MixerChannel>(
-			_callback, _rate, _name
-			);
+	auto ch = std::make_shared<MixerChannel>(this, _callback, _name);
 	m_mix_channels[_name] = ch;
 	return ch;
 }
@@ -360,64 +623,101 @@ void Mixer::unregister_channel(const std::string &_ch_name)
 
 void Mixer::sig_config_changed()
 {
+#if MULTITHREADED
 	//this signal should be preceded by a pause command
 	m_cmd_queue.push([this] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+#endif
 		config_changed();
+#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
+#endif
+}
+
+int Mixer::get_buffer_len() const
+{
+	double bytes = m_out_buffer.get_read_avail();
+	double usec_per_frame = 1000000.0 / double(m_frequency);
+	double frames_in_buffer = bytes / m_bytes_per_frame;
+	int time_left = frames_in_buffer * usec_per_frame;
+	return time_left;
 }
 
 void Mixer::cmd_pause()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		m_enabled.store(false);
 		if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
 			SDL_PauseAudioDevice(m_device, 0);
 		}
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Mixer::cmd_resume()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		m_enabled.store(true);
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Mixer::cmd_quit()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		m_quit = true;
 		if(m_audio_capture) {
 			stop_capture();
 		}
 		stop_wave_playback();
 		SDL_AudioQuit();
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Mixer::cmd_start_capture()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		start_capture();
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Mixer::cmd_stop_capture()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		stop_capture();
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Mixer::cmd_toggle_capture()
 {
+#if MULTITHREADED
 	m_cmd_queue.push([this] () {
+#endif
 		if(m_audio_capture) {
 			stop_capture();
 		} else {
 			start_capture();
 		}
+#if MULTITHREADED
 	});
+#endif
 }

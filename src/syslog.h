@@ -58,10 +58,10 @@ extern Syslog g_syslog;
 	#define PDEBUGEXF(verb,fac,format,...)	LOG(LOG_DEBUG,fac,verb,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__)
 	#define PDEBUGF(verb,fac,format,...)	LOG(LOG_DEBUG,fac,verb,format, ## __VA_ARGS__)
 #else
-	#define PDEBUGEX
-	#define PDEBUG
-	#define PDEBUGEXF
-	#define PDEBUGF
+	#define PDEBUGEX(verb,format,...)
+	#define PDEBUG(verb,format,...)
+	#define PDEBUGEXF(verb,fac,format,...)
+	#define PDEBUGF(verb,fac,format,...)
 #endif
 
 enum e_Syslog_Facilities {

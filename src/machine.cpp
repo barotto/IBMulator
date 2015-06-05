@@ -36,6 +36,7 @@
 #include "hardware/devices/parallel.h"
 #include "hardware/devices/systemboard.h"
 #include "hardware/devices/pcspeaker.h"
+#include "hardware/devices/ps1audio.h"
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -185,6 +186,8 @@ void Machine::init()
 	register_timer(std::bind(&Machine::null_timer,this),
 			NULL_TIMER_INTERVAL, true, true, "null timer");
 
+	//TODO this device "registering" method is a stub.
+	//there must be a mechanism to "unregister" a device at run time
 	g_devices.register_device(&g_dma);
 	g_devices.register_device(&g_sysboard);
 	g_devices.register_device(&g_cmos);
@@ -197,6 +200,7 @@ void Machine::init()
 	g_devices.register_device(&g_harddrv);
 	g_devices.register_device(&g_serial);
 	g_devices.register_device(&g_parallel);
+	g_devices.register_device(&g_ps1audio);
 
 	g_cpu.init();
 	g_memory.init();
@@ -589,9 +593,13 @@ void Machine::cmd_power_on()
 
 void Machine::cmd_power_off()
 {
+#if MULTITHREADED
 	m_cmd_fifo.push([this] () {
+#endif
 		power_off();
+#if MULTITHREADED
 	});
+#endif
 }
 
 void Machine::cmd_cpu_step()
@@ -680,17 +688,23 @@ void Machine::cmd_cycles_adjust(double _factor)
 
 void Machine::cmd_save_state(StateBuf &_state)
 {
+#if MULTITHREADED
 	m_cmd_fifo.push([&] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+#endif
 		save_state(_state);
+#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
+#endif
 }
 
 void Machine::cmd_restore_state(StateBuf &_state)
 {
+#if MULTITHREADED
 	m_cmd_fifo.push([&] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+#endif
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
@@ -699,8 +713,10 @@ void Machine::cmd_restore_state(StateBuf &_state)
 			PERRF(LOG_MACHINE, "error restoring the state\n");
 			_state.m_last_restore = false;
 		}
+#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
+#endif
 }
 
 void Machine::cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp)
@@ -719,8 +735,10 @@ void Machine::cmd_eject_media(uint _drive)
 
 void Machine::sig_config_changed()
 {
+#if MULTITHREADED
 	m_cmd_fifo.push([this] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+#endif
 		if(m_on) {
 			power_off();
 		}
@@ -728,8 +746,10 @@ void Machine::sig_config_changed()
 		g_memory.config_changed();
 		g_devices.config_changed();
 		config_changed();
+#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
+#endif
 }
 
 void Machine::send_key_to_kbctrl(uint32_t _key)

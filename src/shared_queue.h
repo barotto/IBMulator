@@ -12,8 +12,8 @@
 * This example was totally inspired by Anthony Williams lock-based data structures in
 * Ref: "C++ Concurrency In Action" http://www.manning.com/williams */
 
-#ifndef SHARED_QUEUE
-#define SHARED_QUEUE
+#ifndef IBMULATOR_SHARED_QUEUE
+#define IBMULATOR_SHARED_QUEUE
 
 #include <queue>
 #include <mutex>
@@ -25,55 +25,90 @@
 template<typename T>
 class shared_queue
 {
-  std::queue<T> queue_;
-  mutable std::mutex m_;
-  std::condition_variable data_cond_;
+	std::queue<T> queue_;
+	mutable std::mutex m_;
+	std::condition_variable data_cond_;
 
-  shared_queue& operator=(const shared_queue&); // c++11 feature not yet in vs2010 = delete;
-  shared_queue(const shared_queue& other); // c++11 feature not yet in vs2010 = delete;
+	shared_queue& operator=(const shared_queue&) = delete;
+	shared_queue(const shared_queue& other) = delete;
 
 public:
-  shared_queue(){}
 
-  void push(T item){
-    {
-      std::lock_guard<std::mutex> lock(m_);
-      queue_.push(item);
-    }
-    data_cond_.notify_one();
-  }
+	shared_queue() {}
 
-  /// \return immediately, with true if successful retrieval
-  bool try_and_pop(T& popped_item){
-    std::lock_guard<std::mutex> lock(m_);
-    if(queue_.empty()){
-      return false;
-    }
-    popped_item=std::move(queue_.front());
-    queue_.pop();
-    return true;
-  }
+	void push(T item)
+	{
+		{
+			std::lock_guard<std::mutex> lock(m_);
+			queue_.push(item);
+		}
+		data_cond_.notify_one();
+	}
 
-  /// Try to retrieve, if no items, wait till an item is available and try again
-  void wait_and_pop(T& popped_item){
-    std::unique_lock<std::mutex> lock(m_); // note: unique_lock is needed for std::condition_variable::wait
-    while(queue_.empty())
-    { //                       The 'while' loop below is equal to
-      data_cond_.wait(lock);  //data_cond_.wait(lock, [](bool result){return !queue_.empty();});
-    }
-    popped_item=std::move(queue_.front());
-    queue_.pop();
-  }
+	// return immediately, with true if successful retrieval
+	bool try_and_pop(T& popped_item)
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		if(queue_.empty()){
+			return false;
+		}
+		popped_item = std::move(queue_.front());
+		queue_.pop();
+		return true;
+	}
 
-  bool empty() const{
-    std::lock_guard<std::mutex> lock(m_);
-    return queue_.empty();
-  }
+	// return immediately
+	void try_and_pop()
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		if(!queue_.empty()){
+			queue_.pop();
+		}
+		return;
+	}
 
-  unsigned size() const{
-    std::lock_guard<std::mutex> lock(m_);
-    return queue_.size();
-  }
+	// return immediately, with true if successful retrieval
+	bool try_and_copy(T& _item)
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		if(queue_.empty()){
+			return false;
+		}
+		_item = std::move(queue_.front());
+		return true;
+	}
+
+	// Try to retrieve, if no items, wait till an item is available and try again
+	void wait_and_pop(T& popped_item)
+	{
+		// note: unique_lock is needed for std::condition_variable::wait
+		std::unique_lock<std::mutex> lock(m_);
+		while(queue_.empty()) {
+			//The 'while' loop is equal to
+			//data_cond_.wait(lock, [](bool result){return !queue_.empty();});
+			data_cond_.wait(lock);
+		}
+		popped_item=std::move(queue_.front());
+		queue_.pop();
+	}
+
+	bool empty() const
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		return queue_.empty();
+	}
+
+	unsigned size() const
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		return queue_.size();
+	}
+
+	void clear()
+	{
+		std::lock_guard<std::mutex> lock(m_);
+		std::queue<T>().swap(queue_);
+	}
 };
 
 #endif

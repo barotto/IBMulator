@@ -72,9 +72,10 @@ AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_LIBROCKET
 AX_CHECK_LIBARCHIVE
+AX_CHECK_LIBSAMPLERATE
 
 
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS"
+BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
 else
@@ -82,7 +83,7 @@ else
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS"
+BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -140,9 +141,10 @@ echo "------------------------"
 if test "x$debug" = "xyes"; then
 	echo "- configured for debugging"
 fi
-echo "- SDL       : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
-echo "- SDL_image : $SDLIMAGE_LIBS"
-echo "- libRocket : $LIBROCKET_LIBS"
-echo "- libarchive: $LIBARCHIVE_LIBS"
-echo "- OpenGL    : $OPENGL_LIBS $GLEW_LIBS"
-echo "- prefix    : ${prefix}"
+echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
+echo "- SDL_image    : $SDLIMAGE_LIBS"
+echo "- libRocket    : $LIBROCKET_LIBS"
+echo "- libarchive   : $LIBARCHIVE_LIBS"
+echo "- libsamplerate: $LIBSAMPLERATE_LIBS"
+echo "- OpenGL       : $OPENGL_LIBS $GLEW_LIBS"
+echo "- prefix       : ${prefix}"

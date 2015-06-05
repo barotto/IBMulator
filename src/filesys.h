@@ -27,6 +27,11 @@
 	#include <windows.h>
 #endif
 
+#include <memory>
+
+typedef std::unique_ptr<FILE, int (*)(FILE *)> unique_file_ptr;
+typedef std::shared_ptr<FILE> shared_file_ptr;
+
 class FileSys
 {
 public:
@@ -45,6 +50,9 @@ public:
 			std::string &_dir, std::string &_base, std::string &_ext);
 	static bool extract_file(const char *_archive, const char *_filename,
 			const char *_extract_to);
+
+	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
+	static unique_file_ptr make_file(const char *_filename, const char *_flags);
 };
 
 #endif

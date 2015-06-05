@@ -714,7 +714,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 							g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
 					path = FileSys::get_next_filename(path, "screenshot_", ".png");
 					if(!path.empty()) {
-						save_framebuffer(path + ".png");
+						save_framebuffer(path);
 					}
 					return true;
 				}

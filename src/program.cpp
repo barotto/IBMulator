@@ -82,7 +82,9 @@ void Program::save_state(std::string _name)
 
 	std::unique_lock<std::mutex> lock(ms_lock);
 	m_machine->cmd_save_state(state);
-	ms_cv.wait(lock);
+	if(MULTITHREADED) {
+		ms_cv.wait(lock);
+	}
 
 	state.save(path + ".bin");
 
@@ -136,14 +138,20 @@ void Program::restore_state(std::string _name)
 	m_mixer->cmd_pause();
 
 	m_machine->sig_config_changed();
-	ms_cv.wait(restore_lock);
+	if(MULTITHREADED) {
+		ms_cv.wait(restore_lock);
+	}
 
 	m_mixer->sig_config_changed();
-	ms_cv.wait(restore_lock);
+	if(MULTITHREADED) {
+		ms_cv.wait(restore_lock);
+	}
 
 	m_machine->cmd_restore_state(state);
-	ms_cv.wait(restore_lock);
+	if(MULTITHREADED) {
+		ms_cv.wait(restore_lock);
 
+	}
 	if(state.m_last_restore == false) {
 		PERRF(LOG_PROGRAM, "the restored state is not valid\n");
 		throw std::exception();

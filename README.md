@@ -10,9 +10,9 @@ machine, complete of the characteristic 4-quadrant graphical user interface.
 In order to use the program you need the original ROM, which is copyrighted by 
 IBM. You won't find it distributed with this package.
 
-IBMulator emulates only the PS/1 with the 10 MHz 286 CPU. Apparently there is
-a model 2011 with a 386 and without the ROM DOS installed. IBMulator will not 
-work with a BIOS from that particular model.
+IBMulator emulates only the PS/1 with the 80286 CPU (sub-models n01, n34, n41.) 
+It will not work with a BIOS from the model 2011 n42, which had a 386sx and no 
+ROM DOS installed.
 
 
 ## LICENSE
@@ -22,23 +22,14 @@ IBMulator is distributed under the GNU GPLv3. See COPYING for details.
 To obtain the source code go to github.com/barotto/IBMulator
 
 
-## WHAT'S MISSING
-
-* PS/1 Audio Card emulation.
-* Optimizations: there are virtually none, and a lot can be done to speed up the
-emulation.
-
-
 ## HARDWARE REQUIREMENTS
 
-A 64bit Linux or Windows operating system with an OpenGL 3.3 video card.
-CPU wise, unfortunately, due to the lack of optimizations you need a good one. 
-I have tested IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I 
-see I think the program can run on a 2GHz dual core processor.  
-Never tested the code on a 32bit o.s., maybe it will compile and run, maybe it 
-won't.   
+A 64-bit Linux or Windows operating system with an OpenGL 3.3 video card.  
+Due to the lack of optimizations, currently you need a good CPU. I have tested 
+IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I see I think the 
+program can run on a 2GHz dual core processor.    
 I will never have the means nor the time to port to OS X, iOS, Android, WinRT.
-Patches are welcome!
+Patches are welcome though!
 
 
 ## USAGE
@@ -52,10 +43,9 @@ disk
 2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
 reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
 non-US model)
-3. or scour the Internet (I know that there are various ROM sets available...).
+3. or scour the Internet (there are various ROM sets available.)
 
-If you have the single bin files, create a ROM set first (see below for the 
-correct format).
+If you have the BIN files, create a ROM set (see below for the correct format.)
 
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
 been created and where it is placed.
@@ -71,12 +61,10 @@ From now on IBMulator is ready to run.
 For more information regarding the configuration options, see the comments 
 inside ibmulator.ini.
 
-I hope the various icons of the interface are self-explanatory enough.
-
 If you want to experiment with VGA shaders, set 'fb-scanlines.fs' in the ini 
-file. It will try to emulate the VGA monitor. You should also use the compact
-GUI mode and go fullscreen, otherwise the higher res VGA modes can be a bit 
-blurry (or maybe use a 4K high dpi monitor?)
+file. It will try to emulate the VGA monitor. In this case, you should also use 
+the compact GUI mode and go fullscreen, otherwise the higher res VGA modes can 
+be a bit blurry.
 
 Being a faithful emulator of the PS/1 model 2011, to configure the system (ie. 
 the PS/1, not the emulator) after a configuration change (for instance, if you 
@@ -87,8 +75,8 @@ are copyright IBM and you have to search the Internet in order to obtain them.
 
 ### ROM set
 
-A ROM set is a compressed file in the zip format, containing the binary files of
-the original ROM. Inside the zip file there must be (case insensitive):
+A ROM set is a compressed file in the ZIP format, containing the binary files 
+of the original ROM. Inside the ZIP file there must be (case insensitive):
 
 * FC0000.BIN : the system BIOS ROM, 256KiB
 * F80000.BIN : the regional ROM, 256KiB, optional, only for the non-US version. 
@@ -148,7 +136,7 @@ stores new files, like screenshots and savestates
 
 ### Emulation
 
-* VGA palette updates fail with some games (Civilization).
+* VGA palette updates fail with some games (Civilization, The Rocketeer).
 
 ### Linux
 
@@ -171,6 +159,7 @@ bug: https://bugs.launchpad.net/unity/+bug/1415195)
 * libRocket (latest version with a patch applied, see notes below)
 * GLEW
 * libarchive
+* libsamplerate
 
 If you cloned the code from the GitHub repo you also need the GNU Autotools. 
 
@@ -192,7 +181,7 @@ use your distributon's software manager to install them (except libRocket).
 
 If you are going to compile using your own version of SDL2, you should compile 
 SDL2 with xinerama and xrandr, otherwise you could experience many problems 
-switching to fullscreen.
+switching to fullscreen, at least with NVIDIA cards.
 
 ### Windows
 
@@ -206,11 +195,10 @@ Follow the general instructions using this additional 'configure' option:
 
 ### Why GCC 4.9? Isn't the 4.8 version included with Ubuntu 14.04 enough?
 
-IBMulator is written in C++11 and uses std::regex to filter out unwanted 
-file types from the floppy selection window. GCC added proper support to
-std::regex only from the 4.9 version.  
-If you are using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA, as
-I did.
+IBMulator is written in C++11 and uses std::regex, e.g. to filter out 
+unwanted file types from the floppy selection window. GCC added proper support 
+to std::regex only starting from the 4.9 version.  
+If you are using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
 
 ### libRocket
 
@@ -247,9 +235,9 @@ More info on this issue at https://github.com/libRocket/libRocket/issues/113
 
 ## THANKS
 
-I would like to thank the Bochs team. I "borrowed" (flat out copied) a 
-huge amount of code from the project. Thank you guys, you made a terrific job! 
+I would like to thank the Bochs team. I've taken a huge amount of code from the 
+project. Thank you guys, you made a terrific job! 
 Without your work IBMulator would have taken at least a decade to reach the 
-point where it is now.
-Also thanks to the DosBox team. Only a little bit of code from them but a lot of 
+point where it is now.  
+Also thanks to the DOSBox team. Only a little bit of code from them but a lot of 
 information and inspiration.

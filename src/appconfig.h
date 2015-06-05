@@ -152,6 +152,7 @@ public:
 #define MIXER_PREBUFFER "prebuffer"
 #define MIXER_SAMPLES   "samples"
 #define MIXER_PCSPEAKER "pcspeaker"
+#define MIXER_PS1AUDIO  "ps1audio"
 
 #define COM_SECTION "com"
 #define COM_ENABLED "enabled"

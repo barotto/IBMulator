@@ -203,8 +203,6 @@ Chiamata da log(int, int, int, const char*, ...).
 */
 bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
 {
-	std::lock_guard<std::mutex> lock(m_lock);
-
 	ASSERT(_format);
 
 	if(_verbosity > int(m_verbosity[_facility])) {
@@ -215,6 +213,8 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 	if(devlist.empty()) return false;
+
+	std::lock_guard<std::mutex> lock(m_lock);
 
 	if(_format[0] == '\n' && _format[1] == 0) {
 		put_all(devlist,"\n");
@@ -229,15 +229,17 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 	}
 	string toprint, tocompare;
 	if(m_linefeed[_priority][_facility]) {
-		//this 'if' should e based on the output device, not the pri-fac combo!
-#ifndef NDEBUG
+		//this 'if' should be based on the output device, not the pri-fac combo!
 		std::stringstream temp;
-		temp << setfill('0') << setw(10) << g_machine.get_virt_time_us_mt() << " ";
-		temp << std::hex << std::uppercase << internal << setfill('0');
-		temp << setw(4) << REG_CS.sel.value << ":" << setw(4) << REG_IP << " ";
-		temp << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
+		if(LOG_MACHINE_TIME) {
+			temp << setfill('0') << setw(10) << g_machine.get_virt_time_us_mt() << " ";
+		}
+		if(LOG_CSIP) {
+			temp << std::hex << std::uppercase << internal << setfill('0');
+			temp << setw(4) << REG_CS.sel.value << ":" << setw(4) << REG_IP << " ";
+			temp << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
+		}
 		toprint += temp.str();
-#endif
 		toprint += m_pri_prefixes[_verbosity][_priority];
 		toprint += m_fac_prefixes[_facility];
 		tocompare += m_pri_prefixes[_verbosity][_priority];

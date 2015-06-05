@@ -53,7 +53,6 @@ private:
 	std::mutex m_lock;
 	std::shared_ptr<MixerChannel> m_channel;
 	uint64_t m_last_time;
-	uint64_t m_disable_time;
 	double m_samples_rem;
 
 	size_t fill_samples_buffer_t(int _duration, int _bstart, int16_t _value);
@@ -68,11 +67,11 @@ public:
 	void reset(unsigned);
 	void power_off();
 	void config_changed();
-	const char* get_name() { return "PCSpeaker"; }
+	const char* get_name() { return "PC speaker"; }
 
 	void add_event(uint64_t _time, bool _active, bool _out);
 	void activate();
-	int create_samples(int _mix_slice, bool _prebuffering);
+	int create_samples(int _mix_slice, bool _prebuf, bool _first_upd);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
