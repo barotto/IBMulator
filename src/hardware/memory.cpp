@@ -485,16 +485,6 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		uint8_t _len   // data lenght (1=byte, 2=word)
 		)
 {
-	/*
-	if(g_machine.get_POST_code() != 0xDD || g_machine.get_POST_code() != 0x71) {
-		return;
-	}
-
-	uint32_t csip = GET_PHYADDR(CS, REG_IP);
-	if(_address >= csip && _address < csip+10) {
-		//return;
-	}
-	*/
 	const char *assign="<-", *read="=";
 	const char *op;
 	uint len = 20;

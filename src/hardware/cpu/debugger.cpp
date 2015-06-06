@@ -694,7 +694,7 @@ void CPUDebugger::INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
-void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	uint16_t bx = core->get_BX();
@@ -712,7 +712,7 @@ void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	snprintf(buf, buflen, " : %d paragraphs (%d bytes)", bx, uint32_t(bx)*16);
 }
 
-void CPUDebugger::INT_21_4A(bool call, uint16_t ax, CPUCore *core, Memory *mem,
+void CPUDebugger::INT_21_4A(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {

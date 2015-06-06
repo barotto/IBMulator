@@ -149,8 +149,6 @@ void CPULogger::reset_file_counters()
 
 int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 {
-	int res = 0;
-
 	if(CPULOG_WRITE_TIME) {
 		if(fprintf(_dest, "%010lu ", _entry.time) < 0)
 			return -1;

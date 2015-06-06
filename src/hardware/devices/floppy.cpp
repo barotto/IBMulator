@@ -381,7 +381,6 @@ uint16_t FloppyCtrl::read(uint16_t address, unsigned)
 
 	g_sysboard.set_feedback();
 
-	uint8_t pending_command = m_s.pending_command;
 	switch (address) {
 		case 0x3F0: // diskette controller status register A
 			drive = m_s.DOR & 0x03;
@@ -435,11 +434,6 @@ uint16_t FloppyCtrl::read(uint16_t address, unsigned)
 			value = m_s.DOR;
 			break;
 
-		case 0x3F3: // Tape Drive Register
-					// useless, not implemented
-			PERRF(LOG_FDC, "port 3F3h (Tape Drive Register) not implemented\n");
-			break;
-
 		case 0x3F4: /* diskette controller main status register */
 			//AT-PS/2-Model30 mode
 			value = m_s.main_status_reg;
@@ -465,11 +459,6 @@ uint16_t FloppyCtrl::read(uint16_t address, unsigned)
 					enter_idle_phase();
 				}
 			}
-			break;
-
-		case 0x3F6: // Reserved for future floppy controllers
-					// This address shared with the hard drive controller (not on the PS/1?)
-			PDEBUGF(LOG_V0, LOG_FDC, "port 3F6h used!\n");
 			break;
 
 		case 0x3F7: // DIR: diskette controller digital input register
@@ -503,7 +492,7 @@ uint16_t FloppyCtrl::read(uint16_t address, unsigned)
 	}
 
 	PDEBUGF(LOG_V2, LOG_FDC, "read(): during command 0x%02x, port 0x%04x returns 0x%02x\n",
-            pending_command, address, value);
+			m_s.pending_command, address, value);
 
 	return value;
 }
@@ -631,21 +620,9 @@ void FloppyCtrl::write(uint16_t address, uint16_t value, unsigned)
 					case 0x10: // Version command, enhanced controller returns 0x90
 					case 0x14: // Unlock command (Enhanced)
 					case 0x94: // Lock command (Enhanced)
-						//m_s.command_size = 0;
-						//m_s.pending_command = value;
-						//enter_result_phase();
-						//break;
 					case 0x12: // Perpendicular mode (Enhanced)
-						//m_s.command_size = 2;
-						//break;
 					case 0x13: // Configure command (Enhanced)
-						//m_s.command_size = 4;
-						//break;
-
-					case 0x18: // National Semiconductor version command; return 80h
-						// These commands are not implemented on the standard
-						// controller and return an error.  They are available on
-						// the enhanced controller.
+					case 0x18: // National Semiconductor version command
 					default:
 						PDEBUGF(LOG_V0, LOG_FDC, "invalid floppy command 0x%02x", value);
 						m_s.command_size = 0;   // make sure we don't try to process this command

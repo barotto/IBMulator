@@ -558,12 +558,12 @@ int RedoLog::create(int filedes, const char* type, uint64_t size)
   ssize_t res;
   // Write header
   res = ::write(fd, &header, dtoh32(header.standard.header));
-  ASSERT(res==dtoh32(header.standard.header));
+  ASSERT(unsigned(res)==dtoh32(header.standard.header));
 
   // Write catalog
   // FIXME could mmap
   res = ::write(fd, catalog, dtoh32(header.specific.catalog) * sizeof (uint32_t));
-  ASSERT(res==dtoh32(header.specific.catalog) * sizeof (uint32_t));
+  ASSERT(unsigned(res)==dtoh32(header.specific.catalog) * sizeof (uint32_t));
 
   return 0;
 }

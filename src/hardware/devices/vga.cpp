@@ -582,9 +582,9 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 					((m_s.graphics_ctrl.read_mode & 0x01) << 3) |
 					((m_s.graphics_ctrl.write_mode & 0x03) << 0);
 
-					if(m_s.graphics_ctrl.odd_even ||
-					m_s.graphics_ctrl.shift_reg)
-					PDEBUGF(LOG_V2, LOG_VGA, "io read 0x3cf: reg 05 = 0x%02x\n", retval);
+					if(m_s.graphics_ctrl.odd_even || m_s.graphics_ctrl.shift_reg) {
+						PDEBUGF(LOG_V2, LOG_VGA, "io read 0x3cf: reg 05 = 0x%02x\n", retval);
+					}
 					return(retval);
 				case 6: /* Miscellaneous */
 					retval =
@@ -654,7 +654,7 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 				prev_video_enabled = m_s.attribute_ctrl.video_enabled;
 				m_s.attribute_ctrl.video_enabled = (value >> 5) & 0x01;
 
-				PDEBUGF(LOG_V1, LOG_VGA, "io write 0x03c0: video_enabled = %u\n", m_s.attribute_ctrl.video_enabled);
+				PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: video_enabled = %u\n", m_s.attribute_ctrl.video_enabled);
 				/*
 				Bit 5 must be set to 1 for normal operation of the attribute
 				controller. This enables the video memory data to access
@@ -835,8 +835,9 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 
 		case 0x03c6: /* PEL mask */
 			m_s.pel.mask = value;
-			if(m_s.pel.mask != 0xff)
+			if(m_s.pel.mask != 0xff) {
 				PDEBUGF(LOG_V2, LOG_VGA, "io write 0x3c6: PEL mask=0x%02x != 0xFF\n", value);
+			}
 			// m_s.pel.mask should be and'd with final value before
 			// indexing into color register m_s.pel.data[]
 			break;
@@ -909,8 +910,9 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 			break;
 
 		case 0x03ce: /* Graphics Controller Index Register */
-			if(value > 0x08) /* ??? */
+			if(value > 0x08) { /* ??? */
 				PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03ce: value > 8\n");
+			}
 			m_s.graphics_ctrl.index = value;
 			break;
 
@@ -939,10 +941,12 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 					m_s.graphics_ctrl.odd_even          = (value >> 4) & 0x01;
 					m_s.graphics_ctrl.shift_reg         = (value >> 5) & 0x03;
 
-					if(m_s.graphics_ctrl.odd_even)
+					if(m_s.graphics_ctrl.odd_even) {
 						PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03cf: mode reg: value = 0x%02x\n", value);
-					if(m_s.graphics_ctrl.shift_reg)
+					}
+					if(m_s.graphics_ctrl.shift_reg) {
 						PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03cf: mode reg: value = 0x%02x", value);
+					}
 					break;
 				case 6: /* Miscellaneous */
 					prev_graphics_alpha = m_s.graphics_ctrl.graphics_alpha;
@@ -982,8 +986,9 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 		case 0x03d0: /* CGA mirror port of 3d4 */
 		case 0x03d2: /* CGA mirror port of 3d4 */
 			m_s.CRTC.address = value & 0x7f;
-			if(m_s.CRTC.address > 0x18)
+			if(m_s.CRTC.address > 0x18) {
 				PDEBUGF(LOG_V2, LOG_VGA, "write: invalid CRTC register 0x%02x selected\n", m_s.CRTC.address);
+			}
 			break;
 
 		case 0x03b5: /* CRTC Registers (monochrome emulation modes) */
