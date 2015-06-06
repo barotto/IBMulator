@@ -226,8 +226,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
 ";      rate: Sample rate.\n"
 ";            Possible values: 44100, 48000, 32000, 22050.\n"
-"; pcspeaker: Enable PC-Speaker emulation."
-";  ps1audio: Enable PS/1 Audio Card emulation"
+"; pcspeaker: Enable PC-Speaker emulation.\n"
+";  ps1audio: Enable PS/1 Audio Card emulation.\n"
 		},
 
 		{ COM_SECTION, "" },
