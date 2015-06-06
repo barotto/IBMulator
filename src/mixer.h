@@ -28,6 +28,7 @@
 #include "wav.h"
 #include <thread>
 #include <atomic>
+#include <cmath>
 #include <samplerate.h>
 
 class Machine;
@@ -183,7 +184,7 @@ public:
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
 
-	static int us_to_samples(int _us, int _rate) {
+	static inline int us_to_samples(int _us, int _rate) {
 		return round(double(_us) * double(_rate)/1e6);
 	}
 };

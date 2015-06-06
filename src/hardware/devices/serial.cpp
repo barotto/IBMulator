@@ -446,7 +446,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	}
 }
 
-void Serial::init_mode_pipe(uint /*comn*/, std::string dev, uint mode)
+void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
 {
 	if(dev.empty()) {
 		return;
