@@ -1,0 +1,84 @@
+@font-face {
+    font-family: 'perfect_dos_vga_437_winRg';
+    src: url('perfect_dos_vga_437_win-webfont.eot');
+    src: url('perfect_dos_vga_437_win-webfont.eot?#iefix') format('embedded-opentype'),
+         url('perfect_dos_vga_437_win-webfont.woff2') format('woff2'),
+         url('perfect_dos_vga_437_win-webfont.woff') format('woff'),
+         url('perfect_dos_vga_437_win-webfont.ttf') format('truetype'),
+         url('perfect_dos_vga_437_win-webfont.svg#perfect_dos_vga_437_winRg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+html, body {
+	color: #bbbbbb;
+	background-color: #333333;
+	text-shadow: 2px 2px 3px #000;
+}
+
+/*
+html, body {
+	color: #000;
+	background-color: #fff;
+	text-shadow: 2px 2px 3px #ccc;
+}
+*/
+h1 {
+	text-align: center;
+	font-family: 'perfect_dos_vga_437_winRg',courier;
+	font-size: 32px;
+	font-weight: normal;
+}
+
+h2, h3 {
+	text-align: left;
+	font-family: courier;
+	font-size: .6cm;
+}
+
+h2 {
+	font-family: 'perfect_dos_vga_437_winRg',courier;
+	font-size: 28px;
+	font-weight: normal;
+}
+
+h3 {
+	font-size: .5cm;
+}
+
+pre {
+	font-size: .3cm;
+	margin-left: 2%;
+}
+
+a {
+	color: #466bb0;
+	font-family: courier;
+	text-decoration: none;
+	font-weight: bold;
+}
+
+a:hover {
+	color: #22aaee;
+}
+
+body {
+	text-align: left;
+	font-family: sans-serif;
+	font-size: .4cm;
+	margin: 1% 8% 8% 8%;
+}
+
+.center {
+	text-align: center;
+}
+
+ul.menu {
+	text-align: center;
+}
+.menu li {
+	display: inline;
+	padding-right: 2em;
+}
