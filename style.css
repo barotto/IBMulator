@@ -78,7 +78,23 @@ body {
 ul.menu {
 	text-align: center;
 }
+
 .menu li {
 	display: inline;
 	padding-right: 2em;
+}
+
+.media .images img {
+	float: left;
+	margin: 2px;
+}
+
+.media video {
+	position: relative;
+	top: 0;
+	left: 0;
+}
+
+.contentBlock {
+	clear: both;
 }
