@@ -46,6 +46,7 @@ private:
 
 	RC::Element * m_sysunit;
 	RC::Element * m_warning;
+	RC::Element * m_message;
 
 	bool m_drive_b;
 	uint m_curr_drive;
@@ -80,6 +81,18 @@ public:
 	event_map_t & get_event_map() { return Interface::ms_evt_map; }
 
 	void show_warning(bool _show);
+	void show_message(const char* _mex);
+};
+
+class LogMessage : public Logdev
+{
+private:
+	Interface *m_iface;
+public:
+	LogMessage(Interface* _iface);
+	~LogMessage();
+
+	void log_put(const char* _prefix, const char* _message);
 };
 
 #endif

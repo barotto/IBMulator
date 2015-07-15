@@ -126,7 +126,7 @@ void CMOS::reset(unsigned type)
 		std::string binfile = g_program.config().find_file(CMOS_SECTION, CMOS_IMAGE_FILE);
 		std::ifstream fd(binfile.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
 		if(!fd.is_open()) {
-			PERRF(LOG_CMOS,"trying to open CMOS image file '%s'\n", binfile.c_str());
+			PERRF(LOG_CMOS,"error opening CMOS image file '%s'\n", binfile.c_str());
 			throw std::exception();
 		}
 		std::streampos size = fd.tellg();

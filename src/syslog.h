@@ -138,7 +138,7 @@ private:
 	std::string m_repeat_str;
 	uint m_repeat_cnt;
 
-	void put_all(list<Logdev*>& _devlist, const char* _str);
+	void put_all(list<Logdev*>& _devlist, const char* _prefix, const char* _mex);
 
 	std::mutex m_lock;
 
@@ -183,7 +183,7 @@ protected:
 
 public:
 	virtual ~Logdev();
-	virtual	void log_put(const char* _text) = 0;
+	virtual	void log_put(const char* _prefix, const char* _message) = 0;
 	virtual void log_flush() {}
 
 	void log_add(int _pri, int _fac);
@@ -208,7 +208,7 @@ public:
 	LogStream(ostream& _stream, bool _syslog_dispose = true);
 	~LogStream();
 
-	void log_put(const char* _text);
+	void log_put(const char* _prefix, const char* _message);
 	void log_flush();
 };
 

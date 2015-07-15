@@ -219,7 +219,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 					if(!m_s.CONTROL.input) {
 						retval = m_s.data;
 					} else {
-						PERRF(LOG_LPT, "read: input mode not supported\n");
+						PWARNF(LOG_LPT, "read: input mode not supported\n");
 					}
 				} else {
 					retval = m_s.data;

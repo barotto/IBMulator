@@ -102,7 +102,7 @@ void FileSelect::on_file(RC::Event &_event)
 		set_current_dir(path);
 		return;
 	}
-	if(m_select_callbk != NULL) {
+	if(m_select_callbk != nullptr) {
 		path += FS_SEP;
 		path += it->name;
 		bool wp = m_wprotect->GetAttribute("checked") != NULL;

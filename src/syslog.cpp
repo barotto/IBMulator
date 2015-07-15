@@ -217,7 +217,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 	std::lock_guard<std::mutex> lock(m_lock);
 
 	if(_format[0] == '\n' && _format[1] == 0) {
-		put_all(devlist,"\n");
+		put_all(devlist,"","\n");
 		m_linefeed[_priority][_facility] = 1;
 		return true;
 	}
@@ -227,7 +227,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 		m_buf[LOG_BUFFER_SIZE-2] = '\n';
 		len = LOG_BUFFER_SIZE-1;
 	}
-	string toprint, tocompare;
+	string prefix, tocompare;
 	if(m_linefeed[_priority][_facility]) {
 		//this 'if' should be based on the output device, not the pri-fac combo!
 		std::stringstream temp;
@@ -239,13 +239,12 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 			temp << setw(4) << REG_CS.sel.value << ":" << setw(4) << REG_IP << " ";
 			temp << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
 		}
-		toprint += temp.str();
-		toprint += m_pri_prefixes[_verbosity][_priority];
-		toprint += m_fac_prefixes[_facility];
+		prefix += temp.str();
+		prefix += m_pri_prefixes[_verbosity][_priority];
+		prefix += m_fac_prefixes[_facility];
 		tocompare += m_pri_prefixes[_verbosity][_priority];
 		tocompare += m_fac_prefixes[_facility];
 	}
-	toprint += m_buf;
 	tocompare += m_buf;
 
 	if(m_linefeed[_priority][_facility] && tocompare.compare(m_repeat_str) == 0) {
@@ -253,14 +252,14 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 		m_repeat_cnt++;
 	} else {
 		if(m_repeat_cnt>0) {
-			std::stringstream temp;
-			temp << "last message repeated " << m_repeat_cnt << " more times" << std::endl;
-			put_all(devlist,temp.str().c_str());
+			std::stringstream ss;
+			ss << "last message repeated " << m_repeat_cnt << " more times" << std::endl;
+			put_all(devlist, "", ss.str().c_str());
 		}
 		m_repeat_cnt = 0;
 		m_repeat_str = tocompare;
 		m_linefeed[_priority][_facility] = (int)(m_buf[len-1] == '\n');
-		put_all(devlist,toprint.c_str());
+		put_all(devlist, prefix.c_str(), m_buf);
 	}
 	return true;
 }
@@ -293,12 +292,13 @@ void Syslog::remove(Logdev* _device, bool _erase)
 
 /** Scrive una stringa su tutti i device di una lista.
 @param _devlist lista di dispositivi.
-@param _str stringa da scrivere.
+@param _prefix the prefix to the message
+@param _mex the message to print
 */
-void Syslog::put_all(list<Logdev*>& _devlist, const char* _str)
+void Syslog::put_all(list<Logdev*>& _devlist, const char* _prefix, const char* _mex)
 {
 	for(list<Logdev*>::iterator dit=_devlist.begin(); dit!=_devlist.end(); dit++) {
-		(*dit)->log_put(_str);
+		(*dit)->log_put(_prefix, _mex);
 		(*dit)->log_flush();
 	}
 }
@@ -419,12 +419,13 @@ LogStream::~LogStream()
 }
 
 
-void LogStream::log_put(const char* _text)
+void LogStream::log_put(const char* _prefix, const char* _message)
 {
-	if(m_file.is_open())
-		m_file << _text;
-	else
-		*m_stream << _text;
+	if(m_file.is_open()) {
+		m_file << _prefix << _message;
+	} else {
+		*m_stream << _prefix << _message;
+	}
 }
 
 

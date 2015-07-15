@@ -21,7 +21,8 @@ ibmulator_SOURCES = \
 	wav.cpp \
 	ring_buffer.cpp \
 	wincompat/mkstemp.cpp \
-	wincompat/realpath.cpp
+	wincompat/realpath.cpp \
+	utils.cpp
 	
 noinst_HEADERS = \
 	ibmulator.h \

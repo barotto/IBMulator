@@ -80,6 +80,9 @@
 				background-decorator: image;
     			background-image: icons/restore.png 0px 0px 100px 100px;
 			}
+			#restore.active {
+				background-color: #94E400A0;
+			}
 			#exit {
 				left: 80%;
 				background-color: #B63D3FA0;
@@ -170,6 +173,16 @@
     			background-image: icons/warning.png 12px 12px 90px 90px;
     			visibility: hidden;
 			}
+			#message {
+				position: absolute;
+				bottom: 0;
+				margin: 1em;
+				padding: 1em;
+				text-align: center;
+				font-size: 12px;
+				background-color: #383938FF;
+				visibility: hidden;
+			}
 		</style>
 	</head>
 	<body>
@@ -190,6 +203,7 @@
 			</div>
 			
 			<div id="warning"></div>
+			<div id="message"></div>
 		</div>
 
 	</body>

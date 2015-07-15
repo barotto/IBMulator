@@ -21,11 +21,29 @@
 #include "gui.h"
 #include "machine.h"
 #include "program.h"
+#include "utils.h"
 #include <sys/stat.h>
 
 #include <Rocket/Core.h>
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/harddrv.h"
+
+
+LogMessage::LogMessage(Interface *_iface)
+: m_iface(_iface)
+{
+}
+
+LogMessage::~LogMessage()
+{
+}
+
+void LogMessage::log_put(const char* _prefix, const char* _message)
+{
+	//omit any prefix
+	m_iface->show_message(_message);
+}
+
 
 event_map_t Interface::ms_evt_map = {
 	GUI_EVT( "power",     "click", Interface::on_power ),
@@ -60,6 +78,7 @@ Window(_gui, "interface.rml")
 		m_drive_b = true;
 	}
 	m_warning = get_element("warning");
+	m_message = get_element("message");
 
 	m_status.fdd_led = get_element("fdd_led");
 	m_status.hdd_led = get_element("hdd_led");
@@ -83,7 +102,9 @@ Window(_gui, "interface.rml")
 	m_fs = new FileSelect(_gui);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this,
 			std::placeholders::_1, std::placeholders::_2));
-	m_fs->set_cancel_callbk(NULL);
+	m_fs->set_cancel_callbk(nullptr);
+
+	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, new LogMessage(this));
 }
 
 Interface::~Interface()
@@ -232,16 +253,38 @@ void Interface::on_pause(RC::Event &)
 	}
 }
 
+void Interface::show_message(const char* _mex)
+{
+	static atomic<int> callscnt;
+
+	m_message->SetProperty("visibility", "visible");
+	Rocket::Core::String str(_mex);
+	str.Replace("\n", "<br />");
+	m_message->SetInnerRML(str);
+	callscnt++;
+	timed_event(3000, [this]() {
+		callscnt--;
+		if(callscnt==0) {
+			m_message->SetInnerRML("");
+			m_message->SetProperty("visibility", "hidden");
+		}
+	});
+}
+
 void Interface::on_save(RC::Event &)
 {
 	//TODO file select window to choose the destination
-	g_program.save_state("");
+	g_program.save_state("", [this]() {
+		show_message("State saved");
+	}, nullptr);
 }
 
 void Interface::on_restore(RC::Event &)
 {
 	//TODO file select window to choose the source
-	g_program.restore_state("");
+	g_program.restore_state("", [this]() {
+		show_message("State restored");
+	}, nullptr);
 }
 
 void Interface::on_exit(RC::Event &)

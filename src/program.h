@@ -84,8 +84,8 @@ public:
 	inline AppConfig & config() { return m_config; }
 	Bench & get_bench() { return m_bench; }
 
-	void save_state(std::string _path);
-	void restore_state(std::string _path);
+	void save_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
+	void restore_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
 
 	static void check_state_bufsize(uint8_t *_buf, size_t _exp_size);
 };

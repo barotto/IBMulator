@@ -55,7 +55,10 @@ Program::~Program()
 	SDL_Quit();
 }
 
-void Program::save_state(std::string _name)
+void Program::save_state(
+	std::string _name,
+	std::function<void()> _on_success,
+	std::function<void(std::string)> _on_fail)
 {
 	if(!m_machine->is_on()) {
 		PINFOF(LOG_V0, LOG_PROGRAM, "the machine is off\n");
@@ -75,7 +78,10 @@ void Program::save_state(std::string _name)
 		m_config.create_file(ini);
 	} catch(std::exception &e) {
 		PERRF(LOG_PROGRAM, "unable to create config file '%s'\n", ini.c_str());
-		throw std::exception();
+		if(_on_fail) {
+			_on_fail("unable to create config file");
+		}
+		return;
 	}
 
 	StateBuf state(path);
@@ -91,9 +97,15 @@ void Program::save_state(std::string _name)
 	m_gui->save_framebuffer(path + ".png");
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "current state saved\n");
+	if(_on_success) {
+		_on_success();
+	}
 }
 
-void Program::restore_state(std::string _name)
+void Program::restore_state(
+	std::string _name,
+	std::function<void()> _on_success,
+	std::function<void(std::string)> _on_fail)
 {
 	if(_name.empty()) {
 		_name = "state";
@@ -105,23 +117,31 @@ void Program::restore_state(std::string _name)
 
 	if(!FileSys::file_exists(ini.c_str())) {
 		PERRF(LOG_PROGRAM, "state ini file missing!\n");
+		if(_on_fail) {
+			_on_fail("State ini file missing");
+		}
 		return;
 	}
 
 	if(!FileSys::file_exists(bin.c_str())) {
 		PERRF(LOG_PROGRAM, "state bin file missing!\n");
+		if(_on_fail) {
+			_on_fail("State bin file missing");
+		}
 		return;
 	}
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "loading state from '%s'...\n", path.c_str());
-
 
 	AppConfig conf;
 	try {
 		conf.parse(ini);
 	} catch(std::exception &e) {
 		PERRF(LOG_PROGRAM, "unable to parse '%s'\n", ini.c_str());
-		throw std::exception();
+		if(_on_fail) {
+			_on_fail("Error while parsing the state ini file");
+		}
+		return;
 	}
 
 	StateBuf state(path);
@@ -131,6 +151,7 @@ void Program::restore_state(std::string _name)
 	//from this point, any error in the restore procedure will render the
 	//machine inconsistent and it should be terminated
 	//TODO the config object needs a mutex!
+	//TODO create a revert mechanism?
 	m_config.merge(conf);
 
 	std::unique_lock<std::mutex> restore_lock(ms_lock);
@@ -150,17 +171,22 @@ void Program::restore_state(std::string _name)
 	m_machine->cmd_restore_state(state);
 	if(MULTITHREADED) {
 		ms_cv.wait(restore_lock);
-
 	}
 	if(state.m_last_restore == false) {
 		PERRF(LOG_PROGRAM, "the restored state is not valid\n");
-		throw std::exception();
+		if(_on_fail) {
+			_on_fail("The restored state is not valid");
+		}
+		return;
 	}
 
 	m_mixer->cmd_resume();
 	m_gui->vga_update();
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
+	if(_on_success) {
+		_on_success();
+	}
 }
 
 void Program::init_SDL()

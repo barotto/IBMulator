@@ -17,26 +17,14 @@
  *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_UTILS_H
-#define IBMULATOR_UTILS_H
+#include <string>
 
-void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
-
-
-#include <functional>
-#include <chrono>
-#include <future>
-
-template <class callable, class... arguments>
-	void timed_event(int _after_ms, callable&& _func, arguments&&... _args)
+void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
-	std::function<typename std::result_of<callable(arguments...)>::type()>
-		event(std::bind(std::forward<callable>(_func), std::forward<arguments>(_args)...));
-
-	std::thread([_after_ms, event]() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(_after_ms));
-		event();
-	}).detach();
+	std::string::size_type i = _str.find(_search);
+    while(i != std::string::npos) {
+        _str.replace(i, _search.length(), _replace);
+        i = _str.find(_search, i+_replace.length());
+    }
 }
 
-#endif

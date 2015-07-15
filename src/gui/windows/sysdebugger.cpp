@@ -315,10 +315,10 @@ void SysDebugger::ProcessEvent(Rocket::Core::Event & event)
 		m_machine->cmd_memdump(REG_CS.desc.base, 0xFFFF);
 	}
 	else if(el == m_tools.cmd_save_state) {
-		g_program.save_state("");
+		g_program.save_state("", nullptr, nullptr);
 	}
 	else if(el == m_tools.cmd_restore_state) {
-		g_program.restore_state("");
+		g_program.restore_state("", nullptr, nullptr);
 	}
 	else if(el == m_tools2.log_prg_toggle) {
 		if(m_tools2.log_prg_toggle->IsClassSet("on")) {

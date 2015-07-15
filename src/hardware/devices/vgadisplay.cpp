@@ -156,15 +156,13 @@ bool VGADisplay::palette_change(uint8_t index, uint8_t red, uint8_t green, uint8
 void VGADisplay::dimension_update(uint x, uint y, uint fheight, uint fwidth, uint bpp)
 {
 	if(x > VGA_MAX_XRES) {
-		PERRF(LOG_VGA, "requested x res %d is greater than the maximum (%d)\n", x,VGA_MAX_XRES);
+		PWARNF(LOG_VGA, "requested x res %d is greater than the maximum (%d)\n", x,VGA_MAX_XRES);
 		return;
 	}
 	if(y > VGA_MAX_YRES) {
-		PERRF(LOG_VGA, "requested y res %d is greater than the maximum (%d)\n", y,VGA_MAX_YRES);
+		PWARNF(LOG_VGA, "requested y res %d is greater than the maximum (%d)\n", y,VGA_MAX_YRES);
 		return;
 	}
-	ASSERT(x <= VGA_MAX_XRES);
-	ASSERT(y <= VGA_MAX_YRES);
 
 	if(bpp != 8) {
 		//TODO other bit depths?
