@@ -4088,7 +4088,7 @@ void CPUExecutor::OUT_DX_AX() { OUT_w(REG_DX, REG_AX); }
 
 void CPUExecutor::OUTSB()
 {
-	uint8_t value = read_byte(SEG_REG(m_instr->seg), REG_SI);
+	uint8_t value = read_byte(SEG_REG(m_base_ds), REG_SI);
 
 	OUT_b(REG_DX, value);
 
@@ -4101,7 +4101,7 @@ void CPUExecutor::OUTSB()
 
 void CPUExecutor::OUTSW()
 {
-	uint16_t value = read_word(SEG_REG(m_instr->seg), REG_SI);
+	uint16_t value = read_word(SEG_REG(m_base_ds), REG_SI);
 
 	OUT_w(REG_DX, value);
 
