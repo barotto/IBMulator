@@ -22,6 +22,7 @@
 #include "mixer.h"
 #include "program.h"
 #include "machine.h"
+#include "gui/gui.h"
 #include <SDL2/SDL.h>
 #include "wav.h"
 #include <cmath>
@@ -306,7 +307,9 @@ void Mixer::start_capture()
 	if(!path.empty()) {
 		try {
 			m_wav.open(path.c_str(), m_device_spec.freq, SDL_AUDIO_BITSIZE(m_device_spec.format), m_device_spec.channels);
-			PINFOF(LOG_V0, LOG_MIXER, "started audio capturing to '%s'\n", path.c_str());
+			std::string mex = "started audio recording to %s" + path;
+			PINFOF(LOG_V0, LOG_MIXER, "%s\n", mex.c_str());
+			g_gui.show_message(mex.c_str());
 		} catch(std::exception &e) { }
 	}
 	for(auto ch : m_mix_channels) {
@@ -322,7 +325,8 @@ void Mixer::stop_capture()
 	for(auto ch : m_mix_channels) {
 		ch.second->on_capture(false);
 	}
-	PINFOF(LOG_V0, LOG_MIXER, "stopped audio capturing\n");
+	PINFOF(LOG_V0, LOG_MIXER, "audio recording stopped\n");
+	g_gui.show_message("audio recording stopped");
 }
 
 void Mixer::config_changed()

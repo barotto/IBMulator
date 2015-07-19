@@ -37,6 +37,7 @@
 #include "hardware/devices/systemboard.h"
 #include "hardware/devices/pcspeaker.h"
 #include "hardware/devices/ps1audio.h"
+#include "gui/gui.h"
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -682,7 +683,10 @@ void Machine::cmd_cycles_adjust(double _factor)
 {
 	m_cmd_fifo.push([=] () {
 		m_cycles_factor = _factor;
-		PINFOF(LOG_V0, LOG_MACHINE, "emulation speed at %.4f%%\n", _factor*100.f);
+		std::stringstream ss;
+		ss << "emulation speed at " << setprecision(3) << (_factor*100.f) << "%";
+		PINFOF(LOG_V0, LOG_MACHINE, "%s\n", ss.str().c_str());
+		g_gui.show_message(ss.str().c_str());
 	});
 }
 
