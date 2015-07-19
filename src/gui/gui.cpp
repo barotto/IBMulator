@@ -712,9 +712,18 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 					if(_event.type == SDL_KEYUP) return true;
 					std::string path =
 							g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
-					path = FileSys::get_next_filename(path, "screenshot_", ".png");
-					if(!path.empty()) {
-						save_framebuffer(path);
+					std::string screenfile = FileSys::get_next_filename(path, "screenshot_", ".png");
+					if(!screenfile.empty()) {
+						std::string palfile;
+						#ifndef NDEBUG
+						palfile = path + FS_SEP + "palette.png";
+						#endif
+						try {
+							save_framebuffer(screenfile, palfile);
+							std::string mex = "screenshot saved to " + screenfile;
+							PINFOF(LOG_V0, LOG_GUI, "%s", mex.c_str());
+							show_message(mex.c_str());
+						} catch(std::exception &e) { }
 					}
 					return true;
 				}
@@ -1259,23 +1268,8 @@ GLuint GUI::load_GLSL_program(const std::string &_vs_path, const std::string &_f
 	return progid;
 }
 
-void GUI::save_framebuffer(std::string _path)
+void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
-
-	/*
-	m_display.vga.lock();
-	SDL_Surface * surface = SDL_CreateRGBSurfaceFrom(
-		m_display.get_framebuffer(),
-		m_display.get_fb_xsize(),
-		m_display.get_fb_ysize(),
-		32,
-		m_display.get_fb_xsize()*4,
-		PALETTE_RMASK,
-		PALETTE_GMASK,
-		PALETTE_BMASK,
-		PALETTE_AMASK
-	);
-	*/
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
 		m_display.vga.get_screen_xres(),
@@ -1287,17 +1281,61 @@ void GUI::save_framebuffer(std::string _path)
 		PALETTE_AMASK
 	);
 	if(!surface) {
-		PERRF(LOG_GUI, "save_framebuffer() : unable to create buffer surface\n");
-		return;
+		PERRF(LOG_GUI, "error creating buffer surface\n");
+		throw std::exception();
+	}
+	SDL_Surface * palette = nullptr;
+	if(!_palfile.empty()) {
+		palette = SDL_CreateRGBSurface(
+			0,         //flags (unused)
+			16,	16,    //w x h
+			32,        //bit depth
+			PALETTE_RMASK,
+			PALETTE_GMASK,
+			PALETTE_BMASK,
+			PALETTE_AMASK
+		);
+		if(!palette) {
+			SDL_FreeSurface(surface);
+			PERRF(LOG_GUI, "error creating palette surface\n");
+			throw std::exception();
+		}
 	}
 	m_display.vga.lock();
-	SDL_LockSurface(surface);
-	m_display.vga.copy_screen((uint8_t*)surface->pixels);
-	SDL_UnlockSurface(surface);
+		SDL_LockSurface(surface);
+		m_display.vga.copy_screen((uint8_t*)surface->pixels);
+		SDL_UnlockSurface(surface);
+		if(palette) {
+			SDL_LockSurface(palette);
+			for(uint i=0; i<256; i++) {
+				((uint32_t*)palette->pixels)[i] = m_display.vga.get_color(i);
+			}
+			SDL_UnlockSurface(palette);
+		}
 	m_display.vga.unlock();
 
-	IMG_SavePNG(surface, _path.c_str());
+	int result = IMG_SavePNG(surface, _screenfile.c_str());
 	SDL_FreeSurface(surface);
+	if(result<0) {
+		PERRF(LOG_GUI, "error saving surface to PNG\n");
+		if(palette) {
+			SDL_FreeSurface(palette);
+		}
+		throw std::exception();
+	}
+	if(palette) {
+		result = IMG_SavePNG(palette, _palfile.c_str());
+		SDL_FreeSurface(palette);
+		if(result < 0) {
+			PERRF(LOG_GUI, "error saving palette to PNG\n");
+			throw std::exception();
+		}
+	}
+}
+
+void GUI::show_message(const char* _mex)
+{
+	m_windows.interface->show_message(_mex);
 }
 
 void GUI::load_splash_image()

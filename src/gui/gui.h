@@ -257,7 +257,8 @@ public:
 	static GLuint load_GLSL_program(const std::string &_vs_path, const std::string &_fs_path);
 	inline mat4f & get_proj_matrix() { return m_display.projmat; }
 
-	void save_framebuffer(std::string _path);
+	void save_framebuffer(std::string _screenfile, std::string _palfile);
+	void show_message(const char* _mex);
 
 	inline void vga_update() { m_display.vga_updated.store(true); }
 };

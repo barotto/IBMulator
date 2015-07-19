@@ -93,6 +93,7 @@ public:
 	void clear_screen();
 
 	void copy_screen(uint8_t *_buffer);
+	uint32_t get_color(uint8_t index);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

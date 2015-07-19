@@ -875,9 +875,7 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 					g <<= m_s.dac_shift;
 					b <<= m_s.dac_shift;
 					m_display->lock();
-					needs_update = needs_update ||
-						m_display->palette_change(m_s.pel.write_data_register,r,g,b
-					);
+					needs_update = m_display->palette_change(m_s.pel.write_data_register,r,g,b);
 					m_display->unlock();
 					PDEBUGF(LOG_V2, LOG_VGA, "palette[%u] = (%u,%u,%u)\n",
 							m_s.pel.write_data_register, r,g,b);

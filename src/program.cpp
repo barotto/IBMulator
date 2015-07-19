@@ -94,7 +94,7 @@ void Program::save_state(
 
 	state.save(path + ".bin");
 
-	m_gui->save_framebuffer(path + ".png");
+	m_gui->save_framebuffer(path + ".png", "");
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "current state saved\n");
 	if(_on_success) {

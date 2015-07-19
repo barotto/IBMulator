@@ -467,3 +467,10 @@ void VGADisplay::copy_screen(uint8_t *_buffer)
 		}
 	}
 }
+
+// get_color
+// Returns the color at the given index
+uint32_t VGADisplay::get_color(uint8_t _index)
+{
+	return m_s.palette[_index];
+}
