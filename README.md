@@ -3,9 +3,9 @@
 
 ## WHAT IS IBMULATOR?
 
-IBMulator is an open source emulator for the IBM PS/1 model 2011, able to run 
-with the original ROM. The goal is to create a faithful emulation of the 
-machine, complete of the characteristic 4-quadrant graphical user interface.
+IBMulator is a free/libre, open source emulator for the IBM PS/1 model 2011, 
+able to run with the original ROM. The goal is to create a faithful emulation of
+the machine, complete of the characteristic 4-quadrant graphical user interface.
 
 In order to use the program you need the original ROM, which is copyrighted by 
 IBM. You won't find it distributed with this package.
@@ -24,12 +24,8 @@ To obtain the source code go to github.com/barotto/IBMulator
 
 ## HARDWARE REQUIREMENTS
 
-A 64-bit Linux or Windows operating system with an OpenGL 3.3 video card.  
-Due to the lack of optimizations, currently you need a good CPU. I have tested 
-IBMulator only on my i7-2600@3.4GHz. Extrapolating from what I see I think the 
-program can run on a 2GHz dual core processor.    
-I will never have the means nor the time to port to OS X, iOS, Android, WinRT.
-Patches are welcome though!
+A 64-bit Linux or Windows operating system, a OpenGL 3.3 graphics card, and a 
+2GHz dual core processor.
 
 
 ## USAGE
@@ -118,8 +114,8 @@ accurate timings emulation; any other type have the same performance as type
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
 * CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
-* CTRL+F11: emulation speed down
-* CTRL+F12: emulation speed up
+* CTRL+F11: CPU emulation speed down
+* CTRL+F12: CPU emulation speed up
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
@@ -133,10 +129,6 @@ stores new files, like screenshots and savestates
 
 
 ## KNOWN BUGS
-
-### Emulation
-
-* VGA palette updates fail with some games (Civilization, The Rocketeer).
 
 ### Linux
 
@@ -183,6 +175,8 @@ If you are going to compile using your own version of SDL2, you should compile
 SDL2 with xinerama and xrandr, otherwise you could experience many problems 
 switching to fullscreen, at least with NVIDIA cards.
 
+If you're using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
+
 ### Windows
 
 Currently you have two options:
@@ -193,13 +187,6 @@ Currently you have two options:
 Follow the general instructions using this additional 'configure' option: 
 --host=x86_64-w64-mingw32
 
-### Why GCC 4.9? Isn't the 4.8 version included with Ubuntu 14.04 enough?
-
-IBMulator is written in C++11 and uses std::regex, e.g. to filter out 
-unwanted file types from the floppy selection window. GCC added proper support 
-to std::regex only starting from the 4.9 version.  
-If you are using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
-
 ### libRocket
 
 IBMulator uses libRocket which must be downloaded from http://librocket.com. 
@@ -208,7 +195,7 @@ opening the floppy selection window.
 
 I was able to resolve the problem by doing the following:
 
-In "void ElementDocument::_UpdateLayout()" (ElementDocument.cpp:295)
+In "void ElementDocument::_UpdateLayout()" (Core/ElementDocument.cpp:295)
 
 move layout_dirty = false; to the end of the method, so it looks like this:
 
