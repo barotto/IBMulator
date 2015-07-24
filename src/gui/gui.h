@@ -60,6 +60,8 @@ enum DisplayAspect {
 	DISPLAY_ASPECT_SCALED
 };
 
+#define JOY_NONE INT_MAX
+
 class GUI;
 extern GUI g_gui;
 
@@ -131,6 +133,9 @@ private:
 	std::string m_wnd_title;
 	std::string m_curr_title;
 	SDL_TimerID m_second_timer;
+	std::vector<SDL_Joystick*> m_SDL_joysticks;
+	int m_joystick0;
+	int m_joystick1;
 
 	bool m_gui_visible;
 	bool m_input_grab;
@@ -223,6 +228,7 @@ private:
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
+	void init_joysticks();
 
 	int m_gl_errors_count;
 	static void GL_debug_output(GLenum source, GLenum type, GLuint id,

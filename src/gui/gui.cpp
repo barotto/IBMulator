@@ -92,6 +92,8 @@ std::map<std::string, uint> display_aspect = {
 
 GUI::GUI()
 :
+m_joystick0(JOY_NONE),
+m_joystick1(JOY_NONE),
 m_symspeed_factor(1.0),
 m_rocket_renderer(NULL),
 m_rocket_sys_interface(NULL),
@@ -291,6 +293,13 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, NULL);
 	m_display.vga_updated = true;
+
+	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
+		PWARNF(LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
+	} else {
+		SDL_JoystickEventState(SDL_ENABLE);
+		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
+	}
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -397,6 +406,28 @@ void GUI::toggle_fullscreen()
         PERRF(LOG_GUI, "Toggling fullscreen mode failed: %s\n", SDL_GetError());
         return;
     }
+}
+
+void GUI::init_joysticks()
+{
+	int njoy = SDL_NumJoysticks();
+	if(njoy==0) {
+		PINFOF(LOG_V0, LOG_GUI, "No Joystick connected\n");
+	}
+	for(int j=0; j<njoy; j++) {
+		SDL_Joystick *joy = SDL_JoystickOpen(j);
+		if(joy) {
+			PINFOF(LOG_V0, LOG_GUI, "Joystick %d: %s (%d axes, %d buttons)\n", j,
+					SDL_JoystickNameForIndex(j),
+					SDL_JoystickNumAxes(joy),
+					SDL_JoystickNumButtons(joy));
+		} else {
+			PWARNF(LOG_GUI, "Couldn't open Joystick %d\n", j);
+		}
+		if(SDL_JoystickGetAttached(joy)) {
+			SDL_JoystickClose(joy);
+		}
+	}
 }
 
 void GUI::check_device_caps()
@@ -829,6 +860,65 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			m_windows.interface->show_warning(false);
 		}
 		previous = current;
+	} else if(_event.type == SDL_JOYDEVICEADDED) {
+		SDL_Joystick *joy = SDL_JoystickOpen(_event.jdevice.which);
+		if(joy) {
+			m_SDL_joysticks.push_back(joy);
+			int jinstance = m_SDL_joysticks.size()-1;
+			int jid = JOY_NONE;
+			if(m_joystick0 == JOY_NONE) {
+				m_joystick0 = jinstance;
+				jid = 0;
+			} else if(m_joystick1 == JOY_NONE) {
+				m_joystick1 = jinstance;
+				jid = 1;
+			}
+			PINFOF(LOG_V0, LOG_GUI, "Joystick %d: %s (%d axes, %d buttons)\n",
+				jid,
+				SDL_JoystickName(joy),
+				SDL_JoystickNumAxes(joy),
+				SDL_JoystickNumButtons(joy)
+			);
+		} else {
+			PWARNF(LOG_GUI, "Couldn't open Joystick %d\n", _event.jdevice.which);
+		}
+	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
+		PDEBUGF(LOG_V1, LOG_GUI, "Joystick id=%d has been removed\n", _event.jdevice.which);
+		ASSERT(_event.jdevice.which <= m_SDL_joysticks.size());
+		SDL_Joystick *joy = m_SDL_joysticks[_event.jdevice.which];
+		if(SDL_JoystickGetAttached(joy)) {
+			SDL_JoystickClose(joy);
+		}
+		m_SDL_joysticks[_event.jdevice.which] = nullptr;
+		if(m_joystick0 == _event.jdevice.which) {
+			PINFOF(LOG_V1, LOG_GUI, "Joystick 0 has been removed\n");
+			m_joystick0 = m_joystick1;
+			m_joystick1 = JOY_NONE;
+		} else if(m_joystick1 == _event.jdevice.which) {
+			PINFOF(LOG_V1, LOG_GUI, "Joystick 1 has been removed\n");
+			m_joystick1 = JOY_NONE;
+		}
+		if(m_joystick1==JOY_NONE && m_joystick0!=JOY_NONE && SDL_NumJoysticks()>1) {
+			for(int j=0; j<m_SDL_joysticks.size(); j++) {
+				if(m_SDL_joysticks[j]!=nullptr && j!=m_joystick0) {
+					m_joystick1 = j;
+				}
+			}
+		}
+		if(m_joystick0 != JOY_NONE) {
+			PINFOF(LOG_V0, LOG_GUI, "Joystick 0: %s (%d axes, %d buttons)\n",
+				SDL_JoystickName(m_SDL_joysticks[m_joystick0]),
+				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick0]),
+				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick0])
+			);
+		}
+		if(m_joystick1 != JOY_NONE) {
+			PINFOF(LOG_V0, LOG_GUI, "Joystick 1: %s (%d axes, %d buttons)\n",
+				SDL_JoystickName(m_SDL_joysticks[m_joystick1]),
+				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick1]),
+				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick1])
+			);
+		}
 	} else {
 		if(dispatch_special_keys(_event)) {
 			return;
@@ -837,7 +927,9 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			dispatch_hw_event(_event);
 			return;
 		}
-		if( (_event.type==SDL_KEYDOWN || _event.type==SDL_KEYUP) && !m_windows.needs_input() )
+		if( ((_event.type==SDL_KEYDOWN || _event.type==SDL_KEYUP) && !m_windows.needs_input())
+			|| (_event.type==SDL_JOYAXISMOTION || _event.type==SDL_JOYBUTTONDOWN || _event.type==SDL_JOYBUTTONUP)
+		)
 		{
 			dispatch_hw_event(_event);
 		} else {
@@ -851,7 +943,6 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	uint32_t key_event;
 	uint8_t mouse_state;
 	uint8_t buttons;
-
 
 	if(!m_input_grab && (
 			_event.type == SDL_MOUSEMOTION ||
@@ -929,6 +1020,35 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		if(key_event == KEY_UNHANDLED)
 			break;
 		m_machine->send_key_to_kbctrl(key_event | KEY_RELEASED);
+		break;
+	}
+	case SDL_JOYAXISMOTION: {
+		ASSERT(_event.jaxis.which < m_SDL_joysticks.size());
+		int jid = JOY_NONE;
+		if(m_joystick0 == _event.jaxis.which) {
+			jid = 0;
+		} else if(m_joystick1 == _event.jaxis.which) {
+			jid = 1;
+		}
+		if(jid <= 1 && _event.jaxis.axis <= 1) {
+			PDEBUGF(LOG_V2, LOG_GUI, "Joy %d axis %d: %d\n", jid, _event.jaxis.axis, _event.jaxis.value);
+			m_machine->joystick_motion(jid, _event.jaxis.axis, _event.jaxis.value);
+		}
+		break;
+	}
+	case SDL_JOYBUTTONDOWN:
+	case SDL_JOYBUTTONUP: {
+		ASSERT(_event.jbutton.which < m_SDL_joysticks.size());
+		int jid = JOY_NONE;
+		if(m_joystick0 == _event.jbutton.which) {
+			jid = 0;
+		} else if(m_joystick1 == _event.jbutton.which) {
+			jid = 1;
+		}
+		if(jid <= 1 && _event.jbutton.button <= 1) {
+			PDEBUGF(LOG_V2, LOG_GUI, "Joy %d btn %d: %d\n", jid, _event.jbutton.button, _event.jbutton.state);
+			m_machine->joystick_button(jid, _event.jbutton.button, _event.jbutton.state);
+		}
 		break;
 	}
 	default:

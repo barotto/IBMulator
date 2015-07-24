@@ -37,6 +37,8 @@ extern Machine g_machine;
 typedef std::function<void()> Machine_fun_t;
 typedef std::function<void()> timer_fun_t;
 typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_state)> mouse_fun_t;
+typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
+typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
 
 enum MachineReset {
@@ -111,6 +113,8 @@ private:
 	CircularFifo<Machine_fun_t,10> m_cmd_fifo;
 
 	mouse_fun_t m_mouse_fun;
+	joystick_mfun_t m_joystick_mfun;
+	joystick_bfun_t m_joystick_bfun;
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
@@ -192,6 +196,9 @@ public:
 	void send_key_to_kbctrl(uint32_t key);
 	void register_mouse_fun(mouse_fun_t mouse_fun);
 	void mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _button_state);
+	void register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t _button_fun);
+	void joystick_motion(int _jid, int _axis, int _value);
+	void joystick_button(int _jid, int _button, int _state);
 
 	void DOS_program_launch(std::string _name);
 	void DOS_program_start(std::string _name);

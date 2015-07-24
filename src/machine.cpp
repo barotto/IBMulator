@@ -37,6 +37,7 @@
 #include "hardware/devices/systemboard.h"
 #include "hardware/devices/pcspeaker.h"
 #include "hardware/devices/ps1audio.h"
+#include "hardware/devices/gameport.h"
 #include "gui/gui.h"
 #include <sstream>
 #include <iomanip>
@@ -202,6 +203,7 @@ void Machine::init()
 	g_devices.register_device(&g_serial);
 	g_devices.register_device(&g_parallel);
 	g_devices.register_device(&g_ps1audio);
+	g_devices.register_device(&g_gameport);
 
 	g_cpu.init();
 	g_memory.init();
@@ -770,6 +772,26 @@ void Machine::mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _butto
 {
 	if(m_mouse_fun) {
 		m_mouse_fun(_delta_x, _delta_y, _delta_z, _button_state);
+	}
+}
+
+void Machine::register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t _button_fun)
+{
+	m_joystick_mfun = _motion_fun;
+	m_joystick_bfun = _button_fun;
+}
+
+void Machine::joystick_motion(int _jid, int _axis, int _value)
+{
+	if(m_joystick_mfun) {
+		m_joystick_mfun(_jid, _axis, _value);
+	}
+}
+
+void Machine::joystick_button(int _jid, int _button, int _state)
+{
+	if(m_joystick_bfun) {
+		m_joystick_bfun(_jid, _button, _state);
 	}
 }
 

@@ -32,7 +32,8 @@ libhardware_a_SOURCES = \
 	devices/parallel.cpp \
 	devices/pcspeaker.cpp \
 	devices/ps1audio.cpp \
-	devices/sn76496.cpp
+	devices/sn76496.cpp \
+	devices/gameport.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -65,4 +66,5 @@ noinst_HEADERS = \
 	devices/parallel.h \
 	devices/pcspeaker.h \
 	devices/ps1audio.h \
-	devices/sn76496.h
+	devices/sn76496.h \
+	devices/gameport.h

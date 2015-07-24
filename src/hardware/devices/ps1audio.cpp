@@ -63,7 +63,6 @@ void PS1Audio::init()
 
 	//Read Function
 	g_devices.register_read_handler(this, 0x0200, 1);  //Read Analog to Digital Converter Data
-	g_devices.register_read_handler(this, 0x0201, 1);  //Read Joystick and buttons
 	g_devices.register_read_handler(this, 0x0202, 1);  //Read Control Register
 	g_devices.register_read_handler(this, 0x0203, 1);  //Read FIFO Timer reload value
 	g_devices.register_read_handler(this, 0x0204, 1);  //Joystick (X Axis Stick A) P0
@@ -77,7 +76,6 @@ void PS1Audio::init()
 
 	//Write Function
 	g_devices.register_write_handler(this, 0x0200, 1); //Write to Digital to Analog Converter
-	g_devices.register_write_handler(this, 0x0201, 1); //Starts Joystick conversions
 	g_devices.register_write_handler(this, 0x0202, 1); //Write to Control Register
 	g_devices.register_write_handler(this, 0x0203, 1); //Write FIFO Timer reload value
 	g_devices.register_write_handler(this, 0x0204, 1); //Write almost empty value
@@ -254,11 +252,6 @@ uint16_t PS1Audio::read(uint16_t _address, unsigned)
 			PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 ADC: read from port 200h\n");
 			//TODO
 			break;
-		case 0x201:
-			//Joystick and buttons
-			//TODO
-			PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 JOY: read from port 201h\n");
-			break;
 		case 0x202:
 			//Control Register
 			value = 0;
@@ -344,11 +337,6 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 				m_s.DAC.set_reload_register(m_s.DAC.reload_reg);
 			}
 			break;
-		case 0x201:
-			//Starts Joystick conversions
-			//TODO
-			PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 JOY: write to port 201h <- 0x%02X\n", value);
-			break;
 		case 0x202:
 			//Control Register
 			m_s.control_reg = value;
@@ -359,6 +347,18 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: AE Int disabled\n");
 			} else {
 				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: AE Int enabled\n");
+			}
+			//TODO
+			if(_value & 0x20) {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: Joystick Int enabled\n");
+			} else {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: Joystick Int disabled\n");
+			}
+			//TODO
+			if(_value & 0x40) {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: Joystick Auto mode\n");
+			} else {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: Joystick Manual mode\n");
 			}
 			break;
 		case 0x203:
