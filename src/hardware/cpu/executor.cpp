@@ -2112,7 +2112,7 @@ void CPUExecutor::CLI()
 void CPUExecutor::CLTS()
 {
 	// CPL is always 0 in real mode
-	if(CPL != 0) {
+	if(IS_PMODE() && CPL != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "CLTS: priveledge check failed\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
@@ -2415,7 +2415,7 @@ void CPUExecutor::FPU_ESC()
 void CPUExecutor::HLT()
 {
 	// CPL is always 0 in real mode
-	if(CPL != 0) { //pmode
+	if(IS_PMODE() && CPL != 0) { //pmode
 		PDEBUGF(LOG_V2,LOG_CPU,
 			"HLT: pmode priveledge check failed, CPL=%d\n", CPL);
 		throw CPUException(CPU_GP_EXC, 0);
@@ -3347,7 +3347,7 @@ void CPUExecutor::LEAVE()
 void CPUExecutor::LGDT()
 {
 	// CPL is always 0 is real mode
-	if(CPL != 0) {
+	if(IS_PMODE() && CPL != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LGDT: CPL != 0 causes #GP\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
@@ -3364,7 +3364,7 @@ void CPUExecutor::LGDT()
 void CPUExecutor::LIDT()
 {
 	// CPL is always 0 is real mode
-	if(CPL != 0) {
+	if(IS_PMODE() && CPL != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LIDT: CPL != 0 causes #GP\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
@@ -3446,7 +3446,7 @@ void CPUExecutor::LMSW_ew()
 	uint16_t msw;
 
 	// CPL is always 0 in real mode
-	if(CPL != 0) {
+	if(IS_PMODE() && CPL != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LMSW: CPL!=0\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
