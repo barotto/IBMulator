@@ -14,8 +14,8 @@ IBMulator emulates only the PS/1 with the 80286 CPU (sub-models n01, n34, n41.)
 It will not work with a BIOS from the model 2011 n42, which had a 386sx and no 
 ROM DOS installed.
 
-See the project page at barotto.github.io/IBMulator/ for screenshots, videos and 
-additional information.
+See the project page at https://barotto.github.io/IBMulator/ for screenshots, 
+videos and additional information.
 
 
 ## LICENSE
