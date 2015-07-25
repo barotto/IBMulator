@@ -408,28 +408,6 @@ void GUI::toggle_fullscreen()
     }
 }
 
-void GUI::init_joysticks()
-{
-	int njoy = SDL_NumJoysticks();
-	if(njoy==0) {
-		PINFOF(LOG_V0, LOG_GUI, "No Joystick connected\n");
-	}
-	for(int j=0; j<njoy; j++) {
-		SDL_Joystick *joy = SDL_JoystickOpen(j);
-		if(joy) {
-			PINFOF(LOG_V0, LOG_GUI, "Joystick %d: %s (%d axes, %d buttons)\n", j,
-					SDL_JoystickNameForIndex(j),
-					SDL_JoystickNumAxes(joy),
-					SDL_JoystickNumButtons(joy));
-		} else {
-			PWARNF(LOG_GUI, "Couldn't open Joystick %d\n", j);
-		}
-		if(SDL_JoystickGetAttached(joy)) {
-			SDL_JoystickClose(joy);
-		}
-	}
-}
-
 void GUI::check_device_caps()
 {
 	const GLubyte* vendor;

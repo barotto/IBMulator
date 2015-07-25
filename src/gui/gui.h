@@ -228,7 +228,6 @@ private:
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
-	void init_joysticks();
 
 	int m_gl_errors_count;
 	static void GL_debug_output(GLenum source, GLenum type, GLuint id,
