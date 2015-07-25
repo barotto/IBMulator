@@ -201,6 +201,58 @@ $ fdisk -l hdd.img
 Nota bene: if you change the disk type from the default 35 (WDL-330P) to any other type, the automatically created image will be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have accurate timings emulation; any other type have the same performance as type 35.
 </p>
 
+<h3>HDD types</h3>
+<p>These are the BIOS supported hdd types</p>
+<pre>
+Type   Cyl.   Heads    Sect.   Write    Land     Size
+                               p-comp   Zone
+
+ 0       0      0        0         0       0    (none)
+ 1     306      4       17       128     305     10MB
+ 2     615      4       17       300     615     20MB
+ 3     615      6       17       300     615     31MB
+ 4     940      8       17       512     940     62MB
+ 5     940      6       17       512     940     47MB
+ 6     615      4       17        -1     615     20MB
+ 7     462      8       17       256     511     31MB
+ 8     733      5       17        -1     733     30MB
+ 9     900     15       17        -1     901    112MB
+10     820      3       17        -1     820     20MB
+11     855      5       17        -1     855     35MB
+12     855      7       17        -1     855     50MB
+13     306      8       17       128     319     20MB
+14     733      7       17        -1     733     43MB
+15       0      0        0         0       0    (none)
+16     612      4       17         0     663     20MB
+17     977      5       17       300     977     41MB
+18     977      7       17        -1     977     57MB
+19    1024      7       17       512    1023     59MB
+20     733      5       17       300     732     30MB
+21     733      7       17       300     732     43MB
+22     733      5       17       300     733     30MB
+23     306      4       17         0     336     10MB
+24     612      4       17       305     663     20MB
+25     306      4       17        -1     340     10MB
+26     612      4       17        -1     670     20MB
+27     698      7       17       300     732     41MB
+28     976      5       17       488     977     40MB
+29     306      4       17         0     340     10MB
+30     611      4       17       306     663     20MB
+31     732      7       17       300     732     43MB
+32    1023      5       17        -1    1023     42MB
+33     614      4       25        -1     663     30MB
+34     775      2       27        -1     900     20MB
+35     921      2       33        -1    1000     30MB
+36     402      4       26        -1     460     20MB
+37     580      6       26        -1     640     44MB
+38     845      2       36        -1    1023     30MB
+39     769      3       36        -1    1023     41MB
+40     531      4       39        -1     532     40MB
+41     577      2       36        -1    1023     20MB
+42     654      2       32        -1     674     20MB
+43     923      5       36        -1    1023     81MB
+44     531      8       39        -1     532     81MB
+</pre>
 <h3>Key bindings</h3>
 <ul>
 <li>CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
