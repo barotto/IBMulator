@@ -68,24 +68,37 @@ void PIT_82C54::reset(unsigned type)
 void PIT_82C54::PIT_counter::reset()
 {
 	PDEBUGF(LOG_V2, LOG_PIT, "PIT: setting read_state %u to LSB\n", name);
-	read_state = LSByte;
-	write_state = LSByte;
-	GATE = true;
+
+	//Chip IOs;
+	GATE   = true;
 	OUTpin = true;
-	triggerGATE = false;
-	mode = 4;
-	first_pass = false;
-	bcd_mode = false;
-	count = 0;
-	count_binary = 0;
-	state_bit_1 = false;
-	state_bit_2 = false;
+
+	//Architected state;
+	count        = 0;
+	outlatch     = 0;
+	inlatch      = 0;
+	status_latch = 0;
+
+	//Status Register data;
+	rw_mode    = 1;
+	mode       = 4;
+	bcd_mode   = false;
 	null_count = false;
-	rw_mode = 1;
-	count_written = true;
+
+	//Latch status data;
 	count_LSB_latched = false;
 	count_MSB_latched = false;
-	status_latched = false;
+	status_latched    = false;
+
+	//Miscelaneous State;
+	count_binary     = 0;
+	triggerGATE      = false;
+	write_state      = LSByte;
+	read_state       = LSByte;
+	count_written    = true;
+	first_pass       = false;
+	state_bit_1      = false;
+	state_bit_2      = false;
 	next_change_time = 0;
 
 	seen_problems = 0;
