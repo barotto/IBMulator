@@ -90,6 +90,7 @@ void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value, bool _default
 	 */
 
 	_segreg.sel.value = _value;
+	_segreg.sel.cpl = 0; // in real mode the current privilege level is always 0
 	_segreg.desc.base = uint32_t(_value) << 4;
 	if(_defaults) {
 		_segreg.desc.limit = 0xFFFF;

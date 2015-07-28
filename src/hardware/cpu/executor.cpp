@@ -4183,11 +4183,19 @@ void CPUExecutor::POPF()
 {
 	uint16_t flags = stack_pop();
 
-	write_flags(flags,
-		IS_PMODE() && (CPL == 0), // IOPL
-		(CPL <= FLAG_IOPL), // IF
-		IS_PMODE() // NT
-	);
+	if(IS_PMODE()) {
+		write_flags(flags,
+			(CPL == 0),         // IOPL
+			(CPL <= FLAG_IOPL), // IF
+			true                // NT
+		);
+	} else {
+		write_flags(flags,
+			false, // IOPL
+			true,  // IF
+			false  // NT
+		);
+	}
 }
 
 
