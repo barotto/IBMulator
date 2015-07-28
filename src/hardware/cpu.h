@@ -23,6 +23,7 @@
 #include "cpu/core.h"
 #include "cpu/decoder.h"
 #include "cpu/executor.h"
+#include "cpu/state.h"
 #include "cpu/logger.h"
 #include <regex>
 
@@ -94,13 +95,6 @@ public:
 	: vector(_vector), error_code(_error_code) { }
 };
 
-enum CPUActivityState {
-	CPU_STATE_ACTIVE = 0,
-	CPU_STATE_HALT,
-	CPU_STATE_SHUTDOWN,
-	CPU_STATE_POWEROFF
-};
-
 class CPU
 {
 friend class Machine;
@@ -112,27 +106,7 @@ protected:
 	bool m_pq_valid;
 	std::function<void(void)> m_shutdown_trap;
 
-	struct {
-		uint64_t icount;
-		uint64_t ccount;
-		uint32_t activity_state;
-		uint32_t pending_event;
-		uint32_t event_mask;
-		bool     async_event;
-		bool     debug_trap;
-
-		// What events to inhibit at any given time.  Certain instructions
-		// inhibit interrupts, some debug exceptions and single-step traps.
-		unsigned inhibit_mask;
-		uint64_t inhibit_icount;
-
-		bool HRQ; //DMA Hold Request
-		bool EXT; /* EXT is 1 if an external event (ie., a single step, an
-					   external interrupt, an #MF exception, or an #MP exception)
-					   caused the interrupt; 0 if not (ie., an INT instruction or
-					   other exceptions) (cfr. B-50)
-					 */
-	} m_s;
+	CPUState m_s;
 
 	void handle_async_event();
 

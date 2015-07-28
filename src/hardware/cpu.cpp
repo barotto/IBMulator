@@ -232,7 +232,14 @@ uint CPU::step()
 	}
 
 	if(CPULOG && (CPULOG_UNFOLD_REPS || prev_csip!=csip)) {
-		m_logger.add_entry(*m_instr, g_machine.get_virt_time_us(), core_log, g_cpubus, cycles);
+		m_logger.add_entry(
+			g_machine.get_virt_time_us(), // time
+			*m_instr,                     // instruction
+			m_s,                          // state
+			core_log,                     // core
+			g_cpubus,                     // bus
+			cycles                        // cycles used
+		);
 		m_logger.set_iret_address(m_iret_address);
 		m_iret_address = 0;
 	}

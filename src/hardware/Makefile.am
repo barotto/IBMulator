@@ -37,6 +37,7 @@ libhardware_a_SOURCES = \
 
 noinst_HEADERS = \
 	cpu.h \
+	cpu/state.h \
 	cpu/core.h \
 	cpu/bus.h \
 	cpu/decoder.h \

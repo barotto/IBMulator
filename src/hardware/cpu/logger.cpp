@@ -37,8 +37,13 @@ CPULogger::~CPULogger()
 	close_file();
 }
 
-void CPULogger::add_entry(const Instruction &_instr, uint64_t _time,
-		const CPUCore &_core, const CPUBus &_bus, unsigned _cycles)
+void CPULogger::add_entry(
+		uint64_t _time,
+		const Instruction &_instr,
+		const CPUState &_state,
+		const CPUCore &_core,
+		const CPUBus &_bus,
+		unsigned _cycles)
 {
 	//don't log outside fixed boundaries
 	if(_instr.csip<CPULOG_START_ADDR || _instr.csip>CPULOG_END_ADDR) {
@@ -47,9 +52,10 @@ void CPULogger::add_entry(const Instruction &_instr, uint64_t _time,
 
 	m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
 	m_log[m_log_idx].time = _time;
+	m_log[m_log_idx].instr = _instr;
+	m_log[m_log_idx].state = _state;
 	m_log[m_log_idx].core = _core;
 	m_log[m_log_idx].bus = _bus;
-	m_log[m_log_idx].instr = _instr;
 	m_log[m_log_idx].cycles = _cycles;
 
 	int opcode_idx;
@@ -175,6 +181,12 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	//the instruction
 	if(fprintf(_dest, "%s  ", disasm(_entry).c_str()) < 0)
 		return -1;
+
+	if(CPULOG_WRITE_STATE) {
+		if(fprintf(_dest, "M=%d ",
+				_entry.state.event_mask) < 0)
+			return -1;
+	}
 
 	if(CPULOG_WRITE_CORE) {
 		if(fprintf(_dest, "AX=%04X BX=%04X CX=%04X DX=%04X ",

@@ -22,10 +22,12 @@
 
 #include "core.h"
 #include "decoder.h"
+#include "state.h"
 
 struct CPULogEntry
 {
 	uint64_t time;
+	CPUState state;
 	CPUCore core;
 	CPUBus bus;
 	Instruction instr;
@@ -54,8 +56,14 @@ public:
 	CPULogger();
 	~CPULogger();
 
-	void add_entry(const Instruction &_instr, uint64_t _time,
-			const CPUCore &_core, const CPUBus &_bus, unsigned _cycles);
+	void add_entry(
+		uint64_t _time,
+		const Instruction &_instr,
+		const CPUState &_state,
+		const CPUCore &_core,
+		const CPUBus &_bus,
+		unsigned _cycles
+	);
 	void open_file(const std::string _filename);
 	void close_file();
 	void set_iret_address(uint32_t _address);
