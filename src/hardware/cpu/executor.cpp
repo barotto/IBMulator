@@ -3375,6 +3375,10 @@ void CPUExecutor::LIDT()
 	uint16_t limit = read_word(sr, off);
 	uint32_t base = read_dword(sr, off+2) & 0x00ffffff;
 
+	if(limit==0) {
+		PDEBUGF(LOG_V2, LOG_CPU, "LIDT: base 0x%06X, limit 0x%04X\n", base, limit);
+	}
+
 	SET_IDTR(base, limit);
 }
 
@@ -3483,6 +3487,8 @@ void CPUExecutor::LOADALL()
 		PDEBUGF(LOG_V2, LOG_CPU, "LOADALL: CPL != 0 causes #GP\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
+
+	PDEBUGF(LOG_V2, LOG_CPU, "LOADALL\n");
 
 	word_reg = g_cpubus.mem_read_word(0x806);
 	if(GET_MSW(MSW_PE)) {
@@ -4866,7 +4872,7 @@ uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
 	SET_FLAG(CF, (((int16_t) _value) >> (_times - 1)) & 1);
 
 	SET_FLAG(ZF, res == 0);
-	SET_FLAG(SF, res & 0x80);
+	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(PF, PARITY(res));
 
 	return res;
