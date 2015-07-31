@@ -6,7 +6,7 @@ AC_DEFUN([AX_CHECK_LIBSAMPLERATE],
 [
 # Checking for the SRC library.
 
-HAVE_LIBSAMPLERATE=yes
+HAVE_LIBSAMPLERATE=1
 LIBSAMPLERATE_LIBS=""
 LIBSAMPLERATE_CFLAGS=""
 
@@ -16,18 +16,20 @@ AC_ARG_WITH([libsamplerate-prefix],
             [libsamplerate_prefix=""])
 
 if test x$libsamplerate_prefix != x ; then
-	LIBARCHIVE_CFLAGS="-I$libsamplerate_prefix/include"
-	AC_CHECK_HEADER($libsamplerate_prefix/include/samplerate.h,, [HAVE_LIBSAMPLERATE=no])
-	LIBSAMPLERATE_LIBS="$libsamplerate_prefix/lib/libsamplerate.a"
+	AC_CHECK_HEADER($libsamplerate_prefix/include/samplerate.h,, [HAVE_LIBSAMPLERATE=0])
 else
-	AC_CHECK_HEADER(samplerate.h,, [HAVE_LIBSAMPLERATE=no])
-	LIBSAMPLERATE_LIBS="-lsamplerate"
+	AC_CHECK_HEADER(samplerate.h,, [HAVE_LIBSAMPLERATE=0])
 fi
 
-if test "$LIBSAMPLERATE_LIBS" = "no" ; then
-    AC_MSG_ERROR([
-*** Unable to find libsamplerate
-]) 
+AC_DEFINE_UNQUOTED([HAVE_LIBSAMPLERATE],[$HAVE_LIBSAMPLERATE],[Define to 1 if you have libsamplerate installed])
+
+if test "$HAVE_LIBSAMPLERATE" = "1" ; then
+	if test x$libsamplerate_prefix != x ; then
+		LIBSAMPLERATE_CFLAGS="-I$libsamplerate_prefix/include"
+		LIBSAMPLERATE_LIBS="$libsamplerate_prefix/lib/libsamplerate.a"
+	else
+		LIBSAMPLERATE_LIBS="-lsamplerate"
+	fi
 fi
 
 AC_SUBST(LIBSAMPLERATE_CFLAGS)

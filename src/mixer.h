@@ -29,7 +29,9 @@
 #include <thread>
 #include <atomic>
 #include <cmath>
+#if HAVE_LIBSAMPLERATE
 #include <samplerate.h>
+#endif
 
 class Machine;
 class Mixer;
@@ -63,7 +65,9 @@ class MixerChannel
 	std::vector<uint8_t> m_in_buffer;
 	std::vector<float> m_out_buffer;
 	int m_out_frames;
+#if HAVE_LIBSAMPLERATE
 	SRC_STATE *m_SRC_state;
+#endif
 	std::function<void(bool)> m_capture_clbk;
 
 public:

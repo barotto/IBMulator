@@ -40,7 +40,9 @@ m_disable_time(0),
 m_disable_timeout(0),
 m_first_update(true),
 m_out_frames(0),
-m_SRC_state(NULL),
+#if HAVE_LIBSAMPLERATE
+m_SRC_state(nullptr),
+#endif
 m_capture_clbk([](bool){})
 {
 	m_in_buffer.reserve(MIXER_BUFSIZE);
@@ -49,9 +51,11 @@ m_capture_clbk([](bool){})
 
 MixerChannel::~MixerChannel()
 {
+#if HAVE_LIBSAMPLERATE
 	if(m_SRC_state != NULL) {
 		src_delete(m_SRC_state);
 	}
+#endif
 }
 
 void MixerChannel::enable(bool _enabled)
@@ -62,9 +66,11 @@ void MixerChannel::enable(bool _enabled)
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel enabled\n", m_name.c_str());
 	} else {
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel disabled\n", m_name.c_str());
+#if HAVE_LIBSAMPLERATE
 		if(m_SRC_state != NULL) {
 			src_reset(m_SRC_state);
 		}
+#endif
 		m_out_frames = 0;
 		m_in_buffer.clear();
 		m_first_update = true;
@@ -159,6 +165,7 @@ void MixerChannel::mix_samples(int _rate, uint16_t _format, uint16_t _channels)
 		SRC_in_buf = in_buf;
 	}
 
+#if HAVE_LIBSAMPLERATE
 	if(spec.freq != _rate) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "resampling from %dHz to %dHz\n", _rate, spec.freq);
 		double ratio = double(spec.freq) / double(_rate);
@@ -196,6 +203,9 @@ void MixerChannel::mix_samples(int _rate, uint16_t _format, uint16_t _channels)
 		}
 		m_out_frames += out_frames;
 	} else {
+#else
+	if(spec.freq == _rate) {
+#endif
 		int offset = m_out_frames * spec.channels;
 		int out_size = (in_frames+m_out_frames) * spec.channels;
 		if(m_out_buffer.size() < unsigned(out_size)) {

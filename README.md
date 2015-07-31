@@ -44,14 +44,12 @@ reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a
 non-US model)
 3. or scour the Internet (there are various ROM sets available.)
 
-If you have the BIN files, create a ROM set (see below for the correct format.)
-
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
 been created and where it is placed.
 
 Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is 
-a good place) and update ibmulator.ini with the file name of the ROM set you 
-want to use.
+a good place) and update ibmulator.ini with the file name of the ROM you 
+want to use (see below for the correct format.)
 
 You also want to select (or create) the correct keyboard mapping.
 
@@ -74,16 +72,23 @@ are copyright IBM and you have to search the Internet in order to obtain them.
 
 ### ROM set
 
-A ROM set is a compressed file in the ZIP format, containing the binary files 
-of the original ROM. Inside the ZIP file there must be (case insensitive):
+A ROM set can be:
+
+1. a compressed archive in the ZIP format
+2. a file with the *.BIN extension, named as you like
+3. a directory 
+
+A ZIP archive or directory must contain (case insensitive):
 
 * FC0000.BIN : the system BIOS ROM, 256KiB
-* F80000.BIN : the regional ROM, 256KiB, optional, only for the non-US version. 
-For international models, this bin file can be merged with FC0000.BIN
-to form a single 512KiB bin file. In this case FC0000.BIN, if present, is 
-ignored.
+* F80000.BIN : the regional ROM, 256KiB, optional, only for non-US versions. For
+international models, this bin file can be merged with FC0000.BIN to form a 
+single 512KiB bin file. In this case FC0000.BIN, if present, is ignored.
 
-Any other file present in the archive is ignored.
+Any other file present in the archive or directory is ignored.
+
+If you want to use a single BIN file, this can be 256KiB (US version) or 512KiB 
+(international versions) in size.
 
 ### HDD image
 
@@ -128,7 +133,7 @@ mouse.
 -c PATH  Sets a configuration file to use  
 -u PATH  Sets a user directory from where the program reads the ini file and 
 stores new files, like screenshots and savestates  
--v NUM  Sets the verbosity level (from 0 to 2)
+-v NUM  Sets the logging verbosity level (from 0 to 2)
 
 
 ## KNOWN BUGS
@@ -153,10 +158,15 @@ bug: https://bugs.launchpad.net/unity/+bug/1415195)
 * SDL_image 2.0.0
 * libRocket (latest version with a patch applied, see notes below)
 * GLEW
-* libarchive
-* libsamplerate
+* libarchive (optional)
+* libsamplerate (optional)
 
-If you cloned the code from the GitHub repo you also need the GNU Autotools. 
+If you cloned the code from the GitHub repo you also need the GNU Autotools.
+
+You need libarchive if you want to use zipped ROM sets.
+
+Without libsamplerate audio samples will not be played unless they are at the 
+same rate of the mixer. 
 
 ### General instructions
 

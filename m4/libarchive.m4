@@ -16,7 +16,7 @@ else
 	AC_CHECK_HEADER(archive.h,, [HAVE_LIBARCHIVE=0])
 fi
 
-AC_DEFINE_UNQUOTED([HAVE_LIBARCHIVE],[$HAVE_LIBARCHIVE],[Define if you have libarchive installed])
+AC_DEFINE_UNQUOTED([HAVE_LIBARCHIVE],[$HAVE_LIBARCHIVE],[Define to 1 if you have libarchive installed])
 
 if test "$HAVE_LIBARCHIVE" = "1" ; then
 	if test x$libarchive_prefix != x ; then
