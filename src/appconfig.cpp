@@ -179,7 +179,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
-";   romset: Path to a zip file containing the rom set to use (for the correct format see the README)\n"
+";   romset: Path to a bin/zip file or directory containing the ROM set to use (for the correct format see the README)\n"
 ";     base: Size of the base RAM in KiB\n"
 "; extended: Size of the extended RAM in KiB\n"
 		},

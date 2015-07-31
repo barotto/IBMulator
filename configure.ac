@@ -144,7 +144,11 @@ fi
 echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
 echo "- SDL_image    : $SDLIMAGE_LIBS"
 echo "- libRocket    : $LIBROCKET_LIBS"
+if test "x$LIBARCHIVE_LIBS" = "x"; then
+echo "- libarchive   : NO (no support for zipped ROM sets)"
+else
 echo "- libarchive   : $LIBARCHIVE_LIBS"
+fi
 echo "- libsamplerate: $LIBSAMPLERATE_LIBS"
 echo "- OpenGL       : $OPENGL_LIBS $GLEW_LIBS"
 echo "- prefix       : ${prefix}"

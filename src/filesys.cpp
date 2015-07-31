@@ -28,9 +28,11 @@
 #include <vector>
 #include <climits>
 #include <libgen.h>
+#include <algorithm>
+#if HAVE_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>
-#include <algorithm>
+#endif
 
 
 void FileSys::create_dir(const char *_path)
@@ -175,6 +177,7 @@ std::string FileSys::get_next_filename(const std::string &_dir,
 
 bool FileSys::extract_file(const char *_archive, const char *_filename, const char *_extract_to)
 {
+#if HAVE_LIBARCHIVE
 	struct archive *ar;
 	struct archive_entry *entry;
 	int res;
@@ -209,6 +212,9 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 	}
 	archive_read_free(ar);
 	return found;
+#else
+	return false;
+#endif
 }
 
 shared_file_ptr FileSys::make_shared_file(const char *_filename, const char *_flags)

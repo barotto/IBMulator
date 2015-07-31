@@ -29,8 +29,12 @@
 #include <fstream>
 #include <cstring>
 #include <SDL2/SDL.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#if HAVE_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>
+#endif
 
 Memory g_memory;
 
@@ -97,12 +101,25 @@ void Memory::config_changed()
 	PINFOF(LOG_V1, LOG_MEM, "Loading the SYSTEM ROM\n");
 	try {
 		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
-		if(!FileSys::file_exists(romset.c_str())) {
-			PERRF(LOG_MEM, "Unable to find the ROM set '%s'\n", romset.c_str());
-			throw std::exception();
+		if(FileSys::is_directory(romset.c_str())) {
+			PINFOF(LOG_V0, LOG_MEM, "Loading ROM directory '%s'\n", romset.c_str());
+			load_rom_dir(romset);
+		} else {
+			if(!FileSys::file_exists(romset.c_str())) {
+				PERRF(LOG_MEM, "Unable to find ROM set '%s'\n", romset.c_str());
+				throw std::exception();
+			}
+			std::string dir,base,ext;
+			FileSys::get_path_parts(romset.c_str(),	dir, base, ext);
+			std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+			if(ext == ".bin") {
+				PINFOF(LOG_V0, LOG_MEM, "Loading ROM file '%s'\n", romset.c_str());
+				load_rom_file(romset);
+			} else {
+				PINFOF(LOG_V0, LOG_MEM, "Loading ROM set '%s'\n", romset.c_str());
+				load_rom_archive(romset);
+			}
 		}
-		PINFOF(LOG_V0, LOG_MEM, "Loading the ROM set '%s'\n", romset.c_str());
-		load_rom_set(romset);
 
 		//copy SYS BIOS from the ROM
 		memcpy(&m_buffer[0xE0000], &m_sysrom[SYS_ROM_SIZE-0x20000], 0x20000);
@@ -115,10 +132,89 @@ void Memory::config_changed()
 	}
 }
 
-void Memory::load_rom_set(const std::string &_filename)
+int Memory::load_rom_file(const std::string &_filename, uint32_t _destaddr)
+{
+	uint64_t size = FileSys::get_file_size(_filename.c_str());
+	if(_destaddr < SYS_ROM_ADDR) {
+		if(size == 256*KEBIBYTE) {
+			_destaddr = 0xFC0000 - SYS_ROM_ADDR;
+		} else if(size == 512*KEBIBYTE) {
+			_destaddr = 0xF80000 - SYS_ROM_ADDR;
+		} else {
+			PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", _filename.c_str());
+			throw std::exception();
+		}
+	} else {
+		_destaddr -= SYS_ROM_ADDR;
+		if(size != 256*KEBIBYTE && size != 512*KEBIBYTE) {
+			PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", _filename.c_str());
+			throw std::exception();
+		}
+	}
+	auto file = FileSys::make_file(_filename.c_str(), "rb");
+	if(file == nullptr) {
+		PERRF(LOG_MEM, "Error opening ROM file '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
+	PINFOF(LOG_MEM, LOG_V1, "Loading '%s' ...\n", _filename.c_str());
+	size = fread((void*)(m_sysrom + _destaddr), size, 1, file.get());
+	if(size != 1) {
+		PERRF(LOG_MEM, "Error reading ROM file '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
+	return size;
+}
+
+void Memory::load_rom_dir(const std::string &_dirname)
+{
+	DIR *dir;
+	struct dirent *ent;
+
+	if((dir = opendir(_dirname.c_str())) == nullptr) {
+		PERRF(LOG_MEM, "Unable to open directory %s\n", _dirname.c_str());
+		throw std::exception();
+	}
+	std::string dirname = _dirname + FS_SEP;
+	bool f80000found = false;
+	bool fc0000found = false;
+	while((ent = readdir(dir)) != NULL) {
+		struct stat sb;
+		std::string name = ent->d_name;
+		std::string fullpath = dirname + name;
+		if(stat(fullpath.c_str(), &sb) != 0) {
+			continue;
+		}
+		if(S_ISDIR(sb.st_mode)) {
+			continue;
+		} else {
+			std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+			if(!fc0000found && name.compare("fc0000.bin")==0) {
+				fc0000found = true;
+				load_rom_file(fullpath, 0xFC0000);
+			} else if(!f80000found && name.compare("f80000.bin")==0) {
+				f80000found = true;
+				int size = load_rom_file(fullpath, 0xF80000);
+				if(size == 512*KEBIBYTE) {
+					fc0000found = true;
+					break;
+				}
+			}
+			if(fc0000found && f80000found) {
+				break;
+			}
+		}
+	}
+	closedir(dir);
+	if(!fc0000found) {
+		PERRF(LOG_MEM, "Required file FC0000.BIN missing in '%s'\n", _dirname.c_str());
+		throw std::exception();
+	}
+}
+
+void Memory::load_rom_archive(const std::string &_filename)
 {
 	//TODO add support for splitted 128K EPROMs
-
+#if HAVE_LIBARCHIVE
 	struct archive *ar;
 	struct archive_entry *entry;
 	int res;
@@ -152,6 +248,7 @@ void Memory::load_rom_set(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_sysrom + (0xFC0000 - SYS_ROM_ADDR);
+			PINFOF(LOG_MEM, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
 			size = archive_read_data(ar, dest, size);
 			if(size <= 0) {
 				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
@@ -164,7 +261,6 @@ void Memory::load_rom_set(const std::string &_filename)
 				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
 				throw std::exception();
 			}
-
 			if(size == 512*1024) {
 				if(fc0000found) {
 					PERRF(LOG_MEM, "ROM file FC0000.BIN already loaded\n");
@@ -175,6 +271,7 @@ void Memory::load_rom_set(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_sysrom + (0xF80000 - SYS_ROM_ADDR);
+			PINFOF(LOG_MEM, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
 			size = archive_read_data(ar, dest, size);
 			if(size <= 0) {
 				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
@@ -187,6 +284,10 @@ void Memory::load_rom_set(const std::string &_filename)
 		PERRF(LOG_MEM, "Required file FC0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
+#else
+	PERRF(LOG_MEM, "To use a zip archive you need to enable libarchive support.\n");
+	throw std::exception();
+#endif
 }
 
 #define MEM_STATE_NAME "Memory state"

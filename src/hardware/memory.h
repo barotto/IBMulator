@@ -77,7 +77,9 @@ protected:
 	uint8_t read(uint32_t _address) const noexcept;
 	void write(uint32_t _address, uint8_t value) noexcept;
 
-	void load_rom_set(const std::string &_filename);
+	int  load_rom_file(const std::string &_filename, uint32_t _destaddr=0);
+	void load_rom_dir(const std::string &_dirname);
+	void load_rom_archive(const std::string &_filename);
 
 public:
 

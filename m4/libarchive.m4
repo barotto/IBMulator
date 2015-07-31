@@ -3,7 +3,7 @@
 
 AC_DEFUN([AX_CHECK_LIBARCHIVE],
 [
-HAVE_LIBARCHIVE=yes
+HAVE_LIBARCHIVE=1
 LIBARCHIVE_LIBS=""
 LIBARCHIVE_CFLAGS=""
 
@@ -11,19 +11,20 @@ AC_ARG_WITH(libarchive-prefix,[  --with-libarchive-prefix=PFX   Prefix where lib
             libarchive_prefix="$withval", libarchive_prefix="")
 
 if test x$libarchive_prefix != x ; then
-	LIBARCHIVE_CFLAGS="-I$libarchive_prefix/include"
-	AC_CHECK_HEADER($libarchive_prefix/include/archive.h,, [HAVE_LIBARCHIVE=no])
-	LIBARCHIVE_LIBS="$libarchive_prefix/lib/libarchive.a"
+	AC_CHECK_HEADER($libarchive_prefix/include/archive.h,, [HAVE_LIBARCHIVE=0])
 else
-	AC_CHECK_HEADER(archive.h,, [HAVE_LIBARCHIVE=no])
-	LIBARCHIVE_LIBS="-larchive"
+	AC_CHECK_HEADER(archive.h,, [HAVE_LIBARCHIVE=0])
 fi
 
+AC_DEFINE_UNQUOTED([HAVE_LIBARCHIVE],[$HAVE_LIBARCHIVE],[Define if you have libarchive installed])
 
-if test "$HAVE_LIBARCHIVE" = "no" ; then
-    AC_MSG_ERROR([
-*** Unable to find libarchive
-]) 
+if test "$HAVE_LIBARCHIVE" = "1" ; then
+	if test x$libarchive_prefix != x ; then
+		LIBARCHIVE_CFLAGS="-I$libarchive_prefix/include"
+		LIBARCHIVE_LIBS="$libarchive_prefix/lib/libarchive.a"
+	else
+		LIBARCHIVE_LIBS="-larchive"
+	fi
 fi
 
 AC_SUBST(LIBARCHIVE_CFLAGS)
