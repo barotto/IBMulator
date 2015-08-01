@@ -95,6 +95,12 @@ public:
 	: vector(_vector), error_code(_error_code) { }
 };
 
+class CPUShutdown : public std::runtime_error
+{
+public:
+	CPUShutdown(const char *_what) : std::runtime_error(_what) {}
+};
+
 class CPU
 {
 friend class Machine;

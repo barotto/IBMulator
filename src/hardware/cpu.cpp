@@ -199,6 +199,10 @@ uint CPU::step()
 			}
 			exception(e);
 			eu_cycles = 15; //just a random number
+		} catch(CPUShutdown &s) {
+			PDEBUGF(LOG_V2, LOG_CPU, "Entering shutdown for %s\n", s.what());
+			g_cpu.enter_sleep_state(CPU_STATE_SHUTDOWN);
+			eu_cycles = 15; //just a random number
 		}
 
 	} else {

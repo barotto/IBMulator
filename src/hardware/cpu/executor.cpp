@@ -415,7 +415,7 @@ uint16_t CPUExecutor::read_word_pmode(SegReg & _seg, uint16_t _offset, uint8_t _
 void CPUExecutor::stack_push(uint16_t _value)
 {
 	if(REG_SP == 1) {
-		PERR_ABORT("SP=1 on stack push\n");
+		throw CPUShutdown("insufficient stack space on push");
 	}
 	REG_SP -= 2;
 	write_word(REG_SS, REG_SP, _value);
@@ -432,7 +432,8 @@ uint16_t CPUExecutor::stack_pop()
 void CPUExecutor::stack_push_pmode(uint16_t _value)
 {
 	if(REG_SP == 1) {
-		PERR_ABORT("SP=1 on stack push\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "stack_push_pmode(): insufficient stack space\n");
+		throw CPUException(CPU_SS_EXC, 0);
 	}
 	write_word_pmode(REG_SS, (REG_SP - 2), _value, CPU_SS_EXC, 0);
 	REG_SP -= 2;
@@ -448,24 +449,18 @@ uint16_t CPUExecutor::stack_pop_pmode()
 
 uint16_t CPUExecutor::stack_read(uint16_t _offset)
 {
-#if(1)
 	if(IS_PMODE()) {
 		read_check_pmode(REG_SS, _offset, 2);
 	}
-#endif
-
 	return g_cpubus.mem_read_word(GET_PHYADDR(SS, _offset));
 }
 
 void CPUExecutor::stack_write(uint16_t _offset, uint16_t _data)
 {
-#if(1)
 	if(IS_PMODE()) {
 		write_check_pmode(REG_SS, _offset, 2);
 	}
-#endif
-
-	 g_cpubus.mem_write_word(GET_PHYADDR(SS, _offset), _data);
+	g_cpubus.mem_write_word(GET_PHYADDR(SS, _offset), _data);
 }
 
 void CPUExecutor::execute(Instruction * _instr)
@@ -4261,17 +4256,16 @@ void CPUExecutor::PUSH_db(uint8_t imm)
 void CPUExecutor::PUSHA()
 {
 	uint16_t temp_SP  = REG_SP;
-#if(1)
-	if(!IS_PMODE()){
-		if(temp_SP == 7 || temp_SP == 9 || temp_SP == 11 || temp_SP == 13 || temp_SP == 15)
-		{
+
+	if(!IS_PMODE()) {
+		if(temp_SP == 7 || temp_SP == 9 || temp_SP == 11 || temp_SP == 13 || temp_SP == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
 		if(temp_SP == 1 || temp_SP == 3 || temp_SP == 5) {
-			PERR_ABORT("SP=1,3,5 on stack push\n");
+			throw CPUShutdown("SP=1,3,5 on stack push (PUSHA)");
 		}
 	}
-#endif
+
 	stack_write(temp_SP -  2, REG_AX);
 	stack_write(temp_SP -  4, REG_CX);
 	stack_write(temp_SP -  6, REG_DX);
