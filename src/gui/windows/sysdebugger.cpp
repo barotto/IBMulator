@@ -309,7 +309,7 @@ void SysDebugger::ProcessEvent(Rocket::Core::Event & event)
 		m_machine->cmd_resume();
 	}
 	else if(el == m_tools.cmd_memdump) {
-		m_machine->cmd_memdump(0, 524287);
+		m_machine->cmd_memdump(0, 0);
 	}
 	else if(el == m_tools.cmd_csdump) {
 		m_machine->cmd_memdump(REG_CS.desc.base, 0xFFFF);
