@@ -3476,7 +3476,7 @@ void CPUExecutor::LOADALL()
 
 	uint16_t word_reg;
 	uint16_t desc_cache[3];
-	uint32_t base;
+	uint32_t base,limit;
 
 	if(IS_PMODE() && (CPL != 0)) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LOADALL: CPL != 0 causes #GP\n");
@@ -3528,22 +3528,18 @@ void CPUExecutor::LOADALL()
 	desc_cache[2] = g_cpubus.mem_read_word(0x84C);
 	REG_DS.desc.set_from_cache(desc_cache);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x84E);
-	desc_cache[1] = g_cpubus.mem_read_word(0x850);
-	desc_cache[2] = g_cpubus.mem_read_word(0x852);
-	base = (uint32_t(desc_cache[1]&0xFF)<<16) | desc_cache[0];
-	SET_GDTR(base, desc_cache[2]);
+	base  = g_cpubus.mem_read_dword(0x84E);
+	limit = g_cpubus.mem_read_word(0x852);
+	SET_GDTR(base, limit);
 
 	desc_cache[0] = g_cpubus.mem_read_word(0x854);
 	desc_cache[1] = g_cpubus.mem_read_word(0x856);
 	desc_cache[2] = g_cpubus.mem_read_word(0x858);
 	REG_LDTR.desc.set_from_cache(desc_cache);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x85A);
-	desc_cache[1] = g_cpubus.mem_read_word(0x85C);
-	desc_cache[2] = g_cpubus.mem_read_word(0x85E);
-	base = (uint32_t(desc_cache[1]&0xFF)<<16) | desc_cache[0];
-	SET_IDTR(base, desc_cache[2]);
+	base  = g_cpubus.mem_read_dword(0x85A);
+	limit = g_cpubus.mem_read_word(0x85E);
+	SET_IDTR(base, limit);
 
 	desc_cache[0] = g_cpubus.mem_read_word(0x860);
 	desc_cache[1] = g_cpubus.mem_read_word(0x862);
