@@ -67,6 +67,41 @@ const char *byte_to_binary(uint8_t _value, char _buf[9])
     return _buf;
 }
 
+const char *nibble_to_binary(uint8_t _value, char _buf[5])
+{
+    _buf[0] = '\0';
+
+    for(int i = 8; i > 0; i >>= 1) {
+        strcat(_buf, ((_value & i) == i) ? "1" : "0");
+    }
+
+    return _buf;
+}
+
+const Rocket::Core::String & format_bin4(uint _value)
+{
+	static Rocket::Core::String str;
+	char nibble[5];
+
+	nibble_to_binary(_value&0xF, nibble);
+
+	str.FormatString(5,"%s",nibble);
+
+	return str;
+}
+
+const Rocket::Core::String & format_bin8(uint _value)
+{
+	static Rocket::Core::String str;
+	char byte[9];
+
+	byte_to_binary(uint8_t(_value), byte);
+
+	str.FormatString(9,"%s",byte);
+
+	return str;
+}
+
 const Rocket::Core::String & format_bin16(uint _value)
 {
 	static Rocket::Core::String str;

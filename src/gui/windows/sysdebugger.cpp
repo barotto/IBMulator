@@ -60,6 +60,7 @@ Window(_gui, "debugger.rml")
 	m_core.ip = get_element("IP");
 	m_core.f = get_element("F");
 	m_core.msw = get_element("MSW");
+	m_core.cpl = get_element("CPL");
 
 	m_core.cf = get_element("CF");
 	m_core.pf = get_element("PF");
@@ -206,7 +207,8 @@ void SysDebugger::update()
 
 	m_core.ip->SetInnerRML(format_hex16(REG_IP));
 	m_core.f->SetInnerRML(format_bin16(GET_FLAG(ALL)));
-	m_core.msw->SetInnerRML(format_bin16(GET_MSW(MSW_ALL)));
+	m_core.msw->SetInnerRML(format_bin4(GET_MSW(MSW_ALL)));
+	m_core.cpl->SetInnerRML(format_uint16(CPL));
 
 	m_core.cf->SetInnerRML(format_bit(FLAG_CF));
 	m_core.pf->SetInnerRML(format_bit(FLAG_PF));

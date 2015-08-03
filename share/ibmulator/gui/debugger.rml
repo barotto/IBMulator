@@ -54,7 +54,7 @@
 			<table id="statusregs">
 			<tr><th>IP</th><td id="IP">1234</td></tr>
 			<tr><th>F</th><td id="F">0123456789012345</td></tr>
-			<tr><th>MSW</th><td id="MSW">0123456789012345</td></tr>
+			<tr><th>MSW</th><td id="MSW">0123</td><th>CPL</th><td id="CPL">0</td></tr>
 			</table>
 			
 			<table id="desctables">

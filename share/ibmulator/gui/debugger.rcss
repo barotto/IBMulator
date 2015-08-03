@@ -47,7 +47,8 @@ table#segmentregs
 
 #CSbase,#DSbase,
 #ESbase,#SSbase,
-#TRbase
+#TRbase,
+#LDTbase, #GDTbase, #IDTbase
 {
 	width: 50px;
 }
@@ -71,10 +72,14 @@ table#flags td
 	width: 10px;
 }
 
-#F,
-#MSW
+#F
 {
 	width: 140px;
+}
+
+#CPL
+{
+	width: 10px;
 }
 
 table#desctables

@@ -36,7 +36,7 @@ private:
 		Rocket::Core::Element *bp,*si,*di,*sp;
 		Rocket::Core::Element *cs,*ds,*ss,*es,*tr;
 		Rocket::Core::Element *ip;
-		Rocket::Core::Element *f, *msw;
+		Rocket::Core::Element *f, *msw, *cpl;
 		Rocket::Core::Element *cf, *pf, *af, *zf, *sf, *tf,
 		                      *iff, *df, *of, *pl, *nt;
 		Rocket::Core::Element *csbase,*dsbase,*esbase,*ssbase,*trbase;
