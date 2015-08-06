@@ -10,9 +10,8 @@ the machine, complete of the characteristic 4-quadrant graphical user interface.
 In order to use the program you need the original ROM, which is copyrighted by 
 IBM. You won't find it distributed with this package.
 
-IBMulator emulates only the PS/1 with the 80286 CPU (sub-models n01, n34, n41.) 
-It will not work with a BIOS from the model 2011 n42, which had a 386sx and no 
-ROM DOS installed.
+IBMulator emulates only the PS/1 with the 80286 CPU (model 2011, sub-models n01, 
+n34, n41.)
 
 See the project page at https://barotto.github.io/IBMulator/ for screenshots, 
 videos and additional information.
@@ -109,7 +108,7 @@ The offset value is equal to "start sector"*512. The start sector value can be
 determined with:
 $ fdisk -l hdd.img
 
-*Nota bene*: if you change the disk type from the default 35 (WDL-330P) to any 
+*Note*: if you change the disk type from the default 35 (WDL-330P) to any 
 other type, the automatically created image will be 0-filled and you'll need to 
 use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have 
 accurate timings emulation; any other type have the same performance as type
@@ -136,19 +135,6 @@ stores new files, like screenshots and savestates
 -v NUM  Sets the logging verbosity level (from 0 to 2)
 
 
-## KNOWN BUGS
-
-### Linux
-
-* When scaling is on and the window is maximized, GUI elements could be 
-displaced when VGA resolution changes. This is due to a bug in SDL 2 that 
-prevents the program to know when the window is maximized.
-* Performance can be low if an On Demand CPU scaling governor is in use. Switch 
-it to Performance (this is a known issue with the Linux CPUfreq governors).
-* Under Ubuntu, the Unity desktop environment can become sluggish (known
-bug: https://bugs.launchpad.net/unity/+bug/1415195)
-
-
 ## COMPILING
 
 ### Requirements
@@ -166,7 +152,7 @@ If you cloned the code from the GitHub repo you also need the GNU Autotools.
 You need libarchive if you want to use zipped ROM sets.
 
 Without libsamplerate audio samples will not be played unless they are at the 
-same rate of the mixer. 
+same rate as the mixer. 
 
 ### General instructions
 
