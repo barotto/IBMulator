@@ -772,7 +772,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			// descriptor AR byte must indicate code seg
 			// and code segment descriptor DPL<=CPL, else #GP(selector+EXT)
-			if(!cs_descriptor.valid || cs_descriptor.segment==0 ||
+			if(!cs_descriptor.valid || !cs_descriptor.segment ||
 				!(cs_descriptor.type & SEG_TYPE_EXECUTABLE) || cs_descriptor.dpl > CPL)
 			{
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
@@ -925,11 +925,21 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			SET_IP(gate_dest_offset);
 
-			// if interrupt gate then set IF to 0
-			if(!(gate_descriptor.type & 1)) // even is int-gate
+			/* The difference between a trap and an interrupt gate is whether
+			 * the interrupt enable flag is to be cleared or not. An interrupt
+			 * gate specifies a procedure that enters with interrupts disabled
+			 * (i.e., with the interrupt enable flag cleared); entry via a trap
+			 * gate leaves the interrupt enable status unchanged.
+			 */
+			if(gate_descriptor.type == DESC_TYPE_INTR_GATE) {
 				SET_FLAG(IF,false);
-			SET_FLAG(TF,false);
+			}
+
+			/* The NT flag is always cleared (after the old NT state is saved on
+			 * the stack) when an interrupt uses these gates.
+			 */
 			SET_FLAG(NT,false);
+			SET_FLAG(TF,false);
 
 			g_cpubus.invalidate_pq();
 
@@ -2726,7 +2736,7 @@ bool CPUExecutor::INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *cor
 	return true;
 }
 
-void CPUExecutor::INT(uint8_t _vector)
+void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 {
 	uint8_t ah = REG_AH;
 	uint32_t retaddr = GET_PHYADDR(CS, REG_IP);
@@ -2751,10 +2761,6 @@ void CPUExecutor::INT(uint8_t _vector)
 				return;
 			}
 		}
-	}
-
-	if(CPULOG) {
-		g_cpu.INT(retaddr);
 	}
 
 	//DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
@@ -2791,16 +2797,12 @@ void CPUExecutor::INT(uint8_t _vector)
 		m_dos_prg_int_exit = 0;
 	}
 
-	if(IS_PMODE()) {
-		interrupt_pmode(_vector, CPU_SOFTWARE_INTERRUPT, 0, 0);
-	} else {
-		interrupt(_vector);
-	}
+	g_cpu.interrupt(_vector, _type, false, 0);
 }
 
-void CPUExecutor::INT3() { INT(3); }
-void CPUExecutor::INT_db(uint8_t vector) { INT(vector); }
-void CPUExecutor::INTO() { if(FLAG_OF) INT(4); }
+void CPUExecutor::INT3() { INT(3, CPU_SOFTWARE_EXCEPTION); }
+void CPUExecutor::INT_db(uint8_t vector) { INT(vector, CPU_SOFTWARE_INTERRUPT); }
+void CPUExecutor::INTO() { if(FLAG_OF) INT(4, CPU_SOFTWARE_EXCEPTION); }
 
 
 /*******************************************************************************

@@ -35,6 +35,7 @@
 #define CPULOG_WRITE_TIME    false   // write instruction machine time?
 #define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
 #define CPULOG_WRITE_HEX     true    // write instruction as hex codes?
+#define CPULOG_WRITE_STATE   false   // write the CPU global state?
 #define CPULOG_WRITE_CORE    false   // write the CPU registers?
 #define CPULOG_WRITE_PQ      true    // write the prefetch queue?
 #define CPULOG_WRITE_TIMINGS true    // write various timing values?
@@ -93,6 +94,7 @@ void size_check()
 	#define MEMORY_TRAPS  false
 	#define INT_TRAPS     true
 	#define STOP_AT_EXC   false
+	#define STOP_AT_EXC_VEC 0xFF
 	#define UD6_AUTO_DUMP false
 	#define HDD_TIMING    false //used to speed up the HDD and ease the debugging
 
@@ -110,6 +112,7 @@ void size_check()
 	#define MEMORY_TRAPS  false
 	#define INT_TRAPS     false
 	#define STOP_AT_EXC   false
+	#define STOP_AT_EXC_VEC 0xFF
 	#define UD6_AUTO_DUMP false
 	#define HDD_TIMING    true
 

@@ -103,7 +103,6 @@ public:
 
 class CPU
 {
-friend class Machine;
 protected:
 
 	uint32_t m_freq;
@@ -115,12 +114,7 @@ protected:
 	CPUState m_s;
 
 	void handle_async_event();
-
-	void interrupt(uint8_t _vector, unsigned _type,
-			bool _push_error, uint16_t _error_code);
-
 	void mask_event(uint32_t event);
-
 	void signal_event(uint32_t _event);
 	void clear_event(uint32_t _event);
 	bool is_masked_event(uint32_t _event);
@@ -134,7 +128,6 @@ protected:
 	void wait_for_event();
 
 	CPULogger m_logger;
-	uint32_t m_iret_address;
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
 
@@ -156,6 +149,7 @@ public:
 	GCC_ATTRIBUTE(always_inline)
 	inline uint32_t get_cycle_time_ns() { return m_cycle_time; }
 
+	void interrupt(uint8_t _vector, unsigned _type,	bool _push_error, uint16_t _error_code);
 	void clear_INTR();
 	void raise_INTR();
 	void deliver_NMI();
@@ -176,7 +170,6 @@ public:
 	void write_log();
 	void enable_prg_log(std::string _prg_name);
 	void disable_prg_log();
-	void INT(uint32_t _retaddr);
 	void DOS_program_launch(std::string _name);
 	void DOS_program_start(std::string _name);
 	void DOS_program_finish(std::string _name);

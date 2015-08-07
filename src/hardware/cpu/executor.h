@@ -131,7 +131,7 @@ private:
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
 
-	void INT(uint8_t vector);
+	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
 
 	void IRET_pmode();

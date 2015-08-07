@@ -77,7 +77,6 @@ void CPU::reset(uint _signal)
 		m_s.HRQ = false;
 		m_s.inhibit_mask = 0;
 		m_s.inhibit_icount = 0;
-		m_iret_address = 0;
 		m_logger.reset_iret_address();
 		disable_prg_log();
 	} else {
@@ -117,7 +116,6 @@ void CPU::restore_state(StateBuf &_state)
 	g_cpubus.restore_state(_state);
 	g_cpucore.restore_state(_state);
 
-	m_iret_address = 0;
 	m_logger.reset_iret_address();
 	disable_prg_log();
 }
@@ -190,7 +188,7 @@ uint CPU::step()
 			m_instr->cycles.rep = 0;
 		} catch(CPUException &e) {
 			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %u\n", e.vector);
-			if(STOP_AT_EXC) {
+			if(STOP_AT_EXC && (STOP_AT_EXC_VEC==0xFF || e.vector==STOP_AT_EXC_VEC)) {
 				g_machine.set_single_step(true);
 				if(e.vector == CPU_UD_EXC && UD6_AUTO_DUMP) {
 					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->csip);
@@ -244,8 +242,6 @@ uint CPU::step()
 			g_cpubus,                     // bus
 			cycles                        // cycles used
 		);
-		m_logger.set_iret_address(m_iret_address);
-		m_iret_address = 0;
 	}
 
 	ASSERT(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
@@ -435,33 +431,31 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 		case CPU_EXTERNAL_INTERRUPT:
 		case CPU_NMI:
 		case CPU_HARDWARE_EXCEPTION:
+			PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, TYPE = %u, EXT = %u\n",
+					_vector, _type, m_s.EXT);
 			break;
 		default:
 			PERRF_ABORT(LOG_CPU, "interrupt(): unknown exception type %d\n", _type);
 			break;
 	}
 
-	PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, TYPE = %u, EXT = %u\n", _vector, _type, m_s.EXT);
-
 	// Discard any traps and inhibits for new context; traps will
 	// resume upon return.
 	clear_inhibit_mask();
 	clear_debug_trap();
 
-	if(_type != CPU_SOFTWARE_INTERRUPT) {
-		if(CPULOG) {
-			m_logger.set_iret_address(GET_PHYADDR(CS, REG_IP));
+	if(CPULOG) {
+		m_logger.set_iret_address(GET_PHYADDR(CS, REG_IP));
+	}
+	try {
+		if(IS_PMODE()) {
+			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
+		} else {
+			g_cpuexecutor.interrupt(_vector);
 		}
-		try {
-			if(IS_PMODE()) {
-				g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
-			} else {
-				g_cpuexecutor.interrupt(_vector);
-			}
-		} catch(CPUException &e) {
-			m_s.EXT = 0;
-			throw;
-		}
+	} catch(CPUException &e) {
+		m_s.EXT = 0;
+		throw;
 	}
 
 	m_s.EXT = 0;
@@ -701,11 +695,6 @@ void CPU::DOS_program_finish(std::string _name)
 		m_logger.close_file();
 		m_logger.reset_iret_address();
 	}
-}
-
-void CPU::INT(uint32_t _retaddr)
-{
-	m_iret_address = _retaddr;
 }
 
 void CPU::write_log()
