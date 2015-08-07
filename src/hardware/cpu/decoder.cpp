@@ -21,6 +21,7 @@
 #include "decoder.h"
 #include "core.h"
 #include "executor.h"
+#include "logger.h"
 #include "../memory.h"
 
 
