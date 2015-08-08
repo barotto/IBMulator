@@ -150,7 +150,11 @@ uint CPU::step()
 		if(m_s.async_event) {
 			// check on events which occurred for previous instructions (traps)
 			// and ones which are asynchronous to the CPU (hardware interrupts)
-			handle_async_event();
+			try {
+				handle_async_event();
+			} catch(CPUException &e) {
+				exception(e);
+			}
 			if(m_s.activity_state != CPU_STATE_ACTIVE) {
 				// something (eg. triple-fault) put the CPU in non active state
 				// return a non zero number of elapsed cycles anyway
@@ -447,15 +451,11 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	if(CPULOG) {
 		m_logger.set_iret_address(GET_PHYADDR(CS, REG_IP));
 	}
-	try {
-		if(IS_PMODE()) {
-			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
-		} else {
-			g_cpuexecutor.interrupt(_vector);
-		}
-	} catch(CPUException &e) {
-		m_s.EXT = 0;
-		throw;
+
+	if(IS_PMODE()) {
+		g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
+	} else {
+		g_cpuexecutor.interrupt(_vector);
 	}
 
 	m_s.EXT = 0;
@@ -466,7 +466,7 @@ void CPU::exception(CPUException _exc)
 	PDEBUGF(LOG_V2, LOG_CPU, "exception(0x%02x): error_code=%04x\n",
 			_exc.vector, _exc.error_code);
 	bool push_error = false;
-	uint16_t error_code = (_exc.error_code & 0xfffe);
+	uint16_t error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
 	m_s.EXT = 0;
 	switch(_exc.vector) {
 		case CPU_DIV_ER_EXC: //0
@@ -526,8 +526,6 @@ void CPU::exception(CPUException _exc)
 			PERRF_ABORT(LOG_CPU, "exception(%u): bad vector!\n", _exc.vector);
 			break;
 	}
-
-	error_code |= m_s.EXT;
 
 	try {
 		interrupt(_exc.vector, CPU_HARDWARE_EXCEPTION, push_error, error_code);
