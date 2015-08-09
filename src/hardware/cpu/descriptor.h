@@ -56,7 +56,6 @@ enum DescriptorType {
 	DESC_TYPE_RINVALID   = 8
 };
 
-#define DESC_TSS_BUSY_BIT64 0x02000000
 
 struct Descriptor
 {
@@ -123,7 +122,7 @@ struct Descriptor
 		limit = _LIMIT;
 	}
 
-	void set(uint64_t _data) {
+	inline void operator=(uint64_t _data) {
 		set_LIMIT(uint16_t(_data));
 		set_BASE(uint16_t(_data>>16), uint8_t(_data>>32));
 		set_AR(uint8_t(_data>>40));

@@ -36,8 +36,8 @@ struct Selector
 	uint8_t ti;     // Table indicator
 	uint16_t index; // Segment index
 
-	inline void set(uint16_t _selector) {
-		value = _selector;
+	inline void operator=(uint16_t _value) {
+		value = _value;
 		rpl = value & 3;
 		ti = (value >> 2) & 1;
 		index = value >> 3;

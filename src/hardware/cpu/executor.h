@@ -106,7 +106,7 @@ private:
 	uint16_t stack_read(uint16_t _offset);
 	void stack_write(uint16_t _offset, uint16_t _data);
 
-	void get_SS_SP_from_TSS(unsigned pl, uint16_t *ss, uint16_t *sp);
+	void get_SS_SP_from_TSS(unsigned pl, uint16_t &ss, uint16_t &sp);
 
 	void switch_tasks_load_selector(SegReg &_segreg, uint8_t _cs_rpl);
 	void switch_tasks(Selector &selector, Descriptor &descriptor, unsigned source,

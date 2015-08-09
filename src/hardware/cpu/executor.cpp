@@ -574,7 +574,7 @@ void CPUExecutor::illegal_opcode()
 	throw CPUException(CPU_UD_EXC, 0);
 }
 
-void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t *ss, uint16_t *sp)
+void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t &ss_, uint16_t &sp_)
 {
 	if(!REG_TR.desc.valid)
 		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR invalid\n");
@@ -588,8 +588,8 @@ void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t *ss, uint16_t *sp)
 		PDEBUGF(LOG_V2, LOG_CPU, "get_SS_SP_from_TSS: TSSstackaddr > TSS.LIMIT\n");
 		throw CPUException(CPU_TS_EXC, REG_TR.sel.value & SELECTOR_RPL_MASK);
 	}
-	*ss = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr + 2);
-	*sp = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr);
+	ss_ = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr + 2);
+	sp_ = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr);
 }
 
 void CPUExecutor::interrupt(uint8_t _vector)
@@ -643,17 +643,14 @@ void CPUExecutor::interrupt(uint8_t _vector)
 void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		bool push_error, uint16_t error_code)
 {
+	Selector   cs_selector;
 	Descriptor gate_descriptor, cs_descriptor;
-	Selector cs_selector;
 
-	uint16_t raw_tss_selector;
 	Selector   tss_selector;
 	Descriptor tss_descriptor;
 
 	uint16_t gate_dest_selector;
 	uint32_t gate_dest_offset;
-
-	uint64_t descdata;
 
 	// interrupt vector must be within IDT table limits,
 	// else #GP(vector*8 + 2 + EXT)
@@ -664,8 +661,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 
-	descdata = g_cpubus.mem_read_qword(GET_BASE(IDTR) + vector*8);
-	gate_descriptor.set(descdata);
+	gate_descriptor = g_cpubus.mem_read_qword(GET_BASE(IDTR) + vector*8);
 
 	if(!gate_descriptor.valid || gate_descriptor.segment) {
 		PDEBUGF(LOG_V2,LOG_CPU,
@@ -703,43 +699,41 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	switch(gate_descriptor.type) {
 		case DESC_TYPE_TASK_GATE:
 			// examine selector to TSS, given in task gate descriptor
-			raw_tss_selector = gate_descriptor.selector;
-			tss_selector.set(raw_tss_selector);
+			tss_selector = gate_descriptor.selector;
 			// must specify global in the local/global bit,
 			//      else #GP(TSS selector)
 			if(tss_selector.ti) {
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): tss_selector.ti=1 from gate descriptor - #GP(tss_selector)\n");
-				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// index must be within GDT limits, else #TS(TSS selector)
 			try {
-				descdata = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
+				tss_descriptor = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad tss_selector fetch\n");
 				throw;
 			}
-			tss_descriptor.set(descdata);
 
 			// AR byte must specify available TSS,
 			//   else #GP(TSS selector)
 			if(tss_descriptor.valid==0 || tss_descriptor.segment) {
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
-				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			if(tss_descriptor.type != DESC_TYPE_AVAIL_TSS) {
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
-				throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// TSS must be present, else #NP(TSS selector)
 			if(!tss_descriptor.present) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): TSS descriptor.p == 0\n");
-				throw CPUException(CPU_NP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+				throw CPUException(CPU_NP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// switch tasks with nesting to TSS
@@ -758,17 +752,16 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				PDEBUGF(LOG_V1,LOG_CPU,"int_trap_gate(): selector null\n");
 				throw CPUException(CPU_GP_EXC, 0);
 			}
-			cs_selector.set(gate_dest_selector);
+			cs_selector = gate_dest_selector;
 
 			// selector must be within its descriptor table limits
 			// else #GP(selector+EXT)
 			try {
-				descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+				cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad cs_selector fetch\n");
 				throw;
 			}
-			cs_descriptor.set(descdata);
 
 			// descriptor AR byte must indicate code seg
 			// and code segment descriptor DPL<=CPL, else #GP(selector+EXT)
@@ -797,7 +790,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): INTERRUPT TO INNER PRIVILEGE\n");
 
 				// check selector and descriptor for new stack in current TSS
-				get_SS_SP_from_TSS(cs_descriptor.dpl, &SS_for_cpl_x, &SP_for_cpl_x);
+				get_SS_SP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, SP_for_cpl_x);
 
 				// Selector must be non-null else #TS(EXT)
 				if((SS_for_cpl_x & SELECTOR_RPL_MASK) == 0) {
@@ -807,16 +800,15 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 				// selector index must be within its descriptor table limits
 				// else #TS(SS selector + EXT)
-				ss_selector.set(SS_for_cpl_x);
+				ss_selector = SS_for_cpl_x;
 
 				// fetch 2 dwords of descriptor; call handles out of limits checks
 				try {
-					descdata = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
+					ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
 				} catch(CPUException &e) {
 					PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
 					throw;
 				}
-				ss_descriptor.set(descdata);
 
 				// selector rpl must = dpl of code segment,
 				// else #TS(SS selector + ext)
@@ -850,7 +842,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 				// IP must be within CS segment boundaries, else #GP(0)
 				if(gate_dest_offset > cs_descriptor.limit) {
-					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate EIP > CS.limit\n");
+					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate IP > CS.limit\n");
 					throw CPUException(CPU_GP_EXC, 0);
 				}
 
@@ -909,13 +901,13 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 				// push flags onto stack
 				// push current CS selector onto stack
-				// push return offset onto stack
-
+				// push return IP onto stack
 				stack_push(GET_FLAGS());
 				stack_push(REG_CS.sel.value);
 				stack_push(REG_IP);
-				if(push_error)
+				if(push_error) {
 					stack_push(error_code);
+				}
 
 				// load CS:IP from gate
 				// load CS descriptor
@@ -954,18 +946,15 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)
 {
 	Descriptor descriptor;
-	uint64_t descdata;
 
 	// NULL selector is OK, will leave cache invalid
 	if((_seg.sel.value & SELECTOR_RPL_MASK) != 0) {
 		try {
-			descdata = g_cpucore.fetch_descriptor(_seg.sel, CPU_TS_EXC);
+			descriptor = g_cpucore.fetch_descriptor(_seg.sel, CPU_TS_EXC);
 		} catch (CPUException &e) {
 			PERRF(LOG_CPU,"switch_tasks(%s): bad selector fetch\n", _seg.to_string());
 			throw;
 		}
-
-		descriptor.set(descdata);
 
 		/* AR byte must indicate data or readable code segment else #TS(selector) */
 		if(descriptor.segment==0 ||
@@ -1145,7 +1134,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	// Step 8: Load the task register with the segment selector and
 	//         descriptor for the new task TSS.
 
-	REG_TR.sel = selector;
+	REG_TR.sel  = selector;
 	REG_TR.desc = descriptor;
 	REG_TR.desc.type |= 2; // mark TSS in TR as busy
 
@@ -1184,19 +1173,19 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	// Fill in selectors for all segment registers.  If errors
 	// occur later, the selectors will at least be loaded.
-	REG_CS.sel.set(raw_cs_selector);
-	REG_SS.sel.set(raw_ss_selector);
-	REG_DS.sel.set(raw_ds_selector);
-	REG_ES.sel.set(raw_es_selector);
-	REG_LDTR.sel.set(raw_ldt_selector);
+	REG_CS.sel   = raw_cs_selector;
+	REG_SS.sel   = raw_ss_selector;
+	REG_DS.sel   = raw_ds_selector;
+	REG_ES.sel   = raw_es_selector;
+	REG_LDTR.sel = raw_ldt_selector;
 
 	// Start out with invalid descriptor, fill in with
 	// values only as they are validated
 	REG_LDTR.desc.valid = false;
-	REG_CS.desc.valid = false;
-	REG_SS.desc.valid = false;
-	REG_DS.desc.valid = false;
-	REG_ES.desc.valid = false;
+	REG_CS.desc.valid   = false;
+	REG_SS.desc.valid   = false;
+	REG_DS.desc.valid   = false;
+	REG_ES.desc.valid   = false;
 
 	unsigned save_CPL = CPL;
 	/* set CPL to 3 to force a privilege level change and stack switch if SS
@@ -1211,14 +1200,12 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	}
 
 	if((raw_ldt_selector & SELECTOR_RPL_MASK) != 0) {
-		uint64_t descdata;
 		try {
-			descdata = g_cpucore.fetch_descriptor(REG_LDTR.sel, CPU_TS_EXC);
+			ldt_descriptor = g_cpucore.fetch_descriptor(REG_LDTR.sel, CPU_TS_EXC);
 		} catch(CPUException &e) {
 			PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad LDT fetch\n");
 			throw;
 		}
-		ldt_descriptor.set(descdata);
 
 		// LDT selector of new task is valid, else #TS(new task's LDT)
 		if(ldt_descriptor.valid == false ||
@@ -1244,15 +1231,12 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	// SS
 	if((raw_ss_selector & SELECTOR_RPL_MASK) != 0) {
-		uint64_t descdata;
 		try {
-			descdata = g_cpucore.fetch_descriptor(REG_SS.sel, CPU_TS_EXC);
+			ss_descriptor = g_cpucore.fetch_descriptor(REG_SS.sel, CPU_TS_EXC);
 		} catch(CPUException &e) {
 			PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad SS fetch\n");
 			throw;
 		}
-
-		ss_descriptor.set(descdata);
 
 		// SS selector must be within its descriptor table limits else #TS(SS)
 		// SS descriptor AR byte must must indicate writable data segment,
@@ -1311,18 +1295,16 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	// CS
     if((raw_cs_selector & SELECTOR_RPL_MASK) != 0) {
-		uint64_t descdata;
 		try {
-			descdata = g_cpucore.fetch_descriptor(REG_CS.sel, CPU_TS_EXC);
+			cs_descriptor = g_cpucore.fetch_descriptor(REG_CS.sel, CPU_TS_EXC);
 		} catch(CPUException &e) {
 			PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad CS fetch\n");
 			throw;
 		}
-		cs_descriptor.set(descdata);
 
 		// CS descriptor AR byte must indicate code segment else #TS(CS)
 		if(!cs_descriptor.valid || !cs_descriptor.segment ||
-				cs_descriptor.is_data_segment())
+			cs_descriptor.is_data_segment())
 		{
 			PERRF(LOG_CPU,"switch_tasks(exception after commit point): CS not valid executable seg\n");
 			throw CPUException(CPU_TS_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
@@ -1380,8 +1362,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 void CPUExecutor::task_gate(Selector &selector, Descriptor &gate_descriptor, unsigned source)
 {
-	uint16_t raw_tss_selector;
-	Selector tss_selector;
+	Selector   tss_selector;
 	Descriptor tss_descriptor;
 
 	// task gate must be present else #NP(gate selector)
@@ -1392,34 +1373,31 @@ void CPUExecutor::task_gate(Selector &selector, Descriptor &gate_descriptor, uns
 
 	// examine selector to TSS, given in Task Gate descriptor
 	// must specify global in the local/global bit else #GP(TSS selector)
-	raw_tss_selector = gate_descriptor.selector;
-	tss_selector.set(raw_tss_selector);
+	tss_selector = gate_descriptor.selector;
 
 	if(tss_selector.ti) {
 		PERRF(LOG_CPU,"task_gate: tss_selector.ti=1\n");
-		throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// index must be within GDT limits else #GP(TSS selector)
-	uint64_t descdata = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
-
-	// descriptor AR byte must specify available TSS
-	//   else #GP(TSS selector)
-	tss_descriptor.set(descdata);
+	tss_descriptor = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
 
 	if(tss_descriptor.valid==0 || tss_descriptor.segment) {
 		PERRF(LOG_CPU,"task_gate: TSS selector points to bad TSS\n");
-		throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 	}
+	// descriptor AR byte must specify available TSS
+	//   else #GP(TSS selector)
 	if(tss_descriptor.type != DESC_TYPE_AVAIL_TSS) {
 		PERRF(LOG_CPU,"task_gate: TSS selector points to bad TSS\n");
-		throw CPUException(CPU_GP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// task state segment must be present, else #NP(tss selector)
 	if(!tss_descriptor.present) {
 		PERRF(LOG_CPU,"task_gate: TSS descriptor.p == 0\n");
-		throw CPUException(CPU_NP_EXC, raw_tss_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_NP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// SWITCH_TASKS _without_ nesting to TSS
@@ -1428,42 +1406,39 @@ void CPUExecutor::task_gate(Selector &selector, Descriptor &gate_descriptor, uns
 
 void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 {
-	Selector cs_selector;
+	Selector   cs_selector;
 	Descriptor cs_descriptor;
-	uint64_t descdata;
 
 	// examine code segment selector in call gate descriptor
 	PDEBUGF(LOG_V2, LOG_CPU, "call_protected: call gate\n");
 
-	uint16_t dest_selector = gate_descriptor.selector;
-	uint16_t new_IP       = gate_descriptor.offset;
+	cs_selector     = gate_descriptor.selector;
+	uint16_t new_IP = gate_descriptor.offset;
 
 	// selector must not be null else #GP(0)
-	if((dest_selector & SELECTOR_RPL_MASK) == 0) {
+	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "call_protected: selector in gate null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-	cs_selector.set(dest_selector);
 	// selector must be within its descriptor table limits,
 	//   else #GP(code segment selector)
-	descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
-	cs_descriptor.set(descdata);
+	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// AR byte of selected descriptor must indicate code segment,
 	//   else #GP(code segment selector)
 	// DPL of selected descriptor must be <= CPL,
 	// else #GP(code segment selector)
 	if(!cs_descriptor.valid || !cs_descriptor.segment ||
-			cs_descriptor.is_data_segment() || cs_descriptor.dpl > CPL)
+		cs_descriptor.is_data_segment() || cs_descriptor.dpl > CPL)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "call_protected: selected descriptor is not code\n");
-		throw CPUException(CPU_GP_EXC, dest_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// code segment must be present else #NP(selector)
 	if(!cs_descriptor.present) {
 		PDEBUGF(LOG_V2, LOG_CPU, "call_protected: code segment not present!\n");
-		throw CPUException(CPU_NP_EXC, dest_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_NP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// CALL GATE TO MORE PRIVILEGE
@@ -1479,7 +1454,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL GATE TO MORE PRIVILEGE LEVEL\n");
 
 		// get new SS selector for new privilege level from TSS
-		get_SS_SP_from_TSS(cs_descriptor.dpl, &SS_for_cpl_x, &SP_for_cpl_x);
+		get_SS_SP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, SP_for_cpl_x);
 
 		// check selector & descriptor for new SS:
 		// selector must not be null, else #TS(0)
@@ -1490,9 +1465,8 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// selector index must be within its descriptor table limits,
 		//   else #TS(SS selector)
-		ss_selector.set(SS_for_cpl_x);
-		descdata = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
-		ss_descriptor.set(descdata);
+		ss_selector   = SS_for_cpl_x;
+		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
 
 		// selector's RPL must equal DPL of code segment,
 		//   else #TS(SS selector)
@@ -1511,8 +1485,8 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		// descriptor must indicate writable data segment,
 		//   else #TS(SS selector)
 		if(!ss_descriptor.valid || !ss_descriptor.segment ||
-				ss_descriptor.is_code_segment() ||
-				!ss_descriptor.is_data_segment_writeable())
+			ss_descriptor.is_code_segment() ||
+			!ss_descriptor.is_data_segment_writeable())
 		{
 			PDEBUGF(LOG_V2, LOG_CPU, "call_protected: ss descriptor is not writable data seg\n");
 			throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
@@ -1537,11 +1511,11 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// Prepare new stack segment
 		SegReg new_stack;
-		new_stack.sel = ss_selector;
-		new_stack.desc = ss_descriptor;
+		new_stack.sel     = ss_selector;
+		new_stack.desc    = ss_descriptor;
 		new_stack.sel.rpl = cs_descriptor.dpl;
 		// add cpl to the selector value
-		new_stack.sel.value = (SELECTOR_RPL_MASK & new_stack.sel.value) | new_stack.sel.rpl;
+		new_stack.sel.value = (new_stack.sel.value & SELECTOR_RPL_MASK) | new_stack.sel.rpl;
 
 		/* load new SS:SP value from TSS */
 		uint16_t temp_SP = SP_for_cpl_x;
@@ -1639,7 +1613,7 @@ void CPUExecutor::branch_near(uint16_t new_IP)
 
 void CPUExecutor::call_protected(uint16_t cs_raw, uint16_t disp)
 {
-	Selector cs_selector;
+	Selector   cs_selector;
 	Descriptor cs_descriptor;
 
 	/* new cs selector must not be null, else #GP(0) */
@@ -1647,18 +1621,16 @@ void CPUExecutor::call_protected(uint16_t cs_raw, uint16_t disp)
 		PDEBUGF(LOG_V2, LOG_CPU,"call_protected: CS selector null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-	cs_selector.set(cs_raw);
+	cs_selector = cs_raw;
 
 	// check new CS selector index within its descriptor limits,
 	// else #GP(new CS selector)
-	uint64_t descdata;
 	try {
-		descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+		cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "call_protected: descriptor fetch error\n");
 		throw;
 	}
-	cs_descriptor.set(descdata);
 
 	// examine AR byte of selected descriptor for various legal values
 	if(!cs_descriptor.valid) {
@@ -2835,15 +2807,12 @@ void CPUExecutor::IRET()
 
 void CPUExecutor::IRET_pmode()
 {
-	uint16_t raw_cs_selector, raw_ss_selector;
 	Selector cs_selector, ss_selector;
-	uint64_t descdata;
 	Descriptor cs_descriptor, ss_descriptor;
 
 	if(FLAG_NT)   /* NT = 1: RETURN FROM NESTED TASK */
 	{
 		/* what's the deal with NT ? */
-		uint16_t raw_link_selector;
 		Selector   link_selector;
 		Descriptor tss_descriptor;
 
@@ -2853,36 +2822,32 @@ void CPUExecutor::IRET_pmode()
 			PERRF_ABORT(LOG_CPU, "IRET: TR not valid!\n");
 
 		// examine back link selector in TSS addressed by current TR
-		raw_link_selector = g_cpubus.mem_read_word(REG_TR.desc.base);
+		link_selector = g_cpubus.mem_read_word(REG_TR.desc.base);
 
 		// must specify global, else #TS(new TSS selector)
-		link_selector.set(raw_link_selector);
-
 		if(link_selector.ti) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: link selector.ti=1\n");
-			throw CPUException(CPU_TS_EXC, raw_link_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_TS_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		// index must be within GDT limits, else #TS(new TSS selector)
-		descdata = g_cpucore.fetch_descriptor(link_selector, CPU_TS_EXC);
-
-		// AR byte must specify TSS, else #TS(new TSS selector)
-		// new TSS must be busy, else #TS(new TSS selector)
-		tss_descriptor.set(descdata);
+		tss_descriptor = g_cpucore.fetch_descriptor(link_selector, CPU_TS_EXC);
 
 		if(!tss_descriptor.valid || tss_descriptor.segment) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: TSS selector points to bad TSS\n");
-			throw CPUException(CPU_TS_EXC, raw_link_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_TS_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
+		// AR byte must specify TSS, else #TS(new TSS selector)
+		// new TSS must be busy, else #TS(new TSS selector)
 		if(tss_descriptor.type != DESC_TYPE_BUSY_TSS) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: TSS selector points to bad TSS\n");
-			throw CPUException(CPU_TS_EXC, raw_link_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_TS_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		// TSS must be present, else #NP(new TSS selector)
 		if(!tss_descriptor.present) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: task descriptor.p == 0\n");
-			throw CPUException(CPU_NP_EXC, raw_link_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_NP_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		// switch tasks (without nesting) to TSS specified by back link selector
@@ -2903,31 +2868,28 @@ void CPUExecutor::IRET_pmode()
 	* IP     SP+0
 	*/
 
-	new_flags       = stack_read(REG_SP + 4);
-    raw_cs_selector = stack_read(REG_SP + 2);
-    new_ip          = stack_read(REG_SP + 0);
-
-    cs_selector.set(raw_cs_selector);
+	new_flags   = stack_read(REG_SP + 4);
+    cs_selector = stack_read(REG_SP + 2);
+    new_ip      = stack_read(REG_SP + 0);
 
 	// return CS selector must be non-null, else #GP(0)
-	if((raw_cs_selector & SELECTOR_RPL_MASK) == 0) {
+	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "IRET: return CS selector null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
 	// selector index must be within descriptor table limits,
 	// else #GP(return selector)
-	descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
-	cs_descriptor.set(descdata);
+	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// return CS selector RPL must be >= CPL, else #GP(return selector)
 	if(cs_selector.rpl < CPL) {
 		PDEBUGF(LOG_V2, LOG_CPU, "iret: return selector RPL < CPL\n");
-		throw CPUException(CPU_GP_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// check code-segment descriptor
-	CPUCore::check_CS(raw_cs_selector,cs_descriptor,0,cs_selector.rpl);
+	CPUCore::check_CS(cs_selector.value,cs_descriptor,0,cs_selector.rpl);
 
 	if(cs_selector.rpl == CPL) { /* INTERRUPT RETURN TO SAME LEVEL */
 
@@ -2956,27 +2918,24 @@ void CPUExecutor::IRET_pmode()
 
 		/* examine return SS selector and associated descriptor */
 
-		raw_ss_selector = stack_read(REG_SP + 8);
+		ss_selector = stack_read(REG_SP + 8);
 
 		/* selector must be non-null, else #GP(0) */
-		if((raw_ss_selector & SELECTOR_RPL_MASK) == 0) {
+		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: SS selector null\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
-
-		ss_selector.set(raw_ss_selector);
 
 		/* selector RPL must = RPL of return CS selector,
 		 * else #GP(SS selector) */
 		if(ss_selector.rpl != cs_selector.rpl) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: SS.rpl != CS.rpl\n");
-			throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		/* selector index must be within its descriptor table limits,
 		 * else #GP(SS selector) */
-		descdata = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
-		ss_descriptor.set(descdata);
+		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
 
 		/* AR byte must indicate a writable data segment,
 		 * else #GP(SS selector) */
@@ -2986,20 +2945,20 @@ void CPUExecutor::IRET_pmode()
 		)
 		{
 			PDEBUGF(LOG_V2, LOG_CPU, "iret: SS AR byte not writable or code segment\n");
-			throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		/* stack segment DPL must equal the RPL of the return CS selector,
 		 * else #GP(SS selector) */
 		if(ss_descriptor.dpl != cs_selector.rpl) {
 			PDEBUGF(LOG_V2, LOG_CPU, "iret: SS.dpl != CS selector RPL\n");
-			throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		/* SS must be present, else #NP(SS selector) */
 		if(!ss_descriptor.present) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: SS not present!\n");
-			throw CPUException(CPU_NP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
+			throw CPUException(CPU_NP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		new_ip    = stack_read(REG_SP + 0);
@@ -3069,13 +3028,12 @@ void CPUExecutor::JMP_pmode(uint16_t _cs, uint16_t _disp)
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	selector.set(_cs);
+	selector = _cs;
 
 	/* destination selector index is within its descriptor table
 	 * limits else #GP(selector)
 	 */
-	uint64_t descdata = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
-	descriptor.set(descdata);
+	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* examine AR byte of destination selector for legal values: */
 	if(descriptor.segment) {
@@ -3128,7 +3086,7 @@ void CPUExecutor::JMP_pmode(uint16_t _cs, uint16_t _disp)
 
 void CPUExecutor::JMP_call_gate(Selector &selector, Descriptor &gate_descriptor)
 {
-	Selector gate_cs_selector;
+	Selector   gate_cs_selector;
 	Descriptor gate_cs_descriptor;
 
 	// task gate must be present else #NP(gate selector)
@@ -3137,20 +3095,17 @@ void CPUExecutor::JMP_call_gate(Selector &selector, Descriptor &gate_descriptor)
 		throw CPUException(CPU_NP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
+	gate_cs_selector = gate_descriptor.selector;
+
 	// examine selector to code segment given in call gate descriptor
 	// selector must not be null, else #GP(0)
-	uint16_t gate_cs_raw = gate_descriptor.selector;
-
-	if((gate_cs_raw & SELECTOR_RPL_MASK) == 0) {
+	if((gate_cs_selector.value & SELECTOR_RPL_MASK) == 0) {
 		PERRF(LOG_CPU,"JMP_call_gate: CS selector null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	gate_cs_selector.set(gate_cs_raw);
-
 	// selector must be within its descriptor table limits else #GP(CS selector)
-	uint64_t descdata = g_cpucore.fetch_descriptor(gate_cs_selector, CPU_GP_EXC);
-	gate_cs_descriptor.set(descdata);
+	gate_cs_descriptor = g_cpucore.fetch_descriptor(gate_cs_selector, CPU_GP_EXC);
 
 	// check code-segment descriptor
 	CPUCore::check_CS(gate_cs_selector, gate_cs_descriptor, 0, CPL);
@@ -3213,34 +3168,30 @@ void CPUExecutor::LAHF()
 
 void CPUExecutor::LAR_rw_ew()
 {
-	uint16_t raw_selector;
 	Descriptor descriptor;
-	Selector selector;
-	uint64_t descdata;
+	Selector   selector;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	raw_selector = load_ew();
+	selector = load_ew();
 
 	/* if selector null, clear ZF and done */
-	if((raw_selector & SELECTOR_RPL_MASK) == 0) {
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		SET_FLAG(ZF, false);
 		return;
 	}
 
-	selector.set(raw_selector);
 	try {
-		descdata = g_cpucore.fetch_descriptor(selector,0);
+		descriptor = g_cpucore.fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
 		//this fetch does not throw an exception
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: failed to fetch descriptor\n");
 		SET_FLAG(ZF, false);
 		return;
 	}
-	descriptor.set(descdata);
 
 	if(!descriptor.valid) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: descriptor not valid\n");
@@ -3253,7 +3204,7 @@ void CPUExecutor::LAR_rw_ew()
 	 * then load register with segment limit and set ZF
 	 */
 
-	if (descriptor.segment) { /* normal segment */
+	if(descriptor.segment) { /* normal segment */
 		if(descriptor.is_code_segment() && descriptor.is_code_segment_conforming()) {
 			/* ignore DPL for conforming segments */
 		} else {
@@ -3384,8 +3335,6 @@ void CPUExecutor::LLDT_ew()
 	/* protected mode */
 	Descriptor  descriptor;
 	Selector    selector;
-	uint16_t    raw_selector;
-	uint64_t    descdata;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU,"LLDT: not recognized in real mode\n");
@@ -3397,44 +3346,40 @@ void CPUExecutor::LLDT_ew()
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	raw_selector = load_ew();
+	selector = load_ew();
 
 	/* if selector is NULL, invalidate and done */
-	if((raw_selector & 0xfffc) == 0) {
-		REG_LDTR.sel.value = raw_selector;
-		REG_LDTR.desc.valid = 0;
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
+		REG_LDTR.sel = selector;
+		REG_LDTR.desc.valid = false;
 		return;
 	}
-
-	selector.set(raw_selector);
 
 	// #GP(selector) if the selector operand does not point into GDT
 	if(selector.ti != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU,"LLDT: selector.ti != 0\n");
-		throw CPUException(CPU_GP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
 	/* fetch descriptor; call handles out of limits checks */
-	descdata = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
-	descriptor.set(descdata);
+	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* if selector doesn't point to an LDT descriptor #GP(selector) */
 	if(!descriptor.valid || descriptor.segment ||
          descriptor.type != DESC_TYPE_LDT_DESC)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU,"LLDT: doesn't point to an LDT descriptor!\n");
-		throw CPUException(CPU_GP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
 	/* #NP(selector) if LDT descriptor is not present */
-	if (!descriptor.present) {
+	if(!descriptor.present) {
 		PDEBUGF(LOG_V2, LOG_CPU,"LLDT: LDT descriptor not present!\n");
-		throw CPUException(CPU_NP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_NP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
 	REG_LDTR.sel = selector;
 	REG_LDTR.desc = descriptor;
-	REG_LDTR.desc.valid = true;
 }
 
 
@@ -3493,14 +3438,14 @@ void CPUExecutor::LOADALL()
 	}
 	SET_MSW(word_reg);
 
-	REG_TR.sel.set(g_cpubus.mem_read_word(0x816));
+	REG_TR.sel = g_cpubus.mem_read_word(0x816);
 	SET_FLAGS(g_cpubus.mem_read_word(0x818));
 	SET_IP(g_cpubus.mem_read_word(0x81A));
-	REG_LDTR.sel.set(g_cpubus.mem_read_word(0x81C));
-	REG_DS.sel.set(g_cpubus.mem_read_word(0x81E));
-	REG_SS.sel.set(g_cpubus.mem_read_word(0x820));
-	REG_CS.sel.set(g_cpubus.mem_read_word(0x822));
-	REG_ES.sel.set(g_cpubus.mem_read_word(0x824));
+	REG_LDTR.sel = g_cpubus.mem_read_word(0x81C);
+	REG_DS.sel = g_cpubus.mem_read_word(0x81E);
+	REG_SS.sel = g_cpubus.mem_read_word(0x820);
+	REG_CS.sel = g_cpubus.mem_read_word(0x822);
+	REG_ES.sel = g_cpubus.mem_read_word(0x824);
 	REG_DI = g_cpubus.mem_read_word(0x826);
 	REG_SI = g_cpubus.mem_read_word(0x828);
 	REG_BP = g_cpubus.mem_read_word(0x82A);
@@ -3629,40 +3574,36 @@ void CPUExecutor::LOOPNZ(int8_t disp)
 
 void CPUExecutor::LSL_rw_ew()
 {
-	uint16_t raw_selector;
-	Selector selector;
+	Selector   selector;
 	Descriptor descriptor;
-	uint64_t descdata;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LSL: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	raw_selector = load_ew();
+	selector = load_ew();
 
 	/* if selector null, clear ZF and done */
-	if ((raw_selector & SELECTOR_RPL_MASK) == 0) {
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		SET_FLAG(ZF, false);
 	    return;
 	}
 
-	selector.set(raw_selector);
 	try {
-		descdata = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LSL: failed to fetch descriptor\n");
 	    SET_FLAG(ZF, false);
 	    return;
 	}
-	descriptor.set(descdata);
 
 	if(!descriptor.segment) { // system segment
 		switch (descriptor.type) {
 			case DESC_TYPE_AVAIL_TSS:
 			case DESC_TYPE_BUSY_TSS:
 			case DESC_TYPE_LDT_DESC:
-				if (descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
+				if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 					SET_FLAG(ZF, false);
 					return;
 				}
@@ -3674,7 +3615,7 @@ void CPUExecutor::LSL_rw_ew()
 	} else { // data & code segment
 		if(descriptor.is_code_segment_non_conforming()) {
 			// non-conforming code segment
-			if (descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
+			if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 				SET_FLAG(ZF, false);
 				return;
 			}
@@ -3694,67 +3635,52 @@ void CPUExecutor::LSL_rw_ew()
 void CPUExecutor::LTR_ew()
 {
 	Descriptor descriptor;
-	Selector selector;
-	uint16_t raw_selector;
-	uint64_t descdata;
-
+	Selector   selector;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	if (CPL != 0) {
+	if(CPL != 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: The current priveledge level is not 0\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-	raw_selector = load_ew();
 
-	/* if selector is NULL, invalidate and done */
-	if((raw_selector & SELECTOR_RPL_MASK) == 0) {
+	selector = load_ew();
+
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: loading with NULL selector!\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	/* parse fields in selector, then check for null selector */
-	selector.set(raw_selector);
-
 	if(selector.ti) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: selector.ti != 0\n");
-		throw CPUException(CPU_GP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
 	/* fetch descriptor; call handles out of limits checks */
-	descdata = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
-	descriptor.set(descdata);
+	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* #GP(selector) if object is not a TSS or is already busy */
 	if(!descriptor.valid || descriptor.segment || descriptor.type != DESC_TYPE_AVAIL_TSS)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: doesn't point to an available TSS descriptor!\n");
-		throw CPUException(CPU_GP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
 	/* #NP(selector) if TSS descriptor is not present */
 	if(!descriptor.present) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: TSS descriptor not present!\n");
-		throw CPUException(CPU_NP_EXC, raw_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_NP_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
-	REG_TR.sel = selector;
+	REG_TR.sel  = selector;
 	REG_TR.desc = descriptor;
-	REG_TR.desc.valid = true;
-
-	// REG_TR.desc.type should not have busy bit, or it would not get
-	// through the conditions above.
-	//ASSERT((REG_TR.desc.type & 2) == 0); useless assert, condition already checked
-	REG_TR.desc.type = DESC_TYPE_BUSY_TSS; // mark as busy
 
 	/* mark as busy */
-	//if(!(descdata & DESC_TSS_BUSY_BIT64)) { useless if, descdata must be !busy to get here
-		descdata |= DESC_TSS_BUSY_BIT64;
-		g_cpubus.mem_write_byte(GET_BASE(GDTR) + selector.index*8 + 5, descdata>>40);
-	//}
+	REG_TR.desc.type = DESC_TYPE_BUSY_TSS;
+	g_cpubus.mem_write_byte(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
 }
 
 
@@ -4544,12 +4470,10 @@ void CPUExecutor::RET_far(uint16_t popbytes)
 
 void CPUExecutor::return_protected(uint16_t pop_bytes)
 {
-	uint16_t raw_cs_selector, raw_ss_selector;
 	Selector cs_selector, ss_selector;
 	Descriptor cs_descriptor, ss_descriptor;
 	const uint32_t stack_param_offset = 4;
 	uint32_t return_IP, return_SP, temp_SP;
-	uint64_t descdata;
 
 	/* + 6+N*2: SS
 	 * + 4+N*2: SP
@@ -4563,32 +4487,28 @@ void CPUExecutor::return_protected(uint16_t pop_bytes)
 
 	temp_SP = REG_SP;
 
-	return_IP       = stack_read(temp_SP);
-	raw_cs_selector = stack_read(temp_SP + 2);
+	return_IP   = stack_read(temp_SP);
+	cs_selector = stack_read(temp_SP + 2);
 
 	// selector must be non-null else #GP(0)
-	if((raw_cs_selector & SELECTOR_RPL_MASK) == 0) {
+	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "return_protected: CS selector null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	cs_selector.set(raw_cs_selector);
-
 	// selector index must be within its descriptor table limits,
 	// else #GP(selector)
-	descdata = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
-
-	// descriptor AR byte must indicate code segment, else #GP(selector)
-	cs_descriptor.set(descdata);
+	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// return selector RPL must be >= CPL, else #GP(return selector)
 	if(cs_selector.rpl < CPL) {
 		PDEBUGF(LOG_V2, LOG_CPU, "return_protected: CS.rpl < CPL\n");
-		throw CPUException(CPU_GP_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
+		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
+	// descriptor AR byte must indicate code segment, else #GP(selector)
 	// check code-segment descriptor
-	CPUCore::check_CS(raw_cs_selector, cs_descriptor, 0, cs_selector.rpl);
+	CPUCore::check_CS(cs_selector.value, cs_descriptor, 0, cs_selector.rpl);
 
 	// if return selector RPL == CPL then
 	// RETURN TO SAME PRIVILEGE LEVEL
@@ -4610,53 +4530,51 @@ void CPUExecutor::return_protected(uint16_t pop_bytes)
 		 */
 
 		PDEBUGF(LOG_V2, LOG_CPU, "return_protected: return to OUTER PRIVILEGE LEVEL\n");
-		return_SP       = stack_read(temp_SP + 4 + pop_bytes);
-		raw_ss_selector = stack_read(temp_SP + 6 + pop_bytes);
+		return_SP   = stack_read(temp_SP + 4 + pop_bytes);
+		ss_selector = stack_read(temp_SP + 6 + pop_bytes);
 
-		/* selector index must be within its descriptor table limits,
-		 * else #GP(selector) */
-		ss_selector.set(raw_ss_selector);
-
-		if((raw_ss_selector & SELECTOR_RPL_MASK) == 0) {
+		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
 			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS selector null\n");
 			throw CPUException(CPU_GP_EXC, 0);
-		} else {
-			descdata = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
-			ss_descriptor.set(descdata);
-			/* selector RPL must = RPL of the return CS selector,
-			 * else #GP(selector) */
-			if(ss_selector.rpl != cs_selector.rpl) {
-				PDEBUGF(LOG_V2, LOG_CPU, "return_protected: ss.rpl != cs.rpl\n");
-				throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
-			}
+		}
 
-			/* descriptor AR byte must indicate a writable data segment,
-			 * else #GP(selector) */
-			if(!ss_descriptor.valid || !ss_descriptor.segment ||
-					ss_descriptor.is_code_segment() ||
-					!ss_descriptor.is_data_segment_writeable())
-			{
-				PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS.AR byte not writable data\n");
-				throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
-			}
+		// selector index must be within its descriptor table limits,
+		// else #GP(selector)
+		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
 
-			/* descriptor dpl must = RPL of the return CS selector,
-			 * else #GP(selector) */
-			if(ss_descriptor.dpl != cs_selector.rpl) {
-				PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS.dpl != cs.rpl\n");
-				throw CPUException(CPU_GP_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
-			}
+		// selector RPL must = RPL of the return CS selector,
+		// else #GP(selector)
+		if(ss_selector.rpl != cs_selector.rpl) {
+			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: ss.rpl != cs.rpl\n");
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
+		}
 
-			/* segment must be present else #SS(selector) */
-			if(!ss_descriptor.present) {
-				PDEBUGF(LOG_V2, LOG_CPU, "return_protected: ss.present == 0\n");
-				throw CPUException(CPU_SS_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
-			}
+		// descriptor AR byte must indicate a writable data segment,
+		// else #GP(selector)
+		if(!ss_descriptor.valid || !ss_descriptor.segment ||
+			ss_descriptor.is_code_segment() ||
+			!ss_descriptor.is_data_segment_writeable())
+		{
+			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS.AR byte not writable data\n");
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
+		}
+
+		// descriptor dpl must == RPL of the return CS selector,
+		// else #GP(selector)
+		if(ss_descriptor.dpl != cs_selector.rpl) {
+			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS.dpl != cs.rpl\n");
+			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
+		}
+
+		// segment must be present else #SS(selector)
+		if(!ss_descriptor.present) {
+			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: ss.present == 0\n");
+			throw CPUException(CPU_SS_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		branch_far(cs_selector, cs_descriptor, return_IP, cs_selector.rpl);
 
-		if((raw_ss_selector & SELECTOR_RPL_MASK) != 0) {
+		if((ss_selector.value & SELECTOR_RPL_MASK) != 0) {
 			// load SS:RSP from stack
 			// load the SS-cache with SS descriptor
 			SET_SS(ss_selector, ss_descriptor, cs_selector.rpl);
@@ -5173,120 +5091,113 @@ void CPUExecutor::TEST_ew_dw(uint16_t dw){ TEST_w(load_ew(), dw); }
 
 void CPUExecutor::VERR_ew()
 {
-	uint16_t raw_selector;
 	Descriptor descriptor;
-	Selector selector;
-	uint64_t descdata;
+	Selector   selector;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERR: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	raw_selector = load_ew();
+	selector = load_ew();
 
 	/* if selector null, clear ZF and done */
-	if((raw_selector & SELECTOR_RPL_MASK) == 0) {
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERR: null selector\n");
 	    SET_FLAG(ZF, false);
 	    return;
 	}
 
-	/* if source selector is visible at CPL & RPL,
-	* within the descriptor table, and of type accepted by VERR instruction,
-	* then load register with segment limit and set ZF */
-	selector.set(raw_selector);
-
 	try {
-		descdata = g_cpucore.fetch_descriptor(selector,0);
+		descriptor = g_cpucore.fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
-	    /* not within descriptor table */
 	    PDEBUGF(LOG_V2, LOG_CPU, "VERR: not within descriptor table\n");
 	    SET_FLAG(ZF, false);
 	    return;
 	}
-	descriptor.set(descdata);
 
-	if(!descriptor.segment) { /* system or gate descriptor */
+	/* If source selector is visible at CPL & RPL,
+	 * within the descriptor table, and of type accepted by VERR instruction,
+	 * then load register with segment limit and set ZF
+	 */
+
+	if(!descriptor.segment) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERR: system descriptor\n");
-		SET_FLAG(ZF, false);  /* inaccessible */
+		SET_FLAG(ZF, false);
 		return;
 	}
 
 	if(!descriptor.valid) {
 	    PDEBUGF(LOG_V2, LOG_CPU, "VERR: valid bit cleared\n");
-		SET_FLAG(ZF, false);  /* inaccessible */
+		SET_FLAG(ZF, false);
 		return;
 	}
 
-	/* normal data/code segment */
-	if(descriptor.is_code_segment()) { /* code segment */
-		/* ignore DPL for readable conforming segments */
+	// normal data/code segment
+	if(descriptor.is_code_segment()) {
+		// ignore DPL for readable conforming segments
 		if(descriptor.is_code_segment_conforming() && descriptor.is_code_segment_readable())
 	    {
 			PDEBUGF(LOG_V2, LOG_CPU, "VERR: conforming code, OK\n");
-			SET_FLAG(ZF, true); /* accessible */
+			SET_FLAG(ZF, true);
 			return;
 	    }
 	    if(!descriptor.is_code_segment_readable()) {
 	    	PDEBUGF(LOG_V2, LOG_CPU, "VERR: code not readable\n");
-			SET_FLAG(ZF, false);  /* inaccessible */
+			SET_FLAG(ZF, false);
 			return;
 	    }
-	    /* readable, non-conforming code segment */
+	    // readable, non-conforming code segment
 	    if((descriptor.dpl<CPL) || (descriptor.dpl<selector.rpl)) {
 	    	PDEBUGF(LOG_V2, LOG_CPU, "VERR: non-conforming code not withing priv level\n");
-	    	SET_FLAG(ZF, false);  /* inaccessible */
+	    	SET_FLAG(ZF, false);
 	    } else {
-	    	SET_FLAG(ZF, true); /* accessible */
+	    	SET_FLAG(ZF, true);
 	    }
-	} else { /* data segment */
+	} else {
+		// data segment
 		if((descriptor.dpl<CPL) || (descriptor.dpl<selector.rpl)) {
 			PDEBUGF(LOG_V2, LOG_CPU, "VERR: data seg not withing priv level\n");
-			SET_FLAG(ZF, false);  /* inaccessible */
+			SET_FLAG(ZF, false);
 	    } else {
-	    	SET_FLAG(ZF, true); /* accessible */
+	    	SET_FLAG(ZF, true);
 	    }
 	}
 }
 
 void CPUExecutor::VERW_ew()
 {
-	uint16_t raw_selector;
 	Descriptor descriptor;
-	Selector selector;
-	uint64_t descdata;
+	Selector   selector;
 
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	raw_selector = load_ew();
+	selector = load_ew();
 
 	/* if selector null, clear ZF and done */
-	if((raw_selector & SELECTOR_RPL_MASK) == 0) {
+	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: null selector\n");
 		SET_FLAG(ZF, false);
 		return;
 	}
 
-	/* if source selector is visible at CPL & RPL,
-	* within the descriptor table, and of type accepted by VERW instruction,
-	* then load register with segment limit and set ZF */
-	selector.set(raw_selector);
+	/* If source selector is visible at CPL & RPL,
+	 * within the descriptor table, and of type accepted by VERW instruction,
+	 * then load register with segment limit and set ZF
+	 */
 
 	try {
-		descdata = g_cpucore.fetch_descriptor(selector,0);
+		descriptor = g_cpucore.fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
-		/* not within descriptor table */
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: not within descriptor table\n");
 		SET_FLAG(ZF, false);
 		return;
 	}
-	descriptor.set(descdata);
 
-	/* rule out system segments & code segments */
+	// rule out system segments & code segments
 	if(!descriptor.segment || descriptor.is_code_segment()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: system seg or code\n");
 		SET_FLAG(ZF, false);
@@ -5299,17 +5210,17 @@ void CPUExecutor::VERW_ew()
 		return;
 	}
 
-	/* data segment */
-	if(descriptor.is_data_segment_writeable()) { /* writable */
+	// data segment
+	if(descriptor.is_data_segment_writeable()) {
 		if((descriptor.dpl < CPL) || (descriptor.dpl < selector.rpl)) {
 			PDEBUGF(LOG_V2, LOG_CPU, "VERW: writable data seg not within priv level\n");
-			SET_FLAG(ZF, false); /* not accessible */
+			SET_FLAG(ZF, false);
 		} else {
-			SET_FLAG(ZF, true);  /* accessible */
+			SET_FLAG(ZF, true);
 		}
 	} else {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: data seg not writable\n");
-		SET_FLAG(ZF, false); /* not accessible */
+		SET_FLAG(ZF, false);
 	}
 }
 

@@ -118,7 +118,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 
-		selector.set(_value);
+		selector = _value;
 
 		/* selector's RPL must be equal to CPL, else #GP(selector) */
 		if(selector.rpl != CPL) {
@@ -126,8 +126,8 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 
-		uint64_t descdata = fetch_descriptor(selector, CPU_GP_EXC);
-		descriptor.set(descdata);
+		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
+
 		if(!descriptor.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(SS): not valid\n");
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
@@ -162,16 +162,15 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 
 		if((_value & SELECTOR_RPL_MASK) == 0) {
 			/* null selector */
-			_segreg.sel.set(_value);
-			_segreg.desc.set(0);
+			_segreg.sel  = _value;
+			_segreg.desc = 0;
 			_segreg.desc.set_AR(SEG_SEGMENT); /* data/code segment */
 			_segreg.desc.valid = false; /* invalidate null selector */
 			return;
 		}
 
-		selector.set(_value);
-		uint64_t descdata = fetch_descriptor(selector, CPU_GP_EXC);
-		descriptor.set(descdata);
+		selector   = _value;
+		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 
 		if(descriptor.valid==0) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(%s, 0x%04x): invalid segment\n",
@@ -227,7 +226,7 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 			!(descriptor.type & SEG_TYPE_EXECUTABLE))
 	{
 		PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): not a valid code segment\n", selector);
-		throw CPUException(CPU_GP_EXC, selector & 0xfffc);
+		throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 	}
 
 	// if non-conforming, code segment descriptor DPL must = CPL else #GP(selector)
@@ -235,14 +234,14 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 		if(descriptor.dpl != cpl) {
 			PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): non-conforming code seg descriptor dpl != cpl, dpl=%d, cpl=%d\n",
 					selector, descriptor.dpl, cpl);
-			throw CPUException(CPU_GP_EXC, selector & 0xfffc);
+			throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 		}
 
 		/* RPL of destination selector must be <= CPL else #GP(selector) */
 		if(rpl > cpl) {
 			PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): non-conforming code seg selector rpl > cpl, rpl=%d, cpl=%d\n",
 					selector, rpl, cpl);
-			throw CPUException(CPU_GP_EXC, selector & 0xfffc);
+			throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 		}
 	}
 	// if conforming, then code segment descriptor DPL must <= CPL else #GP(selector)
@@ -250,14 +249,14 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 		if(descriptor.dpl > cpl) {
 			PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): conforming code seg descriptor dpl > cpl, dpl=%d, cpl=%d\n",
 					selector, descriptor.dpl, cpl);
-			throw CPUException(CPU_GP_EXC, selector & 0xfffc);
+			throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 		}
 	}
 
 	// code segment must be present else #NP(selector)
 	if(!descriptor.present) {
 		PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): code segment not present\n", selector);
-		throw CPUException(CPU_NP_EXC, selector & 0xfffc);
+		throw CPUException(CPU_NP_EXC, selector & SELECTOR_RPL_MASK);
 	}
 }
 
@@ -319,19 +318,19 @@ uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec)
 		if((_selector.index*8 + 7) > m_gdtr_limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
 					_selector.index*8 + 7, _selector.index, m_gdtr_limit);
-			throw CPUException(_exc_vec, _selector.value & 0xfffc);
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
 		addr += m_gdtr_base;
 	} else {
 		// from LDT
-		if(m_ldtr.desc.valid == false) {
+		if(!m_ldtr.desc.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
-			throw CPUException(_exc_vec, _selector.value & 0xfffc);
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
 		if((_selector.index*8 + 7) > m_ldtr.desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
 					_selector.index*8 + 7, _selector.index, m_ldtr.desc.limit);
-			throw CPUException(_exc_vec, _selector.value & 0xfffc);
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
 		addr += m_ldtr.desc.base;
 	}

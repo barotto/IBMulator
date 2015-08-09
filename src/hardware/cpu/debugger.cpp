@@ -554,8 +554,8 @@ void CPUDebugger::INT_15_87(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	}
 	uint32_t gdt = core->get_ES_phyaddr(core->get_SI());
 	Descriptor from, to;
-	from.set(mem->read_qword(gdt+0x10));
-	to.set(mem->read_qword(gdt+0x18));
+	from = mem->read_qword(gdt+0x10);
+	to   = mem->read_qword(gdt+0x18);
 	snprintf(buf, buflen, ": from 0x%06X to 0x%06X (0x%04X bytes)",
 			from.base, to.base, core->get_CX()*2
 	);
