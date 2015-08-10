@@ -505,12 +505,15 @@ void CPU::exception(CPUException _exc)
 			break;
 		case CPU_TS_EXC: //10
 			RESTORE_IP();
+			push_error = true;
 			break;
 		case CPU_NP_EXC: //11
 			RESTORE_IP();
+			push_error = true;
 			break;
 		case CPU_SS_EXC: //12
 			RESTORE_IP();
+			push_error = true;
 			break;
 		case CPU_GP_EXC: //13
 		/*case CPU_SEG_OVR_EXC:*/
