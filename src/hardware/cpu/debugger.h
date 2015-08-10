@@ -96,6 +96,7 @@ public:
 
 	static const char * INT_decode(bool call, uint8_t vector, uint16_t ax,
 			CPUCore *core, Memory *mem);
+	static std::string descriptor_table_to_CSV(Memory &_mem, uint32_t _base, uint16_t _limit);
 };
 
 

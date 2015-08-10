@@ -22,6 +22,7 @@
 #include "machine.h"
 #include "statebuf.h"
 #include "hardware/cpu.h"
+#include "hardware/cpu/debugger.h"
 #include "hardware/memory.h"
 #include "hardware/devices.h"
 #include "hardware/devices/cmos.h"
@@ -571,7 +572,7 @@ void Machine::memdump(uint32_t _base, uint32_t _len)
 			len = g_memory.get_ram_size();
 		}
 		ss << std::hex << std::uppercase << internal << setfill('0');
-		ss << setw(4) << base;
+		ss << setw(6) << base << "-" << setw(4) << len;
 		ss << ".bin";
 		g_memory.dump(ss.str(),base,len);
 		PINFOF(LOG_V0, LOG_MACHINE, "memory content dumped in %s\n", ss.str().c_str());
@@ -664,6 +665,47 @@ void Machine::cmd_memdump(uint32_t _base, uint32_t _len)
 {
 	m_cmd_fifo.push([=] () {
 		memdump(_base,_len);
+	});
+}
+
+void Machine::cmd_dtdump(const std::string &_name)
+{
+	m_cmd_fifo.push([=] () {
+		uint32_t base;
+		uint16_t limit;
+		if(_name == "GDT") {
+			base = GET_BASE(GDTR);
+			limit = GET_LIMIT(GDTR);
+		} else if(_name == "LDT") {
+			base = GET_BASE(LDTR);
+			limit = GET_LIMIT(LDTR);
+		} else if(_name == "IDT") {
+			base = GET_BASE(IDTR);
+			limit = GET_LIMIT(IDTR);
+		} else {
+			PERRF(LOG_MACHINE, "%s is not a valid descriptor table\n", _name.c_str());
+			return;
+		}
+		if(limit == 0) {
+			PWARNF(LOG_MACHINE, "%s is empty\n", _name.c_str());
+			return;
+		}
+		std::stringstream filename;
+		filename << g_program.config().get_cfg_home() + "/" + _name + "dump-0x";
+		filename << std::hex << std::uppercase << internal << setfill('0');
+		filename << setw(6) << base << "-" << setw(4) << limit;
+		filename << ".csv";
+		try {
+			std::ofstream file(filename.str().c_str());
+			if(file.is_open()) {
+				file << CPUDebugger::descriptor_table_to_CSV(g_memory, base, limit).c_str();
+				file.close();
+				PINFOF(LOG_V0, LOG_MACHINE, "%s content dumped to %s\n", _name.c_str(),
+					filename.str().c_str());
+			}
+		} catch(std::exception &e) {
+			PERRF(LOG_MACHINE, "error dumping %s: %s\n", _name.c_str(), e.what());
+		}
 	});
 }
 

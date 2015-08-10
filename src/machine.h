@@ -182,6 +182,7 @@ public:
 	void cmd_pause();
 	void cmd_resume();
 	void cmd_memdump(uint32_t base=0, uint32_t len=0);
+	void cmd_dtdump(const std::string &_name);
 	void cmd_cpulog();
 	void cmd_prg_cpulog(std::string _prg_name);
 	void cmd_cycles_adjust(double _factor);

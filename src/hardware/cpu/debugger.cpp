@@ -28,6 +28,8 @@
 #include "hardware/cpu/disasm.h"
 #include "hardware/memory.h"
 #include <cstring>
+#include <sstream>
+#include <iomanip>
 
 char * upcase(char * str) {
     for (char* idx = str; *idx ; idx++) *idx = toupper(*reinterpret_cast<unsigned char*>(idx));
@@ -901,6 +903,119 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	//DS:SI -> ASCIZ filename
 	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_SI()));
 	snprintf(buf, buflen, " : '%s'", filename);
+}
+
+std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, uint16_t _limit)
+{
+	if(_base+_limit > _mem.get_ram_size()) {
+		throw std::range_error("descriptor table beyond RAM limit");
+	}
+	std::stringstream output;
+	output << std::setfill('0');
+	uint32_t ptr = _base;
+	int index = 0;
+	Descriptor desc;
+	output << "index,base,limit/offset,base_15_0/selector,base_23_16/word_count,";
+	output << "AR,type,accessed,DPL,P,valid\n";
+	while(ptr < _base+_limit) {
+		desc = _mem.read_qword(ptr);
+
+		// entry number
+		output << std::hex << std::setw(3) << index << ",";
+
+		// base
+		output << std::hex << std::setw(6) << int(desc.base) << ",";
+
+		// limit/offset
+		output << std::hex << std::setw(4) << int(desc.limit) << ",";
+
+		// base_15_0/selector
+		output << std::hex << std::setw(4) << int(desc.base_15_0) << ",";
+
+		// base_23_16/word_count
+		output << std::hex << std::setw(2) << int(desc.base_23_16) << ",";
+
+		//AR
+		output << std::hex << std::setw(2) << int(desc.ar) << ",";
+		if(desc.is_system_segment()) {
+			switch(desc.type) {
+				case DESC_TYPE_INVALID:
+					output << "INVALID";
+					break;
+				case DESC_TYPE_AVAIL_TSS:
+					output << "AVAIL TSS";
+					break;
+				case DESC_TYPE_LDT_DESC:
+					output << "LDT DESC";
+					break;
+				case DESC_TYPE_BUSY_TSS:
+					output << "BUSY TSS";
+					break;
+				case DESC_TYPE_CALL_GATE:
+					output << "CALL GATE";
+					break;
+				case DESC_TYPE_TASK_GATE:
+					output << "TASK GATE";
+					break;
+				case DESC_TYPE_INTR_GATE:
+					output << "INTR GATE";
+					break;
+				case DESC_TYPE_TRAP_GATE:
+					output << "TRAP GATE";
+					break;
+				case DESC_TYPE_RINVALID:
+					output << "RINVALID";
+					break;
+				default:
+					output << "unknown (S=0)";
+					break;
+			}
+			output << ",,";
+		} else {
+			if(desc.is_code_segment()) {
+				output << "code ";
+				if(desc.is_code_segment_non_conforming()) {
+					output << "non conforming";
+				} else {
+					output << "conforming";
+				}
+				if(desc.is_code_segment_readable()) {
+					output << " R";
+				}
+			} else {
+				output << "data ";
+				if(desc.is_data_segment_expand_down()) {
+					output << "exp down ";
+				}
+				if(desc.is_data_segment_writeable()) {
+					output << "RW";
+				} else {
+					output << "R";
+				}
+			}
+			output << ",";
+
+			if(desc.accessed) { output << "accessed" << ","; }
+			else { output << ","; }
+		}
+
+		// DPL
+		output << std::dec << std::setw(2) << int(desc.dpl) << ",";
+
+		// present
+		if(desc.present) { output << "P" << ","; }
+		else { output << "NP" << ","; }
+
+		// valid
+		if(desc.valid) { output << "valid"; }
+		else { output << "invalid"; }
+
+		ptr += 8;
+		index++;
+		output << "\n";
+	}
+	std::string str = output.str();
+	return str;
 }
 
 int_map_t CPUDebugger::ms_interrupts = {

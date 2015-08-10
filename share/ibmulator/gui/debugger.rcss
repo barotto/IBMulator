@@ -64,7 +64,7 @@ table#flags
 {
 	position: absolute;
 	top: 160px;
-	left: 200px;
+	left: 230px;
 }
 
 table#flags td

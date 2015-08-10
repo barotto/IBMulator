@@ -58,9 +58,9 @@
 			</table>
 			
 			<table id="desctables">
-			<tr><th>LDT</th><td id="LDT">1234</td><td id="LDTbase">4567</td><td id="LDTlimit">8901</td></tr>
-			<tr><th>IDT</th><td id="IDTbase">4567</td><td id="IDTlimit">8901</td></tr>
-			<tr><th>GDT</th><td id="GDTbase">4567</td><td id="GDTlimit">8901</td></tr>
+			<tr><th>IDT</th><td id="IDTbase">4567</td><td id="IDTlimit">8901</td><button id="idt_dump" style="width:25px;">d</button></tr>
+			<tr><th>GDT</th><td id="GDTbase">4567</td><td id="GDTlimit">8901</td><button id="gdt_dump" style="width:25px;">d</button></tr>
+			<tr><th>LDT</th><td id="LDT">1234</td><td id="LDTbase">4567</td><td id="LDTlimit">8901</td><button id="ldt_dump" style="width:25px;">d</button></tr>
 			</table>
 
 			<table id="flags">

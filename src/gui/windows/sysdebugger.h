@@ -54,28 +54,33 @@ private:
 	} m_memory;
 
 	struct s_tools {
-		Rocket::Core::Element *step, *skip, *ff;
 		Rocket::Controls::ElementFormControl *cs_ff,*ip_ff;
-		Rocket::Core::Element *cmd_switch_power;
-		Rocket::Core::Element *cmd_pause;
-		Rocket::Core::Element *cmd_resume;
-		Rocket::Core::Element *cmd_memdump;
-		Rocket::Core::Element *cmd_csdump;
-		Rocket::Core::Element *cmd_save_state;
-		Rocket::Core::Element *cmd_restore_state;
-	} m_tools;
-
-	struct s_tools2 {
 		Rocket::Controls::ElementFormControl *log_prg_name;
 		Rocket::Core::Element *log_prg_toggle;
-		Rocket::Core::Element *log_write;
-	} m_tools2;
+	} m_tools;
 
 	struct s_disasm {
 		Rocket::Core::Element *line0;
 	} m_disasm;
 
 	Rocket::Core::Element *m_post;
+
+	static event_map_t ms_evt_map;
+	void on_cmd_switch_power(RC::Event &);
+	void on_cmd_pause(RC::Event &);
+	void on_cmd_resume(RC::Event &);
+	void on_cmd_memdump(RC::Event &);
+	void on_cmd_csdump(RC::Event &);
+	void on_cmd_save_state(RC::Event &);
+	void on_cmd_restore_state(RC::Event &);
+	void on_CPU_step(RC::Event &);
+	void on_CPU_skip(RC::Event &);
+	void on_CPU_ff_btn(RC::Event &);
+	void on_log_prg_toggle(RC::Event &);
+	void on_log_write(RC::Event &);
+	void on_idt_dump(RC::Event &);
+	void on_ldt_dump(RC::Event &);
+	void on_gdt_dump(RC::Event &);
 
 	void read_memory(uint32_t _address, uint8_t *_buf, uint _len);
 	const Rocket::Core::String & disasm(uint16_t _selector, uint16_t _ip, bool _analyze, uint * _size);
@@ -86,8 +91,7 @@ public:
 	~SysDebugger();
 
 	void update();
-
-	void ProcessEvent(Rocket::Core::Event & event);
+	event_map_t & get_event_map() { return SysDebugger::ms_evt_map; }
 };
 
 #endif
