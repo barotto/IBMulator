@@ -53,6 +53,7 @@ protected:
 	static std::map<uint32_t, const char*> ms_addrnames;
 	static int_map_t ms_interrupts;
 	static doserr_map_t ms_dos_errors;
+	static doserr_map_t ms_disk_status;
 
 	static uint32_t get_hex_value(char *_str, char *&_hex, CPUCore *_core);
 
