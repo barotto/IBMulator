@@ -214,7 +214,7 @@ void Machine::init()
 
 	g_cpu.set_HRQ(false);
 	g_cpu.set_shutdown_trap([this] () {
-		reset(MACHINE_SOFT_RESET);
+		reset(CPU_SOFT_RESET);
 	});
 }
 
@@ -230,24 +230,27 @@ void Machine::start()
 
 void Machine::reset(uint _signal)
 {
-	if(_signal == MACHINE_SOFT_RESET) {
-		PINFOF(LOG_V2, LOG_MACHINE, "Machine software reset\n");
-		g_memory.set_A20_line(true);
-	} else if(_signal == MACHINE_HARD_RESET) {
-		PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
-		g_memory.reset();
-		set_DOS_program_name("");
-		m_s.cycles_left = 0;
-	} else { // MACHINE_POWER_ON
-		PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
-		g_memory.reset();
-		set_DOS_program_name("");
-		m_s.cycles_left = 0;
-	}
-	g_cpu.reset(_signal);
-	g_devices.reset(_signal);
-
 	m_on = true;
+	g_cpu.reset(_signal);
+	switch(_signal) {
+		case CPU_SOFT_RESET:
+			PDEBUGF(LOG_V1, LOG_MACHINE, "CPU software reset\n");
+			g_memory.set_A20_line(true);
+			return;
+		case MACHINE_HARD_RESET:
+			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
+			break;
+		case MACHINE_POWER_ON:
+			PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
+			break;
+		default:
+			PERRF(LOG_MACHINE, "unknown reset signal: %d\n", _signal);
+			throw std::exception();
+	}
+	g_memory.reset();
+	g_devices.reset(_signal);
+	set_DOS_program_name("");
+	m_s.cycles_left = 0;
 }
 
 void Machine::power_off()
@@ -624,7 +627,7 @@ void Machine::cmd_cpu_step_to(uint32_t _phyaddr)
 void Machine::cmd_soft_reset()
 {
 	m_cmd_fifo.push([this] () {
-		reset(MACHINE_SOFT_RESET);
+		reset(CPU_SOFT_RESET);
 	});
 }
 

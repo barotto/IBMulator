@@ -78,10 +78,6 @@ void DMA::config_changed()
 
 void DMA::reset(unsigned type)
 {
-	if(type==MACHINE_SOFT_RESET) {
-		return;
-	}
-
 	if(type==MACHINE_POWER_ON) {
 
 		memset(&m_s, 0, sizeof(m_s));

@@ -76,10 +76,6 @@ void PIT::init(void)
 
 void PIT::reset(unsigned type)
 {
-	if(type == MACHINE_SOFT_RESET) {
-		return;
-	}
-
 	if(type == MACHINE_POWER_ON) {
 		m_s.speaker_data_on = false;
 

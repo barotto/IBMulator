@@ -21,6 +21,7 @@
 #include "devices.h"
 #include "iodevice.h"
 #include "hardware/cpu/core.h"
+#include "machine.h"
 #include <cstring>
 
 Devices g_devices;
@@ -44,6 +45,11 @@ void Devices::init()
 
 void Devices::reset(uint _signal)
 {
+	//only reset signals handled by devices are
+	//MACHINE_HARD_RESET, MACHINE_POWER_ON, and DEVICE_SOFT_RESET.
+	if(_signal == CPU_SOFT_RESET) {
+		return;
+	}
 	for(auto dev : m_devices) {
 		dev.second->reset(_signal);
 	}

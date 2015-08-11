@@ -115,19 +115,17 @@ void PS1Audio::init()
 
 void PS1Audio::reset(unsigned _type)
 {
-	if(_type==MACHINE_HARD_RESET || _type==MACHINE_POWER_ON) {
-		std::lock_guard<std::mutex> psg_lock(m_PSG_lock);
-		m_s.PSG.reset(PS1AUDIO_INPUT_CLOCK, m_PSG_rate);
-		m_PSG_events.clear();
+	std::lock_guard<std::mutex> psg_lock(m_PSG_lock);
+	m_s.PSG.reset(PS1AUDIO_INPUT_CLOCK, m_PSG_rate);
+	m_PSG_events.clear();
 
-		m_s.control_reg = 0;
-		lower_interrupt();
+	m_s.control_reg = 0;
+	lower_interrupt();
 
-		std::lock_guard<std::mutex> lock(m_DAC_lock);
-		m_s.DAC.reset(_type);
-		m_DAC_samples.clear();
-		m_DAC_last_value = 128;
-	}
+	std::lock_guard<std::mutex> lock(m_DAC_lock);
+	m_s.DAC.reset(_type);
+	m_DAC_samples.clear();
+	m_DAC_last_value = 128;
 }
 
 void PS1Audio::power_off()

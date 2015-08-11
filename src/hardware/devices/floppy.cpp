@@ -331,7 +331,7 @@ void FloppyCtrl::reset(unsigned type)
 	m_s.status_reg3 = 0;
 
 	// software reset (via DOR port 0x3f2 bit 2) does not change DOR
-	if(type != MACHINE_SOFT_RESET) { //hard or power on
+	if(type != DEVICE_SOFT_RESET) { //hard or power on
 		m_s.DOR = 0x0c;
 		// motor off, drive 3..0
 		// DMA/INT enabled
@@ -1168,7 +1168,7 @@ void FloppyCtrl::timer()
 			break;
 
 		case 0xfe: // (contrived) RESET
-			reset(MACHINE_SOFT_RESET);
+			reset(DEVICE_SOFT_RESET);
 			m_s.pending_command = 0;
 			m_s.status_reg0 = 0xc0;
 			raise_interrupt();

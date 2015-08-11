@@ -327,11 +327,9 @@ void HardDrive::init()
 
 void HardDrive::reset(unsigned _type)
 {
-	if(_type == MACHINE_POWER_ON || _type==MACHINE_HARD_RESET) {
-		memset(&m_s, 0, sizeof(m_s));
-		m_s.ssb.drive_type = m_drive_type;
-		lower_interrupt();
-	}
+	memset(&m_s, 0, sizeof(m_s));
+	m_s.ssb.drive_type = m_drive_type;
+	lower_interrupt();
 }
 
 void HardDrive::config_changed()

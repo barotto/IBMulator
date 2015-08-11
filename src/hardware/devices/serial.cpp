@@ -366,6 +366,9 @@ void Serial::set_enabled(bool _enabled)
 	if(_enabled != m_enabled) {
 		PINFOF(LOG_V1, LOG_COM, "Serial port %s\n", _enabled?"ENABLED":"DISABLED");
 		m_enabled = _enabled;
+		if(!_enabled) {
+			reset(DEVICE_SOFT_RESET);
+		}
 	}
 }
 
@@ -502,12 +505,8 @@ void Serial::lower_interrupt(uint8_t port)
 	}
 }
 
-void Serial::reset(uint type)
+void Serial::reset(uint)
 {
-	if(type == MACHINE_SOFT_RESET) {
-		return;
-	}
-
 	mouse_internal_buffer.num_elements = 0;
 	for(uint i=0; i<MOUSE_BUFF_SIZE; i++)
 		mouse_internal_buffer.buffer[i] = 0;

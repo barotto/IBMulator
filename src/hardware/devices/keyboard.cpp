@@ -91,74 +91,67 @@ void Keyboard::init()
 	config_changed();
 }
 
-void Keyboard::reset(unsigned type)
+void Keyboard::reset(unsigned)
 {
-	if(type==MACHINE_SOFT_RESET) {
-		return;
+	memset(&m_s.kbd_ctrl, 0, sizeof(m_s.kbd_ctrl));
+	memset(&m_s.mouse, 0, sizeof(m_s.mouse));
+
+	reset_internals(true);
+
+	m_s.kbd_buffer.led_status = 0;
+	m_s.kbd_buffer.scanning_enabled = true;
+
+	m_mouse_lock.lock();
+	m_s.mouse_buffer.num_elements = 0;
+	for(uint i=0; i<MOUSE_BUFF_SIZE; i++) {
+		m_s.mouse_buffer.buffer[i] = 0;
 	}
+	m_s.mouse_buffer.head = 0;
+	m_mouse_lock.unlock();
 
-	if(type==MACHINE_POWER_ON) {
+	m_s.kbd_ctrl.pare = false;
+	m_s.kbd_ctrl.tim  = false;
+	m_s.kbd_ctrl.auxb = false;
+	m_s.kbd_ctrl.keyl = true;
+	m_s.kbd_ctrl.c_d = true;
+	m_s.kbd_ctrl.sysf = false;
+	m_s.kbd_ctrl.inpb = false; //is this always false???
+	m_s.kbd_ctrl.outb = false;
 
-		memset(&m_s.kbd_ctrl, 0, sizeof(m_s.kbd_ctrl));
-		memset(&m_s.mouse, 0, sizeof(m_s.mouse));
+	m_s.kbd_ctrl.kbd_clock_enabled = true;
+	m_s.kbd_ctrl.aux_clock_enabled = false;
+	m_s.kbd_ctrl.allow_irq1 = true;
+	m_s.kbd_ctrl.allow_irq12 = true;
+	m_s.kbd_ctrl.kbd_output_buffer = 0;
+	m_s.kbd_ctrl.aux_output_buffer = 0;
+	m_s.kbd_ctrl.last_comm = 0;
+	m_s.kbd_ctrl.expecting_port60h = 0;
+	m_s.kbd_ctrl.irq1_requested = false;
+	m_s.kbd_ctrl.irq12_requested = false;
+	m_s.kbd_ctrl.expecting_mouse_parameter = 0;
+	m_s.kbd_ctrl.bat_in_progress = false;
+	m_s.kbd_ctrl.scancodes_translate = true;
 
-		reset_internals(true);
+	m_s.kbd_ctrl.timer_pending = 0;
 
-		m_s.kbd_buffer.led_status = 0;
-		m_s.kbd_buffer.scanning_enabled = true;
+	// Mouse initialization stuff
+	m_s.mouse.type            = g_program.config().get_enum(GUI_SECTION, GUI_MOUSE_TYPE, g_mouse_types);
+	m_s.mouse.sample_rate     = 100; // reports per second
+	m_s.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
+	m_s.mouse.scaling         = 1;   /* 1:1 (default) */
+	m_s.mouse.mode            = MOUSE_MODE_RESET;
+	m_s.mouse.enable          = false;
+	m_s.mouse.delayed_dx      = 0;
+	m_s.mouse.delayed_dy      = 0;
+	m_s.mouse.delayed_dz      = 0;
+	m_s.mouse.im_request      = 0; // wheel mouse mode request
+	m_s.mouse.im_mode         = 0; // wheel mouse mode
 
-		m_mouse_lock.lock();
-		m_s.mouse_buffer.num_elements = 0;
-		for(uint i=0; i<MOUSE_BUFF_SIZE; i++) {
-			m_s.mouse_buffer.buffer[i] = 0;
-		}
-		m_s.mouse_buffer.head = 0;
-		m_mouse_lock.unlock();
-
-		m_s.kbd_ctrl.pare = false;
-		m_s.kbd_ctrl.tim  = false;
-		m_s.kbd_ctrl.auxb = false;
-		m_s.kbd_ctrl.keyl = true;
-		m_s.kbd_ctrl.c_d = true;
-		m_s.kbd_ctrl.sysf = false;
-		m_s.kbd_ctrl.inpb = false; //is this always false???
-		m_s.kbd_ctrl.outb = false;
-
-		m_s.kbd_ctrl.kbd_clock_enabled = true;
-		m_s.kbd_ctrl.aux_clock_enabled = false;
-		m_s.kbd_ctrl.allow_irq1 = true;
-		m_s.kbd_ctrl.allow_irq12 = true;
-		m_s.kbd_ctrl.kbd_output_buffer = 0;
-		m_s.kbd_ctrl.aux_output_buffer = 0;
-		m_s.kbd_ctrl.last_comm = 0;
-		m_s.kbd_ctrl.expecting_port60h = 0;
-		m_s.kbd_ctrl.irq1_requested = false;
-		m_s.kbd_ctrl.irq12_requested = false;
-		m_s.kbd_ctrl.expecting_mouse_parameter = 0;
-		m_s.kbd_ctrl.bat_in_progress = false;
-		m_s.kbd_ctrl.scancodes_translate = true;
-
-		m_s.kbd_ctrl.timer_pending = 0;
-
-		// Mouse initialization stuff
-		m_s.mouse.type            = g_program.config().get_enum(GUI_SECTION, GUI_MOUSE_TYPE, g_mouse_types);
-		m_s.mouse.sample_rate     = 100; // reports per second
-		m_s.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
-		m_s.mouse.scaling         = 1;   /* 1:1 (default) */
-		m_s.mouse.mode            = MOUSE_MODE_RESET;
-		m_s.mouse.enable          = false;
-		m_s.mouse.delayed_dx      = 0;
-		m_s.mouse.delayed_dy      = 0;
-		m_s.mouse.delayed_dz      = 0;
-		m_s.mouse.im_request      = 0; // wheel mouse mode request
-		m_s.mouse.im_mode         = 0; // wheel mouse mode
-
-		for(uint i=0; i<KBD_CONTROLLER_QSIZE; i++) {
-			m_s.kbd_ctrl.Q[i] = 0;
-		}
-		m_s.kbd_ctrl.Qsize = 0;
-		m_s.kbd_ctrl.Qsource = 0;
+	for(uint i=0; i<KBD_CONTROLLER_QSIZE; i++) {
+		m_s.kbd_ctrl.Q[i] = 0;
 	}
+	m_s.kbd_ctrl.Qsize = 0;
+	m_s.kbd_ctrl.Qsource = 0;
 }
 
 void Keyboard::config_changed()
@@ -375,7 +368,7 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 						g_memory.set_A20_line((value & 0x02) != 0);
 						if(!(value & 0x01)) {
 							PINFOF(LOG_V2, LOG_KEYB, "write output port : processor reset requested!\n");
-							g_machine.reset(MACHINE_SOFT_RESET);
+							g_machine.reset(CPU_SOFT_RESET);
 						}
 						break;
 
@@ -591,7 +584,7 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 				case 0xfe: // System (cpu?) Reset, transition to real mode
 					PDEBUGF(LOG_V2, LOG_KEYB, "io write 0x64: command 0xfe: reset cpu\n");
-					g_machine.reset(MACHINE_SOFT_RESET);
+					g_machine.reset(CPU_SOFT_RESET);
 					break;
 
 				default:
@@ -1128,7 +1121,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 						m_s.mouse.resolution_cpmm = 8;
 						break;
 					default:
-						PERRF(LOG_KEYB, "mouse: unknown resolution %d\n", value);
+						PDEBUGF(LOG_V1, LOG_KEYB, "mouse: unknown resolution %d\n", value);
 						break;
 				}
 				PDEBUGF(LOG_V1, LOG_KEYB, "mouse: resolution set to %d counts per mm\n", m_s.mouse.resolution_cpmm);

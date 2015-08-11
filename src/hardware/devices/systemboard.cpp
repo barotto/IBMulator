@@ -66,12 +66,6 @@ void SystemBoard::init(void)
 
 void SystemBoard::reset(unsigned type)
 {
-	if(type == MACHINE_SOFT_RESET) {
-		return;
-	}
-
-	//HARD reset and POWER ON
-
 	m_s.POST = 0;
 
 	//System Board Enable/Setup Register:
@@ -239,7 +233,7 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			#if (1) // does the PS/1 support this?
 			if(_value & 0x01) { /* high speed reset */
 				PDEBUGF(LOG_V2, LOG_MACHINE, "iowrite to port 0x92 : reset resquested\n");
-				g_machine.reset(MACHINE_SOFT_RESET);
+				g_machine.reset(CPU_SOFT_RESET);
 			}
 			#endif
 			break;

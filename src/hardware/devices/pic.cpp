@@ -56,53 +56,52 @@ void PIC::init()
 
 void PIC::reset(unsigned type)
 {
-	if(type==MACHINE_POWER_ON) {
-		m_s.master.single_PIC           = 0;
-		m_s.master.interrupt_offset     = 0x08; /* IRQ0 = INT 0x08 */
-		m_s.master.u.slave_connect_mask = 0x04; /* slave PIC connected to IRQ2 of master */
-		m_s.master.sfnm                 = 0;    /* normal nested mode */
-		m_s.master.buffered_mode        = 0;    /* unbuffered mode */
-		m_s.master.master_slave         = 1;    /* master PIC */
-		m_s.master.auto_eoi             = 0;    /* manual EOI from CPU */
-		m_s.master.imr                  = 0xFF; /* all IRQ's initially masked */
-		m_s.master.isr                  = 0x00; /* no IRQ's in service */
-		m_s.master.irr                  = 0x00; /* no IRQ's requested */
-		m_s.master.read_reg_select      = 0;    /* IRR */
-		m_s.master.irq                  = 0;
-		m_s.master.lowest_priority      = 7;
-		m_s.master.INT                  = false;
-		m_s.master.IRQ_in               = 0;
-		m_s.master.init.in_init         = 0;
-		m_s.master.init.requires_4      = 0;
-		m_s.master.init.byte_expected   = 0;
-		m_s.master.special_mask         = false;
-		m_s.master.polled               = false;
-		m_s.master.rotate_on_autoeoi    = false;
-		m_s.master.edge_level           = 0;
+	m_s.master.single_PIC           = 0;
+	m_s.master.interrupt_offset     = 0x08; /* IRQ0 = INT 0x08 */
+	m_s.master.u.slave_connect_mask = 0x04; /* slave PIC connected to IRQ2 of master */
+	m_s.master.sfnm                 = 0;    /* normal nested mode */
+	m_s.master.buffered_mode        = 0;    /* unbuffered mode */
+	m_s.master.master_slave         = 1;    /* master PIC */
+	m_s.master.auto_eoi             = 0;    /* manual EOI from CPU */
+	m_s.master.imr                  = 0xFF; /* all IRQ's initially masked */
+	m_s.master.isr                  = 0x00; /* no IRQ's in service */
+	m_s.master.irr                  = 0x00; /* no IRQ's requested */
+	m_s.master.read_reg_select      = 0;    /* IRR */
+	m_s.master.irq                  = 0;
+	m_s.master.lowest_priority      = 7;
+	m_s.master.INT                  = false;
+	m_s.master.IRQ_in               = 0;
+	m_s.master.init.in_init         = 0;
+	m_s.master.init.requires_4      = 0;
+	m_s.master.init.byte_expected   = 0;
+	m_s.master.special_mask         = false;
+	m_s.master.polled               = false;
+	m_s.master.rotate_on_autoeoi    = false;
+	m_s.master.edge_level           = 0;
 
-		m_s.slave.single_PIC            = 0;
-		m_s.slave.interrupt_offset      = 0x70; /* IRQ8 = INT 0x70 */
-		m_s.slave.u.slave_id            = 0x02; /* slave PIC connected to IRQ2 of master */
-		m_s.slave.sfnm                  = 0;    /* normal nested mode */
-		m_s.slave.buffered_mode         = 0;    /* unbuffered mode */
-		m_s.slave.master_slave          = 0;    /* slave PIC */
-		m_s.slave.auto_eoi              = 0;    /* manual EOI from CPU */
-		m_s.slave.imr                   = 0xFF; /* all IRQ's initially masked */
-		m_s.slave.isr                   = 0x00; /* no IRQ's in service */
-		m_s.slave.irr                   = 0x00; /* no IRQ's requested */
-		m_s.slave.read_reg_select       = 0;    /* IRR */
-		m_s.slave.irq                   = 0;
-		m_s.slave.lowest_priority       = 7;
-		m_s.slave.INT                   = false;
-		m_s.slave.IRQ_in                = 0;
-		m_s.slave.init.in_init          = 0;
-		m_s.slave.init.requires_4       = 0;
-		m_s.slave.init.byte_expected    = 0;
-		m_s.slave.special_mask          = false;
-		m_s.slave.polled                = false;
-		m_s.slave.rotate_on_autoeoi     = false;
-		m_s.slave.edge_level            = 0;
-	}
+	m_s.slave.single_PIC            = 0;
+	m_s.slave.interrupt_offset      = 0x70; /* IRQ8 = INT 0x70 */
+	m_s.slave.u.slave_id            = 0x02; /* slave PIC connected to IRQ2 of master */
+	m_s.slave.sfnm                  = 0;    /* normal nested mode */
+	m_s.slave.buffered_mode         = 0;    /* unbuffered mode */
+	m_s.slave.master_slave          = 0;    /* slave PIC */
+	m_s.slave.auto_eoi              = 0;    /* manual EOI from CPU */
+	m_s.slave.imr                   = 0xFF; /* all IRQ's initially masked */
+	m_s.slave.isr                   = 0x00; /* no IRQ's in service */
+	m_s.slave.irr                   = 0x00; /* no IRQ's requested */
+	m_s.slave.read_reg_select       = 0;    /* IRR */
+	m_s.slave.irq                   = 0;
+	m_s.slave.lowest_priority       = 7;
+	m_s.slave.INT                   = false;
+	m_s.slave.IRQ_in                = 0;
+	m_s.slave.init.in_init          = 0;
+	m_s.slave.init.requires_4       = 0;
+	m_s.slave.init.byte_expected    = 0;
+	m_s.slave.special_mask          = false;
+	m_s.slave.polled                = false;
+	m_s.slave.rotate_on_autoeoi     = false;
+	m_s.slave.edge_level            = 0;
+
 }
 
 void PIC::save_state(StateBuf &_state)

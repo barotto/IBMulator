@@ -82,23 +82,21 @@ void Parallel::init(void)
 
 void Parallel::reset(unsigned type)
 {
-	if(type==MACHINE_POWER_ON) {
-		/* internal state */
-		m_s.STATUS.error = 1;
-		m_s.STATUS.slct  = 1;
-		m_s.STATUS.pe    = 0;
-		m_s.STATUS.ack   = 1;
-		m_s.STATUS.busy  = 1;
+	/* internal state */
+	m_s.STATUS.error = 1;
+	m_s.STATUS.slct  = 1;
+	m_s.STATUS.pe    = 0;
+	m_s.STATUS.ack   = 1;
+	m_s.STATUS.busy  = 1;
 
-		m_s.CONTROL.strobe   = 0;
-		m_s.CONTROL.autofeed = 0;
-		m_s.CONTROL.init     = 1;
-		m_s.CONTROL.slct_in  = 1;
-		m_s.CONTROL.irq      = 0;
-		m_s.CONTROL.input    = 0;
+	m_s.CONTROL.strobe   = 0;
+	m_s.CONTROL.autofeed = 0;
+	m_s.CONTROL.init     = 1;
+	m_s.CONTROL.slct_in  = 1;
+	m_s.CONTROL.irq      = 0;
+	m_s.CONTROL.input    = 0;
 
-		m_s.initmode = 0;
-	}
+	m_s.initmode = 0;
 }
 
 void Parallel::config_changed()
@@ -166,6 +164,9 @@ void Parallel::set_enabled(bool _enabled)
 	if(_enabled != m_enabled) {
 		PINFOF(LOG_V1, LOG_LPT, "Parallel port %s\n", _enabled?"ENABLED":"DISABLED");
 		m_enabled = _enabled;
+		if(!_enabled) {
+			reset(DEVICE_SOFT_RESET);
+		}
 	}
 }
 

@@ -152,61 +152,58 @@ void VGA::init()
 
 void VGA::reset(uint type)
 {
-	if(type==MACHINE_POWER_ON) {
+	delete[] m_s.memory;
+	delete[] m_s.vga_tile_updated;
 
-		delete[] m_s.memory;
-		delete[] m_s.vga_tile_updated;
+	memset(&m_s, 0, sizeof(m_s));
 
-		memset(&m_s, 0, sizeof(m_s));
+	m_s.vga_enabled = 1;
+	m_s.blink_counter = 16;
+	m_s.misc_output.color_emulation  = 1;
+	m_s.misc_output.enable_ram  = 1;
+	m_s.misc_output.horiz_sync_pol   = 1;
+	m_s.misc_output.vert_sync_pol    = 1;
 
-		m_s.vga_enabled = 1;
-		m_s.blink_counter = 16;
-		m_s.misc_output.color_emulation  = 1;
-		m_s.misc_output.enable_ram  = 1;
-		m_s.misc_output.horiz_sync_pol   = 1;
-		m_s.misc_output.vert_sync_pol    = 1;
+	m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = 1;
+	m_s.attribute_ctrl.video_status_mux = 0;
+	m_s.line_offset = 80;
+	m_s.line_compare = 1023;
+	m_s.vertical_display_end = 399;
 
-		m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = 1;
-		m_s.attribute_ctrl.video_status_mux = 0;
-		m_s.line_offset = 80;
-		m_s.line_compare = 1023;
-		m_s.vertical_display_end = 399;
+	m_s.attribute_ctrl.video_enabled = 1;
+	m_s.attribute_ctrl.color_plane_enable = 0x0f;
+	m_s.pel.dac_state = 0x01;
+	m_s.pel.mask = 0xff;
+	m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
 
-		m_s.attribute_ctrl.video_enabled = 1;
-		m_s.attribute_ctrl.color_plane_enable = 0x0f;
-		m_s.pel.dac_state = 0x01;
-		m_s.pel.mask = 0xff;
-		m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
+	m_s.sequencer.reset1 = 1;
+	m_s.sequencer.reset2 = 1;
+	m_s.sequencer.extended_mem = 1; // display mem greater than 64K
+	m_s.sequencer.odd_even = 1; // use sequential addressing mode
 
-		m_s.sequencer.reset1 = 1;
-		m_s.sequencer.reset2 = 1;
-		m_s.sequencer.extended_mem = 1; // display mem greater than 64K
-		m_s.sequencer.odd_even = 1; // use sequential addressing mode
+	m_s.plane_shift = 16;
+	m_s.dac_shift = 2;
+	m_s.last_bpp = 8;
+	m_s.htotal_usec = 31;
+	m_s.vtotal_usec = 14285;
 
-		m_s.plane_shift = 16;
-		m_s.dac_shift = 2;
-		m_s.last_bpp = 8;
-		m_s.htotal_usec = 31;
-		m_s.vtotal_usec = 14285;
+	m_s.max_xres = VGA_MAX_XRES;
+	m_s.max_yres = VGA_MAX_YRES;
 
-		m_s.max_xres = VGA_MAX_XRES;
-		m_s.max_yres = VGA_MAX_YRES;
+	m_s.memsize = 0x40000;
+	m_s.planesize = 0x10000;
+	m_s.memory = new uint8_t[m_s.memsize];
 
-		m_s.memsize = 0x40000;
-		m_s.planesize = 0x10000;
-		m_s.memory = new uint8_t[m_s.memsize];
+	memset(m_s.memory, 0, m_s.memsize);
 
-		memset(m_s.memory, 0, m_s.memsize);
+	m_s.num_x_tiles = m_s.max_xres / VGA_X_TILESIZE + ((m_s.max_xres % VGA_X_TILESIZE) > 0);
+	m_s.num_y_tiles = m_s.max_yres / VGA_Y_TILESIZE + ((m_s.max_yres % VGA_Y_TILESIZE) > 0);
 
-		m_s.num_x_tiles = m_s.max_xres / VGA_X_TILESIZE + ((m_s.max_xres % VGA_X_TILESIZE) > 0);
-		m_s.num_y_tiles = m_s.max_yres / VGA_Y_TILESIZE + ((m_s.max_yres % VGA_Y_TILESIZE) > 0);
+	m_s.vga_tile_updated = new bool[m_s.num_x_tiles * m_s.num_y_tiles];
 
-		m_s.vga_tile_updated = new bool[m_s.num_x_tiles * m_s.num_y_tiles];
-
-		for(uint y = 0; y < m_s.num_y_tiles; y++) {
-			for(uint x = 0; x < m_s.num_x_tiles; x++) {
-				SET_TILE_UPDATED(x, y, false);
-			}
+	for(uint y = 0; y < m_s.num_y_tiles; y++) {
+		for(uint x = 0; x < m_s.num_x_tiles; x++) {
+			SET_TILE_UPDATED(x, y, false);
 		}
 	}
 }

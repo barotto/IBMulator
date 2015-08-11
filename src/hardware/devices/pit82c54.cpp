@@ -58,10 +58,8 @@ void PIT_82C54::init()
 
 void PIT_82C54::reset(unsigned type)
 {
-	if(type == MACHINE_POWER_ON) {
-		for(int i=0; i<3; i++) {
-			counter[i].reset();
-		}
+	for(int i=0; i<3; i++) {
+		counter[i].reset();
 	}
 }
 

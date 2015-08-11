@@ -42,10 +42,10 @@ typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
 
 enum MachineReset {
-	MACHINE_SOFT_RESET,
-	MACHINE_HARD_RESET,
-	MACHINE_POWER_ON,
-	DEVICE_SOFT_RESET
+	MACHINE_POWER_ON,   // Machine is switched on using the power button
+	MACHINE_HARD_RESET, // Machine RESET triggered by the reset button
+	CPU_SOFT_RESET,     // CPU RESET triggered by software
+	DEVICE_SOFT_RESET   // Device RESET triggered by software
 };
 
 #define USEC_PER_SECOND (1000000)
