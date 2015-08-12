@@ -16,6 +16,7 @@ ibmulator_SOURCES = \
 	hwbench.cpp \
 	syslog.cpp \
 	ini/ini.cpp \
+	md5.cpp \
 	mixer.cpp \
 	vgm.cpp \
 	wav.cpp \
@@ -35,6 +36,7 @@ noinst_HEADERS = \
 	interval_tree.h \
 	keys.h \
 	machine.h \
+	md5.h \
 	mixer.h \
 	program.h \
 	ring_buffer.h \

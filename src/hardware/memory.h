@@ -65,6 +65,7 @@ protected:
 	uint8_t *m_sysrom;
 	uint m_base_size;
 	uint m_ext_size;
+	std::string m_bios_md5;
 
 	struct {
 		bool A20_enabled;

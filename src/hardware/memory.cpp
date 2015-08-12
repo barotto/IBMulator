@@ -22,6 +22,7 @@
 #include "memory.h"
 #include "program.h"
 #include "machine.h"
+#include "md5.h"
 #include "hardware/devices/vga.h"
 #include "hardware/cpu/core.h"
 
@@ -35,6 +36,9 @@
 #include <archive.h>
 #include <archive_entry.h>
 #endif
+
+#define PS1LW44_BIOS_MD5SUM "f605396b48f02c5e81bc9e5e5fb60717"
+#define PS12011_BIOS_MD5SUM "9cac91f1fa7fe58d9509b754785f7fd2"
 
 Memory g_memory;
 
@@ -129,6 +133,46 @@ void Memory::config_changed()
 				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
 		        NULL);
 		throw;
+	}
+
+	PINFOF(LOG_V0, LOG_MEM, "System model ID: 0x%02X\n", m_buffer[0xFFFFE]);
+	if(m_buffer[0xFFFFE] != 0xFC) {
+		PERRF(LOG_MEM, "Invalid system model ID\n");
+		throw std::exception();
+	}
+
+	std::string biosver, biosdate;
+
+	for(int i=0; i<138; i+=2) {
+		uint8_t c = m_buffer[0xF0000+i];
+		if(c>=0x20 && c<=0x7E) {
+			biosver += c;
+		}
+	}
+	PINFOF(LOG_V0, LOG_MEM, "BIOS version: %s\n", biosver.c_str());
+
+	for(int i=0; i<8; i++) {
+		biosdate += m_buffer[0xFFFF5+i];
+	}
+	PINFOF(LOG_V0, LOG_MEM, "BIOS date: %s\n", biosdate.c_str());
+
+	MD5 md5;
+	md5.update(&m_buffer[0xF0000], 0x10000);
+	md5.finalize();
+	m_bios_md5 = md5.hexdigest();
+	PINFOF(LOG_V1, LOG_MEM, "BIOS md5sum: %s\n", m_bios_md5.c_str());
+
+	if(m_bios_md5 == PS1LW44_BIOS_MD5SUM) {
+		PINFOF(LOG_V0, LOG_MEM, "BIOS type: PS/1 (LW-Type 44)\n");
+	} else if(m_bios_md5 == PS12011_BIOS_MD5SUM) {
+		PINFOF(LOG_V0, LOG_MEM, "BIOS type: PS/1 Model 2011 (10 MHz 286)\n");
+	} else {
+		PINFOF(LOG_V0, LOG_MEM, "BIOS type: unknown!\n");
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Unknown BIOS",
+				"You are using an unsupported BIOS.\n"
+				"If it's from a PS/1 model 2011, please inform the author and maybe send him a copy.\n"
+				"Thank you! :)",
+		        NULL);
 	}
 }
 
