@@ -61,6 +61,7 @@ noinst_HEADERS = \
 	devices/vgadisplay.h \
 	devices/floppy.h \
 	devices/harddrv.h \
+	devices/hddparams.h \
 	devices/mediaimage.h \
 	devices/vvfat.h \
 	devices/serial.h \

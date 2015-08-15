@@ -1659,9 +1659,9 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 		if(vvfat != NULL) {
 			if(vvfat->open(_path + 6) == 0) {
 				type              = FLOPPY_1_44;
-				tracks            = vvfat->cylinders;
-				heads             = vvfat->heads;
-				sectors_per_track = vvfat->spt;
+				tracks            = vvfat->geometry.cylinders;
+				heads             = vvfat->geometry.heads;
+				sectors_per_track = vvfat->geometry.spt;
 				sectors           = 2880;
 				vvfat_floppy      = true;
 				fd                = 0;

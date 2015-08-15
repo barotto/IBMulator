@@ -277,9 +277,6 @@ bool hdimage_copy_file(const char *src, const char *dst)
 
 MediaImage::MediaImage()
 :
-cylinders(0),
-heads(0),
-spt(0),
 hd_size(0)
 {
 }
@@ -291,7 +288,7 @@ int MediaImage::open(const char* _pathname)
 
 uint32_t MediaImage::get_capabilities()
 {
-	return (cylinders == 0) ? HDIMAGE_AUTO_GEOMETRY : 0;
+	return (geometry.cylinders == 0) ? HDIMAGE_AUTO_GEOMETRY : 0;
 }
 
 uint32_t MediaImage::get_timestamp()
@@ -308,7 +305,7 @@ FlatMediaImage::FlatMediaImage()
 :
 fd(-1)
 {
-
+	geometry = {0};
 }
 
 FlatMediaImage::~FlatMediaImage()
@@ -420,7 +417,7 @@ bool FlatMediaImage::is_valid()
 		return false;
 	}
 
-	unsigned sectors = cylinders * heads * spt;
+	unsigned sectors = geometry.cylinders * geometry.heads * geometry.spt;
 	if(hd_size != 512 * sectors) {
 		PERRF(LOG_HDD, "size of disk image is wrong, %d bytes instead of %d bytes\n",
 				hd_size, (512 * sectors));

@@ -25,6 +25,19 @@
 #include "wincompat.h"
 #endif
 
+struct MediaGeometry
+{
+	unsigned cylinders;
+	unsigned heads;
+	unsigned spt;
+	int      wpcomp;
+	unsigned lzone;
+
+	const bool operator==(const MediaGeometry &_geom) {
+		return cylinders==_geom.cylinders && heads==_geom.heads && spt==_geom.spt;
+	}
+};
+
 enum {
   HDIMAGE_MODE_FLAT,
   HDIMAGE_MODE_VVFAT,
@@ -119,9 +132,7 @@ protected:
 
 public:
 
-	unsigned cylinders;
-	unsigned heads;
-	unsigned spt;
+	MediaGeometry geometry;
 	uint64_t hd_size;
 
 public:

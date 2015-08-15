@@ -110,9 +110,7 @@ $ fdisk -l hdd.img
 
 *Note*: if you change the disk type from the default 35 (WDL-330P) to any 
 other type, the automatically created image will be 0-filled and you'll need to 
-use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have 
-accurate timings emulation; any other type have the same performance as type
-35.
+use 'fdisk' and 'format' in order to use it.
 
 ### Key bindings
 

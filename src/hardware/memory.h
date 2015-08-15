@@ -22,6 +22,7 @@
 
 #include "statebuf.h"
 #include "interval_tree.h"
+#include "devices/hddparams.h"
 
 #define KEBIBYTE          1024u
 #define MEBIBYTE          1024u * KEBIBYTE
@@ -75,12 +76,16 @@ protected:
 	memtrap_intervalTree_t m_traps_tree;
 	std::vector<memtrap_interval_t> m_traps_intervals;
 
+	const static std::map<std::string, uint32_t> ms_hdd_paramtable_offsets;
+
 	uint8_t read(uint32_t _address) const noexcept;
 	void write(uint32_t _address, uint8_t value) noexcept;
 
 	int  load_rom_file(const std::string &_filename, uint32_t _destaddr=0);
 	void load_rom_dir(const std::string &_dirname);
 	void load_rom_archive(const std::string &_filename);
+
+	void update_BIOS_8bit_checksum();
 
 public:
 
@@ -109,6 +114,7 @@ public:
 	bool get_A20_line() { return m_s.A20_enabled; }
 
 	uint8_t *get_phy_ptr(uint32_t _address);
+	uint32_t get_ram_size() { return m_mainbuf_size; }
 
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);
@@ -118,7 +124,7 @@ public:
 
 	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
 
-	uint32_t get_ram_size() { return m_mainbuf_size; }
+	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
 
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);

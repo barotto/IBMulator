@@ -42,6 +42,10 @@
 
 Memory g_memory;
 
+const std::map<std::string, uint32_t> Memory::ms_hdd_paramtable_offsets = {
+	{ PS1LW44_BIOS_MD5SUM, 0x4F8F },
+	{ PS12011_BIOS_MD5SUM, 0x4CEF }
+};
 
 Memory::Memory()
 :
@@ -622,6 +626,34 @@ void Memory::register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t
 {
 	m_traps_intervals.push_back(memtrap_interval_t(_lo, _hi, memtrap_t(_mask, _fn)));
 	m_traps_tree = memtrap_intervalTree_t(m_traps_intervals);
+}
+
+void Memory::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
+{
+	if(_table_entry_id<=0 || _table_entry_id>47) {
+		PERRF(LOG_MEM, "Invalid HDD parameters table entry id: %d\n", _table_entry_id);
+		throw std::exception();
+	}
+	auto offset = ms_hdd_paramtable_offsets.find(m_bios_md5);
+	if(offset == ms_hdd_paramtable_offsets.end()) {
+		PERRF(LOG_MEM, "The HDD parameters table offset is unknown\n");
+		throw std::exception();
+	}
+
+	uint32_t addr = 0xF0000 + offset->second + _table_entry_id*16;
+	size_check<HDDParams, 16>();
+	memcpy(&m_buffer[addr], &_params, 16);
+
+	update_BIOS_8bit_checksum();
+}
+
+void Memory::update_BIOS_8bit_checksum()
+{
+	uint8_t sum = 0;
+	for(int i=0xF0000; i<0xFFFFF; i++) {
+		sum += m_buffer[i];
+	}
+	m_buffer[0xFFFFF] = (~sum)+1;
 }
 
 void Memory::s_debug_trap(uint32_t _address,  // address

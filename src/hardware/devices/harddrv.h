@@ -27,13 +27,14 @@
 class HardDrive;
 extern HardDrive g_harddrv;
 
-struct HDDType
+struct HDDPerformance
 {
-	unsigned cylinders;
-	unsigned heads;
-	unsigned spt;
-	int      wpcomp;
-	unsigned lzone;
+	float    seek_max;   // Maximum seek time in milliseconds
+	float    seek_trk;   // Track to track seek time in milliseconds
+	unsigned rot_speed;  // Rotational speed in RPM
+	float    xfer_rate;  // Disk-to-buffer trasfer rate in Mbps
+	unsigned interleave; // Interleave ratio
+	float    exec_time;  // Time to execute a command in milliseconds (controller overhead)
 };
 
 class HardDrive : public IODevice
@@ -133,27 +134,28 @@ private:
 	int m_dma_timer;
 	int m_drive_type;
 	uint32_t m_sectors;
-	double   m_rpm;
 	uint32_t m_trk2trk_us;
+	uint32_t m_avg_rot_lat_us;
 	uint32_t m_avg_trk_lat_us;
-	uint32_t m_sec_tx_us;
+	uint32_t m_sec_xfer_us;
 	uint32_t m_exec_time_us;
-	uint32_t m_avg_rot_lat;
 
 	std::unique_ptr<MediaImage> m_disk;
 	std::string m_original_path;
-	int  m_original_type;
+	MediaGeometry m_original_geom;
 	bool m_write_protect;
 	bool m_save_on_close;
 	bool m_tmp_disk;
 
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
-	static const HDDType ms_hdd_types[45];
+	static const MediaGeometry ms_hdd_types[45];
+	static const std::map<uint, HDDPerformance> ms_hdd_performance;
 
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const;
 	inline void lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const;
 
-	void mount(std::string _imgpath);
+	void get_profile(int _type_id, MediaGeometry &geom_, HDDPerformance &perf_);
+	void mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance _perf);
 	void unmount();
 
 	void cmd_timer();

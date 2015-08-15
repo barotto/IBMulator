@@ -96,9 +96,18 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DISK_C_SECTION, {
-		{ DISK_READONLY, "no" },
-		{ DISK_SAVE, "yes" },
-		{ DISK_PATH, "hdd.img" }
+		{ DISK_READONLY,   "no" },
+		{ DISK_SAVE,       "yes" },
+		{ DISK_PATH,       "hdd.img" },
+		{ DISK_CYLINDERS,  "921" },
+		{ DISK_HEADS,      "2" },
+		{ DISK_SPT,        "33" },
+		{ DISK_SEEK_MAX,   "40.0" },
+		{ DISK_SEEK_TRK,   "8.0" },
+		{ DISK_ROT_SPEED,  "3600" },
+		{ DISK_XFER_RATE,  "10.2" },
+		{ DISK_INTERLEAVE, "4" },
+		{ DISK_EXEC_TIME,  "0.5" }
 	} },
 
 	{ MIXER_SECTION, {
@@ -190,8 +199,12 @@ ini_filehelp_t AppConfig::ms_help = {
 "; floppy_b: The type of floppy drive B.\n"
 ";           Possible values: none, 3.5, 5.25\n"
 ";      hdd: The type of fixed disk drive C.\n"
-";           Possible values: any number between 0 and 44, 15 excluded, where 0 means no disk installed.\n"
-";           Type 35 is the original WDL-330P 30MB disk drive. For more info read the README.\n"
+";           Possible values: any number between 0 and 45 (15 excluded)\n"
+";                0: no disk installed\n"
+";               15: reserved, don't use it\n"
+";               35: the original WDL-330P 30MB disk drive\n"
+";             1-44: standard type (see the project page for the list of types supported by the BIOS)\n"
+";               45: custom type (specify the geometry in the hdd section)\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -218,6 +231,18 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
 ";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
 "(unless it is write-protected)\n"
+"; The following parameters are used for disk type 45 (custom type):\n"
+";   cylinders: Number of cylinders (max. 1024)\n"
+";       heads: Number of heads (max. 16)\n"
+";     sectors: Number of sectors per track (max. 62)\n"
+"; Drive capacity is cylinders*heads*sectors*512, for a maximum of 496MiB.\n"
+"; The following performance parameters are used for any disk type except 35 and 38:\n"
+";    seek_max: Maximum seek time in milliseconds\n"
+";    seek_trk: Track-to-track seek time in milliseconds\n"
+";   rot_speed: Rotational speed in RPM\n"
+";   xfer_rate: Disk-to-buffer trasfer rate in Mbps\n"
+";  interleave: Interleave ratio\n"
+";   exec_time: Time to execute a command in milliseconds (controller overhead)\n"
 		},
 
 		{ MIXER_SECTION,

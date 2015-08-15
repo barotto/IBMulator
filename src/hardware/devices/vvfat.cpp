@@ -326,10 +326,10 @@ bool VVFATMediaImage::sector2CHS(uint32_t spos, mbr_chs_t *chs)
 {
   uint32_t head, sector;
 
-  sector = spos % spt;
-  spos   /= spt;
-  head   = spos % heads;
-  spos   /= heads;
+  sector = spos % geometry.spt;
+  spos   /= geometry.spt;
+  head   = spos % geometry.heads;
+  spos   /= geometry.heads;
   if (spos > 1023) {
     /* Overflow,
     it happens if 32bit sector positions are used, while CHS is only 24bit.
@@ -999,8 +999,8 @@ int VVFATMediaImage::init_directories(const char* dirname)
     if (fat_type != 32) {
       bootsector->sectors_per_fat = htod16(sectors_per_fat);
     }
-    bootsector->sectors_per_track = htod16(spt);
-    bootsector->number_of_heads = htod16(heads);
+    bootsector->sectors_per_track = htod16(geometry.spt);
+    bootsector->number_of_heads = htod16(geometry.heads);
     bootsector->hidden_sectors = htod32(offset_to_bootsector);
     bootsector->total_sectors = (uint32_t)(htod32((volume_sector_count > 0xffff) ? volume_sector_count:0));
     if (fat_type != 32) {
@@ -1156,14 +1156,14 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
       }
       if (fat_type != 0) {
         sector_count = partition->start_sector_long + partition->length_sector_long;
-        spt = partition->start_sector_long;
+        geometry.spt = partition->start_sector_long;
         if (partition->end_CHS.head > 15) {
-          heads = 16;
+        	geometry.heads = 16;
         } else {
-          heads = partition->end_CHS.head + 1;
+        	geometry.heads = partition->end_CHS.head + 1;
         }
-        cylinders = sector_count / (heads * spt);
-        offset_to_bootsector = spt;
+        geometry.cylinders = sector_count / (geometry.heads * geometry.spt);
+        offset_to_bootsector = geometry.spt;
         memcpy(&first_sectors[0], sector_buffer, 0x200);
         use_mbr_file = 1;
         PINFOF(LOG_V1, LOG_HDD, "VVFAT: using MBR from file\n");
@@ -1200,13 +1200,13 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
       }
       if ((fat_type != 0) && (bs->number_of_fats == 2)) {
         sector_count = bs->total_sectors16 + bs->total_sectors + bs->hidden_sectors;
-        spt = bs->sectors_per_track;
+        geometry.spt = bs->sectors_per_track;
         if (bs->number_of_heads > 15) {
-          heads = 16;
+        	geometry.heads = 16;
         } else {
-          heads = bs->number_of_heads;
+        	geometry.heads = bs->number_of_heads;
         }
-        cylinders = sector_count / (heads * spt);
+        geometry.cylinders = sector_count / (geometry.heads * geometry.spt);
         offset_to_bootsector = bs->hidden_sectors;
         use_boot_file = 1;
       }
@@ -1224,9 +1224,9 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
   if (!use_mbr_file && !use_boot_file) {
     if (hd_size == 1474560) {
       // floppy support
-      cylinders = 80;
-      heads = 2;
-      spt = 18;
+      geometry.cylinders = 80;
+      geometry.heads = 2;
+      geometry.spt = 18;
       offset_to_bootsector = 0;
       fat_type = 12;
       sectors_per_cluster = 1;
@@ -1234,14 +1234,14 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
       root_entries = 224;
       reserved_sectors = 1;
     } else {
-      if (cylinders == 0) {
-        cylinders = 1024;
-        heads = 16;
-        spt = 63;
+      if (geometry.cylinders == 0) {
+    	  geometry.cylinders = 1024;
+    	  geometry.heads = 16;
+    	  geometry.spt = 63;
       }
-      offset_to_bootsector = spt;
+      offset_to_bootsector = geometry.spt;
     }
-    sector_count = cylinders * heads * spt;
+    sector_count = geometry.cylinders * geometry.heads * geometry.spt;
   }
 
   hd_size = 512L * ((uint64_t)sector_count);
