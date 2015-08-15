@@ -23,6 +23,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 typedef std::map<std::string, uint> ini_enum_map_t;
 typedef std::map<std::string, std::string> ini_section_t;
@@ -46,6 +47,7 @@ private:
 	ini_file_t m_values;
 	static ini_file_t ms_def_values;
 	static ini_filehelp_t ms_help;
+	static std::vector<std::pair<std::string, std::vector<std::string>>> ms_keys_order;
 
 	static std::string make_key(std::string _name);
 	static int value_handler(void* user, const char* section, const char* name, const char* value);
@@ -93,12 +95,9 @@ public:
 };
 
 
-#define PROGRAM_SECTION     "program"
-#define PROGRAM_MEDIA_DIR   "media_dir"
-#define PROGRAM_CAPTURE_DIR "capture_dir"
-
-#define CPU_SECTION         "cpu"
-#define CPU_FREQUENCY       "frequency"
+#define PROGRAM_SECTION         "program"
+#define PROGRAM_MEDIA_DIR       "media_dir"
+#define PROGRAM_CAPTURE_DIR     "capture_dir"
 
 #define GUI_SECTION             "gui"
 #define GUI_KEYMAP              "keymap"
@@ -123,55 +122,58 @@ public:
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"
 
-#define CMOS_SECTION        "cmos"
-#define CMOS_IMAGE_FILE     "image"
-#define CMOS_IMAGE_RTC_INIT "image_init"
-#define CMOS_IMAGE_SAVE     "image_save"
+#define CPU_SECTION             "cpu"
+#define CPU_FREQUENCY           "frequency"
 
-#define MEM_SECTION           "memory"
-#define MEM_ROMSET            "romset"
-#define MEM_BASE_SIZE         "base"
-#define MEM_EXT_SIZE          "extended"
+#define MEM_SECTION             "memory"
+#define MEM_ROMSET              "romset"
+#define MEM_BASE_SIZE           "base"
+#define MEM_EXT_SIZE            "extended"
 
-#define DRIVES_SECTION  "drives"
-#define DRIVES_FDD_A    "floppy_a"
-#define DRIVES_FDD_B    "floppy_b"
-#define DRIVES_HDD      "hdd"
+#define CMOS_SECTION            "cmos"
+#define CMOS_IMAGE_FILE         "image"
+#define CMOS_IMAGE_RTC_INIT     "image_init"
+#define CMOS_IMAGE_SAVE         "image_save"
 
-#define DISK_A_SECTION  "floppy_a"
-#define DISK_B_SECTION  "floppy_b"
-#define DISK_C_SECTION  "hdd"
-#define DISK_TYPE       "type"
-#define DISK_INSERTED   "inserted"
-#define DISK_READONLY   "readonly"
-#define DISK_PATH       "path"
-#define DISK_SAVE		"save"
-#define DISK_CYLINDERS  "cylinders"
-#define DISK_HEADS      "heads"
-#define DISK_SPT        "sectors"
-#define DISK_SEEK_MAX   "seek_max"
-#define DISK_SEEK_TRK   "seek_trk"
-#define DISK_ROT_SPEED  "rot_speed"
-#define DISK_XFER_RATE  "xfer_rate"
-#define DISK_INTERLEAVE "interleave"
-#define DISK_EXEC_TIME  "exec_time"
+#define DRIVES_SECTION          "drives"
+#define DRIVES_FDD_A            "floppy_a"
+#define DRIVES_FDD_B            "floppy_b"
+#define DRIVES_HDD              "hdd"
 
-#define MIXER_SECTION   "mixer"
-#define MIXER_RATE      "rate"
-#define MIXER_PREBUFFER "prebuffer"
-#define MIXER_SAMPLES   "samples"
-#define MIXER_PCSPEAKER "pcspeaker"
-#define MIXER_PS1AUDIO  "ps1audio"
+#define DISK_A_SECTION          "floppy_a"
+#define DISK_B_SECTION          "floppy_b"
+#define DISK_C_SECTION          "hdd"
+#define DISK_TYPE               "type"
+#define DISK_INSERTED           "inserted"
+#define DISK_READONLY           "readonly"
+#define DISK_PATH               "path"
+#define DISK_SAVE		        "save"
+#define DISK_CYLINDERS          "cylinders"
+#define DISK_HEADS              "heads"
+#define DISK_SPT                "sectors"
+#define DISK_SEEK_MAX           "seek_max"
+#define DISK_SEEK_TRK           "seek_trk"
+#define DISK_ROT_SPEED          "rot_speed"
+#define DISK_XFER_RATE          "xfer_rate"
+#define DISK_INTERLEAVE         "interleave"
+#define DISK_EXEC_TIME          "exec_time"
 
-#define COM_SECTION "com"
-#define COM_ENABLED "enabled"
-#define COM_MODE    "mode"
-#define COM_DEV     "dev"
+#define MIXER_SECTION           "mixer"
+#define MIXER_RATE              "rate"
+#define MIXER_PREBUFFER         "prebuffer"
+#define MIXER_SAMPLES           "samples"
+#define MIXER_PCSPEAKER         "pcspeaker"
+#define MIXER_PS1AUDIO          "ps1audio"
 
-#define LPT_SECTION "lpt"
-#define LPT_ENABLED "enabled"
-#define LPT_PORT    "port"
-#define LPT_FILE    "file"
+#define COM_SECTION             "com"
+#define COM_ENABLED             "enabled"
+#define COM_MODE                "mode"
+#define COM_DEV                 "dev"
+
+#define LPT_SECTION             "lpt"
+#define LPT_ENABLED             "enabled"
+#define LPT_PORT                "port"
+#define LPT_FILE                "file"
 
 #endif
 

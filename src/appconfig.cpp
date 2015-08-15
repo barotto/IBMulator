@@ -142,6 +142,7 @@ ini_filehelp_t AppConfig::ms_help = {
 "; 2. the user directory (the folder where this file is normally located)\n"
 "; 3. the program's assets directory\n"
 		},
+
 		{ PROGRAM_SECTION,
 ";   media_dir: The default directory used to search for floppy and hdd images.\n"
 "; capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
@@ -152,33 +153,35 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ GUI_SECTION,
-";      aspect: VGA aspect ratio.\n"
-";              Possible values: original, adaptive, scaled.\n"
-";      bg_XXX: Background window color\n"
-";         dpi: Resolution of the host display in DPI (currently used for mouse acceleration).\n"
-";  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
-";    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
-";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
-";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
-"; grab_method: Method to use for mouse grabbing\n"
-";              Possible values: MOUSE3, CTRL-F10\n"
-"; guifragment: GLSL fragment shader for GUI rendering\n"
-";   guivertex: GLSL vertex shader for GUI rendering\n"
-";       width: VGA window width in pixel\n"
-";      height: VGA window height in pixel\n"
-";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
-";              Open a .map file to read comments on how to edit it.\n"
 ";        mode: Possible values: normal, compact.\n"
 ";               normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";              compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
+";      aspect: VGA aspect ratio.\n"
+";              Possible values: original, adaptive, scaled.\n"
+";               original: 4:3 aspect ratio\n"
+";               adaptive: screen will be scaled maintaining the aspect ratio of the current video mode (eg: 16:10 for 320x200)\n"
+";                 scaled: screen will be scaled to fill your monitor\n"
+";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
+";              Open a .map file to read comments on how to edit it.\n"
+";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
+"; grab_method: Method to use for mouse grabbing\n"
+";              Possible values: MOUSE3, CTRL-F10\n"
 ";       mouse: Mouse type.\n"
 ";              Possible values: none, ps2, serial\n"
 "; mouse_accel: Enable mouse acceleration\n"
+";       width: VGA window width in pixel\n"
+";      height: VGA window height in pixel\n"
+";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
+";         dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";     sampler: VGA scaling quality.\n"
 ";              Possible values: linear, nearest\n"
-";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
+";  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
+";    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
+"; guifragment: GLSL fragment shader for GUI rendering\n"
+";   guivertex: GLSL vertex shader for GUI rendering\n"
+";      bg_XXX: Background window color\n"
 "; start_image: An optional PNG file to load at program start\n"
-
+";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -258,6 +261,97 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ COM_SECTION, "" },
 
 		{ LPT_SECTION, "" },
+};
+
+std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
+	{ PROGRAM_SECTION, {
+		PROGRAM_MEDIA_DIR,
+		PROGRAM_CAPTURE_DIR
+	} },
+	{ GUI_SECTION, {
+		GUI_MODE,
+		GUI_ASPECT,
+		GUI_KEYMAP,
+		GUI_MOUSE_GRAB,
+		GUI_GRAB_METHOD,
+		GUI_MOUSE_TYPE,
+		GUI_MOUSE_ACCELERATION,
+		GUI_WIDTH,
+		GUI_HEIGHT,
+		GUI_FULLSCREEN,
+		GUI_SCREEN_DPI,
+		GUI_SAMPLER,
+		GUI_FB_VERTEX_SHADER,
+		GUI_FB_FRAGMENT_SHADER,
+		GUI_GUI_VERTEX_SHADER,
+		GUI_GUI_FRAGMENT_SHADER,
+		GUI_BG_R,
+		GUI_BG_G,
+		GUI_BG_B,
+		GUI_START_IMAGE,
+		GUI_SHOW_LEDS
+	} },
+	{ CPU_SECTION, {
+		CPU_FREQUENCY
+	} },
+	{ MEM_SECTION, {
+		MEM_ROMSET,
+		MEM_BASE_SIZE,
+		MEM_EXT_SIZE
+	} },
+	{ CMOS_SECTION, {
+		CMOS_IMAGE_FILE,
+		CMOS_IMAGE_RTC_INIT,
+		CMOS_IMAGE_SAVE
+	} },
+	{ DRIVES_SECTION, {
+		DRIVES_FDD_A,
+		DRIVES_FDD_B,
+		DRIVES_HDD
+	} },
+	{ DISK_A_SECTION, {
+		DISK_PATH,
+		DISK_INSERTED,
+		DISK_READONLY,
+		DISK_TYPE
+	} },
+	{ DISK_B_SECTION, {
+		DISK_PATH,
+		DISK_INSERTED,
+		DISK_READONLY,
+		DISK_TYPE
+	} },
+	{ DISK_C_SECTION, {
+		DISK_PATH,
+		DISK_READONLY,
+		DISK_SAVE,
+		DISK_CYLINDERS,
+		DISK_HEADS,
+		DISK_SPT,
+		DISK_SEEK_MAX,
+		DISK_SEEK_TRK,
+		DISK_ROT_SPEED,
+		DISK_XFER_RATE,
+		DISK_INTERLEAVE,
+		DISK_EXEC_TIME
+	} },
+	{ MIXER_SECTION, {
+		MIXER_PREBUFFER,
+		MIXER_SAMPLES,
+		MIXER_RATE,
+		MIXER_PCSPEAKER,
+		MIXER_PS1AUDIO
+	} },
+	{ COM_SECTION, {
+		COM_ENABLED,
+		COM_MODE,
+		COM_DEV
+	} },
+	{ LPT_SECTION, {
+		LPT_ENABLED,
+		LPT_PORT,
+		LPT_FILE
+	} }
 };
 
 AppConfig::AppConfig()
@@ -564,13 +658,14 @@ void AppConfig::create_file(const std::string &_filename, bool _comments)
 	if(_comments) {
 		file << ms_help["HEADER"] << endl;
 	}
-	for(auto section : ms_def_values) {
+	for(auto section : ms_keys_order) {
 		file << "[" << section.first << "]" << endl;
 		if(_comments) {
 			file << ms_help[section.first];
 		}
-		for(auto value : section.second) {
-			file << value.first << "=" << get(section.first, value.first) << endl;
+
+		for(auto key : section.second) {
+			file << key << "=" << get(section.first, key) << endl;
 		}
 		file << endl;
 	}
