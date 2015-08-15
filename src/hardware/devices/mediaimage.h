@@ -33,7 +33,7 @@ struct MediaGeometry
 	int      wpcomp;
 	unsigned lzone;
 
-	const bool operator==(const MediaGeometry &_geom) {
+	bool operator==(const MediaGeometry &_geom) const {
 		return cylinders==_geom.cylinders && heads==_geom.heads && spt==_geom.spt;
 	}
 };

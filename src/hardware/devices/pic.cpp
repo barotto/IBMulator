@@ -54,7 +54,7 @@ void PIC::init()
 	g_machine.register_irq(2, "cascade");
 }
 
-void PIC::reset(unsigned type)
+void PIC::reset(unsigned)
 {
 	m_s.master.single_PIC           = 0;
 	m_s.master.interrupt_offset     = 0x08; /* IRQ0 = INT 0x08 */

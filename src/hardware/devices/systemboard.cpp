@@ -64,7 +64,7 @@ void SystemBoard::init(void)
 
 }
 
-void SystemBoard::reset(unsigned type)
+void SystemBoard::reset(unsigned)
 {
 	m_s.POST = 0;
 

@@ -80,7 +80,7 @@ void Parallel::init(void)
 	// virtual_printer() opens output file on demand
 }
 
-void Parallel::reset(unsigned type)
+void Parallel::reset(unsigned)
 {
 	/* internal state */
 	m_s.STATUS.error = 1;

@@ -150,7 +150,7 @@ void VGA::init()
 	});
 }
 
-void VGA::reset(uint type)
+void VGA::reset(uint)
 {
 	delete[] m_s.memory;
 	delete[] m_s.vga_tile_updated;

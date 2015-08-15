@@ -305,7 +305,7 @@ FlatMediaImage::FlatMediaImage()
 :
 fd(-1)
 {
-	geometry = {0};
+	geometry = {0,0,0};
 }
 
 FlatMediaImage::~FlatMediaImage()

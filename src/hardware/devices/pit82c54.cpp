@@ -56,7 +56,7 @@ void PIT_82C54::init()
 	}
 }
 
-void PIT_82C54::reset(unsigned type)
+void PIT_82C54::reset(unsigned)
 {
 	for(int i=0; i<3; i++) {
 		counter[i].reset();

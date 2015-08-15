@@ -51,7 +51,7 @@ void GamePort::init()
 	config_changed();
 }
 
-void GamePort::reset(unsigned _type)
+void GamePort::reset(unsigned)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }

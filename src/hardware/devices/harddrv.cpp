@@ -325,7 +325,7 @@ void HardDrive::init()
 	);
 
 	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
-	m_original_geom = {0};
+	m_original_geom = {0,0,0};
 	if(m_drive_type > 0) {
 		MediaGeometry geom;
 		HDDPerformance perf;
@@ -343,7 +343,7 @@ void HardDrive::init()
 	}
 }
 
-void HardDrive::reset(unsigned _type)
+void HardDrive::reset(unsigned)
 {
 	memset(&m_s, 0, sizeof(m_s));
 	if(m_drive_type == 45) {
