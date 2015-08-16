@@ -160,6 +160,9 @@ void Keyboard::reset(unsigned _type)
 	}
 	m_s.kbd_ctrl.Qsize = 0;
 	m_s.kbd_ctrl.Qsource = 0;
+
+	// on a reset the A20 address line is enabled
+	g_memory.set_A20_line(true);
 }
 
 void Keyboard::power_off()
