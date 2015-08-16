@@ -57,14 +57,14 @@ private:
 	struct State {
 		struct {
 			/* status bits matching the status port*/
-			bool pare; // Bit7, 1= parity error from keyboard/m_mouse - ignored.
-			bool tim;  // Bit6, 1= timeout from keyboard - ignored.
-			bool auxb; // Bit5, 1= m_mouse data waiting for CPU to read.
-			bool keyl; // Bit4, 1= keyswitch in lock position - ignored.
-			bool c_d; /*  Bit3, 1=command to port 64h, 0=data to port 60h */
-			bool sysf; // Bit2,
-			bool inpb; // Bit1,
-			bool outb; // Bit0, 1= keyboard data or m_mouse data ready for CPU
+			bool pare; // Bit7, 1=parity error from keyboard/mouse - ignored.
+			bool tim;  // Bit6, 1=timeout from keyboard - ignored.
+			bool auxb; // Bit5, 1=mouse data waiting for CPU to read.
+			bool keyl; // Bit4, 1=keyswitch in lock position - ignored.
+			bool c_d;  // Bit3, 1=command to port 64h, 0=data to port 60h
+			bool sysf; // Bit2, System Flag
+			bool inpb; // Bit1, Input Buffer Full
+			bool outb; // Bit0, 1=keyboard data or mouse data ready for CPU
 					   //       check aux to see which. Or just keyboard
 					   //       data before AT style machines
 
@@ -86,10 +86,12 @@ private:
 			bool     expecting_scancodes_set;
 			uint8_t  current_scancodes_set;
 			bool     bat_in_progress;
+			bool     self_test_in_progress;
+			bool     self_test_completed;
 
 			uint8_t  Q[KBD_CONTROLLER_QSIZE];
 			unsigned Qsize;
-			unsigned Qsource; // 0=keyboard, 1=m_mouse
+			unsigned Qsource; // 0=keyboard, 1=mouse
 
 		} kbd_ctrl;
 
@@ -159,7 +161,7 @@ private:
 	std::mutex m_mouse_lock;
 
 	uint8_t  get_kbd_enable();
-	void     service_paste_buf ();
+	void     service_paste_buf();
 	void     create_mouse_packet(bool force_enq);
 	unsigned periodic(uint32_t usec_delta);
 
@@ -170,8 +172,9 @@ private:
 	void kbd_ctrl_to_mouse(uint8_t value);
 	void kbd_enQ(uint8_t scancode);
 	void kbd_enQ_imm(uint8_t val);
-	void activate_timer();
+	void activate_timer(uint32_t _usec_delta=1);
 	void controller_enQ(uint8_t data, unsigned source);
+	void update_controller_Q();
 	bool mouse_enQ_packet(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4);
 	void mouse_enQ(uint8_t mouse_data);
 
@@ -187,6 +190,7 @@ public:
 
 	void init();
 	void reset(unsigned _signal);
+	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);

@@ -89,9 +89,13 @@ void Keyboard::init()
 	);
 
 	config_changed();
+
+	set_kbd_clock_enable(false);
+	set_aux_clock_enable(false);
+	m_s.mouse.enable = false;
 }
 
-void Keyboard::reset(unsigned)
+void Keyboard::reset(unsigned _type)
 {
 	memset(&m_s.kbd_ctrl, 0, sizeof(m_s.kbd_ctrl));
 	memset(&m_s.mouse, 0, sizeof(m_s.mouse));
@@ -113,24 +117,28 @@ void Keyboard::reset(unsigned)
 	m_s.kbd_ctrl.tim  = false;
 	m_s.kbd_ctrl.auxb = false;
 	m_s.kbd_ctrl.keyl = true;
-	m_s.kbd_ctrl.c_d = true;
+	m_s.kbd_ctrl.c_d  = true;
 	m_s.kbd_ctrl.sysf = false;
 	m_s.kbd_ctrl.inpb = false; //is this always false???
 	m_s.kbd_ctrl.outb = false;
 
-	m_s.kbd_ctrl.kbd_clock_enabled = true;
-	m_s.kbd_ctrl.aux_clock_enabled = false;
-	m_s.kbd_ctrl.allow_irq1 = true;
-	m_s.kbd_ctrl.allow_irq12 = true;
-	m_s.kbd_ctrl.kbd_output_buffer = 0;
-	m_s.kbd_ctrl.aux_output_buffer = 0;
-	m_s.kbd_ctrl.last_comm = 0;
-	m_s.kbd_ctrl.expecting_port60h = 0;
-	m_s.kbd_ctrl.irq1_requested = false;
-	m_s.kbd_ctrl.irq12_requested = false;
+	m_s.kbd_ctrl.kbd_clock_enabled         = false;
+	m_s.kbd_ctrl.aux_clock_enabled         = false;
+	m_s.kbd_ctrl.allow_irq1                = true;
+	m_s.kbd_ctrl.allow_irq12               = true;
+	m_s.kbd_ctrl.kbd_output_buffer         = 0;
+	m_s.kbd_ctrl.aux_output_buffer         = 0;
+	m_s.kbd_ctrl.last_comm                 = 0;
+	m_s.kbd_ctrl.expecting_port60h         = 0;
+	m_s.kbd_ctrl.irq1_requested            = false;
+	m_s.kbd_ctrl.irq12_requested           = false;
 	m_s.kbd_ctrl.expecting_mouse_parameter = 0;
-	m_s.kbd_ctrl.bat_in_progress = false;
-	m_s.kbd_ctrl.scancodes_translate = true;
+	m_s.kbd_ctrl.bat_in_progress           = false;
+	m_s.kbd_ctrl.scancodes_translate       = true;
+	if(_type != DEVICE_SOFT_RESET) {
+		m_s.kbd_ctrl.self_test_in_progress = false;
+		m_s.kbd_ctrl.self_test_completed   = false;
+	}
 
 	m_s.kbd_ctrl.timer_pending = 0;
 
@@ -152,6 +160,13 @@ void Keyboard::reset(unsigned)
 	}
 	m_s.kbd_ctrl.Qsize = 0;
 	m_s.kbd_ctrl.Qsource = 0;
+}
+
+void Keyboard::power_off()
+{
+	set_kbd_clock_enable(false);
+	set_aux_clock_enable(false);
+	m_s.mouse.enable = false;
 }
 
 void Keyboard::config_changed()
@@ -219,18 +234,33 @@ void Keyboard::reset_internals(bool powerup)
 	}
 }
 
-// IO port read callback handler
-// read function - the big picture:
-// if address == data port then
-//    if byte for mouse then return it
-//    else if byte for keyboard then return it
-// else address== status port
-//    assemble the status bits and return them.
-//
+void Keyboard::update_controller_Q()
+{
+	unsigned i;
+	m_s.kbd_ctrl.outb = true;
+	if(m_s.kbd_ctrl.Qsource == 0) { // keyboard
+		m_s.kbd_ctrl.kbd_output_buffer = m_s.kbd_ctrl.Q[0];
+		m_s.kbd_ctrl.auxb = false;
+		if(m_s.kbd_ctrl.allow_irq1) {
+			m_s.kbd_ctrl.irq1_requested = true;
+		}
+	} else { // mouse
+		m_s.kbd_ctrl.aux_output_buffer = m_s.kbd_ctrl.Q[0];
+		m_s.kbd_ctrl.auxb = true;
+		if(m_s.kbd_ctrl.allow_irq12) {
+			m_s.kbd_ctrl.irq12_requested = true;
+		}
+	}
+	for(i=0; i< m_s.kbd_ctrl.Qsize-1; i++) {
+		// move Q elements towards head of queue by one
+		m_s.kbd_ctrl.Q[i] =  m_s.kbd_ctrl.Q[i+1];
+	}
+	PDEBUGF(LOG_V2, LOG_KEYB, "controller_Qsize: %02X\n", m_s.kbd_ctrl.Qsize);
+	m_s.kbd_ctrl.Qsize--;
+}
+
 uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 {
-	PDEBUGF(LOG_V2, LOG_KEYB, "Keyboard read 0x%02X\n", address);
-
 	uint8_t val;
 
 	if(address == 0x60) { /* output buffer */
@@ -240,56 +270,31 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 			m_s.kbd_ctrl.outb = false;
 			m_s.kbd_ctrl.auxb = false;
 			m_s.kbd_ctrl.irq12_requested = false;
-
 			if(m_s.kbd_ctrl.Qsize) {
-				unsigned i;
-				m_s.kbd_ctrl.aux_output_buffer =  m_s.kbd_ctrl.Q[0];
-				m_s.kbd_ctrl.outb = true;
-				m_s.kbd_ctrl.auxb = true;
-				if(m_s.kbd_ctrl.allow_irq12)
-					m_s.kbd_ctrl.irq12_requested = true;
-				for(i=0; i< m_s.kbd_ctrl.Qsize-1; i++) {
-					// move Q elements towards head of queue by one
-					m_s.kbd_ctrl.Q[i] =  m_s.kbd_ctrl.Q[i+1];
-				}
-				m_s.kbd_ctrl.Qsize--;
+				update_controller_Q();
 			}
-
 			g_pic.lower_irq(12);
 			activate_timer();
-			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read from 0x%02X returns 0x%02X\n", address, val);
+			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read from 0x60 -> 0x%02X\n", val);
 			return val;
 		} else if(m_s.kbd_ctrl.outb) { /* kbd byte available */
-			val =  m_s.kbd_ctrl.kbd_output_buffer;
+			val = m_s.kbd_ctrl.kbd_output_buffer;
 			m_s.kbd_ctrl.outb = false;
 			m_s.kbd_ctrl.auxb = false;
 			m_s.kbd_ctrl.irq1_requested = false;
 			m_s.kbd_ctrl.bat_in_progress = false;
-
 			if(m_s.kbd_ctrl.Qsize) {
-				unsigned i;
-				m_s.kbd_ctrl.aux_output_buffer =  m_s.kbd_ctrl.Q[0];
-				m_s.kbd_ctrl.outb = true;
-				m_s.kbd_ctrl.auxb = true;
-				if(m_s.kbd_ctrl.allow_irq1)
-					m_s.kbd_ctrl.irq1_requested = true;
-				for(i=0; i<m_s.kbd_ctrl.Qsize-1; i++) {
-					// move Q elements towards head of queue by one
-					m_s.kbd_ctrl.Q[i] =  m_s.kbd_ctrl.Q[i+1];
-				}
-				PDEBUGF(LOG_V2, LOG_KEYB, "controller_Qsize: %02X\n", m_s.kbd_ctrl.Qsize);
-				m_s.kbd_ctrl.Qsize--;
+				update_controller_Q();
 			}
-
 			g_pic.lower_irq(1);
 			activate_timer();
-			PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x%02X returns 0x%02X\n", address, val);
+			PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x60 -> 0x%02X\n", val);
 			return val;
 		} else {
 			//m_s.kbd_buffer.num_elements is not thread safe, but it's just a debug print...
 			PDEBUGF(LOG_V2, LOG_KEYB, "num_elements = %d", m_s.kbd_buffer.num_elements);
 			PDEBUGF(LOG_V2, LOG_KEYB, " read from port 60h with outb empty\n");
-			return  m_s.kbd_ctrl.kbd_output_buffer;
+			return m_s.kbd_ctrl.kbd_output_buffer;
 		}
 	} else if(address == 0x64) { /* status register */
 		val = (m_s.kbd_ctrl.pare << 7) |
@@ -302,7 +307,7 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 		       m_s.kbd_ctrl.outb;
 
 		m_s.kbd_ctrl.tim = false;
-
+		PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x64 -> 0x%02X\n", val);
 		return val;
 	}
 
@@ -310,13 +315,11 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 	return 0; /* keep compiler happy */
 }
 
-// IO port write callback handler
 void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 {
 	uint8_t   command_byte;
-	static int kbd_initialized=0;
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "keyboard: 8-bit write to %04x = %02x\n", address, value);
+	PDEBUGF(LOG_V2, LOG_KEYB, "write to 0x%04x <- 0x%02x\n", address, value);
 
 	switch(address) {
 		case 0x60: // input buffer
@@ -468,19 +471,26 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 				case 0xaa: // motherboard controller self test
 					PDEBUGF(LOG_V2, LOG_KEYB, "Self Test\n");
-					if(kbd_initialized == 0) {
-						m_s.kbd_ctrl.Qsize = 0;
-						m_s.kbd_ctrl.outb = false;
-						kbd_initialized++;
-					}
+					/* The Self Test command performs tests of the KBC and on success,
+					 * sends 55h to the host; that much is documented by IBM
+					 * and others. However, the self test command also effectively
+					 * resets the KBC and puts it into a known state. That means,
+					 * among other things, that the A20 address line is enabled,
+					 * keyboard interface is disabled, and scan code translation is enabled.
+					 * Furthermore, after the system is powered on, the keyboard
+					 * controller does not start operating until the self test command
+					 * is sent by the host and successfully completed by the KBC.
+					 */
 					// controller output buffer must be empty
-					if( m_s.kbd_ctrl.outb) {
+					if(m_s.kbd_ctrl.outb) {
 						PERRF(LOG_KEYB,"kbd: OUTB set and command 0x%02X encountered\n", value);
 						break;
 					}
-					// (mch) Why is this commented out??? Enabling
-					m_s.kbd_ctrl.sysf = true; // self test complete
-					controller_enQ(0x55, 0); // controller OK
+					reset(DEVICE_SOFT_RESET);
+					m_s.kbd_ctrl.self_test_in_progress = true;
+					m_s.kbd_ctrl.self_test_completed = false;
+					// self-test is supposed to take some time to complete.
+					activate_timer(500);
 					break;
 
 				case 0xab: // Interface Test
@@ -611,6 +621,11 @@ void Keyboard::gen_scancode(uint32_t key)
 	unsigned char *scancode;
 	uint8_t  i;
 
+	// Ignore scancode if keyboard clock is driven low
+	if(!m_s.kbd_ctrl.kbd_clock_enabled || !m_s.kbd_ctrl.self_test_completed) {
+		return;
+	}
+
 	PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): %s %s\n",
 			g_keymap.get_key_name(key), (key >> 31)?"released":"pressed");
 
@@ -618,13 +633,10 @@ void Keyboard::gen_scancode(uint32_t key)
 		PDEBUGF(LOG_V2, LOG_KEYB, "keyboard: gen_scancode with scancode_translate cleared\n");
 	}
 
-	// Ignore scancode if keyboard clock is driven low
-	if(!m_s.kbd_ctrl.kbd_clock_enabled)
-		return;
-
 	// Ignore scancode if scanning is disabled
-	if(!m_s.kbd_buffer.scanning_enabled)
+	if(!m_s.kbd_buffer.scanning_enabled) {
 		return;
+	}
 
 	// Switch between make and break code
 	if(key & KEY_RELEASED)
@@ -653,7 +665,6 @@ void Keyboard::gen_scancode(uint32_t key)
 		}
 	}
 }
-
 
 void Keyboard::set_kbd_clock_enable(bool value)
 {
@@ -720,15 +731,17 @@ void Keyboard::controller_enQ(uint8_t data, unsigned source)
 		m_s.kbd_ctrl.outb = true;
 		m_s.kbd_ctrl.auxb = false;
 		m_s.kbd_ctrl.inpb = false;
-		if(m_s.kbd_ctrl.allow_irq1)
+		if(m_s.kbd_ctrl.allow_irq1) {
 			m_s.kbd_ctrl.irq1_requested = true;
+		}
 	} else { // mouse
 		m_s.kbd_ctrl.aux_output_buffer = data;
 		m_s.kbd_ctrl.outb = true;
 		m_s.kbd_ctrl.auxb = true;
 		m_s.kbd_ctrl.inpb = false;
-		if(m_s.kbd_ctrl.allow_irq12)
+		if(m_s.kbd_ctrl.allow_irq12) {
 			m_s.kbd_ctrl.irq12_requested = true;
+		}
 	}
 }
 
@@ -825,7 +838,7 @@ void Keyboard::mouse_enQ(uint8_t mouse_data)
 	m_s.mouse_buffer.buffer[tail] = mouse_data;
 	m_s.mouse_buffer.num_elements++;
 
-	if(!m_s.kbd_ctrl.outb &&  m_s.kbd_ctrl.aux_clock_enabled) {
+	if(!m_s.kbd_ctrl.outb && m_s.kbd_ctrl.aux_clock_enabled) {
 		activate_timer();
 		return;
 	}
@@ -987,7 +1000,7 @@ void Keyboard::timer_handler()
 {
 	unsigned retval;
 
-	retval = periodic(1);
+	retval = periodic(KBD_SERIAL_DELAY);
 
 	if(retval&0x01) {
 		g_pic.raise_irq(1);
@@ -1002,7 +1015,20 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 {
 	uint8_t  retval;
 
-	retval =  m_s.kbd_ctrl.irq1_requested | (m_s.kbd_ctrl.irq12_requested << 1);
+	if(m_s.kbd_ctrl.self_test_in_progress) {
+		if(usec_delta >= m_s.kbd_ctrl.timer_pending) {
+			// self test complete
+			m_s.kbd_ctrl.self_test_completed = true;
+			m_s.kbd_ctrl.self_test_in_progress = false;
+			m_s.kbd_ctrl.sysf = true;
+			controller_enQ(0x55, 0);  // controller OK
+		} else {
+			m_s.kbd_ctrl.timer_pending -= usec_delta;
+			return 0;
+		}
+	}
+
+	retval = m_s.kbd_ctrl.irq1_requested | (m_s.kbd_ctrl.irq12_requested << 1);
 	m_s.kbd_ctrl.irq1_requested = false;
 	m_s.kbd_ctrl.irq12_requested = false;
 
@@ -1026,9 +1052,9 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 	/* nothing in outb, look for possible data xfer from keyboard or mouse */
 	if(m_s.kbd_buffer.num_elements &&
 			(m_s.kbd_ctrl.kbd_clock_enabled || m_s.kbd_ctrl.bat_in_progress)) {
-		PDEBUGF(LOG_V2, LOG_KEYB, "service_keyboard: key in internal buffer waiting\n");
 		m_s.kbd_ctrl.kbd_output_buffer = m_s.kbd_buffer.buffer[m_s.kbd_buffer.head];
 		m_s.kbd_ctrl.outb = true;
+		PDEBUGF(LOG_V2, LOG_KEYB, "key in internal buffer waiting = 0x%02x\n",m_s.kbd_ctrl.kbd_output_buffer);
 		// commented out since this would override the current state of the
 		// mouse buffer flag - no bug seen - just seems wrong (das)
 		//     m_s.kbd_ctrl.auxb = false;
@@ -1041,27 +1067,26 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 		create_mouse_packet(false);
 		std::lock_guard<std::mutex> mlock(m_mouse_lock);
 		if(m_s.kbd_ctrl.aux_clock_enabled &&  m_s.mouse_buffer.num_elements) {
-			PDEBUGF(LOG_V2, LOG_KEYB, "service_keyboard: key(from mouse) in internal buffer waiting\n");
 			m_s.kbd_ctrl.aux_output_buffer = m_s.mouse_buffer.buffer[m_s.mouse_buffer.head];
-
 			m_s.kbd_ctrl.outb = true;
 			m_s.kbd_ctrl.auxb = true;
+			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] key in internal buffer waiting = 0x%02x\n", m_s.kbd_ctrl.aux_output_buffer);
 			m_s.mouse_buffer.head = ( m_s.mouse_buffer.head + 1) % MOUSE_BUFF_SIZE;
 			m_s.mouse_buffer.num_elements--;
 			if(m_s.kbd_ctrl.allow_irq12) {
 				m_s.kbd_ctrl.irq12_requested = true;
 			}
 		} else {
-			PDEBUGF(LOG_V2, LOG_KEYB, "service_keyboard(): no keys waiting\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "no keys waiting\n");
 		}
 	}
 	return retval;
 }
 
-void Keyboard::activate_timer(void)
+void Keyboard::activate_timer(uint32_t _usec_delta)
 {
 	if(m_s.kbd_ctrl.timer_pending == 0) {
-		m_s.kbd_ctrl.timer_pending = 1;
+		m_s.kbd_ctrl.timer_pending = _usec_delta;
 	}
 }
 
@@ -1157,7 +1182,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 
 			case 0xe7: // Set Mouse Scaling to 2:1
 				controller_enQ(0xFA, 1); // ACK
-				m_s.mouse.scaling         = 2;
+				m_s.mouse.scaling = 2;
 				PDEBUGF(LOG_V1, LOG_KEYB, "mouse: scaling set to 2:1\n");
 				break;
 
@@ -1368,20 +1393,9 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 	}
 
 	// Note: enable only applies in STREAM MODE.
-	if(!m_s.mouse.enable) {
+	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
 		return;
 	}
-
-	// scale down the motion
-	//why?
-	/*
-	if((delta_x < -1) || (delta_x > 1)) {
-		delta_x /= 2;
-	}
-	if((delta_y < -1) || (delta_y > 1)) {
-		delta_y /= 2;
-	}
-	*/
 
 	if(!m_s.mouse.im_mode) {
 		delta_z = 0;
