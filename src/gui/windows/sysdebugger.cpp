@@ -113,6 +113,8 @@ Window(_gui, "debugger.rml")
 	m_core.gdtbase = get_element("GDTbase");
 	m_core.gdtlimit = get_element("GDTlimit");
 
+	m_core.a20 = get_element("A20");
+
 	m_memory.cs_ip = get_element("CS_IP");
 	m_memory.ds_si = get_element("DS_SI");
 	m_memory.es_di = get_element("ES_DI");
@@ -235,6 +237,8 @@ void SysDebugger::update()
 	m_core.idtlimit->SetInnerRML(format_hex16(GET_LIMIT(IDTR)));
 	m_core.gdtbase->SetInnerRML(format_hex24(GET_BASE(GDTR)));
 	m_core.gdtlimit->SetInnerRML(format_hex16(GET_LIMIT(GDTR)));
+
+	m_core.a20->SetInnerRML(format_bit(g_memory.get_A20_line()));
 
 	const uint len = 12;
 	uint8_t buf[len];

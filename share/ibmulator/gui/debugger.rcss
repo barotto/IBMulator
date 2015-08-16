@@ -67,6 +67,13 @@ table#flags
 	left: 230px;
 }
 
+table#extra
+{
+	position: absolute;
+	top: 285px;
+	left: 230px;
+}
+
 table#flags td
 {
 	width: 10px;
@@ -77,7 +84,7 @@ table#flags td
 	width: 140px;
 }
 
-#CPL
+#CPL,#A20
 {
 	width: 10px;
 }

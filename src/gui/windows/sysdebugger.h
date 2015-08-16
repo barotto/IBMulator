@@ -44,6 +44,8 @@ private:
 		Rocket::Core::Element *ldt, *ldtbase, *ldtlimit;
 		Rocket::Core::Element *idtbase, *idtlimit;
 		Rocket::Core::Element *gdtbase, *gdtlimit;
+
+		Rocket::Core::Element *a20;
 	} m_core;
 
 	struct s_memory {

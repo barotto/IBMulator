@@ -69,6 +69,10 @@
 			<tr><th>IF</th><td id="IF">1</td> <th>DF</th><td id="DF">1</td> <th>OF</th><td id="OF">1</td></tr>
 			<tr><th>PL</th><td id="PL">1</td> <th>NT</th><td id="NT">1</td> </tr>
 			</table>
+			
+			<table id="extra">
+			<tr><th>A20</th><td id="A20">0</td></tr>
+			</table>
 		</div>
 		
 		<div id="memory">
