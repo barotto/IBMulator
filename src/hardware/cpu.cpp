@@ -557,6 +557,10 @@ void CPU::exception(CPUException _exc)
 			PDEBUGF(LOG_V2,LOG_CPU,"exception(): #GP while resolving exc %d\n", _exc.vector);
 			exception(e);
 		}
+	} catch(CPUShutdown &s) {
+		PDEBUGF(LOG_V2, LOG_CPU, "Entering shutdown for %s\n", s.what());
+		enter_sleep_state(CPU_STATE_SHUTDOWN);
+		return;
 	}
 }
 
