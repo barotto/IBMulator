@@ -102,7 +102,10 @@ case 0x07:
 {
 	m_instr.fn = std::bind(&CPUExecutor::POP_ES, _1);
 	CYCLES(3,3);
-	CYCLES_PM(20)
+	// 8 descriptor fetch + 2 stack pop = 10 cycles for mem ops
+	// 20 by intel docs - 10 memory operations = 10 cycles for the instruction exec
+	// 10 pmode - 3 rmode  = 7 cycles of penalty
+	CYCLES_PM(7);
 	break;
 }
 
@@ -237,7 +240,8 @@ case 0x17:
 {
 	m_instr.fn = std::bind(&CPUExecutor::POP_SS, _1);
 	CYCLES(3,3);
-	CYCLES_PM(20);
+	// see pop es comment
+	CYCLES_PM(7);
 	break;
 }
 
@@ -246,7 +250,7 @@ case 0x18:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SBB_eb_rb, _1);
-	CYCLES(2,5);
+	CYCLES(2,8);
 	break;
 }
 
@@ -308,7 +312,8 @@ case 0x1F:
 {
 	m_instr.fn = std::bind(&CPUExecutor::POP_DS, _1);
 	CYCLES(3,3);
-	CYCLES_PM(20);
+	// see pop es comment
+	CYCLES_PM(7);
 	break;
 }
 
@@ -317,7 +322,7 @@ case 0x20:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::AND_eb_rb, _1);
-	CYCLES(2,5);
+	CYCLES(2,8);
 	break;
 }
 
@@ -381,7 +386,7 @@ case 0x28:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::SUB_eb_rb, _1);
-	CYCLES(2,5);
+	CYCLES(2,8);
 	break;
 }
 
@@ -445,7 +450,7 @@ case 0x30:
 {
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::XOR_eb_rb, _1);
-	CYCLES(2,5);
+	CYCLES(2,8);
 	break;
 }
 
@@ -655,9 +660,8 @@ case 0x62:
 	m_instr.modrm.load();
 	m_instr.fn = std::bind(&CPUExecutor::BOUND_rw_md , _1);
 	//normal cycles are the same as INT
-	CYCLES_JCOND(9);
 	CYCLES(7,7);
-	CYCLES_CALL(40,78,167,0);
+	CYCLES_JCOND(9);
 	break;
 }
 
@@ -1219,7 +1223,7 @@ case 0x8E:
 			illegal_opcode();
 	}
 	CYCLES(2,3);
-	CYCLES_PM(17);
+	CYCLES_PM(5);
 	break;
 }
 
@@ -1287,7 +1291,13 @@ case 0x9A:
 	uint16_t newcs = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::CALL_cd, _1, newip, newcs);
 	CYCLES(5,5);
-	CYCLES_PM(26);
+	//for PM mode:
+	// 4 cycles for PQ flush and fill
+	// 4 cycles for 2 stack pushes
+	// 8 cycles for 4 mem reads (descriptor)
+	// 26 - 16 = 10 (5 of penalty)
+	//TODO never tested on real hw
+	CYCLES_PM(5);
 	break;
 }
 
@@ -1637,7 +1647,10 @@ case 0xC4:
 		illegal_opcode();
 	}
 	CYCLES(3,3);
-	CYCLES_PM(17);
+	//for PM mode:
+	// 4 cycles for pointer load (2 mem reads)
+	// 8 cycles for decriptor load (4 mem reads)
+	CYCLES_PM(6);
 	break;
 }
 
@@ -1650,7 +1663,7 @@ case 0xC5:
 		illegal_opcode();
 	}
 	CYCLES(3,3);
-	CYCLES_PM(17);
+	CYCLES_PM(6);
 	break;
 }
 
@@ -1719,7 +1732,8 @@ case 0xCA:
 	uint16_t popbytes = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::RET_far, _1, popbytes);
 	CYCLES(11,11);
-	CYCLES_PM(21);
+	//TODO consider the lesser provilege case?
+	CYCLES_PM(7);
 	break;
 }
 
@@ -1731,7 +1745,8 @@ case 0xCB:
 {
 	m_instr.fn = std::bind(&CPUExecutor::RET_far, _1, 0);
 	CYCLES(11,11);
-	CYCLES_PM(21);
+	//TODO consider the lesser provilege case
+	CYCLES_PM(7);
 	break;
 }
 
@@ -1745,7 +1760,7 @@ case 0xCC:
 {
 	m_instr.fn = std::bind(&CPUExecutor::INT3, _1);
 	CYCLES(13,13);
-	CYCLES_CALL(40,78,167,0);
+	CYCLES_PM(7);
 	break;
 }
 
@@ -1760,7 +1775,7 @@ case 0xCD:
 	uint8_t vector = fetchb();
 	m_instr.fn = std::bind(&CPUExecutor::INT_db, _1, vector);
 	CYCLES(13,13);
-	CYCLES_CALL(40,78,167,0);
+	CYCLES_PM(7);
 	break;
 }
 
@@ -1780,8 +1795,7 @@ case 0xCF:
 {
 	m_instr.fn = std::bind(&CPUExecutor::IRET, _1);
 	CYCLES(11,11);
-	CYCLES_PM(26);
-	CYCLES_CALL(169,0,0,0);
+	CYCLES_PM(7);
 	break;
 }
 
@@ -2111,8 +2125,7 @@ case 0xEA:
 	uint16_t selector = fetchw();
 	m_instr.fn = std::bind(&CPUExecutor::JMP_cd, _1, selector, offset);
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
-	CYCLES_PM(23);
-	CYCLES_CALL(38,38,180,175);
+	CYCLES_PM(6);
 	break;
 }
 
@@ -2390,7 +2403,7 @@ case 0xFF:
 		case 3:
 			m_instr.fn = std::bind(&CPUExecutor::CALL_ed, _1);
 			CYCLES(3,5);
-			CYCLES_CALL(44,90,185,180);
+			CYCLES_PM(7);
 			break;
 		case 4:
 			m_instr.fn = std::bind(&CPUExecutor::JMP_ew, _1);
@@ -2398,8 +2411,7 @@ case 0xFF:
 			break;
 		case 5:
 			CYCLES(JUMP_CYCLES+4,JUMP_CYCLES+4);
-			CYCLES_PM(22);
-			CYCLES_CALL(41,41,183,178);
+			CYCLES_PM(7);
 			if(m_instr.modrm.mod == 3) {
 				illegal_opcode();
 				break;

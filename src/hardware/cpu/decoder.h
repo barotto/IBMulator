@@ -27,19 +27,13 @@
 #define CPU_MAX_INSTR_SIZE 10
 
 #define CYCLES(xbase, xmemop) \
-		m_instr.cycles.base += xbase; \
-		m_instr.cycles.memop += xmemop; \
-		m_instr.cycles.base_rep += xbase;
+		m_instr.cycles.base = xbase; \
+		m_instr.cycles.memop = xmemop; \
+		m_instr.cycles.base_rep = xbase;
 
-#define CYCLES_PM(c) m_instr.cycles.pmode += c;
+#define CYCLES_PM(c) m_instr.cycles.pmode = c;
 
 #define CYCLES_JCOND(xnoj) m_instr.cycles.noj += xnoj;
-
-#define CYCLES_CALL(xsamep,xmorep,xtgate,xtss) \
-		m_instr.cycles.samep += xsamep; \
-		m_instr.cycles.morep += xmorep; \
-		m_instr.cycles.tgate += xtgate; \
-		m_instr.cycles.tss += xtss;
 
 class CPUExecutor;
 class CPUDecoder;
@@ -82,12 +76,8 @@ struct Instruction
 		uint8_t extra; //!< any run-time dependent extra amount (like shifts and rotates)
 		uint8_t rep;   //!< execution cycles for the rep warmup
 		uint8_t base_rep; //!< CPU cycles for execution if inside a rep loop
-		uint8_t pmode; //!< CPU cycles if protected mode
+		uint8_t pmode; //!< CPU cycles penalty if protected mode
 		uint8_t noj;   //!< for jumps if jump not taken
-		uint8_t tgate; //!< for jmps and calls
-		uint8_t samep; //!< for jmps and calls
-		uint8_t morep; //!< for calls
-		uint8_t tss;   //!< for jmps and calls
 		int8_t  bu;    //!< cycles added to or reduced from the bu cycles count
 		               //   this is a hack, to account for proper bu operations ordering
 	} cycles;

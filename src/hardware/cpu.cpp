@@ -272,25 +272,22 @@ uint CPU::get_execution_cycles(bool _memtx)
 		}
 	}
 	base += m_instr->cycles.extra;
-
-	if(IS_PMODE() && m_instr->cycles.pmode>0) {
-		//cycles_spent += m_instr->cycles.pmode;
-		//TODO pmode values are with mem tx
-		cycles_spent += base;
-	} else {
-		if(m_instr->cycles.noj>0) {
-			//TODO consider the BOUND case
-			if(g_cpubus.is_pq_valid()) {
-				//jmp not taken
-				cycles_spent += m_instr->cycles.noj;
-			} else {
-				cycles_spent += base;
-			}
+	if(IS_PMODE()) {
+		// protected mode penalty
+		base += m_instr->cycles.pmode;
+	}
+	if(m_instr->cycles.noj>0) {
+		//TODO consider the BOUND case
+		if(g_cpubus.is_pq_valid()) {
+			//jmp not taken
+			cycles_spent += m_instr->cycles.noj;
 		} else {
-			//TODO complete the pmode CALL/JMP
 			cycles_spent += base;
 		}
+	} else {
+		cycles_spent += base;
 	}
+
 	return cycles_spent;
 }
 

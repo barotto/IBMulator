@@ -49,10 +49,6 @@ Instruction * CPUDecoder::decode()
 		0,  //base_rep
 		0,  //pmode
 		0,  //noj
-		0,  //tgate
-		0,  //samep
-		0,  //morep
-		0,  //tss
 		0   //bu
 	};
 
