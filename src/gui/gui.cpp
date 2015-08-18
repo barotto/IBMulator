@@ -730,7 +730,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 						try {
 							save_framebuffer(screenfile, palfile);
 							std::string mex = "screenshot saved to " + screenfile;
-							PINFOF(LOG_V0, LOG_GUI, "%s", mex.c_str());
+							PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
 							show_message(mex.c_str());
 						} catch(std::exception &e) { }
 					}
@@ -818,6 +818,8 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 
 void GUI::dispatch_event(const SDL_Event &_event)
 {
+	static bool special_key = false;
+
 	if(_event.type == SDL_WINDOWEVENT) {
 		dispatch_window_event(_event.window);
 	} else if(_event.type == SDL_USEREVENT) {
@@ -899,19 +901,31 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		}
 	} else {
 		if(dispatch_special_keys(_event)) {
+			special_key = true;
 			return;
 		}
 		if(m_input_grab) {
 			dispatch_hw_event(_event);
 			return;
 		}
-		if( ((_event.type==SDL_KEYDOWN || _event.type==SDL_KEYUP) && !m_windows.needs_input())
-			|| (_event.type==SDL_JOYAXISMOTION || _event.type==SDL_JOYBUTTONDOWN || _event.type==SDL_JOYBUTTONUP)
-		)
-		{
-			dispatch_hw_event(_event);
-		} else {
-			dispatch_rocket_event(_event);
+		switch(_event.type) {
+			case SDL_JOYAXISMOTION:
+			case SDL_JOYBUTTONDOWN:
+			case SDL_JOYBUTTONUP:
+				dispatch_hw_event(_event);
+				break;
+			case SDL_KEYDOWN:
+			case SDL_KEYUP:
+				if(m_windows.needs_input() && !special_key) {
+					dispatch_rocket_event(_event);
+				} else {
+					dispatch_hw_event(_event);
+					special_key = false;
+				}
+				break;
+			default:
+				dispatch_rocket_event(_event);
+				break;
 		}
 	}
 }
