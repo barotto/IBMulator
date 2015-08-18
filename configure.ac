@@ -57,6 +57,8 @@ if test x$have_windows = xno ; then
 	separator="/"
 else
 	separator="\\\\"
+	#-mno-ms-bitfields is required for the __attribute__(packed) to work
+	CXX_DEFAULTS="$CXX_DEFAULTS -mno-ms-bitfields"
 fi
 AC_SUBST(separator)
 AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
