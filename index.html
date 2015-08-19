@@ -56,7 +56,6 @@ The program is in active development and still in a beta status. Expect lots of 
 </ul>
 <h3>Currently missing features</h3>
 <ul>
-<li>Joystick support</li>
 <li>MIDI output with redirection to an external sound module (like a real MT-32.)</li>
 <li>Optimizations (the implementation is naive in many places.)</li>
 <li>Video capture.</li>
@@ -91,6 +90,7 @@ Your browser does not support the video tag!
 <a href="media/09_works.png"><img src="media/thumbs/09_works.png" /></a>
 <a href="media/10_checkit.png"><img src="media/thumbs/10_checkit.png" /></a>
 <a href="media/11_prince.png"><img src="media/thumbs/11_prince.png" /></a>
+<a href="media/12_win31.png"><img src="media/thumbs/12_win31.png" /></a>
 </div>
 </div>
 
@@ -198,11 +198,14 @@ The offset value is equal to "start sector"*512. The start sector value can be d
 $ fdisk -l hdd.img
 </pre>
 <p>
-Nota bene: if you change the disk type from the default 35 (WDL-330P) to any other type, the automatically created image will be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it. Also, only types 35 and 38 have accurate timings emulation; any other type have the same performance as type 35.
+<em>Note 1:</em> if you change the disk type from the default 35 (WDL-330P) to any other type, the automatically created image will be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it.
+</p>
+<p>
+<em>Note 2:</em> only types 35 and 38 have accurate timings emulation; any other type will have the same performance characteristics as type 35, unless otherwise specified in the ini file.
 </p>
 
 <h3>HDD types</h3>
-<p>These are the BIOS supported hdd types</p>
+<p>These are the BIOS supported hdd types:</p>
 <pre>
 Type   Cyl.   Heads    Sect.   Write    Land     Size
                                p-comp   Zone
@@ -252,7 +255,13 @@ Type   Cyl.   Heads    Sect.   Write    Land     Size
 42     654      2       32        -1     674     20MB
 43     923      5       36        -1    1023     81MB
 44     531      8       39        -1     532     81MB
+45             -- user defined type --
 </pre>
+<p>
+With the custom HDD type 45, you can use a drive with 1024 cylinders, 16 heads, and 62 sectors per track, for a maximum of 496MiB.<br />
+Theoretically the maximum value for sectors per track would be 63, but a bug in the BIOS prevents the system to correctly format the drive.
+</p>
+
 <h3>Key bindings</h3>
 <ul>
 <li>CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
@@ -284,22 +293,22 @@ Why not? Most of the time a FOSS project starts by scratching a developer's pers
 </p>
 <ol>
 <li>I wanted an emulator capable of running the IBM software.</li>
-<li>At the time, nobody was interested in emulating the PS/1 audio card.</li>
-<li>I was looking for a new spare time software project.</li>
+<li>At the time (2014), nobody was interested in emulating the PS/1 and its audio card.</li>
+<li>I was looking for a new free time software project.</li>
 <li>I wanted to learn something new (C++11, multithreading, x86 assembly, PC architecture.)</li>
 <li>I always wanted to write an emulator.</li>
 </ol>
 
 <p>
-<b>Why didn't you contribute to MESS / QEMU / %EmulatorName% instead?</b>
+<b>Why didn't you contribute to MESS / PCem / %EmulatorName% instead?</b>
 <br />
-I did think about it, but ended up voting against. Working in an existing environment, like MESS or QEMU, has its own rather steep learning curve and I'm not an emulation expert nor a C/C++ professional.
+I did think about it, but ended up voting against. Working in an existing environment has its own rather steep learning curve and I'm not an emulation expert nor a C/C++ professional.
 </p>
 
 <p>
 <b>Why the IBM PS/1, an overpriced, slow PC compatible that was already absolete at launch?</b>
 <br />
-Nostalgia effect. Also I think that it has some interesting and dinstinctive features like the ROM SHELL.
+Nostalgia. Also I think that it has some interesting and dinstinctive features like the ROM SHELL.
 </p>
 
 <p>
