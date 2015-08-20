@@ -4889,13 +4889,14 @@ void CPUExecutor::SGDT()
 	uint16_t off = EA_get_offset();
 
 	write_word(sr, off, limit_16);
-	//here Bochs seems to store a dword, but it should store 3 bytes only,
-	//the 4th is undefined (don't touch it, or the POST procedure of the
-	//PS/1 won't succeed)
-	// g_memory.write_dword(addr+2, base_32);
-	write_byte(sr, off+2, base_32);
-	write_byte(sr, off+3, base_32>>8);
+	write_word(sr, off+2, base_32);
 	write_byte(sr, off+4, base_32>>16);
+
+	/* Unlike to what described in the iAPX 286 Programmer's Reference Manual,
+	 * the 80286 stores 1's in these upper bits. Windows 3.0 checks this bits to
+	 * detect the 286 (the 386 stores 0's if the operand-size attribute is 16 bits.)
+	 */
+	write_byte(sr, off+5, 0xFF);
 }
 
 void CPUExecutor::SIDT()
@@ -4907,11 +4908,11 @@ void CPUExecutor::SIDT()
 	uint16_t off = EA_get_offset();
 
 	write_word(sr, off, limit_16);
-	//see above
-	// g_memory.write_dword(addr, base_32);
-	write_byte(sr, off+2, base_32);
-	write_byte(sr, off+3, base_32>>8);
+	write_word(sr, off+2, base_32);
 	write_byte(sr, off+4, base_32>>16);
+
+	// See comment for SGDT
+	write_byte(sr, off+5, 0xFF);
 }
 
 void CPUExecutor::SLDT_ew()
