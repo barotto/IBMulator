@@ -98,7 +98,6 @@ void Keyboard::init()
 void Keyboard::reset(unsigned _type)
 {
 	memset(&m_s.kbd_ctrl, 0, sizeof(m_s.kbd_ctrl));
-	memset(&m_s.mouse, 0, sizeof(m_s.mouse));
 
 	reset_internals(true);
 
@@ -148,7 +147,9 @@ void Keyboard::reset(unsigned _type)
 	m_s.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
 	m_s.mouse.scaling         = 1;   /* 1:1 (default) */
 	m_s.mouse.mode            = MOUSE_MODE_RESET;
+	m_s.mouse.saved_mode      = 0;
 	m_s.mouse.enable          = false;
+	// don't reset the button_status, it depends on the current state of the real mouse
 	m_s.mouse.delayed_dx      = 0;
 	m_s.mouse.delayed_dy      = 0;
 	m_s.mouse.delayed_dz      = 0;
@@ -1292,14 +1293,15 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				}
 				break;
 
-			case 0xe9: // Get mouse information
-				// should we ack here? (mch): Yes
+			case 0xe9: { // Get mouse information
 				controller_enQ(0xFA, 1); // ACK
-				controller_enQ(m_s.mouse.get_status_byte(), 1); // status
+				uint8_t status_byte = m_s.mouse.get_status_byte();
+				controller_enQ(status_byte, 1); // status
 				controller_enQ(m_s.mouse.get_resolution_byte(), 1); // resolution
 				controller_enQ(m_s.mouse.sample_rate, 1); // sample rate
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: get mouse information\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: get mouse information: 0x%02X\n", status_byte);
 				break;
+			}
 
 			case 0xeb: // Read Data (send a packet when in Remote Mode)
 				controller_enQ(0xFA, 1); // ACK
@@ -1395,11 +1397,6 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 		return;
 	}
 
-	// Note: enable only applies in STREAM MODE.
-	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
-		return;
-	}
-
 	if(!m_s.mouse.im_mode) {
 		delta_z = 0;
 	}
@@ -1409,7 +1406,20 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 	if((delta_x==0) && (delta_y==0) && (delta_z==0)
 			&& (m_s.mouse.button_status == button_state))
 	{
-		PDEBUGF(LOG_V2, LOG_KEYB, "useless call. ignoring.\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse: useless call. ignoring.\n");
+		return;
+	} else {
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: dx=%d, dy=%d, dz=%d, btns=%d\n",
+				delta_x, delta_y, delta_z, button_state);
+	}
+
+	if((m_s.mouse.button_status != button_state) || delta_z) {
+		force_enq = true;
+	}
+
+	m_s.mouse.button_status = button_state;
+
+	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
 		return;
 	}
 
@@ -1421,12 +1431,6 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 		delta_x = m_s.mouse.resolution_cpmm * x_mm;
 		delta_y = m_s.mouse.resolution_cpmm * y_mm;
 	}
-
-	if((m_s.mouse.button_status != button_state) || delta_z) {
-		force_enq = true;
-	}
-
-	m_s.mouse.button_status = button_state;
 
 	if(delta_x>255) { delta_x = 255; }
 	if(delta_y>255) { delta_y = 255; }
@@ -1452,8 +1456,8 @@ uint8_t Keyboard::State::Mouse::get_status_byte()
 	uint8_t ret = (uint8_t) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
 	ret |= (enable << 5);
 	ret |= (scaling == 1) ? 0 : (1 << 4);
-	ret |= ((button_status & 0x1) << 2);
-	ret |= ((button_status & 0x2) << 0);
+	ret |= ((button_status & 0x1) << 2); // left button
+	ret |= ((button_status & 0x2) >> 1); // right button
 	return ret;
 }
 
