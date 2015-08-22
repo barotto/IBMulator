@@ -115,12 +115,19 @@ use 'fdisk' and 'format' in order to use it.
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
+* CTRL+F3: toggle the machine power button
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
+* CTRL+F7: save current state
+* CTRL+F8: load last state
 * CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
 * CTRL+F11: CPU emulation speed down
 * CTRL+F12: CPU emulation speed up
+* CTRL+DEL: send CTRL+ALT+DEL to the guest OS
+* CTRL+INS: send SysReq to the guest OS
+* ALT+ENTER: toggle fullscreen mode
+* ALT+PAUSE: pause/resume emulation
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.

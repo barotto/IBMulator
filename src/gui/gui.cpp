@@ -710,6 +710,12 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 					}
 					return true;
 				}
+				case SDLK_F3: {
+					//machine on/off
+					if(_event.type == SDL_KEYUP) return true;
+					m_machine->cmd_switch_power();
+					return true;
+				}
 				case SDLK_F4: {
 					//show/hide debug windows
 					if(_event.type == SDL_KEYUP) return true;
@@ -739,7 +745,23 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 				case SDLK_F6: {
 					//start/stop audio capture
 					if(_event.type == SDL_KEYUP) return true;
-					g_mixer.cmd_toggle_capture();
+					m_mixer->cmd_toggle_capture();
+					return true;
+				}
+				case SDLK_F7: {
+					//save current machine state
+					if(_event.type == SDL_KEYUP) return true;
+					g_program.save_state("", [this]() {
+						m_windows.interface->show_message("State saved");
+					}, nullptr);
+					return true;
+				}
+				case SDLK_F8: {
+					//load last machine state
+					if(_event.type == SDL_KEYUP) return true;
+					g_program.restore_state("", [this]() {
+						m_windows.interface->show_message("State restored");
+					}, nullptr);
 					return true;
 				}
 				case SDLK_F10: {
@@ -775,6 +797,20 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 						m_symspeed_factor = 2.0;
 					}
 					m_machine->cmd_cycles_adjust(m_symspeed_factor);
+					return true;
+				}
+				case SDLK_DELETE: {
+					//send CTRL+ALT+CANC
+					if(_event.type == SDL_KEYUP) return true;
+					//CTRL has been already sent
+					m_machine->send_key_to_kbctrl(KEY_ALT_L);
+					m_machine->send_key_to_kbctrl(KEY_DELETE);
+					return true;
+				}
+				case SDLK_INSERT: {
+					//send SysReq
+					if(_event.type == SDL_KEYUP) return true;
+					m_machine->send_key_to_kbctrl(KEY_ALT_SYSREQ);
 					return true;
 				}
 			}
