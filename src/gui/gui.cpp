@@ -791,8 +791,12 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				}
 				case SDLK_F7: {
 					//save current machine state
-					//TODO send a CTRL key up event to the machine before saving
 					if(_event.type == SDL_KEYUP) return true;
+					KeyEntry *entry = g_keymap.find_host_key(modifier_key);
+					if(entry) {
+						m_machine->send_key_to_kbctrl(entry->baseKey | KEY_RELEASED);
+						_discard_next_key = modifier_key;
+					}
 					g_program.save_state("", [this]() {
 						m_windows.interface->show_message("State saved");
 					}, nullptr);
