@@ -141,12 +141,12 @@ private:
 	SDL_AudioSpec m_device_spec;
 	int m_bytes_per_frame;
 
-
 	shared_queue<Mixer_fun_t> m_cmd_queue;
 
 	std::map<std::string, std::shared_ptr<MixerChannel>> m_mix_channels;
 
 	bool m_audio_capture;
+	float m_global_volume;
 
 	void config_changed();
 	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
@@ -187,6 +187,7 @@ public:
 	void cmd_start_capture();
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
+	void cmd_set_global_volume(float _volume);
 
 	static inline int us_to_samples(int _us, int _rate) {
 		return round(double(_us) * double(_rate)/1e6);

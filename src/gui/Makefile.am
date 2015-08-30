@@ -15,6 +15,8 @@ libgui_a_SOURCES = \
 	window.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
+	windows/normal_interface.cpp \
+	windows/realistic_interface.cpp \
 	windows/status.cpp \
 	windows/sysdebugger.cpp \
 	windows/stats.cpp \
@@ -35,6 +37,8 @@ noinst_HEADERS = \
 	window.h \
 	windows/desktop.h \
 	windows/interface.h \
+	windows/normal_interface.h \
+	windows/realistic_interface.h \
 	windows/status.h \
 	windows/sysdebugger.h \
 	windows/stats.h \

@@ -40,10 +40,10 @@ RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 	mRenderer = _renderer;
 	mScreen = _screen;
 	try {
-		m_program = GUI::load_GLSL_program(
-				g_program.config().find_file(GUI_SECTION,GUI_GUI_VERTEX_SHADER),
-				g_program.config().find_file(GUI_SECTION,GUI_GUI_FRAGMENT_SHADER)
-		);
+		std::vector<std::string> vs,fs;
+		vs.push_back(g_program.config().find_file(GUI_SECTION,GUI_GUI_VERTEX_SHADER));
+		fs.push_back(g_program.config().find_file(GUI_SECTION,GUI_GUI_FRAGMENT_SHADER));
+		m_program = GUI::load_GLSL_program(vs,fs);
 		GLCALL( m_uniforms.textured = glGetUniformLocation(m_program, "textured") );
 		GLCALL( m_uniforms.guitex = glGetUniformLocation(m_program, "guitex") );
 		GLCALL( m_uniforms.P = glGetUniformLocation(m_program, "P") );

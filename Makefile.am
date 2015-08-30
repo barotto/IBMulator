@@ -24,7 +24,8 @@ share/ibmulator/gui/default.rml \
 share/ibmulator/gui/desktop.rml \
 share/ibmulator/gui/devstatus.rml \
 share/ibmulator/gui/fileselect.rml \
-share/ibmulator/gui/interface.rml \
+share/ibmulator/gui/normal_interface.rml \
+share/ibmulator/gui/realistic_interface.rml \
 share/ibmulator/gui/stats.rml \
 share/ibmulator/gui/status.rml
 
@@ -52,13 +53,19 @@ share/ibmulator/gui/images/romshell_datagrid_rl.png \
 share/ibmulator/gui/images/romshell_scroller.png \
 share/ibmulator/gui/images/sysunit_disk_g.png \
 share/ibmulator/gui/images/sysunit_disk_r.png \
-share/ibmulator/gui/images/sysunit_no_disk.png
+share/ibmulator/gui/images/sysunit_no_disk.png \
+share/ibmulator/gui/images/realistic_interface.png \
+share/ibmulator/gui/images/realistic_floppy_r.png \
+share/ibmulator/gui/images/realistic_slider.png
 
 guishadersdir = $(pkgdatadir)/gui/shaders
 dist_guishaders_DATA = \
+share/ibmulator/gui/shaders/filter_bicubic.fs \
+share/ibmulator/gui/shaders/filter_bilinear.fs \
 share/ibmulator/gui/shaders/fb-nearest.fs \
 share/ibmulator/gui/shaders/fb-passthrough.vs \
 share/ibmulator/gui/shaders/fb-scanlines.fs \
+share/ibmulator/gui/shaders/fb-realistic.fs \
 share/ibmulator/gui/shaders/gui.fs \
 share/ibmulator/gui/shaders/gui.vs
 

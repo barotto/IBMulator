@@ -28,10 +28,10 @@ class GUI;
 
 class Interface : public Window
 {
-private:
+protected:
 
 	struct {
-		RC::Element *power, *pause;
+		RC::Element *power;
 		RC::Element *fdd_select;
 	} m_buttons;
 
@@ -41,10 +41,9 @@ private:
 	} m_status;
 
 	struct {
-		bool power, pause, fdd, hdd;
+		bool power, fdd, hdd;
 	} m_leds;
 
-	RC::Element * m_sysunit;
 	RC::Element * m_warning;
 	RC::Element * m_message;
 
@@ -52,36 +51,32 @@ private:
 	uint m_curr_drive;
 	bool m_floppy_present;
 	bool m_floppy_changed;
-	uint m_gui_mode;
 
 	Machine *m_machine;
 	FileSelect *m_fs;
-
-	static event_map_t ms_evt_map;
-
-	void on_power(RC::Event &);
-	void on_pause(RC::Event &);
-	void on_save(RC::Event &);
-	void on_restore(RC::Event &);
-	void on_exit(RC::Event &);
-	void on_fdd_select(RC::Event &);
-	void on_fdd_eject(RC::Event &);
-	void on_fdd_mount(RC::Event &);
-	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
 	void update_floppy_disk(std::string _filename);
 
 public:
 
-	Interface(Machine *_machine, GUI * _gui);
+	Interface(Machine *_machine, GUI * _gui, const char *_rml);
 	~Interface();
 
-	void update();
-	void update_size(uint _width, uint _height);
-	event_map_t & get_event_map() { return Interface::ms_evt_map; }
+	virtual void update();
+	virtual void update_size(uint _width, uint _height);
 
 	void show_warning(bool _show);
 	void show_message(const char* _mex);
+
+	void on_power(RC::Event &);
+	void on_fdd_select(RC::Event &);
+	void on_fdd_eject(RC::Event &);
+	void on_fdd_mount(RC::Event &);
+	void on_floppy_mount(std::string _img_path, bool _write_protect);
+
+	virtual void set_audio_volume(float) {}
+	virtual void set_video_brightness(float) {}
+	virtual void set_video_contrast(float) {}
 };
 
 class LogMessage : public Logdev

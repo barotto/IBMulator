@@ -27,6 +27,7 @@
 #include "keymap.h"
 #include "hardware/devices/vga.h"
 #include "hardware/devices/vgadisplay.h"
+#include "utils.h"
 
 #include <Rocket/Core.h>
 #include <Rocket/Controls.h>
@@ -75,13 +76,16 @@ const char * GetGLErrorString(GLenum _error_code)
 }
 
 std::map<std::string, uint> GUI::ms_gui_modes = {
-	{ "compact", GUI_MODE_COMPACT },
-	{ "normal", GUI_MODE_NORMAL }
+	{ "compact",   GUI_MODE_COMPACT },
+	{ "normal",    GUI_MODE_NORMAL },
+	{ "realistic", GUI_MODE_REALISTIC }
 };
 
 std::map<std::string, uint> gui_sampler = {
 	{ "nearest", DISPLAY_SAMPLER_NEAREST },
-	{ "linear", DISPLAY_SAMPLER_LINEAR }
+	{ "linear",  DISPLAY_SAMPLER_BILINEAR },
+	{ "bilinear",DISPLAY_SAMPLER_BILINEAR },
+	{ "bicubic", DISPLAY_SAMPLER_BICUBIC }
 };
 
 std::map<std::string, uint> display_aspect = {
@@ -89,6 +93,7 @@ std::map<std::string, uint> display_aspect = {
 	{ "adaptive", DISPLAY_ASPECT_ADAPTIVE },
 	{ "scaled", DISPLAY_ASPECT_SCALED }
 };
+
 
 GUI::GUI()
 :
@@ -194,7 +199,11 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw;
 	}
 
-	m_windows.init(m_machine, this, m_mixer);
+	m_windows.init(m_machine, this, m_mixer, m_mode);
+
+	set_audio_volume(1.f);
+	set_video_brightness(0.7f);
+	set_video_contrast(0.5f);
 
 	try {
 		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
@@ -215,32 +224,48 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	g_vga.attach_display(&m_display.vga);
 	load_splash_image();
 
+	std::string shadersdir = g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
+	uint sampler = g_program.config().get_enum(GUI_SECTION, GUI_SAMPLER, gui_sampler);
+	std::vector<std::string> vs,fs;
+	if(sampler == DISPLAY_SAMPLER_NEAREST || sampler == DISPLAY_SAMPLER_BILINEAR) {
+		fs.push_back(shadersdir + "filter_bilinear.fs");
+	} else if(sampler == DISPLAY_SAMPLER_BICUBIC) {
+		fs.push_back(shadersdir + "filter_bicubic.fs");
+	} else {
+		PERRF(LOG_GUI, "Invalid sampler interpolation method\n");
+		shutdown_SDL();
+		throw std::exception();
+	}
+	fs.push_back(g_program.config().find_file(GUI_SECTION,GUI_FB_FRAGMENT_SHADER));
+	vs.push_back(g_program.config().find_file(GUI_SECTION,GUI_FB_VERTEX_SHADER));
 	try {
-		m_display.prog = load_GLSL_program(
-				g_program.config().find_file(GUI_SECTION,GUI_FB_VERTEX_SHADER),
-				g_program.config().find_file(GUI_SECTION,GUI_FB_FRAGMENT_SHADER)
-		);
+		m_display.prog = load_GLSL_program(vs,fs);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to create the shader program!\n");
 		shutdown_SDL();
 		throw std::exception();
 	}
+
 	//find the uniforms
 	GLCALL( m_display.uniforms.ch0 = glGetUniformLocation(m_display.prog, "iChannel0") );
 	if(m_display.uniforms.ch0 == -1) {
 		PWARNF(LOG_GUI, "iChannel0 not found in shader program\n");
 	}
-	GLCALL( m_display.uniforms.ch0size = glGetUniformLocation(m_display.prog, "iCh0Size") );
-	if(m_display.uniforms.ch0size == -1) {
-		PWARNF(LOG_GUI, "iCh0Size not found in shader program\n");
+	GLCALL( m_display.uniforms.brightness = glGetUniformLocation(m_display.prog, "iBrightness") );
+	if(m_display.uniforms.brightness == -1) {
+		PWARNF(LOG_GUI, "iBrightness not found in shader program\n");
 	}
-	GLCALL( m_display.uniforms.res = glGetUniformLocation(m_display.prog, "iResolution") );
-	if(m_display.uniforms.res == -1) {
-		PWARNF(LOG_GUI, "iResolution not found in shader program\n");
+	GLCALL( m_display.uniforms.contrast = glGetUniformLocation(m_display.prog, "iContrast") );
+	if(m_display.uniforms.contrast == -1) {
+		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
 	}
 	GLCALL( m_display.uniforms.mvmat = glGetUniformLocation(m_display.prog, "iModelView") );
 	if(m_display.uniforms.mvmat == -1) {
 		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.size = glGetUniformLocation(m_display.prog, "iDisplaySize") );
+	if(m_display.uniforms.size == -1) {
+		PWARNF(LOG_GUI, "iDisplaySize not found in shader program\n");
 	}
 
 	m_display.glintf = GL_RGBA;
@@ -248,25 +273,15 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_display.gltype = GL_UNSIGNED_BYTE;
 	GLCALL( glGenTextures(1, &m_display.tex) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-	/* OpenGL 4.2+
-	GLCALL( glTexStorage2D(GL_TEXTURE_2D, 1, m_display.glintf,
-			m_display.vga.get_fb_xsize(),
-			m_display.vga.get_fb_ysize())
-	);
-	*/
-
-	GLCALL(
-			glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-			m_display.vga.get_fb_xsize(), m_display.vga.get_fb_ysize(),
-			0, m_display.glf, m_display.gltype, NULL)
-	);
+	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
+			m_display.vga.get_screen_xres(), m_display.vga.get_screen_yres(),
+			0, m_display.glf, m_display.gltype, NULL) );
 
 	m_display.tex_buf.resize(m_display.vga.get_framebuffer_data_size());
 
 	GLCALL( glGenSamplers(1, &m_display.sampler) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE) );
-	uint sampler = g_program.config().get_enum(GUI_SECTION, GUI_SAMPLER, gui_sampler);
+	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
+	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER) );
 	if(sampler == DISPLAY_SAMPLER_NEAREST) {
 		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST) );
 		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST) );
@@ -613,8 +628,18 @@ void GUI::GL_debug_output(
 void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
-	render_vga();
-	m_rocket_context->Render();
+	if(m_mode == GUI_MODE_REALISTIC) {
+		m_windows.interface->hide();
+		m_windows.invert_visibility();
+		m_rocket_context->Render();
+		render_vga();
+		m_windows.invert_visibility();
+		m_rocket_context->Render();
+		m_windows.interface->show();
+	} else {
+		render_vga();
+		m_rocket_context->Render();
+	}
 	SDL_RenderPresent(m_SDL_renderer);
 }
 
@@ -626,33 +651,43 @@ void GUI::render_vga()
 	if(m_display.vga_updated) {
 		m_display.vga_updated = false;
 		m_display.vga.lock();
-		m_display.vga_size = vec2i(m_display.vga.get_fb_xsize(),m_display.vga.get_fb_ysize());
-		m_display.vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
+		vec2i vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
 		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
 		//when the program runs with the default shaders, the load on the GPU is very low
 		//so the drivers lower the clock of the GPU to the minimum value;
 		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
 		//a lot of time to complete, bloking the machine emulation thread.
 		//PBOs are a possible alternative, but a memcpy is way simpler.
-		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),VGA_MAX_XRES*VGA_MAX_YRES*4);
+		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
 		m_display.vga.unlock();
 
-		GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
-				0, 0,
-				m_display.vga_size.x, m_display.vga_size.y,
-				m_display.glf, m_display.gltype,
-				&m_display.tex_buf[0]) );
+		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );
+		if(m_display.vga_res != vga_res) {
+			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
+					vga_res.x, vga_res.y,
+					0, m_display.glf, m_display.gltype,
+					&m_display.tex_buf[0]) );
+			m_display.vga_res = vga_res;
+		} else {
+			GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
+					0, 0,
+					vga_res.x, vga_res.y,
+					m_display.glf, m_display.gltype,
+					&m_display.tex_buf[0]) );
+		}
+		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
 	}
 
 	GLCALL( glBindSampler(0, m_display.sampler) );
 	GLCALL( glUseProgram(m_display.prog) );
 
 	GLCALL( glUniform1i(m_display.uniforms.ch0, 0) );
-	GLCALL( glUniform2iv(m_display.uniforms.ch0size, 1, m_display.vga_size) );
-	GLCALL( glUniform2iv(m_display.uniforms.res, 1, m_display.vga_res) );
+	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
+	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
 	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
+	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
 
-	GLCALL( glDisable(GL_BLEND) );
+	GLCALL( glEnable(GL_BLEND) );
 	GLCALL( glDisable(GL_LIGHTING) );
 	//GLCALL( glDisable(GL_DEPTH_TEST) );
 
@@ -674,7 +709,6 @@ void GUI::render_vga()
 	GLCALL( glDisableVertexAttribArray(0) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
-
 }
 
 void GUI::input_grab(bool _value)
@@ -696,10 +730,14 @@ void GUI::toggle_input_grab()
 	input_grab(!m_input_grab);
 }
 
-bool GUI::dispatch_special_keys(const SDL_Event &_event)
+bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key)
 {
+	_discard_next_key = 0;
+	SDL_Keycode modifier_key = 0;
+
 	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
 		if(_event.key.keysym.mod & KMOD_CTRL) {
+			modifier_key = (_event.key.keysym.mod & KMOD_RCTRL)?SDLK_RCTRL:SDLK_LCTRL;
 			switch(_event.key.keysym.sym) {
 				case SDLK_F1: {
 					//show/hide main interface
@@ -712,7 +750,10 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 				}
 				case SDLK_F3: {
 					//machine on/off
-					if(_event.type == SDL_KEYUP) return true;
+					if(_event.type == SDL_KEYUP) {
+						_discard_next_key = modifier_key;
+						return true;
+					}
 					m_machine->cmd_switch_power();
 					return true;
 				}
@@ -750,6 +791,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 				}
 				case SDLK_F7: {
 					//save current machine state
+					//TODO send a CTRL key up event to the machine before saving
 					if(_event.type == SDL_KEYUP) return true;
 					g_program.save_state("", [this]() {
 						m_windows.interface->show_message("State saved");
@@ -758,7 +800,10 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 				}
 				case SDLK_F8: {
 					//load last machine state
-					if(_event.type == SDL_KEYUP) return true;
+					if(_event.type == SDL_KEYUP) {
+						_discard_next_key = modifier_key;
+						return true;
+					}
 					g_program.restore_state("", [this]() {
 						m_windows.interface->show_message("State restored");
 					}, nullptr);
@@ -815,6 +860,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 				}
 			}
 		} else if(_event.key.keysym.mod & KMOD_ALT) {
+			modifier_key = (_event.key.keysym.mod & KMOD_LALT)?SDLK_LALT:SDLK_RALT;
 			switch(_event.key.keysym.sym) {
 				case SDLK_RETURN: {
 					if(_event.type == SDL_KEYUP) return true;
@@ -855,6 +901,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event)
 void GUI::dispatch_event(const SDL_Event &_event)
 {
 	static bool special_key = false;
+	static SDL_Keycode discard_next_key = 0;
 
 	if(_event.type == SDL_WINDOWEVENT) {
 		dispatch_window_event(_event.window);
@@ -936,7 +983,15 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			);
 		}
 	} else {
-		if(dispatch_special_keys(_event)) {
+		if(discard_next_key && (_event.key.keysym.sym == discard_next_key)) {
+			discard_next_key = 0;
+			PDEBUGF(LOG_V2, LOG_GUI, "Discarded key: type=%d,sym=%d,mod=%d\n",
+					_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
+			return;
+		}
+		if(dispatch_special_keys(_event,discard_next_key)) {
+			PDEBUGF(LOG_V2, LOG_GUI, "Special key: type=%d,sym=%d,mod=%d\n",
+					_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
 			special_key = true;
 			return;
 		}
@@ -979,6 +1034,11 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 			_event.type == SDL_MOUSEWHEEL)
 	) {
 		return;
+	}
+
+	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
+		PDEBUGF(LOG_V2, LOG_GUI, "HW key: type=%d,sym=%d,mod=%d\n",
+				_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
 	}
 
 	switch(_event.type)
@@ -1084,8 +1144,45 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	}
 }
 
+void GUI::update_display_size_realistic()
+{
+	int disp_w, disp_h;
+	float xs, ys, xt=0.f, yt;
+	uint system_h = m_height;
+	uint system_w = float(system_h) * RealisticInterface::s_ratio;
+	if(system_w > m_width) {
+		system_w = m_width;
+		system_h = float(system_w) * 1.f/RealisticInterface::s_ratio;
+		disp_w = round(float(m_width) * RealisticInterface::s_wdisp_ratio);
+		disp_h = round(float(disp_w) * 0.75f); // aspect ratio 4:3
+	} else {
+		const float hdisp_ratio = RealisticInterface::s_ratio * RealisticInterface::s_wdisp_ratio * 0.75;
+		disp_h = round(float(m_height) * hdisp_ratio);
+		disp_w = round(float(disp_h) * 1.333333f); // aspect ratio 4:3
+	}
+	m_windows.interface->update_size(system_w, system_h);
+
+	xs = float(disp_w) / float(m_width);
+	ys = float(disp_h) / float(m_height);
+
+	if(RealisticInterface::s_align_top) {
+		yt = 1.0f - ys - (ys*RealisticInterface::s_top_yt_offset);
+	} else {
+		yt = -1.0f + ys + (ys*RealisticInterface::s_bottom_yt_offset);
+	}
+	m_display.size.x = disp_w;
+	m_display.size.y = disp_h;
+	m_display.mvmat.load_scale(xs, ys, 1.0);
+	m_display.mvmat.load_translation(xt, yt, 0.0);
+}
+
 void GUI::update_display_size()
 {
+	if(m_mode==GUI_MODE_REALISTIC) {
+		update_display_size_realistic();
+		return;
+	}
+
 	float xs = 1.f, ys = 1.f;
 	float xt = 0.f, yt = 0.f;
 	uint sysunit_h = m_height/4;
@@ -1148,6 +1245,8 @@ void GUI::update_display_size()
 		//xs = float(disp_w)/float(disp_area_w);
 		xs = float(disp_w)/float(m_width);
 	}
+	m_display.size.x = disp_w;
+	m_display.size.y = disp_h;
 	m_display.mvmat.load_scale(xs, ys, 1.0);
 	m_display.mvmat.load_translation(xt, yt, 0.0);
 }
@@ -1325,85 +1424,82 @@ void GUI::shutdown()
     shutdown_SDL();
 }
 
-GLuint GUI::load_GLSL_program(const std::string &_vs_path, const std::string &_fs_path)
+std::string GUI::load_shader_file(const std::string &_path)
 {
-	// Read the Vertex Shader code from the file
-	std::string vscode;
-	std::ifstream vsstream(_vs_path, std::ios::in);
-	if(vsstream.is_open()){
-		std::string Line = "";
-		while(getline(vsstream, Line))
-			vscode += "\n" + Line;
-		vsstream.close();
+	std::string shdata;
+	std::ifstream shstream(_path, std::ios::in);
+	if(shstream.is_open()){
+		std::string line = "";
+		while(getline(shstream, line))
+			shdata += "\n" + line;
+		shstream.close();
 	} else {
-		PERRF(LOG_GUI, "Unable to open '%s'\n", _vs_path.c_str());
+		PERRF(LOG_GUI, "Unable to open '%s'\n", _path.c_str());
 		throw std::exception();
 	}
+	return shdata;
+}
 
-	// Read the Fragment Shader code from the file
-	std::string fscode;
-	std::ifstream fsstream(_fs_path, std::ios::in);
-	if(fsstream.is_open()){
-		std::string Line = "";
-		while(getline(fsstream, Line))
-			fscode += "\n" + Line;
-		fsstream.close();
-	} else {
-		PERRF(LOG_GUI, "Unable to open '%s'\n", _fs_path.c_str());
-		throw std::exception();
+std::vector<GLuint> GUI::attach_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program)
+{
+	std::vector<GLuint> sh_ids;
+	for(auto sh : _sh_paths) {
+		// Read Shader code from file
+		std::string shcode = load_shader_file(sh);
+		// Create the shader
+		GLuint shid;
+		GLCALL( shid = glCreateShader(_sh_type) );
+		// Compile Vertex Shader
+		char const * source = shcode.c_str();
+		GLCALL( glShaderSource(shid, 1, &source , NULL) );
+		GLCALL( glCompileShader(shid) );
+		// Check Shader
+		GLint result = GL_FALSE;
+		int infologlen;
+		GLCALL( glGetShaderiv(shid, GL_COMPILE_STATUS, &result) );
+		GLCALL( glGetShaderiv(shid, GL_INFO_LOG_LENGTH, &infologlen) );
+		if(!result && infologlen > 1) {
+			std::vector<char> sherr(infologlen+1);
+			GLCALL( glGetShaderInfoLog(shid, infologlen, NULL, &sherr[0]) );
+			PERRF(LOG_GUI, "GLSL error in '%s'\n", sh.c_str());
+			PERRF(LOG_GUI, "%s\n", &sherr[0]);
+		}
+		// Attach Vertex Shader to Program
+		GLCALL( glAttachShader(_program, shid) );
+		sh_ids.push_back(shid);
 	}
+	return sh_ids;
+}
 
-	GLint result = GL_FALSE;
-	int infologlen;
-
-	// Create the shaders
-	GLuint vsid,fsid;
-	GLCALL( vsid = glCreateShader(GL_VERTEX_SHADER) );
-	GLCALL( fsid = glCreateShader(GL_FRAGMENT_SHADER) );
-
-	// Compile Vertex Shader
-	char const * source = vscode.c_str();
-	GLCALL( glShaderSource(vsid, 1, &source , NULL) );
-	GLCALL( glCompileShader(vsid) );
-
-	// Check Vertex Shader
-	GLCALL( glGetShaderiv(vsid, GL_COMPILE_STATUS, &result) );
-	GLCALL( glGetShaderiv(vsid, GL_INFO_LOG_LENGTH, &infologlen) );
-	if(!result && infologlen > 1) {
-		std::vector<char> vserr(infologlen+1);
-		GLCALL( glGetShaderInfoLog(vsid, infologlen, NULL, &vserr[0]) );
-		PERRF(LOG_GUI, "GLSL error in '%s'\n", _vs_path.c_str());
-		PERRF(LOG_GUI, "%s\n", &vserr[0]);
-	}
-
-	// Compile Fragment Shader
-	source = fscode.c_str();
-	GLCALL( glShaderSource(fsid, 1, &source , NULL) );
-	GLCALL( glCompileShader(fsid) );
-
-	// Check Fragment Shader
-	GLCALL( glGetShaderiv(fsid, GL_COMPILE_STATUS, &result) );
-	GLCALL( glGetShaderiv(fsid, GL_INFO_LOG_LENGTH, &infologlen) );
-	if(!result && infologlen > 1) {
-		std::vector<char> fserr(infologlen+1);
-		GLCALL( glGetShaderInfoLog(fsid, infologlen, NULL, &fserr[0]) );
-		PERRF(LOG_GUI, "GLSL error in '%s'\n", _fs_path.c_str());
-		PERRF(LOG_GUI, "%s\n", &fserr[0]);
-	}
-
-	// Link the program
+GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::vector<std::string> &_fs_paths)
+{
+	// Create the Program
 	GLuint progid;
 	GLCALL( progid = glCreateProgram() );
-	GLCALL( glAttachShader(progid, vsid) );
-	GLCALL( glAttachShader(progid, fsid) );
+
+	// Load and attach Shaders to Program
+	std::vector<GLuint> vsids = attach_shaders(_vs_paths, GL_VERTEX_SHADER, progid);
+	std::vector<GLuint> fsids = attach_shaders(_fs_paths, GL_FRAGMENT_SHADER, progid);
+
+	// Link the Program
 	GLCALL( glLinkProgram(progid) );
-	GLCALL( glDeleteShader(vsid) );
-	GLCALL( glDeleteShader(fsid) );
+
+	// Delete useless Shaders
+	for(auto shid : vsids) {
+		//a shader won't actually be deleted by glDeleteShader until it's been detached
+		GLCALL( glDetachShader(progid,shid) );
+		GLCALL( glDeleteShader(shid) );
+	}
+	for(auto shid : fsids) {
+		GLCALL( glDetachShader(progid,shid) );
+		GLCALL( glDeleteShader(shid) );
+	}
 
 	// Check the program
+	GLint result = GL_FALSE;
+	int infologlen;
 	GLCALL( glGetProgramiv(progid, GL_LINK_STATUS, &result) );
 	GLCALL( glGetProgramiv(progid, GL_INFO_LOG_LENGTH, &infologlen) );
-
 	if(!result) {
 		if(infologlen > 1) {
 			std::vector<char> progerr(infologlen+1);
@@ -1543,6 +1639,24 @@ Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 	return interval;
 }
 
+void GUI::set_audio_volume(float _volume)
+{
+	m_mixer->cmd_set_global_volume(_volume);
+	m_windows.interface->set_audio_volume(_volume);
+}
+
+void GUI::set_video_brightness(float _level)
+{
+	m_display.brightness = clamp(_level, 0.f, 1.f);
+	m_windows.interface->set_video_brightness(m_display.brightness);
+}
+
+void GUI::set_video_contrast(float _level)
+{
+	m_display.contrast = clamp(_level, 0.f, 1.f);
+	m_windows.interface->set_video_contrast(m_display.contrast);
+}
+
 GUI::Windows::Windows()
 :
 visible(true),
@@ -1557,17 +1671,24 @@ devices(NULL)
 
 }
 
-void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer)
+void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
 	desktop = new Desktop(_gui);
 	desktop->show();
 
-	interface = new Interface(_machine,_gui);
+	if(_mode == GUI_MODE_REALISTIC) {
+		interface = new RealisticInterface(_machine,_gui);
+	} else {
+		interface = new NormalInterface(_machine,_gui);
+	}
 	interface->show();
 
 	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_LEDS)) {
 		status = new Status(_gui);
 		status->show();
+		status_wnd = true;
+	} else {
+		status_wnd = false;
 	}
 
 	//debug
@@ -1590,6 +1711,34 @@ void GUI::Windows::show(bool _value)
 		interface->show();
 	}
 	visible = _value;
+}
+
+void GUI::Windows::invert_visibility()
+{
+	if(debug_wnds) {
+		if(debugger->is_visible()) {
+			debugger->hide();
+			devices->hide();
+			stats->hide();
+		} else {
+			debugger->show();
+			devices->show();
+			stats->show();
+		}
+	}
+	if(interface->is_visible()) {
+		interface->hide();
+	} else {
+		interface->show();
+	}
+
+	if(status_wnd) {
+		if(status->is_visible()) {
+			status->hide();
+		} else {
+			status->show();
+		}
+	}
 }
 
 void GUI::Windows::update()

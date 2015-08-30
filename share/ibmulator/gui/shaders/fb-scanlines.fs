@@ -17,18 +17,16 @@
 #version 330 core
 
 in vec2 UV;
-out vec3 oColor;
+out vec4 oColor;
 
 uniform sampler2D iChannel0;
-uniform ivec2 iResolution;
-uniform ivec2 iCh0Size;
 
-vec2 res = vec2(iResolution);
+vec2 res;
 
 // Hardness of scanline.
 //  -8.0 = soft
 // -16.0 = medium
-float hardScan = -4.0;
+float hardScan = -8.0;
 
 // Hardness of pixels in scanline.
 // -2.0 = soft
@@ -62,6 +60,8 @@ vec2 warp = vec2(1.0/64.0, 1.0/48.0);
 // Amount of shadow mask.
 float maskDark  = 0.5;
 float maskLight = 1.5;
+
+vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
 
 //------------------------------------------------------------------------
 
@@ -113,7 +113,7 @@ vec3 Fetch(vec2 pos, vec2 off)
 	if(max(abs(pos.x-0.5), abs(pos.y-0.5)) > 0.5) {
 		return vec3(0.0,0.0,0.0);
 	}
-	return Test(ToLinear(texture2D(iChannel0, pos.xy, -16.0).rgb));
+	return Test(ToLinear(FetchTexel(iChannel0, pos.xy).rgb));
 }
 
 
@@ -330,21 +330,19 @@ vec3 Mask(vec2 pos)
 // Entry.
 void main(void)
 {
+	res = textureSize(iChannel0,0);
 	vec2 uv = UV;
-	uv.s *= float(iResolution.x)/float(iCh0Size.x);
 	uv.t = 1.0-uv.t;
-	uv.t *= float(iResolution.y)/float(iCh0Size.y);
-	
 	vec2 pos = Warp(uv);
-	oColor = Tri(pos) * Mask(gl_FragCoord.xy);
+	vec3 color = Tri(pos) * Mask(gl_FragCoord.xy);
 	
 	#if 0
 		// Normalized exposure.
-		oColor = mix(oColor, Bloom(pos), bloomAmount);    
+		color = mix(color, Bloom(pos), bloomAmount);    
 	#else
 		// Additive bloom.
-		oColor += Bloom(pos) * bloomAmount;    
+		color += Bloom(pos) * bloomAmount;    
 	#endif 
 	   
-	oColor = ToSrgb(oColor);
+	oColor = vec4(ToSrgb(color), 1.0);
 }

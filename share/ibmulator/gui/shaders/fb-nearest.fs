@@ -1,17 +1,26 @@
 #version 330 core
 
 in vec2 UV;
-out vec3 oColor;
+out vec4 oColor;
 
 uniform sampler2D iChannel0;
-uniform ivec2 iCh0Size;
-uniform ivec2 iResolution;
+uniform ivec2 iDisplaySize;
+uniform float iBrightness; // range [0.0,1.0]
+uniform float iContrast;   // range [0.0,1.0]
+
+#define BRIGHTNESS_CENTER 0.7
+#define CONTRAST_MIN 0.5
+#define CONTRAST_MAX 1.5
+
+vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
 
 void main()
 {
 	vec2 uv = UV;
-	uv.s *= float(iResolution.x)/float(iCh0Size.x);
 	uv.t = 1.0-uv.t;
-	uv.t *= float(iResolution.y)/float(iCh0Size.y);
-	oColor = texture( iChannel0, uv ).xyz;
+	oColor = FetchTexel(iChannel0, uv);
+	oColor.a = 1.0;
+	float contrast = (CONTRAST_MAX - CONTRAST_MIN)*iContrast + CONTRAST_MIN;
+	oColor.rgb = (oColor.rgb - 0.5) * contrast + 0.5;
+	oColor.rgb += iBrightness - BRIGHTNESS_CENTER;
 }

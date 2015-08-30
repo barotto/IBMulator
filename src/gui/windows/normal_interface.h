@@ -17,46 +17,40 @@
  *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_GUI_WINDOW_H
-#define IBMULATOR_GUI_WINDOW_H
+#ifndef IBMULATOR_GUI_NORMAL_INTERFACE_H
+#define IBMULATOR_GUI_NORMAL_INTERFACE_H
 
-
+#include "interface.h"
 #include <Rocket/Core/EventListener.h>
-#include <functional>
 
+class Machine;
 class GUI;
-class Window;
 
-typedef void (RC::EventListener::*event_handler_t)(RC::Event &);
-typedef pair<RC::String,RC::String> event_map_key_t;
-typedef std::map<event_map_key_t, event_handler_t> event_map_t;
-#define GUI_EVT(id, type, fn) { {id, type}, static_cast<event_handler_t>(&fn) }
-
-class Window : public RC::EventListener
+class NormalInterface : public Interface
 {
-protected:
+private:
 
-	GUI * m_gui;
-	RC::ElementDocument * m_wnd;
+	RC::Element * m_sysunit;
+	RC::Element * m_btn_pause;
+	bool m_led_pause;
+	uint m_gui_mode;
 
-	RC::Element * get_element(const RC::String &_id);
-
-	static event_map_t ms_event_map;
+	void on_pause(RC::Event &);
+	void on_save(RC::Event &);
+	void on_restore(RC::Event &);
+	void on_exit(RC::Event &);
 
 public:
 
-	Window(GUI * _gui, const char *_rml);
-	virtual ~Window();
+	static event_map_t ms_evt_map;
 
-	void show();
-	void hide();
-	bool is_visible();
+	NormalInterface(Machine *_machine, GUI * _gui);
+	~NormalInterface();
 
-	virtual void update();
+	void update();
+	void update_size(uint _width, uint _height);
 
-	void ProcessEvent(RC::Event &);
-	virtual event_map_t & get_event_map() { return ms_event_map; }
-	void init_events();
+	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 };
 
 #endif

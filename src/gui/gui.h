@@ -46,12 +46,14 @@ const char * GetGLErrorString(GLenum _error_code);
 
 enum GUIMode {
 	GUI_MODE_NORMAL,
-	GUI_MODE_COMPACT
+	GUI_MODE_COMPACT,
+	GUI_MODE_REALISTIC
 };
 
 enum DisplaySampler {
 	DISPLAY_SAMPLER_NEAREST,
-	DISPLAY_SAMPLER_LINEAR
+	DISPLAY_SAMPLER_BILINEAR,
+	DISPLAY_SAMPLER_BICUBIC,
 };
 
 enum DisplayAspect {
@@ -88,7 +90,8 @@ namespace Controls {
 
 #include "window.h"
 #include "windows/desktop.h"
-#include "windows/interface.h"
+#include "windows/normal_interface.h"
+#include "windows/realistic_interface.h"
 #include "windows/status.h"
 
 //debug
@@ -158,7 +161,6 @@ private:
 	public:
 		VGADisplay vga;
 		vec2i vga_res;
-		vec2i vga_size;
 		std::atomic<bool> vga_updated;
 		GLuint tex;
 		std::vector<uint32_t> tex_buf;
@@ -173,13 +175,16 @@ private:
 		mat4f mvmat;
 		uint aspect;
 		uint scaling;
+		float brightness;
+		float contrast;
+		vec2i size; // size in pixel of the destination quad
 
 		struct {
 			GLint ch0;
-			GLint ch0size;
-			GLint res;
+			GLint brightness;
+			GLint contrast;
 			GLint mvmat;
-
+			GLint size;
 		} uniforms;
 
 		Display();
@@ -200,6 +205,7 @@ private:
 	public:
 		bool visible;
 		bool debug_wnds;
+		bool status_wnd;
 
 		Desktop * desktop;
 		Interface * interface;
@@ -209,13 +215,14 @@ private:
 		DevStatus * devices;
 
 		Windows();
-		void init(Machine *_machine, GUI *_gui, Mixer *_mixer);
+		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void update();
 		void shutdown();
 		void toggle_dbg();
 		void show(bool _value);
 		void toggle();
 		bool needs_input();
+		void invert_visibility();
 
 	} m_windows;
 
@@ -225,6 +232,7 @@ private:
 	void render_vga();
 	void update_window_size(int _w, int _h);
 	void update_display_size();
+	void update_display_size_realistic();
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
@@ -238,12 +246,15 @@ private:
 	void dispatch_hw_event(const SDL_Event &_event);
 	void dispatch_rocket_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
-	bool dispatch_special_keys(const SDL_Event &_event);
+	bool dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key);
 	void load_splash_image();
 
 	static Uint32 every_second(Uint32 interval, void *param);
 
 	void shutdown_SDL();
+
+	static std::string load_shader_file(const std::string &_path);
+	static std::vector<GLuint> attach_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program);
 
 public:
 	static std::map<std::string, uint> ms_gui_modes;
@@ -259,13 +270,17 @@ public:
 	void shutdown();
 
 	Rocket::Core::ElementDocument * load_document(const std::string &_filename);
-	static GLuint load_GLSL_program(const std::string &_vs_path, const std::string &_fs_path);
+	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
 	inline mat4f & get_proj_matrix() { return m_display.projmat; }
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void show_message(const char* _mex);
 
 	inline void vga_update() { m_display.vga_updated.store(true); }
+
+	void set_audio_volume(float _volume);
+	void set_video_brightness(float _level);
+	void set_video_contrast(float _level);
 };
 
 

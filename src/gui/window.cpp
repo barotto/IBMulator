@@ -26,6 +26,7 @@
 event_map_t Window::ms_event_map = {};
 
 Window::Window(GUI * _gui, const char *_rml)
+: m_gui(_gui)
 {
 	m_wnd = _gui->load_document(_rml);
 	if(!m_wnd) {
@@ -64,6 +65,13 @@ void Window::hide()
 	ASSERT(m_wnd);
 
 	m_wnd->Hide();
+}
+
+bool Window::is_visible()
+{
+	ASSERT(m_wnd);
+
+	return m_wnd->IsVisible();
 }
 
 void Window::update()

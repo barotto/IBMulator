@@ -1,0 +1,184 @@
+<rml>
+	<head>
+		<title>IBMulator</title>
+		<link type="text/rcss" href="base.rcss"/>
+		<style>
+			body
+			{
+				position: relative;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				z-index: 0;
+			}
+			#system {
+				position: absolute;
+				bottom: 0;
+				margin-left: auto;
+				margin-right: auto;
+				background-decorator: image;
+    			background-image: images/realistic_interface.png 0px 0px 2057px 2237px;
+			}
+			#power {
+				width: 5%;
+				height: 3.8%;
+				position: absolute;
+				right: 15%;
+				bottom: 23.5%;
+				background-color: #00000000;
+			}
+			#power_led {
+				width: 1.7%;
+				height: 0.7%;
+				position: absolute;
+				right: 20.45%;
+				bottom: 30%;
+				background-color: #00000000;
+			}
+			#power_led.active {
+				background-color: #0EFF1AF0;
+			}
+			#fdd_led {
+				width: 2.05%;
+				height: 1.05%;
+				position: absolute;
+				left: 17.30%;
+				bottom: 10.45%;
+				background-color: #F0000000;
+			}
+			#fdd_led.active {
+				background-color: #FFFF00A0;
+			}
+			#floppy_disk {
+				position: absolute;
+				text-align: center;
+				width: 33.235%;
+				height: 12.465%;				
+				bottom: 7.569%;
+				left: 12.056%;
+				background-color: #3F7CB600;
+			}
+			#floppy_disk.present {
+				background-decorator: image;
+    			background-image: images/realistic_floppy_r.png 0px 0px 683px 279px;
+			}
+			#fdd_select {
+				position: absolute;
+				text-align: center;
+				width: 3.5%;
+				height: 3.0%;
+				bottom: 9.5%;
+				left: 13.0%;
+				background-color: #3F7CB6A0;
+			}
+			#fdd_select.a {
+				background-decorator: image;
+    			background-image: icons/buttonA.png 12px 12px 90px 90px;
+			}
+			#fdd_select.b {
+				background-decorator: image;
+    			background-image: icons/buttonB.png 12px 12px 90px 90px;
+			}
+			#fdd_eject {
+				position: absolute;
+				width: 4.5%;
+				height: 2.7%;
+				bottom: 10.4%;
+				left: 36.0%;
+				background-color: #f0000000;
+			}
+			#fdd_mount {
+				position: absolute;
+				text-align: center;
+				width: 33.0%;
+				height: 11.0%;
+				bottom: 7.5%;
+				left: 12.0%;
+				background-color: #3F7CB600;
+			}
+			#fdd_disk {
+				position: absolute;
+				text-align: center;
+				width: 33.0%;
+				bottom: 15%;
+				left: 12.0%;
+				background-color: #3F7CB600;
+				shadow-font-effect: shadow;
+    			shadow-offset: -1px 1px;
+			    shadow-color: black;
+			}
+			#hdd_led {
+				width: 1.9%;
+				height: 0.9%;
+				position: absolute;
+				right: 17.1%;
+				bottom: 10.8%;
+				background-color: #f0000000;
+			}
+			#hdd_led.active {
+				background-color: #FFFF00A0;
+			}
+			.slider {
+				position: absolute;
+				top: 72.7%;
+				width: 2.2%;
+				height: 3.5%;
+				background-decorator: image;
+    			background-image: images/realistic_slider.png 0px 0px 47px 73px;
+			}
+			#volume_slider {
+				left: 15.5%;
+				drag: drag;
+			}
+			#brightness_slider {
+				left: 31.5%;
+				drag: drag;
+			}
+			#contrast_slider {
+				left: 47.5%;
+				drag: drag;
+			}
+			#warning {
+				position: absolute;
+				text-align: center;
+				width: 4.0%;
+				height: 3.5%;
+				bottom: 15%;
+				left: 7%;
+				background-decorator: image;
+    			background-image: icons/warning.png 12px 12px 90px 90px;
+    			visibility: hidden;
+			}
+			#message {
+				position: absolute;
+				bottom: 0;
+				margin: 1em;
+				padding: 1em;
+				text-align: center;
+				font-size: 12px;
+				background-color: #383938FF;
+				visibility: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="system">
+			<div id="power"></div>
+			<div id="power_led"></div>
+			<div id="floppy_disk"></div>
+			<div class="slider" id="volume_slider"></div>
+			<div class="slider" id="brightness_slider"></div>
+			<div class="slider" id="contrast_slider"></div>
+			<div id="fdd_disk"></div>
+			<div id="fdd_mount"></div>
+			<div id="fdd_led"></div>
+			<div id="hdd_led"></div>
+			<div id="fdd_select" class="a"></div>
+			<div id="fdd_eject"></div>
+			<div id="warning"></div>
+			<div id="message"></div>
+		</div>
+
+	</body>
+</rml>

@@ -23,6 +23,7 @@
 #include "program.h"
 #include "machine.h"
 #include "gui/gui.h"
+#include "utils.h"
 #include <SDL2/SDL.h>
 #include "wav.h"
 #include <cmath>
@@ -256,7 +257,8 @@ Mixer::Mixer()
 :
 m_heartbeat(MIXER_HEARTBEAT),
 m_device(0),
-m_audio_capture(false)
+m_audio_capture(false),
+m_global_volume(1.f)
 {
 	m_out_buffer.set_size(MIXER_BUFSIZE);
 }
@@ -579,7 +581,8 @@ bool Mixer::send_packet(float *_data, size_t _len)
 	switch(SDL_AUDIO_BITSIZE(m_device_spec.format)) {
 		case 16:
 			for(size_t i=0; i<_len; i++) {
-				int32_t ival = _data[i] * 32768.f;
+
+				int32_t ival = (_data[i]*m_global_volume) * 32768.f;
 				if(ival < -32768) {
 					ival = -32768;
 				}
@@ -731,6 +734,17 @@ void Mixer::cmd_toggle_capture()
 		} else {
 			start_capture();
 		}
+#if MULTITHREADED
+	});
+#endif
+}
+
+void Mixer::cmd_set_global_volume(float _volume)
+{
+#if MULTITHREADED
+	m_cmd_queue.push([=] () {
+#endif
+		m_global_volume = clamp(_volume, 0.f, 1.f);
 #if MULTITHREADED
 	});
 #endif

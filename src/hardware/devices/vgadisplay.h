@@ -82,6 +82,7 @@ public:
 	inline uint get_fb_ysize() { return m_s.fb_ysize; }
 	inline uint32_t* get_framebuffer() { return m_fb; }
 	inline uint32_t get_framebuffer_data_size() { return VGA_MAX_XRES*VGA_MAX_YRES*4; }
+	inline uint32_t get_framebuffer_row_length() { return VGA_MAX_XRES*4; }
 
 	void set_text_charmap(uint8_t *_fbuffer);
 	void set_text_charbyte(uint16_t _address, uint8_t _data);

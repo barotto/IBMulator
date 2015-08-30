@@ -45,30 +45,14 @@ void LogMessage::log_put(const char* _prefix, const char* _message)
 }
 
 
-event_map_t Interface::ms_evt_map = {
-	GUI_EVT( "power",     "click", Interface::on_power ),
-	GUI_EVT( "pause",     "click", Interface::on_pause ),
-	GUI_EVT( "save",      "click", Interface::on_save ),
-	GUI_EVT( "restore",   "click", Interface::on_restore ),
-	GUI_EVT( "exit",      "click", Interface::on_exit ),
-	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
-	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount )
-};
-
-Interface::Interface(Machine *_machine, GUI * _gui)
+Interface::Interface(Machine *_machine, GUI * _gui, const char *_rml)
 :
-Window(_gui, "interface.rml")
+Window(_gui, _rml)
 {
 	ASSERT(m_wnd);
 	m_machine = _machine;
 
-	m_wnd->AddEventListener("click", this, false);
-
-	m_sysunit = get_element("sysunit");
-
 	m_buttons.power = get_element("power");
-	m_buttons.pause = get_element("pause");
 	m_buttons.fdd_select = get_element("fdd_select");
 
 	if(g_program.config().get_string(DRIVES_SECTION,DRIVES_FDD_B).compare("none") == 0) {
@@ -85,19 +69,15 @@ Window(_gui, "interface.rml")
 	m_status.fdd_disk = get_element("fdd_disk");
 
 	m_leds.power = false;
-	m_leds.pause = false;
 	m_leds.fdd = false;
 	m_leds.hdd = false;
 	m_curr_drive = 0;
 
 	m_floppy_present = g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED);
-	m_sysunit->SetClass("disk", m_floppy_present);
 	if(m_floppy_present) {
 		update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH, FILE_TYPE_USER));
 	}
 	m_floppy_changed = g_floppy.get_disk_changed(0);
-
-	m_gui_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, GUI::ms_gui_modes);
 
 	m_fs = new FileSelect(_gui);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this,
@@ -180,13 +160,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 
 void Interface::update_size(uint _width, uint _height)
 {
-	if(m_gui_mode==GUI_MODE_NORMAL) {
-		char buf[10];
-		snprintf(buf, 10, "%upx", _width);
-		m_sysunit->SetProperty("width", buf);
-		snprintf(buf, 10, "%upx", _height);
-		m_sysunit->SetProperty("height", buf);
-	}
+
 }
 
 void Interface::update()
@@ -214,12 +188,10 @@ void Interface::update()
 	if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
 		m_floppy_changed = changed;
 		m_floppy_present = true;
-		m_sysunit->SetClass("disk", true);
 		const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
 		update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
 	} else if(!present && m_floppy_present==true) {
 		m_floppy_present = false;
-		m_sysunit->SetClass("disk", false);
 		m_status.fdd_disk->SetInnerRML("");
 	}
 	if(m_machine->is_on() && m_leds.power==false) {
@@ -229,28 +201,12 @@ void Interface::update()
 		m_leds.power = false;
 		m_buttons.power->SetClass("active", false);
 	}
-	if(m_machine->is_paused() && m_leds.pause==false) {
-		m_leds.pause = true;
-		m_buttons.pause->SetClass("resume", true);
-	} else if(!m_machine->is_paused() && m_leds.pause==true){
-		m_leds.pause = false;
-		m_buttons.pause->SetClass("resume", false);
-	}
 }
 
 void Interface::on_power(RC::Event &)
 {
 	m_machine->cmd_switch_power();
 	m_machine->cmd_resume();
-}
-
-void Interface::on_pause(RC::Event &)
-{
-	if(m_machine->is_paused()) {
-		m_machine->cmd_resume();
-	} else {
-		m_machine->cmd_pause();
-	}
 }
 
 void Interface::show_message(const char* _mex)
@@ -269,27 +225,6 @@ void Interface::show_message(const char* _mex)
 			m_message->SetProperty("visibility", "hidden");
 		}
 	});
-}
-
-void Interface::on_save(RC::Event &)
-{
-	//TODO file select window to choose the destination
-	g_program.save_state("", [this]() {
-		show_message("State saved");
-	}, nullptr);
-}
-
-void Interface::on_restore(RC::Event &)
-{
-	//TODO file select window to choose the source
-	g_program.restore_state("", [this]() {
-		show_message("State restored");
-	}, nullptr);
-}
-
-void Interface::on_exit(RC::Event &)
-{
-	g_program.stop();
 }
 
 void Interface::on_fdd_select(RC::Event &)

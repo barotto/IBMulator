@@ -22,6 +22,13 @@
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 
+template<class T>
+	T clamp(T _value, T _low, T _high)
+{
+	_value = std::max(_low,_value);
+	_value = std::min(_high,_value);
+	return _value;
+}
 
 #include <functional>
 #include <chrono>
