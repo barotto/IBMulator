@@ -201,9 +201,9 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	m_windows.init(m_machine, this, m_mixer, m_mode);
 
-	set_audio_volume(1.f);
-	set_video_brightness(0.7f);
-	set_video_contrast(0.5f);
+	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
+	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
+	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 
 	try {
 		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
@@ -224,8 +224,13 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	g_vga.attach_display(&m_display.vga);
 	load_splash_image();
 
-	std::string shadersdir = g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
-	uint sampler = g_program.config().get_enum(GUI_SECTION, GUI_SAMPLER, gui_sampler);
+	std::string shadersdir = get_shaders_dir();
+	uint sampler;
+	if(m_mode == GUI_MODE_REALISTIC) {
+		sampler = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, gui_sampler);
+	} else {
+		sampler = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, gui_sampler);
+	}
 	std::vector<std::string> vs,fs;
 	if(sampler == DISPLAY_SAMPLER_NEAREST || sampler == DISPLAY_SAMPLER_BILINEAR) {
 		fs.push_back(shadersdir + "filter_bilinear.fs");
@@ -236,8 +241,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		shutdown_SDL();
 		throw std::exception();
 	}
-	fs.push_back(g_program.config().find_file(GUI_SECTION,GUI_FB_FRAGMENT_SHADER));
-	vs.push_back(g_program.config().find_file(GUI_SECTION,GUI_FB_VERTEX_SHADER));
+	vs.push_back(shadersdir + "fb-passthrough.vs");
+	if(m_mode == GUI_MODE_REALISTIC) {
+		fs.push_back(g_program.config().find_file(DISPLAY_SECTION,DISPLAY_REALISTIC_SHADER));
+	} else {
+		fs.push_back(g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER));
+	}
 	try {
 		m_display.prog = load_GLSL_program(vs,fs);
 	} catch(std::exception &e) {
@@ -303,7 +312,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 			g_program.config().get_int(GUI_SECTION, GUI_BG_B),
 			255);
 
-	m_display.aspect = g_program.config().get_enum(GUI_SECTION,GUI_ASPECT,display_aspect);
+	m_display.aspect = g_program.config().get_enum(DISPLAY_SECTION,DISPLAY_NORMAL_ASPECT,display_aspect);
 	update_window_size(w,h);
 
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, NULL);
@@ -1152,28 +1161,38 @@ void GUI::update_display_size_realistic()
 {
 	int disp_w, disp_h;
 	float xs, ys, xt=0.f, yt;
-	uint system_h = m_height;
-	uint system_w = float(system_h) * RealisticInterface::s_ratio;
+	const float sys_ratio = RealisticInterface::s_width / RealisticInterface::s_height;
+	const float abs_disp_w = RealisticInterface::s_width - RealisticInterface::s_vga_left*2;
+	const float wdisp_ratio = abs_disp_w / RealisticInterface::s_width;
+
+	float system_h = m_height;
+	float system_w = system_h * sys_ratio;
 	if(system_w > m_width) {
 		system_w = m_width;
-		system_h = float(system_w) * 1.f/RealisticInterface::s_ratio;
-		disp_w = round(float(m_width) * RealisticInterface::s_wdisp_ratio);
+		system_h = system_w * 1.f/sys_ratio;
+		disp_w = round(float(m_width) * wdisp_ratio);
+		disp_w *= g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
 		disp_h = round(float(disp_w) * 0.75f); // aspect ratio 4:3
 	} else {
-		const float hdisp_ratio = RealisticInterface::s_ratio * RealisticInterface::s_wdisp_ratio * 0.75;
+		const float hdisp_ratio = sys_ratio * wdisp_ratio * 0.75;
 		disp_h = round(float(m_height) * hdisp_ratio);
+		disp_h *= g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
 		disp_w = round(float(disp_h) * 1.333333f); // aspect ratio 4:3
 	}
 	m_windows.interface->update_size(system_w, system_h);
 
-	xs = float(disp_w) / float(m_width);
-	ys = float(disp_h) / float(m_height);
+	xs = float(disp_w) / float(m_width);  // VGA width (screen ratio)
+	ys = float(disp_h) / float(m_height); // VGA height (screen ratio)
+	float monitor_h = ((RealisticInterface::s_monitor_height*system_h)/RealisticInterface::s_height) / float(m_height);
+	system_h /= float(m_height);
+	float vga_offset = monitor_h - ys;
 
 	if(RealisticInterface::s_align_top) {
-		yt = 1.0f - ys - (ys*RealisticInterface::s_top_yt_offset);
+		yt = 1.0 - ys - vga_offset;
 	} else {
-		yt = -1.0f + ys + (ys*RealisticInterface::s_bottom_yt_offset);
+		yt = -1.0 + (system_h-monitor_h)*2.f + vga_offset + ys;
 	}
+
 	m_display.size.x = disp_w;
 	m_display.size.y = disp_h;
 	m_display.mvmat.load_scale(xs, ys, 1.0);
@@ -1358,9 +1377,9 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 
 void GUI::update()
 {
-	//g_vga.refresh_display(true); just a test, don't use, not thread safe
-
-	if(m_display.aspect == DISPLAY_ASPECT_ADAPTIVE || m_display.scaling>0) {
+	if(m_mode != GUI_MODE_REALISTIC &&
+	  (m_display.aspect == DISPLAY_ASPECT_ADAPTIVE || m_display.scaling>0))
+	{
 		m_display.vga.lock();
 		if(m_display.vga.get_dimension_updated()) {
 			Uint32 flags = SDL_GetWindowFlags(m_SDL_window);
@@ -1514,6 +1533,11 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 	}
 
 	return progid;
+}
+
+std::string GUI::get_shaders_dir()
+{
+	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
 }
 
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)

@@ -271,6 +271,7 @@ public:
 
 	Rocket::Core::ElementDocument * load_document(const std::string &_filename);
 	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
+	static std::string get_shaders_dir();
 	inline mat4f & get_proj_matrix() { return m_display.projmat; }
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);

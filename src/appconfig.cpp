@@ -45,10 +45,6 @@ ini_file_t AppConfig::ms_def_values = {
 		{ GUI_MOUSE_GRAB, "yes" },
 		{ GUI_MOUSE_ACCELERATION, "no" },
 		{ GUI_GRAB_METHOD, "MOUSE3" }, //CTRL-F10 or MOUSE3
-		{ GUI_FB_VERTEX_SHADER, "gui/shaders/fb-passthrough.vs" },
-		{ GUI_FB_FRAGMENT_SHADER, "gui/shaders/fb-nearest.fs" },
-		{ GUI_GUI_VERTEX_SHADER, "gui/shaders/gui.vs" },
-		{ GUI_GUI_FRAGMENT_SHADER, "gui/shaders/gui.fs" },
 		{ GUI_SCREEN_DPI, "96" },
 		{ GUI_START_IMAGE, "" },
 		{ GUI_WIDTH, "640" },
@@ -56,11 +52,20 @@ ini_file_t AppConfig::ms_def_values = {
 		{ GUI_FULLSCREEN, "no" },
 		{ GUI_SHOW_LEDS, "no" },
 		{ GUI_MODE, "normal" },
-		{ GUI_SAMPLER, "linear" },
-		{ GUI_ASPECT, "original" },
 		{ GUI_BG_R, "59" },
 		{ GUI_BG_G, "82" },
 		{ GUI_BG_B, "98" }
+	} },
+
+	{ DISPLAY_SECTION, {
+		{ DISPLAY_NORMAL_ASPECT, "original" },
+		{ DISPLAY_NORMAL_SHADER, "gui/shaders/fb-nearest.fs" },
+		{ DISPLAY_NORMAL_FILTER, "bilinear" },
+		{ DISPLAY_REALISTIC_SHADER, "gui/shaders/fb-realistic.fs" },
+		{ DISPLAY_REALISTIC_FILTER, "bicubic" },
+		{ DISPLAY_REALISTIC_SCALE, "1.0" },
+		{ DISPLAY_BRIGHTNESS, "0.7" },
+		{ DISPLAY_CONTRAST, "0.5" }
 	} },
 
 	{ CMOS_SECTION, {
@@ -114,6 +119,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ MIXER_RATE, "44100" },
 		{ MIXER_SAMPLES, "1024" },
 		{ MIXER_PREBUFFER, "50" },
+		{ MIXER_VOLUME, "1.0" },
 		{ MIXER_PCSPEAKER, "yes" },
 		{ MIXER_PS1AUDIO, "yes" }
 	} },
@@ -157,11 +163,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                 compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
 ";               realistic: the system is rendered in its entirety, monitor included\n"
-";      aspect: VGA aspect ratio.\n"
-";              Possible values: original, adaptive, scaled.\n"
-";               original: 4:3 aspect ratio\n"
-";               adaptive: screen will be scaled maintaining the aspect ratio of the current video mode (eg: 16:10 for 320x200)\n"
-";                 scaled: screen will be scaled to fill your monitor\n"
 ";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
 ";              Open a .map file to read comments on how to edit it.\n"
 ";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
@@ -171,18 +172,32 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              Possible values: none, ps2, serial\n"
 "; mouse_accel: Enable mouse acceleration\n"
 ";       width: window width in pixel.\n"
-";      height: window height in pixel (for normal mode it doesn't include the system unit.)\n"
+";      height: window height in pixel (for normal GUI mode it doesn't include the system unit.)\n"
 ";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
 ";         dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
-";     sampler: VGA scaling filter.\n"
-";              Possible values: nearest, bilinear, bicubic\n"
-";  fbfragment: GLSL fragment shader to use for VGA rendering.\n"
-";    fbvertex: GLSL vertex shader to use for VGA rendering.\n"
-"; guifragment: GLSL fragment shader for GUI rendering\n"
-";   guivertex: GLSL vertex shader for GUI rendering\n"
 ";      bg_XXX: Background window color\n"
 "; start_image: An optional PNG file to load at program start\n"
 ";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
+		},
+
+		{ DISPLAY_SECTION,
+";    normal_aspect: VGA aspect ratio (for normal and compact GUI modes)\n"
+";                   Possible values: original, adaptive, scaled.\n"
+";                    original: 4:3 aspect ratio\n"
+";                    adaptive: screen will be scaled maintaining the aspect ratio of the current video mode (eg: 16:10 for 320x200)\n"
+";                      scaled: screen will be scaled to fill your monitor\n"
+";    normal_shader: GLSL fragment shader to use for VGA rendering (for normal and compact GUI modes)\n"
+";    normal_filter: VGA scaling filter (for normal and compact modes)\n"
+";                   Possible values: nearest, bilinear, bicubic\n"
+"; realistic_shader: GLSL fragment shader to use for VGA rendering (for realistic GUI mode)\n"
+"; realistic_filter: VGA scaling filter (for realistic GUI mode)\n"
+";                   Possible values: nearest, bilinear, bicubic\n"
+";  realistic_scale: VGA dimensions as a scaling factor (for realistic GUI mode.) Use this to adjust the image size.\n"
+";                   Possible values: a real number, where 1.0 is the original VGA image size, ~1.2 fills the screen.\n"
+";       brightness: Monitor brightness.\n"
+";                   Possible values: any real value between 0.0 and 1.0\n"
+";         contrast: Monitor contrast value.\n"
+";                   Possible values: any real value between 0.0 and 1.0\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -255,6 +270,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
 ";      rate: Sample rate.\n"
 ";            Possible values: 44100, 48000, 32000, 22050.\n"
+";    volume: Audio volume.\n"
+";            Possible values: any real value between 0.0 and 1.0\n"
 "; pcspeaker: Enable PC-Speaker emulation.\n"
 ";  ps1audio: Enable PS/1 Audio Card emulation.\n"
 		},
@@ -271,7 +288,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ GUI_SECTION, {
 		GUI_MODE,
-		GUI_ASPECT,
 		GUI_KEYMAP,
 		GUI_MOUSE_GRAB,
 		GUI_GRAB_METHOD,
@@ -281,16 +297,21 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_HEIGHT,
 		GUI_FULLSCREEN,
 		GUI_SCREEN_DPI,
-		GUI_SAMPLER,
-		GUI_FB_VERTEX_SHADER,
-		GUI_FB_FRAGMENT_SHADER,
-		GUI_GUI_VERTEX_SHADER,
-		GUI_GUI_FRAGMENT_SHADER,
 		GUI_BG_R,
 		GUI_BG_G,
 		GUI_BG_B,
 		GUI_START_IMAGE,
 		GUI_SHOW_LEDS
+	} },
+	{ DISPLAY_SECTION, {
+		DISPLAY_NORMAL_ASPECT,
+		DISPLAY_NORMAL_SHADER,
+		DISPLAY_NORMAL_FILTER,
+		DISPLAY_REALISTIC_SHADER,
+		DISPLAY_REALISTIC_FILTER,
+		DISPLAY_REALISTIC_SCALE,
+		DISPLAY_BRIGHTNESS,
+		DISPLAY_CONTRAST
 	} },
 	{ CPU_SECTION, {
 		CPU_FREQUENCY
@@ -340,6 +361,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MIXER_PREBUFFER,
 		MIXER_SAMPLES,
 		MIXER_RATE,
+		MIXER_VOLUME,
 		MIXER_PCSPEAKER,
 		MIXER_PS1AUDIO
 	} },

@@ -57,14 +57,15 @@ private:
 	void  on_dragstart(RC::Event &);
 
 public:
-	// these values depend on the machine texture used:
-	static constexpr float s_ratio            = 0.919535f; // texture width/height
-	static constexpr float s_wdisp_ratio      = 0.647f;    // display width in relation to texture width
-	static constexpr float s_top_yt_offset    = 0.600f;    // display offset if aligned to top
-	static constexpr float s_bottom_yt_offset = 1.880f;    // display offset if aligned to bottom
-	static constexpr float s_slider_length    = 7.000f;    // slider horizontal movement length (in %)
 
-	// alignment is specified in the rml file:
+	// the following values depend on the machine texture used:
+	static constexpr float s_width          = 2057.0f; // texture width (pixels)
+	static constexpr float s_height         = 2237.0f; // texture height (pixels)
+	static constexpr float s_monitor_height = 1600.0f; // monitor height bezel included (pixels)
+	static constexpr float s_vga_left       =  358.0f; // offset of the VGA image from the left border (pixels)
+	static constexpr float s_slider_length  =    7.0f; // slider horizontal movement length (%)
+
+	// the alignment is specified in the rml file:
 	static constexpr bool s_align_top = false;
 
 public:
