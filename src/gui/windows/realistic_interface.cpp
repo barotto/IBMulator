@@ -104,10 +104,11 @@ void RealisticInterface::update()
 	}
 }
 
-void RealisticInterface::set_slider_value(RC::Element *_slider, float _xmin, float _value)
+void RealisticInterface::set_slider_value(RC::Element *_slider, float _xleft, float _value)
 {
-	_value  = clamp(_value,0.f,1.f);
-	float slider_left = _xmin + s_slider_length*_value;
+	_value = clamp(_value,s_min_slider_val,s_max_slider_val);
+	_value = (_value - s_min_slider_val) / (s_max_slider_val - s_min_slider_val);
+	float slider_left = _xleft + s_slider_length*_value;
 	static char buf[10];
 	snprintf(buf, 10, "%.1f%%", slider_left);
 	_slider->SetProperty("left", buf);
@@ -143,18 +144,21 @@ float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
 void RealisticInterface::on_volume_drag(RC::Event &_event)
 {
 	float value = on_slider_drag(_event, m_volume_left_min);
+	value = lerp(s_min_slider_val, s_max_slider_val, value);
 	m_gui->set_audio_volume(value);
 }
 
 void RealisticInterface::on_brightness_drag(RC::Event &_event)
 {
 	float value = on_slider_drag(_event, m_brightness_left_min);
+	value = lerp(s_min_slider_val, s_max_slider_val, value);
 	m_gui->set_video_brightness(value);
 }
 
 void RealisticInterface::on_contrast_drag(RC::Event &_event)
 {
 	float value = on_slider_drag(_event, m_contrast_left_min);
+	value = lerp(s_min_slider_val, s_max_slider_val, value);
 	m_gui->set_video_contrast(value);
 }
 

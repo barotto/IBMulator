@@ -60,6 +60,7 @@ share/ibmulator/gui/images/realistic_slider.png
 
 guishadersdir = $(pkgdatadir)/gui/shaders
 dist_guishaders_DATA = \
+share/ibmulator/gui/shaders/color_functions.glsl \
 share/ibmulator/gui/shaders/filter_bicubic.fs \
 share/ibmulator/gui/shaders/filter_bilinear.fs \
 share/ibmulator/gui/shaders/fb-nearest.fs \

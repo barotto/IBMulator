@@ -241,6 +241,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		shutdown_SDL();
 		throw std::exception();
 	}
+	fs.push_back(shadersdir + "color_functions.glsl");
 	vs.push_back(shadersdir + "fb-passthrough.vs");
 	if(m_mode == GUI_MODE_REALISTIC) {
 		fs.push_back(g_program.config().find_file(DISPLAY_SECTION,DISPLAY_REALISTIC_SHADER));
@@ -1675,13 +1676,13 @@ void GUI::set_audio_volume(float _volume)
 
 void GUI::set_video_brightness(float _level)
 {
-	m_display.brightness = clamp(_level, 0.f, 1.f);
+	m_display.brightness = _level;
 	m_windows.interface->set_video_brightness(m_display.brightness);
 }
 
 void GUI::set_video_contrast(float _level)
 {
-	m_display.contrast = clamp(_level, 0.f, 1.f);
+	m_display.contrast = _level;
 	m_windows.interface->set_video_contrast(m_display.contrast);
 }
 

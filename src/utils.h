@@ -30,6 +30,16 @@ template<class T>
 	return _value;
 }
 
+template<class T>
+	T lerp(T _v0, T _v1, T _t)
+{
+	// does not guarantee v = v1 when t = 1, due to floating-point arithmetic error.
+	// return _v0 + _t*(_v1-_v0);
+
+	// guarantees v = v1 when t = 1.
+	return (T(1)-_t)*_v0 + _t*_v1;
+}
+
 #include <functional>
 #include <chrono>
 #include <future>

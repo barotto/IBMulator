@@ -744,7 +744,7 @@ void Mixer::cmd_set_global_volume(float _volume)
 #if MULTITHREADED
 	m_cmd_queue.push([=] () {
 #endif
-		m_global_volume = clamp(_volume, 0.f, 1.f);
+		m_global_volume = _volume;
 #if MULTITHREADED
 	});
 #endif

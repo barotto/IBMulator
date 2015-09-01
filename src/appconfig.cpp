@@ -195,9 +195,9 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  realistic_scale: VGA dimensions as a scaling factor (for realistic GUI mode.) Use this to adjust the image size.\n"
 ";                   Possible values: a real number, where 1.0 is the original VGA image size, ~1.2 fills the screen.\n"
 ";       brightness: Monitor brightness.\n"
-";                   Possible values: any real value between 0.0 and 1.0\n"
-";         contrast: Monitor contrast value.\n"
-";                   Possible values: any real value between 0.0 and 1.0\n"
+";                   Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
+";         contrast: Monitor contrast.\n"
+";                   Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -271,7 +271,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";      rate: Sample rate.\n"
 ";            Possible values: 44100, 48000, 32000, 22050.\n"
 ";    volume: Audio volume.\n"
-";            Possible values: any real value between 0.0 and 1.0\n"
+";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 "; pcspeaker: Enable PC-Speaker emulation.\n"
 ";  ps1audio: Enable PS/1 Audio Card emulation.\n"
 		},

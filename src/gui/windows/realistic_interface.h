@@ -56,6 +56,9 @@ private:
 	void  on_contrast_drag(RC::Event &);
 	void  on_dragstart(RC::Event &);
 
+	static constexpr float s_min_slider_val = 0.0f;
+	static constexpr float s_max_slider_val = 1.3f;
+
 public:
 
 	// the following values depend on the machine texture used:
