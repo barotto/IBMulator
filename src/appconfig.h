@@ -125,6 +125,7 @@ public:
 #define DISPLAY_REALISTIC_SCALE  "realistic_scale"
 #define DISPLAY_BRIGHTNESS       "brightness"
 #define DISPLAY_CONTRAST         "contrast"
+#define DISPLAY_SATURATION       "saturation"
 
 #define CPU_SECTION             "cpu"
 #define CPU_FREQUENCY           "frequency"

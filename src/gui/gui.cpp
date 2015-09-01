@@ -204,6 +204,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
+	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
 
 	try {
 		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
@@ -268,6 +269,10 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	GLCALL( m_display.uniforms.contrast = glGetUniformLocation(m_display.prog, "iContrast") );
 	if(m_display.uniforms.contrast == -1) {
 		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.saturation = glGetUniformLocation(m_display.prog, "iSaturation") );
+	if(m_display.uniforms.saturation == -1) {
+		PWARNF(LOG_GUI, "iSaturation not found in shader program\n");
 	}
 	GLCALL( m_display.uniforms.mvmat = glGetUniformLocation(m_display.prog, "iModelView") );
 	if(m_display.uniforms.mvmat == -1) {
@@ -694,6 +699,7 @@ void GUI::render_vga()
 	GLCALL( glUniform1i(m_display.uniforms.ch0, 0) );
 	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
 	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
+	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
 	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
 	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
 
@@ -1684,6 +1690,12 @@ void GUI::set_video_contrast(float _level)
 {
 	m_display.contrast = _level;
 	m_windows.interface->set_video_contrast(m_display.contrast);
+}
+
+void GUI::set_video_saturation(float _level)
+{
+	m_display.saturation = _level;
+	m_windows.interface->set_video_saturation(m_display.saturation);
 }
 
 GUI::Windows::Windows()

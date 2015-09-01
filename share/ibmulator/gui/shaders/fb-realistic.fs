@@ -34,7 +34,7 @@ void main()
 	vec2 pos = Warp(uv, warp);
 	vec3 color = FetchTexel(iChannel0, pos).rgb;
 
-	color = BrightnessSaturationContrast(color, iBrightness, 1.0, iContrast);
+	color = BrightnessSaturationContrast(color, iBrightness, iSaturation, iContrast);
 		
 	float a = min(color.r + color.g + color.b, 1.0);
 	oColor = vec4(color, a);

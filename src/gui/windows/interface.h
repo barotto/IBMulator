@@ -77,6 +77,7 @@ public:
 	virtual void set_audio_volume(float) {}
 	virtual void set_video_brightness(float) {}
 	virtual void set_video_contrast(float) {}
+	virtual void set_video_saturation(float) {}
 };
 
 class LogMessage : public Logdev

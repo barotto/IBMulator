@@ -64,8 +64,9 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISPLAY_REALISTIC_SHADER, "gui/shaders/fb-realistic.fs" },
 		{ DISPLAY_REALISTIC_FILTER, "bicubic" },
 		{ DISPLAY_REALISTIC_SCALE, "1.0" },
-		{ DISPLAY_BRIGHTNESS, "0.7" },
-		{ DISPLAY_CONTRAST, "0.5" }
+		{ DISPLAY_BRIGHTNESS, "1.0" },
+		{ DISPLAY_CONTRAST, "1.0" },
+		{ DISPLAY_SATURATION, "1.0" }
 	} },
 
 	{ CMOS_SECTION, {
@@ -198,6 +199,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                   Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 ";         contrast: Monitor contrast.\n"
 ";                   Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
+";       saturation: Monitor saturation.\n"
+";                   Possible values: any positive real number.\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -311,7 +314,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISPLAY_REALISTIC_FILTER,
 		DISPLAY_REALISTIC_SCALE,
 		DISPLAY_BRIGHTNESS,
-		DISPLAY_CONTRAST
+		DISPLAY_CONTRAST,
+		DISPLAY_SATURATION
 	} },
 	{ CPU_SECTION, {
 		CPU_FREQUENCY

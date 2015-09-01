@@ -177,12 +177,14 @@ private:
 		uint scaling;
 		float brightness;
 		float contrast;
+		float saturation;
 		vec2i size; // size in pixel of the destination quad
 
 		struct {
 			GLint ch0;
 			GLint brightness;
 			GLint contrast;
+			GLint saturation;
 			GLint mvmat;
 			GLint size;
 		} uniforms;
@@ -282,6 +284,7 @@ public:
 	void set_audio_volume(float _volume);
 	void set_video_brightness(float _level);
 	void set_video_contrast(float _level);
+	void set_video_saturation(float _level);
 };
 
 
