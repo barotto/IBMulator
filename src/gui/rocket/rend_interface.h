@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_GUI_REND_INTERFACE_H
 #define IBMULATOR_GUI_REND_INTERFACE_H
 
+#include "matrix.h"
 #include <Rocket/Core/RenderInterface.h>
 
 #if !(SDL_VIDEO_RENDER_OGL)
@@ -48,6 +49,8 @@ public:
 	/// Called by Rocket when a loaded texture is no longer required.
 	virtual void ReleaseTexture(Rocket::Core::TextureHandle texture_handle);
 
+	void SetDimensions(int _width, int _height);
+
 private:
     SDL_Renderer* mRenderer;
     SDL_Window* mScreen;
@@ -55,6 +58,7 @@ private:
     GLuint m_program;
     GLuint m_vb;
     GLuint m_sampler;
+	mat4f  m_projmat;
 
     struct uniforms {
     	GLint textured, guitex, P, MV;

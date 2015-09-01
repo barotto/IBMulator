@@ -175,8 +175,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	if(m_mode==GUI_MODE_NORMAL) {
 		h += std::min(256, w/4); //the sysunit proportions are 4:1
 	}
-	//the projection matrix is used only for libRocket
-	m_display.projmat = mat4_ortho<float>(0, w, h, 0, 0, 1);
 
 	/*** WINDOW CREATION ***/
 	create_window(PACKAGE_STRING, w, h, flags);
@@ -198,6 +196,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		shutdown_SDL();
 		throw;
 	}
+	m_rocket_renderer->SetDimensions(w,h);
 
 	m_windows.init(m_machine, this, m_mixer, m_mode);
 
@@ -1287,8 +1286,8 @@ void GUI::update_window_size(int _w, int _h)
 	m_height = _h;
 	m_half_width = m_width/2;
 	m_half_height = m_height/2;
-	m_display.projmat = mat4_ortho<float>(0, m_width, m_height, 0, 0, 1);
 	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
+	m_rocket_renderer->SetDimensions(m_width, m_height);
 
 	update_display_size();
 }

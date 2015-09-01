@@ -82,7 +82,7 @@ void RocketRenderer::RenderGeometry(Vertex* vertices,
 		GLCALL( glUniform1i(m_uniforms.textured, 0) );
 	}
 
-	GLCALL( glUniformMatrix4fv(m_uniforms.P, 1, GL_FALSE, g_gui.get_proj_matrix().data()) );
+	GLCALL( glUniformMatrix4fv(m_uniforms.P, 1, GL_FALSE, m_projmat.data()) );
 	GLCALL( glUniformMatrix4fv(m_uniforms.MV, 1, GL_FALSE, mv.data()) );
 
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vb) );
@@ -244,4 +244,9 @@ void RocketRenderer::ReleaseTexture(TextureHandle texture_handle)
 {
 	GLuint gltex = texture_handle;
 	GLCALL( glDeleteTextures(1, &gltex) );
+}
+
+void RocketRenderer::SetDimensions(int _width, int _height)
+{
+	m_projmat = mat4_ortho<float>(0, _width, _height, 0, 0, 1);
 }
