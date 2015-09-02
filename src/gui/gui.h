@@ -126,11 +126,7 @@ private:
 	std::string m_assets_path;
 	int m_width;
 	int m_height;
-	int m_half_width;
-	int m_half_height;
 	SDL_Window *m_SDL_window;
-	SDL_DisplayMode m_SDL_fullmode;
-	SDL_DisplayMode m_SDL_windowmode;
 	SDL_GLContext m_SDL_glcontext;
 	SDL_Renderer * m_SDL_renderer;
 	std::string m_wnd_title;
@@ -223,6 +219,7 @@ private:
 	} m_windows;
 
 	void create_window(const char * _title, int _width, int _height, int _flags);
+	void resize_window(int _width, int _height);
 	void check_device_caps();
 	void init_Rocket();
 	void render_vga();

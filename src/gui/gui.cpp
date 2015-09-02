@@ -144,12 +144,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw std::exception();
 	}
 
-	int flags = SDL_WINDOW_RESIZABLE;
-	if(g_program.config().get_bool(GUI_SECTION, GUI_FULLSCREEN)) {
-		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-	}
 	int w,h;
-
 	//try to parse the width as a scaling factor
 	std::string widths = g_program.config().get_string(GUI_SECTION, GUI_WIDTH);
 	if(widths.at(widths.length()-1) == 'x') {
@@ -177,7 +172,10 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	}
 
 	/*** WINDOW CREATION ***/
-	create_window(PACKAGE_STRING, w, h, flags);
+	create_window(PACKAGE_STRING, w, h, SDL_WINDOW_RESIZABLE);
+	if(g_program.config().get_bool(GUI_SECTION, GUI_FULLSCREEN)) {
+		toggle_fullscreen();
+	}
 
 	glewExperimental = GL_FALSE;
 	GLenum res = glewInit();
@@ -333,8 +331,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
 {
-	int x = SDL_WINDOWPOS_CENTERED;
-	int y = SDL_WINDOWPOS_CENTERED;
+	int x, y;
 	int display = 0;
 
 	int ndisplays = SDL_GetNumVideoDisplays();
@@ -342,40 +339,23 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 		display = 0;
 	}
 
-	SDL_DisplayMode dm;
-
-	/* currently useless info bc i'm using desktop fullscreen
-	int modes = SDL_GetNumDisplayModes(display);
-	PINFOF(LOG_V2,LOG_GUI,"Available video modes:\n");
-	for(int i=0; i<modes; i++) {
-		if(SDL_GetDisplayMode(display, i, &dm) == 0) {
-			PINFOF(LOG_V2,LOG_GUI,"%dx%d @ %dHz\n", dm.w, dm.h, dm.refresh_rate);
-		}
-	}
-	*/
-
-	SDL_GetDesktopDisplayMode(display, &m_SDL_fullmode);
-	SDL_GetCurrentDisplayMode(display, &m_SDL_windowmode);
-	m_SDL_windowmode.w = _width;
-	m_SDL_windowmode.h = _height;
 	if(_flags & SDL_WINDOW_FULLSCREEN) {
 		ASSERT(_flags & 0x00001000); //check the DESKTOP mode
 		/* desktop mode is the only mode that really works. don't even think
 		 * using the "real" fullscreen mode.
 		 */
-		dm = m_SDL_fullmode;
+		SDL_DisplayMode desktop;
+		SDL_GetDesktopDisplayMode(display, &desktop);
 		x = 0;
 		y = 0;
-		PINFOF(LOG_V1,LOG_GUI,"Requested video mode: fullscreen (%dx%d)\n",
-				dm.w, dm.h);
+		m_width = desktop.w;
+		m_height = desktop.h;
 	} else {
-		dm = m_SDL_windowmode;
-		PINFOF(LOG_V1,LOG_GUI,"Requested video mode: %dx%d\n", dm.w, dm.h);
+		int x = SDL_WINDOWPOS_CENTERED;
+		int y = SDL_WINDOWPOS_CENTERED;
+		m_width = _width;
+		m_height = _height;
 	}
-	m_width = dm.w;
-	m_height = dm.h;
-	m_half_width = m_width/2;
-	m_half_height = m_height/2;
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
@@ -398,7 +378,7 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	}
 #endif
 
-	PINFOF(LOG_V0,LOG_GUI,"Selected video mode: %dx%d @ %dHz\n", m_width, m_height, dm.refresh_rate);
+	PINFOF(LOG_V0,LOG_GUI,"Selected video mode: %dx%d\n", m_width, m_height);
 
 	m_SDL_glcontext = SDL_GL_CreateContext(m_SDL_window);
 	if(!m_SDL_glcontext) {
@@ -426,6 +406,15 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 
 	m_wnd_title = _title;
 	m_curr_title = m_wnd_title;
+}
+
+void GUI::resize_window(int _w, int _h)
+{
+	SDL_SetWindowSize(m_SDL_window, _w, _h);
+	SDL_SetWindowPosition(m_SDL_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	m_width = _w;
+	m_height = _h;
+	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
 }
 
 void GUI::toggle_fullscreen()
@@ -1064,8 +1053,8 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	{
 	case SDL_MOUSEMOTION:
 		if(m_mouse.warped
-			&& _event.motion.x == m_half_width
-			&& _event.motion.y == m_half_height)
+			&& _event.motion.x == m_width/2
+			&& _event.motion.y == m_height/2)
 		{
 			// This event was generated as a side effect of the WarpMouse,
 			// and it must be ignored.
@@ -1079,7 +1068,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 
 		m_machine->mouse_motion(_event.motion.xrel, -_event.motion.yrel, 0, buttons);
 
-		SDL_WarpMouseInWindow(m_SDL_window, m_half_width, m_half_height);
+		SDL_WarpMouseInWindow(m_SDL_window, m_width/2, m_height/2);
 		m_mouse.warped = true;
 
 		break;
@@ -1284,8 +1273,6 @@ void GUI::update_window_size(int _w, int _h)
 {
 	m_width = _w;
 	m_height = _h;
-	m_half_width = m_width/2;
-	m_half_height = m_height/2;
 	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
 	m_rocket_renderer->SetDimensions(m_width, m_height);
 
