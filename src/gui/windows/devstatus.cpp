@@ -21,7 +21,7 @@
 #include "program.h"
 #include "gui.h"
 #include "machine.h"
-
+#include "devstatus.h"
 #include <Rocket/Core.h>
 #include <sstream>
 

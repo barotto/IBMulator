@@ -25,8 +25,6 @@
 #include "mixer.h"
 #include "keys.h"
 #include "keymap.h"
-#include "hardware/devices/vga.h"
-#include "hardware/devices/vgadisplay.h"
 #include "utils.h"
 
 #include <Rocket/Core.h>
@@ -36,6 +34,14 @@
 #include "gui/rocket/rend_interface.h"
 #include "gui/rocket/file_interface.h"
 #include <SDL2/SDL_image.h>
+
+#include "windows/desktop.h"
+#include "windows/normal_interface.h"
+#include "windows/realistic_interface.h"
+#include "windows/status.h"
+#include "windows/sysdebugger.h"
+#include "windows/devstatus.h"
+#include "windows/stats.h"
 
 #include <algorithm>
 
@@ -81,14 +87,14 @@ std::map<std::string, uint> GUI::ms_gui_modes = {
 	{ "realistic", GUI_MODE_REALISTIC }
 };
 
-std::map<std::string, uint> gui_sampler = {
+std::map<std::string, uint> GUI::ms_gui_sampler = {
 	{ "nearest", DISPLAY_SAMPLER_NEAREST },
 	{ "linear",  DISPLAY_SAMPLER_BILINEAR },
 	{ "bilinear",DISPLAY_SAMPLER_BILINEAR },
 	{ "bicubic", DISPLAY_SAMPLER_BICUBIC }
 };
 
-std::map<std::string, uint> display_aspect = {
+std::map<std::string, uint> GUI::ms_display_aspect = {
 	{ "original", DISPLAY_ASPECT_ORIGINAL },
 	{ "adaptive", DISPLAY_ASPECT_ADAPTIVE },
 	{ "scaled", DISPLAY_ASPECT_SCALED }
@@ -114,17 +120,6 @@ GUI::~GUI()
 	delete m_rocket_file_interface;
 }
 
-GUI::Display::Display()
-:
-vb_data{
-	-1.0f, -1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	 1.0f,  1.0f, 0.0f
-}{}
-
 void GUI::init(Machine *_machine, Mixer *_mixer)
 {
 	m_machine = _machine;
@@ -144,38 +139,10 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw std::exception();
 	}
 
-	int w,h;
-	//try to parse the width as a scaling factor
-	std::string widths = g_program.config().get_string(GUI_SECTION, GUI_WIDTH);
-	if(widths.at(widths.length()-1) == 'x') {
-		int scan = sscanf(widths.c_str(), "%ux", &m_display.scaling);
-		if(scan == 1) {
-			//sensible defaults
-			w = 640;
-			h = 480;
-		} else {
-			PERRF(LOG_GUI, "invalid scaling factor: '%s'\n", widths.c_str());
-			throw std::exception();
-		}
-	} else {
-		//try as a pixel int value
-		w = g_program.config().get_int(GUI_SECTION, GUI_WIDTH);
-		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
-		m_display.scaling = 0;
-	}
-
-	m_display.mvmat.load_identity();
-
 	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
-	if(m_mode==GUI_MODE_NORMAL) {
-		h += std::min(256, w/4); //the sysunit proportions are 4:1
-	}
 
 	/*** WINDOW CREATION ***/
-	create_window(PACKAGE_STRING, w, h, SDL_WINDOW_RESIZABLE);
-	if(g_program.config().get_bool(GUI_SECTION, GUI_FULLSCREEN)) {
-		toggle_fullscreen();
-	}
+	create_window(PACKAGE_STRING, 640, 480, SDL_WINDOW_RESIZABLE);
 
 	glewExperimental = GL_FALSE;
 	GLenum res = glewInit();
@@ -190,18 +157,20 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	try {
 		check_device_caps();
 		init_Rocket();
+		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
 		shutdown_SDL();
 		throw;
 	}
-	m_rocket_renderer->SetDimensions(w,h);
 
-	m_windows.init(m_machine, this, m_mixer, m_mode);
+	vec2i wsize = m_windows.interface->get_size();
+	resize_window(wsize.x, wsize.y);
+	m_rocket_renderer->SetDimensions(wsize.x,wsize.y);
 
-	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
-	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
-	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
-	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
+	SDL_SetWindowPosition(m_SDL_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	if(g_program.config().get_bool(GUI_SECTION, GUI_FULLSCREEN)) {
+		toggle_fullscreen();
+	}
 
 	try {
 		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
@@ -218,108 +187,13 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
 
-	//at this point the VGA is already inited (see machine::init)
-	g_vga.attach_display(&m_display.vga);
-	load_splash_image();
-
-	std::string shadersdir = get_shaders_dir();
-	uint sampler;
-	if(m_mode == GUI_MODE_REALISTIC) {
-		sampler = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, gui_sampler);
-	} else {
-		sampler = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, gui_sampler);
-	}
-	std::vector<std::string> vs,fs;
-	if(sampler == DISPLAY_SAMPLER_NEAREST || sampler == DISPLAY_SAMPLER_BILINEAR) {
-		fs.push_back(shadersdir + "filter_bilinear.fs");
-	} else if(sampler == DISPLAY_SAMPLER_BICUBIC) {
-		fs.push_back(shadersdir + "filter_bicubic.fs");
-	} else {
-		PERRF(LOG_GUI, "Invalid sampler interpolation method\n");
-		shutdown_SDL();
-		throw std::exception();
-	}
-	fs.push_back(shadersdir + "color_functions.glsl");
-	vs.push_back(shadersdir + "fb-passthrough.vs");
-	if(m_mode == GUI_MODE_REALISTIC) {
-		fs.push_back(g_program.config().find_file(DISPLAY_SECTION,DISPLAY_REALISTIC_SHADER));
-	} else {
-		fs.push_back(g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER));
-	}
-	try {
-		m_display.prog = load_GLSL_program(vs,fs);
-	} catch(std::exception &e) {
-		PERRF(LOG_GUI, "Unable to create the shader program!\n");
-		shutdown_SDL();
-		throw std::exception();
-	}
-
-	//find the uniforms
-	GLCALL( m_display.uniforms.ch0 = glGetUniformLocation(m_display.prog, "iChannel0") );
-	if(m_display.uniforms.ch0 == -1) {
-		PWARNF(LOG_GUI, "iChannel0 not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.brightness = glGetUniformLocation(m_display.prog, "iBrightness") );
-	if(m_display.uniforms.brightness == -1) {
-		PWARNF(LOG_GUI, "iBrightness not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.contrast = glGetUniformLocation(m_display.prog, "iContrast") );
-	if(m_display.uniforms.contrast == -1) {
-		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.saturation = glGetUniformLocation(m_display.prog, "iSaturation") );
-	if(m_display.uniforms.saturation == -1) {
-		PWARNF(LOG_GUI, "iSaturation not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.mvmat = glGetUniformLocation(m_display.prog, "iModelView") );
-	if(m_display.uniforms.mvmat == -1) {
-		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.size = glGetUniformLocation(m_display.prog, "iDisplaySize") );
-	if(m_display.uniforms.size == -1) {
-		PWARNF(LOG_GUI, "iDisplaySize not found in shader program\n");
-	}
-
-	m_display.glintf = GL_RGBA;
-	m_display.glf = GL_RGBA;
-	m_display.gltype = GL_UNSIGNED_BYTE;
-	GLCALL( glGenTextures(1, &m_display.tex) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-			m_display.vga.get_screen_xres(), m_display.vga.get_screen_yres(),
-			0, m_display.glf, m_display.gltype, NULL) );
-
-	m_display.tex_buf.resize(m_display.vga.get_framebuffer_data_size());
-
-	GLCALL( glGenSamplers(1, &m_display.sampler) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER) );
-	if(sampler == DISPLAY_SAMPLER_NEAREST) {
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST) );
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST) );
-	} else {
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
-	}
-
-	GLCALL( glGenBuffers(1, &m_display.vb) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_display.vb_data), m_display.vb_data, GL_DYNAMIC_DRAW) );
-
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
-
 	SDL_SetRenderDrawColor(m_SDL_renderer,
 			g_program.config().get_int(GUI_SECTION, GUI_BG_R),
 			g_program.config().get_int(GUI_SECTION, GUI_BG_G),
 			g_program.config().get_int(GUI_SECTION, GUI_BG_B),
 			255);
 
-	m_display.aspect = g_program.config().get_enum(DISPLAY_SECTION,DISPLAY_NORMAL_ASPECT,display_aspect);
-	update_window_size(w,h);
-
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, NULL);
-	m_display.vga_updated = true;
 
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
 		PWARNF(LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
@@ -400,7 +274,6 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 
 	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, oglIdx,
 			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
 	SDL_ShowWindow(m_SDL_window);
 
@@ -408,13 +281,13 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	m_curr_title = m_wnd_title;
 }
 
-void GUI::resize_window(int _w, int _h)
+vec2i GUI::resize_window(int _w, int _h)
 {
 	SDL_SetWindowSize(m_SDL_window, _w, _h);
-	SDL_SetWindowPosition(m_SDL_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-	m_width = _w;
-	m_height = _h;
+	SDL_GetWindowSize(m_SDL_window, &m_width, &m_height);
 	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
+	update_window_size(m_width, m_height);
+	return vec2i(m_width, m_height);
 }
 
 void GUI::toggle_fullscreen()
@@ -631,88 +504,21 @@ void GUI::GL_debug_output(
 void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
+	GLCALL( glViewport(0,0,	m_width, m_height) );
 	if(m_mode == GUI_MODE_REALISTIC) {
+		//TODO move the rendering logic inside the Interface
 		m_windows.interface->hide();
 		m_windows.invert_visibility();
 		m_rocket_context->Render();
-		render_vga();
+		m_windows.interface->render_vga();
 		m_windows.invert_visibility();
 		m_rocket_context->Render();
 		m_windows.interface->show();
 	} else {
-		render_vga();
+		m_windows.interface->render_vga();
 		m_rocket_context->Render();
 	}
 	SDL_RenderPresent(m_SDL_renderer);
-}
-
-void GUI::render_vga()
-{
-	GLCALL( glActiveTexture(GL_TEXTURE0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-
-	if(m_display.vga_updated) {
-		m_display.vga_updated = false;
-		m_display.vga.lock();
-		vec2i vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
-		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
-		//when the program runs with the default shaders, the load on the GPU is very low
-		//so the drivers lower the clock of the GPU to the minimum value;
-		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
-		//a lot of time to complete, bloking the machine emulation thread.
-		//PBOs are a possible alternative, but a memcpy is way simpler.
-		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
-		m_display.vga.unlock();
-
-		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );
-		if(m_display.vga_res != vga_res) {
-			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-					vga_res.x, vga_res.y,
-					0, m_display.glf, m_display.gltype,
-					&m_display.tex_buf[0]) );
-			m_display.vga_res = vga_res;
-		} else {
-			GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
-					0, 0,
-					vga_res.x, vga_res.y,
-					m_display.glf, m_display.gltype,
-					&m_display.tex_buf[0]) );
-		}
-		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
-	}
-
-	GLCALL( glBindSampler(0, m_display.sampler) );
-	GLCALL( glUseProgram(m_display.prog) );
-
-	GLCALL( glUniform1i(m_display.uniforms.ch0, 0) );
-	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
-	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
-	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
-	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
-	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
-
-	GLCALL( glEnable(GL_BLEND) );
-	GLCALL( glDisable(GL_LIGHTING) );
-	//GLCALL( glDisable(GL_DEPTH_TEST) );
-
-	GLCALL( glViewport(0,0,	m_width, m_height) );
-
-	GLCALL( glEnableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
-	GLCALL( glVertexAttribPointer(
-            0,        // attribute 0. must match the layout in the shader.
-            3,        // size
-            GL_FLOAT, // type
-            GL_FALSE, // normalized?
-            0,        // stride
-            (void*)0  // array buffer offset
-    ) );
-
-	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
-
-	GLCALL( glDisableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 }
 
 void GUI::input_grab(bool _value)
@@ -1152,131 +958,13 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	}
 }
 
-void GUI::update_display_size_realistic()
-{
-	int disp_w, disp_h;
-	float xs, ys, xt=0.f, yt;
-	const float sys_ratio = RealisticInterface::s_width / RealisticInterface::s_height;
-	const float abs_disp_w = RealisticInterface::s_width - RealisticInterface::s_vga_left*2;
-	const float wdisp_ratio = abs_disp_w / RealisticInterface::s_width;
-
-	float system_h = m_height;
-	float system_w = system_h * sys_ratio;
-	if(system_w > m_width) {
-		system_w = m_width;
-		system_h = system_w * 1.f/sys_ratio;
-		disp_w = round(float(m_width) * wdisp_ratio);
-		disp_w *= g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
-		disp_h = round(float(disp_w) * 0.75f); // aspect ratio 4:3
-	} else {
-		const float hdisp_ratio = sys_ratio * wdisp_ratio * 0.75;
-		disp_h = round(float(m_height) * hdisp_ratio);
-		disp_h *= g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
-		disp_w = round(float(disp_h) * 1.333333f); // aspect ratio 4:3
-	}
-	m_windows.interface->update_size(system_w, system_h);
-
-	xs = float(disp_w) / float(m_width);  // VGA width (screen ratio)
-	ys = float(disp_h) / float(m_height); // VGA height (screen ratio)
-	float monitor_h = ((RealisticInterface::s_monitor_height*system_h)/RealisticInterface::s_height) / float(m_height);
-	system_h /= float(m_height);
-	float vga_offset = monitor_h - ys;
-
-	if(RealisticInterface::s_align_top) {
-		yt = 1.0 - ys - vga_offset;
-	} else {
-		yt = -1.0 + (system_h-monitor_h)*2.f + vga_offset + ys;
-	}
-
-	m_display.size.x = disp_w;
-	m_display.size.y = disp_h;
-	m_display.mvmat.load_scale(xs, ys, 1.0);
-	m_display.mvmat.load_translation(xt, yt, 0.0);
-}
-
-void GUI::update_display_size()
-{
-	if(m_mode==GUI_MODE_REALISTIC) {
-		update_display_size_realistic();
-		return;
-	}
-
-	float xs = 1.f, ys = 1.f;
-	float xt = 0.f, yt = 0.f;
-	uint sysunit_h = m_height/4;
-	sysunit_h = std::min(256u, sysunit_h);
-	uint sysunit_w = sysunit_h*4;
-	sysunit_w = std::min(sysunit_w, (uint)m_width);
-	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
-
-	int disp_w, disp_h;
-	int disp_area_w = m_width, disp_area_h = m_height;
-	if(m_display.scaling>0) {
-		disp_w = m_display.vga.get_screen_xres() * m_display.scaling;
-		disp_h = m_display.vga.get_screen_yres() * m_display.scaling;
-	} else {
-		disp_w = disp_area_w;
-		disp_h = disp_area_h;
-	}
-
-	if(m_mode==GUI_MODE_NORMAL) {
-		disp_area_h = m_height - sysunit_h;
-		m_windows.interface->update_size(sysunit_w, sysunit_h);
-	}
-	disp_w = std::min(disp_w,disp_area_w);
-	disp_h = std::min(disp_h,disp_area_h);
-
-	float ratio;
-	if(m_display.aspect == DISPLAY_ASPECT_ORIGINAL) {
-		ratio = 1.333333f; //4:3
-	} else if(m_display.aspect == DISPLAY_ASPECT_ADAPTIVE) {
-		ratio = float(m_display.vga.get_screen_xres()) / float(m_display.vga.get_screen_yres());
-	} else {
-		//SCALED
-		ratio = float(disp_w) / float(disp_h);
-	}
-	disp_w = round(float(disp_h) * ratio);
-	//xs = float(disp_w)/float(disp_area_w);
-	xs = float(disp_w)/float(m_width);
-	if(xs>1.0f) {
-		disp_w = disp_area_w;
-		xs = 1.0f;
-		disp_h = round(float(disp_w) / ratio);
-	}
-	if(m_display.aspect == DISPLAY_ASPECT_SCALED) {
-		ratio = float(disp_w) / float(disp_h);
-	}
-	//ys = float(disp_h)/float(disp_area_h);
-	ys = float(disp_h)/float(m_height);
-	if(m_mode==GUI_MODE_NORMAL) {
-		yt = 1.f - ys; //aligned to top
-	}
-	if(ys>1.f) {
-		disp_h = disp_area_h;
-		//ys = 1.f;
-		ys = float(disp_h)/float(m_height);
-		yt = 0.f;
-		if(m_display.aspect == DISPLAY_ASPECT_SCALED) {
-			ratio = float(disp_w) / float(disp_h);
-		}
-		disp_w = round(float(disp_h) * ratio);
-		//xs = float(disp_w)/float(disp_area_w);
-		xs = float(disp_w)/float(m_width);
-	}
-	m_display.size.x = disp_w;
-	m_display.size.y = disp_h;
-	m_display.mvmat.load_scale(xs, ys, 1.0);
-	m_display.mvmat.load_translation(xt, yt, 0.0);
-}
-
 void GUI::update_window_size(int _w, int _h)
 {
 	m_width = _w;
 	m_height = _h;
 	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
 	m_rocket_renderer->SetDimensions(m_width, m_height);
-
-	update_display_size();
+	m_windows.interface->container_size_changed(m_width, m_height);
 }
 
 void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
@@ -1370,42 +1058,6 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 
 void GUI::update()
 {
-	if(m_mode != GUI_MODE_REALISTIC &&
-	  (m_display.aspect == DISPLAY_ASPECT_ADAPTIVE || m_display.scaling>0))
-	{
-		m_display.vga.lock();
-		if(m_display.vga.get_dimension_updated()) {
-			Uint32 flags = SDL_GetWindowFlags(m_SDL_window);
-			//WARNING in order for the MAXIMIZED case to work under X11 you need
-			//SDL 2.0.4 with this patch:
-			//https://bugzilla.libsdl.org/show_bug.cgi?id=2793
-			if(!(flags & SDL_WINDOW_FULLSCREEN)&&
-			   !(flags & SDL_WINDOW_MAXIMIZED) &&
-			   m_display.scaling)
-			{
-				int w = m_display.vga.get_screen_xres() * m_display.scaling;
-				int h = m_display.vga.get_screen_yres() * m_display.scaling;
-				if(m_mode==GUI_MODE_NORMAL) {
-					h += std::min(256, w/4); //the sysunit proportions are 4:1
-				}
-				SDL_SetWindowSize(m_SDL_window,w,h);
-				int cw,ch;
-				SDL_GetWindowSize(m_SDL_window,&cw,&ch);
-				if(cw!=w || ch!=h) {
-					//not enough space?
-					//what TODO ?
-					w = cw;
-					h = ch;
-				}
-				update_window_size(w, h);
-			} else {
-				update_display_size();
-			}
-			m_display.vga.reset_dimension_updated();
-		}
-		m_display.vga.unlock();
-	}
-
 	m_windows.update();
 	m_rocket_context->Update();
 
@@ -1535,111 +1187,12 @@ std::string GUI::get_shaders_dir()
 
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
-	SDL_Surface * surface = SDL_CreateRGBSurface(
-		0,
-		m_display.vga.get_screen_xres(),
-		m_display.vga.get_screen_yres(),
-		32,
-		PALETTE_RMASK,
-		PALETTE_GMASK,
-		PALETTE_BMASK,
-		PALETTE_AMASK
-	);
-	if(!surface) {
-		PERRF(LOG_GUI, "error creating buffer surface\n");
-		throw std::exception();
-	}
-	SDL_Surface * palette = nullptr;
-	if(!_palfile.empty()) {
-		palette = SDL_CreateRGBSurface(
-			0,         //flags (unused)
-			16,	16,    //w x h
-			32,        //bit depth
-			PALETTE_RMASK,
-			PALETTE_GMASK,
-			PALETTE_BMASK,
-			PALETTE_AMASK
-		);
-		if(!palette) {
-			SDL_FreeSurface(surface);
-			PERRF(LOG_GUI, "error creating palette surface\n");
-			throw std::exception();
-		}
-	}
-	m_display.vga.lock();
-		SDL_LockSurface(surface);
-		m_display.vga.copy_screen((uint8_t*)surface->pixels);
-		SDL_UnlockSurface(surface);
-		if(palette) {
-			SDL_LockSurface(palette);
-			for(uint i=0; i<256; i++) {
-				((uint32_t*)palette->pixels)[i] = m_display.vga.get_color(i);
-			}
-			SDL_UnlockSurface(palette);
-		}
-	m_display.vga.unlock();
-
-	int result = IMG_SavePNG(surface, _screenfile.c_str());
-	SDL_FreeSurface(surface);
-	if(result<0) {
-		PERRF(LOG_GUI, "error saving surface to PNG\n");
-		if(palette) {
-			SDL_FreeSurface(palette);
-		}
-		throw std::exception();
-	}
-	if(palette) {
-		result = IMG_SavePNG(palette, _palfile.c_str());
-		SDL_FreeSurface(palette);
-		if(result < 0) {
-			PERRF(LOG_GUI, "error saving palette to PNG\n");
-			throw std::exception();
-		}
-	}
+	m_windows.interface->save_framebuffer(_screenfile, _palfile);
 }
 
 void GUI::show_message(const char* _mex)
 {
 	m_windows.interface->show_message(_mex);
-}
-
-void GUI::load_splash_image()
-{
-	std::string file = g_program.config().find_file(GUI_SECTION,GUI_START_IMAGE);
-
-	if(file.empty()) {
-		return;
-	}
-
-	SDL_Surface* surface = IMG_Load(file.c_str());
-	if(surface) {
-		SDL_LockSurface(surface);
-		m_display.vga.lock();
-		uint32_t * fb = m_display.vga.get_framebuffer();
-		uint fbw = m_display.vga.get_fb_xsize();
-		uint bytespp = surface->format->BytesPerPixel;
-		for(int y=0; y<surface->h; y++) {
-			for(int x=0; x<surface->w; x++) {
-				if(x>int(m_display.vga.get_fb_xsize())) {
-					break;
-				}
-				uint32_t pixel;
-				uint pixelidx = y*surface->w*bytespp + x*bytespp;
-				memcpy(&pixel, &((uint8_t*)surface->pixels)[pixelidx], bytespp);
-				Uint8 r,g,b,a;
-				SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a);
-				pixel = PALETTE_ENTRY(r,g,b);
-				pixelidx = y*fbw + x;
-				fb[pixelidx] = pixel;
-			}
-			if(y>int(m_display.vga.get_fb_ysize())) {
-				break;
-			}
-		}
-		m_display.vga.unlock();
-		SDL_UnlockSurface(surface);
-		SDL_FreeSurface(surface);
-	}
 }
 
 Uint32 GUI::every_second(Uint32 interval, void */*param*/)
@@ -1660,29 +1213,6 @@ Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 	return interval;
 }
 
-void GUI::set_audio_volume(float _volume)
-{
-	m_mixer->cmd_set_global_volume(_volume);
-	m_windows.interface->set_audio_volume(_volume);
-}
-
-void GUI::set_video_brightness(float _level)
-{
-	m_display.brightness = _level;
-	m_windows.interface->set_video_brightness(m_display.brightness);
-}
-
-void GUI::set_video_contrast(float _level)
-{
-	m_display.contrast = _level;
-	m_windows.interface->set_video_contrast(m_display.contrast);
-}
-
-void GUI::set_video_saturation(float _level)
-{
-	m_display.saturation = _level;
-	m_windows.interface->set_video_saturation(m_display.saturation);
-}
 
 GUI::Windows::Windows()
 :
@@ -1704,9 +1234,9 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	desktop->show();
 
 	if(_mode == GUI_MODE_REALISTIC) {
-		interface = new RealisticInterface(_machine,_gui);
+		interface = new RealisticInterface(_machine,_gui,_mixer);
 	} else {
-		interface = new NormalInterface(_machine,_gui);
+		interface = new NormalInterface(_machine,_gui,_mixer);
 	}
 	interface->show();
 
@@ -1770,6 +1300,8 @@ void GUI::Windows::invert_visibility()
 
 void GUI::Windows::update()
 {
+	interface->update();
+
 	if(debug_wnds) {
 		//debug windows are autonomous
 		debugger->update();
@@ -1780,10 +1312,6 @@ void GUI::Windows::update()
 	//always update the status
 	if(status) {
 		status->update();
-	}
-
-	if(visible) {
-		interface->update();
 	}
 }
 

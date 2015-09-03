@@ -38,7 +38,6 @@ private:
 	            *m_brightness_slider,
 	            *m_contrast_slider;
 
-	uint  m_width, m_height;
 	float m_volume_left_min;
 	float m_brightness_left_min;
 	float m_contrast_left_min;
@@ -56,28 +55,28 @@ private:
 	void  on_contrast_drag(RC::Event &);
 	void  on_dragstart(RC::Event &);
 
-	static constexpr float s_min_slider_val = 0.0f;
-	static constexpr float s_max_slider_val = 1.3f;
+	static constexpr float ms_min_slider_val = 0.0f;
+	static constexpr float ms_max_slider_val = 1.3f;
 
 public:
 
 	// the following values depend on the machine texture used:
-	static constexpr float s_width          = 2057.0f; // texture width (pixels)
-	static constexpr float s_height         = 2237.0f; // texture height (pixels)
-	static constexpr float s_monitor_height = 1600.0f; // monitor height bezel included (pixels)
-	static constexpr float s_vga_left       =  358.0f; // offset of the VGA image from the left border (pixels)
-	static constexpr float s_slider_length  =    7.0f; // slider horizontal movement length (%)
+	static constexpr float ms_width          = 2057.0f; // texture width (pixels)
+	static constexpr float ms_height         = 2237.0f; // texture height (pixels)
+	static constexpr float ms_monitor_height = 1600.0f; // monitor height bezel included (pixels)
+	static constexpr float ms_vga_left       =  358.0f; // offset of the VGA image from the left border (pixels)
+	static constexpr float ms_slider_length  =    7.0f; // slider horizontal movement length (%)
 
 	// the alignment is specified in the rml file:
-	static constexpr bool s_align_top = false;
+	static constexpr bool ms_align_top = false;
 
 public:
 
-	RealisticInterface(Machine *_machine, GUI * _gui);
+	RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
 	~RealisticInterface();
 
 	void update();
-	void update_size(uint _width, uint _height);
+	void container_size_changed(int _width, int _height);
 
 	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
 

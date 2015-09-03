@@ -22,6 +22,7 @@
 #include "gui.h"
 #include "machine.h"
 #include "mixer.h"
+#include "stats.h"
 #include "hardware/memory.h"
 #include "hardware/devices/cmos.h"
 

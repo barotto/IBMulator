@@ -36,6 +36,7 @@ void main()
 
 	color = BrightnessSaturationContrast(color, iBrightness, iSaturation, iContrast);
 		
-	float a = min(color.r + color.g + color.b, 1.0);
+	//float a = min(color.r + color.g + color.b, 1.0);
+	float a = 1.0;
 	oColor = vec4(color, a);
 }

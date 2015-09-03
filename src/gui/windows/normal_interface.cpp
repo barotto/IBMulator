@@ -39,9 +39,9 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount )
 };
 
-NormalInterface::NormalInterface(Machine *_machine, GUI * _gui)
+NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
 :
-Interface(_machine, _gui, "normal_interface.rml")
+Interface(_machine, _gui, _mixer, "normal_interface.rml")
 {
 	ASSERT(m_wnd);
 
@@ -52,21 +52,115 @@ Interface(_machine, _gui, "normal_interface.rml")
 	m_btn_pause = get_element("pause");
 	m_led_pause = false;
 	m_gui_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, GUI::ms_gui_modes);
+	m_vga_aspect = g_program.config().get_enum(DISPLAY_SECTION,DISPLAY_NORMAL_ASPECT,
+		GUI::ms_display_aspect);
+
+	int w,h;
+	//try to parse the width as a scaling factor
+	std::string widths = g_program.config().get_string(GUI_SECTION, GUI_WIDTH);
+	if(widths.at(widths.length()-1) == 'x') {
+		int scan = sscanf(widths.c_str(), "%ux", &m_vga_scaling);
+		if(scan == 1) {
+			//sensible defaults
+			w = 640;
+			h = 480;
+		} else {
+			PERRF(LOG_GUI, "invalid scaling factor: '%s'\n", widths.c_str());
+			throw std::exception();
+		}
+	} else {
+		//try as a pixel int value
+		w = g_program.config().get_int(GUI_SECTION, GUI_WIDTH);
+		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
+		m_vga_scaling = 0;
+	}
+	h += std::min(256, w/4); //the sysunit proportions are 4:1
+
+	m_size = vec2i(w,h);
+
+	init_display(
+		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler),
+		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER)
+	);
 }
 
 NormalInterface::~NormalInterface()
 {
 }
 
-void NormalInterface::update_size(uint _width, uint _height)
+void NormalInterface::container_size_changed(int _width, int _height)
 {
-	Interface::update_size(_width, _height);
+	float xs = 1.f, ys = 1.f;
+	float xt = 0.f, yt = 0.f;
+	uint sysunit_h = _height/4;
+	sysunit_h = std::min(256u, sysunit_h);
+	uint sysunit_w = sysunit_h*4;
+	sysunit_w = std::min(sysunit_w, (uint)_width);
+	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
+
+	int disp_w, disp_h;
+	int disp_area_w = _width, disp_area_h = _height;
+	if(m_vga_scaling>0) {
+		disp_w = m_display.vga.get_screen_xres() * m_vga_scaling;
+		disp_h = m_display.vga.get_screen_yres() * m_vga_scaling;
+	} else {
+		disp_w = disp_area_w;
+		disp_h = disp_area_h;
+	}
 
 	if(m_gui_mode == GUI_MODE_NORMAL) {
+		disp_area_h = _height - sysunit_h;
+	}
+
+	disp_w = std::min(disp_w,disp_area_w);
+	disp_h = std::min(disp_h,disp_area_h);
+
+	float ratio;
+	if(m_vga_aspect == DISPLAY_ASPECT_ORIGINAL) {
+		ratio = 1.333333f; //4:3
+	} else if(m_vga_aspect == DISPLAY_ASPECT_ADAPTIVE) {
+		ratio = float(m_display.vga.get_screen_xres()) / float(m_display.vga.get_screen_yres());
+	} else {
+		//SCALED
+		ratio = float(disp_w) / float(disp_h);
+	}
+	disp_w = round(float(disp_h) * ratio);
+	xs = float(disp_w)/float(_width);
+	if(xs>1.0f) {
+		disp_w = disp_area_w;
+		xs = 1.0f;
+		disp_h = round(float(disp_w) / ratio);
+	}
+	if(m_vga_aspect == DISPLAY_ASPECT_SCALED) {
+		ratio = float(disp_w) / float(disp_h);
+	}
+	ys = float(disp_h)/float(_height);
+	if(m_gui_mode == GUI_MODE_NORMAL) {
+		yt = 1.f - ys; //aligned to top
+	}
+	if(ys>1.f) {
+		disp_h = disp_area_h;
+		ys = float(disp_h)/float(_height);
+		yt = 0.f;
+		if(m_vga_aspect == DISPLAY_ASPECT_SCALED) {
+			ratio = float(disp_w) / float(disp_h);
+		}
+		disp_w = round(float(disp_h) * ratio);
+		xs = float(disp_w)/float(_width);
+	}
+
+	m_display.size.x = disp_w;
+	m_display.size.y = disp_h;
+	m_display.mvmat.load_scale(xs, ys, 1.0);
+	m_display.mvmat.load_translation(xt, yt, 0.0);
+
+	m_size = m_display.size;
+	if(m_gui_mode == GUI_MODE_NORMAL) {
+		m_size.y += sysunit_h;
 		char buf[10];
-		snprintf(buf, 10, "%upx", _width);
+		snprintf(buf, 10, "%upx", sysunit_w);
 		m_sysunit->SetProperty("width", buf);
-		snprintf(buf, 10, "%upx", _height);
+		snprintf(buf, 10, "%upx", sysunit_h);
 		m_sysunit->SetProperty("height", buf);
 	}
 }
@@ -75,18 +169,52 @@ void NormalInterface::update()
 {
 	Interface::update();
 
-	if(m_floppy_present) {
-		m_sysunit->SetClass("disk", true);
-	} else {
-		m_sysunit->SetClass("disk", false);
+	if(m_vga_aspect==DISPLAY_ASPECT_ADAPTIVE || m_vga_scaling>0) {
+		m_display.vga.lock();
+		if(m_display.vga.get_dimension_updated()) {
+			uint32_t wflags = m_gui->get_window_flags();
+			//WARNING in order for the MAXIMIZED case to work under X11 you need
+			//SDL 2.0.4 with this patch:
+			//https://bugzilla.libsdl.org/show_bug.cgi?id=2793
+			if(!(wflags & SDL_WINDOW_FULLSCREEN)&&
+			   !(wflags & SDL_WINDOW_MAXIMIZED) &&
+			   m_vga_scaling)
+			{
+				int w = m_display.vga.get_screen_xres() * m_vga_scaling;
+				int h = m_display.vga.get_screen_yres() * m_vga_scaling;
+				if(m_gui_mode == GUI_MODE_NORMAL) {
+					h += std::min(256, w/4); //the sysunit proportions are 4:1
+				}
+				vec2i size = m_gui->resize_window(w,h);
+				if(size.x!=w || size.y!=h) {
+					//not enough space?
+					//what TODO ?
+				}
+			} else {
+				container_size_changed(
+					m_gui->get_window_width(),
+					m_gui->get_window_height()
+				);
+			}
+			m_display.vga.reset_dimension_updated();
+		}
+		m_display.vga.unlock();
 	}
 
-	if(m_machine->is_paused() && m_led_pause==false) {
-		m_led_pause = true;
-		m_btn_pause->SetClass("resume", true);
-	} else if(!m_machine->is_paused() && m_led_pause==true){
-		m_led_pause = false;
-		m_btn_pause->SetClass("resume", false);
+	if(is_visible()) {
+		if(m_floppy_present) {
+			m_sysunit->SetClass("disk", true);
+		} else {
+			m_sysunit->SetClass("disk", false);
+		}
+
+		if(m_machine->is_paused() && m_led_pause==false) {
+			m_led_pause = true;
+			m_btn_pause->SetClass("resume", true);
+		} else if(!m_machine->is_paused() && m_led_pause==true){
+			m_led_pause = false;
+			m_btn_pause->SetClass("resume", false);
+		}
 	}
 }
 

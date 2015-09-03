@@ -25,7 +25,7 @@
 #include "hardware/memory.h"
 #include "machine.h"
 #include "hardware/cpu/debugger.h"
-
+#include "sysdebugger.h"
 #include <cstdio>
 #include <Rocket/Core.h>
 #include <Rocket/Controls.h>

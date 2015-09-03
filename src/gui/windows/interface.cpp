@@ -20,11 +20,13 @@
 #include "ibmulator.h"
 #include "gui.h"
 #include "machine.h"
+#include "mixer.h"
 #include "program.h"
 #include "utils.h"
 #include <sys/stat.h>
-
+#include <SDL2/SDL_image.h>
 #include <Rocket/Core.h>
+#include "hardware/devices/vga.h"
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/harddrv.h"
 
@@ -44,13 +46,24 @@ void LogMessage::log_put(const char* _prefix, const char* _message)
 	m_iface->show_message(_message);
 }
 
+Interface::Display::Display()
+:
+vb_data{
+	-1.0f, -1.0f, 0.0f,
+	 1.0f, -1.0f, 0.0f,
+	-1.0f,  1.0f, 0.0f,
+	-1.0f,  1.0f, 0.0f,
+	 1.0f, -1.0f, 0.0f,
+	 1.0f,  1.0f, 0.0f
+}{}
 
-Interface::Interface(Machine *_machine, GUI * _gui, const char *_rml)
+Interface::Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml)
 :
 Window(_gui, _rml)
 {
 	ASSERT(m_wnd);
 	m_machine = _machine;
+	m_mixer = _mixer;
 
 	m_buttons.power = get_element("power");
 	m_buttons.fdd_select = get_element("fdd_select");
@@ -85,11 +98,107 @@ Window(_gui, _rml)
 	m_fs->set_cancel_callbk(nullptr);
 
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, new LogMessage(this));
+
+	m_size = 0;
+
+	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
+	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
+	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
+	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
 }
 
 Interface::~Interface()
 {
 	delete m_fs;
+}
+
+void Interface::init_display(uint _sampler, std::string _shader)
+{
+	std::vector<std::string> vs,fs;
+	std::string shadersdir = GUI::get_shaders_dir();
+
+	m_display.mvmat.load_identity();
+
+	if(_sampler == DISPLAY_SAMPLER_NEAREST || _sampler == DISPLAY_SAMPLER_BILINEAR) {
+		fs.push_back(shadersdir + "filter_bilinear.fs");
+	} else if(_sampler == DISPLAY_SAMPLER_BICUBIC) {
+		fs.push_back(shadersdir + "filter_bicubic.fs");
+	} else {
+		PERRF(LOG_GUI, "Invalid sampler interpolation method\n");
+		throw std::exception();
+	}
+
+	vs.push_back(shadersdir + "fb-passthrough.vs");
+	fs.push_back(shadersdir + "color_functions.glsl");
+	fs.push_back(_shader);
+
+	try {
+		m_display.prog = GUI::load_GLSL_program(vs,fs);
+	} catch(std::exception &e) {
+		PERRF(LOG_GUI, "Unable to create the shader program!\n");
+		throw std::exception();
+	}
+
+	//find the uniforms
+	GLCALL( m_display.uniforms.ch0 = glGetUniformLocation(m_display.prog, "iChannel0") );
+	if(m_display.uniforms.ch0 == -1) {
+		PWARNF(LOG_GUI, "iChannel0 not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.brightness = glGetUniformLocation(m_display.prog, "iBrightness") );
+	if(m_display.uniforms.brightness == -1) {
+		PWARNF(LOG_GUI, "iBrightness not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.contrast = glGetUniformLocation(m_display.prog, "iContrast") );
+	if(m_display.uniforms.contrast == -1) {
+		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.saturation = glGetUniformLocation(m_display.prog, "iSaturation") );
+	if(m_display.uniforms.saturation == -1) {
+		PWARNF(LOG_GUI, "iSaturation not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.mvmat = glGetUniformLocation(m_display.prog, "iModelView") );
+	if(m_display.uniforms.mvmat == -1) {
+		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
+	}
+	GLCALL( m_display.uniforms.size = glGetUniformLocation(m_display.prog, "iDisplaySize") );
+	if(m_display.uniforms.size == -1) {
+		PWARNF(LOG_GUI, "iDisplaySize not found in shader program\n");
+	}
+
+	m_display.glintf = GL_RGBA;
+	m_display.glf = GL_RGBA;
+	m_display.gltype = GL_UNSIGNED_BYTE;
+	GLCALL( glGenTextures(1, &m_display.tex) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
+	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
+			m_display.vga.get_screen_xres(), m_display.vga.get_screen_yres(),
+			0, m_display.glf, m_display.gltype, NULL) );
+
+	m_display.tex_buf.resize(m_display.vga.get_framebuffer_data_size());
+
+	GLCALL( glGenSamplers(1, &m_display.sampler) );
+	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
+	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER) );
+	if(_sampler == DISPLAY_SAMPLER_NEAREST) {
+		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST) );
+		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST) );
+	} else {
+		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
+		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
+	}
+
+	GLCALL( glGenBuffers(1, &m_display.vb) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
+	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_display.vb_data), m_display.vb_data, GL_DYNAMIC_DRAW) );
+
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
+
+	m_display.vga_updated = true;
+
+	//at this point the VGA is already inited (see machine::init)
+	g_vga.attach_display(&m_display.vga);
+	load_splash_image();
 }
 
 void Interface::update_floppy_disk(std::string _filename)
@@ -158,48 +267,45 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 	m_fs->hide();
 }
 
-void Interface::update_size(uint _width, uint _height)
-{
-
-}
-
 void Interface::update()
 {
-	bool motor = g_floppy.get_motor_enable(m_curr_drive);
-	if(motor && m_leds.fdd==false) {
-		m_leds.fdd = true;
-		m_status.fdd_led->SetClass("active", true);
-	} else if(!motor && m_leds.fdd==true) {
-		m_leds.fdd = false;
-		m_status.fdd_led->SetClass("active", false);
-	}
+	if(is_visible()) {
+		bool motor = g_floppy.get_motor_enable(m_curr_drive);
+		if(motor && m_leds.fdd==false) {
+			m_leds.fdd = true;
+			m_status.fdd_led->SetClass("active", true);
+		} else if(!motor && m_leds.fdd==true) {
+			m_leds.fdd = false;
+			m_status.fdd_led->SetClass("active", false);
+		}
 
-	bool hdd_busy = g_harddrv.is_busy();
-	if(hdd_busy && m_leds.hdd==false) {
-		m_leds.hdd = true;
-		m_status.hdd_led->SetClass("active", true);
-	} else if(!hdd_busy && m_leds.hdd==true) {
-		m_leds.hdd = false;
-		m_status.hdd_led->SetClass("active", false);
-	}
+		bool hdd_busy = g_harddrv.is_busy();
+		if(hdd_busy && m_leds.hdd==false) {
+			m_leds.hdd = true;
+			m_status.hdd_led->SetClass("active", true);
+		} else if(!hdd_busy && m_leds.hdd==true) {
+			m_leds.hdd = false;
+			m_status.hdd_led->SetClass("active", false);
+		}
 
-	bool present = g_floppy.is_media_present(m_curr_drive);
-	bool changed = g_floppy.get_disk_changed(m_curr_drive);
-	if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
-		m_floppy_changed = changed;
-		m_floppy_present = true;
-		const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
-		update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
-	} else if(!present && m_floppy_present==true) {
-		m_floppy_present = false;
-		m_status.fdd_disk->SetInnerRML("");
-	}
-	if(m_machine->is_on() && m_leds.power==false) {
-		m_leds.power = true;
-		m_buttons.power->SetClass("active", true);
-	} else if(!m_machine->is_on() && m_leds.power==true) {
-		m_leds.power = false;
-		m_buttons.power->SetClass("active", false);
+		bool present = g_floppy.is_media_present(m_curr_drive);
+		bool changed = g_floppy.get_disk_changed(m_curr_drive);
+		if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
+			m_floppy_changed = changed;
+			m_floppy_present = true;
+			const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
+			update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
+		} else if(!present && m_floppy_present==true) {
+			m_floppy_present = false;
+			m_status.fdd_disk->SetInnerRML("");
+		}
+		if(m_machine->is_on() && m_leds.power==false) {
+			m_leds.power = true;
+			m_buttons.power->SetClass("active", true);
+		} else if(!m_machine->is_on() && m_leds.power==true) {
+			m_leds.power = false;
+			m_buttons.power->SetClass("active", false);
+		}
 	}
 }
 
@@ -292,5 +398,198 @@ void Interface::show_warning(bool _show)
 		m_warning->SetProperty("visibility", "visible");
 	} else {
 		m_warning->SetProperty("visibility", "hidden");
+	}
+}
+
+void Interface::render_vga()
+{
+	GLCALL( glActiveTexture(GL_TEXTURE0) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
+
+	if(m_display.vga_updated) {
+		m_display.vga_updated = false;
+		m_display.vga.lock();
+		vec2i vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
+		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
+		//when the program runs with the default shaders, the load on the GPU is very low
+		//so the drivers lower the clock of the GPU to the minimum value;
+		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
+		//a lot of time to complete, bloking the machine emulation thread.
+		//PBOs are a possible alternative, but a memcpy is way simpler.
+		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
+		m_display.vga.unlock();
+
+		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );
+		if(m_display.vga_res != vga_res) {
+			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
+					vga_res.x, vga_res.y,
+					0, m_display.glf, m_display.gltype,
+					&m_display.tex_buf[0]) );
+			m_display.vga_res = vga_res;
+		} else {
+			GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
+					0, 0,
+					vga_res.x, vga_res.y,
+					m_display.glf, m_display.gltype,
+					&m_display.tex_buf[0]) );
+		}
+		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
+	}
+
+	GLCALL( glBindSampler(0, m_display.sampler) );
+	GLCALL( glUseProgram(m_display.prog) );
+
+	GLCALL( glUniform1i(m_display.uniforms.ch0, 0) );
+	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
+	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
+	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
+	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
+	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
+
+	GLCALL( glEnable(GL_BLEND) );
+	GLCALL( glDisable(GL_LIGHTING) );
+	//GLCALL( glDisable(GL_DEPTH_TEST) );
+
+	//GLCALL( glViewport(0,0,	m_width, m_height) );
+
+	GLCALL( glEnableVertexAttribArray(0) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
+	GLCALL( glVertexAttribPointer(
+            0,        // attribute 0. must match the layout in the shader.
+            3,        // size
+            GL_FLOAT, // type
+            GL_FALSE, // normalized?
+            0,        // stride
+            (void*)0  // array buffer offset
+    ) );
+
+	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
+
+	GLCALL( glDisableVertexAttribArray(0) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
+}
+
+void Interface::set_audio_volume(float _volume)
+{
+	m_mixer->cmd_set_global_volume(_volume);
+}
+
+void Interface::set_video_brightness(float _level)
+{
+	m_display.brightness = _level;
+}
+
+void Interface::set_video_contrast(float _level)
+{
+	m_display.contrast = _level;
+}
+
+void Interface::set_video_saturation(float _level)
+{
+	m_display.saturation = _level;
+}
+
+void Interface::load_splash_image()
+{
+	std::string file = g_program.config().find_file(GUI_SECTION,GUI_START_IMAGE);
+
+	if(file.empty()) {
+		return;
+	}
+
+	SDL_Surface* surface = IMG_Load(file.c_str());
+	if(surface) {
+		SDL_LockSurface(surface);
+		m_display.vga.lock();
+		uint32_t * fb = m_display.vga.get_framebuffer();
+		uint fbw = m_display.vga.get_fb_xsize();
+		uint bytespp = surface->format->BytesPerPixel;
+		for(int y=0; y<surface->h; y++) {
+			for(int x=0; x<surface->w; x++) {
+				if(x>int(m_display.vga.get_fb_xsize())) {
+					break;
+				}
+				uint32_t pixel;
+				uint pixelidx = y*surface->w*bytespp + x*bytespp;
+				memcpy(&pixel, &((uint8_t*)surface->pixels)[pixelidx], bytespp);
+				Uint8 r,g,b,a;
+				SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a);
+				pixel = PALETTE_ENTRY(r,g,b);
+				pixelidx = y*fbw + x;
+				fb[pixelidx] = pixel;
+			}
+			if(y>int(m_display.vga.get_fb_ysize())) {
+				break;
+			}
+		}
+		m_display.vga.unlock();
+		SDL_UnlockSurface(surface);
+		SDL_FreeSurface(surface);
+	}
+}
+
+void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
+{
+	SDL_Surface * surface = SDL_CreateRGBSurface(
+		0,
+		m_display.vga.get_screen_xres(),
+		m_display.vga.get_screen_yres(),
+		32,
+		PALETTE_RMASK,
+		PALETTE_GMASK,
+		PALETTE_BMASK,
+		PALETTE_AMASK
+	);
+	if(!surface) {
+		PERRF(LOG_GUI, "error creating buffer surface\n");
+		throw std::exception();
+	}
+	SDL_Surface * palette = nullptr;
+	if(!_palfile.empty()) {
+		palette = SDL_CreateRGBSurface(
+			0,         //flags (unused)
+			16,	16,    //w x h
+			32,        //bit depth
+			PALETTE_RMASK,
+			PALETTE_GMASK,
+			PALETTE_BMASK,
+			PALETTE_AMASK
+		);
+		if(!palette) {
+			SDL_FreeSurface(surface);
+			PERRF(LOG_GUI, "error creating palette surface\n");
+			throw std::exception();
+		}
+	}
+	m_display.vga.lock();
+		SDL_LockSurface(surface);
+		m_display.vga.copy_screen((uint8_t*)surface->pixels);
+		SDL_UnlockSurface(surface);
+		if(palette) {
+			SDL_LockSurface(palette);
+			for(uint i=0; i<256; i++) {
+				((uint32_t*)palette->pixels)[i] = m_display.vga.get_color(i);
+			}
+			SDL_UnlockSurface(palette);
+		}
+	m_display.vga.unlock();
+
+	int result = IMG_SavePNG(surface, _screenfile.c_str());
+	SDL_FreeSurface(surface);
+	if(result<0) {
+		PERRF(LOG_GUI, "error saving surface to PNG\n");
+		if(palette) {
+			SDL_FreeSurface(palette);
+		}
+		throw std::exception();
+	}
+	if(palette) {
+		result = IMG_SavePNG(palette, _palfile.c_str());
+		SDL_FreeSurface(palette);
+		if(result < 0) {
+			PERRF(LOG_GUI, "error saving palette to PNG\n");
+			throw std::exception();
+		}
 	}
 }

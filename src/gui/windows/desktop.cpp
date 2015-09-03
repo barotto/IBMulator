@@ -18,9 +18,8 @@
  */
 
 #include "ibmulator.h"
-#include "gui.h"
-
-
+#include "gui/gui.h"
+#include "desktop.h"
 #include <Rocket/Core.h>
 
 

@@ -67,9 +67,6 @@ enum DisplayAspect {
 class GUI;
 extern GUI g_gui;
 
-class Machine;
-class TextModeInfo;
-
 class RocketRenderer;
 class RocketSystemInterface;
 class RocketFileInterface;
@@ -84,20 +81,21 @@ namespace Controls {
 	class ElementFormControl;
 }
 }
-
 #define RC Rocket::Core
 #define RCN Rocket::Controls
 
-#include "window.h"
-#include "windows/desktop.h"
-#include "windows/normal_interface.h"
-#include "windows/realistic_interface.h"
-#include "windows/status.h"
+#include "windows/interface.h"
 
-//debug
-#include "windows/sysdebugger.h"
-#include "windows/devstatus.h"
-#include "windows/stats.h"
+class Machine;
+class Mixer;
+class Desktop;
+class Interface;
+class NormalInterface;
+class SysDebugger;
+class Stats;
+class Status;
+class DevStatus;
+class TextModeInfo;
 
 #include "appconfig.h"
 
@@ -118,7 +116,7 @@ extern ini_enum_map_t g_mouse_types;
 
 class GUI
 {
-private:
+protected:
 
 	Machine *m_machine;
 	Mixer *m_mixer;
@@ -153,41 +151,6 @@ private:
 
 	double m_symspeed_factor;
 
-	class Display {
-	public:
-		VGADisplay vga;
-		vec2i vga_res;
-		std::atomic<bool> vga_updated;
-		GLuint tex;
-		std::vector<uint32_t> tex_buf;
-		GLuint sampler;
-		GLint  glintf;
-		GLenum glf;
-		GLenum gltype;
-		GLuint prog;
-		GLuint vb;
-		GLfloat vb_data[18];
-		mat4f mvmat;
-		uint aspect;
-		uint scaling;
-		float brightness;
-		float contrast;
-		float saturation;
-		vec2i size; // size in pixel of the destination quad
-
-		struct {
-			GLint ch0;
-			GLint brightness;
-			GLint contrast;
-			GLint saturation;
-			GLint mvmat;
-			GLint size;
-		} uniforms;
-
-		Display();
-
-	} m_display;
-
 	RocketRenderer * m_rocket_renderer;
 	RocketSystemInterface * m_rocket_sys_interface;
 	RocketFileInterface * m_rocket_file_interface;
@@ -219,7 +182,6 @@ private:
 	} m_windows;
 
 	void create_window(const char * _title, int _width, int _height, int _flags);
-	void resize_window(int _width, int _height);
 	void check_device_caps();
 	void init_Rocket();
 	void render_vga();
@@ -251,6 +213,8 @@ private:
 
 public:
 	static std::map<std::string, uint> ms_gui_modes;
+	static std::map<std::string, uint> ms_gui_sampler;
+	static std::map<std::string, uint> ms_display_aspect;
 
 public:
 	GUI();
@@ -269,12 +233,12 @@ public:
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void show_message(const char* _mex);
 
-	inline void vga_update() { m_display.vga_updated.store(true); }
+	inline void vga_update() { m_windows.interface->vga_update(); }
 
-	void set_audio_volume(float _volume);
-	void set_video_brightness(float _level);
-	void set_video_contrast(float _level);
-	void set_video_saturation(float _level);
+	vec2i resize_window(int _width, int _height);
+	int get_window_width() { return m_width; }
+	int get_window_height() { return m_height; }
+	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
 };
 
 

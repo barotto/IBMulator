@@ -20,15 +20,54 @@
 #ifndef IBMULATOR_GUI_INTERFACE_H
 #define IBMULATOR_GUI_INTERFACE_H
 
+#include "gui/window.h"
 #include "fileselect.h"
+#include "hardware/devices/vga.h"
+#include "hardware/devices/vgadisplay.h"
 #include <Rocket/Core/EventListener.h>
 
 class Machine;
 class GUI;
+class Mixer;
 
 class Interface : public Window
 {
 protected:
+
+	class Display {
+	public:
+		VGADisplay vga;
+		vec2i vga_res;
+		std::atomic<bool> vga_updated;
+		GLuint tex;
+		std::vector<uint32_t> tex_buf;
+		GLuint sampler;
+		GLint  glintf;
+		GLenum glf;
+		GLenum gltype;
+		GLuint prog;
+		GLuint vb;
+		GLfloat vb_data[18];
+		mat4f mvmat;
+		float brightness;
+		float contrast;
+		float saturation;
+		vec2i size; // size in pixel of the destination quad
+
+		struct {
+			GLint ch0;
+			GLint brightness;
+			GLint contrast;
+			GLint saturation;
+			GLint mvmat;
+			GLint size;
+		} uniforms;
+
+		Display();
+
+	} m_display;
+
+	vec2i m_size; // current size of the interface
 
 	struct {
 		RC::Element *power;
@@ -53,17 +92,21 @@ protected:
 	bool m_floppy_changed;
 
 	Machine *m_machine;
+	Mixer *m_mixer;
 	FileSelect *m_fs;
 
+	void init_display(uint _sampler, std::string _shader);
 	void update_floppy_disk(std::string _filename);
+	void load_splash_image();
 
 public:
 
-	Interface(Machine *_machine, GUI * _gui, const char *_rml);
+	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
 	~Interface();
 
 	virtual void update();
-	virtual void update_size(uint _width, uint _height);
+	virtual void container_size_changed(int _width, int _height) {}
+	vec2i get_size() { return m_size; }
 
 	void show_warning(bool _show);
 	void show_message(const char* _mex);
@@ -74,10 +117,15 @@ public:
 	void on_fdd_mount(RC::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
-	virtual void set_audio_volume(float) {}
-	virtual void set_video_brightness(float) {}
-	virtual void set_video_contrast(float) {}
-	virtual void set_video_saturation(float) {}
+	void vga_update() { m_display.vga_updated.store(true); }
+	virtual void render_vga();
+
+	virtual void set_audio_volume(float);
+	virtual void set_video_brightness(float);
+	virtual void set_video_contrast(float);
+	virtual void set_video_saturation(float);
+
+	void save_framebuffer(std::string _screenfile, std::string _palfile);
 };
 
 class LogMessage : public Logdev

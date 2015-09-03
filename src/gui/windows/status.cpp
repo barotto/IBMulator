@@ -19,8 +19,9 @@
 
 #include "ibmulator.h"
 #include "program.h"
-#include "gui.h"
 #include "machine.h"
+#include "gui.h"
+#include "status.h"
 
 #include <Rocket/Core.h>
 #include <sstream>

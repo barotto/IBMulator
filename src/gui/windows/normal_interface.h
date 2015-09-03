@@ -28,7 +28,10 @@ class GUI;
 
 class NormalInterface : public Interface
 {
-private:
+protected:
+
+	uint m_vga_aspect;
+	uint m_vga_scaling;
 
 	RC::Element * m_sysunit;
 	RC::Element * m_btn_pause;
@@ -44,11 +47,11 @@ public:
 
 	static event_map_t ms_evt_map;
 
-	NormalInterface(Machine *_machine, GUI * _gui);
+	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
 	~NormalInterface();
 
 	void update();
-	void update_size(uint _width, uint _height);
+	void container_size_changed(int _width, int _height);
 
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 };
