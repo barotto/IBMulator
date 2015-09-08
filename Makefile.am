@@ -56,6 +56,7 @@ share/ibmulator/gui/images/sysunit_disk_r.png \
 share/ibmulator/gui/images/sysunit_no_disk.png \
 share/ibmulator/gui/images/realistic_interface.png \
 share/ibmulator/gui/images/realistic_floppy_r.png \
+share/ibmulator/gui/images/realistic_reflection.png \
 share/ibmulator/gui/images/realistic_slider.png
 
 guishadersdir = $(pkgdatadir)/gui/shaders
@@ -63,10 +64,12 @@ dist_guishaders_DATA = \
 share/ibmulator/gui/shaders/color_functions.glsl \
 share/ibmulator/gui/shaders/filter_bicubic.fs \
 share/ibmulator/gui/shaders/filter_bilinear.fs \
-share/ibmulator/gui/shaders/fb-nearest.fs \
-share/ibmulator/gui/shaders/fb-passthrough.vs \
+share/ibmulator/gui/shaders/fb-normal.fs \
+share/ibmulator/gui/shaders/fb-normal.vs \
 share/ibmulator/gui/shaders/fb-scanlines.fs \
 share/ibmulator/gui/shaders/fb-realistic.fs \
+share/ibmulator/gui/shaders/fb-realistic.vs \
+share/ibmulator/gui/shaders/monitor.fs \
 share/ibmulator/gui/shaders/gui.fs \
 share/ibmulator/gui/shaders/gui.vs
 

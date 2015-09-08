@@ -59,7 +59,7 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_NORMAL_ASPECT, "original" },
-		{ DISPLAY_NORMAL_SHADER, "gui/shaders/fb-nearest.fs" },
+		{ DISPLAY_NORMAL_SHADER, "gui/shaders/fb-normal.fs" },
 		{ DISPLAY_NORMAL_FILTER, "bilinear" },
 		{ DISPLAY_REALISTIC_SHADER, "gui/shaders/fb-realistic.fs" },
 		{ DISPLAY_REALISTIC_FILTER, "bicubic" },

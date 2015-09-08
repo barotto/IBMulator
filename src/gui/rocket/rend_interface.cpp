@@ -167,37 +167,27 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 	file_interface->Close(file_handle);
 
 	size_t i;
-	for(i = source.Length() - 1; i > 0; i--)
-	{
-		if(source[i] == '.')
+	for(i = source.Length() - 1; i > 0; i--) {
+		if(source[i] == '.') {
 			break;
+		}
 	}
 
 	String extension = source.Substring(i+1, source.Length()-i);
-
 	SDL_Surface* surface = IMG_LoadTyped_RW(SDL_RWFromMem(&buffer[0], buffer_size), 1,
 			extension.CString());
 
 	if(!surface) {
 		return false;
 	}
-	if(surface->format->BytesPerPixel != 4) {
+	try {
+		texture_handle = GUI::load_texture(surface);
+	} catch(std::exception &e) {
+		PERRF(LOG_GUI, "%s\n", e.what());
+		SDL_FreeSurface(surface);
 		return false;
 	}
-
-	SDL_LockSurface(surface);
-	GLuint gltex;
-	GLCALL( glGenTextures(1, &gltex) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
-	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
-			surface->w, surface->h,
-			0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-			surface->pixels
-			)
-	);
-	texture_handle = gltex;
 	texture_dimensions = Vector2i(surface->w, surface->h);
-	SDL_UnlockSurface(surface);
 	SDL_FreeSurface(surface);
 	return true;
 }

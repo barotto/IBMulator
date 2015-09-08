@@ -47,19 +47,19 @@ void LogMessage::log_put(const char* _prefix, const char* _message)
 }
 
 Interface::Display::Display()
+{}
+
+Interface::Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml)
 :
-vb_data{
+Window(_gui, _rml),
+m_quad_data{
 	-1.0f, -1.0f, 0.0f,
 	 1.0f, -1.0f, 0.0f,
 	-1.0f,  1.0f, 0.0f,
 	-1.0f,  1.0f, 0.0f,
 	 1.0f, -1.0f, 0.0f,
 	 1.0f,  1.0f, 0.0f
-}{}
-
-Interface::Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml)
-:
-Window(_gui, _rml)
+}
 {
 	ASSERT(m_wnd);
 	m_machine = _machine;
@@ -112,7 +112,7 @@ Interface::~Interface()
 	delete m_fs;
 }
 
-void Interface::init_display(uint _sampler, std::string _shader)
+void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshader)
 {
 	std::vector<std::string> vs,fs;
 	std::string shadersdir = GUI::get_shaders_dir();
@@ -128,9 +128,9 @@ void Interface::init_display(uint _sampler, std::string _shader)
 		throw std::exception();
 	}
 
-	vs.push_back(shadersdir + "fb-passthrough.vs");
+	vs.push_back(_vshader);
 	fs.push_back(shadersdir + "color_functions.glsl");
-	fs.push_back(_shader);
+	fs.push_back(_fshader);
 
 	try {
 		m_display.prog = GUI::load_GLSL_program(vs,fs);
@@ -140,9 +140,9 @@ void Interface::init_display(uint _sampler, std::string _shader)
 	}
 
 	//find the uniforms
-	GLCALL( m_display.uniforms.ch0 = glGetUniformLocation(m_display.prog, "iChannel0") );
-	if(m_display.uniforms.ch0 == -1) {
-		PWARNF(LOG_GUI, "iChannel0 not found in shader program\n");
+	GLCALL( m_display.uniforms.vgamap = glGetUniformLocation(m_display.prog, "iVGAMap") );
+	if(m_display.uniforms.vgamap == -1) {
+		PWARNF(LOG_GUI, "iVGAMap not found in shader program\n");
 	}
 	GLCALL( m_display.uniforms.brightness = glGetUniformLocation(m_display.prog, "iBrightness") );
 	if(m_display.uniforms.brightness == -1) {
@@ -187,11 +187,6 @@ void Interface::init_display(uint _sampler, std::string _shader)
 		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
 	}
 
-	GLCALL( glGenBuffers(1, &m_display.vb) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_display.vb_data), m_display.vb_data, GL_DYNAMIC_DRAW) );
-
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 
 	m_display.vga_updated = true;
@@ -199,6 +194,11 @@ void Interface::init_display(uint _sampler, std::string _shader)
 	//at this point the VGA is already inited (see machine::init)
 	g_vga.attach_display(&m_display.vga);
 	load_splash_image();
+
+	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
+	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_quad_data), m_quad_data, GL_DYNAMIC_DRAW) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
 }
 
 void Interface::update_floppy_disk(std::string _filename)
@@ -401,11 +401,33 @@ void Interface::show_warning(bool _show)
 	}
 }
 
-void Interface::render_vga()
+void Interface::render(RC::Context *_rcontext)
+{
+	render_monitor();
+	_rcontext->Render();
+}
+
+void Interface::render_quad()
+{
+	GLCALL( glEnableVertexAttribArray(0) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
+	GLCALL( glVertexAttribPointer(
+            0,        // attribute 0. must match the layout in the shader.
+            3,        // size
+            GL_FLOAT, // type
+            GL_FALSE, // normalized?
+            0,        // stride
+            (void*)0  // array buffer offset
+    ) );
+	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
+	GLCALL( glDisableVertexAttribArray(0) );
+	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
+}
+
+void Interface::render_monitor()
 {
 	GLCALL( glActiveTexture(GL_TEXTURE0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-
 	if(m_display.vga_updated) {
 		m_display.vga_updated = false;
 		m_display.vga.lock();
@@ -435,39 +457,21 @@ void Interface::render_vga()
 		}
 		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
 	}
-
 	GLCALL( glBindSampler(0, m_display.sampler) );
 	GLCALL( glUseProgram(m_display.prog) );
-
-	GLCALL( glUniform1i(m_display.uniforms.ch0, 0) );
+	GLCALL( glUniform1i(m_display.uniforms.vgamap, 0) );
 	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
 	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
 	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
 	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
 	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
+	render_vga();
+}
 
-	GLCALL( glEnable(GL_BLEND) );
-	GLCALL( glDisable(GL_LIGHTING) );
-	//GLCALL( glDisable(GL_DEPTH_TEST) );
-
-	//GLCALL( glViewport(0,0,	m_width, m_height) );
-
-	GLCALL( glEnableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_display.vb) );
-	GLCALL( glVertexAttribPointer(
-            0,        // attribute 0. must match the layout in the shader.
-            3,        // size
-            GL_FLOAT, // type
-            GL_FALSE, // normalized?
-            0,        // stride
-            (void*)0  // array buffer offset
-    ) );
-
-	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
-
-	GLCALL( glDisableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
+void Interface::render_vga()
+{
+	GLCALL( glDisable(GL_BLEND) );
+	render_quad();
 }
 
 void Interface::set_audio_volume(float _volume)

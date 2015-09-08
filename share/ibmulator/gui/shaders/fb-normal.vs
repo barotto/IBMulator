@@ -12,4 +12,5 @@ void main()
 {
 	gl_Position = iModelView * vec4(iVertex,1);
 	UV = (iVertex.xy + vec2(1,1)) / 2.0;
+	UV.y = 1.0 - UV.y;
 }

@@ -78,8 +78,9 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 
 	m_size = vec2i(w,h);
 
-	init_display(
+	init_gl(
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler),
+		GUI::get_shaders_dir() + "fb-normal.vs",
 		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER)
 	);
 }
@@ -157,12 +158,12 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	m_size = m_display.size;
 	if(m_gui_mode == GUI_MODE_NORMAL) {
 		m_size.y += sysunit_h;
-		char buf[10];
-		snprintf(buf, 10, "%upx", sysunit_w);
-		m_sysunit->SetProperty("width", buf);
-		snprintf(buf, 10, "%upx", sysunit_h);
-		m_sysunit->SetProperty("height", buf);
 	}
+	char buf[10];
+	snprintf(buf, 10, "%upx", sysunit_w);
+	m_sysunit->SetProperty("width", buf);
+	snprintf(buf, 10, "%upx", sysunit_h);
+	m_sysunit->SetProperty("height", buf);
 }
 
 void NormalInterface::update()

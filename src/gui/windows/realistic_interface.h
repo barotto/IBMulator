@@ -38,6 +38,7 @@ private:
 	            *m_brightness_slider,
 	            *m_contrast_slider;
 
+	float m_slider_len_p;
 	float m_volume_left_min;
 	float m_brightness_left_min;
 	float m_contrast_left_min;
@@ -45,7 +46,32 @@ private:
 	int   m_drag_start_x;
 	float m_drag_start_left;
 
+	struct Monitor {
+		mat4f mvmat;
+		GLuint prog;
+		GLuint reflection_map;
+		GLuint reflection_sampler;
+		struct {
+			GLint mvmat;
+			GLint reflection_map;
+		} uniforms;
+	} m_monitor;
+
+	struct {
+		vec2f reflection_scale;
+		struct {
+			GLint reflection_map;
+			GLint vga_scale;
+			GLint reflection_scale;
+		} uniforms;
+	} m_rdisplay;
+
+
+
 	static event_map_t ms_evt_map;
+
+	vec2f display_size(int _width, int _height, float _sys_w, float _xoffset, float _scale, float _aspect);
+	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
 
 	void set_slider_value(RC::Element *_slider, float _xmin, float _value);
 
@@ -55,17 +81,22 @@ private:
 	void  on_contrast_drag(RC::Event &);
 	void  on_dragstart(RC::Event &);
 
+	void render_monitor();
+	void render_vga();
+
 	static constexpr float ms_min_slider_val = 0.0f;
 	static constexpr float ms_max_slider_val = 1.3f;
 
-public:
-
-	// the following values depend on the machine texture used:
-	static constexpr float ms_width          = 2057.0f; // texture width (pixels)
-	static constexpr float ms_height         = 2237.0f; // texture height (pixels)
-	static constexpr float ms_monitor_height = 1600.0f; // monitor height bezel included (pixels)
-	static constexpr float ms_vga_left       =  358.0f; // offset of the VGA image from the left border (pixels)
-	static constexpr float ms_slider_length  =    7.0f; // slider horizontal movement length (%)
+	// the following values depend on the machine texture used.
+	// all values are expressed in pixels.
+	static constexpr float ms_width          = 1100.0f; // texture width
+	static constexpr float ms_height         = 1200.0f; // texture height
+	static constexpr float ms_monitor_width  =  862.0f; // monitor width, bezel excluded
+	static constexpr float ms_monitor_height =  650.0f; // monitor height, bezel excluded
+	static constexpr float ms_monitor_bezelw =  119.0f; // monitor bezel width (should be ms_width-ms_monitor_width/2)
+	static constexpr float ms_monitor_bezelh =  106.0f; // monitor bezel height
+	static constexpr float ms_vga_left       =   86.0f; // offset of the VGA image from the left bezel
+	static constexpr float ms_slider_length  =  100.0f; // slider horizontal movement length
 
 	// the alignment is specified in the rml file:
 	static constexpr bool ms_align_top = false;

@@ -505,6 +505,8 @@ void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
 	GLCALL( glViewport(0,0,	m_width, m_height) );
+	m_windows.interface->render(m_rocket_context);
+	/*
 	if(m_mode == GUI_MODE_REALISTIC) {
 		//TODO move the rendering logic inside the Interface
 		m_windows.interface->hide();
@@ -518,6 +520,7 @@ void GUI::render()
 		m_windows.interface->render_vga();
 		m_rocket_context->Render();
 	}
+	*/
 	SDL_RenderPresent(m_SDL_renderer);
 }
 
@@ -1183,6 +1186,51 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 std::string GUI::get_shaders_dir()
 {
 	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
+}
+
+std::string GUI::get_images_dir()
+{
+	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "images" FS_SEP;
+}
+
+GLuint GUI::load_texture(SDL_Surface *_surface)
+{
+	ASSERT(_surface);
+	if(_surface->format->BytesPerPixel != 4) {
+		throw std::runtime_error("Unsupported image format");
+	}
+	SDL_LockSurface(_surface);
+	GLuint gltex;
+	GLCALL( glGenTextures(1, &gltex) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
+	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
+			_surface->w, _surface->h,
+			0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+			_surface->pixels
+			)
+	);
+	SDL_UnlockSurface(_surface);
+	return gltex;
+}
+
+GLuint GUI::load_texture(const std::string &_path, vec2i *_texdim)
+{
+	SDL_Surface *surface = IMG_Load(_path.c_str());
+	if(!surface) {
+		throw std::runtime_error("Unable to load image file");
+	}
+	GLuint gltex;
+	try {
+		gltex = load_texture(surface);
+	} catch(std::exception &e) {
+		SDL_FreeSurface(surface);
+		throw;
+	}
+	if(_texdim) {
+		*_texdim = vec2i(surface->w, surface->h);
+	}
+	SDL_FreeSurface(surface);
+	return gltex;
 }
 
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)

@@ -1,9 +1,10 @@
 #version 330 core
 
 
-vec3 BrightnessSaturationContrast(vec3 color, float brightness, float saturation, float contrast)
+vec3 BrightnessSaturationContrast(vec3 color, float brightness, vec3 brighness_color, 
+	float saturation, float contrast)
 {
-	const vec3 LumCoeff = vec3(0.2125, 0.7154, 0.0721);
+	const vec3 lumaCoeff = vec3(0.299,0.587,0.114); //vec3(0.2125, 0.7154, 0.0721);
 
 	/* On CRTs the control labeled Contrast is actually gain or the slope of 
 	 * the output curve with increasing input voltage, and the control labeled 
@@ -11,10 +12,14 @@ vec3 BrightnessSaturationContrast(vec3 color, float brightness, float saturation
 	 * the curve, with the whole curve shifted up or down with increasing or 
 	 * decreasing control adjustements.
 	 */
-	color += (brightness-1.0);
-	vec3 intensity = vec3(dot(color, LumCoeff));
+	float brt = brightness-1.0;
+	if(brt<0.0) {
+		brighness_color = vec3(1.0);
+	}
+	color += (brightness-1.0)*brighness_color;
+	vec3 intensity = vec3(dot(color, lumaCoeff));
 	color = mix(intensity, color, saturation);
 	color *= contrast;
-	return color;
+	return max(vec3(0.0), color);
 }
 

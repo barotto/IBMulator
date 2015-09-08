@@ -1,15 +1,17 @@
 #version 330 core
 
 in vec2 UV;
+in vec2 ReflectionUV;
 out vec4 oColor;
 
-uniform sampler2D iChannel0;
+uniform sampler2D iVGAMap;
+uniform sampler2D iReflectionMap;
 uniform float iBrightness;
 uniform float iContrast;
 uniform float iSaturation; 
 
 vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
-vec3 BrightnessSaturationContrast(vec3 color, float brt, float sat, float con);
+vec3 BrightnessSaturationContrast(vec3 color, float brt, vec3 brtcol, float sat, float con);
 
 // Display warp.
 // 0.0 = none
@@ -19,6 +21,7 @@ const vec2 warp = vec2(1.0/80.0, 1.0/64.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#define BlendAdd(base, blend) min(base + blend, vec3(1.0))
 
 vec2 Warp(vec2 pos, vec2 warp_amount)
 {
@@ -29,14 +32,14 @@ vec2 Warp(vec2 pos, vec2 warp_amount)
 
 void main()
 {
-	vec2 uv = UV;
-	uv.t = 1.0 - uv.t;
-	vec2 pos = Warp(uv, warp);
-	vec3 color = FetchTexel(iChannel0, pos).rgb;
+	vec2 pos = Warp(UV, warp);
+	vec3 color = FetchTexel(iVGAMap, pos).rgb;
 
-	color = BrightnessSaturationContrast(color, iBrightness, iSaturation, iContrast);
+	color = BrightnessSaturationContrast(color, iBrightness, vec3(1.0,1.0,1.5), iSaturation, iContrast);
+	vec3 reflection = texture(iReflectionMap, ReflectionUV).rgb;
+	float luma = dot(vec3(0.299,0.587,0.114),color);
+	reflection *= max(0.0, 1.0 - luma*2.2);
+	color = BlendAdd(color, reflection);
 		
-	//float a = min(color.r + color.g + color.b, 1.0);
-	float a = 1.0;
-	oColor = vec4(color, a);
+	oColor = vec4(color, 1.0);
 }

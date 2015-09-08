@@ -31,6 +31,7 @@ public:
 public:
 
 	vec2();
+	vec2(T _xy);
 	vec2(T _x, T _y);
 
 	inline void operator = (T _val);
@@ -42,6 +43,7 @@ public:
 	inline vec2<T> operator + (const vec2<T>& _v) const;
 	inline vec2<T> operator * (T _val) const;
 	inline vec2<T> operator / (T _val) const;
+	inline vec2<T> operator / (const vec2<T>& _v) const;
 	inline vec2<T>& operator += (const vec2<T> &_v);
 	inline vec2<T>& operator -= (const vec2<T> &_v);
 	inline void sum(const vec2<T>& _v);

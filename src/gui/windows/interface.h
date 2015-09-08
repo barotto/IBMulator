@@ -46,8 +46,6 @@ protected:
 		GLenum glf;
 		GLenum gltype;
 		GLuint prog;
-		GLuint vb;
-		GLfloat vb_data[18];
 		mat4f mvmat;
 		float brightness;
 		float contrast;
@@ -55,7 +53,7 @@ protected:
 		vec2i size; // size in pixel of the destination quad
 
 		struct {
-			GLint ch0;
+			GLint vgamap;
 			GLint brightness;
 			GLint contrast;
 			GLint saturation;
@@ -66,6 +64,9 @@ protected:
 		Display();
 
 	} m_display;
+
+	GLuint  m_vertex_buffer;
+	GLfloat m_quad_data[18];
 
 	vec2i m_size; // current size of the interface
 
@@ -95,7 +96,13 @@ protected:
 	Mixer *m_mixer;
 	FileSelect *m_fs;
 
-	void init_display(uint _sampler, std::string _shader);
+	void init_gl(uint _vga_sampler, std::string _vga_vshader, std::string _vga_fshader);
+	virtual void render_monitor();
+	virtual void render_vga();
+	void render_quad();
+
+private:
+
 	void update_floppy_disk(std::string _filename);
 	void load_splash_image();
 
@@ -118,7 +125,7 @@ public:
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
 	void vga_update() { m_display.vga_updated.store(true); }
-	virtual void render_vga();
+	virtual void render(RC::Context *_rcontext);
 
 	virtual void set_audio_volume(float);
 	virtual void set_video_brightness(float);

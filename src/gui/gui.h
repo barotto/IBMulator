@@ -229,6 +229,9 @@ public:
 	Rocket::Core::ElementDocument * load_document(const std::string &_filename);
 	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
 	static std::string get_shaders_dir();
+	static std::string get_images_dir();
+	static GLuint load_texture(SDL_Surface *_surface);
+	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void show_message(const char* _mex);

@@ -19,7 +19,7 @@
 in vec2 UV;
 out vec4 oColor;
 
-uniform sampler2D iChannel0;
+uniform sampler2D iVGAMap;
 
 vec2 res;
 
@@ -113,7 +113,7 @@ vec3 Fetch(vec2 pos, vec2 off)
 	if(max(abs(pos.x-0.5), abs(pos.y-0.5)) > 0.5) {
 		return vec3(0.0,0.0,0.0);
 	}
-	return Test(ToLinear(FetchTexel(iChannel0, pos.xy).rgb));
+	return Test(ToLinear(FetchTexel(iVGAMap, pos.xy).rgb));
 }
 
 
@@ -330,10 +330,8 @@ vec3 Mask(vec2 pos)
 // Entry.
 void main(void)
 {
-	res = textureSize(iChannel0,0);
-	vec2 uv = UV;
-	uv.t = 1.0-uv.t;
-	vec2 pos = Warp(uv);
+	res = textureSize(iVGAMap, 0);
+	vec2 pos = Warp(UV);
 	vec3 color = Tri(pos) * Mask(gl_FragCoord.xy);
 	
 	#if 0

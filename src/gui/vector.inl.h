@@ -30,6 +30,15 @@ y((T)0.0)
 
 
 template<class T>
+vec2<T>::vec2(T _xy)
+:
+x(_xy),
+y(_xy)
+{
+}
+
+
+template<class T>
 vec2<T>::vec2(T _x, T _y)
 :
 x(_x),
@@ -126,6 +135,13 @@ template<class T>
 inline vec2<T> vec2<T>::operator / (T _val) const
 {
 	return vec2<T>(x/_val, y/_val);
+}
+
+
+template<class T>
+inline vec2<T> vec2<T>::operator / (const vec2<T>& _v) const
+{
+	return vec2<T>(x/_v.x, y/_v.y);
 }
 
 
