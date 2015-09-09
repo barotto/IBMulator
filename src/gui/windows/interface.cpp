@@ -459,7 +459,11 @@ void Interface::render_monitor()
 	GLCALL( glBindSampler(0, m_display.sampler) );
 	GLCALL( glUseProgram(m_display.prog) );
 	GLCALL( glUniform1i(m_display.uniforms.vgamap, 0) );
-	GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
+	if(m_machine->is_on()) {
+		GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
+	} else {
+		GLCALL( glUniform1f(m_display.uniforms.brightness, 0.f) );
+	}
 	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
 	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
 	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
