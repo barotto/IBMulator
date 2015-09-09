@@ -49,10 +49,12 @@ private:
 	struct Monitor {
 		mat4f mvmat;
 		GLuint prog;
+		float  ambient;
 		GLuint reflection_map;
 		GLuint reflection_sampler;
 		struct {
 			GLint mvmat;
+			GLint ambient;
 			GLint reflection_map;
 		} uniforms;
 	} m_monitor;
@@ -60,6 +62,7 @@ private:
 	struct {
 		vec2f reflection_scale;
 		struct {
+			GLint ambient;
 			GLint reflection_map;
 			GLint vga_scale;
 			GLint reflection_scale;

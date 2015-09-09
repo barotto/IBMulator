@@ -107,6 +107,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 		shadersdir + REALISTIC_VGA_VS,
 		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_REALISTIC_SHADER)
 	);
+	GLCALL( m_rdisplay.uniforms.ambient = glGetUniformLocation(m_display.prog, "iAmbientLight") );
 	GLCALL( m_rdisplay.uniforms.reflection_map = glGetUniformLocation(m_display.prog, "iReflectionMap") );
 	GLCALL( m_rdisplay.uniforms.reflection_scale = glGetUniformLocation(m_display.prog, "iReflectionScale") );
 	GLCALL( m_rdisplay.uniforms.vga_scale = glGetUniformLocation(m_display.prog, "iVGAScale") );
@@ -116,7 +117,9 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	vs.push_back(shadersdir + REALISTIC_MONITOR_VS);
 	fs.push_back(shadersdir + REALISTIC_MONITOR_FS);
 	m_monitor.prog = GUI::load_GLSL_program(vs,fs);
+	m_monitor.ambient = clamp(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT), 0.0, 1.0);
 	GLCALL( m_monitor.uniforms.mvmat = glGetUniformLocation(m_monitor.prog, "iModelView") );
+	GLCALL( m_monitor.uniforms.ambient = glGetUniformLocation(m_display.prog, "iAmbientLight") );
 	GLCALL( m_monitor.uniforms.reflection_map = glGetUniformLocation(m_monitor.prog, "iReflectionMap") );
 
 	GLCALL( glGenSamplers(1, &m_monitor.reflection_sampler) );
@@ -231,6 +234,7 @@ void RealisticInterface::render_monitor()
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_monitor.reflection_map) );
 	GLCALL( glBindSampler(0, m_monitor.reflection_sampler) );
 	GLCALL( glUniform1i(m_monitor.uniforms.reflection_map, 0) );
+	GLCALL( glUniform1f(m_monitor.uniforms.ambient, m_monitor.ambient) );
 	GLCALL( glDisable(GL_BLEND) );
 	render_quad();
 
@@ -247,6 +251,7 @@ void RealisticInterface::render_vga()
 	GLCALL( glUniform1i(m_rdisplay.uniforms.reflection_map, 1) );
 	GLCALL( glUniform2f(m_rdisplay.uniforms.reflection_scale, m_rdisplay.reflection_scale.x, m_rdisplay.reflection_scale.y) );
 	GLCALL( glUniform2f(m_rdisplay.uniforms.vga_scale, REALISTIC_VGA_SCALE, REALISTIC_VGA_SCALE) );
+	GLCALL( glUniform1f(m_rdisplay.uniforms.ambient, m_monitor.ambient) );
 	render_quad();
 }
 
