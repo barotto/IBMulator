@@ -46,7 +46,6 @@ ini_file_t AppConfig::ms_def_values = {
 		{ GUI_MOUSE_ACCELERATION, "no" },
 		{ GUI_GRAB_METHOD, "MOUSE3" }, //CTRL-F10 or MOUSE3
 		{ GUI_SCREEN_DPI, "96" },
-		{ GUI_START_IMAGE, "" },
 		{ GUI_WIDTH, "640" },
 		{ GUI_HEIGHT, "480" },
 		{ GUI_FULLSCREEN, "no" },
@@ -178,7 +177,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
 ";         dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";      bg_XXX: Background window color\n"
-"; start_image: An optional PNG file to load at program start\n"
 ";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
 		},
 
@@ -308,7 +306,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_BG_R,
 		GUI_BG_G,
 		GUI_BG_B,
-		GUI_START_IMAGE,
 		GUI_SHOW_LEDS
 	} },
 	{ DISPLAY_SECTION, {

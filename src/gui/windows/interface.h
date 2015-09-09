@@ -104,7 +104,6 @@ protected:
 private:
 
 	void update_floppy_disk(std::string _filename);
-	void load_splash_image();
 
 public:
 

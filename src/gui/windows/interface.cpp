@@ -193,7 +193,6 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 
 	//at this point the VGA is already inited (see machine::init)
 	g_vga.attach_display(&m_display.vga);
-	load_splash_image();
 
 	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
@@ -492,45 +491,6 @@ void Interface::set_video_contrast(float _level)
 void Interface::set_video_saturation(float _level)
 {
 	m_display.saturation = _level;
-}
-
-void Interface::load_splash_image()
-{
-	std::string file = g_program.config().find_file(GUI_SECTION,GUI_START_IMAGE);
-
-	if(file.empty()) {
-		return;
-	}
-
-	SDL_Surface* surface = IMG_Load(file.c_str());
-	if(surface) {
-		SDL_LockSurface(surface);
-		m_display.vga.lock();
-		uint32_t * fb = m_display.vga.get_framebuffer();
-		uint fbw = m_display.vga.get_fb_xsize();
-		uint bytespp = surface->format->BytesPerPixel;
-		for(int y=0; y<surface->h; y++) {
-			for(int x=0; x<surface->w; x++) {
-				if(x>int(m_display.vga.get_fb_xsize())) {
-					break;
-				}
-				uint32_t pixel;
-				uint pixelidx = y*surface->w*bytespp + x*bytespp;
-				memcpy(&pixel, &((uint8_t*)surface->pixels)[pixelidx], bytespp);
-				Uint8 r,g,b,a;
-				SDL_GetRGBA(pixel, surface->format, &r, &g, &b, &a);
-				pixel = PALETTE_ENTRY(r,g,b);
-				pixelidx = y*fbw + x;
-				fb[pixelidx] = pixel;
-			}
-			if(y>int(m_display.vga.get_fb_ysize())) {
-				break;
-			}
-		}
-		m_display.vga.unlock();
-		SDL_UnlockSurface(surface);
-		SDL_FreeSurface(surface);
-	}
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)

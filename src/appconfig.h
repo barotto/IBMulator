@@ -105,7 +105,6 @@ public:
 #define GUI_MOUSE_GRAB          "grab"
 #define GUI_MOUSE_ACCELERATION  "mouse_accel"
 #define GUI_GRAB_METHOD         "grab_method"
-#define GUI_START_IMAGE         "start_image"
 #define GUI_SCREEN_DPI          "dpi"
 #define GUI_WIDTH               "width"
 #define GUI_HEIGHT              "height"
