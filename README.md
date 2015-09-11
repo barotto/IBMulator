@@ -57,11 +57,6 @@ From now on IBMulator is ready to run.
 For more information regarding the configuration options, see the comments 
 inside ibmulator.ini.
 
-If you want to experiment with VGA shaders, set 'fb-scanlines.fs' in the ini 
-file. It will try to emulate the VGA monitor. In this case, you should also use 
-the compact GUI mode and go fullscreen, otherwise the higher res VGA modes can 
-be a bit blurry.
-
 Being a faithful emulator of the PS/1 model 2011, to configure the system (ie. 
 the PS/1, not the emulator) after a configuration change (for instance, if you 
 add or remove a floppy drive), you need a DOS program called CONFIGUR.EXE, 
@@ -112,6 +107,26 @@ $ fdisk -l hdd.img
 other type, the automatically created image will be 0-filled and you'll need to 
 use 'fdisk' and 'format' in order to use it.
 
+### GUI modes
+
+IBMulator has 3 different GUI modes.
+
+* **Compact**: in this mode the VGA image fills the available window space and 
+the control panel, in the shape of the PS/1 system unit, disappears when input 
+is grabbed or CTRL-F1 is pressed. Use this mode if you want an experience 
+similar to DosBox.
+* **Normal**: this is the default mode. The control panel / system unit places 
+itself at the bottom of the VGA display and is always visible.
+* **Realistic**: this is the hardcore mode, for the retro enthusiasts who want 
+to truly experience the PS/1. In this mode the system is rendered in its 
+entirety, monitor included. There are no additional buttons and controls except 
+the originals: volume, brightness, contrast, power, and floppy (you need to use 
+the key bindings for any extra function.) The PS/1 model 2011 is 32 cm (12.6") 
+wide and 34.9 cm (13.74") tall, so you need at least a 24" 16:10 monitor in 
+portrait mode (rotated) to render it at real size.
+
+You can select the GUI mode under the [gui] section of the ini file.
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)
@@ -128,6 +143,7 @@ use 'fdisk' and 'format' in order to use it.
 * CTRL+INS: send SysReq to the guest OS
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
+* ALT+F4: exit the program
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
