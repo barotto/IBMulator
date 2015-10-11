@@ -193,6 +193,12 @@ public:
 		m_disk_changed[_drive] = false;
 		return changed;
 	}
+	inline uint get_current_drive() {
+		return (m_s.DOR & 0x03);
+	}
+	inline uint8_t get_drive_type(uint _drive) {
+		return m_device_type[_drive%4];
+	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

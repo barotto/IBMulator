@@ -47,6 +47,7 @@
 #include "pic.h"
 #include "hardware/devices.h"
 #include "hardware/devices/cmos.h"
+#include "hardware/devices/floppy.h"
 #include "hardware/memory.h"
 #include "scancodes.h"
 #include "keys.h"
@@ -521,16 +522,24 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					break;
 
 				case 0xc0: // read input port
+				{
 					// controller output buffer must be empty
 					if(m_s.kbd_ctrl.outb) {
 						PERRF(LOG_KEYB, "kbd: OUTB set and command 0x%02X encountered\n", value);
 						break;
 					}
-					// keyboard not inhibited
-					// bit 2 =1 for POST 56
-					controller_enQ(0x84, 0);
+					// bit 7 = 1 keyboard not locked
+					// bit 6 = 0 if current FDD is 3.5, 1 if it's 5.25
+					// bit 2 = 1 for POST 56
+					uint8_t data = 0x84;
+					uint drive = g_floppy.get_current_drive();
+					uint8_t dtype = g_floppy.get_drive_type(drive);
+					if(dtype == FDD_525DD || dtype == FDD_525HD) {
+						data |= 0x40;
+					}
+					controller_enQ(data, 0);
 					break;
-
+				}
 				case 0xca: // read keyboard controller mode
 					controller_enQ(0x01, 0); // PS/2 (MCA)interface
 					break;
