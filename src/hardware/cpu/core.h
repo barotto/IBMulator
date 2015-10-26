@@ -259,8 +259,8 @@ public:
 
 	void reset();
 
-	uint64_t fetch_descriptor(Selector & _selector, uint8_t _exc_vec);
-	void touch_segment(Selector & _selector, Descriptor & _descriptor);
+	uint64_t fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const;
+	void touch_segment(Selector & _selector, Descriptor & _descriptor) const;
 
 
 	inline GenReg & gen_reg(uint8_t idx) { ASSERT(idx<8); return m_genregs[idx]; }
@@ -297,10 +297,10 @@ public:
 		m_prev_ip = m_ip;
 		m_ip = _val;
 	}
-	inline uint16_t get_IP() { return m_ip; }
+	inline uint16_t get_IP() const { return m_ip; }
 	inline void restore_IP() { m_ip = m_prev_ip; }
 
-	inline uint16_t get_F(uint16_t _flag) { return (m_f&_flag); }
+	inline uint16_t get_F(uint16_t _flag) const { return (m_f&_flag); }
 
 	       void set_F(uint16_t _val);
 	inline void set_CF(bool _val) { set_F(FBITN_CF,_val); }
@@ -324,11 +324,11 @@ public:
 	inline void set_MSW(uint16_t _msw) {
 		m_msw = _msw & MSWMASK_VALID;
 	}
-	inline uint16_t get_MSW(uint16_t _msw) {
+	inline uint16_t get_MSW(uint16_t _msw) const {
 		return (m_msw & _msw);
 	}
 
-	inline bool is_pmode() { return m_msw & MSW_PE; }
+	inline bool is_pmode() const { return m_msw & MSW_PE; }
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current
 	 * privilege level (CPL) from the SS access rights. The CPL is loaded from
@@ -340,48 +340,48 @@ public:
 	 */
 	inline uint8_t & get_CPL() { return m_segregs[REGI_CS].sel.cpl; }
 
-	inline uint32_t get_CS_base() { return m_segregs[REGI_CS].desc.base; }
-	inline uint32_t get_DS_base() { return m_segregs[REGI_DS].desc.base; }
-	inline uint32_t get_SS_base() { return m_segregs[REGI_SS].desc.base; }
-	inline uint32_t get_ES_base() { return m_segregs[REGI_ES].desc.base; }
-	inline uint16_t get_TR_base() { return m_tr.desc.base; }
-	inline uint32_t get_LDTR_base() { return m_ldtr.desc.base; }
-	inline uint32_t get_IDTR_base() { return m_idtr_base; }
-	inline uint32_t get_GDTR_base() { return m_gdtr_base; }
+	inline uint32_t get_CS_base() const { return m_segregs[REGI_CS].desc.base; }
+	inline uint32_t get_DS_base() const { return m_segregs[REGI_DS].desc.base; }
+	inline uint32_t get_SS_base() const { return m_segregs[REGI_SS].desc.base; }
+	inline uint32_t get_ES_base() const { return m_segregs[REGI_ES].desc.base; }
+	inline uint16_t get_TR_base() const { return m_tr.desc.base; }
+	inline uint32_t get_LDTR_base() const { return m_ldtr.desc.base; }
+	inline uint32_t get_IDTR_base() const { return m_idtr_base; }
+	inline uint32_t get_GDTR_base() const { return m_gdtr_base; }
 
-	inline uint32_t get_CS_phyaddr(uint16_t _offset) { return get_CS_base() + _offset; }
-	inline uint32_t get_DS_phyaddr(uint16_t _offset) { return get_DS_base() + _offset; }
-	inline uint32_t get_SS_phyaddr(uint16_t _offset) { return get_SS_base() + _offset; }
-	inline uint32_t get_ES_phyaddr(uint16_t _offset) { return get_ES_base() + _offset; }
+	inline uint32_t get_CS_phyaddr(uint16_t _offset) const { return get_CS_base() + _offset; }
+	inline uint32_t get_DS_phyaddr(uint16_t _offset) const { return get_DS_base() + _offset; }
+	inline uint32_t get_SS_phyaddr(uint16_t _offset) const { return get_SS_base() + _offset; }
+	inline uint32_t get_ES_phyaddr(uint16_t _offset) const { return get_ES_base() + _offset; }
 
-	inline uint16_t get_CS_limit() { return m_segregs[REGI_CS].desc.limit; }
-	inline uint16_t get_DS_limit() { return m_segregs[REGI_DS].desc.limit; }
-	inline uint16_t get_SS_limit() { return m_segregs[REGI_SS].desc.limit; }
-	inline uint16_t get_ES_limit() { return m_segregs[REGI_ES].desc.limit; }
-	inline uint16_t get_TR_limit() { return m_tr.desc.limit; }
-	inline uint16_t get_LDTR_limit() { return m_ldtr.desc.limit; }
-	inline uint16_t get_IDTR_limit() { return m_idtr_limit; }
-	inline uint16_t get_GDTR_limit() { return m_gdtr_limit; }
+	inline uint16_t get_CS_limit() const { return m_segregs[REGI_CS].desc.limit; }
+	inline uint16_t get_DS_limit() const { return m_segregs[REGI_DS].desc.limit; }
+	inline uint16_t get_SS_limit() const { return m_segregs[REGI_SS].desc.limit; }
+	inline uint16_t get_ES_limit() const { return m_segregs[REGI_ES].desc.limit; }
+	inline uint16_t get_TR_limit() const { return m_tr.desc.limit; }
+	inline uint16_t get_LDTR_limit() const { return m_ldtr.desc.limit; }
+	inline uint16_t get_IDTR_limit() const { return m_idtr_limit; }
+	inline uint16_t get_GDTR_limit() const { return m_gdtr_limit; }
 
-	inline uint8_t  get_AL() { return m_genregs[REGI_AX].byte[LO_INDEX]; }
-	inline uint8_t  get_AH() { return m_genregs[REGI_AX].byte[HI_INDEX]; }
-	inline uint16_t get_AX() { return m_genregs[REGI_AX].word[0]; }
-	inline uint8_t  get_BL() { return m_genregs[REGI_BX].byte[LO_INDEX]; }
-	inline uint8_t  get_BH() { return m_genregs[REGI_BX].byte[HI_INDEX]; }
-	inline uint16_t get_BX() { return m_genregs[REGI_BX].word[0]; }
-	inline uint8_t  get_CL() { return m_genregs[REGI_CX].byte[LO_INDEX]; }
-	inline uint8_t  get_CH() { return m_genregs[REGI_CX].byte[HI_INDEX]; }
-	inline uint16_t get_CX() { return m_genregs[REGI_CX].word[0]; }
-	inline uint8_t  get_DL() { return m_genregs[REGI_DX].byte[LO_INDEX]; }
-	inline uint8_t  get_DH() { return m_genregs[REGI_DX].byte[HI_INDEX]; }
-	inline uint16_t get_DX() { return m_genregs[REGI_DX].word[0]; }
+	inline uint8_t  get_AL() const { return m_genregs[REGI_AX].byte[LO_INDEX]; }
+	inline uint8_t  get_AH() const { return m_genregs[REGI_AX].byte[HI_INDEX]; }
+	inline uint16_t get_AX() const { return m_genregs[REGI_AX].word[0]; }
+	inline uint8_t  get_BL() const { return m_genregs[REGI_BX].byte[LO_INDEX]; }
+	inline uint8_t  get_BH() const { return m_genregs[REGI_BX].byte[HI_INDEX]; }
+	inline uint16_t get_BX() const { return m_genregs[REGI_BX].word[0]; }
+	inline uint8_t  get_CL() const { return m_genregs[REGI_CX].byte[LO_INDEX]; }
+	inline uint8_t  get_CH() const { return m_genregs[REGI_CX].byte[HI_INDEX]; }
+	inline uint16_t get_CX() const { return m_genregs[REGI_CX].word[0]; }
+	inline uint8_t  get_DL() const { return m_genregs[REGI_DX].byte[LO_INDEX]; }
+	inline uint8_t  get_DH() const { return m_genregs[REGI_DX].byte[HI_INDEX]; }
+	inline uint16_t get_DX() const { return m_genregs[REGI_DX].word[0]; }
 
-	inline uint16_t get_SI() { return m_genregs[REGI_SI].word[0]; }
-	inline uint16_t get_BP() { return m_genregs[REGI_BP].word[0]; }
-	inline uint16_t get_DI() { return m_genregs[REGI_DI].word[0]; }
-	inline uint16_t get_SP() { return m_genregs[REGI_SP].word[0]; }
+	inline uint16_t get_SI() const { return m_genregs[REGI_SI].word[0]; }
+	inline uint16_t get_BP() const { return m_genregs[REGI_BP].word[0]; }
+	inline uint16_t get_DI() const { return m_genregs[REGI_DI].word[0]; }
+	inline uint16_t get_SP() const { return m_genregs[REGI_SP].word[0]; }
 
-	void save_state(StateBuf &_state);
+	void save_state(StateBuf &_state) const;
 	void restore_state(StateBuf &_state);
 };
 

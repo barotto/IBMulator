@@ -41,8 +41,7 @@ struct int_info_t {
 };
 
 typedef std::map<uint32_t, int_info_t > int_map_t;
-
-typedef std::map<uint8_t, const char*> doserr_map_t;
+typedef std::map<uint8_t, const char*> doscodes_map_t;
 
 class CPUDebugger
 {
@@ -52,17 +51,20 @@ protected:
 
 	static std::map<uint32_t, const char*> ms_addrnames;
 	static int_map_t ms_interrupts;
-	static doserr_map_t ms_dos_errors;
-	static doserr_map_t ms_disk_status;
+	static doscodes_map_t ms_dos_errors;
+	static doscodes_map_t ms_disk_status;
+	static doscodes_map_t ms_ioctl_code;
 
 	static uint32_t get_hex_value(char *_str, char *&_hex, CPUCore *_core);
+	static bool get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int &_H, int &_S);
 
 	static void INT_def_ret(CPUCore *core, char* buf, uint buflen);
 	static void INT_def_ret_errcode(CPUCore *core, char* buf, uint buflen);
 	static void INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_0E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_12(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
-	static void INT_13_02_3_4(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_13(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_13_02_3_4_C(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_15_86(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_15_87(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_1A_00(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
@@ -71,12 +73,15 @@ protected:
 	static void INT_21_0E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_2C(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_21_32(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_21_36(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_39_A_B_4E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_3D(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_3E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_3F(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_42(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_43(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
+	static void INT_21_440D(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_48(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_4A(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);

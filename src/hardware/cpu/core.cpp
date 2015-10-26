@@ -61,7 +61,7 @@ void CPUCore::reset()
 
 #define CPUCORE_STATE_NAME "CPUCore"
 
-void CPUCore::save_state(StateBuf &_state)
+void CPUCore::save_state(StateBuf &_state) const
 {
 	static_assert(std::is_pod<CPUCore>::value, "CPUCore must be POD");
 	StateHeader h;
@@ -289,7 +289,7 @@ void CPUCore::set_SS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 }
 
 
-void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor)
+void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
 {
 	/*
 	 * Whenever a segment descriptor is loaded into a segment register, the
@@ -310,7 +310,7 @@ void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor)
 	}
 }
 
-uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec)
+uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const
 {
 	uint32_t addr = _selector.index * 8;
 	if(_selector.ti == 0) {

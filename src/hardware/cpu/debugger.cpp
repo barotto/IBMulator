@@ -512,7 +512,31 @@ void CPUDebugger::INT_10_12(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	buflen -= len;
 }
 
-void CPUDebugger::INT_13_02_3_4(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int &_H, int &_S)
+{
+	bool is_hdd = _core.get_DL() & 0x80;
+	int drive = _core.get_DL() & 0x1;
+	_C = _core.get_CH();
+	_H = _core.get_DH();
+	_S = _core.get_CL() & 0x3F;
+	if(is_hdd) {
+		_C = _C | ((int(_core.get_CL()) & 0xC0) << 2);
+	}
+	return is_hdd;
+}
+
+void CPUDebugger::INT_13(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/, char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		const char * status = ms_disk_status[core->get_AH()];
+		snprintf(buf, buflen, " ret CF=%d: %s", cf,status);
+		return;
+	}
+	snprintf(buf, buflen, " drive=0x%02X", core->get_DL());
+}
+
+void CPUDebugger::INT_13_02_3_4_C(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {
@@ -525,23 +549,10 @@ void CPUDebugger::INT_13_02_3_4(bool call, uint16_t ax, CPUCore *core, Memory */
 		}
 		return;
 	}
-	bool hd = core->get_DL() & 0x80;
-	int C = core->get_CH();
-	int H = core->get_DH();
-	int S = core->get_CL() & 0x3F;
-	if(hd) {
-		C = C | ((int(core->get_CL()) & 0xC0) << 2);
-		snprintf(buf, buflen, " HDD");
-	} else {
-		snprintf(buf, buflen, " F=%d",core->get_DL()&0x1);
-	}
-	buf += 4;
-	if(buflen<=4) return;
-	buflen -= 4;
-	snprintf(buf, buflen, ",C=%d,H=%d,S=%d,nS=%d", C,H,S,ax&0xFF);
+	int drive,C,H,S;
+	bool is_hdd = get_drive_CHS(*core, drive,C,H,S);
+	snprintf(buf, buflen, " %s=%d,C=%d,H=%d,S=%d (nS=%d)", is_hdd?"HDD":"FDD",drive,C,H,S,ax&0xFF);
 }
-
-
 
 void CPUDebugger::INT_15_86(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
@@ -700,6 +711,41 @@ void CPUDebugger::INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 		}
 		return;
 	}
+}
+
+void CPUDebugger::INT_21_32(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		const char * code;
+		int al = core->get_AL();
+		if(al==0x00) {
+			code = "successful";
+		} else if(al==0xFF) {
+			code = "invalid or network drive";
+		} else {
+			code = "???";
+		}
+		snprintf(buf, buflen, " ret CF=%d: %s", cf,code);
+		return;
+	}
+	snprintf(buf, buflen, " : drive=0x%02X", core->get_DL());
+}
+
+void CPUDebugger::INT_21_36(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		if(ax == 0xFFFF) {
+			snprintf(buf, buflen, " : invalid drive");
+		} else {
+			snprintf(buf, buflen, " : sec.p.cl.=%d, free cl.=%d, bytes p.sec.=%d, tot.cl.=%d",
+					ax, core->get_BX(), core->get_CX(), core->get_DX());
+		}
+		return;
+	}
+	snprintf(buf, buflen, " : drive=0x%02X", core->get_DL());
 }
 
 void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
@@ -880,6 +926,40 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
+void CPUDebugger::INT_21_440D(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	uint16_t bx = core->get_BX();
+	if(!call) {
+		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		const char * retcode;
+		if(cf) {
+			retcode = ms_dos_errors[core->get_AX()];
+		} else {
+			retcode = ms_dos_errors[0];
+		}
+		snprintf(buf, buflen, " ret CF=%d: %s", cf,retcode);
+		return;
+	}
+	int ch = core->get_CH();
+	int cl = core->get_CL();
+	const char *category;
+	if(ch==0x08) {
+		category = "disk drive";
+	} else if(ch==0x48) {
+		category = "FAT32 disk drive";
+	} else if(ch<0x7F) {
+		category = "Microsoft reserved";
+	} else {
+		category = "OEM reserved";
+	}
+	snprintf(buf, buflen, " : drive=%02Xh,cat=%02Xh(%s),fn=%02Xh(%s)",
+			core->get_BL(),
+			ch, category,
+			cl, ms_ioctl_code[cl]
+	);
+}
+
 void CPUDebugger::INT_21_5F03(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
@@ -1052,12 +1132,15 @@ int_map_t CPUDebugger::ms_interrupts = {
 	/* INT 11 */
 	{ MAKE_INT_SEL(0x11, 0x0000, 0), { true,  NULL,                    "GET EQUIPMENT LIST" } },
 	/* INT 13 */
-	{ MAKE_INT_SEL(0x13, 0x0000, 1), { true,  NULL,                    "DISK - RESET DISK SYSTEM" } },
-	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - READ SECTOR(S) INTO MEMORY" } },
-	{ MAKE_INT_SEL(0x13, 0x0300, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - WRITE DISK SECTOR(S)" } },
-	{ MAKE_INT_SEL(0x13, 0x0400, 1), { true,  &CPUDebugger::INT_13_02_3_4,"DISK - VERIFY DISK SECTOR(S)" } },
-	{ MAKE_INT_SEL(0x13, 0x0800, 1), { true,  NULL,                    "DISK - GET DRIVE PARAMETERS" } },
-	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  NULL,                    "FLOPPY - DETECT DISK CHANGE" } },
+	{ MAKE_INT_SEL(0x13, 0x0000, 1), { true,  &CPUDebugger::INT_13,    "DISK - RESET DISK SYSTEM" } },
+	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"DISK - READ SECTOR(S) INTO MEMORY" } },
+	{ MAKE_INT_SEL(0x13, 0x0300, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"DISK - WRITE DISK SECTOR(S)" } },
+	{ MAKE_INT_SEL(0x13, 0x0400, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"DISK - VERIFY DISK SECTOR(S)" } },
+	{ MAKE_INT_SEL(0x13, 0x0800, 1), { true,  &CPUDebugger::INT_13,    "DISK - GET DRIVE PARAMETERS" } },
+	{ MAKE_INT_SEL(0x13, 0x0900, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - INITIALIZE CONTROLLER WITH DRIVE PARAMETERS" } },
+	{ MAKE_INT_SEL(0x13, 0x0C00, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"HARD DISK - SEEK TO CYLINDER" } },
+	{ MAKE_INT_SEL(0x13, 0x1100, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - RECALIBRATE DRIVE" } },
+	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY - DETECT DISK CHANGE" } },
 	/* INT 15 */
 	{ MAKE_INT_SEL(0x15, 0x2100, 1), { false, NULL,                    "POWER-ON SELF-TEST ERROR LOG" } },
 	{ MAKE_INT_SEL(0x15, 0x2300, 2), { true,  NULL,                    "IBM - GET CMOS 2D-2E DATA" } },
@@ -1094,8 +1177,11 @@ int_map_t CPUDebugger::ms_interrupts = {
 	/* INT 1C */
 	{ MAKE_INT_SEL(0x1C, 0x0000, 0), { false, NULL,                    "SYSTEM TIMER TICK" } },
 	/* INT 21 */
+	{ MAKE_INT_SEL(0x21, 0x0200, 1), { true,  NULL,                    "DOS - WRITE CHARACTER TO STANDARD OUTPUT" } },
 	{ MAKE_INT_SEL(0x21, 0x0600, 1), { false, NULL,                    "DOS - DIRECT CONSOLE OUTPUT" } },
 	{ MAKE_INT_SEL(0x21, 0x0900, 1), { true,  &CPUDebugger::INT_21_09, "DOS - WRITE STRING TO STDOUT" } },
+	{ MAKE_INT_SEL(0x21, 0x0A00, 1), { true,  NULL,                    "DOS - BUFFERED INPUT" } },
+	{ MAKE_INT_SEL(0x21, 0x0B00, 1), { true,  NULL,                    "DOS - GET STDIN STATUS" } },
 	{ MAKE_INT_SEL(0x21, 0x0D00, 1), { true,  NULL,                    "DOS - DISK RESET" } },
 	{ MAKE_INT_SEL(0x21, 0x0E00, 1), { true,  &CPUDebugger::INT_21_0E, "DOS - SELECT DEFAULT DRIVE" } },
 	{ MAKE_INT_SEL(0x21, 0x1900, 1), { true,  NULL,                    "DOS - GET CURRENT DEFAULT DRIVE" } },
@@ -1106,10 +1192,12 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x2A00, 1), { true,  NULL,                    "DOS - GET SYSTEM DATE" } },
 	{ MAKE_INT_SEL(0x21, 0x2C00, 1), { false, &CPUDebugger::INT_21_2C, "DOS - GET SYSTEM TIME" } },
 	{ MAKE_INT_SEL(0x21, 0x3000, 1), { true,  &CPUDebugger::INT_21_30, "DOS - GET DOS VERSION" } },
+	{ MAKE_INT_SEL(0x21, 0x3200, 1), { true,  &CPUDebugger::INT_21_32, "DOS - GET DOS DRIVE PARAMETER BLOCK FOR SPECIFIC DRIVE" } },
 	{ MAKE_INT_SEL(0x21, 0x3300, 2), { false, NULL,                    "DOS - EXTENDED BREAK CHECKING (0)" } },
 	{ MAKE_INT_SEL(0x21, 0x3301, 2), { false, NULL,                    "DOS - EXTENDED BREAK CHECKING (1)" } },
 	{ MAKE_INT_SEL(0x21, 0x3400, 1), { false, NULL,                    "DOS - GET ADDRESS OF INDOS FLAG" } },
 	{ MAKE_INT_SEL(0x21, 0x3500, 1), { false, NULL,                    "DOS - GET INTERRUPT VECTOR" } },
+	{ MAKE_INT_SEL(0x21, 0x3600, 1), { true,  &CPUDebugger::INT_21_36, "DOS - GET FREE DISK SPACE" } },
 	{ MAKE_INT_SEL(0x21, 0x3700, 2), { true,  NULL,                    "DOS - GET SWITCH CHARACTER" } },
 	{ MAKE_INT_SEL(0x21, 0x3701, 2), { true,  NULL,                    "DOS - SET SWITCH CHARACTER" } },
 	{ MAKE_INT_SEL(0x21, 0x3800, 1), { true,  NULL,                    "DOS - GET COUNTRY-SPECIFIC INFORMATION" } },
@@ -1126,6 +1214,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x4400, 2), { true,  NULL,                    "DOS - GET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4401, 2), { true,  NULL,                    "DOS - SET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4408, 2), { true,  NULL,                    "DOS - IOCTL - CHECK IF BLOCK DEVICE REMOVABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x440D, 2), { true,  &CPUDebugger::INT_21_440D,"DOS - IOCTL - GENERIC BLOCK DEVICE REQUEST" } },
 	{ MAKE_INT_SEL(0x21, 0x440E, 2), { true,  NULL,                    "DOS - IOCTL - GET LOGICAL DRIVE MAP" } },
 	{ MAKE_INT_SEL(0x21, 0x440F, 2), { true,  NULL,                    "DOS - IOCTL - SET LOGICAL DRIVE MAP" } },
 	{ MAKE_INT_SEL(0x21, 0x4700, 1), { true,  NULL,                    "DOS - CWD - GET CURRENT DIRECTORY" } },
@@ -1145,6 +1234,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x6300, 2), { false, NULL,                    "DOS - GET DOUBLE BYTE CHARACTER SET LEAD-BYTE TABLE" } },
 	{ MAKE_INT_SEL(0x21, 0x6601, 2), { false, NULL,                    "DOS - GET GLOBAL CODE PAGE TABLE" } },
 	{ MAKE_INT_SEL(0x21, 0x6602, 2), { false, NULL,                    "DOS - SET GLOBAL CODE PAGE TABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x6C00, 2), { true,  NULL,                    "DOS - EXTENDED OPEN/CREATE" } },
 	/* INT 28 */
 	{ MAKE_INT_SEL(0x28, 0x0000, 0), { false, NULL,                    "DOS - IDLE INTERRUPT" } },
 	/* INT 29 */
@@ -1199,7 +1289,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 
 };
 
-doserr_map_t CPUDebugger::ms_dos_errors = {
+doscodes_map_t CPUDebugger::ms_dos_errors = {
 	{ 0x00, "no error" },
 	{ 0x01, "function number invalid" },
 	{ 0x02, "file not found" },
@@ -1421,7 +1511,7 @@ doserr_map_t CPUDebugger::ms_dos_errors = {
 	{ 0xFF, "(NetWare4) invalid drive" }
 };
 
-doserr_map_t CPUDebugger::ms_disk_status = {
+doscodes_map_t CPUDebugger::ms_disk_status = {
 	{ 0x00, "successful completion" },
 	{ 0x01, "invalid function in AH or invalid parameter" },
 	{ 0x02, "address mark not found" },
@@ -1458,4 +1548,46 @@ doserr_map_t CPUDebugger::ms_disk_status = {
 	{ 0xCC, "write fault (hard disk)" },
 	{ 0xE0, "status register error (hard disk)" },
 	{ 0xFF, "sense operation failed (hard disk)" }
+};
+
+doscodes_map_t CPUDebugger::ms_ioctl_code = {
+	{ 0x00, "(OS/2) lock drive" },
+	{ 0x01, "(OS/2) unlock drive" },
+	{ 0x40, "set device parameters" },
+	{ 0x41, "write logical device track" },
+	{ 0x42, "format and verify logical device track" },
+	{ 0x46, "(DOS 4.0+) set volume serial number" },
+	{ 0x47, "(DOS 4.0+) set access flag" },
+	{ 0x48, "(Enh. Disk Drive Spec) set media lock state" },
+	{ 0x49, "(Enh. Disk Drive Spec) eject media in drive" },
+	{ 0x4A, "(MS-DOS 7.0) lock logical volume" },
+	{ 0x4B, "(MS-DOS 7.0) lock physical volume" },
+	{ 0x50, "(PCMCIA) attribute memory write" },
+	{ 0x51, "(PCMCIA) common memory write" },
+	{ 0x52, "(PCMCIA) force media change" },
+	{ 0x53, "(PCMCIA) erase drive" },
+	{ 0x54, "(PCMCIA) erase media" },
+	{ 0x56, "(PCMCIA) set erase status callback" },
+	{ 0x57, "(PCMCIA) append Card Information Structure (CIS) tuple" },
+	{ 0x58, "(PCMCIA) erase CIS tuples" },
+	{ 0x60, "get device parameters" },
+	{ 0x61, "read logical device track" },
+	{ 0x62, "verify logical device track" },
+	{ 0x66, "(DOS 4.0+) get volume serial number" },
+	{ 0x67, "(DOS 4.0+) get access flag" },
+	{ 0x68, "(DOS 5.0+) sense media type" },
+	{ 0x6A, "(MS-DOS 7.0) unlock logical volume" },
+	{ 0x6B, "(MS-DOS 7.0) unlock physical volume" },
+	{ 0x6C, "(MS-DOS 7.0) get lock flag" },
+	{ 0x6D, "(MS-DOS 7.0) enumerate open files" },
+	{ 0x6E, "(MS-DOS 7.0) find swap file" },
+	{ 0x6F, "(MS-DOS 7.0) get drive map information" },
+	{ 0x70, "(PCMCIA) attribute memory read" },
+	{ 0x70, "(MS-DOS 7.0) get current lock state" },
+	{ 0x71, "(MS-DOS 7.0) get first cluster" },
+	{ 0x73, "(PCMCIA) get memory media information" },
+	{ 0x76, "(PCMCIA) get erase status callback" },
+	{ 0x77, "(PCMCIA) get first Card Information Structure (CIS) tuple" },
+	{ 0x78, "(PCMCIA) get next CIS tuple" },
+	{ 0x7F, "(PCMCIA) get ??? information" }
 };
