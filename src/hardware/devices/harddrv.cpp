@@ -211,26 +211,26 @@ void HardDrive::State::CCB::set(uint8_t* _data)
 	sector = _data[3];
 	num_sectors = _data[5];
 
-	PDEBUGF(LOG_V2, LOG_HDD, "command: ");
+	PDEBUGF(LOG_V1, LOG_HDD, "command: ");
 	switch(command) {
-		case HDD_CMD::READ_DATA:   { PDEBUGF(LOG_V2, LOG_HDD, "READ_DATA "); break; }
-		case HDD_CMD::READ_CHECK:  { PDEBUGF(LOG_V2, LOG_HDD, "READ_CHECK "); break; }
-		case HDD_CMD::READ_EXT:    { PDEBUGF(LOG_V2, LOG_HDD, "READ_EXT "); break; }
-		case HDD_CMD::READ_ID:     { PDEBUGF(LOG_V2, LOG_HDD, "READ_ID "); break; }
-		case HDD_CMD::RECALIBRATE: { PDEBUGF(LOG_V2, LOG_HDD, "RECALIBRATE "); break; }
-		case HDD_CMD::WRITE_DATA:  { PDEBUGF(LOG_V2, LOG_HDD, "WRITE_DATA "); break; }
-		case HDD_CMD::WRITE_VFY:   { PDEBUGF(LOG_V2, LOG_HDD, "WRITE_VFY "); break; }
-		case HDD_CMD::WRITE_EXT:   { PDEBUGF(LOG_V2, LOG_HDD, "WRITE_EXT "); break; }
-		case HDD_CMD::FORMAT_DISK: { PDEBUGF(LOG_V2, LOG_HDD, "FORMAT_DISK "); break; }
-		case HDD_CMD::SEEK:        { PDEBUGF(LOG_V2, LOG_HDD, "SEEK "); break; }
-		case HDD_CMD::FORMAT_TRK:  { PDEBUGF(LOG_V2, LOG_HDD, "FORMAT_TRK "); break; }
+		case HDD_CMD::READ_DATA:   { PDEBUGF(LOG_V1, LOG_HDD, "READ_DATA "); break; }
+		case HDD_CMD::READ_CHECK:  { PDEBUGF(LOG_V1, LOG_HDD, "READ_CHECK "); break; }
+		case HDD_CMD::READ_EXT:    { PDEBUGF(LOG_V1, LOG_HDD, "READ_EXT "); break; }
+		case HDD_CMD::READ_ID:     { PDEBUGF(LOG_V1, LOG_HDD, "READ_ID "); break; }
+		case HDD_CMD::RECALIBRATE: { PDEBUGF(LOG_V1, LOG_HDD, "RECALIBRATE "); break; }
+		case HDD_CMD::WRITE_DATA:  { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_DATA "); break; }
+		case HDD_CMD::WRITE_VFY:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_VFY "); break; }
+		case HDD_CMD::WRITE_EXT:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_EXT "); break; }
+		case HDD_CMD::FORMAT_DISK: { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_DISK "); break; }
+		case HDD_CMD::SEEK:        { PDEBUGF(LOG_V1, LOG_HDD, "SEEK "); break; }
+		case HDD_CMD::FORMAT_TRK:  { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_TRK "); break; }
 		default:
-			PDEBUGF(LOG_V2, LOG_HDD, "invalid!\n");
+			PDEBUGF(LOG_V1, LOG_HDD, "invalid!\n");
 			valid = false;
 			return;
 	}
 
-	PDEBUGF(LOG_V2, LOG_HDD, " C:%d,H:%d,S:%d,nS:%d\n",
+	PDEBUGF(LOG_V1, LOG_HDD, " C:%d,H:%d,S:%d,nS:%d\n",
 			cylinder, head, sector, num_sectors);
 }
 
@@ -751,6 +751,7 @@ void HardDrive::command()
 		time_us += get_seek_time(m_s.ccb.cylinder);
 	}
 	unsigned s = m_s.ccb.sector;
+	unsigned h = m_s.ccb.head;
 	switch(m_s.ccb.command) {
 		case HDD_CMD::WRITE_DATA:
 			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
@@ -758,6 +759,7 @@ void HardDrive::command()
 			m_s.data_ptr = 0;
 			break;
 		case HDD_CMD::READ_DATA:
+		case HDD_CMD::READ_EXT:
 			break;
 		case HDD_CMD::READ_CHECK:
 			time_us += m_sec_xfer_us*m_s.ccb.num_sectors;
@@ -768,17 +770,23 @@ void HardDrive::command()
 				time_us = m_exec_time_us + get_seek_time(m_s.ccb.cylinder);
 			}
 			break;
+		case HDD_CMD::RECALIBRATE:
+			s = 0;
+			h = 0;
+			//how much time does the recalibrate take?
+			time_us = m_exec_time_us*1000 + get_seek_time(0);
+			break;
 		default:
 			//time needed to read the first sector
 			time_us += m_sec_xfer_us;
 			break;
 	}
-	set_cur_sector(m_s.ccb.head, s);
+	set_cur_sector(h, s);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
 	time_us = std::max(time_us, HDD_DEFTIME_US);
 	g_machine.activate_timer(m_cmd_timer, HDD_TIMING?time_us:HDD_DEFTIME_US, 0);
 
-	PDEBUGF(LOG_V2, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
+	PDEBUGF(LOG_V1, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
 }
 
 uint32_t HardDrive::get_seek_time(unsigned _c)
@@ -836,7 +844,7 @@ void HardDrive::lower_interrupt()
 
 void HardDrive::fill_data_stack(uint8_t *_source, unsigned _len)
 {
-	ASSERT(_len<=512);
+	ASSERT(_len<=HDD_DATA_STACK_SIZE);
 
 	if(_source != nullptr) {
 		memcpy(m_s.data_stack, _source, _len);
@@ -948,7 +956,7 @@ void HardDrive::cmd_timer()
 		m_s.ssb.clear();
 		ms_cmd_funcs[m_s.ccb.command](*this);
 		m_s.ssb.valid = true; //command functions update the SSB so it's valid
-		PDEBUGF(LOG_V2, LOG_HDD, "command exec end: C:%d,H:%d,S:%d,nS:%d\n",
+		PDEBUGF(LOG_V1, LOG_HDD, "command exec end: C:%d,H:%d,S:%d,nS:%d\n",
 			m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, m_s.ccb.num_sectors);
 	} else if(m_s.attention_reg & HDD_ATT_CSB) {
 		PERRF_ABORT(LOG_HDD, "CSB not implemented\n");
@@ -1132,7 +1140,10 @@ void HardDrive::read_id_cmd()
 
 void HardDrive::recalibrate_cmd()
 {
-	PERRF_ABORT(LOG_HDD, "RECALIBRATE: command not implemented\n");
+	seek(0);
+	m_s.attention_reg &= ~HDD_ATT_CCB;
+	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
+	raise_interrupt();
 }
 
 void HardDrive::write_data_cmd()

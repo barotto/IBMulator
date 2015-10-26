@@ -27,6 +27,8 @@
 class HardDrive;
 extern HardDrive g_harddrv;
 
+#define HDD_DATA_STACK_SIZE 518
+
 struct HDDPerformance
 {
 	float    seek_max;   // Maximum seek time in milliseconds
@@ -118,7 +120,7 @@ private:
 			void set(uint8_t* _data);
 		} ccb;
 
-		uint8_t  data_stack[512];
+		uint8_t  data_stack[HDD_DATA_STACK_SIZE];
 		unsigned data_ptr;
 		unsigned data_size;
 
