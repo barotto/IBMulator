@@ -17,11 +17,11 @@
  *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* IBM's proprietary XT-derived 8-bit interface.
- * It emulates only the commands and data transfer modes needed by the PS/1
- * model 2011 BIOS. Almost no error checking is performed, guest code is
- * supposed to be bug free and well behaving.
- * It may not work with PS/2 model 30 and SEGA TeraDrive BIOSes.
+/* IBM's proprietary 8-bit interface. It's similar to the ST-506/412 interface
+ * and used on the PS/1 model 2011, the SEGA TeraDrive and apparently the PS/2
+ * model 30-286.
+ * This implementation is incomplete and almost no error checking is performed,
+ * guest code is supposed to be bug free and well behaving.
  */
 
 #include "ibmulator.h"
@@ -205,7 +205,7 @@ void HardDrive::State::CCB::set(uint8_t* _data)
 	command = _data[0] >> 4;
 	no_data = (_data[0] >> 3) & 1; //ND
 	auto_seek = (_data[0] >> 2) & 1; //AS
-	park = _data[0] & 1; //P
+	park = _data[0] & 1; // EC/P
 	head = _data[1] >> 4;
 	cylinder = ((_data[1] & 3) << 8) + _data[2];
 	sector = _data[3];
@@ -1056,7 +1056,7 @@ void HardDrive::cylinder_error()
 	PDEBUGF(LOG_V2, LOG_HDD, "error: cyl > %d\n", m_disk->geometry.cylinders);
 }
 
-void HardDrive::read_data_cmd()
+bool HardDrive::read_auto_seek()
 {
 	if(m_s.ccb.auto_seek) {
 		if(!seek(m_s.ccb.cylinder)) {
@@ -1064,20 +1064,98 @@ void HardDrive::read_data_cmd()
 			 * operation is done and the heads do not move.
 			 */
 			raise_interrupt();
-			return;
+			return false;
 		}
 		m_s.ccb.auto_seek = false;
 	}
 	ASSERT(m_s.ccb.num_sectors>0);
-	ASSERT(!m_s.eoc);
 	if(m_s.eoc) {
 		cylinder_error();
 		raise_interrupt();
+		return false;
+	}
+	return true;
+}
+
+uint16_t HardDrive::crc16_ccitt_false(uint8_t *_data, int _len)
+{
+	/* 16-bit CRC polynomial:
+	 * x^16 + x^12 + x^5 + 1
+	 *
+	 * Rocksoft Model CRC Algorithm parameters:
+	 * width=16
+	 * poly=0x1021
+	 * init=0xffff
+	 * refin=false
+	 * refout=false
+	 * xorout=0x0000
+	 * check=0x29b1
+	 * name="CRC-16/CCITT-FALSE"
+	 */
+	const uint16_t poly = 0x1021;
+	uint16_t rem  = 0xffff;
+	for(int i = 0; i<_len; i++) {
+		rem = rem ^ (uint16_t(_data[i]) << 8);
+		for(int j=0; j<8; j++) {
+			if(rem & 0x8000) {
+				rem = (rem << 1) ^ poly;
+			} else {
+				rem = rem << 1;
+			}
+		}
+	}
+
+	rem = (rem << 8) | (rem >> 8);
+	return rem;
+}
+
+uint64_t HardDrive::ecc48_noswap(uint8_t *_data, int _len)
+{
+	/* 48-bit ECC polynomial:
+	 * x^48 + x^44 + x^37 + x^32 + x^16 + x^12 + x^5 + 1
+	 *
+	 * Rocksoft Model CRC Algorithm parameters:
+	 * width=48
+	 * poly=0x102100011021
+	 * init=0x752f00008ad0
+	 * refin=false
+	 * refout=false
+	 * xorout=0x000000000000
+	 * check=0xc9980cc2329c
+	 *
+	 * If we consider a init value of 0xffffffffffff (which is possible
+	 * given the available info regarding CRC algo in WD disk controllers)
+	 * xorout would be 0xa1bcffff5e43.
+	 *
+	 * Reverse engineered using:
+	 *  http://www.cosc.canterbury.ac.nz/greg.ewing/essays/CRC-Reverse-Engineering.html
+	 *  CRC RevEng (http://reveng.sourceforge.net/)
+	 *  extra/HDDTEST.C
+	 */
+	const uint64_t poly = 0x102100011021;
+	uint64_t rem = 0x752f00008ad0;
+
+	for(int i = 0; i<_len; i++) {
+		rem = rem ^ (uint64_t(_data[i]) << 40);
+		for(int j=0; j<8; j++) {
+			if(rem & 0x800000000000) {
+				rem = (rem << 1) ^ poly;
+			} else {
+				rem = rem << 1;
+			}
+		}
+	}
+	rem &= 0x0000ffffffffffff;
+	return rem;
+}
+
+void HardDrive::read_data_cmd()
+{
+	if(!read_auto_seek()) {
 		return;
 	}
-	//read the sector;
 	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector);
-	/////
+
 	m_s.data_ptr = 0;
 	m_s.data_size = 512;
 	m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
@@ -1130,7 +1208,66 @@ void HardDrive::read_check_cmd()
 
 void HardDrive::read_ext_cmd()
 {
-	PERRF_ABORT(LOG_HDD, "READ_EXT: command not implemented\n");
+	if(!read_auto_seek()) {
+		return;
+	}
+	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector);
+	fill_data_stack(nullptr, 518);
+	// Initialize the parity buffer
+	memset(&m_s.data_stack[512], 0, 6);
+	if(!m_s.ccb.ecc) {
+		//CRC
+		//http://www.dataclinic.co.uk/hard-disk-crc/
+		/* The divisor or generator polynomial used for hard disk drives is
+		 * defined as 11021h or x^16 + x^12 + x^5 + 1 (CRC-16-CCITT)
+		 * The data sector is made up of 512 bytes. If this is extended by 2
+		 * bytes of 0 lengths, the new sector is 514 bytes in size. A checksum
+		 * can be calculated for this 514 byte sector using modulo-2 and this
+		 * will be 2 bytes in width. If the 2 zero width bytes of the 514 sector
+		 * are replaced by the checksum evaluated, a method for detecting errors
+		 * has been integrated into the sector. This is because on calculating
+		 * the checksum of this new 514 byte sector, this will result in a
+		 * remainder of 0. If the remainder is not zero, it implies an error has
+		 * occurred.
+		 * Therefore, when the device controller writes data on to the platters,
+		 * it includes 2 bytes for the CRC checksum in each sector. On reading
+		 * back the sectors, if the checksum is not equal to 0, then an error
+		 * has occurred.
+		 */
+		/* According to http://reveng.sourceforge.net/crc-catalogue/16.htm
+		 * the CRC-16 variant used in disk controllers and floppy disc formats
+		 * is CRC-16/CCITT-FALSE. I assume the same variant is used here,
+		 * although I can't test if it's true.
+		 */
+		uint16_t crc = crc16_ccitt_false(m_s.data_stack, 514);
+		*((uint16_t*)&m_s.data_stack[512]) = crc;
+	} else {
+		//ECC
+		/* The ECC used in Winchester controllers of the '80s was a computer
+		 * generated 32-bit CRC, or a 48-bit variant for more recent
+		 * controllers, until the '90s when the Reed-Solomon algorithm
+		 * superseded them.
+		 * The PS/1's HDD controller uses a 48-bit ECC.
+		 */
+		uint64_t ecc48 = ecc48_noswap(m_s.data_stack, 512);
+		uint8_t *eccptr = (uint8_t *)&ecc48;
+		m_s.data_stack[512] = eccptr[5];
+		m_s.data_stack[513] = eccptr[4];
+		m_s.data_stack[514] = eccptr[3];
+		m_s.data_stack[515] = eccptr[2];
+		m_s.data_stack[516] = eccptr[1];
+		m_s.data_stack[517] = eccptr[0];
+	}
+	m_s.attch_status_reg |= HDD_ASR_DIR;
+	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
+	m_s.attention_reg &= ~HDD_ATT_CCB;
+
+	// READ_EXT can't read more than 1 sector at a time
+	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
+		g_machine.activate_timer(m_dma_timer, HDD_TIMING?m_exec_time_us:HDD_DEFTIME_US, 0);
+	} else {
+		raise_interrupt();
+	}
 }
 
 void HardDrive::read_id_cmd()
@@ -1156,7 +1293,6 @@ void HardDrive::write_data_cmd()
 			raise_interrupt();
 			return;
 		}
-		//set_cur_sector(m_s.ccb.head, m_s.ccb.sector);
 		m_s.ccb.auto_seek = false;
 	}
 	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {

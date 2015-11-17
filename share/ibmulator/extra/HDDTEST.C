@@ -32,10 +32,16 @@ int g_cur_head;
 int g_eoc;
 int g_traks;
 long int g_sectors;
-unsigned char g_sec_buf[512];
+FILE* g_outfile;
 
-#define CMD_WRITE 0
-#define CMD_READ 1
+#define DATA_BUF_SIZE (512 + 7) /* 512 bytes data + 7 bytes ECC */
+unsigned char g_sec_buf[DATA_BUF_SIZE];
+unsigned char g_tmp_buf[512];
+
+#define CMD_WRITE    0x03
+#define CMD_READ     0x02
+#define CMD_READ_EXT 0x0A
+#define CMD_ECC      0xFF
 
 #define CALL_INT13 \
 	/*low eight bits of cylinder number*/ \
@@ -47,6 +53,9 @@ unsigned char g_sec_buf[512];
 	/*head number*/ \
 	inregs.h.dh = (unsigned char)g_cur_head; \
 	int86x(0x13, &inregs, &outregs, &segregs);
+
+#define INT13_ERROR (outregs.x.cflag != 0 || outregs.h.ah != 0)
+
 
 int determine_hdd_props()
 {
@@ -105,13 +114,13 @@ int cmd_write()
 	g_cur_head = 0;
 	g_cur_sec = 1;
 
-	printf("writing %ld sectors; press any key to interrupt.\n", g_sectors);
+	printf("press any key to interrupt.\n", g_sectors);
 	printf("sector: ");
 	x = wherex();
 	y = wherey();
 
 	/*DISK - WRITE DISK SECTOR(S)*/
-	inregs.h.ah = 0x03;
+	inregs.h.ah = CMD_WRITE;
 	/*number of sectors to read (must be nonzero)*/
 	inregs.h.al = 1;
 	/*drive number (bit 7 set for hard disk)*/
@@ -148,20 +157,21 @@ int cmd_write()
 	return 1;
 }
 
-int cmd_read()
+int cmd_read(int _cmd)
 {
 	long int i;
 	int s,x,y,j;
 	char far *bufptr;
 	struct SREGS segregs;
 	union REGS inregs, outregs;
+	size_t res;
 
 	g_eoc = 0;
 	g_cur_cyl = 0;
 	g_cur_head = 0;
 	g_cur_sec = 1;
 
-	printf("reading %ld sectors; press any key to interrupt.\n", g_sectors);
+	printf("press any key to interrupt.\n", g_sectors);
 	printf("sector: ");
 	x = wherex();
 	y = wherey();
@@ -193,10 +203,17 @@ int cmd_read()
 		if(outregs.x.cflag != 0 || outregs.h.ah != 0) {
 			return 0;
 		}
-
-		for(j=0; j<128; j++) {
-			if ( *(long int*)&g_sec_buf[j*4] != i ) {
-				printf("\n");
+		if(_cmd == CMD_READ) {
+			for(j=0; j<128; j++) {
+				if ( *(long int*)&g_sec_buf[j*4] != i ) {
+					printf("\n");
+					return 0;
+				}
+			}
+		} else {
+			//CMD_READ_EXT
+			res = fwrite(g_sec_buf,DATA_BUF_SIZE,1,g_outfile);
+			if(res != 1) {
 				return 0;
 			}
 		}
@@ -206,9 +223,120 @@ int cmd_read()
 	return 1;
 }
 
+int cmd_ecc()
+{
+	char far *bufptr;
+	struct SREGS segregs;
+	union REGS inregs, outregs;
+	int res = 1;
+	FILE *outfile = NULL;
+	int i;
+
+	g_eoc = 0;
+	g_cur_cyl = g_max_cyl-1;
+	g_cur_head = 0;
+	g_cur_sec = 1;
+
+	memset(g_sec_buf,0,DATA_BUF_SIZE);
+
+	/*number of sectors to read (must be nonzero)*/
+	inregs.h.al = 1;
+	/*drive number (bit 7 set for hard disk)*/
+	inregs.h.dl = 0x80;
+
+	/*Make a backup of the sector*/
+	inregs.h.ah = CMD_READ;
+	bufptr = (char far *)g_tmp_buf;
+	segregs.es = FP_SEG(bufptr);
+	inregs.x.bx = FP_OFF(bufptr);
+	CALL_INT13
+	if(INT13_ERROR) return 0;
+
+	printf("\nDumping sector C:%d,H:%d,S:%d to ECCBKP.BIN ...\n",
+			g_cur_cyl, g_cur_head, g_cur_sec);
+	outfile = fopen("ECCBKP.BIN", "wb");
+	if(outfile == NULL) {
+		printf("Unable to open destination file\n");
+		return 0;
+	}
+	if(fwrite(g_tmp_buf,512,1,outfile) != 1) {
+		return 0;
+	}
+	fclose(outfile);
+
+	/*Write/Read various values*/
+	/*switch buffer*/
+	bufptr = (char far *)g_sec_buf;
+	segregs.es = FP_SEG(bufptr);
+	inregs.x.bx = FP_OFF(bufptr);
+
+	printf("Dumping test sector to ECCDATA.BIN ...\n");
+	outfile = fopen("ECCDATA.BIN", "wb");
+	if(outfile == NULL) {
+		printf("Unable to open destination file\n");
+		res = 0;
+		goto exit;
+	}
+
+	memset(g_sec_buf,0,DATA_BUF_SIZE);
+
+	for(i=0; i<16; i++) {
+
+		/*write test data on sector*/
+		inregs.h.ah = CMD_WRITE;
+		if(i<8) {
+			g_sec_buf[0] = (1<<i);
+		} else {
+			g_sec_buf[0] = 0;
+			g_sec_buf[1] = (1<<(i-8));
+		}
+		CALL_INT13
+		if(INT13_ERROR) {
+			res = 0;
+			goto exit;
+		}
+
+		/*read back the sector with ECC*/
+		inregs.h.ah = CMD_READ_EXT;
+		CALL_INT13
+		if(INT13_ERROR) {
+			res = 0;
+			goto exit;
+		}
+
+		/*write result to file*/
+		if(fwrite(g_sec_buf,DATA_BUF_SIZE-1,1,outfile) != 1) {
+			printf("Unable to write destination file\n");
+			res = 0;
+			goto exit;
+		}
+	}
+
+exit:
+
+	fclose(outfile);
+
+	/*restore backup*/
+	printf("Restoring sector C:%d,H:%d,S:%d original data ...\n",
+			g_cur_cyl, g_cur_head, g_cur_sec);
+	inregs.h.ah = CMD_WRITE;
+	bufptr = (char far *)g_tmp_buf;
+	segregs.es = FP_SEG(bufptr);
+	inregs.x.bx = FP_OFF(bufptr);
+	CALL_INT13
+	if(INT13_ERROR) {
+		printf("Unable to restore sector, see ECCBKP.BIN\n",
+				g_cur_cyl, g_cur_head, g_cur_sec);
+		res = 0;
+	}
+
+	return res;
+}
+
 int main(int argc, char **argv)
 {
 	int cmd,c,result;
+	long int nsec;
 
 	printf("HDDTEST - Tests the HDD's sectors by writing and reading a data pattern.\n");
 	printf("This program has been created to aid the development of IBMulator.\n"
@@ -216,13 +344,18 @@ int main(int argc, char **argv)
 
 	switch(argc) {
 		case 1:
-			printf("Usage: HDDTEST w|r\n\n");
+			printf("Usage: HDDTEST w|r|rx|ecc [NSEC]\n\n");
 			return 1;
 		case 2:
+		case 3:
 			if(strcmp(argv[1], "w") == 0) {
 				cmd = CMD_WRITE;
 			} else if(strcmp(argv[1], "r") == 0) {
 				cmd = CMD_READ;
+			} else if(strcmp(argv[1], "rx") == 0) {
+				cmd = CMD_READ_EXT;
+			} else if(strcmp(argv[1], "ecc") == 0) {
+				cmd = CMD_ECC;
 			} else {
 				printf("invalid argument: '%s'\n", argv[1]);
 				return 1;
@@ -235,11 +368,38 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	printf("cylinders: %d, heads: %d, sectors per track: %d\n",
+	printf("HDD cylinders: %d, heads: %d, sectors per track: %d\n",
 			g_max_cyl+1, g_max_head+1, g_spt);
 
-	if(cmd == CMD_WRITE) {
-		printf("WARNING: you are about to WIPE the entire content of the HDD.\n");
+	if(argc == 3) {
+		nsec = atol(argv[2]);
+		if(nsec < 1 || nsec > g_sectors) {
+			nsec = g_sectors;
+		}
+		g_sectors = nsec;
+	}
+
+	switch(cmd) {
+		case CMD_WRITE: {
+			printf("Operation: Write %ld sector(s) with pattern.\n", g_sectors);
+			printf("WARNING: you are about to WIPE the entire content of the HDD.\n");
+			break;
+		}
+		case CMD_READ: {
+			printf("Operation: Read pattern from %ld sector(s).\n", g_sectors);
+			break;
+		}
+		case CMD_READ_EXT: {
+			printf("Operation: Read %ld sector(s) data and ECC to file.\n", g_sectors);
+			break;
+		}
+		case CMD_ECC: {
+			printf("Operation: data dump for ECC polynomial reverse engineering\n");
+			printf("WARNING: you are about to temporarily modify a sector.\n"
+			"The data will be restored at the end of the operation but if something "
+			"will go wrong (eg. power failure) data integity will be compromised.\n");
+			break;
+		}
 	}
 	printf("Continue? [y/N] ");
 	c = getche();
@@ -255,12 +415,24 @@ int main(int argc, char **argv)
 			return 0;
 		}
 		result = cmd_write();
+	} else if(cmd == CMD_ECC) {
+		result = cmd_ecc();
 	} else {
+		if(cmd == CMD_READ_EXT) {
+			g_outfile = fopen("readext.bin", "wb");
+			if(g_outfile == NULL) {
+				printf("Unable to open destination file\n");
+				return 1;
+			}
+		}
 		printf("\n");
-		result = cmd_read();
+		result = cmd_read(cmd);
 	}
 	if(!result) {
-		printf("ERROR at C:%d,H:%d,S:%d\n",g_cur_cyl,g_cur_head,g_cur_sec);
+		printf("\nERROR at C:%d,H:%d,S:%d\n",g_cur_cyl,g_cur_head,g_cur_sec);
+	}
+	if(g_outfile) {
+		fclose(g_outfile);
 	}
 	return result;
 }

@@ -112,7 +112,10 @@ private:
 			int command;
 			bool no_data; //ND
 			bool auto_seek; //AS
-			bool park; //P
+			union {
+				bool park; //P
+				bool ecc; //EC
+			};
 			unsigned head;
 			unsigned cylinder;
 			unsigned sector;
@@ -178,7 +181,9 @@ private:
 	void read_sector(unsigned _c, unsigned _h, unsigned _s);
 	void write_sector(unsigned _c, unsigned _h, unsigned _s);
 	uint32_t get_seek_time(unsigned _c);
-
+	bool read_auto_seek();
+	uint16_t crc16_ccitt_false(uint8_t *_data, int _len);
+	uint64_t ecc48_noswap(uint8_t *_data, int _len);
 	void read_data_cmd();
 	void read_check_cmd();
 	void read_ext_cmd();
