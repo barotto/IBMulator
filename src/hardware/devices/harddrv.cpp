@@ -18,10 +18,11 @@
  */
 
 /* IBM's proprietary 8-bit interface. It's similar to the ST-506/412 interface
- * and used on the PS/1 model 2011, the SEGA TeraDrive and apparently the PS/2
- * model 30-286.
+ * and it's used on the PS/1 model 2011, the SEGA TeraDrive, and apparently the
+ * PS/2 model 30-286.
  * This implementation is incomplete and almost no error checking is performed,
  * guest code is supposed to be bug free and well behaving.
+ * Only DMA data transfer implemented. No PIO mode.
  */
 
 #include "ibmulator.h"
@@ -43,9 +44,33 @@ HardDrive g_harddrv;
 #define HDD_DMA_CHAN 3
 #define HDD_IRQ      14
 
-#define HDD_SECT_IDFIELD_BYTES  59   // >25 but what is the real value?
-#define HDD_EXEC_TIME_US        500  // command execution time (controller overhead)
-#define HDD_DEFTIME_US          10u  // default busy time used when HDD_TIMING is false
+/* Assuming the ST412/506 HD format RLL encoding, this should be the anatomy of
+ * a sector:
+ * SYNC   10 bytes 00h
+ * IDAM    2 bytes 5eh a1h
+ * ID      4 bytes cylinder head sector flags
+ * ECC     4 bytes ECC value
+ * GAP     5 bytes 00h
+ * SYNC   11 bytes 00h
+ * DAM     2 bytes 5eh a1h
+ * Data  512 bytes data
+ * ECC     6 bytes ECC value
+ * GAP     3 bytes 00h
+ * GAP    17 bytes ffh
+ *
+ * Tracks also have a preamble and a closing gap:
+ * SYNC 11 bytes 00h
+ * IAM   2 bytes a1h fch
+ * GAP  12 bytes ffh
+ * ...
+ * SECTORS
+ * ...
+ * GAP ~93 bytes 00h
+ */
+#define HDD_SECTOR_SIZE    (512+64)  // total sector size (data + overhead)
+#define HDD_TRACK_OVERHEAD  (25+64)  // start+end of track (closing GAP value
+                                     // derived from observation)
+#define HDD_DEFTIME_US          10u  // default busy time
 
 #define HDD_CUSTOM_TYPE_IDX 1    // table index where to inject the custom hdd parameters
                                  // using an index >44 confuses configur.exe
@@ -114,33 +139,33 @@ const MediaGeometry HardDrive::ms_hdd_types[45] = {
  * Type 39 is the Maxtor 7040F1, which was mounted on some later model 2011.
  */
 const std::map<uint, HDDPerformance> HardDrive::ms_hdd_performance = {
-{ 35, { 40.0f, 8.0f, 3600, 10.2f, 4, 0.5f } }, //35 30MB
-{ 38, { 40.0f, 9.0f, 3700, 10.8f, 4, 0.5f } }, //38 30MB
-{ 39, {  0.0f, 0.0f,    0,  0.0f, 0, 0.0f } }, //39 41MB
+{ 35, { 40.0f, 8.0f, 3600, 4, 5.0f } }, //35 30MB
+{ 38, { 40.0f, 9.0f, 3700, 4, 5.0f } }, //38 30MB
+{ 39, {  0.0f, 0.0f,    0, 0, 0.0f } }, //39 41MB
 };
 
 //Attachment Status Reg bits
-#define HDD_ASR_TX_EN    0x1
-#define HDD_ASR_INT_REQ  0x2
-#define HDD_ASR_BUSY     0x4
-#define HDD_ASR_DIR      0x8
-#define HDD_ASR_DATA_REQ 0x10
+#define HDD_ASR_TX_EN    0x1  //Transfer Enable
+#define HDD_ASR_INT_REQ  0x2  //Interrupt Request
+#define HDD_ASR_BUSY     0x4  //Busy
+#define HDD_ASR_DIR      0x8  //Direction
+#define HDD_ASR_DATA_REQ 0x10 //Data Request
 
 //Attention Reg bits
-#define HDD_ATT_DATA 0x10
-#define HDD_ATT_SSB  0x20
-#define HDD_ATT_CSB  0x40
-#define HDD_ATT_CCB  0x80
+#define HDD_ATT_DATA 0x10 //Data Request
+#define HDD_ATT_SSB  0x20 //Sense Summary Block
+#define HDD_ATT_CSB  0x40 //Command Specify Block
+#define HDD_ATT_CCB  0x80 //Command Control Block
 
 //Attachment Control Reg bits
-#define HDD_ACR_DMA_EN 0x1
-#define HDD_ACR_INT_EN 0x2
-#define HDD_ACR_RESET  0x80
+#define HDD_ACR_DMA_EN 0x1  //DMA Enable
+#define HDD_ACR_INT_EN 0x2  //Interrupt Enable
+#define HDD_ACR_RESET  0x80 //Reset
 
 //Interrupt Status Reg bits
-#define HDD_ISR_CMD_REJECT  0x20
-#define HDD_ISR_INVALID_CMD 0x40
-#define HDD_ISR_TERMINATION 0x80
+#define HDD_ISR_CMD_REJECT  0x20 //Command Reject
+#define HDD_ISR_INVALID_CMD 0x40 //Invalid Command
+#define HDD_ISR_TERMINATION 0x80 //Termination Error
 
 //CCB commands
 enum HDD_CMD {
@@ -157,26 +182,50 @@ enum HDD_CMD {
 	FORMAT_TRK  = 0xF
 };
 
-const std::function<void(HardDrive&)> HardDrive::ms_cmd_funcs[0xF+1] = {
-	&HardDrive::undefined_cmd,    //0x0
-	&HardDrive::read_data_cmd,    //0x1
-	&HardDrive::read_check_cmd,   //0x2
-	&HardDrive::read_ext_cmd,     //0x3
-	&HardDrive::undefined_cmd,    //0x4
-	&HardDrive::read_id_cmd,      //0x5
-	&HardDrive::undefined_cmd,    //0x6
-	&HardDrive::undefined_cmd,    //0x7
-	&HardDrive::recalibrate_cmd,  //0x8
-	&HardDrive::write_data_cmd,   //0x9
-	&HardDrive::write_vfy_cmd,    //0xA
-	&HardDrive::write_ext_cmd,    //0xB
-	&HardDrive::undefined_cmd,    //0xC
-	&HardDrive::format_disk_cmd,  //0xD
-	&HardDrive::seek_cmd,         //0xE
-	&HardDrive::format_trk_cmd    //0xF
+/* These are the command execution times in microseconds.
+ * They have been determined through direct observations of a real WDL-330P
+ * drive, but only for the READ_DATA, SEEK, and RECALIBRATE commands.
+ * Others have been arbitrarily set with the same value as of READ_DATA.
+ */
+const uint32_t HardDrive::ms_cmd_times[0xF+1] = {
+       0, //0x0 undefined
+    2200, //0x1 READ_DATA
+    2200, //0x2 READ_CHECK
+    2200, //0x3 READ_EXT
+       0, //0x4 undefined
+    2200, //0x5 READ_ID
+       0, //0x6 undefined
+       0, //0x7 undefined
+ 4000000, //0x8 RECALIBRATE
+    1800, //0x9 WRITE_DATA TODO a little discount: dual buffering is not implemented for the write
+    2200, //0xA WRITE_VFY
+    2200, //0xB WRITE_EXT
+       0, //0xC undefined
+    2200, //0xD FORMAT_DISK
+    2940, //0xE SEEK
+    2200  //0xF FORMAT_TRK
 };
 
-//SSB bits
+const std::function<void(HardDrive&)> HardDrive::ms_cmd_funcs[0xF+1] = {
+	&HardDrive::cmd_undefined,    //0x0
+	&HardDrive::cmd_read_data,    //0x1
+	&HardDrive::cmd_read_check,   //0x2
+	&HardDrive::cmd_read_ext,     //0x3
+	&HardDrive::cmd_undefined,    //0x4
+	&HardDrive::cmd_read_id,      //0x5
+	&HardDrive::cmd_undefined,    //0x6
+	&HardDrive::cmd_undefined,    //0x7
+	&HardDrive::cmd_recalibrate,  //0x8
+	&HardDrive::cmd_write_data,   //0x9
+	&HardDrive::cmd_write_vfy,    //0xA
+	&HardDrive::cmd_write_ext,    //0xB
+	&HardDrive::cmd_undefined,    //0xC
+	&HardDrive::cmd_format_disk,  //0xD
+	&HardDrive::cmd_seek,         //0xE
+	&HardDrive::cmd_format_trk    //0xF
+};
+
+//Sense Summary Block bits
 #define HDD_SSB_B0_B_NR 7 //not ready;
 #define HDD_SSB_B0_B_SE 6 //seek end;
 #define HDD_SSB_B0_B_WF 4 //write fault;
@@ -210,6 +259,7 @@ void HardDrive::State::CCB::set(uint8_t* _data)
 	cylinder = ((_data[1] & 3) << 8) + _data[2];
 	sector = _data[3];
 	num_sectors = _data[5];
+	sect_cnt = num_sectors;
 
 	PDEBUGF(LOG_V1, LOG_HDD, "command: ");
 	switch(command) {
@@ -272,6 +322,15 @@ void HardDrive::State::SSB::clear()
 	//drive_type is static
 }
 
+HardDrive::HardDrive()
+{
+}
+
+HardDrive::~HardDrive()
+{
+	unmount();
+}
+
 unsigned HardDrive::chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const
 {
 	ASSERT(_s>0);
@@ -285,13 +344,33 @@ void HardDrive::lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &
 	_s = (_lba % m_disk->geometry.spt) + 1;
 }
 
-HardDrive::HardDrive()
+double HardDrive::pos_to_sect(double _head_pos)
 {
+	double sectors = double(m_disk->geometry.spt) + HDD_TRACK_OVERHEAD/double(HDD_SECTOR_SIZE);
+	return _head_pos*sectors;
 }
 
-HardDrive::~HardDrive()
+double HardDrive::sect_to_pos(double _hw_sector)
 {
-	unmount();
+	return _hw_sector*m_sect_size;
+}
+
+int HardDrive::get_hw_sector_number(int _logical_sector)
+{
+	return ((_logical_sector-1)*m_disk_performance.interleave) % m_disk->geometry.spt;
+}
+
+double HardDrive::get_head_position(double _last_pos, uint32_t _elapsed_time_us)
+{
+	double cur_pos = _last_pos + (double(_elapsed_time_us) / m_trk_read_us);
+	cur_pos = cur_pos - floor(cur_pos);
+	return cur_pos;
+}
+
+double HardDrive::get_current_head_position()
+{
+	uint32_t elapsed_time_us = g_machine.get_virt_time_us() - m_last_time;
+	return get_head_position(m_last_head_pos, elapsed_time_us);
 }
 
 void HardDrive::init()
@@ -310,7 +389,7 @@ void HardDrive::init()
 	g_devices.register_write_handler(this, 0x0324, 1); //Attention Reg
 
 	m_cmd_timer = g_machine.register_timer(
-			std::bind(&HardDrive::cmd_timer,this),
+			std::bind(&HardDrive::command_timer,this),
 			100,    // period usec
 			false,  // continuous
 			false,  // active
@@ -325,7 +404,7 @@ void HardDrive::init()
 	);
 
 	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
-	m_original_geom = {0,0,0};
+	m_original_geom = {0,0,0,0,0};
 	if(m_drive_type > 0) {
 		MediaGeometry geom;
 		HDDPerformance perf;
@@ -338,6 +417,13 @@ void HardDrive::init()
 		m_save_on_close = g_program.config().get_bool(DISK_C_SECTION, DISK_SAVE);
 		PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
 				m_drive_type, double(m_disk->hd_size)/(1024.0*1024.0));
+		PINFOF(LOG_V1, LOG_HDD, "  Cylinders: %d\n", geom.cylinders);
+		PINFOF(LOG_V1, LOG_HDD, "  Heads: %d\n", geom.heads);
+		PINFOF(LOG_V1, LOG_HDD, "  Sectors per track: %d\n", geom.spt);
+		PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %d RPM\n", perf.rot_speed);
+		PINFOF(LOG_V2, LOG_HDD, "  Interleave: %d:1\n", perf.interleave);
+		PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %d ms\n", perf.overh_time);
+		PINFOF(LOG_V2, LOG_HDD, "  data bits per track: %d\n", geom.spt*512*8);
 	} else {
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 	}
@@ -421,9 +507,7 @@ void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &
 		_perf.seek_max = std::max(0., g_program.config().get_real(DISK_C_SECTION, DISK_SEEK_MAX));
 		_perf.seek_trk = std::max(0., g_program.config().get_real(DISK_C_SECTION, DISK_SEEK_TRK));
 		_perf.rot_speed = std::max(1l, g_program.config().get_int(DISK_C_SECTION, DISK_ROT_SPEED));
-		_perf.xfer_rate = std::max(0.1, g_program.config().get_real(DISK_C_SECTION, DISK_XFER_RATE));
 		_perf.interleave = std::max(1l, g_program.config().get_int(DISK_C_SECTION, DISK_INTERLEAVE));
-		_perf.exec_time = std::max(double(HDD_DEFTIME_US)/1000.0, g_program.config().get_real(DISK_C_SECTION, DISK_EXEC_TIME));
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type: %d\n", _type_id);
 		throw std::exception();
@@ -457,23 +541,49 @@ void HardDrive::mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance 
 	m_tmp_disk = false;
 
 	m_sectors = _geom.spt * _geom.cylinders * _geom.heads;
+	m_trk_read_us = round(6.0e7 / _perf.rot_speed);
 	m_trk2trk_us = _perf.seek_trk * 1000.0;
-	m_avg_rot_lat_us = round(3e7 / float(_perf.rot_speed)); // average, the maximum is twice this value
-	m_avg_trk_lat_us = round((_perf.seek_max*1000.0 - m_avg_rot_lat_us) / float(_geom.cylinders));
-	// equivalent to x / ((perf.xfer_rate*1e6)/8.0) / 1e6 :
-	m_sec_xfer_us = round(float(((512+HDD_SECT_IDFIELD_BYTES)*_perf.interleave)) / (_perf.xfer_rate/8.f));
-	//m_sec_xfer_us = std::max(HDD_DEFTIME_US, m_sec_xfer_us);
-	m_exec_time_us = _perf.exec_time * 1000.0;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "Performance characteristics (us):\n");
-	PDEBUGF(LOG_V2, LOG_HDD, "  track-to-track seek time: %d\n", m_trk2trk_us);
-	PDEBUGF(LOG_V2, LOG_HDD, "  avg rotational latency: %d\n", m_avg_rot_lat_us);
-	PDEBUGF(LOG_V2, LOG_HDD, "  avg track latency: %d\n", m_avg_trk_lat_us);
-	PDEBUGF(LOG_V2, LOG_HDD, "  sector transfer time: %d\n", m_sec_xfer_us);
-	PDEBUGF(LOG_V2, LOG_HDD, "  execution time: %d\n", m_exec_time_us);
+	/* Track seek phases:
+	 * 1. acceleration (the disk arm gets moving);
+	 * 2. coasting (the arm is moving at full speed);
+	 * 3. deceleration (the arm slows down);
+	 * 4. settling (the head is positioned over the correct track).
+	 * Here we divide the total seek time in 2 values: avgspeed and overhead,
+	 * derived from the only 2 values given in HDD specifications:
+	 * track-to-track and maximum (full stroke).
+	 *
+	 * trk2trk = overhead + avgspeed
+	 * maximum = overhead + avgspeed*(ncyls-1)
+	 *
+	 * overhead = trk2trk - avgspeed
+	 * avgspeed = (maximum - trk2trk) / (ncyls-2)
+	 *
+	 * So the average speed includes points 1,2,3.
+	 */
+	m_seek_avgspeed_us = round(((_perf.seek_max-_perf.seek_trk) / double(_geom.cylinders-2)) * 1000.0);
+	m_seek_overhead_us = m_trk2trk_us - m_seek_avgspeed_us;
+
+	double bytes_pt = (_geom.spt*HDD_SECTOR_SIZE + HDD_TRACK_OVERHEAD);
+	double bytes_us = bytes_pt / double(m_trk_read_us);
+	m_sec_read_us = round(HDD_SECTOR_SIZE / bytes_us);
+	m_sect_size = (1.0 / bytes_pt) * HDD_SECTOR_SIZE;
+	m_sec_xfer_us = double(m_sec_read_us) * std::max(1.0,(double(_perf.interleave) * 0.8f));
+
+	PDEBUGF(LOG_V0, LOG_HDD, "Performance characteristics:\n");
+	PDEBUGF(LOG_V0, LOG_HDD, "  track-to-track seek time: %d us\n", m_trk2trk_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "    seek overhead time: %d us\n", m_seek_overhead_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "    seek avgspeed time: %d us/cyl\n", m_seek_avgspeed_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  track read time (rot.lat.): %d us\n", m_trk_read_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  sector read time: %d us\n", m_sec_read_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  command overhead: %d us\n", int(_perf.overh_time*1000.0));
+
+	m_last_head_pos = 0.0;
+	m_last_time = 0;
 
 	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
 	m_disk->geometry = _geom;
+	m_disk_performance = _perf;
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
 		PINFOF(LOG_V0, LOG_HDD, "Creating new image file '%s'\n", _imgpath.c_str());
@@ -585,7 +695,7 @@ uint16_t HardDrive::read(uint16_t _address, unsigned)
 
 	uint16_t value = 0;
 	switch(_address) {
-		case 0x320:
+		case 0x320: {
 			//Data Reg
 			if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
 				PDEBUGF(LOG_V2, LOG_HDD, "null data read\n");
@@ -595,21 +705,23 @@ uint16_t HardDrive::read(uint16_t _address, unsigned)
 				PDEBUGF(LOG_V2, LOG_HDD, "wrong data dir\n");
 				break;
 			}
-			ASSERT(m_s.data_size);
+			DataBuffer *databuf = get_read_data_buffer();
+			ASSERT(databuf);
+			ASSERT(databuf->size);
 			m_s.attch_status_reg |= HDD_ASR_TX_EN;
-			value = m_s.data_stack[m_s.data_ptr];
-			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   -> 0x%04X\n", m_s.data_ptr,
-					(m_s.data_size-1), value);
-			m_s.data_ptr++;
-			if(m_s.data_ptr >= m_s.data_size) {
+			value = databuf->stack[databuf->ptr];
+			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   -> 0x%04X\n",
+					databuf->ptr, (databuf->size-1), value);
+			databuf->ptr++;
+			if(databuf->ptr >= databuf->size) {
 				m_s.attch_status_reg &= ~HDD_ASR_TX_EN;
 				m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
 				m_s.attch_status_reg &= ~HDD_ASR_DIR;
-				m_s.data_size = 0;
-				m_s.data_ptr = 0;
-				//TODO non-DMA sector data transfers
+				databuf->clear();
+				//TODO PIO sector data transfer is incomplete (no software available)
 			}
 			break;
+		}
 		case 0x322:
 			//Attachment Status Reg
 			//This register contains status information on the present state of
@@ -654,6 +766,8 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 	//set the Card Selected Feedback bit
 	g_sysboard.set_feedback();
 
+	DataBuffer *databuf = &m_s.sect_buffer[0];
+
 	switch(_address) {
 		case 0x320:
 			//Data Reg
@@ -665,19 +779,30 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 				PDEBUGF(LOG_V2, LOG_HDD, "wrong data dir\n");
 				break;
 			}
-			ASSERT(m_s.data_size);
+			ASSERT(databuf);
+			ASSERT(databuf->size);
 			m_s.attch_status_reg |= HDD_ASR_TX_EN;
-			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   <- 0x%04X\n", m_s.data_ptr,
-					(m_s.data_size-1), _value);
-			m_s.data_stack[m_s.data_ptr] = _value;
-			m_s.data_ptr++;
-			if(m_s.data_ptr >= m_s.data_size) {
+			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   <- 0x%04X\n",
+					databuf->ptr, (databuf->size-1), _value);
+			databuf->stack[databuf->ptr] = _value;
+			databuf->ptr++;
+			if(databuf->ptr >= databuf->size) {
 				m_s.attch_status_reg &= ~HDD_ASR_TX_EN;
 				m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
-				m_s.data_size = 0;
-				m_s.data_ptr = 0;
-				if(m_s.attention_reg) {
-					attention();
+				if(m_s.attention_reg & HDD_ATT_DATA) {
+					//PIO mode data tx finish
+					//TODO the only tested PIO data transfer is of the Format
+					//Control Block used by the Format track command
+					if((m_s.attention_reg & HDD_ATT_CCB) && m_s.ccb.valid) {
+						// we are in command mode
+						command_timer();
+					} else {
+						// discard and disable PIO tx
+						m_s.attention_reg &= ~HDD_ATT_DATA;
+					}
+				} else {
+					databuf->clear();
+					attention_block();
 				}
 			}
 			break;
@@ -724,14 +849,18 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 					PERRF_ABORT(LOG_HDD, "data not ready\n");
 				}
 				if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-					g_machine.activate_timer(m_dma_timer, HDD_TIMING?m_exec_time_us:HDD_DEFTIME_US, 0);
+					g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+					//g_machine.activate_timer(m_dma_timer, 500, 0);
+				} else {
+					//PIO mode
+					m_s.attention_reg |= HDD_ATT_DATA;
 				}
 			} else if(_value & HDD_ATT_SSB) {
 				m_s.attention_reg |= HDD_ATT_SSB;
-				attention();
+				attention_block();
 			} else if(_value & HDD_ATT_CCB) {
-				m_s.data_ptr = 0;
-				m_s.data_size = 6;
+				databuf->ptr = 0;
+				databuf->size = 6;
 				m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
 				m_s.attention_reg |= HDD_ATT_CCB;
 			}
@@ -743,85 +872,141 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 
 }
 
-void HardDrive::command()
+void HardDrive::exec_command()
 {
-	uint32_t time_us = m_exec_time_us + m_avg_rot_lat_us;
+	uint64_t cur_time_us = g_machine.get_virt_time_us();
+	uint32_t seek_time_us = 0;
+	uint32_t rot_latency_us = 0;
+	uint32_t xfer_time_us = 0;
+	uint32_t exec_time_us = m_disk_performance.overh_time * 1000.0 + ms_cmd_times[m_s.ccb.command];
+	unsigned start_sector = m_s.ccb.sector;
+	unsigned head = m_s.ccb.head;
 
 	if(m_s.ccb.auto_seek) {
-		time_us += get_seek_time(m_s.ccb.cylinder);
+		//the head arm seeks the correct track
+		seek_time_us = get_seek_time(m_s.ccb.cylinder);
 	}
-	unsigned s = m_s.ccb.sector;
-	unsigned h = m_s.ccb.head;
+
 	switch(m_s.ccb.command) {
 		case HDD_CMD::WRITE_DATA:
 			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
-			m_s.data_size = 512;
-			m_s.data_ptr = 0;
+			m_s.sect_buffer[0].size = 512;
+			m_s.sect_buffer[0].ptr = 0;
+			break;
+		case HDD_CMD::FORMAT_TRK:
+			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
+			m_s.sect_buffer[0].size = 5;
+			m_s.sect_buffer[0].ptr = 0;
+			start_sector = 1;
 			break;
 		case HDD_CMD::READ_DATA:
 		case HDD_CMD::READ_EXT:
+			//read the data from the sector, put it into the buffer and
+			//transfer it via DMA
+			xfer_time_us = m_sec_xfer_us;
 			break;
 		case HDD_CMD::READ_CHECK:
-			time_us += m_sec_xfer_us*m_s.ccb.num_sectors;
+			//read checks are done in 1 operation
+			xfer_time_us = (m_sec_read_us * m_disk_performance.interleave)*m_s.ccb.num_sectors;
 			break;
 		case HDD_CMD::SEEK:
-			s = 0;
+			start_sector = 0;
 			if(!m_s.ccb.park) {
-				time_us = m_exec_time_us + get_seek_time(m_s.ccb.cylinder);
+				seek_time_us = get_seek_time(m_s.ccb.cylinder);
+				//seek exec time depends on other factors (see get_seek_time())
+				exec_time_us -= ms_cmd_times[HDD_CMD::SEEK];
 			}
 			break;
 		case HDD_CMD::RECALIBRATE:
-			s = 0;
-			h = 0;
-			//how much time does the recalibrate take?
-			time_us = m_exec_time_us*1000 + get_seek_time(0);
+			start_sector = 0;
+			head = 0;
+			seek_time_us = get_seek_time(0);
 			break;
 		default:
-			//time needed to read the first sector
-			time_us += m_sec_xfer_us;
 			break;
 	}
-	set_cur_sector(h, s);
-	m_s.attch_status_reg |= HDD_ASR_BUSY;
-	time_us = std::max(time_us, HDD_DEFTIME_US);
-	g_machine.activate_timer(m_cmd_timer, HDD_TIMING?time_us:HDD_DEFTIME_US, 0);
 
-	PDEBUGF(LOG_V1, LOG_HDD, "command exec, busy for %d usecs\n", time_us);
-}
-
-uint32_t HardDrive::get_seek_time(unsigned _c)
-{
-	uint32_t time = 0;
-	if(m_s.cur_cylinder != _c) {
-		int dc = abs(int(m_s.cur_cylinder) - int(_c));
-		time = m_trk2trk_us + dc*m_avg_trk_lat_us;
+	if(start_sector>0) {
+		//sectors are 1-based
+		//the sector must align under the head
+		uint32_t elapsed_time = (cur_time_us+seek_time_us+exec_time_us) - m_last_time;
+		double pos_after_seek = get_head_position(m_last_head_pos, elapsed_time);
+		rot_latency_us = get_rotational_latency(pos_after_seek, start_sector);
+		m_s.ccb.sect_cnt--;
 	}
-	return time;
+
+	m_last_head_pos = get_current_head_position();
+	m_last_time = cur_time_us;
+
+	set_cur_sector(head, start_sector);
+	activate_command_timer(exec_time_us, seek_time_us, rot_latency_us, xfer_time_us);
 }
 
-void HardDrive::attention()
+void HardDrive::exec_read_on_next_sector()
+{
+	if(m_s.attch_status_reg & HDD_ASR_BUSY) {
+		//currently reading a sector
+		return;
+	}
+	if(m_s.sect_buffer[0].is_used() && m_s.sect_buffer[1].is_used()) {
+		//data has yet to be read by the system
+		return;
+	}
+	m_s.cur_buffer = (m_s.cur_buffer+1) % 2;
+
+	uint32_t seek_time_us = 0;
+	uint32_t rot_latency_us = 0;
+	unsigned cyl = m_s.cur_cylinder;
+	uint64_t cur_time = g_machine.get_virt_time_us();
+	uint32_t elapsed_time = cur_time - m_last_time;
+	double cur_pos = get_head_position(m_last_head_pos, elapsed_time);
+
+	increment_sector();
+	m_s.ccb.sect_cnt--;
+
+	if(cyl != m_s.cur_cylinder) {
+		seek_time_us = m_trk2trk_us;
+		double pos_after_seek = get_head_position(cur_pos, seek_time_us);
+		rot_latency_us = get_rotational_latency(pos_after_seek, m_s.cur_sector);
+	} else {
+		rot_latency_us = get_rotational_latency(cur_pos, m_s.cur_sector);
+	}
+
+	m_last_head_pos = cur_pos;
+	m_last_time = cur_time;
+
+	activate_command_timer(0, seek_time_us, rot_latency_us, m_sec_xfer_us);
+}
+
+
+
+
+
+void HardDrive::attention_block()
 {
 	if(m_s.attention_reg & HDD_ATT_CCB) {
-		m_s.ccb.set(m_s.data_stack);
+		//we are in command mode
+		m_s.ccb.set(m_s.sect_buffer[0].stack);
 		if(!m_s.ccb.valid) {
 			m_s.int_status_reg |= HDD_ISR_INVALID_CMD;
 			raise_interrupt();
 		} else {
-			command();
+			exec_command();
 		}
 	} else if(m_s.attention_reg & HDD_ATT_SSB) {
 		m_s.attention_reg &= ~HDD_ATT_SSB;
 		if(!m_s.ssb.valid) {
 			m_s.ssb.clear();
-			m_s.ssb.last_cylinder = m_s.cur_cylinder; //TODO?
-			m_s.ssb.last_head = m_s.cur_head; //TODO?
-			m_s.ssb.last_sector = m_s.cur_sector; //TODO?
+			m_s.ssb.last_cylinder = m_s.cur_cylinder;
+			m_s.ssb.last_head = m_s.cur_head;
+			m_s.ssb.last_sector = m_s.cur_sector;
 			m_s.ssb.present_cylinder = m_s.cur_cylinder;
 			m_s.ssb.present_head = m_s.cur_head;
 			m_s.ssb.track_0 = (m_s.cur_cylinder == 0);
 		}
-		m_s.ssb.copy_to(m_s.data_stack);
-		fill_data_stack(nullptr, 14);
+		m_s.cur_buffer = 0;
+		m_s.ssb.copy_to(m_s.sect_buffer[0].stack);
+		fill_data_stack(0, 14);
 		m_s.attch_status_reg |= HDD_ASR_DIR;
 		raise_interrupt();
 		m_s.ssb.valid = false;
@@ -834,6 +1019,8 @@ void HardDrive::raise_interrupt()
 	if(m_s.attch_ctrl_reg & HDD_ACR_INT_EN) {
 		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDD_IRQ);
 		g_pic.raise_irq(HDD_IRQ);
+	} else {
+		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n", HDD_IRQ);
 	}
 }
 
@@ -842,16 +1029,25 @@ void HardDrive::lower_interrupt()
 	g_pic.lower_irq(HDD_IRQ);
 }
 
-void HardDrive::fill_data_stack(uint8_t *_source, unsigned _len)
+void HardDrive::fill_data_stack(unsigned _buf, unsigned _len)
 {
+	ASSERT(_buf<=1);
 	ASSERT(_len<=HDD_DATA_STACK_SIZE);
-
-	if(_source != nullptr) {
-		memcpy(m_s.data_stack, _source, _len);
-	}
-	m_s.data_ptr = 0;
-	m_s.data_size = _len;
+	m_s.sect_buffer[_buf].ptr = 0;
+	m_s.sect_buffer[_buf].size = _len;
 	m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
+}
+
+HardDrive::DataBuffer* HardDrive::get_read_data_buffer()
+{
+	unsigned bufn = (m_s.cur_buffer+1) % 2;
+	if(!m_s.sect_buffer[bufn].is_used()) {
+		bufn = m_s.cur_buffer;
+		if(!m_s.sect_buffer[bufn].is_used()) {
+			return nullptr;
+		}
+	}
+	return &m_s.sect_buffer[bufn];
 }
 
 uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
@@ -869,33 +1065,33 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 
 	g_sysboard.set_feedback();
 
-	uint16_t len = m_s.data_size - m_s.data_ptr;
+	DataBuffer *databuf = get_read_data_buffer();
+	ASSERT(databuf);
+	uint16_t len = databuf->size - databuf->ptr;
+
+	PDEBUGF(LOG_V2, LOG_HDD, "DMA write: %d / %d bytes\n", _maxlen, len);
 	if(len > _maxlen) {
 		len = _maxlen;
 	}
-	PDEBUGF(LOG_V2, LOG_HDD, "DMA write: %d bytes of %d (%d requested)\n",
-			len, (m_s.data_size - m_s.data_ptr),_maxlen);
-	memcpy(_buffer, &m_s.data_stack[m_s.data_ptr], len);
-	m_s.data_ptr += len;
+
+	memcpy(_buffer, &databuf->stack[databuf->ptr], len);
+	databuf->ptr += len;
 	bool TC = g_dma.get_TC() && (len == _maxlen);
 
-	if((m_s.data_ptr >= m_s.data_size) || TC) {
-
-		if(m_s.data_ptr >= m_s.data_size) {
-			m_s.data_ptr = 0;
+	if((databuf->ptr >= databuf->size) || TC) {
+		// all data in buffer transferred
+		if(databuf->ptr >= databuf->size) {
+			databuf->clear();
+			g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 		}
-		if(TC) { // Terminal Count line, done
+		if(TC) { // Terminal Count line, command done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA WRITE TC>> C:%d,H:%d,S:%d,nS:%d\n",
 					m_s.cur_cylinder, m_s.cur_head,
-					m_s.cur_sector, m_s.ccb.num_sectors);
-			m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
-			m_s.attch_status_reg &= ~HDD_ASR_DIR;
-			raise_interrupt();
-		} else { // more data to transfer
-			m_s.attch_status_reg |= HDD_ASR_BUSY;
-			g_machine.activate_timer(m_cmd_timer, HDD_TIMING?m_sec_xfer_us:HDD_DEFTIME_US, 0);
+					m_s.cur_sector, m_s.ccb.sect_cnt);
+			command_completed();
+		} else {
+			exec_read_on_next_sector();
 		}
-		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
 	return len;
 }
@@ -912,60 +1108,185 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	ASSERT(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
 	ASSERT(!(m_s.attch_status_reg & HDD_ASR_DIR));
 
-	uint16_t len = m_s.data_size - m_s.data_ptr;
+	uint16_t len = m_s.sect_buffer[0].size - m_s.sect_buffer[0].ptr;
 	if(len > _maxlen) {
 		len = _maxlen;
 	}
-	PDEBUGF(LOG_V2, LOG_HDD, "DMA read: %d bytes of %d (%d to send)\n",
-			len, (m_s.data_size - m_s.data_ptr),_maxlen);
-	memcpy(&m_s.data_stack[m_s.data_ptr], _buffer, len);
-	m_s.data_ptr += len;
+	PDEBUGF(LOG_V2, LOG_HDD, "DMA read: %d / %d bytes\n", _maxlen, len);
+	memcpy(&m_s.sect_buffer[0].stack[m_s.sect_buffer[0].ptr], _buffer, len);
+	m_s.sect_buffer[0].ptr += len;
 	bool TC = g_dma.get_TC() && (len == _maxlen);
-	if((m_s.data_ptr >= m_s.data_size) || TC) {
+	if((m_s.sect_buffer[0].ptr >= m_s.sect_buffer[0].size) || TC) {
 		m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
 		unsigned c = m_s.cur_cylinder;
-		cmd_timer();
+		command_timer();
 		if(TC) { // Terminal Count line, done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA READ TC>> C:%d,H:%d,S:%d,nS:%d\n",
 					m_s.cur_cylinder, m_s.cur_head,
-					m_s.cur_sector, m_s.ccb.num_sectors);
+					m_s.cur_sector, m_s.ccb.sect_cnt);
+			command_completed();
 		} else {
-			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
 			uint32_t time = m_sec_xfer_us;
 			if(c != m_s.cur_cylinder) {
 				time += m_trk2trk_us;
 			}
 			time = std::max(time, HDD_DEFTIME_US);
-			g_machine.activate_timer(m_dma_timer, HDD_TIMING?time:HDD_DEFTIME_US, 0);
+			g_machine.activate_timer(m_dma_timer, time, 0);
 		}
 		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
 	}
 	return len;
 }
 
-void HardDrive::dma_timer()
+uint32_t HardDrive::get_seek_time(unsigned _cyl)
 {
-	g_dma.set_DRQ(HDD_DMA_CHAN, 1);
-	g_machine.deactivate_timer(m_dma_timer);
+	uint32_t exec_time = ms_cmd_times[HDD_CMD::SEEK];
+
+	if(m_s.cur_cylinder == _cyl) {
+		return exec_time/2;
+	}
+	/* We assume a linear head movement, but in the real world the head
+	 * describes an arc onto the platter surface.
+	 */
+
+	/* I empirically determined that the settling time is 70% of the seek
+	 * overhead time derived from spec documents.
+	 */
+	uint32_t settling_time = m_seek_overhead_us * 0.70 - exec_time;
+	const double platter_radius = 32.0; //in mm
+	const double cylinder_width = platter_radius / m_disk->geometry.cylinders;
+	//speed in mm/ms
+	const double avg_speed = platter_radius /
+			(((m_disk->geometry.cylinders-1)*m_seek_avgspeed_us)/1000.0);
+
+	/* The following factors were derived from perf measurement of a WDL-330P
+	 * specimen.
+	 * 0.99378882 = average speed = 32.0 / ((921-1)*35/1000.0), 35=avg speed in us/cyl
+	 * 1.6240 = maximum speed in mm/ms
+	 * 0.3328 = acceleration in mm/ms^2
+	 */
+	const double speed_factor = 1.6240 / 0.99378882;
+	const double accel_factor = 0.3328 / 0.99378882;
+	double max_speed = avg_speed * speed_factor; // mm/ms
+	double accel     = avg_speed * accel_factor; // mm/ms^2
+
+	int delta_cyl = abs(int(m_s.cur_cylinder) - int(_cyl));
+	double distance = double(delta_cyl) * cylinder_width;
+
+	/*  move time = acceleration + coasting at max speed + deceleration
+	 */
+	uint32_t move_time = 0;
+	double acc_space = (max_speed*max_speed) / (2.0*accel);
+	double acc_time;
+	double coasting_space;
+	double coasting_time;
+
+	if(distance < acc_space*2.0) {
+		// not enough space to reach max speed
+		acc_space = distance / 2.0;
+		coasting_space = 0.0;
+	} else {
+		coasting_space = distance - acc_space*2.0;
+	}
+	acc_time = sqrt(acc_space/(0.5*accel));
+	acc_time *= 2.0; // I assume acceleration = deceleration
+	coasting_time = coasting_space / max_speed;
+
+	acc_time *= 1000.0; // ms to us
+	coasting_time *= 1000.0;
+
+	move_time = acc_time + coasting_time;
+
+	if(_cyl == m_s.prev_cylinder) {
+		/* Analyzing CheckIt and SpinRite benchmarks I came to the conclusion
+		 * that if a seek returns to the previous cylinder then the controller
+		 * takes a lot less time to execute the command.
+		 */
+		exec_time *= 0.4;
+	}
+
+	PDEBUGF(LOG_V2, LOG_HDD, "SEEK dist:%.2f,acc_space:%.2f,acc_time:%.0f,co_space:%.2f,co_time:%.0f,exec:%d,settling:%d,total:%d\n",
+			distance, acc_space, acc_time, coasting_space, coasting_time, exec_time, settling_time,
+			move_time + settling_time + exec_time);
+
+	return move_time + settling_time + exec_time;
 }
 
-void HardDrive::cmd_timer()
+uint32_t HardDrive::get_rotational_latency(
+		double _head_position,    // the head position at time0
+		unsigned _dest_log_sector // the destination logical sector number
+		)
+{
+	double distance;
+	ASSERT(_head_position>=0.f && _head_position<=1.f);
+
+	/* To determine the rotational latency we now need to determine the time
+	 * needed to position the head above the desired logical sector.
+	 * The logical sector position takes into account the interleave.
+	 */
+	double dest_hw_sector = ((_dest_log_sector-1)*m_disk_performance.interleave)
+			% m_disk->geometry.spt;
+	double dest_position = m_sect_size * dest_hw_sector;
+	ASSERT(dest_position>=0.f);
+	if(_head_position > dest_position) {
+		distance = (1.f - _head_position) + dest_position;
+	} else {
+		distance = dest_position - _head_position;
+	}
+	ASSERT(distance>=0.f);
+	uint32_t latency_us = round(distance * m_trk_read_us);
+
+	return latency_us;
+}
+
+void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
+		uint32_t _rot_latency, uint32_t _xfer_time)
+{
+	uint32_t time_us = _exec_time + _seek_time + _rot_latency + _xfer_time;
+	if(time_us == 0) {
+		time_us = HDD_DEFTIME_US;
+	}
+
+	g_machine.activate_timer(m_cmd_timer, time_us, 0);
+	m_s.attch_status_reg |= HDD_ASR_BUSY;
+
+	PDEBUGF(LOG_V2, LOG_HDD, "command exec C:%d,H:%d,S:%d,nS:%d: %dus",
+			m_s.cur_cylinder, m_s.cur_head,	m_s.cur_sector, m_s.ccb.sect_cnt,
+			time_us);
+	PDEBUGF(LOG_V2, LOG_HDD, " (exec:%d,seek:%d,rot:%d,xfer:%d), pos:%.2f(%.1f)->%.2f(%d), buf:%d\n",
+			_exec_time, _seek_time, _rot_latency, _xfer_time,
+			m_last_head_pos, pos_to_sect(m_last_head_pos),
+			sect_to_pos(get_hw_sector_number(m_s.cur_sector)), get_hw_sector_number(m_s.cur_sector),
+			m_s.cur_buffer
+			);
+}
+
+void HardDrive::command_timer()
 {
 	if(m_s.attention_reg & HDD_ATT_CCB) {
 		ASSERT(m_s.ccb.command>=0 && m_s.ccb.command<=0xF);
 		m_s.ssb.clear();
 		ms_cmd_funcs[m_s.ccb.command](*this);
 		m_s.ssb.valid = true; //command functions update the SSB so it's valid
-		PDEBUGF(LOG_V1, LOG_HDD, "command exec end: C:%d,H:%d,S:%d,nS:%d\n",
-			m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, m_s.ccb.num_sectors);
+		PDEBUGF(LOG_V2, LOG_HDD, "command exec end: cur.pos: %.2f (%.1f)\n",
+				get_current_head_position(),
+				pos_to_sect(get_current_head_position())
+				);
 	} else if(m_s.attention_reg & HDD_ATT_CSB) {
 		PERRF_ABORT(LOG_HDD, "CSB not implemented\n");
 	} else {
 		m_s.int_status_reg |= HDD_ISR_CMD_REJECT;
 		PERRF_ABORT(LOG_HDD, "invalid attention request\n");
 	}
+	if(!(m_s.attch_status_reg & HDD_ASR_BUSY)) {
+		g_machine.deactivate_timer(m_cmd_timer);
+	}
+}
 
-	g_machine.deactivate_timer(m_cmd_timer);
+void HardDrive::dma_timer()
+{
+	g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+	g_machine.deactivate_timer(m_dma_timer);
 }
 
 void HardDrive::set_cur_sector(unsigned _h, unsigned _s)
@@ -998,8 +1319,8 @@ bool HardDrive::seek(unsigned _c)
 		return false;
 	}
 	m_s.eoc = false;
+	m_s.prev_cylinder = m_s.cur_cylinder;
 	m_s.cur_cylinder = _c;
-
 	return true;
 }
 
@@ -1012,6 +1333,7 @@ void HardDrive::increment_sector()
 		m_s.cur_head++;
 		if(m_s.cur_head >= m_disk->geometry.heads) {
 			m_s.cur_head = 0;
+			m_s.prev_cylinder = m_s.cur_cylinder;
 			m_s.cur_cylinder++;
 		}
 
@@ -1023,29 +1345,33 @@ void HardDrive::increment_sector()
 	}
 }
 
-void HardDrive::read_sector(unsigned _c, unsigned _h, unsigned _s)
+void HardDrive::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
-	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ\n");
+	ASSERT(_buf <= 1);
+	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ C:%d,H:%d,S:%d -> buf:%d\n",
+			_c, _h, _s, _buf);
 
 	unsigned lba = chs_to_lba(_c,_h,_s);
 	ASSERT(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
 	ASSERT(pos == offset);
-	ssize_t res = m_disk->read(m_s.data_stack, 512);
+	ssize_t res = m_disk->read(m_s.sect_buffer[_buf].stack, 512);
 	ASSERT(res == 512);
 }
 
-void HardDrive::write_sector(unsigned _c, unsigned _h, unsigned _s)
+void HardDrive::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
-	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE\n");
+	ASSERT(_buf <= 1);
+	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE C:%d,H:%d,S:%d <- buf:%d\n",
+			_c, _h, _s, _buf);
 
 	unsigned lba = chs_to_lba(_c,_h,_s);
 	ASSERT(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
 	ASSERT(pos == offset);
-	ssize_t res = m_disk->write(m_s.data_stack, 512);
+	ssize_t res = m_disk->write(m_s.sect_buffer[_buf].stack, 512);
 	ASSERT(res == 512);
 }
 
@@ -1068,7 +1394,6 @@ bool HardDrive::read_auto_seek()
 		}
 		m_s.ccb.auto_seek = false;
 	}
-	ASSERT(m_s.ccb.num_sectors>0);
 	if(m_s.eoc) {
 		cylinder_error();
 		raise_interrupt();
@@ -1149,72 +1474,73 @@ uint64_t HardDrive::ecc48_noswap(uint8_t *_data, int _len)
 	return rem;
 }
 
-void HardDrive::read_data_cmd()
+void HardDrive::command_completed()
+{
+	PDEBUGF(LOG_V2, LOG_HDD, "command completed\n");
+	m_s.sect_buffer[0].clear();
+	m_s.sect_buffer[1].clear();
+	m_s.cur_buffer = 0;
+	m_s.attention_reg &= ~HDD_ATT_CCB;  // command mode off
+	m_s.attention_reg &= ~HDD_ATT_DATA; // PIO mode off
+	m_s.attch_status_reg = 0;
+	raise_interrupt();
+}
+
+void HardDrive::cmd_read_data()
 {
 	if(!read_auto_seek()) {
 		return;
 	}
-	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector);
 
-	m_s.data_ptr = 0;
-	m_s.data_size = 512;
-	m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
+	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, m_s.cur_buffer);
+	fill_data_stack(m_s.cur_buffer, 512);
+
 	m_s.attch_status_reg |= HDD_ASR_DIR;
 	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
-	m_s.ccb.num_sectors--;
-
-	uint32_t time = m_exec_time_us;
-	if(m_s.ccb.num_sectors == 0) {
-		m_s.attention_reg &= ~HDD_ATT_CCB;
-	} else {
-		unsigned s = m_s.cur_cylinder;
-		increment_sector();
-		if(s != m_s.cur_cylinder) {
-			time += m_trk2trk_us;
-		}
-	}
 
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		time = std::max(time, HDD_DEFTIME_US);
-		g_machine.activate_timer(m_dma_timer, HDD_TIMING?time:HDD_DEFTIME_US, 0);
+		g_dma.set_DRQ(HDD_DMA_CHAN, 1);
 	} else {
+		//DATA Request required, the OS can decide later if DMA or PIO writing
+		//to the attch ctrl reg
 		raise_interrupt();
+	}
+	if(m_s.ccb.sect_cnt > 0) {
+		exec_read_on_next_sector();
 	}
 }
 
-void HardDrive::read_check_cmd()
+void HardDrive::cmd_read_check()
 {
-	m_s.attention_reg &= ~HDD_ATT_CCB;
-	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
-	raise_interrupt();
+	command_completed();
 
 	if(m_s.ccb.auto_seek) {
 		if(!seek(m_s.ccb.cylinder)) {
 			return;
 		}
 	}
-	while(m_s.ccb.num_sectors>0) {
+	while(m_s.ccb.sect_cnt>0) {
 		if(m_s.eoc) {
 			cylinder_error();
 			return;
 		}
 		//nothing to do, data checks are always successful
-		m_s.ccb.num_sectors--;
-		if(m_s.ccb.num_sectors > 0) {
+		m_s.ccb.sect_cnt--;
+		if(m_s.ccb.sect_cnt > 0) {
 			increment_sector();
 		}
 	}
 }
 
-void HardDrive::read_ext_cmd()
+void HardDrive::cmd_read_ext()
 {
 	if(!read_auto_seek()) {
 		return;
 	}
-	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector);
-	fill_data_stack(nullptr, 518);
+	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, 0);
+	fill_data_stack(0, 518);
 	// Initialize the parity buffer
-	memset(&m_s.data_stack[512], 0, 6);
+	memset(&m_s.sect_buffer[0].stack[512], 0, 6);
 	if(!m_s.ccb.ecc) {
 		//CRC
 		//http://www.dataclinic.co.uk/hard-disk-crc/
@@ -1239,8 +1565,8 @@ void HardDrive::read_ext_cmd()
 		 * is CRC-16/CCITT-FALSE. I assume the same variant is used here,
 		 * although I can't test if it's true.
 		 */
-		uint16_t crc = crc16_ccitt_false(m_s.data_stack, 514);
-		*((uint16_t*)&m_s.data_stack[512]) = crc;
+		uint16_t crc = crc16_ccitt_false(m_s.sect_buffer[0].stack, 514);
+		*((uint16_t*)&m_s.sect_buffer[0].stack[512]) = crc;
 	} else {
 		//ECC
 		/* The ECC used in Winchester controllers of the '80s was a computer
@@ -1249,41 +1575,37 @@ void HardDrive::read_ext_cmd()
 		 * superseded them.
 		 * The PS/1's HDD controller uses a 48-bit ECC.
 		 */
-		uint64_t ecc48 = ecc48_noswap(m_s.data_stack, 512);
+		uint64_t ecc48 = ecc48_noswap(m_s.sect_buffer[0].stack, 512);
 		uint8_t *eccptr = (uint8_t *)&ecc48;
-		m_s.data_stack[512] = eccptr[5];
-		m_s.data_stack[513] = eccptr[4];
-		m_s.data_stack[514] = eccptr[3];
-		m_s.data_stack[515] = eccptr[2];
-		m_s.data_stack[516] = eccptr[1];
-		m_s.data_stack[517] = eccptr[0];
+		m_s.sect_buffer[0].stack[512] = eccptr[5];
+		m_s.sect_buffer[0].stack[513] = eccptr[4];
+		m_s.sect_buffer[0].stack[514] = eccptr[3];
+		m_s.sect_buffer[0].stack[515] = eccptr[2];
+		m_s.sect_buffer[0].stack[516] = eccptr[1];
+		m_s.sect_buffer[0].stack[517] = eccptr[0];
 	}
-	m_s.attch_status_reg |= HDD_ASR_DIR;
-	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
-	m_s.attention_reg &= ~HDD_ATT_CCB;
 
-	// READ_EXT can't read more than 1 sector at a time
+	m_s.attch_status_reg |= HDD_ASR_DIR;
+
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		g_machine.activate_timer(m_dma_timer, HDD_TIMING?m_exec_time_us:HDD_DEFTIME_US, 0);
+		g_dma.set_DRQ(HDD_DMA_CHAN, 1);
 	} else {
 		raise_interrupt();
 	}
 }
 
-void HardDrive::read_id_cmd()
+void HardDrive::cmd_read_id()
 {
 	PERRF_ABORT(LOG_HDD, "READ_ID: command not implemented\n");
 }
 
-void HardDrive::recalibrate_cmd()
+void HardDrive::cmd_recalibrate()
 {
 	seek(0);
-	m_s.attention_reg &= ~HDD_ATT_CCB;
-	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
-	raise_interrupt();
+	command_completed();
 }
 
-void HardDrive::write_data_cmd()
+void HardDrive::cmd_write_data()
 {
 	if(m_s.ccb.auto_seek) {
 		if(!seek(m_s.ccb.cylinder)) {
@@ -1296,28 +1618,24 @@ void HardDrive::write_data_cmd()
 		m_s.ccb.auto_seek = false;
 	}
 	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
-		ASSERT(m_s.data_size == 512);
-		ASSERT(m_s.data_ptr == 512);
-		ASSERT(m_s.ccb.num_sectors>0);
+		ASSERT(m_s.sect_buffer[0].size == 512);
+		ASSERT(m_s.sect_buffer[0].ptr == 512);
+		ASSERT(m_s.ccb.sect_cnt>=0);
 
 		if(m_s.eoc) {
 			cylinder_error();
 			raise_interrupt();
 			return;
 		}
-		//write the sector;
-		write_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector);
-		/////
-		m_s.ccb.num_sectors--;
-		m_s.data_ptr = 0;
-		if(m_s.ccb.num_sectors == 0) {
-			m_s.data_size = 0;
-			m_s.attention_reg &= ~HDD_ATT_CCB;
-			raise_interrupt();
-		} else {
+
+		write_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, 0);
+
+		m_s.sect_buffer[0].ptr = 0;
+		if(m_s.ccb.sect_cnt > 0) {
 			increment_sector();
+			m_s.ccb.sect_cnt--;
 			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
-			m_s.data_size = 512;
+			m_s.sect_buffer[0].size = 512;
 		}
 	} else {
 		m_s.attch_status_reg &= ~HDD_ASR_BUSY;
@@ -1325,22 +1643,22 @@ void HardDrive::write_data_cmd()
 	}
 }
 
-void HardDrive::write_vfy_cmd()
+void HardDrive::cmd_write_vfy()
 {
 	PERRF_ABORT(LOG_HDD, "WRITE_VFY: command not implemented\n");
 }
 
-void HardDrive::write_ext_cmd()
+void HardDrive::cmd_write_ext()
 {
 	PERRF_ABORT(LOG_HDD, "WRITE_EXT: command not implemented\n");
 }
 
-void HardDrive::format_disk_cmd()
+void HardDrive::cmd_format_disk()
 {
 	PERRF_ABORT(LOG_HDD, "FORMAT_DISK: command not implemented\n");
 }
 
-void HardDrive::seek_cmd()
+void HardDrive::cmd_seek()
 {
 	if(m_s.ccb.park) {
 		//not really a park...
@@ -1348,17 +1666,57 @@ void HardDrive::seek_cmd()
 	} else {
 		seek(m_s.ccb.cylinder);
 	}
-	m_s.attention_reg &= ~HDD_ATT_CCB;
-	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
-	raise_interrupt();
+	command_completed();
 }
 
-void HardDrive::format_trk_cmd()
+void HardDrive::cmd_format_trk()
 {
-	PERRF_ABORT(LOG_HDD, "FORMAT_TRK: command not implemented\n");
+	// This command needs a Format Control Block which is transferred via PIO
+	ASSERT(!(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN));
+
+	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
+		if((m_s.ccb.num_sectors&1) && m_s.ccb.sect_cnt<0) {
+			// the extra byte has been transferred, nothing else to do
+			command_completed();
+			return;
+		}
+		if(m_s.eoc) {
+			cylinder_error();
+			raise_interrupt();
+			return;
+		}
+
+		//nothing to do, we are not really formatting anything
+		PDEBUGF(LOG_V2, LOG_HDD, "SECTOR FORMAT: ID's sect num: %d\n",
+				m_s.sect_buffer[0].stack[2]
+				);
+
+		m_s.sect_buffer[0].ptr = 0;
+		if(m_s.ccb.sect_cnt == 0) {
+			if(m_s.ccb.num_sectors & 1) {
+				/* The control block must contain an even number of bytes. If an
+				 * odd number of sectors are being formatted, an additional byte
+				 * is sent with all bits 0.
+				*/
+				PDEBUGF(LOG_V2, LOG_HDD, "FORMAT_TRK: odd number of sectors\n");
+				m_s.sect_buffer[0].size = 1;
+				m_s.ccb.sect_cnt--;
+				m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
+			} else {
+				command_completed();
+			}
+		} else {
+			increment_sector();
+			m_s.ccb.sect_cnt--;
+			m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
+		}
+	} else {
+		m_s.attch_status_reg &= ~HDD_ASR_BUSY;
+		raise_interrupt();
+	}
 }
 
-void HardDrive::undefined_cmd()
+void HardDrive::cmd_undefined()
 {
 	PERRF_ABORT(LOG_HDD, "unknown command!\n");
 }

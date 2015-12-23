@@ -111,9 +111,8 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISK_SEEK_MAX,   "40.0" },
 		{ DISK_SEEK_TRK,   "8.0" },
 		{ DISK_ROT_SPEED,  "3600" },
-		{ DISK_XFER_RATE,  "10.2" },
 		{ DISK_INTERLEAVE, "4" },
-		{ DISK_EXEC_TIME,  "0.5" }
+		{ DISK_OVERH_TIME, "5.0" }
 	} },
 
 	{ MIXER_SECTION, {
@@ -265,9 +264,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    seek_max: Maximum seek time in milliseconds\n"
 ";    seek_trk: Track-to-track seek time in milliseconds\n"
 ";   rot_speed: Rotational speed in RPM\n"
-";   xfer_rate: Disk-to-buffer trasfer rate in Mbps\n"
 ";  interleave: Interleave ratio\n"
-";   exec_time: Time to execute a command in milliseconds (controller overhead)\n"
+";  overh_time: Controller overhead time in milliseconds\n"
 		},
 
 		{ MIXER_SECTION,
@@ -360,9 +358,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISK_SEEK_MAX,
 		DISK_SEEK_TRK,
 		DISK_ROT_SPEED,
-		DISK_XFER_RATE,
 		DISK_INTERLEAVE,
-		DISK_EXEC_TIME
+		DISK_OVERH_TIME
 	} },
 	{ MIXER_SECTION, {
 		MIXER_PREBUFFER,

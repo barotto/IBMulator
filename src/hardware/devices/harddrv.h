@@ -34,14 +34,26 @@ struct HDDPerformance
 	float    seek_max;   // Maximum seek time in milliseconds
 	float    seek_trk;   // Track to track seek time in milliseconds
 	unsigned rot_speed;  // Rotational speed in RPM
-	float    xfer_rate;  // Disk-to-buffer trasfer rate in Mbps
 	unsigned interleave; // Interleave ratio
-	float    exec_time;  // Time to execute a command in milliseconds (controller overhead)
+	float    overh_time; // Controller overhead time in milliseconds
 };
 
 class HardDrive : public IODevice
 {
 private:
+
+	struct DataBuffer {
+		uint8_t  stack[HDD_DATA_STACK_SIZE];
+		unsigned ptr;
+		unsigned size;
+		inline bool is_used() {
+			return (size != 0);
+		}
+		inline void clear() {
+			size = 0;
+			ptr = 0;
+		}
+	};
 
 	struct State {
 		uint8_t attch_ctrl_reg;   //Attachment Control Reg
@@ -120,16 +132,17 @@ private:
 			unsigned cylinder;
 			unsigned sector;
 			unsigned num_sectors;
+			int sect_cnt;
 			void set(uint8_t* _data);
 		} ccb;
 
-		uint8_t  data_stack[HDD_DATA_STACK_SIZE];
-		unsigned data_ptr;
-		unsigned data_size;
+		DataBuffer sect_buffer[2];
 
+		unsigned cur_buffer;
 		unsigned cur_head;
 		unsigned cur_cylinder;
 		unsigned cur_sector; //warning: sectors are 1-based
+		unsigned prev_cylinder;
 		bool eoc;
 		int reset_phase;
 		uint32_t time;
@@ -138,14 +151,19 @@ private:
 	int m_cmd_timer;
 	int m_dma_timer;
 	int m_drive_type;
+	double m_last_head_pos;
+	uint64_t m_last_time;
 	uint32_t m_sectors;
+	uint32_t m_seek_avgspeed_us;
+	uint32_t m_seek_overhead_us;
 	uint32_t m_trk2trk_us;
-	uint32_t m_avg_rot_lat_us;
-	uint32_t m_avg_trk_lat_us;
-	uint32_t m_sec_xfer_us;
-	uint32_t m_exec_time_us;
+	uint32_t m_trk_read_us; // time needed by the head to read an entire track
+	uint32_t m_sec_read_us; // time needed by the head to read a sector from the surface
+	uint32_t m_sec_xfer_us; // time needed to transfer a sector, taking interleave into account
+	double m_sect_size;
 
 	std::unique_ptr<MediaImage> m_disk;
+	HDDPerformance m_disk_performance;
 	std::string m_original_path;
 	MediaGeometry m_original_geom;
 	bool m_write_protect;
@@ -155,21 +173,34 @@ private:
 	static const std::function<void(HardDrive&)> ms_cmd_funcs[0xF+1];
 	static const MediaGeometry ms_hdd_types[45];
 	static const std::map<uint, HDDPerformance> ms_hdd_performance;
+	static const uint32_t ms_cmd_times[0xF+1];
 
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const;
 	inline void lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const;
+	inline double pos_to_sect(double _head_pos);
+	inline double sect_to_pos(double _hw_sector);
+	inline int get_hw_sector_number(int _logical_sector);
+	inline double get_head_position(double _start_sector, uint32_t _elapsed_time_us);
+	inline double get_current_head_position();
 
 	void get_profile(int _type_id, MediaGeometry &geom_, HDDPerformance &perf_);
 	void mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance _perf);
 	void unmount();
 
-	void cmd_timer();
+	uint32_t get_seek_time(unsigned _c);
+	uint32_t get_rotational_latency(double _start_hw_sector, unsigned _dest_log_sector);
+	void activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
+			uint32_t _rot_latency, uint32_t _xfer_time);
+	void command_timer();
 	void dma_timer();
-	void attention();
-	void command();
+
+	void attention_block();
+	void exec_command();
 	void raise_interrupt();
 	void lower_interrupt();
-	void fill_data_stack(uint8_t *_source, unsigned _len);
+	void fill_data_stack(unsigned _buf, unsigned _len);
+	DataBuffer* get_read_data_buffer();
+	DataBuffer* get_write_data_buffer();
 
 	uint16_t dma_write(uint8_t *_buffer, uint16_t _maxlen);
 	uint16_t dma_read(uint8_t *_buffer, uint16_t _maxlen);
@@ -178,24 +209,26 @@ private:
 	void cylinder_error();
 	bool seek(unsigned _c);
 	void set_cur_sector(unsigned _h, unsigned _s);
-	void read_sector(unsigned _c, unsigned _h, unsigned _s);
-	void write_sector(unsigned _c, unsigned _h, unsigned _s);
-	uint32_t get_seek_time(unsigned _c);
+	void read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf);
+	void write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf);
+
 	bool read_auto_seek();
+	void exec_read_on_next_sector();
+	void command_completed();
 	uint16_t crc16_ccitt_false(uint8_t *_data, int _len);
 	uint64_t ecc48_noswap(uint8_t *_data, int _len);
-	void read_data_cmd();
-	void read_check_cmd();
-	void read_ext_cmd();
-	void read_id_cmd();
-	void recalibrate_cmd();
-	void write_data_cmd();
-	void write_vfy_cmd();
-	void write_ext_cmd();
-	void format_disk_cmd();
-	void seek_cmd();
-	void format_trk_cmd();
-	void undefined_cmd();
+	void cmd_read_data();
+	void cmd_read_check();
+	void cmd_read_ext();
+	void cmd_read_id();
+	void cmd_recalibrate();
+	void cmd_write_data();
+	void cmd_write_vfy();
+	void cmd_write_ext();
+	void cmd_format_disk();
+	void cmd_seek();
+	void cmd_format_trk();
+	void cmd_undefined();
 
 public:
 
@@ -212,7 +245,9 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	inline bool is_busy() { return m_s.attch_status_reg & 0x4; }
+	inline bool is_busy() {
+		return m_s.attention_reg & 0x80;
+	}
 };
 
 #endif

@@ -80,7 +80,6 @@ void size_check()
 	#define STOP_AT_EXC   false
 	#define STOP_AT_EXC_VEC 0xFF
 	#define UD6_AUTO_DUMP false
-	#define HDD_TIMING    false //used to speed up the HDD and ease the debugging
 
 	#define LOG_DEBUG_MESSAGES    true
 	#define LOG_MACHINE_TIME      true
@@ -98,7 +97,6 @@ void size_check()
 	#define STOP_AT_EXC   false
 	#define STOP_AT_EXC_VEC 0xFF
 	#define UD6_AUTO_DUMP false
-	#define HDD_TIMING    true
 
 	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false
