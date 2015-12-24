@@ -40,7 +40,7 @@ LogMessage::~LogMessage()
 {
 }
 
-void LogMessage::log_put(const char* _prefix, const char* _message)
+void LogMessage::log_put(const char* /*_prefix*/, const char* _message)
 {
 	//omit any prefix
 	m_iface->show_message(_message);

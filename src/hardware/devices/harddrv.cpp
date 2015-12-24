@@ -978,10 +978,6 @@ void HardDrive::exec_read_on_next_sector()
 	activate_command_timer(0, seek_time_us, rot_latency_us, m_sec_xfer_us);
 }
 
-
-
-
-
 void HardDrive::attention_block()
 {
 	if(m_s.attention_reg & HDD_ATT_CCB) {

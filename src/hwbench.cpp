@@ -45,9 +45,11 @@ bend(0),
 beat_count(0),
 min_beat_time(UINT_MAX),
 max_beat_time(0),
-min_bps(0.f),
+min_bps(0),
 max_bps(0),
-avg_bps(.0f),
+avg_bps(.0),
+avg_ips(.0),
+avg_cps(.0),
 
 time_elapsed(0),
 endl("\n")

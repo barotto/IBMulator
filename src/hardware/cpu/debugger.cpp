@@ -512,10 +512,9 @@ void CPUDebugger::INT_10_12(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	buflen -= len;
 }
 
-bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int &_H, int &_S)
+bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &/*_drive*/, int &_C, int &_H, int &_S)
 {
 	bool is_hdd = _core.get_DL() & 0x80;
-	int drive = _core.get_DL() & 0x1;
 	_C = _core.get_CH();
 	_H = _core.get_DH();
 	_S = _core.get_CL() & 0x3F;
@@ -713,7 +712,7 @@ void CPUDebugger::INT_21_30(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
-void CPUDebugger::INT_21_32(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+void CPUDebugger::INT_21_32(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
 	if(!call) {
@@ -929,7 +928,6 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 void CPUDebugger::INT_21_440D(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
-	uint16_t bx = core->get_BX();
 	if(!call) {
 		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
 		const char * retcode;

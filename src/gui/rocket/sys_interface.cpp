@@ -404,7 +404,7 @@ float RocketSystemInterface::GetElapsedTime()
 
 bool RocketSystemInterface::LogMessage(Rocket::Core::Log::Type type, const Rocket::Core::String& message)
 {
-	int logpri;
+	int logpri = LOG_DEBUG;
 	int verb = LOG_V0;
 	switch(type)
 	{

@@ -289,7 +289,6 @@ float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
 	float dx = x - m_drag_start_x;
 	float dxp = (dx / float(m_size.x))*100.f;
 	PDEBUGF(LOG_V2, LOG_GUI, "slider drag: x=%dpx,dx=%.1fpx,dxp=%.1f%%\n",x,dx,dxp);
-	RC::Element * slider = _event.GetTargetElement();
 	float slider_left = m_drag_start_left + dxp;
 	slider_left = clamp(slider_left, _xmin, _xmin+m_slider_len_p);
 	return ((slider_left-_xmin)/m_slider_len_p);

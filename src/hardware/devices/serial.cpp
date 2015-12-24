@@ -449,7 +449,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	}
 }
 
-void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
+void Serial::init_mode_pipe(uint /*comn*/, std::string dev, uint mode)
 {
 	if(dev.empty()) {
 		return;
@@ -670,7 +670,7 @@ uint16_t Serial::read_disabled(uint16_t address, unsigned io_len)
 	 * are tested with serial enabled. i can delete read_disable and write_disabled.
 	 */
 	uint16_t ret16;
-	uint8_t offset, val;
+	uint8_t offset, val=0;
 
 	if(io_len == 2) {
 		ret16 = read_disabled(address, 1);

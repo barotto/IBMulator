@@ -225,8 +225,8 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 		m_width = desktop.w;
 		m_height = desktop.h;
 	} else {
-		int x = SDL_WINDOWPOS_CENTERED;
-		int y = SDL_WINDOWPOS_CENTERED;
+		x = SDL_WINDOWPOS_CENTERED;
+		y = SDL_WINDOWPOS_CENTERED;
 		m_width = _width;
 		m_height = _height;
 	}
@@ -447,7 +447,7 @@ void GUI::GL_debug_output(
 			break;
 	}
 
-	int type;
+	int type = LOG_ERROR;
 	switch(_type) {
 		case GL_DEBUG_TYPE_ERROR_ARB:
 			type = LOG_ERROR;
@@ -474,7 +474,7 @@ void GUI::GL_debug_output(
 			break;
 	}
 
-	int verb;
+	int verb = LOG_V0;
 	bool stop = false;
 	switch(_severity) {
 		case GL_DEBUG_SEVERITY_HIGH_ARB:
@@ -764,7 +764,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		}
 	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
 		PDEBUGF(LOG_V1, LOG_GUI, "Joystick id=%d has been removed\n", _event.jdevice.which);
-		ASSERT(_event.jdevice.which <= m_SDL_joysticks.size());
+		ASSERT(_event.jdevice.which <= Sint32(m_SDL_joysticks.size()));
 		SDL_Joystick *joy = m_SDL_joysticks[_event.jdevice.which];
 		if(SDL_JoystickGetAttached(joy)) {
 			SDL_JoystickClose(joy);
@@ -779,7 +779,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			m_joystick1 = JOY_NONE;
 		}
 		if(m_joystick1==JOY_NONE && m_joystick0!=JOY_NONE && SDL_NumJoysticks()>1) {
-			for(int j=0; j<m_SDL_joysticks.size(); j++) {
+			for(int j=0; j<int(m_SDL_joysticks.size()); j++) {
 				if(m_SDL_joysticks[j]!=nullptr && j!=m_joystick0) {
 					m_joystick1 = j;
 				}
@@ -928,7 +928,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		break;
 	}
 	case SDL_JOYAXISMOTION: {
-		ASSERT(_event.jaxis.which < m_SDL_joysticks.size());
+		ASSERT(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
 		int jid = JOY_NONE;
 		if(m_joystick0 == _event.jaxis.which) {
 			jid = 0;
@@ -943,7 +943,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	}
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP: {
-		ASSERT(_event.jbutton.which < m_SDL_joysticks.size());
+		ASSERT(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
 		int jid = JOY_NONE;
 		if(m_joystick0 == _event.jbutton.which) {
 			jid = 0;

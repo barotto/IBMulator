@@ -111,7 +111,7 @@ public:
 	~Interface();
 
 	virtual void update();
-	virtual void container_size_changed(int _width, int _height) {}
+	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 
 	void show_warning(bool _show);
