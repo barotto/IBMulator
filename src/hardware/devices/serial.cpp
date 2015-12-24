@@ -660,87 +660,14 @@ void Serial::raise_interrupt(uint8_t port, int type)
 	}
 }
 
-uint16_t Serial::read_disabled(uint16_t address, unsigned io_len)
-{
-	/* when read in disabled status the ports are being tested.
-	 * i'm not interested in emulating the real behaviour,
-	 * i just want the POST to succeed
-	 */
-	/* well, it appears the POST tests only LCR in disabled mode, other registers
-	 * are tested with serial enabled. i can delete read_disable and write_disabled.
-	 */
-	uint16_t ret16;
-	uint8_t offset, val=0;
-
-	if(io_len == 2) {
-		ret16 = read_disabled(address, 1);
-		ret16 |= (read_disabled(address + 1, 1)) << 8;
-		return ret16;
-	}
-
-	offset = address & 0x07;
-
-	switch(offset) {
-		case SER_RBR: /* 8 receive buffer, or divisor latch LSB if DLAB set */
-		case SER_IER: /* 9 interrupt enable register, or div. latch MSB */
-			val = m_post_reg;
-			break;
-		case SER_IIR: /* a interrupt ID register */
-			break;
-		case SER_LCR: /* b Line control register */
-			//see F000:2062, the OUT_PORT_TEST must fail with CF=1
-			val = 0;
-			break;
-		case SER_MCR: /* c MODEM control register */
-		case SER_LSR: /* d Line status register */
-		case SER_MSR: /* e MODEM status register */
-		case SER_SCR: /* f scratch register */
-			val = m_post_reg;
-			break;
-	}
-
-	return val;
-}
-
-void Serial::write_disabled(uint16_t address, uint16_t value, unsigned io_len)
-{
-	uint8_t offset;
-
-	if(io_len == 2) {
-		write_disabled(address, (value & 0xff), 1);
-		write_disabled(address + 1, ((value >> 8) & 0xff), 1);
-		return;
-	}
-
-	offset = address & 0x07;
-
-	switch(offset) {
-		case SER_THR: /* 8 transmit buffer, or divisor latch LSB if DLAB set */
-			m_post_reg = value;
-			break;
-		case SER_IER: /* 9 interrupt enable register, or div. latch MSB */
-			m_post_reg = value & 0x0F;
-			break;
-		case SER_FCR: /* a FIFO control register */
-			break;
-		case SER_LCR: /* b Line control register */
-			m_s[0].line_cntl.dlab = (value & 0x80);
-			break;
-		case SER_MCR: /* c MODEM control register */
-		case SER_LSR: /* d Line status register */
-		case SER_MSR: /* e MODEM status register */
-		case SER_SCR: /* f scratch register */
-			m_post_reg = value;
-			break;
-	}
-}
-
 uint16_t Serial::read(uint16_t address, unsigned io_len)
 {
 	g_sysboard.set_feedback();
 
 	if(!m_enabled) {
-		return read_disabled(address, io_len);
+		//POST tests only LCR with port disabled
+		//see BIOS at F000:2062, the OUT_PORT_TEST must fail with CF=1
+		return 0;
 	}
 
 	uint8_t offset, val;
@@ -935,7 +862,6 @@ void Serial::write(uint16_t address, uint16_t value, unsigned io_len)
 	g_sysboard.set_feedback();
 
 	if(!m_enabled) {
-		write_disabled(address, value, io_len);
 		return;
 	}
 
