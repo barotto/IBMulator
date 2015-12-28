@@ -69,15 +69,18 @@ class MixerChannel
 	SRC_STATE *m_SRC_state;
 #endif
 	std::function<void(bool)> m_capture_clbk;
+	std::recursive_mutex m_lock;
 
 public:
 
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);
 	~MixerChannel();
 
+	// The machine thread can call only these methods:
 	void enable(bool _enabled);
 	inline bool is_enabled() { return m_enabled.load(); }
 
+	// The mixer thread can call also these methods:
 	void add_samples(uint8_t *_data, size_t _len);
 	template<typename T>
 	int fill_samples(int _duration_us, int _rate, T _value);
@@ -96,6 +99,9 @@ public:
 
 	void register_capture_clbk(std::function<void(bool _enable)> _fn);
 	void on_capture(bool _enable);
+
+	void lock()   { m_lock.lock(); }
+	void unlock() { m_lock.unlock(); }
 };
 
 template<typename T>

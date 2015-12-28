@@ -1,7 +1,7 @@
 #######################################################################
 # Initial configuration                                               #
 #######################################################################
-define([IBMULATOR_VERSION],[0.6])
+define([IBMULATOR_VERSION],[WIP])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
@@ -43,7 +43,7 @@ AC_ARG_ENABLE([debug],
 
 if test "x$debug" = "xyes"
 then
-	CXX_DEFAULTS="-O0 -g -Wextra -Wall -ansi -pthread -std=c++11"
+	CXX_DEFAULTS="-Og -g3 -Wextra -Wall -ansi -pthread -std=c++11"
 	if test x$have_windows = xno ; then
 		CXX_DEFAULTS="$CXX_DEFAULTS -rdynamic"
 	fi

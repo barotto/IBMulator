@@ -66,6 +66,9 @@ void MixerChannel::enable(bool _enabled)
 	if(_enabled) {
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel enabled\n", m_name.c_str());
 	} else {
+
+		std::lock_guard<std::recursive_mutex> lock(m_lock);
+
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel disabled\n", m_name.c_str());
 #if HAVE_LIBSAMPLERATE
 		if(m_SRC_state != NULL) {
@@ -440,11 +443,16 @@ void Mixer::main_loop()
 
 		//update the registered channels
 		for(auto ch : m_mix_channels) {
+			ch.second->lock();
 			if(ch.second->is_enabled()) {
 				ch.second->update(time_slice, audio_status == SDL_AUDIO_PAUSED);
 				if(ch.second->is_enabled() && ch.second->get_out_frames()>0) {
 					active_channels.push_back(ch.second.get());
+				} else {
+					ch.second->unlock();
 				}
+			} else {
+				ch.second->unlock();
 			}
 		}
 
@@ -555,6 +563,7 @@ size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
 	auto chdata = (*ch)->get_out_buffer();
 	std::copy(chdata.begin(), chdata.begin()+mixlen, m_mix_buffer.begin());
 	(*ch)->pop_frames(frames);
+	(*ch)->unlock();
 	ch++;
 	for(; ch != _channels.end(); ch++) {
 		chdata = (*ch)->get_out_buffer();
@@ -564,6 +573,7 @@ size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
 			m_mix_buffer[i] = v1 + v2;
 		}
 		(*ch)->pop_frames(frames);
+		(*ch)->unlock();
 	}
 
 	return mixlen;
