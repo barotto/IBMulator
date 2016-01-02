@@ -335,15 +335,15 @@ size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
 	mixlen = std::min(mixlen, m_mix_buffer.size());
 	frames = mixlen / m_device_spec.channels;
 	auto ch = _channels.begin();
-	auto chdata = (*ch)->get_out_buffer();
-	std::copy(chdata.begin(), chdata.begin()+mixlen, m_mix_buffer.begin());
+	auto chdata = &(*ch)->get_out_buffer();
+	std::copy(chdata->begin(), chdata->begin()+mixlen, m_mix_buffer.begin());
 	(*ch)->pop_frames(frames);
 	(*ch)->unlock();
 	ch++;
 	for(; ch != _channels.end(); ch++) {
-		chdata = (*ch)->get_out_buffer();
+		chdata = &(*ch)->get_out_buffer();
 		for(size_t i=0; i<mixlen; i++) {
-			float v1 = chdata[i];
+			float v1 = (*chdata)[i];
 			float v2 = m_mix_buffer[i];
 			m_mix_buffer[i] = v1 + v2;
 		}
