@@ -20,6 +20,7 @@ ibmulator_SOURCES = \
 	mixer.cpp \
 	vgm.cpp \
 	wav.cpp \
+	audio/mixerchannel.cpp \
 	ring_buffer.cpp \
 	wincompat/mkstemp.cpp \
 	wincompat/realpath.cpp \
@@ -46,6 +47,7 @@ noinst_HEADERS = \
 	ini/ini.h \
 	vgm.h \
 	wav.h \
+	audio/mixerchannel.h \
 	wincompat.h \
 	utils.h
 	
