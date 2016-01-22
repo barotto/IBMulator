@@ -130,6 +130,7 @@ AC_CHECK_TYPE(uint, unsigned int)
 AC_CONFIG_FILES([
 	Makefile 
 	src/Makefile
+	src/audio/Makefile
 	src/hardware/Makefile
 	src/gui/Makefile
 	src/gui/rocket/Makefile

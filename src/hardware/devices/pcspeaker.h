@@ -47,7 +47,6 @@ private:
 
 	bool m_enabled;
 	std::vector<int16_t> m_samples_buffer;
-	uint32_t m_rate;
 	double m_nsec_per_sample;
 	double m_samples_per_nsec;
 	std::mutex m_lock;
@@ -56,7 +55,6 @@ private:
 	double m_samples_rem;
 
 	size_t fill_samples_buffer_t(int _duration, int _bstart, int16_t _value);
-	void fill_samples_buffer(int _bstart, int _samples, int16_t _value);
 
 public:
 

@@ -24,8 +24,8 @@
 #include "hardware/devices/sn76496.h"
 #include "mixer.h"
 #include "shared_deque.h"
-#include "vgm.h"
 #include <atomic>
+#include "audio/vgm.h"
 
 class PS1Audio;
 extern PS1Audio g_ps1audio;

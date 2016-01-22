@@ -143,6 +143,7 @@ void PS1Audio::config_changed()
 	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO);
 	m_PSG_rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	m_PSG_samples_per_ns = double(m_PSG_rate)/1e9;
+	m_PSG_channel->set_input_spec({AUDIO_FORMAT_S16, 1, unsigned(m_PSG_rate)});
 }
 
 void PS1Audio::save_state(StateBuf &_state)
@@ -476,30 +477,32 @@ int PS1Audio::create_DAC_samples(int _mix_slice_us, bool _prebuf, bool _first_up
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04dus, samples: %d at %dHz (%d us)\n",
 			_mix_slice_us, samples, freq, avail);
 
+	m_DAC_channel->set_input_spec({AUDIO_FORMAT_U8, 1, unsigned(freq)});
+
 	if(samples == 0) {
 		m_DAC_lock.unlock();
 		if(!m_DAC_channel->check_disable_time(mtime_us) && !_prebuf) {
-			samples = Mixer::us_to_samples(_mix_slice_us, freq);
+			samples = Mixer::us_to_frames(_mix_slice_us, freq);
 			if(m_DAC_last_value == 128 || _first_upd) {
 				m_DAC_channel->fill_samples<uint8_t>(samples, m_DAC_last_value);
 			} else {
 				//try to prevent nasty pops (Space Quest 4)
-				m_DAC_channel->fill_samples_fade_u8m(samples, m_DAC_last_value, 128);
+				m_DAC_channel->fill_frames_fade<uint8_t>(samples, m_DAC_last_value, 128);
 			}
 			m_DAC_last_value = 128;
-			m_DAC_channel->mix_samples(freq, MIXER_FORMAT_U8, 1);
+			m_DAC_channel->input_finish();
 		}
 		return samples;
 	} else if(PS1AUDIO_DAC_FADE_IN && _first_upd && m_DAC_samples[0]!=128) {
-		totsamples += m_DAC_channel->fill_samples_fade_u8m(
-				Mixer::us_to_samples(_mix_slice_us/2, freq), 128, m_DAC_samples[0]);
+		totsamples += m_DAC_channel->fill_frames_fade<uint8_t>(
+				Mixer::us_to_frames(_mix_slice_us/2, freq), 128, m_DAC_samples[0]);
 	}
 
-	m_DAC_channel->add_samples(&m_DAC_samples[0], samples);
+	m_DAC_channel->add_samples(m_DAC_samples);
 	m_DAC_last_value = m_DAC_samples.back();
 	m_DAC_samples.clear();
 	m_DAC_lock.unlock();
-	m_DAC_channel->mix_samples(freq, MIXER_FORMAT_U8, 1);
+	m_DAC_channel->input_finish();
 	m_DAC_channel->set_disable_time(mtime_us);
 
 	return totsamples;
@@ -512,11 +515,9 @@ int PS1Audio::generate_PSG_samples(uint64_t _duration)
 	double fsamples = (double(_duration) * m_PSG_samples_per_ns) + fsrem;
 	int samples = fsamples;
 	if(samples > 0) {
-		if(buffer.size() < unsigned(samples)) {
-			buffer.resize(samples);
-		}
+		buffer.resize(samples);
 		m_s.PSG.generate_samples(&buffer[0], samples);
-		m_PSG_channel->add_samples((uint8_t*)&buffer[0], samples*2);
+		m_PSG_channel->add_samples(buffer);
 	}
 	fsrem = fsamples - samples;
 	return samples;
@@ -572,9 +573,7 @@ int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_
 		generated_samples += generate_PSG_samples(time_span);
 	}
 
-	if(generated_samples > 0) {
-		m_PSG_channel->mix_samples(m_PSG_rate, MIXER_FORMAT_S16, 1);
-	}
+	m_PSG_channel->input_finish();
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%d samples generated\n", generated_samples);
 

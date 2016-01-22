@@ -31,20 +31,16 @@ m_update_clbk(_callback),
 m_disable_time(0),
 m_disable_timeout(0),
 m_first_update(true),
-m_out_frames(0),
-#if HAVE_LIBSAMPLERATE
+m_in_time(0),
 m_SRC_state(nullptr),
-#endif
 m_capture_clbk([](bool){})
 {
-	m_in_buffer.reserve(MIXER_BUFSIZE);
-	m_out_buffer.resize(MIXER_BUFSIZE);
 }
 
 MixerChannel::~MixerChannel()
 {
 #if HAVE_LIBSAMPLERATE
-	if(m_SRC_state != NULL) {
+	if(m_SRC_state != nullptr) {
 		src_delete(m_SRC_state);
 	}
 #endif
@@ -52,177 +48,127 @@ MixerChannel::~MixerChannel()
 
 void MixerChannel::enable(bool _enabled)
 {
-	m_enabled.store(_enabled);
-	m_disable_time.store(0);
+	m_enabled = _enabled;
+	m_disable_time = 0;
 	if(_enabled) {
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel enabled\n", m_name.c_str());
 	} else {
-
-		std::lock_guard<std::recursive_mutex> lock(m_lock);
-
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel disabled\n", m_name.c_str());
-#if HAVE_LIBSAMPLERATE
-		if(m_SRC_state != NULL) {
-			src_reset(m_SRC_state);
-		}
-#endif
-		m_out_frames = 0;
-		m_in_buffer.clear();
 		m_first_update = true;
 	}
 }
 
 int MixerChannel::update(int _mix_tslice, bool _prebuffering)
 {
-	ASSERT(m_update_clbk);
+	assert(m_update_clbk);
 	int samples = m_update_clbk(_mix_tslice, _prebuffering, m_first_update);
 	m_first_update = false;
 	return samples;
 }
 
-void MixerChannel::add_samples(uint8_t *_data, size_t _size)
+void MixerChannel::reset_SRC()
 {
-	if(_size > 0) {
-		m_in_buffer.insert(m_in_buffer.end(), _data, _data+_size);
+#if HAVE_LIBSAMPLERATE
+	if(m_SRC_state == nullptr) {
+		const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
+		int err;
+		m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, spec.channels, &err);
+		if(m_SRC_state == nullptr) {
+			PERRF(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
+		}
+	} else {
+		src_reset(m_SRC_state);
+	}
+#endif
+}
+
+void MixerChannel::set_input_spec(const AudioSpec &_spec)
+{
+	if(m_in_buffer.spec() != _spec)	{
+		m_in_buffer.set_spec(_spec);
+		reset_SRC();
 	}
 }
 
-int MixerChannel::fill_samples_fade_u8m(int _samples, uint8_t _start, uint8_t _end)
+void MixerChannel::set_output_spec(const AudioSpec &_spec)
 {
-	if(_samples == 0) {
-		return 0;
+	if(m_out_buffer.spec() != _spec) {
+		/* the output buffer is forced to float format
+		 */
+		m_out_buffer.set_spec({AUDIO_FORMAT_F32, _spec.channels, _spec.rate});
+		reset_SRC();
 	}
-	double value = _start;
-	double step = (double(_end) - value) / _samples;
-	for(int i=0; i<_samples; i++,value+=step) {
-		m_in_buffer.push_back(uint8_t(value));
-	}
-	return _samples;
 }
 
-void MixerChannel::mix_samples(int _rate, uint16_t _format, uint16_t _channels)
+void MixerChannel::input_start(uint64_t _time)
 {
-	const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
-	int in_size = m_in_buffer.size();
+	m_in_time = _time;
+}
 
-	if(in_size == 0) {
+void MixerChannel::play(const AudioBuffer &_sample, uint64_t _time)
+{
+	/* This function plays the given sound sample at the specified time, filling
+	 * with silence if needed, basing the calculations on the buffer start time
+	 * specified with input_start()
+	 */
+	//TODO
+}
+
+void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
+{
+	m_out_buffer.pop_frames(_frames_to_pop);
+}
+
+void MixerChannel::input_finish(uint64_t _time)
+{
+	if(!m_mixer->is_enabled()) {
+		m_in_buffer.clear();
+		return;
+	}
+	unsigned in_frames;
+	if(_time > 0) {
+		assert(m_in_time<=_time);
+		uint64_t span = _time - m_in_time;
+		in_frames = round(double(span) * double(m_in_buffer.rate())/1e9);
+		in_frames = std::min(m_in_buffer.frames(), in_frames);
+	} else {
+		in_frames = m_in_buffer.frames();
+	}
+
+	if(in_frames == 0) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "channel active but empty\n");
 		return;
 	}
 
-	//to floats in [-1,1]
-	std::vector<float> in_buf, SRC_in_buf;
-	switch(_format) {
-		case MIXER_FORMAT_U8:
-			in_buf.resize(in_size);
-			for(int i=0; i<in_size; i++) {
-				float fvalue = float(m_in_buffer[i]);
-				in_buf[i] = (fvalue - 128.f) / 128.f;
-			}
-			break;
-		case MIXER_FORMAT_S16:
-			in_size = in_size / 2;
-			in_buf.resize(in_size);
-			for(int i=0; i<in_size; i++) {
-				float fvalue = float(*(int16_t*)(&m_in_buffer[i*2]));
-				in_buf[i] = fvalue / 32768.f;
-			}
-			break;
-		default:
-			PERRF_ABORT(LOG_MIXER, "unsupported sample format\n");
-			return;
+	/* input data -> convert ch/format/rate -> add to output data
+	 * The following procedure could be more efficent using m_out_buffer directly
+	 * but that would require a convoluted conversion function that works on a
+	 * single destination buffer. I'd rather have a slightly less efficent but
+	 * readable and concise procedure.
+	 */
+	static AudioBuffer dest[2];
+	unsigned bufidx = 0;
+	AudioBuffer *source=&m_in_buffer;
+	dest[0].clear();
+	dest[1].clear();
+
+	if(m_in_buffer.channels() != m_out_buffer.channels()) {
+		dest[0].set_spec({m_in_buffer.format(),m_out_buffer.channels(),m_in_buffer.rate()});
+		source->convert_channels(dest[0], in_frames);
+		source = &dest[0];
+		bufidx = 1;
 	}
-
-	m_in_buffer.clear();
-
-	int in_frames = in_size / _channels;
-
-	if(spec.channels != _channels) {
-		int SRC_in_size = in_frames * spec.channels;
-		SRC_in_buf.resize(SRC_in_size);
-		if(_channels==1 && spec.channels==2) {
-			PDEBUGF(LOG_V2, LOG_MIXER, "from mono to stereo\n");
-			for(int i=0; i<in_size; i++) {
-				float v = in_buf[i];
-				SRC_in_buf[i*2]   = v;
-				SRC_in_buf[i*2+1] = v;
-			}
-		} else if(_channels==2 && spec.channels==1) {
-			PDEBUGF(LOG_V2, LOG_MIXER, "from stereo to mono\n");
-			for(int i=0; i<SRC_in_size; i++) {
-				SRC_in_buf[i] = (in_buf[i*2] + in_buf[i*2+1]) / 2.f;
-			}
-		} else {
-			PERRF_ABORT(LOG_MIXER, "unsupported number of channels\n");
-			return;
-		}
+	if(m_in_buffer.format() != AUDIO_FORMAT_F32) {
+		dest[bufidx].set_spec({AUDIO_FORMAT_F32,m_out_buffer.channels(),m_in_buffer.rate()});
+		source->convert_format(dest[bufidx], in_frames);
+		source = &dest[bufidx];
+	}
+	if(m_in_buffer.rate() != m_out_buffer.rate()) {
+		source->convert_rate(m_out_buffer, in_frames, m_SRC_state);
 	} else {
-		SRC_in_buf = in_buf;
+		m_out_buffer.add_frames(*source, in_frames);
 	}
-
-#if HAVE_LIBSAMPLERATE
-	if(spec.freq != _rate) {
-		PDEBUGF(LOG_V2, LOG_MIXER, "resampling from %dHz to %dHz\n", _rate, spec.freq);
-		double ratio = double(spec.freq) / double(_rate);
-		int offset = m_out_frames * spec.channels;
-		int out_frames = int(ceil(double(in_frames) * ratio));
-		int out_size = out_frames * spec.channels;
-		if(m_SRC_state == NULL) {
-			int err;
-			m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, spec.channels, &err);
-			if(m_SRC_state == NULL) {
-				PERRF_ABORT(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
-				return;
-			}
-		}
-		if(m_out_buffer.size() < unsigned(offset+out_size)) {
-			m_out_buffer.resize(offset+out_size);
-		}
-		SRC_DATA srcdata;
-		srcdata.data_in = &SRC_in_buf[0];
-		srcdata.data_out = &m_out_buffer[offset];
-		srcdata.input_frames = in_frames;
-		srcdata.output_frames = out_frames;
-		srcdata.src_ratio = double(spec.freq) / double(_rate);
-		srcdata.end_of_input = 0;
-		int result = src_process(m_SRC_state, &srcdata);
-		if(result != 0) {
-			PERRF(LOG_MIXER, "error resampling: %s (%d)\n", src_strerror(result), result);
-			return;
-		}
-		if(srcdata.output_frames_gen != out_frames) {
-			PDEBUGF(LOG_V2, LOG_MIXER, "frames in=%d, frames out=%d\n",
-					m_out_frames, srcdata.output_frames_gen);
-			ASSERT(srcdata.output_frames_gen < out_frames);
-			out_frames = srcdata.output_frames_gen;
-		}
-		m_out_frames += out_frames;
-	} else {
-#else
-	if(spec.freq == _rate) {
-#endif
-		int offset = m_out_frames * spec.channels;
-		int out_size = (in_frames+m_out_frames) * spec.channels;
-		if(m_out_buffer.size() < unsigned(out_size)) {
-			m_out_buffer.resize(out_size);
-		}
-		std::copy(SRC_in_buf.begin(), SRC_in_buf.end(), m_out_buffer.begin() + offset);
-		m_out_frames += in_frames;
-	}
-}
-
-void MixerChannel::pop_frames(int _frames_to_pop)
-{
-	const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
-	int leftover = m_out_frames - _frames_to_pop;
-	if(leftover > 0) {
-		auto start = m_out_buffer.begin() + _frames_to_pop*spec.channels;
-		auto end = start + leftover*spec.channels;
-		std::copy(start, end, m_out_buffer.begin());
-		m_out_frames = leftover;
-	} else {
-		m_out_frames = 0;
-	}
+	m_in_buffer.pop_frames(in_frames);
 }
 
 bool MixerChannel::check_disable_time(uint64_t _now_us)

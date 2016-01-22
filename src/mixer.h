@@ -20,15 +20,15 @@
 #ifndef IBMULATOR_MIXER_H
 #define IBMULATOR_MIXER_H
 
-#include <SDL2/SDL.h>
 #include "shared_queue.h"
 #include "chrono.h"
 #include "hwbench.h"
 #include "ring_buffer.h"
-#include "wav.h"
+#include "audio/mixerchannel.h"
+#include "audio/wav.h"
 #include <thread>
 #include <cmath>
-#include "audio/mixerchannel.h"
+#include <SDL2/SDL.h>
 
 class Machine;
 extern Mixer g_mixer;
@@ -38,8 +38,6 @@ extern Mixer g_mixer;
 #define MIXER_CHANNELS  1
 #define MIXER_BIT_DEPTH 16
 
-#define MIXER_FORMAT_U8  AUDIO_U8
-#define MIXER_FORMAT_S16 AUDIO_S16
 
 typedef std::function<void()> Mixer_fun_t;
 
@@ -52,7 +50,6 @@ private:
 	WAVFile m_wav;
 	int m_start;
 
-	int m_frequency;
 	int m_prebuffer;
 
 	Machine *m_machine;
@@ -62,7 +59,7 @@ private:
 	int64_t m_next_beat_diff;
 
 	bool m_quit; //how about an std::atomic?
-	std::atomic<bool> m_enabled;
+	std::atomic<bool> m_paused;
 	SDL_AudioDeviceID m_device;
 	SDL_AudioSpec m_device_spec;
 	int m_bytes_per_frame;
@@ -95,7 +92,6 @@ public:
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
 			const std::string &_name);
-	void unregister_channel(const std::string &_name);
 
 	void calibrate(const Chrono &_c);
 	inline HWBench & get_bench() { return m_bench; }
@@ -104,7 +100,8 @@ public:
 	int get_buffer_len() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_device_spec; }
 
-	bool is_paused() const { return !m_enabled.load(); }
+	bool is_paused() const { return m_paused; }
+	bool is_enabled() const { return (m_device!=0); }
 
 	void sig_config_changed();
 	void cmd_quit();
@@ -115,7 +112,7 @@ public:
 	void cmd_toggle_capture();
 	void cmd_set_global_volume(float _volume);
 
-	static inline int us_to_samples(int _us, int _rate) {
+	static inline int us_to_frames(int _us, int _rate) {
 		return round(double(_us) * double(_rate)/1e6);
 	}
 };

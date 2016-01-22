@@ -22,9 +22,7 @@
 
 #include <atomic>
 #include <vector>
-#if HAVE_LIBSAMPLERATE
-#include <samplerate.h>
-#endif
+#include "audiobuffer.h"
 
 class Mixer;
 
@@ -34,8 +32,10 @@ typedef std::function<int(
 		bool _first_update
 	)> MixerChannel_handler;
 
+
 class MixerChannel
 {
+private:
 	Mixer *m_mixer;
 	//enabling/disabling can be performed by the machine thread
 	std::atomic<bool> m_enabled;
@@ -44,65 +44,119 @@ class MixerChannel
 	std::atomic<uint64_t> m_disable_time;
 	uint64_t m_disable_timeout;
 	bool m_first_update;
-	std::vector<uint8_t> m_in_buffer;
-	std::vector<float> m_out_buffer;
-	int m_out_frames;
-#if HAVE_LIBSAMPLERATE
+	AudioBuffer m_in_buffer;
+	AudioBuffer m_out_buffer;
+	uint64_t m_in_time;
 	SRC_STATE *m_SRC_state;
-#endif
 	std::function<void(bool)> m_capture_clbk;
-	std::recursive_mutex m_lock;
 
 public:
-
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);
 	~MixerChannel();
 
 	// The machine thread can call only these methods:
 	void enable(bool _enabled);
-	inline bool is_enabled() { return m_enabled.load(); }
+	inline bool is_enabled() { return m_enabled; }
 
 	// The mixer thread can call also these methods:
-	void add_samples(uint8_t *_data, size_t _len);
+	void set_input_spec(const AudioSpec &_spec);
+	void set_output_spec(const AudioSpec &_spec);
+	template<typename T> void add_samples(const vector<T> &_data);
+	template<typename T> void add_samples(const vector<T> &_data, unsigned _count);
+	template<typename T> unsigned fill_samples(unsigned _samples, T _value);
+	template<typename T> unsigned fill_samples_us(uint64_t _duration_us, T _value);
 	template<typename T>
-	int fill_samples(int _duration_us, int _rate, T _value);
+	unsigned fill_frames_fade(unsigned _frames, T _v0, T _v1);
 	template<typename T>
-	int fill_samples(int _samples, T _value);
-	int fill_samples_fade_u8m(int _samples, uint8_t _start, uint8_t _end);
-	void mix_samples(int _rate, uint16_t _format, uint16_t _channels);
-	inline const std::vector<float> & get_out_buffer() { return m_out_buffer; }
-	inline int get_out_frames() { return m_out_frames; }
-	void pop_frames(int _count);
+	unsigned fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1);
+	void play(const AudioBuffer &_sample, uint64_t _at_time);
+	void input_start(uint64_t _time);
+	void input_finish(uint64_t _time=0);
+	const float & get_out_data() { return m_out_buffer.at<float>(0); }
+	inline int out_frames_count() { return m_out_buffer.frames(); }
+	inline int in_frames_count() { return m_in_buffer.frames(); }
+	void pop_out_frames(unsigned _count);
 
 	int update(int _mix_tslice, bool _prebuffering);
-	void set_disable_time(uint64_t _time) { m_disable_time.store(_time); }
+	void set_disable_time(uint64_t _time) { m_disable_time = _time; }
 	bool check_disable_time(uint64_t _now_us);
 	void set_disable_timeout(uint64_t _timeout_us) { m_disable_timeout = _timeout_us; }
 
 	void register_capture_clbk(std::function<void(bool _enable)> _fn);
 	void on_capture(bool _enable);
 
-	void lock()   { m_lock.lock(); }
-	void unlock() { m_lock.unlock(); }
+private:
+	void reset_SRC();
 };
 
+
 template<typename T>
-int MixerChannel::fill_samples(int _duration_us, int _rate, T _value)
+void MixerChannel::add_samples(const vector<T> &_data)
 {
-	int samples = double(_duration_us) * double(_rate)/1e6;
-	std::vector<T> buf(samples);
-	std::fill(buf.begin(), buf.begin()+samples, _value);
-	add_samples(&buf[0], samples*sizeof(T));
-	return samples;
+	if(!_data.empty()) {
+		m_in_buffer.add_samples(_data);
+	}
 }
 
 template<typename T>
-int MixerChannel::fill_samples(int _samples, T _value)
+void MixerChannel::add_samples(const vector<T> &_data, unsigned _count)
 {
-	std::vector<T> buf(_samples);
-	std::fill(buf.begin(), buf.begin()+_samples, _value);
-	add_samples(&buf[0], _samples*sizeof(T));
+	if(!_data.empty()) {
+		m_in_buffer.add_samples(_data, _count);
+	}
+}
+
+template<typename T>
+unsigned MixerChannel::fill_samples(unsigned _samples, T _value)
+{
+	if(_samples>0) {
+		m_in_buffer.fill_samples(_samples, _value);
+	}
 	return _samples;
+}
+
+template<typename T>
+unsigned MixerChannel::fill_samples_us(uint64_t _duration_us, T _value)
+{
+	if(_duration_us>0) {
+		return m_in_buffer.fill_samples_us(_duration_us, _value);
+	}
+	return 0;
+}
+
+template<typename T>
+unsigned MixerChannel::fill_frames_fade(unsigned _frames, T _v0, T _v1)
+{
+	if(_frames==0) {
+		return 0;
+	}
+	double s = (double(_v1) - double(_v0)) / _frames;
+	double v = double(_v0);
+	unsigned i = m_in_buffer.frames();
+	m_in_buffer.resize_frames(i+_frames);
+	for(; i<m_in_buffer.frames(); ++i,v+=s) {
+		m_in_buffer.at<T>(i) = T(v);
+	}
+	return _frames;
+}
+
+template<typename T>
+unsigned MixerChannel::fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1)
+{
+	if(_frames==0) {
+		return 0;
+	}
+	double sl = (double(_v1) - double(_v0l)) / _frames;
+	double sr = (double(_v1) - double(_v0r)) / _frames;
+	double vl = double(_v0l);
+	double vr = double(_v0r);
+	unsigned i = m_in_buffer.frames();
+	m_in_buffer.resize_frames(i+_frames);
+	for(; i<m_in_buffer.frames(); ++i,vl+=sl,vr+=sr) {
+		m_in_buffer.at<T>(i*2)   = T(vl);
+		m_in_buffer.at<T>(i*2+1) = T(vr);
+	}
+	return _frames;
 }
 
 #endif

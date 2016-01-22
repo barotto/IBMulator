@@ -1,6 +1,6 @@
 AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src -DDATA_PATH=\"$(pkgdatadir)\" 
 
-SUBDIRS = hardware gui
+SUBDIRS = audio hardware gui
 
 bin_PROGRAMS = ibmulator
 
@@ -18,9 +18,6 @@ ibmulator_SOURCES = \
 	ini/ini.cpp \
 	md5.cpp \
 	mixer.cpp \
-	vgm.cpp \
-	wav.cpp \
-	audio/mixerchannel.cpp \
 	ring_buffer.cpp \
 	wincompat/mkstemp.cpp \
 	wincompat/realpath.cpp \
@@ -45,13 +42,10 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	ini/ini.h \
-	vgm.h \
-	wav.h \
-	audio/mixerchannel.h \
 	wincompat.h \
 	utils.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
-ibmulator_LDADD = gui/libgui.a hardware/libhardware.a $(BASELIBS) ibmulator.res
+ibmulator_LDADD = gui/libgui.a hardware/libhardware.a audio/libaudio.a $(BASELIBS) ibmulator.res
 
 
