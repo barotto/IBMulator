@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef IBMULATOR_DEBUG_H
@@ -95,7 +95,7 @@ public:
 	CPUDebugger() {}
 
 	uint disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip, Memory *_mem,
-			const uint8_t *_instr_buf=NULL, uint _instr_buf_len=0);
+			const uint8_t *_instr_buf=nullptr, uint _instr_buf_len=0);
 	char * analyze_instruction(char * _inst, bool _mem_read,
 			CPUCore *_core, Memory *_mem, uint _opsize=16);
 	uint32_t get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core);

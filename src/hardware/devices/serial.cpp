@@ -1,21 +1,21 @@
 /*
- * 	Copyright (c) 2001-2014  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2001-2014  The Bochs Project
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // Peter Grehan (grehan@iprg.nokia.com) coded the original version of this
@@ -91,7 +91,7 @@ Serial::~Serial(void)
 		}
 		switch (m_s[i].io_mode) {
 			case SER_MODE_FILE:
-				if(m_s[i].output != NULL) {
+				if(m_s[i].output != nullptr) {
 					fclose(m_s[i].output);
 				}
 				break;
@@ -398,7 +398,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 
 	strcpy(host, dev.c_str());
 	char *substr = strtok(host, ":");
-	substr = strtok(NULL, ":");
+	substr = strtok(nullptr, ":");
 	if(!substr) {
 		PERRF_ABORT(LOG_COM, "COM%d: inet address is wrong (%s)\n", comn+1, dev.c_str());
 	}
@@ -430,7 +430,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 		} else {
 			PINFOF(LOG_V0, LOG_COM, "COM%d: waiting for client to connect (host:%s, port:%d)\n",comn+1, host, port);
 			SOCKET client;
-			if((client = ::accept (socket, NULL, 0)) < 0) {
+			if((client = ::accept (socket, nullptr, 0)) < 0) {
 				PERRF_ABORT(LOG_COM, "COM%d: accept() failed (host:%s, port:%d)\n",comn+1, host, port);
 			}
 			closesocket(socket);
@@ -464,20 +464,20 @@ void Serial::init_mode_pipe(uint /*comn*/, std::string dev, uint mode)
 			pipe = CreateNamedPipe( dev.c_str(),
 					PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
 					PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-					1, 4096, 4096, 0, NULL);
+					1, 4096, 4096, 0, nullptr);
 
 			if(pipe == INVALID_HANDLE_VALUE) {
 				PERRF_ABORT(LOG_COM, "COM%d: CreateNamedPipe(%s) failed\n", comn+1, dev.c_str());
 			}
 			PINFOF(LOG_V0, LOG_COM, "COM%d: waiting for client to connect to %s\n", comn+1, dev.c_str());
-			if(!ConnectNamedPipe(pipe, NULL) && GetLastError() != ERROR_PIPE_CONNECTED) {
+			if(!ConnectNamedPipe(pipe, nullptr) && GetLastError() != ERROR_PIPE_CONNECTED) {
 				CloseHandle(pipe);
 				pipe = INVALID_HANDLE_VALUE;
 				PERRF_ABORT(LOG_COM, "COM%d: ConnectNamedPipe(%s) failed\n", comn+1, dev.c_str());
 			}
 		} else { // client mode
 			pipe = CreateFile( dev.c_str(), GENERIC_READ | GENERIC_WRITE,
-					0, NULL, OPEN_EXISTING, 0, NULL);
+					0, nullptr, OPEN_EXISTING, 0, nullptr);
 
 			if(pipe == INVALID_HANDLE_VALUE) {
 				PERRF(LOG_COM, "COM%d: failed to open pipe %s", comn+1, dev.c_str());
@@ -1311,14 +1311,14 @@ void Serial::tx_timer(uint8_t port)
 	} else {
 		switch (m_s[port].io_mode) {
 			case SER_MODE_FILE:
-				if(m_s[port].output == NULL) {
+				if(m_s[port].output == nullptr) {
 					sprintf(pname, "COM%d", port+1);
 					std::string dev = g_program.config().get_string(pname, COM_DEV);
 
 					if(!dev.empty()) {
 						m_s[port].output = fopen(dev.c_str(), "wb");
 					}
-					if(m_s[port].output == NULL) {
+					if(m_s[port].output == nullptr) {
 						PERRF(LOG_COM, "Could not open '%s' to write COM%d output",
 								dev.c_str(), port+1);
 						m_s[port].io_mode = SER_MODE_NULL;
@@ -1363,7 +1363,7 @@ void Serial::tx_timer(uint8_t port)
 				#if SER_WIN32
 				if(m_s[port].pipe) {
 					DWORD written;
-					WriteFile(m_s[port].pipe, (void*)& m_s[port].tsrbuffer, 1, &written, NULL);
+					WriteFile(m_s[port].pipe, (void*)& m_s[port].tsrbuffer, 1, &written, nullptr);
 				}
 				#endif
 				break;
@@ -1427,7 +1427,7 @@ void Serial::rx_timer(uint8_t port)
 					FD_ZERO(&fds);
 					SOCKET socketid = m_s[port].socket_id;
 					if(socketid >= 0) FD_SET(socketid, &fds);
-					if((socketid >= 0) && (select(socketid+1, &fds, NULL, NULL, &tval) == 1)) {
+					if((socketid >= 0) && (select(socketid+1, &fds, nullptr, nullptr, &tval) == 1)) {
 						ssize_t bytes = (ssize_t)
 						#if SER_WIN32
 							::recv(socketid, (char*) &chbuf, 1, 0);
@@ -1486,7 +1486,7 @@ void Serial::rx_timer(uint8_t port)
 				break;
 			case SER_MODE_TERM:
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-				if((m_s[port].tty_id >= 0) && (select(m_s[port].tty_id + 1, &fds, NULL, NULL, &tval) == 1)) {
+				if((m_s[port].tty_id >= 0) && (select(m_s[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1)) {
 					ssize_t res = ::read(m_s[port].tty_id, &chbuf, 1);
 					ASSERT(res==1);
 					PDEBUGF(LOG_V2, LOG_COM, "COM%d: read: '%c'\n", port+1, chbuf);
@@ -1510,10 +1510,10 @@ void Serial::rx_timer(uint8_t port)
 				#if SER_WIN32
 				DWORD avail = 0;
 				if(m_s[port].pipe &&
-						PeekNamedPipe(m_s[port].pipe, NULL, 0, NULL, &avail, NULL) &&
+						PeekNamedPipe(m_s[port].pipe, nullptr, 0, nullptr, &avail, nullptr) &&
 						avail > 0)
 				{
-					ReadFile(m_s[port].pipe, &chbuf, 1, &avail, NULL);
+					ReadFile(m_s[port].pipe, &chbuf, 1, &avail, nullptr);
 					data_ready = 1;
 				}
 				#endif

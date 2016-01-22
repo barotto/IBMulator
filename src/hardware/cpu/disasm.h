@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef IBMULATOR_CPU_DISASM_H
@@ -77,7 +77,7 @@ private:
 
 public:
 	uint32_t disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
-			Memory *_memory, const uint8_t *_instr_buf=NULL, uint _instr_buf_len=0,
+			Memory *_memory, const uint8_t *_instr_buf=nullptr, uint _instr_buf_len=0,
 			bool bit32=false);
 
 	int last_operand_size();

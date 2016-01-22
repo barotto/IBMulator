@@ -122,14 +122,14 @@ public:
     int center;
 
     IntervalTree<T,K>(void)
-        : left(NULL)
-        , right(NULL)
+        : left(nullptr)
+        , right(nullptr)
         , center(0)
     { }
 
     IntervalTree<T,K>(const intervalTree& other)
-        : left(NULL)
-        , right(NULL)
+        : left(nullptr)
+        , right(nullptr)
     {
         center = other.center;
         intervals = other.intervals;
@@ -148,13 +148,13 @@ public:
             left = new intervalTree(*other.left);
         } else {
             if (left) delete left;
-            left = NULL;
+            left = nullptr;
         }
         if (other.right) {
             right = new intervalTree(*other.right);
         } else {
             if (right) delete right;
-            right = NULL;
+            right = nullptr;
         }
         return *this;
     }
@@ -167,8 +167,8 @@ public:
             int rightextent = 0,
             unsigned int maxbucket = 512
             )
-        : left(NULL)
-        , right(NULL)
+        : left(nullptr)
+        , right(nullptr)
     {
 
         --depth;

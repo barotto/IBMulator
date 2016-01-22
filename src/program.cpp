@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -44,8 +44,8 @@ std::condition_variable Program::ms_cv;
 
 Program::Program()
 :
-m_machine(NULL),
-m_gui(NULL)
+m_machine(nullptr),
+m_gui(nullptr)
 {
 
 }
@@ -240,7 +240,7 @@ bool Program::initialize(int argc, char** argv)
 	if(m_user_dir.empty()) {
 #ifndef _WIN32
 		str = getenv("XDG_CONFIG_HOME");
-		if(str == NULL) {
+		if(str == nullptr) {
 			m_user_dir = home + FS_SEP ".config";
 		} else {
 			m_user_dir = str;
@@ -248,7 +248,7 @@ bool Program::initialize(int argc, char** argv)
 #else
 		//WINDOWS uses LOCALAPPDATA\{DeveloperName\AppName}
 		str = getenv("LOCALAPPDATA");
-		if(str == NULL) {
+		if(str == nullptr) {
 			PERRF_ABORT(LOG_PROGRAM, "Unable to determine the LOCALAPPDATA directory!\n");
 		}
 		m_user_dir = str;
@@ -278,7 +278,7 @@ bool Program::initialize(int argc, char** argv)
 			message += "Open it and configure the program as you like.";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Configuration file",
 					message.c_str(),
-			        NULL);
+			        nullptr);
 			return false;
 		} catch(std::exception &e) {
 			PWARNF(LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
@@ -286,7 +286,7 @@ bool Program::initialize(int argc, char** argv)
 					m_user_dir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",
 					message.c_str(),
-			        NULL);
+			        nullptr);
 			m_cfg_file = cfgfile;
 		}
 	}
@@ -378,7 +378,7 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 
 	//1. DATA_HOME env variable
 	const char* edatapath = getenv("DATA_HOME");
-	if(edatapath != NULL) {
+	if(edatapath != nullptr) {
 		return std::string(edatapath);
 	}
 
@@ -387,13 +387,13 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	datapath = dirname(buf);
 	free(buf);
 	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE;
-	if(realpath(datapath.c_str(), rpbuf) != NULL && FileSys::is_directory(rpbuf)) {
+	if(realpath(datapath.c_str(), rpbuf) != nullptr && FileSys::is_directory(rpbuf)) {
 		return std::string(rpbuf);
 	}
 
 	//3. XGD_DATA_HOME env + PACKAGE define
 	edatapath = getenv("XDG_DATA_HOME");
-	if(edatapath != NULL) {
+	if(edatapath != nullptr) {
 		datapath = std::string(edatapath) + FS_SEP PACKAGE;
 		if(FileSys::is_directory(datapath.c_str())) {
 			return datapath;
@@ -402,7 +402,7 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 
 #ifdef DATA_PATH
 	//4. DATA_PATH define
-	if(FileSys::is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != NULL) {
+	if(FileSys::is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != nullptr) {
 		return std::string(rpbuf);
 	}
 #endif

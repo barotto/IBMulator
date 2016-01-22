@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef IBMULATOR_WAV_H
@@ -102,7 +102,7 @@ public:
 
 	void open_read(const char *_filepath);
 	void open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, uint16_t _channels);
-	inline bool is_open() const { return m_file!=NULL; }
+	inline bool is_open() const { return m_file!=nullptr; }
 	std::vector<uint8_t> read() const;
 	void write(const uint8_t *_data, size_t _len);
 	void close();

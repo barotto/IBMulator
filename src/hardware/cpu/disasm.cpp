@@ -822,7 +822,7 @@ void Disasm::floating_point(int e1)
 void Disasm::percent(char type, char subtype)
 {
   int32_t vofs = 0;
-  char *name=NULL;
+  char *name=nullptr;
   int extend = (addrsize == 32) ? 4 : 2;
   uint8_t c;
 
@@ -1085,7 +1085,7 @@ void Disasm::ua_str(char const *str)
 /*
  * _addr = the absolute memory address of the instruction
  * _rip = the offset of the instruction (IP register)
- * _instr_buf = a vector containing the instruction to disassemble, if NULL the instr. will be read from memory
+ * _instr_buf = a vector containing the instruction to disassemble, if nullptr the instr. will be read from memory
  * _instr_buf_len = the length of _instr_buf
  */
 uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,

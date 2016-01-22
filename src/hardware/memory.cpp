@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -49,9 +49,9 @@ const std::map<std::string, uint32_t> Memory::ms_hdd_paramtable_offsets = {
 
 Memory::Memory()
 :
-m_buffer(NULL),
+m_buffer(nullptr),
 m_mainbuf_size(0),
-m_sysrom(NULL),
+m_sysrom(nullptr),
 m_base_size(0),
 m_ext_size(0)
 {
@@ -135,7 +135,7 @@ void Memory::config_changed()
 		PERRF_ABORT(LOG_MEM,"unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
-		        NULL);
+		        nullptr);
 		throw;
 	}
 
@@ -176,7 +176,7 @@ void Memory::config_changed()
 				"You are using an unsupported BIOS.\n"
 				"If it's from a PS/1 model 2011, please inform the author and maybe send him a copy.\n"
 				"Thank you! :)",
-		        NULL);
+		        nullptr);
 	}
 }
 
@@ -225,7 +225,7 @@ void Memory::load_rom_dir(const std::string &_dirname)
 	std::string dirname = _dirname + FS_SEP;
 	bool f80000found = false;
 	bool fc0000found = false;
-	while((ent = readdir(dir)) != NULL) {
+	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		std::string name = ent->d_name;
 		std::string fullpath = dirname + name;

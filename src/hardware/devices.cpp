@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -106,7 +106,7 @@ void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask
 {
 	ASSERT(_iodev);
 
-	if(m_read_handlers[_port].device != NULL) {
+	if(m_read_handlers[_port].device != nullptr) {
 		PERRF(LOG_MACHINE, "IO device %s address conflict(read) with device %s at IO address 0x%04X\n",
 				_iodev->get_name(), m_read_handlers[_port].device->get_name(), _port);
 		return;
@@ -119,7 +119,7 @@ void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask
 				_port
 			);
 		}
-		if(m_read_handlers[_port+1].device != NULL) {
+		if(m_read_handlers[_port+1].device != nullptr) {
 			PDEBUGF(LOG_V2, LOG_MACHINE,
 				"IO device %s at address 0x%04Xh is 16-bit but address 0x%04Xh is registered to %s\n",
 				_iodev->get_name(),
@@ -138,7 +138,7 @@ void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mas
 {
 	ASSERT(_iodev);
 
-	if(m_write_handlers[_port].device != NULL) {
+	if(m_write_handlers[_port].device != nullptr) {
 		PERRF(LOG_MACHINE, "IO device %s address conflict(write) with device %s at IO address 0x%04X\n",
 				_iodev->get_name(), m_write_handlers[_port].device->get_name(), _port);
 		return;
@@ -151,7 +151,7 @@ void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mas
 				_port
 			);
 		}
-		if(m_write_handlers[_port+1].device != NULL) {
+		if(m_write_handlers[_port+1].device != nullptr) {
 			PDEBUGF(LOG_V2, LOG_MACHINE,
 				"IO device %s at address 0x%04X is 16-bit but address 0x%04X is registered to %s\n",
 				_iodev->get_name(),
@@ -167,12 +167,12 @@ void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mas
 
 void Devices::unregister_read_handler(uint16_t _port)
 {
-	m_read_handlers[_port].device = NULL;
+	m_read_handlers[_port].device = nullptr;
 }
 
 void Devices::unregister_write_handler(uint16_t _port)
 {
-	m_write_handlers[_port].device = NULL;
+	m_write_handlers[_port].device = nullptr;
 }
 
 
@@ -188,7 +188,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 {
 	io_handler_t &iohdl = m_read_handlers[_port];
 
-	if(iohdl.device == NULL || !(iohdl.mask & 1)) {
+	if(iohdl.device == nullptr || !(iohdl.mask & 1)) {
 		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return 0xFF;
@@ -217,7 +217,7 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 {
 	io_handler_t &iohdl = m_write_handlers[_port];
 
-	if(iohdl.device == NULL || !(iohdl.mask & 1)) {
+	if(iohdl.device == nullptr || !(iohdl.mask & 1)) {
 		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return;

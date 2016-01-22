@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -106,9 +106,9 @@ GUI::GUI()
 m_joystick0(JOY_NONE),
 m_joystick1(JOY_NONE),
 m_symspeed_factor(1.0),
-m_rocket_renderer(NULL),
-m_rocket_sys_interface(NULL),
-m_rocket_file_interface(NULL)
+m_rocket_renderer(nullptr),
+m_rocket_sys_interface(nullptr),
+m_rocket_file_interface(nullptr)
 {
 
 }
@@ -126,7 +126,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_mixer = _mixer;
 	m_assets_path = g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP;
 
-	if(SDL_VideoInit(NULL) != 0) {
+	if(SDL_VideoInit(nullptr) != 0) {
 		PERRF(LOG_GUI, "unable to initialize SDL video: %s\n", SDL_GetError());
 		throw std::exception();
 	}
@@ -193,7 +193,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 			g_program.config().get_int(GUI_SECTION, GUI_BG_B),
 			255);
 
-	m_second_timer = SDL_AddTimer(1000, GUI::every_second, NULL);
+	m_second_timer = SDL_AddTimer(1000, GUI::every_second, nullptr);
 
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
 		PWARNF(LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
@@ -367,7 +367,7 @@ void GUI::check_device_caps()
 			GL_DONT_CARE , //type
 			GL_DONT_CARE, //severity
 			0, //count
-			NULL, //ids
+			nullptr, //ids
 			GL_TRUE //enabled
 		) );
 #endif
@@ -407,7 +407,7 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 		}
 		PDEBUGF(LOG_V2,LOG_GUI,"Document \"%s\" loaded\n", _filename.c_str());
 	} else {
-		PERRF(LOG_GUI, "Document \"%s\" is NULL\n", _filename.c_str());
+		PERRF(LOG_GUI, "Document \"%s\" is nullptr\n", _filename.c_str());
 	}
 
 	return document;
@@ -888,7 +888,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 			break;
 		}
 
-		mouse_state = SDL_GetMouseState(NULL, NULL);
+		mouse_state = SDL_GetMouseState(nullptr, nullptr);
 
 		buttons  = bool(mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT));
 		buttons |= bool(mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
@@ -1122,7 +1122,7 @@ std::vector<GLuint> GUI::attach_shaders(const std::vector<std::string> &_sh_path
 		GLCALL( shid = glCreateShader(_sh_type) );
 		// Compile Vertex Shader
 		char const * source = shcode.c_str();
-		GLCALL( glShaderSource(shid, 1, &source , NULL) );
+		GLCALL( glShaderSource(shid, 1, &source , nullptr) );
 		GLCALL( glCompileShader(shid) );
 		// Check Shader
 		GLint result = GL_FALSE;
@@ -1131,7 +1131,7 @@ std::vector<GLuint> GUI::attach_shaders(const std::vector<std::string> &_sh_path
 		GLCALL( glGetShaderiv(shid, GL_INFO_LOG_LENGTH, &infologlen) );
 		if(!result && infologlen > 1) {
 			std::vector<char> sherr(infologlen+1);
-			GLCALL( glGetShaderInfoLog(shid, infologlen, NULL, &sherr[0]) );
+			GLCALL( glGetShaderInfoLog(shid, infologlen, nullptr, &sherr[0]) );
 			PERRF(LOG_GUI, "GLSL error in '%s'\n", sh.c_str());
 			PERRF(LOG_GUI, "%s\n", &sherr[0]);
 		}
@@ -1174,7 +1174,7 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 	if(!result) {
 		if(infologlen > 1) {
 			std::vector<char> progerr(infologlen+1);
-			GLCALL( glGetProgramInfoLog(progid, infologlen, NULL, &progerr[0]) );
+			GLCALL( glGetProgramInfoLog(progid, infologlen, nullptr, &progerr[0]) );
 			PERRF(LOG_GUI, "Program error: '%s'\n", &progerr[0]);
 		}
 		throw std::exception();
@@ -1250,8 +1250,8 @@ Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 
 	userevent.type = SDL_USEREVENT;
 	userevent.code = 0;
-	userevent.data1 = NULL;
-	userevent.data2 = NULL;
+	userevent.data1 = nullptr;
+	userevent.data2 = nullptr;
 
 	event.type = SDL_USEREVENT;
 	event.user = userevent;
@@ -1266,12 +1266,12 @@ GUI::Windows::Windows()
 :
 visible(true),
 debug_wnds(false),
-desktop(NULL),
-interface(NULL),
-debugger(NULL),
-stats(NULL),
-status(NULL),
-devices(NULL)
+desktop(nullptr),
+interface(nullptr),
+debugger(nullptr),
+stats(nullptr),
+status(nullptr),
+devices(nullptr)
 {
 
 }
@@ -1386,21 +1386,21 @@ bool GUI::Windows::needs_input()
 void GUI::Windows::shutdown()
 {
 	delete status;
-	status = NULL;
+	status = nullptr;
 
 	delete debugger;
-	debugger = NULL;
+	debugger = nullptr;
 
 	delete devices;
-	devices = NULL;
+	devices = nullptr;
 
 	delete stats;
-	stats = NULL;
+	stats = nullptr;
 
 	delete desktop;
-	desktop = NULL;
+	desktop = nullptr;
 
 	delete interface;
-	interface = NULL;
+	interface = nullptr;
 }
 

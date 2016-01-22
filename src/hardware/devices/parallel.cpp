@@ -1,21 +1,21 @@
 /*
- * 	Copyright (c) 2001-2014  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2001-2014  The Bochs Project
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // This code was just a few stubs until Volker.Ruppert@t-online.de
@@ -52,7 +52,7 @@ Parallel::Parallel()
 
 Parallel::~Parallel()
 {
-	if(m_s.output != NULL) {
+	if(m_s.output != nullptr) {
 		fclose(m_s.output);
 	}
 }
@@ -101,7 +101,7 @@ void Parallel::reset(unsigned)
 
 void Parallel::config_changed()
 {
-	if(m_s.output != NULL) {
+	if(m_s.output != nullptr) {
 		fclose(m_s.output);
 	}
 
@@ -132,7 +132,7 @@ void Parallel::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	m_s.output = NULL;
+	m_s.output = nullptr;
 }
 
 void Parallel::set_mode(uint8_t _mode)
@@ -176,7 +176,7 @@ void Parallel::virtual_printer()
 		return;
 	}
 
-	if(m_s.output == NULL) {
+	if(m_s.output == nullptr) {
 		std::string filename = g_program.config().get_file(LPT_SECTION, LPT_FILE, FILE_TYPE_USER);
 		if(!filename.empty()) {
 			m_s.output = fopen(filename.c_str(), "wb");
@@ -187,7 +187,7 @@ void Parallel::virtual_printer()
 	}
 	if(m_s.mode == PARPORT_EXTENDED) {
 		if(m_s.STATUS.slct) {
-			if(m_s.output != NULL) {
+			if(m_s.output != nullptr) {
 				fputc(m_s.data, m_s.output);
 				fflush (m_s.output);
 			}
@@ -200,7 +200,7 @@ void Parallel::virtual_printer()
 			PWARNF(LOG_LPT, "printer is offline\n");
 		}
 	} else {
-		if(m_s.output != NULL) {
+		if(m_s.output != nullptr) {
 			fputc(m_s.data, m_s.output);
 			fflush(m_s.output);
 		}

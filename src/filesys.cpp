@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -52,7 +52,7 @@ void FileSys::create_dir(const char *_path)
 
 bool FileSys::is_directory(const char *_path)
 {
-	if(_path == NULL) {
+	if(_path == nullptr) {
 		return false;
 	}
 
@@ -67,25 +67,25 @@ bool FileSys::is_directory(const char *_path)
 
 bool FileSys::is_file_readable(const char *_path)
 {
-	if(_path == NULL) return false;
+	if(_path == nullptr) return false;
 	return (access(_path, R_OK) == 0);
 }
 
 bool FileSys::is_file_writeable(const char *_path)
 {
-	if(_path == NULL) return false;
+	if(_path == nullptr) return false;
 	return (access(_path, W_OK) == 0);
 }
 
 bool FileSys::file_exists(const char *_path)
 {
-	if(_path == NULL) return false;
+	if(_path == nullptr) return false;
 	return (access(_path, F_OK) == 0);
 }
 
 uint64_t FileSys::get_file_size(const char *_path)
 {
-	if(_path == NULL) {
+	if(_path == nullptr) {
 		return 0;
 	}
 	struct stat sb;
@@ -98,13 +98,13 @@ uint64_t FileSys::get_file_size(const char *_path)
 int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime)
 {
 #ifdef _WIN32
-	if(_fsize != NULL) {
-		HANDLE hFile = CreateFile(_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
+	if(_fsize != nullptr) {
+		HANDLE hFile = CreateFile(_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
 		if(hFile != INVALID_HANDLE_VALUE) {
 			ULARGE_INTEGER FileSize;
 			FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
-			if(_mtime != NULL) {
-				GetFileTime(hFile, NULL, NULL, _mtime);
+			if(_mtime != nullptr) {
+				GetFileTime(hFile, nullptr, nullptr, _mtime);
 			}
 			CloseHandle(hFile);
 			if((FileSize.LowPart != INVALID_FILE_SIZE) || (GetLastError() == NO_ERROR)) {
@@ -117,15 +117,15 @@ int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtim
 		}
 	}
 #else
-	if(_fsize != NULL) {
+	if(_fsize != nullptr) {
 		struct stat stat_buf;
 		if(stat(_path, &stat_buf)) {
 			return -1;
-	    }
+		}
 
 		*_fsize = (uint64_t)stat_buf.st_size;
 
-		if(_mtime != NULL) {
+		if(_mtime != nullptr) {
 			*_mtime = stat_buf.st_mtime;
 		}
 	}
@@ -138,7 +138,7 @@ bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {
 	std::vector<char> rpbuf(PATH_MAX);
-	if(realpath(_path, &rpbuf[0]) == NULL) {
+	if(realpath(_path, &rpbuf[0]) == nullptr) {
 		return false;
 	}
 	std::vector<char> dirbuf(rpbuf);

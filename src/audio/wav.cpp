@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -22,7 +22,7 @@
 #include <cstring>
 
 WAVFile::WAVFile()
-: m_file(NULL),
+: m_file(nullptr),
   m_datasize(0)
 {
 	size_check<WAVHeader,SIZEOF_WAVHEADER>();
@@ -46,7 +46,7 @@ void WAVFile::open_read(const char *_filepath)
 	m_write_mode = false;
 
 	m_file = fopen(_filepath, "rb");
-	if(m_file == NULL) {
+	if(m_file == nullptr) {
 		throw std::runtime_error("unable to open");
 	}
 
@@ -78,7 +78,7 @@ void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, 
 	m_write_mode = true;
 
 	m_file = fopen(_filepath, "wb");
-	if(m_file == NULL) {
+	if(m_file == nullptr) {
 		throw std::runtime_error("unable to open");
 	}
 
@@ -144,6 +144,6 @@ void WAVFile::close()
 	}
 
 	fclose(m_file);
-	m_file = NULL;
+	m_file = nullptr;
 }
 

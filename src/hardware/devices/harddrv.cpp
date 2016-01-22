@@ -427,6 +427,8 @@ void HardDrive::init()
 	} else {
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 	}
+
+	//m_fx.init();
 }
 
 void HardDrive::reset(unsigned)
@@ -438,6 +440,13 @@ void HardDrive::reset(unsigned)
 		m_s.ssb.drive_type = m_drive_type;
 	}
 	lower_interrupt();
+
+	//TODO if machine power on then play spin up sample
+}
+
+void HardDrive::power_off()
+{
+	//TODO play spin down sample and set a disable timeout
 }
 
 void HardDrive::config_changed()
@@ -881,10 +890,12 @@ void HardDrive::exec_command()
 	uint32_t exec_time_us = m_disk_performance.overh_time * 1000.0 + ms_cmd_times[m_s.ccb.command];
 	unsigned start_sector = m_s.ccb.sector;
 	unsigned head = m_s.ccb.head;
+	bool seek = false;
 
 	if(m_s.ccb.auto_seek) {
 		//the head arm seeks the correct track
 		seek_time_us = get_seek_time(m_s.ccb.cylinder);
+		seek = true;
 	}
 
 	switch(m_s.ccb.command) {
@@ -916,6 +927,7 @@ void HardDrive::exec_command()
 				//seek exec time depends on other factors (see get_seek_time())
 				exec_time_us -= ms_cmd_times[HDD_CMD::SEEK];
 			}
+			seek = true;
 			break;
 		case HDD_CMD::RECALIBRATE:
 			start_sector = 0;
@@ -940,6 +952,10 @@ void HardDrive::exec_command()
 
 	set_cur_sector(head, start_sector);
 	activate_command_timer(exec_time_us, seek_time_us, rot_latency_us, xfer_time_us);
+
+	if(seek) {
+		//m_fx.seek(m_s.cur_cylinder, m_s.ccb.cylinder);
+	}
 }
 
 void HardDrive::exec_read_on_next_sector()

@@ -1,21 +1,20 @@
 /*
- * 	Copyright (c) 2002-2014  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -117,7 +116,7 @@ void CMOS::reset(unsigned type)
 	if(type==MACHINE_POWER_ON) {
 		memset(&m_s, 0, sizeof(m_s));
 
-		m_s.timeval = time(NULL);
+		m_s.timeval = time(nullptr);
 
 		std::string binfile = g_program.config().find_file(CMOS_SECTION, CMOS_IMAGE_FILE);
 		std::ifstream fd(binfile.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
@@ -153,7 +152,7 @@ void CMOS::reset(unsigned type)
 		}
 
 		char *tmptime;
-		while((tmptime = strdup(ctime(&(m_s.timeval)))) == NULL) {
+		while((tmptime = strdup(ctime(&(m_s.timeval)))) == nullptr) {
 			PERRF_ABORT(LOG_CMOS,"Out of memory\n");
 		}
 		tmptime[strlen(tmptime)-1] = '\0';
@@ -203,7 +202,7 @@ void CMOS::restore_state(StateBuf &_state)
 
 	if(!g_program.config().get_bool(CMOS_SECTION, CMOS_IMAGE_RTC_INIT)) {
 		//TODO DOS clock should be updated too
-		m_s.timeval = time(NULL);
+		m_s.timeval = time(nullptr);
 		update_clock();
 		m_s.timeval_change = 0;
 	}

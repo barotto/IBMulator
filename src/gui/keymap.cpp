@@ -1,21 +1,20 @@
 /*
- *  Copyright (C) 2002-2013  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -94,18 +93,18 @@ static uint32_t convertStringToSDLKey(const char *string)
 
 Keymap::Keymap(void)
 :
-m_keymapTable(NULL),
+m_keymapTable(nullptr),
 m_keymapCount(0),
-m_lineptr(NULL)
+m_lineptr(nullptr)
 {
 
 }
 
 Keymap::~Keymap(void)
 {
-	if(m_keymapTable != NULL) {
+	if(m_keymapTable != nullptr) {
 		free(m_keymapTable);
-		m_keymapTable = (KeyEntry *)NULL;
+		m_keymapTable = (KeyEntry *)nullptr;
 	}
 	m_keymapCount = 0;
 }
@@ -125,7 +124,7 @@ void Keymap::init_parse_line(char *_line_to_parse)
 	// chop off newline
 	m_lineptr = (unsigned char *)_line_to_parse;
 	char *nl;
-	if ((nl = strchr(_line_to_parse,'\n')) != NULL) {
+	if ((nl = strchr(_line_to_parse,'\n')) != nullptr) {
 		*nl = 0;
 	}
 }
@@ -166,7 +165,7 @@ int Keymap::get_next_keymap_line(std::ifstream &_fp, char *_sym, char *_modsym,
 			_modsym[0] = 0;
 			char *p;
 			p = strchr(_sym, '+');
-			if(p != NULL) {
+			if(p != nullptr) {
 				*p = 0;  // truncate _sym.
 				p++;  // move one char beyond the +
 				strcpy(_modsym, p);  // copy the rest to _modsym
@@ -258,7 +257,7 @@ void Keymap::load(const std::string &_filename)
 
 		m_keymapTable = (KeyEntry*)realloc(m_keymapTable,(m_keymapCount+1) * sizeof(KeyEntry));
 
-		if(m_keymapTable == NULL) {
+		if(m_keymapTable == nullptr) {
 			PERRF(LOG_GUI,"Can not allocate memory for keymap table\n");
 			throw std::exception();
 		}
@@ -299,7 +298,7 @@ KeyEntry *Keymap::find_host_key(uint32_t _key)
 	PDEBUGF(LOG_V0,LOG_GUI,"key %02x matches no entries\n", _key);
 
 	// Return default
-	return NULL;
+	return nullptr;
 }
 
 KeyEntry *Keymap::find_ascii_char(uint8_t _ch)
@@ -316,7 +315,7 @@ KeyEntry *Keymap::find_ascii_char(uint8_t _ch)
 	PDEBUGF(LOG_V0,LOG_GUI,"key 0x%02x matches no entries\n", _ch);
 
 	// Return default
-	return NULL;
+	return nullptr;
 }
 
 const char *Keymap::get_key_name(uint32_t _key)

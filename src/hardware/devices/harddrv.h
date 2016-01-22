@@ -17,11 +17,12 @@
  *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_HDDRIVE_H
-#define IBMULATOR_HW_HDDRIVE_H
+#ifndef IBMULATOR_HW_HARDDRV_H
+#define IBMULATOR_HW_HARDDRV_H
 
 #include "hardware/iodevice.h"
 #include "mediaimage.h"
+//#include "harddrvfx.h"
 #include <memory>
 
 class HardDrive;
@@ -175,6 +176,8 @@ private:
 	static const std::map<uint, HDDPerformance> ms_hdd_performance;
 	static const uint32_t ms_cmd_times[0xF+1];
 
+	//HardDriveFX m_fx;
+
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const;
 	inline void lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const;
 	inline double pos_to_sect(double _head_pos);
@@ -237,6 +240,7 @@ public:
 
 	void init();
 	void reset(unsigned type);
+	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);

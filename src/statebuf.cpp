@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -139,9 +139,9 @@ size_t StateHeader::write(uint8_t *_dest, size_t _dest_size) const
 StateBuf::StateBuf(const std::string &_basename)
 :
 m_basename(_basename),
-m_buf(NULL),
+m_buf(nullptr),
 m_size(0),
-m_curptr(NULL),
+m_curptr(nullptr),
 m_last_restore(false)
 {
 
@@ -161,7 +161,7 @@ void StateBuf::write(const void *_data, const StateHeader &_header)
 	if(bleft < lumpsize) {
 		size_t newsize = m_size + lumpsize - (m_size-curoff);
 		uint8_t *newbuf = (uint8_t*)realloc(m_buf, newsize);
-		if(newbuf == NULL) {
+		if(newbuf == nullptr) {
 			throw std::exception();
 		}
 		m_buf = newbuf;
@@ -237,7 +237,7 @@ void StateBuf::load(const std::string &_path)
 	binfile.seekg(0, std::ios::beg);
 
 	uint8_t* newbuf = (uint8_t*)malloc(size);
-	if(newbuf == NULL) {
+	if(newbuf == nullptr) {
 		throw std::exception();
 	}
 

@@ -1,21 +1,21 @@
 /*
- * 	Copyright (c) 2002-2014  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2002-2014  The Bochs Project
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -272,7 +272,7 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 		typekey = DRIVES_FDD_B;
 	}
 
-	std::map<std::string, uint> * mediatypes = NULL;
+	std::map<std::string, uint> * mediatypes = nullptr;
 	uint devtype;
 	try {
 		devtype = g_program.config().get_enum(DRIVES_SECTION, typekey, drive_types);
@@ -1656,7 +1656,7 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 	// use virtual VFAT support if requested
 	if(!strncmp(_path, "vvfat:", 6) && (_devtype == FDRIVE_350HD)) {
 		vvfat = new VVFATMediaImage(1474560, "", !write_protected);
-		if(vvfat != NULL) {
+		if(vvfat != nullptr) {
 			if(vvfat->open(_path + 6) == 0) {
 				type              = FLOPPY_1_44;
 				tracks            = vvfat->geometry.cylinders;
@@ -1678,13 +1678,13 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 	if((isalpha(_path[0])) && (_path[1] == ':') && (strlen(_path) == 2)) {
 		raw_floppy = 1;
 		wsprintf(sTemp, "\\\\.\\%s", _path);
-		hFile = CreateFile(sTemp, GENERIC_READ, FILE_SHARE_WRITE, NULL,
-				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		hFile = CreateFile(sTemp, GENERIC_READ, FILE_SHARE_WRITE, nullptr,
+				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if(hFile == INVALID_HANDLE_VALUE) {
 			PDEBUGF(LOG_V0, LOG_FDC, "Cannot open floppy drive\n");
 			return false;
 		}
-		if(!DeviceIoControl(hFile, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &dg, sizeof(dg), &bytes, NULL)) {
+		if(!DeviceIoControl(hFile, IOCTL_DISK_GET_DRIVE_GEOMETRY, nullptr, 0, &dg, sizeof(dg), &bytes, nullptr)) {
 			PDEBUGF(LOG_V0, LOG_FDC, "No media in floppy drive\n");
 			CloseHandle(hFile);
 			return false;

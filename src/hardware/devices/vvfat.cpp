@@ -5,7 +5,7 @@
 //
 // Copyright (c) 2004,2005  Johannes E. Schindelin
 // Copyright (C) 2010-2014  The Bochs Project
-// Copyright (c) 2015  Marco Bortolin
+// Copyright (C) 2015,2016  Marco Bortolin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,7 @@ int VVFATMediaImage::mkdir(const char *path)
 #ifndef _WIN32
 	return ::mkdir(path, 0755);
 #else
-	return (CreateDirectory(path, NULL) != 0) ? 0 : -1;
+	return (CreateDirectory(path, nullptr) != 0) ? 0 : -1;
 #endif
 }
 
@@ -83,7 +83,7 @@ int VVFATMediaImage::rmdir(const char *path)
 // dynamic array functions
 static inline void array_init(array_t* array,unsigned int item_size)
 {
-  array->pointer = NULL;
+  array->pointer = nullptr;
   array->size = 0;
   array->next = 0;
   array->item_size = item_size;
@@ -123,7 +123,7 @@ static inline void* array_get_next(array_t* array)
   void* result;
 
   if (array_ensure_allocated(array, next) < 0)
-    return NULL;
+    return nullptr;
 
   array->next = next + 1;
   result = array_get(array, next);
@@ -137,7 +137,7 @@ static inline void* array_insert(array_t* array,unsigned int index,unsigned int 
     int increment = count*array->item_size;
     array->pointer = (char*)realloc(array->pointer, array->size+increment);
     if (!array->pointer)
-      return NULL;
+      return nullptr;
     array->size += increment;
   }
   memmove(array->pointer+(index+count)*array->item_size,
@@ -305,9 +305,9 @@ VVFATMediaImage::VVFATMediaImage(uint64_t size, const char* _redolog_name, bool 
 
   hd_size = size;
   redolog = new RedoLog();
-  redolog_temp = NULL;
-  redolog_name = NULL;
-  if (_redolog_name != NULL) {
+  redolog_temp = nullptr;
+  redolog_name = nullptr;
+  if (_redolog_name != nullptr) {
     if ((strlen(_redolog_name) > 0) && (strcmp(_redolog_name,"none") != 0)) {
       redolog_name = strdup(_redolog_name);
     }
@@ -490,8 +490,8 @@ direntry_t* VVFATMediaImage::create_short_and_long_name(
   unsigned int directory_start, const char* filename, int is_dot)
 {
   int i, j, long_index = directory.next;
-  direntry_t* entry = NULL;
-  direntry_t* entry_long = NULL;
+  direntry_t* entry = nullptr;
+  direntry_t* entry_long = nullptr;
   char tempfn[PATHNAME_LEN];
 
   if (is_dot) {
@@ -592,7 +592,7 @@ int VVFATMediaImage::read_directory(int mapping_index)
   uint32_t first_cluster = mapping->begin;
   int parent_index = mapping->info.dir.parent_mapping_index;
   mapping_t* parent_mapping = (mapping_t*)
-      (parent_index >= 0 ? array_get(&this->mapping, parent_index) : NULL);
+      (parent_index >= 0 ? array_get(&this->mapping, parent_index) : nullptr);
   int first_cluster_of_parent = parent_mapping ? (int)parent_mapping->begin : -1;
   int count = 0;
 
@@ -976,7 +976,7 @@ int VVFATMediaImage::init_directories(const char* dirname)
   fat_set(0, max_fat_value);
   fat_set(1, max_fat_value);
 
-  current_mapping = NULL;
+  current_mapping = nullptr;
 
   if (!use_boot_file) {
     bootsector->jump[0] = 0xeb;
@@ -1077,10 +1077,10 @@ void VVFATMediaImage::set_file_attributes(void)
 
   sprintf(path, "%s/%s", vvfat_path, VVFAT_ATTR);
   fd = fopen(path, "r");
-  if (fd != NULL) {
+  if (fd != nullptr) {
     do {
       ret = fgets(line, sizeof(line) - 1, fd);
-      if (ret != NULL) {
+      if (ret != nullptr) {
         line[sizeof(line) - 1] = '\0';
         size_t len = strlen(line);
         if ((len > 0) && (line[len - 1] < ' ')) line[len - 1] = '\0';
@@ -1098,10 +1098,10 @@ void VVFATMediaImage::set_file_attributes(void)
           sprintf(fpath, "%s/%s", vvfat_path, path);
         }
         mapping_t* mapping = find_mapping_for_path(fpath);
-        if (mapping != NULL) {
+        if (mapping != nullptr) {
           direntry_t* entry = (direntry_t*)array_get(&directory, mapping->dir_index);
           attributes = entry->attributes;
-          ptr = strtok(NULL, "");
+          ptr = strtok(nullptr, "");
           for (i = 0; i < (int)strlen(ptr); i++) {
             switch (ptr[i]) {
               case 'a':
@@ -1132,7 +1132,7 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
   char path[PATHNAME_LEN];
   uint8_t sector_buffer[0x200];
   int filedes;
-  const char *logname = NULL;
+  const char *logname = nullptr;
   char ftype[10];
   bool ftype_ok;
 
@@ -1292,14 +1292,14 @@ int VVFATMediaImage::open(const char* dirname, int /*flags*/)
   // VOLATILE WRITE SUPPORT
   snprintf(path, PATHNAME_LEN, "%s/vvfat.dir", dirname);
   // if redolog name was set
-  if (redolog_name != NULL) {
+  if (redolog_name != nullptr) {
     if (strcmp(redolog_name, "") != 0) {
       logname = redolog_name;
     }
   }
 
   // otherwise use path as template
-  if (logname == NULL) {
+  if (logname == nullptr) {
     logname = path;
   }
 
@@ -1342,7 +1342,7 @@ direntry_t* VVFATMediaImage::read_direntry(uint8_t *buffer, char *filename)
   do {
     entry = (direntry_t*)buffer;
     if (entry->name[0] == 0) {
-      entry = NULL;
+      entry = nullptr;
       break;
     } else if ((entry->name[0] != '.') && (entry->name[0] != 0xe5) &&
                ((entry->attributes & 0x0f) != 0x08)) {
@@ -1488,7 +1488,7 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
   }
   utime(path, &ut);
 #else
-  hFile = CreateFile(path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  hFile = CreateFile(path, GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
   if (hFile != INVALID_HANDLE_VALUE) {
     memset(&st, 0, sizeof(st));
     st.wYear = (entry->mdate >> 9) + 1980;
@@ -1511,7 +1511,7 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
     } else {
       at = mt;
     }
-    SetFileTime(hFile, NULL, &at, &mt);
+    SetFileTime(hFile, nullptr, &at, &mt);
     CloseHandle(hFile);
   }
 #endif
@@ -1558,10 +1558,10 @@ void VVFATMediaImage::parse_directory(const char *path, uint32_t start_cluster)
   ptr = buffer;
   do {
     newentry = read_direntry(ptr, filename);
-    if (newentry != NULL) {
+    if (newentry != nullptr) {
       sprintf(full_path, "%s/%s", path, filename);
       if ((newentry->attributes != 0x10) && (newentry->attributes != 0x20)) {
-        if (vvfat_attr_fd != NULL) {
+        if (vvfat_attr_fd != nullptr) {
           attr_txt[0] = 0;
           if ((newentry->attributes & 0x30) == 0) strcpy(attr_txt, "a");
           if (newentry->attributes & 0x04) strcpy(attr_txt, "S");
@@ -1577,14 +1577,14 @@ void VVFATMediaImage::parse_directory(const char *path, uint32_t start_cluster)
       }
       fstart = dtoh16(newentry->begin) | (dtoh16(newentry->begin_hi) << 16);
       mapping = find_mapping_for_cluster(fstart);
-      if (mapping == NULL) {
+      if (mapping == nullptr) {
         if ((newentry->attributes & 0x10) > 0) {
           mkdir(full_path);
           parse_directory(full_path, fstart);
         } else {
           if (access(full_path, F_OK) == 0) {
             mapping = find_mapping_for_path(full_path);
-            if (mapping != NULL) {
+            if (mapping != nullptr) {
               mapping->mode &= ~MODE_DELETED;
             }
             write_file(full_path, newentry, 0);
@@ -1625,7 +1625,7 @@ void VVFATMediaImage::parse_directory(const char *path, uint32_t start_cluster)
             } else {
               if (access(full_path, F_OK) == 0) {
                 mapping = find_mapping_for_path(full_path);
-                if (mapping != NULL) {
+                if (mapping != nullptr) {
                   mapping->mode &= ~MODE_DELETED;
                 }
                 write_file(full_path, newentry, 0);
@@ -1638,7 +1638,7 @@ void VVFATMediaImage::parse_directory(const char *path, uint32_t start_cluster)
       }
       ptr = (uint8_t*)newentry+32;
     }
-  } while ((newentry != NULL) && ((uint32_t)(ptr - buffer) < size));
+  } while ((newentry != nullptr) && ((uint32_t)(ptr - buffer) < size));
   free(buffer);
 }
 
@@ -1663,7 +1663,7 @@ void VVFATMediaImage::commit_changes(void)
   vvfat_attr_fd = fopen(path, "w");
   // parse new directory tree and create / modify directories and files
   parse_directory(vvfat_path, (fat_type == 32) ? first_cluster_of_root_dir : 0);
-  if (vvfat_attr_fd != NULL)
+  if (vvfat_attr_fd != nullptr)
     fclose(vvfat_attr_fd);
   // remove all directories and files still marked for delete
   for (i = this->mapping.next - 1; i > 0; i--) {
@@ -1696,7 +1696,7 @@ void VVFATMediaImage::close(void)
     free(mapping->path);
   }
   array_free(&this->mapping);
-  if (cluster_buffer != NULL)
+  if (cluster_buffer != nullptr)
     delete [] cluster_buffer;
 
   redolog->close();
@@ -1705,10 +1705,10 @@ void VVFATMediaImage::close(void)
   // on non-unix we have to wait till the file is closed to delete it
   unlink(redolog_temp);
 #endif
-  if (redolog_temp!=NULL)
+  if (redolog_temp!=nullptr)
     free(redolog_temp);
 
-  if (redolog_name!=NULL)
+  if (redolog_name!=nullptr)
     free(redolog_name);
 }
 
@@ -1731,7 +1731,7 @@ int64_t VVFATMediaImage::lseek(int64_t offset, int whence)
 void VVFATMediaImage::close_current_file(void)
 {
   if(current_mapping) {
-    current_mapping = NULL;
+    current_mapping = nullptr;
     if (current_fd) {
       ::close(current_fd);
       current_fd = 0;
@@ -1770,10 +1770,10 @@ mapping_t* VVFATMediaImage::find_mapping_for_cluster(int cluster_num)
   int index = find_mapping_for_cluster_aux(cluster_num, 0, mapping.next);
   mapping_t* mapping;
   if (index >= (int)this->mapping.next)
-    return NULL;
+    return nullptr;
   mapping = (mapping_t*)array_get(&this->mapping, index);
   if ((int)mapping->begin > cluster_num)
-    return NULL;
+    return nullptr;
   ASSERT(((int)mapping->begin <= cluster_num) && ((int)mapping->end > cluster_num));
   return mapping;
 }
@@ -1789,7 +1789,7 @@ mapping_t* VVFATMediaImage::find_mapping_for_path(const char* path)
       if ((mapping->first_mapping_index < 0) && !strcmp(path, mapping->path))
         return mapping;
     }
-    return NULL;
+    return nullptr;
 }
 
 int VVFATMediaImage::open_file(mapping_t* mapping)

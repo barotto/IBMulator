@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -164,7 +164,7 @@ const Rocket::Core::String & SysDebugger::disasm(uint16_t _selector, uint16_t _i
 	uint32_t start = debugger.get_address(_selector, _ip, &g_cpucore);
 	char dline[200];
 	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory);
-	if(_size!=NULL) {
+	if(_size!=nullptr) {
 		*_size = size;
 	}
 
@@ -266,7 +266,7 @@ void SysDebugger::update()
 	nextip += size;
 	str += disasm(REG_CS.sel.value, nextip, false, &size) + "<br />";
 	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, NULL);
+	str += disasm(REG_CS.sel.value, nextip, false, nullptr);
 	m_disasm.line0->SetInnerRML(str);
 
 	str.FormatString(3, "%02X", g_machine.get_POST_code());

@@ -1,21 +1,21 @@
 /*
- * 	Copyright (c) 2002-2014  The Bochs Project
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2002-2014  The Bochs Project
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -90,7 +90,7 @@ int hdimage_open_temp(const char *_pathname, char *_template, int _flags,
 	);
 	int srcfd;
 	if(tmpfd >= 0) {
-		srcfd = hdimage_open_file(_pathname, O_RDONLY, _fsize, NULL);
+		srcfd = hdimage_open_file(_pathname, O_RDONLY, _fsize, nullptr);
 		if(srcfd >= 0) {
 			if(!hdimage_backup_file(srcfd, tmpfd)) {
 				::close(tmpfd);
@@ -111,7 +111,7 @@ int hdimage_detect_image_mode(const char *pathname)
 	int result = HDIMAGE_MODE_UNKNOWN;
 	uint64_t image_size = 0;
 
-	int fd = hdimage_open_file(pathname, O_RDONLY, &image_size, NULL);
+	int fd = hdimage_open_file(pathname, O_RDONLY, &image_size, nullptr);
 	if(fd < 0) {
 		return result;
 	}
@@ -162,7 +162,7 @@ bool hdimage_backup_file(int _from_fd, int _backup_fd)
 	offset = 0;
 	size = 0x20000;
 	buf = (char*)malloc(size);
-	if(buf == NULL) {
+	if(buf == nullptr) {
 		return false;
 	}
 	while((nread = read_image(_from_fd, offset, buf, size)) > 0) {
@@ -210,7 +210,7 @@ bool hdimage_copy_file(const char *src, const char *dst)
 #elif defined(__linux__)
   pid_t pid, ws;
 
-  if((src == NULL) || (dst == NULL)) {
+  if((src == nullptr) || (dst == nullptr)) {
     return 0;
   }
 
@@ -245,7 +245,7 @@ bool hdimage_copy_file(const char *src, const char *dst)
   offset = 0;
   size = 0x20000;
   buf = (char*)malloc(size);
-  if(buf == NULL) {
+  if(buf == nullptr) {
     ::close(fd1);
     ::close(fd2);
     return 0;
@@ -435,8 +435,8 @@ bool FlatMediaImage::is_valid()
 RedoLog::RedoLog()
 {
   fd = -1;
-  catalog = NULL;
-  bitmap = NULL;
+  catalog = nullptr;
+  bitmap = nullptr;
   extent_index = (uint32_t)0;
   extent_offset = (uint32_t)0;
   extent_next = (uint32_t)0;
@@ -506,7 +506,7 @@ int RedoLog::make_header(const char* type, uint64_t size)
   catalog = (uint32_t*)malloc(dtoh32(header.specific.catalog) * sizeof(uint32_t));
   bitmap = (uint8_t*)malloc(dtoh32(header.specific.bitmap));
 
-  if ((catalog == NULL) || (bitmap==NULL))
+  if ((catalog == nullptr) || (bitmap==nullptr))
     PERRF_ABORT(LOG_HDD, "redolog : could not malloc catalog or bitmap\n");
 
   for (uint32_t i=0; i<dtoh32(header.specific.catalog); i++)
@@ -664,10 +664,10 @@ void RedoLog::close()
   if (fd >= 0)
     ::close(fd);
 
-  if (catalog != NULL)
+  if (catalog != nullptr)
     free(catalog);
 
-  if (bitmap != NULL)
+  if (bitmap != nullptr)
     free(bitmap);
 }
 

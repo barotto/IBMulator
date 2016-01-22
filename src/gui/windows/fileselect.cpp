@@ -1,20 +1,20 @@
 /*
- * 	Copyright (c) 2015  Marco Bortolin
+ * Copyright (C) 2015, 2016  Marco Bortolin
  *
- *	This file is part of IBMulator
+ * This file is part of IBMulator.
  *
- *  IBMulator is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *	IBMulator is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- *	You should have received a copy of the GNU General Public License
- *	along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "ibmulator.h"
@@ -45,8 +45,8 @@ Window(_gui, "fileselect.rml"),
 Rocket::Controls::DataSource("file_select")
 {
 	ASSERT(m_wnd);
-	m_select_callbk = NULL;
-	m_cancel_callbk = NULL;
+	m_select_callbk = nullptr;
+	m_cancel_callbk = nullptr;
 	m_cwd_el = get_element("cwd");
 	m_wprotect = dynamic_cast<RCN::ElementFormControl*>(get_element("wprotect"));
 	init_events();
@@ -105,7 +105,7 @@ void FileSelect::on_file(RC::Event &_event)
 	if(m_select_callbk != nullptr) {
 		path += FS_SEP;
 		path += it->name;
-		bool wp = m_wprotect->GetAttribute("checked") != NULL;
+		bool wp = m_wprotect->GetAttribute("checked") != nullptr;
 		m_select_callbk(path,wp);
 	} else {
 		hide();
@@ -114,7 +114,7 @@ void FileSelect::on_file(RC::Event &_event)
 
 void FileSelect::on_cancel(RC::Event &)
 {
-	if(m_cancel_callbk != NULL) {
+	if(m_cancel_callbk != nullptr) {
 		m_cancel_callbk();
 	} else {
 		hide();
@@ -208,7 +208,7 @@ bool FileSelect::DirEntry::operator<(const FileSelect::DirEntry &_other) const
 void FileSelect::set_current_dir(const std::string &_path)
 {
 	char buf[PATH_MAX];
-	if(realpath(_path.c_str(), buf) == NULL) {
+	if(realpath(_path.c_str(), buf) == nullptr) {
 		PERRF(LOG_GUI, "unable to set the current path to '%s'\n", _path.c_str());
 		throw std::exception();
 	}
@@ -231,13 +231,13 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 	DIR *dir;
 	struct dirent *ent;
 
-	if((dir = opendir(_path.c_str())) == NULL) {
+	if((dir = opendir(_path.c_str())) == nullptr) {
 		PERRF(LOG_FS, "Unable to open directory %s\n", _path.c_str());
 		throw std::exception();
 	}
 	_path += FS_SEP;
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
-	while((ent = readdir(dir)) != NULL) {
+	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		DirEntry de;
 		de.name = ent->d_name;
