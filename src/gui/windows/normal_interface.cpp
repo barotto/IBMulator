@@ -43,7 +43,7 @@ NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
 :
 Interface(_machine, _gui, _mixer, "normal_interface.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_wnd->AddEventListener("click", this, false);
 

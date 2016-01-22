@@ -203,7 +203,7 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 	if(strstr(instu,"CALL") == instu) {
 		//eg: CALL 000F2084  ($-3325)
 		pos = strchr(instu,' ');
-		ASSERT(pos);
+		assert(pos);
 		pos++;
 		uint32_t addr;
 		if(sscanf(pos, "%x",&addr)) {
@@ -278,7 +278,7 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 					}	break;
 		}
 		pos = strchr(instu,' ');
-		ASSERT(pos);
+		assert(pos);
 		uint32_t addr=0;
 		uint32_t seg,off;
 		pos = skip_blanks(pos);
@@ -401,7 +401,7 @@ const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 		uint slen = strlen(result);
 		char * curpos = result + slen;
 		reslen -= slen;
-		ASSERT(reslen>0);
+		assert(reslen>0);
 
 		if(interr->second.decoder) {
 			interr->second.decoder(call, ax, core, mem, curpos, reslen);

@@ -35,7 +35,7 @@ Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer)
 :
 Window(_gui, "stats.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	m_stats.fps = get_element("FPS");
 	g_program.get_bench().endl = "<br />";
 

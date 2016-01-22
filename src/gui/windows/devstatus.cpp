@@ -33,7 +33,7 @@ DevStatus::DevStatus(GUI * _gui)
 :
 Window(_gui, "devstatus.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_pic.irq_e[0] = get_element("pic_irq_0");
 	m_pic.irq_e[1] = get_element("pic_irq_1");
@@ -134,7 +134,7 @@ DevStatus::~DevStatus()
 
 void DevStatus::update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn)
 {
-	ASSERT(_irqn<16);
+	assert(_irqn<16);
 	bool mybit, picbit;
 
 	picbit = (_irq>>_irqn) & 1;

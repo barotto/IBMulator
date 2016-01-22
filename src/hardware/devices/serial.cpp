@@ -1332,7 +1332,7 @@ void Serial::tx_timer(uint8_t port)
 				PDEBUGF(LOG_V2, LOG_COM, "COM%d: write: '%c'\n", port+1, m_s[port].tsrbuffer);
 				if(m_s[port].tty_id >= 0) {
 					ssize_t res = ::write(m_s[port].tty_id, (void*) & m_s[port].tsrbuffer, 1);
-					ASSERT(res==1);
+					assert(res==1);
 				}
 				#endif
 				break;
@@ -1354,7 +1354,7 @@ void Serial::tx_timer(uint8_t port)
 					::send(m_s[port].socket_id, (const char*) & m_s[port].tsrbuffer, 1, 0);
 					#else
 					ssize_t res = ::write(m_s[port].socket_id, (void*)&m_s[port].tsrbuffer, 1);
-					ASSERT(res==1);
+					assert(res==1);
 					#endif
 				}
 				break;
@@ -1488,7 +1488,7 @@ void Serial::rx_timer(uint8_t port)
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
 				if((m_s[port].tty_id >= 0) && (select(m_s[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1)) {
 					ssize_t res = ::read(m_s[port].tty_id, &chbuf, 1);
-					ASSERT(res==1);
+					assert(res==1);
 					PDEBUGF(LOG_V2, LOG_COM, "COM%d: read: '%c'\n", port+1, chbuf);
 					data_ready = 1;
 				}

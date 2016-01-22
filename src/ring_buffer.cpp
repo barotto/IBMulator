@@ -38,7 +38,7 @@ void RingBuffer::set_size(size_t _size)
 {
 	m_data.resize(_size);
 	m_size = _size;
-	ASSERT(m_data.size() == m_size);
+	assert(m_data.size() == m_size);
 	clear();
 }
 

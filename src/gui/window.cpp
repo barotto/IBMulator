@@ -55,33 +55,33 @@ void Window::init_events()
 
 void Window::show()
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_wnd->Show();
 }
 
 void Window::hide()
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_wnd->Hide();
 }
 
 bool Window::is_visible()
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	return m_wnd->IsVisible();
 }
 
 void Window::update()
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 }
 
 RC::Element * Window::get_element(const RC::String &_id)
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	RC::Element * el = m_wnd->GetElementById(_id);
 	if(!el) {
 		PERRF(LOG_GUI, "element %s not found!\n", _id.CString());

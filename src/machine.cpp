@@ -400,9 +400,9 @@ bool Machine::update_timers(uint64_t _cpu_time)
 	while(timer != triggered.end()) {
 		uint64_t thistimer_time = timer->first;
 		uint64_t system_time = m_s.virt_time;
-		ASSERT(thistimer_time >= prevtimer_time);
-		ASSERT(thistimer_time <= _cpu_time);
-		ASSERT(thistimer_time >= system_time);
+		assert(thistimer_time >= prevtimer_time);
+		assert(thistimer_time <= _cpu_time);
+		assert(thistimer_time >= system_time);
 
 		// Call requested timer function.  It may request a different
 		// timer period or deactivate etc.
@@ -511,8 +511,8 @@ void Machine::activate_timer(unsigned _timer, uint32_t _usecs, bool _continuous)
 
 void Machine::activate_timer_ns(unsigned _timer, uint32_t _nsecs, bool _continuous)
 {
-	ASSERT(_timer!=0);
-	ASSERT(_timer<m_num_timers);
+	assert(_timer!=0);
+	assert(_timer<m_num_timers);
 
 	// if _nsecs = 0, use default stored in period field
 	if(_nsecs == 0) {
@@ -531,35 +531,35 @@ void Machine::activate_timer_ns(unsigned _timer, uint32_t _nsecs, bool _continuo
 
 void Machine::deactivate_timer(unsigned _timer)
 {
-	ASSERT(_timer!=0);
-	ASSERT(_timer<m_num_timers);
+	assert(_timer!=0);
+	assert(_timer<m_num_timers);
 
 	m_timers[_timer].active = false;
 }
 
 void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func)
 {
-	ASSERT(_timer>0);
-	ASSERT(_timer<m_num_timers);
+	assert(_timer>0);
+	assert(_timer<m_num_timers);
 
 	m_timers[_timer].fire = _func;
 }
 
 void Machine::register_irq(uint8_t _irq, const char* _name)
 {
-	ASSERT(_irq<16);
+	assert(_irq<16);
 	m_irq_names[_irq] = _name;
 }
 
 void Machine::unregister_irq(uint8_t _irq)
 {
-	ASSERT(_irq<16);
+	assert(_irq<16);
 	m_irq_names[_irq] = "?";
 }
 
 const char* Machine::get_irq_name(uint8_t _irq)
 {
-	ASSERT(_irq<16);
+	assert(_irq<16);
 	return m_irq_names[_irq].c_str();
 }
 

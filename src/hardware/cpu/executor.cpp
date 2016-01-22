@@ -93,7 +93,7 @@ inline SegReg & CPUExecutor::EA_get_segreg()
 			return SEG_REG(m_base_ss);
 	}
 
-	ASSERT(false);
+	assert(false);
 
 	//keep compiler happy, but you really don't want to end here!
 	return REG_DS;
@@ -245,7 +245,7 @@ void CPUExecutor::write_flags(uint16_t _flags,
 
 void CPUExecutor::read_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
 {
-	ASSERT(_len!=0);
+	assert(_len!=0);
 	uint8_t vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
 	if(!_seg.desc.valid) {
 		PDEBUGF(LOG_V2, LOG_CPU, "read_check_pmode(): segment not valid\n");
@@ -259,7 +259,7 @@ void CPUExecutor::read_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
 
 void CPUExecutor::write_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
 {
-	ASSERT(_len!=0);
+	assert(_len!=0);
 	uint8_t vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
 	if(!_seg.desc.valid) {
 		PDEBUGF(LOG_V2, LOG_CPU, "write_check_pmode(): segment not valid\n");

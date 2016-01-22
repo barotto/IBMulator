@@ -45,9 +45,9 @@ extern Syslog g_syslog;
 
 #define PERRFEX(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__) }
 
-#define PERR_ABORT(format,...) 		{ LOG(LOG_ERROR,LOG_PROGRAM,LOG_V0,format, ## __VA_ARGS__) ; RASSERT(false); }
-#define PERRF_ABORT(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,format, ## __VA_ARGS__) ; RASSERT(false); }
-#define PERRFEX_ABORT(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__) ; RASSERT(false); }
+#define PERR_ABORT(format,...) 		{ LOG(LOG_ERROR,LOG_PROGRAM,LOG_V0,format, ## __VA_ARGS__) ; exit(1); }
+#define PERRF_ABORT(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,format, ## __VA_ARGS__) ; exit(1); }
+#define PERRFEX_ABORT(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__) ; exit(1); }
 
 #define ICONV(from,to,str,len) g_syslog.convert(from,to,str,len)
 

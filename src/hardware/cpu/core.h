@@ -263,12 +263,12 @@ public:
 	void touch_segment(Selector & _selector, Descriptor & _descriptor) const;
 
 
-	inline GenReg & gen_reg(uint8_t idx) { ASSERT(idx<8); return m_genregs[idx]; }
-	inline SegReg & seg_reg(uint8_t idx) { ASSERT(idx<4); return m_segregs[idx]; }
+	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
+	inline SegReg & seg_reg(uint8_t idx) { assert(idx<4); return m_segregs[idx]; }
 
 	//only real mode:
 	inline void set_CS(uint16_t _val) {
-		ASSERT(!IS_PMODE());
+		assert(!IS_PMODE());
 		load_segment_real(m_segregs[REGI_CS], _val, true);
 	}
 	//only protected mode

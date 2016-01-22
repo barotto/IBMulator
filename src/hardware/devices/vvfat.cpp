@@ -99,7 +99,7 @@ static inline void array_free(array_t* array)
 // does not automatically grow
 static inline void* array_get(array_t* array,unsigned int index)
 {
-  ASSERT(index < array->next);
+  assert(index < array->next);
   return array->pointer + index * array->item_size;
 }
 
@@ -601,7 +601,7 @@ int VVFATMediaImage::read_directory(int mapping_index)
   struct dirent* entry;
   int i;
 
-  ASSERT(mapping->mode & MODE_DIRECTORY);
+  assert(mapping->mode & MODE_DIRECTORY);
 
   if (!dir) {
     mapping->end = mapping->begin;
@@ -932,7 +932,7 @@ int VVFATMediaImage::init_directories(const char* dirname)
       }
       mapping = (mapping_t*)array_get(&this->mapping, i);
     } else {
-      ASSERT(mapping->mode == MODE_UNDEFINED);
+      assert(mapping->mode == MODE_UNDEFINED);
       mapping->mode = MODE_NORMAL;
       mapping->begin = cluster;
       if (mapping->end > 0) {
@@ -946,7 +946,7 @@ int VVFATMediaImage::init_directories(const char* dirname)
       }
     }
 
-    ASSERT(mapping->begin < mapping->end);
+    assert(mapping->begin < mapping->end);
 
     /* next free cluster */
     cluster = mapping->end;
@@ -970,7 +970,7 @@ int VVFATMediaImage::init_directories(const char* dirname)
   }
 
   mapping = (mapping_t*)array_get(&this->mapping, 0);
-  ASSERT((fat_type == 32) || (mapping->end == 2));
+  assert((fat_type == 32) || (mapping->end == 2));
 
   // the FAT signature
   fat_set(0, max_fat_value);
@@ -1453,11 +1453,11 @@ bool VVFATMediaImage::write_file(const char *path, direntry_t *entry, bool creat
     ssize_t res;
     if (fsize > csize) {
       res = ::write(fd, buffer, csize);
-      ASSERT(res==csize);
+      assert(res==csize);
       fsize -= csize;
     } else {
       res = ::write(fd, buffer, fsize);
-      ASSERT(res==fsize);
+      assert(res==fsize);
     }
     next = fat_get_next(cur);
     if ((next >= rsvd_clusters) && (next < bad_cluster)) {
@@ -1749,9 +1749,9 @@ int VVFATMediaImage::find_mapping_for_cluster_aux(int cluster_num, int index1, i
     mapping_t* mapping;
     index3 = (index1+index2) / 2;
     mapping = (mapping_t*)array_get(&this->mapping, index3);
-    ASSERT(mapping->begin < mapping->end);
+    assert(mapping->begin < mapping->end);
     if (mapping->begin >= (unsigned int)cluster_num) {
-    	ASSERT(index2 != index3 || index2 == 0);
+    	assert(index2 != index3 || index2 == 0);
       if (index2 == index3)
         return index1;
       index2 = index3;
@@ -1760,7 +1760,7 @@ int VVFATMediaImage::find_mapping_for_cluster_aux(int cluster_num, int index1, i
         return (mapping->end <= (unsigned int)cluster_num) ? index2 : index1;
       index1 = index3;
     }
-    ASSERT(index1 <= index2);
+    assert(index1 <= index2);
   }
   return 0; //keeps compiler happy
 }
@@ -1774,7 +1774,7 @@ mapping_t* VVFATMediaImage::find_mapping_for_cluster(int cluster_num)
   mapping = (mapping_t*)array_get(&this->mapping, index);
   if ((int)mapping->begin > cluster_num)
     return nullptr;
-  ASSERT(((int)mapping->begin <= cluster_num) && ((int)mapping->end > cluster_num));
+  assert(((int)mapping->begin <= cluster_num) && ((int)mapping->end > cluster_num));
   return mapping;
 }
 
@@ -1823,14 +1823,14 @@ int VVFATMediaImage::read_cluster(int cluster_num)
   if (current_cluster != cluster_num) {
     int result=0;
     off_t offset;
-    ASSERT(!current_mapping || current_fd || (current_mapping->mode & MODE_DIRECTORY));
+    assert(!current_mapping || current_fd || (current_mapping->mode & MODE_DIRECTORY));
     if (!current_mapping
         || ((int)current_mapping->begin > cluster_num)
         || ((int)current_mapping->end <= cluster_num)) {
       // binary search of mappings for file
       mapping = find_mapping_for_cluster(cluster_num);
 
-      ASSERT(!mapping || ((cluster_num >= (int)mapping->begin) && (cluster_num < (int)mapping->end)));
+      assert(!mapping || ((cluster_num >= (int)mapping->begin) && (cluster_num < (int)mapping->end)));
 
       if (mapping && (mapping->mode & MODE_DIRECTORY)) {
         close_current_file();
@@ -1839,8 +1839,8 @@ read_cluster_directory:
         offset = cluster_size * (cluster_num - current_mapping->begin);
         cluster = (unsigned char*)directory.pointer+offset
                      + 0x20 * current_mapping->info.dir.first_dir_index;
-        ASSERT(((cluster -(unsigned char*)directory.pointer) % cluster_size) == 0);
-        ASSERT((char*)cluster + cluster_size <= directory.pointer + directory.next * directory.item_size);
+        assert(((cluster -(unsigned char*)directory.pointer) % cluster_size) == 0);
+        assert((char*)cluster + cluster_size <= directory.pointer + directory.next * directory.item_size);
         current_cluster = cluster_num;
         return 0;
       }
@@ -1850,7 +1850,7 @@ read_cluster_directory:
     } else if (current_mapping->mode & MODE_DIRECTORY)
       goto read_cluster_directory;
 
-    ASSERT(current_fd);
+    assert(current_fd);
 
     offset = cluster_size * (cluster_num - current_mapping->begin) + current_mapping->info.file.offset;
     if (::lseek(current_fd, offset, SEEK_SET) != offset)

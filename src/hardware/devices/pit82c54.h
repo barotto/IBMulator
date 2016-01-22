@@ -131,42 +131,42 @@ public:
 	void print_cnum(uint8_t cnum);
 
 	inline bool new_count_ready(int countnum) const {
-		ASSERT(countnum<=MAX_COUNTER);
+		assert(countnum<=MAX_COUNTER);
 		return (counter[countnum].write_state != MSByte_multiple);
 	}
 
 	inline void set_OUT_handler(uint8_t counternum, out_handler_t outh) {
-		ASSERT(counternum<=MAX_COUNTER);
+		assert(counternum<=MAX_COUNTER);
 		counter[counternum].out_handler = outh;
 	}
 
 	inline bool read_OUT(uint8_t cnum) const {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		return counter[cnum].OUTpin;
 	}
 
 	inline bool read_GATE(uint8_t cnum) const {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		return counter[cnum].GATE;
 	}
 
 	inline uint8_t read_mode(uint8_t cnum) const {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		return counter[cnum].mode;
 	}
 
 	inline uint32_t read_CNT(uint8_t cnum) const {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		return counter[cnum].count;
 	}
 
 	inline uint16_t read_inlatch(uint8_t cnum) const {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		return counter[cnum].inlatch;
 	}
 
 	inline void set_GATE(uint8_t cnum, bool data) {
-		ASSERT(cnum<=MAX_COUNTER);
+		assert(cnum<=MAX_COUNTER);
 		counter[cnum].set_GATE(data);
 	}
 };

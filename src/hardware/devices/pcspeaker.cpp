@@ -172,7 +172,7 @@ void PCSpeaker::add_event(uint64_t _time, bool _active, bool _out)
 		//it's definitely an error. The offender is not create_samples(), I've
 		//already checked.
 		_time = m_events.back().time;
-		//ASSERT(_time > m_events.back().time);
+		//assert(_time > m_events.back().time);
 		PDEBUGF(LOG_V2, LOG_PIT, "_time > m_events.back().time\n");
 	}
 

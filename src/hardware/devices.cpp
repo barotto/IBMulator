@@ -104,7 +104,7 @@ void Devices::register_device(IODevice *_iodev)
 
 void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask)
 {
-	ASSERT(_iodev);
+	assert(_iodev);
 
 	if(m_read_handlers[_port].device != nullptr) {
 		PERRF(LOG_MACHINE, "IO device %s address conflict(read) with device %s at IO address 0x%04X\n",
@@ -136,7 +136,7 @@ void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask
 
 void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mask)
 {
-	ASSERT(_iodev);
+	assert(_iodev);
 
 	if(m_write_handlers[_port].device != nullptr) {
 		PERRF(LOG_MACHINE, "IO device %s address conflict(write) with device %s at IO address 0x%04X\n",

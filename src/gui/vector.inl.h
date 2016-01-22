@@ -713,7 +713,7 @@ inline vec3<T> vec3<T>::yz3(T _x) const
 template<class T>
 void vec3<T>::copy_from(const T* _data)
 {
-	ASSERT(_data != nullptr);
+	assert(_data != nullptr);
 	x = _data[0];
 	y = _data[1];
 	z = _data[2];
@@ -852,7 +852,7 @@ inline vec2<T> vec4<T>::xy()
 template<class T>
 void vec4<T>::copy_from(const T* _data)
 {
-	ASSERT(_data != nullptr);
+	assert(_data != nullptr);
 	x = _data[0];
 	y = _data[1];
 	z = _data[2];

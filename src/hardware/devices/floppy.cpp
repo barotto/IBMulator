@@ -261,7 +261,7 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 void FloppyCtrl::floppy_drive_setup(uint drive)
 {
 	const char *drivename, *section, *typekey;
-	ASSERT(drive<=1);
+	assert(drive<=1);
 	if(drive == 0) {
 		drivename = "A";
 		section = DISK_A_SECTION;
@@ -487,7 +487,7 @@ uint16_t FloppyCtrl::read(uint16_t address, unsigned)
 			break;
 		}
 		default:
-			ASSERT(false);
+			assert(false);
 			return 0;
 	}
 

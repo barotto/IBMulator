@@ -33,7 +33,7 @@ Status::Status(GUI * _gui)
 :
 Window(_gui, "status.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	m_status.power_led = get_element("power_led");
 	m_status.floppy_a_led = get_element("floppy_a_led");
 	m_status.floppy_b_led = get_element("floppy_b_led");

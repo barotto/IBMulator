@@ -44,7 +44,7 @@ FileSelect::FileSelect(GUI * _gui)
 Window(_gui, "fileselect.rml"),
 Rocket::Controls::DataSource("file_select")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	m_select_callbk = nullptr;
 	m_cancel_callbk = nullptr;
 	m_cwd_el = get_element("cwd");

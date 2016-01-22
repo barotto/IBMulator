@@ -61,7 +61,7 @@ m_quad_data{
 	 1.0f,  1.0f, 0.0f
 }
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	m_machine = _machine;
 	m_mixer = _mixer;
 

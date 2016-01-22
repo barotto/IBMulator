@@ -145,7 +145,7 @@ int Keymap::get_next_word(char *_output)
 	*copyp = 0;  // null terminate the copy
 	// there must be at least one nonspace, since that's why we stopped the
 	// first loop!
-	ASSERT(copyp != _output);
+	assert(copyp != _output);
 	return 0;
 }
 

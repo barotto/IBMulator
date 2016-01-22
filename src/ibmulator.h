@@ -71,9 +71,6 @@ void size_check()
 
 #ifndef NDEBUG
 	//DEBUG
-	#define ASSERT(T) assert(T)
-	#define RASSERT(T) assert(T)
-
 	#define CONFIG_PARSE  true
 	#define MEMORY_TRAPS  false
 	#define INT_TRAPS     true
@@ -88,9 +85,6 @@ void size_check()
 
 #else
 	//RELEASE
-	#define ASSERT(T)
-	#define RASSERT(T) assert(T)
-
 	#define CONFIG_PARSE  true
 	#define MEMORY_TRAPS  false
 	#define INT_TRAPS     false

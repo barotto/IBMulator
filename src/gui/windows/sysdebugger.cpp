@@ -54,7 +54,7 @@ SysDebugger::SysDebugger(Machine *_machine, GUI *_gui)
 :
 Window(_gui, "debugger.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_wnd->AddEventListener("click", this, false);
 
@@ -144,7 +144,7 @@ SysDebugger::~SysDebugger()
 
 void SysDebugger::read_memory(uint32_t _address, uint8_t *_buf, uint _len)
 {
-	ASSERT(_buf);
+	assert(_buf);
 
 	while(_len--) {
 		*(_buf++) = g_memory.read_byte_notraps(_address++);

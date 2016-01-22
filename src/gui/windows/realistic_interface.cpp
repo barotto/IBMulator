@@ -64,7 +64,7 @@ RealisticInterface::RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mi
 :
 Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 
 	m_wnd->AddEventListener("click", this, false);
 	m_wnd->AddEventListener("drag", this, false);

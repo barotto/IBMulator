@@ -131,7 +131,7 @@ uint8_t CPUBus::fetchb()
 {
 	uint8_t b;
 	if(USE_PREFETCH_QUEUE) {
-		ASSERT(m_s.csip<=m_s.pq_tail);
+		assert(m_s.csip<=m_s.pq_tail);
 		if(m_s.csip == m_s.pq_tail) {
 			//the pq is empty
 			if(CPU_PQ_ODDPENALTY) {
@@ -159,7 +159,7 @@ uint16_t CPUBus::fetchw()
 {
 	uint8_t b0, b1;
 	if(USE_PREFETCH_QUEUE) {
-		ASSERT(m_s.csip<=m_s.pq_tail);
+		assert(m_s.csip<=m_s.pq_tail);
 		if(m_s.csip >= m_s.pq_tail - 1) {
 			//the pq is empty or not full enough
 			if(CPU_PQ_ODDPENALTY) {

@@ -278,7 +278,7 @@ bool mat3<T>::is_identity()
 template<class T>
 void mat3<T>::copy_from(const T* _data)
 {
-	ASSERT(_data != nullptr);
+	assert(_data != nullptr);
 	Memcopy(m_data, _data, sizeof(T)*9);
 }
 
@@ -845,8 +845,8 @@ const T* mat4<T>::get_col_w() const
 template<class T>
 T& mat4<T>::element(int _row, int _col)
 {
-	ASSERT(_row>=0 && _row<4);
-	ASSERT(_col>=0 && _col<4);
+	assert(_row>=0 && _row<4);
+	assert(_col>=0 && _col<4);
 
 	return m_data[_row+_col*4];
 }
@@ -855,8 +855,8 @@ T& mat4<T>::element(int _row, int _col)
 template<class T>
 const T& mat4<T>::element(int _row, int _col) const
 {
-	ASSERT(_row>=0 && _row<4);
-	ASSERT(_col>=0 && _col<4);
+	assert(_row>=0 && _row<4);
+	assert(_col>=0 && _col<4);
 
 	return m_data[_row+_col*4];
 }
@@ -865,7 +865,7 @@ const T& mat4<T>::element(int _row, int _col) const
 template<class T>
 void mat4<T>::copy_from(const T* _data)
 {
-	ASSERT(_data != nullptr);
+	assert(_data != nullptr);
 	memcopy(m_data, _data, sizeof(T)*16);
 }
 

@@ -27,7 +27,7 @@ Desktop::Desktop(GUI * _gui)
 :
 Window(_gui, "desktop.rml")
 {
-	ASSERT(m_wnd);
+	assert(m_wnd);
 	m_wnd->AddEventListener("click", this, false);
 }
 

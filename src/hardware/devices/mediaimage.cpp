@@ -555,12 +555,12 @@ int RedoLog::create(int filedes, const char* type, uint64_t size)
   ssize_t res;
   // Write header
   res = ::write(fd, &header, dtoh32(header.standard.header));
-  ASSERT(unsigned(res)==dtoh32(header.standard.header));
+  assert(unsigned(res)==dtoh32(header.standard.header));
 
   // Write catalog
   // FIXME could mmap
   res = ::write(fd, catalog, dtoh32(header.specific.catalog) * sizeof (uint32_t));
-  ASSERT(unsigned(res)==dtoh32(header.specific.catalog) * sizeof (uint32_t));
+  assert(unsigned(res)==dtoh32(header.specific.catalog) * sizeof (uint32_t));
 
   return 0;
 }
@@ -802,12 +802,12 @@ ssize_t RedoLog::write(const void* buf, size_t count)
     ssize_t res;
     for (i=0; i<bitmap_blocks; i++) {
       res = ::write(fd, zerobuffer, 512);
-      ASSERT(res==512);
+      assert(res==512);
     }
     // Write extent
     for (i=0; i<extent_blocks; i++) {
       res = ::write(fd, zerobuffer, 512);
-      ASSERT(res==512);
+      assert(res==512);
     }
 
     free(zerobuffer);

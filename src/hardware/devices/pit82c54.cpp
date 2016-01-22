@@ -113,7 +113,7 @@ void PIT_82C54::PIT_counter::dbg_print()
 
 void PIT_82C54::print_cnum(uint8_t cnum)
 {
-	ASSERT(cnum<=MAX_COUNTER);
+	assert(cnum<=MAX_COUNTER);
 	counter[cnum].dbg_print();
 }
 

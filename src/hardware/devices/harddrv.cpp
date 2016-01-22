@@ -333,7 +333,7 @@ HardDrive::~HardDrive()
 
 unsigned HardDrive::chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const
 {
-	ASSERT(_s>0);
+	assert(_s>0);
 	return (_c * m_disk->geometry.heads + _h ) * m_disk->geometry.spt + (_s-1);
 }
 
@@ -715,8 +715,8 @@ uint16_t HardDrive::read(uint16_t _address, unsigned)
 				break;
 			}
 			DataBuffer *databuf = get_read_data_buffer();
-			ASSERT(databuf);
-			ASSERT(databuf->size);
+			assert(databuf);
+			assert(databuf->size);
 			m_s.attch_status_reg |= HDD_ASR_TX_EN;
 			value = databuf->stack[databuf->ptr];
 			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   -> 0x%04X\n",
@@ -788,8 +788,8 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 				PDEBUGF(LOG_V2, LOG_HDD, "wrong data dir\n");
 				break;
 			}
-			ASSERT(databuf);
-			ASSERT(databuf->size);
+			assert(databuf);
+			assert(databuf->size);
 			m_s.attch_status_reg |= HDD_ASR_TX_EN;
 			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   <- 0x%04X\n",
 					databuf->ptr, (databuf->size-1), _value);
@@ -1043,8 +1043,8 @@ void HardDrive::lower_interrupt()
 
 void HardDrive::fill_data_stack(unsigned _buf, unsigned _len)
 {
-	ASSERT(_buf<=1);
-	ASSERT(_len<=HDD_DATA_STACK_SIZE);
+	assert(_buf<=1);
+	assert(_len<=HDD_DATA_STACK_SIZE);
 	m_s.sect_buffer[_buf].ptr = 0;
 	m_s.sect_buffer[_buf].size = _len;
 	m_s.attch_status_reg |= HDD_ASR_DATA_REQ;
@@ -1071,14 +1071,14 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 	// maxlen is the maximum length of the DMA transfer
 
 	//TODO implement control blocks DMA transfers?
-	ASSERT(m_s.ccb.valid);
-	ASSERT(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
-	ASSERT(m_s.attch_status_reg & HDD_ASR_DIR);
+	assert(m_s.ccb.valid);
+	assert(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
+	assert(m_s.attch_status_reg & HDD_ASR_DIR);
 
 	g_sysboard.set_feedback();
 
 	DataBuffer *databuf = get_read_data_buffer();
-	ASSERT(databuf);
+	assert(databuf);
 	uint16_t len = databuf->size - databuf->ptr;
 
 	PDEBUGF(LOG_V2, LOG_HDD, "DMA write: %d / %d bytes\n", _maxlen, len);
@@ -1116,9 +1116,9 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	g_sysboard.set_feedback();
 
 	//TODO implement control blocks DMA transfers?
-	ASSERT(m_s.ccb.valid);
-	ASSERT(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
-	ASSERT(!(m_s.attch_status_reg & HDD_ASR_DIR));
+	assert(m_s.ccb.valid);
+	assert(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
+	assert(!(m_s.attch_status_reg & HDD_ASR_DIR));
 
 	uint16_t len = m_s.sect_buffer[0].size - m_s.sect_buffer[0].ptr;
 	if(len > _maxlen) {
@@ -1230,7 +1230,7 @@ uint32_t HardDrive::get_rotational_latency(
 		)
 {
 	double distance;
-	ASSERT(_head_position>=0.f && _head_position<=1.f);
+	assert(_head_position>=0.f && _head_position<=1.f);
 
 	/* To determine the rotational latency we now need to determine the time
 	 * needed to position the head above the desired logical sector.
@@ -1239,13 +1239,13 @@ uint32_t HardDrive::get_rotational_latency(
 	double dest_hw_sector = ((_dest_log_sector-1)*m_disk_performance.interleave)
 			% m_disk->geometry.spt;
 	double dest_position = m_sect_size * dest_hw_sector;
-	ASSERT(dest_position>=0.f);
+	assert(dest_position>=0.f);
 	if(_head_position > dest_position) {
 		distance = (1.f - _head_position) + dest_position;
 	} else {
 		distance = dest_position - _head_position;
 	}
-	ASSERT(distance>=0.f);
+	assert(distance>=0.f);
 	uint32_t latency_us = round(distance * m_trk_read_us);
 
 	return latency_us;
@@ -1276,7 +1276,7 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 void HardDrive::command_timer()
 {
 	if(m_s.attention_reg & HDD_ATT_CCB) {
-		ASSERT(m_s.ccb.command>=0 && m_s.ccb.command<=0xF);
+		assert(m_s.ccb.command>=0 && m_s.ccb.command<=0xF);
 		m_s.ssb.clear();
 		ms_cmd_funcs[m_s.ccb.command](*this);
 		m_s.ssb.valid = true; //command functions update the SSB so it's valid
@@ -1359,32 +1359,32 @@ void HardDrive::increment_sector()
 
 void HardDrive::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
-	ASSERT(_buf <= 1);
+	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ C:%d,H:%d,S:%d -> buf:%d\n",
 			_c, _h, _s, _buf);
 
 	unsigned lba = chs_to_lba(_c,_h,_s);
-	ASSERT(lba < m_sectors);
+	assert(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
-	ASSERT(pos == offset);
+	assert(pos == offset);
 	ssize_t res = m_disk->read(m_s.sect_buffer[_buf].stack, 512);
-	ASSERT(res == 512);
+	assert(res == 512);
 }
 
 void HardDrive::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
-	ASSERT(_buf <= 1);
+	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE C:%d,H:%d,S:%d <- buf:%d\n",
 			_c, _h, _s, _buf);
 
 	unsigned lba = chs_to_lba(_c,_h,_s);
-	ASSERT(lba < m_sectors);
+	assert(lba < m_sectors);
 	int64_t offset = lba*512;
 	int64_t pos = m_disk->lseek(offset, SEEK_SET);
-	ASSERT(pos == offset);
+	assert(pos == offset);
 	ssize_t res = m_disk->write(m_s.sect_buffer[_buf].stack, 512);
-	ASSERT(res == 512);
+	assert(res == 512);
 }
 
 void HardDrive::cylinder_error()
@@ -1630,9 +1630,9 @@ void HardDrive::cmd_write_data()
 		m_s.ccb.auto_seek = false;
 	}
 	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
-		ASSERT(m_s.sect_buffer[0].size == 512);
-		ASSERT(m_s.sect_buffer[0].ptr == 512);
-		ASSERT(m_s.ccb.sect_cnt>=0);
+		assert(m_s.sect_buffer[0].size == 512);
+		assert(m_s.sect_buffer[0].ptr == 512);
+		assert(m_s.ccb.sect_cnt>=0);
 
 		if(m_s.eoc) {
 			cylinder_error();
@@ -1684,7 +1684,7 @@ void HardDrive::cmd_seek()
 void HardDrive::cmd_format_trk()
 {
 	// This command needs a Format Control Block which is transferred via PIO
-	ASSERT(!(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN));
+	assert(!(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN));
 
 	if(!(m_s.attch_status_reg & HDD_ASR_DATA_REQ)) {
 		if((m_s.ccb.num_sectors&1) && m_s.ccb.sect_cnt<0) {

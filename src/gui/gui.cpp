@@ -214,7 +214,7 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	}
 
 	if(_flags & SDL_WINDOW_FULLSCREEN) {
-		ASSERT(_flags & 0x00001000); //check the DESKTOP mode
+		assert(_flags & 0x00001000); //check the DESKTOP mode
 		/* desktop mode is the only mode that really works. don't even think
 		 * using the "real" fullscreen mode.
 		 */
@@ -764,7 +764,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		}
 	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
 		PDEBUGF(LOG_V1, LOG_GUI, "Joystick id=%d has been removed\n", _event.jdevice.which);
-		ASSERT(_event.jdevice.which <= Sint32(m_SDL_joysticks.size()));
+		assert(_event.jdevice.which <= Sint32(m_SDL_joysticks.size()));
 		SDL_Joystick *joy = m_SDL_joysticks[_event.jdevice.which];
 		if(SDL_JoystickGetAttached(joy)) {
 			SDL_JoystickClose(joy);
@@ -928,7 +928,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		break;
 	}
 	case SDL_JOYAXISMOTION: {
-		ASSERT(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
+		assert(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
 		int jid = JOY_NONE;
 		if(m_joystick0 == _event.jaxis.which) {
 			jid = 0;
@@ -943,7 +943,7 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	}
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP: {
-		ASSERT(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
+		assert(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
 		int jid = JOY_NONE;
 		if(m_joystick0 == _event.jbutton.which) {
 			jid = 0;
@@ -1195,7 +1195,7 @@ std::string GUI::get_images_dir()
 
 GLuint GUI::load_texture(SDL_Surface *_surface)
 {
-	ASSERT(_surface);
+	assert(_surface);
 	if(_surface->format->BytesPerPixel != 4) {
 		throw std::runtime_error("Unsupported image format");
 	}

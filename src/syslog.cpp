@@ -96,7 +96,7 @@ Syslog::~Syslog()
 */
 void Syslog::add_device(int _priority, int _facility, Logdev* _device)
 {
-	ASSERT(_device);
+	assert(_device);
 
 	if(_priority==LOG_PRIMAX) {
 		if(_facility==LOG_FACMAX) {
@@ -145,7 +145,7 @@ void Syslog::add_device(int _priority, int _facility, Logdev* _device)
 */
 void Syslog::del_device(int _priority, int _facility, Logdev* _device)
 {
-	ASSERT(_device);
+	assert(_device);
 
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 
@@ -203,7 +203,7 @@ Chiamata da log(int, int, int, const char*, ...).
 */
 bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
 {
-	ASSERT(_format);
+	assert(_format);
 
 	if(_verbosity > int(m_verbosity[_facility])) {
 		return false;
@@ -273,7 +273,7 @@ il responsabile della sua gestione (nel caso in cui sia vero anche _device->sysl
 */
 void Syslog::remove(Logdev* _device, bool _erase)
 {
-	ASSERT(_device);
+	assert(_device);
 
 	LOGREFSLIST::iterator refit = _device->m_log_refs.begin();
 	for(refit = _device->m_log_refs.begin(); refit != _device->m_log_refs.end(); refit++) {

@@ -248,7 +248,7 @@ uint CPU::step()
 		);
 	}
 
-	ASSERT(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
+	assert(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
 
 	m_s.icount++;
 	m_s.ccount += cycles;
@@ -304,7 +304,7 @@ void CPU::enter_sleep_state(CPUActivityState _state)
 
 	switch(_state) {
 		case CPU_STATE_ACTIVE:
-			ASSERT(false); // should not be used for entering active CPU state
+			assert(false); // should not be used for entering active CPU state
 			break;
 
 		case CPU_STATE_HALT:
