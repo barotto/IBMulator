@@ -17,35 +17,18 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_RINGBUFFER_H
-#define IBMULATOR_RINGBUFFER_H
+#include "ibmulator.h"
+#include "audiospec.h"
+#include <sstream>
 
-#include <vector>
-
-class RingBuffer
+std::string AudioSpec::to_string() const
 {
-private:
-	std::vector<uint8_t> m_data;
-	size_t m_size;
-	size_t m_read_ptr;
-	size_t m_write_ptr;
-	size_t m_write_avail;
-
-public:
-
-	RingBuffer();
-	~RingBuffer();
-
-	void set_size(size_t _size);
-	void clear();
-
-	size_t read(uint8_t *_data, size_t _len);
-	size_t write(uint8_t *_data, size_t _len);
-
-	inline const uint8_t *get_data() const { return m_data.data(); }
-	inline size_t get_size() const { return m_size; }
-	inline size_t get_write_avail() const { return m_write_avail; }
-	inline size_t get_read_avail() const { return m_size - m_write_avail; }
-};
-
-#endif
+	std::stringstream ss;
+	std::map<AudioFormat, std::string> formats = {
+		{ AUDIO_FORMAT_U8, "8-bit unsigned" },
+		{ AUDIO_FORMAT_S16, "16-bit signed" },
+		{ AUDIO_FORMAT_F32, "32-bit float" }
+	};
+	ss << formats[format] << ", " << channels << " ch., " << rate << " Hz";
+	return ss.str();
+}

@@ -5,45 +5,44 @@ SUBDIRS = audio hardware gui
 bin_PROGRAMS = ibmulator
 
 ibmulator_SOURCES = \
-	main.cpp \
-	filesys.cpp \
 	appconfig.cpp \
-	program.cpp \
-	machine.cpp \
-	statebuf.cpp \
-	chrono.cpp \
 	bench.cpp \
+	chrono.cpp \
+	filesys.cpp \
 	hwbench.cpp \
-	syslog.cpp \
 	ini/ini.cpp \
+	machine.cpp \
+	main.cpp \
 	md5.cpp \
 	mixer.cpp \
-	ring_buffer.cpp \
+	program.cpp \
+	statebuf.cpp \
+	syslog.cpp \
+	utils.cpp \
 	wincompat/mkstemp.cpp \
-	wincompat/realpath.cpp \
-	utils.cpp
+	wincompat/realpath.cpp 
 	
 noinst_HEADERS = \
-	ibmulator.h \
-	filesys.h \
 	appconfig.h \
 	bench.h \
 	chrono.h \
 	circular_fifo.h \
+	filesys.h \
 	hwbench.h \
+	ibmulator.h \
 	interval_tree.h \
+	ini/ini.h \
 	keys.h \
 	machine.h \
 	md5.h \
 	mixer.h \
 	program.h \
-	ring_buffer.h \
 	shared_queue.h \
+	shared_deque.h \
 	statebuf.h \
 	syslog.h \
-	ini/ini.h \
-	wincompat.h \
-	utils.h
+	utils.h \
+	wincompat.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a audio/libaudio.a $(BASELIBS) ibmulator.res

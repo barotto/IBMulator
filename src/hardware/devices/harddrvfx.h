@@ -1,0 +1,65 @@
+/*
+ * Copyright (C) 2015, 2016  Marco Bortolin
+ *
+ * This file is part of IBMulator
+ *
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * This is the HDD noise simulator
+ */
+
+#ifndef IBMULATOR_HW_HARDDRVFX_H
+#define IBMULATOR_HW_HARDDRVFX_H
+
+#include "mixer.h"
+#include "shared_deque.h"
+
+class HardDriveFX
+{
+private:
+	std::mutex m_clear_mutex;
+	struct SeekEvent {
+		uint64_t time;
+		int distance;
+	};
+	shared_deque<SeekEvent> m_seek_events;
+	struct {
+		std::shared_ptr<MixerChannel> seek;
+		std::shared_ptr<MixerChannel> spin;
+	} m_channels;
+	struct {
+		AudioBuffer spin_up;
+		AudioBuffer spin;
+		AudioBuffer spin_down;
+		AudioBuffer seek;
+	} m_waves;
+
+public:
+	HardDriveFX();
+	~HardDriveFX();
+
+	void init();
+	void seek(int _c0, int _c1);
+	void clear_events();
+
+	void create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	void create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+
+private:
+	void load_wave(const char *_filename, AudioBuffer &_sample, const AudioSpec &_spec);
+};
+
+#endif

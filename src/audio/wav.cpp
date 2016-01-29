@@ -23,9 +23,12 @@
 
 WAVFile::WAVFile()
 : m_file(nullptr),
-  m_datasize(0)
+  m_datasize(0),
+  m_write_mode(false)
 {
-	size_check<WAVHeader,SIZEOF_WAVHEADER>();
+	size_check<WAVHeader,12>();
+	size_check<WAVHeaderFMT,26>();
+	size_check<WAVHeaderDATA,8>();
 }
 
 WAVFile::~WAVFile()
@@ -38,7 +41,7 @@ WAVFile::~WAVFile()
 void WAVFile::open_read(const char *_filepath)
 {
 	if(m_file) {
-		throw std::runtime_error("already open");
+		throw std::runtime_error("the file is already open");
 	}
 
 	memset(&m_header, 0, sizeof(m_header));
@@ -47,31 +50,43 @@ void WAVFile::open_read(const char *_filepath)
 
 	m_file = fopen(_filepath, "rb");
 	if(m_file == nullptr) {
-		throw std::runtime_error("unable to open");
+		throw std::runtime_error("unable to open the file");
 	}
 
+	// Main header
 	if(fread(&m_header, sizeof(m_header), 1, m_file) != 1) {
-		throw std::runtime_error("unable to read");
+		throw std::runtime_error("unable to read the main header");
 	}
-
-	if(m_header.ChunkID != WAV_HEADER_RIFF || m_header.Format != WAV_HEADER_WAVE ||
-	   m_header.Subchunk1ID != WAV_HEADER_FMT)
-	{
+	if(m_header.ChunkID != WAV_HEADER_RIFF || m_header.Format != WAV_HEADER_WAVE) {
 		throw std::runtime_error("not a wav file");
 	}
 
-	if(m_header.AudioFormat != WAV_FORMAT_PCM ||
-	   m_header.Subchunk1Size != WAV_HEADER_SC1_SIZE ||
-	   m_header.Subchunk2ID != WAV_HEADER_DATA)
-	{
-		throw std::runtime_error("unsupported format");
+	// FMT header
+	if(fread(&m_header_fmt, sizeof(m_header_fmt), 1, m_file) != 1) {
+		throw std::runtime_error("unable to read the FMT header");
+	}
+	if(m_header_fmt.Subchunk1ID != WAV_HEADER_FMT) {
+		throw std::runtime_error("invalid FMT header");
+	}
+	if(m_header_fmt.AudioFormat != WAV_FORMAT_PCM) {
+		throw std::runtime_error("unsupported format (not a PCM file)");
+	}
+
+	fseek(m_file, 20+m_header_fmt.Subchunk1Size, SEEK_SET);
+
+	// DATA header
+	if(fread(&m_header_data, sizeof(m_header_data), 1, m_file) != 1) {
+		throw std::runtime_error("unable to read the DATA header");
+	}
+	if(m_header_data.Subchunk2ID != WAV_HEADER_DATA) {
+		throw std::runtime_error("invalid DATA header");
 	}
 }
 
 void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, uint16_t _channels)
 {
 	if(m_file) {
-		throw std::runtime_error("already open");
+		throw std::runtime_error("the file is already open");
 	}
 
 	m_datasize = 0;
@@ -79,18 +94,24 @@ void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, 
 
 	m_file = fopen(_filepath, "wb");
 	if(m_file == nullptr) {
-		throw std::runtime_error("unable to open");
+		throw std::runtime_error("unable to open the file");
 	}
 
 	m_header.ChunkSize = 36;
-	m_header.NumChannels = _channels;
-	m_header.SampleRate = _rate;
-	m_header.ByteRate = _rate * _channels * (_bits / 8);
-	m_header.BlockAlign = _channels * (_bits / 8);
-	m_header.BitsPerSample = _bits;
-	m_header.Subchunk2Size = 0;
+	m_header_fmt.NumChannels = _channels;
+	m_header_fmt.SampleRate = _rate;
+	m_header_fmt.ByteRate = _rate * _channels * (_bits / 8);
+	m_header_fmt.BlockAlign = _channels * (_bits / 8);
+	m_header_fmt.BitsPerSample = _bits;
+	m_header_data.Subchunk2Size = 0;
 
 	if(fwrite(&m_header, sizeof(m_header), 1, m_file) != 1) {
+		throw std::runtime_error("unable to write");
+	}
+	if(fwrite(&m_header_fmt, sizeof(m_header_fmt)-2, 1, m_file) != 1) {
+		throw std::runtime_error("unable to write");
+	}
+	if(fwrite(&m_header_data, sizeof(m_header_data), 1, m_file) != 1) {
 		throw std::runtime_error("unable to write");
 	}
 }
@@ -99,17 +120,17 @@ std::vector<uint8_t> WAVFile::read() const
 {
 	std::vector<uint8_t> samples;
 
-	if(!m_file || m_write_mode || m_header.Subchunk2Size == 0) {
+	if(!m_file || m_write_mode || m_header_data.Subchunk2Size == 0) {
 		return samples;
 	}
 
-	samples.resize(m_header.Subchunk2Size);
+	samples.resize(m_header_data.Subchunk2Size);
 
-	size_t bytes = fread(&samples[0], 1, m_header.Subchunk2Size, m_file);
+	size_t bytes = fread(&samples[0], 1, m_header_data.Subchunk2Size, m_file);
 	if(bytes == 0) {
 		throw std::runtime_error("unable to read");
 	}
-	if(bytes < m_header.Subchunk2Size) {
+	if(bytes < m_header_data.Subchunk2Size) {
 		throw std::runtime_error("the file is of wrong size");
 	}
 

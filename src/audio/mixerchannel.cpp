@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "mixer.h"
+#include "machine.h"
 
 
 MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
@@ -33,7 +34,8 @@ m_disable_timeout(0),
 m_first_update(true),
 m_in_time(0),
 m_SRC_state(nullptr),
-m_capture_clbk([](bool){})
+m_capture_clbk([](bool){}),
+m_volume(1.f)
 {
 }
 
@@ -51,18 +53,23 @@ void MixerChannel::enable(bool _enabled)
 	m_enabled = _enabled;
 	m_disable_time = 0;
 	if(_enabled) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel enabled\n", m_name.c_str());
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 	} else {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s channel disabled\n", m_name.c_str());
 		m_first_update = true;
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
 	}
 }
 
-int MixerChannel::update(int _mix_tslice, bool _prebuffering)
+int MixerChannel::update(uint64_t _time_span_us, bool _prebuffering)
 {
 	assert(m_update_clbk);
-	int samples = m_update_clbk(_mix_tslice, _prebuffering, m_first_update);
+	int samples = m_out_buffer.samples();
+	bool first_upd = m_first_update;
+	// channel can be disabled in the callback, so I update the first update
+	// member before
 	m_first_update = false;
+	m_update_clbk(_time_span_us, _prebuffering, first_upd);
+	samples = m_out_buffer.samples() - samples;
 	return samples;
 }
 
@@ -82,7 +89,7 @@ void MixerChannel::reset_SRC()
 #endif
 }
 
-void MixerChannel::set_input_spec(const AudioSpec &_spec)
+void MixerChannel::set_in_spec(const AudioSpec &_spec)
 {
 	if(m_in_buffer.spec() != _spec)	{
 		m_in_buffer.set_spec(_spec);
@@ -90,7 +97,7 @@ void MixerChannel::set_input_spec(const AudioSpec &_spec)
 	}
 }
 
-void MixerChannel::set_output_spec(const AudioSpec &_spec)
+void MixerChannel::set_out_spec(const AudioSpec &_spec)
 {
 	if(m_out_buffer.spec() != _spec) {
 		/* the output buffer is forced to float format
@@ -100,18 +107,25 @@ void MixerChannel::set_output_spec(const AudioSpec &_spec)
 	}
 }
 
-void MixerChannel::input_start(uint64_t _time)
+void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
 {
-	m_in_time = _time;
-}
-
-void MixerChannel::play(const AudioBuffer &_sample, uint64_t _time)
-{
-	/* This function plays the given sound sample at the specified time, filling
-	 * with silence if needed, basing the calculations on the buffer start time
-	 * specified with input_start()
+	/* This function plays the given sound sample at the specified time distance
+	 * from the start of the samples input buffer, filling with silence if needed.
 	 */
-	//TODO
+	if(_wave.spec() != m_in_buffer.spec()) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: can't play, incompatible audio format\n",
+				m_name.c_str());
+		return;
+	}
+	unsigned frames = m_in_buffer.spec().us_to_frames(_time_dist);
+	m_in_buffer.resize_frames_silence(frames);
+	m_in_buffer.add_frames(_wave);
+	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%dus), in buf: %d samples (%dus)\n",
+			m_name.c_str(),
+			frames, _time_dist,
+			_wave.frames(), _wave.duration_us(),
+			m_in_buffer.samples(), m_in_buffer.duration_us()
+			);
 }
 
 void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
@@ -119,18 +133,15 @@ void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
 	m_out_buffer.pop_frames(_frames_to_pop);
 }
 
-void MixerChannel::input_finish(uint64_t _time)
+void MixerChannel::input_finish(uint64_t _time_span_us)
 {
 	if(!m_mixer->is_enabled()) {
 		m_in_buffer.clear();
 		return;
 	}
 	unsigned in_frames;
-	if(_time > 0) {
-		assert(m_in_time<=_time);
-		uint64_t span = _time - m_in_time;
-		in_frames = round(double(span) * double(m_in_buffer.rate())/1e9);
-		in_frames = std::min(m_in_buffer.frames(), in_frames);
+	if(_time_span_us>0) {
+		in_frames = m_in_buffer.us_to_frames(_time_span_us);
 	} else {
 		in_frames = m_in_buffer.frames();
 	}
@@ -146,11 +157,12 @@ void MixerChannel::input_finish(uint64_t _time)
 	 * single destination buffer. I'd rather have a slightly less efficent but
 	 * readable and concise procedure.
 	 */
+	/* these work buffers can be static only because the current implementation
+	 * of the mixer is single threaded.
+	 */
 	static AudioBuffer dest[2];
 	unsigned bufidx = 0;
 	AudioBuffer *source=&m_in_buffer;
-	dest[0].clear();
-	dest[1].clear();
 
 	if(m_in_buffer.channels() != m_out_buffer.channels()) {
 		dest[0].set_spec({m_in_buffer.format(),m_out_buffer.channels(),m_in_buffer.rate()});
@@ -169,15 +181,18 @@ void MixerChannel::input_finish(uint64_t _time)
 		m_out_buffer.add_frames(*source, in_frames);
 	}
 	m_in_buffer.pop_frames(in_frames);
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%dus), out: %d frames (%dus)\n",
+			m_name.c_str(), _time_span_us,
+			in_frames, m_in_buffer.spec().frames_to_us(in_frames),
+			m_out_buffer.frames(), m_out_buffer.duration_us());
 }
 
 bool MixerChannel::check_disable_time(uint64_t _now_us)
 {
 	if(m_disable_time && (_now_us - m_disable_time >= m_disable_timeout)) {
-		enable(false);
-		PDEBUGF(LOG_V2, LOG_MIXER, "%s channel disabled, after %d usec of silence\n",
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %d us of silence\n",
 				m_name.c_str(), (_now_us - m_disable_time));
-		m_disable_time = 0;
+		enable(false);
 		return true;
 	}
 	return false;

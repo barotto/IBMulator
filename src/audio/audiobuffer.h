@@ -26,28 +26,9 @@
 #else
 typedef void SRC_STATE;
 #endif
-#include <SDL2/SDL_audio.h>
+#include "audiospec.h"
 #include "wav.h"
 
-//direct mapping to SDL2 defines
-//you can therefore use SDL2 format macros
-enum AudioFormat
-{
-	AUDIO_FORMAT_U8 = AUDIO_U8,
-	AUDIO_FORMAT_S16 = AUDIO_S16,
-	AUDIO_FORMAT_F32 = AUDIO_F32
-};
-
-struct AudioSpec
-{
-	AudioFormat format;
-	unsigned channels;
-	unsigned rate;
-
-	bool operator!=(const AudioSpec &_s) const {
-		return (format!=_s.format) || (channels!=_s.channels) || (rate!=_s.rate);
-	}
-};
 
 class AudioBuffer
 {
@@ -69,27 +50,36 @@ public:
 	unsigned frame_size() const { return sample_size()*m_spec.channels; }
 	unsigned frames() const { return (m_data.size()/frame_size()); }
 	unsigned samples() const { return (m_data.size()/sample_size()); }
+	uint64_t duration_us() const { return m_spec.frames_to_us(frames()); }
 	void resize_frames(unsigned _num_frames);
 	void resize_samples(unsigned _num_samples);
+	void resize_frames_silence(unsigned _num_frames);
 	void clear();
 	template<typename T> void add_samples(const vector<T> &_data);
 	template<typename T> void add_samples(const vector<T> &_data, unsigned _count);
+	void add_frames(const AudioBuffer &_source);
 	void add_frames(const AudioBuffer &_source, unsigned _frames_count);
 	void pop_frames(unsigned _frames_to_pop);
 	template<typename T> unsigned fill_samples(unsigned _samples, T _value);
 	template<typename T> unsigned fill_samples_us(uint64_t _duration_us, T _value);
+	unsigned fill_frames_silence(unsigned _samples);
+	unsigned fill_samples_silence(unsigned _samples);
+	unsigned fill_us_silence(uint64_t _duration_us);
+	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0, T _v1);
+	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1);
+	void convert(const AudioSpec &_new_spec);
 	void convert_format(AudioBuffer &_dest, unsigned _frames_count);
 	void convert_channels(AudioBuffer &_dest, unsigned _frames_count);
 	void convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
+	unsigned us_to_frames(uint64_t _us);
+	unsigned us_to_samples(uint64_t _us);
 
 	// direct sample access no checks
-	template<typename T> T& operator[](unsigned _pos) {
-		return reinterpret_cast<T&>(*(&m_data[_pos*sample_size()]));
-	}
+	template<typename T> const T& operator[](unsigned _pos) const;
+	template<typename T> T& operator[](unsigned _pos);
 	// direct sample access with checks
 	template<typename T> const T& at(unsigned _pos) const;
 	template<typename T> T& at(unsigned _pos);
-
 
 	//TODO? an audio file interface can be defined but I don't think anything
 	//other than WAVs will ever be used.
@@ -100,11 +90,23 @@ private:
 			std::vector<uint8_t> &_dest, unsigned _samples);
 	static void s16_to_f32(const std::vector<uint8_t> &_source,
 			std::vector<uint8_t> &_dest, unsigned _samples);
+	static void f32_to_s16(const std::vector<uint8_t> &_source,
+			std::vector<uint8_t> &_dest, unsigned _samples);
 	template<typename T>
 	static void convert_channels(const AudioBuffer &_source, AudioBuffer &_dest,
 			unsigned _frames);
 };
 
+
+template<typename T> const T& AudioBuffer::operator[](unsigned _pos) const
+{
+	return reinterpret_cast<const T&>(*(&m_data[_pos*sample_size()]));
+}
+
+template<typename T> T& AudioBuffer::operator[](unsigned _pos)
+{
+	return const_cast<T&>(static_cast<const AudioBuffer*>(this)->operator[]<T>(_pos));
+}
 
 template<typename T>
 const T& AudioBuffer::at(unsigned _pos) const
@@ -156,10 +158,44 @@ unsigned AudioBuffer::fill_samples(unsigned _samples, T _value)
 template<typename T>
 unsigned AudioBuffer::fill_samples_us(uint64_t _duration_us, T _value)
 {
-	unsigned samples = (double(_duration_us) * double(m_spec.rate)/1e6) * m_spec.channels;
+	unsigned samples = m_spec.us_to_samples(_duration_us);
 	fill_samples(samples, _value);
 	return samples;
 }
 
+template<typename T>
+unsigned AudioBuffer::fill_frames_fade(unsigned _frames, T _v0, T _v1)
+{
+	if(_frames==0) {
+		return 0;
+	}
+	double s = (double(_v1) - double(_v0)) / _frames;
+	double v = double(_v0);
+	unsigned i = frames();
+	resize_frames(i+_frames);
+	for(; i<frames(); ++i,v+=s) {
+		at<T>(i) = T(v);
+	}
+	return _frames;
+}
+
+template<typename T>
+unsigned AudioBuffer::fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1)
+{
+	if(_frames==0) {
+		return 0;
+	}
+	double sl = (double(_v1) - double(_v0l)) / _frames;
+	double sr = (double(_v1) - double(_v0r)) / _frames;
+	double vl = double(_v0l);
+	double vr = double(_v0r);
+	unsigned i = frames();
+	resize_frames(i+_frames);
+	for(; i<frames(); ++i,vl+=sl,vr+=sr) {
+		at<T>(i*2)   = T(vl);
+		at<T>(i*2+1) = T(vr);
+	}
+	return _frames;
+}
 
 #endif

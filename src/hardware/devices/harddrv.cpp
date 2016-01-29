@@ -428,7 +428,7 @@ void HardDrive::init()
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 	}
 
-	//m_fx.init();
+	m_fx.init();
 }
 
 void HardDrive::reset(unsigned)
@@ -493,6 +493,8 @@ void HardDrive::restore_state(StateBuf &_state)
 		get_profile(m_drive_type, geom, perf);
 		mount(_state.get_basename() + "-hdd.img", geom, perf);
 	}
+
+	m_fx.clear_events();
 }
 
 void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &_perf)
@@ -954,7 +956,7 @@ void HardDrive::exec_command()
 	activate_command_timer(exec_time_us, seek_time_us, rot_latency_us, xfer_time_us);
 
 	if(seek) {
-		//m_fx.seek(m_s.cur_cylinder, m_s.ccb.cylinder);
+		m_fx.seek(m_s.cur_cylinder, m_s.ccb.cylinder);
 	}
 }
 

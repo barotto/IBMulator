@@ -36,22 +36,24 @@ RingBuffer::~RingBuffer( )
 
 void RingBuffer::set_size(size_t _size)
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
+
 	m_data.resize(_size);
 	m_size = _size;
 	assert(m_data.size() == m_size);
-	clear();
+	p_clear();
 }
 
 void RingBuffer::clear()
 {
-	std::fill(m_data.begin(), m_data.end(), 0);
-	m_read_ptr = 0;
-	m_write_ptr = 0;
-	m_write_avail = m_size;
+	std::lock_guard<std::mutex> lock(m_mutex);
+	p_clear();
 }
 
 size_t RingBuffer::read(uint8_t *_data, size_t _len)
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
+
 	if(_data == nullptr || !_len || m_write_avail == m_size) {
 		return 0;
 	}
@@ -64,6 +66,9 @@ size_t RingBuffer::read(uint8_t *_data, size_t _len)
 
 	if(_len > m_size - m_read_ptr) {
 		size_t len = m_size - m_read_ptr;
+		/* I know sizeof(uint8_t)==1, but I left it here to remind me that
+		 * the mult is required if this class will ever be converted to a template
+		 */
 		memcpy(_data, &m_data[m_read_ptr], len*sizeof(uint8_t));
 		memcpy(_data+len, &m_data[0], (_len-len)*sizeof(uint8_t));
 	} else {
@@ -78,6 +83,8 @@ size_t RingBuffer::read(uint8_t *_data, size_t _len)
 
 size_t RingBuffer::write(uint8_t *_data, size_t _len)
 {
+	std::lock_guard<std::mutex> lock(m_mutex);
+
 	if(_data == nullptr || !_len || m_write_avail == 0) {
 		return 0;
 	}
@@ -101,4 +108,28 @@ size_t RingBuffer::write(uint8_t *_data, size_t _len)
 	m_write_avail -= _len;
 
 	return _len;
+}
+
+void RingBuffer::get_status(size_t &_size, size_t &_wr_avail, size_t &_rd_avail) const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	_size = m_size;
+	_wr_avail = m_write_avail;
+	_rd_avail = m_size - m_write_avail;
+}
+
+size_t RingBuffer::get_read_avail() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	return (m_size - m_write_avail);
+}
+
+void RingBuffer::p_clear()
+{
+	std::fill(m_data.begin(), m_data.end(), 0);
+	m_read_ptr = 0;
+	m_write_ptr = 0;
+	m_write_avail = m_size;
 }

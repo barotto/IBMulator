@@ -74,7 +74,7 @@ private:
 	std::mutex m_PSG_lock;
 	int m_DAC_empty_samples;
 	//the DAC frequency value is written by the machine and read by the mixer
-	std::atomic<int> m_DAC_freq;
+	std::atomic<unsigned> m_DAC_freq;
 	std::vector<uint8_t> m_DAC_samples;
 	std::shared_ptr<MixerChannel> m_DAC_channel;
 	std::shared_ptr<MixerChannel> m_PSG_channel;
@@ -87,8 +87,8 @@ private:
 	void FIFO_timer();
 	void raise_interrupt();
 	void lower_interrupt();
-	int create_DAC_samples(int _mix_slice, bool _prebuf, bool _first_upd);
-	int create_PSG_samples(int _mix_slice_us, bool _prebuf, bool _first_upd);
+	void create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	void create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 	void PSG_activate();
 	int generate_PSG_samples(uint64_t _duration);
 	void on_PSG_capture(bool _enable);

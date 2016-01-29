@@ -33,7 +33,6 @@
 #define WAV_FORMAT_IEEE_FLOAT 0x0003
 
 struct WAVHeader {
-
 	uint32_t ChunkID = WAV_HEADER_RIFF;
 	                     //0/4  Contains the letters "RIFF" in ASCII form
 	                     //     (0x52494646 big-endian form).
@@ -47,6 +46,10 @@ struct WAVHeader {
 	uint32_t Format = WAV_HEADER_WAVE;
 	                     //8/4  Contains the letters "WAVE"
 	                     //     (0x57415645 big-endian form).
+} GCC_ATTRIBUTE(packed);
+
+
+struct WAVHeaderFMT {
 	/*
 	 * The "WAVE" format consists of two subchunks: "fmt " and "data":
 	 * The "fmt " subchunk describes the sound data's format:
@@ -68,12 +71,14 @@ struct WAVHeader {
 	                        //       this number isn't an integer?
 	uint16_t BitsPerSample; //34/2   8 bits = 8, 16 bits = 16, etc.
 
-	//uint16_t ExtraParamSize    2   if PCM, then doesn't exist
-	//ExtraParams                X   space for extra parameters
+	uint16_t ExtraParamSize;//36/2   if PCM, then doesn't exist
+	//ExtraParams           // X     space for extra parameters
+} GCC_ATTRIBUTE(packed);
 
+struct WAVHeaderDATA {
 	/*
-	The "data" subchunk contains the size of the data and the actual sound:
-	*/
+	 * The "data" subchunk contains the size of the data and the actual sound:
+	 */
 	uint32_t Subchunk2ID = WAV_HEADER_DATA;
 	                        //36/4   Contains the letters "data"
 	                        //       (0x64617461 big-endian form).
@@ -85,12 +90,15 @@ struct WAVHeader {
 } GCC_ATTRIBUTE(packed);
 
 
-#define SIZEOF_WAVHEADER 44
+
 
 
 class WAVFile
 {
-	WAVHeader m_header;
+	WAVHeader       m_header;
+	WAVHeaderFMT    m_header_fmt;
+	WAVHeaderDATA   m_header_data;
+	vector<uint8_t> m_hrader_extra;
 	FILE * m_file;
 	size_t m_datasize;
 	bool m_write_mode;
@@ -107,10 +115,10 @@ public:
 	void write(const uint8_t *_data, size_t _len);
 	void close();
 
-	uint16_t channels() const { return m_header.NumChannels; }
-	uint32_t rate()     const { return m_header.SampleRate; }
-	uint16_t bits()     const { return m_header.BitsPerSample; }
-	uint16_t format()   const { return m_header.AudioFormat; }
+	uint16_t channels() const { return m_header_fmt.NumChannels; }
+	uint32_t rate()     const { return m_header_fmt.SampleRate; }
+	uint16_t bits()     const { return m_header_fmt.BitsPerSample; }
+	uint16_t format()   const { return m_header_fmt.AudioFormat; }
 };
 
 #endif

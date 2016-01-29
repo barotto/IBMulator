@@ -22,7 +22,7 @@
 
 #include "hardware/iodevice.h"
 #include "mediaimage.h"
-//#include "harddrvfx.h"
+#include "harddrvfx.h"
 #include <memory>
 
 class HardDrive;
@@ -176,7 +176,7 @@ private:
 	static const std::map<uint, HDDPerformance> ms_hdd_performance;
 	static const uint32_t ms_cmd_times[0xF+1];
 
-	//HardDriveFX m_fx;
+	HardDriveFX m_fx;
 
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s) const;
 	inline void lba_to_chs(unsigned _lba, unsigned &_c, unsigned &_h, unsigned &_s) const;

@@ -41,6 +41,8 @@
 #define PS1AUDIO_PSG_DISABLE_TIMEOUT 2500000 //in usecs
 #define PS1AUDIO_DAC_DISABLE_TIMEOUT 1000000 //in usecs
 #define PS1AUDIO_DAC_FADE_IN false
+#define PS1AUDIO_DAC_EMPTY_THRESHOLD 1000 // number of empty DAC samples after
+                                          // which the FIFO timer will be auto-deactivated
 
 PS1Audio g_ps1audio;
 
@@ -143,7 +145,7 @@ void PS1Audio::config_changed()
 	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO);
 	m_PSG_rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	m_PSG_samples_per_ns = double(m_PSG_rate)/1e9;
-	m_PSG_channel->set_input_spec({AUDIO_FORMAT_S16, 1, unsigned(m_PSG_rate)});
+	m_PSG_channel->set_in_spec({AUDIO_FORMAT_S16, 1, unsigned(m_PSG_rate)});
 }
 
 void PS1Audio::save_state(StateBuf &_state)
@@ -370,7 +372,7 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 			}
 			if(value != 0) {
 				//a change in frequency or a DAC start.
-				m_DAC_freq = 1000000 / (int(value)+1);
+				m_DAC_freq = 1000000 / (unsigned(value)+1);
 			}
 			m_s.DAC.set_reload_register(value);
 			break;
@@ -450,9 +452,12 @@ void PS1Audio::FIFO_timer()
 		m_s.DAC.almost_empty = true;
 		raise_interrupt();
 	}
-	if(m_DAC_empty_samples>10) {
+	if(m_DAC_empty_samples > PS1AUDIO_DAC_EMPTY_THRESHOLD) {
+		/* lots of software don't disable the FIFO timer so the channel remains
+		 * open. If the DAC has been empty for long enough, stop the timer.
+		 */
 		g_machine.deactivate_timer(m_s.DAC.fifo_timer);
-		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer deactivated\n");
+		PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: empty, FIFO timer deactivated\n");
 	}
 
 	std::lock_guard<std::mutex> lock(m_DAC_lock);
@@ -466,46 +471,44 @@ void PS1Audio::PSG_activate()
 }
 
 //this method is called by the Mixer thread
-int PS1Audio::create_DAC_samples(int _mix_slice_us, bool _prebuf, bool _first_upd)
+void PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd)
 {
 	m_DAC_lock.lock();
 	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
-	int freq = m_DAC_freq.load();
-	int samples = m_DAC_samples.size();
-	int totsamples = samples;
-	int avail = ((double(samples) / double(freq)) * 1e6);
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04dus, samples: %d at %dHz (%d us)\n",
-			_mix_slice_us, samples, freq, avail);
+	unsigned freq = m_DAC_freq;
+	unsigned samples = m_DAC_samples.size();
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix span: %04d us, samples: %d at %d Hz (%d us)\n",
+			_time_span_us, samples, freq, unsigned((double(samples)/double(freq))*1e6));
 
-	m_DAC_channel->set_input_spec({AUDIO_FORMAT_U8, 1, unsigned(freq)});
+	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, freq});
 
 	if(samples == 0) {
 		m_DAC_lock.unlock();
 		if(!m_DAC_channel->check_disable_time(mtime_us) && !_prebuf) {
-			samples = Mixer::us_to_frames(_mix_slice_us, freq);
+			samples = us_to_frames(_time_span_us, freq);
 			if(m_DAC_last_value == 128 || _first_upd) {
-				m_DAC_channel->fill_samples<uint8_t>(samples, m_DAC_last_value);
+				m_DAC_channel->in().fill_samples<uint8_t>(samples, m_DAC_last_value);
 			} else {
 				//try to prevent nasty pops (Space Quest 4)
-				m_DAC_channel->fill_frames_fade<uint8_t>(samples, m_DAC_last_value, 128);
+				m_DAC_channel->in().fill_frames_fade<uint8_t>(samples, m_DAC_last_value, 128);
 			}
 			m_DAC_last_value = 128;
 			m_DAC_channel->input_finish();
 		}
-		return samples;
+		return;
 	} else if(PS1AUDIO_DAC_FADE_IN && _first_upd && m_DAC_samples[0]!=128) {
-		totsamples += m_DAC_channel->fill_frames_fade<uint8_t>(
-				Mixer::us_to_frames(_mix_slice_us/2, freq), 128, m_DAC_samples[0]);
+		m_DAC_channel->in().fill_frames_fade<uint8_t>(
+				us_to_frames(_time_span_us/2, freq), 128, m_DAC_samples[0]);
 	}
 
-	m_DAC_channel->add_samples(m_DAC_samples);
+	m_DAC_channel->in().add_samples(m_DAC_samples);
 	m_DAC_last_value = m_DAC_samples.back();
 	m_DAC_samples.clear();
 	m_DAC_lock.unlock();
 	m_DAC_channel->input_finish();
 	m_DAC_channel->set_disable_time(mtime_us);
 
-	return totsamples;
+	return;
 }
 
 int PS1Audio::generate_PSG_samples(uint64_t _duration)
@@ -517,14 +520,14 @@ int PS1Audio::generate_PSG_samples(uint64_t _duration)
 	if(samples > 0) {
 		buffer.resize(samples);
 		m_s.PSG.generate_samples(&buffer[0], samples);
-		m_PSG_channel->add_samples(buffer);
+		m_PSG_channel->in().add_samples(buffer);
 	}
 	fsrem = fsamples - samples;
 	return samples;
 }
 
 //this method is called by the Mixer thread
-int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd*/)
+void PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
 	//this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_PSG_lock);
@@ -533,10 +536,10 @@ int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_
 	uint64_t mtime_us = NSEC_TO_USEC(mtime_ns);
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 PSG: mix slice: %04d usecs, samples needed: %d\n",
-			_mix_slice_us, int(round(double(_mix_slice_us) * 1000.0 * m_PSG_samples_per_ns)));
+			_time_span_us, int(round(double(_time_span_us) * 1000.0 * m_PSG_samples_per_ns)));
 
 	PSGEvent event, next_event;
-	uint64_t time_span;
+	uint64_t evt_dist_ns;
 	int generated_samples = 0;
 	next_event.time = 0;
 	bool empty = m_PSG_events.empty();
@@ -546,15 +549,15 @@ int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_
 
 		if(empty || event.time > mtime_ns) {
 			if(m_PSG_last_mtime) {
-				time_span = mtime_ns - m_PSG_last_mtime;
+				evt_dist_ns = mtime_ns - m_PSG_last_mtime;
 			} else {
-				time_span = _mix_slice_us * 1000 * (!_prebuf);
+				evt_dist_ns = _time_span_us * 1000 * (!_prebuf);
 			}
-			generated_samples += generate_PSG_samples(time_span);
+			generated_samples += generate_PSG_samples(evt_dist_ns);
 			break;
 		} else if(m_PSG_last_mtime) {
-			time_span = event.time - m_PSG_last_mtime;
-			generated_samples += generate_PSG_samples(time_span);
+			evt_dist_ns = event.time - m_PSG_last_mtime;
+			generated_samples += generate_PSG_samples(evt_dist_ns);
 		}
 		m_PSG_last_mtime = 0;
 
@@ -569,8 +572,8 @@ int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_
 			//no more events or the next event is in the future
 			next_event.time = mtime_ns;
 		}
-		time_span = next_event.time - event.time;
-		generated_samples += generate_PSG_samples(time_span);
+		evt_dist_ns = next_event.time - event.time;
+		generated_samples += generate_PSG_samples(evt_dist_ns);
 	}
 
 	m_PSG_channel->input_finish();
@@ -584,7 +587,7 @@ int PS1Audio::create_PSG_samples(int _mix_slice_us, bool _prebuf, bool /*_first_
 	}
 	m_PSG_last_mtime = mtime_ns;
 
-	return generated_samples;
+	return;
 }
 
 //this method is called by the Mixer thread

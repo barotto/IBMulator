@@ -23,7 +23,7 @@
 #include "shared_queue.h"
 #include "chrono.h"
 #include "hwbench.h"
-#include "ring_buffer.h"
+#include "audio/ring_buffer.h"
 #include "audio/mixerchannel.h"
 #include "audio/wav.h"
 #include <thread>
@@ -44,7 +44,6 @@ typedef std::function<void()> Mixer_fun_t;
 class Mixer
 {
 private:
-
 	RingBuffer m_out_buffer;
 	std::vector<float> m_mix_buffer;
 	WAVFile m_wav;
@@ -70,17 +69,6 @@ private:
 
 	bool m_audio_capture;
 	float m_global_volume;
-
-	void config_changed();
-	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
-	void stop_wave_playback();
-	size_t mix_channels(const std::vector<MixerChannel*> &_channels);
-	bool send_packet(float *_data, size_t _len);
-
-	void start_capture();
-	void stop_capture();
-
-	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 
 public:
 	Mixer();
@@ -112,9 +100,15 @@ public:
 	void cmd_toggle_capture();
 	void cmd_set_global_volume(float _volume);
 
-	static inline int us_to_frames(int _us, int _rate) {
-		return round(double(_us) * double(_rate)/1e6);
-	}
+private:
+	void config_changed();
+	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
+	void stop_wave_playback();
+	size_t mix_channels(const std::vector<MixerChannel*> &_channels);
+	bool send_packet(size_t _len);
+	void start_capture();
+	void stop_capture();
+	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 };
 
 #endif

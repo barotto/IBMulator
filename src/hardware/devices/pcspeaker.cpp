@@ -54,7 +54,7 @@ void PCSpeaker::config_changed()
 {
 	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PCSPEAKER);
 	uint32_t rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_channel->set_input_spec({AUDIO_FORMAT_S16, 1, rate});
+	m_channel->set_in_spec({AUDIO_FORMAT_S16, 1, rate});
 	//a second worth of samples
 	m_samples_buffer.resize(rate);
 	m_nsec_per_sample = 1e9/double(rate);
@@ -254,16 +254,18 @@ size_t PCSpeaker::fill_samples_buffer_t(int _duration, int _bstart, int16_t _val
 
 #include "machine.h"
 //this method is called by the Mixer thread
-int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd*/)
+void PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
+	//TODO this function is a mess
+
 	m_lock.lock();
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 
-	double this_slice_samples = _mix_slice_us * 1000 * m_samples_per_nsec;
+	double this_slice_samples = _time_span_us * 1000 * m_samples_per_nsec;
 	size_t size = m_events.size();
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix slice: %04d usecs, samples: %.1f, evnts: %d, ",
-			_mix_slice_us, this_slice_samples, size);
+			_time_span_us, this_slice_samples, size);
 
 	if(size==0 || m_events[0].time > mtime_ns) {
 		m_lock.unlock();
@@ -272,10 +274,10 @@ int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd
 		if(m_channel->check_disable_time(NSEC_TO_USEC(mtime_ns))) {
 			m_last_time = 0;
 			m_samples_rem = 0.0;
-			return 0;
+			return;
 		} else if(m_last_time && isamples && !_prebuf) {
 			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %d samples\n", isamples);
-			m_channel->fill_samples<int16_t>(isamples, 0);
+			m_channel->in().fill_samples<int16_t>(isamples, 0);
 		} else {
 			PDEBUGF(LOG_V2, LOG_AUDIO, "needed samples: %.0f\n", samples);
 		}
@@ -285,7 +287,7 @@ int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd
 			m_samples_rem = std::min(0.0, m_samples_rem);
 		}
 		m_channel->input_finish();
-		return isamples;
+		return;
 	}
 	m_channel->set_disable_time(0);
 	uint32_t samples_cnt = 0;
@@ -387,7 +389,7 @@ int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd
 	PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 
 	if(samples_cnt>0) {
-		m_channel->add_samples(m_samples_buffer, samples_cnt);
+		m_channel->in().add_samples(m_samples_buffer, samples_cnt);
 	}
 	if(chan_disable) {
 		m_s.level = 0.0;
@@ -400,7 +402,7 @@ int PCSpeaker::create_samples(int _mix_slice_us, bool _prebuf, bool /*_first_upd
 
 	m_channel->input_finish();
 
-	return samples_cnt;
+	return;
 }
 
 

@@ -53,9 +53,25 @@ void AudioBuffer::resize_samples(unsigned _num_samples)
 	m_data.resize(ss*_num_samples);
 }
 
+void AudioBuffer::resize_frames_silence(unsigned _new_frame_size)
+{
+	if(_new_frame_size == frames()) {
+		return;
+	} else if(_new_frame_size < frames()) {
+		resize_frames(_new_frame_size);
+	} else {
+		fill_frames_silence(_new_frame_size - frames());
+	}
+}
+
 void AudioBuffer::clear()
 {
 	m_data.clear();
+}
+
+void AudioBuffer::add_frames(const AudioBuffer &_source)
+{
+	add_frames(_source, _source.frames());
 }
 
 void AudioBuffer::add_frames(const AudioBuffer &_source, unsigned _frames_count)
@@ -83,31 +99,113 @@ void AudioBuffer::pop_frames(unsigned _frames_to_pop)
 	}
 }
 
+unsigned AudioBuffer::fill_frames_silence(unsigned _frames)
+{
+	return fill_samples_silence(m_spec.frames_to_samples(_frames));
+}
+
+unsigned AudioBuffer::fill_samples_silence(unsigned _samples)
+{
+	switch(m_spec.format) {
+		case AUDIO_FORMAT_U8:
+			return fill_samples<uint8_t>(_samples, 128);
+		case AUDIO_FORMAT_S16:
+			return fill_samples<int16_t>(_samples, 0);
+		case AUDIO_FORMAT_F32:
+			return fill_samples<float>(_samples, 0.f);
+		default:
+			throw std::logic_error("unsupported format");
+	}
+}
+
+unsigned AudioBuffer::fill_us_silence(uint64_t _duration_us)
+{
+	return fill_samples_silence(m_spec.us_to_samples(_duration_us));
+}
+
+void AudioBuffer::convert(const AudioSpec &_new_spec)
+{
+	if(_new_spec == m_spec) {
+		return;
+	}
+
+	AudioSpec new_spec = _new_spec;
+	AudioBuffer dest[2];
+	unsigned bufidx = 0;
+	AudioBuffer *source = this;
+
+	if(source->rate() != new_spec.rate) {
+#if HAVE_LIBSAMPLERATE
+		if(source->format() != AUDIO_FORMAT_F32) {
+			dest[1].set_spec({AUDIO_FORMAT_F32, source->channels(), source->rate()});
+			source->convert_format(dest[1], source->frames());
+			source = &dest[1];
+		}
+		dest[0].set_spec({source->format(), source->channels(), new_spec.rate});
+		source->convert_rate(dest[0], source->frames(), nullptr);
+		source = &dest[0];
+		bufidx = 1;
+#else
+		new_spec.rate = source->rate();
+#endif
+	}
+	if(source->channels() != new_spec.channels) {
+		dest[bufidx].set_spec({source->format(),new_spec.channels,source->rate()});
+		source->convert_channels(dest[bufidx], source->frames());
+		source = &dest[bufidx];
+		bufidx = (bufidx + 1) % 2;
+	}
+	if(source->format() != new_spec.format) {
+		dest[bufidx].set_spec({new_spec.format,source->channels(),source->rate()});
+		source->convert_format(dest[bufidx], source->frames());
+		source = &dest[bufidx];
+	}
+
+	if(new_spec != m_spec) {
+		m_data = source->m_data;
+		m_spec = new_spec;
+	}
+}
+
 void AudioBuffer::convert_format(AudioBuffer &_dest, unsigned _frames_count)
 {
 	AudioSpec destspec{_dest.format(), m_spec.channels, m_spec.rate};
-	// only 2 conversions implemented, currently we don't need more
-	if(_dest.spec() != destspec || destspec.format!=AUDIO_FORMAT_F32) {
-		throw std::logic_error("unsupported format");
+
+	if(_dest.spec() != destspec) {
+		throw std::logic_error("destination must have same channels and rate");
 	}
 
 	_frames_count = std::min(frames(),_frames_count);
+
 	if(m_spec.format == destspec.format) {
 		_dest.add_frames(*this,_frames_count);
 		return;
 	}
 
-	const unsigned samples_count = _frames_count*m_spec.channels;
-
+	const unsigned samples_count = m_spec.frames_to_samples(_frames_count);
+	std::vector<uint8_t> buffer, *data=&buffer;
 	switch(m_spec.format) {
 		case AUDIO_FORMAT_U8:
-			u8_to_f32(m_data, _dest.m_data, samples_count);
+			u8_to_f32(m_data, buffer, samples_count);
 			break;
 		case AUDIO_FORMAT_S16:
-			s16_to_f32(m_data, _dest.m_data, samples_count);
+			s16_to_f32(m_data, buffer, samples_count);
+			break;
+		case AUDIO_FORMAT_F32:
+			data = &m_data;
 			break;
 		default:
-			throw std::logic_error("unsupported format");
+			throw std::logic_error("unsupported source format");
+	}
+	switch(destspec.format) {
+		case AUDIO_FORMAT_S16:
+			f32_to_s16(*data, _dest.m_data, samples_count);
+			break;
+		case AUDIO_FORMAT_F32:
+			_dest.m_data.swap(buffer);
+			break;
+		default:
+			throw std::logic_error("unsupported destination format");
 	}
 }
 
@@ -159,15 +257,20 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 	_dest.resize_frames(_dest.frames()+out_frames);
 
 #if HAVE_LIBSAMPLERATE
-	assert(_SRC != nullptr);
 	SRC_DATA srcdata;
 	srcdata.data_in = &at<float>(0);
 	srcdata.data_out = &_dest.at<float>(destpos);
 	srcdata.input_frames = _frames_count;
 	srcdata.output_frames = out_frames;
 	srcdata.src_ratio = rate_ratio;
-	srcdata.end_of_input = 0;
-	int srcresult = src_process(_SRC, &srcdata);
+	int srcresult;
+	if(_SRC != nullptr) {
+		srcdata.end_of_input = 0;
+		srcresult = src_process(_SRC, &srcdata);
+	} else {
+		srcdata.end_of_input = 1;
+		srcresult = src_simple(&srcdata, SRC_SINC_BEST_QUALITY, destspec.channels) ;
+	}
 	if(srcresult != 0) {
 		throw std::runtime_error(std::string("error resampling: ") + src_strerror(srcresult));
 	}
@@ -175,6 +278,8 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 	if(srcdata.output_frames_gen != out_frames) {
 		_dest.resize_frames(destframes + srcdata.output_frames_gen);
 	}
+	PDEBUGF(LOG_V2, LOG_MIXER, "convert rate: f-in: %d, f-out: %d, gen: %d\n",
+			_frames_count, out_frames, srcdata.output_frames_gen);
 #else
 	for(unsigned i=destpos; i<_dest.samples(); ++i) {
 		_dest.operator[]<float>(i) = 0.f;
@@ -182,12 +287,22 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 #endif
 }
 
+unsigned AudioBuffer::us_to_frames(uint64_t _us)
+{
+	return std::min(frames(), m_spec.us_to_frames(_us));
+}
+
+unsigned AudioBuffer::us_to_samples(uint64_t _us)
+{
+	return std::min(samples(), m_spec.us_to_samples(_us));
+}
+
 void AudioBuffer::load(const WAVFile &_wav)
 {
 	if(!_wav.is_open()) {
 		throw std::logic_error("file is not open");
 	}
-	if(_wav.format() != WAV_FORMAT_PCM || _wav.format() != WAV_FORMAT_IEEE_FLOAT) {
+	if(_wav.format() != WAV_FORMAT_PCM && _wav.format() != WAV_FORMAT_IEEE_FLOAT) {
 		throw std::logic_error("unsupported data format");
 	}
 	if(_wav.channels() > 2) {
@@ -233,6 +348,19 @@ void AudioBuffer::s16_to_f32(const std::vector<uint8_t> &_source,
 	for(unsigned s=0; s<_samples_count; ++s) {
 		int16_t s16sample = reinterpret_cast<const int16_t&>(_source[s*2]);
 		reinterpret_cast<float&>(_dest[d+s*4]) = float(s16sample) / 32768.f ;
+	}
+}
+
+void AudioBuffer::f32_to_s16(const std::vector<uint8_t> &_source,
+		std::vector<uint8_t> &_dest, unsigned _samples_count)
+{
+	unsigned d = _dest.size();
+	_dest.resize(_dest.size()+_samples_count*2);
+	for(unsigned s=0; s<_samples_count; ++s) {
+		float f32sample = reinterpret_cast<const float&>(_source[s*4]) * 32768.f;
+		f32sample = std::max(f32sample,-32768.f);
+		f32sample = std::min(f32sample,32767.f);
+		reinterpret_cast<int16_t&>(_dest[d+s*2]) = int16_t(f32sample);
 	}
 }
 

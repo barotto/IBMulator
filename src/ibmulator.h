@@ -92,34 +92,34 @@ void size_check()
 	#define STOP_AT_EXC_VEC 0xFF
 	#define UD6_AUTO_DUMP false
 
-	#define LOG_DEBUG_MESSAGES    false
+	#define LOG_DEBUG_MESSAGES    true
 	#define LOG_MACHINE_TIME      false
 	#define LOG_CSIP              false
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL false
-#define LOG_PROGRAM_VERBOSITY  LOG_V1
-#define LOG_FS_VERBOSITY       LOG_V1
-#define LOG_GFX_VERBOSITY      LOG_V1
-#define LOG_INPUT_VERBOSITY    LOG_V1
-#define LOG_GUI_VERBOSITY      LOG_V1
-#define LOG_MACHINE_VERBOSITY  LOG_V1
+#define OVERRIDE_VERBOSITY_LEVEL true
+#define LOG_PROGRAM_VERBOSITY  LOG_V0
+#define LOG_FS_VERBOSITY       LOG_V0
+#define LOG_GFX_VERBOSITY      LOG_V0
+#define LOG_INPUT_VERBOSITY    LOG_V0
+#define LOG_GUI_VERBOSITY      LOG_V0
+#define LOG_MACHINE_VERBOSITY  LOG_V0
 #define LOG_MIXER_VERBOSITY    LOG_V1
-#define LOG_MEM_VERBOSITY      LOG_V1
-#define LOG_CPU_VERBOSITY      LOG_V1
-#define LOG_PIT_VERBOSITY      LOG_V1
-#define LOG_PIC_VERBOSITY      LOG_V1
-#define LOG_DMA_VERBOSITY      LOG_V1
-#define LOG_KEYB_VERBOSITY     LOG_V1
-#define LOG_VGA_VERBOSITY      LOG_V1
-#define LOG_CMOS_VERBOSITY     LOG_V1
-#define LOG_FDC_VERBOSITY      LOG_V1
-#define LOG_HDD_VERBOSITY      LOG_V1
+#define LOG_MEM_VERBOSITY      LOG_V0
+#define LOG_CPU_VERBOSITY      LOG_V0
+#define LOG_PIT_VERBOSITY      LOG_V0
+#define LOG_PIC_VERBOSITY      LOG_V0
+#define LOG_DMA_VERBOSITY      LOG_V0
+#define LOG_KEYB_VERBOSITY     LOG_V0
+#define LOG_VGA_VERBOSITY      LOG_V0
+#define LOG_CMOS_VERBOSITY     LOG_V0
+#define LOG_FDC_VERBOSITY      LOG_V0
+#define LOG_HDD_VERBOSITY      LOG_V0
 #define LOG_AUDIO_VERBOSITY    LOG_V1
-#define LOG_LPT_VERBOSITY      LOG_V1
-#define LOG_COM_VERBOSITY      LOG_V1
+#define LOG_LPT_VERBOSITY      LOG_V0
+#define LOG_COM_VERBOSITY      LOG_V0
 
 #include "syslog.h"
 
