@@ -73,9 +73,6 @@ void Mixer::init(Machine *_machine)
 	m_machine = _machine;
 	m_main_chrono.start();
 	m_bench.init(&m_main_chrono, 1000);
-	if(!MULTITHREADED) {
-		m_heartbeat = g_program.get_beat_time_usec();
-	}
 	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat);
 
 	m_paused = true;
@@ -172,10 +169,8 @@ void Mixer::start()
 	m_quit = false;
 	m_start = 0;
 	m_next_beat_diff = 0;
-	if(MULTITHREADED) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Mixer thread started\n");
-		main_loop();
-	}
+	PDEBUGF(LOG_V2, LOG_MACHINE, "Mixer thread started\n");
+	main_loop();
 }
 
 void Mixer::main_loop()
@@ -183,7 +178,6 @@ void Mixer::main_loop()
 	std::vector<MixerChannel*> active_channels;
 	uint64_t time_span_us;
 
-	#if MULTITHREADED
 	while(true) {
 		time_span_us = m_main_chrono.elapsed_usec();
 		uint64_t time_slept = 0;
@@ -200,10 +194,6 @@ void Mixer::main_loop()
 		} else {
 			m_main_chrono.start();
 		}
-	#else
-		time_span_us = m_main_chrono.elapsed_usec();
-		m_main_chrono.start();
-	#endif
 
 		uint64_t chupdates=0,chmixing=0;
 		if(time_span_us>m_heartbeat*1.05) {
@@ -227,11 +217,7 @@ void Mixer::main_loop()
 				SDL_PauseAudioDevice(m_device, 0);
 				//TODO should we purge all the channels buffers?
 			}
-#if MULTITHREADED
 			continue;
-#else
-			return;
-#endif
 		} else if(!is_enabled()) {
 			for(auto ch : m_mix_channels) {
 				if(ch.second->is_enabled()) {
@@ -239,11 +225,7 @@ void Mixer::main_loop()
 				}
 				ch.second->flush();
 			}
-#if MULTITHREADED
 			continue;
-#else
-			return;
-#endif
 		}
 
 		active_channels.clear();
@@ -300,10 +282,7 @@ void Mixer::main_loop()
 		chmixing = m_main_chrono.elapsed_usec();
 
 		m_bench.beat_end();
-
-	#if MULTITHREADED
 	}
-	#endif
 }
 
 void Mixer::start_wave_playback(int _frequency, int _bits, int _channels, int _samples)
@@ -463,16 +442,12 @@ std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _call
 
 void Mixer::sig_config_changed()
 {
-#if MULTITHREADED
 	//this signal should be preceded by a pause command
 	m_cmd_queue.push([this] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
-#endif
 		config_changed();
-#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
-#endif
 }
 
 int Mixer::get_buffer_len() const
@@ -486,89 +461,61 @@ int Mixer::get_buffer_len() const
 
 void Mixer::cmd_pause()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		m_paused = true;
 		if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
 			SDL_PauseAudioDevice(m_device, 0);
 		}
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_resume()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		m_paused = false;
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_quit()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		m_quit = true;
 		if(m_audio_capture) {
 			stop_capture();
 		}
 		stop_wave_playback();
 		SDL_AudioQuit();
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_start_capture()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		start_capture();
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_stop_capture()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		stop_capture();
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_toggle_capture()
 {
-#if MULTITHREADED
 	m_cmd_queue.push([this] () {
-#endif
 		if(m_audio_capture) {
 			stop_capture();
 		} else {
 			start_capture();
 		}
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Mixer::cmd_set_global_volume(float _volume)
 {
-#if MULTITHREADED
 	m_cmd_queue.push([=] () {
-#endif
 		m_global_volume = _volume;
-#if MULTITHREADED
 	});
-#endif
 }

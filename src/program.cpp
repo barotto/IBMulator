@@ -88,9 +88,7 @@ void Program::save_state(
 
 	std::unique_lock<std::mutex> lock(ms_lock);
 	m_machine->cmd_save_state(state);
-	if(MULTITHREADED) {
-		ms_cv.wait(lock);
-	}
+	ms_cv.wait(lock);
 
 	state.save(path + ".bin");
 
@@ -159,19 +157,14 @@ void Program::restore_state(
 	m_mixer->cmd_pause();
 
 	m_machine->sig_config_changed();
-	if(MULTITHREADED) {
-		ms_cv.wait(restore_lock);
-	}
+	ms_cv.wait(restore_lock);
 
 	m_mixer->sig_config_changed();
-	if(MULTITHREADED) {
-		ms_cv.wait(restore_lock);
-	}
+	ms_cv.wait(restore_lock);
 
 	m_machine->cmd_restore_state(state);
-	if(MULTITHREADED) {
-		ms_cv.wait(restore_lock);
-	}
+	ms_cv.wait(restore_lock);
+
 	if(state.m_last_restore == false) {
 		PERRF(LOG_PROGRAM, "the restored state is not valid\n");
 		if(_on_fail) {
@@ -534,14 +527,6 @@ void Program::main_loop()
 			m_bench.frameskip = loops;
 
 			process_evts();
-
-			if(!MULTITHREADED) {
-				if(!m_machine->main_loop()) {
-					m_quit = true;
-				} else {
-					m_mixer->main_loop();
-				}
-			}
 			m_gui->update();
 
 			m_next_beat += m_heartbeat;
@@ -561,23 +546,14 @@ void Program::main_loop()
 
 void Program::start()
 {
-	if(MULTITHREADED) {
-		PDEBUGF(LOG_V2, LOG_PROGRAM, "Program thread started\n");
-		std::thread machine(&Machine::start,m_machine);
-		std::thread mixer(&Mixer::start,m_mixer);
+	PDEBUGF(LOG_V2, LOG_PROGRAM, "Program thread started\n");
+	std::thread machine(&Machine::start,m_machine);
+	std::thread mixer(&Mixer::start,m_mixer);
 
-		main_loop();
+	main_loop();
 
-		machine.join();
-		mixer.join();
-
-	} else {
-
-		m_machine->start();
-		m_mixer->start();
-
-		main_loop();
-	}
+	machine.join();
+	mixer.join();
 
 	m_gui->shutdown();
 }

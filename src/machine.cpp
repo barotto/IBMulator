@@ -182,9 +182,6 @@ void Machine::init()
 	m_s.curr_prgname[0] = 0;
 	m_mt_virt_time = 0;
 	m_num_timers = 0;
-	if(!MULTITHREADED) {
-		m_heartbeat = g_program.get_beat_time_usec();
-	}
 
 	register_timer(std::bind(&Machine::null_timer,this),
 			NULL_TIMER_INTERVAL, true, true, "null timer");
@@ -222,10 +219,8 @@ void Machine::start()
 {
 	m_quit = false;
 	m_next_beat_diff = 0;
-	if(MULTITHREADED) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Machine thread started\n");
-		main_loop();
-	}
+	PDEBUGF(LOG_V2, LOG_MACHINE, "Machine thread started\n");
+	main_loop();
 }
 
 void Machine::reset(uint _signal)
@@ -279,7 +274,6 @@ void Machine::config_changed()
 
 bool Machine::main_loop()
 {
-	#if MULTITHREADED
 	while(true) {
 		uint64_t time = m_main_chrono.elapsed_usec();
 		if(time < m_heartbeat) {
@@ -292,7 +286,6 @@ bool Machine::main_loop()
 		} else {
 			m_main_chrono.start();
 		}
-	#endif
 
 		m_bench.beat_start();
 
@@ -317,12 +310,8 @@ bool Machine::main_loop()
 				m_bench.cpu_cycles(cycles);
 			}
 		}
-
 		m_bench.beat_end();
-
-	#if MULTITHREADED
 	}
-	#endif
 
 	return true;
 }
@@ -600,13 +589,9 @@ void Machine::cmd_power_on()
 
 void Machine::cmd_power_off()
 {
-#if MULTITHREADED
 	m_cmd_fifo.push([this] () {
-#endif
 		power_off();
-#if MULTITHREADED
 	});
-#endif
 }
 
 void Machine::cmd_cpu_step()
@@ -739,23 +724,17 @@ void Machine::cmd_cycles_adjust(double _factor)
 
 void Machine::cmd_save_state(StateBuf &_state)
 {
-#if MULTITHREADED
 	m_cmd_fifo.push([&] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
-#endif
 		save_state(_state);
-#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
-#endif
 }
 
 void Machine::cmd_restore_state(StateBuf &_state)
 {
-#if MULTITHREADED
 	m_cmd_fifo.push([&] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
-#endif
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
@@ -764,10 +743,8 @@ void Machine::cmd_restore_state(StateBuf &_state)
 			PERRF(LOG_MACHINE, "error restoring the state\n");
 			_state.m_last_restore = false;
 		}
-#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
-#endif
 }
 
 void Machine::cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp)
@@ -786,10 +763,8 @@ void Machine::cmd_eject_media(uint _drive)
 
 void Machine::sig_config_changed()
 {
-#if MULTITHREADED
 	m_cmd_fifo.push([this] () {
 		std::unique_lock<std::mutex> lock(g_program.ms_lock);
-#endif
 		if(m_on) {
 			power_off();
 		}
@@ -797,10 +772,8 @@ void Machine::sig_config_changed()
 		g_memory.config_changed();
 		g_devices.config_changed();
 		config_changed();
-#if MULTITHREADED
 		g_program.ms_cv.notify_one();
 	});
-#endif
 }
 
 void Machine::send_key_to_kbctrl(uint32_t _key)

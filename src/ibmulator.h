@@ -20,7 +20,6 @@
 #ifndef IBMULATOR_H
 #define IBMULATOR_H
 
-#define MULTITHREADED        true
 #define MACHINE_HEARTBEAT    10000
 #define GUI_HEARTBEAT        16666
 #define MIXER_HEARTBEAT      10000
