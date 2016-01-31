@@ -431,7 +431,7 @@ void HardDrive::init()
 	m_fx.init();
 }
 
-void HardDrive::reset(unsigned)
+void HardDrive::reset(unsigned _type)
 {
 	memset(&m_s, 0, sizeof(m_s));
 	if(m_drive_type == 45) {
@@ -442,11 +442,16 @@ void HardDrive::reset(unsigned)
 	lower_interrupt();
 
 	//TODO if machine power on then play spin up sample
+	if(_type == MACHINE_POWER_ON) {
+		m_fx.spin(true, true);
+	}
 }
 
 void HardDrive::power_off()
 {
-	//TODO play spin down sample and set a disable timeout
+	if(m_drive_type != 0) {
+		m_fx.spin(false, true);
+	}
 }
 
 void HardDrive::config_changed()
@@ -485,6 +490,8 @@ void HardDrive::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
+	m_fx.clear_events();
+
 	if(m_drive_type != 0) {
 		//the saved state is read only
 		g_program.config().set_bool(DISK_C_SECTION, DISK_READONLY, true);
@@ -492,9 +499,10 @@ void HardDrive::restore_state(StateBuf &_state)
 		HDDPerformance perf;
 		get_profile(m_drive_type, geom, perf);
 		mount(_state.get_basename() + "-hdd.img", geom, perf);
+		m_fx.spin(true, false);
+	} else {
+		m_fx.spin(false, false);
 	}
-
-	m_fx.clear_events();
 }
 
 void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &_perf)
@@ -956,7 +964,7 @@ void HardDrive::exec_command()
 	activate_command_timer(exec_time_us, seek_time_us, rot_latency_us, xfer_time_us);
 
 	if(seek) {
-		m_fx.seek(m_s.cur_cylinder, m_s.ccb.cylinder);
+		m_fx.seek(m_s.cur_cylinder, m_s.ccb.cylinder, m_disk->geometry.cylinders);
 	}
 }
 

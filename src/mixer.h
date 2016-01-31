@@ -82,6 +82,7 @@ public:
 			const std::string &_name);
 
 	void calibrate(const Chrono &_c);
+	unsigned heartbeat() const { return m_heartbeat; }
 	inline HWBench & get_bench() { return m_bench; }
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }
 	inline SDL_AudioStatus get_audio_status() const { return SDL_GetAudioDeviceStatus(m_device); }
@@ -104,7 +105,7 @@ private:
 	void config_changed();
 	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
 	void stop_wave_playback();
-	size_t mix_channels(const std::vector<MixerChannel*> &_channels);
+	size_t mix_channels(const std::vector<MixerChannel*> &_channels, uint64_t _time_span_us);
 	bool send_packet(size_t _len);
 	void start_capture();
 	void stop_capture();

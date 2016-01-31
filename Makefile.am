@@ -81,6 +81,13 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf
 
+soundshdddir = $(pkgdatadir)/sounds/hdd
+dist_soundshdd_DATA = \
+share/ibmulator/sounds/hdd/drive_spin_up.wav \
+share/ibmulator/sounds/hdd/drive_spin_down.wav \
+share/ibmulator/sounds/hdd/drive_spin.wav \
+share/ibmulator/sounds/hdd/drive_seek.wav
+
 extraprogsdir = $(pkgdatadir)/extra
 dist_extraprogs_DATA = \
 share/ibmulator/extra/CMOSDUMP.C \

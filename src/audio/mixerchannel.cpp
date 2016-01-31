@@ -107,6 +107,21 @@ void MixerChannel::set_out_spec(const AudioSpec &_spec)
 	}
 }
 
+void MixerChannel::play(const AudioBuffer &_wave)
+{
+	if(_wave.spec() != m_in_buffer.spec()) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: can't play, incompatible audio format\n",
+				m_name.c_str());
+		return;
+	}
+	m_in_buffer.add_frames(_wave);
+	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: %d frames (%dus), in buf: %d samples (%dus)\n",
+			m_name.c_str(),
+			_wave.frames(), _wave.duration_us(),
+			m_in_buffer.samples(), m_in_buffer.duration_us()
+			);
+}
+
 void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
 {
 	/* This function plays the given sound sample at the specified time distance
@@ -128,9 +143,23 @@ void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
 			);
 }
 
+void MixerChannel::play_loop(const AudioBuffer &_wave)
+{
+	if(m_in_buffer.duration_us() < m_mixer->heartbeat()) {
+		play(_wave);
+	}
+}
+
 void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
 {
 	m_out_buffer.pop_frames(_frames_to_pop);
+}
+
+void MixerChannel::flush()
+{
+	m_in_buffer.clear();
+	m_out_buffer.clear();
+	reset_SRC();
 }
 
 void MixerChannel::input_finish(uint64_t _time_span_us)

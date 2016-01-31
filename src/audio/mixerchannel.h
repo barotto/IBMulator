@@ -62,11 +62,14 @@ public:
 	// The mixer thread can call also these methods:
 	void set_in_spec(const AudioSpec &_spec);
 	void set_out_spec(const AudioSpec &_spec);
-	void play(const AudioBuffer &_sample, uint64_t _at_time);
+	void play(const AudioBuffer &_wave);
+	void play(const AudioBuffer &_wave, uint64_t _at_time);
+	void play_loop(const AudioBuffer &_wave);
 	void input_finish(uint64_t _time_span_us=0);
 	      AudioBuffer & in() { return m_in_buffer; }
 	const AudioBuffer & out() { return m_out_buffer; }
 	void pop_out_frames(unsigned _count);
+	void flush();
 
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }

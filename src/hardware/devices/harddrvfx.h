@@ -26,6 +26,8 @@
 
 #include "mixer.h"
 #include "shared_deque.h"
+#include <array>
+
 
 class HardDriveFX
 {
@@ -33,26 +35,31 @@ private:
 	std::mutex m_clear_mutex;
 	struct SeekEvent {
 		uint64_t time;
-		int distance;
+		double distance;
 	};
 	shared_deque<SeekEvent> m_seek_events;
+	std::atomic<bool> m_spinning, m_spin_up_down;
 	struct {
 		std::shared_ptr<MixerChannel> seek;
 		std::shared_ptr<MixerChannel> spin;
 	} m_channels;
-	struct {
-		AudioBuffer spin_up;
-		AudioBuffer spin;
-		AudioBuffer spin_down;
-		AudioBuffer seek;
-	} m_waves;
+	enum SampleType {
+		HDD_SPIN_UP = 0,
+		HDD_SPIN_DOWN,
+		HDD_SPIN,
+		HDD_SEEK,
+		SAMPLES_COUNT
+	};
+	std::array<AudioBuffer,SAMPLES_COUNT> m_buffers;
+	const static std::array<std::pair<const char*, const char*>,SAMPLES_COUNT> ms_samples;
 
 public:
 	HardDriveFX();
 	~HardDriveFX();
 
 	void init();
-	void seek(int _c0, int _c1);
+	void seek(int _c0, int _c1, int _tot_cyls);
+	void spin(bool _spinning, bool _up_down_fx);
 	void clear_events();
 
 	void create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);

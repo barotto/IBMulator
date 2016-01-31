@@ -58,7 +58,7 @@ void Mixer::sdl_callback(void *userdata, Uint8 *stream, int len)
 		/* buffer underrun is normal when the audio ring buffer is emptying and
 		 * channels are all disabled.
 		 */
-		PDEBUGF(LOG_V2, LOG_MIXER, "buffer underrun\n");
+		PDEBUGF(LOG_V1, LOG_MIXER, "buffer underrun\n");
 		memset(&stream[bytes], mixer->m_device_spec.silence, len-bytes);
 	}
 }
@@ -186,6 +186,7 @@ void Mixer::main_loop()
 	#if MULTITHREADED
 	while(true) {
 		time_span_us = m_main_chrono.elapsed_usec();
+		uint64_t time_slept = 0;
 		if(time_span_us < m_heartbeat) {
 			uint64_t sleep = m_heartbeat - time_span_us;
 			uint64_t t0 = m_main_chrono.get_usec();
@@ -193,7 +194,7 @@ void Mixer::main_loop()
 			m_main_chrono.start();
 			uint64_t t1 = m_main_chrono.get_usec();
 			assert(t1 > t0);
-			uint64_t time_slept = (t1 - t0);
+			time_slept = (t1 - t0);
 			time_span_us += time_slept;
 			m_next_beat_diff = (sleep+m_next_beat_diff) - time_slept;
 		} else {
@@ -203,6 +204,12 @@ void Mixer::main_loop()
 		time_span_us = m_main_chrono.elapsed_usec();
 		m_main_chrono.start();
 	#endif
+
+		uint64_t chupdates=0,chmixing=0;
+		if(time_span_us>m_heartbeat*1.05) {
+			PDEBUGF(LOG_V1, LOG_MIXER, "time_slept:%d, overslept: %d\n", time_slept,time_span_us);
+			PDEBUGF(LOG_V1, LOG_MIXER, "  updates:%d, mixing: %d\n", chupdates,chmixing);
+		}
 
 		m_bench.beat_start();
 
@@ -230,6 +237,7 @@ void Mixer::main_loop()
 				if(ch.second->is_enabled()) {
 					ch.second->update(time_span_us, false);
 				}
+				ch.second->flush();
 			}
 #if MULTITHREADED
 			continue;
@@ -258,9 +266,10 @@ void Mixer::main_loop()
 				}
 			}
 		}
+		chupdates = m_main_chrono.elapsed_usec();
 
 		if(!active_channels.empty()) {
-			size_t mix_size = mix_channels(active_channels);
+			size_t mix_size = mix_channels(active_channels, time_span_us);
 			if(mix_size>0) {
 				send_packet(mix_size);
 			}
@@ -288,6 +297,7 @@ void Mixer::main_loop()
 				PDEBUGF(LOG_V1, LOG_MIXER, "playing\n");
 			}
 		}
+		chmixing = m_main_chrono.elapsed_usec();
 
 		m_bench.beat_end();
 
@@ -351,13 +361,23 @@ void Mixer::stop_wave_playback()
 	}
 }
 
-size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
+size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, uint64_t _time_span_us)
 {
 	size_t mixlen = std::numeric_limits<size_t>::max();
-	int frames;
+	unsigned frames;
+	const unsigned reqframes = us_to_frames(_time_span_us,m_device_spec.freq);
 	for(auto ch : _channels) {
 		frames = ch->out().frames();
+		if(ch->is_enabled()) {
+			frames = ch->out().frames();
+		} else {
+			frames = reqframes;
+		}
 		mixlen = std::min(mixlen, size_t(frames*m_device_spec.channels));
+	}
+	if(mixlen < reqframes) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "mixlen: %d (req.: %d)\n",
+				mixlen,reqframes*m_device_spec.channels);
 	}
 	if(mixlen==0) {
 		return 0;
@@ -367,9 +387,15 @@ size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels)
 	std::fill(m_mix_buffer.begin(), m_mix_buffer.begin()+mixlen, 0.f);
 	for(auto ch : _channels) {
 		const float *chdata = &ch->out().at<float>(0);
+		unsigned chframes = ch->out().frames();
 		for(size_t i=0; i<mixlen; i++) {
-			float v1 = chdata[i] * ch->volume();
-			float v2 = m_mix_buffer[i];
+			float v1,v2;
+			if(i<chframes) {
+				v1 = chdata[i] * ch->volume();
+			} else {
+				v1 = 0.f;
+			}
+			v2 = m_mix_buffer[i];
 			m_mix_buffer[i] = v1 + v2;
 		}
 		ch->pop_out_frames(frames);
@@ -406,17 +432,13 @@ bool Mixer::send_packet(size_t _len)
 			return false;
 	}
 
-	//SDL_LockAudioDevice(m_device);
-	size_t size, read, write;
-	m_out_buffer.get_status(size, read, write);
 	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d frames, %d bytes, buf fullness: %d\n",
-			_len / m_device_spec.channels, bytes, read + bytes);
+			_len / m_device_spec.channels, bytes, (m_out_buffer.get_read_avail() + bytes));
 
 	if(m_out_buffer.write((uint8_t*)&buf[0], bytes) < bytes) {
 		PERRF(LOG_MIXER, "audio buffer overflow\n");
 		ret = false;
 	}
-	//SDL_UnlockAudioDevice(m_device);
 
 	if(m_wav.is_open()) {
 		try {
