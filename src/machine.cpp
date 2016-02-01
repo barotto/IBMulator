@@ -371,7 +371,7 @@ bool Machine::update_timers(uint64_t _cpu_time)
 			if(m_timers[i].time_to_fire <= _cpu_time) {
 
 				//timers need to fire in an ordered manner
-				triggered.insert(pair<uint64_t,ushort>(m_timers[i].time_to_fire,i));
+				triggered.insert(std::pair<uint64_t,ushort>(m_timers[i].time_to_fire,i));
 
 			} else {
 
@@ -563,8 +563,8 @@ void Machine::memdump(uint32_t _base, uint32_t _len)
 			base = 0;
 			len = g_memory.get_ram_size();
 		}
-		ss << std::hex << std::uppercase << internal << setfill('0');
-		ss << setw(6) << base << "-" << setw(4) << len;
+		ss << std::hex << std::uppercase << std::internal << std::setfill('0');
+		ss << std::setw(6) << base << "-" << std::setw(4) << len;
 		ss << ".bin";
 		g_memory.dump(ss.str(),base,len);
 		PINFOF(LOG_V0, LOG_MACHINE, "memory content dumped in %s\n", ss.str().c_str());
@@ -680,8 +680,8 @@ void Machine::cmd_dtdump(const std::string &_name)
 		}
 		std::stringstream filename;
 		filename << g_program.config().get_cfg_home() + "/" + _name + "dump-0x";
-		filename << std::hex << std::uppercase << internal << setfill('0');
-		filename << setw(6) << base << "-" << setw(4) << limit;
+		filename << std::hex << std::uppercase << std::internal << std::setfill('0');
+		filename << std::setw(6) << base << "-" << std::setw(4) << limit;
 		filename << ".csv";
 		try {
 			std::ofstream file(filename.str().c_str());
@@ -716,7 +716,7 @@ void Machine::cmd_cycles_adjust(double _factor)
 	m_cmd_fifo.push([=] () {
 		m_cycles_factor = _factor;
 		std::stringstream ss;
-		ss << "emulation speed at " << setprecision(3) << (_factor*100.f) << "%";
+		ss << "emulation speed at " << std::setprecision(3) << (_factor*100.f) << "%";
 		PINFOF(LOG_V0, LOG_MACHINE, "%s\n", ss.str().c_str());
 		g_gui.show_message(ss.str().c_str());
 	});

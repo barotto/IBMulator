@@ -162,7 +162,7 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 	size_t buffer_size = file_interface->Tell(file_handle);
 	file_interface->Seek(file_handle, 0, SEEK_SET);
 
-	vector<uint8_t> buffer(buffer_size);
+	std::vector<uint8_t> buffer(buffer_size);
 	file_interface->Read(&buffer[0], buffer_size, file_handle);
 	file_interface->Close(file_handle);
 

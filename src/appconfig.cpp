@@ -636,7 +636,7 @@ uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_m
 	string enumstr;
 	try {
 		enumstr = get(_section, _name);
-	} catch(exception &e) {
+	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
 
@@ -644,7 +644,7 @@ uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_m
 	if(enumvalue == _enum_map.end()) {
 		PERRF(LOG_PROGRAM, "unable to find enum value for '%s' in [%s]:%s\n",
 				enumstr.c_str(), _section.c_str(), _name.c_str());
-		throw exception();
+		throw std::exception();
 	}
 	return enumvalue->second;
 }
@@ -683,18 +683,18 @@ void AppConfig::create_file(const std::string &_filename, bool _comments)
 		throw std::exception();
 	}
 	if(_comments) {
-		file << ms_help["HEADER"] << endl;
+		file << ms_help["HEADER"] << std::endl;
 	}
 	for(auto section : ms_keys_order) {
-		file << "[" << section.first << "]" << endl;
+		file << "[" << section.first << "]" << std::endl;
 		if(_comments) {
 			file << ms_help[section.first];
 		}
 
 		for(auto key : section.second) {
-			file << key << "=" << get(section.first, key) << endl;
+			file << key << "=" << get(section.first, key) << std::endl;
 		}
-		file << endl;
+		file << std::endl;
 	}
 
 	file.close();

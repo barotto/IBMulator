@@ -75,7 +75,7 @@ const char *g_key_symbol[KEY_NBKEYS] = {
 #define DEF_SDL_KEY(key) \
   { #key, key },
 
-map<string, uint32_t> sdl_keytable = {
+std::map<std::string, uint32_t> sdl_keytable = {
 	// this include provides all the entries.
 	#include "sdlkeys.h"
 };

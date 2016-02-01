@@ -59,7 +59,7 @@ private:
 	std::vector<inttrap_interval_t> m_inttraps_intervals;
 	//TODO change this map to a stack
 	std::map<uint32_t, std::vector<std::function<bool()>>> m_inttraps_ret;
-	std::stack<pair<uint32_t,std::string>> m_dos_prg;
+	std::stack<std::pair<uint32_t,std::string>> m_dos_prg;
 	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
 
 	uint8_t load_eb();

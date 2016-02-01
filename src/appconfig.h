@@ -52,7 +52,7 @@ private:
 	static std::string make_key(std::string _name);
 	static int value_handler(void* user, const char* section, const char* name, const char* value);
 
-	std::string get(ini_file_t &_values, const string &_section, const string &_name);
+	std::string get(ini_file_t &_values, const std::string &_section, const std::string &_name);
 	std::string get(const std::string &_section, const std::string &_name);
 
 	long parse_int(const std::string &_str);
@@ -78,12 +78,12 @@ public:
 	long get_int(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name);
 	bool get_bool(const std::string &section, const std::string &name);
-	string get_string(const string &_section, const string &_name);
-	uint get_enum(const string &_section, const string &_name, ini_enum_map_t &_enum_map);
+	std::string get_string(const std::string &_section, const std::string &_name);
+	uint get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
-	string get_file_path(const string &_filename, FileType _type);
-	string find_file(const string &_section, const string &_name);
-	string find_media(const string &_section, const string &_name);
+	std::string get_file_path(const std::string &_filename, FileType _type);
+	std::string find_file(const std::string &_section, const std::string &_name);
+	std::string find_media(const std::string &_section, const std::string &_name);
 
 	void set_bool(const std::string &section, const std::string &name, bool _value);
 	void set_string(const std::string &_section, const std::string &_name, std::string _value);

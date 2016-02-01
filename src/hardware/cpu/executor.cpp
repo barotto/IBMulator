@@ -2719,7 +2719,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		if(!results.empty()) {
 			bool res = false;
 			auto retinfo = m_inttraps_ret.insert(
-				pair<uint32_t, std::vector<std::function<bool()>>>(
+				std::pair<uint32_t, std::vector<std::function<bool()>>>(
 					retaddr, std::vector<std::function<bool()>>()
 				)
 			).first;

@@ -28,7 +28,7 @@ class GUI;
 class Window;
 
 typedef void (RC::EventListener::*event_handler_t)(RC::Event &);
-typedef pair<RC::String,RC::String> event_map_key_t;
+typedef std::pair<RC::String,RC::String> event_map_key_t;
 typedef std::map<event_map_key_t, event_handler_t> event_map_t;
 #define GUI_EVT(id, type, fn) { {id, type}, static_cast<event_handler_t>(&fn) }
 

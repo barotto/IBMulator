@@ -91,7 +91,7 @@ void FileSelect::on_file(RC::Event &_event)
 	if(it->is_dir) {
 		if(it->name == "..") {
 			size_t pos = path.rfind(FS_SEP);
-			if(pos==string::npos) {
+			if(pos==std::string::npos) {
 				return;
 			}
 			path = path.substr(0,pos);

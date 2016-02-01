@@ -203,7 +203,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 void Interface::update_floppy_disk(std::string _filename)
 {
 	size_t pos = _filename.rfind(FS_SEP);
-	if(pos!=string::npos) {
+	if(pos!=std::string::npos) {
 		_filename = _filename.substr(pos+1);
 	}
 	m_status.fdd_disk->SetInnerRML(_filename.c_str());
@@ -316,7 +316,7 @@ void Interface::on_power(RC::Event &)
 
 void Interface::show_message(const char* _mex)
 {
-	static atomic<int> callscnt;
+	static std::atomic<int> callscnt;
 
 	m_message->SetProperty("visibility", "visible");
 	Rocket::Core::String str(_mex);
@@ -371,7 +371,7 @@ void Interface::on_fdd_mount(RC::Event &)
 
 	if(!floppy_dir.empty()) {
 		size_t pos = floppy_dir.rfind(FS_SEP);
-		if(pos == string::npos) {
+		if(pos == std::string::npos) {
 			floppy_dir = "";
 		} else {
 			floppy_dir = floppy_dir.substr(0,pos);

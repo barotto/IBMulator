@@ -56,8 +56,8 @@ public:
 	void resize_frames_silence(unsigned _num_frames);
 	void clear();
 	void reserve_us(uint64_t _us);
-	template<typename T> void add_samples(const vector<T> &_data);
-	template<typename T> void add_samples(const vector<T> &_data, unsigned _count);
+	template<typename T> void add_samples(const std::vector<T> &_data);
+	template<typename T> void add_samples(const std::vector<T> &_data, unsigned _count);
 	void add_frames(const AudioBuffer &_source);
 	void add_frames(const AudioBuffer &_source, unsigned _frames_count);
 	void pop_frames(unsigned _frames_to_pop);
@@ -129,13 +129,13 @@ T& AudioBuffer::at(unsigned _pos)
 }
 
 template<typename T>
-void AudioBuffer::add_samples(const vector<T> &_data)
+void AudioBuffer::add_samples(const std::vector<T> &_data)
 {
 	add_samples(_data, _data.size());
 }
 
 template<typename T>
-void AudioBuffer::add_samples(const vector<T> &_data, unsigned _count)
+void AudioBuffer::add_samples(const std::vector<T> &_data, unsigned _count)
 {
 	if(sizeof(T) != sample_size()) {
 		throw std::logic_error("invalid type");

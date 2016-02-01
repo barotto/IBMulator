@@ -425,7 +425,7 @@ void GUI::GL_debug_output(
 {
 	GUI* gui = (GUI*)_userParam;
 
-	string source;
+	std::string source;
 	switch(_source) {
 		case GL_DEBUG_SOURCE_API_ARB:
 			source = "API";

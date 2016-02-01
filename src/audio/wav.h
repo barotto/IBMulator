@@ -98,7 +98,7 @@ class WAVFile
 	WAVHeader       m_header;
 	WAVHeaderFMT    m_header_fmt;
 	WAVHeaderDATA   m_header_data;
-	vector<uint8_t> m_hrader_extra;
+	std::vector<uint8_t> m_hrader_extra;
 	FILE * m_file;
 	size_t m_datasize;
 	bool m_write_mode;

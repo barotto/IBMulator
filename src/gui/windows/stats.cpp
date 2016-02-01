@@ -54,7 +54,7 @@ Stats::~Stats()
 
 void Stats::update()
 {
-	stringstream ss;
+	std::stringstream ss;
 	ss << g_program.get_bench();
 	m_stats.fps->SetInnerRML(ss.str().c_str());
 
