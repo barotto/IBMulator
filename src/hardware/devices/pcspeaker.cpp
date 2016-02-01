@@ -254,7 +254,7 @@ size_t PCSpeaker::fill_samples_buffer_t(int _duration, int _bstart, int16_t _val
 
 #include "machine.h"
 //this method is called by the Mixer thread
-void PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
+bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
 	//TODO this function is a mess
 
@@ -274,7 +274,7 @@ void PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 		if(m_channel->check_disable_time(NSEC_TO_USEC(mtime_ns))) {
 			m_last_time = 0;
 			m_samples_rem = 0.0;
-			return;
+			return false;
 		} else if(m_last_time && isamples && !_prebuf) {
 			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %d samples\n", isamples);
 			m_channel->in().fill_samples<int16_t>(isamples, 0);
@@ -287,7 +287,7 @@ void PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 			m_samples_rem = std::min(0.0, m_samples_rem);
 		}
 		m_channel->input_finish();
-		return;
+		return true;
 	}
 	m_channel->set_disable_time(0);
 	uint32_t samples_cnt = 0;
@@ -402,7 +402,7 @@ void PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 
 	m_channel->input_finish();
 
-	return;
+	return true;
 }
 
 

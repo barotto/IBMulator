@@ -60,17 +60,33 @@ void MixerChannel::enable(bool _enabled)
 	}
 }
 
-int MixerChannel::update(uint64_t _time_span_us, bool _prebuffering)
+std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_us, bool _prebuffering)
 {
 	assert(m_update_clbk);
-	int samples = m_out_buffer.samples();
-	bool first_upd = m_first_update;
-	// channel can be disabled in the callback, so I update the first update
-	// member before
-	m_first_update = false;
-	m_update_clbk(_time_span_us, _prebuffering, first_upd);
-	samples = m_out_buffer.samples() - samples;
-	return samples;
+
+	bool active=false,enabled=false;
+	if(m_enabled) {
+		bool first_upd = m_first_update;
+		/* channel can be disabled in the callback, so I update m_first_update
+		 * before calling the update
+		 */
+		m_first_update = false;
+		enabled = m_update_clbk(_time_span_us, _prebuffering, first_upd);
+		if(enabled || m_out_buffer.frames()>0) {
+			active = true;
+		}
+	} else {
+		enabled = false;
+		/* On the previous iteration the channel could have been disabled
+		 * but its input buffer could have some samples left to process
+		 */
+		if(m_in_buffer.frames()) {
+			input_finish(_time_span_us);
+			active = true;
+		}
+	}
+
+	return std::make_tuple(active,enabled);
 }
 
 void MixerChannel::reset_SRC()
@@ -93,6 +109,8 @@ void MixerChannel::set_in_spec(const AudioSpec &_spec)
 {
 	if(m_in_buffer.spec() != _spec)	{
 		m_in_buffer.set_spec(_spec);
+		// 5 sec. worth of data, how much is enough?
+		m_in_buffer.reserve_us(5e6);
 		reset_SRC();
 	}
 }
@@ -103,6 +121,7 @@ void MixerChannel::set_out_spec(const AudioSpec &_spec)
 		/* the output buffer is forced to float format
 		 */
 		m_out_buffer.set_spec({AUDIO_FORMAT_F32, _spec.channels, _spec.rate});
+		m_out_buffer.reserve_us(5e6);
 		reset_SRC();
 	}
 }

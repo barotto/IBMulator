@@ -175,8 +175,10 @@ void Mixer::start()
 
 void Mixer::main_loop()
 {
-	std::vector<MixerChannel*> active_channels;
+	std::vector<std::pair<MixerChannel*,bool>> active_channels;
+
 	uint64_t time_span_us;
+	uint64_t chupdates=0, chmixing=0;
 
 	while(true) {
 		time_span_us = m_main_chrono.elapsed_usec();
@@ -195,10 +197,10 @@ void Mixer::main_loop()
 			m_main_chrono.start();
 		}
 
-		uint64_t chupdates=0,chmixing=0;
 		if(time_span_us>m_heartbeat*1.05) {
-			PDEBUGF(LOG_V1, LOG_MIXER, "time_slept:%d, overslept: %d\n", time_slept,time_span_us);
-			PDEBUGF(LOG_V1, LOG_MIXER, "  updates:%d, mixing: %d\n", chupdates,chmixing);
+			PDEBUGF(LOG_V1, LOG_MIXER, "time_slept:%d, overslept:%d\n", time_slept,time_span_us);
+			PDEBUGF(LOG_V1, LOG_MIXER, "  updates:%d, mixing:%d\n", chupdates,chmixing);
+			// TODO implement a mechanism to kepp the audio buffer within the prebuf limit
 		}
 
 		m_bench.beat_start();
@@ -210,13 +212,7 @@ void Mixer::main_loop()
 
 		if(m_quit) {
 			return;
-		}
-
-		if(m_paused) {
-			if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
-				SDL_PauseAudioDevice(m_device, 0);
-				//TODO should we purge all the channels buffers?
-			}
+		} else if(m_paused) {
 			continue;
 		} else if(!is_enabled()) {
 			for(auto ch : m_mix_channels) {
@@ -229,33 +225,27 @@ void Mixer::main_loop()
 		}
 
 		active_channels.clear();
-		SDL_AudioStatus audio_status = SDL_GetAudioDeviceStatus(m_device);
 
+		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
+		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
+
+		chupdates = m_main_chrono.elapsed_usec();
 		//update the registered channels
 		for(auto ch : m_mix_channels) {
-			if(ch.second->is_enabled()) {
-				ch.second->update(time_span_us, audio_status == SDL_AUDIO_PAUSED);
-				if(ch.second->is_enabled() || ch.second->out().frames()>0) {
-					active_channels.push_back(ch.second.get());
-				}
-			} else {
-				/* On the previous iteration the channel could have been disabled
-				 * but its input buffer could have some samples left to process
-				 */
-				if(ch.second->in().frames()) {
-					ch.second->input_finish(time_span_us);
-					active_channels.push_back(ch.second.get());
-				}
+			bool active,enabled;
+			std::tie(active,enabled) = ch.second->update(time_span_us, prebuffering);
+			if(active) {
+				active_channels.push_back(std::pair<MixerChannel*,bool>(ch.second.get(),enabled));
 			}
 		}
-		chupdates = m_main_chrono.elapsed_usec();
+		chupdates = m_main_chrono.elapsed_usec()-chupdates;
 
 		if(!active_channels.empty()) {
 			size_t mix_size = mix_channels(active_channels, time_span_us);
 			if(mix_size>0) {
 				send_packet(mix_size);
 			}
-			if(audio_status == SDL_AUDIO_PAUSED) {
+			if(m_audio_status == SDL_AUDIO_PAUSED) {
 				int elapsed = m_main_chrono.get_msec() - m_start;
 				if(m_start == 0) {
 					m_start = m_main_chrono.get_msec();
@@ -271,16 +261,17 @@ void Mixer::main_loop()
 			}
 		} else {
 			m_start = 0;
-			if(audio_status==SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
+			if(m_audio_status==SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
 				SDL_PauseAudioDevice(m_device, 1);
 				PDEBUGF(LOG_V1, LOG_MIXER, "paused\n");
-			} else if(audio_status==SDL_AUDIO_PAUSED && m_out_buffer.get_read_avail() != 0) {
+			} else if(m_audio_status==SDL_AUDIO_PAUSED && m_out_buffer.get_read_avail() != 0) {
 				SDL_PauseAudioDevice(m_device, 0);
 				PDEBUGF(LOG_V1, LOG_MIXER, "playing\n");
 			}
 		}
 		chmixing = m_main_chrono.elapsed_usec();
 
+		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
 		m_bench.beat_end();
 	}
 }
@@ -315,6 +306,7 @@ void Mixer::start_wave_playback(int _frequency, int _bits, int _channels, int _s
 	want.callback = Mixer::sdl_callback;
 	want.userdata = this;
 
+	m_audio_status = SDL_AUDIO_STOPPED;
 	m_device = SDL_OpenAudioDevice(nullptr, 0, &want, &m_device_spec, 0);
 	if(m_device == 0) {
 		PERRF(LOG_MIXER, "Failed to open audio: %s\n", SDL_GetError());
@@ -327,6 +319,7 @@ void Mixer::start_wave_playback(int _frequency, int _bits, int _channels, int _s
 	}
 
 	SDL_PauseAudioDevice(m_device, 1);
+	m_audio_status = SDL_GetAudioDeviceStatus(m_device);
 
 	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %u Hz, %u bit, %u channels, %u samples\n",
 			m_device_spec.freq, _bits, m_device_spec.channels, m_device_spec.samples);
@@ -340,15 +333,16 @@ void Mixer::stop_wave_playback()
 	}
 }
 
-size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, uint64_t _time_span_us)
+size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels,
+		uint64_t _time_span_us)
 {
 	size_t mixlen = std::numeric_limits<size_t>::max();
 	unsigned frames;
 	const unsigned reqframes = us_to_frames(_time_span_us,m_device_spec.freq);
 	for(auto ch : _channels) {
-		frames = ch->out().frames();
-		if(ch->is_enabled()) {
-			frames = ch->out().frames();
+		frames = ch.first->out().frames();
+		if(ch.second) { //enabled
+			frames = ch.first->out().frames();
 		} else {
 			frames = reqframes;
 		}
@@ -365,19 +359,19 @@ size_t Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, uint64_t
 	frames = mixlen / m_device_spec.channels;
 	std::fill(m_mix_buffer.begin(), m_mix_buffer.begin()+mixlen, 0.f);
 	for(auto ch : _channels) {
-		const float *chdata = &ch->out().at<float>(0);
-		unsigned chframes = ch->out().frames();
+		const float *chdata = &ch.first->out().at<float>(0);
+		unsigned chframes = ch.first->out().frames();
 		for(size_t i=0; i<mixlen; i++) {
 			float v1,v2;
 			if(i<chframes) {
-				v1 = chdata[i] * ch->volume();
+				v1 = chdata[i] * ch.first->volume();
 			} else {
 				v1 = 0.f;
 			}
 			v2 = m_mix_buffer[i];
 			m_mix_buffer[i] = v1 + v2;
 		}
-		ch->pop_out_frames(frames);
+		ch.first->pop_out_frames(frames);
 	}
 
 	return mixlen;
@@ -463,8 +457,8 @@ void Mixer::cmd_pause()
 {
 	m_cmd_queue.push([this] () {
 		m_paused = true;
-		if(m_device && SDL_GetAudioDeviceStatus(m_device)==SDL_AUDIO_PLAYING) {
-			SDL_PauseAudioDevice(m_device, 0);
+		if(m_device && m_audio_status==SDL_AUDIO_PLAYING) {
+			SDL_PauseAudioDevice(m_device, 1);
 		}
 	});
 }
@@ -472,7 +466,13 @@ void Mixer::cmd_pause()
 void Mixer::cmd_resume()
 {
 	m_cmd_queue.push([this] () {
+		if(!m_paused) {
+			return;
+		}
 		m_paused = false;
+		if(m_device && m_audio_status==SDL_AUDIO_PLAYING) {
+			SDL_PauseAudioDevice(m_device, 0);
+		}
 	});
 }
 

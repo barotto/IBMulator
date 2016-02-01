@@ -62,8 +62,8 @@ public:
 	void spin(bool _spinning, bool _up_down_fx);
 	void clear_events();
 
-	void create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	void create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 
 private:
 	void load_wave(const char *_filename, AudioBuffer &_sample, const AudioSpec &_spec);

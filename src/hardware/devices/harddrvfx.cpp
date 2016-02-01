@@ -51,7 +51,7 @@ void HardDriveFX::init()
 	/* mixer channels operate in float format, but rate and channels count depend
 	 * on the current state of the mixer. can't anticipate.
 	 */
-	AudioSpec spec({AUDIO_FORMAT_F32, 2, 48000});
+	AudioSpec spec({AUDIO_FORMAT_F32, 1, 44100});
 
 	m_channels.spin = g_mixer.register_channel(
 		std::bind(&HardDriveFX::create_spin_samples, this,
@@ -130,7 +130,7 @@ void HardDriveFX::clear_events()
 }
 
 //this method is called by the Mixer thread
-void HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, bool _first_upd)
+bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, bool _first_upd)
 {
 	/* TODO this function can be generalised/templatised and used whenever there's
 	 * the need to play pre-rendered samples for timed events.
@@ -182,14 +182,14 @@ void HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, 
 	audio_cue_time = mtime_us;
 	m_channels.seek->input_finish(buf_span);
 	if(evtcnt == 0) {
-		m_channels.seek->check_disable_time(mtime_us);
-	} else {
-		m_channels.seek->set_disable_time(mtime_us);
+		return m_channels.seek->check_disable_time(mtime_us);
 	}
+	m_channels.seek->set_disable_time(mtime_us);
+	return true;
 }
 
 //this method is called by the Mixer thread
-void HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
+bool HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
 {
 	bool spin = m_spinning;
 	if(spin) {
@@ -201,6 +201,7 @@ void HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
 		}
 		m_channels.spin->play_loop(m_buffers[HDD_SPIN]);
 		m_channels.spin->input_finish(_time_span_us);
+		return true;
 	} else {
 		if(m_spin_up_down) {
 			PDEBUGF(LOG_V0, LOG_AUDIO, "HDD-spin: spin down\n");
@@ -210,5 +211,6 @@ void HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
 		}
 		m_channels.spin->input_finish(_time_span_us);
 		m_channels.spin->enable(false);
+		return false;
 	}
 }

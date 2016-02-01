@@ -471,7 +471,7 @@ void PS1Audio::PSG_activate()
 }
 
 //this method is called by the Mixer thread
-void PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd)
+bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd)
 {
 	m_DAC_lock.lock();
 	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
@@ -494,8 +494,9 @@ void PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 			}
 			m_DAC_last_value = 128;
 			m_DAC_channel->input_finish();
+			return true;
 		}
-		return;
+		return false;
 	} else if(PS1AUDIO_DAC_FADE_IN && _first_upd && m_DAC_samples[0]!=128) {
 		m_DAC_channel->in().fill_frames_fade<uint8_t>(
 				us_to_frames(_time_span_us/2, freq), 128, m_DAC_samples[0]);
@@ -508,7 +509,7 @@ void PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 	m_DAC_channel->input_finish();
 	m_DAC_channel->set_disable_time(mtime_us);
 
-	return;
+	return true;
 }
 
 int PS1Audio::generate_PSG_samples(uint64_t _duration)
@@ -527,7 +528,7 @@ int PS1Audio::generate_PSG_samples(uint64_t _duration)
 }
 
 //this method is called by the Mixer thread
-void PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
+bool PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
 	//this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_PSG_lock);
@@ -580,14 +581,12 @@ void PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%d samples generated\n", generated_samples);
 
-	if(empty && m_s.PSG.is_silent()) {
-		m_PSG_channel->check_disable_time(mtime_us);
-	} else {
-		m_PSG_channel->set_disable_time(mtime_us);
-	}
 	m_PSG_last_mtime = mtime_ns;
-
-	return;
+	if(empty && m_s.PSG.is_silent()) {
+		return m_PSG_channel->check_disable_time(mtime_us);
+	}
+	m_PSG_channel->set_disable_time(mtime_us);
+	return true;
 }
 
 //this method is called by the Mixer thread

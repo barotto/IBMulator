@@ -58,6 +58,7 @@ private:
 	int64_t m_next_beat_diff;
 
 	bool m_quit; //how about an std::atomic?
+	SDL_AudioStatus m_audio_status;
 	std::atomic<bool> m_paused;
 	SDL_AudioDeviceID m_device;
 	SDL_AudioSpec m_device_spec;
@@ -105,7 +106,7 @@ private:
 	void config_changed();
 	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
 	void stop_wave_playback();
-	size_t mix_channels(const std::vector<MixerChannel*> &_channels, uint64_t _time_span_us);
+	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);
 	bool send_packet(size_t _len);
 	void start_capture();
 	void stop_capture();

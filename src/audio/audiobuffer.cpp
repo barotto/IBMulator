@@ -69,6 +69,12 @@ void AudioBuffer::clear()
 	m_data.clear();
 }
 
+void AudioBuffer::reserve_us(uint64_t _us)
+{
+	unsigned bytes = m_spec.us_to_samples(_us) * sample_size();
+	m_data.reserve(bytes);
+}
+
 void AudioBuffer::add_frames(const AudioBuffer &_source)
 {
 	add_frames(_source, _source.frames());

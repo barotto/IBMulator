@@ -69,7 +69,7 @@ public:
 
 	void add_event(uint64_t _time, bool _active, bool _out);
 	void activate();
-	void create_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

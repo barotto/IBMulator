@@ -26,7 +26,7 @@
 
 class Mixer;
 
-typedef std::function<void(
+typedef std::function<bool(
 		uint64_t _time_span_us,
 		bool     _prebuffering,
 		bool     _first_update
@@ -74,7 +74,7 @@ public:
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }
 
-	int update(uint64_t _time_span_us, bool _prebuffering);
+	std::tuple<bool,bool> update(uint64_t _time_span_us, bool _prebuffering);
 	void set_disable_time(uint64_t _time) { m_disable_time = _time; }
 	bool check_disable_time(uint64_t _now_us);
 	void set_disable_timeout(uint64_t _timeout_us) { m_disable_timeout = _timeout_us; }

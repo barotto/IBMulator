@@ -87,8 +87,8 @@ private:
 	void FIFO_timer();
 	void raise_interrupt();
 	void lower_interrupt();
-	void create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	void create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 	void PSG_activate();
 	int generate_PSG_samples(uint64_t _duration);
 	void on_PSG_capture(bool _enable);
