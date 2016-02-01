@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
+/* This first version of this code is from more than 15 years ago, in the dark
+ * ages of C++.
+ */
 
 #include "ibmulator.h"
 #include <cstring>
@@ -27,6 +30,8 @@
 #include "hardware/cpu/core.h"
 
 Syslog g_syslog;
+
+using namespace std;
 
 const char* Syslog::m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRIMAX] = {
 	{ "[DBG0]", "[INF0]", "[WRN0]", "[ERR0]" },
@@ -63,7 +68,8 @@ const char* Syslog::m_fac_prefixes[] = {
 Syslog::Syslog()
 :
 m_default(new LogStream(cerr)),
-m_repeat_cnt(0)
+m_repeat_cnt(0),
+m_stop(false)
 {
 	for(int pri=0; pri<LOG_PRIMAX; pri++) {
 		for(int fac=0; fac<LOG_FACMAX; fac++) {
@@ -73,6 +79,8 @@ m_repeat_cnt(0)
 
 	memset(m_linefeed, 1, LOG_PRIMAX*LOG_FACMAX);
 	memset(m_verbosity, 0, sizeof(m_verbosity));
+
+	m_thread = std::thread(&Syslog::main_loop,this);
 }
 
 
@@ -80,6 +88,11 @@ m_repeat_cnt(0)
 */
 Syslog::~Syslog()
 {
+	m_cmd_queue.push([this](){
+		m_stop = true;
+	});
+	m_thread.join();
+
 	auto it = m_devices.begin();
 	while(it != m_devices.end()) {
 		if((*it)->syslog_dispose())
@@ -88,6 +101,14 @@ Syslog::~Syslog()
 	}
 }
 
+void Syslog::main_loop()
+{
+	std::function<void()> fn;
+	while(!m_stop) {
+		m_cmd_queue.wait_and_pop(fn);
+		fn();
+	}
+}
 
 /** Aggiunge un device alla coda di priorità e facility.
 @param _priority priorità (vedi _Syslog_Priorities)
@@ -214,7 +235,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 	if(devlist.empty()) return false;
 
-	std::lock_guard<std::mutex> lock(m_lock);
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	if(_format[0] == '\n' && _format[1] == 0) {
 		put_all(devlist,"","\n");
@@ -254,12 +275,12 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 		if(m_repeat_cnt>0) {
 			std::stringstream ss;
 			ss << "last message repeated " << m_repeat_cnt << " more times" << std::endl;
-			put_all(devlist, "", ss.str().c_str());
+			put_all(devlist, "", ss.str());
 		}
 		m_repeat_cnt = 0;
 		m_repeat_str = tocompare;
 		m_linefeed[_priority][_facility] = (int)(m_buf[len-1] == '\n');
-		put_all(devlist, prefix.c_str(), m_buf);
+		put_all(devlist, prefix, m_buf);
 	}
 	return true;
 }
@@ -295,12 +316,14 @@ void Syslog::remove(Logdev* _device, bool _erase)
 @param _prefix the prefix to the message
 @param _mex the message to print
 */
-void Syslog::put_all(list<Logdev*>& _devlist, const char* _prefix, const char* _mex)
+void Syslog::put_all(list<Logdev*>& _devlist, string _prefix, string _mex)
 {
-	for(list<Logdev*>::iterator dit=_devlist.begin(); dit!=_devlist.end(); dit++) {
-		(*dit)->log_put(_prefix, _mex);
-		(*dit)->log_flush();
-	}
+	m_cmd_queue.push([=](){
+		for(auto dev : _devlist) {
+			dev->log_put(_prefix, _mex);
+			dev->log_flush();
+		}
+	});
 }
 
 
@@ -323,7 +346,7 @@ void Syslog::set_verbosity(uint _level, uint _facility)
 const char* Syslog::convert(const char *from_charset, const char *to_charset,
 		char *instr, size_t inlen)
 {
-	std::lock_guard<std::mutex> lock(m_lock);
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	size_t inleft = inlen;
 	size_t outleft = LOG_BUFFER_SIZE;
@@ -419,8 +442,18 @@ LogStream::~LogStream()
 }
 
 
-void LogStream::log_put(const char* _prefix, const char* _message)
+void LogStream::log_put(const std::string &_prefix, const std::string &_message)
 {
+	/* There is a limited amount of buffer space between the application and the
+	 * terminal, and the I/O channel will block until there is enough space in
+	 * said buffer to actually output the data. The thread will generally
+	 * not be able to continue while this blocking is taking place.
+	 *
+	 * When a thread is outputting more data than the terminal is able to flush,
+	 * the buffer eventually fills up. When that happens the thread will be
+	 * blocked until the buffer is emptied. This can mean a blocking time of
+	 * like 150ms.
+	 */
 	if(m_file.is_open()) {
 		m_file << _prefix << _message;
 	} else {

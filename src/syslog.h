@@ -25,9 +25,11 @@
 #include <fstream>
 #include <map>
 #include <list>
+#include <thread>
+#include <atomic>
 #include <mutex>
+#include "shared_deque.h"
 
-using namespace std;
 class Syslog;
 extern Syslog g_syslog;
 
@@ -120,12 +122,11 @@ class Logdev;
 class Syslog
 {
 private:
-
 	int m_id_max;
 	Logdev* m_default;
 
-	list<Logdev*> m_devices;
-	list<Logdev*> m_mapped_devices[LOG_PRIMAX][LOG_FACMAX];
+	std::list<Logdev*> m_devices;
+	std::list<Logdev*> m_mapped_devices[LOG_PRIMAX][LOG_FACMAX];
 	uint8_t m_linefeed[LOG_PRIMAX][LOG_FACMAX];
 
 	static const char* m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRIMAX];
@@ -138,26 +139,30 @@ private:
 	std::string m_repeat_str;
 	uint m_repeat_cnt;
 
-	void put_all(list<Logdev*>& _devlist, const char* _prefix, const char* _mex);
-
-	std::mutex m_lock;
+	/* Multi-threading extension to resolve the blocking behaviour of I/O stream
+	 * writing.
+	 */
+	std::thread m_thread;
+	std::atomic<bool> m_stop;
+	std::mutex m_mutex;
+	shared_deque<std::function<void()>> m_cmd_queue;
 
 public:
-
 	Syslog();
 	~Syslog();
 
 	void add_device(int _priority, int _facility, Logdev* _device);
 	void del_device(int _priority, int _facility, Logdev* _device);
 	void clear_queue(int _priority, int _facility);
-
 	bool log(int _priority, int _facility, int _verbosity, const char* _format, ...);
-	bool log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);
-
 	void remove(Logdev* _dev, bool _erase = false);
-
 	void set_verbosity(uint _level, uint facility = LOG_FACMAX);
 	const char* convert(const char *from_charset, const char *to_charset, char *instr, size_t inlen);
+
+private:
+	bool log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);
+	void put_all(std::list<Logdev*>& _devlist, std::string _prefix, std::string _mex);
+	void main_loop();
 };
 
 
@@ -166,7 +171,7 @@ public:
 
 
 
-typedef list< list<Logdev*>* > LOGREFSLIST;
+typedef std::list< std::list<Logdev*>* > LOGREFSLIST;
 
 class Logdev
 {
@@ -183,7 +188,7 @@ protected:
 
 public:
 	virtual ~Logdev();
-	virtual	void log_put(const char* _prefix, const char* _message) = 0;
+	virtual	void log_put(const std::string &_prefix, const std::string &_message) = 0;
 	virtual void log_flush() {}
 
 	void log_add(int _pri, int _fac);
@@ -200,15 +205,15 @@ public:
 class LogStream : public Logdev
 {
 protected:
-	ostream* m_stream;
-	ofstream m_file;
+	std::ostream* m_stream;
+	std::ofstream m_file;
 
 public:
-	LogStream(const char* _path, ios_base::openmode _mode=ios_base::out, bool _syslog_dispose = true);
-	LogStream(ostream& _stream, bool _syslog_dispose = true);
+	LogStream(const char* _path, std::ios_base::openmode _mode=std::ios_base::out, bool _syslog_dispose = true);
+	LogStream(std::ostream& _stream, bool _syslog_dispose = true);
 	~LogStream();
 
-	void log_put(const char* _prefix, const char* _message);
+	void log_put(const std::string &_prefix, const std::string &_message);
 	void log_flush();
 };
 

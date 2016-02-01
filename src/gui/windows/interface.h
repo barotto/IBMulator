@@ -142,7 +142,7 @@ public:
 	LogMessage(Interface* _iface);
 	~LogMessage();
 
-	void log_put(const char* _prefix, const char* _message);
+	void log_put(const std::string &_prefix, const std::string &_message);
 };
 
 #endif
