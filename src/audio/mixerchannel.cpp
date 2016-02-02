@@ -162,6 +162,17 @@ void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
 			);
 }
 
+void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist)
+{
+	/* this work buffers can be static only because the current implementation
+	 * of the mixer is single threaded.
+	 */
+	static AudioBuffer temp;
+	temp = _wave;
+	temp.apply_volume(_volume);
+	play(temp,_time_dist);
+}
+
 void MixerChannel::play_loop(const AudioBuffer &_wave)
 {
 	if(m_in_buffer.duration_us() < m_mixer->heartbeat()) {

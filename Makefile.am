@@ -86,7 +86,8 @@ dist_soundshdd_DATA = \
 share/ibmulator/sounds/hdd/drive_spin_up.wav \
 share/ibmulator/sounds/hdd/drive_spin_down.wav \
 share/ibmulator/sounds/hdd/drive_spin.wav \
-share/ibmulator/sounds/hdd/drive_seek.wav
+share/ibmulator/sounds/hdd/drive_seek.wav \
+share/ibmulator/sounds/hdd/drive_seek_long.wav
 
 extraprogsdir = $(pkgdatadir)/extra
 dist_extraprogs_DATA = \

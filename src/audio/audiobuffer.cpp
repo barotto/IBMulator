@@ -303,6 +303,26 @@ unsigned AudioBuffer::us_to_samples(uint64_t _us)
 	return std::min(samples(), m_spec.us_to_samples(_us));
 }
 
+void AudioBuffer::apply_volume(float _volume)
+{
+	auto fn = [=](float _sample) -> float{
+		return _sample * _volume;
+	};
+	switch(m_spec.format) {
+		case AUDIO_FORMAT_U8:
+			apply_u8(fn);
+			break;
+		case AUDIO_FORMAT_S16:
+			apply_s16(fn);
+			break;
+		case AUDIO_FORMAT_F32:
+			apply_f32(fn);
+			break;
+		default:
+			throw std::logic_error("unsupported format");
+	}
+}
+
 void AudioBuffer::load(const WAVFile &_wav)
 {
 	if(!_wav.is_open()) {
@@ -342,7 +362,7 @@ void AudioBuffer::u8_to_f32(const std::vector<uint8_t> &_source,
 	unsigned d = _dest.size();
 	_dest.resize(_dest.size()+_samples_count*4);
 	for(unsigned s=0; s<_samples_count; ++s) {
-		reinterpret_cast<float&>(_dest[d+s*4]) = (float(_source[s]) - 128.f) / 128.f;
+		reinterpret_cast<float&>(_dest[d+s*4]) = u8_to_f32(_source[s]);
 	}
 }
 
@@ -353,7 +373,7 @@ void AudioBuffer::s16_to_f32(const std::vector<uint8_t> &_source,
 	_dest.resize(_dest.size()+_samples_count*4);
 	for(unsigned s=0; s<_samples_count; ++s) {
 		int16_t s16sample = reinterpret_cast<const int16_t&>(_source[s*2]);
-		reinterpret_cast<float&>(_dest[d+s*4]) = float(s16sample) / 32768.f ;
+		reinterpret_cast<float&>(_dest[d+s*4]) = s16_to_f32(s16sample);
 	}
 }
 
@@ -363,10 +383,8 @@ void AudioBuffer::f32_to_s16(const std::vector<uint8_t> &_source,
 	unsigned d = _dest.size();
 	_dest.resize(_dest.size()+_samples_count*2);
 	for(unsigned s=0; s<_samples_count; ++s) {
-		float f32sample = reinterpret_cast<const float&>(_source[s*4]) * 32768.f;
-		f32sample = std::max(f32sample,-32768.f);
-		f32sample = std::min(f32sample,32767.f);
-		reinterpret_cast<int16_t&>(_dest[d+s*2]) = int16_t(f32sample);
+		float f32sample = reinterpret_cast<const float&>(_source[s*4]);
+		reinterpret_cast<int16_t&>(_dest[d+s*2]) = f32_to_s16(f32sample);
 	}
 }
 
@@ -390,5 +408,30 @@ void AudioBuffer::convert_channels(const AudioBuffer &_source, AudioBuffer &_des
 			double ch2 = double(_source.at<T>(i*2+1));
 			_dest.operator[]<T>(d+i) = T((ch1 + ch2) / 2.0);
 		}
+	}
+}
+
+void AudioBuffer::apply_u8(std::function<float(float)> _fn)
+{
+	for(unsigned i=0; i<samples(); ++i) {
+		float result = _fn(u8_to_f32(m_data[i]));
+		m_data[i] = f32_to_u8(result);
+	}
+}
+
+void AudioBuffer::apply_s16(std::function<float(float)> _fn)
+{
+	int16_t *data = &at<int16_t>(0);
+	for(unsigned i=0; i<samples(); ++i) {
+		float result = _fn(s16_to_f32(data[i]));
+		data[i] = f32_to_u8(result);
+	}
+}
+
+void AudioBuffer::apply_f32(std::function<float(float)> _fn)
+{
+	float *data = &at<float>(0);
+	for(unsigned i=0; i<samples(); ++i) {
+		data[i] = _fn(data[i]);
 	}
 }

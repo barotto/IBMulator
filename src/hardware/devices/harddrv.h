@@ -146,6 +146,7 @@ private:
 		unsigned prev_cylinder;
 		bool eoc;
 		int reset_phase;
+		int power_up_phase;
 		uint32_t time;
 	} m_s;
 
@@ -249,8 +250,8 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	inline bool is_busy() {
-		return m_s.attention_reg & 0x80;
+	inline bool is_busy() const {
+		return (m_s.attention_reg & 0x80) || (m_s.power_up_phase);
 	}
 };
 

@@ -48,6 +48,7 @@ private:
 		HDD_SPIN_DOWN,
 		HDD_SPIN,
 		HDD_SEEK,
+		HDD_SEEK_LONG,
 		SAMPLES_COUNT
 	};
 	std::array<AudioBuffer,SAMPLES_COUNT> m_buffers;
@@ -60,6 +61,7 @@ public:
 	void init();
 	void seek(int _c0, int _c1, int _tot_cyls);
 	void spin(bool _spinning, bool _up_down_fx);
+	uint64_t spin_up_time();
 	void clear_events();
 
 	bool create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);

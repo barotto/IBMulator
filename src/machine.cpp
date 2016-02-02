@@ -526,6 +526,23 @@ void Machine::deactivate_timer(unsigned _timer)
 	m_timers[_timer].active = false;
 }
 
+uint64_t Machine::get_timer_eta(unsigned _timer) const
+{
+	return get_timer_eta_ns(_timer) / 1000;
+}
+
+uint64_t Machine::get_timer_eta_ns(unsigned _timer) const
+{
+	assert(_timer!=0);
+	assert(_timer<m_num_timers);
+
+	if(!m_timers[_timer].active) {
+		return 0;
+	}
+	assert(m_timers[_timer].time_to_fire >= m_s.virt_time);
+	return (m_timers[_timer].time_to_fire - m_s.virt_time);
+}
+
 void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func)
 {
 	assert(_timer>0);

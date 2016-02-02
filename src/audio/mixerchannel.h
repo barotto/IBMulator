@@ -64,6 +64,7 @@ public:
 	void set_out_spec(const AudioSpec &_spec);
 	void play(const AudioBuffer &_wave);
 	void play(const AudioBuffer &_wave, uint64_t _at_time);
+	void play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist);
 	void play_loop(const AudioBuffer &_wave);
 	void input_finish(uint64_t _time_span_us=0);
 	      AudioBuffer & in() { return m_in_buffer; }

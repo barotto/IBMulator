@@ -324,6 +324,7 @@ void HardDrive::State::SSB::clear()
 
 HardDrive::HardDrive()
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 HardDrive::~HardDrive()
@@ -422,7 +423,7 @@ void HardDrive::init()
 		PINFOF(LOG_V1, LOG_HDD, "  Sectors per track: %d\n", geom.spt);
 		PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %d RPM\n", perf.rot_speed);
 		PINFOF(LOG_V2, LOG_HDD, "  Interleave: %d:1\n", perf.interleave);
-		PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %d ms\n", perf.overh_time);
+		PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %.1f ms\n", perf.overh_time);
 		PINFOF(LOG_V2, LOG_HDD, "  data bits per track: %d\n", geom.spt*512*8);
 	} else {
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
@@ -433,7 +434,10 @@ void HardDrive::init()
 
 void HardDrive::reset(unsigned _type)
 {
+	int pu = m_s.power_up_phase;
 	memset(&m_s, 0, sizeof(m_s));
+	m_s.power_up_phase = pu;
+
 	if(m_drive_type == 45) {
 		m_s.ssb.drive_type = HDD_CUSTOM_TYPE_IDX;
 	} else {
@@ -441,9 +445,10 @@ void HardDrive::reset(unsigned _type)
 	}
 	lower_interrupt();
 
-	//TODO if machine power on then play spin up sample
 	if(_type == MACHINE_POWER_ON) {
 		m_fx.spin(true, true);
+		m_s.power_up_phase = 1;
+		g_machine.activate_timer(m_cmd_timer, m_fx.spin_up_time(), 0);
 	}
 }
 
@@ -452,6 +457,7 @@ void HardDrive::power_off()
 	if(m_drive_type != 0) {
 		m_fx.spin(false, true);
 	}
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 void HardDrive::config_changed()
@@ -1268,7 +1274,11 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 	if(time_us == 0) {
 		time_us = HDD_DEFTIME_US;
 	}
-
+	if(m_s.power_up_phase) {
+		uint64_t delay = g_machine.get_timer_eta(m_cmd_timer);
+		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", delay);
+		time_us += delay;
+	}
 	g_machine.activate_timer(m_cmd_timer, time_us, 0);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
 
@@ -1285,6 +1295,10 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 
 void HardDrive::command_timer()
 {
+	if(m_s.power_up_phase) {
+		m_s.power_up_phase = 0;
+		PDEBUGF(LOG_V2, LOG_HDD, "drive powered up\n");
+	}
 	if(m_s.attention_reg & HDD_ATT_CCB) {
 		assert(m_s.ccb.command>=0 && m_s.ccb.command<=0xF);
 		m_s.ssb.clear();

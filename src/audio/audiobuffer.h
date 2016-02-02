@@ -28,6 +28,7 @@ typedef void SRC_STATE;
 #endif
 #include "audiospec.h"
 #include "wav.h"
+#include "utils.h"
 
 
 class AudioBuffer
@@ -74,6 +75,7 @@ public:
 	void convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
 	unsigned us_to_frames(uint64_t _us);
 	unsigned us_to_samples(uint64_t _us);
+	void apply_volume(float _volume);
 
 	// direct sample access no checks
 	template<typename T> const T& operator[](unsigned _pos) const;
@@ -87,6 +89,18 @@ public:
 	void load(const WAVFile &_wav);
 
 private:
+	constexpr static float u8_to_f32(uint8_t _s) {
+		return (float(_s) - 128.f) / 128.f;
+	}
+	constexpr static float s16_to_f32(int16_t _s) {
+		return float(_s) / 32768.f;
+	}
+	inline static uint8_t f32_to_u8(float _s) {
+		return uint8_t(clamp((_s*128.f + 128.f), 0.f, 255.f));
+	}
+	inline static int16_t f32_to_s16(float _s) {
+		return int16_t(clamp((_s*32768.f), -32768.f, 32767.f));
+	}
 	static void u8_to_f32(const std::vector<uint8_t> &_source,
 			std::vector<uint8_t> &_dest, unsigned _samples);
 	static void s16_to_f32(const std::vector<uint8_t> &_source,
@@ -96,6 +110,11 @@ private:
 	template<typename T>
 	static void convert_channels(const AudioBuffer &_source, AudioBuffer &_dest,
 			unsigned _frames);
+	template<typename T> void apply(std::function<double(double)>);
+	void apply_u8(std::function<float(float)> _fn);
+	void apply_s16(std::function<float(float)>);
+	void apply_f32(std::function<float(float)>);
+
 };
 
 

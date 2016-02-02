@@ -28,7 +28,8 @@ HardDriveFX::ms_samples = {{
 	{"HDD spin up",   "sounds" FS_SEP "hdd" FS_SEP "drive_spin_up.wav"},
 	{"HDD spin down", "sounds" FS_SEP "hdd" FS_SEP "drive_spin_down.wav"},
 	{"HDD spin",      "sounds" FS_SEP "hdd" FS_SEP "drive_spin.wav"},
-	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek.wav"}
+	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek.wav"},
+	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek_long.wav"}
 }};
 
 const uint64_t CHANNELS_TIMEOUT = 1000000;
@@ -106,7 +107,9 @@ void HardDriveFX::seek(int _c0, int _c1, int _tot_cyls)
 	if(event.distance > 0.f) {
 		event.time = g_machine.get_virt_time_us();
 		m_seek_events.push(event);
-		PDEBUGF(LOG_V1, LOG_AUDIO, "HDD-seek: dist:%.4f, time:%lld\n", event.distance,
+		PDEBUGF(LOG_V1, LOG_AUDIO, "HDD-seek: dist:%.4f (%d sect.), time:%lld\n",
+				event.distance,
+				(_c1 - _c0),
 				event.time);
 		if(!m_channels.seek->is_enabled()) {
 			m_channels.seek->enable(true);
@@ -121,6 +124,11 @@ void HardDriveFX::spin(bool _spinning, bool _up_down_fx)
 	if((m_spinning || m_spin_up_down) && !m_channels.spin->is_enabled()) {
 		m_channels.spin->enable(true);
 	}
+}
+
+uint64_t HardDriveFX::spin_up_time()
+{
+	return m_buffers[HDD_SPIN_UP].duration_us();
 }
 
 void HardDriveFX::clear_events()
@@ -159,7 +167,11 @@ bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, 
 				_first_upd = false;
 			}
 			uint64_t time_span = event.time - audio_cue_time;
-			m_channels.seek->play(m_buffers[HDD_SEEK], time_span);
+			AudioBuffer *wave = &m_buffers[HDD_SEEK];
+			if(event.distance>0.2) {
+				wave = &m_buffers[HDD_SEEK_LONG];
+			}
+			m_channels.seek->play(*wave, lerp(0.8,1.4,event.distance), time_span);
 		}
 	} while(1);
 

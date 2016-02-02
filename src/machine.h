@@ -137,10 +137,10 @@ public:
 	bool main_loop();
 	void config_changed();
 
-	inline uint64_t get_virt_time_ns() { return m_s.virt_time; }
-	inline uint64_t get_virt_time_us() { return NSEC_TO_USEC(m_s.virt_time); }
-	inline uint64_t get_virt_time_ns_mt() { return m_mt_virt_time; }
-	inline uint64_t get_virt_time_us_mt() { return NSEC_TO_USEC(m_mt_virt_time); }
+	inline uint64_t get_virt_time_ns() const { return m_s.virt_time; }
+	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_s.virt_time); }
+	inline uint64_t get_virt_time_ns_mt() const { return m_mt_virt_time; }
+	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
 	inline HWBench & get_bench() { return m_bench; }
 
 	int register_timer(timer_fun_t _func, uint64_t _usecs, bool _continuous,
@@ -149,9 +149,11 @@ public:
 			bool _active, const char *_name);
 	void activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous);
 	void activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous);
+	uint64_t get_timer_eta(unsigned _timer) const;
+	uint64_t get_timer_eta_ns(unsigned _timer) const;
 	void deactivate_timer(unsigned _timer);
 	void set_timer_callback(unsigned _timer, timer_fun_t _func);
-	inline bool is_timer_active(unsigned _timer) {
+	inline bool is_timer_active(unsigned _timer) const {
 		assert(_timer!=0 && _timer<m_num_timers);
 		return m_timers[_timer].active;
 	}
