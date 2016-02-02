@@ -147,8 +147,8 @@ public:
 			bool _active, const char *_name);
 	int register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _continuous,
 			bool _active, const char *_name);
-	void activate_timer(unsigned _timer, uint32_t _usecs, bool _continuous);
-	void activate_timer_ns(unsigned _timer, uint32_t _nsecs, bool _continuous);
+	void activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous);
+	void activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous);
 	void deactivate_timer(unsigned _timer);
 	void set_timer_callback(unsigned _timer, timer_fun_t _func);
 	inline bool is_timer_active(unsigned _timer) {

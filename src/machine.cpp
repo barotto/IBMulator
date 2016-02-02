@@ -483,7 +483,7 @@ int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _
 	return timer;
 }
 
-void Machine::activate_timer(unsigned _timer, uint32_t _usecs, bool _continuous)
+void Machine::activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous)
 {
 	uint64_t nsecs;
 
@@ -498,7 +498,7 @@ void Machine::activate_timer(unsigned _timer, uint32_t _usecs, bool _continuous)
 	activate_timer_ns(_timer, nsecs, _continuous);
 }
 
-void Machine::activate_timer_ns(unsigned _timer, uint32_t _nsecs, bool _continuous)
+void Machine::activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous)
 {
 	assert(_timer!=0);
 	assert(_timer<m_num_timers);
