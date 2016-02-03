@@ -470,6 +470,8 @@ void HardDrive::config_changed()
 		throw std::exception();
 	}
 	//disk mount is performed at restore_state
+
+	m_fx.config_changed();
 }
 
 void HardDrive::save_state(StateBuf &_state)

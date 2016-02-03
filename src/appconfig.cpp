@@ -124,6 +124,12 @@ ini_file_t AppConfig::ms_def_values = {
 		{ MIXER_PS1AUDIO, "yes" }
 	} },
 
+	{ SOUNDFX_SECTION, {
+		{ SOUNDFX_VOLUME,   "1.0" },
+		{ SOUNDFX_HDD_SPIN, "0.4" },
+		{ SOUNDFX_HDD_SEEK, "0.3" }
+	} },
+
 	{ COM_SECTION, {
 		{ COM_ENABLED, "yes" },
 		{ COM_MODE, "null" },
@@ -273,11 +279,18 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
 ";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
 ";      rate: Sample rate.\n"
-";            Possible values: 44100, 48000, 32000, 22050.\n"
-";    volume: Audio volume.\n"
+";            Possible values: 48000, 44100, 32000, 22050.\n"
+";    volume: Audio volume of the sound cards.\n"
 ";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 "; pcspeaker: Enable PC-Speaker emulation.\n"
 ";  ps1audio: Enable PS/1 Audio Card emulation.\n"
+		},
+
+		{ SOUNDFX_SECTION,
+"; Volumes are expressed as positive real numbers.\n"
+";   volume: Audio volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
+"; hdd_seek: Volume of HDD seeks.\n"
+"; hdd_spin: Volume of HDD spin noise.\n"
 		},
 
 		{ COM_SECTION, "" },
@@ -368,6 +381,11 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MIXER_VOLUME,
 		MIXER_PCSPEAKER,
 		MIXER_PS1AUDIO
+	} },
+	{ SOUNDFX_SECTION, {
+		SOUNDFX_VOLUME,
+		SOUNDFX_HDD_SPIN,
+		SOUNDFX_HDD_SEEK
 	} },
 	{ COM_SECTION, {
 		COM_ENABLED,

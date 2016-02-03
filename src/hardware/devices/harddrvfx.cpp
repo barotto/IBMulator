@@ -21,6 +21,7 @@
 #include "program.h"
 #include "machine.h"
 #include "harddrvfx.h"
+#include <cfloat>
 #include <future>
 
 const std::array<std::pair<const char*, const char*>,HardDriveFX::SAMPLES_COUNT>
@@ -52,7 +53,7 @@ void HardDriveFX::init()
 	/* mixer channels operate in float format, but rate and channels count depend
 	 * on the current state of the mixer. can't anticipate.
 	 */
-	AudioSpec spec({AUDIO_FORMAT_F32, 1, 44100});
+	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
 	m_channels.spin = g_mixer.register_channel(
 		std::bind(&HardDriveFX::create_spin_samples, this,
@@ -79,6 +80,8 @@ void HardDriveFX::init()
 	for(unsigned i=0; i<SAMPLES_COUNT; ++i) {
 		futures[i].wait();
 	}
+
+	config_changed();
 }
 
 void HardDriveFX::load_wave(const char *_filename, AudioBuffer &_sample, const AudioSpec &_spec)
@@ -101,6 +104,9 @@ void HardDriveFX::load_wave(const char *_filename, AudioBuffer &_sample, const A
 
 void HardDriveFX::seek(int _c0, int _c1, int _tot_cyls)
 {
+	if(m_channels.seek->volume()<=FLT_MIN) {
+		return;
+	}
 	assert(_c0>=0 && _c1>=0 && _tot_cyls>0);
 	SeekEvent event;
 	event.distance = double(_c1 - _c0)/(_tot_cyls-1);
@@ -119,6 +125,9 @@ void HardDriveFX::seek(int _c0, int _c1, int _tot_cyls)
 
 void HardDriveFX::spin(bool _spinning, bool _up_down_fx)
 {
+	if(m_channels.spin->volume()<=FLT_MIN) {
+		return;
+	}
 	m_spinning = _spinning;
 	m_spin_up_down = _up_down_fx;
 	if((m_spinning || m_spin_up_down) && !m_channels.spin->is_enabled()) {
@@ -126,7 +135,7 @@ void HardDriveFX::spin(bool _spinning, bool _up_down_fx)
 	}
 }
 
-uint64_t HardDriveFX::spin_up_time()
+uint64_t HardDriveFX::spin_up_time() const
 {
 	return m_buffers[HDD_SPIN_UP].duration_us();
 }
@@ -135,6 +144,14 @@ void HardDriveFX::clear_events()
 {
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 	m_seek_events.clear();
+}
+
+void HardDriveFX::config_changed()
+{
+	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+
+	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK) * volume);
+	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN) * volume);
 }
 
 //this method is called by the Mixer thread

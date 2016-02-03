@@ -170,6 +170,11 @@ public:
 #define MIXER_PCSPEAKER         "pcspeaker"
 #define MIXER_PS1AUDIO          "ps1audio"
 
+#define SOUNDFX_SECTION         "soundfx"
+#define SOUNDFX_VOLUME          "volume"
+#define SOUNDFX_HDD_SPIN        "hdd_spin"
+#define SOUNDFX_HDD_SEEK        "hdd_seek"
+
 #define COM_SECTION             "com"
 #define COM_ENABLED             "enabled"
 #define COM_MODE                "mode"

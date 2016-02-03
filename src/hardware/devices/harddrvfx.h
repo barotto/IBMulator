@@ -61,8 +61,9 @@ public:
 	void init();
 	void seek(int _c0, int _c1, int _tot_cyls);
 	void spin(bool _spinning, bool _up_down_fx);
-	uint64_t spin_up_time();
+	uint64_t spin_up_time() const;
 	void clear_events();
+	void config_changed();
 
 	bool create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 	bool create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
