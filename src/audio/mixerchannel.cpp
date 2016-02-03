@@ -35,7 +35,8 @@ m_first_update(true),
 m_in_time(0),
 m_SRC_state(nullptr),
 m_capture_clbk([](bool){}),
-m_volume(1.f)
+m_volume(1.f),
+m_category(MixerChannelCategory::AUDIO)
 {
 }
 

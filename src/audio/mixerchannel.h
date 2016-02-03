@@ -33,6 +33,13 @@ typedef std::function<bool(
 	)> MixerChannel_handler;
 
 
+enum class MixerChannelCategory
+{
+	AUDIO   = 0,
+	SOUNDFX = 1,
+	GUI     = 2
+};
+
 class MixerChannel
 {
 private:
@@ -50,6 +57,7 @@ private:
 	SRC_STATE *m_SRC_state;
 	std::function<void(bool)> m_capture_clbk;
 	float m_volume;
+	MixerChannelCategory m_category;
 
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);
@@ -72,6 +80,8 @@ public:
 	void pop_out_frames(unsigned _count);
 	void flush();
 
+	void set_category(MixerChannelCategory _cat) { m_category = _cat; }
+	MixerChannelCategory category() const { return m_category; }
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }
 

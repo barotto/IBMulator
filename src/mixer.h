@@ -43,6 +43,9 @@ typedef std::function<void()> Mixer_fun_t;
 
 class Mixer
 {
+public:
+
+
 private:
 	RingBuffer m_out_buffer;
 	std::vector<float> m_mix_buffer;
@@ -70,6 +73,7 @@ private:
 
 	bool m_audio_capture;
 	float m_global_volume;
+	std::array<float,3> m_channels_volume;
 
 public:
 	Mixer();
@@ -101,6 +105,7 @@ public:
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
 	void cmd_set_global_volume(float _volume);
+	void cmd_set_category_volume(MixerChannelCategory _cat, float _volume);
 
 private:
 	void config_changed();

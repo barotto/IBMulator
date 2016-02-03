@@ -59,6 +59,7 @@ void HardDriveFX::init()
 		std::bind(&HardDriveFX::create_spin_samples, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 		"HDD-spin");
+	m_channels.spin->set_category(MixerChannelCategory::SOUNDFX);
 	m_channels.spin->set_disable_timeout(CHANNELS_TIMEOUT);
 	m_channels.spin->set_in_spec(spec);
 
@@ -66,6 +67,7 @@ void HardDriveFX::init()
 		std::bind(&HardDriveFX::create_seek_samples, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 		"HDD-seek");
+	m_channels.seek->set_category(MixerChannelCategory::SOUNDFX);
 	m_channels.seek->set_disable_timeout(CHANNELS_TIMEOUT);
 	m_channels.seek->set_in_spec(spec);
 

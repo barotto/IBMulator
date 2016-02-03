@@ -156,6 +156,10 @@ void Mixer::config_changed()
 		PERRF(LOG_MIXER, "wave audio output disabled\n");
 	}
 
+	// let the GUI interfaces set the AUDIO category volume
+	m_channels_volume[static_cast<int>(MixerChannelCategory::SOUNDFX)] =
+			g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+
 	if(capture) {
 		start_capture();
 	}
@@ -361,10 +365,11 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 	for(auto ch : _channels) {
 		const float *chdata = &ch.first->out().at<float>(0);
 		unsigned chframes = ch.first->out().frames();
+		float cat_volume = m_channels_volume[static_cast<int>(ch.first->category())];
 		for(size_t i=0; i<mixlen; i++) {
 			float v1,v2;
 			if(i<chframes) {
-				v1 = chdata[i] * ch.first->volume();
+				v1 = chdata[i] * ch.first->volume() * cat_volume;
 			} else {
 				v1 = 0.f;
 			}
@@ -517,5 +522,12 @@ void Mixer::cmd_set_global_volume(float _volume)
 {
 	m_cmd_queue.push([=] () {
 		m_global_volume = _volume;
+	});
+}
+
+void Mixer::cmd_set_category_volume(MixerChannelCategory _cat, float _volume)
+{
+	m_cmd_queue.push([=] () {
+		m_channels_volume[static_cast<int>(_cat)] = std::max(0.f,_volume);
 	});
 }

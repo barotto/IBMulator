@@ -479,7 +479,7 @@ void Interface::render_vga()
 
 void Interface::set_audio_volume(float _volume)
 {
-	m_mixer->cmd_set_global_volume(_volume);
+	m_mixer->cmd_set_category_volume(MixerChannelCategory::AUDIO, _volume);
 }
 
 void Interface::set_video_brightness(float _level)
