@@ -242,6 +242,8 @@ public:
 	int get_window_width() { return m_width; }
 	int get_window_height() { return m_height; }
 	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
+
+	static uint mode();
 };
 
 

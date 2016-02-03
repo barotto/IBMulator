@@ -139,7 +139,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw std::exception();
 	}
 
-	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
+	m_mode = mode();
 
 	/*** WINDOW CREATION ***/
 	create_window(PACKAGE_STRING, 640, 480, SDL_WINDOW_RESIZABLE);
@@ -288,6 +288,11 @@ vec2i GUI::resize_window(int _w, int _h)
 	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
 	update_window_size(m_width, m_height);
 	return vec2i(m_width, m_height);
+}
+
+uint GUI::mode()
+{
+	return g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
 }
 
 void GUI::toggle_fullscreen()
