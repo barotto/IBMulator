@@ -25,17 +25,15 @@
 #include <cfloat>
 #include <future>
 
-const std::array<std::pair<const char*, const char*>,HardDriveFX::SAMPLES_COUNT>
-HardDriveFX::ms_samples = {{
+const SoundFX::samples_t HardDriveFX::ms_samples = {
 	{"HDD spin up",   "sounds" FS_SEP "hdd" FS_SEP "drive_spin_up.wav"},
 	{"HDD spin down", "sounds" FS_SEP "hdd" FS_SEP "drive_spin_down.wav"},
 	{"HDD spin",      "sounds" FS_SEP "hdd" FS_SEP "drive_spin.wav"},
 	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek.wav"},
 	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek_long.wav"}
-}};
+};
 
 const uint64_t CHANNELS_TIMEOUT = 1000000;
-
 
 
 HardDriveFX::HardDriveFX()
@@ -72,37 +70,9 @@ void HardDriveFX::init()
 	m_channels.seek->set_disable_timeout(CHANNELS_TIMEOUT);
 	m_channels.seek->set_in_spec(spec);
 
-	std::array<std::future<void>, SAMPLES_COUNT> futures;
-	for(unsigned i=0; i<SAMPLES_COUNT; ++i) {
-		futures[i] = std::async(std::launch::async, [=](){
-			PINFOF(LOG_V1, LOG_AUDIO, "loading %s for %s sound fx\n",
-					ms_samples[i].second, ms_samples[i].first);
-			load_wave(ms_samples[i].second, m_buffers[i], spec);
-		});
-	}
-	for(unsigned i=0; i<SAMPLES_COUNT; ++i) {
-		futures[i].wait();
-	}
+	m_buffers = SoundFX::load_samples(spec, ms_samples);
 
 	config_changed();
-}
-
-void HardDriveFX::load_wave(const char *_filename, AudioBuffer &_sample, const AudioSpec &_spec)
-{
-	try {
-		std::string path = g_program.config().get_file_path(_filename, FILE_TYPE_ASSET);
-		WAVFile wav;
-		wav.open_read(path.c_str());
-		_sample.load(wav);
-		if(_spec != _sample.spec()) {
-			PDEBUGF(LOG_V1, LOG_AUDIO, "converting from %s to %s\n",
-					_sample.spec().to_string().c_str(),
-					_spec.to_string().c_str());
-			_sample.convert(_spec);
-		}
-	} catch(std::exception &e) {
-		PERRF(LOG_AUDIO, "HardDrive FX: %s: %s\n", _filename, e.what());
-	}
 }
 
 void HardDriveFX::seek(int _c0, int _c1, int _tot_cyls)
@@ -165,89 +135,27 @@ void HardDriveFX::config_changed()
 //this method is called by the Mixer thread
 bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, bool _first_upd)
 {
-	/* TODO this function can be generalised/templatised and used whenever there's
-	 * the need to play pre-rendered samples for timed events.
-	 */
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
-	static uint64_t audio_cue_time = 0;
-	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
-
-	PDEBUGF(LOG_V2, LOG_AUDIO, "HDD-seek: mix span: %04d us (1st upd:%d), cue time:%lld us, events:%d\n",
-			_time_span_us, _first_upd, audio_cue_time, m_seek_events.size());
-
-	unsigned evtcnt = 0;
-
-	do {
-		SeekEvent event;
-		bool empty = !m_seek_events.try_and_copy(event);
-		if(empty || event.time > mtime_us) {
-			break;
-		} else {
-			//play the seek sample
-			evtcnt++;
-			m_seek_events.try_and_pop();
-			if(_first_upd) {
-				audio_cue_time = event.time;
-				_first_upd = false;
-			}
-			uint64_t time_span = event.time - audio_cue_time;
+	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
+		_time_span_us, _first_upd,
+		*m_channels.seek, m_seek_events,
+		[this](SeekEvent &_evt, uint64_t _time_span) {
 			AudioBuffer *wave = &m_buffers[HDD_SEEK];
-			if(event.distance>0.2) {
+			if(_evt.distance>0.2) {
 				wave = &m_buffers[HDD_SEEK_LONG];
 			}
-			m_channels.seek->play(*wave, lerp(0.8,1.4,event.distance), time_span);
-		}
-	} while(1);
-
-	unsigned buf_span;
-	if(audio_cue_time==0) {
-		buf_span = _time_span_us;
-	} else {
-		buf_span = mtime_us - audio_cue_time;
-	}
-	unsigned in_duration = m_channels.seek->in().duration_us();
-	if(in_duration < buf_span) {
-		unsigned fill_us = buf_span - in_duration;
-		unsigned samples = m_channels.seek->in().fill_us_silence(fill_us);
-		assert(samples == m_channels.seek->in().spec().us_to_samples(fill_us));
-		PDEBUGF(LOG_V2, LOG_AUDIO, "HDD-seek: silence fill: %d frames (%d us)\n",
-				m_channels.seek->in().spec().samples_to_frames(samples),
-				fill_us
-				);
-	}
-	audio_cue_time = mtime_us;
-	m_channels.seek->input_finish(buf_span);
-	if(evtcnt == 0) {
-		return m_channels.seek->check_disable_time(mtime_us);
-	}
-	m_channels.seek->set_disable_time(mtime_us);
-	return true;
+			m_channels.seek->play(*wave, lerp(0.8,1.4,_evt.distance), _time_span);
+		});
 }
 
 //this method is called by the Mixer thread
 bool HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
 {
 	bool spin = m_spinning;
-	if(spin) {
-		if(m_spin_up_down) {
-			PDEBUGF(LOG_V0, LOG_AUDIO, "HDD-spin: spin up\n");
-			m_channels.spin->flush();
-			m_channels.spin->play(m_buffers[HDD_SPIN_UP],0);
-			m_spin_up_down = false;
-		}
-		m_channels.spin->play_loop(m_buffers[HDD_SPIN]);
-		m_channels.spin->input_finish(_time_span_us);
-		return true;
-	} else {
-		if(m_spin_up_down) {
-			PDEBUGF(LOG_V0, LOG_AUDIO, "HDD-spin: spin down\n");
-			m_channels.spin->flush();
-			m_channels.spin->play(m_buffers[HDD_SPIN_DOWN],0);
-			m_spin_up_down = false;
-		}
-		m_channels.spin->input_finish(_time_span_us);
-		m_channels.spin->enable(false);
-		return false;
-	}
+	bool change_state = m_spin_up_down;
+	m_spin_up_down = false;
+
+	return SoundFX::play_motor(_time_span_us, *m_channels.spin, spin, change_state,
+		m_buffers[HDD_SPIN_UP], m_buffers[HDD_SPIN], m_buffers[HDD_SPIN_DOWN]);
 }

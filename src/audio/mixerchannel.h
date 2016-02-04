@@ -84,6 +84,7 @@ public:
 	MixerChannelCategory category() const { return m_category; }
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }
+	const char* name() const { return m_name.c_str(); }
 
 	std::tuple<bool,bool> update(uint64_t _time_span_us, bool _prebuffering);
 	void set_disable_time(uint64_t _time) { m_disable_time = _time; }

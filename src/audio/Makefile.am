@@ -6,6 +6,7 @@ libaudio_a_SOURCES = \
 	audiospec.cpp \
 	mixerchannel.cpp \
 	ring_buffer.cpp \
+	soundfx.cpp \
 	vgm.cpp \
 	wav.cpp
 
@@ -14,5 +15,6 @@ noinst_HEADERS = \
 	audiospec.h \
 	mixerchannel.h \
 	ring_buffer.h \
+	soundfx.h \
 	vgm.h \
 	wav.h

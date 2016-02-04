@@ -26,6 +26,7 @@
 
 #include "mixer.h"
 #include "shared_deque.h"
+#include "audio/soundfx.h"
 #include <array>
 
 
@@ -48,11 +49,10 @@ private:
 		HDD_SPIN_DOWN,
 		HDD_SPIN,
 		HDD_SEEK,
-		HDD_SEEK_LONG,
-		SAMPLES_COUNT
+		HDD_SEEK_LONG
 	};
-	std::array<AudioBuffer,SAMPLES_COUNT> m_buffers;
-	const static std::array<std::pair<const char*, const char*>,SAMPLES_COUNT> ms_samples;
+	std::vector<AudioBuffer> m_buffers;
+	const static SoundFX::samples_t ms_samples;
 
 public:
 	HardDriveFX();
@@ -67,9 +67,6 @@ public:
 
 	bool create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 	bool create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-
-private:
-	void load_wave(const char *_filename, AudioBuffer &_sample, const AudioSpec &_spec);
 };
 
 #endif
