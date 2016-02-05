@@ -127,7 +127,8 @@ ini_file_t AppConfig::ms_def_values = {
 	{ SOUNDFX_SECTION, {
 		{ SOUNDFX_VOLUME,   "1.0" },
 		{ SOUNDFX_HDD_SPIN, "0.4" },
-		{ SOUNDFX_HDD_SEEK, "0.3" }
+		{ SOUNDFX_HDD_SEEK, "0.3" },
+		{ SOUNDFX_SYSTEM,   "1.0" }
 	} },
 
 	{ COM_SECTION, {
@@ -291,6 +292,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   volume: Audio volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
 "; hdd_seek: Volume of HDD seeks.\n"
 "; hdd_spin: Volume of HDD spin noise.\n"
+";   system: Volume of system unit's and monitor's noises.\n"
 		},
 
 		{ COM_SECTION, "" },
@@ -385,7 +387,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
 		SOUNDFX_HDD_SPIN,
-		SOUNDFX_HDD_SEEK
+		SOUNDFX_HDD_SEEK,
+		SOUNDFX_SYSTEM
 	} },
 	{ COM_SECTION, {
 		COM_ENABLED,

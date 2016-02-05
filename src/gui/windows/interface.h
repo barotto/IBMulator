@@ -96,19 +96,9 @@ protected:
 	Mixer *m_mixer;
 	FileSelect *m_fs;
 
-	void init_gl(uint _vga_sampler, std::string _vga_vshader, std::string _vga_fshader);
-	virtual void render_monitor();
-	virtual void render_vga();
-	void render_quad();
-
-private:
-
-	void update_floppy_disk(std::string _filename);
-
 public:
-
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
-	~Interface();
+	virtual ~Interface();
 
 	virtual void update();
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
@@ -132,6 +122,17 @@ public:
 	virtual void set_video_saturation(float);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
+
+	virtual void sig_state_restored() {}
+
+protected:
+	void init_gl(uint _vga_sampler, std::string _vga_vshader, std::string _vga_fshader);
+	virtual void render_monitor();
+	virtual void render_vga();
+	void render_quad();
+
+private:
+	void update_floppy_disk(std::string _filename);
 };
 
 class LogMessage : public Logdev

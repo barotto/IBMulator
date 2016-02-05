@@ -21,6 +21,8 @@
 #define IBMULATOR_GUI_REALISTIC_INTERFACE_H
 
 #include "interface.h"
+#include "mixer.h"
+#include "audio/soundfx.h"
 #include <Rocket/Core/EventListener.h>
 
 class Machine;
@@ -69,23 +71,24 @@ private:
 		} uniforms;
 	} m_rdisplay;
 
-
-
 	static event_map_t ms_evt_map;
 
-	vec2f display_size(int _width, int _height, float _sys_w, float _xoffset, float _scale, float _aspect);
-	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
+	struct Audio {
+		std::atomic<bool> m_power_on, m_change_state;
+		std::shared_ptr<MixerChannel> m_channel;
+		enum SampleType {
+			POWER_UP = 0,
+			POWER_DOWN,
+			POWER_ON
+		};
+		std::vector<AudioBuffer> m_buffers;
+		const static SoundFX::samples_t ms_samples;
 
-	void set_slider_value(RC::Element *_slider, float _xmin, float _value);
-
-	float on_slider_drag(RC::Event &_event, float _xmin);
-	void  on_volume_drag(RC::Event &);
-	void  on_brightness_drag(RC::Event &);
-	void  on_contrast_drag(RC::Event &);
-	void  on_dragstart(RC::Event &);
-
-	void render_monitor();
-	void render_vga();
+		Audio() : m_power_on(false), m_change_state(false) {}
+		void init(Mixer *_mixer);
+		void update(bool _power_on, bool _change_state);
+		bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+	} m_audio;
 
 	static constexpr float ms_min_slider_val = 0.0f;
 	static constexpr float ms_max_slider_val = 1.3f;
@@ -117,6 +120,24 @@ public:
 	void set_audio_volume(float _value);
 	void set_video_brightness(float _value);
 	void set_video_contrast(float _value);
+
+	void sig_state_restored();
+
+private:
+	vec2f display_size(int _width, int _height, float _sys_w, float _xoffset, float _scale, float _aspect);
+	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
+
+	void set_slider_value(RC::Element *_slider, float _xmin, float _value);
+
+	float on_slider_drag(RC::Event &_event, float _xmin);
+	void  on_volume_drag(RC::Event &);
+	void  on_brightness_drag(RC::Event &);
+	void  on_contrast_drag(RC::Event &);
+	void  on_dragstart(RC::Event &);
+	void  on_power(RC::Event &);
+
+	void render_monitor();
+	void render_vga();
 };
 
 #endif

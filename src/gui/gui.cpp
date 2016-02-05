@@ -295,6 +295,12 @@ uint GUI::mode()
 	return g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
 }
 
+void GUI::sig_state_restored()
+{
+	m_windows.interface->sig_state_restored();
+	vga_update();
+}
+
 void GUI::toggle_fullscreen()
 {
 	Uint32 flags = (SDL_GetWindowFlags(m_SDL_window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP);

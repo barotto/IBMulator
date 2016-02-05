@@ -174,7 +174,7 @@ void Program::restore_state(
 	}
 
 	m_mixer->cmd_resume();
-	m_gui->vga_update();
+	m_gui->sig_state_restored();
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
 	if(_on_success) {

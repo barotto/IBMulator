@@ -89,6 +89,12 @@ share/ibmulator/sounds/hdd/drive_spin.wav \
 share/ibmulator/sounds/hdd/drive_seek.wav \
 share/ibmulator/sounds/hdd/drive_seek_long.wav
 
+soundssysdir = $(pkgdatadir)/sounds/system
+dist_soundssys_DATA = \
+share/ibmulator/sounds/system/power_up.wav \
+share/ibmulator/sounds/system/power_down.wav \
+share/ibmulator/sounds/system/power_on.wav
+
 extraprogsdir = $(pkgdatadir)/extra
 dist_extraprogs_DATA = \
 share/ibmulator/extra/CMOSDUMP.C \

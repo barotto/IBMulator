@@ -48,7 +48,7 @@
 */
 
 event_map_t RealisticInterface::ms_evt_map = {
-	GUI_EVT( "power",     "click", Interface::on_power ),
+	GUI_EVT( "power",     "click", RealisticInterface::on_power ),
 	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
 	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
 	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
@@ -58,6 +58,12 @@ event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT( "brightness_slider", "dragstart", RealisticInterface::on_dragstart ),
 	GUI_EVT( "contrast_slider",   "drag",      RealisticInterface::on_contrast_drag ),
 	GUI_EVT( "contrast_slider",   "dragstart", RealisticInterface::on_dragstart )
+};
+
+const SoundFX::samples_t RealisticInterface::Audio::ms_samples = {
+	{"System power up",   "sounds" FS_SEP "system" FS_SEP "power_up.wav"},
+	{"System power down", "sounds" FS_SEP "system" FS_SEP "power_down.wav"},
+	{"System power on",   "sounds" FS_SEP "system" FS_SEP "power_on.wav"}
 };
 
 RealisticInterface::RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
@@ -134,6 +140,8 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
+
+	m_audio.init(_mixer);
 }
 
 RealisticInterface::~RealisticInterface()
@@ -283,6 +291,11 @@ void RealisticInterface::set_video_contrast(float _value)
 	set_slider_value(m_contrast_slider, m_contrast_left_min, _value);
 }
 
+void RealisticInterface::sig_state_restored()
+{
+	m_audio.update(true, false);
+}
+
 float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
 {
 	int x = _event.GetParameter("mouse_x",0);
@@ -323,3 +336,47 @@ void RealisticInterface::on_dragstart(RC::Event &_event)
 	PDEBUGF(LOG_V2, LOG_GUI, "slider start: x=%d\n",m_drag_start_x);
 }
 
+void RealisticInterface::on_power(RC::Event &_evt)
+{
+	bool on = g_machine.is_on();
+	Interface::on_power(_evt);
+	m_audio.update(!on, true);
+}
+
+void RealisticInterface::Audio::init(Mixer *_mixer)
+{
+	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
+	m_channel = _mixer->register_channel(
+		std::bind(&RealisticInterface::Audio::create_sound_samples, this,
+		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		"System");
+	m_channel->set_category(MixerChannelCategory::SOUNDFX);
+	m_channel->set_disable_timeout(1000000);
+	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+	m_channel->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_SYSTEM) * volume);
+	m_buffers = SoundFX::load_samples(spec, ms_samples);
+	m_channel->set_in_spec(spec);
+}
+
+//this method is called by the Mixer thread
+bool RealisticInterface::Audio::create_sound_samples(uint64_t _time_span_us, bool, bool)
+{
+	bool power_on = m_power_on;
+	bool change_state = m_change_state;
+	m_change_state = false;
+
+	return SoundFX::play_motor(_time_span_us, *m_channel, power_on, change_state,
+			m_buffers[POWER_UP], m_buffers[POWER_ON], m_buffers[POWER_DOWN]);
+}
+
+void RealisticInterface::Audio::update(bool _power_on, bool _change_state)
+{
+	if(m_channel->volume()<=FLT_MIN) {
+		return;
+	}
+	if((_power_on || _change_state) && !m_channel->is_enabled()) {
+		m_channel->enable(true);
+	}
+	m_power_on = _power_on;
+	m_change_state = _change_state;
+}

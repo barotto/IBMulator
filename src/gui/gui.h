@@ -244,6 +244,7 @@ public:
 	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
 
 	static uint mode();
+	void sig_state_restored();
 };
 
 
