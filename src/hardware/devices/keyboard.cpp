@@ -532,8 +532,8 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					// bit 6 = 0 if current FDD is 3.5, 1 if it's 5.25
 					// bit 2 = 1 for POST 56
 					uint8_t data = 0x84;
-					uint drive = g_floppy.get_current_drive();
-					uint8_t dtype = g_floppy.get_drive_type(drive);
+					uint drive = g_floppy.current_drive();
+					uint8_t dtype = g_floppy.drive_type(drive);
 					if(dtype == FDD_525DD || dtype == FDD_525HD) {
 						data |= 0x40;
 					}

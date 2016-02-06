@@ -147,23 +147,7 @@ private:
 	uint m_num_installed_floppies;
 	int m_timer_index;
 	bool m_disk_changed[4]; //!< used by the GUI to know when a disk has been changed
-	std::mutex m_lock; //!< used for machine-GUI comm
-
-	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
-	uint16_t dma_read(uint8_t *buffer, uint16_t maxlen);
-	void floppy_command(void);
-	void floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, uint32_t bytes, uint8_t direction);
-	void raise_interrupt(void);
-	void lower_interrupt(void);
-	void enter_idle_phase(void);
-	void enter_result_phase(void);
-	uint32_t calculate_step_delay(uint8_t drive, uint8_t new_cylinder);
-	void reset_changeline(void);
-	bool get_tc(void);
-	void timer(void);
-	void increment_sector(void);
-
-	void floppy_drive_setup(uint drive);
+	std::mutex m_mutex; //!< used for machine-GUI comm
 
 public:
 
@@ -180,28 +164,45 @@ public:
 
 	bool insert_media(uint _drive, uint _type, const char *_path, bool _write_protected);
 	void eject_media(uint _drive);
-	inline bool get_motor_enable(uint _drive) {
+	inline bool is_motor_enabled(uint _drive) const {
 		return (m_device_type[_drive] != FDD_NONE) && (m_s.DOR & (1 << (_drive+4)));
 	}
-	inline bool is_media_present(uint _drive) {
+	inline bool is_media_present(uint _drive) const {
 		return m_media_present[_drive];
 	}
 	//this is not the DIR bit 7, this is used by the GUI
-	inline bool get_disk_changed(uint _drive) {
-		std::lock_guard<std::mutex> lock(m_lock);
+	inline bool has_disk_changed(uint _drive) {
+		std::lock_guard<std::mutex> lock(m_mutex);
 		bool changed = m_disk_changed[_drive];
 		m_disk_changed[_drive] = false;
 		return changed;
 	}
-	inline uint get_current_drive() {
+	inline uint current_drive() const {
 		return (m_s.DOR & 0x03);
 	}
-	inline uint8_t get_drive_type(uint _drive) {
+	inline uint8_t drive_type(uint _drive) const {
 		return m_device_type[_drive%4];
 	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
+	uint16_t dma_read(uint8_t *buffer, uint16_t maxlen);
+	void floppy_command(void);
+	void floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, uint32_t bytes, uint8_t direction);
+	void raise_interrupt(void);
+	void lower_interrupt(void);
+	void enter_idle_phase(void);
+	void enter_result_phase(void);
+	uint32_t calculate_step_delay(uint8_t drive, uint8_t new_cylinder);
+	void reset_changeline(void);
+	bool get_tc(void);
+	void timer(void);
+	void increment_sector(void);
+	void floppy_drive_setup(uint drive);
+	static std::string print_array(uint8_t*,unsigned);
 };
 
 #endif

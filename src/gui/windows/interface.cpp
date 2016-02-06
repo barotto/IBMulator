@@ -90,7 +90,7 @@ m_quad_data{
 	if(m_floppy_present) {
 		update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH, FILE_TYPE_USER));
 	}
-	m_floppy_changed = g_floppy.get_disk_changed(0);
+	m_floppy_changed = g_floppy.has_disk_changed(0);
 
 	m_fs = new FileSelect(_gui);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this,
@@ -269,7 +269,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 void Interface::update()
 {
 	if(is_visible()) {
-		bool motor = g_floppy.get_motor_enable(m_curr_drive);
+		bool motor = g_floppy.is_motor_enabled(m_curr_drive);
 		if(motor && m_leds.fdd==false) {
 			m_leds.fdd = true;
 			m_status.fdd_led->SetClass("active", true);
@@ -288,7 +288,7 @@ void Interface::update()
 		}
 
 		bool present = g_floppy.is_media_present(m_curr_drive);
-		bool changed = g_floppy.get_disk_changed(m_curr_drive);
+		bool changed = g_floppy.has_disk_changed(m_curr_drive);
 		if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
 			m_floppy_changed = changed;
 			m_floppy_present = true;
@@ -337,7 +337,7 @@ void Interface::on_fdd_select(RC::Event &)
 	m_status.fdd_disk->SetInnerRML("");
 	if(m_curr_drive == 0) {
 		m_curr_drive = 1;
-		m_floppy_changed = g_floppy.get_disk_changed(1);
+		m_floppy_changed = g_floppy.has_disk_changed(1);
 		m_buttons.fdd_select->SetClass("a", false);
 		m_buttons.fdd_select->SetClass("b", true);
 		if(g_program.config().get_bool(DISK_B_SECTION,DISK_INSERTED)) {
@@ -345,7 +345,7 @@ void Interface::on_fdd_select(RC::Event &)
 		}
 	} else {
 		m_curr_drive = 0;
-		m_floppy_changed = g_floppy.get_disk_changed(0);
+		m_floppy_changed = g_floppy.has_disk_changed(0);
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
 		if(g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED)) {

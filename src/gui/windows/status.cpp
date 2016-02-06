@@ -52,7 +52,7 @@ void Status::update()
 {
 	bool motor;
 
-	motor = g_floppy.get_motor_enable(0);
+	motor = g_floppy.is_motor_enabled(0);
 	if(motor && m_leds.floppy_a==false) {
 		m_leds.floppy_a = true;
 		m_status.floppy_a_led->SetClass("led_active", true);
@@ -60,7 +60,7 @@ void Status::update()
 		m_leds.floppy_a = false;
 		m_status.floppy_a_led->SetClass("led_active", false);
 	}
-	motor = g_floppy.get_motor_enable(1);
+	motor = g_floppy.is_motor_enabled(1);
 	if(motor && m_leds.floppy_b==false) {
 		m_leds.floppy_b = true;
 		m_status.floppy_b_led->SetClass("led_active", true);
