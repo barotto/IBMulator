@@ -445,7 +445,7 @@ void HardDrive::reset(unsigned _type)
 	}
 	lower_interrupt();
 
-	if(_type == MACHINE_POWER_ON) {
+	if(m_s.ssb.drive_type && _type == MACHINE_POWER_ON) {
 		m_fx.spin(true, true);
 		m_s.power_up_phase = 1;
 		g_machine.activate_timer(m_cmd_timer, m_fx.spin_up_time(), 0);
