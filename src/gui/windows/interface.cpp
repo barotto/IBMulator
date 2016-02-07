@@ -269,7 +269,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 void Interface::update()
 {
 	if(is_visible()) {
-		bool motor = g_floppy.is_motor_enabled(m_curr_drive);
+		bool motor = g_floppy.is_motor_on(m_curr_drive);
 		if(motor && m_leds.fdd==false) {
 			m_leds.fdd = true;
 			m_status.fdd_led->SetClass("active", true);

@@ -74,51 +74,91 @@ using namespace std::placeholders;
 
 FloppyCtrl g_floppy;
 
+enum FDCInterfaceRegisters {
 
-// Status Register A (SRA, Model30)
-#define FDC_SRA_INT_REQ   0x80
-#define FDC_SRA_DRQ       0x40
-#define FDC_SRA_STEP_FF   0x20
-#define FDC_SRA_TRK0      0x10
-#define FDC_SRA_NHDSEL    0x08
-#define FDC_SRA_INDEX     0x04
-#define FDC_SRA_WP        0x02
-#define FDC_SRA_NDIR      0x01
+	// Status Register A (SRA, Model30)
+	FDC_SRA_INT_REQ   = 0x80,
+	FDC_SRA_DRQ       = 0x40,
+	FDC_SRA_STEP_FF   = 0x20,
+	FDC_SRA_TRK0      = 0x10,
+	FDC_SRA_NHDSEL    = 0x08,
+	FDC_SRA_INDEX     = 0x04,
+	FDC_SRA_WP        = 0x02,
+	FDC_SRA_NDIR      = 0x01,
 
-// Status Register B (SRB, Model30)
-#define FDC_SRB_NDRV2     0x80
-#define FDC_SRB_NDS1      0x40
-#define FDC_SRB_NDS0      0x20
-#define FDC_SRB_WRDATA_FF 0x10
-#define FDC_SRB_RDDATA_FF 0x08
-#define FDC_SRB_WE_FF     0x04
-#define FDC_SRB_NDS3      0x02
-#define FDC_SRB_NDS2      0x01
+	// Status Register B (SRB, Model30)
+	FDC_SRB_NDRV2     = 0x80,
+	FDC_SRB_NDS1      = 0x40,
+	FDC_SRB_NDS0      = 0x20,
+	FDC_SRB_WRDATA_FF = 0x10,
+	FDC_SRB_RDDATA_FF = 0x08,
+	FDC_SRB_WE_FF     = 0x04,
+	FDC_SRB_NDS3      = 0x02,
+	FDC_SRB_NDS2      = 0x01,
 
-// Digital Output Register (DOR)
-#define FDC_DOR_MOTEN3    0x80
-#define FDC_DOR_MOTEN2    0x40
-#define FDC_DOR_MOTEN1    0x20
-#define FDC_DOR_MOTEN0    0x10
-#define FDC_DOR_NDMAGATE  0x08
-#define FDC_DOR_NRESET    0x04
-#define FDC_DOR_DRVSEL    0x03
+	// Digital Output Register (DOR)
+	FDC_DOR_MOTEN3    = 0x80,
+	FDC_DOR_MOTEN2    = 0x40,
+	FDC_DOR_MOTEN1    = 0x20,
+	FDC_DOR_MOTEN0    = 0x10,
+	FDC_DOR_NDMAGATE  = 0x08,
+	FDC_DOR_NRESET    = 0x04,
+	FDC_DOR_DRVSEL    = 0x03,
 
-// Main Status Register (MSR)
-#define FDC_MSR_RQM       0x80
-#define FDC_MSR_DIO       0x40
-#define FDC_MSR_NDMA      0x20
-#define FDC_MSR_BUSY      0x10
-#define FDC_MSR_DRV3BUSY  0x08
-#define FDC_MSR_DRV2BUSY  0x04
-#define FDC_MSR_DRV1BUSY  0x02
-#define FDC_MSR_DRV0BUSY  0x01
+	// Main Status Register (MSR)
+	FDC_MSR_RQM       = 0x80,
+	FDC_MSR_DIO       = 0x40,
+	FDC_MSR_NDMA      = 0x20,
+	FDC_MSR_BUSY      = 0x10,
+	FDC_MSR_DRV3BUSY  = 0x08,
+	FDC_MSR_DRV2BUSY  = 0x04,
+	FDC_MSR_DRV1BUSY  = 0x02,
+	FDC_MSR_DRV0BUSY  = 0x01,
 
-// Digital Input Register (DIR)
-#define FDC_DIR_NDSKCHG   0x80
-#define FDC_DIR_NDMAGATE  0x08
-#define FDC_DIR_NOPREC    0x04
-#define FDC_DIR_DRATE     0x03
+	// Digital Input Register (DIR)
+	FDC_DIR_NDSKCHG   = 0x80,
+	FDC_DIR_NDMAGATE  = 0x08,
+	FDC_DIR_NOPREC    = 0x04,
+	FDC_DIR_DRATE     = 0x03
+};
+
+enum FDCStatusRegisters {
+
+	// Status Register 0
+	FDC_ST0_IC = 0xC0, //IC Interrupt Code
+		FDC_ST0_IC_NORMAL   = 0x00,
+		FDC_ST0_IC_ABNORMAL = 0x40,
+		FDC_ST0_IC_INVALID  = 0x80,
+		FDC_ST0_IC_POLLING  = 0xC0,
+	FDC_ST0_SE = 0x20, //SE Seek End
+	FDC_ST0_EC = 0x10, //EC Equipment Check
+	FDC_ST0_H  = 0x04, // H Head Address
+	FDC_ST0_DS = 0x03, //DS Drive Select
+
+	// Status Register 1
+	FDC_ST1_EN = 0x80, // EN End of Cylinder
+	FDC_ST1_DE = 0x20, // DE Data Error
+	FDC_ST1_OR = 0x10, // OR Overrun/Underrun
+	FDC_ST1_ND = 0x04, // ND No data
+	FDC_ST1_NW = 0x02, // NW Not Writeable
+	FDC_ST1_MA = 0x01, // MA Missing Address Mark
+
+	// Status Register 2
+	FDC_ST2_CM = 0x40, // CM Control Mark
+	FDC_ST2_DD = 0x20, // DD Data Error in Data Field
+	FDC_ST2_WC = 0x10, // Wrong Cylinder
+	FDC_ST2_BC = 0x02, // BC Bad Cylinder
+	FDC_ST2_MD = 0x01, // Missing Data Address Mark
+
+	// Status Register 3
+	FDC_ST3_WP = 0x40, // WP Write Protect
+	FDC_ST3_T0 = 0x10, // T0 TRACK 0
+	FDC_ST3_HD = 0x04, // HD Head Address
+	FDC_ST3_DS = 0x03, // DS Drive Select
+	FDC_ST3_BASE = 0x28 // Unused bits 3,5 always '1'
+};
+
+#define FDC_ST_HDS(DRIVE) ((m_s.head[DRIVE]<<2) | DRIVE)
 
 
 #define FROM_FLOPPY 10
@@ -126,31 +166,25 @@ FloppyCtrl g_floppy;
 
 #define FLOPPY_DMA_CHAN 2
 
-#define FDRIVE_NONE  0x00
-#define FDRIVE_525DD 0x01
-#define FDRIVE_525HD 0x02
-#define FDRIVE_350DD 0x04
-#define FDRIVE_350HD 0x08
-#define FDRIVE_350ED 0x10
 
 typedef struct {
 	unsigned id;
-	uint8_t trk;
-	uint8_t hd;
-	uint8_t spt;
+	uint8_t  trk;
+	uint8_t  hd;
+	uint8_t  spt;
 	unsigned sectors;
-	uint8_t drive_mask;
+	uint8_t  drive_mask;
 } floppy_type_t;
 
 static floppy_type_t floppy_type[8] = {
-	{FLOPPY_160K, 40, 1,  8,  320, 0x03},
-	{FLOPPY_180K, 40, 1,  9,  360, 0x03},
-	{FLOPPY_320K, 40, 2,  8,  640, 0x03},
-	{FLOPPY_360K, 40, 2,  9,  720, 0x03},
-	{FLOPPY_720K, 80, 2,  9, 1440, 0x1f},
-	{FLOPPY_1_2,  80, 2, 15, 2400, 0x02},
-	{FLOPPY_1_44, 80, 2, 18, 2880, 0x18},
-	{FLOPPY_2_88, 80, 2, 36, 5760, 0x10}
+	{ FLOPPY_160K, 40, 1,  8,  320, 0x03 },
+	{ FLOPPY_180K, 40, 1,  9,  360, 0x03 },
+	{ FLOPPY_320K, 40, 2,  8,  640, 0x03 },
+	{ FLOPPY_360K, 40, 2,  9,  720, 0x03 },
+	{ FLOPPY_720K, 80, 2,  9, 1440, 0x1f },
+	{ FLOPPY_1_2,  80, 2, 15, 2400, 0x02 },
+	{ FLOPPY_1_44, 80, 2, 18, 2880, 0x18 },
+	{ FLOPPY_2_88, 80, 2, 36, 5760, 0x10 }
 };
 
 static uint16_t drate_in_k[4] = {
@@ -158,15 +192,15 @@ static uint16_t drate_in_k[4] = {
 };
 
 static std::map<std::string, uint> drive_types = {
-	{ "none", FDRIVE_NONE  },
-	{ "3.5", FDRIVE_350HD  },
-	{ "5.25", FDRIVE_525HD }
+	{ "none", FDD_NONE  },
+	{ "3.5",  FDD_350HD },
+	{ "5.25", FDD_525HD }
 };
 
 static std::map<std::string, uint> disk_types_350 = {
-	{ "none", FLOPPY_NONE  },
-	{ "1.44M", FLOPPY_1_44 },
-	{ "720K", FLOPPY_720K  }
+	{ "none", FLOPPY_NONE },
+	{ "1.44M",FLOPPY_1_44 },
+	{ "720K", FLOPPY_720K }
 };
 
 static std::map<std::string, uint> disk_types_525 = {
@@ -190,7 +224,7 @@ FloppyCtrl::FloppyCtrl()
 	for(uint i=0; i<4; i++) {
 		m_media[i].fd = -1;
 		m_media_present[i] = false;
-		m_device_type[i] = FDRIVE_NONE;
+		m_device_type[i] = FDD_NONE;
 	}
 	m_num_installed_floppies = 0;
 }
@@ -231,16 +265,17 @@ void FloppyCtrl::init(void)
 	);
 
 	for(uint i=0; i<4; i++) {
-		m_media[i].type              = FLOPPY_NONE;
-		m_media[i].sectors_per_track = 0;
-		m_media[i].tracks            = 0;
-		m_media[i].heads             = 0;
-		m_media[i].sectors           = 0;
-		m_media[i].fd                = -1;
-		m_media[i].vvfat_floppy      = 0;
-		m_media_present[i]           = false;
-		m_device_type[i]             = FDRIVE_NONE;
-		m_disk_changed[i]            = false;
+		m_media[i].type            = FLOPPY_NONE;
+		m_media[i].spt             = 0;
+		m_media[i].tracks          = 0;
+		m_media[i].heads           = 0;
+		m_media[i].sectors         = 0;
+		m_media[i].fd              = -1;
+		m_media[i].write_protected = false;
+		m_media[i].vvfat_floppy    = 0;
+		m_media_present[i]         = false;
+		m_device_type[i]           = FDD_NONE;
+		m_disk_changed[i]          = false;
 	}
 
 	config_changed();
@@ -304,20 +339,20 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 	uint devtype;
 	try {
 		devtype = g_program.config().get_enum(DRIVES_SECTION, typekey, drive_types);
-		if(devtype == FDRIVE_350HD) {
+		if(devtype == FDD_350HD) {
 			mediatypes = &disk_types_350;
-		} else if(devtype == FDRIVE_525HD) {
+		} else if(devtype == FDD_525HD) {
 			mediatypes = &disk_types_525;
 		}
 	} catch(std::exception &e) {
-		devtype = FDRIVE_NONE;
+		devtype = FDD_NONE;
 	}
 
 	m_device_type[drive] = devtype;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;
 		PINFOF(LOG_V0, LOG_FDC, "Installed floppy %s as %s\n",
-				drivename, devtype==FDRIVE_350HD?"3.5 HD":"5.25 HD");
+				drivename, devtype==FDD_350HD?"3.5 HD":"5.25 HD");
 	} else {
 		return;
 	}
@@ -593,12 +628,12 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				m_s.pending_command = 0xfe; // RESET pending
 			}
 			PDEBUGF(LOG_V2, LOG_FDC, "DOR  <- 0x%02X ", _value);
-			if(_value & FDC_DOR_MOTEN0)   { PDEBUGF(LOG_V2, LOG_FDC, "MOT#0 "); }
-			if(_value & FDC_DOR_MOTEN1)   { PDEBUGF(LOG_V2, LOG_FDC, "MOT#1 "); }
+			if(_value & FDC_DOR_MOTEN0)   { PDEBUGF(LOG_V2, LOG_FDC, "MOT0 "); }
+			if(_value & FDC_DOR_MOTEN1)   { PDEBUGF(LOG_V2, LOG_FDC, "MOT1 "); }
 			if(_value & FDC_DOR_NDMAGATE) { PDEBUGF(LOG_V2, LOG_FDC, "!DMAGATE "); }
 			if(_value & FDC_DOR_NRESET)   { PDEBUGF(LOG_V2, LOG_FDC, "!RESET "); }
 			PDEBUGF(LOG_V2, LOG_FDC, "DRVSEL=%01X\n", drive_sel);
-			if(m_device_type[drive_sel] == FDRIVE_NONE) {
+			if(m_device_type[drive_sel] == FDD_NONE) {
 				PDEBUGF(LOG_V0, LOG_FDC, "WARNING: non existing drive selected\n");
 			}
 			break;
@@ -690,7 +725,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 					default:
 						command = "INVALID";
 						m_s.command_size = 0;   // make sure we don't try to process this command
-						m_s.status_reg0 = 0x80; // status: invalid command
+						m_s.status_reg0 = FDC_ST0_IC_INVALID;
 						enter_result_phase();
 						break;
 				}
@@ -763,12 +798,14 @@ void FloppyCtrl::floppy_command()
 			PDEBUGF(LOG_V1, LOG_FDC, "get status DRV%u\n", drive);
 
 			m_s.head[drive] = (m_s.command[1] >> 2) & 0x01;
-			m_s.status_reg3 = 0x28 | (m_s.head[drive]<<2) | drive
-					| (m_media[drive].write_protected ? 0x40 : 0x00);
-			if((m_device_type[drive] != FDRIVE_NONE) && (m_s.cur_cylinder[drive] == 0)) {
+			m_s.status_reg3 = FDC_ST3_BASE | FDC_ST_HDS(drive);
+			if(m_media[drive].write_protected) {
+				m_s.status_reg3 |= FDC_ST3_WP;
+			}
+			if((m_device_type[drive] != FDD_NONE) && (m_s.cur_cylinder[drive] == 0)) {
 				//the head takes time to move to track0; this time is used to determine if 40 or 80 tracks
 				//the value of cur_cylinder for the drive is set in the timer handler
-				m_s.status_reg3 |= 0x10;
+				m_s.status_reg3 |= FDC_ST3_T0;
 			}
 			enter_result_phase();
 			return;
@@ -806,11 +843,11 @@ void FloppyCtrl::floppy_command()
 
 			if(m_s.reset_sensei > 0) {
 				drive = 4 - m_s.reset_sensei;
-				m_s.status_reg0 &= 0xf8;
-				m_s.status_reg0 |= (m_s.head[drive] << 2) | drive;
+				m_s.status_reg0 &= FDC_ST0_IC | FDC_ST0_SE | FDC_ST0_EC;
+				m_s.status_reg0 |= FDC_ST_HDS(drive);
 				m_s.reset_sensei--;
 			} else if(!m_s.pending_irq) {
-				m_s.status_reg0 = 0x80;
+				m_s.status_reg0 = FDC_ST0_IC_INVALID;
 			}
 			enter_result_phase();
 			return;
@@ -864,14 +901,13 @@ void FloppyCtrl::floppy_command()
 
 			PDEBUGF(LOG_V1, LOG_FDC, "read ID DRV%u\n", drive);
 
-			motor_on = (m_s.DOR>>(drive+4)) & 0x01;
-			if(motor_on == 0) {
+			if(!is_motor_on(drive)) {
 				PDEBUGF(LOG_V1, LOG_FDC, "read ID: motor not on\n");
 				m_s.main_status_reg &= FDC_MSR_NDMA;
 				m_s.main_status_reg |= FDC_MSR_BUSY;
 				return; // Hang controller
 			}
-			if(m_device_type[drive] == FDRIVE_NONE) {
+			if(m_device_type[drive] == FDD_NONE) {
 				PDEBUGF(LOG_V1, LOG_FDC, "read ID: bad drive #%d\n", drive);
 				m_s.main_status_reg &= FDC_MSR_NDMA;
 				m_s.main_status_reg |= FDC_MSR_BUSY;
@@ -883,9 +919,9 @@ void FloppyCtrl::floppy_command()
 				m_s.main_status_reg |= FDC_MSR_BUSY;
 				return; // Hang controller
 			}
-			m_s.status_reg0 = (m_s.head[drive]<<2) | drive;
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			// time to read one sector at 300 rpm
-			sector_time = 200000 / m_media[drive].sectors_per_track;
+			sector_time = 200000 / m_media[drive].spt;
 			g_machine.activate_timer(m_timer_index, sector_time, 0);
 			/* data reg not ready, controller busy */
 			m_s.main_status_reg &= FDC_MSR_NDMA;
@@ -908,7 +944,7 @@ void FloppyCtrl::floppy_command()
 			sector_size = m_s.command[2];
 			m_s.format_count = m_s.command[3];
 			m_s.format_fillbyte = m_s.command[5];
-			if(m_device_type[drive] == FDRIVE_NONE) {
+			if(m_device_type[drive] == FDD_NONE) {
 				PERRF_ABORT(LOG_FDC, "format track: bad drive #%d\n", drive);
 				return; // Hang controller?
 			}
@@ -916,9 +952,9 @@ void FloppyCtrl::floppy_command()
 				PERRF_ABORT(LOG_FDC, "format track: sector size %d not supported\n", 128<<sector_size);
 				return; // Hang controller?
 			}
-			if(m_s.format_count != m_media[drive].sectors_per_track) {
+			if(m_s.format_count != m_media[drive].spt) {
 				PERRF_ABORT(LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
-						m_s.format_count, m_media[drive].sectors_per_track);
+						m_s.format_count, m_media[drive].spt);
 				return; // Hang controller?
 			}
 			if(m_media_present[drive] == 0) {
@@ -928,9 +964,9 @@ void FloppyCtrl::floppy_command()
 			if(m_media[drive].write_protected) {
 				// media write-protected, return error
 				PINFOF(LOG_V1, LOG_FDC, "format track: attempt to format track with media write-protected\n");
-				m_s.status_reg0 = 0x40 | (m_s.head[drive]<<2) | drive; // abnormal termination
-				m_s.status_reg1 = 0x27; // 0010 0111
-				m_s.status_reg2 = 0x31; // 0011 0001
+				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
+				m_s.status_reg1 = FDC_ST1_DE | FDC_ST1_ND | FDC_ST1_NW | FDC_ST1_MA;
+				m_s.status_reg2 = FDC_ST2_DD | FDC_ST2_WC | FDC_ST2_MD;
 				enter_result_phase();
 				return;
 			}
@@ -980,7 +1016,7 @@ void FloppyCtrl::floppy_command()
 			PDEBUGF(LOG_V1, LOG_FDC, "%s data DRV%u, C=%u,H=%u,S=%u,eot=%u\n",
 					cmd, drive, cylinder, head, sector, eot);
 
-			if(m_device_type[drive] == FDRIVE_NONE) {
+			if(m_device_type[drive] == FDD_NONE) {
 				PERRF(LOG_FDC, "%s: bad drive #%d\n", cmd, drive);
 				return;
 			}
@@ -991,9 +1027,9 @@ void FloppyCtrl::floppy_command()
 			// read input error checking).
 			if(head != ((m_s.command[1]>>2)&1)) {
 				PDEBUGF(LOG_V0, LOG_FDC, "%s: head number in command[1] doesn't match head field\n", cmd);
-				m_s.status_reg0 = 0x40 | (m_s.head[drive]<<2) | drive; // abnormal termination
-				m_s.status_reg1 = 0x04; // 0000 0100
-				m_s.status_reg2 = 0x00; // 0000 0000
+				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
+				m_s.status_reg1 = FDC_ST1_ND;
+				m_s.status_reg2 = 0x00;
 				enter_result_phase();
 				return;
 			}
@@ -1014,16 +1050,16 @@ void FloppyCtrl::floppy_command()
 				return;
 			}
 
-			if(sector > m_media[drive].sectors_per_track) {
+			if(sector > m_media[drive].spt) {
 				PINFOF(LOG_V1, LOG_FDC, "%s: attempt to %s sector %u past last sector %u\n",
-						cmd, cmd, sector, m_media[drive].sectors_per_track);
+						cmd, cmd, sector, m_media[drive].spt);
 				m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
 				m_s.cylinder[drive]  = cylinder;
 				m_s.head[drive]      = head;
 				m_s.sector[drive]    = sector;
 
-				m_s.status_reg0 = 0x40 | (m_s.head[drive]<<2) | drive;
-				m_s.status_reg1 = 0x04;
+				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
+				m_s.status_reg1 = FDC_ST1_ND;
 				m_s.status_reg2 = 0x00;
 				enter_result_phase();
 				return;
@@ -1034,8 +1070,8 @@ void FloppyCtrl::floppy_command()
 				reset_changeline();
 			}
 
-			logical_sector = (cylinder * m_media[drive].heads * m_media[drive].sectors_per_track) +
-						(head * m_media[drive].sectors_per_track) +
+			logical_sector = (cylinder * m_media[drive].heads * m_media[drive].spt) +
+						(head * m_media[drive].spt) +
 						(sector - 1);
 
 			if(logical_sector >= m_media[drive].sectors) {
@@ -1043,7 +1079,7 @@ void FloppyCtrl::floppy_command()
 			}
 			// This hack makes older versions of the Bochs BIOS work
 			if(eot == 0) {
-				eot = m_media[drive].sectors_per_track;
+				eot = m_media[drive].spt;
 			}
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
 			m_s.cylinder[drive]  = cylinder;
@@ -1061,7 +1097,7 @@ void FloppyCtrl::floppy_command()
 					m_s.main_status_reg |= (FDC_MSR_RQM | FDC_MSR_DIO);
 				}
 				// time to read one sector at 300 rpm
-				sector_time = 200000 / m_media[drive].sectors_per_track;
+				sector_time = 200000 / m_media[drive].spt;
 				g_machine.activate_timer(m_timer_index, sector_time , 0);
 			} else if((m_s.command[0] & 0x7f) == 0x45) { // write
 				m_s.wrdata[drive] = true;
@@ -1098,7 +1134,7 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 {
 	int ret = 0;
 
-	if(m_device_type[drive] == FDRIVE_NONE) {
+	if(m_device_type[drive] == FDD_NONE) {
 		PERRF_ABORT(LOG_FDC, "floppy_xfer: bad drive #%d\n", drive);
 	}
 
@@ -1151,10 +1187,11 @@ void FloppyCtrl::timer()
 	switch (m_s.pending_command) {
 		case 0x07: // recalibrate
 		{
-			m_s.status_reg0 = 0x20 | drive;
-			uint8_t motor_on = ((m_s.DOR>>(drive+4)) & 0x01);
-			if((m_device_type[drive] == FDRIVE_NONE) || (motor_on == 0)) {
-				m_s.status_reg0 |= 0x50;
+			m_s.status_reg0 = FDC_ST0_SE | drive;
+			if(!is_motor_on(drive)) {
+				m_s.status_reg0 |= FDC_ST0_IC_ABNORMAL | FDC_ST0_EC;
+			} else {
+				m_s.status_reg0 |= FDC_ST0_IC_NORMAL;
 			}
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			m_s.direction[drive] = 0;
@@ -1164,7 +1201,7 @@ void FloppyCtrl::timer()
 			break;
 		}
 		case 0x0f: // seek
-			m_s.status_reg0 = 0x20 | (m_s.head[drive]<<2) | drive;
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST0_SE | FDC_ST_HDS(drive);
 			m_s.step[drive] = true;
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			enter_idle_phase();
@@ -1178,7 +1215,7 @@ void FloppyCtrl::timer()
 		case 0x45: // write normal data
 		case 0xc5:
 			if(m_s.TC) { // Terminal Count line, done
-				m_s.status_reg0 = (m_s.head[drive] << 2) | drive;
+				m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 				m_s.status_reg1 = 0;
 				m_s.status_reg2 = 0;
 				PDEBUGF(LOG_V2, LOG_FDC, "<<WRITE DONE>> DRV%u C=%u,H=%u,S=%u\n",
@@ -1212,7 +1249,7 @@ void FloppyCtrl::timer()
 		case 0x4d: // format track
 			if((m_s.format_count == 0) || m_s.TC) {
 				m_s.format_count = 0;
-				m_s.status_reg0 = (m_s.head[drive] << 2) | drive;
+				m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 				enter_result_phase();
 			} else {
 				// transfer next sector
@@ -1227,7 +1264,7 @@ void FloppyCtrl::timer()
 		case 0xfe: // (contrived) RESET
 			reset(DEVICE_SOFT_RESET);
 			m_s.pending_command = 0;
-			m_s.status_reg0 = 0xc0;
+			m_s.status_reg0 = FDC_ST0_IC_POLLING;
 			raise_interrupt();
 			m_s.reset_sensei = 4;
 			break;
@@ -1267,7 +1304,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 			m_s.floppy_buffer_index = 0;
 		}
 		if(m_s.TC) { // Terminal Count line, done
-			m_s.status_reg0 = (m_s.head[drive] << 2) | drive;
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			m_s.status_reg1 = 0;
 			m_s.status_reg2 = 0;
 
@@ -1283,8 +1320,8 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 
 			// remember that not all floppies have two sides, multiply by m_s.head[drive]
 			logical_sector =
-					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].sectors_per_track) +
-					(m_s.head[drive] * m_media[drive].sectors_per_track) +
+					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
+					(m_s.head[drive] * m_media[drive].spt) +
 					(m_s.sector[drive] - 1);
 
 			floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
@@ -1292,7 +1329,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
 			}
 			// time to read one sector at 300 rpm
-			sector_time = 200000 / m_media[drive].sectors_per_track;
+			sector_time = 200000 / m_media[drive].spt;
 			g_machine.activate_timer(m_timer_index, sector_time , 0);
 		}
 	}
@@ -1339,15 +1376,15 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 					m_s.floppy_buffer[i] = m_s.format_fillbyte;
 				}
 				logical_sector =
-						(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].sectors_per_track) +
-						(m_s.head[drive] * m_media[drive].sectors_per_track) +
+						(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
+						(m_s.head[drive] * m_media[drive].spt) +
 						(m_s.sector[drive] - 1);
 				floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, TO_FLOPPY);
 				if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
 					g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
 				}
 				// time to write one sector at 300 rpm
-				sector_time = 200000 / m_media[drive].sectors_per_track;
+				sector_time = 200000 / m_media[drive].spt;
 				g_machine.activate_timer(m_timer_index, sector_time , 0);
 				break;
 		}
@@ -1365,18 +1402,18 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 
 		if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
 			logical_sector =
-					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].sectors_per_track) +
-					(m_s.head[drive] * m_media[drive].sectors_per_track) +
+					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
+					(m_s.head[drive] * m_media[drive].spt) +
 					(m_s.sector[drive] - 1);
 			if(m_media[drive].write_protected) {
 				// write protected error
 				PINFOF(LOG_V1, LOG_FDC, "tried to write disk %u, which is write-protected\n", drive);
 				// ST0: IC1,0=01  (abnormal termination: started execution but failed)
-				m_s.status_reg0 = 0x40 | (m_s.head[drive]<<2) | drive;
+				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 				// ST1: DataError=1, NDAT=1, NotWritable=1, NID=1
-				m_s.status_reg1 = 0x27; // 0010 0111
-				// ST2: CRCE=1, SERR=1, BCYL=1, NDAM=1.
-				m_s.status_reg2 = 0x31; // 0011 0001
+				m_s.status_reg1 = FDC_ST1_DE | FDC_ST1_ND | FDC_ST1_NW | FDC_ST1_MA;
+				// ST2: CRCE=1, SERR=1, BCYL=1(?), NDAM=1.
+				m_s.status_reg2 = FDC_ST2_DD | FDC_ST2_WC | FDC_ST2_MD;
 				enter_result_phase();
 				return 1;
 			}
@@ -1387,7 +1424,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
 			}
 			// time to write one sector at 300 rpm
-			sector_time = 200000 / m_media[drive].sectors_per_track;
+			sector_time = 200000 / m_media[drive].spt;
 			g_machine.activate_timer(m_timer_index, sector_time , 0);
 			// the following is a kludge; i (jc) don't know how to work with the timer
 			if((m_s.main_status_reg & FDC_MSR_NDMA) && m_s.TC) {
@@ -1422,7 +1459,7 @@ void FloppyCtrl::increment_sector(void)
 	// values after completion of data xfer
 	// ??? calculation depends on base_count being multiple of 512
 	m_s.sector[drive]++;
-	if((m_s.sector[drive] > m_s.eot[drive]) || (m_s.sector[drive] > m_media[drive].sectors_per_track)) {
+	if((m_s.sector[drive] > m_s.eot[drive]) || (m_s.sector[drive] > m_media[drive].spt)) {
 		m_s.sector[drive] = 1;
 		if(m_s.multi_track) {
 			m_s.head[drive]++;
@@ -1499,7 +1536,7 @@ bool FloppyCtrl::insert_media(uint _drive, uint _mediatype, const char *_path, b
 			m_media[_drive].write_protected,
 			m_media[_drive].heads,
 			m_media[_drive].tracks,
-			m_media[_drive].sectors_per_track);
+			m_media[_drive].spt);
 
 	g_program.config().set_bool(drivename, DISK_INSERTED, true);
 	g_program.config().set_string(drivename, DISK_PATH, _path);
@@ -1521,7 +1558,7 @@ void FloppyCtrl::enter_result_phase(void)
 	m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_DIO | FDC_MSR_BUSY;
 
 	/* invalid command */
-	if((m_s.status_reg0 & 0xc0) == 0x80) {
+	if((m_s.status_reg0 & FDC_ST0_IC) == FDC_ST0_IC_INVALID) {
 		m_s.result_size = 1;
 		m_s.result[0] = m_s.status_reg0;
 		return;
@@ -1712,17 +1749,17 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 	}
 
 	// use virtual VFAT support if requested
-	if(!strncmp(_path, "vvfat:", 6) && (_devtype == FDRIVE_350HD)) {
+	if(!strncmp(_path, "vvfat:", 6) && (_devtype == FDD_350HD)) {
 		vvfat = new VVFATMediaImage(1474560, "", !write_protected);
 		if(vvfat != nullptr) {
 			if(vvfat->open(_path + 6) == 0) {
-				type              = FLOPPY_1_44;
-				tracks            = vvfat->geometry.cylinders;
-				heads             = vvfat->geometry.heads;
-				sectors_per_track = vvfat->geometry.spt;
-				sectors           = 2880;
-				vvfat_floppy      = true;
-				fd                = 0;
+				type         = FLOPPY_1_44;
+				tracks       = vvfat->geometry.cylinders;
+				heads        = vvfat->geometry.heads;
+				spt          = vvfat->geometry.spt;
+				sectors      = 2880;
+				vvfat_floppy = true;
+				fd           = 0;
 			}
 		}
 		if(vvfat_floppy) {
@@ -1813,11 +1850,11 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 			case FLOPPY_720K: // 720K 3.5"
 			case FLOPPY_1_2: // 1.2M 5.25"
 			case FLOPPY_2_88: // 2.88M 3.5"
-				type              = _type;
-				tracks            = floppy_type[type_idx].trk;
-				heads             = floppy_type[type_idx].hd;
-				sectors_per_track = floppy_type[type_idx].spt;
-				sectors           = floppy_type[type_idx].sectors;
+				type    = _type;
+				tracks  = floppy_type[type_idx].trk;
+				heads   = floppy_type[type_idx].hd;
+				spt     = floppy_type[type_idx].spt;
+				sectors = floppy_type[type_idx].sectors;
 				if(stat_buf.st_size > (int)(sectors * 512)) {
 					PDEBUGF(LOG_V0, LOG_FDC, "size of file '%s' (%lu) too large for selected type\n",
 							_path, (unsigned long) stat_buf.st_size);
@@ -1827,27 +1864,27 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 			default: // 1.44M 3.5"
 				type              = _type;
 				if(stat_buf.st_size <= 1474560) {
-					tracks            = floppy_type[type_idx].trk;
-					heads             = floppy_type[type_idx].hd;
-					sectors_per_track = floppy_type[type_idx].spt;
+					tracks = floppy_type[type_idx].trk;
+					heads  = floppy_type[type_idx].hd;
+					spt    = floppy_type[type_idx].spt;
 				} else if(stat_buf.st_size == 1720320) {
-					sectors_per_track = 21;
-					tracks            = 80;
-					heads             = 2;
+					spt    = 21;
+					tracks = 80;
+					heads  = 2;
 				} else if(stat_buf.st_size == 1763328) {
-					sectors_per_track = 21;
-					tracks            = 82;
-					heads             = 2;
+					spt    = 21;
+					tracks = 82;
+					heads  = 2;
 				} else if(stat_buf.st_size == 1884160) {
-					sectors_per_track = 23;
-					tracks            = 80;
-					heads             = 2;
+					spt    = 23;
+					tracks = 80;
+					heads  = 2;
 				} else {
 					PDEBUGF(LOG_V0, LOG_FDC, "file '%s' of unknown size %lu\n",
 							_path, (unsigned long) stat_buf.st_size);
 					return false;
 				}
-				sectors = heads * tracks * sectors_per_track;
+				sectors = heads * tracks * spt;
 				break;
 		}
 		return (sectors > 0); // success
@@ -1864,26 +1901,26 @@ bool FloppyDisk::open(uint8_t _devtype, uint8_t _type, const char *_path)
 #ifdef __linux__
 		if(ioctl(fd, FDGETPRM, &floppy_geom) < 0) {
 			PWARNF(LOG_FDC, "cannot determine media geometry, trying to use defaults\n");
-			tracks            = floppy_type[type_idx].trk;
-			heads             = floppy_type[type_idx].hd;
-			sectors_per_track = floppy_type[type_idx].spt;
-			sectors           = floppy_type[type_idx].sectors;
+			tracks  = floppy_type[type_idx].trk;
+			heads   = floppy_type[type_idx].hd;
+			spt     = floppy_type[type_idx].spt;
+			sectors = floppy_type[type_idx].sectors;
 			return (sectors > 0);
 		}
-		tracks            = floppy_geom.track;
-		heads             = floppy_geom.head;
-		sectors_per_track = floppy_geom.sect;
-		sectors           = floppy_geom.size;
+		tracks  = floppy_geom.track;
+		heads   = floppy_geom.head;
+		spt     = floppy_geom.sect;
+		sectors = floppy_geom.size;
 #elif defined(_WIN32)
-		tracks            = wtracks;
-		heads             = wheads;
-		sectors_per_track = wspt;
-		sectors = heads * tracks * sectors_per_track;
+		tracks  = wtracks;
+		heads   = wheads;
+		spt     = wspt;
+		sectors = heads * tracks * spt;
 #else
-		tracks            = floppy_type[type_idx].trk;
-		heads             = floppy_type[type_idx].hd;
-		sectors_per_track = floppy_type[type_idx].spt;
-		sectors           = floppy_type[type_idx].sectors;
+		tracks  = floppy_type[type_idx].trk;
+		heads   = floppy_type[type_idx].hd;
+		spt     = floppy_type[type_idx].spt;
+		sectors = floppy_type[type_idx].sectors;
 #endif
 		return (sectors > 0); // success
 	} else {
