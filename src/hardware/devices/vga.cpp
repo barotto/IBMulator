@@ -195,6 +195,10 @@ void VGA::reset(uint)
 	m_s.memory = new uint8_t[m_s.memsize];
 
 	memset(m_s.memory, 0, m_s.memsize);
+	m_display->lock();
+	m_display->clear_screen();
+	m_display->unlock();
+	g_gui.vga_update();
 
 	m_s.num_x_tiles = m_s.max_xres / VGA_X_TILESIZE + ((m_s.max_xres % VGA_X_TILESIZE) > 0);
 	m_s.num_y_tiles = m_s.max_yres / VGA_Y_TILESIZE + ((m_s.max_yres % VGA_Y_TILESIZE) > 0);

@@ -479,6 +479,7 @@ void AppConfig::parse(const string &_filename)
 	if(m_error != 0) {
 		throw std::exception();
 	}
+	m_parsed_file = _filename;
 }
 
 string AppConfig::get(ini_file_t &_values, const string &section, const string &name)

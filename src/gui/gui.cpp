@@ -201,6 +201,8 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		SDL_JoystickEventState(SDL_ENABLE);
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
 	}
+
+	show_welcome_screen();
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -517,21 +519,6 @@ void GUI::render()
 	SDL_RenderClear(m_SDL_renderer);
 	GLCALL( glViewport(0,0,	m_width, m_height) );
 	m_windows.interface->render(m_rocket_context);
-	/*
-	if(m_mode == GUI_MODE_REALISTIC) {
-		//TODO move the rendering logic inside the Interface
-		m_windows.interface->hide();
-		m_windows.invert_visibility();
-		m_rocket_context->Render();
-		m_windows.interface->render_vga();
-		m_windows.invert_visibility();
-		m_rocket_context->Render();
-		m_windows.interface->show();
-	} else {
-		m_windows.interface->render_vga();
-		m_rocket_context->Render();
-	}
-	*/
 	SDL_RenderPresent(m_SDL_renderer);
 }
 
@@ -1268,6 +1255,91 @@ Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 	return interval;
 }
 
+void GUI::show_welcome_screen()
+{
+	std::vector<uint16_t> text(80*25,0x0000);
+	int cx = 0, cy = 0;
+	const int bg = 0x8;
+	const int bd = 2;
+
+	auto ps = [&](const char *_str, uint8_t _foreg, uint8_t _backg, int _border) {
+		do {
+			unsigned char c = *_str++;
+			if(cx >= 80-_border || c == '\n') {
+				cx = _border;
+				cy++;
+				if(c == '\n') {
+					continue;
+				}
+			}
+			if(cy >= 25) {
+				cy = 0;
+			}
+			uint16_t attrib = (_backg << 4) | (_foreg & 0x0F);
+			text[cy*80 + cx++] = (attrib << 8) | c;
+
+		} while(*_str);
+	};
+
+	ps(
+"\xC9"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xBB",
+0xf, bg, 0);
+	for(int i=1; i<=((m_mode==GUI_MODE_COMPACT)?17:23); i++) {
+		ps("\xBA                                                                              \xBA",
+				0xf, bg, 0);
+	}
+	ps(
+"\xC8"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xBC",
+0xf, bg, 0);
+
+	cx = bd; cy = 1;
+	ps("Welcome to ", 0xf, bg, bd); ps(PACKAGE_STRING "\n\n", 0xa, 0x9, bd);
+	ps(PACKAGE_NAME " is free software, you can redistribute it and/or modify it"
+			" under\nthe terms of the GNU GPL v.3+\n\n", 0x7, bg, bd);
+
+	cx = 0;
+	ps(
+"\xCC"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xB9",
+0xf, bg, 0);
+
+	cx = bd;
+	if(m_mode == GUI_MODE_COMPACT) {
+		ps("\nTo show/hide the interface press ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
+		ps(" or grab the mouse\n", 0xf, bg, bd);
+	} else {
+		cy++;
+	}
+	ps("To grab the mouse press ", 0xf, bg, bd);
+	if(m_grab_method.compare("ctrl-f10") == 0) {
+		ps("CTRL+F10\n", 0xe, bg, bd);
+	} else {
+		ps("the middle mouse button\n", 0xe, bg, bd);
+	}
+	ps("To start/stop the machine press ", 0xf, bg, bd); ps("CTRL+F3\n", 0xe, bg, bd);
+	ps("To toggle fullscreen mode press ", 0xf, bg, bd); ps("ALT+ENTER", 0xe, bg, bd);
+	ps(" and to close the emulator ", 0xf, bg, bd); ps("ALT+F4\n", 0xe, bg, bd);
+	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
+	ps(g_program.config().get_parsed_file().c_str(), 0xe, bg, bd);
+	ps("\n\nFor more information read the README file and visit the project page at\n", 0xf, bg, bd);
+	ps("http://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
+
+	m_windows.interface->print_VGA_text(text);
+}
 
 GUI::Windows::Windows()
 :

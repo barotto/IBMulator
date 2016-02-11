@@ -461,10 +461,13 @@ void Interface::render_monitor()
 	GLCALL( glUniform1i(m_display.uniforms.vgamap, 0) );
 	if(m_machine->is_on()) {
 		GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
+		GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
+		GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
 	} else {
-		GLCALL( glUniform1f(m_display.uniforms.brightness, 0.f) );
+		GLCALL( glUniform1f(m_display.uniforms.brightness, 1.f) );
+		GLCALL( glUniform1f(m_display.uniforms.contrast, 1.f) );
+		GLCALL( glUniform1f(m_display.uniforms.saturation, 1.f) );
 	}
-	GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
 	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
 	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
 	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
@@ -560,4 +563,27 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 			throw std::exception();
 		}
 	}
+}
+
+void Interface::print_VGA_text(std::vector<uint16_t> &_text)
+{
+	TextModeInfo tminfo;
+	tminfo.start_address = 0;
+	tminfo.cs_start = 1;
+	tminfo.cs_end = 0;
+	tminfo.line_offset = 80*2;
+	tminfo.line_compare = 1023;
+	tminfo.h_panning = 0;
+	tminfo.v_panning = 0;
+	tminfo.line_graphics = false;
+	tminfo.split_hpanning = false;
+	tminfo.blink_flags = 0;
+	for(int i=0; i<16; i++) {
+		tminfo.actl_palette[i] = i;
+	}
+	std::vector<uint16_t> oldtxt(80*25,0);
+	m_display.vga.text_update(
+			(uint8_t*)(oldtxt.data()),
+			(uint8_t*)(_text.data()),
+			0, 0, &tminfo);
 }

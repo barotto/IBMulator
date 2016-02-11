@@ -39,6 +39,7 @@ enum FileType {
 class AppConfig
 {
 private:
+	std::string m_parsed_file;
 	std::string m_user_home;
 	std::string m_cfg_home;
 	std::string m_assets_home;
@@ -65,9 +66,10 @@ public:
 	void set_user_home(std::string _path) { m_user_home = _path; }
 	void set_cfg_home(std::string _path) { m_cfg_home = _path; }
 	void set_assets_home(std::string _path) { m_assets_home = _path; }
-	std::string get_assets_home() { return m_assets_home; }
-	std::string get_user_home() { return m_user_home; }
-	std::string get_cfg_home() { return m_cfg_home; }
+	std::string get_parsed_file() const { return m_parsed_file; }
+	std::string get_assets_home() const { return m_assets_home; }
+	std::string get_user_home() const { return m_user_home; }
+	std::string get_cfg_home() const { return m_cfg_home; }
 
 	void parse(const std::string &_filename);
 

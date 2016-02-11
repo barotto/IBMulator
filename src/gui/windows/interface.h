@@ -122,6 +122,7 @@ public:
 	virtual void set_video_saturation(float);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
+	void print_VGA_text(std::vector<uint16_t> &_text);
 
 	virtual void sig_state_restored() {}
 

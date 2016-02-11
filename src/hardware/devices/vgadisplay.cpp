@@ -31,13 +31,13 @@ VGADisplay::VGADisplay()
 {
 	m_s.textmode = true;
 	m_s.xres = 640;
-	m_s.yres = 480;
+	m_s.yres = 400;
 	m_s.bpp = 8;
 	m_s.fb_xsize = VGA_MAX_XRES;
 	m_s.fb_ysize = VGA_MAX_YRES;
 	m_s.tile_xsize = VGA_X_TILESIZE;
 	m_s.tile_ysize = VGA_Y_TILESIZE;
-	m_s.charmap_updated = false;
+	m_s.charmap_updated = true;
 	m_s.prev_cursor_x = 0;
 	m_s.prev_cursor_y = 0;
 	m_s.h_panning = 0;
@@ -45,13 +45,28 @@ VGADisplay::VGADisplay()
 	m_s.line_compare = 1023;
 	m_s.fontwidth = 8;
 	m_s.fontheight = 16;
-	m_s.text_rows = 25;
 	m_s.text_cols = 80;
+	m_s.text_rows = 25;
 
 	m_fb = new uint32_t[VGA_MAX_XRES*VGA_MAX_YRES];
 	memset(m_fb, 0, VGA_MAX_XRES*VGA_MAX_YRES*4);
 
-	memset(m_s.palette, 0, sizeof(m_s.palette));
+	m_s.palette[0]  = PALETTE_ENTRY(  0,   0,   0); // black
+	m_s.palette[1]  = PALETTE_ENTRY(  0,   0, 170); // blue
+	m_s.palette[2]  = PALETTE_ENTRY(  0, 170,   0); // green
+	m_s.palette[3]  = PALETTE_ENTRY(  0, 170, 170); // cyan
+	m_s.palette[4]  = PALETTE_ENTRY(170,   0,   0); // red
+	m_s.palette[5]  = PALETTE_ENTRY(170,   0, 170); // magenta
+	m_s.palette[6]  = PALETTE_ENTRY(170,  85,   0); // brown
+	m_s.palette[7]  = PALETTE_ENTRY(170, 170, 170); // light gray
+	m_s.palette[8]  = PALETTE_ENTRY( 85,  85,  85); // dark gray
+	m_s.palette[9]  = PALETTE_ENTRY( 85,  85, 255); // light blue
+	m_s.palette[10] = PALETTE_ENTRY( 85, 255,  85); // light green
+	m_s.palette[11] = PALETTE_ENTRY( 85, 255, 255); // light cyan
+	m_s.palette[12] = PALETTE_ENTRY(255,  85,  85); // light red
+	m_s.palette[13] = PALETTE_ENTRY(255,  85, 255); // light magenta
+	m_s.palette[14] = PALETTE_ENTRY(255, 255,  85); // yellow
+	m_s.palette[15] = PALETTE_ENTRY(255, 255, 255); // white
 
 	for(uint i=0; i<256; i++) {
 		for(uint j=0; j<16; j++) {

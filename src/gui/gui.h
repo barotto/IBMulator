@@ -245,6 +245,10 @@ public:
 
 	static uint mode();
 	void sig_state_restored();
+
+private:
+	void show_welcome_screen();
+
 };
 
 
