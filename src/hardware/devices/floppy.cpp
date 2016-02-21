@@ -165,6 +165,7 @@ enum FDCStatusRegisters {
 #define TO_FLOPPY   11
 
 #define FLOPPY_DMA_CHAN 2
+#define FLOPPY_IRQ      6
 
 
 typedef struct {
@@ -242,7 +243,7 @@ void FloppyCtrl::init(void)
 			std::bind(&FloppyCtrl::dma_read, this, _1, _2),
 			std::bind(&FloppyCtrl::dma_write, this, _1, _2),
 			get_name());
-	g_machine.register_irq(6, get_name());
+	g_machine.register_irq(FLOPPY_IRQ, get_name());
 
 	g_devices.register_read_handler(this, 0x03F0, 1);  //Status Register A R
 	g_devices.register_read_handler(this, 0x03F1, 1);  //Status Register B R
@@ -421,7 +422,7 @@ void FloppyCtrl::reset(unsigned type)
 		m_s.rddata[i]       = false;
 	}
 
-	g_pic.lower_irq(6);
+	g_pic.lower_irq(FLOPPY_IRQ);
 	if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
 		g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
 	}
@@ -673,55 +674,78 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_BUSY;
 				const char* command;
 				switch(_value) {
-					case 0x03: /* specify */
+					case 0x03:
 						command = "specify";
 						m_s.command_size = 3;
 						break;
-					case 0x04: /* get status */
+					case 0x04:
 						command = "get status";
 						m_s.command_size = 2;
 						break;
-					case 0x07: /* recalibrate */
+					case 0x07:
 						command = "recalibrate";
 						m_s.command_size = 2;
 						break;
-					case 0x08: /* sense interrupt status */
+					case 0x08:
 						command = "sense interrupt status";
 						m_s.command_size = 1;
 						break;
-					case 0x0f: /* seek */
+					case 0x0f:
 						command = "seek";
 						m_s.command_size = 3;
 						break;
-					case 0x4a: /* read ID */
+					case 0x4a:
 						command = "read ID";
 						m_s.command_size = 2;
 						break;
-					case 0x4d: /* format track */
+					case 0x4d:
 						command = "format track";
 						m_s.command_size = 6;
 						break;
 					case 0x45:
-					case 0xc5: /* write normal data */
+					case 0xc5:
 						command = "write normal data";
 						m_s.command_size = 9;
 						break;
 					case 0x46:
 					case 0x66:
 					case 0xc6:
-					case 0xe6: /* read normal data */
+					case 0xe6:
 						command = "read normal data";
 						m_s.command_size = 9;
 						break;
-
-					//INVALID COMMANDS:
-					case 0x0e: // dump registers (Enhanced drives)
-					case 0x10: // Version command, enhanced controller returns 0x90
-					case 0x14: // Unlock command (Enhanced)
-					case 0x94: // Lock command (Enhanced)
-					case 0x12: // Perpendicular mode (Enhanced)
-					case 0x13: // Configure command (Enhanced)
-					case 0x18: // National Semiconductor version command
+					case 0x0e:
+						command = "dump registers";
+						m_s.command_size = 0;
+						m_s.pending_command = _value;
+						enter_result_phase();
+						break;
+					case 0x10:
+						command = "version";
+						m_s.command_size = 0;
+						m_s.pending_command = _value;
+						enter_result_phase();
+						break;
+					case 0x14:
+						command = "unlock";
+						m_s.command_size = 0;
+						m_s.pending_command = _value;
+						enter_result_phase();
+						break;
+					case 0x94:
+						command = "lock";
+						m_s.command_size = 0;
+						m_s.pending_command = _value;
+						enter_result_phase();
+						break;
+					case 0x13:
+						command = "configure";
+						m_s.command_size = 4;
+						break;
+					case 0x12:
+						command = "perpendicular mode";
+						m_s.command_size = 2;
+						break;
 					default:
 						command = "INVALID";
 						m_s.command_size = 0;   // make sure we don't try to process this command
@@ -818,10 +842,11 @@ void FloppyCtrl::floppy_command()
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u\n", drive);
 
 			step_delay = calculate_step_delay(drive, 0);
+			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* command head to track 0
 			* controller set to non-busy
-			* error condition noted in Status reg 0'm_s equipment check bit
+			* error condition noted in Status reg 0's equipment check bit
 			* seek end bit set to 1 in Status reg 0 regardless of outcome
 			* The last two are taken care of in timer().
 			*/
@@ -871,6 +896,7 @@ void FloppyCtrl::floppy_command()
 			m_s.DOR &= 0xfc;
 			m_s.DOR |= drive;
 			step_delay = calculate_step_delay(drive, m_s.command[2]);
+			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
 			m_s.direction[drive] = (m_s.cylinder[drive]>m_s.command[2]);
@@ -1115,13 +1141,12 @@ void FloppyCtrl::floppy_command()
 			}
 			break;
 		}
+
 		case 0x12: // Perpendicular mode
-			/*
 			m_s.perp_mode = m_s.command[1];
-			PINFOF(LOG_V1, LOG_FDC, "perpendicular mode: config=0x%02x", m_s.perp_mode));
+			PDEBUGF(LOG_V2, LOG_FDC, "perpendicular mode: config=0x%02X\n", m_s.perp_mode);
 			enter_idle_phase();
 			break;
-			*/
 
 		default: // invalid or unsupported command; these are captured in write() above
 			PERRF_ABORT(LOG_FDC, "You should never get here! cmd = 0x%02x\n", m_s.command[0]);
@@ -1262,6 +1287,7 @@ void FloppyCtrl::timer()
 			break;
 
 		case 0xfe: // (contrived) RESET
+			PDEBUGF(LOG_V1, LOG_FDC, "RESET\n");
 			reset(DEVICE_SOFT_RESET);
 			m_s.pending_command = 0;
 			m_s.status_reg0 = FDC_ST0_IC_POLLING;
@@ -1644,7 +1670,7 @@ uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, uint8_t new_cylinder)
 		steps = abs(new_cylinder - m_s.cylinder[drive]);
 		reset_changeline();
 	}
-	one_step_delay = ((m_s.SRT ^ 0x0f) + 1) * 500000 / drate_in_k[m_s.data_rate];
+	one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
 	return (steps * one_step_delay);
 }
 
