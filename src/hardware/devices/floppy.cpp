@@ -1452,10 +1452,6 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 			// time to write one sector at 300 rpm
 			sector_time = 200000 / m_media[drive].spt;
 			g_machine.activate_timer(m_timer_index, sector_time , 0);
-			// the following is a kludge; i (jc) don't know how to work with the timer
-			if((m_s.main_status_reg & FDC_MSR_NDMA) && m_s.TC) {
-				enter_result_phase();
-			}
 		}
 		return len;
 	}
@@ -1463,7 +1459,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 
 void FloppyCtrl::raise_interrupt(void)
 {
-	  g_pic.raise_irq(6);
+	  g_pic.raise_irq(FLOPPY_IRQ);
 	  m_s.pending_irq = 1;
 	  m_s.reset_sensei = 0;
 }
@@ -1471,7 +1467,7 @@ void FloppyCtrl::raise_interrupt(void)
 void FloppyCtrl::lower_interrupt(void)
 {
 	if(m_s.pending_irq) {
-		g_pic.lower_irq(6);
+		g_pic.lower_irq(FLOPPY_IRQ);
 		m_s.pending_irq = 0;
 	}
 }
