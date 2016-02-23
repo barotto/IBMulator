@@ -74,6 +74,21 @@ using namespace std::placeholders;
 
 FloppyCtrl g_floppy;
 
+/* Define FDC_FAST_1_44_SEEKS as true to make the drive seek with a data rate of
+ * 500kbps, even if the controller is set at 250kbps, when the mounted floppy is
+ * 1.44MB.
+ * According to the 82077AA documentation, and the original Bochs sources, seeks
+ * at 500kbps are twice as fast as seeks at 250kbps; but direct mesurements of a
+ * real PS/1 floppy disk drive reveal that the drive seeks at 500kbps speed even
+ * if the controller is set at 250kbps by the BIOS.
+ * Data transfer speed is unaffected though, and is consistent with the expected
+ * value of ~30KB/s.
+ * @@ maybe I misunderstood, but this is the only explanation I currently have
+ * for the observed behaviour.
+ */
+#define FDC_FAST_1_44_SEEKS true
+
+
 enum FDCInterfaceRegisters {
 
 	// Status Register A (SRA, Model30)
@@ -807,8 +822,8 @@ void FloppyCtrl::floppy_command()
 			m_s.HUT = m_s.command[1] & 0x0f;
 			m_s.HLT = m_s.command[2] >> 1;
 
-			PDEBUGF(LOG_V1, LOG_FDC, "specify SRT=%u,HUT=%u,HLT=%u\n",
-					m_s.SRT, m_s.HUT, m_s.HLT);
+			PDEBUGF(LOG_V1, LOG_FDC, "specify SRT=%u,HUT=%u,HLT=%u,ND=%u\n",
+					m_s.SRT, m_s.HUT, m_s.HLT, m_s.command[2]&1);
 
 			m_s.main_status_reg |= (m_s.command[2] & 0x01) ? FDC_MSR_NDMA : 0;
 			if(m_s.main_status_reg & FDC_MSR_NDMA) {
@@ -1653,16 +1668,28 @@ void FloppyCtrl::enter_idle_phase(void)
 uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, uint8_t new_cylinder)
 {
 	uint8_t steps;
-	uint32_t one_step_delay;
+	uint32_t one_step_delay, hlt;
 
 	if(new_cylinder == m_s.cylinder[drive]) {
 		steps = 1;
+		hlt = 0;
 	} else {
 		steps = abs(new_cylinder - m_s.cylinder[drive]);
+		hlt = m_s.HLT;
+		if(hlt == 0) {
+			hlt = 128;
+		}
 		reset_changeline();
 	}
-	one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
-	return (steps * one_step_delay);
+	if(m_media[drive].type == FLOPPY_1_44 && FDC_FAST_1_44_SEEKS) {
+		one_step_delay = (16 - m_s.SRT) * 1000;
+		hlt = hlt * 2000;
+	} else {
+		one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
+		hlt = hlt * 1000000/drate_in_k[m_s.data_rate];
+	}
+
+	return (steps * one_step_delay) + hlt;
 }
 
 uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive)
