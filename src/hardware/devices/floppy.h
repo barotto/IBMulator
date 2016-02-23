@@ -182,8 +182,9 @@ private:
 	void enter_idle_phase(void);
 	void enter_result_phase(void);
 	uint32_t calculate_step_delay(uint8_t drive, uint8_t new_cylinder);
+	uint32_t calculate_rw_delay(uint8_t _drive);
 	void reset_changeline(void);
-	bool get_tc(void);
+	bool get_TC(void);
 	void timer(void);
 	void increment_sector(void);
 	void floppy_drive_setup(uint drive);
