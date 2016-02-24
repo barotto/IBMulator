@@ -389,45 +389,45 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 
 void FloppyCtrl::reset(unsigned type)
 {
-	uint32_t i;
 	if(type == MACHINE_POWER_ON) {
+		// DMA is enabled from start
 		memset(&m_s, 0, sizeof(m_s));
-		m_s.main_status_reg &= ~FDC_MSR_NDMA;  // enable DMA from start
-		/* these registers are not cleared by normal reset */
-		m_s.SRT = 0;
-		m_s.HUT = 0;
-		m_s.HLT = 0;
+	} else {
+		/* Hardware RESET clears all registers except those programmed by
+		 * the SPECIFY command.
+		 */
+		m_s.pending_irq     = false;
+		m_s.reset_sensei    = 0;
+		m_s.main_status_reg &= FDC_MSR_NDMA; // keep ND bit value
+		m_s.status_reg0     = 0;
+		m_s.status_reg1     = 0;
+		m_s.status_reg2     = 0;
+		m_s.status_reg3     = 0;
 	}
-	m_s.pending_irq     = false;
-	m_s.reset_sensei    = 0; /* no reset result present */
-	m_s.main_status_reg = 0;
-	m_s.status_reg0     = 0;
-	m_s.status_reg1     = 0;
-	m_s.status_reg2     = 0;
-	m_s.status_reg3     = 0;
 
-	// software reset (via DOR port 0x3f2 bit 2) does not change DOR
-	if(type != DEVICE_SOFT_RESET) { //hard reset and power on
+	// hard reset and power on
+	if(type != DEVICE_SOFT_RESET) {
 		// motor off drive 3..0
 		// DMA/INT enabled
 		// normal operation
 		// drive select 0
+		// software reset (via DOR port 0x3f2 bit 2) does not change DOR
 		m_s.DOR = FDC_DOR_NDMAGATE | FDC_DOR_NRESET;
 
 		// DIR and CCR affected only by hard reset
-		for(i=0; i<4; i++) {
+		for(int i=0; i<4; i++) {
 			m_s.DIR[i] |= FDC_DIR_NDSKCHG;
 		}
 		m_s.data_rate = 2; /* 250 Kbps */
 		m_s.lock = false;
 	}
 	if(!m_s.lock) {
-		m_s.config = 0;
+		m_s.config = 0x20; // EFIFO=1 8272A compatible mode FIFO is disabled
 		m_s.pretrk = 0;
 	}
 	m_s.perp_mode = 0;
 
-	for(i=0; i<4; i++) {
+	for(int i=0; i<4; i++) {
 		m_s.cylinder[i]     = 0;
 	    m_s.cur_cylinder[i] = 0;
 		m_s.head[i]         = 0;
@@ -440,7 +440,7 @@ void FloppyCtrl::reset(unsigned type)
 
 	g_pic.lower_irq(FLOPPY_IRQ);
 	if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-		g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
+		g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 	}
 	enter_idle_phase();
 }
