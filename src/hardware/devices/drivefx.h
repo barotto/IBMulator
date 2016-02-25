@@ -16,40 +16,39 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef IBMULATOR_HW_DRIVEFX_H
+#define IBMULATOR_HW_DRIVEFX_H
 
-/*
- * This is the HDD noise simulator
- */
-
-#ifndef IBMULATOR_HW_HARDDRVFX_H
-#define IBMULATOR_HW_HARDDRVFX_H
-
-#include "drivefx.h"
+#include "mixer.h"
+#include "shared_deque.h"
+#include "audio/soundfx.h"
 
 
-class HardDriveFX : public DriveFX
+class DriveFX
 {
 protected:
-	enum SampleType {
-		HDD_SPIN_UP = 0,
-		HDD_SPIN_DOWN,
-		HDD_SPIN,
-		HDD_SEEK,
-		HDD_SEEK_LONG
+	std::mutex m_clear_mutex;
+	struct SeekEvent {
+		uint64_t time;
+		double distance;
 	};
-	std::vector<AudioBuffer> m_buffers;
-	const static SoundFX::samples_t ms_samples;
+	shared_deque<SeekEvent> m_seek_events;
+	std::atomic<bool> m_spinning, m_spin_change;
+	struct {
+		std::shared_ptr<MixerChannel> seek;
+		std::shared_ptr<MixerChannel> spin;
+	} m_channels;
 
 public:
-	HardDriveFX();
-	~HardDriveFX();
+	DriveFX();
+	virtual ~DriveFX();
 
-	void init();
-	uint64_t spin_up_time() const;
-	void config_changed();
-
-	bool create_seek_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	bool create_spin_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	void init(MixerChannel_handler _spin_channel, const char *_spin_name,
+			MixerChannel_handler _seek_channel, const char *_seek_name,
+			const AudioSpec &_spec);
+	void seek(int _c0, int _c1, int _tot_cyls);
+	void spin(bool _spinning, bool _up_down_fx);
+	void clear_events();
 };
 
 #endif

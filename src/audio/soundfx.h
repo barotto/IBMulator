@@ -36,12 +36,8 @@ public:
 		const samples_t &_samples);
 
 	static bool play_motor(uint64_t _time_span_us, MixerChannel &_channel,
-		bool _is_on,
-		const AudioBuffer &_on);
-
-	static bool play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 		bool _is_on, bool _is_changing_state,
-		const AudioBuffer &_power_up, const AudioBuffer &_on,
+		const AudioBuffer &_power_up, const AudioBuffer &_running,
 		const AudioBuffer &_power_down);
 
 	template<class Event, class EventQueue>

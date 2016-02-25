@@ -24,6 +24,7 @@ libhardware_a_SOURCES = \
 	devices/pit82c54.cpp \
 	devices/vga.cpp \
 	devices/vgadisplay.cpp \
+	devices/drivefx.cpp \
 	devices/floppy.cpp \
 	devices/harddrv.cpp \
 	devices/harddrvfx.cpp \
@@ -60,6 +61,7 @@ noinst_HEADERS = \
 	devices/pit82c54.h \
 	devices/vga.h \
 	devices/vgadisplay.h \
+	devices/drivefx.h \
 	devices/floppy.h \
 	devices/harddrv.h \
 	devices/harddrvfx.h \

@@ -58,23 +58,9 @@ void SoundFX::load_audio_file(const char *_filename, AudioBuffer &_sample, const
 	}
 }
 
-bool SoundFX::play_motor(uint64_t _time_span_us, MixerChannel &_channel, bool _is_on,
-		const AudioBuffer &_on)
-{
-	if(_is_on) {
-		_channel.play_loop(_on);
-		_channel.input_finish(_time_span_us);
-		return true;
-	} else {
-		_channel.input_finish(_time_span_us);
-		_channel.enable(false);
-		return false;
-	}
-}
-
 bool SoundFX::play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 		bool _is_on, bool _is_changing_state,
-		const AudioBuffer &_power_up, const AudioBuffer &_on,
+		const AudioBuffer &_power_up, const AudioBuffer &_running,
 		const AudioBuffer &_power_down)
 {
 	if(_is_on) {
@@ -83,7 +69,7 @@ bool SoundFX::play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 			_channel.flush();
 			_channel.play(_power_up,0);
 		}
-		_channel.play_loop(_on);
+		_channel.play_loop(_running);
 		_channel.input_finish(_time_span_us);
 		return true;
 	} else {
