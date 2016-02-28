@@ -26,6 +26,7 @@ libhardware_a_SOURCES = \
 	devices/vgadisplay.cpp \
 	devices/drivefx.cpp \
 	devices/floppy.cpp \
+	devices/floppyfx.cpp \
 	devices/harddrv.cpp \
 	devices/harddrvfx.cpp \
 	devices/mediaimage.cpp \
@@ -63,6 +64,7 @@ noinst_HEADERS = \
 	devices/vgadisplay.h \
 	devices/drivefx.h \
 	devices/floppy.h \
+	devices/floppyfx.h \
 	devices/harddrv.h \
 	devices/harddrvfx.h \
 	devices/hddparams.h \

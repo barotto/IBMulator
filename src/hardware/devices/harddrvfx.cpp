@@ -93,10 +93,11 @@ bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, 
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
 			AudioBuffer *wave = &m_buffers[HDD_SEEK];
-			if(_evt.distance>0.2) {
+			double absdist = fabs(_evt.distance);
+			if(absdist>0.2) {
 				wave = &m_buffers[HDD_SEEK_LONG];
 			}
-			m_channels.seek->play(*wave, lerp(0.8,1.4,_evt.distance), _time_span);
+			m_channels.seek->play(*wave, lerp(0.8,1.4,absdist), _time_span);
 		});
 }
 

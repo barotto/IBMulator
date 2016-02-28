@@ -81,6 +81,18 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf
 
+soundsfloppydir = $(pkgdatadir)/sounds/floppy
+dist_soundsfloppy_DATA = \
+share/ibmulator/sounds/floppy/drive_spin.wav \
+share/ibmulator/sounds/floppy/drive_spin_up.wav \
+share/ibmulator/sounds/floppy/drive_spin_down.wav \
+share/ibmulator/sounds/floppy/drive_seek_step.wav \
+share/ibmulator/sounds/floppy/drive_seek_up.wav \
+share/ibmulator/sounds/floppy/drive_seek_down.wav \
+share/ibmulator/sounds/floppy/drive_snatch.wav \
+share/ibmulator/sounds/floppy/drive_boot.wav \
+share/ibmulator/sounds/floppy/drive_boot_disk.wav
+
 soundshdddir = $(pkgdatadir)/sounds/hdd
 dist_soundshdd_DATA = \
 share/ibmulator/sounds/hdd/drive_spin_up.wav \

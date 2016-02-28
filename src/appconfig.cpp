@@ -126,6 +126,8 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ SOUNDFX_SECTION, {
 		{ SOUNDFX_VOLUME,   "1.0" },
+		{ SOUNDFX_FDD_SPIN, "0.4" },
+		{ SOUNDFX_FDD_SEEK, "0.4" },
 		{ SOUNDFX_HDD_SPIN, "0.4" },
 		{ SOUNDFX_HDD_SEEK, "0.3" },
 		{ SOUNDFX_SYSTEM,   "1.0" }
@@ -290,6 +292,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
 ";   volume: Audio volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
+"; fdd_seek: Volume of FDD seeks.\n"
+"; fdd_spin: Volume of FDD spin noise.\n"
 "; hdd_seek: Volume of HDD seeks.\n"
 "; hdd_spin: Volume of HDD spin noise.\n"
 ";   system: Volume of system unit's and monitor's noises.\n"
@@ -386,6 +390,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
+		SOUNDFX_FDD_SPIN,
+		SOUNDFX_FDD_SEEK,
 		SOUNDFX_HDD_SPIN,
 		SOUNDFX_HDD_SEEK,
 		SOUNDFX_SYSTEM

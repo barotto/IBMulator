@@ -25,6 +25,9 @@
 
 class SoundFX
 {
+protected:
+	uint64_t m_audio_cue_time;
+
 public:
 	struct sample_def {
 		const char* name;
@@ -41,16 +44,16 @@ public:
 		const AudioBuffer &_power_down);
 
 	template<class Event, class EventQueue>
-	static bool play_timed_events(uint64_t _time_span_us, bool _first_upd,
+	bool play_timed_events(uint64_t _time_span_us, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play);
 
-private:
-	SoundFX();
+protected:
+	SoundFX() : m_audio_cue_time(0) {}
+	virtual ~SoundFX() {}
 
 	static void load_audio_file(const char *_filename, AudioBuffer &_sample,
 		const AudioSpec &_spec);
-
 };
 
 
@@ -59,11 +62,10 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play)
 {
-	static uint64_t audio_cue_time = 0;
 	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix span: %04d us (1st upd:%d), cue time:%lld us, events:%d\n",
-			_channel.name(), _time_span_us, _first_upd, audio_cue_time, _events.size());
+			_channel.name(), _time_span_us, _first_upd, m_audio_cue_time, _events.size());
 
 	unsigned evtcnt = 0;
 
@@ -76,19 +78,20 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 			evtcnt++;
 			_events.try_and_pop();
 			if(_first_upd) {
-				audio_cue_time = event.time;
+				m_audio_cue_time = event.time;
 				_first_upd = false;
 			}
-			uint64_t time_span = event.time - audio_cue_time;
-			_play(event,time_span);
+			assert(event.time >= m_audio_cue_time);
+			uint64_t time_span = event.time - m_audio_cue_time;
+			_play(event, time_span);
 		}
 	} while(1);
 
 	unsigned buf_span;
-	if(audio_cue_time==0) {
+	if(m_audio_cue_time==0) {
 		buf_span = _time_span_us;
 	} else {
-		buf_span = mtime_us - audio_cue_time;
+		buf_span = mtime_us - m_audio_cue_time;
 	}
 	unsigned in_duration = _channel.in().duration_us();
 	if(in_duration < buf_span) {
@@ -101,7 +104,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 				fill_us
 				);
 	}
-	audio_cue_time = mtime_us;
+	m_audio_cue_time = mtime_us;
 	_channel.input_finish(buf_span);
 	if(evtcnt == 0) {
 		return _channel.check_disable_time(mtime_us);

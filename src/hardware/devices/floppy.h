@@ -23,6 +23,7 @@
 
 #include "hardware/iodevice.h"
 #include "mediaimage.h"
+#include "floppyfx.h"
 
 class FloppyCtrl;
 extern FloppyCtrl g_floppy;
@@ -38,16 +39,16 @@ enum FloppyDriveType {
 };
 
 enum FloppyDiskType {
-	FLOPPY_NONE = 0, // media not present
-	FLOPPY_1_2  = 1, // 1.2M  5.25"
-	FLOPPY_1_44 = 2, // 1.44M 3.5"
-	FLOPPY_2_88 = 3, // 2.88M 3.5"
-	FLOPPY_720K = 4, // 720K  3.5"
-	FLOPPY_360K = 5, // 360K  5.25"
-	FLOPPY_160K = 6, // 160K  5.25"
-	FLOPPY_180K = 7, // 180K  5.25"
-	FLOPPY_320K = 8, // 320K  5.25"
-	FLOPPY_LAST = 8  // last legal value of floppy type
+	FLOPPY_NONE, // media not present
+	FLOPPY_160K, // 160K  5.25"
+	FLOPPY_180K, // 180K  5.25"
+	FLOPPY_320K, // 320K  5.25"
+	FLOPPY_360K, // 360K  5.25"
+	FLOPPY_720K, // 720K  3.5"
+	FLOPPY_1_2,  // 1.2M  5.25"
+	FLOPPY_1_44, // 1.44M 3.5"
+	FLOPPY_2_88, // 2.88M 3.5"
+	FLOPPY_TYPE_CNT
 };
 
 struct FloppyDisk
@@ -63,7 +64,7 @@ struct FloppyDisk
 	bool        vvfat_floppy;
 	MediaImage *vvfat;
 
-	bool open(uint8_t devtype, uint8_t type, const char *path);
+	bool open(uint devtype, uint type, const char *path);
 	void close();
 };
 
@@ -134,8 +135,10 @@ private:
 	bool m_disk_changed[4]; //!< used by the GUI to know when a disk has been changed
 	std::mutex m_mutex;     //!< for machine-GUI synchronization
 
-public:
+	FloppyFX m_fx[2];
+	bool m_drive_booted[4];
 
+public:
 	FloppyCtrl();
 	~FloppyCtrl();
 
@@ -187,7 +190,11 @@ private:
 	bool get_TC(void);
 	void timer(void);
 	void increment_sector(void);
+	void set_cylinder(uint8_t _drive, uint8_t _cyl);
 	void floppy_drive_setup(uint drive);
+	inline bool is_motor_spinning(uint _drive) const {
+		return (is_motor_on(_drive) && is_media_present(_drive));
+	}
 	static std::string print_array(uint8_t*,unsigned);
 };
 

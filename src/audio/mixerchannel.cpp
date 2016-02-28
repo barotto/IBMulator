@@ -144,23 +144,7 @@ void MixerChannel::play(const AudioBuffer &_wave)
 
 void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
 {
-	/* This function plays the given sound sample at the specified time distance
-	 * from the start of the samples input buffer, filling with silence if needed.
-	 */
-	if(_wave.spec() != m_in_buffer.spec()) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s: can't play, incompatible audio format\n",
-				m_name.c_str());
-		return;
-	}
-	unsigned frames = m_in_buffer.spec().us_to_frames(_time_dist);
-	m_in_buffer.resize_frames_silence(frames);
-	m_in_buffer.add_frames(_wave);
-	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%dus), in buf: %d samples (%dus)\n",
-			m_name.c_str(),
-			frames, _time_dist,
-			_wave.frames(), _wave.duration_us(),
-			m_in_buffer.samples(), m_in_buffer.duration_us()
-			);
+	play_frames(_wave, _wave.frames(), _time_dist);
 }
 
 void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist)
@@ -171,7 +155,28 @@ void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_
 	static AudioBuffer temp;
 	temp = _wave;
 	temp.apply_volume(_volume);
-	play(temp,_time_dist);
+	play_frames(temp, temp.frames(), _time_dist);
+}
+
+void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, uint64_t _time_dist)
+{
+	/* This function plays the given sound sample at the specified time distance
+	 * from the start of the samples input buffer, filling with silence if needed.
+	 */
+	if(_wave.spec() != m_in_buffer.spec()) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: can't play, incompatible audio format\n",
+				m_name.c_str());
+		return;
+	}
+	unsigned inbuf_frames = m_in_buffer.spec().us_to_frames(_time_dist);
+	m_in_buffer.resize_frames_silence(inbuf_frames);
+	m_in_buffer.add_frames(_wave, _frames_cnt);
+	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%dus), in buf: %d samples (%dus)\n",
+			m_name.c_str(),
+			inbuf_frames, _time_dist,
+			_frames_cnt, _wave.spec().frames_to_us(_frames_cnt),
+			m_in_buffer.samples(), m_in_buffer.duration_us()
+			);
 }
 
 void MixerChannel::play_loop(const AudioBuffer &_wave)

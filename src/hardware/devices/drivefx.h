@@ -24,13 +24,14 @@
 #include "audio/soundfx.h"
 
 
-class DriveFX
+class DriveFX : public SoundFX
 {
 protected:
 	std::mutex m_clear_mutex;
 	struct SeekEvent {
 		uint64_t time;
 		double distance;
+		uint32_t userdata;
 	};
 	shared_deque<SeekEvent> m_seek_events;
 	std::atomic<bool> m_spinning, m_spin_change;
@@ -43,12 +44,12 @@ public:
 	DriveFX();
 	virtual ~DriveFX();
 
-	void init(MixerChannel_handler _spin_channel, const char *_spin_name,
+	virtual void init(MixerChannel_handler _spin_channel, const char *_spin_name,
 			MixerChannel_handler _seek_channel, const char *_seek_name,
 			const AudioSpec &_spec);
-	void seek(int _c0, int _c1, int _tot_cyls);
-	void spin(bool _spinning, bool _up_down_fx);
-	void clear_events();
+	virtual void seek(int _c0, int _c1, int _tot_cyls);
+	virtual void spin(bool _spinning, bool _change_state);
+	virtual void clear_events();
 };
 
 #endif
