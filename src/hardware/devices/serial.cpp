@@ -46,6 +46,7 @@
 	#include <netdb.h>
 	#include <unistd.h>
 	#define closesocket(s) ::close(s)
+	#define INVALID_SOCKET -1
 #endif
 #if SER_WIN32
 	//#include <winioctl.h>
