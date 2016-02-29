@@ -21,7 +21,6 @@
 #include "program.h"
 #include "machine.h"
 #include "harddrvfx.h"
-#include "gui/gui.h"
 #include <cfloat>
 #include <future>
 
@@ -72,13 +71,8 @@ uint64_t HardDriveFX::spin_up_time() const
 
 void HardDriveFX::config_changed()
 {
-	float volume;
-	// HDD fx are on only for normal and realistic GUI modes
-	if(GUI::mode() == GUI_MODE_COMPACT) {
-		volume = 0.f;
-	} else {
-		volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
-	}
+	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+
 	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK) * volume);
 	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN) * volume);
 }
