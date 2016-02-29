@@ -207,7 +207,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 	}
 
 	va_start(ap, _format);
-	bool res = log(_priority,_facility,_verbosity,_format,ap);
+	bool res = p_log(_priority,_facility,_verbosity,_format,ap);
 	va_end(ap);
 	return res;
 }
@@ -222,7 +222,7 @@ bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _form
 
 Chiamata da log(int, int, int, const char*, ...).
 */
-bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
+bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
 {
 	assert(_format);
 

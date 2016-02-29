@@ -160,7 +160,7 @@ public:
 	const char* convert(const char *from_charset, const char *to_charset, char *instr, size_t inlen);
 
 private:
-	bool log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);
+	bool p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);
 	void put_all(std::list<Logdev*>& _devlist, std::string _prefix, std::string _mex);
 	void main_loop();
 };

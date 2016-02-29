@@ -21,6 +21,7 @@
 #define IBMULATOR_AUDIOSPEC_H
 
 #include <SDL2/SDL_audio.h>
+#include <cmath>
 
 //direct mapping to SDL2 defines
 //you can therefore use SDL2 format macros

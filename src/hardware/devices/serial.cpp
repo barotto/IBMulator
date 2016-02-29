@@ -109,7 +109,7 @@ Serial::~Serial(void)
 				break;
 			case SER_MODE_SOCKET_CLIENT:
 			case SER_MODE_SOCKET_SERVER:
-				if(m_s[i].socket_id >= 0) {
+				if(m_s[i].socket_id != INVALID_SOCKET) {
 					closesocket(m_s[i].socket_id);
 				}
 				break;
@@ -418,8 +418,9 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	sin.sin_port = htons (port);
 
 	socket = ::socket (AF_INET, SOCK_STREAM, 0);
-	if(socket < 0)
+	if(socket == INVALID_SOCKET) {
 		PERRF_ABORT(LOG_COM, "COM%d: socket() failed\n",comn+1);
+	}
 
 	// server mode
 	if(server) {
@@ -430,7 +431,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 		} else {
 			PINFOF(LOG_V0, LOG_COM, "COM%d: waiting for client to connect (host:%s, port:%d)\n",comn+1, host, port);
 			SOCKET client;
-			if((client = ::accept (socket, nullptr, 0)) < 0) {
+			if((client = ::accept (socket, nullptr, 0)) == INVALID_SOCKET) {
 				PERRF_ABORT(LOG_COM, "COM%d: accept() failed (host:%s, port:%d)\n",comn+1, host, port);
 			}
 			closesocket(socket);
@@ -449,7 +450,7 @@ void Serial::init_mode_socket(uint comn, std::string dev, uint mode)
 	}
 }
 
-void Serial::init_mode_pipe(uint /*comn*/, std::string dev, uint mode)
+void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
 {
 	if(dev.empty()) {
 		return;
