@@ -18,12 +18,9 @@
  */
 
 #include "ibmulator.h"
-#include "program.h"
 #include "machine.h"
 #include "drivefx.h"
-#include "gui/gui.h"
 #include <cfloat>
-#include <future>
 
 const uint64_t CHANNELS_TIMEOUT = 1000000;
 

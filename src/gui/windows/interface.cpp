@@ -46,6 +46,54 @@ void LogMessage::log_put(const std::string & /*_prefix*/, const std::string & _m
 	m_iface->show_message(_message.c_str());
 }
 
+
+const SoundFX::samples_t InterfaceFX::ms_samples = {
+	{"Floppy insert", "sounds" FS_SEP "floppy" FS_SEP "disk_insert.wav"},
+	{"Floppy eject",  "sounds" FS_SEP "floppy" FS_SEP "disk_eject.wav"}
+};
+
+void InterfaceFX::init(Mixer *_mixer)
+{
+	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
+	GUIFX::init(_mixer,
+		std::bind(&InterfaceFX::create_sound_samples, this,
+				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		"GUI interface", spec);
+	m_buffers = SoundFX::load_samples(spec, ms_samples);
+}
+
+void InterfaceFX::use_floppy(bool _insert)
+{
+	if(m_channel->volume()<=FLT_MIN) {
+		return;
+	}
+
+	if(_insert) {
+		m_event = FLOPPY_INSERT;
+	} else {
+		m_event = FLOPPY_EJECT;
+	}
+	if(!m_channel->is_enabled()) {
+		m_channel->enable(true);
+	}
+}
+
+bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
+{
+	if(m_event == FLOPPY_INSERT) {
+		m_channel->flush();
+		m_channel->play(m_buffers[FLOPPY_INSERT], 0);
+	} else if(m_event == FLOPPY_EJECT) {
+		m_channel->flush();
+		m_channel->play(m_buffers[FLOPPY_EJECT], 0);
+	}
+	// possible event miss, but i don't care, they are very slow anyway
+	m_event = -1;
+	m_channel->enable(false);
+	return false;
+}
+
+
 Interface::Display::Display()
 {}
 
@@ -105,6 +153,8 @@ m_quad_data{
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
+
+	m_audio.init(_mixer);
 }
 
 Interface::~Interface()
@@ -264,6 +314,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 			m_curr_drive?"B":"A", _write_protect?"(write protected)":"");
 	m_machine->cmd_insert_media(m_curr_drive, type, _img_path, _write_protect);
 	m_fs->hide();
+	m_audio.use_floppy(true);
 }
 
 void Interface::update()
@@ -357,6 +408,7 @@ void Interface::on_fdd_select(RC::Event &)
 void Interface::on_fdd_eject(RC::Event &)
 {
 	m_machine->cmd_eject_media(m_curr_drive);
+	m_audio.use_floppy(false);
 }
 
 void Interface::on_fdd_mount(RC::Event &)

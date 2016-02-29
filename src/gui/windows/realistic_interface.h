@@ -28,6 +28,25 @@
 class Machine;
 class GUI;
 
+class RealisticFX : public GUIFX
+{
+private:
+	std::atomic<bool> m_power_on, m_change_state;
+	enum SampleType {
+		POWER_UP = 0,
+		POWER_DOWN,
+		POWER_ON
+	};
+	std::vector<AudioBuffer> m_buffers;
+	const static SoundFX::samples_t ms_samples;
+
+public:
+	RealisticFX() : GUIFX(), m_power_on(false), m_change_state(false) {}
+	void init(Mixer *_mixer);
+	void update(bool _power_on, bool _change_state);
+	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+};
+
 class RealisticInterface : public Interface
 {
 private:
@@ -73,22 +92,7 @@ private:
 
 	static event_map_t ms_evt_map;
 
-	struct Audio {
-		std::atomic<bool> m_power_on, m_change_state;
-		std::shared_ptr<MixerChannel> m_channel;
-		enum SampleType {
-			POWER_UP = 0,
-			POWER_DOWN,
-			POWER_ON
-		};
-		std::vector<AudioBuffer> m_buffers;
-		const static SoundFX::samples_t ms_samples;
-
-		Audio() : m_power_on(false), m_change_state(false) {}
-		void init(Mixer *_mixer);
-		void update(bool _power_on, bool _change_state);
-		bool create_sound_samples(uint64_t _time_span_us, bool, bool);
-	} m_audio;
+	RealisticFX m_real_audio;
 
 	static constexpr float ms_min_slider_val = 0.0f;
 	static constexpr float ms_max_slider_val = 1.3f;

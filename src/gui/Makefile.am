@@ -5,6 +5,7 @@ AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src
 noinst_LIBRARIES = libgui.a
 libgui_a_SOURCES = \
 	gui.cpp \
+	guifx.cpp \
 	vector.cpp \
 	matrix.cpp \
 	keymap.cpp \
@@ -25,6 +26,7 @@ libgui_a_SOURCES = \
 
 noinst_HEADERS = \
 	gui.h \
+	guifx.h \
 	vector.h \
 	vector.inl.h \
 	matrix.h \

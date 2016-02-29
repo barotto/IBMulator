@@ -25,15 +25,33 @@
 #include "hardware/devices/vga.h"
 #include "hardware/devices/vgadisplay.h"
 #include <Rocket/Core/EventListener.h>
+#include "gui/guifx.h"
 
 class Machine;
 class GUI;
 class Mixer;
 
+class InterfaceFX : public GUIFX
+{
+private:
+	enum SampleType {
+		FLOPPY_INSERT,
+		FLOPPY_EJECT
+	};
+	std::vector<AudioBuffer> m_buffers;
+	const static SoundFX::samples_t ms_samples;
+	std::atomic<int> m_event;
+
+public:
+	InterfaceFX() : GUIFX() {}
+	void init(Mixer *);
+	void use_floppy(bool _insert);
+	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+};
+
 class Interface : public Window
 {
 protected:
-
 	class Display {
 	public:
 		VGADisplay vga;
@@ -95,6 +113,8 @@ protected:
 	Machine *m_machine;
 	Mixer *m_mixer;
 	FileSelect *m_fs;
+
+	InterfaceFX m_audio;
 
 public:
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);

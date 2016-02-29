@@ -28,8 +28,7 @@ class GUI;
 
 class NormalInterface : public Interface
 {
-protected:
-
+private:
 	uint m_vga_aspect;
 	uint m_vga_scaling;
 
@@ -38,13 +37,7 @@ protected:
 	bool m_led_pause;
 	uint m_gui_mode;
 
-	void on_pause(RC::Event &);
-	void on_save(RC::Event &);
-	void on_restore(RC::Event &);
-	void on_exit(RC::Event &);
-
 public:
-
 	static event_map_t ms_evt_map;
 
 	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
@@ -54,6 +47,12 @@ public:
 	void container_size_changed(int _width, int _height);
 
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
+
+private:
+	void on_pause(RC::Event &);
+	void on_save(RC::Event &);
+	void on_restore(RC::Event &);
+	void on_exit(RC::Event &);
 };
 
 #endif
