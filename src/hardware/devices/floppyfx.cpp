@@ -85,7 +85,7 @@ void FloppyFX::spin(bool _spinning, bool _change_state)
 		}
 	} else if(!_spinning && _change_state) {
 		//the BIOS sometimes activate the motor and deactivate it after only a bunch of us
-		if(g_machine.get_virt_time_us() < m_spin_time+100) {
+		if(g_machine.get_virt_time_us() < m_spin_time+50) {
 			m_channels.spin->enable(false);
 			return;
 		}

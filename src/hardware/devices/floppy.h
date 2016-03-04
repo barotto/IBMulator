@@ -100,6 +100,7 @@ private:
 		uint8_t head[4];
 		uint8_t sector[4];
 		uint8_t eot[4];
+		uint64_t last_hut[4][2];   // the time when a head was unloaded
 		bool    step[4];   // for status reg A, latched. is it drive dependent?
 		bool    wrdata[4]; // for status reg B, latched. is it drive dependent?
 		bool    rddata[4]; // for status reg B, latched. is it drive dependent?
@@ -176,6 +177,8 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
+	inline unsigned chs_to_lba(unsigned _d) const;
+	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned _d) const;
 	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
 	uint16_t dma_read(uint8_t *buffer, uint16_t maxlen);
 	void floppy_command(void);
@@ -184,7 +187,7 @@ private:
 	void lower_interrupt(void);
 	void enter_idle_phase(void);
 	void enter_result_phase(void);
-	uint32_t calculate_step_delay(uint8_t drive, uint8_t new_cylinder);
+	uint32_t calculate_step_delay(uint8_t drive, int _c0, int _c1);
 	uint32_t calculate_rw_delay(uint8_t _drive);
 	void reset_changeline(void);
 	bool get_TC(void);

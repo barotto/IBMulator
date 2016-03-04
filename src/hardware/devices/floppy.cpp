@@ -842,7 +842,7 @@ void FloppyCtrl::floppy_command()
 	uint8_t motor_on;
 	uint8_t head, drive, cylinder, sector, eot;
 	uint8_t sector_size;
-	uint32_t logical_sector, sector_time, step_delay;
+	uint32_t sector_time, step_delay;
 
 	PDEBUGF(LOG_V1, LOG_FDC, "COMMAND: ");
 	PDEBUGF(LOG_V2, LOG_FDC, "%s ", print_array(m_s.command,m_s.command_size).c_str());
@@ -890,7 +890,7 @@ void FloppyCtrl::floppy_command()
 
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u\n", drive);
 
-			step_delay = calculate_step_delay(drive, 0);
+			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* command head to track 0
@@ -944,7 +944,7 @@ void FloppyCtrl::floppy_command()
 					drive, cylinder, m_s.cylinder[drive]);
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
-			step_delay = calculate_step_delay(drive, cylinder);
+			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
 			PDEBUGF(LOG_V1, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
@@ -1049,7 +1049,7 @@ void FloppyCtrl::floppy_command()
 			if(m_s.main_status_reg & FDC_MSR_NDMA) {
 				PWARNF(LOG_FDC, "format track: non-DMA floppy format unimplemented\n");
 			} else {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 1);
+				g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
 			/* data reg not ready, controller busy */
 			m_s.main_status_reg &= FDC_MSR_NDMA;
@@ -1140,10 +1140,7 @@ void FloppyCtrl::floppy_command()
 				reset_changeline();
 			}
 
-			logical_sector = (cylinder * m_media[drive].heads * m_media[drive].spt) +
-						(head * m_media[drive].spt) +
-						(sector - 1);
-
+			uint32_t logical_sector = chs_to_lba(cylinder, head, sector, drive);
 			if(logical_sector >= m_media[drive].sectors) {
 				PERRF_ABORT(LOG_FDC, "%s: logical sector out of bounds\n", cmd);
 			}
@@ -1166,7 +1163,7 @@ void FloppyCtrl::floppy_command()
 				if(m_s.main_status_reg & FDC_MSR_NDMA) {
 					m_s.main_status_reg |= (FDC_MSR_RQM | FDC_MSR_DIO);
 				}
-				sector_time = calculate_rw_delay(drive);
+				uint32_t sector_time = calculate_rw_delay(drive);
 				g_machine.activate_timer(m_timer_index, sector_time, 0);
 			} else if((m_s.command[0] & 0x7f) == 0x45) { // write
 				m_s.wrdata[drive] = true;
@@ -1176,7 +1173,7 @@ void FloppyCtrl::floppy_command()
 				if(m_s.main_status_reg & FDC_MSR_NDMA) {
 					m_s.main_status_reg |= FDC_MSR_RQM;
 				} else {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, 1);
+					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			} else {
 				PERRF_ABORT(LOG_FDC, "unknown read/write command\n");
@@ -1297,7 +1294,7 @@ void FloppyCtrl::timer()
 			} else {
 				// transfer next sector
 				if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, 1);
+					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			}
 			m_s.step[drive] = true;
@@ -1313,7 +1310,7 @@ void FloppyCtrl::timer()
 				m_s.main_status_reg &= ~FDC_MSR_BUSY;  // clear busy bit
 				m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_DIO;  // data byte waiting
 			} else {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 1);
+				g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
 			m_s.step[drive] = true;
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
@@ -1327,7 +1324,7 @@ void FloppyCtrl::timer()
 			} else {
 				// transfer next sector
 				if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, 1);
+					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			}
 			m_s.step[drive] = true;
@@ -1372,9 +1369,13 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 	PDEBUGF(LOG_V2, LOG_FDC, "DMA write DRV%u\n", drive);
 
 	if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
-
+		uint32_t seek_time = 0;
 		if(m_s.floppy_buffer_index >= 512) {
+			uint8_t c = m_s.cylinder[drive];
 			increment_sector(); // increment to next sector before retrieving next one
+			if(c != m_s.cylinder[drive]) {
+				seek_time = calculate_step_delay(drive, c, m_s.cylinder[drive]);
+			}
 			m_s.floppy_buffer_index = 0;
 		}
 		if(m_s.TC) { // Terminal Count line, done
@@ -1386,24 +1387,16 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 					drive, m_s.cylinder[drive], m_s.head[drive], m_s.sector[drive]);
 
 			if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
+				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			enter_result_phase();
 		} else { // more data to transfer
-			uint32_t logical_sector, sector_time;
-
-			// remember that not all floppies have two sides, multiply by m_s.head[drive]
-			logical_sector =
-					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
-					(m_s.head[drive] * m_media[drive].spt) +
-					(m_s.sector[drive] - 1);
-
-			floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
+			floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
 			if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
+				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
-			sector_time = calculate_rw_delay(drive);
-			g_machine.activate_timer(m_timer_index, sector_time, 0);
+			uint32_t sector_time = calculate_rw_delay(drive);
+			g_machine.activate_timer(m_timer_index, sector_time+seek_time, 0);
 		}
 	}
 	return len;
@@ -1418,7 +1411,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 	// maxlen is the length of the DMA transfer (not implemented yet)
 
 	uint8_t drive = current_drive();
-	uint32_t logical_sector, sector_time;
+	uint32_t sector_time;
 
 	g_sysboard.set_feedback();
 
@@ -1429,6 +1422,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 		m_s.format_count--;
 		switch (3 - (m_s.format_count & 0x03)) {
 			case 0:
+				//TODO seek time should be considered and added to the sector_time below
 				set_cylinder(drive, *buffer);
 				break;
 			case 1:
@@ -1448,13 +1442,10 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				for(unsigned i = 0; i < 512; i++) {
 					m_s.floppy_buffer[i] = m_s.format_fillbyte;
 				}
-				logical_sector =
-						(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
-						(m_s.head[drive] * m_media[drive].spt) +
-						(m_s.sector[drive] - 1);
-				floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, TO_FLOPPY);
+
+				floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
 				if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
+					g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 				}
 				sector_time = calculate_rw_delay(drive);
 				g_machine.activate_timer(m_timer_index, sector_time, 0);
@@ -1473,10 +1464,6 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 		m_s.TC = get_TC() && (len == maxlen);
 
 		if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
-			logical_sector =
-					(m_s.cylinder[drive] * m_media[drive].heads * m_media[drive].spt) +
-					(m_s.head[drive] * m_media[drive].spt) +
-					(m_s.sector[drive] - 1);
 			if(m_media[drive].write_protected) {
 				// write protected error
 				PINFOF(LOG_V1, LOG_FDC, "tried to write disk %u, which is write-protected\n", drive);
@@ -1489,13 +1476,13 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				enter_result_phase();
 				return 1;
 			}
-			floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, TO_FLOPPY);
+			floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
+			sector_time = calculate_rw_delay(drive);
 			increment_sector(); // increment to next sector after writing current one
 			m_s.floppy_buffer_index = 0;
 			if(!(m_s.main_status_reg & FDC_MSR_NDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, 0);
+				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
-			sector_time = calculate_rw_delay(drive);
 			g_machine.activate_timer(m_timer_index, sector_time, 0);
 		}
 		return len;
@@ -1711,31 +1698,36 @@ void FloppyCtrl::enter_idle_phase(void)
 	m_s.floppy_buffer_index = 0;
 }
 
-uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, uint8_t new_cylinder)
+unsigned FloppyCtrl::chs_to_lba(unsigned _d) const
 {
-	uint8_t steps;
-	uint32_t one_step_delay, hlt;
+	assert(_d<4);
+	return chs_to_lba(m_s.cylinder[_d], m_s.head[_d], m_s.sector[_d], _d);
+}
 
-	if(new_cylinder == m_s.cylinder[drive]) {
+unsigned FloppyCtrl::chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned _d) const
+{
+	assert(_s>0);
+	assert(_d<4);
+	return (_c * m_media[_d].heads + _h ) * m_media[_d].spt + (_s-1);
+}
+
+uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, int _c0, int _c1)
+{
+	int steps;
+	if(_c0 == _c1) {
 		steps = 1;
-		hlt = 0;
 	} else {
-		steps = abs(new_cylinder - m_s.cylinder[drive]);
-		hlt = m_s.HLT;
-		if(hlt == 0) {
-			hlt = 128;
-		}
+		steps = abs(_c1 - _c0);
 		reset_changeline();
 	}
+	uint32_t one_step_delay;
 	if(m_device_type[drive] == FDD_350HD && FDC_FAST_3_5_SEEKS) {
 		one_step_delay = (16 - m_s.SRT) * 1000;
-		hlt = hlt * 2000;
 	} else {
 		one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
-		hlt = hlt * 1000000/drate_in_k[m_s.data_rate];
 	}
 
-	return (steps * one_step_delay) + hlt;
+	return (one_step_delay*steps) + 15000;
 }
 
 uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive)
@@ -1750,8 +1742,23 @@ uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive)
 		// 60e6us/300rpm = 200000us per track
 		min_sector_time = 200000 / m_media[_drive].spt;
 	}
-
 	sector_time = std::max(sector_time, min_sector_time);
+
+	uint64_t now = g_machine.get_virt_time_us();
+	uint32_t hlt = m_s.HLT;
+	if(hlt == 0) {
+		hlt = 128;
+	}
+	hlt *= 1000000/drate_in_k[m_s.data_rate];
+	uint32_t hut = m_s.HUT;
+	if(hut == 0) {
+		hut = 128;
+	}
+	hut *= 8000000/drate_in_k[m_s.data_rate];
+	if(m_s.last_hut[_drive][m_s.head[_drive]] < now) {
+		sector_time += hlt;
+	}
+	m_s.last_hut[_drive][m_s.head[_drive]] = now + sector_time + hut;
 	return sector_time;
 }
 
