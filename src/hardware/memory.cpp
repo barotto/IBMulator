@@ -74,7 +74,9 @@ void Memory::init()
 	//register_trap(0x800, 0xDFFFF, 3, &Memory::s_debug_trap);
 	//register_trap(0xF80000+0x35D9E, 0xF80000+0x35F1E, 3, &Memory::s_debug_trap); romdrv config.sys
 	//register_trap(0x3bee, 0x3c6e, 3, &Memory::s_debug_trap);
-	register_trap(0x00400 + 0x006C, 0x00400 + 0x006E, 3, &Memory::s_debug_trap);
+	//register_trap(0x00400 + 0x006C, 0x00400 + 0x006E, 3, &Memory::s_debug_trap);
+	register_trap(0x00442, 0x00442, 1, &Memory::s_debug_trap);
+	register_trap(0x0048B, 0x0048B, 1, &Memory::s_debug_trap);
 }
 
 void Memory::reset()
@@ -668,11 +670,12 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 	char buf[len+1];
 	buf[0] = 0;
 	buf[len] = 0;
+	uint32_t addr = _address;
 	if(_rw==0) {
 		op = read;
 		char * byte0 = buf;
 		while(len--) {
-			uint8_t byte = g_memory.read_byte_notraps(_address++);
+			uint8_t byte = g_memory.read_byte_notraps(addr++);
 			if(byte>=32 && byte<=126) {
 				*byte0 = byte;
 			} else {
@@ -682,7 +685,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 	} else {
 		if(_len==1) {
-			uint8_t byte = g_memory.read_byte_notraps(_address);
+			uint8_t byte = g_memory.read_byte_notraps(addr);
 			if(byte>=32 && byte<=126) {
 				buf[0] = byte;
 			} else {
