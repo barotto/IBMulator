@@ -529,7 +529,7 @@ void CPUDebugger::INT_13(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*me
 	if(!call) {
 		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
 		const char * status = ms_disk_status[core->get_AH()];
-		snprintf(buf, buflen, " ret CF=%d: %s", cf,status);
+		snprintf(buf, buflen, " ret CF=%u: AH=%u (%s)", cf,core->get_AH(),status);
 		return;
 	}
 	snprintf(buf, buflen, " drive=0x%02X", core->get_DL());
@@ -1138,7 +1138,10 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x13, 0x0900, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - INITIALIZE CONTROLLER WITH DRIVE PARAMETERS" } },
 	{ MAKE_INT_SEL(0x13, 0x0C00, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"HARD DISK - SEEK TO CYLINDER" } },
 	{ MAKE_INT_SEL(0x13, 0x1100, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - RECALIBRATE DRIVE" } },
+	{ MAKE_INT_SEL(0x13, 0x1500, 1), { true,  &CPUDebugger::INT_13,    "DISK - GET DISK TYPE" } },
 	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY - DETECT DISK CHANGE" } },
+	{ MAKE_INT_SEL(0x13, 0x1700, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY DISK - SET MEDIA TYPE FOR FORMAT" } },
+	{ MAKE_INT_SEL(0x13, 0x1800, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY DISK - SET MEDIA TYPE FOR FORMAT (new)" } },
 	/* INT 15 */
 	{ MAKE_INT_SEL(0x15, 0x2100, 1), { false, nullptr,                 "POWER-ON SELF-TEST ERROR LOG" } },
 	{ MAKE_INT_SEL(0x15, 0x2300, 2), { true,  nullptr,                 "IBM - GET CMOS 2D-2E DATA" } },
