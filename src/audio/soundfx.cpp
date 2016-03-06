@@ -65,7 +65,7 @@ bool SoundFX::play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 {
 	if(_is_on) {
 		if(_is_changing_state) {
-			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: power up\n", _channel.name());
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: power up\n", _channel.name());
 			_channel.flush();
 			_channel.play(_power_up,0);
 		}
@@ -74,7 +74,7 @@ bool SoundFX::play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 		return true;
 	} else {
 		if(_is_changing_state) {
-			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: power down\n", _channel.name());
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: power down\n", _channel.name());
 			_channel.flush();
 			_channel.play(_power_down,0);
 		}
