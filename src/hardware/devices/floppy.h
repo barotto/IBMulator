@@ -187,8 +187,8 @@ private:
 	void lower_interrupt(void);
 	void enter_idle_phase(void);
 	void enter_result_phase(void);
-	uint32_t calculate_step_delay(uint8_t drive, int _c0, int _c1);
-	uint32_t calculate_rw_delay(uint8_t _drive);
+	uint32_t calculate_step_delay(int _c0, int _c1);
+	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
 	void reset_changeline(void);
 	bool get_TC(void);
 	void timer(void);

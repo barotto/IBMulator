@@ -912,7 +912,7 @@ void FloppyCtrl::floppy_command()
 
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u\n", drive);
 
-			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], 0);
+			step_delay = calculate_step_delay(m_s.cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* command head to track 0
@@ -966,7 +966,7 @@ void FloppyCtrl::floppy_command()
 					drive, cylinder, m_s.cylinder[drive]);
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
-			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
+			step_delay = calculate_step_delay(m_s.cylinder[drive], cylinder);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
@@ -1023,7 +1023,7 @@ void FloppyCtrl::floppy_command()
 				return;
 			}
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
-			sector_time = calculate_rw_delay(drive);
+			sector_time = calculate_rw_delay(drive, true);
 			g_machine.activate_timer(m_timer_index, sector_time, 0);
 			/* data reg not ready, controller busy */
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
@@ -1194,7 +1194,7 @@ void FloppyCtrl::floppy_command()
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 					m_s.main_status_reg |= (FDC_MSR_RQM | FDC_MSR_DIO);
 				}
-				uint32_t sector_time = calculate_rw_delay(drive);
+				uint32_t sector_time = calculate_rw_delay(drive, true);
 				g_machine.activate_timer(m_timer_index, sector_time, 0);
 			} else if((m_s.command[0] & 0x7f) == 0x45) { // write
 				m_s.wrdata[drive] = true;
@@ -1405,7 +1405,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 			uint8_t c = m_s.cylinder[drive];
 			increment_sector(); // increment to next sector before retrieving next one
 			if(c != m_s.cylinder[drive]) {
-				seek_time = calculate_step_delay(drive, c, m_s.cylinder[drive]);
+				seek_time = calculate_step_delay(c, m_s.cylinder[drive]);
 			}
 			m_s.floppy_buffer_index = 0;
 		}
@@ -1426,7 +1426,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
 				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
-			uint32_t sector_time = calculate_rw_delay(drive);
+			uint32_t sector_time = calculate_rw_delay(drive, false);
 			g_machine.activate_timer(m_timer_index, sector_time+seek_time, 0);
 		}
 	}
@@ -1478,7 +1478,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
 					g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 				}
-				sector_time = calculate_rw_delay(drive);
+				sector_time = calculate_rw_delay(drive, false);
 				g_machine.activate_timer(m_timer_index, sector_time, 0);
 				break;
 		}
@@ -1508,7 +1508,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				return 1;
 			}
 			floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
-			sector_time = calculate_rw_delay(drive);
+			sector_time = calculate_rw_delay(drive, false);
 			increment_sector(); // increment to next sector after writing current one
 			m_s.floppy_buffer_index = 0;
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
@@ -1742,7 +1742,7 @@ unsigned FloppyCtrl::chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned 
 	return (_c * m_media[_d].heads + _h ) * m_media[_d].spt + (_s-1);
 }
 
-uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, int _c0, int _c1)
+uint32_t FloppyCtrl::calculate_step_delay(int _c0, int _c1)
 {
 	int steps;
 	if(_c0 == _c1) {
@@ -1754,22 +1754,26 @@ uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, int _c0, int _c1)
 	uint32_t one_step_delay;
 	one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
 
-	return (one_step_delay*steps) + 15000;
+	const uint32_t settling_time = 15000;
+	return (one_step_delay*steps) + settling_time;
 }
 
-uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive)
+uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive, bool _latency)
 {
 	assert(_drive < 4);
-	uint32_t sector_time = 1000.0 / ((drate_in_k[m_s.data_rate]/8.0) / 512);
-	uint32_t min_sector_time;
+	uint32_t sector_time, max_latency;
 	if(m_device_type[_drive] == FDD_525HD) {
-		// 60e6us/360rpm = 166667us per track
-		min_sector_time = 166667 / m_media[_drive].spt;
+		max_latency = (60e6 / 360);
 	} else {
-		// 60e6us/300rpm = 200000us per track
-		min_sector_time = 200000 / m_media[_drive].spt;
+		max_latency = (60e6 / 300);
 	}
-	sector_time = std::max(sector_time, min_sector_time);
+	sector_time = max_latency / m_media[_drive].spt;
+	if(_latency) {
+		//average latency is half the max latency
+		//I reduce it further for better results
+		sector_time += max_latency / 2.2;
+	}
+	PDEBUGF(LOG_V2, LOG_FDC, "sector time = %d us\n", sector_time);
 
 	uint64_t now = g_machine.get_virt_time_us();
 	uint32_t hlt = m_s.HLT;
