@@ -74,21 +74,6 @@ using namespace std::placeholders;
 
 FloppyCtrl g_floppy;
 
-/* Define FDC_FAST_3_5_SEEKS as true to make the drive seek with a data rate of
- * 500kbps, even if the controller is set at 250kbps, when the mounted floppy is
- * 3.5HD.
- * According to the 82077AA documentation, and the original Bochs sources, seeks
- * at 500kbps are twice as fast as seeks at 250kbps; but direct mesurements of a
- * real PS/1 floppy disk drive reveal that the drive seeks at 500kbps speed even
- * if the controller is set at 250kbps by the BIOS.
- * Data transfer speed is unaffected though, and is consistent with the expected
- * value of ~30KB/s.
- * @@ maybe I misunderstood, but this is the only explanation I currently have
- * for the observed behaviour.
- */
-#define FDC_FAST_3_5_SEEKS true
-
-
 enum FDCInterfaceRegisters {
 
 	// Status Register A (SRA, Model30)
@@ -399,6 +384,41 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 	if(disktype != FLOPPY_NONE && inserted) {
 		std::string diskpath = g_program.config().find_media(section, DISK_PATH);
 		insert_media(drive, disktype, diskpath.c_str(), g_program.config().get_bool(section, DISK_READONLY));
+	}
+}
+
+uint8_t FloppyCtrl::get_drate_for_media(uint8_t _drive)
+{
+	assert(_drive < 4);
+	if(!m_media_present[_drive]) {
+		return 2;
+	}
+	/* There are two standardized bit rates, 250 kb/s and 500 kb/s. DD 5.25" and
+	 * all 3.5" drives spin at 300 rpm, 8" and HD 5.25" drives at 360 rpm. Then
+	 * IBM went clever and let their HD drive spin at 360 rpm all the time using
+	 * the non standard bit rate of 300 kb/s for DD. Foreign format drives must
+	 * of necessity circumvent the standard BIOS routines and may or may not
+	 * encounter trouble at the unusual speed.
+	 */
+	switch(m_media[_drive].type) {
+		case FLOPPY_160K:
+		case FLOPPY_180K:
+		case FLOPPY_320K:
+		case FLOPPY_360K:
+			if(m_device_type[_drive]==FDD_525DD)
+				return 2; // 250
+			else // FDD_525HD
+				return 1; // 300
+		case FLOPPY_720K:
+			return 2; // 250
+		case FLOPPY_1_2:
+		case FLOPPY_1_44:
+			return 0; // 500
+		case FLOPPY_2_88:
+			return 3; // 1000
+		case FLOPPY_NONE:
+		default:
+			return 2;
 	}
 }
 
@@ -947,7 +967,7 @@ void FloppyCtrl::floppy_command()
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
-			PDEBUGF(LOG_V1, LOG_FDC, "step_delay: %u us\n", step_delay);
+			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
@@ -994,6 +1014,13 @@ void FloppyCtrl::floppy_command()
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				return; // Hang controller
+			}
+			if(m_s.data_rate != get_drate_for_media(drive)) {
+				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
+				m_s.status_reg1 = FDC_ST1_MA;
+				m_s.status_reg2 = 0x00;
+				enter_result_phase();
+				return;
 			}
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			sector_time = calculate_rw_delay(drive);
@@ -1122,9 +1149,11 @@ void FloppyCtrl::floppy_command()
 				return;
 			}
 
-			if(sector > m_media[drive].spt) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: attempt to %s sector %u past last sector %u\n",
-						cmd, cmd, sector, m_media[drive].spt);
+			if(sector > m_media[drive].spt || m_s.data_rate != get_drate_for_media(drive)) {
+				if(sector > m_media[drive].spt) {
+					PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to %s sector %u past last sector %u\n",
+							cmd, cmd, sector, m_media[drive].spt);
+				}
 				m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
 				set_cylinder(drive, cylinder);
 				m_s.head[drive]      = head;
@@ -1723,11 +1752,7 @@ uint32_t FloppyCtrl::calculate_step_delay(uint8_t drive, int _c0, int _c1)
 		reset_changeline();
 	}
 	uint32_t one_step_delay;
-	if(m_device_type[drive] == FDD_350HD && FDC_FAST_3_5_SEEKS) {
-		one_step_delay = (16 - m_s.SRT) * 1000;
-	} else {
-		one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
-	}
+	one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
 
 	return (one_step_delay*steps) + 15000;
 }
@@ -1737,7 +1762,7 @@ uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive)
 	assert(_drive < 4);
 	uint32_t sector_time = 1000.0 / ((drate_in_k[m_s.data_rate]/8.0) / 512);
 	uint32_t min_sector_time;
-	if(m_media[_drive].type == FLOPPY_1_2) {
+	if(m_device_type[_drive] == FDD_525HD) {
 		// 60e6us/360rpm = 166667us per track
 		min_sector_time = 166667 / m_media[_drive].spt;
 	} else {

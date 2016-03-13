@@ -198,6 +198,7 @@ private:
 	inline bool is_motor_spinning(uint _drive) const {
 		return (is_motor_on(_drive) && is_media_present(_drive));
 	}
+	uint8_t get_drate_for_media(uint8_t _drive);
 	static std::string print_array(uint8_t*,unsigned);
 };
 
