@@ -655,6 +655,7 @@ void Machine::cmd_pause()
 {
 	m_cmd_fifo.push([this] () {
 		set_single_step(true);
+		g_mixer.cmd_pause();
 		PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
 	});
 }
@@ -663,6 +664,7 @@ void Machine::cmd_resume()
 {
 	m_cmd_fifo.push([this] () {
 		set_single_step(false);
+		g_mixer.cmd_resume();
 	});
 }
 
