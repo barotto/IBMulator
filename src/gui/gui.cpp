@@ -1004,7 +1004,6 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 	switch(event.type)
 	{
 	case SDL_MOUSEMOTION:
-
 		m_rocket_context->ProcessMouseMove(
 				event.motion.x, event.motion.y,
 				rockmod
@@ -1018,13 +1017,17 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 				);
 		break;
 
-	case SDL_MOUSEBUTTONUP:
+	case SDL_MOUSEBUTTONUP: {
 		m_rocket_context->ProcessMouseButtonUp(
 				m_rocket_sys_interface->TranslateMouseButton(event.button.button),
 				rockmod
 				);
+		// this is a hack to fix libRocket not updating events targets
+		int x,y;
+		SDL_GetMouseState(&x,&y);
+		m_rocket_context->ProcessMouseMove(x, y, rockmod);
 		break;
-
+	}
 	case SDL_MOUSEWHEEL:
 		m_rocket_context->ProcessMouseWheel(
 				-event.wheel.y,
