@@ -408,7 +408,9 @@ void Interface::on_fdd_select(RC::Event &)
 void Interface::on_fdd_eject(RC::Event &)
 {
 	m_machine->cmd_eject_media(m_curr_drive);
-	m_audio.use_floppy(false);
+	if(g_floppy.is_media_present(m_curr_drive)) {
+		m_audio.use_floppy(false);
+	}
 }
 
 void Interface::on_fdd_mount(RC::Event &)
