@@ -193,7 +193,7 @@ private:
 	bool get_TC(void);
 	void timer(void);
 	void increment_sector(void);
-	void set_cylinder(uint8_t _drive, uint8_t _cyl);
+	void play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl);
 	void floppy_drive_setup(uint drive);
 	inline bool is_motor_spinning(uint _drive) const {
 		return (is_motor_on(_drive) && is_media_present(_drive));

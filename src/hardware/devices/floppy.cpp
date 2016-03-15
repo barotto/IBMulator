@@ -464,8 +464,8 @@ void FloppyCtrl::reset(unsigned type)
 	m_s.perp_mode = 0;
 
 	for(int i=0; i<4; i++) {
-		set_cylinder(i, 0);
-	    m_s.cur_cylinder[i] = 0;
+		m_s.cylinder[i]     = 0;
+	    //m_s.cur_cylinder[i] = 0;
 		m_s.head[i]         = 0;
 		m_s.sector[i]       = 0;
 		m_s.eot[i]          = 0;
@@ -910,9 +910,9 @@ void FloppyCtrl::floppy_command()
 			drive = (m_s.command[1] & 0x03);
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 
-			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u\n", drive);
+			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u (cur.C=%u)\n", drive, m_s.cur_cylinder[drive]);
 
-			step_delay = calculate_step_delay(m_s.cylinder[drive], 0);
+			step_delay = calculate_step_delay(m_s.cur_cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* command head to track 0
@@ -922,9 +922,12 @@ void FloppyCtrl::floppy_command()
 			* The last two are taken care of in timer().
 			*/
 			m_s.direction[drive] = (m_s.cylinder[drive]>0);
-			set_cylinder(drive, 0);
+			m_s.cylinder[drive] = 0;
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
+
+			play_seek_sound(drive, m_s.cur_cylinder[drive], 0);
+
 			return;
 
 		case 0x08: // sense interrupt status
@@ -963,7 +966,7 @@ void FloppyCtrl::floppy_command()
 			head  = (m_s.command[1] >> 2) & 0x01;
 			cylinder = m_s.command[2];
 			PDEBUGF(LOG_V1, LOG_FDC, "seek DRV%u C=%u (cur.C=%u)\n",
-					drive, cylinder, m_s.cylinder[drive]);
+					drive, cylinder, m_s.cur_cylinder[drive]);
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 			step_delay = calculate_step_delay(m_s.cylinder[drive], cylinder);
@@ -971,11 +974,14 @@ void FloppyCtrl::floppy_command()
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
-			set_cylinder(drive, cylinder);
+			m_s.cylinder[drive] = cylinder;
 			m_s.head[drive] = head;
 			/* data reg not ready, drive not busy */
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
+
+			play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
+
 			return;
 		}
 		case 0x13: // Configure
@@ -1155,7 +1161,7 @@ void FloppyCtrl::floppy_command()
 							cmd, cmd, sector, m_media[drive].spt);
 				}
 				m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
-				set_cylinder(drive, cylinder);
+				m_s.cylinder[drive]  = cylinder;
 				m_s.head[drive]      = head;
 				m_s.sector[drive]    = sector;
 
@@ -1180,10 +1186,12 @@ void FloppyCtrl::floppy_command()
 				eot = m_media[drive].spt;
 			}
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
-			set_cylinder(drive, cylinder);
+			m_s.cylinder[drive]  = cylinder;
 			m_s.head[drive]      = head;
 			m_s.sector[drive]    = sector;
 			m_s.eot[drive]       = eot;
+
+			play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
 
 			if((m_s.command[0] & 0x4f) == 0x46) { // read
 				m_s.rddata[drive] = true;
@@ -1454,7 +1462,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 		switch (3 - (m_s.format_count & 0x03)) {
 			case 0:
 				//TODO seek time should be considered and added to the sector_time below
-				set_cylinder(drive, *buffer);
+				m_s.cylinder[drive] = *buffer;
 				break;
 			case 1:
 				if(*buffer != m_s.head[drive]) {
@@ -1550,11 +1558,11 @@ void FloppyCtrl::increment_sector(void)
 			m_s.head[drive]++;
 			if(m_s.head[drive] > 1) {
 				m_s.head[drive] = 0;
-				set_cylinder(drive, m_s.cylinder[drive]+1);
+				m_s.cylinder[drive]++;
 				reset_changeline();
 			}
 		} else {
-			set_cylinder(drive, m_s.cylinder[drive]+1);
+			m_s.cylinder[drive]++;
 			reset_changeline();
 		}
 		if(m_s.cylinder[drive] >= m_media[drive].tracks) {
@@ -1566,12 +1574,11 @@ void FloppyCtrl::increment_sector(void)
 	}
 }
 
-void FloppyCtrl::set_cylinder(uint8_t _drive, uint8_t _cyl)
+void FloppyCtrl::play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl)
 {
-	if(_drive<2 && m_device_type[_drive]!=FDD_NONE) {
-		m_fx[_drive].seek(m_s.cylinder[_drive], _cyl, 80);
+	if(_drive<2 && is_motor_spinning(_drive)) {
+		m_fx[_drive].seek(_from_cyl, _to_cyl, 80);
 	}
-	m_s.cylinder[_drive] = _cyl;
 }
 
 void FloppyCtrl::eject_media(uint _drive)
