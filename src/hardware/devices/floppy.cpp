@@ -912,7 +912,7 @@ void FloppyCtrl::floppy_command()
 
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u (cur.C=%u)\n", drive, m_s.cur_cylinder[drive]);
 
-			step_delay = calculate_step_delay(m_s.cur_cylinder[drive], 0);
+			step_delay = calculate_step_delay(drive, m_s.cur_cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* command head to track 0
@@ -969,7 +969,7 @@ void FloppyCtrl::floppy_command()
 					drive, cylinder, m_s.cur_cylinder[drive]);
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
-			step_delay = calculate_step_delay(m_s.cylinder[drive], cylinder);
+			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer_index, step_delay, 0);
 			/* ??? should also check cylinder validity */
@@ -1301,18 +1301,20 @@ void FloppyCtrl::timer()
 				m_s.status_reg0 |= FDC_ST0_IC_ABNORMAL | FDC_ST0_EC;
 			} else {
 				m_s.status_reg0 |= FDC_ST0_IC_NORMAL;
+				m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			}
-			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
-			m_s.direction[drive] = 0;
 			m_s.step[drive] = true;
+			m_s.direction[drive] = false;
 			enter_idle_phase();
 			raise_interrupt();
 			break;
 		}
 		case 0x0f: // seek
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST0_SE | FDC_ST_HDS(drive);
+			if(is_motor_on(drive)) {
+				m_s.cur_cylinder[drive] = m_s.cylinder[drive];
+			}
 			m_s.step[drive] = true;
-			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			enter_idle_phase();
 			raise_interrupt();
 			break;
@@ -1413,7 +1415,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 			uint8_t c = m_s.cylinder[drive];
 			increment_sector(); // increment to next sector before retrieving next one
 			if(c != m_s.cylinder[drive]) {
-				seek_time = calculate_step_delay(c, m_s.cylinder[drive]);
+				seek_time = calculate_step_delay(drive, c, m_s.cylinder[drive]);
 			}
 			m_s.floppy_buffer_index = 0;
 		}
@@ -1576,8 +1578,11 @@ void FloppyCtrl::increment_sector(void)
 
 void FloppyCtrl::play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl)
 {
-	if(_drive<2 && is_motor_spinning(_drive)) {
+	assert(_drive<2);
+	if(is_motor_on(_drive)) {
 		m_fx[_drive].seek(_from_cyl, _to_cyl, 80);
+	} else {
+		PDEBUGF(LOG_V1, LOG_AUDIO, "FDD seek: motor is off\n");
 	}
 }
 
@@ -1749,8 +1754,14 @@ unsigned FloppyCtrl::chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned 
 	return (_c * m_media[_d].heads + _h ) * m_media[_d].spt + (_s-1);
 }
 
-uint32_t FloppyCtrl::calculate_step_delay(int _c0, int _c1)
+uint32_t FloppyCtrl::calculate_step_delay(uint8_t _drive, int _c0, int _c1)
 {
+	assert(_drive<4);
+	uint32_t one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
+
+	if(!is_motor_on(_drive)) {
+		return one_step_delay;
+	}
 	int steps;
 	if(_c0 == _c1) {
 		steps = 1;
@@ -1758,8 +1769,6 @@ uint32_t FloppyCtrl::calculate_step_delay(int _c0, int _c1)
 		steps = abs(_c1 - _c0);
 		reset_changeline();
 	}
-	uint32_t one_step_delay;
-	one_step_delay = (16 - m_s.SRT) * (500000 / drate_in_k[m_s.data_rate]);
 
 	const uint32_t settling_time = 15000;
 	return (one_step_delay*steps) + settling_time;

@@ -95,7 +95,7 @@ private:
 		uint8_t data_rate; // CCR
 		bool    noprec;    // CCR
 		uint8_t cylinder[4];
-		uint8_t cur_cylinder[4]; // to determine the TRK0 pin value
+		uint8_t cur_cylinder[4]; // the current head position
 		bool    direction[4];    // to determine the !DIR bit in regA
 		uint8_t head[4];
 		uint8_t sector[4];
@@ -187,7 +187,7 @@ private:
 	void lower_interrupt(void);
 	void enter_idle_phase(void);
 	void enter_result_phase(void);
-	uint32_t calculate_step_delay(int _c0, int _c1);
+	uint32_t calculate_step_delay(uint8_t _drive, int _c0, int _c1);
 	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
 	void reset_changeline(void);
 	bool get_TC(void);
