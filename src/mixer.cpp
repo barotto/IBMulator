@@ -97,6 +97,10 @@ void Mixer::init(Machine *_machine)
 
 void Mixer::start_capture()
 {
+	if(!is_enabled()) {
+		PERRF(LOG_MIXER, "unable to start audio recording\n");
+		return;
+	}
 	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 	path = FileSys::get_next_filename(path, "sound_", ".wav");
 	if(!path.empty()) {
@@ -115,6 +119,9 @@ void Mixer::start_capture()
 
 void Mixer::stop_capture()
 {
+	if(!is_enabled()) {
+		return;
+	}
 	m_wav.close();
 	m_audio_capture = false;
 	for(auto ch : m_mix_channels) {
