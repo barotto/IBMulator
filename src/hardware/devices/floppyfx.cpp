@@ -125,12 +125,12 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, boo
 			if(_evt.userdata) {
 				m_channels.seek->play(ms_buffers[_evt.userdata], _time_span);
 				m_booting = _evt.time + ms_buffers[_evt.userdata].duration_us();
-				PDEBUGF(LOG_V2, LOG_AUDIO, "%s: booting until %llu\n",
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu\n",
 						m_channels.seek->name(), m_booting);
 				return;
 			}
 			if(_evt.time < m_booting) {
-				PDEBUGF(LOG_V2, LOG_AUDIO, "%s: seek event ignored\n", m_channels.seek->name());
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: seek event ignored\n", m_channels.seek->name());
 				return;
 			}
 			double absdist = fabs(_evt.distance);

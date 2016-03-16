@@ -1410,13 +1410,8 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 	PDEBUGF(LOG_V2, LOG_FDC, "DMA write DRV%u\n", drive);
 
 	if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
-		uint32_t seek_time = 0;
 		if(m_s.floppy_buffer_index >= 512) {
-			uint8_t c = m_s.cylinder[drive];
 			increment_sector(); // increment to next sector before retrieving next one
-			if(c != m_s.cylinder[drive]) {
-				seek_time = calculate_step_delay(drive, c, m_s.cylinder[drive]);
-			}
 			m_s.floppy_buffer_index = 0;
 		}
 		if(m_s.TC) { // Terminal Count line, done
@@ -1437,7 +1432,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			uint32_t sector_time = calculate_rw_delay(drive, false);
-			g_machine.activate_timer(m_timer_index, sector_time+seek_time, 0);
+			g_machine.activate_timer(m_timer_index, sector_time, 0);
 		}
 	}
 	return len;
