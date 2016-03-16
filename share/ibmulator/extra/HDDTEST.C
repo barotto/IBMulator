@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define WARNING 1
+
 int g_max_cyl;
 int g_max_head;
 int g_spt;
@@ -339,8 +341,16 @@ int main(int argc, char **argv)
 	long int nsec;
 
 	printf("HDDTEST - Tests the HDD's sectors by writing and reading a data pattern.\n");
-	printf("This program has been created to aid the development of IBMulator.\n"
-			"It is NOT a proper HDD tester! Don't use it on real hardware!\n");
+	printf("This program has been created to aid the development of IBMulator.\n");
+
+	if(WARNING) {
+	printf("------------------------------- WARNING ---------------------------------------\n");
+	printf("This program is very dangerous and will wipe (and possibly destroy) your HDD.\n");
+	printf("This is NOT a proper HDD tester! "
+			"You should not use it on real hardware unless you really know what you're doing.\n");
+	printf("If you are aware of the risks remove this warning.\n");
+	exit(1);
+	}
 
 	switch(argc) {
 		case 1:

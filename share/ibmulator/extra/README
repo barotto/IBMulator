@@ -1,15 +1,16 @@
-Useful programs.
+Useful DOS programs.
 Use Turbo C to compile the source files.
 
 
-## ROMDUMP
-Dumps the PS/1 model 2011 ROM in one (US version) or two (international version) 
-files.
+## ROMDUMP.EXE
+Dumps the PS/1 model 2011 ROM to 1 file (for the US version) or 2 files (for
+international versions.)
+Put the EXE in a floppy disk with at least 300KiB (US) / 600KiB (intl.) of free
+space.
 Usage: ROMDUMP us|intl
-Use 'us' to dump a US model, otherwise use 'intl' to dump a international model.
-It will create the files FC0000.bin (the ROM BIOS) and F80000.bin (the regional 
-extra file). 
-Needs at least 256KB (512KB for intl) of disk space.
+Use ‘us’ if you have got the US version, use ‘intl’ otherwise.
+It shouldn’t do anything wrong, just read from memory, but I have to warn you
+that I never tested it on anything else than my italian PS/1.
 
 
 ## CMOSDUMP
@@ -27,3 +28,19 @@ Plays a 8bit PCM mono WAV or VOC file through the PC speaker.
 Usage: SPKRWAV audiofile [frequency]
 If the audio file is a VOC you need the specify the frequency, otherwise the 
 default value of 16000Hz will be used.
+
+
+## FDDTEST
+Used to perform various low level access tests on real and emulated FDD during 
+the development of IBMulator.
+It allows the direct access to the floppy drive bypassing the BIOS.
+This program can damage the floppy drive if used improperly. For this reason you
+need to compile it yourself. You have been warned.
+
+
+## HDDTEST
+Used to perform various tests on real and emulated HDD during the development of
+IBMulator.
+This program is very dangerous and will wipe (and possibly destroy) your HDD.
+You need to compile it yourself, but only after careful analysis of the sources.
+You have been warned.
