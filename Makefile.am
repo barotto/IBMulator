@@ -83,6 +83,8 @@ share/ibmulator/gui/fonts/ProFontWindows.ttf
 
 soundsfloppydir = $(pkgdatadir)/sounds/floppy
 dist_soundsfloppy_DATA = \
+share/ibmulator/sounds/floppy/disk_insert.wav \
+share/ibmulator/sounds/floppy/disk_eject.wav \
 share/ibmulator/sounds/floppy/drive_spin.wav \
 share/ibmulator/sounds/floppy/drive_spin_up.wav \
 share/ibmulator/sounds/floppy/drive_spin_down.wav \
@@ -118,6 +120,8 @@ share/ibmulator/extra/ROMDUMP.EXE \
 share/ibmulator/extra/SPKRTONE.C \
 share/ibmulator/extra/SPKRTONE.EXE \
 share/ibmulator/extra/SPKRWAV.C \
-share/ibmulator/extra/SPKRWAV.EXE 
+share/ibmulator/extra/SPKRWAV.EXE \
+share/ibmulator/extra/HDDTEST.C \
+share/ibmulator/extra/FDDTEST.C
 
 EXTRA_DIST = README.md
