@@ -21,9 +21,10 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 AC_PROG_INSTALL
-AC_CHECK_TOOLS([AR], [gcc-ar ar], [:])
-AC_CHECK_TOOLS([NM], [gcc-nm nm], [:])
-AC_CHECK_TOOLS([RANLIB], [gcc-ranlib ranlib], [:])
+AC_PROG_RANLIB
+#AC_CHECK_TOOLS([AR], [gcc-ar ar], [:])
+#AC_CHECK_TOOLS([NM], [gcc-nm nm], [:])
+#AC_CHECK_TOOLS([RANLIB], [gcc-ranlib ranlib], [:])
 
 AM_CONDITIONAL([GCC], [test x$GXX = xyes])
 
