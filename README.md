@@ -86,7 +86,7 @@ If you want to use a single BIN file, this can be 256KiB (US version) or 512KiB
 
 ### HDD image
 
-The first time you launch IBMulator, an empty pre-formatted bootable hard disk 
+The first time you launch IBMulator an empty pre-formatted bootable hard disk 
 image will be created.
  
 If you have an original PS/1 backup disk-set you can restore the machine to its 
@@ -177,11 +177,11 @@ same rate as the mixer.
 
 ### General instructions
 
-$ ./configure  
-$ make -j5  
+$ ./configure --with-librocket-prefix=PATHTOLIBROCKET  
+$ make  
 $ make install
 
-Use './configure --help' to read the variuous compilation options.
+Use './configure --help' to read the various compilation options.
 
 If you cloned the code from GitHub, before the 'configure' script you must run:  
 $ autoreconf --install
@@ -189,11 +189,12 @@ $ autoreconf --install
 ### Linux
 
 Just follow the general instructions. Any missing library will be pointed out;
-use your distributon's software manager to install them (except libRocket).
+use your distributon's software manager to install them (except libRocket, see 
+notes below).
 
 If you are going to compile using your own version of SDL2, you should compile 
 SDL2 with xinerama and xrandr, otherwise you could experience many problems 
-switching to fullscreen, at least with NVIDIA cards.
+switching to fullscreen, at least on NVIDIA cards with closed drivers.
 
 If you're using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
 
