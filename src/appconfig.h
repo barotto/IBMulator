@@ -145,6 +145,7 @@ public:
 #define DRIVES_SECTION          "drives"
 #define DRIVES_FDD_A            "floppy_a"
 #define DRIVES_FDD_B            "floppy_b"
+#define DRIVES_FDD_LAT          "fdd_latency"
 #define DRIVES_HDD              "hdd"
 
 #define DISK_A_SECTION          "floppy_a"

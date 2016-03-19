@@ -31,7 +31,7 @@ using std::string;
 
 ini_file_t AppConfig::ms_def_values = {
 	{ PROGRAM_SECTION, {
-		{ PROGRAM_MEDIA_DIR, "" },
+		{ PROGRAM_MEDIA_DIR,   "" },
 		{ PROGRAM_CAPTURE_DIR, "" }
 	} },
 
@@ -40,65 +40,66 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ GUI_SECTION, {
-		{ GUI_KEYMAP, "keymaps/pc-us.map"},
-		{ GUI_MOUSE_TYPE, "ps2" },
-		{ GUI_MOUSE_GRAB, "yes" },
+		{ GUI_KEYMAP,             "keymaps/pc-us.map"},
+		{ GUI_MOUSE_TYPE,         "ps2" },
+		{ GUI_MOUSE_GRAB,         "yes" },
 		{ GUI_MOUSE_ACCELERATION, "no" },
-		{ GUI_GRAB_METHOD, "MOUSE3" }, //CTRL-F10 or MOUSE3
-		{ GUI_SCREEN_DPI, "96" },
-		{ GUI_WIDTH, "640" },
-		{ GUI_HEIGHT, "480" },
-		{ GUI_FULLSCREEN, "no" },
-		{ GUI_SHOW_LEDS, "no" },
-		{ GUI_MODE, "normal" },
-		{ GUI_BG_R, "59" },
-		{ GUI_BG_G, "82" },
-		{ GUI_BG_B, "98" }
+		{ GUI_GRAB_METHOD,        "MOUSE3" }, //CTRL-F10 or MOUSE3
+		{ GUI_SCREEN_DPI,         "96" },
+		{ GUI_WIDTH,              "640" },
+		{ GUI_HEIGHT,             "480" },
+		{ GUI_FULLSCREEN,         "no" },
+		{ GUI_SHOW_LEDS,          "no" },
+		{ GUI_MODE,               "normal" },
+		{ GUI_BG_R,               "59" },
+		{ GUI_BG_G,               "82" },
+		{ GUI_BG_B,               "98" }
 	} },
 
 	{ DISPLAY_SECTION, {
-		{ DISPLAY_NORMAL_ASPECT, "original" },
-		{ DISPLAY_NORMAL_SHADER, "gui/shaders/fb-normal.fs" },
-		{ DISPLAY_NORMAL_FILTER, "bilinear" },
-		{ DISPLAY_REALISTIC_SHADER, "gui/shaders/fb-realistic.fs" },
-		{ DISPLAY_REALISTIC_FILTER, "bicubic" },
-		{ DISPLAY_REALISTIC_SCALE, "1.0" },
+		{ DISPLAY_NORMAL_ASPECT,     "original" },
+		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
+		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
+		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
+		{ DISPLAY_REALISTIC_FILTER,  "bicubic" },
+		{ DISPLAY_REALISTIC_SCALE,   "1.0" },
 		{ DISPLAY_REALISTIC_AMBIENT, "0.6" },
-		{ DISPLAY_BRIGHTNESS, "1.0" },
-		{ DISPLAY_CONTRAST, "1.0" },
-		{ DISPLAY_SATURATION, "1.0" }
+		{ DISPLAY_BRIGHTNESS,        "1.0" },
+		{ DISPLAY_CONTRAST,          "1.0" },
+		{ DISPLAY_SATURATION,        "1.0" }
 	} },
 
 	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_FILE, "cmos.bin" },
+		{ CMOS_IMAGE_FILE,     "cmos.bin" },
 		{ CMOS_IMAGE_RTC_INIT, "no" },
-		{ CMOS_IMAGE_SAVE, "yes" }
+		{ CMOS_IMAGE_SAVE,     "yes" }
 	} },
 
 	{ MEM_SECTION, {
 		{ MEM_BASE_SIZE, "640" },
-		{ MEM_EXT_SIZE, "384" },
-		{ MEM_ROMSET, "PS1_2011_ROM.zip" }
+		{ MEM_EXT_SIZE,  "384" },
+		{ MEM_ROMSET,    "PS1_2011_ROM.zip" }
 	} },
 
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A, "3.5" },
-		{ DRIVES_FDD_B, "none" },
-		{ DRIVES_HDD, "35" }
+		{ DRIVES_FDD_A,   "3.5" },
+		{ DRIVES_FDD_B,   "none" },
+		{ DRIVES_FDD_LAT, "1.0" },
+		{ DRIVES_HDD,     "35" }
 	} },
 
 	{ DISK_A_SECTION, {
-		{ DISK_TYPE, "1.44M" },
+		{ DISK_TYPE,     "1.44M" },
 		{ DISK_INSERTED, "no" },
 		{ DISK_READONLY, "no" },
-		{ DISK_PATH, "" }
+		{ DISK_PATH,     "" }
 	} },
 
 	{ DISK_B_SECTION, {
-		{ DISK_TYPE, "1.44M" },
+		{ DISK_TYPE,     "1.44M" },
 		{ DISK_INSERTED, "no" },
 		{ DISK_READONLY, "no" },
-		{ DISK_PATH, "" }
+		{ DISK_PATH,     "" }
 	} },
 
 	{ DISK_C_SECTION, {
@@ -116,12 +117,12 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ MIXER_SECTION, {
-		{ MIXER_RATE, "44100" },
-		{ MIXER_SAMPLES, "1024" },
+		{ MIXER_RATE,      "44100" },
+		{ MIXER_SAMPLES,   "1024" },
 		{ MIXER_PREBUFFER, "50" },
-		{ MIXER_VOLUME, "1.0" },
+		{ MIXER_VOLUME,    "1.0" },
 		{ MIXER_PCSPEAKER, "yes" },
-		{ MIXER_PS1AUDIO, "yes" }
+		{ MIXER_PS1AUDIO,  "yes" }
 	} },
 
 	{ SOUNDFX_SECTION, {
@@ -135,14 +136,14 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ COM_SECTION, {
 		{ COM_ENABLED, "yes" },
-		{ COM_MODE, "null" },
-		{ COM_DEV, "" }
+		{ COM_MODE,    "null" },
+		{ COM_DEV,     "" }
 	} },
 
 	{ LPT_SECTION, {
 		{ LPT_ENABLED, "yes" },
-		{ LPT_PORT, "LPT1" },
-		{ LPT_FILE, "" }
+		{ LPT_PORT,    "LPT1" },
+		{ LPT_FILE,    "" }
 	} },
 };
 
@@ -227,22 +228,25 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DRIVES_SECTION,
-"; floppy_a: The type of floppy drive A.\n"
-";           Possible values: none, 3.5, 5.25\n"
-"; floppy_b: The type of floppy drive B.\n"
-";           Possible values: none, 3.5, 5.25\n"
-";      hdd: The type of fixed disk drive C.\n"
-";           Possible values: any number between 0 and 45 (15 excluded)\n"
-";                0: no disk installed\n"
-";               15: reserved, don't use it\n"
-";               35: the original WDL-330P 30MB disk drive\n"
-";             1-44: standard type (see the project page for the list of types supported by the BIOS)\n"
-";               45: custom type (specify the geometry in the hdd section)\n"
+";    floppy_a: The type of floppy drive A.\n"
+";              Possible values: none, 3.5, 5.25\n"
+";    floppy_b: The type of floppy drive B.\n"
+";              Possible values: none, 3.5, 5.25\n"
+"; fdd_latency: A multiplier for the floppy drives rotational latency.\n"
+";              You can use this parameter to speed up the FDD read/write operations.\n"
+";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)"
+";         hdd: The type of fixed disk drive C.\n"
+";              Possible values: any number between 0 and 45 (15 excluded)\n"
+";                 0: no disk installed\n"
+";                15: reserved, don't use it\n"
+";                35: the original WDL-330P 30MB disk drive\n"
+";              1-44: standard type (see the project page for the list of types supported by the BIOS)\n"
+";                45: custom type (specify the geometry in the hdd section)\n"
 		},
 
 		{ DISK_A_SECTION,
-"; These options are used to mount a floppy at program launch.\n"
-";     path: Path of a floppy image file to mount at program lauch\n"
+"; These options are used to insert a floppy disk at program launch.\n"
+";     path: Path of a floppy image file\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
 ";     type: The type of the inserted floppy.\n"
@@ -250,8 +254,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DISK_B_SECTION,
-"; These options are used to mount a floppy at program launch.\n"
-";     path: Path of a floppy image file to mount at program lauch\n"
+"; These options are used to insert a floppy disk at program launch.\n"
+";     path: Path of a floppy image file\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
 ";     type: The type of the inserted floppy.\n"
@@ -353,6 +357,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ DRIVES_SECTION, {
 		DRIVES_FDD_A,
 		DRIVES_FDD_B,
+		DRIVES_FDD_LAT,
 		DRIVES_HDD
 	} },
 	{ DISK_A_SECTION, {

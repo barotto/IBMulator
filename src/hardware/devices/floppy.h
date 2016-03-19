@@ -130,6 +130,7 @@ private:
 	bool       m_media_present[4];
 	uint8_t    m_device_type[4];
 	uint       m_num_installed_floppies;
+	double     m_latency_mult;
 
 	int  m_timer_index;
 

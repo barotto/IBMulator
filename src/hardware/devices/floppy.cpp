@@ -303,6 +303,9 @@ void FloppyCtrl::config_changed()
 	floppy_drive_setup(0);
 	floppy_drive_setup(1);
 
+	m_latency_mult = g_program.config().get_real(DRIVES_SECTION, DRIVES_FDD_LAT);
+	m_latency_mult = clamp(m_latency_mult,0.0,1.0);
+
 	for(int i=0; i<2; i++) {
 		m_fx[i].config_changed();
 	}
@@ -1782,7 +1785,7 @@ uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive, bool _latency)
 	if(_latency) {
 		//average latency is half the max latency
 		//I reduce it further for better results
-		sector_time += max_latency / 2.2;
+		sector_time += (max_latency / 2.2) * m_latency_mult;
 	}
 	PDEBUGF(LOG_V2, LOG_FDC, "sector time = %d us\n", sector_time);
 
