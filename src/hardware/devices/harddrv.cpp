@@ -542,6 +542,7 @@ void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &
 			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the maximum: %u RPM\n", _perf.rot_speed);
 		}
 		_perf.interleave = std::max(1l, g_program.config().get_int(DISK_C_SECTION, DISK_INTERLEAVE));
+		_perf.overh_time = std::max(0.0, g_program.config().get_real(DISK_C_SECTION, DISK_OVERH_TIME));
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type: %d\n", _type_id);
 		throw std::exception();
