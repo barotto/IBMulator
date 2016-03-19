@@ -1306,7 +1306,6 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 void HardDrive::command_timer()
 {
 	if(m_s.power_up_phase) {
-		m_s.power_up_phase = 0;
 		PDEBUGF(LOG_V2, LOG_HDD, "drive powered up\n");
 	}
 	if(m_s.attention_reg & HDD_ATT_CCB) {
@@ -1321,12 +1320,15 @@ void HardDrive::command_timer()
 	} else if(m_s.attention_reg & HDD_ATT_CSB) {
 		PERRF_ABORT(LOG_HDD, "CSB not implemented\n");
 	} else {
-		m_s.int_status_reg |= HDD_ISR_CMD_REJECT;
-		PERRF_ABORT(LOG_HDD, "invalid attention request\n");
+		if(!m_s.power_up_phase) {
+			m_s.int_status_reg |= HDD_ISR_CMD_REJECT;
+			PERRF_ABORT(LOG_HDD, "invalid attention request\n");
+		}
 	}
 	if(!(m_s.attch_status_reg & HDD_ASR_BUSY)) {
 		g_machine.deactivate_timer(m_cmd_timer);
 	}
+	m_s.power_up_phase = 0;
 }
 
 void HardDrive::dma_timer()
