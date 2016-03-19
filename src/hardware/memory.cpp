@@ -89,20 +89,22 @@ void Memory::reset()
 
 void Memory::config_changed()
 {
-	m_base_size = std::min(
-			(uint)(g_program.config().get_int(MEM_SECTION, MEM_BASE_SIZE))* KEBIBYTE,
-			MAX_BASE_MEM_SIZE);
-	m_ext_size = std::min(
-			(uint)(g_program.config().get_int(MEM_SECTION, MEM_EXT_SIZE))* KEBIBYTE,
-			MAX_EXT_MEM_SIZE);
-
+	int ram = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE);
+	// the last 512 KiB are reserved for the ROM
+	ram = std::min(16384-512-384, ram);
+	ram = std::max(128, ram);
+	ram -= ram % 128;
+	m_base_size = std::min(ram, 640);
+	m_ext_size = ram - m_base_size;
+	m_base_size *= KEBIBYTE;
+	m_ext_size *= KEBIBYTE;
 	m_mainbuf_size = MEBIBYTE + m_ext_size;
 	delete[] m_buffer;
 	m_buffer = new uint8_t[m_mainbuf_size];
 	memset(m_buffer, 0, m_mainbuf_size);
 
-	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, ext.: %uKB)\n",
-			(m_base_size+m_ext_size)/1024, m_base_size/1024, m_ext_size/1024);
+	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, extended: %uKB)\n",
+			ram, m_base_size/KEBIBYTE, m_ext_size/KEBIBYTE);
 
 	delete[] m_sysrom;
 	m_sysrom = new uint8_t[SYS_ROM_SIZE];
@@ -664,7 +666,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		uint8_t _len   // data lenght (1=byte, 2=word)
 		)
 {
-	const char *assign="<-", *read="=";
+	const char *assign="<-", *read="->";
 	const char *op;
 	uint len = 20;
 	char buf[len+1];

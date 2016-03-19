@@ -76,9 +76,8 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ MEM_SECTION, {
-		{ MEM_BASE_SIZE, "640" },
-		{ MEM_EXT_SIZE,  "384" },
-		{ MEM_ROMSET,    "PS1_2011_ROM.zip" }
+		{ MEM_RAM_SIZE, "1024" },
+		{ MEM_ROMSET,   "PS1_2011_ROM.zip" }
 	} },
 
 	{ DRIVES_SECTION, {
@@ -222,9 +221,9 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
+";      ram: Size of the RAM in KiB\n"
+";           Possible values: any multiple of 128, maximum 15488 (16M minus 512K for ROM and 384K for upper memory)\n"
 ";   romset: Path to a bin/zip file or directory containing the ROM set to use (for the correct format see the README)\n"
-";     base: Size of the base RAM in KiB\n"
-"; extended: Size of the extended RAM in KiB\n"
 		},
 
 		{ DRIVES_SECTION,
@@ -345,9 +344,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		CPU_FREQUENCY
 	} },
 	{ MEM_SECTION, {
-		MEM_ROMSET,
-		MEM_BASE_SIZE,
-		MEM_EXT_SIZE
+		MEM_RAM_SIZE,
+		MEM_ROMSET
 	} },
 	{ CMOS_SECTION, {
 		CMOS_IMAGE_FILE,

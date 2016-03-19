@@ -133,9 +133,8 @@ public:
 #define CPU_FREQUENCY           "frequency"
 
 #define MEM_SECTION             "memory"
+#define MEM_RAM_SIZE            "ram"
 #define MEM_ROMSET              "romset"
-#define MEM_BASE_SIZE           "base"
-#define MEM_EXT_SIZE            "extended"
 
 #define CMOS_SECTION            "cmos"
 #define CMOS_IMAGE_FILE         "image"
