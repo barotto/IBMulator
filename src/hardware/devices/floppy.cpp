@@ -684,9 +684,11 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			if(prev_normal_op==0 && normal_op) {
 				// transition from RESET to NORMAL
 				g_machine.activate_timer(m_timer_index, 250, 0);
-				if(!m_drive_booted[drive_sel] && drive_sel<2) {
-					m_fx[drive_sel].boot(m_media_present[drive_sel]);
-					m_drive_booted[drive_sel] = true;
+				for(int i=0; i<2; i++) {
+					if(m_device_type[i]!=FDD_NONE && !m_drive_booted[i]) {
+						m_fx[i].boot(m_media_present[i]);
+						m_drive_booted[i] = true;
+					}
 				}
 			} else if(prev_normal_op && normal_op==0) {
 				// transition from NORMAL to RESET
