@@ -221,9 +221,9 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
-";      ram: Size of the RAM in KiB\n"
-";           Possible values: any multiple of 128, maximum 15488 (16M minus 512K for ROM and 384K for upper memory)\n"
-";   romset: Path to a bin/zip file or directory containing the ROM set to use (for the correct format see the README)\n"
+";    ram: Size of the RAM in KiB\n"
+";         Possible values: any multiple of 128, maximum 15488 (16M minus 512K for ROM and 384K for upper memory)\n"
+"; romset: Path to a bin/zip file or directory containing the ROM set to use (for the correct format see the README)\n"
 		},
 
 		{ DRIVES_SECTION,
@@ -233,7 +233,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              Possible values: none, 3.5, 5.25\n"
 "; fdd_latency: A multiplier for the floppy drives rotational latency.\n"
 ";              You can use this parameter to speed up the FDD read/write operations.\n"
-";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)"
+";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
 ";         hdd: The type of fixed disk drive C.\n"
 ";              Possible values: any number between 0 and 45 (15 excluded)\n"
 ";                 0: no disk installed\n"
@@ -276,6 +276,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    seek_max: Maximum seek time in milliseconds\n"
 ";    seek_trk: Track-to-track seek time in milliseconds\n"
 ";   rot_speed: Rotational speed in RPM\n"
+";              Possible values: any number between 3600 and 7200\n"
 ";  interleave: Interleave ratio\n"
 ";  overh_time: Controller overhead time in milliseconds\n"
 		},
@@ -294,12 +295,12 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
-";   volume: Audio volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
+";   volume: General volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
 "; fdd_seek: Volume of FDD seeks.\n"
 "; fdd_spin: Volume of FDD spin noise.\n"
 "; hdd_seek: Volume of HDD seeks.\n"
 "; hdd_spin: Volume of HDD spin noise.\n"
-";   system: Volume of system unit's and monitor's noises.\n"
+";   system: Volume of system unit's and monitor's noises (realistic mode only.)\n"
 		},
 
 		{ COM_SECTION, "" },
