@@ -136,7 +136,7 @@ void Memory::config_changed()
 		//copy SYS BIOS from the ROM
 		memcpy(&m_buffer[0xE0000], &m_sysrom[SYS_ROM_SIZE-0x20000], 0x20000);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_MEM,"unable to load the SYSTEM ROM!\n");
+		PERRF(LOG_MEM, "unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
 		        nullptr);

@@ -47,7 +47,8 @@ int main(int argc, char** argv)
 #endif
 				".\n"
 				"Use the -v NUM command line switch to enable verbose logging.\n\n"
-				"The log file is located at:\n" + g_program.config().get_cfg_home();
+				"The log file is here:\n" + g_program.config().get_cfg_home() + FS_SEP"log.txt\n"
+				"The ini file is here:\n" + g_program.config().get_parsed_file();
 
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				message.c_str(),
