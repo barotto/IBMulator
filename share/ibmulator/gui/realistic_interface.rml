@@ -40,11 +40,11 @@
 				background-color: #0EFF1AF0;
 			}
 			#fdd_led {
-				width: 2.05%;
-				height: 1.05%;
+				width: 1.95%;
+				height: 0.9%;
 				position: absolute;
-				left: 17.30%;
-				bottom: 10.45%;
+				left: 17.45%;
+				bottom: 10.5%;
 				background-color: #F0000000;
 			}
 			#fdd_led.active {
