@@ -1,7 +1,7 @@
 #######################################################################
 # Initial configuration                                               #
 #######################################################################
-define([IBMULATOR_VERSION],[0.7 WIP])
+define([IBMULATOR_VERSION],[0.7])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
