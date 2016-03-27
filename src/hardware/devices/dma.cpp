@@ -65,8 +65,12 @@ void DMA::init(void)
 		g_devices.register_write_handler(this, i, 3);
 	}
 
-	memset(&m_chused, 0, sizeof(m_chused));
-	m_chused[1][0] = true; // cascade channel in use
+	for(int i=0; i<8; i++) {
+		m_channels[i].used = false;
+		m_channels[i].device = "";
+	}
+	m_channels[4].used = true;
+	m_channels[4].device = "cascade";
 	PDEBUGF(LOG_V2, LOG_DMA, "channel 4 used by cascade\n");
 }
 
@@ -453,7 +457,7 @@ void DMA::set_DRQ(unsigned channel, bool val)
 	}
 	ma_sl = (channel > 3)?1:0;
 	m_s.dma[ma_sl].DRQ[channel & 0x03] = val;
-	if(!m_chused[ma_sl][channel & 0x03]) {
+	if(!m_channels[channel].used) {
 		PERRF(LOG_DMA, "set_DRQ(): channel %d not connected to device\n", channel);
 		return;
 	}
@@ -672,14 +676,15 @@ unsigned DMA::register_8bit_channel(unsigned channel,
 		PERRF(LOG_DMA, "register_8bit_channel: invalid channel number(%u)\n", channel);
 		return 0; // Fail
 	}
-	if(m_chused[0][channel]) {
+	if(m_channels[channel].used) {
 		PERRF(LOG_DMA, "register_8bit_channel: channel(%u) already in use\n", channel);
 		return 0; // Fail
 	}
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by '%s'\n", channel, name);
 	m_h[channel].dmaRead8  = dmaRead;
 	m_h[channel].dmaWrite8 = dmaWrite;
-	m_chused[0][channel] = true;
+	m_channels[channel].used = true;
+	m_channels[channel].device = name;
 	return 1; // OK
 }
 
@@ -690,22 +695,29 @@ unsigned DMA::register_16bit_channel(unsigned channel,
 		PERRF(LOG_DMA, "register_16bit_channel: invalid channel number(%u)\n", channel);
 		return 0; // Fail
 	}
-	if(m_chused[1][channel & 0x03]) {
+	if(m_channels[channel].used) {
 		PERRF(LOG_DMA, "register_16bit_channel: channel(%u) already in use\n", channel);
 		return 0; // Fail
 	}
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by %s", channel, name);
-	channel &= 0x03;
-	m_h[channel].dmaRead16  = dmaRead;
-	m_h[channel].dmaWrite16 = dmaWrite;
-	m_chused[1][channel] = true;
+	m_h[channel&0x03].dmaRead16  = dmaRead;
+	m_h[channel&0x03].dmaWrite16 = dmaWrite;
+	m_channels[channel].used = true;
+	m_channels[channel].device = name;
 	return 1; // OK
 }
 
 unsigned DMA::unregister_channel(unsigned channel)
 {
-	uint ma_sl = (channel > 3)?1:0;
-	m_chused[ma_sl][channel & 0x03] = false;
+	assert(channel < 8);
+	m_channels[channel].used = false;
+	m_channels[channel].device = "";
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u no longer used\n", channel);
 	return 1;
+}
+
+std::string DMA::get_device_name(unsigned _channel)
+{
+	assert(_channel < 8);
+	return m_channels[_channel].device;
 }

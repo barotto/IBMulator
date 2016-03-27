@@ -213,6 +213,19 @@ void Machine::init()
 	g_cpu.set_shutdown_trap([this] () {
 		reset(CPU_SOFT_RESET);
 	});
+
+	PDEBUGF(LOG_V2, LOG_MACHINE, "registered timers: %u\n", m_num_timers);
+	for(unsigned i=0; i<m_num_timers; i++) {
+		PDEBUGF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
+	}
+	PINFOF(LOG_V2, LOG_MACHINE, "IRQ channels:\n");
+	for(unsigned i=0; i<16; i++) {
+		PINFOF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, m_irq_names[i].c_str());
+	}
+	PINFOF(LOG_V2, LOG_MACHINE, "DMA channels:\n");
+	for(unsigned i=0; i<8; i++) {
+		PINFOF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, g_dma.get_device_name(i).c_str());
+	}
 }
 
 void Machine::start()
@@ -560,7 +573,7 @@ void Machine::register_irq(uint8_t _irq, const char* _name)
 void Machine::unregister_irq(uint8_t _irq)
 {
 	assert(_irq<16);
-	m_irq_names[_irq] = "?";
+	m_irq_names[_irq] = "";
 }
 
 const char* Machine::get_irq_name(uint8_t _irq)

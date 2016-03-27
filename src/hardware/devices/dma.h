@@ -66,7 +66,10 @@ private:
 
 	} m_s; // state information
 
-	bool m_chused[2][4];
+	struct {
+		bool used;
+		std::string device;
+	} m_channels[8];
 
 	struct {
 		dma8_fun_t dmaRead8;
@@ -100,6 +103,7 @@ public:
 	unsigned register_16bit_channel(unsigned channel,
 			dma16_fun_t dmaRead, dma16_fun_t dmaWrite, const char *name);
 	unsigned unregister_channel(unsigned channel);
+	std::string get_device_name(unsigned _channel);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
