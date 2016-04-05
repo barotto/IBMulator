@@ -37,7 +37,7 @@ DriveFX::~DriveFX()
 {
 }
 
-void DriveFX::init(MixerChannel_handler _spin_channel, const char *_spin_name,
+void DriveFX::install(MixerChannel_handler _spin_channel, const char *_spin_name,
 		MixerChannel_handler _seek_channel, const char *_seek_name,
 		const AudioSpec &_spec)
 {
@@ -50,6 +50,12 @@ void DriveFX::init(MixerChannel_handler _spin_channel, const char *_spin_name,
 	m_channels.seek->set_category(MixerChannelCategory::SOUNDFX);
 	m_channels.seek->set_disable_timeout(CHANNELS_TIMEOUT);
 	m_channels.seek->set_in_spec(_spec);
+}
+
+void DriveFX::remove()
+{
+	g_mixer.unregister_channel(m_channels.spin);
+	g_mixer.unregister_channel(m_channels.seek);
 }
 
 void DriveFX::seek(int _c0, int _c1, int _tot_cyls)

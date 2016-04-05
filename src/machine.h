@@ -26,7 +26,7 @@
 #include "chrono.h"
 #include "hwbench.h"
 #include "statebuf.h"
-
+#include "hardware/devices.h"
 
 class CPU;
 class Memory;
@@ -143,10 +143,13 @@ public:
 	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
 	inline HWBench & get_bench() { return m_bench; }
 
+	inline Devices &devices() { return g_devices; }
+
 	int register_timer(timer_fun_t _func, uint64_t _usecs, bool _continuous,
 			bool _active, const char *_name);
 	int register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _continuous,
 			bool _active, const char *_name);
+	void unregister_timer(int &_timer);
 	void activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous);
 	void activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous);
 	uint64_t get_timer_eta(unsigned _timer) const;

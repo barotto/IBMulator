@@ -25,9 +25,6 @@
 #include "mediaimage.h"
 #include "floppyfx.h"
 
-class FloppyCtrl;
-extern FloppyCtrl g_floppy;
-
 
 enum FloppyDriveType {
 	FDD_NONE  = 0x00, // floppy not present
@@ -64,12 +61,15 @@ struct FloppyDisk
 	bool        vvfat_floppy;
 	MediaImage *vvfat;
 
+	FloppyDisk() : fd(-1) {}
 	bool open(uint devtype, uint type, const char *path);
 	void close();
 };
 
 class FloppyCtrl : public IODevice
 {
+	IODEVICE(FloppyCtrl, "Floppy Controller");
+
 private:
 	struct {
 		uint8_t command[10];
@@ -141,16 +141,16 @@ private:
 	bool m_drive_booted[4];
 
 public:
-	FloppyCtrl();
+	FloppyCtrl(Devices *_dev);
 	~FloppyCtrl();
 
-	void init();
+	void install();
+	void remove();
 	void reset(uint type);
 	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t address, uint io_len);
 	void write(uint16_t address, uint16_t value, uint io_len);
-	const char * get_name() { return "Floppy Controller"; }
 
 	bool insert_media(uint _drive, uint _type, const char *_path, bool _write_protected);
 	void eject_media(uint _drive);
@@ -176,6 +176,8 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+	static unsigned config_drive_type(unsigned drive);
 
 private:
 	inline unsigned chs_to_lba(unsigned _d) const;

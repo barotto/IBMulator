@@ -174,6 +174,7 @@ void Program::restore_state(
 	}
 
 	m_mixer->cmd_resume();
+	m_gui->config_changed();
 	m_gui->sig_state_restored();
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
@@ -462,6 +463,7 @@ void Program::set_gui(GUI *_gui)
 	}
 	m_gui = _gui;
 	m_gui->init(m_machine, m_mixer);
+	m_gui->config_changed();
 }
 
 void Program::set_machine(Machine *_machine)
@@ -469,6 +471,7 @@ void Program::set_machine(Machine *_machine)
 	m_machine = _machine;
 	m_machine->calibrate(m_main_chrono);
 	m_machine->init();
+	m_machine->config_changed();
 }
 
 void Program::set_mixer(Mixer *_mixer)
@@ -480,6 +483,7 @@ void Program::set_mixer(Mixer *_mixer)
 	m_mixer = _mixer;
 	m_mixer->calibrate(m_main_chrono);
 	m_mixer->init(m_machine);
+	m_mixer->config_changed();
 }
 
 void Program::process_evts()

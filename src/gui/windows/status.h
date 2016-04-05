@@ -22,13 +22,13 @@
 
 #include <Rocket/Core/EventListener.h>
 
-class Machine;
 class GUI;
+class FloppyCtrl;
+class HardDrive;
 
 class Status : public Window
 {
 private:
-
 	struct {
 		Rocket::Core::Element *power_led, *floppy_a_led, *floppy_b_led, *hdd_led;
 	} m_status;
@@ -37,14 +37,15 @@ private:
 		bool power, floppy_a, floppy_b, hdd;
 	} m_leds;
 
-	Machine * m_machine;
+	FloppyCtrl *m_floppy;
+	HardDrive *m_hdd;
 
 public:
-
 	Status(GUI * _gui);
 	~Status();
 
 	void update();
+	void config_changed();
 
 	void ProcessEvent(Rocket::Core::Event & event);
 };

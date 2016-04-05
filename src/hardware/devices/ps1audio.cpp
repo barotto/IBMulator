@@ -37,82 +37,74 @@
 #include <cstring>
 
 #define PS1AUDIO_INPUT_CLOCK 4000000
-#define PS1AUDIO_IRQ 7
 #define PS1AUDIO_PSG_DISABLE_TIMEOUT 2500000 //in usecs
 #define PS1AUDIO_DAC_DISABLE_TIMEOUT 1000000 //in usecs
 #define PS1AUDIO_DAC_FADE_IN false
 #define PS1AUDIO_DAC_EMPTY_THRESHOLD 1000 // number of empty DAC samples after
                                           // which the FIFO timer will be auto-deactivated
 
-PS1Audio g_ps1audio;
+IODEVICE_PORTS(PS1Audio) = {
+	{ 0x200, 0x200, PORT_8BIT|PORT_RW },  // ADC (R) / DAC (W)
+	//0x201 is used by the Game Port device
+	{ 0x202, 0x202, PORT_8BIT|PORT_RW }, // Control Register
+	{ 0x203, 0x203, PORT_8BIT|PORT_RW }, // FIFO Timer reload value
+	{ 0x204, 0x204, PORT_8BIT|PORT_RW }, // Joystick (X Axis Stick A) P0 (R) / Almost empty value (W)
+	{ 0x205, 0x205, PORT_8BIT|PORT_RW }, // Joystick (Y Axis Stick A) P1 (R) / Sound Generator (W)
+	{ 0x206, 0x206, PORT_8BIT|PORT_R_ }, // Joystick (X Axis Stick B) P2
+	{ 0x207, 0x207, PORT_8BIT|PORT_R_ }, // Joystick (Y Axis Stick B) P3
+	{ 0x330, 0x330, PORT_8BIT|PORT_RW }, // MIDI TXD Register
+	{ 0x331, 0x331, PORT_8BIT|PORT_RW }, // MIDI IER Register
+	{ 0x332, 0x332, PORT_8BIT|PORT_RW }, // MIDI IIR Register
+	{ 0x335, 0x335, PORT_8BIT|PORT_RW }  // MIDI LSR Register
+};
+#define PS1AUDIO_IRQ 7
 
-
-PS1Audio::PS1Audio()
-:
-m_enabled(false)
+PS1Audio::PS1Audio(Devices *_dev)
+: IODevice(_dev)
 {
 	m_DAC_samples.reserve(PS1AUDIO_FIFO_SIZE*2);
 }
 
 PS1Audio::~PS1Audio()
 {
-
 }
 
-void PS1Audio::init()
+void PS1Audio::install()
 {
-	g_machine.register_irq(PS1AUDIO_IRQ, get_name());
-
-	//Read Function
-	g_devices.register_read_handler(this, 0x0200, 1);  //Read Analog to Digital Converter Data
-	g_devices.register_read_handler(this, 0x0202, 1);  //Read Control Register
-	g_devices.register_read_handler(this, 0x0203, 1);  //Read FIFO Timer reload value
-	g_devices.register_read_handler(this, 0x0204, 1);  //Joystick (X Axis Stick A) P0
-	g_devices.register_read_handler(this, 0x0205, 1);  //Joystick (Y Axis Stick A) P1
-	g_devices.register_read_handler(this, 0x0206, 1);  //Joystick (X Axis Stick B) P2
-	g_devices.register_read_handler(this, 0x0207, 1);  //Joystick (Y Axis Stick B) P3
-	g_devices.register_read_handler(this, 0x0330, 1);  //Read to MIDI TXD Register
-	g_devices.register_read_handler(this, 0x0331, 1);  //Read to MIDI IER Register
-	g_devices.register_read_handler(this, 0x0332, 1);  //Read to MIDI IIR Register
-	g_devices.register_read_handler(this, 0x0335, 1);  //Read to MIDI LSR Register
-
-	//Write Function
-	g_devices.register_write_handler(this, 0x0200, 1); //Write to Digital to Analog Converter
-	g_devices.register_write_handler(this, 0x0202, 1); //Write to Control Register
-	g_devices.register_write_handler(this, 0x0203, 1); //Write FIFO Timer reload value
-	g_devices.register_write_handler(this, 0x0204, 1); //Write almost empty value
-	g_devices.register_write_handler(this, 0x0205, 1); //Write to Sound Generator
-	g_devices.register_write_handler(this, 0x0330, 1); //Write to MIDI TXD Register
-	g_devices.register_write_handler(this, 0x0331, 1); //Write to MIDI IER Register
-	g_devices.register_write_handler(this, 0x0332, 1); //Write to MIDI IIR Register
-	g_devices.register_write_handler(this, 0x0335, 1); //Write to MIDI LSR Register
+	IODevice::install();
+	g_machine.register_irq(PS1AUDIO_IRQ, name());
 
 	//the DAC emulation can surely be done without a machine timer, but I find
-	//this approach easier to read and follow.
+	//this approach way easier to read and follow.
 	m_s.DAC.fifo_timer = g_machine.register_timer(
 		std::bind(&PS1Audio::FIFO_timer,this),
-		256,    // period usec
-		false,  // continuous
-		false,  // active
-		"PS1AudioDAC" //name
+		256,             // period usec
+		false,           // continuous
+		false,           // active
+		"PS/1 Audio DAC" // name
 	);
 
+	using namespace std::placeholders;
 	m_DAC_channel = g_mixer.register_channel(
-		std::bind(&PS1Audio::create_DAC_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		std::bind(&PS1Audio::create_DAC_samples, this, _1, _2, _3),
 		"PS/1 Audio DAC");
 	m_DAC_channel->set_disable_timeout(PS1AUDIO_DAC_DISABLE_TIMEOUT);
 
 	m_PSG_channel = g_mixer.register_channel(
-		std::bind(&PS1Audio::create_PSG_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		std::bind(&PS1Audio::create_PSG_samples, this, _1, _2, _3),
 		"PS/1 Audio PSG");
 	m_PSG_channel->set_disable_timeout(PS1AUDIO_PSG_DISABLE_TIMEOUT);
+	m_PSG_channel->register_capture_clbk(std::bind(
+			&PS1Audio::on_PSG_capture, this, _1));
+}
 
-	m_PSG_channel->register_capture_clbk(
-		std::bind(&PS1Audio::on_PSG_capture, this, std::placeholders::_1)
-	);
-	config_changed();
+void PS1Audio::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(PS1AUDIO_IRQ);
+	g_machine.unregister_timer(m_s.DAC.fifo_timer);
+	g_mixer.unregister_channel(m_DAC_channel);
+	g_mixer.unregister_channel(m_PSG_channel);
 }
 
 void PS1Audio::reset(unsigned _type)
@@ -142,7 +134,6 @@ void PS1Audio::power_off()
 
 void PS1Audio::config_changed()
 {
-	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO);
 	m_PSG_rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	m_PSG_samples_per_ns = double(m_PSG_rate)/1e9;
 	m_PSG_channel->set_in_spec({AUDIO_FORMAT_S16, 1, unsigned(m_PSG_rate)});
@@ -156,7 +147,7 @@ void PS1Audio::save_state(StateBuf &_state)
 
 	StateHeader h;
 	m_s.PSG_events_cnt = m_PSG_events.size();
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 
@@ -167,7 +158,7 @@ void PS1Audio::save_state(StateBuf &_state)
 			throw std::exception();
 			return;
 		}
-		h.name = std::string(get_name()) + "-PSG evts";
+		h.name = std::string(name()) + "-PSG evts";
 		h.data_size = m_s.PSG_events_cnt * sizeof(PSGEvent);
 		std::vector<uint8_t> evts(h.data_size);
 		uint8_t *ptr = &evts[0];
@@ -188,16 +179,18 @@ void PS1Audio::restore_state(StateBuf &_state)
 	m_PSG_channel->enable(false);
 	m_DAC_channel->enable(false);
 
+	int fifo_timer = m_s.DAC.fifo_timer;
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s, h);
+	m_s.DAC.fifo_timer = fifo_timer;
 
 	m_PSG_events.clear();
 	m_PSG_last_mtime = 0;
 	if(m_s.PSG_events_cnt) {
 		_state.get_next_lump_header(h);
-		if(h.name.compare(std::string(get_name()) + "-PSG evts") != 0) {
+		if(h.name.compare(std::string(name()) + "-PSG evts") != 0) {
 			PERRF(LOG_AUDIO, "PS/1 PSG events expected in state buffer, found %s\n", h.name.c_str());
 			throw std::exception();
 		}
@@ -232,21 +225,19 @@ void PS1Audio::raise_interrupt()
 {
 	if(m_s.control_reg & 1) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: raising IRQ %d\n", PS1AUDIO_IRQ);
-		g_pic.raise_irq(PS1AUDIO_IRQ);
+		m_devices->pic()->raise_irq(PS1AUDIO_IRQ);
 	}
 }
 
 void PS1Audio::lower_interrupt()
 {
-	g_pic.lower_irq(PS1AUDIO_IRQ);
+	m_devices->pic()->lower_irq(PS1AUDIO_IRQ);
 }
 
 uint16_t PS1Audio::read(uint16_t _address, unsigned)
 {
 	uint16_t value = ~0;
-	if(!m_enabled) {
-		return value;
-	}
+
 	switch(_address) {
 		case 0x200:
 			//Analog to Digital Converter Data
@@ -323,10 +314,6 @@ uint16_t PS1Audio::read(uint16_t _address, unsigned)
 
 void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 {
-	if(!m_enabled) {
-		return;
-	}
-
 	uint8_t value = _value & 0xFF;
 	switch(_address) {
 		case 0x200:
@@ -457,7 +444,7 @@ void PS1Audio::FIFO_timer()
 		 * open. If the DAC has been empty for long enough, stop the timer.
 		 */
 		g_machine.deactivate_timer(m_s.DAC.fifo_timer);
-		PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: empty, FIFO timer deactivated\n");
+		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: empty, FIFO timer deactivated\n");
 	}
 
 	std::lock_guard<std::mutex> lock(m_DAC_lock);
@@ -592,9 +579,6 @@ bool PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_
 //this method is called by the Mixer thread
 void PS1Audio::on_PSG_capture(bool _enable)
 {
-	if(!m_enabled) {
-		return;
-	}
 	if(_enable) {
 		std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 		std::string fname = FileSys::get_next_filename(path, "ps1psg_", ".vgm");

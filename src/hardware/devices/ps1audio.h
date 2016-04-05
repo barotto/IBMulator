@@ -27,15 +27,13 @@
 #include <atomic>
 #include "audio/vgm.h"
 
-class PS1Audio;
-extern PS1Audio g_ps1audio;
-
 #define PS1AUDIO_FIFO_SIZE 2048
 
 class PS1Audio : public IODevice
 {
-private:
+	IODEVICE(PS1Audio, "IBM PS/1 Audio Card")
 
+private:
 	struct DAC
 	{
 		uint8_t  FIFO[PS1AUDIO_FIFO_SIZE];
@@ -69,7 +67,6 @@ private:
 		uint8_t control_reg;
 	} m_s;
 
-	bool m_enabled;
 	std::mutex m_DAC_lock;
 	std::mutex m_PSG_lock;
 	int m_DAC_empty_samples;
@@ -94,16 +91,16 @@ private:
 	void on_PSG_capture(bool _enable);
 
 public:
-	PS1Audio();
+	PS1Audio(Devices *_dev);
 	~PS1Audio();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned _type);
 	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char *get_name() { return "IBM PS/1 Audio/Joystick Card"; }
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

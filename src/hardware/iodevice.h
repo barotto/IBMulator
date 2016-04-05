@@ -21,22 +21,54 @@
 #define IBMULATOR_HW_DEVICE_H
 
 #include "statebuf.h"
+#include <vector>
+class Devices;
+
+#define IODEVICE(_CLASSNAME_, _DEVNAME_) \
+	public: \
+		static constexpr const char* NAME = _DEVNAME_; \
+		virtual const char *name() { return _CLASSNAME_::NAME; } \
+	protected: \
+		static const IODevice::IOPorts ms_ioports; \
+		virtual const IOPorts * ioports() { return &_CLASSNAME_::ms_ioports; }
+
+#define IODEVICE_PORTS(_CLASSNAME_) \
+		const IODevice::IOPorts _CLASSNAME_::ms_ioports
 
 class IODevice
 {
+protected:
+	Devices *m_devices;
+
+	struct IOPortsInterval {
+		uint16_t from, to;
+		uint8_t  mask;
+	};
+	typedef std::vector<IOPortsInterval> IOPorts;
+
+	IODEVICE(IODevice, "null device")
+
 public:
+	IODevice(Devices *_dev) : m_devices(_dev) {}
 	virtual ~IODevice() {}
 
-	virtual void init() {}
+	IODevice() = delete;
+	IODevice(IODevice const&) = delete;
+	IODevice& operator=(IODevice const&) = delete;
+
+	virtual void install();
+	virtual void remove();
 	virtual void reset(uint /*_signal*/) {}
 	virtual void power_off() {}
 	virtual void config_changed() {}
 	virtual uint16_t read(uint16_t /*_address*/, unsigned /*_io_len*/) { return ~0; }
 	virtual void write(uint16_t /*_address*/, uint16_t /*_value*/, unsigned /*_io_len*/) {}
-	virtual const char *get_name() { return "null device"; }
+	virtual void save_state(StateBuf &) {}
+	virtual void restore_state(StateBuf &) {}
 
-	virtual void save_state(StateBuf &) {  }
-	virtual void restore_state(StateBuf &) {  }
+protected:
+	void install(const IOPortsInterval *_io, unsigned _len);
+	void remove(const IOPortsInterval *_io, unsigned _len);
 };
 
 

@@ -13,6 +13,7 @@ libhardware_a_SOURCES = \
 	cpu/disasm.cpp \
 	cpu/debugger.cpp \
 	memory.cpp \
+	iodevice.cpp \
 	devices.cpp \
 	devices/systemboard.cpp \
 	devices/keyboard.cpp \
@@ -51,6 +52,7 @@ noinst_HEADERS = \
 	cpu/disasm.h \
 	cpu/debugger.h \
 	memory.h \
+	iodevice.h \
 	devices.h \
 	devices/systemboard.h \
 	devices/keyboard.h \

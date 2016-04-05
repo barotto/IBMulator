@@ -23,8 +23,6 @@
 
 #include "hardware/iodevice.h"
 
-class PIC;
-extern PIC g_pic;
 
 typedef struct {
 	uint8_t single_PIC;        /* 0=cascaded PIC, 1=master only */
@@ -60,6 +58,8 @@ typedef struct {
 
 class PIC : public IODevice
 {
+	IODEVICE(PIC, "8259 PIC")
+
 private:
 	struct {
 		pic_t master;
@@ -73,13 +73,13 @@ private:
 	void set_slave_imr(uint8_t value);
 
 public:
-	PIC();
+	PIC(Devices* _dev);
 	~PIC();
 
-	void init(void);
+	void install();
+	void remove();
 	uint16_t read(uint16_t address, uint io_len);
-	void  write(uint16_t address, uint16_t value, uint io_len);
-	const char *get_name() { return "8259 PIC"; }
+	void write(uint16_t address, uint16_t value, uint io_len);
 
 	void reset(unsigned type);
 	void lower_irq(unsigned irq_no);

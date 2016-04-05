@@ -22,36 +22,35 @@
 
 #include "hardware/iodevice.h"
 
-class GamePort;
-extern GamePort g_gameport;
 
 class GamePort : public IODevice
 {
+	IODEVICE(GamePort, "Game Port")
+
 private:
+	struct {
+		struct stick {
+			float xpos, ypos;
+			double x_us, y_us;
+			bool button[2];
+		} stick[2];
+	} m_s;  // state information
 
-  struct {
-	  struct stick {
-	  	float xpos, ypos;
-	  	double x_us, y_us;
-	  	bool button[2];
-	  } stick[2];
-  } m_s;  // state information
-
-  std::mutex m_stick_lock;
-  void joystick_motion(int _jid, int _axis, int _value);
-  void joystick_button(int _jid, int _button, int _state);
+	std::mutex m_stick_lock;
+	void joystick_motion(int _jid, int _axis, int _value);
+	void joystick_button(int _jid, int _button, int _state);
 
 public:
-	GamePort();
+	GamePort(Devices *_dev);
 	~GamePort();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned type);
 	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char* get_name() { return "Game Port"; }
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

@@ -43,9 +43,6 @@ typedef std::function<void()> Mixer_fun_t;
 
 class Mixer
 {
-public:
-
-
 private:
 	RingBuffer m_out_buffer;
 	std::vector<float> m_mix_buffer;
@@ -80,11 +77,13 @@ public:
 	~Mixer();
 
 	void init(Machine *);
+	void config_changed();
 	void start();
 	void main_loop();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
 			const std::string &_name);
+	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
 	void calibrate(const Chrono &_c);
 	unsigned heartbeat() const { return m_heartbeat; }
@@ -108,7 +107,6 @@ public:
 	void cmd_set_category_volume(MixerChannelCategory _cat, float _volume);
 
 private:
-	void config_changed();
 	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
 	void stop_wave_playback();
 	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);

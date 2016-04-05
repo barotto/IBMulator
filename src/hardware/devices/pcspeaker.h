@@ -23,13 +23,11 @@
 #include "hardware/iodevice.h"
 #include "mixer.h"
 
-class PCSpeaker;
-extern PCSpeaker g_pcspeaker;
-
 class PCSpeaker : public IODevice
 {
-private:
+	IODEVICE(PCSpeaker, "PC-Speaker")
 
+private:
 	struct SpeakerEvent {
 		uint64_t time;
 		bool active;
@@ -45,7 +43,6 @@ private:
 		size_t events_cnt;
 	} m_s;
 
-	bool m_enabled;
 	std::vector<int16_t> m_samples_buffer;
 	double m_nsec_per_sample;
 	double m_samples_per_nsec;
@@ -57,15 +54,14 @@ private:
 	size_t fill_samples_buffer_t(int _duration, int _bstart, int16_t _value);
 
 public:
-
-	PCSpeaker();
+	PCSpeaker(Devices *_dev);
 	~PCSpeaker();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned);
 	void power_off();
 	void config_changed();
-	const char* get_name() { return "PC speaker"; }
 
 	void add_event(uint64_t _time, bool _active, bool _out);
 	void activate();

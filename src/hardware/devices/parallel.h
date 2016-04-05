@@ -51,29 +51,27 @@ typedef struct {
 	uint8_t port;
 } parport_t;
 
-class Parallel;
-extern Parallel g_parallel;
 
 class Parallel : public IODevice
 {
+	IODEVICE(Parallel, "Parallel");
+
 private:
 	parport_t m_s;
-	static uint16_t ms_ports[3];
 	static uint16_t ms_irqs[3];
 	bool m_enabled;
 	void virtual_printer();
 
 public:
-
-	Parallel();
+	Parallel(Devices *_dev);
 	~Parallel();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned type);
 	void config_changed();
 	uint16_t read(uint16_t address, unsigned io_len);
-	void   write(uint16_t address, uint16_t value, unsigned io_len);
-	const char *get_name() { return "Parallel"; }
+	void write(uint16_t address, uint16_t value, unsigned io_len);
 
 	void set_mode(uint8_t _mode);
 	void set_port(uint8_t _port);

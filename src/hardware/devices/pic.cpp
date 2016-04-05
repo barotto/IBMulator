@@ -25,10 +25,13 @@
 #include "hardware/devices.h"
 #include <cstring>
 
-PIC g_pic;
+IODEVICE_PORTS(PIC) = {
+	{ 0x20, 0x21, PORT_8BIT|PORT_RW },
+	{ 0xA0, 0xA1, PORT_8BIT|PORT_RW }
+};
 
-
-PIC::PIC()
+PIC::PIC(Devices* _dev)
+: IODevice(_dev)
 {
 
 }
@@ -38,20 +41,16 @@ PIC::~PIC()
 
 }
 
-void PIC::init()
+void PIC::install()
 {
-	/* 8259 PIC (Programmable Interrupt Controller) */
-	g_devices.register_read_handler(this, 0x20, 1);
-	g_devices.register_read_handler(this, 0x21, 1);
-	g_devices.register_read_handler(this, 0xA0, 1);
-	g_devices.register_read_handler(this, 0xA1, 1);
-
-	g_devices.register_write_handler(this, 0x20, 1);
-	g_devices.register_write_handler(this, 0x21, 1);
-	g_devices.register_write_handler(this, 0xA0, 1);
-	g_devices.register_write_handler(this, 0xA1, 1);
-
+	IODevice::install();
 	g_machine.register_irq(2, "cascade");
+}
+
+void PIC::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(2);
 }
 
 void PIC::reset(unsigned)
@@ -109,7 +108,7 @@ void PIC::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_PIC, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -119,7 +118,7 @@ void PIC::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_PIC, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 }

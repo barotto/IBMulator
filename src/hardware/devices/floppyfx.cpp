@@ -46,18 +46,17 @@ FloppyFX::~FloppyFX()
 {
 }
 
-void FloppyFX::init(const std::string &_drive)
+void FloppyFX::install(const std::string &_drive)
 {
 	std::string spin = "FDD-spin-" + _drive;
 	std::string seek = "FDD-seek-" + _drive;
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
-	DriveFX::init(
-		std::bind(&FloppyFX::create_spin_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+	using namespace std::placeholders;
+	DriveFX::install(
+		std::bind(&FloppyFX::create_spin_samples, this, _1, _2, _3),
 		spin.c_str(),
-		std::bind(&FloppyFX::create_seek_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		std::bind(&FloppyFX::create_seek_samples, this, _1, _2, _3),
 		seek.c_str(),
 		spec
 	);

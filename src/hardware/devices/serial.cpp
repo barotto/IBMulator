@@ -27,7 +27,7 @@
 /* WARNING
  * on the PS/1 2011 there's only 1 serial port and it's controlled by POS register 2.
  * I'll keep the Bochs' general structure (I don't want to introduce new bugs)
- * but it now support ONLY 1 UART
+ * but it now supports ONLY 1 UART
  */
 
 #include "ibmulator.h"
@@ -67,65 +67,14 @@
 #include <functional>
 using namespace std::placeholders;
 
-Serial g_serial;
-
-uint16_t Serial::ms_ports[SERIAL_MAXDEV] = { 0x3F8, 0x2F8 };
-uint8_t Serial::ms_irqs[SERIAL_MAXDEV] = { 4, 3 };
-
-Serial::Serial(void)
-{
-	for(int i=0; i<SERIAL_MAXDEV; i++) {
-		memset(&m_s[i], 0, sizeof(serial_t));
-		m_s[i].io_mode = SER_MODE_NULL;
-		m_s[i].tty_id = -1;
-		m_s[i].tx_timer_index = NULL_TIMER_HANDLE;
-		m_s[i].rx_timer_index = NULL_TIMER_HANDLE;
-		m_s[i].fifo_timer_index = NULL_TIMER_HANDLE;
-	}
-}
-
-Serial::~Serial(void)
-{
-	for(int i=0; i<SERIAL_MAXDEV; i++) {
-		if(!m_s[i].enabled) {
-			continue;
-		}
-		switch (m_s[i].io_mode) {
-			case SER_MODE_FILE:
-				if(m_s[i].output != nullptr) {
-					fclose(m_s[i].output);
-				}
-				break;
-			case SER_MODE_TERM:
-				#if SERIAL_ENABLE && !SER_WIN32
-				if(m_s[i].tty_id >= 0) {
-					tcsetattr(m_s[i].tty_id, TCSAFLUSH, &m_s[i].term_orig);
-				}
-				#endif
-				break;
-			case SER_MODE_RAW:
-				#if USE_RAW_SERIAL
-				delete[] m_s[i].raw;
-				#endif
-				break;
-			case SER_MODE_SOCKET_CLIENT:
-			case SER_MODE_SOCKET_SERVER:
-				if(m_s[i].socket_id != INVALID_SOCKET) {
-					closesocket(m_s[i].socket_id);
-				}
-				break;
-			case SER_MODE_PIPE_CLIENT:
-			case SER_MODE_PIPE_SERVER:
-				#if SER_WIN32
-				if(m_s[i].pipe) {
-					CloseHandle(m_s[i].pipe);
-				}
-				#endif
-				break;
-		}
-	}
-}
-
+IODEVICE_PORTS(Serial) = {
+	{ 0x3F8, 0x3FF, PORT_8BIT|PORT_RW }, // COM1
+	{ 0x2F8, 0x2FF, PORT_8BIT|PORT_RW }  // COM2
+};
+uint8_t Serial::ms_irqs[SERIAL_MAXDEV] = {
+	4, // COM1
+	3  // COM2
+};
 
 static ini_enum_map_t serial_modes = {
 	{ "null", SER_MODE_NULL },
@@ -139,119 +88,155 @@ static ini_enum_map_t serial_modes = {
 	{ "pipe-server", SER_MODE_PIPE_SERVER }
 };
 
-
-void Serial::init()
+Serial::Serial(Devices *_dev)
+: IODevice(_dev)
 {
-	//controlled by POS reg 2 bit 2
-	m_enabled = g_program.config().get_bool(COM_SECTION, COM_ENABLED);
+	m_enabled = false; // POS determines the general state
+	for(int i=0; i<SERIAL_MAXDEV; i++) {
+		memset(&m_s[i], 0, sizeof(serial_t));
+		m_s[i].io_mode = SER_MODE_NULL;
+		m_s[i].tty_id = -1;
+		m_s[i].tx_timer_index = NULL_TIMER_HANDLE;
+		m_s[i].rx_timer_index = NULL_TIMER_HANDLE;
+		m_s[i].fifo_timer_index = NULL_TIMER_HANDLE;
+		m_s[i].port = 0xFF; // POS determines the port number
+	}
+}
+
+Serial::~Serial(void)
+{
+	close();
+}
+
+void Serial::install()
+{
+	//don't install ports here, POS will do this
+
+	m_enabled = false; // POS determines the general state
+	m_s[0].enabled = true; // a serial port is always defined
+	m_s[0].port = 0xFF; // POS will set the port
+
+	m_s[0].tx_timer_index =	g_machine.register_timer(
+		std::bind(&Serial::tx_timer, this, 0), 0,
+		false,false, // one-shot, inactive
+		"COM.tx");
+
+	m_s[0].rx_timer_index =	g_machine.register_timer(
+		std::bind(&Serial::rx_timer, this, 0), 0,
+		false,false,  // one-shot, inactive
+		"COM.rx");
+
+	m_s[0].fifo_timer_index = g_machine.register_timer(
+		std::bind(&Serial::fifo_timer, this, 0), 0,
+		false,false,  // one-shot, inactive
+		"COM.fifo");
+}
+
+void Serial::remove()
+{
+	close();
+
+	if(m_s[0].port < 2) {
+		IODevice::remove(&ioports()->at(m_s[0].port), 1);
+		g_machine.unregister_irq(m_s[0].IRQ);
+		m_s[0].port = 0xFF;
+	}
+
+	g_machine.unregister_timer(m_s[0].tx_timer_index);
+	g_machine.unregister_timer(m_s[0].rx_timer_index);
+	g_machine.unregister_timer(m_s[0].fifo_timer_index);
+}
+
+void Serial::config_changed()
+{
+	/* config_changed is called after the system board has initialised the POS
+	 * so general state and port number are already determined
+	 */
+	close();
 
 	detect_mouse = 0;
 	mouse_port = -1;
 	mouse_type = MOUSE_TYPE_NONE;
 
-	char pname[10];
-
-	/* WARNING
-	 * on the PS/1 2011 there's only 1 serial port and it's controlled by POS register 2.
-	 * I'll keep the Bochs' structure (array of serial_t) just because I don't
-	 * want to introduce new bugs.
-	 * USE ONLY m_s[0]
-	 */
-
-	const unsigned i = 0;
-	sprintf(pname, "COM%d", i+1);
-
-	m_s[i].enabled = true; // a serial port is always defined
-
-	/* serial interrupt */
-	m_s[i].IRQ = ms_irqs[i];
-	g_machine.register_irq(m_s[i].IRQ, pname);
-
-	if(m_s[i].tx_timer_index == NULL_TIMER_HANDLE) {
-		m_s[i].tx_timer_index =
-				g_machine.register_timer(
-						std::bind(&Serial::tx_timer, this, i), 0,
-						false,false, // one-shot, inactive
-						"COM.tx");
-	}
-
-	if(m_s[i].rx_timer_index == NULL_TIMER_HANDLE) {
-		m_s[i].rx_timer_index =
-				g_machine.register_timer(
-						std::bind(&Serial::rx_timer, this, i), 0,
-						false,false,  // one-shot, inactive
-						"COM.rx");
-	}
-	if(m_s[i].fifo_timer_index == NULL_TIMER_HANDLE) {
-		m_s[i].fifo_timer_index =
-				g_machine.register_timer(
-						std::bind(&Serial::fifo_timer, this, i), 0,
-						false,false,  // one-shot, inactive
-						"COM.fifo");
-	}
-
-	for(uint addr = ms_ports[i]; addr < (uint)(ms_ports[i] + 8); addr++) {
-		PDEBUGF(LOG_V2, LOG_COM, "%s initialize register for read/write: 0x%04X\n", pname, addr);
-		if(addr < (uint)(ms_ports[i] + 7)) {
-			g_devices.register_read_handler(this, addr, 3);
-			g_devices.register_write_handler(this, addr, 3);
-		} else {
-			g_devices.register_read_handler(this, addr, 1);
-			g_devices.register_write_handler(this, addr, 1);
-		}
-	}
-
-	m_s[i].io_mode = SER_MODE_NULL;
 	uint8_t mode = g_program.config().get_enum(COM_SECTION, COM_MODE, serial_modes);
 	std::string dev = g_program.config().get_string(COM_SECTION, COM_DEV);
 
 	switch(mode) {
 		case SER_MODE_FILE:
-			init_mode_file(i, dev);
+			init_mode_file(0, dev);
 			break;
 		case SER_MODE_TERM:
-			init_mode_term(i, dev);
+			init_mode_term(0, dev);
 			break;
 		case SER_MODE_RAW:
-			init_mode_raw(i, dev);
+			init_mode_raw(0, dev);
 			break;
 		case SER_MODE_MOUSE:
-			init_mode_mouse(i);
+			init_mode_mouse(0);
 			break;
 		case SER_MODE_SOCKET_CLIENT:
 		case SER_MODE_SOCKET_SERVER:
-			init_mode_socket(i, dev, mode);
+			init_mode_socket(0, dev, mode);
 			break;
 		case SER_MODE_PIPE_CLIENT:
 		case SER_MODE_PIPE_SERVER:
-			init_mode_pipe(i, dev, mode);
+			init_mode_pipe(0, dev, mode);
 			break;
 		case SER_MODE_NULL:
 			break;
 		default:
-			PERRF_ABORT(LOG_COM, "unknown serial i/o mode %d\n", mode);
+			PERRF(LOG_COM, "unknown serial i/o mode %d\n", mode);
+			throw std::exception();
 			break;
-	}
-
-
-	PINFOF(LOG_V0, LOG_COM, "%s at 0x%04x, irq %d (mode: %s)\n", pname,
-			ms_ports[i], m_s[i].IRQ,
-			g_program.config().get_string(COM_SECTION, COM_MODE).c_str());
-
-
-	if((mouse_type == MOUSE_TYPE_SERIAL) ||
-		(mouse_type == MOUSE_TYPE_SERIAL_WHEEL) ||
-		(mouse_type == MOUSE_TYPE_SERIAL_MSYS)) {
-
-		g_machine.register_mouse_fun(
-			std::bind(&Serial::mouse_motion, this, _1, _2, _3, _4)
-		);
 	}
 }
 
-void Serial::config_changed()
+void Serial::close()
 {
-	//TODO
+	for(int i=0; i<SERIAL_MAXDEV; i++) {
+		if(!m_s[i].enabled) {
+			continue;
+		}
+		switch (m_s[i].io_mode) {
+			case SER_MODE_FILE:
+				if(m_s[i].output != nullptr) {
+					fclose(m_s[i].output);
+					m_s[i].output = nullptr;
+				}
+				break;
+			case SER_MODE_TERM:
+				#if SERIAL_ENABLE && !SER_WIN32
+				if(m_s[i].tty_id >= 0) {
+					tcsetattr(m_s[i].tty_id, TCSAFLUSH, &m_s[i].term_orig);
+					m_s[i].tty_id = -1;
+				}
+				#endif
+				break;
+			case SER_MODE_RAW:
+				#if USE_RAW_SERIAL
+				delete[] m_s[i].raw;
+				m_s[i].raw = nullptr;
+				#endif
+				break;
+			case SER_MODE_SOCKET_CLIENT:
+			case SER_MODE_SOCKET_SERVER:
+				if(m_s[i].socket_id != INVALID_SOCKET) {
+					closesocket(m_s[i].socket_id);
+					m_s[i].socket_id = INVALID_SOCKET;
+				}
+				break;
+			case SER_MODE_PIPE_CLIENT:
+			case SER_MODE_PIPE_SERVER:
+				#if SER_WIN32
+				if(m_s[i].pipe) {
+					CloseHandle(m_s[i].pipe);
+					m_s[i].pipe = INVALID_HANDLE_VALUE;
+				}
+				#endif
+				break;
+		}
+		m_s[i].io_mode = SER_MODE_NULL;
+	}
 }
 
 void Serial::save_state(StateBuf &_state)
@@ -259,7 +244,7 @@ void Serial::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_COM, "saving state (not implemented)\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -270,10 +255,48 @@ void Serial::restore_state(StateBuf &_state)
 
 	//TODO restoring the serial state is a lot more than just copy the m_s struct.
 	//for the time being, don't save the machine state while using the serial port
-	//state_header_t h;
-	//h.size = sizeof(m_s);
-	//_state.read(&m_s,h);
 	_state.skip();
+}
+
+void Serial::set_port(uint8_t _port)
+{
+	_port %= 2;
+	_port = !bool(_port); // if _port==1 then is COM1, if _port==0 then COM2, so invert
+
+	if(m_s[0].port == _port) {
+		return;
+	}
+
+	char pname[5];
+	sprintf(pname, "COM%d", _port+1);
+
+	if(m_s[0].port < 2) {
+		IODevice::remove(&ioports()->at(m_s[0].port), 1);
+		g_machine.unregister_irq(m_s[0].IRQ);
+	}
+
+	m_s[0].port = _port;
+	IODevice::install(&ioports()->at(m_s[0].port), 1);
+
+	m_s[0].IRQ = ms_irqs[_port];
+	g_machine.register_irq(m_s[0].IRQ, pname);
+
+	PINFOF(LOG_V0, LOG_COM, "%s at 0x%04x, irq %d (mode: %s)\n",
+			pname,
+			ioports()->at(m_s[0].port).from,
+			m_s[0].IRQ,
+			g_program.config().get_string(COM_SECTION, COM_MODE).c_str());
+}
+
+void Serial::set_enabled(bool _enabled)
+{
+	if(_enabled != m_enabled) {
+		PINFOF(LOG_V1, LOG_COM, "Serial port %s\n", _enabled?"ENABLED":"DISABLED");
+		m_enabled = _enabled;
+		if(_enabled) {
+			reset(DEVICE_SOFT_RESET);
+		}
+	}
 }
 
 void Serial::init_mode_file(uint comn, std::string dev)
@@ -343,33 +366,13 @@ void Serial::init_mode_mouse(uint comn)
 	m_s[comn].io_mode = SER_MODE_MOUSE;
 	mouse_port = comn;
 	mouse_type = g_program.config().get_enum(GUI_SECTION, GUI_MOUSE_TYPE, g_mouse_types);
-}
 
-void Serial::set_port(uint8_t _port)
-{
-	_port %= 2;
-	_port = !bool(_port); // if _port==1 then is COM1, if _port==0 then COM2, so invert
-
-	if(m_s[0].port != _port) {
-		char pname[5];
-		sprintf(pname, "COM%d", _port+1);
-		m_s[0].port = _port;
-		g_machine.unregister_irq(m_s[0].IRQ);
-		m_s[0].IRQ = ms_irqs[_port];
-		g_machine.register_irq(m_s[0].IRQ, pname);
-		PINFOF(LOG_V0, LOG_COM, "Serial port at 0x%04X (%s), irq %d\n",
-				ms_ports[m_s[0].port], pname, m_s[0].IRQ);
-	}
-}
-
-void Serial::set_enabled(bool _enabled)
-{
-	if(_enabled != m_enabled) {
-		PINFOF(LOG_V1, LOG_COM, "Serial port %s\n", _enabled?"ENABLED":"DISABLED");
-		m_enabled = _enabled;
-		if(!_enabled) {
-			reset(DEVICE_SOFT_RESET);
-		}
+	if((mouse_type == MOUSE_TYPE_SERIAL) ||
+		(mouse_type == MOUSE_TYPE_SERIAL_WHEEL) ||
+		(mouse_type == MOUSE_TYPE_SERIAL_MSYS)) {
+		g_machine.register_mouse_fun(
+			std::bind(&Serial::mouse_motion, this, _1, _2, _3, _4)
+		);
 	}
 }
 
@@ -503,15 +506,16 @@ void Serial::lower_interrupt(uint8_t port)
 		(m_s[port].ms_interrupt == 0) &&
 		(m_s[port].fifo_interrupt == 0))
 	{
-		g_pic.lower_irq(m_s[port].IRQ);
+		m_devices->pic()->lower_irq(m_s[port].IRQ);
 	}
 }
 
 void Serial::reset(uint)
 {
 	mouse_internal_buffer.num_elements = 0;
-	for(uint i=0; i<MOUSE_BUFF_SIZE; i++)
+	for(uint i=0; i<MOUSE_BUFF_SIZE; i++) {
 		mouse_internal_buffer.buffer[i] = 0;
+	}
 	mouse_internal_buffer.head = 0;
 	mouse_delayed_dx = 0;
 	mouse_delayed_dy = 0;
@@ -658,13 +662,13 @@ void Serial::raise_interrupt(uint8_t port, int type)
 	}
 
 	if(gen_int && m_s[port].modem_cntl.out2) {
-		g_pic.raise_irq(m_s[port].IRQ);
+		m_devices->pic()->raise_irq(m_s[port].IRQ);
 	}
 }
 
-uint16_t Serial::read(uint16_t address, unsigned io_len)
+uint16_t Serial::read(uint16_t address, unsigned /*io_len*/)
 {
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	if(!m_enabled) {
 		//POST tests only LCR with port disabled
@@ -674,12 +678,6 @@ uint16_t Serial::read(uint16_t address, unsigned io_len)
 
 	uint8_t offset, val;
 	uint16_t ret16;
-
-	if(io_len == 2) {
-		ret16 = read(address, 1);
-		ret16 |= (read(address + 1, 1)) << 8;
-		return ret16;
-	}
 
 	offset = address & 0x07;
 
@@ -859,9 +857,9 @@ uint16_t Serial::read(uint16_t address, unsigned io_len)
 }
 
 
-void Serial::write(uint16_t address, uint16_t value, unsigned io_len)
+void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 {
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	if(!m_enabled) {
 		return;
@@ -876,12 +874,6 @@ void Serial::write(uint16_t address, uint16_t value, unsigned io_len)
 	int new_baudrate;
 	bool restart_timer = 0;
 
-
-	if(io_len == 2) {
-		write(address, (value & 0xff), 1);
-		write(address + 1, ((value >> 8) & 0xff), 1);
-		return;
-	}
 
 	offset = address & 0x07;
 	/* port is always 0

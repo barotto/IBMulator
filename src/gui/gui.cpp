@@ -205,6 +205,11 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	show_welcome_screen();
 }
 
+void GUI::config_changed()
+{
+	m_windows.config_changed();
+}
+
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
 {
 	int x, y;
@@ -1382,6 +1387,20 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	debugger = new SysDebugger(_machine, _gui);
 	stats = new Stats(_machine, _gui, _mixer);
 	devices = new DevStatus(_gui);
+}
+
+void GUI::Windows::config_changed()
+{
+	desktop->config_changed();
+	interface->config_changed();
+	if(status) {
+		status->config_changed();
+	}
+	if(debug_wnds) {
+		debugger->config_changed();
+		devices->config_changed();
+		stats->config_changed();
+	}
 }
 
 void GUI::Windows::toggle()

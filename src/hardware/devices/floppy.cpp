@@ -72,7 +72,15 @@ extern "C" {
 #include <iomanip>
 using namespace std::placeholders;
 
-FloppyCtrl g_floppy;
+IODEVICE_PORTS(FloppyCtrl) = {
+	{ 0x03F0, 0x03F1, PORT_8BIT|PORT_R_ }, //Status Register A / B
+	{ 0x03F2, 0x03F2, PORT_8BIT|PORT_RW }, // DOR
+	{ 0x03F4, 0x03F4, PORT_8BIT|PORT_RW }, // MSR R / DSR W
+	{ 0x03F5, 0x03F5, PORT_8BIT|PORT_RW }, // FIFO R/W
+	{ 0x03F7, 0x03F7, PORT_8BIT|PORT_RW }  // DIR R / CCR W
+};
+#define FLOPPY_DMA_CHAN 2
+#define FLOPPY_IRQ      6
 
 enum FDCInterfaceRegisters {
 
@@ -161,12 +169,8 @@ enum FDCStatusRegisters {
 #define FDC_ST_HDS(DRIVE) ((m_s.head[DRIVE]<<2) | DRIVE)
 #define FDC_DOR_DRIVE(DRIVE) ((m_s.DOR & 0xFC) | DRIVE)
 
-
 #define FROM_FLOPPY 10
 #define TO_FLOPPY   11
-
-#define FLOPPY_DMA_CHAN 2
-#define FLOPPY_IRQ      6
 
 
 typedef struct {
@@ -217,16 +221,9 @@ static std::map<std::string, uint> disk_types_525 = {
 	{ "1.2M", FLOPPY_1_2  }
 };
 
-FloppyCtrl::FloppyCtrl()
+FloppyCtrl::FloppyCtrl(Devices *_dev)
+: IODevice(_dev)
 {
-	memset(&m_s, 0, sizeof(m_s));
-	m_timer_index = NULL_TIMER_HANDLE;
-	for(uint i=0; i<4; i++) {
-		m_media[i].fd = -1;
-		m_media_present[i] = false;
-		m_device_type[i] = FDD_NONE;
-	}
-	m_num_installed_floppies = 0;
 }
 
 FloppyCtrl::~FloppyCtrl()
@@ -236,32 +233,25 @@ FloppyCtrl::~FloppyCtrl()
 	}
 }
 
-void FloppyCtrl::init(void)
+void FloppyCtrl::install(void)
 {
-	g_dma.register_8bit_channel(FLOPPY_DMA_CHAN,
+	IODevice::install();
+
+	memset(&m_s, 0, sizeof(m_s));
+
+	m_devices->dma()->register_8bit_channel(
+			FLOPPY_DMA_CHAN,
 			std::bind(&FloppyCtrl::dma_read, this, _1, _2),
 			std::bind(&FloppyCtrl::dma_write, this, _1, _2),
-			get_name());
-	g_machine.register_irq(FLOPPY_IRQ, get_name());
-
-	g_devices.register_read_handler(this, 0x03F0, 1);  //Status Register A R
-	g_devices.register_read_handler(this, 0x03F1, 1);  //Status Register B R
-	g_devices.register_read_handler(this, 0x03F2, 1);  //DOR R
-	g_devices.register_write_handler(this, 0x03F2, 1); //DOR W; on the PS/1 tech ref is read-only,
-	                                                   //on the 82077AA datasheet is R/W
-	g_devices.register_read_handler(this, 0x03F4, 1);  // MSR R
-	g_devices.register_write_handler(this, 0x03F4, 1); // DSR W (03F4 should be read only on AT-PS2-Mod30)
-	g_devices.register_read_handler(this, 0x03F5, 1);  // FIFO R
-	g_devices.register_write_handler(this, 0x03F5, 1); // FIFO W
-	g_devices.register_read_handler(this, 0x03F7, 1);  // DIR R
-	g_devices.register_write_handler(this, 0x03F7, 1); // CCR W
+			name());
+	g_machine.register_irq(FLOPPY_IRQ, name());
 
 	m_timer_index = g_machine.register_timer(
 			std::bind(&FloppyCtrl::timer,this),
 			250,    // period usec
 			false,  // continuous
 			false,  // active
-			get_name()//name
+			name()//name
 	);
 
 	for(uint i=0; i<4; i++) {
@@ -278,10 +268,26 @@ void FloppyCtrl::init(void)
 		m_disk_changed[i]          = false;
 		m_drive_booted[i]          = false;
 	}
+	m_num_installed_floppies = 0;
 
-	m_fx[0].init("A");
-	m_fx[1].init("B");
-	config_changed();
+	m_fx[0].install("A");
+	m_fx[1].install("B");
+}
+
+void FloppyCtrl::remove()
+{
+	IODevice::remove();
+
+	for(int i = 0; i < 2; i++) {
+		m_media[i].close();
+	}
+
+	m_devices->dma()->unregister_channel(FLOPPY_DMA_CHAN);
+	g_machine.unregister_irq(FLOPPY_IRQ);
+	g_machine.unregister_timer(m_timer_index);
+
+	m_fx[0].remove();
+	m_fx[1].remove();
 }
 
 void FloppyCtrl::config_changed()
@@ -316,7 +322,7 @@ void FloppyCtrl::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_FDC, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -326,7 +332,7 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_FDC, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -341,38 +347,53 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 	}
 }
 
-void FloppyCtrl::floppy_drive_setup(uint drive)
+unsigned FloppyCtrl::config_drive_type(unsigned drive)
 {
-	const char *drivename, *section, *typekey;
-	assert(drive<=1);
+	assert(drive < 2);
+
+	const char *typekey;
 	if(drive == 0) {
-		drivename = "A";
-		section = DISK_A_SECTION;
 		typekey = DRIVES_FDD_A;
 	} else {
-		drivename = "B";
-		section = DISK_B_SECTION;
 		typekey = DRIVES_FDD_B;
 	}
-
-	std::map<std::string, uint> * mediatypes = nullptr;
 	uint devtype;
 	try {
 		devtype = g_program.config().get_enum(DRIVES_SECTION, typekey, drive_types);
-		if(devtype == FDD_350HD) {
-			mediatypes = &disk_types_350;
-		} else if(devtype == FDD_525HD) {
-			mediatypes = &disk_types_525;
-		}
 	} catch(std::exception &e) {
 		devtype = FDD_NONE;
 	}
 
+	return devtype;
+}
+
+void FloppyCtrl::floppy_drive_setup(uint drive)
+{
+	assert(drive < 2);
+
+	const char *drivename, *section;
+	if(drive == 0) {
+		drivename = "A";
+		section = DISK_A_SECTION;
+	} else {
+		drivename = "B";
+		section = DISK_B_SECTION;
+	}
+
+	unsigned devtype = config_drive_type(drive);
 	m_device_type[drive] = devtype;
+	std::map<std::string, uint> *mediatypes = nullptr;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;
 		PINFOF(LOG_V0, LOG_FDC, "Installed floppy %s as %s\n",
 				drivename, devtype==FDD_350HD?"3.5 HD":"5.25 HD");
+		if(devtype == FDD_350HD) {
+			mediatypes = &disk_types_350;
+		} else if(devtype == FDD_525HD) {
+			mediatypes = &disk_types_525;
+		} else {
+			throw std::exception();
+		}
 	} else {
 		return;
 	}
@@ -477,9 +498,9 @@ void FloppyCtrl::reset(unsigned type)
 		m_s.rddata[i]       = false;
 	}
 
-	g_pic.lower_irq(FLOPPY_IRQ);
+	m_devices->pic()->lower_irq(FLOPPY_IRQ);
 	if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-		g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
+		m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 	}
 	enter_idle_phase();
 }
@@ -500,7 +521,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 
 	PDEBUGF(LOG_V2, LOG_FDC, "read  0x%04X [%02X] ", _address, m_s.pending_command);
 
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	switch(_address) {
 
@@ -510,7 +531,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 			// Bit 7 : INT PENDING
 			value |= (m_s.pending_irq << 7);
 			// Bit 6 : DRQ
-			value |= (g_dma.get_DRQ(FLOPPY_DMA_CHAN) << 6);
+			value |= (m_devices->dma()->get_DRQ(FLOPPY_DMA_CHAN) << 6);
 			// Bit 5 : STEP F/F
 			value |= (m_s.step[drive] << 5);
 			// Bit 4 : TRK0
@@ -668,7 +689,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 {
 	PDEBUGF(LOG_V2, LOG_FDC, "write 0x%04X      ", _address);
 
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	switch (_address) {
 
@@ -1089,7 +1110,7 @@ void FloppyCtrl::floppy_command()
 			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 				PWARNF(LOG_FDC, "format track: non-DMA floppy format unimplemented\n");
 			} else {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
+				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
 			/* data reg not ready, controller busy */
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
@@ -1217,7 +1238,7 @@ void FloppyCtrl::floppy_command()
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 					m_s.main_status_reg |= FDC_MSR_RQM;
 				} else {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
+					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			} else {
 				PERRF_ABORT(LOG_FDC, "unknown read/write command\n");
@@ -1340,7 +1361,7 @@ void FloppyCtrl::timer()
 			} else {
 				// transfer next sector
 				if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
+					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			}
 			m_s.step[drive] = true;
@@ -1356,7 +1377,7 @@ void FloppyCtrl::timer()
 				m_s.main_status_reg &= ~FDC_MSR_CMDBUSY;  // clear busy bit
 				m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_DIO;  // data byte waiting
 			} else {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
+				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
 			m_s.step[drive] = true;
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
@@ -1370,7 +1391,7 @@ void FloppyCtrl::timer()
 			} else {
 				// transfer next sector
 				if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, true);
+					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			}
 			m_s.step[drive] = true;
@@ -1403,7 +1424,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 	//
 	// maxlen is the maximum length of the DMA transfer
 
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	uint8_t drive = current_drive();
 	uint16_t len = 512 - m_s.floppy_buffer_index;
@@ -1428,13 +1449,13 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 					drive, m_s.cylinder[drive], m_s.head[drive], m_s.sector[drive]);
 
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
+				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			enter_result_phase();
 		} else { // more data to transfer
 			floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
+				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			uint32_t sector_time = calculate_rw_delay(drive, false);
 			g_machine.activate_timer(m_timer_index, sector_time, 0);
@@ -1454,7 +1475,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 	uint8_t drive = current_drive();
 	uint32_t sector_time;
 
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DMA read DRV%u\n", drive);
 
@@ -1486,7 +1507,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 
 				floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
 				if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-					g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
+					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 				}
 				sector_time = calculate_rw_delay(drive, false);
 				g_machine.activate_timer(m_timer_index, sector_time, 0);
@@ -1522,7 +1543,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 			increment_sector(); // increment to next sector after writing current one
 			m_s.floppy_buffer_index = 0;
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
-				g_dma.set_DRQ(FLOPPY_DMA_CHAN, false);
+				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			g_machine.activate_timer(m_timer_index, sector_time, 0);
 		}
@@ -1532,7 +1553,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 
 void FloppyCtrl::raise_interrupt(void)
 {
-	  g_pic.raise_irq(FLOPPY_IRQ);
+	m_devices->pic()->raise_irq(FLOPPY_IRQ);
 	  m_s.pending_irq = 1;
 	  m_s.reset_sensei = 0;
 }
@@ -1540,7 +1561,7 @@ void FloppyCtrl::raise_interrupt(void)
 void FloppyCtrl::lower_interrupt(void)
 {
 	if(m_s.pending_irq) {
-		g_pic.lower_irq(FLOPPY_IRQ);
+		m_devices->pic()->lower_irq(FLOPPY_IRQ);
 		m_s.pending_irq = 0;
 	}
 }
@@ -1835,7 +1856,7 @@ bool FloppyCtrl::get_TC(void)
 				(m_s.sector[drive] == m_s.eot[drive]) &&
 				(m_s.head[drive] == (m_media[drive].heads - 1)));
 	} else {
-		terminal_count = g_dma.get_TC();
+		terminal_count = m_devices->dma()->get_TC();
 	}
 	return terminal_count;
 }

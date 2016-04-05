@@ -90,8 +90,6 @@ void Mixer::init(Machine *_machine)
 	for(i=0; i<count; ++i) {
 		PINFOF(LOG_V1, LOG_MIXER, "Audio device %d: %s\n", i, SDL_GetAudioDeviceName(i, 0));
 	}
-
-	config_changed();
 	m_paused = false;
 }
 
@@ -200,7 +198,7 @@ void Mixer::main_loop()
 			std::this_thread::sleep_for( std::chrono::microseconds(sleep + m_next_beat_diff) );
 			m_main_chrono.start();
 			uint64_t t1 = m_main_chrono.get_usec();
-			assert(t1 > t0);
+			assert(t1 >= t0);
 			time_slept = (t1 - t0);
 			time_span_us += time_slept;
 			m_next_beat_diff = (sleep+m_next_beat_diff) - time_slept;
@@ -444,6 +442,11 @@ std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _call
 	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_device_spec.channels),
 		unsigned(m_device_spec.freq)});
 	return ch;
+}
+
+void Mixer::unregister_channel(std::shared_ptr<MixerChannel> _channel)
+{
+	m_mix_channels.erase(_channel->name());
 }
 
 void Mixer::sig_config_changed()

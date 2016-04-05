@@ -38,10 +38,6 @@ Window(_gui, "status.rml")
 	m_status.floppy_a_led = get_element("floppy_a_led");
 	m_status.floppy_b_led = get_element("floppy_b_led");
 	m_status.hdd_led = get_element("hdd_led");
-	m_leds.power = false;
-	m_leds.floppy_a = false;
-	m_leds.floppy_b = false;
-	m_leds.hdd = false;
 }
 
 Status::~Status()
@@ -52,39 +48,59 @@ void Status::update()
 {
 	bool motor;
 
-	motor = g_floppy.is_motor_on(0);
-	if(motor && m_leds.floppy_a==false) {
-		m_leds.floppy_a = true;
-		m_status.floppy_a_led->SetClass("led_active", true);
-	} else if(!motor && m_leds.floppy_a==true) {
-		m_leds.floppy_a = false;
-		m_status.floppy_a_led->SetClass("led_active", false);
-	}
-	motor = g_floppy.is_motor_on(1);
-	if(motor && m_leds.floppy_b==false) {
-		m_leds.floppy_b = true;
-		m_status.floppy_b_led->SetClass("led_active", true);
-	} else if(!motor && m_leds.floppy_b==true) {
-		m_leds.floppy_b = false;
-		m_status.floppy_b_led->SetClass("led_active", false);
-	}
-
-	bool hdd_busy = g_harddrv.is_busy();
-	if(hdd_busy && m_leds.hdd==false) {
-		m_leds.hdd = true;
-		m_status.hdd_led->SetClass("led_active", true);
-	} else if(!hdd_busy && m_leds.hdd==true) {
-		m_leds.hdd = false;
-		m_status.hdd_led->SetClass("led_active", false);
-	}
-
-	if(g_machine.is_on() && m_leds.power==false) {
+	//Power led
+	if(m_gui->machine()->is_on() && m_leds.power==false) {
 		m_leds.power = true;
 		m_status.power_led->SetClass("led_active", true);
-	} else if(!g_machine.is_on() && m_leds.power==true) {
+	} else if(!m_gui->machine()->is_on() && m_leds.power==true) {
 		m_leds.power = false;
 		m_status.power_led->SetClass("led_active", false);
 	}
+	if(m_floppy) {
+		//Floppy A
+		motor = m_floppy->is_motor_on(0);
+		if(motor && m_leds.floppy_a==false) {
+			m_leds.floppy_a = true;
+			m_status.floppy_a_led->SetClass("led_active", true);
+		} else if(!motor && m_leds.floppy_a==true) {
+			m_leds.floppy_a = false;
+			m_status.floppy_a_led->SetClass("led_active", false);
+		}
+		//Floppy B
+		motor = m_floppy->is_motor_on(1);
+		if(motor && m_leds.floppy_b==false) {
+			m_leds.floppy_b = true;
+			m_status.floppy_b_led->SetClass("led_active", true);
+		} else if(!motor && m_leds.floppy_b==true) {
+			m_leds.floppy_b = false;
+			m_status.floppy_b_led->SetClass("led_active", false);
+		}
+	}
+	if(m_hdd) {
+		//HDD
+		bool hdd_busy = m_hdd->is_busy();
+		if(hdd_busy && m_leds.hdd==false) {
+			m_leds.hdd = true;
+			m_status.hdd_led->SetClass("led_active", true);
+		} else if(!hdd_busy && m_leds.hdd==true) {
+			m_leds.hdd = false;
+			m_status.hdd_led->SetClass("led_active", false);
+		}
+	}
+}
+
+void Status::config_changed()
+{
+	m_floppy = m_gui->machine()->devices().device<FloppyCtrl>();
+	m_hdd = m_gui->machine()->devices().device<HardDrive>();
+	m_leds.power = false;
+	m_leds.floppy_a = false;
+	m_leds.floppy_b = false;
+	m_leds.hdd = false;
+	m_status.power_led->SetClass("led_active", false);
+	m_status.floppy_a_led->SetClass("led_active", false);
+	m_status.floppy_b_led->SetClass("led_active", false);
+	m_status.hdd_led->SetClass("led_active", false);
 }
 
 void Status::ProcessEvent(Rocket::Core::Event &)

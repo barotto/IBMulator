@@ -25,8 +25,6 @@
 #include "harddrvfx.h"
 #include <memory>
 
-class HardDrive;
-extern HardDrive g_harddrv;
 
 #define HDD_DATA_STACK_SIZE 518
 
@@ -41,6 +39,8 @@ struct HDDPerformance
 
 class HardDrive : public IODevice
 {
+	IODEVICE(HardDrive, "PS/1 Hard Drive")
+
 private:
 
 	struct DataBuffer {
@@ -235,17 +235,16 @@ private:
 	void cmd_undefined();
 
 public:
-
-	HardDrive();
+	HardDrive(Devices *_dev);
 	~HardDrive();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned type);
 	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);
-	const char *get_name() { return "Hard Drive"; }
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

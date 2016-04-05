@@ -76,11 +76,12 @@ void Stats::update()
 	uint hundredths = fmod(double(remainder),18.21) * 100;
 	ss << "DOS clock: " << hour << ":" << minute << ":" << second << "." << hundredths;
 	ss << "<br />";
-	hour = g_cmos.get_reg(4);
+	CMOS *cmos = m_gui->machine()->devices().cmos();
+	hour = cmos->get_reg(4);
 	hour = ((hour>>4)*10) + (hour&0xF);
-	minute = g_cmos.get_reg(2);
+	minute = cmos->get_reg(2);
 	minute = ((minute>>4)*10) + (minute&0xF);
-	second = g_cmos.get_reg(0);
+	second = cmos->get_reg(0);
 	second = ((second>>4)*10) + (second&0xF);
 	ss << "RTC clock: " << hour << ":" << minute << ":" << second;
 

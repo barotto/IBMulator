@@ -28,9 +28,31 @@
 #include "gui/gui.h"
 #include <cstring>
 
+IODEVICE_PORTS(VGA) = {
+	{ 0x03B4, 0x03B5, PORT_8BIT|PORT_RW }, //3B4-3B5 CRTC Controller Address / Data
+	{ 0x03BA, 0x03BA, PORT_8BIT|PORT_RW }, //3BA mono Input Status #1 (R) / Feature Control (W)
+	{ 0x03C0, 0x03C0, PORT_8BIT|PORT_RW }, //3C0 Attribute Address/Data
+	{ 0x03C1, 0x03C1, PORT_8BIT|PORT_RW }, //3C1 Attribute Data Read
+	{ 0x03C2, 0x03C2, PORT_8BIT|PORT_RW }, //3C2 Input Status #0 (R) / Miscellaneous Output (W)
+	{ 0x03C3, 0x03C3, PORT_8BIT|PORT_RW }, //3C3 Video subsystem enable
+	{ 0x03C4, 0x03C4, PORT_8BIT|PORT_RW }, //3C4 Sequencer Address
+	{ 0x03C5, 0x03C5, PORT_8BIT|PORT_RW }, //3C5 Sequencer Data
+	{ 0x03C6, 0x03C6, PORT_8BIT|PORT_RW }, //3C6 PEL mask
+	{ 0x03C7, 0x03C7, PORT_8BIT|PORT_RW }, //3C7 DAC State (R) / DAC Address Read Mode (W)
+	{ 0x03C8, 0x03C8, PORT_8BIT|PORT_RW }, //3C8 PEL Address
+	{ 0x03C9, 0x03C9, PORT_8BIT|PORT_RW }, //3C9 PEL Data
+	{ 0x03CA, 0x03CA, PORT_8BIT|PORT_R_ }, //3CA Feature Control (R)
+	{ 0x03CC, 0x03CC, PORT_8BIT|PORT_R_ }, //3CC Miscellaneous Output (R)
+	{ 0x03CE, 0x03CE, PORT_8BIT|PORT_RW }, //3CE Graphics Controller Address
+	{ 0x03CF, 0x03CF, PORT_8BIT|PORT_RW }, //3CF Graphics Controller Data
+	{ 0x03D4, 0x03D5, PORT_8BIT|PORT_RW }, //3D4-3D5 CRTC Controller Address / Data
+	{ 0x03D0, 0x03D0, PORT_8BIT|PORT__W }, //3D0 CGA same as 3D4
+	{ 0x03D1, 0x03D1, PORT_8BIT|PORT_RW }, //3D1 CGA same as 3D5
+	{ 0x03D2, 0x03D2, PORT_8BIT|PORT__W }, //3D2 CGA same as 3D4
+	{ 0x03D3, 0x03D3, PORT_8BIT|PORT_RW }, //3D3 CGA same as 3D5
+	{ 0x03DA, 0x03DA, PORT_8BIT|PORT_RW }  //3DA color Input Status #1 (R) / Feature Control (W)
+};
 #define VGA_IRQ 9
-
-VGA g_vga;
 
 // Only reference the array if the tile numbers are within the bounds
 // of the array.  If out of bounds, do nothing.
@@ -72,7 +94,8 @@ static const uint8_t ccdat[16][4] = {
 };
 
 
-VGA::VGA()
+VGA::VGA(Devices *_dev)
+: IODevice(_dev)
 {
 	m_s.memory = nullptr;
 	m_s.vga_tile_updated = nullptr;
@@ -83,64 +106,24 @@ VGA::~VGA()
 {
 	if(m_s.memory != nullptr) {
 		delete[] m_s.memory;
-		m_s.memory = nullptr;
 	}
 	if(m_s.vga_tile_updated != nullptr) {
 		delete[] m_s.vga_tile_updated;
-		m_s.vga_tile_updated = nullptr;
 	}
 }
 
-void VGA::init()
+
+void VGA::install()
 {
-	uint addr, i;
-
-	g_machine.register_irq(VGA_IRQ, get_name());
-
-	for(addr=0x03B4; addr<=0x03B5; addr++) {
-		g_devices.register_read_handler(this, addr, 1);
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
-	for(addr=0x03BA; addr<=0x03BA; addr++) {
-		g_devices.register_read_handler(this, addr, 1);
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
-	i = 0;
-	uint8_t io_mask[16] = {3, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1};
-	for(addr=0x03C0; addr<=0x03CF; addr++) {
-		g_devices.register_read_handler(this, addr, io_mask[i++]);
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
-	for(addr=0x03D4; addr<=0x03D5; addr++) {
-		g_devices.register_read_handler(this, addr, 3);
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
-	//CGA (Color Graphics Adapter) - MIRRORS OF 03D4/03D5
-	for(addr=0x03D0; addr<=0x03D3; addr++) {
-		if(addr & 1) {
-			//only 3d1 and 3d3 are RW
-			g_devices.register_read_handler(this, addr, 3);
-		}
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
-	for(addr=0x03DA; addr<=0x03DA; addr++) {
-		g_devices.register_read_handler(this, addr, 1);
-		g_devices.register_write_handler(this, addr, 3);
-	}
-
+	IODevice::install();
+	g_machine.register_irq(VGA_IRQ, name());
 	m_timer_id = g_machine.register_timer(
 		nullptr,
 		0,
 		false, //continuous
 		false, //active
-		get_name()
+		name()
 	);
-
 	g_memory.register_trap(0xA0000, 0xBFFFF, 3, [this] (uint32_t addr, uint rw, uint16_t value, uint8_t len) {
 		if(rw == 0) { //read
 			PDEBUGF(LOG_V2, LOG_VGA, "%s[0x%05X] = 0x%04X\n", len==1?"b":"w", addr, value);
@@ -148,6 +131,13 @@ void VGA::init()
 			PDEBUGF(LOG_V2, LOG_VGA, "%s[0x%05X] := 0x%04X\n", len==1?"b":"w", addr, value);
 		}
 	});
+}
+
+void VGA::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(VGA_IRQ);
+	g_machine.unregister_timer(m_timer_id);
 }
 
 void VGA::reset(uint)
@@ -226,7 +216,7 @@ void VGA::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_VGA, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 
@@ -253,7 +243,7 @@ void VGA::restore_state(StateBuf &_state)
 	//state object
 	delete[] m_s.memory;
 	delete[] m_s.vga_tile_updated;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -363,17 +353,11 @@ void VGA::calculate_retrace_timing()
 	}
 }
 
-uint16_t VGA::read(uint16_t address, uint io_len)
+uint16_t VGA::read(uint16_t address, uint /*io_len*/)
 {
 	uint64_t display_usec, line_usec, now_usec;
 	uint16_t ret16;
 	uint8_t retval;
-
-	if(io_len == 2) {
-		ret16 = read(address, 1);
-		ret16 |= (read(address+1, 1)) << 8;
-		return ret16;
-	}
 
 	PDEBUGF(LOG_V2, LOG_VGA, "io read from 0x%04x\n", address);
 
@@ -617,28 +601,19 @@ uint16_t VGA::read(uint16_t address, uint io_len)
 			return(m_s.CRTC.reg[m_s.CRTC.address]);
 
 		case 0x03b4: /* CRTC Index Register (monochrome emulation modes) */
-		case 0x03cb: /* not sure but OpenBSD reads it a lot */
 		default:
 			PDEBUGF(LOG_V1, LOG_VGA, "io read from vga port 0x%04x\n", address);
 			return(0); /* keep compiler happy */
 	}
 }
 
-void VGA::write(uint16_t address, uint16_t value, uint io_len)
+void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 {
 	uint8_t charmap1, charmap2, prev_memory_mapping;
 	bool prev_video_enabled, prev_line_graphics, prev_int_pal_size, prev_graphics_alpha;
 	bool needs_update = 0, charmap_update = 0;
 
-	if(io_len == 1) {
-		PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x%04x = 0x%02x\n", address, value);
-	}
-
-	if(io_len == 2) {
-		write(address, value & 0xff, 1);
-		write(address+1, (value >> 8) & 0xff, 1);
-		return;
-	}
+	PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x%04x = 0x%02x\n", address, value);
 
 	if((address >= 0x03b0) && (address <= 0x03bf) && (m_s.misc_output.color_emulation))
 		return;
@@ -896,18 +871,6 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 			}
 			break;
 
-		case 0x03ca: /* Graphics 2 Position (EGA) */
-			// ignore, EGA only???
-			break;
-
-		case 0x03cc: /* Graphics 1 Position (EGA) */
-			// ignore, EGA only???
-			break;
-
-		case 0x03cd: /* ??? */
-			PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x03cd = 0x%02x\n", value);
-			break;
-
 		case 0x03ce: /* Graphics Controller Index Register */
 			if(value > 0x08) { /* ??? */
 				PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03ce: value > 8\n");
@@ -1096,7 +1059,6 @@ void VGA::write(uint16_t address, uint16_t value, uint io_len)
 			PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03da: ignoring: feature ctrl & vert sync\n");
 			break;
 
-		case 0x03c1: /* */
 		default:
 			PDEBUGF(LOG_V0, LOG_VGA, "unsupported io write to port 0x%04x, val=0x%02x\n", address, value);
 			break;
@@ -1166,14 +1128,14 @@ void VGA::raise_interrupt()
 {
 	if(m_s.CRTC.reg[0x11] & 0x10) {
 		PDEBUGF(LOG_V2, LOG_VGA, "raising IRQ %d\n", VGA_IRQ);
-		g_pic.raise_irq(VGA_IRQ);
+		m_devices->pic()->raise_irq(VGA_IRQ);
 		m_s.CRTC.interrupt = true;
 	}
 }
 
 void VGA::lower_interrupt()
 {
-	g_pic.lower_irq(VGA_IRQ);
+	m_devices->pic()->lower_irq(VGA_IRQ);
 	m_s.CRTC.interrupt = false;
 }
 

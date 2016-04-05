@@ -24,9 +24,6 @@
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
-class VGA;
-extern VGA g_vga;
-
 // text mode blink feature
 #define TEXT_BLINK_MODE      0x01
 #define TEXT_BLINK_TOGGLE    0x02
@@ -50,6 +47,8 @@ struct TextModeInfo
 
 class VGA : public IODevice
 {
+	IODEVICE(VGA, "VGA")
+
 protected:
 	struct {
 		struct {
@@ -209,14 +208,14 @@ protected:
 	void lower_interrupt();
 
 public:
-	VGA();
+	VGA(Devices *_dev);
 	~VGA();
 
-	void init();
+	void install();
+	void remove();
 	void reset(uint type);
 	uint16_t read(uint16_t address, uint io_len);
 	void write(uint16_t address, uint16_t value, uint io_len);
-	const char* get_name() { return "VGA"; }
 	void power_off();
 
 	uint8_t mem_read(uint32_t addr);

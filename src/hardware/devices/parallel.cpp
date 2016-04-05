@@ -34,10 +34,13 @@
 #define LPT_STAT   1
 #define LPT_CTRL   2
 
-uint16_t Parallel::ms_ports[3] = {0x03BC, 0x0378, 0x0278};
+IODEVICE_PORTS(Parallel) = {
+	{ 0x3BC, 0x3BE, PORT_8BIT|PORT_RW },
+	{ 0x378, 0x37A, PORT_8BIT|PORT_RW },
+	{ 0x278, 0x27A, PORT_8BIT|PORT_RW }
+};
 uint16_t Parallel::ms_irqs[3]  = {7, 7, 5};
 
-Parallel g_parallel;
 
 std::map<std::string, uint> Parallel::ms_lpt_ports = {
 	{ "LPT1", 0 },
@@ -45,7 +48,8 @@ std::map<std::string, uint> Parallel::ms_lpt_ports = {
 	{ "LPT3", 2 }
 };
 
-Parallel::Parallel()
+Parallel::Parallel(Devices *_dev)
+: IODevice(_dev)
 {
 	memset(&m_s, 0, sizeof(parport_t));
 }
@@ -57,27 +61,25 @@ Parallel::~Parallel()
 	}
 }
 
-void Parallel::init(void)
+void Parallel::install(void)
 {
-	//on the PS/1 there'm_s only 1 port and it's address assignment is
+	//on the PS/1 there's only 1 port and its address assignment is
 	//controlled by POS register 2.
-
-	/* parallel interrupt and i/o ports */
-	for(uint i=0; i<LPT_MAXDEV; i++) {
-		for(int addr=ms_ports[i]; addr<=ms_ports[i]+2; addr++) {
-			g_devices.register_read_handler(this, addr, 1);
-		}
-		g_devices.register_write_handler(this, ms_ports[i], 1);
-		g_devices.register_write_handler(this, ms_ports[i]+2, 1);
-	}
-
-	m_s.mode = PARPORT_COMPATIBLE;
-	m_s.port = g_program.config().get_enum(LPT_SECTION, LPT_PORT, ms_lpt_ports);
-	m_enabled = g_program.config().get_bool(LPT_SECTION, LPT_ENABLED);
-
-	config_changed();
+	// don't install the ioports, POS will take care of that
+	m_enabled = false; // POS determines the general state
+	m_s.port = 0xFF;   // POS will set the port
+	m_s.mode = 0xFF;
 
 	// virtual_printer() opens output file on demand
+}
+
+void Parallel::remove()
+{
+	if(m_s.port < 3) {
+		IODevice::remove(&ioports()->at(m_s.port), 1);
+		g_machine.unregister_irq(ms_irqs[m_s.port]);
+		m_s.port = 0xFF;
+	}
 }
 
 void Parallel::reset(unsigned)
@@ -103,14 +105,8 @@ void Parallel::config_changed()
 {
 	if(m_s.output != nullptr) {
 		fclose(m_s.output);
+		m_s.output = nullptr;
 	}
-
-	m_s.port = g_program.config().get_enum(LPT_SECTION, LPT_PORT, ms_lpt_ports);
-	m_enabled = g_program.config().get_bool(LPT_SECTION, LPT_ENABLED);
-
-	PINFOF(LOG_V0, LOG_LPT, "Parallel port at 0x%04X (LPT%d), irq %d, mode %s\n",
-			ms_ports[m_s.port], m_s.port+1, ms_irqs[m_s.port],
-			m_s.mode==PARPORT_COMPATIBLE?"COMPATIBLE":"EXTENDED");
 }
 
 void Parallel::save_state(StateBuf &_state)
@@ -118,7 +114,7 @@ void Parallel::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_LPT, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -128,7 +124,7 @@ void Parallel::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_LPT, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -138,11 +134,11 @@ void Parallel::restore_state(StateBuf &_state)
 void Parallel::set_mode(uint8_t _mode)
 {
 	if(_mode != m_s.mode) {
-		if(_mode == PARPORT_EXTENDED)
+		if(_mode == PARPORT_EXTENDED) {
 			PINFOF(LOG_V1, LOG_LPT, "Parallel mode EXTENDED\n");
-		else
+		} else {
 			PINFOF(LOG_V1, LOG_LPT, "Parallel mode COMPATIBLE\n");
-
+		}
 		m_s.mode = _mode;
 	}
 }
@@ -151,12 +147,27 @@ void Parallel::set_port(uint8_t _port)
 {
 	_port %= 3;
 
-	if(m_s.port != _port) {
-		m_s.port = _port;
-		PINFOF(LOG_V0, LOG_LPT, "Parallel port at 0x%04X (LPT%d), irq %d, mode %s\n",
-				ms_ports[m_s.port], m_s.port+1, ms_irqs[m_s.port],
-				m_s.mode==PARPORT_COMPATIBLE?"COMPATIBLE":"EXTENDED");
+	if(m_s.port == _port) {
+		return;
 	}
+
+	char pname[5];
+	sprintf(pname, "LPT%d", _port+1);
+
+	if(m_s.port < 3) {
+		IODevice::remove(&ioports()->at(m_s.port), 1);
+		g_machine.unregister_irq(ms_irqs[m_s.port]);
+	}
+
+	m_s.port = _port;
+	IODevice::install(&ioports()->at(m_s.port), 1);
+	g_machine.register_irq(ms_irqs[m_s.port], pname);
+
+	g_program.config().set_string(LPT_SECTION, LPT_PORT, pname);
+
+	PINFOF(LOG_V0, LOG_LPT, "Parallel port at 0x%04X (%s), irq %d, mode %s\n",
+			ioports()->at(m_s.port).from, pname, ms_irqs[m_s.port],
+			m_s.mode==PARPORT_COMPATIBLE?"COMPATIBLE":"EXTENDED");
 }
 
 void Parallel::set_enabled(bool _enabled)
@@ -164,7 +175,7 @@ void Parallel::set_enabled(bool _enabled)
 	if(_enabled != m_enabled) {
 		PINFOF(LOG_V1, LOG_LPT, "Parallel port %s\n", _enabled?"ENABLED":"DISABLED");
 		m_enabled = _enabled;
-		if(!_enabled) {
+		if(_enabled) {
 			reset(DEVICE_SOFT_RESET);
 		}
 	}
@@ -192,7 +203,7 @@ void Parallel::virtual_printer()
 				fflush (m_s.output);
 			}
 			if(m_s.CONTROL.irq == 1) {
-				g_pic.raise_irq(ms_irqs[m_s.port]);
+				m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
 			}
 			m_s.STATUS.ack = 0;
 			m_s.STATUS.busy = 1;
@@ -211,7 +222,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 {
 	uint16_t retval = 0xFF;
 
-	address = address - ms_ports[m_s.port];
+	address = address - ioports()->at(m_s.port).from;
 
 	switch(address) {
 		case LPT_DATA:
@@ -237,7 +248,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 				if(m_s.STATUS.ack == 0) {
 					m_s.STATUS.ack = 1;
 					if(m_s.CONTROL.irq == 1) {
-						g_pic.lower_irq(ms_irqs[m_s.port]);
+						m_devices->pic()->lower_irq(ms_irqs[m_s.port]);
 					}
 				}
 				if(m_s.initmode == 1) {
@@ -245,7 +256,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 					m_s.STATUS.slct  = 1;
 					m_s.STATUS.ack  = 0;
 					if(m_s.CONTROL.irq == 1) {
-						g_pic.raise_irq(ms_irqs[m_s.port]);
+						m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
 					}
 					m_s.initmode = 0;
 				}
@@ -273,7 +284,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 
 void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 {
-	address = address - ms_ports[m_s.port];
+	address = address - ioports()->at(m_s.port).from;
 
 	switch(address) {
 		case LPT_DATA:
@@ -323,7 +334,7 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if((value & 0x10) == 0x10) {
 				if(m_s.CONTROL.irq == 0) {
 					m_s.CONTROL.irq = 1;
-					g_machine.register_irq(ms_irqs[m_s.port], get_name());
+					g_machine.register_irq(ms_irqs[m_s.port], name());
 					PDEBUGF(LOG_V2, LOG_LPT, "irq mode selected\n");
 				}
 			} else {

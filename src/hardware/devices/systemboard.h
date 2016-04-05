@@ -21,14 +21,14 @@
 #define IBMULATOR_HW_SYSTEM_BOARD_H
 
 #include "hardware/iodevice.h"
-
-class SystemBoard;
-extern SystemBoard g_sysboard;
+class Parallel;
+class Serial;
 
 class SystemBoard : public IODevice
 {
-private:
+	IODEVICE(SystemBoard, "System Board")
 
+private:
 	struct {
 		// Port 0x0094
 		bool VGA_enable; // bit 5, VGA enable/setup mode
@@ -64,27 +64,30 @@ private:
 
 		//Card Selected Feedback
 		uint8_t CSF;
-
 	} m_s;
 
-	void update_POS2_status();
-	void update_POS3_status();
-	void update_POS4_status();
-	void update_board_status();
+	// config at program launch or when a new config file is loaded:
+	uint8_t m_LPT_port;
+
+	// serial and parallel ports can be not installed
+	Parallel *m_parallel;
+	Serial *m_serial;
+
+	void update_POS2_state();
+	void update_POS3_state();
+	void update_POS4_state();
+	void update_board_state();
 
 public:
-
-	SystemBoard() {}
+	SystemBoard(Devices* _dev) : IODevice(_dev) {}
 	~SystemBoard() {}
 
-	void init(void);
 	void reset(unsigned type);
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char* get_name() { return "System Board"; }
 
-	void update_status();
+	void update_state();
 	void set_feedback();
 
 	void save_state(StateBuf &_state);

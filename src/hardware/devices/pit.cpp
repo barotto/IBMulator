@@ -27,14 +27,19 @@
 #include "mixer.h"
 #include <cstring>
 
-PIT g_pit;
+IODEVICE_PORTS(PIT) = {
+	{ 0x40, 0x43, PORT_8BIT|PORT_RW },
+	{ 0x61, 0x61, PORT_8BIT|PORT_RW } // System Control Port B
+};
+#define PIT_IRQ 0
 
 //1.1931816666MHz Clock
 #define TICKS_PER_SECOND (1193182.0)
 #define CYCLE_TIME (1000000000.0/TICKS_PER_SECOND) //838.095110386 ns
 
 
-PIT::PIT()
+PIT::PIT(Devices* _dev)
+: IODevice(_dev)
 {
 	m_timer_handle = NULL_TIMER_HANDLE;
 }
@@ -43,35 +48,27 @@ PIT::~PIT()
 {
 }
 
-void PIT::init(void)
+void PIT::install()
 {
-	g_devices.register_read_handler(this, 0x0040, 1);
-	g_devices.register_read_handler(this, 0x0041, 1);
-	g_devices.register_read_handler(this, 0x0042, 1);
-	g_devices.register_read_handler(this, 0x0043, 1);
-
-	g_devices.register_write_handler(this, 0x0040, 1);
-	g_devices.register_write_handler(this, 0x0041, 1);
-	g_devices.register_write_handler(this, 0x0042, 1);
-	g_devices.register_write_handler(this, 0x0043, 1);
-
-	//System Control Port B
-	g_devices.register_read_handler(this, 0x0061, 1);
-	g_devices.register_write_handler(this, 0x0061, 1);
-
-	g_machine.register_irq(0, "8254 PIT");
+	IODevice::install();
+	g_machine.register_irq(PIT_IRQ, "8254 PIT");
 
 	m_timer_handle = g_machine.register_timer_ns(
 		std::bind(&PIT::handle_timer, this),
 		100560u, //nsec
-		true, //continuous
-		true, //active
-		get_name() //name
+		true,    //continuous
+		true,    //active
+		name()   //name
 	);
 
 	m_s.timer.init();
-	m_s.timer.set_OUT_handler(0, &PIT::irq0_handler);
-	m_s.timer.set_OUT_handler(2, &PIT::speaker_handler);
+}
+
+void PIT::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(PIT_IRQ);
+	g_machine.unregister_timer(m_timer_handle);
 }
 
 void PIT::reset(unsigned type)
@@ -106,14 +103,39 @@ void PIT::reset(unsigned type)
 	m_s.timer.reset(type);
 }
 
+void PIT::config_changed()
+{
+	m_pcspeaker = m_devices->device<PCSpeaker>();
+	set_OUT_handlers();
+}
+
+void PIT::set_OUT_handlers()
+{
+	using namespace std::placeholders;
+	m_s.timer.set_OUT_handler(0, std::bind(&PIT::irq0_handler, this, _1, _2));
+	if(m_pcspeaker) {
+		m_s.timer.set_OUT_handler(2, std::bind(&PIT::speaker_handler, this, _1, _2));
+	} else {
+		m_s.timer.set_OUT_handler(2, nullptr);
+	}
+}
+
 void PIT::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_PIT, "saving state\n");
 
+	// nullify the handlers before saving the state. why? because otherwise:
+	// savedstate with non-null handlers -> restore -> set new handlers ->
+	//    handler desctructor on invalid pointer -> SIGSEGV
+	m_s.timer.set_OUT_handler(0, nullptr);
+	m_s.timer.set_OUT_handler(2, nullptr);
+
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
+
+	set_OUT_handlers();
 }
 
 void PIT::restore_state(StateBuf &_state)
@@ -121,12 +143,11 @@ void PIT::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_PIT, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	m_s.timer.set_OUT_handler(0, &PIT::irq0_handler);
-	m_s.timer.set_OUT_handler(2, &PIT::speaker_handler);
+	set_OUT_handlers();
 }
 
 void PIT::handle_timer()
@@ -228,14 +249,16 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 			m_s.timer.set_GATE(2, value & 0x01);
 			bool speaker_data_on = (value >> 1) & 0x01;
 			if(m_s.speaker_data_on != speaker_data_on) {
-				if(speaker_data_on) {
-					g_pcspeaker.add_event(my_time_nsec, true, m_s.timer.read_OUT(2));
-					g_pcspeaker.activate();
-					PDEBUGF(LOG_V2, LOG_PIT, "pc speaker enable\n");
-				} else {
-					//the pc speaker mixer channel is disabled by the speaker
-					PDEBUGF(LOG_V2, LOG_PIT, "pc speaker disable\n");
-					g_pcspeaker.add_event(my_time_nsec, false, false);
+				if(m_pcspeaker) {
+					if(speaker_data_on) {
+						m_pcspeaker->add_event(my_time_nsec, true, m_s.timer.read_OUT(2));
+						m_pcspeaker->activate();
+						PDEBUGF(LOG_V2, LOG_PIT, "pc speaker enable\n");
+					} else {
+						//the pc speaker mixer channel is disabled by the speaker
+						PDEBUGF(LOG_V2, LOG_PIT, "pc speaker disable\n");
+						m_pcspeaker->add_event(my_time_nsec, false, false);
+					}
 				}
 				m_s.speaker_data_on = speaker_data_on;
 			}
@@ -301,28 +324,28 @@ bool PIT::periodic(uint64_t _time, uint64_t _nsec_delta)
 void PIT::irq0_handler(bool value, uint32_t)
 {
 	if(value == true) {
-		g_pic.raise_irq(0);
+		m_devices->pic()->raise_irq(PIT_IRQ);
 	} else {
-		g_pic.lower_irq(0);
+		m_devices->pic()->lower_irq(PIT_IRQ);
 	}
 }
 
 void PIT::speaker_handler(bool value, uint32_t _remaining_ticks)
 {
-	if(!g_pit.m_s.speaker_data_on) {
+	if(!m_s.speaker_data_on) {
 		return;
 	}
 
 	uint64_t cur_time, elapsed_ticks, elapsed_nsec;
-	if(g_pit.m_crnt_emulated_ticks!=0) {
-		elapsed_ticks = g_pit.m_crnt_emulated_ticks - _remaining_ticks;
+	if(m_crnt_emulated_ticks!=0) {
+		elapsed_ticks = m_crnt_emulated_ticks - _remaining_ticks;
 		elapsed_nsec = double(elapsed_ticks) * CYCLE_TIME;
-		cur_time = g_pit.m_crnt_start_time + elapsed_nsec;
+		cur_time = m_crnt_start_time + elapsed_nsec;
 	} else {
 		cur_time = g_machine.get_virt_time_ns();
 	}
 
-	g_pcspeaker.add_event(cur_time, true, value);
+	m_pcspeaker->add_event(cur_time, true, value);
 }
 
 

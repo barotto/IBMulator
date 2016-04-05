@@ -171,6 +171,7 @@ protected:
 
 		Windows();
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
+		void config_changed();
 		void update();
 		void shutdown();
 		void toggle_dbg();
@@ -221,6 +222,7 @@ public:
 	~GUI();
 
 	void init(Machine *_machine, Mixer *_mixer);
+	void config_changed();
 	void render();
 	void dispatch_event(const SDL_Event &_event);
 	void update();
@@ -245,6 +247,9 @@ public:
 
 	static uint mode();
 	void sig_state_restored();
+
+	inline Machine *machine() { return m_machine; }
+	inline Mixer *mixer() { return m_mixer; }
 
 private:
 	void show_welcome_screen();

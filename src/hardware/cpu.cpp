@@ -46,7 +46,6 @@ CPU::~CPU()
 void CPU::init()
 {
 	g_cpubus.init();
-	config_changed();
 	m_s.icount = 0;
 	m_s.ccount = 0;
 }
@@ -344,7 +343,7 @@ void CPU::wait_for_event()
 
 	if(m_s.HRQ) {
 		// handle DMA also when CPU is halted
-		g_dma.raise_HLDA();
+		g_devices.dma()->raise_HLDA();
 	}
 }
 
@@ -387,12 +386,12 @@ void CPU::handle_async_event()
 		m_s.EXT = true; /* external event */
 		interrupt(2, CPU_NMI, false, 0);
 	} else if(is_unmasked_event_pending(CPU_EVENT_PENDING_INTR)) {
-		uint8_t vector = g_pic.IAC(); // may set INTR with next interrupt
+		uint8_t vector = g_devices.pic()->IAC(); // may set INTR with next interrupt
 		m_s.EXT = true; /* external event */
 		interrupt(vector, CPU_EXTERNAL_INTERRUPT, 0, 0);
 	} else if(m_s.HRQ) {
 		// assert Hold Acknowledge (HLDA) and go into a bus hold state
-		g_dma.raise_HLDA();
+		g_devices.dma()->raise_HLDA();
 	}
 
 	if(FLAG_TF) {

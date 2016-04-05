@@ -46,14 +46,11 @@ enum {
 #define KBD_TYPE KBD_TYPE_MF
 
 
-class Keyboard;
-extern Keyboard g_keyboard;
-
-
 class Keyboard : public IODevice
 {
-private:
+	IODEVICE(Keyboard, "Keyboard Controller");
 
+private:
 	struct State {
 		struct {
 			/* status bits matching the status port*/
@@ -185,16 +182,16 @@ private:
 	bool m_mouse_acc;
 
 public:
-	Keyboard();
+	Keyboard(Devices *_dev);
 	~Keyboard();
 
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned _signal);
 	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char* get_name() { return "8042 Keyboard controller"; }
 
 	void gen_scancode(uint32_t key);
 	void mouse_motion(int delta_x, int delta_y, int delta_z, unsigned button_state);

@@ -24,16 +24,28 @@
 #include <set>
 
 class IODevice;
+class Machine;
 class Devices;
+class SystemBoard;
+class DMA;
+class PIC;
+class PIT;
+class VGA;
+class CMOS;
 extern Devices g_devices;
 
-#define PORTSCNT 0x10000
-#define PORTMAX  0xFFFF
+#define PORT_8BIT  0x01
+#define PORT_16BIT 0x02
+#define PORT_READ  0x04
+#define PORT_R_    PORT_READ
+#define PORT_WRITE 0x08
+#define PORT__W    PORT_WRITE
+#define PORT_RW    PORT_READ | PORT_WRITE
+#define PORT_MAX   0xFFFF
 
 class Devices
 {
 private:
-
 	struct io_handler_t {
 		IODevice * device;
 		uint mask;
@@ -41,28 +53,46 @@ private:
 		io_handler_t() : device(nullptr), mask(0) {}
 	};
 
-	io_handler_t m_read_handlers[PORTSCNT];
-	io_handler_t m_write_handlers[PORTSCNT];
+	io_handler_t m_read_handlers[PORT_MAX+1];
+	io_handler_t m_write_handlers[PORT_MAX+1];
 
 	std::map<std::string, IODevice *> m_devices;
+
+	Machine * m_machine;
+	SystemBoard * m_sysboard;
+	DMA * m_dma;
+	PIC * m_pic;
+	PIT * m_pit;
+	VGA * m_vga;
+	CMOS * m_cmos;
 
 public:
 	Devices();
 	~Devices();
 
-	//called by the machine:
-	void register_device(IODevice *_iodev);
+	void init(Machine*);
+	void reset(uint _signal);
+	void power_off();
+	void config_changed();
 
-	//called by devices:
+	template<class T>
+	inline T* device() {
+		if(m_devices.find(T::NAME) != m_devices.end()) {
+			return dynamic_cast<T*>(m_devices[T::NAME]);
+		}
+		return nullptr;
+	}
+	inline SystemBoard* sysboard() { return m_sysboard; }
+	inline DMA* dma() { return m_dma; }
+	inline PIC* pic() { return m_pic; }
+	inline PIT* pit() { return m_pit; }
+	inline VGA* vga() { return m_vga; }
+	inline CMOS* cmos() { return m_cmos; }
+
 	void register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask);
 	void register_write_handler(IODevice *_iodev, uint16_t _port, uint _mask);
 	void unregister_read_handler(uint16_t _port);
 	void unregister_write_handler(uint16_t _port);
-
-	void init();
-	void reset(uint _signal);
-	void power_off();
-	void config_changed();
 
 	uint8_t read_byte(uint16_t _port);
 	uint16_t read_word(uint16_t _port);
@@ -71,6 +101,11 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	template<class T> T* install();
+	template<class T> T* install_only_if(bool _condition);
+	void remove(const char *);
 };
 
 #endif

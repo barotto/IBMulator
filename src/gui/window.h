@@ -52,6 +52,7 @@ public:
 	void hide();
 	bool is_visible();
 
+	virtual void config_changed() {}
 	virtual void update();
 
 	void ProcessEvent(RC::Event &);

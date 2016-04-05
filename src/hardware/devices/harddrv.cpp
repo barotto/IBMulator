@@ -38,11 +38,13 @@
 #include "hardware/devices/pic.h"
 #include <cstring>
 
-
-HardDrive g_harddrv;
-
-#define HDD_DMA_CHAN 3
-#define HDD_IRQ      14
+IODEVICE_PORTS(HardDrive) = {
+	{ 0x0320, 0x0320, PORT_8BIT|PORT_RW }, // Data Register R / W
+	{ 0x0322, 0x0322, PORT_8BIT|PORT_RW }, //Attachment Status Reg R / Attachment Control Reg W
+	{ 0x0324, 0x0324, PORT_8BIT|PORT_RW }  //Interrupt Status Reg R / Attention Reg W
+};
+#define HDD_DMA  3
+#define HDD_IRQ  14
 
 /* Assuming the ST412/506 HD format RLL encoding, this should be the anatomy of
  * a sector:
@@ -322,7 +324,8 @@ void HardDrive::State::SSB::clear()
 	//drive_type is static
 }
 
-HardDrive::HardDrive()
+HardDrive::HardDrive(Devices *_dev)
+: IODevice(_dev)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -374,20 +377,16 @@ double HardDrive::get_current_head_position()
 	return get_head_position(m_last_head_pos, elapsed_time_us);
 }
 
-void HardDrive::init()
+void HardDrive::install()
 {
-	g_dma.register_8bit_channel(3,
-			std::bind(&HardDrive::dma_read, this, std::placeholders::_1, std::placeholders::_2),
-			std::bind(&HardDrive::dma_write, this, std::placeholders::_1, std::placeholders::_2),
-			get_name());
-	g_machine.register_irq(HDD_IRQ, get_name());
+	IODevice::install();
 
-	g_devices.register_read_handler(this, 0x0320, 1);  //Data Reg
-	g_devices.register_write_handler(this, 0x0320, 1); //Data Reg
-	g_devices.register_read_handler(this, 0x0322, 1);  //Attachment Status Reg
-	g_devices.register_write_handler(this, 0x0322, 1); //Attachment Control Reg
-	g_devices.register_read_handler(this, 0x0324, 1);  //Interrupt Status Reg
-	g_devices.register_write_handler(this, 0x0324, 1); //Attention Reg
+	using namespace std::placeholders;
+	m_devices->dma()->register_8bit_channel(HDD_DMA,
+			std::bind(&HardDrive::dma_read, this, _1, _2),
+			std::bind(&HardDrive::dma_write, this, _1, _2),
+			name());
+	g_machine.register_irq(HDD_IRQ, name());
 
 	m_cmd_timer = g_machine.register_timer(
 			std::bind(&HardDrive::command_timer,this),
@@ -429,7 +428,18 @@ void HardDrive::init()
 		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
 	}
 
-	m_fx.init();
+	m_fx.install();
+}
+
+void HardDrive::remove()
+{
+	unmount();
+	IODevice::remove();
+	m_devices->dma()->unregister_channel(HDD_DMA);
+	g_machine.unregister_irq(HDD_IRQ);
+	g_machine.unregister_timer(m_cmd_timer);
+	g_machine.unregister_timer(m_dma_timer);
+	m_fx.remove();
 }
 
 void HardDrive::reset(unsigned _type)
@@ -462,14 +472,13 @@ void HardDrive::power_off()
 
 void HardDrive::config_changed()
 {
-	unmount();
 	//get_enum throws if value is not allowed:
 	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
 	if(m_drive_type<0 || m_drive_type == 15 || m_drive_type > 45) {
 		PERRF(LOG_HDD, "Invalid HDD type %d\n", m_drive_type);
 		throw std::exception();
 	}
-	//disk mount is performed at restore_state
+	//disk mount is performed in install() and restore_state()
 
 	m_fx.config_changed();
 }
@@ -479,7 +488,7 @@ void HardDrive::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_HDD, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 
@@ -493,8 +502,10 @@ void HardDrive::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "restoring state\n");
 
+	unmount();
+
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -712,7 +723,7 @@ void HardDrive::unmount()
 
 	m_disk->close();
 	if(m_tmp_disk) {
-		remove(m_disk->get_name().c_str());
+		::remove(m_disk->get_name().c_str());
 	}
 	m_disk.reset(nullptr);
 }
@@ -726,7 +737,7 @@ uint16_t HardDrive::read(uint16_t _address, unsigned)
 	PDEBUGF(LOG_V2, LOG_HDD, "read  0x%04X ", _address);
 
 	//set the Card Selected Feedback bit
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	uint16_t value = 0;
 	switch(_address) {
@@ -799,7 +810,7 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 	PDEBUGF(LOG_V2, LOG_HDD, "write 0x%04X ", _address);
 
 	//set the Card Selected Feedback bit
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	DataBuffer *databuf = &m_s.sect_buffer[0];
 
@@ -884,7 +895,7 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 					PERRF_ABORT(LOG_HDD, "data not ready\n");
 				}
 				if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-					g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+					m_devices->dma()->set_DRQ(HDD_DMA, 1);
 					//g_machine.activate_timer(m_dma_timer, 500, 0);
 				} else {
 					//PIO mode
@@ -1056,7 +1067,7 @@ void HardDrive::raise_interrupt()
 	m_s.attch_status_reg |= HDD_ASR_INT_REQ;
 	if(m_s.attch_ctrl_reg & HDD_ACR_INT_EN) {
 		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDD_IRQ);
-		g_pic.raise_irq(HDD_IRQ);
+		m_devices->pic()->raise_irq(HDD_IRQ);
 	} else {
 		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n", HDD_IRQ);
 	}
@@ -1064,7 +1075,7 @@ void HardDrive::raise_interrupt()
 
 void HardDrive::lower_interrupt()
 {
-	g_pic.lower_irq(HDD_IRQ);
+	m_devices->pic()->lower_irq(HDD_IRQ);
 }
 
 void HardDrive::fill_data_stack(unsigned _buf, unsigned _len)
@@ -1101,7 +1112,7 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 	assert(m_s.attch_status_reg & HDD_ASR_DATA_REQ);
 	assert(m_s.attch_status_reg & HDD_ASR_DIR);
 
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	DataBuffer *databuf = get_read_data_buffer();
 	assert(databuf);
@@ -1114,13 +1125,13 @@ uint16_t HardDrive::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 
 	memcpy(_buffer, &databuf->stack[databuf->ptr], len);
 	databuf->ptr += len;
-	bool TC = g_dma.get_TC() && (len == _maxlen);
+	bool TC = m_devices->dma()->get_TC() && (len == _maxlen);
 
 	if((databuf->ptr >= databuf->size) || TC) {
 		// all data in buffer transferred
 		if(databuf->ptr >= databuf->size) {
 			databuf->clear();
-			g_dma.set_DRQ(HDD_DMA_CHAN, 0);
+			m_devices->dma()->set_DRQ(HDD_DMA, 0);
 		}
 		if(TC) { // Terminal Count line, command done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA WRITE TC>> C:%d,H:%d,S:%d,nS:%d\n",
@@ -1139,7 +1150,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	/*
 	 * From Memory to I/O
 	 */
-	g_sysboard.set_feedback();
+	m_devices->sysboard()->set_feedback();
 
 	//TODO implement control blocks DMA transfers?
 	assert(m_s.ccb.valid);
@@ -1153,7 +1164,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	PDEBUGF(LOG_V2, LOG_HDD, "DMA read: %d / %d bytes\n", _maxlen, len);
 	memcpy(&m_s.sect_buffer[0].stack[m_s.sect_buffer[0].ptr], _buffer, len);
 	m_s.sect_buffer[0].ptr += len;
-	bool TC = g_dma.get_TC() && (len == _maxlen);
+	bool TC = m_devices->dma()->get_TC() && (len == _maxlen);
 	if((m_s.sect_buffer[0].ptr >= m_s.sect_buffer[0].size) || TC) {
 		m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
 		unsigned c = m_s.cur_cylinder;
@@ -1171,7 +1182,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 			time = std::max(time, HDD_DEFTIME_US);
 			g_machine.activate_timer(m_dma_timer, time, 0);
 		}
-		g_dma.set_DRQ(HDD_DMA_CHAN, 0);
+		m_devices->dma()->set_DRQ(HDD_DMA, 0);
 	}
 	return len;
 }
@@ -1333,7 +1344,7 @@ void HardDrive::command_timer()
 
 void HardDrive::dma_timer()
 {
-	g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+	m_devices->dma()->set_DRQ(HDD_DMA, 1);
 	g_machine.deactivate_timer(m_dma_timer);
 }
 
@@ -1547,7 +1558,7 @@ void HardDrive::cmd_read_data()
 	m_s.attch_status_reg &= ~HDD_ASR_BUSY;
 
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+		m_devices->dma()->set_DRQ(HDD_DMA, 1);
 	} else {
 		//DATA Request required, the OS can decide later if DMA or PIO writing
 		//to the attch ctrl reg
@@ -1636,7 +1647,7 @@ void HardDrive::cmd_read_ext()
 	m_s.attch_status_reg |= HDD_ASR_DIR;
 
 	if(m_s.attch_ctrl_reg & HDD_ACR_DMA_EN) {
-		g_dma.set_DRQ(HDD_DMA_CHAN, 1);
+		m_devices->dma()->set_DRQ(HDD_DMA, 1);
 	} else {
 		raise_interrupt();
 	}

@@ -25,41 +25,38 @@
 
 #define CMOS_SIZE 64
 
-class CMOS;
-extern CMOS g_cmos;
-
 class CMOS : public IODevice
 {
+	IODEVICE(CMOS, "CMOS")
+
 private:
+	struct {
+		uint32_t periodic_interval_usec;
+		time_t   timeval;
+		uint8_t  cmos_mem_address;
+		bool     timeval_change;
+		bool     rtc_mode_12hour;
+		bool     rtc_mode_binary;
+		bool     rtc_sync;
+		uint8_t  reg[CMOS_SIZE];
+	} m_s;  // state information
 
-  struct {
-    uint32_t periodic_interval_usec;
-    time_t   timeval;
-    uint8_t  cmos_mem_address;
-    bool     timeval_change;
-    bool     rtc_mode_12hour;
-    bool     rtc_mode_binary;
-    bool     rtc_sync;
-    uint8_t  reg[CMOS_SIZE];
-  } m_s;  // state information
+	int m_periodic_timer_index;
+	int m_one_second_timer_index;
+	int m_uip_timer_index; //Update in Progress timer
 
-  int m_periodic_timer_index;
-  int m_one_second_timer_index;
-  int m_uip_timer_index; //Update in Progress timer
-
-  void update_clock(void);
-  void update_timeval(void);
-  void CRA_change(void);
+	void update_clock(void);
+	void update_timeval(void);
+	void CRA_change(void);
 
 public:
-
-	CMOS();
+	CMOS(Devices *_dev);
 	~CMOS();
 
-	void init();
+	void install();
+	void remove();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char* get_name() { return "CMOS"; }
 
 	void periodic_timer();
 	void one_second_timer();

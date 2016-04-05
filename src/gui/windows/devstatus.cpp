@@ -177,7 +177,7 @@ void DevStatus::update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t
 
 void DevStatus::update_pit(uint cnt)
 {
-	const PIT_82C54 & timer = g_pit.get_timer();
+	const PIT_82C54 & timer = m_gui->machine()->devices().pit()->get_timer();
 
 	m_pit.mode[cnt]->SetInnerRML(format_uint16(timer.read_mode(cnt)));
 	m_pit.cnt[cnt]->SetInnerRML(format_hex32(timer.read_CNT(cnt)));
@@ -195,10 +195,11 @@ void DevStatus::update_pit(uint cnt)
 
 void DevStatus::update()
 {
-	uint16_t pic_irq = g_pic.get_irq();
-	uint16_t pic_irr = g_pic.get_irr();
-	uint16_t pic_imr = g_pic.get_imr();
-	uint16_t pic_isr = g_pic.get_isr();
+	PIC *pic = m_gui->machine()->devices().pic();
+	uint16_t pic_irq = pic->get_irq();
+	uint16_t pic_irr = pic->get_irr();
+	uint16_t pic_imr = pic->get_imr();
+	uint16_t pic_isr = pic->get_isr();
 	for(uint i=0; i<16; i++) {
 		update_pic(pic_irq, pic_irr, pic_imr, pic_isr, i);
 	}

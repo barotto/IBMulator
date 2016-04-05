@@ -17,7 +17,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+//
+// 8042 Keyboard controller
+//
 // Now features proper implementation of keyboard opcodes 0xF4 to 0xF6
 // Silently ignores PS/2 keyboard extensions (0xF7 to 0xFD)
 // Explicit panic on resend (0xFE)
@@ -58,10 +60,15 @@
 #include <functional>
 using namespace std::placeholders;
 
-Keyboard g_keyboard;
+IODEVICE_PORTS(Keyboard) = {
+	{ 0x60, 0x60, PORT_8BIT|PORT_RW },
+	{ 0x64, 0x64, PORT_8BIT|PORT_RW }
+};
+#define KEYB_IRQ  1
+#define MOUSE_IRQ 12
 
-
-Keyboard::Keyboard()
+Keyboard::Keyboard(Devices *_dev)
+: IODevice(_dev)
 {
 
 }
@@ -71,29 +78,30 @@ Keyboard::~Keyboard()
 
 }
 
-void Keyboard::init()
+void Keyboard::install()
 {
-	g_devices.register_read_handler(this, 0x60, 1);
-	g_devices.register_read_handler(this, 0x64, 1);
-	g_devices.register_write_handler(this, 0x60, 1);
-	g_devices.register_write_handler(this, 0x64, 1);
-
-	g_machine.register_irq(1, "8042 Keyboard controller");
-	g_machine.register_irq(12, "8042 Keyboard controller (PS/2 mouse)");
+	IODevice::install();
+	g_machine.register_irq(KEYB_IRQ, "Keyboard controller (kbd)");
+	g_machine.register_irq(MOUSE_IRQ, "Keyboard controller (mouse)");
 
 	m_timer_handle = g_machine.register_timer(
 			std::bind(&Keyboard::timer_handler,this),
 			KBD_SERIAL_DELAY, //usec
 			1, //continuous
 			1, //active
-			get_name() //name
+			name() //name
 	);
-
-	config_changed();
-
 	set_kbd_clock_enable(false);
 	set_aux_clock_enable(false);
 	m_s.mouse.enable = false;
+}
+
+void Keyboard::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(KEYB_IRQ);
+	g_machine.unregister_irq(MOUSE_IRQ);
+	g_machine.unregister_timer(m_timer_handle);
 }
 
 void Keyboard::reset(unsigned _type)
@@ -199,7 +207,7 @@ void Keyboard::save_state(StateBuf &_state)
 	std::lock_guard<std::mutex> klock(m_kbd_lock);
 	std::lock_guard<std::mutex> mlock(m_mouse_lock);
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -211,7 +219,7 @@ void Keyboard::restore_state(StateBuf &_state)
 	std::lock_guard<std::mutex> klock(m_kbd_lock);
 	std::lock_guard<std::mutex> mlock(m_mouse_lock);
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 }
@@ -278,7 +286,7 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 			if(m_s.kbd_ctrl.Qsize) {
 				update_controller_Q();
 			}
-			g_pic.lower_irq(12);
+			m_devices->pic()->lower_irq(MOUSE_IRQ);
 			activate_timer();
 			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read from 0x60 -> 0x%02X\n", val);
 			return val;
@@ -291,7 +299,7 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 			if(m_s.kbd_ctrl.Qsize) {
 				update_controller_Q();
 			}
-			g_pic.lower_irq(1);
+			m_devices->pic()->lower_irq(KEYB_IRQ);
 			activate_timer();
 			PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x60 -> 0x%02X\n", val);
 			return val;
@@ -532,10 +540,13 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					// bit 6 = 0 if current FDD is 3.5, 1 if it's 5.25
 					// bit 2 = 1 for POST 56
 					uint8_t data = 0x84;
-					uint drive = g_floppy.current_drive();
-					uint8_t dtype = g_floppy.drive_type(drive);
-					if(dtype == FDD_525DD || dtype == FDD_525HD) {
-						data |= 0x40;
+					FloppyCtrl *floppy = m_devices->device<FloppyCtrl>();
+					if(floppy) {
+						uint drive = floppy->current_drive();
+						uint8_t dtype = floppy->drive_type(drive);
+						if(dtype == FDD_525DD || dtype == FDD_525HD) {
+							data |= 0x40;
+						}
 					}
 					controller_enQ(data, 0);
 					break;
@@ -1016,11 +1027,11 @@ void Keyboard::timer_handler()
 	retval = periodic(KBD_SERIAL_DELAY);
 
 	if(retval&0x01) {
-		g_pic.raise_irq(1);
+		m_devices->pic()->raise_irq(KEYB_IRQ);
 	}
 
 	if(retval&0x02) {
-		g_pic.raise_irq(12);
+		m_devices->pic()->raise_irq(MOUSE_IRQ);
 	}
 }
 

@@ -27,10 +27,12 @@ using namespace std::placeholders;
 
 #define OHMS 60000.0
 
-GamePort g_gameport;
+IODEVICE_PORTS(GamePort) = {
+	{ 0x201, 0x201, PORT_8BIT|PORT_RW }
+};
 
-
-GamePort::GamePort()
+GamePort::GamePort(Devices *_dev)
+: IODevice(_dev)
 {
 }
 
@@ -38,17 +40,19 @@ GamePort::~GamePort()
 {
 }
 
-void GamePort::init()
+void GamePort::install()
 {
-	g_devices.register_read_handler(this, 0x0201, 1);
-	g_devices.register_write_handler(this, 0x0201, 1);
+	IODevice::install();
 
 	g_machine.register_joystick_fun(
 		std::bind(&GamePort::joystick_motion, this, _1, _2, _3),
 		std::bind(&GamePort::joystick_button, this, _1, _2, _3)
 	);
+}
 
-	config_changed();
+void GamePort::remove()
+{
+	g_machine.register_joystick_fun(nullptr,nullptr);
 }
 
 void GamePort::reset(unsigned)
@@ -69,7 +73,7 @@ void GamePort::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_AUDIO, "GamePort: saving state\n");
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -79,7 +83,7 @@ void GamePort::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_AUDIO, "GamePort: restoring state\n");
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 }

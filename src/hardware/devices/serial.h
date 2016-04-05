@@ -217,13 +217,17 @@ typedef struct {
 } serial_t;
 
 
-class Serial;
-extern Serial g_serial;
-
-
 class Serial : public IODevice
 {
+	IODEVICE(Serial, "Serial")
+
 private:
+	/* WARNING *****************************************************************
+	 * on the PS/1 2011 there's only 1 serial port and it's controlled by POS
+	 * register 2. I'll keep the Bochs structure (array of serial_t) just
+	 * because I don't want to introduce any new bugs.
+	 * USE ONLY m_s[0]
+	 */
 	serial_t m_s[SERIAL_MAXDEV];
 	bool m_enabled;
 	uint8_t m_post_reg; //used as scratch memory to pass POST
@@ -245,6 +249,24 @@ private:
 		int     head;
 	} mouse_internal_buffer;
 
+public:
+	Serial(Devices *_dev);
+	~Serial();
+
+	void install();
+	void remove();
+	void reset(unsigned type);
+	void config_changed();
+	uint16_t read(uint16_t address, unsigned io_len);
+	void write(uint16_t address, uint16_t value, unsigned io_len);
+
+	void set_port(uint8_t _port);
+	void set_enabled(bool _enabled);
+
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+
+private:
 	void lower_interrupt(uint8_t port);
 	void raise_interrupt(uint8_t port, int type);
 
@@ -264,26 +286,7 @@ private:
 	void init_mode_socket(uint port, std::string dev, uint mode);
 	void init_mode_pipe(uint port, std::string dev, uint mode);
 
-	uint16_t read_disabled(uint16_t address, unsigned io_len);
-	void write_disabled(uint16_t address, uint16_t value, unsigned io_len);
-
-public:
-
-	Serial();
-	~Serial();
-
-	void init(void);
-	void reset(unsigned type);
-	void config_changed(); //TODO
-	uint16_t read(uint16_t address, unsigned io_len);
-	void write(uint16_t address, uint16_t value, unsigned io_len);
-	const char *get_name() { return "Serial"; }
-
-	void set_port(uint8_t _port);
-	void set_enabled(bool _enabled);
-
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+	void close();
 };
 
 #endif

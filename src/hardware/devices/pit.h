@@ -25,13 +25,13 @@
 #include "pit82c54.h"
 #include "pcspeaker.h"
 
-class PIT;
-extern PIT g_pit;
+class PIC;
 
 class PIT : public IODevice
 {
-private:
+	IODEVICE(PIT, "8254 PIT")
 
+private:
 	struct {
 		PIT_82C54 timer;
 		bool speaker_data_on;
@@ -45,19 +45,19 @@ private:
 	int m_timer_handle;
 	uint32_t m_crnt_emulated_ticks;
 	uint64_t m_crnt_start_time;
-	static void irq0_handler(bool value, uint32_t);
-	static void speaker_handler(bool value, uint32_t _cycles);
+
+	PCSpeaker *m_pcspeaker;
 
 public:
+	PIT(Devices* _dev);
+	~PIT();
 
-	PIT();
-	virtual ~PIT();
-
-	void init();
+	void install();
+	void remove();
 	void reset(unsigned type);
+	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-	const char* get_name() { return "PIT"; }
 
 	void handle_timer();
 	bool periodic(uint64_t _time, uint64_t _nsec_delta);
@@ -68,6 +68,11 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	void irq0_handler(bool value, uint32_t);
+	void speaker_handler(bool value, uint32_t _cycles);
+	void set_OUT_handlers();
 };
 
 #endif

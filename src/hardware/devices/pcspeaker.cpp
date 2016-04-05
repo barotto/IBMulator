@@ -24,12 +24,11 @@
 
 #define SPKR_DISABLE_TIMEOUT 2500000 //in usecs
 
-PCSpeaker g_pcspeaker;
+IODEVICE_PORTS(PCSpeaker) = {};
 
 
-PCSpeaker::PCSpeaker()
-:
-m_enabled(false),
+PCSpeaker::PCSpeaker(Devices *_dev)
+: IODevice(_dev),
 m_last_time(0),
 m_samples_rem(0.0)
 {
@@ -39,20 +38,22 @@ PCSpeaker::~PCSpeaker()
 {
 }
 
-void PCSpeaker::init()
+void PCSpeaker::install()
 {
 	m_channel = g_mixer.register_channel(
 		std::bind(&PCSpeaker::create_samples, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		get_name());
+		name());
 	m_channel->set_disable_timeout(SPKR_DISABLE_TIMEOUT);
+}
 
-	config_changed();
+void PCSpeaker::remove()
+{
+	g_mixer.unregister_channel(m_channel);
 }
 
 void PCSpeaker::config_changed()
 {
-	m_enabled = g_program.config().get_bool(MIXER_SECTION, MIXER_PCSPEAKER);
 	uint32_t rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	m_channel->set_in_spec({AUDIO_FORMAT_S16, 1, rate});
 	//a second worth of samples
@@ -88,7 +89,7 @@ void PCSpeaker::save_state(StateBuf &_state)
 	m_s.events_cnt = m_events.size();
 
 	std::lock_guard<std::mutex> lock(m_lock);
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 
@@ -97,7 +98,7 @@ void PCSpeaker::save_state(StateBuf &_state)
 		//maybe use something like Boost serialization lib?
 		//I don't like Boost, I'd rather to not include it in the project
 		//for this case only.
-		h.name = std::string(get_name()) + "-evts";
+		h.name = std::string(name()) + "-evts";
 		h.data_size = m_s.events_cnt * sizeof(SpeakerEvent);
 		std::unique_ptr<uint8_t[]> spkrevts(new uint8_t[h.data_size]);
 		uint8_t *ptr = spkrevts.get();
@@ -114,7 +115,7 @@ void PCSpeaker::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_AUDIO, "PC speaker: restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -125,7 +126,7 @@ void PCSpeaker::restore_state(StateBuf &_state)
 	m_samples_rem = 0;
 	if(m_s.events_cnt) {
 		_state.get_next_lump_header(h);
-		if(h.name.compare(std::string(get_name()) + "-evts") != 0) {
+		if(h.name.compare(std::string(name()) + "-evts") != 0) {
 			PERRF(LOG_AUDIO, "speaker events expected in state buffer, found %s\n", h.name.c_str());
 			throw std::exception();
 		}
@@ -149,9 +150,6 @@ void PCSpeaker::restore_state(StateBuf &_state)
 
 void PCSpeaker::activate()
 {
-	if(!m_enabled) {
-		return;
-	}
 	if(!m_channel->is_enabled()) {
 		m_last_time = 0;
 		m_samples_rem = 0;
@@ -161,10 +159,6 @@ void PCSpeaker::activate()
 
 void PCSpeaker::add_event(uint64_t _time, bool _active, bool _out)
 {
-	if(!m_enabled) {
-		return;
-	}
-
 	std::lock_guard<std::mutex> lock(m_lock);
 
 	if(m_events.size() && (m_events.back().time > _time)) {

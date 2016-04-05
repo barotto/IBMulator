@@ -25,16 +25,20 @@
 #include "hardware/cpu.h"
 #include <cstring>
 
-DMA g_dma;
-
 
 #define DMA_MODE_DEMAND  0
 #define DMA_MODE_SINGLE  1
 #define DMA_MODE_BLOCK   2
 #define DMA_MODE_CASCADE 3
 
+IODEVICE_PORTS(DMA) = {
+	{ 0x00, 0x0F, PORT_8BIT|PORT_RW },
+	{ 0x80, 0x8F, PORT_8BIT|PORT_RW },
+	{ 0xC0, 0xDE, PORT_8BIT|PORT_RW }
+};
 
-DMA::DMA()
+DMA::DMA(Devices* _dev)
+: IODevice(_dev)
 {
 
 }
@@ -43,28 +47,9 @@ DMA::~DMA()
 {
 }
 
-void DMA::init(void)
+void DMA::install()
 {
-	unsigned i;
-
-	// 0000..000F
-	for(i=0x0000; i<=0x000F; i++) {
-		g_devices.register_read_handler(this, i, 1);
-		g_devices.register_write_handler(this, i, 3);
-	}
-
-	// 00080..008F
-	for(i=0x0080; i<=0x008F; i++) {
-		g_devices.register_read_handler(this, i, 1);
-		g_devices.register_write_handler(this, i, 3);
-	}
-
-	// 000C0..00DE
-	for(i=0x00C0; i<=0x00DE; i+=2) {
-		g_devices.register_read_handler(this, i, 1);
-		g_devices.register_write_handler(this, i, 3);
-	}
-
+	IODevice::install();
 	for(int i=0; i<8; i++) {
 		m_channels[i].used = false;
 		m_channels[i].device = "";
@@ -122,7 +107,7 @@ void DMA::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_DMA, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -132,7 +117,7 @@ void DMA::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_DMA, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 }
@@ -218,28 +203,28 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 			PERRF(LOG_DMA, "DMA-%d: read of temporary register always returns 0\n", ma_sl+1);
 			return 0;
 
-		case 0x0081: // DMA-1 page register, channel 2
-		case 0x0082: // DMA-1 page register, channel 3
-		case 0x0083: // DMA-1 page register, channel 1
-		case 0x0087: // DMA-1 page register, channel 0
+		case 0x81: // DMA-1 page register, channel 2
+		case 0x82: // DMA-1 page register, channel 3
+		case 0x83: // DMA-1 page register, channel 1
+		case 0x87: // DMA-1 page register, channel 0
 			channel = channelindex[address - 0x81];
 			return m_s.dma[0].chan[channel].page_reg;
 
-		case 0x0089: // DMA-2 page register, channel 2
-		case 0x008a: // DMA-2 page register, channel 3
-		case 0x008b: // DMA-2 page register, channel 1
-		case 0x008f: // DMA-2 page register, channel 0
+		case 0x89: // DMA-2 page register, channel 2
+		case 0x8a: // DMA-2 page register, channel 3
+		case 0x8b: // DMA-2 page register, channel 1
+		case 0x8f: // DMA-2 page register, channel 0
 			channel = channelindex[address - 0x89];
 			return m_s.dma[1].chan[channel].page_reg;
 
-		case 0x0080:
-		case 0x0084:
-		case 0x0085:
-		case 0x0086:
-		case 0x0088:
-		case 0x008c:
-		case 0x008d:
-		case 0x008e:
+		case 0x80:
+		case 0x84:
+		case 0x85:
+		case 0x86:
+		case 0x88:
+		case 0x8c:
+		case 0x8d:
+		case 0x8e:
 			PDEBUGF(LOG_V2, LOG_DMA, "read: extra page register 0x%04x (unused)\n", address);
 			return m_s.ext_page_reg[address & 0x0f];
 
@@ -257,20 +242,10 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 	}
 }
 
-void DMA::write(uint16_t address, uint16_t value, unsigned io_len)
+void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 {
 	uint8_t set_mask_bit;
 	uint8_t channel;
-
-	if(io_len > 1) {
-		if((io_len == 2) && (address == 0x0b)) {
-			write(address,   value & 0xff, 1);
-			write(address+1, value >> 8,   1);
-			return;
-		}
-		PERRF(LOG_DMA, "write to address %08x, len=%u\n", address, io_len);
-		return;
-	}
 
 	PDEBUGF(LOG_V2, LOG_DMA, "write: address=%04x value=%02x\n", address, value);
 
@@ -428,14 +403,14 @@ void DMA::write(uint16_t address, uint16_t value, unsigned io_len)
 			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-2: page register %d = %02x\n", channel + 4, value);
 			break;
 
-		case 0x0080:
-		case 0x0084:
-		case 0x0085:
-		case 0x0086:
-		case 0x0088:
-		case 0x008c:
-		case 0x008d:
-		case 0x008e:
+		case 0x80:
+		case 0x84:
+		case 0x85:
+		case 0x86:
+		case 0x88:
+		case 0x8c:
+		case 0x8d:
+		case 0x8e:
 			PDEBUGF(LOG_V2, LOG_DMA, "write: extra page register 0x%04x (unused)\n", address);
 			m_s.ext_page_reg[address & 0x0f] = value;
 			break;
@@ -669,51 +644,48 @@ void DMA::raise_HLDA(void)
 	}
 }
 
-unsigned DMA::register_8bit_channel(unsigned channel,
+void DMA::register_8bit_channel(unsigned channel,
 		dma8_fun_t dmaRead, dma8_fun_t dmaWrite, const char *name)
 {
 	if(channel > 3) {
 		PERRF(LOG_DMA, "register_8bit_channel: invalid channel number(%u)\n", channel);
-		return 0; // Fail
+		return;
 	}
 	if(m_channels[channel].used) {
 		PERRF(LOG_DMA, "register_8bit_channel: channel(%u) already in use\n", channel);
-		return 0; // Fail
+		return;
 	}
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by '%s'\n", channel, name);
 	m_h[channel].dmaRead8  = dmaRead;
 	m_h[channel].dmaWrite8 = dmaWrite;
 	m_channels[channel].used = true;
 	m_channels[channel].device = name;
-	return 1; // OK
 }
 
-unsigned DMA::register_16bit_channel(unsigned channel,
+void DMA::register_16bit_channel(unsigned channel,
 		dma16_fun_t dmaRead, dma16_fun_t dmaWrite, const char *name)
 {
 	if((channel < 4) || (channel > 7)) {
 		PERRF(LOG_DMA, "register_16bit_channel: invalid channel number(%u)\n", channel);
-		return 0; // Fail
+		return;
 	}
 	if(m_channels[channel].used) {
 		PERRF(LOG_DMA, "register_16bit_channel: channel(%u) already in use\n", channel);
-		return 0; // Fail
+		return;
 	}
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by %s", channel, name);
 	m_h[channel&0x03].dmaRead16  = dmaRead;
 	m_h[channel&0x03].dmaWrite16 = dmaWrite;
 	m_channels[channel].used = true;
 	m_channels[channel].device = name;
-	return 1; // OK
 }
 
-unsigned DMA::unregister_channel(unsigned channel)
+void DMA::unregister_channel(unsigned channel)
 {
 	assert(channel < 8);
 	m_channels[channel].used = false;
 	m_channels[channel].device = "";
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u no longer used\n", channel);
-	return 1;
 }
 
 std::string DMA::get_device_name(unsigned _channel)

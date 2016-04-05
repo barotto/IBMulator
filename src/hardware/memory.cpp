@@ -67,8 +67,6 @@ Memory::~Memory()
 
 void Memory::init()
 {
-	config_changed();
-
 	//register_trap(0x400, 0x4FF, 3, &Memory::s_debug_40h_trap);
 	//register_trap(0xC0000, 0xDFFFF, 3, &Memory::s_debug_trap);
 	//register_trap(0x800, 0xDFFFF, 3, &Memory::s_debug_trap);
@@ -400,7 +398,7 @@ uint8_t Memory::read(uint32_t _address) const noexcept
 
 	//VGA MEMORY
 	if(_address >= 0xA0000 && _address <= 0xBFFFF) {
-		return g_vga.mem_read(_address);
+		return g_machine.devices().vga()->mem_read(_address);
 	}
 
 	//SYSTEM ROM
@@ -421,7 +419,7 @@ void Memory::write(uint32_t _address, uint8_t _value) noexcept
 	}
 	//VGA MEMORY
 	else if(_address >= 0xA0000 && _address <= 0xBFFFF) {
-		g_vga.mem_write(_address, _value);
+		g_machine.devices().vga()->mem_write(_address, _value);
 	}
 }
 

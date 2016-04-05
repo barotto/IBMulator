@@ -372,7 +372,7 @@ void RealisticInterface::on_dragstart(RC::Event &_event)
 
 void RealisticInterface::on_power(RC::Event &_evt)
 {
-	bool on = g_machine.is_on();
+	bool on = m_gui->machine()->is_on();
 	Interface::on_power(_evt);
 	m_real_audio.update(!on, true);
 }

@@ -29,7 +29,7 @@
 #include "hardware/devices/vga.h"
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/harddrv.h"
-
+using namespace std::placeholders;
 
 LogMessage::LogMessage(Interface *_iface)
 : m_iface(_iface)
@@ -56,8 +56,7 @@ void InterfaceFX::init(Mixer *_mixer)
 {
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 	GUIFX::init(_mixer,
-		std::bind(&InterfaceFX::create_sound_samples, this,
-				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		std::bind(&InterfaceFX::create_sound_samples, this, _1, _2, _3),
 		"GUI interface", spec);
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
 }
@@ -115,44 +114,21 @@ m_quad_data{
 
 	m_buttons.power = get_element("power");
 	m_buttons.fdd_select = get_element("fdd_select");
-
-	if(g_program.config().get_string(DRIVES_SECTION,DRIVES_FDD_B).compare("none") == 0) {
-		m_buttons.fdd_select->SetProperty("visibility", "hidden");
-		m_drive_b = false;
-	} else {
-		m_drive_b = true;
-	}
 	m_warning = get_element("warning");
 	m_message = get_element("message");
-
 	m_status.fdd_led = get_element("fdd_led");
 	m_status.hdd_led = get_element("hdd_led");
 	m_status.fdd_disk = get_element("fdd_disk");
 
 	m_leds.power = false;
-	m_leds.fdd = false;
-	m_leds.hdd = false;
-	m_curr_drive = 0;
-
-	m_floppy_present = g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED);
-	if(m_floppy_present) {
-		update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH, FILE_TYPE_USER));
-	}
-	m_floppy_changed = g_floppy.has_disk_changed(0);
 
 	m_fs = new FileSelect(_gui);
-	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this,
-			std::placeholders::_1, std::placeholders::_2));
+	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
 
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, new LogMessage(this));
 
 	m_size = 0;
-
-	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
-	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
-	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
-	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
 
 	m_audio.init(_mixer);
 }
@@ -241,13 +217,48 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 
 	m_display.vga_updated = true;
 
-	//at this point the VGA is already inited (see machine::init)
-	g_vga.attach_display(&m_display.vga);
+	//at this point the VGA is already initialised (see machine::init)
+	m_machine->devices().device<VGA>()->attach_display(&m_display.vga);
 
 	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
 	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_quad_data), m_quad_data, GL_DYNAMIC_DRAW) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
+}
+
+void Interface::config_changed()
+{
+	m_leds.fdd = false;
+	m_status.fdd_led->SetClass("active", false);
+	m_status.fdd_disk->SetInnerRML("");
+	m_floppy_present = false;
+	m_floppy_changed = false;
+	m_curr_drive = 0;
+	m_buttons.fdd_select->SetProperty("visibility", "hidden");
+	m_floppy = m_machine->devices().device<FloppyCtrl>();
+	if(m_floppy) {
+		m_floppy_present = g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED);
+		if(m_floppy_present) {
+			update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH,
+					FILE_TYPE_USER));
+		}
+		m_floppy_changed = m_floppy->has_disk_changed(0);
+
+		if(m_floppy->drive_type(1) != FDD_NONE) {
+			m_buttons.fdd_select->SetProperty("visibility", "visible");
+			m_buttons.fdd_select->SetClass("a", true);
+			m_buttons.fdd_select->SetClass("b", false);
+		}
+	}
+
+	m_leds.hdd = false;
+	m_status.hdd_led->SetClass("active", false);
+	m_hdd = m_machine->devices().device<HardDrive>();
+
+	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
+	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
+	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
+	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
 }
 
 void Interface::update_floppy_disk(std::string _filename)
@@ -267,7 +278,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		return;
 	}
 
-	if(m_drive_b) {
+	if(m_floppy->drive_type(1) != FDD_NONE) {
 		//check if the same image file is already mounted on drive A
 		const char *section = m_curr_drive?DISK_A_SECTION:DISK_B_SECTION;
 		if(g_program.config().get_bool(section,DISK_INSERTED)) {
@@ -320,34 +331,36 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 void Interface::update()
 {
 	if(is_visible()) {
-		bool motor = g_floppy.is_motor_on(m_curr_drive);
-		if(motor && m_leds.fdd==false) {
-			m_leds.fdd = true;
-			m_status.fdd_led->SetClass("active", true);
-		} else if(!motor && m_leds.fdd==true) {
-			m_leds.fdd = false;
-			m_status.fdd_led->SetClass("active", false);
+		if(m_floppy) {
+			bool motor = m_floppy->is_motor_on(m_curr_drive);
+			if(motor && m_leds.fdd==false) {
+				m_leds.fdd = true;
+				m_status.fdd_led->SetClass("active", true);
+			} else if(!motor && m_leds.fdd==true) {
+				m_leds.fdd = false;
+				m_status.fdd_led->SetClass("active", false);
+			}
+			bool present = m_floppy->is_media_present(m_curr_drive);
+			bool changed = m_floppy->has_disk_changed(m_curr_drive);
+			if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
+				m_floppy_changed = changed;
+				m_floppy_present = true;
+				const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
+				update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
+			} else if(!present && m_floppy_present==true) {
+				m_floppy_present = false;
+				m_status.fdd_disk->SetInnerRML("");
+			}
 		}
-
-		bool hdd_busy = g_harddrv.is_busy();
-		if(hdd_busy && m_leds.hdd==false) {
-			m_leds.hdd = true;
-			m_status.hdd_led->SetClass("active", true);
-		} else if(!hdd_busy && m_leds.hdd==true) {
-			m_leds.hdd = false;
-			m_status.hdd_led->SetClass("active", false);
-		}
-
-		bool present = g_floppy.is_media_present(m_curr_drive);
-		bool changed = g_floppy.has_disk_changed(m_curr_drive);
-		if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
-			m_floppy_changed = changed;
-			m_floppy_present = true;
-			const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
-			update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
-		} else if(!present && m_floppy_present==true) {
-			m_floppy_present = false;
-			m_status.fdd_disk->SetInnerRML("");
+		if(m_hdd) {
+			bool hdd_busy = m_hdd->is_busy();
+			if(hdd_busy && m_leds.hdd==false) {
+				m_leds.hdd = true;
+				m_status.hdd_led->SetClass("active", true);
+			} else if(!hdd_busy && m_leds.hdd==true) {
+				m_leds.hdd = false;
+				m_status.hdd_led->SetClass("active", false);
+			}
 		}
 		if(m_machine->is_on() && m_leds.power==false) {
 			m_leds.power = true;
@@ -388,7 +401,7 @@ void Interface::on_fdd_select(RC::Event &)
 	m_status.fdd_disk->SetInnerRML("");
 	if(m_curr_drive == 0) {
 		m_curr_drive = 1;
-		m_floppy_changed = g_floppy.has_disk_changed(1);
+		m_floppy_changed = m_floppy->has_disk_changed(1);
 		m_buttons.fdd_select->SetClass("a", false);
 		m_buttons.fdd_select->SetClass("b", true);
 		if(g_program.config().get_bool(DISK_B_SECTION,DISK_INSERTED)) {
@@ -396,7 +409,7 @@ void Interface::on_fdd_select(RC::Event &)
 		}
 	} else {
 		m_curr_drive = 0;
-		m_floppy_changed = g_floppy.has_disk_changed(0);
+		m_floppy_changed = m_floppy->has_disk_changed(0);
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
 		if(g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED)) {
@@ -408,13 +421,18 @@ void Interface::on_fdd_select(RC::Event &)
 void Interface::on_fdd_eject(RC::Event &)
 {
 	m_machine->cmd_eject_media(m_curr_drive);
-	if(g_floppy.is_media_present(m_curr_drive)) {
+	if(m_floppy->is_media_present(m_curr_drive)) {
 		m_audio.use_floppy(false);
 	}
 }
 
 void Interface::on_fdd_mount(RC::Event &)
 {
+	if(m_floppy == nullptr) {
+		show_message("floppy drives not present");
+		return;
+	}
+
 	std::string floppy_dir;
 
 	if(m_curr_drive==0) {

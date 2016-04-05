@@ -44,9 +44,10 @@ public:
 	DriveFX();
 	virtual ~DriveFX();
 
-	virtual void init(MixerChannel_handler _spin_channel, const char *_spin_name,
+	virtual void install(MixerChannel_handler _spin_channel, const char *_spin_name,
 			MixerChannel_handler _seek_channel, const char *_seek_name,
 			const AudioSpec &_spec);
+	virtual void remove();
 	virtual void seek(int _c0, int _c1, int _tot_cyls);
 	virtual void spin(bool _spinning, bool _change_state);
 	virtual void clear_events();

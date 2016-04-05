@@ -269,7 +269,7 @@ void SysDebugger::update()
 	str += disasm(REG_CS.sel.value, nextip, false, nullptr);
 	m_disasm.line0->SetInnerRML(str);
 
-	str.FormatString(3, "%02X", g_machine.get_POST_code());
+	str.FormatString(3, "%02X", m_gui->machine()->get_POST_code());
 	m_post->SetInnerRML(str);
 }
 

@@ -26,7 +26,7 @@
 #ifndef IBMULATOR_HW_PIT_82C54_H
 #define IBMULATOR_HW_PIT_82C54_H
 
-typedef void (*out_handler_t)(bool value, uint32_t cycles);
+typedef std::function<void(bool value, uint32_t cycles)> out_handler_t;
 
 class PIT_82C54
 {

@@ -30,6 +30,8 @@
 class Machine;
 class GUI;
 class Mixer;
+class FloppyCtrl;
+class HardDrive;
 
 class InterfaceFX : public GUIFX
 {
@@ -113,6 +115,8 @@ protected:
 	Machine *m_machine;
 	Mixer *m_mixer;
 	FileSelect *m_fs;
+	FloppyCtrl *m_floppy;
+	HardDrive *m_hdd;
 
 	InterfaceFX m_audio;
 
@@ -121,6 +125,7 @@ public:
 	virtual ~Interface();
 
 	virtual void update();
+	virtual void config_changed();
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 

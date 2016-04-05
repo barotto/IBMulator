@@ -25,20 +25,11 @@
 #include "hardware/cpu/debugger.h"
 #include "hardware/memory.h"
 #include "hardware/devices.h"
-#include "hardware/devices/cmos.h"
-#include "hardware/devices/pic.h"
-#include "hardware/devices/pit.h"
-#include "hardware/devices/dma.h"
-#include "hardware/devices/vga.h"
 #include "hardware/devices/keyboard.h"
 #include "hardware/devices/floppy.h"
-#include "hardware/devices/harddrv.h"
-#include "hardware/devices/serial.h"
-#include "hardware/devices/parallel.h"
+#include "hardware/devices/dma.h"
 #include "hardware/devices/systemboard.h"
-#include "hardware/devices/pcspeaker.h"
-#include "hardware/devices/ps1audio.h"
-#include "hardware/devices/gameport.h"
+
 #include "gui/gui.h"
 #include <sstream>
 #include <iomanip>
@@ -110,17 +101,30 @@ void Machine::restore_state(StateBuf &_state)
 	h.name = MACHINE_TIMERS_NAME;
 	h.data_size = sizeof(Timer) * MAX_TIMERS;
 	_state.check(h);
+
+	//for every timer in the savestate
 	for(uint t=0; t<MAX_TIMERS; t++) {
-		Timer *timer = (Timer*)_state.get_buf();
-		if(strcmp(m_timers[t].name, timer->name) != 0) {
-			PERRF(LOG_MACHINE, "timer error\n");
-			throw std::exception();
-		}
-		if(m_timers[t].in_use) {
-			m_timers[t].period = timer->period;
-			m_timers[t].time_to_fire = timer->time_to_fire;
-			m_timers[t].active = timer->active;
-			m_timers[t].continuous = timer->continuous;
+		Timer *savtimer = (Timer*)_state.get_buf();
+		if(savtimer->in_use) {
+			uint mchtidx;
+			//find the correct machine timer, which must be already registered
+			for(mchtidx=0; mchtidx<MAX_TIMERS; mchtidx++) {
+				if(strcmp(m_timers[mchtidx].name, savtimer->name) == 0) {
+					break;
+				}
+			}
+			if(mchtidx>=MAX_TIMERS) {
+				PERRF(LOG_MACHINE, "cant find timer %s\n", savtimer->name);
+				throw std::exception();
+			}
+			if(!m_timers[mchtidx].in_use) {
+				PERRF(LOG_MACHINE, "timer %s is not in use\n", m_timers[mchtidx].name);
+				throw std::exception();
+			}
+			m_timers[mchtidx].period = savtimer->period;
+			m_timers[mchtidx].time_to_fire = savtimer->time_to_fire;
+			m_timers[mchtidx].active = savtimer->active;
+			m_timers[mchtidx].continuous = savtimer->continuous;
 		}
 		_state.advance(sizeof(Timer));
 	}
@@ -155,8 +159,6 @@ void Machine::restore_state(StateBuf &_state)
 		throw std::exception();
 	}
 
-	g_sysboard.update_status();
-
 	std::unique_lock<std::mutex> lock(ms_gui_lock);
 	m_curr_prgname_changed = true;
 }
@@ -186,46 +188,13 @@ void Machine::init()
 	register_timer(std::bind(&Machine::null_timer,this),
 			NULL_TIMER_INTERVAL, true, true, "null timer");
 
-	//TODO this device "registering" method is a stub.
-	//there must be a mechanism to "unregister" a device at run time
-	g_devices.register_device(&g_dma);
-	g_devices.register_device(&g_sysboard);
-	g_devices.register_device(&g_cmos);
-	g_devices.register_device(&g_pic);
-	g_devices.register_device(&g_pit);
-	g_devices.register_device(&g_pcspeaker);
-	g_devices.register_device(&g_vga);
-	g_devices.register_device(&g_keyboard);
-	g_devices.register_device(&g_floppy);
-	g_devices.register_device(&g_harddrv);
-	g_devices.register_device(&g_serial);
-	g_devices.register_device(&g_parallel);
-	g_devices.register_device(&g_ps1audio);
-	g_devices.register_device(&g_gameport);
-
 	g_cpu.init();
-	g_memory.init();
-	g_devices.init();
-
-	config_changed();
-
 	g_cpu.set_HRQ(false);
 	g_cpu.set_shutdown_trap([this] () {
 		reset(CPU_SOFT_RESET);
 	});
-
-	PDEBUGF(LOG_V2, LOG_MACHINE, "registered timers: %u\n", m_num_timers);
-	for(unsigned i=0; i<m_num_timers; i++) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
-	}
-	PINFOF(LOG_V2, LOG_MACHINE, "IRQ channels:\n");
-	for(unsigned i=0; i<16; i++) {
-		PINFOF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, m_irq_names[i].c_str());
-	}
-	PINFOF(LOG_V2, LOG_MACHINE, "DMA channels:\n");
-	for(unsigned i=0; i<8; i++) {
-		PINFOF(LOG_V2, LOG_MACHINE, "   %u: %s\n", i, g_dma.get_device_name(i).c_str());
-	}
+	g_memory.init();
+	g_devices.init(this);
 }
 
 void Machine::start()
@@ -277,12 +246,29 @@ void Machine::power_off()
 
 void Machine::config_changed()
 {
+	g_cpu.config_changed();
+	g_memory.config_changed();
+	g_devices.config_changed();
+
 	m_cpu_cycles = g_cpu.get_freq() / (1.0e6 / m_heartbeat);
 	m_cycles_factor = 1.0;
 	m_skipped_cycles = 0.0;
 
 	PINFOF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
 	PINFOF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %u\n", m_cpu_cycles);
+
+	PDEBUGF(LOG_V2, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
+	for(unsigned i=0; i<m_num_timers; i++) {
+		PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
+	}
+	PINFOF(LOG_V2, LOG_MACHINE, "IRQ channels:\n");
+	for(unsigned i=0; i<16; i++) {
+		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_irq_names[i].c_str());
+	}
+	PINFOF(LOG_V2, LOG_MACHINE, "DMA channels:\n");
+	for(unsigned i=0; i<8; i++) {
+		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
+	}
 }
 
 bool Machine::main_loop()
@@ -494,6 +480,15 @@ int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _
 	}
 
 	return timer;
+}
+
+void Machine::unregister_timer(int &_timer)
+{
+	assert(_timer < MAX_TIMERS);
+	m_timers[_timer].in_use = false;
+	m_timers[_timer].active = false;
+	m_timers[_timer].fire = nullptr;
+	_timer = NULL_TIMER_HANDLE;
 }
 
 void Machine::activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous)
@@ -782,14 +777,14 @@ void Machine::cmd_restore_state(StateBuf &_state)
 void Machine::cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp)
 {
 	m_cmd_fifo.push([=] () {
-		g_floppy.insert_media(_drive, _type, _file.c_str(), _wp);
+		g_devices.device<FloppyCtrl>()->insert_media(_drive, _type, _file.c_str(), _wp);
 	});
 }
 
 void Machine::cmd_eject_media(uint _drive)
 {
 	m_cmd_fifo.push([=] () {
-		g_floppy.eject_media(_drive);
+		g_devices.device<FloppyCtrl>()->eject_media(_drive);
 	});
 }
 
@@ -800,9 +795,6 @@ void Machine::sig_config_changed()
 		if(m_on) {
 			power_off();
 		}
-		g_cpu.config_changed();
-		g_memory.config_changed();
-		g_devices.config_changed();
 		config_changed();
 		g_program.ms_cv.notify_one();
 	});
@@ -810,7 +802,7 @@ void Machine::sig_config_changed()
 
 void Machine::send_key_to_kbctrl(uint32_t _key)
 {
-	g_keyboard.gen_scancode(_key);
+	g_devices.device<Keyboard>()->gen_scancode(_key);
 }
 
 void Machine::register_mouse_fun(mouse_fun_t _mouse_fun)
@@ -847,7 +839,11 @@ void Machine::joystick_button(int _jid, int _button, int _state)
 
 uint8_t Machine::get_POST_code()
 {
-	return g_sysboard.read(0x0190,1);
+	SystemBoard * sb = g_devices.sysboard();
+	if(sb != nullptr) {
+		return g_devices.sysboard()->read(0x0190,1);
+	}
+	return 0;
 }
 
 void Machine::set_DOS_program_name(const char *_name)

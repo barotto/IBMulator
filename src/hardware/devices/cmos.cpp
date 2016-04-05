@@ -26,7 +26,11 @@
 #include <cstring>
 #include <fstream>
 
-CMOS g_cmos;
+#define CMOS_IRQ 8
+
+IODEVICE_PORTS(CMOS) = {
+	{ 0x70, 0x71, PORT_8BIT|PORT_RW }
+};
 
 // CMOS register definitions from the IBM PS/1 Technical Reference
 #define  REG_SEC           0x00
@@ -63,25 +67,19 @@ uint8_t bin_to_bcd(uint8_t value, bool is_binary)
 }
 
 
-CMOS::CMOS()
+CMOS::CMOS(Devices *_dev)
+: IODevice(_dev)
 {
-	m_periodic_timer_index = NULL_TIMER_HANDLE;
-	m_one_second_timer_index = NULL_TIMER_HANDLE;
-	m_uip_timer_index = NULL_TIMER_HANDLE;
 }
 
 CMOS::~CMOS()
 {
 }
 
-void CMOS::init()
+void CMOS::install()
 {
-	g_devices.register_read_handler(this, 0x70, 1);
-	g_devices.register_read_handler(this, 0x71, 1);
-	g_devices.register_write_handler(this, 0x70, 1);
-	g_devices.register_write_handler(this, 0x71, 1);
-
-	g_machine.register_irq(8, "CMOS RTC");
+	IODevice::install();
+	g_machine.register_irq(CMOS_IRQ, name());
 
 	m_periodic_timer_index = g_machine.register_timer(
 			std::bind(&CMOS::periodic_timer,this),
@@ -103,6 +101,15 @@ void CMOS::init()
 			false, // one-shot
 			false, // not-active
 			"CMOS uip");
+}
+
+void CMOS::remove()
+{
+	IODevice::remove();
+	g_machine.unregister_irq(CMOS_IRQ);
+	g_machine.unregister_timer(m_periodic_timer_index);
+	g_machine.unregister_timer(m_one_second_timer_index);
+	g_machine.unregister_timer(m_uip_timer_index);
 }
 
 void CMOS::config_changed()
@@ -186,7 +193,7 @@ void CMOS::save_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_CMOS, "saving state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 }
@@ -196,7 +203,7 @@ void CMOS::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_CMOS, "restoring state\n");
 
 	StateHeader h;
-	h.name = get_name();
+	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
@@ -267,7 +274,7 @@ uint16_t CMOS::read(uint16_t address, unsigned /*io_len*/)
 {
 	uint8_t ret8;
 
-	PDEBUGF(LOG_V2, LOG_CMOS, "CMOS read of register 0x%02x\n", (unsigned)  m_s.cmos_mem_address);
+	PDEBUGF(LOG_V2, LOG_CMOS, "CMOS read of register 0x%02x\n", (unsigned)m_s.cmos_mem_address);
 
 	switch (address) {
 		case 0x0070:
@@ -279,7 +286,7 @@ uint16_t CMOS::read(uint16_t address, unsigned /*io_len*/)
 			// all bits of Register C are cleared after a read occurs.
 			if(m_s.cmos_mem_address == REG_STAT_C) {
 				m_s.reg[REG_STAT_C] = 0x00;
-				g_pic.lower_irq(8);
+				m_devices->pic()->lower_irq(CMOS_IRQ);
 			}
 			return ret8;
 
@@ -459,7 +466,7 @@ void CMOS::periodic_timer()
 	if(m_s.reg[REG_STAT_B] & 0x40) {
 		m_s.reg[REG_STAT_C] |= 0xc0; // Interrupt Request, Periodic Int
 		PDEBUGF(LOG_V2, LOG_CMOS, "Interrupt Request, Periodic Int\n");
-		g_pic.raise_irq(8);
+		m_devices->pic()->raise_irq(CMOS_IRQ);
 	}
 }
 
@@ -496,7 +503,7 @@ void CMOS::uip_timer()
 	if(m_s.reg[REG_STAT_B] & 0x10) {
 		m_s.reg[REG_STAT_C] |= 0x90; // Interrupt Request, Update Ended
 		PDEBUGF(LOG_V2, LOG_CMOS, "Interrupt Request, Update Ended\n");
-		g_pic.raise_irq(8);
+		m_devices->pic()->raise_irq(CMOS_IRQ);
 	}
 
 	// compare CMOS user copy of time/date to alarm time/date here
@@ -521,7 +528,7 @@ void CMOS::uip_timer()
 		if(alarm_match) {
 			m_s.reg[REG_STAT_C] |= 0xa0; // Interrupt Request, Alarm Int
 			PDEBUGF(LOG_V2, LOG_CMOS, "Interrupt Request, Alarm Int\n");
-			g_pic.raise_irq(8);
+			m_devices->pic()->raise_irq(CMOS_IRQ);
 		}
 	}
 	m_s.reg[REG_STAT_A] &= 0x7f; // clear UIP bit
