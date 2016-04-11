@@ -124,12 +124,8 @@ void PS1Audio::reset(unsigned _type)
 
 void PS1Audio::power_off()
 {
-	if(m_PSG_channel->is_enabled()) {
-		m_PSG_channel->enable(false);
-	}
-	if(m_DAC_channel->is_enabled()) {
-		m_DAC_channel->enable(false);
-	}
+	m_PSG_channel->enable(false);
+	m_DAC_channel->enable(false);
 }
 
 void PS1Audio::config_changed()
@@ -425,9 +421,7 @@ void PS1Audio::FIFO_timer()
 	uint8_t value = m_DAC_last_value;
 	if(m_s.DAC.read_avail > 0) {
 		value = m_s.DAC.read();
-		if(!m_DAC_channel->is_enabled()) {
-			m_DAC_channel->enable(true);
-		}
+		m_DAC_channel->enable(true);
 		m_DAC_empty_samples = 0;
 	} else {
 		m_DAC_empty_samples++;

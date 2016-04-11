@@ -74,9 +74,8 @@ void DriveFX::seek(int _c0, int _c1, int _tot_cyls)
 			event.distance,
 			(_c1 - _c0),
 			event.time);
-	if(!m_channels.seek->is_enabled()) {
-		m_channels.seek->enable(true);
-	}
+
+	m_channels.seek->enable(true);
 }
 
 void DriveFX::spin(bool _spinning, bool _change_state)
@@ -86,7 +85,7 @@ void DriveFX::spin(bool _spinning, bool _change_state)
 	}
 	m_spinning = _spinning;
 	m_spin_change = _change_state;
-	if((m_spinning || m_spin_change) && !m_channels.spin->is_enabled()) {
+	if((m_spinning || m_spin_change)) {
 		m_channels.spin->enable(true);
 	}
 }

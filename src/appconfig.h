@@ -171,6 +171,7 @@ public:
 #define MIXER_VOLUME            "volume"
 #define MIXER_PCSPEAKER         "pcspeaker"
 #define MIXER_PS1AUDIO          "ps1audio"
+#define MIXER_ADLIB             "adlib"
 
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_VOLUME          "volume"

@@ -37,7 +37,9 @@ libhardware_a_SOURCES = \
 	devices/pcspeaker.cpp \
 	devices/ps1audio.cpp \
 	devices/sn76496.cpp \
-	devices/gameport.cpp
+	devices/gameport.cpp \
+	devices/opl.cpp \
+	devices/adlib.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -77,4 +79,6 @@ noinst_HEADERS = \
 	devices/pcspeaker.h \
 	devices/ps1audio.h \
 	devices/sn76496.h \
-	devices/gameport.h
+	devices/gameport.h \
+	devices/opl.h \
+	devices/adlib.h

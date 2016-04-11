@@ -72,9 +72,7 @@ void InterfaceFX::use_floppy(bool _insert)
 	} else {
 		m_event = FLOPPY_EJECT;
 	}
-	if(!m_channel->is_enabled()) {
-		m_channel->enable(true);
-	}
+	m_channel->enable(true);
 }
 
 bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)

@@ -74,9 +74,7 @@ void PCSpeaker::reset(uint)
 
 void PCSpeaker::power_off()
 {
-	if(m_channel->is_enabled()) {
-		m_channel->enable(false);
-	}
+	m_channel->enable(false);
 	reset(0);
 }
 

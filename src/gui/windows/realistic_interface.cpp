@@ -81,7 +81,7 @@ void RealisticFX::update(bool _power_on, bool _change_state)
 	if(m_channel->volume()<=FLT_MIN) {
 		return;
 	}
-	if((_power_on || _change_state) && !m_channel->is_enabled()) {
+	if((_power_on || _change_state)) {
 		m_channel->enable(true);
 	}
 	m_power_on = _power_on;

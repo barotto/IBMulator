@@ -257,15 +257,15 @@ void Machine::config_changed()
 	PINFOF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
 	PINFOF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %u\n", m_cpu_cycles);
 
-	PDEBUGF(LOG_V2, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
 	for(unsigned i=0; i<m_num_timers; i++) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
 	}
-	PINFOF(LOG_V2, LOG_MACHINE, "IRQ channels:\n");
+	PINFOF(LOG_V1, LOG_MACHINE, "IRQ channels:\n");
 	for(unsigned i=0; i<16; i++) {
 		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_irq_names[i].c_str());
 	}
-	PINFOF(LOG_V2, LOG_MACHINE, "DMA channels:\n");
+	PINFOF(LOG_V1, LOG_MACHINE, "DMA channels:\n");
 	for(unsigned i=0; i<8; i++) {
 		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
 	}
@@ -446,20 +446,30 @@ int Machine::register_timer(timer_fun_t _func, uint64_t _period_usecs, bool _con
 int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _continuous,
 		bool _active, const char *_name)
 {
-	unsigned timer;
+	unsigned timer = NULL_TIMER_HANDLE;
 
 	if(m_num_timers >= MAX_TIMERS) {
-    	PERRF_ABORT(LOG_MACHINE, "register_timer: too many registered timers\n");
-    	return -1;
+    	PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
+    	throw std::exception();
 	}
 
 	// search for new timer
-	for(timer = 0; timer < m_num_timers; timer++) {
-		if(!m_timers[timer].in_use) {
-			break;
+	for(unsigned i = 0; i < m_num_timers; i++) {
+		//check if there's another timer with the same name
+		if(m_timers[i].in_use && strcmp(m_timers[i].name, _name)==0) {
+			//cannot be 2 timers with the same name
+			return NULL_TIMER_HANDLE;
+		}
+		if((!m_timers[i].in_use) && (timer==NULL_TIMER_HANDLE)) {
+			//free timer found
+			timer = i;
 		}
 	}
-
+	if(timer == NULL_TIMER_HANDLE) {
+		// If we didn't find a free slot, increment the bound m_num_timers.
+		timer = m_num_timers;
+		m_num_timers++;
+	}
 	m_timers[timer].in_use = true;
 	m_timers[timer].period = _period_nsecs;
 	m_timers[timer].time_to_fire = m_s.virt_time + _period_nsecs;
@@ -474,16 +484,14 @@ int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _
 
 	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name);
 
-	// If we didn't find a free slot, increment the bound m_num_timers.
-	if(timer == m_num_timers) {
-		m_num_timers++;
-	}
-
 	return timer;
 }
 
 void Machine::unregister_timer(int &_timer)
 {
+	if(_timer == NULL_TIMER_HANDLE) {
+		return;
+	}
 	assert(_timer < MAX_TIMERS);
 	m_timers[_timer].in_use = false;
 	m_timers[_timer].active = false;

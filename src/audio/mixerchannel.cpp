@@ -51,13 +51,15 @@ MixerChannel::~MixerChannel()
 
 void MixerChannel::enable(bool _enabled)
 {
-	m_enabled = _enabled;
-	m_disable_time = 0;
-	if(_enabled) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
-	} else {
-		m_first_update = true;
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
+	if(m_enabled != _enabled) {
+		m_enabled = _enabled;
+		m_disable_time = 0;
+		if(_enabled) {
+			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
+		} else {
+			m_first_update = true;
+			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
+		}
 	}
 }
 

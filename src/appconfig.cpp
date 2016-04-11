@@ -117,11 +117,12 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ MIXER_SECTION, {
 		{ MIXER_RATE,      "48000" },
-		{ MIXER_SAMPLES,   "1024" },
-		{ MIXER_PREBUFFER, "50" },
-		{ MIXER_VOLUME,    "1.0" },
-		{ MIXER_PCSPEAKER, "yes" },
-		{ MIXER_PS1AUDIO,  "yes" }
+		{ MIXER_SAMPLES,   "1024"  },
+		{ MIXER_PREBUFFER, "50"    },
+		{ MIXER_VOLUME,    "1.0"   },
+		{ MIXER_PCSPEAKER, "yes"   },
+		{ MIXER_PS1AUDIO,  "yes"   },
+		{ MIXER_ADLIB,     "no"    }
 	} },
 
 	{ SOUNDFX_SECTION, {

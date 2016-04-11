@@ -169,13 +169,14 @@ void StateBuf::write(const void *_data, const StateHeader &_header)
 		m_curptr = m_buf + curoff;
 		bleft = get_bytesleft();
 	}
-
 	m_curptr += _header.write(m_curptr, bleft);
 
-	bleft = get_bytesleft();
-	assert(bleft>=_header.data_size);
-	memcpy(m_curptr, _data, _header.data_size);
-	m_curptr += _header.data_size;
+	if(_header.data_size) {
+		bleft = get_bytesleft();
+		assert(bleft>=_header.data_size);
+		memcpy(m_curptr, _data, _header.data_size);
+		m_curptr += _header.data_size;
+	}
 }
 
 void StateBuf::read(void *_data, const StateHeader &_header)

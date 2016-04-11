@@ -7,6 +7,7 @@ libaudio_a_SOURCES = \
 	mixerchannel.cpp \
 	ring_buffer.cpp \
 	soundfx.cpp \
+	synth.cpp \
 	vgm.cpp \
 	wav.cpp
 
@@ -16,5 +17,6 @@ noinst_HEADERS = \
 	mixerchannel.h \
 	ring_buffer.h \
 	soundfx.h \
+	synth.h \
 	vgm.h \
 	wav.h

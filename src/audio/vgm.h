@@ -98,15 +98,16 @@ struct VGMHeader {
 class VGMFile
 {
 public:
-
 	enum ChipType {
-		SN76489 = 3
+		SN76489 = 3,
+		YM3812  = 20
 	};
 
 private:
 	struct VGMEvent {
 		uint64_t time;
 		uint8_t  cmd;
+		uint32_t reg;
 		uint32_t data;
 	};
 	std::vector<VGMEvent> m_events;
@@ -120,8 +121,10 @@ public:
 	~VGMFile();
 
 	void open(std::string _filepath);
+	const char* name() { return m_filepath.c_str(); }
 	inline bool is_open() { return !m_filepath.empty(); };
 	void command(uint64_t _time, uint8_t _command, uint32_t _data);
+	void command(uint64_t _time, uint8_t _command, uint32_t _reg, uint32_t _data);
 	void set_chip(ChipType _chip);
 	void set_clock(uint32_t _value);
 	void set_SN76489_feedback(uint16_t _value);

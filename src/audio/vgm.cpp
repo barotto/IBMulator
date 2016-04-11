@@ -70,7 +70,12 @@ void VGMFile::set_SN76489_flags(uint8_t _value)
 
 void VGMFile::command(uint64_t _time, uint8_t _command, uint32_t _data)
 {
-	m_events.push_back({_time,_command,_data});
+	m_events.push_back({_time,_command,0,_data});
+}
+
+void VGMFile::command(uint64_t _time, uint8_t _command, uint32_t _reg, uint32_t _data)
+{
+	m_events.push_back({_time,_command,_reg,_data});
 }
 
 void VGMFile::close()
@@ -141,16 +146,23 @@ void VGMFile::close()
 		}
 		//the command data
 		size_t wresult = 1;
+		size_t size = 1;
 		switch(e.cmd) {
 			case 0x50:
 				//PSG (SN76489/SN76496) write value dd
 				wresult = fwrite(&e.data, 1, 1, file.get());
 				break;
+			case 0x5A:
+				//YM3812 write value aa dd
+				size = 2;
+				wresult = fwrite(&e.reg, 1, 1, file.get());
+				wresult += fwrite(&e.data, 1, 1, file.get());
+				break;
 			default:
 				PERRF(LOG_FS, "unsupported command\n");
 				throw std::exception();
 		}
-		if(wresult != 1) {
+		if(wresult != size) {
 			PERRF(LOG_FS, "error writing to file\n");
 			throw std::exception();
 		}

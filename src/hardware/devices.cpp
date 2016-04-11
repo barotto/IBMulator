@@ -38,6 +38,7 @@
 #include "devices/systemboard.h"
 #include "devices/pcspeaker.h"
 #include "devices/ps1audio.h"
+#include "devices/adlib.h"
 #include "devices/gameport.h"
 
 Devices g_devices;
@@ -93,6 +94,7 @@ void Devices::config_changed()
 	install_only_if<PCSpeaker>(g_program.config().get_bool(MIXER_SECTION, MIXER_PCSPEAKER));
 	bool gameport =
 	install_only_if<PS1Audio>(g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO));
+	install_only_if<AdLib>(g_program.config().get_bool(MIXER_SECTION, MIXER_ADLIB));
 	install_only_if<GamePort>(gameport);
 	install_only_if<Serial>(g_program.config().get_bool(COM_SECTION, COM_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));
@@ -248,7 +250,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 	io_handler_t &iohdl = m_read_handlers[_port];
 
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return 0xFF;
 	}
@@ -276,7 +278,7 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 	io_handler_t &iohdl = m_write_handlers[_port];
 
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PINFOF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
 		return;
 	}

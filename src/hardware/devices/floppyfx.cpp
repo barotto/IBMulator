@@ -106,9 +106,7 @@ void FloppyFX::boot(bool _wdisk)
 		event.userdata = FDD_BOOT;
 	}
 	m_seek_events.push(event);
-	if(!m_channels.seek->is_enabled()) {
-		m_channels.seek->enable(true);
-	}
+	m_channels.seek->enable(true);
 }
 
 //this method is called by the Mixer thread
