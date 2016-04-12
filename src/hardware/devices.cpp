@@ -56,6 +56,10 @@ m_cmos(nullptr)
 
 Devices::~Devices()
 {
+	// call the devices' destructor!
+	for(auto dev : m_devices) {
+		delete dev.second;
+	}
 }
 
 void Devices::init(Machine *_machine)
