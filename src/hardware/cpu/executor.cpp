@@ -2703,7 +2703,7 @@ bool CPUExecutor::INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *cor
 {
 	const char * str = CPUDebugger::INT_decode(call, vector, ax, core, mem);
 	if(str != nullptr) {
-		PINFOF(LOG_V1, LOG_CPU, "%s\n", str);
+		PDEBUGF(LOG_V1, LOG_CPU, "%s\n", str);
 	}
 	return true;
 }
