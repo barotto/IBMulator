@@ -125,7 +125,7 @@ void SN76496::write(uint16_t _value)
 	}
 }
 
-void SN76496::generate_samples(int16_t *_buffer, int _samples)
+void SN76496::generate(int16_t *_buffer, int _samples)
 {
 	int i;
 
@@ -253,7 +253,27 @@ void SN76496::set_gain(int _gain)
 	VolTable[15] = 0;
 }
 
-void SN76496::reset(int _clock, int _rate)
+void SN76496::reset()
+{
+	int i;
+	for(i = 0; i < 4; i++) {
+		Volume[i] = 0;
+	}
+	LastRegister = 0;
+	for(i = 0; i < 8; i+=2) {
+		Register[i] = 0;
+		Register[i + 1] = 0x0f;	/* volume = 0 */
+	}
+	for(i = 0; i < 4; i++) {
+		Output[i] = 0;
+		Period[i] = Count[i] = UpdateStep;
+	}
+	RNG = SN76496_NG_PRESET;
+	Output[3] = RNG & 1;
+	set_gain(0x1);
+}
+
+void SN76496::config_changed(int _clock, int _rate)
 {
 	int i;
 	SampleRate = _rate;
@@ -264,22 +284,6 @@ void SN76496::reset(int _clock, int _rate)
 	/* SN76496_STEP is a multiplier used to turn the fraction into a fixed point */
 	/* number. */
 	UpdateStep = (unsigned int)(((double)SN76496_STEP * SampleRate * 16) / _clock);
-	for(i = 0; i < 4; i++) {
-		Volume[i] = 0;
-	}
-	LastRegister = 0;
-	for(i = 0; i < 8; i+=2) {
-		Register[i] = 0;
-		Register[i + 1] = 0x0f;	/* volume = 0 */
-	}
-
-	for(i = 0; i < 4; i++) {
-		Output[i] = 0;
-		Period[i] = Count[i] = UpdateStep;
-	}
-	RNG = SN76496_NG_PRESET;
-	Output[3] = RNG & 1;
-	set_gain(0x1);
 }
 
 bool SN76496::is_silent()

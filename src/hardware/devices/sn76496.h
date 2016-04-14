@@ -40,8 +40,9 @@ struct SN76496
 
 
 	void write(uint16_t _value);
-	void generate_samples(int16_t *_buffer, int _samples);
-	void reset(int _clock, int _rate);
+	void generate(int16_t *_buffer, int _samples);
+	void reset();
+	void config_changed(int _clock, int _rate);
 	void set_gain(int _gain);
 	bool is_silent();
 };

@@ -109,13 +109,14 @@ void PS1Audio::remove()
 
 void PS1Audio::reset(unsigned _type)
 {
-	std::lock_guard<std::mutex> psg_lock(m_PSG_lock);
-	m_s.PSG.reset(PS1AUDIO_INPUT_CLOCK, m_PSG_rate);
-	m_PSG_events.clear();
+	m_PSG_channel->enable(false);
+	Synth::reset();
+	m_s.PSG.reset();
 
 	m_s.control_reg = 0;
 	lower_interrupt();
 
+	m_DAC_channel->enable(false);
 	std::lock_guard<std::mutex> lock(m_DAC_lock);
 	m_s.DAC.reset(_type);
 	m_DAC_samples.clear();
@@ -130,80 +131,34 @@ void PS1Audio::power_off()
 
 void PS1Audio::config_changed()
 {
-	m_PSG_rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_PSG_samples_per_ns = double(m_PSG_rate)/1e9;
-	m_PSG_channel->set_in_spec({AUDIO_FORMAT_S16, 1, unsigned(m_PSG_rate)});
+	int rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
+	AudioSpec spec({AUDIO_FORMAT_S16, 1, unsigned(rate)});
+	Synth::set_audio_spec(spec);
+	m_PSG_channel->set_in_spec(spec);
+	m_s.PSG.config_changed(PS1AUDIO_INPUT_CLOCK, rate);
 }
 
 void PS1Audio::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "PS/1: saving state\n");
-	std::lock_guard<std::mutex> psg_lock(m_PSG_lock);
-	std::lock_guard<std::mutex> dac_lock(m_DAC_lock);
-
-	StateHeader h;
-	m_s.PSG_events_cnt = m_PSG_events.size();
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
-
-	if(m_s.PSG_events_cnt) {
-		std::deque<PSGEvent>::iterator it;
-		if(!m_PSG_events.acquire_iterator(it)) {
-			PERRF(LOG_AUDIO, "PS/1: error writing state\n");
-			throw std::exception();
-			return;
-		}
-		h.name = std::string(name()) + "-PSG evts";
-		h.data_size = m_s.PSG_events_cnt * sizeof(PSGEvent);
-		std::vector<uint8_t> evts(h.data_size);
-		uint8_t *ptr = &evts[0];
-		for(size_t i=0; i<m_s.PSG_events_cnt; i++,it++) {
-			*((PSGEvent*)ptr) = *it;
-			ptr += sizeof(PSGEvent);
-		}
-		m_PSG_events.release_iterator();
-		_state.write(&evts[0], h);
-	}
+	_state.write(&m_s, {sizeof(m_s), name()});
+	Synth::save_state(_state);
 }
 
 void PS1Audio::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "PS/1: restoring state\n");
-	std::lock_guard<std::mutex> psg_lock(m_PSG_lock);
-	std::lock_guard<std::mutex> dac_lock(m_DAC_lock);
+
 	m_PSG_channel->enable(false);
 	m_DAC_channel->enable(false);
 
 	int fifo_timer = m_s.DAC.fifo_timer;
-	StateHeader h;
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s, h);
+	_state.read(&m_s, {sizeof(m_s), name()});
 	m_s.DAC.fifo_timer = fifo_timer;
 
-	m_PSG_events.clear();
-	m_PSG_last_mtime = 0;
-	if(m_s.PSG_events_cnt) {
-		_state.get_next_lump_header(h);
-		if(h.name.compare(std::string(name()) + "-PSG evts") != 0) {
-			PERRF(LOG_AUDIO, "PS/1 PSG events expected in state buffer, found %s\n", h.name.c_str());
-			throw std::exception();
-		}
-		size_t expsize = m_s.PSG_events_cnt*sizeof(PSGEvent);
-		if(h.data_size != expsize) {
-			PERRF(LOG_AUDIO, "PS/1 PSG events size mismatch in state buffer, expected %u, found %u\n",
-					expsize, h.data_size);
-			throw std::exception();
-		}
-		std::vector<PSGEvent> evts(m_s.PSG_events_cnt);
-		_state.read((uint8_t*)&evts[0],h);
-		for(size_t i=0; i<m_s.PSG_events_cnt; i++) {
-			m_PSG_events.push(evts[i]);
-		}
-	}
-	if(m_s.PSG_events_cnt || !m_s.PSG.is_silent()) {
-		m_PSG_channel->enable(true);
+	Synth::restore_state(_state);
+	if(Synth::has_events() || !m_s.PSG.is_silent()) {
+		Synth::enable_channel(m_PSG_channel.get());
 	}
 
 	m_DAC_samples.clear();
@@ -374,17 +329,17 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 					// push 0x0F (silence) only if the channel is active
 					push = ((value & 0xF) != 0xF) || m_PSG_channel->is_enabled();
 					if(push && !m_PSG_channel->is_enabled()) {
-						PSG_activate();
+						Synth::enable_channel(m_PSG_channel.get());
 					}
 				} else { /* frequency bit0-3 */ }
 			} else {
 				//DATA byte, frequency bit4-9
 				if(!m_PSG_channel->is_enabled()) {
-					PSG_activate();
+					Synth::enable_channel(m_PSG_channel.get());
 				}
 			}
 			if(push) {
-				m_PSG_events.push({g_machine.get_virt_time_ns(), value});
+				Synth::add_event({g_machine.get_virt_time_ns(), 0, value});
 			}
 			break;
 		}
@@ -445,12 +400,6 @@ void PS1Audio::FIFO_timer()
 	m_DAC_samples.push_back(value);
 }
 
-void PS1Audio::PSG_activate()
-{
-	m_PSG_last_mtime = 0;
-	m_PSG_channel->enable(true);
-}
-
 //this method is called by the Mixer thread
 bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd)
 {
@@ -493,80 +442,33 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 	return true;
 }
 
-int PS1Audio::generate_PSG_samples(uint64_t _duration)
-{
-	static std::vector<int16_t> buffer;
-	static double fsrem = 0.0;
-	double fsamples = (double(_duration) * m_PSG_samples_per_ns) + fsrem;
-	int samples = fsamples;
-	if(samples > 0) {
-		buffer.resize(samples);
-		m_s.PSG.generate_samples(&buffer[0], samples);
-		m_PSG_channel->in().add_samples(buffer);
-	}
-	fsrem = fsamples - samples;
-	return samples;
-}
-
 //this method is called by the Mixer thread
 bool PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
-	//this lock is to prevent a sudden queue clear on reset
-	std::lock_guard<std::mutex> lock(m_PSG_lock);
-
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
-	uint64_t mtime_us = NSEC_TO_USEC(mtime_ns);
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 PSG: mix slice: %04d usecs, samples needed: %d\n",
-			_time_span_us, int(round(double(_time_span_us) * 1000.0 * m_PSG_samples_per_ns)));
-
-	PSGEvent event, next_event;
-	uint64_t evt_dist_ns;
-	int generated_samples = 0;
-	next_event.time = 0;
-	bool empty = m_PSG_events.empty();
-
-	while(next_event.time < mtime_ns) {
-		empty = !m_PSG_events.try_and_copy(event);
-
-		if(empty || event.time > mtime_ns) {
-			if(m_PSG_last_mtime) {
-				evt_dist_ns = mtime_ns - m_PSG_last_mtime;
-			} else {
-				evt_dist_ns = _time_span_us * 1000 * (!_prebuf);
+	auto result = Synth::play_events(mtime_ns, _time_span_us, _prebuf,
+		[this](Event &_event) {
+			m_s.PSG.write(_event.value);
+			if(Synth::is_capturing()) {
+				Synth::capture_command(0x50, _event);
 			}
-			generated_samples += generate_PSG_samples(evt_dist_ns);
-			break;
-		} else if(m_PSG_last_mtime) {
-			evt_dist_ns = event.time - m_PSG_last_mtime;
-			generated_samples += generate_PSG_samples(evt_dist_ns);
+		},
+		[this](AudioBuffer &_buffer, int _frames) {
+			m_s.PSG.generate(&_buffer.operator[]<int16_t>(0), _frames);
+			m_PSG_channel->in().add_frames(_buffer);
 		}
-		m_PSG_last_mtime = 0;
-
-		//send command to the PSG
-		m_s.PSG.write(event.b0);
-		if(m_PSG_vgm.is_open()) {
-			m_PSG_vgm.command(NSEC_TO_USEC(event.time), 0x50, event.b0);
-		}
-
-		m_PSG_events.try_and_pop();
-		if(!m_PSG_events.try_and_copy(next_event) || next_event.time > mtime_ns) {
-			//no more events or the next event is in the future
-			next_event.time = mtime_ns;
-		}
-		evt_dist_ns = next_event.time - event.time;
-		generated_samples += generate_PSG_samples(evt_dist_ns);
-	}
+	);
 
 	m_PSG_channel->input_finish();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%d samples generated\n", generated_samples);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 PSG: mix %04d usecs, %d samples generated\n",
+			_time_span_us, result.second);
 
-	m_PSG_last_mtime = mtime_ns;
-	if(empty && m_s.PSG.is_silent()) {
-		return m_PSG_channel->check_disable_time(mtime_us);
+	if(result.first && m_s.PSG.is_silent()) {
+		return m_PSG_channel->check_disable_time(mtime_ns/1000);
 	}
-	m_PSG_channel->set_disable_time(mtime_us);
+	m_PSG_channel->set_disable_time(mtime_ns/1000);
 	return true;
 }
 
@@ -574,22 +476,17 @@ bool PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_
 void PS1Audio::on_PSG_capture(bool _enable)
 {
 	if(_enable) {
-		std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
-		std::string fname = FileSys::get_next_filename(path, "ps1psg_", ".vgm");
-		if(!fname.empty()) {
-			try {
-				m_PSG_vgm.open(fname);
-				m_PSG_vgm.set_chip(VGMFile::SN76489);
-				m_PSG_vgm.set_clock(PS1AUDIO_INPUT_CLOCK);
-				m_PSG_vgm.set_SN76489_feedback(6);
-				m_PSG_vgm.set_SN76489_shift_width(16);
-				PINFOF(LOG_V0, LOG_MIXER, "PS/1 PSG: started audio capturing to '%s'\n", fname.c_str());
-			} catch(std::exception &e) { }
-		}
-	} else {
 		try {
-			m_PSG_vgm.close();
+			Synth::start_capture("ps1psg");
+			Synth::vgm().set_chip(VGMFile::SN76489);
+			Synth::vgm().set_clock(PS1AUDIO_INPUT_CLOCK);
+			Synth::vgm().set_SN76489_feedback(6);
+			Synth::vgm().set_SN76489_shift_width(16);
+			PINFOF(LOG_V0, LOG_MIXER, "PS/1 PSG: started audio capturing to '%s'\n",
+					Synth::vgm().name());
 		} catch(std::exception &e) { }
+	} else {
+		Synth::stop_capture();
 	}
 }
 

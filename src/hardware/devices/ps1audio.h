@@ -23,13 +23,12 @@
 #include "hardware/iodevice.h"
 #include "hardware/devices/sn76496.h"
 #include "mixer.h"
-#include "shared_deque.h"
 #include <atomic>
-#include "audio/vgm.h"
+#include "audio/synth.h"
 
 #define PS1AUDIO_FIFO_SIZE 2048
 
-class PS1Audio : public IODevice
+class PS1Audio : public IODevice, private Synth
 {
 	IODEVICE(PS1Audio, "IBM PS/1 Audio Card")
 
@@ -53,22 +52,13 @@ private:
 		void set_reload_register(int _value);
 	};
 
-	struct PSGEvent {
-		uint64_t time;
-		uint8_t b0;
-	};
-
-	shared_deque<PSGEvent> m_PSG_events;
-
 	struct {
 		struct DAC     DAC;
 		struct SN76496 PSG;
-		size_t PSG_events_cnt;
 		uint8_t control_reg;
 	} m_s;
 
 	std::mutex m_DAC_lock;
-	std::mutex m_PSG_lock;
 	int m_DAC_empty_samples;
 	//the DAC frequency value is written by the machine and read by the mixer
 	std::atomic<unsigned> m_DAC_freq;
@@ -76,19 +66,6 @@ private:
 	std::shared_ptr<MixerChannel> m_DAC_channel;
 	std::shared_ptr<MixerChannel> m_PSG_channel;
 	uint8_t m_DAC_last_value;
-	int m_PSG_rate;
-	double m_PSG_samples_per_ns;
-	uint64_t m_PSG_last_mtime;
-	VGMFile m_PSG_vgm;
-
-	void FIFO_timer();
-	void raise_interrupt();
-	void lower_interrupt();
-	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	bool create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	void PSG_activate();
-	int generate_PSG_samples(uint64_t _duration);
-	void on_PSG_capture(bool _enable);
 
 public:
 	PS1Audio(Devices *_dev);
@@ -104,6 +81,15 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	void FIFO_timer();
+	void raise_interrupt();
+	void lower_interrupt();
+	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	void PSG_activate();
+	void on_PSG_capture(bool _enable);
 };
 
 #endif
