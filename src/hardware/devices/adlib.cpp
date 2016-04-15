@@ -39,44 +39,50 @@ AdLib::~AdLib()
 void AdLib::install()
 {
 	IODevice::install();
-	m_OPL.install("AdLib",true);
+	m_OPL.install(OPL::OPL2, true);
 
-	using namespace std::placeholders;
-	m_channel = g_mixer.register_channel(
-		std::bind(&AdLib::create_samples, this, _1, _2, _3),
-		"AdLib FM");
-	m_channel->set_disable_timeout(5000000);
-	m_channel->register_capture_clbk(std::bind(
-			&AdLib::on_capture, this, _1));
+	Synth::set_chip(0, &m_OPL);
+	Synth::install("AdLib", 5000,
+		[this](Event &_event) {
+			m_OPL.write(0, _event.reg);
+			m_OPL.write(1, _event.value);
+			if(Synth::is_capturing()) {
+				Synth::capture_command(0x5A, _event);
+			}
+		},
+		[this](AudioBuffer &_buffer, int _frames) {
+			m_OPL.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
+		},
+		[this](bool _start, VGMFile& _vgm) {
+			if(_start) {
+				_vgm.set_chip(VGMFile::YM3812);
+				_vgm.set_clock(3579545);
+			}
+		}
+	);
 }
 
 void AdLib::remove()
 {
 	IODevice::remove();
-	m_OPL.remove();
-	g_mixer.unregister_channel(m_channel);
+	Synth::remove();
 }
 
 void AdLib::reset(unsigned)
 {
-	m_channel->enable(false);
 	Synth::reset();
-	m_OPL.reset();
 	m_s.reg_index = 0;
 }
 
 void AdLib::power_off()
 {
-	m_channel->enable(false);
+	Synth::power_off();
 }
 
 void AdLib::config_changed()
 {
 	int rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_OPL.config_changed(OPL::OPL2, rate);
-	AudioSpec spec({AUDIO_FORMAT_S16, 1, unsigned(rate)});
-	set_audio_spec(spec);
-	m_channel->set_in_spec(spec);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, unsigned(rate)});
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)
@@ -109,9 +115,7 @@ void AdLib::write(uint16_t _address, uint16_t _value, unsigned)
 						m_s.reg_index,
 						uint8_t(_value)
 					});
-					if(!m_channel->is_enabled()) {
-						Synth::enable_channel(m_channel.get());
-					}
+					Synth::enable_channel();
 					break;
 			}
 			break;
@@ -125,7 +129,6 @@ void AdLib::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "AdLib: saving state\n");
 	_state.write(&m_s, {sizeof(m_s), name()});
-	m_OPL.save_state(_state);
 	Synth::save_state(_state);
 }
 
@@ -133,54 +136,5 @@ void AdLib::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "AdLib: restoring state\n");
 	_state.read(&m_s, {sizeof(m_s), name()});
-	m_OPL.restore_state(_state);
 	Synth::restore_state(_state);
-	if(Synth::has_events() || !m_OPL.is_silent()) {
-		Synth::enable_channel(m_channel.get());
-	}
-}
-
-bool AdLib::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
-{
-	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
-
-	auto result = play_events(mtime_ns, _time_span_us, _prebuf,
-		[this](Event &_event) {
-			m_OPL.write(0, _event.reg);
-			m_OPL.write(1, _event.value);
-			if(Synth::is_capturing()) {
-				Synth::capture_command(0x5A, _event);
-			}
-		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_OPL.generate(&_buffer.operator[]<int16_t>(0), _frames);
-			m_channel->in().add_frames(_buffer);
-		}
-	);
-
-	m_channel->input_finish();
-
-	PDEBUGF(LOG_V2, LOG_AUDIO, "AdLib FM: mix %04d usecs, %d samples generated\n",
-			_time_span_us, result.second);
-
-	if(result.first && m_OPL.is_silent()) {
-		return m_channel->check_disable_time(mtime_ns/1000);
-	}
-	m_channel->set_disable_time(mtime_ns/1000);
-	return true;
-}
-
-void AdLib::on_capture(bool _enable)
-{
-	if(_enable) {
-		try {
-			Synth::start_capture("adlib");
-			Synth::vgm().set_chip(VGMFile::YM3812);
-			Synth::vgm().set_clock(3579545);
-			PINFOF(LOG_V0, LOG_MIXER, "AdLib OPL: started audio capturing to '%s'\n",
-					Synth::vgm().name());
-		} catch(std::exception &e) {}
-	} else {
-		Synth::stop_capture();
-	}
 }

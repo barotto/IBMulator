@@ -28,7 +28,7 @@
 
 #define PS1AUDIO_FIFO_SIZE 2048
 
-class PS1Audio : public IODevice, private Synth
+class PS1Audio : public IODevice, protected Synth
 {
 	IODEVICE(PS1Audio, "IBM PS/1 Audio Card")
 
@@ -54,17 +54,17 @@ private:
 
 	struct {
 		struct DAC     DAC;
-		struct SN76496 PSG;
 		uint8_t control_reg;
 	} m_s;
+	SN76496 m_PSG;
 
 	std::mutex m_DAC_lock;
+	int m_DAC_timer;
 	int m_DAC_empty_samples;
 	//the DAC frequency value is written by the machine and read by the mixer
 	std::atomic<unsigned> m_DAC_freq;
 	std::vector<uint8_t> m_DAC_samples;
 	std::shared_ptr<MixerChannel> m_DAC_channel;
-	std::shared_ptr<MixerChannel> m_PSG_channel;
 	uint8_t m_DAC_last_value;
 
 public:

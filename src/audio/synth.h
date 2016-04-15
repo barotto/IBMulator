@@ -23,6 +23,20 @@
 #include "machine.h"
 #include "vgm.h"
 
+class SynthChip
+{
+public:
+	virtual ~SynthChip() {}
+	virtual void reset() = 0;
+	virtual void remove() = 0;
+	virtual void config_changed(int _rate) = 0;
+	virtual void generate(int16_t *_buffer, int _frames, int _stride) = 0;
+	virtual bool is_silent() = 0;
+	virtual void save_state(StateBuf &_state) = 0;
+	virtual void restore_state(StateBuf &_state) = 0;
+	virtual const char *name() = 0;
+};
+
 class Synth
 {
 public:
@@ -32,32 +46,48 @@ public:
 		uint16_t value;
 	};
 
+	typedef std::function<void(Event&)> synthfunc_t;
+	typedef std::function<void(AudioBuffer&,int)> genfunc_t;
+	typedef std::function<void(bool, VGMFile&)> captfunc_t;
+
 private:
-	int m_rate;
-	double m_frames_per_ns;
-	uint64_t m_last_time;
-	VGMFile m_vgm;
-	std::mutex m_evt_lock;
+	std::string m_name;
+	SynthChip * m_chips[2];
+	std::shared_ptr<MixerChannel> m_channel;
+	int         m_rate;
+	double      m_frames_per_ns;
+	uint64_t    m_last_time;
+	VGMFile     m_vgm;
+	std::mutex  m_evt_lock;
 	shared_deque<Event> m_events;
 	AudioBuffer m_buffer;
-	double m_frem;
+	double      m_fr_rem;
+	synthfunc_t m_synthcmd_fn;
+	genfunc_t   m_generate_fn;
+	captfunc_t  m_capture_fn;
 
 public:
-	Synth() : m_rate(0), m_frames_per_ns(0), m_last_time(0), m_frem(0.0) {}
+	Synth();
 	virtual ~Synth() {}
 
+	void install(std::string _name, int _chtimeout,
+			synthfunc_t _synthcmd,
+			genfunc_t   _generate,
+			captfunc_t  _capture);
+	void remove();
 	void reset();
-	void set_audio_spec(const AudioSpec &_spec);
-	int generate(double _frames, std::function<void(AudioBuffer&,int)> _generate);
+	void power_off();
+	void config_changed(const AudioSpec &_spec);
+	void set_chip(int id, SynthChip *_chip);
+	void enable_channel();
+	inline bool is_channel_enabled() {
+		return m_channel->is_enabled();
+	}
 	inline void add_event(const Event &_evt) {
 		m_events.push(_evt);
 	}
 	inline bool has_events() {
 		return !m_events.empty();
-	}
-	inline void enable_channel(MixerChannel *_ch) {
-		_ch->enable(true);
-		m_last_time = 0;
 	}
 	inline bool is_capturing() {
 		return m_vgm.is_open();
@@ -65,17 +95,14 @@ public:
 	inline void capture_command(int _cmd, const Event &_e) {
 		m_vgm.command(NSEC_TO_USEC(_e.time), _cmd, _e.reg, _e.value);
 	}
-	inline VGMFile& vgm() {
-		return m_vgm;
-	}
-	std::pair<bool,int> play_events(
-		uint64_t _mtime_ns, uint64_t _time_span_us, bool _prebuf,
-		std::function<void(Event&)> _synthcmd,
-		std::function<void(AudioBuffer&,int)> _generate);
-	void start_capture(const std::string &_name);
-	void stop_capture();
+	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool);
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	int generate(double _frames);
+	bool is_silent();
+	void on_capture(bool _start);
 };
 
 #endif

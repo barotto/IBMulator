@@ -28,14 +28,15 @@
  * Copyright (C) 1998-2001 Ken Silverman
  * Ken Silverman's official web site: "http://www.advsys.net/ken"
  */
-
 #ifndef IBMULATOR_HW_OPL_H
 #define IBMULATOR_HW_OPL_H
+
+#include "audio/synth.h"
 
 #define OPL_CHANNELS   18
 #define OPL_OPERATORS  (OPL_CHANNELS*2)
 
-class OPL
+class OPL : public SynthChip
 {
 public:
 	enum ChipTypes {
@@ -151,17 +152,18 @@ private:
 public:
 	OPL();
 	~OPL() {}
-	void install(const std::string &_name, bool _timers);
+	void install(ChipTypes _type, bool _timers);
 	void remove();
-	void config_changed(ChipTypes _type, int _samplerate);
-	void reset();
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+	void config_changed(int _samplerate);
 	uint8_t read(unsigned _port);
 	void write(unsigned _port, uint8_t _value);
 	void write_timers(int _index, uint8_t _value);
-	void generate(int16_t *framesbuf, int numframes);
+	void reset();
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+	void generate(int16_t *_buffer, int _frames, int _stride);
 	bool is_silent();
+	const char *name() { return (m_type==OPL3?"YM262":"YM3812"); }
 	void set_IRQ_callback(std::function<void(bool)> _fn) {
 		m_irqfn = _fn;
 	}

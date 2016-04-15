@@ -192,10 +192,11 @@ OPL::OPL()
 	init_tables();
 }
 
-void OPL::install(const std::string &_name, bool _timers)
+void OPL::install(ChipTypes _type, bool _timers)
 {
+	m_type = _type;
 	if(_timers) {
-		std::string timername = _name + " T1";
+		std::string timername = std::string(name()) + " T1";
 		m_s.timers[T1].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T1),
 				80,    // period
@@ -204,7 +205,7 @@ void OPL::install(const std::string &_name, bool _timers)
 				timername.c_str());
 		assert(m_s.timers[T1].index != NULL_TIMER_HANDLE);
 
-		timername = _name + " T2";
+		timername = std::string(name()) + " T2";
 		m_s.timers[T2].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T2),
 				320,   // period
@@ -221,9 +222,8 @@ void OPL::remove()
 	g_machine.unregister_timer(m_s.timers[T2].index);
 }
 
-void OPL::config_changed(ChipTypes _type, int _samplerate)
+void OPL::config_changed(int _samplerate)
 {
-	m_type = _type;
 	m_samplerate = _samplerate;
 	m_generator_add = (uint32_t)(INTFREQU * FIXEDPT/_samplerate);
 	// vibrato at ~6.1 ?? (opl3 docs say 6.1, opl4 docs say 6.0, y8950 docs say 6.4)
@@ -280,14 +280,14 @@ void OPL::reset()
 
 void OPL::save_state(StateBuf &_state)
 {
-	_state.write(&m_s, {sizeof(m_s), "OPL"});
+	_state.write(&m_s, {sizeof(m_s), name()});
 }
 
 void OPL::restore_state(StateBuf &_state)
 {
 	int t1 = m_s.timers[T1].index;
 	int t2 = m_s.timers[T2].index;
-	_state.read(&m_s, {sizeof(m_s), "OPL"});
+	_state.read(&m_s, {sizeof(m_s), name()});
 	m_s.timers[T1].index = t1;
 	m_s.timers[T2].index = t2;
 }
@@ -703,10 +703,18 @@ inline void clipit16(int32_t ival, int16_t* outval)
 		outbufl[i] += chanval;                   \
 	}
 
-void OPL::generate(int16_t *framesbuf, int numframes)
+void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 {
 	int i, endframes;
 	Operator* cptr;
+	int stride = _stride;
+	if(stride <= 0) {
+		if(m_type == OPL3) {
+			stride = 2;
+		} else {
+			stride = 1;
+		}
+	}
 
 	// output buffers, left and right channel for OPL3 stereo
 	int32_t outbufl[BLOCKBUF_SIZE];
@@ -716,8 +724,8 @@ void OPL::generate(int16_t *framesbuf, int numframes)
 	int32_t vib_lut[BLOCKBUF_SIZE];
 	int32_t trem_lut[BLOCKBUF_SIZE];
 
-	for(int curfrm=0; curfrm<numframes; curfrm+=endframes) {
-		endframes = numframes - curfrm;
+	for(int curfrm=0; curfrm<_frames; curfrm+=endframes) {
+		endframes = _frames - curfrm;
 		if(endframes > BLOCKBUF_SIZE) {
 			endframes = BLOCKBUF_SIZE;
 		}
@@ -1352,22 +1360,22 @@ void OPL::generate(int16_t *framesbuf, int numframes)
 		if(m_type == OPL3) {
 			if(m_s.regs[0x105]&1) {
 				// convert to 16bit samples (stereo)
-				for(i=0; i<endframes; i++) {
-					clipit16(outbufl[i], framesbuf++);
-					clipit16(outbufr[i], framesbuf++);
+				for(i=0; i<endframes; i++,_buffer+=stride) {
+					clipit16(outbufl[i], _buffer);
+					clipit16(outbufr[i], _buffer+1);
 				}
 			} else {
 				// convert to 16bit samples (mono)
-				for(i=0; i<endframes; i++) {
-					clipit16(outbufl[i], framesbuf++);
-					clipit16(outbufl[i], framesbuf++);
+				for(i=0; i<endframes; i++,_buffer+=stride) {
+					clipit16(outbufl[i], _buffer);
+					clipit16(outbufl[i], _buffer+1);
 				}
 			}
 		} else {
 			//OPL2 (mono)
 			// convert to 16bit samples
-			for(i=0; i<endframes; i++) {
-				clipit16(outbufl[i], framesbuf++);
+			for(i=0; i<endframes; i++,_buffer+=stride) {
+				clipit16(outbufl[i], _buffer);
 			}
 		}
 	} // for samples_to_process

@@ -37,8 +37,6 @@
 #include <cstring>
 
 #define PS1AUDIO_INPUT_CLOCK 4000000
-#define PS1AUDIO_PSG_DISABLE_TIMEOUT 2500000 //in usecs
-#define PS1AUDIO_DAC_DISABLE_TIMEOUT 1000000 //in usecs
 #define PS1AUDIO_DAC_FADE_IN false
 #define PS1AUDIO_DAC_EMPTY_THRESHOLD 1000 // number of empty DAC samples after
                                           // which the FIFO timer will be auto-deactivated
@@ -76,7 +74,7 @@ void PS1Audio::install()
 
 	//the DAC emulation can surely be done without a machine timer, but I find
 	//this approach way easier to read and follow.
-	m_s.DAC.fifo_timer = g_machine.register_timer(
+	m_DAC_timer = g_machine.register_timer(
 		std::bind(&PS1Audio::FIFO_timer,this),
 		256,             // period usec
 		false,           // continuous
@@ -88,30 +86,45 @@ void PS1Audio::install()
 	m_DAC_channel = g_mixer.register_channel(
 		std::bind(&PS1Audio::create_DAC_samples, this, _1, _2, _3),
 		"PS/1 Audio DAC");
-	m_DAC_channel->set_disable_timeout(PS1AUDIO_DAC_DISABLE_TIMEOUT);
+	m_DAC_channel->set_disable_timeout(1000000);
+	m_s.DAC.fifo_timer = m_DAC_timer;
 
-	m_PSG_channel = g_mixer.register_channel(
-		std::bind(&PS1Audio::create_PSG_samples, this, _1, _2, _3),
-		"PS/1 Audio PSG");
-	m_PSG_channel->set_disable_timeout(PS1AUDIO_PSG_DISABLE_TIMEOUT);
-	m_PSG_channel->register_capture_clbk(std::bind(
-			&PS1Audio::on_PSG_capture, this, _1));
+	m_PSG.install(PS1AUDIO_INPUT_CLOCK);
+
+	Synth::set_chip(0, &m_PSG);
+	Synth::install("PS/1 Audio", 2500,
+		[this](Event &_event) {
+			m_PSG.write(_event.value);
+			if(Synth::is_capturing()) {
+				Synth::capture_command(0x50, _event);
+			}
+		},
+		[this](AudioBuffer &_buffer, int _frames) {
+			m_PSG.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
+		},
+		[this](bool _start, VGMFile& _vgm) {
+			if(_start) {
+				_vgm.set_chip(VGMFile::SN76489);
+				_vgm.set_clock(PS1AUDIO_INPUT_CLOCK);
+				_vgm.set_SN76489_feedback(6);
+				_vgm.set_SN76489_shift_width(16);
+			}
+		}
+	);
 }
 
 void PS1Audio::remove()
 {
 	IODevice::remove();
+	Synth::remove();
 	g_machine.unregister_irq(PS1AUDIO_IRQ);
-	g_machine.unregister_timer(m_s.DAC.fifo_timer);
+	g_machine.unregister_timer(m_DAC_timer);
 	g_mixer.unregister_channel(m_DAC_channel);
-	g_mixer.unregister_channel(m_PSG_channel);
 }
 
 void PS1Audio::reset(unsigned _type)
 {
-	m_PSG_channel->enable(false);
 	Synth::reset();
-	m_s.PSG.reset();
 
 	m_s.control_reg = 0;
 	lower_interrupt();
@@ -125,17 +138,14 @@ void PS1Audio::reset(unsigned _type)
 
 void PS1Audio::power_off()
 {
-	m_PSG_channel->enable(false);
+	Synth::power_off();
 	m_DAC_channel->enable(false);
 }
 
 void PS1Audio::config_changed()
 {
 	int rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	AudioSpec spec({AUDIO_FORMAT_S16, 1, unsigned(rate)});
-	Synth::set_audio_spec(spec);
-	m_PSG_channel->set_in_spec(spec);
-	m_s.PSG.config_changed(PS1AUDIO_INPUT_CLOCK, rate);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, unsigned(rate)});
 }
 
 void PS1Audio::save_state(StateBuf &_state)
@@ -148,19 +158,11 @@ void PS1Audio::save_state(StateBuf &_state)
 void PS1Audio::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "PS/1: restoring state\n");
-
-	m_PSG_channel->enable(false);
-	m_DAC_channel->enable(false);
-
-	int fifo_timer = m_s.DAC.fifo_timer;
 	_state.read(&m_s, {sizeof(m_s), name()});
-	m_s.DAC.fifo_timer = fifo_timer;
-
 	Synth::restore_state(_state);
-	if(Synth::has_events() || !m_s.PSG.is_silent()) {
-		Synth::enable_channel(m_PSG_channel.get());
-	}
 
+	m_DAC_channel->enable(false);
+	m_s.DAC.fifo_timer = m_DAC_timer;
 	m_DAC_samples.clear();
 	m_DAC_last_value = 128;
 	m_DAC_empty_samples = 0;
@@ -272,7 +274,7 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 			m_s.DAC.write(value);
 			//if the DAC is fetching from the FIFO but the timer is stopped
 			//(for eg. because the fifo was empty long enough) then restart it
-			if(m_s.DAC.reload_reg>0 && !g_machine.is_timer_active(m_s.DAC.fifo_timer)) {
+			if(m_s.DAC.reload_reg>0 && !g_machine.is_timer_active(m_DAC_timer)) {
 				m_s.DAC.set_reload_register(m_s.DAC.reload_reg);
 			}
 			break;
@@ -327,18 +329,16 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 				if(value & 0x10) {
 					// attenuation
 					// push 0x0F (silence) only if the channel is active
-					push = ((value & 0xF) != 0xF) || m_PSG_channel->is_enabled();
-					if(push && !m_PSG_channel->is_enabled()) {
-						Synth::enable_channel(m_PSG_channel.get());
+					push = ((value & 0xF) != 0xF);
+					if(push) {
+						Synth::enable_channel();
 					}
 				} else { /* frequency bit0-3 */ }
 			} else {
 				//DATA byte, frequency bit4-9
-				if(!m_PSG_channel->is_enabled()) {
-					Synth::enable_channel(m_PSG_channel.get());
-				}
+				Synth::enable_channel();
 			}
-			if(push) {
+			if(push || Synth::is_channel_enabled()) {
 				Synth::add_event({g_machine.get_virt_time_ns(), 0, value});
 			}
 			break;
@@ -392,7 +392,7 @@ void PS1Audio::FIFO_timer()
 		/* lots of software don't disable the FIFO timer so the channel remains
 		 * open. If the DAC has been empty for long enough, stop the timer.
 		 */
-		g_machine.deactivate_timer(m_s.DAC.fifo_timer);
+		g_machine.deactivate_timer(m_DAC_timer);
 		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: empty, FIFO timer deactivated\n");
 	}
 
@@ -416,10 +416,16 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 		m_DAC_lock.unlock();
 		if(!m_DAC_channel->check_disable_time(mtime_us) && !_prebuf) {
 			samples = us_to_frames(_time_span_us, freq);
-			if(m_DAC_last_value == 128 || _first_upd) {
+			/* Some programs feed the DAC with 8-bit signed samples (eg Space
+			 * Quest 4), while others with 8-bit unsigned samples. The real HW
+			 * DAC *should* work with unsigned values (see eg. the POST beep
+			 * sound, which is emitted with the DAC not the PSG). There's no
+			 * way to know the type of the samples used so in order to avoid
+			 * pops fade to the final value of 128.
+			 */
+			if(_first_upd) {
 				m_DAC_channel->in().fill_samples<uint8_t>(samples, m_DAC_last_value);
 			} else {
-				//try to prevent nasty pops (Space Quest 4)
 				m_DAC_channel->in().fill_frames_fade<uint8_t>(samples, m_DAC_last_value, 128);
 			}
 			m_DAC_last_value = 128;
@@ -427,7 +433,12 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 			return true;
 		}
 		return false;
-	} else if(PS1AUDIO_DAC_FADE_IN && _first_upd && m_DAC_samples[0]!=128) {
+	} else if(PS1AUDIO_DAC_FADE_IN && _first_upd) {
+		/* See the comment above. This fade-in should remove the pop at the
+		 * start but doesn't work for SQ4 because it seems the game starts its
+		 * samples at 128 like it's a unsigned 8bit, but the actual played sound
+		 * effects are still signed 8bit. A bug in the game?
+		 */
 		m_DAC_channel->in().fill_frames_fade<uint8_t>(
 				us_to_frames(_time_span_us/2, freq), 128, m_DAC_samples[0]);
 	}
@@ -440,54 +451,6 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _fi
 	m_DAC_channel->set_disable_time(mtime_us);
 
 	return true;
-}
-
-//this method is called by the Mixer thread
-bool PS1Audio::create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
-{
-	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
-
-	auto result = Synth::play_events(mtime_ns, _time_span_us, _prebuf,
-		[this](Event &_event) {
-			m_s.PSG.write(_event.value);
-			if(Synth::is_capturing()) {
-				Synth::capture_command(0x50, _event);
-			}
-		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_s.PSG.generate(&_buffer.operator[]<int16_t>(0), _frames);
-			m_PSG_channel->in().add_frames(_buffer);
-		}
-	);
-
-	m_PSG_channel->input_finish();
-
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 PSG: mix %04d usecs, %d samples generated\n",
-			_time_span_us, result.second);
-
-	if(result.first && m_s.PSG.is_silent()) {
-		return m_PSG_channel->check_disable_time(mtime_ns/1000);
-	}
-	m_PSG_channel->set_disable_time(mtime_ns/1000);
-	return true;
-}
-
-//this method is called by the Mixer thread
-void PS1Audio::on_PSG_capture(bool _enable)
-{
-	if(_enable) {
-		try {
-			Synth::start_capture("ps1psg");
-			Synth::vgm().set_chip(VGMFile::SN76489);
-			Synth::vgm().set_clock(PS1AUDIO_INPUT_CLOCK);
-			Synth::vgm().set_SN76489_feedback(6);
-			Synth::vgm().set_SN76489_shift_width(16);
-			PINFOF(LOG_V0, LOG_MIXER, "PS/1 PSG: started audio capturing to '%s'\n",
-					Synth::vgm().name());
-		} catch(std::exception &e) { }
-	} else {
-		Synth::stop_capture();
-	}
 }
 
 void PS1Audio::DAC::reset(unsigned _type)

@@ -24,27 +24,38 @@
 #ifndef IBMULATOR_SN76496
 #define IBMULATOR_SN76496
 
-struct SN76496
+#include "audio/synth.h"
+
+class SN76496 : public SynthChip
 {
-	int  SampleRate;
-	uint UpdateStep;
-	int  VolTable[16]; // volume table
-	int  Register[8];  // registers
-	int  LastRegister; // last register written
-	int  Volume[4];    // volume of voice 0-2 and noise
-	uint RNG;          // noise generator
-	int  NoiseFB;      // noise feedback mask
-	int  Period[4];
-	int  Count[4];
-	int  Output[4];
+private:
+	struct {
+		int  Clock;
+		int  SampleRate;
+		uint UpdateStep;
+		int  VolTable[16]; // volume table
+		int  Register[8];  // registers
+		int  LastRegister; // last register written
+		int  Volume[4];    // volume of voice 0-2 and noise
+		uint RNG;          // noise generator
+		int  NoiseFB;      // noise feedback mask
+		int  Period[4];
+		int  Count[4];
+		int  Output[4];
+	} m_s;
 
-
+public:
 	void write(uint16_t _value);
-	void generate(int16_t *_buffer, int _samples);
 	void reset();
-	void config_changed(int _clock, int _rate);
+	void install(int _clock);
+	void remove() {}
+	void config_changed(int _rate);
+	void generate(int16_t *_buffer, int _samples, int _stride);
 	void set_gain(int _gain);
 	bool is_silent();
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+	const char *name() { return "SN76496"; }
 };
 
 #endif

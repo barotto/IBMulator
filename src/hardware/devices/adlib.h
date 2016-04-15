@@ -50,10 +50,6 @@ public:
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
-
-private:
-	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool);
-	void on_capture(bool _enable);
 };
 
 #endif
