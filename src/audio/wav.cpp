@@ -72,15 +72,26 @@ void WAVFile::open_read(const char *_filepath)
 		throw std::runtime_error("unsupported format (not a PCM file)");
 	}
 
-	fseek(m_file, 20+m_header_fmt.Subchunk1Size, SEEK_SET);
-
-	// DATA header
-	if(fread(&m_header_data, sizeof(m_header_data), 1, m_file) != 1) {
-		throw std::runtime_error("unable to read the DATA header");
+	/* Find the DATA chunk skipping any other RIFF extensions */
+	fseek(m_file, 16, SEEK_SET);
+	uint32_t chunk_name = WAV_HEADER_FMT;
+	uint32_t chunk_size = 0;
+	while(chunk_name != WAV_HEADER_DATA) {
+		if(fread(&chunk_size, 4, 1, m_file) != 1) {
+			throw std::runtime_error("unable to find the data chunk");
+		}
+		if(fseek(m_file, chunk_size, SEEK_CUR) != 0) {
+			throw std::runtime_error("unable to find the data chunk");
+		}
+		if(fread(&chunk_name, 4, 1, m_file) != 1) {
+			throw std::runtime_error("unable to find the data chunk");
+		}
 	}
-	if(m_header_data.Subchunk2ID != WAV_HEADER_DATA) {
+	if(fread(&chunk_size, 4, 1, m_file) != 1) {
 		throw std::runtime_error("invalid DATA header");
 	}
+	m_header_data.Subchunk2ID = chunk_name;
+	m_header_data.Subchunk2Size = chunk_size;
 }
 
 void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, uint16_t _channels)
