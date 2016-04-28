@@ -195,8 +195,8 @@ private:
 	uint32_t get_rotational_latency(double _start_hw_sector, unsigned _dest_log_sector);
 	void activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 			uint32_t _rot_latency, uint32_t _xfer_time);
-	void command_timer();
-	void dma_timer();
+	void command_timer(uint64_t);
+	void dma_timer(uint64_t);
 
 	void attention_block();
 	void exec_command();

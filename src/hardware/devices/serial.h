@@ -272,9 +272,9 @@ private:
 
 	void rx_fifo_enq(uint8_t port, uint8_t data);
 
-	void tx_timer(uint8_t);
-	void rx_timer(uint8_t);
-	void fifo_timer(uint8_t);
+	void tx_timer(uint8_t, uint64_t);
+	void rx_timer(uint8_t, uint64_t);
+	void fifo_timer(uint8_t, uint64_t);
 
 	void mouse_motion(int delta_x, int delta_y, int delta_z, unsigned button_state);
 	void update_mouse_data(void);

@@ -389,18 +389,12 @@ void HardDrive::install()
 	g_machine.register_irq(HDD_IRQ, name());
 
 	m_cmd_timer = g_machine.register_timer(
-			std::bind(&HardDrive::command_timer,this),
-			100,    // period usec
-			false,  // continuous
-			false,  // active
-			"HDD-cmd"//name
+			std::bind(&HardDrive::command_timer, this, _1),
+			"HDD-cmd"
 	);
 	m_dma_timer = g_machine.register_timer(
-			std::bind(&HardDrive::dma_timer,this),
-			100,    // period usec
-			false,  // continuous
-			false,  // active
-			"HDD-dma"//name
+			std::bind(&HardDrive::dma_timer, this, _1),
+			"HDD-dma"
 	);
 
 	m_drive_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
@@ -458,7 +452,7 @@ void HardDrive::reset(unsigned _type)
 	if(m_s.ssb.drive_type && _type == MACHINE_POWER_ON) {
 		m_fx.spin(true, true);
 		m_s.power_up_phase = 1;
-		g_machine.activate_timer(m_cmd_timer, m_fx.spin_up_time(), 0);
+		g_machine.activate_timer(m_cmd_timer, uint64_t(m_fx.spin_up_time())*1_us, false);
 	}
 }
 
@@ -841,7 +835,7 @@ void HardDrive::write(uint16_t _address, uint16_t _value, unsigned)
 					//Control Block used by the Format track command
 					if((m_s.attention_reg & HDD_ATT_CCB) && m_s.ccb.valid) {
 						// we are in command mode
-						command_timer();
+						command_timer(g_machine.get_virt_time_ns());
 					} else {
 						// discard and disable PIO tx
 						m_s.attention_reg &= ~HDD_ATT_DATA;
@@ -1168,7 +1162,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	if((m_s.sect_buffer[0].ptr >= m_s.sect_buffer[0].size) || TC) {
 		m_s.attch_status_reg &= ~HDD_ASR_DATA_REQ;
 		unsigned c = m_s.cur_cylinder;
-		command_timer();
+		command_timer(g_machine.get_virt_time_ns());
 		if(TC) { // Terminal Count line, done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA READ TC>> C:%d,H:%d,S:%d,nS:%d\n",
 					m_s.cur_cylinder, m_s.cur_head,
@@ -1180,7 +1174,7 @@ uint16_t HardDrive::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 				time += m_trk2trk_us;
 			}
 			time = std::max(time, HDD_DEFTIME_US);
-			g_machine.activate_timer(m_dma_timer, time, 0);
+			g_machine.activate_timer(m_dma_timer, uint64_t(time)*1_us, false);
 		}
 		m_devices->dma()->set_DRQ(HDD_DMA, 0);
 	}
@@ -1296,11 +1290,11 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 		time_us = HDD_DEFTIME_US;
 	}
 	if(m_s.power_up_phase) {
-		uint64_t delay = g_machine.get_timer_eta(m_cmd_timer);
+		uint64_t delay = g_machine.get_timer_eta(m_cmd_timer)/1_us;
 		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", delay);
 		time_us += delay;
 	}
-	g_machine.activate_timer(m_cmd_timer, time_us, 0);
+	g_machine.activate_timer(m_cmd_timer, uint64_t(time_us)*1_us, false);
 	m_s.attch_status_reg |= HDD_ASR_BUSY;
 
 	PDEBUGF(LOG_V2, LOG_HDD, "command exec C:%d,H:%d,S:%d,nS:%d: %dus",
@@ -1314,7 +1308,7 @@ void HardDrive::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 			);
 }
 
-void HardDrive::command_timer()
+void HardDrive::command_timer(uint64_t)
 {
 	if(m_s.power_up_phase) {
 		PDEBUGF(LOG_V2, LOG_HDD, "drive powered up\n");
@@ -1342,7 +1336,7 @@ void HardDrive::command_timer()
 	m_s.power_up_phase = 0;
 }
 
-void HardDrive::dma_timer()
+void HardDrive::dma_timer(uint64_t)
 {
 	m_devices->dma()->set_DRQ(HDD_DMA, 1);
 	g_machine.deactivate_timer(m_dma_timer);

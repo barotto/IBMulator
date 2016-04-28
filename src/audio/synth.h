@@ -27,14 +27,14 @@ class SynthChip
 {
 public:
 	virtual ~SynthChip() {}
-	virtual void reset() = 0;
-	virtual void remove() = 0;
-	virtual void config_changed(int _rate) = 0;
+	virtual void reset() {}
+	virtual void remove() {}
+	virtual void config_changed(int) {}
 	virtual void generate(int16_t *_buffer, int _frames, int _stride) = 0;
-	virtual bool is_silent() = 0;
-	virtual void save_state(StateBuf &_state) = 0;
-	virtual void restore_state(StateBuf &_state) = 0;
-	virtual const char *name() = 0;
+	virtual bool is_silent() { return true; }
+	virtual void save_state(StateBuf &) {}
+	virtual void restore_state(StateBuf &) {}
+	virtual const char *name() { return "SynthChip"; }
 };
 
 class Synth

@@ -35,13 +35,14 @@ IODEVICE_PORTS(PIT) = {
 
 //1.1931816666MHz Clock
 #define TICKS_PER_SECOND (1193182.0)
-#define CYCLE_TIME (1000000000.0/TICKS_PER_SECOND) //838.095110386 ns
+//#define CYCLE_TIME (1000000000.0/TICKS_PER_SECOND) //838.095110386 ns
+#define CYCLE_TIME (uint64_t(838))
 
 
 PIT::PIT(Devices* _dev)
 : IODevice(_dev)
 {
-	m_timer_handle = NULL_TIMER_HANDLE;
+	m_systimer = NULL_TIMER_HANDLE;
 }
 
 PIT::~PIT()
@@ -53,14 +54,10 @@ void PIT::install()
 	IODevice::install();
 	g_machine.register_irq(PIT_IRQ, "8254 PIT");
 
-	m_timer_handle = g_machine.register_timer_ns(
-		std::bind(&PIT::handle_timer, this),
-		100560u, //nsec
-		true,    //continuous
-		true,    //active
-		name()   //name
+	m_systimer = g_machine.register_timer(
+		std::bind(&PIT::handle_systimer, this, std::placeholders::_1),
+		name()
 	);
-
 	m_s.timer.init();
 }
 
@@ -68,39 +65,20 @@ void PIT::remove()
 {
 	IODevice::remove();
 	g_machine.unregister_irq(PIT_IRQ);
-	g_machine.unregister_timer(m_timer_handle);
+	g_machine.unregister_timer(m_systimer);
 }
 
 void PIT::reset(unsigned type)
 {
-	if(type == MACHINE_POWER_ON) {
-		m_s.speaker_data_on = false;
-
-		uint64_t my_time_nsec = g_machine.get_virt_time_ns();
-
-		PDEBUGF(LOG_V2, LOG_PIT, "RESETting timer.\n");
-		g_machine.deactivate_timer(m_timer_handle);
-		PDEBUGF(LOG_V2, LOG_PIT, "deactivated timer.\n");
-		if(m_s.timer.get_next_event_time()) {
-			g_machine.activate_timer_ns(
-				m_timer_handle,
-				std::max(uint64_t(1u), uint64_t(CYCLE_TIME*m_s.timer.get_next_event_time())),
-				false
-			);
-			PDEBUGF(LOG_V2, LOG_PIT, "activated timer.\n");
-		}
-		m_s.last_next_event_time = m_s.timer.get_next_event_time();
-		m_s.last_nsec = my_time_nsec;
-
-		m_s.total_ticks = 0;
-		m_s.total_nsec = 0;
-
-		PDEBUGF(LOG_V2, LOG_PIT, " s.last_nsec = %llu\n", m_s.last_nsec);
-		PDEBUGF(LOG_V2, LOG_PIT, " next event time = %x\n", m_s.timer.get_next_event_time());
-		PDEBUGF(LOG_V2, LOG_PIT, " last next event time = %d\n", m_s.last_next_event_time);
-	}
-
 	m_s.timer.reset(type);
+
+	if(type == MACHINE_POWER_ON || type == MACHINE_HARD_RESET) {
+		g_machine.deactivate_timer(m_systimer);
+		m_s.speaker_data_on = false;
+		m_s.pit_time       = 0;
+		m_s.pit_ticks      = 0;
+		m_mt_pit_time      = 0;
+	}
 }
 
 void PIT::config_changed()
@@ -147,88 +125,67 @@ void PIT::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
+	m_mt_pit_time = m_s.pit_time;
+
 	set_OUT_handlers();
-}
-
-void PIT::handle_timer()
-{
-	uint64_t my_time_ns = g_machine.get_virt_time_ns();
-	uint64_t time_passed = my_time_ns - m_s.last_nsec;
-
-	//PDEBUGF(LOG_V2, LOG_PIT, "entering timer handler\n");
-
-	if(time_passed) {
-		periodic(my_time_ns, time_passed);
-	}
-	m_s.last_nsec = m_s.last_nsec + time_passed;
-	if(time_passed || (m_s.last_next_event_time != m_s.timer.get_next_event_time())) {
-		//PDEBUGF(LOG_V2, LOG_PIT, "RESETting timer\n");
-		g_machine.deactivate_timer(m_timer_handle);
-		//PDEBUGF(LOG_V2, LOG_PIT, "deactivated timer\n");
-		if(m_s.timer.get_next_event_time()) {
-			g_machine.activate_timer_ns(m_timer_handle,
-				std::max(uint64_t(1u), uint64_t(CYCLE_TIME*m_s.timer.get_next_event_time())),
-				false
-			);
-			//PDEBUGF(LOG_V2, LOG_PIT, "activated timer\n");
-		}
-		m_s.last_next_event_time = m_s.timer.get_next_event_time();
-	}
-	/*
-	PDEBUGF(LOG_V2, LOG_PIT, " s.last_usec = %llu\n", m_s.last_usec);
-	PDEBUGF(LOG_V2, LOG_PIT, " next event time = %x\n", m_s.timer.get_next_event_time());
-	PDEBUGF(LOG_V2, LOG_PIT, " last next event time = %d\n", m_s.last_next_event_time);
-	*/
 }
 
 uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 {
 	uint8_t value = 0;
+	uint64_t cpu_time = g_machine.get_virt_time_ns();
+	uint64_t pit_time = cpu_time / CYCLE_TIME * CYCLE_TIME;
+	update_emulation(pit_time);
+	update_systimer(cpu_time);
 
-	handle_timer();
+	PDEBUGF(LOG_V2, LOG_PIT, "read  0x%02X ", address);
 
 	switch (address) {
 		case 0x40: /* timer 0 - system ticks */
 			value = m_s.timer.read(0);
+			PDEBUGF(LOG_V2, LOG_PIT, "T0 -> %02d\n", value);
 			break;
 		case 0x41: /* timer 1 read */
 			value = m_s.timer.read(1);
+			PDEBUGF(LOG_V2, LOG_PIT, "T1 -> %02d\n", value);
 			break;
 		case 0x42: /* timer 2 read */
 			value = m_s.timer.read(2);
+			PDEBUGF(LOG_V2, LOG_PIT, "T2 -> %02d\n", value);
 			break;
-		case 0x43: /* timer 1 read */
-			value = m_s.timer.read(3);
+		case 0x43: /* Control Byte Register */
+	    	PDEBUGF(LOG_V2, LOG_PIT, "Control Word Reg. -> 0\n");
 			break;
 		case 0x61: {
 			/* AT, port 61h */
-			uint16_t refresh_clock_div2 = ((g_machine.get_virt_time_ns() / 15085) & 1);
-			value = (m_s.timer.read_OUT(2)  << 5) |
-				  (refresh_clock_div2     << 4) |
-				  (m_s.speaker_data_on    << 1) |
-				  (m_s.timer.read_GATE(2) ? 1 : 0);
+			uint16_t refresh_clock_div2 = ((cpu_time / 15085) & 1);
+			value = (m_s.timer.read_OUT(2) << 5) |
+			        (refresh_clock_div2    << 4) |
+			        (m_s.speaker_data_on   << 1) |
+				    (m_s.timer.read_GATE(2) ? 1 : 0);
+			PDEBUGF(LOG_V2, LOG_PIT, "SysCtrlB -> %02Xh\n", value);
 			break;
 		}
+		default:
+			throw std::logic_error("unhandled port read");
 	}
 
-	PDEBUGF(LOG_V2, LOG_PIT, "read from port 0x%04x, value = 0x%02x\n", address, value);
 	return value;
 }
 
 void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 {
-	uint8_t  value;
-	uint64_t my_time_nsec = g_machine.get_virt_time_ns();
-	uint64_t time_passed = my_time_nsec - m_s.last_nsec;
-
-	if(time_passed) {
-		periodic(my_time_nsec, time_passed);
+	// update the PIT emulation
+	uint64_t cpu_time = g_machine.get_virt_time_ns();
+	uint64_t pit_time = cpu_time / CYCLE_TIME * CYCLE_TIME;
+	if(pit_time < cpu_time) {
+		// a write advances the PIT time if it happened between two CLK pulses.
+		// this puts the PIT in the future relative to the CPU time.
+		pit_time += CYCLE_TIME;
 	}
-	m_s.last_nsec = m_s.last_nsec + time_passed;
+	update_emulation(pit_time);
 
-	value = (uint8_t)_value;
-
-	PDEBUGF(LOG_V2, LOG_PIT, "write to port 0x%04x, value = 0x%02x\n", _address, value);
+	uint8_t value = (uint8_t)_value;
 
 	switch (_address) {
 		case 0x40: /* timer 0: write count register */
@@ -240,72 +197,82 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 		case 0x42: /* timer 2: write count register */
 			m_s.timer.write(2, value);
 			break;
-
 		case 0x43: /* timer 0-2 mode control */
 			m_s.timer.write(3, value);
 			break;
-
-		case 0x61:
-			m_s.timer.set_GATE(2, value & 0x01);
-			bool speaker_data_on = (value >> 1) & 0x01;
-			if(m_s.speaker_data_on != speaker_data_on) {
+		case 0x61: {
+			PDEBUGF(LOG_V2, LOG_PIT, "write 0x61 SysCtrlB <- %02Xh ", value);
+			bool t2_gate = value & 1;
+			bool spkr_on = (value >> 1) & 0x01;
+			if(t2_gate) { PDEBUGF(LOG_V2, LOG_PIT, "T2_GATE "); }
+			if(spkr_on) { PDEBUGF(LOG_V2, LOG_PIT, "SPKR_ON "); }
+			PDEBUGF(LOG_V2, LOG_PIT, "\n");
+			m_s.timer.set_GATE(2, t2_gate);
+			if(m_s.speaker_data_on != spkr_on) {
 				if(m_pcspeaker) {
-					if(speaker_data_on) {
-						m_pcspeaker->add_event(my_time_nsec, true, m_s.timer.read_OUT(2));
+					if(spkr_on) {
+						m_pcspeaker->add_event(m_s.pit_time, true, m_s.timer.read_OUT(2));
 						m_pcspeaker->activate();
-						PDEBUGF(LOG_V2, LOG_PIT, "pc speaker enable\n");
+						PDEBUGF(LOG_V2, LOG_PIT, "PC-Speaker enable\n");
 					} else {
 						//the pc speaker mixer channel is disabled by the speaker
-						PDEBUGF(LOG_V2, LOG_PIT, "pc speaker disable\n");
-						m_pcspeaker->add_event(my_time_nsec, false, false);
+						PDEBUGF(LOG_V2, LOG_PIT, "PC-Speaker disable\n");
+						m_pcspeaker->add_event(m_s.pit_time, false, false);
 					}
 				}
-				m_s.speaker_data_on = speaker_data_on;
+				m_s.speaker_data_on = spkr_on;
 			}
-
 			break;
-	}
-
-	if(time_passed || (m_s.last_next_event_time != m_s.timer.get_next_event_time())) {
-		PDEBUGF(LOG_V2, LOG_PIT, "RESETting timer: ");
-		g_machine.deactivate_timer(m_timer_handle);
-		if(m_s.timer.get_next_event_time()) {
-			//uint64_t nsecs = std::max(1u, CYCLE_TIME*m_s.timer.get_next_event_time());
-			//uint32_t usecs = TICKS_TO_USEC(m_s.timer.get_next_event_time());
-			uint64_t nsecs = CYCLE_TIME*m_s.timer.get_next_event_time();
-			g_machine.activate_timer_ns(
-				m_timer_handle,
-				nsecs,
-				false
-			);
-			PDEBUGF(LOG_V2, LOG_PIT, "activated timer: %u nsecs\n", nsecs);
-		} else {
-			PDEBUGF(LOG_V2, LOG_PIT, "deactivated timer\n");
 		}
-		m_s.last_next_event_time = m_s.timer.get_next_event_time();
+		default:
+			throw std::logic_error("unhandled port write");
 	}
 
-	PDEBUGF(LOG_V2, LOG_PIT, " s.last_nsec = %llu\n", m_s.last_nsec);
-	PDEBUGF(LOG_V2, LOG_PIT, " next event time = %x\n", m_s.timer.get_next_event_time());
-	PDEBUGF(LOG_V2, LOG_PIT, " last next event time = %d\n", m_s.last_next_event_time);
+	update_systimer(cpu_time);
+
+	// synchronize the CPU with the PIT otherwise any subsequent write or read
+	// done before the current CLK tick will be wrong.
+	assert(pit_time >= cpu_time);
+	m_devices->set_io_time(pit_time - cpu_time);
 }
 
-bool PIT::periodic(uint64_t _time, uint64_t _nsec_delta)
+void PIT::handle_systimer(uint64_t _cpu_time)
 {
-	uint64_t ticks_amount = 0;
+	// this function must be called only on PIT CLK ticks
+	assert((_cpu_time % CYCLE_TIME) == 0);
+	uint64_t pit_time = _cpu_time;
+	update_emulation(pit_time);
+	update_systimer(_cpu_time);
+}
 
-	m_crnt_start_time = _time;
+void PIT::update_emulation(uint64_t _pit_time)
+{
+	assert(m_s.pit_time % CYCLE_TIME == 0);
+	assert(_pit_time % CYCLE_TIME == 0);
 
-	m_s.total_nsec += _nsec_delta;
+	/* _time is the current time, it can be not a multiple of the CYCLE_TIME
+	 * but we can update the chip only on CLK ticks.
+	 * Emulate the ticks and return the nsecs not emulated.
+	 */
+	assert(_pit_time >= m_s.pit_time);
+	if(_pit_time == m_s.pit_time) {
+		PDEBUGF(LOG_V2, LOG_PIT, "nothing to emulate!\n");
+		return;
+	}
+
 	//calculate the amount of PIT CLK ticks to emulate
-	double dticks_amount = double(_nsec_delta)/double(CYCLE_TIME) + m_s.dticks_amount;
-	ticks_amount = uint64_t(dticks_amount);
-	m_s.dticks_amount = dticks_amount - ticks_amount;
-	m_s.total_ticks += ticks_amount;
+	uint64_t elapsed_nsec = _pit_time - m_s.pit_time;
+	assert(elapsed_nsec % CYCLE_TIME == 0);
+	uint64_t ticks_amount = elapsed_nsec / CYCLE_TIME;
 
+	PDEBUGF(LOG_V2, LOG_PIT, "emulating: elapsed time: %d nsec, %d CLK pulses\n",
+			elapsed_nsec, ticks_amount);
+
+	uint64_t prev_pit_time = m_s.pit_time;
 	while(ticks_amount > 0) {
 		// how many CLK ticks till the next event?
-		uint32_t next_event = m_s.timer.get_next_event_time();
+		uint8_t timer;
+		uint32_t next_event = m_s.timer.get_next_event_ticks(timer);
 		uint32_t ticks = next_event;
 		if((next_event == 0) || (next_event>ticks_amount)) {
 			//if the next event is NEVER or after the last emulated CLK tick
@@ -314,11 +281,42 @@ bool PIT::periodic(uint64_t _time, uint64_t _nsec_delta)
 		}
 		m_crnt_emulated_ticks = ticks;
 		m_s.timer.clock_all(ticks);
+		m_s.pit_ticks += ticks;
+		m_s.pit_time += ticks * CYCLE_TIME;
 		ticks_amount -= ticks;
 	}
-
 	m_crnt_emulated_ticks = 0;
-	return 0;
+	m_mt_pit_time = m_s.pit_time;
+
+	assert(m_s.pit_time == prev_pit_time + elapsed_nsec);
+	assert((m_s.pit_time % CYCLE_TIME) == 0);
+	assert(m_s.pit_time / CYCLE_TIME == m_s.pit_ticks);
+}
+
+void PIT::update_systimer(uint64_t _cpu_time)
+{
+	/* call update_emulation() before this function */
+	uint8_t timer;
+	uint32_t next_event = m_s.timer.get_next_event_ticks(timer);
+
+	g_machine.deactivate_timer(m_systimer);
+
+	if(next_event) {
+		uint64_t next_event_eta = next_event * CYCLE_TIME;
+		if(m_s.pit_time <= _cpu_time) {
+			next_event_eta -= _cpu_time - m_s.pit_time;
+		} else {
+			next_event_eta += m_s.pit_time - _cpu_time;
+		}
+		uint64_t abs_time = g_machine.get_virt_time_ns() + next_event_eta;
+		if((abs_time % CYCLE_TIME) != 0)
+			assert((abs_time % CYCLE_TIME) == 0);
+		g_machine.activate_timer(m_systimer, next_event_eta, false);
+		PDEBUGF(LOG_V2, LOG_PIT, "next event: T%d, %u CLK, %llu nsecs (%.2f CLK)\n",
+				timer, next_event, next_event_eta, (double(next_event_eta)/CYCLE_TIME));
+	} else {
+		PDEBUGF(LOG_V2, LOG_PIT, "no events\n");
+	}
 }
 
 void PIT::irq0_handler(bool value, uint32_t)
@@ -332,20 +330,20 @@ void PIT::irq0_handler(bool value, uint32_t)
 
 void PIT::speaker_handler(bool value, uint32_t _remaining_ticks)
 {
-	if(!m_s.speaker_data_on) {
+	if(!m_pcspeaker || !m_s.speaker_data_on) {
 		return;
 	}
-
-	uint64_t cur_time, elapsed_ticks, elapsed_nsec;
-	if(m_crnt_emulated_ticks!=0) {
-		elapsed_ticks = m_crnt_emulated_ticks - _remaining_ticks;
-		elapsed_nsec = double(elapsed_ticks) * CYCLE_TIME;
-		cur_time = m_crnt_start_time + elapsed_nsec;
+	uint64_t time;
+	if(m_crnt_emulated_ticks) {
+		uint32_t elapsed_ticks = m_crnt_emulated_ticks - _remaining_ticks;
+		time = (m_s.pit_ticks + elapsed_ticks) * CYCLE_TIME;
+		PDEBUGF(LOG_V2, LOG_PIT, "PC speaker evt: emu ticks %d, elapsed %d, time %llu\n",
+				m_crnt_emulated_ticks, elapsed_ticks, time);
 	} else {
-		cur_time = g_machine.get_virt_time_ns();
+		// this case happens only on a write, the PIT time is updated
+		time = m_s.pit_time;
 	}
-
-	m_pcspeaker->add_event(cur_time, true, value);
+	m_pcspeaker->add_event(time, true, value);
 }
 
 

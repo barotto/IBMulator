@@ -46,8 +46,6 @@ CPU::~CPU()
 void CPU::init()
 {
 	g_cpubus.init();
-	m_s.icount = 0;
-	m_s.ccount = 0;
 }
 
 void CPU::config_changed()
@@ -67,7 +65,7 @@ void CPU::reset(uint _signal)
 	m_s.activity_state = CPU_STATE_ACTIVE;
 	m_s.event_mask = 0;
 	m_s.pending_event = 0;
-	m_s.async_event = 0;
+	m_s.async_event = false;
 	m_s.debug_trap = false;
 	m_s.EXT = false;
 	if(_signal==MACHINE_POWER_ON || _signal==MACHINE_HARD_RESET) {
@@ -127,7 +125,7 @@ void CPU::power_off()
 
 uint CPU::step()
 {
-	int cycles, bu_cycles, eu_cycles, decode_cycles, dramtx, vramtx, bu_rops;
+	int cycles, bu_cycles, eu_cycles, decode_cycles, io_cycles, dramtx, vramtx, bu_rops;
 	int bu_update;
 	uint32_t csip, prev_csip;
 	CPUCore core_log;
@@ -137,6 +135,7 @@ uint CPU::step()
 	eu_cycles = 0;
 	bu_cycles = 0;
 	decode_cycles = 0;
+	io_cycles = 0;
 	bu_rops = 0;
 	dramtx = 0;
 	vramtx = 0;
@@ -188,6 +187,10 @@ uint CPU::step()
 			dramtx = g_cpubus.get_dram_tx() - bu_rops; // instruction execution transfers
 			vramtx = g_cpubus.get_vram_tx();
 			eu_cycles = get_execution_cycles(dramtx||vramtx);
+			unsigned io_time = g_devices.get_last_io_time();
+			if(io_time) {
+				io_cycles = get_io_cycles(io_time);
+			}
 			m_instr->cycles.rep = 0;
 		} catch(CPUException &e) {
 			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %u\n", e.vector);
@@ -229,7 +232,7 @@ uint CPU::step()
 
 	dramtx = g_cpubus.get_dram_r() - bu_rops;
 	vramtx = g_cpubus.get_vram_r();
-	cycles += eu_cycles + bu_cycles + decode_cycles +
+	cycles += eu_cycles + bu_cycles + decode_cycles + io_cycles +
 			(bu_rops+dramtx)*DRAM_TX_CYCLES +
 			vramtx*VRAM_TX_CYCLES;
 	if((dramtx||bu_rops) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
@@ -255,10 +258,10 @@ uint CPU::step()
 	return cycles;
 }
 
-uint CPU::get_execution_cycles(bool _memtx)
+unsigned CPU::get_execution_cycles(bool _memtx)
 {
-	uint cycles_spent = 0;
-	uint base = 0;
+	unsigned cycles_spent = 0;
+	unsigned base = 0;
 
 	if(m_instr->rep) {
 		cycles_spent = m_instr->cycles.rep;
@@ -288,6 +291,18 @@ uint CPU::get_execution_cycles(bool _memtx)
 	}
 
 	return cycles_spent;
+}
+
+unsigned CPU::get_io_cycles(unsigned _io_time)
+{
+	unsigned io_cycles = (_io_time + m_cycle_time - 1) / m_cycle_time; // round up
+	if(io_cycles < m_instr->cycles.base) {
+		io_cycles = 0;
+	} else {
+		io_cycles -= m_instr->cycles.base;
+	}
+	g_devices.reset_io_time();
+	return io_cycles;
 }
 
 void CPU::set_shutdown_trap(std::function<void(void)> _fn)

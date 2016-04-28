@@ -132,7 +132,7 @@ private:
 	uint       m_num_installed_floppies;
 	double     m_latency_mult;
 
-	int  m_timer_index;
+	int  m_timer;
 
 	bool m_disk_changed[4]; //!< used by the GUI to know when a disk has been changed
 	std::mutex m_mutex;     //!< for machine-GUI synchronization
@@ -194,7 +194,7 @@ private:
 	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
 	void reset_changeline(void);
 	bool get_TC(void);
-	void timer(void);
+	void timer(uint64_t);
 	void increment_sector(void);
 	void play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl);
 	void floppy_drive_setup(uint drive);

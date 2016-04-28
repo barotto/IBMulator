@@ -157,8 +157,10 @@ bool Synth::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
 			//no more events or the next event is in the future
 			next_event.time = mtime_ns;
 		}
-		evt_dist_ns = next_event.time - event.time;
-		generated_frames += generate(m_frames_per_ns*evt_dist_ns);
+		if(next_event.time > event.time) {
+			evt_dist_ns = next_event.time - event.time;
+			generated_frames += generate(m_frames_per_ns*evt_dist_ns);
+		}
 	}
 	m_last_time = mtime_ns;
 

@@ -74,11 +74,9 @@ void PS1Audio::install()
 
 	//the DAC emulation can surely be done without a machine timer, but I find
 	//this approach way easier to read and follow.
+	using namespace std::placeholders;
 	m_DAC_timer = g_machine.register_timer(
-		std::bind(&PS1Audio::FIFO_timer,this),
-		256,             // period usec
-		false,           // continuous
-		false,           // active
+		std::bind(&PS1Audio::FIFO_timer, this, _1),
 		"PS/1 Audio DAC" // name
 	);
 
@@ -369,7 +367,7 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 	}
 }
 
-void PS1Audio::FIFO_timer()
+void PS1Audio::FIFO_timer(uint64_t)
 {
 	//A	pulse is generated on overflow and is used to latch data into the ADC
 	//latch and to read data out of the FIFO.
@@ -481,7 +479,7 @@ void PS1Audio::DAC::set_reload_register(int _value)
 	}
 
 	//The time between reloads is one cycle longer than the value written to the reload register.
-	g_machine.activate_timer(fifo_timer, _value+1, true);
+	g_machine.activate_timer(fifo_timer, uint64_t(_value+1)*1_us, true);
 	PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer activated, %dus\n", _value+1);
 }
 

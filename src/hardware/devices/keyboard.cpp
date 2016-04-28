@@ -84,13 +84,12 @@ void Keyboard::install()
 	g_machine.register_irq(KEYB_IRQ, "Keyboard controller (kbd)");
 	g_machine.register_irq(MOUSE_IRQ, "Keyboard controller (mouse)");
 
-	m_timer_handle = g_machine.register_timer(
-			std::bind(&Keyboard::timer_handler,this),
-			KBD_SERIAL_DELAY, //usec
-			1, //continuous
-			1, //active
-			name() //name
+	m_timer = g_machine.register_timer(
+		std::bind(&Keyboard::timer_handler, this, std::placeholders::_1),
+		name()
 	);
+	g_machine.activate_timer(m_timer, uint64_t(KBD_SERIAL_DELAY)*1_us, true);
+
 	set_kbd_clock_enable(false);
 	set_aux_clock_enable(false);
 	m_s.mouse.enable = false;
@@ -101,7 +100,7 @@ void Keyboard::remove()
 	IODevice::remove();
 	g_machine.unregister_irq(KEYB_IRQ);
 	g_machine.unregister_irq(MOUSE_IRQ);
-	g_machine.unregister_timer(m_timer_handle);
+	g_machine.unregister_timer(m_timer);
 }
 
 void Keyboard::reset(unsigned _type)
@@ -1020,7 +1019,7 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 	}
 }
 
-void Keyboard::timer_handler()
+void Keyboard::timer_handler(uint64_t)
 {
 	unsigned retval;
 

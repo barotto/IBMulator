@@ -81,25 +81,15 @@ void CMOS::install()
 	IODevice::install();
 	g_machine.register_irq(CMOS_IRQ, name());
 
-	m_periodic_timer_index = g_machine.register_timer(
-			std::bind(&CMOS::periodic_timer,this),
-			1000000,
-			true, //continuous
-			false, //not active
+	using namespace std::placeholders;
+	m_periodic_timer = g_machine.register_timer(
+			std::bind(&CMOS::periodic_timer,this,_1),
 			"CMOS periodic");
-
-	m_one_second_timer_index = g_machine.register_timer(
-			std::bind(&CMOS::one_second_timer,this),
-			1000000,
-			true, //continuous
-			false, //not active
+	m_one_second_timer = g_machine.register_timer(
+			std::bind(&CMOS::one_second_timer,this,_1),
 			"CMOS one second");
-
-	m_uip_timer_index = g_machine.register_timer(
-			std::bind(&CMOS::uip_timer,this),
-			244,
-			false, // one-shot
-			false, // not-active
+	m_uip_timer = g_machine.register_timer(
+			std::bind(&CMOS::uip_timer,this,_1),
 			"CMOS uip");
 }
 
@@ -107,9 +97,9 @@ void CMOS::remove()
 {
 	IODevice::remove();
 	g_machine.unregister_irq(CMOS_IRQ);
-	g_machine.unregister_timer(m_periodic_timer_index);
-	g_machine.unregister_timer(m_one_second_timer_index);
-	g_machine.unregister_timer(m_uip_timer_index);
+	g_machine.unregister_timer(m_periodic_timer);
+	g_machine.unregister_timer(m_one_second_timer);
+	g_machine.unregister_timer(m_uip_timer);
 }
 
 void CMOS::config_changed()
@@ -182,7 +172,7 @@ void CMOS::reset(unsigned type)
 	m_s.reg[REG_STAT_C] = 0;
 
 	// One second timer for updating clock & alarm functions
-	g_machine.activate_timer(m_one_second_timer_index, 1000000, true);
+	g_machine.activate_timer(m_one_second_timer, 1_s, true);
 
 	// handle periodic interrupt rate select
 	CRA_change();
@@ -251,7 +241,7 @@ void CMOS::CRA_change(void)
 	dcc = ( m_s.reg[REG_STAT_A] >> 4) & 0x07;
 	if((nibble == 0) || ((dcc & 0x06) == 0)) {
 		// No Periodic Interrupt Rate when 0, deactivate timer
-		g_machine.deactivate_timer(m_periodic_timer_index);
+		g_machine.deactivate_timer(m_periodic_timer);
 		m_s.periodic_interval_usec = (uint32_t) -1; // max value
 	} else {
 		// values 0001b and 0010b are the same as 1000b and 1001b
@@ -262,10 +252,10 @@ void CMOS::CRA_change(void)
 		// if Periodic Interrupt Enable bit set, activate timer
 		if(m_s.reg[REG_STAT_B] & 0x40) {
 			PDEBUGF(LOG_V1, LOG_CMOS, "periodic timer ENABLED\n");
-			g_machine.activate_timer(m_periodic_timer_index, m_s.periodic_interval_usec, 1);
+			g_machine.activate_timer(m_periodic_timer, uint64_t(m_s.periodic_interval_usec)*1_us, true);
 		} else {
 			PDEBUGF(LOG_V1, LOG_CMOS, "periodic timer DISABLED\n");
-			g_machine.deactivate_timer(m_periodic_timer_index);
+			g_machine.deactivate_timer(m_periodic_timer);
 		}
 	}
 }
@@ -423,13 +413,13 @@ void CMOS::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 						if(prev_CRB & 0x40) {
 							// transition from 1 to 0, deactivate timer
 							PDEBUGF(LOG_V2, LOG_CMOS, "periodic timer DEACTIVATED\n");
-							g_machine.deactivate_timer(m_periodic_timer_index);
+							g_machine.deactivate_timer(m_periodic_timer);
 						} else {
 							// transition from 0 to 1
 							// if rate select is not 0, activate timer
 							if((m_s.reg[REG_STAT_A] & 0x0f) != 0) {
 								PDEBUGF(LOG_V2, LOG_CMOS, "periodic timer ACTIVATED\n");
-								g_machine.activate_timer(m_periodic_timer_index, m_s.periodic_interval_usec, 1);
+								g_machine.activate_timer(m_periodic_timer, uint64_t(m_s.periodic_interval_usec)*1_us, true);
 							}
 						}
 					}
@@ -459,7 +449,7 @@ void CMOS::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	}
 }
 
-void CMOS::periodic_timer()
+void CMOS::periodic_timer(uint64_t)
 {
 	// if periodic interrupts are enabled, trip IRQ 8, and
 	// update status register C
@@ -470,7 +460,7 @@ void CMOS::periodic_timer()
 	}
 }
 
-void CMOS::one_second_timer()
+void CMOS::one_second_timer(uint64_t)
 {
 	// divider chain reset - RTC stopped
 	if((m_s.reg[REG_STAT_A] & 0x60) == 0x60) {
@@ -491,10 +481,10 @@ void CMOS::one_second_timer()
 	m_s.reg[REG_STAT_A] |= 0x80; // set UIP bit
 
 	// UIP timer for updating clock & alarm functions
-	g_machine.activate_timer(m_uip_timer_index, 244, 0);
+	g_machine.activate_timer(m_uip_timer, 244_us, false);
 }
 
-void CMOS::uip_timer()
+void CMOS::uip_timer(uint64_t)
 {
 	update_clock();
 

@@ -28,6 +28,8 @@
 #include "gui/gui.h"
 #include <cstring>
 
+using namespace std::placeholders;
+
 IODEVICE_PORTS(VGA) = {
 	{ 0x03B4, 0x03B5, PORT_8BIT|PORT_RW }, //3B4-3B5 CRTC Controller Address / Data
 	{ 0x03BA, 0x03BA, PORT_8BIT|PORT_RW }, //3BA mono Input Status #1 (R) / Feature Control (W)
@@ -117,13 +119,7 @@ void VGA::install()
 {
 	IODevice::install();
 	g_machine.register_irq(VGA_IRQ, name());
-	m_timer_id = g_machine.register_timer(
-		nullptr,
-		0,
-		false, //continuous
-		false, //active
-		name()
-	);
+	m_timer_id = g_machine.register_timer(nullptr, name());
 	g_memory.register_trap(0xA0000, 0xBFFFF, 3, [this] (uint32_t addr, uint rw, uint16_t value, uint8_t len) {
 		if(rw == 0) { //read
 			PDEBUGF(LOG_V2, LOG_VGA, "%s[0x%05X] = 0x%04X\n", len==1?"b":"w", addr, value);
@@ -264,8 +260,8 @@ void VGA::restore_state(StateBuf &_state)
 
 	double vfreq = 1000000.0 / m_s.vtotal_usec;
 	if(vfreq >= 35.0 && vfreq <= 75.0) {
-		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
-		g_machine.activate_timer(m_timer_id, m_s.vtotal_usec, false);
+		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this,_1));
+		g_machine.activate_timer(m_timer_id, uint64_t(m_s.vtotal_usec)*1_us, false);
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 	}
@@ -346,7 +342,7 @@ void VGA::calculate_retrace_timing()
 
 	if(vfreq >= 35.0 && vfreq <= 75.0) {
 		PINFOF(LOG_V1, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
-		vertical_retrace();
+		vertical_retrace(g_machine.get_virt_time_ns());
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 		PWARNF(LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
@@ -1158,7 +1154,7 @@ bool VGA::skip_update()
 	return false;
 }
 
-void VGA::update()
+void VGA::update(uint64_t _time)
 {
 	//this is "vertical blank start"
 
@@ -1168,12 +1164,13 @@ void VGA::update()
 	bool cs_toggle = false;
 	bool skip = skip_update();
 
-	m_s.vblank_time_usec = g_machine.get_virt_time_us();
+	m_s.vblank_time_usec = _time / 1000;
 
 	//next is the "vertical retrace start"
 	uint64_t vrdist = m_s.vrstart_usec - m_s.vblank_usec;
-	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this));
-	g_machine.activate_timer(m_timer_id, vrdist, false);
+	using namespace std::placeholders;
+	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this, _1));
+	g_machine.activate_timer(m_timer_id, vrdist*1_us, false);
 
 	cs_counter--;
 	/* no screen update necessary */
@@ -1553,9 +1550,9 @@ void VGA::update()
 	g_gui.vga_update();
 }
 
-void VGA::vertical_retrace()
+void VGA::vertical_retrace(uint64_t _time)
 {
-	m_s.vretrace_time_usec = g_machine.get_virt_time_us();
+	m_s.vretrace_time_usec = _time / 1000;
 
 	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip_update()) {
 		raise_interrupt();
@@ -1566,8 +1563,8 @@ void VGA::vertical_retrace()
 
 	//next is the "vblank start"
 	uint64_t vbstart = (m_s.vtotal_usec - m_s.vrstart_usec) + m_s.vblank_usec;
-	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this));
-	g_machine.activate_timer(m_timer_id, vbstart, false);
+	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this,_1));
+	g_machine.activate_timer(m_timer_id, vbstart*1_us, false);
 }
 
 uint8_t VGA::mem_read(uint32_t addr)

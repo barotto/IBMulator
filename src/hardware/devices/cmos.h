@@ -41,13 +41,13 @@ private:
 		uint8_t  reg[CMOS_SIZE];
 	} m_s;  // state information
 
-	int m_periodic_timer_index;
-	int m_one_second_timer_index;
-	int m_uip_timer_index; //Update in Progress timer
+	int m_periodic_timer;
+	int m_one_second_timer;
+	int m_uip_timer; //Update in Progress timer
 
-	void update_clock(void);
-	void update_timeval(void);
-	void CRA_change(void);
+	void update_clock();
+	void update_timeval();
+	void CRA_change();
 
 public:
 	CMOS(Devices *_dev);
@@ -58,9 +58,9 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
-	void periodic_timer();
-	void one_second_timer();
-	void uip_timer();
+	void periodic_timer(uint64_t);
+	void one_second_timer(uint64_t);
+	void uip_timer(uint64_t);
 
 	void reset(unsigned type);
 	void power_off();

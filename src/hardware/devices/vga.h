@@ -199,8 +199,8 @@ protected:
 	void init_iohandlers();
 	void init_systemtimer();
 	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t **plane);
-	void update();
-	void vertical_retrace();
+	void update(uint64_t _time);
+	void vertical_retrace(uint64_t _time);
 	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
 	void calculate_retrace_timing();
 	bool skip_update();

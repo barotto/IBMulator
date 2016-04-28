@@ -56,50 +56,52 @@ void PIT_82C54::init()
 	}
 }
 
-void PIT_82C54::reset(unsigned)
+void PIT_82C54::reset(unsigned _type)
 {
 	for(int i=0; i<3; i++) {
-		counter[i].reset();
+		counter[i].reset(_type);
 	}
 }
 
-void PIT_82C54::PIT_counter::reset()
+void PIT_82C54::PIT_counter::reset(unsigned _type)
 {
-	PDEBUGF(LOG_V2, LOG_PIT, "PIT: setting read_state %u to LSB\n", name);
+	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
+		PDEBUGF(LOG_V2, LOG_PIT, "T%d: setting read_state to LSB\n", name);
 
-	//Chip IOs;
-	GATE   = true;
-	OUTpin = true;
+		//Chip IOs;
+		GATE   = true;
+		OUTpin = true;
 
-	//Architected state;
-	count        = 0;
-	outlatch     = 0;
-	inlatch      = 0;
-	status_latch = 0;
+		//Architected state;
+		count        = 0;
+		outlatch     = 0;
+		inlatch      = 0;
+		status_latch = 0;
 
-	//Status Register data;
-	rw_mode    = 1;
-	mode       = 4;
-	bcd_mode   = false;
-	null_count = false;
+		//Status Register data;
+		rw_mode    = 1;
+		mode       = 4;
+		bcd_mode   = false;
+		null_count = false;
 
-	//Latch status data;
-	count_LSB_latched = false;
-	count_MSB_latched = false;
-	status_latched    = false;
+		//Latch status data;
+		count_LSB_latched = false;
+		count_MSB_latched = false;
+		status_latched    = false;
 
-	//Miscelaneous State;
-	count_binary     = 0;
-	triggerGATE      = false;
-	write_state      = LSByte;
-	read_state       = LSByte;
-	count_written    = true;
-	first_pass       = false;
-	state_bit_1      = false;
-	state_bit_2      = false;
-	next_change_time = 0;
+		//Miscelaneous State;
+		count_binary     = 0;
+		triggerGATE      = false;
+		write_state      = LSByte;
+		read_state       = LSByte;
+		count_written    = true;
+		first_pass       = false;
+		state_bit_1      = false;
+		state_bit_2      = false;
+		next_change_time = 0;
 
-	seen_problems = 0;
+		seen_problems = 0;
+	}
 }
 
 void PIT_82C54::PIT_counter::dbg_print()
@@ -138,19 +140,19 @@ void PIT_82C54::PIT_counter::latch()
 				break;
 			case MSByte_multiple:
 				if(!(seen_problems & UNL_2P_READ)) {
-					// seen_problems|=UNL_2P_READ;
-					PDEBUGF(LOG_V2, LOG_PIT, "Unknown behavior when latching during 2-part read.\n");
+					seen_problems |= UNL_2P_READ;
+					PDEBUGF(LOG_V2, LOG_PIT, "T%d: Unknown behavior when latching during 2-part read.\n", name);
 					PDEBUGF(LOG_V2, LOG_PIT, "  This message will not be repeated.\n");
 				}
 				//I guess latching and resetting to LSB first makes sense;
-				PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to LSB_mult\n");
+				PDEBUGF(LOG_V2, LOG_PIT, "T%d: Setting read_state to LSB_mult\n", name);
 				read_state = LSByte_multiple;
 				outlatch = count & 0xFFFF;
 				count_LSB_latched = true;
 				count_MSB_latched = true;
 				break;
 			default:
-				PDEBUGF(LOG_V2, LOG_PIT, "Unknown read mode found during latch command.\n");
+				PDEBUGF(LOG_V2, LOG_PIT, "T%d: Unknown read mode found during latch command.\n", name);
 				break;
 		}
 	}
@@ -161,6 +163,7 @@ void PIT_82C54::PIT_counter::set_OUT(bool value, uint32_t _cycles)
 	if(OUTpin != value) {
 		OUTpin = value;
 		if(out_handler != nullptr) {
+			PDEBUGF(LOG_V2, LOG_PIT, "T%d OUT: %d\n", name, value);
 			out_handler(value, _cycles);
 		}
 	}
@@ -288,10 +291,8 @@ void PIT_82C54::PIT_counter::clock_multiple(uint32_t cycles)
 						cycles = 0;
 					} else {
 						decrement_multiple((next_change_time-1));
-						uint32_t c = cycles;
 						cycles -= next_change_time;
-						clock(c);
-
+						clock(cycles);
 					}
 					break;
 				case 3:
@@ -301,9 +302,8 @@ void PIT_82C54::PIT_counter::clock_multiple(uint32_t cycles)
 						cycles = 0;
 					} else {
 						decrement_multiple((next_change_time-1)*2);
-						uint32_t c = cycles;
 						cycles -= next_change_time;
-						clock(c);
+						clock(cycles);
 					}
 					break;
 				default:
@@ -364,7 +364,7 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					set_OUT(false, _cycles);
 					if(write_state == MSByte_multiple) {
 						PDEBUGF(LOG_V1, LOG_PIT,
-								"Undefined behavior when loading a half loaded count.\n");
+								"T%d: Undefined behavior when loading a half loaded count.\n", name);
 					}
 				} else {
 					decrement();
@@ -394,14 +394,14 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					null_count=0;
 					if(inlatch == 1) {
 						PDEBUGF(LOG_V1, LOG_PIT,
-								"ERROR: count of 1 is invalid in pit mode 2.\n");
+								"T%d ERROR: count of 1 is invalid in pit mode 2.\n", name);
 					}
 					if(!OUTpin) {
 						set_OUT(true, _cycles);
 					}
 					if(write_state == MSByte_multiple) {
 						PDEBUGF(LOG_V1, LOG_PIT,
-								"Undefined behavior when loading a half loaded count.\n");
+								"T%d: Undefined behavior when loading a half loaded count.\n", name);
 					}
 					first_pass = false;
 				} else {
@@ -449,7 +449,7 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					}
 					null_count = 0;
 					if(inlatch == 1) {
-						PDEBUGF(LOG_V2, LOG_PIT, "Count of 1 is invalid in pit mode 3.\n");
+						PDEBUGF(LOG_V2, LOG_PIT, "T%d: Count of 1 is invalid in pit mode 3.\n", name);
 					}
 					if(!OUTpin) {
 						set_OUT(true, _cycles);
@@ -458,7 +458,7 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					}
 					if(write_state == MSByte_multiple) {
 						PDEBUGF(LOG_V0, LOG_PIT,
-								"Undefined behavior when loading a half loaded count.\n");
+								"T%d: Undefined behavior when loading a half loaded count.\n", name);
 					}
 					state_bit_2 = false;
 					first_pass = false;
@@ -509,7 +509,7 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					null_count=0;
 					if(write_state == MSByte_multiple) {
 						PDEBUGF(LOG_V2, LOG_PIT,
-								"Undefined behavior when loading a half loaded count.\n");
+								"T%d: Undefined behavior when loading a half loaded count.\n", name);
 					}
 					first_pass = true;
 				} else {
@@ -549,7 +549,7 @@ void PIT_82C54::PIT_counter::clock(uint32_t _cycles)
 					null_count=0;
 					if(write_state == MSByte_multiple) {
 						PDEBUGF(LOG_V2, LOG_PIT,
-								"Undefined behavior when loading a half loaded count.\n");
+								"T%d: Undefined behavior when loading a half loaded count.\n", name);
 					}
 					first_pass = true;
 				} else {
@@ -595,7 +595,6 @@ uint8_t PIT_82C54::read(uint8_t address)
     }
 
     if(address==CONTROL_ADDRESS) {
-    	PDEBUGF(LOG_V2, LOG_PIT, "PIT Read: Control Word Register\n");
 		//Read from control word register;
 		/* This might be okay.  If so, 0 seems the most logical
 		 *  return value from looking at the docs.
@@ -614,7 +613,7 @@ uint8_t PIT_82C54::PIT_counter::read()
 	if(status_latched) {
 		//Latched Status Read;
 		if(count_MSB_latched && (read_state==MSByte_multiple)) {
-			PDEBUGF(LOG_V2, LOG_PIT, "Undefined output when status latched and count half read\n");
+			PDEBUGF(LOG_V2, LOG_PIT, "T%d: Undefined output when status latched and count half read\n", name);
 			return 0;
 		} else {
 			status_latched=0;
@@ -626,7 +625,7 @@ uint8_t PIT_82C54::PIT_counter::read()
 	if(count_LSB_latched) {
 		//Read Least Significant Byte;
 		if(read_state==LSByte_multiple) {
-			PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to MSB_mult\n");
+			PDEBUGF(LOG_V2, LOG_PIT, "T%d: Setting read_state to MSB_mult\n", name);
 			read_state=MSByte_multiple;
 		}
 		count_LSB_latched = false;
@@ -634,7 +633,7 @@ uint8_t PIT_82C54::PIT_counter::read()
 	} else if(count_MSB_latched) {
 		//Read Most Significant Byte;
 		if(read_state==MSByte_multiple) {
-			PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to LSB_mult\n");
+			PDEBUGF(LOG_V2, LOG_PIT, "T%d: Setting read_state to LSB_mult\n", name);
 			read_state=LSByte_multiple;
 		}
 		count_MSB_latched = false;
@@ -645,13 +644,13 @@ uint8_t PIT_82C54::PIT_counter::read()
 			//Read Least Significant Byte;
 			if(read_state==LSByte_multiple) {
 				read_state=MSByte_multiple;
-				PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to MSB_mult\n");
+				PDEBUGF(LOG_V2, LOG_PIT, "T%d: Setting read_state to MSB_mult\n", name);
 			}
 			return (count & 0xFF);
 		} else {
 			//Read Most Significant Byte;
 			if(read_state==MSByte_multiple) {
-				PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to LSB_mult\n");
+				PDEBUGF(LOG_V2, LOG_PIT, "T%d: Setting read_state to LSB_mult\n", name);
 				read_state=LSByte_multiple;
 			}
 			return ((count>>8) & 0xFF);
@@ -670,16 +669,17 @@ void PIT_82C54::write(uint8_t address, uint8_t data)
 	}
 
 	if(address == CONTROL_ADDRESS) {
+
 		controlword = data;
-		PDEBUGF(LOG_V2, LOG_PIT, "Control Word Write\n");
-		uint8_t SC = (controlword>>6) & 0x3;
-		uint8_t RW = (controlword>>4) & 0x3;
-		uint8_t M  = (controlword>>1) & 0x7;
-		uint8_t BCD = controlword & 0x1;
+		PDEBUGF(LOG_V2, LOG_PIT, "write Control Byte Register: ");
+		uint8_t SC = (controlword>>6) & 0x3; // Select Counter
+		uint8_t RW = (controlword>>4) & 0x3; // Read/Write counter
+		uint8_t M  = (controlword>>1) & 0x7; // Mode
+		uint8_t BCD = controlword & 0x1;     // Binary Coded Decimal
 		if(SC == 3) {
 			//READ_BACK command;
 			int i;
-			PDEBUGF(LOG_V2, LOG_PIT, "READ_BACK command\n");
+			PDEBUGF(LOG_V2, LOG_PIT, "READ_BACK\n");
 			for(i=0; i<=MAX_COUNTER; i++) {
 				if((M>>i) & 0x1) {
 					PIT_counter *ctr = &counter[i];
@@ -706,13 +706,14 @@ void PIT_82C54::write(uint8_t address, uint8_t data)
 			}
 		} else {
 			PIT_counter *ctr = &counter[SC];
-			if(!RW) {
+			if(RW == 0) {
 				//Counter Latch command;
-				PDEBUGF(LOG_V2, LOG_PIT, "Counter Latch command.  SC=%d\n",SC);
+				PDEBUGF(LOG_V2, LOG_PIT, "Latch. SC=%d\n", SC);
 				ctr->latch();
 			} else {
 				//Counter Program Command;
-				PDEBUGF(LOG_V2, LOG_PIT, "Counter Program command.  SC=%d, RW=%d, M=%d, BCD=%d\n",SC,RW,M,BCD);
+				PDEBUGF(LOG_V2, LOG_PIT, "Program. SC=%d, RW=%d, M=%d, BCD=%d\n",
+						SC, RW, M, BCD);
 				ctr->null_count = 1;
 				ctr->count_LSB_latched = false;
 				ctr->count_MSB_latched = false;
@@ -725,17 +726,17 @@ void PIT_82C54::write(uint8_t address, uint8_t data)
 				ctr->mode = M;
 				switch(RW) {
 					case 0x1:
-						PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to LSB\n");
+						PDEBUGF(LOG_V2, LOG_PIT, "T%d: setting read_state to LSB\n", SC);
 						ctr->read_state = LSByte;
 						ctr->write_state = LSByte;
 						break;
 					case 0x2:
-						PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to MSB\n");
+						PDEBUGF(LOG_V2, LOG_PIT, "T%d: setting read_state to MSB\n", SC);
 						ctr->read_state = MSByte;
 						ctr->write_state = MSByte;
 						break;
 					case 0x3:
-						PDEBUGF(LOG_V2, LOG_PIT, "Setting read_state to LSB_mult\n");
+						PDEBUGF(LOG_V2, LOG_PIT, "T%d: setting read_state to LSB_mult\n", SC);
 						ctr->read_state = LSByte_multiple;
 						ctr->write_state = LSByte_multiple;
 						break;
@@ -744,47 +745,51 @@ void PIT_82C54::write(uint8_t address, uint8_t data)
 						break;
 				}
 				//All modes except mode 0 have initial output of 1.;
-				if(M) {
-					ctr->set_OUT(true,0);
-				} else {
+				if(M == 0) {
 					ctr->set_OUT(false,0);
+				} else {
+					ctr->set_OUT(true,0);
 				}
 				ctr->next_change_time = 0;
 			}
 		}
-		return;
-	}
 
-	counter[address].write(data);
+	} else {
+
+		counter[address].write(data);
+
+	}
 }
 
 void PIT_82C54::PIT_counter::write(uint8_t data)
 {
 	//Write to counter initial value.
 
-	PDEBUGF(LOG_V2, LOG_PIT, "Write Initial Count: counter=%d, count=%d\n", name, data);
+	PDEBUGF(LOG_V2, LOG_PIT, "write T%d: initial count <- %d ", name, data);
 	switch(write_state) {
 		case LSByte_multiple:
 			inlatch = data;
 			write_state = MSByte_multiple;
+			PDEBUGF(LOG_V2, LOG_PIT, "(LSByte->MSByte)");
 			break;
 		case LSByte:
 			inlatch = data;
 			count_written = true;
+			PDEBUGF(LOG_V2, LOG_PIT, "(LSByte)");
 			break;
 		case MSByte_multiple:
 			write_state = LSByte_multiple;
 			inlatch |= (data << 8);
 			count_written = true;
+			PDEBUGF(LOG_V2, LOG_PIT, "(MSByte->LSByte)");
 			break;
 		case MSByte:
 			inlatch = (data << 8);
 			count_written = true;
-			break;
-		default:
-			PDEBUGF(LOG_V2, LOG_PIT, "write counter %d in invalid write state\n", name);
+			PDEBUGF(LOG_V2, LOG_PIT, "(MSByte)");
 			break;
 	}
+	PDEBUGF(LOG_V2, LOG_PIT, " (mode %d)\n", mode);
 	if(count_written && write_state != MSByte_multiple) {
 		null_count = true;
 		/*
@@ -846,7 +851,7 @@ void PIT_82C54::PIT_counter::write(uint8_t data)
 void PIT_82C54::PIT_counter::set_GATE(bool value)
 {
 	if(!((GATE&&value) || (!(GATE||value)))) {
-		PDEBUGF(LOG_V2, LOG_PIT, "Changing GATE %d to: %d\n",name,value);
+		PDEBUGF(LOG_V2, LOG_PIT, "T%d: changing GATE to %d\n", name, value);
 		GATE = value;
 		if(GATE) {
 			triggerGATE = true;
@@ -936,23 +941,21 @@ void PIT_82C54::PIT_counter::set_GATE(bool value)
 	}
 }
 
-uint32_t PIT_82C54::get_next_event_time()
+uint32_t PIT_82C54::get_next_event_ticks(uint8_t &_timer)
 {
 	uint32_t time0 = counter[0].next_change_time;
 	uint32_t time1 = counter[1].next_change_time;
 	uint32_t time2 = counter[2].next_change_time;
 
 	uint32_t out = time0;
+	_timer = 0;
 	if(PIT_CNT1_AUTO_UPDATE && time1 && (time1<out)) {
 		out = time1;
-		//PDEBUGF(LOG_V2, LOG_PIT, "next counter=1 %u\n",time1);
+		_timer = 1;
 	}
 	if(time2 && (time2<out)) {
 		out = time2;
-		//PDEBUGF(LOG_V2, LOG_PIT, "next counter=2 %u\n",time2);
-	}
-	if(out == time0) {
-		//PDEBUGF(LOG_V2, LOG_PIT, "next counter=0 %u\n",time0);
+		_timer = 2;
 	}
 	return out;
 }

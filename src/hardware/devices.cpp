@@ -86,6 +86,8 @@ void Devices::reset(uint _signal)
 	for(auto dev : m_devices) {
 		dev.second->reset(_signal);
 	}
+
+	m_last_io_time = 0;
 }
 
 void Devices::config_changed()
@@ -253,6 +255,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 {
 	io_handler_t &iohdl = m_read_handlers[_port];
 
+	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
 		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
@@ -267,9 +270,13 @@ uint16_t Devices::read_word(uint16_t _port)
 	uint16_t value = 0xFFFF;
 	io_handler_t &iohdl = m_read_handlers[_port];
 
+	m_last_io_time = 0;
 	if((_port & 1) || !(iohdl.mask & PORT_16BIT)) {
 		b0 = read_byte(_port);
+		unsigned io_time = m_last_io_time;
+		m_last_io_time = 0;
 		b1 = read_byte(_port+1);
+		m_last_io_time += io_time;
 		value = b0 | (b1<<8);
 	} else if(iohdl.mask & PORT_16BIT) {
 		value = iohdl.device->read(_port, 2);
@@ -281,6 +288,7 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 {
 	io_handler_t &iohdl = m_write_handlers[_port];
 
+	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
 		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
 				_port, REG_CS.sel.value, REG_IP);
@@ -293,6 +301,7 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 {
 	io_handler_t &iohdl = m_write_handlers[_port];
 
+	m_last_io_time = 0;
 	if((_port & 1) || !(iohdl.mask & PORT_16BIT)) {
 		/* If you output a word to an odd-numbered I/O port, it's done in two
 		 * operations using A0 and BHE/ as it would if you were writing a word to a
@@ -304,7 +313,10 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 		 * the 486 and later chips (cf the AC bit in EFLAGS and the AM bit in CR0).
 		 */
 		write_byte(_port, uint8_t(_value));
+		unsigned io_time = m_last_io_time;
+		m_last_io_time = 0;
 		write_byte(_port+1, uint8_t(_value>>8));
+		m_last_io_time += io_time;
 	} else if(iohdl.mask & PORT_16BIT) {
 		iohdl.device->write(_port, _value, 2);
 	}

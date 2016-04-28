@@ -178,18 +178,10 @@ void Machine::init()
 
 	m_main_chrono.start();
 	m_bench.init(&m_main_chrono, 1000);
-	m_s.virt_time = 0;
-	m_s.next_timer_time = 0;
-	m_s.cycles_left = 0;
 	m_s.curr_prgname[0] = 0;
-	m_mt_virt_time = 0;
 	m_num_timers = 0;
 
-	register_timer(std::bind(&Machine::null_timer,this),
-			NULL_TIMER_INTERVAL, true, true, "null timer");
-
 	g_cpu.init();
-	g_cpu.set_HRQ(false);
 	g_cpu.set_shutdown_trap([this] () {
 		reset(CPU_SOFT_RESET);
 	});
@@ -224,10 +216,20 @@ void Machine::reset(uint _signal)
 			PERRF(LOG_MACHINE, "unknown reset signal: %d\n", _signal);
 			throw std::exception();
 	}
+	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+		m_s.virt_time       = 0;
+		m_s.next_timer_time = 0;
+		m_mt_virt_time      = 0;
+		for(unsigned i = 0; i < m_num_timers; i++) {
+			if(m_timers[i].in_use && m_timers[i].active && m_timers[i].continuous) {
+				m_timers[i].time_to_fire = m_timers[i].period;
+			}
+		}
+	}
+	m_s.cycles_left = 0;
 	g_memory.reset();
 	g_devices.reset(_signal);
 	set_DOS_program_name("");
-	m_s.cycles_left = 0;
 }
 
 void Machine::power_off()
@@ -383,10 +385,10 @@ bool Machine::update_timers(uint64_t _cpu_time)
 		}
 	}
 
-	auto timer = triggered.begin();
 	uint64_t prevtimer_time = 0;
-	while(timer != triggered.end()) {
-		uint64_t thistimer_time = timer->first;
+	for(auto timer : triggered) {
+		unsigned thistimer = timer.second;
+		uint64_t thistimer_time = timer.first;
 		uint64_t system_time = m_s.virt_time;
 		assert(thistimer_time >= prevtimer_time);
 		assert(thistimer_time <= _cpu_time);
@@ -395,34 +397,29 @@ bool Machine::update_timers(uint64_t _cpu_time)
 		// Call requested timer function.  It may request a different
 		// timer period or deactivate etc.
 		// it can even reactivate the same timer and set it to fire BEFORE the next vtime
-
-
-		// This timer fires before or at the next vtime point
-		m_timers[timer->second].last_fire_time = m_timers[timer->second].time_to_fire;
-
-		if(!m_timers[timer->second].continuous) {
+		if(!m_timers[thistimer].continuous) {
 			// If triggered timer is one-shot, deactive.
-			m_timers[timer->second].active = false;
+			m_timers[thistimer].active = false;
 		} else {
 			// Continuous timer, increment time-to-fire by period.
-			m_timers[timer->second].time_to_fire += m_timers[timer->second].period;
-			if(m_timers[timer->second].time_to_fire < m_s.next_timer_time) {
-				m_s.next_timer_time = m_timers[timer->second].time_to_fire;
+			m_timers[thistimer].time_to_fire += m_timers[thistimer].period;
+			if(m_timers[thistimer].time_to_fire < m_s.next_timer_time) {
+				m_s.next_timer_time = m_timers[thistimer].time_to_fire;
 			}
 		}
-		if(m_timers[timer->second].fire != nullptr) {
+		if(m_timers[thistimer].fire != nullptr) {
 			//the current time is when the timer fires
 			//virt_time must advance in a monotonic way (that's why we use a map)
-			m_s.virt_time = timer->first;
-			m_timers[timer->second].fire();
-			if(m_timers[timer->second].time_to_fire <= _cpu_time) {
+			m_s.virt_time = thistimer_time;
+			m_mt_virt_time = thistimer_time;
+			m_timers[thistimer].fire(m_s.virt_time);
+			if(m_timers[thistimer].time_to_fire <= _cpu_time) {
 				// the timer set itself to fire again before or at the time point
 				// we need to reorder
 				return false;
 			}
 		}
-		prevtimer_time = timer->first;
-		timer++;
+		prevtimer_time = thistimer_time;
 	}
 	return true;
 }
@@ -432,19 +429,7 @@ void Machine::set_single_step(bool _val)
 	m_cpu_single_step = _val;
 }
 
-void Machine::null_timer()
-{
-	PDEBUGF(LOG_V2,LOG_MACHINE, "null timer\n");
-}
-
-int Machine::register_timer(timer_fun_t _func, uint64_t _period_usecs, bool _continuous,
-		bool _active, const char *_name)
-{
-	return register_timer_ns(_func, _period_usecs*1000, _continuous, _active, _name);
-}
-
-int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _continuous,
-		bool _active, const char *_name)
+int Machine::register_timer(timer_fun_t _func, const char *_name)
 {
 	unsigned timer = NULL_TIMER_HANDLE;
 
@@ -471,16 +456,12 @@ int Machine::register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _
 		m_num_timers++;
 	}
 	m_timers[timer].in_use = true;
-	m_timers[timer].period = _period_nsecs;
-	m_timers[timer].time_to_fire = m_s.virt_time + _period_nsecs;
-	m_timers[timer].active = _active;
-	m_timers[timer].continuous = _continuous;
+	m_timers[timer].period = 0;
+	m_timers[timer].time_to_fire = 0;
+	m_timers[timer].active = false;
+	m_timers[timer].continuous = false;
 	m_timers[timer].fire = _func;
 	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name);
-
-	if(_active && m_timers[timer].time_to_fire < m_s.next_timer_time) {
-		m_s.next_timer_time = m_timers[timer].time_to_fire;
-	}
 
 	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name);
 
@@ -499,24 +480,8 @@ void Machine::unregister_timer(int &_timer)
 	_timer = NULL_TIMER_HANDLE;
 }
 
-void Machine::activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous)
+void Machine::activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous)
 {
-	uint64_t nsecs;
-
-	// if _usecs = 0, use default stored in period field
-	// else set new period from _usecs
-	if(_usecs == 0) {
-		nsecs = m_timers[_timer].period;
-	} else {
-		nsecs = US_TO_NS(_usecs);
-	}
-
-	activate_timer_ns(_timer, nsecs, _continuous);
-}
-
-void Machine::activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous)
-{
-	assert(_timer!=0);
 	assert(_timer<m_num_timers);
 
 	// if _nsecs = 0, use default stored in period field
@@ -536,7 +501,6 @@ void Machine::activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuo
 
 void Machine::deactivate_timer(unsigned _timer)
 {
-	assert(_timer!=0);
 	assert(_timer<m_num_timers);
 
 	m_timers[_timer].active = false;
@@ -544,12 +508,6 @@ void Machine::deactivate_timer(unsigned _timer)
 
 uint64_t Machine::get_timer_eta(unsigned _timer) const
 {
-	return get_timer_eta_ns(_timer) / 1000;
-}
-
-uint64_t Machine::get_timer_eta_ns(unsigned _timer) const
-{
-	assert(_timer!=0);
 	assert(_timer<m_num_timers);
 
 	if(!m_timers[_timer].active) {
@@ -561,7 +519,6 @@ uint64_t Machine::get_timer_eta_ns(unsigned _timer) const
 
 void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func)
 {
-	assert(_timer>0);
 	assert(_timer<m_num_timers);
 
 	m_timers[_timer].fire = _func;

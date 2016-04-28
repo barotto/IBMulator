@@ -83,7 +83,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
-	void FIFO_timer();
+	void FIFO_timer(uint64_t);
 	void raise_interrupt();
 	void lower_interrupt();
 	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);

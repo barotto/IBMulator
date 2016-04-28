@@ -253,7 +253,11 @@ bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _fo
 		//this 'if' should be based on the output device, not the pri-fac combo!
 		std::stringstream temp;
 		if(LOG_MACHINE_TIME) {
-			temp << setfill('0') << setw(10) << g_machine.get_virt_time_us_mt() << " ";
+			if(LOG_MACHINE_TIME_NS) {
+				temp << setfill('0') << setw(13) << g_machine.get_virt_time_ns_mt() << " ";
+			} else {
+				temp << setfill('0') << setw(10) << g_machine.get_virt_time_us_mt() << " ";
+			}
 		}
 		if(LOG_CSIP) {
 			temp << std::hex << std::uppercase << internal << setfill('0');

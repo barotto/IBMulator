@@ -246,12 +246,9 @@ void FloppyCtrl::install(void)
 			name());
 	g_machine.register_irq(FLOPPY_IRQ, name());
 
-	m_timer_index = g_machine.register_timer(
-			std::bind(&FloppyCtrl::timer,this),
-			250,    // period usec
-			false,  // continuous
-			false,  // active
-			name()//name
+	m_timer = g_machine.register_timer(
+			std::bind(&FloppyCtrl::timer, this, _1),
+			name()
 	);
 
 	for(uint i=0; i<4; i++) {
@@ -284,7 +281,7 @@ void FloppyCtrl::remove()
 
 	m_devices->dma()->unregister_channel(FLOPPY_DMA_CHAN);
 	g_machine.unregister_irq(FLOPPY_IRQ);
-	g_machine.unregister_timer(m_timer_index);
+	g_machine.unregister_timer(m_timer);
 
 	m_fx[0].remove();
 	m_fx[1].remove();
@@ -704,7 +701,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 
 			if(prev_normal_op==0 && normal_op) {
 				// transition from RESET to NORMAL
-				g_machine.activate_timer(m_timer_index, 250, 0);
+				g_machine.activate_timer(m_timer, 250_us, false);
 				for(int i=0; i<2; i++) {
 					if(m_device_type[i]!=FDD_NONE && !m_drive_booted[i]) {
 						m_fx[i].boot(m_media_present[i]);
@@ -744,7 +741,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			if(_value & 0x80) {
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				m_s.pending_command = 0xfe; // RESET pending
-				g_machine.activate_timer(m_timer_index, 250, 0);
+				g_machine.activate_timer(m_timer, 250_us, false);
 			}
 			if(_value & 0x7c) {
 				PDEBUGF(LOG_V0, LOG_FDC, "write to Data Rate Select register: unsupported bits set\n");
@@ -940,7 +937,7 @@ void FloppyCtrl::floppy_command()
 
 			step_delay = calculate_step_delay(drive, m_s.cur_cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
-			g_machine.activate_timer(m_timer_index, step_delay, 0);
+			g_machine.activate_timer(m_timer, uint64_t(step_delay)*1_us, false);
 			/* command head to track 0
 			* controller set to non-busy
 			* error condition noted in Status reg 0's equipment check bit
@@ -997,7 +994,7 @@ void FloppyCtrl::floppy_command()
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
-			g_machine.activate_timer(m_timer_index, step_delay, 0);
+			g_machine.activate_timer(m_timer, uint64_t(step_delay)*1_us, false);
 			/* ??? should also check cylinder validity */
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
 			m_s.cylinder[drive] = cylinder;
@@ -1056,7 +1053,7 @@ void FloppyCtrl::floppy_command()
 			}
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			sector_time = calculate_rw_delay(drive, true);
-			g_machine.activate_timer(m_timer_index, sector_time, 0);
+			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 			/* data reg not ready, controller busy */
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= FDC_MSR_CMDBUSY;
@@ -1229,7 +1226,7 @@ void FloppyCtrl::floppy_command()
 					m_s.main_status_reg |= (FDC_MSR_RQM | FDC_MSR_DIO);
 				}
 				uint32_t sector_time = calculate_rw_delay(drive, true);
-				g_machine.activate_timer(m_timer_index, sector_time, 0);
+				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 			} else if((m_s.command[0] & 0x7f) == 0x45) { // write
 				m_s.wrdata[drive] = true;
 				/* controller busy; if DMA mode, data reg not ready */
@@ -1316,7 +1313,7 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 	}
 }
 
-void FloppyCtrl::timer()
+void FloppyCtrl::timer(uint64_t)
 {
 	uint8_t drive = current_drive();
 	switch (m_s.pending_command) {
@@ -1458,7 +1455,7 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			uint32_t sector_time = calculate_rw_delay(drive, false);
-			g_machine.activate_timer(m_timer_index, sector_time, 0);
+			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 		}
 	}
 	return len;
@@ -1510,7 +1507,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 				}
 				sector_time = calculate_rw_delay(drive, false);
-				g_machine.activate_timer(m_timer_index, sector_time, 0);
+				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 				break;
 		}
 		return 1;
@@ -1545,7 +1542,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
-			g_machine.activate_timer(m_timer_index, sector_time, 0);
+			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 		}
 		return len;
 	}

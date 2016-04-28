@@ -95,7 +95,7 @@ private:
 
 		int seen_problems;
 
-		void reset();
+		void reset(unsigned _type);
 		void dbg_print();
 		void latch();
 		void set_OUT(bool data, uint32_t _cycles);
@@ -121,12 +121,11 @@ public:
 	void reset(unsigned type);
 
 	void clock_all(uint32_t cycles);
-	void clock_multiple(uint8_t cnum, uint32_t cycles);
 
 	uint8_t read(uint8_t address);
 	void write(uint8_t address, uint8_t data);
 
-	uint32_t get_next_event_time();
+	uint32_t get_next_event_ticks(uint8_t &_timer);
 
 	void print_cnum(uint8_t cnum);
 

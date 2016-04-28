@@ -175,9 +175,8 @@ private:
 	bool mouse_enQ_packet(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4);
 	void mouse_enQ(uint8_t mouse_data);
 
-	void   timer_handler();
-	void   timer();
-	int    m_timer_handle;
+	void timer_handler(uint64_t);
+	int m_timer;
 
 	bool m_mouse_acc;
 

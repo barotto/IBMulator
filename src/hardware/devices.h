@@ -66,6 +66,8 @@ private:
 	VGA * m_vga;
 	CMOS * m_cmos;
 
+	unsigned m_last_io_time;
+
 public:
 	Devices();
 	~Devices();
@@ -98,6 +100,16 @@ public:
 	uint16_t read_word(uint16_t _port);
 	void write_byte(uint16_t _port, uint8_t _value);
 	void write_word(uint16_t _port, uint16_t _value);
+
+	inline void set_io_time(unsigned _io_time) {
+		m_last_io_time = _io_time;
+	}
+	inline unsigned get_last_io_time() const {
+		return m_last_io_time;
+	}
+	inline void reset_io_time() {
+		m_last_io_time = 0;
+	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

@@ -46,7 +46,7 @@ private:
 	std::vector<int16_t> m_samples_buffer;
 	double m_nsec_per_sample;
 	double m_samples_per_nsec;
-	std::mutex m_lock;
+	std::mutex m_mutex;
 	std::shared_ptr<MixerChannel> m_channel;
 	uint64_t m_last_time;
 	double m_samples_rem;
@@ -63,7 +63,7 @@ public:
 	void power_off();
 	void config_changed();
 
-	void add_event(uint64_t _time, bool _active, bool _out);
+	void add_event(uint64_t _ticks, bool _active, bool _out);
 	void activate();
 	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 

@@ -199,18 +199,12 @@ void OPL::install(ChipTypes _type, bool _timers)
 		std::string timername = std::string(name()) + " T1";
 		m_s.timers[T1].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T1),
-				80,    // period
-				true,  // continuous
-				false, // not active
 				timername.c_str());
 		assert(m_s.timers[T1].index != NULL_TIMER_HANDLE);
 
 		timername = std::string(name()) + " T2";
 		m_s.timers[T2].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T2),
-				320,   // period
-				true,  // continuous
-				false, // not active
 				timername.c_str());
 		assert(m_s.timers[T2].index != NULL_TIMER_HANDLE);
 	}
@@ -1838,7 +1832,7 @@ void OPL::Timer::toggle(bool _start)
 	if(_start) {
 		uint32_t time = (256 - value) * increment;
 		assert(time);
-		g_machine.activate_timer(index,time,true);
+		g_machine.activate_timer(index, uint64_t(time)*1_us, true);
 	} else {
 		g_machine.deactivate_timer(index);
 	}

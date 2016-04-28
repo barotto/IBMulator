@@ -34,18 +34,14 @@ class PIT : public IODevice
 private:
 	struct {
 		PIT_82C54 timer;
-		bool speaker_data_on;
-		uint64_t  last_nsec;
-		uint32_t  last_next_event_time;
-		uint64_t  total_ticks;
-		uint64_t  total_nsec;
-		double dticks_amount;
+		bool      speaker_data_on;
+		uint64_t  pit_time;
+		uint64_t  pit_ticks;
 	} m_s;
 
-	int m_timer_handle;
+	int m_systimer;
 	uint32_t m_crnt_emulated_ticks;
-	uint64_t m_crnt_start_time;
-
+	std::atomic<uint64_t> m_mt_pit_time;
 	PCSpeaker *m_pcspeaker;
 
 public:
@@ -59,17 +55,20 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
-	void handle_timer();
-	bool periodic(uint64_t _time, uint64_t _nsec_delta);
-
 	const PIT_82C54 & get_timer() const {
 		return m_s.timer;
+	}
+	uint64_t get_pit_time_ns_mt() {
+		return m_mt_pit_time;
 	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
 private:
+	void handle_systimer(uint64_t);
+	void update_emulation(uint64_t _pit_time);
+	void update_systimer(uint64_t _cpu_time);
 	void irq0_handler(bool value, uint32_t);
 	void speaker_handler(bool value, uint32_t _cycles);
 	void set_OUT_handlers();

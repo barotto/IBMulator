@@ -116,19 +116,17 @@ void Serial::install()
 	m_s[0].enabled = true; // a serial port is always defined
 	m_s[0].port = 0xFF; // POS will set the port
 
+	using namespace std::placeholders;
 	m_s[0].tx_timer_index =	g_machine.register_timer(
-		std::bind(&Serial::tx_timer, this, 0), 0,
-		false,false, // one-shot, inactive
+		std::bind(&Serial::tx_timer, this, 0, _1),
 		"COM.tx");
 
 	m_s[0].rx_timer_index =	g_machine.register_timer(
-		std::bind(&Serial::rx_timer, this, 0), 0,
-		false,false,  // one-shot, inactive
+		std::bind(&Serial::rx_timer, this, 0, _1),
 		"COM.rx");
 
 	m_s[0].fifo_timer_index = g_machine.register_timer(
-		std::bind(&Serial::fifo_timer, this, 0), 0,
-		false,false,  // one-shot, inactive
+		std::bind(&Serial::fifo_timer, this, 0, _1),
 		"COM.fifo");
 }
 
@@ -923,8 +921,8 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 						m_s[port].line_status.tsr_empty = 0;
 						raise_interrupt(port, SER_INT_TXHOLD);
 						g_machine.activate_timer(m_s[port].tx_timer_index,
-								m_s[port].databyte_usec,
-								0); /* not continuous */
+								uint64_t(m_s[port].databyte_usec)*1_us,
+								false); /* not continuous */
 					} else {
 						m_s[port].tx_interrupt = 0;
 						lower_interrupt(port);
@@ -1101,8 +1099,8 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 				m_s[port].databyte_usec = (uint32_t)(1000000.0 / m_s[port].baudrate *
 						(m_s[port].line_cntl.wordlen_sel + 7));
 				g_machine.activate_timer(m_s[port].rx_timer_index,
-						m_s[port].databyte_usec,
-						0); /* not continuous */
+						uint64_t(m_s[port].databyte_usec)*1_us,
+						false); /* not continuous */
 			}
 			break;
 
@@ -1208,8 +1206,8 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 							mouse_internal_buffer.buffer[5] = '\0';
 						}
 						g_machine.activate_timer(m_s[port].rx_timer_index,
-								m_s[port].databyte_usec,
-								0); /* not continuous */
+								uint64_t(m_s[port].databyte_usec)*1_us,
+								false); /* not continuous */
 						detect_mouse = 0;
 					}
 				}
@@ -1279,8 +1277,8 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 				raise_interrupt(port, SER_INT_RXDATA);
 			} else {
 				g_machine.activate_timer(m_s[port].fifo_timer_index,
-						m_s[port].databyte_usec * 3,
-						0); /* not continuous */
+						uint64_t(m_s[port].databyte_usec * 3)*1_us,
+						false); /* not continuous */
 			}
 		}
 	} else {
@@ -1295,7 +1293,7 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 	}
 }
 
-void Serial::tx_timer(uint8_t port)
+void Serial::tx_timer(uint8_t port, uint64_t)
 {
 	bool gen_int = 0;
 	char pname[20];
@@ -1380,12 +1378,13 @@ void Serial::tx_timer(uint8_t port)
 			m_s[port].line_status.thr_empty = 1;
 			raise_interrupt(port, SER_INT_TXHOLD);
 		}
-		g_machine.activate_timer(m_s[port].tx_timer_index, m_s[port].databyte_usec,
-				0); /* not continuous */
+		g_machine.activate_timer(m_s[port].tx_timer_index,
+				uint64_t(m_s[port].databyte_usec)*1_us,
+				false); /* not continuous */
 	}
 }
 
-void Serial::rx_timer(uint8_t port)
+void Serial::rx_timer(uint8_t port, uint64_t)
 {
 	#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
 	struct timeval tval;
@@ -1529,10 +1528,10 @@ void Serial::rx_timer(uint8_t port)
 	}
 
 	g_machine.activate_timer(m_s[port].rx_timer_index,
-			db_usec, 0); /* not continuous */
+			uint64_t(db_usec)*1_us, false); /* not continuous */
 }
 
-void Serial::fifo_timer(uint8_t port)
+void Serial::fifo_timer(uint8_t port, uint64_t)
 {
 	m_s[port].line_status.rxdata_ready = 1;
 	raise_interrupt(port, SER_INT_FIFO);

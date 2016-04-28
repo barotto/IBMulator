@@ -35,7 +35,7 @@ class Machine;
 extern Machine g_machine;
 
 typedef std::function<void()> Machine_fun_t;
-typedef std::function<void()> timer_fun_t;
+typedef std::function<void(uint64_t)> timer_fun_t;
 typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_state)> mouse_fun_t;
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
@@ -44,19 +44,23 @@ typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 enum MachineReset {
 	MACHINE_POWER_ON,   // Machine is switched on using the power button
 	MACHINE_HARD_RESET, // Machine RESET triggered by the reset button
+	                    //FIXME right now is equivalent to POWER_ON, should we remove it?
 	CPU_SOFT_RESET,     // CPU RESET triggered by software
 	DEVICE_SOFT_RESET   // Device RESET triggered by software
 };
 
 #define USEC_PER_SECOND (1000000)
-#define NSEC_PER_SECOND (1000000000)
+#define NSEC_PER_SECOND (1000000000L)
 #define INV_USEC_PER_SECOND_D (0.000001)
 #define NSEC_TO_USEC(nsec) (nsec/1000)
-#define MAX_TIMERS 16
+#define MAX_TIMERS 24
 #define NULL_TIMER_HANDLE 10000
-#define NULL_TIMER_INTERVAL 1000000 // 1 sec
 #define TIMER_NAME_LEN 20
 #define PRG_NAME_LEN 261
+
+constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * 1000L; }
+constexpr uint64_t operator"" _ms ( unsigned long long int _t ) { return _t * 1000000L; }
+constexpr uint64_t operator"" _s ( unsigned long long int _t ) { return _t * 1000000000L; }
 
 class Machine
 {
@@ -80,7 +84,6 @@ private:
 		bool        in_use;     // Timer slot is in-use (currently registered).
 		uint64_t    period;     // Timer periodocity in nsecs.
 		uint64_t    time_to_fire; // Time to fire next (in nsecs).
-		uint64_t    last_fire_time; // The last time this timer fired (in nsecs).
 		bool        active;     // false=inactive, true=active.
 		bool        continuous; // false=one-shot timer, true=continuous periodicity.
 		timer_fun_t fire;      // A callback function for when the timer fires.
@@ -106,8 +109,6 @@ private:
 	void core_step(int32_t _cpu_cycles);
 	void mem_reset();
 	void power_off();
-
-	void null_timer();
 	bool update_timers(uint64_t _vtime);
 
 	CircularFifo<Machine_fun_t,10> m_cmd_fifo;
@@ -145,15 +146,10 @@ public:
 
 	inline Devices &devices() { return g_devices; }
 
-	int register_timer(timer_fun_t _func, uint64_t _usecs, bool _continuous,
-			bool _active, const char *_name);
-	int register_timer_ns(timer_fun_t _func, uint64_t _period_nsecs, bool _continuous,
-			bool _active, const char *_name);
+	int register_timer(timer_fun_t _func, const char *_name);
 	void unregister_timer(int &_timer);
-	void activate_timer(unsigned _timer, uint64_t _usecs, bool _continuous);
-	void activate_timer_ns(unsigned _timer, uint64_t _nsecs, bool _continuous);
+	void activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous);
 	uint64_t get_timer_eta(unsigned _timer) const;
-	uint64_t get_timer_eta_ns(unsigned _timer) const;
 	void deactivate_timer(unsigned _timer);
 	void set_timer_callback(unsigned _timer, timer_fun_t _func);
 	inline bool is_timer_active(unsigned _timer) const {
