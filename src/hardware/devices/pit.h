@@ -27,6 +27,9 @@
 
 class PIC;
 
+#define PIT_CLK_TIME (uint64_t(838))
+#define PIT_FREQ (1193317)
+
 class PIT : public IODevice
 {
 	IODEVICE(PIT, "8254 PIT")
@@ -41,7 +44,7 @@ private:
 
 	int m_systimer;
 	uint32_t m_crnt_emulated_ticks;
-	std::atomic<uint64_t> m_mt_pit_time;
+	std::atomic<uint64_t> m_mt_pit_ticks;
 	PCSpeaker *m_pcspeaker;
 
 public:
@@ -58,8 +61,8 @@ public:
 	const PIT_82C54 & get_timer() const {
 		return m_s.timer;
 	}
-	uint64_t get_pit_time_ns_mt() {
-		return m_mt_pit_time;
+	uint64_t get_pit_ticks_mt() {
+		return m_mt_pit_ticks;
 	}
 
 	void save_state(StateBuf &_state);

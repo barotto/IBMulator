@@ -97,7 +97,7 @@ void Devices::config_changed()
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
 	);
 	install_only_if<HardDrive>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
-	install_only_if<PCSpeaker>(g_program.config().get_bool(MIXER_SECTION, MIXER_PCSPEAKER));
+	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =
 	install_only_if<PS1Audio>(g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO));
 	install_only_if<AdLib>(g_program.config().get_bool(MIXER_SECTION, MIXER_ADLIB));

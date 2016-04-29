@@ -24,13 +24,12 @@
 #include "machine.h"
 #include <cmath>
 
-#define SPKR_DISABLE_TIMEOUT 2500000 //in usecs
-
 IODEVICE_PORTS(PCSpeaker) = {};
 
 
 PCSpeaker::PCSpeaker(Devices *_dev)
 : IODevice(_dev),
+m_SRC(nullptr),
 m_last_time(0),
 m_samples_rem(0.0)
 {
@@ -38,15 +37,20 @@ m_samples_rem(0.0)
 
 PCSpeaker::~PCSpeaker()
 {
+#if HAVE_LIBSAMPLERATE
+	if(m_SRC != nullptr) {
+		src_delete(m_SRC);
+	}
+#endif
 }
 
 void PCSpeaker::install()
 {
+	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
-		std::bind(&PCSpeaker::create_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
 		name());
-	m_channel->set_disable_timeout(SPKR_DISABLE_TIMEOUT);
+	m_channel->set_disable_timeout(2500000);
 }
 
 void PCSpeaker::remove()
@@ -56,222 +60,163 @@ void PCSpeaker::remove()
 
 void PCSpeaker::config_changed()
 {
-	uint32_t rate = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_channel->set_in_spec({AUDIO_FORMAT_S16, 1, rate});
-	//a second worth of samples
-	m_samples_buffer.resize(rate);
-	m_nsec_per_sample = 1e9/double(rate);
-	m_samples_per_nsec = double(rate)/1e9;
+	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
+	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, rate});
+	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, rate});
+	m_outbuf.reserve_us(50000);
+#if HAVE_LIBSAMPLERATE
+	if(m_SRC == nullptr) {
+		int err;
+		m_SRC = src_new(SRC_SINC_FASTEST, 1, &err);
+		if(m_SRC == nullptr) {
+			throw std::runtime_error(src_strerror(err));
+		}
+		m_pitbuf.set_spec({AUDIO_FORMAT_F32, 1, PIT_FREQ});
+		m_pitbuf.reserve_us(50000);
+	}
+#endif
+	float volume = clamp(g_program.config().get_real(PCSPEAKER_SECTION, PCSPEAKER_VOLUME), 0.0, 1.0);
+	m_channel->set_volume(volume);
 	reset(0);
 }
 
 void PCSpeaker::reset(uint)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	m_channel->enable(false);
 	m_events.clear();
 	m_s.level = 0.0;
-	m_s.samples = 0.0;
-	m_s.velocity = 0.0;
 }
 
 void PCSpeaker::power_off()
 {
-	m_channel->enable(false);
 	reset(0);
 }
 
 void PCSpeaker::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_AUDIO, "PC speaker: saving state\n");
-
-	StateHeader h;
-
-	m_s.events_cnt = m_events.size();
+	PINFOF(LOG_V1, LOG_AUDIO, "%s: saving state\n", name());
 
 	std::lock_guard<std::mutex> lock(m_mutex);
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
 
-	if(m_s.events_cnt) {
-		//trying to serialize the events.
-		//maybe use something like Boost serialization lib?
-		//I don't like Boost, I'd rather to not include it in the project
-		//for this case only.
-		h.name = std::string(name()) + "-evts";
-		h.data_size = m_s.events_cnt * sizeof(SpeakerEvent);
-		std::unique_ptr<uint8_t[]> spkrevts(new uint8_t[h.data_size]);
-		uint8_t *ptr = spkrevts.get();
-		for(auto ev : m_events) {
-			*((SpeakerEvent*)ptr) = ev;
+	_state.write(&m_s, {sizeof(m_s), name()});
+
+	StateHeader h;
+	h.data_size = m_events.size() * sizeof(SpeakerEvent);
+	h.name = std::string(name()) + "-Events";
+	if(h.data_size) {
+		std::vector<uint8_t> evts(h.data_size);
+		uint8_t *ptr = &evts[0];
+		auto it = m_events.begin();
+		for(size_t i=0; i<m_events.size(); i++,it++) {
+			*((SpeakerEvent*)ptr) = *it;
 			ptr += sizeof(SpeakerEvent);
 		}
-		_state.write(spkrevts.get(),h);
+		_state.write(&evts[0], h);
+	} else {
+		_state.write(nullptr, h);
 	}
 }
 
 void PCSpeaker::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_AUDIO, "PC speaker: restoring state\n");
-	StateHeader h;
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s,h);
+	PINFOF(LOG_V1, LOG_AUDIO, "%s: restoring state\n", name());
 
 	std::lock_guard<std::mutex> lock(m_mutex);
-	m_events.clear();
-	m_channel->enable(false);
-	m_last_time = 0;
-	m_samples_rem = 0;
-	if(m_s.events_cnt) {
-		_state.get_next_lump_header(h);
-		if(h.name.compare(std::string(name()) + "-evts") != 0) {
-			PERRF(LOG_AUDIO, "speaker events expected in state buffer, found %s\n", h.name.c_str());
-			throw std::exception();
-		}
-		size_t expsize = m_s.events_cnt*sizeof(SpeakerEvent);
-		if(h.data_size != expsize) {
-			PERRF(LOG_AUDIO, "speaker events size mismatch in state buffer, expected %u, found %u\n",
-					expsize, h.data_size);
-			throw std::exception();
-		}
-		std::unique_ptr<uint8_t[]> spkrevts(new uint8_t[h.data_size]);
-		uint8_t *ptr = spkrevts.get();
-		_state.read(ptr,h);
-		for(size_t i=0; i<m_s.events_cnt; i++) {
-			m_events.push_back(*((SpeakerEvent*)ptr));
-			ptr += sizeof(SpeakerEvent);
-		}
 
-		m_channel->enable(true);
+	m_channel->enable(false);
+	_state.read(&m_s, {sizeof(m_s), name()});
+
+	// events
+	m_events.clear();
+	std::string evtname = std::string(name()) + "-Events";
+	StateHeader h;
+	_state.get_next_lump_header(h);
+	if(h.name.compare(evtname) != 0) {
+		PERRF(LOG_AUDIO, "%s expected in state buffer, found %s\n",
+				evtname.c_str(), h.name.c_str());
+		throw std::exception();
+	}
+	if(h.data_size) {
+		if(h.data_size % sizeof(SpeakerEvent)) {
+			PERRF(LOG_AUDIO, "%s size mismatch in state buffer\n", evtname.c_str());
+			throw std::exception();
+		}
+		int evtcnt = h.data_size / sizeof(SpeakerEvent);
+		std::vector<SpeakerEvent> evts(evtcnt);
+		_state.read((uint8_t*)&evts[0],h);
+		for(int i=0; i<evtcnt; i++) {
+			m_events.push_back(evts[i]);
+		}
+		activate();
+	} else {
+		_state.skip();
 	}
 }
 
 void PCSpeaker::activate()
 {
+	//TODO maybe implement a version w/o libsaplerate?
+#if HAVE_LIBSAMPLERATE
 	if(!m_channel->is_enabled()) {
 		m_last_time = 0;
-		m_samples_rem = 0;
+		m_samples_rem = 0.0;
+		src_reset(m_SRC);
 		m_channel->enable(true);
 	}
+#endif
 }
 
-void PCSpeaker::add_event(uint64_t _time, bool _active, bool _out)
+void PCSpeaker::add_event(uint64_t _ticks, bool _active, bool _out)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	static uint64_t last_time = 0;
-	uint64_t elapsed = _time - last_time;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker evt: %07llu dns, %s, %s\n",
+	static uint64_t last_ticks = 0;
+	uint64_t elapsed = _ticks - last_ticks;
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: evt: %07llu CLK, %s, %s\n",
 			elapsed, (_active?" act":"!act"), (_out?"5v":"0v"));
-	last_time = _time;
+	last_ticks = _ticks;
 
+#if HAVE_LIBSAMPLERATE
 	if(m_events.size()) {
 		SpeakerEvent &evt = m_events.back();
-		assert(_time >= evt.time);
-		if(evt.time == _time) {
+		assert(_ticks >= evt.ticks);
+		if(evt.ticks == _ticks) {
 			evt.out = _out;
 			evt.active = _active;
 			return;
 		}
 	}
-
-	m_events.push_back({_time, _active, _out});
-}
-
-
-const double SPKR_VOLUME = 1.0;
-const double SPKR_TIME = 62012.0;
-const double SPKR_SPEED = (SPKR_VOLUME/SPKR_TIME);
-const double SPKR_ACC = (SPKR_VOLUME/(SPKR_TIME*SPKR_TIME));
-#define ACC 0
-
-#if ACC
-inline int16_t speaker_level(bool _out, double &_v0, double &_s, double _t)
-{
-	double a;
-	if(_out) {
-		a = SPKR_ACC;
-	} else {
-		a = -SPKR_ACC;
-	}
-	double v = _v0 + a * _t;
-	double s = (_v0 + v) / 2.0 * _t;
-	_s += s;
-
-	if(_s < 0.0) {
-		_s = 0.0;
-		v = 0.0;
-	} else if(_s > SPKR_VOLUME) {
-		_s = SPKR_VOLUME;
-		v = 0.0;
-	}
-	_v0 = v;
-
-	return int16_t(_s*10000.0);
-}
-#else
-#if 1
-inline int16_t speaker_level(bool _out, double &_v0, double &_s, double _t)
-{
-	if(_out) {
-		_s = std::min(1.0, _s + (SPKR_SPEED*_t));
-	} else {
-		_s = std::max(0.0, _s - (SPKR_SPEED*_t));
-	}
-	_v0 = 0;
-	return int16_t(_s*10000.0);
-}
-#else
-inline int16_t speaker_level(bool _out, double &_v0, double &_s, double _t)
-{
-	if(_out) {
-		_s = SPKR_VOLUME;
-	} else {
-		_s = 0.0;
-	}
-	_v0 = 0;
-	return int16_t(_s*10000.0);
-}
+	m_events.push_back({_ticks, _active, _out});
 #endif
-#endif
-
-size_t PCSpeaker::fill_samples_buffer_t(int _nsec, int _bstart, int16_t _value)
-{
-	int samples = round(_nsec * m_samples_per_nsec);
-	samples = std::min(int(m_samples_buffer.size())-_bstart, samples);
-	std::fill(m_samples_buffer.begin()+_bstart,
-	          m_samples_buffer.begin()+_bstart+samples,
-	          _value);
-	return samples;
 }
 
-//this method is called by the Mixer thread
+// this function is called by the Mixer thread
 bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
 {
-	//TODO this function is a mess
 	m_mutex.lock();
-	uint64_t pit_time = g_devices.pit()->get_pit_time_ns_mt();
 
-	double this_slice_samples = _time_span_us * 1000 / m_nsec_per_sample;
+	uint64_t pit_ticks = g_devices.pit()->get_pit_ticks_mt();
+
+	double needed_frames = double(_time_span_us) * double(m_outbuf.rate())/1e6;
 	size_t size = m_events.size();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix slice: %04d usecs, samples: %.1f, evnts: %d, ",
-			_time_span_us, this_slice_samples, size);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix time: %04d usecs, samples: %.1f, evnts: %d, ",
+			_time_span_us, needed_frames, size);
 
-	if(size==0 || m_events[0].time > pit_time) {
+	if(size==0 || m_events[0].ticks > pit_ticks) {
 		m_mutex.unlock();
-		unsigned samples = unsigned(std::max(0, int(this_slice_samples + m_samples_rem)));
-		if(m_channel->check_disable_time(NSEC_TO_USEC(pit_time))) {
+		unsigned samples = unsigned(std::max(0, int(needed_frames + m_samples_rem)));
+		if(m_channel->check_disable_time(NSEC_TO_USEC(pit_ticks*PIT_CLK_TIME))) {
 			m_last_time = 0;
-			m_samples_rem = 0.0;
+			PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 			return false;
 		} else if(m_last_time && samples && !_prebuf) {
 			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %u samples\n", samples);
-			m_channel->in().fill_samples<int16_t>(samples, 0);
+			m_channel->in().fill_samples<float>(samples, 0.0);
 		}
-		m_last_time = pit_time;
-		m_samples_rem += this_slice_samples - samples;
+		m_last_time = pit_ticks;
+		m_samples_rem += needed_frames - samples;
 		if(_prebuf) {
 			m_samples_rem = std::min(0.0, m_samples_rem);
 		}
@@ -279,70 +224,48 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 		return true;
 	}
 
-	m_channel->set_disable_time(0);
-	uint32_t pregap = 0,  samples_cnt = 0;
+	m_pitbuf.clear();
+	m_outbuf.clear();
 
-	if(m_last_time && (m_events[0].time>m_last_time)) {
+	m_channel->set_disable_time(0);
+	uint32_t samples = 0;
+
+	if(m_last_time && (m_events[0].ticks>m_last_time)) {
 		//fill the gap
-		pregap = fill_samples_buffer_t(m_events[0].time-m_last_time, 0, round(m_s.level));
-		PDEBUGF(LOG_V2, LOG_AUDIO, "pregap fill: %d, ", pregap);
-		samples_cnt = pregap;
+		samples = m_events[0].ticks - m_last_time;
+		m_pitbuf.fill_samples<float>(samples, m_s.level);
+		PDEBUGF(LOG_V2, LOG_AUDIO, "pregap fill: %d, ", samples);
 	}
 
-	uint64_t evnts_begin = m_events[0].time;
-	uint64_t end = pit_time;
+	uint64_t evnts_begin = m_events[0].ticks;
+	uint64_t end = pit_ticks;
 	for(size_t i=0; i<size; i++) {
 		SpeakerEvent front = m_events[0];
-		uint64_t begin = front.time;
-		if(begin > pit_time) {
+		uint64_t begin = front.ticks;
+		if(begin > pit_ticks) {
 			// an event is in the future when the lock is acquired after a new
 			// event and before the pit time is updated
 			break;
 		}
 		if(i<size-1) {
-			end = m_events[1].time;
+			end = m_events[1].ticks;
 			m_events.pop_front();
 		} else {
 			//this is the last event
-			end = pit_time;
-		}
-		if((m_s.velocity<.0 && front.out) || (m_s.velocity>.0 && !front.out)) {
-			m_s.velocity = 0.0;
-		}
-		double v = m_s.velocity;
-		double l = m_s.level;
-		//interval until the next audio sample
-		double next_sample = m_nsec_per_sample - (m_s.samples * m_nsec_per_sample);
-		double duration = (end - begin);
-		m_s.samples += (duration * m_samples_per_nsec);
-
-		uint j = 0;
-		for(j=0; j<(uint)m_s.samples; j++,samples_cnt++) {
-			if(samples_cnt >= m_samples_buffer.size()) {
-				break;
+			// if the speaker is active continue
+			if(front.active) {
+				m_events[0].ticks = pit_ticks;
+			} else {
+				//the last event is a shutdown
+				m_events.pop_front();
 			}
-			int16_t sample = speaker_level(front.out, v, l, next_sample);
-			m_samples_buffer[samples_cnt] = sample;
-			next_sample = m_nsec_per_sample;
+			end = pit_ticks;
 		}
 
-		speaker_level(front.out, m_s.velocity, m_s.level, duration);
+		m_s.level = (front.out)?1.0:0.0;
+		m_pitbuf.fill_samples<float>(end - begin, m_s.level);
 
-		PDEBUGF(LOG_V2, LOG_AUDIO, "evt:%.4f-%.4f-%.4f, ", duration, m_s.samples, m_s.level);
-
-		m_s.samples -= j;
-
-		if(end == pit_time) {
-			if(i==size-1) {
-				//last event
-				// if the speaker is active or not settled continue to emulate
-				if(front.active || m_s.level>0.0) {
-					m_events[0].time = pit_time;
-				} else {
-					//the last event is a shutdown and the speaker is quiet
-					m_events.pop_front();
-				}
-			}
+		if(end == pit_ticks) {
 			break;
 		}
 	}
@@ -350,41 +273,38 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 	bool chan_disable = m_events.empty();
 	m_mutex.unlock();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "evnts len: %llu nsec, evnts samples: %d, ",
-			(end - evnts_begin), (samples_cnt - pregap));
+	PDEBUGF(LOG_V2, LOG_AUDIO, "evnts len: %llu nsec, PIT ticks: %d, ",
+			(end - evnts_begin), m_pitbuf.frames());
 
-	if(end < pit_time) {
+	if(end < pit_ticks) {
 		//fill the gap
-		size_t fillsamples = fill_samples_buffer_t(pit_time-end, samples_cnt, round(m_s.level));
-		PDEBUGF(LOG_V2, LOG_AUDIO, "postgap fill: %d, ", fillsamples);
-		samples_cnt += fillsamples;
+		samples = m_events[0].ticks - m_last_time;
+		m_pitbuf.fill_samples<float>(samples, m_s.level);
+		PDEBUGF(LOG_V2, LOG_AUDIO, "postgap fill: %d, ", samples);
 	}
 
-	m_samples_rem = m_samples_rem + (this_slice_samples - samples_cnt);
-	PDEBUGF(LOG_V2, LOG_AUDIO, "samples created: %d", samples_cnt);
+	// rate conversion from 1.193MHz to current speaker rate
+	m_pitbuf.convert_rate(m_outbuf, m_pitbuf.frames(), m_SRC);
+
+	m_samples_rem = m_samples_rem + (needed_frames - m_outbuf.frames());
+	PDEBUGF(LOG_V2, LOG_AUDIO, "audio samples: %d", m_outbuf.frames());
 	if(_prebuf) {
 		m_samples_rem = std::min(0.0, m_samples_rem);
 	} else {
-		m_samples_rem = std::min(m_samples_rem, this_slice_samples);
+		m_samples_rem = std::min(m_samples_rem, needed_frames);
 		PDEBUGF(LOG_V2, LOG_AUDIO, ", remainder: %.1f", m_samples_rem);
 	}
 	PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 
-	if(samples_cnt>0) {
-		m_channel->in().add_samples(m_samples_buffer, samples_cnt);
-	}
+	m_channel->in().add_frames(m_outbuf);
+
 	if(chan_disable) {
 		m_s.level = 0.0;
-		m_s.velocity = 0.0;
-		m_s.samples = 0.0;
-		m_channel->set_disable_time(NSEC_TO_USEC(pit_time));
+		m_channel->set_disable_time(NSEC_TO_USEC(pit_ticks*PIT_CLK_TIME));
 	}
 
-	m_last_time = pit_time;
-
+	m_last_time = pit_ticks;
 	m_channel->input_finish();
-
 	return true;
 }
-
 

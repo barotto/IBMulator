@@ -120,9 +120,14 @@ ini_file_t AppConfig::ms_def_values = {
 		{ MIXER_SAMPLES,   "1024"  },
 		{ MIXER_PREBUFFER, "50"    },
 		{ MIXER_VOLUME,    "1.0"   },
-		{ MIXER_PCSPEAKER, "yes"   },
 		{ MIXER_PS1AUDIO,  "yes"   },
 		{ MIXER_ADLIB,     "no"    }
+	} },
+
+	{ PCSPEAKER_SECTION, {
+		{ PCSPEAKER_ENABLED, "yes"   },
+		{ PCSPEAKER_RATE,    "22050" },
+		{ PCSPEAKER_VOLUME,  "1.0"   }
 	} },
 
 	{ SOUNDFX_SECTION, {
@@ -290,10 +295,15 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: 48000, 44100, 32000, 22050.\n"
 ";    volume: Audio volume of the sound cards.\n"
 ";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
-"; pcspeaker: Enable PC-Speaker emulation.\n"
 ";  ps1audio: Enable PS/1 Audio Card emulation.\n"
 		},
-
+		{ PCSPEAKER_SECTION,
+"; enabled: Enable PC-Speaker emulation.\n"
+";    rate: Sample rate.\n"
+";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
+";  volume: Audio volume.\n"
+";          Possible values: a real number between 0.0 (silent) and 1.0 (normal).\n"
+		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
 ";   volume: General volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
@@ -390,8 +400,12 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MIXER_SAMPLES,
 		MIXER_RATE,
 		MIXER_VOLUME,
-		MIXER_PCSPEAKER,
 		MIXER_PS1AUDIO
+	} },
+	{ PCSPEAKER_SECTION, {
+		PCSPEAKER_ENABLED,
+		PCSPEAKER_RATE,
+		PCSPEAKER_VOLUME,
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
@@ -548,7 +562,7 @@ long AppConfig::get_int(const string &_section, const string &_name)
 double AppConfig::get_real(const string &_section, const string &_name)
 {
 	string valstr;
-	double value;
+	double value = 0.0;
 
 	try {
 		valstr = get(_section, _name);

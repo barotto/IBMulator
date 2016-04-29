@@ -33,11 +33,6 @@ IODEVICE_PORTS(PIT) = {
 };
 #define PIT_IRQ 0
 
-//1.1931816666MHz Clock
-#define TICKS_PER_SECOND (1193182.0)
-//#define CYCLE_TIME (1000000000.0/TICKS_PER_SECOND) //838.095110386 ns
-#define CYCLE_TIME (uint64_t(838))
-
 
 PIT::PIT(Devices* _dev)
 : IODevice(_dev)
@@ -75,9 +70,9 @@ void PIT::reset(unsigned type)
 	if(type == MACHINE_POWER_ON || type == MACHINE_HARD_RESET) {
 		g_machine.deactivate_timer(m_systimer);
 		m_s.speaker_data_on = false;
-		m_s.pit_time       = 0;
-		m_s.pit_ticks      = 0;
-		m_mt_pit_time      = 0;
+		m_s.pit_time   = 0;
+		m_s.pit_ticks  = 0;
+		m_mt_pit_ticks = 0;
 	}
 }
 
@@ -125,7 +120,7 @@ void PIT::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	m_mt_pit_time = m_s.pit_time;
+	m_mt_pit_ticks = m_s.pit_ticks;
 
 	set_OUT_handlers();
 }
@@ -134,7 +129,7 @@ uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 {
 	uint8_t value = 0;
 	uint64_t cpu_time = g_machine.get_virt_time_ns();
-	uint64_t pit_time = cpu_time / CYCLE_TIME * CYCLE_TIME;
+	uint64_t pit_time = cpu_time / PIT_CLK_TIME * PIT_CLK_TIME;
 	update_emulation(pit_time);
 	update_systimer(cpu_time);
 
@@ -177,11 +172,11 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 {
 	// update the PIT emulation
 	uint64_t cpu_time = g_machine.get_virt_time_ns();
-	uint64_t pit_time = cpu_time / CYCLE_TIME * CYCLE_TIME;
+	uint64_t pit_time = cpu_time / PIT_CLK_TIME * PIT_CLK_TIME;
 	if(pit_time < cpu_time) {
 		// a write advances the PIT time if it happened between two CLK pulses.
 		// this puts the PIT in the future relative to the CPU time.
-		pit_time += CYCLE_TIME;
+		pit_time += PIT_CLK_TIME;
 	}
 	update_emulation(pit_time);
 
@@ -211,13 +206,13 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 			if(m_s.speaker_data_on != spkr_on) {
 				if(m_pcspeaker) {
 					if(spkr_on) {
-						m_pcspeaker->add_event(m_s.pit_time, true, m_s.timer.read_OUT(2));
+						m_pcspeaker->add_event(m_s.pit_ticks, true, m_s.timer.read_OUT(2));
 						m_pcspeaker->activate();
 						PDEBUGF(LOG_V2, LOG_PIT, "PC-Speaker enable\n");
 					} else {
 						//the pc speaker mixer channel is disabled by the speaker
 						PDEBUGF(LOG_V2, LOG_PIT, "PC-Speaker disable\n");
-						m_pcspeaker->add_event(m_s.pit_time, false, false);
+						m_pcspeaker->add_event(m_s.pit_ticks, false, false);
 					}
 				}
 				m_s.speaker_data_on = spkr_on;
@@ -239,7 +234,7 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 void PIT::handle_systimer(uint64_t _cpu_time)
 {
 	// this function must be called only on PIT CLK ticks
-	assert((_cpu_time % CYCLE_TIME) == 0);
+	assert((_cpu_time % PIT_CLK_TIME) == 0);
 	uint64_t pit_time = _cpu_time;
 	update_emulation(pit_time);
 	update_systimer(_cpu_time);
@@ -247,10 +242,10 @@ void PIT::handle_systimer(uint64_t _cpu_time)
 
 void PIT::update_emulation(uint64_t _pit_time)
 {
-	assert(m_s.pit_time % CYCLE_TIME == 0);
-	assert(_pit_time % CYCLE_TIME == 0);
+	assert(m_s.pit_time % PIT_CLK_TIME == 0);
+	assert(_pit_time % PIT_CLK_TIME == 0);
 
-	/* _time is the current time, it can be not a multiple of the CYCLE_TIME
+	/* _time is the current time, it can be not a multiple of the PIT_CLK_TIME
 	 * but we can update the chip only on CLK ticks.
 	 * Emulate the ticks and return the nsecs not emulated.
 	 */
@@ -262,8 +257,8 @@ void PIT::update_emulation(uint64_t _pit_time)
 
 	//calculate the amount of PIT CLK ticks to emulate
 	uint64_t elapsed_nsec = _pit_time - m_s.pit_time;
-	assert(elapsed_nsec % CYCLE_TIME == 0);
-	uint64_t ticks_amount = elapsed_nsec / CYCLE_TIME;
+	assert(elapsed_nsec % PIT_CLK_TIME == 0);
+	uint64_t ticks_amount = elapsed_nsec / PIT_CLK_TIME;
 
 	PDEBUGF(LOG_V2, LOG_PIT, "emulating: elapsed time: %d nsec, %d CLK pulses\n",
 			elapsed_nsec, ticks_amount);
@@ -282,15 +277,15 @@ void PIT::update_emulation(uint64_t _pit_time)
 		m_crnt_emulated_ticks = ticks;
 		m_s.timer.clock_all(ticks);
 		m_s.pit_ticks += ticks;
-		m_s.pit_time += ticks * CYCLE_TIME;
+		m_s.pit_time += ticks * PIT_CLK_TIME;
 		ticks_amount -= ticks;
 	}
 	m_crnt_emulated_ticks = 0;
-	m_mt_pit_time = m_s.pit_time;
+	m_mt_pit_ticks = m_s.pit_ticks;
 
 	assert(m_s.pit_time == prev_pit_time + elapsed_nsec);
-	assert((m_s.pit_time % CYCLE_TIME) == 0);
-	assert(m_s.pit_time / CYCLE_TIME == m_s.pit_ticks);
+	assert((m_s.pit_time % PIT_CLK_TIME) == 0);
+	assert(m_s.pit_time / PIT_CLK_TIME == m_s.pit_ticks);
 }
 
 void PIT::update_systimer(uint64_t _cpu_time)
@@ -302,18 +297,18 @@ void PIT::update_systimer(uint64_t _cpu_time)
 	g_machine.deactivate_timer(m_systimer);
 
 	if(next_event) {
-		uint64_t next_event_eta = next_event * CYCLE_TIME;
+		uint64_t next_event_eta = next_event * PIT_CLK_TIME;
 		if(m_s.pit_time <= _cpu_time) {
 			next_event_eta -= _cpu_time - m_s.pit_time;
 		} else {
 			next_event_eta += m_s.pit_time - _cpu_time;
 		}
 		uint64_t abs_time = g_machine.get_virt_time_ns() + next_event_eta;
-		if((abs_time % CYCLE_TIME) != 0)
-			assert((abs_time % CYCLE_TIME) == 0);
+		if((abs_time % PIT_CLK_TIME) != 0)
+			assert((abs_time % PIT_CLK_TIME) == 0);
 		g_machine.activate_timer(m_systimer, next_event_eta, false);
 		PDEBUGF(LOG_V2, LOG_PIT, "next event: T%d, %u CLK, %llu nsecs (%.2f CLK)\n",
-				timer, next_event, next_event_eta, (double(next_event_eta)/CYCLE_TIME));
+				timer, next_event, next_event_eta, (double(next_event_eta)/PIT_CLK_TIME));
 	} else {
 		PDEBUGF(LOG_V2, LOG_PIT, "no events\n");
 	}
@@ -333,17 +328,17 @@ void PIT::speaker_handler(bool value, uint32_t _remaining_ticks)
 	if(!m_pcspeaker || !m_s.speaker_data_on) {
 		return;
 	}
-	uint64_t time;
+	uint64_t ticks;
 	if(m_crnt_emulated_ticks) {
 		uint32_t elapsed_ticks = m_crnt_emulated_ticks - _remaining_ticks;
-		time = (m_s.pit_ticks + elapsed_ticks) * CYCLE_TIME;
-		PDEBUGF(LOG_V2, LOG_PIT, "PC speaker evt: emu ticks %d, elapsed %d, time %llu\n",
-				m_crnt_emulated_ticks, elapsed_ticks, time);
+		ticks = (m_s.pit_ticks + elapsed_ticks);
+		PDEBUGF(LOG_V2, LOG_PIT, "PC speaker evt: emu ticks %d, elapsed %d, CLK %llu\n",
+				m_crnt_emulated_ticks, elapsed_ticks, ticks);
 	} else {
 		// this case happens only on a write, the PIT time is updated
-		time = m_s.pit_time;
+		ticks = m_s.pit_ticks;
 	}
-	m_pcspeaker->add_event(time, true, value);
+	m_pcspeaker->add_event(ticks, true, value);
 }
 
 

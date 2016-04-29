@@ -169,9 +169,13 @@ public:
 #define MIXER_PREBUFFER         "prebuffer"
 #define MIXER_SAMPLES           "samples"
 #define MIXER_VOLUME            "volume"
-#define MIXER_PCSPEAKER         "pcspeaker"
 #define MIXER_PS1AUDIO          "ps1audio"
 #define MIXER_ADLIB             "adlib"
+
+#define PCSPEAKER_SECTION       "pcspeaker"
+#define PCSPEAKER_ENABLED       "enabled"
+#define PCSPEAKER_RATE          "rate"
+#define PCSPEAKER_VOLUME        "volume"
 
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_VOLUME          "volume"

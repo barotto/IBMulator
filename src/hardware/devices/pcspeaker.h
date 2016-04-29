@@ -29,7 +29,7 @@ class PCSpeaker : public IODevice
 
 private:
 	struct SpeakerEvent {
-		uint64_t time;
+		uint64_t ticks;
 		bool active;
 		bool out;
 	};
@@ -38,20 +38,16 @@ private:
 
 	struct {
 		double level;
-		double velocity;
-		double samples;
 		size_t events_cnt;
 	} m_s;
 
-	std::vector<int16_t> m_samples_buffer;
-	double m_nsec_per_sample;
-	double m_samples_per_nsec;
+	SRC_STATE *m_SRC;
+	AudioBuffer m_pitbuf;
+	AudioBuffer m_outbuf;
 	std::mutex m_mutex;
 	std::shared_ptr<MixerChannel> m_channel;
 	uint64_t m_last_time;
 	double m_samples_rem;
-
-	size_t fill_samples_buffer_t(int _duration, int _bstart, int16_t _value);
 
 public:
 	PCSpeaker(Devices *_dev);
