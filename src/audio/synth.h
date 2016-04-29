@@ -77,7 +77,7 @@ public:
 	void remove();
 	void reset();
 	void power_off();
-	void config_changed(const AudioSpec &_spec);
+	void config_changed(const AudioSpec &_spec, float _volume=1.f);
 	void set_chip(int id, SynthChip *_chip);
 	void enable_channel();
 	inline bool is_channel_enabled() {

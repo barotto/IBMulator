@@ -130,6 +130,18 @@ ini_file_t AppConfig::ms_def_values = {
 		{ PCSPEAKER_VOLUME,  "1.0"   }
 	} },
 
+	{ PS1AUDIO_SECTION, {
+		{ PS1AUDIO_ENABLED, "yes"   },
+		{ PS1AUDIO_RATE,    "48000" },
+		{ PS1AUDIO_VOLUME,  "1.0"   }
+	} },
+
+	{ ADLIB_SECTION, {
+		{ ADLIB_ENABLED, "no"   },
+		{ ADLIB_RATE,    "48000" },
+		{ ADLIB_VOLUME,  "1.0"   }
+	} },
+
 	{ SOUNDFX_SECTION, {
 		{ SOUNDFX_VOLUME,   "1.0" },
 		{ SOUNDFX_FDD_SPIN, "0.4" },
@@ -288,21 +300,31 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MIXER_SECTION,
-"; prebuffer: How many milliseconds of data to prebuffer before audio start to be emitted.\n"
+"; prebuffer: How many milliseconds of data to prebuffer before audio starts to be emitted. A larger value might help sound stuttering.\n"
 ";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
 ";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
-";      rate: Sample rate.\n"
+";      rate: Sample rate. Use the value more compatible with your sound card. Any device with a rate different than this will be up/down-sampled.\n"
 ";            Possible values: 48000, 44100, 32000, 22050.\n"
-";    volume: Audio volume of the sound cards.\n"
+";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
-";  ps1audio: Enable PS/1 Audio Card emulation.\n"
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
-";    rate: Sample rate.\n"
-";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
+";    rate: Sample rate. Best quality with 22050.\n"
+";          Possible values: 48000, 44100, 32000, 22050, 11025, 8000.\n"
 ";  volume: Audio volume.\n"
-";          Possible values: a real number between 0.0 (silent) and 1.0 (normal).\n"
+		},
+		{ PS1AUDIO_SECTION,
+"; enabled: Install the PS/1 Audio/Joystick Card.\n"
+";    rate: Sample rate of the PSG (Programmable Sound Generator). The DAC rate is programmed at run-time.\n"
+";          Possible values: 48000, 44100, 32000, 22050, 11025, 8000.\n"
+";  volume: Audio volume.\n"
+		},
+		{ ADLIB_SECTION,
+"; enabled: Install the AdLib Audio Card.\n"
+";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
+";          Possible values: 49716, 48000, 44100, 32000, 22050, 11025, 8000.\n"
+";  volume: Audio volume.\n"
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
@@ -405,7 +427,17 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ PCSPEAKER_SECTION, {
 		PCSPEAKER_ENABLED,
 		PCSPEAKER_RATE,
-		PCSPEAKER_VOLUME,
+		PCSPEAKER_VOLUME
+	} },
+	{ PS1AUDIO_SECTION, {
+		PS1AUDIO_ENABLED,
+		PS1AUDIO_RATE,
+		PS1AUDIO_VOLUME
+	} },
+	{ ADLIB_SECTION, {
+		ADLIB_ENABLED,
+		ADLIB_RATE,
+		ADLIB_VOLUME
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
@@ -454,12 +486,12 @@ void AppConfig::merge(AppConfig &_config)
 	}
 }
 
-long AppConfig::parse_int(const string &_str)
+int AppConfig::parse_int(const string &_str)
 {
 	const char* value = _str.c_str();
 	char* end;
 	// This parses "1234" (decimal) and also "0x4D2" (hex)
-	long n = strtol(value, &end, 0);
+	int n = strtol(value, &end, 0);
 	if(end <= value) {
 		PWARNF(LOG_PROGRAM, "'%s' is not a valid integer\n", value);
 		throw std::exception();
@@ -544,10 +576,10 @@ string AppConfig::get(const string &section, const string &name)
 	return valstr;
 }
 
-long AppConfig::get_int(const string &_section, const string &_name)
+int AppConfig::get_int(const string &_section, const string &_name)
 {
 	string valstr;
-	long value;
+	int value;
 
 	try {
 		valstr = get(_section, _name);

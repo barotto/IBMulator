@@ -75,7 +75,8 @@ void PCSpeaker::config_changed()
 		m_pitbuf.reserve_us(50000);
 	}
 #endif
-	float volume = clamp(g_program.config().get_real(PCSPEAKER_SECTION, PCSPEAKER_VOLUME), 0.0, 1.0);
+	float volume = clamp(g_program.config().get_real(PCSPEAKER_SECTION, PCSPEAKER_VOLUME),
+			0.0, 10.0);
 	m_channel->set_volume(volume);
 	reset(0);
 }

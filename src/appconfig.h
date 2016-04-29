@@ -56,7 +56,7 @@ private:
 	std::string get(ini_file_t &_values, const std::string &_section, const std::string &_name);
 	std::string get(const std::string &_section, const std::string &_name);
 
-	long parse_int(const std::string &_str);
+	int parse_int(const std::string &_str);
 	double parse_real(const std::string &_str);
 	bool parse_bool(std::string _str);
 
@@ -77,7 +77,7 @@ public:
 	// first error on parse error, or -1 on file open error.
 	int get_error();
 
-	long get_int(const std::string &section, const std::string &name);
+	int get_int(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name);
 	bool get_bool(const std::string &section, const std::string &name);
 	std::string get_string(const std::string &_section, const std::string &_name);
@@ -176,6 +176,16 @@ public:
 #define PCSPEAKER_ENABLED       "enabled"
 #define PCSPEAKER_RATE          "rate"
 #define PCSPEAKER_VOLUME        "volume"
+
+#define PS1AUDIO_SECTION        "ps1audio"
+#define PS1AUDIO_ENABLED        "enabled"
+#define PS1AUDIO_RATE           "rate"
+#define PS1AUDIO_VOLUME         "volume"
+
+#define ADLIB_SECTION           "adlib"
+#define ADLIB_ENABLED           "enabled"
+#define ADLIB_RATE              "rate"
+#define ADLIB_VOLUME            "volume"
 
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_VOLUME          "volume"

@@ -87,7 +87,7 @@ void Synth::power_off()
 	m_channel->enable(false);
 }
 
-void Synth::config_changed(const AudioSpec &_spec)
+void Synth::config_changed(const AudioSpec &_spec, float _volume)
 {
 	m_channel->set_in_spec(_spec);
 	m_buffer.set_spec(_spec);
@@ -98,6 +98,7 @@ void Synth::config_changed(const AudioSpec &_spec)
 	if(m_chips[1]) {
 		m_chips[1]->config_changed(_spec.rate);
 	}
+	m_channel->set_volume(_volume);
 }
 
 void Synth::set_chip(int _id, SynthChip *_chip)

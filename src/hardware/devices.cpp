@@ -99,8 +99,8 @@ void Devices::config_changed()
 	install_only_if<HardDrive>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =
-	install_only_if<PS1Audio>(g_program.config().get_bool(MIXER_SECTION, MIXER_PS1AUDIO));
-	install_only_if<AdLib>(g_program.config().get_bool(MIXER_SECTION, MIXER_ADLIB));
+	install_only_if<PS1Audio>(g_program.config().get_bool(PS1AUDIO_SECTION, PS1AUDIO_ENABLED));
+	install_only_if<AdLib>(g_program.config().get_bool(ADLIB_SECTION, ADLIB_ENABLED));
 	install_only_if<GamePort>(gameport);
 	install_only_if<Serial>(g_program.config().get_bool(COM_SECTION, COM_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));

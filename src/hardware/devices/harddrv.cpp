@@ -538,7 +538,7 @@ void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &
 		}
 		_perf.seek_max = std::max(0., g_program.config().get_real(DISK_C_SECTION, DISK_SEEK_MAX));
 		_perf.seek_trk = std::max(0., g_program.config().get_real(DISK_C_SECTION, DISK_SEEK_TRK));
-		_perf.rot_speed = std::max(1l, g_program.config().get_int(DISK_C_SECTION, DISK_ROT_SPEED));
+		_perf.rot_speed = std::max(1, g_program.config().get_int(DISK_C_SECTION, DISK_ROT_SPEED));
 		if(_perf.rot_speed < 3600) {
 			_perf.rot_speed = 3600;
 			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the minimum: %u RPM\n", _perf.rot_speed);
@@ -546,7 +546,7 @@ void HardDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &
 			_perf.rot_speed = 7200;
 			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the maximum: %u RPM\n", _perf.rot_speed);
 		}
-		_perf.interleave = std::max(1l, g_program.config().get_int(DISK_C_SECTION, DISK_INTERLEAVE));
+		_perf.interleave = std::max(1, g_program.config().get_int(DISK_C_SECTION, DISK_INTERLEAVE));
 		_perf.overh_time = std::max(0.0, g_program.config().get_real(DISK_C_SECTION, DISK_OVERH_TIME));
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type: %d\n", _type_id);

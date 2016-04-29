@@ -37,6 +37,8 @@ extern Mixer g_mixer;
 #define MIXER_BUFSIZE  MIXER_WAVEPACKETSIZE * 8
 #define MIXER_CHANNELS  1
 #define MIXER_BIT_DEPTH 16
+#define MIXER_MIN_RATE 8000
+#define MIXER_MAX_RATE 49716
 
 
 typedef std::function<void()> Mixer_fun_t;
