@@ -46,8 +46,8 @@ public:
 
 	size_t read(uint8_t *_data, size_t _len);
 	size_t write(uint8_t *_data, size_t _len);
+	size_t shrink_data(size_t _limit);
 
-	const uint8_t *get_data() const;
 	void get_status(size_t &_size, size_t &_wr_avail, size_t &_rd_avail) const;
 	size_t get_read_avail() const;
 

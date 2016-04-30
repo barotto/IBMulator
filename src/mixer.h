@@ -39,6 +39,7 @@ extern Mixer g_mixer;
 #define MIXER_BIT_DEPTH 16
 #define MIXER_MIN_RATE 8000
 #define MIXER_MAX_RATE 49716
+#define MIXER_TIME_TOLERANCE 1.25
 
 
 typedef std::function<void()> Mixer_fun_t;
@@ -64,7 +65,7 @@ private:
 	std::atomic<bool> m_paused;
 	SDL_AudioDeviceID m_device;
 	SDL_AudioSpec m_device_spec;
-	int m_bytes_per_frame;
+	int m_frame_size;
 
 	shared_queue<Mixer_fun_t> m_cmd_queue;
 

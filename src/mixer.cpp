@@ -146,12 +146,12 @@ void Mixer::config_changed()
 	m_prebuffer = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); //msecs
 	int buf_len = std::max(m_prebuffer*2, 1000); //msecs
 	int buf_frames = (frequency * buf_len) / 1000;
-	m_bytes_per_frame = 0;
+	m_frame_size = 0;
 
 	try {
 		start_wave_playback(frequency, MIXER_BIT_DEPTH, MIXER_CHANNELS, samples);
-		m_bytes_per_frame = m_device_spec.channels * (SDL_AUDIO_BITSIZE(m_device_spec.format) / 8);
-		m_out_buffer.set_size(buf_frames * m_bytes_per_frame);
+		m_frame_size = m_device_spec.channels * (SDL_AUDIO_BITSIZE(m_device_spec.format) / 8);
+		m_out_buffer.set_size(buf_frames * m_frame_size);
 		m_mix_buffer.resize(buf_frames * m_device_spec.channels);
 		for(auto ch : m_mix_channels) {
 			ch.second->set_out_spec({AUDIO_FORMAT_F32,
@@ -170,7 +170,7 @@ void Mixer::config_changed()
 	}
 
 	PDEBUGF(LOG_V1, LOG_MIXER, "prebuffer: %d msec., ring buffer: %d bytes\n",
-			m_prebuffer, buf_frames * m_bytes_per_frame);
+			m_prebuffer, buf_frames * m_frame_size);
 }
 
 void Mixer::start()
@@ -206,10 +206,14 @@ void Mixer::main_loop()
 			m_main_chrono.start();
 		}
 
-		if(time_span_us>m_heartbeat*1.05) {
-			PDEBUGF(LOG_V1, LOG_MIXER, "time_slept:%d, overslept:%d\n", time_slept,time_span_us);
-			PDEBUGF(LOG_V1, LOG_MIXER, "  updates:%d, mixing:%d\n", chupdates,chmixing);
-			// TODO implement a mechanism to kepp the audio buffer within the prebuf limit
+		if(time_span_us > m_heartbeat*MIXER_TIME_TOLERANCE) {
+			PDEBUGF(LOG_V1, LOG_MIXER, "time span:%d, time slept:%d, updates:%d, mixing:%d\n",
+					time_slept, time_span_us, chupdates, chmixing);
+			double buf_len_s = (m_prebuffer*MIXER_TIME_TOLERANCE) / 1000.0;
+			size_t buf_limit = buf_len_s*m_device_spec.freq*m_frame_size;
+			if(m_out_buffer.shrink_data(buf_limit) == buf_limit) {
+				PDEBUGF(LOG_V0, LOG_MIXER, "out buffer limited to %d bytes\n", buf_limit);
+			}
 		}
 
 		m_bench.beat_start();
@@ -247,7 +251,7 @@ void Mixer::main_loop()
 				active_channels.push_back(std::pair<MixerChannel*,bool>(ch.second.get(),enabled));
 			}
 		}
-		chupdates = m_main_chrono.elapsed_usec()-chupdates;
+		chupdates = m_main_chrono.elapsed_usec() - chupdates;
 
 		if(!active_channels.empty()) {
 			size_t mix_size = mix_channels(active_channels, time_span_us);
@@ -463,7 +467,7 @@ int Mixer::get_buffer_len() const
 {
 	double bytes = m_out_buffer.get_read_avail();
 	double usec_per_frame = 1000000.0 / double(m_device_spec.freq);
-	double frames_in_buffer = bytes / m_bytes_per_frame;
+	double frames_in_buffer = bytes / m_frame_size;
 	int time_left = frames_in_buffer * usec_per_frame;
 	return time_left;
 }

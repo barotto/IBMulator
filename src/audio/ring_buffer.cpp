@@ -110,6 +110,23 @@ size_t RingBuffer::write(uint8_t *_data, size_t _len)
 	return _len;
 }
 
+size_t RingBuffer::shrink_data(size_t _limit)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	if(m_write_avail == m_size) {
+		return 0;
+	}
+	size_t read_avail = m_size - m_write_avail;
+	if(read_avail <= _limit) {
+		return read_avail;
+	}
+	size_t len = read_avail - _limit;
+	m_read_ptr = (m_read_ptr + len) % m_size;
+	m_write_avail += len;
+	return _limit;
+}
+
 void RingBuffer::get_status(size_t &_size, size_t &_wr_avail, size_t &_rd_avail) const
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
