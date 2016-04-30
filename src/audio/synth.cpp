@@ -107,42 +107,42 @@ void Synth::set_chip(int _id, SynthChip *_chip)
 	m_chips[_id] = _chip;
 }
 
-int Synth::generate(double _frames)
+unsigned Synth::generate(unsigned _frames)
 {
-	double frames = _frames + m_fr_rem;
-	int iframes = frames;
-	if(iframes > 0) {
-		m_buffer.resize_frames(iframes);
-		m_generate_fn(m_buffer, iframes);
-		m_channel->in().add_frames(m_buffer);
+	if(_frames == 0) {
+		return 0;
 	}
-	m_fr_rem = frames - iframes;
-	return iframes;
+	m_buffer.resize_frames(_frames);
+	m_generate_fn(m_buffer, _frames);
+	m_channel->in().add_frames(m_buffer);
+	return _frames;
 }
 
 bool Synth::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
 {
-	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
-
 	//this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_evt_lock);
 
+	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
+	double needed_frames = m_buffer.spec().us_to_frames(_time_span_us);
+
 	Event event, next_event;
 	uint64_t evt_dist_ns;
-	int generated_frames = 0;
+	unsigned generated_frames = 0;
 	next_event.time = 0;
 	bool empty = m_events.empty();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "Synth: %d events\n", m_events.size());
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %d events\n", m_name.c_str(), m_events.size());
 	while(next_event.time < mtime_ns) {
 		empty = !m_events.try_and_copy(event);
 		if(empty || event.time > mtime_ns) {
-			if(m_last_time) {
-				evt_dist_ns = mtime_ns - m_last_time;
-			} else {
-				evt_dist_ns = _time_span_us * 1000 * (!_prebuf);
+			unsigned frames = unsigned(std::max(0, int(needed_frames + m_fr_rem)));
+			if(is_silent() && m_channel->check_disable_time(mtime_ns/1000)) {
+				m_last_time = 0;
+				return false;
+			} else if(m_last_time && frames) {
+				generated_frames += generate(frames);
 			}
-			generated_frames += generate(m_frames_per_ns*evt_dist_ns);
 			break;
 		} else if(m_last_time) {
 			evt_dist_ns = event.time - m_last_time;
@@ -150,7 +150,7 @@ bool Synth::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
 		}
 		m_last_time = 0;
 
-		PDEBUGF(LOG_V2, LOG_AUDIO, "Synth: %02Xh <- %02Xh\n", event.reg, event.value);
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %02Xh <- %02Xh\n", m_name.c_str(), event.reg, event.value);
 		m_synthcmd_fn(event);
 
 		m_events.try_and_pop();
@@ -164,16 +164,20 @@ bool Synth::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
 		}
 	}
 	m_last_time = mtime_ns;
-
 	m_channel->input_finish();
-
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04d usecs, %d samples generated\n",
-			m_name.c_str(), _time_span_us, generated_frames);
-
-	if(empty && is_silent()) {
-		return m_channel->check_disable_time(mtime_ns/1000);
+	m_fr_rem += needed_frames - generated_frames;
+	if(_prebuf) {
+		m_fr_rem = std::min(0.0, m_fr_rem);
+	} else {
+		m_fr_rem = std::min(m_fr_rem, needed_frames);
 	}
-	m_channel->set_disable_time(mtime_ns/1000);
+
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04d usecs, frames needed:%.1f, generated:%d\n",
+			m_name.c_str(), _time_span_us, needed_frames, generated_frames);
+
+	if(!empty) {
+		m_channel->set_disable_time(mtime_ns/1000);
+	}
 	return true;
 }
 
