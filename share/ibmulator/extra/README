@@ -24,10 +24,12 @@ Usage: SPKRTONE frequency
 
 
 ## SPKRWAV
-Plays a 8bit PCM mono WAV or VOC file through the PC speaker.
+Plays a 8bit PCM mono WAV file through the PC speaker.
 Usage: SPKRWAV audiofile [frequency]
-If the audio file is a VOC you need the specify the frequency, otherwise the 
-default value of 16000Hz will be used.
+frequency is optional and if not provided will be automatically detected.
+It can also play raw PCM data, which must be in the mono 8bit usigned format. In
+this case you need to specify the frequency, otherwise the default value of
+16000Hz will be used.
 
 
 ## FDDTEST

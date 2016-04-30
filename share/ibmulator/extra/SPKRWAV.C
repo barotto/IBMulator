@@ -1,8 +1,8 @@
 /*
-  SPKRWAV - Plays a 8bit PCM mono WAV or VOC file through the PC speaker.
+  SPKRWAV - Plays a 8bit PCM mono WAV file through the PC Speaker.
   Use at your own risk.
 
-  Copyright (c) 2015  Marco Bortolin
+  Copyright (C) 2015, 2016  Marco Bortolin
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,34 +31,36 @@ unsigned short g_current_buffer = 0;
 unsigned short g_switch_buffer = 0;
 unsigned char *g_double_buffer[2];
 unsigned short g_buffer_pos = 0;
-unsigned char byte;
 unsigned char g_amplitudes[256];
-unsigned short g_counter;
+
 
 void interrupt NewISR (__CPPARGS)
 {
+	int byte, amp;
 	if(g_buffer_pos == BUFFERSIZE) {
 		g_current_buffer = 1-g_current_buffer;
 		g_buffer_pos = 0;
 		g_switch_buffer = 1;
 	}
 	byte = g_double_buffer[g_current_buffer][g_buffer_pos++];
-	outportb(0x42, (int)g_amplitudes[byte]);
-
-	//end of int
-	outportb(0x20, 0x20);
+	amp = g_amplitudes[byte];
+	outportb(0x42, amp); /* counter 2 count */
+	outportb(0x20, 0x20); /* end of int */
 }
 
 int main(int argc, char **argv)
 {
-	FILE * audioFile;
-	unsigned short PCM;
-	unsigned short channels;
-	short int bits;
+	FILE * audioFile = NULL;
+	unsigned short PCM = 0;
+	unsigned short channels = 0;
+	short int bits = 0;
 	long int frequency = 0;
-	unsigned short int finish = 0;
-	unsigned short int is_WAV = 0;
-	unsigned short int i;
+	unsigned short counter = 0;
+	unsigned short finish = 0;
+	unsigned short i = 0;
+	unsigned char byte = 0;
+	long int chunk_name = 0x20746d66;
+	long int chunk_size = 0;
 
 	g_double_buffer[0] = (unsigned char *) malloc(BUFFERSIZE);
 	g_double_buffer[1] = (unsigned char *) malloc(BUFFERSIZE);
@@ -67,78 +69,88 @@ int main(int argc, char **argv)
 		case 1:
 			printf("Usage: SPKRWAV audiofile [frequency]\n");
 			return 1;
-		case 2:
-			frequency = DEFAULTFREQ;
-			break;
 		case 3:
 			frequency = atoi(argv[2]);
 			break;
 	}
-	if('.' == argv[1][strlen(argv[1])-4] &&
-		'w' == argv[1][strlen(argv[1])-3] &&
-		'a' == argv[1][strlen(argv[1])-2] &&
-		'v' == argv[1][strlen(argv[1])-1]) {
-		is_WAV = 1;
-	}
 
 	audioFile = fopen(argv[1],"rb");
 	if(audioFile == NULL) {
-		printf("error opening the audio file\n");
+		printf("ERROR: unable to open the audio file\n");
 		return 1;
 	}
-
-	if(is_WAV) {
+	if(fread(&chunk_name, 4, 1, audioFile) != 1) {
+		printf("ERROR: unable to read from file\n");
+		return 1;
+	}
+	if(chunk_name == 0x46464952) {
 		fseek(audioFile, 20, SEEK_SET);
 		fread(&PCM, 1, sizeof(short int), audioFile);
 		fread(&channels, 1, sizeof(short int), audioFile);
 		fseek(audioFile, 34, SEEK_SET);
 		fread(&bits, 1, sizeof(short int), audioFile);
 		if(PCM == 1 && channels == 1 && bits == 8) {
-			fseek(audioFile , 24, SEEK_SET);
-			fread(&frequency, 1, sizeof(long int), audioFile);
-			fseek(audioFile, 44, SEEK_SET);
+			if(frequency == 0) {
+				fseek(audioFile , 24, SEEK_SET);
+				fread(&frequency, 1, sizeof(long int), audioFile);
+			}
+			fseek(audioFile, 16, SEEK_SET);
+			while(chunk_name != 0x61746164) {
+				fread(&chunk_size, 4, 1, audioFile);
+				if(fseek(audioFile, chunk_size, SEEK_CUR) != 0) {
+					printf("unable to find the data chunk\n");
+					return 1;
+				}
+				if(fread(&chunk_name, 4, 1, audioFile) != 1) {
+					printf("unable to find the data chunk\n");
+					return 1;
+				}
+			}
+			fseek(audioFile, 4, SEEK_CUR);
 		} else {
 			printf("ERROR: only 8 bit PCM mono WAV files are suported\n");
 			return 1;
 		}
+	} else {
+		// raw PCM data
+		fseek(audioFile, 0, SEEK_SET);
+		if(frequency == 0) {
+			frequency = DEFAULTFREQ;
+		}
 	}
+
 	printf("frequency: %d Hz\n", frequency);
-	if(frequency==0) {
-		printf("incorrect frequency\n");
-		return 1;
-	}
-	g_counter = 1193180/frequency;
+	counter = 1193180/frequency;
 
 	//double buffering
 	fread(g_double_buffer[0], 1, BUFFERSIZE, audioFile);
 	fread(g_double_buffer[1], 1, BUFFERSIZE, audioFile);
 
 	for(i = 0; i < 256; i++) {
-		g_amplitudes[i] = (i*g_counter/256) + 1;
+		g_amplitudes[i] = ((i*counter)/256) + 1;
 	}
 
 	//INT 8
 	g_original_INT8 = getvect(8);
 
-	printf("installing ISR\n");
-	setvect(8, NewISR);
-
 	printf("counter 2 mode 0\n");
 	outportb(0x43, 0x90);
 
-	printf("counter 0 mode 3\n");
-	outportb(0x43, 0x16);
-
-	printf("counter 0 count: %d\n",g_counter);
-	outportb(0x40, g_counter);
-
-	//enable the speaker
 	byte = inportb(0x61);
 	printf("speaker activation\n");
 	outportb(0x61, byte|0x03);
 
+	printf("counter 0 mode 3\n");
+	outportb(0x43, 0x16);
+
+	printf("counter 0 count: %d\n", counter);
+	outportb(0x40, counter);
+
+	printf("installing ISR\n");
+	setvect(8, NewISR);
+
 	//wait until finish or the user press a key
-	printf("playing... (press a key to stop)\n");
+	printf("playing... (press any key to stop)\n");
 	while(peekb(0x40,0x1A) == peekb(0x40,0x1C) && !finish) {
 		if(g_switch_buffer) {
 			if(!fread(g_double_buffer[1-g_current_buffer], 1, BUFFERSIZE, audioFile)) {

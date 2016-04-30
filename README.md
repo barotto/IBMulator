@@ -3,15 +3,14 @@
 
 ## WHAT IS IBMULATOR?
 
-IBMulator is a free/libre, open source emulator for the IBM PS/1 model 2011, 
-able to run with the original ROM. The goal is to create a faithful emulation of
-the machine, complete of the characteristic 4-quadrant graphical user interface.
+IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run 
+with the original ROM. The goal is to create a faithful emulation of the 
+machine, complete of the characteristic 4-quadrant graphical user interface.
+
+IBMulator currently emulates only the PS/1 with the 80286 CPU (model 2011.)
 
 In order to use the program you need the original ROM, which is copyrighted by 
 IBM. You won't find it distributed with this package.
-
-IBMulator emulates only the PS/1 with the 80286 CPU (model 2011, sub-models n01, 
-n34, n41.)
 
 See the project page at https://barotto.github.io/IBMulator/ for screenshots, 
 videos and additional information.
@@ -19,7 +18,8 @@ videos and additional information.
 
 ## LICENSE
 
-IBMulator is distributed under the GNU GPLv3. See COPYING for details.
+IBMulator is distributed under the GNU GPL version 3 or (at your option) any 
+later version. See COPYING for details.
 
 To obtain the source code go to github.com/barotto/IBMulator
 
@@ -172,8 +172,8 @@ If you cloned the code from the GitHub repo you also need the GNU Autotools.
 
 You need libarchive if you want to use zipped ROM sets.
 
-Without libsamplerate audio samples will not be played unless they are at the 
-same rate as the mixer. 
+Without libsamplerate the PC Speaker will not emit any sound and other audio 
+sources will not be played unless they are at the same rate as the mixer. 
 
 ### General instructions
 
@@ -247,5 +247,5 @@ I would like to thank the Bochs team. I've taken a huge amount of code from the
 project. Thank you guys, you made a terrific job! 
 Without your work IBMulator would have taken at least a decade to reach the 
 point where it is now.  
-Also thanks to the DOSBox team. Only a little bit of code from them but a lot of 
+Also thanks to the DOSBox team. Some code from them as well and a lot of 
 information and inspiration.
