@@ -352,7 +352,6 @@ void VGA::calculate_retrace_timing()
 uint16_t VGA::read(uint16_t address, uint /*io_len*/)
 {
 	uint64_t display_usec, line_usec, now_usec;
-	uint16_t ret16;
 	uint8_t retval;
 
 	PDEBUGF(LOG_V2, LOG_VGA, "io read from 0x%04x\n", address);
@@ -1073,7 +1072,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 }
 
 uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
-		bool bs, uint8_t **plane)
+		bool bs, uint8_t * const *plane)
 {
 	uint8_t attribute, bit_no, palette_reg_val, DAC_regno;
 	uint32_t byte_offset;
@@ -1154,6 +1153,44 @@ bool VGA::skip_update()
 	return false;
 }
 
+template <typename F>
+void VGA::gfx_update(F _loop_core, unsigned _width, unsigned _height, bool _force_upd)
+{
+	unsigned xc, yc, xti, yti, r, row, col, pixelx, pixely;
+
+	for(yc=0, yti=0; yc<_height; yc+=VGA_Y_TILESIZE, yti++) {
+		for(xc=0, xti=0; xc<_width; xc+=VGA_X_TILESIZE, xti++) {
+			if(_force_upd || GET_TILE_UPDATED (xti, yti)) {
+				for(r=0; r<VGA_Y_TILESIZE; r++) {
+					pixely = (yc + r) >> m_s.y_doublescan;
+					row = r * VGA_X_TILESIZE;
+					for(col=0; col<VGA_X_TILESIZE; col++) {
+						pixelx = xc + col;
+						m_s.tile[row + col] = _loop_core(pixelx, pixely);
+					}
+				}
+				SET_TILE_UPDATED(xti, yti, false);
+				m_display->graphics_tile_update(m_s.tile, xc, yc);
+			}
+		}
+	}
+}
+
+template <typename F>
+void VGA::update_mode13(F _pixelx_offset, unsigned _width, unsigned _height, unsigned _pan)
+{
+	gfx_update([=] (unsigned pixelx, unsigned pixely)
+	{
+		pixelx = (pixelx >> 1) + _pan;
+		unsigned plane  = (pixelx % 4);
+		unsigned byte_offset = (plane * 65536)
+		    + (pixely * m_s.line_offset)
+		    + _pixelx_offset(pixelx);
+		return m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
+	},
+	_width, _height, false);
+}
+
 void VGA::update(uint64_t _time)
 {
 	//this is "vertical blank start"
@@ -1210,15 +1247,6 @@ void VGA::update(uint64_t _time)
 		/*****
 		 * Graphics mode
 		 */
-
-		uint8_t color;
-		uint16_t x, y;
-		uint bit_no, r, c;
-		uint byte_offset;
-		uint xc, yc, xti, yti, pan = m_s.attribute_ctrl.horiz_pel_panning;
-		const uint mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
-		if(pan>=8) { pan = 0; }
-
 		determine_screen_dimensions(&iHeight, &iWidth);
 		if((iWidth != m_s.last_xres) || (iHeight != m_s.last_yres) || (m_s.last_bpp > 8))
 		{
@@ -1241,112 +1269,70 @@ void VGA::update(uint64_t _time)
 
 		PDEBUGF(LOG_V2, LOG_VGA, "graphical update\n");
 
+		uint8_t pan = m_s.attribute_ctrl.horiz_pel_panning;
+		if(pan >= 8) {
+			pan = 0;
+		}
+
 		switch (m_s.graphics_ctrl.shift_reg) {
 			case 0: // interleaved shift
-				uint8_t attribute, palette_reg_val, DAC_regno;
-				uint16_t line_compare;
-				uint8_t *plane[4];
-
 				if((m_s.CRTC.reg[0x17] & 1) == 0) { // CGA 640x200x2
 
-					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-							if(GET_TILE_UPDATED (xti, yti)) {
-								for(r=0; r<VGA_Y_TILESIZE; r++) {
-									y = yc + r;
-									if(m_s.y_doublescan) y >>= 1;
-									for(c=0; c<VGA_X_TILESIZE; c++) {
+					gfx_update([=] (unsigned pixelx, unsigned pixely)
+					{
+						pixelx += pan;
+						/* 0 or 0x2000 */
+						unsigned byte_offset = m_s.CRTC.start_address + ((pixely & 1) << 13);
+						/* to the start of the line */
+						byte_offset += (320 / 4) * (pixely / 2);
+						/* to the byte start */
+						byte_offset += (pixelx / 8);
 
-										x = xc + c + pan;
-										/* 0 or 0x2000 */
-										byte_offset = m_s.CRTC.start_address + ((y & 1) << 13);
-										/* to the start of the line */
-										byte_offset += (320 / 4) * (y / 2);
-										/* to the byte start */
-										byte_offset += (x / 8);
+						unsigned bit_no = 7 - (pixelx % 8);
+						uint8_t palette_reg_val = (((m_s.memory[byte_offset%m_s.memsize]) >> bit_no) & 1);
+						return m_s.attribute_ctrl.palette_reg[palette_reg_val];
+					},
+					iWidth, iHeight, false);
 
-										bit_no = 7 - (x % 8);
-										palette_reg_val = (((m_s.memory[byte_offset%m_s.memsize]) >> bit_no) & 1);
-										DAC_regno = m_s.attribute_ctrl.palette_reg[palette_reg_val];
-										m_s.tile[r*VGA_X_TILESIZE + c] = DAC_regno;
-									}
-								}
-								SET_TILE_UPDATED(xti, yti, false);
-								m_display->graphics_tile_update(m_s.tile, xc, yc);
-							}
-						}
-					}
 				} else {
 					// output data in serial fashion with each display plane
 					// output on its associated serial output.  Standard EGA/VGA format
-
+					uint8_t *plane[4];
 					plane[0] = &m_s.memory[0 << m_s.plane_shift];
 					plane[1] = &m_s.memory[1 << m_s.plane_shift];
 					plane[2] = &m_s.memory[2 << m_s.plane_shift];
 					plane[3] = &m_s.memory[3 << m_s.plane_shift];
-					line_compare = m_s.line_compare;
-					if(m_s.y_doublescan) line_compare >>= 1;
+					uint16_t line_compare = m_s.line_compare >> m_s.y_doublescan;
 
-					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-							if(cs_toggle || GET_TILE_UPDATED(xti, yti)) {
-								for(r=0; r<VGA_Y_TILESIZE; r++) {
-									y = yc + r;
-									if(m_s.y_doublescan) y >>= 1;
-									for(c=0; c<VGA_X_TILESIZE; c++) {
-										x = xc + c;
-										m_s.tile[r*VGA_X_TILESIZE + c] =
-												get_vga_pixel(x, y, m_s.CRTC.start_address,
-														line_compare, cs_visible, plane);
-									}
-								}
-								SET_TILE_UPDATED(xti, yti, false);
-								m_display->graphics_tile_update(m_s.tile, xc, yc);
-							}
-						}
-					}
+					gfx_update([=] (unsigned pixelx, unsigned pixely)
+					{
+						return get_vga_pixel(pixelx, pixely, m_s.CRTC.start_address, line_compare, cs_visible, plane);
+					},
+					iWidth, iHeight, cs_toggle);
+
 				}
-				break; // case 0
+				break;
 
 			case 1:
 				// output the data in a CGA-compatible 320x200 4 color graphics
 				// mode.  (planar shift, modes 4 & 5)
+				gfx_update([=] (unsigned pixelx, unsigned pixely)
+				{
+					pixelx = (pixelx >> m_s.x_dotclockdiv2) + pan;
+					/* 0 or 0x2000 */
+					unsigned byte_offset = m_s.CRTC.start_address + ((pixely & 1) << 13);
+					/* to the start of the line */
+					byte_offset += (320 / 4) * (pixely / 2);
+					/* to the byte start */
+					byte_offset += (pixelx / 4);
 
-				/* CGA 320x200x4 start */
-
-				for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-					for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-						if(GET_TILE_UPDATED (xti, yti)) {
-							for(r=0; r<VGA_Y_TILESIZE; r++) {
-								y = yc + r;
-								if(m_s.y_doublescan) y >>= 1;
-								for(c=0; c<VGA_X_TILESIZE; c++) {
-
-									x = xc + c;
-									if(m_s.x_dotclockdiv2) { x >>= 1; }
-									x += pan;
-									/* 0 or 0x2000 */
-									byte_offset = m_s.CRTC.start_address + ((y & 1) << 13);
-									/* to the start of the line */
-									byte_offset += (320 / 4) * (y / 2);
-									/* to the byte start */
-									byte_offset += (x / 4);
-
-									attribute = 6 - 2*(x % 4);
-									palette_reg_val = (m_s.memory[byte_offset%m_s.memsize]) >> attribute;
-									palette_reg_val &= 3;
-									DAC_regno = m_s.attribute_ctrl.palette_reg[palette_reg_val];
-									m_s.tile[r*VGA_X_TILESIZE + c] = DAC_regno;
-								}
-							}
-							SET_TILE_UPDATED(xti, yti, false);
-							m_display->graphics_tile_update(m_s.tile, xc, yc);
-						}
-					}
-				}
-				/* CGA 320x200x4 end */
-
-				break; // case 1
+					uint8_t attribute = 6 - 2*(pixelx % 4);
+					uint8_t palette_reg_val = (m_s.memory[byte_offset%m_s.memsize]) >> attribute;
+					palette_reg_val &= 3;
+					return m_s.attribute_ctrl.palette_reg[palette_reg_val];
+				},
+				iWidth, iHeight, false);
+				break;
 
 			case 2:
 				// output the data eight bits at a time from the 4 bit plane
@@ -1354,84 +1340,40 @@ void VGA::update(uint64_t _time)
 			case 3:
 				// FIXME: is this really the same ???
 
+				const uint mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
 				pan = mode13_pan_values[pan];
+
 				if(m_s.CRTC.reg[0x14] & 0x40) { // DW set: doubleword mode
-					uint pixely, pixelx, plane;
 					m_s.CRTC.start_address *= 4;
 					if(m_s.misc_output.select_high_bank != 1) {
 						PERRF(LOG_VGA, "update: select_high_bank != 1\n");
 					}
-					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-							if(GET_TILE_UPDATED (xti, yti)) {
-								for(r=0; r<VGA_Y_TILESIZE; r++) {
-									pixely = yc + r;
-									if(m_s.y_doublescan) pixely >>= 1;
-									for(c=0; c<VGA_X_TILESIZE; c++) {
-										pixelx = ((xc + c) >> 1) + pan;
-										plane  = (pixelx % 4);
-										byte_offset = (plane * 65536) +
-												(pixely * m_s.line_offset)
-												+ (pixelx & ~0x03);
-										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
-										m_s.tile[r*VGA_X_TILESIZE + c] = color;
-									}
-								}
-								SET_TILE_UPDATED(xti, yti, false);
-								m_display->graphics_tile_update(m_s.tile, xc, yc);
-							}
-						}
-					}
-				} else if(m_s.CRTC.reg[0x17] & 0x40) { // B/W set: byte mode, modeX
-					uint pixely, pixelx, plane;
 
-					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-							if(GET_TILE_UPDATED (xti, yti)) {
-								for(r=0; r<VGA_Y_TILESIZE; r++) {
-									pixely = yc + r;
-									if(m_s.y_doublescan) pixely >>= 1;
-									for(c=0; c<VGA_X_TILESIZE; c++) {
-										pixelx = ((xc + c) >> 1) + pan;
-										plane  = (pixelx % 4);
-										byte_offset = (plane * 65536) +
-												(pixely * m_s.line_offset)
-												+ (pixelx >> 2);
-										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
-										m_s.tile[r*VGA_X_TILESIZE + c] = color;
-									}
-								}
-								SET_TILE_UPDATED(xti, yti, false);
-								m_display->graphics_tile_update(m_s.tile, xc, yc);
-							}
-						}
-					}
+					update_mode13([](unsigned _px)
+					{
+						return (_px & ~0x03);
+					},
+					iWidth, iHeight, pan);
+
+				} else if(m_s.CRTC.reg[0x17] & 0x40) { // B/W set: byte mode, modeX
+
+					update_mode13([](unsigned _px)
+					{
+						return _px>>2;
+					},
+					iWidth, iHeight, pan);
+
 				} else { // word mode
-					uint pixely, pixelx, plane;
+
 					m_s.CRTC.start_address *= 2;
-					for(yc=0, yti=0; yc<iHeight; yc+=VGA_Y_TILESIZE, yti++) {
-						for(xc=0, xti=0; xc<iWidth; xc+=VGA_X_TILESIZE, xti++) {
-							if(GET_TILE_UPDATED (xti, yti)) {
-								for(r=0; r<VGA_Y_TILESIZE; r++) {
-									pixely = yc + r;
-									if(m_s.y_doublescan) pixely >>= 1;
-									for(c=0; c<VGA_X_TILESIZE; c++) {
-										pixelx = ((xc + c) >> 1) + pan;
-										plane  = (pixelx % 4);
-										byte_offset = (plane * 65536) +
-												(pixely * m_s.line_offset)
-												+ ((pixelx >> 1) & ~0x01);
-										color = m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
-										m_s.tile[r*VGA_X_TILESIZE + c] = color;
-									}
-								}
-								SET_TILE_UPDATED(xti, yti, false);
-								m_display->graphics_tile_update(m_s.tile, xc, yc);
-							}
-						}
-					}
+					update_mode13([](unsigned _px)
+					{
+						return ((_px >> 1) & ~0x01);
+					},
+					iWidth, iHeight, pan);
+
 				}
-				break; // case 2
+				break;
 
 			default:
 				PERRF(LOG_VGA, "update: shift_reg == %u\n", m_s.graphics_ctrl.shift_reg);

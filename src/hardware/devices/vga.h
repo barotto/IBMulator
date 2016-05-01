@@ -198,7 +198,7 @@ protected:
 
 	void init_iohandlers();
 	void init_systemtimer();
-	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t **plane);
+	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t * const *plane);
 	void update(uint64_t _time);
 	void vertical_retrace(uint64_t _time);
 	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
@@ -227,6 +227,12 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	template <typename F>
+	void gfx_update(F _loop_core, unsigned _width, unsigned _height, bool _force_upd);
+	template <typename F>
+	void update_mode13(F _pixelx_offset, unsigned _width, unsigned _height, unsigned _pan);
 };
 
 #endif
