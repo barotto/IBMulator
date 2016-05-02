@@ -127,11 +127,17 @@ void PIT::restore_state(StateBuf &_state)
 
 uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 {
-	uint8_t value = 0;
+	// update the PIT emulation
 	uint64_t cpu_time = g_machine.get_virt_time_ns();
 	uint64_t pit_time = cpu_time / PIT_CLK_TIME * PIT_CLK_TIME;
+	if(pit_time < cpu_time) {
+		// a read/write advances the PIT time if it happened between two CLK
+		// pulses. This puts the PIT in the future relative to the CPU time.
+		pit_time += PIT_CLK_TIME;
+	}
 	update_emulation(pit_time);
-	update_systimer(cpu_time);
+
+	uint8_t value = 0;
 
 	PDEBUGF(LOG_V2, LOG_PIT, "read  0x%02X ", address);
 
@@ -165,6 +171,9 @@ uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 			throw std::logic_error("unhandled port read");
 	}
 
+	update_systimer(cpu_time);
+	m_devices->set_io_time(pit_time - cpu_time);
+
 	return value;
 }
 
@@ -174,8 +183,8 @@ void PIT::write(uint16_t _address, uint16_t _value, unsigned /*io_len*/)
 	uint64_t cpu_time = g_machine.get_virt_time_ns();
 	uint64_t pit_time = cpu_time / PIT_CLK_TIME * PIT_CLK_TIME;
 	if(pit_time < cpu_time) {
-		// a write advances the PIT time if it happened between two CLK pulses.
-		// this puts the PIT in the future relative to the CPU time.
+		// a read/write advances the PIT time if it happened between two CLK
+		// pulses. This puts the PIT in the future relative to the CPU time.
 		pit_time += PIT_CLK_TIME;
 	}
 	update_emulation(pit_time);
