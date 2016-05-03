@@ -375,10 +375,10 @@ void PS1Audio::FIFO_timer(uint64_t)
 {
 	//A	pulse is generated on overflow and is used to latch data into the ADC
 	//latch and to read data out of the FIFO.
+	m_DAC_channel->enable(true);
 	uint8_t value = m_DAC_last_value;
 	if(m_s.DAC.read_avail > 0) {
 		value = m_s.DAC.read();
-		m_DAC_channel->enable(true);
 		m_DAC_empty_samples = 0;
 	} else {
 		m_DAC_empty_samples++;
@@ -481,10 +481,11 @@ void PS1Audio::DAC::set_reload_register(int _value)
 		}
 		return;
 	}
-
+	_value += 1;
 	//The time between reloads is one cycle longer than the value written to the reload register.
-	g_machine.activate_timer(fifo_timer, uint64_t(_value+1)*1_us, true);
-	PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer activated, %dus\n", _value+1);
+	g_machine.activate_timer(fifo_timer, uint64_t(_value)*1_us, true);
+	PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer activated, %dus (%dHz)\n",
+			_value, 1000000/_value);
 }
 
 uint8_t PS1Audio::DAC::read()
