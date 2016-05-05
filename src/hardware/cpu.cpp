@@ -50,9 +50,11 @@ void CPU::init()
 
 void CPU::config_changed()
 {
-	m_freq = uint32_t(g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY) * 1000000.0);
-	m_cycle_time = uint32_t(1.0e9/double(m_freq));
-	PINFOF(LOG_V0, LOG_CPU, "Frequency: %.1f MHz\n", float(m_freq) / 1.0e6);
+	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
+	m_cycle_time = round(1000.0 / freq);
+	m_freq = round(1e9 / m_cycle_time);
+
+	PINFOF(LOG_V0, LOG_CPU, "Frequency: %.3f MHz\n", m_freq / 1.0e6);
 	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
 
 	g_cpubus.config_changed();

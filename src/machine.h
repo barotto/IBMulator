@@ -70,15 +70,13 @@ private:
 	HWBench m_bench;
 
 	uint m_heartbeat;
-	int64_t m_next_beat_diff;
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
 	uint32_t m_step_to_addr;
-	uint32_t m_cpu_cycles;
+	double m_cpu_cycles;
 	uint m_cpu_cycle_time;
 	double m_cycles_factor;
-	double m_skipped_cycles;
 
 	struct Timer {
 		bool        in_use;     // Timer slot is in-use (currently registered).

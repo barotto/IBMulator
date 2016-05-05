@@ -60,10 +60,11 @@ void Stats::update()
 
 	ss.str("");
 	uint64_t vtime = m_machine->get_virt_time_ns();
-	ss << "vtime: " <<  vtime << "<br />";
+	ss << "CPU time (ns): " <<  vtime << "<br />";
 	HWBench &hwb = m_machine->get_bench();
 	int64_t vdiff = int64_t(hwb.time_elapsed) - int64_t(vtime)/1000;
-	ss << "vdiff: " << int64_t(vdiff/1.0e3) << "<br />";
+	ss << "CPU time diff: " << int64_t(vdiff/1.0e3) << "<br />";
+
 	ss << hwb;
 
 	//read the DOS clock from MEM 0040h:006Ch

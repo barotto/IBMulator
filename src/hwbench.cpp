@@ -127,18 +127,24 @@ void HWBench::data_update()
 
 void operator<<(std::ostream& _os, const HWBench &_bench)
 {
-	_os << "time: " << _bench.time_elapsed << _bench.endl;
+	_os << "Sim time (us): " << _bench.time_elapsed << _bench.endl;
 
-	_os << "avg bps: " << _bench.avg_bps << _bench.endl;
+	_os << "Sim beats/s: " << _bench.beat_count << _bench.endl;
+	_os << "Max beats/s: ";
+	if(_bench.max_beat_time) {
+		_os << _bench.min_bps;
+	} else {
+		_os << "+inf";
+	}
+	_os << _bench.endl;
 
-	_os << "beats: " << _bench.beat_count << _bench.endl;
-	if(_bench.max_beat_time)
-		_os << "max btime: " << _bench.max_beat_time << " (" << _bench.min_bps << " bps)"<< _bench.endl;
-	else
-		_os << "max btime: " << _bench.max_beat_time << " (+inf bps)"<< _bench.endl;
+	_os << "Avg beats/s: " << _bench.avg_bps << _bench.endl;
 
-	_os << "avg IPS: " << (uint)_bench.avg_ips << _bench.endl;
-	_os << "avg CPS: " << (uint)_bench.avg_cps << _bench.endl;
+	double mhz = _bench.avg_cps / 1e6;
+	double mips = _bench.avg_ips / 1e6;
+	_os.precision(8);
+	_os << "CPU MHz: " << mhz << _bench.endl;
+	_os << "CPU MIPS: " << mips << _bench.endl;
 }
 
 

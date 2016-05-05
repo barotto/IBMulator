@@ -173,7 +173,6 @@ void Machine::init()
 	/* the time keeping in IBMulator is equivalent to that of Bochs slowdown:
 	 * the emulator is deterministic, and the clock/s are kept in sync with real time
 	 * by slowing emulation down when virtual time gets ahead of real time.
-	 * (see the loop_wait() method)
 	 */
 
 	m_main_chrono.start();
@@ -192,7 +191,6 @@ void Machine::init()
 void Machine::start()
 {
 	m_quit = false;
-	m_next_beat_diff = 0;
 	PDEBUGF(LOG_V2, LOG_MACHINE, "Machine thread started\n");
 	main_loop();
 }
@@ -252,12 +250,11 @@ void Machine::config_changed()
 	g_memory.config_changed();
 	g_devices.config_changed();
 
-	m_cpu_cycles = g_cpu.get_freq() / (1.0e6 / m_heartbeat);
+	m_cpu_cycles = g_cpu.get_freq()/1e6 * m_heartbeat;
 	m_cycles_factor = 1.0;
-	m_skipped_cycles = 0.0;
 
 	PINFOF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
-	PINFOF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %u\n", m_cpu_cycles);
+	PINFOF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
 
 	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
 	for(unsigned i=0; i<m_num_timers; i++) {
@@ -275,15 +272,18 @@ void Machine::config_changed()
 
 bool Machine::main_loop()
 {
+	static double cycles_rem = 0.0;
+	static int64_t next_beat_diff = 0L;
+
 	while(true) {
 		uint64_t time = m_main_chrono.elapsed_usec();
 		if(time < m_heartbeat) {
 			uint64_t sleep = m_heartbeat - time;
 			uint64_t t0 = m_main_chrono.get_usec();
-			std::this_thread::sleep_for( std::chrono::microseconds(sleep + m_next_beat_diff) );
+			std::this_thread::sleep_for( std::chrono::microseconds(sleep + next_beat_diff) );
 			m_main_chrono.start();
 			uint64_t t1 = m_main_chrono.get_usec();
-			m_next_beat_diff = (sleep+m_next_beat_diff) - (t1 - t0);
+			next_beat_diff = (sleep + next_beat_diff) - (t1 - t0);
 		} else {
 			m_main_chrono.start();
 		}
@@ -300,14 +300,10 @@ bool Machine::main_loop()
 		}
 		if(m_on) {
 			if(!m_cpu_single_step) {
-				double dcycles = double(m_cpu_cycles) * m_cycles_factor;
-				uint cycles = (uint)dcycles + (uint)m_skipped_cycles;
-				if(cycles==0) {
-					m_skipped_cycles += dcycles;
-				} else {
-					m_skipped_cycles = 0;
-					core_step(cycles);
-				}
+				double needed_cycles = m_cpu_cycles * m_cycles_factor;
+				int32_t cycles = round(needed_cycles + cycles_rem);
+				cycles_rem += needed_cycles - cycles;
+				core_step(cycles);
 				m_bench.cpu_cycles(cycles);
 			}
 		}
