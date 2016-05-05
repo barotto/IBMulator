@@ -100,7 +100,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
-	unsigned generate(unsigned _frames);
+	unsigned generate(uint64_t _delta_ns);
 	bool is_silent();
 	void on_capture(bool _start);
 };
