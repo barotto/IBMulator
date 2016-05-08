@@ -1153,31 +1153,45 @@ bool VGA::skip_update()
 	return false;
 }
 
-template <typename F>
-void VGA::gfx_update(F _loop_core, unsigned _width, unsigned _height, bool _force_upd)
+template<typename FN>
+void VGA::gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size)
 {
 	unsigned xc, yc, xti, yti, r, row, col, pixelx, pixely;
+	unsigned ystart = VGA_Y_TILESIZE * id;
+	unsigned ystep = VGA_Y_TILESIZE * pool_size;
 
-	for(yc=0, yti=0; yc<_height; yc+=VGA_Y_TILESIZE, yti++) {
-		for(xc=0, xti=0; xc<_width; xc+=VGA_X_TILESIZE, xti++) {
+	uint8_t tile[VGA_X_TILESIZE * VGA_Y_TILESIZE * 4];
+
+	for(yc=ystart, yti=id; yc<m_s.last_yres; yc+=ystep, yti+=pool_size) {
+		for(xc=0, xti=0; xc<m_s.last_xres; xc+=VGA_X_TILESIZE, xti++) {
 			if(_force_upd || GET_TILE_UPDATED (xti, yti)) {
 				for(r=0; r<VGA_Y_TILESIZE; r++) {
 					pixely = (yc + r) >> m_s.y_doublescan;
 					row = r * VGA_X_TILESIZE;
 					for(col=0; col<VGA_X_TILESIZE; col++) {
 						pixelx = xc + col;
-						m_s.tile[row + col] = _loop_core(pixelx, pixely);
+						tile[row + col] = _get_pixel(pixelx, pixely);
 					}
 				}
 				SET_TILE_UPDATED(xti, yti, false);
-				m_display->graphics_tile_update(m_s.tile, xc, yc);
+				m_display->graphics_tile_update(tile, xc, yc);
 			}
 		}
 	}
 }
 
-template <typename F>
-void VGA::update_mode13(F _pixelx_offset, unsigned _width, unsigned _height, unsigned _pan)
+template<typename FN>
+void VGA::gfx_update(FN _get_pixel, bool _force_upd)
+{
+	std::future<void> w0 = std::async(std::launch::async, [&]() {
+		gfx_update_core(_get_pixel, _force_upd, 0, 2);
+	});
+	gfx_update_core(_get_pixel, _force_upd, 1, 2);
+	w0.wait();
+}
+
+template <typename FN>
+void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 {
 	gfx_update([=] (unsigned pixelx, unsigned pixely)
 	{
@@ -1185,10 +1199,10 @@ void VGA::update_mode13(F _pixelx_offset, unsigned _width, unsigned _height, uns
 		unsigned plane  = (pixelx % 4);
 		unsigned byte_offset = (plane * 65536)
 		    + (pixely * m_s.line_offset)
-		    + _pixelx_offset(pixelx);
+		    + _pixel_x(pixelx);
 		return m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
 	},
-	_width, _height, false);
+	false);
 }
 
 void VGA::update(uint64_t _time)
@@ -1292,7 +1306,7 @@ void VGA::update(uint64_t _time)
 						uint8_t palette_reg_val = (((m_s.memory[byte_offset%m_s.memsize]) >> bit_no) & 1);
 						return m_s.attribute_ctrl.palette_reg[palette_reg_val];
 					},
-					iWidth, iHeight, false);
+					false);
 
 				} else {
 					// output data in serial fashion with each display plane
@@ -1308,7 +1322,7 @@ void VGA::update(uint64_t _time)
 					{
 						return get_vga_pixel(pixelx, pixely, m_s.CRTC.start_address, line_compare, cs_visible, plane);
 					},
-					iWidth, iHeight, cs_toggle);
+					cs_toggle);
 
 				}
 				break;
@@ -1331,13 +1345,13 @@ void VGA::update(uint64_t _time)
 					palette_reg_val &= 3;
 					return m_s.attribute_ctrl.palette_reg[palette_reg_val];
 				},
-				iWidth, iHeight, false);
+				false);
 				break;
 
 			case 2:
 				// output the data eight bits at a time from the 4 bit plane
 				// (format for VGA mode 13 hex)
-			case 3:
+			case 3: {
 				// FIXME: is this really the same ???
 
 				const uint mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
@@ -1353,15 +1367,15 @@ void VGA::update(uint64_t _time)
 					{
 						return (_px & ~0x03);
 					},
-					iWidth, iHeight, pan);
+					pan);
 
 				} else if(m_s.CRTC.reg[0x17] & 0x40) { // B/W set: byte mode, modeX
 
 					update_mode13([](unsigned _px)
 					{
-						return _px>>2;
+						return (_px >> 2);
 					},
-					iWidth, iHeight, pan);
+					pan);
 
 				} else { // word mode
 
@@ -1370,11 +1384,11 @@ void VGA::update(uint64_t _time)
 					{
 						return ((_px >> 1) & ~0x01);
 					},
-					iWidth, iHeight, pan);
+					pan);
 
 				}
 				break;
-
+			}
 			default:
 				PERRF(LOG_VGA, "update: shift_reg == %u\n", m_s.graphics_ctrl.shift_reg);
 				break;

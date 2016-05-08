@@ -24,6 +24,8 @@
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
+#define VGA_WORKERS 4
+
 // text mode blink feature
 #define TEXT_BLINK_MODE      0x01
 #define TEXT_BLINK_TOGGLE    0x02
@@ -196,17 +198,6 @@ protected:
 
 	VGADisplay * m_display;
 
-	void init_iohandlers();
-	void init_systemtimer();
-	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t * const *plane);
-	void update(uint64_t _time);
-	void vertical_retrace(uint64_t _time);
-	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
-	void calculate_retrace_timing();
-	bool skip_update();
-	void raise_interrupt();
-	void lower_interrupt();
-
 public:
 	VGA(Devices *_dev);
 	~VGA();
@@ -229,10 +220,23 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
-	template <typename F>
-	void gfx_update(F _loop_core, unsigned _width, unsigned _height, bool _force_upd);
-	template <typename F>
-	void update_mode13(F _pixelx_offset, unsigned _width, unsigned _height, unsigned _pan);
+	void init_iohandlers();
+	void init_systemtimer();
+	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t * const *plane);
+	void update(uint64_t _time);
+	void vertical_retrace(uint64_t _time);
+	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
+	void calculate_retrace_timing();
+	bool skip_update();
+	void raise_interrupt();
+	void lower_interrupt();
+
+	template<typename FN>
+	void gfx_update(FN _get_pixel, bool _force_upd);
+	template<typename FN>
+	void gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size);
+	template <typename FN>
+	void update_mode13(FN _pixel_x, unsigned _pan);
 };
 
 #endif
