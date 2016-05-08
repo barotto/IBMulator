@@ -69,10 +69,11 @@ public:
 	unsigned fill_us_silence(uint64_t _duration_us);
 	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0, T _v1);
 	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1);
+	template<typename T> unsigned hold_frames(unsigned _frames);
 	void convert(const AudioSpec &_new_spec);
 	void convert_format(AudioBuffer &_dest, unsigned _frames_count);
 	void convert_channels(AudioBuffer &_dest, unsigned _frames_count);
-	void convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
+	unsigned convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
 	unsigned us_to_frames(uint64_t _us);
 	unsigned us_to_samples(uint64_t _us);
 	void apply_volume(float _volume);
@@ -181,6 +182,22 @@ unsigned AudioBuffer::fill_samples_us(uint64_t _duration_us, T _value)
 	unsigned samples = m_spec.us_to_samples(_duration_us);
 	fill_samples(samples, _value);
 	return samples;
+}
+
+template<typename T>
+unsigned AudioBuffer::hold_frames(unsigned _frames)
+{
+	unsigned i = frames();
+	if(_frames==0 || i==0 || m_spec.channels>2) {
+		return 0;
+	}
+	resize_frames(i+_frames);
+	for(; i<frames(); ++i) {
+		for(unsigned j=0; j<m_spec.channels; j++) {
+			at<T>(i*m_spec.channels + j) = at<T>((i-1)*m_spec.channels + j);
+		}
+	}
+	return _frames;
 }
 
 template<typename T>

@@ -99,12 +99,13 @@ void MixerChannel::reset_SRC()
 	if(m_SRC_state == nullptr) {
 		const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
 		int err;
-		m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, spec.channels, &err);
+		m_SRC_state = src_new(SRC_SINC_FASTEST, spec.channels, &err);
 		if(m_SRC_state == nullptr) {
 			PERRF(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
 		}
 	} else {
 		src_reset(m_SRC_state);
+		m_new_data = true;
 	}
 #endif
 }
@@ -244,7 +245,11 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 		source = &dest[bufidx];
 	}
 	if(m_in_buffer.rate() != m_out_buffer.rate()) {
-		source->convert_rate(m_out_buffer, in_frames, m_SRC_state);
+		unsigned missing = source->convert_rate(m_out_buffer, in_frames, m_SRC_state);
+		if(m_new_data && missing>0) {
+			m_out_buffer.hold_frames<float>(missing);
+		}
+		m_new_data = false;
 	} else {
 		m_out_buffer.add_frames(*source, in_frames);
 	}

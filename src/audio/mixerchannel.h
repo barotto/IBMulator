@@ -55,6 +55,7 @@ private:
 	AudioBuffer m_out_buffer;
 	uint64_t m_in_time;
 	SRC_STATE *m_SRC_state;
+	bool m_new_data;
 	std::function<void(bool)> m_capture_clbk;
 	float m_volume;
 	MixerChannelCategory m_category;

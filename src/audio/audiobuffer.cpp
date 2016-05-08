@@ -244,7 +244,7 @@ void AudioBuffer::convert_channels(AudioBuffer &_dest, unsigned _frames_count)
 	}
 }
 
-void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_SRC)
+unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_SRC)
 {
 	AudioSpec destspec{AUDIO_FORMAT_F32, m_spec.channels, _dest.rate()};
 	if(m_spec.format != AUDIO_FORMAT_F32 || _dest.spec() != destspec) {
@@ -254,13 +254,14 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 	double rate_ratio = double(destspec.rate)/double(m_spec.rate);
 	unsigned out_frames = unsigned(ceil(double(_frames_count) * rate_ratio));
 	if(out_frames==0) {
-		return;
+		return 0;
 	}
 
 	unsigned destpos = _dest.samples();
 	unsigned destframes = _dest.frames();
 
 	_dest.resize_frames(_dest.frames()+out_frames);
+	unsigned missing = 0;
 
 #if HAVE_LIBSAMPLERATE
 	SRC_DATA srcdata;
@@ -283,6 +284,7 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 	assert(srcdata.output_frames_gen>=0 && srcdata.output_frames_gen<=out_frames);
 	if(srcdata.output_frames_gen != out_frames) {
 		_dest.resize_frames(destframes + srcdata.output_frames_gen);
+		missing = out_frames - srcdata.output_frames_gen;
 	}
 	PDEBUGF(LOG_V2, LOG_MIXER, "convert rate: f-in: %d, f-out: %d, gen: %d\n",
 			_frames_count, out_frames, srcdata.output_frames_gen);
@@ -291,6 +293,7 @@ void AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_S
 		_dest.operator[]<float>(i) = 0.f;
 	}
 #endif
+	return missing;
 }
 
 unsigned AudioBuffer::us_to_frames(uint64_t _us)

@@ -123,7 +123,7 @@ unsigned Synth::generate(uint64_t _delta_ns)
 	return frames;
 }
 
-bool Synth::create_samples(uint64_t _time_span_us, bool _prebuf, bool)
+bool Synth::create_samples(uint64_t _time_span_us, bool, bool)
 {
 	//this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_evt_lock);
@@ -277,8 +277,8 @@ void Synth::on_capture(bool _start)
 void Synth::enable_channel()
 {
 	if(!m_channel->is_enabled()) {
-		m_channel->enable(true);
 		m_last_time = 0;
+		m_channel->enable(true);
 	}
 }
 

@@ -87,15 +87,9 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 		}
 	} while(1);
 
-	unsigned buf_span;
-	if(m_audio_cue_time==0) {
-		buf_span = _time_span_us;
-	} else {
-		buf_span = mtime_us - m_audio_cue_time;
-	}
 	unsigned in_duration = _channel.in().duration_us();
-	if(in_duration < buf_span) {
-		unsigned fill_us = buf_span - in_duration;
+	if(in_duration < _time_span_us) {
+		unsigned fill_us = _time_span_us - in_duration;
 		unsigned samples = _channel.in().fill_us_silence(fill_us);
 		assert(samples == _channel.in().spec().us_to_samples(fill_us));
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: silence fill: %d frames (%d us)\n",
@@ -105,7 +99,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 				);
 	}
 	m_audio_cue_time = mtime_us;
-	_channel.input_finish(buf_span);
+	_channel.input_finish(_time_span_us);
 	if(evtcnt == 0) {
 		return _channel.check_disable_time(mtime_us);
 	}

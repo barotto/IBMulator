@@ -193,7 +193,7 @@ void PCSpeaker::add_event(uint64_t _ticks, bool _active, bool _out)
 }
 
 // this function is called by the Mixer thread
-bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_first_upd*/)
+bool PCSpeaker::create_samples(uint64_t _time_span_us, bool, bool)
 {
 	m_mutex.lock();
 
@@ -210,18 +210,16 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 		unsigned samples = unsigned(std::max(0, int(needed_frames + m_samples_rem)));
 		if(m_channel->check_disable_time(NSEC_TO_USEC(pit_ticks*PIT_CLK_TIME))) {
 			m_last_time = 0;
-			PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
+			PDEBUGF(LOG_V2, LOG_AUDIO, "ch disable\n");
 			return false;
-		} else if(m_last_time && samples && !_prebuf) {
-			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %u samples\n", samples);
+		} else if(m_last_time && samples) {
+			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %u samples", samples);
 			m_channel->in().fill_samples<float>(samples, 0.0);
 		}
 		m_last_time = pit_ticks;
 		m_samples_rem += needed_frames - samples;
-		if(_prebuf) {
-			m_samples_rem = std::min(0.0, m_samples_rem);
-		}
 		m_channel->input_finish();
+		PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 		return true;
 	}
 
@@ -285,19 +283,15 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 	}
 
 	// rate conversion from 1.193MHz to current speaker rate
-	m_pitbuf.convert_rate(m_outbuf, m_pitbuf.frames(), m_SRC);
-
-	m_samples_rem = m_samples_rem + (needed_frames - m_outbuf.frames());
-	PDEBUGF(LOG_V2, LOG_AUDIO, "audio samples: %d", m_outbuf.frames());
-	if(_prebuf) {
-		m_samples_rem = std::min(0.0, m_samples_rem);
-	} else {
-		m_samples_rem = std::min(m_samples_rem, needed_frames);
-		PDEBUGF(LOG_V2, LOG_AUDIO, ", remainder: %.1f", m_samples_rem);
-	}
-	PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
-
+	int missing = m_pitbuf.convert_rate(m_outbuf, m_pitbuf.frames(), m_SRC);
 	m_channel->in().add_frames(m_outbuf);
+	m_channel->input_finish();
+
+	m_samples_rem += needed_frames - m_outbuf.frames() + missing;
+	m_samples_rem = std::min(m_samples_rem, needed_frames);
+
+	PDEBUGF(LOG_V2, LOG_AUDIO, "audio samples: %d, remainder: %.1f\n",
+			m_outbuf.frames(), m_samples_rem);
 
 	if(chan_disable) {
 		m_s.level = 0.0;
@@ -305,7 +299,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool _prebuf, bool /*_fir
 	}
 
 	m_last_time = pit_ticks;
-	m_channel->input_finish();
+
 	return true;
 }
 

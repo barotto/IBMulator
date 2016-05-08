@@ -41,7 +41,6 @@ private:
 		uint32_t write_avail;
 		uint32_t read_avail;
 		uint8_t  reload_reg;
-		int      fifo_timer;
 		uint64_t timer_last_time;
 		uint16_t almost_empty_value;
 		bool     almost_empty;
@@ -49,7 +48,6 @@ private:
 		void reset(unsigned type);
 		uint8_t read();
 		void write(uint8_t _data);
-		void set_reload_register(int _value);
 	};
 
 	struct {
@@ -63,6 +61,8 @@ private:
 	int m_DAC_empty_samples;
 	//the DAC frequency value is written by the machine and read by the mixer
 	std::atomic<unsigned> m_DAC_freq;
+	std::atomic<bool> m_DAC_active;
+	bool m_DAC_newdata;
 	std::vector<uint8_t> m_DAC_samples;
 	std::shared_ptr<MixerChannel> m_DAC_channel;
 	uint8_t m_DAC_last_value;
@@ -88,7 +88,8 @@ private:
 	void lower_interrupt();
 	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
 	bool create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	void PSG_activate();
+	void DAC_activate();
+	void DAC_deactivate();
 	void on_PSG_capture(bool _enable);
 };
 
