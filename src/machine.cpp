@@ -48,7 +48,7 @@ m_heartbeat(MACHINE_HEARTBEAT),
 m_quit(false),
 m_on(false),
 m_cpu_single_step(false),
-m_step_to_addr(0),
+m_breakpoint(0),
 m_mouse_fun(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
@@ -81,6 +81,8 @@ void Machine::save_state(StateBuf &_state)
 	g_cpu.save_state(_state);
 	g_memory.save_state(_state);
 	g_devices.save_state(_state);
+
+	PINFOF(LOG_V0, LOG_MACHINE, "Machine state saved\n");
 }
 
 void Machine::restore_state(StateBuf &_state)
@@ -161,6 +163,8 @@ void Machine::restore_state(StateBuf &_state)
 
 	std::unique_lock<std::mutex> lock(ms_gui_lock);
 	m_curr_prgname_changed = true;
+
+	PINFOF(LOG_V0, LOG_MACHINE, "Machine state restored\n");
 }
 
 void Machine::calibrate(const Chrono &_c)
@@ -341,11 +345,12 @@ void Machine::core_step(int32_t _cpu_cycles)
 			m_mt_virt_time.store(cpu_time);
 		}
 
-		if(m_step_to_addr>0) {
+		if(m_breakpoint>0) {
 			uint32_t current_phy = GET_PHYADDR(CS, REG_IP);
-			if(m_step_to_addr == current_phy) {
-				set_single_step(true);
-				m_step_to_addr = 0;
+			if(m_breakpoint == current_phy) {
+				pause();
+				m_breakpoint_clbk();
+				m_breakpoint = 0;
 			}
 		}
 		if(m_cpu_single_step && cycles_left>0) {
@@ -354,6 +359,18 @@ void Machine::core_step(int32_t _cpu_cycles)
 		}
 	}
 	m_s.cycles_left = cycles_left;
+}
+
+void Machine::pause()
+{
+	set_single_step(true);
+	g_mixer.cmd_pause();
+}
+
+void Machine::resume()
+{
+	set_single_step(false);
+	g_mixer.cmd_resume();
 }
 
 bool Machine::update_timers(uint64_t _cpu_time)
@@ -587,11 +604,11 @@ void Machine::cmd_cpu_step()
 	});
 }
 
-void Machine::cmd_cpu_step_to(uint32_t _phyaddr)
+void Machine::cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback)
 {
 	m_cmd_fifo.push([=] () {
-		m_step_to_addr = _phyaddr;
-		set_single_step(false);
+		m_breakpoint = _phyaddr;
+		m_breakpoint_clbk = _callback;
 	});
 }
 
@@ -623,8 +640,7 @@ void Machine::cmd_switch_power()
 void Machine::cmd_pause()
 {
 	m_cmd_fifo.push([this] () {
-		set_single_step(true);
-		g_mixer.cmd_pause();
+		pause();
 		PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
 	});
 }
@@ -632,8 +648,8 @@ void Machine::cmd_pause()
 void Machine::cmd_resume()
 {
 	m_cmd_fifo.push([this] () {
-		set_single_step(false);
-		g_mixer.cmd_resume();
+		resume();
+		PINFOF(LOG_V0, LOG_MACHINE, "emulation resumed\n");
 	});
 }
 

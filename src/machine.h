@@ -73,7 +73,8 @@ private:
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
-	uint32_t m_step_to_addr;
+	uint32_t m_breakpoint;
+	std::function<void()> m_breakpoint_clbk;
 	double m_cpu_cycles;
 	uint m_cpu_cycle_time;
 	double m_cycles_factor;
@@ -105,6 +106,8 @@ private:
 	bool m_curr_prgname_changed;
 
 	void core_step(int32_t _cpu_cycles);
+	void pause();
+	void resume();
 	void mem_reset();
 	void power_off();
 	bool update_timers(uint64_t _vtime);
@@ -174,7 +177,7 @@ public:
 	void cmd_power_on();
 	void cmd_power_off();
 	void cmd_cpu_step();
-	void cmd_cpu_step_to(uint32_t _phyaddr);
+	void cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback);
 	void cmd_soft_reset();
 	void cmd_reset();
 	void cmd_switch_power();

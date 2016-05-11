@@ -44,6 +44,20 @@ share/ibmulator/gui/icons/resume.png \
 share/ibmulator/gui/icons/save.png \
 share/ibmulator/gui/icons/warning.png
 
+guiiconsdebuggerdir = $(pkgdatadir)/gui/icons/debugger
+dist_guiiconsdebugger_DATA = \
+share/ibmulator/gui/icons/debugger/control_power.png \
+share/ibmulator/gui/icons/debugger/control_pause.png \
+share/ibmulator/gui/icons/debugger/control_run.png \
+share/ibmulator/gui/icons/debugger/cpu_breakp.png \
+share/ibmulator/gui/icons/debugger/cpu_skip.png \
+share/ibmulator/gui/icons/debugger/cpu_step.png \
+share/ibmulator/gui/icons/debugger/memory_dump.png \
+share/ibmulator/gui/icons/debugger/processor_dump.png \
+share/ibmulator/gui/icons/debugger/processor_rec.png \
+share/ibmulator/gui/icons/debugger/state_restore.png \
+share/ibmulator/gui/icons/debugger/state_save.png
+
 guiimagesdir = $(pkgdatadir)/gui/images
 dist_guiimages_DATA = \
 share/ibmulator/gui/images/romshell_button.png \

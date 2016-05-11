@@ -56,7 +56,9 @@ private:
 	} m_memory;
 
 	struct s_tools {
-		Rocket::Controls::ElementFormControl *cs_ff,*ip_ff;
+		Rocket::Core::Element *btn_power, *btn_pause, *btn_bp;
+		bool led_power, led_pause;
+		Rocket::Controls::ElementFormControl *cs_bp,*ip_bp;
 		Rocket::Controls::ElementFormControl *log_prg_name;
 		Rocket::Core::Element *log_prg_toggle;
 	} m_tools;
@@ -66,20 +68,24 @@ private:
 	} m_disasm;
 
 	Rocket::Core::Element *m_post;
+	Rocket::Core::Element *m_message;
 
 	static event_map_t ms_evt_map;
 	void on_cmd_switch_power(RC::Event &);
 	void on_cmd_pause(RC::Event &);
 	void on_cmd_resume(RC::Event &);
-	void on_cmd_memdump(RC::Event &);
-	void on_cmd_csdump(RC::Event &);
 	void on_cmd_save_state(RC::Event &);
 	void on_cmd_restore_state(RC::Event &);
 	void on_CPU_step(RC::Event &);
 	void on_CPU_skip(RC::Event &);
-	void on_CPU_ff_btn(RC::Event &);
+	void on_CPU_bp_btn(RC::Event &);
 	void on_log_prg_toggle(RC::Event &);
 	void on_log_write(RC::Event &);
+	void on_mem_dump(RC::Event &);
+	void on_cs_dump(RC::Event &);
+	void on_ds_dump(RC::Event &);
+	void on_ss_dump(RC::Event &);
+	void on_es_dump(RC::Event &);
 	void on_idt_dump(RC::Event &);
 	void on_ldt_dump(RC::Event &);
 	void on_gdt_dump(RC::Event &);
@@ -94,6 +100,20 @@ public:
 
 	void update();
 	event_map_t & get_event_map() { return SysDebugger::ms_evt_map; }
+
+	void show_message(const char* _mex);
+
+private:
+	class LogMessage : public Logdev
+	{
+	private:
+		SysDebugger *m_iface;
+	public:
+		LogMessage(SysDebugger* _iface);
+		~LogMessage();
+
+		void log_put(const std::string &_prefix, const std::string &_message);
+	};
 };
 
 #endif

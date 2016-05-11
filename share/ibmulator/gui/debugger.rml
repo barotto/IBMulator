@@ -7,7 +7,7 @@
 			body
 			{
 				width: 440px;
-				height: 570px;
+				height: 600px;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -17,23 +17,21 @@
 	<body template="default">
 		<div id="POST">	</div>
 		<div id="tools">
-			<button id="CPU_step" style="width:20px;">&gt;</button>
-			<button id="CPU_skip" style="width:20px;">+</button>
-			<input type="text" id="CS_ff" size=8 />
-			<input type="text" id="IP_ff" size=8 />
-			<button id="CPU_ff_btn" style="width:20px;">&gt;&gt;</button>
-			<button id="cmd_switch_power" style="width:20px;">!</button>
-			<button id="cmd_pause" style="width:20px;">p</button>
-			<button id="cmd_resume" style="width:20px;">r</button>
-			<button id="cmd_memdump" style="width:40px;">memd</button>
-			<button id="cmd_csdump" style="width:38px;">csd</button>
-			<button id="cmd_save_state" style="width:38px;">ss</button>
-			<button id="cmd_restore_state" style="width:38px;">rs</button>
+			<button id="cmd_switch_power" style="width:30px;"><btnicon /></button>
+			<button id="cmd_pause" style="width:30px;"><btnicon /></button>
+			<button id="CPU_step" style="width:30px;"><btnicon /></button>
+			<button id="CPU_skip" style="width:30px;"><btnicon /></button>
+			<input type="text" id="CS_bp" size=8 />
+			<input type="text" id="IP_bp" size=8 />
+			<button id="CPU_bp_btn" style="width:30px;"><btnicon /></button>
+			<button id="mem_dump" style="width:30px;"><btnicon /></button>
+			<button id="cmd_save_state" style="width:30px;"><btnicon /></button>
+			<button id="cmd_restore_state" style="width:30px;"><btnicon /></button>
 		</div>
 		<div id="tools2">
-			<input type="text" id="log_prg_name" size=32 />
-			<button id="log_prg_toggle" style="width:80px;">prg.log</button>
-			<button id="log_write" style="width:58px;">wr.log</button>
+			<input type="text" id="log_prg_name" size=20 />
+			<button id="log_prg_toggle" style="width:30px;"><btnicon /></button>
+			<button id="log_write" style="width:30px;"><btnicon /></button>
 		</div>
 		<div id="cpucore">
 			<table id="generalregs">
@@ -44,10 +42,10 @@
 			</table>
 			
 			<table id="segmentregs">
-			<tr><th>CS</th><td id="CS">1234</td><td id="CSbase">4567</td><td id="CSlimit">8901</td></tr>
-			<tr><th>DS</th><td id="DS">1234</td><td id="DSbase">4567</td><td id="DSlimit">8901</td></tr>
-			<tr><th>SS</th><td id="SS">1234</td><td id="SSbase">4567</td><td id="SSlimit">8901</td></tr>
-			<tr><th>ES</th><td id="ES">1234</td><td id="ESbase">4567</td><td id="ESlimit">8901</td></tr>
+			<tr><th>CS</th><td id="CS">1234</td><td id="CSbase">4567</td><td id="CSlimit">8901</td><button id="cs_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>DS</th><td id="DS">1234</td><td id="DSbase">4567</td><td id="DSlimit">8901</td><button id="ds_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>SS</th><td id="SS">1234</td><td id="SSbase">4567</td><td id="SSlimit">8901</td><button id="ss_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>ES</th><td id="ES">1234</td><td id="ESbase">4567</td><td id="ESlimit">8901</td><button id="es_dump" style="width:25px;"><btnicon /></button></tr>
 			<tr><th>TR</th><td id="TR">1234</td><td id="TRbase">4567</td><td id="TRlimit">8901</td></tr>
 			</table>
 			
@@ -58,9 +56,9 @@
 			</table>
 			
 			<table id="desctables">
-			<tr><th>IDT</th><td id="IDTbase">4567</td><td id="IDTlimit">8901</td><button id="idt_dump" style="width:25px;">d</button></tr>
-			<tr><th>GDT</th><td id="GDTbase">4567</td><td id="GDTlimit">8901</td><button id="gdt_dump" style="width:25px;">d</button></tr>
-			<tr><th>LDT</th><td id="LDT">1234</td><td id="LDTbase">4567</td><td id="LDTlimit">8901</td><button id="ldt_dump" style="width:25px;">d</button></tr>
+			<tr><th>IDT</th><td id="IDTbase">4567</td><td id="IDTlimit">8901</td><button id="idt_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>GDT</th><td id="GDTbase">4567</td><td id="GDTlimit">8901</td><button id="gdt_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>LDT</th><td id="LDT">1234</td><td id="LDTbase">4567</td><td id="LDTlimit">8901</td><button id="ldt_dump" style="width:25px;"><btnicon /></button></tr>
 			</table>
 
 			<table id="flags">
@@ -87,5 +85,7 @@
 		<div id="disasm">
 		disasm
 		</div>
+		
+		<div id="message">&nbsp;</div>
 	</body>
 </rml>

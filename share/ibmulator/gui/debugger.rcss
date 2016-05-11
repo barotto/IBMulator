@@ -2,7 +2,8 @@
 #tools,
 #cpucore,
 #memory,
-#disasm
+#disasm,
+#message
 {
 	position: relative;
 }
@@ -140,6 +141,14 @@ table tr
 	padding: 4px;
 }
 
+#message
+{
+	top: 450px;
+	padding: 4px;
+	font-size: 11px;
+	background-color: #383938FF;
+}
+
 #POST
 {
 	position: absolute;
@@ -148,4 +157,57 @@ table tr
 	right: 10px;
 	padding: 5px;
 	background-color: #000000ff;
+}
+
+#CPU_step btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/cpu_step.png 0px 0px 16px 16px;
+}
+#CPU_skip btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/cpu_skip.png 0px 0px 16px 16px;
+}
+#CPU_bp_btn btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/cpu_breakp.png 0px 0px 16px 16px;
+}
+#cmd_switch_power btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/control_power.png 0px 0px 16px 16px;
+}
+#cmd_pause btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/control_pause.png 0px 0px 16px 16px;
+}
+#cmd_pause.on btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/control_run.png 0px 0px 16px 16px;
+}
+#mem_dump btnicon,
+#cs_dump btnicon,
+#ds_dump btnicon,
+#ss_dump btnicon,
+#es_dump btnicon,
+#idt_dump btnicon,
+#gdt_dump btnicon,
+#ldt_dump btnicon
+{
+	icon-decorator: image;
+	icon-image: icons/debugger/memory_dump.png 0px 0px 16px 16px;
+}
+#cmd_save_state btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/state_save.png 0px 0px 16px 16px;
+}
+#cmd_restore_state btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/state_restore.png 0px 0px 16px 16px;
+}
+#log_prg_toggle btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/processor_rec.png 0px 0px 16px 16px;
+}
+#log_write btnicon {
+	icon-decorator: image;
+	icon-image: icons/debugger/processor_dump.png 0px 0px 16px 16px;
 }
