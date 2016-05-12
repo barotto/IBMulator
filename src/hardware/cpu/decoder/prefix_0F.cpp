@@ -43,27 +43,27 @@ case 0x00:
 	switch(m_instr.modrm.n) {
 		case 0:
 			CYCLES(2,1);
-			m_instr.fn = std::bind(&CPUExecutor::SLDT_ew, _1);
+			m_instr.fn = &CPUExecutor::SLDT_ew;
 			break;
 		case 1:
 			CYCLES(2,1);
-			m_instr.fn = std::bind(&CPUExecutor::STR_ew, _1);
+			m_instr.fn = &CPUExecutor::STR_ew;
 			break;
 		case 2:
 			CYCLES(17,17);
-			m_instr.fn = std::bind(&CPUExecutor::LLDT_ew, _1);
+			m_instr.fn = &CPUExecutor::LLDT_ew;
 			break;
 		case 3:
 			CYCLES(17,17);
-			m_instr.fn = std::bind(&CPUExecutor::LTR_ew, _1);
+			m_instr.fn = &CPUExecutor::LTR_ew;
 			break;
 		case 4:
 			CYCLES(14,14);
-			m_instr.fn = std::bind(&CPUExecutor::VERR_ew, _1);
+			m_instr.fn = &CPUExecutor::VERR_ew;
 			break;
 		case 5:
 			CYCLES(14,14);
-			m_instr.fn = std::bind(&CPUExecutor::VERW_ew, _1);
+			m_instr.fn = &CPUExecutor::VERW_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -85,27 +85,27 @@ case 0x01:
 	switch(m_instr.modrm.n) {
 		case 0:
 			CYCLES(7,7);
-			m_instr.fn = std::bind(&CPUExecutor::SGDT, _1);
+			m_instr.fn = &CPUExecutor::SGDT;
 			break;
 		case 1:
 			CYCLES(8,8);
-			m_instr.fn = std::bind(&CPUExecutor::SIDT, _1);
+			m_instr.fn = &CPUExecutor::SIDT;
 			break;
 		case 2:
 			CYCLES(7,7);
-			m_instr.fn = std::bind(&CPUExecutor::LGDT, _1);
+			m_instr.fn = &CPUExecutor::LGDT;
 			break;
 		case 3:
 			CYCLES(8,8);
-			m_instr.fn = std::bind(&CPUExecutor::LIDT, _1);
+			m_instr.fn = &CPUExecutor::LIDT;
 			break;
 		case 4:
 			CYCLES(2,1);
-			m_instr.fn = std::bind(&CPUExecutor::SMSW_ew, _1);
+			m_instr.fn = &CPUExecutor::SMSW_ew;
 			break;
 		case 6:
 			CYCLES(3,4);
-			m_instr.fn = std::bind(&CPUExecutor::LMSW_ew, _1);
+			m_instr.fn = &CPUExecutor::LMSW_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -117,7 +117,7 @@ case 0x01:
 case 0x02:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::LAR_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::LAR_rw_ew;
 	CYCLES(14,14);
 	break;
 }
@@ -126,7 +126,7 @@ case 0x02:
 case 0x03:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::LSL_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::LSL_rw_ew;
 	CYCLES(14,14);
 	break;
 }
@@ -134,7 +134,7 @@ case 0x03:
 /*  0F 05      LOADALL         195        Load CPU registers from memory */
 case 0x05:
 {
-	m_instr.fn = std::bind(&CPUExecutor::LOADALL, _1);
+	m_instr.fn = &CPUExecutor::LOADALL;
 	CYCLES(93,93);
 	break;
 }
@@ -142,7 +142,7 @@ case 0x05:
 /*  0F 06      CLTS            2          Clear task switched flag */
 case 0x06:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CLTS, _1);
+	m_instr.fn = &CPUExecutor::CLTS;
 	CYCLES(2,2);
 	break;
 }

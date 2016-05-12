@@ -39,7 +39,7 @@ switch(_opcode) {
 case 0x00:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::ADD_eb_rb;
 	CYCLES(2,5);
 	break;
 }
@@ -48,7 +48,7 @@ case 0x00:
 case 0x01:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::ADD_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -57,7 +57,7 @@ case 0x01:
 case 0x02:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::ADD_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -66,7 +66,7 @@ case 0x02:
 case 0x03:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::ADD_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -74,8 +74,8 @@ case 0x03:
 /* 04 db      ADD AL,db   3          Add immediate byte into AL */
 case 0x04:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::ADD_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -83,8 +83,8 @@ case 0x04:
 /* 05 dw      ADD AX,dw   3          Add immediate word into AX */
 case 0x05:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::ADD_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::ADD_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -92,7 +92,7 @@ case 0x05:
 /* 06         PUSH ES      3         Push ES */
 case 0x06:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_ES, _1);
+	m_instr.fn = &CPUExecutor::PUSH_ES;
 	CYCLES(3,3);
 	break;
 }
@@ -100,7 +100,7 @@ case 0x06:
 /* 07          POP ES           5,pm=20    Pop top of stack into ES */
 case 0x07:
 {
-	m_instr.fn = std::bind(&CPUExecutor::POP_ES, _1);
+	m_instr.fn = &CPUExecutor::POP_ES;
 	CYCLES(3,3);
 	// 8 descriptor fetch + 2 stack pop = 10 cycles for mem ops
 	// 20 by intel docs - 10 memory operations = 10 cycles for the instruction exec
@@ -113,7 +113,7 @@ case 0x07:
 case 0x08:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::OR_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::OR_eb_rb;
 	CYCLES(2,5);
 	break;
 }
@@ -122,7 +122,7 @@ case 0x08:
 case 0x09:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::OR_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::OR_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -131,7 +131,7 @@ case 0x09:
 case 0x0A:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::OR_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::OR_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -140,7 +140,7 @@ case 0x0A:
 case 0x0B:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::OR_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::OR_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -148,8 +148,8 @@ case 0x0B:
 /* 0C db      OR AL,db       3         Logical-OR immediate byte into AL */
 case 0x0C:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::OR_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::OR_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -157,8 +157,8 @@ case 0x0C:
 /* 0D dw      OR AX,dw       3         Logical-OR immediate word into AX */
 case 0x0D:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::OR_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::OR_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -166,7 +166,7 @@ case 0x0D:
 /* 0E         PUSH CS      3         Push CS */
 case 0x0E:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_CS, _1);
+	m_instr.fn = &CPUExecutor::PUSH_CS;
 	CYCLES(3,3);
 	break;
 }
@@ -177,7 +177,7 @@ case 0x0E:
 case 0x10:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::ADC_eb_rb;
 	CYCLES(2,5);
 	break;
 }
@@ -186,7 +186,7 @@ case 0x10:
 case 0x11:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::ADC_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -195,7 +195,7 @@ case 0x11:
 case 0x12:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::ADC_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -204,7 +204,7 @@ case 0x12:
 case 0x13:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::ADC_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -212,8 +212,8 @@ case 0x13:
 /* 14 db      ADC AL,db   3          Add with carry immediate byte into AL */
 case 0x14:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::ADC_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -221,8 +221,8 @@ case 0x14:
 /* 15 dw      ADC AX,dw   3          Add with carry immediate word into AX */
 case 0x15:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::ADC_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::ADC_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -230,7 +230,7 @@ case 0x15:
 /* 16         PUSH SS      3         Push SS */
 case 0x16:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_SS, _1);
+	m_instr.fn = &CPUExecutor::PUSH_SS;
 	CYCLES(3,3);
 	break;
 }
@@ -238,7 +238,7 @@ case 0x16:
 /* 17          POP SS           5,pm=20    Pop top of stack into SS */
 case 0x17:
 {
-	m_instr.fn = std::bind(&CPUExecutor::POP_SS, _1);
+	m_instr.fn = &CPUExecutor::POP_SS;
 	CYCLES(3,3);
 	// see pop es comment
 	CYCLES_PM(7);
@@ -249,7 +249,7 @@ case 0x17:
 case 0x18:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::SBB_eb_rb;
 	CYCLES(2,8);
 	break;
 }
@@ -258,7 +258,7 @@ case 0x18:
 case 0x19:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::SBB_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -267,7 +267,7 @@ case 0x19:
 case 0x1A:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::SBB_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -276,7 +276,7 @@ case 0x1A:
 case 0x1B:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::SBB_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -284,8 +284,8 @@ case 0x1B:
 /* 1C db       SBB AL,db    3         Subtract with borrow imm. byte from AL */
 case 0x1C:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::SBB_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -293,8 +293,8 @@ case 0x1C:
 /* 1D dw       SBB AX,dw    3         Subtract with borrow imm. word from AX */
 case 0x1D:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::SBB_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::SBB_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -302,7 +302,7 @@ case 0x1D:
 /* 1E         PUSH DS      3         Push DS */
 case 0x1E:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_DS, _1);
+	m_instr.fn = &CPUExecutor::PUSH_DS;
 	CYCLES(3,3);
 	break;
 }
@@ -310,7 +310,7 @@ case 0x1E:
 /* 1F          POP DS           5,pm=20    Pop top of stack into DS */
 case 0x1F:
 {
-	m_instr.fn = std::bind(&CPUExecutor::POP_DS, _1);
+	m_instr.fn = &CPUExecutor::POP_DS;
 	CYCLES(3,3);
 	// see pop es comment
 	CYCLES_PM(7);
@@ -321,7 +321,7 @@ case 0x1F:
 case 0x20:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::AND_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::AND_eb_rb;
 	CYCLES(2,8);
 	break;
 }
@@ -330,7 +330,7 @@ case 0x20:
 case 0x21:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::AND_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::AND_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -339,7 +339,7 @@ case 0x21:
 case 0x22:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::AND_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::AND_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -348,7 +348,7 @@ case 0x22:
 case 0x23:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::AND_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::AND_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -356,8 +356,8 @@ case 0x23:
 /* 24 db      AND AL,db     3          Logical-AND immediate byte into AL */
 case 0x24:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::AND_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::AND_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -365,8 +365,8 @@ case 0x24:
 /* 25 dw      AND AX,dw     3          Logical-AND immediate word into AX */
 case 0x25:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::AND_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::AND_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -376,7 +376,7 @@ case 0x25:
 /* 27      DAA            3         Decimal adjust AL after addition */
 case 0x27:
 {
-	m_instr.fn = std::bind(&CPUExecutor::DAA, _1);
+	m_instr.fn = &CPUExecutor::DAA;
 	CYCLES(3,3);
 	break;
 }
@@ -385,7 +385,7 @@ case 0x27:
 case 0x28:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::SUB_eb_rb;
 	CYCLES(2,8);
 	break;
 }
@@ -394,7 +394,7 @@ case 0x28:
 case 0x29:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::SUB_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -403,7 +403,7 @@ case 0x29:
 case 0x2A:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::SUB_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -412,7 +412,7 @@ case 0x2A:
 case 0x2B:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::SUB_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -420,8 +420,8 @@ case 0x2B:
 /* 2C db      SUB AL,db      3           Subtract immediate byte from AL */
 case 0x2C:
 {
-	uint8_t db = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_AL_db, _1, db);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::SUB_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -429,8 +429,8 @@ case 0x2C:
 /* 2D dw      SUB AX,dw      3           Subtract immediate word from AX */
 case 0x2D:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::SUB_AX_dw, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::SUB_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -440,7 +440,7 @@ case 0x2D:
 /* 2F        DAS             3          Decimal adjust AL after subtraction */
 case 0x2F:
 {
-	m_instr.fn = std::bind(&CPUExecutor::DAS, _1);
+	m_instr.fn = &CPUExecutor::DAS;
 	CYCLES(3,3);
 	break;
 }
@@ -449,7 +449,7 @@ case 0x2F:
 case 0x30:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::XOR_eb_rb;
 	CYCLES(2,8);
 	break;
 }
@@ -458,7 +458,7 @@ case 0x30:
 case 0x31:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::XOR_ew_rw;
 	CYCLES(2,8);
 	break;
 }
@@ -467,7 +467,7 @@ case 0x31:
 case 0x32:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::XOR_rb_eb;
 	CYCLES(2,5);
 	break;
 }
@@ -476,7 +476,7 @@ case 0x32:
 case 0x33:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::XOR_rw_ew;
 	CYCLES(2,5);
 	break;
 }
@@ -484,8 +484,8 @@ case 0x33:
 /* 34 db     XOR AL,db   3         Exclusive-OR immediate byte into AL */
 case 0x34:
 {
-	uint8_t db = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_AL_db, _1, db);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::XOR_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -493,8 +493,8 @@ case 0x34:
 /* 35 dw     XOR AX,dw   3         Exclusive-OR immediate word into AX */
 case 0x35:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::XOR_AX_dw, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::XOR_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -504,7 +504,7 @@ case 0x35:
 /* 37        AAA         3          ASCII adjust AL after addition */
 case 0x37:
 {
-	m_instr.fn = std::bind(&CPUExecutor::AAA, _1);
+	m_instr.fn = &CPUExecutor::AAA;
 	CYCLES(3,3);
 	break;
 }
@@ -513,7 +513,7 @@ case 0x37:
 case 0x38:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::CMP_eb_rb;
 	CYCLES(2,5);
 	break;
 }
@@ -522,7 +522,7 @@ case 0x38:
 case 0x39:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::CMP_ew_rw;
 	CYCLES(2,5);
 	break;
 }
@@ -531,7 +531,7 @@ case 0x39:
 case 0x3A:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::CMP_rb_eb;
 	CYCLES(2,4);
 	break;
 }
@@ -540,7 +540,7 @@ case 0x3A:
 case 0x3B:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::CMP_rw_ew;
 	CYCLES(2,4);
 	break;
 }
@@ -548,8 +548,8 @@ case 0x3B:
 /* 3C db        CMP AL,db       3           Compare immediate byte from AL */
 case 0x3C:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_AL_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::CMP_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -557,8 +557,8 @@ case 0x3C:
 /* 3D dw        CMP AX,dw       3           Compare immediate word from AX */
 case 0x3D:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::CMP_AX_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::CMP_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -568,7 +568,7 @@ case 0x3D:
 /* 3F        AAS       3          ASCII adjust AL after subtraction */
 case 0x3F:
 {
-	m_instr.fn = std::bind(&CPUExecutor::AAS, _1);
+	m_instr.fn = &CPUExecutor::AAS;
 	CYCLES(3,3);
 	break;
 }
@@ -584,7 +584,7 @@ case 0x46: //SI
 case 0x47: //DI
 {
 	m_instr.reg = _opcode - 0x40;
-	m_instr.fn = std::bind(&CPUExecutor::INC_rw, _1);
+	m_instr.fn = &CPUExecutor::INC_rw;
 	CYCLES(2,2);
 	break;
 }
@@ -600,7 +600,7 @@ case 0x4E: //SI
 case 0x4F: //DI
 {
 	m_instr.reg = _opcode - 0x48;
-	m_instr.fn = std::bind(&CPUExecutor::DEC_rw, _1);
+	m_instr.fn = &CPUExecutor::DEC_rw;
 	CYCLES(2,2);
 	break;
 }
@@ -616,7 +616,7 @@ case 0x56: //SI
 case 0x57: //DI
 {
 	m_instr.reg = _opcode - 0x50;
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_rw, _1);
+	m_instr.fn = &CPUExecutor::PUSH_rw;
 	CYCLES(3,3);
 	break;
 }
@@ -632,7 +632,7 @@ case 0x5E: //SI
 case 0x5F: //DI
 {
 	m_instr.reg = _opcode - 0x58;
-	m_instr.fn = std::bind(&CPUExecutor::POP_rw, _1);
+	m_instr.fn = &CPUExecutor::POP_rw;
 	CYCLES(3,3);
 	m_instr.cycles.bu = -3;
 	break;
@@ -641,7 +641,7 @@ case 0x5F: //DI
 /* 60        PUSHA      17        Push in order: AX,CX,DX,BX,original SP,BP,SI,DI */
 case 0x60:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSHA, _1);
+	m_instr.fn = &CPUExecutor::PUSHA;
 	CYCLES(17,17);
 	break;
 }
@@ -649,7 +649,7 @@ case 0x60:
 /* 61        POPA           19         Pop in order: DI,SI,BP,SP,BX,DX,CX,AX */
 case 0x61:
 {
-	m_instr.fn = std::bind(&CPUExecutor::POPA , _1);
+	m_instr.fn = &CPUExecutor::POPA ;
 	CYCLES(3,3);
 	break;
 }
@@ -658,7 +658,7 @@ case 0x61:
 case 0x62:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::BOUND_rw_md , _1);
+	m_instr.fn = &CPUExecutor::BOUND_rw_md ;
 	//normal cycles are the same as INT
 	CYCLES(7,7);
 	CYCLES_JCOND(9);
@@ -669,7 +669,7 @@ case 0x62:
 case 0x63:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::ARPL_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::ARPL_ew_rw;
 	CYCLES(10,9);
 	break;
 }
@@ -688,8 +688,8 @@ case 0x63:
 /* 68  dw     PUSH dw      3         Push immediate word */
 case 0x68:
 {
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::PUSH_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -698,8 +698,8 @@ case 0x68:
 case 0x69:
 {
 	m_instr.modrm.load();
-	uint16_t imm = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::IMUL_rw_ew_dw, _1, imm);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::IMUL_rw_ew_dw;
 	CYCLES(21,22);
 	break;
 }
@@ -707,8 +707,8 @@ case 0x69:
 /* 6A  db     PUSH db      3         Push immediate sign-extended byte*/
 case 0x6A:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::PUSH_db, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::PUSH_db;
 	CYCLES(3,3);
 	break;
 }
@@ -717,8 +717,8 @@ case 0x6A:
 case 0x6B:
 {
 	m_instr.modrm.load();
-	uint16_t imm = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::IMUL_rw_ew_dw, _1, imm);
+	m_instr.dw1 = int8_t(fetchb());
+	m_instr.fn = &CPUExecutor::IMUL_rw_ew_dw;
 	CYCLES(21,22);
 	break;
 }
@@ -727,7 +727,7 @@ case 0x6B:
 case 0x6C:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::INSB, _1);
+	m_instr.fn = &CPUExecutor::INSB;
 	CYCLES(5,5);
 	m_instr.cycles.base_rep = 4;
 	break;
@@ -737,7 +737,7 @@ case 0x6C:
 case 0x6D:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::INSW, _1);
+	m_instr.fn = &CPUExecutor::INSW;
 	CYCLES(5,5);
 	m_instr.cycles.base_rep = 4;
 	break;
@@ -747,7 +747,7 @@ case 0x6D:
 case 0x6E:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::OUTSB, _1);
+	m_instr.fn = &CPUExecutor::OUTSB;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 4;
 	break;
@@ -757,7 +757,7 @@ case 0x6E:
 case 0x6F:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::OUTSW, _1);
+	m_instr.fn = &CPUExecutor::OUTSW;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 4;
 	break;
@@ -766,8 +766,8 @@ case 0x6F:
 /* 70  cb     JO cb      7,noj=3   Jump short if overflow (OF=1) */
 case 0x70:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JO_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JO_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -776,8 +776,8 @@ case 0x70:
 /* 71  cb     JNO cb     7,noj=3   Jump short if notoverflow (OF=0) */
 case 0x71:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNO_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNO_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -786,8 +786,8 @@ case 0x71:
 /* 72  cb     JC cb      7,noj=3   Jump short if carry (CF=1) */
 case 0x72:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JC_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JC_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -796,8 +796,8 @@ case 0x72:
 /* 73  cb     JNC cb     7,noj=3   Jump short if not carry (CF=0) */
 case 0x73:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNC_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNC_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -806,8 +806,8 @@ case 0x73:
 /* 74  cb     JE cb      7,noj=3   Jump short if equal (ZF=1) */
 case 0x74:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -816,8 +816,8 @@ case 0x74:
 /* 75  cb     JNE cb     7,noj=3   Jump short if not equal (ZF=0) */
 case 0x75:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -826,8 +826,8 @@ case 0x75:
 /* 76  cb     JBE cb     7,noj=3   Jump short if below or equal (CF=1 or ZF=1) */
 case 0x76:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JBE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JBE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -836,8 +836,8 @@ case 0x76:
 /* 77  cb     JA cb      7,noj=3   Jump short if above (CF=0 and ZF=0) */
 case 0x77:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JA_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JA_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -846,8 +846,8 @@ case 0x77:
 /* 78  cb     JS cb      7,noj=3   Jump short if sign (SF=1) */
 case 0x78:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JS_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JS_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -856,8 +856,8 @@ case 0x78:
 /* 79  cb     JNS cb     7,noj=3   Jump short if not sign (SF=0) */
 case 0x79:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNS_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNS_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -866,8 +866,8 @@ case 0x79:
 /* 7A  cb     JPE cb     7,noj=3   Jump short if parity even (PF=1) */
 case 0x7A:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JPE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JPE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -876,8 +876,8 @@ case 0x7A:
 /* 7B  cb     JPO cb     7,noj=3   Jump short if parity odd (PF=0) */
 case 0x7B:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JPO_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JPO_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -886,8 +886,8 @@ case 0x7B:
 /* 7C  cb     JL cb      7,noj=3   Jump short if less (SF/=OF) */
 case 0x7C:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JL_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JL_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -896,8 +896,8 @@ case 0x7C:
 /* 7D  cb     JNL cb     7,noj=3   Jump short if not less (SF=OF) */
 case 0x7D:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNL_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNL_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -906,8 +906,8 @@ case 0x7D:
 /* 7E  cb     JLE cb     7,noj=3   Jump short if less or equal (ZF=1 or SF/=OF) */
 case 0x7E:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JLE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JLE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -916,8 +916,8 @@ case 0x7E:
 /* 7F  cb     JNLE cb    7,noj=3   Jump short if not less/equal (ZF=0 and SF=OF) */
 case 0x7F:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JNLE_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JNLE_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_JCOND(3);
 	break;
@@ -937,38 +937,38 @@ case 0x80:
 case 0x82:
 {
 	m_instr.modrm.load();
-	uint8_t db = fetchb();
+	m_instr.db = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ADD_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::ADD_eb_db;
 			CYCLES(3,5);
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::OR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::OR_eb_db;
 			CYCLES(3,5);
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::ADC_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::ADC_eb_db;
 			CYCLES(3,5);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::SBB_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::SBB_eb_db;
 			CYCLES(3,5);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::AND_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::AND_eb_db;
 			CYCLES(3,5);
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SUB_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::SUB_eb_db;
 			CYCLES(3,5);
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::XOR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::XOR_eb_db;
 			CYCLES(3,5);
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::CMP_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::CMP_eb_db;
 			CYCLES(3,4);
 			break;
 		default:
@@ -990,38 +990,38 @@ case 0x82:
 case 0x81:
 {
 	m_instr.modrm.load();
-	uint16_t dw = fetchw();
+	m_instr.dw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ADD_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::ADD_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::OR_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::OR_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::ADC_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::ADC_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::SBB_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::SBB_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::AND_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::AND_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SUB_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::SUB_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::XOR_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::XOR_ew_dw;
 			CYCLES(3,8);
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::CMP_ew_dw, _1, dw);
+			m_instr.fn = &CPUExecutor::CMP_ew_dw;
 			CYCLES(3,4);
 			break;
 		default:
@@ -1045,38 +1045,38 @@ case 0x81:
 case 0x83:
 {
 	m_instr.modrm.load();
-	uint8_t db = fetchb();
+	m_instr.db = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ADD_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::ADD_ew_db;
 			CYCLES(3,8);
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::OR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::OR_ew_db;
 			CYCLES(3,8);
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::ADC_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::ADC_ew_db;
 			CYCLES(3,8);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::SBB_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::SBB_ew_db;
 			CYCLES(3,8);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::AND_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::AND_ew_db;
 			CYCLES(3,8);
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SUB_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::SUB_ew_db;
 			CYCLES(3,8);
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::XOR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::XOR_ew_db;
 			CYCLES(3,8);
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::CMP_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::CMP_ew_db;
 			CYCLES(3,4);
 			break;
 		default:
@@ -1092,7 +1092,7 @@ case 0x83:
 case 0x84:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::TEST_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::TEST_eb_rb;
 	CYCLES(2,4);
 	break;
 }
@@ -1101,7 +1101,7 @@ case 0x84:
 case 0x85:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::TEST_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::TEST_ew_rw;
 	CYCLES(2,4);
 	break;
 }
@@ -1110,7 +1110,7 @@ case 0x85:
 case 0x86:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XCHG_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::XCHG_eb_rb;
 	CYCLES(3,3);
 	break;
 }
@@ -1119,7 +1119,7 @@ case 0x86:
 case 0x87:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::XCHG_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::XCHG_ew_rw;
 	CYCLES(3,3);
 	break;
 }
@@ -1128,7 +1128,7 @@ case 0x87:
 case 0x88:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_eb_rb, _1);
+	m_instr.fn = &CPUExecutor::MOV_eb_rb;
 	CYCLES(2,3);
 	break;
 }
@@ -1137,7 +1137,7 @@ case 0x88:
 case 0x89:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_ew_rw, _1);
+	m_instr.fn = &CPUExecutor::MOV_ew_rw;
 	CYCLES(2,3);
 	break;
 }
@@ -1146,7 +1146,7 @@ case 0x89:
 case 0x8A:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_rb_eb, _1);
+	m_instr.fn = &CPUExecutor::MOV_rb_eb;
 	CYCLES(2,3);
 	break;
 }
@@ -1155,7 +1155,7 @@ case 0x8A:
 case 0x8B:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_rw_ew, _1);
+	m_instr.fn = &CPUExecutor::MOV_rw_ew;
 	CYCLES(2,3);
 	break;
 }
@@ -1171,16 +1171,16 @@ case 0x8C:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ew_ES, _1);
+			m_instr.fn = &CPUExecutor::MOV_ew_ES;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ew_CS, _1);
+			m_instr.fn = &CPUExecutor::MOV_ew_CS;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ew_SS, _1);
+			m_instr.fn = &CPUExecutor::MOV_ew_SS;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ew_DS, _1);
+			m_instr.fn = &CPUExecutor::MOV_ew_DS;
 			break;
 		default:
 			illegal_opcode();
@@ -1193,7 +1193,7 @@ case 0x8C:
 case 0x8D:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::LEA_rw_m, _1);
+	m_instr.fn = &CPUExecutor::LEA_rw_m;
 	CYCLES(3,3);
 	break;
 }
@@ -1211,13 +1211,13 @@ case 0x8E:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ES_ew, _1);
+			m_instr.fn = &CPUExecutor::MOV_ES_ew;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_SS_ew, _1);
+			m_instr.fn = &CPUExecutor::MOV_SS_ew;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_DS_ew, _1);
+			m_instr.fn = &CPUExecutor::MOV_DS_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -1235,7 +1235,7 @@ case 0x8F:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::POP_mw, _1);
+			m_instr.fn = &CPUExecutor::POP_mw;
 			break;
 		default:
 			illegal_opcode();
@@ -1247,7 +1247,7 @@ case 0x8F:
 /* 90            NOP              3        No OPERATION */
 case 0x90:
 {
-	m_instr.fn = std::bind(&CPUExecutor::NOP, _1);
+	m_instr.fn = &CPUExecutor::NOP;
 	CYCLES(3,3);
 	break;
 }
@@ -1263,7 +1263,7 @@ case 0x96: //SI
 case 0x97: //DI
 {
 	m_instr.reg = _opcode - 0x90;
-	m_instr.fn = std::bind(&CPUExecutor::XCHG_AX_rw, _1);
+	m_instr.fn = &CPUExecutor::XCHG_AX_rw;
 	CYCLES(3,3);
 	break;
 }
@@ -1271,7 +1271,7 @@ case 0x97: //DI
 /* 98       CBW           2        Convert byte into word (AH = top bit of AL) */
 case 0x98:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CBW, _1);
+	m_instr.fn = &CPUExecutor::CBW;
 	CYCLES(2,2);
 	break;
 }
@@ -1279,7 +1279,7 @@ case 0x98:
 /* 99       CWD             2           Convert word to doubleword (DX:AX = AX) */
 case 0x99:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CWD, _1);
+	m_instr.fn = &CPUExecutor::CWD;
 	CYCLES(2,2);
 	break;
 }
@@ -1287,9 +1287,9 @@ case 0x99:
 /* 9A cd     CALL cd       13,pm=26   Call inter-segment, immediate 4-byte address */
 case 0x9A:
 {
-	uint16_t newip = fetchw();
-	uint16_t newcs = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::CALL_cd, _1, newip, newcs);
+	m_instr.dw1 = fetchw();
+	m_instr.dw2 = fetchw();
+	m_instr.fn = &CPUExecutor::CALL_cd;
 	CYCLES(5,5);
 	//for PM mode:
 	// 4 cycles for PQ flush and fill
@@ -1304,7 +1304,7 @@ case 0x9A:
 /* 9B        WAIT           3        Wait until BUSY pin is inactive (HIGH) */
 case 0x9B:
 {
-	m_instr.fn = std::bind(&CPUExecutor::WAIT, _1);
+	m_instr.fn = &CPUExecutor::WAIT;
 	CYCLES(3,3);
 	break;
 }
@@ -1312,7 +1312,7 @@ case 0x9B:
 /* 9C         PUSHF           3          Push flags register */
 case 0x9C:
 {
-	m_instr.fn = std::bind(&CPUExecutor::PUSHF, _1);
+	m_instr.fn = &CPUExecutor::PUSHF;
 	CYCLES(3,3);
 	break;
 }
@@ -1320,7 +1320,7 @@ case 0x9C:
 /* 9D         POPF            5          Pop top of stack into flags register */
 case 0x9D:
 {
-	m_instr.fn = std::bind(&CPUExecutor::POPF , _1);
+	m_instr.fn = &CPUExecutor::POPF ;
 	CYCLES(3,3);
 	break;
 }
@@ -1328,7 +1328,7 @@ case 0x9D:
 /* 9E - SAHF     2      Store AH into flags */
 case 0x9E:
 {
-	m_instr.fn = std::bind(&CPUExecutor::SAHF, _1);
+	m_instr.fn = &CPUExecutor::SAHF;
 	CYCLES(2,2);
 	break;
 }
@@ -1336,7 +1336,7 @@ case 0x9E:
 /* 9F - LAHF     2         Load flags into AH */
 case 0x9F:
 {
-	m_instr.fn = std::bind(&CPUExecutor::LAHF, _1);
+	m_instr.fn = &CPUExecutor::LAHF;
 	CYCLES(2,2);
 	break;
 }
@@ -1344,8 +1344,8 @@ case 0x9F:
 /* A0 dw      MOV AL,xb   5          Move byte variable (offset dw) into AL */
 case 0xA0:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_AL_xb, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::MOV_AL_xb;
 	CYCLES(3,3);
 	break;
 }
@@ -1353,8 +1353,8 @@ case 0xA0:
 /* A1 dw      MOV AX,xw   5         Move word variable (offset dw) into AX */
 case 0xA1:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_AX_xw, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::MOV_AX_xw;
 	CYCLES(3,3);
 	break;
 }
@@ -1362,8 +1362,8 @@ case 0xA1:
 /* A2 dw      MOV xb,AL   3         Move AL into byte variable (offset dw) */
 case 0xA2:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_xb_AL, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::MOV_xb_AL;
 	CYCLES(3,3);
 	break;
 }
@@ -1371,8 +1371,8 @@ case 0xA2:
 /* A3 dw      MOV xw,AX   3         Move AX into word register (offset dw) */
 case 0xA3:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::MOV_xw_AX, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::MOV_xw_AX;
 	CYCLES(3,3);
 	break;
 }
@@ -1381,7 +1381,7 @@ case 0xA3:
 case 0xA4:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::MOVSB, _1);
+	m_instr.fn = &CPUExecutor::MOVSB;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 0;
 	break;
@@ -1391,7 +1391,7 @@ case 0xA4:
 case 0xA5:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::MOVSW, _1);
+	m_instr.fn = &CPUExecutor::MOVSW;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 0;
 	break;
@@ -1402,7 +1402,7 @@ case 0xA6:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = std::bind(&CPUExecutor::CMPSB, _1);
+	m_instr.fn = &CPUExecutor::CMPSB;
 	CYCLES(4,4);
 	m_instr.cycles.base_rep = 5;
 	break;
@@ -1413,7 +1413,7 @@ case 0xA7:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = std::bind(&CPUExecutor::CMPSW, _1);
+	m_instr.fn = &CPUExecutor::CMPSW;
 	CYCLES(4,4);
 	m_instr.cycles.base_rep = 5;
 	break;
@@ -1422,8 +1422,8 @@ case 0xA7:
 /* A8 db      TEST AL,db    3       AND immediate byte into AL for flags only */
 case 0xA8:
 {
-	uint8_t db = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::TEST_AL_db, _1, db);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::TEST_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -1431,8 +1431,8 @@ case 0xA8:
 /* A9 dw      TEST AX,dw    3       AND immediate word into AX for flags only */
 case 0xA9:
 {
-	uint16_t dw = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::TEST_AX_dw, _1, dw);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::TEST_AX_dw;
 	CYCLES(3,3);
 	break;
 }
@@ -1441,7 +1441,7 @@ case 0xA9:
 case 0xAA:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::STOSB, _1);
+	m_instr.fn = &CPUExecutor::STOSB;
 	CYCLES(3,3);
 	m_instr.cycles.rep = 4;
 	m_instr.cycles.base_rep = 0;
@@ -1452,7 +1452,7 @@ case 0xAA:
 case 0xAB:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::STOSW, _1);
+	m_instr.fn = &CPUExecutor::STOSW;
 	CYCLES(3,3);
 	m_instr.cycles.rep = 4;
 	m_instr.cycles.base_rep = 0;
@@ -1463,7 +1463,7 @@ case 0xAB:
 case 0xAC:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::LODSB, _1);
+	m_instr.fn = &CPUExecutor::LODSB;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
 	break;
@@ -1473,7 +1473,7 @@ case 0xAC:
 case 0xAD:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = std::bind(&CPUExecutor::LODSW, _1);
+	m_instr.fn = &CPUExecutor::LODSW;
 	CYCLES(3,3);
 	m_instr.cycles.base_rep = 2;
 	break;
@@ -1484,7 +1484,7 @@ case 0xAE:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = std::bind(&CPUExecutor::SCASB, _1);
+	m_instr.fn = &CPUExecutor::SCASB;
 	CYCLES(5,5);
 	m_instr.cycles.base_rep = 6;
 	break;
@@ -1495,7 +1495,7 @@ case 0xAF:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = std::bind(&CPUExecutor::SCASW, _1);
+	m_instr.fn = &CPUExecutor::SCASW;
 	CYCLES(5,5);
 	m_instr.cycles.base_rep = 6;
 	break;
@@ -1511,9 +1511,9 @@ case 0xB5: //CH
 case 0xB6: //DH
 case 0xB7: //BH
 {
-	uint8_t db = fetchb();
+	m_instr.db = fetchb();
 	m_instr.reg = _opcode - 0xB0;
-	m_instr.fn = std::bind(&CPUExecutor::MOV_rb_db, _1, db);
+	m_instr.fn = &CPUExecutor::MOV_rb_db;
 	CYCLES(2,2);
 	break;
 }
@@ -1528,9 +1528,9 @@ case 0xBD: //BP
 case 0xBE: //SI
 case 0xBF: //DI
 {
-	uint16_t data = fetchw();
+	m_instr.dw1 = fetchw();
 	m_instr.reg = _opcode - 0xB8;
-	m_instr.fn = std::bind(&CPUExecutor::MOV_rw_dw, _1, data);
+	m_instr.fn = &CPUExecutor::MOV_rw_dw;
 	CYCLES(2,2);
 	break;
 }
@@ -1547,29 +1547,29 @@ C0 /7 db  SAR eb,db    5,mem=8   Signed divide EA byte by 2, db times
 case 0xC0: //eb,db
 {
 	m_instr.modrm.load();
-	uint8_t db = fetchb();
+	m_instr.db = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::ROL_eb_db;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::ROR_eb_db;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::RCL_eb_db;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::RCR_eb_db;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::SAL_eb_db;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::SHR_eb_db;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_eb_db, _1, db);
+			m_instr.fn = &CPUExecutor::SAR_eb_db;
 			break;
 		default:
 			illegal_opcode();
@@ -1590,29 +1590,29 @@ C1 /7 db  SAR ew,db    5,mem=8   Signed divide EA word by 2, db times
 case 0xC1:
 {
 	m_instr.modrm.load();
-	uint8_t db = fetchb();
+	m_instr.db = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::ROL_ew_db;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::ROR_ew_db;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::RCL_ew_db;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::RCR_ew_db;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::SAL_ew_db;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::SHR_ew_db;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_ew_db, _1, db);
+			m_instr.fn = &CPUExecutor::SAR_ew_db;
 			break;
 		default:
 			illegal_opcode();
@@ -1624,8 +1624,8 @@ case 0xC1:
 /* C2 dw   RET dw       11    RET (near), same privilege, pop dw bytes pushed before Call*/
 case 0xC2:
 {
-	uint16_t popbytes = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::RET_near, _1, popbytes);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::RET_near;
 	CYCLES(7,7);
 	break;
 }
@@ -1633,7 +1633,8 @@ case 0xC2:
 /* C3      RET          11         Return to near caller, same privilege */
 case 0xC3:
 {
-	m_instr.fn = std::bind(&CPUExecutor::RET_near, _1, 0);
+	m_instr.dw1 = 0;
+	m_instr.fn = &CPUExecutor::RET_near;
 	CYCLES(7,7);
 	break;
 }
@@ -1642,7 +1643,7 @@ case 0xC3:
 case 0xC4:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::LES_rw_ed, _1);
+	m_instr.fn = &CPUExecutor::LES_rw_ed;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}
@@ -1658,7 +1659,7 @@ case 0xC4:
 case 0xC5:
 {
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::LDS_rw_ed, _1);
+	m_instr.fn = &CPUExecutor::LDS_rw_ed;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}
@@ -1671,10 +1672,10 @@ case 0xC5:
 case 0xC6:
 {
 	m_instr.modrm.load();
-	uint8_t data = fetchb();
+	m_instr.db = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_eb_db, _1, data);
+			m_instr.fn = &CPUExecutor::MOV_eb_db;
 			break;
 		default:
 			illegal_opcode();
@@ -1688,10 +1689,10 @@ case 0xC6:
 case 0xC7:
 {
 	m_instr.modrm.load();
-	uint16_t data = fetchw();
+	m_instr.dw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::MOV_ew_dw, _1, data);
+			m_instr.fn = &CPUExecutor::MOV_ew_dw;
 			break;
 		default:
 			illegal_opcode();
@@ -1708,9 +1709,9 @@ C8 dw db   ENTER dw,db    12+4db   Make stack frame for procedure parameters
 */
 case 0xC8:
 {
-	uint16_t bytes = fetchw();
-	uint8_t level = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::ENTER, _1, bytes, level);
+	m_instr.dw1 = fetchw();
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::ENTER;
 	CYCLES(12,12);
 	break;
 }
@@ -1718,7 +1719,7 @@ case 0xC8:
 /* C9         LEAVE                5             Set SP to BP, then POP BP */
 case 0xC9:
 {
-	m_instr.fn = std::bind(&CPUExecutor::LEAVE, _1);
+	m_instr.fn = &CPUExecutor::LEAVE;
 	CYCLES(3,3);
 	break;
 }
@@ -1729,8 +1730,8 @@ CA dw   RET dw       55         RET (far), lesser privilege, pop dw bytes
 */
 case 0xCA:
 {
-	uint16_t popbytes = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::RET_far, _1, popbytes);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::RET_far;
 	CYCLES(11,11);
 	//TODO consider the lesser provilege case?
 	CYCLES_PM(7);
@@ -1743,7 +1744,8 @@ CB      RET          55         Return, lesser privilege, switch stacks
 */
 case 0xCB:
 {
-	m_instr.fn = std::bind(&CPUExecutor::RET_far, _1, 0);
+	m_instr.dw1 = 0;
+	m_instr.fn = &CPUExecutor::RET_far;
 	CYCLES(11,11);
 	//TODO consider the lesser provilege case
 	CYCLES_PM(7);
@@ -1758,7 +1760,7 @@ CC      INT 3         167        Interrupt 3, protected mode, via task gate
 */
 case 0xCC:
 {
-	m_instr.fn = std::bind(&CPUExecutor::INT3, _1);
+	m_instr.fn = &CPUExecutor::INT3;
 	CYCLES(13,13);
 	CYCLES_PM(7);
 	break;
@@ -1772,8 +1774,8 @@ CD db   INT db        167        Interrupt, protected mode, via task gate
 */
 case 0xCD:
 {
-	uint8_t vector = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::INT_db, _1, vector);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::INT_db;
 	CYCLES(13,13);
 	CYCLES_PM(7);
 	break;
@@ -1782,7 +1784,7 @@ case 0xCD:
 /* CE      INTO          24,noj=3 */
 case 0xCE:
 {
-	m_instr.fn = std::bind(&CPUExecutor::INTO, _1);
+	m_instr.fn = &CPUExecutor::INTO;
 	break;
 }
 
@@ -1793,7 +1795,7 @@ CF        IRET       169        Interrupt return, different task (NT=1)
 */
 case 0xCF:
 {
-	m_instr.fn = std::bind(&CPUExecutor::IRET, _1);
+	m_instr.fn = &CPUExecutor::IRET;
 	CYCLES(11,11);
 	CYCLES_PM(7);
 	break;
@@ -1814,26 +1816,26 @@ case 0xD0:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_eb_1, _1);
+			m_instr.fn = &CPUExecutor::ROL_eb_1;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_eb_1, _1);
+			m_instr.fn = &CPUExecutor::ROR_eb_1;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_eb_1, _1);
+			m_instr.fn = &CPUExecutor::RCL_eb_1;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_eb_1, _1);
+			m_instr.fn = &CPUExecutor::RCR_eb_1;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_eb_1, _1);
+			m_instr.fn = &CPUExecutor::SAL_eb_1;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_eb_1, _1);
+			m_instr.fn = &CPUExecutor::SHR_eb_1;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_eb_1, _1);
+			m_instr.fn = &CPUExecutor::SAR_eb_1;
 			break;
 		default:
 			illegal_opcode();
@@ -1857,26 +1859,26 @@ case 0xD1:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_ew_1, _1);
+			m_instr.fn = &CPUExecutor::ROL_ew_1;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_ew_1, _1);
+			m_instr.fn = &CPUExecutor::ROR_ew_1;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_ew_1, _1);
+			m_instr.fn = &CPUExecutor::RCL_ew_1;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_ew_1, _1);
+			m_instr.fn = &CPUExecutor::RCR_ew_1;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_ew_1, _1);
+			m_instr.fn = &CPUExecutor::SAL_ew_1;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_ew_1, _1);
+			m_instr.fn = &CPUExecutor::SHR_ew_1;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_ew_1, _1);
+			m_instr.fn = &CPUExecutor::SAR_ew_1;
 			break;
 		default:
 			illegal_opcode();
@@ -1900,26 +1902,26 @@ case 0xD2:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::ROL_eb_CL;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::ROR_eb_CL;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::RCL_eb_CL;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::RCR_eb_CL;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::SAL_eb_CL;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::SHR_eb_CL;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_eb_CL, _1);
+			m_instr.fn = &CPUExecutor::SAR_eb_CL;
 			break;
 		default:
 			illegal_opcode();
@@ -1942,26 +1944,26 @@ case 0xD3:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::ROL_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::ROL_ew_CL;
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::ROR_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::ROR_ew_CL;
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::RCL_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::RCL_ew_CL;
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::RCR_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::RCR_ew_CL;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = std::bind(&CPUExecutor::SAL_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::SAL_ew_CL;
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::SHR_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::SHR_ew_CL;
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::SAR_ew_CL, _1);
+			m_instr.fn = &CPUExecutor::SAR_ew_CL;
 			break;
 		default:
 			illegal_opcode();
@@ -1973,8 +1975,8 @@ case 0xD3:
 /* D4 db      AAM             16          ASCII adjust AX after multiply */
 case 0xD4:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::AAM, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::AAM;
 	CYCLES(16,16);
 	break;
 }
@@ -1982,8 +1984,8 @@ case 0xD4:
 /* D5 db      AAD             14          ASCII adjust AX before division */
 case 0xD5:
 {
-	uint8_t imm = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::AAD, _1, imm);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::AAD;
 	CYCLES(14,14);
 	break;
 }
@@ -1991,7 +1993,7 @@ case 0xD5:
 /* D6 SALC ?? Set AL If Carry */
 case 0xD6:
 {
-	m_instr.fn = std::bind(&CPUExecutor::SALC, _1);
+	m_instr.fn = &CPUExecutor::SALC;
 	CYCLES(1,1);
 	break;
 }
@@ -1999,7 +2001,7 @@ case 0xD6:
 /* D7        XLATB        5        Set AL to memory byte DS:[BX + unsigned AL] */
 case 0xD7:
 {
-	m_instr.fn = std::bind(&CPUExecutor::XLATB, _1);
+	m_instr.fn = &CPUExecutor::XLATB;
 	CYCLES(3,3);
 	break;
 }
@@ -2016,7 +2018,7 @@ case 0xDF:
 {
 	//TODO fpu support?
 	m_instr.modrm.load();
-	m_instr.fn = std::bind(&CPUExecutor::FPU_ESC, _1);
+	m_instr.fn = &CPUExecutor::FPU_ESC;
 	CYCLES(1,1);
 	break;
 }
@@ -2024,8 +2026,8 @@ case 0xDF:
 /* E0 cb    LOOPNZ cb     8,noj=4  DEC CX; jump short if CX<>0 and ZF=0 */
 case 0xE0:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::LOOPNZ, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::LOOPNZ;
 	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
@@ -2034,8 +2036,8 @@ case 0xE0:
 /* E1 cb    LOOPZ cb      8,noj=4  DEC CX; jump short if CX<>0 and zero (ZF=1) */
 case 0xE1:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::LOOPZ, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::LOOPZ;
 	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
@@ -2044,8 +2046,8 @@ case 0xE1:
 /* E2 cb    LOOP cb       8,noj=4  DEC CX; jump short if CX<>0 */
 case 0xE2:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::LOOP, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::LOOP;
 	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
@@ -2054,8 +2056,8 @@ case 0xE2:
 /* E3  cb     JCXZ cb    8,noj=4   Jump short if CX register is zero */
 case 0xE3:
 {
-	int8_t disp = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JCXZ_cb, _1, disp);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JCXZ_cb;
 	CYCLES(LOOP_CYCLES,LOOP_CYCLES);
 	CYCLES_JCOND(4);
 	break;
@@ -2064,8 +2066,8 @@ case 0xE3:
 /* E4 db     IN AL,db       5         Input byte from immediate port into AL */
 case 0xE4:
 {
-	uint8_t port = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::IN_AL_db, _1, port);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::IN_AL_db;
 	CYCLES(3,3);
 	break;
 }
@@ -2073,8 +2075,8 @@ case 0xE4:
 /* E5 db     IN AX,db       5         Input word from immediate port into AX */
 case 0xE5:
 {
-	uint8_t port = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::IN_AX_db, _1, port);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::IN_AX_db;
 	CYCLES(3,3);
 	break;
 }
@@ -2082,8 +2084,8 @@ case 0xE5:
 /* E6 db    OUT db,AL     3         Output byte AL to immediate port number db */
 case 0xE6:
 {
-	uint8_t port = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::OUT_db_AL, _1, port);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::OUT_db_AL;
 	CYCLES(3,3);
 	break;
 }
@@ -2091,8 +2093,8 @@ case 0xE6:
 /* E7 db    OUT db,AX     3         Output word AX to immediate port number db */
 case 0xE7:
 {
-	uint8_t port = fetchb();
-	m_instr.fn = std::bind(&CPUExecutor::OUT_db_AX, _1, port);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::OUT_db_AX;
 	CYCLES(3,3);
 	break;
 }
@@ -2100,8 +2102,8 @@ case 0xE7:
 /* E8 cw    CALL cw       7         Call near, offset relative to next instruction */
 case 0xE8:
 {
-	uint16_t offset = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::CALL_cw, _1, offset);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::CALL_cw;
 	//TODO
 	//are the cycles given in the intel docs inclusive of the time needed
 	//to replenish the prefetch queue?
@@ -2112,8 +2114,8 @@ case 0xE8:
 /* E9 cw   JMP cw   7   Jump near */
 case 0xE9:
 {
-	uint16_t offset = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::JMP_cw, _1, offset);
+	m_instr.dw1 = fetchw();
+	m_instr.fn = &CPUExecutor::JMP_cw;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	break;
 }
@@ -2121,9 +2123,9 @@ case 0xE9:
 /* EA cd   JMP cd   Jump far/task/call/tss */
 case 0xEA:
 {
-	uint16_t offset = fetchw();
-	uint16_t selector = fetchw();
-	m_instr.fn = std::bind(&CPUExecutor::JMP_cd, _1, selector, offset);
+	m_instr.dw1 = fetchw();
+	m_instr.dw2 = fetchw();
+	m_instr.fn = &CPUExecutor::JMP_cd;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	CYCLES_PM(6);
 	break;
@@ -2132,8 +2134,8 @@ case 0xEA:
 /* EB   cb     JMP cb         7            Jump short */
 case 0xEB:
 {
-	int8_t offset = int8_t(fetchb());
-	m_instr.fn = std::bind(&CPUExecutor::JMP_cb, _1, offset);
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::JMP_cb;
 	CYCLES(JUMP_CYCLES,JUMP_CYCLES);
 	break;
 }
@@ -2141,7 +2143,7 @@ case 0xEB:
 /* EC        IN AL,DX       5         Input byte from port DX into AL */
 case 0xEC:
 {
-	m_instr.fn = std::bind(&CPUExecutor::IN_AL_DX, _1);
+	m_instr.fn = &CPUExecutor::IN_AL_DX;
 	CYCLES(5,5);
 	break;
 }
@@ -2149,7 +2151,7 @@ case 0xEC:
 /* ED        IN AX,DX       5         Input word from port DX into AX */
 case 0xED:
 {
-	m_instr.fn = std::bind(&CPUExecutor::IN_AX_DX, _1);
+	m_instr.fn = &CPUExecutor::IN_AX_DX;
 	CYCLES(5,5);
 	break;
 }
@@ -2157,7 +2159,7 @@ case 0xED:
 /* EE       OUT DX,AL     3         Output byte AL to port number DX */
 case 0xEE:
 {
-	m_instr.fn = std::bind(&CPUExecutor::OUT_DX_AL, _1);
+	m_instr.fn = &CPUExecutor::OUT_DX_AL;
 	CYCLES(3,3);
 	break;
 }
@@ -2165,7 +2167,7 @@ case 0xEE:
 /* EF       OUT DX,AX     3         Output word AX to port number DX */
 case 0xEF:
 {
-	m_instr.fn = std::bind(&CPUExecutor::OUT_DX_AX, _1);
+	m_instr.fn = &CPUExecutor::OUT_DX_AX;
 	CYCLES(3,3);
 	break;
 }
@@ -2181,7 +2183,7 @@ case 0xEF:
 /* F4        HLT            2         Halt */
 case 0xF4:
 {
-	m_instr.fn = std::bind(&CPUExecutor::HLT, _1);
+	m_instr.fn = &CPUExecutor::HLT;
 	CYCLES(2,2);
 	break;
 }
@@ -2189,7 +2191,7 @@ case 0xF4:
 /* F5         CMC            2          Complement carry flag */
 case 0xF5:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CMC, _1);
+	m_instr.fn = &CPUExecutor::CMC;
 	CYCLES(2,2);
 	break;
 }
@@ -2210,33 +2212,33 @@ case 0xF6:
 		case 0:
 		case 1: // 1: undocumented alias
 		{
-			uint8_t db = fetchb();
-			m_instr.fn = std::bind(&CPUExecutor::TEST_eb_db, _1, db);
+			m_instr.db = fetchb();
+			m_instr.fn = &CPUExecutor::TEST_eb_db;
 			CYCLES(3,4);
 			break;
 		}
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::NOT_eb, _1);
+			m_instr.fn = &CPUExecutor::NOT_eb;
 			CYCLES(2,5);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::NEG_eb, _1);
+			m_instr.fn = &CPUExecutor::NEG_eb;
 			CYCLES(2,5);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::MUL_eb, _1);
+			m_instr.fn = &CPUExecutor::MUL_eb;
 			CYCLES(13,14);
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::IMUL_eb, _1);
+			m_instr.fn = &CPUExecutor::IMUL_eb;
 			CYCLES(13,14);
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::DIV_eb, _1);
+			m_instr.fn = &CPUExecutor::DIV_eb;
 			CYCLES(14,15);
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::IDIV_eb, _1);
+			m_instr.fn = &CPUExecutor::IDIV_eb;
 			CYCLES(17,18);
 			break;
 		default:
@@ -2261,33 +2263,33 @@ case 0xF7:
 		case 0:
 		case 1: // 1: undocumented alias
 		{
-			uint16_t dw = fetchw();
-			m_instr.fn = std::bind(&CPUExecutor::TEST_ew_dw, _1, dw);
+			m_instr.dw1 = fetchw();
+			m_instr.fn = &CPUExecutor::TEST_ew_dw;
 			CYCLES(3,4);
 			break;
 		}
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::NOT_ew, _1);
+			m_instr.fn = &CPUExecutor::NOT_ew;
 			CYCLES(2,8);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::NEG_ew, _1);
+			m_instr.fn = &CPUExecutor::NEG_ew;
 			CYCLES(2,8);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::MUL_ew, _1);
+			m_instr.fn = &CPUExecutor::MUL_ew;
 			CYCLES(21,22);
 			break;
 		case 5:
-			m_instr.fn = std::bind(&CPUExecutor::IMUL_ew, _1);
+			m_instr.fn = &CPUExecutor::IMUL_ew;
 			CYCLES(21,22);
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::DIV_ew, _1);
+			m_instr.fn = &CPUExecutor::DIV_ew;
 			CYCLES(22,23);
 			break;
 		case 7:
-			m_instr.fn = std::bind(&CPUExecutor::IDIV_ew, _1);
+			m_instr.fn = &CPUExecutor::IDIV_ew;
 			CYCLES(25,26);
 			break;
 		default:
@@ -2299,7 +2301,7 @@ case 0xF7:
 /* F8         CLC             2           Clear carry flag */
 case 0xF8:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CLC, _1);
+	m_instr.fn = &CPUExecutor::CLC;
 	CYCLES(2,2);
 	break;
 }
@@ -2307,7 +2309,7 @@ case 0xF8:
 /* F9         STC              2           Set carry flag */
 case 0xF9:
 {
-	m_instr.fn = std::bind(&CPUExecutor::STC, _1);
+	m_instr.fn = &CPUExecutor::STC;
 	CYCLES(2,2);
 	break;
 }
@@ -2315,7 +2317,7 @@ case 0xF9:
 /* FA      CLI          3       Clear interrupt flag; interrupts disabled */
 case 0xFA:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CLI, _1);
+	m_instr.fn = &CPUExecutor::CLI;
 	CYCLES(3,3);
 	break;
 }
@@ -2323,7 +2325,7 @@ case 0xFA:
 /* FB        STI        2      Set interrupt enable flag, interrupts enabled */
 case 0xFB:
 {
-	m_instr.fn = std::bind(&CPUExecutor::STI, _1);
+	m_instr.fn = &CPUExecutor::STI;
 	CYCLES(2,2);
 	break;
 }
@@ -2331,7 +2333,7 @@ case 0xFB:
 /* FC      CLD          2       Clear direction flag, SI and DI will increment */
 case 0xFC:
 {
-	m_instr.fn = std::bind(&CPUExecutor::CLD, _1);
+	m_instr.fn = &CPUExecutor::CLD;
 	CYCLES(2,2);
 	break;
 }
@@ -2339,7 +2341,7 @@ case 0xFC:
 /* FD       STD         2        Set direction flag so SI and DI will decrement */
 case 0xFD:
 {
-	m_instr.fn = std::bind(&CPUExecutor::STD, _1);
+	m_instr.fn = &CPUExecutor::STD;
 	CYCLES(2,2);
 	break;
 }
@@ -2353,11 +2355,11 @@ case 0xFE:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::INC_eb, _1);
+			m_instr.fn = &CPUExecutor::INC_eb;
 			CYCLES(2,5);
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::DEC_eb, _1);
+			m_instr.fn = &CPUExecutor::DEC_eb;
 			CYCLES(2,5);
 			break;
 		default:
@@ -2389,24 +2391,24 @@ case 0xFF:
 	m_instr.modrm.load();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = std::bind(&CPUExecutor::INC_ew, _1);
+			m_instr.fn = &CPUExecutor::INC_ew;
 			CYCLES(2,8);
 			break;
 		case 1:
-			m_instr.fn = std::bind(&CPUExecutor::DEC_ew, _1);
+			m_instr.fn = &CPUExecutor::DEC_ew;
 			CYCLES(2,8);
 			break;
 		case 2:
-			m_instr.fn = std::bind(&CPUExecutor::CALL_ew, _1);
+			m_instr.fn = &CPUExecutor::CALL_ew;
 			CYCLES(1,3);
 			break;
 		case 3:
-			m_instr.fn = std::bind(&CPUExecutor::CALL_ed, _1);
+			m_instr.fn = &CPUExecutor::CALL_ed;
 			CYCLES(3,5);
 			CYCLES_PM(7);
 			break;
 		case 4:
-			m_instr.fn = std::bind(&CPUExecutor::JMP_ew, _1);
+			m_instr.fn = &CPUExecutor::JMP_ew;
 			CYCLES(JUMP_CYCLES,JUMP_CYCLES+2);
 			break;
 		case 5:
@@ -2416,10 +2418,10 @@ case 0xFF:
 				illegal_opcode();
 				break;
 			}
-			m_instr.fn = std::bind(&CPUExecutor::JMP_ed, _1);
+			m_instr.fn = &CPUExecutor::JMP_ed;
 			break;
 		case 6:
-			m_instr.fn = std::bind(&CPUExecutor::PUSH_mw, _1);
+			m_instr.fn = &CPUExecutor::PUSH_mw;
 			CYCLES(5,5);
 			break;
 		default:

@@ -128,6 +128,8 @@ private:
 	uint8_t AND_b(uint8_t op1, uint8_t op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 
+	void CALL_cd(uint16_t newip, uint16_t newcs);
+
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
 
@@ -192,47 +194,47 @@ public:
 	void register_INT_trap(uint8_t _lo_vec, uint8_t _hi_vec, inttrap_fun_t _fn);
 
 	void AAA();
-	void AAD(uint8_t imm);
-	void AAM(uint8_t imm);
+	void AAD();
+	void AAM();
 	void AAS();
 
 	void ADC_eb_rb();
 	void ADC_ew_rw();
 	void ADC_rb_eb();
 	void ADC_rw_ew();
-	void ADC_AL_db(uint8_t imm);
-	void ADC_AX_dw(uint16_t imm);
-	void ADC_eb_db(uint8_t imm);
-	void ADC_ew_dw(uint16_t imm);
-	void ADC_ew_db(uint8_t imm);
+	void ADC_AL_db();
+	void ADC_AX_dw();
+	void ADC_eb_db();
+	void ADC_ew_dw();
+	void ADC_ew_db();
 
 	void ADD_eb_rb();
 	void ADD_ew_rw();
 	void ADD_rb_eb();
 	void ADD_rw_ew();
-	void ADD_AL_db(uint8_t imm);
-	void ADD_AX_dw(uint16_t imm);
-	void ADD_eb_db(uint8_t imm);
-	void ADD_ew_dw(uint16_t imm);
-	void ADD_ew_db(uint8_t imm);
+	void ADD_AL_db();
+	void ADD_AX_dw();
+	void ADD_eb_db();
+	void ADD_ew_dw();
+	void ADD_ew_db();
 
 	void AND_eb_rb();
 	void AND_ew_rw();
 	void AND_rb_eb();
 	void AND_rw_ew();
-	void AND_AL_db(uint8_t imm);
-	void AND_AX_dw(uint16_t imm);
-	void AND_eb_db(uint8_t imm);
-	void AND_ew_dw(uint16_t imm);
-	void AND_ew_db(uint8_t imm);
+	void AND_AL_db();
+	void AND_AX_dw();
+	void AND_eb_db();
+	void AND_ew_dw();
+	void AND_ew_db();
 
 	void ARPL_ew_rw();
 
 	void BOUND_rw_md();
 
-	void CALL_cw(uint16_t offset);
+	void CALL_cw();
 	void CALL_ew();
-	void CALL_cd(uint16_t newip, uint16_t newcs);
+	void CALL_cd();
 	void CALL_ed();
 
 	void CBW();
@@ -246,12 +248,12 @@ public:
 
 	void CWD();
 
-	void CMP_AL_db(uint8_t imm);
-	void CMP_AX_dw(uint16_t imm);
-	void CMP_eb_db(uint8_t imm);
+	void CMP_AL_db();
+	void CMP_AX_dw();
+	void CMP_eb_db();
 	void CMP_eb_rb();
-	void CMP_ew_db(uint8_t imm);
-	void CMP_ew_dw(uint16_t imm);
+	void CMP_ew_db();
+	void CMP_ew_dw();
 	void CMP_ew_rw();
 	void CMP_rb_eb();
 	void CMP_rw_ew();
@@ -268,7 +270,7 @@ public:
 	void DEC_ew();
 	void DEC_rw();
 
-	void ENTER(uint16_t bytes, uint8_t level);
+	void ENTER();
 
 	void FPU_ESC();
 
@@ -278,11 +280,11 @@ public:
 	void IDIV_ew();
 	void IMUL_eb();
 	void IMUL_ew();
-	void IMUL_rw_ew_dw(uint16_t imm);
+	void IMUL_rw_ew_dw();
 
-	void IN_AL_db(uint8_t port);
+	void IN_AL_db();
 	void IN_AL_DX();
-	void IN_AX_db(uint8_t port);
+	void IN_AX_db();
 	void IN_AX_DX();
 
 	void INC_eb();
@@ -293,34 +295,34 @@ public:
 	void INSW();
 
 	void INT3();
-	void INT_db(uint8_t vector);
+	void INT_db();
 	void INTO();
 
 	void IRET();
 
-	void JA_cb(int8_t disp);
-	void JBE_cb(int8_t disp);
-	void JC_cb(int8_t disp);
-	void JNC_cb(int8_t disp);
-	void JE_cb(int8_t disp);
-	void JNE_cb(int8_t disp);
-	void JO_cb(int8_t disp);
-	void JNO_cb(int8_t disp);
-	void JPE_cb(int8_t disp);
-	void JPO_cb(int8_t disp);
-	void JS_cb(int8_t disp);
-	void JNS_cb(int8_t disp);
-	void JL_cb(int8_t disp);
-	void JNL_cb(int8_t disp);
-	void JLE_cb(int8_t disp);
-	void JNLE_cb(int8_t disp);
-	void JCXZ_cb(int8_t disp);
+	void JA_cb();
+	void JBE_cb();
+	void JC_cb();
+	void JNC_cb();
+	void JE_cb();
+	void JNE_cb();
+	void JO_cb();
+	void JNO_cb();
+	void JPE_cb();
+	void JPO_cb();
+	void JS_cb();
+	void JNS_cb();
+	void JL_cb();
+	void JNL_cb();
+	void JLE_cb();
+	void JNLE_cb();
+	void JCXZ_cb();
 
 	void JMP_ew();
 	void JMP_ed();
-	void JMP_cb(int8_t disp);
-	void JMP_cw(uint16_t offset);
-	void JMP_cd(uint16_t newcs, uint16_t newip);
+	void JMP_cb();
+	void JMP_cw();
+	void JMP_cd();
 
 	void LAHF();
 	void LAR_rw_ew();
@@ -336,9 +338,9 @@ public:
 	void LODSB();
 	void LODSW();
 
-	void LOOP(int8_t disp);
-	void LOOPZ(int8_t disp);
-	void LOOPNZ(int8_t disp);
+	void LOOP();
+	void LOOPZ();
+	void LOOPNZ();
 
 	void LSL_rw_ew();
 
@@ -355,14 +357,14 @@ public:
 	void MOV_ES_ew();
 	void MOV_SS_ew();
 	void MOV_DS_ew();
-	void MOV_AL_xb(uint16_t offset);
-	void MOV_AX_xw(uint16_t offset);
-	void MOV_xb_AL(uint16_t offset);
-	void MOV_xw_AX(uint16_t offset);
-	void MOV_rb_db(uint8_t data);
-	void MOV_rw_dw(uint16_t data);
-	void MOV_eb_db(uint8_t data);
-	void MOV_ew_dw(uint16_t data);
+	void MOV_AL_xb();
+	void MOV_AX_xw();
+	void MOV_xb_AL();
+	void MOV_xw_AX();
+	void MOV_rb_db();
+	void MOV_rw_dw();
+	void MOV_eb_db();
+	void MOV_ew_dw();
 	void MOVSB();
 	void MOVSW();
 
@@ -381,14 +383,14 @@ public:
 	void OR_ew_rw();
 	void OR_rb_eb();
 	void OR_rw_ew();
-	void OR_AL_db(uint8_t imm);
-	void OR_AX_dw(uint16_t imm);
-	void OR_eb_db(uint8_t imm);
-	void OR_ew_dw(uint16_t imm);
-	void OR_ew_db(uint8_t imm);
+	void OR_AL_db();
+	void OR_AX_dw();
+	void OR_eb_db();
+	void OR_ew_dw();
+	void OR_ew_db();
 
-	void OUT_db_AL(uint8_t port);
-	void OUT_db_AX(uint8_t port);
+	void OUT_db_AL();
+	void OUT_db_AX();
 	void OUT_DX_AL();
 	void OUT_DX_AX();
 
@@ -409,53 +411,53 @@ public:
 	void PUSH_DS();
 	void PUSH_rw();
 	void PUSH_mw();
-	void PUSH_dw(uint16_t imm);
-	void PUSH_db(uint8_t imm);
+	void PUSH_dw();
+	void PUSH_db();
 	void PUSHA();
 	void PUSHF();
 
-	void ROL_eb_db(uint8_t db);
-	void ROL_ew_db(uint8_t db);
+	void ROL_eb_db();
+	void ROL_ew_db();
 	void ROL_eb_1();
 	void ROL_ew_1();
 	void ROL_eb_CL();
 	void ROL_ew_CL();
-	void ROR_eb_db(uint8_t db);
-	void ROR_ew_db(uint8_t db);
+	void ROR_eb_db();
+	void ROR_ew_db();
 	void ROR_eb_1();
 	void ROR_ew_1();
 	void ROR_eb_CL();
 	void ROR_ew_CL();
-	void RCL_eb_db(uint8_t db);
-	void RCL_ew_db(uint8_t db);
+	void RCL_eb_db();
+	void RCL_ew_db();
 	void RCL_eb_1();
 	void RCL_ew_1();
 	void RCL_eb_CL();
 	void RCL_ew_CL();
-	void RCR_eb_db(uint8_t db);
-	void RCR_ew_db(uint8_t db);
+	void RCR_eb_db();
+	void RCR_ew_db();
 	void RCR_eb_1();
 	void RCR_ew_1();
 	void RCR_eb_CL();
 	void RCR_ew_CL();
 
-	void RET_near(uint16_t popbytes);
-	void RET_far(uint16_t popbytes);
+	void RET_near();
+	void RET_far();
 
-	void SAL_eb_db(uint8_t db);
-	void SAL_ew_db(uint8_t db);
+	void SAL_eb_db();
+	void SAL_ew_db();
 	void SAL_eb_1();
 	void SAL_ew_1();
 	void SAL_eb_CL();
 	void SAL_ew_CL();
-	void SHR_eb_db(uint8_t db);
-	void SHR_ew_db(uint8_t db);
+	void SHR_eb_db();
+	void SHR_ew_db();
 	void SHR_eb_1();
 	void SHR_ew_1();
 	void SHR_eb_CL();
 	void SHR_ew_CL();
-	void SAR_eb_db(uint8_t db);
-	void SAR_ew_db(uint8_t db);
+	void SAR_eb_db();
+	void SAR_ew_db();
 	void SAR_eb_1();
 	void SAR_ew_1();
 	void SAR_eb_CL();
@@ -468,11 +470,11 @@ public:
 	void SBB_ew_rw();
 	void SBB_rb_eb();
 	void SBB_rw_ew();
-	void SBB_AL_db(uint8_t db);
-	void SBB_AX_dw(uint16_t dw);
-	void SBB_eb_db(uint8_t db);
-	void SBB_ew_dw(uint16_t dw);
-	void SBB_ew_db(uint8_t db);
+	void SBB_AL_db();
+	void SBB_AX_dw();
+	void SBB_eb_db();
+	void SBB_ew_dw();
+	void SBB_ew_db();
 
 	void SCASB();
 	void SCASW();
@@ -496,18 +498,18 @@ public:
 	void SUB_ew_rw();
 	void SUB_rb_eb();
 	void SUB_rw_ew();
-	void SUB_AL_db(uint8_t db);
-	void SUB_AX_dw(uint16_t dw);
-	void SUB_eb_db(uint8_t db);
-	void SUB_ew_dw(uint16_t dw);
-	void SUB_ew_db(uint8_t db);
+	void SUB_AL_db();
+	void SUB_AX_dw();
+	void SUB_eb_db();
+	void SUB_ew_dw();
+	void SUB_ew_db();
 
 	void TEST_eb_rb();
 	void TEST_ew_rw();
-	void TEST_AL_db(uint8_t db);
-	void TEST_AX_dw(uint16_t dw);
-	void TEST_eb_db(uint8_t db);
-	void TEST_ew_dw(uint16_t dw);
+	void TEST_AL_db();
+	void TEST_AX_dw();
+	void TEST_eb_db();
+	void TEST_ew_dw();
 
 	void VERR_ew();
 	void VERW_ew();
@@ -522,13 +524,13 @@ public:
 
 	void XOR_rb_eb();
 	void XOR_eb_rb();
-	void XOR_AL_db(uint8_t db);
+	void XOR_AL_db();
 	void XOR_rw_ew();
 	void XOR_ew_rw();
-	void XOR_AX_dw(uint16_t dw);
-	void XOR_eb_db(uint8_t db);
-	void XOR_ew_dw(uint16_t dw);
-	void XOR_ew_db(uint8_t db);
+	void XOR_AX_dw();
+	void XOR_eb_db();
+	void XOR_ew_dw();
+	void XOR_ew_db();
 };
 
 #endif

@@ -55,12 +55,14 @@ struct ModRM
 	inline bool mod_is_reg() { return mod == 3; }
 };
 
-typedef std::function<void(CPUExecutor&)> CPUExecutor_fun_t;
+typedef void (CPUExecutor::*CPUExecutor_fun)();
 
 struct Instruction
 {
 	bool valid;     //!< true if valid
-	CPUExecutor_fun_t fn; //!< executor function
+	CPUExecutor_fun fn; //!< executor function
+	uint8_t db;       //!< byte function arg
+	uint16_t dw1,dw2; //!< word function args
 	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
 	uint8_t seg;    //!< index of the segment override
 	ModRM modrm;    //!< the ModRM
