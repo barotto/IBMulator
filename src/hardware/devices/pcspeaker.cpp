@@ -283,7 +283,11 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool, bool)
 	}
 
 	// rate conversion from 1.193MHz to current speaker rate
-	int missing = m_pitbuf.convert_rate(m_outbuf, m_pitbuf.frames(), m_SRC);
+	unsigned missing = m_pitbuf.convert_rate(m_outbuf, m_pitbuf.frames(), m_SRC);
+	if(m_last_time == 0 && missing > 0) {
+		m_channel->in().hold_frames<float>(missing);
+		missing = 0;
+	}
 	m_channel->in().add_frames(m_outbuf);
 	m_channel->input_finish();
 

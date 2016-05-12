@@ -310,7 +310,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
-";    rate: Sample rate. Best quality with 22050.\n"
+";    rate: Sample rate. Best results with 11025 or 22050.\n"
 ";          Possible values: 48000, 44100, 32000, 22050, 11025, 8000.\n"
 ";  volume: Audio volume.\n"
 		},

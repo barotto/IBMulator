@@ -99,7 +99,7 @@ void MixerChannel::reset_SRC()
 	if(m_SRC_state == nullptr) {
 		const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
 		int err;
-		m_SRC_state = src_new(SRC_SINC_FASTEST, spec.channels, &err);
+		m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, spec.channels, &err);
 		if(m_SRC_state == nullptr) {
 			PERRF(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
 		}

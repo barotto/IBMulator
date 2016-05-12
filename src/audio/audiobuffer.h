@@ -187,14 +187,20 @@ unsigned AudioBuffer::fill_samples_us(uint64_t _duration_us, T _value)
 template<typename T>
 unsigned AudioBuffer::hold_frames(unsigned _frames)
 {
-	unsigned i = frames();
-	if(_frames==0 || i==0 || m_spec.channels>2) {
+	unsigned f = frames();
+	if(_frames==0 || m_spec.channels>2) {
 		return 0;
 	}
-	resize_frames(i+_frames);
-	for(; i<frames(); ++i) {
+	resize_frames(f+_frames);
+	if(f == 0) {
 		for(unsigned j=0; j<m_spec.channels; j++) {
-			at<T>(i*m_spec.channels + j) = at<T>((i-1)*m_spec.channels + j);
+			at<T>(j) = (T)0;
+		}
+		f++;
+	}
+	for(; f<frames(); ++f) {
+		for(unsigned j=0; j<m_spec.channels; j++) {
+			at<T>(f*m_spec.channels + j) = at<T>((f-1)*m_spec.channels + j);
 		}
 	}
 	return _frames;
