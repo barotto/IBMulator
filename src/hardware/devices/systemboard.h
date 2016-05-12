@@ -79,7 +79,7 @@ private:
 	void update_board_state();
 
 public:
-	SystemBoard(Devices* _dev) : IODevice(_dev) {}
+	SystemBoard(Devices* _dev);
 	~SystemBoard() {}
 
 	void reset(unsigned type);

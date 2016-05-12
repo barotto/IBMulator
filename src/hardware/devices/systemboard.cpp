@@ -38,6 +38,12 @@ IODEVICE_PORTS(SystemBoard) = {
 	{ 0x190, 0x191, PORT_8BIT|PORT__W }  // POST procedure codes
 };
 
+SystemBoard::SystemBoard(Devices* _dev)
+: IODevice(_dev)
+{
+	memset(&m_s, 0, sizeof(m_s));
+}
+
 void SystemBoard::reset(unsigned)
 {
 	m_s.POST = 0;

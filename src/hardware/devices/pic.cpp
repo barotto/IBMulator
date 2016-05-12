@@ -33,7 +33,7 @@ IODEVICE_PORTS(PIC) = {
 PIC::PIC(Devices* _dev)
 : IODevice(_dev)
 {
-
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 PIC::~PIC()
