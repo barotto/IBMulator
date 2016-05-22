@@ -22,7 +22,6 @@
 
 #define MACHINE_HEARTBEAT    10000
 #define GUI_HEARTBEAT        16666
-#define MIXER_HEARTBEAT      10000
 #define CHRONO_RDTSC         false
 #define USE_PREFETCH_QUEUE   true
 #define PIT_CNT1_AUTO_UPDATE false

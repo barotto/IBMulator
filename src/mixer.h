@@ -39,7 +39,7 @@ extern Mixer g_mixer;
 #define MIXER_BIT_DEPTH 16
 #define MIXER_MIN_RATE 8000
 #define MIXER_MAX_RATE 49716
-#define MIXER_TIME_TOLERANCE 1.25
+#define MIXER_TIME_TOLERANCE 1.45
 
 
 typedef std::function<void()> Mixer_fun_t;

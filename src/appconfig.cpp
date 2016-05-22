@@ -117,11 +117,8 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ MIXER_SECTION, {
 		{ MIXER_RATE,      "48000" },
-		{ MIXER_SAMPLES,   "1024"  },
 		{ MIXER_PREBUFFER, "50"    },
-		{ MIXER_VOLUME,    "1.0"   },
-		{ MIXER_PS1AUDIO,  "yes"   },
-		{ MIXER_ADLIB,     "no"    }
+		{ MIXER_VOLUME,    "1.0"   }
 	} },
 
 	{ PCSPEAKER_SECTION, {
@@ -300,30 +297,29 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MIXER_SECTION,
-"; prebuffer: How many milliseconds of data to prebuffer before audio starts to be emitted. A larger value might help sound stuttering.\n"
-";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
-";            Possible values: 1024, 2048, 4096, 8192, 512, 256.\n"
-";      rate: Sample rate. Use the value more compatible with your sound card. Any device with a rate different than this will be up/down-sampled.\n"
-";            Possible values: 48000, 44100, 32000, 22050.\n"
+"; prebuffer: How many milliseconds of data to prebuffer before audio starts to be emitted. A larger value might help sound stuttering, but will introduce latency.\n"
+";            Possible values: any positive integer number between 10 and 1000.\n"
+";      rate: Sample rate. Use the value which is more compatible with your sound card. Any emulated device with a rate different than this will be resampled.\n"
+";            Possible values: 48000, 44100, 49716.\n"
 ";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
-";    rate: Sample rate. Best results with 11025 or 22050.\n"
-";          Possible values: 48000, 44100, 32000, 22050, 11025, 8000.\n"
+";    rate: Sample rate. Best results with 22050.\n"
+";          Possible values: 22050, 48000, 44100, 32000, 11025.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ PS1AUDIO_SECTION,
 "; enabled: Install the PS/1 Audio/Joystick Card.\n"
 ";    rate: Sample rate of the PSG (Programmable Sound Generator). The DAC rate is programmed at run-time.\n"
-";          Possible values: 48000, 44100, 32000, 22050, 11025, 8000.\n"
+";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ ADLIB_SECTION,
 "; enabled: Install the AdLib Audio Card.\n"
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
-";          Possible values: 49716, 48000, 44100, 32000, 22050, 11025, 8000.\n"
+";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ SOUNDFX_SECTION,
@@ -419,10 +415,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ MIXER_SECTION, {
 		MIXER_PREBUFFER,
-		MIXER_SAMPLES,
 		MIXER_RATE,
-		MIXER_VOLUME,
-		MIXER_PS1AUDIO
+		MIXER_VOLUME
 	} },
 	{ PCSPEAKER_SECTION, {
 		PCSPEAKER_ENABLED,
