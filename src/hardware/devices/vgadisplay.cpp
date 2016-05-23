@@ -458,7 +458,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			cs_y++;
 			y++;
 		}
-	} while(--rows);
+	} while(--rows >= 0);
 	m_s.h_panning = _tm_info->h_panning;
 	m_s.prev_cursor_x = _cursor_x;
 	m_s.prev_cursor_y = _cursor_y;
