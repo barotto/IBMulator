@@ -143,29 +143,29 @@ void VGA::reset(uint)
 
 	memset(&m_s, 0, sizeof(m_s));
 
-	m_s.vga_enabled = 1;
+	m_s.vga_enabled = true;
 	m_s.blink_counter = 16;
-	m_s.misc_output.color_emulation  = 1;
-	m_s.misc_output.enable_ram  = 1;
-	m_s.misc_output.horiz_sync_pol   = 1;
-	m_s.misc_output.vert_sync_pol    = 1;
+	m_s.misc_output.color_emulation  = true;
+	m_s.misc_output.enable_ram = true;
+	m_s.misc_output.horiz_sync_pol = true;
+	m_s.misc_output.vert_sync_pol = true;
 
-	m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = 1;
+	m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = true;
 	m_s.attribute_ctrl.video_status_mux = 0;
 	m_s.line_offset = 80;
-	m_s.line_compare = 1023;
+	m_s.line_compare = 0x3FF;
 	m_s.vertical_display_end = 399;
 
-	m_s.attribute_ctrl.video_enabled = 1;
+	m_s.attribute_ctrl.video_enabled = true;
 	m_s.attribute_ctrl.color_plane_enable = 0x0f;
 	m_s.pel.dac_state = 0x01;
 	m_s.pel.mask = 0xff;
 	m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
 
-	m_s.sequencer.reset1 = 1;
-	m_s.sequencer.reset2 = 1;
-	m_s.sequencer.extended_mem = 1; // display mem greater than 64K
-	m_s.sequencer.odd_even = 1; // use sequential addressing mode
+	m_s.sequencer.reset1 = true;
+	m_s.sequencer.reset2 = true;
+	m_s.sequencer.extended_mem = true; // display mem greater than 64K
+	m_s.sequencer.odd_even = true; // use sequential addressing mode
 
 	m_s.plane_shift = 16;
 	m_s.dac_shift = 2;
@@ -606,14 +606,16 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 {
 	uint8_t charmap1, charmap2, prev_memory_mapping;
 	bool prev_video_enabled, prev_line_graphics, prev_int_pal_size, prev_graphics_alpha;
-	bool needs_update = 0, charmap_update = 0;
+	bool needs_update = false, charmap_update = false;
 
 	PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x%04x = 0x%02x\n", address, value);
 
-	if((address >= 0x03b0) && (address <= 0x03bf) && (m_s.misc_output.color_emulation))
+	if((address >= 0x03b0) && (address <= 0x03bf) && (m_s.misc_output.color_emulation)) {
 		return;
-	if((address >= 0x03d0) && (address <= 0x03df) && (m_s.misc_output.color_emulation==0))
+	}
+	if((address >= 0x03d0) && (address <= 0x03df) && (m_s.misc_output.color_emulation==0)) {
 		return;
+	}
 
 	switch (address) {
 		case 0x03ba: /* Feature Control (monochrome emulation modes) */
@@ -645,7 +647,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					*/
 				} else if(!prev_video_enabled) {
 					PDEBUGF(LOG_V2, LOG_VGA, "found enable transition\n");
-					needs_update = 1;
+					needs_update = true;
 				}
 				value &= 0x1f; /* address = bits 0..4 */
 				m_s.attribute_ctrl.address = value;
@@ -667,7 +669,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						if(value != m_s.attribute_ctrl.palette_reg[m_s.attribute_ctrl.address]) {
 							m_s.attribute_ctrl.palette_reg[m_s.attribute_ctrl.address] = value;
 							PDEBUGF(LOG_V2, LOG_VGA, "palette_reg[%u]=%u\n",m_s.attribute_ctrl.address,value);
-							needs_update = 1;
+							needs_update = true;
 						}
 						break;
 					case 0x10: // mode control register
@@ -681,10 +683,10 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						m_s.attribute_ctrl.mode_ctrl.pixel_clock_select = (value >> 6) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.internal_palette_size = (value >> 7) & 0x01;
 						if(((value >> 2) & 0x01) != prev_line_graphics) {
-							charmap_update = 1;
+							charmap_update = true;
 						}
 						if(((value >> 7) & 0x01) != prev_int_pal_size) {
-							needs_update = 1;
+							needs_update = true;
 						}
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: mode control: 0x%02x\n", value);
 						break;
@@ -695,17 +697,17 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					case 0x12: // Color Plane Enable Register
 						m_s.attribute_ctrl.color_plane_enable = (value & 0x0f);
 						m_s.attribute_ctrl.video_status_mux = (value & 0x30);
-						needs_update = 1;
+						needs_update = true;
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: color plane enable = 0x%02x\n", value);
 						break;
 					case 0x13: // Horizontal Pixel Panning Register
 						m_s.attribute_ctrl.horiz_pel_panning = (value & 0x0f);
-						needs_update = 1;
+						needs_update = true;
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: horiz pel panning = 0x%02x\n", value);
 						break;
 					case 0x14: // Color Select Register
 						m_s.attribute_ctrl.color_select = (value & 0x0f);
-						needs_update = 1;
+						needs_update = true;
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: color select = 0x%02x\n", m_s.attribute_ctrl.color_select);
 						break;
 					default:
@@ -754,7 +756,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					if(m_s.sequencer.reset1 && ((value & 0x01) == 0)) {
 						m_s.sequencer.char_map_select = 0;
 						m_s.charmap_address = 0;
-						charmap_update = 1;
+						charmap_update = true;
 					}
 					m_s.sequencer.reset1 = (value >> 0) & 0x01;
 					m_s.sequencer.reset2 = (value >> 1) & 0x01;
@@ -764,7 +766,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						m_s.x_dotclockdiv2 = ((value & 0x08) > 0);
 						m_s.sequencer.clear_screen = ((value & 0x20) > 0);
 						calculate_retrace_timing();
-						needs_update = 1;
+						needs_update = true;
 					}
 					m_s.sequencer.reg1 = value & 0x3d;
 					break;
@@ -774,14 +776,16 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 				case 3: /* sequencer: character map select register */
 					m_s.sequencer.char_map_select = value & 0x3f;
 					charmap1 = value & 0x13;
-					if(charmap1 > 3)
+					if(charmap1 > 3) {
 						charmap1 = (charmap1 & 3) + 4;
+					}
 					charmap2 = (value & 0x2C) >> 2;
-					if(charmap2 > 3)
+					if(charmap2 > 3) {
 						charmap2 = (charmap2 & 3) + 4;
+					}
 					if(m_s.CRTC.reg[0x09] > 0) {
 						m_s.charmap_address = charmap_offset[charmap1];
-						charmap_update = 1;
+						charmap_update = true;
 					}
 					if(charmap2 != charmap1) {
 						PDEBUGF(LOG_V1, LOG_VGA, "char map select: map #2 in block #%d unused\n", charmap2);
@@ -815,13 +819,13 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 
 		case 0x03c7: // PEL address, read mode
 			m_s.pel.read_data_register = value;
-			m_s.pel.read_data_cycle    = 0;
+			m_s.pel.read_data_cycle = 0;
 			m_s.pel.dac_state = 0x03;
 			break;
 
 		case 0x03c8: /* PEL address write mode */
 			m_s.pel.write_data_register = value;
-			m_s.pel.write_data_cycle    = 0;
+			m_s.pel.write_data_cycle = 0;
 			m_s.pel.dac_state = 0x00;
 			break;
 
@@ -886,17 +890,17 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					break;
 				case 3: /* Data Rotate */
 					m_s.graphics_ctrl.data_rotate = value & 0x07;
-					m_s.graphics_ctrl.raster_op    = (value >> 3) & 0x03;
+					m_s.graphics_ctrl.raster_op = (value >> 3) & 0x03;
 					break;
 				case 4: /* Read Map Select */
 					m_s.graphics_ctrl.read_map_select = value & 0x03;
 					PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x03cf = 0x%02x (RMS)\n", value);
 					break;
 				case 5: /* Mode */
-					m_s.graphics_ctrl.write_mode        = value & 0x03;
-					m_s.graphics_ctrl.read_mode         = (value >> 3) & 0x01;
-					m_s.graphics_ctrl.odd_even          = (value >> 4) & 0x01;
-					m_s.graphics_ctrl.shift_reg         = (value >> 5) & 0x03;
+					m_s.graphics_ctrl.write_mode = value & 0x03;
+					m_s.graphics_ctrl.read_mode  = (value >> 3) & 0x01;
+					m_s.graphics_ctrl.odd_even   = (value >> 4) & 0x01;
+					m_s.graphics_ctrl.shift_reg  = (value >> 5) & 0x03;
 
 					if(m_s.graphics_ctrl.odd_even) {
 						PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03cf: mode reg: value = 0x%02x\n", value);
@@ -919,10 +923,11 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					PDEBUGF(LOG_V2, LOG_VGA, "odd_even mode set to %u\n", m_s.graphics_ctrl.odd_even);
 					PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x3cf: misc reg: value = 0x%02x\n", value);
 
-					if(prev_memory_mapping != m_s.graphics_ctrl.memory_mapping)
-						needs_update = 1;
+					if(prev_memory_mapping != m_s.graphics_ctrl.memory_mapping) {
+						needs_update = true;
+					}
 					if(prev_graphics_alpha != m_s.graphics_ctrl.graphics_alpha) {
-						needs_update = 1;
+						needs_update = true;
 						m_s.last_yres = 0;
 					}
 					break;
@@ -961,8 +966,10 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					m_s.CRTC.reg[m_s.CRTC.address] &= ~0x10;
 					m_s.CRTC.reg[m_s.CRTC.address] |= (value & 0x10);
 					m_s.line_compare &= 0x2ff;
-					if(m_s.CRTC.reg[0x07] & 0x10) m_s.line_compare |= 0x100;
-					needs_update = 1;
+					if(m_s.CRTC.reg[0x07] & 0x10) {
+						m_s.line_compare |= 0x100;
+					}
+					needs_update = true;
 					break;
 				} else {
 					return;
@@ -982,38 +989,46 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						break;
 					case 0x07:
 						m_s.vertical_display_end &= 0xff;
-						if(m_s.CRTC.reg[0x07] & 0x02) m_s.vertical_display_end |= 0x100;
-						if(m_s.CRTC.reg[0x07] & 0x40) m_s.vertical_display_end |= 0x200;
+						if(m_s.CRTC.reg[0x07] & 0x02) {
+							m_s.vertical_display_end |= 0x100;
+						}
+						if(m_s.CRTC.reg[0x07] & 0x40) {
+							m_s.vertical_display_end |= 0x200;
+						}
 						m_s.line_compare &= 0x2ff;
-						if(m_s.CRTC.reg[0x07] & 0x10) m_s.line_compare |= 0x100;
+						if(m_s.CRTC.reg[0x07] & 0x10) {
+							m_s.line_compare |= 0x100;
+						}
 						calculate_retrace_timing();
-						needs_update = 1;
+						needs_update = true;
 						break;
 					case 0x08:
 						// Vertical pel panning change
-						needs_update = 1;
+						needs_update = true;
 						break;
 					case 0x09:
 						m_s.y_doublescan = ((value & 0x9f) > 0);
 						m_s.line_compare &= 0x1ff;
-						if(m_s.CRTC.reg[0x09] & 0x40) m_s.line_compare |= 0x200;
-						charmap_update = 1;
-						needs_update = 1;
+						if(m_s.CRTC.reg[0x09] & 0x40) {
+							m_s.line_compare |= 0x200;
+						}
+						charmap_update = true;
+						needs_update = true;
 						break;
 					case 0x0A:
 					case 0x0B:
 					case 0x0E:
 					case 0x0F:
 						// Cursor size / location change
-						m_s.vga_mem_updated = 1;
+						m_s.vga_mem_updated = true;
 						break;
 					case 0x0C:
 					case 0x0D:
 						// Start address change
 						if(m_s.graphics_ctrl.graphics_alpha) {
-							needs_update = 1;
+							needs_update = true;
 						} else {
-							m_s.vga_mem_updated = 1;
+							m_s.vga_mem_updated = true;
 						}
 						PDEBUGF(LOG_V2, LOG_VGA, "start address 0x%02X=%02X\n",
 								m_s.CRTC.address, value);
@@ -1037,14 +1052,17 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					case 0x17:
 						// Line offset change
 						m_s.line_offset = m_s.CRTC.reg[0x13] << 1;
-						if(m_s.CRTC.reg[0x14] & 0x40) m_s.line_offset <<= 2;
-						else if((m_s.CRTC.reg[0x17] & 0x40) == 0) m_s.line_offset <<= 1;
-						needs_update = 1;
+						if(m_s.CRTC.reg[0x14] & 0x40) {
+							m_s.line_offset <<= 2;
+						} else if((m_s.CRTC.reg[0x17] & 0x40) == 0) {
+							m_s.line_offset <<= 1;
+						}
+						needs_update = true;
 						break;
 					case 0x18:
 						m_s.line_compare &= 0x300;
 						m_s.line_compare |= m_s.CRTC.reg[0x18];
-						needs_update = 1;
+						needs_update = true;
 						break;
 				}
 			}
@@ -1063,7 +1081,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 		m_display->lock();
 		m_display->set_text_charmap(& m_s.memory[0x20000 + m_s.charmap_address]);
 		m_display->unlock();
-		m_s.vga_mem_updated = 1;
+		m_s.vga_mem_updated = true;
 	}
 	if(needs_update) {
 		// Mark all video as updated so the changes will go through
@@ -1077,7 +1095,9 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 	uint8_t attribute, bit_no, palette_reg_val, DAC_regno;
 	uint32_t byte_offset;
 	int pan = m_s.attribute_ctrl.horiz_pel_panning;
-	if(pan>=8) { pan = 0; }
+	if(pan>=8) {
+		pan = 0;
+	}
 	if(m_s.x_dotclockdiv2) {
 		x >>= 1;
 	}
@@ -1235,8 +1255,9 @@ void VGA::update(uint64_t _time)
 			cs_toggle = true;
 			cs_visible = !cs_visible;
 		} else {
-			if(!m_s.vga_mem_updated)
+			if(!m_s.vga_mem_updated) {
 				return;
+			}
 			cs_toggle = false;
 			cs_visible = false;
 		}
@@ -1394,7 +1415,7 @@ void VGA::update(uint64_t _time)
 				break;
 		}
 
-		m_s.vga_mem_updated = 0;
+		m_s.vga_mem_updated = false;
 
 	} else {
 
@@ -1498,7 +1519,7 @@ void VGA::update(uint64_t _time)
 		if(m_s.vga_mem_updated) {
 			// screen updated, copy new VGA memory contents into text snapshot
 			memcpy(m_s.text_snapshot, &m_s.memory[start_address], tm_info.line_offset*rows);
-			m_s.vga_mem_updated = 0;
+			m_s.vga_mem_updated = false;
 		}
 	}
 
@@ -1645,26 +1666,26 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			}
 			x_tileno2=x_tileno;
 			if(m_s.graphics_ctrl.shift_reg==0) {
-				x_tileno*=2;
-				x_tileno2+=7;
+				x_tileno *= 2;
+				x_tileno2 += 7;
 			} else {
-				x_tileno2+=3;
+				x_tileno2 += 3;
 			}
 			if(m_s.x_dotclockdiv2) {
-				x_tileno/=(VGA_X_TILESIZE/2);
-				x_tileno2/=(VGA_X_TILESIZE/2);
+				x_tileno /= (VGA_X_TILESIZE/2);
+				x_tileno2 /= (VGA_X_TILESIZE/2);
 			} else {
-				x_tileno/=VGA_X_TILESIZE;
-				x_tileno2/=VGA_X_TILESIZE;
+				x_tileno /= VGA_X_TILESIZE;
+				x_tileno2 /= VGA_X_TILESIZE;
 			}
 			if(m_s.y_doublescan) {
-				y_tileno/=(VGA_Y_TILESIZE/2);
+				y_tileno /= (VGA_Y_TILESIZE/2);
 			} else {
-				y_tileno/=VGA_Y_TILESIZE;
+				y_tileno /= VGA_Y_TILESIZE;
 			}
-			m_s.vga_mem_updated = 1;
+			m_s.vga_mem_updated = true;
 			SET_TILE_UPDATED(x_tileno, y_tileno, true);
-			if(x_tileno2!=x_tileno) {
+			if(x_tileno2 != x_tileno) {
 				SET_TILE_UPDATED(x_tileno2, y_tileno, true);
 			}
 			return;
@@ -1690,7 +1711,7 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 				} else {
 					y_tileno = (offset / m_s.line_offset) / VGA_Y_TILESIZE;
 				}
-				m_s.vga_mem_updated = 1;
+				m_s.vga_mem_updated = true;
 				SET_TILE_UPDATED(x_tileno, y_tileno, true);
 			}
 			return;
@@ -1948,11 +1969,13 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 	}
 
 	if(m_s.sequencer.map_mask & 0x0f) {
-		m_s.vga_mem_updated = 1;
-		if(m_s.sequencer.map_mask & 0x01)
+		m_s.vga_mem_updated = true;
+		if(m_s.sequencer.map_mask & 0x01) {
 			plane0[offset] = new_val[0];
-		if(m_s.sequencer.map_mask & 0x02)
+		}
+		if(m_s.sequencer.map_mask & 0x02) {
 			plane1[offset] = new_val[1];
+		}
 		if(m_s.sequencer.map_mask & 0x04) {
 			if((offset & 0xe000) == m_s.charmap_address) {
 				m_display->lock();
@@ -1961,8 +1984,9 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			}
 			plane2[offset] = new_val[2];
 		}
-		if(m_s.sequencer.map_mask & 0x08)
+		if(m_s.sequencer.map_mask & 0x08) {
 			plane3[offset] = new_val[3];
+		}
 
 		uint x_tileno, y_tileno;
 
@@ -2035,7 +2059,7 @@ void VGA::redraw_area(uint x0, uint y0, uint width, uint height)
 		return;
 	}
 
-	m_s.vga_mem_updated = 1;
+	m_s.vga_mem_updated = true;
 
 	if(m_s.graphics_ctrl.graphics_alpha) {
 		// graphics mode
