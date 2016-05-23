@@ -33,7 +33,7 @@ Mixer g_mixer;
 
 Mixer::Mixer()
 :
-m_heartbeat(MIXER_HEARTBEAT),
+m_heartbeat(10000),
 m_device(0),
 m_audio_capture(false),
 m_global_volume(1.f)
