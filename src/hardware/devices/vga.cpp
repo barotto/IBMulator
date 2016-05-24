@@ -771,7 +771,10 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					m_s.sequencer.reg1 = value & 0x3d;
 					break;
 				case 2: /* sequencer: map mask register */
-					m_s.sequencer.map_mask = (value & 0x0f);
+					if(m_s.sequencer.map_mask != (value & 0x0f)) {
+						m_s.sequencer.map_mask = (value & 0x0f);
+						needs_update = true;
+					}
 					break;
 				case 3: /* sequencer: character map select register */
 					m_s.sequencer.char_map_select = value & 0x3f;
