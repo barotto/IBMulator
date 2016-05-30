@@ -17,6 +17,13 @@
 				bottom: 0;
 				margin-left: auto;
 				margin-right: auto;
+			}
+			#sysbkgd {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				top: 0;
+				left: 0;
 				background-decorator: image;
     			background-image: images/realistic_interface.png 0px 0px 1100px 1200px;
 			}
@@ -29,26 +36,26 @@
 				background-color: #00000000;
 			}
 			#power_led {
-				width: 1.68%;
-				height: 0.67%;
+				width: 4%;
+				height: 3%;
 				position: absolute;
-				right: 20.19%;
-				bottom: 30.07%;
-				background-color: #00000000;
+				right: 19.0%;
+				bottom: 29.0%;
+				background-color: #000000FF;
 			}
 			#power_led.active {
-				background-color: #0EFF1AF0;
+				background-color: #0EFF1AFF;
 			}
 			#fdd_led {
-				width: 1.95%;
-				height: 0.9%;
+				width: 3%;
+				height: 2%;
 				position: absolute;
-				left: 17.45%;
-				bottom: 10.5%;
-				background-color: #F0000000;
+				left: 17.0%;
+				bottom: 10.0%;
+				background-color: #000000FF;
 			}
 			#fdd_led.active {
-				background-color: #FFFF00A0;
+				background-color: #FFEE00FF;
 			}
 			#floppy_disk {
 				position: absolute;
@@ -109,15 +116,15 @@
 			    shadow-color: black;
 			}
 			#hdd_led {
-				width: 1.9%;
-				height: 0.9%;
+				width: 3%;
+				height: 2%;
 				position: absolute;
-				right: 16.7%;
-				bottom: 10.8%;
-				background-color: #f0000000;
+				right: 16.0%;
+				bottom: 10.5%;
+				background-color: #000000FF;
 			}
 			#hdd_led.active {
-				background-color: #FFFF00A0;
+				background-color: #FFEE00FF;
 			}
 			.slider {
 				position: absolute;
@@ -165,16 +172,17 @@
 	</head>
 	<body>
 		<div id="system">
-			<div id="power"></div>
 			<div id="power_led"></div>
+			<div id="fdd_led"></div>
+			<div id="hdd_led"></div>
+			<div id="sysbkgd"></div>
+			<div id="power"></div>
 			<div id="floppy_disk"></div>
 			<div class="slider" id="volume_slider"></div>
 			<div class="slider" id="brightness_slider"></div>
 			<div class="slider" id="contrast_slider"></div>
 			<div id="fdd_disk"></div>
 			<div id="fdd_mount"></div>
-			<div id="fdd_led"></div>
-			<div id="hdd_led"></div>
 			<div id="fdd_select" class="a"></div>
 			<div id="fdd_eject"></div>
 			<div id="warning"></div>

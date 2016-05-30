@@ -21,10 +21,17 @@
 				bottom: 0;
 				margin-left: auto;
 				margin-right: auto;
+			}
+			#sysbkgd {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				top: 0;
+				left: 0;
 				background-decorator: image;
     			background-image: images/sysunit_no_disk.png 0px 0px 1024px 256px;
 			}
-			#sysunit.disk {
+			#sysbkgd.disk {
 				background-decorator: image;
     			background-image: images/sysunit_disk_r.png 0px 0px 1024px 256px;
 			}
@@ -90,15 +97,15 @@
     			background-image: icons/exit.png 0px 0px 100px 100px;
 			}
 			#fdd_led {
-				width: 2.3%;
-				height: 4.5%;
+				width: 4%;
+				height: 8%;
 				position: absolute;
-				left: 12.7%;
-				top: 42.3%;
-				background-color: #00000000;
+				left: 12%;
+				top: 40%;
+				background-color: #000000FF;
 			}
 			#fdd_led.active {
-				background-color: #FFFF00A0;
+				background-color: #FFEE00FF;
 			}
 			#fdd_select {
 				position: absolute;
@@ -146,15 +153,15 @@
 			    shadow-color: black;
 			}
 			#hdd_led {
-				width: 2.2%;
-				height: 4.5%;
+				width: 4%;
+				height: 8%;
 				position: absolute;
-				right: 11.9%;
-				top: 42.3%;
-				background-color: #00000000;
+				top: 40%;
+				right: 11%;
+				background-color: #000000FF;
 			}
 			#hdd_led.active {
-				background-color: #FFFF00A0;
+				background-color: #FFEE00FF;
 			}
 			#warning {
 				position: absolute;
@@ -186,11 +193,13 @@
 		</style>
 	</head>
 	<body>
+	
 		<div id="sysunit">
-			<div id="fdd_disk"></div>
-			<div id="fdd_mount"></div>
-			<div id="fdd_led"></div>
 			<div id="hdd_led"></div>
+			<div id="fdd_led"></div>
+			<div id="sysbkgd"></div>
+			<div id="fdd_disk"></div>
+			<div id="fdd_mount"></div>			
 			<div id="fdd_select" class="a"></div>
 			<div id="fdd_eject"></div>
 			

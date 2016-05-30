@@ -32,8 +32,8 @@ private:
 	uint m_vga_aspect;
 	uint m_vga_scaling;
 
-	RC::Element * m_sysunit;
-	RC::Element * m_btn_pause;
+	RC::Element *m_sysunit, *m_sysbkgd;
+	RC::Element *m_btn_pause;
 	bool m_led_pause;
 	uint m_gui_mode;
 

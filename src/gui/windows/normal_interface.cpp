@@ -48,7 +48,8 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 	m_wnd->AddEventListener("click", this, false);
 
 	m_sysunit = get_element("sysunit");
-	m_sysunit->SetClass("disk", m_floppy_present);
+	m_sysbkgd = get_element("sysbkgd");
+	m_sysbkgd->SetClass("disk", m_floppy_present);
 	m_btn_pause = get_element("pause");
 	m_led_pause = false;
 	m_gui_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, GUI::ms_gui_modes);
@@ -204,9 +205,9 @@ void NormalInterface::update()
 
 	if(is_visible()) {
 		if(m_floppy_present) {
-			m_sysunit->SetClass("disk", true);
+			m_sysbkgd->SetClass("disk", true);
 		} else {
-			m_sysunit->SetClass("disk", false);
+			m_sysbkgd->SetClass("disk", false);
 		}
 
 		if(m_machine->is_paused() && m_led_pause==false) {
