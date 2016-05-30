@@ -640,16 +640,20 @@ void Machine::cmd_switch_power()
 void Machine::cmd_pause()
 {
 	m_cmd_fifo.push([this] () {
-		pause();
-		PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
+		if(!m_cpu_single_step) {
+			pause();
+			PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
+		}
 	});
 }
 
 void Machine::cmd_resume()
 {
 	m_cmd_fifo.push([this] () {
-		resume();
-		PINFOF(LOG_V0, LOG_MACHINE, "emulation resumed\n");
+		if(m_cpu_single_step) {
+			resume();
+			PINFOF(LOG_V0, LOG_MACHINE, "emulation resumed\n");
+		}
 	});
 }
 
