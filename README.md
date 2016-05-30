@@ -7,7 +7,7 @@ IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run
 with the original ROM. The goal is to create a faithful emulation of the 
 machine, complete of the characteristic 4-quadrant graphical user interface.
 
-IBMulator currently emulates only the PS/1 with the 80286 CPU (model 2011.)
+IBMulator currently emulates only the PS/1 type 2011, with the 80286 CPU.
 
 In order to use the program you need the original ROM, which is copyrighted by 
 IBM. You won't find it distributed with this package.
@@ -34,11 +34,11 @@ A 64-bit Linux or Windows operating system, a OpenGL 3.3 graphics card, and a
 
 Obtain the original ROM. You have the following options:
 
-1. if you have a real PS/1 model 2011, take the program ROMDUMP.EXE in the 
+1. if you have a real PS/1 type 2011, take the program ROMDUMP.EXE in the 
 'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
 your PS/1 and launch the executable: it will create the ROM image on the floppy 
 disk
-2. or open your PS/1 model 2011, extract the EPROMs and read them with an EPROM 
+2. or open your PS/1, extract the EPROMs and read them with an EPROM 
 reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
 non-US model)
 3. or scour the Internet (there are various ROM sets available.)
@@ -57,12 +57,12 @@ From now on IBMulator is ready to run.
 For more information regarding the configuration options, see the comments 
 inside ibmulator.ini.
 
-Being a faithful emulator of the PS/1 model 2011, to configure the system (ie. 
-the PS/1, not the emulator) after a configuration change (for instance, if you 
-add or remove a floppy drive), you need a DOS program called CONFIGUR.EXE, 
-otherwise you'll get various POST errors. Likewise, if you want to customize 
-the way the system works, you need to use the program CUSTOMIZ.EXE. Both files 
-are copyright IBM and you have to search the Internet in order to obtain them.
+Being a faithful emulator of the PS/1, to configure the system (ie. the PS/1, 
+not the emulator) after a configuration change (for instance, if you add or 
+remove a floppy drive), you need a DOS program called CONFIGUR.EXE, otherwise 
+you'll get various POST errors. Likewise, if you want to customize the way the 
+system works, you need to use the program CUSTOMIZ.EXE. Both files are copyright 
+IBM and you have to search the Internet in order to obtain them.
 
 ### ROM set
 
@@ -80,9 +80,6 @@ international models, this bin file can be merged with FC0000.BIN to form a
 single 512KiB bin file. In this case FC0000.BIN, if present, is ignored.
 
 Any other file present in the archive or directory is ignored.
-
-If you want to use a single BIN file, this can be 256KiB (US version) or 512KiB 
-(international versions) in size.
 
 ### HDD image
 
@@ -114,14 +111,14 @@ IBMulator has 3 different GUI modes.
 * **Compact**: in this mode the VGA image fills the available window space and 
 the control panel, in the shape of the PS/1 system unit, disappears when input 
 is grabbed or CTRL-F1 is pressed. Use this mode if you want an experience 
-similar to DosBox.
+similar to DOSBox.
 * **Normal**: this is the default mode. The control panel / system unit places 
 itself at the bottom of the VGA display and is always visible.
 * **Realistic**: this is the hardcore mode, for the retro enthusiasts who want 
 to truly experience the PS/1. In this mode the system is rendered in its 
 entirety, monitor included. There are no additional buttons and controls except 
 the originals: volume, brightness, contrast, power, and floppy (you need to use 
-the key bindings for any extra function.) The PS/1 model 2011 is 32 cm (12.6") 
+the key bindings for any extra function.) The PS/1 type 2011 is 32 cm (12.6") 
 wide and 34.9 cm (13.74") tall, so you need at least a 24" 16:10 monitor in 
 portrait mode (rotated) to render it at real size.
 
@@ -244,8 +241,7 @@ More info on this issue at https://github.com/libRocket/libRocket/issues/113
 ## THANKS
 
 I would like to thank the Bochs team. I've taken a huge amount of code from the 
-project. Thank you guys, you made a terrific job! 
-Without your work IBMulator would have taken at least a decade to reach the 
-point where it is now.  
+project. Thank you guys, you made a terrific job! Without your work IBMulator 
+would have taken at least a decade to reach the point where it is now.  
 Also thanks to the DOSBox team. Some code from them as well and a lot of 
 information and inspiration.
