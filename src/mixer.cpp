@@ -18,6 +18,8 @@
  */
 
 #include "ibmulator.h"
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include "filesys.h"
 #include "mixer.h"
 #include "program.h"
@@ -26,7 +28,6 @@
 #include "utils.h"
 #include "audio/wav.h"
 #include <SDL2/SDL.h>
-#include <cmath>
 
 Mixer g_mixer;
 
