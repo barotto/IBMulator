@@ -154,8 +154,8 @@ void Mixer::config_changed()
 		start_wave_playback(frequency, MIXER_BIT_DEPTH, MIXER_CHANNELS, samples);
 
 		m_frame_size = m_device_spec.channels * (SDL_AUDIO_BITSIZE(m_device_spec.format) / 8);
+		m_heartbeat = round(1e6 / (double(m_device_spec.freq) / 512.0));
 
-		m_heartbeat = round(1e6 / (double(m_device_spec.freq) / double(m_device_spec.samples / MIXER_CHANNELS)));
 		PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat);
 
 		m_prebuffer = clamp(m_prebuffer, int(m_heartbeat/1000), int(m_heartbeat/100)); //msecs
@@ -363,21 +363,21 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 {
 	size_t mixlen = std::numeric_limits<size_t>::max();
 	unsigned frames;
-	static int missing = 0;
+	static double missing = 0.0;
 	if(m_audio_status == SDL_AUDIO_PAUSED) {
 		//the mixer is prebuffering
-		missing = 0;
+		missing = 0.0;
 	}
-	unsigned reqframes = us_to_frames(_time_span_us,m_device_spec.freq) + missing;
+	double reqframes = us_to_frames(_time_span_us, m_device_spec.freq) + missing;
 	for(auto ch : _channels) {
-		frames = std::min(reqframes, ch.first->out().frames());
+		frames = std::min(unsigned(reqframes), ch.first->out().frames());
 		mixlen = std::min(mixlen, size_t(frames*m_device_spec.channels));
 	}
 	missing = reqframes - mixlen;
-	if(mixlen < reqframes) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "mixlen: %d (req.: %d), missing: %d\n",
-				mixlen, reqframes*m_device_spec.channels, missing);
-	}
+
+	PDEBUGF(LOG_V2, LOG_MIXER, "mixspan: %llu, mixlen: %d (req.: %.2f), missing: %.2f\n",
+			_time_span_us, mixlen, reqframes*m_device_spec.channels, missing);
+
 	if(mixlen==0) {
 		return 0;
 	}

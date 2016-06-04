@@ -91,7 +91,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 	if(in_duration < _time_span_us) {
 		unsigned fill_us = _time_span_us - in_duration;
 		unsigned samples = _channel.in().fill_us_silence(fill_us);
-		assert(samples == _channel.in().spec().us_to_samples(fill_us));
+		assert(samples == round(_channel.in().spec().us_to_samples(fill_us)));
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: silence fill: %d frames (%d us)\n",
 				_channel.name(),
 				_channel.in().spec().samples_to_frames(samples),

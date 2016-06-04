@@ -74,8 +74,8 @@ public:
 	void convert_format(AudioBuffer &_dest, unsigned _frames_count);
 	void convert_channels(AudioBuffer &_dest, unsigned _frames_count);
 	unsigned convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
-	unsigned us_to_frames(uint64_t _us);
-	unsigned us_to_samples(uint64_t _us);
+	double us_to_frames(uint64_t _us);
+	double us_to_samples(uint64_t _us);
 	void apply_volume(float _volume);
 
 	// direct sample access no checks
@@ -179,7 +179,7 @@ unsigned AudioBuffer::fill_samples(unsigned _samples, T _value)
 template<typename T>
 unsigned AudioBuffer::fill_samples_us(uint64_t _duration_us, T _value)
 {
-	unsigned samples = m_spec.us_to_samples(_duration_us);
+	unsigned samples = round(m_spec.us_to_samples(_duration_us));
 	fill_samples(samples, _value);
 	return samples;
 }

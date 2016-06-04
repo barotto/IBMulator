@@ -32,16 +32,16 @@ enum AudioFormat
 	AUDIO_FORMAT_F32 = AUDIO_F32
 };
 
-inline unsigned us_to_frames(uint64_t _us, unsigned _rate) {
-	return round(double(_us) * double(_rate)/1e6);
+inline double us_to_frames(uint64_t _us, unsigned _rate) {
+	return double(_us) * double(_rate)/1e6;
 }
 
-inline unsigned us_to_samples(uint64_t _us, unsigned _rate, unsigned _ch) {
+inline double us_to_samples(uint64_t _us, unsigned _rate, unsigned _ch) {
 	return us_to_frames(_us,_rate) * _ch;
 }
 
-inline unsigned frames_to_us(unsigned _frames, unsigned _rate) {
-	return round((double(_frames) / double(_rate)) * 1e6);
+inline double frames_to_us(unsigned _frames, unsigned _rate) {
+	return (double(_frames) / double(_rate)) * 1e6;
 }
 
 struct AudioSpec
@@ -56,14 +56,14 @@ struct AudioSpec
 	bool operator!=(const AudioSpec &_s) const {
 		return !(*this==_s);
 	}
-	unsigned us_to_frames(uint64_t _us) const {
+	double us_to_frames(uint64_t _us) const {
 		return ::us_to_frames(_us, rate);
 	}
-	unsigned us_to_samples(uint64_t _us) const {
+	double us_to_samples(uint64_t _us) const {
 		return ::us_to_samples(_us, rate, channels);
 	}
 	uint64_t frames_to_us(unsigned _frames) const {
-		return ::frames_to_us(_frames, rate);
+		return round(::frames_to_us(_frames, rate));
 	}
 	unsigned frames_to_samples(unsigned _frames) const {
 		return _frames*channels;

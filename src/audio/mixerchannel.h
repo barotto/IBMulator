@@ -59,6 +59,7 @@ private:
 	std::function<void(bool)> m_capture_clbk;
 	float m_volume;
 	MixerChannelCategory m_category;
+	double m_fr_rem;
 
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);

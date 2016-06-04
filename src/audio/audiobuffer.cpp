@@ -71,7 +71,7 @@ void AudioBuffer::clear()
 
 void AudioBuffer::reserve_us(uint64_t _us)
 {
-	unsigned bytes = m_spec.us_to_samples(_us) * sample_size();
+	unsigned bytes = round(m_spec.us_to_samples(_us)) * sample_size();
 	m_data.reserve(bytes);
 }
 
@@ -126,7 +126,7 @@ unsigned AudioBuffer::fill_samples_silence(unsigned _samples)
 
 unsigned AudioBuffer::fill_us_silence(uint64_t _duration_us)
 {
-	return fill_samples_silence(m_spec.us_to_samples(_duration_us));
+	return fill_samples_silence(round(m_spec.us_to_samples(_duration_us)));
 }
 
 void AudioBuffer::convert(const AudioSpec &_new_spec)
@@ -296,14 +296,14 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 	return missing;
 }
 
-unsigned AudioBuffer::us_to_frames(uint64_t _us)
+double AudioBuffer::us_to_frames(uint64_t _us)
 {
-	return std::min(frames(), m_spec.us_to_frames(_us));
+	return std::min(double(frames()), m_spec.us_to_frames(_us));
 }
 
-unsigned AudioBuffer::us_to_samples(uint64_t _us)
+double AudioBuffer::us_to_samples(uint64_t _us)
 {
-	return std::min(samples(), m_spec.us_to_samples(_us));
+	return std::min(double(samples()), m_spec.us_to_samples(_us));
 }
 
 void AudioBuffer::apply_volume(float _volume)

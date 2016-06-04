@@ -172,7 +172,7 @@ void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, u
 				m_name.c_str());
 		return;
 	}
-	unsigned inbuf_frames = m_in_buffer.spec().us_to_frames(_time_dist);
+	unsigned inbuf_frames = round(m_in_buffer.spec().us_to_frames(_time_dist));
 	m_in_buffer.resize_frames_silence(inbuf_frames);
 	m_in_buffer.add_frames(_wave, _frames_cnt);
 	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%dus), in buf: %d samples (%dus)\n",
@@ -210,7 +210,12 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 	}
 	unsigned in_frames;
 	if(_time_span_us>0) {
-		in_frames = m_in_buffer.us_to_frames(_time_span_us);
+		if(m_first_update) {
+			m_fr_rem = 0.0;
+		}
+		double frames = m_in_buffer.us_to_frames(_time_span_us) + m_fr_rem;
+		in_frames = unsigned(frames);
+		m_fr_rem = frames - in_frames;
 	} else {
 		in_frames = m_in_buffer.frames();
 	}
