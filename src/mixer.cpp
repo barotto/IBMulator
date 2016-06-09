@@ -391,10 +391,14 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 		if(cat_volume > 1.f) {
 			cat_volume = (exp(cat_volume) - 1.f)/(M_E - 1.f);
 		}
+		float ch_volume = ch.first->volume();
+		if(ch_volume > 1.f) {
+			ch_volume = (exp(ch_volume) - 1.f)/(M_E - 1.f);
+		}
 		for(size_t i=0; i<mixlen; i++) {
 			float v1,v2;
 			if(i<chframes) {
-				v1 = chdata[i] * ch.first->volume() * cat_volume;
+				v1 = chdata[i] * ch_volume * cat_volume;
 			} else {
 				v1 = 0.f;
 			}
