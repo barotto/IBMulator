@@ -166,6 +166,7 @@ public:
 
 #define MIXER_SECTION           "mixer"
 #define MIXER_RATE              "rate"
+#define MIXER_SAMPLES           "samples"
 #define MIXER_PREBUFFER         "prebuffer"
 #define MIXER_VOLUME            "volume"
 

@@ -117,6 +117,7 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ MIXER_SECTION, {
 		{ MIXER_RATE,      "48000" },
+		{ MIXER_SAMPLES,   "1024"  },
 		{ MIXER_PREBUFFER, "50"    },
 		{ MIXER_VOLUME,    "1.0"   }
 	} },
@@ -301,6 +302,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: any positive integer number between 10 and 1000.\n"
 ";      rate: Sample rate. Use the value which is more compatible with your sound card. Any emulated device with a rate different than this will be resampled.\n"
 ";            Possible values: 48000, 44100, 49716.\n"
+";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
+";            Possible values: 1024, 2048, 4096, 512, 256.\n"
 ";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
 		},
@@ -416,6 +419,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ MIXER_SECTION, {
 		MIXER_PREBUFFER,
 		MIXER_RATE,
+		MIXER_SAMPLES,
 		MIXER_VOLUME
 	} },
 	{ PCSPEAKER_SECTION, {

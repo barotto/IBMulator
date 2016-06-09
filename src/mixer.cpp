@@ -143,12 +143,8 @@ void Mixer::config_changed()
 
 	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	m_prebuffer = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); //msecs
+	int samples = g_program.config().get_int(MIXER_SECTION, MIXER_SAMPLES);
 	m_frame_size = 0;
-
-	int samples = 1024;
-	if(frequency < 44100) {
-		samples = 512;
-	}
 
 	try {
 		start_wave_playback(frequency, MIXER_BIT_DEPTH, MIXER_CHANNELS, samples);
