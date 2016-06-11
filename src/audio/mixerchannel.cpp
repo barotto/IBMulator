@@ -248,16 +248,20 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 		dest[bufidx].set_spec({AUDIO_FORMAT_F32,m_out_buffer.channels(),m_in_buffer.rate()});
 		source->convert_format(dest[bufidx], in_frames);
 		source = &dest[bufidx];
+		bufidx = (bufidx+1)%2;
 	}
 	if(m_in_buffer.rate() != m_out_buffer.rate()) {
-		unsigned missing = source->convert_rate(m_out_buffer, in_frames, m_SRC_state);
+		dest[bufidx].set_spec(m_out_buffer.spec());
+		unsigned missing = source->convert_rate(dest[bufidx], in_frames, m_SRC_state);
 		if(m_new_data && missing>0) {
 			m_out_buffer.hold_frames<float>(missing);
 		}
+		m_out_buffer.add_frames(dest[bufidx]);
 		m_new_data = false;
 	} else {
 		m_out_buffer.add_frames(*source, in_frames);
 	}
+
 	m_in_buffer.pop_frames(in_frames);
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%dus), out: %d frames (%dus)\n",
 			m_name.c_str(), _time_span_us,
