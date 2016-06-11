@@ -24,6 +24,8 @@
 #include "machine.h"
 #include <cmath>
 
+#define PC_SPEAKER_LEVEL 0.8
+
 IODEVICE_PORTS(PCSpeaker) = {};
 
 
@@ -261,7 +263,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool, bool)
 			end = pit_ticks;
 		}
 
-		m_s.level = (front.out)?1.0:0.0;
+		m_s.level = (front.out)?PC_SPEAKER_LEVEL:0.0;
 		m_pitbuf.fill_samples<float>(end - begin, m_s.level);
 
 		if(end == pit_ticks) {
