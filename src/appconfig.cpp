@@ -201,7 +201,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
 ";         dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";      bg_XXX: Background window color\n"
-";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact mode)\n"
+";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact GUI mode)\n"
 		},
 
 		{ DISPLAY_SECTION,
@@ -305,7 +305,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
 ";            Possible values: 1024, 2048, 4096, 512, 256.\n"
 ";    volume: Audio volume of the emulated sound cards.\n"
-";            Possible values: any positive real number. When in realistic GUI mode it's clamped to 1.3\n"
+";            Possible values: any positive real number, 1.0 is nominal. When in realistic GUI mode it's clamped to 1.3\n"
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
@@ -332,7 +332,7 @@ ini_filehelp_t AppConfig::ms_help = {
 "; fdd_spin: Volume of FDD spin noise.\n"
 "; hdd_seek: Volume of HDD seeks.\n"
 "; hdd_spin: Volume of HDD spin noise.\n"
-";   system: Volume of system unit's and monitor's noises (realistic mode only.)\n"
+";   system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
 		},
 
 		{ COM_SECTION, "" },
