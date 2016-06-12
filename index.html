@@ -31,10 +31,10 @@ able to run with the original ROM.
 The goal is to create a faithful emulation of the machine, complete of the characteristic 4-quadrant graphical user interface.
 </p>
 <p>
-Currently, IBMulator emulates only the PS/1 model 2011 with the 80286 CPU (sub-models n01, n34, n41.)
+Currently IBMulator emulates only the PS/1 type 2011 with the 80286 CPU.
 </p>
 <p>
-The program is in active development and still in a beta status. Expect lots of bugs and missing features.
+The program is in active development and still in a beta status. Expect bugs and missing features.
 </p>
 
 <hr />
@@ -53,16 +53,15 @@ The program is in active development and still in a beta status. Expect lots of 
 <li>Full OpenGL GUI.<br />Triple mode of operation: compact, normal, and realistic, for an added sense of realism.</li>
 <li>Debugging tools.</li>
 <li>Multithreaded.<br />OpenGL rendering, CPU core, and sound generation are on separate threads, so your i7 multi-core beast has some spare cycles for overclocking that puny 286.</li>
-<li>Highly configurable.<br />You can create a dream PS/1 configuration, with 496MB HDD, 16MB RAM and a blazingly fast 50MHz 286 CPU, if you want to.</li>
+<li>Highly configurable.<br />You can create a dream PS/1 configuration, with 496MB HDD, 16MB RAM and a blazingly fast 30MHz 286 CPU, if you want to.</li>
 </ul>
 <h3>Currently missing features</h3>
 <ul>
 <li>MIDI output with redirection to an external sound module (like a real MT-32.)</li>
-<li>Optimizations (the implementation is naive in many places.)</li>
+<li>Emulation for Sound Blaster and NE2000.</li>
 <li>Video capture.</li>
 <li>Better debugging tools with breakpoints.</li>
 <li>OS X support (help needed.)</li>
-<li>Emulation for expasion cards like AdLib, Sound Blaster, and network cards.</li>
 </ul>
 
 <hr />
@@ -180,10 +179,6 @@ single 512KiB bin file. In this case FC0000.BIN, if present, is ignored.
 <p>
 Any other file present in the archive or directory is ignored.
 </p>
-<p>
-If you want to use a single BIN file, this can be 256KiB (US version) or 512KiB 
-(international versions) in size.
-</p>
 
 <h3>HDD image</h3>
 <p>
@@ -289,7 +284,7 @@ itself at the bottom of the VGA display and is always visible.</li>
 to truly experience the PS/1. In this mode the system is rendered in its 
 entirety, monitor included. There are no additional buttons and controls except 
 the originals: volume, brightness, contrast, power, and floppy (you need to use 
-the key bindings for any extra function.) The PS/1 model 2011 is 32 cm (12.6") 
+the key bindings for any extra function.) The PS/1 type 2011 is 32 cm (12.6") 
 wide and 34.9 cm (13.74") tall, so you need at least a 24" 16:10 monitor in 
 portrait mode (rotated) to render it at real size.</li>
 </ul>
