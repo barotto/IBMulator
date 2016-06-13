@@ -3,7 +3,7 @@ Use Turbo C to compile the source files.
 
 
 ## ROMDUMP.EXE
-Dumps the PS/1 model 2011 ROM to 1 file (for the US version) or 2 files (for
+Dumps the PS/1 type 2011 ROM to 1 file (for the US version) or 2 files (for
 international versions.)
 Put the EXE in a floppy disk with at least 300KiB (US) / 600KiB (intl.) of free
 space.
@@ -16,6 +16,12 @@ that I never tested it on anything else than my italian PS/1.
 ## CMOSDUMP
 A program to dump the content of the CMOS to a file called CMOS.BIN.
 Usage: CMOSDUMP
+
+
+## MEMDUMP
+Dumps various memory regions in the lower area (<1MB): 00000-00400, 00400-00500, 
+9FC00-A0000, C0000-D0000, D0000-E0000, E0000-F0000, F0000-100000.
+Usage: MEMDUMP
 
 
 ## SPKRTONE
