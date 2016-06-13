@@ -28,29 +28,30 @@
 class CPUCore;
 extern CPUCore g_cpucore;
 
-/*
-    STATUS FLAGS:
-     CARRY────────────────────────────────────────────────┐
-     PARITY─────────────────────────────────────────┐     │
-     AUXILLIARY CARRY─────────────────────────┐     │     │
-     ZERO───────────────────────────────┐     │     │     │
-     SIGN────────────────────────────┐  │     │     │     │
-     OVERFLOW────────────┐           │  │     │     │     │
-                         │           │  │     │     │     │
-              15 14 13 12v 11 10 9  8v 7v 6  5v 4  3v 2  1v 0
-            ╔══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╗
-      FLAGS:║▒▒│NT│IOPL │OF│DF│IF│TF│SF│ZF│▒▒│AF│▒▒│PF│▒▒│CF║
-            ╚══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╝
-                 ^   ^       ^  ^  ^
-                 │   │       │  │  │          CONTROL FLAGS:
-                 │   │       │  │  └───────────TRAP FLAG
-                 │   │       │  └──────────────INTERRUPT ENABLE
-                 │   │       └─────────────────DIRECTION FLAG
-                 │   │                        SPECIAL FIELDS:
-                 │   └─────────────────────────I/O PRIVILEGE LEVEL
-                 └─────────────────────────────NESTED TASK FLAG
+/* EFLAGS REGISTER:
+
+              CARRY───S─────────────────────────────────────────┐
+             PARITY───S───────────────────────────────────┐     │
+   AUXILLIARY CARRY───S─────────────────────────────┐     │     │
+               ZERO───S───────────────────────┐     │     │     │
+               SIGN───S────────────────────┐  │     │     │     │
+           OVERFLOW───S────────┐           │  │     │     │     │
+                               │           │  │     │     │     │
+    31     18 17 16 15 14 13 12│11 10  9  8│ 7│ 6  5│ 4  3│ 2  1│ 0
+   ╔════════╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╤══╗
+   ║ 0 .. 0 │VM│RF│ 0│NT│IO PL│OF│DF│IF│TF│SF│ZF│ 0│AF│ 0│PF│ 1│CF║
+   ╚════════╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╧══╝
+              │  │     │   │       │  │  │
+              │  │     │   │       │  │  └───────S───TRAP FLAG
+              │  │     │   │       │  └──────────X───INTERRUPT ENABLE
+              │  │     │   │       └─────────────C───DIRECTION FLAG
+              │  │     │   └─────────────────────X───I/O PRIVILEGE LEVEL
+              │  │     └─────────────────────────X───NESTED TASK FLAG
+              │  └───────────────────────────────X───RESUME FLAG (386)
+              └──────────────────────────────────X───VIRTUAL 8086 MODE (386)
+
+    S = STATUS FLAG, C = CONTROL FLAG, X = SYSTEM FLAG
 */
-// Flags Register
 #define FBITN_CF   0
 #define FBITN_PF   2
 #define FBITN_AF   4
@@ -62,6 +63,8 @@ extern CPUCore g_cpucore;
 #define FBITN_OF   11
 #define FBITN_IOPL 12
 #define FBITN_NT   14
+#define FBITN_RF   16
+#define FBITN_VM   17
 
 #define FMASK_CF   (1 << FBITN_CF)  // 0 CARRY
 #define FMASK_PF   (1 << FBITN_PF)  // 2 PARITY
@@ -74,14 +77,16 @@ extern CPUCore g_cpucore;
 #define FMASK_OF   (1 << FBITN_OF)  // 11 OVERFLOW
 #define FMASK_IOPL (3 << FBITN_IOPL)// 12-13 I/O PRIVILEGE LEVEL
 #define FMASK_NT   (1 << FBITN_NT)  // 14 NESTED TASK FLAG
+#define FMASK_RF   (1 << FBITN_RF)  // 16 RESUME FLAG
+#define FMASK_VM   (1 << FBITN_VM)  // 17 VIRTUAL 8086 MODE
 
-#define FMASK_ALL   0xFFFF
-#define FMASK_VALID 0x00007fd5 // only supported bits for FLAGS
+#define FMASK_ALL   0x3FFFF
+#define FMASK_VALID  0x00037FD5 // only supported bits for EFLAGS register
 
-#define GET_FLAG(TYPE)     g_cpucore.get_F(FMASK_ ## TYPE)
+#define GET_FLAG(TYPE)     g_cpucore.get_FLAGS(FMASK_ ## TYPE)
 #define SET_FLAG(TYPE,VAL) g_cpucore.set_##TYPE (VAL)
-#define GET_FLAGS()        g_cpucore.get_F(FMASK_ALL)
-#define SET_FLAGS(VAL)     g_cpucore.set_F(VAL)
+#define GET_FLAGS()        g_cpucore.get_FLAGS(FMASK_ALL)
+#define SET_FLAGS(VAL)     g_cpucore.set_FLAGS(VAL)
 
 #define FLAG_CF   (GET_FLAG(CF) >> FBITN_CF)
 #define FLAG_PF   (GET_FLAG(PF) >> FBITN_PF)
@@ -94,7 +99,8 @@ extern CPUCore g_cpucore;
 #define FLAG_OF   (GET_FLAG(OF) >> FBITN_OF)
 #define FLAG_IOPL (GET_FLAG(IOPL) >> FBITN_IOPL)
 #define FLAG_NT   (GET_FLAG(NT) >> FBITN_NT)
-
+#define FLAG_RF   (GET_FLAG(RF) >> FBITN_RF)
+#define FLAG_VM   (GET_FLAG(VM) >> FBITN_VM)
 
 // Machine Status Word
 #define MSW_PE (1 << 0)  // Protected mode enable
@@ -237,7 +243,8 @@ protected:
 	uint16_t m_gdtr_limit;
 
 	// status and control registers
-	uint16_t m_ip, m_prev_ip, m_f, m_msw;
+	uint32_t m_flags;
+	uint16_t m_ip, m_prev_ip, m_msw;
 
 
 	inline void load_segment_register(SegReg & _segreg, uint16_t _value)
@@ -251,8 +258,8 @@ protected:
 	void load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults);
 	void load_segment_protected(SegReg & _segreg, uint16_t _value);
 
-	inline void set_F(uint8_t _flagnum, bool _val) {
-		m_f = (m_f &~ (1<<_flagnum)) | ((_val)<<_flagnum);
+	inline void set_FLAGS(uint8_t _flagnum, bool _val) {
+		m_flags = (m_flags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 
 public:
@@ -300,23 +307,23 @@ public:
 	inline uint16_t get_IP() const { return m_ip; }
 	inline void restore_IP() { m_ip = m_prev_ip; }
 
-	inline uint16_t get_F(uint16_t _flag) const { return (m_f&_flag); }
+	inline uint32_t get_FLAGS(uint32_t _mask) const { return (m_flags & _mask); }
 
-	       void set_F(uint16_t _val);
-	inline void set_CF(bool _val) { set_F(FBITN_CF,_val); }
-	inline void set_PF(bool _val) { set_F(FBITN_PF,_val); }
-	inline void set_AF(bool _val) { set_F(FBITN_AF,_val); }
-	inline void set_ZF(bool _val) { set_F(FBITN_ZF,_val); }
-	inline void set_SF(bool _val) { set_F(FBITN_SF,_val); }
+	       void set_FLAGS(uint32_t _val);
+	inline void set_CF(bool _val) { set_FLAGS(FBITN_CF,_val); }
+	inline void set_PF(bool _val) { set_FLAGS(FBITN_PF,_val); }
+	inline void set_AF(bool _val) { set_FLAGS(FBITN_AF,_val); }
+	inline void set_ZF(bool _val) { set_FLAGS(FBITN_ZF,_val); }
+	inline void set_SF(bool _val) { set_FLAGS(FBITN_SF,_val); }
 	       void set_TF(bool _val);
 	       void set_IF(bool _val);
-	inline void set_DF(bool _val) { set_F(FBITN_DF,_val); }
-	inline void set_OF(bool _val) { set_F(FBITN_OF,_val); }
+	inline void set_DF(bool _val) { set_FLAGS(FBITN_DF,_val); }
+	inline void set_OF(bool _val) { set_FLAGS(FBITN_OF,_val); }
 	inline void set_IOPL(uint16_t _val) {
-		m_f &= ~(3 << 12);
-		m_f |= ((3 & _val) << 12);
+		m_flags &= ~(3 << 12);
+		m_flags |= ((3 & _val) << 12);
 	}
-	inline void set_NT(bool _val) { set_F(FBITN_NT,_val); }
+	inline void set_NT(bool _val) { set_FLAGS(FBITN_NT,_val); }
 
 	inline void set_MSW(uint8_t _flagnum, bool _val) {
 		m_msw = (m_msw &~ (1<<_flagnum)) | ((_val)<<_flagnum);

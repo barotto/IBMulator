@@ -218,63 +218,63 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 	{
 		bool jmp = false;
 		switch (instu[1]) {
-		case 'A' :	{	jmp = (_core->get_F(FMASK_CF)?false:true) && (_core->get_F(FMASK_ZF)?false:true); // JA
+		case 'A' :	{	jmp = (_core->get_FLAGS(FMASK_CF)?false:true) && (_core->get_FLAGS(FMASK_ZF)?false:true); // JA
 					}	break;
 		case 'B' :	{	if (instu[2] == 'E') {
-							jmp = (_core->get_F(FMASK_CF)?true:false) || (_core->get_F(FMASK_ZF)?true:false); // JBE
+							jmp = (_core->get_FLAGS(FMASK_CF)?true:false) || (_core->get_FLAGS(FMASK_ZF)?true:false); // JBE
 						} else {
-							jmp = _core->get_F(FMASK_CF)?true:false; // JB
+							jmp = _core->get_FLAGS(FMASK_CF)?true:false; // JB
 						}
 					}	break;
 		case 'C' :	{	if (instu[2] == 'X') {
 							jmp = _core->get_CX() == 0; // JCXZ
 						} else {
-							jmp = _core->get_F(FMASK_CF)?true:false; // JC
+							jmp = _core->get_FLAGS(FMASK_CF)?true:false; // JC
 						}
 					}	break;
-		case 'E' :	{	jmp = _core->get_F(FMASK_ZF)?true:false; // JE
+		case 'E' :	{	jmp = _core->get_FLAGS(FMASK_ZF)?true:false; // JE
 					}	break;
 		case 'G' :	{	if (instu[2] == 'E') {
-							jmp = (_core->get_F(FMASK_SF)?true:false)==(_core->get_F(FMASK_OF)?true:false); // JGE
+							jmp = (_core->get_FLAGS(FMASK_SF)?true:false)==(_core->get_FLAGS(FMASK_OF)?true:false); // JGE
 						} else {
-							jmp = (_core->get_F(FMASK_ZF)?false:true) && ((_core->get_F(FMASK_SF)?true:false)==(_core->get_F(FMASK_OF)?true:false)); // JG
+							jmp = (_core->get_FLAGS(FMASK_ZF)?false:true) && ((_core->get_FLAGS(FMASK_SF)?true:false)==(_core->get_FLAGS(FMASK_OF)?true:false)); // JG
 						}
 					}	break;
 		case 'L' :	{	if (instu[2] == 'E') {
-							jmp = (_core->get_F(FMASK_ZF)?true:false) || ((_core->get_F(FMASK_SF)?true:false)!=(_core->get_F(FMASK_OF)?true:false)); // JLE
+							jmp = (_core->get_FLAGS(FMASK_ZF)?true:false) || ((_core->get_FLAGS(FMASK_SF)?true:false)!=(_core->get_FLAGS(FMASK_OF)?true:false)); // JLE
 						} else {
-							jmp = (_core->get_F(FMASK_SF)?true:false)!=(_core->get_F(FMASK_OF)?true:false); // JL
+							jmp = (_core->get_FLAGS(FMASK_SF)?true:false)!=(_core->get_FLAGS(FMASK_OF)?true:false); // JL
 						}
 					}	break;
 		case 'M' :	{	jmp = true; // JMP
 					}	break;
 		case 'N' :	{	switch (instu[2]) {
 						case 'B' :
-						case 'C' :	{	jmp = _core->get_F(FMASK_CF)?false:true;	// JNB / JNC
+						case 'C' :	{	jmp = _core->get_FLAGS(FMASK_CF)?false:true;	// JNB / JNC
 									}	break;
-						case 'E' :	{	jmp = _core->get_F(FMASK_ZF)?false:true;	// JNE
+						case 'E' :	{	jmp = _core->get_FLAGS(FMASK_ZF)?false:true;	// JNE
 									}	break;
-						case 'O' :	{	jmp = _core->get_F(FMASK_OF)?false:true;	// JNO
+						case 'O' :	{	jmp = _core->get_FLAGS(FMASK_OF)?false:true;	// JNO
 									}	break;
-						case 'P' :	{	jmp = _core->get_F(FMASK_PF)?false:true;	// JNP
+						case 'P' :	{	jmp = _core->get_FLAGS(FMASK_PF)?false:true;	// JNP
 									}	break;
-						case 'S' :	{	jmp = _core->get_F(FMASK_SF)?false:true;	// JNS
+						case 'S' :	{	jmp = _core->get_FLAGS(FMASK_SF)?false:true;	// JNS
 									}	break;
-						case 'Z' :	{	jmp = _core->get_F(FMASK_ZF)?false:true;	// JNZ
+						case 'Z' :	{	jmp = _core->get_FLAGS(FMASK_ZF)?false:true;	// JNZ
 									}	break;
 						}
 					}	break;
-		case 'O' :	{	jmp = _core->get_F(FMASK_OF)?true:false; // JO
+		case 'O' :	{	jmp = _core->get_FLAGS(FMASK_OF)?true:false; // JO
 					}	break;
 		case 'P' :	{	if (instu[2] == 'O') {
-							jmp = _core->get_F(FMASK_PF)?false:true; // JPO
+							jmp = _core->get_FLAGS(FMASK_PF)?false:true; // JPO
 						} else {
-							jmp = _core->get_F(FMASK_SF)?true:false; // JP / JPE
+							jmp = _core->get_FLAGS(FMASK_SF)?true:false; // JP / JPE
 						}
 					}	break;
-		case 'S' :	{	jmp = _core->get_F(FMASK_SF)?true:false; // JS
+		case 'S' :	{	jmp = _core->get_FLAGS(FMASK_SF)?true:false; // JS
 					}	break;
-		case 'Z' :	{	jmp = _core->get_F(FMASK_ZF)?true:false; // JZ
+		case 'Z' :	{	jmp = _core->get_FLAGS(FMASK_ZF)?true:false; // JZ
 					}	break;
 		}
 		pos = strchr(instu,' ');
@@ -423,12 +423,12 @@ const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 void CPUDebugger::INT_def_ret(CPUCore *core, char* buf, uint buflen)
 {
 	if(buflen<15) return;
-	snprintf(buf, buflen, " ret CF=%u", core->get_F(FMASK_CF)>>FBITN_CF);
+	snprintf(buf, buflen, " ret CF=%u", core->get_FLAGS(FMASK_CF)>>FBITN_CF);
 }
 
 void CPUDebugger::INT_def_ret_errcode(CPUCore *core, char* buf, uint buflen)
 {
-	uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+	uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 	if(cf) {
 		const char * errstr = ms_dos_errors[core->get_AX()];
 		snprintf(buf, buflen, " ret CF=1: %s", errstr);
@@ -527,7 +527,7 @@ bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &/*_drive*/, int &_C, 
 void CPUDebugger::INT_13(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/, char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		const char * status = ms_disk_status[core->get_AH()];
 		snprintf(buf, buflen, " ret CF=%u: AH=%u (%s)", cf,core->get_AH(),status);
 		return;
@@ -539,7 +539,7 @@ void CPUDebugger::INT_13_02_3_4_C(bool call, uint16_t ax, CPUCore *core, Memory 
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			const char * errstr = ms_disk_status[core->get_AH()];
 			snprintf(buf, buflen, " ret CF=1: %s", errstr);
@@ -651,7 +651,7 @@ void CPUDebugger::INT_2F_1116(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			const char * errstr = ms_dos_errors[core->get_AX()];
 			snprintf(buf, buflen, " ret CF=1: %s", errstr);
@@ -668,7 +668,7 @@ void CPUDebugger::INT_2F_1123(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 {
 	if(!call) {
 		INT_def_ret(core, buf, buflen);
-		if(core->get_F(FMASK_CF) == 0) {
+		if(core->get_FLAGS(FMASK_CF) == 0) {
 			buf += strlen(buf);
 			char * filename = (char*)mem->get_phy_ptr(core->get_ES_phyaddr(core->get_DI()));
 			snprintf(buf, buflen, " : '%s'", filename);
@@ -716,7 +716,7 @@ void CPUDebugger::INT_21_32(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		const char * code;
 		int al = core->get_AL();
 		if(al==0x00) {
@@ -752,7 +752,7 @@ void CPUDebugger::INT_21_48(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 {
 	uint16_t bx = core->get_BX();
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			const char * errstr = ms_dos_errors[core->get_AX()];
 			snprintf(buf, buflen, " ret CF=1: %s, %d paragraphs available (%d bytes)",
@@ -782,7 +782,7 @@ void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			const char * errstr = ms_dos_errors[core->get_AX()];
 			snprintf(buf, buflen, " ret CF=1: %s", errstr);
@@ -808,7 +808,7 @@ void CPUDebugger::INT_21_39_A_B_4E(bool call, uint16_t /*ax*/, CPUCore *core, Me
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			const char * errstr = ms_dos_errors[core->get_AX()];
 			snprintf(buf, buflen, " ret CF=1: %s", errstr);
@@ -826,7 +826,7 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
 		} else {
@@ -861,7 +861,7 @@ void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
 		} else {
@@ -878,7 +878,7 @@ void CPUDebugger::INT_21_42(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
 		} else {
@@ -904,7 +904,7 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		if(cf) {
 			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
 		} else {
@@ -929,7 +929,7 @@ void CPUDebugger::INT_21_440D(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		char* buf, uint buflen)
 {
 	if(!call) {
-		uint cf = core->get_F(FMASK_CF)>>FBITN_CF;
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		const char * retcode;
 		if(cf) {
 			retcode = ms_dos_errors[core->get_AX()];
@@ -976,7 +976,7 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	//IBM - RAM LOADER - FIND FILE IN ROMDRV
 	if(!call) {
 		INT_def_ret(core, buf, buflen);
-		if(!core->get_F(FMASK_CF)) {
+		if(!core->get_FLAGS(FMASK_CF)) {
 			buf += strlen(buf);
 			//AL = the file table index
 			snprintf(buf, buflen, " : AL=%02X", core->get_AL());
