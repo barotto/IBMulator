@@ -344,7 +344,7 @@ public:
 	inline uint32_t get_DS_base() const { return m_segregs[REGI_DS].desc.base; }
 	inline uint32_t get_SS_base() const { return m_segregs[REGI_SS].desc.base; }
 	inline uint32_t get_ES_base() const { return m_segregs[REGI_ES].desc.base; }
-	inline uint16_t get_TR_base() const { return m_tr.desc.base; }
+	inline uint32_t get_TR_base() const { return m_tr.desc.base; }
 	inline uint32_t get_LDTR_base() const { return m_ldtr.desc.base; }
 	inline uint32_t get_IDTR_base() const { return m_idtr_base; }
 	inline uint32_t get_GDTR_base() const { return m_gdtr_base; }
