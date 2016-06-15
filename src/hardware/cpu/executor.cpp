@@ -131,9 +131,9 @@ uint8_t CPUExecutor::load_eb()
 {
 	if(m_instr->modrm.mod == 3) {
 		if(m_instr->modrm.rm < 4) {
-			return g_cpucore.gen_reg(m_instr->modrm.rm).byte[LO_INDEX];
+			return g_cpucore.gen_reg(m_instr->modrm.rm).byte[0];
 		}
-		return g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[HI_INDEX];
+		return g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[1];
 	}
 	return read_byte(EA_get_segreg(), EA_get_offset());
 }
@@ -141,9 +141,9 @@ uint8_t CPUExecutor::load_eb()
 uint8_t CPUExecutor::load_rb()
 {
 	if(m_instr->modrm.r < 4) {
-		return g_cpucore.gen_reg(m_instr->modrm.r).byte[LO_INDEX];
+		return g_cpucore.gen_reg(m_instr->modrm.r).byte[0];
 	}
-	return g_cpucore.gen_reg(m_instr->modrm.r-4).byte[HI_INDEX];
+	return g_cpucore.gen_reg(m_instr->modrm.r-4).byte[1];
 }
 
 uint16_t CPUExecutor::load_ew()
@@ -172,10 +172,10 @@ void CPUExecutor::store_eb(uint8_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
 		if(m_instr->modrm.rm < 4) {
-			g_cpucore.gen_reg(m_instr->modrm.rm).byte[LO_INDEX] = _value;
+			g_cpucore.gen_reg(m_instr->modrm.rm).byte[0] = _value;
 			return;
 		}
-		g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[HI_INDEX] = _value;
+		g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[1] = _value;
 		return;
 	}
 	write_byte(EA_get_segreg(), EA_get_offset(), _value);
@@ -184,18 +184,18 @@ void CPUExecutor::store_eb(uint8_t _value)
 void CPUExecutor::store_rb(uint8_t _value)
 {
 	if(m_instr->modrm.r < 4) {
-		g_cpucore.gen_reg(m_instr->modrm.r).byte[LO_INDEX] = _value;
+		g_cpucore.gen_reg(m_instr->modrm.r).byte[0] = _value;
 	} else {
-		g_cpucore.gen_reg(m_instr->modrm.r-4).byte[HI_INDEX] = _value;
+		g_cpucore.gen_reg(m_instr->modrm.r-4).byte[1] = _value;
 	}
 }
 
 void CPUExecutor::store_rb_op(uint8_t _value)
 {
 	if(m_instr->reg < 4) {
-		g_cpucore.gen_reg(m_instr->reg).byte[LO_INDEX] = _value;
+		g_cpucore.gen_reg(m_instr->reg).byte[0] = _value;
 	} else {
-		g_cpucore.gen_reg(m_instr->reg-4).byte[HI_INDEX] = _value;
+		g_cpucore.gen_reg(m_instr->reg-4).byte[1] = _value;
 	}
 }
 

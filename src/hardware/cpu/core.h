@@ -128,15 +128,15 @@ enum GenRegIndex8 {
 	REGI_BH = 7
 };
 
-enum GenRegIndex16 {
-	REGI_AX = 0,
-	REGI_CX = 1,
-	REGI_DX = 2,
-	REGI_BX = 3,
-	REGI_SP = 4,
-	REGI_BP = 5,
-	REGI_SI = 6,
-	REGI_DI = 7
+enum GenRegIndex32 {
+	REGI_EAX = 0,
+	REGI_ECX = 1,
+	REGI_EDX = 2,
+	REGI_EBX = 3,
+	REGI_ESP = 4,
+	REGI_EBP = 5,
+	REGI_ESI = 6,
+	REGI_EDI = 7
 };
 
 enum SegRegIndex {
@@ -149,30 +149,30 @@ enum SegRegIndex {
 #define REGI_NONE 0xFF
 
 
-#ifdef WORDS_BIGENDIAN
-	#define HI_INDEX 0
-	#define LO_INDEX 1
-#else
-	#define HI_INDEX 1
-	#define LO_INDEX 0
-#endif
-
-#define REG_AL g_cpucore.gen_reg(REGI_AX).byte[LO_INDEX]
-#define REG_AH g_cpucore.gen_reg(REGI_AX).byte[HI_INDEX]
-#define REG_AX g_cpucore.gen_reg(REGI_AX).word[0]
-#define REG_BL g_cpucore.gen_reg(REGI_BX).byte[LO_INDEX]
-#define REG_BH g_cpucore.gen_reg(REGI_BX).byte[HI_INDEX]
-#define REG_BX g_cpucore.gen_reg(REGI_BX).word[0]
-#define REG_CL g_cpucore.gen_reg(REGI_CX).byte[LO_INDEX]
-#define REG_CH g_cpucore.gen_reg(REGI_CX).byte[HI_INDEX]
-#define REG_CX g_cpucore.gen_reg(REGI_CX).word[0]
-#define REG_DL g_cpucore.gen_reg(REGI_DX).byte[LO_INDEX]
-#define REG_DH g_cpucore.gen_reg(REGI_DX).byte[HI_INDEX]
-#define REG_DX g_cpucore.gen_reg(REGI_DX).word[0]
-#define REG_SI g_cpucore.gen_reg(REGI_SI).word[0]
-#define REG_DI g_cpucore.gen_reg(REGI_DI).word[0]
-#define REG_SP g_cpucore.gen_reg(REGI_SP).word[0]
-#define REG_BP g_cpucore.gen_reg(REGI_BP).word[0]
+#define REG_AL  g_cpucore.gen_reg(REGI_EAX).byte[0]
+#define REG_AH  g_cpucore.gen_reg(REGI_EAX).byte[1]
+#define REG_AX  g_cpucore.gen_reg(REGI_EAX).word[0]
+#define REG_EAX g_cpucore.gen_reg(REGI_EAX).dword[0]
+#define REG_BL  g_cpucore.gen_reg(REGI_EBX).byte[0]
+#define REG_BH  g_cpucore.gen_reg(REGI_EBX).byte[1]
+#define REG_BX  g_cpucore.gen_reg(REGI_EBX).word[0]
+#define REG_EBX g_cpucore.gen_reg(REGI_EBX).dword[0]
+#define REG_CL  g_cpucore.gen_reg(REGI_ECX).byte[0]
+#define REG_CH  g_cpucore.gen_reg(REGI_ECX).byte[1]
+#define REG_CX  g_cpucore.gen_reg(REGI_ECX).word[0]
+#define REG_ECX g_cpucore.gen_reg(REGI_ECX).dword[0]
+#define REG_DL  g_cpucore.gen_reg(REGI_EDX).byte[0]
+#define REG_DH  g_cpucore.gen_reg(REGI_EDX).byte[1]
+#define REG_DX  g_cpucore.gen_reg(REGI_EDX).word[0]
+#define REG_EDX g_cpucore.gen_reg(REGI_EDX).dword[0]
+#define REG_SI  g_cpucore.gen_reg(REGI_ESI).word[0]
+#define REG_ESI g_cpucore.gen_reg(REGI_ESI).dword[0]
+#define REG_DI  g_cpucore.gen_reg(REGI_EDI).word[0]
+#define REG_EDI g_cpucore.gen_reg(REGI_EDI).dword[0]
+#define REG_SP  g_cpucore.gen_reg(REGI_ESP).word[0]
+#define REG_ESP g_cpucore.gen_reg(REGI_ESP).dword[0]
+#define REG_BP  g_cpucore.gen_reg(REGI_EBP).word[0]
+#define REG_EBP g_cpucore.gen_reg(REGI_EBP).dword[0]
 
 #define REG_IP g_cpucore.get_IP()
 #define SET_IP(value) g_cpucore.set_IP(value)
@@ -209,8 +209,9 @@ enum SegRegIndex {
 
 union GenReg
 {
-	uint16_t word[1];
-	uint8_t  byte[2];
+	uint32_t dword[1];
+	uint16_t word[2];
+	uint8_t  byte[4];
 };
 
 struct SegReg
@@ -351,7 +352,7 @@ public:
 	inline uint32_t get_DS_base() const { return m_segregs[REGI_DS].desc.base; }
 	inline uint32_t get_SS_base() const { return m_segregs[REGI_SS].desc.base; }
 	inline uint32_t get_ES_base() const { return m_segregs[REGI_ES].desc.base; }
-	inline uint16_t get_TR_base() const { return m_tr.desc.base; }
+	inline uint32_t get_TR_base() const { return m_tr.desc.base; }
 	inline uint32_t get_LDTR_base() const { return m_ldtr.desc.base; }
 	inline uint32_t get_IDTR_base() const { return m_idtr_base; }
 	inline uint32_t get_GDTR_base() const { return m_gdtr_base; }
@@ -370,23 +371,30 @@ public:
 	inline uint16_t get_IDTR_limit() const { return m_idtr_limit; }
 	inline uint16_t get_GDTR_limit() const { return m_gdtr_limit; }
 
-	inline uint8_t  get_AL() const { return m_genregs[REGI_AX].byte[LO_INDEX]; }
-	inline uint8_t  get_AH() const { return m_genregs[REGI_AX].byte[HI_INDEX]; }
-	inline uint16_t get_AX() const { return m_genregs[REGI_AX].word[0]; }
-	inline uint8_t  get_BL() const { return m_genregs[REGI_BX].byte[LO_INDEX]; }
-	inline uint8_t  get_BH() const { return m_genregs[REGI_BX].byte[HI_INDEX]; }
-	inline uint16_t get_BX() const { return m_genregs[REGI_BX].word[0]; }
-	inline uint8_t  get_CL() const { return m_genregs[REGI_CX].byte[LO_INDEX]; }
-	inline uint8_t  get_CH() const { return m_genregs[REGI_CX].byte[HI_INDEX]; }
-	inline uint16_t get_CX() const { return m_genregs[REGI_CX].word[0]; }
-	inline uint8_t  get_DL() const { return m_genregs[REGI_DX].byte[LO_INDEX]; }
-	inline uint8_t  get_DH() const { return m_genregs[REGI_DX].byte[HI_INDEX]; }
-	inline uint16_t get_DX() const { return m_genregs[REGI_DX].word[0]; }
-
-	inline uint16_t get_SI() const { return m_genregs[REGI_SI].word[0]; }
-	inline uint16_t get_BP() const { return m_genregs[REGI_BP].word[0]; }
-	inline uint16_t get_DI() const { return m_genregs[REGI_DI].word[0]; }
-	inline uint16_t get_SP() const { return m_genregs[REGI_SP].word[0]; }
+	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }
+	inline uint8_t  get_AH() const  { return m_genregs[REGI_EAX].byte[1]; }
+	inline uint16_t get_AX() const  { return m_genregs[REGI_EAX].word[0]; }
+	inline uint32_t get_EAX() const { return m_genregs[REGI_EAX].dword[0]; }
+	inline uint8_t  get_BL() const  { return m_genregs[REGI_EBX].byte[0]; }
+	inline uint8_t  get_BH() const  { return m_genregs[REGI_EBX].byte[1]; }
+	inline uint16_t get_BX() const  { return m_genregs[REGI_EBX].word[0]; }
+	inline uint32_t get_EBX() const { return m_genregs[REGI_EBX].dword[0]; }
+	inline uint8_t  get_CL() const  { return m_genregs[REGI_ECX].byte[0]; }
+	inline uint8_t  get_CH() const  { return m_genregs[REGI_ECX].byte[1]; }
+	inline uint16_t get_CX() const  { return m_genregs[REGI_ECX].word[0]; }
+	inline uint32_t get_ECX() const { return m_genregs[REGI_ECX].dword[0]; }
+	inline uint8_t  get_DL() const  { return m_genregs[REGI_EDX].byte[0]; }
+	inline uint8_t  get_DH() const  { return m_genregs[REGI_EDX].byte[1]; }
+	inline uint16_t get_DX() const  { return m_genregs[REGI_EDX].word[0]; }
+	inline uint32_t get_EDX() const { return m_genregs[REGI_EDX].dword[0]; }
+	inline uint16_t get_SI() const  { return m_genregs[REGI_ESI].word[0]; }
+	inline uint32_t get_ESI() const { return m_genregs[REGI_ESI].dword[0]; }
+	inline uint16_t get_BP() const  { return m_genregs[REGI_EBP].word[0]; }
+	inline uint32_t get_EBP() const { return m_genregs[REGI_EBP].dword[0]; }
+	inline uint16_t get_DI() const  { return m_genregs[REGI_EDI].word[0]; }
+	inline uint32_t get_EDI() const { return m_genregs[REGI_EDI].dword[0]; }
+	inline uint16_t get_SP() const  { return m_genregs[REGI_ESP].word[0]; }
+	inline uint32_t get_ESP() const { return m_genregs[REGI_ESP].dword[0]; }
 
 	void save_state(StateBuf &_state) const;
 	void restore_state(StateBuf &_state);

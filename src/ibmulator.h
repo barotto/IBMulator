@@ -99,7 +99,7 @@ void size_check()
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL false
+#define OVERRIDE_VERBOSITY_LEVEL true
 #define LOG_PROGRAM_VERBOSITY  LOG_V0
 #define LOG_FS_VERBOSITY       LOG_V0
 #define LOG_GFX_VERBOSITY      LOG_V0
