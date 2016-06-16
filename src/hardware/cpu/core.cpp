@@ -48,6 +48,8 @@ void CPUCore::reset()
 	load_segment_real(REG_DS, 0x0000, true);
 	load_segment_real(REG_SS, 0x0000, true);
 	load_segment_real(REG_ES, 0x0000, true);
+	load_segment_real(REG_FS, 0x0000, true);
+	load_segment_real(REG_GS, 0x0000, true);
 
 	load_segment_real(m_ldtr, 0x0000, true);
 	load_segment_real(m_tr, 0x0000, true);
@@ -158,7 +160,8 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		REG_SS.desc = descriptor;
 		REG_SS.sel = selector;
 
-	} else if(_segreg.is(REG_DS) || _segreg.is(REG_ES)) {
+	} else if(_segreg.is(REG_DS) || _segreg.is(REG_ES)
+	        || _segreg.is(REG_FS)|| _segreg.is(REG_GS)) {
 
 		if((_value & SELECTOR_RPL_MASK) == 0) {
 			/* null selector */
@@ -371,6 +374,8 @@ const char *SegReg::to_string()
 	else if (is(REG_CS)) return("CS");
 	else if (is(REG_SS)) return("SS");
 	else if (is(REG_DS)) return("DS");
+	else if (is(REG_FS)) return("FS");
+	else if (is(REG_GS)) return("GS");
 	else { return "??"; }
 }
 

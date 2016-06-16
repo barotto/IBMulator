@@ -23,7 +23,7 @@
 #include "executor.h"
 #include "logger.h"
 #include "../memory.h"
-
+#include "hardware/cpu.h"
 
 CPUDecoder g_cpudecoder;
 
@@ -71,6 +71,24 @@ restart_opcode:
 		case 0x3E: { // segment ovr: DS
 			m_instr.seg = REGI_DS;
 			goto restart_opcode;
+		}
+		case 0x64: { // segment ovr: FS
+			if(CPU_TYPE >= CPU_386) {
+				m_instr.seg = REGI_FS;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x65: { // segment ovr: GS
+			if(CPU_TYPE >= CPU_386) {
+				m_instr.seg = REGI_GS;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
 		}
 		case 0xF0: { // LOCK
 			PDEBUGF(LOG_V2, LOG_CPU, "LOCK\n");

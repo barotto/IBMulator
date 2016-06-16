@@ -143,7 +143,9 @@ enum SegRegIndex {
 	REGI_ES = 0,
 	REGI_CS = 1,
 	REGI_SS = 2,
-	REGI_DS = 3
+	REGI_DS = 3,
+	REGI_FS = 4,
+	REGI_GS = 5
 };
 
 #define REGI_NONE 0xFF
@@ -184,6 +186,8 @@ enum SegRegIndex {
 #define SET_SS g_cpucore.set_SS
 #define SET_ES g_cpucore.set_ES
 #define SET_DS g_cpucore.set_DS
+#define SET_FS g_cpucore.set_FS
+#define SET_GS g_cpucore.set_GS
 
 #define SET_IDTR(base,limit) g_cpucore.set_IDTR(base,limit)
 #define SET_GDTR(base,limit) g_cpucore.set_GDTR(base,limit)
@@ -192,6 +196,8 @@ enum SegRegIndex {
 #define REG_DS GET_REG(DS)
 #define REG_SS GET_REG(SS)
 #define REG_CS GET_REG(CS)
+#define REG_FS GET_REG(FS)
+#define REG_GS GET_REG(GS)
 #define REG_TR GET_REG(TR)
 #define REG_LDTR GET_REG(LDTR)
 
@@ -236,7 +242,7 @@ protected:
 	GenReg m_genregs[8];
 
 	// segment registers
-	SegReg m_segregs[4];
+	SegReg m_segregs[6];
 	SegReg m_tr, m_ldtr;
 	uint32_t m_idtr_base;
 	uint16_t m_idtr_limit;
@@ -272,7 +278,7 @@ public:
 
 
 	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
-	inline SegReg & seg_reg(uint8_t idx) { assert(idx<4); return m_segregs[idx]; }
+	inline SegReg & seg_reg(uint8_t idx) { assert(idx<6); return m_segregs[idx]; }
 
 	//only real mode:
 	inline void set_CS(uint16_t _val) {
@@ -288,6 +294,8 @@ public:
 	inline void set_SS(uint16_t _val) { load_segment_register(m_segregs[REGI_SS], _val); }
 	void set_SS(Selector &sel, Descriptor &desc, uint8_t cpl);
 	inline void set_ES(uint16_t _val) { load_segment_register(m_segregs[REGI_ES], _val); }
+	inline void set_FS(uint16_t _val) { load_segment_register(m_segregs[REGI_FS], _val); }
+	inline void set_GS(uint16_t _val) { load_segment_register(m_segregs[REGI_GS], _val); }
 
 	inline void set_IDTR(uint32_t _base, uint16_t _limit)
 		{ m_idtr_base = _base; m_idtr_limit = _limit; }
@@ -298,6 +306,8 @@ public:
 	inline SegReg & get_DS() { return m_segregs[REGI_DS]; }
 	inline SegReg & get_SS() { return m_segregs[REGI_SS]; }
 	inline SegReg & get_ES() { return m_segregs[REGI_ES]; }
+	inline SegReg & get_FS() { return m_segregs[REGI_FS]; }
+	inline SegReg & get_GS() { return m_segregs[REGI_GS]; }
 	inline SegReg & get_TR() { return m_tr; }
 	inline SegReg & get_LDTR() { return m_ldtr; }
 
