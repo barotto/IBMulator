@@ -30,6 +30,12 @@
 class CPU;
 extern CPU g_cpu;
 
+enum CPUType {
+	CPU_286 = 2,
+	CPU_386 = 3
+};
+
+#define CPU_TYPE  g_cpu.type()
 
 #define CPU_EVENT_NMI           (1 << 0)
 #define CPU_EVENT_PENDING_INTR  (1 << 1)
@@ -104,7 +110,7 @@ public:
 class CPU
 {
 protected:
-
+	unsigned m_type;
 	uint32_t m_freq;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
@@ -146,6 +152,7 @@ public:
 
 	uint step();
 
+	inline unsigned type() const { return m_type; }
 	inline uint32_t get_freq() { return m_freq; }
 	GCC_ATTRIBUTE(always_inline)
 	inline uint32_t get_cycle_time_ns() { return m_cycle_time; }

@@ -50,6 +50,8 @@ void CPU::init()
 
 void CPU::config_changed()
 {
+	m_type = CPU_286; //TODO STUB
+
 	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
 	m_cycle_time = round(1000.0 / freq);
 	m_freq = round(1e9 / m_cycle_time);
