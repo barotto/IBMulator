@@ -39,8 +39,8 @@ Instruction * CPUDecoder::decode()
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
 	m_instr.seg = REGI_NONE;
-	m_instr.ip = g_cpubus.get_ip();
-	m_instr.csip = g_cpubus.get_csip();
+	m_instr.eip = g_cpubus.get_eip();
+	m_instr.cseip = g_cpubus.get_cseip();
 	m_instr.cycles = {
 		0,  //base
 		0,  //memop

@@ -469,12 +469,12 @@ void CPUExecutor::execute(Instruction * _instr)
 {
 	m_instr = _instr;
 
-	uint32_t old_ip = REG_IP;
+	uint32_t old_eip = REG_EIP;
 
-	SET_IP(REG_IP + m_instr->size);
+	SET_EIP(REG_EIP + m_instr->size);
 
 	if(INT_TRAPS) {
-		auto ret = m_inttraps_ret.find(m_instr->csip);
+		auto ret = m_inttraps_ret.find(m_instr->cseip);
 		if(ret != m_inttraps_ret.end()) {
 			for(auto fn : ret->second) {
 				fn();
@@ -484,7 +484,7 @@ void CPUExecutor::execute(Instruction * _instr)
 	}
 
 	if(CPULOG && m_dos_prg_int_exit) {
-		if(m_instr->csip == m_dos_prg_int_exit) {
+		if(m_instr->cseip == m_dos_prg_int_exit) {
 			//logging starts at the next instruction
 			g_machine.DOS_program_start(m_dos_prg.top().second);
 		}
@@ -502,7 +502,7 @@ void CPUExecutor::execute(Instruction * _instr)
 		 */
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-	if(old_ip + m_instr->size > GET_LIMIT(CS)) {
+	if(old_eip + m_instr->size > GET_LIMIT(CS)) {
 		PERRF(LOG_CPU, "CS limit violation!\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
@@ -533,7 +533,7 @@ void CPUExecutor::execute(Instruction * _instr)
 			(g_cpuexecutor.*(m_instr->fn))();
 		} catch(CPUException &e) {
 			//TODO an exception occurred during the instr execution. what should i do?
-			RESTORE_IP();
+			RESTORE_EIP();
 			throw;
 		}
 		/* 4. Decrement CX by 1; no flags are modified. */
@@ -554,7 +554,7 @@ void CPUExecutor::execute(Instruction * _instr)
 		}
 		/* 6. Go to step 1 for the next iteration. */
 		//REP not finished so back up
-		RESTORE_IP();
+		RESTORE_EIP();
 
 	} else {
 

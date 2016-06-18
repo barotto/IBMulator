@@ -50,8 +50,8 @@ class CPUBus
 {
 private:
 	struct {
-		uint32_t csip;
-		uint16_t ip;
+		uint32_t cseip;
+		uint32_t eip;
 		uint8_t pq[CPU_PQ_SIZE];
 		bool pq_valid;
 		uint32_t pq_head;
@@ -81,17 +81,17 @@ private:
 	void pq_fill(uint toread);
 	GCC_ATTRIBUTE(always_inline)
 	inline uint get_pq_free_space() {
-		return CPU_PQ_SIZE - (m_s.pq_tail-m_s.pq_head) + (m_s.csip - m_s.pq_head);
+		return CPU_PQ_SIZE - (m_s.pq_tail-m_s.pq_head) + (m_s.cseip - m_s.pq_head);
 	}
 	GCC_ATTRIBUTE(always_inline)
 	inline uint get_pq_cur_index() {
-		return (m_s.pq_headpos + (m_s.csip - m_s.pq_head)) % CPU_PQ_SIZE;
+		return (m_s.pq_headpos + (m_s.cseip - m_s.pq_head)) % CPU_PQ_SIZE;
 	}
 	inline uint get_pq_cur_size() {
 		return CPU_PQ_SIZE - get_pq_free_space();
 	}
 	inline bool is_pq_empty() {
-		return (m_s.csip == m_s.pq_tail);
+		return (m_s.cseip == m_s.pq_tail);
 	}
 
 public:
@@ -127,13 +127,13 @@ public:
 	uint8_t fetchb();
 	uint16_t fetchw();
 
-	inline uint32_t get_ip() { return m_s.ip; }
-	inline uint32_t get_csip() { return m_s.csip; }
+	inline uint32_t get_eip() const { return m_s.eip; }
+	inline uint32_t get_cseip() const { return m_s.cseip; }
 
 	inline void invalidate_pq() {
 		m_s.pq_valid = false;
-		m_s.ip = REG_IP;
-		m_s.csip = GET_PHYADDR(CS, m_s.ip);
+		m_s.eip = REG_EIP;
+		m_s.cseip = GET_PHYADDR(CS, m_s.eip);
 	}
 
 	inline uint8_t mem_read_byte(uint32_t _addr) {

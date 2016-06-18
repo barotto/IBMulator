@@ -69,7 +69,7 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 	else if(strstr(_hex,"DI")==_hex) { _hex+=2; regval = _core->get_DI(); }
 	else if(strstr(_hex,"BP")==_hex) { _hex+=2; regval = _core->get_BP(); }
 	else if(strstr(_hex,"SP")==_hex) { _hex+=2; regval = _core->get_SP(); }
-	else if(strstr(_hex,"IP")==_hex) { _hex+=2; regval = _core->get_IP(); }
+	else if(strstr(_hex,"IP")==_hex) { _hex+=2; regval = _core->get_EIP(); }
 	else if(strstr(_hex,"CS")==_hex) { _hex+=2; regval = _core->get_CS().sel.value; }
 	else if(strstr(_hex,"DS")==_hex) { _hex+=2; regval = _core->get_DS().sel.value; }
 	else if(strstr(_hex,"ES")==_hex) { _hex+=2; regval = _core->get_ES().sel.value; }

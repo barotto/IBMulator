@@ -46,7 +46,7 @@ void CPULogger::add_entry(
 		unsigned _cycles)
 {
 	//don't log outside fixed boundaries
-	if(_instr.csip<CPULOG_START_ADDR || _instr.csip>CPULOG_END_ADDR) {
+	if(_instr.cseip<CPULOG_START_ADDR || _instr.cseip>CPULOG_END_ADDR) {
 		return;
 	}
 
@@ -64,7 +64,7 @@ void CPULogger::add_entry(
 		m_global_counters[opcode_idx] += 1;
 	}
 
-	if(m_log_file && (CPULOG_LOG_INTS || m_iret_address==0 || m_iret_address==_instr.csip)) {
+	if(m_log_file && (CPULOG_LOG_INTS || m_iret_address==0 || m_iret_address==_instr.cseip)) {
 		m_iret_address = 0;
 		write_entry(m_log_file, m_log[m_log_idx]);
 		if(CPULOG_COUNTERS) {
@@ -160,9 +160,9 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 			return -1;
 	}
 
-	if(CPULOG_WRITE_CSIP) {
+	if(CPULOG_WRITE_CSEIP) {
 		if(fprintf(_dest, "%04X:%04X ",
-				_entry.core.get_CS().sel.value, _entry.core.get_IP()) < 0)
+				_entry.core.get_CS().sel.value, _entry.core.get_EIP()) < 0)
 			return -1;
 	}
 
@@ -237,7 +237,7 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 
 	char dline[200];
 	debugger.disasm(dline, 200u,
-		_log_entry.instr.csip, _log_entry.instr.ip,	nullptr,
+		_log_entry.instr.cseip, _log_entry.instr.eip, nullptr,
 		_log_entry.instr.bytes, _log_entry.instr.size
 	);
 	char *analize = empty;

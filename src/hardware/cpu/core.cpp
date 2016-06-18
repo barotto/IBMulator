@@ -41,7 +41,7 @@ void CPUCore::reset()
 	m_flags = 0x00000002;
 	m_msw = 0xFFF0;
 
-	m_ip = 0xFFF0;
+	m_eip = 0x0000FFF0;
 
 	load_segment_real(REG_CS, 0xF000, true);
 	REG_CS.desc.base = 0xFF0000;

@@ -166,7 +166,7 @@ uint CPU::step()
 			g_cpubus.update(0);
 		}
 		csip = GET_PHYADDR(CS,REG_IP);
-		prev_csip = (m_instr!=nullptr)?m_instr->csip:0;
+		prev_csip = (m_instr!=nullptr)?m_instr->cseip:0;
 		//if the prev instr is the same as the next (REP), don't decode
 		if(m_instr==nullptr || !(m_instr->rep && prev_csip==csip)) {
 			m_instr = g_cpudecoder.decode();
@@ -201,7 +201,7 @@ uint CPU::step()
 			if(STOP_AT_EXC && (STOP_AT_EXC_VEC==0xFF || e.vector==STOP_AT_EXC_VEC)) {
 				g_machine.set_single_step(true);
 				if(e.vector == CPU_UD_EXC && UD6_AUTO_DUMP) {
-					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->csip);
+					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->cseip);
 					g_machine.memdump(REG_CS.desc.base, GET_LIMIT(CS));
 				}
 			}

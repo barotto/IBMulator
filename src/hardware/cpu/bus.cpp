@@ -88,9 +88,9 @@ void CPUBus::pq_fill(uint btoread)
 void CPUBus::update(int _cycles)
 {
 	if(!m_s.pq_valid) {
-		m_s.pq_head = m_s.csip;
+		m_s.pq_head = m_s.cseip;
 		m_s.pq_headpos = 0;
-		m_s.pq_tail = m_s.csip;
+		m_s.pq_tail = m_s.cseip;
 		m_cycles_ahead = 0;
 	} else {
 		_cycles -= m_cycles_ahead;
@@ -131,8 +131,8 @@ uint8_t CPUBus::fetchb()
 {
 	uint8_t b;
 	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.csip<=m_s.pq_tail);
-		if(m_s.csip == m_s.pq_tail) {
+		assert(m_s.cseip <= m_s.pq_tail);
+		if(m_s.cseip == m_s.pq_tail) {
 			//the pq is empty
 			if(CPU_PQ_ODDPENALTY) {
 				pq_fill(1);
@@ -147,11 +147,11 @@ uint8_t CPUBus::fetchb()
 		}
 		b = m_s.pq[get_pq_cur_index()];
 	} else {
-		b = g_memory.read_byte(m_s.csip);
+		b = g_memory.read_byte(m_s.cseip);
 		m_dram_r++;
 	}
-	m_s.csip++;
-	m_s.ip++;
+	m_s.cseip++;
+	m_s.eip++;
 	return b;
 }
 
@@ -159,8 +159,8 @@ uint16_t CPUBus::fetchw()
 {
 	uint8_t b0, b1;
 	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.csip<=m_s.pq_tail);
-		if(m_s.csip >= m_s.pq_tail - 1) {
+		assert(m_s.cseip <= m_s.pq_tail);
+		if(m_s.cseip >= m_s.pq_tail - 1) {
 			//the pq is empty or not full enough
 			if(CPU_PQ_ODDPENALTY) {
 				m_dram_r += 2;
@@ -175,16 +175,16 @@ uint16_t CPUBus::fetchw()
 			}
 		}
 		b0 = m_s.pq[get_pq_cur_index()];
-		m_s.csip++;
+		m_s.cseip++;
 		b1 = m_s.pq[get_pq_cur_index()];
-		m_s.csip++;
+		m_s.cseip++;
 	} else {
-		b0 = g_memory.read_byte(m_s.csip);
-		b1 = g_memory.read_byte(m_s.csip+1);
-		m_dram_r += 1+(m_s.csip & 1);
-		m_s.csip += 2;
+		b0 = g_memory.read_byte(m_s.cseip);
+		b1 = g_memory.read_byte(m_s.cseip+1);
+		m_dram_r += 1+(m_s.cseip & 1);
+		m_s.cseip += 2;
 	}
-	m_s.ip += 2;
+	m_s.eip += 2;
 	return uint16_t(b1)<<8 | b0;
 }
 

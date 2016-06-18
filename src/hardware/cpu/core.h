@@ -176,9 +176,12 @@ enum SegRegIndex {
 #define REG_BP  g_cpucore.gen_reg(REGI_EBP).word[0]
 #define REG_EBP g_cpucore.gen_reg(REGI_EBP).dword[0]
 
-#define REG_IP g_cpucore.get_IP()
-#define SET_IP(value) g_cpucore.set_IP(value)
-#define RESTORE_IP g_cpucore.restore_IP
+#define REG_IP (uint16_t(g_cpucore.get_EIP() & 0xFFFF))
+#define SET_IP(value) g_cpucore.set_EIP(value & 0xFFFF)
+#define RESTORE_IP g_cpucore.restore_EIP
+#define REG_EIP g_cpucore.get_EIP()
+#define SET_EIP(value) g_cpucore.set_EIP(value)
+#define RESTORE_EIP g_cpucore.restore_EIP
 
 #define GET_REG(NAME)     (g_cpucore.get_ ## NAME ())
 #define SET_REG(NAME,VAL) (g_cpucore.set_ ## NAME (VAL))
@@ -251,7 +254,8 @@ protected:
 
 	// status and control registers
 	uint32_t m_flags;
-	uint16_t m_ip, m_prev_ip, m_msw;
+	uint32_t m_eip, m_prev_eip;
+	uint16_t m_msw;
 
 
 	inline void load_segment_register(SegReg & _segreg, uint16_t _value)
@@ -311,12 +315,12 @@ public:
 	inline SegReg & get_TR() { return m_tr; }
 	inline SegReg & get_LDTR() { return m_ldtr; }
 
-	inline void set_IP(uint16_t _val) {
-		m_prev_ip = m_ip;
-		m_ip = _val;
+	inline void set_EIP(uint32_t _val) {
+		m_prev_eip = m_eip;
+		m_eip = _val;
 	}
-	inline uint16_t get_IP() const { return m_ip; }
-	inline void restore_IP() { m_ip = m_prev_ip; }
+	inline uint32_t get_EIP() const { return m_eip; }
+	inline void restore_EIP() { m_eip = m_prev_eip; }
 
 	inline uint32_t get_FLAGS(uint32_t _mask) const { return (m_flags & _mask); }
 

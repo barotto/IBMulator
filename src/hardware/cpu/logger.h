@@ -23,7 +23,7 @@
 #define CPULOG               false   // activate CPU logging?
 #define CPULOG_MAX_SIZE      400000u // number of instruction to log
 #define CPULOG_WRITE_TIME    false   // write instruction machine time?
-#define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
+#define CPULOG_WRITE_CSEIP   true    // write instruction address as CS:EIP?
 #define CPULOG_WRITE_HEX     true    // write instruction as hex codes?
 #define CPULOG_WRITE_STATE   false   // write the CPU global state?
 #define CPULOG_WRITE_CORE    false   // write the CPU registers?

@@ -69,8 +69,8 @@ struct Instruction
 	bool rep;       //!< true if REP/REPE/REPNE
 	bool rep_zf;    //!< tells the executor that the exit condition is by checking the ZF
 	bool rep_equal; //!< true if REPE, false if REPNE
-	uint16_t ip;    //!< used in cpu logging only
-	uint32_t csip;  //!< the absolute instruction memory address
+	uint32_t eip;   //!< used in cpu logging only
+	uint32_t cseip; //!< the instruction linear memory address
 	uint size;      //!< total size of the instruction (prefixes included)
 	struct {
 		uint8_t base;  //!< CPU cycles for execution
@@ -124,9 +124,9 @@ public:
 
 	Instruction * decode();
 
-	inline uint32_t get_next_csip() {
-		//return the CS:IP of the next decoded instruction
-		return g_cpubus.get_csip();
+	inline uint32_t get_next_cseip() {
+		//return the linear address of the next decoded instruction
+		return g_cpubus.get_cseip();
 	}
 };
 
