@@ -70,7 +70,7 @@ struct Instruction
 	bool rep_zf;    //!< tells the executor that the exit condition is by checking the ZF
 	bool rep_equal; //!< true if REPE, false if REPNE
 	uint32_t eip;   //!< used in cpu logging only
-	uint32_t cseip; //!< the instruction linear memory address
+	uint32_t cseip; //!< the instruction physical memory address
 	uint size;      //!< total size of the instruction (prefixes included)
 	struct {
 		uint8_t base;  //!< CPU cycles for execution

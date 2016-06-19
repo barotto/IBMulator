@@ -102,19 +102,38 @@ extern CPUCore g_cpucore;
 #define FLAG_RF   (GET_FLAG(RF) >> FBITN_RF)
 #define FLAG_VM   (GET_FLAG(VM) >> FBITN_VM)
 
-// Machine Status Word
-#define MSW_PE (1 << 0)  // Protected mode enable
-#define MSW_MP (1 << 1)  // Monitor processor extension
-#define MSW_EM (1 << 2)  // Emulate processor extension
-#define MSW_TS (1 << 3)  // Task switched
+// Control registers
+/*
+31                23                15                7               0
+╔═════════════════╪═════════════════╪════════╦════════╪═════════════════╗
+║                                            ║                          ║
+║    PAGE DIRECTORY BASE REGISTER (PDBR)     ║         RESERVED         ║CR3
+╟────────────────────────────────────────────╨──────────────────────────╢
+║                                                                       ║
+║                       PAGE FAULT LINEAR ADDRESS                       ║CR2
+╟─┬───────────────────────────────────────────────────────────┬─┬─┬─┬─┬─╢
+║P│                                                           │E│T│E│M│P║
+║G│                              RESERVED                     │T│S│M│P│E║CR0
+╚═╧═══════════════╪═════════════════╪═════════════════╪═══════╧═╧═╧═╧═╧═╝
+*/
 
-#define MSW_ALL 0xF
-#define MSWMASK_VALID 0xF
+#define CR0_PE (1 << 0)  // Protected mode enable
+#define CR0_MP (1 << 1)  // Monitor processor extension
+#define CR0_EM (1 << 2)  // Emulate processor extension
+#define CR0_TS (1 << 3)  // Task switched
+#define CR0_ET (1 << 4)  // Extension Type
+#define CR0_PG (1 << 31) // Paging
 
-#define GET_MSW     g_cpucore.get_MSW
-#define SET_MSW		g_cpucore.set_MSW
+#define CR0_ALL 0x8000001F
+#define CR0_MSW 0x0000000F
 
-#define IS_PMODE() GET_MSW(MSW_PE)
+#define GET_CR0  g_cpucore.get_CR0
+#define SET_CR0  g_cpucore.set_CR0
+
+#define GET_MSW()  (uint16_t(GET_CR0(CR0_MSW)))
+#define SET_MSW(_msw_)  (SET_CR0((GET_CR0(CR0_ALL) & ~CR0_MSW) | _msw_))
+
+#define IS_PMODE() GET_CR0(CR0_PE)
 
 
 enum GenRegIndex8 {
@@ -255,7 +274,7 @@ protected:
 	// status and control registers
 	uint32_t m_flags;
 	uint32_t m_eip, m_prev_eip;
-	uint16_t m_msw;
+	uint32_t m_cr0;
 
 
 	inline void load_segment_register(SegReg & _segreg, uint16_t _value)
@@ -340,17 +359,17 @@ public:
 	}
 	inline void set_NT(bool _val) { set_FLAGS(FBITN_NT,_val); }
 
-	inline void set_MSW(uint8_t _flagnum, bool _val) {
-		m_msw = (m_msw &~ (1<<_flagnum)) | ((_val)<<_flagnum);
+	inline void set_CR0(uint8_t _flagnum, bool _val) {
+		m_cr0 = (m_cr0 &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
-	inline void set_MSW(uint16_t _msw) {
-		m_msw = _msw & MSWMASK_VALID;
+	inline void set_CR0(uint32_t _cr0) {
+		m_cr0 = _cr0 & CR0_ALL;
 	}
-	inline uint16_t get_MSW(uint16_t _msw) const {
-		return (m_msw & _msw);
+	inline uint32_t get_CR0(uint32_t _cr0) const {
+		return (m_cr0 & _cr0);
 	}
 
-	inline bool is_pmode() const { return m_msw & MSW_PE; }
+	inline bool is_pmode() const { return m_cr0 & CR0_PE; }
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current
 	 * privilege level (CPL) from the SS access rights. The CPL is loaded from

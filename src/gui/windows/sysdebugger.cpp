@@ -229,7 +229,7 @@ void SysDebugger::update()
 
 	m_core.ip->SetInnerRML(format_hex16(REG_IP));
 	m_core.f->SetInnerRML(format_bin16(GET_FLAG(ALL)));
-	m_core.msw->SetInnerRML(format_bin4(GET_MSW(MSW_ALL)));
+	m_core.msw->SetInnerRML(format_bin4(GET_MSW()));
 	m_core.cpl->SetInnerRML(format_uint16(CPL));
 
 	m_core.cf->SetInnerRML(format_bit(FLAG_CF));

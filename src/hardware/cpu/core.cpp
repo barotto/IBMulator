@@ -39,8 +39,7 @@ void CPUCore::reset()
 	memset(m_genregs, 0, sizeof(GenReg)*8);
 
 	m_flags = 0x00000002;
-	m_msw = 0xFFF0;
-
+	m_cr0 = 0x0000FFF0;
 	m_eip = 0x0000FFF0;
 
 	load_segment_real(REG_CS, 0xF000, true);
