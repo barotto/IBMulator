@@ -1023,35 +1023,29 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 		output << std::hex << std::setw(2) << int(desc.ar) << ",";
 		if(desc.is_system_segment()) {
 			switch(desc.type) {
-				case DESC_TYPE_INVALID:
-					output << "INVALID";
-					break;
-				case DESC_TYPE_AVAIL_TSS:
-					output << "AVAIL TSS";
+				case DESC_TYPE_AVAIL_286_TSS:
+					output << "AVAIL 286 TSS";
 					break;
 				case DESC_TYPE_LDT_DESC:
 					output << "LDT DESC";
 					break;
-				case DESC_TYPE_BUSY_TSS:
-					output << "BUSY TSS";
+				case DESC_TYPE_BUSY_286_TSS:
+					output << "BUSY 286 TSS";
 					break;
-				case DESC_TYPE_CALL_GATE:
-					output << "CALL GATE";
+				case DESC_TYPE_286_CALL_GATE:
+					output << "286 CALL GATE";
 					break;
 				case DESC_TYPE_TASK_GATE:
 					output << "TASK GATE";
 					break;
-				case DESC_TYPE_INTR_GATE:
-					output << "INTR GATE";
+				case DESC_TYPE_286_INTR_GATE:
+					output << "286 INTR GATE";
 					break;
-				case DESC_TYPE_TRAP_GATE:
-					output << "TRAP GATE";
-					break;
-				case DESC_TYPE_RINVALID:
-					output << "RINVALID";
+				case DESC_TYPE_286_TRAP_GATE:
+					output << "286 TRAP GATE";
 					break;
 				default:
-					output << "unknown (S=0)";
+					output << "INVALID";
 					break;
 			}
 			output << ",,";

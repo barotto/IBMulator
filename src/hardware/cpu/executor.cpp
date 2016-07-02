@@ -581,7 +581,7 @@ void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t &ss_, uint16_t &sp_)
 	if(!REG_TR.desc.valid)
 		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR invalid\n");
 
-	if(!(REG_TR.desc.type!=DESC_TYPE_AVAIL_TSS || REG_TR.desc.type!=DESC_TYPE_BUSY_TSS)) {
+	if(!(REG_TR.desc.type!=DESC_TYPE_AVAIL_286_TSS || REG_TR.desc.type!=DESC_TYPE_BUSY_286_TSS)) {
 		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR is bogus type (%u)", REG_TR.desc.type);
 	}
 
@@ -676,8 +676,8 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// or task gate, else #GP(vector*8 + 2 + EXT)
 	switch(gate_descriptor.type) {
 		case DESC_TYPE_TASK_GATE:
-		case DESC_TYPE_INTR_GATE:
-		case DESC_TYPE_TRAP_GATE:
+		case DESC_TYPE_286_INTR_GATE:
+		case DESC_TYPE_286_TRAP_GATE:
 			break;
 		default:
 			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7}\n",
@@ -726,7 +726,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
-			if(tss_descriptor.type != DESC_TYPE_AVAIL_TSS) {
+			if(tss_descriptor.type != DESC_TYPE_AVAIL_286_TSS) {
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
@@ -743,8 +743,8 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 					push_error, error_code);
 			return;
 
-		case DESC_TYPE_INTR_GATE:
-		case DESC_TYPE_TRAP_GATE:
+		case DESC_TYPE_286_INTR_GATE:
+		case DESC_TYPE_286_TRAP_GATE:
 			gate_dest_selector = gate_descriptor.selector;
 			gate_dest_offset   = gate_descriptor.offset;
 
@@ -925,7 +925,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			 * (i.e., with the interrupt enable flag cleared); entry via a trap
 			 * gate leaves the interrupt enable status unchanged.
 			 */
-			if(gate_descriptor.type == DESC_TYPE_INTR_GATE) {
+			if(gate_descriptor.type == DESC_TYPE_286_INTR_GATE) {
 				SET_FLAG(IF,false);
 			}
 
@@ -1064,7 +1064,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	uint16_t oldFLAGS = GET_FLAGS();
 
 	/* if moving to busy task, clear NT bit */
-	if(descriptor.type == DESC_TYPE_BUSY_TSS) {
+	if(descriptor.type == DESC_TYPE_BUSY_286_TSS) {
 		oldFLAGS &= ~FMASK_NT;
 	}
 
@@ -1391,7 +1391,7 @@ void CPUExecutor::task_gate(Selector &selector, Descriptor &gate_descriptor, uns
 	}
 	// descriptor AR byte must specify available TSS
 	//   else #GP(TSS selector)
-	if(tss_descriptor.type != DESC_TYPE_AVAIL_TSS) {
+	if(tss_descriptor.type != DESC_TYPE_AVAIL_286_TSS) {
 		PERRF(LOG_CPU,"task_gate: TSS selector points to bad TSS\n");
 		throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 	}
@@ -1677,7 +1677,7 @@ void CPUExecutor::call_protected(uint16_t cs_raw, uint16_t disp)
 		}
 
 		switch (gate_descriptor.type) {
-			case DESC_TYPE_AVAIL_TSS:
+			case DESC_TYPE_AVAIL_286_TSS:
 				PDEBUGF(LOG_V2, LOG_CPU, "call_protected: available TSS\n");
 				if (!gate_descriptor.valid || gate_selector.ti) {
 					PDEBUGF(LOG_V2, LOG_CPU,"call_protected: call bad TSS selector!\n");
@@ -1698,7 +1698,7 @@ void CPUExecutor::call_protected(uint16_t cs_raw, uint16_t disp)
 				task_gate(gate_selector, gate_descriptor, CPU_TASK_FROM_CALL);
 				return;
 
-			case DESC_TYPE_CALL_GATE:
+			case DESC_TYPE_286_CALL_GATE:
 				// gate descriptor must be present else #NP(gate selector)
 				if(!gate_descriptor.present) {
 					PDEBUGF(LOG_V2, LOG_CPU,"call_protected: gate not present\n");
@@ -2846,7 +2846,7 @@ void CPUExecutor::IRET_pmode()
 		}
 		// AR byte must specify TSS, else #TS(new TSS selector)
 		// new TSS must be busy, else #TS(new TSS selector)
-		if(tss_descriptor.type != DESC_TYPE_BUSY_TSS) {
+		if(tss_descriptor.type != DESC_TYPE_BUSY_286_TSS) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: TSS selector points to bad TSS\n");
 			throw CPUException(CPU_TS_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
@@ -3061,7 +3061,7 @@ void CPUExecutor::JMP_pmode(uint16_t _cs, uint16_t _disp)
 		}
 
 		switch(descriptor.type) {
-			case DESC_TYPE_AVAIL_TSS:
+			case DESC_TYPE_AVAIL_286_TSS:
 				PDEBUGF(LOG_V2,LOG_CPU,"JMP_pmode: jump to TSS\n");
 
 				if(!descriptor.valid || selector.ti) {
@@ -3081,7 +3081,7 @@ void CPUExecutor::JMP_pmode(uint16_t _cs, uint16_t _disp)
 			case DESC_TYPE_TASK_GATE:
 				task_gate(selector, descriptor, CPU_TASK_FROM_JUMP);
 				return;
-			case DESC_TYPE_CALL_GATE:
+			case DESC_TYPE_286_CALL_GATE:
 				JMP_call_gate(selector, descriptor);
 				return;
 			default:
@@ -3222,9 +3222,9 @@ void CPUExecutor::LAR_rw_ew()
 		}
 	} else { /* system or gate segment */
 		switch(descriptor.type) {
-			case DESC_TYPE_AVAIL_TSS:
-			case DESC_TYPE_BUSY_TSS:
-			case DESC_TYPE_CALL_GATE:
+			case DESC_TYPE_AVAIL_286_TSS:
+			case DESC_TYPE_BUSY_286_TSS:
+			case DESC_TYPE_286_CALL_GATE:
 			case DESC_TYPE_TASK_GATE:
 			case DESC_TYPE_LDT_DESC:
 				break;
@@ -3465,22 +3465,22 @@ void CPUExecutor::LOADALL()
 	desc_cache[0] = g_cpubus.mem_read_word(0x836);
 	desc_cache[1] = g_cpubus.mem_read_word(0x838);
 	desc_cache[2] = g_cpubus.mem_read_word(0x83A);
-	REG_ES.desc.set_from_cache(desc_cache);
+	REG_ES.desc.set_from_286_cache(desc_cache);
 
 	desc_cache[0] = g_cpubus.mem_read_word(0x83C);
 	desc_cache[1] = g_cpubus.mem_read_word(0x83E);
 	desc_cache[2] = g_cpubus.mem_read_word(0x840);
-	REG_CS.desc.set_from_cache(desc_cache);
+	REG_CS.desc.set_from_286_cache(desc_cache);
 
 	desc_cache[0] = g_cpubus.mem_read_word(0x842);
 	desc_cache[1] = g_cpubus.mem_read_word(0x844);
 	desc_cache[2] = g_cpubus.mem_read_word(0x846);
-	REG_SS.desc.set_from_cache(desc_cache);
+	REG_SS.desc.set_from_286_cache(desc_cache);
 
 	desc_cache[0] = g_cpubus.mem_read_word(0x848);
 	desc_cache[1] = g_cpubus.mem_read_word(0x84A);
 	desc_cache[2] = g_cpubus.mem_read_word(0x84C);
-	REG_DS.desc.set_from_cache(desc_cache);
+	REG_DS.desc.set_from_286_cache(desc_cache);
 
 	base  = g_cpubus.mem_read_dword(0x84E);
 	limit = g_cpubus.mem_read_word(0x852);
@@ -3489,7 +3489,7 @@ void CPUExecutor::LOADALL()
 	desc_cache[0] = g_cpubus.mem_read_word(0x854);
 	desc_cache[1] = g_cpubus.mem_read_word(0x856);
 	desc_cache[2] = g_cpubus.mem_read_word(0x858);
-	REG_LDTR.desc.set_from_cache(desc_cache);
+	REG_LDTR.desc.set_from_286_cache(desc_cache);
 
 	base  = g_cpubus.mem_read_dword(0x85A);
 	limit = g_cpubus.mem_read_word(0x85E);
@@ -3498,7 +3498,7 @@ void CPUExecutor::LOADALL()
 	desc_cache[0] = g_cpubus.mem_read_word(0x860);
 	desc_cache[1] = g_cpubus.mem_read_word(0x862);
 	desc_cache[2] = g_cpubus.mem_read_word(0x864);
-	REG_TR.desc.set_from_cache(desc_cache);
+	REG_TR.desc.set_from_286_cache(desc_cache);
 
 	g_cpubus.invalidate_pq();
 }
@@ -3607,8 +3607,8 @@ void CPUExecutor::LSL_rw_ew()
 
 	if(!descriptor.segment) { // system segment
 		switch (descriptor.type) {
-			case DESC_TYPE_AVAIL_TSS:
-			case DESC_TYPE_BUSY_TSS:
+			case DESC_TYPE_AVAIL_286_TSS:
+			case DESC_TYPE_BUSY_286_TSS:
 			case DESC_TYPE_LDT_DESC:
 				if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 					SET_FLAG(ZF, false);
@@ -3670,7 +3670,7 @@ void CPUExecutor::LTR_ew()
 	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* #GP(selector) if object is not a TSS or is already busy */
-	if(!descriptor.valid || descriptor.segment || descriptor.type != DESC_TYPE_AVAIL_TSS)
+	if(!descriptor.valid || descriptor.segment || descriptor.type != DESC_TYPE_AVAIL_286_TSS)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: doesn't point to an available TSS descriptor!\n");
 		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
@@ -3686,7 +3686,7 @@ void CPUExecutor::LTR_ew()
 	REG_TR.desc = descriptor;
 
 	/* mark as busy */
-	REG_TR.desc.type = DESC_TYPE_BUSY_TSS;
+	REG_TR.desc.type = DESC_TYPE_BUSY_286_TSS;
 	g_cpubus.mem_write_byte(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
 }
 
