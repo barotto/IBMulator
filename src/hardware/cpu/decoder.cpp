@@ -35,6 +35,8 @@ Instruction * CPUDecoder::decode()
 	m_ilen = 0;
 	m_rep = false;
 	m_instr.valid = true;
+	m_instr.opsize = false;
+	m_instr.addrsize = false;
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
@@ -84,6 +86,24 @@ restart_opcode:
 		case 0x65: { // segment ovr: GS
 			if(CPU_TYPE >= CPU_386) {
 				m_instr.seg = REGI_GS;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x66: { // operand-size
+			if(CPU_TYPE >= CPU_386) {
+				m_instr.opsize = true;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x67: { // address-size
+			if(CPU_TYPE >= CPU_386) {
+				m_instr.addrsize = true;
 				goto restart_opcode;
 			} else {
 				illegal_opcode();

@@ -188,6 +188,15 @@ uint16_t CPUBus::fetchw()
 	return uint16_t(b1)<<8 | b0;
 }
 
+uint32_t CPUBus::fetchdw()
+{
+	uint32_t w0, w1;
+	//TODO STUB
+	w0 = fetchw();
+	w1 = fetchw();
+	return (uint32_t(w1)<<16) | w0;
+}
+
 int CPUBus::write_pq_to_logfile(FILE *_dest)
 {
 	int res = 0;

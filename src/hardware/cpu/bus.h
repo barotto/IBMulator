@@ -126,6 +126,7 @@ public:
 	//instruction fetching
 	uint8_t fetchb();
 	uint16_t fetchw();
+	uint32_t fetchdw();
 
 	inline uint32_t get_eip() const { return m_s.eip; }
 	inline uint32_t get_cseip() const { return m_s.cseip; }

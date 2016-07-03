@@ -39,20 +39,67 @@ class CPUExecutor;
 class CPUDecoder;
 extern CPUDecoder g_cpudecoder;
 
-struct ModRM
+/*
+ The 8086/80286 instruction format
+╔═══════════════╦══════════════╦══════════╦══════════╦════════════════╦═════════════╗
+║  INSTRUCTION  ║   SEGMENT    ║  OPCODE  ║  MODR/M  ║  DISPLACEMENT  ║  IMMEDIATE  ║
+║    PREFIX     ║   OVERRIDE   ║          ║          ║                ║             ║
+╠═══════════════╩══════════════╩══════════╩══════════╩════════════════╩═════════════╣
+║     0 OR 1         0 OR 1       1 OR 2     0 OR 1       0,1 OR 2       0,1 OR 2   ║
+╟─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─╢
+║                                 NUMBER OF BYTES                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════════╝
+
+
+ The 80386 instruction format
+╔═══════════════╦═══════════════╦═══════════════╦═══════════════╗
+║  INSTRUCTION  ║   ADDRESS-    ║    OPERAND-   ║   SEGMENT     ║
+║    PREFIX     ║  SIZE PREFIX  ║  SIZE PREFIX  ║   OVERRIDE    ║
+╠═══════════════╩═══════════════╩═══════════════╩═══════════════╣
+║     0 OR 1         0 OR 1           0 OR 1         0 OR 1     ║
+╟─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─╢
+║                        NUMBER OF BYTES                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+╔══════════╦═══════════╦═══════╦══════════════════╦═════════════╗
+║  OPCODE  ║  MODR/M   ║  SIB  ║   DISPLACEMENT   ║  IMMEDIATE  ║
+║          ║           ║       ║                  ║             ║
+╠══════════╩═══════════╩═══════╩══════════════════╩═════════════╣
+║  1 OR 2     0 OR 1    0 OR 1      0,1,2 OR 4       0,1,2 OR 4 ║
+╟─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─╢
+║                        NUMBER OF BYTES                        ║
+╚═══════════════════════════════════════════════════════════════╝
+*/
+
+class ModRM
 {
+	/* 7    6    5    4    3    2    1    0
+	  ╔════════╦═════════════╦════════════╗
+	  ║  MOD   ║ REG/OPCODE  ║     R/M    ║ ModR/M byte
+	  ╚════════╩═════════════╩════════════╝
+	  ╔════════╦═════════════╦════════════╗
+	  ║ SCALE  ║    INDEX    ║    BASE    ║ SIB byte
+	  ╚════════╩═════════════╩════════════╝
+	*/
+public:
 	uint8_t mod;
 	union {
 		uint8_t r;
 		uint8_t n;
 	};
 	uint8_t rm;
-	uint16_t disp;
+	uint8_t scale;
+	uint8_t index;
+	uint8_t base;
+	uint32_t disp;
 
 	ModRM() = default;
-	inline void load();
+	inline void load(bool _32bit=false);
 
 	inline bool mod_is_reg() { return mod == 3; }
+
+private:
+	inline void load_SIB();
 };
 
 typedef void (CPUExecutor::*CPUExecutor_fun)();
@@ -65,6 +112,8 @@ struct Instruction
 	uint16_t dw1,dw2; //!< word function args
 	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
 	uint8_t seg;    //!< index of the segment override
+	bool opsize;    //!< operand-size prefix
+	bool addrsize;  //!< address-size prefix
 	ModRM modrm;    //!< the ModRM
 	bool rep;       //!< true if REP/REPE/REPNE
 	bool rep_zf;    //!< tells the executor that the exit condition is by checking the ZF
@@ -120,6 +169,15 @@ private:
 		return w;
 	}
 
+	inline uint32_t fetchdw() {
+		uint32_t dw = g_cpubus.fetchdw();
+		if(m_ilen+3 < CPU_MAX_INSTR_SIZE) {
+			*(uint32_t*)(&m_instr.bytes[m_ilen]) = dw;
+		}
+		m_ilen += 4;
+		return dw;
+	}
+
 public:
 
 	Instruction * decode();
@@ -131,23 +189,50 @@ public:
 };
 
 
+inline void ModRM::load_SIB()
+{
+	uint8_t sib = g_cpudecoder.fetchb();
+	scale = (sib >> 6) & 3;
+	index = (sib >> 3) & 7;
+	base = sib & 7;
+}
 
-inline void ModRM::load()
+inline void ModRM::load(bool _32bit)
 {
 	uint8_t modrm = g_cpudecoder.fetchb();
 	mod = (modrm >> 6) & 3;
 	r = (modrm >> 3) & 7;
 	rm = modrm & 7;
-	if(mod==0 && rm==6)
-		disp = g_cpudecoder.fetchw();
-	else if(mod==0 || mod==3)
-		disp = 0;
-	else if(mod==1)
-		disp = int8_t(g_cpudecoder.fetchb());
-	else if(mod==2)
-		disp = g_cpudecoder.fetchw();
+	if(_32bit) {
+		if(mod==0) {
+			if(rm == 4) {
+				load_SIB();
+			} else if(rm==5) {
+				disp = g_cpudecoder.fetchdw();
+			}
+		} else if(mod == 1) {
+			if(rm == 4) {
+				load_SIB();
+			}
+			disp = int8_t(g_cpudecoder.fetchb());
+		} else if(mod == 2) {
+			if(rm == 4) {
+				load_SIB();
+			}
+			disp = g_cpudecoder.fetchdw();
+		}
+	} else {
+		if(mod==0 && rm==6) {
+			disp = g_cpudecoder.fetchw();
+		} else if(mod==0 || mod==3) {
+			disp = 0;
+		} else if(mod==1) {
+			disp = int8_t(g_cpudecoder.fetchb());
+		} else if(mod==2) {
+			disp = g_cpudecoder.fetchw();
+		}
+	}
 }
-
 
 
 #endif
