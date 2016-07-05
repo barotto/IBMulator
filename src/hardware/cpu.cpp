@@ -32,6 +32,12 @@
 
 CPU g_cpu;
 
+ini_enum_map_t g_cpu_models = {
+	{ "286", CPU_286 },
+	{ "386SX", CPU_386 },
+	{ "386DX", CPU_386 }
+};
+
 CPU::CPU()
 :
 m_instr(nullptr)
@@ -50,13 +56,15 @@ void CPU::init()
 
 void CPU::config_changed()
 {
-	m_type = CPU_286; //TODO STUB
+	m_type = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_models);
 
 	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
 	m_cycle_time = round(1000.0 / freq);
 	m_freq = round(1e9 / m_cycle_time);
 
-	PINFOF(LOG_V0, LOG_CPU, "Frequency: %.3f MHz\n", m_freq / 1.0e6);
+	PINFOF(LOG_V0, LOG_CPU, "Model: %s @ %.3fMHz\n",
+			g_program.config().get_string(CPU_SECTION, CPU_MODEL).c_str(),
+			m_freq / 1.0e6);
 	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
 
 	g_cpubus.config_changed();

@@ -36,6 +36,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ CPU_SECTION, {
+		{ CPU_MODEL,     "286" },
 		{ CPU_FREQUENCY, "10.0"}
 	} },
 
@@ -180,7 +181,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ CPU_SECTION,
-"; frequency: The CPU frequency in MHz.\n"
+";     model: Possible values: 286, 386SX, 386DX.\n"
+"; frequency: Frequency in MHz.\n"
 		},
 
 		{ GUI_SECTION,
@@ -374,6 +376,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISPLAY_SATURATION
 	} },
 	{ CPU_SECTION, {
+		CPU_MODEL,
 		CPU_FREQUENCY
 	} },
 	{ MEM_SECTION, {
