@@ -163,15 +163,15 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 
 		if(_mem_read) {
 			switch (_opsize) {
-				case 8 : {	uint8_t val = _memory->read_byte_notraps(address);
+				case 8 : {	uint8_t val = _memory->read_notraps<1>(address);
 							outmask[12] = '2';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;
-				case 16: {	uint16_t val = _memory->read_word_notraps(address);
+				case 16: {	uint16_t val = _memory->read_notraps<2>(address);
 							outmask[12] = '4';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;
-				case 32: {	uint32_t val = _memory->read_dword_notraps(address);
+				case 32: {	uint32_t val = _memory->read_notraps<4>(address);
 							outmask[12] = '8';
 							sprintf(result,outmask,prefix,adr,val);
 						}	break;

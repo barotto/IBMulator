@@ -27,7 +27,7 @@
 #endif
 #include <vector>
 
-#define CPU_PQ_SIZE          6
+#define CPU_PQ_MAX_SIZE      16
 #define DRAM_ACCESS_CYCLES   2
 #define DRAM_WAIT_STATES     1
 #define DRAM_TX_CYCLES (DRAM_ACCESS_CYCLES+DRAM_WAIT_STATES)
@@ -52,27 +52,30 @@ private:
 	struct {
 		uint32_t cseip;
 		uint32_t eip;
-		uint8_t pq[CPU_PQ_SIZE];
+		uint8_t pq[CPU_PQ_MAX_SIZE];
 		bool pq_valid;
 		uint32_t pq_head;
 		uint32_t pq_tail;
 		uint32_t pq_headpos;
 	} m_s;
 
+	unsigned m_width;
+	unsigned m_pq_size;
+	unsigned m_pq_thres;
+
 	uint m_dram_r;
 	uint m_dram_w;
 	uint m_vram_r;
 	uint m_vram_w;
-	uint m_pq_fetches;
 	uint m_mem_cycles;
 	uint m_fetch_cycles;
 	uint m_cycles_ahead;
 	struct wq_data {
 		uint32_t address;
-		uint16_t value;
-		uint16_t len;
+		uint32_t value;
+		uint8_t len;
 		uint cycles;
-		wq_data(uint32_t _address, uint16_t _data, uint16_t _len, uint _cycles)
+		wq_data(uint32_t _address, uint32_t _data, uint16_t _len, uint _cycles)
 			: address(_address), value(_data), len(_len), cycles(_cycles)
 		{}
 	};
@@ -81,14 +84,14 @@ private:
 	void pq_fill(uint toread);
 	GCC_ATTRIBUTE(always_inline)
 	inline uint get_pq_free_space() {
-		return CPU_PQ_SIZE - (m_s.pq_tail-m_s.pq_head) + (m_s.cseip - m_s.pq_head);
+		return m_pq_size - (m_s.pq_tail-m_s.pq_head) + (m_s.cseip - m_s.pq_head);
 	}
 	GCC_ATTRIBUTE(always_inline)
 	inline uint get_pq_cur_index() {
-		return (m_s.pq_headpos + (m_s.cseip - m_s.pq_head)) % CPU_PQ_SIZE;
+		return (m_s.pq_headpos + (m_s.cseip - m_s.pq_head)) % m_pq_size;
 	}
 	inline uint get_pq_cur_size() {
-		return CPU_PQ_SIZE - get_pq_free_space();
+		return m_pq_size - get_pq_free_space();
 	}
 	inline bool is_pq_empty() {
 		return (m_s.cseip == m_s.pq_tail);
@@ -137,73 +140,52 @@ public:
 		m_s.cseip = GET_PHYADDR(CS, m_s.eip);
 	}
 
-	inline uint8_t mem_read_byte(uint32_t _addr) {
-		//TODO video ram range is a special case; also, this check is already
-		//done in Memory::read* and Memory::write*. Move into the Memory class.
+	template<unsigned LEN>
+	uint32_t mem_read(uint32_t _addr)
+	{
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_r += 1;
+			m_vram_r += LEN; //TODO adapt to the real bus of the VGA
 		} else {
-			m_dram_r += 1;
+			/* When the 286 is asked to perform a word-sized access
+			 * starting at an odd address, it actually performs two separate
+			 * accesses, each of which fetches 1 byte, just as the 8088 does for
+			 * all word-sized accesses.
+			 */
+			/* LEN can be 1, 2, or 4. The odd address penalty happens only when
+			 * LEN is 2 or 4, checked by (~LEN & 1)
+			 */
+			m_dram_r += 1 + ((_addr & 1) * (~LEN & 1));
+			if(LEN > m_width) {
+				/* bus width penalty */
+				m_dram_r += LEN/m_width - 1;
+			}
 		}
 		if(m_cycles_ahead) {
 			m_mem_cycles += m_cycles_ahead;
 			m_cycles_ahead = 0;
 		}
-		return g_memory.read_byte(_addr);
-	}
-	inline uint16_t mem_read_word(uint32_t _addr) {
-		/* When the 286 is asked to perform a word-sized access
-		 * starting at an odd address, it actually performs two separate
-		 * accesses, each of which fetches 1 byte, just as the 8088 does for
-		 * all word-sized accesses.
-		 */
-		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_r += 2; //apparently, the VGA has a 8-bit data bus
-		} else {
-			m_dram_r += 1 + (_addr & 1);
-		}
-		if(m_cycles_ahead) {
-			m_mem_cycles += m_cycles_ahead;
-			m_cycles_ahead = 0;
-		}
-		return g_memory.read_word(_addr);
-	}
-	inline uint32_t mem_read_dword(uint32_t _addr) {
-		uint32_t w0 = mem_read_word(_addr);
-		uint32_t w1 = mem_read_word(_addr+2);
-		return w1<<16 | w0;
+		return g_memory.read<LEN>(_addr);
 	}
 	inline uint64_t mem_read_qword(uint32_t _addr) {
-		uint64_t w0 = mem_read_word(_addr);
-		uint64_t w1 = mem_read_word(_addr+2);
-		uint64_t w2 = mem_read_word(_addr+4);
-		uint64_t w3 = mem_read_word(_addr+6);
-		return w3<<48 | w2<<32 | w1<<16 | w0;
-
+		uint64_t dw0 = mem_read<4>(_addr);
+		uint64_t dw1 = mem_read<4>(_addr+4);
+		return dw1<<32 | dw0;
 	}
 
-	inline void mem_write_byte(uint32_t _addr, uint8_t _data) {
+	template<unsigned LEN>
+	void mem_write(uint32_t _addr, uint32_t _data) {
 		uint c;
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_w += 1;
-			c = VRAM_TX_CYCLES;
+			m_vram_w += LEN; //TODO adapt to the real bus of the VGA
+			c = VRAM_TX_CYCLES * LEN;
 		} else {
-			m_dram_w += 1;
-			c = DRAM_TX_CYCLES;
-		}
-		if(m_cycles_ahead) {
-			m_mem_cycles += m_cycles_ahead;
-			m_cycles_ahead = 0;
-		}
-		m_write_queue.push_back(wq_data(_addr,_data,1,c));
-	}
-	inline void mem_write_word(uint32_t _addr, uint16_t _data) {
-		uint c;
-		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_w += 2; //apparently, the VGA has a 8-bit data bus
-			c = VRAM_TX_CYCLES * 2;
-		} else {
-			c = 1 + (_addr & 1);
+			/*LEN can be 1,2, or 4. the odd address penalty is only if LEN is 2
+			or 4.*/
+			c = 1 + ((_addr & 1) * (~LEN & 1));
+			if(LEN > m_width) {
+				/* bus width penalty */
+				c += LEN/m_width - 1;
+			}
 			m_dram_w += c;
 			c *= DRAM_TX_CYCLES;
 		}
@@ -211,7 +193,7 @@ public:
 			m_mem_cycles += m_cycles_ahead;
 			m_cycles_ahead = 0;
 		}
-		m_write_queue.push_back(wq_data(_addr,_data,2,c));
+		m_write_queue.push_back(wq_data(_addr,_data,LEN,c));
 	}
 
 	void save_state(StateBuf &_state);

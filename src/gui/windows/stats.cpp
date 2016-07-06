@@ -68,7 +68,7 @@ void Stats::update()
 	ss << hwb;
 
 	//read the DOS clock from MEM 0040h:006Ch
-	uint32_t ticks = g_memory.read_dword_notraps(0x0400 + 0x006C);
+	uint32_t ticks = g_memory.read_notraps<4>(0x0400 + 0x006C);
 	uint hour      = ticks / 65543;
 	uint remainder = ticks % 65543;
 	uint minute   = remainder / 1092;

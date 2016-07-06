@@ -40,8 +40,8 @@ extern Memory g_memory;
 typedef std::function<void(
 		uint32_t,  // address
 		uint8_t,   // 0=read, 1=write
-		uint16_t,  // value read or written
-		uint8_t    // data lenght (1=byte, 2=word)
+		uint32_t,  // value read or written
+		uint8_t    // data lenght (1=byte, 2=word, 4=dword)
 	)> memtrap_fun_t;
 
 struct memtrap_t {
@@ -78,8 +78,8 @@ protected:
 
 	const static std::map<std::string, uint32_t> ms_hdd_paramtable_offsets;
 
-	uint8_t read(uint32_t _address) const noexcept;
-	void write(uint32_t _address, uint8_t value) noexcept;
+	uint8_t read_byte(uint32_t _address) const noexcept;
+	void write_byte(uint32_t _address, uint8_t value) noexcept;
 
 	int  load_rom_file(const std::string &_filename, uint32_t _destaddr=0);
 	void load_rom_dir(const std::string &_dirname);
@@ -96,19 +96,60 @@ public:
 	void reset();
 	void config_changed();
 
-	uint8_t read_byte(uint32_t _address) const noexcept;
-	uint16_t read_word(uint32_t _address) const noexcept;
-	uint32_t read_dword(uint32_t _address) const noexcept;
-	uint64_t read_qword(uint32_t _address) const noexcept;
-
-	uint8_t read_byte_notraps(uint32_t _address) const noexcept;
-	uint16_t read_word_notraps(uint32_t _address) const noexcept;
-	uint32_t read_dword_notraps(uint32_t _address) const noexcept;
+	template<unsigned LEN>
+	uint32_t read_notraps(uint32_t _address) const noexcept
+	{
+		uint32_t b0 = read_byte(_address), b1=0, b2=0, b3=0;
+		if(LEN >= 2) {
+			b1 = read_byte(_address+1);
+		}
+		if(LEN == 4) {
+			b2 = read_byte(_address+2);
+			b3 = read_byte(_address+3);
+		}
+		return (b3<<24 | b2<<16 | b1<<8 | b0);
+	}
 	uint64_t read_qword_notraps(uint32_t _address) const noexcept;
 
-	void write_byte(uint32_t _address, uint8_t value) noexcept;
-	void write_word(uint32_t _address, uint16_t value) noexcept;
-	void write_dword(uint32_t _address, uint32_t value) noexcept;
+	template<unsigned LEN>
+	uint32_t read(uint32_t _address) const noexcept
+	{
+		uint32_t value = read_notraps<LEN>(_address);
+
+		if(MEMORY_TRAPS) {
+			std::vector<memtrap_interval_t> results;
+			m_traps_tree.findOverlapping(_address, _address, results);
+			for(auto t : results) {
+				if(t.value.mask & 2)
+					t.value.func(_address, 0, value, LEN);
+			}
+		}
+
+		return value;
+	}
+	uint64_t read_qword(uint32_t _address) const noexcept;
+
+	template<unsigned LEN>
+	void write(uint32_t _address, uint32_t value) noexcept
+	{
+		write_byte(_address, uint8_t(value));
+		if(LEN >=2) {
+			write_byte(_address+1, uint8_t(value>>8));
+		}
+		if(LEN == 4) {
+			write_byte(_address+2, uint8_t(value>>16));
+			write_byte(_address+3, uint8_t(value>>24));
+		}
+
+		if(MEMORY_TRAPS) {
+			std::vector<memtrap_interval_t> results;
+			m_traps_tree.findOverlapping(_address, _address, results);
+			for(auto t : results) {
+				if(t.value.mask & 2)
+					t.value.func(_address, 1, value, LEN);
+			}
+		}
+	}
 
 	void set_A20_line(bool _enabled);
 	bool get_A20_line() { return m_s.A20_enabled; }
@@ -129,8 +170,8 @@ public:
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);
 
-	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint16_t _value, uint8_t _len);
-	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint16_t _value, uint8_t _len);
+	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
+	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 };
 
 

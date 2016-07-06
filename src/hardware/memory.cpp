@@ -380,7 +380,7 @@ void Memory::set_A20_line(bool _enabled)
 	}
 }
 
-uint8_t Memory::read(uint32_t _address) const noexcept
+uint8_t Memory::read_byte(uint32_t _address) const noexcept
 {
 	_address &= m_s.mask;
 
@@ -409,7 +409,7 @@ uint8_t Memory::read(uint32_t _address) const noexcept
 	return 0;
 }
 
-void Memory::write(uint32_t _address, uint8_t _value) noexcept
+void Memory::write_byte(uint32_t _address, uint8_t _value) noexcept
 {
 	_address &= m_s.mask;
 
@@ -423,124 +423,20 @@ void Memory::write(uint32_t _address, uint8_t _value) noexcept
 	}
 }
 
-uint8_t Memory::read_byte(uint32_t _address) const noexcept
-{
-	uint8_t value = read(_address);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 1)
-				t.value.func(_address, 0, value, 1);
-		}
-	}
-
-	return value;
-}
-
-uint16_t Memory::read_word(uint32_t _address) const noexcept
-{
-	uint8_t b0 = read(_address); //lo byte
-	uint8_t b1 = read(_address+1); //hi byte
-	uint16_t value = uint16_t(b1)<<8 | b0;
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 2)
-				t.value.func(_address, 0, value, 2);
-		}
-	}
-
-	return value;
-}
-
-uint32_t Memory::read_dword(uint32_t _address) const noexcept
-{
-	uint16_t w0 = read_word(_address); //lo word
-	uint16_t w1 = read_word(_address+2); //hi word
-	uint32_t value = uint32_t(w1)<<16 | w0;
-
-	return value;
-}
-
 uint64_t Memory::read_qword(uint32_t _address) const noexcept
 {
-	uint32_t dw0 = read_dword(_address); //lo dword
-	uint32_t dw1 = read_dword(_address+4); //hi dword
+	uint32_t dw0 = read<4>(_address); //lo dword
+	uint32_t dw1 = read<4>(_address+4); //hi dword
 	uint64_t value = uint64_t(dw1)<<32 | dw0;
 
 	return value;
 }
 
-uint8_t Memory::read_byte_notraps(uint32_t _address) const noexcept
-{
-	return read(_address);
-}
-
-uint16_t Memory::read_word_notraps(uint32_t _address) const noexcept
-{
-	uint8_t b0 = read(_address); //lo byte
-	uint8_t b1 = read(_address+1); //hi byte
-	return uint16_t(b1)<<8 | uint16_t(b0);
-}
-
-uint32_t Memory::read_dword_notraps(uint32_t _address) const noexcept
-{
-	uint16_t w0 = read_word_notraps(_address); //lo word
-	uint16_t w1 = read_word_notraps(_address+2); //hi word
-	return uint32_t(w1)<<16 | uint32_t(w0);
-}
-
 uint64_t Memory::read_qword_notraps(uint32_t _address) const noexcept
 {
-	uint32_t dw0 = read_dword_notraps(_address); //lo dword
-	uint32_t dw1 = read_dword_notraps(_address+4); //hi dword
+	uint32_t dw0 = read_notraps<4>(_address); //lo dword
+	uint32_t dw1 = read_notraps<4>(_address+4); //hi dword
 	return uint64_t(dw1)<<32 | uint64_t(dw0);
-}
-
-
-void Memory::write_byte(uint32_t _address, uint8_t _value) noexcept
-{
-	write(_address, _value);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 1)
-				t.value.func(_address, 1, _value, 1);
-		}
-	}
-}
-
-void Memory::write_word(uint32_t _address, uint16_t value) noexcept
-{
-	uint8_t b0 = uint8_t(value);
-	uint8_t b1 = uint8_t(value>>8);
-
-	write(_address, b0);
-	write(_address+1, b1);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 2)
-				t.value.func(_address, 1, value, 2);
-		}
-	}
-}
-
-void Memory::write_dword(uint32_t _address, uint32_t value) noexcept
-{
-	uint16_t w0 = uint16_t(value);
-	uint16_t w1 = uint16_t(value>>16);
-
-	write_word(_address, w0);
-	write_word(_address+2, w1);
 }
 
 uint8_t * Memory::get_phy_ptr(uint32_t _address)
@@ -552,14 +448,14 @@ uint8_t * Memory::get_phy_ptr(uint32_t _address)
 void Memory::DMA_read(uint32_t _address, uint16_t _len, uint8_t *_buf)
 {
 	for(uint16_t i=0; i<_len; i++) {
-		_buf[i] = read_byte(_address+i);
+		_buf[i] = read<1>(_address+i);
 	}
 }
 
 void Memory::DMA_write(uint32_t _address, uint16_t _len, uint8_t *_buf)
 {
 	for(uint16_t i=0; i<_len; i++) {
-		write_byte(_address+i, _buf[i]);
+		write<1>(_address+i, _buf[i]);
 	}
 }
 
@@ -659,9 +555,9 @@ void Memory::update_BIOS_8bit_checksum()
 }
 
 void Memory::s_debug_trap(uint32_t _address,  // address
-		uint8_t _rw,   // 0=read, 1=write
-		uint16_t _value,  // value read or written
-		uint8_t _len   // data lenght (1=byte, 2=word)
+		uint8_t  _rw,    // 0=read, 1=write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data lenght (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign="<-", *read="->";
@@ -675,7 +571,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		op = read;
 		char * byte0 = buf;
 		while(len--) {
-			uint8_t byte = g_memory.read_byte_notraps(addr++);
+			uint8_t byte = g_memory.read_notraps<1>(addr++);
 			if(byte>=32 && byte<=126) {
 				*byte0 = byte;
 			} else {
@@ -685,7 +581,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 	} else {
 		if(_len==1) {
-			uint8_t byte = g_memory.read_byte_notraps(addr);
+			uint8_t byte = g_memory.read_notraps<1>(addr);
 			if(byte>=32 && byte<=126) {
 				buf[0] = byte;
 			} else {
@@ -696,13 +592,13 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		op = assign;
 	}
 
-	PDEBUGF(LOG_V1, LOG_MEM, "%s[%04X] %s %04X %s\n",_len==1?"b":"w",_address,op,_value, buf);
+	PDEBUGF(LOG_V1, LOG_MEM, "%d[%04X] %s %04X %s\n", _len, _address, op, _value, buf);
 }
 
 void Memory::s_debug_40h_trap(uint32_t _address,  // address
-		uint8_t _rw,   // 0=read, 1=write
-		uint16_t _value,  // value read or written
-		uint8_t _len   // data lenght (1=byte, 2=word)
+		uint8_t  _rw,    // 0=read, 1=write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data lenght (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign=":=", *read="=";
@@ -715,7 +611,7 @@ void Memory::s_debug_40h_trap(uint32_t _address,  // address
 
 	uint32_t offset = _address-0x400;
 
-	PDEBUGF(LOG_V2, LOG_MEM, "%s[40:%04X] %s %04X (",_len==1?"b":"w",offset,op,_value);
+	PDEBUGF(LOG_V2, LOG_MEM, "%d[40:%04X] %s %04X (", _len, offset, op, _value);
 
 	switch(offset) {
 	case 0x0000:

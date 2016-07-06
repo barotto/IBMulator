@@ -304,10 +304,10 @@ void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
 		uint8_t ar = _descriptor.get_AR();
 		if(_selector.ti == false) {
 			// from GDT
-			g_cpubus.mem_write_byte(m_gdtr_base + _selector.index*8 + 5, ar);
+			g_cpubus.mem_write<1>(m_gdtr_base + _selector.index*8 + 5, ar);
 		} else {
 			// from LDT
-			g_cpubus.mem_write_byte(m_ldtr.desc.base + _selector.index*8 + 5, ar);
+			g_cpubus.mem_write<1>(m_ldtr.desc.base + _selector.index*8 + 5, ar);
 		}
 	}
 }

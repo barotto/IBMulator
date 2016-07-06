@@ -298,7 +298,7 @@ uint8_t CPUExecutor::read_byte(SegReg &_seg, uint16_t _offset)
 	} else {
 		read_check_rmode(_seg, _offset, 1);
 	}
-	return g_cpubus.mem_read_byte(_seg.desc.base + uint32_t(_offset));
+	return g_cpubus.mem_read<1>(_seg.desc.base + uint32_t(_offset));
 }
 
 uint16_t CPUExecutor::read_word(SegReg &_seg, uint16_t _offset)
@@ -308,7 +308,7 @@ uint16_t CPUExecutor::read_word(SegReg &_seg, uint16_t _offset)
 	} else {
 		read_check_rmode(_seg, _offset, 2);
 	}
-	return g_cpubus.mem_read_word(_seg.desc.base + uint32_t(_offset));
+	return g_cpubus.mem_read<2>(_seg.desc.base + uint32_t(_offset));
 }
 
 uint32_t CPUExecutor::read_dword(SegReg &_seg, uint16_t _offset)
@@ -318,7 +318,7 @@ uint32_t CPUExecutor::read_dword(SegReg &_seg, uint16_t _offset)
 	} else {
 		read_check_rmode(_seg, _offset, 4);
 	}
-	return g_cpubus.mem_read_dword(_seg.desc.base + uint32_t(_offset));
+	return g_cpubus.mem_read<4>(_seg.desc.base + uint32_t(_offset));
 }
 
 void CPUExecutor::write_byte(SegReg &_seg, uint16_t _offset, uint8_t _data)
@@ -328,7 +328,7 @@ void CPUExecutor::write_byte(SegReg &_seg, uint16_t _offset, uint8_t _data)
 	} else {
 		write_check_rmode(_seg, _offset, 1);
 	}
-	g_cpubus.mem_write_byte(_seg.desc.base + uint32_t(_offset), _data);
+	g_cpubus.mem_write<1>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
 void CPUExecutor::write_word(SegReg &_seg, uint16_t _offset, uint16_t _data)
@@ -338,27 +338,27 @@ void CPUExecutor::write_word(SegReg &_seg, uint16_t _offset, uint16_t _data)
 	} else {
 		write_check_rmode(_seg, _offset, 2);
 	}
-	g_cpubus.mem_write_word(_seg.desc.base + uint32_t(_offset), _data);
+	g_cpubus.mem_write<2>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
 uint8_t CPUExecutor::read_byte_nocheck(SegReg &_seg, uint16_t _offset)
 {
-	return g_cpubus.mem_read_byte(_seg.desc.base + uint32_t(_offset));
+	return g_cpubus.mem_read<1>(_seg.desc.base + uint32_t(_offset));
 }
 
 uint16_t CPUExecutor::read_word_nocheck(SegReg &_seg, uint16_t _offset)
 {
-	return g_cpubus.mem_read_word(_seg.desc.base + uint32_t(_offset));
+	return g_cpubus.mem_read<2>(_seg.desc.base + uint32_t(_offset));
 }
 
 void CPUExecutor::write_byte_nocheck(SegReg &_seg, uint16_t _offset, uint8_t _data)
 {
-	g_cpubus.mem_write_byte(_seg.desc.base + uint32_t(_offset), _data);
+	g_cpubus.mem_write<1>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
 void CPUExecutor::write_word_nocheck(SegReg &_seg, uint16_t _offset, uint16_t _data)
 {
-	g_cpubus.mem_write_word(_seg.desc.base + uint32_t(_offset), _data);
+	g_cpubus.mem_write<2>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
 void CPUExecutor::write_word_pmode(SegReg &_seg, uint16_t _offset, uint16_t _data,
@@ -378,7 +378,7 @@ void CPUExecutor::write_word_pmode(SegReg &_seg, uint16_t _offset, uint16_t _dat
 	}
 	if(uint32_t(_offset)+1 <= _seg.desc.limit) {
 		uint32_t addr = _seg.desc.base + _offset;
-		g_cpubus.mem_write_word(addr,_data);
+		g_cpubus.mem_write<2>(addr, _data);
 		return;
 	} else {
 		PERRF(LOG_CPU, "write_word_pmode(): segment limit violation\n");
@@ -406,7 +406,7 @@ uint16_t CPUExecutor::read_word_pmode(SegReg & _seg, uint16_t _offset, uint8_t _
 
     if(uint32_t(_offset)+1 <= _seg.desc.limit) {
     	uint32_t addr = _seg.desc.base + _offset;
-    	uint16_t value = g_cpubus.mem_read_word(addr);
+    	uint16_t value = g_cpubus.mem_read<2>(addr);
     	return value;
     } else {
     	PDEBUGF(LOG_V2, LOG_CPU, "read_word_pmode(): segment limit violation\n");
@@ -454,7 +454,7 @@ uint16_t CPUExecutor::stack_read(uint16_t _offset)
 	if(IS_PMODE()) {
 		read_check_pmode(REG_SS, _offset, 2);
 	}
-	return g_cpubus.mem_read_word(GET_PHYADDR(SS, _offset));
+	return g_cpubus.mem_read<2>(GET_PHYADDR(SS, _offset));
 }
 
 void CPUExecutor::stack_write(uint16_t _offset, uint16_t _data)
@@ -462,7 +462,7 @@ void CPUExecutor::stack_write(uint16_t _offset, uint16_t _data)
 	if(IS_PMODE()) {
 		write_check_pmode(REG_SS, _offset, 2);
 	}
-	g_cpubus.mem_write_word(GET_PHYADDR(SS, _offset), _data);
+	g_cpubus.mem_write<2>(GET_PHYADDR(SS, _offset), _data);
 }
 
 void CPUExecutor::execute(Instruction * _instr)
@@ -590,8 +590,8 @@ void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t &ss_, uint16_t &sp_)
 		PDEBUGF(LOG_V2, LOG_CPU, "get_SS_SP_from_TSS: TSSstackaddr > TSS.LIMIT\n");
 		throw CPUException(CPU_TS_EXC, REG_TR.sel.value & SELECTOR_RPL_MASK);
 	}
-	ss_ = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr + 2);
-	sp_ = g_cpubus.mem_read_word(REG_TR.desc.base + TSSstackaddr);
+	ss_ = g_cpubus.mem_read<2>(REG_TR.desc.base + TSSstackaddr + 2);
+	sp_ = g_cpubus.mem_read<2>(REG_TR.desc.base + TSSstackaddr);
 }
 
 void CPUExecutor::interrupt(uint8_t _vector)
@@ -630,8 +630,8 @@ void CPUExecutor::interrupt(uint8_t _vector)
 	stack_push(REG_IP);
 
 	uint32_t addr = _vector * 4;
-	uint16_t new_ip = g_cpubus.mem_read_word(addr);
-	uint16_t cs_selector = g_cpubus.mem_read_word(addr+2);
+	uint16_t new_ip = g_cpubus.mem_read<2>(addr);
+	uint16_t cs_selector = g_cpubus.mem_read<2>(addr+2);
 
 	SET_CS(cs_selector);
 	SET_IP(new_ip);
@@ -1051,9 +1051,9 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	if(source == CPU_TASK_FROM_JUMP || source == CPU_TASK_FROM_IRET) {
 		// Bit is cleared
 		uint32_t addr = GET_BASE(GDTR) + REG_TR.sel.index*8 + 5;
-		uint8_t ar = g_cpubus.mem_read_byte(addr);
+		uint8_t ar = g_cpubus.mem_read<1>(addr);
 		ar &= ~0x2;
-		g_cpubus.mem_write_byte(addr,ar);
+		g_cpubus.mem_write<1>(addr, ar);
 	}
 
 	// STEP 4: If the task switch was initiated with an IRET instruction,
@@ -1073,45 +1073,45 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	//         changing the processor state.
 
 	/* save current machine state in old task's TSS */
-    g_cpubus.mem_write_word(uint32_t(obase32 + 14), REG_IP);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 16), oldFLAGS);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 18), REG_AX);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 20), REG_CX);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 22), REG_DX);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 24), REG_BX);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 26), REG_SP);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 28), REG_BP);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 30), REG_SI);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 32), REG_DI);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 34), REG_ES.sel.value);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 36), REG_CS.sel.value);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 38), REG_SS.sel.value);
-    g_cpubus.mem_write_word(uint32_t(obase32 + 40), REG_DS.sel.value);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 14), REG_IP);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 16), oldFLAGS);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 18), REG_AX);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 20), REG_CX);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 22), REG_DX);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 24), REG_BX);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 26), REG_SP);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 28), REG_BP);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 30), REG_SI);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 32), REG_DI);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 34), REG_ES.sel.value);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 36), REG_CS.sel.value);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 38), REG_SS.sel.value);
+    g_cpubus.mem_write<2>(uint32_t(obase32 + 40), REG_DS.sel.value);
 
 	// effect on link field of new task
 	if(source == CPU_TASK_FROM_CALL || source == CPU_TASK_FROM_INT) {
 		// set to selector of old task's TSS
-		g_cpubus.mem_write_word(nbase32, REG_TR.sel.value);
+		g_cpubus.mem_write<2>(nbase32, REG_TR.sel.value);
 	}
 
 	// STEP 6: The new-task state is loaded from the TSS
-	newIP    = g_cpubus.mem_read_word(uint32_t(nbase32 + 14));
-	newFLAGS = g_cpubus.mem_read_word(uint32_t(nbase32 + 16));
+	newIP    = g_cpubus.mem_read<2>(uint32_t(nbase32 + 14));
+	newFLAGS = g_cpubus.mem_read<2>(uint32_t(nbase32 + 16));
 
 	// incoming TSS:
-	newAX = g_cpubus.mem_read_word(uint32_t(nbase32 + 18));
-	newCX = g_cpubus.mem_read_word(uint32_t(nbase32 + 20));
-	newDX = g_cpubus.mem_read_word(uint32_t(nbase32 + 22));
-	newBX = g_cpubus.mem_read_word(uint32_t(nbase32 + 24));
-	newSP = g_cpubus.mem_read_word(uint32_t(nbase32 + 26));
-	newBP = g_cpubus.mem_read_word(uint32_t(nbase32 + 28));
-	newSI = g_cpubus.mem_read_word(uint32_t(nbase32 + 30));
-	newDI = g_cpubus.mem_read_word(uint32_t(nbase32 + 32));
-	raw_es_selector  = g_cpubus.mem_read_word(uint32_t(nbase32 + 34));
-	raw_cs_selector  = g_cpubus.mem_read_word(uint32_t(nbase32 + 36));
-	raw_ss_selector  = g_cpubus.mem_read_word(uint32_t(nbase32 + 38));
-	raw_ds_selector  = g_cpubus.mem_read_word(uint32_t(nbase32 + 40));
-	raw_ldt_selector = g_cpubus.mem_read_word(uint32_t(nbase32 + 42));
+	newAX = g_cpubus.mem_read<2>(uint32_t(nbase32 + 18));
+	newCX = g_cpubus.mem_read<2>(uint32_t(nbase32 + 20));
+	newDX = g_cpubus.mem_read<2>(uint32_t(nbase32 + 22));
+	newBX = g_cpubus.mem_read<2>(uint32_t(nbase32 + 24));
+	newSP = g_cpubus.mem_read<2>(uint32_t(nbase32 + 26));
+	newBP = g_cpubus.mem_read<2>(uint32_t(nbase32 + 28));
+	newSI = g_cpubus.mem_read<2>(uint32_t(nbase32 + 30));
+	newDI = g_cpubus.mem_read<2>(uint32_t(nbase32 + 32));
+	raw_es_selector  = g_cpubus.mem_read<2>(uint32_t(nbase32 + 34));
+	raw_cs_selector  = g_cpubus.mem_read<2>(uint32_t(nbase32 + 36));
+	raw_ss_selector  = g_cpubus.mem_read<2>(uint32_t(nbase32 + 38));
+	raw_ds_selector  = g_cpubus.mem_read<2>(uint32_t(nbase32 + 40));
+	raw_ldt_selector = g_cpubus.mem_read<2>(uint32_t(nbase32 + 42));
 
 	// Step 7: If CALL, interrupt, or JMP, set busy flag in new task's
 	//         TSS descriptor.  If IRET, leave set.
@@ -1119,9 +1119,9 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	if(source != CPU_TASK_FROM_IRET) {
 		// set the new task's busy bit
 		uint32_t addr = GET_BASE(GDTR) + (selector.index*8) + 5;
-		uint8_t ar = g_cpubus.mem_read_byte(addr);
+		uint8_t ar = g_cpubus.mem_read<1>(addr);
 		ar |= 0x2;
-		g_cpubus.mem_write_byte(addr, ar);
+		g_cpubus.mem_write<1>(addr, ar);
 	}
 
 	//
@@ -1531,7 +1531,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		for(unsigned n = param_count; n>0; n--) {
 			temp_SP -= 2;
 			uint32_t addr = GET_PHYADDR(SS, return_SP + (n-1)*2);
-			uint16_t param = g_cpubus.mem_read_word(addr);
+			uint16_t param = g_cpubus.mem_read<2>(addr);
 			write_word_pmode(new_stack, temp_SP, param, CPU_SS_EXC, errcode);
 		}
 		// push return address onto new stack
@@ -2753,7 +2753,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 			g_machine.DOS_program_start(pname);
 		} else {
 			//find the INT exit point
-			uint32_t cs = g_cpubus.mem_read_word(0x21*4 + 2);
+			uint32_t cs = g_cpubus.mem_read<2>(0x21*4 + 2);
 			m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
 		}
 	}
@@ -2829,7 +2829,7 @@ void CPUExecutor::IRET_pmode()
 			PERRF_ABORT(LOG_CPU, "IRET: TR not valid!\n");
 
 		// examine back link selector in TSS addressed by current TR
-		link_selector = g_cpubus.mem_read_word(REG_TR.desc.base);
+		link_selector = g_cpubus.mem_read<2>(REG_TR.desc.base);
 
 		// must specify global, else #TS(new TSS selector)
 		if(link_selector.ti) {
@@ -3439,65 +3439,65 @@ void CPUExecutor::LOADALL()
 
 	PDEBUGF(LOG_V2, LOG_CPU, "LOADALL\n");
 
-	word_reg = g_cpubus.mem_read_word(0x806);
+	word_reg = g_cpubus.mem_read<2>(0x806);
 	if(GET_CR0(CR0_PE)) {
 		word_reg |= CR0_PE; // adjust PE bit to current value of 1
 	}
 	SET_MSW(word_reg);
 
-	REG_TR.sel = g_cpubus.mem_read_word(0x816);
-	SET_FLAGS(g_cpubus.mem_read_word(0x818));
-	SET_IP(g_cpubus.mem_read_word(0x81A));
-	REG_LDTR.sel = g_cpubus.mem_read_word(0x81C);
-	REG_DS.sel = g_cpubus.mem_read_word(0x81E);
-	REG_SS.sel = g_cpubus.mem_read_word(0x820);
-	REG_CS.sel = g_cpubus.mem_read_word(0x822);
-	REG_ES.sel = g_cpubus.mem_read_word(0x824);
-	REG_DI = g_cpubus.mem_read_word(0x826);
-	REG_SI = g_cpubus.mem_read_word(0x828);
-	REG_BP = g_cpubus.mem_read_word(0x82A);
-	REG_SP = g_cpubus.mem_read_word(0x82C);
-	REG_BX = g_cpubus.mem_read_word(0x82E);
-	REG_DX = g_cpubus.mem_read_word(0x830);
-	REG_CX = g_cpubus.mem_read_word(0x832);
-	REG_AX = g_cpubus.mem_read_word(0x834);
+	REG_TR.sel = g_cpubus.mem_read<2>(0x816);
+	SET_FLAGS(g_cpubus.mem_read<2>(0x818));
+	SET_IP(g_cpubus.mem_read<2>(0x81A));
+	REG_LDTR.sel = g_cpubus.mem_read<2>(0x81C);
+	REG_DS.sel = g_cpubus.mem_read<2>(0x81E);
+	REG_SS.sel = g_cpubus.mem_read<2>(0x820);
+	REG_CS.sel = g_cpubus.mem_read<2>(0x822);
+	REG_ES.sel = g_cpubus.mem_read<2>(0x824);
+	REG_DI = g_cpubus.mem_read<2>(0x826);
+	REG_SI = g_cpubus.mem_read<2>(0x828);
+	REG_BP = g_cpubus.mem_read<2>(0x82A);
+	REG_SP = g_cpubus.mem_read<2>(0x82C);
+	REG_BX = g_cpubus.mem_read<2>(0x82E);
+	REG_DX = g_cpubus.mem_read<2>(0x830);
+	REG_CX = g_cpubus.mem_read<2>(0x832);
+	REG_AX = g_cpubus.mem_read<2>(0x834);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x836);
-	desc_cache[1] = g_cpubus.mem_read_word(0x838);
-	desc_cache[2] = g_cpubus.mem_read_word(0x83A);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x836);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x838);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x83A);
 	REG_ES.desc.set_from_286_cache(desc_cache);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x83C);
-	desc_cache[1] = g_cpubus.mem_read_word(0x83E);
-	desc_cache[2] = g_cpubus.mem_read_word(0x840);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x83C);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x83E);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x840);
 	REG_CS.desc.set_from_286_cache(desc_cache);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x842);
-	desc_cache[1] = g_cpubus.mem_read_word(0x844);
-	desc_cache[2] = g_cpubus.mem_read_word(0x846);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x842);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x844);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x846);
 	REG_SS.desc.set_from_286_cache(desc_cache);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x848);
-	desc_cache[1] = g_cpubus.mem_read_word(0x84A);
-	desc_cache[2] = g_cpubus.mem_read_word(0x84C);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x848);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x84A);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x84C);
 	REG_DS.desc.set_from_286_cache(desc_cache);
 
-	base  = g_cpubus.mem_read_dword(0x84E);
-	limit = g_cpubus.mem_read_word(0x852);
+	base  = g_cpubus.mem_read<4>(0x84E);
+	limit = g_cpubus.mem_read<2>(0x852);
 	SET_GDTR(base, limit);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x854);
-	desc_cache[1] = g_cpubus.mem_read_word(0x856);
-	desc_cache[2] = g_cpubus.mem_read_word(0x858);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x854);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x856);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x858);
 	REG_LDTR.desc.set_from_286_cache(desc_cache);
 
-	base  = g_cpubus.mem_read_dword(0x85A);
-	limit = g_cpubus.mem_read_word(0x85E);
+	base  = g_cpubus.mem_read<4>(0x85A);
+	limit = g_cpubus.mem_read<2>(0x85E);
 	SET_IDTR(base, limit);
 
-	desc_cache[0] = g_cpubus.mem_read_word(0x860);
-	desc_cache[1] = g_cpubus.mem_read_word(0x862);
-	desc_cache[2] = g_cpubus.mem_read_word(0x864);
+	desc_cache[0] = g_cpubus.mem_read<2>(0x860);
+	desc_cache[1] = g_cpubus.mem_read<2>(0x862);
+	desc_cache[2] = g_cpubus.mem_read<2>(0x864);
 	REG_TR.desc.set_from_286_cache(desc_cache);
 
 	g_cpubus.invalidate_pq();
@@ -3687,7 +3687,7 @@ void CPUExecutor::LTR_ew()
 
 	/* mark as busy */
 	REG_TR.desc.type = DESC_TYPE_BUSY_286_TSS;
-	g_cpubus.mem_write_byte(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
+	g_cpubus.mem_write<1>(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
 }
 
 
