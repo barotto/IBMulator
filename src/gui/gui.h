@@ -171,7 +171,7 @@ protected:
 
 		Windows();
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
-		void config_changed();
+		void config_changed(GUI *_gui, Machine *_machine);
 		void update();
 		void shutdown();
 		void toggle_dbg();

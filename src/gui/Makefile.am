@@ -20,6 +20,8 @@ libgui_a_SOURCES = \
 	windows/realistic_interface.cpp \
 	windows/status.cpp \
 	windows/sysdebugger.cpp \
+	windows/sysdebugger286.cpp \
+	windows/sysdebugger386.cpp \
 	windows/stats.cpp \
 	windows/devstatus.cpp \
 	windows/fileselect.cpp
@@ -43,6 +45,8 @@ noinst_HEADERS = \
 	windows/realistic_interface.h \
 	windows/status.h \
 	windows/sysdebugger.h \
+	windows/sysdebugger286.h \
+	windows/sysdebugger386.h \
 	windows/stats.h \
 	windows/devstatus.h \
 	windows/fileselect.h

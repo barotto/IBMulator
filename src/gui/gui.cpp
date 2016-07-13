@@ -39,9 +39,12 @@
 #include "windows/normal_interface.h"
 #include "windows/realistic_interface.h"
 #include "windows/status.h"
-#include "windows/sysdebugger.h"
+#include "windows/sysdebugger286.h"
+#include "windows/sysdebugger386.h"
 #include "windows/devstatus.h"
 #include "windows/stats.h"
+
+#include "hardware/cpu.h"
 
 #include <algorithm>
 
@@ -207,7 +210,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 void GUI::config_changed()
 {
-	m_windows.config_changed();
+	m_windows.config_changed(this, m_machine);
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -1384,23 +1387,28 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	}
 
 	//debug
-	debugger = new SysDebugger(_machine, _gui);
+	debugger = nullptr; // will be created in the config_changed
 	stats = new Stats(_machine, _gui, _mixer);
 	devices = new DevStatus(_gui);
 }
 
-void GUI::Windows::config_changed()
+void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 {
 	desktop->config_changed();
 	interface->config_changed();
+
 	if(status) {
 		status->config_changed();
 	}
-	if(debug_wnds) {
-		debugger->config_changed();
-		devices->config_changed();
-		stats->config_changed();
+
+	delete debugger;
+	if(CPU_TYPE >= CPU_386) {
+		debugger = new SysDebugger386(_gui, _machine);
+	} else {
+		debugger = new SysDebugger286(_gui, _machine);
 	}
+	devices->config_changed();
+	stats->config_changed();
 }
 
 void GUI::Windows::toggle()

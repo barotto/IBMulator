@@ -117,23 +117,37 @@ extern CPUCore g_cpucore;
 ╚═╧═══════════════╪═════════════════╪═════════════════╪═══════╧═╧═╧═╧═╧═╝
 */
 
-#define CR0_PE (1 << 0)  // Protected mode enable
-#define CR0_MP (1 << 1)  // Monitor processor extension
-#define CR0_EM (1 << 2)  // Emulate processor extension
-#define CR0_TS (1 << 3)  // Task switched
-#define CR0_ET (1 << 4)  // Extension Type
-#define CR0_PG (1 << 31) // Paging
+#define CR0BIT_PE 0  // Protected mode enable
+#define CR0BIT_MP 1  // Monitor processor extension
+#define CR0BIT_EM 2  // Emulate processor extension
+#define CR0BIT_TS 3  // Task switched
+#define CR0BIT_ET 4  // Extension Type
+#define CR0BIT_PG 31 // Paging
 
-#define CR0_ALL 0x8000001F
-#define CR0_MSW 0x0000000F
+#define CR0MASK_PE (1 << CR0BIT_PE)
+#define CR0MASK_MP (1 << CR0BIT_MP)
+#define CR0MASK_EM (1 << CR0BIT_EM)
+#define CR0MASK_TS (1 << CR0BIT_TS)
+#define CR0MASK_ET (1 << CR0BIT_ET)
+#define CR0MASK_PG (1 << CR0BIT_PG)
 
-#define GET_CR0  g_cpucore.get_CR0
-#define SET_CR0  g_cpucore.set_CR0
+#define CR0MASK_ALL 0x8000001F
+#define CR0MASK_MSW 0x0000000F
 
-#define GET_MSW()  (uint16_t(GET_CR0(CR0_MSW)))
-#define SET_MSW(_msw_)  (SET_CR0((GET_CR0(CR0_ALL) & ~CR0_MSW) | _msw_))
+#define GET_CR0(NAME)     g_cpucore.get_CR0(CR0MASK_ ## NAME)
+#define SET_CR0(NAME,VAL) g_cpucore.set_CR0(CR0BIT_ ## NAME, VAL)
 
-#define IS_PMODE() GET_CR0(CR0_PE)
+#define CR0_PE (GET_CR0(PE) >> CR0BIT_PE)
+#define CR0_MP (GET_CR0(MP) >> CR0BIT_MP)
+#define CR0_EM (GET_CR0(EM) >> CR0BIT_EM)
+#define CR0_TS (GET_CR0(TS) >> CR0BIT_TS)
+#define CR0_ET (GET_CR0(ET) >> CR0BIT_ET)
+#define CR0_PG (GET_CR0(PG) >> CR0BIT_PG)
+
+#define GET_MSW()      (uint16_t(g_cpucore.get_CR0(CR0MASK_MSW)))
+#define SET_MSW(_msw_) (g_cpucore.set_CR0((g_cpucore.get_CR0(CR0MASK_ALL) & ~CR0MASK_MSW) | _msw_))
+
+#define IS_PMODE() GET_CR0(PE)
 
 
 enum GenRegIndex8 {
@@ -363,13 +377,13 @@ public:
 		m_cr0 = (m_cr0 &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 	inline void set_CR0(uint32_t _cr0) {
-		m_cr0 = _cr0 & CR0_ALL;
+		m_cr0 = _cr0 & CR0MASK_ALL;
 	}
 	inline uint32_t get_CR0(uint32_t _cr0) const {
 		return (m_cr0 & _cr0);
 	}
 
-	inline bool is_pmode() const { return m_cr0 & CR0_PE; }
+	inline bool is_pmode() const { return (m_cr0 & CR0MASK_PE); }
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current
 	 * privilege level (CPL) from the SS access rights. The CPL is loaded from
@@ -385,6 +399,8 @@ public:
 	inline uint32_t get_DS_base() const { return m_segregs[REGI_DS].desc.base; }
 	inline uint32_t get_SS_base() const { return m_segregs[REGI_SS].desc.base; }
 	inline uint32_t get_ES_base() const { return m_segregs[REGI_ES].desc.base; }
+	inline uint32_t get_FS_base() const { return m_segregs[REGI_FS].desc.base; }
+	inline uint32_t get_GS_base() const { return m_segregs[REGI_GS].desc.base; }
 	inline uint32_t get_TR_base() const { return m_tr.desc.base; }
 	inline uint32_t get_LDTR_base() const { return m_ldtr.desc.base; }
 	inline uint32_t get_IDTR_base() const { return m_idtr_base; }

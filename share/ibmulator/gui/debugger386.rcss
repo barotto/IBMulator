@@ -1,0 +1,110 @@
+table th
+{
+	width: 25px;
+}
+
+table#generalregs td
+{
+	width: 80px;
+}
+
+table#generalregs
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+table#segmentregs
+{
+	position: absolute;
+	top: 0px;
+	left: 150px;
+}
+
+#CSbase,#DSbase,
+#ESbase,#SSbase,
+#FSbase,#GSbase,
+#TRbase,
+#LDTbase, #GDTbase, #IDTbase
+{
+	width: 80px;
+}
+
+#CSlimit,#DSlimit,
+#ESlimit,#SSlimit,
+#FSlimit,#GSlimit,
+#TRlimit
+{
+	width: 50px;
+}
+
+table#statusregs
+{
+	position: absolute;
+	top: 250px;
+	left: 0px;
+}
+
+table#flags
+{
+	position: absolute;
+	top: 220px;
+	left: 260px;
+}
+
+table#flags th
+{
+	width: 15px;
+}
+
+table#extra
+{
+	position: absolute;
+	top: 380px;
+	left: 260px;
+}
+
+#EFLAGS,#EIP
+{
+	width: 80px;
+}
+
+#PE,#TS,#PG
+{
+	width: 10px;
+}
+
+table#desctables
+{
+	position: absolute;
+	top: 355px;
+	left: 0px;
+}
+
+table#segments th
+{
+	width: 50px;
+}
+
+#memory
+{
+	top: 460px;
+}
+
+#disasm
+{
+	top: 580px;
+}
+
+#message
+{
+	top: 580px;
+}
+
+#fs_dump btnicon,
+#gs_dump btnicon
+{
+	icon-decorator: image;
+	icon-image: icons/debugger/memory_dump.png 0px 0px 16px 16px;
+}

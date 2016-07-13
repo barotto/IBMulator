@@ -1142,7 +1142,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	// Step 9: Set TS flag
 
-	SET_CR0(CR0_TS, true);
+	SET_CR0(TS, true);
 
 	// Step 10: If call or interrupt, set the NT flag in the eflags
 	//          image stored in new task's TSS.  If IRET or JMP,
@@ -2101,7 +2101,7 @@ void CPUExecutor::CLTS()
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	SET_CR0(CR0_TS, false);
+	SET_CR0(TS, false);
 }
 
 
@@ -2386,7 +2386,7 @@ void CPUExecutor::ENTER()
 
 void CPUExecutor::FPU_ESC()
 {
-	if(GET_CR0(CR0_EM) || GET_CR0(CR0_TS)) {
+	if(CR0_EM || CR0_TS) {
 		throw CPUException(CPU_NM_EXC, 0);
 	}
 }
@@ -3407,9 +3407,9 @@ void CPUExecutor::LMSW_ew()
 	msw = load_ew();
 
 	// LMSW cannot clear PE
-	if(GET_CR0(CR0_PE)) {
-		msw |= CR0_PE; // adjust PE bit to current value of 1
-	} else if(msw & CR0_PE) {
+	if(CR0_PE) {
+		msw |= CR0MASK_PE; // adjust PE to current value of 1
+	} else if(msw & CR0MASK_PE) {
 		PDEBUGF(LOG_V2, LOG_CPU, "now in Protected Mode\n");
 	}
 
@@ -3440,8 +3440,8 @@ void CPUExecutor::LOADALL()
 	PDEBUGF(LOG_V2, LOG_CPU, "LOADALL\n");
 
 	word_reg = g_cpubus.mem_read<2>(0x806);
-	if(GET_CR0(CR0_PE)) {
-		word_reg |= CR0_PE; // adjust PE bit to current value of 1
+	if(CR0_PE) {
+		word_reg |= CR0MASK_PE; // adjust PE to current value of 1
 	}
 	SET_MSW(word_reg);
 
@@ -5246,7 +5246,7 @@ void CPUExecutor::WAIT()
 unmasked numeric error.
 */
 	//checks also MP
-	if(GET_CR0(CR0_TS) && GET_CR0(CR0_MP)) {
+	if(CR0_TS && CR0_MP) {
 		throw CPUException(CPU_NM_EXC, 0);
 	}
 }
