@@ -23,10 +23,22 @@
 class CPUExecutor;
 extern CPUExecutor g_cpuexecutor;
 
+#include "hardware/cpu.h"
 #include "decoder.h"
 #include "interval_tree.h"
 #include <stack>
 
+
+#define TLB_SIZE 1024 // number of entries in the TLB
+
+#define LPF_OF(laddr)      ((laddr) & 0xFFFFF000)
+#define PAGE_OFFSET(laddr) (uint32_t(laddr) & 0xFFF)
+
+enum PageProtection {
+	PAGE_SUPER, PAGE_READ, PAGE_WRITE
+};
+#define PAGE_ACCESSED 0x20
+#define PAGE_DIRTY    0x40
 
 enum {
 	CPU_TASK_FROM_CALL = 0,
@@ -62,6 +74,29 @@ private:
 	std::stack<std::pair<uint32_t,std::string>> m_dos_prg;
 	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
 
+	typedef struct {
+	  uint32_t lpf;   // linear page frame
+	  uint32_t ppf;   // physical page frame
+	  unsigned protection;
+	} TLBEntry;
+
+	TLBEntry m_TLB[TLB_SIZE];
+
+	inline unsigned TLB_index(uint32_t _lpf, unsigned _len) const {
+		return (((_lpf + _len) & ((TLB_SIZE-1) << 12)) >> 12);
+	}
+	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
+	void TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write);
+	void page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write);
+
+	struct {
+		uint32_t phy1;
+		uint32_t phy2;
+		unsigned len1;
+		unsigned len2;
+		unsigned pages;
+	} m_cached_phy;
+
 	uint8_t load_eb();
 	uint8_t load_rb();
 	uint16_t load_ew();
@@ -79,25 +114,26 @@ private:
 
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
 
-	void write_word_pmode(SegReg & _seg, uint16_t _offset, uint16_t _data, uint8_t _exc, uint16_t _errcode);
-	void write_word_pmode(SegReg &_seg, uint16_t _offset, uint16_t _data);
-	uint16_t read_word_pmode(SegReg & _seg, uint16_t _offset, uint8_t _exc, uint16_t _errcode);
+	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write);
+	void mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _user, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 
-	void read_check_pmode(SegReg & _seg, uint16_t _offset, uint _len);
-	void write_check_pmode(SegReg & _seg, uint16_t _offset, uint _len);
-	void read_check_rmode(SegReg & _seg, uint16_t _offset, uint _len);
-	void write_check_rmode(SegReg & _seg, uint16_t _offset, uint _len);
+	uint8_t read_byte();
+	uint16_t read_word();
+	uint32_t read_dword();
+	uint32_t read_xpages();
+	uint8_t read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint16_t read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint32_t read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 
-	uint8_t read_byte(SegReg &_seg, uint16_t _offset);
-	uint16_t read_word(SegReg &_seg, uint16_t _offset);
-	uint32_t read_dword(SegReg &_seg, uint16_t _offset);
-	void write_byte(SegReg &_seg, uint16_t _offset, uint8_t _data);
-	void write_word(SegReg &_seg, uint16_t _offset, uint16_t _data);
-
-	uint8_t read_byte_nocheck(SegReg &_seg, uint16_t _offset);
-	uint16_t read_word_nocheck(SegReg &_seg, uint16_t _offset);
-	void write_byte_nocheck(SegReg &_seg, uint16_t _offset, uint8_t _data);
-	void write_word_nocheck(SegReg &_seg, uint16_t _offset, uint16_t _data);
+	void write_byte(uint8_t _data);
+	void write_word(uint16_t _data);
+	void write_dword(uint32_t _data);
+	void write_xpages(uint32_t _data);
+	void write_byte(SegReg &_seg, uint32_t _offset, uint8_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 
 	void stack_push(uint16_t _value);
 	uint16_t stack_pop();

@@ -96,6 +96,17 @@ public:
 	void reset();
 	void config_changed();
 
+	void check_trap(uint32_t _address, bool _write, uint32_t _value, unsigned _len) const noexcept
+	{
+		std::vector<memtrap_interval_t> results;
+		m_traps_tree.findOverlapping(_address, _address, results);
+		for(auto t : results) {
+			if(t.value.mask & 2) {
+				t.value.func(_address, _write, _value, _len);
+			}
+		}
+	}
+
 	template<unsigned LEN>
 	uint32_t read_notraps(uint32_t _address) const noexcept
 	{
@@ -112,17 +123,12 @@ public:
 	uint64_t read_qword_notraps(uint32_t _address) const noexcept;
 
 	template<unsigned LEN>
-	uint32_t read(uint32_t _address) const noexcept
+	uint32_t read(uint32_t _address, unsigned _trap_len = LEN) const noexcept
 	{
 		uint32_t value = read_notraps<LEN>(_address);
 
-		if(MEMORY_TRAPS) {
-			std::vector<memtrap_interval_t> results;
-			m_traps_tree.findOverlapping(_address, _address, results);
-			for(auto t : results) {
-				if(t.value.mask & 2)
-					t.value.func(_address, 0, value, LEN);
-			}
+		if(MEMORY_TRAPS && _trap_len==LEN) {
+			check_trap(_address, false, value, LEN);
 		}
 
 		return value;
@@ -130,7 +136,7 @@ public:
 	uint64_t read_qword(uint32_t _address) const noexcept;
 
 	template<unsigned LEN>
-	void write(uint32_t _address, uint32_t value) noexcept
+	void write_notraps(uint32_t _address, uint32_t value) noexcept
 	{
 		write_byte(_address, uint8_t(value));
 		if(LEN >=2) {
@@ -140,14 +146,15 @@ public:
 			write_byte(_address+2, uint8_t(value>>16));
 			write_byte(_address+3, uint8_t(value>>24));
 		}
+	}
 
-		if(MEMORY_TRAPS) {
-			std::vector<memtrap_interval_t> results;
-			m_traps_tree.findOverlapping(_address, _address, results);
-			for(auto t : results) {
-				if(t.value.mask & 2)
-					t.value.func(_address, 1, value, LEN);
-			}
+	template<unsigned LEN>
+	void write(uint32_t _address, uint32_t _value, unsigned _trap_len = LEN) noexcept
+	{
+		write_notraps<LEN>(_address, _value);
+
+		if(MEMORY_TRAPS && _trap_len==LEN) {
+			check_trap(_address, true, _value, LEN);
 		}
 	}
 

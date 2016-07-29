@@ -136,6 +136,9 @@ struct Descriptor
 			base = base_15_0 | (uint32_t(base_23_16) << 16) | ((_data >> 32) & 0xFF000000 );
 			big = (_data >> 54) & 1;
 			granularity = (_data >> 55) & 1;
+			if(granularity) { // page
+				limit = (limit << 12) | 0xFFF;
+			}
 		} else {
 			offset = (_data & 0xFFFF) | ((_data >> 32) & 0xFFFF0000);
 			selector = _data >> 16;

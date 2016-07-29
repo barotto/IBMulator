@@ -245,173 +245,332 @@ void CPUExecutor::write_flags(uint16_t _flags,
 	SET_FLAGS(new_flags);
 }
 
-void CPUExecutor::read_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
+void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode)
 {
 	assert(_len!=0);
-	uint8_t vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
-	if(!_seg.desc.valid) {
-		PDEBUGF(LOG_V2, LOG_CPU, "read_check_pmode(): segment not valid\n");
-		throw CPUException(vector, 0);
+	if(_vector == CPU_INVALID_INT) {
+		_vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
 	}
-	if(uint32_t(_offset)+_len-1 > _seg.desc.limit) {
-		PDEBUGF(LOG_V2, LOG_CPU, "read_check_pmode(): segment limit violation\n");
-		throw CPUException(vector, 0);
+	if(!_seg.desc.valid) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment not valid\n");
+		throw CPUException(_vector, _errcode);
+	}
+	if(_seg.desc.is_data_segment_expand_down()) {
+		uint32_t upper_limit = 0xFFFF;
+		if(_seg.desc.big) {
+			upper_limit = 0xFFFFFFFF;
+		}
+		if(_offset <= _seg.desc.limit || _offset > upper_limit || (upper_limit - _offset) < _len) {
+			PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment limit violation exp.down\n");
+			throw CPUException(_vector, _errcode);
+		}
+	} else if(_offset+_len-1 > _seg.desc.limit) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment limit violation\n");
+		throw CPUException(_vector, _errcode);
+	}
+	if(_seg.desc.is_code_segment() && !_seg.desc.is_code_segment_readable()) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): execute only\n");
+		throw CPUException(_vector, _errcode);
 	}
 }
 
-void CPUExecutor::write_check_pmode(SegReg & _seg, uint16_t _offset, uint _len)
+void CPUExecutor::seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode)
 {
 	assert(_len!=0);
-	uint8_t vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
-	if(!_seg.desc.valid) {
-		PDEBUGF(LOG_V2, LOG_CPU, "write_check_pmode(): segment not valid\n");
-		throw CPUException(vector, 0);
+	if(_vector == CPU_INVALID_INT) {
+		_vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
 	}
-	if(uint32_t(_offset)+_len-1 > _seg.desc.limit) {
-		PDEBUGF(LOG_V2, LOG_CPU, "write_check_pmode(): segment limit violation\n");
-		throw CPUException(vector, 0);
+	if(!_seg.desc.valid) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not valid\n");
+		throw CPUException(_vector, _errcode);
 	}
 	if(!_seg.desc.is_data_segment_writeable()) {
-		PDEBUGF(LOG_V2, LOG_CPU, "write_check_pmode(): segment not writeable\n");
-		throw CPUException(CPU_GP_EXC, 0);
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not writeable\n");
+		throw CPUException(_vector, _errcode);
+	}
+	if(_seg.desc.is_data_segment_expand_down()) {
+		uint32_t upper_limit = 0xFFFF;
+		if(_seg.desc.big) {
+			upper_limit = 0xFFFFFFFF;
+		}
+		if(_offset <= _seg.desc.limit || _offset > upper_limit || (upper_limit - _offset) < _len) {
+			PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment limit violation exp.down\n");
+			throw CPUException(_vector, _errcode);
+		}
+	} else if(_offset+_len-1 > _seg.desc.limit) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment limit violation\n");
+		throw CPUException(_vector, _errcode);
+	}
+
+}
+
+#define PF_NOT_PRESENT  0x00
+#define PF_PROTECTION   0x01
+
+void CPUExecutor::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write)
+{
+	uint32_t error_code = _fault | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
+	REG_CR2 = _linear;
+	PDEBUGF(LOG_V2, LOG_CPU, "page fault at %08X:%08X\n", _linear, REG_EIP);
+	throw CPUException(CPU_PF_EXC, error_code);
+}
+
+static const unsigned g_page_protection[16] = {
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_READ,
+	PAGE_READ,
+	PAGE_SUPER,
+	PAGE_SUPER,
+	PAGE_READ,
+	PAGE_WRITE
+};
+
+void CPUExecutor::page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write)
+{
+	if(_user) {
+		if(_protection == PAGE_SUPER) {
+			page_fault(PF_PROTECTION, _linear, true, _write);
+		}
+		if(_write && _protection == PAGE_READ) {
+			page_fault(PF_PROTECTION, _linear, true, true);
+		}
 	}
 }
 
-void CPUExecutor::read_check_rmode(SegReg & /*_seg*/, uint16_t _offset, uint _len)
+void CPUExecutor::TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write)
 {
-	if(_len>1 && _offset==0xFFFF) {
-		throw CPUException(CPU_SEG_OVR_EXC, 0);
+	uint32_t ppf = PDBR;
+	unsigned prot = 0;
+	uint32_t entry[2];
+	uint32_t entry_addr[2];
+	static const int PDIR = 1;
+	static const int PTBL = 0;
+
+	/*
+	Page Directory/Table Entry (PDE, PTE)
+	31                                   12 11          6 5     2 1 0
+	╔══════════════════════════════════════╤═══════╤═══╤═╤═╤═══╤═╤═╤═╗
+	║                                      │       │   │ │ │   │U│R│ ║
+	║      PAGE FRAME ADDRESS 31..12       │ AVAIL │0 0│D│A│0 0│/│/│P║
+	║                                      │       │   │ │ │   │S│W│ ║
+	╚══════════════════════════════════════╧═══════╧═══╧═╧═╧═══╧═╧═╧═╝
+	P: PRESENT, R/W: READ/WRITE, U/S: USER/SUPERVISOR, D: DIRTY
+	AVAIL: AVAILABLE FOR SYSTEMS PROGRAMMER USE, 0: reserved
+
+	Page Translation
+	                                                              PAGE FRAME
+	              ╔═══════════╦═══════════╦══════════╗         ╔═══════════════╗
+	              ║    DIR    ║   PAGE    ║  OFFSET  ║         ║               ║
+	              ╚═════╤═════╩═════╤═════╩═════╤════╝         ║               ║
+	                    │           │           │              ║               ║
+	      ┌──────/──────┘           /10         └──────/──────▶║    PHYSICAL   ║
+	      │     10                  │                 12       ║    ADDRESS    ║
+	      *4                        *4                         ║               ║
+	      │   PAGE DIRECTORY        │      PAGE TABLE          ║               ║
+	      │  ╔═══════════════╗      │   ╔═══════════════╗      ║               ║
+	      │  ║               ║      │   ║               ║      ╚═══════════════╝
+	      │  ║               ║      │   ╠═══════════════╣              ▲
+	      │  ║               ║      └──▶║      PTE      ╟──────────────┘
+	      │  ╠═══════════════╣          ╠═══════════════╣   [31:12]
+	      └─▶║      PDE      ╟──┐       ║               ║
+	         ╠═══════════════╣  │       ║               ║
+	         ║               ║  │       ║               ║
+	         ╚═══════════════╝  │       ╚═══════════════╝
+	                 ▲          │               ▲
+	╔═══════╗ PDBR   │          └───────────────┘
+	║  CR3  ╟────────┘               [31:12]
+	╚═══════╝ [31:12]
+	 */
+
+	// Read tables from memory
+	for(int table = PDIR; table>=PTBL; --table) {
+		entry_addr[table] = ppf + ((_linear >> (10 + 10*table)) & 0xFFC);
+		entry[table] = g_cpubus.mem_read<4>(entry_addr[table]);
+		if(!(entry[table] & 0x1)) {
+			page_fault(PF_NOT_PRESENT, _linear, _user, _write);
+		}
+		prot |= ((entry[table] & 0x6) >> 1) << table*2;
+		ppf = entry[table] & 0xFFFFF000;
+	}
+
+	// Update TLB
+	_tlbent->lpf = LPF_OF(_linear);
+	_tlbent->ppf = ppf;
+	_tlbent->protection = g_page_protection[prot];
+
+	// Update PDE A bit
+	if(!(entry[PDIR] & PAGE_ACCESSED)) {
+		entry[PDIR] |= PAGE_ACCESSED;
+		g_cpubus.mem_write<4>(entry_addr[PDIR], entry[PDIR]);
+	}
+	// Update PTE A and D bits
+	if(!(entry[PTBL] & PAGE_ACCESSED) || (_write && !(entry[PTBL] & PAGE_DIRTY))) {
+		entry[PTBL] |= (PAGE_ACCESSED | (_write << 6));
+		g_cpubus.mem_write<4>(entry_addr[PTBL], entry[PTBL]);
 	}
 }
 
-void CPUExecutor::write_check_rmode(SegReg & /*_seg*/, uint16_t _offset, uint _len)
+uint32_t CPUExecutor::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write)
 {
-	if(_len>1 && _offset==0xFFFF) {
-		throw CPUException(CPU_SEG_OVR_EXC, 0);
+	TLBEntry *tlbent = &m_TLB[TLB_index(_linear, _len-1)];
+	if(tlbent->lpf != LPF_OF(_linear)) {
+		TLB_miss(_linear, tlbent, _user, _write);
 	}
+	page_check(tlbent->protection, _linear, _user, _write);
+	uint32_t phy = tlbent->ppf | PAGE_OFFSET(_linear);
+
+	return phy;
 }
 
-uint8_t CPUExecutor::read_byte(SegReg &_seg, uint16_t _offset)
+void CPUExecutor::mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _len,
+		bool _user, bool _write, uint8_t _vector, uint16_t _errcode)
 {
-	if(IS_PMODE()) {
-		read_check_pmode(_seg, _offset, 1);
+	if(_write) {
+		seg_check_write(_seg, _offset, _len, _vector, _errcode);
 	} else {
-		read_check_rmode(_seg, _offset, 1);
+		seg_check_read(_seg, _offset, _len, _vector, _errcode);
 	}
-	return g_cpubus.mem_read<1>(_seg.desc.base + uint32_t(_offset));
-}
-
-uint16_t CPUExecutor::read_word(SegReg &_seg, uint16_t _offset)
-{
-	if(IS_PMODE()) {
-		read_check_pmode(_seg, _offset, 2);
+	uint32_t linear = _seg.desc.base + _offset;
+	if(IS_PAGING()) {
+		if((PAGE_OFFSET(linear) + _len) <= 4096) {
+			m_cached_phy.phy1 = TLB_lookup(linear, _len, _user, _write);
+			m_cached_phy.len1 = _len;
+			m_cached_phy.pages = 1;
+		} else {
+			uint32_t page_offset = PAGE_OFFSET(linear);
+			m_cached_phy.len1 = 4096 - page_offset;
+			m_cached_phy.len2 = _len - m_cached_phy.len1;
+			m_cached_phy.phy1 = TLB_lookup(linear, m_cached_phy.len1, _user, _write);
+			m_cached_phy.phy2 = TLB_lookup(linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
+			m_cached_phy.pages = 2;
+		}
 	} else {
-		read_check_rmode(_seg, _offset, 2);
+		m_cached_phy.phy1 = linear;
+		m_cached_phy.len1 = _len;
+		m_cached_phy.pages = 1;
 	}
-	return g_cpubus.mem_read<2>(_seg.desc.base + uint32_t(_offset));
 }
 
-uint32_t CPUExecutor::read_dword(SegReg &_seg, uint16_t _offset)
+uint32_t CPUExecutor::read_xpages()
 {
-	if(IS_PMODE()) {
-		read_check_pmode(_seg, _offset, 4);
+	unsigned len = m_cached_phy.len1 + m_cached_phy.len2;
+	uint32_t b, data = 0;
+	for(b=0; b<m_cached_phy.len1; b++) {
+		data |= g_cpubus.mem_read<1>(m_cached_phy.phy1 + b, len) << (b*8);
+	}
+	for(; b<len; b++) {
+		data |= g_cpubus.mem_read<1>(m_cached_phy.phy2 + (b-m_cached_phy.len1), len) << (b*8);
+	}
+	if(MEMORY_TRAPS) {
+		g_memory.check_trap(m_cached_phy.phy1, false, data, len);
+	}
+	return data;
+}
+
+uint8_t CPUExecutor::read_byte()
+{
+	return g_cpubus.mem_read<1>(m_cached_phy.phy1);
+}
+
+uint16_t CPUExecutor::read_word()
+{
+	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+		return g_cpubus.mem_read<2>(m_cached_phy.phy1);
 	} else {
-		read_check_rmode(_seg, _offset, 4);
+		return read_xpages();
 	}
-	return g_cpubus.mem_read<4>(_seg.desc.base + uint32_t(_offset));
 }
 
-void CPUExecutor::write_byte(SegReg &_seg, uint16_t _offset, uint8_t _data)
+uint32_t CPUExecutor::read_dword()
 {
-	if(IS_PMODE()) {
-		write_check_pmode(_seg, _offset, 1);
+	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+		return g_cpubus.mem_read<4>(m_cached_phy.phy1);
 	} else {
-		write_check_rmode(_seg, _offset, 1);
+		return read_xpages();
 	}
-	g_cpubus.mem_write<1>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
-void CPUExecutor::write_word(SegReg &_seg, uint16_t _offset, uint16_t _data)
+uint8_t CPUExecutor::read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
 {
-	if(IS_PMODE()) {
-		write_check_pmode(_seg, _offset, 2);
+	mem_access_check(_seg, _offset, 1, IS_USER_PL, false, _vector, _errcode);
+	return read_byte();
+}
+
+uint16_t CPUExecutor::read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
+{
+	mem_access_check(_seg, _offset, 2, IS_USER_PL, false, _vector, _errcode);
+	return read_word();
+}
+
+uint32_t CPUExecutor::read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
+{
+	mem_access_check(_seg, _offset, 4, IS_USER_PL, false, _vector, _errcode);
+	return read_dword();
+}
+
+void CPUExecutor::write_xpages(uint32_t _data)
+{
+	unsigned len = m_cached_phy.len1 + m_cached_phy.len2;
+	unsigned b;
+	for(b=0; b<m_cached_phy.len1; b++) {
+		g_cpubus.mem_write<1>(m_cached_phy.phy1 + b, len, (_data>>(b*8)) & 0xFF);
+	}
+	for(; b<len; b++) {
+		g_cpubus.mem_write<1>(m_cached_phy.phy2 + (b-m_cached_phy.len1), len, (_data>>(b*8)) & 0xFF);
+	}
+	if(MEMORY_TRAPS) {
+		g_memory.check_trap(m_cached_phy.phy1, true, _data, len);
+	}
+}
+
+void CPUExecutor::write_byte(uint8_t _data)
+{
+	g_cpubus.mem_write<1>(m_cached_phy.phy1, _data);
+}
+
+void CPUExecutor::write_word(uint16_t _data)
+{
+	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+		g_cpubus.mem_write<2>(m_cached_phy.phy1, _data);
 	} else {
-		write_check_rmode(_seg, _offset, 2);
+		write_xpages(_data);
 	}
-	g_cpubus.mem_write<2>(_seg.desc.base + uint32_t(_offset), _data);
 }
 
-uint8_t CPUExecutor::read_byte_nocheck(SegReg &_seg, uint16_t _offset)
+void CPUExecutor::write_dword(uint32_t _data)
 {
-	return g_cpubus.mem_read<1>(_seg.desc.base + uint32_t(_offset));
-}
-
-uint16_t CPUExecutor::read_word_nocheck(SegReg &_seg, uint16_t _offset)
-{
-	return g_cpubus.mem_read<2>(_seg.desc.base + uint32_t(_offset));
-}
-
-void CPUExecutor::write_byte_nocheck(SegReg &_seg, uint16_t _offset, uint8_t _data)
-{
-	g_cpubus.mem_write<1>(_seg.desc.base + uint32_t(_offset), _data);
-}
-
-void CPUExecutor::write_word_nocheck(SegReg &_seg, uint16_t _offset, uint16_t _data)
-{
-	g_cpubus.mem_write<2>(_seg.desc.base + uint32_t(_offset), _data);
-}
-
-void CPUExecutor::write_word_pmode(SegReg &_seg, uint16_t _offset, uint16_t _data,
-		uint8_t _exc, uint16_t _errcode)
-{
-	//see access32.cc/write_virtual_word_32
-	//and access32.cc/write_new_stack_word_32
-	//this function doesn't call write_virtual_checks()
-	//TODO?
-	if(!_seg.desc.valid) {
-		PERRF(LOG_CPU, "write_word_pmode(): segment not valid\n");
-		throw CPUException(_exc, _errcode);
-	}
-	if(!_seg.desc.is_data_segment_writeable()) {
-		PDEBUGF(LOG_V2, LOG_CPU, "write_word_pmode(): segment not writeable\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-	if(uint32_t(_offset)+1 <= _seg.desc.limit) {
-		uint32_t addr = _seg.desc.base + _offset;
-		g_cpubus.mem_write<2>(addr, _data);
-		return;
+	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+		g_cpubus.mem_write<4>(m_cached_phy.phy1, _data);
 	} else {
-		PERRF(LOG_CPU, "write_word_pmode(): segment limit violation\n");
-		throw CPUException(_exc, _errcode);
+		write_xpages(_data);
 	}
 }
 
-void CPUExecutor::write_word_pmode(SegReg &_seg, uint16_t _offset, uint16_t _data)
+void CPUExecutor::write_byte(SegReg &_seg, uint32_t _offset, uint8_t _data, uint8_t _vector, uint16_t _errcode)
 {
-    uint8_t exc = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
-    uint16_t errcode = _seg.sel.rpl != CPL ? (_seg.sel.value & SELECTOR_RPL_MASK) : 0;
-    write_word_pmode(_seg, _offset, _data, exc, errcode);
+	mem_access_check(_seg, _offset, 1, IS_USER_PL, true, _vector, _errcode);
+	write_byte(_data);
 }
 
-uint16_t CPUExecutor::read_word_pmode(SegReg & _seg, uint16_t _offset, uint8_t _exc,
-		uint16_t _errcode)
+void CPUExecutor::write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector, uint16_t _errcode)
 {
-	//see access32.cc/read_virtual_word_32
-	//this function doesn't call read_virtual_checks()
-	//TODO?
-	if(!_seg.desc.valid) {
-		PDEBUGF(LOG_V2, LOG_CPU, "read_word_pmode(): segment not valid\n");
-		throw CPUException(_exc, _errcode);
-	}
+	mem_access_check(_seg, _offset, 2, IS_USER_PL, true, _vector, _errcode);
+	write_word(_data);
+}
 
-    if(uint32_t(_offset)+1 <= _seg.desc.limit) {
-    	uint32_t addr = _seg.desc.base + _offset;
-    	uint16_t value = g_cpubus.mem_read<2>(addr);
-    	return value;
-    } else {
-    	PDEBUGF(LOG_V2, LOG_CPU, "read_word_pmode(): segment limit violation\n");
-		throw CPUException(_exc, _errcode);
-    }
+void CPUExecutor::write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector, uint16_t _errcode)
+{
+	mem_access_check(_seg, _offset, 4, IS_USER_PL, true, _vector, _errcode);
+	write_dword(_data);
 }
 
 void CPUExecutor::stack_push(uint16_t _value)
@@ -437,13 +596,13 @@ void CPUExecutor::stack_push_pmode(uint16_t _value)
 		PDEBUGF(LOG_V2, LOG_CPU, "stack_push_pmode(): insufficient stack space\n");
 		throw CPUException(CPU_SS_EXC, 0);
 	}
-	write_word_pmode(REG_SS, (REG_SP - 2), _value, CPU_SS_EXC, 0);
+	write_word(REG_SS, (REG_SP - 2), _value, CPU_SS_EXC, 0);
 	REG_SP -= 2;
 }
 
 uint16_t CPUExecutor::stack_pop_pmode()
 {
-	uint16_t value = read_word_pmode(REG_SS, REG_SP, CPU_SS_EXC, 0);
+	uint16_t value = read_word(REG_SS, REG_SP, CPU_SS_EXC, 0);
 	REG_SP += 2;
 
 	return value;
@@ -451,17 +610,13 @@ uint16_t CPUExecutor::stack_pop_pmode()
 
 uint16_t CPUExecutor::stack_read(uint16_t _offset)
 {
-	if(IS_PMODE()) {
-		read_check_pmode(REG_SS, _offset, 2);
-	}
+	seg_check_read(REG_SS, _offset, 2);
 	return g_cpubus.mem_read<2>(GET_PHYADDR(SS, _offset));
 }
 
 void CPUExecutor::stack_write(uint16_t _offset, uint16_t _data)
 {
-	if(IS_PMODE()) {
-		write_check_pmode(REG_SS, _offset, 2);
-	}
+	seg_check_write(REG_SS, _offset, 2);
 	g_cpubus.mem_write<2>(GET_PHYADDR(SS, _offset), _data);
 }
 
@@ -869,16 +1024,16 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				uint8_t exc = CPU_SS_EXC;
 				uint16_t errcode =
 					new_stack.sel.rpl != CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
-				write_word_pmode(new_stack, temp_SP-2,  old_SS, exc, errcode);
-				write_word_pmode(new_stack, temp_SP-4,  old_SP, exc, errcode);
-				write_word_pmode(new_stack, temp_SP-6,  GET_FLAGS(), exc, errcode);
-				write_word_pmode(new_stack, temp_SP-8,  old_CS, exc, errcode);
-				write_word_pmode(new_stack, temp_SP-10, old_IP, exc, errcode);
+				write_word(new_stack, temp_SP-2,  old_SS, exc, errcode);
+				write_word(new_stack, temp_SP-4,  old_SP, exc, errcode);
+				write_word(new_stack, temp_SP-6,  GET_FLAGS(), exc, errcode);
+				write_word(new_stack, temp_SP-8,  old_CS, exc, errcode);
+				write_word(new_stack, temp_SP-10, old_IP, exc, errcode);
 				temp_SP -= 10;
 
 				if(push_error) {
 					temp_SP -= 2;
-					write_word_pmode(new_stack, temp_SP, error_code, exc, errcode);
+					write_word(new_stack, temp_SP, error_code, exc, errcode);
 				}
 
 				// load new CS:IP values from gate
@@ -1524,19 +1679,19 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// push pointer of old stack onto new stack
 		uint16_t errcode = new_stack.sel.rpl != CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
-		write_word_pmode(new_stack, temp_SP-2, return_SS, CPU_SS_EXC, errcode);
-		write_word_pmode(new_stack, temp_SP-4, return_SP, CPU_SS_EXC, errcode);
+		write_word(new_stack, temp_SP-2, return_SS, CPU_SS_EXC, errcode);
+		write_word(new_stack, temp_SP-4, return_SP, CPU_SS_EXC, errcode);
 		temp_SP -= 4;
 
 		for(unsigned n = param_count; n>0; n--) {
 			temp_SP -= 2;
 			uint32_t addr = GET_PHYADDR(SS, return_SP + (n-1)*2);
 			uint16_t param = g_cpubus.mem_read<2>(addr);
-			write_word_pmode(new_stack, temp_SP, param, CPU_SS_EXC, errcode);
+			write_word(new_stack, temp_SP, param, CPU_SS_EXC, errcode);
 		}
 		// push return address onto new stack
-		write_word_pmode(new_stack, temp_SP-2, return_CS, CPU_SS_EXC, errcode);
-		write_word_pmode(new_stack, temp_SP-4, return_IP, CPU_SS_EXC, errcode);
+		write_word(new_stack, temp_SP-2, return_CS, CPU_SS_EXC, errcode);
+		write_word(new_stack, temp_SP-4, return_IP, CPU_SS_EXC, errcode);
 		temp_SP -= 4;
 
 		REG_SP = temp_SP;
@@ -1645,9 +1800,10 @@ void CPUExecutor::call_protected(uint16_t cs_raw, uint16_t disp)
 		CPUCore::check_CS(cs_raw, cs_descriptor, SELECTOR_RPL(cs_raw), CPL);
 
 		uint16_t temp_SP = REG_SP;
+		uint16_t errcode = REG_SS.sel.rpl != CPL ? (REG_SS.sel.value & SELECTOR_RPL_MASK) : 0;
 
-		write_word_pmode(REG_SS, temp_SP - 2, REG_CS.sel.value);
-		write_word_pmode(REG_SS, temp_SP - 4, REG_IP);
+		write_word(REG_SS, temp_SP - 2, REG_CS.sel.value, CPU_SS_EXC, errcode);
+		write_word(REG_SS, temp_SP - 4, REG_IP, CPU_SS_EXC, errcode);
 		temp_SP -= 4;
 
 		// load code segment descriptor into CS cache
@@ -2358,7 +2514,7 @@ void CPUExecutor::ENTER()
 		/* do level-1 times */
 		while(--level) {
 			bp -= 2;
-			uint16_t temp16 = read_word_nocheck(REG_SS, bp);
+			uint16_t temp16 = read_word(REG_SS, bp);
 			stack_push(temp16);
 		}
 
@@ -2657,18 +2813,15 @@ void CPUExecutor::INSB()
 			PDEBUGF(LOG_V2, LOG_CPU, "INSB: I/O access not allowed!\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
-		write_check_pmode(REG_ES, REG_DI, 1);
-	} else {
-		write_check_rmode(REG_ES, REG_DI, 1);
 	}
-
-	uint8_t value = g_devices.read_byte(REG_DX);
-
 	/*
 	The memory operand must be addressable from the ES register; no segment override is
 	possible.
 	*/
-	write_byte_nocheck(REG_ES, REG_DI, value);
+	mem_access_check(REG_ES, REG_DI, 1, IS_USER_PL, true);
+
+	uint8_t value = g_devices.read_byte(REG_DX);
+	write_byte(value);
 
 	if(FLAG_DF) {
 		REG_DI -= 1;
@@ -2685,14 +2838,11 @@ void CPUExecutor::INSW()
 			PDEBUGF(LOG_V2, LOG_CPU, "INSW: I/O access not allowed!\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
-		write_check_pmode(REG_ES, REG_DI, 2);
-	} else {
-		write_check_rmode(REG_ES, REG_DI, 2);
 	}
+	seg_check_write(REG_ES, REG_DI, 2);
 
 	uint16_t value = g_devices.read_word(REG_DX);
-
-	write_word_nocheck(REG_ES, REG_DI, value);
+	write_word(value);
 
 	if(FLAG_DF) {
 		REG_DI -= 2;

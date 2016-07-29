@@ -22,7 +22,6 @@
 
 #include "cpu/core.h"
 #include "cpu/decoder.h"
-#include "cpu/executor.h"
 #include "cpu/state.h"
 #include "cpu/logger.h"
 #include <regex>
@@ -33,27 +32,6 @@ extern CPU g_cpu;
 enum CPUType {
 	CPU_286 = 2,
 	CPU_386 = 3
-};
-
-#define CPU_TYPE  g_cpu.type()
-
-#define CPU_EVENT_NMI           (1 << 0)
-#define CPU_EVENT_PENDING_INTR  (1 << 1)
-
-#define CPU_INHIBIT_INTERRUPTS  0x01
-#define CPU_INHIBIT_DEBUG       0x02
-
-#define CPU_INHIBIT_INTERRUPTS_BY_MOVSS \
-	(CPU_INHIBIT_INTERRUPTS | CPU_INHIBIT_DEBUG)
-
-// exception types for interrupt method
-enum CPUInterruptType {
-	CPU_EXTERNAL_INTERRUPT = 0,
-	CPU_NMI = 2,
-	CPU_HARDWARE_EXCEPTION = 3,  // all exceptions except #BP and #OF
-	CPU_SOFTWARE_INTERRUPT = 4,
-	CPU_PRIVILEGED_SOFTWARE_INTERRUPT = 5,
-	CPU_SOFTWARE_EXCEPTION = 6
 };
 
 /* The names of CPU interrupts reflect those reported in the 80286 programmers's
@@ -87,8 +65,35 @@ enum CPUInterrupt {
 	CPU_SS_EXC          = 12, // Stack Fault exception (pmode)
 	CPU_SEG_OVR_EXC     = 13, // Segment overrun exception (rmode)
 	CPU_GP_EXC          = 13, // General Protection exception (pmode)
+	CPU_PF_EXC          = 14, // Page fault (pmode)
 	CPU_NPX_ERR_INT     = 16, // NPX error interrupt (rmode)
-	CPU_MF_EXC          = 16  // Math Fault exception (pmode)
+	CPU_MF_EXC          = 16, // Math Fault exception (pmode)
+
+	CPU_MAX_INT,
+	CPU_INVALID_INT = CPU_MAX_INT
+};
+
+#include "cpu/executor.h"
+
+#define CPU_TYPE  g_cpu.type()
+
+#define CPU_EVENT_NMI           (1 << 0)
+#define CPU_EVENT_PENDING_INTR  (1 << 1)
+
+#define CPU_INHIBIT_INTERRUPTS  0x01
+#define CPU_INHIBIT_DEBUG       0x02
+
+#define CPU_INHIBIT_INTERRUPTS_BY_MOVSS \
+	(CPU_INHIBIT_INTERRUPTS | CPU_INHIBIT_DEBUG)
+
+// exception types for interrupt method
+enum CPUInterruptType {
+	CPU_EXTERNAL_INTERRUPT = 0,
+	CPU_NMI = 2,
+	CPU_HARDWARE_EXCEPTION = 3,  // all exceptions except #BP and #OF
+	CPU_SOFTWARE_INTERRUPT = 4,
+	CPU_PRIVILEGED_SOFTWARE_INTERRUPT = 5,
+	CPU_SOFTWARE_EXCEPTION = 6
 };
 
 class CPUException

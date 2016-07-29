@@ -147,7 +147,13 @@ extern CPUCore g_cpucore;
 #define GET_MSW()      (uint16_t(g_cpucore.get_CR0(CR0MASK_MSW)))
 #define SET_MSW(_msw_) (g_cpucore.set_CR0((g_cpucore.get_CR0(CR0MASK_ALL) & ~CR0MASK_MSW) | _msw_))
 
-#define IS_PMODE() GET_CR0(PE)
+#define REG_CR0 g_cpucore.ctl_reg(0)
+#define REG_CR2 g_cpucore.ctl_reg(2)
+#define REG_CR3 g_cpucore.ctl_reg(3)
+#define PDBR (REG_CR3 & 0xFFFFF000)
+
+#define IS_PMODE()  GET_CR0(PE)
+#define IS_PAGING() GET_CR0(PG)
 
 
 enum GenRegIndex8 {
@@ -178,7 +184,12 @@ enum SegRegIndex {
 	REGI_SS = 2,
 	REGI_DS = 3,
 	REGI_FS = 4,
-	REGI_GS = 5
+	REGI_GS = 5,
+
+	REGI_TR,
+	REGI_IDTR,
+	REGI_LDTR,
+	REGI_GDTR
 };
 
 #define REGI_NONE 0xFF
@@ -216,38 +227,36 @@ enum SegRegIndex {
 #define SET_EIP(value) g_cpucore.set_EIP(value)
 #define RESTORE_EIP g_cpucore.restore_EIP
 
-#define GET_REG(NAME)     (g_cpucore.get_ ## NAME ())
-#define SET_REG(NAME,VAL) (g_cpucore.set_ ## NAME (VAL))
 #define SET_CS g_cpucore.set_CS
 #define SET_SS g_cpucore.set_SS
 #define SET_ES g_cpucore.set_ES
 #define SET_DS g_cpucore.set_DS
 #define SET_FS g_cpucore.set_FS
 #define SET_GS g_cpucore.set_GS
-
 #define SET_IDTR(base,limit) g_cpucore.set_IDTR(base,limit)
 #define SET_GDTR(base,limit) g_cpucore.set_GDTR(base,limit)
 
-#define REG_ES GET_REG(ES)
-#define REG_DS GET_REG(DS)
-#define REG_SS GET_REG(SS)
-#define REG_CS GET_REG(CS)
-#define REG_FS GET_REG(FS)
-#define REG_GS GET_REG(GS)
-#define REG_TR GET_REG(TR)
-#define REG_LDTR GET_REG(LDTR)
+#define REG_ES g_cpucore.seg_reg(REGI_ES)
+#define REG_DS g_cpucore.seg_reg(REGI_DS)
+#define REG_SS g_cpucore.seg_reg(REGI_SS)
+#define REG_CS g_cpucore.seg_reg(REGI_CS)
+#define REG_FS g_cpucore.seg_reg(REGI_FS)
+#define REG_GS g_cpucore.seg_reg(REGI_GS)
+#define REG_TR g_cpucore.seg_reg(REGI_TR)
+#define REG_LDTR g_cpucore.seg_reg(REGI_LDTR)
 
 #define SEG_REG(idx) g_cpucore.seg_reg(idx)
 #define GEN_REG(idx) g_cpucore.gen_reg(idx)
 
-#define GET_BASE(S)	 g_cpucore.get_ ## S ## _base()
-#define GET_LIMIT(S) g_cpucore.get_ ## S ## _limit()
+#define GET_BASE(S)	 g_cpucore.get_seg_base(REGI_ ## S)
+#define GET_LIMIT(S) g_cpucore.get_seg_limit(REGI_ ## S)
 
-#define GET_PHYADDR(SEG,OFF) g_cpucore.get_ ## SEG ## _phyaddr(OFF)
+#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF)
 
 #define IP_CHAIN_SIZE 10
 
 #define CPL g_cpucore.get_CPL()
+#define IS_USER_PL (CPL == 3)
 
 union GenReg
 {
@@ -277,18 +286,13 @@ protected:
 	// general registers
 	GenReg m_genregs[8];
 
-	// segment registers
-	SegReg m_segregs[6];
-	SegReg m_tr, m_ldtr;
-	uint32_t m_idtr_base;
-	uint16_t m_idtr_limit;
-	uint32_t m_gdtr_base;
-	uint16_t m_gdtr_limit;
+	// segment registers and TR, IDTR, LDTR, and GDTR for convenience
+	SegReg m_segregs[10];
 
 	// status and control registers
 	uint32_t m_flags;
 	uint32_t m_eip, m_prev_eip;
-	uint32_t m_cr0;
+	uint32_t m_cr[4];
 
 
 	inline void load_segment_register(SegReg & _segreg, uint16_t _value)
@@ -306,6 +310,8 @@ protected:
 		m_flags = (m_flags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 
+	uint32_t translate_linear(uint32_t _linear_addr) const;
+
 public:
 
 	void reset();
@@ -313,13 +319,13 @@ public:
 	uint64_t fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const;
 	void touch_segment(Selector & _selector, Descriptor & _descriptor) const;
 
-
 	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
-	inline SegReg & seg_reg(uint8_t idx) { assert(idx<6); return m_segregs[idx]; }
+	inline SegReg & seg_reg(uint8_t idx) { assert(idx<10); return m_segregs[idx]; }
+	inline uint32_t & ctl_reg(uint8_t idx) { assert(idx<3); return m_cr[idx]; }
 
 	//only real mode:
 	inline void set_CS(uint16_t _val) {
-		assert(!IS_PMODE());
+		assert(!is_pmode());
 		load_segment_real(m_segregs[REGI_CS], _val, true);
 	}
 	//only protected mode
@@ -333,20 +339,14 @@ public:
 	inline void set_ES(uint16_t _val) { load_segment_register(m_segregs[REGI_ES], _val); }
 	inline void set_FS(uint16_t _val) { load_segment_register(m_segregs[REGI_FS], _val); }
 	inline void set_GS(uint16_t _val) { load_segment_register(m_segregs[REGI_GS], _val); }
-
-	inline void set_IDTR(uint32_t _base, uint16_t _limit)
-		{ m_idtr_base = _base; m_idtr_limit = _limit; }
-	inline void set_GDTR(uint32_t _base, uint16_t _limit)
-		{ m_gdtr_base = _base; m_gdtr_limit = _limit; }
-
-	inline SegReg & get_CS() { return m_segregs[REGI_CS]; }
-	inline SegReg & get_DS() { return m_segregs[REGI_DS]; }
-	inline SegReg & get_SS() { return m_segregs[REGI_SS]; }
-	inline SegReg & get_ES() { return m_segregs[REGI_ES]; }
-	inline SegReg & get_FS() { return m_segregs[REGI_FS]; }
-	inline SegReg & get_GS() { return m_segregs[REGI_GS]; }
-	inline SegReg & get_TR() { return m_tr; }
-	inline SegReg & get_LDTR() { return m_ldtr; }
+	inline void set_IDTR(uint32_t _base, uint32_t _limit) {
+		m_segregs[REGI_IDTR].desc.base = _base;
+		m_segregs[REGI_IDTR].desc.limit = _limit;
+	}
+	inline void set_GDTR(uint32_t _base, uint32_t _limit) {
+		m_segregs[REGI_GDTR].desc.base = _base;
+		m_segregs[REGI_GDTR].desc.limit = _limit;
+	}
 
 	inline void set_EIP(uint32_t _val) {
 		m_prev_eip = m_eip;
@@ -374,16 +374,18 @@ public:
 	inline void set_NT(bool _val) { set_FLAGS(FBITN_NT,_val); }
 
 	inline void set_CR0(uint8_t _flagnum, bool _val) {
-		m_cr0 = (m_cr0 &~ (1<<_flagnum)) | ((_val)<<_flagnum);
+		m_cr[0] = (m_cr[0] &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 	inline void set_CR0(uint32_t _cr0) {
-		m_cr0 = _cr0 & CR0MASK_ALL;
+		m_cr[0] = _cr0 & CR0MASK_ALL;
 	}
 	inline uint32_t get_CR0(uint32_t _cr0) const {
-		return (m_cr0 & _cr0);
+		return (m_cr[0] & _cr0);
 	}
 
-	inline bool is_pmode() const { return (m_cr0 & CR0MASK_PE); }
+	inline bool is_pmode() const { return (m_cr[0] & CR0MASK_PE); }
+	inline bool is_paging() const { return (m_cr[0] & CR0MASK_PG); }
+
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current
 	 * privilege level (CPL) from the SS access rights. The CPL is loaded from
@@ -395,31 +397,20 @@ public:
 	 */
 	inline uint8_t & get_CPL() { return m_segregs[REGI_CS].sel.cpl; }
 
-	inline uint32_t get_CS_base() const { return m_segregs[REGI_CS].desc.base; }
-	inline uint32_t get_DS_base() const { return m_segregs[REGI_DS].desc.base; }
-	inline uint32_t get_SS_base() const { return m_segregs[REGI_SS].desc.base; }
-	inline uint32_t get_ES_base() const { return m_segregs[REGI_ES].desc.base; }
-	inline uint32_t get_FS_base() const { return m_segregs[REGI_FS].desc.base; }
-	inline uint32_t get_GS_base() const { return m_segregs[REGI_GS].desc.base; }
-	inline uint32_t get_TR_base() const { return m_tr.desc.base; }
-	inline uint32_t get_LDTR_base() const { return m_ldtr.desc.base; }
-	inline uint32_t get_IDTR_base() const { return m_idtr_base; }
-	inline uint32_t get_GDTR_base() const { return m_gdtr_base; }
+	inline uint32_t get_seg_base(unsigned _segidx) const { return m_segregs[_segidx].desc.base; }
+	inline uint32_t get_seg_limit(unsigned _segidx) const { return m_segregs[_segidx].desc.limit; }
 
-	inline uint32_t get_CS_phyaddr(uint16_t _offset) const { return get_CS_base() + _offset; }
-	inline uint32_t get_DS_phyaddr(uint16_t _offset) const { return get_DS_base() + _offset; }
-	inline uint32_t get_SS_phyaddr(uint16_t _offset) const { return get_SS_base() + _offset; }
-	inline uint32_t get_ES_phyaddr(uint16_t _offset) const { return get_ES_base() + _offset; }
+	inline uint32_t get_linaddr(unsigned _segidx, uint32_t _offset) const { return get_seg_base(_segidx) + _offset; }
+	inline uint32_t get_phyaddr(unsigned _segidx, uint32_t _offset) const {
+		if(is_paging()) {
+			return translate_linear(get_linaddr(_segidx, _offset));
+		} else {
+			return get_linaddr(_segidx, _offset);
+		}
+	}
+	static uint32_t get_linaddr(SegReg &_segreg, uint32_t _offset) { return _segreg.desc.base + _offset; }
 
-	inline uint16_t get_CS_limit() const { return m_segregs[REGI_CS].desc.limit; }
-	inline uint16_t get_DS_limit() const { return m_segregs[REGI_DS].desc.limit; }
-	inline uint16_t get_SS_limit() const { return m_segregs[REGI_SS].desc.limit; }
-	inline uint16_t get_ES_limit() const { return m_segregs[REGI_ES].desc.limit; }
-	inline uint16_t get_TR_limit() const { return m_tr.desc.limit; }
-	inline uint16_t get_LDTR_limit() const { return m_ldtr.desc.limit; }
-	inline uint16_t get_IDTR_limit() const { return m_idtr_limit; }
-	inline uint16_t get_GDTR_limit() const { return m_gdtr_limit; }
-
+	// convenience funcs used by CPUDebugger
 	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }
 	inline uint8_t  get_AH() const  { return m_genregs[REGI_EAX].byte[1]; }
 	inline uint16_t get_AX() const  { return m_genregs[REGI_EAX].word[0]; }
@@ -444,6 +435,14 @@ public:
 	inline uint32_t get_EDI() const { return m_genregs[REGI_EDI].dword[0]; }
 	inline uint16_t get_SP() const  { return m_genregs[REGI_ESP].word[0]; }
 	inline uint32_t get_ESP() const { return m_genregs[REGI_ESP].dword[0]; }
+	inline SegReg & get_CS() { return m_segregs[REGI_CS]; }
+	inline SegReg & get_DS() { return m_segregs[REGI_DS]; }
+	inline SegReg & get_SS() { return m_segregs[REGI_SS]; }
+	inline SegReg & get_ES() { return m_segregs[REGI_ES]; }
+	inline SegReg & get_FS() { return m_segregs[REGI_FS]; }
+	inline SegReg & get_GS() { return m_segregs[REGI_GS]; }
+	inline SegReg & get_TR() { return m_segregs[REGI_TR]; }
+	inline SegReg & get_LDTR() { return m_segregs[REGI_LDTR]; }
 
 	void save_state(StateBuf &_state) const;
 	void restore_state(StateBuf &_state);

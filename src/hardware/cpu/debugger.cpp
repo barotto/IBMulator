@@ -96,17 +96,17 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 uint32_t CPUDebugger::get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core)
 {
 	if(_seg == _core->get_CS().sel.value) {
-		return _core->get_CS_phyaddr(_offset);
+		return _core->get_phyaddr(REGI_CS, _offset);
 	}
 	if(_seg == _core->get_DS().sel.value) {
-		return _core->get_DS_phyaddr(_offset);
+		return _core->get_phyaddr(REGI_DS, _offset);
 	}
 	if(_seg == _core->get_ES().sel.value) {
-		return _core->get_ES_phyaddr(_offset);
+		return _core->get_phyaddr(REGI_ES, _offset);
 	}
 
 	//if (_seg==GETREG(SS))
-	return _core->get_SS_phyaddr(_offset);
+	return _core->get_phyaddr(REGI_SS, _offset);
 }
 
 char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
@@ -570,7 +570,7 @@ void CPUDebugger::INT_15_87(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		INT_def_ret(core, buf, buflen);
 		return;
 	}
-	uint32_t gdt = core->get_ES_phyaddr(core->get_SI());
+	uint32_t gdt = core->get_phyaddr(REGI_ES, core->get_SI());
 	Descriptor from, to;
 	from = mem->read_qword(gdt+0x10);
 	to   = mem->read_qword(gdt+0x18);
@@ -596,7 +596,7 @@ void CPUDebugger::INT_21_09(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	if(buflen<=3) return;
-	uint32_t addr = core->get_DS_phyaddr(core->get_DX());
+	uint32_t addr = core->get_phyaddr(REGI_DS, core->get_DX());
 	char * str = (char*)mem->get_phy_ptr(addr);
 	*buf++ = ':';
 	*buf++ = ' ';
@@ -670,13 +670,13 @@ void CPUDebugger::INT_2F_1123(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		INT_def_ret(core, buf, buflen);
 		if(core->get_FLAGS(FMASK_CF) == 0) {
 			buf += strlen(buf);
-			char * filename = (char*)mem->get_phy_ptr(core->get_ES_phyaddr(core->get_DI()));
+			char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI()));
 			snprintf(buf, buflen, " : '%s'", filename);
 		}
 		return;
 	}
 	//DS:SI -> ASCIZ filename to canonicalize
-	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_SI()));
+	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
@@ -792,7 +792,7 @@ void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		return;
 	}
 	//DS:DX -> ASCIZ program name
-	char * name = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	char * name = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
 	const char * type = "";
 	switch(ax & 0xFF) {
 		case 0x0: type = "load and execute"; break;
@@ -818,7 +818,7 @@ void CPUDebugger::INT_21_39_A_B_4E(bool call, uint16_t /*ax*/, CPUCore *core, Me
 		return;
 	}
 	//DS:DX -> ASCIZ pathname
-	char * pathname = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	char * pathname = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
 	snprintf(buf, buflen, " : '%s'", pathname);
 }
 
@@ -835,7 +835,7 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	//DS:DX -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
 	const char * mode = "";
 	switch(core->get_AL() & 0x7) {
 		case 0x0: mode = "read only"; break;
@@ -921,7 +921,7 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	//DS:DX -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_DX()));
+	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
@@ -965,8 +965,8 @@ void CPUDebugger::INT_21_5F03(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		INT_def_ret(core, buf, buflen);
 		return;
 	}
-	char * local = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_SI()));
-	char *   net = (char*)mem->get_phy_ptr(core->get_ES_phyaddr(core->get_DI()));
+	char * local = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
+	char *   net = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI()));
 	snprintf(buf, buflen, " : local:'%s', net:'%s'", local, net);
 }
 
@@ -985,7 +985,7 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	}
 
 	//DS:SI -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_DS_phyaddr(core->get_SI()));
+	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 

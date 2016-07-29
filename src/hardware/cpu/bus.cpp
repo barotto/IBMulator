@@ -149,12 +149,12 @@ void CPUBus::update(int _cycles)
 	//flush the write queue
 	for(wq_data& data : m_write_queue) {
 		if(data.len==1) {
-			g_memory.write<1>(data.address, data.value);
+			g_memory.write<1>(data.address, data.data, data.trap_len);
 		} else if (data.len==2) {
-			g_memory.write<2>(data.address, data.value);
+			g_memory.write<2>(data.address, data.data, data.trap_len);
 		} else {
 			assert(data.len==4);
-			g_memory.write<4>(data.address, data.value);
+			g_memory.write<4>(data.address, data.data, data.trap_len);
 		}
 		m_cycles_ahead += data.cycles;
 	}

@@ -72,12 +72,10 @@ private:
 	uint m_cycles_ahead;
 	struct wq_data {
 		uint32_t address;
-		uint32_t value;
+		uint32_t data;
 		uint8_t len;
-		uint cycles;
-		wq_data(uint32_t _address, uint32_t _data, uint16_t _len, uint _cycles)
-			: address(_address), value(_data), len(_len), cycles(_cycles)
-		{}
+		unsigned cycles;
+		unsigned trap_len;
 	};
 	std::vector<wq_data> m_write_queue;
 
@@ -141,7 +139,7 @@ public:
 	}
 
 	template<unsigned LEN>
-	uint32_t mem_read(uint32_t _addr)
+	uint32_t mem_read(uint32_t _addr, unsigned _trap_len = LEN)
 	{
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
 			m_vram_r += LEN; //TODO adapt to the real bus of the VGA
@@ -164,7 +162,7 @@ public:
 			m_mem_cycles += m_cycles_ahead;
 			m_cycles_ahead = 0;
 		}
-		return g_memory.read<LEN>(_addr);
+		return g_memory.read<LEN>(_addr, _trap_len);
 	}
 	inline uint64_t mem_read_qword(uint32_t _addr) {
 		uint64_t dw0 = mem_read<4>(_addr);
@@ -173,7 +171,7 @@ public:
 	}
 
 	template<unsigned LEN>
-	void mem_write(uint32_t _addr, uint32_t _data) {
+	void mem_write(uint32_t _addr, uint32_t _data, unsigned _trap_len = LEN) {
 		uint c;
 		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
 			m_vram_w += LEN; //TODO adapt to the real bus of the VGA
@@ -193,7 +191,7 @@ public:
 			m_mem_cycles += m_cycles_ahead;
 			m_cycles_ahead = 0;
 		}
-		m_write_queue.push_back(wq_data(_addr,_data,LEN,c));
+		m_write_queue.push_back({_addr, _data, LEN, c, _trap_len});
 	}
 
 	void save_state(StateBuf &_state);

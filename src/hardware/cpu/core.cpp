@@ -39,7 +39,9 @@ void CPUCore::reset()
 	memset(m_genregs, 0, sizeof(GenReg)*8);
 
 	m_flags = 0x00000002;
-	m_cr0 = 0x0000FFF0;
+	m_cr[0] = 0x0000FFF0;
+	m_cr[2] = 0x0;
+	m_cr[3] = 0x0;
 	m_eip = 0x0000FFF0;
 
 	load_segment_real(REG_CS, 0xF000, true);
@@ -50,14 +52,11 @@ void CPUCore::reset()
 	load_segment_real(REG_FS, 0x0000, true);
 	load_segment_real(REG_GS, 0x0000, true);
 
-	load_segment_real(m_ldtr, 0x0000, true);
-	load_segment_real(m_tr, 0x0000, true);
+	load_segment_real(REG_LDTR, 0x0000, true);
+	load_segment_real(REG_TR, 0x0000, true);
 
-	m_idtr_base = 0x000000;
-	m_idtr_limit = 0x03FF;
-
-	m_gdtr_base = 0x000000;
-	m_gdtr_limit = 0x0000;
+	set_IDTR(0x000000, 0x03FF);
+	set_GDTR(0x000000, 0x0000);
 }
 
 #define CPUCORE_STATE_NAME "CPUCore"
@@ -304,10 +303,10 @@ void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
 		uint8_t ar = _descriptor.get_AR();
 		if(_selector.ti == false) {
 			// from GDT
-			g_cpubus.mem_write<1>(m_gdtr_base + _selector.index*8 + 5, ar);
+			g_cpubus.mem_write<1>(m_segregs[REGI_GDTR].desc.base + _selector.index*8 + 5, ar);
 		} else {
 			// from LDT
-			g_cpubus.mem_write<1>(m_ldtr.desc.base + _selector.index*8 + 5, ar);
+			g_cpubus.mem_write<1>(m_segregs[REGI_LDTR].desc.base + _selector.index*8 + 5, ar);
 		}
 	}
 }
@@ -317,24 +316,24 @@ uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const
 	uint32_t addr = _selector.index * 8;
 	if(_selector.ti == 0) {
 		//from GDT
-		if((_selector.index*8 + 7) > m_gdtr_limit) {
+		if((_selector.index*8 + 7u) > m_segregs[REGI_GDTR].desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_gdtr_limit);
+					_selector.index*8 + 7, _selector.index, m_segregs[REGI_GDTR].desc.limit);
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		addr += m_gdtr_base;
+		addr += m_segregs[REGI_GDTR].desc.base;
 	} else {
 		// from LDT
-		if(!m_ldtr.desc.valid) {
+		if(!m_segregs[REGI_LDTR].desc.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		if((_selector.index*8 + 7) > m_ldtr.desc.limit) {
+		if((_selector.index*8 + 7u) > m_segregs[REGI_LDTR].desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_ldtr.desc.limit);
+					_selector.index*8 + 7, _selector.index, m_segregs[REGI_LDTR].desc.limit);
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		addr += m_ldtr.desc.base;
+		addr += m_segregs[REGI_LDTR].desc.base;
 	}
 	return g_cpubus.mem_read_qword(addr);
 }
@@ -365,6 +364,24 @@ void CPUCore::set_IF(bool _val)
 {
 	set_FLAGS(FBITN_IF,_val);
 	g_cpu.interrupt_mask_change();
+}
+
+uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const
+{
+	//TODO this function is a placeholder.
+	//need to decide where page traslation and TLB belong, Core or Executor.
+
+	uint32_t ppf = PDBR;
+	for(int table = 1; table>=0; --table) {
+		uint32_t entry_addr = ppf + ((_linear_addr >> (10 + 10*table)) & 0xffc);
+		uint32_t entry = g_memory.read_notraps<4>(entry_addr);
+		if(!(entry & 0x1)) {
+			//not present
+			return 0;
+		}
+		ppf = entry & 0xfffff000;
+	}
+	return ppf | (_linear_addr & 0xfff);
 }
 
 const char *SegReg::to_string()
