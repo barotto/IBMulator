@@ -77,7 +77,7 @@ void CPUExecutor::reset(uint _signal)
 	}
 }
 
-inline SegReg & CPUExecutor::EA_get_segreg()
+SegReg & CPUExecutor::EA_get_segreg_16()
 {
 	switch(m_instr->modrm.rm) {
 		case 0:
@@ -101,121 +101,208 @@ inline SegReg & CPUExecutor::EA_get_segreg()
 	return REG_DS;
 }
 
-uint16_t CPUExecutor::EA_get_offset()
+uint32_t CPUExecutor::EA_get_offset_16()
 {
-	uint16_t disp = m_instr->modrm.disp;
+	uint16_t disp = m_instr->modrm.disp & 0xFFFF;
+	uint16_t offset = 0;
 	switch(m_instr->modrm.rm) {
 		case 0:
-			return (REG_BX + REG_SI + disp);
+			offset = (REG_BX + REG_SI + disp); break;
 		case 1:
-			return (REG_BX + REG_DI + disp);
+			offset = (REG_BX + REG_DI + disp); break;
 		case 2:
-			return (REG_BP + REG_SI + disp);
+			offset = (REG_BP + REG_SI + disp); break;
 		case 3:
-			return (REG_BP + REG_DI + disp);
+			offset = (REG_BP + REG_DI + disp); break;
 		case 4:
-			return (REG_SI + disp);
+			offset = (REG_SI + disp); break;
 		case 5:
-			return (REG_DI + disp);
+			offset = (REG_DI + disp); break;
 		case 6:
-			if(m_instr->modrm.mod==0)
-				return disp;
-			return (REG_BP + disp);
+			if(m_instr->modrm.mod==0) {
+				offset = disp;
+			} else {
+				offset = (REG_BP + disp);
+			}
+			 break;
 		case 7:
-			return (REG_BX + disp);
+			offset = (REG_BX + disp); break;
 	}
-	return 0;
+	return offset;
+}
+
+SegReg & CPUExecutor::EA_get_segreg_32()
+{
+	if(m_instr->modrm.rm != 4) {
+		// no SIB
+		if(m_instr->modrm.mod == 0) {
+			return SEG_REG(m_base_ds);
+		}
+		if(m_instr->modrm.rm == 5) {
+			return SEG_REG(m_base_ss);
+		} else {
+			return SEG_REG(m_base_ds);
+		}
+	} else {
+		// SIB
+		if(m_instr->modrm.base == 4) {
+			return SEG_REG(m_base_ss);
+		}
+		if(m_instr->modrm.mod == 0) {
+			return SEG_REG(m_base_ds);
+		} else {
+			if(m_instr->modrm.base == 5) {
+				return SEG_REG(m_base_ss);
+			} else {
+				return SEG_REG(m_base_ds);
+			}
+		}
+	}
+}
+
+uint32_t CPUExecutor::EA_get_offset_32()
+{
+	uint32_t offset = m_instr->modrm.disp;
+
+	if(m_instr->modrm.rm != 4) {
+		// no SIB
+		if(m_instr->modrm.mod != 0 || m_instr->modrm.rm != 5) {
+			offset += GEN_REG(m_instr->modrm.rm).dword[0];
+		}
+	} else {
+		// SIB
+		if(m_instr->modrm.index != 4) {
+			offset += GEN_REG(m_instr->modrm.index).dword[0];
+			offset *= 1 << m_instr->modrm.scale;
+		}
+		if(m_instr->modrm.scale != 0 || m_instr->modrm.base != 5) {
+			offset += GEN_REG(m_instr->modrm.base).dword[0];
+		}
+	}
+	return offset;
 }
 
 uint8_t CPUExecutor::load_eb()
 {
 	if(m_instr->modrm.mod == 3) {
 		if(m_instr->modrm.rm < 4) {
-			return g_cpucore.gen_reg(m_instr->modrm.rm).byte[0];
+			return GEN_REG(m_instr->modrm.rm).byte[0];
 		}
-		return g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[1];
+		return GEN_REG(m_instr->modrm.rm-4).byte[1];
 	}
-	return read_byte(EA_get_segreg(), EA_get_offset());
+	return read_byte((this->*EA_get_segreg)(), (this->*EA_get_offset)());
 }
 
 uint8_t CPUExecutor::load_rb()
 {
 	if(m_instr->modrm.r < 4) {
-		return g_cpucore.gen_reg(m_instr->modrm.r).byte[0];
+		return GEN_REG(m_instr->modrm.r).byte[0];
 	}
-	return g_cpucore.gen_reg(m_instr->modrm.r-4).byte[1];
+	return GEN_REG(m_instr->modrm.r-4).byte[1];
 }
 
 uint16_t CPUExecutor::load_ew()
 {
 	if(m_instr->modrm.mod == 3) {
-		return g_cpucore.gen_reg(m_instr->modrm.rm).word[0];
+		return GEN_REG(m_instr->modrm.rm).word[0];
 	}
-	return read_word(EA_get_segreg(), EA_get_offset());
+	return read_word((this->*EA_get_segreg)(), (this->*EA_get_offset)());
 }
 
 uint16_t CPUExecutor::load_rw()
 {
-	return g_cpucore.gen_reg(m_instr->modrm.r).word[0];
+	return GEN_REG(m_instr->modrm.r).word[0];
 }
 
-void CPUExecutor::load_ed(uint16_t &w1_, uint16_t &w2_)
+uint32_t CPUExecutor::load_ed()
 {
-	SegReg & sr = EA_get_segreg();
-	uint16_t off = EA_get_offset();
+	if(m_instr->modrm.mod == 3) {
+		return GEN_REG(m_instr->modrm.rm).dword[0];
+	}
+	return read_dword((this->*EA_get_segreg)(), (this->*EA_get_offset)());
+}
+
+void CPUExecutor::load_ed_mem(uint16_t &w1_, uint16_t &w2_)
+{
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint16_t off = (this->*EA_get_offset)();
 
 	w1_ = read_word(sr, off);
 	w2_ = read_word(sr, off+2);
+}
+
+uint32_t CPUExecutor::load_rd()
+{
+	return GEN_REG(m_instr->modrm.r).dword[0];
 }
 
 void CPUExecutor::store_eb(uint8_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
 		if(m_instr->modrm.rm < 4) {
-			g_cpucore.gen_reg(m_instr->modrm.rm).byte[0] = _value;
+			GEN_REG(m_instr->modrm.rm).byte[0] = _value;
 			return;
 		}
-		g_cpucore.gen_reg(m_instr->modrm.rm-4).byte[1] = _value;
+		GEN_REG(m_instr->modrm.rm-4).byte[1] = _value;
 		return;
 	}
-	write_byte(EA_get_segreg(), EA_get_offset(), _value);
+	write_byte((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
 }
 
 void CPUExecutor::store_rb(uint8_t _value)
 {
 	if(m_instr->modrm.r < 4) {
-		g_cpucore.gen_reg(m_instr->modrm.r).byte[0] = _value;
+		GEN_REG(m_instr->modrm.r).byte[0] = _value;
 	} else {
-		g_cpucore.gen_reg(m_instr->modrm.r-4).byte[1] = _value;
+		GEN_REG(m_instr->modrm.r-4).byte[1] = _value;
 	}
 }
 
 void CPUExecutor::store_rb_op(uint8_t _value)
 {
 	if(m_instr->reg < 4) {
-		g_cpucore.gen_reg(m_instr->reg).byte[0] = _value;
+		GEN_REG(m_instr->reg).byte[0] = _value;
 	} else {
-		g_cpucore.gen_reg(m_instr->reg-4).byte[1] = _value;
+		GEN_REG(m_instr->reg-4).byte[1] = _value;
 	}
 }
 
 void CPUExecutor::store_ew(uint16_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
-		g_cpucore.gen_reg(m_instr->modrm.rm).word[0] = _value;
+		GEN_REG(m_instr->modrm.rm).word[0] = _value;
 		return;
 	}
-	write_word(EA_get_segreg(), EA_get_offset(), _value);
+	write_word((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
 }
 
 void CPUExecutor::store_rw(uint16_t _value)
 {
-	g_cpucore.gen_reg(m_instr->modrm.r).word[0] = _value;
+	GEN_REG(m_instr->modrm.r).word[0] = _value;
 }
 
 void CPUExecutor::store_rw_op(uint16_t _value)
 {
-	g_cpucore.gen_reg(m_instr->reg).word[0] = _value;
+	GEN_REG(m_instr->reg).word[0] = _value;
+}
+
+void CPUExecutor::store_ed(uint32_t _value)
+{
+	if(m_instr->modrm.mod == 3) {
+		GEN_REG(m_instr->modrm.rm).dword[0] = _value;
+		return;
+	}
+	write_dword((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
+}
+
+void CPUExecutor::store_rd(uint32_t _value)
+{
+	GEN_REG(m_instr->modrm.r).dword[0] = _value;
+}
+
+void CPUExecutor::store_rd_op(uint32_t _value)
+{
+	GEN_REG(m_instr->reg).dword[0] = _value;
 }
 
 void CPUExecutor::write_flags(uint16_t _flags,
@@ -668,6 +755,14 @@ void CPUExecutor::execute(Instruction * _instr)
 	} else {
 		m_base_ds = REGI_DS;
 		m_base_ss = REGI_SS;
+	}
+
+	if(m_instr->addr32) {
+		EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
+		EA_get_offset = &CPUExecutor::EA_get_offset_32;
+	} else {
+		EA_get_segreg = &CPUExecutor::EA_get_segreg_16;
+		EA_get_offset = &CPUExecutor::EA_get_offset_16;
 	}
 
 	if(m_instr->rep) {
@@ -2061,8 +2156,23 @@ uint16_t CPUExecutor::ADD_w(uint16_t op1, uint16_t op2)
 	return res;
 }
 
+uint32_t CPUExecutor::ADD_d(uint32_t op1, uint32_t op2)
+{
+	uint32_t res = op1 + op2;
+
+	SET_FLAG(OF, ((op1 ^ op2 ^ 0x80000000) & (res ^ op2)) & 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(CF, res < op1);
+
+	return res;
+}
+
 void CPUExecutor::ADD_eb_rb() { store_eb(ADD_b(load_eb(), load_rb())); }
 void CPUExecutor::ADD_ew_rw() { store_ew(ADD_w(load_ew(), load_rw())); }
+void CPUExecutor::ADD_ed_rd() { store_ed(ADD_d(load_ed(), load_rd())); }
 void CPUExecutor::ADD_rb_eb() { store_rb(ADD_b(load_rb(), load_eb())); }
 void CPUExecutor::ADD_rw_ew() { store_rw(ADD_w(load_rw(), load_ew())); }
 void CPUExecutor::ADD_AL_db() { REG_AL = ADD_b(REG_AL, m_instr->db); }
@@ -2147,7 +2257,7 @@ void CPUExecutor::BOUND_rw_md()
 {
 	int16_t op1 = int16_t(load_rw());
 	uint16_t bound_min, bound_max;
-	load_ed(bound_min, bound_max);
+	load_ed_mem(bound_min, bound_max);
 
 	if(op1 < int16_t(bound_min) || op1 > int16_t(bound_max)) {
 		PDEBUGF(LOG_V2,LOG_CPU, "BOUND: fails bounds test\n");
@@ -2208,7 +2318,7 @@ void CPUExecutor::CALL_cd()
 void CPUExecutor::CALL_ed()
 {
 	uint16_t newip, newcs;
-	load_ed(newip, newcs);
+	load_ed_mem(newip, newcs);
 
 	CALL_cd(newip, newcs);
 }
@@ -3280,7 +3390,7 @@ void CPUExecutor::JMP_ew()
 void CPUExecutor::JMP_ed()
 {
 	uint16_t disp, cs;
-	load_ed(disp, cs);
+	load_ed_mem(disp, cs);
 
 	if(!IS_PMODE()) {
 		branch_far(cs, disp);
@@ -3403,7 +3513,7 @@ void CPUExecutor::LAR_rw_ew()
 void CPUExecutor::LDS_rw_ed()
 {
 	uint16_t reg, ds;
-	load_ed(reg, ds);
+	load_ed_mem(reg, ds);
 
 	SET_DS(ds);
 	store_rw(reg);
@@ -3412,7 +3522,7 @@ void CPUExecutor::LDS_rw_ed()
 void CPUExecutor::LES_rw_ed()
 {
 	uint16_t reg, es;
-	load_ed(reg, es);
+	load_ed_mem(reg, es);
 
 	SET_ES(es);
 	store_rw(reg);
@@ -3429,7 +3539,7 @@ void CPUExecutor::LEA_rw_m()
 		PDEBUGF(LOG_V2, LOG_CPU, "LEA second operand is a register\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
-	uint16_t offset = EA_get_offset();
+	uint16_t offset = (this->*EA_get_offset)();
 	store_rw(offset);
 }
 
@@ -3457,8 +3567,8 @@ void CPUExecutor::LGDT()
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	SegReg & sr = EA_get_segreg();
-	uint16_t off = EA_get_offset();
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint16_t off = (this->*EA_get_offset)();
 
 	uint16_t limit = read_word(sr, off);
 	uint32_t base = read_dword(sr, off+2) & 0x00ffffff;
@@ -3474,8 +3584,8 @@ void CPUExecutor::LIDT()
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	SegReg & sr = EA_get_segreg();
-	uint16_t off = EA_get_offset();
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint16_t off = (this->*EA_get_offset)();
 
 	uint16_t limit = read_word(sr, off);
 	uint32_t base = read_dword(sr, off+2) & 0x00ffffff;
@@ -5044,8 +5154,8 @@ void CPUExecutor::SGDT()
 	uint16_t limit_16 = GET_LIMIT(GDTR);
 	uint32_t base_32  = GET_BASE(GDTR);
 
-	SegReg & sr = EA_get_segreg();
-	uint16_t off = EA_get_offset();
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint16_t off = (this->*EA_get_offset)();
 
 	write_word(sr, off, limit_16);
 	write_word(sr, off+2, base_32);
@@ -5063,8 +5173,8 @@ void CPUExecutor::SIDT()
 	uint16_t limit_16 = GET_LIMIT(IDTR);
 	uint32_t base_32  = GET_BASE(IDTR);
 
-	SegReg & sr = EA_get_segreg();
-	uint16_t off = EA_get_offset();
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint16_t off = (this->*EA_get_offset)();
 
 	write_word(sr, off, limit_16);
 	write_word(sr, off+2, base_32);
