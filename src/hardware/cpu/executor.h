@@ -101,16 +101,24 @@ private:
 	uint8_t load_rb();
 	uint16_t load_ew();
 	uint16_t load_rw();
-	void load_ed(uint16_t &w1_, uint16_t &w2_);
+	uint32_t load_ed();
+	void load_ed_mem(uint16_t &w1_, uint16_t &w2_);
+	uint32_t load_rd();
 	void store_eb(uint8_t _value);
 	void store_rb(uint8_t _value);
 	void store_rb_op(uint8_t _value);
 	void store_ew(uint16_t _value);
 	void store_rw(uint16_t _value);
 	void store_rw_op(uint16_t _value);
-	inline uint32_t EA_get_address();
-	inline SegReg & EA_get_segreg();
-	uint16_t EA_get_offset();
+	void store_ed(uint32_t _value);
+	void store_rd(uint32_t _value);
+	void store_rd_op(uint32_t _value);
+	SegReg & EA_get_segreg_16();
+	uint32_t EA_get_offset_16();
+	SegReg & EA_get_segreg_32();
+	uint32_t EA_get_offset_32();
+	SegReg & (CPUExecutor::*EA_get_segreg)();
+	uint32_t (CPUExecutor::*EA_get_offset)();
 
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
 
@@ -160,6 +168,7 @@ private:
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
 	uint8_t ADD_b(uint8_t op1, uint8_t op2);
 	uint16_t ADD_w(uint16_t op1, uint16_t op2);
+	uint32_t ADD_d(uint32_t op1, uint32_t op2);
 
 	uint8_t AND_b(uint8_t op1, uint8_t op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
@@ -246,6 +255,7 @@ public:
 
 	void ADD_eb_rb();
 	void ADD_ew_rw();
+	void ADD_ed_rd();
 	void ADD_rb_eb();
 	void ADD_rw_ew();
 	void ADD_AL_db();

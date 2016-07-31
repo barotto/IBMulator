@@ -112,8 +112,8 @@ struct Instruction
 	uint16_t dw1,dw2; //!< word function args
 	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
 	uint8_t seg;    //!< index of the segment override
-	bool opsize;    //!< operand-size prefix
-	bool addrsize;  //!< address-size prefix
+	bool op32;      //!< operand-size is 32 bit
+	bool addr32;    //!< address-size is 32 bit
 	ModRM modrm;    //!< the ModRM
 	bool rep;       //!< true if REP/REPE/REPNE
 	bool rep_zf;    //!< tells the executor that the exit condition is by checking the ZF
@@ -203,11 +203,15 @@ inline void ModRM::load(bool _32bit)
 	mod = (modrm >> 6) & 3;
 	r = (modrm >> 3) & 7;
 	rm = modrm & 7;
+	disp = 0;
 	if(_32bit) {
-		if(mod==0) {
+		if(mod == 0) {
 			if(rm == 4) {
 				load_SIB();
-			} else if(rm==5) {
+				if(base == 5) {
+					disp = g_cpudecoder.fetchdw();
+				}
+			} else if(rm == 5) {
 				disp = g_cpudecoder.fetchdw();
 			}
 		} else if(mod == 1) {

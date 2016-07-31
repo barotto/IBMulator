@@ -25,7 +25,9 @@
 #define JUMP_CYCLES 6
 #define LOOP_CYCLES 7
 
-using std::placeholders::_1;
+
+#define FN_BYTE(_fn_) m_instr.fn = &CPUExecutor::_fn_
+#define FN_W_DW(_fnw_,_fndw_) (m_instr.op32)?(m_instr.fn = &CPUExecutor::_fndw_):(m_instr.fn = &CPUExecutor::_fnw_)
 
 void CPUDecoder::prefix_none(uint8_t _opcode)
 {
@@ -35,20 +37,23 @@ void CPUDecoder::prefix_none(uint8_t _opcode)
 
 switch(_opcode) {
 
-/* 00 /r      ADD eb,rb   2,mem=7    Add byte register into EA byte */
+/* 00 /r      ADD eb,rb   2/7  2/7  Add byte register into EA byte */
 case 0x00:
 {
 	m_instr.modrm.load();
-	m_instr.fn = &CPUExecutor::ADD_eb_rb;
+	FN_BYTE(ADD_eb_rb);
 	CYCLES(2,5);
 	break;
 }
 
-/* 01 /r      ADD ew,rw   2,mem=7    Add word register into EA word */
+/*
+01 /r     ADD ew,rw   2/7 2/7   Add word register into EA word
+01 /r     ADD ed,rd       2/7   Add dword register to EA dword
+*/
 case 0x01:
 {
 	m_instr.modrm.load();
-	m_instr.fn = &CPUExecutor::ADD_ew_rw;
+	FN_W_DW(ADD_ew_rw, ADD_ed_rd);
 	CYCLES(2,8);
 	break;
 }
