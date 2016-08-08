@@ -31,7 +31,9 @@ extern CPU g_cpu;
 
 enum CPUType {
 	CPU_286 = 2,
-	CPU_386 = 3
+	CPU_386 = 3,
+
+	CPU_COUNT = 2
 };
 
 /* The names of CPU interrupts reflect those reported in the 80286 programmers's

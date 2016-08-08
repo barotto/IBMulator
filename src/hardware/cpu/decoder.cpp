@@ -31,6 +31,8 @@ CPUDecoder g_cpudecoder;
 Instruction * CPUDecoder::decode()
 {
 	uint8_t opcode;
+	unsigned cycles_table = CTB_IDX_NONE;
+	unsigned cycles_op = 0;
 
 	m_ilen = 0;
 	m_rep = false;
@@ -43,16 +45,7 @@ Instruction * CPUDecoder::decode()
 	m_instr.seg = REGI_NONE;
 	m_instr.eip = g_cpubus.get_eip();
 	m_instr.cseip = g_cpubus.get_cseip();
-	m_instr.cycles = {
-		0,  //base
-		0,  //memop
-		0,  //extra
-		0,  //rep
-		0,  //base_rep
-		0,  //pmode
-		0,  //noj
-		0   //bu
-	};
+	m_instr.cycles = {0,0,0,0,0,0,0,0};
 
 restart_opcode:
 
@@ -134,21 +127,21 @@ restart_opcode:
 		}
 		case 0x0F: {
 			opcode = fetchb();
-			prefix_0F(opcode);
+			prefix_0F(opcode,cycles_table,cycles_op);
 			if(CPULOG) {
 				m_instr.opcode = 0xF00 + opcode;
 			}
 			break;
 		}
 		default: {
-			prefix_none(opcode);
+			prefix_none(opcode,cycles_table,cycles_op);
 			if(CPULOG) {
 				m_instr.opcode = opcode;
 			}
 			break;
 		}
 	}
-
+	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (g_cpu.type()-CPU_286)];
 	m_instr.size = m_ilen;
 
 	return &m_instr;

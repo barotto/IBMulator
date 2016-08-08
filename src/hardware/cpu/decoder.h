@@ -26,15 +26,6 @@
 
 #define CPU_MAX_INSTR_SIZE 10
 
-#define CYCLES(xbase, xmemop) \
-		m_instr.cycles.base = xbase; \
-		m_instr.cycles.memop = xmemop; \
-		m_instr.cycles.base_rep = xbase;
-
-#define CYCLES_PM(c) m_instr.cycles.pmode = c;
-
-#define CYCLES_JCOND(xnoj) m_instr.cycles.noj += xnoj;
-
 class CPUExecutor;
 class CPUDecoder;
 extern CPUDecoder g_cpudecoder;
@@ -102,6 +93,19 @@ private:
 	inline void load_SIB();
 };
 
+struct Cycles
+{
+	int base;     //!< CPU cycles for execution
+	int memop;    //!< CPU cycles for execution if memory is accessed
+	int extra;    //!< any run-time dependent extra amount (like shifts and rotates)
+	int rep;      //!< execution cycles for the rep "warmup" (time spent before the loop)
+	int base_rep; //!< CPU cycles for execution if inside a rep loop
+	int pmode;    //!< CPU cycles penalty if protected mode (added to base)
+	int noj;      //!< for jumps if jump not taken
+	int bu;       //!< cycles added to or reduced from the bu cycles count
+				  //   this is a hack, to account for proper bu operations ordering
+};
+
 typedef void (CPUExecutor::*CPUExecutor_fun)();
 
 struct Instruction
@@ -110,6 +114,7 @@ struct Instruction
 	CPUExecutor_fun fn; //!< executor function
 	uint8_t db;       //!< byte function arg
 	uint16_t dw1,dw2; //!< word function args
+	uint32_t dd1,dd2; //!< dword function args
 	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
 	uint8_t seg;    //!< index of the segment override
 	bool op32;      //!< operand-size is 32 bit
@@ -121,17 +126,7 @@ struct Instruction
 	uint32_t eip;   //!< used in cpu logging only
 	uint32_t cseip; //!< the instruction physical memory address
 	uint size;      //!< total size of the instruction (prefixes included)
-	struct {
-		uint8_t base;  //!< CPU cycles for execution
-		uint8_t memop; //!< CPU cycles for execution if memory operand
-		uint8_t extra; //!< any run-time dependent extra amount (like shifts and rotates)
-		uint8_t rep;   //!< execution cycles for the rep warmup
-		uint8_t base_rep; //!< CPU cycles for execution if inside a rep loop
-		uint8_t pmode; //!< CPU cycles penalty if protected mode
-		uint8_t noj;   //!< for jumps if jump not taken
-		int8_t  bu;    //!< cycles added to or reduced from the bu cycles count
-		               //   this is a hack, to account for proper bu operations ordering
-	} cycles;
+	Cycles cycles;
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; //!< the instruction bytes (prefixes included)
 	uint16_t opcode; //!< main opcode (used only when CPULOG is true)
 };
@@ -147,8 +142,57 @@ private:
 	Instruction m_instr;
 	bool m_rep;
 
-	void prefix_none(uint8_t);
-	void prefix_0F(uint8_t next_opcode);
+	enum CyclesTableIndex {
+		CTB_IDX_NONE,
+		CTB_IDX_0F,
+
+		// Group 1
+		CTB_IDX_80,
+		CTB_IDX_81,
+		CTB_IDX_83,
+
+		// Group 2
+		CTB_IDX_C0,
+		CTB_IDX_C1,
+		CTB_IDX_D0,
+		CTB_IDX_D1,
+		CTB_IDX_D2,
+		CTB_IDX_D3,
+
+		// Group 3
+		CTB_IDX_F6,
+		CTB_IDX_F7,
+
+		// Group 4
+		CTB_IDX_FE,
+
+		// Group 5
+		CTB_IDX_FF,
+
+		// Group 6
+		CTB_IDX_0F00,
+
+		// Group 7
+		CTB_IDX_0F01,
+
+		// Group 8
+		CTB_IDX_0FBA,
+
+		CTB_COUNT
+	};
+
+	static const Cycles * ms_cycles[CTB_COUNT];
+
+public:
+	Instruction * decode();
+	inline uint32_t get_next_cseip() {
+		//return the linear address of the next decoded instruction
+		return g_cpubus.get_cseip();
+	}
+
+private:
+	void prefix_none(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
+	void prefix_0F(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void illegal_opcode();
 
 	inline uint8_t fetchb() {
@@ -176,15 +220,6 @@ private:
 		}
 		m_ilen += 4;
 		return dw;
-	}
-
-public:
-
-	Instruction * decode();
-
-	inline uint32_t get_next_cseip() {
-		//return the linear address of the next decoded instruction
-		return g_cpubus.get_cseip();
 	}
 };
 
