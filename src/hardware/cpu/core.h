@@ -80,13 +80,16 @@ extern CPUCore g_cpucore;
 #define FMASK_RF   (1 << FBITN_RF)  // 16 RESUME FLAG
 #define FMASK_VM   (1 << FBITN_VM)  // 17 VIRTUAL 8086 MODE
 
-#define FMASK_ALL   0x3FFFF
+#define FMASK_FLAGS  0xFFFF
+#define FMASK_EFLAGS 0x3FFFF
 #define FMASK_VALID  0x00037FD5 // only supported bits for EFLAGS register
 
-#define GET_FLAG(TYPE)     g_cpucore.get_FLAGS(FMASK_ ## TYPE)
-#define SET_FLAG(TYPE,VAL) g_cpucore.set_##TYPE (VAL)
-#define GET_FLAGS()        g_cpucore.get_FLAGS(FMASK_ALL)
+#define GET_FLAG(NAME)     g_cpucore.get_EFLAGS(FMASK_ ## NAME)
+#define SET_FLAG(NAME,VAL) g_cpucore.set_##NAME (VAL)
+#define GET_FLAGS()        g_cpucore.get_FLAGS(FMASK_FLAGS)
+#define GET_EFLAGS()       g_cpucore.get_EFLAGS(FMASK_EFLAGS)
 #define SET_FLAGS(VAL)     g_cpucore.set_FLAGS(VAL)
+#define SET_EFLAGS(VAL)    g_cpucore.set_EFLAGS(VAL)
 
 #define FLAG_CF   (GET_FLAG(CF) >> FBITN_CF)
 #define FLAG_PF   (GET_FLAG(PF) >> FBITN_PF)
@@ -101,6 +104,9 @@ extern CPUCore g_cpucore;
 #define FLAG_NT   (GET_FLAG(NT) >> FBITN_NT)
 #define FLAG_RF   (GET_FLAG(RF) >> FBITN_RF)
 #define FLAG_VM   (GET_FLAG(VM) >> FBITN_VM)
+
+#define IS_V8086() GET_FLAG(VM)
+
 
 // Control registers
 /*
@@ -290,7 +296,7 @@ protected:
 	SegReg m_segregs[10];
 
 	// status and control registers
-	uint32_t m_flags;
+	uint32_t m_eflags;
 	uint32_t m_eip, m_prev_eip;
 	uint32_t m_cr[4];
 
@@ -306,8 +312,8 @@ protected:
 	void load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults);
 	void load_segment_protected(SegReg & _segreg, uint16_t _value);
 
-	inline void set_FLAGS(uint8_t _flagnum, bool _val) {
-		m_flags = (m_flags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
+	inline void set_flag(uint8_t _flagnum, bool _val) {
+		m_eflags = (m_eflags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 
 	uint32_t translate_linear(uint32_t _linear_addr) const;
@@ -355,23 +361,25 @@ public:
 	inline uint32_t get_EIP() const { return m_eip; }
 	inline void restore_EIP() { m_eip = m_prev_eip; }
 
-	inline uint32_t get_FLAGS(uint32_t _mask) const { return (m_flags & _mask); }
+	inline uint16_t get_FLAGS(uint16_t _mask) const { return (uint16_t(m_eflags) & _mask); }
+	inline uint32_t get_EFLAGS(uint32_t _mask) const { return (m_eflags & _mask); }
 
-	       void set_FLAGS(uint32_t _val);
-	inline void set_CF(bool _val) { set_FLAGS(FBITN_CF,_val); }
-	inline void set_PF(bool _val) { set_FLAGS(FBITN_PF,_val); }
-	inline void set_AF(bool _val) { set_FLAGS(FBITN_AF,_val); }
-	inline void set_ZF(bool _val) { set_FLAGS(FBITN_ZF,_val); }
-	inline void set_SF(bool _val) { set_FLAGS(FBITN_SF,_val); }
+	       void set_FLAGS(uint16_t _val);
+	       void set_EFLAGS(uint32_t _val);
+	inline void set_CF(bool _val) { set_flag(FBITN_CF,_val); }
+	inline void set_PF(bool _val) { set_flag(FBITN_PF,_val); }
+	inline void set_AF(bool _val) { set_flag(FBITN_AF,_val); }
+	inline void set_ZF(bool _val) { set_flag(FBITN_ZF,_val); }
+	inline void set_SF(bool _val) { set_flag(FBITN_SF,_val); }
 	       void set_TF(bool _val);
 	       void set_IF(bool _val);
-	inline void set_DF(bool _val) { set_FLAGS(FBITN_DF,_val); }
-	inline void set_OF(bool _val) { set_FLAGS(FBITN_OF,_val); }
+	inline void set_DF(bool _val) { set_flag(FBITN_DF,_val); }
+	inline void set_OF(bool _val) { set_flag(FBITN_OF,_val); }
 	inline void set_IOPL(uint16_t _val) {
-		m_flags &= ~(3 << 12);
-		m_flags |= ((3 & _val) << 12);
+		m_eflags &= ~(3 << 12);
+		m_eflags |= ((3 & _val) << 12);
 	}
-	inline void set_NT(bool _val) { set_FLAGS(FBITN_NT,_val); }
+	inline void set_NT(bool _val) { set_flag(FBITN_NT,_val); }
 
 	inline void set_CR0(uint8_t _flagnum, bool _val) {
 		m_cr[0] = (m_cr[0] &~ (1<<_flagnum)) | ((_val)<<_flagnum);

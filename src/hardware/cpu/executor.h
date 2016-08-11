@@ -121,6 +121,7 @@ private:
 	uint32_t (CPUExecutor::*EA_get_offset)();
 
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
+	void write_flags(uint16_t _flags);
 
 	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
@@ -143,12 +144,14 @@ private:
 	void write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 
-	void stack_push(uint16_t _value);
-	uint16_t stack_pop();
-	void stack_push_pmode(uint16_t _value);
-	uint16_t stack_pop_pmode();
-	uint16_t stack_read(uint16_t _offset);
-	void stack_write(uint16_t _offset, uint16_t _data);
+	void stack_push_word(uint16_t _value);
+	void stack_push_dword(uint32_t _value);
+	uint16_t stack_pop_word();
+	uint32_t stack_pop_dword();
+	void stack_write_word(uint16_t _value, uint32_t _offset);
+	void stack_write_dword(uint32_t _value, uint32_t _offset);
+	uint16_t stack_read_word(uint32_t _offset);
+	uint32_t stack_read_dword(uint32_t _offset);
 
 	void get_SS_SP_from_TSS(unsigned pl, uint16_t &ss, uint16_t &sp);
 
@@ -166,6 +169,7 @@ private:
 
 	uint8_t ADC_b(uint8_t op1, uint8_t op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
+	uint32_t ADC_d(uint32_t op1, uint32_t op2);
 	uint8_t ADD_b(uint8_t op1, uint8_t op2);
 	uint16_t ADD_w(uint16_t op1, uint16_t op2);
 	uint32_t ADD_d(uint32_t op1, uint32_t op2);
@@ -249,6 +253,7 @@ public:
 	void ADC_rw_ew();
 	void ADC_AL_db();
 	void ADC_AX_dw();
+	void ADC_EAX_dd();
 	void ADC_eb_db();
 	void ADC_ew_dw();
 	void ADC_ew_db();
@@ -258,8 +263,10 @@ public:
 	void ADD_ed_rd();
 	void ADD_rb_eb();
 	void ADD_rw_ew();
+	void ADD_rd_ed();
 	void ADD_AL_db();
 	void ADD_AX_dw();
+	void ADD_EAX_dd();
 	void ADD_eb_db();
 	void ADD_ew_dw();
 	void ADD_ew_db();
@@ -444,23 +451,47 @@ public:
 	void OUTSW();
 
 	void POP_DS();
+	void POP_DS_32();
 	void POP_ES();
+	void POP_ES_32();
 	void POP_SS();
+	void POP_SS_32();
+	void POP_FS();
+	void POP_FS_32();
+	void POP_GS();
+	void POP_GS_32();
 	void POP_mw();
+	void POP_md();
 	void POP_rw();
+	void POP_rd();
 	void POPA();
+	void POPAD();
 	void POPF();
+	void POPFD();
 
 	void PUSH_ES();
+	void PUSH_ES_32();
 	void PUSH_CS();
+	void PUSH_CS_32();
 	void PUSH_SS();
+	void PUSH_SS_32();
 	void PUSH_DS();
+	void PUSH_DS_32();
+	void PUSH_FS();
+	void PUSH_FS_32();
+	void PUSH_GS();
+	void PUSH_GS_32();
 	void PUSH_rw();
+	void PUSH_rd();
 	void PUSH_mw();
-	void PUSH_dw();
+	void PUSH_md();
 	void PUSH_db();
+	void PUSH_dw();
+	void PUSH_dd();
 	void PUSHA();
+	void PUSHAD();
 	void PUSHF();
+	void PUSHFD();
 
 	void ROL_eb_db();
 	void ROL_ew_db();

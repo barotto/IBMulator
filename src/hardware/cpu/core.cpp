@@ -38,7 +38,7 @@ void CPUCore::reset()
 
 	memset(m_genregs, 0, sizeof(GenReg)*8);
 
-	m_flags = 0x00000002;
+	m_eflags = 0x00000002;
 	m_cr[0] = 0x0000FFF0;
 	m_cr[2] = 0x0;
 	m_cr[3] = 0x0;
@@ -338,14 +338,26 @@ uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const
 	return g_cpubus.mem_read_qword(addr);
 }
 
-void CPUCore::set_FLAGS(uint32_t _val)
+void CPUCore::set_FLAGS(uint16_t _val)
 {
-	uint32_t f = m_flags;
-	m_flags = _val & FMASK_VALID;
-	if(m_flags & FMASK_TF) {
+	uint16_t f16 = uint16_t(m_eflags);
+	m_eflags = (_val & FMASK_VALID) | (m_eflags & 0x30000);
+	if(m_eflags & FMASK_TF) {
 		g_cpu.set_async_event();
 	}
-	if((f ^ _val) & FMASK_IF) {
+	if((f16 ^ _val) & FMASK_IF) {
+		g_cpu.interrupt_mask_change();
+	}
+}
+
+void CPUCore::set_EFLAGS(uint32_t _val)
+{
+	uint32_t f32 = m_eflags;
+	m_eflags = _val & FMASK_VALID;
+	if(m_eflags & FMASK_TF) {
+		g_cpu.set_async_event();
+	}
+	if((f32 ^ _val) & FMASK_IF) {
 		g_cpu.interrupt_mask_change();
 	}
 }
@@ -353,16 +365,16 @@ void CPUCore::set_FLAGS(uint32_t _val)
 void CPUCore::set_TF(bool _val)
 {
 	if(_val) {
-		m_flags |= FMASK_TF;
+		m_eflags |= FMASK_TF;
 		g_cpu.set_async_event();
 	} else {
-		m_flags &= ~FMASK_TF;
+		m_eflags &= ~FMASK_TF;
 	}
 }
 
 void CPUCore::set_IF(bool _val)
 {
-	set_FLAGS(FBITN_IF,_val);
+	set_flag(FBITN_IF, _val);
 	g_cpu.interrupt_mask_change();
 }
 

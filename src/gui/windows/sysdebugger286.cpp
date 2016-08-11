@@ -119,7 +119,7 @@ void SysDebugger286::update()
 	m_286core.msw->SetInnerRML(format_bin4(GET_MSW()));
 
 	m_core.eip->SetInnerRML(format_hex16(REG_IP));
-	m_core.eflags->SetInnerRML(format_hex16(GET_FLAG(ALL)));
+	m_core.eflags->SetInnerRML(format_hex16(GET_FLAGS()));
 
 	m_core.csbase->SetInnerRML(format_hex24(GET_BASE(CS)));
 	m_core.dsbase->SetInnerRML(format_hex24(GET_BASE(DS)));

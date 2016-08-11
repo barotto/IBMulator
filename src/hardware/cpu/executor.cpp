@@ -312,24 +312,45 @@ void CPUExecutor::write_flags(uint16_t _flags,
 	// x,NT,IOPL,OF,DF,IF,TF,SF,ZF,x,AF,x,PF,x,CF
 	uint16_t changeMask = 0x0dd5;
 
-#if(1)
-	/* Bochs enables this code only if cpu level >=3 (i386) but I suspect it's a
-	* bug. no one checks the 286 emulation.
-	*/
 	if(_change_NT)
-	  changeMask |= FMASK_NT;     // NT is modified as requested.
+		changeMask |= FMASK_NT;   // NT is modified as requested.
 	if(_change_IOPL)
 		changeMask |= FMASK_IOPL; // IOPL is modified as requested.
-#endif
-
 	if(_change_IF)
-		changeMask |= FMASK_IF;
+		changeMask |= FMASK_IF;   // IF is modified as requested.
 
 	// Screen out changing of any unsupported bits.
 	changeMask &= FMASK_VALID;
 
 	uint16_t new_flags = (GET_FLAGS() & ~changeMask) | (_flags & changeMask);
 	SET_FLAGS(new_flags);
+}
+
+void CPUExecutor::write_flags(uint16_t _flags)
+{
+	if(IS_PMODE()) {
+		write_flags(_flags,
+			(CPL == 0),         // IOPL
+			(CPL <= FLAG_IOPL), // IF
+			true                // NT
+		);
+	} else if(IS_V8086()) {
+		if(FLAG_IOPL < 3) {
+			PDEBUGF(LOG_CPU, LOG_V2, "write_flags: general protection in v8086 mode\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		write_flags(_flags,
+			false, // IOPL CPL is always 3 in V86 mode
+			true,  // IF   CPL<=FLAG_IOPL is always true
+			true   // NT
+		);
+	} else {
+		write_flags(_flags,
+			false, // IOPL
+			true,  // IF
+			false  // NT
+		);
+	}
 }
 
 void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode)
@@ -660,52 +681,114 @@ void CPUExecutor::write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, ui
 	write_dword(_data);
 }
 
-void CPUExecutor::stack_push(uint16_t _value)
+void CPUExecutor::stack_push_word(uint16_t _value)
 {
-	if(REG_SP == 1) {
-		throw CPUShutdown("insufficient stack space on push");
+	if(REG_SS.desc.big) {
+		// StackAddrSize = 32
+		if(REG_ESP == 1) {
+			if(IS_PMODE()) {
+				throw CPUException(CPU_SS_EXC, 0);
+			} else {
+				throw CPUShutdown("insufficient stack space on push");
+			}
+		}
+		REG_ESP -= 2;
+		write_word(REG_SS, REG_ESP, _value);
+	} else {
+		// StackAddrSize = 16
+		if(REG_SP == 1) {
+			if(IS_PMODE()) {
+				throw CPUException(CPU_SS_EXC, 0);
+			} else {
+				throw CPUShutdown("insufficient stack space on push");
+			}
+		}
+		REG_SP -= 2;
+		write_word(REG_SS, REG_SP, _value);
 	}
-	REG_SP -= 2;
-	write_word(REG_SS, REG_SP, _value);
 }
 
-uint16_t CPUExecutor::stack_pop()
+void CPUExecutor::stack_push_dword(uint32_t _value)
 {
-	uint16_t value = read_word(REG_SS, REG_SP);
-	REG_SP += 2;
+	if(REG_SS.desc.big) {
+		// StackAddrSize = 32
+		if(REG_ESP < 4) {
+			if(IS_PMODE()) {
+				throw CPUException(CPU_SS_EXC, 0);
+			} else {
+				throw CPUShutdown("insufficient stack space on push");
+			}
+		}
+		REG_ESP -= 4;
+		write_word(REG_SS, REG_ESP, _value);
+	} else {
+		// StackAddrSize = 16
+		if(REG_SP < 4) {
+			if(IS_PMODE()) {
+				throw CPUException(CPU_SS_EXC, 0);
+			} else {
+				throw CPUShutdown("insufficient stack space on push");
+			}
+		}
+		REG_SP -= 4;
+		write_word(REG_SS, REG_SP, _value);
+	}
+}
+
+uint16_t CPUExecutor::stack_pop_word()
+{
+	uint16_t value;
+
+	if(REG_SS.desc.big) {
+		// StackAddrSize = 32
+		value = read_word(REG_SS, REG_ESP);
+		REG_ESP += 2;
+	} else {
+		// StackAddrSize = 16
+		value = read_word(REG_SS, REG_SP);
+		REG_SP += 2;
+	}
 
 	return value;
 }
 
-void CPUExecutor::stack_push_pmode(uint16_t _value)
+uint32_t CPUExecutor::stack_pop_dword()
 {
-	if(REG_SP == 1) {
-		PDEBUGF(LOG_V2, LOG_CPU, "stack_push_pmode(): insufficient stack space\n");
-		throw CPUException(CPU_SS_EXC, 0);
-	}
-	write_word(REG_SS, (REG_SP - 2), _value, CPU_SS_EXC, 0);
-	REG_SP -= 2;
-}
+	uint32_t value;
 
-uint16_t CPUExecutor::stack_pop_pmode()
-{
-	uint16_t value = read_word(REG_SS, REG_SP, CPU_SS_EXC, 0);
-	REG_SP += 2;
+	if(REG_SS.desc.big) {
+		// StackAddrSize = 32
+		value = read_dword(REG_SS, REG_ESP);
+		REG_ESP += 4;
+	} else {
+		// StackAddrSize = 16
+		value = read_dword(REG_SS, REG_SP);
+		REG_SP += 4;
+	}
 
 	return value;
 }
 
-uint16_t CPUExecutor::stack_read(uint16_t _offset)
+void CPUExecutor::stack_write_word(uint16_t _value, uint32_t _offset)
 {
-	seg_check_read(REG_SS, _offset, 2);
-	return g_cpubus.mem_read<2>(GET_PHYADDR(SS, _offset));
+	write_word(REG_SS, _offset, _value);
 }
 
-void CPUExecutor::stack_write(uint16_t _offset, uint16_t _data)
+void CPUExecutor::stack_write_dword(uint32_t _value, uint32_t _offset)
 {
-	seg_check_write(REG_SS, _offset, 2);
-	g_cpubus.mem_write<2>(GET_PHYADDR(SS, _offset), _data);
+	write_dword(REG_SS, _offset, _value);
 }
+
+uint16_t CPUExecutor::stack_read_word(uint32_t _offset)
+{
+	return read_word(REG_SS, _offset);
+}
+
+uint32_t CPUExecutor::stack_read_dword(uint32_t _offset)
+{
+	return read_dword(REG_SS, _offset);
+}
+
 
 void CPUExecutor::execute(Instruction * _instr)
 {
@@ -875,9 +958,9 @@ void CPUExecutor::interrupt(uint8_t _vector)
 		PERRF(LOG_CPU, "real mode interrupt vector > IDT limit\n");
 		throw CPUException(CPU_IDT_LIMIT_EXC, 0);
 	}
-	stack_push(GET_FLAGS());
-	stack_push(REG_CS.sel.value);
-	stack_push(REG_IP);
+	stack_push_word(GET_FLAGS());
+	stack_push_word(REG_CS.sel.value);
+	stack_push_word(REG_IP);
 
 	uint32_t addr = _vector * 4;
 	uint16_t new_ip = g_cpubus.mem_read<2>(addr);
@@ -1154,11 +1237,11 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				// push flags onto stack
 				// push current CS selector onto stack
 				// push return IP onto stack
-				stack_push(GET_FLAGS());
-				stack_push(REG_CS.sel.value);
-				stack_push(REG_IP);
+				stack_push_word(GET_FLAGS());
+				stack_push_word(REG_CS.sel.value);
+				stack_push_word(REG_IP);
 				if(push_error) {
-					stack_push(error_code);
+					stack_push_word(error_code);
 				}
 
 				// load CS:IP from gate
@@ -1600,7 +1683,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
     // push error code onto stack
     if(push_error) {
-    	stack_push_pmode(error_code);
+    	stack_push_word(error_code);
     }
 
     // instruction pointer must be in CS limit, else #GP(0)
@@ -1814,8 +1897,8 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL GATE TO SAME PRIVILEGE\n");
 
 		// call gate 16bit, push return address onto stack
-		stack_push(REG_CS.sel.value);
-		stack_push(REG_IP);
+		stack_push_word(REG_CS.sel.value);
+		stack_push_word(REG_IP);
 
 		// load CS:IP from gate
 		// load code segment descriptor into CS register
@@ -2118,12 +2201,28 @@ uint16_t CPUExecutor::ADC_w(uint16_t op1, uint16_t op2)
 	return res;
 }
 
+uint32_t CPUExecutor::ADC_d(uint32_t op1, uint32_t op2)
+{
+	uint32_t cf = FLAG_CF;
+	uint32_t res = op1 + op2 + cf;
+
+	SET_FLAG(OF, ((op1 ^ op2 ^ 0x80000000) & (res ^ op2)) & 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(CF, (res < op1) || (cf && (res == op1)));
+
+	return res;
+}
+
 void CPUExecutor::ADC_eb_rb() { store_eb(ADC_b(load_eb(), load_rb())); }
 void CPUExecutor::ADC_ew_rw() { store_ew(ADC_w(load_ew(), load_rw())); }
 void CPUExecutor::ADC_rb_eb() { store_rb(ADC_b(load_rb(), load_eb())); }
 void CPUExecutor::ADC_rw_ew() { store_rw(ADC_w(load_rw(), load_ew())); }
 void CPUExecutor::ADC_AL_db() { REG_AL = ADC_b(REG_AL, m_instr->db); }
 void CPUExecutor::ADC_AX_dw() { REG_AX = ADC_w(REG_AX, m_instr->dw1); }
+void CPUExecutor::ADC_EAX_dd(){ REG_EAX = ADC_d(REG_EAX, m_instr->dd1); }
 void CPUExecutor::ADC_eb_db() { store_eb(ADC_b(load_eb(), m_instr->db)); }
 void CPUExecutor::ADC_ew_dw() { store_ew(ADC_w(load_ew(), m_instr->dw1)); }
 void CPUExecutor::ADC_ew_db() { store_ew(ADC_w(load_ew(), int8_t(m_instr->db))); }
@@ -2175,8 +2274,10 @@ void CPUExecutor::ADD_ew_rw() { store_ew(ADD_w(load_ew(), load_rw())); }
 void CPUExecutor::ADD_ed_rd() { store_ed(ADD_d(load_ed(), load_rd())); }
 void CPUExecutor::ADD_rb_eb() { store_rb(ADD_b(load_rb(), load_eb())); }
 void CPUExecutor::ADD_rw_ew() { store_rw(ADD_w(load_rw(), load_ew())); }
+void CPUExecutor::ADD_rd_ed() { store_rd(ADD_d(load_rd(), load_ed())); }
 void CPUExecutor::ADD_AL_db() { REG_AL = ADD_b(REG_AL, m_instr->db); }
 void CPUExecutor::ADD_AX_dw() { REG_AX = ADD_w(REG_AX, m_instr->dw1); }
+void CPUExecutor::ADD_EAX_dd(){ REG_EAX = ADD_d(REG_EAX, m_instr->dd1); }
 void CPUExecutor::ADD_eb_db() { store_eb(ADD_b(load_eb(), m_instr->db)); }
 void CPUExecutor::ADD_ew_dw() { store_ew(ADD_w(load_ew(), m_instr->dw1)); }
 void CPUExecutor::ADD_ew_db() { store_ew(ADD_w(load_ew(), int8_t(m_instr->db))); }
@@ -2273,7 +2374,7 @@ void CPUExecutor::BOUND_rw_md()
 void CPUExecutor::CALL_cw()
 {
 	/* push 16 bit EA of next instruction */
-	stack_push(REG_IP);
+	stack_push_word(REG_IP);
 
 	uint16_t new_IP = REG_IP + m_instr->dw1;
 	branch_near(new_IP);
@@ -2282,7 +2383,7 @@ void CPUExecutor::CALL_cw()
 void CPUExecutor::CALL_ew()
 {
 	/* push 16 bit EA of next instruction */
-	stack_push(REG_IP);
+	stack_push_word(REG_IP);
 
 	uint16_t new_IP = load_ew();
 	branch_near(new_IP);
@@ -2296,8 +2397,8 @@ void CPUExecutor::CALL_cd(uint16_t newip, uint16_t newcs)
 	}
 
 	//REAL mode
-	stack_push(REG_CS.sel.value);
-	stack_push(REG_IP);
+	stack_push_word(REG_CS.sel.value);
+	stack_push_word(REG_IP);
 
 	// CS LIMIT can't change when in real mode
 	if(newip > GET_LIMIT(CS)) {
@@ -2615,7 +2716,7 @@ void CPUExecutor::ENTER()
 {
 	uint8_t level = m_instr->db & 0x1F;
 
-	stack_push(REG_BP);
+	stack_push_word(REG_BP);
 
 	uint16_t frame_ptr16 = REG_SP;
 	uint16_t bp = REG_BP;
@@ -2625,11 +2726,11 @@ void CPUExecutor::ENTER()
 		while(--level) {
 			bp -= 2;
 			uint16_t temp16 = read_word(REG_SS, bp);
-			stack_push(temp16);
+			stack_push_word(temp16);
 		}
 
 		/* push(frame pointer) */
-		stack_push(frame_ptr16);
+		stack_push_word(frame_ptr16);
 	}
 
 	REG_SP -= m_instr->dw1; // bytes
@@ -3055,9 +3156,9 @@ void CPUExecutor::IRET()
 	if(IS_PMODE()) {
 		IRET_pmode();
 	} else {
-		uint16_t ip     = stack_pop();
-		uint16_t cs_raw = stack_pop(); // #SS has higher priority
-		uint16_t flags  = stack_pop();
+		uint16_t ip     = stack_pop_word();
+		uint16_t cs_raw = stack_pop_word(); // #SS has higher priority
+		uint16_t flags  = stack_pop_word();
 
 		// CS LIMIT can't change when in real mode
 		if(ip > REG_CS.desc.limit) {
@@ -3135,9 +3236,9 @@ void CPUExecutor::IRET_pmode()
 	* IP     SP+0
 	*/
 
-	new_flags   = stack_read(REG_SP + 4);
-    cs_selector = stack_read(REG_SP + 2);
-    new_ip      = stack_read(REG_SP + 0);
+	new_flags   = stack_read_word(REG_SP + 4);
+    cs_selector = stack_read_word(REG_SP + 2);
+    new_ip      = stack_read_word(REG_SP + 0);
 
 	// return CS selector must be non-null, else #GP(0)
 	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -3185,7 +3286,7 @@ void CPUExecutor::IRET_pmode()
 
 		/* examine return SS selector and associated descriptor */
 
-		ss_selector = stack_read(REG_SP + 8);
+		ss_selector = stack_read_word(REG_SP + 8);
 
 		/* selector must be non-null, else #GP(0) */
 		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -3228,9 +3329,9 @@ void CPUExecutor::IRET_pmode()
 			throw CPUException(CPU_NP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
-		new_ip    = stack_read(REG_SP + 0);
-		new_flags = stack_read(REG_SP + 4);
-		new_sp    = stack_read(REG_SP + 6);
+		new_ip    = stack_read_word(REG_SP + 0);
+		new_flags = stack_read_word(REG_SP + 4);
+		new_sp    = stack_read_word(REG_SP + 6);
 
 		bool change_IF = (CPL <= FLAG_IOPL);
 		bool change_IOPL = (CPL == 0);
@@ -3551,7 +3652,7 @@ void CPUExecutor::LEA_rw_m()
 void CPUExecutor::LEAVE()
 {
 	REG_SP = REG_BP;
-	REG_BP = stack_pop();
+	REG_BP = stack_pop_word();
 }
 
 
@@ -4306,24 +4407,36 @@ void CPUExecutor::OUTSW()
 
 
 /*******************************************************************************
- * POP-Pop a Word from the Stack
+ * POP-Pop Operand from the Stack
  */
 
 void CPUExecutor::POP_DS()
 {
-	uint16_t selector = stack_pop();
+	uint16_t selector = stack_pop_word();
+	SET_DS(selector);
+}
+
+void CPUExecutor::POP_DS_32()
+{
+	uint16_t selector = uint16_t(stack_pop_dword());
 	SET_DS(selector);
 }
 
 void CPUExecutor::POP_ES()
 {
-	uint16_t selector = stack_pop();
+	uint16_t selector = stack_pop_word();
+	SET_ES(selector);
+}
+
+void CPUExecutor::POP_ES_32()
+{
+	uint16_t selector = uint16_t(stack_pop_dword());
 	SET_ES(selector);
 }
 
 void CPUExecutor::POP_SS()
 {
-	uint16_t selector = stack_pop();
+	uint16_t selector = stack_pop_word();
 	SET_SS(selector);
 
 	/*
@@ -4334,85 +4447,172 @@ void CPUExecutor::POP_SS()
 	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
 }
 
+void CPUExecutor::POP_SS_32()
+{
+	uint16_t selector = uint16_t(stack_pop_dword());
+	SET_SS(selector);
+	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
+}
+
+void CPUExecutor::POP_FS()
+{
+	uint16_t selector = stack_pop_word();
+	SET_FS(selector);
+}
+
+void CPUExecutor::POP_FS_32()
+{
+	uint16_t selector = uint16_t(stack_pop_dword());
+	SET_FS(selector);
+}
+
+void CPUExecutor::POP_GS()
+{
+	uint16_t selector = stack_pop_word();
+	SET_GS(selector);
+}
+
+void CPUExecutor::POP_GS_32()
+{
+	uint16_t selector = uint16_t(stack_pop_dword());
+	SET_GS(selector);
+}
+
 void CPUExecutor::POP_mw()
 {
-	uint16_t val = stack_pop();
+	uint16_t val = stack_pop_word();
 	store_ew(val);
+}
+
+void CPUExecutor::POP_md()
+{
+	uint32_t val = stack_pop_dword();
+	store_ed(val);
 }
 
 void CPUExecutor::POP_rw()
 {
-	store_rw_op(stack_pop());
+	store_rw_op(stack_pop_word());
+}
+
+void CPUExecutor::POP_rd()
+{
+	store_rd_op(stack_pop_dword());
 }
 
 
 /*******************************************************************************
- * POPA-Pop All General Registers
+ * POPA/POPAD-Pop All General Registers
  */
 
 void CPUExecutor::POPA()
 {
-	uint16_t temp_SP = REG_SP;
+	REG_DI = stack_pop_word();
+	REG_SI = stack_pop_word();
+	REG_BP = stack_pop_word();
+	         stack_pop_word(); //skip SP
+	REG_BX = stack_pop_word();
+	REG_DX = stack_pop_word();
+	REG_CX = stack_pop_word();
+	REG_AX = stack_pop_word();
+}
 
-	REG_DI = stack_read(temp_SP + 0);
-	REG_SI = stack_read(temp_SP + 2);
-	REG_BP = stack_read(temp_SP + 4);
-	//REG_SP = stack_read(temp_SP + 6); skip SP
-	REG_BX = stack_read(temp_SP + 8);
-	REG_DX = stack_read(temp_SP + 10);
-	REG_CX = stack_read(temp_SP + 12);
-	REG_AX = stack_read(temp_SP + 14);
-
-	REG_SP += 16;
+void CPUExecutor::POPAD()
+{
+	REG_EDI = stack_pop_dword();
+	REG_ESI = stack_pop_dword();
+	REG_EBP = stack_pop_dword();
+	          stack_pop_dword(); //skip ESP
+	REG_EBX = stack_pop_dword();
+	REG_EDX = stack_pop_dword();
+	REG_ECX = stack_pop_dword();
+	REG_EAX = stack_pop_dword();
 }
 
 
 /*******************************************************************************
- * POPF-Pop from Stack into the Flags Register
+ * POPF/POPFD-Pop from Stack into the FLAGS or EFLAGS Register
  */
 
 void CPUExecutor::POPF()
 {
-	uint16_t flags = stack_pop();
+	uint16_t flags = stack_pop_word();
+	write_flags(flags);
+}
 
-	if(IS_PMODE()) {
-		write_flags(flags,
-			(CPL == 0),         // IOPL
-			(CPL <= FLAG_IOPL), // IF
-			true                // NT
-		);
-	} else {
-		write_flags(flags,
-			false, // IOPL
-			true,  // IF
-			false  // NT
-		);
-	}
+void CPUExecutor::POPFD()
+{
+	/* POPF and POPFD don't affect bit 16 & 17 of EFLAGS, so use the
+	 * same write_flags as POPF
+	 * TODO this works only for the 386
+	 */
+	uint16_t flags = uint16_t(stack_pop_dword());
+	write_flags(flags);
 }
 
 
 /*******************************************************************************
- * PUSH-Push a Word onto the Stack
+ * PUSH-Push Operand onto the Stack
  */
 
 void CPUExecutor::PUSH_ES()
 {
-	stack_push(REG_ES.sel.value);
+	stack_push_word(REG_ES.sel.value);
+}
+
+void CPUExecutor::PUSH_ES_32()
+{
+	stack_push_dword(REG_ES.sel.value);
 }
 
 void CPUExecutor::PUSH_CS()
 {
-	stack_push(REG_CS.sel.value);
+	stack_push_word(REG_CS.sel.value);
+}
+
+void CPUExecutor::PUSH_CS_32()
+{
+	stack_push_dword(REG_CS.sel.value);
 }
 
 void CPUExecutor::PUSH_SS()
 {
-	stack_push(REG_SS.sel.value);
+	stack_push_word(REG_SS.sel.value);
+}
+
+void CPUExecutor::PUSH_SS_32()
+{
+	stack_push_dword(REG_SS.sel.value);
 }
 
 void CPUExecutor::PUSH_DS()
 {
-	stack_push(REG_DS.sel.value);
+	stack_push_word(REG_DS.sel.value);
+}
+
+void CPUExecutor::PUSH_DS_32()
+{
+	stack_push_dword(REG_DS.sel.value);
+}
+
+void CPUExecutor::PUSH_FS()
+{
+	stack_push_word(REG_FS.sel.value);
+}
+
+void CPUExecutor::PUSH_FS_32()
+{
+	stack_push_dword(REG_FS.sel.value);
+}
+
+void CPUExecutor::PUSH_GS()
+{
+	stack_push_word(REG_GS.sel.value);
+}
+
+void CPUExecutor::PUSH_GS_32()
+{
+	stack_push_dword(REG_GS.sel.value);
 }
 
 void CPUExecutor::PUSH_rw()
@@ -4421,22 +4621,37 @@ void CPUExecutor::PUSH_rw()
 	 * the instruction. This differs from the 8086, which pushes the new
 	 * (decremented by 2) value.
 	 */
-	stack_push(GEN_REG(m_instr->reg).word[0]);
+	stack_push_word(GEN_REG(m_instr->reg).word[0]);
+}
+
+void CPUExecutor::PUSH_rd()
+{
+	stack_push_dword(GEN_REG(m_instr->reg).dword[0]);
 }
 
 void CPUExecutor::PUSH_mw()
 {
-	stack_push(load_ew());
+	stack_push_word(load_ew());
 }
 
-void CPUExecutor::PUSH_dw()
+void CPUExecutor::PUSH_md()
 {
-	stack_push(m_instr->dw1);
+	stack_push_dword(load_ed());
 }
 
 void CPUExecutor::PUSH_db()
 {
-	stack_push(int8_t(m_instr->db));
+	stack_push_word(int8_t(m_instr->db));
+}
+
+void CPUExecutor::PUSH_dw()
+{
+	stack_push_word(m_instr->dw1);
+}
+
+void CPUExecutor::PUSH_dd()
+{
+	stack_push_word(m_instr->dd1);
 }
 
 
@@ -4446,37 +4661,72 @@ void CPUExecutor::PUSH_db()
 
 void CPUExecutor::PUSHA()
 {
-	uint16_t temp_SP  = REG_SP;
-
 	if(!IS_PMODE()) {
-		if(temp_SP == 7 || temp_SP == 9 || temp_SP == 11 || temp_SP == 13 || temp_SP == 15) {
+		uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
-		if(temp_SP == 1 || temp_SP == 3 || temp_SP == 5) {
+		if(sp == 1 || sp == 3 || sp == 5) {
 			throw CPUShutdown("SP=1,3,5 on stack push (PUSHA)");
 		}
 	}
+	uint16_t temp_SP  = REG_SP;
+	stack_push_word(REG_AX);
+	stack_push_word(REG_CX);
+	stack_push_word(REG_DX);
+	stack_push_word(REG_BX);
+	stack_push_word(temp_SP);
+	stack_push_word(REG_BP);
+	stack_push_word(REG_SI);
+	stack_push_word(REG_DI);
+}
 
-	stack_write(temp_SP -  2, REG_AX);
-	stack_write(temp_SP -  4, REG_CX);
-	stack_write(temp_SP -  6, REG_DX);
-	stack_write(temp_SP -  8, REG_BX);
-	stack_write(temp_SP - 10, temp_SP);
-	stack_write(temp_SP - 12, REG_BP);
-	stack_write(temp_SP - 14, REG_SI);
-	stack_write(temp_SP - 16, REG_DI);
-	REG_SP -= 16;
+void CPUExecutor::PUSHAD()
+{
+	if(!IS_PMODE()) {
+		uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
+			throw CPUException(CPU_SEG_OVR_EXC,0);
+		}
+		if(sp == 1 || sp == 3 || sp == 5) {
+			throw CPUShutdown("SP=1,3,5 on stack push (PUSHAD)");
+		}
+	}
+	uint32_t temp_ESP  = REG_ESP;
+	stack_push_dword(REG_EAX);
+	stack_push_dword(REG_ECX);
+	stack_push_dword(REG_EDX);
+	stack_push_dword(REG_EBX);
+	stack_push_dword(temp_ESP);
+	stack_push_dword(REG_EBP);
+	stack_push_dword(REG_ESI);
+	stack_push_dword(REG_EDI);
 }
 
 
 /*******************************************************************************
- * PUSHF-Push Flags Register onto the Stack
+ * PUSHF/PUSHFD-Push FLAGS or EFLAGS Register onto the Stack
  */
 
 void CPUExecutor::PUSHF()
 {
+	if(IS_V8086() && FLAG_IOPL < 3) {
+		PDEBUGF(LOG_V2, LOG_CPU, "Push Flags: general protection in v8086 mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
 	uint16_t flags = GET_FLAGS();
-	stack_push(flags);
+	stack_push_word(flags);
+}
+
+void CPUExecutor::PUSHFD()
+{
+	if(IS_V8086() && FLAG_IOPL < 3) {
+		PDEBUGF(LOG_V2, LOG_CPU, "Push Flags: general protection in v8086 mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+	// VM & RF flags cleared when pushed onto stack
+	uint32_t eflags = GET_EFLAGS() & ~(FMASK_RF | FMASK_VM);
+	stack_push_dword(eflags);
 }
 
 
@@ -4698,7 +4948,7 @@ void CPUExecutor::RCR_ew_CL() { store_ew(RCR_w(load_ew(), REG_CL)); }
 
 void CPUExecutor::RET_near()
 {
-	uint16_t return_IP = stack_pop();
+	uint16_t return_IP = stack_pop_word();
 
 	if(return_IP > REG_CS.desc.limit) {
 		PDEBUGF(LOG_V2, LOG_CPU, "RET_near: offset outside of CS limits\n");
@@ -4720,8 +4970,8 @@ void CPUExecutor::RET_far()
 		return;
 	}
 
-	uint16_t ip     = stack_pop();
-	uint16_t cs_raw = stack_pop();
+	uint16_t ip     = stack_pop_word();
+	uint16_t cs_raw = stack_pop_word();
 
 	// CS.LIMIT can't change when in real mode
 	if(ip > REG_CS.desc.limit) {
@@ -4756,8 +5006,8 @@ void CPUExecutor::return_protected(uint16_t pop_bytes)
 
 	temp_SP = REG_SP;
 
-	return_IP   = stack_read(temp_SP);
-	cs_selector = stack_read(temp_SP + 2);
+	return_IP   = stack_read_word(temp_SP);
+	cs_selector = stack_read_word(temp_SP + 2);
 
 	// selector must be non-null else #GP(0)
 	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -4799,8 +5049,8 @@ void CPUExecutor::return_protected(uint16_t pop_bytes)
 		 */
 
 		PDEBUGF(LOG_V2, LOG_CPU, "return_protected: return to OUTER PRIVILEGE LEVEL\n");
-		return_SP   = stack_read(temp_SP + 4 + pop_bytes);
-		ss_selector = stack_read(temp_SP + 6 + pop_bytes);
+		return_SP   = stack_read_word(temp_SP + 4 + pop_bytes);
+		ss_selector = stack_read_word(temp_SP + 6 + pop_bytes);
 
 		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
 			PDEBUGF(LOG_V2, LOG_CPU, "return_protected: SS selector null\n");
