@@ -2812,6 +2812,28 @@ void CPUExecutor::DIV_ew()
 	REG_DX = remainder_16;
 }
 
+void CPUExecutor::DIV_ed()
+{
+	uint32_t op2_32 = load_ew();
+	if(op2_32 == 0) {
+		throw CPUException(CPU_DIV_ER_EXC, 0);
+	}
+
+	uint64_t op1_64 = (uint64_t(REG_EDX) << 32) | uint64_t(REG_EAX);
+
+	uint64_t quotient_64  = op1_64 / op2_32;
+	uint32_t remainder_32 = op1_64 % op2_32;
+	uint32_t quotient_32l = quotient_64 & 0xFFFFFFFF;
+
+	if(quotient_64 != quotient_32l) {
+		throw CPUException(CPU_DIV_ER_EXC, 0);
+	}
+
+	/* now write quotient back to destination */
+	REG_EAX = quotient_32l;
+	REG_EDX = remainder_32;
+}
+
 
 /*******************************************************************************
  * ENTER-Make Stack Frame for Procedure Parameters
@@ -2949,6 +2971,34 @@ void CPUExecutor::IDIV_ew()
 	/* now write quotient back to destination */
 	REG_AX = quotient_16l;
 	REG_DX = remainder_16;
+}
+
+void CPUExecutor::IDIV_ed()
+{
+	int64_t op1_64 = int64_t((uint64_t(REG_EDX) << 32) | uint64_t(REG_EAX));
+
+	/* check MIN_INT case */
+	if(op1_64 == int64_t(0x8000000000000000LL)) {
+		throw CPUException(CPU_DIV_ER_EXC, 0);
+	}
+
+	int32_t op2_32 = int32_t(load_ed());
+
+	if(op2_32 == 0) {
+		throw CPUException(CPU_DIV_ER_EXC, 0);
+	}
+
+	int64_t quotient_64  = op1_64 / op2_32;
+	int32_t remainder_32 = op1_64 % op2_32;
+	int32_t quotient_32l = quotient_64 & 0xFFFFFFFF;
+
+	if(quotient_64 != quotient_32l) {
+		throw CPUException(CPU_DIV_ER_EXC, 0);
+	}
+
+	/* now write quotient back to destination */
+	REG_EAX = quotient_32l;
+	REG_EDX = remainder_32;
 }
 
 

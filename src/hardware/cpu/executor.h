@@ -343,6 +343,7 @@ public:
 
 	void DIV_eb();
 	void DIV_ew();
+	void DIV_ed();
 
 	void DEC_eb();
 	void DEC_ew();
@@ -356,6 +357,7 @@ public:
 
 	void IDIV_eb();
 	void IDIV_ew();
+	void IDIV_ed();
 	void IMUL_eb();
 	void IMUL_ew();
 	void IMUL_rw_ew_dw();
