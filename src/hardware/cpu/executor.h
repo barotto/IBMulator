@@ -183,6 +183,7 @@ private:
 
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
+	void CMP_d(uint32_t op1, uint32_t op2);
 
 	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
@@ -315,17 +316,27 @@ public:
 
 	void CWD();
 
-	void CMP_AL_db();
-	void CMP_AX_dw();
-	void CMP_eb_db();
 	void CMP_eb_rb();
-	void CMP_ew_db();
-	void CMP_ew_dw();
 	void CMP_ew_rw();
+	void CMP_ed_rd();
 	void CMP_rb_eb();
 	void CMP_rw_ew();
-	void CMPSB();
-	void CMPSW();
+	void CMP_rd_ed();
+	void CMP_AL_db();
+	void CMP_AX_dw();
+	void CMP_EAX_dd();
+	void CMP_eb_db();
+	void CMP_ew_dw();
+	void CMP_ed_dd();
+	void CMP_ew_db();
+	void CMP_ed_db();
+
+	void CMPSB_16();
+	void CMPSW_16();
+	void CMPSD_16();
+	void CMPSB_32();
+	void CMPSW_32();
+	void CMPSD_32();
 
 	void DAA();
 	void DAS();

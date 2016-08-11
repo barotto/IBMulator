@@ -1212,21 +1212,29 @@ case 0xA5:
 	break;
 }
 
-/* A6        CMPSB         Compare bytes ES:[DI] from DS:[SI] */
+/* A6        CMPSB         Compare bytes ES:[(E)DI] from DS:[(E)SI] */
 case 0xA6:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = &CPUExecutor::CMPSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::CMPSB_32;
+	} else {
+		m_instr.fn = &CPUExecutor::CMPSB_16;
+	}
 	break;
 }
 
-/* A7        CMPSW         Compare words ES:[DI] from DS:[SI] */
+/* A7        CMPSW         Compare words ES:[(E)DI] from DS:[(E)SI] */
 case 0xA7:
 {
 	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
-	m_instr.fn = &CPUExecutor::CMPSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::CMPSW_32;
+	} else {
+		m_instr.fn = &CPUExecutor::CMPSW_16;
+	}
 	break;
 }
 

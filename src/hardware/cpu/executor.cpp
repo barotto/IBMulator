@@ -2549,22 +2549,39 @@ void CPUExecutor::CMP_w(uint16_t op1, uint16_t op2)
 	SET_FLAG(CF, op1<op2);
 }
 
+void CPUExecutor::CMP_d(uint32_t op1, uint32_t op2)
+{
+	uint32_t res = op1 - op2;
+
+	SET_FLAG(OF, ((op1 ^ op2) & (op1 ^ res)) & 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(CF, op1<op2);
+}
+
 void CPUExecutor::CMP_eb_rb() { CMP_b(load_eb(), load_rb()); }
 void CPUExecutor::CMP_ew_rw() { CMP_w(load_ew(), load_rw()); }
+void CPUExecutor::CMP_ed_rd() { CMP_d(load_ed(), load_rd()); }
 void CPUExecutor::CMP_rb_eb() { CMP_b(load_rb(), load_eb()); }
 void CPUExecutor::CMP_rw_ew() { CMP_w(load_rw(), load_ew()); }
+void CPUExecutor::CMP_rd_ed() { CMP_d(load_rd(), load_ed()); }
 void CPUExecutor::CMP_AL_db() { CMP_b(REG_AL, m_instr->db); }
 void CPUExecutor::CMP_AX_dw() { CMP_w(REG_AX, m_instr->dw1); }
+void CPUExecutor::CMP_EAX_dd(){ CMP_d(REG_EAX, m_instr->dd1); }
 void CPUExecutor::CMP_eb_db() { CMP_b(load_eb(), m_instr->db); }
 void CPUExecutor::CMP_ew_dw() { CMP_w(load_ew(), m_instr->dw1); }
+void CPUExecutor::CMP_ed_dd() { CMP_d(load_ed(), m_instr->dd1); }
 void CPUExecutor::CMP_ew_db() { CMP_w(load_ew(), int8_t(m_instr->db)); }
+void CPUExecutor::CMP_ed_db() { CMP_d(load_ed(), int8_t(m_instr->db)); }
 
 
 /*******************************************************************************
- * CMPS/CMPSB/CMPSW-Compare string operands
+ * CMPS/CMPSB/CMPSW/CMPSWD-Compare string operands
  */
 
-void CPUExecutor::CMPSB()
+void CPUExecutor::CMPSB_16()
 {
 	uint8_t op1 = read_byte(SEG_REG(m_base_ds), REG_SI);
 	uint8_t op2 = read_byte(REG_ES, REG_DI);
@@ -2580,7 +2597,7 @@ void CPUExecutor::CMPSB()
 	}
 }
 
-void CPUExecutor::CMPSW()
+void CPUExecutor::CMPSW_16()
 {
 	uint16_t op1 = read_word(SEG_REG(m_base_ds), REG_SI);
 	uint16_t op2 = read_word(REG_ES, REG_DI);
@@ -2596,6 +2613,69 @@ void CPUExecutor::CMPSW()
 	}
 }
 
+void CPUExecutor::CMPSD_16()
+{
+	uint32_t op1 = read_dword(SEG_REG(m_base_ds), REG_SI);
+	uint32_t op2 = read_dword(REG_ES, REG_DI);
+
+	CMP_d(op1, op2);
+
+	if(FLAG_DF) {
+		REG_SI -= 4;
+		REG_DI -= 4;
+	} else {
+		REG_SI += 4;
+		REG_DI += 4;
+	}
+}
+
+void CPUExecutor::CMPSB_32()
+{
+	uint8_t op1 = read_byte(SEG_REG(m_base_ds), REG_ESI);
+	uint8_t op2 = read_byte(REG_ES, REG_EDI);
+
+	CMP_b(op1, op2);
+
+	if(FLAG_DF) {
+		REG_ESI -= 1;
+		REG_EDI -= 1;
+	} else {
+		REG_ESI += 1;
+		REG_EDI += 1;
+	}
+}
+
+void CPUExecutor::CMPSW_32()
+{
+	uint16_t op1 = read_word(SEG_REG(m_base_ds), REG_ESI);
+	uint16_t op2 = read_word(REG_ES, REG_EDI);
+
+	CMP_w(op1, op2);
+
+	if(FLAG_DF) {
+		REG_ESI -= 2;
+		REG_EDI -= 2;
+	} else {
+		REG_ESI += 2;
+		REG_EDI += 2;
+	}
+}
+
+void CPUExecutor::CMPSD_32()
+{
+	uint32_t op1 = read_dword(SEG_REG(m_base_ds), REG_ESI);
+	uint32_t op2 = read_dword(REG_ES, REG_EDI);
+
+	CMP_d(op1, op2);
+
+	if(FLAG_DF) {
+		REG_ESI -= 4;
+		REG_EDI -= 4;
+	} else {
+		REG_ESI += 4;
+		REG_EDI += 4;
+	}
+}
 
 /*******************************************************************************
  * DAA/DAS-Decimal Adjust AL after addition/subtraction
