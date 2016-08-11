@@ -252,14 +252,18 @@ public:
 
 	void ADC_eb_rb();
 	void ADC_ew_rw();
+	void ADC_ed_rd();
 	void ADC_rb_eb();
 	void ADC_rw_ew();
+	void ADC_rd_ed();
 	void ADC_AL_db();
 	void ADC_AX_dw();
 	void ADC_EAX_dd();
 	void ADC_eb_db();
 	void ADC_ew_dw();
+	void ADC_ed_dd();
 	void ADC_ew_db();
+	void ADC_ed_db();
 
 	void ADD_eb_rb();
 	void ADD_ew_rw();
@@ -272,7 +276,9 @@ public:
 	void ADD_EAX_dd();
 	void ADD_eb_db();
 	void ADD_ew_dw();
+	void ADD_ed_dd();
 	void ADD_ew_db();
+	void ADD_ed_db();
 
 	void AND_eb_rb();
 	void AND_ew_rw();
