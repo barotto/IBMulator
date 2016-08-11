@@ -170,12 +170,14 @@ private:
 	uint8_t ADC_b(uint8_t op1, uint8_t op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
 	uint32_t ADC_d(uint32_t op1, uint32_t op2);
+
 	uint8_t ADD_b(uint8_t op1, uint8_t op2);
 	uint16_t ADD_w(uint16_t op1, uint16_t op2);
 	uint32_t ADD_d(uint32_t op1, uint32_t op2);
 
 	uint8_t AND_b(uint8_t op1, uint8_t op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
+	uint32_t AND_d(uint32_t op1, uint32_t op2);
 
 	void CALL_cd(uint16_t newip, uint16_t newcs);
 
@@ -193,6 +195,7 @@ private:
 
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
+	uint32_t OR_d(uint32_t op1, uint32_t op2);
 
 	void OUT_b(uint16_t _port, uint8_t _value);
 	void OUT_w(uint16_t _port, uint16_t _value);
@@ -273,13 +276,18 @@ public:
 
 	void AND_eb_rb();
 	void AND_ew_rw();
+	void AND_ed_rd();
 	void AND_rb_eb();
 	void AND_rw_ew();
+	void AND_rd_ed();
 	void AND_AL_db();
 	void AND_AX_dw();
+	void AND_EAX_dd();
 	void AND_eb_db();
 	void AND_ew_dw();
+	void AND_ed_dd();
 	void AND_ew_db();
+	void AND_ed_db();
 
 	void ARPL_ew_rw();
 
@@ -434,13 +442,18 @@ public:
 
 	void OR_eb_rb();
 	void OR_ew_rw();
+	void OR_ed_rd();
 	void OR_rb_eb();
 	void OR_rw_ew();
+	void OR_rd_ed();
 	void OR_AL_db();
 	void OR_AX_dw();
+	void OR_EAX_dd();
 	void OR_eb_db();
 	void OR_ew_dw();
+	void OR_ed_dd();
 	void OR_ew_db();
+	void OR_ed_db();
 
 	void OUT_db_AL();
 	void OUT_db_AX();
