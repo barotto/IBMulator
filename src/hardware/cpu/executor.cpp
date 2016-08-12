@@ -4719,96 +4719,34 @@ void CPUExecutor::OUTSW()
  * POP-Pop Operand from the Stack
  */
 
-void CPUExecutor::POP_DS()
-{
-	uint16_t selector = stack_pop_word();
-	SET_DS(selector);
-}
-
-void CPUExecutor::POP_DS_32()
-{
-	uint16_t selector = uint16_t(stack_pop_dword());
-	SET_DS(selector);
-}
-
-void CPUExecutor::POP_ES()
-{
-	uint16_t selector = stack_pop_word();
-	SET_ES(selector);
-}
-
-void CPUExecutor::POP_ES_32()
-{
-	uint16_t selector = uint16_t(stack_pop_dword());
-	SET_ES(selector);
-}
+void CPUExecutor::POP_DS()    { SET_DS(stack_pop_word()); }
+void CPUExecutor::POP_ES()    { SET_ES(stack_pop_word()); }
+void CPUExecutor::POP_FS()    { SET_FS(stack_pop_word()); }
+void CPUExecutor::POP_GS()    { SET_GS(stack_pop_word()); }
+void CPUExecutor::POP_DS_32() { SET_DS(stack_pop_dword()); }
+void CPUExecutor::POP_ES_32() {	SET_ES(stack_pop_dword()); }
+void CPUExecutor::POP_FS_32() { SET_FS(stack_pop_dword()); }
+void CPUExecutor::POP_GS_32() {	SET_GS(stack_pop_dword()); }
+void CPUExecutor::POP_mw()    { store_ew(stack_pop_word()); }
+void CPUExecutor::POP_md()    { store_ed(stack_pop_dword()); }
+void CPUExecutor::POP_rw_op() { store_rw_op(stack_pop_word()); }
+void CPUExecutor::POP_rd_op() { store_rd_op(stack_pop_dword()); }
 
 void CPUExecutor::POP_SS()
 {
-	uint16_t selector = stack_pop_word();
-	SET_SS(selector);
-
-	/*
-	A POP SS instruction will inhibit all interrupts, including NMI, until
-	after the execution of the next instruction. This permits a POP SP
-	instruction to be performed first. (cf. B-83)
-	*/
+	SET_SS(stack_pop_word());
+	/* A POP SS instruction will inhibit all interrupts, including NMI, until
+	 * after the execution of the next instruction. This permits a POP SP
+	 * instruction to be performed first. (cf. B-83)
+	 */
 	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
 }
 
 void CPUExecutor::POP_SS_32()
 {
-	uint16_t selector = uint16_t(stack_pop_dword());
-	SET_SS(selector);
+	SET_SS(stack_pop_dword());
 	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
 }
-
-void CPUExecutor::POP_FS()
-{
-	uint16_t selector = stack_pop_word();
-	SET_FS(selector);
-}
-
-void CPUExecutor::POP_FS_32()
-{
-	uint16_t selector = uint16_t(stack_pop_dword());
-	SET_FS(selector);
-}
-
-void CPUExecutor::POP_GS()
-{
-	uint16_t selector = stack_pop_word();
-	SET_GS(selector);
-}
-
-void CPUExecutor::POP_GS_32()
-{
-	uint16_t selector = uint16_t(stack_pop_dword());
-	SET_GS(selector);
-}
-
-void CPUExecutor::POP_mw()
-{
-	uint16_t val = stack_pop_word();
-	store_ew(val);
-}
-
-void CPUExecutor::POP_md()
-{
-	uint32_t val = stack_pop_dword();
-	store_ed(val);
-}
-
-void CPUExecutor::POP_rw()
-{
-	store_rw_op(stack_pop_word());
-}
-
-void CPUExecutor::POP_rd()
-{
-	store_rd_op(stack_pop_dword());
-}
-
 
 /*******************************************************************************
  * POPA/POPAD-Pop All General Registers
@@ -4864,104 +4802,25 @@ void CPUExecutor::POPFD()
  * PUSH-Push Operand onto the Stack
  */
 
-void CPUExecutor::PUSH_ES()
-{
-	stack_push_word(REG_ES.sel.value);
-}
-
-void CPUExecutor::PUSH_ES_32()
-{
-	stack_push_dword(REG_ES.sel.value);
-}
-
-void CPUExecutor::PUSH_CS()
-{
-	stack_push_word(REG_CS.sel.value);
-}
-
-void CPUExecutor::PUSH_CS_32()
-{
-	stack_push_dword(REG_CS.sel.value);
-}
-
-void CPUExecutor::PUSH_SS()
-{
-	stack_push_word(REG_SS.sel.value);
-}
-
-void CPUExecutor::PUSH_SS_32()
-{
-	stack_push_dword(REG_SS.sel.value);
-}
-
-void CPUExecutor::PUSH_DS()
-{
-	stack_push_word(REG_DS.sel.value);
-}
-
-void CPUExecutor::PUSH_DS_32()
-{
-	stack_push_dword(REG_DS.sel.value);
-}
-
-void CPUExecutor::PUSH_FS()
-{
-	stack_push_word(REG_FS.sel.value);
-}
-
-void CPUExecutor::PUSH_FS_32()
-{
-	stack_push_dword(REG_FS.sel.value);
-}
-
-void CPUExecutor::PUSH_GS()
-{
-	stack_push_word(REG_GS.sel.value);
-}
-
-void CPUExecutor::PUSH_GS_32()
-{
-	stack_push_dword(REG_GS.sel.value);
-}
-
-void CPUExecutor::PUSH_rw()
-{
-	/* The 80286 PUSH SP instruction pushes the value of SP as it existed before
-	 * the instruction. This differs from the 8086, which pushes the new
-	 * (decremented by 2) value.
-	 */
-	stack_push_word(GEN_REG(m_instr->reg).word[0]);
-}
-
-void CPUExecutor::PUSH_rd()
-{
-	stack_push_dword(GEN_REG(m_instr->reg).dword[0]);
-}
-
-void CPUExecutor::PUSH_mw()
-{
-	stack_push_word(load_ew());
-}
-
-void CPUExecutor::PUSH_md()
-{
-	stack_push_dword(load_ed());
-}
-
-void CPUExecutor::PUSH_db()
-{
-	stack_push_word(int8_t(m_instr->db));
-}
-
-void CPUExecutor::PUSH_dw()
-{
-	stack_push_word(m_instr->dw1);
-}
-
-void CPUExecutor::PUSH_dd()
-{
-	stack_push_word(m_instr->dd1);
-}
+void CPUExecutor::PUSH_ES()    { stack_push_word(REG_ES.sel.value); }
+void CPUExecutor::PUSH_CS()    { stack_push_word(REG_CS.sel.value); }
+void CPUExecutor::PUSH_SS()    { stack_push_word(REG_SS.sel.value); }
+void CPUExecutor::PUSH_DS()    { stack_push_word(REG_DS.sel.value); }
+void CPUExecutor::PUSH_FS()    { stack_push_word(REG_FS.sel.value); }
+void CPUExecutor::PUSH_GS()    { stack_push_word(REG_GS.sel.value); }
+void CPUExecutor::PUSH_ES_32() { stack_push_dword(REG_ES.sel.value); }
+void CPUExecutor::PUSH_CS_32() { stack_push_dword(REG_CS.sel.value); }
+void CPUExecutor::PUSH_SS_32() { stack_push_dword(REG_SS.sel.value); }
+void CPUExecutor::PUSH_DS_32() { stack_push_dword(REG_DS.sel.value); }
+void CPUExecutor::PUSH_FS_32() { stack_push_dword(REG_FS.sel.value); }
+void CPUExecutor::PUSH_GS_32() { stack_push_dword(REG_GS.sel.value); }
+void CPUExecutor::PUSH_rw_op() { stack_push_word(load_rw_op()); }
+void CPUExecutor::PUSH_rd_op() { stack_push_dword(load_rd_op()); }
+void CPUExecutor::PUSH_mw()    { stack_push_word(load_ew()); }
+void CPUExecutor::PUSH_md()    { stack_push_dword(load_ed()); }
+void CPUExecutor::PUSH_db()    { stack_push_word(int8_t(m_instr->db)); }
+void CPUExecutor::PUSH_dw()    { stack_push_word(m_instr->dw1); }
+void CPUExecutor::PUSH_dd()    { stack_push_word(m_instr->dd1); }
 
 
 /*******************************************************************************

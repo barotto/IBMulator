@@ -506,43 +506,45 @@ public:
 	void OUTSW();
 
 	void POP_DS();
-	void POP_DS_32();
 	void POP_ES();
-	void POP_ES_32();
 	void POP_SS();
-	void POP_SS_32();
 	void POP_FS();
-	void POP_FS_32();
 	void POP_GS();
+	void POP_DS_32();
+	void POP_ES_32();
+	void POP_SS_32();
+	void POP_FS_32();
 	void POP_GS_32();
 	void POP_mw();
 	void POP_md();
-	void POP_rw();
-	void POP_rd();
+	void POP_rw_op();
+	void POP_rd_op();
+
 	void POPA();
 	void POPAD();
 	void POPF();
 	void POPFD();
 
 	void PUSH_ES();
-	void PUSH_ES_32();
 	void PUSH_CS();
-	void PUSH_CS_32();
 	void PUSH_SS();
-	void PUSH_SS_32();
 	void PUSH_DS();
-	void PUSH_DS_32();
 	void PUSH_FS();
-	void PUSH_FS_32();
 	void PUSH_GS();
+	void PUSH_ES_32();
+	void PUSH_CS_32();
+	void PUSH_SS_32();
+	void PUSH_DS_32();
+	void PUSH_FS_32();
 	void PUSH_GS_32();
-	void PUSH_rw();
-	void PUSH_rd();
+	void PUSH_rw_op();
+	void PUSH_rd_op();
 	void PUSH_mw();
 	void PUSH_md();
 	void PUSH_db();
 	void PUSH_dw();
 	void PUSH_dd();
+
 	void PUSHA();
 	void PUSHAD();
 	void PUSHF();

@@ -541,7 +541,7 @@ case 0x56: //SI
 case 0x57: //DI
 {
 	m_instr.reg = _opcode - 0x50;
-	m_instr.fn = &CPUExecutor::PUSH_rw;
+	m_instr.fn = &CPUExecutor::PUSH_rw_op;
 	break;
 }
 
@@ -556,7 +556,7 @@ case 0x5E: //SI
 case 0x5F: //DI
 {
 	m_instr.reg = _opcode - 0x58;
-	m_instr.fn = &CPUExecutor::POP_rw;
+	m_instr.fn = &CPUExecutor::POP_rw_op;
 	break;
 }
 
