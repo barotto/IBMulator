@@ -101,9 +101,11 @@ private:
 	uint8_t load_rb();
 	uint16_t load_ew();
 	uint16_t load_rw();
+	uint16_t load_rw_op();
 	uint32_t load_ed();
 	void load_ed_mem(uint16_t &w1_, uint16_t &w2_);
 	uint32_t load_rd();
+	uint32_t load_rd_op();
 	void store_eb(uint8_t _value);
 	void store_rb(uint8_t _value);
 	void store_rb_op(uint8_t _value);
@@ -185,8 +187,14 @@ private:
 	void CMP_w(uint16_t op1, uint16_t op2);
 	void CMP_d(uint32_t op1, uint32_t op2);
 
+	uint16_t DEC_w(uint16_t _op1);
+	uint32_t DEC_d(uint32_t _op1);
+
 	int16_t IMUL_w(int16_t op1, int16_t op2);
 	int32_t IMUL_d(int32_t op1, int32_t op2);
+
+	uint16_t INC_w(uint16_t _op1);
+	uint32_t INC_d(uint32_t _op1);
 
 	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
@@ -350,7 +358,9 @@ public:
 
 	void DEC_eb();
 	void DEC_ew();
-	void DEC_rw();
+	void DEC_ed();
+	void DEC_rw_op();
+	void DEC_rd_op();
 
 	void ENTER();
 
@@ -379,7 +389,9 @@ public:
 
 	void INC_eb();
 	void INC_ew();
-	void INC_rw();
+	void INC_ed();
+	void INC_rw_op();
+	void INC_rd_op();
 
 	void INSB();
 	void INSW();

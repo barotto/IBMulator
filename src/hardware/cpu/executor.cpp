@@ -214,6 +214,11 @@ uint16_t CPUExecutor::load_rw()
 	return GEN_REG(m_instr->modrm.r).word[0];
 }
 
+uint16_t CPUExecutor::load_rw_op()
+{
+	return GEN_REG(m_instr->reg).word[0];
+}
+
 uint32_t CPUExecutor::load_ed()
 {
 	if(m_instr->modrm.mod == 3) {
@@ -234,6 +239,11 @@ void CPUExecutor::load_ed_mem(uint16_t &w1_, uint16_t &w2_)
 uint32_t CPUExecutor::load_rd()
 {
 	return GEN_REG(m_instr->modrm.r).dword[0];
+}
+
+uint32_t CPUExecutor::load_rd_op()
+{
+	return GEN_REG(m_instr->reg).dword[0];
 }
 
 void CPUExecutor::store_eb(uint8_t _value)
@@ -2737,31 +2747,36 @@ void CPUExecutor::DEC_eb()
 	SET_FLAG(PF, PARITY(res));
 }
 
-void CPUExecutor::DEC_ew()
+uint16_t CPUExecutor::DEC_w(uint16_t _op1)
 {
-	uint16_t op1 = load_ew();
-	uint16_t res = op1 - 1;
-	store_ew(res);
+	uint16_t res = _op1 - 1;
 
 	SET_FLAG(OF, res == 0x7fff);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(AF, (res & 0x0f) == 0x0f);
 	SET_FLAG(PF, PARITY(res));
+
+	return res;
 }
 
-void CPUExecutor::DEC_rw()
+uint32_t CPUExecutor::DEC_d(uint32_t _op1)
 {
-	uint16_t op1 = GEN_REG(m_instr->reg).word[0];
-	uint16_t res = op1 - 1;
-	GEN_REG(m_instr->reg).word[0] = res;
+	uint32_t res = _op1 - 1;
 
-	SET_FLAG(OF, res == 0x7fff);
-	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(OF, res == 0x7fffffff);
+	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(AF, (res & 0x0f) == 0x0f);
 	SET_FLAG(PF, PARITY(res));
+
+	return res;
 }
+
+void CPUExecutor::DEC_ew() { store_ew(DEC_w(load_ew())); }
+void CPUExecutor::DEC_ed() { store_ed(DEC_d(load_ed())); }
+void CPUExecutor::DEC_rw_op() { store_rw_op(DEC_w(load_rw_op())); }
+void CPUExecutor::DEC_rd_op() { store_rd_op(DEC_d(load_rd_op())); }
 
 
 /*******************************************************************************
@@ -3221,31 +3236,36 @@ void CPUExecutor::INC_eb()
 	SET_FLAG(PF, PARITY(res));
 }
 
-void CPUExecutor::INC_ew()
+uint16_t CPUExecutor::INC_w(uint16_t _op1)
 {
-	uint16_t op1 = load_ew();
-	uint16_t res = op1 + 1;
-	store_ew(res);
+	uint16_t res = _op1 + 1;
 
 	SET_FLAG(OF, res == 0x8000);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(AF, (res & 0x0f) == 0);
 	SET_FLAG(PF, PARITY(res));
+
+	return res;
 }
 
-void CPUExecutor::INC_rw()
+uint32_t CPUExecutor::INC_d(uint32_t _op1)
 {
-	uint16_t op1 = GEN_REG(m_instr->reg).word[0];
-	uint16_t res = op1 + 1;
-	GEN_REG(m_instr->reg).word[0] = res;
+	uint32_t res = _op1 + 1;
 
-	SET_FLAG(OF, res == 0x8000);
-	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(OF, res == 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(AF, (res & 0x0f) == 0);
 	SET_FLAG(PF, PARITY(res));
+
+	return res;
 }
+
+void CPUExecutor::INC_ew() { store_ew(INC_w(load_ew())); }
+void CPUExecutor::INC_ed() { store_ed(INC_d(load_ed())); }
+void CPUExecutor::INC_rw_op() { store_rw_op(INC_w(load_rw_op())); }
+void CPUExecutor::INC_rd_op() { store_rd_op(INC_d(load_rd_op())); }
 
 
 /*******************************************************************************
