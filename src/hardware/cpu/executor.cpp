@@ -3006,6 +3006,23 @@ void CPUExecutor::IDIV_ed()
  * IMUL-Signed Multiply
  */
 
+inline static int mul_cycles_386(int _m)
+{
+	/* The 80386 uses an early-out multiply algorithm. The actual number of
+	clocks depends on the position of the most significant bit in the
+	optimizing multiplier. The optimization occurs for positive and negative
+	values. To calculate the actual clocks, use	the following formula:
+	Clock = if m <> 0 then max(ceiling(log₂│m│), 3) + 6 clocks
+	Clock = if m = 0 then 9 clocks
+	(where m is the multiplier)
+	*/
+	if(_m != 0) {
+		return std::max(int(std::ceil(std::log2(std::abs(_m)))), 3);
+	} else {
+		return 3;
+	}
+}
+
 void CPUExecutor::IMUL_eb()
 {
 	int8_t op1 = int8_t(REG_AL);
@@ -3019,12 +3036,16 @@ void CPUExecutor::IMUL_eb()
 	/* IMUL r/m8: condition for clearing CF & OF:
 	 *   AX = sign-extend of AL to 16 bits
 	 */
-	if((product_16 & 0xff80)==0xff80 || (product_16 & 0xff80)==0x0000) {
+	if((product_16 & 0xff80)==0xff80 || (product_16 & 0xff80)==0) {
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	} else {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2);
 	}
 }
 
@@ -3044,28 +3065,54 @@ void CPUExecutor::IMUL_ew()
 	/* IMUL r/m16: condition for clearing CF & OF:
 	 *   DX:AX = sign-extend of AX
 	 */
-	if(((product_32 & 0xffff8000)==0xffff8000 || (product_32 & 0xffff8000)==0x0000)) {
+	if(((product_32 & 0xffff8000)==0xffff8000 || (product_32 & 0xffff8000)==0)) {
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	} else {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
 	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2_16);
+	}
 }
 
-void CPUExecutor::IMUL_rw_ew_dw()
+void CPUExecutor::IMUL_ed()
 {
-	int16_t op2_16 = int16_t(load_ew());
-	int16_t op3_16 = int16_t(m_instr->dw1);
+	int32_t op1_32 = int32_t(REG_EAX);
+	int32_t op2_32 = int32_t(load_ed());
 
-	int32_t product_32  = op2_16 * op3_16;
-	uint16_t product_16 = (product_32 & 0xFFFF);
+	int64_t product_64 = int64_t(op1_32) * int64_t(op2_32);
+	uint32_t product_32l = (product_64 & 0xFFFFFFFF);
+	uint32_t product_32h = product_64 >> 32;
 
 	/* now write product back to destination */
-	store_rw(product_16);
+	REG_EAX = product_32l;
+	REG_EDX = product_32h;
 
-	/* IMUL r16,r/m16,imm16: condition for clearing CF & OF:
-	 * Carry and overflow are set to 0 if the result fits in a signed word
+	/* IMUL r/m32: condition for clearing CF & OF:
+	 *   EDX:EAX = sign-extend of EAX
+	 */
+	uint64_t sign = product_64 & 0xFFFFFFFF80000000LL;
+	if((sign==0xFFFFFFFF80000000LL || sign==0)) {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
+	} else {
+		SET_FLAG(CF, true);
+		SET_FLAG(OF, true);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2_32);
+	}
+}
+
+int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
+{
+	int32_t product_32  = _op1 * _op2;
+
+	/* Carry and overflow are set to 0 if the result fits in a signed word
 	 * (between -32768 and +32767, inclusive); they are set to 1 otherwise.
 	 */
 	if((product_32 >= -32768) && (product_32 <= 32767)) {
@@ -3075,8 +3122,42 @@ void CPUExecutor::IMUL_rw_ew_dw()
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
 	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(_op2);
+	}
+
+	return (product_32 & 0xFFFF);
 }
 
+int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
+{
+	int64_t product_64  = _op1 * _op2;
+
+	/* Carry and overflow are set to 0 if the result fits in a signed dword
+	 * (between -2147483648 and +2147483647, inclusive); they are set to 1 otherwise.
+	 */
+	if((product_64 >= -2147483648LL) && (product_64 <= 2147483647LL)) {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
+	} else {
+		SET_FLAG(CF, true);
+		SET_FLAG(OF, true);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(_op2);
+	}
+
+	return (product_64 & 0xFFFFFFFF);
+}
+
+void CPUExecutor::IMUL_rw_ew()    { store_rw(IMUL_w(load_rw(), load_ew())); }
+void CPUExecutor::IMUL_rd_ed()    { store_rd(IMUL_d(load_rd(), load_ed())); }
+void CPUExecutor::IMUL_rw_ew_db() {	store_rw(IMUL_w(load_ew(), int8_t(m_instr->db))); }
+void CPUExecutor::IMUL_rd_ed_db() {	store_rd(IMUL_d(load_ed(), int8_t(m_instr->db))); }
+void CPUExecutor::IMUL_rw_ew_dw() {	store_rw(IMUL_w(load_ew(), m_instr->dw1)); }
+void CPUExecutor::IMUL_rd_ed_dd() {	store_rd(IMUL_d(load_ed(), m_instr->dd1)); }
 
 
 /*******************************************************************************

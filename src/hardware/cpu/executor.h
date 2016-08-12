@@ -185,6 +185,9 @@ private:
 	void CMP_w(uint16_t op1, uint16_t op2);
 	void CMP_d(uint32_t op1, uint32_t op2);
 
+	int16_t IMUL_w(int16_t op1, int16_t op2);
+	int32_t IMUL_d(int32_t op1, int32_t op2);
+
 	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
 
@@ -358,9 +361,16 @@ public:
 	void IDIV_eb();
 	void IDIV_ew();
 	void IDIV_ed();
+
 	void IMUL_eb();
 	void IMUL_ew();
+	void IMUL_ed();
+	void IMUL_rw_ew();
+	void IMUL_rd_ed();
+	void IMUL_rw_ew_db();
+	void IMUL_rd_ed_db();
 	void IMUL_rw_ew_dw();
+	void IMUL_rd_ed_dd();
 
 	void IN_AL_db();
 	void IN_AL_DX();

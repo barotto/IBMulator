@@ -169,9 +169,9 @@ static const Cycles cycles_none[256*2] = {
 /* 66 op-size ovr                           */ cNull,             cNull,
 /* 67 addr-size ovr                         */ cNull,             cNull,
 /* 68 PUSH dw        3           2          */ cBase(3),          cBase(2),
-/* 69 IMUL rw,ew,dw  21/24       9-22/12-25 */ cBaseMem(21,22),   cBaseMem(9,10),
+/* 69 IMUL rw,ew,dw  21/24       9-22/12-25 */ cBaseMem(21,22),   cBaseMem(6,7),
 /* 6A PUSH db        3           2          */ cBase(3),          cBase(2),
-/* 6B IMUL rw,ew,db  21/24       9-14/12-17 */ cBaseMem(21,22),   cBaseMem(9,10),
+/* 6B IMUL rw,ew,db  21/24       9-14/12-17 */ cBaseMem(21,22),   cBaseMem(6,7),
 /* 6C INSB           5           15,p9-29   */ cBaseRep(5,4,5),   cBaseRep(15,6,13), //TODO? 386 PM
 /* 6D INSW           5           15,p9-29   */ cBaseRep(5,4,5),   cBaseRep(15,6,13), //TODO? 386 PM
 /* 6E OUTSB          5           14,p8-28   */ cBaseRep(3,4,5),   cBaseRep(12,12,5), //TODO? 386 PM
@@ -407,7 +407,7 @@ static const Cycles cycles_0F[256*2] = {
 /* AC SHRD r/m16,r16,imm8  -      3/7    */ cNull,     cBaseMem(3,5),
 /* AD SHRD r/m16,r16,CL    -      3/7    */ cNull,     cBaseMem(3,5),
 /* AE illegal op.                        */ cNull,     cNull,
-/* AF IMUL r16,r/m16       -      9/12   */ cNull,     cBaseMem(9,10),
+/* AF IMUL r16,r/m16       -      9/12   */ cNull,     cBaseMem(6,7),
 /* B0-B7                                 */ cNullBlock7,
 /* B8 illegal op.                        */ cNull,     cNull,
 /* B9 illegal op.                        */ cNull,     cNull,
@@ -525,8 +525,8 @@ static const Cycles cycles_F6[8*2] = {
 /* F6 /1 TEST eb,db  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
 /* F6 /2 NOT eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,4),
 /* F6 /3 NEG eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,4),
-/* F6 /4 MUL eb      13/16  9/12   */ cBaseMem(13,14), cBaseMem(9,10),
-/* F6 /5 IMUL eb     13/16  9/12   */ cBaseMem(13,14), cBaseMem(9,10),
+/* F6 /4 MUL eb      13/16  9/12   */ cBaseMem(13,14), cBaseMem(6,7),
+/* F6 /5 IMUL eb     13/16  9/12   */ cBaseMem(13,14), cBaseMem(6,7),
 /* F6 /6 DIV eb      14/17  14/17  */ cBaseMem(14,15), cBaseMem(14,15),
 /* F6 /7 IDIV eb     17/20  19/??  */ cBaseMem(17,18), cBaseMem(19,20)
 };
@@ -535,8 +535,8 @@ static const Cycles cycles_F7[8 *2] = {
 /* F7 /1 TEST ew,dw  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
 /* F7 /2 NOT ew      2/7    2/6    */ cBaseMem(2,8),   cBaseMem(2,4),
 /* F7 /3 NEG ew      2/7    2/6    */ cBaseMem(2,8),   cBaseMem(2,4),
-/* F7 /4 MUL ew      21/24  9/12   */ cBaseMem(21,22), cBaseMem(9,10),
-/* F7 /5 IMUL ew     21/24  9/12   */ cBaseMem(21,22), cBaseMem(9,10),
+/* F7 /4 MUL ew      21/24  9/12   */ cBaseMem(21,22), cBaseMem(6,7),
+/* F7 /5 IMUL ew     21/24  9/12   */ cBaseMem(21,22), cBaseMem(6,7),
 /* F7 /6 DIV ew      22/25  22/25  */ cBaseMem(22,23), cBaseMem(22,23),
 /* F7 /7 IDIV ew     25/28  27/??  */ cBaseMem(25,26), cBaseMem(27,28)
 };

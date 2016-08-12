@@ -630,8 +630,8 @@ case 0x6A:
 case 0x6B:
 {
 	m_instr.modrm.load();
-	m_instr.dw1 = int8_t(fetchb());
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew_dw;
+	m_instr.db = fetchb();
+	m_instr.fn = &CPUExecutor::IMUL_rw_ew_db;
 	break;
 }
 
