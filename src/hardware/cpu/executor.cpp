@@ -4433,7 +4433,7 @@ void CPUExecutor::MOVSW()
 
 
 /*******************************************************************************
- * MUL-Unsigned Multiplication of AL or AX
+ * MUL-Unsigned Multiplication of AL / AX / EAX
  */
 
 void CPUExecutor::MUL_eb()
@@ -4454,6 +4454,10 @@ void CPUExecutor::MUL_eb()
 	} else {
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2_8);
 	}
 }
 
@@ -4477,6 +4481,37 @@ void CPUExecutor::MUL_ew()
 	} else {
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2_16);
+	}
+}
+
+void CPUExecutor::MUL_ed()
+{
+	uint32_t op1_32 = REG_EAX;
+	uint32_t op2_32 = load_ed();
+
+	uint64_t product_64  = uint64_t(op1_32) * uint64_t(op2_32);
+
+	uint32_t product_32l = product_64 & 0xFFFFFFFF;
+	uint32_t product_32h = product_64 >> 32;
+
+	/* now write product back to destination */
+	REG_EAX = product_32l;
+	REG_EDX = product_32h;
+
+	if(product_32h) {
+		SET_FLAG(CF, true);
+		SET_FLAG(OF, true);
+	} else {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
+	}
+
+	if(CPU_TYPE == CPU_386) {
+		m_instr->cycles.extra = mul_cycles_386(op2_32);
 	}
 }
 

@@ -460,6 +460,7 @@ public:
 
 	void MUL_eb();
 	void MUL_ew();
+	void MUL_ed();
 
 	void NEG_eb();
 	void NEG_ew();
