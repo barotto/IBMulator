@@ -104,6 +104,7 @@ private:
 	uint16_t load_rw_op();
 	uint32_t load_ed();
 	void load_ed_mem(uint16_t &w1_, uint16_t &w2_);
+	void load_eq_mem(uint32_t &dw1_, uint32_t &dw2_);
 	uint32_t load_rd();
 	uint32_t load_rd_op();
 	void store_eb(uint8_t _value);
@@ -310,6 +311,7 @@ public:
 	void ARPL_ew_rw();
 
 	void BOUND_rw_md();
+	void BOUND_rd_mq();
 
 	void CALL_cw();
 	void CALL_ew();
@@ -317,6 +319,9 @@ public:
 	void CALL_ed();
 
 	void CBW();
+	void CWD();
+	void CWDE();
+	void CDQ();
 
 	void CLC();
 	void CLD();
@@ -324,8 +329,6 @@ public:
 	void CLTS();
 
 	void CMC();
-
-	void CWD();
 
 	void CMP_eb_rb();
 	void CMP_ew_rw();

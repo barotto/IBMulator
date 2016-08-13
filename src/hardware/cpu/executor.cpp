@@ -230,10 +230,19 @@ uint32_t CPUExecutor::load_ed()
 void CPUExecutor::load_ed_mem(uint16_t &w1_, uint16_t &w2_)
 {
 	SegReg & sr = (this->*EA_get_segreg)();
-	uint16_t off = (this->*EA_get_offset)();
+	uint32_t off = (this->*EA_get_offset)();
 
 	w1_ = read_word(sr, off);
 	w2_ = read_word(sr, off+2);
+}
+
+void CPUExecutor::load_eq_mem(uint32_t &dw1_, uint32_t &dw2_)
+{
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint32_t off = (this->*EA_get_offset)();
+
+	dw1_ = read_dword(sr, off);
+	dw2_ = read_dword(sr, off+4);
 }
 
 uint32_t CPUExecutor::load_rd()
@@ -2401,6 +2410,18 @@ void CPUExecutor::BOUND_rw_md()
 	}
 }
 
+void CPUExecutor::BOUND_rd_mq()
+{
+	int32_t op1 = int32_t(load_rd());
+	uint32_t bound_min, bound_max;
+	load_eq_mem(bound_min, bound_max);
+
+	if(op1 < int16_t(bound_min) || op1 > int16_t(bound_max)) {
+		PDEBUGF(LOG_V2,LOG_CPU, "BOUND: fails bounds test\n");
+		throw CPUException(CPU_BOUND_EXC, 0);
+	}
+}
+
 
 /*******************************************************************************
  * CALL-Call Procedure
@@ -2461,13 +2482,36 @@ void CPUExecutor::CALL_ed()
 
 
 /*******************************************************************************
- * CBW-Convert Byte into Word
+ * CBW/CWD/CWDE/CDQ-Convert Byte/Word/DWord to Word/DWord/QWord
  */
 
 void CPUExecutor::CBW()
 {
 	/* CBW: no flags are effected */
 	REG_AX = int8_t(REG_AL);
+}
+
+void CPUExecutor::CWD()
+{
+	if(REG_AX & 0x8000) {
+		REG_DX = 0xFFFF;
+	} else {
+		REG_DX = 0;
+	}
+}
+
+void CPUExecutor::CWDE()
+{
+	REG_EAX = int16_t(REG_AX);
+}
+
+void CPUExecutor::CDQ()
+{
+	if(REG_EAX & 0x80000000) {
+		REG_EDX = 0xFFFFFFFF;
+	} else {
+		REG_EDX = 0;
+	}
 }
 
 
@@ -2514,20 +2558,6 @@ void CPUExecutor::CLTS()
 void CPUExecutor::CMC()
 {
 	SET_FLAG(CF, !FLAG_CF);
-}
-
-
-/*******************************************************************************
- * CWD-Convert Word to Doubleword
- */
-
-void CPUExecutor::CWD()
-{
-	if(REG_AX & 0x8000) {
-		REG_DX = 0xFFFF;
-	} else {
-		REG_DX = 0;
-	}
 }
 
 
