@@ -83,3 +83,15 @@ noinst_HEADERS = \
 	devices/gameport.h \
 	devices/opl.h \
 	devices/adlib.h
+
+noinst_EXTRA = \
+	cpu/executor/access.cpp \
+	cpu/executor/calls.cpp \
+	cpu/executor/flags.cpp \
+	cpu/executor/interrupts.cpp \
+	cpu/executor/memory.cpp \
+	cpu/executor/modrm.cpp \
+	cpu/executor/paging.cpp \
+	cpu/executor/stack.cpp \
+	cpu/executor/tasks.cpp \
+	cpu/executor/opcodes.cpp
