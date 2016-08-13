@@ -107,6 +107,7 @@ private:
 	void load_eq_mem(uint32_t &dw1_, uint32_t &dw2_);
 	uint32_t load_rd();
 	uint32_t load_rd_op();
+	uint16_t load_sr();
 	void store_eb(uint8_t _value);
 	void store_rb(uint8_t _value);
 	void store_rb_op(uint8_t _value);
@@ -116,6 +117,7 @@ private:
 	void store_ed(uint32_t _value);
 	void store_rd(uint32_t _value);
 	void store_rd_op(uint32_t _value);
+	void store_sr(uint16_t _value);
 	SegReg & EA_get_segreg_16();
 	uint32_t EA_get_offset_16();
 	SegReg & EA_get_segreg_32();
@@ -449,23 +451,25 @@ public:
 
 	void MOV_eb_rb();
 	void MOV_ew_rw();
+	void MOV_ed_rd();
 	void MOV_rb_eb();
 	void MOV_rw_ew();
-	void MOV_ew_ES();
-	void MOV_ew_CS();
-	void MOV_ew_SS();
-	void MOV_ew_DS();
-	void MOV_ES_ew();
-	void MOV_SS_ew();
-	void MOV_DS_ew();
+	void MOV_rd_ed();
+	void MOV_ew_SR();
+	void MOV_SR_ew();
 	void MOV_AL_xb();
 	void MOV_AX_xw();
+	void MOV_EAX_xd();
 	void MOV_xb_AL();
 	void MOV_xw_AX();
+	void MOV_xd_EAX();
 	void MOV_rb_db();
 	void MOV_rw_dw();
+	void MOV_rd_dd();
 	void MOV_eb_db();
 	void MOV_ew_dw();
+	void MOV_ed_dd();
+
 	void MOVSB();
 	void MOVSW();
 

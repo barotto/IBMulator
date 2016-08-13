@@ -2004,107 +2004,26 @@ void CPUExecutor::LTR_ew()
  * MOV-Move Data
  */
 
-void CPUExecutor::MOV_eb_rb()
-{
-	store_eb(load_rb());
-}
-
-void CPUExecutor::MOV_ew_rw()
-{
-	store_ew(load_rw());
-}
-
-void CPUExecutor::MOV_rb_eb()
-{
-	store_rb(load_eb());
-}
-
-void CPUExecutor::MOV_rw_ew()
-{
-	store_rw(load_ew());
-}
-
-void CPUExecutor::MOV_rb_db()
-{
-	store_rb_op(m_instr->db);
-}
-
-void CPUExecutor::MOV_rw_dw()
-{
-	store_rw_op(m_instr->dw1);
-}
-
-void CPUExecutor::MOV_ew_ES()
-{
-	store_ew(REG_ES.sel.value);
-}
-
-void CPUExecutor::MOV_ew_CS()
-{
-	store_ew(REG_CS.sel.value);
-}
-
-void CPUExecutor::MOV_ew_SS()
-{
-	store_ew(REG_SS.sel.value);
-}
-
-void CPUExecutor::MOV_ew_DS()
-{
-	store_ew(REG_DS.sel.value);
-}
-
-void CPUExecutor::MOV_ES_ew()
-{
-	uint16_t value = load_ew();
-	SET_ES(value);
-}
-
-void CPUExecutor::MOV_SS_ew()
-{
-	uint16_t value = load_ew();
-	SET_SS(value);
-    /* Any move into SS will inhibit all interrupts until after the execution
-     * of the next instruction.
-     */
-	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
-}
-
-void CPUExecutor::MOV_DS_ew()
-{
-	uint16_t value = load_ew();
-	SET_DS(value);
-}
-
-void CPUExecutor::MOV_AL_xb()
-{
-	REG_AL = read_byte(SEG_REG(m_base_ds), m_instr->dw1);
-}
-
-void CPUExecutor::MOV_AX_xw()
-{
-	REG_AX = read_word(SEG_REG(m_base_ds), m_instr->dw1);
-}
-
-void CPUExecutor::MOV_xb_AL()
-{
-	write_byte(SEG_REG(m_base_ds), m_instr->dw1, REG_AL);
-}
-
-void CPUExecutor::MOV_xw_AX()
-{
-	write_word(SEG_REG(m_base_ds), m_instr->dw1, REG_AX);
-}
-
-void CPUExecutor::MOV_eb_db()
-{
-	store_eb(m_instr->db);
-}
-
-void CPUExecutor::MOV_ew_dw()
-{
-	store_ew(m_instr->dw1);
-}
+void CPUExecutor::MOV_eb_rb() { store_eb(load_rb()); }
+void CPUExecutor::MOV_ew_rw() { store_ew(load_rw()); }
+void CPUExecutor::MOV_ed_rd() { store_ed(load_rd()); }
+void CPUExecutor::MOV_rb_eb() { store_rb(load_eb()); }
+void CPUExecutor::MOV_rw_ew() { store_rw(load_ew()); }
+void CPUExecutor::MOV_rd_ed() { store_rd(load_ed()); }
+void CPUExecutor::MOV_ew_SR() { store_ew(load_sr()); }
+void CPUExecutor::MOV_SR_ew() {	store_sr(load_ew()); }
+void CPUExecutor::MOV_AL_xb() { REG_AL = read_byte(SEG_REG(m_base_ds), m_instr->offset); }
+void CPUExecutor::MOV_AX_xw() { REG_AX = read_word(SEG_REG(m_base_ds), m_instr->offset); }
+void CPUExecutor::MOV_EAX_xd(){ REG_EAX = read_dword(SEG_REG(m_base_ds), m_instr->offset); }
+void CPUExecutor::MOV_xb_AL() { write_byte(SEG_REG(m_base_ds), m_instr->offset, REG_AL); }
+void CPUExecutor::MOV_xw_AX() { write_word(SEG_REG(m_base_ds), m_instr->offset, REG_AX); }
+void CPUExecutor::MOV_xd_EAX(){ write_dword(SEG_REG(m_base_ds), m_instr->offset, REG_EAX); }
+void CPUExecutor::MOV_rb_db() { store_rb_op(m_instr->db); }
+void CPUExecutor::MOV_rw_dw() { store_rw_op(m_instr->dw1); }
+void CPUExecutor::MOV_rd_dd() { store_rd_op(m_instr->dd1); }
+void CPUExecutor::MOV_eb_db() { store_eb(m_instr->db); }
+void CPUExecutor::MOV_ew_dw() { store_ew(m_instr->dw1); }
+void CPUExecutor::MOV_ed_dd() { store_ed(m_instr->dd1); }
 
 
 /*******************************************************************************

@@ -1006,30 +1006,14 @@ case 0x8B:
 	break;
 }
 
-/*
-8C /0      MOV ew,ES      Move ES into EA word
-8C /1      MOV ew,CS      Move CS into EA word
-8C /2      MOV ew,SS      Move SS into EA word
-8C /3      MOV ew,DS      Move DS into EA word
-*/
+/* 8C /r      MOV ew,SR      Move Segment Register into EA word */
 case 0x8C:
 {
 	m_instr.modrm.load();
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::MOV_ew_ES;
-			break;
-		case 1:
-			m_instr.fn = &CPUExecutor::MOV_ew_CS;
-			break;
-		case 2:
-			m_instr.fn = &CPUExecutor::MOV_ew_SS;
-			break;
-		case 3:
-			m_instr.fn = &CPUExecutor::MOV_ew_DS;
-			break;
-		default:
-			illegal_opcode();
+	if(m_instr.modrm.r > 5) {
+		illegal_opcode();
+	} else {
+		m_instr.fn = &CPUExecutor::MOV_ew_SR;
 	}
 	break;
 }
@@ -1042,29 +1026,14 @@ case 0x8D:
 	break;
 }
 
-/*
-8E /0      MOV ES,mw    Move memory word into ES
-8E /0      MOV ES,rw    Move word register into ES
-8E /2      MOV SS,mw    Move memory word into SS
-8E /2      MOV SS,rw    Move word register into SS
-8E /3      MOV DS,mw    Move memory word into DS
-8E /3      MOV DS,rw    Move word register into DS
-*/
+/* 8E /r      MOV SR,mw    Move memory word into Segment Register */
 case 0x8E:
 {
 	m_instr.modrm.load();
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::MOV_ES_ew;
-			break;
-		case 2:
-			m_instr.fn = &CPUExecutor::MOV_SS_ew;
-			break;
-		case 3:
-			m_instr.fn = &CPUExecutor::MOV_DS_ew;
-			break;
-		default:
-			illegal_opcode();
+	if(m_instr.modrm.r > 5 || m_instr.modrm.r == 1) {
+		illegal_opcode();
+	} else {
+		m_instr.fn = &CPUExecutor::MOV_SR_ew;
 	}
 	break;
 }
@@ -1167,7 +1136,7 @@ case 0x9F:
 /* A0 dw      MOV AL,xb    Move byte variable (offset dw) into AL */
 case 0xA0:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.offset = fetchw();
 	m_instr.fn = &CPUExecutor::MOV_AL_xb;
 	break;
 }
@@ -1175,7 +1144,7 @@ case 0xA0:
 /* A1 dw      MOV AX,xw      Move word variable (offset dw) into AX */
 case 0xA1:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.offset = fetchw();
 	m_instr.fn = &CPUExecutor::MOV_AX_xw;
 	break;
 }
@@ -1183,7 +1152,7 @@ case 0xA1:
 /* A2 dw      MOV xb,AL       Move AL into byte variable (offset dw) */
 case 0xA2:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.offset = fetchw();
 	m_instr.fn = &CPUExecutor::MOV_xb_AL;
 	break;
 }
@@ -1191,7 +1160,7 @@ case 0xA2:
 /* A3 dw      MOV xw,AX       Move AX into word register (offset dw) */
 case 0xA3:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.offset = fetchw();
 	m_instr.fn = &CPUExecutor::MOV_xw_AX;
 	break;
 }
@@ -1845,7 +1814,7 @@ case 0xE8:
 	break;
 }
 
-/* E9 cw   JMP cw   ump near */
+/* E9 cw   JMP cw   Jump near */
 case 0xE9:
 {
 	m_instr.dw1 = fetchw();

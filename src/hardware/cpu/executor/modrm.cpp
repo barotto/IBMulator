@@ -195,6 +195,11 @@ uint32_t CPUExecutor::load_rd_op()
 	return GEN_REG(m_instr->reg).dword[0];
 }
 
+uint16_t CPUExecutor::load_sr()
+{
+	return SEG_REG(m_instr->modrm.r).sel.value;
+}
+
 void CPUExecutor::store_eb(uint8_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
@@ -262,4 +267,16 @@ void CPUExecutor::store_rd(uint32_t _value)
 void CPUExecutor::store_rd_op(uint32_t _value)
 {
 	GEN_REG(m_instr->reg).dword[0] = _value;
+}
+
+void CPUExecutor::store_sr(uint16_t _value)
+{
+	SET_SR(m_instr->modrm.r, _value);
+
+	if(m_instr->modrm.r == REGI_SS) {
+		/* Any move into SS will inhibit all interrupts until after the execution
+		 * of the next instruction.
+		 */
+		g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
+	}
 }

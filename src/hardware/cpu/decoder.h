@@ -115,6 +115,7 @@ struct Instruction
 	uint8_t db;       //!< byte function arg
 	uint16_t dw1,dw2; //!< word function args
 	uint32_t dd1,dd2; //!< dword function args
+	uint32_t offset;  //!< memory offset
 	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
 	uint8_t seg;    //!< index of the segment override
 	bool op32;      //!< operand-size is 32 bit

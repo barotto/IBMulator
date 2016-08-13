@@ -241,6 +241,7 @@ enum SegRegIndex {
 #define SET_GS g_cpucore.set_GS
 #define SET_IDTR(base,limit) g_cpucore.set_IDTR(base,limit)
 #define SET_GDTR(base,limit) g_cpucore.set_GDTR(base,limit)
+#define SET_SR g_cpucore.set_SR
 
 #define REG_ES g_cpucore.seg_reg(REGI_ES)
 #define REG_DS g_cpucore.seg_reg(REGI_DS)
@@ -345,6 +346,14 @@ public:
 	inline void set_ES(uint16_t _val) { load_segment_register(m_segregs[REGI_ES], _val); }
 	inline void set_FS(uint16_t _val) { load_segment_register(m_segregs[REGI_FS], _val); }
 	inline void set_GS(uint16_t _val) { load_segment_register(m_segregs[REGI_GS], _val); }
+	inline void set_SR(uint8_t _idx, uint16_t _val) {
+		assert(_idx <= REGI_GS);
+		if(_idx == REGI_CS) {
+			set_CS(_val);
+		} else {
+			load_segment_register(m_segregs[_idx], _val);
+		}
+	}
 	inline void set_IDTR(uint32_t _base, uint32_t _limit) {
 		m_segregs[REGI_IDTR].desc.base = _base;
 		m_segregs[REGI_IDTR].desc.limit = _limit;
