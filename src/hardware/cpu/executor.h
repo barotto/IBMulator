@@ -156,19 +156,21 @@ private:
 	uint16_t stack_read_word(uint32_t _offset);
 	uint32_t stack_read_dword(uint32_t _offset);
 
-	void get_SS_SP_from_TSS(unsigned pl, uint16_t &ss, uint16_t &sp);
+	void branch_near(uint16_t newIP);
+	void branch_far(Selector &selector, Descriptor &descriptor, uint16_t ip, uint8_t cpl);
+	void branch_far(uint16_t cs, uint16_t ip);
+	void branch_far_pmode(uint16_t cs, uint16_t disp);
+	void call_pmode(uint16_t cs_raw, uint16_t disp);
+	void call_gate(Descriptor &gate_descriptor);
+	void return_pmode(uint16_t pop_bytes);
+	void jump_call_gate(Selector &selector, Descriptor &gate_descriptor);
+	void iret_pmode();
 
+	void get_SS_SP_from_TSS(unsigned pl, uint16_t &ss, uint16_t &sp);
 	void switch_tasks_load_selector(SegReg &_segreg, uint8_t _cs_rpl);
 	void switch_tasks(Selector &selector, Descriptor &descriptor, unsigned source,
 	                  bool push_error=false, uint16_t error_code=0);
 	void task_gate(Selector &selector, Descriptor &gate_descriptor, unsigned source);
-	void call_gate(Descriptor &gate_descriptor);
-
-	void branch_far(Selector &selector, Descriptor &descriptor, uint16_t ip, uint8_t cpl);
-	void branch_far(uint16_t cs, uint16_t ip);
-	void branch_near(uint16_t newIP);
-	void call_protected(uint16_t cs_raw, uint16_t disp);
-	void return_protected(uint16_t pop_bytes);
 
 	uint8_t ADC_b(uint8_t op1, uint8_t op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
@@ -199,12 +201,6 @@ private:
 
 	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
-
-	void IRET_pmode();
-
-	void JMP_far(uint16_t _sel, uint16_t _disp);
-	void JMP_pmode(uint16_t cs, uint16_t disp);
-	void JMP_call_gate(Selector &selector, Descriptor &gate_descriptor);
 
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
