@@ -61,19 +61,19 @@ case 0x03:
 	break;
 }
 
-/* 04 db      ADD AL,db   Add immediate byte into AL */
+/* 04 ib      ADD AL,ib   Add immediate byte into AL */
 case 0x04:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::ADD_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::ADD_AL_ib;
 	break;
 }
 
-/* 05 dw      ADD AX,dw   Add immediate word into AX */
+/* 05 iw      ADD AX,iw   Add immediate word into AX */
 case 0x05:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::ADD_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::ADD_AX_iw;
 	break;
 }
 
@@ -123,19 +123,19 @@ case 0x0B:
 	break;
 }
 
-/* 0C db      OR AL,db       Logical-OR immediate byte into AL */
+/* 0C ib      OR AL,ib       Logical-OR immediate byte into AL */
 case 0x0C:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::OR_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::OR_AL_ib;
 	break;
 }
 
-/* 0D dw      OR AX,dw       Logical-OR immediate word into AX */
+/* 0D iw      OR AX,iw       Logical-OR immediate word into AX */
 case 0x0D:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::OR_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::OR_AX_iw;
 	break;
 }
 
@@ -180,19 +180,19 @@ case 0x13:
 	break;
 }
 
-/* 14 db      ADC AL,db   Add with carry immediate byte into AL */
+/* 14 ib      ADC AL,ib   Add with carry immediate byte into AL */
 case 0x14:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::ADC_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::ADC_AL_ib;
 	break;
 }
 
-/* 15 dw      ADC AX,dw   Add with carry immediate word into AX */
+/* 15 iw      ADC AX,iw   Add with carry immediate word into AX */
 case 0x15:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::ADC_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::ADC_AX_iw;
 	break;
 }
 
@@ -242,19 +242,19 @@ case 0x1B:
 	break;
 }
 
-/* 1C db       SBB AL,db    Subtract with borrow imm. byte from AL */
+/* 1C ib       SBB AL,ib    Subtract with borrow imm. byte from AL */
 case 0x1C:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::SBB_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::SBB_AL_ib;
 	break;
 }
 
-/* 1D dw       SBB AX,dw    Subtract with borrow imm. word from AX */
+/* 1D iw       SBB AX,iw    Subtract with borrow imm. word from AX */
 case 0x1D:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::SBB_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::SBB_AX_iw;
 	break;
 }
 
@@ -304,19 +304,19 @@ case 0x23:
 	break;
 }
 
-/* 24 db      AND AL,db     Logical-AND immediate byte into AL */
+/* 24 ib      AND AL,ib     Logical-AND immediate byte into AL */
 case 0x24:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::AND_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::AND_AL_ib;
 	break;
 }
 
-/* 25 dw      AND AX,dw     Logical-AND immediate word into AX */
+/* 25 iw      AND AX,iw     Logical-AND immediate word into AX */
 case 0x25:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::AND_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::AND_AX_iw;
 	break;
 }
 
@@ -361,19 +361,19 @@ case 0x2B:
 	break;
 }
 
-/* 2C db      SUB AL,db      Subtract immediate byte from AL */
+/* 2C ib      SUB AL,ib      Subtract immediate byte from AL */
 case 0x2C:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::SUB_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::SUB_AL_ib;
 	break;
 }
 
-/* 2D dw      SUB AX,dw      Subtract immediate word from AX */
+/* 2D iw      SUB AX,iw      Subtract immediate word from AX */
 case 0x2D:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::SUB_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::SUB_AX_iw;
 	break;
 }
 
@@ -418,19 +418,19 @@ case 0x33:
 	break;
 }
 
-/* 34 db     XOR AL,db   Exclusive-OR immediate byte into AL */
+/* 34 ib     XOR AL,ib   Exclusive-OR immediate byte into AL */
 case 0x34:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::XOR_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::XOR_AL_ib;
 	break;
 }
 
-/* 35 dw     XOR AX,dw   Exclusive-OR immediate word into AX */
+/* 35 iw     XOR AX,iw   Exclusive-OR immediate word into AX */
 case 0x35:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::XOR_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::XOR_AX_iw;
 	break;
 }
 
@@ -475,19 +475,19 @@ case 0x3B:
 	break;
 }
 
-/* 3C db        CMP AL,db      Compare immediate byte from AL */
+/* 3C ib        CMP AL,ib      Compare immediate byte from AL */
 case 0x3C:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::CMP_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::CMP_AL_ib;
 	break;
 }
 
-/* 3D dw        CMP AX,dw       Compare immediate word from AX */
+/* 3D iw        CMP AX,iw       Compare immediate word from AX */
 case 0x3D:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::CMP_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::CMP_AX_iw;
 	break;
 }
 
@@ -601,37 +601,37 @@ case 0x63:
 	on 8086 is alias for 77 JA cb
 */
 
-/* 68  dw     PUSH dw      Push immediate word */
+/* 68  iw     PUSH iw      Push immediate word */
 case 0x68:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::PUSH_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::PUSH_iw;
 	break;
 }
 
-/* 69 /r dw   IMUL rw,ew,dw     Signed multiply (rw = EA word * imm. word) */
+/* 69 /r iw   IMUL rw,ew,iw     Signed multiply (rw = EA word * imm. word) */
 case 0x69:
 {
 	m_instr.modrm.load();
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::IMUL_rw_ew_iw;
 	break;
 }
 
-/* 6A  db     PUSH db      Push immediate sign-extended byte*/
+/* 6A  ib     PUSH ib      Push immediate sign-extended byte*/
 case 0x6A:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::PUSH_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::PUSH_ib;
 	break;
 }
 
-/* 6B /r db   IMUL rw,ew,db    Signed multiply (rw = EA word * imm. byte) */
+/* 6B /r ib   IMUL rw,ew,ib    Signed multiply (rw = EA word * imm. byte) */
 case 0x6B:
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::IMUL_rw_ew_ib;
 	break;
 }
 
@@ -670,7 +670,7 @@ case 0x6F:
 /* 70  cb     JO cb      Jump short if overflow (OF=1) */
 case 0x70:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JO_cb;
 	break;
 }
@@ -678,7 +678,7 @@ case 0x70:
 /* 71  cb     JNO cb     Jump short if notoverflow (OF=0) */
 case 0x71:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNO_cb;
 	break;
 }
@@ -686,7 +686,7 @@ case 0x71:
 /* 72  cb     JC cb      Jump short if carry (CF=1) */
 case 0x72:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JC_cb;
 	break;
 }
@@ -694,7 +694,7 @@ case 0x72:
 /* 73  cb     JNC cb     Jump short if not carry (CF=0) */
 case 0x73:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNC_cb;
 	break;
 }
@@ -702,7 +702,7 @@ case 0x73:
 /* 74  cb     JE cb      Jump short if equal (ZF=1) */
 case 0x74:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JE_cb;
 	break;
 }
@@ -710,7 +710,7 @@ case 0x74:
 /* 75  cb     JNE cb     Jump short if not equal (ZF=0) */
 case 0x75:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNE_cb;
 	break;
 }
@@ -718,7 +718,7 @@ case 0x75:
 /* 76  cb     JBE cb     Jump short if below or equal (CF=1 or ZF=1) */
 case 0x76:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JBE_cb;
 	break;
 }
@@ -726,7 +726,7 @@ case 0x76:
 /* 77  cb     JA cb      Jump short if above (CF=0 and ZF=0) */
 case 0x77:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JA_cb;
 	break;
 }
@@ -734,7 +734,7 @@ case 0x77:
 /* 78  cb     JS cb      Jump short if sign (SF=1) */
 case 0x78:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JS_cb;
 	break;
 }
@@ -742,7 +742,7 @@ case 0x78:
 /* 79  cb     JNS cb     Jump short if not sign (SF=0) */
 case 0x79:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNS_cb;
 	break;
 }
@@ -750,7 +750,7 @@ case 0x79:
 /* 7A  cb     JPE cb     Jump short if parity even (PF=1) */
 case 0x7A:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JPE_cb;
 	break;
 }
@@ -758,7 +758,7 @@ case 0x7A:
 /* 7B  cb     JPO cb     Jump short if parity odd (PF=0) */
 case 0x7B:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JPO_cb;
 	break;
 }
@@ -766,7 +766,7 @@ case 0x7B:
 /* 7C  cb     JL cb      Jump short if less (SF/=OF) */
 case 0x7C:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JL_cb;
 	break;
 }
@@ -774,7 +774,7 @@ case 0x7C:
 /* 7D  cb     JNL cb     Jump short if not less (SF=OF) */
 case 0x7D:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNL_cb;
 	break;
 }
@@ -782,7 +782,7 @@ case 0x7D:
 /* 7E  cb     JLE cb     Jump short if less or equal (ZF=1 or SF/=OF) */
 case 0x7E:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JLE_cb;
 	break;
 }
@@ -790,50 +790,50 @@ case 0x7E:
 /* 7F  cb     JNLE cb    Jump short if not less/equal (ZF=0 and SF=OF) */
 case 0x7F:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JNLE_cb;
 	break;
 }
 
 /*
-80 /0 db   ADD eb,db    Add immediate byte into EA byte
-80 /1 db   OR  eb,db    Logical-OR immediate byte  into EA byte
-80 /2 db   ADC eb,db    Add with carry immediate byte into EA byte
-80 /3 db   SBB eb,db    Subtract with borrow imm. byte from EA byte
-80 /4 db   AND eb,db    Logical-AND immediate byte into EA byte
-80 /5 db   SUB eb,db    Subtract immediate byte from EA byte
-80 /6 db   XOR eb,db    Exclusive-OR immediate byte into EA byte
-80 /7 db   CMP eb,db    Compare immediate byte from EA byte
+80 /0 ib   ADD eb,ib    Add immediate byte into EA byte
+80 /1 ib   OR  eb,ib    Logical-OR immediate byte  into EA byte
+80 /2 ib   ADC eb,ib    Add with carry immediate byte into EA byte
+80 /3 ib   SBB eb,ib    Subtract with borrow imm. byte from EA byte
+80 /4 ib   AND eb,ib    Logical-AND immediate byte into EA byte
+80 /5 ib   SUB eb,ib    Subtract immediate byte from EA byte
+80 /6 ib   XOR eb,ib    Exclusive-OR immediate byte into EA byte
+80 /7 ib   CMP eb,ib    Compare immediate byte from EA byte
 */
 case 0x80:
 case 0x82:
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_eb_db;
+			m_instr.fn = &CPUExecutor::ADD_eb_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_eb_db;
+			m_instr.fn = &CPUExecutor::OR_eb_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_eb_db;
+			m_instr.fn = &CPUExecutor::ADC_eb_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_eb_db;
+			m_instr.fn = &CPUExecutor::SBB_eb_ib;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_eb_db;
+			m_instr.fn = &CPUExecutor::AND_eb_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_eb_db;
+			m_instr.fn = &CPUExecutor::SUB_eb_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_eb_db;
+			m_instr.fn = &CPUExecutor::XOR_eb_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_eb_db;
+			m_instr.fn = &CPUExecutor::CMP_eb_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -844,43 +844,43 @@ case 0x82:
 }
 
 /*
-81 /0 dw   ADD ew,dw    Add immediate word into EA word
-81 /1 dw   OR  ew,dw    Logical-OR immediate word into EA word
-81 /2 dw   ADC ew,dw    Add with carry immediate word into EA word
-81 /3 dw   SBB ew,dw    Subtract with borrow imm. word from EA word
-81 /4 dw   AND ew,dw    Logical-AND immediate word into EA word
-81 /5 dw   SUB ew,dw    Subtract immediate word from EA word
-81 /6 dw   XOR ew,dw    Exclusive-OR immediate word into EA word
-81 /7 dw   CMP ew,dw    Compare immediate word from EA word
+81 /0 iw   ADD ew,iw    Add immediate word into EA word
+81 /1 iw   OR  ew,iw    Logical-OR immediate word into EA word
+81 /2 iw   ADC ew,iw    Add with carry immediate word into EA word
+81 /3 iw   SBB ew,iw    Subtract with borrow imm. word from EA word
+81 /4 iw   AND ew,iw    Logical-AND immediate word into EA word
+81 /5 iw   SUB ew,iw    Subtract immediate word from EA word
+81 /6 iw   XOR ew,iw    Exclusive-OR immediate word into EA word
+81 /7 iw   CMP ew,iw    Compare immediate word from EA word
 */
 case 0x81:
 {
 	m_instr.modrm.load();
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_ew_dw;
+			m_instr.fn = &CPUExecutor::ADD_ew_iw;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_ew_dw;
+			m_instr.fn = &CPUExecutor::OR_ew_iw;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_ew_dw;
+			m_instr.fn = &CPUExecutor::ADC_ew_iw;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_ew_dw;
+			m_instr.fn = &CPUExecutor::SBB_ew_iw;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_ew_dw;
+			m_instr.fn = &CPUExecutor::AND_ew_iw;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_ew_dw;
+			m_instr.fn = &CPUExecutor::SUB_ew_iw;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_ew_dw;
+			m_instr.fn = &CPUExecutor::XOR_ew_iw;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_ew_dw;
+			m_instr.fn = &CPUExecutor::CMP_ew_iw;
 			break;
 		default:
 			illegal_opcode();
@@ -893,43 +893,43 @@ case 0x81:
 /* 82  alias of 80 */
 
 /*
-83 /0 db   ADD ew,db    Add immediate byte into EA word
-83 /1 db   OR  ew,db    Logical-OR immediate byte into EA word (undocumented!)
-83 /2 db   ADC ew,db    Add with carry immediate byte into EA word
-83 /3 db   SBB ew,db    Subtract with borrow imm. byte from EA word
-83 /4 db   AND ew,db    Logical-AND immediate byte into EA word (undocumented!)
-83 /5 db   SUB ew,db    Subtract immediate byte from EA word
-83 /6 db   XOR ew,db    Exclusive-OR immediate byte into EA word (undocumented!)
-83 /7 db   CMP ew,db    Compare immediate byte from EA word
+83 /0 ib   ADD ew,ib    Add immediate byte into EA word
+83 /1 ib   OR  ew,ib    Logical-OR immediate byte into EA word (undocumented!)
+83 /2 ib   ADC ew,ib    Add with carry immediate byte into EA word
+83 /3 ib   SBB ew,ib    Subtract with borrow imm. byte from EA word
+83 /4 ib   AND ew,ib    Logical-AND immediate byte into EA word (undocumented!)
+83 /5 ib   SUB ew,ib    Subtract immediate byte from EA word
+83 /6 ib   XOR ew,ib    Exclusive-OR immediate byte into EA word (undocumented!)
+83 /7 ib   CMP ew,ib    Compare immediate byte from EA word
 */
 case 0x83:
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_ew_db;
+			m_instr.fn = &CPUExecutor::ADD_ew_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_ew_db;
+			m_instr.fn = &CPUExecutor::OR_ew_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_ew_db;
+			m_instr.fn = &CPUExecutor::ADC_ew_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_ew_db;
+			m_instr.fn = &CPUExecutor::SBB_ew_ib;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_ew_db;
+			m_instr.fn = &CPUExecutor::AND_ew_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_ew_db;
+			m_instr.fn = &CPUExecutor::SUB_ew_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_ew_db;
+			m_instr.fn = &CPUExecutor::XOR_ew_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_ew_db;
+			m_instr.fn = &CPUExecutor::CMP_ew_ib;
 			break;
 		default:
 			// according to the Intel's 286 user manual and http://ref.x86asm.net
@@ -1010,7 +1010,7 @@ case 0x8B:
 case 0x8C:
 {
 	m_instr.modrm.load();
-	if(m_instr.modrm.r > 5) {
+	if(m_instr.modrm.r > REGI_GS) {
 		illegal_opcode();
 	} else {
 		m_instr.fn = &CPUExecutor::MOV_ew_SR;
@@ -1030,7 +1030,7 @@ case 0x8D:
 case 0x8E:
 {
 	m_instr.modrm.load();
-	if(m_instr.modrm.r > 5 || m_instr.modrm.r == 1) {
+	if(m_instr.modrm.r > REGI_GS || m_instr.modrm.r == REGI_CS) {
 		illegal_opcode();
 	} else {
 		m_instr.fn = &CPUExecutor::MOV_SR_ew;
@@ -1092,8 +1092,8 @@ case 0x99:
 /* 9A cd     CALL cd       Call inter-segment, immediate 4-byte address */
 case 0x9A:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.dw2 = fetchw();
+	m_instr.iw1 = fetchw();
+	m_instr.iw2 = fetchw();
 	m_instr.fn = &CPUExecutor::CALL_cd;
 	break;
 }
@@ -1133,7 +1133,7 @@ case 0x9F:
 	break;
 }
 
-/* A0 dw      MOV AL,xb    Move byte variable (offset dw) into AL */
+/* A0 iw      MOV AL,xb    Move byte variable (offset iw) into AL */
 case 0xA0:
 {
 	m_instr.offset = fetchw();
@@ -1141,7 +1141,7 @@ case 0xA0:
 	break;
 }
 
-/* A1 dw      MOV AX,xw      Move word variable (offset dw) into AX */
+/* A1 iw      MOV AX,xw      Move word variable (offset iw) into AX */
 case 0xA1:
 {
 	m_instr.offset = fetchw();
@@ -1149,7 +1149,7 @@ case 0xA1:
 	break;
 }
 
-/* A2 dw      MOV xb,AL       Move AL into byte variable (offset dw) */
+/* A2 iw      MOV xb,AL       Move AL into byte variable (offset iw) */
 case 0xA2:
 {
 	m_instr.offset = fetchw();
@@ -1157,7 +1157,7 @@ case 0xA2:
 	break;
 }
 
-/* A3 dw      MOV xw,AX       Move AX into word register (offset dw) */
+/* A3 iw      MOV xw,AX       Move AX into word register (offset iw) */
 case 0xA3:
 {
 	m_instr.offset = fetchw();
@@ -1207,19 +1207,19 @@ case 0xA7:
 	break;
 }
 
-/* A8 db      TEST AL,db    AND immediate byte into AL for flags only */
+/* A8 ib      TEST AL,ib    AND immediate byte into AL for flags only */
 case 0xA8:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::TEST_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::TEST_AL_ib;
 	break;
 }
 
-/* A9 dw      TEST AX,dw    AND immediate word into AX for flags only */
+/* A9 iw      TEST AX,iw    AND immediate word into AX for flags only */
 case 0xA9:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.fn = &CPUExecutor::TEST_AX_dw;
+	m_instr.iw1 = fetchw();
+	m_instr.fn = &CPUExecutor::TEST_AX_iw;
 	break;
 }
 
@@ -1273,7 +1273,7 @@ case 0xAF:
 	break;
 }
 
-/* B0+ rb db - MOV rb,db    Move imm byte into byte reg */
+/* B0+ rb ib - MOV rb,ib    Move imm byte into byte reg */
 case 0xB0: //AL
 case 0xB1: //CL
 case 0xB2: //DL
@@ -1283,13 +1283,13 @@ case 0xB5: //CH
 case 0xB6: //DH
 case 0xB7: //BH
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.reg = _opcode - 0xB0;
-	m_instr.fn = &CPUExecutor::MOV_rb_db;
+	m_instr.fn = &CPUExecutor::MOV_rb_ib;
 	break;
 }
 
-/* B8+ rw dw - MOV rw,dw   Move imm w into w reg */
+/* B8+ rw iw - MOV rw,iw   Move imm w into w reg */
 case 0xB8: //AX
 case 0xB9: //CX
 case 0xBA: //DX
@@ -1299,47 +1299,47 @@ case 0xBD: //BP
 case 0xBE: //SI
 case 0xBF: //DI
 {
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	m_instr.reg = _opcode - 0xB8;
-	m_instr.fn = &CPUExecutor::MOV_rw_dw;
+	m_instr.fn = &CPUExecutor::MOV_rw_iw;
 	break;
 }
 
 /*
-C0 /0 db  ROL eb,db    Rotate 8-bit EA byte left db times
-C0 /1 db  ROR eb,db    Rotate 8-bit EA byte right db times
-C0 /2 db  RCL eb,db    Rotate 9-bits (CF, EA byte) left db times
-C0 /3 db  RCR eb,db    Rotate 9-bits (CF, EA byte) right db times
-C0 /4 db  SAL eb,db    Multiply EA byte by 2, db times
-C0 /5 db  SHR eb,db    Unsigned divide EA byte by 2, db times
-C0 /7 db  SAR eb,db    Signed divide EA byte by 2, db times
+C0 /0 ib  ROL eb,ib    Rotate 8-bit EA byte left ib times
+C0 /1 ib  ROR eb,ib    Rotate 8-bit EA byte right ib times
+C0 /2 ib  RCL eb,ib    Rotate 9-bits (CF, EA byte) left ib times
+C0 /3 ib  RCR eb,ib    Rotate 9-bits (CF, EA byte) right ib times
+C0 /4 ib  SAL eb,ib    Multiply EA byte by 2, ib times
+C0 /5 ib  SHR eb,ib    Unsigned divide EA byte by 2, ib times
+C0 /7 ib  SAR eb,ib    Signed divide EA byte by 2, ib times
 */
-case 0xC0: //eb,db
+case 0xC0: //eb,ib
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_eb_db;
+			m_instr.fn = &CPUExecutor::ROL_eb_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_eb_db;
+			m_instr.fn = &CPUExecutor::ROR_eb_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_eb_db;
+			m_instr.fn = &CPUExecutor::RCL_eb_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_eb_db;
+			m_instr.fn = &CPUExecutor::RCR_eb_ib;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_eb_db;
+			m_instr.fn = &CPUExecutor::SAL_eb_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_eb_db;
+			m_instr.fn = &CPUExecutor::SHR_eb_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_eb_db;
+			m_instr.fn = &CPUExecutor::SAR_eb_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -1350,40 +1350,40 @@ case 0xC0: //eb,db
 }
 
 /*
-C1 /0 db  ROL ew,db    Rotate 16-bit EA word left db times
-C1 /1 db  ROR ew,db    Rotate 16-bit EA word right db times
-C1 /2 db  RCL ew,db    Rotate 17-bits (CF, EA word) left db times
-C1 /3 db  RCR ew,db    Rotate 17-bits (CF, EA word) right db times
-C1 /4 db  SAL ew,db    Multiply EA word by 2, db times
-C1 /5 db  SHR ew,db    Unsigned divide EA word by 2, db times
-C1 /7 db  SAR ew,db    Signed divide EA word by 2, db times
+C1 /0 ib  ROL ew,ib    Rotate 16-bit EA word left ib times
+C1 /1 ib  ROR ew,ib    Rotate 16-bit EA word right ib times
+C1 /2 ib  RCL ew,ib    Rotate 17-bits (CF, EA word) left ib times
+C1 /3 ib  RCR ew,ib    Rotate 17-bits (CF, EA word) right ib times
+C1 /4 ib  SAL ew,ib    Multiply EA word by 2, ib times
+C1 /5 ib  SHR ew,ib    Unsigned divide EA word by 2, ib times
+C1 /7 ib  SAR ew,ib    Signed divide EA word by 2, ib times
 */
 case 0xC1:
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_ew_db;
+			m_instr.fn = &CPUExecutor::ROL_ew_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_ew_db;
+			m_instr.fn = &CPUExecutor::ROR_ew_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_ew_db;
+			m_instr.fn = &CPUExecutor::RCL_ew_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_ew_db;
+			m_instr.fn = &CPUExecutor::RCR_ew_ib;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_ew_db;
+			m_instr.fn = &CPUExecutor::SAL_ew_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_ew_db;
+			m_instr.fn = &CPUExecutor::SHR_ew_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_ew_db;
+			m_instr.fn = &CPUExecutor::SAR_ew_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -1393,10 +1393,10 @@ case 0xC1:
 	break;
 }
 
-/* C2 dw   RET dw      RET (near), same privilege, pop dw bytes pushed before Call*/
+/* C2 iw   RET iw      RET (near), same privilege, pop iw bytes pushed before Call*/
 case 0xC2:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	m_instr.fn = &CPUExecutor::RET_near;
 	break;
 }
@@ -1404,7 +1404,7 @@ case 0xC2:
 /* C3      RET          Return to near caller, same privilege */
 case 0xC3:
 {
-	m_instr.dw1 = 0;
+	m_instr.iw1 = 0;
 	m_instr.fn = &CPUExecutor::RET_near;
 	break;
 }
@@ -1431,14 +1431,14 @@ case 0xC5:
 	break;
 }
 
-/* C6 /0 db   MOV eb,db   Move immediate byte into EA byte */
+/* C6 /0 ib   MOV eb,ib   Move immediate byte into EA byte */
 case 0xC6:
 {
 	m_instr.modrm.load();
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::MOV_eb_db;
+			m_instr.fn = &CPUExecutor::MOV_eb_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -1447,14 +1447,14 @@ case 0xC6:
 	break;
 }
 
-/* C7 /0 dw   MOV ew,dw   Move immediate word into EA word */
+/* C7 /0 iw   MOV ew,iw   Move immediate word into EA word */
 case 0xC7:
 {
 	m_instr.modrm.load();
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::MOV_ew_dw;
+			m_instr.fn = &CPUExecutor::MOV_ew_iw;
 			break;
 		default:
 			illegal_opcode();
@@ -1463,11 +1463,11 @@ case 0xC7:
 	break;
 }
 
-/* C8 dw db   ENTER dw,db   Make stack frame for procedure parameters */
+/* C8 iw ib   ENTER iw,ib   Make stack frame for procedure parameters */
 case 0xC8:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.db = fetchb();
+	m_instr.iw1 = fetchw();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::ENTER;
 	break;
 }
@@ -1479,10 +1479,10 @@ case 0xC9:
 	break;
 }
 
-/* CA dw   RET dw       RET (far), pop dw bytes */
+/* CA iw   RET iw       RET (far), pop iw bytes */
 case 0xCA:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	m_instr.fn = &CPUExecutor::RET_far;
 	break;
 }
@@ -1490,7 +1490,7 @@ case 0xCA:
 /* CB      RET          Return to far caller */
 case 0xCB:
 {
-	m_instr.dw1 = 0;
+	m_instr.iw1 = 0;
 	m_instr.fn = &CPUExecutor::RET_far;
 	break;
 }
@@ -1502,11 +1502,11 @@ case 0xCC:
 	break;
 }
 
-/* CD db   INT db        Interrupt numbered by immediate byte */
+/* CD ib   INT ib        Interrupt numbered by immediate byte */
 case 0xCD:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::INT_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::INT_ib;
 	break;
 }
 
@@ -1696,18 +1696,18 @@ case 0xD3:
 	break;
 }
 
-/* D4 db      AAM        ASCII adjust AX after multiply */
+/* D4 ib      AAM        ASCII adjust AX after multiply */
 case 0xD4:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::AAM;
 	break;
 }
 
-/* D5 db      AAD         ASCII adjust AX before division */
+/* D5 ib      AAD         ASCII adjust AX before division */
 case 0xD5:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::AAD;
 	break;
 }
@@ -1745,7 +1745,7 @@ case 0xDF:
 /* E0 cb    LOOPNZ cb     DEC CX; jump short if CX<>0 and ZF=0 */
 case 0xE0:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::LOOPNZ;
 	break;
 }
@@ -1753,7 +1753,7 @@ case 0xE0:
 /* E1 cb    LOOPZ cb      DEC CX; jump short if CX<>0 and zero (ZF=1) */
 case 0xE1:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::LOOPZ;
 	break;
 }
@@ -1761,7 +1761,7 @@ case 0xE1:
 /* E2 cb    LOOP cb       DEC CX; jump short if CX<>0 */
 case 0xE2:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::LOOP;
 	break;
 }
@@ -1769,47 +1769,47 @@ case 0xE2:
 /* E3  cb     JCXZ cb    Jump short if CX register is zero */
 case 0xE3:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JCXZ_cb;
 	break;
 }
 
-/* E4 db     IN AL,db     Input byte from immediate port into AL */
+/* E4 ib     IN AL,ib     Input byte from immediate port into AL */
 case 0xE4:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::IN_AL_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::IN_AL_ib;
 	break;
 }
 
-/* E5 db     IN AX,db      Input word from immediate port into AX */
+/* E5 ib     IN AX,ib      Input word from immediate port into AX */
 case 0xE5:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::IN_AX_db;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::IN_AX_ib;
 	break;
 }
 
-/* E6 db    OUT db,AL     Output byte AL to immediate port number db */
+/* E6 ib    OUT ib,AL     Output byte AL to immediate port number ib */
 case 0xE6:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::OUT_db_AL;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::OUT_ib_AL;
 	break;
 }
 
-/* E7 db    OUT db,AX     Output word AX to immediate port number db */
+/* E7 ib    OUT ib,AX     Output word AX to immediate port number ib */
 case 0xE7:
 {
-	m_instr.db = fetchb();
-	m_instr.fn = &CPUExecutor::OUT_db_AX;
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::OUT_ib_AX;
 	break;
 }
 
 /* E8 cw    CALL cw       Call near, offset relative to next instruction */
 case 0xE8:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	m_instr.fn = &CPUExecutor::CALL_cw;
 	break;
 }
@@ -1817,7 +1817,7 @@ case 0xE8:
 /* E9 cw   JMP cw   Jump near */
 case 0xE9:
 {
-	m_instr.dw1 = fetchw();
+	m_instr.iw1 = fetchw();
 	m_instr.fn = &CPUExecutor::JMP_cw;
 	break;
 }
@@ -1825,8 +1825,8 @@ case 0xE9:
 /* EA cd   JMP cd   Jump far/task/call/tss */
 case 0xEA:
 {
-	m_instr.dw1 = fetchw();
-	m_instr.dw2 = fetchw();
+	m_instr.iw1 = fetchw();
+	m_instr.iw2 = fetchw();
 	m_instr.fn = &CPUExecutor::JMP_cd;
 	break;
 }
@@ -1834,7 +1834,7 @@ case 0xEA:
 /* EB   cb     JMP cb         ump short */
 case 0xEB:
 {
-	m_instr.db = fetchb();
+	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::JMP_cb;
 	break;
 }
@@ -1890,7 +1890,7 @@ case 0xF5:
 }
 
 /*
-F6 /0 db   TEST eb,db    AND immediate byte into EA byte for flags only
+F6 /0 ib   TEST eb,ib    AND immediate byte into EA byte for flags only
 F6 /2      NOT eb        Reverse each bit of EA byte
 F6 /3      NEG eb        Two's complement negate EA byte
 F6 /4      MUL eb        Unsigned multiply (AX = AL * EA byte)
@@ -1905,8 +1905,8 @@ case 0xF6:
 		case 0:
 		case 1: // 1: undocumented alias
 		{
-			m_instr.db = fetchb();
-			m_instr.fn = &CPUExecutor::TEST_eb_db;
+			m_instr.ib = fetchb();
+			m_instr.fn = &CPUExecutor::TEST_eb_ib;
 			break;
 		}
 		case 2:
@@ -1936,7 +1936,7 @@ case 0xF6:
 }
 
 /*
-F7 /0 dw   TEST ew,dw    AND immediate word into EA word for flags only
+F7 /0 iw   TEST ew,iw    AND immediate word into EA word for flags only
 F7 /2      NOT ew        Reverse each bit of EA word
 F7 /3      NEG ew        Two's complement negate EA word
 F7 /4      MUL ew        Unsigned multiply (DXAX = AX * EA word)
@@ -1951,8 +1951,8 @@ case 0xF7:
 		case 0:
 		case 1: // 1: undocumented alias
 		{
-			m_instr.dw1 = fetchw();
-			m_instr.fn = &CPUExecutor::TEST_ew_dw;
+			m_instr.iw1 = fetchw();
+			m_instr.fn = &CPUExecutor::TEST_ew_iw;
 			break;
 		}
 		case 2:

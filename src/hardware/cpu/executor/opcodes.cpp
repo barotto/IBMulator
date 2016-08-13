@@ -61,7 +61,7 @@ void CPUExecutor::AAD()
 	//according to the Intel's 286 manual, the immediate value is always 0x0A.
 	//in reality it can be anything.
 	//see http://www.rcollins.org/secrets/opcodes/AAD.html
-	uint16_t tmp = REG_AL + (m_instr->db * REG_AH);
+	uint16_t tmp = REG_AL + (m_instr->ib * REG_AH);
 	REG_AX = (tmp & 0xff);
 
 	SET_FLAG(SF, REG_AL & 0x80);
@@ -82,12 +82,12 @@ void CPUExecutor::AAM()
 	//according to the Intel's 286 manual the immediate value is always 0x0A.
 	//in reality it can be anything.
 	//see http://www.rcollins.org/secrets/opcodes/AAM.html
-	if(m_instr->db == 0) {
+	if(m_instr->ib == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
 	uint8_t al = REG_AL;
-	REG_AH = al / m_instr->db;
-	REG_AL = al % m_instr->db;
+	REG_AH = al / m_instr->ib;
+	REG_AL = al % m_instr->ib;
 
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
@@ -183,14 +183,14 @@ void CPUExecutor::ADC_ed_rd() { store_ed(ADC_d(load_ed(), load_rd())); }
 void CPUExecutor::ADC_rb_eb() { store_rb(ADC_b(load_rb(), load_eb())); }
 void CPUExecutor::ADC_rw_ew() { store_rw(ADC_w(load_rw(), load_ew())); }
 void CPUExecutor::ADC_rd_ed() { store_rd(ADC_d(load_rd(), load_ed())); }
-void CPUExecutor::ADC_AL_db() { REG_AL = ADC_b(REG_AL, m_instr->db); }
-void CPUExecutor::ADC_AX_dw() { REG_AX = ADC_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::ADC_EAX_dd(){ REG_EAX = ADC_d(REG_EAX, m_instr->dd1); }
-void CPUExecutor::ADC_eb_db() { store_eb(ADC_b(load_eb(), m_instr->db)); }
-void CPUExecutor::ADC_ew_dw() { store_ew(ADC_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::ADC_ed_dd() { store_ed(ADC_d(load_ed(), m_instr->dd1)); }
-void CPUExecutor::ADC_ew_db() { store_ew(ADC_w(load_ew(), int8_t(m_instr->db))); }
-void CPUExecutor::ADC_ed_db() { store_ed(ADC_d(load_ed(), int8_t(m_instr->db))); }
+void CPUExecutor::ADC_AL_ib() { REG_AL = ADC_b(REG_AL, m_instr->ib); }
+void CPUExecutor::ADC_AX_iw() { REG_AX = ADC_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::ADC_EAX_id(){ REG_EAX = ADC_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::ADC_eb_ib() { store_eb(ADC_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::ADC_ew_iw() { store_ew(ADC_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::ADC_ed_id() { store_ed(ADC_d(load_ed(), m_instr->id1)); }
+void CPUExecutor::ADC_ew_ib() { store_ew(ADC_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::ADC_ed_ib() { store_ed(ADC_d(load_ed(), int8_t(m_instr->ib))); }
 
 uint8_t CPUExecutor::ADD_b(uint8_t op1, uint8_t op2)
 {
@@ -240,14 +240,14 @@ void CPUExecutor::ADD_ed_rd() { store_ed(ADD_d(load_ed(), load_rd())); }
 void CPUExecutor::ADD_rb_eb() { store_rb(ADD_b(load_rb(), load_eb())); }
 void CPUExecutor::ADD_rw_ew() { store_rw(ADD_w(load_rw(), load_ew())); }
 void CPUExecutor::ADD_rd_ed() { store_rd(ADD_d(load_rd(), load_ed())); }
-void CPUExecutor::ADD_AL_db() { REG_AL = ADD_b(REG_AL, m_instr->db); }
-void CPUExecutor::ADD_AX_dw() { REG_AX = ADD_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::ADD_EAX_dd(){ REG_EAX = ADD_d(REG_EAX, m_instr->dd1); }
-void CPUExecutor::ADD_eb_db() { store_eb(ADD_b(load_eb(), m_instr->db)); }
-void CPUExecutor::ADD_ew_dw() { store_ew(ADD_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::ADD_ed_dd() { store_ed(ADD_d(load_ed(), m_instr->dd1)); }
-void CPUExecutor::ADD_ew_db() { store_ew(ADD_w(load_ew(), int8_t(m_instr->db))); }
-void CPUExecutor::ADD_ed_db() { store_ed(ADD_d(load_ed(), int8_t(m_instr->db))); }
+void CPUExecutor::ADD_AL_ib() { REG_AL = ADD_b(REG_AL, m_instr->ib); }
+void CPUExecutor::ADD_AX_iw() { REG_AX = ADD_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::ADD_EAX_id(){ REG_EAX = ADD_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::ADD_eb_ib() { store_eb(ADD_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::ADD_ew_iw() { store_ew(ADD_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::ADD_ed_id() { store_ed(ADD_d(load_ed(), m_instr->id1)); }
+void CPUExecutor::ADD_ew_ib() { store_ew(ADD_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::ADD_ed_ib() { store_ed(ADD_d(load_ed(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -302,14 +302,14 @@ void CPUExecutor::AND_ed_rd() { store_ed(AND_d(load_ed(),load_rd())); }
 void CPUExecutor::AND_rb_eb() { store_rb(AND_b(load_rb(),load_eb())); }
 void CPUExecutor::AND_rw_ew() { store_rw(AND_w(load_rw(),load_ew())); }
 void CPUExecutor::AND_rd_ed() { store_rd(AND_d(load_rd(),load_ed())); }
-void CPUExecutor::AND_AL_db() { REG_AL = AND_b(REG_AL, m_instr->db); }
-void CPUExecutor::AND_AX_dw() { REG_AX = AND_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::AND_EAX_dd(){ REG_EAX = AND_d(REG_EAX, m_instr->dd1); }
-void CPUExecutor::AND_eb_db() { store_eb(AND_b(load_eb(),m_instr->db)); }
-void CPUExecutor::AND_ew_dw() { store_ew(AND_w(load_ew(),m_instr->dw1)); }
-void CPUExecutor::AND_ed_dd() { store_ed(AND_d(load_ed(),m_instr->dd1)); }
-void CPUExecutor::AND_ew_db() { store_ew(AND_w(load_ew(), int8_t(m_instr->db))); }
-void CPUExecutor::AND_ed_db() { store_ed(AND_d(load_ed(), int8_t(m_instr->db))); }
+void CPUExecutor::AND_AL_ib() { REG_AL = AND_b(REG_AL, m_instr->ib); }
+void CPUExecutor::AND_AX_iw() { REG_AX = AND_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::AND_EAX_id(){ REG_EAX = AND_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::AND_eb_ib() { store_eb(AND_b(load_eb(),m_instr->ib)); }
+void CPUExecutor::AND_ew_iw() { store_ew(AND_w(load_ew(),m_instr->iw1)); }
+void CPUExecutor::AND_ed_id() { store_ed(AND_d(load_ed(),m_instr->id1)); }
+void CPUExecutor::AND_ew_ib() { store_ew(AND_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::AND_ed_ib() { store_ed(AND_d(load_ed(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -374,7 +374,7 @@ void CPUExecutor::CALL_cw()
 	/* push 16 bit EA of next instruction */
 	stack_push_word(REG_IP);
 
-	uint16_t new_IP = REG_IP + m_instr->dw1;
+	uint16_t new_IP = REG_IP + m_instr->iw1;
 	branch_near(new_IP);
 }
 
@@ -411,7 +411,7 @@ void CPUExecutor::CALL_cd(uint16_t newip, uint16_t newcs)
 
 void CPUExecutor::CALL_cd()
 {
-	CALL_cd(m_instr->dw1, m_instr->dw2);
+	CALL_cd(m_instr->iw1, m_instr->iw2);
 }
 
 void CPUExecutor::CALL_ed()
@@ -549,14 +549,14 @@ void CPUExecutor::CMP_ed_rd() { CMP_d(load_ed(), load_rd()); }
 void CPUExecutor::CMP_rb_eb() { CMP_b(load_rb(), load_eb()); }
 void CPUExecutor::CMP_rw_ew() { CMP_w(load_rw(), load_ew()); }
 void CPUExecutor::CMP_rd_ed() { CMP_d(load_rd(), load_ed()); }
-void CPUExecutor::CMP_AL_db() { CMP_b(REG_AL, m_instr->db); }
-void CPUExecutor::CMP_AX_dw() { CMP_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::CMP_EAX_dd(){ CMP_d(REG_EAX, m_instr->dd1); }
-void CPUExecutor::CMP_eb_db() { CMP_b(load_eb(), m_instr->db); }
-void CPUExecutor::CMP_ew_dw() { CMP_w(load_ew(), m_instr->dw1); }
-void CPUExecutor::CMP_ed_dd() { CMP_d(load_ed(), m_instr->dd1); }
-void CPUExecutor::CMP_ew_db() { CMP_w(load_ew(), int8_t(m_instr->db)); }
-void CPUExecutor::CMP_ed_db() { CMP_d(load_ed(), int8_t(m_instr->db)); }
+void CPUExecutor::CMP_AL_ib() { CMP_b(REG_AL, m_instr->ib); }
+void CPUExecutor::CMP_AX_iw() { CMP_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::CMP_EAX_id(){ CMP_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::CMP_eb_ib() { CMP_b(load_eb(), m_instr->ib); }
+void CPUExecutor::CMP_ew_iw() { CMP_w(load_ew(), m_instr->iw1); }
+void CPUExecutor::CMP_ed_id() { CMP_d(load_ed(), m_instr->id1); }
+void CPUExecutor::CMP_ew_ib() { CMP_w(load_ew(), int8_t(m_instr->ib)); }
+void CPUExecutor::CMP_ed_ib() { CMP_d(load_ed(), int8_t(m_instr->ib)); }
 
 
 /*******************************************************************************
@@ -828,7 +828,7 @@ void CPUExecutor::DIV_ed()
 
 void CPUExecutor::ENTER()
 {
-	uint8_t level = m_instr->db & 0x1F;
+	uint8_t level = m_instr->ib & 0x1F;
 
 	stack_push_word(REG_BP);
 
@@ -847,7 +847,7 @@ void CPUExecutor::ENTER()
 		stack_push_word(frame_ptr16);
 	}
 
-	REG_SP -= m_instr->dw1; // bytes
+	REG_SP -= m_instr->iw1; // bytes
 
 	// ENTER finishes with memory write check on the final stack pointer
 	// the memory is touched but no write actually occurs
@@ -1141,26 +1141,26 @@ int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 
 void CPUExecutor::IMUL_rw_ew()    { store_rw(IMUL_w(load_rw(), load_ew())); }
 void CPUExecutor::IMUL_rd_ed()    { store_rd(IMUL_d(load_rd(), load_ed())); }
-void CPUExecutor::IMUL_rw_ew_db() {	store_rw(IMUL_w(load_ew(), int8_t(m_instr->db))); }
-void CPUExecutor::IMUL_rd_ed_db() {	store_rd(IMUL_d(load_ed(), int8_t(m_instr->db))); }
-void CPUExecutor::IMUL_rw_ew_dw() {	store_rw(IMUL_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::IMUL_rd_ed_dd() {	store_rd(IMUL_d(load_ed(), m_instr->dd1)); }
+void CPUExecutor::IMUL_rw_ew_ib() {	store_rw(IMUL_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::IMUL_rd_ed_ib() {	store_rd(IMUL_d(load_ed(), int8_t(m_instr->ib))); }
+void CPUExecutor::IMUL_rw_ew_iw() {	store_rw(IMUL_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::IMUL_rd_ed_id() {	store_rd(IMUL_d(load_ed(), m_instr->id1)); }
 
 
 /*******************************************************************************
  * Input from Port
  */
 
-void CPUExecutor::IN_AL_db()
+void CPUExecutor::IN_AL_ib()
 {
 	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
 		/* #GP(O) if the current privilege level is bigger (has less privilege)
 		 * than IOPL; which is the privilege level found in the flags register.
 		 */
-		PDEBUGF(LOG_V2, LOG_CPU, "IN_AL_db: I/O access not allowed!\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "IN_AL_ib: I/O access not allowed!\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-	REG_AL = g_devices.read_byte(m_instr->db);
+	REG_AL = g_devices.read_byte(m_instr->ib);
 }
 
 void CPUExecutor::IN_AL_DX()
@@ -1172,13 +1172,13 @@ void CPUExecutor::IN_AL_DX()
 	REG_AL = g_devices.read_byte(REG_DX);
 }
 
-void CPUExecutor::IN_AX_db()
+void CPUExecutor::IN_AX_ib()
 {
 	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "IN_AX_db: I/O access not allowed!\n");
+	    PDEBUGF(LOG_V2, LOG_CPU, "IN_AX_ib: I/O access not allowed!\n");
 	    throw CPUException(CPU_GP_EXC, 0);
 	}
-	REG_AX = g_devices.read_word(m_instr->db);
+	REG_AX = g_devices.read_word(m_instr->ib);
 }
 
 void CPUExecutor::IN_AX_DX()
@@ -1369,7 +1369,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 }
 
 void CPUExecutor::INT3()   { INT(3, CPU_SOFTWARE_EXCEPTION); }
-void CPUExecutor::INT_db() { INT(m_instr->db, CPU_SOFTWARE_INTERRUPT); }
+void CPUExecutor::INT_ib() { INT(m_instr->ib, CPU_SOFTWARE_INTERRUPT); }
 void CPUExecutor::INTO()   { if(FLAG_OF) INT(4, CPU_SOFTWARE_EXCEPTION); }
 
 
@@ -1406,23 +1406,23 @@ void CPUExecutor::IRET()
  * Jcond-Jump Short If Condition Met
  */
 
-void CPUExecutor::JA_cb()  { if(!FLAG_CF && !FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JBE_cb() { if(FLAG_CF || FLAG_ZF)  {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JC_cb()  { if(FLAG_CF) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNC_cb() { if(!FLAG_CF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JE_cb()  { if(FLAG_ZF) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNE_cb() { if(!FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JO_cb()  { if(FLAG_OF) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNO_cb() { if(!FLAG_OF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JPE_cb() { if(FLAG_PF) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JPO_cb() { if(!FLAG_PF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JS_cb()  { if(FLAG_SF) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNS_cb() { if(!FLAG_SF){branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JL_cb()  { if((FLAG_SF!=0) != (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNL_cb() { if((FLAG_SF!=0) == (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JLE_cb() { if(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JNLE_cb(){ if(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->db));} }
-void CPUExecutor::JCXZ_cb(){ if(REG_CX==0) {branch_near(REG_IP + int8_t(m_instr->db));} }
+void CPUExecutor::JA_cb()  { if(!FLAG_CF && !FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JBE_cb() { if(FLAG_CF || FLAG_ZF)  {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JC_cb()  { if(FLAG_CF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNC_cb() { if(!FLAG_CF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JE_cb()  { if(FLAG_ZF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNE_cb() { if(!FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JO_cb()  { if(FLAG_OF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNO_cb() { if(!FLAG_OF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JPE_cb() { if(FLAG_PF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JPO_cb() { if(!FLAG_PF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JS_cb()  { if(FLAG_SF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNS_cb() { if(!FLAG_SF){branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JL_cb()  { if((FLAG_SF!=0) != (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNL_cb() { if((FLAG_SF!=0) == (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JLE_cb() { if(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JNLE_cb(){ if(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::JCXZ_cb(){ if(REG_CX==0) {branch_near(REG_IP + int8_t(m_instr->ib));} }
 
 
 /*******************************************************************************
@@ -1449,21 +1449,21 @@ void CPUExecutor::JMP_ed()
 
 void CPUExecutor::JMP_cb()
 {
-	uint16_t new_IP = REG_IP + int8_t(m_instr->db);
+	uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
 	branch_near(new_IP);
 }
 
 void CPUExecutor::JMP_cw()
 {
-	branch_near(REG_IP + m_instr->dw1);
+	branch_near(REG_IP + m_instr->iw1);
 }
 
 void CPUExecutor::JMP_cd()
 {
 	if(!IS_PMODE()) {
-		branch_far(m_instr->dw2, m_instr->dw1);
+		branch_far(m_instr->iw2, m_instr->iw1);
 	} else {
-		branch_far_pmode(m_instr->dw2, m_instr->dw1);
+		branch_far_pmode(m_instr->iw2, m_instr->iw1);
 	}
 }
 
@@ -1850,7 +1850,7 @@ void CPUExecutor::LOOP()
 
 	count--;
 	if(count != 0) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->db);
+		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
 		branch_near(new_IP);
 	}
 
@@ -1863,7 +1863,7 @@ void CPUExecutor::LOOPZ()
 
 	count--;
 	if(count != 0 && FLAG_ZF) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->db);
+		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
 		branch_near(new_IP);
 	}
 
@@ -1876,7 +1876,7 @@ void CPUExecutor::LOOPNZ()
 
 	count--;
 	if(count != 0 && (FLAG_ZF==false)) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->db);
+		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
 		branch_near(new_IP);
 	}
 
@@ -2018,12 +2018,12 @@ void CPUExecutor::MOV_EAX_xd(){ REG_EAX = read_dword(SEG_REG(m_base_ds), m_instr
 void CPUExecutor::MOV_xb_AL() { write_byte(SEG_REG(m_base_ds), m_instr->offset, REG_AL); }
 void CPUExecutor::MOV_xw_AX() { write_word(SEG_REG(m_base_ds), m_instr->offset, REG_AX); }
 void CPUExecutor::MOV_xd_EAX(){ write_dword(SEG_REG(m_base_ds), m_instr->offset, REG_EAX); }
-void CPUExecutor::MOV_rb_db() { store_rb_op(m_instr->db); }
-void CPUExecutor::MOV_rw_dw() { store_rw_op(m_instr->dw1); }
-void CPUExecutor::MOV_rd_dd() { store_rd_op(m_instr->dd1); }
-void CPUExecutor::MOV_eb_db() { store_eb(m_instr->db); }
-void CPUExecutor::MOV_ew_dw() { store_ew(m_instr->dw1); }
-void CPUExecutor::MOV_ed_dd() { store_ed(m_instr->dd1); }
+void CPUExecutor::MOV_rb_ib() { store_rb_op(m_instr->ib); }
+void CPUExecutor::MOV_rw_iw() { store_rw_op(m_instr->iw1); }
+void CPUExecutor::MOV_rd_id() { store_rd_op(m_instr->id1); }
+void CPUExecutor::MOV_eb_ib() { store_eb(m_instr->ib); }
+void CPUExecutor::MOV_ew_iw() { store_ew(m_instr->iw1); }
+void CPUExecutor::MOV_ed_id() { store_ed(m_instr->id1); }
 
 
 /*******************************************************************************
@@ -2255,14 +2255,14 @@ void CPUExecutor::OR_ed_rd() { store_ed(OR_d(load_ed(), load_rd())); }
 void CPUExecutor::OR_rb_eb() { store_rb(OR_b(load_rb(), load_eb())); }
 void CPUExecutor::OR_rw_ew() { store_rw(OR_w(load_rw(), load_ew())); }
 void CPUExecutor::OR_rd_ed() { store_rd(OR_d(load_rd(), load_ed())); }
-void CPUExecutor::OR_AL_db() { REG_AL = OR_b(REG_AL, m_instr->db); }
-void CPUExecutor::OR_AX_dw() { REG_AX = OR_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::OR_EAX_dd(){ REG_EAX = OR_d(REG_EAX, m_instr->dd1); }
-void CPUExecutor::OR_eb_db() { store_eb(OR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::OR_ew_dw() { store_ew(OR_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::OR_ed_dd() { store_ed(OR_d(load_ed(), m_instr->dd1)); }
-void CPUExecutor::OR_ew_db() { store_ew(OR_w(load_ew(), int8_t(m_instr->db))); }
-void CPUExecutor::OR_ed_db() { store_ed(OR_d(load_ed(), int8_t(m_instr->db))); }
+void CPUExecutor::OR_AL_ib() { REG_AL = OR_b(REG_AL, m_instr->ib); }
+void CPUExecutor::OR_AX_iw() { REG_AX = OR_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::OR_EAX_id(){ REG_EAX = OR_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::OR_eb_ib() { store_eb(OR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::OR_ew_iw() { store_ew(OR_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::OR_ed_id() { store_ed(OR_d(load_ed(), m_instr->id1)); }
+void CPUExecutor::OR_ew_ib() { store_ew(OR_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::OR_ed_ib() { store_ed(OR_d(load_ed(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -2289,8 +2289,8 @@ void CPUExecutor::OUT_w(uint16_t _port, uint16_t _value)
 	g_devices.write_word(_port, _value);
 }
 
-void CPUExecutor::OUT_db_AL() { OUT_b(m_instr->db, REG_AL); }
-void CPUExecutor::OUT_db_AX() { OUT_w(m_instr->db, REG_AX); }
+void CPUExecutor::OUT_ib_AL() { OUT_b(m_instr->ib, REG_AL); }
+void CPUExecutor::OUT_ib_AX() { OUT_w(m_instr->ib, REG_AX); }
 void CPUExecutor::OUT_DX_AL() { OUT_b(REG_DX, REG_AL); }
 void CPUExecutor::OUT_DX_AX() { OUT_w(REG_DX, REG_AX); }
 
@@ -2429,9 +2429,9 @@ void CPUExecutor::PUSH_rw_op() { stack_push_word(load_rw_op()); }
 void CPUExecutor::PUSH_rd_op() { stack_push_dword(load_rd_op()); }
 void CPUExecutor::PUSH_mw()    { stack_push_word(load_ew()); }
 void CPUExecutor::PUSH_md()    { stack_push_dword(load_ed()); }
-void CPUExecutor::PUSH_db()    { stack_push_word(int8_t(m_instr->db)); }
-void CPUExecutor::PUSH_dw()    { stack_push_word(m_instr->dw1); }
-void CPUExecutor::PUSH_dd()    { stack_push_word(m_instr->dd1); }
+void CPUExecutor::PUSH_ib()    { stack_push_word(int8_t(m_instr->ib)); }
+void CPUExecutor::PUSH_iw()    { stack_push_word(m_instr->iw1); }
+void CPUExecutor::PUSH_id()    { stack_push_word(m_instr->id1); }
 
 
 /*******************************************************************************
@@ -2555,8 +2555,8 @@ uint16_t CPUExecutor::ROL_w(uint16_t _value, uint8_t _times)
 	return _value;
 }
 
-void CPUExecutor::ROL_eb_db() { store_eb(ROL_b(load_eb(), m_instr->db)); }
-void CPUExecutor::ROL_ew_db() { store_ew(ROL_w(load_ew(), m_instr->db)); }
+void CPUExecutor::ROL_eb_ib() { store_eb(ROL_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::ROL_ew_ib() { store_ew(ROL_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::ROL_eb_1()  { store_eb(ROL_b(load_eb(), 1)); }
 void CPUExecutor::ROL_ew_1()  { store_ew(ROL_w(load_ew(), 1)); }
 void CPUExecutor::ROL_eb_CL() { store_eb(ROL_b(load_eb(), REG_CL)); }
@@ -2604,8 +2604,8 @@ uint16_t CPUExecutor::ROR_w(uint16_t _value, uint8_t _times)
 	return _value;
 }
 
-void CPUExecutor::ROR_eb_db() { store_eb(ROR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::ROR_ew_db() { store_ew(ROR_w(load_ew(), m_instr->db)); }
+void CPUExecutor::ROR_eb_ib() { store_eb(ROR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::ROR_ew_ib() { store_ew(ROR_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::ROR_eb_1()  { store_eb(ROR_b(load_eb(), 1)); }
 void CPUExecutor::ROR_ew_1()  { store_ew(ROR_w(load_ew(), 1)); }
 void CPUExecutor::ROR_eb_CL() { store_eb(ROR_b(load_eb(), REG_CL)); }
@@ -2666,8 +2666,8 @@ uint16_t CPUExecutor::RCL_w(uint16_t _value, uint8_t _times)
 	return res;
 }
 
-void CPUExecutor::RCL_eb_db() { store_eb(RCL_b(load_eb(), m_instr->db)); }
-void CPUExecutor::RCL_ew_db() { store_ew(RCL_w(load_ew(), m_instr->db)); }
+void CPUExecutor::RCL_eb_ib() { store_eb(RCL_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::RCL_ew_ib() { store_ew(RCL_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::RCL_eb_1()  { store_eb(RCL_b(load_eb(), 1)); }
 void CPUExecutor::RCL_ew_1()  { store_ew(RCL_w(load_ew(), 1)); }
 void CPUExecutor::RCL_eb_CL() { store_eb(RCL_b(load_eb(), REG_CL)); }
@@ -2713,8 +2713,8 @@ uint16_t CPUExecutor::RCR_w(uint16_t _value, uint8_t _times)
 	return res;
 }
 
-void CPUExecutor::RCR_eb_db() { store_eb(RCR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::RCR_ew_db() { store_ew(RCR_w(load_ew(), m_instr->db)); }
+void CPUExecutor::RCR_eb_ib() { store_eb(RCR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::RCR_ew_ib() { store_ew(RCR_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::RCR_eb_1()  { store_eb(RCR_b(load_eb(), 1)); }
 void CPUExecutor::RCR_ew_1()  { store_ew(RCR_w(load_ew(), 1)); }
 void CPUExecutor::RCR_eb_CL() { store_eb(RCR_b(load_eb(), REG_CL)); }
@@ -2735,14 +2735,14 @@ void CPUExecutor::RET_near()
 	}
 
 	SET_IP(return_IP);
-	REG_SP += m_instr->dw1; // pop bytes
+	REG_SP += m_instr->iw1; // pop bytes
 
 	g_cpubus.invalidate_pq();
 }
 
 void CPUExecutor::RET_far()
 {
-	uint16_t popbytes = m_instr->dw1;
+	uint16_t popbytes = m_instr->iw1;
 
 	if(IS_PMODE()) {
 		return_pmode(popbytes);
@@ -2864,8 +2864,8 @@ uint16_t CPUExecutor::SHL_w(uint16_t _value, uint8_t _times)
 	return res;
 }
 
-void CPUExecutor::SAL_eb_db() { store_eb(SHL_b(load_eb(), m_instr->db)); }
-void CPUExecutor::SAL_ew_db() { store_ew(SHL_w(load_ew(), m_instr->db));  }
+void CPUExecutor::SAL_eb_ib() { store_eb(SHL_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::SAL_ew_ib() { store_ew(SHL_w(load_ew(), m_instr->ib));  }
 void CPUExecutor::SAL_eb_1()  { store_eb(SHL_b(load_eb(), 1)); }
 void CPUExecutor::SAL_ew_1()  { store_ew(SHL_w(load_ew(), 1)); }
 void CPUExecutor::SAL_eb_CL() { store_eb(SHL_b(load_eb(), REG_CL)); }
@@ -2915,8 +2915,8 @@ uint16_t CPUExecutor::SHR_w(uint16_t _value, uint8_t _times)
 	return res;
 }
 
-void CPUExecutor::SHR_eb_db() { store_eb(SHR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::SHR_ew_db() { store_ew(SHR_w(load_ew(), m_instr->db)); }
+void CPUExecutor::SHR_eb_ib() { store_eb(SHR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::SHR_ew_ib() { store_ew(SHR_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::SHR_eb_1()  { store_eb(SHR_b(load_eb(), 1)); }
 void CPUExecutor::SHR_ew_1()  { store_ew(SHR_w(load_ew(), 1)); }
 void CPUExecutor::SHR_eb_CL() { store_eb(SHR_b(load_eb(), REG_CL)); }
@@ -2966,8 +2966,8 @@ uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
 	return res;
 }
 
-void CPUExecutor::SAR_eb_db() { store_eb(SAR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::SAR_ew_db() { store_ew(SAR_w(load_ew(), m_instr->db)); }
+void CPUExecutor::SAR_eb_ib() { store_eb(SAR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::SAR_ew_ib() { store_ew(SAR_w(load_ew(), m_instr->ib)); }
 void CPUExecutor::SAR_eb_1()  { store_eb(SAR_b(load_eb(), 1)); }
 void CPUExecutor::SAR_ew_1()  { store_ew(SAR_w(load_ew(), 1)); }
 void CPUExecutor::SAR_eb_CL() { store_eb(SAR_b(load_eb(), REG_CL)); }
@@ -3012,11 +3012,11 @@ void CPUExecutor::SBB_eb_rb() { store_eb(SBB_b(load_eb(), load_rb())); }
 void CPUExecutor::SBB_ew_rw() { store_ew(SBB_w(load_ew(), load_rw())); }
 void CPUExecutor::SBB_rb_eb() { store_rb(SBB_b(load_rb(), load_eb())); }
 void CPUExecutor::SBB_rw_ew() { store_rw(SBB_w(load_rw(), load_ew())); }
-void CPUExecutor::SBB_AL_db() { REG_AL = SBB_b(REG_AL, m_instr->db); }
-void CPUExecutor::SBB_AX_dw() { REG_AX = SBB_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::SBB_eb_db() { store_eb(SBB_b(load_eb(), m_instr->db)); }
-void CPUExecutor::SBB_ew_dw() { store_ew(SBB_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::SBB_ew_db() { store_ew(SBB_w(load_ew(), int8_t(m_instr->db))); }
+void CPUExecutor::SBB_AL_ib() { REG_AL = SBB_b(REG_AL, m_instr->ib); }
+void CPUExecutor::SBB_AX_iw() { REG_AX = SBB_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::SBB_eb_ib() { store_eb(SBB_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::SBB_ew_iw() { store_ew(SBB_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::SBB_ew_ib() { store_ew(SBB_w(load_ew(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -3223,11 +3223,11 @@ void CPUExecutor::SUB_eb_rb() { store_eb(SUB_b(load_eb(), load_rb())); }
 void CPUExecutor::SUB_ew_rw() { store_ew(SUB_w(load_ew(), load_rw())); }
 void CPUExecutor::SUB_rb_eb() { store_rb(SUB_b(load_rb(), load_eb())); }
 void CPUExecutor::SUB_rw_ew() { store_rw(SUB_w(load_rw(), load_ew())); }
-void CPUExecutor::SUB_AL_db() { REG_AL = SUB_b(REG_AL, m_instr->db); }
-void CPUExecutor::SUB_AX_dw() { REG_AX = SUB_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::SUB_eb_db() { store_eb(SUB_b(load_eb(), m_instr->db)); }
-void CPUExecutor::SUB_ew_dw() { store_ew(SUB_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::SUB_ew_db() { store_ew(SUB_w(load_ew(), int8_t(m_instr->db))); }
+void CPUExecutor::SUB_AL_ib() { REG_AL = SUB_b(REG_AL, m_instr->ib); }
+void CPUExecutor::SUB_AX_iw() { REG_AX = SUB_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::SUB_eb_ib() { store_eb(SUB_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::SUB_ew_iw() { store_ew(SUB_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::SUB_ew_ib() { store_ew(SUB_w(load_ew(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -3258,10 +3258,10 @@ void CPUExecutor::TEST_w(uint16_t _value1, uint16_t _value2)
 
 void CPUExecutor::TEST_eb_rb() { TEST_b(load_eb(), load_rb()); }
 void CPUExecutor::TEST_ew_rw() { TEST_w(load_ew(), load_rw()); }
-void CPUExecutor::TEST_AL_db() { TEST_b(REG_AL, m_instr->db); }
-void CPUExecutor::TEST_AX_dw() { TEST_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::TEST_eb_db() { TEST_b(load_eb(), m_instr->db); }
-void CPUExecutor::TEST_ew_dw() { TEST_w(load_ew(), m_instr->dw1); }
+void CPUExecutor::TEST_AL_ib() { TEST_b(REG_AL, m_instr->ib); }
+void CPUExecutor::TEST_AX_iw() { TEST_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::TEST_eb_ib() { TEST_b(load_eb(), m_instr->ib); }
+void CPUExecutor::TEST_ew_iw() { TEST_w(load_ew(), m_instr->iw1); }
 
 
 /*******************************************************************************
@@ -3493,9 +3493,9 @@ void CPUExecutor::XOR_rb_eb() { store_rb(XOR_b(load_rb(), load_eb())); }
 void CPUExecutor::XOR_rw_ew() { store_rw(XOR_w(load_rw(), load_ew())); }
 void CPUExecutor::XOR_eb_rb() { store_eb(XOR_b(load_eb(), load_rb())); }
 void CPUExecutor::XOR_ew_rw() { store_ew(XOR_w(load_ew(), load_rw())); }
-void CPUExecutor::XOR_AL_db() { REG_AL = XOR_b(REG_AL, m_instr->db); }
-void CPUExecutor::XOR_AX_dw() { REG_AX = XOR_w(REG_AX, m_instr->dw1); }
-void CPUExecutor::XOR_eb_db() { store_eb(XOR_b(load_eb(), m_instr->db)); }
-void CPUExecutor::XOR_ew_dw() { store_ew(XOR_w(load_ew(), m_instr->dw1)); }
-void CPUExecutor::XOR_ew_db() { store_ew(XOR_w(load_ew(), int8_t(m_instr->db))); }
+void CPUExecutor::XOR_AL_ib() { REG_AL = XOR_b(REG_AL, m_instr->ib); }
+void CPUExecutor::XOR_AX_iw() { REG_AX = XOR_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::XOR_eb_ib() { store_eb(XOR_b(load_eb(), m_instr->ib)); }
+void CPUExecutor::XOR_ew_iw() { store_ew(XOR_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::XOR_ew_ib() { store_ew(XOR_w(load_ew(), int8_t(m_instr->ib))); }
 

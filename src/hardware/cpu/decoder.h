@@ -110,23 +110,23 @@ typedef void (CPUExecutor::*CPUExecutor_fun)();
 
 struct Instruction
 {
-	bool valid;     //!< true if valid
+	bool valid;         //!< true if instruction is valid
 	CPUExecutor_fun fn; //!< executor function
-	uint8_t db;       //!< byte function arg
-	uint16_t dw1,dw2; //!< word function args
-	uint32_t dd1,dd2; //!< dword function args
-	uint32_t offset;  //!< memory offset
-	uint8_t reg;    //!< register index for op+ instructions (like MOVs)
-	uint8_t seg;    //!< index of the segment override
-	bool op32;      //!< operand-size is 32 bit
-	bool addr32;    //!< address-size is 32 bit
-	ModRM modrm;    //!< the ModRM
-	bool rep;       //!< true if REP/REPE/REPNE
-	bool rep_zf;    //!< tells the executor that the exit condition is by checking the ZF
-	bool rep_equal; //!< true if REPE, false if REPNE
-	uint32_t eip;   //!< used in cpu logging only
-	uint32_t cseip; //!< the instruction physical memory address
-	uint size;      //!< total size of the instruction (prefixes included)
+	uint8_t  ib;        //!< byte immediate data
+	uint16_t iw1, iw2;  //!< word immediate data
+	uint32_t id1, id2;  //!< dword immediate data
+	uint32_t offset;    //!< memory offset
+	uint8_t reg;        //!< register index for op+ instructions (like MOVs)
+	uint8_t seg;        //!< index of the segment override
+	bool op32;          //!< operand-size is 32 bit
+	bool addr32;        //!< address-size is 32 bit
+	ModRM modrm;        //!< the ModRM
+	bool rep;           //!< true if REP/REPE/REPNE
+	bool rep_zf;        //!< tells the executor that the exit condition is by checking the ZF
+	bool rep_equal;     //!< true if REPE, false if REPNE
+	uint32_t eip;       //!< used in cpu logging only
+	uint32_t cseip;     //!< the instruction physical memory address
+	uint size;          //!< total size of the instruction (prefixes included)
 	Cycles cycles;
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; //!< the instruction bytes (prefixes included)
 	uint16_t opcode; //!< main opcode (used only when CPULOG is true)

@@ -267,14 +267,14 @@ public:
 	void ADC_rb_eb();
 	void ADC_rw_ew();
 	void ADC_rd_ed();
-	void ADC_AL_db();
-	void ADC_AX_dw();
-	void ADC_EAX_dd();
-	void ADC_eb_db();
-	void ADC_ew_dw();
-	void ADC_ed_dd();
-	void ADC_ew_db();
-	void ADC_ed_db();
+	void ADC_AL_ib();
+	void ADC_AX_iw();
+	void ADC_EAX_id();
+	void ADC_eb_ib();
+	void ADC_ew_iw();
+	void ADC_ed_id();
+	void ADC_ew_ib();
+	void ADC_ed_ib();
 
 	void ADD_eb_rb();
 	void ADD_ew_rw();
@@ -282,14 +282,14 @@ public:
 	void ADD_rb_eb();
 	void ADD_rw_ew();
 	void ADD_rd_ed();
-	void ADD_AL_db();
-	void ADD_AX_dw();
-	void ADD_EAX_dd();
-	void ADD_eb_db();
-	void ADD_ew_dw();
-	void ADD_ed_dd();
-	void ADD_ew_db();
-	void ADD_ed_db();
+	void ADD_AL_ib();
+	void ADD_AX_iw();
+	void ADD_EAX_id();
+	void ADD_eb_ib();
+	void ADD_ew_iw();
+	void ADD_ed_id();
+	void ADD_ew_ib();
+	void ADD_ed_ib();
 
 	void AND_eb_rb();
 	void AND_ew_rw();
@@ -297,14 +297,14 @@ public:
 	void AND_rb_eb();
 	void AND_rw_ew();
 	void AND_rd_ed();
-	void AND_AL_db();
-	void AND_AX_dw();
-	void AND_EAX_dd();
-	void AND_eb_db();
-	void AND_ew_dw();
-	void AND_ed_dd();
-	void AND_ew_db();
-	void AND_ed_db();
+	void AND_AL_ib();
+	void AND_AX_iw();
+	void AND_EAX_id();
+	void AND_eb_ib();
+	void AND_ew_iw();
+	void AND_ed_id();
+	void AND_ew_ib();
+	void AND_ed_ib();
 
 	void ARPL_ew_rw();
 
@@ -334,14 +334,14 @@ public:
 	void CMP_rb_eb();
 	void CMP_rw_ew();
 	void CMP_rd_ed();
-	void CMP_AL_db();
-	void CMP_AX_dw();
-	void CMP_EAX_dd();
-	void CMP_eb_db();
-	void CMP_ew_dw();
-	void CMP_ed_dd();
-	void CMP_ew_db();
-	void CMP_ed_db();
+	void CMP_AL_ib();
+	void CMP_AX_iw();
+	void CMP_EAX_id();
+	void CMP_eb_ib();
+	void CMP_ew_iw();
+	void CMP_ed_id();
+	void CMP_ew_ib();
+	void CMP_ed_ib();
 
 	void CMPSB_16();
 	void CMPSW_16();
@@ -378,14 +378,14 @@ public:
 	void IMUL_ed();
 	void IMUL_rw_ew();
 	void IMUL_rd_ed();
-	void IMUL_rw_ew_db();
-	void IMUL_rd_ed_db();
-	void IMUL_rw_ew_dw();
-	void IMUL_rd_ed_dd();
+	void IMUL_rw_ew_ib();
+	void IMUL_rd_ed_ib();
+	void IMUL_rw_ew_iw();
+	void IMUL_rd_ed_id();
 
-	void IN_AL_db();
+	void IN_AL_ib();
 	void IN_AL_DX();
-	void IN_AX_db();
+	void IN_AX_ib();
 	void IN_AX_DX();
 
 	void INC_eb();
@@ -398,7 +398,7 @@ public:
 	void INSW();
 
 	void INT3();
-	void INT_db();
+	void INT_ib();
 	void INTO();
 
 	void IRET();
@@ -463,12 +463,12 @@ public:
 	void MOV_xb_AL();
 	void MOV_xw_AX();
 	void MOV_xd_EAX();
-	void MOV_rb_db();
-	void MOV_rw_dw();
-	void MOV_rd_dd();
-	void MOV_eb_db();
-	void MOV_ew_dw();
-	void MOV_ed_dd();
+	void MOV_rb_ib();
+	void MOV_rw_iw();
+	void MOV_rd_id();
+	void MOV_eb_ib();
+	void MOV_ew_iw();
+	void MOV_ed_id();
 
 	void MOVSB();
 	void MOVSW();
@@ -491,17 +491,17 @@ public:
 	void OR_rb_eb();
 	void OR_rw_ew();
 	void OR_rd_ed();
-	void OR_AL_db();
-	void OR_AX_dw();
-	void OR_EAX_dd();
-	void OR_eb_db();
-	void OR_ew_dw();
-	void OR_ed_dd();
-	void OR_ew_db();
-	void OR_ed_db();
+	void OR_AL_ib();
+	void OR_AX_iw();
+	void OR_EAX_id();
+	void OR_eb_ib();
+	void OR_ew_iw();
+	void OR_ed_id();
+	void OR_ew_ib();
+	void OR_ed_ib();
 
-	void OUT_db_AL();
-	void OUT_db_AX();
+	void OUT_ib_AL();
+	void OUT_ib_AX();
 	void OUT_DX_AL();
 	void OUT_DX_AX();
 
@@ -544,35 +544,35 @@ public:
 	void PUSH_rd_op();
 	void PUSH_mw();
 	void PUSH_md();
-	void PUSH_db();
-	void PUSH_dw();
-	void PUSH_dd();
+	void PUSH_ib();
+	void PUSH_iw();
+	void PUSH_id();
 
 	void PUSHA();
 	void PUSHAD();
 	void PUSHF();
 	void PUSHFD();
 
-	void ROL_eb_db();
-	void ROL_ew_db();
+	void ROL_eb_ib();
+	void ROL_ew_ib();
 	void ROL_eb_1();
 	void ROL_ew_1();
 	void ROL_eb_CL();
 	void ROL_ew_CL();
-	void ROR_eb_db();
-	void ROR_ew_db();
+	void ROR_eb_ib();
+	void ROR_ew_ib();
 	void ROR_eb_1();
 	void ROR_ew_1();
 	void ROR_eb_CL();
 	void ROR_ew_CL();
-	void RCL_eb_db();
-	void RCL_ew_db();
+	void RCL_eb_ib();
+	void RCL_ew_ib();
 	void RCL_eb_1();
 	void RCL_ew_1();
 	void RCL_eb_CL();
 	void RCL_ew_CL();
-	void RCR_eb_db();
-	void RCR_ew_db();
+	void RCR_eb_ib();
+	void RCR_ew_ib();
 	void RCR_eb_1();
 	void RCR_ew_1();
 	void RCR_eb_CL();
@@ -581,20 +581,20 @@ public:
 	void RET_near();
 	void RET_far();
 
-	void SAL_eb_db();
-	void SAL_ew_db();
+	void SAL_eb_ib();
+	void SAL_ew_ib();
 	void SAL_eb_1();
 	void SAL_ew_1();
 	void SAL_eb_CL();
 	void SAL_ew_CL();
-	void SHR_eb_db();
-	void SHR_ew_db();
+	void SHR_eb_ib();
+	void SHR_ew_ib();
 	void SHR_eb_1();
 	void SHR_ew_1();
 	void SHR_eb_CL();
 	void SHR_ew_CL();
-	void SAR_eb_db();
-	void SAR_ew_db();
+	void SAR_eb_ib();
+	void SAR_ew_ib();
 	void SAR_eb_1();
 	void SAR_ew_1();
 	void SAR_eb_CL();
@@ -607,11 +607,11 @@ public:
 	void SBB_ew_rw();
 	void SBB_rb_eb();
 	void SBB_rw_ew();
-	void SBB_AL_db();
-	void SBB_AX_dw();
-	void SBB_eb_db();
-	void SBB_ew_dw();
-	void SBB_ew_db();
+	void SBB_AL_ib();
+	void SBB_AX_iw();
+	void SBB_eb_ib();
+	void SBB_ew_iw();
+	void SBB_ew_ib();
 
 	void SCASB();
 	void SCASW();
@@ -635,18 +635,18 @@ public:
 	void SUB_ew_rw();
 	void SUB_rb_eb();
 	void SUB_rw_ew();
-	void SUB_AL_db();
-	void SUB_AX_dw();
-	void SUB_eb_db();
-	void SUB_ew_dw();
-	void SUB_ew_db();
+	void SUB_AL_ib();
+	void SUB_AX_iw();
+	void SUB_eb_ib();
+	void SUB_ew_iw();
+	void SUB_ew_ib();
 
 	void TEST_eb_rb();
 	void TEST_ew_rw();
-	void TEST_AL_db();
-	void TEST_AX_dw();
-	void TEST_eb_db();
-	void TEST_ew_dw();
+	void TEST_AL_ib();
+	void TEST_AX_iw();
+	void TEST_eb_ib();
+	void TEST_ew_iw();
 
 	void VERR_ew();
 	void VERW_ew();
@@ -661,13 +661,13 @@ public:
 
 	void XOR_rb_eb();
 	void XOR_eb_rb();
-	void XOR_AL_db();
+	void XOR_AL_ib();
 	void XOR_rw_ew();
 	void XOR_ew_rw();
-	void XOR_AX_dw();
-	void XOR_eb_db();
-	void XOR_ew_dw();
-	void XOR_ew_db();
+	void XOR_AX_iw();
+	void XOR_eb_ib();
+	void XOR_ew_iw();
+	void XOR_ew_ib();
 };
 
 #endif
