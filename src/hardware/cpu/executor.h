@@ -483,11 +483,13 @@ public:
 
 	void NEG_eb();
 	void NEG_ew();
+	void NEG_ed();
 
 	void NOP();
 
 	void NOT_eb();
 	void NOT_ew();
+	void NOT_ed();
 
 	void OR_eb_rb();
 	void OR_ew_rw();

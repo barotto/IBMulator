@@ -2243,6 +2243,20 @@ void CPUExecutor::NEG_ew()
 	SET_FLAG(PF, PARITY(res));
 }
 
+void CPUExecutor::NEG_ed()
+{
+	uint32_t op1 = load_ed();
+	uint32_t res = -(int32_t)(op1);
+	store_ed(res);
+
+	SET_FLAG(CF, op1);
+	SET_FLAG(AF, op1 & 0x0f);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(OF, op1 == 0x80000000);
+	SET_FLAG(PF, PARITY(res));
+}
+
 
 /*******************************************************************************
  * NOP-No OPERATION
@@ -2267,6 +2281,13 @@ void CPUExecutor::NOT_ew()
 	uint16_t op1 = load_ew();
 	op1 = ~op1;
 	store_ew(op1);
+}
+
+void CPUExecutor::NOT_ed()
+{
+	uint32_t op1 = load_ed();
+	op1 = ~op1;
+	store_ed(op1);
 }
 
 
