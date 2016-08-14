@@ -470,8 +470,12 @@ public:
 	void MOV_ew_iw();
 	void MOV_ed_id();
 
-	void MOVSB();
-	void MOVSW();
+	void MOVSB_16();
+	void MOVSW_16();
+	void MOVSD_16();
+	void MOVSB_32();
+	void MOVSW_32();
+	void MOVSD_32();
 
 	void MUL_eb();
 	void MUL_ew();

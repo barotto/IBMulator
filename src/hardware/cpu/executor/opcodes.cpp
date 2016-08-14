@@ -2027,10 +2027,10 @@ void CPUExecutor::MOV_ed_id() { store_ed(m_instr->id1); }
 
 
 /*******************************************************************************
- * MOVSB/MOVSW-Move Data from String to String
+ * MOVSB/MOVSW/MOVSD-Move Data from String to String
  */
 
-void CPUExecutor::MOVSB()
+void CPUExecutor::MOVSB_16()
 {
 	uint8_t temp = read_byte(SEG_REG(m_base_ds), REG_SI);
 	write_byte(REG_ES, REG_DI, temp);
@@ -2046,7 +2046,7 @@ void CPUExecutor::MOVSB()
 	}
 }
 
-void CPUExecutor::MOVSW()
+void CPUExecutor::MOVSW_16()
 {
 	uint16_t temp = read_word(SEG_REG(m_base_ds), REG_SI);
 	write_word(REG_ES, REG_DI, temp);
@@ -2059,6 +2059,70 @@ void CPUExecutor::MOVSW()
 		/* increment SI, DI */
 		REG_SI += 2;
 		REG_DI += 2;
+	}
+}
+
+void CPUExecutor::MOVSD_16()
+{
+	uint32_t temp = read_dword(SEG_REG(m_base_ds), REG_SI);
+	write_dword(REG_ES, REG_DI, temp);
+
+	if(FLAG_DF) {
+		/* decrement SI, DI */
+		REG_SI -= 4;
+		REG_DI -= 4;
+	} else {
+		/* increment SI, DI */
+		REG_SI += 4;
+		REG_DI += 4;
+	}
+}
+
+void CPUExecutor::MOVSB_32()
+{
+	uint8_t temp = read_byte(SEG_REG(m_base_ds), REG_ESI);
+	write_byte(REG_ES, REG_EDI, temp);
+
+	if(FLAG_DF) {
+		/* decrement ESI, EDI */
+		REG_ESI -= 1;
+		REG_EDI -= 1;
+	} else {
+		/* increment ESI, EDI */
+		REG_ESI += 1;
+		REG_EDI += 1;
+	}
+}
+
+void CPUExecutor::MOVSW_32()
+{
+	uint16_t temp = read_word(SEG_REG(m_base_ds), REG_ESI);
+	write_word(REG_ES, REG_EDI, temp);
+
+	if(FLAG_DF) {
+		/* decrement ESI, EDI */
+		REG_ESI -= 2;
+		REG_EDI -= 2;
+	} else {
+		/* increment ESI, EDI */
+		REG_ESI += 2;
+		REG_EDI += 2;
+	}
+}
+
+void CPUExecutor::MOVSD_32()
+{
+	uint32_t temp = read_dword(SEG_REG(m_base_ds), REG_ESI);
+	write_dword(REG_ES, REG_EDI, temp);
+
+	if(FLAG_DF) {
+		/* decrement ESI, EDI */
+		REG_ESI -= 4;
+		REG_EDI -= 4;
+	} else {
+		/* increment ESI, EDI */
+		REG_ESI += 4;
+		REG_EDI += 4;
 	}
 }
 

@@ -1165,19 +1165,27 @@ case 0xA3:
 	break;
 }
 
-/* A4        MOVSB         Move byte DS:[SI] to ES:[DI] */
+/* A4        MOVSB         Move byte DS:[(E)SI] to ES:[(E)DI] */
 case 0xA4:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = &CPUExecutor::MOVSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::MOVSB_32;
+	} else {
+		m_instr.fn = &CPUExecutor::MOVSB_16;
+	}
 	break;
 }
 
-/* A5        MOVSW         Move word DS:[SI] to ES:[DI] */
+/* A5        MOVSW         Move word DS:[(E)SI] to ES:[(E)DI] */
 case 0xA5:
 {
 	m_instr.rep = m_rep;
-	m_instr.fn = &CPUExecutor::MOVSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::MOVSW_32;
+	} else {
+		m_instr.fn = &CPUExecutor::MOVSW_16;
+	}
 	break;
 }
 
