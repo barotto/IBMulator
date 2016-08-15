@@ -35,7 +35,6 @@ Instruction * CPUDecoder::decode()
 	unsigned cycles_op = 0;
 
 	m_ilen = 0;
-	m_rep = false;
 	m_instr.valid = true;
 	m_instr.op32 = REG_CS.desc.def;
 	m_instr.addr32 = REG_CS.desc.def;
@@ -114,15 +113,13 @@ restart_opcode:
 			goto restart_opcode;
 		}
 		case 0xF2: { // REPNE
-			m_rep = true;
+			m_instr.rep = true;
 			m_instr.rep_equal = false;
-			m_instr.cycles.rep = 5;
 			goto restart_opcode;
 		}
 		case 0xF3: { // REP/REPE
-			m_rep = true;
+			m_instr.rep = true;
 			m_instr.rep_equal = true;
-			m_instr.cycles.rep = 5;
 			goto restart_opcode;
 		}
 		case 0x0F: {
@@ -143,6 +140,7 @@ restart_opcode:
 	}
 	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (g_cpu.type()-CPU_286)];
 	m_instr.size = m_ilen;
+	m_instr.rep_first = m_instr.rep;
 
 	return &m_instr;
 }

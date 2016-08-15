@@ -638,7 +638,6 @@ case 0x6B:
 /* 6C      INSB           Input byte from port DX into ES:[DI] */
 case 0x6C:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::INSB;
 	break;
 }
@@ -646,7 +645,6 @@ case 0x6C:
 /* 6D      INSW           Input word from port DX into ES:[DI] */
 case 0x6D:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::INSW;
 	break;
 }
@@ -654,7 +652,6 @@ case 0x6D:
 /* 6E      OUTSB          Output byte DS:[SI] to port number DX */
 case 0x6E:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::OUTSB;
 	break;
 }
@@ -662,7 +659,6 @@ case 0x6E:
 /* 6F      OUTSW          Output word DS:[SI] to port number DX */
 case 0x6F:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::OUTSW;
 	break;
 }
@@ -1168,7 +1164,6 @@ case 0xA3:
 /* A4        MOVSB         Move byte DS:[(E)SI] to ES:[(E)DI] */
 case 0xA4:
 {
-	m_instr.rep = m_rep;
 	if(m_instr.addr32) {
 		m_instr.fn = &CPUExecutor::MOVSB_32;
 	} else {
@@ -1180,7 +1175,6 @@ case 0xA4:
 /* A5        MOVSW         Move word DS:[(E)SI] to ES:[(E)DI] */
 case 0xA5:
 {
-	m_instr.rep = m_rep;
 	if(m_instr.addr32) {
 		m_instr.fn = &CPUExecutor::MOVSW_32;
 	} else {
@@ -1192,7 +1186,6 @@ case 0xA5:
 /* A6        CMPSB         Compare bytes ES:[(E)DI] from DS:[(E)SI] */
 case 0xA6:
 {
-	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
 		m_instr.fn = &CPUExecutor::CMPSB_32;
@@ -1205,7 +1198,6 @@ case 0xA6:
 /* A7        CMPSW         Compare words ES:[(E)DI] from DS:[(E)SI] */
 case 0xA7:
 {
-	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
 		m_instr.fn = &CPUExecutor::CMPSW_32;
@@ -1234,7 +1226,6 @@ case 0xA9:
 /* AA       STOSB           Store AL to byte ES:[DI], advance DI */
 case 0xAA:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::STOSB;
 	break;
 }
@@ -1242,7 +1233,6 @@ case 0xAA:
 /* AB       STOSW           Store AX to word ES:[DI], advance DI */
 case 0xAB:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::STOSW;
 	break;
 }
@@ -1250,7 +1240,6 @@ case 0xAB:
 /* AC         LODSB            Load byte DS:[SI] into AL */
 case 0xAC:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::LODSB;
 	break;
 }
@@ -1258,7 +1247,6 @@ case 0xAC:
 /* AD         LODSW             Load word DS:[SI] into AX */
 case 0xAD:
 {
-	m_instr.rep = m_rep;
 	m_instr.fn = &CPUExecutor::LODSW;
 	break;
 }
@@ -1266,7 +1254,6 @@ case 0xAD:
 /*  AE       SCASB         Compare bytes AL - ES:[DI], advance DI */
 case 0xAE:
 {
-	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = &CPUExecutor::SCASB;
 	break;
@@ -1275,7 +1262,6 @@ case 0xAE:
 /*  AF       SCASW         Compare words AX - ES:[DI], advance DI */
 case 0xAF:
 {
-	m_instr.rep = m_rep;
 	m_instr.rep_zf = true;
 	m_instr.fn = &CPUExecutor::SCASW;
 	break;

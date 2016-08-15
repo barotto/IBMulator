@@ -239,6 +239,8 @@ private:
 	uint8_t XOR_b(uint8_t _value1, uint8_t _value2);
 	uint16_t XOR_w(uint16_t _value1, uint16_t _value2);
 
+	void rep_16();
+	void rep_32();
 	void illegal_opcode();
 
 public:

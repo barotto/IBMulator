@@ -138,9 +138,8 @@ void CPU::power_off()
 uint CPU::step()
 {
 	int cycles, bu_cycles, eu_cycles, decode_cycles, io_cycles, dramtx, vramtx, bu_rops;
-	int bu_update;
-	uint32_t csip, prev_csip;
 	CPUCore core_log;
+	bool do_log = false;
 
 	g_cpubus.reset_counters();
 	cycles = 0;
@@ -151,9 +150,6 @@ uint CPU::step()
 	bu_rops = 0;
 	dramtx = 0;
 	vramtx = 0;
-	csip = 0;
-	prev_csip = 0;
-	bu_update = 0;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -173,23 +169,22 @@ uint CPU::step()
 			//an interrupt could have invalidated the pq, we must update
 			g_cpubus.update(0);
 		}
-		csip = GET_PHYADDR(CS,REG_IP);
-		prev_csip = (m_instr!=nullptr)?m_instr->cseip:0;
-		//if the prev instr is the same as the next (REP), don't decode
-		if(m_instr==nullptr || !(m_instr->rep && prev_csip==csip)) {
-			m_instr = g_cpudecoder.decode();
-			if(!m_pq_valid) {
+		//if the prev instr is the same as the next don't decode
+		if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.is_pq_valid()) {
+			if(!g_cpubus.is_pq_valid()) {
 				/*
 				According to various sources, the decoding time should be
 				proportional to the size of the next instruction (1 cycle per
 				decoded byte). But after some empirical tests, 2 cycles is the
 				best value given the current setup.
 				*/
-				//decode_cycles = 1;
 				decode_cycles = 2;
-				//decode_cycles = m_instr->size;
 			}
+
+			m_instr = g_cpudecoder.decode();
+
 			if(CPULOG) {
+				do_log = true;
 				core_log = g_cpucore;
 			}
 		}
@@ -228,13 +223,11 @@ uint CPU::step()
 		eu_cycles = 1;
 	}
 
-	m_pq_valid = g_cpubus.is_pq_valid();
-	if(m_pq_valid) {
-		bu_update = eu_cycles + decode_cycles;
+	if(g_cpubus.is_pq_valid()) {
+		g_cpubus.update(eu_cycles + decode_cycles);
 	} else {
-		bu_update = 0;
+		g_cpubus.update(0);
 	}
-	g_cpubus.update(bu_update);
 
 	bu_cycles = g_cpubus.get_mem_cycles() + m_instr->cycles.bu;
 	if(bu_cycles < 0) {
@@ -251,7 +244,7 @@ uint CPU::step()
 		cycles += DRAM_REFRESH_CYCLES;
 	}
 
-	if(CPULOG && (CPULOG_UNFOLD_REPS || prev_csip!=csip)) {
+	if(CPULOG && (CPULOG_UNFOLD_REPS || do_log)) {
 		m_logger.add_entry(
 			g_machine.get_virt_time_us(), // time
 			*m_instr,                     // instruction
@@ -261,8 +254,6 @@ uint CPU::step()
 			cycles                        // cycles used
 		);
 	}
-
-	assert(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
 
 	m_s.icount++;
 	m_s.ccount += cycles;

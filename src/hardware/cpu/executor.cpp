@@ -116,82 +116,124 @@ void CPUExecutor::execute(Instruction * _instr)
 	if(!m_instr->valid) {
 		illegal_opcode();
 	}
-	if(m_instr->size > CPU_MAX_INSTR_SIZE) {
-		/*
-		 * When the CPU detects an instruction that is illegal due to being
-		 * greater than 10 bytes in length, it generates an exception
-		 * #13 (General Protection Violation)
-		 * [80286 ARPL and Overlength Instructions, 15 October 1984]
+
+	static CPUExecutor_fun exec_fn;
+
+	if(!m_instr->rep || m_instr->rep_first) {
+		if(m_instr->size > CPU_MAX_INSTR_SIZE) {
+			/*
+			 * When the CPU detects an instruction that is illegal due to being
+			 * greater than 10 bytes in length, it generates an exception
+			 * #13 (General Protection Violation)
+			 * [80286 ARPL and Overlength Instructions, 15 October 1984]
+			 */
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+
+		if(old_eip + m_instr->size > GET_LIMIT(CS)) {
+			PERRF(LOG_CPU, "CS limit violation!\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+
+		if(m_instr->seg != REGI_NONE) {
+			m_base_ds = m_instr->seg;
+			m_base_ss = m_instr->seg;
+		} else {
+			m_base_ds = REGI_DS;
+			m_base_ss = REGI_SS;
+		}
+
+		exec_fn = m_instr->fn;
+
+		if(m_instr->addr32) {
+			EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
+			EA_get_offset = &CPUExecutor::EA_get_offset_32;
+			if(m_instr->rep) {
+				exec_fn = &CPUExecutor::rep_32;
+			}
+		} else {
+			EA_get_segreg = &CPUExecutor::EA_get_segreg_16;
+			EA_get_offset = &CPUExecutor::EA_get_offset_16;
+			if(m_instr->rep) {
+				exec_fn = &CPUExecutor::rep_16;
+			}
+		}
+	}
+
+	(this->*exec_fn)();
+}
+
+void CPUExecutor::rep_16()
+{
+	/* 1. Check the CX register. If it is zero, exit the iteration and move
+	 * to the next instruction.
+	 */
+	if(REG_CX == 0) {
+		//REP finished and IP points to the next instr.
+		return;
+	}
+	/* 2. Acknowledge any pending interrupts.
+	 * this is done in the CPU::step()
+	 * TODO so it checks (E)CX after interrupts; is it really a relevant difference?
+	 */
+	try {
+		/* 3. Perform the string operation once.
 		 */
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-	if(old_eip + m_instr->size > GET_LIMIT(CS)) {
-		PERRF(LOG_CPU, "CS limit violation!\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-
-	if(m_instr->seg != REGI_NONE) {
-		m_base_ds = m_instr->seg;
-		m_base_ss = m_instr->seg;
-	} else {
-		m_base_ds = REGI_DS;
-		m_base_ss = REGI_SS;
+		(this->*(m_instr->fn))();
+	} catch(CPUException &e) {
+		//TODO an exception occurred during the instr execution. what should i do?
+		RESTORE_EIP();
+		throw;
 	}
 
-	if(m_instr->addr32) {
-		EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
-		EA_get_offset = &CPUExecutor::EA_get_offset_32;
-	} else {
-		EA_get_segreg = &CPUExecutor::EA_get_segreg_16;
-		EA_get_offset = &CPUExecutor::EA_get_offset_16;
-	}
+	/* 4. Decrement CX by 1; no flags are modified. */
+	REG_CX -= 1;
 
-	if(m_instr->rep) {
-		/* 1. Check the CX register. If it is zero, exit the iteration and move
-		 * to the next instruction.
-		 */
-		if(REG_CX == 0) {
+	/* 5. If the string operation is SCAS or CMPS, check the zero flag.
+	 * If the repeat condition does not hold, then exit the iteration and
+	 * move to the next instruction. Exit if the prefix is REPE and ZF=O
+	 * (the last comparison was not equal), or if the prefix is REPNE and
+	 * ZF=1 (the last comparison was equal).
+	 */
+	if(m_instr->rep_zf) {
+		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF))
+		{
 			//REP finished and IP points to the next instr.
 			return;
 		}
-		/* 2. Acknowledge any pending interrupts.
-		 * this is done in the CPU::step()
-		 * TODO so it checks CX after interrupts; is it really a relevant difference?
-		 */
-		try {
-			/* 3. Perform the string operation once.
-			 */
-			(g_cpuexecutor.*(m_instr->fn))();
-		} catch(CPUException &e) {
-			//TODO an exception occurred during the instr execution. what should i do?
-			RESTORE_EIP();
-			throw;
-		}
-		/* 4. Decrement CX by 1; no flags are modified. */
-		REG_CX -= 1;
-
-		/* 5. If the string operation is SCAS or CMPS, check the zero flag.
-		 * If the repeat condition does not hold, then exit the iteration and
-		 * move to the next instruction. Exit if the prefix is REPE and ZF=O
-		 * (the last comparison was not equal), or if the prefix is REPNE and
-		 * ZF=1 (the last comparison was equal).
-		 */
-		if(m_instr->rep_zf) {
-			if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF))
-			{
-				//REP finished and IP points to the next instr.
-				return;
-			}
-		}
-		/* 6. Go to step 1 for the next iteration. */
-		//REP not finished so back up
-		RESTORE_EIP();
-
-	} else {
-
-		(g_cpuexecutor.*(m_instr->fn))();
-
 	}
+	/* 6. Go to step 1 for the next iteration. */
+	//REP not finished so back up
+	RESTORE_EIP();
+
+	m_instr->rep_first = false;
+}
+
+void CPUExecutor::rep_32()
+{
+	if(REG_ECX == 0) {
+		return;
+	}
+
+	try {
+		(this->*(m_instr->fn))();
+	} catch(CPUException &e) {
+		//TODO an exception occurred during the instr execution. what should i do?
+		RESTORE_EIP();
+		throw;
+	}
+
+	REG_ECX -= 1;
+
+	if(m_instr->rep_zf) {
+		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF)) {
+			return;
+		}
+	}
+
+	RESTORE_EIP();
+
+	m_instr->rep_first = false;
 }
 
 void CPUExecutor::illegal_opcode()

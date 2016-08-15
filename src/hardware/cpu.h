@@ -121,7 +121,6 @@ protected:
 	uint32_t m_freq;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
-	bool m_pq_valid;
 	std::function<void(void)> m_shutdown_trap;
 
 	CPUState m_s;
