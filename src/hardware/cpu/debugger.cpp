@@ -1052,20 +1052,20 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 		} else {
 			if(desc.is_code_segment()) {
 				output << "code ";
-				if(desc.is_code_segment_non_conforming()) {
+				if(!desc.is_conforming()) {
 					output << "non conforming";
 				} else {
 					output << "conforming";
 				}
-				if(desc.is_code_segment_readable()) {
+				if(desc.is_readable()) {
 					output << " R";
 				}
 			} else {
 				output << "data ";
-				if(desc.is_data_segment_expand_down()) {
+				if(desc.is_expand_down()) {
 					output << "exp down ";
 				}
-				if(desc.is_data_segment_writeable()) {
+				if(desc.is_writeable()) {
 					output << "RW";
 				} else {
 					output << "R";

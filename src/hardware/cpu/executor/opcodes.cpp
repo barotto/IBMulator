@@ -1521,7 +1521,7 @@ void CPUExecutor::LAR_rw_ew()
 	 */
 
 	if(descriptor.segment) { /* normal segment */
-		if(descriptor.is_code_segment() && descriptor.is_code_segment_conforming()) {
+		if(descriptor.is_code_segment() && descriptor.is_conforming()) {
 			/* ignore DPL for conforming segments */
 		} else {
 			if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
@@ -1914,7 +1914,7 @@ void CPUExecutor::LSL_rw_ew()
 	    return;
 	}
 
-	if(!descriptor.segment) { // system segment
+	if(descriptor.is_system_segment()) {
 		switch (descriptor.type) {
 			case DESC_TYPE_AVAIL_286_TSS:
 			case DESC_TYPE_BUSY_286_TSS:
@@ -1929,7 +1929,7 @@ void CPUExecutor::LSL_rw_ew()
 				return;
 		}
 	} else { // data & code segment
-		if(descriptor.is_code_segment_non_conforming()) {
+		if(descriptor.is_code_segment() && !descriptor.is_conforming()) {
 			// non-conforming code segment
 			if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 				SET_FLAG(ZF, false);
@@ -3400,13 +3400,12 @@ void CPUExecutor::VERR_ew()
 	// normal data/code segment
 	if(descriptor.is_code_segment()) {
 		// ignore DPL for readable conforming segments
-		if(descriptor.is_code_segment_conforming() && descriptor.is_code_segment_readable())
-	    {
+		if(descriptor.is_conforming() && descriptor.is_readable()) {
 			PDEBUGF(LOG_V2, LOG_CPU, "VERR: conforming code, OK\n");
 			SET_FLAG(ZF, true);
 			return;
 	    }
-	    if(!descriptor.is_code_segment_readable()) {
+	    if(!descriptor.is_readable()) {
 	    	PDEBUGF(LOG_V2, LOG_CPU, "VERR: code not readable\n");
 			SET_FLAG(ZF, false);
 			return;
@@ -3462,7 +3461,7 @@ void CPUExecutor::VERW_ew()
 	}
 
 	// rule out system segments & code segments
-	if(!descriptor.segment || descriptor.is_code_segment()) {
+	if(descriptor.is_system_segment() || descriptor.is_code_segment()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: system seg or code\n");
 		SET_FLAG(ZF, false);
 		return;
@@ -3475,7 +3474,7 @@ void CPUExecutor::VERW_ew()
 	}
 
 	// data segment
-	if(descriptor.is_data_segment_writeable()) {
+	if(descriptor.is_writeable()) {
 		if((descriptor.dpl < CPL) || (descriptor.dpl < selector.rpl)) {
 			PDEBUGF(LOG_V2, LOG_CPU, "VERW: writable data seg not within priv level\n");
 			SET_FLAG(ZF, false);

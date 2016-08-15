@@ -41,8 +41,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	//   else #GP(code segment selector)
 	// DPL of selected descriptor must be <= CPL,
 	// else #GP(code segment selector)
-	if(!cs_descriptor.valid || !cs_descriptor.segment ||
-		cs_descriptor.is_data_segment() || cs_descriptor.dpl > CPL)
+	if(!cs_descriptor.valid || !cs_descriptor.is_code_segment() || cs_descriptor.dpl > CPL)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "call_gate: selected descriptor is not code\n");
 		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
@@ -56,7 +55,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 	// CALL GATE TO MORE PRIVILEGE
 	// if non-conforming code segment and DPL < CPL then
-	if(cs_descriptor.is_code_segment_non_conforming() && (cs_descriptor.dpl < CPL)) {
+	if(!cs_descriptor.is_conforming() && (cs_descriptor.dpl < CPL)) {
 		uint16_t SS_for_cpl_x;
 		uint16_t SP_for_cpl_x;
 		Selector   ss_selector;
@@ -97,9 +96,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// descriptor must indicate writable data segment,
 		//   else #TS(SS selector)
-		if(!ss_descriptor.valid || !ss_descriptor.segment ||
-			ss_descriptor.is_code_segment() ||
-			!ss_descriptor.is_data_segment_writeable())
+		if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable())
 		{
 			PDEBUGF(LOG_V2, LOG_CPU, "call_gate: ss descriptor is not writable data seg\n");
 			throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
@@ -560,11 +557,7 @@ void CPUExecutor::iret_pmode()
 
 		/* AR byte must indicate a writable data segment,
 		 * else #GP(SS selector) */
-		if(!ss_descriptor.valid || !ss_descriptor.segment ||
-			ss_descriptor.is_code_segment() ||
-			!ss_descriptor.is_data_segment_writeable()
-		)
-		{
+		if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable()) {
 			PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: SS AR byte not writable or code segment\n");
 			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
@@ -691,10 +684,7 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 
 		// descriptor AR byte must indicate a writable data segment,
 		// else #GP(selector)
-		if(!ss_descriptor.valid || !ss_descriptor.segment ||
-			ss_descriptor.is_code_segment() ||
-			!ss_descriptor.is_data_segment_writeable())
-		{
+		if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable()) {
 			PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: SS.AR byte not writable data\n");
 			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}

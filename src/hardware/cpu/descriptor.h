@@ -107,7 +107,7 @@ struct Descriptor
 	inline void set_AR(uint8_t _AR) {
 		ar = _AR;
 		valid = true;
-		segment = ar & 0x10;
+		segment = ar & SEG_SEGMENT;
 		if(segment) {
 			//Code or Data Segment Descriptor
 			accessed = ar & 1;
@@ -161,14 +161,13 @@ struct Descriptor
 		valid = (_cache[1]>>8) & 0x80;
 	}
 
-	inline bool is_code_segment() { return (ar & SEG_CODE); }
-	inline bool is_code_segment_conforming() { return (ar & SEG_CONFORMING); }
-	inline bool is_data_segment_expand_down() { return (ar & SEG_EXP_DOWN); }
-	inline bool is_code_segment_readable() { return (ar & SEG_READWRITE); }
-	inline bool is_data_segment_writeable() { return (ar & SEG_READWRITE); }
-	inline bool is_data_segment() { return (!is_code_segment()); }
-	inline bool is_code_segment_non_conforming() { return (!is_code_segment_conforming()); }
-	inline bool is_system_segment() { return !(ar & SEG_SEGMENT); }
+	inline bool is_data_segment() const   { return (segment && !(ar & SEG_CODE)); }
+	inline bool is_code_segment() const   { return (segment && (ar & SEG_CODE)); }
+	inline bool is_system_segment() const { return !segment; }
+	inline bool is_conforming() const     { return (segment && (ar & SEG_CONFORMING)); }
+	inline bool is_expand_down() const    { return (segment && (ar & SEG_EXP_DOWN)); }
+	inline bool is_readable() const       { return (segment && (ar & SEG_READWRITE)); }
+	inline bool is_writeable() const      { return (segment && (ar & SEG_READWRITE)); }
 };
 
 /*
@@ -185,6 +184,21 @@ struct Descriptor
 +1║                           LIMIT 15-0                          ║ 0
   ╚═══════════════════════════════╧═══════════════════════════════╝
    15                                                            0
+
+	A: Accessed, P: Present, B/D: Big/Default, G: Granularity
+
+	Data segments AR byte:
+	┌───┬───────┬───┬───────────┬───┐
+	│ P │  DPL  │ 1 │ 0   E   W │ A │
+	└───┴───┴───┴───┴───┴───┴───┴───┘
+	E: Expand-Down, W: Writeable
+
+	Code segments AR byte:
+	┌───┬───────┬───┬───────────┬───┐
+	│ P │  DPL  │ 1 │ 1   C   R │ A │
+	└───┴───┴───┴───┴───┴───┴───┴───┘
+	C: Conforming, R: Readable
+
 
  * System Segment (S=0) (cf. 286:6-6; 386:5-3,6-2)
 

@@ -395,22 +395,19 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		}
 
 		// CS descriptor AR byte must indicate code segment else #TS(CS)
-		if(!cs_descriptor.valid || !cs_descriptor.segment ||
-			cs_descriptor.is_data_segment())
-		{
+		if(!cs_descriptor.valid || !cs_descriptor.is_code_segment()) {
 			PERRF(LOG_CPU,"switch_tasks(exception after commit point): CS not valid executable seg\n");
 			throw CPUException(CPU_TS_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
 		}
 
 		// if non-conforming then DPL must equal selector RPL else #TS(CS)
-		if (cs_descriptor.is_code_segment_non_conforming() && cs_descriptor.dpl != REG_CS.sel.rpl)
-		{
+		if(!cs_descriptor.is_conforming() && cs_descriptor.dpl != REG_CS.sel.rpl) {
 			PERRF(LOG_CPU,"switch_tasks(exception after commit point): non-conforming: CS.dpl!=CS.RPL\n");
 			throw CPUException(CPU_TS_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
 		}
 
 		// if conforming then DPL must be <= selector RPL else #TS(CS)
-		if(cs_descriptor.is_code_segment_conforming() && cs_descriptor.dpl > REG_CS.sel.rpl) {
+		if(cs_descriptor.is_conforming() && cs_descriptor.dpl > REG_CS.sel.rpl) {
 			PERRF(LOG_CPU,"switch_tasks(exception after commit point): conforming: CS.dpl>RPL\n");
 			throw CPUException(CPU_TS_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
 		}

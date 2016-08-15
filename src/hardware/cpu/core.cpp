@@ -133,10 +133,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 		/* AR byte must indicate a writable data segment else #GP(selector) */
-		if(  descriptor.segment == false ||
-		    (descriptor.is_code_segment()) ||
-		   !(descriptor.is_data_segment_writeable())
-		) {
+		if(!descriptor.is_data_segment() || !descriptor.is_writeable()) {
 			PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(SS): not writable data segment\n");
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
@@ -180,8 +177,8 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* AR byte must indicate a writable data segment else #GP(selector) */
-		if(  descriptor.segment == false ||
-			(descriptor.is_code_segment() && !(descriptor.is_code_segment_readable())
+		if(  descriptor.is_system_segment() ||
+			(descriptor.is_code_segment() && !(descriptor.is_readable())
 		  )
 		) {
 			PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): not data or readable code (AR=0x%02X)\n",
@@ -191,7 +188,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 
 		/* If data or non-conforming code, then both the RPL and the CPL
 		 * must be less than or equal to DPL in AR byte else #GP(selector) */
-		if(descriptor.is_data_segment() || descriptor.is_code_segment_non_conforming()) {
+		if(descriptor.is_data_segment() || !descriptor.is_conforming()) {
 			if((selector.rpl > descriptor.dpl) || (CPL > descriptor.dpl)) {
 				PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): RPL & CPL must be <= DPL\n",
 						_segreg.to_string(), _value);
@@ -231,7 +228,7 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 	}
 
 	// if non-conforming, code segment descriptor DPL must = CPL else #GP(selector)
-	if(!(descriptor.is_code_segment_conforming())) {
+	if(!descriptor.is_conforming()) {
 		if(descriptor.dpl != cpl) {
 			PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): non-conforming code seg descriptor dpl != cpl, dpl=%d, cpl=%d\n",
 					selector, descriptor.dpl, cpl);
@@ -411,8 +408,8 @@ void SegReg::validate()
 {
 	if(desc.dpl < CPL) {
 		// invalidate if data or non-conforming code segment
-		if(desc.valid==0 || desc.segment==0 ||
-        desc.is_data_segment() || desc.is_code_segment_non_conforming())
+		if(desc.valid==0 || desc.segment==false ||
+        desc.is_data_segment() || !desc.is_conforming())
 		{
 			sel.value = 0;
 			desc.valid = false;

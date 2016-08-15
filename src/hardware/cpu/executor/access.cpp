@@ -27,7 +27,7 @@ void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len,
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment not valid\n");
 		throw CPUException(_vector, _errcode);
 	}
-	if(_seg.desc.is_data_segment_expand_down()) {
+	if(_seg.desc.is_expand_down()) {
 		uint32_t upper_limit = 0xFFFF;
 		if(_seg.desc.big) {
 			upper_limit = 0xFFFFFFFF;
@@ -40,7 +40,7 @@ void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len,
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment limit violation\n");
 		throw CPUException(_vector, _errcode);
 	}
-	if(_seg.desc.is_code_segment() && !_seg.desc.is_code_segment_readable()) {
+	if(_seg.desc.is_code_segment() && !_seg.desc.is_readable()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): execute only\n");
 		throw CPUException(_vector, _errcode);
 	}
@@ -56,11 +56,11 @@ void CPUExecutor::seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not valid\n");
 		throw CPUException(_vector, _errcode);
 	}
-	if(!_seg.desc.is_data_segment_writeable()) {
+	if(!_seg.desc.is_writeable()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not writeable\n");
 		throw CPUException(_vector, _errcode);
 	}
-	if(_seg.desc.is_data_segment_expand_down()) {
+	if(_seg.desc.is_expand_down()) {
 		uint32_t upper_limit = 0xFFFF;
 		if(_seg.desc.big) {
 			upper_limit = 0xFFFFFFFF;
