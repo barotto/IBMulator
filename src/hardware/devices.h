@@ -98,6 +98,7 @@ public:
 
 	uint8_t read_byte(uint16_t _port);
 	uint16_t read_word(uint16_t _port);
+	uint32_t read_dword(uint16_t _port);
 	void write_byte(uint16_t _port, uint8_t _value);
 	void write_word(uint16_t _port, uint16_t _value);
 

@@ -284,6 +284,13 @@ uint16_t Devices::read_word(uint16_t _port)
 	return value;
 }
 
+uint32_t Devices::read_dword(uint16_t _port)
+{
+	uint32_t w0 = read_word(_port);
+	uint32_t w1 = read_word(_port + 2);
+	return w0 | (w1<<16);
+}
+
 void Devices::write_byte(uint16_t _port, uint8_t _value)
 {
 	io_handler_t &iohdl = m_write_handlers[_port];

@@ -132,6 +132,7 @@ private:
 	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write);
 	void mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _user, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void io_check(uint16_t _port, unsigned _len);
 
 	uint8_t read_byte();
 	uint16_t read_word();
@@ -197,6 +198,10 @@ private:
 
 	int16_t IMUL_w(int16_t op1, int16_t op2);
 	int32_t IMUL_d(int32_t op1, int32_t op2);
+
+	void INSB(uint32_t _offset);
+	void INSW(uint32_t _offset);
+	void INSD(uint32_t _offset);
 
 	uint16_t INC_w(uint16_t _op1);
 	uint32_t INC_d(uint32_t _op1);
@@ -388,7 +393,9 @@ public:
 	void IN_AL_ib();
 	void IN_AL_DX();
 	void IN_AX_ib();
+	void IN_EAX_ib();
 	void IN_AX_DX();
+	void IN_EAX_DX();
 
 	void INC_eb();
 	void INC_ew();
@@ -396,8 +403,12 @@ public:
 	void INC_rw_op();
 	void INC_rd_op();
 
-	void INSB();
-	void INSW();
+	void INSB_16();
+	void INSW_16();
+	void INSD_16();
+	void INSB_32();
+	void INSW_32();
+	void INSD_32();
 
 	void INT3();
 	void INT_ib();

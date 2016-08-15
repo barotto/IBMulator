@@ -103,3 +103,27 @@ void CPUExecutor::mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _le
 		m_cached_phy.pages = 1;
 	}
 }
+
+void CPUExecutor::io_check(uint16_t _port, unsigned _len)
+{
+	if(IS_PMODE() && (IS_V8086() || (CPL > FLAG_IOPL))) {
+		if(CPU_TYPE <= CPU_286) {
+			/* #GP(O) if the current privilege level is bigger (has less privilege)
+			 * than IOPL; which is the privilege level found in the flags register.
+			 */
+			PDEBUGF(LOG_V2, LOG_CPU, "I/O access not allowed\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		if(!REG_TR.desc.is_system_segment() || (REG_TR.desc.type != DESC_TYPE_AVAIL_386_TSS && REG_TR.desc.type != DESC_TYPE_BUSY_386_TSS)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "TR doesn't point to a valid 32bit TSS\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		uint32_t io_base = read_word(REG_TR, 102, CPU_GP_EXC, 0);
+		uint16_t permission = read_word(REG_TR, io_base + _port/8, CPU_GP_EXC, 0);
+	    unsigned bit_index = _port & 0x7;
+	    unsigned mask = (1 << _len) - 1;
+	    if((permission >> bit_index) & mask) {
+	    	throw CPUException(CPU_GP_EXC, 0);
+	    }
+	}
+}

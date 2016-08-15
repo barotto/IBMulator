@@ -1148,48 +1148,44 @@ void CPUExecutor::IMUL_rd_ed_id() {	store_rd(IMUL_d(load_ed(), m_instr->id1)); }
 
 
 /*******************************************************************************
- * Input from Port
+ * IN-Input from Port
  */
 
 void CPUExecutor::IN_AL_ib()
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-		/* #GP(O) if the current privilege level is bigger (has less privilege)
-		 * than IOPL; which is the privilege level found in the flags register.
-		 */
-		PDEBUGF(LOG_V2, LOG_CPU, "IN_AL_ib: I/O access not allowed!\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	io_check(m_instr->ib, 1);
 	REG_AL = g_devices.read_byte(m_instr->ib);
 }
 
 void CPUExecutor::IN_AL_DX()
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "IN_AL_DX: I/O access not allowed!\n");
-	    throw CPUException(CPU_GP_EXC, 0);
-	}
+	io_check(REG_DX, 1);
 	REG_AL = g_devices.read_byte(REG_DX);
 }
 
 void CPUExecutor::IN_AX_ib()
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "IN_AX_ib: I/O access not allowed!\n");
-	    throw CPUException(CPU_GP_EXC, 0);
-	}
+	io_check(m_instr->ib, 2);
 	REG_AX = g_devices.read_word(m_instr->ib);
 }
 
 void CPUExecutor::IN_AX_DX()
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "IN_AX_DX: I/O access not allowed!\n");
-	    throw CPUException(CPU_GP_EXC, 0);
-	}
+	io_check(REG_DX, 2);
 	REG_AX = g_devices.read_word(REG_DX);
 }
 
+void CPUExecutor::IN_EAX_ib()
+{
+	io_check(m_instr->ib, 4);
+	REG_EAX = g_devices.read_dword(m_instr->ib);
+}
+
+void CPUExecutor::IN_EAX_DX()
+{
+	io_check(REG_DX, 4);
+	REG_EAX = g_devices.read_dword(REG_DX);
+}
 
 /*******************************************************************************
  * INC-Increment by 1
@@ -1241,26 +1237,27 @@ void CPUExecutor::INC_rd_op() { store_rd_op(INC_d(load_rd_op())); }
 
 
 /*******************************************************************************
- * INSB/INSW-Input from Port to String
+ * INSB/INSW/INSD-Input from Port to String
  */
 
-void CPUExecutor::INSB()
+void CPUExecutor::INSB(uint32_t _offset)
 {
-	// trigger any segment faults before reading from IO port
-	if(IS_PMODE()) {
-		if(CPL > FLAG_IOPL) {
-			PDEBUGF(LOG_V2, LOG_CPU, "INSB: I/O access not allowed!\n");
-			throw CPUException(CPU_GP_EXC, 0);
-		}
+	// trigger any faults before reading from I/O port
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 1);
 	}
-	/*
-	The memory operand must be addressable from the ES register; no segment override is
-	possible.
-	*/
-	mem_access_check(REG_ES, REG_DI, 1, IS_USER_PL, true);
+	/* The memory operand must be addressable from the ES register; no segment
+	 * override is possible.
+	 */
+	mem_access_check(REG_ES, _offset, 1, IS_USER_PL, true);
 
 	uint8_t value = g_devices.read_byte(REG_DX);
 	write_byte(value);
+}
+
+void CPUExecutor::INSB_16()
+{
+	INSB(REG_DI);
 
 	if(FLAG_DF) {
 		REG_DI -= 1;
@@ -1269,24 +1266,82 @@ void CPUExecutor::INSB()
 	}
 }
 
-void CPUExecutor::INSW()
+void CPUExecutor::INSB_32()
 {
-	// trigger any segment faults before reading from IO port
-	if(IS_PMODE()) {
-		if(CPL > FLAG_IOPL) {
-			PDEBUGF(LOG_V2, LOG_CPU, "INSW: I/O access not allowed!\n");
-			throw CPUException(CPU_GP_EXC, 0);
-		}
+	INSB(REG_EDI);
+
+	if(FLAG_DF) {
+		REG_EDI -= 1;
+	} else {
+		REG_EDI += 1;
 	}
-	seg_check_write(REG_ES, REG_DI, 2);
+}
+
+void CPUExecutor::INSW(uint32_t _offset)
+{
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 2);
+	}
+
+	mem_access_check(REG_ES, _offset, 2, IS_USER_PL, true);
 
 	uint16_t value = g_devices.read_word(REG_DX);
 	write_word(value);
+}
+
+void CPUExecutor::INSW_16()
+{
+	INSW(REG_DI);
 
 	if(FLAG_DF) {
 		REG_DI -= 2;
 	} else {
 		REG_DI += 2;
+	}
+}
+
+void CPUExecutor::INSW_32()
+{
+	INSW(REG_EDI);
+
+	if(FLAG_DF) {
+		REG_EDI -= 2;
+	} else {
+		REG_EDI += 2;
+	}
+}
+
+void CPUExecutor::INSD(uint32_t _offset)
+{
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 4);
+	}
+
+	mem_access_check(REG_ES, _offset, 4, IS_USER_PL, true);
+
+	uint32_t value = g_devices.read_word(REG_DX);
+	write_word(value);
+}
+
+void CPUExecutor::INSD_16()
+{
+	INSD(REG_DI);
+
+	if(FLAG_DF) {
+		REG_DI -= 4;
+	} else {
+		REG_DI += 4;
+	}
+}
+
+void CPUExecutor::INSD_32()
+{
+	INSD(REG_EDI);
+
+	if(FLAG_DF) {
+		REG_EDI -= 4;
+	} else {
+		REG_EDI += 4;
 	}
 }
 

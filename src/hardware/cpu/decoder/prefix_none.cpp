@@ -638,14 +638,22 @@ case 0x6B:
 /* 6C      INSB           Input byte from port DX into ES:[DI] */
 case 0x6C:
 {
-	m_instr.fn = &CPUExecutor::INSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::INSB_32;
+	} else {
+		m_instr.fn = &CPUExecutor::INSB_16;
+	}
 	break;
 }
 
 /* 6D      INSW           Input word from port DX into ES:[DI] */
 case 0x6D:
 {
-	m_instr.fn = &CPUExecutor::INSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::INSW_32;
+	} else {
+		m_instr.fn = &CPUExecutor::INSW_16;
+	}
 	break;
 }
 
