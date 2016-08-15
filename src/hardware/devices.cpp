@@ -266,16 +266,15 @@ uint8_t Devices::read_byte(uint16_t _port)
 
 uint16_t Devices::read_word(uint16_t _port)
 {
-	uint8_t b0, b1;
 	uint16_t value = 0xFFFF;
 	io_handler_t &iohdl = m_read_handlers[_port];
 
 	m_last_io_time = 0;
 	if((_port & 1) || !(iohdl.mask & PORT_16BIT)) {
-		b0 = read_byte(_port);
+		uint16_t b0 = read_byte(_port);
 		unsigned io_time = m_last_io_time;
 		m_last_io_time = 0;
-		b1 = read_byte(_port+1);
+		uint16_t b1 = read_byte(_port + 1);
 		m_last_io_time += io_time;
 		value = b0 | (b1<<8);
 	} else if(iohdl.mask & PORT_16BIT) {
