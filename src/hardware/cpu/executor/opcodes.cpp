@@ -2411,39 +2411,45 @@ void CPUExecutor::OR_ed_ib() { store_ed(OR_d(load_ed(), int8_t(m_instr->ib))); }
 
 void CPUExecutor::OUT_b(uint16_t _port, uint8_t _value)
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "OUT_b: I/O access not allowed!\n");
-	    throw CPUException(CPU_GP_EXC, 0);
-	}
-
+	io_check(_port, 1);
 	g_devices.write_byte(_port, _value);
 }
 
 void CPUExecutor::OUT_w(uint16_t _port, uint16_t _value)
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-	    PDEBUGF(LOG_V2, LOG_CPU, "OUT_w: I/O access not allowed!\n");
-	    throw CPUException(CPU_GP_EXC, 0);
-	}
-
+	io_check(_port, 2);
 	g_devices.write_word(_port, _value);
+}
+
+void CPUExecutor::OUT_d(uint16_t _port, uint32_t _value)
+{
+	io_check(_port, 4);
+	g_devices.write_dword(_port, _value);
 }
 
 void CPUExecutor::OUT_ib_AL() { OUT_b(m_instr->ib, REG_AL); }
 void CPUExecutor::OUT_ib_AX() { OUT_w(m_instr->ib, REG_AX); }
+void CPUExecutor::OUT_ib_EAX(){ OUT_d(m_instr->ib, REG_EAX); }
 void CPUExecutor::OUT_DX_AL() { OUT_b(REG_DX, REG_AL); }
 void CPUExecutor::OUT_DX_AX() { OUT_w(REG_DX, REG_AX); }
+void CPUExecutor::OUT_DX_EAX(){ OUT_d(REG_DX, REG_EAX); }
 
 
 /*******************************************************************************
- * OUTSB/OUTSW-Output String to Port
+ * OUTSB/OUTSW/OUTSD-Output String to Port
  */
 
-void CPUExecutor::OUTSB()
+void CPUExecutor::OUTSB(uint8_t _value)
 {
-	uint8_t value = read_byte(SEG_REG(m_base_ds), REG_SI);
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 1);
+	}
+	g_devices.write_byte(REG_DX, _value);
+}
 
-	OUT_b(REG_DX, value);
+void CPUExecutor::OUTSB_16()
+{
+	OUTSB(read_byte(SEG_REG(m_base_ds), REG_SI));
 
 	if(FLAG_DF) {
 		REG_SI -= 1;
@@ -2452,16 +2458,74 @@ void CPUExecutor::OUTSB()
 	}
 }
 
-void CPUExecutor::OUTSW()
+void CPUExecutor::OUTSB_32()
 {
-	uint16_t value = read_word(SEG_REG(m_base_ds), REG_SI);
+	OUTSB(read_byte(SEG_REG(m_base_ds), REG_ESI));
 
-	OUT_w(REG_DX, value);
+	if(FLAG_DF) {
+		REG_ESI -= 1;
+	} else {
+		REG_ESI += 1;
+	}
+}
+
+void CPUExecutor::OUTSW(uint16_t _value)
+{
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 2);
+	}
+	g_devices.write_word(REG_DX, _value);
+}
+
+void CPUExecutor::OUTSW_16()
+{
+	OUTSW(read_word(SEG_REG(m_base_ds), REG_SI));
 
 	if(FLAG_DF) {
 		REG_SI -= 2;
 	} else {
 		REG_SI += 2;
+	}
+}
+
+void CPUExecutor::OUTSW_32()
+{
+	OUTSW(read_word(SEG_REG(m_base_ds), REG_ESI));
+
+	if(FLAG_DF) {
+		REG_ESI -= 2;
+	} else {
+		REG_ESI += 2;
+	}
+}
+
+void CPUExecutor::OUTSD(uint32_t _value)
+{
+	if(m_instr->rep && m_instr->rep_first) {
+		io_check(REG_DX, 4);
+	}
+	g_devices.write_dword(REG_DX, _value);
+}
+
+void CPUExecutor::OUTSD_16()
+{
+	OUTSD(read_dword(SEG_REG(m_base_ds), REG_SI));
+
+	if(FLAG_DF) {
+		REG_SI -= 4;
+	} else {
+		REG_SI += 4;
+	}
+}
+
+void CPUExecutor::OUTSD_32()
+{
+	OUTSD(read_dword(SEG_REG(m_base_ds), REG_ESI));
+
+	if(FLAG_DF) {
+		REG_ESI -= 4;
+	} else {
+		REG_ESI += 4;
 	}
 }
 

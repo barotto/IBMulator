@@ -215,6 +215,11 @@ private:
 
 	void OUT_b(uint16_t _port, uint8_t _value);
 	void OUT_w(uint16_t _port, uint16_t _value);
+	void OUT_d(uint16_t _port, uint32_t _value);
+
+	void OUTSB(uint8_t _value);
+	void OUTSW(uint16_t _value);
+	void OUTSD(uint32_t _value);
 
 	uint8_t ROL_b(uint8_t _value, uint8_t _times);
 	uint16_t ROL_w(uint16_t _value, uint8_t _times);
@@ -521,11 +526,17 @@ public:
 
 	void OUT_ib_AL();
 	void OUT_ib_AX();
+	void OUT_ib_EAX();
 	void OUT_DX_AL();
 	void OUT_DX_AX();
+	void OUT_DX_EAX();
 
-	void OUTSB();
-	void OUTSW();
+	void OUTSB_16();
+	void OUTSW_16();
+	void OUTSD_16();
+	void OUTSB_32();
+	void OUTSW_32();
+	void OUTSD_32();
 
 	void POP_DS();
 	void POP_ES();

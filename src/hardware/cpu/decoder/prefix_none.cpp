@@ -660,14 +660,22 @@ case 0x6D:
 /* 6E      OUTSB          Output byte DS:[SI] to port number DX */
 case 0x6E:
 {
-	m_instr.fn = &CPUExecutor::OUTSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::OUTSB_32;
+	} else {
+		m_instr.fn = &CPUExecutor::OUTSB_16;
+	}
 	break;
 }
 
 /* 6F      OUTSW          Output word DS:[SI] to port number DX */
 case 0x6F:
 {
-	m_instr.fn = &CPUExecutor::OUTSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::OUTSW_32;
+	} else {
+		m_instr.fn = &CPUExecutor::OUTSW_16;
+	}
 	break;
 }
 

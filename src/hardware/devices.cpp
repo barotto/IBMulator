@@ -328,6 +328,12 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 	}
 }
 
+void Devices::write_dword(uint16_t _port, uint32_t _value)
+{
+	write_word(_port, _value);
+	write_word(_port+2, _value>>16);
+}
+
 void Devices::remove(const char *_name)
 {
 	if(m_devices.find(_name) == m_devices.end()) {
