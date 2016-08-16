@@ -159,7 +159,7 @@ private:
 	uint16_t stack_read_word(uint32_t _offset);
 	uint32_t stack_read_dword(uint32_t _offset);
 
-	void branch_near(uint16_t newIP);
+	void branch_near(uint32_t new_EIP);
 	void branch_far(Selector &selector, Descriptor &descriptor, uint16_t ip, uint8_t cpl);
 	void branch_far(uint16_t cs, uint16_t ip);
 	void branch_far_pmode(uint16_t cs, uint16_t disp);
@@ -208,6 +208,8 @@ private:
 
 	void INT(uint8_t vector, unsigned _type);
 	static bool INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *core, Memory *mem);
+
+	void Jcc(bool _cond, int32_t _offset);
 
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
@@ -421,23 +423,59 @@ public:
 
 	void IRET();
 
-	void JA_cb();
-	void JBE_cb();
+	void JO_cb();
+	void JNO_cb();
 	void JC_cb();
 	void JNC_cb();
 	void JE_cb();
 	void JNE_cb();
-	void JO_cb();
-	void JNO_cb();
-	void JPE_cb();
-	void JPO_cb();
+	void JBE_cb();
+	void JA_cb();
 	void JS_cb();
 	void JNS_cb();
+	void JPE_cb();
+	void JPO_cb();
 	void JL_cb();
 	void JNL_cb();
 	void JLE_cb();
 	void JNLE_cb();
+
+	void JO_cw();
+	void JNO_cw();
+	void JC_cw();
+	void JNC_cw();
+	void JE_cw();
+	void JNE_cw();
+	void JBE_cw();
+	void JA_cw();
+	void JS_cw();
+	void JNS_cw();
+	void JPE_cw();
+	void JPO_cw();
+	void JL_cw();
+	void JNL_cw();
+	void JLE_cw();
+	void JNLE_cw();
+
+	void JO_cd();
+	void JNO_cd();
+	void JC_cd();
+	void JNC_cd();
+	void JE_cd();
+	void JNE_cd();
+	void JBE_cd();
+	void JA_cd();
+	void JS_cd();
+	void JNS_cd();
+	void JPE_cd();
+	void JPO_cd();
+	void JL_cd();
+	void JNL_cd();
+	void JLE_cd();
+	void JNLE_cd();
+
 	void JCXZ_cb();
+	void JECXZ_cb();
 
 	void JMP_ew();
 	void JMP_ed();

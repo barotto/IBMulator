@@ -182,15 +182,15 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	}
 }
 
-void CPUExecutor::branch_near(uint16_t new_IP)
+void CPUExecutor::branch_near(uint32_t new_EIP)
 {
 	// check always, not only in protected mode
-	if(new_IP > GET_LIMIT(CS)) {
+	if(new_EIP > GET_LIMIT(CS)) {
 		PDEBUGF(LOG_V2,LOG_CPU,"branch_near: offset outside of CS limits\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	SET_IP(new_IP);
+	SET_EIP(new_EIP);
 	g_cpubus.invalidate_pq();
 }
 

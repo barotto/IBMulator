@@ -1458,26 +1458,77 @@ void CPUExecutor::IRET()
 
 
 /*******************************************************************************
- * Jcond-Jump Short If Condition Met
+ * Jcc-Jump Short If Condition is Met
  */
 
-void CPUExecutor::JA_cb()  { if(!FLAG_CF && !FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JBE_cb() { if(FLAG_CF || FLAG_ZF)  {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JC_cb()  { if(FLAG_CF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNC_cb() { if(!FLAG_CF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JE_cb()  { if(FLAG_ZF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNE_cb() { if(!FLAG_ZF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JO_cb()  { if(FLAG_OF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNO_cb() { if(!FLAG_OF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JPE_cb() { if(FLAG_PF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JPO_cb() { if(!FLAG_PF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JS_cb()  { if(FLAG_SF) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNS_cb() { if(!FLAG_SF){branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JL_cb()  { if((FLAG_SF!=0) != (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNL_cb() { if((FLAG_SF!=0) == (FLAG_OF!=0)) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JLE_cb() { if(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JNLE_cb(){ if(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0))) {branch_near(REG_IP + int8_t(m_instr->ib));} }
-void CPUExecutor::JCXZ_cb(){ if(REG_CX==0) {branch_near(REG_IP + int8_t(m_instr->ib));} }
+void CPUExecutor::Jcc(bool _cond, int32_t _offset)
+{
+	if(_cond) {
+		uint32_t new_EIP;
+
+		if(m_instr->op32) {
+			new_EIP = REG_EIP + _offset;
+		} else {
+			new_EIP = uint32_t(REG_IP + int16_t(_offset));
+		}
+
+		branch_near(new_EIP);
+	}
+}
+
+void CPUExecutor::JO_cb()  /*  70*/ { Jcc(FLAG_OF,  int8_t(m_instr->ib)); }
+void CPUExecutor::JNO_cb() /*  71*/ { Jcc(!FLAG_OF, int8_t(m_instr->ib)); }
+void CPUExecutor::JC_cb()  /*  72*/ { Jcc(FLAG_CF,  int8_t(m_instr->ib)); }
+void CPUExecutor::JNC_cb() /*  73*/ { Jcc(!FLAG_CF, int8_t(m_instr->ib)); }
+void CPUExecutor::JE_cb()  /*  74*/ { Jcc(FLAG_ZF,  int8_t(m_instr->ib)); }
+void CPUExecutor::JNE_cb() /*  75*/ { Jcc(!FLAG_ZF, int8_t(m_instr->ib)); }
+void CPUExecutor::JBE_cb() /*  76*/ { Jcc(FLAG_CF || FLAG_ZF, int8_t(m_instr->ib)); }
+void CPUExecutor::JA_cb()  /*  77*/ { Jcc(!FLAG_CF && !FLAG_ZF, int8_t(m_instr->ib)); }
+void CPUExecutor::JS_cb()  /*  78*/ { Jcc(FLAG_SF,  int8_t(m_instr->ib)); }
+void CPUExecutor::JNS_cb() /*  79*/ { Jcc(!FLAG_SF, int8_t(m_instr->ib)); }
+void CPUExecutor::JPE_cb() /*  7A*/ { Jcc(FLAG_PF,  int8_t(m_instr->ib)); }
+void CPUExecutor::JPO_cb() /*  7B*/ { Jcc(!FLAG_PF, int8_t(m_instr->ib)); }
+void CPUExecutor::JL_cb()  /*  7C*/ { Jcc((FLAG_SF!=0) != (FLAG_OF!=0), int8_t(m_instr->ib)); }
+void CPUExecutor::JNL_cb() /*  7D*/ { Jcc((FLAG_SF!=0) == (FLAG_OF!=0), int8_t(m_instr->ib)); }
+void CPUExecutor::JLE_cb() /*  7E*/ { Jcc(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0)), int8_t(m_instr->ib)); }
+void CPUExecutor::JNLE_cb()/*  7F*/ { Jcc(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0)), int8_t(m_instr->ib)); }
+
+void CPUExecutor::JO_cw()  /*0F80*/ { Jcc(FLAG_OF,  int16_t(m_instr->iw1)); }
+void CPUExecutor::JNO_cw() /*0F81*/ { Jcc(!FLAG_OF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JC_cw()  /*0F82*/ { Jcc(FLAG_CF,  int16_t(m_instr->iw1)); }
+void CPUExecutor::JNC_cw() /*0F83*/ { Jcc(!FLAG_CF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JE_cw()  /*0F84*/ { Jcc(FLAG_ZF,  int16_t(m_instr->iw1)); }
+void CPUExecutor::JNE_cw() /*0F85*/ { Jcc(!FLAG_ZF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JBE_cw() /*0F76*/ { Jcc(FLAG_CF || FLAG_ZF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JA_cw()  /*0F87*/ { Jcc(!FLAG_CF && !FLAG_ZF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JS_cw()  /*0F88*/ { Jcc(FLAG_SF,  int16_t(m_instr->iw1)); }
+void CPUExecutor::JNS_cw() /*0F89*/ { Jcc(!FLAG_SF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JPE_cw() /*0F8A*/ { Jcc(FLAG_PF,  int16_t(m_instr->iw1)); }
+void CPUExecutor::JPO_cw() /*0F8B*/ { Jcc(!FLAG_PF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JL_cw()  /*0F8C*/ { Jcc((FLAG_SF!=0) != (FLAG_OF!=0), int16_t(m_instr->iw1)); }
+void CPUExecutor::JNL_cw() /*0F8D*/ { Jcc((FLAG_SF!=0) == (FLAG_OF!=0), int16_t(m_instr->iw1)); }
+void CPUExecutor::JLE_cw() /*0F8E*/ { Jcc(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0)), int16_t(m_instr->iw1)); }
+void CPUExecutor::JNLE_cw()/*0F8F*/ { Jcc(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0)), int16_t(m_instr->iw1)); }
+
+void CPUExecutor::JO_cd()  /*0F80*/ { Jcc(FLAG_OF,  int32_t(m_instr->id1)); }
+void CPUExecutor::JNO_cd() /*0F81*/ { Jcc(!FLAG_OF, int32_t(m_instr->id1)); }
+void CPUExecutor::JC_cd()  /*0F82*/ { Jcc(FLAG_CF,  int32_t(m_instr->id1)); }
+void CPUExecutor::JNC_cd() /*0F83*/ { Jcc(!FLAG_CF, int32_t(m_instr->id1)); }
+void CPUExecutor::JE_cd()  /*0F84*/ { Jcc(FLAG_ZF,  int32_t(m_instr->id1)); }
+void CPUExecutor::JNE_cd() /*0F85*/ { Jcc(!FLAG_ZF, int32_t(m_instr->id1)); }
+void CPUExecutor::JBE_cd() /*0F76*/ { Jcc(FLAG_CF || FLAG_ZF, int32_t(m_instr->id1)); }
+void CPUExecutor::JA_cd()  /*0F87*/ { Jcc(!FLAG_CF && !FLAG_ZF, int32_t(m_instr->id1)); }
+void CPUExecutor::JS_cd()  /*0F88*/ { Jcc(FLAG_SF,  int32_t(m_instr->id1)); }
+void CPUExecutor::JNS_cd() /*0F89*/ { Jcc(!FLAG_SF, int32_t(m_instr->id1)); }
+void CPUExecutor::JPE_cd() /*0F8A*/ { Jcc(FLAG_PF,  int32_t(m_instr->id1)); }
+void CPUExecutor::JPO_cd() /*0F8B*/ { Jcc(!FLAG_PF, int32_t(m_instr->id1)); }
+void CPUExecutor::JL_cd()  /*0F8C*/ { Jcc((FLAG_SF!=0) != (FLAG_OF!=0), int32_t(m_instr->id1)); }
+void CPUExecutor::JNL_cd() /*0F8D*/ { Jcc((FLAG_SF!=0) == (FLAG_OF!=0), int32_t(m_instr->id1)); }
+void CPUExecutor::JLE_cd() /*0F8E*/ { Jcc(FLAG_ZF || ((FLAG_SF!=0) != (FLAG_OF!=0)), int32_t(m_instr->id1)); }
+void CPUExecutor::JNLE_cd()/*0F8F*/ { Jcc(!FLAG_ZF && ((FLAG_SF!=0) == (FLAG_OF!=0)), int32_t(m_instr->id1)); }
+
+void CPUExecutor::JCXZ_cb() /*E3*/ { Jcc(REG_CX==0, int8_t(m_instr->ib)); }
+void CPUExecutor::JECXZ_cb()/*E3*/ { Jcc(REG_ECX==0, int8_t(m_instr->ib)); }
 
 
 /*******************************************************************************
@@ -1510,7 +1561,8 @@ void CPUExecutor::JMP_cb()
 
 void CPUExecutor::JMP_cw()
 {
-	branch_near(REG_IP + m_instr->iw1);
+	uint16_t new_IP = REG_IP + int16_t(m_instr->iw1);
+	branch_near(new_IP);
 }
 
 void CPUExecutor::JMP_cd()
