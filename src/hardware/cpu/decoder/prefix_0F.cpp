@@ -88,10 +88,10 @@ case 0x01:
 			m_instr.fn = &CPUExecutor::SIDT;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::LGDT;
+			m_instr.fn = &CPUExecutor::LGDT_16;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::LIDT;
+			m_instr.fn = &CPUExecutor::LIDT_16;
 			break;
 		case 4:
 			m_instr.fn = &CPUExecutor::SMSW_ew;

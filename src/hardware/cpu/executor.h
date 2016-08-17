@@ -226,6 +226,8 @@ private:
 
 	uint32_t LAR(uint16_t raw_sel);
 
+	void LDT_m(uint32_t &base_, uint16_t &limit_);
+
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
 	uint32_t OR_d(uint32_t op1, uint32_t op2);
@@ -507,13 +509,20 @@ public:
 	void LAR_rw_ew();
 	void LAR_rd_ed();
 
+	void LEA_rw_m();
+	void LEA_rd_m();
+
+	void LEAVE_16();
+	void LEAVE_32();
+
+	void LGDT_16();
+	void LGDT_32();
+	void LIDT_16();
+	void LIDT_32();
+	void LLDT_ew();
+
 	void LES_rw_ed();
 	void LDS_rw_ed();
-	void LEA_rw_m();
-	void LEAVE();
-	void LGDT();
-	void LIDT();
-	void LLDT_ew();
 	void LMSW_ew();
 	void LOADALL();
 	void LODSB();

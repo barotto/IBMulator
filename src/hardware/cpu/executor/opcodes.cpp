@@ -1732,15 +1732,39 @@ void CPUExecutor::LEA_rw_m()
 	store_rw(offset);
 }
 
+void CPUExecutor::LEA_rd_m()
+{
+	if(m_instr->modrm.mod == 3) {
+		PDEBUGF(LOG_V2, LOG_CPU, "LEA second operand is a register\n");
+		throw CPUException(CPU_UD_EXC, 0);
+	}
+	uint32_t offset = (this->*EA_get_offset)();
+	store_rd(offset);
+}
+
 
 /*******************************************************************************
  * LEAVE-High Level Procedure Exit
  */
 
-void CPUExecutor::LEAVE()
+void CPUExecutor::LEAVE_16()
 {
-	REG_SP = REG_BP;
+	if(REG_SS.desc.big) {
+		REG_ESP = REG_EBP;
+	} else {
+		REG_SP = REG_BP;
+	}
 	REG_BP = stack_pop_word();
+}
+
+void CPUExecutor::LEAVE_32()
+{
+	if(REG_SS.desc.big) {
+		REG_ESP = REG_EBP;
+	} else {
+		REG_SP = REG_BP;
+	}
+	REG_EBP = stack_pop_dword();
 }
 
 
@@ -1748,41 +1772,46 @@ void CPUExecutor::LEAVE()
  * LGDT/LIDT/LLDT-Load Global/Interrupt/Local Descriptor Table Register
  */
 
-void CPUExecutor::LGDT()
+void CPUExecutor::LDT_m(uint32_t &base_, uint16_t &limit_)
 {
 	// CPL is always 0 is real mode
 	if(IS_PMODE() && CPL != 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LGDT: CPL != 0 causes #GP\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "LDT_m: CPL != 0 causes #GP\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint16_t off = (this->*EA_get_offset)();
 
-	uint16_t limit = read_word(sr, off);
-	uint32_t base = read_dword(sr, off+2) & 0x00ffffff;
+	limit_ = read_word(sr, off);
+	base_ = read_dword(sr, off+2);
+}
 
+void CPUExecutor::LGDT_16()
+{
+	uint32_t base; uint16_t limit;
+	LDT_m(base, limit);
+	SET_GDTR(base & 0x00FFFFFF, limit);
+}
+
+void CPUExecutor::LGDT_32()
+{
+	uint32_t base; uint16_t limit;
+	LDT_m(base, limit);
 	SET_GDTR(base, limit);
 }
 
-void CPUExecutor::LIDT()
+void CPUExecutor::LIDT_16()
 {
-	// CPL is always 0 is real mode
-	if(IS_PMODE() && CPL != 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LIDT: CPL != 0 causes #GP\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	uint32_t base; uint16_t limit;
+	LDT_m(base, limit);
+	SET_IDTR(base & 0x00FFFFFF, limit);
+}
 
-	SegReg & sr = (this->*EA_get_segreg)();
-	uint16_t off = (this->*EA_get_offset)();
-
-	uint16_t limit = read_word(sr, off);
-	uint32_t base = read_dword(sr, off+2) & 0x00ffffff;
-
-	if(limit==0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LIDT: base 0x%06X, limit 0x%04X\n", base, limit);
-	}
-
+void CPUExecutor::LIDT_32()
+{
+	uint32_t base; uint16_t limit;
+	LDT_m(base, limit);
 	SET_IDTR(base, limit);
 }
 

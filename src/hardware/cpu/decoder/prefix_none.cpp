@@ -1482,10 +1482,10 @@ case 0xC8:
 	break;
 }
 
-/* C9         LEAVE      Set SP to BP, then POP BP */
+/* C9         LEAVE      Set (E)SP to (E)BP, then POP (E)BP */
 case 0xC9:
 {
-	m_instr.fn = &CPUExecutor::LEAVE;
+	m_instr.fn = &CPUExecutor::LEAVE_16;
 	break;
 }
 
