@@ -521,10 +521,22 @@ public:
 	void LIDT_32();
 	void LLDT_ew();
 
-	void LES_rw_ed();
-	void LDS_rw_ed();
+	void LDS_rw_mp();
+	void LDS_rd_mp();
+	void LSS_rw_mp();
+	void LSS_rd_mp();
+	void LES_rw_mp();
+	void LES_rd_mp();
+	void LFS_rw_mp();
+	void LFS_rd_mp();
+	void LGS_rw_mp();
+	void LGS_rd_mp();
+
+
 	void LMSW_ew();
-	void LOADALL();
+
+	void LOADALL_286();
+
 	void LODSB();
 	void LODSW();
 

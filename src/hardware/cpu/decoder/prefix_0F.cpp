@@ -126,7 +126,7 @@ case 0x03:
 /*  0F 05      LOADALL        Load CPU registers from memory */
 case 0x05:
 {
-	m_instr.fn = &CPUExecutor::LOADALL;
+	m_instr.fn = &CPUExecutor::LOADALL_286;
 	break;
 }
 

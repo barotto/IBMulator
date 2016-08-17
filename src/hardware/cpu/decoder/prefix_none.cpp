@@ -1423,7 +1423,7 @@ case 0xC3:
 case 0xC4:
 {
 	m_instr.modrm.load();
-	m_instr.fn = &CPUExecutor::LES_rw_ed;
+	m_instr.fn = &CPUExecutor::LES_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}
@@ -1434,7 +1434,7 @@ case 0xC4:
 case 0xC5:
 {
 	m_instr.modrm.load();
-	m_instr.fn = &CPUExecutor::LDS_rw_ed;
+	m_instr.fn = &CPUExecutor::LDS_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}

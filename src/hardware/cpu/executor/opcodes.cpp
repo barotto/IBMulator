@@ -1696,29 +1696,6 @@ void CPUExecutor::LAR_rd_ed()
 
 
 /*******************************************************************************
- * LDS/LES-Load Doubleword Pointer
- */
-
-void CPUExecutor::LDS_rw_ed()
-{
-	uint16_t reg, ds;
-	load_m1616(reg, ds);
-
-	SET_DS(ds);
-	store_rw(reg);
-}
-
-void CPUExecutor::LES_rw_ed()
-{
-	uint16_t reg, es;
-	load_m1616(reg, es);
-
-	SET_ES(es);
-	store_rw(reg);
-}
-
-
-/*******************************************************************************
  * LEA-Load Effective Address Offset
  */
 
@@ -1869,6 +1846,101 @@ void CPUExecutor::LLDT_ew()
 
 
 /*******************************************************************************
+ * LGS/LSS/LDS/LES/LFS-Load Full Pointer
+ */
+
+void CPUExecutor::LDS_rw_mp()
+{
+	uint16_t reg, seg;
+
+	load_m1616(reg, seg);
+	SET_DS(seg);
+	store_rw(reg);
+}
+
+void CPUExecutor::LDS_rd_mp()
+{
+	uint32_t reg; uint16_t seg;
+
+	load_m1632(reg, seg);
+	SET_DS(seg);
+	store_rd(reg);
+}
+
+void CPUExecutor::LSS_rw_mp()
+{
+	uint16_t reg, seg;
+
+	load_m1616(reg, seg);
+	SET_SS(seg);
+	store_rw(reg);
+}
+
+void CPUExecutor::LSS_rd_mp()
+{
+	uint32_t reg; uint16_t seg;
+
+	load_m1632(reg, seg);
+	SET_SS(seg);
+	store_rd(reg);
+}
+
+void CPUExecutor::LES_rw_mp()
+{
+	uint16_t reg, seg;
+
+	load_m1616(reg, seg);
+	SET_ES(seg);
+	store_rw(reg);
+}
+
+void CPUExecutor::LES_rd_mp()
+{
+	uint32_t reg; uint16_t seg;
+
+	load_m1632(reg, seg);
+	SET_ES(seg);
+	store_rd(reg);
+}
+
+void CPUExecutor::LFS_rw_mp()
+{
+	uint16_t reg, seg;
+
+	load_m1616(reg, seg);
+	SET_FS(seg);
+	store_rw(reg);
+}
+
+void CPUExecutor::LFS_rd_mp()
+{
+	uint32_t reg; uint16_t seg;
+
+	load_m1632(reg, seg);
+	SET_FS(seg);
+	store_rd(reg);
+}
+
+void CPUExecutor::LGS_rw_mp()
+{
+	uint16_t reg, seg;
+
+	load_m1616(reg, seg);
+	SET_GS(seg);
+	store_rw(reg);
+}
+
+void CPUExecutor::LGS_rd_mp()
+{
+	uint32_t reg; uint16_t seg;
+
+	load_m1632(reg, seg);
+	SET_GS(seg);
+	store_rd(reg);
+}
+
+
+/*******************************************************************************
  * LMSW-Load Machine Status Word
  */
 
@@ -1899,7 +1971,7 @@ void CPUExecutor::LMSW_ew()
  * LOADALL-Load registers from memory
  */
 
-void CPUExecutor::LOADALL()
+void CPUExecutor::LOADALL_286()
 {
 	/* Undocumented
 	 * From 15-page Intel document titled "Undocumented iAPX 286 Test Instruction"
