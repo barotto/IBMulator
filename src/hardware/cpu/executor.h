@@ -228,6 +228,10 @@ private:
 
 	void LDT_m(uint32_t &base_, uint16_t &limit_);
 
+	uint32_t LOOP(uint32_t _count);
+	uint32_t LOOPZ(uint32_t _count);
+	uint32_t LOOPNZ(uint32_t _count);
+
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
 	uint32_t OR_d(uint32_t op1, uint32_t op2);
@@ -543,9 +547,12 @@ public:
 	void LODSW_32();
 	void LODSD_32();
 
-	void LOOP();
-	void LOOPZ();
-	void LOOPNZ();
+	void LOOP_16();
+	void LOOPZ_16();
+	void LOOPNZ_16();
+	void LOOP_32();
+	void LOOPZ_32();
+	void LOOPNZ_32();
 
 	void LSL_rw_ew();
 

@@ -1764,7 +1764,11 @@ case 0xDF:
 case 0xE0:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::LOOPNZ;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::LOOPNZ_32;
+	} else {
+		m_instr.fn = &CPUExecutor::LOOPNZ_16;
+	}
 	break;
 }
 
@@ -1772,7 +1776,11 @@ case 0xE0:
 case 0xE1:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::LOOPZ;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::LOOPZ_32;
+	} else {
+		m_instr.fn = &CPUExecutor::LOOPZ_16;
+	}
 	break;
 }
 
@@ -1780,7 +1788,11 @@ case 0xE1:
 case 0xE2:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::LOOP;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::LOOP_32;
+	} else {
+		m_instr.fn = &CPUExecutor::LOOP_16;
+	}
 	break;
 }
 

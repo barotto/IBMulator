@@ -2129,44 +2129,39 @@ void CPUExecutor::LODSD_32()
  * LOOP/LOOPcond-Loop Control with CX Counter
  */
 
-void CPUExecutor::LOOP()
+uint32_t CPUExecutor::LOOP(uint32_t _count)
 {
-	uint16_t count = REG_CX;
-
-	count--;
-	if(count != 0) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
-		branch_near(new_IP);
+	_count--;
+	if(_count != 0) {
+		branch_relative(int8_t(m_instr->ib));
 	}
-
-    REG_CX = count;
+    return _count;
 }
 
-void CPUExecutor::LOOPZ()
+uint32_t CPUExecutor::LOOPZ(uint32_t _count)
 {
-	uint16_t count = REG_CX;
-
-	count--;
-	if(count != 0 && FLAG_ZF) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
-		branch_near(new_IP);
+	_count--;
+	if(_count != 0 && FLAG_ZF) {
+		branch_relative(int8_t(m_instr->ib));
 	}
-
-	REG_CX = count;
+	return _count;
 }
 
-void CPUExecutor::LOOPNZ()
+uint32_t CPUExecutor::LOOPNZ(uint32_t _count)
 {
-	uint16_t count = REG_CX;
-
-	count--;
-	if(count != 0 && (FLAG_ZF==false)) {
-		uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
-		branch_near(new_IP);
+	_count--;
+	if(_count != 0 && (FLAG_ZF==false)) {
+		branch_relative(int8_t(m_instr->ib));
 	}
-
-	REG_CX = count;
+	return _count;
 }
+
+void CPUExecutor::LOOP_16()  { REG_CX  = LOOP(REG_CX); }
+void CPUExecutor::LOOP_32()  { REG_ECX = LOOP(REG_ECX); }
+void CPUExecutor::LOOPZ_16() { REG_CX  = LOOPZ(REG_CX); }
+void CPUExecutor::LOOPZ_32() { REG_ECX = LOOPZ(REG_ECX); }
+void CPUExecutor::LOOPNZ_16(){ REG_CX  = LOOPNZ(REG_CX); }
+void CPUExecutor::LOOPNZ_32(){ REG_ECX = LOOPNZ(REG_ECX); }
 
 
 /*******************************************************************************
