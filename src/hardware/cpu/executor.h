@@ -85,9 +85,12 @@ private:
 	inline unsigned TLB_index(uint32_t _lpf, unsigned _len) const {
 		return (((_lpf + _len) & ((TLB_SIZE-1) << 12)) >> 12);
 	}
+	void TLB_check(uint32_t _linear, bool _user, bool _write);
 	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 	void TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write);
+	void TLB_flush();
 	void page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write);
+	void set_CR3(uint32_t _value);
 
 	struct {
 		uint32_t phy1;
@@ -103,8 +106,9 @@ private:
 	uint16_t load_rw();
 	uint16_t load_rw_op();
 	uint32_t load_ed();
-	void load_ed_mem(uint16_t &w1_, uint16_t &w2_);
-	void load_eq_mem(uint32_t &dw1_, uint32_t &dw2_);
+	void load_m1616(uint16_t &w2_,  uint16_t &w1_);
+	void load_m1632(uint32_t &dw1_, uint16_t &w2_);
+	void load_m3232(uint32_t &dw2_, uint32_t &dw1_);
 	uint32_t load_rd();
 	uint32_t load_rd_op();
 	uint16_t load_sr();
@@ -128,19 +132,24 @@ private:
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
 	void write_flags(uint16_t _flags);
 
-	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
-	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void seg_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
+	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
 	void page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write);
-	void mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _user, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void io_check(uint16_t _port, unsigned _len);
 
-	uint8_t read_byte();
+	void mem_access(uint32_t _linear, unsigned _len, bool _user, bool _write);
+
+	uint8_t  read_byte();
 	uint16_t read_word();
 	uint32_t read_dword();
 	uint32_t read_xpages();
-	uint8_t read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint8_t  read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint16_t read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint32_t read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint8_t  read_byte(uint32_t _linear);
+	uint16_t read_word(uint32_t _linear);
+	uint32_t read_dword(uint32_t _linear);
 
 	void write_byte(uint8_t _data);
 	void write_word(uint16_t _data);
@@ -149,6 +158,9 @@ private:
 	void write_byte(SegReg &_seg, uint32_t _offset, uint8_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void write_byte(uint32_t _linear, uint8_t _data);
+	void write_word(uint32_t _linear, uint16_t _data);
+	void write_dword(uint32_t _linear, uint32_t _data);
 
 	void stack_push_word(uint16_t _value);
 	void stack_push_dword(uint32_t _value);
@@ -159,10 +171,11 @@ private:
 	uint16_t stack_read_word(uint32_t _offset);
 	uint32_t stack_read_dword(uint32_t _offset);
 
+	void branch_relative(int32_t _offset);
 	void branch_near(uint32_t new_EIP);
-	void branch_far(Selector &selector, Descriptor &descriptor, uint16_t ip, uint8_t cpl);
-	void branch_far(uint16_t cs, uint16_t ip);
-	void branch_far_pmode(uint16_t cs, uint16_t disp);
+	void branch_far(Selector &selector, Descriptor &descriptor, uint32_t eip, uint8_t cpl);
+	void branch_far(uint16_t cs, uint32_t eip);
+	void branch_far_pmode(uint16_t cs, uint32_t eip);
 	void call_pmode(uint16_t cs_raw, uint16_t disp);
 	void call_gate(Descriptor &gate_descriptor);
 	void return_pmode(uint16_t pop_bytes);
@@ -477,11 +490,15 @@ public:
 	void JCXZ_cb();
 	void JECXZ_cb();
 
+	void JMP_rel8();
+	void JMP_rel16();
+	void JMP_rel32();
+	void JMP_ptr1616();
+	void JMP_ptr1632();
 	void JMP_ew();
 	void JMP_ed();
-	void JMP_cb();
-	void JMP_cw();
-	void JMP_cd();
+	void JMP_m1616();
+	void JMP_m1632();
 
 	void LAHF();
 	void LAR_rw_ew();

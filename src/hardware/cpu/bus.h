@@ -134,8 +134,6 @@ public:
 
 	inline void invalidate_pq() {
 		m_s.pq_valid = false;
-		m_s.eip = REG_EIP;
-		m_s.cseip = GET_PHYADDR(CS, m_s.eip);
 	}
 
 	template<unsigned LEN>

@@ -119,6 +119,8 @@ void CPUBus::pq_fill(uint btoread)
 void CPUBus::update(int _cycles)
 {
 	if(!m_s.pq_valid) {
+		m_s.eip = REG_EIP;
+		m_s.cseip = GET_PHYADDR(CS, REG_EIP);
 		m_s.pq_head = m_s.cseip;
 		m_s.pq_headpos = 0;
 		m_s.pq_tail = m_s.cseip;

@@ -143,3 +143,22 @@ uint32_t CPUExecutor::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bo
 
 	return phy;
 }
+
+void CPUExecutor::TLB_check(uint32_t _linear, bool _user, bool _write)
+{
+	TLB_lookup(_linear, 1, _user, _write);
+}
+
+void CPUExecutor::TLB_flush()
+{
+	for(unsigned n=0; n<TLB_SIZE; n++) {
+		m_TLB[n].lpf = -1;
+	}
+	g_cpubus.invalidate_pq();
+}
+
+void CPUExecutor::set_CR3(uint32_t _value)
+{
+	REG_CR3 = _value;
+	TLB_flush();
+}

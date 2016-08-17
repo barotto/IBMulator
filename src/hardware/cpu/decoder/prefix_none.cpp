@@ -1828,7 +1828,7 @@ case 0xE8:
 case 0xE9:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JMP_cw;
+	m_instr.fn = &CPUExecutor::JMP_rel16;
 	break;
 }
 
@@ -1837,7 +1837,7 @@ case 0xEA:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.iw2 = fetchw();
-	m_instr.fn = &CPUExecutor::JMP_cd;
+	m_instr.fn = &CPUExecutor::JMP_ptr1616;
 	break;
 }
 
@@ -1845,7 +1845,7 @@ case 0xEA:
 case 0xEB:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JMP_cb;
+	m_instr.fn = &CPUExecutor::JMP_rel8;
 	break;
 }
 
@@ -2083,13 +2083,13 @@ case 0xFF:
 			break;
 		case 4:
 			m_instr.fn = &CPUExecutor::JMP_ew;
-					break;
+			break;
 		case 5:
 			if(m_instr.modrm.mod == 3) {
 				illegal_opcode();
 				break;
 			}
-			m_instr.fn = &CPUExecutor::JMP_ed;
+			m_instr.fn = &CPUExecutor::JMP_m1616;
 			break;
 		case 6:
 			m_instr.fn = &CPUExecutor::PUSH_mw;

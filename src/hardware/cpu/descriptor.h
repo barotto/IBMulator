@@ -63,6 +63,8 @@ enum DescriptorType {
 	DESC_TYPE_386_TRAP_GATE  = 0xF,
 };
 
+#define TSS_BUSY_BIT 0x2
+
 
 struct Descriptor
 {
@@ -168,6 +170,8 @@ struct Descriptor
 	inline bool is_expand_down() const    { return (segment && (ar & SEG_EXP_DOWN)); }
 	inline bool is_readable() const       { return (segment && (ar & SEG_READWRITE)); }
 	inline bool is_writeable() const      { return (segment && (ar & SEG_READWRITE)); }
+	inline bool is_286_system() const     { return (!segment && type <= DESC_TYPE_286_TRAP_GATE); }
+	inline bool is_386_system() const     { return (!segment && type >= DESC_TYPE_AVAIL_386_TSS); }
 };
 
 /*

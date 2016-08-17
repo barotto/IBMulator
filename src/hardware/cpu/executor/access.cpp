@@ -20,13 +20,7 @@
 void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode)
 {
 	assert(_len!=0);
-	if(_vector == CPU_INVALID_INT) {
-		_vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
-	}
-	if(!_seg.desc.valid) {
-		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment not valid\n");
-		throw CPUException(_vector, _errcode);
-	}
+
 	if(_seg.desc.is_expand_down()) {
 		uint32_t upper_limit = 0xFFFF;
 		if(_seg.desc.big) {
@@ -49,13 +43,7 @@ void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len,
 void CPUExecutor::seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode)
 {
 	assert(_len!=0);
-	if(_vector == CPU_INVALID_INT) {
-		_vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
-	}
-	if(!_seg.desc.valid) {
-		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not valid\n");
-		throw CPUException(_vector, _errcode);
-	}
+
 	if(!_seg.desc.is_writeable()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment not writeable\n");
 		throw CPUException(_vector, _errcode);
@@ -75,32 +63,20 @@ void CPUExecutor::seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len
 	}
 }
 
-void CPUExecutor::mem_access_check(SegReg & _seg, uint32_t _offset, unsigned _len,
-		bool _user, bool _write, uint8_t _vector, uint16_t _errcode)
+void CPUExecutor::seg_check(SegReg & _seg, uint32_t _offset, unsigned _len,
+		bool _write, uint8_t _vector, uint16_t _errcode)
 {
+	if(_vector == CPU_INVALID_INT) {
+		_vector = _seg.is(REG_SS)?CPU_SS_EXC:CPU_GP_EXC;
+	}
+	if(!_seg.desc.valid) {
+		PDEBUGF(LOG_V2, LOG_CPU, "seg_check(): segment not valid\n");
+		throw CPUException(_vector, _errcode);
+	}
 	if(_write) {
 		seg_check_write(_seg, _offset, _len, _vector, _errcode);
 	} else {
 		seg_check_read(_seg, _offset, _len, _vector, _errcode);
-	}
-	uint32_t linear = _seg.desc.base + _offset;
-	if(IS_PAGING()) {
-		if((PAGE_OFFSET(linear) + _len) <= 4096) {
-			m_cached_phy.phy1 = TLB_lookup(linear, _len, _user, _write);
-			m_cached_phy.len1 = _len;
-			m_cached_phy.pages = 1;
-		} else {
-			uint32_t page_offset = PAGE_OFFSET(linear);
-			m_cached_phy.len1 = 4096 - page_offset;
-			m_cached_phy.len2 = _len - m_cached_phy.len1;
-			m_cached_phy.phy1 = TLB_lookup(linear, m_cached_phy.len1, _user, _write);
-			m_cached_phy.phy2 = TLB_lookup(linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
-			m_cached_phy.pages = 2;
-		}
-	} else {
-		m_cached_phy.phy1 = linear;
-		m_cached_phy.len1 = _len;
-		m_cached_phy.pages = 1;
 	}
 }
 

@@ -220,9 +220,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, uint8_t cpl)
 {
 	// descriptor AR byte must indicate code segment else #GP(selector)
-	if(descriptor.valid==false || descriptor.segment==false ||
-			!(descriptor.type & SEG_TYPE_EXECUTABLE))
-	{
+	if(!descriptor.valid || !descriptor.is_code_segment()) {
 		PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): not a valid code segment\n", selector);
 		throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 	}

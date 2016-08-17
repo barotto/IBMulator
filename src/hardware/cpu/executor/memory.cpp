@@ -17,6 +17,33 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+void CPUExecutor::mem_access(uint32_t _linear, unsigned _len, bool _user, bool _write)
+{
+	if(IS_PAGING()) {
+		if((PAGE_OFFSET(_linear) + _len) <= 4096) {
+			m_cached_phy.phy1 = TLB_lookup(_linear, _len, _user, _write);
+			m_cached_phy.len1 = _len;
+			m_cached_phy.pages = 1;
+		} else {
+			uint32_t page_offset = PAGE_OFFSET(_linear);
+			m_cached_phy.len1 = 4096 - page_offset;
+			m_cached_phy.len2 = _len - m_cached_phy.len1;
+			m_cached_phy.phy1 = TLB_lookup(_linear, m_cached_phy.len1, _user, _write);
+			m_cached_phy.phy2 = TLB_lookup(_linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
+			m_cached_phy.pages = 2;
+		}
+	} else {
+		m_cached_phy.phy1 = _linear;
+		m_cached_phy.len1 = _len;
+		m_cached_phy.pages = 1;
+	}
+}
+
+
+/*******************************************************************************
+ * Reads
+ */
+
 uint32_t CPUExecutor::read_xpages()
 {
 	unsigned len = m_cached_phy.len1 + m_cached_phy.len2;
@@ -58,21 +85,47 @@ uint32_t CPUExecutor::read_dword()
 
 uint8_t CPUExecutor::read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 1, IS_USER_PL, false, _vector, _errcode);
+	seg_check(_seg, _offset, 1, false, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 1, IS_USER_PL, false);
 	return read_byte();
 }
 
 uint16_t CPUExecutor::read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 2, IS_USER_PL, false, _vector, _errcode);
+	seg_check(_seg, _offset, 2, false, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 2, IS_USER_PL, false);
 	return read_word();
 }
 
 uint32_t CPUExecutor::read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 4, IS_USER_PL, false, _vector, _errcode);
+	seg_check(_seg, _offset, 4, false, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 4, IS_USER_PL, false);
 	return read_dword();
 }
+
+uint8_t  CPUExecutor::read_byte(uint32_t _linear)
+{
+	mem_access(_linear, 1, false, false);
+	return read_byte();
+}
+
+uint16_t CPUExecutor::read_word(uint32_t _linear)
+{
+	mem_access(_linear, 2, false, false);
+	return read_word();
+}
+
+uint32_t CPUExecutor::read_dword(uint32_t _linear)
+{
+	mem_access(_linear, 4, false, false);
+	return read_dword();
+}
+
+
+/*******************************************************************************
+ * Writes
+ */
 
 void CPUExecutor::write_xpages(uint32_t _data)
 {
@@ -114,19 +167,39 @@ void CPUExecutor::write_dword(uint32_t _data)
 
 void CPUExecutor::write_byte(SegReg &_seg, uint32_t _offset, uint8_t _data, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 1, IS_USER_PL, true, _vector, _errcode);
+	seg_check(_seg, _offset, 1, true, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 1, IS_USER_PL, true);
 	write_byte(_data);
 }
 
 void CPUExecutor::write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 2, IS_USER_PL, true, _vector, _errcode);
+	seg_check(_seg, _offset, 2, true, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 2, IS_USER_PL, true);
 	write_word(_data);
 }
 
 void CPUExecutor::write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector, uint16_t _errcode)
 {
-	mem_access_check(_seg, _offset, 4, IS_USER_PL, true, _vector, _errcode);
+	seg_check(_seg, _offset, 4, true, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 4, IS_USER_PL, true);
 	write_dword(_data);
 }
 
+void CPUExecutor::write_byte(uint32_t _linear, uint8_t _data)
+{
+	mem_access(_linear, 1, false, true);
+	write_byte(_data);
+}
+
+void CPUExecutor::write_word(uint32_t _linear, uint16_t _data)
+{
+	mem_access(_linear, 2, false, true);
+	write_word(_data);
+}
+
+void CPUExecutor::write_dword(uint32_t _linear, uint32_t _data)
+{
+	mem_access(_linear, 4, false, true);
+	write_dword(_data);
+}

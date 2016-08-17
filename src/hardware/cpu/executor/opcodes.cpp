@@ -344,7 +344,7 @@ void CPUExecutor::BOUND_rw_md()
 {
 	int16_t op1 = int16_t(load_rw());
 	uint16_t bound_min, bound_max;
-	load_ed_mem(bound_min, bound_max);
+	load_m1616(bound_min, bound_max);
 
 	if(op1 < int16_t(bound_min) || op1 > int16_t(bound_max)) {
 		PDEBUGF(LOG_V2,LOG_CPU, "BOUND: fails bounds test\n");
@@ -356,9 +356,9 @@ void CPUExecutor::BOUND_rd_mq()
 {
 	int32_t op1 = int32_t(load_rd());
 	uint32_t bound_min, bound_max;
-	load_eq_mem(bound_min, bound_max);
+	load_m3232(bound_min, bound_max);
 
-	if(op1 < int16_t(bound_min) || op1 > int16_t(bound_max)) {
+	if(op1 < int32_t(bound_min) || op1 > int32_t(bound_max)) {
 		PDEBUGF(LOG_V2,LOG_CPU, "BOUND: fails bounds test\n");
 		throw CPUException(CPU_BOUND_EXC, 0);
 	}
@@ -417,7 +417,7 @@ void CPUExecutor::CALL_cd()
 void CPUExecutor::CALL_ed()
 {
 	uint16_t newip, newcs;
-	load_ed_mem(newip, newcs);
+	load_m1616(newip, newcs);
 
 	CALL_cd(newip, newcs);
 }
@@ -1249,7 +1249,8 @@ void CPUExecutor::INSB(uint32_t _offset)
 	/* The memory operand must be addressable from the ES register; no segment
 	 * override is possible.
 	 */
-	mem_access_check(REG_ES, _offset, 1, IS_USER_PL, true);
+	seg_check(REG_ES, _offset, 1, true);
+	mem_access(REG_ES.desc.base + _offset, 1, IS_USER_PL, true);
 
 	uint8_t value = g_devices.read_byte(REG_DX);
 	write_byte(value);
@@ -1283,7 +1284,8 @@ void CPUExecutor::INSW(uint32_t _offset)
 		io_check(REG_DX, 2);
 	}
 
-	mem_access_check(REG_ES, _offset, 2, IS_USER_PL, true);
+	seg_check(REG_ES, _offset, 2, true);
+	mem_access(REG_ES.desc.base + _offset, 2, IS_USER_PL, true);
 
 	uint16_t value = g_devices.read_word(REG_DX);
 	write_word(value);
@@ -1317,7 +1319,8 @@ void CPUExecutor::INSD(uint32_t _offset)
 		io_check(REG_DX, 4);
 	}
 
-	mem_access_check(REG_ES, _offset, 4, IS_USER_PL, true);
+	seg_check(REG_ES, _offset, 4, true);
+	mem_access(REG_ES.desc.base + _offset, 4, IS_USER_PL, true);
 
 	uint32_t value = g_devices.read_word(REG_DX);
 	write_word(value);
@@ -1461,18 +1464,10 @@ void CPUExecutor::IRET()
  * Jcc-Jump Short If Condition is Met
  */
 
-void CPUExecutor::Jcc(bool _cond, int32_t _offset)
+inline void CPUExecutor::Jcc(bool _cond, int32_t _offset)
 {
 	if(_cond) {
-		uint32_t new_EIP;
-
-		if(m_instr->op32) {
-			new_EIP = REG_EIP + _offset;
-		} else {
-			new_EIP = uint32_t(REG_IP + int16_t(_offset));
-		}
-
-		branch_near(new_EIP);
+		branch_relative(_offset);
 	}
 }
 
@@ -1535,16 +1530,25 @@ void CPUExecutor::JECXZ_cb()/*E3*/ { Jcc(REG_ECX==0, int8_t(m_instr->ib)); }
  * JMP-Jump
  */
 
-void CPUExecutor::JMP_ew()
+void CPUExecutor::JMP_rel8()  { branch_relative(int8_t(m_instr->ib)); }
+void CPUExecutor::JMP_rel16() { branch_relative(int16_t(m_instr->iw1)); }
+void CPUExecutor::JMP_rel32() { branch_relative(int32_t(m_instr->id1)); }
+void CPUExecutor::JMP_ew()    { branch_near(load_ew()); }
+void CPUExecutor::JMP_ed()    { branch_near(load_ed()); }
+
+void CPUExecutor::JMP_ptr1616() // JMPF Ap (op.size 16)
 {
-	uint16_t newip = load_ew();
-	branch_near(newip);
+	if(!IS_PMODE()) {
+		branch_far(m_instr->iw2, m_instr->iw1);
+	} else {
+		branch_far_pmode(m_instr->iw2, m_instr->iw1);
+	}
 }
 
-void CPUExecutor::JMP_ed()
+void CPUExecutor::JMP_m1616() // JMPF Ep (op.size 16)
 {
 	uint16_t disp, cs;
-	load_ed_mem(disp, cs);
+	load_m1616(disp, cs);
 
 	if(!IS_PMODE()) {
 		branch_far(cs, disp);
@@ -1553,24 +1557,25 @@ void CPUExecutor::JMP_ed()
 	}
 }
 
-void CPUExecutor::JMP_cb()
-{
-	uint16_t new_IP = REG_IP + int8_t(m_instr->ib);
-	branch_near(new_IP);
-}
-
-void CPUExecutor::JMP_cw()
-{
-	uint16_t new_IP = REG_IP + int16_t(m_instr->iw1);
-	branch_near(new_IP);
-}
-
-void CPUExecutor::JMP_cd()
+void CPUExecutor::JMP_ptr1632() // JMPF Ap (op.size 32)
 {
 	if(!IS_PMODE()) {
-		branch_far(m_instr->iw2, m_instr->iw1);
+		branch_far(m_instr->iw2, m_instr->id1);
 	} else {
-		branch_far_pmode(m_instr->iw2, m_instr->iw1);
+		branch_far_pmode(m_instr->iw2, m_instr->id1);
+	}
+}
+
+void CPUExecutor::JMP_m1632() // JMPF Ep (op.size 32)
+{
+	uint32_t disp;
+	uint16_t cs;
+	load_m1632(disp, cs);
+
+	if(!IS_PMODE()) {
+		branch_far(cs, disp);
+	} else {
+		branch_far_pmode(cs, disp);
 	}
 }
 
@@ -1669,7 +1674,7 @@ void CPUExecutor::LAR_rw_ew()
 void CPUExecutor::LDS_rw_ed()
 {
 	uint16_t reg, ds;
-	load_ed_mem(reg, ds);
+	load_m1616(reg, ds);
 
 	SET_DS(ds);
 	store_rw(reg);
@@ -1678,7 +1683,7 @@ void CPUExecutor::LDS_rw_ed()
 void CPUExecutor::LES_rw_ed()
 {
 	uint16_t reg, es;
-	load_ed_mem(reg, es);
+	load_m1616(reg, es);
 
 	SET_ES(es);
 	store_rw(reg);

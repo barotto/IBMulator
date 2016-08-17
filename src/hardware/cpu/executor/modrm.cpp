@@ -167,7 +167,7 @@ uint32_t CPUExecutor::load_ed()
 	return read_dword((this->*EA_get_segreg)(), (this->*EA_get_offset)());
 }
 
-void CPUExecutor::load_ed_mem(uint16_t &w1_, uint16_t &w2_)
+void CPUExecutor::load_m1616(uint16_t &w1_, uint16_t &w2_)
 {
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint32_t off = (this->*EA_get_offset)();
@@ -176,7 +176,17 @@ void CPUExecutor::load_ed_mem(uint16_t &w1_, uint16_t &w2_)
 	w2_ = read_word(sr, off+2);
 }
 
-void CPUExecutor::load_eq_mem(uint32_t &dw1_, uint32_t &dw2_)
+void CPUExecutor::load_m1632(uint32_t &dw1_, uint16_t &w2_)
+{
+	SegReg & sr = (this->*EA_get_segreg)();
+	uint32_t off = (this->*EA_get_offset)();
+
+	//little endian
+	dw1_ = read_dword(sr, off);
+	 w2_ = read_word(sr, off+4);
+}
+
+void CPUExecutor::load_m3232(uint32_t &dw1_, uint32_t &dw2_)
 {
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint32_t off = (this->*EA_get_offset)();

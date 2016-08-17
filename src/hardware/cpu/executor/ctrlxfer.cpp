@@ -182,6 +182,19 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	}
 }
 
+void CPUExecutor::branch_relative(int32_t _offset)
+{
+	uint32_t new_EIP;
+
+	if(m_instr->op32) {
+		new_EIP = REG_EIP + _offset;
+	} else {
+		new_EIP = (REG_IP + _offset) & 0xFFFF;
+	}
+
+	branch_near(new_EIP);
+}
+
 void CPUExecutor::branch_near(uint32_t new_EIP)
 {
 	// check always, not only in protected mode
@@ -194,21 +207,21 @@ void CPUExecutor::branch_near(uint32_t new_EIP)
 	g_cpubus.invalidate_pq();
 }
 
-void CPUExecutor::branch_far(Selector &selector, Descriptor &descriptor, uint16_t ip, uint8_t cpl)
+void CPUExecutor::branch_far(Selector &selector, Descriptor &descriptor, uint32_t eip, uint8_t cpl)
 {
 	/* instruction pointer must be in code segment limit else #GP(0) */
-	if(ip > descriptor.limit) {
-		PERRF(LOG_CPU, "branch_far: IP > descriptor limit\n");
+	if(eip > descriptor.limit) {
+		PERRF(LOG_CPU, "branch_far: EIP > descriptor limit\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
 	/* Load CS:IP from destination pointer */
 	SET_CS(selector, descriptor, cpl);
-	SET_IP(ip);
+	SET_EIP(eip);
 	g_cpubus.invalidate_pq();
 }
 
-void CPUExecutor::branch_far(uint16_t _sel, uint16_t _disp)
+void CPUExecutor::branch_far(uint16_t _sel, uint32_t _disp)
 {
 	// CS LIMIT can't change when in real mode
 	if(_disp > GET_LIMIT(CS)) {
@@ -217,11 +230,11 @@ void CPUExecutor::branch_far(uint16_t _sel, uint16_t _disp)
 	}
 
 	SET_CS(_sel);
-	SET_IP(_disp);
+	SET_EIP(_disp);
 	g_cpubus.invalidate_pq();
 }
 
-void CPUExecutor::branch_far_pmode(uint16_t _cs, uint16_t _disp)
+void CPUExecutor::branch_far_pmode(uint16_t _cs, uint32_t _disp)
 {
 	//see jmp_far.cc/jump_protected
 
@@ -261,6 +274,7 @@ void CPUExecutor::branch_far_pmode(uint16_t _cs, uint16_t _disp)
 
 		switch(descriptor.type) {
 			case DESC_TYPE_AVAIL_286_TSS:
+			case DESC_TYPE_AVAIL_386_TSS:
 				PDEBUGF(LOG_V2,LOG_CPU,"branch_far_pmode: jump to TSS\n");
 
 				if(!descriptor.valid || selector.ti) {
@@ -277,12 +291,16 @@ void CPUExecutor::branch_far_pmode(uint16_t _cs, uint16_t _disp)
 				// SWITCH_TASKS _without_ nesting to TSS
 				switch_tasks(selector, descriptor, CPU_TASK_FROM_JUMP);
 				return;
+
 			case DESC_TYPE_TASK_GATE:
 				task_gate(selector, descriptor, CPU_TASK_FROM_JUMP);
 				return;
+
 			case DESC_TYPE_286_CALL_GATE:
+			case DESC_TYPE_386_CALL_GATE:
 				jump_call_gate(selector, descriptor);
 				return;
+
 			default:
 				PDEBUGF(LOG_V2, LOG_CPU,"branch_far_pmode: gate type %u unsupported\n", descriptor.type);
 				throw CPUException(CPU_GP_EXC, _cs & SELECTOR_RPL_MASK);
@@ -419,8 +437,8 @@ void CPUExecutor::jump_call_gate(Selector &selector, Descriptor &gate_descriptor
 	// check code-segment descriptor
 	CPUCore::check_CS(gate_cs_selector, gate_cs_descriptor, 0, CPL);
 
-	uint16_t newIP = gate_descriptor.offset;
-	branch_far(gate_cs_selector, gate_cs_descriptor, newIP, CPL);
+	uint32_t newEIP = gate_descriptor.offset;
+	branch_far(gate_cs_selector, gate_cs_descriptor, newEIP, CPL);
 }
 
 void CPUExecutor::iret_pmode()
