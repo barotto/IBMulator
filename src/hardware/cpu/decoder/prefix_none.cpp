@@ -1256,14 +1256,22 @@ case 0xAB:
 /* AC         LODSB            Load byte DS:[SI] into AL */
 case 0xAC:
 {
-	m_instr.fn = &CPUExecutor::LODSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::LODSB_32;
+	} else {
+		m_instr.fn = &CPUExecutor::LODSB_16;
+	}
 	break;
 }
 
 /* AD         LODSW             Load word DS:[SI] into AX */
 case 0xAD:
 {
-	m_instr.fn = &CPUExecutor::LODSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::LODSW_32;
+	} else {
+		m_instr.fn = &CPUExecutor::LODSW_16;
+	}
 	break;
 }
 

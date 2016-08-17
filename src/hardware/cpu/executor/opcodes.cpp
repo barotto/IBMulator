@@ -2055,10 +2055,10 @@ void CPUExecutor::LOADALL_286()
 
 
 /*******************************************************************************
- * LODSB/LODSW-Load String Operand
+ * LODSB/LODSW/LODSD-Load String Operand
  */
 
-void CPUExecutor::LODSB()
+void CPUExecutor::LODSB_16()
 {
 	REG_AL = read_byte(SEG_REG(m_base_ds), REG_SI);
 
@@ -2069,7 +2069,18 @@ void CPUExecutor::LODSB()
 	}
 }
 
-void CPUExecutor::LODSW()
+void CPUExecutor::LODSB_32()
+{
+	REG_AL = read_byte(SEG_REG(m_base_ds), REG_ESI);
+
+	if(FLAG_DF) {
+		REG_ESI -= 1;
+	} else {
+		REG_ESI += 1;
+	}
+}
+
+void CPUExecutor::LODSW_16()
 {
 	REG_AX = read_word(SEG_REG(m_base_ds), REG_SI);
 
@@ -2077,6 +2088,39 @@ void CPUExecutor::LODSW()
 		REG_SI -= 2;
 	} else {
 		REG_SI += 2;
+	}
+}
+
+void CPUExecutor::LODSW_32()
+{
+	REG_AX = read_word(SEG_REG(m_base_ds), REG_ESI);
+
+	if(FLAG_DF) {
+		REG_ESI -= 2;
+	} else {
+		REG_ESI += 2;
+	}
+}
+
+void CPUExecutor::LODSD_16()
+{
+	REG_EAX = read_dword(SEG_REG(m_base_ds), REG_SI);
+
+	if(FLAG_DF) {
+		REG_SI -= 4;
+	} else {
+		REG_SI += 4;
+	}
+}
+
+void CPUExecutor::LODSD_32()
+{
+	REG_EAX = read_dword(SEG_REG(m_base_ds), REG_ESI);
+
+	if(FLAG_DF) {
+		REG_ESI -= 4;
+	} else {
+		REG_ESI += 4;
 	}
 }
 

@@ -532,13 +532,16 @@ public:
 	void LGS_rw_mp();
 	void LGS_rd_mp();
 
-
 	void LMSW_ew();
 
 	void LOADALL_286();
 
-	void LODSB();
-	void LODSW();
+	void LODSB_16();
+	void LODSW_16();
+	void LODSD_16();
+	void LODSB_32();
+	void LODSW_32();
+	void LODSD_32();
 
 	void LOOP();
 	void LOOPZ();
