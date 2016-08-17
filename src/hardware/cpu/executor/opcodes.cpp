@@ -1594,37 +1594,35 @@ void CPUExecutor::LAHF()
  * LAR-Load Access Rights Byte
  */
 
-void CPUExecutor::LAR_rw_ew()
+uint32_t CPUExecutor::LAR(uint16_t _raw_selector)
 {
+	uint64_t   raw_descriptor;
 	Descriptor descriptor;
 	Selector   selector;
 
-	if(!IS_PMODE()) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LAR: not recognized in real mode\n");
-		throw CPUException(CPU_UD_EXC, 0);
-	}
-
-	selector = load_ew();
-
 	/* if selector null, clear ZF and done */
-	if((selector.value & SELECTOR_RPL_MASK) == 0) {
+	if((_raw_selector & SELECTOR_RPL_MASK) == 0) {
 		SET_FLAG(ZF, false);
-		return;
+		return 0;
 	}
+
+	selector = _raw_selector;
 
 	try {
-		descriptor = g_cpucore.fetch_descriptor(selector,0);
+		raw_descriptor = g_cpucore.fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
 		//this fetch does not throw an exception
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: failed to fetch descriptor\n");
 		SET_FLAG(ZF, false);
-		return;
+		return 0;
 	}
+
+	descriptor = raw_descriptor;
 
 	if(!descriptor.valid) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: descriptor not valid\n");
 		SET_FLAG(ZF, false);
-		return;
+		return 0;
 	}
 
 	/* if source selector is visible at CPL & RPL,
@@ -1638,7 +1636,7 @@ void CPUExecutor::LAR_rw_ew()
 		} else {
 			if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 				SET_FLAG(ZF, false);
-				return;
+				return 0;
 			}
 		}
 	} else { /* system or gate segment */
@@ -1648,22 +1646,52 @@ void CPUExecutor::LAR_rw_ew()
 			case DESC_TYPE_286_CALL_GATE:
 			case DESC_TYPE_TASK_GATE:
 			case DESC_TYPE_LDT_DESC:
+			case DESC_TYPE_AVAIL_386_TSS:
+			case DESC_TYPE_BUSY_386_TSS:
+			case DESC_TYPE_386_CALL_GATE:
 				break;
 			default: /* rest not accepted types to LAR */
 				PDEBUGF(LOG_V2, LOG_CPU, "LAR: not accepted descriptor type\n");
 				SET_FLAG(ZF, false);
-				return;
+				return 0;
 		}
 
 		if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 			SET_FLAG(ZF, false);
-			return;
+			return 0;
 		}
 	}
 
 	SET_FLAG(ZF, true);
-	uint16_t value = uint16_t(descriptor.ar)<<8;
-	store_rw(value);
+	return (raw_descriptor >> 32);
+}
+
+void CPUExecutor::LAR_rw_ew()
+{
+	if(!IS_PMODE()) {
+		PDEBUGF(LOG_V2, LOG_CPU, "LAR: not recognized in real mode\n");
+		throw CPUException(CPU_UD_EXC, 0);
+	}
+
+	uint16_t raw_selector = load_ew();
+	uint32_t upper_dword = LAR(raw_selector) & 0xFF00;
+	if(FLAG_ZF) {
+		store_rw(upper_dword);
+	}
+}
+
+void CPUExecutor::LAR_rd_ed()
+{
+	if(!IS_PMODE()) {
+		PDEBUGF(LOG_V2, LOG_CPU, "LAR: not recognized in real mode\n");
+		throw CPUException(CPU_UD_EXC, 0);
+	}
+
+	uint16_t raw_selector = load_ed();
+	uint32_t upper_dword = LAR(raw_selector) & 0x00FFFF00;
+	if(FLAG_ZF) {
+		store_rd(upper_dword);
+	}
 }
 
 

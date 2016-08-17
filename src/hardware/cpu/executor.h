@@ -224,6 +224,8 @@ private:
 
 	void Jcc(bool _cond, int32_t _offset);
 
+	uint32_t LAR(uint16_t raw_sel);
+
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
 	uint32_t OR_d(uint32_t op1, uint32_t op2);
@@ -501,7 +503,10 @@ public:
 	void JMP_m1632();
 
 	void LAHF();
+
 	void LAR_rw_ew();
+	void LAR_rd_ed();
+
 	void LES_rw_ed();
 	void LDS_rw_ed();
 	void LEA_rw_m();
