@@ -273,11 +273,13 @@ private:
 	uint16_t SBB_w(uint16_t _op1, uint16_t _op2);
 	uint32_t SBB_d(uint32_t _op1, uint32_t _op2);
 
-	uint8_t SUB_b(uint8_t op1, uint8_t op2);
-	uint16_t SUB_w(uint16_t op1, uint16_t op2);
+	uint8_t  SUB_b(uint8_t  _op1, uint8_t  _op2);
+	uint16_t SUB_w(uint16_t _op1, uint16_t _op2);
+	uint32_t SUB_d(uint32_t _op1, uint32_t _op2);
 
-	void TEST_b(uint8_t _value1, uint8_t _value2);
+	void TEST_b(uint8_t  _value1, uint8_t  _value2);
 	void TEST_w(uint16_t _value1, uint16_t _value2);
+	void TEST_d(uint32_t _value1, uint32_t _value2);
 
 	uint8_t XOR_b(uint8_t _value1, uint8_t _value2);
 	uint16_t XOR_w(uint16_t _value1, uint16_t _value2);
@@ -782,20 +784,28 @@ public:
 
 	void SUB_eb_rb();
 	void SUB_ew_rw();
+	void SUB_ed_rd();
 	void SUB_rb_eb();
 	void SUB_rw_ew();
+	void SUB_rd_ed();
 	void SUB_AL_ib();
 	void SUB_AX_iw();
+	void SUB_EAX_iw();
 	void SUB_eb_ib();
 	void SUB_ew_iw();
+	void SUB_ed_id();
 	void SUB_ew_ib();
+	void SUB_ed_ib();
 
 	void TEST_eb_rb();
 	void TEST_ew_rw();
+	void TEST_ed_rd();
 	void TEST_AL_ib();
 	void TEST_AX_iw();
+	void TEST_EAX_iw();
 	void TEST_eb_ib();
 	void TEST_ew_iw();
+	void TEST_ed_id();
 
 	void VERR_ew();
 	void VERW_ew();

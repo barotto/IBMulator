@@ -3949,43 +3949,62 @@ void CPUExecutor::STR_ew()
  * SUB-Integer Subtraction
  */
 
-uint8_t CPUExecutor::SUB_b(uint8_t op1, uint8_t op2)
+uint8_t CPUExecutor::SUB_b(uint8_t _op1, uint8_t _op2)
 {
-	uint8_t res = op1 - op2;
+	uint8_t res = _op1 - _op2;
 
-	SET_FLAG(OF, ((op1 ^ op2) & (op1 ^ res)) & 0x80);
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x80);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(ZF, res == 0);
-	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(CF, op1 < op2);
+	SET_FLAG(CF, _op1 < _op2);
 
 	return res;
 }
 
-uint16_t CPUExecutor::SUB_w(uint16_t op1, uint16_t op2)
+uint16_t CPUExecutor::SUB_w(uint16_t _op1, uint16_t _op2)
 {
-	uint16_t res = op1 - op2;
+	uint16_t res = _op1 - _op2;
 
-	SET_FLAG(OF, ((op1 ^ op2) & (op1 ^ res)) & 0x8000);
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x8000);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
-	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(CF, op1 < op2);
+	SET_FLAG(CF, _op1 < _op2);
+
+	return res;
+}
+
+uint32_t CPUExecutor::SUB_d(uint32_t _op1, uint32_t _op2)
+{
+	uint32_t res = _op1 - _op2;
+
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(CF, _op1 < _op2);
 
 	return res;
 }
 
 void CPUExecutor::SUB_eb_rb() { store_eb(SUB_b(load_eb(), load_rb())); }
 void CPUExecutor::SUB_ew_rw() { store_ew(SUB_w(load_ew(), load_rw())); }
+void CPUExecutor::SUB_ed_rd() { store_ed(SUB_d(load_ed(), load_rd())); }
 void CPUExecutor::SUB_rb_eb() { store_rb(SUB_b(load_rb(), load_eb())); }
 void CPUExecutor::SUB_rw_ew() { store_rw(SUB_w(load_rw(), load_ew())); }
+void CPUExecutor::SUB_rd_ed() { store_rd(SUB_d(load_rd(), load_ed())); }
 void CPUExecutor::SUB_AL_ib() { REG_AL = SUB_b(REG_AL, m_instr->ib); }
 void CPUExecutor::SUB_AX_iw() { REG_AX = SUB_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::SUB_EAX_iw(){REG_EAX = SUB_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::SUB_eb_ib() { store_eb(SUB_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::SUB_ew_iw() { store_ew(SUB_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::SUB_ed_id() { store_ed(SUB_d(load_ed(), m_instr->id1)); }
 void CPUExecutor::SUB_ew_ib() { store_ew(SUB_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::SUB_ed_ib() { store_ed(SUB_d(load_ed(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
@@ -4014,12 +4033,26 @@ void CPUExecutor::TEST_w(uint16_t _value1, uint16_t _value2)
 	SET_FLAG(PF, PARITY(res));
 }
 
+void CPUExecutor::TEST_d(uint32_t _value1, uint32_t _value2)
+{
+	uint32_t res = _value1 & _value2;
+
+	SET_FLAG(OF, false);
+	SET_FLAG(CF, false);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(PF, PARITY(res));
+}
+
 void CPUExecutor::TEST_eb_rb() { TEST_b(load_eb(), load_rb()); }
 void CPUExecutor::TEST_ew_rw() { TEST_w(load_ew(), load_rw()); }
+void CPUExecutor::TEST_ed_rd() { TEST_d(load_ed(), load_rd()); }
 void CPUExecutor::TEST_AL_ib() { TEST_b(REG_AL, m_instr->ib); }
 void CPUExecutor::TEST_AX_iw() { TEST_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::TEST_EAX_iw(){ TEST_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::TEST_eb_ib() { TEST_b(load_eb(), m_instr->ib); }
 void CPUExecutor::TEST_ew_iw() { TEST_w(load_ew(), m_instr->iw1); }
+void CPUExecutor::TEST_ed_id() { TEST_d(load_ed(), m_instr->id1); }
 
 
 /*******************************************************************************
