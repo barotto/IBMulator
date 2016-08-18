@@ -3533,6 +3533,8 @@ uint32_t CPUExecutor::SHR_d(uint32_t _op1, uint8_t _count)
 	if(CPU_TYPE <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
+
+	return res;
 }
 
 void CPUExecutor::SHR_eb_ib() { store_eb(SHR_b(load_eb(), m_instr->ib)); }
@@ -3629,45 +3631,65 @@ void CPUExecutor::SAR_ed_CL() { store_ed(SAR_d(load_ed(), REG_CL)); }
  * SBB-Integer Subtraction With Borrow
  */
 
-uint8_t CPUExecutor::SBB_b(uint8_t op1, uint8_t op2)
+uint8_t CPUExecutor::SBB_b(uint8_t _op1, uint8_t _op2)
 {
 	uint8_t cf = FLAG_CF;
-	uint8_t res = op1 - (op2 + cf);
+	uint8_t res = _op1 - (_op2 + cf);
 
-	SET_FLAG(OF, ((op1 ^ op2) & (op1 ^ res)) & 0x80);
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x80);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(ZF, res == 0);
-	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(CF, (op1 < res) || (cf && (op2==0xff)));
+	SET_FLAG(CF, (_op1 < res) || (cf && (_op2==0xff)));
 
 	return res;
 }
 
-uint16_t CPUExecutor::SBB_w(uint16_t op1, uint16_t op2)
+uint16_t CPUExecutor::SBB_w(uint16_t _op1, uint16_t _op2)
 {
 	uint16_t cf = FLAG_CF;
-	uint16_t res = op1 - (op2 + cf);
+	uint16_t res = _op1 - (_op2 + cf);
 
-	SET_FLAG(OF, ((op1 ^ op2) & (op1 ^ res)) & 0x8000);
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x8000);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
-	SET_FLAG(AF, ((op1 ^ op2) ^ res) & 0x10);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
 	SET_FLAG(PF, PARITY(res));
-	SET_FLAG(CF, (op1 < res) || (cf && (op2==0xffff)));
+	SET_FLAG(CF, (_op1 < res) || (cf && (_op2==0xffff)));
+
+	return res;
+}
+
+uint32_t CPUExecutor::SBB_d(uint32_t _op1, uint32_t _op2)
+{
+	uint32_t cf = FLAG_CF;
+	uint32_t res = _op1 - (_op2 + cf);
+
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x8000000);
+	SET_FLAG(SF, res & 0x8000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(CF, (_op1 < res) || (cf && (_op2==0xffffffff)));
 
 	return res;
 }
 
 void CPUExecutor::SBB_eb_rb() { store_eb(SBB_b(load_eb(), load_rb())); }
 void CPUExecutor::SBB_ew_rw() { store_ew(SBB_w(load_ew(), load_rw())); }
+void CPUExecutor::SBB_ed_rd() { store_ed(SBB_d(load_ed(), load_rd())); }
 void CPUExecutor::SBB_rb_eb() { store_rb(SBB_b(load_rb(), load_eb())); }
 void CPUExecutor::SBB_rw_ew() { store_rw(SBB_w(load_rw(), load_ew())); }
+void CPUExecutor::SBB_rd_ed() { store_rd(SBB_d(load_rd(), load_ed())); }
 void CPUExecutor::SBB_AL_ib() { REG_AL = SBB_b(REG_AL, m_instr->ib); }
 void CPUExecutor::SBB_AX_iw() { REG_AX = SBB_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::SBB_EAX_id(){REG_EAX = SBB_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::SBB_eb_ib() { store_eb(SBB_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::SBB_ew_iw() { store_ew(SBB_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::SBB_ed_id() { store_ed(SBB_d(load_ed(), m_instr->id1)); }
 void CPUExecutor::SBB_ew_ib() { store_ew(SBB_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::SBB_ed_ib() { store_ed(SBB_d(load_ed(), int8_t(m_instr->ib))); }
 
 
 /*******************************************************************************
