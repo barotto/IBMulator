@@ -281,8 +281,9 @@ private:
 	void TEST_w(uint16_t _value1, uint16_t _value2);
 	void TEST_d(uint32_t _value1, uint32_t _value2);
 
-	uint8_t XOR_b(uint8_t _value1, uint8_t _value2);
+	uint8_t  XOR_b(uint8_t  _value1, uint8_t  _value2);
 	uint16_t XOR_w(uint16_t _value1, uint16_t _value2);
+	uint32_t XOR_d(uint32_t _value1, uint32_t _value2);
 
 	void rep_16();
 	void rep_32();
@@ -814,19 +815,26 @@ public:
 
 	void XCHG_eb_rb();
 	void XCHG_ew_rw();
+	void XCHG_ed_rd();
 	void XCHG_AX_rw();
+	void XCHG_EAX_rd();
 
 	void XLATB();
 
 	void XOR_rb_eb();
-	void XOR_eb_rb();
-	void XOR_AL_ib();
 	void XOR_rw_ew();
+	void XOR_rd_ed();
+	void XOR_eb_rb();
 	void XOR_ew_rw();
+	void XOR_ed_rd();
+	void XOR_AL_ib();
 	void XOR_AX_iw();
+	void XOR_EAX_ie();
 	void XOR_eb_ib();
 	void XOR_ew_iw();
+	void XOR_ed_id();
 	void XOR_ew_ib();
+	void XOR_ed_ib();
 };
 
 #endif

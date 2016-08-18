@@ -4231,11 +4231,26 @@ void CPUExecutor::XCHG_ew_rw()
 	store_rw(ew);
 }
 
+void CPUExecutor::XCHG_ed_rd()
+{
+	uint32_t ed = load_ed();
+	uint32_t rd = load_rd();
+	store_ed(rd);
+	store_rd(ed);
+}
+
 void CPUExecutor::XCHG_AX_rw()
 {
 	uint16_t ax = REG_AX;
 	REG_AX = GEN_REG(m_instr->reg).word[0];
 	GEN_REG(m_instr->reg).word[0] = ax;
+}
+
+void CPUExecutor::XCHG_EAX_rd()
+{
+	uint32_t eax = REG_EAX;
+	REG_EAX = GEN_REG(m_instr->reg).dword[0];
+	GEN_REG(m_instr->reg).dword[0] = eax;
 }
 
 
@@ -4279,13 +4294,31 @@ uint16_t CPUExecutor::XOR_w(uint16_t _op1, uint16_t _op2)
 	return res;
 }
 
+uint32_t CPUExecutor::XOR_d(uint32_t _op1, uint32_t _op2)
+{
+	uint32_t res = _op1 ^ _op2;
+
+	SET_FLAG(CF, false);
+	SET_FLAG(OF, false);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(PF, PARITY(res));
+
+	return res;
+}
+
 void CPUExecutor::XOR_rb_eb() { store_rb(XOR_b(load_rb(), load_eb())); }
 void CPUExecutor::XOR_rw_ew() { store_rw(XOR_w(load_rw(), load_ew())); }
+void CPUExecutor::XOR_rd_ed() { store_rd(XOR_d(load_rd(), load_ed())); }
 void CPUExecutor::XOR_eb_rb() { store_eb(XOR_b(load_eb(), load_rb())); }
 void CPUExecutor::XOR_ew_rw() { store_ew(XOR_w(load_ew(), load_rw())); }
+void CPUExecutor::XOR_ed_rd() { store_ed(XOR_d(load_ed(), load_rd())); }
 void CPUExecutor::XOR_AL_ib() { REG_AL = XOR_b(REG_AL, m_instr->ib); }
 void CPUExecutor::XOR_AX_iw() { REG_AX = XOR_w(REG_AX, m_instr->iw1); }
+void CPUExecutor::XOR_EAX_ie(){REG_EAX = XOR_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::XOR_eb_ib() { store_eb(XOR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::XOR_ew_iw() { store_ew(XOR_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::XOR_ed_id() { store_ed(XOR_d(load_ed(), m_instr->id1)); }
 void CPUExecutor::XOR_ew_ib() { store_ew(XOR_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::XOR_ed_ib() { store_ed(XOR_d(load_ed(), int8_t(m_instr->ib))); }
 
