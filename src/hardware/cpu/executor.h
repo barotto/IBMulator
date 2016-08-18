@@ -771,8 +771,12 @@ public:
 	void STD();
 	void STI();
 
-	void STOSB();
-	void STOSW();
+	void STOSB_a16();
+	void STOSB_a32();
+	void STOSW_a16();
+	void STOSW_a32();
+	void STOSD_a16();
+	void STOSD_a32();
 
 	void STR_ew();
 

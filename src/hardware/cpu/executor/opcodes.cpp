@@ -3854,10 +3854,10 @@ void CPUExecutor::STI()
 
 
 /*******************************************************************************
- * STOSB/STOSW-Store String Data
+ * STOSB/STOSW/STOSD-Store String Data
  */
 
-void CPUExecutor::STOSB()
+void CPUExecutor::STOSB_a16()
 {
 	//no segment override is possible.
 	write_byte(REG_ES, REG_DI, REG_AL);
@@ -3869,7 +3869,19 @@ void CPUExecutor::STOSB()
 	}
 }
 
-void CPUExecutor::STOSW()
+void CPUExecutor::STOSB_a32()
+{
+	//no segment override is possible.
+	write_byte(REG_ES, REG_EDI, REG_AL);
+
+	if(FLAG_DF) {
+		REG_EDI -= 1;
+	} else {
+		REG_EDI += 1;
+	}
+}
+
+void CPUExecutor::STOSW_a16()
 {
 	//no segment override is possible.
 	write_word(REG_ES, REG_DI, REG_AX);
@@ -3878,6 +3890,42 @@ void CPUExecutor::STOSW()
 		REG_DI -= 2;
 	} else {
 		REG_DI += 2;
+	}
+}
+
+void CPUExecutor::STOSW_a32()
+{
+	//no segment override is possible.
+	write_word(REG_ES, REG_EDI, REG_AX);
+
+	if(FLAG_DF) {
+		REG_EDI -= 2;
+	} else {
+		REG_EDI += 2;
+	}
+}
+
+void CPUExecutor::STOSD_a16()
+{
+	//no segment override is possible.
+	write_dword(REG_ES, REG_DI, REG_EAX);
+
+	if(FLAG_DF) {
+		REG_DI -= 4;
+	} else {
+		REG_DI += 4;
+	}
+}
+
+void CPUExecutor::STOSD_a32()
+{
+	//no segment override is possible.
+	write_dword(REG_ES, REG_EDI, REG_EAX);
+
+	if(FLAG_DF) {
+		REG_EDI -= 4;
+	} else {
+		REG_EDI += 4;
 	}
 }
 

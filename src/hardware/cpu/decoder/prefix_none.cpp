@@ -1249,14 +1249,22 @@ case 0xA9:
 /* AA       STOSB           Store AL to byte ES:[DI], advance DI */
 case 0xAA:
 {
-	m_instr.fn = &CPUExecutor::STOSB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::STOSB_a32;
+	} else {
+		m_instr.fn = &CPUExecutor::STOSB_a16;
+	}
 	break;
 }
 
 /* AB       STOSW           Store AX to word ES:[DI], advance DI */
 case 0xAB:
 {
-	m_instr.fn = &CPUExecutor::STOSW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::STOSW_a32;
+	} else {
+		m_instr.fn = &CPUExecutor::STOSW_a16;
+	}
 	break;
 }
 
