@@ -2168,7 +2168,7 @@ void CPUExecutor::LOOPNZ_a32(){ REG_ECX = LOOPNZ(REG_ECX); }
  * LSL-Load Segment Limit
  */
 
-void CPUExecutor::LSL_rw_ew()
+uint32_t CPUExecutor::LSL()
 {
 	Selector   selector;
 	Descriptor descriptor;
@@ -2183,7 +2183,7 @@ void CPUExecutor::LSL_rw_ew()
 	/* if selector null, clear ZF and done */
 	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		SET_FLAG(ZF, false);
-	    return;
+	    return 0;
 	}
 
 	try {
@@ -2191,7 +2191,7 @@ void CPUExecutor::LSL_rw_ew()
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LSL: failed to fetch descriptor\n");
 	    SET_FLAG(ZF, false);
-	    return;
+	    return 0;
 	}
 
 	if(descriptor.is_system_segment()) {
@@ -2199,28 +2199,44 @@ void CPUExecutor::LSL_rw_ew()
 			case DESC_TYPE_AVAIL_286_TSS:
 			case DESC_TYPE_BUSY_286_TSS:
 			case DESC_TYPE_LDT_DESC:
+			case DESC_TYPE_AVAIL_386_TSS:
+			case DESC_TYPE_BUSY_386_TSS:
 				if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 					SET_FLAG(ZF, false);
-					return;
+					return 0;
 				}
 				break;
 			default: /* rest not accepted types to LSL */
 				SET_FLAG(ZF, false);
-				return;
+				return 0;
 		}
 	} else { // data & code segment
 		if(descriptor.is_code_segment() && !descriptor.is_conforming()) {
 			// non-conforming code segment
 			if(descriptor.dpl < CPL || descriptor.dpl < selector.rpl) {
 				SET_FLAG(ZF, false);
-				return;
+				return 0;
 			}
 		}
 	}
 
 	/* all checks pass */
 	SET_FLAG(ZF, true);
-	store_rw(descriptor.limit);
+	return descriptor.limit;
+}
+
+void CPUExecutor::LSL_rw_ew()
+{
+	if(FLAG_ZF) {
+		store_rw(LSL());
+	}
+}
+
+void CPUExecutor::LSL_rd_ew()
+{
+	if(FLAG_ZF) {
+		store_rd(LSL());
+	}
 }
 
 

@@ -232,6 +232,8 @@ private:
 	uint32_t LOOPZ(uint32_t _count);
 	uint32_t LOOPNZ(uint32_t _count);
 
+	uint32_t LSL();
+
 	uint8_t OR_b(uint8_t op1, uint8_t op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
 	uint32_t OR_d(uint32_t op1, uint32_t op2);
@@ -555,6 +557,7 @@ public:
 	void LOOPNZ_a32();
 
 	void LSL_rw_ew();
+	void LSL_rd_ew();
 
 	void LTR_ew();
 
