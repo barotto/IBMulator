@@ -80,14 +80,16 @@ case 0x05:
 /* 06         PUSH ES      Push ES */
 case 0x06:
 {
-	m_instr.fn = &CPUExecutor::PUSH_ES;
+	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.reg = REGI_ES;
 	break;
 }
 
 /* 07          POP ES      Pop top of stack into ES */
 case 0x07:
 {
-	m_instr.fn = &CPUExecutor::POP_ES;
+	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.reg = REGI_ES;
 	break;
 }
 
@@ -142,7 +144,8 @@ case 0x0D:
 /* 0E         PUSH CS      Push CS */
 case 0x0E:
 {
-	m_instr.fn = &CPUExecutor::PUSH_CS;
+	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.reg = REGI_CS;
 	break;
 }
 
@@ -199,14 +202,16 @@ case 0x15:
 /* 16         PUSH SS      Push SS */
 case 0x16:
 {
-	m_instr.fn = &CPUExecutor::PUSH_SS;
+	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.reg = REGI_SS;
 	break;
 }
 
 /* 17          POP SS       Pop top of stack into SS */
 case 0x17:
 {
-	m_instr.fn = &CPUExecutor::POP_SS;
+	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.reg = REGI_SS;
 	break;
 }
 
@@ -261,14 +266,16 @@ case 0x1D:
 /* 1E         PUSH DS      Push DS */
 case 0x1E:
 {
-	m_instr.fn = &CPUExecutor::PUSH_DS;
+	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.reg = REGI_DS;
 	break;
 }
 
 /* 1F          POP DS       Pop top of stack into DS */
 case 0x1F:
 {
-	m_instr.fn = &CPUExecutor::POP_DS;
+	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.reg = REGI_DS;
 	break;
 }
 
@@ -639,9 +646,9 @@ case 0x6B:
 case 0x6C:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::INSB_32;
+		m_instr.fn = &CPUExecutor::INSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::INSB_16;
+		m_instr.fn = &CPUExecutor::INSB_a16;
 	}
 	break;
 }
@@ -650,9 +657,9 @@ case 0x6C:
 case 0x6D:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::INSW_32;
+		m_instr.fn = &CPUExecutor::INSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::INSW_16;
+		m_instr.fn = &CPUExecutor::INSW_a16;
 	}
 	break;
 }
@@ -661,9 +668,9 @@ case 0x6D:
 case 0x6E:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::OUTSB_32;
+		m_instr.fn = &CPUExecutor::OUTSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::OUTSB_16;
+		m_instr.fn = &CPUExecutor::OUTSB_a16;
 	}
 	break;
 }
@@ -672,9 +679,9 @@ case 0x6E:
 case 0x6F:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::OUTSW_32;
+		m_instr.fn = &CPUExecutor::OUTSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::OUTSW_16;
+		m_instr.fn = &CPUExecutor::OUTSW_a16;
 	}
 	break;
 }
@@ -1181,9 +1188,9 @@ case 0xA3:
 case 0xA4:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::MOVSB_32;
+		m_instr.fn = &CPUExecutor::MOVSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::MOVSB_16;
+		m_instr.fn = &CPUExecutor::MOVSB_a16;
 	}
 	break;
 }
@@ -1192,9 +1199,9 @@ case 0xA4:
 case 0xA5:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::MOVSW_32;
+		m_instr.fn = &CPUExecutor::MOVSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::MOVSW_16;
+		m_instr.fn = &CPUExecutor::MOVSW_a16;
 	}
 	break;
 }
@@ -1204,9 +1211,9 @@ case 0xA6:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::CMPSB_32;
+		m_instr.fn = &CPUExecutor::CMPSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::CMPSB_16;
+		m_instr.fn = &CPUExecutor::CMPSB_a16;
 	}
 	break;
 }
@@ -1216,9 +1223,9 @@ case 0xA7:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::CMPSW_32;
+		m_instr.fn = &CPUExecutor::CMPSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::CMPSW_16;
+		m_instr.fn = &CPUExecutor::CMPSW_a16;
 	}
 	break;
 }
@@ -1257,9 +1264,9 @@ case 0xAB:
 case 0xAC:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LODSB_32;
+		m_instr.fn = &CPUExecutor::LODSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LODSB_16;
+		m_instr.fn = &CPUExecutor::LODSB_a16;
 	}
 	break;
 }
@@ -1268,9 +1275,9 @@ case 0xAC:
 case 0xAD:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LODSW_32;
+		m_instr.fn = &CPUExecutor::LODSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LODSW_16;
+		m_instr.fn = &CPUExecutor::LODSW_a16;
 	}
 	break;
 }
@@ -1493,7 +1500,7 @@ case 0xC8:
 /* C9         LEAVE      Set (E)SP to (E)BP, then POP (E)BP */
 case 0xC9:
 {
-	m_instr.fn = &CPUExecutor::LEAVE_16;
+	m_instr.fn = &CPUExecutor::LEAVE_o16;
 	break;
 }
 
@@ -1765,9 +1772,9 @@ case 0xE0:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOPNZ_32;
+		m_instr.fn = &CPUExecutor::LOOPNZ_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOPNZ_16;
+		m_instr.fn = &CPUExecutor::LOOPNZ_a16;
 	}
 	break;
 }
@@ -1777,9 +1784,9 @@ case 0xE1:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOPZ_32;
+		m_instr.fn = &CPUExecutor::LOOPZ_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOPZ_16;
+		m_instr.fn = &CPUExecutor::LOOPZ_a16;
 	}
 	break;
 }
@@ -1789,9 +1796,9 @@ case 0xE2:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOP_32;
+		m_instr.fn = &CPUExecutor::LOOP_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOP_16;
+		m_instr.fn = &CPUExecutor::LOOP_a16;
 	}
 	break;
 }

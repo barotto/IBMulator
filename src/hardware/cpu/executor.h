@@ -378,12 +378,12 @@ public:
 	void CMP_ew_ib();
 	void CMP_ed_ib();
 
-	void CMPSB_16();
-	void CMPSW_16();
-	void CMPSD_16();
-	void CMPSB_32();
-	void CMPSW_32();
-	void CMPSD_32();
+	void CMPSB_a16();
+	void CMPSB_a32();
+	void CMPSW_a16();
+	void CMPSW_a32();
+	void CMPSD_a16();
+	void CMPSD_a32();
 
 	void DAA();
 	void DAS();
@@ -431,12 +431,12 @@ public:
 	void INC_rw_op();
 	void INC_rd_op();
 
-	void INSB_16();
-	void INSW_16();
-	void INSD_16();
-	void INSB_32();
-	void INSW_32();
-	void INSD_32();
+	void INSB_a16();
+	void INSB_a32();
+	void INSW_a16();
+	void INSW_a32();
+	void INSD_a16();
+	void INSD_a32();
 
 	void INT3();
 	void INT_ib();
@@ -516,13 +516,13 @@ public:
 	void LEA_rw_m();
 	void LEA_rd_m();
 
-	void LEAVE_16();
-	void LEAVE_32();
+	void LEAVE_o16();
+	void LEAVE_o32();
 
-	void LGDT_16();
-	void LGDT_32();
-	void LIDT_16();
-	void LIDT_32();
+	void LGDT_o16();
+	void LGDT_o32();
+	void LIDT_o16();
+	void LIDT_o32();
 	void LLDT_ew();
 
 	void LDS_rw_mp();
@@ -540,19 +540,19 @@ public:
 
 	void LOADALL_286();
 
-	void LODSB_16();
-	void LODSW_16();
-	void LODSD_16();
-	void LODSB_32();
-	void LODSW_32();
-	void LODSD_32();
+	void LODSB_a16();
+	void LODSB_a32();
+	void LODSW_a16();
+	void LODSW_a32();
+	void LODSD_a16();
+	void LODSD_a32();
 
-	void LOOP_16();
-	void LOOPZ_16();
-	void LOOPNZ_16();
-	void LOOP_32();
-	void LOOPZ_32();
-	void LOOPNZ_32();
+	void LOOP_a16();
+	void LOOP_a32();
+	void LOOPZ_a16();
+	void LOOPZ_a32();
+	void LOOPNZ_a16();
+	void LOOPNZ_a32();
 
 	void LSL_rw_ew();
 
@@ -579,12 +579,12 @@ public:
 	void MOV_ew_iw();
 	void MOV_ed_id();
 
-	void MOVSB_16();
-	void MOVSW_16();
-	void MOVSD_16();
-	void MOVSB_32();
-	void MOVSW_32();
-	void MOVSD_32();
+	void MOVSB_a16();
+	void MOVSB_a32();
+	void MOVSW_a16();
+	void MOVSW_a32();
+	void MOVSD_a16();
+	void MOVSD_a32();
 
 	void MUL_eb();
 	void MUL_ew();
@@ -622,23 +622,15 @@ public:
 	void OUT_DX_AX();
 	void OUT_DX_EAX();
 
-	void OUTSB_16();
-	void OUTSW_16();
-	void OUTSD_16();
-	void OUTSB_32();
-	void OUTSW_32();
-	void OUTSD_32();
+	void OUTSB_a16();
+	void OUTSB_a32();
+	void OUTSW_a16();
+	void OUTSW_a32();
+	void OUTSD_a16();
+	void OUTSD_a32();
 
-	void POP_DS();
-	void POP_ES();
-	void POP_SS();
-	void POP_FS();
-	void POP_GS();
-	void POP_DS_32();
-	void POP_ES_32();
-	void POP_SS_32();
-	void POP_FS_32();
-	void POP_GS_32();
+	void POP_SR_w();
+	void POP_SR_dw();
 	void POP_mw();
 	void POP_md();
 	void POP_rw_op();
@@ -649,18 +641,8 @@ public:
 	void POPF();
 	void POPFD();
 
-	void PUSH_ES();
-	void PUSH_CS();
-	void PUSH_SS();
-	void PUSH_DS();
-	void PUSH_FS();
-	void PUSH_GS();
-	void PUSH_ES_32();
-	void PUSH_CS_32();
-	void PUSH_SS_32();
-	void PUSH_DS_32();
-	void PUSH_FS_32();
-	void PUSH_GS_32();
+	void PUSH_SR_w();
+	void PUSH_SR_dw();
 	void PUSH_rw_op();
 	void PUSH_rd_op();
 	void PUSH_mw();

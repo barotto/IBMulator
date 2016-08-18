@@ -563,7 +563,7 @@ void CPUExecutor::CMP_ed_ib() { CMP_d(load_ed(), int8_t(m_instr->ib)); }
  * CMPS/CMPSB/CMPSW/CMPSWD-Compare string operands
  */
 
-void CPUExecutor::CMPSB_16()
+void CPUExecutor::CMPSB_a16()
 {
 	uint8_t op1 = read_byte(SEG_REG(m_base_ds), REG_SI);
 	uint8_t op2 = read_byte(REG_ES, REG_DI);
@@ -579,7 +579,7 @@ void CPUExecutor::CMPSB_16()
 	}
 }
 
-void CPUExecutor::CMPSW_16()
+void CPUExecutor::CMPSW_a16()
 {
 	uint16_t op1 = read_word(SEG_REG(m_base_ds), REG_SI);
 	uint16_t op2 = read_word(REG_ES, REG_DI);
@@ -595,7 +595,7 @@ void CPUExecutor::CMPSW_16()
 	}
 }
 
-void CPUExecutor::CMPSD_16()
+void CPUExecutor::CMPSD_a16()
 {
 	uint32_t op1 = read_dword(SEG_REG(m_base_ds), REG_SI);
 	uint32_t op2 = read_dword(REG_ES, REG_DI);
@@ -611,7 +611,7 @@ void CPUExecutor::CMPSD_16()
 	}
 }
 
-void CPUExecutor::CMPSB_32()
+void CPUExecutor::CMPSB_a32()
 {
 	uint8_t op1 = read_byte(SEG_REG(m_base_ds), REG_ESI);
 	uint8_t op2 = read_byte(REG_ES, REG_EDI);
@@ -627,7 +627,7 @@ void CPUExecutor::CMPSB_32()
 	}
 }
 
-void CPUExecutor::CMPSW_32()
+void CPUExecutor::CMPSW_a32()
 {
 	uint16_t op1 = read_word(SEG_REG(m_base_ds), REG_ESI);
 	uint16_t op2 = read_word(REG_ES, REG_EDI);
@@ -643,7 +643,7 @@ void CPUExecutor::CMPSW_32()
 	}
 }
 
-void CPUExecutor::CMPSD_32()
+void CPUExecutor::CMPSD_a32()
 {
 	uint32_t op1 = read_dword(SEG_REG(m_base_ds), REG_ESI);
 	uint32_t op2 = read_dword(REG_ES, REG_EDI);
@@ -1256,7 +1256,7 @@ void CPUExecutor::INSB(uint32_t _offset)
 	write_byte(value);
 }
 
-void CPUExecutor::INSB_16()
+void CPUExecutor::INSB_a16()
 {
 	INSB(REG_DI);
 
@@ -1267,7 +1267,7 @@ void CPUExecutor::INSB_16()
 	}
 }
 
-void CPUExecutor::INSB_32()
+void CPUExecutor::INSB_a32()
 {
 	INSB(REG_EDI);
 
@@ -1291,7 +1291,7 @@ void CPUExecutor::INSW(uint32_t _offset)
 	write_word(value);
 }
 
-void CPUExecutor::INSW_16()
+void CPUExecutor::INSW_a16()
 {
 	INSW(REG_DI);
 
@@ -1302,7 +1302,7 @@ void CPUExecutor::INSW_16()
 	}
 }
 
-void CPUExecutor::INSW_32()
+void CPUExecutor::INSW_a32()
 {
 	INSW(REG_EDI);
 
@@ -1326,7 +1326,7 @@ void CPUExecutor::INSD(uint32_t _offset)
 	write_word(value);
 }
 
-void CPUExecutor::INSD_16()
+void CPUExecutor::INSD_a16()
 {
 	INSD(REG_DI);
 
@@ -1337,7 +1337,7 @@ void CPUExecutor::INSD_16()
 	}
 }
 
-void CPUExecutor::INSD_32()
+void CPUExecutor::INSD_a32()
 {
 	INSD(REG_EDI);
 
@@ -1724,7 +1724,7 @@ void CPUExecutor::LEA_rd_m()
  * LEAVE-High Level Procedure Exit
  */
 
-void CPUExecutor::LEAVE_16()
+void CPUExecutor::LEAVE_o16()
 {
 	if(REG_SS.desc.big) {
 		REG_ESP = REG_EBP;
@@ -1734,7 +1734,7 @@ void CPUExecutor::LEAVE_16()
 	REG_BP = stack_pop_word();
 }
 
-void CPUExecutor::LEAVE_32()
+void CPUExecutor::LEAVE_o32()
 {
 	if(REG_SS.desc.big) {
 		REG_ESP = REG_EBP;
@@ -1764,28 +1764,28 @@ void CPUExecutor::LDT_m(uint32_t &base_, uint16_t &limit_)
 	base_ = read_dword(sr, off+2);
 }
 
-void CPUExecutor::LGDT_16()
+void CPUExecutor::LGDT_o16()
 {
 	uint32_t base; uint16_t limit;
 	LDT_m(base, limit);
 	SET_GDTR(base & 0x00FFFFFF, limit);
 }
 
-void CPUExecutor::LGDT_32()
+void CPUExecutor::LGDT_o32()
 {
 	uint32_t base; uint16_t limit;
 	LDT_m(base, limit);
 	SET_GDTR(base, limit);
 }
 
-void CPUExecutor::LIDT_16()
+void CPUExecutor::LIDT_o16()
 {
 	uint32_t base; uint16_t limit;
 	LDT_m(base, limit);
 	SET_IDTR(base & 0x00FFFFFF, limit);
 }
 
-void CPUExecutor::LIDT_32()
+void CPUExecutor::LIDT_o32()
 {
 	uint32_t base; uint16_t limit;
 	LDT_m(base, limit);
@@ -2058,7 +2058,7 @@ void CPUExecutor::LOADALL_286()
  * LODSB/LODSW/LODSD-Load String Operand
  */
 
-void CPUExecutor::LODSB_16()
+void CPUExecutor::LODSB_a16()
 {
 	REG_AL = read_byte(SEG_REG(m_base_ds), REG_SI);
 
@@ -2069,7 +2069,7 @@ void CPUExecutor::LODSB_16()
 	}
 }
 
-void CPUExecutor::LODSB_32()
+void CPUExecutor::LODSB_a32()
 {
 	REG_AL = read_byte(SEG_REG(m_base_ds), REG_ESI);
 
@@ -2080,7 +2080,7 @@ void CPUExecutor::LODSB_32()
 	}
 }
 
-void CPUExecutor::LODSW_16()
+void CPUExecutor::LODSW_a16()
 {
 	REG_AX = read_word(SEG_REG(m_base_ds), REG_SI);
 
@@ -2091,7 +2091,7 @@ void CPUExecutor::LODSW_16()
 	}
 }
 
-void CPUExecutor::LODSW_32()
+void CPUExecutor::LODSW_a32()
 {
 	REG_AX = read_word(SEG_REG(m_base_ds), REG_ESI);
 
@@ -2102,7 +2102,7 @@ void CPUExecutor::LODSW_32()
 	}
 }
 
-void CPUExecutor::LODSD_16()
+void CPUExecutor::LODSD_a16()
 {
 	REG_EAX = read_dword(SEG_REG(m_base_ds), REG_SI);
 
@@ -2113,7 +2113,7 @@ void CPUExecutor::LODSD_16()
 	}
 }
 
-void CPUExecutor::LODSD_32()
+void CPUExecutor::LODSD_a32()
 {
 	REG_EAX = read_dword(SEG_REG(m_base_ds), REG_ESI);
 
@@ -2156,12 +2156,12 @@ uint32_t CPUExecutor::LOOPNZ(uint32_t _count)
 	return _count;
 }
 
-void CPUExecutor::LOOP_16()  { REG_CX  = LOOP(REG_CX); }
-void CPUExecutor::LOOP_32()  { REG_ECX = LOOP(REG_ECX); }
-void CPUExecutor::LOOPZ_16() { REG_CX  = LOOPZ(REG_CX); }
-void CPUExecutor::LOOPZ_32() { REG_ECX = LOOPZ(REG_ECX); }
-void CPUExecutor::LOOPNZ_16(){ REG_CX  = LOOPNZ(REG_CX); }
-void CPUExecutor::LOOPNZ_32(){ REG_ECX = LOOPNZ(REG_ECX); }
+void CPUExecutor::LOOP_a16()  { REG_CX  = LOOP(REG_CX); }
+void CPUExecutor::LOOP_a32()  { REG_ECX = LOOP(REG_ECX); }
+void CPUExecutor::LOOPZ_a16() { REG_CX  = LOOPZ(REG_CX); }
+void CPUExecutor::LOOPZ_a32() { REG_ECX = LOOPZ(REG_ECX); }
+void CPUExecutor::LOOPNZ_a16(){ REG_CX  = LOOPNZ(REG_CX); }
+void CPUExecutor::LOOPNZ_a32(){ REG_ECX = LOOPNZ(REG_ECX); }
 
 
 /*******************************************************************************
@@ -2310,7 +2310,7 @@ void CPUExecutor::MOV_ed_id() { store_ed(m_instr->id1); }
  * MOVSB/MOVSW/MOVSD-Move Data from String to String
  */
 
-void CPUExecutor::MOVSB_16()
+void CPUExecutor::MOVSB_a16()
 {
 	uint8_t temp = read_byte(SEG_REG(m_base_ds), REG_SI);
 	write_byte(REG_ES, REG_DI, temp);
@@ -2326,7 +2326,7 @@ void CPUExecutor::MOVSB_16()
 	}
 }
 
-void CPUExecutor::MOVSW_16()
+void CPUExecutor::MOVSW_a16()
 {
 	uint16_t temp = read_word(SEG_REG(m_base_ds), REG_SI);
 	write_word(REG_ES, REG_DI, temp);
@@ -2342,7 +2342,7 @@ void CPUExecutor::MOVSW_16()
 	}
 }
 
-void CPUExecutor::MOVSD_16()
+void CPUExecutor::MOVSD_a16()
 {
 	uint32_t temp = read_dword(SEG_REG(m_base_ds), REG_SI);
 	write_dword(REG_ES, REG_DI, temp);
@@ -2358,7 +2358,7 @@ void CPUExecutor::MOVSD_16()
 	}
 }
 
-void CPUExecutor::MOVSB_32()
+void CPUExecutor::MOVSB_a32()
 {
 	uint8_t temp = read_byte(SEG_REG(m_base_ds), REG_ESI);
 	write_byte(REG_ES, REG_EDI, temp);
@@ -2374,7 +2374,7 @@ void CPUExecutor::MOVSB_32()
 	}
 }
 
-void CPUExecutor::MOVSW_32()
+void CPUExecutor::MOVSW_a32()
 {
 	uint16_t temp = read_word(SEG_REG(m_base_ds), REG_ESI);
 	write_word(REG_ES, REG_EDI, temp);
@@ -2390,7 +2390,7 @@ void CPUExecutor::MOVSW_32()
 	}
 }
 
-void CPUExecutor::MOVSD_32()
+void CPUExecutor::MOVSD_a32()
 {
 	uint32_t temp = read_dword(SEG_REG(m_base_ds), REG_ESI);
 	write_dword(REG_ES, REG_EDI, temp);
@@ -2672,7 +2672,7 @@ void CPUExecutor::OUTSB(uint8_t _value)
 	g_devices.write_byte(REG_DX, _value);
 }
 
-void CPUExecutor::OUTSB_16()
+void CPUExecutor::OUTSB_a16()
 {
 	OUTSB(read_byte(SEG_REG(m_base_ds), REG_SI));
 
@@ -2683,7 +2683,7 @@ void CPUExecutor::OUTSB_16()
 	}
 }
 
-void CPUExecutor::OUTSB_32()
+void CPUExecutor::OUTSB_a32()
 {
 	OUTSB(read_byte(SEG_REG(m_base_ds), REG_ESI));
 
@@ -2702,7 +2702,7 @@ void CPUExecutor::OUTSW(uint16_t _value)
 	g_devices.write_word(REG_DX, _value);
 }
 
-void CPUExecutor::OUTSW_16()
+void CPUExecutor::OUTSW_a16()
 {
 	OUTSW(read_word(SEG_REG(m_base_ds), REG_SI));
 
@@ -2713,7 +2713,7 @@ void CPUExecutor::OUTSW_16()
 	}
 }
 
-void CPUExecutor::OUTSW_32()
+void CPUExecutor::OUTSW_a32()
 {
 	OUTSW(read_word(SEG_REG(m_base_ds), REG_ESI));
 
@@ -2732,7 +2732,7 @@ void CPUExecutor::OUTSD(uint32_t _value)
 	g_devices.write_dword(REG_DX, _value);
 }
 
-void CPUExecutor::OUTSD_16()
+void CPUExecutor::OUTSD_a16()
 {
 	OUTSD(read_dword(SEG_REG(m_base_ds), REG_SI));
 
@@ -2743,7 +2743,7 @@ void CPUExecutor::OUTSD_16()
 	}
 }
 
-void CPUExecutor::OUTSD_32()
+void CPUExecutor::OUTSD_a32()
 {
 	OUTSD(read_dword(SEG_REG(m_base_ds), REG_ESI));
 
@@ -2759,34 +2759,31 @@ void CPUExecutor::OUTSD_32()
  * POP-Pop Operand from the Stack
  */
 
-void CPUExecutor::POP_DS()    { SET_DS(stack_pop_word()); }
-void CPUExecutor::POP_ES()    { SET_ES(stack_pop_word()); }
-void CPUExecutor::POP_FS()    { SET_FS(stack_pop_word()); }
-void CPUExecutor::POP_GS()    { SET_GS(stack_pop_word()); }
-void CPUExecutor::POP_DS_32() { SET_DS(stack_pop_dword()); }
-void CPUExecutor::POP_ES_32() {	SET_ES(stack_pop_dword()); }
-void CPUExecutor::POP_FS_32() { SET_FS(stack_pop_dword()); }
-void CPUExecutor::POP_GS_32() {	SET_GS(stack_pop_dword()); }
+void CPUExecutor::POP_SR_w()
+{
+	SET_SR(m_instr->reg, stack_pop_word());
+	if(m_instr->reg == REGI_SS) {
+		/* A POP SS instruction will inhibit all interrupts, including NMI, until
+		 * after the execution of the next instruction. This permits a POP SP
+		 * instruction to be performed first. (cf. B-83)
+		 */
+		g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
+	}
+}
+
+void CPUExecutor::POP_SR_dw()
+{
+	SET_SR(m_instr->reg, stack_pop_dword());
+	if(m_instr->reg == REGI_SS) {
+		g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
+	}
+}
+
 void CPUExecutor::POP_mw()    { store_ew(stack_pop_word()); }
 void CPUExecutor::POP_md()    { store_ed(stack_pop_dword()); }
 void CPUExecutor::POP_rw_op() { store_rw_op(stack_pop_word()); }
 void CPUExecutor::POP_rd_op() { store_rd_op(stack_pop_dword()); }
 
-void CPUExecutor::POP_SS()
-{
-	SET_SS(stack_pop_word());
-	/* A POP SS instruction will inhibit all interrupts, including NMI, until
-	 * after the execution of the next instruction. This permits a POP SP
-	 * instruction to be performed first. (cf. B-83)
-	 */
-	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
-}
-
-void CPUExecutor::POP_SS_32()
-{
-	SET_SS(stack_pop_dword());
-	g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
-}
 
 /*******************************************************************************
  * POPA/POPAD-Pop All General Registers
@@ -2842,18 +2839,8 @@ void CPUExecutor::POPFD()
  * PUSH-Push Operand onto the Stack
  */
 
-void CPUExecutor::PUSH_ES()    { stack_push_word(REG_ES.sel.value); }
-void CPUExecutor::PUSH_CS()    { stack_push_word(REG_CS.sel.value); }
-void CPUExecutor::PUSH_SS()    { stack_push_word(REG_SS.sel.value); }
-void CPUExecutor::PUSH_DS()    { stack_push_word(REG_DS.sel.value); }
-void CPUExecutor::PUSH_FS()    { stack_push_word(REG_FS.sel.value); }
-void CPUExecutor::PUSH_GS()    { stack_push_word(REG_GS.sel.value); }
-void CPUExecutor::PUSH_ES_32() { stack_push_dword(REG_ES.sel.value); }
-void CPUExecutor::PUSH_CS_32() { stack_push_dword(REG_CS.sel.value); }
-void CPUExecutor::PUSH_SS_32() { stack_push_dword(REG_SS.sel.value); }
-void CPUExecutor::PUSH_DS_32() { stack_push_dword(REG_DS.sel.value); }
-void CPUExecutor::PUSH_FS_32() { stack_push_dword(REG_FS.sel.value); }
-void CPUExecutor::PUSH_GS_32() { stack_push_dword(REG_GS.sel.value); }
+void CPUExecutor::PUSH_SR_w()  { stack_push_word(SEG_REG(m_instr->reg).sel.value); }
+void CPUExecutor::PUSH_SR_dw() { stack_push_dword(SEG_REG(m_instr->reg).sel.value); }
 void CPUExecutor::PUSH_rw_op() { stack_push_word(load_rw_op()); }
 void CPUExecutor::PUSH_rd_op() { stack_push_dword(load_rd_op()); }
 void CPUExecutor::PUSH_mw()    { stack_push_word(load_ew()); }
