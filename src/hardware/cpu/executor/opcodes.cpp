@@ -2945,212 +2945,341 @@ void CPUExecutor::PUSHFD()
  * RCL/RCR/ROL/ROR-Rotate Instructions
  */
 
-uint8_t CPUExecutor::ROL_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::ROL_b(uint8_t _op1, uint8_t _count)
 {
-	if(!(_times & 0x7)) { //if _times==0 || _times>=8
-		if(_times & 0x18) { //if times==8 || _times==16 || _times==24
-			SET_FLAG(CF, _value & 1);
-			SET_FLAG(OF, (_value & 1) ^ (_value >> 7));
+	if(!(_count & 0x7)) { //if _count==0 || _count>=8
+		if(_count & 0x18) { //if _count==8 || _count==16 || _count==24
+			SET_FLAG(CF, _op1 & 1);
+			SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 7));
 		}
-		return _value;
+		return _op1;
 	}
-	_times %= 8;
+	_count %= 8;
 
-	m_instr->cycles.extra = _times;
+	_op1 = (_op1 << _count) | (_op1 >> (8 - _count));
 
-	_value = (_value << _times) | (_value >> (8 - _times));
+	SET_FLAG(CF, _op1 & 1);
+	SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 7));
 
-	SET_FLAG(CF, _value & 1);
-	SET_FLAG(OF, (_value & 1) ^ (_value >> 7));
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
-	return _value;
+	return _op1;
 }
 
-uint16_t CPUExecutor::ROL_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::ROL_w(uint16_t _op1, uint8_t _count)
 {
-	if(!(_times & 0xF)) { //if _times==0 || _times>=15
-		if(_times & 0x10) { //if _times==16 || _times==24
-			SET_FLAG(CF, _value & 1);
-			SET_FLAG(OF, (_value & 1) ^ (_value >> 15));
+	if(!(_count & 0xF)) { //if _count==0 || _count>=15
+		if(_count & 0x10) { //if _count==16 || _count==24
+			SET_FLAG(CF, _op1 & 1);
+			SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 15));
 		}
-		return _value;
+		return _op1;
 	}
-	_times %= 16;
+	_count %= 16;
 
-	m_instr->cycles.extra = _times;
+	_op1 = (_op1 << _count) | (_op1 >> (16 - _count));
 
-	_value = (_value << _times) | (_value >> (16 - _times));
+	SET_FLAG(CF, _op1 & 1);
+	SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 15));
 
-	SET_FLAG(CF, _value & 1);
-	SET_FLAG(OF, (_value & 1) ^ (_value >> 15));
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
-	return _value;
+	return _op1;
+}
+
+uint32_t CPUExecutor::ROL_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	_op1 = (_op1 << _count) | (_op1 >> (32 - _count));
+
+	bool bit0  = (_op1 & 1);
+	bool bit31 = (_op1 >> 31);
+	SET_FLAG(CF, bit0);
+	SET_FLAG(OF, bit0 ^ bit31);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return _op1;
 }
 
 void CPUExecutor::ROL_eb_ib() { store_eb(ROL_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::ROL_ew_ib() { store_ew(ROL_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::ROL_ed_ib() { store_ed(ROL_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::ROL_eb_1()  { store_eb(ROL_b(load_eb(), 1)); }
 void CPUExecutor::ROL_ew_1()  { store_ew(ROL_w(load_ew(), 1)); }
+void CPUExecutor::ROL_ed_1()  { store_ed(ROL_d(load_ed(), 1)); }
 void CPUExecutor::ROL_eb_CL() { store_eb(ROL_b(load_eb(), REG_CL)); }
 void CPUExecutor::ROL_ew_CL() { store_ew(ROL_w(load_ew(), REG_CL)); }
+void CPUExecutor::ROL_ed_CL() { store_ed(ROL_d(load_ed(), REG_CL)); }
 
-uint8_t CPUExecutor::ROR_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::ROR_b(uint8_t _op1, uint8_t _count)
 {
-	if(!(_times & 0x7)) { //if _times==0 || _times>=8
-		if(_times & 0x18) { //if times==8 || _times==16 || _times==24
-			SET_FLAG(CF, _value >> 7);
-			SET_FLAG(OF, (_value >> 7) ^ ((_value >> 6) & 1));
+	if(!(_count & 0x7)) { //if _count==0 || _count>=8
+		if(_count & 0x18) { //if _count==8 || _count==16 || _count==24
+			SET_FLAG(CF, _op1 >> 7);
+			SET_FLAG(OF, (_op1 >> 7) ^ ((_op1 >> 6) & 1));
 		}
-		return _value;
+		return _op1;
 	}
-	_times %= 8;
+	_count %= 8;
 
-	m_instr->cycles.extra = _times;
+	_op1 = (_op1 >> _count) | (_op1 << (8 - _count));
 
-	_value = (_value >> _times) | (_value << (8 - _times));
+	SET_FLAG(CF, _op1 >> 7);
+	SET_FLAG(OF, (_op1 >> 7) ^ ((_op1 >> 6) & 1));
 
-	SET_FLAG(CF, _value >> 7);
-	SET_FLAG(OF, (_value >> 7) ^ ((_value >> 6) & 1));
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
-	return _value;
+	return _op1;
 }
 
-uint16_t CPUExecutor::ROR_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::ROR_w(uint16_t _op1, uint8_t _count)
 {
-	if(!(_times & 0xf)) { //if _times==0 || _times>=15
-		if(_times & 0x10) { //if _times==16 || _times==24
-			SET_FLAG(CF, _value >> 15);
-			SET_FLAG(OF, (_value >> 15) ^ ((_value >> 14) & 1));
+	if(!(_count & 0xf)) { //if _count==0 || _count>=15
+		if(_count & 0x10) { //if _count==16 || _count==24
+			SET_FLAG(CF, _op1 >> 15);
+			SET_FLAG(OF, (_op1 >> 15) ^ ((_op1 >> 14) & 1));
 		}
-		return _value;
+		return _op1;
 	}
-	_times %= 16;
+	_count %= 16;
 
-	m_instr->cycles.extra = _times;
+	_op1 = (_op1 >> _count) | (_op1 << (16 - _count));
 
-	_value = (_value >> _times) | (_value << (16 - _times));
+	SET_FLAG(CF, _op1 >> 15);
+	SET_FLAG(OF, (_op1 >> 15) ^ ((_op1 >> 14) & 1));
 
-	SET_FLAG(CF, _value >> 15);
-	SET_FLAG(OF, (_value >> 15) ^ ((_value >> 14) & 1));
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
-	return _value;
+	return _op1;
+}
+
+uint32_t CPUExecutor::ROR_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	_op1 = (_op1 >> _count) | (_op1 << (32 - _count));
+
+	bool bit31 = (_op1 >> 31) & 1;
+	bool bit30 = (_op1 >> 30) & 1;
+
+	SET_FLAG(CF, bit31);
+	SET_FLAG(OF, bit30 ^ bit31);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return _op1;
 }
 
 void CPUExecutor::ROR_eb_ib() { store_eb(ROR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::ROR_ew_ib() { store_ew(ROR_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::ROR_ed_ib() { store_ed(ROR_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::ROR_eb_1()  { store_eb(ROR_b(load_eb(), 1)); }
 void CPUExecutor::ROR_ew_1()  { store_ew(ROR_w(load_ew(), 1)); }
+void CPUExecutor::ROR_ed_1()  { store_ed(ROR_d(load_ed(), 1)); }
 void CPUExecutor::ROR_eb_CL() { store_eb(ROR_b(load_eb(), REG_CL)); }
 void CPUExecutor::ROR_ew_CL() { store_ew(ROR_w(load_ew(), REG_CL)); }
+void CPUExecutor::ROR_ed_CL() { store_ed(ROR_d(load_ed(), REG_CL)); }
 
-uint8_t CPUExecutor::RCL_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::RCL_b(uint8_t _op1, uint8_t _count)
 {
-	_times = (_times & 0x1F) % 9;
+	_count = (_count & 0x1F) % 9;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
-
-	m_instr->cycles.extra = _times;
 
 	uint8_t res;
 	uint8_t cf = FLAG_CF;
 
-	if(_times == 1) {
-		res = (_value << 1) | cf;
+	if(_count == 1) {
+		res = (_op1 << 1) | cf;
 	} else {
-		res = (_value << _times) | (cf << (_times - 1)) | (_value >> (9 - _times));
+		res = (_op1 << _count) | (cf << (_count - 1)) | (_op1 >> (9 - _count));
 	}
 
-	cf = (_value >> (8-_times)) & 1;
+	cf = (_op1 >> (8 - _count)) & 1;
 
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 7));
 
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
 	return res;
 }
 
-uint16_t CPUExecutor::RCL_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::RCL_w(uint16_t _op1, uint8_t _count)
 {
-	_times = (_times & 0x1F) % 17;
+	_count = (_count & 0x1F) % 17;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
-
-	m_instr->cycles.extra = _times;
 
 	uint16_t res;
 	uint16_t cf = FLAG_CF;
 
-	if(_times == 1) {
-		res = (_value << 1) | cf;
-	} else if(_times == 16) {
-		res = (cf << 15) | (_value >> 1);
+	if(_count == 1) {
+		res = (_op1 << 1) | cf;
+	} else if(_count == 16) {
+		res = (cf << 15) | (_op1 >> 1);
 	} else { // 2..15
-		res = (_value << _times) | (cf << (_times - 1)) | (_value >> (17 - _times));
+		res = (_op1 << _count) | (cf << (_count - 1)) | (_op1 >> (17 - _count));
 	}
 
-	cf = (_value >> (16-_times)) & 1;
+	cf = (_op1 >> (16 - _count)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 15));
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return res;
+}
+
+uint32_t CPUExecutor::RCL_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	uint32_t res;
+	uint32_t cf = FLAG_CF;
+
+	if(_count == 1) {
+		res = (_op1 << 1) | cf;
+	} else {
+		res = (_op1 << _count) | (cf << (_count - 1)) | (_op1 >> (33 - _count));
+	}
+
+	cf = (_op1 >> (32 - _count)) & 1;
+	SET_FLAG(CF, cf);
+	SET_FLAG(OF, cf ^ (res >> 31));
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
 	return res;
 }
 
 void CPUExecutor::RCL_eb_ib() { store_eb(RCL_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::RCL_ew_ib() { store_ew(RCL_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::RCL_ed_ib() { store_ed(RCL_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::RCL_eb_1()  { store_eb(RCL_b(load_eb(), 1)); }
 void CPUExecutor::RCL_ew_1()  { store_ew(RCL_w(load_ew(), 1)); }
+void CPUExecutor::RCL_ed_1()  { store_ed(RCL_d(load_ed(), 1)); }
 void CPUExecutor::RCL_eb_CL() { store_eb(RCL_b(load_eb(), REG_CL)); }
 void CPUExecutor::RCL_ew_CL() { store_ew(RCL_w(load_ew(), REG_CL)); }
+void CPUExecutor::RCL_ed_CL() { store_ed(RCL_d(load_ed(), REG_CL)); }
 
-uint8_t CPUExecutor::RCR_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::RCR_b(uint8_t _op1, uint8_t _count)
 {
-	_times = (_times & 0x1F) % 9;
+	_count = (_count & 0x1F) % 9;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = _times;
-
 	uint8_t cf = FLAG_CF;
-	uint8_t res = (_value >> _times) | (cf << (8-_times)) | (_value << (9-_times));
+	uint8_t res = (_op1 >> _count) | (cf << (8 - _count)) | (_op1 << (9 - _count));
 
-	cf = (_value >> (_times - 1)) & 1;
+	cf = (_op1 >> (_count - 1)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x80);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
 	return res;
 }
 
-uint16_t CPUExecutor::RCR_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::RCR_w(uint16_t _op1, uint8_t _count)
 {
-	_times = (_times & 0x1f) % 17;
+	_count = (_count & 0x1f) % 17;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = _times;
-
 	uint16_t cf = FLAG_CF;
-	uint16_t res = (_value >> _times) | (cf << (16-_times)) | (_value << (17-_times));
+	uint16_t res = (_op1 >> _count) | (cf << (16 - _count)) | (_op1 << (17 - _count));
 
-	cf = (_value >> (_times - 1)) & 1;
+	cf = (_op1 >> (_count - 1)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x8000);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return res;
+}
+
+uint32_t CPUExecutor::RCR_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	uint32_t res;
+	uint32_t cf = FLAG_CF;
+
+	if(_count == 1) {
+		res = (_op1 >> 1) | (cf << 31);
+	} else {
+		res = (_op1 >> _count) | (cf << (32 - _count)) | (_op1 << (33 - _count));
+	}
+
+	cf = (_op1 >> (_count - 1)) & 1;
+	SET_FLAG(CF, cf);
+	SET_FLAG(OF, ((res << 1) ^ res) >> 31);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
 	return res;
 }
 
 void CPUExecutor::RCR_eb_ib() { store_eb(RCR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::RCR_ew_ib() { store_ew(RCR_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::RCR_ed_ib() { store_ed(RCR_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::RCR_eb_1()  { store_eb(RCR_b(load_eb(), 1)); }
 void CPUExecutor::RCR_ew_1()  { store_ew(RCR_w(load_ew(), 1)); }
+void CPUExecutor::RCR_ed_1()  { store_ed(RCR_d(load_ed(), 1)); }
 void CPUExecutor::RCR_eb_CL() { store_eb(RCR_b(load_eb(), REG_CL)); }
 void CPUExecutor::RCR_ew_CL() { store_ew(RCR_w(load_ew(), REG_CL)); }
+void CPUExecutor::RCR_ed_CL() { store_ed(RCR_d(load_ed(), REG_CL)); }
 
 
 /*******************************************************************************

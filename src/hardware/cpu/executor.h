@@ -246,14 +246,18 @@ private:
 	void OUTSW(uint16_t _value);
 	void OUTSD(uint32_t _value);
 
-	uint8_t ROL_b(uint8_t _value, uint8_t _times);
-	uint16_t ROL_w(uint16_t _value, uint8_t _times);
-	uint8_t ROR_b(uint8_t _value, uint8_t _times);
-	uint16_t ROR_w(uint16_t _value, uint8_t _times);
-	uint8_t RCL_b(uint8_t _value, uint8_t _times);
-	uint16_t RCL_w(uint16_t _value, uint8_t _times);
-	uint8_t RCR_b(uint8_t _value, uint8_t _times);
-	uint16_t RCR_w(uint16_t _value, uint8_t _times);
+	uint8_t  ROL_b(uint8_t  _op1, uint8_t _count);
+	uint16_t ROL_w(uint16_t _op1, uint8_t _count);
+	uint32_t ROL_d(uint32_t _op1, uint8_t _count);
+	uint8_t  ROR_b(uint8_t  _op1, uint8_t _count);
+	uint16_t ROR_w(uint16_t _op1, uint8_t _count);
+	uint32_t ROR_d(uint32_t _op1, uint8_t _count);
+	uint8_t  RCL_b(uint8_t  _op1, uint8_t _count);
+	uint16_t RCL_w(uint16_t _op1, uint8_t _count);
+	uint32_t RCL_d(uint32_t _op1, uint8_t _count);
+	uint8_t  RCR_b(uint8_t  _op1, uint8_t _count);
+	uint16_t RCR_w(uint16_t _op1, uint8_t _count);
+	uint32_t RCR_d(uint32_t _op1, uint8_t _count);
 
 	uint8_t SHL_b(uint8_t _value, uint8_t _times);
 	uint16_t SHL_w(uint16_t _value, uint8_t _times);
@@ -661,28 +665,40 @@ public:
 
 	void ROL_eb_ib();
 	void ROL_ew_ib();
+	void ROL_ed_ib();
 	void ROL_eb_1();
 	void ROL_ew_1();
+	void ROL_ed_1();
 	void ROL_eb_CL();
 	void ROL_ew_CL();
+	void ROL_ed_CL();
 	void ROR_eb_ib();
 	void ROR_ew_ib();
+	void ROR_ed_ib();
 	void ROR_eb_1();
 	void ROR_ew_1();
+	void ROR_ed_1();
 	void ROR_eb_CL();
 	void ROR_ew_CL();
+	void ROR_ed_CL();
 	void RCL_eb_ib();
 	void RCL_ew_ib();
+	void RCL_ed_ib();
 	void RCL_eb_1();
 	void RCL_ew_1();
+	void RCL_ed_1();
 	void RCL_eb_CL();
 	void RCL_ew_CL();
+	void RCL_ed_CL();
 	void RCR_eb_ib();
 	void RCR_ew_ib();
+	void RCR_ed_ib();
 	void RCR_eb_1();
 	void RCR_ew_1();
+	void RCR_ed_1();
 	void RCR_eb_CL();
 	void RCR_ew_CL();
+	void RCR_ed_CL();
 
 	void RET_near();
 	void RET_far();
