@@ -1286,7 +1286,11 @@ case 0xAD:
 case 0xAE:
 {
 	m_instr.rep_zf = true;
-	m_instr.fn = &CPUExecutor::SCASB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::SCASB_a32;
+	} else {
+		m_instr.fn = &CPUExecutor::SCASB_a16;
+	}
 	break;
 }
 
@@ -1294,7 +1298,11 @@ case 0xAE:
 case 0xAF:
 {
 	m_instr.rep_zf = true;
-	m_instr.fn = &CPUExecutor::SCASW;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::SCASW_a32;
+	} else {
+		m_instr.fn = &CPUExecutor::SCASW_a16;
+	}
 	break;
 }
 

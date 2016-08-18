@@ -754,8 +754,12 @@ public:
 	void SBB_ew_ib();
 	void SBB_ed_ib();
 
-	void SCASB();
-	void SCASW();
+	void SCASB_a16();
+	void SCASB_a32();
+	void SCASW_a16();
+	void SCASW_a32();
+	void SCASD_a16();
+	void SCASD_a32();
 
 	void SGDT();
 	void SIDT();

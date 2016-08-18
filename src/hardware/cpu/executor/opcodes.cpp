@@ -3693,16 +3693,13 @@ void CPUExecutor::SBB_ed_ib() { store_ed(SBB_d(load_ed(), int8_t(m_instr->ib)));
 
 
 /*******************************************************************************
- * SCASB/SCASW-Compare String Data
+ * SCASB/SCASW/SCASD-Compare String Data
  */
 
-void CPUExecutor::SCASB()
+void CPUExecutor::SCASB_a16()
 {
-	uint8_t op1 = REG_AL;
-	//no segment override is possible.
-	uint8_t op2 = read_byte(REG_ES, REG_DI);
-
-	CMP_b(op1, op2);
+	// segment override not possible
+	CMP_b(REG_AL, read_byte(REG_ES, REG_DI));
 
 	if(FLAG_DF) {
 		REG_DI -= 1;
@@ -3711,18 +3708,58 @@ void CPUExecutor::SCASB()
 	}
 }
 
-void CPUExecutor::SCASW()
+void CPUExecutor::SCASB_a32()
 {
-	uint16_t op1 = REG_AX;
-	//no segment override is possible.
-	uint16_t op2 = read_word(REG_ES, REG_DI);
+	CMP_b(REG_AL, read_byte(REG_ES, REG_EDI));
 
-	CMP_w(op1, op2);
+	if(FLAG_DF) {
+		REG_EDI -= 1;
+	} else {
+		REG_EDI += 1;
+	}
+}
+
+void CPUExecutor::SCASW_a16()
+{
+	CMP_w(REG_AX, read_word(REG_ES, REG_DI));
 
 	if(FLAG_DF) {
 		REG_DI -= 2;
 	} else {
 		REG_DI += 2;
+	}
+}
+
+void CPUExecutor::SCASW_a32()
+{
+	CMP_w(REG_AX, read_word(REG_ES, REG_EDI));
+
+	if(FLAG_DF) {
+		REG_EDI -= 2;
+	} else {
+		REG_EDI += 2;
+	}
+}
+
+void CPUExecutor::SCASD_a16()
+{
+	CMP_d(REG_EAX, read_dword(REG_ES, REG_DI));
+
+	if(FLAG_DF) {
+		REG_DI -= 4;
+	} else {
+		REG_DI += 4;
+	}
+}
+
+void CPUExecutor::SCASD_a32()
+{
+	CMP_d(REG_EAX, read_dword(REG_ES, REG_EDI));
+
+	if(FLAG_DF) {
+		REG_EDI -= 4;
+	} else {
+		REG_EDI += 4;
 	}
 }
 
