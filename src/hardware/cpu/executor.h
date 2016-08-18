@@ -188,15 +188,15 @@ private:
 	                  bool push_error=false, uint16_t error_code=0);
 	void task_gate(Selector &selector, Descriptor &gate_descriptor, unsigned source);
 
-	uint8_t ADC_b(uint8_t op1, uint8_t op2);
+	uint8_t  ADC_b(uint8_t  op1, uint8_t  op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
 	uint32_t ADC_d(uint32_t op1, uint32_t op2);
 
-	uint8_t ADD_b(uint8_t op1, uint8_t op2);
+	uint8_t  ADD_b(uint8_t  op1, uint8_t  op2);
 	uint16_t ADD_w(uint16_t op1, uint16_t op2);
 	uint32_t ADD_d(uint32_t op1, uint32_t op2);
 
-	uint8_t AND_b(uint8_t op1, uint8_t op2);
+	uint8_t  AND_b(uint8_t  op1, uint8_t  op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 	uint32_t AND_d(uint32_t op1, uint32_t op2);
 
@@ -234,15 +234,15 @@ private:
 
 	uint32_t LSL();
 
-	uint8_t OR_b(uint8_t op1, uint8_t op2);
+	uint8_t  OR_b(uint8_t  op1, uint8_t  op2);
 	uint16_t OR_w(uint16_t op1, uint16_t op2);
 	uint32_t OR_d(uint32_t op1, uint32_t op2);
 
-	void OUT_b(uint16_t _port, uint8_t _value);
+	void OUT_b(uint16_t _port, uint8_t  _value);
 	void OUT_w(uint16_t _port, uint16_t _value);
 	void OUT_d(uint16_t _port, uint32_t _value);
 
-	void OUTSB(uint8_t _value);
+	void OUTSB(uint8_t  _value);
 	void OUTSW(uint16_t _value);
 	void OUTSD(uint32_t _value);
 
@@ -259,12 +259,15 @@ private:
 	uint16_t RCR_w(uint16_t _op1, uint8_t _count);
 	uint32_t RCR_d(uint32_t _op1, uint8_t _count);
 
-	uint8_t SHL_b(uint8_t _value, uint8_t _times);
-	uint16_t SHL_w(uint16_t _value, uint8_t _times);
-	uint8_t SHR_b(uint8_t _value, uint8_t _times);
-	uint16_t SHR_w(uint16_t _value, uint8_t _times);
-	uint8_t SAR_b(uint8_t _value, uint8_t _times);
-	uint16_t SAR_w(uint16_t _value, uint8_t _times);
+	uint8_t  SHL_b(uint8_t  _op1, uint8_t _count);
+	uint16_t SHL_w(uint16_t _op1, uint8_t _count);
+	uint32_t SHL_d(uint32_t _op1, uint8_t _count);
+	uint8_t  SHR_b(uint8_t  _op1, uint8_t _count);
+	uint16_t SHR_w(uint16_t _op1, uint8_t _count);
+	uint32_t SHR_d(uint32_t _op1, uint8_t _count);
+	uint8_t  SAR_b(uint8_t  _op1, uint8_t _count);
+	uint16_t SAR_w(uint16_t _op1, uint8_t _count);
+	uint32_t SAR_d(uint32_t _op1, uint8_t _count);
 
 	uint8_t SBB_b(uint8_t op1, uint8_t op2);
 	uint16_t SBB_w(uint16_t op1, uint16_t op2);
@@ -705,22 +708,32 @@ public:
 
 	void SAL_eb_ib();
 	void SAL_ew_ib();
+	void SAL_ed_ib();
 	void SAL_eb_1();
 	void SAL_ew_1();
+	void SAL_ed_1();
 	void SAL_eb_CL();
 	void SAL_ew_CL();
+	void SAL_ed_CL();
 	void SHR_eb_ib();
 	void SHR_ew_ib();
+	void SHR_ed_ib();
 	void SHR_eb_1();
 	void SHR_ew_1();
+	void SHR_ed_1();
 	void SHR_eb_CL();
 	void SHR_ew_CL();
+	void SHR_ed_CL();
 	void SAR_eb_ib();
 	void SAR_ew_ib();
+	void SAR_ed_ib();
 	void SAR_eb_1();
 	void SAR_ew_1();
+	void SAR_ed_1();
 	void SAR_eb_CL();
 	void SAR_ew_CL();
+	void SAR_ed_CL();
+
 	void SAHF();
 
 	void SALC();

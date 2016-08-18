@@ -3363,22 +3363,20 @@ void CPUExecutor::SALC()
  * SAL/SAR/SHL/SHR-Shift Instructions
  */
 
-uint8_t CPUExecutor::SHL_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::SHL_b(uint8_t _op1, uint8_t _count)
 {
-	_times &= 0x1F;
+	_count &= 0x1F;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
-
-	m_instr->cycles.extra = _times;
 
 	uint of = 0, cf = 0;
 	uint8_t res;
 
-	if(_times <= 8) {
-		res = (_value << _times);
-		cf = (_value >> (8 - _times)) & 0x1;
+	if(_count <= 8) {
+		res = (_op1 << _count);
+		cf = (_op1 >> (8 - _count)) & 0x1;
 		of = cf ^ (res >> 7);
 	} else {
 		res = 0;
@@ -3386,30 +3384,31 @@ uint8_t CPUExecutor::SHL_b(uint8_t _value, uint8_t _times)
 
 	SET_FLAG(OF, of);
 	SET_FLAG(CF, cf);
-
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
 
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
 	return res;
 }
 
-uint16_t CPUExecutor::SHL_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::SHL_w(uint16_t _op1, uint8_t _count)
 {
-	_times &= 0x1F;
+	_count &= 0x1F;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
-
-	m_instr->cycles.extra = _times;
 
 	uint16_t res;
 	uint of = 0, cf = 0;
 
-	if(_times <= 16) {
-		res = (_value << _times);
-		cf = (_value >> (16 - _times)) & 0x1;
+	if(_count <= 16) {
+		res = (_op1 << _count);
+		cf = (_op1 >> (16 - _count)) & 0x1;
 		of = cf ^ (res >> 15);
 	} else {
 		res = 0;
@@ -3417,122 +3416,213 @@ uint16_t CPUExecutor::SHL_w(uint16_t _value, uint8_t _times)
 
 	SET_FLAG(OF, of);
 	SET_FLAG(CF, cf);
-
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return res;
+}
+
+uint32_t CPUExecutor::SHL_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	/* count < 32, since only lower 5 bits used */
+	uint32_t res = (_op1 << _count);
+
+	bool cf = (_op1 >> (32 - _count)) & 0x1;
+	bool of = cf ^ (res >> 31);
+	SET_FLAG(CF, cf);
+	SET_FLAG(OF, of);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(SF, res & 0x80000000);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
 	return res;
 }
 
 void CPUExecutor::SAL_eb_ib() { store_eb(SHL_b(load_eb(), m_instr->ib)); }
-void CPUExecutor::SAL_ew_ib() { store_ew(SHL_w(load_ew(), m_instr->ib));  }
+void CPUExecutor::SAL_ew_ib() { store_ew(SHL_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::SAL_ed_ib() { store_ed(SHL_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::SAL_eb_1()  { store_eb(SHL_b(load_eb(), 1)); }
 void CPUExecutor::SAL_ew_1()  { store_ew(SHL_w(load_ew(), 1)); }
+void CPUExecutor::SAL_ed_1()  { store_ed(SHL_d(load_ed(), 1)); }
 void CPUExecutor::SAL_eb_CL() { store_eb(SHL_b(load_eb(), REG_CL)); }
 void CPUExecutor::SAL_ew_CL() { store_ew(SHL_w(load_ew(), REG_CL)); }
+void CPUExecutor::SAL_ed_CL() { store_ed(SHL_d(load_ed(), REG_CL)); }
 
-uint8_t CPUExecutor::SHR_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::SHR_b(uint8_t _op1, uint8_t _count)
 {
-	_times &= 0x1f;
+	_count &= 0x1f;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = _times;
-
-	uint8_t res = _value >> _times;
+	uint8_t res = _op1 >> _count;
 
 	SET_FLAG(OF, (((res << 1) ^ res) >> 7) & 0x1);
-	SET_FLAG(CF, (_value >> (_times - 1)) & 0x1);
-
+	SET_FLAG(CF, (_op1 >> (_count - 1)) & 0x1);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
 
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
 	return res;
 }
 
-uint16_t CPUExecutor::SHR_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::SHR_w(uint16_t _op1, uint8_t _count)
 {
-	_times &= 0x1f;
+	_count &= 0x1f;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = _times;
-
-	uint16_t res = _value >> _times;
+	uint16_t res = _op1 >> _count;
 
 	SET_FLAG(OF, ((uint16_t)((res << 1) ^ res) >> 15) & 0x1);
-	SET_FLAG(CF, (_value >> (_times - 1)) & 1);
-
+	SET_FLAG(CF, (_op1 >> (_count - 1)) & 1);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
 
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
 	return res;
+}
+
+uint32_t CPUExecutor::SHR_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+
+	uint32_t res = (_op1 >> _count);
+
+	bool cf = (_op1 >> (_count - 1)) & 1;
+	// of == result31 if count == 1 and
+	// of == 0        if count >= 2
+	bool of = ((res << 1) ^ res) >> 31;
+
+	SET_FLAG(CF, cf);
+	SET_FLAG(OF, of);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(SF, res & 0x80000000);
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 }
 
 void CPUExecutor::SHR_eb_ib() { store_eb(SHR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::SHR_ew_ib() { store_ew(SHR_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::SHR_ed_ib() { store_ed(SHR_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::SHR_eb_1()  { store_eb(SHR_b(load_eb(), 1)); }
 void CPUExecutor::SHR_ew_1()  { store_ew(SHR_w(load_ew(), 1)); }
+void CPUExecutor::SHR_ed_1()  { store_ed(SHR_d(load_ed(), 1)); }
 void CPUExecutor::SHR_eb_CL() { store_eb(SHR_b(load_eb(), REG_CL)); }
 void CPUExecutor::SHR_ew_CL() { store_ew(SHR_w(load_ew(), REG_CL)); }
+void CPUExecutor::SHR_ed_CL() { store_ed(SHR_d(load_ed(), REG_CL)); }
 
-uint8_t CPUExecutor::SAR_b(uint8_t _value, uint8_t _times)
+uint8_t CPUExecutor::SAR_b(uint8_t _op1, uint8_t _count)
 {
-	_times &= 0x1F;
+	_count &= 0x1F;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = _times;
-
-	uint8_t res = ((int8_t) _value) >> _times;
+	uint8_t res = ((int8_t) _op1) >> _count;
 
 	SET_FLAG(OF, false);
-	SET_FLAG(CF, (((int8_t) _value) >> (_times - 1)) & 1);
-
+	SET_FLAG(CF, (((int8_t) _op1) >> (_count - 1)) & 1);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(PF, PARITY(res));
 
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
 	return res;
 }
 
-uint16_t CPUExecutor::SAR_w(uint16_t _value, uint8_t _times)
+uint16_t CPUExecutor::SAR_w(uint16_t _op1, uint8_t _count)
 {
-	_times &= 0x1F;
+	_count &= 0x1F;
 
-	if(_times == 0) {
-		return _value;
+	if(_count == 0) {
+		return _op1;
 	}
 
-	m_instr->cycles.extra = (_value)?_times:0;
-
-	uint16_t res = ((int16_t) _value) >> _times;
+	uint16_t res = ((int16_t) _op1) >> _count;
 
 	SET_FLAG(OF, false);
-	SET_FLAG(CF, (((int16_t) _value) >> (_times - 1)) & 1);
-
+	SET_FLAG(CF, (((int16_t) _op1) >> (_count - 1)) & 1);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(PF, PARITY(res));
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
+
+	return res;
+}
+
+uint32_t CPUExecutor::SAR_d(uint32_t _op1, uint8_t _count)
+{
+	_count &= 0x1F;
+
+	if(_count == 0) {
+		return _op1;
+	}
+	/* count < 32, since only lower 5 bits used */
+	uint32_t res = ((int32_t)_op1) >> _count;
+
+	SET_FLAG(OF, false);
+	SET_FLAG(CF, (_op1 >> (_count - 1)) & 1);
+	SET_FLAG(ZF, res == 0);
+	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(PF, PARITY(res));
+
+	if(CPU_TYPE <= CPU_286) {
+		m_instr->cycles.extra = _count;
+	}
 
 	return res;
 }
 
 void CPUExecutor::SAR_eb_ib() { store_eb(SAR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::SAR_ew_ib() { store_ew(SAR_w(load_ew(), m_instr->ib)); }
+void CPUExecutor::SAR_ed_ib() { store_ed(SAR_d(load_ed(), m_instr->ib)); }
 void CPUExecutor::SAR_eb_1()  { store_eb(SAR_b(load_eb(), 1)); }
 void CPUExecutor::SAR_ew_1()  { store_ew(SAR_w(load_ew(), 1)); }
+void CPUExecutor::SAR_ed_1()  { store_ed(SAR_d(load_ed(), 1)); }
 void CPUExecutor::SAR_eb_CL() { store_eb(SAR_b(load_eb(), REG_CL)); }
 void CPUExecutor::SAR_ew_CL() { store_ew(SAR_w(load_ew(), REG_CL)); }
+void CPUExecutor::SAR_ed_CL() { store_ed(SAR_d(load_ed(), REG_CL)); }
 
 
 /*******************************************************************************
