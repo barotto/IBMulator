@@ -2227,15 +2227,17 @@ uint32_t CPUExecutor::LSL()
 
 void CPUExecutor::LSL_rw_ew()
 {
+	uint16_t limit = LSL();
 	if(FLAG_ZF) {
-		store_rw(LSL());
+		store_rw(limit);
 	}
 }
 
 void CPUExecutor::LSL_rd_ew()
 {
+	uint32_t limit = LSL();
 	if(FLAG_ZF) {
-		store_rd(LSL());
+		store_rd(limit);
 	}
 }
 
