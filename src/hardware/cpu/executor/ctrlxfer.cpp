@@ -25,8 +25,8 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	// examine code segment selector in call gate descriptor
 	PDEBUGF(LOG_V2, LOG_CPU, "call gate\n");
 
-	cs_selector     = gate_descriptor.selector;
-	uint16_t new_IP = gate_descriptor.offset;
+	cs_selector      = gate_descriptor.selector;
+	uint32_t new_EIP = gate_descriptor.offset;
 
 	// selector must not be null else #GP(0)
 	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -57,16 +57,16 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	// if non-conforming code segment and DPL < CPL then
 	if(!cs_descriptor.is_conforming() && (cs_descriptor.dpl < CPL)) {
 		uint16_t SS_for_cpl_x;
-		uint16_t SP_for_cpl_x;
+		uint32_t ESP_for_cpl_x;
 		Selector   ss_selector;
 		Descriptor ss_descriptor;
 		uint16_t   return_SS, return_CS;
-		uint16_t   return_SP, return_IP;
+		uint32_t   return_ESP, return_EIP;
 
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL GATE TO MORE PRIVILEGE LEVEL\n");
 
 		// get new SS selector for new privilege level from TSS
-		get_SS_SP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, SP_for_cpl_x);
+		get_SS_ESP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, ESP_for_cpl_x);
 
 		// check selector & descriptor for new SS:
 		// selector must not be null, else #TS(0)
@@ -113,11 +113,11 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// save return SS:eSP to be pushed on new stack
 		return_SS = REG_SS.sel.value;
-		return_SP = REG_SP;
+		return_ESP = (REG_SS.desc.big)?(REG_ESP):(REG_SP);
 
-		// save return CS:IP to be pushed on new stack
+		// save return CS:EIP to be pushed on new stack
 		return_CS = REG_CS.sel.value;
-		return_IP = REG_IP;
+		return_EIP = (cs_descriptor.big)?(REG_EIP):(REG_IP);
 
 		// Prepare new stack segment
 		SegReg new_stack;
@@ -127,30 +127,87 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		// add cpl to the selector value
 		new_stack.sel.value = (new_stack.sel.value & SELECTOR_RPL_MASK) | new_stack.sel.rpl;
 
-		/* load new SS:SP value from TSS */
-		uint16_t temp_SP = SP_for_cpl_x;
+		const uint16_t errcode = new_stack.sel.rpl != CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
+		const unsigned pl = cs_descriptor.dpl;
 
-		// push pointer of old stack onto new stack
-		uint16_t errcode = new_stack.sel.rpl != CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
-		write_word(new_stack, temp_SP-2, return_SS, CPU_SS_EXC, errcode);
-		write_word(new_stack, temp_SP-4, return_SP, CPU_SS_EXC, errcode);
-		temp_SP -= 4;
+		/* load new SS:ESP value from TSS */
+		if(ss_descriptor.big) {
+			uint32_t temp_ESP = ESP_for_cpl_x;
 
-		for(unsigned n = param_count; n>0; n--) {
-			temp_SP -= 2;
-			uint32_t addr = GET_PHYADDR(SS, return_SP + (n-1)*2);
-			uint16_t param = g_cpubus.mem_read<2>(addr);
-			write_word(new_stack, temp_SP, param, CPU_SS_EXC, errcode);
+			// push pointer of old stack onto new stack
+			if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
+				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (32bit SS)\n");
+				write_dword(new_stack, temp_ESP-4, return_SS, pl, CPU_SS_EXC, errcode);
+				write_dword(new_stack, temp_ESP-8, return_ESP, pl, CPU_SS_EXC, errcode);
+				temp_ESP -= 8;
+
+				for(unsigned n = param_count; n>0; n--) {
+					temp_ESP -= 4;
+					uint32_t param = stack_read_dword(return_ESP + (n-1)*4);
+					write_dword(new_stack, temp_ESP, param, pl, CPU_SS_EXC, errcode);
+				}
+				// push return address onto new stack
+				write_dword(new_stack, temp_ESP-4, return_CS, pl, CPU_SS_EXC, errcode);
+				write_dword(new_stack, temp_ESP-8, return_EIP, pl, CPU_SS_EXC, errcode);
+				temp_ESP -= 8;
+			} else {
+				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (32bit SS)\n");
+				write_word(new_stack, temp_ESP-2, return_SS, pl, CPU_SS_EXC, errcode);
+				write_word(new_stack, temp_ESP-4, return_ESP, pl, CPU_SS_EXC, errcode);
+				temp_ESP -= 4;
+
+				for(unsigned n = param_count; n>0; n--) {
+					temp_ESP -= 2;
+					uint16_t param = stack_read_word(return_ESP + (n-1)*2);
+					write_word(new_stack, temp_ESP, param, pl, CPU_SS_EXC, errcode);
+				}
+				// push return address onto new stack
+				write_word(new_stack, temp_ESP-2, return_CS, pl, CPU_SS_EXC, errcode);
+				write_word(new_stack, temp_ESP-4, return_EIP, pl, CPU_SS_EXC, errcode);
+				temp_ESP -= 4;
+			}
+
+			REG_ESP = temp_ESP;
+		} else {
+			uint16_t temp_SP = ESP_for_cpl_x;
+
+			// push pointer of old stack onto new stack
+			if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
+				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (16bit SS)\n");
+				write_dword(new_stack, uint16_t(temp_SP-4), return_SS, pl, CPU_SS_EXC, errcode);
+				write_dword(new_stack, uint16_t(temp_SP-8), return_ESP, pl, CPU_SS_EXC, errcode);
+				temp_SP -= 8;
+
+				for(unsigned n = param_count; n>0; n--) {
+					temp_SP -= 4;
+					uint32_t param = stack_read_dword(return_ESP + (n-1)*4);
+					write_dword(new_stack, temp_SP, param, pl, CPU_SS_EXC, errcode);
+				}
+				// push return address onto new stack
+				write_dword(new_stack, uint16_t(temp_SP-4), return_CS, pl, CPU_SS_EXC, errcode);
+				write_dword(new_stack, uint16_t(temp_SP-8), return_EIP, pl, CPU_SS_EXC, errcode);
+				temp_SP -= 8;
+			} else {
+				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (16bit SS)\n");
+				write_word(new_stack, uint16_t(temp_SP-2), return_SS, pl, CPU_SS_EXC, errcode);
+				write_word(new_stack, uint16_t(temp_SP-4), return_ESP, pl, CPU_SS_EXC, errcode);
+				temp_SP -= 4;
+
+				for(unsigned n = param_count; n>0; n--) {
+					temp_SP -= 2;
+					uint16_t param = stack_read_word(return_ESP + (n-1)*2);
+					write_word(new_stack, temp_SP, param, pl, CPU_SS_EXC, errcode);
+				}
+				// push return address onto new stack
+				write_word(new_stack, uint16_t(temp_SP-2), return_CS, pl, CPU_SS_EXC, errcode);
+				write_word(new_stack, uint16_t(temp_SP-4), return_EIP, pl, CPU_SS_EXC, errcode);
+				temp_SP -= 4;
+			}
+			REG_SP = temp_SP;
 		}
-		// push return address onto new stack
-		write_word(new_stack, temp_SP-2, return_CS, CPU_SS_EXC, errcode);
-		write_word(new_stack, temp_SP-4, return_IP, CPU_SS_EXC, errcode);
-		temp_SP -= 4;
 
-		REG_SP = temp_SP;
-
-		// new eIP must be in code segment limit else #GP(0)
-		if(new_IP > cs_descriptor.limit) {
+		// new EIP must be in code segment limit else #GP(0)
+		if(new_EIP > cs_descriptor.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU, "call_gate: IP not within CS limits\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
@@ -163,7 +220,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		/* set CPL to stack segment DPL */
 		/* set RPL of CS to CPL */
 		SET_CS(cs_selector, cs_descriptor, cs_descriptor.dpl);
-		SET_IP(new_IP);
+		SET_EIP(new_EIP);
 
 		g_cpubus.invalidate_pq();
 	}
@@ -171,14 +228,21 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL GATE TO SAME PRIVILEGE\n");
 
-		// call gate 16bit, push return address onto stack
-		stack_push_word(REG_CS.sel.value);
-		stack_push_word(REG_IP);
-
-		// load CS:IP from gate
+		if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
+			// call gate 32bit, push return address onto stack
+			PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE\n");
+			stack_push_dword(REG_CS.sel.value);
+			stack_push_dword(REG_EIP);
+		} else {
+			// call gate 16bit, push return address onto stack
+			PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE\n");
+			stack_push_word(REG_CS.sel.value);
+			stack_push_word(REG_IP);
+		}
+		// load CS:EIP from gate
 		// load code segment descriptor into CS register
 		// set RPL of CS to CPL
-		branch_far(cs_selector, cs_descriptor, new_IP, CPL);
+		branch_far(cs_selector, cs_descriptor, new_EIP, CPL);
 	}
 }
 
@@ -215,7 +279,7 @@ void CPUExecutor::branch_far(Selector &selector, Descriptor &descriptor, uint32_
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	/* Load CS:IP from destination pointer */
+	/* Load CS:EIP from destination pointer */
 	SET_CS(selector, descriptor, cpl);
 	SET_EIP(eip);
 	g_cpubus.invalidate_pq();
@@ -308,6 +372,65 @@ void CPUExecutor::branch_far_pmode(uint16_t _cs, uint32_t _disp)
 	}
 }
 
+void CPUExecutor::call_relative(int32_t _offset)
+{
+	uint32_t new_EIP;
+
+	if(m_instr->op32) {
+		stack_push_dword(REG_EIP);
+		new_EIP = REG_EIP + _offset;
+	} else {
+		stack_push_word(REG_IP);
+		new_EIP = (REG_IP + _offset) & 0xFFFF;
+	}
+
+	branch_near(new_EIP);
+}
+
+void CPUExecutor::call_16(uint16_t _cs, uint16_t _ip)
+{
+	if(IS_PMODE()) {
+		call_pmode(_cs, _ip);
+		return;
+	}
+
+	//REAL mode
+	stack_push_word(REG_CS.sel.value);
+	stack_push_word(REG_IP);
+
+	// CS LIMIT can't change when in real mode
+	if(_ip > GET_LIMIT(CS)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	SET_CS(_cs);
+	SET_IP(_ip);
+	g_cpubus.invalidate_pq();
+}
+
+void CPUExecutor::call_32(uint16_t _cs, uint32_t _eip)
+{
+	if(IS_PMODE()) {
+		call_pmode(_cs, _eip);
+		return;
+	}
+
+	//REAL mode
+	stack_push_dword(REG_CS.sel.value);
+	stack_push_dword(REG_EIP);
+
+	// CS LIMIT can't change when in real mode
+	if(_eip > GET_LIMIT(CS)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	SET_CS(_cs);
+	SET_EIP(_eip);
+	g_cpubus.invalidate_pq();
+}
+
 void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 {
 	Selector   cs_selector;
@@ -339,19 +462,29 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 
 		CPUCore::check_CS(cs_raw, cs_descriptor, SELECTOR_RPL(cs_raw), CPL);
 
-		uint16_t temp_SP = REG_SP;
+		uint32_t temp_ESP = (REG_SS.desc.big)?(REG_ESP):(REG_SP);
 		uint16_t errcode = REG_SS.sel.rpl != CPL ? (REG_SS.sel.value & SELECTOR_RPL_MASK) : 0;
 
-		write_word(REG_SS, temp_SP - 2, REG_CS.sel.value, CPU_SS_EXC, errcode);
-		write_word(REG_SS, temp_SP - 4, REG_IP, CPU_SS_EXC, errcode);
-		temp_SP -= 4;
+		if(m_instr->op32) {
+			write_dword(REG_SS, temp_ESP-4, REG_CS.sel.value, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			write_dword(REG_SS, temp_ESP-8, REG_EIP, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			temp_ESP -= 8;
+		} else {
+			write_word(REG_SS, uint16_t(temp_ESP-2), REG_CS.sel.value, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			write_word(REG_SS, uint16_t(temp_ESP-4), REG_IP, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			temp_ESP -= 4;
+		}
 
 		// load code segment descriptor into CS cache
 		// load CS with new code segment selector
 		// set RPL of CS to CPL
 		branch_far(cs_selector, cs_descriptor, disp, CPL);
 
-		REG_SP = temp_SP;
+		if(REG_SS.desc.big) {
+			REG_ESP = temp_ESP;
+		} else {
+			REG_SP = uint16_t(temp_ESP);
+		}
 
 		return;
 
@@ -361,7 +494,7 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 		Selector    gate_selector = cs_selector;
 
 		// descriptor DPL must be >= CPL else #GP(gate selector)
-		if (gate_descriptor.dpl < CPL) {
+		if(gate_descriptor.dpl < CPL) {
 			PDEBUGF(LOG_V2, LOG_CPU,"call_pmode: descriptor.dpl < CPL\n");
 			throw CPUException(CPU_GP_EXC, cs_raw & SELECTOR_RPL_MASK);
 		}
@@ -372,10 +505,11 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 			throw CPUException(CPU_GP_EXC, cs_raw & SELECTOR_RPL_MASK);
 		}
 
-		switch (gate_descriptor.type) {
+		switch(gate_descriptor.type) {
 			case DESC_TYPE_AVAIL_286_TSS:
+			case DESC_TYPE_AVAIL_386_TSS:
 				PDEBUGF(LOG_V2, LOG_CPU, "call_pmode: available TSS\n");
-				if (!gate_descriptor.valid || gate_selector.ti) {
+				if(!gate_descriptor.valid || gate_selector.ti) {
 					PDEBUGF(LOG_V2, LOG_CPU,"call_pmode: call bad TSS selector!\n");
 					throw CPUException(CPU_GP_EXC, cs_raw & SELECTOR_RPL_MASK);
 				}
@@ -395,6 +529,7 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 				return;
 
 			case DESC_TYPE_286_CALL_GATE:
+			case DESC_TYPE_386_CALL_GATE:
 				// gate descriptor must be present else #NP(gate selector)
 				if(!gate_descriptor.present) {
 					PDEBUGF(LOG_V2, LOG_CPU,"call_pmode: gate not present\n");
@@ -441,16 +576,18 @@ void CPUExecutor::jump_call_gate(Selector &selector, Descriptor &gate_descriptor
 	branch_far(gate_cs_selector, gate_cs_descriptor, newEIP, CPL);
 }
 
-void CPUExecutor::iret_pmode()
+void CPUExecutor::iret_pmode(bool _32bit)
 {
 	Selector cs_selector, ss_selector;
 	Descriptor cs_descriptor, ss_descriptor;
 
 	if(FLAG_NT)   /* NT = 1: RETURN FROM NESTED TASK */
 	{
-		/* what's the deal with NT ? */
+		/* what's the deal with NT & VM ? */
 		Selector   link_selector;
 		Descriptor tss_descriptor;
+
+		assert(!FLAG_VM);
 
 		PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: nested task return\n");
 
@@ -458,7 +595,7 @@ void CPUExecutor::iret_pmode()
 			PERRF_ABORT(LOG_CPU, "iret_pmode: TR not valid!\n");
 
 		// examine back link selector in TSS addressed by current TR
-		link_selector = g_cpubus.mem_read<2>(REG_TR.desc.base);
+		link_selector = read_word(REG_TR.desc.base);
 
 		// must specify global, else #TS(new TSS selector)
 		if(link_selector.ti) {
@@ -475,7 +612,9 @@ void CPUExecutor::iret_pmode()
 		}
 		// AR byte must specify TSS, else #TS(new TSS selector)
 		// new TSS must be busy, else #TS(new TSS selector)
-		if(tss_descriptor.type != DESC_TYPE_BUSY_286_TSS) {
+		if(tss_descriptor.type != DESC_TYPE_BUSY_286_TSS &&
+		   tss_descriptor.type != DESC_TYPE_BUSY_386_TSS)
+		{
 			PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: TSS selector points to bad TSS\n");
 			throw CPUException(CPU_TS_EXC, link_selector.value & SELECTOR_RPL_MASK);
 		}
@@ -492,21 +631,43 @@ void CPUExecutor::iret_pmode()
 	}
 
 	/* NT = 0: INTERRUPT RETURN ON STACK */
-	const unsigned top_nbytes_same = 6;
+	uint32_t new_esp, new_eip = 0, new_eflags = 0, temp_ESP;
 	uint16_t new_sp, new_ip = 0, new_flags = 0;
 
-	/*
-	* SS     SP+8
-	* SP     SP+6
-	* -----------
-	* FLAGS  SP+4
-	* CS     SP+2
-	* IP     SP+0
-	*/
+	/* 16bit opsize  |   32bit opsize
+	 * ==============================
+	 * SS     eSP+8  |   SS     eSP+16
+	 * SP     eSP+6  |   ESP    eSP+12
+	 * -------------------------------
+	 * FLAGS  eSP+4  |   EFLAGS eSP+8
+	 * CS     eSP+2  |   CS     eSP+4
+	 * IP     eSP+0  |   EIP    eSP+0
+	 */
 
-	new_flags   = stack_read_word(REG_SP + 4);
-    cs_selector = stack_read_word(REG_SP + 2);
-    new_ip      = stack_read_word(REG_SP + 0);
+	if(REG_SS.desc.big) {
+		temp_ESP = REG_ESP;
+	} else {
+		temp_ESP = REG_SP;
+	}
+	unsigned top_nbytes_same;
+	if(_32bit) {
+		top_nbytes_same = 12;
+		new_eflags  =          stack_read_dword(temp_ESP + 8);
+		cs_selector = uint16_t(stack_read_dword(temp_ESP + 4));
+		new_eip     =          stack_read_dword(temp_ESP + 0);
+		if(new_eflags & FMASK_VM) {
+			if(CPL == 0) {
+				stack_return_to_v86(cs_selector, new_eip, new_eflags);
+				return;
+			}
+		}
+
+	} else {
+		top_nbytes_same = 6;
+		new_flags   = stack_read_word(temp_ESP + 4);
+	    cs_selector = stack_read_word(temp_ESP + 2);
+	    new_ip      = stack_read_word(temp_ESP + 0);
+	}
 
 	// return CS selector must be non-null, else #GP(0)
 	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -529,32 +690,58 @@ void CPUExecutor::iret_pmode()
 
 	if(cs_selector.rpl == CPL) { /* INTERRUPT RETURN TO SAME LEVEL */
 
-		/* top 6 bytes on stack must be within limits, else #SS(0) */
+		/* top 6/12 bytes on stack must be within limits, else #SS(0) */
 		/* satisfied above */
+		if(_32bit) {
+			/* load CS-cache with new code segment descriptor */
+			branch_far(cs_selector, cs_descriptor, new_eip, cs_selector.rpl);
 
-		/* load CS-cache with new code segment descriptor */
-		branch_far(cs_selector, cs_descriptor, new_ip, cs_selector.rpl);
+			// IF only changed if (CPL <= EFLAGS.IOPL)
+			// IOPL only changed if CPL == 0
+			// VM unaffected
+			write_eflags(new_eflags,
+					(CPL == 0), // IOPL
+					(CPL <= FLAG_IOPL), //IF
+					true, //NT
+					false //VM
+				);
+		} else {
+			/* load CS-cache with new code segment descriptor */
+			branch_far(cs_selector, cs_descriptor, new_ip, cs_selector.rpl);
 
-		/* load flags with third word on stack */
-		write_flags(new_flags, CPL==0, CPL<=FLAG_IOPL);
+			/* load flags with third word on stack */
+			write_flags(new_flags,
+					(CPL == 0), //IOPL
+					(CPL <= FLAG_IOPL), // IF
+					true //NT
+					);
+		}
 
-		/* increment stack by 6 */
-		REG_SP += top_nbytes_same;
+		/* increment stack by 6/12 */
+		if(REG_SS.desc.big) {
+			REG_ESP += top_nbytes_same;
+		} else {
+			REG_SP += top_nbytes_same;
+		}
 		return;
 
 	} else { /* INTERRUPT RETURN TO OUTER PRIVILEGE LEVEL */
 
-		/*
-		 * SS     SP+8
-		 * SP     SP+6
-		 * FLAGS  SP+4
-		 * CS     SP+2
-		 * IP     SP+0
+		/* 16bit opsize  |   32bit opsize
+		 * ==============================
+		 * SS     eSP+8  |   SS     eSP+16
+		 * SP     eSP+6  |   ESP    eSP+12
+		 * FLAGS  eSP+4  |   EFLAGS eSP+8
+		 * CS     eSP+2  |   CS     eSP+4
+		 * IP     eSP+0  |   EIP    eSP+0
 		 */
 
 		/* examine return SS selector and associated descriptor */
-
-		ss_selector = stack_read_word(REG_SP + 8);
+		if(_32bit) {
+			ss_selector = stack_read_word(temp_ESP + 16);
+		} else {
+			ss_selector = stack_read_word(uint16_t(temp_ESP + 8));
+		}
 
 		/* selector must be non-null, else #GP(0) */
 		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
@@ -593,9 +780,15 @@ void CPUExecutor::iret_pmode()
 			throw CPUException(CPU_NP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
-		new_ip    = stack_read_word(REG_SP + 0);
-		new_flags = stack_read_word(REG_SP + 4);
-		new_sp    = stack_read_word(REG_SP + 6);
+		if(_32bit) {
+			new_esp    = stack_read_dword(temp_ESP + 12);
+			new_eflags = stack_read_dword(temp_ESP + 8);
+			new_eip    = stack_read_dword(temp_ESP + 0);
+		} else {
+			new_esp   = stack_read_word(temp_ESP + 6);
+			new_flags = stack_read_word(temp_ESP + 4);
+			new_eip   = stack_read_word(temp_ESP + 0);
+		}
 
 		bool change_IF = (CPL <= FLAG_IOPL);
 		bool change_IOPL = (CPL == 0);
@@ -607,43 +800,102 @@ void CPUExecutor::iret_pmode()
 
 		// IF only changed if (prev_CPL <= FLAGS.IOPL)
 		// IOPL only changed if prev_CPL == 0
-		write_flags(new_flags, change_IOPL, change_IF);
+		if(_32bit) {
+			write_eflags(new_eflags, change_IOPL, change_IF, true, false);
+		} else {
+			write_flags(new_flags, change_IOPL, change_IF, true);
+		}
 
 		// load SS:SP from stack
 		// load the SS-cache with SS descriptor
 		SET_SS(ss_selector, ss_descriptor, cs_selector.rpl);
-		REG_SP = new_sp;
+		if(ss_descriptor.big) {
+			REG_ESP = new_esp;
+		} else {
+			REG_SP = new_esp;
+		}
 
 		REG_ES.validate();
 		REG_DS.validate();
+		REG_FS.validate();
+		REG_GS.validate();
 	}
 }
 
-void CPUExecutor::return_pmode(uint16_t pop_bytes)
+void CPUExecutor::return_near(uint32_t _newEIP, uint16_t _pop_bytes)
+{
+	if(_newEIP > REG_CS.desc.limit) {
+		PDEBUGF(LOG_V2, LOG_CPU, "return_near: offset outside of CS limits\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	SET_EIP(_newEIP);
+
+	if(REG_SS.desc.big) {
+		REG_ESP += _pop_bytes; // pop bytes
+	} else {
+		REG_SP += _pop_bytes; // pop bytes
+	}
+
+	g_cpubus.invalidate_pq();
+}
+
+void CPUExecutor::return_far_rmode(uint16_t _newCS, uint32_t _newEIP, uint16_t _pop_bytes)
+{
+	// CS.LIMIT can't change when in real mode
+	if(_newEIP > REG_CS.desc.limit) {
+		PDEBUGF(LOG_V2, LOG_CPU,
+				"return_far_real: instruction pointer not within code segment limits\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	SET_CS(_newCS);
+	SET_EIP(_newEIP);
+
+	if(REG_SS.desc.big) {
+		REG_ESP += _pop_bytes;
+	} else {
+		REG_SP += _pop_bytes;
+	}
+
+	g_cpubus.invalidate_pq();
+}
+
+void CPUExecutor::return_far_pmode(uint16_t _pop_bytes, bool _32bit)
 {
 	Selector cs_selector, ss_selector;
 	Descriptor cs_descriptor, ss_descriptor;
-	const uint32_t stack_param_offset = 4;
-	uint32_t return_IP, return_SP, temp_SP;
+	uint32_t stack_param_offset;
+	uint32_t return_EIP, return_ESP, temp_ESP;
 
-	/* + 6+N*2: SS
-	 * + 4+N*2: SP
-	 *          parm N
-	 *          parm 3
-	 *          parm 2
-	 * + 4:     parm 1
-	 * + 2:     CS
-	 * + 0:     IP
-	 */
+	/* + 6+N*2: SS      | +12+N*4:     SS */
+	/* + 4+N*2: SP      | + 8+N*4:    ESP */
+	/*          parm N  | +        parm N */
+	/*          parm 3  | +        parm 3 */
+	/*          parm 2  | +        parm 2 */
+	/* + 4:     parm 1  | + 8:     parm 1 */
+	/* + 2:     CS      | + 4:         CS */
+	/* + 0:     IP      | + 0:        EIP */
 
-	temp_SP = REG_SP;
+	if(REG_SS.desc.big) {
+		temp_ESP = REG_ESP;
+	} else {
+		temp_ESP = REG_SP;
+	}
 
-	return_IP   = stack_read_word(temp_SP);
-	cs_selector = stack_read_word(temp_SP + 2);
+	if(_32bit) {
+		cs_selector = stack_read_dword(temp_ESP + 4);
+		return_EIP  = stack_read_dword(temp_ESP);
+		stack_param_offset = 8;
+	} else {
+		cs_selector = stack_read_word(temp_ESP + 2);
+		return_EIP  = stack_read_word(temp_ESP);
+		stack_param_offset = 4;
+	}
 
 	// selector must be non-null else #GP(0)
 	if((cs_selector.value & SELECTOR_RPL_MASK) == 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: CS selector null\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: CS selector null\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
@@ -653,7 +905,7 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 
 	// return selector RPL must be >= CPL, else #GP(return selector)
 	if(cs_selector.rpl < CPL) {
-		PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: CS.rpl < CPL\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: CS.rpl < CPL\n");
 		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
@@ -664,28 +916,36 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 	// if return selector RPL == CPL then
 	// RETURN TO SAME PRIVILEGE LEVEL
 	if(cs_selector.rpl == CPL) {
-		PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: return to SAME PRIVILEGE LEVEL\n");
-		branch_far(cs_selector, cs_descriptor, return_IP, CPL);
-		REG_SP += stack_param_offset + pop_bytes;
+		PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: return to SAME PRIVILEGE LEVEL\n");
+		branch_far(cs_selector, cs_descriptor, return_EIP, CPL);
+		if(REG_SS.desc.big) {
+			REG_ESP += stack_param_offset + _pop_bytes;
+		} else {
+			REG_SP += stack_param_offset + _pop_bytes;
+		}
 	}
 	/* RETURN TO OUTER PRIVILEGE LEVEL */
 	else {
-		/* + 6+N*2: SS
-		 * + 4+N*2: SP
-		 *          parm N
-		 *          parm 3
-		 *          parm 2
-		 * + 4:     parm 1
-		 * + 2:     CS
-		 * + 0:     IP
-		 */
+		/* + 6+N*2: SS      | +12+N*4:     SS */
+		/* + 4+N*2: SP      | + 8+N*4:    ESP */
+		/*          parm N  | +        parm N */
+		/*          parm 3  | +        parm 3 */
+		/*          parm 2  | +        parm 2 */
+		/* + 4:     parm 1  | + 8:     parm 1 */
+		/* + 2:     CS      | + 4:         CS */
+		/* + 0:     IP      | + 0:        EIP */
 
-		PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: return to OUTER PRIVILEGE LEVEL\n");
-		return_SP   = stack_read_word(temp_SP + 4 + pop_bytes);
-		ss_selector = stack_read_word(temp_SP + 6 + pop_bytes);
+		PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: return to OUTER PRIVILEGE LEVEL\n");
+		if(_32bit) {
+			ss_selector = stack_read_word(temp_ESP + 12 + _pop_bytes);
+			return_ESP  = stack_read_dword(temp_ESP + 8 + _pop_bytes);
+		} else {
+			ss_selector = stack_read_word(temp_ESP + 6 + _pop_bytes);
+			return_ESP  = stack_read_word(temp_ESP + 4 + _pop_bytes);
+		}
 
 		if((ss_selector.value & SELECTOR_RPL_MASK) == 0) {
-			PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: SS selector null\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: SS selector null\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
 
@@ -696,21 +956,21 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 		// selector RPL must = RPL of the return CS selector,
 		// else #GP(selector)
 		if(ss_selector.rpl != cs_selector.rpl) {
-			PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: ss.rpl != cs.rpl\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: ss.rpl != cs.rpl\n");
 			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		// descriptor AR byte must indicate a writable data segment,
 		// else #GP(selector)
 		if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable()) {
-			PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: SS.AR byte not writable data\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: SS.AR byte not writable data\n");
 			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
 		// descriptor dpl must == RPL of the return CS selector,
 		// else #GP(selector)
 		if(ss_descriptor.dpl != cs_selector.rpl) {
-			PDEBUGF(LOG_V2, LOG_CPU, "return_pmode: SS.dpl != cs.rpl\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "return_far_pmode: SS.dpl != cs.rpl\n");
 			throw CPUException(CPU_GP_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
@@ -720,7 +980,7 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 			throw CPUException(CPU_SS_EXC, ss_selector.value & SELECTOR_RPL_MASK);
 		}
 
-		branch_far(cs_selector, cs_descriptor, return_IP, cs_selector.rpl);
+		branch_far(cs_selector, cs_descriptor, return_EIP, cs_selector.rpl);
 
 		if((ss_selector.value & SELECTOR_RPL_MASK) != 0) {
 			// load SS:RSP from stack
@@ -728,10 +988,81 @@ void CPUExecutor::return_pmode(uint16_t pop_bytes)
 			SET_SS(ss_selector, ss_descriptor, cs_selector.rpl);
 		}
 
-		REG_SP  = (uint16_t)(return_SP + pop_bytes);
+		if(ss_descriptor.big) {
+			REG_ESP = return_ESP + _pop_bytes;
+		} else {
+			REG_SP  = uint16_t(return_ESP + _pop_bytes);
+		}
 
-		/* check ES, DS for validity */
+		/* check ES, DS, FS, GS for validity */
 		REG_ES.validate();
 		REG_DS.validate();
+		REG_FS.validate();
+		REG_GS.validate();
 	}
+}
+
+//
+// Notes:
+//
+// The high bits of the 32bit eip image are ignored by
+// the IRET to VM.  The high bits of the 32bit esp image
+// are loaded into ESP.  A subsequent push uses
+// only the low 16bits since it's in VM.  In neither case
+// did a protection fault occur during actual tests.  This
+// is contrary to the Intel docs which claim a #GP for
+// eIP out of code limits.
+//
+// IRET to VM does affect IOPL, IF, VM, and RF
+//
+void CPUExecutor::stack_return_to_v86(Selector &cs_selector, uint32_t new_eip, uint32_t flags32)
+{
+	uint32_t temp_ESP, new_esp;
+	uint16_t es_selector, ds_selector, fs_selector, gs_selector, ss_selector;
+
+	// Must be 32bit effective opsize, VM is set in upper 16bits of eFLAGS
+	// and CPL = 0 to get here
+
+	// ----------------
+	// |     | OLD GS | eSP+32
+	// |     | OLD FS | eSP+28
+	// |     | OLD DS | eSP+24
+	// |     | OLD ES | eSP+20
+	// |     | OLD SS | eSP+16
+	// |  OLD ESP     | eSP+12
+	// |  OLD EFLAGS  | eSP+8
+	// |     | OLD CS | eSP+4
+	// |  OLD EIP     | eSP+0
+	// ----------------
+
+	if(REG_SS.desc.big) {
+		temp_ESP = REG_ESP;
+	} else {
+		temp_ESP = REG_SP;
+	}
+
+	// load SS:ESP from stack
+	new_esp     =          stack_read_dword(temp_ESP + 12);
+	ss_selector = uint16_t(stack_read_dword(temp_ESP + 16));
+
+	// load ES,DS,FS,GS from stack
+	es_selector = uint16_t(stack_read_dword(temp_ESP + 20));
+	ds_selector = uint16_t(stack_read_dword(temp_ESP + 24));
+	fs_selector = uint16_t(stack_read_dword(temp_ESP + 28));
+	gs_selector = uint16_t(stack_read_dword(temp_ESP + 32));
+
+	write_eflags(flags32, true, true, true, true);
+
+	// load CS:IP from stack; already read and passed as args
+	REG_CS.sel = cs_selector;
+	SET_IP(new_eip);
+
+	REG_ES.sel = es_selector;
+	REG_DS.sel = ds_selector;
+	REG_FS.sel = fs_selector;
+	REG_GS.sel = gs_selector;
+	REG_SS.sel = ss_selector;
+	REG_ESP = new_esp; // full 32 bit are loaded
+
+	g_cpucore.init_v8086_mode();
 }

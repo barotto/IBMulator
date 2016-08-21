@@ -136,6 +136,7 @@ protected:
 	void default_shutdown_trap() {}
 
 	bool interrupts_inhibited(unsigned mask);
+	bool v86_redirect_interrupt(uint8_t _vector);
 
 	void wait_for_event();
 

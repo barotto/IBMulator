@@ -83,6 +83,15 @@ uint32_t CPUExecutor::read_dword()
 	}
 }
 
+uint64_t CPUExecutor::read_qword()
+{
+	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+		return g_cpubus.mem_read_qword(m_cached_phy.phy1);
+	} else {
+		return read_xpages();
+	}
+}
+
 uint8_t CPUExecutor::read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
 {
 	seg_check(_seg, _offset, 1, false, _vector, _errcode);
@@ -120,6 +129,12 @@ uint32_t CPUExecutor::read_dword(uint32_t _linear)
 {
 	mem_access(_linear, 4, false, false);
 	return read_dword();
+}
+
+uint64_t CPUExecutor::read_qword(uint32_t _linear)
+{
+	mem_access(_linear, 8, false, false);
+	return read_qword();
 }
 
 
@@ -183,6 +198,20 @@ void CPUExecutor::write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, ui
 {
 	seg_check(_seg, _offset, 4, true, _vector, _errcode);
 	mem_access(_seg.desc.base + _offset, 4, IS_USER_PL, true);
+	write_dword(_data);
+}
+
+void CPUExecutor::write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, unsigned _pl, uint8_t _vector, uint16_t _errcode)
+{
+	seg_check(_seg, _offset, 2, true, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 2, _pl==3, true);
+	write_word(_data);
+}
+
+void CPUExecutor::write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, unsigned _pl, uint8_t _vector, uint16_t _errcode)
+{
+	seg_check(_seg, _offset, 4, true, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 4, _pl==3, true);
 	write_dword(_data);
 }
 

@@ -57,6 +57,8 @@ void CPUCore::reset()
 
 	set_IDTR(0x000000, 0x03FF);
 	set_GDTR(0x000000, 0x0000);
+
+	handle_mode_change();
 }
 
 #define CPUCORE_STATE_NAME "CPUCore"
@@ -76,6 +78,37 @@ void CPUCore::restore_state(StateBuf &_state)
 	h.name = CPUCORE_STATE_NAME;
 	h.data_size = sizeof(CPUCore);
 	_state.read(this,h);
+}
+
+void CPUCore::init_v8086_mode()
+{
+	for(unsigned sreg = REGI_ES; sreg <= REGI_GS; sreg++) {
+		m_segregs[sreg].desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
+		m_segregs[sreg].desc.dpl = 3;
+		m_segregs[sreg].desc.base = m_segregs[sreg].sel.value << 4;
+		m_segregs[sreg].desc.limit = 0xFFFF;
+		m_segregs[sreg].desc.granularity  = false;
+		m_segregs[sreg].desc.big  = false;
+		m_segregs[sreg].sel.rpl = 3;
+	}
+	handle_mode_change();
+}
+
+void CPUCore::handle_mode_change()
+{
+	if(m_cr[0] & CR0MASK_PE) {
+		if(m_eflags & FMASK_VM) {
+			CPL = 3;
+		}
+	} else {
+		// CS segment in real mode always allows full access
+		m_segregs[REGI_CS].desc.set_AR(
+			SEG_SEGMENT |
+			SEG_PRESENT |
+			SEG_READWRITE |
+			SEG_ACCESSED);
+		CPL = 0;
+	}
 }
 
 void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults)
@@ -256,7 +289,6 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 	}
 }
 
-
 void CPUCore::set_CS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 {
 	// Add cpl to the selector value.
@@ -283,7 +315,6 @@ void CPUCore::set_SS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 	REG_SS.desc = descriptor;
 	REG_SS.sel.cpl = cpl;
 }
-
 
 void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
 {
@@ -355,6 +386,12 @@ void CPUCore::set_EFLAGS(uint32_t _val)
 	if((f32 ^ _val) & FMASK_IF) {
 		g_cpu.interrupt_mask_change();
 	}
+	if((f32 ^ _val) & FMASK_VM) {
+		handle_mode_change();
+	}
+	if(!(f32 & FMASK_RF) && (_val & FMASK_RF)) {
+		g_cpubus.invalidate_pq();
+	}
 }
 
 void CPUCore::set_TF(bool _val)
@@ -373,10 +410,24 @@ void CPUCore::set_IF(bool _val)
 	g_cpu.interrupt_mask_change();
 }
 
+void CPUCore::set_VM(bool _val)
+{
+	set_flag(FBITN_VM, _val);
+	handle_mode_change();
+}
+
+void CPUCore::set_RF(bool _val)
+{
+	set_flag(FBITN_RF, _val);
+	if(_val) {
+		g_cpubus.invalidate_pq();
+	}
+}
+
 uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const
 {
 	//TODO this function is a placeholder.
-	//need to decide where page traslation and TLB belong, Core or Executor.
+	//need to decide where page traslation and TLB belong.
 
 	uint32_t ppf = PDBR;
 	for(int table = 1; table>=0; --table) {
@@ -384,6 +435,7 @@ uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const
 		uint32_t entry = g_memory.read_notraps<4>(entry_addr);
 		if(!(entry & 0x1)) {
 			//not present
+			//TODO launch an exception
 			return 0;
 		}
 		ppf = entry & 0xfffff000;

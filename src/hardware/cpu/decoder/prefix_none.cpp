@@ -1113,7 +1113,7 @@ case 0x9A:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.iw2 = fetchw();
-	m_instr.fn = &CPUExecutor::CALL_cd;
+	m_instr.fn = &CPUExecutor::CALL_ptr1616;
 	break;
 }
 
@@ -1438,7 +1438,7 @@ case 0xC1:
 case 0xC2:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::RET_near;
+	m_instr.fn = &CPUExecutor::RET_near_o16;
 	break;
 }
 
@@ -1446,7 +1446,7 @@ case 0xC2:
 case 0xC3:
 {
 	m_instr.iw1 = 0;
-	m_instr.fn = &CPUExecutor::RET_near;
+	m_instr.fn = &CPUExecutor::RET_near_o16;
 	break;
 }
 
@@ -1524,7 +1524,7 @@ case 0xC9:
 case 0xCA:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::RET_far;
+	m_instr.fn = &CPUExecutor::RET_far_o16;
 	break;
 }
 
@@ -1532,7 +1532,7 @@ case 0xCA:
 case 0xCB:
 {
 	m_instr.iw1 = 0;
-	m_instr.fn = &CPUExecutor::RET_far;
+	m_instr.fn = &CPUExecutor::RET_far_o16;
 	break;
 }
 
@@ -1863,7 +1863,7 @@ case 0xE7:
 case 0xE8:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::CALL_cw;
+	m_instr.fn = &CPUExecutor::CALL_rel16;
 	break;
 }
 
@@ -2122,7 +2122,7 @@ case 0xFF:
 			m_instr.fn = &CPUExecutor::CALL_ew;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::CALL_ed;
+			m_instr.fn = &CPUExecutor::CALL_m1616;
 			break;
 		case 4:
 			m_instr.fn = &CPUExecutor::JMP_ew;

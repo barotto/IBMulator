@@ -107,20 +107,32 @@ uint32_t CPUExecutor::stack_pop_dword()
 
 void CPUExecutor::stack_write_word(uint16_t _value, uint32_t _offset)
 {
+	if(!REG_SS.desc.big) {
+		_offset &= 0xFFFF;
+	}
 	write_word(REG_SS, _offset, _value);
 }
 
 void CPUExecutor::stack_write_dword(uint32_t _value, uint32_t _offset)
 {
+	if(!REG_SS.desc.big) {
+		_offset &= 0xFFFF;
+	}
 	write_dword(REG_SS, _offset, _value);
 }
 
 uint16_t CPUExecutor::stack_read_word(uint32_t _offset)
 {
+	if(!REG_SS.desc.big) {
+		_offset &= 0xFFFF;
+	}
 	return read_word(REG_SS, _offset);
 }
 
 uint32_t CPUExecutor::stack_read_dword(uint32_t _offset)
 {
+	if(!REG_SS.desc.big) {
+		_offset &= 0xFFFF;
+	}
 	return read_dword(REG_SS, _offset);
 }

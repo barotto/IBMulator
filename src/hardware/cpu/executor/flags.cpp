@@ -64,3 +64,26 @@ void CPUExecutor::write_flags(uint16_t _flags)
 		);
 	}
 }
+
+void CPUExecutor::write_eflags(uint32_t _eflags,
+		bool _change_IOPL, bool _change_IF, bool _change_NT, bool _change_VM)
+{
+	// Build a mask of the following bits:
+	// x,NT,IOPL,OF,DF,IF,TF,SF,ZF,x,AF,x,PF,x,CF
+	uint32_t changeMask = 0x10DD5;
+
+	if(_change_NT)
+		changeMask |= FMASK_NT;   // NT is modified as requested.
+	if(_change_IOPL)
+		changeMask |= FMASK_IOPL; // IOPL is modified as requested.
+	if(_change_IF)
+		changeMask |= FMASK_IF;   // IF is modified as requested.
+	if(_change_VM)
+		changeMask |= FMASK_VM;
+
+	// Screen out changing of any unsupported bits.
+	changeMask &= FMASK_VALID;
+
+	uint32_t new_eflags = (GET_EFLAGS() & ~changeMask) | (_eflags & changeMask);
+	SET_EFLAGS(new_eflags);
+}

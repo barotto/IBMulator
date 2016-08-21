@@ -131,6 +131,7 @@ private:
 
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
 	void write_flags(uint16_t _flags);
+	void write_eflags(uint32_t _eflags, bool _change_IOPL, bool _change_IF, bool _change_NT, bool _change_VM);
 
 	void seg_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
@@ -143,6 +144,7 @@ private:
 	uint8_t  read_byte();
 	uint16_t read_word();
 	uint32_t read_dword();
+	uint64_t read_qword();
 	uint32_t read_xpages();
 	uint8_t  read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint16_t read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
@@ -150,6 +152,7 @@ private:
 	uint8_t  read_byte(uint32_t _linear);
 	uint16_t read_word(uint32_t _linear);
 	uint32_t read_dword(uint32_t _linear);
+	uint64_t read_qword(uint32_t _linear);
 
 	void write_byte(uint8_t _data);
 	void write_word(uint16_t _data);
@@ -158,6 +161,8 @@ private:
 	void write_byte(SegReg &_seg, uint32_t _offset, uint8_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	void write_word(SegReg &_seg, uint32_t _offset, uint16_t _data, unsigned _pl, uint8_t _vector, uint16_t _errcode);
+	void write_dword(SegReg &_seg, uint32_t _offset, uint32_t _data, unsigned _pl, uint8_t _vector, uint16_t _errcode);
 	void write_byte(uint32_t _linear, uint8_t _data);
 	void write_word(uint32_t _linear, uint16_t _data);
 	void write_dword(uint32_t _linear, uint32_t _data);
@@ -176,17 +181,33 @@ private:
 	void branch_far(Selector &selector, Descriptor &descriptor, uint32_t eip, uint8_t cpl);
 	void branch_far(uint16_t cs, uint32_t eip);
 	void branch_far_pmode(uint16_t cs, uint32_t eip);
+	void call_relative(int32_t _offset);
+	void call_16(uint16_t _cs, uint16_t _ip);
+	void call_32(uint16_t _cs, uint32_t _eip);
 	void call_pmode(uint16_t cs_raw, uint16_t disp);
 	void call_gate(Descriptor &gate_descriptor);
-	void return_pmode(uint16_t pop_bytes);
+	void return_near(uint32_t _newEIP, uint16_t _pop_bytes);
+	void return_far_rmode(uint16_t _newCS, uint32_t _newEIP, uint16_t _pop_bytes);
+	void return_far_pmode(uint16_t _pop_bytes, bool _32bit);
 	void jump_call_gate(Selector &selector, Descriptor &gate_descriptor);
-	void iret_pmode();
+	void iret_pmode(bool _32bit);
+	void stack_return_to_v86(Selector &_cs, uint32_t _eip, uint32_t _eflags);
 
-	void get_SS_SP_from_TSS(unsigned pl, uint16_t &ss, uint16_t &sp);
+	void get_SS_ESP_from_TSS(unsigned pl, uint16_t &ss, uint32_t &sp);
 	void switch_tasks_load_selector(SegReg &_segreg, uint8_t _cs_rpl);
 	void switch_tasks(Selector &selector, Descriptor &descriptor, unsigned source,
 	                  bool push_error=false, uint16_t error_code=0);
 	void task_gate(Selector &selector, Descriptor &gate_descriptor, unsigned source);
+
+	template<typename T>
+	T interrupt_prepare_stack(SegReg &new_stack, T temp_ESP,
+			unsigned _pl, unsigned _gate_type, bool _push_error, uint16_t _error_code);
+	void interrupt_inner_privilege(Descriptor &gate_descriptor,
+			Selector &cs_selector, Descriptor &cs_descriptor,
+			bool _push_error, uint16_t _error_code);
+	void interrupt_same_privilege(Descriptor &gate_descriptor,
+			Selector &cs_selector, Descriptor &cs_descriptor,
+			bool _push_error, uint16_t _error_code);
 
 	uint8_t  ADC_b(uint8_t  op1, uint8_t  op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
@@ -199,8 +220,6 @@ private:
 	uint8_t  AND_b(uint8_t  op1, uint8_t  op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 	uint32_t AND_d(uint32_t op1, uint32_t op2);
-
-	void CALL_cd(uint16_t newip, uint16_t newcs);
 
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
@@ -359,10 +378,14 @@ public:
 	void BOUND_rw_md();
 	void BOUND_rd_mq();
 
-	void CALL_cw();
+	void CALL_rel16();
+	void CALL_rel32();
 	void CALL_ew();
-	void CALL_cd();
 	void CALL_ed();
+	void CALL_ptr1616();
+	void CALL_ptr1632();
+	void CALL_m1616();
+	void CALL_m1632();
 
 	void CBW();
 	void CWD();
@@ -456,6 +479,7 @@ public:
 	void INTO();
 
 	void IRET();
+	void IRETD();
 
 	void JO_cb();
 	void JNO_cb();
@@ -707,8 +731,10 @@ public:
 	void RCR_ew_CL();
 	void RCR_ed_CL();
 
-	void RET_near();
-	void RET_far();
+	void RET_near_o16();
+	void RET_near_o32();
+	void RET_far_o16();
+	void RET_far_o32();
 
 	void SAL_eb_ib();
 	void SAL_ew_ib();

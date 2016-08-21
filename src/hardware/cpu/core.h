@@ -105,8 +105,6 @@ extern CPUCore g_cpucore;
 #define FLAG_RF   (GET_FLAG(RF) >> FBITN_RF)
 #define FLAG_VM   (GET_FLAG(VM) >> FBITN_VM)
 
-#define IS_V8086() GET_FLAG(VM)
-
 
 // Control registers
 /*
@@ -158,8 +156,9 @@ extern CPUCore g_cpucore;
 #define REG_CR3 g_cpucore.ctl_reg(3)
 #define PDBR (REG_CR3 & 0xFFFFF000)
 
-#define IS_PMODE()  GET_CR0(PE)
-#define IS_PAGING() GET_CR0(PG)
+#define IS_PMODE()  g_cpucore.is_pmode()
+#define IS_V8086()  g_cpucore.is_v8086()
+#define IS_PAGING() g_cpucore.is_paging()
 
 
 enum GenRegIndex8 {
@@ -258,7 +257,8 @@ enum SegRegIndex {
 #define GET_BASE(S)	 g_cpucore.get_seg_base(REGI_ ## S)
 #define GET_LIMIT(S) g_cpucore.get_seg_limit(REGI_ ## S)
 
-#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF)
+#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF) //TODO remove this
+#define GET_LINADDR(SEG,OFF) g_cpucore.get_linaddr(REGI_ ## SEG , OFF)
 
 #define IP_CHAIN_SIZE 10
 
@@ -318,6 +318,7 @@ protected:
 	}
 
 	uint32_t translate_linear(uint32_t _linear_addr) const;
+	void handle_mode_change();
 
 public:
 
@@ -389,6 +390,8 @@ public:
 		m_eflags |= ((3 & _val) << 12);
 	}
 	inline void set_NT(bool _val) { set_flag(FBITN_NT,_val); }
+	       void set_VM(bool _val);
+	       void set_RF(bool _val);
 
 	inline void set_CR0(uint8_t _flagnum, bool _val) {
 		m_cr[0] = (m_cr[0] &~ (1<<_flagnum)) | ((_val)<<_flagnum);
@@ -400,8 +403,11 @@ public:
 		return (m_cr[0] & _cr0);
 	}
 
-	inline bool is_pmode() const { return (m_cr[0] & CR0MASK_PE); }
+	inline bool is_pmode() const { return (m_cr[0] & CR0MASK_PE) && !(m_eflags & FMASK_VM); }
+	inline bool is_v8086() const { return (m_eflags & FMASK_VM); }
 	inline bool is_paging() const { return (m_cr[0] & CR0MASK_PG); }
+
+	void init_v8086_mode();
 
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current

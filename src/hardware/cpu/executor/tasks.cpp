@@ -17,22 +17,31 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void CPUExecutor::get_SS_SP_from_TSS(unsigned pl, uint16_t &ss_, uint16_t &sp_)
+void CPUExecutor::get_SS_ESP_from_TSS(unsigned pl, uint16_t &ss_, uint32_t &esp_)
 {
-	if(!REG_TR.desc.valid)
+	if(!REG_TR.desc.valid) {
 		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR invalid\n");
-
-	if(!(REG_TR.desc.type!=DESC_TYPE_AVAIL_286_TSS || REG_TR.desc.type!=DESC_TYPE_BUSY_286_TSS)) {
-		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR is bogus type (%u)", REG_TR.desc.type);
 	}
 
-	uint32_t TSSstackaddr = 4 * pl + 2;
-	if((TSSstackaddr+3) > REG_TR.desc.limit) {
-		PDEBUGF(LOG_V2, LOG_CPU, "get_SS_SP_from_TSS: TSSstackaddr > TSS.LIMIT\n");
-		throw CPUException(CPU_TS_EXC, REG_TR.sel.value & SELECTOR_RPL_MASK);
+	if(REG_TR.desc.type==DESC_TYPE_AVAIL_286_TSS || REG_TR.desc.type==DESC_TYPE_BUSY_286_TSS) {
+		uint32_t TSSstackaddr = 4 * pl + 2;
+		if((TSSstackaddr+3) > REG_TR.desc.limit) {
+			PDEBUGF(LOG_V2, LOG_CPU, "get_SS_ESP_from_TSS: TSSstackaddr > TSS.LIMIT\n");
+			throw CPUException(CPU_TS_EXC, REG_TR.sel.value & SELECTOR_RPL_MASK);
+		}
+		ss_  = read_word(REG_TR.desc.base + TSSstackaddr + 2);
+		esp_ = read_word(REG_TR.desc.base + TSSstackaddr);
+	} else if(REG_TR.desc.type==DESC_TYPE_AVAIL_386_TSS || REG_TR.desc.type==DESC_TYPE_BUSY_386_TSS) {
+		uint32_t TSSstackaddr = 8 * pl + 4;
+		if((TSSstackaddr+7) > REG_TR.desc.limit) {
+			PDEBUGF(LOG_V2, LOG_CPU, "get_SS_ESP_from_TSS: TSSstackaddr > TSS.LIMIT\n");
+			throw CPUException(CPU_TS_EXC, REG_TR.sel.value & SELECTOR_RPL_MASK);
+		}
+		ss_  = read_word(REG_TR.desc.base + TSSstackaddr + 4);
+		esp_ = read_dword(REG_TR.desc.base + TSSstackaddr);
+	} else {
+		PERRF_ABORT(LOG_CPU, "get_SS_ESP_from_TSS: TR is bogus type (%u)\n", REG_TR.desc.type);
 	}
-	ss_ = g_cpubus.mem_read<2>(REG_TR.desc.base + TSSstackaddr + 2);
-	sp_ = g_cpubus.mem_read<2>(REG_TR.desc.base + TSSstackaddr);
 }
 
 void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)

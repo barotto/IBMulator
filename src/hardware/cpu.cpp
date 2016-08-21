@@ -437,6 +437,16 @@ void CPU::handle_async_event()
 	}
 }
 
+bool CPU::v86_redirect_interrupt(uint8_t _vector)
+{
+	// see Bochs code for CPU 586+
+	if(FLAG_IOPL < 3) {
+		PDEBUGF(LOG_V2, LOG_CPU, "Redirecting soft INT in V8086 mode: %d\n", _vector);
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+	return false;
+}
+
 void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t _error_code)
 {
 	bool soft_int = false;
@@ -463,13 +473,16 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	clear_debug_trap();
 
 	if(CPULOG) {
-		m_logger.set_iret_address(GET_PHYADDR(CS, REG_IP));
+		m_logger.set_iret_address(GET_LINADDR(CS, REG_EIP));
 	}
 
-	if(IS_PMODE()) {
-		g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
-	} else {
-		g_cpuexecutor.interrupt(_vector);
+	// software interrupts can be redirected in v8086 mode
+	if((_type!=CPU_SOFTWARE_INTERRUPT) || !IS_V8086() || !v86_redirect_interrupt(_vector)) {
+		if(IS_PMODE()) {
+			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
+		} else {
+			g_cpuexecutor.interrupt(_vector);
+		}
 	}
 
 	m_s.EXT = 0;

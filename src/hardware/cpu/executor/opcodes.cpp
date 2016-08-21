@@ -369,14 +369,8 @@ void CPUExecutor::BOUND_rd_mq()
  * CALL-Call Procedure
  */
 
-void CPUExecutor::CALL_cw()
-{
-	/* push 16 bit EA of next instruction */
-	stack_push_word(REG_IP);
-
-	uint16_t new_IP = REG_IP + m_instr->iw1;
-	branch_near(new_IP);
-}
+void CPUExecutor::CALL_rel16() { call_relative(int16_t(m_instr->iw1)); }
+void CPUExecutor::CALL_rel32() { call_relative(int32_t(m_instr->id1)); }
 
 void CPUExecutor::CALL_ew()
 {
@@ -387,41 +381,33 @@ void CPUExecutor::CALL_ew()
 	branch_near(new_IP);
 }
 
-void CPUExecutor::CALL_cd(uint16_t newip, uint16_t newcs)
-{
-	if(IS_PMODE()) {
-		call_pmode(newcs, newip);
-		return;
-	}
-
-	//REAL mode
-	stack_push_word(REG_CS.sel.value);
-	stack_push_word(REG_IP);
-
-	// CS LIMIT can't change when in real mode
-	if(newip > GET_LIMIT(CS)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-
-	SET_CS(newcs);
-	SET_IP(newip);
-	g_cpubus.invalidate_pq();
-}
-
-void CPUExecutor::CALL_cd()
-{
-	CALL_cd(m_instr->iw1, m_instr->iw2);
-}
-
 void CPUExecutor::CALL_ed()
 {
-	uint16_t newip, newcs;
-	load_m1616(newip, newcs);
+	/* push 32 bit EA of next instruction */
+	stack_push_dword(REG_EIP);
 
-	CALL_cd(newip, newcs);
+	uint32_t new_EIP = load_ed();
+	branch_near(new_EIP);
 }
 
+void CPUExecutor::CALL_ptr1616() { call_16(m_instr->iw2, m_instr->iw1); }
+void CPUExecutor::CALL_ptr1632() { call_32(m_instr->iw2, m_instr->id1); }
+
+void CPUExecutor::CALL_m1616()
+{
+	uint16_t ip, cs;
+	load_m1616(ip, cs);
+
+	call_16(cs, ip);
+}
+
+void CPUExecutor::CALL_m1632()
+{
+	uint32_t eip; uint16_t cs;
+	load_m1632(eip, cs);
+
+	call_32(cs, eip);
+}
 
 /*******************************************************************************
  * CBW/CWD/CWDE/CDQ-Convert Byte/Word/DWord to Word/DWord/QWord
@@ -1365,7 +1351,7 @@ bool CPUExecutor::INT_debug(bool call, uint8_t vector, uint16_t ax, CPUCore *cor
 void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 {
 	uint8_t ah = REG_AH;
-	uint32_t retaddr = GET_PHYADDR(CS, REG_IP);
+	uint32_t retaddr = REG_CS.desc.base + REG_EIP;
 
 	if(INT_TRAPS) {
 		std::vector<inttrap_interval_t> results;
@@ -1389,38 +1375,41 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		}
 	}
 
-	//DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
-	if(_vector == 0x21 && ah == 0x4B) {
-		char * pname = (char*)g_memory.get_phy_ptr(GET_PHYADDR(DS, REG_DX));
-		PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
-		g_machine.DOS_program_launch(pname);
-		m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
-		//can the cpu be in pmode?
-		if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
-			g_machine.DOS_program_start(pname);
-		} else {
-			//find the INT exit point
-			uint32_t cs = g_cpubus.mem_read<2>(0x21*4 + 2);
-			m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
-		}
-	}
-	else if((_vector == 0x21 && (
-			ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
-			ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
-		)) ||
-			_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
-	)
-	{
-		std::string oldprg,newprg;
-		if(!m_dos_prg.empty()) {
-			oldprg = m_dos_prg.top().second;
-			m_dos_prg.pop();
-			if(!m_dos_prg.empty()) {
-				newprg = m_dos_prg.top().second;
+	//TODO adapt for paging
+	if(!IS_PAGING()) {
+		//DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
+		if(_vector == 0x21 && ah == 0x4B) {
+			char * pname = (char*)g_memory.get_phy_ptr(GET_LINADDR(DS, REG_DX));
+			PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
+			g_machine.DOS_program_launch(pname);
+			m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
+			//can the cpu be in pmode?
+			if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
+				g_machine.DOS_program_start(pname);
+			} else {
+				//find the INT exit point
+				uint32_t cs = g_memory.read_notraps<2>(0x21*4 + 2);
+				m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
 			}
 		}
-		g_machine.DOS_program_finish(oldprg,newprg);
-		m_dos_prg_int_exit = 0;
+		else if((_vector == 0x21 && (
+				ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
+				ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
+			)) ||
+				_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
+		)
+		{
+			std::string oldprg,newprg;
+			if(!m_dos_prg.empty()) {
+				oldprg = m_dos_prg.top().second;
+				m_dos_prg.pop();
+				if(!m_dos_prg.empty()) {
+					newprg = m_dos_prg.top().second;
+				}
+			}
+			g_machine.DOS_program_finish(oldprg,newprg);
+			m_dos_prg_int_exit = 0;
+		}
 	}
 
 	g_cpu.interrupt(_vector, _type, false, 0);
@@ -1440,8 +1429,9 @@ void CPUExecutor::IRET()
 	g_cpu.unmask_event(CPU_EVENT_NMI);
 
 	if(IS_PMODE()) {
-		iret_pmode();
+		iret_pmode(false);
 	} else {
+		// real and v8086 mode
 		uint16_t ip     = stack_pop_word();
 		uint16_t cs_raw = stack_pop_word(); // #SS has higher priority
 		uint16_t flags  = stack_pop_word();
@@ -1454,7 +1444,42 @@ void CPUExecutor::IRET()
 		}
 		SET_CS(cs_raw);
 		SET_IP(ip);
-		write_flags(flags,false,true,false);
+		write_flags(flags,
+			false, // IOPL
+			true,  // IF
+			false  // NT
+			);
+	}
+	g_cpubus.invalidate_pq();
+}
+
+void CPUExecutor::IRETD()
+{
+	g_cpu.unmask_event(CPU_EVENT_NMI);
+
+	if(IS_PMODE()) {
+		iret_pmode(true);
+	} else {
+		// real and v8086 mode
+		uint32_t eip    = stack_pop_dword();
+		uint16_t cs_raw = stack_pop_dword(); // #SS has higher priority
+		uint32_t eflags = stack_pop_dword();
+
+		// CS LIMIT can't change when in real/v8086 mode
+		if(eip > REG_CS.desc.limit) {
+			PDEBUGF(LOG_V2, LOG_CPU,
+				"IRET: instruction pointer not within code segment limits\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		SET_CS(cs_raw);
+		SET_EIP(eip);
+		// VM unchanged
+		write_eflags(eflags,
+			false, // IOPL
+			true,  // IF
+			false, // NT,
+			false  // VM
+			);
 	}
 	g_cpubus.invalidate_pq();
 }
@@ -3288,45 +3313,38 @@ void CPUExecutor::RCR_ed_CL() { store_ed(RCR_d(load_ed(), REG_CL)); }
  * RET-Return from Procedure
  */
 
-void CPUExecutor::RET_near()
+void CPUExecutor::RET_near_o16()
 {
-	uint16_t return_IP = stack_pop_word();
-
-	if(return_IP > REG_CS.desc.limit) {
-		PDEBUGF(LOG_V2, LOG_CPU, "RET_near: offset outside of CS limits\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-
-	SET_IP(return_IP);
-	REG_SP += m_instr->iw1; // pop bytes
-
-	g_cpubus.invalidate_pq();
+	return_near(stack_pop_word(), m_instr->iw1);
 }
 
-void CPUExecutor::RET_far()
+void CPUExecutor::RET_near_o32()
 {
-	uint16_t popbytes = m_instr->iw1;
+	return_near(stack_pop_dword(), m_instr->iw1);
+}
 
+void CPUExecutor::RET_far_o16()
+{
 	if(IS_PMODE()) {
-		return_pmode(popbytes);
-		return;
+		return_far_pmode(m_instr->iw1, false);
+	} else {
+		uint16_t ip     = stack_pop_word();
+		uint16_t cs_raw = stack_pop_word();
+
+		return_far_rmode(cs_raw, ip, m_instr->iw1);
 	}
+}
 
-	uint16_t ip     = stack_pop_word();
-	uint16_t cs_raw = stack_pop_word();
+void CPUExecutor::RET_far_o32()
+{
+	if(IS_PMODE()) {
+		return_far_pmode(m_instr->iw1, true);
+	} else {
+		uint32_t eip    = stack_pop_dword();
+		uint16_t cs_raw = stack_pop_dword();
 
-	// CS.LIMIT can't change when in real mode
-	if(ip > REG_CS.desc.limit) {
-		PDEBUGF(LOG_V2, LOG_CPU,
-				"RET_far: instruction pointer not within code segment limits\n");
-		throw CPUException(CPU_GP_EXC, 0);
+		return_far_rmode(cs_raw, eip, m_instr->iw1);
 	}
-
-	SET_CS(cs_raw);
-	SET_IP(ip);
-	REG_SP += popbytes;
-
-	g_cpubus.invalidate_pq();
 }
 
 

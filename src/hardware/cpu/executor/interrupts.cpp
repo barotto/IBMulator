@@ -53,29 +53,231 @@ void CPUExecutor::interrupt(uint8_t _vector)
 	stack_push_word(REG_IP);
 
 	uint32_t addr = _vector * 4;
-	uint16_t new_ip = g_cpubus.mem_read<2>(addr);
-	uint16_t cs_selector = g_cpubus.mem_read<2>(addr+2);
+	uint16_t new_ip = read_word(addr);
+	uint16_t cs_selector = read_word(addr+2);
 
 	SET_CS(cs_selector);
 	SET_IP(new_ip);
 
 	SET_FLAG(IF, false);
 	SET_FLAG(TF, false);
+	SET_FLAG(RF, false);
 
 	g_cpubus.invalidate_pq();
+}
+
+template<typename T>
+T CPUExecutor::interrupt_prepare_stack(SegReg &new_stack, T temp_ESP,
+		unsigned _pl, unsigned _gate_type, bool _push_error, uint16_t _error_code)
+{
+	const uint8_t exc = CPU_SS_EXC;
+	const uint16_t errcode = new_stack.sel.rpl!=CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
+
+	if(IS_V8086()) {
+		if(_gate_type >= DESC_TYPE_386_INTR_GATE) { // 386 int/trap gate
+			write_dword(new_stack, T(temp_ESP-4),  REG_GS.sel.value, _pl, exc, errcode);
+			write_dword(new_stack, T(temp_ESP-8),  REG_FS.sel.value, _pl, exc, errcode);
+			write_dword(new_stack, T(temp_ESP-12), REG_DS.sel.value, _pl, exc, errcode);
+			write_dword(new_stack, T(temp_ESP-16), REG_ES.sel.value, _pl, exc, errcode);
+			temp_ESP -= 16;
+		} else {
+			write_word(new_stack, T(temp_ESP-2), REG_GS.sel.value, _pl, exc, errcode);
+			write_word(new_stack, T(temp_ESP-4), REG_FS.sel.value, _pl, exc, errcode);
+			write_word(new_stack, T(temp_ESP-6), REG_DS.sel.value, _pl, exc, errcode);
+			write_word(new_stack, T(temp_ESP-8), REG_ES.sel.value, _pl, exc, errcode);
+			temp_ESP -= 8;
+		}
+	}
+
+	if(_gate_type >= DESC_TYPE_386_INTR_GATE) { // 386 int/trap gate
+		// push long pointer to old stack onto new stack
+		write_dword(new_stack, T(temp_ESP-4),  REG_SS.sel.value, _pl, exc, errcode);
+		write_dword(new_stack, T(temp_ESP-8),  REG_ESP,          _pl, exc, errcode);
+		write_dword(new_stack, T(temp_ESP-12), GET_EFLAGS(),     _pl, exc, errcode);
+		write_dword(new_stack, T(temp_ESP-16), REG_CS.sel.value, _pl, exc, errcode);
+		write_dword(new_stack, T(temp_ESP-20), REG_EIP,          _pl, exc, errcode);
+		temp_ESP -= 20;
+		if (_push_error) {
+			temp_ESP -= 4;
+			write_dword(new_stack, temp_ESP, _error_code, _pl, exc, errcode);
+		}
+	} else { // 286 int/trap gate
+		// push long pointer to old stack onto new stack
+		write_word(new_stack, T(temp_ESP-2),  REG_SS.sel.value, _pl, exc, errcode);
+		write_word(new_stack, T(temp_ESP-4),  REG_SP,           _pl, exc, errcode);
+		write_word(new_stack, T(temp_ESP-6),  GET_FLAGS(),      _pl, exc, errcode);
+		write_word(new_stack, T(temp_ESP-8),  REG_CS.sel.value, _pl, exc, errcode);
+		write_word(new_stack, T(temp_ESP-10), REG_IP,           _pl, exc, errcode);
+		temp_ESP -= 10;
+		if (_push_error) {
+			temp_ESP -= 2;
+			write_word(new_stack, temp_ESP, _error_code, _pl, exc, errcode);
+		}
+	}
+
+	return temp_ESP;
+}
+
+void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
+		Selector &cs_selector, Descriptor &cs_descriptor,
+		bool _push_error, uint16_t _error_code)
+{
+	uint16_t SS_for_cpl_x;
+	uint32_t ESP_for_cpl_x;
+	Descriptor ss_descriptor;
+	Selector   ss_selector;
+
+	// check selector and descriptor for new stack in current TSS
+	get_SS_ESP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, ESP_for_cpl_x);
+
+	if(IS_V8086() && cs_descriptor.dpl != 0) {
+		// if code segment DPL != 0 then #GP(new code segment selector)
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): code segment DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
+		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
+	}
+
+	// Selector must be non-null else #TS(EXT)
+	if((SS_for_cpl_x & SELECTOR_RPL_MASK) == 0) {
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS selector null\n");
+		throw CPUException(CPU_TS_EXC, 0); /* TS(ext) */
+	}
+
+	// selector index must be within its descriptor table limits
+	// else #TS(SS selector + EXT)
+	ss_selector = SS_for_cpl_x;
+
+	// fetch 2 dwords of descriptor; call handles out of limits checks
+	try {
+		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
+	} catch(CPUException &e) {
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
+		throw;
+	}
+
+	// selector rpl must = dpl of code segment,
+	// else #TS(SS selector + ext)
+	if(ss_selector.rpl != cs_descriptor.dpl) {
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.rpl != CS.dpl\n");
+		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
+	}
+
+	// stack seg DPL must = DPL of code segment,
+	// else #TS(SS selector + ext)
+	if(ss_descriptor.dpl != cs_descriptor.dpl) {
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.dpl != CS.dpl\n");
+		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
+	}
+
+	// descriptor must indicate writable data segment,
+	// else #TS(SS selector + EXT)
+	if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable())
+	{
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): SS is not writable data segment\n");
+		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
+	}
+
+	// seg must be present, else #SS(SS selector + ext)
+	if(!ss_descriptor.present) {
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS not present\n");
+		throw CPUException(CPU_SS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
+	}
+
+	// IP must be within CS segment boundaries, else #GP(0)
+	if(gate_descriptor.offset > cs_descriptor.limit) {
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate EIP > CS.limit\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	// Prepare new stack segment
+	SegReg new_stack;
+	new_stack.sel = ss_selector;
+	new_stack.desc = ss_descriptor;
+	new_stack.sel.rpl = cs_descriptor.dpl;
+	// add cpl to the selector value
+	new_stack.sel.value =
+		(new_stack.sel.value & SELECTOR_RPL_MASK) | new_stack.sel.rpl;
+
+	if(new_stack.desc.big) {
+
+		REG_ESP = interrupt_prepare_stack<uint32_t>(
+				new_stack, ESP_for_cpl_x,
+				cs_descriptor.dpl, gate_descriptor.type,
+				_push_error, _error_code);
+
+	} else {
+
+		REG_SP = interrupt_prepare_stack<uint16_t>(
+				new_stack, (uint16_t)ESP_for_cpl_x,
+				cs_descriptor.dpl, gate_descriptor.type,
+				_push_error, _error_code);
+
+	}
+	// load new CS:IP values from gate
+	// set CPL to new code segment DPL
+	// set RPL of CS to CPL
+	SET_CS(cs_selector, cs_descriptor, cs_descriptor.dpl);
+	//IP is set by the caller
+
+	// load new SS:ESP values from TSS
+	SET_SS(ss_selector, ss_descriptor, cs_descriptor.dpl);
+
+    if(IS_V8086()) {
+		REG_GS.desc.valid = false;
+		REG_GS.sel.value = 0;
+		REG_FS.desc.valid = false;
+		REG_FS.sel.value = 0;
+		REG_DS.desc.valid = false;
+		REG_DS.sel.value = 0;
+		REG_ES.desc.valid = false;
+		REG_ES.sel.value = 0;
+    }
+}
+
+void CPUExecutor::interrupt_same_privilege(Descriptor &gate_descriptor,
+		Selector &cs_selector, Descriptor &cs_descriptor,
+		bool _push_error, uint16_t _error_code)
+{
+	if(IS_V8086() && (cs_descriptor.is_conforming() || cs_descriptor.dpl != 0)) {
+		// if code segment DPL != 0 then #GP(new code segment selector)
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): code segment conforming or DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
+		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
+	}
+
+	// EIP must be in CS limit else #GP(0)
+	if(gate_descriptor.offset > cs_descriptor.limit) {
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): IP > CS descriptor limit\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	// push flags onto stack
+	// push current CS selector onto stack
+	// push return IP onto stack
+	if(gate_descriptor.type >= DESC_TYPE_386_INTR_GATE) {
+		stack_push_dword(GET_EFLAGS());
+		stack_push_dword(REG_CS.sel.value);
+		stack_push_dword(REG_EIP);
+		if(_push_error) {
+			stack_push_dword(_error_code);
+		}
+	} else {
+		stack_push_word(GET_FLAGS());
+		stack_push_word(REG_CS.sel.value);
+		stack_push_word(REG_IP);
+		if(_push_error) {
+			stack_push_word(_error_code);
+		}
+	}
+
+	// load CS:EIP from gate
+	// load CS descriptor
+	// set the RPL field of CS to CPL
+	SET_CS(cs_selector, cs_descriptor, CPL);
 }
 
 void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		bool push_error, uint16_t error_code)
 {
-	Selector   cs_selector;
-	Descriptor gate_descriptor, cs_descriptor;
-
-	Selector   tss_selector;
-	Descriptor tss_descriptor;
-
-	uint16_t gate_dest_selector;
-	uint32_t gate_dest_offset;
+	Descriptor gate_descriptor;
 
 	// interrupt vector must be within IDT table limits,
 	// else #GP(vector*8 + 2 + EXT)
@@ -86,7 +288,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 
-	gate_descriptor = g_cpubus.mem_read_qword(GET_BASE(IDTR) + vector*8);
+	gate_descriptor = read_qword(GET_BASE(IDTR) + vector*8);
 
 	if(!gate_descriptor.valid || gate_descriptor.segment) {
 		PDEBUGF(LOG_V2,LOG_CPU,
@@ -101,6 +303,8 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		case DESC_TYPE_TASK_GATE:
 		case DESC_TYPE_286_INTR_GATE:
 		case DESC_TYPE_286_TRAP_GATE:
+		case DESC_TYPE_386_INTR_GATE:
+		case DESC_TYPE_386_TRAP_GATE:
 			break;
 		default:
 			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7}\n",
@@ -122,7 +326,10 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	}
 
 	switch(gate_descriptor.type) {
-		case DESC_TYPE_TASK_GATE:
+		case DESC_TYPE_TASK_GATE: {
+			Selector tss_selector;
+			Descriptor tss_descriptor;
+
 			// examine selector to TSS, given in task gate descriptor
 			tss_selector = gate_descriptor.selector;
 			// must specify global in the local/global bit,
@@ -149,7 +356,9 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
-			if(tss_descriptor.type != DESC_TYPE_AVAIL_286_TSS) {
+			if(tss_descriptor.type != DESC_TYPE_AVAIL_286_TSS &&
+			   tss_descriptor.type != DESC_TYPE_AVAIL_386_TSS)
+			{
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
@@ -165,19 +374,21 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			switch_tasks(tss_selector, tss_descriptor, CPU_TASK_FROM_INT,
 					push_error, error_code);
 			return;
-
+		}
 		case DESC_TYPE_286_INTR_GATE:
 		case DESC_TYPE_286_TRAP_GATE:
-			gate_dest_selector = gate_descriptor.selector;
-			gate_dest_offset   = gate_descriptor.offset;
+		case DESC_TYPE_386_INTR_GATE:
+		case DESC_TYPE_386_TRAP_GATE: {
+			Selector   cs_selector;
+			Descriptor cs_descriptor;
 
 			// examine CS selector and descriptor given in gate descriptor
 			// selector must be non-null else #GP(EXT)
-			if((gate_dest_selector & SELECTOR_RPL_MASK) == 0) {
+			if((gate_descriptor.selector & SELECTOR_RPL_MASK) == 0) {
 				PDEBUGF(LOG_V1,LOG_CPU,"int_trap_gate(): selector null\n");
 				throw CPUException(CPU_GP_EXC, 0);
 			}
-			cs_selector = gate_dest_selector;
+			cs_selector = gate_descriptor.selector;
 
 			// selector must be within its descriptor table limits
 			// else #GP(selector+EXT)
@@ -190,9 +401,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			// descriptor AR byte must indicate code seg
 			// and code segment descriptor DPL<=CPL, else #GP(selector+EXT)
-			if(!cs_descriptor.valid || !cs_descriptor.segment ||
-				!(cs_descriptor.type & SEG_TYPE_EXECUTABLE) || cs_descriptor.dpl > CPL)
-			{
+			if(!cs_descriptor.valid || !cs_descriptor.is_code_segment() || cs_descriptor.dpl > CPL) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
 						cs_selector.value);
 				throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
@@ -204,143 +413,23 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 				throw CPUException(CPU_NP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
-			// if code segment is non-conforming and DPL < CPL then
-			// INTERRUPT TO INNER PRIVILEGE
-			if(!(cs_descriptor.type & SEG_TYPE_CONFORMING) && cs_descriptor.dpl < CPL)
+			// if code segment is non-conforming and DPL < CPL then int to inner priv
+			if(!cs_descriptor.is_conforming() && cs_descriptor.dpl < CPL)
 			{
-				uint16_t old_SS, old_CS, SS_for_cpl_x;
-				uint16_t SP_for_cpl_x, old_IP, old_SP;
-				Descriptor ss_descriptor;
-				Selector   ss_selector;
 				PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): INTERRUPT TO INNER PRIVILEGE\n");
-
-				// check selector and descriptor for new stack in current TSS
-				get_SS_SP_from_TSS(cs_descriptor.dpl, SS_for_cpl_x, SP_for_cpl_x);
-
-				// Selector must be non-null else #TS(EXT)
-				if((SS_for_cpl_x & SELECTOR_RPL_MASK) == 0) {
-					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS selector null\n");
-					throw CPUException(CPU_TS_EXC, 0); /* TS(ext) */
-				}
-
-				// selector index must be within its descriptor table limits
-				// else #TS(SS selector + EXT)
-				ss_selector = SS_for_cpl_x;
-
-				// fetch 2 dwords of descriptor; call handles out of limits checks
-				try {
-					ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
-				} catch(CPUException &e) {
-					PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
-					throw;
-				}
-
-				// selector rpl must = dpl of code segment,
-				// else #TS(SS selector + ext)
-				if(ss_selector.rpl != cs_descriptor.dpl) {
-					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.rpl != CS.dpl\n");
-					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
-				}
-
-				// stack seg DPL must = DPL of code segment,
-				// else #TS(SS selector + ext)
-				if(ss_descriptor.dpl != cs_descriptor.dpl) {
-					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.dpl != CS.dpl\n");
-					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
-				}
-
-				// descriptor must indicate writable data segment,
-				// else #TS(SS selector + EXT)
-				if(!ss_descriptor.valid || !ss_descriptor.segment ||
-					(ss_descriptor.type & SEG_TYPE_EXECUTABLE) ||
-					!(ss_descriptor.type & SEG_TYPE_WRITABLE))
-				{
-					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): SS is not writable data segment\n");
-					throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
-				}
-
-				// seg must be present, else #SS(SS selector + ext)
-				if(!ss_descriptor.present) {
-					PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS not present\n");
-					throw CPUException(CPU_SS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
-				}
-
-				// IP must be within CS segment boundaries, else #GP(0)
-				if(gate_dest_offset > cs_descriptor.limit) {
-					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate IP > CS.limit\n");
-					throw CPUException(CPU_GP_EXC, 0);
-				}
-
-				old_SP = REG_SP;
-				old_SS = REG_SS.sel.value;
-				old_IP = REG_IP;
-				old_CS = REG_CS.sel.value;
-
-				// Prepare new stack segment
-				SegReg new_stack;
-				new_stack.sel = ss_selector;
-				new_stack.desc = ss_descriptor;
-				new_stack.sel.rpl = cs_descriptor.dpl;
-				// add cpl to the selector value
-				new_stack.sel.value =
-					(new_stack.sel.value & SELECTOR_RPL_MASK) | new_stack.sel.rpl;
-
-				uint16_t temp_SP = SP_for_cpl_x;
-
-				// int/trap gate
-				// push long pointer to old stack onto new stack
-				uint8_t exc = CPU_SS_EXC;
-				uint16_t errcode =
-					new_stack.sel.rpl != CPL ? (new_stack.sel.value & SELECTOR_RPL_MASK) : 0;
-				write_word(new_stack, temp_SP-2,  old_SS, exc, errcode);
-				write_word(new_stack, temp_SP-4,  old_SP, exc, errcode);
-				write_word(new_stack, temp_SP-6,  GET_FLAGS(), exc, errcode);
-				write_word(new_stack, temp_SP-8,  old_CS, exc, errcode);
-				write_word(new_stack, temp_SP-10, old_IP, exc, errcode);
-				temp_SP -= 10;
-
-				if(push_error) {
-					temp_SP -= 2;
-					write_word(new_stack, temp_SP, error_code, exc, errcode);
-				}
-
-				// load new CS:IP values from gate
-				// set CPL to new code segment DPL
-				// set RPL of CS to CPL
-				SET_CS(cs_selector, cs_descriptor, cs_descriptor.dpl);
-				//IP is set below...
-
-				// load new SS:SP values from TSS
-				SET_SS(ss_selector, ss_descriptor, cs_descriptor.dpl);
-				REG_SP = temp_SP;
+				interrupt_inner_privilege(gate_descriptor,
+						cs_selector, cs_descriptor,
+						push_error, error_code);
 			}
 			else
 			{
 				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): INTERRUPT TO SAME PRIVILEGE\n");
-
-				// IP must be in CS limit else #GP(0)
-				if(gate_dest_offset > cs_descriptor.limit) {
-					PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): IP > CS descriptor limit\n");
-					throw CPUException(CPU_GP_EXC, 0);
-				}
-
-				// push flags onto stack
-				// push current CS selector onto stack
-				// push return IP onto stack
-				stack_push_word(GET_FLAGS());
-				stack_push_word(REG_CS.sel.value);
-				stack_push_word(REG_IP);
-				if(push_error) {
-					stack_push_word(error_code);
-				}
-
-				// load CS:IP from gate
-				// load CS descriptor
-				// set the RPL field of CS to CPL
-				SET_CS(cs_selector, cs_descriptor, CPL);
+				interrupt_same_privilege(gate_descriptor,
+						cs_selector, cs_descriptor,
+						push_error, error_code);
 			}
 
-			SET_IP(gate_dest_offset);
+			SET_EIP(gate_descriptor.offset);
 
 			/* The difference between a trap and an interrupt gate is whether
 			 * the interrupt enable flag is to be cleared or not. An interrupt
@@ -348,20 +437,24 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			 * (i.e., with the interrupt enable flag cleared); entry via a trap
 			 * gate leaves the interrupt enable status unchanged.
 			 */
-			if(gate_descriptor.type == DESC_TYPE_286_INTR_GATE) {
-				SET_FLAG(IF,false);
+			if(gate_descriptor.type == DESC_TYPE_286_INTR_GATE ||
+			   gate_descriptor.type == DESC_TYPE_386_INTR_GATE)
+			{
+				SET_FLAG(IF, false);
 			}
 
 			/* The NT flag is always cleared (after the old NT state is saved on
 			 * the stack) when an interrupt uses these gates.
 			 */
-			SET_FLAG(NT,false);
-			SET_FLAG(TF,false);
+			SET_FLAG(NT, false);
+			SET_FLAG(TF, false);
+			SET_FLAG(VM, false);
+			SET_FLAG(RF, false);
 
 			g_cpubus.invalidate_pq();
 
 			break;
-
+		}
 		default:
 			PERRF_ABORT(LOG_CPU,"bad descriptor type in interrupt()!\n");
 			break;
