@@ -333,7 +333,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	// Step 9: Set TS flag
 
-	SET_CR0(TS, true);
+	SET_CR0BIT(TS, true);
 
 	// Task switch clears LE/L3/L2/L1/L0 in DR7
 	// TODO

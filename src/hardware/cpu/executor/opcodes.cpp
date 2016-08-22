@@ -17,6 +17,15 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+void CPUExecutor::check_CPL_privilege(bool _mode_cond, const char *_opstr)
+{
+	if(_mode_cond && CPL != 0) {
+		PDEBUGF(LOG_V2, LOG_CPU, "%s: privilege check failed\n", _opstr);
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+}
+
+
 /*******************************************************************************
  * AAA-ASCII Adjust AL After Addition
  */
@@ -459,8 +468,8 @@ void CPUExecutor::CLD()
 
 void CPUExecutor::CLI()
 {
-	if(IS_PMODE() && (FLAG_IOPL < CPL)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CLI: IOPL < CPL in protected mode\n");
+	if(!IS_RMODE() && (FLAG_IOPL < CPL)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "CLI: IOPL < CPL\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
@@ -469,13 +478,8 @@ void CPUExecutor::CLI()
 
 void CPUExecutor::CLTS()
 {
-	// CPL is always 0 in real mode
-	if(IS_PMODE() && CPL != 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CLTS: priveledge check failed\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-
-	SET_CR0(TS, false);
+	check_CPL_privilege(!IS_RMODE(), "CLTS");
+	SET_CR0BIT(TS, false);
 }
 
 
@@ -865,12 +869,7 @@ void CPUExecutor::FPU_ESC()
 
 void CPUExecutor::HLT()
 {
-	// CPL is always 0 in real mode
-	if(IS_PMODE() && CPL != 0) { //pmode
-		PDEBUGF(LOG_V2,LOG_CPU,
-			"HLT: pmode priveledge check failed, CPL=%d\n", CPL);
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	check_CPL_privilege(!IS_RMODE(), "HLT");
 
 	if(!FLAG_IF) {
 		PWARNF(LOG_CPU, "HLT instruction with IF=0!");
@@ -1776,11 +1775,7 @@ void CPUExecutor::LEAVE_o32()
 
 void CPUExecutor::LDT_m(uint32_t &base_, uint16_t &limit_)
 {
-	// CPL is always 0 is real mode
-	if(IS_PMODE() && CPL != 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LDT_m: CPL != 0 causes #GP\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	check_CPL_privilege(IS_PMODE(), "LDT_m");
 
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint16_t off = (this->*EA_get_offset)();
@@ -1973,19 +1968,13 @@ void CPUExecutor::LMSW_ew()
 {
 	uint16_t msw;
 
-	// CPL is always 0 in real mode
-	if(IS_PMODE() && CPL != 0) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LMSW: CPL!=0\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	check_CPL_privilege(IS_PMODE(), "LMSW");
 
 	msw = load_ew();
 
 	// LMSW cannot clear PE
 	if(CR0_PE) {
 		msw |= CR0MASK_PE; // adjust PE to current value of 1
-	} else if(msw & CR0MASK_PE) {
-		PDEBUGF(LOG_V2, LOG_CPU, "now in Protected Mode\n");
 	}
 
 	SET_MSW(msw);
@@ -2007,12 +1996,9 @@ void CPUExecutor::LOADALL_286()
 	uint16_t desc_cache[3];
 	uint32_t base,limit;
 
-	if(IS_PMODE() && (CPL != 0)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "LOADALL: CPL != 0 causes #GP\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
+	check_CPL_privilege(IS_PMODE(), "LOADALL 286");
 
-	PDEBUGF(LOG_V2, LOG_CPU, "LOADALL\n");
+	PDEBUGF(LOG_V2, LOG_CPU, "LOADALL 286\n");
 
 	word_reg = g_cpubus.mem_read<2>(0x806);
 	if(CR0_PE) {
@@ -2447,6 +2433,59 @@ void CPUExecutor::MOVSD_a32()
 		REG_ESI += 4;
 		REG_EDI += 4;
 	}
+}
+
+
+/*******************************************************************************
+ * MOV-Move to/from special registers
+ */
+
+void CPUExecutor::MOV_CR0_rd()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_CR0_rd");
+	SET_CR0(load_rd());
+}
+
+void CPUExecutor::MOV_CR2_rd()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_CR2_rd");
+	SET_CR2(load_rd());
+}
+
+void CPUExecutor::MOV_CR3_rd()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_CR3_rd");
+	SET_CR3(load_rd());
+}
+
+void CPUExecutor::MOV_rd_CR()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_rd_CR");
+	store_rd(GET_CR(m_instr->modrm.r));
+}
+
+void CPUExecutor::MOV_DR_rd()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_DR_rd");
+	REG_DBG(m_instr->modrm.r) = load_rd();
+}
+
+void CPUExecutor::MOV_rd_DR()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_rd_DR");
+	store_rd(REG_DBG(m_instr->modrm.r));
+}
+
+void CPUExecutor::MOV_TR_rd()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_TR_rd");
+	REG_TEST(m_instr->modrm.r) = load_rd();
+}
+
+void CPUExecutor::MOV_rd_TR()
+{
+	check_CPL_privilege(!IS_RMODE(), "MOV_rd_TR");
+	store_rd(REG_TEST(m_instr->modrm.r));
 }
 
 

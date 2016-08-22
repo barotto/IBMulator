@@ -80,25 +80,14 @@ void CPUCore::restore_state(StateBuf &_state)
 	_state.read(this,h);
 }
 
-void CPUCore::init_v8086_mode()
-{
-	for(unsigned sreg = REGI_ES; sreg <= REGI_GS; sreg++) {
-		m_segregs[sreg].desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
-		m_segregs[sreg].desc.dpl = 3;
-		m_segregs[sreg].desc.base = m_segregs[sreg].sel.value << 4;
-		m_segregs[sreg].desc.limit = 0xFFFF;
-		m_segregs[sreg].desc.granularity  = false;
-		m_segregs[sreg].desc.big  = false;
-		m_segregs[sreg].sel.rpl = 3;
-	}
-	handle_mode_change();
-}
-
 void CPUCore::handle_mode_change()
 {
 	if(m_cr[0] & CR0MASK_PE) {
 		if(m_eflags & FMASK_VM) {
 			CPL = 3;
+			PDEBUGF(LOG_V2, LOG_CPU, "now in V8086 mode\n");
+		} else {
+			PDEBUGF(LOG_V2, LOG_CPU, "now in Protected mode\n");
 		}
 	} else {
 		// CS segment in real mode always allows full access
@@ -108,6 +97,7 @@ void CPUCore::handle_mode_change()
 			SEG_READWRITE |
 			SEG_ACCESSED);
 		CPL = 0;
+		PDEBUGF(LOG_V2, LOG_CPU, "now in Real mode\n");
 	}
 }
 
@@ -386,7 +376,7 @@ void CPUCore::set_EFLAGS(uint32_t _val)
 	if((f32 ^ _val) & FMASK_IF) {
 		g_cpu.interrupt_mask_change();
 	}
-	if((f32 ^ _val) & FMASK_VM) {
+	if((m_cr[0]&CR0MASK_PE) && ((f32 ^ _val)&FMASK_VM)) {
 		handle_mode_change();
 	}
 	if(!(f32 & FMASK_RF) && (_val & FMASK_RF)) {
@@ -422,6 +412,36 @@ void CPUCore::set_RF(bool _val)
 	if(_val) {
 		g_cpubus.invalidate_pq();
 	}
+}
+
+void CPUCore::set_CR0(uint32_t _cr0)
+{
+	_cr0 &= CR0MASK_ALL;
+
+	if((_cr0&CR0MASK_PG) && !(_cr0&CR0MASK_PE)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "attempt to set CR0.PG with CR0.PE cleared\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	uint32_t oldcr0 = m_cr[0];
+	m_cr[0] = _cr0;
+	bool PE_changed = (oldcr0 ^ _cr0) & CR0MASK_PE;
+	bool PG_changed = (oldcr0 ^ _cr0) & CR0MASK_PG;
+	if(PE_changed) {
+		handle_mode_change();
+	}
+	if(PE_changed || PG_changed) {
+		// Modification of PG,PE flushes TLB cache according to docs.
+		// TODO
+		//g_cpummu.TLB_flush();
+	}
+}
+
+void CPUCore::set_CR3(uint32_t _cr3)
+{
+	m_cr[3] = _cr3;
+	// TODO
+	//g_cpummu.TLB_flush();
 }
 
 uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const

@@ -23,7 +23,7 @@
 void CPUExecutor::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write)
 {
 	uint32_t error_code = _fault | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
-	REG_CR2 = _linear;
+	SET_CR2(_linear);
 	PDEBUGF(LOG_V2, LOG_CPU, "page fault at %08X:%08X\n", _linear, REG_EIP);
 	throw CPUException(CPU_PF_EXC, error_code);
 }
@@ -159,6 +159,6 @@ void CPUExecutor::TLB_flush()
 
 void CPUExecutor::set_CR3(uint32_t _value)
 {
-	REG_CR3 = _value;
+	SET_CR3(_value);
 	TLB_flush();
 }

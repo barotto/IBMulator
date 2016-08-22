@@ -209,6 +209,8 @@ private:
 			Selector &cs_selector, Descriptor &cs_descriptor,
 			bool _push_error, uint16_t _error_code);
 
+	void check_CPL_privilege(bool _mode_cond, const char *_opstr);
+
 	uint8_t  ADC_b(uint8_t  op1, uint8_t  op2);
 	uint16_t ADC_w(uint16_t op1, uint16_t op2);
 	uint32_t ADC_d(uint32_t op1, uint32_t op2);
@@ -616,6 +618,15 @@ public:
 	void MOV_eb_ib();
 	void MOV_ew_iw();
 	void MOV_ed_id();
+
+	void MOV_CR0_rd();
+	void MOV_CR2_rd();
+	void MOV_CR3_rd();
+	void MOV_rd_CR();
+	void MOV_DR_rd();
+	void MOV_rd_DR();
+	void MOV_TR_rd();
+	void MOV_rd_TR();
 
 	void MOVSB_a16();
 	void MOVSB_a32();

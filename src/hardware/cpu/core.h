@@ -138,8 +138,12 @@ extern CPUCore g_cpucore;
 #define CR0MASK_ALL 0x8000001F
 #define CR0MASK_MSW 0x0000000F
 
-#define GET_CR0(NAME)     g_cpucore.get_CR0(CR0MASK_ ## NAME)
-#define SET_CR0(NAME,VAL) g_cpucore.set_CR0(CR0BIT_ ## NAME, VAL)
+#define GET_CR(REGI)         g_cpucore.ctl_reg(REGI)
+#define GET_CR0(BIT)         g_cpucore.get_CR0(CR0MASK_ ## BIT)
+#define SET_CR0(VAL)         g_cpucore.set_CR0(VAL)
+#define SET_CR0BIT(BIT,VAL)  g_cpucore.set_CR0(CR0BIT_ ## BIT, VAL)
+#define SET_CR2(VAL)         g_cpucore.set_CR2(VAL)
+#define SET_CR3(VAL)         g_cpucore.set_CR3(VAL)
 
 #define CR0_PE (GET_CR0(PE) >> CR0BIT_PE)
 #define CR0_MP (GET_CR0(MP) >> CR0BIT_MP)
@@ -158,6 +162,7 @@ extern CPUCore g_cpucore;
 
 #define IS_PMODE()  g_cpucore.is_pmode()
 #define IS_V8086()  g_cpucore.is_v8086()
+#define IS_RMODE()  g_cpucore.is_rmode()
 #define IS_PAGING() g_cpucore.is_paging()
 
 
@@ -265,6 +270,10 @@ enum SegRegIndex {
 #define CPL g_cpucore.get_CPL()
 #define IS_USER_PL (CPL == 3)
 
+#define REG_DBG(NUM) g_cpucore.dbg_reg(NUM)
+#define REG_TEST(NUM) g_cpucore.test_reg(NUM)
+
+
 union GenReg
 {
 	uint32_t dword[1];
@@ -300,6 +309,8 @@ protected:
 	uint32_t m_eflags;
 	uint32_t m_eip, m_prev_eip;
 	uint32_t m_cr[4];
+	uint32_t m_dr[8];
+	uint32_t m_tr[8];
 
 
 	inline void load_segment_register(SegReg & _segreg, uint16_t _value)
@@ -329,7 +340,9 @@ public:
 
 	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
 	inline SegReg & seg_reg(uint8_t idx) { assert(idx<10); return m_segregs[idx]; }
-	inline uint32_t & ctl_reg(uint8_t idx) { assert(idx<3); return m_cr[idx]; }
+	inline uint32_t ctl_reg(uint8_t idx) { assert(idx<4); return m_cr[idx]; }
+	inline uint32_t & dbg_reg(uint8_t idx) { assert(idx<8); return m_dr[idx]; }
+	inline uint32_t & test_reg(uint8_t idx) { assert(idx<8); return m_tr[idx]; }
 
 	//only real mode:
 	inline void set_CS(uint16_t _val) {
@@ -393,21 +406,20 @@ public:
 	       void set_VM(bool _val);
 	       void set_RF(bool _val);
 
+	       void set_CR0(uint32_t _cr0);
 	inline void set_CR0(uint8_t _flagnum, bool _val) {
-		m_cr[0] = (m_cr[0] &~ (1<<_flagnum)) | ((_val)<<_flagnum);
-	}
-	inline void set_CR0(uint32_t _cr0) {
-		m_cr[0] = _cr0 & CR0MASK_ALL;
+		set_CR0((m_cr[0] &~ (1<<_flagnum)) | ((_val)<<_flagnum));
 	}
 	inline uint32_t get_CR0(uint32_t _cr0) const {
 		return (m_cr[0] & _cr0);
 	}
+	inline void set_CR2(uint32_t _cr2) { m_cr[2] = _cr2; }
+	       void set_CR3(uint32_t _cr3);
 
+	inline bool is_rmode() const { return !(m_cr[0] & CR0MASK_PE); }
 	inline bool is_pmode() const { return (m_cr[0] & CR0MASK_PE) && !(m_eflags & FMASK_VM); }
 	inline bool is_v8086() const { return (m_eflags & FMASK_VM); }
 	inline bool is_paging() const { return (m_cr[0] & CR0MASK_PG); }
-
-	void init_v8086_mode();
 
 	/*
 	 * From the 80286 to the Pentium, all Intel processors derive their current
