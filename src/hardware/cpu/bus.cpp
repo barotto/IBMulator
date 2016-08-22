@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "bus.h"
+#include "mmu.h"
 #include "../cpu.h"
 #include "program.h"
 #include <cstring>
@@ -116,17 +117,25 @@ void CPUBus::pq_fill(uint btoread)
 	m_s.pq_valid = true;
 }
 
+void CPUBus::reset_pq()
+{
+	m_s.eip = REG_EIP;
+	if(IS_PAGING()) {
+		m_s.cseip = g_cpummu.TLB_lookup(REG_CS.desc.base + REG_EIP, 1, IS_USER_PL, false);
+		//MMU writes to memory
+		update(0);
+	} else {
+		m_s.cseip = REG_CS.desc.base + REG_EIP;
+	}
+	m_s.pq_head = m_s.cseip;
+	m_s.pq_headpos = 0;
+	m_s.pq_tail = m_s.cseip;
+	m_cycles_ahead = 0;
+}
+
 void CPUBus::update(int _cycles)
 {
-	if(!m_s.pq_valid) {
-		m_s.eip = REG_EIP;
-		//TODO use MMU
-		m_s.cseip = GET_LINADDR(CS, REG_EIP);
-		m_s.pq_head = m_s.cseip;
-		m_s.pq_headpos = 0;
-		m_s.pq_tail = m_s.cseip;
-		m_cycles_ahead = 0;
-	} else {
+	if(m_s.pq_valid) {
 		_cycles -= m_cycles_ahead;
 	}
 	if(_cycles>0) {

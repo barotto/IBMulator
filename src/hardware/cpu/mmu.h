@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_CPU_MMU_H
 #define IBMULATOR_CPU_MMU_H
 
+class Memory;
 class CPUMMU;
 extern CPUMMU g_cpummu;
 
@@ -45,6 +46,7 @@ public:
 	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 	void TLB_check(uint32_t _linear, bool _user, bool _write);
 	void TLB_flush();
+	uint32_t translate_linear(uint32_t _linear_addr, Memory *_memory) const;
 
 private:
 

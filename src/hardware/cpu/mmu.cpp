@@ -169,3 +169,17 @@ void CPUMMU::TLB_flush()
 		m_TLB[n].lpf = -1;
 	}
 }
+
+uint32_t CPUMMU::translate_linear(uint32_t _linear_addr, Memory *_memory) const
+{
+	uint32_t ppf = PDBR;
+	for(int table = 1; table>=0; --table) {
+		uint32_t entry_addr = ppf + ((_linear_addr >> (10 + 10*table)) & 0xffc);
+		uint32_t entry = _memory->read_notraps<4>(entry_addr);
+		if(!(entry & 0x1)) {
+			throw CPUException(CPU_PF_EXC, PF_NOT_PRESENT);
+		}
+		ppf = entry & 0xfffff000;
+	}
+	return ppf | (_linear_addr & 0xfff);
+}

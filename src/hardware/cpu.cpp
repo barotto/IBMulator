@@ -166,31 +166,41 @@ uint CPU::step()
 				// return a non zero number of elapsed cycles anyway
 				return 1;
 			}
-			//an interrupt could have invalidated the pq, we must update
+			// serialize any pending write
 			g_cpubus.update(0);
 		}
-		//if the prev instr is the same as the next don't decode
-		if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.is_pq_valid()) {
-			if(!g_cpubus.is_pq_valid()) {
-				/*
-				According to various sources, the decoding time should be
-				proportional to the size of the next instruction (1 cycle per
-				decoded byte). But after some empirical tests, 2 cycles is the
-				best value given the current setup.
-				*/
-				decode_cycles = 2;
-			}
 
-			m_instr = g_cpudecoder.decode();
-
-			if(CPULOG) {
-				do_log = true;
-				core_log = g_cpucore;
-			}
-		}
+		// decode and execute the next instruction
 		try {
+			//if the prev instr is the same as the next don't decode
+			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.is_pq_valid()) {
+				if(!g_cpubus.is_pq_valid()) {
+
+					// page faults can be generated at this point
+					g_cpubus.reset_pq();
+
+					/*
+					According to various sources, the decoding time should be
+					proportional to the size of the next instruction (1 cycle per
+					decoded byte). But after some empirical tests, 2 cycles is the
+					best value given the current setup.
+					*/
+					decode_cycles = 2;
+				}
+
+				// TODO actual decoding can be put in a separate thread
+				m_instr = g_cpudecoder.decode();
+
+				if(CPULOG) {
+					do_log = true;
+					core_log = g_cpucore;
+				}
+			}
+
 			bu_rops = g_cpubus.get_dram_r();
+
 			g_cpuexecutor.execute(m_instr);
+
 			dramtx = g_cpubus.get_dram_tx() - bu_rops; // instruction execution transfers
 			vramtx = g_cpubus.get_vram_tx();
 			eu_cycles = get_execution_cycles(dramtx||vramtx);
@@ -223,18 +233,19 @@ uint CPU::step()
 		eu_cycles = 1;
 	}
 
+	// serialize any pending write
 	if(g_cpubus.is_pq_valid()) {
 		g_cpubus.update(eu_cycles + decode_cycles);
 	} else {
 		g_cpubus.update(0);
 	}
 
+	// determine the total amount of cycles spent
 	bu_cycles = g_cpubus.get_mem_cycles() + m_instr->cycles.bu;
 	if(bu_cycles < 0) {
 		bu_cycles = 0;
 	}
 	bu_cycles += g_cpubus.get_fetch_cycles();
-
 	dramtx = g_cpubus.get_dram_r() - bu_rops;
 	vramtx = g_cpubus.get_vram_r();
 	cycles += eu_cycles + bu_cycles + decode_cycles + io_cycles +
@@ -244,7 +255,7 @@ uint CPU::step()
 		cycles += DRAM_REFRESH_CYCLES;
 	}
 
-	if(CPULOG && (CPULOG_UNFOLD_REPS || do_log)) {
+	if(CPULOG && do_log) {
 		m_logger.add_entry(
 			g_machine.get_virt_time_us(), // time
 			*m_instr,                     // instruction

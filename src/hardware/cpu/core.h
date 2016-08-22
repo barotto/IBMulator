@@ -24,7 +24,7 @@
 #include "descriptor.h"
 #include "statebuf.h"
 
-
+class Memory;
 class CPUCore;
 extern CPUCore g_cpucore;
 
@@ -262,7 +262,7 @@ enum SegRegIndex {
 #define GET_BASE(S)	 g_cpucore.get_seg_base(REGI_ ## S)
 #define GET_LIMIT(S) g_cpucore.get_seg_limit(REGI_ ## S)
 
-#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF) //TODO remove this
+#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF)
 #define GET_LINADDR(SEG,OFF) g_cpucore.get_linaddr(REGI_ ## SEG , OFF)
 
 #define IP_CHAIN_SIZE 10
@@ -436,14 +436,7 @@ public:
 	inline uint32_t get_seg_limit(unsigned _segidx) const { return m_segregs[_segidx].desc.limit; }
 
 	inline uint32_t get_linaddr(unsigned _segidx, uint32_t _offset) const { return get_seg_base(_segidx) + _offset; }
-	inline uint32_t get_phyaddr(unsigned _segidx, uint32_t _offset) const {
-		if(is_paging()) {
-			return translate_linear(get_linaddr(_segidx, _offset));
-		} else {
-			return get_linaddr(_segidx, _offset);
-		}
-	}
-	static uint32_t get_linaddr(SegReg &_segreg, uint32_t _offset) { return _segreg.desc.base + _offset; }
+	       uint32_t get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory=nullptr) const;
 
 	// convenience funcs used by CPUDebugger
 	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }

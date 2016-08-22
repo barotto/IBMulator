@@ -135,6 +135,7 @@ public:
 	inline void invalidate_pq() {
 		m_s.pq_valid = false;
 	}
+	void reset_pq();
 
 	template<unsigned LEN>
 	uint32_t mem_read(uint32_t _addr, unsigned _trap_len = LEN)

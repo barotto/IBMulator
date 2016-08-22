@@ -346,8 +346,8 @@ void Machine::core_step(int32_t _cpu_cycles)
 		}
 
 		if(m_breakpoint>0) {
-			uint32_t current_phy = GET_PHYADDR(CS, REG_IP);
-			if(m_breakpoint == current_phy) {
+			uint32_t current_addr = GET_LINADDR(CS, REG_EIP);
+			if(m_breakpoint == current_addr) {
 				pause();
 				m_breakpoint_clbk();
 				m_breakpoint = 0;

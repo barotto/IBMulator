@@ -443,23 +443,16 @@ void CPUCore::set_CR3(uint32_t _cr3)
 	g_cpummu.TLB_flush();
 }
 
-uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const
+uint32_t CPUCore::get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory) const
 {
-	//TODO this function is a placeholder.
-	//need to decide where page traslation and TLB belong.
-
-	uint32_t ppf = PDBR;
-	for(int table = 1; table>=0; --table) {
-		uint32_t entry_addr = ppf + ((_linear_addr >> (10 + 10*table)) & 0xffc);
-		uint32_t entry = g_memory.read_notraps<4>(entry_addr);
-		if(!(entry & 0x1)) {
-			//not present
-			//TODO launch an exception
-			return 0;
-		}
-		ppf = entry & 0xfffff000;
+	if(_memory == nullptr) {
+		_memory = &g_memory;
 	}
-	return ppf | (_linear_addr & 0xfff);
+	if(is_paging()) {
+		return g_cpummu.translate_linear(get_linaddr(_segidx, _offset), _memory);
+	} else {
+		return get_linaddr(_segidx, _offset);
+	}
 }
 
 const char *SegReg::to_string()

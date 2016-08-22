@@ -156,21 +156,45 @@ void SysDebugger386::update()
 	const uint len = 12;
 	uint8_t buf[len];
 
-	read_memory(GET_PHYADDR(CS, REG_EIP), buf, len);
-	m_memory.cs_eip->SetInnerRML(format_words(buf, len));
-	m_memory.cs_eip_str->SetInnerRML(format_words_string(buf, len));
+	try {
+		read_memory(GET_PHYADDR(CS, REG_EIP), buf, len);
+		m_memory.cs_eip->SetInnerRML(format_words(buf, len));
+		m_memory.cs_eip_str->SetInnerRML(format_words_string(buf, len));
+	} catch(...) {
+		// catch any #PF
+		m_memory.cs_eip->SetInnerRML("#PF");
+		m_memory.cs_eip_str->SetInnerRML("#PF");
+	}
 
-	read_memory(GET_PHYADDR(DS, REG_ESI), buf, len);
-	m_memory.ds_esi->SetInnerRML(format_words(buf, len));
-	m_memory.ds_esi_str->SetInnerRML(format_words_string(buf, len));
+	try {
+		read_memory(GET_PHYADDR(DS, REG_ESI), buf, len);
+		m_memory.ds_esi->SetInnerRML(format_words(buf, len));
+		m_memory.ds_esi_str->SetInnerRML(format_words_string(buf, len));
+	} catch(...) {
+		// catch any #PF
+		m_memory.ds_esi->SetInnerRML("#PF");
+		m_memory.ds_esi_str->SetInnerRML("#PF");
+	}
 
-	read_memory(GET_PHYADDR(ES, REG_EDI), buf, len);
-	m_memory.es_edi->SetInnerRML(format_words(buf, len));
-	m_memory.es_edi_str->SetInnerRML(format_words_string(buf, len));
+	try {
+		read_memory(GET_PHYADDR(ES, REG_EDI), buf, len);
+		m_memory.es_edi->SetInnerRML(format_words(buf, len));
+		m_memory.es_edi_str->SetInnerRML(format_words_string(buf, len));
+	} catch(...) {
+		// catch any #PF
+		m_memory.es_edi->SetInnerRML("#PF");
+		m_memory.es_edi_str->SetInnerRML("#PF");
+	}
 
-	read_memory(GET_PHYADDR(SS, REG_ESP), buf, len);
-	m_memory.ss_esp->SetInnerRML(format_words(buf, len));
-	m_memory.ss_esp_str->SetInnerRML(format_words_string(buf, len));
+	try {
+		read_memory(GET_PHYADDR(SS, REG_ESP), buf, len);
+		m_memory.ss_esp->SetInnerRML(format_words(buf, len));
+		m_memory.ss_esp_str->SetInnerRML(format_words_string(buf, len));
+	} catch(...) {
+		// catch any #PF
+		m_memory.ss_esp->SetInnerRML("#PF");
+		m_memory.ss_esp_str->SetInnerRML("#PF");
+	}
 
 	RC::String str;
 	uint size;

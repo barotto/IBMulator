@@ -140,6 +140,7 @@ void SysDebugger286::update()
 	const uint len = 12;
 	uint8_t buf[len];
 
+	// no #PF in 286 mode
 	read_memory(GET_PHYADDR(CS, REG_IP), buf, len);
 	m_memory.cs_eip->SetInnerRML(format_words(buf, len));
 	m_memory.cs_eip_str->SetInnerRML(format_words_string(buf, len));
