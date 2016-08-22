@@ -29,16 +29,7 @@ extern CPUExecutor g_cpuexecutor;
 #include <stack>
 
 
-#define TLB_SIZE 1024 // number of entries in the TLB
 
-#define LPF_OF(laddr)      ((laddr) & 0xFFFFF000)
-#define PAGE_OFFSET(laddr) (uint32_t(laddr) & 0xFFF)
-
-enum PageProtection {
-	PAGE_SUPER, PAGE_READ, PAGE_WRITE
-};
-#define PAGE_ACCESSED 0x20
-#define PAGE_DIRTY    0x40
 
 enum {
 	CPU_TASK_FROM_CALL = 0,
@@ -73,24 +64,6 @@ private:
 	std::map<uint32_t, std::vector<std::function<bool()>>> m_inttraps_ret;
 	std::stack<std::pair<uint32_t,std::string>> m_dos_prg;
 	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
-
-	typedef struct {
-	  uint32_t lpf;   // linear page frame
-	  uint32_t ppf;   // physical page frame
-	  unsigned protection;
-	} TLBEntry;
-
-	TLBEntry m_TLB[TLB_SIZE];
-
-	inline unsigned TLB_index(uint32_t _lpf, unsigned _len) const {
-		return (((_lpf + _len) & ((TLB_SIZE-1) << 12)) >> 12);
-	}
-	void TLB_check(uint32_t _linear, bool _user, bool _write);
-	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
-	void TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write);
-	void TLB_flush();
-	void page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write);
-	void set_CR3(uint32_t _value);
 
 	struct {
 		uint32_t phy1;
@@ -136,7 +109,6 @@ private:
 	void seg_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
 	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
-	void page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write);
 	void io_check(uint16_t _port, unsigned _len);
 
 	void mem_access(uint32_t _linear, unsigned _len, bool _user, bool _write);

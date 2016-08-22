@@ -13,6 +13,7 @@ libhardware_a_SOURCES = \
 	cpu/logger.cpp \
 	cpu/disasm.cpp \
 	cpu/debugger.cpp \
+	cpu/mmu.cpp \
 	memory.cpp \
 	iodevice.cpp \
 	devices.cpp \
@@ -54,6 +55,7 @@ noinst_HEADERS = \
 	cpu/logger.h \
 	cpu/disasm.h \
 	cpu/debugger.h \
+	cpu/mmu.h \
 	memory.h \
 	iodevice.h \
 	devices.h \

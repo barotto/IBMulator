@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "core.h"
+#include "mmu.h"
 #include "hardware/cpu.h"
 #include "hardware/memory.h"
 #include <cstring>
@@ -432,16 +433,14 @@ void CPUCore::set_CR0(uint32_t _cr0)
 	}
 	if(PE_changed || PG_changed) {
 		// Modification of PG,PE flushes TLB cache according to docs.
-		// TODO
-		//g_cpummu.TLB_flush();
+		g_cpummu.TLB_flush();
 	}
 }
 
 void CPUCore::set_CR3(uint32_t _cr3)
 {
 	m_cr[3] = _cr3;
-	// TODO
-	//g_cpummu.TLB_flush();
+	g_cpummu.TLB_flush();
 }
 
 uint32_t CPUCore::translate_linear(uint32_t _linear_addr) const

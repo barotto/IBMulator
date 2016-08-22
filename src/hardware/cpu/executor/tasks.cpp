@@ -155,11 +155,11 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	// used in the task switch are paged in.
 	if(IS_PAGING()) {
 		//TODO a comment in Bochs suggests to check for WRITE.
-		TLB_check(nbase32, false, false);
-		TLB_check(nbase32 + new_TSS_max, false, false);
+		g_cpummu.TLB_check(nbase32, false, false);
+		g_cpummu.TLB_check(nbase32 + new_TSS_max, false, false);
 		if(source==CPU_TASK_FROM_CALL || source==CPU_TASK_FROM_INT) {
-			TLB_check(nbase32, false, true);
-			TLB_check(nbase32 + 1, false, true);
+			g_cpummu.TLB_check(nbase32, false, true);
+			g_cpummu.TLB_check(nbase32 + 1, false, true);
 		}
 	}
 
@@ -201,8 +201,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		if(IS_PAGING()) {
 			// check that we won't page fault while writing
 			uint32_t start = obase32 + 14, end = obase32 + 41;
-			TLB_check(start, false, true);
-			TLB_check(end,   false, true);
+			g_cpummu.TLB_check(start, false, true);
+			g_cpummu.TLB_check(end,   false, true);
 		}
 		write_word(obase32 + 14, REG_IP);
 		write_word(obase32 + 16, oldEFLAGS);
@@ -223,8 +223,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		if(IS_PAGING()) {
 			// check that we won't page fault while writing
 			uint32_t start = obase32 + 0x20, end = obase32 + 0x5d;
-			TLB_check(start, false, true);
-			TLB_check(end,   false, true);
+			g_cpummu.TLB_check(start, false, true);
+			g_cpummu.TLB_check(end,   false, true);
 		}
 		write_dword(obase32 + 0x20, REG_EIP);
 		write_dword(obase32 + 0x24, oldEFLAGS);
@@ -392,7 +392,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		// change CR3 only if it actually modified
 		if(newCR3 != REG_CR3) {
 			PDEBUGF(LOG_V2, LOG_CPU, "switch_tasks: changing CR3 to 0x%08X", newCR3);
-			set_CR3(newCR3);
+			SET_CR3(newCR3);
 		}
 	}
 

@@ -17,10 +17,23 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "cpu.h"
+#include "mmu.h"
+#include "bus.h"
+
+CPUMMU g_cpummu;
+
 #define PF_NOT_PRESENT  0x00
 #define PF_PROTECTION   0x01
 
-void CPUExecutor::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write)
+enum PageProtection {
+	PAGE_SUPER, PAGE_READ, PAGE_WRITE
+};
+#define PAGE_ACCESSED 0x20
+#define PAGE_DIRTY    0x40
+
+void CPUMMU::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write)
 {
 	uint32_t error_code = _fault | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
 	SET_CR2(_linear);
@@ -47,7 +60,7 @@ static const unsigned g_page_protection[16] = {
 	PAGE_WRITE
 };
 
-void CPUExecutor::page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write)
+void CPUMMU::page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write)
 {
 	if(_user) {
 		if(_protection == PAGE_SUPER) {
@@ -59,7 +72,7 @@ void CPUExecutor::page_check(unsigned _protection, uint32_t _linear, bool _user,
 	}
 }
 
-void CPUExecutor::TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write)
+void CPUMMU::TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write)
 {
 	uint32_t ppf = PDBR;
 	unsigned prot = 0;
@@ -132,7 +145,7 @@ void CPUExecutor::TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool
 	}
 }
 
-uint32_t CPUExecutor::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write)
+uint32_t CPUMMU::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write)
 {
 	TLBEntry *tlbent = &m_TLB[TLB_index(_linear, _len-1)];
 	if(tlbent->lpf != LPF_OF(_linear)) {
@@ -144,21 +157,15 @@ uint32_t CPUExecutor::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bo
 	return phy;
 }
 
-void CPUExecutor::TLB_check(uint32_t _linear, bool _user, bool _write)
+void CPUMMU::TLB_check(uint32_t _linear, bool _user, bool _write)
 {
+	// do a byte lookup discarding the result
 	TLB_lookup(_linear, 1, _user, _write);
 }
 
-void CPUExecutor::TLB_flush()
+void CPUMMU::TLB_flush()
 {
 	for(unsigned n=0; n<TLB_SIZE; n++) {
 		m_TLB[n].lpf = -1;
 	}
-	g_cpubus.invalidate_pq();
-}
-
-void CPUExecutor::set_CR3(uint32_t _value)
-{
-	SET_CR3(_value);
-	TLB_flush();
 }

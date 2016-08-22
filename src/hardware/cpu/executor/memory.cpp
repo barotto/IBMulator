@@ -21,15 +21,15 @@ void CPUExecutor::mem_access(uint32_t _linear, unsigned _len, bool _user, bool _
 {
 	if(IS_PAGING()) {
 		if((PAGE_OFFSET(_linear) + _len) <= 4096) {
-			m_cached_phy.phy1 = TLB_lookup(_linear, _len, _user, _write);
+			m_cached_phy.phy1 = g_cpummu.TLB_lookup(_linear, _len, _user, _write);
 			m_cached_phy.len1 = _len;
 			m_cached_phy.pages = 1;
 		} else {
 			uint32_t page_offset = PAGE_OFFSET(_linear);
 			m_cached_phy.len1 = 4096 - page_offset;
 			m_cached_phy.len2 = _len - m_cached_phy.len1;
-			m_cached_phy.phy1 = TLB_lookup(_linear, m_cached_phy.len1, _user, _write);
-			m_cached_phy.phy2 = TLB_lookup(_linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
+			m_cached_phy.phy1 = g_cpummu.TLB_lookup(_linear, m_cached_phy.len1, _user, _write);
+			m_cached_phy.phy2 = g_cpummu.TLB_lookup(_linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
 			m_cached_phy.pages = 2;
 		}
 	} else {
@@ -164,7 +164,7 @@ void CPUExecutor::write_byte(uint8_t _data)
 
 void CPUExecutor::write_word(uint16_t _data)
 {
-	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+	if(m_cached_phy.pages == 1) {
 		g_cpubus.mem_write<2>(m_cached_phy.phy1, _data);
 	} else {
 		write_xpages(_data);
@@ -173,7 +173,7 @@ void CPUExecutor::write_word(uint16_t _data)
 
 void CPUExecutor::write_dword(uint32_t _data)
 {
-	if(!IS_PAGING() || m_cached_phy.pages == 1) {
+	if(m_cached_phy.pages == 1) {
 		g_cpubus.mem_write<4>(m_cached_phy.phy1, _data);
 	} else {
 		write_xpages(_data);

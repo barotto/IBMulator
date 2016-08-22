@@ -23,6 +23,7 @@
 #include "core.h"
 #include "executor.h"
 #include "bus.h"
+#include "mmu.h"
 #include "hardware/devices.h"
 #include "debugger.h"
 #include <cstring>
@@ -59,7 +60,6 @@ inline uint popcnt(uint _value)
 #include "executor/interrupts.cpp"
 #include "executor/memory.cpp"
 #include "executor/modrm.cpp"
-#include "executor/paging.cpp"
 #include "executor/stack.cpp"
 #include "executor/tasks.cpp"
 #include "executor/opcodes.cpp"
