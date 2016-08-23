@@ -499,6 +499,74 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	m_s.EXT = 0;
 }
 
+enum CPUInterruptClasses {
+	CPU_BENIGN_EXC, CPU_CONTRIBUTORY_EXC, CPU_PAGE_FAULTS, CPU_UNK_EXC_CLASS
+};
+
+static const unsigned df_detection_classes[CPU_MAX_INT] = {
+	CPU_CONTRIBUTORY_EXC, // #0  CPU_DIV_ER_EXC
+	CPU_BENIGN_EXC,       // #1  CPU_SINGLE_STEP_INT
+	CPU_BENIGN_EXC,       // #2  CPU_NMI_INT
+	CPU_BENIGN_EXC,       // #3  CPU_BREAKPOINT_INT
+	CPU_BENIGN_EXC,       // #4  CPU_INTO_EXC
+	CPU_BENIGN_EXC,       // #5  CPU_BOUND_EXC
+	CPU_BENIGN_EXC,       // #6  CPU_UD_EXC
+	CPU_BENIGN_EXC,       // #7  CPU_NM_EXC
+	CPU_UNK_EXC_CLASS,    // #8  CPU_DF_EXC
+	CPU_CONTRIBUTORY_EXC, // #9  CPU_MP_EXC
+	CPU_CONTRIBUTORY_EXC, // #10 CPU_TS_EXC
+	CPU_CONTRIBUTORY_EXC, // #11 CPU_NP_EXC
+	CPU_CONTRIBUTORY_EXC, // #12 CPU_SS_EXC
+	CPU_CONTRIBUTORY_EXC, // #13 CPU_GP_EXC
+	CPU_PAGE_FAULTS,      // #14 CPU_PF_EXC
+	CPU_UNK_EXC_CLASS,    // #15 undefined
+	CPU_BENIGN_EXC        // #16 CPU_MF_EXC
+};
+
+static const bool df_definition[3][3] = {
+	//          second exc
+	// BENIGN  CONTRIBUTORY  PAGE_FAULTS
+	 { false,  false,        false      },  // BENIGN
+	 { false,  true,         false      },  // CONTRIBUTORY  first exc
+	 { false,  true,         true       }   // PAGE_FAULTS
+};
+
+bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
+{
+	switch(m_type) {
+		case CPU_286: {
+			/* If two separate faults occur during a single instruction, and if the
+			 * first fault is any of #0, #10, #11, #12, and #13, exception 8
+			 * (Double Fault) occurs (e.g., a general protection fault in level 3 is
+			 * followed by a not-present fault due to a segment not-present). If
+			 * another protection violation occurs during the processing of
+			 * exception 8, the 80286 enters shutdown, during which time no further
+			 * instructions or exceptions are processed.
+			 */
+			return (_first_vec==CPU_DIV_ER_EXC //#0
+				 || _first_vec==CPU_TS_EXC     //#10
+				 || _first_vec==CPU_NP_EXC     //#11
+				 || _first_vec==CPU_SS_EXC     //#12
+				 || _first_vec==CPU_GP_EXC     //#13
+			);
+		}
+		case CPU_386: {
+			/* To determine when two faults are to be signalled as a double
+			 * fault, the 80386 divides the exceptions into three classes:
+			 * benign exceptions, contributory exceptions, and page faults.
+			 */
+			assert(_first_vec != 8 && _first_vec != 15 && _first_vec < 17);
+			assert(_current_vec != 8 && _current_vec != 15 && _current_vec < 17);
+			unsigned fclass = df_detection_classes[_first_vec];
+			unsigned sclass = df_detection_classes[_current_vec];
+			return df_definition[fclass][sclass];
+		}
+		default:
+			PERRF_ABORT(LOG_CPU, "is_double_fault(): unsupported CPU type\n");
+			return false;
+	}
+}
+
 void CPU::exception(CPUException _exc)
 {
 	PDEBUGF(LOG_V2, LOG_CPU, "exception(0x%02x): error_code=%04x\n",
@@ -558,6 +626,10 @@ void CPU::exception(CPUException _exc)
 			RESTORE_IP();
 			push_error = true;
 			break;
+		case CPU_PF_EXC: //14
+			push_error = true;
+			error_code = _exc.error_code;
+			break;
 		case CPU_MF_EXC: //16
 		/*case CPU_NPX_ERR_INT:*/
 			RESTORE_IP();
@@ -571,28 +643,22 @@ void CPU::exception(CPUException _exc)
 	try {
 		interrupt(_exc.vector, CPU_HARDWARE_EXCEPTION, push_error, error_code);
 	} catch(CPUException &e) {
-		/* If two separate faults occur during a single instruction, and if the
-		 * first fault is any of #0, #10, #11, #12, and #13, exception 8
-		 * (Double Fault) occurs (e.g., a general protection fault in level 3 is
-		 * followed by a not-present fault due to a segment not-present). If
-		 * another protection violation occurs during the processing of
-		 * exception 8, the 80286 enters shutdown, during which time no further
+		/* If another protection violation occurs during the processing of
+		 * exception 8, the CPU enters shutdown, during which time no further
 		 * instructions or exceptions are processed.
 		 */
 		if(_exc.vector == CPU_DF_EXC) {
-			PDEBUGF(LOG_V1,LOG_CPU,"exception(): 3rd (%d) exception with no resolution\n", e.vector);
+			PDEBUGF(LOG_V1,LOG_CPU,"exception(): 3rd (#%d) exception with no resolution\n", e.vector);
 			enter_sleep_state(CPU_STATE_SHUTDOWN);
 			return;
 		}
-		if(_exc.vector==CPU_DIV_ER_EXC //#0
-			|| _exc.vector==CPU_TS_EXC //#10
-			|| _exc.vector==CPU_NP_EXC //#11
-			|| _exc.vector==CPU_SS_EXC //#12
-			|| _exc.vector==CPU_GP_EXC) //#13
-		{
+
+		if(is_double_fault(_exc.vector, e.vector)) {
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): exc #%d while resolving exc #%d, generating #DF\n",
+					e.vector, _exc.vector);
 			exception(CPUException(CPU_DF_EXC,0));
 		} else {
-			PDEBUGF(LOG_V2,LOG_CPU,"exception(): #GP while resolving exc %d\n", _exc.vector);
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): exc #%d while resolving exc #%d\n", e.vector, _exc.vector);
 			exception(e);
 		}
 	} catch(CPUShutdown &s) {

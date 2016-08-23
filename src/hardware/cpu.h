@@ -134,7 +134,7 @@ protected:
 	bool is_unmasked_event_pending(uint32_t _event);
 	uint32_t unmasked_events_pending();
 	void default_shutdown_trap() {}
-
+	bool is_double_fault(uint8_t _first_vec, uint8_t _current_vec);
 	bool interrupts_inhibited(unsigned mask);
 	bool v86_redirect_interrupt(uint8_t _vector);
 
