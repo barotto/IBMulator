@@ -408,7 +408,8 @@ public:
 	void DEC_rw_op();
 	void DEC_rd_op();
 
-	void ENTER();
+	void ENTER_o16();
+	void ENTER_o32();
 
 	void FPU_ESC();
 

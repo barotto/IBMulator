@@ -1509,7 +1509,7 @@ case 0xC8:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::ENTER;
+	m_instr.fn = &CPUExecutor::ENTER_o16;
 	break;
 }
 

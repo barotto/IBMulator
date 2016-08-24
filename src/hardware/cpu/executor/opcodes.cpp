@@ -816,37 +816,90 @@ void CPUExecutor::DIV_ed()
  * ENTER-Make Stack Frame for Procedure Parameters
  */
 
-void CPUExecutor::ENTER()
+void CPUExecutor::ENTER_o16()
 {
-	uint8_t level = m_instr->ib & 0x1F;
+	uint8_t nesting_level = m_instr->ib & 0x1F;
+	uint16_t   alloc_size = m_instr->iw1;
 
 	stack_push_word(REG_BP);
+	uint16_t frame_ptr = REG_SP;
 
-	uint16_t frame_ptr16 = REG_SP;
-	uint16_t bp = REG_BP;
-
-	if (level > 0) {
-		/* do level-1 times */
-		while(--level) {
-			bp -= 2;
-			uint16_t temp16 = read_word(REG_SS, bp);
-			stack_push_word(temp16);
+	if(REG_SS.desc.big) {
+		uint32_t ebp = REG_EBP;
+		if(nesting_level > 0) {
+			while(--nesting_level) {
+				ebp -= 2;
+				uint16_t temp16 = read_word(REG_SS, ebp);
+				stack_push_word(temp16);
+			}
+			stack_push_word(frame_ptr);
 		}
 
-		/* push(frame pointer) */
-		stack_push_word(frame_ptr16);
+		REG_ESP = REG_ESP - alloc_size;
+		/* The ENTER instruction causes a page fault whenever a write using the
+		 * final value of the stack pointer (within the current stack segment)
+		 * would do so.
+		 */
+		mem_access(REG_SS.desc.base + REG_ESP, 2, IS_USER_PL, true);
+	} else {
+		uint16_t bp = REG_BP;
+		if(nesting_level > 0) {
+			while(--nesting_level) {
+				bp -= 2;
+				uint16_t temp16 = read_word(REG_SS, bp);
+				stack_push_word(temp16);
+			}
+			stack_push_word(frame_ptr);
+		}
+
+		REG_SP = REG_SP - alloc_size;
+		mem_access(REG_SS.desc.base + REG_SP, 2, IS_USER_PL, true);
 	}
 
-	REG_SP -= m_instr->iw1; // bytes
+	REG_BP = frame_ptr;
+}
 
-	// ENTER finishes with memory write check on the final stack pointer
-	// the memory is touched but no write actually occurs
-	// emulate it by doing RMW read access from SS:SP
-	//read_RMW_virtual_word_32(REG_SS, SP); TODO?
-	//according to the intel docs the only exc is #SS(0) if SP were to go outside
-	//of the stack limit (already checked in stack_push())
+void CPUExecutor::ENTER_o32()
+{
+	uint8_t nesting_level = m_instr->ib & 0x1F;
+	uint16_t   alloc_size = m_instr->iw1;
 
-	REG_BP = frame_ptr16;
+	stack_push_dword(REG_EBP);
+	uint32_t frame_ptr = REG_ESP;
+
+	if(REG_SS.desc.big) {
+		uint32_t ebp = REG_EBP;
+		if(nesting_level > 0) {
+			while(--nesting_level) {
+				ebp -= 2;
+				uint32_t temp32 = read_dword(REG_SS, ebp);
+				stack_push_dword(temp32);
+			}
+			stack_push_dword(frame_ptr);
+		}
+
+		REG_ESP = REG_ESP - alloc_size;
+		/* The ENTER instruction causes a page fault whenever a write using the
+		 * final value of the stack pointer (within the current stack segment)
+		 * would do so.
+		 */
+		mem_access(REG_SS.desc.base + REG_ESP, 4, IS_USER_PL, true);
+	} else {
+		uint16_t bp = REG_BP;
+		if(nesting_level > 0) {
+			while(--nesting_level) {
+				bp -= 4;
+				uint32_t temp32 = read_dword(REG_SS, bp);
+				stack_push_dword(temp32);
+			}
+			stack_push_dword(frame_ptr);
+		}
+
+		REG_SP = REG_SP - alloc_size;
+		mem_access(REG_SS.desc.base + REG_SP, 4, IS_USER_PL, true);
+	}
+
+	REG_EBP = frame_ptr;
 }
 
 
