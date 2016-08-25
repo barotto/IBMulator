@@ -245,9 +245,18 @@ void CPUExecutor::store_ew(uint16_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
 		GEN_REG(m_instr->modrm.rm).word[0] = _value;
-		return;
+	} else {
+		write_word((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
 	}
-	write_word((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
+}
+
+void CPUExecutor::store_ew_rmw(uint16_t _value)
+{
+	if(m_instr->modrm.mod == 3) {
+		GEN_REG(m_instr->modrm.rm).word[0] = _value;
+	} else {
+		write_word(_value);
+	}
 }
 
 void CPUExecutor::store_rw(uint16_t _value)
@@ -264,9 +273,18 @@ void CPUExecutor::store_ed(uint32_t _value)
 {
 	if(m_instr->modrm.mod == 3) {
 		GEN_REG(m_instr->modrm.rm).dword[0] = _value;
-		return;
+	} else {
+		write_dword((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
 	}
-	write_dword((this->*EA_get_segreg)(), (this->*EA_get_offset)(), _value);
+}
+
+void CPUExecutor::store_ed_rmw(uint32_t _value)
+{
+	if(m_instr->modrm.mod == 3) {
+		GEN_REG(m_instr->modrm.rm).dword[0] = _value;
+	} else {
+		write_dword(_value);
+	}
 }
 
 void CPUExecutor::store_rd(uint32_t _value)

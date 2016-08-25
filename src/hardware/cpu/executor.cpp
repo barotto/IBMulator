@@ -148,12 +148,14 @@ void CPUExecutor::execute(Instruction * _instr)
 		if(m_instr->addr32) {
 			EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
 			EA_get_offset = &CPUExecutor::EA_get_offset_32;
+			m_addr_mask = 0xFFFFFFFF;
 			if(m_instr->rep) {
 				exec_fn = &CPUExecutor::rep_32;
 			}
 		} else {
 			EA_get_segreg = &CPUExecutor::EA_get_segreg_16;
 			EA_get_offset = &CPUExecutor::EA_get_offset_16;
+			m_addr_mask = 0xFFFF;
 			if(m_instr->rep) {
 				exec_fn = &CPUExecutor::rep_16;
 			}

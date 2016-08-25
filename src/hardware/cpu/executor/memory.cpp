@@ -113,6 +113,20 @@ uint32_t CPUExecutor::read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector
 	return read_dword();
 }
 
+uint16_t CPUExecutor::read_word_rmw(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
+{
+	seg_check(_seg, _offset, 2, false, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 2, IS_USER_PL, true);
+	return read_word();
+}
+
+uint32_t CPUExecutor::read_dword_rmw(SegReg &_seg, uint32_t _offset, uint8_t _vector, uint16_t _errcode)
+{
+	seg_check(_seg, _offset, 4, false, _vector, _errcode);
+	mem_access(_seg.desc.base + _offset, 4, IS_USER_PL, true);
+	return read_dword();
+}
+
 uint8_t  CPUExecutor::read_byte(uint32_t _linear)
 {
 	mem_access(_linear, 1, false, false);

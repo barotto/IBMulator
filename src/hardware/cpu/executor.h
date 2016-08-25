@@ -57,6 +57,7 @@ private:
 	Instruction * m_instr;
 	uint m_base_ds;
 	uint m_base_ss;
+	uint32_t m_addr_mask;
 
 	inttrap_intervalTree_t m_inttraps_tree;
 	std::vector<inttrap_interval_t> m_inttraps_intervals;
@@ -89,9 +90,11 @@ private:
 	void store_rb(uint8_t _value);
 	void store_rb_op(uint8_t _value);
 	void store_ew(uint16_t _value);
+	void store_ew_rmw(uint16_t _value);
 	void store_rw(uint16_t _value);
 	void store_rw_op(uint16_t _value);
 	void store_ed(uint32_t _value);
+	void store_ed_rmw(uint32_t _value);
 	void store_rd(uint32_t _value);
 	void store_rd_op(uint32_t _value);
 	void store_sr(uint16_t _value);
@@ -121,6 +124,8 @@ private:
 	uint8_t  read_byte(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint16_t read_word(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint32_t read_dword(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint16_t read_word_rmw(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
+	uint32_t read_dword_rmw(SegReg &_seg, uint32_t _offset, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
 	uint8_t  read_byte(uint32_t _linear);
 	uint16_t read_word(uint32_t _linear);
 	uint32_t read_dword(uint32_t _linear);
@@ -194,6 +199,9 @@ private:
 	uint8_t  AND_b(uint8_t  op1, uint8_t  op2);
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 	uint32_t AND_d(uint32_t op1, uint32_t op2);
+
+	uint16_t BT_ew(uint16_t op2, bool _rmw);
+	uint32_t BT_ed(uint32_t op2, bool _rmw);
 
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
@@ -351,6 +359,32 @@ public:
 
 	void BOUND_rw_md();
 	void BOUND_rd_mq();
+
+	void BSF_rw_ew();
+	void BSF_rd_ed();
+
+	void BSR_rw_ew();
+	void BSR_rd_ed();
+
+	void BT_ew_rw();
+	void BT_ed_rd();
+	void BT_ew_ib();
+	void BT_ed_ib();
+
+	void BTC_ew_rw();
+	void BTC_ed_rd();
+	void BTC_ew_ib();
+	void BTC_ed_ib();
+
+	void BTR_ew_rw();
+	void BTR_ed_rd();
+	void BTR_ew_ib();
+	void BTR_ed_ib();
+
+	void BTS_ew_rw();
+	void BTS_ed_rd();
+	void BTS_ew_ib();
+	void BTS_ed_ib();
 
 	void CALL_rel16();
 	void CALL_rel32();

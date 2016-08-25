@@ -375,6 +375,308 @@ void CPUExecutor::BOUND_rd_mq()
 
 
 /*******************************************************************************
+ * BSF-Bit Scan Forward
+ */
+
+void CPUExecutor::BSF_rw_ew()
+{
+	uint16_t op2 = load_ew();
+
+	if(op2 == 0) {
+		SET_FLAG(ZF, true);
+	} else {
+		uint16_t mask = 0x1;
+		uint16_t count = 0;
+		while((op2 & mask) == 0 && mask) {
+			mask <<= 1;
+			count++;
+		}
+
+		store_rw(count);
+		SET_FLAG(ZF, false);
+	}
+}
+
+void CPUExecutor::BSF_rd_ed()
+{
+	uint32_t op2 = load_ed();
+
+	if(op2 == 0) {
+		SET_FLAG(ZF, true);
+	} else {
+		uint32_t mask = 0x1;
+		uint32_t count = 0;
+		while((op2 & mask) == 0 && mask) {
+			mask <<= 1;
+			count++;
+		}
+
+		store_rd(count);
+		SET_FLAG(ZF, false);
+	}
+}
+
+
+/*******************************************************************************
+ * BSR-Bit Scan Reverse
+ */
+
+void CPUExecutor::BSR_rw_ew()
+{
+	uint16_t op2 = load_ew();
+
+	if(op2 == 0) {
+		SET_FLAG(ZF, true);
+	} else {
+		uint16_t op1 = 15;
+		while((op2 & 0x8000) == 0) {
+			op1--;
+			op2 <<= 1;
+		}
+
+		store_rw(op1);
+		SET_FLAG(ZF, false);
+	}
+}
+
+void CPUExecutor::BSR_rd_ed()
+{
+	uint32_t op2 = load_ew();
+
+	if(op2 == 0) {
+		SET_FLAG(ZF, true);
+	} else {
+		uint32_t op1 = 31;
+		while((op2 & 0x80000000) == 0) {
+			op1--;
+			op2 <<= 1;
+		}
+
+		store_rw(op1);
+		SET_FLAG(ZF, false);
+	}
+}
+
+
+/*******************************************************************************
+ * BT-Bit Test
+ */
+
+uint16_t CPUExecutor::BT_ew(uint16_t op2, bool _rmw)
+{
+	uint16_t op1;
+
+	if(m_instr->modrm.mod == 3) {
+		op1 = GEN_REG(m_instr->modrm.rm).word[0];
+	} else {
+		uint32_t disp = ((uint16_t)(op2&0xfff0)) / 16;
+		uint32_t op1_off = (this->*EA_get_offset)() + 2 * disp;
+		if(_rmw) {
+			op1 = read_word_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
+		} else {
+			op1 = read_word((this->*EA_get_segreg)(), op1_off & m_addr_mask);
+		}
+	}
+
+	SET_FLAG(CF, (op1 >> (op2 & 0xf)) & 1);
+
+	return op1;
+}
+
+uint32_t CPUExecutor::BT_ed(uint32_t op2, bool _rmw)
+{
+	uint32_t op1;
+
+	if(m_instr->modrm.mod == 3) {
+		op1 = GEN_REG(m_instr->modrm.rm).dword[0];
+	} else {
+		uint32_t disp = ((uint32_t)(op2&0xffffffe0)) / 32;
+		uint32_t op1_off = (this->*EA_get_offset)() + 4 * disp;
+		if(_rmw) {
+			op1 = read_dword_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
+		} else {
+			op1 = read_dword((this->*EA_get_segreg)(), op1_off & m_addr_mask);
+		}
+	}
+
+	SET_FLAG(CF, (op1 >> (op2 & 0x1f)) & 1);
+
+	return op1;
+}
+
+void CPUExecutor::BT_ew_rw()
+{
+	BT_ew(load_rw(), false);
+}
+
+void CPUExecutor::BT_ed_rd()
+{
+	BT_ed(load_rd(), false);
+}
+
+void CPUExecutor::BT_ew_ib()
+{
+	uint16_t op1 = load_ew();
+
+	SET_FLAG(CF, (op1 >> (m_instr->ib&0xf)) & 1);
+}
+
+void CPUExecutor::BT_ed_ib()
+{
+	uint32_t op1 = load_ed();
+
+	SET_FLAG(CF, (op1 >> (m_instr->ib&0xf)) & 1);
+}
+
+
+/*******************************************************************************
+ * BTC-Bit Test and Complement
+ */
+
+void CPUExecutor::BTC_ew_rw()
+{
+	uint16_t op2 = load_rw();
+	uint16_t op1 = BT_ew(op2, true);
+
+	op1 ^= (1 << (op2 & 0xf));
+
+	store_ew_rmw(op1);
+}
+
+void CPUExecutor::BTC_ed_rd()
+{
+	uint32_t op2 = load_rd();
+	uint32_t op1 = BT_ed(op2, true);
+
+	op1 ^= (1 << (op2 & 0x1f));
+
+	store_ed_rmw(op1);
+}
+
+void CPUExecutor::BTC_ew_ib()
+{
+	uint16_t op1 = load_ew();
+	uint8_t index = m_instr->ib & 0xf;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 ^= (1 << index);
+
+	store_ew(op1);
+	SET_FLAG(CF, cf);
+}
+
+void CPUExecutor::BTC_ed_ib()
+{
+	uint32_t op1 = load_ed();
+	uint8_t index = m_instr->ib & 0x1f;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 ^= (1 << index);
+
+	store_ed(op1);
+	SET_FLAG(CF, cf);
+}
+
+
+/*******************************************************************************
+ * BTR-Bit Test and Reset
+ */
+
+void CPUExecutor::BTR_ew_rw()
+{
+	uint16_t op2 = load_rw();
+	uint16_t op1 = BT_ew(op2, true);
+
+	op1 &= ~(1 << (op2 & 0xf));
+
+	store_ew_rmw(op1);
+}
+
+void CPUExecutor::BTR_ed_rd()
+{
+	uint32_t op2 = load_rd();
+	uint32_t op1 = BT_ed(op2, true);
+
+	op1 &= ~(1 << (op2 & 0x1f));
+
+	store_ed_rmw(op1);
+}
+
+void CPUExecutor::BTR_ew_ib()
+{
+	uint16_t op1 = load_ew();
+	uint8_t index = m_instr->ib & 0xf;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 &= ~(1 << index);
+
+	store_ew(op1);
+	SET_FLAG(CF, cf);
+}
+
+void CPUExecutor::BTR_ed_ib()
+{
+	uint32_t op1 = load_ed();
+	uint8_t index = m_instr->ib & 0x1f;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 &= ~(1 << index);
+
+	store_ed(op1);
+	SET_FLAG(CF, cf);
+}
+
+
+/*******************************************************************************
+ * BTS-Bit Test and Set
+ */
+
+void CPUExecutor::BTS_ew_rw()
+{
+	uint16_t op2 = load_rw();
+	uint16_t op1 = BT_ew(op2, true);
+
+	op1 |= (1 << (op2 & 0xf));
+
+	store_ew_rmw(op1);
+}
+
+void CPUExecutor::BTS_ed_rd()
+{
+	uint32_t op2 = load_rd();
+	uint32_t op1 = BT_ed(op2, true);
+
+	op1 |= (1 << (op2 & 0x1f));
+
+	store_ed_rmw(op1);
+}
+
+void CPUExecutor::BTS_ew_ib()
+{
+	uint16_t op1 = load_ew();
+	uint8_t index = m_instr->ib & 0xf;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 |= (1 << index);
+
+	store_ew(op1);
+	SET_FLAG(CF, cf);
+}
+
+void CPUExecutor::BTS_ed_ib()
+{
+	uint32_t op1 = load_ed();
+	uint8_t index = m_instr->ib & 0x1f;
+
+	bool cf = bool((op1 >> index) & 1);
+	op1 |= (1 << index);
+
+	store_ed(op1);
+	SET_FLAG(CF, cf);
+}
+
+
+/*******************************************************************************
  * CALL-Call Procedure
  */
 
