@@ -270,6 +270,12 @@ private:
 	uint16_t SAR_w(uint16_t _op1, uint8_t _count);
 	uint32_t SAR_d(uint32_t _op1, uint8_t _count);
 
+	uint16_t SHLD_w(uint16_t _op1, uint16_t _op2, uint8_t _count);
+	uint32_t SHLD_d(uint32_t _op1, uint32_t _op2, uint8_t _count);
+
+	uint16_t SHRD_w(uint16_t _op1, uint16_t _op2, uint8_t _count);
+	uint32_t SHRD_d(uint32_t _op1, uint32_t _op2, uint8_t _count);
+
 	uint8_t  SBB_b(uint8_t  _op1, uint8_t  _op2);
 	uint16_t SBB_w(uint16_t _op1, uint16_t _op2);
 	uint32_t SBB_d(uint32_t _op1, uint32_t _op2);
@@ -836,6 +842,16 @@ public:
 	void SGDT();
 	void SIDT();
 	void SLDT_ew();
+
+	void SHLD_ew_rw_ib();
+	void SHLD_ed_rd_ib();
+	void SHLD_ew_rw_CL();
+	void SHLD_ed_rd_CL();
+
+	void SHRD_ew_rw_ib();
+	void SHRD_ed_rd_ib();
+	void SHRD_ew_rw_CL();
+	void SHRD_ed_rd_CL();
 
 	void SMSW_ew();
 

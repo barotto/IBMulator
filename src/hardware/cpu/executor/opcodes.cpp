@@ -4273,6 +4273,145 @@ void CPUExecutor::SLDT_ew()
 
 
 /*******************************************************************************
+ * SHLD-Double Precision Shift Left
+ */
+
+uint16_t CPUExecutor::SHLD_w(uint16_t _op1, uint16_t _op2, uint8_t _count)
+{
+	uint16_t result = _op1;
+
+	_count %= 32;
+
+	if(_count) {
+		uint32_t op1_op2 = (uint32_t(_op1) << 16) | _op2; // double formed by op1:op2
+		uint32_t result_32 = op1_op2 << _count;
+
+		// hack to act like x86 SHLD when count > 16
+		if(_count > 16) {
+			/* For Pentium processor, when count > 16, actually shifting op1:op2:op2 << count,
+			 * it is the same as shifting op2:op2 by count-16
+			 * For P6 and later, when count > 16, actually shifting op1:op2:op1 << count,
+			 * which is the same as shifting op2:op1 by count-16
+			 * Intel docs state that if count > operand size then result and flags are undefined,
+			 * so both ways are correct.
+			 *
+			 * Bochs follows the P6+ behaviour.
+			 * DOSBox follows the Pentium behaviour.
+			 * IBMulator does the same as DOSBox.
+			 */
+			result_32 |= (uint32_t(_op2) << (_count - 16));
+		}
+
+		result = uint16_t(result_32 >> 16);
+
+		SET_FLAG(ZF, result == 0);
+		SET_FLAG(SF, result & 0x8000);
+		SET_FLAG(PF, PARITY(result));
+		bool cf = (op1_op2 >> (32 - _count)) & 1;
+		bool of = cf ^ (result >> 15); // of = cf ^ result15
+		SET_FLAG(CF, cf);
+		SET_FLAG(OF, of);
+	}
+
+	return result;
+}
+
+uint32_t CPUExecutor::SHLD_d(uint32_t _op1, uint32_t _op2, uint8_t _count)
+{
+	uint32_t result = _op1;
+
+	_count %= 32;
+
+	if(_count) {
+		result = (_op1 << _count) | (_op2 >> (32 - _count));
+
+		SET_FLAG(ZF, result == 0);
+		SET_FLAG(SF, result & 0x80000000);
+		SET_FLAG(PF, PARITY(result));
+		bool cf = (_op1 >> (32 - _count)) & 1;
+		bool of = cf ^ (result >> 31); // of = cf ^ result31
+		SET_FLAG(CF, cf);
+		SET_FLAG(OF, of);
+	}
+
+	return result;
+}
+
+void CPUExecutor::SHLD_ew_rw_ib() { store_ew(SHLD_w(load_ew(), load_rw(), m_instr->ib)); }
+void CPUExecutor::SHLD_ed_rd_ib() { store_ed(SHLD_d(load_ed(), load_rd(), m_instr->ib)); }
+void CPUExecutor::SHLD_ew_rw_CL() { store_ew(SHLD_w(load_ew(), load_rw(), REG_CL)); }
+void CPUExecutor::SHLD_ed_rd_CL() { store_ed(SHLD_d(load_ed(), load_rd(), REG_CL)); }
+
+
+/*******************************************************************************
+ * SHRD-Double Precision Shift Right
+ */
+
+uint16_t CPUExecutor::SHRD_w(uint16_t _op1, uint16_t _op2, uint8_t _count)
+{
+	uint16_t result = _op1;
+	_count %= 32;
+	if(_count) {
+		uint32_t op2_op1 = (uint32_t(_op2) << 16) | _op1; // double formed by op2:op1
+		uint32_t result_32 = op2_op1 >> _count;
+
+		// hack to act like x86 SHRD when count > 16
+		if(_count > 16) {
+			/* For Pentium processor, when count > 16, actually shifting op2:op2:op1 >> count,
+			 * it is the same as shifting op2:op2 by count-16
+			 * For P6 and later, when count > 16, actually shifting op1:op2:op1 >> count,
+			 * which is the same as shifting op1:op2 by count-16
+			 * The behavior is undefined so both ways are correct.
+			 *
+			 * Bochs follows the P6+ behaviour.
+			 * DOSBox follows the Pentium behaviour.
+			 * IBMulator does the same as DOSBox.
+			 */
+			result_32 |= (uint32_t(_op2) << (32 - _count));
+		}
+
+		result = uint16_t(result_32);
+
+		SET_FLAG(ZF, result == 0);
+		SET_FLAG(SF, result & 0x8000);
+		SET_FLAG(PF, PARITY(result));
+		bool cf = (_op1 >> (_count - 1)) & 1;
+		bool of = (((result << 1) ^ result) >> 15) & 1; // of = result14 ^ result15
+		SET_FLAG(CF, cf);
+		SET_FLAG(OF, of);
+	}
+
+	return result;
+}
+
+uint32_t CPUExecutor::SHRD_d(uint32_t _op1, uint32_t _op2, uint8_t _count)
+{
+	uint32_t result = _op1;
+
+	_count %= 32;
+
+	if(_count) {
+		result = (_op2 << (32 - _count)) | (_op1 >> _count);
+
+		SET_FLAG(ZF, result == 0);
+		SET_FLAG(SF, result & 0x80000000);
+		SET_FLAG(PF, PARITY(result));
+		bool cf = (_op1 >> (_count - 1)) & 1;
+		bool of = ((result << 1) ^ result) >> 31; // of = result30 ^ result31
+		SET_FLAG(CF, cf);
+		SET_FLAG(OF, of);
+	}
+
+	return result;
+}
+
+void CPUExecutor::SHRD_ew_rw_ib() { store_ew(SHRD_w(load_ew(), load_rw(), m_instr->ib)); }
+void CPUExecutor::SHRD_ed_rd_ib() { store_ed(SHRD_d(load_ed(), load_rd(), m_instr->ib)); }
+void CPUExecutor::SHRD_ew_rw_CL() { store_ew(SHRD_w(load_ew(), load_rw(), REG_CL)); }
+void CPUExecutor::SHRD_ed_rd_CL() { store_ed(SHRD_d(load_ed(), load_rd(), REG_CL)); }
+
+
+/*******************************************************************************
  * SMSW-Store Machine Status Word
  */
 
