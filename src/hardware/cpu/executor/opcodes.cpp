@@ -2646,7 +2646,9 @@ void CPUExecutor::LTR_ew()
 	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* #GP(selector) if object is not a TSS or is already busy */
-	if(!descriptor.valid || descriptor.segment || descriptor.type != DESC_TYPE_AVAIL_286_TSS)
+	if(!descriptor.valid || descriptor.segment ||
+	   (descriptor.type!=DESC_TYPE_AVAIL_286_TSS &&
+	    descriptor.type!=DESC_TYPE_AVAIL_386_TSS))
 	{
 		PDEBUGF(LOG_V2, LOG_CPU, "LTR: doesn't point to an available TSS descriptor!\n");
 		throw CPUException(CPU_GP_EXC, selector.value & SELECTOR_RPL_MASK);
@@ -2662,8 +2664,8 @@ void CPUExecutor::LTR_ew()
 	REG_TR.desc = descriptor;
 
 	/* mark as busy */
-	REG_TR.desc.type = DESC_TYPE_BUSY_286_TSS;
-	g_cpubus.mem_write<1>(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
+	REG_TR.desc.type |= TSS_BUSY_BIT;
+	write_byte(GET_BASE(GDTR) + selector.index*8 + 5, REG_TR.desc.get_AR());
 }
 
 
