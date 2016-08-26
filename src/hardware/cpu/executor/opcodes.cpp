@@ -462,14 +462,14 @@ void CPUExecutor::BSR_rd_ed()
  * BT-Bit Test
  */
 
-uint16_t CPUExecutor::BT_ew(uint16_t op2, bool _rmw)
+uint16_t CPUExecutor::BT_ew(uint16_t _op2, bool _rmw)
 {
 	uint16_t op1;
 
 	if(m_instr->modrm.mod == 3) {
 		op1 = GEN_REG(m_instr->modrm.rm).word[0];
 	} else {
-		uint32_t disp = ((uint16_t)(op2&0xfff0)) / 16;
+		uint32_t disp = ((uint16_t)(_op2&0xfff0)) / 16;
 		uint32_t op1_off = (this->*EA_get_offset)() + 2 * disp;
 		if(_rmw) {
 			op1 = read_word_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
@@ -478,19 +478,19 @@ uint16_t CPUExecutor::BT_ew(uint16_t op2, bool _rmw)
 		}
 	}
 
-	SET_FLAG(CF, (op1 >> (op2 & 0xf)) & 1);
+	SET_FLAG(CF, (op1 >> (_op2 & 0xf)) & 1);
 
 	return op1;
 }
 
-uint32_t CPUExecutor::BT_ed(uint32_t op2, bool _rmw)
+uint32_t CPUExecutor::BT_ed(uint32_t _op2, bool _rmw)
 {
 	uint32_t op1;
 
 	if(m_instr->modrm.mod == 3) {
 		op1 = GEN_REG(m_instr->modrm.rm).dword[0];
 	} else {
-		uint32_t disp = ((uint32_t)(op2&0xffffffe0)) / 32;
+		uint32_t disp = ((uint32_t)(_op2&0xffffffe0)) / 32;
 		uint32_t op1_off = (this->*EA_get_offset)() + 4 * disp;
 		if(_rmw) {
 			op1 = read_dword_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
@@ -499,7 +499,7 @@ uint32_t CPUExecutor::BT_ed(uint32_t op2, bool _rmw)
 		}
 	}
 
-	SET_FLAG(CF, (op1 >> (op2 & 0x1f)) & 1);
+	SET_FLAG(CF, (op1 >> (_op2 & 0x1f)) & 1);
 
 	return op1;
 }
@@ -719,6 +719,7 @@ void CPUExecutor::CALL_m1632()
 
 	call_32(cs, eip);
 }
+
 
 /*******************************************************************************
  * CBW/CWD/CWDE/CDQ-Convert Byte/Word/DWord to Word/DWord/QWord
@@ -950,6 +951,7 @@ void CPUExecutor::CMPSD_a32()
 		REG_EDI += 4;
 	}
 }
+
 
 /*******************************************************************************
  * DAA/DAS-Decimal Adjust AL after addition/subtraction
@@ -1526,6 +1528,7 @@ void CPUExecutor::IN_EAX_DX()
 	io_check(REG_DX, 4);
 	REG_EAX = g_devices.read_dword(REG_DX);
 }
+
 
 /*******************************************************************************
  * INC-Increment by 1
@@ -2789,6 +2792,24 @@ void CPUExecutor::MOVSD_a32()
 		REG_EDI += 4;
 	}
 }
+
+
+/*******************************************************************************
+ * MOVSX-Move with Sign-Extend
+ */
+
+void CPUExecutor::MOVSX_rw_eb() { store_rw(int8_t(load_eb())); }
+void CPUExecutor::MOVSX_rd_eb() { store_rd(int8_t(load_eb())); }
+void CPUExecutor::MOVSX_rd_ew() { store_rd(int16_t(load_ew())); }
+
+
+/*******************************************************************************
+ * MOVZX-Move with Zero-Extend
+ */
+
+void CPUExecutor::MOVZX_rw_eb() { store_rw(load_eb()); }
+void CPUExecutor::MOVZX_rd_eb() { store_rd(load_eb()); }
+void CPUExecutor::MOVZX_rd_ew() { store_rd(load_ew()); }
 
 
 /*******************************************************************************

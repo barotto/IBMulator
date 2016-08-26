@@ -200,8 +200,8 @@ private:
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 	uint32_t AND_d(uint32_t op1, uint32_t op2);
 
-	uint16_t BT_ew(uint16_t op2, bool _rmw);
-	uint32_t BT_ed(uint32_t op2, bool _rmw);
+	uint16_t BT_ew(uint16_t _op2, bool _rmw);
+	uint32_t BT_ed(uint32_t _op2, bool _rmw);
 
 	void CMP_b(uint8_t op1, uint8_t op2);
 	void CMP_w(uint16_t op1, uint16_t op2);
@@ -641,6 +641,14 @@ public:
 	void MOVSW_a32();
 	void MOVSD_a16();
 	void MOVSD_a32();
+
+	void MOVSX_rw_eb();
+	void MOVSX_rd_eb();
+	void MOVSX_rd_ew();
+
+	void MOVZX_rw_eb();
+	void MOVZX_rd_eb();
+	void MOVZX_rd_ew();
 
 	void MUL_eb();
 	void MUL_ew();
