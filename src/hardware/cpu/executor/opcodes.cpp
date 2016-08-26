@@ -2139,7 +2139,7 @@ void CPUExecutor::LDT_m(uint32_t &base_, uint16_t &limit_)
 	uint16_t off = (this->*EA_get_offset)();
 
 	limit_ = read_word(sr, off);
-	base_ = read_dword(sr, off+2);
+	base_ = read_dword(sr, (off+2) & m_addr_mask);
 }
 
 void CPUExecutor::LGDT_o16()
@@ -4846,9 +4846,14 @@ void CPUExecutor::XCHG_EAX_rd()
  * XLATB-Table Look-up Translation
  */
 
-void CPUExecutor::XLATB()
+void CPUExecutor::XLATB_a16()
 {
 	REG_AL = read_byte(SEG_REG(m_base_ds), (REG_BX + uint16_t(REG_AL)));
+}
+
+void CPUExecutor::XLATB_a32()
+{
+	REG_AL = read_byte(SEG_REG(m_base_ds), (REG_EBX + uint32_t(REG_AL)));
 }
 
 

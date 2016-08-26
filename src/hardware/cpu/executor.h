@@ -908,7 +908,8 @@ public:
 	void XCHG_AX_rw();
 	void XCHG_EAX_rd();
 
-	void XLATB();
+	void XLATB_a16();
+	void XLATB_a32();
 
 	void XOR_rb_eb();
 	void XOR_rw_ew();

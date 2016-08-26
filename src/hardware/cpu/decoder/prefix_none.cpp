@@ -1763,7 +1763,11 @@ case 0xD6:
 /* D7        XLATB        Set AL to memory byte DS:[BX + unsigned AL] */
 case 0xD7:
 {
-	m_instr.fn = &CPUExecutor::XLATB;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::XLATB_a32;
+	} else {
+		m_instr.fn = &CPUExecutor::XLATB_a16;
+	}
 	break;
 }
 
