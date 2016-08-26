@@ -4200,6 +4200,28 @@ void CPUExecutor::SCASD_a32()
 
 
 /*******************************************************************************
+ * SETcc-Byte Set on Condition
+ */
+
+void CPUExecutor::SETO_eb()   /*0F90*/ { store_eb( FLAG_OF ); }
+void CPUExecutor::SETNO_eb()  /*0F91*/ { store_eb(!FLAG_OF ); }
+void CPUExecutor::SETB_eb()   /*0F92*/ { store_eb( FLAG_CF ); }
+void CPUExecutor::SETNB_eb()  /*0F93*/ { store_eb(!FLAG_CF ); }
+void CPUExecutor::SETE_eb()   /*0F94*/ { store_eb( FLAG_ZF ); }
+void CPUExecutor::SETNE_eb()  /*0F95*/ { store_eb(!FLAG_ZF ); }
+void CPUExecutor::SETBE_eb()  /*0F96*/ { store_eb(  FLAG_CF || FLAG_ZF ); }
+void CPUExecutor::SETNBE_eb() /*0F97*/ { store_eb(!(FLAG_CF || FLAG_ZF) ); }
+void CPUExecutor::SETS_eb()   /*0F98*/ { store_eb( FLAG_SF ); }
+void CPUExecutor::SETNS_eb()  /*0F99*/ { store_eb(!FLAG_SF ); }
+void CPUExecutor::SETP_eb()   /*0F9A*/ { store_eb( FLAG_PF ); }
+void CPUExecutor::SETNP_eb()  /*0F9B*/ { store_eb(!FLAG_PF ); }
+void CPUExecutor::SETL_eb()   /*0F9C*/ { store_eb(  FLAG_SF != FLAG_OF ); }
+void CPUExecutor::SETNL_eb()  /*0F9D*/ { store_eb(!(FLAG_SF != FLAG_OF) ); }
+void CPUExecutor::SETLE_eb()  /*0F9E*/ { store_eb(  FLAG_ZF || FLAG_SF!=FLAG_OF ); }
+void CPUExecutor::SETNLE_eb() /*0F9F*/ { store_eb(!(FLAG_ZF || FLAG_SF!=FLAG_OF) ); }
+
+
+/*******************************************************************************
  * SGDT/SIDT/SLDT-Store Global/Interrupt/Local Descriptor Table Register
  */
 

@@ -816,6 +816,23 @@ public:
 	void SCASD_a16();
 	void SCASD_a32();
 
+	void SETO_eb();
+	void SETNO_eb();
+	void SETB_eb();
+	void SETNB_eb();
+	void SETE_eb();
+	void SETNE_eb();
+	void SETBE_eb();
+	void SETNBE_eb();
+	void SETS_eb();
+	void SETNS_eb();
+	void SETP_eb();
+	void SETNP_eb();
+	void SETL_eb();
+	void SETNL_eb();
+	void SETLE_eb();
+	void SETNLE_eb();
+
 	void SGDT();
 	void SIDT();
 	void SLDT_ew();
