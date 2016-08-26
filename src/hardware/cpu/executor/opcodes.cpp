@@ -4227,40 +4227,30 @@ void CPUExecutor::SETNLE_eb() /*0F9F*/ { store_eb(!(FLAG_ZF || FLAG_SF!=FLAG_OF)
  * SGDT/SIDT/SLDT-Store Global/Interrupt/Local Descriptor Table Register
  */
 
-void CPUExecutor::SGDT()
+void CPUExecutor::SDT(unsigned _reg, uint32_t _base_mask)
 {
-	uint16_t limit_16 = GET_LIMIT(GDTR);
-	uint32_t base_32  = GET_BASE(GDTR);
+	uint16_t limit_16 = SEG_REG(_reg).desc.limit;
+	uint32_t base_32  = SEG_REG(_reg).desc.base & _base_mask;
+
+	if(CPU_TYPE <= CPU_286) {
+		/* Unlike to what described in the iAPX 286 Programmer's Reference Manual,
+		 * the 80286 stores 1s in these upper bits. Windows 3.0 checks these bits to
+		 * detect the 286 (the 386 stores 0s if the operand-size attribute is 16 bits.)
+		 */
+		base_32 = 0xFF000000 | base_32;
+	}
 
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint16_t off = (this->*EA_get_offset)();
 
 	write_word(sr, off, limit_16);
-	write_word(sr, off+2, base_32);
-	write_byte(sr, off+4, base_32>>16);
-
-	/* Unlike to what described in the iAPX 286 Programmer's Reference Manual,
-	 * the 80286 stores 1s in these upper bits. Windows 3.0 checks these bits to
-	 * detect the 286 (the 386 stores 0s if the operand-size attribute is 16 bits.)
-	 */
-	write_byte(sr, off+5, 0xFF);
+	write_dword(sr, (off+2) & m_addr_mask, base_32);
 }
 
-void CPUExecutor::SIDT()
-{
-	uint16_t limit_16 = GET_LIMIT(IDTR);
-	uint32_t base_32  = GET_BASE(IDTR);
-
-	SegReg & sr = (this->*EA_get_segreg)();
-	uint16_t off = (this->*EA_get_offset)();
-
-	write_word(sr, off, limit_16);
-	write_word(sr, off+2, base_32);
-	write_byte(sr, off+4, base_32>>16);
-
-	// See comment for SGDT
-	write_byte(sr, off+5, 0xFF);
-}
+void CPUExecutor::SGDT_o16() { SDT(REGI_GDTR, 0x00FFFFFF); }
+void CPUExecutor::SGDT_o32() { SDT(REGI_GDTR, 0xFFFFFFFF); }
+void CPUExecutor::SIDT_o16() { SDT(REGI_IDTR, 0x00FFFFFF); }
+void CPUExecutor::SIDT_o32() { SDT(REGI_IDTR, 0xFFFFFFFF); }
 
 void CPUExecutor::SLDT_ew()
 {
