@@ -311,6 +311,9 @@ public:
 	void interrupt_pmode(uint8_t _vector, bool _soft_int,
 			bool _push_error, uint16_t _error_code);
 
+	uint64_t fetch_descriptor(Selector & _selector, uint8_t _exc_vec);
+	void touch_segment(Selector & _selector, Descriptor & _descriptor);
+
 	void register_INT_trap(uint8_t _lo_vec, uint8_t _hi_vec, inttrap_fun_t _fn);
 
 	void AAA();

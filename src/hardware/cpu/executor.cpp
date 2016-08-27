@@ -251,6 +251,56 @@ void CPUExecutor::illegal_opcode()
 	throw CPUException(CPU_UD_EXC, 0);
 }
 
+uint64_t CPUExecutor::fetch_descriptor(Selector & _selector, uint8_t _exc_vec)
+{
+	uint32_t linaddr = _selector.index * 8;
+	if(_selector.ti == 0) {
+		//from GDT
+		if((_selector.index*8 + 7u) > SEG_REG(REGI_GDTR).desc.limit) {
+			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
+					_selector.index*8 + 7, _selector.index, SEG_REG(REGI_GDTR).desc.limit);
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
+		}
+		linaddr += SEG_REG(REGI_GDTR).desc.base;
+	} else {
+		// from LDT
+		if(!SEG_REG(REGI_LDTR).desc.valid) {
+			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
+		}
+		if((_selector.index*8 + 7u) > SEG_REG(REGI_LDTR).desc.limit) {
+			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
+					_selector.index*8 + 7, _selector.index, SEG_REG(REGI_LDTR).desc.limit);
+			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
+		}
+		linaddr += SEG_REG(REGI_LDTR).desc.base;
+	}
+	return read_qword(linaddr);
+}
+
+void CPUExecutor::touch_segment(Selector &_selector, Descriptor &_descriptor)
+{
+	/*
+	 * Whenever a segment descriptor is loaded into a segment register, the
+	 * accessed bit in the descriptor table is set to 1. This bit is useful for
+	 * determining the usage profile of the segment.
+	 * (cfr. 7-11)
+	 */
+	if(!_descriptor.accessed) {
+		_descriptor.accessed = true;
+		uint8_t ar = _descriptor.get_AR();
+		unsigned reg;
+		if(_selector.ti == false) {
+			// from GDT
+			reg = REGI_GDTR;
+		} else {
+			// from LDT
+			reg = REGI_LDTR;
+		}
+		write_byte(SEG_REG(reg).desc.base + _selector.index*8 + 5, ar);
+	}
+}
+
 void CPUExecutor::register_INT_trap(uint8_t _lo_vec, uint8_t _hi_vec, inttrap_fun_t _fn)
 {
 	m_inttraps_intervals.push_back(inttrap_interval_t(_lo_vec, _hi_vec, _fn));

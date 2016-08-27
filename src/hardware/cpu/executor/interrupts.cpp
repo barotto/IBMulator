@@ -148,7 +148,7 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 
 	// fetch 2 dwords of descriptor; call handles out of limits checks
 	try {
-		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
+		ss_descriptor = fetch_descriptor(ss_selector, CPU_TS_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
 		throw;
@@ -342,7 +342,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			// index must be within GDT limits, else #TS(TSS selector)
 			try {
-				tss_descriptor = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
+				tss_descriptor = fetch_descriptor(tss_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad tss_selector fetch\n");
 				throw;
@@ -393,7 +393,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// selector must be within its descriptor table limits
 			// else #GP(selector+EXT)
 			try {
-				cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+				cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
 				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad cs_selector fetch\n");
 				throw;

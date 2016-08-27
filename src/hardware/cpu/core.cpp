@@ -150,7 +150,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 
-		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = g_cpuexecutor.fetch_descriptor(selector, CPU_GP_EXC);
 
 		if(!descriptor.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(SS): not valid\n");
@@ -173,7 +173,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* set accessed bit */
-		touch_segment(selector, descriptor);
+		g_cpuexecutor.touch_segment(selector, descriptor);
 
 		/* all done and well, load the register */
 		REG_SS.desc = descriptor;
@@ -192,7 +192,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		selector   = _value;
-		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = g_cpuexecutor.fetch_descriptor(selector, CPU_GP_EXC);
 
 		if(descriptor.valid==0) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(%s, 0x%04x): invalid segment\n",
@@ -228,7 +228,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* set accessed bit */
-		touch_segment(selector, descriptor);
+		g_cpuexecutor.touch_segment(selector, descriptor);
 
 		/* all done and well, load the register */
 		_segreg.desc = descriptor;
@@ -285,7 +285,7 @@ void CPUCore::set_CS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 	// Add cpl to the selector value.
 	selector.value = (selector.value & SELECTOR_RPL_MASK) | cpl;
 
-	touch_segment(selector, descriptor);
+	g_cpuexecutor.touch_segment(selector, descriptor);
 
 	REG_CS.sel = selector;
 	REG_CS.desc = descriptor;
@@ -299,60 +299,13 @@ void CPUCore::set_SS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 	// Add cpl to the selector value.
 	selector.value = (selector.value & SELECTOR_RPL_MASK) | cpl;
 
-	if((selector.value & SELECTOR_RPL_MASK) != 0)
-		touch_segment(selector, descriptor);
+	if((selector.value & SELECTOR_RPL_MASK) != 0) {
+		g_cpuexecutor.touch_segment(selector, descriptor);
+	}
 
 	REG_SS.sel = selector;
 	REG_SS.desc = descriptor;
 	REG_SS.sel.cpl = cpl;
-}
-
-void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
-{
-	/*
-	 * Whenever a segment descriptor is loaded into a segment register, the
-	 * accessed bit in the descriptor table is set to 1. This bit is useful for
-	 * determining the usage profile of the segment.
-	 * (cfr. 7-11)
-	 */
-	if(!_descriptor.accessed) {
-		_descriptor.accessed = true;
-		uint8_t ar = _descriptor.get_AR();
-		if(_selector.ti == false) {
-			// from GDT
-			g_cpubus.mem_write<1>(m_segregs[REGI_GDTR].desc.base + _selector.index*8 + 5, ar);
-		} else {
-			// from LDT
-			g_cpubus.mem_write<1>(m_segregs[REGI_LDTR].desc.base + _selector.index*8 + 5, ar);
-		}
-	}
-}
-
-uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const
-{
-	uint32_t addr = _selector.index * 8;
-	if(_selector.ti == 0) {
-		//from GDT
-		if((_selector.index*8 + 7u) > m_segregs[REGI_GDTR].desc.limit) {
-			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_segregs[REGI_GDTR].desc.limit);
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		addr += m_segregs[REGI_GDTR].desc.base;
-	} else {
-		// from LDT
-		if(!m_segregs[REGI_LDTR].desc.valid) {
-			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		if((_selector.index*8 + 7u) > m_segregs[REGI_LDTR].desc.limit) {
-			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_segregs[REGI_LDTR].desc.limit);
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		addr += m_segregs[REGI_LDTR].desc.base;
-	}
-	return g_cpubus.mem_read_qword(addr);
 }
 
 void CPUCore::set_FLAGS(uint16_t _val)

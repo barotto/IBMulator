@@ -1991,7 +1991,7 @@ uint32_t CPUExecutor::LAR(uint16_t _raw_selector)
 	selector = _raw_selector;
 
 	try {
-		raw_descriptor = g_cpucore.fetch_descriptor(selector,0);
+		raw_descriptor = fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
 		//this fetch does not throw an exception
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: failed to fetch descriptor\n");
@@ -2202,7 +2202,7 @@ void CPUExecutor::LLDT_ew()
 	}
 
 	/* fetch descriptor; call handles out of limits checks */
-	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
+	descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* if selector doesn't point to an LDT descriptor #GP(selector) */
 	if(!descriptor.valid || descriptor.segment ||
@@ -2556,7 +2556,7 @@ uint32_t CPUExecutor::LSL()
 	}
 
 	try {
-		descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LSL: failed to fetch descriptor\n");
 	    SET_FLAG(ZF, false);
@@ -2643,7 +2643,7 @@ void CPUExecutor::LTR_ew()
 	}
 
 	/* fetch descriptor; call handles out of limits checks */
-	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
+	descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* #GP(selector) if object is not a TSS or is already busy */
 	if(!descriptor.valid || descriptor.segment ||
@@ -4667,7 +4667,7 @@ void CPUExecutor::VERR_ew()
 	}
 
 	try {
-		descriptor = g_cpucore.fetch_descriptor(selector,0);
+		descriptor = fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
 	    PDEBUGF(LOG_V2, LOG_CPU, "VERR: not within descriptor table\n");
 	    SET_FLAG(ZF, false);
@@ -4747,7 +4747,7 @@ void CPUExecutor::VERW_ew()
 	 */
 
 	try {
-		descriptor = g_cpucore.fetch_descriptor(selector,0);
+		descriptor = fetch_descriptor(selector,0);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "VERW: not within descriptor table\n");
 		SET_FLAG(ZF, false);

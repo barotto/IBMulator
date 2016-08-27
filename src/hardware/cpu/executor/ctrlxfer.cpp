@@ -35,7 +35,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 	}
 	// selector must be within its descriptor table limits,
 	//   else #GP(code segment selector)
-	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+	cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// AR byte of selected descriptor must indicate code segment,
 	//   else #GP(code segment selector)
@@ -78,7 +78,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 		// selector index must be within its descriptor table limits,
 		//   else #TS(SS selector)
 		ss_selector   = SS_for_cpl_x;
-		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_TS_EXC);
+		ss_descriptor = fetch_descriptor(ss_selector, CPU_TS_EXC);
 
 		// selector's RPL must equal DPL of code segment,
 		//   else #TS(SS selector)
@@ -316,7 +316,7 @@ void CPUExecutor::branch_far_pmode(uint16_t _cs, uint32_t _disp)
 	/* destination selector index is within its descriptor table
 	 * limits else #GP(selector)
 	 */
-	descriptor = g_cpucore.fetch_descriptor(selector, CPU_GP_EXC);
+	descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 
 	/* examine AR byte of destination selector for legal values: */
 	if(descriptor.segment) {
@@ -446,7 +446,7 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 	// check new CS selector index within its descriptor limits,
 	// else #GP(new CS selector)
 	try {
-		cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+		cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "call_pmode: descriptor fetch error\n");
 		throw;
@@ -567,7 +567,7 @@ void CPUExecutor::jump_call_gate(Selector &selector, Descriptor &gate_descriptor
 	}
 
 	// selector must be within its descriptor table limits else #GP(CS selector)
-	gate_cs_descriptor = g_cpucore.fetch_descriptor(gate_cs_selector, CPU_GP_EXC);
+	gate_cs_descriptor = fetch_descriptor(gate_cs_selector, CPU_GP_EXC);
 
 	// check code-segment descriptor
 	CPUCore::check_CS(gate_cs_selector, gate_cs_descriptor, 0, CPL);
@@ -604,7 +604,7 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		}
 
 		// index must be within GDT limits, else #TS(new TSS selector)
-		tss_descriptor = g_cpucore.fetch_descriptor(link_selector, CPU_TS_EXC);
+		tss_descriptor = fetch_descriptor(link_selector, CPU_TS_EXC);
 
 		if(!tss_descriptor.valid || tss_descriptor.segment) {
 			PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: TSS selector points to bad TSS\n");
@@ -677,7 +677,7 @@ void CPUExecutor::iret_pmode(bool _32bit)
 
 	// selector index must be within descriptor table limits,
 	// else #GP(return selector)
-	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+	cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// return CS selector RPL must be >= CPL, else #GP(return selector)
 	if(cs_selector.rpl < CPL) {
@@ -758,7 +758,7 @@ void CPUExecutor::iret_pmode(bool _32bit)
 
 		/* selector index must be within its descriptor table limits,
 		 * else #GP(SS selector) */
-		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
+		ss_descriptor = fetch_descriptor(ss_selector, CPU_GP_EXC);
 
 		/* AR byte must indicate a writable data segment,
 		 * else #GP(SS selector) */
@@ -901,7 +901,7 @@ void CPUExecutor::return_far_pmode(uint16_t _pop_bytes, bool _32bit)
 
 	// selector index must be within its descriptor table limits,
 	// else #GP(selector)
-	cs_descriptor = g_cpucore.fetch_descriptor(cs_selector, CPU_GP_EXC);
+	cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 
 	// return selector RPL must be >= CPL, else #GP(return selector)
 	if(cs_selector.rpl < CPL) {
@@ -951,7 +951,7 @@ void CPUExecutor::return_far_pmode(uint16_t _pop_bytes, bool _32bit)
 
 		// selector index must be within its descriptor table limits,
 		// else #GP(selector)
-		ss_descriptor = g_cpucore.fetch_descriptor(ss_selector, CPU_GP_EXC);
+		ss_descriptor = fetch_descriptor(ss_selector, CPU_GP_EXC);
 
 		// selector RPL must = RPL of the return CS selector,
 		// else #GP(selector)

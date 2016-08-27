@@ -335,9 +335,6 @@ public:
 
 	void reset();
 
-	uint64_t fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const;
-	void touch_segment(Selector & _selector, Descriptor & _descriptor) const;
-
 	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
 	inline SegReg & seg_reg(uint8_t idx) { assert(idx<10); return m_segregs[idx]; }
 	inline uint32_t ctl_reg(uint8_t idx) { assert(idx<4); return m_cr[idx]; }

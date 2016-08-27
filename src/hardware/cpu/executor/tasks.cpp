@@ -51,7 +51,7 @@ void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)
 	// NULL selector is OK, will leave cache invalid
 	if((_seg.sel.value & SELECTOR_RPL_MASK) != 0) {
 		try {
-			descriptor = g_cpucore.fetch_descriptor(_seg.sel, CPU_TS_EXC);
+			descriptor = fetch_descriptor(_seg.sel, CPU_TS_EXC);
 		} catch (CPUException &e) {
 			PERRF(LOG_CPU,"switch_tasks(%s): bad selector fetch\n", _seg.to_string());
 			throw;
@@ -79,7 +79,7 @@ void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)
 			throw CPUException(CPU_TS_EXC, _seg.sel.value & SELECTOR_RPL_MASK);
 		}
 
-		g_cpucore.touch_segment(_seg.sel, descriptor);
+		touch_segment(_seg.sel, descriptor);
 
 		// All checks pass, fill in shadow cache
 		_seg.desc = descriptor;
@@ -410,7 +410,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 
 	if((raw_ldt_selector & SELECTOR_RPL_MASK) != 0) {
 		try {
-			ldt_descriptor = g_cpucore.fetch_descriptor(REG_LDTR.sel, CPU_TS_EXC);
+			ldt_descriptor = fetch_descriptor(REG_LDTR.sel, CPU_TS_EXC);
 		} catch(CPUException &e) {
 			PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad LDT fetch\n");
 			throw;
@@ -451,7 +451,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		// SS
 		if((raw_ss_selector & SELECTOR_RPL_MASK) != 0) {
 			try {
-				ss_descriptor = g_cpucore.fetch_descriptor(REG_SS.sel, CPU_TS_EXC);
+				ss_descriptor = fetch_descriptor(REG_SS.sel, CPU_TS_EXC);
 			} catch(CPUException &e) {
 				PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad SS fetch\n");
 				throw;
@@ -485,7 +485,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 				throw CPUException(CPU_TS_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
 			}
 
-			g_cpucore.touch_segment(REG_SS.sel, ss_descriptor);
+			touch_segment(REG_SS.sel, ss_descriptor);
 
 			// All checks pass, fill in cache
 			REG_SS.desc = ss_descriptor;
@@ -514,7 +514,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		// CS
 		if((raw_cs_selector & SELECTOR_RPL_MASK) != 0) {
 			try {
-				cs_descriptor = g_cpucore.fetch_descriptor(REG_CS.sel, CPU_TS_EXC);
+				cs_descriptor = fetch_descriptor(REG_CS.sel, CPU_TS_EXC);
 			} catch(CPUException &e) {
 				PERRF(LOG_CPU, "switch_tasks(exception after commit point): bad CS fetch\n");
 				throw;
@@ -544,7 +544,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 				throw CPUException(CPU_NP_EXC, raw_cs_selector & SELECTOR_RPL_MASK);
 			}
 
-			g_cpucore.touch_segment(REG_CS.sel, cs_descriptor);
+			touch_segment(REG_CS.sel, cs_descriptor);
 
 			// All checks pass, fill in shadow cache
 			REG_CS.desc = cs_descriptor;
@@ -608,7 +608,7 @@ void CPUExecutor::task_gate(Selector &selector, Descriptor &gate_descriptor, uns
 	}
 
 	// index must be within GDT limits else #GP(TSS selector)
-	tss_descriptor = g_cpucore.fetch_descriptor(tss_selector, CPU_GP_EXC);
+	tss_descriptor = fetch_descriptor(tss_selector, CPU_GP_EXC);
 
 	if(!tss_descriptor.valid || tss_descriptor.segment) {
 		PERRF(LOG_CPU,"task_gate: TSS selector points to bad TSS\n");
