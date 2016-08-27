@@ -60,13 +60,11 @@ enum DescriptorType {
 	DESC_TYPE_386_CALL_GATE  = 0xC,
 	DESC_TYPE_INVALID_D      = 0xD,
 	DESC_TYPE_386_INTR_GATE  = 0xE,
-	DESC_TYPE_386_TRAP_GATE  = 0xF,
+	DESC_TYPE_386_TRAP_GATE  = 0xF
 };
 
-#define TSS_BUSY_BIT 0x2
-#define TSS_CHECK_MASK 0xD
-#define TSS_CHECK_286  0x1
-#define TSS_CHECK_386  0x9
+#define TSS_BUSY_BIT   0x2
+#define DESC_GATE_MASK 0x4
 
 
 struct Descriptor
@@ -131,10 +129,8 @@ struct Descriptor
 
 	inline void operator=(uint64_t _data) {
 		set_AR(uint8_t(_data>>40));
-		if(segment || (
-		   type!=DESC_TYPE_386_CALL_GATE && type!=DESC_TYPE_386_INTR_GATE &&
-		   type!=DESC_TYPE_386_TRAP_GATE
-		)) {
+		if(segment || !(type&DESC_GATE_MASK)) {
+			// for code/data segments and not call/task/int/trap gates
 			limit = (_data & 0xFFFF) | ((_data >> 32) & 0xF0000);
 			base_15_0 = _data >> 16;
 			base_23_16 = _data >> 32;
