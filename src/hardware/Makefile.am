@@ -7,7 +7,9 @@ libhardware_a_SOURCES = \
 	cpu/bus.cpp \
 	cpu/decoder/cycles.cpp \
 	cpu/decoder/prefix_none.cpp \
+	cpu/decoder/prefix_none_32.cpp \
 	cpu/decoder/prefix_0F.cpp \
+	cpu/decoder/prefix_0F_32.cpp \
 	cpu/decoder.cpp \
 	cpu/executor.cpp \
 	cpu/logger.cpp \

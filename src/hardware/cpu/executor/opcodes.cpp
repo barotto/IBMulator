@@ -1665,8 +1665,8 @@ void CPUExecutor::INSD(uint32_t _offset)
 	seg_check(REG_ES, _offset, 4, true);
 	mem_access(REG_ES.desc.base + _offset, 4, IS_USER_PL, true);
 
-	uint32_t value = g_devices.read_word(REG_DX);
-	write_word(value);
+	uint32_t value = g_devices.read_dword(REG_DX);
+	write_dword(value);
 }
 
 void CPUExecutor::INSD_a16()
@@ -1876,7 +1876,7 @@ void CPUExecutor::JC_cw()  /*0F82*/ { Jcc(FLAG_CF,  int16_t(m_instr->iw1)); }
 void CPUExecutor::JNC_cw() /*0F83*/ { Jcc(!FLAG_CF, int16_t(m_instr->iw1)); }
 void CPUExecutor::JE_cw()  /*0F84*/ { Jcc(FLAG_ZF,  int16_t(m_instr->iw1)); }
 void CPUExecutor::JNE_cw() /*0F85*/ { Jcc(!FLAG_ZF, int16_t(m_instr->iw1)); }
-void CPUExecutor::JBE_cw() /*0F76*/ { Jcc(FLAG_CF || FLAG_ZF, int16_t(m_instr->iw1)); }
+void CPUExecutor::JBE_cw() /*0F86*/ { Jcc(FLAG_CF || FLAG_ZF, int16_t(m_instr->iw1)); }
 void CPUExecutor::JA_cw()  /*0F87*/ { Jcc(!FLAG_CF && !FLAG_ZF, int16_t(m_instr->iw1)); }
 void CPUExecutor::JS_cw()  /*0F88*/ { Jcc(FLAG_SF,  int16_t(m_instr->iw1)); }
 void CPUExecutor::JNS_cw() /*0F89*/ { Jcc(!FLAG_SF, int16_t(m_instr->iw1)); }
@@ -1893,7 +1893,7 @@ void CPUExecutor::JC_cd()  /*0F82*/ { Jcc(FLAG_CF,  int32_t(m_instr->id1)); }
 void CPUExecutor::JNC_cd() /*0F83*/ { Jcc(!FLAG_CF, int32_t(m_instr->id1)); }
 void CPUExecutor::JE_cd()  /*0F84*/ { Jcc(FLAG_ZF,  int32_t(m_instr->id1)); }
 void CPUExecutor::JNE_cd() /*0F85*/ { Jcc(!FLAG_ZF, int32_t(m_instr->id1)); }
-void CPUExecutor::JBE_cd() /*0F76*/ { Jcc(FLAG_CF || FLAG_ZF, int32_t(m_instr->id1)); }
+void CPUExecutor::JBE_cd() /*0F86*/ { Jcc(FLAG_CF || FLAG_ZF, int32_t(m_instr->id1)); }
 void CPUExecutor::JA_cd()  /*0F87*/ { Jcc(!FLAG_CF && !FLAG_ZF, int32_t(m_instr->id1)); }
 void CPUExecutor::JS_cd()  /*0F88*/ { Jcc(FLAG_SF,  int32_t(m_instr->id1)); }
 void CPUExecutor::JNS_cd() /*0F89*/ { Jcc(!FLAG_SF, int32_t(m_instr->id1)); }
@@ -2062,14 +2062,14 @@ void CPUExecutor::LAR_rw_ew()
 	}
 }
 
-void CPUExecutor::LAR_rd_ed()
+void CPUExecutor::LAR_rd_ew()
 {
 	if(!IS_PMODE()) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LAR: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
-	uint16_t raw_selector = load_ed();
+	uint16_t raw_selector = load_ew();
 	uint32_t upper_dword = LAR(raw_selector) & 0x00FFFF00;
 	if(FLAG_ZF) {
 		store_rd(upper_dword);
@@ -2818,22 +2818,17 @@ void CPUExecutor::MOVZX_rd_ew() { store_rd(load_ew()); }
  * MOV-Move to/from special registers
  */
 
-void CPUExecutor::MOV_CR0_rd()
+void CPUExecutor::MOV_CR_rd()
 {
-	check_CPL_privilege(!IS_RMODE(), "MOV_CR0_rd");
-	SET_CR0(load_rd());
-}
-
-void CPUExecutor::MOV_CR2_rd()
-{
-	check_CPL_privilege(!IS_RMODE(), "MOV_CR2_rd");
-	SET_CR2(load_rd());
-}
-
-void CPUExecutor::MOV_CR3_rd()
-{
-	check_CPL_privilege(!IS_RMODE(), "MOV_CR3_rd");
-	SET_CR3(load_rd());
+	check_CPL_privilege(!IS_RMODE(), "MOV_CR_rd");
+	uint32_t value = load_rd();
+	switch(m_instr->modrm.r) {
+		case 0: SET_CR0(value); break;
+		case 2: SET_CR2(value); break;
+		case 3: SET_CR3(value); break;
+		default:
+			break;
+	}
 }
 
 void CPUExecutor::MOV_rd_CR()
@@ -3305,9 +3300,10 @@ void CPUExecutor::PUSH_rw_op() { stack_push_word(load_rw_op()); }
 void CPUExecutor::PUSH_rd_op() { stack_push_dword(load_rd_op()); }
 void CPUExecutor::PUSH_mw()    { stack_push_word(load_ew()); }
 void CPUExecutor::PUSH_md()    { stack_push_dword(load_ed()); }
-void CPUExecutor::PUSH_ib()    { stack_push_word(int8_t(m_instr->ib)); }
+void CPUExecutor::PUSH_ib_w()  { stack_push_word(int8_t(m_instr->ib)); }
+void CPUExecutor::PUSH_ib_dw() { stack_push_dword(int8_t(m_instr->ib)); }
 void CPUExecutor::PUSH_iw()    { stack_push_word(m_instr->iw1); }
-void CPUExecutor::PUSH_id()    { stack_push_word(m_instr->id1); }
+void CPUExecutor::PUSH_id()    { stack_push_dword(m_instr->id1); }
 
 
 /*******************************************************************************
@@ -4587,7 +4583,7 @@ void CPUExecutor::SUB_rw_ew() { store_rw(SUB_w(load_rw(), load_ew())); }
 void CPUExecutor::SUB_rd_ed() { store_rd(SUB_d(load_rd(), load_ed())); }
 void CPUExecutor::SUB_AL_ib() { REG_AL = SUB_b(REG_AL, m_instr->ib); }
 void CPUExecutor::SUB_AX_iw() { REG_AX = SUB_w(REG_AX, m_instr->iw1); }
-void CPUExecutor::SUB_EAX_iw(){REG_EAX = SUB_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::SUB_EAX_id(){REG_EAX = SUB_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::SUB_eb_ib() { store_eb(SUB_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::SUB_ew_iw() { store_ew(SUB_w(load_ew(), m_instr->iw1)); }
 void CPUExecutor::SUB_ed_id() { store_ed(SUB_d(load_ed(), m_instr->id1)); }
@@ -4637,7 +4633,7 @@ void CPUExecutor::TEST_ew_rw() { TEST_w(load_ew(), load_rw()); }
 void CPUExecutor::TEST_ed_rd() { TEST_d(load_ed(), load_rd()); }
 void CPUExecutor::TEST_AL_ib() { TEST_b(REG_AL, m_instr->ib); }
 void CPUExecutor::TEST_AX_iw() { TEST_w(REG_AX, m_instr->iw1); }
-void CPUExecutor::TEST_EAX_iw(){ TEST_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::TEST_EAX_id(){ TEST_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::TEST_eb_ib() { TEST_b(load_eb(), m_instr->ib); }
 void CPUExecutor::TEST_ew_iw() { TEST_w(load_ew(), m_instr->iw1); }
 void CPUExecutor::TEST_ed_id() { TEST_d(load_ed(), m_instr->id1); }
@@ -4908,7 +4904,7 @@ void CPUExecutor::XOR_ew_rw() { store_ew(XOR_w(load_ew(), load_rw())); }
 void CPUExecutor::XOR_ed_rd() { store_ed(XOR_d(load_ed(), load_rd())); }
 void CPUExecutor::XOR_AL_ib() { REG_AL = XOR_b(REG_AL, m_instr->ib); }
 void CPUExecutor::XOR_AX_iw() { REG_AX = XOR_w(REG_AX, m_instr->iw1); }
-void CPUExecutor::XOR_EAX_ie(){REG_EAX = XOR_d(REG_EAX, m_instr->id1); }
+void CPUExecutor::XOR_EAX_id(){REG_EAX = XOR_d(REG_EAX, m_instr->id1); }
 void CPUExecutor::XOR_eb_ib() { store_eb(XOR_b(load_eb(), m_instr->ib)); }
 void CPUExecutor::XOR_ew_iw() { store_ew(XOR_w(load_ew(), m_instr->iw1)); }
 void CPUExecutor::XOR_ed_id() { store_ed(XOR_d(load_ed(), m_instr->id1)); }

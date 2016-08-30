@@ -32,7 +32,7 @@ switch(_opcode) {
 /* 00 /r      ADD eb,rb   Add byte register into EA byte */
 case 0x00:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADD_eb_rb;
 	break;
 }
@@ -40,7 +40,7 @@ case 0x00:
 /* 01 /r     ADD ew,rw   Add word register into EA word */
 case 0x01:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADD_ew_rw;
 	break;
 }
@@ -48,7 +48,7 @@ case 0x01:
 /* 02 /r      ADD rb,eb   Add EA byte into byte register */
 case 0x02:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADD_rb_eb;
 	break;
 }
@@ -56,7 +56,7 @@ case 0x02:
 /* 03 /r      ADD rw,ew   Add EA word into word register */
 case 0x03:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADD_rw_ew;
 	break;
 }
@@ -96,7 +96,7 @@ case 0x07:
 /* 08 /r      OR eb,rb       Logical-OR byte register into EA byte */
 case 0x08:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::OR_eb_rb;
 	break;
 }
@@ -104,7 +104,7 @@ case 0x08:
 /* 09 /r      OR ew,rw      Logical-OR word register into EA word */
 case 0x09:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::OR_ew_rw;
 	break;
 }
@@ -112,7 +112,7 @@ case 0x09:
 /* 0A /r      OR rb,eb       Logical-OR EA byte into byte register */
 case 0x0A:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::OR_rb_eb;
 	break;
 }
@@ -120,7 +120,7 @@ case 0x0A:
 /* 0B /r      OR rw,ew       Logical-OR EA word into word register */
 case 0x0B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::OR_rw_ew;
 	break;
 }
@@ -154,7 +154,7 @@ case 0x0E:
 /* 10 /r      ADC eb,rb   Add with carry byte register into EA byte */
 case 0x10:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADC_eb_rb;
 	break;
 }
@@ -162,7 +162,7 @@ case 0x10:
 /* 11 /r      ADC ew,rw   Add with carry word register into EA word */
 case 0x11:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADC_ew_rw;
 	break;
 }
@@ -170,7 +170,7 @@ case 0x11:
 /* 12 /r      ADC rb,eb   Add with carry EA byte into byte register */
 case 0x12:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADC_rb_eb;
 	break;
 }
@@ -178,7 +178,7 @@ case 0x12:
 /* 13 /r      ADC rw,ew   Add with carry EA word into word register */
 case 0x13:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ADC_rw_ew;
 	break;
 }
@@ -218,7 +218,7 @@ case 0x17:
 /* 18 /r       SBB eb,rb    Subtract with borrow byte register from EA byte */
 case 0x18:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SBB_eb_rb;
 	break;
 }
@@ -226,7 +226,7 @@ case 0x18:
 /* 19 /r       SBB ew,rw    Subtract with borrow word register from EA word */
 case 0x19:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SBB_ew_rw;
 	break;
 }
@@ -234,7 +234,7 @@ case 0x19:
 /* 1A /r       SBB rb,eb    Subtract with borrow EA byte from byte register */
 case 0x1A:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SBB_rb_eb;
 	break;
 }
@@ -242,7 +242,7 @@ case 0x1A:
 /* 1B /r       SBB rw,ew    Subtract with borrow EA word from word register */
 case 0x1B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SBB_rw_ew;
 	break;
 }
@@ -282,7 +282,7 @@ case 0x1F:
 /* 20 /r      AND eb,rb     Logical-AND byte register into EA byte */
 case 0x20:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::AND_eb_rb;
 	break;
 }
@@ -290,7 +290,7 @@ case 0x20:
 /* 21 /r      AND ew,rw     Logical-AND word register into EA word */
 case 0x21:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::AND_ew_rw;
 	break;
 }
@@ -298,7 +298,7 @@ case 0x21:
 /* 22 /r      AND rb,eb     Logical-AND EA byte into byte register */
 case 0x22:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::AND_rb_eb;
 	break;
 }
@@ -306,7 +306,7 @@ case 0x22:
 /* 23 /r      AND rw,ew     Logical-AND EA word into word register */
 case 0x23:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::AND_rw_ew;
 	break;
 }
@@ -339,7 +339,7 @@ case 0x27:
 /* 28 /r      SUB eb,rb     Subtract byte register from EA byte */
 case 0x28:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SUB_eb_rb;
 	break;
 }
@@ -347,7 +347,7 @@ case 0x28:
 /* 29 /r      SUB ew,rw     Subtract word register from EA word */
 case 0x29:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SUB_ew_rw;
 	break;
 }
@@ -355,7 +355,7 @@ case 0x29:
 /* 2A /r      SUB rb,eb      Subtract EA byte from byte register */
 case 0x2A:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SUB_rb_eb;
 	break;
 }
@@ -363,7 +363,7 @@ case 0x2A:
 /* 2B /r      SUB rw,ew      Subtract EA word from word register */
 case 0x2B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SUB_rw_ew;
 	break;
 }
@@ -396,7 +396,7 @@ case 0x2F:
 /* 30 /r     XOR eb,rb   Exclusive-OR byte register into EA byte */
 case 0x30:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XOR_eb_rb;
 	break;
 }
@@ -404,7 +404,7 @@ case 0x30:
 /* 31 /r     XOR ew,rw   Exclusive-OR word register into EA word */
 case 0x31:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XOR_ew_rw;
 	break;
 }
@@ -412,7 +412,7 @@ case 0x31:
 /* 32 /r     XOR rb,eb   Exclusive-OR EA byte into byte register */
 case 0x32:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XOR_rb_eb;
 	break;
 }
@@ -420,7 +420,7 @@ case 0x32:
 /* 33 /r     XOR rw,ew   Exclusive-OR EA word into word register */
 case 0x33:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XOR_rw_ew;
 	break;
 }
@@ -453,7 +453,7 @@ case 0x37:
 /* 38 /r        CMP eb,rb      Compare byte register from EA byte */
 case 0x38:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::CMP_eb_rb;
 	break;
 }
@@ -461,7 +461,7 @@ case 0x38:
 /* 39 /r        CMP ew,rw     Compare word register from EA word */
 case 0x39:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::CMP_ew_rw;
 	break;
 }
@@ -469,7 +469,7 @@ case 0x39:
 /* 3A /r        CMP rb,eb     Compare EA byte from byte register*/
 case 0x3A:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::CMP_rb_eb;
 	break;
 }
@@ -477,7 +477,7 @@ case 0x3A:
 /* 3B /r        CMP rw,ew     Compare EA word from word register */
 case 0x3B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::CMP_rw_ew;
 	break;
 }
@@ -584,7 +584,7 @@ case 0x61:
 /* 62 /r      BOUND rw,md     INT 5 if rw not within bounds */
 case 0x62:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BOUND_rw_md ;
 	break;
 }
@@ -592,7 +592,7 @@ case 0x62:
 /* 63 /r    ARPL ew,rw   Adjust RPL of EA word not less than RPL of rw */
 case 0x63:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::ARPL_ew_rw;
 	break;
 }
@@ -619,7 +619,7 @@ case 0x68:
 /* 69 /r iw   IMUL rw,ew,iw     Signed multiply (rw = EA word * imm. word) */
 case 0x69:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
 	m_instr.fn = &CPUExecutor::IMUL_rw_ew_iw;
 	break;
@@ -629,14 +629,14 @@ case 0x69:
 case 0x6A:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::PUSH_ib;
+	m_instr.fn = &CPUExecutor::PUSH_ib_w;
 	break;
 }
 
 /* 6B /r ib   IMUL rw,ew,ib    Signed multiply (rw = EA word * imm. byte) */
 case 0x6B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::IMUL_rw_ew_ib;
 	break;
@@ -827,7 +827,7 @@ case 0x7F:
 case 0x80:
 case 0x82:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -874,7 +874,7 @@ case 0x82:
 */
 case 0x81:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -923,7 +923,7 @@ case 0x81:
 */
 case 0x83:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -964,7 +964,7 @@ case 0x83:
 /* 84 /r      TEST eb,rb    AND byte register into EA byte for flags only */
 case 0x84:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::TEST_eb_rb;
 	break;
 }
@@ -972,7 +972,7 @@ case 0x84:
 /* 85 /r      TEST ew,rw    AND word register into EA word for flags only */
 case 0x85:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::TEST_ew_rw;
 	break;
 }
@@ -980,7 +980,7 @@ case 0x85:
 /* 86 /r     XCHG eb,rb     Exchange byte register with EA byte */
 case 0x86:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XCHG_eb_rb;
 	break;
 }
@@ -988,7 +988,7 @@ case 0x86:
 /* 87 /r     XCHG ew,rw     Exchange word register with EA word */
 case 0x87:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::XCHG_ew_rw;
 	break;
 }
@@ -996,7 +996,7 @@ case 0x87:
 /* 88 /r      MOV eb,rb   Move byte register into EA byte */
 case 0x88:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOV_eb_rb;
 	break;
 }
@@ -1004,7 +1004,7 @@ case 0x88:
 /* 89 /r      MOV ew,rw   Move word register into EA word */
 case 0x89:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOV_ew_rw;
 	break;
 }
@@ -1012,7 +1012,7 @@ case 0x89:
 /* 8A /r      MOV rb,eb   Move EA byte into byte register */
 case 0x8A:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOV_rb_eb;
 	break;
 }
@@ -1020,7 +1020,7 @@ case 0x8A:
 /* 8B /r      MOV rw,ew   Move EA word into word register */
 case 0x8B:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOV_rw_ew;
 	break;
 }
@@ -1028,7 +1028,7 @@ case 0x8B:
 /* 8C /r      MOV ew,SR      Move Segment Register into EA word */
 case 0x8C:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	if(m_instr.modrm.r > REGI_GS) {
 		illegal_opcode();
 	} else {
@@ -1040,7 +1040,7 @@ case 0x8C:
 /* 8D /r    LEA rw,m       Calculate EA offset given by m, place in rw */
 case 0x8D:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LEA_rw_m;
 	break;
 }
@@ -1048,7 +1048,7 @@ case 0x8D:
 /* 8E /r      MOV SR,mw    Move memory word into Segment Register */
 case 0x8E:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	if(m_instr.modrm.r > REGI_GS || m_instr.modrm.r == REGI_CS) {
 		illegal_opcode();
 	} else {
@@ -1062,7 +1062,7 @@ case 0x8E:
 */
 case 0x8F:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::POP_mw;
@@ -1152,34 +1152,50 @@ case 0x9F:
 	break;
 }
 
-/* A0 iw      MOV AL,xb    Move byte variable (offset iw) into AL */
+/* A0 iw/id      MOV AL,xb    Move byte variable at seg:offset into AL */
 case 0xA0:
 {
-	m_instr.offset = fetchw();
+	if(m_instr.addr32) {
+		m_instr.offset = fetchdw();
+	} else {
+		m_instr.offset = fetchw();
+	}
 	m_instr.fn = &CPUExecutor::MOV_AL_xb;
 	break;
 }
 
-/* A1 iw      MOV AX,xw      Move word variable (offset iw) into AX */
+/* A1 iw/id      MOV AX,xw      Move word variable at seg:offset into AX */
 case 0xA1:
 {
-	m_instr.offset = fetchw();
+	if(m_instr.addr32) {
+		m_instr.offset = fetchdw();
+	} else {
+		m_instr.offset = fetchw();
+	}
 	m_instr.fn = &CPUExecutor::MOV_AX_xw;
 	break;
 }
 
-/* A2 iw      MOV xb,AL       Move AL into byte variable (offset iw) */
+/* A2 iw/id      MOV xb,AL       Move AL into byte variable at seg:offset */
 case 0xA2:
 {
-	m_instr.offset = fetchw();
+	if(m_instr.addr32) {
+		m_instr.offset = fetchdw();
+	} else {
+		m_instr.offset = fetchw();
+	}
 	m_instr.fn = &CPUExecutor::MOV_xb_AL;
 	break;
 }
 
-/* A3 iw      MOV xw,AX       Move AX into word register (offset iw) */
+/* A3 iw/id      MOV xw,AX       Move AX into word register at seg:offset */
 case 0xA3:
 {
-	m_instr.offset = fetchw();
+	if(m_instr.addr32) {
+		m_instr.offset = fetchdw();
+	} else {
+		m_instr.offset = fetchw();
+	}
 	m_instr.fn = &CPUExecutor::MOV_xw_AX;
 	break;
 }
@@ -1246,7 +1262,7 @@ case 0xA9:
 	break;
 }
 
-/* AA       STOSB           Store AL to byte ES:[DI], advance DI */
+/* AA       STOSB           Store AL to byte ES:[(E)DI], advance (E)DI */
 case 0xAA:
 {
 	if(m_instr.addr32) {
@@ -1257,7 +1273,7 @@ case 0xAA:
 	break;
 }
 
-/* AB       STOSW           Store AX to word ES:[DI], advance DI */
+/* AB       STOSW           Store AX to word ES:[(E)DI], advance (E)DI */
 case 0xAB:
 {
 	if(m_instr.addr32) {
@@ -1268,7 +1284,7 @@ case 0xAB:
 	break;
 }
 
-/* AC         LODSB            Load byte DS:[SI] into AL */
+/* AC         LODSB            Load byte DS:[(E)SI] into AL */
 case 0xAC:
 {
 	if(m_instr.addr32) {
@@ -1279,7 +1295,7 @@ case 0xAC:
 	break;
 }
 
-/* AD         LODSW             Load word DS:[SI] into AX */
+/* AD         LODSW             Load word DS:[(E)SI] into AX */
 case 0xAD:
 {
 	if(m_instr.addr32) {
@@ -1290,7 +1306,7 @@ case 0xAD:
 	break;
 }
 
-/*  AE       SCASB         Compare bytes AL - ES:[DI], advance DI */
+/*  AE       SCASB         Compare bytes AL - ES:[(E)DI], advance (E)DI */
 case 0xAE:
 {
 	m_instr.rep_zf = true;
@@ -1302,7 +1318,7 @@ case 0xAE:
 	break;
 }
 
-/*  AF       SCASW         Compare words AX - ES:[DI], advance DI */
+/*  AF       SCASW         Compare words AX - ES:[(E)DI], advance (E)DI */
 case 0xAF:
 {
 	m_instr.rep_zf = true;
@@ -1357,7 +1373,7 @@ C0 /7 ib  SAR eb,ib    Signed divide EA byte by 2, ib times
 */
 case 0xC0: //eb,ib
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -1401,7 +1417,7 @@ C1 /7 ib  SAR ew,ib    Signed divide EA word by 2, ib times
 */
 case 0xC1:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -1434,7 +1450,7 @@ case 0xC1:
 	break;
 }
 
-/* C2 iw   RET iw      RET (near), same privilege, pop iw bytes pushed before Call*/
+/* C2 iw   RET iw      Return to near caller, pop iw bytes pushed before Call */
 case 0xC2:
 {
 	m_instr.iw1 = fetchw();
@@ -1442,7 +1458,7 @@ case 0xC2:
 	break;
 }
 
-/* C3      RET          Return to near caller, same privilege */
+/* C3      RET          Return to near caller */
 case 0xC3:
 {
 	m_instr.iw1 = 0;
@@ -1450,10 +1466,10 @@ case 0xC3:
 	break;
 }
 
-/* C4 /r    LES rw,ed    Load EA doubleword into ES and word register */
+/* C4 /r    LES rw,mp    Load ES:r16 with pointer from memory */
 case 0xC4:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LES_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
@@ -1461,10 +1477,10 @@ case 0xC4:
 	break;
 }
 
-/* C5 /r    LDS rw,ed    Load EA doubleword into DS and word register */
+/* C5 /r    LDS rw,mp    Load DS:r16 with pointer from memory */
 case 0xC5:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LDS_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
@@ -1475,7 +1491,7 @@ case 0xC5:
 /* C6 /0 ib   MOV eb,ib   Move immediate byte into EA byte */
 case 0xC6:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -1491,7 +1507,7 @@ case 0xC6:
 /* C7 /0 iw   MOV ew,iw   Move immediate word into EA word */
 case 0xC7:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
@@ -1520,7 +1536,7 @@ case 0xC9:
 	break;
 }
 
-/* CA iw   RET iw       RET (far), pop iw bytes */
+/* CA iw   RET iw       Return to far caller, pop iw bytes */
 case 0xCA:
 {
 	m_instr.iw1 = fetchw();
@@ -1576,7 +1592,7 @@ D0 /7     SAR eb,1     Signed divide EA byte by 2, once
 */
 case 0xD0:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::ROL_eb_1;
@@ -1619,7 +1635,7 @@ D1 /7     SAR ew,1    Signed divide EA word by 2, once
 */
 case 0xD1:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::ROL_ew_1;
@@ -1662,7 +1678,7 @@ D2 /7     SAR eb,CL    Signed divide EA byte by 2, CL times
 */
 case 0xD2:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::ROL_eb_CL;
@@ -1705,7 +1721,7 @@ D3 /7     SAR ew,CL    Signed divide EA word by 2, CL times
 */
 case 0xD3:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::ROL_ew_CL;
@@ -1782,7 +1798,7 @@ case 0xDE:
 case 0xDF:
 {
 	//TODO fpu support?
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::FPU_ESC;
 	break;
 }
@@ -1871,7 +1887,7 @@ case 0xE8:
 	break;
 }
 
-/* E9 cw   JMP cw   Jump near */
+/* E9 cw   JMP cw   Jump near displacement relative to next instruction */
 case 0xE9:
 {
 	m_instr.iw1 = fetchw();
@@ -1888,7 +1904,7 @@ case 0xEA:
 	break;
 }
 
-/* EB   cb     JMP cb         ump short */
+/* EB   cb     JMP cb         Jump short */
 case 0xEB:
 {
 	m_instr.ib = fetchb();
@@ -1957,7 +1973,7 @@ F6 /7      IDIV eb       Signed divide AX by EA byte (AL=Quo,AH=Rem)
 */
 case 0xF6:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 		case 1: // 1: undocumented alias
@@ -2003,7 +2019,7 @@ F7 /7      IDIV ew       Signed divide DX:AX by EA word (AX=Quo,DX=Rem)
 */
 case 0xF7:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 		case 1: // 1: undocumented alias
@@ -2086,7 +2102,7 @@ FE   /1     DEC eb         Decrement EA byte by 1
 */
 case 0xFE:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::INC_eb;
@@ -2114,7 +2130,7 @@ FF /6     PUSH mw   Push memory word
 */
 case 0xFF:
 {
-	m_instr.modrm.load();
+	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = &CPUExecutor::INC_ew;

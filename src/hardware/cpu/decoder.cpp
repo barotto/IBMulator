@@ -124,14 +124,22 @@ restart_opcode:
 		}
 		case 0x0F: {
 			opcode = fetchb();
-			prefix_0F(opcode,cycles_table,cycles_op);
+			if(m_instr.op32) {
+				prefix_0F_32(opcode,cycles_table,cycles_op);
+			} else {
+				prefix_0F(opcode,cycles_table,cycles_op);
+			}
 			if(CPULOG) {
 				m_instr.opcode = 0xF00 + opcode;
 			}
 			break;
 		}
 		default: {
-			prefix_none(opcode,cycles_table,cycles_op);
+			if(m_instr.op32) {
+				prefix_none_32(opcode,cycles_table,cycles_op);
+			} else {
+				prefix_none(opcode,cycles_table,cycles_op);
+			}
 			if(CPULOG) {
 				m_instr.opcode = opcode;
 			}

@@ -30,6 +30,16 @@ class CPUExecutor;
 class CPUDecoder;
 extern CPUDecoder g_cpudecoder;
 
+#if 1
+#define ILLEGAL_286         \
+	if(CPU_TYPE<=CPU_286) { \
+		illegal_opcode();   \
+		return;             \
+	}
+#else
+#define ILLEGAL_286
+#endif
+
 /*
  The 8086/80286 instruction format
 ╔═══════════════╦══════════════╦══════════╦══════════╦════════════════╦═════════════╗
@@ -193,7 +203,9 @@ public:
 
 private:
 	void prefix_none(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
+	void prefix_none_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void prefix_0F(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
+	void prefix_0F_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void illegal_opcode();
 
 	inline uint8_t fetchb() {

@@ -568,7 +568,7 @@ public:
 	void LAHF();
 
 	void LAR_rw_ew();
-	void LAR_rd_ed();
+	void LAR_rd_ew();
 
 	void LEA_rw_m();
 	void LEA_rd_m();
@@ -637,9 +637,7 @@ public:
 	void MOV_ew_iw();
 	void MOV_ed_id();
 
-	void MOV_CR0_rd();
-	void MOV_CR2_rd();
-	void MOV_CR3_rd();
+	void MOV_CR_rd();
 	void MOV_rd_CR();
 	void MOV_DR_rd();
 	void MOV_rd_DR();
@@ -722,7 +720,8 @@ public:
 	void PUSH_rd_op();
 	void PUSH_mw();
 	void PUSH_md();
-	void PUSH_ib();
+	void PUSH_ib_w();
+	void PUSH_ib_dw();
 	void PUSH_iw();
 	void PUSH_id();
 
@@ -883,7 +882,7 @@ public:
 	void SUB_rd_ed();
 	void SUB_AL_ib();
 	void SUB_AX_iw();
-	void SUB_EAX_iw();
+	void SUB_EAX_id();
 	void SUB_eb_ib();
 	void SUB_ew_iw();
 	void SUB_ed_id();
@@ -895,7 +894,7 @@ public:
 	void TEST_ed_rd();
 	void TEST_AL_ib();
 	void TEST_AX_iw();
-	void TEST_EAX_iw();
+	void TEST_EAX_id();
 	void TEST_eb_ib();
 	void TEST_ew_iw();
 	void TEST_ed_id();
@@ -922,7 +921,7 @@ public:
 	void XOR_ed_rd();
 	void XOR_AL_ib();
 	void XOR_AX_iw();
-	void XOR_EAX_ie();
+	void XOR_EAX_id();
 	void XOR_eb_ib();
 	void XOR_ew_iw();
 	void XOR_ed_id();
