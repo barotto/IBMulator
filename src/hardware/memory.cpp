@@ -55,8 +55,13 @@ m_sysrom(nullptr),
 m_base_size(0),
 m_ext_size(0)
 {
-	m_s.A20_enabled = true;
+	/* The 286 and the 386SX both have a 24-bit address bus. The 386DX has a
+	 * 32-bit address bus, but the PS/1 was equipped with the SX variant, so the
+	 * system supported only 16MB of RAM, and the ROM BIOS was mapped at
+	 * 0xFC0000
+	 */
 	m_s.mask = 0x00FFFFFF;
+	m_s.A20_enabled = true;
 }
 
 Memory::~Memory()
@@ -372,11 +377,11 @@ void Memory::set_A20_line(bool _enabled)
 	if(_enabled) {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line ENABLED\n");
 		m_s.A20_enabled = true;
-		m_s.mask =   0x00ffffff;
+		m_s.mask = 0x00ffffff; // 24-bit address bus
 	} else {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line DISABLED\n");
 		m_s.A20_enabled = false;
-		m_s.mask = 0x00efffff;
+		m_s.mask = 0x00efffff; // 24-bit address bus with A20 masked
 	}
 }
 

@@ -32,11 +32,6 @@
 
 CPU g_cpu;
 
-ini_enum_map_t g_cpu_models = {
-	{ "286", CPU_286 },
-	{ "386SX", CPU_386 },
-	{ "386DX", CPU_386 }
-};
 
 CPU::CPU()
 :
@@ -56,7 +51,20 @@ void CPU::init()
 
 void CPU::config_changed()
 {
-	m_type = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_models);
+	static ini_enum_map_t cpu_families = {
+		{ "286",   CPU_286 },
+		{ "386SX", CPU_386 },
+		{ "386DX", CPU_386 }
+	};
+
+	static ini_enum_map_t cpu_signatures = {
+		{ "286",   0x0000 },
+		{ "386SX", 0x2308 },
+		{ "386DX", 0x0308 }
+	};
+
+	m_family = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_families);
+	m_signature = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_signatures);
 
 	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
 	m_cycle_time = round(1000.0 / freq);
@@ -68,6 +76,7 @@ void CPU::config_changed()
 	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
 
 	g_cpubus.config_changed();
+	g_cpuexecutor.config_changed();
 }
 
 void CPU::reset(uint _signal)
@@ -533,7 +542,7 @@ static const bool df_definition[3][3] = {
 
 bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 {
-	switch(m_type) {
+	switch(m_family) {
 		case CPU_286: {
 			/* If two separate faults occur during a single instruction, and if the
 			 * first fault is any of #0, #10, #11, #12, and #13, exception 8

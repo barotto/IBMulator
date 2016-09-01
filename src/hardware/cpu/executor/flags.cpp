@@ -57,11 +57,27 @@ void CPUExecutor::write_flags(uint16_t _flags)
 			true   // NT
 		);
 	} else {
-		write_flags(_flags,
-			false, // IOPL
-			true,  // IF
-			false  // NT
-		);
+		/* in real mode IOPL and NT are:
+		 * 8086  : always set
+		 *  286  : always clear
+		 *  386+ : hold the last value loaded into them
+		 */
+		switch(CPU_FAMILY) {
+		case CPU_286:
+			write_flags(_flags,
+				false, // IOPL
+				true,  // IF
+				false  // NT
+			);
+			break;
+		case CPU_386:
+			write_flags(_flags,
+				true, // IOPL
+				true, // IF
+				true  // NT
+			);
+			break;
+		}
 	}
 }
 

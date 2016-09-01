@@ -58,6 +58,7 @@ private:
 	uint m_base_ds;
 	uint m_base_ss;
 	uint32_t m_addr_mask;
+	unsigned m_max_instr_size;
 
 	inttrap_intervalTree_t m_inttraps_tree;
 	std::vector<inttrap_interval_t> m_inttraps_intervals;
@@ -303,6 +304,7 @@ public:
 	CPUExecutor();
 
 	void reset(uint _signal);
+	void config_changed();
 
 	void execute(Instruction * _instr);
 	Instruction * get_current_instruction() { return m_instr; }

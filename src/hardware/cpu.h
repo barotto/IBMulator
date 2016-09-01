@@ -29,7 +29,7 @@
 class CPU;
 extern CPU g_cpu;
 
-enum CPUType {
+enum CPUFamily {
 	CPU_286 = 2,
 	CPU_386 = 3,
 
@@ -77,7 +77,31 @@ enum CPUInterrupt {
 
 #include "cpu/executor.h"
 
-#define CPU_TYPE  g_cpu.type()
+#define CPU_FAMILY     g_cpu.family()
+#define CPU_SIGNATURE  g_cpu.signature()
+
+/* Various known CPU signatures
+Sig    Model       Step
+-----------------------
+0303   386 DX      B1
+0305   386 DX      D0
+0308   386 DX      D1/D2/E1
+2304   386 SX      A0
+2305   386 SX      D0
+2308   386 SX      D1
+43??   386 SL      ??
+0400   486 DX      A1
+0401   486 DX      Bx
+0402   486 DX      C0
+0404   486 DX      D0
+0410   486 DX      cAx
+0411   486 DX      cBx
+0420   486 SX      A0
+0433   486 DX2-66
+*/
+
+#define CPU_SIG_386SX 0x2300
+
 
 #define CPU_EVENT_NMI           (1 << 0)
 #define CPU_EVENT_PENDING_INTR  (1 << 1)
@@ -117,7 +141,8 @@ public:
 class CPU
 {
 protected:
-	unsigned m_type;
+	unsigned m_family;
+	unsigned m_signature;
 	uint32_t m_freq;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
@@ -159,7 +184,8 @@ public:
 
 	uint step();
 
-	inline unsigned type() const { return m_type; }
+	inline unsigned family() const { return m_family; }
+	inline unsigned signature() const { return m_signature; }
 	inline uint32_t get_freq() { return m_freq; }
 	GCC_ATTRIBUTE(always_inline)
 	inline uint32_t get_cycle_time_ns() { return m_cycle_time; }

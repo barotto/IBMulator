@@ -67,7 +67,7 @@ restart_opcode:
 			goto restart_opcode;
 		}
 		case 0x64: { // segment ovr: FS
-			if(CPU_TYPE >= CPU_386) {
+			if(CPU_FAMILY >= CPU_386) {
 				m_instr.seg = REGI_FS;
 				goto restart_opcode;
 			} else {
@@ -76,7 +76,7 @@ restart_opcode:
 			}
 		}
 		case 0x65: { // segment ovr: GS
-			if(CPU_TYPE >= CPU_386) {
+			if(CPU_FAMILY >= CPU_386) {
 				m_instr.seg = REGI_GS;
 				goto restart_opcode;
 			} else {
@@ -85,7 +85,7 @@ restart_opcode:
 			}
 		}
 		case 0x66: { // operand-size
-			if(CPU_TYPE >= CPU_386) {
+			if(CPU_FAMILY >= CPU_386) {
 				m_instr.op32 = !m_instr.op32;
 				goto restart_opcode;
 			} else {
@@ -94,7 +94,7 @@ restart_opcode:
 			}
 		}
 		case 0x67: { // address-size
-			if(CPU_TYPE >= CPU_386) {
+			if(CPU_FAMILY >= CPU_386) {
 				m_instr.addr32 = !m_instr.addr32;
 				goto restart_opcode;
 			} else {
@@ -146,7 +146,7 @@ restart_opcode:
 			break;
 		}
 	}
-	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (g_cpu.type()-CPU_286)];
+	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (CPU_FAMILY-CPU_286)];
 	m_instr.size = m_ilen;
 	m_instr.rep_first = m_instr.rep;
 

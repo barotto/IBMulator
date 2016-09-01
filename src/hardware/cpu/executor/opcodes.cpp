@@ -1373,7 +1373,7 @@ void CPUExecutor::IMUL_eb()
 		SET_FLAG(OF, true);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2);
 	}
 }
@@ -1402,7 +1402,7 @@ void CPUExecutor::IMUL_ew()
 		SET_FLAG(OF, true);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_16);
 	}
 }
@@ -1432,7 +1432,7 @@ void CPUExecutor::IMUL_ed()
 		SET_FLAG(OF, true);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_32);
 	}
 }
@@ -1452,7 +1452,7 @@ int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
 		SET_FLAG(OF, true);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(_op2);
 	}
 
@@ -1474,7 +1474,7 @@ int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 		SET_FLAG(OF, true);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(_op2);
 	}
 
@@ -2886,7 +2886,7 @@ void CPUExecutor::MUL_eb()
 		SET_FLAG(OF, false);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_8);
 	}
 }
@@ -2913,7 +2913,7 @@ void CPUExecutor::MUL_ew()
 		SET_FLAG(OF, false);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_16);
 	}
 }
@@ -2940,7 +2940,7 @@ void CPUExecutor::MUL_ed()
 		SET_FLAG(OF, false);
 	}
 
-	if(CPU_TYPE == CPU_386) {
+	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_32);
 	}
 }
@@ -3401,7 +3401,7 @@ uint8_t CPUExecutor::ROL_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(CF, _op1 & 1);
 	SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 7));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3424,7 +3424,7 @@ uint16_t CPUExecutor::ROL_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(CF, _op1 & 1);
 	SET_FLAG(OF, (_op1 & 1) ^ (_op1 >> 15));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3446,7 +3446,7 @@ uint32_t CPUExecutor::ROL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(CF, bit0);
 	SET_FLAG(OF, bit0 ^ bit31);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3479,7 +3479,7 @@ uint8_t CPUExecutor::ROR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(CF, _op1 >> 7);
 	SET_FLAG(OF, (_op1 >> 7) ^ ((_op1 >> 6) & 1));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3502,7 +3502,7 @@ uint16_t CPUExecutor::ROR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(CF, _op1 >> 15);
 	SET_FLAG(OF, (_op1 >> 15) ^ ((_op1 >> 14) & 1));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3525,7 +3525,7 @@ uint32_t CPUExecutor::ROR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(CF, bit31);
 	SET_FLAG(OF, bit30 ^ bit31);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3564,7 +3564,7 @@ uint8_t CPUExecutor::RCL_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 7));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3594,7 +3594,7 @@ uint16_t CPUExecutor::RCL_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 15));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3622,7 +3622,7 @@ uint32_t CPUExecutor::RCL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 31));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3654,7 +3654,7 @@ uint8_t CPUExecutor::RCR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x80);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3676,7 +3676,7 @@ uint16_t CPUExecutor::RCR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x8000);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3704,7 +3704,7 @@ uint32_t CPUExecutor::RCR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, ((res << 1) ^ res) >> 31);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3821,7 +3821,7 @@ uint8_t CPUExecutor::SHL_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3853,7 +3853,7 @@ uint16_t CPUExecutor::SHL_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3879,7 +3879,7 @@ uint32_t CPUExecutor::SHL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3912,7 +3912,7 @@ uint8_t CPUExecutor::SHR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3935,7 +3935,7 @@ uint16_t CPUExecutor::SHR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3963,7 +3963,7 @@ uint32_t CPUExecutor::SHR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -3996,7 +3996,7 @@ uint8_t CPUExecutor::SAR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(PF, PARITY(res));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -4019,7 +4019,7 @@ uint16_t CPUExecutor::SAR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(PF, PARITY(res));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -4042,7 +4042,7 @@ uint32_t CPUExecutor::SAR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(PF, PARITY(res));
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
 	}
 
@@ -4228,7 +4228,7 @@ void CPUExecutor::SDT(unsigned _reg, uint32_t _base_mask)
 	uint16_t limit_16 = SEG_REG(_reg).desc.limit;
 	uint32_t base_32  = SEG_REG(_reg).desc.base & _base_mask;
 
-	if(CPU_TYPE <= CPU_286) {
+	if(CPU_FAMILY <= CPU_286) {
 		/* Unlike to what described in the iAPX 286 Programmer's Reference Manual,
 		 * the 80286 stores 1s in these upper bits. Windows 3.0 checks these bits to
 		 * detect the 286 (the 386 stores 0s if the operand-size attribute is 16 bits.)

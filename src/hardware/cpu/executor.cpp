@@ -88,6 +88,15 @@ void CPUExecutor::reset(uint _signal)
 	}
 }
 
+void CPUExecutor::config_changed()
+{
+	if(CPU_FAMILY <= CPU_286) {
+		m_max_instr_size = 10;
+	} else {
+		m_max_instr_size = 15;
+	}
+}
+
 void CPUExecutor::execute(Instruction * _instr)
 {
 	m_instr = _instr;
@@ -120,7 +129,7 @@ void CPUExecutor::execute(Instruction * _instr)
 	static CPUExecutor_fun exec_fn;
 
 	if(!m_instr->rep || m_instr->rep_first) {
-		if(m_instr->size > CPU_MAX_INSTR_SIZE) {
+		if(m_instr->size > m_max_instr_size) {
 			/*
 			 * When the CPU detects an instruction that is illegal due to being
 			 * greater than 10 bytes in length, it generates an exception

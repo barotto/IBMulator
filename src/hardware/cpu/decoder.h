@@ -24,17 +24,17 @@
 #include "bus.h"
 #include <functional>
 
-#define CPU_MAX_INSTR_SIZE 10
+#define CPU_MAX_INSTR_SIZE 15
 
 class CPUExecutor;
 class CPUDecoder;
 extern CPUDecoder g_cpudecoder;
 
 #if 1
-#define ILLEGAL_286         \
-	if(CPU_TYPE<=CPU_286) { \
-		illegal_opcode();   \
-		return;             \
+#define ILLEGAL_286           \
+	if(CPU_FAMILY<=CPU_286) { \
+		illegal_opcode();     \
+		return;               \
 	}
 #else
 #define ILLEGAL_286

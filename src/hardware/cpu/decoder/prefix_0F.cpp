@@ -122,15 +122,11 @@ case 0x03:
 	break;
 }
 
-/*  0F 05      LOADALL        Load CPU registers from memory */
+/*  0F 05      286 LOADALL        Load CPU registers from memory (286) */
 case 0x05:
 {
-	if(CPU_TYPE == CPU_286) {
+	if(CPU_FAMILY == CPU_286) {
 		m_instr.fn = &CPUExecutor::LOADALL_286;
-	} else if(CPU_TYPE == CPU_386) {
-		//TODO
-		//m_instr.fn = &CPUExecutor::LOADALL_386;
-		illegal_opcode();
 	} else {
 		illegal_opcode();
 	}
@@ -141,6 +137,19 @@ case 0x05:
 case 0x06:
 {
 	m_instr.fn = &CPUExecutor::CLTS;
+	break;
+}
+
+/*  0F 07      386 LOADALL        Load CPU registers from memory (386) */
+case 0x07:
+{
+	if(CPU_FAMILY == CPU_386) {
+		//TODO
+		//m_instr.fn = &CPUExecutor::LOADALL_386;
+		illegal_opcode();
+	} else {
+		illegal_opcode();
+	}
 	break;
 }
 

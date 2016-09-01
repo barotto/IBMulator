@@ -83,7 +83,7 @@ void CPUExecutor::seg_check(SegReg & _seg, uint32_t _offset, unsigned _len,
 void CPUExecutor::io_check(uint16_t _port, unsigned _len)
 {
 	if(IS_PMODE() && (IS_V8086() || (CPL > FLAG_IOPL))) {
-		if(CPU_TYPE <= CPU_286) {
+		if(CPU_FAMILY <= CPU_286) {
 			/* #GP(O) if the current privilege level is bigger (has less privilege)
 			 * than IOPL; which is the privilege level found in the flags register.
 			 */

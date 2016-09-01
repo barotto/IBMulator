@@ -29,12 +29,15 @@ CPUCore g_cpucore;
 
 void CPUCore::reset()
 {
-	/* The RESET signal initializes the CPU in Real-Address mode, with the CS
-	 * base register containing FFOOOOH and IP containing FFFOH. The first
+	/* The RESET signal initializes the CPU in Real-Address mode. The first
 	 * instruction fetch cycle following reset will be from the physical address
-	 * formed by these two registers, i.e., from address FFFFFOH. This location
-	 * will normally contain a JMP instruction to the actual beginning of the
-	 * system bootstrap program.
+	 * formed by CS.base and EIP. This location will normally contain a JMP
+	 * instruction to the actual beginning of the system bootstrap program.
+	 *
+	 * CPU type  CS sel   CS base   CS limit    EIP
+	 *     8086    FFFF     FFFF0       FFFF   0000
+	 *     286     F000    FF0000       FFFF   FFF0
+	 *     386+    F000  FFFF0000       FFFF   FFF0
 	 */
 
 	memset(m_genregs, 0, sizeof(GenReg)*8);
@@ -46,7 +49,6 @@ void CPUCore::reset()
 	m_eip = 0x0000FFF0;
 
 	load_segment_real(REG_CS, 0xF000, true);
-	REG_CS.desc.base = 0xFF0000;
 	load_segment_real(REG_DS, 0x0000, true);
 	load_segment_real(REG_SS, 0x0000, true);
 	load_segment_real(REG_ES, 0x0000, true);
@@ -58,6 +60,18 @@ void CPUCore::reset()
 
 	set_IDTR(0x000000, 0x03FF);
 	set_GDTR(0x000000, 0x0000);
+
+	switch(CPU_FAMILY) {
+		case CPU_286:
+			m_cr[0] = 0x0000FFF0;
+			REG_CS.desc.base = 0xFF0000;
+			break;
+		case CPU_386:
+			m_genregs[REGI_EDX].dword[0] = CPU_SIGNATURE;
+			m_cr[0] = 0x7FFFFFF0;
+			REG_CS.desc.base = 0xFFFF0000;
+			break;
+	}
 
 	handle_mode_change();
 }
@@ -371,6 +385,13 @@ void CPUCore::set_RF(bool _val)
 void CPUCore::set_CR0(uint32_t _cr0)
 {
 	_cr0 &= CR0MASK_ALL;
+
+	/* CR0.ET may be toggled on the 80386 DX, while it is hardwired to 1 on
+	 * the 80386 SX (same difference between the 80486 DX and SX)
+	 */
+	if(CPU_FAMILY == CPU_386 && (CPU_SIGNATURE&CPU_SIG_386SX) == CPU_SIG_386SX) {
+		_cr0 |= CR0MASK_ET;
+	}
 
 	if((_cr0&CR0MASK_PG) && !(_cr0&CR0MASK_PE)) {
 		PDEBUGF(LOG_V2, LOG_CPU, "attempt to set CR0.PG with CR0.PE cleared\n");

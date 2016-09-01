@@ -1402,7 +1402,7 @@ void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 	}
 
 	delete debugger;
-	if(CPU_TYPE >= CPU_386) {
+	if(CPU_FAMILY >= CPU_386) {
 		debugger = new SysDebugger386(_gui, _machine);
 	} else {
 		debugger = new SysDebugger286(_gui, _machine);
