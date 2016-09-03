@@ -2826,7 +2826,7 @@ void CPUExecutor::MOVZX_rd_ew() { store_rd(load_ew()); }
 void CPUExecutor::MOV_CR_rd()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_CR_rd");
-	uint32_t value = load_rd();
+	uint32_t value = load_ed();
 	switch(m_instr->modrm.r) {
 		case 0: SET_CR0(value); break;
 		case 2: SET_CR2(value); break;
@@ -2839,31 +2839,31 @@ void CPUExecutor::MOV_CR_rd()
 void CPUExecutor::MOV_rd_CR()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_rd_CR");
-	store_rd(GET_CR(m_instr->modrm.r));
+	store_ed(GET_CR(m_instr->modrm.r));
 }
 
 void CPUExecutor::MOV_DR_rd()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_DR_rd");
-	REG_DBG(m_instr->modrm.r) = load_rd();
+	REG_DBG(m_instr->modrm.r) = load_ed();
 }
 
 void CPUExecutor::MOV_rd_DR()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_rd_DR");
-	store_rd(REG_DBG(m_instr->modrm.r));
+	store_ed(REG_DBG(m_instr->modrm.r));
 }
 
 void CPUExecutor::MOV_TR_rd()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_TR_rd");
-	REG_TEST(m_instr->modrm.r) = load_rd();
+	REG_TEST(m_instr->modrm.r) = load_ed();
 }
 
 void CPUExecutor::MOV_rd_TR()
 {
 	check_CPL_privilege(!IS_RMODE(), "MOV_rd_TR");
-	store_rd(REG_TEST(m_instr->modrm.r));
+	store_ed(REG_TEST(m_instr->modrm.r));
 }
 
 
