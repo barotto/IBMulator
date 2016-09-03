@@ -129,6 +129,9 @@ SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine)
 	m_tools.log_prg_name =
 		dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("log_prg_name"));
 	m_tools.log_prg_toggle = get_element("log_prg_toggle");
+	m_tools.cs_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("CS_bp"));
+	m_tools.eip_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("EIP_bp"));
+	m_tools.cs_bp->SetValue(format_hex16(REG_CS.sel.value));
 
 	m_disasm.line0 = get_element("disasm");
 
@@ -269,6 +272,38 @@ void SysDebugger::on_CPU_step(RC::Event &)
 {
 	if(m_machine->is_paused()) {
 		m_machine->cmd_cpu_step();
+	}
+}
+
+void SysDebugger::on_CPU_bp_btn(RC::Event &)
+{
+	// this works only in real address mode
+	if(!m_tools.btn_bp->IsClassSet("on")) {
+		RC::String cs_str = m_tools.cs_bp->GetValue();
+		uint32_t cs,eip;
+		if(!sscanf(cs_str.CString(), "%x", &cs)) {
+			show_message("invalid breakpoint Code Segment");
+			return;
+		}
+		RC::String eip_str = m_tools.eip_bp->GetValue();
+		if(!sscanf(eip_str.CString(), "%x", &eip)) {
+			show_message("invalid breakpoint Offset");
+			return;
+		}
+
+		uint32_t linaddr = (cs<<4) + eip;
+		if(linaddr > 0) {
+			m_machine->cmd_cpu_breakpoint(linaddr, [&](){
+				m_tools.btn_bp->SetClass("on", false);
+			});
+			std::stringstream ss;
+			ss << "breakpoint set to " << cs_str.CString() << ":" << eip_str.CString();
+			show_message(ss.str().c_str());
+			m_tools.btn_bp->SetClass("on", true);
+		}
+	} else {
+		m_machine->cmd_cpu_breakpoint(0, [](){});
+		m_tools.btn_bp->SetClass("on", false);
 	}
 }
 

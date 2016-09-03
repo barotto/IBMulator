@@ -370,8 +370,10 @@ void CPUCore::set_IF(bool _val)
 
 void CPUCore::set_VM(bool _val)
 {
-	set_flag(FBITN_VM, _val);
-	handle_mode_change();
+	if(CPU_FAMILY>=CPU_386 && bool(m_eflags&FMASK_VM)!=_val) {
+		set_flag(FBITN_VM, _val);
+		handle_mode_change();
+	}
 }
 
 void CPUCore::set_RF(bool _val)
@@ -405,7 +407,7 @@ void CPUCore::set_CR0(uint32_t _cr0)
 	if(PE_changed) {
 		handle_mode_change();
 	}
-	if(PE_changed || PG_changed) {
+	if(CPU_FAMILY >= CPU_386 && (PE_changed || PG_changed)) {
 		// Modification of PG,PE flushes TLB cache according to docs.
 		g_cpummu.TLB_flush();
 	}

@@ -1732,41 +1732,46 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		}
 	}
 
-	//TODO adapt for paging
-	if(!IS_PAGING()) {
-		//DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
-		if(_vector == 0x21 && ah == 0x4B) {
-			char * pname = (char*)g_memory.get_phy_ptr(GET_LINADDR(DS, REG_DX));
-			PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
-			g_machine.DOS_program_launch(pname);
-			m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
-			//can the cpu be in pmode?
-			if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
-				g_machine.DOS_program_start(pname);
-			} else {
-				//find the INT exit point
-				uint32_t cs = g_memory.read_notraps<2>(0x21*4 + 2);
-				m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
-			}
+	/* If it's INT 21/4Bh (LOAD AND/OR EXECUTE PROGRAM) then try to determine
+	 * the program name so that it can be displayed on the GUI or reported in
+	 * logs.
+	 */
+	if(_vector == 0x21 && ah == 0x4B) {
+		const char *pname;
+		try {
+			uint32_t nameaddr = GET_PHYADDR(DS, REG_DX);
+			pname = (char*)g_memory.get_phy_ptr(nameaddr);
+		} catch(CPUException &) {
+			pname = "[unknown]";
 		}
-		else if((_vector == 0x21 && (
-				ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
-				ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
-			)) ||
-				_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
-		)
-		{
-			std::string oldprg,newprg;
+		PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
+		g_machine.DOS_program_launch(pname);
+		m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
+		if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
+			g_machine.DOS_program_start(pname);
+		} else {
+			//find the INT exit point
+			uint32_t cs = g_memory.read_notraps<2>(0x21*4 + 2);
+			m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
+		}
+	}
+	else if((_vector == 0x21 && (
+			ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
+			ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
+		)) ||
+			_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
+	)
+	{
+		std::string oldprg,newprg;
+		if(!m_dos_prg.empty()) {
+			oldprg = m_dos_prg.top().second;
+			m_dos_prg.pop();
 			if(!m_dos_prg.empty()) {
-				oldprg = m_dos_prg.top().second;
-				m_dos_prg.pop();
-				if(!m_dos_prg.empty()) {
-					newprg = m_dos_prg.top().second;
-				}
+				newprg = m_dos_prg.top().second;
 			}
-			g_machine.DOS_program_finish(oldprg,newprg);
-			m_dos_prg_int_exit = 0;
 		}
+		g_machine.DOS_program_finish(oldprg,newprg);
+		m_dos_prg_int_exit = 0;
 	}
 
 	g_cpu.interrupt(_vector, _type, false, 0);

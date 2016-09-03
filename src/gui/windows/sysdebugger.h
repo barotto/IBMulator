@@ -59,6 +59,7 @@ private:
 		bool led_power, led_pause;
 		RCN::ElementFormControl *log_prg_name;
 		RC::Element *log_prg_toggle;
+		RCN::ElementFormControl *cs_bp,*eip_bp;
 	} m_tools;
 
 	struct s_disasm {
@@ -74,6 +75,7 @@ private:
 	void on_cmd_save_state(RC::Event &);
 	void on_cmd_restore_state(RC::Event &);
 	void on_CPU_step(RC::Event &);
+	void on_CPU_bp_btn(RC::Event &);
 	void on_log_prg_toggle(RC::Event &);
 	void on_log_write(RC::Event &);
 	void on_mem_dump(RC::Event &);

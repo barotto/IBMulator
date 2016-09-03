@@ -604,10 +604,10 @@ void Machine::cmd_cpu_step()
 	});
 }
 
-void Machine::cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback)
+void Machine::cmd_cpu_breakpoint(uint32_t _linaddr, std::function<void()> _callback)
 {
 	m_cmd_fifo.push([=] () {
-		m_breakpoint = _phyaddr;
+		m_breakpoint = _linaddr;
 		m_breakpoint_clbk = _callback;
 	});
 }

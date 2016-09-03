@@ -36,12 +36,16 @@ private:
 		RC::Element *fslimit,*gslimit;
 	} m_386core;
 
+	struct s_tools {
+		RCN::ElementFormControl *cs_bp,*eip_bp;
+	} m_386tools;
+
 	static event_map_t ms_evt_map;
 
 	void on_CPU_skip(RC::Event &);
 	void on_CPU_bp_btn(RC::Event &);
 
-	const RC::String & disasm(uint16_t _selector, uint32_t _eip, bool _analyze, uint * _size);
+	const RC::String & disasm(uint32_t _eip, bool _analyze, uint * _size);
 
 public:
 

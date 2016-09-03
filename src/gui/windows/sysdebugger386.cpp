@@ -40,7 +40,7 @@ event_map_t SysDebugger386::ms_evt_map = {
 	GUI_EVT( "cmd_restore_state","click", SysDebugger::on_cmd_restore_state ),
 	GUI_EVT( "CPU_step",         "click", SysDebugger::on_CPU_step ),
 	GUI_EVT( "CPU_skip",         "click", SysDebugger386::on_CPU_skip ),
-	GUI_EVT( "CPU_bp_btn",       "click", SysDebugger386::on_CPU_bp_btn ),
+	GUI_EVT( "CPU_bp_btn",       "click", SysDebugger::on_CPU_bp_btn ),
 	GUI_EVT( "log_prg_toggle",   "click", SysDebugger::on_log_prg_toggle ),
 	GUI_EVT( "log_write",        "click", SysDebugger::on_log_write ),
 	GUI_EVT( "mem_dump",         "click", SysDebugger::on_mem_dump ),
@@ -70,13 +70,16 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine)
 	m_386core.gsbase = get_element("GSbase");
 	m_386core.fslimit = get_element("FSlimit");
 	m_386core.gslimit = get_element("GSlimit");
+
+
+	m_tools.eip_bp->SetValue(format_hex32(REG_EIP));
 }
 
 SysDebugger386::~SysDebugger386()
 {
 }
 
-const RC::String & SysDebugger386::disasm(uint16_t _selector, uint32_t _eip, bool _analyze, uint * _size)
+const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
 
@@ -86,9 +89,10 @@ const RC::String & SysDebugger386::disasm(uint16_t _selector, uint32_t _eip, boo
 
 	static char empty = 0;
 
-	uint32_t start = debugger.get_address(_selector, _eip, &g_cpucore);
+	//throws CPUException when #PF
+	uint32_t start = GET_PHYADDR(CS, _eip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory);
+	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory, nullptr, 0, REG_CS.desc.def);
 	if(_size!=nullptr) {
 		*_size = size;
 	}
@@ -96,14 +100,17 @@ const RC::String & SysDebugger386::disasm(uint16_t _selector, uint32_t _eip, boo
 	char *res = &empty;
 
 	if(_analyze) {
-		res = debugger.analyze_instruction(dline, true, &g_cpucore, &g_memory);
-		if(!res || !(*res))
+		//analyze_instruction throws CPUException when #PF
+		res = debugger.analyze_instruction(dline, &g_cpucore, &g_memory,
+				debugger.last_disasm_opsize());
+		if(!res || !(*res)) {
 			res = &empty;
+		}
 	}
 
 	dline[30] = 0;
 
-	str.FormatString(100, "%04X:%08X &nbsp; %s &nbsp; %s",_selector,_eip, dline, res);
+	str.FormatString(100, "%04X:%08X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _eip, dline, res);
 
 	return str;
 };
@@ -199,20 +206,32 @@ void SysDebugger386::update()
 	RC::String str;
 	uint size;
 	uint32_t nextip = REG_EIP;
-	str = disasm(REG_CS.sel.value, nextip, true, &size) + "<br />";
-	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, &size) + "<br />";
-	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, nullptr);
+	try {
+		str = disasm(nextip, true, &size) + "<br />";
+		nextip += size;
+		str += disasm(nextip, false, &size) + "<br />";
+		nextip += size;
+		str += disasm(nextip, false, nullptr);
+	} catch(CPUException &) {
+		// catch any #PF
+		str = "[invalid]";
+	}
 	m_disasm.line0->SetInnerRML(str);
 }
 
 void SysDebugger386::on_CPU_skip(RC::Event &)
 {
-	//TODO
+	if(m_machine->is_paused()) {
+		uint size;
+		try {
+			disasm(REG_EIP, false, &size);
+			uint32_t curaddr = GET_LINADDR(CS, REG_EIP);
+			m_machine->cmd_cpu_breakpoint(curaddr+size, [](){});
+			m_tools.btn_bp->SetClass("on", false);
+			m_machine->cmd_resume();
+		} catch(CPUException &) {
+			show_message("CPU exception trying to disassemble current instruction");
+		}
+	}
 }
 
-void SysDebugger386::on_CPU_bp_btn(RC::Event &)
-{
-	//TODO
-}

@@ -40,7 +40,7 @@ event_map_t SysDebugger286::ms_evt_map = {
 	GUI_EVT( "cmd_restore_state","click", SysDebugger::on_cmd_restore_state ),
 	GUI_EVT( "CPU_step",         "click", SysDebugger::on_CPU_step ),
 	GUI_EVT( "CPU_skip",         "click", SysDebugger286::on_CPU_skip ),
-	GUI_EVT( "CPU_bp_btn",       "click", SysDebugger286::on_CPU_bp_btn ),
+	GUI_EVT( "CPU_bp_btn",       "click", SysDebugger::on_CPU_bp_btn ),
 	GUI_EVT( "log_prg_toggle",   "click", SysDebugger::on_log_prg_toggle ),
 	GUI_EVT( "log_write",        "click", SysDebugger::on_log_write ),
 	GUI_EVT( "mem_dump",         "click", SysDebugger::on_mem_dump ),
@@ -58,19 +58,16 @@ SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine)
 {
 	assert(m_wnd);
 
-	m_286core.msw = get_element("MSW");
+	m_tools.eip_bp->SetValue(format_hex16(REG_IP));
 
-	m_286tools.cs_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("CS_bp"));
-	m_286tools.ip_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("IP_bp"));
-	m_286tools.cs_bp->SetValue(format_hex16(REG_CS.sel.value));
-	m_286tools.ip_bp->SetValue(format_hex16(REG_IP));
+	m_286core.msw = get_element("MSW");
 }
 
 SysDebugger286::~SysDebugger286()
 {
 }
 
-const RC::String & SysDebugger286::disasm(uint16_t _selector, uint16_t _ip, bool _analyze, uint * _size)
+const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
 
@@ -80,9 +77,9 @@ const RC::String & SysDebugger286::disasm(uint16_t _selector, uint16_t _ip, bool
 
 	static char empty = 0;
 
-	uint32_t start = debugger.get_address(_selector, _ip, &g_cpucore);
+	uint32_t start = GET_PHYADDR(CS, _ip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory);
+	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory, nullptr, 0, false);
 	if(_size!=nullptr) {
 		*_size = size;
 	}
@@ -90,14 +87,14 @@ const RC::String & SysDebugger286::disasm(uint16_t _selector, uint16_t _ip, bool
 	char *res = &empty;
 
 	if(_analyze) {
-		res = debugger.analyze_instruction(dline, true, &g_cpucore, &g_memory);
+		res = debugger.analyze_instruction(dline, &g_cpucore, &g_memory, 16);
 		if(!res || !(*res))
 			res = &empty;
 	}
 
 	dline[30] = 0;
 
-	str.FormatString(100, "%04X:%04X &nbsp; %s &nbsp; %s",_selector,_ip, dline, res);
+	str.FormatString(100, "%04X:%04X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _ip, dline, res);
 
 	return str;
 };
@@ -160,11 +157,11 @@ void SysDebugger286::update()
 	Rocket::Core::String str;
 	uint size;
 	uint16_t nextip = REG_IP;
-	str = disasm(REG_CS.sel.value, nextip, true, &size) + "<br />";
+	str = disasm(nextip, true, &size) + "<br />";
 	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, &size) + "<br />";
+	str += disasm(nextip, false, &size) + "<br />";
 	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, nullptr);
+	str += disasm(nextip, false, nullptr);
 	m_disasm.line0->SetInnerRML(str);
 }
 
@@ -172,41 +169,11 @@ void SysDebugger286::on_CPU_skip(RC::Event &)
 {
 	if(m_machine->is_paused()) {
 		uint size;
-		disasm(REG_CS.sel.value, REG_IP, false, &size);
-		uint32_t curphy = GET_PHYADDR(CS, REG_IP);
-		m_machine->cmd_cpu_breakpoint(curphy+size, [](){});
+		disasm(REG_IP, false, &size);
+		uint32_t curaddr = GET_LINADDR(CS, REG_IP);
+		m_machine->cmd_cpu_breakpoint(curaddr+size, [](){});
 		m_tools.btn_bp->SetClass("on", false);
 		m_machine->cmd_resume();
 	}
 }
 
-void SysDebugger286::on_CPU_bp_btn(RC::Event &)
-{
-	if(!m_tools.btn_bp->IsClassSet("on")) {
-		RC::String cs_str = m_286tools.cs_bp->GetValue();
-		uint cs,ip;
-		if(!sscanf(cs_str.CString(), "%x", &cs)) {
-			show_message("invalid breakpoint Code Segment");
-			return;
-		}
-		RC::String ip_str = m_286tools.ip_bp->GetValue();
-		if(!sscanf(ip_str.CString(), "%x", &ip)) {
-			show_message("invalid breakpoint Offset");
-			return;
-		}
-
-		uint32_t phy = (cs<<4) + ip;
-		if(phy > 0) {
-			m_machine->cmd_cpu_breakpoint(phy, [&](){
-				m_tools.btn_bp->SetClass("on", false);
-			});
-			std::stringstream ss;
-			ss << "breakpoint set to " << cs_str.CString() << ":" << ip_str.CString();
-			show_message(ss.str().c_str());
-			m_tools.btn_bp->SetClass("on", true);
-		}
-	} else {
-		m_machine->cmd_cpu_breakpoint(0, [](){});
-		m_tools.btn_bp->SetClass("on", false);
-	}
-}

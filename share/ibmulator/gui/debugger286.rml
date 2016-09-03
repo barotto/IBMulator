@@ -23,7 +23,7 @@
 			<button id="CPU_step" style="width:30px;"><btnicon /></button>
 			<button id="CPU_skip" style="width:30px;"><btnicon /></button>
 			<input type="text" id="CS_bp" size=8 />
-			<input type="text" id="IP_bp" size=8 />
+			<input type="text" id="EIP_bp" size=8 />
 			<button id="CPU_bp_btn" style="width:30px;"><btnicon /></button>
 			<button id="mem_dump" style="width:30px;"><btnicon /></button>
 			<button id="cmd_save_state" style="width:30px;"><btnicon /></button>

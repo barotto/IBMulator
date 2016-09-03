@@ -22,9 +22,8 @@
  */
 
 #include "ibmulator.h"
-
 #include "debugger.h"
-#include "hardware/cpu/core.h"
+#include "hardware/cpu.h"
 #include "hardware/cpu/disasm.h"
 #include "hardware/memory.h"
 #include <cstring>
@@ -48,11 +47,15 @@ char * skip_blanks(char * str) {
 	return str;
 }
 
-uint CPUDebugger::disasm(char *_buf, uint _buflen, uint32_t _addr, uint32_t _ip,
-		Memory *_mem, const uint8_t *_instr_buf, uint _instr_buf_len)
+uint CPUDebugger::disasm(char *_buf, uint _buflen, uint32_t _addr, uint32_t _eip,
+		Memory *_mem, const uint8_t *_instr_buf, uint _instr_buf_len, bool _cs_def)
 {
-	Disasm dasm;
-	return dasm.disasm(_buf, _buflen, _addr, _ip, _mem, _instr_buf, _instr_buf_len);
+	return m_dasm.disasm(_buf, _buflen, _addr, _eip, _mem, _instr_buf, _instr_buf_len, _cs_def);
+}
+
+unsigned CPUDebugger::last_disasm_opsize()
+{
+	return m_dasm.last_operand_size();
 }
 
 uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
@@ -61,7 +64,16 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 	uint32_t regval = 0;
 	_hex = _str;
 	while (*_hex==' ') _hex++;
-	     if(strstr(_hex,"AX")==_hex) { _hex+=2; regval = _core->get_AX(); }
+	     if(strstr(_hex,"EAX")==_hex){ _hex+=3; regval = _core->get_EAX(); }
+	else if(strstr(_hex,"EBX")==_hex){ _hex+=3; regval = _core->get_EBX(); }
+	else if(strstr(_hex,"ECX")==_hex){ _hex+=3; regval = _core->get_ECX(); }
+	else if(strstr(_hex,"EDX")==_hex){ _hex+=3; regval = _core->get_EDX(); }
+	else if(strstr(_hex,"ESI")==_hex){ _hex+=3; regval = _core->get_ESI(); }
+	else if(strstr(_hex,"EDI")==_hex){ _hex+=3; regval = _core->get_EDI(); }
+	else if(strstr(_hex,"EBP")==_hex){ _hex+=3; regval = _core->get_EBP(); }
+	else if(strstr(_hex,"ESP")==_hex){ _hex+=3; regval = _core->get_ESP(); }
+	else if(strstr(_hex,"EIP")==_hex){ _hex+=3; regval = _core->get_EIP(); }
+	else if(strstr(_hex,"AX")==_hex) { _hex+=2; regval = _core->get_AX(); }
 	else if(strstr(_hex,"BX")==_hex) { _hex+=2; regval = _core->get_BX(); }
 	else if(strstr(_hex,"CX")==_hex) { _hex+=2; regval = _core->get_CX(); }
 	else if(strstr(_hex,"DX")==_hex) { _hex+=2; regval = _core->get_DX(); }
@@ -69,16 +81,13 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 	else if(strstr(_hex,"DI")==_hex) { _hex+=2; regval = _core->get_DI(); }
 	else if(strstr(_hex,"BP")==_hex) { _hex+=2; regval = _core->get_BP(); }
 	else if(strstr(_hex,"SP")==_hex) { _hex+=2; regval = _core->get_SP(); }
-	else if(strstr(_hex,"IP")==_hex) { _hex+=2; regval = _core->get_EIP(); }
+	else if(strstr(_hex,"IP")==_hex) { _hex+=2; regval = _core->get_EIP()&0xFFFF; }
 	else if(strstr(_hex,"CS")==_hex) { _hex+=2; regval = _core->get_CS().sel.value; }
 	else if(strstr(_hex,"DS")==_hex) { _hex+=2; regval = _core->get_DS().sel.value; }
 	else if(strstr(_hex,"ES")==_hex) { _hex+=2; regval = _core->get_ES().sel.value; }
 	else if(strstr(_hex,"SS")==_hex) { _hex+=2; regval = _core->get_SS().sel.value; }
-	//return a fake value. the debugger gui disassembles 2 instructions ahead.
-	//if those "instructions" are not code but data, they can be interpreted as anything,
-	//like bogus 386's prefixes fs: and gs:
-	else if(strstr(_hex,"FS")==_hex) { _hex+=2; regval = 0; }
-	else if(strstr(_hex,"GS")==_hex) { _hex+=2; regval = 0; };
+	else if(strstr(_hex,"FS")==_hex) { _hex+=2; regval = _core->get_FS().sel.value; }
+	else if(strstr(_hex,"GS")==_hex) { _hex+=2; regval = _core->get_GS().sel.value; };
 
 	while(*_hex) {
 		if((*_hex>='0') && (*_hex<='9')) value = (value<<4)+*_hex-'0';
@@ -93,50 +102,47 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 	return regval + value;
 };
 
-uint32_t CPUDebugger::get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core)
+unsigned CPUDebugger::get_seg_idx(char *_str)
 {
-	if(_seg == _core->get_CS().sel.value) {
-		return _core->get_phyaddr(REGI_CS, _offset);
-	}
-	if(_seg == _core->get_DS().sel.value) {
-		return _core->get_phyaddr(REGI_DS, _offset);
-	}
-	if(_seg == _core->get_ES().sel.value) {
-		return _core->get_phyaddr(REGI_ES, _offset);
-	}
+	     if(strstr(_str,"CS")==_str) { return REGI_CS; }
+	else if(strstr(_str,"DS")==_str) { return REGI_DS; }
+	else if(strstr(_str,"ES")==_str) { return REGI_ES; }
+	else if(strstr(_str,"SS")==_str) { return REGI_SS; }
+	else if(strstr(_str,"FS")==_str) { return REGI_FS; }
+	else if(strstr(_str,"GS")==_str) { return REGI_GS; }
 
-	//if (_seg==GETREG(SS))
-	return _core->get_phyaddr(REGI_SS, _offset);
+	//return something, but what? throw an exception?
+	return REGI_CS;
 }
 
-char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
-		CPUCore *_core, Memory *_memory, uint _opsize)
+char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
+		Memory *_memory, uint _opsize)
 {
 	static char result[256];
 
 	char instu[256];
 	char prefix[3];
-	uint16_t seg;
+	unsigned seg;
 
 	strcpy(instu, _dasm_inst);
 	upcase(instu);
 
 	result[0] = 0;
 	char* pos = strchr(instu,'[');
-	if (pos) {
+	if(pos) {
 		// Segment prefix ?
-		if (*(pos-1)==':') {
+		if(*(pos-1) == ':') {
 			char* segpos = pos-3;
 			prefix[0] = tolower(*segpos);
 			prefix[1] = tolower(*(segpos+1));
 			prefix[2] = 0;
-			seg = (uint16_t)get_hex_value(segpos, segpos, _core);
+			seg = get_seg_idx(segpos);
 		} else {
-			if (strstr(pos,"SP") || strstr(pos,"BP")) {
-				seg = _core->get_SS().sel.value;
+			if(strstr(pos,"SP") || strstr(pos,"BP")) {
+				seg = REGI_SS;
 				strcpy(prefix,"ss");
 			} else {
-				seg = _core->get_DS().sel.value;
+				seg = REGI_DS;
 				strcpy(prefix,"ds");
 			};
 		};
@@ -153,29 +159,29 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 			} else
 				pos++;
 		};
-		uint32_t address = get_address(seg, adr, _core);
 
-		static char outmask[] = "%s:[%04X]=%02X";
-
-		if(_core->is_pmode()) {
-			outmask[6] = '8';
-		}
-
-		if(_mem_read) {
-			switch (_opsize) {
-				case 8 : {	uint8_t val = _memory->read_notraps<1>(address);
-							outmask[12] = '2';
-							sprintf(result,outmask,prefix,adr,val);
-						}	break;
-				case 16: {	uint16_t val = _memory->read_notraps<2>(address);
-							outmask[12] = '4';
-							sprintf(result,outmask,prefix,adr,val);
-						}	break;
-				case 32: {	uint32_t val = _memory->read_notraps<4>(address);
-							outmask[12] = '8';
-							sprintf(result,outmask,prefix,adr,val);
-						}	break;
+		if(_memory) {
+			static char outmask[] = "%s:[%04X]=%02X";
+			if(_core->is_pmode()) {
+				outmask[6] = '8';
 			}
+			try {
+				uint32_t address = _core->get_phyaddr(seg, adr, _memory);
+				switch (_opsize) {
+					case 8 : {	uint8_t val = _memory->read_notraps<1>(address);
+								outmask[12] = '2';
+								sprintf(result,outmask,prefix,adr,val);
+							}	break;
+					case 16: {	uint16_t val = _memory->read_notraps<2>(address);
+								outmask[12] = '4';
+								sprintf(result,outmask,prefix,adr,val);
+							}	break;
+					case 32: {	uint32_t val = _memory->read_notraps<4>(address);
+								outmask[12] = '8';
+								sprintf(result,outmask,prefix,adr,val);
+							}	break;
+				}
+			} catch(CPUException &) { }
 		}
 		// Variable found ?
 		/* TODO
@@ -279,28 +285,32 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, bool _mem_read,
 		}
 		pos = strchr(instu,' ');
 		assert(pos);
-		uint32_t addr=0;
-		uint32_t seg,off;
-		pos = skip_blanks(pos);
-		if(sscanf(pos, "%x:%x",&seg,&off)==2) {
-			//eg: JMP  F000:E05B
-			addr = get_address(seg,off,_core);
-		} else if(sscanf(pos, "%x",&addr)==1) {
-			//absolute address
-		} else if(strstr(pos,"NEAR") == pos) {
-			//jump near to EA word (abs offset)
-			pos = strchr(pos,' ');
+
+		if(!_core->is_pmode()) {
+			uint32_t addr=0;
+			uint32_t seg,off;
 			pos = skip_blanks(pos);
-			if(pos[0]=='B' && pos[1]=='X') {
-				addr = get_address(_core->get_CS().sel.value, _core->get_BX(), _core);
+			if(sscanf(pos, "%x:%x",&seg,&off)==2) {
+				//eg: JMP  F000:E05B
+				addr = (seg << 4) + off;
+			} else if(sscanf(pos, "%x",&addr)==1) {
+				//absolute address
+			} else if(strstr(pos,"NEAR") == pos) {
+				//jump near to EA word (abs offset)
+				pos = strchr(pos,' ');
+				pos = skip_blanks(pos);
+				if(pos[0]=='B' && pos[1]=='X') {
+					addr = _core->get_phyaddr(REGI_CS, _core->get_BX());
+				}
+			}
+			if(addr != 0) {
+				auto name = ms_addrnames.find(addr);
+				if(name != ms_addrnames.end()) {
+					sprintf(result,"%s", name->second);
+				}
 			}
 		}
-		if(addr!=0) {
-			auto name = ms_addrnames.find(addr);
-			if(name != ms_addrnames.end()) {
-				sprintf(result,"%s", name->second);
-			}
-		}
+
 		char * curpos = result + strlen(result);
 		if (jmp) {
 			pos = strchr(instu,'$');
@@ -570,13 +580,15 @@ void CPUDebugger::INT_15_87(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		INT_def_ret(core, buf, buflen);
 		return;
 	}
-	uint32_t gdt = core->get_phyaddr(REGI_ES, core->get_SI());
-	Descriptor from, to;
-	from = mem->read_qword(gdt+0x10);
-	to   = mem->read_qword(gdt+0x18);
-	snprintf(buf, buflen, ": from 0x%06X to 0x%06X (0x%04X bytes)",
-			from.base, to.base, core->get_CX()*2
-	);
+	try {
+		uint32_t gdt = core->get_phyaddr(REGI_ES, core->get_SI(), mem);
+		Descriptor from, to;
+		from = mem->read_qword(gdt+0x10);
+		to   = mem->read_qword(gdt+0x18);
+		snprintf(buf, buflen, ": from 0x%06X to 0x%06X (0x%04X bytes)",
+				from.base, to.base, core->get_CX()*2
+		);
+	} catch(CPUException &) { }
 }
 
 void CPUDebugger::INT_1A_00(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
@@ -595,8 +607,15 @@ void CPUDebugger::INT_21_09(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		snprintf(buf, buflen, " ret");
 		return;
 	}
-	if(buflen<=3) return;
-	uint32_t addr = core->get_phyaddr(REGI_DS, core->get_DX());
+	if(buflen<=3) {
+		return;
+	}
+	uint32_t addr;
+	try {
+		addr = core->get_phyaddr(REGI_DS, core->get_DX(), mem);
+	} catch(CPUException &) {
+		return;
+	}
 	char * str = (char*)mem->get_phy_ptr(addr);
 	*buf++ = ':';
 	*buf++ = ' ';
@@ -666,17 +685,26 @@ void CPUDebugger::INT_2F_1116(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 void CPUDebugger::INT_2F_1123(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
+	const char *filename;
 	if(!call) {
 		INT_def_ret(core, buf, buflen);
 		if(core->get_FLAGS(FMASK_CF) == 0) {
 			buf += strlen(buf);
-			char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI()));
+			try {
+				filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI(), mem));
+			} catch(CPUException &) {
+				filename = "[unknown]";
+			}
 			snprintf(buf, buflen, " : '%s'", filename);
 		}
 		return;
 	}
 	//DS:SI -> ASCIZ filename to canonicalize
-	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
+	try {
+		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+	} catch(CPUException &) {
+		filename = "[unknown]";
+	}
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
@@ -792,7 +820,12 @@ void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		return;
 	}
 	//DS:DX -> ASCIZ program name
-	char * name = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
+	const char * name;
+	try {
+		name = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+	} catch(CPUException &) {
+		name = "[unknown]";
+	}
 	const char * type = "";
 	switch(ax & 0xFF) {
 		case 0x0: type = "load and execute"; break;
@@ -818,7 +851,12 @@ void CPUDebugger::INT_21_39_A_B_4E(bool call, uint16_t /*ax*/, CPUCore *core, Me
 		return;
 	}
 	//DS:DX -> ASCIZ pathname
-	char * pathname = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
+	const char * pathname;
+	try {
+		pathname = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+	} catch(CPUException &) {
+		pathname = "[unknown]";
+	}
 	snprintf(buf, buflen, " : '%s'", pathname);
 }
 
@@ -835,7 +873,12 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	//DS:DX -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
+	const char * filename;
+	try {
+		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+	} catch(CPUException &) {
+		filename = "[unknown]";
+	}
 	const char * mode = "";
 	switch(core->get_AL() & 0x7) {
 		case 0x0: mode = "read only"; break;
@@ -921,7 +964,12 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	//DS:DX -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX()));
+	const char * filename;
+	try {
+		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+	} catch(CPUException &) {
+		filename = "[unknown]";
+	}
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
@@ -965,8 +1013,17 @@ void CPUDebugger::INT_21_5F03(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		INT_def_ret(core, buf, buflen);
 		return;
 	}
-	char * local = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
-	char *   net = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI()));
+	const char *local, *net;
+	try {
+		local = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+	} catch(CPUException &) {
+		local = "[unknown]";
+	}
+	try {
+		net = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI(), mem));
+	} catch(CPUException &) {
+		net = "[unknown]";
+	}
 	snprintf(buf, buflen, " : local:'%s', net:'%s'", local, net);
 }
 
@@ -985,7 +1042,12 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	}
 
 	//DS:SI -> ASCIZ filename
-	char * filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI()));
+	const char * filename;
+	try {
+		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+	} catch(CPUException &) {
+		filename = "[unknown]";
+	}
 	snprintf(buf, buflen, " : '%s'", filename);
 }
 
@@ -1008,16 +1070,16 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 		output << std::hex << std::setw(3) << index << ",";
 
 		// base
-		output << std::hex << std::setw(6) << int(desc.base) << ",";
+		output << std::hex << std::setw(8) << int(desc.base) << ",";
 
 		// limit/offset
-		output << std::hex << std::setw(4) << int(desc.limit) << ",";
+		output << std::hex << std::setw(8) << int(desc.limit) << ",";
 
 		// base_15_0/selector
-		output << std::hex << std::setw(4) << int(desc.base_15_0) << ",";
+		output << std::hex << std::setw(4) << int(desc.selector) << ",";
 
 		// base_23_16/word_count
-		output << std::hex << std::setw(2) << int(desc.base_23_16) << ",";
+		output << std::hex << std::setw(2) << int(desc.word_count) << ",";
 
 		//AR
 		output << std::hex << std::setw(2) << int(desc.ar) << ",";
@@ -1026,14 +1088,23 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 				case DESC_TYPE_AVAIL_286_TSS:
 					output << "AVAIL 286 TSS";
 					break;
+				case DESC_TYPE_AVAIL_386_TSS:
+					output << "AVAIL 386 TSS";
+					break;
 				case DESC_TYPE_LDT_DESC:
 					output << "LDT DESC";
 					break;
 				case DESC_TYPE_BUSY_286_TSS:
 					output << "BUSY 286 TSS";
 					break;
+				case DESC_TYPE_BUSY_386_TSS:
+					output << "BUSY 386 TSS";
+					break;
 				case DESC_TYPE_286_CALL_GATE:
 					output << "286 CALL GATE";
+					break;
+				case DESC_TYPE_386_CALL_GATE:
+					output << "386 CALL GATE";
 					break;
 				case DESC_TYPE_TASK_GATE:
 					output << "TASK GATE";
@@ -1041,8 +1112,14 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 				case DESC_TYPE_286_INTR_GATE:
 					output << "286 INTR GATE";
 					break;
+				case DESC_TYPE_386_INTR_GATE:
+					output << "386 INTR GATE";
+					break;
 				case DESC_TYPE_286_TRAP_GATE:
 					output << "286 TRAP GATE";
+					break;
+				case DESC_TYPE_386_TRAP_GATE:
+					output << "386 TRAP GATE";
 					break;
 				default:
 					output << "INVALID";
