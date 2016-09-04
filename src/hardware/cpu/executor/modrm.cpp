@@ -173,7 +173,7 @@ void CPUExecutor::load_m1616(uint16_t &w1_, uint16_t &w2_)
 	uint32_t off = (this->*EA_get_offset)();
 
 	w1_ = read_word(sr, off);
-	w2_ = read_word(sr, off+2);
+	w2_ = read_word(sr, (off+2) & m_addr_mask);
 }
 
 void CPUExecutor::load_m1632(uint32_t &dw1_, uint16_t &w2_)
@@ -183,7 +183,7 @@ void CPUExecutor::load_m1632(uint32_t &dw1_, uint16_t &w2_)
 
 	//little endian
 	dw1_ = read_dword(sr, off);
-	 w2_ = read_word(sr, off+4);
+	 w2_ = read_word(sr, (off+4) & m_addr_mask);
 }
 
 void CPUExecutor::load_m3232(uint32_t &dw1_, uint32_t &dw2_)
@@ -192,7 +192,7 @@ void CPUExecutor::load_m3232(uint32_t &dw1_, uint32_t &dw2_)
 	uint32_t off = (this->*EA_get_offset)();
 
 	dw1_ = read_dword(sr, off);
-	dw2_ = read_dword(sr, off+4);
+	dw2_ = read_dword(sr, (off+4) & m_addr_mask);
 }
 
 uint32_t CPUExecutor::load_rd()

@@ -2141,7 +2141,7 @@ void CPUExecutor::LDT_m(uint32_t &base_, uint16_t &limit_)
 	check_CPL_privilege(IS_PMODE(), "LDT_m");
 
 	SegReg & sr = (this->*EA_get_segreg)();
-	uint16_t off = (this->*EA_get_offset)();
+	uint32_t off = (this->*EA_get_offset)();
 
 	limit_ = read_word(sr, off);
 	base_ = read_dword(sr, (off+2) & m_addr_mask);
@@ -4242,7 +4242,7 @@ void CPUExecutor::SDT(unsigned _reg, uint32_t _base_mask)
 	}
 
 	SegReg & sr = (this->*EA_get_segreg)();
-	uint16_t off = (this->*EA_get_offset)();
+	uint32_t off = (this->*EA_get_offset)();
 
 	write_word(sr, off, limit_16);
 	write_dword(sr, (off+2) & m_addr_mask, base_32);
@@ -4849,12 +4849,12 @@ void CPUExecutor::XCHG_EAX_rd()
 
 void CPUExecutor::XLATB_a16()
 {
-	REG_AL = read_byte(SEG_REG(m_base_ds), (REG_BX + uint16_t(REG_AL)));
+	REG_AL = read_byte(SEG_REG(m_base_ds), uint16_t(REG_BX + REG_AL));
 }
 
 void CPUExecutor::XLATB_a32()
 {
-	REG_AL = read_byte(SEG_REG(m_base_ds), (REG_EBX + uint32_t(REG_AL)));
+	REG_AL = read_byte(SEG_REG(m_base_ds), (REG_EBX + REG_AL));
 }
 
 

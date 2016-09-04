@@ -470,8 +470,8 @@ void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
 			write_dword(REG_SS, temp_ESP-8, REG_EIP, cs_descriptor.dpl, CPU_SS_EXC, errcode);
 			temp_ESP -= 8;
 		} else {
-			write_word(REG_SS, uint16_t(temp_ESP-2), REG_CS.sel.value, cs_descriptor.dpl, CPU_SS_EXC, errcode);
-			write_word(REG_SS, uint16_t(temp_ESP-4), REG_IP, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			write_word(REG_SS, temp_ESP-2, REG_CS.sel.value, cs_descriptor.dpl, CPU_SS_EXC, errcode);
+			write_word(REG_SS, temp_ESP-4, REG_IP, cs_descriptor.dpl, CPU_SS_EXC, errcode);
 			temp_ESP -= 4;
 		}
 
