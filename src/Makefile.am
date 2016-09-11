@@ -15,6 +15,7 @@ ibmulator_SOURCES = \
 	main.cpp \
 	md5.cpp \
 	mixer.cpp \
+	model.cpp \
 	program.cpp \
 	statebuf.cpp \
 	syslog.cpp \
@@ -36,6 +37,7 @@ noinst_HEADERS = \
 	machine.h \
 	md5.h \
 	mixer.h \
+	model.h \
 	program.h \
 	shared_queue.h \
 	shared_deque.h \

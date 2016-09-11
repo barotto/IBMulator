@@ -692,7 +692,7 @@ void HardDrive::mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance 
 		params.lzone      = _geom.lzone;
 		params.sectors    = _geom.spt;
 		params.reserved   = 0;
-		g_memory.inject_custom_hdd_params(HDD_CUSTOM_TYPE_IDX, params);
+		g_machine.sys_rom().inject_custom_hdd_params(HDD_CUSTOM_TYPE_IDX, params);
 	}
 }
 

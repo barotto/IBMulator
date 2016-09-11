@@ -250,6 +250,18 @@ void Machine::power_off()
 
 void Machine::config_changed()
 {
+	PINFOF(LOG_V1, LOG_MACHINE, "Loading the SYSTEM ROM\n");
+	try {
+		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
+		m_sysrom.load(romset);
+	} catch(std::exception &e) {
+		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
+				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
+		        nullptr);
+		throw;
+	}
+
 	g_cpu.config_changed();
 	g_memory.config_changed();
 	g_devices.config_changed();

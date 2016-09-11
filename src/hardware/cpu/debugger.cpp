@@ -610,13 +610,13 @@ void CPUDebugger::INT_21_09(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	if(buflen<=3) {
 		return;
 	}
-	uint32_t addr;
+	char * str;
 	try {
-		addr = core->get_phyaddr(REGI_DS, core->get_DX(), mem);
-	} catch(CPUException &) {
+		uint32_t addr = core->get_phyaddr(REGI_DS, core->get_DX(), mem);
+		str = (char*)mem->get_phy_ptr(addr);
+	} catch(...) {
 		return;
 	}
-	char * str = (char*)mem->get_phy_ptr(addr);
 	*buf++ = ':';
 	*buf++ = ' ';
 	buflen -= 2;

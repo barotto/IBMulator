@@ -92,6 +92,9 @@ void Devices::reset(uint _signal)
 
 void Devices::config_changed()
 {
+	// install mandatory devices
+	m_sysboard = install<SystemBoard>();
+
 	// install or remove optional devices
 	install_only_if<FloppyCtrl>(
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
@@ -257,8 +260,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
-				_port, REG_CS.sel.value, REG_IP);
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X\n", _port);
 		return 0xFF;
 	}
 	return uint8_t(iohdl.device->read(_port, 1));
@@ -296,8 +298,7 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
-				_port, REG_CS.sel.value, REG_IP);
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X\n", _port);
 		return;
 	}
 	iohdl.device->write(_port, _value, 1);

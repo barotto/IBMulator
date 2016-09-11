@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_HW_MEMORY_H
 #define IBMULATOR_HW_MEMORY_H
 
+#include "model.h"
 #include "statebuf.h"
 #include "interval_tree.h"
 #include "devices/hddparams.h"
@@ -63,10 +64,8 @@ protected:
 	//TODO change these C arrays to std::vector
 	uint8_t *m_buffer;
 	uint m_mainbuf_size;
-	uint8_t *m_sysrom;
 	uint m_base_size;
 	uint m_ext_size;
-	std::string m_bios_md5;
 
 	struct {
 		bool A20_enabled;
@@ -76,16 +75,8 @@ protected:
 	memtrap_intervalTree_t m_traps_tree;
 	std::vector<memtrap_interval_t> m_traps_intervals;
 
-	const static std::map<std::string, uint32_t> ms_hdd_paramtable_offsets;
-
 	uint8_t read_byte(uint32_t _address) const noexcept;
 	void write_byte(uint32_t _address, uint8_t value) noexcept;
-
-	int  load_rom_file(const std::string &_filename, uint32_t _destaddr=0);
-	void load_rom_dir(const std::string &_dirname);
-	void load_rom_archive(const std::string &_filename);
-
-	void update_BIOS_8bit_checksum();
 
 public:
 
@@ -159,7 +150,7 @@ public:
 	}
 
 	void set_A20_line(bool _enabled);
-	bool get_A20_line() { return m_s.A20_enabled; }
+	inline bool get_A20_line() const { return m_s.A20_enabled; }
 
 	uint8_t *get_phy_ptr(uint32_t _address);
 	uint32_t get_ram_size() { return m_mainbuf_size; }
@@ -167,16 +158,11 @@ public:
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);
 
-	void load(uint32_t _address, const std::string &_filename);
-	void dump(const std::string &_filename, uint32_t _address, uint _len);
-
-	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
-
-	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
-
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);
 
+	void dump(const std::string &_filename, uint32_t _address, uint _len);
+	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
 	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 };

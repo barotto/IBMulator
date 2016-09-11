@@ -26,6 +26,7 @@
 #include "chrono.h"
 #include "hwbench.h"
 #include "statebuf.h"
+#include "hardware/systemrom.h"
 #include "hardware/devices.h"
 
 class CPU;
@@ -40,6 +41,17 @@ typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_st
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
+/* There's some confusion about the proper terminology here.
+ * "Type" is the 4 digit number with which IBM identified the various PS/1's, like 2011 and 2121.
+ * "Model" is the combination of Type with a particular variation, e.g. 2121-A82
+ * Unfortunately people keep using Model to designate the Type.
+ * I use Type in the sense IBM intended.
+ */
+enum MachineType {
+	PS1_2011,
+	PS1_2121,
+	MCH_UNKNOWN
+};
 
 enum MachineReset {
 	MACHINE_POWER_ON,   // Machine is switched on using the power button
@@ -80,12 +92,12 @@ private:
 	double m_cycles_factor;
 
 	struct Timer {
-		bool        in_use;     // Timer slot is in-use (currently registered).
-		uint64_t    period;     // Timer periodocity in nsecs.
+		bool        in_use;       // Timer slot is in-use (currently registered).
+		uint64_t    period;       // Timer periodocity in nsecs.
 		uint64_t    time_to_fire; // Time to fire next (in nsecs).
-		bool        active;     // false=inactive, true=active.
-		bool        continuous; // false=one-shot timer, true=continuous periodicity.
-		timer_fun_t fire;      // A callback function for when the timer fires.
+		bool        active;       // false=inactive, true=active.
+		bool        continuous;   // false=one-shot timer, true=continuous periodicity.
+		timer_fun_t fire;         // A callback function for when the timer fires.
 		char        name[TIMER_NAME_LEN];
 	} m_timers[MAX_TIMERS];
 
@@ -102,6 +114,7 @@ private:
 
 	std::string m_irq_names[16];
 
+	SystemROM m_sysrom;
 
 	bool m_curr_prgname_changed;
 
@@ -145,7 +158,9 @@ public:
 	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
 	inline HWBench & get_bench() { return m_bench; }
 
-	inline Devices &devices() { return g_devices; }
+	inline unsigned type() const { return m_sysrom.bios().machine; }
+	inline SystemROM & sys_rom() { return m_sysrom; }
+	inline Devices & devices() { return g_devices; }
 
 	int register_timer(timer_fun_t _func, const char *_name);
 	void unregister_timer(int &_timer);

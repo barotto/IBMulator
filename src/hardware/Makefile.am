@@ -17,6 +17,7 @@ libhardware_a_SOURCES = \
 	cpu/debugger.cpp \
 	cpu/mmu.cpp \
 	memory.cpp \
+	systemrom.cpp \
 	iodevice.cpp \
 	devices.cpp \
 	devices/systemboard.cpp \
@@ -59,6 +60,7 @@ noinst_HEADERS = \
 	cpu/debugger.h \
 	cpu/mmu.h \
 	memory.h \
+	systemrom.h \
 	iodevice.h \
 	devices.h \
 	devices/systemboard.h \
