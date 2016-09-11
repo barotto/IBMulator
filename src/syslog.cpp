@@ -27,7 +27,7 @@
 #include <iomanip>
 #include <iconv.h>
 #include "machine.h"
-#include "hardware/cpu/core.h"
+#include "hardware/cpu.h"
 
 Syslog g_syslog;
 
@@ -261,8 +261,13 @@ bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _fo
 		}
 		if(LOG_CSIP) {
 			temp << std::hex << std::uppercase << internal << setfill('0');
-			temp << setw(4) << REG_CS.sel.value << ":" << setw(4) << REG_IP << " ";
-			temp << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
+			temp << setw(4) << REG_CS.sel.value << ":";
+			if(CPU_FAMILY <= CPU_286) {
+				temp << setw(4) << REG_IP;
+			} else {
+				temp << setw(8) << REG_EIP;
+			}
+			temp << " " << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
 		}
 		prefix += temp.str();
 		prefix += m_pri_prefixes[_verbosity][_priority];

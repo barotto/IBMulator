@@ -35,7 +35,8 @@
 #include "devices/harddrv.h"
 #include "devices/serial.h"
 #include "devices/parallel.h"
-#include "devices/systemboard.h"
+#include "devices/systemboard_ps1_2011.h"
+#include "devices/systemboard_ps1_2121.h"
 #include "devices/pcspeaker.h"
 #include "devices/ps1audio.h"
 #include "devices/adlib.h"
@@ -67,13 +68,15 @@ void Devices::init(Machine *_machine)
 	m_machine = _machine;
 
 	// install mandatory devices
-	m_sysboard = install<SystemBoard>();
 	m_dma = install<DMA>();
 	m_pic = install<PIC>();
 	m_pit = install<PIT>();
 	m_vga = install<VGA>(); // TODO other VGA models?
 	m_cmos = install<CMOS>();
 	install<Keyboard>();
+
+	// the sysboard will be installed in the config_changed
+	m_sysboard = nullptr;
 }
 
 void Devices::reset(uint _signal)
@@ -92,8 +95,22 @@ void Devices::reset(uint _signal)
 
 void Devices::config_changed()
 {
-	// install mandatory devices
-	m_sysboard = install<SystemBoard>();
+	// install the system board
+	if(m_sysboard) {
+		remove(m_sysboard->name());
+		m_sysboard = nullptr;
+	}
+	switch(m_machine->type()) {
+		case PS1_2011:
+			m_sysboard = install<SystemBoard_PS1_2011>();
+			break;
+		case PS1_2121:
+			m_sysboard = install<SystemBoard_PS1_2121>();
+			break;
+		default:
+			PERRF(LOG_MACHINE, "unknown machine type\n");
+			throw std::exception();
+	}
 
 	// install or remove optional devices
 	install_only_if<FloppyCtrl>(

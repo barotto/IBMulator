@@ -25,21 +25,27 @@ IODEVICE_PORTS(IODevice) = {};
 
 void IODevice::install()
 {
-	install(&ioports()->at(0), ioports()->size());
+	size_t len = ioports()->size();
+	if(len) {
+		install(&ioports()->at(0), len);
+	}
 }
 
 void IODevice::remove()
 {
-	remove(&ioports()->at(0), ioports()->size());
+	size_t len = ioports()->size();
+	if(len) {
+		remove(&ioports()->at(0), len);
+	}
 }
 
 void IODevice::install(const IOPortsInterval *_io, unsigned _len)
 {
 	while(_len--) {
 		if(_io->from == _io->to) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "insalling IO port  %03X     for %s\n", _io->from, name());
+		PDEBUGF(LOG_V2, LOG_MACHINE, "installing IO port  %03X     for %s\n", _io->from, name());
 		} else {
-			PDEBUGF(LOG_V2, LOG_MACHINE, "insalling IO ports %03X-%03X for %s\n",
+			PDEBUGF(LOG_V2, LOG_MACHINE, "installing IO ports %03X-%03X for %s\n",
 					_io->from, _io->to, name());
 		}
 		for(unsigned p=_io->from; p<=_io->to; p++) {

@@ -21,9 +21,7 @@
 #include "program.h"
 #include "machine.h"
 #include "systemboard.h"
-#include "hardware/devices.h"
 #include "hardware/memory.h"
-#include "hardware/cpu/core.h"
 #include "hardware/devices/serial.h"
 #include "hardware/devices/parallel.h"
 #include <cstring>
@@ -44,42 +42,32 @@ SystemBoard::SystemBoard(Devices* _dev)
 	memset(&m_s, 0, sizeof(m_s));
 }
 
-void SystemBoard::reset(unsigned)
+void SystemBoard::reset(unsigned _signal)
 {
 	m_s.POST = 0;
 
-	//System Board Enable/Setup Register:
-	m_s.VGA_enable = true;
-	m_s.board_enable = true;
-	update_board_state();
+	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+		//System Board Enable/Setup Register:
+		m_s.VGA_enable = true;
+		m_s.board_enable = true;
+		update_board_state();
 
-	//POS 2
-	m_s.VGA_awake = true;
-	m_s.POS2_bit1 = false;
-	m_s.COM_enabled = true;
-	m_s.COM_port = 1; // COM1 fixed on model 2011
-	m_s.LPT_enabled = true;
-	m_s.LPT_port = m_LPT_port;
-	m_s.LPT_mode = PARPORT_COMPATIBLE;
-	update_POS2_state();
+		//POS 2
+		m_s.VGA_awake = true;
+		m_s.POS2_bit1 = false;
+		m_s.COM_enabled = true;
+		m_s.COM_port = m_COM_port;
+		m_s.LPT_enabled = true;
+		m_s.LPT_port = m_LPT_port;
+		m_s.LPT_mode = PARPORT_COMPATIBLE;
+		update_POS2_state();
 
-	//POS 3
-	m_s.POS_3 = 0x0F;
-	update_POS3_state();
+		// other POS regs
+		m_s.POS_3 = m_s.POS_4 = m_s.POS_5 = 0;
 
-	//POS 4
-	m_s.RAM_bank1_en = true;
-	m_s.RAM_bank2_en = true;
-	m_s.RAM_bank3_en = true;
-	m_s.RAM_bank4_en = true;
-	m_s.RAM_bank5_en = true;
-	update_POS4_state();
-
-	//POS 5
-	m_s.POS_5 = 0x0F;
-
-	//
-	m_s.CSF = 0;
+		//Card Select Feedback
+		m_s.CSF = 0;
+	}
 }
 
 void SystemBoard::config_changed()
@@ -87,31 +75,24 @@ void SystemBoard::config_changed()
 	m_parallel = m_devices->device<Parallel>();
 	m_serial = m_devices->device<Serial>();
 
-	m_s.COM_port = 1; // COM1 fixed on model 2011
+	//TODO m_COM_port = g_program.config().get_enum(COM_SECTION, COM_PORT, Serial::ms_com_ports);
+	m_COM_port = 1;
 	m_LPT_port = g_program.config().get_enum(LPT_SECTION, LPT_PORT, Parallel::ms_lpt_ports);
-	m_s.LPT_port = m_LPT_port;
 
-	update_state();
+	m_s.COM_port = m_COM_port;
+	m_s.LPT_port = m_LPT_port;
 }
 
 void SystemBoard::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_MACHINE, "saving board state\n");
-
-	StateHeader h;
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
+	PINFOF(LOG_V1, LOG_MACHINE, "saving main board state\n");
+	_state.write(&m_s,{sizeof(m_s), name()});
 }
 
 void SystemBoard::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_MACHINE, "restoring board state\n");
-
-	StateHeader h;
-	h.name = name();
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s,h);
+	PINFOF(LOG_V1, LOG_MACHINE, "restoring main board state\n");
+	_state.read(&m_s,{sizeof(m_s), name()});
 }
 
 void SystemBoard::update_state()
@@ -119,6 +100,7 @@ void SystemBoard::update_state()
 	update_POS2_state();
 	update_POS3_state();
 	update_POS4_state();
+	update_POS5_state();
 	update_board_state();
 }
 
@@ -135,16 +117,6 @@ void SystemBoard::update_POS2_state()
 	}
 }
 
-void SystemBoard::update_POS3_state()
-{
-	//TODO HDD
-}
-
-void SystemBoard::update_POS4_state()
-{
-	//TODO RAM
-}
-
 void SystemBoard::update_board_state()
 {
 	//TODO VGA
@@ -152,7 +124,7 @@ void SystemBoard::update_board_state()
 
 uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
 {
-	uint8_t value = 0;
+	uint8_t value = ~0;
 
 	switch(_address) {
 		case 0x0091: //Card Selected Feedback;
@@ -169,23 +141,13 @@ uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
 			value = (m_s.VGA_enable << 5) | (m_s.board_enable << 7);
 			break;
 		case 0x0102:
-			value = (m_s.VGA_awake   << 0) |
-			        (m_s.POS2_bit1   << 1) |
-			        (m_s.COM_enabled << 2) |
-			        (m_s.COM_port    << 3) |
-			        (m_s.LPT_enabled << 4) |
-			        (m_s.LPT_port    << 5) |
-			        (m_s.LPT_mode    << 7);
+			value = m_s.POS_2;
 			break;
 		case 0x0103:
 			value = m_s.POS_3;
 			break;
 		case 0x0104:
-			value =	(m_s.RAM_bank1_en << 0) |
-			        (m_s.RAM_bank2_en << 1) |
-			        (m_s.RAM_bank3_en << 2) |
-			        (m_s.RAM_bank4_en << 3) |
-			        (m_s.RAM_bank5_en << 4);
+			value = m_s.POS_4;
 			break;
 		case 0x0105:
 			value = m_s.POS_5;
@@ -194,9 +156,7 @@ uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
 			value = m_s.POST;
 			break;
 		default:
-			PWARNF(LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
-					_address, REG_CS.sel.value, REG_IP);
-			value = 0xFF;
+			PWARNF(LOG_MACHINE, "Unhandled read from port 0x%04X\n", _address);
 			break;
 	}
 
@@ -214,12 +174,10 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			bool a20 = (_value & 0x02);
 			g_memory.set_A20_line(a20);
 			PDEBUGF(LOG_V2, LOG_MACHINE, "A20: now %u\n", (uint)a20);
-			#if (1) // does the PS/1 support this?
 			if(_value & 0x01) { /* high speed reset */
-				PDEBUGF(LOG_V2, LOG_MACHINE, "iowrite to port 0x92 : reset resquested\n");
+				PDEBUGF(LOG_V2, LOG_MACHINE, "iowrite to port 0x92 : reset requested\n");
 				g_machine.reset(CPU_SOFT_RESET);
 			}
-			#endif
 			break;
 		}
 		case 0x0094:
@@ -230,10 +188,11 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			update_board_state();
 			break;
 		case 0x102:
-			m_s.VGA_awake   = _value & 1;
+			m_s.POS_2 = _value;
+			m_s.VGA_awake   = (_value >> 0) & 1;
 			m_s.POS2_bit1   = (_value >> 1) & 1;
 			m_s.COM_enabled = (_value >> 2) & 1;
-			//m_s.COM_port  = (_value >> 3) & 1; //the serial port is fixed 1 for model 2011
+			m_s.COM_port    = (_value >> 3) & 1;
 			m_s.LPT_enabled = (_value >> 4) & 1;
 			m_s.LPT_port    = (_value >> 5) & 3;
 			m_s.LPT_mode    = (_value >> 7) & 1;
@@ -244,18 +203,13 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			break;
 		case 0x0103:
 			m_s.POS_3 = _value;
-			m_s.HDD_enabled = (_value >> 3) & 1;
 			PDEBUGF(LOG_V2, LOG_MACHINE, "POS register 3 := 0x%02X\n", _value);
 			if(!m_s.board_enable) {
 				update_POS3_state();
 			}
 			break;
 		case 0x0104:
-			m_s.RAM_bank1_en = _value & 1;
-			m_s.RAM_bank2_en = (_value >> 1) & 1;
-			m_s.RAM_bank3_en = (_value >> 2) & 1;
-			m_s.RAM_bank4_en = (_value >> 3) & 1;
-			m_s.RAM_bank5_en = (_value >> 4) & 1;
+			m_s.POS_4 = _value;
 			PDEBUGF(LOG_V2, LOG_MACHINE, "POS register 4 := 0x%02X\n", _value);
 			if(!m_s.board_enable) {
 				update_POS4_state();
@@ -263,11 +217,9 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			break;
 		case 0x0105:
 			m_s.POS_5 = _value;
-			m_s.RAM_fast = (_value >> 3) & 1;
 			PDEBUGF(LOG_V2, LOG_MACHINE, "POS register 5 := 0x%02X\n", _value);
 			if(!m_s.board_enable) {
-				//TODO?
-				//update_POS5_state();
+				update_POS5_state();
 			}
 			break;
 		case 0x0191:
@@ -277,8 +229,7 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 			break;
 		}
 		default:
-			PWARNF(LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
-					_address, REG_CS.sel.value, REG_IP);
+			PWARNF(LOG_MACHINE, "Unhandled write to port 0x%04X\n", _address);
 			break;
 	}
 }

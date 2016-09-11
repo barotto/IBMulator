@@ -21,6 +21,8 @@ libhardware_a_SOURCES = \
 	iodevice.cpp \
 	devices.cpp \
 	devices/systemboard.cpp \
+	devices/systemboard_ps1_2011.cpp \
+	devices/systemboard_ps1_2121.cpp \
 	devices/keyboard.cpp \
 	devices/scancodes.cpp \
 	devices/pic.cpp \
@@ -64,6 +66,8 @@ noinst_HEADERS = \
 	iodevice.h \
 	devices.h \
 	devices/systemboard.h \
+	devices/systemboard_ps1_2011.h \
+	devices/systemboard_ps1_2121.h \
 	devices/keyboard.h \
 	devices/scancodes.h \
 	devices/pic.h \
