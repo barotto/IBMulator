@@ -56,7 +56,7 @@ void CPUExecutor::stack_push_dword(uint32_t _value)
 			}
 		}
 		REG_ESP -= 4;
-		write_word(REG_SS, REG_ESP, _value);
+		write_dword(REG_SS, REG_ESP, _value);
 	} else {
 		// StackAddrSize = 16
 		if(REG_SP < 4) {
@@ -67,7 +67,7 @@ void CPUExecutor::stack_push_dword(uint32_t _value)
 			}
 		}
 		REG_SP -= 4;
-		write_word(REG_SS, REG_SP, _value);
+		write_dword(REG_SS, REG_SP, _value);
 	}
 }
 
