@@ -33,27 +33,10 @@
 #include "format.h"
 
 
-SysDebugger::LogMessage::LogMessage(SysDebugger *_iface)
-: m_iface(_iface)
-{
-}
-
-SysDebugger::LogMessage::~LogMessage()
-{
-}
-
-void SysDebugger::LogMessage::log_put(const std::string & /*_prefix*/, const std::string & _message)
-{
-	//omit any prefix
-	m_iface->show_message(_message.c_str());
-}
-
 SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine)
 : Window(_gui, _rml)
 {
 	assert(m_wnd);
-
-	m_wnd->AddEventListener("click", this, false);
 
 	m_machine = _machine;
 
@@ -131,14 +114,12 @@ SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine)
 	m_tools.log_prg_toggle = get_element("log_prg_toggle");
 	m_tools.cs_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("CS_bp"));
 	m_tools.eip_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("EIP_bp"));
-	m_tools.cs_bp->SetValue(format_hex16(REG_CS.sel.value));
+	m_tools.cs_bp->SetValue(format_hex16(0));
 
 	m_disasm.line0 = get_element("disasm");
 
 	m_post = get_element("POST");
 	m_message = get_element("message");
-
-	g_syslog.add_device(LOG_INFO, LOG_MACHINE, new LogMessage(this));
 }
 
 SysDebugger::~SysDebugger()
@@ -205,18 +186,12 @@ void SysDebugger::update()
 
 void SysDebugger::show_message(const char* _mex)
 {
-	static std::atomic<int> callscnt;
-
 	Rocket::Core::String str(_mex);
 	str.Replace("\n", "<br />");
+	if(str.Empty()) {
+		str = "&nbsp;";
+	}
 	m_message->SetInnerRML(str);
-	callscnt++;
-	timed_event(3000, [this]() {
-		callscnt--;
-		if(callscnt==0) {
-			m_message->SetInnerRML("&nbsp;");
-		}
-	});
 }
 
 void SysDebugger::on_cmd_switch_power(RC::Event &)
@@ -282,12 +257,12 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 		RC::String cs_str = m_tools.cs_bp->GetValue();
 		uint32_t cs,eip;
 		if(!sscanf(cs_str.CString(), "%x", &cs)) {
-			show_message("invalid breakpoint Code Segment");
+			m_gui->show_dbg_message("invalid breakpoint Code Segment");
 			return;
 		}
 		RC::String eip_str = m_tools.eip_bp->GetValue();
 		if(!sscanf(eip_str.CString(), "%x", &eip)) {
-			show_message("invalid breakpoint Offset");
+			m_gui->show_dbg_message("invalid breakpoint Offset");
 			return;
 		}
 
@@ -298,7 +273,7 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 			});
 			std::stringstream ss;
 			ss << "breakpoint set to " << cs_str.CString() << ":" << eip_str.CString();
-			show_message(ss.str().c_str());
+			m_gui->show_dbg_message(ss.str().c_str());
 			m_tools.btn_bp->SetClass("on", true);
 		}
 	} else {
@@ -313,19 +288,19 @@ void SysDebugger::on_log_prg_toggle(RC::Event &)
 		if(m_tools.log_prg_toggle->IsClassSet("on")) {
 			m_tools.log_prg_toggle->SetClass("on", false);
 			m_machine->cmd_prg_cpulog("");
-			show_message("program CPU logging deactivated");
+			m_gui->show_dbg_message("program CPU logging deactivated");
 		} else {
 			Rocket::Core::String str = m_tools.log_prg_name->GetValue();
 			if(str != "") {
 				m_tools.log_prg_toggle->SetClass("on", true);
 				m_machine->cmd_prg_cpulog(str.CString());
-				show_message("program CPU logging activated");
+				m_gui->show_dbg_message("program CPU logging activated");
 			} else {
-				show_message("specify a program name");
+				m_gui->show_dbg_message("specify a program name");
 			}
 		}
 	} else {
-		show_message("recompile with CPULOG defined as true in cpu/logger.h");
+		m_gui->show_dbg_message("recompile with CPULOG defined as true in cpu/logger.h");
 	}
 }
 
@@ -333,9 +308,9 @@ void SysDebugger::on_log_write(RC::Event &)
 {
 	if(CPULOG) {
 		m_machine->cmd_cpulog();
-		show_message("writing CPU log...");
+		m_gui->show_dbg_message("writing CPU log...");
 	} else {
-		show_message("recompile with CPULOG defined as true in cpu/logger.h");
+		m_gui->show_dbg_message("recompile with CPULOG defined as true in cpu/logger.h");
 	}
 }
 

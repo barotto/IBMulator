@@ -212,8 +212,3 @@ void DevStatus::update()
 		update_pit(i);
 	}
 }
-
-void DevStatus::ProcessEvent(Rocket::Core::Event &)
-{
-	//Rocket::Core::Element * el = event.GetTargetElement();
-}

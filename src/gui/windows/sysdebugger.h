@@ -22,6 +22,9 @@
 
 class Machine;
 class GUI;
+class SysDebugger;
+
+
 
 class SysDebugger : public Window
 {
@@ -98,16 +101,7 @@ public:
 	void show_message(const char* _mex);
 
 private:
-	class LogMessage : public Logdev
-	{
-	private:
-		SysDebugger *m_iface;
-	public:
-		LogMessage(SysDebugger* _iface);
-		~LogMessage();
 
-		void log_put(const std::string &_prefix, const std::string &_message);
-	};
 };
 
 #endif

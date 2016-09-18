@@ -378,7 +378,10 @@ void Interface::on_power(RC::Event &)
 
 void Interface::show_message(const char* _mex)
 {
+	static std::mutex mexmutex;
 	static std::atomic<int> callscnt;
+
+	std::lock_guard<std::mutex> lock(mexmutex);
 
 	m_message->SetProperty("visibility", "visible");
 	Rocket::Core::String str(_mex);
@@ -388,6 +391,7 @@ void Interface::show_message(const char* _mex)
 	timed_event(3000, [this]() {
 		callscnt--;
 		if(callscnt==0) {
+			std::lock_guard<std::mutex> lock(mexmutex);
 			m_message->SetInnerRML("");
 			m_message->SetProperty("visibility", "hidden");
 		}

@@ -27,16 +27,9 @@ Desktop::Desktop(GUI * _gui)
 :
 Window(_gui, "desktop.rml")
 {
-	assert(m_wnd);
-	m_wnd->AddEventListener("click", this, false);
 }
 
 Desktop::~Desktop()
 {
 }
 
-void Desktop::ProcessEvent(Rocket::Core::Event &)
-{
-	//Rocket::Core::Element * el = event.GetTargetElement();
-
-}

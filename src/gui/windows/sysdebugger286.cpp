@@ -58,7 +58,7 @@ SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine)
 {
 	assert(m_wnd);
 
-	m_tools.eip_bp->SetValue(format_hex16(REG_IP));
+	m_tools.eip_bp->SetValue(format_hex16(0));
 
 	m_286core.msw = get_element("MSW");
 }

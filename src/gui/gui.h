@@ -161,6 +161,7 @@ protected:
 		bool visible;
 		bool debug_wnds;
 		bool status_wnd;
+		std::mutex win_mutex;
 
 		Desktop * desktop;
 		Interface * interface;
@@ -229,6 +230,7 @@ public:
 	void shutdown();
 
 	Rocket::Core::ElementDocument * load_document(const std::string &_filename);
+	void unload_document(RC::ElementDocument *_document);
 	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
 	static std::string get_shaders_dir();
 	static std::string get_images_dir();
@@ -237,6 +239,7 @@ public:
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void show_message(const char* _mex);
+	void show_dbg_message(const char* _mex);
 
 	inline void vga_update() { m_windows.interface->vga_update(); }
 

@@ -45,8 +45,6 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 {
 	assert(m_wnd);
 
-	m_wnd->AddEventListener("click", this, false);
-
 	m_sysunit = get_element("sysunit");
 	m_sysbkgd = get_element("sysbkgd");
 	m_sysbkgd->SetClass("disk", m_floppy_present);

@@ -71,8 +71,7 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine)
 	m_386core.fslimit = get_element("FSlimit");
 	m_386core.gslimit = get_element("GSlimit");
 
-
-	m_tools.eip_bp->SetValue(format_hex32(REG_EIP));
+	m_tools.eip_bp->SetValue(format_hex32(0));
 }
 
 SysDebugger386::~SysDebugger386()
@@ -230,7 +229,7 @@ void SysDebugger386::on_CPU_skip(RC::Event &)
 			m_tools.btn_bp->SetClass("on", false);
 			m_machine->cmd_resume();
 		} catch(CPUException &) {
-			show_message("CPU exception trying to disassemble current instruction");
+			m_gui->show_dbg_message("CPU exception trying to disassemble current instruction");
 		}
 	}
 }

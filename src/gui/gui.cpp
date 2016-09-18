@@ -434,6 +434,11 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 	return document;
 }
 
+void GUI::unload_document(RC::ElementDocument *_document)
+{
+	m_rocket_context->UnloadDocument(_document);
+}
+
 void GUI::GL_debug_output(
 		GLenum _source,
 		GLenum _type,
@@ -1248,6 +1253,25 @@ void GUI::show_message(const char* _mex)
 	m_windows.interface->show_message(_mex);
 }
 
+void GUI::show_dbg_message(const char* _mex)
+{
+	static std::atomic<int> callscnt;
+
+	std::lock_guard<std::mutex> lock(m_windows.win_mutex);
+	if(m_windows.debugger == nullptr) {
+		return;
+	}
+	m_windows.debugger->show_message(_mex);
+	callscnt++;
+	timed_event(3000, [this]() {
+		std::lock_guard<std::mutex> lock(m_windows.win_mutex);
+		callscnt--;
+		if(callscnt<=0 && m_windows.debugger) {
+			m_windows.debugger->show_message("");
+		}
+	});
+}
+
 Uint32 GUI::every_second(Uint32 interval, void */*param*/)
 {
 	SDL_Event event;
@@ -1352,6 +1376,24 @@ void GUI::show_welcome_screen()
 	m_windows.interface->print_VGA_text(text);
 }
 
+
+/*******************************************************************************
+ * Windows
+ */
+
+class SysDbgMessage : public Logdev
+{
+private:
+	GUI *m_gui;
+public:
+	SysDbgMessage(GUI * _gui, bool _delete) : Logdev(_delete), m_gui(_gui) {}
+	void log_put(const std::string & /*_prefix*/, const std::string &_message)
+	{
+		m_gui->show_dbg_message(_message.c_str());
+	}
+};
+
+
 GUI::Windows::Windows()
 :
 visible(true),
@@ -1390,10 +1432,15 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	debugger = nullptr; // will be created in the config_changed
 	stats = new Stats(_machine, _gui, _mixer);
 	devices = new DevStatus(_gui);
+
+	static SysDbgMessage sysdbgmsg(_gui, false);
+	g_syslog.add_device(LOG_INFO, LOG_MACHINE, &sysdbgmsg);
 }
 
 void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 {
+	std::lock_guard<std::mutex> lock(win_mutex);
+
 	desktop->config_changed();
 	interface->config_changed();
 
@@ -1401,12 +1448,29 @@ void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 		status->config_changed();
 	}
 
-	delete debugger;
-	if(CPU_FAMILY >= CPU_386) {
-		debugger = new SysDebugger386(_gui, _machine);
+	if(debugger) {
+		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(debugger));
+		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
+			bool dbg_visible = debugger->is_visible();
+			debugger->close();
+			delete debugger;
+			if(CPU_FAMILY >= CPU_386) {
+				debugger = new SysDebugger386(_gui, _machine);
+			} else {
+				debugger = new SysDebugger286(_gui, _machine);
+			}
+			if(dbg_visible) {
+				debugger->show();
+			}
+		}
 	} else {
-		debugger = new SysDebugger286(_gui, _machine);
+		if(CPU_FAMILY >= CPU_386) {
+			debugger = new SysDebugger386(_gui, _machine);
+		} else {
+			debugger = new SysDebugger286(_gui, _machine);
+		}
 	}
+
 	devices->config_changed();
 	stats->config_changed();
 }
@@ -1460,9 +1524,13 @@ void GUI::Windows::update()
 	interface->update();
 
 	if(debug_wnds) {
-		//debug windows are autonomous
-		debugger->update();
-		devices->update();
+		// quick hack to limit the update freq of the dbg windows
+		static bool dbgupdate = true;
+		dbgupdate = !dbgupdate;
+		if(dbgupdate) {
+			debugger->update();
+			devices->update();
+		}
 		stats->update();
 	}
 
@@ -1494,6 +1562,8 @@ bool GUI::Windows::needs_input()
 
 void GUI::Windows::shutdown()
 {
+	std::lock_guard<std::mutex> lock(win_mutex);
+
 	delete status;
 	status = nullptr;
 

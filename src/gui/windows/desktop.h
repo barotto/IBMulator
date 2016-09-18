@@ -29,16 +29,11 @@ class GUI;
 class Desktop : public Window
 {
 private:
-
 	Rocket::Core::Element *background;
 
-
 public:
-
 	Desktop(GUI * _gui);
 	~Desktop();
-
-	void ProcessEvent(Rocket::Core::Event &);
 };
 
 #endif

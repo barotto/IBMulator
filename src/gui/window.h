@@ -35,29 +35,29 @@ typedef std::map<event_map_key_t, event_handler_t> event_map_t;
 class Window : public RC::EventListener
 {
 protected:
-
 	GUI * m_gui;
 	RC::ElementDocument * m_wnd;
-
-	RC::Element * get_element(const RC::String &_id);
-
 	static event_map_t ms_event_map;
+	bool m_evts_added;
 
 public:
-
 	Window(GUI * _gui, const char *_rml);
 	virtual ~Window();
 
 	void show();
 	void hide();
+	void close();
 	bool is_visible();
 
 	virtual void config_changed() {}
 	virtual void update();
 
+protected:
 	void ProcessEvent(RC::Event &);
 	virtual event_map_t & get_event_map() { return ms_event_map; }
-	void init_events();
+	RC::Element * get_element(const RC::String &_id);
+	void add_events();
+	void remove_events();
 };
 
 #endif
