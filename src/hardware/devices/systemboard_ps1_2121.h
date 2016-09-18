@@ -21,6 +21,7 @@
 #define IBMULATOR_HW_SYSTEM_BOARD_PS1_2121_H
 
 #include "systemboard.h"
+class FloppyCtrl;
 
 class SystemBoard_PS1_2121 : public SystemBoard
 {
@@ -33,8 +34,7 @@ private:
 		uint8_t E0_regs[256];
 	} m_s;
 
-	void update_E0_state();
-	void update_state();
+	FloppyCtrl *m_floppy;
 
 public:
 	SystemBoard_PS1_2121(Devices* _dev);
@@ -50,6 +50,10 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	void update_E0_state();
+	void update_state();
 };
 
 #endif

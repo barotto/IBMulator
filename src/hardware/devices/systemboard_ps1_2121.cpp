@@ -20,15 +20,18 @@
 #include "ibmulator.h"
 #include "machine.h"
 #include "systemboard_ps1_2121.h"
+#include "floppy.h"
 #include <cstring>
 
 IODEVICE_PORTS(SystemBoard_PS1_2121) = {
 	{ 0x0E0, 0x0E0, PORT_8BIT|PORT__W }, // Cfg reg address (IBM PS/1 CLOCK on Ralf Brown's PORTS.TXT)
-	{ 0x0E1, 0x0E1, PORT_8BIT|PORT_RW }  // Cfg registers (IBM PS/1 CLOCK on Ralf Brown's PORTS.TXT)
+	{ 0x0E1, 0x0E1, PORT_8BIT|PORT_RW }, // Cfg registers (IBM PS/1 CLOCK on Ralf Brown's PORTS.TXT)
+	{ 0x3F3, 0x3F3, PORT_8BIT|PORT_R_ }  // Floppy drive type
 };
 
 SystemBoard_PS1_2121::SystemBoard_PS1_2121(Devices* _dev)
-: SystemBoard(_dev)
+: SystemBoard(_dev),
+  m_floppy(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -59,6 +62,7 @@ void SystemBoard_PS1_2121::reset(unsigned _signal)
 void SystemBoard_PS1_2121::config_changed()
 {
 	SystemBoard::config_changed();
+	m_floppy = m_devices->device<FloppyCtrl>();
 	update_state();
 }
 
@@ -100,6 +104,24 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 	switch(_address) {
 		case 0x00E1:
 			value = m_s.E0_regs[m_s.E0_addr];
+			break;
+		case 0x03F3:
+			value = 0;
+			if(m_floppy) {
+				uint8_t type = m_floppy->drive_type(m_floppy->current_drive());
+				switch(type) {
+					case FDD_525DD:
+					case FDD_525HD:
+						value = 0x20;
+						break;
+					case FDD_350ED:
+						value = 0x10;
+						break;
+					default:
+						value = 0x0;
+						break;
+				}
+			}
 			break;
 		default:
 			value = SystemBoard::read(_address, _io_len);
