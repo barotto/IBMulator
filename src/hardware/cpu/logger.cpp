@@ -23,6 +23,8 @@
 #include "hardware/cpu.h"
 #include <cstring>
 
+#define LOG_O32_BIT 30
+#define LOG_A32_BIT 31
 
 CPULogger::CPULogger()
 :
@@ -107,6 +109,8 @@ int CPULogger::get_opcode_index(const Instruction &_instr)
 		default:
 			break;
 	}
+	idx |= int(_instr.op32) << LOG_O32_BIT;
+	idx |= int(_instr.addr32) << LOG_A32_BIT;
 	return idx;
 }
 
@@ -164,9 +168,15 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_CSEIP) {
-		if(fprintf(_dest, "%04X:%04X ",
-				_entry.core.get_CS().sel.value, _entry.core.get_EIP()) < 0)
-			return -1;
+		if(CPU_FAMILY >= CPU_386) {
+			if(fprintf(_dest, "%04X:%08X ",
+					_entry.core.get_CS().sel.value, _entry.core.get_EIP()) < 0)
+				return -1;
+		} else {
+			if(fprintf(_dest, "%04X:%04X ",
+					_entry.core.get_CS().sel.value, _entry.core.get_EIP()&0xFFFF) < 0)
+				return -1;
+		}
 	}
 
 	if(CPULOG_WRITE_HEX) {
@@ -186,8 +196,11 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		return -1;
 
 	if(CPULOG_WRITE_STATE) {
-		if(fprintf(_dest, "M=%d ",
-				_entry.state.event_mask) < 0)
+		if(fprintf(_dest, "SE=%d,SM=%d,SA=%d ",
+				_entry.state.pending_event,
+				_entry.state.event_mask,
+				_entry.state.async_event
+				) < 0)
 			return -1;
 	}
 
@@ -208,6 +221,15 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 					_entry.core.get_FS().sel.value,
 					_entry.core.get_GS().sel.value) < 0)
 				return -1;
+			if(fprintf(_dest, "CR0=PE:%d,TS:%d,PG:%d ",
+					bool(_entry.core.get_CR0(CR0MASK_PE)),
+					bool(_entry.core.get_CR0(CR0MASK_TS)),
+					bool(_entry.core.get_CR0(CR0MASK_PG))) < 0)
+				return -1;
+			if(fprintf(_dest, "CR2=%08X CR3=%08X ",
+					_entry.core.ctl_reg(2),
+					_entry.core.ctl_reg(3)) < 0)
+				return -1;
 		} else {
 			if(fprintf(_dest, "AX=%04X BX=%04X CX=%04X DX=%04X ",
 					_entry.core.get_AX(), _entry.core.get_BX(),
@@ -221,6 +243,10 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 					_entry.core.get_ES().sel.value,
 					_entry.core.get_DS().sel.value,
 					_entry.core.get_SS().sel.value) < 0)
+				return -1;
+			if(fprintf(_dest, "MSW=PE:%d,TS:%d ",
+					bool(_entry.core.get_CR0(CR0MASK_PE)),
+					bool(_entry.core.get_CR0(CR0MASK_TS))) < 0)
 				return -1;
 		}
 	}
@@ -296,7 +322,6 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 
 void CPULogger::dump(const std::string _filename)
 {
-	//C stdlib, because i hate C++ streams with a passion
 	FILE *file = fopen(_filename.c_str(), "w");
 	if(!file) {
 		PERRF(LOG_CPU, "error opening '%s' for writing\n", _filename.c_str());
@@ -401,15 +426,22 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 	}
 	uint64_t total = 0;
 	PINFOF(LOG_V0, LOG_CPU, "writing counters to '%s' ... ", _filename.c_str());
-	for(auto op : oplist) {
-		if(fprintf(file, "0x%05X: %lu\n", op, _cnt[op]) < 0) {
-			PERRF(LOG_CPU, "error writing to file\n");
-			break;
+	if(fprintf(file, "               o16a16        o32a16        o16a32        o32a32\n") > 0) {
+		for(int op : oplist) {
+			if(fprintf(file, "0x%05X: %12lu  %12lu  %12lu  %12lu\n", op,
+					_cnt[op],
+					_cnt[op|(1<<LOG_O32_BIT)],
+					_cnt[op|(1<<LOG_A32_BIT)],
+					_cnt[(op|(1<<LOG_O32_BIT))|(1<<LOG_A32_BIT)]
+			) < 0)
+			{
+				PERRF(LOG_CPU, "error writing to file\n");
+				break;
+			}
+			total += _cnt[op];
 		}
-		total += _cnt[op];
+		fprintf(file, "\n total: %lu\n", total);
 	}
-	fprintf(file, "\n total: %lu\n", total);
-
 	PINFOF(LOG_V0, LOG_CPU, "done\n");
 	fclose(file);
 }
