@@ -1095,7 +1095,7 @@ void CPUExecutor::DIV_ew()
 
 void CPUExecutor::DIV_ed()
 {
-	uint32_t op2_32 = load_ew();
+	uint32_t op2_32 = load_ed();
 	if(op2_32 == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
