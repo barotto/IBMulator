@@ -106,16 +106,15 @@ uint32_t CPUExecutor::EA_get_offset_32()
 
 	if(m_instr->modrm.rm != 4) {
 		// no SIB
-		if(m_instr->modrm.mod != 0 || m_instr->modrm.rm != 5) {
+		if(m_instr->modrm.rm != 5 || m_instr->modrm.mod != 0) {
 			offset += GEN_REG(m_instr->modrm.rm).dword[0];
 		}
 	} else {
 		// SIB
 		if(m_instr->modrm.index != 4) {
-			offset += GEN_REG(m_instr->modrm.index).dword[0];
-			offset *= 1 << m_instr->modrm.scale;
+			offset += GEN_REG(m_instr->modrm.index).dword[0] * (1 << m_instr->modrm.scale);
 		}
-		if(m_instr->modrm.scale != 0 || m_instr->modrm.base != 5) {
+		if(m_instr->modrm.base != 5 || m_instr->modrm.mod != 0) {
 			offset += GEN_REG(m_instr->modrm.base).dword[0];
 		}
 	}
