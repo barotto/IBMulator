@@ -2684,7 +2684,6 @@ void CPUExecutor::MOV_ed_rd() { store_ed(load_rd()); }
 void CPUExecutor::MOV_rb_eb() { store_rb(load_eb()); }
 void CPUExecutor::MOV_rw_ew() { store_rw(load_ew()); }
 void CPUExecutor::MOV_rd_ed() { store_rd(load_ed()); }
-void CPUExecutor::MOV_ew_SR() { store_ew(load_sr()); }
 void CPUExecutor::MOV_SR_ew() {	store_sr(load_ew()); }
 void CPUExecutor::MOV_AL_xb() { REG_AL = read_byte(SEG_REG(m_base_ds), m_instr->offset); }
 void CPUExecutor::MOV_AX_xw() { REG_AX = read_word(SEG_REG(m_base_ds), m_instr->offset); }
@@ -2699,6 +2698,26 @@ void CPUExecutor::MOV_eb_ib() { store_eb(m_instr->ib); }
 void CPUExecutor::MOV_ew_iw() { store_ew(m_instr->iw1); }
 void CPUExecutor::MOV_ed_id() { store_ed(m_instr->id1); }
 
+void CPUExecutor::MOV_ew_SR()
+{
+	store_ew(load_sr());
+	if(m_instr->op32) {
+		/* When the processor executes the instruction with a 32-bit general
+		 * purpose register, it assumes that the 16 least-significant bits of
+		 * the register are the destination or source operand.
+		 * If the register is a destination operand, the resulting value in the
+		 * two high-order bytes of the register is implementation dependent. For
+		 * the Pentium 4, Intel Xeon, and P6 family processors, the two
+		 * high-order bytes are filled with zeros; for earlier 32-bit IA-32
+		 * processors, the two high order bytes are undefined.
+		 *
+		 * I zero-fill the upper bytes which is the behaviour of Bochs and PCjs.
+		 */
+		if(m_instr->modrm.mod == 3) {
+			GEN_REG(m_instr->modrm.rm).word[1] = 0;
+		}
+	}
+}
 
 /*******************************************************************************
  * MOVSB/MOVSW/MOVSD-Move Data from String to String
