@@ -1357,7 +1357,7 @@ void CPUExecutor::IMUL_eb()
 	int8_t op1 = int8_t(REG_AL);
 	int8_t op2 = int8_t(load_eb());
 
-	int16_t product_16 = op1 * op2;
+	int16_t product_16 = int16_t(op1) * int16_t(op2);
 
 	/* now write product back to destination */
 	REG_AX = product_16;
@@ -1423,13 +1423,12 @@ void CPUExecutor::IMUL_ed()
 	/* IMUL r/m32: condition for clearing CF & OF:
 	 *   EDX:EAX = sign-extend of EAX
 	 */
-	uint64_t sign = product_64 & 0xFFFFFFFF80000000LL;
-	if((sign==0xFFFFFFFF80000000LL || sign==0)) {
-		SET_FLAG(CF, false);
-		SET_FLAG(OF, false);
-	} else {
+	if(product_64 != int32_t(product_64)) {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
+	} else {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
 	}
 
 	if(CPU_FAMILY == CPU_386) {
@@ -1439,17 +1438,15 @@ void CPUExecutor::IMUL_ed()
 
 int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
 {
-	int32_t product_32  = _op1 * _op2;
+	int32_t product_32  = int32_t(_op1) * int32_t(_op2);
 
-	/* Carry and overflow are set to 0 if the result fits in a signed word
-	 * (between -32768 and +32767, inclusive); they are set to 1 otherwise.
-	 */
-	if((product_32 >= -32768) && (product_32 <= 32767)) {
-		SET_FLAG(CF, false);
-		SET_FLAG(OF, false);
-	} else {
+	// CF and OF are cleared if the result fits in a r16
+	if(product_32 != int16_t(product_32)) {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
+	} else {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
 	}
 
 	if(CPU_FAMILY == CPU_386) {
@@ -1461,17 +1458,15 @@ int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
 
 int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 {
-	int64_t product_64  = _op1 * _op2;
+	int64_t product_64  = int64_t(_op1) * int64_t(_op2);
 
-	/* Carry and overflow are set to 0 if the result fits in a signed dword
-	 * (between -2147483648 and +2147483647, inclusive); they are set to 1 otherwise.
-	 */
-	if((product_64 >= -2147483648LL) && (product_64 <= 2147483647LL)) {
-		SET_FLAG(CF, false);
-		SET_FLAG(OF, false);
-	} else {
+	// CF and OF are cleared if the result fits in a r32
+	if(product_64 != int32_t(product_64)) {
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
+	} else {
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
 	}
 
 	if(CPU_FAMILY == CPU_386) {
