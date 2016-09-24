@@ -4123,8 +4123,8 @@ uint32_t CPUExecutor::SBB_d(uint32_t _op1, uint32_t _op2)
 	uint32_t cf = FLAG_CF;
 	uint32_t res = _op1 - (_op2 + cf);
 
-	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x8000000);
-	SET_FLAG(SF, res & 0x8000000);
+	SET_FLAG(OF, ((_op1 ^ _op2) & (_op1 ^ res)) & 0x80000000);
+	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(AF, ((_op1 ^ _op2) ^ res) & 0x10);
 	SET_FLAG(PF, PARITY(res));
