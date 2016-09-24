@@ -118,8 +118,8 @@ struct Descriptor
 		} else {
 			//System Segment Descriptor or Gate Descriptor
 			type = (ar & 0xF);
-			if(type==DESC_TYPE_INVALID_0 || type>=DESC_TYPE_INVALID_8
-			|| type>=DESC_TYPE_INVALID_A || type>=DESC_TYPE_INVALID_D) {
+			if(type==DESC_TYPE_INVALID_0 || type==DESC_TYPE_INVALID_8
+			|| type==DESC_TYPE_INVALID_A || type==DESC_TYPE_INVALID_D) {
 				valid = false;
 			}
 		}
