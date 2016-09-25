@@ -41,6 +41,7 @@ void CPUCore::reset()
 	 */
 
 	memset(m_genregs, 0, sizeof(GenReg)*8);
+	memset(m_segregs, 0, sizeof(SegReg)*10);
 
 	m_eflags = 0x00000002;
 	m_cr[0] = 0x0000FFF0;
