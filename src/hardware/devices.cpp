@@ -101,15 +101,14 @@ void Devices::config_changed()
 		m_sysboard = nullptr;
 	}
 	switch(m_machine->type()) {
-		case PS1_2011:
-			m_sysboard = install<SystemBoard_PS1_2011>();
-			break;
 		case PS1_2121:
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
 		default:
-			PERRF(LOG_MACHINE, "unknown machine type\n");
-			throw std::exception();
+			PERRF(LOG_MACHINE, "unknown machine type, using default 2011\n");
+		case PS1_2011:
+			m_sysboard = install<SystemBoard_PS1_2011>();
+			break;
 	}
 
 	// install or remove optional devices
