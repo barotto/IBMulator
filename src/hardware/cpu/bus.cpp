@@ -98,6 +98,7 @@ void CPUBus::restore_state(StateBuf &_state)
 	h.name = CPUBUS_STATE_NAME;
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
+	invalidate_pq();
 }
 
 void CPUBus::pq_fill(uint btoread)
