@@ -89,17 +89,31 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 	else if(strstr(_hex,"FS")==_hex) { _hex+=2; regval = _core->get_FS().sel.value; }
 	else if(strstr(_hex,"GS")==_hex) { _hex+=2; regval = _core->get_GS().sel.value; };
 
+	int mult = 1;
 	while(*_hex) {
-		if((*_hex>='0') && (*_hex<='9')) value = (value<<4)+*_hex-'0';
-		else if((*_hex>='A') && (*_hex<='F')) value = (value<<4)+*_hex-'A'+10;
-		else {
-			if(*_hex == '+') { _hex++; return regval + value + get_hex_value(_hex,_hex,_core); };
-			if(*_hex == '-') { _hex++; return regval + value - get_hex_value(_hex,_hex,_core); };
-			break; // No valid char
+		if((*_hex>='0') && (*_hex<='9')) {
+			value = (value<<4) + *_hex-'0';
+		} else if((*_hex>='A') && (*_hex<='F')) {
+			value = (value<<4) + *_hex-'A'+10;
+		} else {
+			if(*_hex == '+') {
+				_hex++;
+				return (regval + value)*mult + get_hex_value(_hex,_hex,_core);
+			};
+			if(*_hex == '-') {
+				_hex++;
+				return (regval + value)*mult - get_hex_value(_hex,_hex,_core);
+			};
+			if(*_hex == '*') {
+				_hex++;
+				mult = *_hex-'0';
+			} else {
+				break; // No valid char
+			}
 		}
 		_hex++;
 	};
-	return regval + value;
+	return (regval + value)*mult;
 };
 
 unsigned CPUDebugger::get_seg_idx(char *_str)
@@ -156,8 +170,9 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 			} else if (*pos=='-') {
 				pos++;
 				adr -= get_hex_value(pos, pos, _core);
-			} else
+			} else {
 				pos++;
+			}
 		};
 
 		if(_memory) {
