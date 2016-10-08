@@ -742,19 +742,19 @@ void Machine::cmd_cycles_adjust(double _factor)
 	});
 }
 
-void Machine::cmd_save_state(StateBuf &_state)
+void Machine::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+		std::unique_lock<std::mutex> lock(_mutex);
 		save_state(_state);
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 
-void Machine::cmd_restore_state(StateBuf &_state)
+void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+		std::unique_lock<std::mutex> lock(_mutex);
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
@@ -763,7 +763,7 @@ void Machine::cmd_restore_state(StateBuf &_state)
 			PERRF(LOG_MACHINE, "error restoring the state\n");
 			_state.m_last_restore = false;
 		}
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 
@@ -781,15 +781,15 @@ void Machine::cmd_eject_media(uint _drive)
 	});
 }
 
-void Machine::sig_config_changed()
+void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
-	m_cmd_fifo.push([this] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+	m_cmd_fifo.push([&] () {
+		std::unique_lock<std::mutex> lock(_mutex);
 		if(m_on) {
 			power_off();
 		}
 		config_changed();
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 

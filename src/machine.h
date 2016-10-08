@@ -28,6 +28,7 @@
 #include "statebuf.h"
 #include "hardware/systemrom.h"
 #include "hardware/devices.h"
+#include "timers.h"
 
 class CPU;
 class Memory;
@@ -36,7 +37,6 @@ class Machine;
 extern Machine g_machine;
 
 typedef std::function<void()> Machine_fun_t;
-typedef std::function<void(uint64_t)> timer_fun_t;
 typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_state)> mouse_fun_t;
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
@@ -61,18 +61,7 @@ enum MachineReset {
 	DEVICE_SOFT_RESET   // Device RESET triggered by software
 };
 
-#define USEC_PER_SECOND (1000000)
-#define NSEC_PER_SECOND (1000000000L)
-#define INV_USEC_PER_SECOND_D (0.000001)
-#define NSEC_TO_USEC(nsec) (nsec/1000)
-#define MAX_TIMERS 24
-#define NULL_TIMER_HANDLE 10000
-#define TIMER_NAME_LEN 20
 #define PRG_NAME_LEN 261
-
-constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * 1000L; }
-constexpr uint64_t operator"" _ms ( unsigned long long int _t ) { return _t * 1000000L; }
-constexpr uint64_t operator"" _s ( unsigned long long int _t ) { return _t * 1000000000L; }
 
 class Machine
 {
@@ -203,12 +192,12 @@ public:
 	void cmd_cpulog();
 	void cmd_prg_cpulog(std::string _prg_name);
 	void cmd_cycles_adjust(double _factor);
-	void cmd_save_state(StateBuf &_state);
-	void cmd_restore_state(StateBuf &_state);
+	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
+	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp);
 	void cmd_eject_media(uint _drive);
 
-	void sig_config_changed();
+	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 
 	//used by the GUI. inter threading considerations are in keyboard.h/cpp
 	void send_key_to_kbctrl(uint32_t key);

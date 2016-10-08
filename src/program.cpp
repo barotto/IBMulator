@@ -45,7 +45,8 @@ std::condition_variable Program::ms_cv;
 Program::Program()
 :
 m_machine(nullptr),
-m_gui(nullptr)
+m_gui(nullptr),
+m_restore_fn(nullptr)
 {
 
 }
@@ -78,7 +79,7 @@ void Program::save_state(
 		m_config.create_file(ini);
 	} catch(std::exception &e) {
 		PERRF(LOG_PROGRAM, "unable to create config file '%s'\n", ini.c_str());
-		if(_on_fail) {
+		if(_on_fail != nullptr) {
 			_on_fail("unable to create config file");
 		}
 		return;
@@ -87,7 +88,7 @@ void Program::save_state(
 	StateBuf state(path);
 
 	std::unique_lock<std::mutex> lock(ms_lock);
-	m_machine->cmd_save_state(state);
+	m_machine->cmd_save_state(state, ms_lock, ms_cv);
 	ms_cv.wait(lock);
 
 	state.save(path + ".bin");
@@ -95,7 +96,7 @@ void Program::save_state(
 	m_gui->save_framebuffer(path + ".png", "");
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "current state saved\n");
-	if(_on_success) {
+	if(_on_success != nullptr) {
 		_on_success();
 	}
 }
@@ -105,82 +106,88 @@ void Program::restore_state(
 	std::function<void()> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
-	if(_name.empty()) {
-		_name = "state";
-	}
-	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
-			+ FS_SEP + _name;
-	std::string ini = path + ".ini";
-	std::string bin = path + ".bin";
+	/* The actual restore needs to be executed outside libRocket's event manager,
+	 * otherwise a deadlock on the libRocket mutex caused by the SysLog will occur.
+	 */
+	m_restore_fn = [=](){
+		std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+				+ FS_SEP + (_name.empty()?"state":_name);
+		std::string ini = path + ".ini";
+		std::string bin = path + ".bin";
 
-	if(!FileSys::file_exists(ini.c_str())) {
-		PERRF(LOG_PROGRAM, "state ini file missing!\n");
-		if(_on_fail) {
-			_on_fail("State ini file missing");
+		if(!FileSys::file_exists(ini.c_str())) {
+			PERRF(LOG_PROGRAM, "state ini file missing!\n");
+			if(_on_fail != nullptr) {
+				_on_fail("State ini file missing");
+			}
+			return;
 		}
-		return;
-	}
 
-	if(!FileSys::file_exists(bin.c_str())) {
-		PERRF(LOG_PROGRAM, "state bin file missing!\n");
-		if(_on_fail) {
-			_on_fail("State bin file missing");
+		if(!FileSys::file_exists(bin.c_str())) {
+			PERRF(LOG_PROGRAM, "state bin file missing!\n");
+			if(_on_fail) {
+				_on_fail("State bin file missing");
+			}
+			return;
 		}
-		return;
-	}
 
-	PINFOF(LOG_V0, LOG_PROGRAM, "loading state from '%s'...\n", path.c_str());
+		PINFOF(LOG_V0, LOG_PROGRAM, "loading state from '%s'...\n", path.c_str());
 
-	AppConfig conf;
-	try {
-		conf.parse(ini);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to parse '%s'\n", ini.c_str());
-		if(_on_fail) {
-			_on_fail("Error while parsing the state ini file");
+		AppConfig conf;
+		try {
+			conf.parse(ini);
+		} catch(std::exception &e) {
+			PERRF(LOG_PROGRAM, "unable to parse '%s'\n", ini.c_str());
+			if(_on_fail != nullptr) {
+				_on_fail("Error while parsing the state ini file");
+			}
+			return;
 		}
-		return;
-	}
 
-	StateBuf state(path);
+		StateBuf state(path);
 
-	state.load(bin);
+		state.load(bin);
 
-	//from this point, any error in the restore procedure will render the
-	//machine inconsistent and it should be terminated
-	//TODO the config object needs a mutex!
-	//TODO create a revert mechanism?
-	m_config.merge(conf);
+		//from this point, any error in the restore procedure will render the
+		//machine inconsistent and it should be terminated
+		//TODO the config object needs a mutex!
+		//TODO create a revert mechanism?
+		m_config.merge(conf);
 
-	std::unique_lock<std::mutex> restore_lock(ms_lock);
+		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
-	m_mixer->cmd_pause();
+		m_mixer->cmd_pause();
 
-	m_machine->sig_config_changed();
-	ms_cv.wait(restore_lock);
+		m_machine->sig_config_changed(ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
 
-	m_mixer->sig_config_changed();
-	ms_cv.wait(restore_lock);
+		m_mixer->sig_config_changed(ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
 
-	m_machine->cmd_restore_state(state);
-	ms_cv.wait(restore_lock);
+		m_machine->cmd_restore_state(state, ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
 
-	if(state.m_last_restore == false) {
-		PERRF(LOG_PROGRAM, "the restored state is not valid\n");
-		if(_on_fail) {
-			_on_fail("The restored state is not valid");
+		m_mixer->cmd_resume();
+
+		// we need to pause the syslog because it'll use the GUI otherwise
+		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
+		m_gui->config_changed();
+		m_gui->sig_state_restored();
+		g_syslog.cmd_resume();
+
+		if(!state.m_last_restore) {
+			PERRF(LOG_PROGRAM, "the restored state is not valid\n");
+			if(_on_fail != nullptr) {
+				_on_fail("The restored state is not valid");
+			}
+		} else {
+			PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
+			if(_on_success != nullptr) {
+				_on_success();
+			}
 		}
-		return;
-	}
-
-	m_mixer->cmd_resume();
-	m_gui->config_changed();
-	m_gui->sig_state_restored();
-
-	PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
-	if(_on_success) {
-		_on_success();
-	}
+	};
 }
 
 void Program::init_SDL()
@@ -493,6 +500,11 @@ void Program::process_evts()
 
 		m_gui->dispatch_event(event);
 
+		if(m_restore_fn != nullptr) {
+			m_restore_fn();
+			m_restore_fn = nullptr;
+		}
+
 		switch(event.type)
 		{
 		case SDL_QUIT:
@@ -531,7 +543,7 @@ void Program::main_loop()
 			m_bench.frameskip = loops;
 
 			process_evts();
-			m_gui->update();
+			m_gui->update(time);
 
 			m_next_beat += m_heartbeat;
 			loops++;

@@ -99,7 +99,7 @@ public:
 	bool is_paused() const { return m_paused; }
 	bool is_enabled() const { return (m_device!=0); }
 
-	void sig_config_changed();
+	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_pause();
 	void cmd_resume();

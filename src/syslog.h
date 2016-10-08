@@ -143,8 +143,11 @@ private:
 	 * writing.
 	 */
 	std::thread m_thread;
-	std::atomic<bool> m_stop;
-	std::mutex m_mutex;
+	bool m_stop;
+	std::atomic<bool> m_paused;
+	std::mutex m_log_mutex;
+	std::mutex m_pause_mutex;
+	std::condition_variable m_pause_cond;
 	shared_deque<std::function<void()>> m_cmd_queue;
 
 public:
@@ -157,7 +160,9 @@ public:
 	bool log(int _priority, int _facility, int _verbosity, const char* _format, ...);
 	void remove(Logdev* _dev, bool _erase = false);
 	void set_verbosity(uint _level, uint facility = LOG_FACMAX);
-	const char* convert(const char *from_charset, const char *to_charset, char *instr, size_t inlen);
+
+	void cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
+	void cmd_resume();
 
 private:
 	bool p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);

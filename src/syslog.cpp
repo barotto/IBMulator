@@ -28,6 +28,7 @@
 #include <iconv.h>
 #include "machine.h"
 #include "hardware/cpu.h"
+#include "program.h"
 
 Syslog g_syslog;
 
@@ -69,7 +70,8 @@ Syslog::Syslog()
 :
 m_default(new LogStream(cerr)),
 m_repeat_cnt(0),
-m_stop(false)
+m_stop(false),
+m_paused(false)
 {
 	for(int pri=0; pri<LOG_PRIMAX; pri++) {
 		for(int fac=0; fac<LOG_FACMAX; fac++) {
@@ -107,6 +109,12 @@ void Syslog::main_loop()
 	while(!m_stop) {
 		m_cmd_queue.wait_and_pop(fn);
 		fn();
+		if(m_paused) {
+			std::unique_lock<std::mutex> lock(m_pause_mutex);
+			while(m_paused) {
+				m_pause_cond.wait(lock);
+			}
+		}
 	}
 }
 
@@ -235,7 +243,7 @@ bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _fo
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 	if(devlist.empty()) return false;
 
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_log_mutex);
 
 	if(_format[0] == '\n' && _format[1] == 0) {
 		put_all(devlist,"","\n");
@@ -328,6 +336,7 @@ void Syslog::remove(Logdev* _device, bool _erase)
 void Syslog::put_all(list<Logdev*>& _devlist, string _prefix, string _mex)
 {
 	m_cmd_queue.push([=](){
+		assert(!m_paused);
 		for(auto dev : _devlist) {
 			dev->log_put(_prefix, _mex);
 			dev->log_flush();
@@ -351,7 +360,7 @@ void Syslog::set_verbosity(uint _level, uint _facility)
 	m_verbosity[_facility] = _level;
 }
 
-
+/* this function seems useless...
 const char* Syslog::convert(const char *from_charset, const char *to_charset,
 		char *instr, size_t inlen)
 {
@@ -376,6 +385,25 @@ const char* Syslog::convert(const char *from_charset, const char *to_charset,
 	}
 	iconv_close(cd);
 	return m_iconvbuf;
+}
+*/
+
+void Syslog::cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&](){
+		std::unique_lock<std::mutex> lock(_mutex);
+		m_paused = true;
+		_cv.notify_one();
+	});
+}
+
+void Syslog::cmd_resume()
+{
+	{
+		std::lock_guard<std::mutex> lock(m_pause_mutex);
+		m_paused = false;
+	}
+	m_pause_cond.notify_one();
 }
 
 
