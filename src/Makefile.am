@@ -8,6 +8,7 @@ ibmulator_SOURCES = \
 	appconfig.cpp \
 	bench.cpp \
 	chrono.cpp \
+	timers.cpp \
 	filesys.cpp \
 	hwbench.cpp \
 	ini/ini.cpp \
@@ -27,6 +28,7 @@ noinst_HEADERS = \
 	appconfig.h \
 	bench.h \
 	chrono.h \
+	timers.h \
 	circular_fifo.h \
 	filesys.h \
 	hwbench.h \

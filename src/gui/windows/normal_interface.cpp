@@ -231,7 +231,7 @@ void NormalInterface::on_save(RC::Event &)
 {
 	//TODO file select window to choose the destination
 	g_program.save_state("", [this]() {
-		show_message("State saved");
+		m_gui->show_message("State saved");
 	}, nullptr);
 }
 
@@ -239,7 +239,7 @@ void NormalInterface::on_restore(RC::Event &)
 {
 	//TODO file select window to choose the source
 	g_program.restore_state("", [this]() {
-		show_message("State restored");
+		m_gui->show_message("State restored");
 	}, nullptr);
 }
 
