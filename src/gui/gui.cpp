@@ -51,6 +51,7 @@
 
 GUI g_gui;
 std::mutex GUI::ms_rocket_mutex;
+std::mutex GUI::Windows::s_interface_mutex;
 
 ini_enum_map_t g_mouse_types = {
 	{ "none", MOUSE_TYPE_NONE },
@@ -1078,7 +1079,11 @@ void GUI::update(uint64_t _current_time)
 	m_windows.update(_current_time);
 
 	/* during a libRocket Context update no other thread can call any windows
-	 * related functions, like show_*_message()
+	 * related functions
+	 * TODO Interface messages are outside event handlers and SysLog doesn't
+	 * write messages on the interface directly anymore, so this mutex is
+	 * useless now because no other thread is accessing libRocket's context.
+	 * Consider removing it?
 	 */
 	ms_rocket_mutex.lock();
 	m_rocket_context->Update();
@@ -1268,12 +1273,14 @@ void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 
 void GUI::show_message(const char* _mex)
 {
-	m_windows.show_ifc_message(_mex);
+	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
+	m_windows.last_ifc_mex = _mex;
 }
 
 void GUI::show_dbg_message(const char* _mex)
 {
-	m_windows.show_dbg_message(_mex);
+	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
+	m_windows.last_dbg_mex = _mex;
 }
 
 Uint32 GUI::every_second(Uint32 interval, void */*param*/)
@@ -1508,7 +1515,6 @@ void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 
 void GUI::Windows::show_ifc_message(const char* _mex)
 {
-	//this function is called by 2 threads: GUI and Syslog
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(interface != nullptr) {
 		interface->show_message(_mex);
@@ -1518,7 +1524,6 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 
 void GUI::Windows::show_dbg_message(const char* _mex)
 {
-	//this function is called by 2 threads: GUI and Syslog
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(debugger != nullptr) {
 		debugger->show_message(_mex);
@@ -1572,8 +1577,18 @@ void GUI::Windows::invert_visibility()
 
 void GUI::Windows::update(uint64_t _current_time)
 {
+	s_interface_mutex.lock();
+	if(!last_ifc_mex.empty()) {
+		show_ifc_message(last_ifc_mex.c_str());
+		last_ifc_mex.clear();
+	}
+	if(!last_dbg_mex.empty()) {
+		show_dbg_message(last_dbg_mex.c_str());
+		last_dbg_mex.clear();
+	}
+	s_interface_mutex.unlock();
+
 	// updates can't call any function that needs a lock on ms_rocket_mutex
-	// like show_*_message()
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 
 	interface->update();

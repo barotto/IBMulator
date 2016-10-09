@@ -152,6 +152,7 @@ protected:
 	double m_symspeed_factor;
 
 	// mutex must be locked before any access to the libRocket's objects
+	// TODO this mutex is currently used by 1 thread only (GUI). remove?
 	static std::mutex ms_rocket_mutex;
 	RocketRenderer * m_rocket_renderer;
 	RocketSystemInterface * m_rocket_sys_interface;
@@ -160,6 +161,8 @@ protected:
 
 	class Windows {
 	public:
+		static std::mutex s_interface_mutex;
+
 		bool visible;
 		bool debug_wnds;
 		bool status_wnd;
@@ -170,6 +173,9 @@ protected:
 		Stats * stats;
 		Status * status;
 		DevStatus * devices;
+
+		std::string last_ifc_mex;
+		std::string last_dbg_mex;
 
 		EventTimers timers;
 		unsigned dbgmex_timer;
