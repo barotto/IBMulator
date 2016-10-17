@@ -32,6 +32,26 @@
 
 CPU g_cpu;
 
+const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #0  CPU_DIV_ER_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #1  CPU_SINGLE_STEP_INT
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #2  CPU_NMI_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #3  CPU_BREAKPOINT_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #4  CPU_INTO_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #5  CPU_BOUND_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #6  CPU_UD_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #7  CPU_NM_EXC
+	{ CPU_DOUBLE_FAULT,     CPU_ABORT_EXC, true  }, // #8  CPU_DF_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #9  CPU_MP_EXC (Bochs has benign)
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #10 CPU_TS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #11 CPU_NP_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #12 CPU_SS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #13 CPU_GP_EXC
+	{ CPU_PAGE_FAULTS,      CPU_FAULT_EXC, true  }, // #14 CPU_PF_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #15 reserved
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }  // #16 CPU_MF_EXC
+};
+
 
 CPU::CPU()
 :
@@ -407,7 +427,7 @@ void CPU::handle_async_event()
 	if(!interrupts_inhibited(CPU_INHIBIT_DEBUG)) {
 	    // A trap may be inhibited on this boundary due to an instruction which loaded SS
 		if(m_s.debug_trap) {
-			exception(CPUException(CPU_SINGLE_STEP_INT, 0)); // no error, not interrupt
+			exception(CPUException(CPU_DEBUG_EXC, 0)); // no error, not interrupt
 			return;
 		}
 	}
@@ -421,11 +441,11 @@ void CPU::handle_async_event()
 	} else if(is_unmasked_event_pending(CPU_EVENT_NMI)) {
 		clear_event(CPU_EVENT_NMI);
 		mask_event(CPU_EVENT_NMI);
-		m_s.EXT = true; /* external event */
+		m_s.EXT = 1; /* external event */
 		interrupt(2, CPU_NMI, false, 0);
 	} else if(is_unmasked_event_pending(CPU_EVENT_PENDING_INTR)) {
 		uint8_t vector = g_devices.pic()->IAC(); // may set INTR with next interrupt
-		m_s.EXT = true; /* external event */
+		m_s.EXT = 1; /* external event */
 		interrupt(vector, CPU_EXTERNAL_INTERRUPT, 0, 0);
 	} else if(m_s.HRQ) {
 		// assert Hold Acknowledge (HLDA) and go into a bus hold state
@@ -508,40 +528,16 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	m_s.EXT = 0;
 }
 
-enum CPUInterruptClasses {
-	CPU_BENIGN_EXC, CPU_CONTRIBUTORY_EXC, CPU_PAGE_FAULTS, CPU_UNK_EXC_CLASS
-};
-
-static const unsigned df_detection_classes[CPU_MAX_INT] = {
-	CPU_CONTRIBUTORY_EXC, // #0  CPU_DIV_ER_EXC
-	CPU_BENIGN_EXC,       // #1  CPU_SINGLE_STEP_INT
-	CPU_BENIGN_EXC,       // #2  CPU_NMI_INT
-	CPU_BENIGN_EXC,       // #3  CPU_BREAKPOINT_INT
-	CPU_BENIGN_EXC,       // #4  CPU_INTO_EXC
-	CPU_BENIGN_EXC,       // #5  CPU_BOUND_EXC
-	CPU_BENIGN_EXC,       // #6  CPU_UD_EXC
-	CPU_BENIGN_EXC,       // #7  CPU_NM_EXC
-	CPU_UNK_EXC_CLASS,    // #8  CPU_DF_EXC
-	CPU_CONTRIBUTORY_EXC, // #9  CPU_MP_EXC
-	CPU_CONTRIBUTORY_EXC, // #10 CPU_TS_EXC
-	CPU_CONTRIBUTORY_EXC, // #11 CPU_NP_EXC
-	CPU_CONTRIBUTORY_EXC, // #12 CPU_SS_EXC
-	CPU_CONTRIBUTORY_EXC, // #13 CPU_GP_EXC
-	CPU_PAGE_FAULTS,      // #14 CPU_PF_EXC
-	CPU_UNK_EXC_CLASS,    // #15 undefined
-	CPU_BENIGN_EXC        // #16 CPU_MF_EXC
-};
-
-static const bool df_definition[3][3] = {
-	//          second exc
-	// BENIGN  CONTRIBUTORY  PAGE_FAULTS
-	 { false,  false,        false      },  // BENIGN
-	 { false,  true,         false      },  // CONTRIBUTORY  first exc
-	 { false,  true,         true       }   // PAGE_FAULTS
-};
-
 bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 {
+	static const bool df_definition[3][3] = {
+		//          second exc
+		// BENIGN  CONTRIBUTORY  PAGE_FAULTS
+		 { false,  false,        false      },  // BENIGN
+		 { false,  true,         false      },  // CONTRIBUTORY  first exc
+		 { false,  true,         true       }   // PAGE_FAULTS
+	};
+
 	switch(m_family) {
 		case CPU_286: {
 			/* If two separate faults occur during a single instruction, and if the
@@ -564,11 +560,11 @@ bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 			 * fault, the 80386 divides the exceptions into three classes:
 			 * benign exceptions, contributory exceptions, and page faults.
 			 */
-			assert(_first_vec != 8 && _first_vec != 15 && _first_vec < 17);
-			assert(_current_vec != 8 && _current_vec != 15 && _current_vec < 17);
-			unsigned fclass = df_detection_classes[_first_vec];
-			unsigned sclass = df_detection_classes[_current_vec];
-			return df_definition[fclass][sclass];
+			assert(_first_vec != CPU_DF_EXC && _first_vec < CPU_MAX_INT);
+			assert(_current_vec != CPU_DF_EXC && _current_vec < CPU_MAX_INT);
+			unsigned first = g_cpu_exceptions[_first_vec].exc_type;
+			unsigned second = g_cpu_exceptions[_current_vec].exc_type;
+			return df_definition[first][second];
 		}
 		default:
 			PERRF_ABORT(LOG_CPU, "is_double_fault(): unsupported CPU type\n");
@@ -576,78 +572,50 @@ bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 	}
 }
 
+
+
+
 void CPU::exception(CPUException _exc)
 {
+	assert(_exc.vector < CPU_MAX_INT);
+
 	PDEBUGF(LOG_V2, LOG_CPU, "exception(0x%02x): error_code=%04x\n",
 			_exc.vector, _exc.error_code);
-	bool push_error = false;
-	uint16_t error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
-	m_s.EXT = 0;
+
+	uint16_t error_code;
+	unsigned exc_class = g_cpu_exceptions[_exc.vector].exc_class;
+	bool push_error = g_cpu_exceptions[_exc.vector].push_error;
+
 	switch(_exc.vector) {
-		case CPU_DIV_ER_EXC: //0
-			RESTORE_IP();
+		case CPU_DEBUG_EXC:
+			/*TODO discriminate between:
+			Instruction address breakpoint: fault.
+			Data address breakpoint: trap.
+			General detect: fault.
+			Single-step: trap.
+			Task-switch breakpoint: trap.
+			*/
+			PERRF_ABORT(LOG_CPU, "not implemented\n");
 			break;
-		case CPU_SINGLE_STEP_INT: //1
-			/* Intel's 286 manual: "The saved value of CS:IP will point to the
-			 * next instruction.".
-			 */
-			break;
-		case CPU_NMI_INT: //2
-			RESTORE_IP();
-			break;
-		case CPU_BREAKPOINT_INT: //3
-		case CPU_INTO_EXC: //4
-			break;
-		case CPU_BOUND_EXC: //5
-			RESTORE_IP();
-			break;
-		case CPU_UD_EXC: //6
-			RESTORE_IP();
-			break;
-		case CPU_NM_EXC: //7
-			RESTORE_IP();
-			break;
-		case CPU_DF_EXC:  //8
-		/*case CPU_IDT_LIMIT_EXC:*/
-			RESTORE_IP();
+		case CPU_DF_EXC:
 			error_code = 0;
-			push_error = true;
 			break;
-		case CPU_MP_EXC: //9
-		/*case CPU_NPX_SEG_OVR_INT:*/
-			RESTORE_IP();
-			m_s.EXT = 1;
-			break;
-		case CPU_TS_EXC: //10
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_NP_EXC: //11
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_SS_EXC: //12
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_GP_EXC: //13
-		/*case CPU_SEG_OVR_EXC:*/
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_PF_EXC: //14
-			push_error = true;
+		case CPU_PF_EXC:
 			error_code = _exc.error_code;
 			break;
-		case CPU_MF_EXC: //16
-		/*case CPU_NPX_ERR_INT:*/
-			RESTORE_IP();
-			m_s.EXT = 1;
-			break;
 		default:
-			PERRF_ABORT(LOG_CPU, "exception(%u): bad vector!\n", _exc.vector);
+			error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
 			break;
 	}
+	if(exc_class == CPU_FAULT_EXC) {
+		/* The CS and EIP values saved when a fault is reported point to the instruction
+		 * causing the fault.
+		 */
+		RESTORE_IP();
+	}
+
+	// set EXT in case another exception happens in interrupt()
+	m_s.EXT = 1;
 
 	try {
 		interrupt(_exc.vector, CPU_HARDWARE_EXCEPTION, push_error, error_code);
@@ -657,7 +625,7 @@ void CPU::exception(CPUException _exc)
 		 * instructions or exceptions are processed.
 		 */
 		if(_exc.vector == CPU_DF_EXC) {
-			PDEBUGF(LOG_V1,LOG_CPU,"exception(): 3rd (#%d) exception with no resolution\n", e.vector);
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): 3rd (#%d) exception with no resolution\n", e.vector);
 			enter_sleep_state(CPU_STATE_SHUTDOWN);
 			return;
 		}

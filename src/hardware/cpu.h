@@ -81,11 +81,11 @@ Sig    Model       Step
  * Internal interrupts are caused by the INT instruction. Exceptions occur when
  * an instruction cannot be completed normally. (cfr. 9-1)
  */
-enum CPUInterrupt {
+enum CPUExceptionVector {
 	CPU_DIV_ER_EXC      = 0,  // Divide Error exception
-	CPU_SINGLE_STEP_INT = 1,  // Single step interrupt
+	CPU_DEBUG_EXC       = 1,  // Breakpoint/Single step interrupt
 	CPU_NMI_INT         = 2,  // NMI interrupt
-	CPU_BREAKPOINT_INT  = 3,  // Breakpoint interrupt
+	CPU_BREAKPOINT_INT  = 3,  // INT3 (breakpoint) interrupt
 	CPU_INTO_EXC        = 4,  // INTO detected overflow exception
 	CPU_BOUND_EXC       = 5,  // BOUND range exceeded exception
 	CPU_UD_EXC          = 6,  // Undefined opcode exception (rmode/pmode)
@@ -128,6 +128,28 @@ enum CPUInterruptType {
 	CPU_PRIVILEGED_SOFTWARE_INTERRUPT = 5,
 	CPU_SOFTWARE_EXCEPTION = 6
 };
+
+enum CPUExceptionType {
+	CPU_BENIGN_EXC       = 0,
+	CPU_CONTRIBUTORY_EXC = 1,
+	CPU_PAGE_FAULTS      = 2,
+	CPU_DOUBLE_FAULT
+};
+
+enum CPUExceptionClass {
+	CPU_FAULT_EXC = 0,
+	CPU_TRAP_EXC  = 1,
+	CPU_ABORT_EXC = 2,
+};
+
+struct CPUExceptionInfo
+{
+	unsigned exc_type;
+	unsigned exc_class;
+	bool push_error;
+};
+
+extern const CPUExceptionInfo g_cpu_exceptions[];
 
 class CPUException
 {

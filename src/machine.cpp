@@ -205,7 +205,7 @@ void Machine::reset(uint _signal)
 	g_cpu.reset(_signal);
 	switch(_signal) {
 		case CPU_SOFT_RESET:
-			PDEBUGF(LOG_V1, LOG_MACHINE, "CPU software reset\n");
+			PDEBUGF(LOG_V2, LOG_MACHINE, "CPU software reset\n");
 			g_memory.set_A20_line(true);
 			return;
 		case MACHINE_HARD_RESET:
