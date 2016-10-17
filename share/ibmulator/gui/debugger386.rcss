@@ -42,7 +42,7 @@ table#segmentregs
 table#statusregs
 {
 	position: absolute;
-	top: 250px;
+	top: 240px;
 	left: 0px;
 }
 
@@ -65,7 +65,7 @@ table#extra
 	left: 260px;
 }
 
-#EFLAGS,#EIP
+#EFLAGS,#EIP,#CR2,#CR3
 {
 	width: 80px;
 }
@@ -78,7 +78,7 @@ table#extra
 table#desctables
 {
 	position: absolute;
-	top: 355px;
+	top: 365px;
 	left: 0px;
 }
 

@@ -1,6 +1,6 @@
 <rml>
 	<head>
-		<title>Debugger</title>
+		<title>Debugger 80286</title>
 		<link type="text/template" href="default.rml" />
 		<link type="text/rcss" href="debugger.rcss"/>
 		<link type="text/rcss" href="debugger286.rcss"/>

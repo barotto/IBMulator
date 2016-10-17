@@ -1,6 +1,6 @@
 <rml>
 	<head>
-		<title>Debugger</title>
+		<title>Debugger 80386</title>
 		<link type="text/template" href="default.rml" />
 		<link type="text/rcss" href="debugger.rcss"/>
 		<link type="text/rcss" href="debugger386.rcss"/>
@@ -10,7 +10,7 @@
 				width: 450px;
 				height: 720px;
 				position: absolute;
-				bottom: 0;
+				top: 0;
 				right: 0;
 			}
 		</style>
@@ -60,6 +60,7 @@
 			<tr><th>EIP</th><td id="EIP"></td></tr>
 			<tr><th>EF</th><td id="EFLAGS"></td></tr>
 			<tr><th>PE</th><td id="PE"></td> <th>TS</th><td id="TS"></td> <th>PG</th><td id="PG"></td></tr>
+			<tr><th>CR2</th><td id="CR2"></td><th>CR3</th><td id="CR3"></td></tr>
 			</table>
 			
 			<table id="desctables">

@@ -1555,8 +1555,8 @@ void GUI::Windows::invert_visibility()
 			devices->hide();
 			stats->hide();
 		} else {
-			debugger->show();
 			devices->show();
+			debugger->show();
 			stats->show();
 		}
 	}
@@ -1617,8 +1617,8 @@ void GUI::Windows::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
 	if(debug_wnds) {
-		debugger->show();
 		devices->show();
+		debugger->show();
 		stats->show();
 	} else {
 		debugger->hide();

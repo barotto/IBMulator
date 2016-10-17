@@ -34,6 +34,7 @@ private:
 		RC::Element *fs,*gs;
 		RC::Element *fsbase,*gsbase;
 		RC::Element *fslimit,*gslimit;
+		RC::Element *cr2, *cr3;
 	} m_386core;
 
 	struct s_tools {
@@ -44,6 +45,8 @@ private:
 
 	void on_CPU_skip(RC::Event &);
 	void on_CPU_bp_btn(RC::Event &);
+	void on_fs_dump(RC::Event &);
+	void on_gs_dump(RC::Event &);
 
 	const RC::String & disasm(uint32_t _eip, bool _analyze, uint * _size);
 

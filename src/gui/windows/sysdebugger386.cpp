@@ -48,6 +48,8 @@ event_map_t SysDebugger386::ms_evt_map = {
 	GUI_EVT( "ds_dump",          "click", SysDebugger::on_ds_dump ),
 	GUI_EVT( "ss_dump",          "click", SysDebugger::on_ss_dump ),
 	GUI_EVT( "es_dump",          "click", SysDebugger::on_es_dump ),
+	GUI_EVT( "fs_dump",          "click", SysDebugger386::on_fs_dump ),
+	GUI_EVT( "gs_dump",          "click", SysDebugger386::on_gs_dump ),
 	GUI_EVT( "idt_dump",         "click", SysDebugger::on_idt_dump ),
 	GUI_EVT( "ldt_dump",         "click", SysDebugger::on_ldt_dump ),
 	GUI_EVT( "gdt_dump",         "click", SysDebugger::on_gdt_dump ),
@@ -63,6 +65,9 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine)
 	m_386core.pe = get_element("PE");
 	m_386core.ts = get_element("TS");
 	m_386core.pg = get_element("PG");
+
+	m_386core.cr2 = get_element("CR2");
+	m_386core.cr3 = get_element("CR3");
 
 	m_386core.fs = get_element("FS");
 	m_386core.gs = get_element("GS");
@@ -155,6 +160,9 @@ void SysDebugger386::update()
 	m_386core.fslimit->SetInnerRML(format_hex24(GET_LIMIT(TR)));
 	m_386core.gslimit->SetInnerRML(format_hex24(GET_LIMIT(TR)));
 
+	m_386core.cr2->SetInnerRML(format_hex32(REG_CR2));
+	m_386core.cr3->SetInnerRML(format_hex32(REG_CR3));
+
 	m_core.ldtbase->SetInnerRML(format_hex32(GET_BASE(LDTR)));
 	m_core.idtbase->SetInnerRML(format_hex32(GET_BASE(IDTR)));
 	m_core.gdtbase->SetInnerRML(format_hex32(GET_BASE(GDTR)));
@@ -234,3 +242,12 @@ void SysDebugger386::on_CPU_skip(RC::Event &)
 	}
 }
 
+void SysDebugger386::on_fs_dump(RC::Event &)
+{
+	m_machine->cmd_memdump(REG_FS.desc.base, REG_FS.desc.limit);
+}
+
+void SysDebugger386::on_gs_dump(RC::Event &)
+{
+	m_machine->cmd_memdump(REG_GS.desc.base, REG_GS.desc.limit);
+}
