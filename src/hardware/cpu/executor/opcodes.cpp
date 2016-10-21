@@ -441,7 +441,7 @@ void CPUExecutor::BSR_rw_ew()
 
 void CPUExecutor::BSR_rd_ed()
 {
-	uint32_t op2 = load_ew();
+	uint32_t op2 = load_ed();
 
 	if(op2 == 0) {
 		SET_FLAG(ZF, true);
@@ -452,7 +452,7 @@ void CPUExecutor::BSR_rd_ed()
 			op2 <<= 1;
 		}
 
-		store_rw(op1);
+		store_rd(op1);
 		SET_FLAG(ZF, false);
 	}
 }
