@@ -266,9 +266,9 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 			return;
 		}
 
-		uint32_t linaddr = (cs<<4) + eip;
-		if(linaddr > 0) {
-			m_machine->cmd_cpu_breakpoint(linaddr, [&](){
+		if(cs > 0) {
+			m_machine->cmd_cpu_breakpoint(cs, eip, [&](){
+				//TODO this function is called by a different thread!
 				m_tools.btn_bp->SetClass("on", false);
 			});
 			std::stringstream ss;
@@ -277,7 +277,7 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 			m_tools.btn_bp->SetClass("on", true);
 		}
 	} else {
-		m_machine->cmd_cpu_breakpoint(0, [](){});
+		m_machine->cmd_cpu_breakpoint(0, 0, [](){});
 		m_tools.btn_bp->SetClass("on", false);
 	}
 }

@@ -74,7 +74,8 @@ private:
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
-	uint32_t m_breakpoint;
+	uint16_t m_breakpoint_cs;
+	uint32_t m_breakpoint_eip;
 	std::function<void()> m_breakpoint_clbk;
 	double m_cpu_cycles;
 	uint m_cpu_cycle_time;
@@ -181,7 +182,7 @@ public:
 	void cmd_power_on();
 	void cmd_power_off();
 	void cmd_cpu_step();
-	void cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback);
+	void cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback);
 	void cmd_soft_reset();
 	void cmd_reset();
 	void cmd_switch_power();

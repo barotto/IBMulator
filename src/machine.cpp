@@ -48,7 +48,8 @@ m_heartbeat(MACHINE_HEARTBEAT),
 m_quit(false),
 m_on(false),
 m_cpu_single_step(false),
-m_breakpoint(0),
+m_breakpoint_cs(0),
+m_breakpoint_eip(0),
 m_mouse_fun(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
@@ -357,12 +358,11 @@ void Machine::core_step(int32_t _cpu_cycles)
 			m_mt_virt_time.store(cpu_time);
 		}
 
-		if(m_breakpoint>0) {
-			uint32_t current_addr = GET_LINADDR(CS, REG_EIP);
-			if(m_breakpoint == current_addr) {
+		if(m_breakpoint_cs > 0) {
+			if(m_breakpoint_cs == REG_CS.sel.value && m_breakpoint_eip == REG_EIP) {
 				pause();
 				m_breakpoint_clbk();
-				m_breakpoint = 0;
+				m_breakpoint_cs = 0;
 			}
 		}
 		if(m_cpu_single_step && cycles_left>0) {
@@ -616,10 +616,11 @@ void Machine::cmd_cpu_step()
 	});
 }
 
-void Machine::cmd_cpu_breakpoint(uint32_t _linaddr, std::function<void()> _callback)
+void Machine::cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback)
 {
 	m_cmd_fifo.push([=] () {
-		m_breakpoint = _linaddr;
+		m_breakpoint_cs = _cs;
+		m_breakpoint_eip = _eip;
 		m_breakpoint_clbk = _callback;
 	});
 }

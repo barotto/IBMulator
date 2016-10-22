@@ -136,7 +136,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 			// push pointer of old stack onto new stack
 			if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
-				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (32bit SS)\n");
+				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (32bit SS) ");
 				write_dword(new_stack, temp_ESP-4, return_SS, pl, CPU_SS_EXC, errcode);
 				write_dword(new_stack, temp_ESP-8, return_ESP, pl, CPU_SS_EXC, errcode);
 				temp_ESP -= 8;
@@ -151,7 +151,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 				write_dword(new_stack, temp_ESP-8, return_EIP, pl, CPU_SS_EXC, errcode);
 				temp_ESP -= 8;
 			} else {
-				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (32bit SS)\n");
+				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (32bit SS) ");
 				write_word(new_stack, temp_ESP-2, return_SS, pl, CPU_SS_EXC, errcode);
 				write_word(new_stack, temp_ESP-4, return_ESP, pl, CPU_SS_EXC, errcode);
 				temp_ESP -= 4;
@@ -173,7 +173,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 			// push pointer of old stack onto new stack
 			if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
-				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (16bit SS)\n");
+				PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE (16bit SS) ");
 				write_dword(new_stack, uint16_t(temp_SP-4), return_SS, pl, CPU_SS_EXC, errcode);
 				write_dword(new_stack, uint16_t(temp_SP-8), return_ESP, pl, CPU_SS_EXC, errcode);
 				temp_SP -= 8;
@@ -188,7 +188,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 				write_dword(new_stack, uint16_t(temp_SP-8), return_EIP, pl, CPU_SS_EXC, errcode);
 				temp_SP -= 8;
 			} else {
-				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (16bit SS)\n");
+				PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE (16bit SS) ");
 				write_word(new_stack, uint16_t(temp_SP-2), return_SS, pl, CPU_SS_EXC, errcode);
 				write_word(new_stack, uint16_t(temp_SP-4), return_ESP, pl, CPU_SS_EXC, errcode);
 				temp_SP -= 4;
@@ -205,10 +205,11 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 			}
 			REG_SP = temp_SP;
 		}
+		PDEBUGF(LOG_V2, LOG_CPU, "to %04X:%08X\n", cs_selector.value, new_EIP);
 
 		// new EIP must be in code segment limit else #GP(0)
 		if(new_EIP > cs_descriptor.limit) {
-			PDEBUGF(LOG_V2, LOG_CPU, "call_gate: IP not within CS limits\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "new EIP not within CS limits\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
 
@@ -230,18 +231,19 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		if(gate_descriptor.type == DESC_TYPE_386_CALL_GATE) {
 			// call gate 32bit, push return address onto stack
-			PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "386 CALL GATE ");
 			stack_push_dword(REG_CS.sel.value);
 			stack_push_dword(REG_EIP);
 		} else {
 			// call gate 16bit, push return address onto stack
-			PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE\n");
+			PDEBUGF(LOG_V2, LOG_CPU, "286 CALL GATE ");
 			stack_push_word(REG_CS.sel.value);
 			stack_push_word(REG_IP);
 		}
 		// load CS:EIP from gate
 		// load code segment descriptor into CS register
 		// set RPL of CS to CPL
+		PDEBUGF(LOG_V2, LOG_CPU, "to %04X:%08X\n", cs_selector.value, new_EIP);
 		branch_far(cs_selector, cs_descriptor, new_EIP, CPL);
 	}
 }

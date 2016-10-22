@@ -232,8 +232,7 @@ void SysDebugger386::on_CPU_skip(RC::Event &)
 		uint size;
 		try {
 			disasm(REG_EIP, false, &size);
-			uint32_t curaddr = GET_LINADDR(CS, REG_EIP);
-			m_machine->cmd_cpu_breakpoint(curaddr+size, [](){});
+			m_machine->cmd_cpu_breakpoint(REG_CS.sel.value, REG_EIP+size, [](){});
 			m_tools.btn_bp->SetClass("on", false);
 			m_machine->cmd_resume();
 		} catch(CPUException &) {
