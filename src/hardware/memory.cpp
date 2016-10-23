@@ -215,6 +215,21 @@ void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)
 	file.close();
 }
 
+void Memory::check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len)
+const noexcept
+{
+	std::vector<memtrap_interval_t> results;
+	m_traps_tree.findOverlapping(_address, _address, results);
+	for(auto t : results) {
+		if(t.value.mask & _mask) {
+			t.value.func(_address, _mask, _value, _len);
+			if(STOP_AT_MEM_TRAPS) {
+				g_machine.set_single_step(true);
+			}
+		}
+	}
+}
+
 void Memory::register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn)
 {
 	m_traps_intervals.push_back(memtrap_interval_t(_lo, _hi, memtrap_t(_mask, _fn)));
@@ -222,9 +237,9 @@ void Memory::register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t
 }
 
 void Memory::s_debug_trap(uint32_t _address,  // address
-		uint8_t  _rw,    // 0=read, 1=write
+		uint8_t  _rw,    // read or write
 		uint32_t _value, // value read or written
-		uint8_t  _len    // data lenght (1=byte, 2=word, 4=dword)
+		uint8_t  _len    // data length (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign="<-", *read="->";
@@ -234,7 +249,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 	buf[0] = 0;
 	buf[len] = 0;
 	uint32_t addr = _address;
-	if(_rw==0) {
+	if(_rw == MEM_TRAP_READ) {
 		op = read;
 		char * byte0 = buf;
 		while(len--) {
@@ -258,19 +273,31 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 		op = assign;
 	}
-
-	PDEBUGF(LOG_V1, LOG_MEM, "%d[%04X] %s %04X %s\n", _len, _address, op, _value, buf);
+	const char *format;
+	switch(_len) {
+		case 1:
+			format = "%d[%04X] %s %02X %s\n";
+			break;
+		case 2:
+			format = "%d[%04X] %s %04X %s\n";
+			break;
+		case 4:
+		default:
+			format = "%d[%04X] %s %08X %s\n";
+			break;
+	}
+	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value, buf);
 }
 
 void Memory::s_debug_40h_trap(uint32_t _address,  // address
-		uint8_t  _rw,    // 0=read, 1=write
+		uint8_t  _rw,    // read or write
 		uint32_t _value, // value read or written
 		uint8_t  _len    // data lenght (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign=":=", *read="=";
 	const char *op;
-	if(_rw==0) {
+	if(_rw == MEM_TRAP_READ) {
 		op = read;
 	} else {
 		op = assign;

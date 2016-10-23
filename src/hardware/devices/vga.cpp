@@ -120,13 +120,16 @@ void VGA::install()
 	IODevice::install();
 	g_machine.register_irq(VGA_IRQ, name());
 	m_timer_id = g_machine.register_timer(nullptr, name());
-	g_memory.register_trap(0xA0000, 0xBFFFF, 3, [this] (uint32_t addr, uint rw, uint16_t value, uint8_t len) {
-		if(rw == 0) { //read
+	/*
+	g_memory.register_trap(0xA0000, 0xBFFFF, MEM_TRAP_READ|MEM_TRAP_WRITE,
+	[this] (uint32_t addr, uint8_t rw, uint16_t value, uint8_t len) {
+		if(rw == MEM_TRAP_READ) {
 			PDEBUGF(LOG_V2, LOG_VGA, "%s[0x%05X] = 0x%04X\n", len==1?"b":"w", addr, value);
 		} else { //write
 			PDEBUGF(LOG_V2, LOG_VGA, "%s[0x%05X] := 0x%04X\n", len==1?"b":"w", addr, value);
 		}
 	});
+	*/
 }
 
 void VGA::remove()

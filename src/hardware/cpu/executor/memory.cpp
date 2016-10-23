@@ -55,7 +55,7 @@ uint32_t CPUExecutor::read_xpages()
 		data |= g_cpubus.mem_read<1>(m_cached_phy.phy2 + (b-m_cached_phy.len1), len) << (b*8);
 	}
 	if(MEMORY_TRAPS) {
-		g_memory.check_trap(m_cached_phy.phy1, false, data, len);
+		g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_READ, data, len);
 	}
 	return data;
 }
@@ -167,7 +167,7 @@ void CPUExecutor::write_xpages(uint32_t _data)
 		g_cpubus.mem_write<1>(m_cached_phy.phy2 + (b-m_cached_phy.len1), len, (_data>>(b*8)) & 0xFF);
 	}
 	if(MEMORY_TRAPS) {
-		g_memory.check_trap(m_cached_phy.phy1, true, _data, len);
+		g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_WRITE, _data, len);
 	}
 }
 

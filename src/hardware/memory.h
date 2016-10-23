@@ -38,9 +38,12 @@
 class Memory;
 extern Memory g_memory;
 
+#define MEM_TRAP_READ  0x1
+#define MEM_TRAP_WRITE 0x2
+
 typedef std::function<void(
 		uint32_t,  // address
-		uint8_t,   // 0=read, 1=write
+		uint8_t,   // read or write
 		uint32_t,  // value read or written
 		uint8_t    // data lenght (1=byte, 2=word, 4=dword)
 	)> memtrap_fun_t;
@@ -86,17 +89,7 @@ public:
 	void init();
 	void reset();
 	void config_changed();
-
-	void check_trap(uint32_t _address, bool _write, uint32_t _value, unsigned _len) const noexcept
-	{
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 2) {
-				t.value.func(_address, _write, _value, _len);
-			}
-		}
-	}
+	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
 
 	template<unsigned LEN>
 	uint32_t read_notraps(uint32_t _address) const noexcept
@@ -119,7 +112,7 @@ public:
 		uint32_t value = read_notraps<LEN>(_address);
 
 		if(MEMORY_TRAPS && _trap_len==LEN) {
-			check_trap(_address, false, value, LEN);
+			check_trap(_address, MEM_TRAP_READ, value, LEN);
 		}
 
 		return value;
@@ -145,7 +138,7 @@ public:
 		write_notraps<LEN>(_address, _value);
 
 		if(MEMORY_TRAPS && _trap_len==LEN) {
-			check_trap(_address, true, _value, LEN);
+			check_trap(_address, MEM_TRAP_WRITE, _value, LEN);
 		}
 	}
 

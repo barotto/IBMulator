@@ -69,12 +69,13 @@ void size_check()
 
 #ifndef NDEBUG
 	//DEBUG
-	#define CONFIG_PARSE  true
-	#define MEMORY_TRAPS  false
-	#define INT_TRAPS     true
-	#define STOP_AT_EXC   false
-	#define STOP_AT_EXC_VEC 0xFF
-	#define UD6_AUTO_DUMP false
+	#define CONFIG_PARSE      true
+	#define MEMORY_TRAPS      false
+	#define INT_TRAPS         true
+	#define STOP_AT_MEM_TRAPS false
+	#define STOP_AT_EXC       false
+	#define STOP_AT_EXC_VEC   0xFF
+	#define UD6_AUTO_DUMP     false
 
 	#define LOG_DEBUG_MESSAGES    true
 	#define LOG_MACHINE_TIME      true
@@ -84,12 +85,13 @@ void size_check()
 
 #else
 	//RELEASE
-	#define CONFIG_PARSE  true
-	#define MEMORY_TRAPS  false
-	#define INT_TRAPS     false
-	#define STOP_AT_EXC   false
-	#define STOP_AT_EXC_VEC 0xFF
-	#define UD6_AUTO_DUMP false
+	#define CONFIG_PARSE      true
+	#define MEMORY_TRAPS      false
+	#define INT_TRAPS         false
+	#define STOP_AT_MEM_TRAPS false
+	#define STOP_AT_EXC       false
+	#define STOP_AT_EXC_VEC   0xFF
+	#define UD6_AUTO_DUMP     false
 
 	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false
@@ -99,7 +101,7 @@ void size_check()
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL true
+#define OVERRIDE_VERBOSITY_LEVEL false
 #define LOG_PROGRAM_VERBOSITY  LOG_V0
 #define LOG_FS_VERBOSITY       LOG_V0
 #define LOG_GFX_VERBOSITY      LOG_V0
