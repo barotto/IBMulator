@@ -79,7 +79,6 @@ void CPULogger::add_entry(
 
 int CPULogger::get_opcode_index(const Instruction &_instr)
 {
-	// TODO add 32bit op size
 	int idx = int(_instr.opcode) << 4;
 	switch(_instr.opcode) {
 		case 0x80:
@@ -104,7 +103,7 @@ int CPULogger::get_opcode_index(const Instruction &_instr)
 		case 0xF00:
 		case 0xF01:
 		case 0xFBA:
-			return idx + _instr.modrm.n;
+			idx += _instr.modrm.n;
 			break;
 		default:
 			break;
