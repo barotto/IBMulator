@@ -1175,7 +1175,7 @@ void CPUExecutor::ENTER_o32()
 		uint32_t ebp = REG_EBP;
 		if(nesting_level > 0) {
 			while(--nesting_level) {
-				ebp -= 2;
+				ebp -= 4;
 				uint32_t temp32 = read_dword(REG_SS, ebp);
 				stack_push_dword(temp32);
 			}
