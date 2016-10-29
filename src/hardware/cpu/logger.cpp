@@ -423,23 +423,27 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 		PERRF(LOG_CPU, "error opening '%s' for writing\n", _filename.c_str());
 		return;
 	}
-	uint64_t total = 0;
+	uint64_t totals[4] = {0,0,0,0};
 	PINFOF(LOG_V0, LOG_CPU, "writing counters to '%s' ... ", _filename.c_str());
 	if(fprintf(file, "               o16a16        o32a16        o16a32        o32a32\n") > 0) {
 		for(int op : oplist) {
+			uint64_t o16a16 = _cnt[op];
+			uint64_t o32a16 = _cnt[op|(1<<LOG_O32_BIT)];
+			uint64_t o16a32 = _cnt[op|(1<<LOG_A32_BIT)];
+			uint64_t o32a32 = _cnt[(op|(1<<LOG_O32_BIT))|(1<<LOG_A32_BIT)];
 			if(fprintf(file, "0x%05X: %12lu  %12lu  %12lu  %12lu\n", op,
-					_cnt[op],
-					_cnt[op|(1<<LOG_O32_BIT)],
-					_cnt[op|(1<<LOG_A32_BIT)],
-					_cnt[(op|(1<<LOG_O32_BIT))|(1<<LOG_A32_BIT)]
-			) < 0)
+					o16a16,	o32a16,	o16a32,	o32a32) < 0)
 			{
 				PERRF(LOG_CPU, "error writing to file\n");
 				break;
 			}
-			total += _cnt[op];
+			totals[0] += o16a16;
+			totals[1] += o32a16;
+			totals[2] += o16a32;
+			totals[3] += o32a32;
 		}
-		fprintf(file, "\n total: %lu\n", total);
+		fprintf(file, "\n totals: %12lu  %12lu  %12lu  %12lu\n",
+				totals[0], totals[1], totals[2], totals[3]);
 	}
 	PINFOF(LOG_V0, LOG_CPU, "done\n");
 	fclose(file);
