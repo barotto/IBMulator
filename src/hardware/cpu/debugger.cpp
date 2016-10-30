@@ -537,9 +537,10 @@ void CPUDebugger::INT_10_12(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	buflen -= len;
 }
 
-bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &/*_drive*/, int &_C, int &_H, int &_S)
+bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int &_H, int &_S)
 {
 	bool is_hdd = _core.get_DL() & 0x80;
+	_drive = _core.get_DL() & 0x7F;
 	_C = _core.get_CH();
 	_H = _core.get_DH();
 	_S = _core.get_CL() & 0x3F;
