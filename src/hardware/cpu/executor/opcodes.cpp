@@ -525,7 +525,7 @@ void CPUExecutor::BT_ed_ib()
 {
 	uint32_t op1 = load_ed();
 
-	SET_FLAG(CF, (op1 >> (m_instr->ib&0xf)) & 1);
+	SET_FLAG(CF, (op1 >> (m_instr->ib&0x1f)) & 1);
 }
 
 
