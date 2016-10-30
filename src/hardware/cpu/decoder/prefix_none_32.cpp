@@ -526,53 +526,23 @@ case 0x6F:
 	break;
 }
 
-/* 70  cb     JO cb      Jump short if overflow (OF=1) */
-case 0x70: PREFIX_NONE;
-
-/* 71  cb     JNO cb     Jump short if notoverflow (OF=0) */
-case 0x71: PREFIX_NONE;
-
-/* 72  cb     JC cb      Jump short if carry (CF=1) */
-case 0x72: PREFIX_NONE;
-
-/* 73  cb     JNC cb     Jump short if not carry (CF=0) */
-case 0x73: PREFIX_NONE;
-
-/* 74  cb     JE cb      Jump short if equal (ZF=1) */
-case 0x74: PREFIX_NONE;
-
-/* 75  cb     JNE cb     Jump short if not equal (ZF=0) */
-case 0x75: PREFIX_NONE;
-
-/* 76  cb     JBE cb     Jump short if below or equal (CF=1 or ZF=1) */
-case 0x76: PREFIX_NONE;
-
-/* 77  cb     JA cb      Jump short if above (CF=0 and ZF=0) */
-case 0x77: PREFIX_NONE;
-
-/* 78  cb     JS cb      Jump short if sign (SF=1) */
-case 0x78: PREFIX_NONE;
-
-/* 79  cb     JNS cb     Jump short if not sign (SF=0) */
-case 0x79: PREFIX_NONE;
-
-/* 7A  cb     JPE cb     Jump short if parity even (PF=1) */
-case 0x7A: PREFIX_NONE;
-
-/* 7B  cb     JPO cb     Jump short if parity odd (PF=0) */
-case 0x7B: PREFIX_NONE;
-
-/* 7C  cb     JL cb      Jump short if less (SF/=OF) */
-case 0x7C: PREFIX_NONE;
-
-/* 7D  cb     JNL cb     Jump short if not less (SF=OF) */
-case 0x7D: PREFIX_NONE;
-
-/* 7E  cb     JLE cb     Jump short if less or equal (ZF=1 or SF/=OF) */
-case 0x7E: PREFIX_NONE;
-
-/* 7F  cb     JNLE cb    Jump short if not less/equal (ZF=0 and SF=OF) */
-case 0x7F: PREFIX_NONE;
+case 0x70: /* 70 cb   JO cb    Jump short if overflow (OF=1)                    */
+case 0x71: /* 71 cb   JNO cb   Jump short if notoverflow (OF=0)                 */
+case 0x72: /* 72 cb   JC cb    Jump short if carry (CF=1)                       */
+case 0x73: /* 73 cb   JNC cb   Jump short if not carry (CF=0)                   */
+case 0x74: /* 74 cb   JE cb    Jump short if equal (ZF=1)                       */
+case 0x75: /* 75 cb   JNE cb   Jump short if not equal (ZF=0)                   */
+case 0x76: /* 76 cb   JBE cb   Jump short if below or equal (CF=1 or ZF=1)      */
+case 0x77: /* 77 cb   JA cb    Jump short if above (CF=0 and ZF=0)              */
+case 0x78: /* 78 cb   JS cb    Jump short if sign (SF=1)                        */
+case 0x79: /* 79 cb   JNS cb   Jump short if not sign (SF=0)                    */
+case 0x7A: /* 7A cb   JPE cb   Jump short if parity even (PF=1)                 */
+case 0x7B: /* 7B cb   JPO cb   Jump short if parity odd (PF=0)                  */
+case 0x7C: /* 7C cb   JL cb    Jump short if less (SF<>OF)                      */
+case 0x7D: /* 7D cb   JNL cb   Jump short if not less (SF=OF)                   */
+case 0x7E: /* 7E cb   JLE cb   Jump short if less or equal (ZF=1 or SF<>OF)     */
+case 0x7F: /* 7F cb   JNLE cb  Jump short if not less or equal (ZF=0 and SF=OF) */
+	PREFIX_NONE;
 
 /*
 80 /0 ib   ADD eb,ib    Add immediate byte into EA byte
@@ -1324,11 +1294,7 @@ case 0xED:
 }
 
 /* EE       OUT DX,AL       Output byte AL to port number DX */
-case 0xEE:
-{
-	m_instr.fn = &CPUExecutor::OUT_DX_AL;
-	break;
-}
+case 0xEE: PREFIX_NONE;
 
 /* EF       OUT DX,EAX     Output dword EAX to port number DX */
 case 0xEF:

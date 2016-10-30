@@ -94,34 +94,20 @@ case 0x03:
 	break;
 }
 
-/*  0F 05      LOADALL        Load CPU registers from memory */
-case 0x05: PREFIX_0F;
-
-/*  0F 06      CLTS            Clear task switched flag */
-case 0x06: PREFIX_0F;
-
-/* 0F 20 /r   MOV r32,CR0/CR2/CR3      Move (control register) to (register) */
-case 0x20: PREFIX_0F;
-
-/* 0F 21 /r   MOV r32,DRx         Move (debug register) to (register) */
-case 0x21: PREFIX_0F;
-
-/* 0F 22 /r   MOV CR0/CR2/CR3,r32      Move (register) to (control register)  */
-case 0x22: PREFIX_0F;
-
-/* 0F 23 /r        MOV DR0 -- 3,r32         Move (register) to (debug register) */
-case 0x23: PREFIX_0F;
-
-/* 0F 24 /r        MOV r32,TR6/TR7          Move (test register) to (register) */
-case 0x24: PREFIX_0F;
-
-/* 0F 26 /r        MOV TR6/TR7,r32          Move (register) to (test register) */
-case 0x26: PREFIX_0F;
+case 0x05: /* 0F 05      286 LOADALL            Load CPU registers from memory */
+case 0x06: /* 0F 06      CLTS                   Clear task switched flag */
+case 0x07: /* 0F 07      386 LOADALL            Load CPU registers from memory */
+case 0x20: /* 0F 20 /r   MOV r32,CR0/CR2/CR3    Move (control register) to (register) */
+case 0x21: /* 0F 21 /r   MOV r32,DRx            Move (debug register) to (register) */
+case 0x22: /* 0F 22 /r   MOV CR0/CR2/CR3,r32    Move (register) to (control register)  */
+case 0x23: /* 0F 23 /r   MOV DR0 -- 3,r32       Move (register) to (debug register) */
+case 0x24: /* 0F 24 /r   MOV r32,TR6/TR7        Move (test register) to (register) */
+case 0x26: /* 0F 26 /r   MOV TR6/TR7,r32        Move (register) to (test register) */
+	PREFIX_0F;
 
 /* 0F 80 cd    JO rel32         Jump near if overflow (OF=1)                    */
 case 0x80:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JO_cd;
 	break;
@@ -130,7 +116,6 @@ case 0x80:
 /* 0F 81 cd   JNO  rel32       Jump near if not overflow (OF=0)                */
 case 0x81:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNO_cd;
 	break;
@@ -139,7 +124,6 @@ case 0x81:
 /* 0F 82 cd   JC   rel32       Jump near if carry (CF=1)                       */
 case 0x82:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JC_cd;
 	break;
@@ -148,7 +132,6 @@ case 0x82:
 /* 0F 83 cd   JNC  rel32       Jump near if not carry (CF=0)                   */
 case 0x83:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNC_cd;
 	break;
@@ -157,7 +140,6 @@ case 0x83:
 /* 0F 84 cd   JE   rel32       Jump near if equal (ZF=1)                       */
 case 0x84:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JE_cd;
 	break;
@@ -166,7 +148,6 @@ case 0x84:
 /* 0F 85 cd   JNE  rel32       Jump near if not equal (ZF=0)                   */
 case 0x85:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNE_cd;
 	break;
@@ -175,7 +156,6 @@ case 0x85:
 /* 0F 86 cd   JBE  rel32       Jump near if below or equal (CF=1 or ZF=1)      */
 case 0x86:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JBE_cd;
 	break;
@@ -184,7 +164,6 @@ case 0x86:
 /* 0F 87 cd   JA   rel32       Jump near if above (CF=0 and ZF=0)              */
 case 0x87:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JA_cd;
 	break;
@@ -193,7 +172,6 @@ case 0x87:
 /* 0F 88 cd   JS   rel32       Jump near if sign (SF=1)                        */
 case 0x88:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JS_cd;
 	break;
@@ -202,7 +180,6 @@ case 0x88:
 /* 0F 89 cd   JNS  rel32       Jump near if not sign (SF=0)                    */
 case 0x89:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNS_cd;
 	break;
@@ -211,7 +188,6 @@ case 0x89:
 /* 0F 8A cd   JPE  rel32       Jump near if parity even (PF=1)                 */
 case 0x8A:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JPE_cd;
 	break;
@@ -220,7 +196,6 @@ case 0x8A:
 /* 0F 8B cd   JPO  rel32       Jump near if parity odd (PF=0)                  */
 case 0x8B:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JPO_cd;
 	break;
@@ -229,7 +204,6 @@ case 0x8B:
 /* 0F 8C cd   JL   rel32       Jump near if less (SF<>OF)                      */
 case 0x8C:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JL_cd;
 	break;
@@ -238,16 +212,14 @@ case 0x8C:
 /* 0F 8D cd   JNL  rel32       Jump near if not less (SF=OF)                   */
 case 0x8D:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNL_cd;
 	break;
 }
 
-/* 0F 8E cd   JLE  rel32       Jump near if less or equal (ZF=1 and SF<>OF)    */
+/* 0F 8E cd   JLE  rel32       Jump near if less or equal (ZF=1 or SF<>OF)    */
 case 0x8E:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JLE_cd;
 	break;
@@ -256,64 +228,32 @@ case 0x8E:
 /* 0F 8F cd   JNLE rel32       Jump near if not less or equal (ZF=0 and SF=OF) */
 case 0x8F:
 {
-	ILLEGAL_286
 	m_instr.id1 = fetchdw();
 	m_instr.fn = &CPUExecutor::JNLE_cd;
 	break;
 }
 
-/* 0F 90      SETO r/m8        Set byte if overflow (OF=1)                    */
-case 0x90: PREFIX_0F;
-
-/* 0F 91      SETNO r/m8       Set byte if not overflow (OF=0)                */
-case 0x91: PREFIX_0F;
-
-/* 0F 92      SETB r/m8        Set byte if below (CF=1)                       */
-case 0x92: PREFIX_0F;
-
-/* 0F 93      SETNB r/m8       Set byte if not below (CF=0)                   */
-case 0x93: PREFIX_0F;
-
-/* 0F 94      SETE r/m8        Set byte if equal (ZF=1)                       */
-case 0x94: PREFIX_0F;
-
-/* 0F 95      SETNE r/m8       Set byte if not equal (ZF=0)                   */
-case 0x95: PREFIX_0F;
-
-/* 0F 96      SETBE r/m8       Set byte if below or equal (CF=1 or (ZF=1)     */
-case 0x96: PREFIX_0F;
-
-/* 0F 97      SETNBE r/m8      Set byte if not below or equal (CF=0 and ZF=0) */
-case 0x97: PREFIX_0F;
-
-/* 0F 98      SETS r/m8        Set byte if sign (SF=1)                        */
-case 0x98: PREFIX_0F;
-
-/* 0F 99      SETNS r/m8       Set byte if not sign (SF=0)                    */
-case 0x99: PREFIX_0F;
-
-/* 0F 9A      SETP r/m8        Set byte if parity (PF=1)                      */
-case 0x9A: PREFIX_0F;
-
-/* 0F 9B      SETNP r/m8       Set byte if not parity (PF=0)                  */
-case 0x9B: PREFIX_0F;
-
-/* 0F 9C      SETL r/m8        Set byte if less (SF<>OF)                      */
-case 0x9C: PREFIX_0F;
-
-/* 0F 9D      SETNL r/m8       Set byte if not less (SF=OF)                   */
-case 0x9D: PREFIX_0F;
-
-/* 0F 9E      SETLE r/m8       Set byte if less or equal (ZF=1 and SF<>OF)    */
-case 0x9E: PREFIX_0F;
-
-/* 0F 9F      SETNLE r/m8      Set byte if not less or equal (ZF=1 and SF<>OF)*/
-case 0x9F: PREFIX_0F;
+case 0x90: /* 0F 90   SETO r/m8     Set byte if overflow (OF=1)                    */
+case 0x91: /* 0F 91   SETNO r/m8    Set byte if not overflow (OF=0)                */
+case 0x92: /* 0F 92   SETB r/m8     Set byte if below (CF=1)                       */
+case 0x93: /* 0F 93   SETNB r/m8    Set byte if not below (CF=0)                   */
+case 0x94: /* 0F 94   SETE r/m8     Set byte if equal (ZF=1)                       */
+case 0x95: /* 0F 95   SETNE r/m8    Set byte if not equal (ZF=0)                   */
+case 0x96: /* 0F 96   SETBE r/m8    Set byte if below or equal (CF=1 or ZF=1)      */
+case 0x97: /* 0F 97   SETNBE r/m8   Set byte if not below or equal (CF=0 and ZF=0) */
+case 0x98: /* 0F 98   SETS r/m8     Set byte if sign (SF=1)                        */
+case 0x99: /* 0F 99   SETNS r/m8    Set byte if not sign (SF=0)                    */
+case 0x9A: /* 0F 9A   SETP r/m8     Set byte if parity (PF=1)                      */
+case 0x9B: /* 0F 9B   SETNP r/m8    Set byte if not parity (PF=0)                  */
+case 0x9C: /* 0F 9C   SETL r/m8     Set byte if less (SF<>OF)                      */
+case 0x9D: /* 0F 9D   SETNL r/m8    Set byte if not less (SF=OF)                   */
+case 0x9E: /* 0F 9E   SETLE r/m8    Set byte if less or equal (ZF=1 or SF<>OF)     */
+case 0x9F: /* 0F 9F   SETNLE r/m8   Set byte if not less or equal (ZF=0 and SF=OF) */
+	PREFIX_0F;
 
 /* 0F A0           PUSH FS                  Push FS                                       */
 case 0xA0:
 {
-	ILLEGAL_286
 	m_instr.reg = REGI_FS;
 	m_instr.fn = &CPUExecutor::PUSH_SR_dw;
 	break;
@@ -322,7 +262,6 @@ case 0xA0:
 /* 0F A1           POP FS                   Pop top of stack into FS                      */
 case 0xA1:
 {
-	ILLEGAL_286
 	m_instr.reg = REGI_FS;
 	m_instr.fn = &CPUExecutor::POP_SR_dw;
 	break;
@@ -331,7 +270,6 @@ case 0xA1:
 /* 0F A3           BT r/m32,r32             Save bit in carry flag                        */
 case 0xA3:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BT_ed_rd;
 	break;
@@ -340,7 +278,6 @@ case 0xA3:
 /* 0F A4           SHLD r/m32,r32,imm8      r/m32 gets SHL of r/m32 concatenated with r32 */
 case 0xA4:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::SHLD_ed_rd_ib;
@@ -350,7 +287,6 @@ case 0xA4:
 /* 0F A5           SHLD r/m32,r32,CL        r/m32 gets SHL of r/m32 concatenated with r32 */
 case 0xA5:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SHLD_ed_rd_CL;
 	break;
@@ -359,7 +295,6 @@ case 0xA5:
 /* OF A8           PUSH GS                  Push GS                                       */
 case 0xA8:
 {
-	ILLEGAL_286
 	m_instr.reg = REGI_GS;
 	m_instr.fn = &CPUExecutor::PUSH_SR_dw;
 	break;
@@ -368,7 +303,6 @@ case 0xA8:
 /* 0F A9           POP GS                   Pop top of stack into GS                      */
 case 0xA9:
 {
-	ILLEGAL_286
 	m_instr.reg = REGI_GS;
 	m_instr.fn = &CPUExecutor::POP_SR_dw;
 	break;
@@ -377,7 +311,6 @@ case 0xA9:
 /* 0F AB           BTS r/m32,r32            Save bit in carry flag and set                */
 case 0xAB:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BTS_ed_rd;
 	break;
@@ -386,7 +319,6 @@ case 0xAB:
 /* 0F AC           SHRD r/m32,r32,imm8      r/m32 gets SHR of r/m32 concatenated with r32 */
 case 0xAC:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	m_instr.fn = &CPUExecutor::SHRD_ed_rd_ib;
@@ -396,7 +328,6 @@ case 0xAC:
 /* 0F AD           SHRD r/m32,r32,CL        r/m32 gets SHR of r/m32 concatenated with r32 */
 case 0xAD:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::SHRD_ed_rd_CL;
 	break;
@@ -405,7 +336,6 @@ case 0xAD:
 /* 0F AF /r        IMUL r32,r/m32           dword register = dword register * r/m dword      */
 case 0xAF:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::IMUL_rd_ed;
 	break;
@@ -414,7 +344,6 @@ case 0xAF:
 /* 0F B2 /r        LSS r32,m16:32           Load SS:r32 with pointer from memory          */
 case 0xB2:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LSS_rd_mp;
 	break;
@@ -423,7 +352,6 @@ case 0xB2:
 /* 0F B3           BTR r/m32,r32            Save bit in carry flag and reset              */
 case 0xB3:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BTR_ed_rd;
 	break;
@@ -432,7 +360,6 @@ case 0xB3:
 /* 0F B4 /r        LFS r32,m16:32           Load FS:r32 with pointer from memory          */
 case 0xB4:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LFS_rd_mp;
 	break;
@@ -441,7 +368,6 @@ case 0xB4:
 /* 0F B5 /r        LGS r32,m16:32           Load GS:r32 with pointer from memory          */
 case 0xB5:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::LGS_rd_mp;
 	break;
@@ -450,7 +376,6 @@ case 0xB5:
 /* 0F B6 /r        MOVZX r32,r/m8           Move byte to dword with zero-extend            */
 case 0xB6:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOVZX_rd_eb;
 	break;
@@ -459,7 +384,6 @@ case 0xB6:
 /* 0F B7 /r        MOVZX r32,r/m16          Move word to dword reg with zero-extend */
 case 0xB7:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOVZX_rd_ew;
 	break;
@@ -471,7 +395,6 @@ case 0xB7:
 /* 0F BA /7  ib    BTC r/m32,imm8           Save bit in carry flag and complement         */
 case 0xBA:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
@@ -499,7 +422,6 @@ case 0xBA:
 /* 0F BB           BTC r/m32,r32            Save bit in carry flag and complement         */
 case 0xBB:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BTC_ed_rd;
 	break;
@@ -508,7 +430,6 @@ case 0xBB:
 /* 0F BC           BSF r32,r/m32            Bit scan forward on r/m dword                  */
 case 0xBC:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BSF_rd_ed;
 	break;
@@ -517,7 +438,6 @@ case 0xBC:
 /* 0F BD           BSR r32,r/m32            Bit scan reverse on r/m dword                  */
 case 0xBD:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::BSR_rd_ed;
 	break;
@@ -526,7 +446,6 @@ case 0xBD:
 /* 0F BE /r        MOVSX r32,r/m8           Move byte to dword with sign-extend            */
 case 0xBE:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOVSX_rd_eb;
 	break;
@@ -535,7 +454,6 @@ case 0xBE:
 /* 0F BF /r        MOVSX r32,r/m16          Move word to dword, sign-extend */
 case 0xBF:
 {
-	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = &CPUExecutor::MOVSX_rd_ew;
 	break;

@@ -146,6 +146,7 @@ case 0x07:
 	if(CPU_FAMILY == CPU_386) {
 		//TODO
 		//m_instr.fn = &CPUExecutor::LOADALL_386;
+		PERRF_ABORT(LOG_CPU, "LOADALL 386 not implemented\n");
 		illegal_opcode();
 	} else {
 		illegal_opcode();
