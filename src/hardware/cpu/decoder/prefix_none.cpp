@@ -1057,18 +1057,13 @@ case 0x8E:
 	break;
 }
 
-/*
-8F /0       POP mw          Pop top of stack into memory word
-*/
+/* 8F /0      POP mw      Pop top of stack into memory word */
 case 0x8F:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::POP_mw;
-			break;
-		default:
-			illegal_opcode();
+	m_instr.fn = &CPUExecutor::POP_mw;
+	if(m_instr.modrm.n != 0) {
+		illegal_opcode();
 	}
 	break;
 }
@@ -1493,13 +1488,9 @@ case 0xC6:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::MOV_eb_ib;
-			break;
-		default:
-			illegal_opcode();
-			break;
+	m_instr.fn = &CPUExecutor::MOV_eb_ib;
+	if(m_instr.modrm.n != 0) {
+		illegal_opcode();
 	}
 	break;
 }
@@ -1509,13 +1500,9 @@ case 0xC7:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::MOV_ew_iw;
-			break;
-		default:
-			illegal_opcode();
-			break;
+	m_instr.fn = &CPUExecutor::MOV_ew_iw;
+	if(m_instr.modrm.n != 0) {
+		illegal_opcode();
 	}
 	break;
 }
@@ -1776,7 +1763,7 @@ case 0xD6:
 	break;
 }
 
-/* D7        XLATB        Set AL to memory byte DS:[BX + unsigned AL] */
+/* D7        XLATB        Set AL to memory byte DS:[eBX + unsigned AL] */
 case 0xD7:
 {
 	if(m_instr.addr32) {
@@ -1803,7 +1790,7 @@ case 0xDF:
 	break;
 }
 
-/* E0 cb    LOOPNZ cb     DEC CX; jump short if CX<>0 and ZF=0 */
+/* E0 cb    LOOPNZ cb     DEC eCX; jump short if eCX<>0 and ZF=0 */
 case 0xE0:
 {
 	m_instr.ib = fetchb();
@@ -1815,7 +1802,7 @@ case 0xE0:
 	break;
 }
 
-/* E1 cb    LOOPZ cb      DEC CX; jump short if CX<>0 and zero (ZF=1) */
+/* E1 cb    LOOPZ cb      DEC eCX; jump short if eCX<>0 and zero (ZF=1) */
 case 0xE1:
 {
 	m_instr.ib = fetchb();
@@ -1827,7 +1814,7 @@ case 0xE1:
 	break;
 }
 
-/* E2 cb    LOOP cb       DEC CX; jump short if CX<>0 */
+/* E2 cb    LOOP cb       DEC eCX; jump short if eCX<>0 */
 case 0xE2:
 {
 	m_instr.ib = fetchb();

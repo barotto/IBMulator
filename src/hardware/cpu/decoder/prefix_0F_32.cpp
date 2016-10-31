@@ -32,9 +32,9 @@ switch(_opcode) {
 
 /*
 0F 00 /0   SLDT ew      Store Local Descriptor Table register to EA word
-0F 00 /1   STR ew       Store Task Register to EA word
+0F 00 /1   STR  ew      Store Task Register to EA word
 0F 00 /2   LLDT ew      Load selector ew into Local  Descriptor Table register
-0F 00 /3   LTR ew       Load EA word into Task Register
+0F 00 /3   LTR  ew      Load EA word into Task Register
 0F 00 /4   VERR ew      Set ZF=1 if seg. can be read, selector ew
 0F 00 /5   VERW ew      Set ZF=1 if seg. can be written, selector ew
 */
@@ -86,7 +86,7 @@ case 0x02:
 	break;
 }
 
-/* 0F 03 /r     LSL rd,ew   Load: rd = Segment Limit, selector ew */
+/* 0F 03 /r   LSL rd,ew    Load: rd = Segment Limit, selector ew */
 case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -251,7 +251,7 @@ case 0x9E: /* 0F 9E   SETLE r/m8    Set byte if less or equal (ZF=1 or SF<>OF)  
 case 0x9F: /* 0F 9F   SETNLE r/m8   Set byte if not less or equal (ZF=0 and SF=OF) */
 	PREFIX_0F;
 
-/* 0F A0           PUSH FS                  Push FS                                       */
+/* 0F A0     PUSH FS                  Push FS                                       */
 case 0xA0:
 {
 	m_instr.reg = REGI_FS;
@@ -259,7 +259,7 @@ case 0xA0:
 	break;
 }
 
-/* 0F A1           POP FS                   Pop top of stack into FS                      */
+/* 0F A1     POP FS                   Pop top of stack into FS                      */
 case 0xA1:
 {
 	m_instr.reg = REGI_FS;
@@ -267,7 +267,7 @@ case 0xA1:
 	break;
 }
 
-/* 0F A3           BT r/m32,r32             Save bit in carry flag                        */
+/* 0F A3     BT r/m32,r32             Save bit in carry flag                        */
 case 0xA3:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -275,7 +275,7 @@ case 0xA3:
 	break;
 }
 
-/* 0F A4           SHLD r/m32,r32,imm8      r/m32 gets SHL of r/m32 concatenated with r32 */
+/* 0F A4     SHLD r/m32,r32,imm8      r/m32 gets SHL of r/m32 concatenated with r32 */
 case 0xA4:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -284,7 +284,7 @@ case 0xA4:
 	break;
 }
 
-/* 0F A5           SHLD r/m32,r32,CL        r/m32 gets SHL of r/m32 concatenated with r32 */
+/* 0F A5     SHLD r/m32,r32,CL        r/m32 gets SHL of r/m32 concatenated with r32 */
 case 0xA5:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -292,7 +292,7 @@ case 0xA5:
 	break;
 }
 
-/* OF A8           PUSH GS                  Push GS                                       */
+/* OF A8     PUSH GS                  Push GS                                       */
 case 0xA8:
 {
 	m_instr.reg = REGI_GS;
@@ -300,7 +300,7 @@ case 0xA8:
 	break;
 }
 
-/* 0F A9           POP GS                   Pop top of stack into GS                      */
+/* 0F A9     POP GS                   Pop top of stack into GS                      */
 case 0xA9:
 {
 	m_instr.reg = REGI_GS;
@@ -308,7 +308,7 @@ case 0xA9:
 	break;
 }
 
-/* 0F AB           BTS r/m32,r32            Save bit in carry flag and set                */
+/* 0F AB     BTS r/m32,r32            Save bit in carry flag and set                */
 case 0xAB:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -316,7 +316,7 @@ case 0xAB:
 	break;
 }
 
-/* 0F AC           SHRD r/m32,r32,imm8      r/m32 gets SHR of r/m32 concatenated with r32 */
+/* 0F AC     SHRD r/m32,r32,imm8      r/m32 gets SHR of r/m32 concatenated with r32 */
 case 0xAC:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -325,7 +325,7 @@ case 0xAC:
 	break;
 }
 
-/* 0F AD           SHRD r/m32,r32,CL        r/m32 gets SHR of r/m32 concatenated with r32 */
+/* 0F AD     SHRD r/m32,r32,CL        r/m32 gets SHR of r/m32 concatenated with r32 */
 case 0xAD:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -333,7 +333,7 @@ case 0xAD:
 	break;
 }
 
-/* 0F AF /r        IMUL r32,r/m32           dword register = dword register * r/m dword      */
+/* 0F AF /r  IMUL r32,r/m32           dword register = dword register * r/m dword      */
 case 0xAF:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -341,7 +341,7 @@ case 0xAF:
 	break;
 }
 
-/* 0F B2 /r        LSS r32,m16:32           Load SS:r32 with pointer from memory          */
+/* 0F B2 /r  LSS r32,m16:32           Load SS:r32 with pointer from memory          */
 case 0xB2:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -349,7 +349,7 @@ case 0xB2:
 	break;
 }
 
-/* 0F B3           BTR r/m32,r32            Save bit in carry flag and reset              */
+/* 0F B3     BTR r/m32,r32            Save bit in carry flag and reset              */
 case 0xB3:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -357,7 +357,7 @@ case 0xB3:
 	break;
 }
 
-/* 0F B4 /r        LFS r32,m16:32           Load FS:r32 with pointer from memory          */
+/* 0F B4 /r  LFS r32,m16:32           Load FS:r32 with pointer from memory          */
 case 0xB4:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -365,7 +365,7 @@ case 0xB4:
 	break;
 }
 
-/* 0F B5 /r        LGS r32,m16:32           Load GS:r32 with pointer from memory          */
+/* 0F B5 /r  LGS r32,m16:32           Load GS:r32 with pointer from memory          */
 case 0xB5:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -373,7 +373,7 @@ case 0xB5:
 	break;
 }
 
-/* 0F B6 /r        MOVZX r32,r/m8           Move byte to dword with zero-extend            */
+/* 0F B6 /r  MOVZX r32,r/m8           Move byte to dword with zero-extend            */
 case 0xB6:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -381,7 +381,7 @@ case 0xB6:
 	break;
 }
 
-/* 0F B7 /r        MOVZX r32,r/m16          Move word to dword reg with zero-extend */
+/* 0F B7 /r  MOVZX r32,r/m16          Move word to dword reg with zero-extend */
 case 0xB7:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -419,7 +419,7 @@ case 0xBA:
 	break;
 }
 
-/* 0F BB           BTC r/m32,r32            Save bit in carry flag and complement         */
+/* 0F BB     BTC r/m32,r32            Save bit in carry flag and complement         */
 case 0xBB:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -427,7 +427,7 @@ case 0xBB:
 	break;
 }
 
-/* 0F BC           BSF r32,r/m32            Bit scan forward on r/m dword                  */
+/* 0F BC     BSF r32,r/m32            Bit scan forward on r/m dword                  */
 case 0xBC:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -435,7 +435,7 @@ case 0xBC:
 	break;
 }
 
-/* 0F BD           BSR r32,r/m32            Bit scan reverse on r/m dword                  */
+/* 0F BD     BSR r32,r/m32            Bit scan reverse on r/m dword                  */
 case 0xBD:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -443,7 +443,7 @@ case 0xBD:
 	break;
 }
 
-/* 0F BE /r        MOVSX r32,r/m8           Move byte to dword with sign-extend            */
+/* 0F BE /r  MOVSX r32,r/m8           Move byte to dword with sign-extend            */
 case 0xBE:
 {
 	m_instr.modrm.load(m_instr.addr32);
@@ -451,7 +451,7 @@ case 0xBE:
 	break;
 }
 
-/* 0F BF /r        MOVSX r32,r/m16          Move word to dword, sign-extend */
+/* 0F BF /r  MOVSX r32,r/m16          Move word to dword, sign-extend */
 case 0xBF:
 {
 	m_instr.modrm.load(m_instr.addr32);

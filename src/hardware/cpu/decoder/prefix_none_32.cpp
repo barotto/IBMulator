@@ -711,18 +711,13 @@ case 0x8D:
 /* 8E /r      MOV SR,mw    Move memory word into Segment Register */
 case 0x8E: PREFIX_NONE;
 
-/*
-8F /0       POP md          Pop top of stack into memory dword
-*/
+/* 8F /0      POP md       Pop top of stack into memory dword */
 case 0x8F:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::POP_md;
-			break;
-		default:
-			illegal_opcode();
+	m_instr.fn = &CPUExecutor::POP_md;
+	if(m_instr.modrm.n != 0) {
+		illegal_opcode();
 	}
 	break;
 }
@@ -784,16 +779,14 @@ case 0x9D:
 	break;
 }
 
-/* 9E - SAHF     Store AH into flags */
-case 0x9E: PREFIX_NONE;
-
-/* 9F - LAHF     Load flags into AH */
-case 0x9F: PREFIX_NONE;
+case 0x9E: /* 9E   SAHF     Store AH into flags */
+case 0x9F: /* 9F   LAHF     Load flags into AH */
+	PREFIX_NONE;
 
 /* A0 iw/id      MOV AL,xb    Move byte variable at seg:offset into AL */
 case 0xA0: PREFIX_NONE;
 
-/* A1 iw/id      MOV EAX,xw      Move dword variable at seg:offset into EAX */
+/* A1 iw/id      MOV EAX,xw   Move dword variable at seg:offset into EAX */
 case 0xA1:
 {
 	if(m_instr.addr32) {
@@ -808,7 +801,7 @@ case 0xA1:
 /* A2 iw/id      MOV xb,AL       Move AL into byte variable at seg:offset */
 case 0xA2: PREFIX_NONE;
 
-/* A3 iw/id      MOV xd,EAX       Move EAX into dword register at seg:offset */
+/* A3 iw/id      MOV xd,EAX      Move EAX into dword register at seg:offset */
 case 0xA3:
 {
 	if(m_instr.addr32) {
@@ -937,6 +930,7 @@ C0 /2 ib  RCL eb,ib    Rotate 9-bits (CF, EA byte) left ib times
 C0 /3 ib  RCR eb,ib    Rotate 9-bits (CF, EA byte) right ib times
 C0 /4 ib  SAL eb,ib    Multiply EA byte by 2, ib times
 C0 /5 ib  SHR eb,ib    Unsigned divide EA byte by 2, ib times
+C0 /6 ib  SHL eb,ib    Multiply EA byte by 2, ib times
 C0 /7 ib  SAR eb,ib    Signed divide EA byte by 2, ib times
 */
 case 0xC0: PREFIX_NONE;
@@ -948,6 +942,7 @@ C1 /2 ib  RCL ed,ib    Rotate 17-bits (CF, EA dword) left ib times
 C1 /3 ib  RCR ed,ib    Rotate 17-bits (CF, EA dword) right ib times
 C1 /4 ib  SAL ed,ib    Multiply EA dword by 2, ib times
 C1 /5 ib  SHR ed,ib    Unsigned divide EA dword by 2, ib times
+C1 /6 ib  SHL ed,ib    Multiply EA dword by 2, ib times
 C1 /7 ib  SAR ed,ib    Signed divide EA dword by 2, ib times
 */
 case 0xC1:
@@ -1031,13 +1026,9 @@ case 0xC7:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.id1 = fetchdw();
-	switch(m_instr.modrm.n) {
-		case 0:
-			m_instr.fn = &CPUExecutor::MOV_ed_id;
-			break;
-		default:
-			illegal_opcode();
-			break;
+	m_instr.fn = &CPUExecutor::MOV_ed_id;
+	if(m_instr.modrm.n != 0) {
+		illegal_opcode();
 	}
 	break;
 }
@@ -1051,14 +1042,14 @@ case 0xC8:
 	break;
 }
 
-/* C9         LEAVE      Set (E)SP to (E)BP, then POP (E)BP */
+/* C9      LEAVE      Set (E)SP to (E)BP, then POP (E)BP */
 case 0xC9:
 {
 	m_instr.fn = &CPUExecutor::LEAVE_o32;
 	break;
 }
 
-/* CA iw   RET iw       Return to far caller, pop iw bytes */
+/* CA iw   RET iw     Return to far caller, pop iw bytes */
 case 0xCA:
 {
 	m_instr.iw1 = fetchw();
@@ -1066,7 +1057,7 @@ case 0xCA:
 	break;
 }
 
-/* CB      RET          Return to far caller */
+/* CB      RET        Return to far caller */
 case 0xCB:
 {
 	m_instr.iw1 = 0;
@@ -1074,16 +1065,12 @@ case 0xCB:
 	break;
 }
 
-/* CC      INT 3         Interrupt 3 (trap to debugger) */
-case 0xCC: PREFIX_NONE;
+case 0xCC: /* CC      INT 3     Interrupt 3 (trap to debugger) */
+case 0xCD: /* CD ib   INT ib    Interrupt numbered by immediate byte */
+case 0xCE: /* CE      INTO      Interrupt 4  */
+	PREFIX_NONE;
 
-/* CD ib   INT ib        Interrupt numbered by immediate byte */
-case 0xCD: PREFIX_NONE;
-
-/* CE      INTO      Interrupt 4  */
-case 0xCE: PREFIX_NONE;
-
-/* CF        IRETD    Interrupt return (far return and pop flags) */
+/* CF     IRETD        Interrupt return (far return and pop flags) */
 case 0xCF:
 {
 	m_instr.fn = &CPUExecutor::IRETD;
@@ -1097,6 +1084,7 @@ D0 /2     RCL eb,1     Rotate 9-bits (CF, EA byte) left once
 D0 /3     RCR eb,1     Rotate 9-bits (CF, EA byte) right once
 D0 /4     SAL eb,1     Multiply EA byte by 2, once
 D0 /5     SHR eb,1     Unsigned divide EA byte by 2, once
+D0 /6     SHL eb,1     Multiply EA byte by 2, once
 D0 /7     SAR eb,1     Signed divide EA byte by 2, once
 */
 case 0xD0: PREFIX_NONE;
@@ -1108,6 +1096,7 @@ D1 /2     RCL ed,1    Rotate 33-bits (CF, EA dword) left once
 D1 /3     RCR ed,1    Rotate 33-bits (CF, EA dword) right once
 D1 /4     SAL ed,1    Multiply EA dword by 2, once
 D1 /5     SHR ed,1    Unsigned divide EA dword by 2, once
+D1 /6     SHL ed,1    Multiply EA dword by 2, once
 D1 /7     SAR ed,1    Signed divide EA dword by 2, once
 */
 case 0xD1:
@@ -1151,6 +1140,7 @@ D2 /2     RCL eb,CL    Rotate 9-bits (CF, EA byte) left CL times
 D2 /3     RCR eb,CL    Rotate 9-bits (CF, EA byte) right CL times
 D2 /4     SAL eb,CL    Multiply EA byte by 2, CL times
 D2 /5     SHR eb,CL    Unsigned divide EA byte by 2, CL times
+D2 /6     SHR eb,CL    Multiply EA byte by 2, CL times
 D2 /7     SAR eb,CL    Signed divide EA byte by 2, CL times
 */
 case 0xD2: PREFIX_NONE;
@@ -1162,6 +1152,7 @@ D3 /2     RCL ed,CL    Rotate 33-bits (CF, EA dword) left CL times
 D3 /3     RCR ed,CL    Rotate 33-bits (CF, EA dword) right CL times
 D3 /4     SAL ed,CL    Multiply EA dword by 2, CL times
 D3 /5     SHR ed,CL    Unsigned divide EAd word by 2, CL times
+D3 /6     SHR ed,CL    Multiply EA dword by 2, CL times
 D3 /7     SAR ed,CL    Signed divide EA dword by 2, CL times
 */
 case 0xD3:
@@ -1198,20 +1189,13 @@ case 0xD3:
 	break;
 }
 
-/* D4 ib      AAM        ASCII adjust AX after multiply */
-case 0xD4: PREFIX_NONE;
+case 0xD4: /* D4 ib    AAM      ASCII adjust AX after multiply */
+case 0xD5: /* D5 ib    AAD      ASCII adjust AX before division */
+case 0xD6: /* D6       SALC     Set AL If Carry */
+case 0xD7: /* D7       XLATB    Set AL to memory byte DS:[eBX + unsigned AL] */
+	PREFIX_NONE;
 
-/* D5 ib      AAD         ASCII adjust AX before division */
-case 0xD5: PREFIX_NONE;
-
-/* D6         SALC        Set AL If Carry */
-case 0xD6: PREFIX_NONE;
-
-/* D7        XLATB        Set AL to memory byte DS:[BX + unsigned AL] */
-case 0xD7: PREFIX_NONE;
-
-/* FPU ESC */
-case 0xD8:
+case 0xD8: /* D8-DF    FPU ESC  */
 case 0xD9:
 case 0xDA:
 case 0xDB:
@@ -1219,24 +1203,24 @@ case 0xDC:
 case 0xDD:
 case 0xDE:
 case 0xDF:
-	 PREFIX_NONE;
+	PREFIX_NONE;
 
-/* E0 cb    LOOPNZ cb     DEC CX; jump short if CX<>0 and ZF=0 */
-case 0xE0: PREFIX_NONE;
+case 0xE0: /* E0 cb   LOOPNZ cb  DEC eCX; jump short if eCX<>0 and ZF=0 */
+case 0xE1: /* E1 cb   LOOPZ cb   DEC eCX; jump short if eCX<>0 and zero (ZF=1) */
+case 0xE2: /* E2 cb   LOOP cb    DEC eCX; jump short if eCX<>0 */
+	PREFIX_NONE;
 
-/* E1 cb    LOOPZ cb      DEC CX; jump short if CX<>0 and zero (ZF=1) */
-case 0xE1: PREFIX_NONE;
-
-/* E2 cb    LOOP cb       DEC CX; jump short if CX<>0 */
-case 0xE2: PREFIX_NONE;
-
-/* E3  cb     JCXZ cb    Jump short if CX register is zero */
-case 0xE3: PREFIX_NONE;
+case 0xE3: /* E3 cb   JECXZ cb   Jump short if ECX register is zero */
+{
+	m_instr.ib = fetchb();
+	m_instr.fn = &CPUExecutor::JECXZ_cb;
+	break;
+}
 
 /* E4 ib     IN AL,ib     Input byte from immediate port into AL */
 case 0xE4: PREFIX_NONE;
 
-/* E5 ib     IN EAX,ib      Input dword from immediate port into EAX */
+/* E5 ib     IN EAX,ib    Input dword from immediate port into EAX */
 case 0xE5:
 {
 	m_instr.ib = fetchb();
@@ -1280,7 +1264,7 @@ case 0xEA:
 	break;
 }
 
-/* EB   cb     JMP cb         Jump short */
+/* EB cb     JMP cb         Jump short */
 case 0xEB: PREFIX_NONE;
 
 /* EC        IN AL,DX       Input byte from port DX into AL */
@@ -1303,27 +1287,26 @@ case 0xEF:
 	break;
 }
 
-/* F0  LOCK prefix */
+/*
+F0   LOCK prefix
+F1   prefix, does not generate #UD; INT1 (ICEBP) on 386+ TODO?
+F2   REP/REPE prefix
+F3   REPNE prefix
+*/
 
-/* F1 prefix, does not generate #UD; INT1 (ICEBP) on 386+ TODO? */
-
-/* F2 REP/REPE prefix */
-
-/* F3 REPNE prefix */
-
-/* F4        HLT            Halt */
+/* F4      HLT           Halt */
 case 0xF4: PREFIX_NONE;
 
-/* F5         CMC            Complement carry flag */
+/* F5      CMC           Complement carry flag */
 case 0xF5: PREFIX_NONE;
 
 /*
 F6 /0 ib   TEST eb,ib    AND immediate byte into EA byte for flags only
-F6 /2      NOT eb        Reverse each bit of EA byte
-F6 /3      NEG eb        Two's complement negate EA byte
-F6 /4      MUL eb        Unsigned multiply (AX = AL * EA byte)
+F6 /2      NOT  eb       Reverse each bit of EA byte
+F6 /3      NEG  eb       Two's complement negate EA byte
+F6 /4      MUL  eb       Unsigned multiply (AX = AL * EA byte)
 F6 /5      IMUL eb       Signed multiply (AX = AL * EA byte)
-F6 /6      DIV eb        Unsigned divide AX by EA byte
+F6 /6      DIV  eb       Unsigned divide AX by EA byte
 F6 /7      IDIV eb       Signed divide AX by EA byte (AL=Quo,AH=Rem)
 */
 case 0xF6: PREFIX_NONE;
@@ -1374,27 +1357,17 @@ case 0xF7:
 	break;
 }
 
-/* F8         CLC            Clear carry flag */
-case 0xF8: PREFIX_NONE;
-
-/* F9         STC             Set carry flag */
-case 0xF9: PREFIX_NONE;
-
-/* FA      CLI          Clear interrupt flag; interrupts disabled */
-case 0xFA: PREFIX_NONE;
-
-/* FB        STI        Set interrupt enable flag, interrupts enabled */
-case 0xFB: PREFIX_NONE;
-
-/* FC      CLD          Clear direction flag, (E)SI and (E)DI will increment */
-case 0xFC: PREFIX_NONE;
-
-/* FD       STD         Set direction flag so (E)SI and (E)DI will decrement */
-case 0xFD: PREFIX_NONE;
+case 0xF8: /* F8   CLC    Clear carry flag */
+case 0xF9: /* F9   STC    Set carry flag */
+case 0xFA: /* FA   CLI    Clear interrupt flag; interrupts disabled */
+case 0xFB: /* FB   STI    Set interrupt enable flag, interrupts enabled */
+case 0xFC: /* FC   CLD    Clear direction flag, (E)SI and (E)DI will increment */
+case 0xFD: /* FD   STD    Set direction flag so (E)SI and (E)DI will decrement */
+	PREFIX_NONE;
 
 /*
-FE   /0     INC eb         Increment EA byte by 1
-FE   /1     DEC eb         Decrement EA byte by 1
+FE /0     INC eb    Increment EA byte by 1
+FE /1     DEC eb    Decrement EA byte by 1
 */
 case 0xFE: PREFIX_NONE;
 
