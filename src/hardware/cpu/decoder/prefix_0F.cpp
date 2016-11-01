@@ -159,6 +159,8 @@ case 0x20:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	/* For the MOVs from/to CRx/DRx/TRx, mod=00b/01b/10b is aliased to 11b. */
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_rd_CR;
 	break;
 }
@@ -168,6 +170,7 @@ case 0x21:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_rd_DR;
 	break;
 }
@@ -177,6 +180,7 @@ case 0x22:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_CR_rd;
 	break;
 }
@@ -186,6 +190,7 @@ case 0x23:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_DR_rd;
 	break;
 }
@@ -195,6 +200,7 @@ case 0x24:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_rd_TR;
 	break;
 }
@@ -204,6 +210,7 @@ case 0x26:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
+	m_instr.modrm.mod = 3;
 	m_instr.fn = &CPUExecutor::MOV_TR_rd;
 	break;
 }
