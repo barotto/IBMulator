@@ -4273,9 +4273,14 @@ void CPUExecutor::SLDT_ew()
 		PDEBUGF(LOG_V2, LOG_CPU, "SLDT: not recognized in real mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
-
 	uint16_t val16 = REG_LDTR.sel.value;
 	store_ew(val16);
+	if(m_instr->op32 && m_instr->modrm.mod==3) {
+		/* When the destination operand is a 32-bit register the high-order
+		 * 16 bits of the register are cleared.
+		 */
+		GEN_REG(m_instr->modrm.rm).word[1] = 0;
+	}
 }
 
 
@@ -4545,6 +4550,12 @@ void CPUExecutor::STR_ew()
 	}
 	uint16_t val = REG_TR.sel.value;
 	store_ew(val);
+	if(m_instr->op32 && m_instr->modrm.mod==3) {
+		/* When the destination operand is a 32-bit register the high-order
+		 * 16 bits of the register are cleared.
+		 */
+		GEN_REG(m_instr->modrm.rm).word[1] = 0;
+	}
 }
 
 
