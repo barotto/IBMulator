@@ -4431,6 +4431,12 @@ void CPUExecutor::SMSW_ew()
 {
 	uint16_t msw = GET_MSW();
 	store_ew(msw);
+	if(m_instr->op32 && m_instr->modrm.mod==3) {
+		/* When the destination operand is a 32-bit register the high-order
+		 * 16 bits of the register are cleared.
+		 */
+		GEN_REG(m_instr->modrm.rm).word[1] = 0;
+	}
 }
 
 
