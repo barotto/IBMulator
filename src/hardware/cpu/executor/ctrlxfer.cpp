@@ -634,7 +634,6 @@ void CPUExecutor::iret_pmode(bool _32bit)
 
 	/* NT = 0: INTERRUPT RETURN ON STACK */
 	uint32_t new_esp, new_eip = 0, new_eflags = 0, temp_ESP;
-	uint16_t new_sp, new_ip = 0, new_flags = 0;
 
 	/* 16bit opsize  |   32bit opsize
 	 * ==============================
@@ -666,9 +665,9 @@ void CPUExecutor::iret_pmode(bool _32bit)
 
 	} else {
 		top_nbytes_same = 6;
-		new_flags   = stack_read_word(temp_ESP + 4);
+		new_eflags  = stack_read_word(temp_ESP + 4);
 	    cs_selector = stack_read_word(temp_ESP + 2);
-	    new_ip      = stack_read_word(temp_ESP + 0);
+	    new_eip     = stack_read_word(temp_ESP + 0);
 	}
 
 	// return CS selector must be non-null, else #GP(0)
@@ -692,12 +691,14 @@ void CPUExecutor::iret_pmode(bool _32bit)
 
 	if(cs_selector.rpl == CPL) { /* INTERRUPT RETURN TO SAME LEVEL */
 
+		PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: return to same level\n");
+
 		/* top 6/12 bytes on stack must be within limits, else #SS(0) */
 		/* satisfied above */
-		if(_32bit) {
-			/* load CS-cache with new code segment descriptor */
-			branch_far(cs_selector, cs_descriptor, new_eip, cs_selector.rpl);
 
+		/* load CS-cache with new code segment descriptor */
+		branch_far(cs_selector, cs_descriptor, new_eip, cs_selector.rpl);
+		if(_32bit) {
 			// IF only changed if (CPL <= EFLAGS.IOPL)
 			// IOPL only changed if CPL == 0
 			// VM unaffected
@@ -708,11 +709,8 @@ void CPUExecutor::iret_pmode(bool _32bit)
 					false //VM
 				);
 		} else {
-			/* load CS-cache with new code segment descriptor */
-			branch_far(cs_selector, cs_descriptor, new_ip, cs_selector.rpl);
-
 			/* load flags with third word on stack */
-			write_flags(new_flags,
+			write_flags(new_eflags,
 					(CPL == 0), //IOPL
 					(CPL <= FLAG_IOPL), // IF
 					true //NT
@@ -728,6 +726,8 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		return;
 
 	} else { /* INTERRUPT RETURN TO OUTER PRIVILEGE LEVEL */
+
+		PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: return to outer privilege level\n");
 
 		/* 16bit opsize  |   32bit opsize
 		 * ==============================
@@ -787,9 +787,9 @@ void CPUExecutor::iret_pmode(bool _32bit)
 			new_eflags = stack_read_dword(temp_ESP + 8);
 			new_eip    = stack_read_dword(temp_ESP + 0);
 		} else {
-			new_esp   = stack_read_word(temp_ESP + 6);
-			new_flags = stack_read_word(temp_ESP + 4);
-			new_eip   = stack_read_word(temp_ESP + 0);
+			new_esp    = stack_read_word(temp_ESP + 6);
+			new_eflags = stack_read_word(temp_ESP + 4);
+			new_eip    = stack_read_word(temp_ESP + 0);
 		}
 
 		bool change_IF = (CPL <= FLAG_IOPL);
@@ -798,14 +798,14 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		/* load CS:EIP from stack */
 		/* load the CS-cache with CS descriptor */
 		/* set CPL to the RPL of the return CS selector */
-		branch_far(cs_selector, cs_descriptor, new_ip, cs_selector.rpl);
+		branch_far(cs_selector, cs_descriptor, new_eip, cs_selector.rpl);
 
 		// IF only changed if (prev_CPL <= FLAGS.IOPL)
 		// IOPL only changed if prev_CPL == 0
 		if(_32bit) {
 			write_eflags(new_eflags, change_IOPL, change_IF, true, false);
 		} else {
-			write_flags(new_flags, change_IOPL, change_IF, true);
+			write_flags(new_eflags, change_IOPL, change_IF, true);
 		}
 
 		// load SS:SP from stack
