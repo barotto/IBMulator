@@ -801,8 +801,8 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 				break;
 			}
 			totals[0] += o16a16;
-			totals[1] += o32a16;
-			totals[2] += o16a32;
+			totals[1] += o16a32;
+			totals[2] += o32a16;
 			totals[3] += o32a32;
 		}
 		fprintf(file, "\n totals: %12lu  %12lu  %12lu  %12lu\n",
