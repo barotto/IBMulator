@@ -157,8 +157,8 @@ void SysDebugger386::update()
 	m_core.eslimit->SetInnerRML(format_hex24(GET_LIMIT(ES)));
 	m_core.sslimit->SetInnerRML(format_hex24(GET_LIMIT(SS)));
 	m_core.trlimit->SetInnerRML(format_hex24(GET_LIMIT(TR)));
-	m_386core.fslimit->SetInnerRML(format_hex24(GET_LIMIT(TR)));
-	m_386core.gslimit->SetInnerRML(format_hex24(GET_LIMIT(TR)));
+	m_386core.fslimit->SetInnerRML(format_hex24(GET_LIMIT(FS)));
+	m_386core.gslimit->SetInnerRML(format_hex24(GET_LIMIT(GS)));
 
 	m_386core.cr2->SetInnerRML(format_hex32(REG_CR2));
 	m_386core.cr3->SetInnerRML(format_hex32(REG_CR3));
