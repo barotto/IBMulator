@@ -93,13 +93,16 @@ factory state. In order to do so:
 2. go to the DOS prompt
 4. run "a:restore a: c: /s"
 
-Under Linux you can mount the HDD image using this command:  
+Under Linux you can mount the HDD image using this command:
+```
 $ mount -o loop,offset=16896 hdd.img /mnt/loop
+```
 
 The offset value is equal to "start sector"*512. The start sector value can be 
 determined with:
+```
 $ fdisk -l hdd.img
-
+```
 *Note*: if you change the disk type from the default 35 (WDL-330P) to any 
 other type, the automatically created image will be 0-filled and you'll need to 
 use 'fdisk' and 'format' in order to use it.
@@ -157,10 +160,10 @@ stores new files, like screenshots and savestates
 
 ### Requirements
 
-* GCC 4.9
-* SDL 2.0.2
-* SDL_image 2.0.0
-* libRocket (latest version with a patch applied, see notes below)
+* GCC 4.9+
+* SDL 2.0.2+
+* SDL_image 2.0.0+
+* libRocket (see notes below)
 * GLEW
 * libarchive (optional)
 * libsamplerate (optional)
@@ -173,15 +176,17 @@ Without libsamplerate the PC Speaker will not emit any sound and other audio
 sources will not be played unless they are at the same rate as the mixer. 
 
 ### General instructions
-
+```
 $ ./configure --with-librocket-prefix=PATHTOLIBROCKET  
 $ make  
 $ make install
-
+```
 Use './configure --help' to read the various compilation options.
 
-If you cloned the code from GitHub, before the 'configure' script you must run:  
+If you cloned the code from GitHub, before the 'configure' script you must run:
+```
 $ autoreconf --install
+```
 
 ### Linux
 
@@ -207,36 +212,16 @@ Follow the general instructions using this additional 'configure' option:
 
 ### libRocket
 
-IBMulator uses libRocket which must be downloaded from http://librocket.com. 
-Unfortunately there is a critical bug that can cause the program to hang while 
-opening the floppy selection window.
-
-I was able to resolve the problem by doing the following:
-
-In "void ElementDocument::_UpdateLayout()" (Core/ElementDocument.cpp:295)
-
-move layout_dirty = false; to the end of the method, so it looks like this:
-
-```cpp
-// Updates the layout if necessary.
-void ElementDocument::_UpdateLayout()
-{
-	lock_layout++;
-	
-	Vector2f containing_block(0, 0);
-	if (GetParentNode() != NULL)
-	    containing_block = GetParentNode()->GetBox().GetSize();
-	
-	LayoutEngine layout_engine;
-	layout_engine.FormatElement(this, containing_block);
-	
-	lock_layout--;
-	layout_dirty = false;
-}
+libRocket is a C++ user interface package based on the HTML and CSS standards.
+IBMulator needs various fixes so use the version from my repository.
 ```
-
-More info on this issue at https://github.com/libRocket/libRocket/issues/113
-
+$ git clone https://github.com/barotto/libRocket.git
+$ cd libRocket/Build
+$ cmake -G "Unix Makefiles"
+$ make
+```
+Read the build instructions inside the libRocket repo for Windows instructions 
+and additional information.
 
 ## THANKS
 
