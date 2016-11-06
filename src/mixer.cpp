@@ -473,13 +473,13 @@ void Mixer::unregister_channel(std::shared_ptr<MixerChannel> _channel)
 	m_mix_channels.erase(_channel->name());
 }
 
-void Mixer::sig_config_changed()
+void Mixer::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
 	//this signal should be preceded by a pause command
-	m_cmd_queue.push([this] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+	m_cmd_queue.push([&] () {
+		std::unique_lock<std::mutex> lock(_mutex);
 		config_changed();
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 

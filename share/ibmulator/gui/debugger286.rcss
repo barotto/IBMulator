@@ -1,0 +1,54 @@
+table#generalregs
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+table#segmentregs
+{
+	position: absolute;
+	top: 0px;
+	left: 175px;
+}
+
+#CSbase,#DSbase,
+#ESbase,#SSbase,
+#TRbase,
+#LDTbase, #GDTbase, #IDTbase
+{
+	width: 50px;
+}
+
+table#statusregs
+{
+	position: absolute;
+	top: 130px;
+	left: 0px;
+}
+
+table#flags
+{
+	position: absolute;
+	top: 160px;
+	left: 230px;
+}
+
+table#extra
+{
+	position: absolute;
+	top: 285px;
+	left: 230px;
+}
+
+table#desctables
+{
+	position: absolute;
+	top: 230px;
+	left: 0px;
+}
+
+#memory
+{
+	top: 330px;
+}

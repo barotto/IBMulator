@@ -22,62 +22,62 @@
 
 class Machine;
 class GUI;
+class SysDebugger;
+
+
 
 class SysDebugger : public Window
 {
-private:
+	friend class SysDebugger286;
+	friend class SysDebugger386;
 
+private:
 	Machine *m_machine;
 
-	Rocket::Core::ElementDocument * m_debugger_wnd;
-
 	struct s_core {
-		Rocket::Core::Element *ax,*bx,*cx,*dx;
-		Rocket::Core::Element *bp,*si,*di,*sp;
-		Rocket::Core::Element *cs,*ds,*ss,*es,*tr;
-		Rocket::Core::Element *ip;
-		Rocket::Core::Element *f, *msw, *cpl;
-		Rocket::Core::Element *cf, *pf, *af, *zf, *sf, *tf,
-		                      *iff, *df, *of, *pl, *nt;
-		Rocket::Core::Element *csbase,*dsbase,*esbase,*ssbase,*trbase;
-		Rocket::Core::Element *cslimit,*dslimit,*eslimit,*sslimit,*trlimit;
-		Rocket::Core::Element *ldt, *ldtbase, *ldtlimit;
-		Rocket::Core::Element *idtbase, *idtlimit;
-		Rocket::Core::Element *gdtbase, *gdtlimit;
+		RC::Element *eax,*ebx,*ecx,*edx;
+		RC::Element *ebp,*esi,*edi,*esp;
+		RC::Element *cs,*ds,*ss,*es,*tr;
+		RC::Element *eip,*eflags,*cpl;
+		RC::Element *cf, *pf, *af, *zf, *sf, *tf,
+		            *iff, *df, *of, *pl, *nt;
+		RC::Element *csbase,*dsbase,*esbase,*ssbase,*trbase;
+		RC::Element *cslimit,*dslimit,*eslimit,*sslimit,*trlimit;
+		RC::Element *ldt, *ldtbase, *ldtlimit;
+		RC::Element *idtbase, *idtlimit;
+		RC::Element *gdtbase, *gdtlimit;
 
-		Rocket::Core::Element *a20;
+		RC::Element *a20;
 	} m_core;
 
 	struct s_memory {
-		Rocket::Core::Element *cs_ip, *cs_ip_str;
-		Rocket::Core::Element *ds_si, *ds_si_str;
-		Rocket::Core::Element *es_di, *es_di_str;
-		Rocket::Core::Element *ss_sp, *ss_sp_str;
+		RC::Element *cs_eip, *cs_eip_str;
+		RC::Element *ds_esi, *ds_esi_str;
+		RC::Element *es_edi, *es_edi_str;
+		RC::Element *ss_esp, *ss_esp_str;
 	} m_memory;
 
 	struct s_tools {
-		Rocket::Core::Element *btn_power, *btn_pause, *btn_bp;
+		RC::Element *btn_power, *btn_pause, *btn_bp;
 		bool led_power, led_pause;
-		Rocket::Controls::ElementFormControl *cs_bp,*ip_bp;
-		Rocket::Controls::ElementFormControl *log_prg_name;
-		Rocket::Core::Element *log_prg_toggle;
+		RCN::ElementFormControl *log_prg_name;
+		RC::Element *log_prg_toggle;
+		RCN::ElementFormControl *cs_bp,*eip_bp;
 	} m_tools;
 
 	struct s_disasm {
-		Rocket::Core::Element *line0;
+		RC::Element *line0;
 	} m_disasm;
 
-	Rocket::Core::Element *m_post;
-	Rocket::Core::Element *m_message;
+	RC::Element *m_post;
+	RC::Element *m_message;
 
-	static event_map_t ms_evt_map;
 	void on_cmd_switch_power(RC::Event &);
 	void on_cmd_pause(RC::Event &);
 	void on_cmd_resume(RC::Event &);
 	void on_cmd_save_state(RC::Event &);
 	void on_cmd_restore_state(RC::Event &);
 	void on_CPU_step(RC::Event &);
-	void on_CPU_skip(RC::Event &);
 	void on_CPU_bp_btn(RC::Event &);
 	void on_log_prg_toggle(RC::Event &);
 	void on_log_write(RC::Event &);
@@ -91,29 +91,17 @@ private:
 	void on_gdt_dump(RC::Event &);
 
 	void read_memory(uint32_t _address, uint8_t *_buf, uint _len);
-	const Rocket::Core::String & disasm(uint16_t _selector, uint16_t _ip, bool _analyze, uint * _size);
 
 public:
 
-	SysDebugger(Machine *_machine, GUI *_gui);
-	~SysDebugger();
+	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine);
+	virtual ~SysDebugger();
 
-	void update();
-	event_map_t & get_event_map() { return SysDebugger::ms_evt_map; }
-
+	virtual void update();
 	void show_message(const char* _mex);
 
 private:
-	class LogMessage : public Logdev
-	{
-	private:
-		SysDebugger *m_iface;
-	public:
-		LogMessage(SysDebugger* _iface);
-		~LogMessage();
 
-		void log_put(const std::string &_prefix, const std::string &_message);
-	};
 };
 
 #endif

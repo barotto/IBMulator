@@ -18,63 +18,42 @@
  */
 
 #include "ibmulator.h"
-#include "filesys.h"
 #include "memory.h"
+#include "filesys.h"
 #include "program.h"
 #include "machine.h"
-#include "md5.h"
 #include "hardware/devices/vga.h"
-#include "hardware/cpu/core.h"
-
-#include <algorithm>
 #include <fstream>
 #include <cstring>
-#include <SDL2/SDL.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#if HAVE_LIBARCHIVE
-#include <archive.h>
-#include <archive_entry.h>
-#endif
 
-#define PS1LW44_BIOS_MD5SUM "f605396b48f02c5e81bc9e5e5fb60717"
-#define PS12011_BIOS_MD5SUM "9cac91f1fa7fe58d9509b754785f7fd2"
 
 Memory g_memory;
 
-const std::map<std::string, uint32_t> Memory::ms_hdd_paramtable_offsets = {
-	{ PS1LW44_BIOS_MD5SUM, 0x4F8F },
-	{ PS12011_BIOS_MD5SUM, 0x4CEF }
-};
 
 Memory::Memory()
 :
 m_buffer(nullptr),
 m_mainbuf_size(0),
-m_sysrom(nullptr),
 m_base_size(0),
 m_ext_size(0)
 {
-	m_s.A20_enabled = true;
+	/* The 286 and the 386SX both have a 24-bit address bus. The 386DX has a
+	 * 32-bit address bus, but the PS/1 was equipped with the SX variant, so the
+	 * system supported only 16MB of RAM, and the ROM BIOS was mapped at
+	 * 0xFC0000
+	 */
 	m_s.mask = 0x00FFFFFF;
+	m_s.A20_enabled = true;
 }
 
 Memory::~Memory()
 {
 	delete[] m_buffer;
-	delete[] m_sysrom;
 }
 
 void Memory::init()
 {
 	//register_trap(0x400, 0x4FF, 3, &Memory::s_debug_40h_trap);
-	//register_trap(0xC0000, 0xDFFFF, 3, &Memory::s_debug_trap);
-	//register_trap(0x800, 0xDFFFF, 3, &Memory::s_debug_trap);
-	//register_trap(0xF80000+0x35D9E, 0xF80000+0x35F1E, 3, &Memory::s_debug_trap); romdrv config.sys
-	//register_trap(0x3bee, 0x3c6e, 3, &Memory::s_debug_trap);
-	//register_trap(0x00400 + 0x006C, 0x00400 + 0x006E, 3, &Memory::s_debug_trap);
-	register_trap(0x00442, 0x00442, 1, &Memory::s_debug_trap);
-	register_trap(0x0048B, 0x0048B, 1, &Memory::s_debug_trap);
 }
 
 void Memory::reset()
@@ -103,241 +82,6 @@ void Memory::config_changed()
 
 	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, extended: %uKB)\n",
 			ram, m_base_size/KEBIBYTE, m_ext_size/KEBIBYTE);
-
-	delete[] m_sysrom;
-	m_sysrom = new uint8_t[SYS_ROM_SIZE];
-	memset(m_sysrom, 0, SYS_ROM_SIZE);
-
-	PINFOF(LOG_V1, LOG_MEM, "Loading the SYSTEM ROM\n");
-	try {
-		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
-		if(FileSys::is_directory(romset.c_str())) {
-			PINFOF(LOG_V0, LOG_MEM, "Loading ROM directory '%s'\n", romset.c_str());
-			load_rom_dir(romset);
-		} else {
-			if(!FileSys::file_exists(romset.c_str())) {
-				PERRF(LOG_MEM, "Unable to find ROM set '%s'\n", romset.c_str());
-				throw std::exception();
-			}
-			std::string dir,base,ext;
-			FileSys::get_path_parts(romset.c_str(),	dir, base, ext);
-			std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-			if(ext == ".bin") {
-				PINFOF(LOG_V0, LOG_MEM, "Loading ROM file '%s'\n", romset.c_str());
-				load_rom_file(romset);
-			} else {
-				PINFOF(LOG_V0, LOG_MEM, "Loading ROM set '%s'\n", romset.c_str());
-				load_rom_archive(romset);
-			}
-		}
-
-		//copy SYS BIOS from the ROM
-		memcpy(&m_buffer[0xE0000], &m_sysrom[SYS_ROM_SIZE-0x20000], 0x20000);
-	} catch(std::exception &e) {
-		PERRF(LOG_MEM, "unable to load the SYSTEM ROM!\n");
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
-				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
-		        nullptr);
-		throw;
-	}
-
-	PINFOF(LOG_V0, LOG_MEM, "System model ID: 0x%02X\n", m_buffer[0xFFFFE]);
-	if(m_buffer[0xFFFFE] != 0xFC) {
-		PERRF(LOG_MEM, "Invalid system model ID\n");
-		throw std::exception();
-	}
-
-	std::string biosver, biosdate;
-
-	for(int i=0; i<138; i+=2) {
-		uint8_t c = m_buffer[0xF0000+i];
-		if(c>=0x20 && c<=0x7E) {
-			biosver += c;
-		}
-	}
-	PINFOF(LOG_V0, LOG_MEM, "BIOS version: %s\n", biosver.c_str());
-
-	for(int i=0; i<8; i++) {
-		biosdate += m_buffer[0xFFFF5+i];
-	}
-	PINFOF(LOG_V0, LOG_MEM, "BIOS date: %s\n", biosdate.c_str());
-
-	MD5 md5;
-	md5.update(&m_buffer[0xF0000], 0x10000);
-	md5.finalize();
-	m_bios_md5 = md5.hexdigest();
-	PINFOF(LOG_V1, LOG_MEM, "BIOS md5sum: %s\n", m_bios_md5.c_str());
-
-	if(m_bios_md5 == PS1LW44_BIOS_MD5SUM) {
-		PINFOF(LOG_V0, LOG_MEM, "BIOS type: PS/1 (LW-Type 44)\n");
-	} else if(m_bios_md5 == PS12011_BIOS_MD5SUM) {
-		PINFOF(LOG_V0, LOG_MEM, "BIOS type: PS/1 Model 2011 (10 MHz 286)\n");
-	} else {
-		PINFOF(LOG_V0, LOG_MEM, "BIOS type: unknown!\n");
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Unknown BIOS",
-				"You are using an unsupported BIOS.\n"
-				"If it's from a PS/1 model 2011, please inform the author and maybe send him a copy.\n"
-				"Thank you! :)",
-		        nullptr);
-	}
-}
-
-int Memory::load_rom_file(const std::string &_filename, uint32_t _destaddr)
-{
-	uint64_t size = FileSys::get_file_size(_filename.c_str());
-	if(_destaddr < SYS_ROM_ADDR) {
-		if(size == 256*KEBIBYTE) {
-			_destaddr = 0xFC0000 - SYS_ROM_ADDR;
-		} else if(size == 512*KEBIBYTE) {
-			_destaddr = 0xF80000 - SYS_ROM_ADDR;
-		} else {
-			PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", _filename.c_str());
-			throw std::exception();
-		}
-	} else {
-		_destaddr -= SYS_ROM_ADDR;
-		if(size != 256*KEBIBYTE && size != 512*KEBIBYTE) {
-			PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", _filename.c_str());
-			throw std::exception();
-		}
-	}
-	auto file = FileSys::make_file(_filename.c_str(), "rb");
-	if(file == nullptr) {
-		PERRF(LOG_MEM, "Error opening ROM file '%s'\n", _filename.c_str());
-		throw std::exception();
-	}
-	PINFOF(LOG_MEM, LOG_V1, "Loading '%s' ...\n", _filename.c_str());
-	size = fread((void*)(m_sysrom + _destaddr), size, 1, file.get());
-	if(size != 1) {
-		PERRF(LOG_MEM, "Error reading ROM file '%s'\n", _filename.c_str());
-		throw std::exception();
-	}
-	return size;
-}
-
-void Memory::load_rom_dir(const std::string &_dirname)
-{
-	DIR *dir;
-	struct dirent *ent;
-
-	if((dir = opendir(_dirname.c_str())) == nullptr) {
-		PERRF(LOG_MEM, "Unable to open directory %s\n", _dirname.c_str());
-		throw std::exception();
-	}
-	std::string dirname = _dirname + FS_SEP;
-	bool f80000found = false;
-	bool fc0000found = false;
-	while((ent = readdir(dir)) != nullptr) {
-		struct stat sb;
-		std::string name = ent->d_name;
-		std::string fullpath = dirname + name;
-		if(stat(fullpath.c_str(), &sb) != 0) {
-			continue;
-		}
-		if(S_ISDIR(sb.st_mode)) {
-			continue;
-		} else {
-			std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-			if(!fc0000found && name.compare("fc0000.bin")==0) {
-				fc0000found = true;
-				load_rom_file(fullpath, 0xFC0000);
-			} else if(!f80000found && name.compare("f80000.bin")==0) {
-				f80000found = true;
-				int size = load_rom_file(fullpath, 0xF80000);
-				if(size == 512*KEBIBYTE) {
-					fc0000found = true;
-					break;
-				}
-			}
-			if(fc0000found && f80000found) {
-				break;
-			}
-		}
-	}
-	closedir(dir);
-	if(!fc0000found) {
-		PERRF(LOG_MEM, "Required file FC0000.BIN missing in '%s'\n", _dirname.c_str());
-		throw std::exception();
-	}
-}
-
-void Memory::load_rom_archive(const std::string &_filename)
-{
-	//TODO add support for splitted 128K EPROMs
-#if HAVE_LIBARCHIVE
-	struct archive *ar;
-	struct archive_entry *entry;
-	int res;
-
-	ar = archive_read_new();
-	archive_read_support_filter_all(ar);
-	archive_read_support_format_all(ar);
-	res = archive_read_open_filename(ar, _filename.c_str(), 10240);
-	if(res != ARCHIVE_OK) {
-		PERRF(LOG_MEM, "Error opening ROM set '%s'\n", _filename.c_str());
-		throw std::exception();
-	}
-	bool f80000found = false;
-	bool singlerom = false;
-	bool fc0000found = false;
-	int64_t size;
-	uint8_t *dest;
-	while(archive_read_next_header(ar, &entry) == ARCHIVE_OK) {
-		std::string name = archive_entry_pathname(entry);
-		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-		if(!fc0000found && name.compare("fc0000.bin")==0) {
-			fc0000found = true;
-			size = archive_entry_size(entry);
-			if(size != 256*1024) {
-				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
-				throw std::exception();
-			}
-			if(f80000found && singlerom) {
-				PWARNF(LOG_MEM, "Single ROM file F80000.BIN already loaded\n");
-				break;
-			}
-			//read the rom
-			dest = m_sysrom + (0xFC0000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MEM, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
-			size = archive_read_data(ar, dest, size);
-			if(size <= 0) {
-				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
-				throw std::exception();
-			}
-		} else if(!f80000found && name.compare("f80000.bin")==0) {
-			f80000found = true;
-			size = archive_entry_size(entry);
-			if(size != 512*1024 && size != 256*1024) {
-				PERRF(LOG_MEM, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
-				throw std::exception();
-			}
-			if(size == 512*1024) {
-				if(fc0000found) {
-					PERRF(LOG_MEM, "ROM file FC0000.BIN already loaded\n");
-					throw std::exception();
-				}
-				fc0000found = true;
-				singlerom = true;
-			}
-			//read the rom
-			dest = m_sysrom + (0xF80000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MEM, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
-			size = archive_read_data(ar, dest, size);
-			if(size <= 0) {
-				PERRF(LOG_MEM, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
-				throw std::exception();
-			}
-		}
-	}
-	archive_read_free(ar);
-	if(!fc0000found) {
-		PERRF(LOG_MEM, "Required file FC0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
-		throw std::exception();
-	}
-#else
-	PERRF(LOG_MEM, "To use a zip archive you need to enable libarchive support.\n");
-	throw std::exception();
-#endif
 }
 
 #define MEM_STATE_NAME "Memory state"
@@ -372,49 +116,41 @@ void Memory::set_A20_line(bool _enabled)
 	if(_enabled) {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line ENABLED\n");
 		m_s.A20_enabled = true;
-		m_s.mask =   0x00ffffff;
+		m_s.mask = 0x00ffffff; // 24-bit address bus
 	} else {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line DISABLED\n");
 		m_s.A20_enabled = false;
-		m_s.mask = 0x00efffff;
+		m_s.mask = 0x00efffff; // 24-bit address bus with A20 masked
 	}
 }
 
-uint8_t Memory::read(uint32_t _address) const noexcept
+uint8_t Memory::read_byte(uint32_t _address) const noexcept
 {
 	_address &= m_s.mask;
 
-	//BASE RAM, EXTENDED RAM, BIOS
-	if(_address < m_base_size || (_address >= 0xE0000 && _address<m_mainbuf_size)) {
+	//BASE RAM, EXTENDED RAM
+	if(_address < m_base_size || (_address > 0xFFFFF && _address < m_mainbuf_size)) {
 		return m_buffer[_address];
 	}
-
-	//BIOS
-	/* already memcpyed in the init, we can omit an if, yay
-	if(_address >= 0xE0000 && _address <= 0xFFFFF) {
-		return m_sysrom[_address - 0xE0000 + (SYS_ROM_SIZE-0x20000)];
+	//SYSTEM ROM
+	//TODO this works only for 24-bit address systems
+	else if((_address >= 0xE0000 && _address <= 0xFFFFF) || _address >= SYS_ROM_ADDR) {
+		return g_machine.sys_rom().read(_address);
 	}
-	*/
-
 	//VGA MEMORY
-	if(_address >= 0xA0000 && _address <= 0xBFFFF) {
+	else if(_address >= 0xA0000 && _address <= 0xBFFFF) {
 		return g_machine.devices().vga()->mem_read(_address);
 	}
-
-	//SYSTEM ROM
-	if(_address >= SYS_ROM_ADDR) {
-		return m_sysrom[_address-SYS_ROM_ADDR];
-	}
-
-	return 0;
+	//NO DATA
+	return 0xFF;
 }
 
-void Memory::write(uint32_t _address, uint8_t _value) noexcept
+void Memory::write_byte(uint32_t _address, uint8_t _value) noexcept
 {
 	_address &= m_s.mask;
 
 	//BASE and EXTENDED RAM
-	if(_address < m_base_size || (_address > 0xFFFFF && _address<m_mainbuf_size)) {
+	if(_address < m_base_size || (_address > 0xFFFFF && _address < m_mainbuf_size)) {
 		m_buffer[_address] = _value;
 	}
 	//VGA MEMORY
@@ -423,205 +159,75 @@ void Memory::write(uint32_t _address, uint8_t _value) noexcept
 	}
 }
 
-uint8_t Memory::read_byte(uint32_t _address) const noexcept
-{
-	uint8_t value = read(_address);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 1)
-				t.value.func(_address, 0, value, 1);
-		}
-	}
-
-	return value;
-}
-
-uint16_t Memory::read_word(uint32_t _address) const noexcept
-{
-	uint8_t b0 = read(_address); //lo byte
-	uint8_t b1 = read(_address+1); //hi byte
-	uint16_t value = uint16_t(b1)<<8 | b0;
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 2)
-				t.value.func(_address, 0, value, 2);
-		}
-	}
-
-	return value;
-}
-
-uint32_t Memory::read_dword(uint32_t _address) const noexcept
-{
-	uint16_t w0 = read_word(_address); //lo word
-	uint16_t w1 = read_word(_address+2); //hi word
-	uint32_t value = uint32_t(w1)<<16 | w0;
-
-	return value;
-}
-
 uint64_t Memory::read_qword(uint32_t _address) const noexcept
 {
-	uint32_t dw0 = read_dword(_address); //lo dword
-	uint32_t dw1 = read_dword(_address+4); //hi dword
+	uint32_t dw0 = read<4>(_address); //lo dword
+	uint32_t dw1 = read<4>(_address+4); //hi dword
 	uint64_t value = uint64_t(dw1)<<32 | dw0;
 
 	return value;
 }
 
-uint8_t Memory::read_byte_notraps(uint32_t _address) const noexcept
-{
-	return read(_address);
-}
-
-uint16_t Memory::read_word_notraps(uint32_t _address) const noexcept
-{
-	uint8_t b0 = read(_address); //lo byte
-	uint8_t b1 = read(_address+1); //hi byte
-	return uint16_t(b1)<<8 | uint16_t(b0);
-}
-
-uint32_t Memory::read_dword_notraps(uint32_t _address) const noexcept
-{
-	uint16_t w0 = read_word_notraps(_address); //lo word
-	uint16_t w1 = read_word_notraps(_address+2); //hi word
-	return uint32_t(w1)<<16 | uint32_t(w0);
-}
-
 uint64_t Memory::read_qword_notraps(uint32_t _address) const noexcept
 {
-	uint32_t dw0 = read_dword_notraps(_address); //lo dword
-	uint32_t dw1 = read_dword_notraps(_address+4); //hi dword
+	uint32_t dw0 = read_notraps<4>(_address); //lo dword
+	uint32_t dw1 = read_notraps<4>(_address+4); //hi dword
 	return uint64_t(dw1)<<32 | uint64_t(dw0);
-}
-
-
-void Memory::write_byte(uint32_t _address, uint8_t _value) noexcept
-{
-	write(_address, _value);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 1)
-				t.value.func(_address, 1, _value, 1);
-		}
-	}
-}
-
-void Memory::write_word(uint32_t _address, uint16_t value) noexcept
-{
-	uint8_t b0 = uint8_t(value);
-	uint8_t b1 = uint8_t(value>>8);
-
-	write(_address, b0);
-	write(_address+1, b1);
-
-	if(MEMORY_TRAPS) {
-		std::vector<memtrap_interval_t> results;
-		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
-			if(t.value.mask & 2)
-				t.value.func(_address, 1, value, 2);
-		}
-	}
-}
-
-void Memory::write_dword(uint32_t _address, uint32_t value) noexcept
-{
-	uint16_t w0 = uint16_t(value);
-	uint16_t w1 = uint16_t(value>>16);
-
-	write_word(_address, w0);
-	write_word(_address+2, w1);
 }
 
 uint8_t * Memory::get_phy_ptr(uint32_t _address)
 {
 	_address &= m_s.mask;
+	if(_address > m_mainbuf_size) {
+		throw std::exception();
+	}
 	return &m_buffer[_address];
 }
 
 void Memory::DMA_read(uint32_t _address, uint16_t _len, uint8_t *_buf)
 {
 	for(uint16_t i=0; i<_len; i++) {
-		_buf[i] = read_byte(_address+i);
+		_buf[i] = read<1>(_address+i);
 	}
 }
 
 void Memory::DMA_write(uint32_t _address, uint16_t _len, uint8_t *_buf)
 {
 	for(uint16_t i=0; i<_len; i++) {
-		write_byte(_address+i, _buf[i]);
+		write<1>(_address+i, _buf[i]);
 	}
-}
-
-void Memory::load(uint32_t _address, const std::string &_filename)
-{
-	std::ifstream file(_filename.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
-	if(!file.is_open()) {
-		PERRF(LOG_FS, "unable to open %s for reading\n", _filename.c_str());
-		throw std::exception();
-	}
-
-	std::streampos size = file.tellg();
-
-	file.seekg(0, std::ios::beg);
-
-	uint8_t * dest;
-	if(_address >= SYS_ROM_ADDR) {
-		dest = m_sysrom + (_address - SYS_ROM_ADDR);
-		if(dest+size > m_sysrom+SYS_ROM_SIZE) {
-			PERRF(LOG_MEM,
-				"can't load a %uKB ROM file ('%s') to 0x%06X\n",
-				size/1024, _filename.c_str(), _address);
-			throw std::exception();
-		}
-	} else {
-		dest = m_buffer + _address;
-		if(_address+size > m_mainbuf_size) {
-			PDEBUGF(LOG_V0,LOG_MEM,"can't load '%s' to 0x%06X for %u bytes\n",
-					_filename.c_str(), _address, size);
-			return;
-		}
-	}
-
-	file.read((char*)dest, size);
-	file.close();
 }
 
 void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)
 {
+	if(_address+_len > m_mainbuf_size) {
+		PERRF(LOG_MEM, "can't read %u bytes from 0x%06X\n", _len, _address);
+		throw std::exception();
+	}
+
 	std::ofstream file(_filename.c_str(), std::ofstream::binary);
 	if(!file.is_open()) {
 		PERRF(LOG_FS,"unable to open %s to write\n",_filename.c_str());
 		throw std::exception();
 	}
 
-	uint8_t * source;
-	if(_address >= SYS_ROM_ADDR) {
-		source = m_sysrom + (_address - SYS_ROM_ADDR);
-		if(source+_len > m_sysrom+SYS_ROM_SIZE) {
-			PERRF(LOG_MEM, "can't read %u bytes from 0x%06X\n", _len, _address);
-			throw std::exception();
-		}
-	} else {
-		source = m_buffer + _address;
-		if(_address+_len > m_mainbuf_size) {
-			PERRF(LOG_MEM, "can't read %u bytes from 0x%06X\n", _len, _address);
-			throw std::exception();
+	file.write((char*)(m_buffer + _address), _len);
+	file.close();
+}
+
+void Memory::check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len)
+const noexcept
+{
+	std::vector<memtrap_interval_t> results;
+	m_traps_tree.findOverlapping(_address, _address, results);
+	for(auto t : results) {
+		if(t.value.mask & _mask) {
+			t.value.func(_address, _mask, _value, _len);
+			if(STOP_AT_MEM_TRAPS) {
+				g_machine.set_single_step(true);
+			}
 		}
 	}
-
-	file.write((char*)source, _len);
-	file.close();
 }
 
 void Memory::register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn)
@@ -630,38 +236,10 @@ void Memory::register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t
 	m_traps_tree = memtrap_intervalTree_t(m_traps_intervals);
 }
 
-void Memory::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
-{
-	if(_table_entry_id<=0 || _table_entry_id>47) {
-		PERRF(LOG_MEM, "Invalid HDD parameters table entry id: %d\n", _table_entry_id);
-		throw std::exception();
-	}
-	auto offset = ms_hdd_paramtable_offsets.find(m_bios_md5);
-	if(offset == ms_hdd_paramtable_offsets.end()) {
-		PERRF(LOG_MEM, "The HDD parameters table offset is unknown\n");
-		throw std::exception();
-	}
-
-	uint32_t addr = 0xF0000 + offset->second + _table_entry_id*16;
-	size_check<HDDParams, 16>();
-	memcpy(&m_buffer[addr], &_params, 16);
-
-	update_BIOS_8bit_checksum();
-}
-
-void Memory::update_BIOS_8bit_checksum()
-{
-	uint8_t sum = 0;
-	for(int i=0xF0000; i<0xFFFFF; i++) {
-		sum += m_buffer[i];
-	}
-	m_buffer[0xFFFFF] = (~sum)+1;
-}
-
 void Memory::s_debug_trap(uint32_t _address,  // address
-		uint8_t _rw,   // 0=read, 1=write
-		uint16_t _value,  // value read or written
-		uint8_t _len   // data lenght (1=byte, 2=word)
+		uint8_t  _rw,    // read or write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data length (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign="<-", *read="->";
@@ -671,11 +249,11 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 	buf[0] = 0;
 	buf[len] = 0;
 	uint32_t addr = _address;
-	if(_rw==0) {
+	if(_rw == MEM_TRAP_READ) {
 		op = read;
 		char * byte0 = buf;
 		while(len--) {
-			uint8_t byte = g_memory.read_byte_notraps(addr++);
+			uint8_t byte = g_memory.read_notraps<1>(addr++);
 			if(byte>=32 && byte<=126) {
 				*byte0 = byte;
 			} else {
@@ -685,7 +263,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 	} else {
 		if(_len==1) {
-			uint8_t byte = g_memory.read_byte_notraps(addr);
+			uint8_t byte = g_memory.read_notraps<1>(addr);
 			if(byte>=32 && byte<=126) {
 				buf[0] = byte;
 			} else {
@@ -695,19 +273,31 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 		op = assign;
 	}
-
-	PDEBUGF(LOG_V1, LOG_MEM, "%s[%04X] %s %04X %s\n",_len==1?"b":"w",_address,op,_value, buf);
+	const char *format;
+	switch(_len) {
+		case 1:
+			format = "%d[%04X] %s %02X %s\n";
+			break;
+		case 2:
+			format = "%d[%04X] %s %04X %s\n";
+			break;
+		case 4:
+		default:
+			format = "%d[%04X] %s %08X %s\n";
+			break;
+	}
+	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value, buf);
 }
 
 void Memory::s_debug_40h_trap(uint32_t _address,  // address
-		uint8_t _rw,   // 0=read, 1=write
-		uint16_t _value,  // value read or written
-		uint8_t _len   // data lenght (1=byte, 2=word)
+		uint8_t  _rw,    // read or write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data lenght (1=byte, 2=word, 4=dword)
 		)
 {
 	const char *assign=":=", *read="=";
 	const char *op;
-	if(_rw==0) {
+	if(_rw == MEM_TRAP_READ) {
 		op = read;
 	} else {
 		op = assign;
@@ -715,7 +305,7 @@ void Memory::s_debug_40h_trap(uint32_t _address,  // address
 
 	uint32_t offset = _address-0x400;
 
-	PDEBUGF(LOG_V2, LOG_MEM, "%s[40:%04X] %s %04X (",_len==1?"b":"w",offset,op,_value);
+	PDEBUGF(LOG_V2, LOG_MEM, "%d[40:%04X] %s %04X (", _len, offset, op, _value);
 
 	switch(offset) {
 	case 0x0000:
@@ -854,10 +444,16 @@ void Memory::s_debug_40h_trap(uint32_t _address,  // address
 
 	case 0x0042:
 		PDEBUGF(LOG_V2, LOG_MEM, "DISK CONTROLLER STATUS REGISTER 0. ");
+		break;
+
 	case 0x0043:
 		PDEBUGF(LOG_V2, LOG_MEM, "DISK CONTROLLER STATUS REGISTER 1. ");
+		break;
+
 	case 0x0044:
 		PDEBUGF(LOG_V2, LOG_MEM, "DISK CONTROLLER STATUS REGISTER 2. ");
+		break;
+
 	case 0x0045:
 	case 0x0046:
 	case 0x0047:

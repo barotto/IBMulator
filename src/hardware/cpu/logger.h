@@ -23,7 +23,7 @@
 #define CPULOG               false   // activate CPU logging?
 #define CPULOG_MAX_SIZE      400000u // number of instruction to log
 #define CPULOG_WRITE_TIME    false   // write instruction machine time?
-#define CPULOG_WRITE_CSIP    true    // write instruction address as CS:IP?
+#define CPULOG_WRITE_CSEIP   true    // write instruction address as CS:EIP?
 #define CPULOG_WRITE_HEX     true    // write instruction as hex codes?
 #define CPULOG_WRITE_STATE   false   // write the CPU global state?
 #define CPULOG_WRITE_CORE    false   // write the CPU registers?
@@ -36,7 +36,6 @@
                                      // For PC-DOS 4.0 under ROMSHELL is 0x7782,
                                      //                under plain DOS is 0x7852
                                      // use -1 to disable (logging starts at INT call)
-#define CPULOG_UNFOLD_REPS   false   // write a log line for every repetition
 #define CPULOG_COUNTERS      false   // count every instruction executed
 
 #include "core.h"

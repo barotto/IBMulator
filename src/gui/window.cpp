@@ -26,7 +26,7 @@
 event_map_t Window::ms_event_map = {};
 
 Window::Window(GUI * _gui, const char *_rml)
-: m_gui(_gui)
+: m_gui(_gui), m_evts_added(false)
 {
 	m_wnd = _gui->load_document(_rml);
 	if(!m_wnd) {
@@ -42,35 +42,60 @@ Window::~Window()
 	}
 }
 
-void Window::init_events()
+void Window::add_events()
 {
-	event_map_t & evtmap = get_event_map();
-	for(auto i : evtmap) {
-		Rocket::Core::Element * el = get_element(i.first.first);
-		if(el) {
-			el->AddEventListener(i.first.second,this,false);
-		}
+	if(m_evts_added) {
+		return;
 	}
+	assert(m_wnd);
+	event_map_t & evtmap = get_event_map();
+	std::set<RC::String> evtnames;
+	for(auto i : evtmap) {
+		evtnames.insert(i.first.second);
+	}
+	for(auto e : evtnames) {
+		m_wnd->AddEventListener(e, this);
+	}
+	m_evts_added = true;
+}
+
+void Window::remove_events()
+{
+	assert(m_wnd);
+	event_map_t & evtmap = get_event_map();
+	std::set<RC::String> evtnames;
+	for(auto i : evtmap) {
+		evtnames.insert(i.first.second);
+	}
+	for(auto e : evtnames) {
+		m_wnd->RemoveEventListener(e, this);
+	}
+	m_evts_added = false;
 }
 
 void Window::show()
 {
 	assert(m_wnd);
-
+	add_events();
 	m_wnd->Show();
 }
 
 void Window::hide()
 {
 	assert(m_wnd);
-
 	m_wnd->Hide();
+}
+
+void Window::close()
+{
+	assert(m_wnd);
+	m_wnd->Close();
+	remove_events();
 }
 
 bool Window::is_visible()
 {
 	assert(m_wnd);
-
 	return m_wnd->IsVisible();
 }
 
@@ -88,7 +113,6 @@ RC::Element * Window::get_element(const RC::String &_id)
 	}
 	return el;
 }
-
 
 void Window::ProcessEvent(RC::Event &_event)
 {

@@ -25,6 +25,7 @@
 #include <Rocket/Core/Input.h>
 #include <Rocket/Core/Types.h>
 #include "matrix.h"
+#include "timers.h"
 #include <atomic>
 
 #define GUI_OPENGL_MAJOR_VER 3
@@ -117,7 +118,6 @@ extern ini_enum_map_t g_mouse_types;
 class GUI
 {
 protected:
-
 	Machine *m_machine;
 	Mixer *m_mixer;
 
@@ -151,6 +151,9 @@ protected:
 
 	double m_symspeed_factor;
 
+	// mutex must be locked before any access to the libRocket's objects
+	// TODO this mutex is currently used by 1 thread only (GUI). remove?
+	static std::mutex ms_rocket_mutex;
 	RocketRenderer * m_rocket_renderer;
 	RocketSystemInterface * m_rocket_sys_interface;
 	RocketFileInterface * m_rocket_file_interface;
@@ -158,6 +161,8 @@ protected:
 
 	class Windows {
 	public:
+		static std::mutex s_interface_mutex;
+
 		bool visible;
 		bool debug_wnds;
 		bool status_wnd;
@@ -169,16 +174,25 @@ protected:
 		Status * status;
 		DevStatus * devices;
 
+		std::string last_ifc_mex;
+		std::string last_dbg_mex;
+
+		EventTimers timers;
+		unsigned dbgmex_timer;
+		unsigned ifcmex_timer;
+
 		Windows();
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
-		void config_changed();
-		void update();
+		void config_changed(GUI *_gui, Machine *_machine);
+		void update(uint64_t _current_time);
 		void shutdown();
 		void toggle_dbg();
 		void show(bool _value);
 		void toggle();
 		bool needs_input();
 		void invert_visibility();
+		void show_ifc_message(const char* _mex);
+		void show_dbg_message(const char* _mex);
 
 	} m_windows;
 
@@ -225,10 +239,10 @@ public:
 	void config_changed();
 	void render();
 	void dispatch_event(const SDL_Event &_event);
-	void update();
+	void update(uint64_t _time);
 	void shutdown();
 
-	Rocket::Core::ElementDocument * load_document(const std::string &_filename);
+	RC::ElementDocument * load_document(const std::string &_filename);
 	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
 	static std::string get_shaders_dir();
 	static std::string get_images_dir();
@@ -237,6 +251,7 @@ public:
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void show_message(const char* _mex);
+	void show_dbg_message(const char* _mex);
 
 	inline void vga_update() { m_windows.interface->vga_update(); }
 

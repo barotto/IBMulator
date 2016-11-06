@@ -31,22 +31,6 @@
 #include "hardware/devices/harddrv.h"
 using namespace std::placeholders;
 
-LogMessage::LogMessage(Interface *_iface)
-: m_iface(_iface)
-{
-}
-
-LogMessage::~LogMessage()
-{
-}
-
-void LogMessage::log_put(const std::string & /*_prefix*/, const std::string & _message)
-{
-	//omit any prefix
-	m_iface->show_message(_message.c_str());
-}
-
-
 const SoundFX::samples_t InterfaceFX::ms_samples = {
 	{"Floppy insert", "sounds" FS_SEP "floppy" FS_SEP "disk_insert.wav"},
 	{"Floppy eject",  "sounds" FS_SEP "floppy" FS_SEP "disk_eject.wav"}
@@ -123,8 +107,6 @@ m_quad_data{
 	m_fs = new FileSelect(_gui);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
-
-	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, new LogMessage(this));
 
 	m_size = 0;
 
@@ -378,20 +360,15 @@ void Interface::on_power(RC::Event &)
 
 void Interface::show_message(const char* _mex)
 {
-	static std::atomic<int> callscnt;
-
-	m_message->SetProperty("visibility", "visible");
 	Rocket::Core::String str(_mex);
 	str.Replace("\n", "<br />");
+
 	m_message->SetInnerRML(str);
-	callscnt++;
-	timed_event(3000, [this]() {
-		callscnt--;
-		if(callscnt==0) {
-			m_message->SetInnerRML("");
-			m_message->SetProperty("visibility", "hidden");
-		}
-	});
+	if(str.Empty()) {
+		m_message->SetProperty("visibility", "hidden");
+	} else {
+		m_message->SetProperty("visibility", "visible");
+	}
 }
 
 void Interface::on_fdd_select(RC::Event &)
@@ -470,10 +447,9 @@ void Interface::show_warning(bool _show)
 	}
 }
 
-void Interface::render(RC::Context *_rcontext)
+void Interface::render()
 {
 	render_monitor();
-	_rcontext->Render();
 }
 
 void Interface::render_quad()

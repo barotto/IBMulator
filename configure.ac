@@ -46,7 +46,7 @@ AC_ARG_ENABLE([debug],
 
 if test "x$debug" = "xyes"
 then
-	CXX_DEFAULTS="-Og -g3 -Wextra -Wall -ansi -pthread -std=c++11"
+	CXX_DEFAULTS="-O0 -g3 -Wextra -Wall -ansi -pthread -std=c++11"
 	if test x$have_windows = xno ; then
 		CXX_DEFAULTS="$CXX_DEFAULTS -rdynamic"
 	fi

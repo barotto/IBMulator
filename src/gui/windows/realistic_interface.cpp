@@ -106,10 +106,6 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 {
 	assert(m_wnd);
 
-	m_wnd->AddEventListener("click", this, false);
-	m_wnd->AddEventListener("drag", this, false);
-	m_wnd->AddEventListener("dragstart", this, false);
-
 	m_system = get_element("system");
 	m_floppy_disk = get_element("floppy_disk");
 	m_floppy_disk->SetClass("disk", m_floppy_present);

@@ -1,0 +1,98 @@
+<rml>
+	<head>
+		<title>Debugger 80386</title>
+		<link type="text/template" href="default.rml" />
+		<link type="text/rcss" href="debugger.rcss"/>
+		<link type="text/rcss" href="debugger386.rcss"/>
+		<style>
+			body
+			{
+				width: 450px;
+				height: 720px;
+				position: absolute;
+				top: 0;
+				right: 0;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="POST">	</div>
+		<div id="tools">
+			<button id="cmd_switch_power" style="width:30px;"><btnicon /></button>
+			<button id="cmd_pause" style="width:30px;"><btnicon /></button>
+			<button id="CPU_step" style="width:30px;"><btnicon /></button>
+			<button id="CPU_skip" style="width:30px;"><btnicon /></button>
+			<input type="text" id="CS_bp" size=8 />
+			<input type="text" id="EIP_bp" size=12 />
+			<button id="CPU_bp_btn" style="width:30px;"><btnicon /></button>
+			<button id="mem_dump" style="width:30px;"><btnicon /></button>
+			<button id="cmd_save_state" style="width:30px;"><btnicon /></button>
+			<button id="cmd_restore_state" style="width:30px;"><btnicon /></button>
+		</div>
+		<div id="tools2">
+			<input type="text" id="log_prg_name" size=20 />
+			<button id="log_prg_toggle" style="width:30px;"><btnicon /></button>
+			<button id="log_write" style="width:30px;"><btnicon /></button>
+		</div>
+		<div id="cpucore">
+			<table id="generalregs">
+			<tr><th>EAX</th><td id="EAX"></td></tr>
+			<tr><th>EBX</th><td id="EBX"></td></tr>
+			<tr><th>ECX</th><td id="ECX"></td></tr>
+			<tr><th>EDX</th><td id="EDX"></td></tr>
+			<tr><th>EBP</th><td id="EBP"></td></tr>
+			<tr><th>ESI</th><td id="ESI"></td></tr>
+			<tr><th>EDI</th><td id="EDI"></td></tr>
+			<tr><th>ESP</th><td id="ESP"></td></tr>
+			</table>
+			
+			<table id="segmentregs">
+			<tr><th>CS</th><td id="CS"></td><td id="CSbase"></td><td id="CSlimit"></td><button id="cs_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>DS</th><td id="DS"></td><td id="DSbase"></td><td id="DSlimit"></td><button id="ds_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>SS</th><td id="SS"></td><td id="SSbase"></td><td id="SSlimit"></td><button id="ss_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>ES</th><td id="ES"></td><td id="ESbase"></td><td id="ESlimit"></td><button id="es_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>FS</th><td id="FS"></td><td id="FSbase"></td><td id="FSlimit"></td><button id="fs_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>GS</th><td id="GS"></td><td id="GSbase"></td><td id="GSlimit"></td><button id="gs_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>TR</th><td id="TR"></td><td id="TRbase"></td><td id="TRlimit"></td></tr>
+			</table>
+			
+			<table id="statusregs">
+			<tr><th>EIP</th><td id="EIP"></td></tr>
+			<tr><th>EF</th><td id="EFLAGS"></td></tr>
+			<tr><th>PE</th><td id="PE"></td> <th>TS</th><td id="TS"></td> <th>PG</th><td id="PG"></td></tr>
+			<tr><th>CR2</th><td id="CR2"></td><th>CR3</th><td id="CR3"></td></tr>
+			</table>
+			
+			<table id="desctables">
+			<tr><th>IDT</th><td id="IDTbase"></td><td id="IDTlimit"></td><button id="idt_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>GDT</th><td id="GDTbase"></td><td id="GDTlimit"></td><button id="gdt_dump" style="width:25px;"><btnicon /></button></tr>
+			<tr><th>LDT</th><td id="LDT"></td><td id="LDTbase"></td><td id="LDTlimit"></td><button id="ldt_dump" style="width:25px;"><btnicon /></button></tr>
+			</table>
+
+			<table id="flags">
+			<tr><th>CF</th><td id="CF"></td> <th>PF</th><td id="PF"></td> <th>AF</th><td id="AF"></td></tr>
+			<tr><th>ZF</th><td id="ZF"></td> <th>SF</th><td id="SF"></td> <th>TF</th><td id="TF"></td></tr>
+			<tr><th>IF</th><td id="IF"></td> <th>DF</th><td id="DF"></td> <th>OF</th><td id="OF"></td></tr>
+			<tr><th>PL</th><td id="PL"></td> <th>NT</th><td id="NT"></td> <th>RF</th><td id="RF"></td></tr>
+			<tr><th>VM</th><td id="VM"></td> </tr>
+			</table>
+			
+			<table id="extra">
+			<tr><th>CPL</th><td id="CPL"></td> <th>A20</th><td id="A20"></td></tr>
+			</table>
+		</div>
+		
+		<div id="memory">
+			<table id="segments">
+			<tr><th>CS:EIP</th><td id="CS_EIP"></td><td id="CS_EIP_str"></td></tr>
+			<tr><th>DS:ESI</th><td id="DS_ESI"></td><td id="DS_ESI_str"></td></tr>
+			<tr><th>ES:EDI</th><td id="ES_EDI"></td><td id="ES_EDI_str"></td></tr>
+			<tr><th>SS:ESP</th><td id="SS_ESP"></td><td id="SS_ESP_str"></td></tr>
+			</table>
+		</div>
+		
+		<div id="disasm"></div>
+		
+		<div id="message">&nbsp;</div>
+	</body>
+</rml>

@@ -5,17 +5,24 @@ libhardware_a_SOURCES = \
 	cpu.cpp \
 	cpu/core.cpp \
 	cpu/bus.cpp \
+	cpu/decoder/cycles.cpp \
 	cpu/decoder/prefix_none.cpp \
+	cpu/decoder/prefix_none_32.cpp \
 	cpu/decoder/prefix_0F.cpp \
+	cpu/decoder/prefix_0F_32.cpp \
 	cpu/decoder.cpp \
 	cpu/executor.cpp \
 	cpu/logger.cpp \
 	cpu/disasm.cpp \
 	cpu/debugger.cpp \
+	cpu/mmu.cpp \
 	memory.cpp \
+	systemrom.cpp \
 	iodevice.cpp \
 	devices.cpp \
 	devices/systemboard.cpp \
+	devices/systemboard_ps1_2011.cpp \
+	devices/systemboard_ps1_2121.cpp \
 	devices/keyboard.cpp \
 	devices/scancodes.cpp \
 	devices/pic.cpp \
@@ -53,10 +60,14 @@ noinst_HEADERS = \
 	cpu/logger.h \
 	cpu/disasm.h \
 	cpu/debugger.h \
+	cpu/mmu.h \
 	memory.h \
+	systemrom.h \
 	iodevice.h \
 	devices.h \
 	devices/systemboard.h \
+	devices/systemboard_ps1_2011.h \
+	devices/systemboard_ps1_2121.h \
 	devices/keyboard.h \
 	devices/scancodes.h \
 	devices/pic.h \
@@ -82,3 +93,15 @@ noinst_HEADERS = \
 	devices/gameport.h \
 	devices/opl.h \
 	devices/adlib.h
+
+noinst_EXTRA = \
+	cpu/executor/access.cpp \
+	cpu/executor/calls.cpp \
+	cpu/executor/flags.cpp \
+	cpu/executor/interrupts.cpp \
+	cpu/executor/memory.cpp \
+	cpu/executor/modrm.cpp \
+	cpu/executor/paging.cpp \
+	cpu/executor/stack.cpp \
+	cpu/executor/tasks.cpp \
+	cpu/executor/opcodes.cpp

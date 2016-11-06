@@ -1,4 +1,3 @@
-
 #tools,
 #cpucore,
 #memory,
@@ -32,74 +31,14 @@ table td
 	text-align: center;
 }
 
-table#generalregs
-{
-	position: absolute;
-	top: 0px;
-	left: 0px;
-}
-
-table#segmentregs
-{
-	position: absolute;
-	top: 0px;
-	left: 175px;
-}
-
-#CSbase,#DSbase,
-#ESbase,#SSbase,
-#TRbase,
-#LDTbase, #GDTbase, #IDTbase
-{
-	width: 50px;
-}
-
-table#statusregs
-{
-	position: absolute;
-	top: 130px;
-	left: 0px;
-}
-
-table#flags
-{
-	position: absolute;
-	top: 160px;
-	left: 230px;
-}
-
-table#extra
-{
-	position: absolute;
-	top: 285px;
-	left: 230px;
-}
-
 table#flags td
 {
 	width: 10px;
 }
 
-#F
-{
-	width: 140px;
-}
-
 #CPL,#A20
 {
 	width: 10px;
-}
-
-table#desctables
-{
-	position: absolute;
-	top: 230px;
-	left: 0px;
-}
-
-#memory
-{
-	top: 330px;
 }
 
 table#segments
@@ -119,10 +58,10 @@ table#segments td
 	width: 240px;
 }
 
-table#segments td#CS_IP_str,
-table#segments td#DS_SI_str,
-table#segments td#ES_DI_str,
-table#segments td#SS_SP_str,
+table#segments td#CS_EIP_str,
+table#segments td#DS_ESI_str,
+table#segments td#ES_EDI_str,
+table#segments td#SS_ESP_str,
 {
 	width: 100px;
 }

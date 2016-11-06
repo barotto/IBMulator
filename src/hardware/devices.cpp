@@ -35,7 +35,8 @@
 #include "devices/harddrv.h"
 #include "devices/serial.h"
 #include "devices/parallel.h"
-#include "devices/systemboard.h"
+#include "devices/systemboard_ps1_2011.h"
+#include "devices/systemboard_ps1_2121.h"
 #include "devices/pcspeaker.h"
 #include "devices/ps1audio.h"
 #include "devices/adlib.h"
@@ -67,13 +68,15 @@ void Devices::init(Machine *_machine)
 	m_machine = _machine;
 
 	// install mandatory devices
-	m_sysboard = install<SystemBoard>();
 	m_dma = install<DMA>();
 	m_pic = install<PIC>();
 	m_pit = install<PIT>();
 	m_vga = install<VGA>(); // TODO other VGA models?
 	m_cmos = install<CMOS>();
 	install<Keyboard>();
+
+	// the sysboard will be installed in the config_changed
+	m_sysboard = nullptr;
 }
 
 void Devices::reset(uint _signal)
@@ -92,6 +95,22 @@ void Devices::reset(uint _signal)
 
 void Devices::config_changed()
 {
+	// install the system board
+	if(m_sysboard) {
+		remove(m_sysboard->name());
+		m_sysboard = nullptr;
+	}
+	switch(m_machine->type()) {
+		case PS1_2121:
+			m_sysboard = install<SystemBoard_PS1_2121>();
+			break;
+		default:
+			PERRF(LOG_MACHINE, "unknown machine type, using default 2011\n");
+		case PS1_2011:
+			m_sysboard = install<SystemBoard_PS1_2011>();
+			break;
+	}
+
 	// install or remove optional devices
 	install_only_if<FloppyCtrl>(
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
@@ -257,8 +276,7 @@ uint8_t Devices::read_byte(uint16_t _port)
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X (CS:IP=%X:%X)\n",
-				_port, REG_CS.sel.value, REG_IP);
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X\n", _port);
 		return 0xFF;
 	}
 	return uint8_t(iohdl.device->read(_port, 1));
@@ -266,16 +284,15 @@ uint8_t Devices::read_byte(uint16_t _port)
 
 uint16_t Devices::read_word(uint16_t _port)
 {
-	uint8_t b0, b1;
 	uint16_t value = 0xFFFF;
 	io_handler_t &iohdl = m_read_handlers[_port];
 
 	m_last_io_time = 0;
 	if((_port & 1) || !(iohdl.mask & PORT_16BIT)) {
-		b0 = read_byte(_port);
+		uint16_t b0 = read_byte(_port);
 		unsigned io_time = m_last_io_time;
 		m_last_io_time = 0;
-		b1 = read_byte(_port+1);
+		uint16_t b1 = read_byte(_port + 1);
 		m_last_io_time += io_time;
 		value = b0 | (b1<<8);
 	} else if(iohdl.mask & PORT_16BIT) {
@@ -284,14 +301,20 @@ uint16_t Devices::read_word(uint16_t _port)
 	return value;
 }
 
+uint32_t Devices::read_dword(uint16_t _port)
+{
+	uint32_t w0 = read_word(_port);
+	uint32_t w1 = read_word(_port + 2);
+	return w0 | (w1<<16);
+}
+
 void Devices::write_byte(uint16_t _port, uint8_t _value)
 {
 	io_handler_t &iohdl = m_write_handlers[_port];
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X (CS:IP=%X:%X)\n",
-				_port, REG_CS.sel.value, REG_IP);
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X\n", _port);
 		return;
 	}
 	iohdl.device->write(_port, _value, 1);
@@ -320,6 +343,12 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 	} else if(iohdl.mask & PORT_16BIT) {
 		iohdl.device->write(_port, _value, 2);
 	}
+}
+
+void Devices::write_dword(uint16_t _port, uint32_t _value)
+{
+	write_word(_port, _value);
+	write_word(_port+2, _value>>16);
 }
 
 void Devices::remove(const char *_name)

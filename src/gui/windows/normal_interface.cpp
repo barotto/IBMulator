@@ -45,8 +45,6 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 {
 	assert(m_wnd);
 
-	m_wnd->AddEventListener("click", this, false);
-
 	m_sysunit = get_element("sysunit");
 	m_sysbkgd = get_element("sysbkgd");
 	m_sysbkgd->SetClass("disk", m_floppy_present);
@@ -233,7 +231,7 @@ void NormalInterface::on_save(RC::Event &)
 {
 	//TODO file select window to choose the destination
 	g_program.save_state("", [this]() {
-		show_message("State saved");
+		m_gui->show_message("State saved");
 	}, nullptr);
 }
 
@@ -241,7 +239,7 @@ void NormalInterface::on_restore(RC::Event &)
 {
 	//TODO file select window to choose the source
 	g_program.restore_state("", [this]() {
-		show_message("State restored");
+		m_gui->show_message("State restored");
 	}, nullptr);
 }
 

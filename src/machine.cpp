@@ -48,7 +48,8 @@ m_heartbeat(MACHINE_HEARTBEAT),
 m_quit(false),
 m_on(false),
 m_cpu_single_step(false),
-m_breakpoint(0),
+m_breakpoint_cs(0),
+m_breakpoint_eip(0),
 m_mouse_fun(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
@@ -205,7 +206,7 @@ void Machine::reset(uint _signal)
 	g_cpu.reset(_signal);
 	switch(_signal) {
 		case CPU_SOFT_RESET:
-			PDEBUGF(LOG_V1, LOG_MACHINE, "CPU software reset\n");
+			PDEBUGF(LOG_V2, LOG_MACHINE, "CPU software reset\n");
 			g_memory.set_A20_line(true);
 			return;
 		case MACHINE_HARD_RESET:
@@ -250,6 +251,18 @@ void Machine::power_off()
 
 void Machine::config_changed()
 {
+	PINFOF(LOG_V1, LOG_MACHINE, "Loading the SYSTEM ROM\n");
+	try {
+		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
+		m_sysrom.load(romset);
+	} catch(std::exception &e) {
+		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
+				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
+		        nullptr);
+		throw;
+	}
+
 	g_cpu.config_changed();
 	g_memory.config_changed();
 	g_devices.config_changed();
@@ -345,12 +358,11 @@ void Machine::core_step(int32_t _cpu_cycles)
 			m_mt_virt_time.store(cpu_time);
 		}
 
-		if(m_breakpoint>0) {
-			uint32_t current_phy = GET_PHYADDR(CS, REG_IP);
-			if(m_breakpoint == current_phy) {
+		if(m_breakpoint_cs > 0) {
+			if(m_breakpoint_cs == REG_CS.sel.value && m_breakpoint_eip == REG_EIP) {
 				pause();
 				m_breakpoint_clbk();
-				m_breakpoint = 0;
+				m_breakpoint_cs = 0;
 			}
 		}
 		if(m_cpu_single_step && cycles_left>0) {
@@ -604,10 +616,11 @@ void Machine::cmd_cpu_step()
 	});
 }
 
-void Machine::cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback)
+void Machine::cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback)
 {
 	m_cmd_fifo.push([=] () {
-		m_breakpoint = _phyaddr;
+		m_breakpoint_cs = _cs;
+		m_breakpoint_eip = _eip;
 		m_breakpoint_clbk = _callback;
 	});
 }
@@ -730,19 +743,19 @@ void Machine::cmd_cycles_adjust(double _factor)
 	});
 }
 
-void Machine::cmd_save_state(StateBuf &_state)
+void Machine::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+		std::unique_lock<std::mutex> lock(_mutex);
 		save_state(_state);
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 
-void Machine::cmd_restore_state(StateBuf &_state)
+void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+		std::unique_lock<std::mutex> lock(_mutex);
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
@@ -751,7 +764,7 @@ void Machine::cmd_restore_state(StateBuf &_state)
 			PERRF(LOG_MACHINE, "error restoring the state\n");
 			_state.m_last_restore = false;
 		}
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 
@@ -769,15 +782,15 @@ void Machine::cmd_eject_media(uint _drive)
 	});
 }
 
-void Machine::sig_config_changed()
+void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
-	m_cmd_fifo.push([this] () {
-		std::unique_lock<std::mutex> lock(g_program.ms_lock);
+	m_cmd_fifo.push([&] () {
+		std::unique_lock<std::mutex> lock(_mutex);
 		if(m_on) {
 			power_off();
 		}
 		config_changed();
-		g_program.ms_cv.notify_one();
+		_cv.notify_one();
 	});
 }
 
@@ -822,6 +835,7 @@ uint8_t Machine::get_POST_code()
 {
 	SystemBoard * sb = g_devices.sysboard();
 	if(sb != nullptr) {
+		//TODO this is PS/1 specific
 		return g_devices.sysboard()->read(0x0190,1);
 	}
 	return 0;

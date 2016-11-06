@@ -22,7 +22,7 @@
 
 
 /*
- * Segment descriptor AR masks
+ * Segment descriptor Access Rights masks
  */
 #define SEG_ACCESSED	0x1
 #define SEG_READWRITE	0x2
@@ -43,43 +43,58 @@
 #define SEG_TYPE_EXECUTABLE 0x4
 #define SEG_TYPE_CODE       0x4
 
-
+/* cf. 386:6-4 */
 enum DescriptorType {
-	DESC_TYPE_INVALID    = 0,
-	DESC_TYPE_AVAIL_TSS  = 1,
-	DESC_TYPE_LDT_DESC   = 2,
-	DESC_TYPE_BUSY_TSS   = 3,
-	DESC_TYPE_CALL_GATE  = 4,
-	DESC_TYPE_TASK_GATE  = 5,
-	DESC_TYPE_INTR_GATE  = 6,
-	DESC_TYPE_TRAP_GATE  = 7,
-	DESC_TYPE_RINVALID   = 8
+	DESC_TYPE_INVALID_0      = 0x0,
+	DESC_TYPE_AVAIL_286_TSS  = 0x1,
+	DESC_TYPE_LDT_DESC       = 0x2,
+	DESC_TYPE_BUSY_286_TSS   = 0x3,
+	DESC_TYPE_286_CALL_GATE  = 0x4,
+	DESC_TYPE_TASK_GATE      = 0x5,
+	DESC_TYPE_286_INTR_GATE  = 0x6,
+	DESC_TYPE_286_TRAP_GATE  = 0x7,
+	DESC_TYPE_INVALID_8      = 0x8,
+	DESC_TYPE_AVAIL_386_TSS  = 0x9,
+	DESC_TYPE_INVALID_A      = 0xA,
+	DESC_TYPE_BUSY_386_TSS   = 0xB,
+	DESC_TYPE_386_CALL_GATE  = 0xC,
+	DESC_TYPE_INVALID_D      = 0xD,
+	DESC_TYPE_386_INTR_GATE  = 0xE,
+	DESC_TYPE_386_TRAP_GATE  = 0xF
 };
+
+#define TSS_BUSY_BIT   0x2
+#define DESC_GATE_MASK 0x4
 
 
 struct Descriptor
 {
 	union {
-		uint16_t limit;  // Segment descriptor
-		uint16_t offset; // Gate descr. / Trap/Int Gate desc.
+		uint32_t limit;     // Segment / TSS
+		uint32_t offset;    // Call Gate / Trap-Int Gate
 	};
 	union {
-		uint16_t base_15_0; // Segment descriptor
-		uint16_t selector; // Gate desc. / Task Gate desc. / Trap/Int Gate desc.
+		uint16_t base_15_0; // Segment / System / TSS
+		uint16_t selector;  // Call Gate / Task Gate / Trap-Int Gate
 	};
 	union {
-		uint8_t base_23_16; // Segment descriptor
-		uint8_t word_count; // Gate descriptor
+		uint8_t base_23_16; // Segment / System / TSS
+		uint8_t word_count; // Call Gate
 	};
 	uint32_t base;
 	uint8_t ar;
 	// Access Rights (AR) bits:
-	bool accessed; // | 0 (if segment, 1=desc. has been accessed)
-	uint8_t type;  // | 0,1,2,3 (b0 if gate)
-	bool segment;  // | 4 (1=segment desc., 0=control desc.)
-	uint8_t dpl;   // | 5,6 (Descriptor Privilege Level)
-	bool present;  // | 7 (1=present in real memory)
-
+	bool accessed; // | bit0 (if segment, 1=has been accessed)
+	uint8_t type;  // | bit0,1,2,3 (b0 if gate)
+	bool segment;  // | bit4 (1=segment, 0=control)
+	uint8_t dpl;   // | bit5,6 (Descriptor Privilege Level)
+	bool present;  // | bit7 (1=present in real memory)
+	///
+	union {
+		bool big;
+		bool def; // default
+	};
+	bool granularity;
 	bool valid;
 
 	inline uint8_t get_AR() {
@@ -95,7 +110,7 @@ struct Descriptor
 	inline void set_AR(uint8_t _AR) {
 		ar = _AR;
 		valid = true;
-		segment = ar & 0x10;
+		segment = ar & SEG_SEGMENT;
 		if(segment) {
 			//Code or Data Segment Descriptor
 			accessed = ar & 1;
@@ -103,7 +118,8 @@ struct Descriptor
 		} else {
 			//System Segment Descriptor or Gate Descriptor
 			type = (ar & 0xF);
-			if(type==DESC_TYPE_INVALID || type>=DESC_TYPE_RINVALID) {
+			if(type==DESC_TYPE_INVALID_0 || type==DESC_TYPE_INVALID_8
+			|| type==DESC_TYPE_INVALID_A || type==DESC_TYPE_INVALID_D) {
 				valid = false;
 			}
 		}
@@ -111,110 +127,137 @@ struct Descriptor
 		present = ar & 0x80;
 	}
 
-	inline void set_BASE(uint16_t _BASE16, uint8_t _BASE8) {
-		base_15_0 = _BASE16;
-		base_23_16 = _BASE8;
-		base = base_23_16;
-		base = (base<<16) | base_15_0;
-	}
-
-	inline void set_LIMIT(uint16_t _LIMIT) {
-		limit = _LIMIT;
-	}
-
 	inline void operator=(uint64_t _data) {
-		set_LIMIT(uint16_t(_data));
-		set_BASE(uint16_t(_data>>16), uint8_t(_data>>32));
 		set_AR(uint8_t(_data>>40));
+		if(segment || !(type&DESC_GATE_MASK)) {
+			// for code/data segments and not call/task/int/trap gates
+			limit = (_data & 0xFFFF) | ((_data >> 32) & 0xF0000);
+			base_15_0 = _data >> 16;
+			base_23_16 = _data >> 32;
+			base = base_15_0 | (uint32_t(base_23_16) << 16) | ((_data >> 32) & 0xFF000000 );
+			big = (_data >> 54) & 1;
+			granularity = (_data >> 55) & 1;
+			if(granularity) { // page
+				limit = (limit << 12) | 0xFFF;
+			}
+		} else {
+			offset = (_data & 0xFFFF) | ((_data >> 32) & 0xFFFF0000);
+			selector = _data >> 16;
+			word_count = (_data >> 32) & 0x1F;
+		}
 	}
 
-	void set_from_cache(uint16_t _data[3]) {
-		set_LIMIT(_data[2]);
-		set_BASE(_data[0], _data[1]&0xFF);
+	void set_from_286_cache(uint16_t _cache[3]) {
+		uint64_t data;
+		data = _cache[2]; // limit
+		data |= uint64_t(_cache[0]) << 16; // base 15-0
+		data |= uint64_t(_cache[1]) << 32; // AR | base 23-16
+		(*this) = data;
 		/*
 		 * Access rights byte is in the format of the access byte in a descriptor.
 		 * The only difference is that the present bit becomes a valid bit.
 		 * If zero, the descriptor is considered invalid and any memory reference
 		 * using the descriptor will cause exception 13 with an error code of zero.
 		 */
-		set_AR(_data[1] >> 8);
-		valid = (_data[1]>>8) & 0x80;
+		valid = (_cache[1]>>8) & 0x80;
 	}
 
-	inline bool is_code_segment() { return (ar & SEG_CODE); }
-	inline bool is_code_segment_conforming() { return (ar & SEG_CONFORMING); }
-	inline bool is_data_segment_expand_down() { return (ar & SEG_EXP_DOWN); }
-	inline bool is_code_segment_readable() { return (ar & SEG_READWRITE); }
-	inline bool is_data_segment_writeable() { return (ar & SEG_READWRITE); }
-	inline bool is_data_segment() { return (!is_code_segment()); }
-	inline bool is_code_segment_non_conforming() { return (!is_code_segment_conforming()); }
-	inline bool is_system_segment() { return !(ar & SEG_SEGMENT); }
+	inline bool is_data_segment() const   { return (segment && !(ar & SEG_CODE)); }
+	inline bool is_code_segment() const   { return (segment && (ar & SEG_CODE)); }
+	inline bool is_system_segment() const { return !segment; }
+	inline bool is_conforming() const     { return (segment && (ar & SEG_CONFORMING)); }
+	inline bool is_expand_down() const    { return (segment && (ar & SEG_EXP_DOWN)); }
+	inline bool is_readable() const       { return (segment && (ar & SEG_READWRITE)); }
+	inline bool is_writeable() const      { return (segment && (ar & SEG_READWRITE)); }
+	inline bool is_286_system() const     { return (!segment && type <= DESC_TYPE_286_TRAP_GATE); }
+	inline bool is_286_TSS() const        { return (!segment && ((type & 0xD) == 0x1)); }
+	inline bool is_386_system() const     { return (!segment && type >= DESC_TYPE_AVAIL_386_TSS); }
+	inline bool is_386_TSS() const        { return (!segment && ((type & 0xD) == 0x9)); }
 };
 
 /*
- * Segment Descriptors (S=1) (cf. 6-5)
+ * Code/Data Segment (S=1) (cf. 286:6-5; 386:5-3,6-2)
 
-   7                             0 7                              0
-  ╔═══════════════════════════════╤════════════════════════════════╗
-+7║                         INTEL RESERVED                         ║+6
-  ╟───┬───────┬───┬───────────┬───┬────────────────────────────────╢
-+5║ P │  DPL  │S=1│   TYPE    │ A │          BASE 23-16            ║+4
-  ╟───┴───┴───┴───┴───┴───┴───┴───┴────────────────────────────────╢
-+3║                           BASE 15-0                            ║+2
-  ╟───────────────────────────────┴────────────────────────────────╢
-+1║                           LIMIT 15-0                           ║ 0
-  ╚═══════════════════════════════╧════════════════════════════════╝
-   15                            8 7                              0
+   7                             0 7                             0
+  ╔═══════════════════════════════╤═══╤═══╤═══╤═══╤═══════════════╗
++7║            BASE 31-24         │ G │B/D│ 0 │AVL│  LIMIT 19-16  ║+6 (386 only)
+  ╟───┬───────┬───┬───────────┬───┼───┴───┴───┴───┴───┴───┴───┴───╢
++5║ P │  DPL  │S=1│   TYPE    │ A │          BASE 23-16           ║+4
+  ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
++3║                           BASE 15-0                           ║+2
+  ╟───────────────────────────────┴───────────────────────────────╢
++1║                           LIMIT 15-0                          ║ 0
+  ╚═══════════════════════════════╧═══════════════════════════════╝
+   15                                                            0
 
- * System Segment Descriptors or Gate Descriptor (S=0) (cf. 6-6)
+	A: Accessed, P: Present, B/D: Big/Default, G: Granularity
 
-   7                             0 7                              0
-  ╔═══════════════════════════════╤════════════════════════════════╗
-+7║                         INTEL RESERVED                         ║+6
-  ╟───┬───────┬───┬───────────────┬────────────────────────────────╢
-+5║ P │  DPL  │S=0│     TYPE      │           BASE 23-16           ║+4
-  ╟───┴───┴───┴───┴───┴───┴───┴───┴────────────────────────────────╢
-+3║                           BASE 15-0                            ║+2
-  ║───────────────────────────────┴────────────────────────────────╢
-+1║                           LIMIT 15-0                           ║ 0
-  ╚═══════════════════════════════╧════════════════════════════════╝
-   15                            8 7                              0
+	Data segments AR byte:
+	┌───┬───────┬───┬───────────┬───┐
+	│ P │  DPL  │ 1 │ 0   E   W │ A │
+	└───┴───┴───┴───┴───┴───┴───┴───┘
+	E: Expand-Down, W: Writeable
 
- * Gate Descriptor (cf. 8-4)
+	Code segments AR byte:
+	┌───┬───────┬───┬───────────┬───┐
+	│ P │  DPL  │ 1 │ 1   C   R │ A │
+	└───┴───┴───┴───┴───┴───┴───┴───┘
+	C: Conforming, R: Readable
 
-	7							  0 7                             0
+
+ * System Segment (S=0) (cf. 286:6-6; 386:5-3,6-2)
+
+   7                             0 7                             0
+  ╔═══════════════════════════════╤═══╤═══╤═══╤═══╤═══════════════╗
++7║            BASE 31-24         │ G │ x │ 0 │AVL│  LIMIT 19-16  ║+6 (386 only)
+  ╟───┬───────┬───┬───────────────┼───┴───┴───┴───┴───┴───┴───┴───╢
++5║ P │  DPL  │S=0│     TYPE      │           BASE 23-16          ║+4
+  ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
++3║                           BASE 15-0                           ║+2
+  ╟───────────────────────────────┴───────────────────────────────╢
++1║                           LIMIT 15-0                          ║ 0
+  ╚═══════════════════════════════╧═══════════════════════════════╝
+   15                                                            0
+
+ * Call Gate (cf. 286:8-4; 386:6-11)
+
+	7							 0 7                             0
   ╔═══════════════════════════════════════════════════════════════╗
-+7║                        INTEL RESERVED                         ║+6
++7║                  DESTINATION OFFSET 31-16                     ║+6 (386 only)
   ╟───┬───────┬───┬───────────────┬───────────┬───────────────────╢
-+5║ P │  DPL  │ 0 │      TYPE     │ x   x   x │  WORD COUNT 4-0   ║+4
++5║ P │  DPL  │ 0 │ T   1   0   0 │ x   x   x │  WORD COUNT 4-0   ║+4
   ╟───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───────────┬───────╢
 +3║                 DESTINATION SELECTOR 15-2             │ x   x ║+2
   ╟───────────────────────────────┴───────────────────────┴───┴───╢
 +1║                  DESTINATION OFFSET 15-0                      ║ 0
   ╚═══════════════════════════════╧═══════════════════════════════╝
-   15                                                           0
+   15                                                            0
 
- * TSS Descriptor (cf. 8-4)
+  T=0 for 286, 1 for 386
+
+ * TSS (cf. 286:8-4; 386:7-3)
 
    7                             0 7                             0
-  ╔═══════════════════════════════╤═══════════════════════════════╗
-+7║                        INTEL RESERVED                         ║+6
-  ╟───┬───────┬───┬───────────┬───┬───────────────────────────────╢
-+5║ P │  DPL  │ 0 │ 0   0   B │ 1 │         TSS BASE 23-16        ║+4
+  ╔═══════════════════════════════╤═══╤═══╤═══╤═══╤═══════════════╗
++7║            BASE 31-24         │ G │ 0 │ 0 │AVL│  LIMIT 19-16  ║+6 (386 only)
+  ╟───┬───────┬───┬───────────────┼───┴───┴───┴───┴───┴───┴───┴───╢
++5║ P │  DPL  │ 0 │ T   0   B   1 │         TSS BASE 23-16        ║+4
   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
 +3║                          TSS BASE 15-0                        ║+2
   ╟───────────────────────────────┴───────────────────────────────╢
-+1║                            TSS LIMIT                          ║ 0
++1║                          TSS LIMIT 15-0                       ║ 0
   ╚═══════════════════════════════╧═══════════════════════════════╝
    15                                                            0
 
- * Task Gate Descriptor (cf. 8-8)
+  T=0 for 286, 1 for 386, B: Busy
+
+ * Task Gate (cf. 286:8-8; 386:7-6)
 
    7                             0 7                             0
   ╔═══════════════════════════════╤═══════════════════════════════╗
-+7║                        INTEL RESERVED                         ║+6
-  ╟───┬───────┬───┬───────────┬───┬───────────────────────────────╢
-+5║ P │  DPL  │ 0 │ 0   1   0 │ 1 │            UNUSED             ║+4
++7║                             UNUSED                            ║+6
+  ╟───┬───────┬───┬───────────────┬───────────────────────────────╢
++5║ P │  DPL  │ 0 │ 0   1   0   1 │            UNUSED             ║+4
   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
 +3║                          TSS SELECTOR                         ║+2
   ╟───────────────────────────────┴───────────────────────────────╢
@@ -222,19 +265,21 @@ struct Descriptor
   ╚═══════════════════════════════╧═══════════════════════════════╝
    15                                                            0
 
- * Trap/Interrupt Gate Descriptors (cf. 9-4)
+ * Trap/Interrupt Gate (cf. 286:9-4; 386:9-6)
 
    7                             0 7                             0
   ╔═══════════════════════════════╤═══════════════════════════════╗
-+7║                        INTEL RESERVED                         ║+6
-  ╟───┬───────┬───┬───────────┬───┬───────────────────────────────╢
-+5║ P │  DPL  │ 0 │ 0   1   1 │ T │            UNUSED             ║+4
++7║                          OFFSET 31-16                         ║+6 (386 only)
+  ╟───┬───────┬───┬───────────────┬───────────────────────────────╢
++5║ P │  DPL  │ 0 │ T   1   1   I │            UNUSED             ║+4
   ╟───┴───┴───┴───┴───┴───┴───┴───┴───────────────────────────────╢
 +3║                          TSS SELECTOR                         ║+2
   ╟───────────────────────────────┴───────────────────────────────╢
-+1║                             UNUSED                            ║ 0
++1║                          OFFSET 15-0                          ║ 0 (386 only)
   ╚═══════════════════════════════╧═══════════════════════════════╝
    15                                                            0
+
+  T=0 for 286, 1 for 386, I=0 for Interrupt, 1 for Trap
 
  */
 

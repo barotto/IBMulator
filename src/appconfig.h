@@ -130,6 +130,7 @@ public:
 #define DISPLAY_SATURATION       "saturation"
 
 #define CPU_SECTION             "cpu"
+#define CPU_MODEL               "model"
 #define CPU_FREQUENCY           "frequency"
 
 #define MEM_SECTION             "memory"

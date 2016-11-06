@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "core.h"
+#include "mmu.h"
 #include "hardware/cpu.h"
 #include "hardware/memory.h"
 #include <cstring>
@@ -28,35 +29,52 @@ CPUCore g_cpucore;
 
 void CPUCore::reset()
 {
-	/* The RESET signal initializes the CPU in Real-Address mode, with the CS
-	 * base register containing FFOOOOH and IP containing FFFOH. The first
+	/* The RESET signal initializes the CPU in Real-Address mode. The first
 	 * instruction fetch cycle following reset will be from the physical address
-	 * formed by these two registers, i.e., from address FFFFFOH. This location
-	 * will normally contain a JMP instruction to the actual beginning of the
-	 * system bootstrap program.
+	 * formed by CS.base and EIP. This location will normally contain a JMP
+	 * instruction to the actual beginning of the system bootstrap program.
+	 *
+	 * CPU type  CS sel   CS base   CS limit    EIP
+	 *     8086    FFFF     FFFF0       FFFF   0000
+	 *     286     F000    FF0000       FFFF   FFF0
+	 *     386+    F000  FFFF0000       FFFF   FFF0
 	 */
 
 	memset(m_genregs, 0, sizeof(GenReg)*8);
+	memset(m_segregs, 0, sizeof(SegReg)*10);
 
-	m_f = 0x0002;
-	m_msw = 0xFFF0;
-
-	m_ip = 0xFFF0;
+	m_eflags = 0x00000002;
+	m_cr[0] = 0x0000FFF0;
+	m_cr[2] = 0x0;
+	m_cr[3] = 0x0;
+	m_eip = 0x0000FFF0;
 
 	load_segment_real(REG_CS, 0xF000, true);
-	REG_CS.desc.base = 0xFF0000;
 	load_segment_real(REG_DS, 0x0000, true);
 	load_segment_real(REG_SS, 0x0000, true);
 	load_segment_real(REG_ES, 0x0000, true);
+	load_segment_real(REG_FS, 0x0000, true);
+	load_segment_real(REG_GS, 0x0000, true);
 
-	load_segment_real(m_ldtr, 0x0000, true);
-	load_segment_real(m_tr, 0x0000, true);
+	load_segment_real(REG_LDTR, 0x0000, true);
+	load_segment_real(REG_TR, 0x0000, true);
 
-	m_idtr_base = 0x000000;
-	m_idtr_limit = 0x03FF;
+	set_IDTR(0x000000, 0x03FF);
+	set_GDTR(0x000000, 0x0000);
 
-	m_gdtr_base = 0x000000;
-	m_gdtr_limit = 0x0000;
+	switch(CPU_FAMILY) {
+		case CPU_286:
+			m_cr[0] = 0x0000FFF0;
+			REG_CS.desc.base = 0xFF0000;
+			break;
+		case CPU_386:
+			m_genregs[REGI_EDX].dword[0] = CPU_SIGNATURE;
+			m_cr[0] = 0x7FFFFFF0;
+			REG_CS.desc.base = 0xFFFF0000;
+			break;
+	}
+
+	handle_mode_change();
 }
 
 #define CPUCORE_STATE_NAME "CPUCore"
@@ -76,6 +94,27 @@ void CPUCore::restore_state(StateBuf &_state)
 	h.name = CPUCORE_STATE_NAME;
 	h.data_size = sizeof(CPUCore);
 	_state.read(this,h);
+}
+
+void CPUCore::handle_mode_change()
+{
+	if(m_cr[0] & CR0MASK_PE) {
+		if(m_eflags & FMASK_VM) {
+			CPL = 3;
+			PDEBUGF(LOG_V2, LOG_CPU, "now in V8086 mode\n");
+		} else {
+			PDEBUGF(LOG_V2, LOG_CPU, "now in Protected mode\n");
+		}
+	} else {
+		// CS segment in real mode always allows full access
+		m_segregs[REGI_CS].desc.set_AR(
+			SEG_SEGMENT |
+			SEG_PRESENT |
+			SEG_READWRITE |
+			SEG_ACCESSED);
+		CPL = 0;
+		PDEBUGF(LOG_V2, LOG_CPU, "now in Real mode\n");
+	}
 }
 
 void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults)
@@ -126,17 +165,14 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 
-		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = g_cpuexecutor.fetch_descriptor(selector, CPU_GP_EXC);
 
 		if(!descriptor.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(SS): not valid\n");
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 		/* AR byte must indicate a writable data segment else #GP(selector) */
-		if(  descriptor.segment == false ||
-		    (descriptor.is_code_segment()) ||
-		   !(descriptor.is_data_segment_writeable())
-		) {
+		if(!descriptor.is_data_segment() || !descriptor.is_writeable()) {
 			PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(SS): not writable data segment\n");
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
@@ -152,13 +188,14 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* set accessed bit */
-		touch_segment(selector, descriptor);
+		g_cpuexecutor.touch_segment(selector, descriptor);
 
 		/* all done and well, load the register */
 		REG_SS.desc = descriptor;
 		REG_SS.sel = selector;
 
-	} else if(_segreg.is(REG_DS) || _segreg.is(REG_ES)) {
+	} else if(_segreg.is(REG_DS) || _segreg.is(REG_ES)
+	        || _segreg.is(REG_FS)|| _segreg.is(REG_GS)) {
 
 		if((_value & SELECTOR_RPL_MASK) == 0) {
 			/* null selector */
@@ -170,7 +207,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		selector   = _value;
-		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
+		descriptor = g_cpuexecutor.fetch_descriptor(selector, CPU_GP_EXC);
 
 		if(descriptor.valid==0) {
 			PDEBUGF(LOG_V2, LOG_CPU,"load_segment_protected(%s, 0x%04x): invalid segment\n",
@@ -179,8 +216,8 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* AR byte must indicate a writable data segment else #GP(selector) */
-		if(  descriptor.segment == false ||
-			(descriptor.is_code_segment() && !(descriptor.is_code_segment_readable())
+		if(  descriptor.is_system_segment() ||
+			(descriptor.is_code_segment() && !(descriptor.is_readable())
 		  )
 		) {
 			PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): not data or readable code (AR=0x%02X)\n",
@@ -190,7 +227,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 
 		/* If data or non-conforming code, then both the RPL and the CPL
 		 * must be less than or equal to DPL in AR byte else #GP(selector) */
-		if(descriptor.is_data_segment() || descriptor.is_code_segment_non_conforming()) {
+		if(descriptor.is_data_segment() || !descriptor.is_conforming()) {
 			if((selector.rpl > descriptor.dpl) || (CPL > descriptor.dpl)) {
 				PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): RPL & CPL must be <= DPL\n",
 						_segreg.to_string(), _value);
@@ -206,7 +243,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		}
 
 		/* set accessed bit */
-		touch_segment(selector, descriptor);
+		g_cpuexecutor.touch_segment(selector, descriptor);
 
 		/* all done and well, load the register */
 		_segreg.desc = descriptor;
@@ -222,15 +259,13 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, uint8_t cpl)
 {
 	// descriptor AR byte must indicate code segment else #GP(selector)
-	if(descriptor.valid==false || descriptor.segment==false ||
-			!(descriptor.type & SEG_TYPE_EXECUTABLE))
-	{
+	if(!descriptor.valid || !descriptor.is_code_segment()) {
 		PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): not a valid code segment\n", selector);
 		throw CPUException(CPU_GP_EXC, selector & SELECTOR_RPL_MASK);
 	}
 
 	// if non-conforming, code segment descriptor DPL must = CPL else #GP(selector)
-	if(!(descriptor.is_code_segment_conforming())) {
+	if(!descriptor.is_conforming()) {
 		if(descriptor.dpl != cpl) {
 			PDEBUGF(LOG_V2, LOG_CPU,"check_CS(0x%04x): non-conforming code seg descriptor dpl != cpl, dpl=%d, cpl=%d\n",
 					selector, descriptor.dpl, cpl);
@@ -260,13 +295,12 @@ void CPUCore::check_CS(uint16_t selector, Descriptor &descriptor, uint8_t rpl, u
 	}
 }
 
-
 void CPUCore::set_CS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 {
 	// Add cpl to the selector value.
 	selector.value = (selector.value & SELECTOR_RPL_MASK) | cpl;
 
-	touch_segment(selector, descriptor);
+	g_cpuexecutor.touch_segment(selector, descriptor);
 
 	REG_CS.sel = selector;
 	REG_CS.desc = descriptor;
@@ -280,89 +314,122 @@ void CPUCore::set_SS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 	// Add cpl to the selector value.
 	selector.value = (selector.value & SELECTOR_RPL_MASK) | cpl;
 
-	if((selector.value & SELECTOR_RPL_MASK) != 0)
-		touch_segment(selector, descriptor);
+	if((selector.value & SELECTOR_RPL_MASK) != 0) {
+		g_cpuexecutor.touch_segment(selector, descriptor);
+	}
 
 	REG_SS.sel = selector;
 	REG_SS.desc = descriptor;
 	REG_SS.sel.cpl = cpl;
 }
 
-
-void CPUCore::touch_segment(Selector &_selector, Descriptor &_descriptor) const
+void CPUCore::set_FLAGS(uint16_t _val)
 {
-	/*
-	 * Whenever a segment descriptor is loaded into a segment register, the
-	 * accessed bit in the descriptor table is set to 1. This bit is useful for
-	 * determining the usage profile of the segment.
-	 * (cfr. 7-11)
-	 */
-	if(!_descriptor.accessed) {
-		_descriptor.accessed = true;
-		uint8_t ar = _descriptor.get_AR();
-		if(_selector.ti == false) {
-			// from GDT
-			g_cpubus.mem_write_byte(m_gdtr_base + _selector.index*8 + 5, ar);
-		} else {
-			// from LDT
-			g_cpubus.mem_write_byte(m_ldtr.desc.base + _selector.index*8 + 5, ar);
-		}
-	}
-}
-
-uint64_t CPUCore::fetch_descriptor(Selector & _selector, uint8_t _exc_vec) const
-{
-	uint32_t addr = _selector.index * 8;
-	if(_selector.ti == 0) {
-		//from GDT
-		if((_selector.index*8 + 7) > m_gdtr_limit) {
-			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_gdtr_limit);
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		addr += m_gdtr_base;
-	} else {
-		// from LDT
-		if(!m_ldtr.desc.valid) {
-			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		if((_selector.index*8 + 7) > m_ldtr.desc.limit) {
-			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, m_ldtr.desc.limit);
-			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
-		}
-		addr += m_ldtr.desc.base;
-	}
-	return g_cpubus.mem_read_qword(addr);
-}
-
-void CPUCore::set_F(uint16_t _val)
-{
-	uint16_t f = m_f;
-	m_f = _val & FMASK_VALID;
-	if(m_f & FMASK_TF) {
+	uint16_t f16 = uint16_t(m_eflags);
+	m_eflags = (_val & FMASK_VALID) | (m_eflags & 0x30000);
+	if(m_eflags & FMASK_TF) {
 		g_cpu.set_async_event();
 	}
-	if((f ^ _val) & FMASK_IF) {
+	if((f16 ^ _val) & FMASK_IF) {
 		g_cpu.interrupt_mask_change();
+	}
+}
+
+void CPUCore::set_EFLAGS(uint32_t _val)
+{
+	uint32_t f32 = m_eflags;
+	m_eflags = _val & FMASK_VALID;
+	if(m_eflags & FMASK_TF) {
+		g_cpu.set_async_event();
+	}
+	if((f32 ^ _val) & FMASK_IF) {
+		g_cpu.interrupt_mask_change();
+	}
+	if((m_cr[0]&CR0MASK_PE) && ((f32 ^ _val)&FMASK_VM)) {
+		handle_mode_change();
+	}
+	if(!(f32 & FMASK_RF) && (_val & FMASK_RF)) {
+		g_cpubus.invalidate_pq();
 	}
 }
 
 void CPUCore::set_TF(bool _val)
 {
 	if(_val) {
-		m_f |= FMASK_TF;
+		m_eflags |= FMASK_TF;
 		g_cpu.set_async_event();
 	} else {
-		m_f &= ~FMASK_TF;
+		m_eflags &= ~FMASK_TF;
 	}
 }
 
 void CPUCore::set_IF(bool _val)
 {
-	set_F(FBITN_IF,_val);
+	set_flag(FBITN_IF, _val);
 	g_cpu.interrupt_mask_change();
+}
+
+void CPUCore::set_VM(bool _val)
+{
+	if(CPU_FAMILY>=CPU_386 && bool(m_eflags&FMASK_VM)!=_val) {
+		set_flag(FBITN_VM, _val);
+		handle_mode_change();
+	}
+}
+
+void CPUCore::set_RF(bool _val)
+{
+	set_flag(FBITN_RF, _val);
+	if(_val) {
+		g_cpubus.invalidate_pq();
+	}
+}
+
+void CPUCore::set_CR0(uint32_t _cr0)
+{
+	_cr0 &= CR0MASK_ALL;
+
+	/* CR0.ET may be toggled on the 80386 DX, while it is hardwired to 1 on
+	 * the 80386 SX (same difference between the 80486 DX and SX)
+	 */
+	if(CPU_FAMILY == CPU_386 && (CPU_SIGNATURE&CPU_SIG_386SX) == CPU_SIG_386SX) {
+		_cr0 |= CR0MASK_ET;
+	}
+
+	if((_cr0&CR0MASK_PG) && !(_cr0&CR0MASK_PE)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "attempt to set CR0.PG with CR0.PE cleared\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	uint32_t oldcr0 = m_cr[0];
+	m_cr[0] = _cr0;
+	bool PE_changed = (oldcr0 ^ _cr0) & CR0MASK_PE;
+	bool PG_changed = (oldcr0 ^ _cr0) & CR0MASK_PG;
+	if(PE_changed) {
+		handle_mode_change();
+	}
+	if(CPU_FAMILY >= CPU_386 && (PE_changed || PG_changed)) {
+		// Modification of PG,PE flushes TLB cache according to docs.
+		g_cpummu.TLB_flush();
+	}
+}
+
+void CPUCore::set_CR3(uint32_t _cr3)
+{
+	m_cr[3] = _cr3;
+	g_cpummu.TLB_flush();
+}
+
+uint32_t CPUCore::get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory) const
+{
+	if(_memory == nullptr) {
+		_memory = &g_memory;
+	}
+	if(is_paging()) {
+		return g_cpummu.translate_linear(get_linaddr(_segidx, _offset), _memory);
+	} else {
+		return get_linaddr(_segidx, _offset);
+	}
 }
 
 const char *SegReg::to_string()
@@ -371,6 +438,8 @@ const char *SegReg::to_string()
 	else if (is(REG_CS)) return("CS");
 	else if (is(REG_SS)) return("SS");
 	else if (is(REG_DS)) return("DS");
+	else if (is(REG_FS)) return("FS");
+	else if (is(REG_GS)) return("GS");
 	else { return "??"; }
 }
 
@@ -378,8 +447,8 @@ void SegReg::validate()
 {
 	if(desc.dpl < CPL) {
 		// invalidate if data or non-conforming code segment
-		if(desc.valid==0 || desc.segment==0 ||
-        desc.is_data_segment() || desc.is_code_segment_non_conforming())
+		if(desc.valid==0 || desc.segment==false ||
+        desc.is_data_segment() || !desc.is_conforming())
 		{
 			sel.value = 0;
 			desc.valid = false;

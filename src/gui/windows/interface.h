@@ -139,7 +139,7 @@ public:
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
 	void vga_update() { m_display.vga_updated.store(true); }
-	virtual void render(RC::Context *_rcontext);
+	virtual void render();
 
 	virtual void set_audio_volume(float);
 	virtual void set_video_brightness(float);
@@ -159,17 +159,6 @@ protected:
 
 private:
 	void update_floppy_disk(std::string _filename);
-};
-
-class LogMessage : public Logdev
-{
-private:
-	Interface *m_iface;
-public:
-	LogMessage(Interface* _iface);
-	~LogMessage();
-
-	void log_put(const std::string &_prefix, const std::string &_message);
 };
 
 #endif

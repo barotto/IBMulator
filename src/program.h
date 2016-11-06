@@ -52,14 +52,14 @@ class Program
 	std::string m_cfg_file; //the full path of ibmulator.ini
 	AppConfig m_config;
 
+	std::function<void()> m_restore_fn;
+
 	void init_SDL();
 	void process_evts();
 	void main_loop();
 
 	std::string get_assets_dir(int argc, char** argv);
 	void parse_arguments(int argc, char** argv);
-
-public:
 
 	//this is for synchronization between program and machine threads
 	//(see state save/restore)

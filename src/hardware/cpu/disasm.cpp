@@ -449,7 +449,7 @@ uint8_t Disasm::getbyte(void)
 	if(m_memory == nullptr) {
 		return 0;
 	}
-	return m_memory->read_byte_notraps(getbyte_mac++);
+	return m_memory->read_notraps<1>(getbyte_mac++);
 }
 
 /*
@@ -1083,14 +1083,14 @@ void Disasm::ua_str(char const *str)
 }
 
 /*
- * _addr = the absolute memory address of the instruction
- * _rip = the offset of the instruction (IP register)
+ * _addr = the memory physical address of the instruction
+ * _rip = the offset of the instruction (EIP register)
  * _instr_buf = a vector containing the instruction to disassemble, if nullptr the instr. will be read from memory
  * _instr_buf_len = the length of _instr_buf
  */
 uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
 		Memory *_memory, const uint8_t *_instr_buf, uint _instr_buf_len,
-		bool bit32)
+		bool _cs_def)
 {
   	uint32_t c;
 
@@ -1116,8 +1116,11 @@ uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_
 
 	prefix = 0;
 	modrmv = sibv = -1;     /* set modrm and sib flags */
-	if (bit32) opsize = addrsize = 32;
-	else opsize = addrsize = 16;
+	if(_cs_def) {
+		opsize = addrsize = 32;
+	} else {
+		opsize = addrsize = 16;
+	}
 	c = getbyte();
 	wordop = c & 1;
 	must_do_size = 1;

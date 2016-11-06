@@ -32,6 +32,27 @@
 
 CPU g_cpu;
 
+const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #0  CPU_DIV_ER_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #1  CPU_SINGLE_STEP_INT
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #2  CPU_NMI_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #3  CPU_BREAKPOINT_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #4  CPU_INTO_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #5  CPU_BOUND_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #6  CPU_UD_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #7  CPU_NM_EXC
+	{ CPU_DOUBLE_FAULT,     CPU_ABORT_EXC, true  }, // #8  CPU_DF_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #9  CPU_MP_EXC (Bochs has benign)
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #10 CPU_TS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #11 CPU_NP_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #12 CPU_SS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #13 CPU_GP_EXC
+	{ CPU_PAGE_FAULTS,      CPU_FAULT_EXC, true  }, // #14 CPU_PF_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #15 reserved
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }  // #16 CPU_MF_EXC
+};
+
+
 CPU::CPU()
 :
 m_instr(nullptr)
@@ -50,14 +71,32 @@ void CPU::init()
 
 void CPU::config_changed()
 {
+	static ini_enum_map_t cpu_families = {
+		{ "286",   CPU_286 },
+		{ "386SX", CPU_386 },
+		{ "386DX", CPU_386 }
+	};
+
+	static ini_enum_map_t cpu_signatures = {
+		{ "286",   0x0000 },
+		{ "386SX", 0x2308 },
+		{ "386DX", 0x0308 }
+	};
+
+	m_family = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_families);
+	m_signature = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_signatures);
+
 	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
 	m_cycle_time = round(1000.0 / freq);
 	m_freq = round(1e9 / m_cycle_time);
 
-	PINFOF(LOG_V0, LOG_CPU, "Frequency: %.3f MHz\n", m_freq / 1.0e6);
+	PINFOF(LOG_V0, LOG_CPU, "Model: %s @ %.3fMHz\n",
+			g_program.config().get_string(CPU_SECTION, CPU_MODEL).c_str(),
+			m_freq / 1.0e6);
 	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
 
 	g_cpubus.config_changed();
+	g_cpuexecutor.config_changed();
 }
 
 void CPU::reset(uint _signal)
@@ -128,9 +167,8 @@ void CPU::power_off()
 uint CPU::step()
 {
 	int cycles, bu_cycles, eu_cycles, decode_cycles, io_cycles, dramtx, vramtx, bu_rops;
-	int bu_update;
-	uint32_t csip, prev_csip;
 	CPUCore core_log;
+	bool do_log = false;
 
 	g_cpubus.reset_counters();
 	cycles = 0;
@@ -141,9 +179,6 @@ uint CPU::step()
 	bu_rops = 0;
 	dramtx = 0;
 	vramtx = 0;
-	csip = 0;
-	prev_csip = 0;
-	bu_update = 0;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -160,32 +195,41 @@ uint CPU::step()
 				// return a non zero number of elapsed cycles anyway
 				return 1;
 			}
-			//an interrupt could have invalidated the pq, we must update
+			// serialize any pending write
 			g_cpubus.update(0);
 		}
-		csip = GET_PHYADDR(CS,REG_IP);
-		prev_csip = (m_instr!=nullptr)?m_instr->csip:0;
-		//if the prev instr is the same as the next (REP), don't decode
-		if(m_instr==nullptr || !(m_instr->rep && prev_csip==csip)) {
-			m_instr = g_cpudecoder.decode();
-			if(!m_pq_valid) {
-				/*
-				According to various sources, the decoding time should be
-				proportional to the size of the next instruction (1 cycle per
-				decoded byte). But after some empirical tests, 2 cycles is the
-				best value given the current setup.
-				*/
-				//decode_cycles = 1;
-				decode_cycles = 2;
-				//decode_cycles = m_instr->size;
-			}
-			if(CPULOG) {
-				core_log = g_cpucore;
-			}
-		}
+
+		// decode and execute the next instruction
 		try {
+			//if the prev instr is the same as the next don't decode
+			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.is_pq_valid()) {
+				if(!g_cpubus.is_pq_valid()) {
+
+					// page faults can be generated at this point
+					g_cpubus.reset_pq();
+
+					/*
+					According to various sources, the decoding time should be
+					proportional to the size of the next instruction (1 cycle per
+					decoded byte). But after some empirical tests, 2 cycles is the
+					best value given the current setup.
+					*/
+					decode_cycles = 2;
+				}
+
+				// TODO actual decoding can be put in a separate thread
+				m_instr = g_cpudecoder.decode();
+
+				if(CPULOG) {
+					do_log = true;
+					core_log = g_cpucore;
+				}
+			}
+
 			bu_rops = g_cpubus.get_dram_r();
+
 			g_cpuexecutor.execute(m_instr);
+
 			dramtx = g_cpubus.get_dram_tx() - bu_rops; // instruction execution transfers
 			vramtx = g_cpubus.get_vram_tx();
 			eu_cycles = get_execution_cycles(dramtx||vramtx);
@@ -199,7 +243,7 @@ uint CPU::step()
 			if(STOP_AT_EXC && (STOP_AT_EXC_VEC==0xFF || e.vector==STOP_AT_EXC_VEC)) {
 				g_machine.set_single_step(true);
 				if(e.vector == CPU_UD_EXC && UD6_AUTO_DUMP) {
-					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->csip);
+					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->cseip);
 					g_machine.memdump(REG_CS.desc.base, GET_LIMIT(CS));
 				}
 			}
@@ -218,20 +262,19 @@ uint CPU::step()
 		eu_cycles = 1;
 	}
 
-	m_pq_valid = g_cpubus.is_pq_valid();
-	if(m_pq_valid) {
-		bu_update = eu_cycles + decode_cycles;
+	// serialize any pending write
+	if(g_cpubus.is_pq_valid()) {
+		g_cpubus.update(eu_cycles + decode_cycles);
 	} else {
-		bu_update = 0;
+		g_cpubus.update(0);
 	}
-	g_cpubus.update(bu_update);
 
+	// determine the total amount of cycles spent
 	bu_cycles = g_cpubus.get_mem_cycles() + m_instr->cycles.bu;
 	if(bu_cycles < 0) {
 		bu_cycles = 0;
 	}
 	bu_cycles += g_cpubus.get_fetch_cycles();
-
 	dramtx = g_cpubus.get_dram_r() - bu_rops;
 	vramtx = g_cpubus.get_vram_r();
 	cycles += eu_cycles + bu_cycles + decode_cycles + io_cycles +
@@ -241,7 +284,7 @@ uint CPU::step()
 		cycles += DRAM_REFRESH_CYCLES;
 	}
 
-	if(CPULOG && (CPULOG_UNFOLD_REPS || prev_csip!=csip)) {
+	if(CPULOG && do_log) {
 		m_logger.add_entry(
 			g_machine.get_virt_time_us(), // time
 			*m_instr,                     // instruction
@@ -251,8 +294,6 @@ uint CPU::step()
 			cycles                        // cycles used
 		);
 	}
-
-	assert(cycles>0 || (cycles==0 && m_instr->rep && REG_CX==0));
 
 	m_s.icount++;
 	m_s.ccount += cycles;
@@ -386,7 +427,7 @@ void CPU::handle_async_event()
 	if(!interrupts_inhibited(CPU_INHIBIT_DEBUG)) {
 	    // A trap may be inhibited on this boundary due to an instruction which loaded SS
 		if(m_s.debug_trap) {
-			exception(CPUException(CPU_SINGLE_STEP_INT, 0)); // no error, not interrupt
+			exception(CPUException(CPU_DEBUG_EXC, 0)); // no error, not interrupt
 			return;
 		}
 	}
@@ -400,11 +441,11 @@ void CPU::handle_async_event()
 	} else if(is_unmasked_event_pending(CPU_EVENT_NMI)) {
 		clear_event(CPU_EVENT_NMI);
 		mask_event(CPU_EVENT_NMI);
-		m_s.EXT = true; /* external event */
+		m_s.EXT = 1; /* external event */
 		interrupt(2, CPU_NMI, false, 0);
 	} else if(is_unmasked_event_pending(CPU_EVENT_PENDING_INTR)) {
 		uint8_t vector = g_devices.pic()->IAC(); // may set INTR with next interrupt
-		m_s.EXT = true; /* external event */
+		m_s.EXT = 1; /* external event */
 		interrupt(vector, CPU_EXTERNAL_INTERRUPT, 0, 0);
 	} else if(m_s.HRQ) {
 		// assert Hold Acknowledge (HLDA) and go into a bus hold state
@@ -436,6 +477,16 @@ void CPU::handle_async_event()
 	}
 }
 
+bool CPU::v86_redirect_interrupt(uint8_t _vector)
+{
+	// see Bochs code for CPU 586+
+	if(FLAG_IOPL < 3) {
+		PDEBUGF(LOG_V2, LOG_CPU, "Redirecting soft INT in V8086 mode: %d\n", _vector);
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+	return false;
+}
+
 void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t _error_code)
 {
 	bool soft_int = false;
@@ -462,112 +513,129 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	clear_debug_trap();
 
 	if(CPULOG) {
-		m_logger.set_iret_address(GET_PHYADDR(CS, REG_IP));
+		m_logger.set_iret_address(GET_LINADDR(CS, REG_EIP));
 	}
 
-	if(IS_PMODE()) {
-		g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
-	} else {
-		g_cpuexecutor.interrupt(_vector);
+	// software interrupts can be redirected in v8086 mode
+	if((_type!=CPU_SOFTWARE_INTERRUPT) || !IS_V8086() || !v86_redirect_interrupt(_vector)) {
+		if(IS_PMODE()) {
+			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
+		} else {
+			g_cpuexecutor.interrupt(_vector);
+		}
 	}
 
 	m_s.EXT = 0;
 }
 
+bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
+{
+	static const bool df_definition[3][3] = {
+		//          second exc
+		// BENIGN  CONTRIBUTORY  PAGE_FAULTS
+		 { false,  false,        false      },  // BENIGN
+		 { false,  true,         false      },  // CONTRIBUTORY  first exc
+		 { false,  true,         true       }   // PAGE_FAULTS
+	};
+
+	switch(m_family) {
+		case CPU_286: {
+			/* If two separate faults occur during a single instruction, and if the
+			 * first fault is any of #0, #10, #11, #12, and #13, exception 8
+			 * (Double Fault) occurs (e.g., a general protection fault in level 3 is
+			 * followed by a not-present fault due to a segment not-present). If
+			 * another protection violation occurs during the processing of
+			 * exception 8, the 80286 enters shutdown, during which time no further
+			 * instructions or exceptions are processed.
+			 */
+			return (_first_vec==CPU_DIV_ER_EXC //#0
+				 || _first_vec==CPU_TS_EXC     //#10
+				 || _first_vec==CPU_NP_EXC     //#11
+				 || _first_vec==CPU_SS_EXC     //#12
+				 || _first_vec==CPU_GP_EXC     //#13
+			);
+		}
+		case CPU_386: {
+			/* To determine when two faults are to be signalled as a double
+			 * fault, the 80386 divides the exceptions into three classes:
+			 * benign exceptions, contributory exceptions, and page faults.
+			 */
+			assert(_first_vec != CPU_DF_EXC && _first_vec < CPU_MAX_INT);
+			assert(_current_vec != CPU_DF_EXC && _current_vec < CPU_MAX_INT);
+			unsigned first = g_cpu_exceptions[_first_vec].exc_type;
+			unsigned second = g_cpu_exceptions[_current_vec].exc_type;
+			return df_definition[first][second];
+		}
+		default:
+			PERRF_ABORT(LOG_CPU, "is_double_fault(): unsupported CPU type\n");
+			return false;
+	}
+}
+
+
+
+
 void CPU::exception(CPUException _exc)
 {
+	assert(_exc.vector < CPU_MAX_INT);
+
 	PDEBUGF(LOG_V2, LOG_CPU, "exception(0x%02x): error_code=%04x\n",
 			_exc.vector, _exc.error_code);
-	bool push_error = false;
-	uint16_t error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
-	m_s.EXT = 0;
+
+	uint16_t error_code;
+	unsigned exc_class = g_cpu_exceptions[_exc.vector].exc_class;
+	bool push_error = g_cpu_exceptions[_exc.vector].push_error;
+
 	switch(_exc.vector) {
-		case CPU_DIV_ER_EXC: //0
-			RESTORE_IP();
+		case CPU_DEBUG_EXC:
+			/*TODO discriminate between:
+			Instruction address breakpoint: fault.
+			Data address breakpoint: trap.
+			General detect: fault.
+			Single-step: trap.
+			Task-switch breakpoint: trap.
+			*/
+			PERRF_ABORT(LOG_CPU, "not implemented\n");
 			break;
-		case CPU_SINGLE_STEP_INT: //1
-			/* Intel's 286 manual: "The saved value of CS:IP will point to the
-			 * next instruction.".
-			 */
-			break;
-		case CPU_NMI_INT: //2
-			RESTORE_IP();
-			break;
-		case CPU_BREAKPOINT_INT: //3
-		case CPU_INTO_EXC: //4
-			break;
-		case CPU_BOUND_EXC: //5
-			RESTORE_IP();
-			break;
-		case CPU_UD_EXC: //6
-			RESTORE_IP();
-			break;
-		case CPU_NM_EXC: //7
-			RESTORE_IP();
-			break;
-		case CPU_DF_EXC:  //8
-		/*case CPU_IDT_LIMIT_EXC:*/
-			RESTORE_IP();
+		case CPU_DF_EXC:
 			error_code = 0;
-			push_error = true;
 			break;
-		case CPU_MP_EXC: //9
-		/*case CPU_NPX_SEG_OVR_INT:*/
-			RESTORE_IP();
-			m_s.EXT = 1;
-			break;
-		case CPU_TS_EXC: //10
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_NP_EXC: //11
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_SS_EXC: //12
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_GP_EXC: //13
-		/*case CPU_SEG_OVR_EXC:*/
-			RESTORE_IP();
-			push_error = true;
-			break;
-		case CPU_MF_EXC: //16
-		/*case CPU_NPX_ERR_INT:*/
-			RESTORE_IP();
-			m_s.EXT = 1;
+		case CPU_PF_EXC:
+			error_code = _exc.error_code;
 			break;
 		default:
-			PERRF_ABORT(LOG_CPU, "exception(%u): bad vector!\n", _exc.vector);
+			error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
 			break;
 	}
+	if(exc_class == CPU_FAULT_EXC) {
+		/* The CS and EIP values saved when a fault is reported point to the instruction
+		 * causing the fault.
+		 */
+		RESTORE_IP();
+	}
+
+	// set EXT in case another exception happens in interrupt()
+	m_s.EXT = 1;
 
 	try {
 		interrupt(_exc.vector, CPU_HARDWARE_EXCEPTION, push_error, error_code);
 	} catch(CPUException &e) {
-		/* If two separate faults occur during a single instruction, and if the
-		 * first fault is any of #0, #10, #11, #12, and #13, exception 8
-		 * (Double Fault) occurs (e.g., a general protection fault in level 3 is
-		 * followed by a not-present fault due to a segment not-present). If
-		 * another protection violation occurs during the processing of
-		 * exception 8, the 80286 enters shutdown, during which time no further
+		/* If another protection violation occurs during the processing of
+		 * exception 8, the CPU enters shutdown, during which time no further
 		 * instructions or exceptions are processed.
 		 */
 		if(_exc.vector == CPU_DF_EXC) {
-			PDEBUGF(LOG_V1,LOG_CPU,"exception(): 3rd (%d) exception with no resolution\n", e.vector);
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): 3rd (#%d) exception with no resolution\n", e.vector);
 			enter_sleep_state(CPU_STATE_SHUTDOWN);
 			return;
 		}
-		if(_exc.vector==CPU_DIV_ER_EXC //#0
-			|| _exc.vector==CPU_TS_EXC //#10
-			|| _exc.vector==CPU_NP_EXC //#11
-			|| _exc.vector==CPU_SS_EXC //#12
-			|| _exc.vector==CPU_GP_EXC) //#13
-		{
+
+		if(is_double_fault(_exc.vector, e.vector)) {
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): exc #%d while resolving exc #%d, generating #DF\n",
+					e.vector, _exc.vector);
 			exception(CPUException(CPU_DF_EXC,0));
 		} else {
-			PDEBUGF(LOG_V2,LOG_CPU,"exception(): #GP while resolving exc %d\n", _exc.vector);
+			PDEBUGF(LOG_V2,LOG_CPU,"exception(): exc #%d while resolving exc #%d\n", e.vector, _exc.vector);
 			exception(e);
 		}
 	} catch(CPUShutdown &s) {

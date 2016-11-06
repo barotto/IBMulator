@@ -49,7 +49,6 @@ Rocket::Controls::DataSource("file_select")
 	m_cancel_callbk = nullptr;
 	m_cwd_el = get_element("cwd");
 	m_wprotect = dynamic_cast<RCN::ElementFormControl*>(get_element("wprotect"));
-	init_events();
 }
 
 FileSelect::~FileSelect()

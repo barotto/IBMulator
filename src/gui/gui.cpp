@@ -39,14 +39,19 @@
 #include "windows/normal_interface.h"
 #include "windows/realistic_interface.h"
 #include "windows/status.h"
-#include "windows/sysdebugger.h"
+#include "windows/sysdebugger286.h"
+#include "windows/sysdebugger386.h"
 #include "windows/devstatus.h"
 #include "windows/stats.h"
+
+#include "hardware/cpu.h"
 
 #include <algorithm>
 
 
 GUI g_gui;
+std::mutex GUI::ms_rocket_mutex;
+std::mutex GUI::Windows::s_interface_mutex;
 
 ini_enum_map_t g_mouse_types = {
 	{ "none", MOUSE_TYPE_NONE },
@@ -207,7 +212,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 void GUI::config_changed()
 {
-	m_windows.config_changed();
+	m_windows.config_changed(this, m_machine);
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -416,10 +421,10 @@ void GUI::init_Rocket()
 
 Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 {
-	Rocket::Core::ElementDocument * document = m_rocket_context->LoadDocument(_filename.c_str());
+	RC::ElementDocument * document = m_rocket_context->LoadDocument(_filename.c_str());
 
 	if(document) {
-		Rocket::Core::Element * title = document->GetElementById("title");
+		RC::Element * title = document->GetElementById("title");
 		if(title) {
 			title->SetInnerRML(document->GetTitle());
 		}
@@ -523,7 +528,12 @@ void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
 	GLCALL( glViewport(0,0,	m_width, m_height) );
-	m_windows.interface->render(m_rocket_context);
+	m_windows.interface->render();
+
+	ms_rocket_mutex.lock();
+	m_rocket_context->Render();
+	ms_rocket_mutex.unlock();
+
 	SDL_RenderPresent(m_SDL_renderer);
 }
 
@@ -964,6 +974,7 @@ void GUI::update_window_size(int _w, int _h)
 {
 	m_width = _w;
 	m_height = _h;
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
 	m_rocket_renderer->SetDimensions(m_width, m_height);
 	m_windows.interface->container_size_changed(m_width, m_height);
@@ -1004,6 +1015,8 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 
 void GUI::dispatch_rocket_event(const SDL_Event &event)
 {
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+
 	int rockmod = m_rocket_sys_interface->GetKeyModifiers();
 
 	switch(event.type)
@@ -1061,14 +1074,29 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 	}
 }
 
-void GUI::update()
+void GUI::update(uint64_t _current_time)
 {
-	m_windows.update();
-	m_rocket_context->Update();
+	m_windows.update(_current_time);
 
+	/* during a libRocket Context update no other thread can call any windows
+	 * related functions
+	 * TODO Interface messages are outside event handlers and SysLog doesn't
+	 * write messages on the interface directly anymore, so this mutex is
+	 * useless now because no other thread is accessing libRocket's context.
+	 * Consider removing it?
+	 */
+	ms_rocket_mutex.lock();
+	m_rocket_context->Update();
+	ms_rocket_mutex.unlock();
+
+	bool title_changed = false;
 	m_machine->ms_gui_lock.lock();
 	if(m_machine->is_current_program_name_changed()) {
+		title_changed = true;
 		m_curr_title = m_machine->get_current_program_name();
+	}
+	m_machine->ms_gui_lock.unlock();
+	if(title_changed) {
 		if(!m_curr_title.empty()) {
 			m_curr_title = m_wnd_title + " - " + m_curr_title;
 		} else {
@@ -1076,7 +1104,6 @@ void GUI::update()
 		}
 		SDL_SetWindowTitle(m_SDL_window, m_curr_title.c_str());
 	}
-	m_machine->ms_gui_lock.unlock();
 }
 
 void GUI::shutdown_SDL()
@@ -1090,8 +1117,12 @@ void GUI::shutdown()
 {
 	SDL_RemoveTimer(m_second_timer);
 
-	m_rocket_context->RemoveReference();
 	m_windows.shutdown();
+
+	ms_rocket_mutex.lock();
+	m_rocket_context->RemoveReference();
+	ms_rocket_mutex.unlock();
+
     Rocket::Core::Shutdown();
 
     shutdown_SDL();
@@ -1242,7 +1273,14 @@ void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 
 void GUI::show_message(const char* _mex)
 {
-	m_windows.interface->show_message(_mex);
+	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
+	m_windows.last_ifc_mex = _mex;
+}
+
+void GUI::show_dbg_message(const char* _mex)
+{
+	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
+	m_windows.last_dbg_mex = _mex;
 }
 
 Uint32 GUI::every_second(Uint32 interval, void */*param*/)
@@ -1349,6 +1387,37 @@ void GUI::show_welcome_screen()
 	m_windows.interface->print_VGA_text(text);
 }
 
+
+/*******************************************************************************
+ * Windows
+ */
+
+class SysDbgMessage : public Logdev
+{
+private:
+	GUI *m_gui;
+public:
+	SysDbgMessage(GUI * _gui, bool _delete) : Logdev(_delete), m_gui(_gui) {}
+	void log_put(const std::string & /*_prefix*/, const std::string &_message)
+	{
+		// This function is called by the Syslog thread
+		m_gui->show_dbg_message(_message.c_str());
+	}
+};
+
+class IfaceMessage : public Logdev
+{
+private:
+	GUI *m_gui;
+public:
+	IfaceMessage(GUI * _gui, bool _delete) : Logdev(_delete), m_gui(_gui) {}
+	void log_put(const std::string & /*_prefix*/, const std::string &_message)
+	{
+		// This function is called by the Syslog thread
+		m_gui->show_message(_message.c_str());
+	}
+};
+
 GUI::Windows::Windows()
 :
 visible(true),
@@ -1384,22 +1453,81 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	}
 
 	//debug
-	debugger = new SysDebugger(_machine, _gui);
+	debugger = nullptr; // will be created in the config_changed
 	stats = new Stats(_machine, _gui, _mixer);
 	devices = new DevStatus(_gui);
+
+	timers.init();
+	ifcmex_timer = timers.register_timer([this](uint64_t){
+		if(interface) {
+			interface->show_message("");
+		}
+	}, "main interface messages");
+	dbgmex_timer = timers.register_timer([this](uint64_t){
+		if(debugger) {
+			debugger->show_message("");
+		}
+	}, "debug messages");
+
+	static SysDbgMessage sysdbgmsg(_gui, false);
+	static IfaceMessage ifacemsg(_gui, false);
+	g_syslog.add_device(LOG_INFO, LOG_MACHINE, &sysdbgmsg);
+	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, &ifacemsg);
 }
 
-void GUI::Windows::config_changed()
+void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
 {
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+
 	desktop->config_changed();
 	interface->config_changed();
+
 	if(status) {
 		status->config_changed();
 	}
-	if(debug_wnds) {
-		debugger->config_changed();
-		devices->config_changed();
-		stats->config_changed();
+
+	if(debugger) {
+		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(debugger));
+		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
+			bool dbg_visible = debugger->is_visible();
+			debugger->close();
+			delete debugger;
+			if(CPU_FAMILY >= CPU_386) {
+				debugger = new SysDebugger386(_gui, _machine);
+			} else {
+				debugger = new SysDebugger286(_gui, _machine);
+			}
+			if(dbg_visible) {
+				debugger->show();
+			}
+		}
+	} else {
+		if(CPU_FAMILY >= CPU_386) {
+			debugger = new SysDebugger386(_gui, _machine);
+		} else {
+			debugger = new SysDebugger286(_gui, _machine);
+		}
+	}
+
+	devices->config_changed();
+	stats->config_changed();
+}
+
+void GUI::Windows::show_ifc_message(const char* _mex)
+{
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	if(interface != nullptr) {
+		interface->show_message(_mex);
+		timers.activate_timer(ifcmex_timer, 3000000, false);
+	}
+}
+
+void GUI::Windows::show_dbg_message(const char* _mex)
+{
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	if(debugger != nullptr) {
+		debugger->show_message(_mex);
+		timers.activate_timer(dbgmex_timer, 3000000, false);
 	}
 }
 
@@ -1427,8 +1555,8 @@ void GUI::Windows::invert_visibility()
 			devices->hide();
 			stats->hide();
 		} else {
-			debugger->show();
 			devices->show();
+			debugger->show();
 			stats->show();
 		}
 	}
@@ -1447,29 +1575,50 @@ void GUI::Windows::invert_visibility()
 	}
 }
 
-void GUI::Windows::update()
+void GUI::Windows::update(uint64_t _current_time)
 {
+	s_interface_mutex.lock();
+	if(!last_ifc_mex.empty()) {
+		show_ifc_message(last_ifc_mex.c_str());
+		last_ifc_mex.clear();
+	}
+	if(!last_dbg_mex.empty()) {
+		show_dbg_message(last_dbg_mex.c_str());
+		last_dbg_mex.clear();
+	}
+	s_interface_mutex.unlock();
+
+	// updates can't call any function that needs a lock on ms_rocket_mutex
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+
 	interface->update();
 
 	if(debug_wnds) {
-		//debug windows are autonomous
-		debugger->update();
-		devices->update();
+		// quick hack to limit the update freq of the dbg windows
+		static bool dbgupdate = true;
+		dbgupdate = !dbgupdate;
+		if(dbgupdate) {
+			debugger->update();
+			devices->update();
+		}
 		stats->update();
 	}
 
-	//always update the status
 	if(status) {
 		status->update();
 	}
+
+	// timers are where the timed windows events take place
+	// like the interface messages clears
+	while(!timers.update(_current_time));
 }
 
 void GUI::Windows::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
 	if(debug_wnds) {
-		debugger->show();
 		devices->show();
+		debugger->show();
 		stats->show();
 	} else {
 		debugger->hide();
@@ -1486,22 +1635,42 @@ bool GUI::Windows::needs_input()
 
 void GUI::Windows::shutdown()
 {
-	delete status;
-	status = nullptr;
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 
-	delete debugger;
-	debugger = nullptr;
+	if(status) {
+		status->close();
+		delete status;
+		status = nullptr;
+	}
 
-	delete devices;
-	devices = nullptr;
+	if(debugger) {
+		debugger->close();
+		delete debugger;
+		debugger = nullptr;
+	}
 
-	delete stats;
-	stats = nullptr;
+	if(devices) {
+		devices->close();
+		delete devices;
+		devices = nullptr;
+	}
 
-	delete desktop;
-	desktop = nullptr;
+	if(stats) {
+		stats->close();
+		delete stats;
+		stats = nullptr;
+	}
 
-	delete interface;
-	interface = nullptr;
+	if(desktop) {
+		desktop->close();
+		delete desktop;
+		desktop = nullptr;
+	}
+
+	if(interface) {
+		interface->close();
+		delete interface;
+		interface = nullptr;
+	}
 }
 

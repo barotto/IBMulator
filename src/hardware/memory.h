@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_HW_MEMORY_H
 #define IBMULATOR_HW_MEMORY_H
 
+#include "model.h"
 #include "statebuf.h"
 #include "interval_tree.h"
 #include "devices/hddparams.h"
@@ -37,11 +38,14 @@
 class Memory;
 extern Memory g_memory;
 
+#define MEM_TRAP_READ  0x1
+#define MEM_TRAP_WRITE 0x2
+
 typedef std::function<void(
 		uint32_t,  // address
-		uint8_t,   // 0=read, 1=write
-		uint16_t,  // value read or written
-		uint8_t    // data lenght (1=byte, 2=word)
+		uint8_t,   // read or write
+		uint32_t,  // value read or written
+		uint8_t    // data lenght (1=byte, 2=word, 4=dword)
 	)> memtrap_fun_t;
 
 struct memtrap_t {
@@ -63,10 +67,8 @@ protected:
 	//TODO change these C arrays to std::vector
 	uint8_t *m_buffer;
 	uint m_mainbuf_size;
-	uint8_t *m_sysrom;
 	uint m_base_size;
 	uint m_ext_size;
-	std::string m_bios_md5;
 
 	struct {
 		bool A20_enabled;
@@ -76,16 +78,8 @@ protected:
 	memtrap_intervalTree_t m_traps_tree;
 	std::vector<memtrap_interval_t> m_traps_intervals;
 
-	const static std::map<std::string, uint32_t> ms_hdd_paramtable_offsets;
-
-	uint8_t read(uint32_t _address) const noexcept;
-	void write(uint32_t _address, uint8_t value) noexcept;
-
-	int  load_rom_file(const std::string &_filename, uint32_t _destaddr=0);
-	void load_rom_dir(const std::string &_dirname);
-	void load_rom_archive(const std::string &_filename);
-
-	void update_BIOS_8bit_checksum();
+	uint8_t read_byte(uint32_t _address) const noexcept;
+	void write_byte(uint32_t _address, uint8_t value) noexcept;
 
 public:
 
@@ -95,23 +89,61 @@ public:
 	void init();
 	void reset();
 	void config_changed();
+	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
 
-	uint8_t read_byte(uint32_t _address) const noexcept;
-	uint16_t read_word(uint32_t _address) const noexcept;
-	uint32_t read_dword(uint32_t _address) const noexcept;
-	uint64_t read_qword(uint32_t _address) const noexcept;
-
-	uint8_t read_byte_notraps(uint32_t _address) const noexcept;
-	uint16_t read_word_notraps(uint32_t _address) const noexcept;
-	uint32_t read_dword_notraps(uint32_t _address) const noexcept;
+	template<unsigned LEN>
+	uint32_t read_notraps(uint32_t _address) const noexcept
+	{
+		uint32_t b0 = read_byte(_address), b1=0, b2=0, b3=0;
+		if(LEN >= 2) {
+			b1 = read_byte(_address+1);
+		}
+		if(LEN == 4) {
+			b2 = read_byte(_address+2);
+			b3 = read_byte(_address+3);
+		}
+		return (b3<<24 | b2<<16 | b1<<8 | b0);
+	}
 	uint64_t read_qword_notraps(uint32_t _address) const noexcept;
 
-	void write_byte(uint32_t _address, uint8_t value) noexcept;
-	void write_word(uint32_t _address, uint16_t value) noexcept;
-	void write_dword(uint32_t _address, uint32_t value) noexcept;
+	template<unsigned LEN>
+	uint32_t read(uint32_t _address, unsigned _trap_len = LEN) const noexcept
+	{
+		uint32_t value = read_notraps<LEN>(_address);
+
+		if(MEMORY_TRAPS && _trap_len==LEN) {
+			check_trap(_address, MEM_TRAP_READ, value, LEN);
+		}
+
+		return value;
+	}
+	uint64_t read_qword(uint32_t _address) const noexcept;
+
+	template<unsigned LEN>
+	void write_notraps(uint32_t _address, uint32_t value) noexcept
+	{
+		write_byte(_address, uint8_t(value));
+		if(LEN >=2) {
+			write_byte(_address+1, uint8_t(value>>8));
+		}
+		if(LEN == 4) {
+			write_byte(_address+2, uint8_t(value>>16));
+			write_byte(_address+3, uint8_t(value>>24));
+		}
+	}
+
+	template<unsigned LEN>
+	void write(uint32_t _address, uint32_t _value, unsigned _trap_len = LEN) noexcept
+	{
+		write_notraps<LEN>(_address, _value);
+
+		if(MEMORY_TRAPS && _trap_len==LEN) {
+			check_trap(_address, MEM_TRAP_WRITE, _value, LEN);
+		}
+	}
 
 	void set_A20_line(bool _enabled);
-	bool get_A20_line() { return m_s.A20_enabled; }
+	inline bool get_A20_line() const { return m_s.A20_enabled; }
 
 	uint8_t *get_phy_ptr(uint32_t _address);
 	uint32_t get_ram_size() { return m_mainbuf_size; }
@@ -119,18 +151,13 @@ public:
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);
 
-	void load(uint32_t _address, const std::string &_filename);
-	void dump(const std::string &_filename, uint32_t _address, uint _len);
-
-	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
-
-	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
-
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);
 
-	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint16_t _value, uint8_t _len);
-	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint16_t _value, uint8_t _len);
+	void dump(const std::string &_filename, uint32_t _address, uint _len);
+	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
+	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
+	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 };
 
 

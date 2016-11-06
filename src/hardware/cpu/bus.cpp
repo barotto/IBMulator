@@ -19,14 +19,40 @@
 
 #include "ibmulator.h"
 #include "bus.h"
+#include "mmu.h"
+#include "../cpu.h"
+#include "program.h"
 #include <cstring>
 
 CPUBus g_cpubus;
 
-#define CPUBUS_STATE_NAME "CPUBus"
+ini_enum_map_t g_cpu_busw = {
+	{ "286",   2 },
+	{ "386SX", 2 },
+	{ "386DX", 4 }
+};
 
-#define CPU_PQ_THRESHOLD   2
-#define CPU_PQ_ODDPENALTY  ((!m_s.pq_valid) && (m_s.pq_tail & 1))
+/* http://www.rcollins.org/secrets/PrefetchQueue.html
+ * The 80386 is documented as having a 16-byte prefetch queue. At one time,
+ * it did, but due to a bug in the pipelining architecture, Intel had to
+ * abandon the 16-byte queue, and only use a 12-byte queue. The change
+ * occurred (I believe) between the D0, and D1 step of the '386.
+ * The '386SX wasn't affected by the bug, and therefore hasn't changed.
+ */
+ini_enum_map_t g_cpu_pqs = {
+	{ "286",   6 },
+	{ "386SX", 16 },
+	{ "386DX", 12 }
+};
+
+ini_enum_map_t g_cpu_pqt = {
+	{ "286",   2 },
+	{ "386SX", 4 },
+	{ "386DX", 4 }
+};
+
+#define CPUBUS_STATE_NAME "CPUBus"
+#define CPU_PQ_ODDPENALTY ((!m_s.pq_valid) && (m_s.pq_tail & 1))
 
 
 CPUBus::CPUBus()
@@ -50,6 +76,12 @@ void CPUBus::reset()
 
 void CPUBus::config_changed()
 {
+	m_width = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_busw);
+	m_pq_size = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_pqs);
+	m_pq_thres = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_pqt);
+
+	PINFOF(LOG_V1, LOG_CPU, "Bus width: %d-bit, Prefetch Queue: %d byte\n",
+			m_width*8, m_pq_size);
 }
 
 void CPUBus::save_state(StateBuf &_state)
@@ -66,39 +98,51 @@ void CPUBus::restore_state(StateBuf &_state)
 	h.name = CPUBUS_STATE_NAME;
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
+	invalidate_pq();
 }
 
 void CPUBus::pq_fill(uint btoread)
 {
-	uint pos = (get_pq_cur_index() + get_pq_cur_size()) % CPU_PQ_SIZE;
+	uint pos = (get_pq_cur_index() + get_pq_cur_size()) % m_pq_size;
 	while(btoread--) {
 		uint32_t addr = m_s.pq_tail;
-		m_s.pq[pos++] = g_memory.read_byte(addr);
+		m_s.pq[pos++] = g_memory.read<1>(addr);
 		m_s.pq_tail++;
-		pos %= CPU_PQ_SIZE;
+		pos %= m_pq_size;
 	}
-	int hadv = m_s.pq_tail-m_s.pq_head-CPU_PQ_SIZE;
+	int hadv = m_s.pq_tail-m_s.pq_head-m_pq_size;
 	if(hadv>0) {
 		m_s.pq_head += hadv;
-		m_s.pq_headpos = (m_s.pq_headpos+hadv) % CPU_PQ_SIZE;
+		m_s.pq_headpos = (m_s.pq_headpos+hadv) % m_pq_size;
 	}
 	m_s.pq_valid = true;
 }
 
+void CPUBus::reset_pq()
+{
+	m_s.eip = REG_EIP;
+	if(IS_PAGING()) {
+		m_s.cseip = g_cpummu.TLB_lookup(REG_CS.desc.base + REG_EIP, 1, IS_USER_PL, false);
+		//MMU writes to memory
+		update(0);
+	} else {
+		m_s.cseip = REG_CS.desc.base + REG_EIP;
+	}
+	m_s.pq_head = m_s.cseip;
+	m_s.pq_headpos = 0;
+	m_s.pq_tail = m_s.cseip;
+	m_cycles_ahead = 0;
+}
+
 void CPUBus::update(int _cycles)
 {
-	if(!m_s.pq_valid) {
-		m_s.pq_head = m_s.csip;
-		m_s.pq_headpos = 0;
-		m_s.pq_tail = m_s.csip;
-		m_cycles_ahead = 0;
-	} else {
+	if(m_s.pq_valid) {
 		_cycles -= m_cycles_ahead;
 	}
 	if(_cycles>0) {
 		m_cycles_ahead = 0;
 		uint free_space = get_pq_free_space();
-		if(free_space >= CPU_PQ_THRESHOLD) {
+		if(free_space >= m_pq_thres) {
 			uint bytes = CPU_PQ_ODDPENALTY;
 			_cycles -= DRAM_TX_CYCLES*bytes;
 			while(_cycles>0) {
@@ -118,9 +162,12 @@ void CPUBus::update(int _cycles)
 	//flush the write queue
 	for(wq_data& data : m_write_queue) {
 		if(data.len==1) {
-			g_memory.write_byte(data.address, data.value);
+			g_memory.write<1>(data.address, data.data, data.trap_len);
+		} else if (data.len==2) {
+			g_memory.write<2>(data.address, data.data, data.trap_len);
 		} else {
-			g_memory.write_word(data.address, data.value);
+			assert(data.len==4);
+			g_memory.write<4>(data.address, data.data, data.trap_len);
 		}
 		m_cycles_ahead += data.cycles;
 	}
@@ -131,8 +178,8 @@ uint8_t CPUBus::fetchb()
 {
 	uint8_t b;
 	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.csip<=m_s.pq_tail);
-		if(m_s.csip == m_s.pq_tail) {
+		assert(m_s.cseip <= m_s.pq_tail);
+		if(m_s.cseip == m_s.pq_tail) {
 			//the pq is empty
 			if(CPU_PQ_ODDPENALTY) {
 				pq_fill(1);
@@ -147,11 +194,11 @@ uint8_t CPUBus::fetchb()
 		}
 		b = m_s.pq[get_pq_cur_index()];
 	} else {
-		b = g_memory.read_byte(m_s.csip);
+		b = g_memory.read<1>(m_s.cseip);
 		m_dram_r++;
 	}
-	m_s.csip++;
-	m_s.ip++;
+	m_s.cseip++;
+	m_s.eip++;
 	return b;
 }
 
@@ -159,8 +206,8 @@ uint16_t CPUBus::fetchw()
 {
 	uint8_t b0, b1;
 	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.csip<=m_s.pq_tail);
-		if(m_s.csip >= m_s.pq_tail - 1) {
+		assert(m_s.cseip <= m_s.pq_tail);
+		if(m_s.cseip >= m_s.pq_tail - 1) {
 			//the pq is empty or not full enough
 			if(CPU_PQ_ODDPENALTY) {
 				m_dram_r += 2;
@@ -175,17 +222,26 @@ uint16_t CPUBus::fetchw()
 			}
 		}
 		b0 = m_s.pq[get_pq_cur_index()];
-		m_s.csip++;
+		m_s.cseip++;
 		b1 = m_s.pq[get_pq_cur_index()];
-		m_s.csip++;
+		m_s.cseip++;
 	} else {
-		b0 = g_memory.read_byte(m_s.csip);
-		b1 = g_memory.read_byte(m_s.csip+1);
-		m_dram_r += 1+(m_s.csip & 1);
-		m_s.csip += 2;
+		b0 = g_memory.read<1>(m_s.cseip);
+		b1 = g_memory.read<1>(m_s.cseip+1);
+		m_dram_r += 1+(m_s.cseip & 1);
+		m_s.cseip += 2;
 	}
-	m_s.ip += 2;
+	m_s.eip += 2;
 	return uint16_t(b1)<<8 | b0;
+}
+
+uint32_t CPUBus::fetchdw()
+{
+	uint32_t w0, w1;
+	//TODO STUB
+	w0 = fetchw();
+	w1 = fetchw();
+	return (w1<<16) | w0;
 }
 
 int CPUBus::write_pq_to_logfile(FILE *_dest)
@@ -218,7 +274,7 @@ int CPUBus::write_pq_to_logfile(FILE *_dest)
 		if(fprintf(_dest, "%02X ", m_s.pq[idx]) < 0) {
 			return -1;
 		}
-		idx = (idx+1)%CPU_PQ_SIZE;
+		idx = (idx+1)%m_pq_size;
 	}
 
 	return 0;

@@ -46,8 +46,6 @@ public:
 	~DevStatus();
 
 	void update();
-
-	void ProcessEvent(Rocket::Core::Event & event);
 };
 
 #endif

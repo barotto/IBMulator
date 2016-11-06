@@ -23,7 +23,7 @@
 #include "executor.h"
 #include "logger.h"
 #include "../memory.h"
-
+#include "hardware/cpu.h"
 
 CPUDecoder g_cpudecoder;
 
@@ -31,26 +31,20 @@ CPUDecoder g_cpudecoder;
 Instruction * CPUDecoder::decode()
 {
 	uint8_t opcode;
+	unsigned cycles_table = CTB_IDX_NONE;
+	unsigned cycles_op = 0;
 
 	m_ilen = 0;
-	m_rep = false;
 	m_instr.valid = true;
+	m_instr.op32 = REG_CS.desc.def;
+	m_instr.addr32 = REG_CS.desc.def;
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
 	m_instr.seg = REGI_NONE;
-	m_instr.ip = g_cpubus.get_ip();
-	m_instr.csip = g_cpubus.get_csip();
-	m_instr.cycles = {
-		0,  //base
-		0,  //memop
-		0,  //extra
-		0,  //rep
-		0,  //base_rep
-		0,  //pmode
-		0,  //noj
-		0   //bu
-	};
+	m_instr.eip = g_cpubus.get_eip();
+	m_instr.cseip = g_cpubus.get_cseip();
+	m_instr.cycles = {0,0,0,0,0,0,0,0};
 
 restart_opcode:
 
@@ -72,6 +66,42 @@ restart_opcode:
 			m_instr.seg = REGI_DS;
 			goto restart_opcode;
 		}
+		case 0x64: { // segment ovr: FS
+			if(CPU_FAMILY >= CPU_386) {
+				m_instr.seg = REGI_FS;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x65: { // segment ovr: GS
+			if(CPU_FAMILY >= CPU_386) {
+				m_instr.seg = REGI_GS;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x66: { // operand-size
+			if(CPU_FAMILY >= CPU_386) {
+				m_instr.op32 = !m_instr.op32;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
+		case 0x67: { // address-size
+			if(CPU_FAMILY >= CPU_386) {
+				m_instr.addr32 = !m_instr.addr32;
+				goto restart_opcode;
+			} else {
+				illegal_opcode();
+				break;
+			}
+		}
 		case 0xF0: { // LOCK
 			PDEBUGF(LOG_V2, LOG_CPU, "LOCK\n");
 			goto restart_opcode;
@@ -83,35 +113,42 @@ restart_opcode:
 			goto restart_opcode;
 		}
 		case 0xF2: { // REPNE
-			m_rep = true;
+			m_instr.rep = true;
 			m_instr.rep_equal = false;
-			m_instr.cycles.rep = 5;
 			goto restart_opcode;
 		}
 		case 0xF3: { // REP/REPE
-			m_rep = true;
+			m_instr.rep = true;
 			m_instr.rep_equal = true;
-			m_instr.cycles.rep = 5;
 			goto restart_opcode;
 		}
 		case 0x0F: {
 			opcode = fetchb();
-			prefix_0F(opcode);
+			if(m_instr.op32) {
+				prefix_0F_32(opcode,cycles_table,cycles_op);
+			} else {
+				prefix_0F(opcode,cycles_table,cycles_op);
+			}
 			if(CPULOG) {
 				m_instr.opcode = 0xF00 + opcode;
 			}
 			break;
 		}
 		default: {
-			prefix_none(opcode);
+			if(m_instr.op32) {
+				prefix_none_32(opcode,cycles_table,cycles_op);
+			} else {
+				prefix_none(opcode,cycles_table,cycles_op);
+			}
 			if(CPULOG) {
 				m_instr.opcode = opcode;
 			}
 			break;
 		}
 	}
-
+	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (CPU_FAMILY-CPU_286)];
 	m_instr.size = m_ilen;
+	m_instr.rep_first = m_instr.rep;
 
 	return &m_instr;
 }

@@ -8,6 +8,7 @@ ibmulator_SOURCES = \
 	appconfig.cpp \
 	bench.cpp \
 	chrono.cpp \
+	timers.cpp \
 	filesys.cpp \
 	hwbench.cpp \
 	ini/ini.cpp \
@@ -15,6 +16,7 @@ ibmulator_SOURCES = \
 	main.cpp \
 	md5.cpp \
 	mixer.cpp \
+	model.cpp \
 	program.cpp \
 	statebuf.cpp \
 	syslog.cpp \
@@ -26,6 +28,7 @@ noinst_HEADERS = \
 	appconfig.h \
 	bench.h \
 	chrono.h \
+	timers.h \
 	circular_fifo.h \
 	filesys.h \
 	hwbench.h \
@@ -36,6 +39,7 @@ noinst_HEADERS = \
 	machine.h \
 	md5.h \
 	mixer.h \
+	model.h \
 	program.h \
 	shared_queue.h \
 	shared_deque.h \

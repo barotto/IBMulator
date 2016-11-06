@@ -26,7 +26,9 @@
 #include "chrono.h"
 #include "hwbench.h"
 #include "statebuf.h"
+#include "hardware/systemrom.h"
 #include "hardware/devices.h"
+#include "timers.h"
 
 class CPU;
 class Memory;
@@ -35,11 +37,21 @@ class Machine;
 extern Machine g_machine;
 
 typedef std::function<void()> Machine_fun_t;
-typedef std::function<void(uint64_t)> timer_fun_t;
 typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_state)> mouse_fun_t;
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
+/* There's some confusion about the proper terminology here.
+ * "Type" is the 4 digit number with which IBM identified the various PS/1's, like 2011 and 2121.
+ * "Model" is the combination of Type with a particular variation, e.g. 2121-A82
+ * Unfortunately people keep using Model to designate the Type.
+ * I use Type in the sense IBM intended.
+ */
+enum MachineType {
+	PS1_2011,
+	PS1_2121,
+	MCH_UNKNOWN
+};
 
 enum MachineReset {
 	MACHINE_POWER_ON,   // Machine is switched on using the power button
@@ -49,18 +61,7 @@ enum MachineReset {
 	DEVICE_SOFT_RESET   // Device RESET triggered by software
 };
 
-#define USEC_PER_SECOND (1000000)
-#define NSEC_PER_SECOND (1000000000L)
-#define INV_USEC_PER_SECOND_D (0.000001)
-#define NSEC_TO_USEC(nsec) (nsec/1000)
-#define MAX_TIMERS 24
-#define NULL_TIMER_HANDLE 10000
-#define TIMER_NAME_LEN 20
 #define PRG_NAME_LEN 261
-
-constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * 1000L; }
-constexpr uint64_t operator"" _ms ( unsigned long long int _t ) { return _t * 1000000L; }
-constexpr uint64_t operator"" _s ( unsigned long long int _t ) { return _t * 1000000000L; }
 
 class Machine
 {
@@ -73,19 +74,20 @@ private:
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
-	uint32_t m_breakpoint;
+	uint16_t m_breakpoint_cs;
+	uint32_t m_breakpoint_eip;
 	std::function<void()> m_breakpoint_clbk;
 	double m_cpu_cycles;
 	uint m_cpu_cycle_time;
 	double m_cycles_factor;
 
 	struct Timer {
-		bool        in_use;     // Timer slot is in-use (currently registered).
-		uint64_t    period;     // Timer periodocity in nsecs.
+		bool        in_use;       // Timer slot is in-use (currently registered).
+		uint64_t    period;       // Timer periodocity in nsecs.
 		uint64_t    time_to_fire; // Time to fire next (in nsecs).
-		bool        active;     // false=inactive, true=active.
-		bool        continuous; // false=one-shot timer, true=continuous periodicity.
-		timer_fun_t fire;      // A callback function for when the timer fires.
+		bool        active;       // false=inactive, true=active.
+		bool        continuous;   // false=one-shot timer, true=continuous periodicity.
+		timer_fun_t fire;         // A callback function for when the timer fires.
 		char        name[TIMER_NAME_LEN];
 	} m_timers[MAX_TIMERS];
 
@@ -102,6 +104,7 @@ private:
 
 	std::string m_irq_names[16];
 
+	SystemROM m_sysrom;
 
 	bool m_curr_prgname_changed;
 
@@ -145,7 +148,9 @@ public:
 	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
 	inline HWBench & get_bench() { return m_bench; }
 
-	inline Devices &devices() { return g_devices; }
+	inline unsigned type() const { return m_sysrom.bios().machine; }
+	inline SystemROM & sys_rom() { return m_sysrom; }
+	inline Devices & devices() { return g_devices; }
 
 	int register_timer(timer_fun_t _func, const char *_name);
 	void unregister_timer(int &_timer);
@@ -177,7 +182,7 @@ public:
 	void cmd_power_on();
 	void cmd_power_off();
 	void cmd_cpu_step();
-	void cmd_cpu_breakpoint(uint32_t _phyaddr, std::function<void()> _callback);
+	void cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback);
 	void cmd_soft_reset();
 	void cmd_reset();
 	void cmd_switch_power();
@@ -188,12 +193,12 @@ public:
 	void cmd_cpulog();
 	void cmd_prg_cpulog(std::string _prg_name);
 	void cmd_cycles_adjust(double _factor);
-	void cmd_save_state(StateBuf &_state);
-	void cmd_restore_state(StateBuf &_state);
+	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
+	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp);
 	void cmd_eject_media(uint _drive);
 
-	void sig_config_changed();
+	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 
 	//used by the GUI. inter threading considerations are in keyboard.h/cpp
 	void send_key_to_kbctrl(uint32_t key);

@@ -56,6 +56,7 @@ protected:
 	static doscodes_map_t ms_ioctl_code;
 
 	static uint32_t get_hex_value(char *_str, char *&_hex, CPUCore *_core);
+	static unsigned get_seg_idx(char *_str);
 	static bool get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int &_H, int &_S);
 
 	static void INT_def_ret(CPUCore *core, char* buf, uint buflen);
@@ -95,10 +96,9 @@ public:
 	CPUDebugger() {}
 
 	uint disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip, Memory *_mem,
-			const uint8_t *_instr_buf=nullptr, uint _instr_buf_len=0);
-	char * analyze_instruction(char * _inst, bool _mem_read,
-			CPUCore *_core, Memory *_mem, uint _opsize=16);
-	uint32_t get_address(uint16_t _seg, uint32_t _offset, CPUCore *_core);
+			const uint8_t *_instr_buf, uint _instr_buf_len, bool _cs_def);
+	unsigned last_disasm_opsize();
+	char * analyze_instruction(char * _inst, CPUCore *_core, Memory *_mem, uint _opsize);
 
 	static const char * INT_decode(bool call, uint8_t vector, uint16_t ax,
 			CPUCore *core, Memory *mem);

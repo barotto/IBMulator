@@ -33,60 +33,22 @@
 #include "format.h"
 
 
-SysDebugger::LogMessage::LogMessage(SysDebugger *_iface)
-: m_iface(_iface)
-{
-}
-
-SysDebugger::LogMessage::~LogMessage()
-{
-}
-
-void SysDebugger::LogMessage::log_put(const std::string & /*_prefix*/, const std::string & _message)
-{
-	//omit any prefix
-	m_iface->show_message(_message.c_str());
-}
-
-event_map_t SysDebugger::ms_evt_map = {
-	GUI_EVT( "cmd_switch_power", "click", SysDebugger::on_cmd_switch_power ),
-	GUI_EVT( "cmd_pause",        "click", SysDebugger::on_cmd_pause ),
-	GUI_EVT( "cmd_save_state",   "click", SysDebugger::on_cmd_save_state ),
-	GUI_EVT( "cmd_restore_state","click", SysDebugger::on_cmd_restore_state ),
-	GUI_EVT( "CPU_step",         "click", SysDebugger::on_CPU_step ),
-	GUI_EVT( "CPU_skip",         "click", SysDebugger::on_CPU_skip ),
-	GUI_EVT( "CPU_bp_btn",       "click", SysDebugger::on_CPU_bp_btn ),
-	GUI_EVT( "log_prg_toggle",   "click", SysDebugger::on_log_prg_toggle ),
-	GUI_EVT( "log_write",        "click", SysDebugger::on_log_write ),
-	GUI_EVT( "mem_dump",         "click", SysDebugger::on_mem_dump ),
-	GUI_EVT( "cs_dump",          "click", SysDebugger::on_cs_dump ),
-	GUI_EVT( "ds_dump",          "click", SysDebugger::on_ds_dump ),
-	GUI_EVT( "ss_dump",          "click", SysDebugger::on_ss_dump ),
-	GUI_EVT( "es_dump",          "click", SysDebugger::on_es_dump ),
-	GUI_EVT( "idt_dump",         "click", SysDebugger::on_idt_dump ),
-	GUI_EVT( "ldt_dump",         "click", SysDebugger::on_ldt_dump ),
-	GUI_EVT( "gdt_dump",         "click", SysDebugger::on_gdt_dump ),
-};
-
-SysDebugger::SysDebugger(Machine *_machine, GUI *_gui)
-:
-Window(_gui, "debugger.rml")
+SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine)
+: Window(_gui, _rml)
 {
 	assert(m_wnd);
 
-	m_wnd->AddEventListener("click", this, false);
-
 	m_machine = _machine;
 
-	m_core.ax = get_element("AX");
-	m_core.bx = get_element("BX");
-	m_core.cx = get_element("CX");
-	m_core.dx = get_element("DX");
+	m_core.eax = get_element("EAX");
+	m_core.ebx = get_element("EBX");
+	m_core.ecx = get_element("ECX");
+	m_core.edx = get_element("EDX");
 
-	m_core.bp = get_element("BP");
-	m_core.si = get_element("SI");
-	m_core.di = get_element("DI");
-	m_core.sp = get_element("SP");
+	m_core.ebp = get_element("EBP");
+	m_core.esi = get_element("ESI");
+	m_core.edi = get_element("EDI");
+	m_core.esp = get_element("ESP");
 
 	m_core.cs = get_element("CS");
 	m_core.ds = get_element("DS");
@@ -94,9 +56,8 @@ Window(_gui, "debugger.rml")
 	m_core.es = get_element("ES");
 	m_core.tr = get_element("TR");
 
-	m_core.ip = get_element("IP");
-	m_core.f = get_element("F");
-	m_core.msw = get_element("MSW");
+	m_core.eip = get_element("EIP");
+	m_core.eflags = get_element("EFLAGS");
 	m_core.cpl = get_element("CPL");
 
 	m_core.cf = get_element("CF");
@@ -133,35 +94,32 @@ Window(_gui, "debugger.rml")
 
 	m_core.a20 = get_element("A20");
 
-	m_memory.cs_ip = get_element("CS_IP");
-	m_memory.ds_si = get_element("DS_SI");
-	m_memory.es_di = get_element("ES_DI");
-	m_memory.ss_sp = get_element("SS_SP");
+	m_memory.cs_eip = get_element("CS_EIP");
+	m_memory.ds_esi = get_element("DS_ESI");
+	m_memory.es_edi = get_element("ES_EDI");
+	m_memory.ss_esp = get_element("SS_ESP");
 
-	m_memory.cs_ip_str = get_element("CS_IP_str");
-	m_memory.ds_si_str = get_element("DS_SI_str");
-	m_memory.es_di_str = get_element("ES_DI_str");
-	m_memory.ss_sp_str = get_element("SS_SP_str");
+	m_memory.cs_eip_str = get_element("CS_EIP_str");
+	m_memory.ds_esi_str = get_element("DS_ESI_str");
+	m_memory.es_edi_str = get_element("ES_EDI_str");
+	m_memory.ss_esp_str = get_element("SS_ESP_str");
 
 	m_tools.btn_power = get_element("cmd_switch_power");
 	m_tools.led_power = false;
 	m_tools.btn_pause = get_element("cmd_pause");
 	m_tools.led_pause = false;
 	m_tools.btn_bp = get_element("CPU_bp_btn");
-	m_tools.cs_bp = dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("CS_bp"));
-	m_tools.ip_bp = dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("IP_bp"));
-	m_tools.cs_bp->SetValue(format_hex16(REG_CS.sel.value));
-	m_tools.ip_bp->SetValue(format_hex16(REG_IP));
 	m_tools.log_prg_name =
 		dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("log_prg_name"));
 	m_tools.log_prg_toggle = get_element("log_prg_toggle");
+	m_tools.cs_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("CS_bp"));
+	m_tools.eip_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("EIP_bp"));
+	m_tools.cs_bp->SetValue(format_hex16(0));
 
 	m_disasm.line0 = get_element("disasm");
 
 	m_post = get_element("POST");
 	m_message = get_element("message");
-
-	g_syslog.add_device(LOG_INFO, LOG_MACHINE, new LogMessage(this));
 }
 
 SysDebugger::~SysDebugger()
@@ -173,63 +131,18 @@ void SysDebugger::read_memory(uint32_t _address, uint8_t *_buf, uint _len)
 	assert(_buf);
 
 	while(_len--) {
-		*(_buf++) = g_memory.read_byte_notraps(_address++);
+		*(_buf++) = g_memory.read_notraps<1>(_address++);
 	}
 }
 
-const Rocket::Core::String & SysDebugger::disasm(uint16_t _selector, uint16_t _ip, bool _analyze, uint * _size)
-{
-	CPUDebugger debugger;
-
-	static Rocket::Core::String str;
-
-	str = "";
-
-	static char empty = 0;
-
-	uint32_t start = debugger.get_address(_selector, _ip, &g_cpucore);
-	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory);
-	if(_size!=nullptr) {
-		*_size = size;
-	}
-
-	char *res = &empty;
-
-	if(_analyze) {
-		res = debugger.analyze_instruction(dline, true, &g_cpucore, &g_memory);
-		if(!res || !(*res))
-			res = &empty;
-	}
-
-	dline[30] = 0;
-
-	str.FormatString(100, "%04X:%04X &nbsp; %s &nbsp; %s",_selector,_ip, dline, res);
-
-	return str;
-};
-
 void SysDebugger::update()
 {
-	m_core.ax->SetInnerRML(format_hex16(REG_AX));
-	m_core.bx->SetInnerRML(format_hex16(REG_BX));
-	m_core.cx->SetInnerRML(format_hex16(REG_CX));
-	m_core.dx->SetInnerRML(format_hex16(REG_DX));
-
-	m_core.bp->SetInnerRML(format_hex16(REG_BP));
-	m_core.si->SetInnerRML(format_hex16(REG_SI));
-	m_core.di->SetInnerRML(format_hex16(REG_DI));
-	m_core.sp->SetInnerRML(format_hex16(REG_SP));
-
 	m_core.cs->SetInnerRML(format_hex16(REG_CS.sel.value));
 	m_core.ds->SetInnerRML(format_hex16(REG_DS.sel.value));
 	m_core.ss->SetInnerRML(format_hex16(REG_SS.sel.value));
 	m_core.es->SetInnerRML(format_hex16(REG_ES.sel.value));
 	m_core.tr->SetInnerRML(format_hex16(REG_TR.sel.value));
 
-	m_core.ip->SetInnerRML(format_hex16(REG_IP));
-	m_core.f->SetInnerRML(format_bin16(GET_FLAG(ALL)));
-	m_core.msw->SetInnerRML(format_bin4(GET_MSW(MSW_ALL)));
 	m_core.cpl->SetInnerRML(format_uint16(CPL));
 
 	m_core.cf->SetInnerRML(format_bit(FLAG_CF));
@@ -244,57 +157,14 @@ void SysDebugger::update()
 	m_core.pl->SetInnerRML(format_uint16(FLAG_IOPL));
 	m_core.nt->SetInnerRML(format_bit(FLAG_NT));
 
-	m_core.csbase->SetInnerRML(format_hex24(GET_BASE(CS)));
-	m_core.dsbase->SetInnerRML(format_hex24(GET_BASE(DS)));
-	m_core.esbase->SetInnerRML(format_hex24(GET_BASE(ES)));
-	m_core.ssbase->SetInnerRML(format_hex24(GET_BASE(SS)));
-	m_core.trbase->SetInnerRML(format_hex24(GET_BASE(TR)));
-
-	m_core.cslimit->SetInnerRML(format_hex16(GET_LIMIT(CS)));
-	m_core.dslimit->SetInnerRML(format_hex16(GET_LIMIT(DS)));
-	m_core.eslimit->SetInnerRML(format_hex16(GET_LIMIT(ES)));
-	m_core.sslimit->SetInnerRML(format_hex16(GET_LIMIT(SS)));
-	m_core.trlimit->SetInnerRML(format_hex16(GET_LIMIT(TR)));
-
 	m_core.ldt->SetInnerRML(format_hex16(REG_LDTR.sel.value));
-	m_core.ldtbase->SetInnerRML(format_hex24(GET_BASE(LDTR)));
 	m_core.ldtlimit->SetInnerRML(format_hex16(GET_LIMIT(LDTR)));
-	m_core.idtbase->SetInnerRML(format_hex24(GET_BASE(IDTR)));
 	m_core.idtlimit->SetInnerRML(format_hex16(GET_LIMIT(IDTR)));
-	m_core.gdtbase->SetInnerRML(format_hex24(GET_BASE(GDTR)));
 	m_core.gdtlimit->SetInnerRML(format_hex16(GET_LIMIT(GDTR)));
 
 	m_core.a20->SetInnerRML(format_bit(g_memory.get_A20_line()));
 
-	const uint len = 12;
-	uint8_t buf[len];
-
-	read_memory(GET_PHYADDR(CS, REG_IP), buf, len);
-	m_memory.cs_ip->SetInnerRML(format_words(buf, len));
-	m_memory.cs_ip_str->SetInnerRML(format_words_string(buf, len));
-
-	read_memory(GET_PHYADDR(DS, REG_SI), buf, len);
-	m_memory.ds_si->SetInnerRML(format_words(buf, len));
-	m_memory.ds_si_str->SetInnerRML(format_words_string(buf, len));
-
-	read_memory(GET_PHYADDR(ES, REG_DI), buf, len);
-	m_memory.es_di->SetInnerRML(format_words(buf, len));
-	m_memory.es_di_str->SetInnerRML(format_words_string(buf, len));
-
-	read_memory(GET_PHYADDR(SS, REG_SP), buf, len);
-	m_memory.ss_sp->SetInnerRML(format_words(buf, len));
-	m_memory.ss_sp_str->SetInnerRML(format_words_string(buf, len));
-
-	Rocket::Core::String str;
-	uint size;
-	uint16_t nextip = REG_IP;
-	str = disasm(REG_CS.sel.value, nextip, true, &size) + "<br />";
-	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, &size) + "<br />";
-	nextip += size;
-	str += disasm(REG_CS.sel.value, nextip, false, nullptr);
-	m_disasm.line0->SetInnerRML(str);
-
+	RC::String str;
 	str.FormatString(3, "%02X", m_gui->machine()->get_POST_code());
 	m_post->SetInnerRML(str);
 
@@ -316,18 +186,12 @@ void SysDebugger::update()
 
 void SysDebugger::show_message(const char* _mex)
 {
-	static std::atomic<int> callscnt;
-
 	Rocket::Core::String str(_mex);
 	str.Replace("\n", "<br />");
+	if(str.Empty()) {
+		str = "&nbsp;";
+	}
 	m_message->SetInnerRML(str);
-	callscnt++;
-	timed_event(3000, [this]() {
-		callscnt--;
-		if(callscnt==0) {
-			m_message->SetInnerRML("&nbsp;");
-		}
-	});
 }
 
 void SysDebugger::on_cmd_switch_power(RC::Event &)
@@ -386,45 +250,34 @@ void SysDebugger::on_CPU_step(RC::Event &)
 	}
 }
 
-void SysDebugger::on_CPU_skip(RC::Event &)
-{
-	if(m_machine->is_paused()) {
-		uint size;
-		disasm(REG_CS.sel.value, REG_IP, false, &size);
-		uint32_t curphy = GET_PHYADDR(CS, REG_IP);
-		m_machine->cmd_cpu_breakpoint(curphy+size, [](){});
-		m_tools.btn_bp->SetClass("on", false);
-		m_machine->cmd_resume();
-	}
-}
-
 void SysDebugger::on_CPU_bp_btn(RC::Event &)
 {
+	// this works only in real address mode
 	if(!m_tools.btn_bp->IsClassSet("on")) {
-		Rocket::Core::String cs_str = m_tools.cs_bp->GetValue();
-		uint cs,ip;
+		RC::String cs_str = m_tools.cs_bp->GetValue();
+		uint32_t cs,eip;
 		if(!sscanf(cs_str.CString(), "%x", &cs)) {
-			show_message("invalid breakpoint Code Segment");
+			m_gui->show_dbg_message("invalid breakpoint Code Segment");
 			return;
 		}
-		Rocket::Core::String ip_str = m_tools.ip_bp->GetValue();
-		if(!sscanf(ip_str.CString(), "%x", &ip)) {
-			show_message("invalid breakpoint Offset");
+		RC::String eip_str = m_tools.eip_bp->GetValue();
+		if(!sscanf(eip_str.CString(), "%x", &eip)) {
+			m_gui->show_dbg_message("invalid breakpoint Offset");
 			return;
 		}
 
-		uint32_t phy = (cs<<4) + ip;
-		if(phy > 0) {
-			m_machine->cmd_cpu_breakpoint(phy, [&](){
+		if(cs > 0) {
+			m_machine->cmd_cpu_breakpoint(cs, eip, [&](){
+				//TODO this function is called by a different thread!
 				m_tools.btn_bp->SetClass("on", false);
 			});
 			std::stringstream ss;
-			ss << "breakpoint set to " << cs_str.CString() << ":" << ip_str.CString();
-			show_message(ss.str().c_str());
+			ss << "breakpoint set to " << cs_str.CString() << ":" << eip_str.CString();
+			m_gui->show_dbg_message(ss.str().c_str());
 			m_tools.btn_bp->SetClass("on", true);
 		}
 	} else {
-		m_machine->cmd_cpu_breakpoint(0, [](){});
+		m_machine->cmd_cpu_breakpoint(0, 0, [](){});
 		m_tools.btn_bp->SetClass("on", false);
 	}
 }
@@ -435,19 +288,19 @@ void SysDebugger::on_log_prg_toggle(RC::Event &)
 		if(m_tools.log_prg_toggle->IsClassSet("on")) {
 			m_tools.log_prg_toggle->SetClass("on", false);
 			m_machine->cmd_prg_cpulog("");
-			show_message("program CPU logging deactivated");
+			m_gui->show_dbg_message("program CPU logging deactivated");
 		} else {
 			Rocket::Core::String str = m_tools.log_prg_name->GetValue();
 			if(str != "") {
 				m_tools.log_prg_toggle->SetClass("on", true);
 				m_machine->cmd_prg_cpulog(str.CString());
-				show_message("program CPU logging activated");
+				m_gui->show_dbg_message("program CPU logging activated");
 			} else {
-				show_message("specify a program name");
+				m_gui->show_dbg_message("specify a program name");
 			}
 		}
 	} else {
-		show_message("recompile with CPULOG defined as true in cpu/logger.h");
+		m_gui->show_dbg_message("recompile with CPULOG defined as true in cpu/logger.h");
 	}
 }
 
@@ -455,9 +308,9 @@ void SysDebugger::on_log_write(RC::Event &)
 {
 	if(CPULOG) {
 		m_machine->cmd_cpulog();
-		show_message("writing CPU log...");
+		m_gui->show_dbg_message("writing CPU log...");
 	} else {
-		show_message("recompile with CPULOG defined as true in cpu/logger.h");
+		m_gui->show_dbg_message("recompile with CPULOG defined as true in cpu/logger.h");
 	}
 }
 
