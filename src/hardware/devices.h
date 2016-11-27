@@ -79,8 +79,11 @@ public:
 
 	template<class T>
 	inline T* device() {
-		if(m_devices.find(T::NAME) != m_devices.end()) {
-			return dynamic_cast<T*>(m_devices[T::NAME]);
+		for(auto dev : m_devices) {
+			T* devptr = dynamic_cast<T*>(dev.second);
+			if(devptr != nullptr) {
+				return devptr;
+			}
 		}
 		return nullptr;
 	}

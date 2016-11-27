@@ -32,7 +32,7 @@
 #include "devices/vga.h"
 #include "devices/keyboard.h"
 #include "devices/floppy.h"
-#include "devices/harddrv.h"
+#include "devices/hdc_ps1.h"
 #include "devices/serial.h"
 #include "devices/parallel.h"
 #include "devices/systemboard_ps1_2011.h"
@@ -115,7 +115,7 @@ void Devices::config_changed()
 	install_only_if<FloppyCtrl>(
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
 	);
-	install_only_if<HardDrive>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
+	install_only_if<HardDiskCtrl_PS1>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =
 	install_only_if<PS1Audio>(g_program.config().get_bool(PS1AUDIO_SECTION, PS1AUDIO_ENABLED));

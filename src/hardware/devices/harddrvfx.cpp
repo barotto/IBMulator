@@ -63,7 +63,7 @@ void HardDriveFX::install()
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
 }
 
-uint64_t HardDriveFX::spin_up_time() const
+uint64_t HardDriveFX::spin_up_time_us() const
 {
 	return m_buffers[HDD_SPIN_UP].duration_us();
 }

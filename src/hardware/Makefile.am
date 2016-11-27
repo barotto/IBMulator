@@ -35,7 +35,9 @@ libhardware_a_SOURCES = \
 	devices/drivefx.cpp \
 	devices/floppy.cpp \
 	devices/floppyfx.cpp \
-	devices/harddrv.cpp \
+	devices/hdc.cpp \
+	devices/hdc_ps1.cpp \
+	devices/hdd.cpp \
 	devices/harddrvfx.cpp \
 	devices/mediaimage.cpp \
 	devices/vvfat.cpp \
@@ -80,7 +82,9 @@ noinst_HEADERS = \
 	devices/drivefx.h \
 	devices/floppy.h \
 	devices/floppyfx.h \
-	devices/harddrv.h \
+	devices/hdc.h \
+	devices/hdc_ps1.h \
+	devices/hdd.h \
 	devices/harddrvfx.h \
 	devices/hddparams.h \
 	devices/mediaimage.h \

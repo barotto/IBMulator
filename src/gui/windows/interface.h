@@ -31,7 +31,7 @@ class Machine;
 class GUI;
 class Mixer;
 class FloppyCtrl;
-class HardDrive;
+class HardDiskCtrl;
 
 class InterfaceFX : public GUIFX
 {
@@ -116,7 +116,7 @@ protected:
 	Mixer *m_mixer;
 	FileSelect *m_fs;
 	FloppyCtrl *m_floppy;
-	HardDrive *m_hdd;
+	HardDiskCtrl *m_hdd;
 
 	InterfaceFX m_audio;
 

@@ -28,7 +28,7 @@
 #include <Rocket/Core.h>
 #include "hardware/devices/vga.h"
 #include "hardware/devices/floppy.h"
-#include "hardware/devices/harddrv.h"
+#include "hardware/devices/hdc.h"
 using namespace std::placeholders;
 
 const SoundFX::samples_t InterfaceFX::ms_samples = {
@@ -233,7 +233,7 @@ void Interface::config_changed()
 
 	m_leds.hdd = false;
 	m_status.hdd_led->SetClass("active", false);
-	m_hdd = m_machine->devices().device<HardDrive>();
+	m_hdd = m_machine->devices().device<HardDiskCtrl>();
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));

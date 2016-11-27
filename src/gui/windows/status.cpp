@@ -27,7 +27,7 @@
 #include <sstream>
 
 #include "hardware/devices/floppy.h"
-#include "hardware/devices/harddrv.h"
+#include "hardware/devices/hdc.h"
 
 Status::Status(GUI * _gui)
 :
@@ -92,7 +92,7 @@ void Status::update()
 void Status::config_changed()
 {
 	m_floppy = m_gui->machine()->devices().device<FloppyCtrl>();
-	m_hdd = m_gui->machine()->devices().device<HardDrive>();
+	m_hdd = m_gui->machine()->devices().device<HardDiskCtrl>();
 	m_leds.power = false;
 	m_leds.floppy_a = false;
 	m_leds.floppy_b = false;
