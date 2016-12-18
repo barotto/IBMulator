@@ -27,7 +27,7 @@
 #include <sstream>
 
 #include "hardware/devices/floppy.h"
-#include "hardware/devices/hdc.h"
+#include "hardware/devices/storagectrl.h"
 
 Status::Status(GUI * _gui)
 :

@@ -32,7 +32,7 @@
 #include "devices/vga.h"
 #include "devices/keyboard.h"
 #include "devices/floppy.h"
-#include "devices/hdc_ps1.h"
+#include "devices/storagectrl_ps1.h"
 #include "devices/serial.h"
 #include "devices/parallel.h"
 #include "devices/systemboard_ps1_2011.h"

@@ -17,8 +17,8 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_PORTS_H
-#define IBMULATOR_HW_PORTS_H
+#ifndef IBMULATOR_HW_DEVICES_H
+#define IBMULATOR_HW_DEVICES_H
 
 #include "statebuf.h"
 #include <set>

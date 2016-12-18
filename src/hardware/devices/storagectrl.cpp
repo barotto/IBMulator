@@ -18,10 +18,7 @@
  */
 
 #include "ibmulator.h"
-#include "hdc.h"
-#include "hddparams.h"
-#include "hardware/devices.h"
-#include <cstring>
+#include "storagectrl.h"
 
 
 IODEVICE_PORTS(StorageCtrl) = {};

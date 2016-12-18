@@ -28,7 +28,7 @@
 #include <Rocket/Core.h>
 #include "hardware/devices/vga.h"
 #include "hardware/devices/floppy.h"
-#include "hardware/devices/hdc.h"
+#include "hardware/devices/storagectrl.h"
 using namespace std::placeholders;
 
 const SoundFX::samples_t InterfaceFX::ms_samples = {

@@ -26,12 +26,12 @@
  */
 
 #include "ibmulator.h"
-#include "hdc_ps1.h"
 #include "hddparams.h"
 #include "program.h"
 #include "machine.h"
 #include "hardware/memory.h"
 #include "hardware/devices.h"
+#include "hardware/devices/storagectrl_ps1.h"
 #include "hardware/devices/systemboard.h"
 #include "hardware/devices/dma.h"
 #include "hardware/devices/pic.h"

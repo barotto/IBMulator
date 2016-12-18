@@ -20,8 +20,7 @@
 #ifndef IBMULATOR_HW_STORAGECTRL_PS1_H
 #define IBMULATOR_HW_STORAGECTRL_PS1_H
 
-#include "hardware/iodevice.h"
-#include "hdc.h"
+#include "storagectrl.h"
 #include "hdd.h"
 #include <memory>
 
