@@ -82,10 +82,12 @@ public:
 	void power_off();
 	void config_changed();
 
+	unsigned type() const { return m_type; }
+	uint64_t size() const { return m_disk->hd_size; }
+	uint32_t sectors() const { return m_sectors; }
 	const MediaGeometry &  geometry() const { return m_disk->geometry; }
 	const HDDPerformance & performance() const { return m_performance; }
 
-	unsigned type() const { return m_type; }
 	uint32_t seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl);
 	uint32_t rotational_latency_us(double _start_hw_sector, unsigned _dest_log_sector);
 	int      hw_sector_number(int _logical_sector) const;

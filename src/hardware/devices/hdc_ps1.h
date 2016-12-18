@@ -17,8 +17,8 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_HDC_PS1_H
-#define IBMULATOR_HW_HDC_PS1_H
+#ifndef IBMULATOR_HW_STORAGECTRL_PS1_H
+#define IBMULATOR_HW_STORAGECTRL_PS1_H
 
 #include "hardware/iodevice.h"
 #include "hdc.h"
@@ -26,16 +26,14 @@
 #include <memory>
 
 
-#define HDCPS1_DATA_STACK_SIZE 518
-
-class HardDiskCtrl_PS1 : public HardDiskCtrl
+class StorageCtrl_PS1 : public StorageCtrl
 {
-	IODEVICE(HardDiskCtrl_PS1, "PS/1 Hard Disk Controller")
+	IODEVICE(StorageCtrl_PS1, "PS/1 Storage Controller")
 
 private:
 
 	struct DataBuffer {
-		uint8_t  stack[HDCPS1_DATA_STACK_SIZE];
+		uint8_t  stack[518];
 		unsigned ptr;
 		unsigned size;
 		inline bool is_used() {
@@ -140,16 +138,19 @@ private:
 	int m_cmd_timer;
 	int m_dma_timer;
 
-	static const std::function<void(HardDiskCtrl_PS1&)> ms_cmd_funcs[0xF+1];
+	HardDiskDrive m_disk;
+
+	static const std::function<void(StorageCtrl_PS1&)> ms_cmd_funcs[0xF+1];
 	static const uint32_t ms_cmd_times[0xF+1];
 
 public:
-	HardDiskCtrl_PS1(Devices *_dev);
-	~HardDiskCtrl_PS1();
+	StorageCtrl_PS1(Devices *_dev);
+	~StorageCtrl_PS1();
 
 	void install();
 	void remove();
 	void reset(unsigned type);
+	void config_changed();
 	void power_off();
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);

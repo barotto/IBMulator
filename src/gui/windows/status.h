@@ -24,7 +24,7 @@
 
 class GUI;
 class FloppyCtrl;
-class HardDiskCtrl;
+class StorageCtrl;
 
 class Status : public Window
 {
@@ -38,7 +38,7 @@ private:
 	} m_leds;
 
 	FloppyCtrl *m_floppy;
-	HardDiskCtrl *m_hdd;
+	StorageCtrl *m_hdd;
 
 public:
 	Status(GUI * _gui);

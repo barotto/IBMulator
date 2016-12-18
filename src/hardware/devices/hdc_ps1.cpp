@@ -38,42 +38,42 @@
 #include <cstring>
 
 
-IODEVICE_PORTS(HardDiskCtrl_PS1) = {
+IODEVICE_PORTS(StorageCtrl_PS1) = {
 	{ 0x0320, 0x0320, PORT_8BIT|PORT_RW }, // Data Register R / W
-	{ 0x0322, 0x0322, PORT_8BIT|PORT_RW }, //Attachment Status Reg R / Attachment Control Reg W
-	{ 0x0324, 0x0324, PORT_8BIT|PORT_RW }  //Interrupt Status Reg R / Attention Reg W
+	{ 0x0322, 0x0322, PORT_8BIT|PORT_RW }, // Attachment Status Reg R / Attachment Control Reg W
+	{ 0x0324, 0x0324, PORT_8BIT|PORT_RW }  // Interrupt Status Reg R / Attention Reg W
 };
-#define HDCPS1_DMA  3
-#define HDCPS1_IRQ  14
 
-#define HDCPS1_DEFTIME_US      10u  // default busy time
+#define HDC_DMA  3
+#define HDC_IRQ  14
 
+#define DEFTIME_US   10u  // default busy time
 
 //Attachment Status Reg bits
-#define HDCPS1_ASR_TX_EN    0x1  //Transfer Enable
-#define HDCPS1_ASR_INT_REQ  0x2  //Interrupt Request
-#define HDCPS1_ASR_BUSY     0x4  //Busy
-#define HDCPS1_ASR_DIR      0x8  //Direction
-#define HDCPS1_ASR_DATA_REQ 0x10 //Data Request
+#define ASR_TX_EN    0x1  // Transfer Enable
+#define ASR_INT_REQ  0x2  // Interrupt Request
+#define ASR_BUSY     0x4  // Busy
+#define ASR_DIR      0x8  // Direction
+#define ASR_DATA_REQ 0x10 // Data Request
 
 //Attention Reg bits
-#define HDCPS1_ATT_DATA 0x10 //Data Request
-#define HDCPS1_ATT_SSB  0x20 //Sense Summary Block
-#define HDCPS1_ATT_CSB  0x40 //Command Specify Block
-#define HDCPS1_ATT_CCB  0x80 //Command Control Block
+#define ATT_DATA 0x10 // Data Request
+#define ATT_SSB  0x20 // Sense Summary Block
+#define ATT_CSB  0x40 // Command Specify Block
+#define ATT_CCB  0x80 // Command Control Block
 
 //Attachment Control Reg bits
-#define HDCPS1_ACR_DMA_EN 0x1  //DMA Enable
-#define HDCPS1_ACR_INT_EN 0x2  //Interrupt Enable
-#define HDCPS1_ACR_RESET  0x80 //Reset
+#define ACR_DMA_EN 0x1  // DMA Enable
+#define ACR_INT_EN 0x2  // Interrupt Enable
+#define ACR_RESET  0x80 // Reset
 
 //Interrupt Status Reg bits
-#define HDCPS1_ISR_CMD_REJECT  0x20 //Command Reject
-#define HDCPS1_ISR_INVALID_CMD 0x40 //Invalid Command
-#define HDCPS1_ISR_TERMINATION 0x80 //Termination Error
+#define ISR_CMD_REJECT  0x20 // Command Reject
+#define ISR_INVALID_CMD 0x40 // Invalid Command
+#define ISR_TERMINATION 0x80 // Termination Error
 
 //CCB commands
-enum HDCPS1_CMD {
+enum CMD {
 	READ_DATA   = 0x1,
 	READ_CHECK  = 0x2,
 	READ_EXT    = 0x3,
@@ -92,110 +92,131 @@ enum HDCPS1_CMD {
  * drive, but only for the READ_DATA, SEEK, and RECALIBRATE commands.
  * Others have been arbitrarily set with the same value as of READ_DATA.
  */
-const uint32_t HardDiskCtrl_PS1::ms_cmd_times[0xF+1] = {
-       0, //0x0 undefined
-    2200, //0x1 READ_DATA
-    2200, //0x2 READ_CHECK
-    2200, //0x3 READ_EXT
-       0, //0x4 undefined
-    2200, //0x5 READ_ID
-       0, //0x6 undefined
-       0, //0x7 undefined
- 4000000, //0x8 RECALIBRATE
-    1800, //0x9 WRITE_DATA TODO a little discount: dual buffering is not implemented for the write
-    2200, //0xA WRITE_VFY
-    2200, //0xB WRITE_EXT
-       0, //0xC undefined
-    2200, //0xD FORMAT_DISK
-    2940, //0xE SEEK
-    2200  //0xF FORMAT_TRK
+const uint32_t StorageCtrl_PS1::ms_cmd_times[0xF+1] = {
+       0, // 0x0 undefined
+    2200, // 0x1 READ_DATA
+    2200, // 0x2 READ_CHECK
+    2200, // 0x3 READ_EXT
+       0, // 0x4 undefined
+    2200, // 0x5 READ_ID
+       0, // 0x6 undefined
+       0, // 0x7 undefined
+ 4000000, // 0x8 RECALIBRATE
+    1800, // 0x9 WRITE_DATA TODO a little discount: dual buffering is not implemented for the write
+    2200, // 0xA WRITE_VFY
+    2200, // 0xB WRITE_EXT
+       0, // 0xC undefined
+    2200, // 0xD FORMAT_DISK
+    2940, // 0xE SEEK
+    2200  // 0xF FORMAT_TRK
 };
 
-const std::function<void(HardDiskCtrl_PS1&)> HardDiskCtrl_PS1::ms_cmd_funcs[0xF+1] = {
-	&HardDiskCtrl_PS1::cmd_undefined,    //0x0
-	&HardDiskCtrl_PS1::cmd_read_data,    //0x1
-	&HardDiskCtrl_PS1::cmd_read_check,   //0x2
-	&HardDiskCtrl_PS1::cmd_read_ext,     //0x3
-	&HardDiskCtrl_PS1::cmd_undefined,    //0x4
-	&HardDiskCtrl_PS1::cmd_read_id,      //0x5
-	&HardDiskCtrl_PS1::cmd_undefined,    //0x6
-	&HardDiskCtrl_PS1::cmd_undefined,    //0x7
-	&HardDiskCtrl_PS1::cmd_recalibrate,  //0x8
-	&HardDiskCtrl_PS1::cmd_write_data,   //0x9
-	&HardDiskCtrl_PS1::cmd_write_vfy,    //0xA
-	&HardDiskCtrl_PS1::cmd_write_ext,    //0xB
-	&HardDiskCtrl_PS1::cmd_undefined,    //0xC
-	&HardDiskCtrl_PS1::cmd_format_disk,  //0xD
-	&HardDiskCtrl_PS1::cmd_seek,         //0xE
-	&HardDiskCtrl_PS1::cmd_format_trk    //0xF
+const std::function<void(StorageCtrl_PS1&)> StorageCtrl_PS1::ms_cmd_funcs[0xF+1] = {
+	&StorageCtrl_PS1::cmd_undefined,    // 0x0
+	&StorageCtrl_PS1::cmd_read_data,    // 0x1
+	&StorageCtrl_PS1::cmd_read_check,   // 0x2
+	&StorageCtrl_PS1::cmd_read_ext,     // 0x3
+	&StorageCtrl_PS1::cmd_undefined,    // 0x4
+	&StorageCtrl_PS1::cmd_read_id,      // 0x5
+	&StorageCtrl_PS1::cmd_undefined,    // 0x6
+	&StorageCtrl_PS1::cmd_undefined,    // 0x7
+	&StorageCtrl_PS1::cmd_recalibrate,  // 0x8
+	&StorageCtrl_PS1::cmd_write_data,   // 0x9
+	&StorageCtrl_PS1::cmd_write_vfy,    // 0xA
+	&StorageCtrl_PS1::cmd_write_ext,    // 0xB
+	&StorageCtrl_PS1::cmd_undefined,    // 0xC
+	&StorageCtrl_PS1::cmd_format_disk,  // 0xD
+	&StorageCtrl_PS1::cmd_seek,         // 0xE
+	&StorageCtrl_PS1::cmd_format_trk    // 0xF
 };
 
 //Sense Summary Block bits
-#define HDCPS1_SSB_B0_B_NR 7 //not ready;
-#define HDCPS1_SSB_B0_B_SE 6 //seek end;
-#define HDCPS1_SSB_B0_B_WF 4 //write fault;
-#define HDCPS1_SSB_B0_B_CE 3 //cylinder error;
-#define HDCPS1_SSB_B0_B_T0 0 //on track 0
-#define HDCPS1_SSB_B1_B_EF 7 //error is on ID field
-#define HDCPS1_SSB_B1_B_ET 6 //error occurred
-#define HDCPS1_SSB_B1_B_AM 5 //address mark not found
-#define HDCPS1_SSB_B1_B_BT 4 //ID field with all bits set detected.
-#define HDCPS1_SSB_B1_B_WC 3 //cylinder bytes read did not match the cylinder requested in the CCB
-#define HDCPS1_SSB_B1_B_ID 0 //ID match not found
-#define HDCPS1_SSB_B2_B_RR 6 //reset needed
-#define HDCPS1_SSB_B2_B_RG 5 //read or write retry corrected the error
-#define HDCPS1_SSB_B2_B_DS 4 //defective sector bit in the ID field is 1.
+#define SSB_B0_B_NR 7 // not ready;
+#define SSB_B0_B_SE 6 // seek end;
+#define SSB_B0_B_WF 4 // write fault;
+#define SSB_B0_B_CE 3 // cylinder error;
+#define SSB_B0_B_T0 0 // on track 0
+#define SSB_B1_B_EF 7 // error is on ID field
+#define SSB_B1_B_ET 6 // error occurred
+#define SSB_B1_B_AM 5 // address mark not found
+#define SSB_B1_B_BT 4 // ID field with all bits set detected.
+#define SSB_B1_B_WC 3 // cylinder bytes read did not match the cylinder requested in the CCB
+#define SSB_B1_B_ID 0 // ID match not found
+#define SSB_B2_B_RR 6 // reset needed
+#define SSB_B2_B_RG 5 // read or write retry corrected the error
+#define SSB_B2_B_DS 4 // defective sector bit in the ID field is 1.
 
-#define HDCPS1_SSB_B0_SE (1 << HDCPS1_SSB_B0_B_SE)
-#define HDCPS1_SSB_B0_CE (1 << HDCPS1_SSB_B0_B_CE)
-#define HDCPS1_SSB_B0_T0 (1 << HDCPS1_SSB_B0_B_T0)
-#define HDCPS1_SSB_B1_WC (1 << HDCPS1_SSB_B1_B_WC)
-#define HDCPS1_SSB_B2_RR (1 << HDCPS1_SSB_B2_B_RR)
+#define SSB_B0_SE (1 << SSB_B0_B_SE)
+#define SSB_B0_CE (1 << SSB_B0_B_CE)
+#define SSB_B0_T0 (1 << SSB_B0_B_T0)
+#define SSB_B1_WC (1 << SSB_B1_B_WC)
+#define SSB_B2_RR (1 << SSB_B2_B_RR)
 
 
 
-HardDiskCtrl_PS1::HardDiskCtrl_PS1(Devices *_dev)
-: HardDiskCtrl(_dev)
+StorageCtrl_PS1::StorageCtrl_PS1(Devices *_dev)
+: StorageCtrl(_dev)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
 
-HardDiskCtrl_PS1::~HardDiskCtrl_PS1()
+StorageCtrl_PS1::~StorageCtrl_PS1()
 {
 }
 
-void HardDiskCtrl_PS1::install()
+void StorageCtrl_PS1::install()
 {
-	HardDiskCtrl::install();
+	StorageCtrl::install();
 
 	using namespace std::placeholders;
-	m_devices->dma()->register_8bit_channel(HDCPS1_DMA,
-			std::bind(&HardDiskCtrl_PS1::dma_read, this, _1, _2),
-			std::bind(&HardDiskCtrl_PS1::dma_write, this, _1, _2),
+	m_devices->dma()->register_8bit_channel(HDC_DMA,
+			std::bind(&StorageCtrl_PS1::dma_read, this, _1, _2),
+			std::bind(&StorageCtrl_PS1::dma_write, this, _1, _2),
 			name());
-	g_machine.register_irq(HDCPS1_IRQ, name());
+	g_machine.register_irq(HDC_IRQ, name());
 
 	m_cmd_timer = g_machine.register_timer(
-			std::bind(&HardDiskCtrl_PS1::command_timer, this, _1),
+			std::bind(&StorageCtrl_PS1::command_timer, this, _1),
 			"HDD-cmd"
 	);
 	m_dma_timer = g_machine.register_timer(
-			std::bind(&HardDiskCtrl_PS1::dma_timer, this, _1),
+			std::bind(&StorageCtrl_PS1::dma_timer, this, _1),
 			"HDD-dma"
 	);
+
+	m_disk.install();
+
+	if(m_disk.type() == HDD_CUSTOM_DRIVE_IDX) {
+		HDDParams params;
+		params.cylinders  = m_disk.geometry().cylinders;
+		params.heads      = m_disk.geometry().heads;
+		params.rwcyl      = 0;
+		params.wpcyl      = m_disk.geometry().wpcomp;
+		params.ECClen     = 0;
+		params.options    = (m_disk.geometry().heads>8 ? 0x08 : 0);
+		params.timeoutstd = 0;
+		params.timeoutfmt = 0;
+		params.timeoutchk = 0;
+		params.lzone      = m_disk.geometry().lzone;
+		params.sectors    = m_disk.geometry().spt;
+		params.reserved   = 0;
+		g_machine.sys_rom().inject_custom_hdd_params(HDC_CUSTOM_BIOS_IDX, params);
+	}
 }
 
-void HardDiskCtrl_PS1::remove()
+void StorageCtrl_PS1::remove()
 {
-	HardDiskCtrl::remove();
+	StorageCtrl::remove();
 
-	m_devices->dma()->unregister_channel(HDCPS1_DMA);
-	g_machine.unregister_irq(HDCPS1_IRQ);
+	m_disk.remove();
+
+	m_devices->dma()->unregister_channel(HDC_DMA);
+	g_machine.unregister_irq(HDC_IRQ);
 	g_machine.unregister_timer(m_cmd_timer);
 	g_machine.unregister_timer(m_dma_timer);
 }
 
-void HardDiskCtrl_PS1::reset(unsigned _type)
+void StorageCtrl_PS1::reset(unsigned _type)
 {
 	if(m_disk.type() == HDD_CUSTOM_DRIVE_IDX) {
 		m_s.ssb.drive_type = HDC_CUSTOM_BIOS_IDX;
@@ -210,29 +231,35 @@ void HardDiskCtrl_PS1::reset(unsigned _type)
 	}
 }
 
-void HardDiskCtrl_PS1::power_off()
+void StorageCtrl_PS1::config_changed()
 {
-	HardDiskCtrl::power_off();
+	m_disk.config_changed();
+}
+
+void StorageCtrl_PS1::power_off()
+{
+	StorageCtrl::power_off();
+	m_disk.power_off();
 	memset(&m_s, 0, sizeof(m_s));
 }
 
-void HardDiskCtrl_PS1::save_state(StateBuf &_state)
+void StorageCtrl_PS1::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_HDD, "PS/1 HDC: saving state\n");
+	PINFOF(LOG_V1, LOG_HDD, "PS/1: saving state\n");
 
 	_state.write(&m_s, {sizeof(m_s), name()});
-	HardDiskCtrl::save_state(_state);
+	m_disk.save_state(_state);
 }
 
-void HardDiskCtrl_PS1::restore_state(StateBuf &_state)
+void StorageCtrl_PS1::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_HDD, "PS/1 HDC: restoring state\n");
+	PINFOF(LOG_V1, LOG_HDD, "PS/1: restoring state\n");
 
 	_state.read(&m_s, {sizeof(m_s), name()});
-	HardDiskCtrl::restore_state(_state);
+	m_disk.restore_state(_state);
 }
 
-uint16_t HardDiskCtrl_PS1::read(uint16_t _address, unsigned)
+uint16_t StorageCtrl_PS1::read(uint16_t _address, unsigned)
 {
 	if(m_disk.type() == 0) {
 		return ~0;
@@ -247,26 +274,26 @@ uint16_t HardDiskCtrl_PS1::read(uint16_t _address, unsigned)
 	switch(_address) {
 		case 0x320: {
 			//Data Reg
-			if(!(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ)) {
+			if(!(m_s.attch_status_reg & ASR_DATA_REQ)) {
 				PDEBUGF(LOG_V2, LOG_HDD, "null data read\n");
 				break;
 			}
-			if(!(m_s.attch_status_reg & HDCPS1_ASR_DIR)) {
+			if(!(m_s.attch_status_reg & ASR_DIR)) {
 				PDEBUGF(LOG_V2, LOG_HDD, "wrong data dir\n");
 				break;
 			}
 			DataBuffer *databuf = get_read_data_buffer();
 			assert(databuf);
 			assert(databuf->size);
-			m_s.attch_status_reg |= HDCPS1_ASR_TX_EN;
+			m_s.attch_status_reg |= ASR_TX_EN;
 			value = databuf->stack[databuf->ptr];
 			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   -> 0x%04X\n",
 					databuf->ptr, (databuf->size-1), value);
 			databuf->ptr++;
 			if(databuf->ptr >= databuf->size) {
-				m_s.attch_status_reg &= ~HDCPS1_ASR_TX_EN;
-				m_s.attch_status_reg &= ~HDCPS1_ASR_DATA_REQ;
-				m_s.attch_status_reg &= ~HDCPS1_ASR_DIR;
+				m_s.attch_status_reg &= ~ASR_TX_EN;
+				m_s.attch_status_reg &= ~ASR_DATA_REQ;
+				m_s.attch_status_reg &= ~ASR_DIR;
 				databuf->clear();
 				//TODO PIO sector data transfer is incomplete (no software available)
 			}
@@ -278,11 +305,11 @@ uint16_t HardDiskCtrl_PS1::read(uint16_t _address, unsigned)
 			//the controller.
 			value = m_s.attch_status_reg;
 			PDEBUGF(LOG_V2, LOG_HDD, "attch status -> 0x%04X ", value);
-			if(value & HDCPS1_ASR_TX_EN)   { PDEBUGF(LOG_V2, LOG_HDD, "TX_EN "); }
-			if(value & HDCPS1_ASR_INT_REQ) { PDEBUGF(LOG_V2, LOG_HDD, "INT_REQ "); }
-			if(value & HDCPS1_ASR_BUSY)    { PDEBUGF(LOG_V2, LOG_HDD, "BUSY "); }
-			if(value & HDCPS1_ASR_DIR)     { PDEBUGF(LOG_V2, LOG_HDD, "DIR "); }
-			if(value & HDCPS1_ASR_DATA_REQ){ PDEBUGF(LOG_V2, LOG_HDD, "DATA_REQ "); }
+			if(value & ASR_TX_EN)   { PDEBUGF(LOG_V2, LOG_HDD, "TX_EN "); }
+			if(value & ASR_INT_REQ) { PDEBUGF(LOG_V2, LOG_HDD, "INT_REQ "); }
+			if(value & ASR_BUSY)    { PDEBUGF(LOG_V2, LOG_HDD, "BUSY "); }
+			if(value & ASR_DIR)     { PDEBUGF(LOG_V2, LOG_HDD, "DIR "); }
+			if(value & ASR_DATA_REQ){ PDEBUGF(LOG_V2, LOG_HDD, "DATA_REQ "); }
 			PDEBUGF(LOG_V2, LOG_HDD, "\n");
 			break;
 		case 0x324:
@@ -295,7 +322,7 @@ uint16_t HardDiskCtrl_PS1::read(uint16_t _address, unsigned)
 			PDEBUGF(LOG_V2, LOG_HDD, "int status   -> 0x%04X\n", value);
 			m_s.int_status_reg = 0; //<--- TODO is it correct?
 			//Int req bit is cleared when this register is read:
-			m_s.attch_status_reg &= ~HDCPS1_ASR_INT_REQ;
+			m_s.attch_status_reg &= ~ASR_INT_REQ;
 			//lower_interrupt(); //TODO
 			break;
 		default:
@@ -305,7 +332,7 @@ uint16_t HardDiskCtrl_PS1::read(uint16_t _address, unsigned)
 	return value;
 }
 
-void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
+void StorageCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 {
 	if(m_disk.type() == 0) {
 		return;
@@ -321,34 +348,34 @@ void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 	switch(_address) {
 		case 0x320:
 			//Data Reg
-			if(!(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ)) {
+			if(!(m_s.attch_status_reg & ASR_DATA_REQ)) {
 				PDEBUGF(LOG_V2, LOG_HDD, "null data write\n");
 				break;
 			}
-			if(m_s.attch_status_reg & HDCPS1_ASR_DIR) {
+			if(m_s.attch_status_reg & ASR_DIR) {
 				PDEBUGF(LOG_V2, LOG_HDD, "wrong data dir\n");
 				break;
 			}
 			assert(databuf);
 			assert(databuf->size);
-			m_s.attch_status_reg |= HDCPS1_ASR_TX_EN;
+			m_s.attch_status_reg |= ASR_TX_EN;
 			PDEBUGF(LOG_V2, LOG_HDD, "data %02d/%02d   <- 0x%04X\n",
 					databuf->ptr, (databuf->size-1), _value);
 			databuf->stack[databuf->ptr] = _value;
 			databuf->ptr++;
 			if(databuf->ptr >= databuf->size) {
-				m_s.attch_status_reg &= ~HDCPS1_ASR_TX_EN;
-				m_s.attch_status_reg &= ~HDCPS1_ASR_DATA_REQ;
-				if(m_s.attention_reg & HDCPS1_ATT_DATA) {
+				m_s.attch_status_reg &= ~ASR_TX_EN;
+				m_s.attch_status_reg &= ~ASR_DATA_REQ;
+				if(m_s.attention_reg & ATT_DATA) {
 					//PIO mode data tx finish
 					//TODO the only tested PIO data transfer is of the Format
 					//Control Block used by the Format track command
-					if((m_s.attention_reg & HDCPS1_ATT_CCB) && m_s.ccb.valid) {
+					if((m_s.attention_reg & ATT_CCB) && m_s.ccb.valid) {
 						// we are in command mode
 						command_timer(g_machine.get_virt_time_ns());
 					} else {
 						// discard and disable PIO tx
-						m_s.attention_reg &= ~HDCPS1_ATT_DATA;
+						m_s.attention_reg &= ~ATT_DATA;
 					}
 				} else {
 					databuf->clear();
@@ -361,12 +388,12 @@ void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 			//The Attachment Control register controls the fixed-disk interrupt
 			//and DMA channel, and resets the drive.
 			PDEBUGF(LOG_V2, LOG_HDD, "attch ctrl   <- 0x%04X ", _value);
-			if(_value & HDCPS1_ACR_DMA_EN) { PDEBUGF(LOG_V2, LOG_HDD, "DMA_EN "); }
-			if(_value & HDCPS1_ACR_INT_EN) { PDEBUGF(LOG_V2, LOG_HDD, "INT_EN "); }
-			if(_value & HDCPS1_ACR_RESET)  { PDEBUGF(LOG_V2, LOG_HDD, "RESET "); }
+			if(_value & ACR_DMA_EN) { PDEBUGF(LOG_V2, LOG_HDD, "DMA_EN "); }
+			if(_value & ACR_INT_EN) { PDEBUGF(LOG_V2, LOG_HDD, "INT_EN "); }
+			if(_value & ACR_RESET)  { PDEBUGF(LOG_V2, LOG_HDD, "RESET "); }
 			PDEBUGF(LOG_V2, LOG_HDD, "\n");
 			m_s.attch_ctrl_reg = _value;
-			if(!(_value & HDCPS1_ACR_INT_EN)) {
+			if(!(_value & ACR_INT_EN)) {
 				lower_interrupt();
 			}
 			if(m_s.reset_phase) {
@@ -377,7 +404,7 @@ void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 				}
 				break;
 			}
-			if(_value & HDCPS1_ACR_RESET) {
+			if(_value & ACR_RESET) {
 				reset(MACHINE_HARD_RESET);
 				m_s.reset_phase = 1;
 				break;
@@ -388,31 +415,31 @@ void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 			//The system uses this register to initiate all transactions with
 			//the drive.
 			PDEBUGF(LOG_V2, LOG_HDD, "attention    <- 0x%04X ", _value);
-			if(_value & HDCPS1_ATT_DATA) { PDEBUGF(LOG_V2, LOG_HDD, "DATA "); }
-			if(_value & HDCPS1_ATT_SSB)  { PDEBUGF(LOG_V2, LOG_HDD, "SSB "); }
-			if(_value & HDCPS1_ATT_CSB)  { PDEBUGF(LOG_V2, LOG_HDD, "CSB "); }
-			if(_value & HDCPS1_ATT_CCB)  { PDEBUGF(LOG_V2, LOG_HDD, "CCB "); }
+			if(_value & ATT_DATA) { PDEBUGF(LOG_V2, LOG_HDD, "DATA "); }
+			if(_value & ATT_SSB)  { PDEBUGF(LOG_V2, LOG_HDD, "SSB "); }
+			if(_value & ATT_CSB)  { PDEBUGF(LOG_V2, LOG_HDD, "CSB "); }
+			if(_value & ATT_CCB)  { PDEBUGF(LOG_V2, LOG_HDD, "CCB "); }
 			PDEBUGF(LOG_V2, LOG_HDD, "\n");
-			if(_value & HDCPS1_ATT_DATA) {
-				if(!(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ)) {
+			if(_value & ATT_DATA) {
+				if(!(m_s.attch_status_reg & ASR_DATA_REQ)) {
 					//data is not ready, what TODO ?
 					PERRF_ABORT(LOG_HDD, "data not ready\n");
 				}
-				if(m_s.attch_ctrl_reg & HDCPS1_ACR_DMA_EN) {
-					m_devices->dma()->set_DRQ(HDCPS1_DMA, 1);
+				if(m_s.attch_ctrl_reg & ACR_DMA_EN) {
+					m_devices->dma()->set_DRQ(HDC_DMA, true);
 					//g_machine.activate_timer(m_dma_timer, 500, 0);
 				} else {
 					//PIO mode
-					m_s.attention_reg |= HDCPS1_ATT_DATA;
+					m_s.attention_reg |= ATT_DATA;
 				}
-			} else if(_value & HDCPS1_ATT_SSB) {
-				m_s.attention_reg |= HDCPS1_ATT_SSB;
+			} else if(_value & ATT_SSB) {
+				m_s.attention_reg |= ATT_SSB;
 				attention_block();
-			} else if(_value & HDCPS1_ATT_CCB) {
+			} else if(_value & ATT_CCB) {
 				databuf->ptr = 0;
 				databuf->size = 6;
-				m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
-				m_s.attention_reg |= HDCPS1_ATT_CCB;
+				m_s.attch_status_reg |= ASR_DATA_REQ;
+				m_s.attention_reg |= ATT_CCB;
 			}
 			break;
 		default:
@@ -422,7 +449,7 @@ void HardDiskCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 
 }
 
-void HardDiskCtrl_PS1::exec_command()
+void StorageCtrl_PS1::exec_command()
 {
 	uint64_t cur_time_us = g_machine.get_virt_time_us();
 	uint32_t seek_time_us = 0;
@@ -441,37 +468,37 @@ void HardDiskCtrl_PS1::exec_command()
 	}
 
 	switch(m_s.ccb.command) {
-		case HDCPS1_CMD::WRITE_DATA:
-			m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+		case CMD::WRITE_DATA:
+			m_s.attch_status_reg |= ASR_DATA_REQ;
 			m_s.sect_buffer[0].size = 512;
 			m_s.sect_buffer[0].ptr = 0;
 			break;
-		case HDCPS1_CMD::FORMAT_TRK:
-			m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+		case CMD::FORMAT_TRK:
+			m_s.attch_status_reg |= ASR_DATA_REQ;
 			m_s.sect_buffer[0].size = 5;
 			m_s.sect_buffer[0].ptr = 0;
 			start_sector = 1;
 			break;
-		case HDCPS1_CMD::READ_DATA:
-		case HDCPS1_CMD::READ_EXT:
+		case CMD::READ_DATA:
+		case CMD::READ_EXT:
 			//read the data from the sector, put it into the buffer and
 			//transfer it via DMA
 			xfer_time_us = m_disk.performance().sec_xfer_us;
 			break;
-		case HDCPS1_CMD::READ_CHECK:
+		case CMD::READ_CHECK:
 			//read checks are done in 1 operation
 			xfer_time_us = (m_disk.performance().sec_read_us * m_disk.performance().interleave)*m_s.ccb.num_sectors;
 			break;
-		case HDCPS1_CMD::SEEK:
+		case CMD::SEEK:
 			start_sector = 0;
 			if(!m_s.ccb.park) {
 				seek_time_us = get_seek_time(m_s.ccb.cylinder);
 				//seek exec time depends on other factors (see get_seek_time())
-				exec_time_us -= ms_cmd_times[HDCPS1_CMD::SEEK];
+				exec_time_us -= ms_cmd_times[CMD::SEEK];
 			}
 			seek = true;
 			break;
-		case HDCPS1_CMD::RECALIBRATE:
+		case CMD::RECALIBRATE:
 			start_sector = 0;
 			head = 0;
 			seek_time_us = get_seek_time(0);
@@ -498,9 +525,9 @@ void HardDiskCtrl_PS1::exec_command()
 	}
 }
 
-void HardDiskCtrl_PS1::exec_read_on_next_sector()
+void StorageCtrl_PS1::exec_read_on_next_sector()
 {
-	if(m_s.attch_status_reg & HDCPS1_ASR_BUSY) {
+	if(m_s.attch_status_reg & ASR_BUSY) {
 		//currently reading a sector
 		return;
 	}
@@ -531,19 +558,19 @@ void HardDiskCtrl_PS1::exec_read_on_next_sector()
 	activate_command_timer(0, seek_time_us, rot_latency_us, m_disk.performance().sec_xfer_us);
 }
 
-void HardDiskCtrl_PS1::attention_block()
+void StorageCtrl_PS1::attention_block()
 {
-	if(m_s.attention_reg & HDCPS1_ATT_CCB) {
+	if(m_s.attention_reg & ATT_CCB) {
 		//we are in command mode
 		m_s.ccb.set(m_s.sect_buffer[0].stack);
 		if(!m_s.ccb.valid) {
-			m_s.int_status_reg |= HDCPS1_ISR_INVALID_CMD;
+			m_s.int_status_reg |= ISR_INVALID_CMD;
 			raise_interrupt();
 		} else {
 			exec_command();
 		}
-	} else if(m_s.attention_reg & HDCPS1_ATT_SSB) {
-		m_s.attention_reg &= ~HDCPS1_ATT_SSB;
+	} else if(m_s.attention_reg & ATT_SSB) {
+		m_s.attention_reg &= ~ATT_SSB;
 		if(!m_s.ssb.valid) {
 			m_s.ssb.clear();
 			m_s.ssb.last_cylinder = m_s.cur_cylinder;
@@ -556,38 +583,38 @@ void HardDiskCtrl_PS1::attention_block()
 		m_s.cur_buffer = 0;
 		m_s.ssb.copy_to(m_s.sect_buffer[0].stack);
 		fill_data_stack(0, 14);
-		m_s.attch_status_reg |= HDCPS1_ASR_DIR;
+		m_s.attch_status_reg |= ASR_DIR;
 		raise_interrupt();
 		m_s.ssb.valid = false;
 	}
 }
 
-void HardDiskCtrl_PS1::raise_interrupt()
+void StorageCtrl_PS1::raise_interrupt()
 {
-	m_s.attch_status_reg |= HDCPS1_ASR_INT_REQ;
-	if(m_s.attch_ctrl_reg & HDCPS1_ACR_INT_EN) {
-		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDCPS1_IRQ);
-		m_devices->pic()->raise_irq(HDCPS1_IRQ);
+	m_s.attch_status_reg |= ASR_INT_REQ;
+	if(m_s.attch_ctrl_reg & ACR_INT_EN) {
+		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDC_IRQ);
+		m_devices->pic()->raise_irq(HDC_IRQ);
 	} else {
-		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n", HDCPS1_IRQ);
+		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n", HDC_IRQ);
 	}
 }
 
-void HardDiskCtrl_PS1::lower_interrupt()
+void StorageCtrl_PS1::lower_interrupt()
 {
-	m_devices->pic()->lower_irq(HDCPS1_IRQ);
+	m_devices->pic()->lower_irq(HDC_IRQ);
 }
 
-void HardDiskCtrl_PS1::fill_data_stack(unsigned _buf, unsigned _len)
+void StorageCtrl_PS1::fill_data_stack(unsigned _buf, unsigned _len)
 {
-	assert(_buf<=1);
-	assert(_len<=HDCPS1_DATA_STACK_SIZE);
+	assert(_buf <= 1);
+	assert(_len <= sizeof(DataBuffer::stack));
 	m_s.sect_buffer[_buf].ptr = 0;
 	m_s.sect_buffer[_buf].size = _len;
-	m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+	m_s.attch_status_reg |= ASR_DATA_REQ;
 }
 
-HardDiskCtrl_PS1::DataBuffer* HardDiskCtrl_PS1::get_read_data_buffer()
+StorageCtrl_PS1::DataBuffer* StorageCtrl_PS1::get_read_data_buffer()
 {
 	unsigned bufn = (m_s.cur_buffer+1) % 2;
 	if(!m_s.sect_buffer[bufn].is_used()) {
@@ -599,7 +626,7 @@ HardDiskCtrl_PS1::DataBuffer* HardDiskCtrl_PS1::get_read_data_buffer()
 	return &m_s.sect_buffer[bufn];
 }
 
-uint16_t HardDiskCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t StorageCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 {
 	// A DMA write is from I/O to Memory
 	// We need to return the next data byte(s) from the buffer
@@ -609,8 +636,8 @@ uint16_t HardDiskCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 
 	//TODO implement control blocks DMA transfers?
 	assert(m_s.ccb.valid);
-	assert(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ);
-	assert(m_s.attch_status_reg & HDCPS1_ASR_DIR);
+	assert(m_s.attch_status_reg & ASR_DATA_REQ);
+	assert(m_s.attch_status_reg & ASR_DIR);
 
 	m_devices->sysboard()->set_feedback();
 
@@ -631,7 +658,7 @@ uint16_t HardDiskCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 		// all data in buffer transferred
 		if(databuf->ptr >= databuf->size) {
 			databuf->clear();
-			m_devices->dma()->set_DRQ(HDCPS1_DMA, 0);
+			m_devices->dma()->set_DRQ(HDC_DMA, false);
 		}
 		if(TC) { // Terminal Count line, command done
 			PDEBUGF(LOG_V2, LOG_HDD, "<<DMA WRITE TC>> C:%d,H:%d,S:%d,nS:%d\n",
@@ -645,7 +672,7 @@ uint16_t HardDiskCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 	return len;
 }
 
-uint16_t HardDiskCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t StorageCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 {
 	/*
 	 * From Memory to I/O
@@ -654,8 +681,8 @@ uint16_t HardDiskCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 
 	//TODO implement control blocks DMA transfers?
 	assert(m_s.ccb.valid);
-	assert(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ);
-	assert(!(m_s.attch_status_reg & HDCPS1_ASR_DIR));
+	assert(m_s.attch_status_reg & ASR_DATA_REQ);
+	assert(!(m_s.attch_status_reg & ASR_DIR));
 
 	uint16_t len = m_s.sect_buffer[0].size - m_s.sect_buffer[0].ptr;
 	if(len > _maxlen) {
@@ -666,7 +693,7 @@ uint16_t HardDiskCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	m_s.sect_buffer[0].ptr += len;
 	bool TC = m_devices->dma()->get_TC() && (len == _maxlen);
 	if((m_s.sect_buffer[0].ptr >= m_s.sect_buffer[0].size) || TC) {
-		m_s.attch_status_reg &= ~HDCPS1_ASR_DATA_REQ;
+		m_s.attch_status_reg &= ~ASR_DATA_REQ;
 		unsigned c = m_s.cur_cylinder;
 		command_timer(g_machine.get_virt_time_ns());
 		if(TC) { // Terminal Count line, done
@@ -679,17 +706,17 @@ uint16_t HardDiskCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 			if(c != m_s.cur_cylinder) {
 				time += m_disk.performance().trk2trk_us;
 			}
-			time = std::max(time, HDCPS1_DEFTIME_US);
+			time = std::max(time, DEFTIME_US);
 			g_machine.activate_timer(m_dma_timer, uint64_t(time)*1_us, false);
 		}
-		m_devices->dma()->set_DRQ(HDCPS1_DMA, 0);
+		m_devices->dma()->set_DRQ(HDC_DMA, false);
 	}
 	return len;
 }
 
-uint32_t HardDiskCtrl_PS1::get_seek_time(unsigned _cyl)
+uint32_t StorageCtrl_PS1::get_seek_time(unsigned _cyl)
 {
-	uint32_t exec_time = ms_cmd_times[HDCPS1_CMD::SEEK];
+	uint32_t exec_time = ms_cmd_times[CMD::SEEK];
 
 	if(m_s.cur_cylinder == _cyl) {
 		return exec_time/2;
@@ -717,12 +744,12 @@ uint32_t HardDiskCtrl_PS1::get_seek_time(unsigned _cyl)
 	return total_seek_time;
 }
 
-void HardDiskCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
+void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek_time,
 		uint32_t _rot_latency, uint32_t _xfer_time)
 {
 	uint32_t time_us = _exec_time + _seek_time + _rot_latency + _xfer_time;
 	if(time_us == 0) {
-		time_us = HDCPS1_DEFTIME_US;
+		time_us = DEFTIME_US;
 	}
 	uint64_t spin_up = m_disk.spin_up_eta_us();
 	if(spin_up) {
@@ -730,7 +757,7 @@ void HardDiskCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _see
 		time_us += spin_up;
 	}
 	g_machine.activate_timer(m_cmd_timer, uint64_t(time_us)*1_us, false);
-	m_s.attch_status_reg |= HDCPS1_ASR_BUSY;
+	m_s.attch_status_reg |= ASR_BUSY;
 
 	PDEBUGF(LOG_V2, LOG_HDD, "command exec C:%d,H:%d,S:%d,nS:%d: %dus",
 			m_s.cur_cylinder, m_s.cur_head,	m_s.cur_sector, m_s.ccb.sect_cnt,
@@ -744,9 +771,9 @@ void HardDiskCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _see
 			);
 }
 
-void HardDiskCtrl_PS1::command_timer(uint64_t)
+void StorageCtrl_PS1::command_timer(uint64_t)
 {
-	if(m_s.attention_reg & HDCPS1_ATT_CCB) {
+	if(m_s.attention_reg & ATT_CCB) {
 		assert(m_s.ccb.command>=0 && m_s.ccb.command<=0xF);
 		m_s.ssb.clear();
 		ms_cmd_funcs[m_s.ccb.command](*this);
@@ -755,24 +782,24 @@ void HardDiskCtrl_PS1::command_timer(uint64_t)
 				m_disk.head_position(g_machine.get_virt_time_us()),
 				m_disk.pos_to_sect(m_disk.head_position(g_machine.get_virt_time_us()))
 				);
-	} else if(m_s.attention_reg & HDCPS1_ATT_CSB) {
+	} else if(m_s.attention_reg & ATT_CSB) {
 		PERRF_ABORT(LOG_HDD, "CSB not implemented\n");
 	} else {
-		m_s.int_status_reg |= HDCPS1_ISR_CMD_REJECT;
+		m_s.int_status_reg |= ISR_CMD_REJECT;
 		PERRF_ABORT(LOG_HDD, "invalid attention request\n");
 	}
-	if(!(m_s.attch_status_reg & HDCPS1_ASR_BUSY)) {
+	if(!(m_s.attch_status_reg & ASR_BUSY)) {
 		g_machine.deactivate_timer(m_cmd_timer);
 	}
 }
 
-void HardDiskCtrl_PS1::dma_timer(uint64_t)
+void StorageCtrl_PS1::dma_timer(uint64_t)
 {
-	m_devices->dma()->set_DRQ(HDCPS1_DMA, 1);
+	m_devices->dma()->set_DRQ(HDC_DMA, true);
 	g_machine.deactivate_timer(m_dma_timer);
 }
 
-void HardDiskCtrl_PS1::set_cur_sector(unsigned _h, unsigned _s)
+void StorageCtrl_PS1::set_cur_sector(unsigned _h, unsigned _s)
 {
 	m_s.cur_head = _h;
 	if(_h >= m_disk.geometry().heads) {
@@ -791,12 +818,12 @@ void HardDiskCtrl_PS1::set_cur_sector(unsigned _h, unsigned _s)
 	}
 }
 
-bool HardDiskCtrl_PS1::seek(unsigned _c)
+bool StorageCtrl_PS1::seek(unsigned _c)
 {
 	if(_c >= m_disk.geometry().cylinders) {
 		//TODO is it a temination error?
 		//what about command reject and ERP invoked?
-		m_s.int_status_reg |= HDCPS1_ISR_TERMINATION;
+		m_s.int_status_reg |= ISR_TERMINATION;
 		m_s.ssb.cylinder_err = true;
 		PDEBUGF(LOG_V2, LOG_HDD, "seek error: cyl=%d > %d\n", _c, m_disk.geometry().cylinders);
 		return false;
@@ -807,7 +834,7 @@ bool HardDiskCtrl_PS1::seek(unsigned _c)
 	return true;
 }
 
-void HardDiskCtrl_PS1::increment_sector()
+void StorageCtrl_PS1::increment_sector()
 {
 	m_s.cur_sector++;
 	//warning: sectors are 1-based
@@ -828,7 +855,7 @@ void HardDiskCtrl_PS1::increment_sector()
 	}
 }
 
-void HardDiskCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
+void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
 	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ C:%d,H:%d,S:%d -> buf:%d\n",
@@ -837,7 +864,7 @@ void HardDiskCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsign
 	m_disk.read_sector(_c, _h, _s, m_s.sect_buffer[_buf].stack);
 }
 
-void HardDiskCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
+void StorageCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
 	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE C:%d,H:%d,S:%d <- buf:%d\n",
@@ -846,14 +873,14 @@ void HardDiskCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsig
 	m_disk.write_sector(_c, _h, _s, m_s.sect_buffer[_buf].stack);
 }
 
-void HardDiskCtrl_PS1::cylinder_error()
+void StorageCtrl_PS1::cylinder_error()
 {
-	m_s.int_status_reg |= HDCPS1_ISR_TERMINATION;
+	m_s.int_status_reg |= ISR_TERMINATION;
 	m_s.ssb.cylinder_err = true;
 	PDEBUGF(LOG_V2, LOG_HDD, "error: cyl > %d\n", m_disk.geometry().cylinders);
 }
 
-bool HardDiskCtrl_PS1::read_auto_seek()
+bool StorageCtrl_PS1::read_auto_seek()
 {
 	if(m_s.ccb.auto_seek) {
 		if(!seek(m_s.ccb.cylinder)) {
@@ -873,7 +900,7 @@ bool HardDiskCtrl_PS1::read_auto_seek()
 	return true;
 }
 
-uint16_t HardDiskCtrl_PS1::crc16_ccitt_false(uint8_t *_data, int _len)
+uint16_t StorageCtrl_PS1::crc16_ccitt_false(uint8_t *_data, int _len)
 {
 	/* 16-bit CRC polynomial:
 	 * x^16 + x^12 + x^5 + 1
@@ -905,7 +932,7 @@ uint16_t HardDiskCtrl_PS1::crc16_ccitt_false(uint8_t *_data, int _len)
 	return rem;
 }
 
-uint64_t HardDiskCtrl_PS1::ecc48_noswap(uint8_t *_data, int _len)
+uint64_t StorageCtrl_PS1::ecc48_noswap(uint8_t *_data, int _len)
 {
 	/* 48-bit ECC polynomial:
 	 * x^48 + x^44 + x^37 + x^32 + x^16 + x^12 + x^5 + 1
@@ -945,19 +972,19 @@ uint64_t HardDiskCtrl_PS1::ecc48_noswap(uint8_t *_data, int _len)
 	return rem;
 }
 
-void HardDiskCtrl_PS1::command_completed()
+void StorageCtrl_PS1::command_completed()
 {
 	PDEBUGF(LOG_V2, LOG_HDD, "command completed\n");
 	m_s.sect_buffer[0].clear();
 	m_s.sect_buffer[1].clear();
 	m_s.cur_buffer = 0;
-	m_s.attention_reg &= ~HDCPS1_ATT_CCB;  // command mode off
-	m_s.attention_reg &= ~HDCPS1_ATT_DATA; // PIO mode off
+	m_s.attention_reg &= ~ATT_CCB;  // command mode off
+	m_s.attention_reg &= ~ATT_DATA; // PIO mode off
 	m_s.attch_status_reg = 0;
 	raise_interrupt();
 }
 
-void HardDiskCtrl_PS1::cmd_read_data()
+void StorageCtrl_PS1::cmd_read_data()
 {
 	if(!read_auto_seek()) {
 		return;
@@ -966,11 +993,11 @@ void HardDiskCtrl_PS1::cmd_read_data()
 	read_sector(m_s.cur_cylinder, m_s.cur_head, m_s.cur_sector, m_s.cur_buffer);
 	fill_data_stack(m_s.cur_buffer, 512);
 
-	m_s.attch_status_reg |= HDCPS1_ASR_DIR;
-	m_s.attch_status_reg &= ~HDCPS1_ASR_BUSY;
+	m_s.attch_status_reg |= ASR_DIR;
+	m_s.attch_status_reg &= ~ASR_BUSY;
 
-	if(m_s.attch_ctrl_reg & HDCPS1_ACR_DMA_EN) {
-		m_devices->dma()->set_DRQ(HDCPS1_DMA, 1);
+	if(m_s.attch_ctrl_reg & ACR_DMA_EN) {
+		m_devices->dma()->set_DRQ(HDC_DMA, true);
 	} else {
 		//DATA Request required, the OS can decide later if DMA or PIO writing
 		//to the attch ctrl reg
@@ -981,7 +1008,7 @@ void HardDiskCtrl_PS1::cmd_read_data()
 	}
 }
 
-void HardDiskCtrl_PS1::cmd_read_check()
+void StorageCtrl_PS1::cmd_read_check()
 {
 	command_completed();
 
@@ -1003,7 +1030,7 @@ void HardDiskCtrl_PS1::cmd_read_check()
 	}
 }
 
-void HardDiskCtrl_PS1::cmd_read_ext()
+void StorageCtrl_PS1::cmd_read_ext()
 {
 	if(!read_auto_seek()) {
 		return;
@@ -1056,27 +1083,27 @@ void HardDiskCtrl_PS1::cmd_read_ext()
 		m_s.sect_buffer[0].stack[517] = eccptr[0];
 	}
 
-	m_s.attch_status_reg |= HDCPS1_ASR_DIR;
+	m_s.attch_status_reg |= ASR_DIR;
 
-	if(m_s.attch_ctrl_reg & HDCPS1_ACR_DMA_EN) {
-		m_devices->dma()->set_DRQ(HDCPS1_DMA, 1);
+	if(m_s.attch_ctrl_reg & ACR_DMA_EN) {
+		m_devices->dma()->set_DRQ(HDC_DMA, true);
 	} else {
 		raise_interrupt();
 	}
 }
 
-void HardDiskCtrl_PS1::cmd_read_id()
+void StorageCtrl_PS1::cmd_read_id()
 {
 	PERRF_ABORT(LOG_HDD, "READ_ID: command not implemented\n");
 }
 
-void HardDiskCtrl_PS1::cmd_recalibrate()
+void StorageCtrl_PS1::cmd_recalibrate()
 {
 	seek(0);
 	command_completed();
 }
 
-void HardDiskCtrl_PS1::cmd_write_data()
+void StorageCtrl_PS1::cmd_write_data()
 {
 	if(m_s.ccb.auto_seek) {
 		if(!seek(m_s.ccb.cylinder)) {
@@ -1088,7 +1115,7 @@ void HardDiskCtrl_PS1::cmd_write_data()
 		}
 		m_s.ccb.auto_seek = false;
 	}
-	if(!(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ)) {
+	if(!(m_s.attch_status_reg & ASR_DATA_REQ)) {
 		assert(m_s.sect_buffer[0].size == 512);
 		assert(m_s.sect_buffer[0].ptr == 512);
 		assert(m_s.ccb.sect_cnt>=0);
@@ -1105,31 +1132,31 @@ void HardDiskCtrl_PS1::cmd_write_data()
 		if(m_s.ccb.sect_cnt > 0) {
 			increment_sector();
 			m_s.ccb.sect_cnt--;
-			m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+			m_s.attch_status_reg |= ASR_DATA_REQ;
 			m_s.sect_buffer[0].size = 512;
 		}
 	} else {
-		m_s.attch_status_reg &= ~HDCPS1_ASR_BUSY;
+		m_s.attch_status_reg &= ~ASR_BUSY;
 		raise_interrupt();
 	}
 }
 
-void HardDiskCtrl_PS1::cmd_write_vfy()
+void StorageCtrl_PS1::cmd_write_vfy()
 {
 	PERRF_ABORT(LOG_HDD, "WRITE_VFY: command not implemented\n");
 }
 
-void HardDiskCtrl_PS1::cmd_write_ext()
+void StorageCtrl_PS1::cmd_write_ext()
 {
 	PERRF_ABORT(LOG_HDD, "WRITE_EXT: command not implemented\n");
 }
 
-void HardDiskCtrl_PS1::cmd_format_disk()
+void StorageCtrl_PS1::cmd_format_disk()
 {
 	PERRF_ABORT(LOG_HDD, "FORMAT_DISK: command not implemented\n");
 }
 
-void HardDiskCtrl_PS1::cmd_seek()
+void StorageCtrl_PS1::cmd_seek()
 {
 	if(m_s.ccb.park) {
 		//not really a park...
@@ -1140,12 +1167,12 @@ void HardDiskCtrl_PS1::cmd_seek()
 	command_completed();
 }
 
-void HardDiskCtrl_PS1::cmd_format_trk()
+void StorageCtrl_PS1::cmd_format_trk()
 {
 	// This command needs a Format Control Block which is transferred via PIO
-	assert(!(m_s.attch_ctrl_reg & HDCPS1_ACR_DMA_EN));
+	assert(!(m_s.attch_ctrl_reg & ACR_DMA_EN));
 
-	if(!(m_s.attch_status_reg & HDCPS1_ASR_DATA_REQ)) {
+	if(!(m_s.attch_status_reg & ASR_DATA_REQ)) {
 		if((m_s.ccb.num_sectors&1) && m_s.ccb.sect_cnt<0) {
 			// the extra byte has been transferred, nothing else to do
 			command_completed();
@@ -1172,27 +1199,27 @@ void HardDiskCtrl_PS1::cmd_format_trk()
 				PDEBUGF(LOG_V2, LOG_HDD, "FORMAT_TRK: odd number of sectors\n");
 				m_s.sect_buffer[0].size = 1;
 				m_s.ccb.sect_cnt--;
-				m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+				m_s.attch_status_reg |= ASR_DATA_REQ;
 			} else {
 				command_completed();
 			}
 		} else {
 			increment_sector();
 			m_s.ccb.sect_cnt--;
-			m_s.attch_status_reg |= HDCPS1_ASR_DATA_REQ;
+			m_s.attch_status_reg |= ASR_DATA_REQ;
 		}
 	} else {
-		m_s.attch_status_reg &= ~HDCPS1_ASR_BUSY;
+		m_s.attch_status_reg &= ~ASR_BUSY;
 		raise_interrupt();
 	}
 }
 
-void HardDiskCtrl_PS1::cmd_undefined()
+void StorageCtrl_PS1::cmd_undefined()
 {
 	PERRF_ABORT(LOG_HDD, "unknown command!\n");
 }
 
-void HardDiskCtrl_PS1::State::CCB::set(uint8_t* _data)
+void StorageCtrl_PS1::State::CCB::set(uint8_t* _data)
 {
 	valid = true;
 
@@ -1208,17 +1235,17 @@ void HardDiskCtrl_PS1::State::CCB::set(uint8_t* _data)
 
 	PDEBUGF(LOG_V1, LOG_HDD, "command: ");
 	switch(command) {
-		case HDCPS1_CMD::READ_DATA:   { PDEBUGF(LOG_V1, LOG_HDD, "READ_DATA "); break; }
-		case HDCPS1_CMD::READ_CHECK:  { PDEBUGF(LOG_V1, LOG_HDD, "READ_CHECK "); break; }
-		case HDCPS1_CMD::READ_EXT:    { PDEBUGF(LOG_V1, LOG_HDD, "READ_EXT "); break; }
-		case HDCPS1_CMD::READ_ID:     { PDEBUGF(LOG_V1, LOG_HDD, "READ_ID "); break; }
-		case HDCPS1_CMD::RECALIBRATE: { PDEBUGF(LOG_V1, LOG_HDD, "RECALIBRATE "); break; }
-		case HDCPS1_CMD::WRITE_DATA:  { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_DATA "); break; }
-		case HDCPS1_CMD::WRITE_VFY:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_VFY "); break; }
-		case HDCPS1_CMD::WRITE_EXT:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_EXT "); break; }
-		case HDCPS1_CMD::FORMAT_DISK: { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_DISK "); break; }
-		case HDCPS1_CMD::SEEK:        { PDEBUGF(LOG_V1, LOG_HDD, "SEEK "); break; }
-		case HDCPS1_CMD::FORMAT_TRK:  { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_TRK "); break; }
+		case CMD::READ_DATA:   { PDEBUGF(LOG_V1, LOG_HDD, "READ_DATA "); break; }
+		case CMD::READ_CHECK:  { PDEBUGF(LOG_V1, LOG_HDD, "READ_CHECK "); break; }
+		case CMD::READ_EXT:    { PDEBUGF(LOG_V1, LOG_HDD, "READ_EXT "); break; }
+		case CMD::READ_ID:     { PDEBUGF(LOG_V1, LOG_HDD, "READ_ID "); break; }
+		case CMD::RECALIBRATE: { PDEBUGF(LOG_V1, LOG_HDD, "RECALIBRATE "); break; }
+		case CMD::WRITE_DATA:  { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_DATA "); break; }
+		case CMD::WRITE_VFY:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_VFY "); break; }
+		case CMD::WRITE_EXT:   { PDEBUGF(LOG_V1, LOG_HDD, "WRITE_EXT "); break; }
+		case CMD::FORMAT_DISK: { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_DISK "); break; }
+		case CMD::SEEK:        { PDEBUGF(LOG_V1, LOG_HDD, "SEEK "); break; }
+		case CMD::FORMAT_TRK:  { PDEBUGF(LOG_V1, LOG_HDD, "FORMAT_TRK "); break; }
 		default:
 			PDEBUGF(LOG_V1, LOG_HDD, "invalid!\n");
 			valid = false;
@@ -1229,14 +1256,14 @@ void HardDiskCtrl_PS1::State::CCB::set(uint8_t* _data)
 			cylinder, head, sector, num_sectors);
 }
 
-void HardDiskCtrl_PS1::State::SSB::copy_to(uint8_t *_dest)
+void StorageCtrl_PS1::State::SSB::copy_to(uint8_t *_dest)
 {
-	_dest[0] = not_ready << HDCPS1_SSB_B0_B_NR;
-	_dest[0] |= seek_end << HDCPS1_SSB_B0_B_SE;
-	_dest[0] |= cylinder_err << HDCPS1_SSB_B0_B_CE;
-	_dest[0] |= track_0 << HDCPS1_SSB_B0_B_T0;
+	_dest[0] = not_ready << SSB_B0_B_NR;
+	_dest[0] |= seek_end << SSB_B0_B_SE;
+	_dest[0] |= cylinder_err << SSB_B0_B_CE;
+	_dest[0] |= track_0 << SSB_B0_B_T0;
 	_dest[1] = 0;
-	_dest[2] = reset << HDCPS1_SSB_B2_B_RR;
+	_dest[2] = reset << SSB_B2_B_RR;
 	_dest[3] = last_cylinder & 0xFF;
 	_dest[4] = ((last_cylinder & 0x300) >> 3) + last_head;
 	_dest[5] = last_sector;
@@ -1250,7 +1277,7 @@ void HardDiskCtrl_PS1::State::SSB::copy_to(uint8_t *_dest)
 	_dest[13] = 0;
 }
 
-void HardDiskCtrl_PS1::State::SSB::clear()
+void StorageCtrl_PS1::State::SSB::clear()
 {
 	not_ready = false;
 	seek_end = false;

@@ -115,7 +115,7 @@ void Devices::config_changed()
 	install_only_if<FloppyCtrl>(
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
 	);
-	install_only_if<HardDiskCtrl_PS1>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
+	install_only_if<StorageCtrl_PS1>(g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD) > 0);
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =
 	install_only_if<PS1Audio>(g_program.config().get_bool(PS1AUDIO_SECTION, PS1AUDIO_ENABLED));

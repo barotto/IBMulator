@@ -17,38 +17,22 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_HDC_H
-#define IBMULATOR_HW_HDC_H
+#ifndef IBMULATOR_HW_STORAGECTRL_H
+#define IBMULATOR_HW_STORAGECTRL_H
 
 #include "hardware/iodevice.h"
-#include "hdd.h"
-#include <memory>
 
 #define HDC_CUSTOM_BIOS_IDX  1 // table index where to inject the custom hdd parameters
                                // using an index >44 confuses CONFIGUR.EXE
 
 
-class HardDiskCtrl : public IODevice
+class StorageCtrl : public IODevice
 {
-	IODEVICE(HardDiskCtrl, "Hard Disk Controller")
-
-protected:
-	HardDiskDrive m_disk;
+	IODEVICE(StorageCtrl, "Storage Controller")
 
 public:
-	HardDiskCtrl(Devices *_dev);
-	~HardDiskCtrl();
-
-	void install();
-	void remove();
-	void reset(unsigned type);
-	void power_off();
-	void config_changed();
-	uint16_t read(uint16_t address, unsigned io_len);
-	void write(uint16_t address, uint16_t value, unsigned io_len);
-
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+	StorageCtrl(Devices *_dev);
+	virtual ~StorageCtrl();
 
 	virtual bool is_busy() const { return false; }
 };

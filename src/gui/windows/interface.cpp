@@ -233,7 +233,7 @@ void Interface::config_changed()
 
 	m_leds.hdd = false;
 	m_status.hdd_led->SetClass("active", false);
-	m_hdd = m_machine->devices().device<HardDiskCtrl>();
+	m_hdd = m_machine->devices().device<StorageCtrl>();
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
