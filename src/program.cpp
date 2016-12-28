@@ -69,14 +69,14 @@ void Program::save_state(
 	if(_name.empty()) {
 		_name = "state";
 	}
-	std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+	std::string path = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
 			+ FS_SEP + _name;
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "saving current state in '%s'...\n", path.c_str());
 
 	std::string ini = path + ".ini";
 	try {
-		m_config.create_file(ini);
+		m_config[1].create_file(ini);
 	} catch(std::exception &e) {
 		PERRF(LOG_PROGRAM, "unable to create config file '%s'\n", ini.c_str());
 		if(_on_fail != nullptr) {
@@ -110,7 +110,7 @@ void Program::restore_state(
 	 * otherwise a deadlock on the libRocket mutex caused by the SysLog will occur.
 	 */
 	m_restore_fn = [=](){
-		std::string path = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+		std::string path = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
 				+ FS_SEP + (_name.empty()?"state":_name);
 		std::string ini = path + ".ini";
 		std::string bin = path + ".bin";
@@ -152,7 +152,8 @@ void Program::restore_state(
 		//machine inconsistent and it should be terminated
 		//TODO the config object needs a mutex!
 		//TODO create a revert mechanism?
-		m_config.merge(conf);
+		m_config[1].copy(m_config[0]);
+		m_config[1].merge(conf);
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
@@ -236,7 +237,7 @@ bool Program::initialize(int argc, char** argv)
 		PERRF(LOG_PROGRAM, "Unable to determine the home directory!\n");
 		throw std::exception();
 	}
-	m_config.set_user_home(home);
+	m_config[0].set_user_home(home);
 
 	if(m_user_dir.empty()) {
 #ifndef _WIN32
@@ -262,7 +263,7 @@ bool Program::initialize(int argc, char** argv)
 	}
 	FileSys::create_dir(m_user_dir.c_str());
 	PINFO(LOG_V1,"user directory: %s\n", m_user_dir.c_str());
-	m_config.set_cfg_home(m_user_dir);
+	m_config[0].set_cfg_home(m_user_dir);
 
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
 	if(m_cfg_file.empty()) {
@@ -273,13 +274,13 @@ bool Program::initialize(int argc, char** argv)
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
 		try {
-			m_config.create_file(m_cfg_file,true);
+			m_config[0].create_file(m_cfg_file, true);
 			std::string message = "The configuration file " PACKAGE ".ini has been created in " +
 					m_user_dir + "\n";
 			message += "Open it and configure the program as you like.";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Configuration file",
 					message.c_str(),
-			        nullptr);
+					nullptr);
 			return false;
 		} catch(std::exception &e) {
 			PWARNF(LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
@@ -287,16 +288,16 @@ bool Program::initialize(int argc, char** argv)
 					m_user_dir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",
 					message.c_str(),
-			        nullptr);
+					nullptr);
 			m_cfg_file = cfgfile;
 		}
 	}
 
 	if(CONFIG_PARSE) {
 		try {
-			m_config.parse(m_cfg_file);
+			m_config[0].parse(m_cfg_file);
 		} catch(std::exception &e) {
-			int error = m_config.get_error();
+			int error = m_config[0].get_error();
 			if(error < 0) {
 				PERRF(LOG_PROGRAM, "Unable to open '%s'\n", m_cfg_file.c_str());
 				throw;
@@ -307,20 +308,22 @@ bool Program::initialize(int argc, char** argv)
 	}
 
 	m_datapath = get_assets_dir(argc,argv);
-	m_config.set_assets_home(m_datapath);
+	m_config[0].set_assets_home(m_datapath);
 	PINFO(LOG_V1,"assets directory: %s\n", m_datapath.c_str());
 
 	//Capture dir, create if not exists
-	std::string capture_dir = m_config.get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
+	std::string capture_dir = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
 	if(capture_dir.empty()) {
 		capture_dir = m_user_dir + FS_SEP "capture";
 	}
 	FileSys::create_dir(capture_dir.c_str());
-	m_config.set_string(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, capture_dir);
+	m_config[0].set_string(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, capture_dir);
 	PINFO(LOG_V1,"capture directory: %s\n", capture_dir.c_str());
 
-	std::string dumplog = m_config.get_file_path("log.txt", FILE_TYPE_USER);
+	std::string dumplog = m_config[0].get_file_path("log.txt", FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
+
+	m_config[1].copy(m_config[0]);
 
 	init_SDL();
 

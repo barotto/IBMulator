@@ -93,7 +93,8 @@ public:
 	void create_file(const std::string &_filename, bool _comments=false);
 
 	void reset();
-	void merge(AppConfig &_config);
+	void merge(const AppConfig &_config);
+	void copy(const AppConfig &_config);
 };
 
 

@@ -470,7 +470,7 @@ void AppConfig::reset()
 	m_values.clear();
 }
 
-void AppConfig::merge(AppConfig &_config)
+void AppConfig::merge(const AppConfig &_config)
 {
 	//deep merge
 	for(auto section : _config.m_values) {
@@ -485,6 +485,11 @@ void AppConfig::merge(AppConfig &_config)
 			m_values[section.first] = section.second;
 		}
 	}
+}
+
+void AppConfig::copy(const AppConfig &_config)
+{
+	(*this) = _config;
 }
 
 int AppConfig::parse_int(const string &_str)

@@ -48,9 +48,9 @@ class Program
 	GUI *m_gui;
 	Mixer *m_mixer;
 
-	std::string m_user_dir; //the directory where the user keeps files like ibmulator.ini
-	std::string m_cfg_file; //the full path of ibmulator.ini
-	AppConfig m_config;
+	std::string m_user_dir; // the directory where the user keeps files like ibmulator.ini
+	std::string m_cfg_file; // the full path of ibmulator.ini
+	AppConfig m_config[2];  // 0: the start up program config, 1: the current config
 
 	std::function<void()> m_restore_fn;
 
@@ -81,7 +81,9 @@ public:
 
 	uint get_beat_time_usec() { return m_heartbeat; }
 
-	inline AppConfig & config() { return m_config; }
+	inline AppConfig & config(unsigned _level=1) {
+		return (_level) ? m_config[1] : m_config[0];
+	}
 	Bench & get_bench() { return m_bench; }
 
 	void save_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
