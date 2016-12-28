@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_HW_HDD_H
 #define IBMULATOR_HW_HDD_H
 
+#include "storagedev.h"
 #include "mediaimage.h"
 #include "harddrvfx.h"
 #include <memory>
@@ -58,13 +59,9 @@ private:
 	uint32_t m_sectors;
 	double m_sect_size;
 	uint64_t m_spin_up_duration;
-
+	std::string m_imgpath;
 	std::unique_ptr<MediaImage> m_disk;
 	HDDPerformance m_performance;
-	std::string m_original_path;
-	MediaGeometry m_original_geom;
-	bool m_write_protect;
-	bool m_save_on_close;
 	bool m_tmp_disk;
 
 	static const MediaGeometry ms_hdd_types[HDD_DRIVES_TABLE_SIZE];
@@ -114,7 +111,7 @@ public:
 
 private:
 	void get_profile(int _type_id, MediaGeometry &geom_, HDDPerformance &perf_);
-	void mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance _perf);
+	void mount(std::string _imgpath, MediaGeometry _geom, bool _read_only);
 	void unmount();
 };
 

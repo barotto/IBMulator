@@ -190,33 +190,6 @@ double HardDiskDrive::head_position() const
 
 void HardDiskDrive::install()
 {
-	m_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
-	m_original_geom = {0,0,0,0,0};
-	if(m_type > 0) {
-		MediaGeometry geom;
-		HDDPerformance perf;
-		std::string imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
-		get_profile(m_type, geom, perf);
-		mount(imgpath, geom, perf);
-
-		m_write_protect = g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY);
-		m_original_path = m_disk->get_name();
-		m_original_geom = geom;
-		m_save_on_close = g_program.config().get_bool(DISK_C_SECTION, DISK_SAVE);
-		PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
-				m_type, double(m_disk->hd_size)/(1024.0*1024.0));
-		PINFOF(LOG_V1, LOG_HDD, "  Cylinders: %d\n", geom.cylinders);
-		PINFOF(LOG_V1, LOG_HDD, "  Heads: %d\n", geom.heads);
-		PINFOF(LOG_V1, LOG_HDD, "  Sectors per track: %d\n", geom.spt);
-		PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %d RPM\n", perf.rot_speed);
-		PINFOF(LOG_V2, LOG_HDD, "  Interleave: %d:1\n", perf.interleave);
-		PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %.1f ms\n", perf.overh_time);
-		PINFOF(LOG_V2, LOG_HDD, "  data bits per track: %d\n", geom.spt*512*8);
-
-	} else {
-		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
-	}
-
 	m_fx.install();
 	m_spin_up_duration = m_fx.spin_up_time_us();
 }
@@ -258,6 +231,9 @@ uint64_t HardDiskDrive::spin_up_eta_us() const
 
 void HardDiskDrive::config_changed()
 {
+	// unmount the current image and serialize it if needed
+	unmount();
+
 	//get_enum throws if value is not allowed:
 	m_type = g_program.config().get_int(DRIVES_SECTION, DRIVES_HDD);
 	if(m_type<0 || m_type == 15 ||
@@ -266,9 +242,72 @@ void HardDiskDrive::config_changed()
 		PERRF(LOG_HDD, "Invalid HDD type %d\n", m_type);
 		throw std::exception();
 	}
-	//disk mount is performed in install() and restore_state()
-	// at first install a new
+
 	m_fx.config_changed();
+
+	if(m_type == 0) {
+		PINFOF(LOG_V0, LOG_HDD, "Drive C not installed\n");
+		return;
+	}
+
+	MediaGeometry geom;
+	HDDPerformance perf;
+	get_profile(m_type, geom, perf);
+
+	m_imgpath = g_program.config().find_media(DISK_C_SECTION, DISK_PATH);
+	// read only is a start up configuration property
+	bool read_only = g_program.config(0).get_bool(DISK_C_SECTION, DISK_READONLY);
+	mount(m_imgpath, geom, read_only);
+
+	m_tmp_disk = false;
+	m_sectors = geom.spt * geom.cylinders * geom.heads;
+	m_performance = perf;
+	m_performance.trk_read_us = round(6.0e7 / perf.rot_speed);
+	m_performance.trk2trk_us = perf.seek_trk * 1000.0;
+
+	/* Track seek phases:
+	 * 1. acceleration (the disk arm gets moving);
+	 * 2. coasting (the arm is moving at full speed);
+	 * 3. deceleration (the arm slows down);
+	 * 4. settling (the head is positioned over the correct track).
+	 * Here we divide the total seek time in 2 values: avgspeed and overhead,
+	 * derived from the only 2 values given in HDD specifications:
+	 * track-to-track and maximum (full stroke).
+	 *
+	 * trk2trk = overhead + avgspeed
+	 * maximum = overhead + avgspeed*(ncyls-1)
+	 *
+	 * overhead = trk2trk - avgspeed
+	 * avgspeed = (maximum - trk2trk) / (ncyls-2)
+	 *
+	 * So the average speed includes points 1,2,3.
+	 */
+	m_performance.seek_avgspeed_us = round(((perf.seek_max-perf.seek_trk) / double(geom.cylinders-2)) * 1000.0);
+	m_performance.seek_overhead_us = m_performance.trk2trk_us - m_performance.seek_avgspeed_us;
+
+	double bytes_pt = (geom.spt*HDD_SECTOR_SIZE + HDD_TRACK_OVERHEAD);
+	double bytes_us = bytes_pt / double(m_performance.trk_read_us);
+	m_performance.sec_read_us = round(HDD_SECTOR_SIZE / bytes_us);
+	m_sect_size = (1.0 / bytes_pt) * HDD_SECTOR_SIZE;
+	m_performance.sec_xfer_us = double(m_performance.sec_read_us) * std::max(1.0,(double(perf.interleave) * 0.8f));
+
+	PDEBUGF(LOG_V0, LOG_HDD, "Performance characteristics:\n");
+	PDEBUGF(LOG_V0, LOG_HDD, "  track-to-track seek time: %d us\n", m_performance.trk2trk_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "    seek overhead time: %d us\n", m_performance.seek_overhead_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "    seek avgspeed time: %d us/cyl\n", m_performance.seek_avgspeed_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  track read time (rot.lat.): %d us\n", m_performance.trk_read_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  sector read time: %d us\n", m_performance.sec_read_us);
+	PDEBUGF(LOG_V0, LOG_HDD, "  command overhead: %d us\n", int(perf.overh_time*1000.0));
+
+	PINFOF(LOG_V0, LOG_HDD, "Installed drive C as type %d (%.1fMiB)\n",
+			m_type, double(m_disk->hd_size)/(1024.0*1024.0));
+	PINFOF(LOG_V1, LOG_HDD, "  Cylinders: %d\n", geom.cylinders);
+	PINFOF(LOG_V1, LOG_HDD, "  Heads: %d\n", geom.heads);
+	PINFOF(LOG_V1, LOG_HDD, "  Sectors per track: %d\n", geom.spt);
+	PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %d RPM\n", perf.rot_speed);
+	PINFOF(LOG_V2, LOG_HDD, "  Interleave: %d:1\n", perf.interleave);
+	PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %.1f ms\n", perf.overh_time);
+	PINFOF(LOG_V2, LOG_HDD, "  data bits per track: %d\n", geom.spt*512*8);
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)
@@ -287,23 +326,29 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "HDD: restoring state\n");
 
-	unmount();
-
-	_state.read(&m_s, {sizeof(m_s), "Hard Disk Drive"});
-
 	m_fx.clear_events();
 
-	if(m_type != 0) {
+	// restore_state comes after config_changed, so:
+	// 1. the old disk has been serialized and unmounted
+	// 2. a new disk is mounted, with path in m_imgpath
+	// 3. geometry and performance are determined
+	if(m_type > 0) {
+		assert(m_disk != nullptr);
+		std::string imgfile = _state.get_basename() + "-hdd.img";
+		if(!FileSys::file_exists(imgfile.c_str())) {
+			PERRF(LOG_HDD, "Unable to find state image %s\n", imgfile.c_str());
+			throw std::exception();
+		}
+		MediaGeometry geom = m_disk->geometry;
+		m_disk.reset(nullptr); // this calls the destructor and closes the file
 		//the saved state is read only
-		g_program.config().set_bool(DISK_C_SECTION, DISK_READONLY, true);
-		MediaGeometry geom;
-		HDDPerformance perf;
-		get_profile(m_type, geom, perf);
-		mount(_state.get_basename() + "-hdd.img", geom, perf);
+		mount(_state.get_basename() + "-hdd.img", geom, true);
 		m_fx.spin(true, false);
 	} else {
 		m_fx.spin(false, false);
 	}
+
+	_state.read(&m_s, {sizeof(m_s), "Hard Disk Drive"});
 }
 
 void HardDiskDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerformance &_perf)
@@ -358,7 +403,7 @@ void HardDiskDrive::get_profile(int _type_id, MediaGeometry &_geom, HDDPerforman
 	}
 }
 
-void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, HDDPerformance _perf)
+void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_only)
 {
 	if(_imgpath.empty()) {
 		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
@@ -368,48 +413,6 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, HDDPerforma
 		PERRF(LOG_HDD, "Cannot use a directory as an image file\n");
 		throw std::exception();
 	}
-
-	m_tmp_disk = false;
-
-	m_sectors = _geom.spt * _geom.cylinders * _geom.heads;
-
-	m_performance = _perf;
-	m_performance.trk_read_us = round(6.0e7 / _perf.rot_speed);
-	m_performance.trk2trk_us = _perf.seek_trk * 1000.0;
-
-	/* Track seek phases:
-	 * 1. acceleration (the disk arm gets moving);
-	 * 2. coasting (the arm is moving at full speed);
-	 * 3. deceleration (the arm slows down);
-	 * 4. settling (the head is positioned over the correct track).
-	 * Here we divide the total seek time in 2 values: avgspeed and overhead,
-	 * derived from the only 2 values given in HDD specifications:
-	 * track-to-track and maximum (full stroke).
-	 *
-	 * trk2trk = overhead + avgspeed
-	 * maximum = overhead + avgspeed*(ncyls-1)
-	 *
-	 * overhead = trk2trk - avgspeed
-	 * avgspeed = (maximum - trk2trk) / (ncyls-2)
-	 *
-	 * So the average speed includes points 1,2,3.
-	 */
-	m_performance.seek_avgspeed_us = round(((_perf.seek_max-_perf.seek_trk) / double(_geom.cylinders-2)) * 1000.0);
-	m_performance.seek_overhead_us = m_performance.trk2trk_us - m_performance.seek_avgspeed_us;
-
-	double bytes_pt = (_geom.spt*HDD_SECTOR_SIZE + HDD_TRACK_OVERHEAD);
-	double bytes_us = bytes_pt / double(m_performance.trk_read_us);
-	m_performance.sec_read_us = round(HDD_SECTOR_SIZE / bytes_us);
-	m_sect_size = (1.0 / bytes_pt) * HDD_SECTOR_SIZE;
-	m_performance.sec_xfer_us = double(m_performance.sec_read_us) * std::max(1.0,(double(_perf.interleave) * 0.8f));
-
-	PDEBUGF(LOG_V0, LOG_HDD, "Performance characteristics:\n");
-	PDEBUGF(LOG_V0, LOG_HDD, "  track-to-track seek time: %d us\n", m_performance.trk2trk_us);
-	PDEBUGF(LOG_V0, LOG_HDD, "    seek overhead time: %d us\n", m_performance.seek_overhead_us);
-	PDEBUGF(LOG_V0, LOG_HDD, "    seek avgspeed time: %d us/cyl\n", m_performance.seek_avgspeed_us);
-	PDEBUGF(LOG_V0, LOG_HDD, "  track read time (rot.lat.): %d us\n", m_performance.trk_read_us);
-	PDEBUGF(LOG_V0, LOG_HDD, "  sector read time: %d us\n", m_performance.sec_read_us);
-	PDEBUGF(LOG_V0, LOG_HDD, "  command overhead: %d us\n", int(_perf.overh_time*1000.0));
 
 	set_space_time(0.0, 0);
 
@@ -442,9 +445,7 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, HDDPerforma
 		PINFOF(LOG_V0, LOG_HDD, "Using image file '%s'\n", _imgpath.c_str());
 	}
 
-	if(g_program.config().get_bool(DISK_C_SECTION, DISK_READONLY)
-	   || !FileSys::is_file_writeable(_imgpath.c_str()))
-	{
+	if(_read_only || !FileSys::is_file_writeable(_imgpath.c_str()))	{
 		PINFOF(LOG_V1, LOG_HDD, "The image file is read-only, using a replica\n");
 
 		std::string dir, base, ext;
@@ -476,21 +477,41 @@ void HardDiskDrive::unmount()
 		return;
 	}
 
-	if(m_tmp_disk && m_save_on_close && !m_write_protect) {
-		if(!(m_disk->geometry == m_original_geom)) {
-			PINFOF(LOG_V0, LOG_HDD, "Disk geometry mismatch, temporary image not saved\n");
+	// write protect and save on close are from the start up configuration
+	bool write_protect = g_program.config(0).get_bool(DISK_C_SECTION, DISK_READONLY);
+	bool save_on_close = g_program.config(0).get_bool(DISK_C_SECTION, DISK_SAVE);
+	if(m_tmp_disk) {
+		if(!save_on_close) {
+			PINFOF(LOG_V0, LOG_HDD,
+					"Disk image file not saved because '" DISK_SAVE "' option is set to false in the configuration file\n");
+		} else if(write_protect) {
+			PINFOF(LOG_V0, LOG_HDD,
+					"Disk image file not saved because '" DISK_READONLY "' option is set to true in the configuration file\n");
 		} else {
-			if(!FileSys::file_exists(m_original_path.c_str())
-			   || FileSys::is_file_writeable(m_original_path.c_str()))
-			{
-				//make the current disk state permanent.
-				m_disk->save_state(m_original_path.c_str());
+			// make the current disk state permanent.
+			bool save = true;
+			if(FileSys::file_exists(m_imgpath.c_str())) {
+				if(FileSys::get_file_size(m_imgpath.c_str()) != size()) {
+					//TODO this is true only for flat media images
+					PINFOF(LOG_V0, LOG_HDD, "Disk geometry mismatch, temporary image not saved!\n");
+					save = false;
+				}
+				if(!FileSys::is_file_writeable(m_imgpath.c_str())) {
+					PINFOF(LOG_V0, LOG_HDD, "Disk image file is write protected, temporary image not saved!\n");
+					save = false;
+				}
+			}
+			if(save) {
+				PINFOF(LOG_V0, LOG_HDD,
+						"Saving disk image to '%s'\n",m_imgpath.c_str());
+				m_disk->save_state(m_imgpath.c_str());
 			}
 		}
 	}
 
 	m_disk->close();
 	if(m_tmp_disk) {
+		PDEBUGF(LOG_V0, LOG_HDD, "Removing temporary image file '%s'\n", m_disk->get_name().c_str());
 		::remove(m_disk->get_name().c_str());
 	}
 	m_disk.reset(nullptr);
