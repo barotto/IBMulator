@@ -17,6 +17,7 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
 #include "program.h"
 #include "machine.h"
 #include "hardware/devices.h"

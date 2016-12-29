@@ -19,7 +19,7 @@
 
 #include <cmath>
 #include <cstring>
-#include "ibmulator.h"
+
 #define SWAP(a,b,t) { t = a; a = b; b = t; }
 
 /*

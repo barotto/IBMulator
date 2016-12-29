@@ -20,8 +20,6 @@
 #ifndef IBMULATOR_GUI_FORMAT_H
 #define IBMULATOR_GUI_FORMAT_H
 
-#include "ibmulator.h"
-
 const Rocket::Core::String & format_uint16(uint16_t _value);
 const Rocket::Core::String & format_bit(uint _value);
 const Rocket::Core::String & format_hex16(uint16_t _value);

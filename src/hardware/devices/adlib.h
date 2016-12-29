@@ -20,7 +20,6 @@
 #ifndef IBMULATOR_HW_ADLIB_H
 #define IBMULATOR_HW_ADLIB_H
 
-#include "ibmulator.h"
 #include "hardware/iodevice.h"
 #include "mixer.h"
 #include "opl.h"

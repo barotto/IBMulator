@@ -17,6 +17,7 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
 #include "hardware/cpu/decoder.h"
 
                                        /* base    memop   ex.  rep    base_rep pmode   noj    bu  */

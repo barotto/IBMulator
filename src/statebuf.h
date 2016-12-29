@@ -20,7 +20,6 @@
 #ifndef IBMULATOR_STATEBUF_H
 #define IBMULATOR_STATEBUF_H
 
-#include "ibmulator.h"
 #include <string>
 
 struct StateHeader

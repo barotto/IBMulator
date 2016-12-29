@@ -17,7 +17,6 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ibmulator.h"
 #include <cmath>
 
 template<class T>

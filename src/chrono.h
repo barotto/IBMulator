@@ -21,7 +21,6 @@
 #ifndef IBMULATOR_CHRONO_H
 #define IBMULATOR_CHRONO_H
 
-#include "ibmulator.h"
 #include <chrono>
 
 #define RDTSCP(low) __asm__ __volatile__ ("rdtscp" : "=A" (low));
