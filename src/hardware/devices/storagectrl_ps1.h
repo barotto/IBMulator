@@ -27,7 +27,7 @@
 
 class StorageCtrl_PS1 : public StorageCtrl
 {
-	IODEVICE(StorageCtrl_PS1, "PS/1 Storage Controller")
+	IODEVICE(StorageCtrl_PS1, "PS/1 HDD Controller")
 
 private:
 
@@ -159,7 +159,7 @@ public:
 
 	bool is_busy() const {
 		// this function is called by the GUI thread.
-		return (m_s.attention_reg & 0x80) || (m_disk.is_spinning_up());
+		return (m_s.attention_reg & 0x80) || (m_disk.is_powering_up());
 	}
 
 private:

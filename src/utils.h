@@ -20,6 +20,16 @@
 #ifndef IBMULATOR_UTILS_H
 #define IBMULATOR_UTILS_H
 
+/* Converts a int into a string, to be used in string concatenations */
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+template <typename _to_check, std::size_t _expected, std::size_t _real = sizeof(_to_check)>
+void size_check()
+{
+	static_assert(_expected == _real, "Incorrect size!");
+}
+
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 
 template<class T>
@@ -52,6 +62,26 @@ template <class callable, class... arguments>
 		std::this_thread::sleep_for(std::chrono::milliseconds(_after_ms));
 		event();
 	}).detach();
+}
+
+inline uint16_t read_16bit(const uint8_t* buf)
+{
+	return (buf[0] << 8) | buf[1];
+}
+
+inline uint32_t read_32bit(const uint8_t* buf)
+{
+	return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+}
+
+inline uint8_t packet_field(uint8_t *packet, unsigned byte, unsigned start, unsigned num_bits)
+{
+	return ((packet[byte] >> start) & ((1 << num_bits) - 1));
+}
+
+inline uint16_t packet_word(uint8_t *packet, unsigned byte)
+{
+	return ( (uint16_t(packet[byte]) << 8) | packet[byte+1] );
 }
 
 #endif

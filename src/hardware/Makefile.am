@@ -37,6 +37,7 @@ libhardware_a_SOURCES = \
 	devices/floppyfx.cpp \
 	devices/storagectrl.cpp \
 	devices/storagectrl_ps1.cpp \
+	devices/storagedev.cpp \
 	devices/hdd.cpp \
 	devices/harddrvfx.cpp \
 	devices/mediaimage.cpp \
@@ -84,6 +85,7 @@ noinst_HEADERS = \
 	devices/floppyfx.h \
 	devices/storagectrl.h \
 	devices/storagectrl_ps1.h \
+	devices/storagedev.h \
 	devices/hdd.h \
 	devices/harddrvfx.h \
 	devices/hddparams.h \

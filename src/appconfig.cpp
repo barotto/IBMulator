@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "utils.h"
 #include "filesys.h"
 #include "appconfig.h"
 #include "program.h"
@@ -26,6 +27,7 @@
 #include <cctype>
 #include <cstdlib>
 #include "ini/ini.h"
+#include "hardware/devices/hdd.h"
 
 using std::string;
 
@@ -82,10 +84,10 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,   "3.5" },
+		{ DRIVES_FDD_A,   "3.5"  },
 		{ DRIVES_FDD_B,   "none" },
-		{ DRIVES_FDD_LAT, "1.0" },
-		{ DRIVES_HDD,     "35" }
+		{ DRIVES_FDD_LAT, "1.0"  },
+		{ DRIVES_HDD,     "auto" }
 	} },
 
 	{ DISK_A_SECTION, {
@@ -103,6 +105,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DISK_C_SECTION, {
+		{ DISK_TYPE,       "35" },
 		{ DISK_READONLY,   "no" },
 		{ DISK_SAVE,       "yes" },
 		{ DISK_PATH,       "hdd.img" },
@@ -253,12 +256,10 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              You can use this parameter to speed up the FDD read/write operations.\n"
 ";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
 ";         hdd: The type of fixed disk drive C.\n"
-";              Possible values: any number between 0 and 45 (15 excluded)\n"
-";                 0: no disk installed\n"
-";                15: reserved, don't use it\n"
-";                35: the original WDL-330P 30MB disk drive\n"
-";              1-44: standard type (see the project page for the list of types supported by the BIOS)\n"
-";                45: custom type (specify the geometry in the hdd section)\n"
+";              Possible values: none, auto, ps1, ata\n"
+";               none: no hard disk installed\n"
+";               auto: automatically determined by the system model\n"
+";                ps1: IBM's proprietary 8-bit XTA like controller\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -280,16 +281,23 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DISK_C_SECTION,
+"; Drive C configuration:\n"
+";     type: The standard type of fixed disk.\n"
+";           Possible values:\n"
+";              15: reserved, don't use\n"
+";              35: the IBM WDL-330P 30MB disk drive used on the PS/1 2011\n"
+";            1-44: other standard types (see the project page for the list of types supported by the BIOS)\n"
+";              " STR(HDD_CUSTOM_DRIVE_IDX) ": custom type (specify the geometry)\n"
 ";     path: Path of the image file to mount\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
 ";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
 "(unless it is write-protected)\n"
-"; The following parameters are used for disk type 45 (custom type):\n"
+"; The following parameters are used for disk type " STR(HDD_CUSTOM_DRIVE_IDX) " (custom type):\n"
 ";   cylinders: Number of cylinders (max. 1024)\n"
 ";       heads: Number of heads (max. 16)\n"
-";     sectors: Number of sectors per track (max. 62)\n"
-"; Drive capacity is cylinders*heads*sectors*512, for a maximum of 496MiB.\n"
+";     sectors: Number of sectors per track (max. 63)\n"
+"; Drive capacity is cylinders*heads*sectors*512, for a maximum of 528MB (504MiB)\n"
 "; The following performance parameters are used for any disk type except 35 and 38:\n"
 ";    seek_max: Maximum seek time in milliseconds\n"
 ";    seek_trk: Track-to-track seek time in milliseconds\n"
@@ -407,6 +415,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISK_TYPE
 	} },
 	{ DISK_C_SECTION, {
+		DISK_TYPE,
 		DISK_PATH,
 		DISK_READONLY,
 		DISK_SAVE,
@@ -722,12 +731,12 @@ uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_m
 	try {
 		enumstr = get(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF_ABORT(LOG_PROGRAM, "Unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
 
 	auto enumvalue = _enum_map.find(enumstr);
 	if(enumvalue == _enum_map.end()) {
-		PERRF(LOG_PROGRAM, "unable to find enum value for '%s' in [%s]:%s\n",
+		PERRF(LOG_PROGRAM, "Invalid value '%s' for [%s]:%s\n",
 				enumstr.c_str(), _section.c_str(), _name.c_str());
 		throw std::exception();
 	}

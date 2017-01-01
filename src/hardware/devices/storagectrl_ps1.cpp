@@ -184,24 +184,10 @@ void StorageCtrl_PS1::install()
 			"HDD-dma"
 	);
 
-	m_disk.install();
+	PINFOF(LOG_V0, LOG_HDD, "Installed %s\n", name());
 
-	if(m_disk.type() == HDD_CUSTOM_DRIVE_IDX) {
-		HDDParams params;
-		params.cylinders  = m_disk.geometry().cylinders;
-		params.heads      = m_disk.geometry().heads;
-		params.rwcyl      = 0;
-		params.wpcyl      = m_disk.geometry().wpcomp;
-		params.ECClen     = 0;
-		params.options    = (m_disk.geometry().heads>8 ? 0x08 : 0);
-		params.timeoutstd = 0;
-		params.timeoutfmt = 0;
-		params.timeoutchk = 0;
-		params.lzone      = m_disk.geometry().lzone;
-		params.sectors    = m_disk.geometry().spt;
-		params.reserved   = 0;
-		g_machine.sys_rom().inject_custom_hdd_params(HDC_CUSTOM_BIOS_IDX, params);
-	}
+	m_disk.set_name("Drive C");
+	m_disk.install();
 }
 
 void StorageCtrl_PS1::remove()
@@ -233,7 +219,24 @@ void StorageCtrl_PS1::reset(unsigned _type)
 
 void StorageCtrl_PS1::config_changed()
 {
-	m_disk.config_changed();
+	m_disk.config_changed(DISK_C_SECTION);
+
+	if(m_disk.type() == HDD_CUSTOM_DRIVE_IDX) {
+		HDDParams params;
+		params.cylinders  = m_disk.geometry().cylinders;
+		params.heads      = m_disk.geometry().heads;
+		params.rwcyl      = 0;
+		params.wpcyl      = m_disk.geometry().wpcomp;
+		params.ECClen     = 0;
+		params.options    = (m_disk.geometry().heads>8 ? 0x08 : 0);
+		params.timeoutstd = 0;
+		params.timeoutfmt = 0;
+		params.timeoutchk = 0;
+		params.lzone      = m_disk.geometry().lzone;
+		params.sectors    = m_disk.geometry().spt;
+		params.reserved   = 0;
+		g_machine.sys_rom().inject_custom_hdd_params(HDC_CUSTOM_BIOS_IDX, params);
+	}
 }
 
 void StorageCtrl_PS1::power_off()
@@ -751,7 +754,7 @@ void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek
 	if(time_us == 0) {
 		time_us = DEFTIME_US;
 	}
-	uint64_t spin_up = m_disk.spin_up_eta_us();
+	uint64_t spin_up = m_disk.power_up_eta_us();
 	if(spin_up) {
 		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", spin_up);
 		time_us += spin_up;
@@ -861,7 +864,8 @@ void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigne
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ C:%d,H:%d,S:%d -> buf:%d\n",
 			_c, _h, _s, _buf);
 
-	m_disk.read_sector(_c, _h, _s, m_s.sect_buffer[_buf].stack);
+	int64_t lba = m_disk.chs_to_lba(_c, _h, _s);
+	m_disk.read_sector(lba, m_s.sect_buffer[_buf].stack, 512);
 }
 
 void StorageCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
@@ -870,7 +874,8 @@ void StorageCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsign
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE C:%d,H:%d,S:%d <- buf:%d\n",
 			_c, _h, _s, _buf);
 
-	m_disk.write_sector(_c, _h, _s, m_s.sect_buffer[_buf].stack);
+	int64_t lba = m_disk.chs_to_lba(_c, _h, _s);
+	m_disk.write_sector(lba, m_s.sect_buffer[_buf].stack, 512);
 }
 
 void StorageCtrl_PS1::cylinder_error()

@@ -60,13 +60,6 @@
 #endif
 
 
-template <typename _to_check, std::size_t _expected, std::size_t _real = sizeof(_to_check)>
-void size_check()
-{
-	static_assert(_expected == _real, "Incorrect size!");
-}
-
-
 #ifndef NDEBUG
 	//DEBUG
 	#define CONFIG_PARSE      true

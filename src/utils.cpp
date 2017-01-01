@@ -22,9 +22,9 @@
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
 	std::string::size_type i = _str.find(_search);
-    while(i != std::string::npos) {
-        _str.replace(i, _search.length(), _replace);
-        i = _str.find(_search, i+_replace.length());
-    }
+	while(i != std::string::npos) {
+		_str.replace(i, _search.length(), _replace);
+		i = _str.find(_search, i+_replace.length());
+	}
 }
 
