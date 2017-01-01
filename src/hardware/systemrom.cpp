@@ -22,6 +22,7 @@
 #include "md5.h"
 #include "systemrom.h"
 #include "filesys.h"
+#include "utils.h"
 #include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>

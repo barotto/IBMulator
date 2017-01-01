@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "vgm.h"
 #include "filesys.h"
+#include "utils.h"
 #include <cstring>
 #include <cmath>
 

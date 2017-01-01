@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "wav.h"
+#include "utils.h"
 #include <cstring>
 
 WAVFile::WAVFile()
