@@ -18,6 +18,7 @@
  */
 
 #include <string>
+#include <array>
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
@@ -28,3 +29,21 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 	}
 }
 
+std::string bitfield_to_string(uint8_t _bitfield,
+		const std::array<std::string, 8> &_set_names,
+		const std::array<std::string, 8> &_clear_names)
+{
+	std::string s;
+	for(int i=7; i>=0; i--) {
+		if(_bitfield & 1<<i) {
+			if(!_set_names[i].empty()) {
+				s += _set_names[i] + " ";
+			}
+		} else {
+			if(!_clear_names[i].empty()) {
+				s += _clear_names[i] + " ";
+			}
+		}
+	}
+	return s;
+}

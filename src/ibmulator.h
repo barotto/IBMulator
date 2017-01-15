@@ -59,6 +59,7 @@
 	#define MSC_ALIGN(x)
 #endif
 
+#define UNUSED(x) ((void)x)
 
 #ifndef NDEBUG
 	//DEBUG

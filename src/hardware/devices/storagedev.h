@@ -41,6 +41,33 @@ struct DrivePerformance
 };
 
 /**
+ * Drive identification data.
+ * Used for the ATA controller and general logging.
+ * All strings are ASCII character padded with 20h (space) and null terminated.
+ */
+struct DriveIdent
+{
+	char vendor[9];   // Vendor name
+	char product[17]; // Product id
+	char revision[5]; // Product revision
+	char model[41];   // Model name
+	char serial[21];  // Serial number
+	char firmware[9]; // Firmware revision
+
+	//DriveIdent();
+
+	void set_vendor(const char *_str) { set_string(vendor, _str, 8); }
+	void set_product(const char *_str) { set_string(product, _str, 16); }
+	void set_revision(const char *_str) { set_string(revision, _str, 4); }
+	void set_model(const char *_str) { set_string(model, _str, 40); }
+	void set_serial(const char *_str) { set_string(serial, _str, 20); }
+	void set_firmware(const char *_str) { set_string(firmware, _str, 8); }
+
+	void set_string(char *_dest, const char *_src, size_t _len);
+	DriveIdent & operator=(const DriveIdent &);
+};
+
+/**
  * Disk storage device class.
  * Can be used to model hard drives, floppy drives and cd-rom drives.
  *
@@ -68,10 +95,7 @@ protected:
 	double m_head_speed_factor; // Used to derive the head max speed
 	double m_head_accel_factor; // Used to derive the head acceleration
 
-	char m_model[41];   // Model name, 40 ASCII characters padded with 20h + null term.
-	char m_serial[21];  // Serial number, 20 ASCII characters padded with 20h + null term.
-	char m_firmware[9]; // Firmware revision, 8 ASCII characters padded with 20h + null term.
-
+	DriveIdent m_ident;
 	MediaGeometry m_geometry;
 	DrivePerformance m_performance;
 
@@ -94,9 +118,17 @@ public:
 	virtual void restore_state(StateBuf &) {}
 
 	const char * name() { return m_name.c_str(); }
-	const char * model() { return m_model; }
-	const char * serial() { return m_serial; }
-	const char * firmware() { return m_firmware; }
+	const char * vendor() { return m_ident.vendor; }
+	const char * product() { return m_ident.product; }
+	const char * revision() { return m_ident.revision; }
+	const char * model() { return m_ident.model; }
+	const char * serial() { return m_ident.serial; }
+	const char * firmware() { return m_ident.firmware; }
+
+	bool insert_media(const char */*_path*/) { return false; }
+	void eject_media() {}
+	bool is_media_present() { return false; }
+
 	const MediaGeometry & geometry() const { return m_geometry; }
 	const DrivePerformance & performance() const { return m_performance; }
 
@@ -118,6 +150,7 @@ public:
 	virtual void read_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}
 	virtual void write_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}
 	virtual void seek(unsigned /*_from_cyl*/, unsigned /*_to_cyl*/) {}
+	virtual void seek(int64_t /*_lba*/) {}
 
 	int64_t chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const;
 	void lba_to_chs(int64_t _lba, int64_t &c_, int64_t &h_, int64_t &s_) const;

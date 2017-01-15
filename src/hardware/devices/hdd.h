@@ -41,7 +41,7 @@ protected:
 
 	static const MediaGeometry ms_hdd_types[HDD_DRIVES_TABLE_SIZE];
 	static const std::map<uint, DrivePerformance> ms_hdd_performance;
-	static const std::map<int, const char*> ms_hdd_models;
+	static const std::map<int, const DriveIdent> ms_hdd_models;
 
 	HardDriveFX m_fx;
 

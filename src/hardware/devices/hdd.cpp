@@ -24,6 +24,7 @@
 #include "program.h"
 #include "machine.h"
 #include <cstring>
+#include <sstream>
 
 /* Assuming the ST412/506 HD format RLL encoding, this should be the anatomy of
  * a sector:
@@ -130,10 +131,16 @@ const std::map<uint, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
 { 39, {  0.0f, 0.0f,    0, 0, 0.0f, 0,0,0,0,0,0 } }, //39 41MB
 };
 
-const std::map<int, const char*> HardDiskDrive::ms_hdd_models = {
-{ 35, "IBM WDL-330P"  }, //35 30MB
-{ 38, "IBM TYPE 38"   }, //38 30MB
-{ 39, "MAXTOR 7040F1" }, //39 41MB
+const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
+{ 0,  DriveIdent{ "IBMLTR", "STD TYPE ","1.0", "IBMLTR STD TYPE ","1", "1.0" } },
+{ 35, DriveIdent{ "IBM",    "WDL-330P", "1.0", "IBM WDL-330P",    "1", "1.0" } }, //35 30MB
+{ 38, DriveIdent{ "IBM",    "TYPE 38",  "1.0", "IBM TYPE 38",     "1", "1.0" } }, //38 30MB
+{ 39, DriveIdent{ "MAXTOR", "7040F1",   "1.0", "MAXTOR 7040F1",   "1", "1.0" } }, //39 41MB
+{ HDD_CUSTOM_DRIVE_IDX,
+      DriveIdent{ "IBMLTR", "CUSTOM TYPE " STR(HDD_CUSTOM_DRIVE_IDX), "1.0",
+      "IBMULATOR CUSTOM TYPE " STR(HDD_CUSTOM_DRIVE_IDX), "1", "1.0"
+      }
+}
 };
 
 
@@ -156,12 +163,12 @@ m_tmp_disk(false)
 
 HardDiskDrive::~HardDiskDrive()
 {
-	unmount(m_save_on_close, m_read_only);
+	remove();
 }
 
 void HardDiskDrive::install()
 {
-	m_fx.install();
+	m_fx.install(m_name);
 	m_spin_up_duration = m_fx.spin_up_time_us();
 }
 
@@ -232,25 +239,25 @@ void HardDiskDrive::config_changed(const char *_section)
 	mount(m_imgpath, m_geometry, m_read_only);
 
 	auto model = ms_hdd_models.find(type);
-	const char *model_str = "GENERIC HDD";
 	if(model != ms_hdd_models.end()) {
-		model_str = model->second;
-	} else if(m_type == HDD_CUSTOM_DRIVE_IDX) {
-		model_str = "CUSTOM TYPE " STR(HDD_CUSTOM_DRIVE_IDX);
+		m_ident = model->second;
+	} else {
+		// other standard types
+		m_ident = ms_hdd_models.at(0);
+		std::stringstream ss;
+		ss << ms_hdd_models.at(0).product << type;
+		m_ident.set_product(ss.str().c_str());
+		ss.str("");
+		ss << ms_hdd_models.at(0).model << type;
+		m_ident.set_model(ss.str().c_str());
 	}
-	strncpy(m_model, model_str, 40);
-	while(strlen(m_model) < 40) {
-		strcat(m_model, " ");
-	}
-	strcpy(m_serial, "00000000000000000000");
-	memset(m_firmware, 0, 8);
 
 	m_fx.config_changed();
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d\n", name(), m_type);
 	PINFOF(LOG_V0, LOG_HDD, "  Capacity: %.1fMB, %.1fMiB, %lu sectors\n",
 			double(size())/(1000.0*1000.0), double(size())/(1024.0*1024.0), m_sectors);
-	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_model);
+	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_ident.model);
 	PINFOF(LOG_V1, LOG_HDD, "  Geometry: C:%u, H:%u, S:%u\n",
 			m_geometry.cylinders, m_geometry.heads, m_geometry.spt);
 	PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %u RPM\n", m_performance.rot_speed);

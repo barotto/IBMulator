@@ -22,13 +22,53 @@
 #include <cstring>
 #include <cmath>
 
+/*
+DriveIdent::DriveIdent()
+{
+	memset(this, 0x20, sizeof(DriveIdent));
+	vendor[8] = 0;
+	product[16] = 0;
+	revision[4] = 0;
+	model[40] = 0;
+	serial[20] = 0;
+	firmware[8] = 0;
+}
+*/
+
+void DriveIdent::set_string(char *_dest, const char *_src, size_t _len)
+{
+	strncpy(_dest, _src, _len);
+	while(strlen(_dest) < _len) {
+		strcat(_dest, " ");
+	}
+	_dest[_len] = 0;
+}
+
+DriveIdent & DriveIdent::operator=(const DriveIdent &_src)
+{
+	set_vendor(_src.vendor);
+	set_product(_src.product);
+	set_revision(_src.revision);
+	set_model(_src.model);
+	set_serial(_src.serial);
+	set_firmware(_src.firmware);
+
+	return *this;
+}
+
 
 StorageDev::StorageDev()
+:
+m_sectors(0),
+m_sector_data(0),
+m_sector_size(0.0),
+m_sector_len(0.0),
+m_disk_radius(0.0),
+m_track_overhead(0.0),
+m_head_speed_factor(0.0),
+m_head_accel_factor(0.0)
 {
 	memset(&m_s, 0, sizeof(m_s));
-	m_model[40] = 0;
-	m_serial[20]= 0;
-	m_firmware[8] = 0;
 }
 
 void StorageDev::set_space_time(double _head_pos, uint64_t _head_time)

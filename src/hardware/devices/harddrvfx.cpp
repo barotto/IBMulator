@@ -43,20 +43,22 @@ HardDriveFX::~HardDriveFX()
 {
 }
 
-void HardDriveFX::install()
+void HardDriveFX::install(const std::string &_name)
 {
 	/* mixer channels operate in float format, but rate and channels count depend
 	 * on the current state of the mixer. can't anticipate.
 	 */
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
+	std::string spin_name = _name + " spin";
+	std::string seek_name = _name + " seek";
 	DriveFX::install(
 		std::bind(&HardDriveFX::create_spin_samples, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		"HDD-spin",
+		spin_name.c_str(),
 		std::bind(&HardDriveFX::create_seek_samples, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		"HDD-seek",
+		seek_name.c_str(),
 		spec
 	);
 

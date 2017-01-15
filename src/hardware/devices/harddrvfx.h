@@ -44,7 +44,7 @@ public:
 	HardDriveFX();
 	~HardDriveFX();
 
-	void install();
+	void install(const std::string &_name);
 	uint64_t spin_up_time_us() const;
 	void config_changed();
 

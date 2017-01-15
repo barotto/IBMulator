@@ -33,6 +33,7 @@
 #include "devices/keyboard.h"
 #include "devices/floppy.h"
 #include "devices/storagectrl_ps1.h"
+#include "devices/storagectrl_ata.h"
 #include "devices/serial.h"
 #include "devices/parallel.h"
 #include "devices/systemboard_ps1_2011.h"
@@ -118,6 +119,8 @@ void Devices::config_changed()
 	std::string stg_ctrl = g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD);
 	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->type() == PS1_2011)) {
 		install<StorageCtrl_PS1>();
+	} else if(stg_ctrl == "ata" || (stg_ctrl == "auto" && m_machine->type() >= PS1_2121)) {
+		install<StorageCtrl_ATA>();
 	}
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =

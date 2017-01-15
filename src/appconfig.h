@@ -152,6 +152,7 @@ public:
 #define DISK_A_SECTION          "floppy_a"
 #define DISK_B_SECTION          "floppy_b"
 #define DISK_C_SECTION          "hdd"
+#define DISK_CD_SECTION         "cdrom"
 #define DISK_TYPE               "type"
 #define DISK_INSERTED           "inserted"
 #define DISK_READONLY           "readonly"
