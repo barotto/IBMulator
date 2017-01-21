@@ -174,6 +174,7 @@ public:
 	}
 
 private:
+	void reset_channel(int _ch);
 	void raise_interrupt(int _ch);
 	void lower_interrupt(int _ch);
 	void identify_ata_device(int _ch);

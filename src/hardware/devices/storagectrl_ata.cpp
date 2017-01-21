@@ -272,76 +272,6 @@ void StorageCtrl_ATA::config_changed()
 				g_program.config().get_bool(DISK_CD_SECTION, DISK_INSERTED),
 				false);
 	}
-
-	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
-		m_channels[ch].drive_select = 0;
-		for(uint8_t dev=0; dev<2; dev ++) {
-			if(drive(ch,dev).device_type == ATA_DISK) {
-				drive(ch,dev).next_lsector = 0;
-				drive(ch,dev).curr_lsector = m_storage[ch][dev]->sectors();
-			} else if(drive(ch,dev).device_type == ATA_CDROM) {
-				// TODO this code block is untested
-				drive(ch,dev).sense.sense_key = SENSE_NONE;
-				drive(ch,dev).sense.asc = 0;
-				drive(ch,dev).sense.ascq = 0;
-
-				// Check bit fields
-				ctrl(ch,dev).sector_count = 0;
-				ctrl(ch,dev).interrupt_reason.c_d = 1;
-				if(ctrl(ch,dev).sector_count != 0x01) {
-					PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
-				}
-
-				ctrl(ch,dev).sector_count = 0;
-				ctrl(ch,dev).interrupt_reason.i_o = 1;
-				if(ctrl(ch,dev).sector_count != 0x02) {
-					PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
-				}
-
-				ctrl(ch,dev).sector_count = 0;
-				ctrl(ch,dev).interrupt_reason.rel = 1;
-				if(ctrl(ch,dev).sector_count != 0x04) {
-					PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
-				}
-
-				ctrl(ch,dev).sector_count = 0;
-				ctrl(ch,dev).interrupt_reason.tag = 3;
-				if(ctrl(ch,dev).sector_count != 0x18) {
-					PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
-				}
-				ctrl(ch,dev).sector_count = 0;
-			}
-
-			// Initialize controller state, even if device is not present
-			ctrl(ch,dev).status.busy              = false;
-			ctrl(ch,dev).status.drive_ready       = true;
-			ctrl(ch,dev).status.write_fault       = false;
-			ctrl(ch,dev).status.seek_complete     = true;
-			ctrl(ch,dev).status.drq               = false;
-			ctrl(ch,dev).status.corrected_data    = false;
-			ctrl(ch,dev).status.index_pulse       = false;
-			ctrl(ch,dev).status.index_pulse_count = 0;
-			ctrl(ch,dev).status.err               = false;
-
-			ctrl(ch,dev).error_register      = 0x01; // diagnostic code: no error
-			ctrl(ch,dev).head_no             = 0;
-			ctrl(ch,dev).sector_count        = 1;
-			ctrl(ch,dev).sector_no           = 1;
-			ctrl(ch,dev).cylinder_no         = 0;
-			ctrl(ch,dev).current_command     = 0x00;
-			ctrl(ch,dev).buffer_index        = 0;
-			ctrl(ch,dev).control.reset       = false;
-			ctrl(ch,dev).control.disable_irq = false;
-			ctrl(ch,dev).reset_in_progress   = false;
-			ctrl(ch,dev).multiple_sectors    = 0;
-			ctrl(ch,dev).lba_mode            = false;
-			ctrl(ch,dev).features            = 0;
-			ctrl(ch,dev).mdma_mode           = 0;
-			ctrl(ch,dev).udma_mode           = 0;
-
-			drive(ch,dev).identify_set = false;
-		}
-	}
 }
 
 void StorageCtrl_ATA::reset(unsigned _type)
@@ -349,6 +279,7 @@ void StorageCtrl_ATA::reset(unsigned _type)
 	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
 		m_devices->pic()->lower_irq(m_channels[ch].irq);
 		if(_type == MACHINE_POWER_ON) {
+			reset_channel(ch);
 			for(int dev=0; dev<2; dev++) {
 				if(is_hdd(ch, dev)) {
 					m_storage[ch][dev]->power_on(g_machine.get_virt_time_us());
@@ -369,8 +300,6 @@ void StorageCtrl_ATA::power_off()
 			}
 		}
 	}
-
-	memset(&m_channels, 0, sizeof(m_channels));
 }
 
 void StorageCtrl_ATA::save_state(StateBuf &)
@@ -381,6 +310,77 @@ void StorageCtrl_ATA::save_state(StateBuf &)
 void StorageCtrl_ATA::restore_state(StateBuf &)
 {
 	PINFOF(LOG_V1, LOG_HDD, "ATA: restoring state (not implemented)\n");
+}
+
+void StorageCtrl_ATA::reset_channel(int _ch)
+{
+	m_channels[_ch].drive_select = 0;
+	for(uint8_t dev=0; dev<2; dev ++) {
+		if(drive(_ch,dev).device_type == ATA_DISK) {
+			drive(_ch,dev).next_lsector = 0;
+			drive(_ch,dev).curr_lsector = m_storage[_ch][dev]->sectors();
+		} else if(drive(_ch,dev).device_type == ATA_CDROM) {
+			// TODO this code block is untested
+			drive(_ch,dev).sense.sense_key = SENSE_NONE;
+			drive(_ch,dev).sense.asc = 0;
+			drive(_ch,dev).sense.ascq = 0;
+
+			// Check bit fields
+			ctrl(_ch,dev).sector_count = 0;
+			ctrl(_ch,dev).interrupt_reason.c_d = 1;
+			if(ctrl(_ch,dev).sector_count != 0x01) {
+				PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
+			}
+
+			ctrl(_ch,dev).sector_count = 0;
+			ctrl(_ch,dev).interrupt_reason.i_o = 1;
+			if(ctrl(_ch,dev).sector_count != 0x02) {
+				PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
+			}
+
+			ctrl(_ch,dev).sector_count = 0;
+			ctrl(_ch,dev).interrupt_reason.rel = 1;
+			if(ctrl(_ch,dev).sector_count != 0x04) {
+				PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
+			}
+
+			ctrl(_ch,dev).sector_count = 0;
+			ctrl(_ch,dev).interrupt_reason.tag = 3;
+			if(ctrl(_ch,dev).sector_count != 0x18) {
+				PERRF_ABORT(LOG_HDD, "interrupt reason bit field error\n");
+			}
+			ctrl(_ch,dev).sector_count = 0;
+		}
+
+		// Initialize controller state, even if device is not present
+		ctrl(_ch,dev).status.busy              = false;
+		ctrl(_ch,dev).status.drive_ready       = true;
+		ctrl(_ch,dev).status.write_fault       = false;
+		ctrl(_ch,dev).status.seek_complete     = true;
+		ctrl(_ch,dev).status.drq               = false;
+		ctrl(_ch,dev).status.corrected_data    = false;
+		ctrl(_ch,dev).status.index_pulse       = false;
+		ctrl(_ch,dev).status.index_pulse_count = 0;
+		ctrl(_ch,dev).status.err               = false;
+
+		ctrl(_ch,dev).error_register      = 0x01; // diagnostic code: no error
+		ctrl(_ch,dev).head_no             = 0;
+		ctrl(_ch,dev).sector_count        = 1;
+		ctrl(_ch,dev).sector_no           = 1;
+		ctrl(_ch,dev).cylinder_no         = 0;
+		ctrl(_ch,dev).current_command     = 0x00;
+		ctrl(_ch,dev).buffer_index        = 0;
+		ctrl(_ch,dev).control.reset       = false;
+		ctrl(_ch,dev).control.disable_irq = false;
+		ctrl(_ch,dev).reset_in_progress   = false;
+		ctrl(_ch,dev).multiple_sectors    = 0;
+		ctrl(_ch,dev).lba_mode            = false;
+		ctrl(_ch,dev).features            = 0;
+		ctrl(_ch,dev).mdma_mode           = 0;
+		ctrl(_ch,dev).udma_mode           = 0;
+
+		drive(_ch,dev).identify_set = false;
+	}
 }
 
 void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
