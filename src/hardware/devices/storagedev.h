@@ -138,7 +138,7 @@ public:
 	virtual void set_name(const char *_name) { m_name = _name; }
 	virtual uint32_t seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl);
 	virtual uint32_t rotational_latency_us(double _start_hw_sector, unsigned _dest_log_sector);
-	virtual int hw_sector_number(int _logical_sector) const;
+	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector, int64_t _xfer_amount);
 	virtual double head_position(double _last_pos, uint32_t _elapsed_time_us) const;
 	virtual double head_position(uint64_t _time_us) const;
 	virtual double head_position() const;
@@ -153,9 +153,11 @@ public:
 	virtual void seek(int64_t /*_lba*/) {}
 
 	int64_t chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const;
+	int chs_to_hw_sector(int _sector) const;
+	double hw_sect_to_pos(double _hw_sector) const;
+	int64_t lba_to_cylinder(int64_t _lba) const;
 	void lba_to_chs(int64_t _lba, int64_t &c_, int64_t &h_, int64_t &s_) const;
 	double pos_to_sect(double _head_pos) const;
-	double sect_to_pos(double _hw_sector) const;
 };
 
 #endif

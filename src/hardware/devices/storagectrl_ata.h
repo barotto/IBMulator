@@ -64,7 +64,7 @@ private:
 			bool drq;
 			bool corrected_data;
 			bool index_pulse;
-			unsigned index_pulse_count;
+			uint64_t index_pulse_time;
 			bool err;
 		} status;
 		uint8_t error_register;
@@ -88,7 +88,7 @@ private:
 		uint32_t buffer_index;
 		uint32_t drq_index;
 		uint8_t  current_command;
-		uint8_t  multiple_sectors;
+		uint8_t  multiple_sectors; // number of sectors per data transfer block
 		bool     lba_mode;
 		bool     packet_dma;
 		uint8_t  mdma_mode;
@@ -106,7 +106,7 @@ private:
 			uint8_t lcyl;
 			uint8_t hcyl;
 		} hob;
-		uint32_t num_sectors;
+		uint32_t num_sectors; // number of remaining sectors to read or write
 		bool lba48;
 	};
 
@@ -132,7 +132,8 @@ private:
 			int drq_bytes;
 			int total_bytes_remaining;
 		} atapi;
-		int64_t curr_lsector;
+		int64_t prev_cyl;
+		int64_t curr_cyl;
 		int64_t next_lsector;
 		bool status_changed;
 	};
@@ -148,10 +149,14 @@ private:
 	std::unique_ptr<StorageDev> m_storage[ATA_MAX_CHANNEL][2];
 	int m_cmd_timers[ATA_MAX_CHANNEL][2];
 
-	typedef std::pair<const char*, std::function<void(StorageCtrl_ATA&, int, int)>>
+	std::atomic<bool> m_busy;
+
+	typedef std::pair<const char*, std::function<uint32_t(StorageCtrl_ATA&, int, int)>>
 			ata_command_fn;
+	typedef std::pair<const char*, std::function<void(StorageCtrl_ATA&, int, int)>>
+			atapi_command_fn;
 	static const std::map<int, ata_command_fn> ms_ata_commands;
-	static const std::map<int, ata_command_fn> ms_atapi_commands;
+	static const std::map<int, atapi_command_fn> ms_atapi_commands;
 
 public:
 	StorageCtrl_ATA(Devices *_dev);
@@ -160,7 +165,7 @@ public:
 	void install();
 	void remove();
 	void config_changed();
-	void reset(unsigned type);
+	void reset(unsigned _type);
 	void power_off();
 	uint16_t read(uint16_t _address, unsigned _len);
 	void write(uint16_t _address, uint16_t _value, unsigned _len);
@@ -170,7 +175,7 @@ public:
 
 	bool is_busy() const {
 		// this function is called by the GUI thread.
-		return false;
+		return m_busy;
 	}
 
 private:
@@ -179,6 +184,7 @@ private:
 	void lower_interrupt(int _ch);
 	void identify_ata_device(int _ch);
 	void identify_atapi_device(int _ch);
+	void command_successful(int _ch, int _dev, bool _raise_int);
 	void command_aborted(int _ch, uint8_t _cmd);
 	void init_send_atapi_command(int _ch, uint8_t _cmd, int _req_len, int _alloc_len, bool _lazy = false);
 	void ready_to_send_atapi(int _ch);
@@ -187,31 +193,37 @@ private:
 	bool set_cd_media_status(int _ch, int _dev, bool _inserted, bool _interrupt);
 
 	int64_t calculate_logical_address(int _ch);
-	int64_t increment_address(int _ch, int64_t _sector);
-	void ata_read_sector(int _ch, uint8_t *_buffer, unsigned _len);
-	void ata_write_sector(int _ch, uint8_t *_buffer, unsigned _len);
+	int64_t increment_address(int _ch, int64_t &_lba_sector, uint8_t _amount);
+	void ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, unsigned _len);
 	void lba48_transform(Controller &_controller, bool _lba48);
 
-	void start_seek(int _ch);
+	uint32_t ata_read_next_block(int _ch, uint32_t _seek_time);
+	void ata_write_next_block(int _ch);
+	uint32_t ata_write_block(int _ch);
+
+	uint32_t seek(int _ch);
+	void activate_command_timer(int _ch, uint32_t _exec_time);
 	void command_timer(int _ch, int _device, uint64_t _time);
 
-	void ata_cmd_calibrate_drive(int _ch, uint8_t _cmd);
-	void ata_cmd_read_sectors(int _ch, uint8_t _cmd);
-	void ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd);
-	void ata_cmd_write_sectors(int _ch, uint8_t _cmd);
-	void ata_cmd_execute_device_diagnostic(int _ch, uint8_t _cmd);
-	void ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd);
-	void ata_cmd_identify_device(int _ch, uint8_t _cmd);
-	void ata_cmd_set_features(int _ch, uint8_t _cmd);
-	void ata_cmd_set_multiple_mode(int _ch, uint8_t _cmd);
-	void ata_cmd_identify_packet_device(int _ch, uint8_t _cmd);
-	void ata_cmd_device_reset(int _ch, uint8_t _cmd);
-	void ata_cmd_send_packet(int _ch, uint8_t _cmd);
-	void ata_cmd_power_stubs(int _ch, uint8_t _cmd);
-	void ata_cmd_check_power_mode(int _ch, uint8_t _cmd);
-	void ata_cmd_seek(int _ch, uint8_t _cmd);
-	void ata_cmd_read_native_max_address(int _ch, uint8_t _cmd);
-	void ata_cmd_not_implemented(int _ch, uint8_t _cmd);
+	void update_busy_status();
+
+	uint32_t ata_cmd_calibrate_drive(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_read_sectors(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_write_sectors(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_execute_device_diagnostic(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_identify_device(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_set_features(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_set_multiple_mode(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_identify_packet_device(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_device_reset(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_send_packet(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_power_stubs(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_check_power_mode(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_seek(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_read_native_max_address(int _ch, uint8_t _cmd);
+	uint32_t ata_cmd_not_implemented(int _ch, uint8_t _cmd);
 
 	void atapi_cmd_test_unit_ready(int _ch, uint8_t _cmd);
 	void atapi_cmd_request_sense(int _ch, uint8_t _cmd);

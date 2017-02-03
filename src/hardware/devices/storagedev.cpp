@@ -90,20 +90,34 @@ void StorageDev::lba_to_chs(int64_t _lba, int64_t &c_, int64_t &h_, int64_t &s_)
 	s_ = (_lba % m_geometry.spt) + 1;
 }
 
+int64_t StorageDev::lba_to_cylinder(int64_t _lba) const
+{
+	return (_lba / (m_geometry.heads * m_geometry.spt));
+}
+
 double StorageDev::pos_to_sect(double _head_pos) const
 {
 	double sector = double(m_geometry.spt) + m_track_overhead/m_sector_size;
 	return (_head_pos * sector);
 }
 
-double StorageDev::sect_to_pos(double _hw_sector) const
+/**
+ * Returns the track position corresponding to a hardware sector.
+ * @param _hw_sector  the hardware sector index, 0-based.
+ * @return the position of the starting point of _hw_sector in the range 0.0-1.0
+ */
+double StorageDev::hw_sect_to_pos(double _hw_sector) const
 {
 	return (_hw_sector * m_sector_len);
 }
 
-int StorageDev::hw_sector_number(int _logical_sector) const
+/**
+ * Returns the hardware sector number corresponding to a given CHS sector.
+ * Hardware sectors are 0-based and take into account the interleave value.
+ */
+int StorageDev::chs_to_hw_sector(int _sector) const
 {
-	return (((_logical_sector-1)*m_performance.interleave) % m_geometry.spt);
+	return (((_sector-1)*m_performance.interleave) % m_geometry.spt);
 }
 
 double StorageDev::head_position(double _last_pos, uint32_t _elapsed_time_us) const
@@ -142,11 +156,7 @@ void StorageDev::config_changed(const char *)
 	m_performance.trk_read_us = round(6.0e7 / m_performance.rot_speed);
 	m_performance.trk2trk_us = m_performance.seek_trk * 1000.0;
 
-	/* Track seek phases:
-	 * 1. acceleration (the disk arm gets moving);
-	 * 2. coasting (the arm is moving at full speed);
-	 * 3. deceleration (the arm slows down);
-	 * 4. settling (the head is positioned over the correct track).
+	/* See comment for seek_move_time_us().
 	 * Here we divide the total seek time in 2 values: avgspeed and overhead,
 	 * derived from the only 2 values given in HDD specifications:
 	 * track-to-track and maximum (full stroke).
@@ -157,7 +167,7 @@ void StorageDev::config_changed(const char *)
 	 * overhead = trk2trk - avgspeed
 	 * avgspeed = (maximum - trk2trk) / (ncyls-2)
 	 *
-	 * So the average speed includes points 1,2,3.
+	 * So the average speed includes phases 1, 2, and 3.
 	 */
 	m_performance.seek_avgspeed_us = round(((m_performance.seek_max-m_performance.seek_trk) / double(m_geometry.cylinders-2)) * 1000.0);
 	m_performance.seek_overhead_us = m_performance.trk2trk_us - m_performance.seek_avgspeed_us;
@@ -169,6 +179,19 @@ void StorageDev::config_changed(const char *)
 	m_performance.sec_xfer_us = double(m_performance.sec_read_us) * std::max(1.0,(double(m_performance.interleave) * 0.8f));
 }
 
+/**
+ * Gives the head move time of a seek.
+ * Seeks are comprised of the following phases:
+ * 1. acceleration (the disk arm gets moving);
+ * 2. coasting (the arm is moving at full speed);
+ * 3. deceleration (the arm slows down);
+ * 4. settling (the head is positioned over the correct track).
+ * This function returns the combined value of phases 1, 2, and 3.
+ *
+ * @param _cur_cyl  starting cylinder number.
+ * @param _dest_cyl destination cylinder number.
+ * @return seek move time in microseconds.
+ */
 uint32_t StorageDev::seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl)
 {
 	/* We assume a linear head movement, but in the real world the head
@@ -215,20 +238,20 @@ uint32_t StorageDev::seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl)
 	return move_time;
 }
 
-uint32_t StorageDev::rotational_latency_us(
-		double _head_position,    // the head position at time0
-		unsigned _dest_log_sector // the destination logical sector number
-		)
+/**
+ * Returns the rotational latency in microseconds needed to position the head
+ * upon the given CHS track sector. The head is considered already at the right track.
+ *
+ * @param _head_position  the head position in the range 0.0-1.0 at time0.
+ * @param _dest_sector    the destination CHS sector number, 1-based.
+ * @return rotational latency in microseconds.
+ */
+uint32_t StorageDev::rotational_latency_us(double _head_position, unsigned _dest_sector)
 {
 	double distance;
 	assert(_head_position>=0.f && _head_position<=1.f);
 
-	/* To determine the rotational latency we now need to determine the time
-	 * needed to position the head above the desired logical sector.
-	 * The logical sector position takes into account the interleave.
-	 */
-	double dest_hw_sector = ((_dest_log_sector-1)*m_performance.interleave)
-			% m_geometry.spt;
+	double dest_hw_sector = chs_to_hw_sector(_dest_sector);
 	double dest_position = m_sector_len * dest_hw_sector;
 	assert(dest_position>=0.f);
 	if(_head_position > dest_position) {
@@ -240,5 +263,61 @@ uint32_t StorageDev::rotational_latency_us(
 	uint32_t latency_us = round(distance * m_performance.trk_read_us);
 
 	return latency_us;
+}
+
+/**
+ * Returns the tranfer time in microseconds required to read or write the given
+ * amount of sectors. The head is considered already at the right track.
+ *
+ * @param _curr_time         the current time (us).
+ * @param _first_lba_sector  the first sector to transfer.
+ * @param _xfer_amount       the number of sectors to transfer.
+ * @return  the tranfer time in microseconds.
+ */
+uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector,
+		int64_t _xfer_amount)
+{
+	if(_xfer_amount <= 0) {
+		return 0;
+	}
+
+	/* 1. wait for the head to position itself upon the right sector (rotational latency)
+	 * 2. transfer the needed sectors or until the end of track (transfer time)
+	 * 3. if transfer not complete and next sector is in next track then seek (trk2trk seek time)
+	 * 4. repeat from 1. until transfer completes
+	 */
+	uint32_t xfer_time = 0;
+	int64_t lba = _xfer_lba_sector;
+	double headpos = head_position(_curr_time);
+	int64_t c0,c1,h,s0,s1;
+	lba_to_chs(lba, c0, h, s0);
+	do {
+		// *** WARNING ***
+		// CHS sectors are 1-based
+		int64_t transfer_cnt = m_geometry.spt - (s0-1);
+		transfer_cnt = std::min(transfer_cnt, _xfer_amount);
+		uint32_t time_amount = 0;
+		time_amount += rotational_latency_us(headpos, s0);
+		time_amount += m_performance.sec_read_us * m_performance.interleave * (transfer_cnt-1);
+		time_amount += m_performance.sec_read_us;
+		//time_amount += m_performance.sec_xfer_us;
+		_xfer_amount -= transfer_cnt;
+		xfer_time += time_amount;
+		lba += transfer_cnt;
+		headpos = head_position(headpos, time_amount);
+		headpos = hw_sect_to_pos(chs_to_hw_sector(s0+transfer_cnt));
+		if(_xfer_amount > 0) {
+			lba_to_chs(lba, c1, h, s1);
+			if(c1 != c0) {
+				xfer_time += m_performance.trk2trk_us;
+				headpos = head_position(headpos, m_performance.trk2trk_us);
+			}
+			//TODO we should take into account the head switching time
+			c0 = c1;
+			s0 = s1;
+		}
+	} while(_xfer_amount);
+
+	return xfer_time;
 }
 

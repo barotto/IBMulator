@@ -23,6 +23,19 @@
  * www.t13.org
  */
 
+/* This is the Bochs' implementation with the following notable differences:
+ * 1. DMA transfer modes removed (PIO only), they weren't used by the PS/1 2121
+ * 2. realistic read/write/seek timings added
+ * 3. 16-bit data transfer only
+ * 4. ata/atapi commands refactored
+ *
+ * CD-ROM support is incomplete and current code is untested. See TODO comments
+ * to implement missing features. Maybe use Bochs' code as a reference.
+ *
+ * DMA transfer modes to be reimplemented if/when 486-class PS/1's emulation
+ * will be added, along with 32-bit I/O.
+ */
+
 #include "ibmulator.h"
 #include "storagectrl_ata.h"
 #include "hddparams.h"
@@ -129,7 +142,7 @@ const std::map<int, StorageCtrl_ATA::ata_command_fn> StorageCtrl_ATA::ms_ata_com
 	ATA_CMD_FN(0xF9, "SET MAX ADDRESS",                not_implemented             )
 };
 
-const std::map<int, StorageCtrl_ATA::ata_command_fn> StorageCtrl_ATA::ms_atapi_commands = {
+const std::map<int, StorageCtrl_ATA::atapi_command_fn> StorageCtrl_ATA::ms_atapi_commands = {
 	ATAPI_CMD_FN(0x00, "TEST UNIT READY",               test_unit_ready              ),
 	ATAPI_CMD_FN(0x03, "REQUEST SENSE",                 request_sense                ),
 	ATAPI_CMD_FN(0x1b, "START STOP UNIT",               start_stop_unit              ),
@@ -161,6 +174,12 @@ const std::map<int, StorageCtrl_ATA::ata_command_fn> StorageCtrl_ATA::ms_atapi_c
 	ATAPI_CMD_FN(0x4a, "GET EVENT STATUS NOTIFICATION", not_implemented              )
 };
 
+#define MIN_CMD_US      10u      // minimum busy time
+#define DEFAULT_CMD_US  2200u    // default command execution time
+#define SEEK_CMD_US     2940u    // seek exec time
+#define CALIB_CMD_US    500000u  // calibrate exec time
+
+
 enum SenseKey
 {
 	SENSE_NONE            = 0,
@@ -179,12 +198,12 @@ enum ASC
 	ASC_MEDIUM_NOT_PRESENT              = 0x3a
 };
 
-#define INDEX_PULSE_CYCLE 10
+
 #define ATAPI_PACKET_SIZE 12
 
 
 StorageCtrl_ATA::StorageCtrl_ATA(Devices *_dev)
-: StorageCtrl(_dev)
+: StorageCtrl(_dev), m_busy(false)
 {
 }
 
@@ -236,8 +255,7 @@ void StorageCtrl_ATA::config_changed()
 {
 	StorageCtrl::config_changed();
 
-	/*
-	 * Possible configuration:
+	/* Possible configuration:
 	 * Only 1 HDD and 1 CD-ROM drive
 	 * HDD present:     ATA0:0 HDD    ATA0:1 CD-ROM
 	 * HDD not present: ATA0:0 CD-ROM
@@ -300,16 +318,37 @@ void StorageCtrl_ATA::power_off()
 			}
 		}
 	}
+
+	m_busy = false;
 }
 
-void StorageCtrl_ATA::save_state(StateBuf &)
+void StorageCtrl_ATA::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_HDD, "ATA: saving state (not implemented)\n");
+	PINFOF(LOG_V1, LOG_HDD, "%s: saving state\n", name());
+
+	_state.write(&m_channels, {sizeof(m_channels), name()});
+	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
+		for(int dev=0; dev<2; dev++) {
+			if(drive_is_present(ch,dev)) {
+				m_storage[ch][dev]->save_state(_state);
+			}
+		}
+	}
 }
 
-void StorageCtrl_ATA::restore_state(StateBuf &)
+void StorageCtrl_ATA::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_HDD, "ATA: restoring state (not implemented)\n");
+	PINFOF(LOG_V1, LOG_HDD, "%s: restoring state\n", name());
+
+	_state.read(&m_channels, {sizeof(m_channels), name()});
+	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
+		for(int dev=0; dev<2; dev++) {
+			if(drive_is_present(ch,dev)) {
+				m_storage[ch][dev]->restore_state(_state);
+			}
+		}
+	}
+	update_busy_status();
 }
 
 void StorageCtrl_ATA::reset_channel(int _ch)
@@ -318,7 +357,8 @@ void StorageCtrl_ATA::reset_channel(int _ch)
 	for(uint8_t dev=0; dev<2; dev ++) {
 		if(drive(_ch,dev).device_type == ATA_DISK) {
 			drive(_ch,dev).next_lsector = 0;
-			drive(_ch,dev).curr_lsector = m_storage[_ch][dev]->sectors();
+			drive(_ch,dev).curr_cyl = 0;
+			drive(_ch,dev).prev_cyl = 0;
 		} else if(drive(_ch,dev).device_type == ATA_CDROM) {
 			// TODO this code block is untested
 			drive(_ch,dev).sense.sense_key = SENSE_NONE;
@@ -360,7 +400,7 @@ void StorageCtrl_ATA::reset_channel(int _ch)
 		ctrl(_ch,dev).status.drq               = false;
 		ctrl(_ch,dev).status.corrected_data    = false;
 		ctrl(_ch,dev).status.index_pulse       = false;
-		ctrl(_ch,dev).status.index_pulse_count = 0;
+		ctrl(_ch,dev).status.index_pulse_time  = 0;
 		ctrl(_ch,dev).status.err               = false;
 
 		ctrl(_ch,dev).error_register      = 0x01; // diagnostic code: no error
@@ -387,37 +427,42 @@ void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
 {
 	Controller *controller = &ctrl(_ch, _device);
 	if(is_hdd(_ch, _device)) {
+
+		command_successful(_ch, _device, true);
+
 		switch(controller->current_command) {
-			case 0x24: // READ SECTORS EXT
-			case 0x29: // READ MULTIPLE EXT
 			case 0x20: // READ SECTORS, with retries
 			case 0x21: // READ SECTORS, without retries
+			case 0x24: // READ SECTORS EXT
+			case 0x29: // READ MULTIPLE EXT
 			case 0xC4: // READ MULTIPLE SECTORS
-				controller->error_register = 0;
-				controller->status.busy = false;
-				controller->status.drive_ready = true;
-				controller->status.seek_complete = true;
 				controller->status.drq = true;
-				controller->status.corrected_data = false;
-				controller->buffer_index = 0;
-				raise_interrupt(_ch);
 				break;
-			case 0x70: // SEEK
-				selected_drive(_ch).curr_lsector = selected_drive(_ch).next_lsector;
-				controller->error_register = 0;
-				controller->status.busy  = false;
-				controller->status.drive_ready = true;
-				controller->status.seek_complete = true;
-				controller->status.drq   = false;
-				controller->status.corrected_data = false;
-				controller->buffer_index = 0;
-				PDEBUGF(LOG_V2, LOG_HDD, "%s: SEEK completed (IRQ %sabled)\n",
-						device_string(_ch, _device), controller->control.disable_irq?"dis":"en");
-				raise_interrupt(_ch);
+			case 0x40: // READ VERIFY SECTORS
+			case 0x41: // READ VERIFY SECTORS NO RETRY
+			case 0x42: // READ VERIFY SECTORS EXT
+			{
+				int64_t curr_cyl = increment_address(_ch,
+							selected_drive(_ch).next_lsector,
+							controller->num_sectors);
+				if(selected_drive(_ch).curr_cyl != curr_cyl) {
+					selected_drive(_ch).prev_cyl = selected_drive(_ch).curr_cyl;
+				}
+				selected_drive(_ch).curr_cyl = curr_cyl;
+				break;
+			}
+			case 0x30: // WRITE SECTORS
+			case 0xC5: // WRITE MULTIPLE SECTORS
+			case 0x34: // WRITE SECTORS EXT
+			case 0x39: // WRITE MULTIPLE EXT
+				if(controller->num_sectors) {
+					controller->status.drq = true;
+				}
+				break;
+			case 0x90: // EXECUTE DEVICE DIAGNOSTIC
+				controller->error_register = 0x01;
 				break;
 			default:
-				PERRF(LOG_HDD, "command_timer(): ATA command 0x%02x not supported",
-						controller->current_command);
 				break;
 		}
 	} else {
@@ -433,6 +478,8 @@ void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
 				break;
 		}
 	}
+
+	update_busy_status();
 }
 
 uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
@@ -456,7 +503,7 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 	if(channel == ATA_MAX_CHANNEL) {
 		channel = 0;
 		if((_address < 0x03f6) || (_address > 0x03f7)) {
-			PERRF_ABORT(LOG_HDD, "unable to find ATA channel\n", _address);
+			PERRF_ABORT(LOG_HDD, "unable to find ATA channel\n");
 		} else {
 			port = _address - 0x03e0;
 		}
@@ -494,38 +541,16 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 
 					// if buffer completely read
 					if(controller->buffer_index >= controller->buffer_size) {
-						// update sector count, sector number, cylinder,
-						// drive, head, status
-						// if there are more sectors, read next one in...
-						//
-						if((controller->current_command == 0xC4) ||
-								(controller->current_command == 0x29)) {
-							if(controller->num_sectors > controller->multiple_sectors) {
-								controller->buffer_size = controller->multiple_sectors * 512;
-							} else {
-								controller->buffer_size = controller->num_sectors * 512;
-							}
-						}
-						controller->status.busy = false;
-						controller->status.drive_ready = true;
-						controller->status.write_fault = false;
-						controller->status.seek_complete = true;
-						controller->status.corrected_data = false;
-						controller->status.err = false;
-
 						if(controller->num_sectors == 0) {
+							// no more sectors to read
 							controller->status.drq = false;
-							selected_drive(channel).curr_lsector = selected_drive(channel).next_lsector;
-						} else { /* read next one into controller buffer */
-							//TODO move this block in the command timer
-							controller->status.drq = true;
-							controller->status.seek_complete = true;
-							try {
-								ata_read_sector(channel, controller->buffer, controller->buffer_size);
-								controller->buffer_index = 0;
-								raise_interrupt(channel);
-							} catch(std::exception &) {
-								command_aborted(channel, controller->current_command);
+							controller->status.err = false;
+							controller->buffer_size = 0;
+						} else {
+							// read next block of sectors into controller buffer
+							uint32_t exec_time = ata_read_next_block(channel, 0);
+							if(!controller->status.err) {
+								activate_command_timer(channel, exec_time);
 							}
 						}
 					}
@@ -534,14 +559,7 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 				case 0xec: // IDENTIFY DEVICE
 				case 0xa1:
 				{
-					unsigned index;
-					controller->status.busy = false;
-					controller->status.drive_ready = true;
-					controller->status.write_fault = false;
-					controller->status.seek_complete = true;
-					controller->status.corrected_data = false;
-					controller->status.err = false;
-
+					uint32_t index;
 					index = controller->buffer_index;
 					value = controller->buffer[index];
 					index++;
@@ -714,14 +732,15 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 				        (controller->status.err)
 				        );
 				controller->status.index_pulse = false;
-				controller->status.index_pulse_count++;
-				if(controller->status.index_pulse_count >= INDEX_PULSE_CYCLE) {
+				uint32_t elapsed = g_machine.get_virt_time_us() - controller->status.index_pulse_time;
+				uint32_t rot_time = selected_storage(channel).performance().trk_read_us;
+				if(elapsed >= rot_time) {
 					controller->status.index_pulse = true;
-					controller->status.index_pulse_count = 0;
+					controller->status.index_pulse_time = g_machine.get_virt_time_us();
 				}
 			}
 			std::string value_str = bitfield_to_string(value,
-			{ "ERR", "IDX", "ECC", "DRQ", "SKC", "WER", "RDY", "BSY" },
+			{ "ERR", "IDX", "CORR", "DRQ", "DSC", "DWF", "DRDY", "BSY" },
 			{ "", "", "", "", "", "", "", "" });
 			PDEBUGF(LOG_V2, LOG_HDD, "status    -> 0x%02X %s\n", value, value_str.c_str());
 			if(port == 0x07) {
@@ -733,6 +752,8 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 			PERRF_ABORT(LOG_HDD, "invalid address\n");
 			break;
 	}
+
+	update_busy_status();
 
 	return value;
 }
@@ -788,43 +809,16 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 
 					controller->buffer_index += 2;
 
-					/* if buffer completely writtten */
 					if(controller->buffer_index >= controller->buffer_size) {
-						//TODO move this block in the command timer
-						try {
-							ata_write_sector(channel, controller->buffer, controller->buffer_size);
-							if((controller->current_command == 0xC5)
-									|| (controller->current_command == 0x39))
-							{
-								if(controller->num_sectors > controller->multiple_sectors) {
-									controller->buffer_size = controller->multiple_sectors * 512;
-								} else {
-									controller->buffer_size = controller->num_sectors * 512;
-								}
+						/* buffer is completely written, we are ready to write
+						 * data block to the device
+						 */
+						uint32_t exec_time = ata_write_block(channel);
+						if(!controller->status.err) {
+							activate_command_timer(channel, exec_time);
+							if(controller->num_sectors) {
+								ata_write_next_block(channel);
 							}
-							controller->buffer_index = 0;
-							/* When the write is complete, controller clears the DRQ bit and
-							 * sets the BSY bit.
-							 * If at least one more sector is to be written, controller sets DRQ bit,
-							 * clears BSY bit, and issues IRQ
-							 */
-							if(controller->num_sectors != 0) {
-								controller->status.busy = false;
-								controller->status.drive_ready = true;
-								controller->status.drq = true;
-								controller->status.corrected_data = false;
-								controller->status.err = false;
-							} else { /* no more sectors to write */
-								controller->status.busy = false;
-								controller->status.drive_ready = true;
-								controller->status.drq = false;
-								controller->status.err = false;
-								controller->status.corrected_data = false;
-								selected_drive(channel).curr_lsector = selected_drive(channel).next_lsector;
-							}
-							raise_interrupt(channel);
-						} catch(std::exception &) {
-							command_aborted(channel, controller->current_command);
 						}
 					}
 					break;
@@ -939,8 +933,8 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 			// b3..0 HD3..HD0
 		{
 			std::string value_str = bitfield_to_string(_value,
-			{ "", "", "", "",  "SLAVE", "512", "LBA", "ECC" },
-			{ "", "", "", "", "MASTER", "???", "CHS", "???" }); //b7 and b5 must be 1
+			{ "", "", "", "", "DRV1", "", "LBA", "" },
+			{ "", "", "", "", "DRV0", "", "CHS", "" });
 			bool lba_mode = (_value >> 6) & 1;
 			if(lba_mode) {
 				value_str += "LBA24-27=";
@@ -949,7 +943,7 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 			}
 			PDEBUGF(LOG_V2, LOG_HDD, "drv head  <- 0x%02x %s%d\n",
 					_value, value_str.c_str(), _value&0xf);
-			if((_value & 0xa0) != 0xa0) { // 1x1xxxxx
+			if((_value & 0xa0) != 0xa0) { //b7 and b5 must be 1
 				PDEBUGF(LOG_V2, LOG_HDD, "drv head not 1x1xxxxxb!\n");
 			}
 			m_channels[channel].drive_select = (_value >> 4) & 1;
@@ -971,7 +965,9 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 		}
 		case 0x07: // hard disk command 0x1f7
 		{
-			PDEBUGF(LOG_V2, LOG_HDD, "command   <- 0x%02x\n", _value);
+			uint8_t cmd = _value;
+
+			PDEBUGF(LOG_V2, LOG_HDD, "command   <- 0x%02x\n", cmd);
 
 			// (mch) Writes to the command register with drive_select != 0
 			// are ignored if no secondary device is present
@@ -986,27 +982,40 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 
 			if(controller->status.busy) {
 				PERRF(LOG_HDD, "%s: command 0x%02x sent with controller BSY bit set\n",
-						selected_string(channel), _value);
+						selected_string(channel), cmd);
 				break;
 			}
-			if((_value & 0xf0) == 0x10) {
-				_value = 0x10;
+			if((cmd & 0xf0) == 0x10) {
+				cmd = 0x10;
 			}
+
+			controller->status.busy = true;
 			controller->status.err = false;
-			auto command_fn = ms_ata_commands.find(_value);
+			controller->status.drive_ready = true;
+			controller->status.seek_complete = false;
+			controller->status.drq = false;
+			controller->status.corrected_data = false;
+			controller->current_command = cmd;
+			controller->error_register = 0;
+
+			uint32_t exec_time = 0;
+			auto command_fn = ms_ata_commands.find(cmd);
 			if(command_fn != ms_ata_commands.end()) {
 				PDEBUGF(LOG_V1, LOG_HDD, "%s: cmd %s\n", selected_string(channel), command_fn->second.first);
-				command_fn->second.second(*this, channel, _value);
+				exec_time = command_fn->second.second(*this, channel, cmd);
+				if(!controller->status.err && exec_time>0) {
+					activate_command_timer(channel, exec_time);
+				}
 			} else {
-				PERRF(LOG_HDD, "%s: unknown ATA command 0x%02x (%d)\n", selected_string(channel), _value, _value);
-				command_aborted(channel, _value);
+				PERRF(LOG_HDD, "%s: unknown ATA command 0x%02x (%d)\n", selected_string(channel), cmd, cmd);
+				command_aborted(channel, cmd);
 			}
 			break;
 		}
 		case 0x16: // hard disk adapter control 0x3f6
 		{
 			std::string value_str = bitfield_to_string(_value,
-			{ "", "IRQ_DIS", "RST", "9+H", "", "", "", "" },
+			{ "", "IRQ_DIS", "SRST", "", "", "", "", "" },
 			{ "", "IRQ_EN", "", "", "", "", "", "" });
 			PDEBUGF(LOG_V2, LOG_HDD, "adpt ctrl <- 0x%02x %s\n", _value, value_str.c_str());
 
@@ -1064,6 +1073,19 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 			PERRF_ABORT(LOG_HDD, "invalid address <- %02x\n", _value);
 			break;
 	}
+
+	update_busy_status();
+}
+
+void StorageCtrl_ATA::update_busy_status()
+{
+	bool busy = false;
+	for(int channel=0; channel<ATA_MAX_CHANNEL; channel++) {
+		for(int drive=0; drive<2; drive++) {
+			busy = busy || m_channels[channel].drives[drive].controller.status.busy;
+		}
+	}
+	m_busy = busy;
 }
 
 void StorageCtrl_ATA::identify_atapi_device(int _ch)
@@ -1425,13 +1447,13 @@ void StorageCtrl_ATA::identify_ata_device(int _ch)
 	drive.identify_set = true;
 }
 
-void StorageCtrl_ATA::ata_cmd_calibrate_drive(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_calibrate_drive(int _ch, uint8_t _cmd)
 {
 	if(!selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V2, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	if(!selected_is_present(_ch)) {
@@ -1444,19 +1466,18 @@ void StorageCtrl_ATA::ata_cmd_calibrate_drive(int _ch, uint8_t _cmd)
 		raise_interrupt(_ch);
 		PDEBUGF(LOG_V2, LOG_HDD, "%s %s: disk not present\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
-		return;
+		return 0;
 	}
 	/* move head to cylinder 0, issue IRQ */
-	controller.error_register = 0;
+	selected_drive(_ch).next_lsector = 0;
 	controller.cylinder_no = 0;
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.seek_complete = true;
-	controller.status.drq = false;
-	raise_interrupt(_ch);
+
+	uint32_t seek_time = seek(_ch);
+
+	return (CALIB_CMD_US + seek_time);
 }
 
-void StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
 {
 	/* update sector_no, always points to current sector
 	 * after each sector is read to buffer, DRQ bit set and issue IRQ
@@ -1469,19 +1490,19 @@ void StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
-	// Lose98 accesses 0/0/0 in CHS mode
+	// Win98 accesses 0/0/0 in CHS mode
 	if(!controller.lba_mode &&
-			!controller.head_no &&
-			!controller.cylinder_no &&
-			!controller.sector_no)
+	   !controller.head_no &&
+	   !controller.cylinder_no &&
+	   !controller.sector_no)
 	{
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: read from 0/0/0, aborting command\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	bool lba48 = false;
 	if(_cmd == 0x24 || _cmd == 0x29) {
@@ -1490,44 +1511,119 @@ void StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
 	}
 	lba48_transform(controller, lba48);
 
-	if((_cmd == 0xC4) || (_cmd == 0x29)) {
-		//READ MULTIPLE
-		if(controller.multiple_sectors == 0) {
-			command_aborted(_ch, _cmd);
-			return;
-		}
-		if(controller.num_sectors > controller.multiple_sectors) {
-			controller.buffer_size = controller.multiple_sectors * 512;
-		} else {
-			controller.buffer_size = controller.num_sectors * 512;
-		}
-	} else {
-		controller.buffer_size = 512;
-	}
 	int64_t logical_sector = calculate_logical_address(_ch);
 	if(logical_sector < 0) {
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	selected_drive(_ch).next_lsector = logical_sector;
-	controller.current_command = _cmd;
-	controller.error_register = 0;
-	controller.status.busy = true;
-	controller.status.drive_ready = true;
-	controller.status.seek_complete = false;
-	controller.status.drq = false;
-	controller.status.corrected_data = false;
-	controller.buffer_index = 0;
-	start_seek(_ch);
-	try {
-		ata_read_sector(_ch, controller.buffer, controller.buffer_size);
-	} catch(std::exception &) {
-		g_machine.deactivate_timer(selected_timer(_ch));
-		command_aborted(_ch, _cmd);
-	}
+
+	PDEBUGF(LOG_V1, LOG_HDD, "%s %s: reading %d sector(s) at lba=%lld (%dB)\n",
+			selected_string(_ch), ata_cmd_string(_cmd), controller.num_sectors, logical_sector,
+			controller.num_sectors*512);
+
+	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t exec_time = ata_read_next_block(_ch, cmd_time);
+
+	return exec_time;
 }
 
-void StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_read_next_block(int _ch, uint32_t _cmd_time)
+{
+	Controller &ctrl = selected_ctrl(_ch);
+
+	unsigned xfer_amount = 1;
+	if((ctrl.current_command == 0xC4) || (ctrl.current_command == 0x29)) {
+		// READ MULTIPLE
+		if(ctrl.multiple_sectors == 0) {
+			command_aborted(_ch, ctrl.current_command);
+			return 0;
+		}
+		if(ctrl.num_sectors > ctrl.multiple_sectors) {
+			xfer_amount = ctrl.multiple_sectors;
+		} else {
+			xfer_amount = ctrl.num_sectors;
+		}
+	}
+	ctrl.buffer_size = xfer_amount * 512;
+	ctrl.buffer_index = 0;
+
+	/* If the drive is not already on the desired track, an implied seek is
+     * performed.
+     */
+	int64_t curr_cyl = selected_drive(_ch).curr_cyl;
+	uint32_t seek_time = seek(_ch);
+
+	// transfer_time_us includes rotational latency and read time
+	uint32_t xfer_time = selected_storage(_ch).transfer_time_us(
+			g_machine.get_virt_time_us() + _cmd_time + seek_time,
+			selected_drive(_ch).next_lsector,
+			xfer_amount
+			);
+	uint32_t exec_time = _cmd_time + seek_time + xfer_time;
+
+#ifndef NDEBUG
+	int64_t c0,h0,s0,c1,h1,s1;
+	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lsector, c0,h0,s0);
+	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lsector+xfer_amount, c1,h1,s1);
+	double hpos = selected_storage(_ch).head_position(g_machine.get_virt_time_us());
+	PDEBUGF(LOG_V2, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=C:%d/S:%.2f, seek:%d, tx:%d\n",
+			c0,h0,s0, c1,h1,s1, xfer_amount,
+			selected_storage(_ch).chs_to_hw_sector(s0),
+			selected_storage(_ch).chs_to_hw_sector(s1),
+			curr_cyl, selected_storage(_ch).pos_to_sect(hpos),
+			hpos,
+			seek_time, xfer_time);
+#endif
+
+	try {
+		// the following function updates the value of next_lsector
+		// it will point to the first sector of the next block transfer
+		ata_tx_sectors(_ch, false, ctrl.buffer, ctrl.buffer_size);
+	} catch(std::exception &) {
+		command_aborted(_ch, ctrl.current_command);
+		return 0;
+	}
+	return exec_time;
+}
+
+uint32_t StorageCtrl_ATA::ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd)
+{
+	if(!selected_is_hdd(_ch)) {
+		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
+				selected_string(_ch), ata_cmd_string(_cmd));
+		command_aborted(_ch, _cmd);
+		return 0;
+	}
+	Controller &controller = selected_ctrl(_ch);
+	bool lba48 = false;
+	if(_cmd == 0x42) {
+		// READ EXT
+		lba48 = true;
+	}
+	lba48_transform(controller, lba48);
+
+	int64_t logical_sector = calculate_logical_address(_ch);
+	if(logical_sector < 0) {
+		command_aborted(_ch, _cmd);
+		return 0;
+	}
+
+	assert(controller.num_sectors <= 256);
+	selected_drive(_ch).next_lsector = logical_sector;
+
+	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t seek_time = seek(_ch);
+	uint32_t read_time = selected_storage(_ch).transfer_time_us(
+			g_machine.get_virt_time_us() + cmd_time + seek_time,
+			logical_sector,
+			controller.num_sectors
+			);
+
+	return (cmd_time + seek_time + read_time);
+}
+
+uint32_t StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 {
 	/* update sector_no, always points to current sector
 	 * after each sector is read to buffer, DRQ bit set and issue IRQ
@@ -1540,7 +1636,7 @@ void StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	bool lba48 = false;
@@ -1549,52 +1645,99 @@ void StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 		lba48 = true;
 	}
 	lba48_transform(controller, lba48);
+
+	unsigned xfer_amount = 1;
 	if((_cmd == 0xC5) || (_cmd ==0x39)) {
 		//WRITE MULTIPLE
 		if(controller.multiple_sectors == 0) {
 			command_aborted(_ch, _cmd);
-			return;
+			return 0;
 		}
 		if(controller.num_sectors > controller.multiple_sectors) {
-			controller.buffer_size = controller.multiple_sectors * 512;
+			xfer_amount = controller.multiple_sectors;
 		} else {
-			controller.buffer_size = controller.num_sectors * 512;
+			xfer_amount = controller.num_sectors;
 		}
-	} else {
-		controller.buffer_size = 512;
 	}
+	controller.buffer_size = xfer_amount * 512;
+	controller.buffer_index = 0;
+
 	int64_t logical_sector = calculate_logical_address(_ch);
 	if(logical_sector < 0) {
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
+
 	selected_drive(_ch).next_lsector = logical_sector;
-	controller.current_command = _cmd;
-	// implicit seek done
-	controller.error_register = 0;
-	controller.status.busy = false;
-	// controller.status.drive_ready = true;
-	controller.status.seek_complete = true;
-	controller.status.drq = true;
+
+	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	return (cmd_time);
+}
+
+uint32_t StorageCtrl_ATA::ata_write_block(int _ch)
+{
+	Controller &controller = selected_ctrl(_ch);
+
+	/* If the drive is not already on the desired track, an implied seek is
+     * performed.
+     */
+	uint32_t seek_time = seek(_ch);
+	int sector_count = (controller.buffer_size / 512);
+	uint32_t xfer_time = selected_storage(_ch).transfer_time_us(
+			g_machine.get_virt_time_us() + seek_time,
+			selected_drive(_ch).next_lsector,
+			sector_count
+			);
+	try {
+		// the following function updates the value of next_lsector
+		// it will point to the first sector of the next block transfer
+		ata_tx_sectors(_ch, true, controller.buffer, controller.buffer_size);
+	} catch(std::exception &) {
+		command_aborted(_ch, controller.current_command);
+		return 0;
+	}
+
+	return (seek_time + xfer_time);
+}
+
+void StorageCtrl_ATA::ata_write_next_block(int _ch)
+{
+	Controller &controller = selected_ctrl(_ch);
+
+	assert(controller.num_sectors);
+
+	unsigned xfer_amount = 1;
+	if((controller.current_command == 0xC5) || (controller.current_command == 0x39)) {
+		// WRITE MULTIPLE
+		if(controller.multiple_sectors == 0) {
+			command_aborted(_ch, controller.current_command);
+			return;
+		}
+		if(controller.num_sectors > controller.multiple_sectors) {
+			xfer_amount = controller.multiple_sectors;
+		} else {
+			xfer_amount = controller.num_sectors;
+		}
+	}
+	controller.buffer_size = xfer_amount * 512;
 	controller.buffer_index = 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_execute_device_diagnostic(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_execute_device_diagnostic(int _ch, uint8_t _cmd)
 {
 	UNUSED(_cmd);
 	set_signature(_ch, slave_is_selected(_ch));
-	selected_ctrl(_ch).error_register = 0x01;
-	selected_ctrl(_ch).status.drq = false;
-	raise_interrupt(_ch);
+
+	return (DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0);
 }
 
-void StorageCtrl_ATA::ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd)
 {
 	if(!selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	// sets logical geometry of specified drive
@@ -1604,21 +1747,17 @@ void StorageCtrl_ATA::ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd)
 			m_channels[_ch].drive_select,
 			controller.head_no);
 	if(!selected_is_present(_ch)) {
-		PERRF_ABORT(LOG_HDD, "%s %s: disk not present\n",
+		PERRF(LOG_HDD, "%s %s: disk not present\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
-		//controller.error_register = 0x12;
-		controller.status.busy = false;
-		controller.status.drive_ready = true;
-		controller.status.drq = false;
-		raise_interrupt(_ch);
-		return;
+		command_aborted(_ch, _cmd);
+		return 0;
 	}
 	if(controller.sector_count != selected_storage(_ch).geometry().spt) {
 		PERRF(LOG_HDD, "%s %s: logical sector count %d not supported\n",
 				selected_string(_ch), ata_cmd_string(_cmd),
 				controller.sector_count);
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	if(controller.head_no == 0) {
 		// Linux 2.6.x kernels use this value and don't like aborting here
@@ -1629,59 +1768,51 @@ void StorageCtrl_ATA::ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd)
 				selected_string(_ch), ata_cmd_string(_cmd),
 				controller.head_no);
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.drq = false;
-	raise_interrupt(_ch);
+
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_identify_device(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_identify_device(int _ch, uint8_t _cmd)
 {
 	if(!selected_is_present(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: disk not present, aborting\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	if(selected_is_cd(_ch)) {
 		set_signature(_ch, slave_is_selected(_ch));
 		command_aborted(_ch, _cmd);
-	} else {
-		controller.current_command = _cmd;
-		controller.error_register = 0;
-
-		// See ATA/ATAPI-4, 8.12
-		controller.status.busy = false;
-		controller.status.drive_ready = true;
-		controller.status.write_fault = false;
-		controller.status.drq = true;
-		controller.status.seek_complete = true;
-		controller.status.corrected_data = false;
-
-		controller.buffer_index = 0;
-		if(!selected_drive(_ch).identify_set) {
-			identify_ata_device(_ch);
-		}
-		// now convert the id_drive array (native 256 word format) to
-		// the controller buffer (512 bytes)
-		for(int i=0; i<=255; i++) {
-			uint16_t temp16 = selected_drive(_ch).id_drive[i];
-			controller.buffer[i*2] = temp16 & 0x00ff;
-			controller.buffer[i*2+1] = temp16 >> 8;
-		}
-		raise_interrupt(_ch);
+		return 0;
 	}
+
+	// See ATA/ATAPI-4, 8.12
+	if(!selected_drive(_ch).identify_set) {
+		identify_ata_device(_ch);
+	}
+	// now convert the id_drive array (native 256 word format) to
+	// the controller buffer (512 bytes)
+	for(int i=0; i<=255; i++) {
+		uint16_t temp16 = selected_drive(_ch).id_drive[i];
+		controller.buffer[i*2] = temp16 & 0x00ff;
+		controller.buffer[i*2+1] = temp16 >> 8;
+	}
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	controller.status.drq = true;
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_set_features(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_set_features(int _ch, uint8_t _cmd)
 {
 	Controller &controller = selected_ctrl(_ch);
 	switch(controller.features) {
 		case 0x03: // Set Transfer Mode
 		{
+			selected_drive(_ch).identify_set = 0;
 			uint8_t type = (controller.sector_count >> 3);
 			uint8_t mode = controller.sector_count & 0x07;
 			//Singleword DMA, Multiword DMA, UDMA, are PCI Busmastering DMA types.
@@ -1695,34 +1826,25 @@ void StorageCtrl_ATA::ata_cmd_set_features(int _ch, uint8_t _cmd)
 							selected_string(_ch), ata_cmd_string(_cmd));
 					controller.mdma_mode = 0x00;
 					controller.udma_mode = 0x00;
-					controller.status.drive_ready = true;
-					controller.status.seek_complete = true;
-					raise_interrupt(_ch);
 					break;
 				case 0x04: // MDMA mode
 					PDEBUGF(LOG_V1, LOG_HDD, "%s %s: set transfer mode to MDMA%d\n",
 							selected_string(_ch), ata_cmd_string(_cmd), mode);
 					controller.mdma_mode = (1 << mode);
 					controller.udma_mode = 0x00;
-					controller.status.drive_ready = true;
-					controller.status.seek_complete = true;
-					raise_interrupt(_ch);
 					break;
 				case 0x08: // UDMA mode
 					PDEBUGF(LOG_V1, LOG_HDD, "%s %s: set transfer mode to UDMA%d\n",
 							selected_string(_ch), ata_cmd_string(_cmd), mode);
 					controller.mdma_mode = 0x00;
 					controller.udma_mode = (1 << mode);
-					controller.status.drive_ready = true;
-					controller.status.seek_complete = true;
-					raise_interrupt(_ch);
 					break;
 				default:
 					PERRF(LOG_HDD, "%s %s: unknown transfer mode type 0x%02x\n",
 							selected_string(_ch), ata_cmd_string(_cmd), type);
 					command_aborted(_ch, _cmd);
+					return 0;
 			}
-			selected_drive(_ch).identify_set = 0;
 			break;
 		}
 		case 0x02: // Enable and
@@ -1734,9 +1856,6 @@ void StorageCtrl_ATA::ata_cmd_set_features(int _ch, uint8_t _cmd)
 		{
 			PDEBUGF(LOG_V1, LOG_HDD, "%s %s: subcommand 0x%02x not supported, but returning success\n",
 					selected_string(_ch), ata_cmd_string(_cmd), controller.features);
-			controller.status.drive_ready = true;
-			controller.status.seek_complete = true;
-			raise_interrupt(_ch);
 			break;
 		}
 		default:
@@ -1744,39 +1863,20 @@ void StorageCtrl_ATA::ata_cmd_set_features(int _ch, uint8_t _cmd)
 			PERRF(LOG_HDD, "%s %s: unknown subcommand: 0x%02x\n",
 					selected_string(_ch), ata_cmd_string(_cmd), controller.features);
 			command_aborted(_ch, _cmd);
-			break;
+			return 0;
 		}
 	}
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_set_multiple_mode(int _ch, uint8_t _cmd)
 {
 	if(!selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
-	}
-	Controller &controller = selected_ctrl(_ch);
-	bool lba48 = false;
-	if(_cmd == 0x42) {
-		// READ EXT
-		lba48 = true;
-	}
-	lba48_transform(controller, lba48);
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.drq = false;
-	raise_interrupt(_ch);
-}
-
-void StorageCtrl_ATA::ata_cmd_set_multiple_mode(int _ch, uint8_t _cmd)
-{
-	if(!selected_is_hdd(_ch)) {
-		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
-				selected_string(_ch), ata_cmd_string(_cmd));
-		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	if((controller.sector_count > ATA_MAX_MULTIPLE_SECTORS) ||
@@ -1784,37 +1884,23 @@ void StorageCtrl_ATA::ata_cmd_set_multiple_mode(int _ch, uint8_t _cmd)
 			(controller.sector_count == 0))
 	{
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 
 	controller.multiple_sectors = controller.sector_count;
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.write_fault = false;
-	controller.status.drq = false;
-	raise_interrupt(_ch);
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_identify_packet_device(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_identify_packet_device(int _ch, uint8_t _cmd)
 {
 	if(selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
-
-	controller.current_command = _cmd;
-	controller.error_register = 0;
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.write_fault = false;
-	controller.status.drq = true;
-	controller.status.seek_complete = true;
-	controller.status.corrected_data = false;
-	controller.buffer_index = 0;
-
 	if(!selected_drive(_ch).identify_set) {
 		identify_atapi_device(_ch);
 	}
@@ -1825,36 +1911,32 @@ void StorageCtrl_ATA::ata_cmd_identify_packet_device(int _ch, uint8_t _cmd)
 		controller.buffer[i*2] = temp16 & 0x00ff;
 		controller.buffer[i*2+1] = temp16 >> 8;
 	}
-	raise_interrupt(_ch);
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	controller.status.drq = true;
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_device_reset(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_device_reset(int _ch, uint8_t _cmd)
 {
 	if(selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
-	Controller &controller = selected_ctrl(_ch);
-
-	set_signature(_ch, slave_is_selected(_ch));
-
-	controller.status.busy = true;
-	controller.error_register &= ~(1 << 7);
-	controller.status.write_fault = false;
-	controller.status.drq = false;
-	controller.status.corrected_data = false;
-	controller.status.busy = false;
+	set_signature(_ch, m_channels[_ch].drive_select);
+	command_successful(_ch, m_channels[_ch].drive_select, false);
+	selected_ctrl(_ch).error_register &= ~(1 << 7);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_send_packet(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_send_packet(int _ch, uint8_t _cmd)
 {
 	if(selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
 	}
 	Controller &controller = selected_ctrl(_ch);
 	// PACKET
@@ -1863,107 +1945,97 @@ void StorageCtrl_ATA::ata_cmd_send_packet(int _ch, uint8_t _cmd)
 		PERRF(LOG_HDD, "%s %s: PACKET-overlapped not supported\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted (_ch, _cmd);
-	} else {
-		// We're already ready!
-		controller.sector_count = 1;
-		controller.status.busy = false;
-		controller.status.write_fault = false;
-		// serv bit??
-		controller.status.drq = true;
-		// NOTE: no interrupt here
-		controller.current_command = _cmd;
-		controller.buffer_index = 0;
+		return 0;
 	}
+	// We're already ready!
+	controller.sector_count = 1;
+	// serv bit??
+	// NOTE: no interrupt here
+	command_successful(_ch, m_channels[_ch].drive_select, false);
+	controller.status.drq = true;
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_power_stubs(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_power_stubs(int _ch, uint8_t _cmd)
 {
 	UNUSED(_cmd);
-	Controller &controller = selected_ctrl(_ch);
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.write_fault = false;
-	controller.status.drq = false;
-	raise_interrupt(_ch);
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_check_power_mode(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_check_power_mode(int _ch, uint8_t _cmd)
 {
 	UNUSED(_cmd);
-	Controller &controller = selected_ctrl(_ch);
-	controller.status.busy = false;
-	controller.status.drive_ready = true;
-	controller.status.write_fault = false;
-	controller.status.drq = false;
-	controller.sector_count = 0xff; // Active or Idle mode
-	raise_interrupt(_ch);
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	selected_ctrl(_ch).sector_count = 0xff; // Active or Idle mode
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_seek(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_seek(int _ch, uint8_t _cmd)
 {
-	if(selected_is_hdd(_ch)) {
-		int64_t logical_sector = calculate_logical_address(_ch);
-		if(logical_sector < 0) {
-			command_aborted(_ch, _cmd);
-			return;
-		}
-		Controller &controller = selected_ctrl(_ch);
-		selected_drive(_ch).next_lsector = logical_sector;
-		controller.current_command = _cmd;
-		controller.error_register = 0;
-		controller.status.busy = true;
-		controller.status.drive_ready = true;
-		controller.status.seek_complete = false;
-		controller.status.drq = false;
-		controller.status.corrected_data = false;
-		start_seek(_ch);
-	} else {
+	if(!selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V2, LOG_HDD, "%s %s: not supported for non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
+		return 0;
 	}
+
+	int64_t logical_sector = calculate_logical_address(_ch);
+	if(logical_sector < 0) {
+		command_aborted(_ch, _cmd);
+		return 0;
+	}
+	selected_drive(_ch).next_lsector = logical_sector;
+
+	uint32_t seek_time = seek(_ch);
+	if(seek_time == 0) {
+		seek_time = SEEK_CMD_US / 2;
+	}
+	seek_time += selected_storage(_ch).performance().overh_time * 1000.0;
+	return seek_time;
 }
 
-void StorageCtrl_ATA::ata_cmd_read_native_max_address(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_read_native_max_address(int _ch, uint8_t _cmd)
 {
 	if(!selected_is_hdd(_ch)) {
 		PDEBUGF(LOG_V1, LOG_HDD, "%s %s: issued to non-disk\n",
 				selected_string(_ch), ata_cmd_string(_cmd));
 		command_aborted(_ch, _cmd);
-		return;
+		return 0;
+	}
+	Controller &controller = selected_ctrl(_ch);
+	if(!controller.lba_mode) {
+		command_aborted(_ch, _cmd);
+		return 0;
 	}
 	bool lba48 = false;
 	if(_cmd == 0x27) {
 		// READ EXT
 		lba48 = true;
 	}
-	Controller &controller = selected_ctrl(_ch);
+
 	lba48_transform(controller, lba48);
 	int64_t max_sector = selected_storage(_ch).sectors() - 1;
-	if(controller.lba_mode) {
-		if(!controller.lba48) {
-			controller.head_no = (uint8_t)((max_sector >> 24) & 0xf);
-			controller.cylinder_no = (uint16_t)((max_sector >> 8) & 0xffff);
-			controller.sector_no = (uint8_t)((max_sector) & 0xff);
-		} else {
-			controller.hob.hcyl = (uint8_t)((max_sector >> 40) & 0xff);
-			controller.hob.lcyl = (uint8_t)((max_sector >> 32) & 0xff);
-			controller.hob.sector = (uint8_t)((max_sector >> 24) & 0xff);
-			controller.cylinder_no = (uint16_t)((max_sector >> 8) & 0xffff);
-			controller.sector_no = (uint8_t)((max_sector) & 0xff);
-		}
-		controller.status.drive_ready = true;
-		controller.status.seek_complete = true;
-		raise_interrupt(_ch);
+	if(!controller.lba48) {
+		controller.head_no = (uint8_t)((max_sector >> 24) & 0xf);
+		controller.cylinder_no = (uint16_t)((max_sector >> 8) & 0xffff);
+		controller.sector_no = (uint8_t)((max_sector) & 0xff);
 	} else {
-		command_aborted(_ch, _cmd);
+		controller.hob.hcyl = (uint8_t)((max_sector >> 40) & 0xff);
+		controller.hob.lcyl = (uint8_t)((max_sector >> 32) & 0xff);
+		controller.hob.sector = (uint8_t)((max_sector >> 24) & 0xff);
+		controller.cylinder_no = (uint16_t)((max_sector >> 8) & 0xffff);
+		controller.sector_no = (uint8_t)((max_sector) & 0xff);
 	}
+	command_successful(_ch, m_channels[_ch].drive_select, true);
+	return 0;
 }
 
-void StorageCtrl_ATA::ata_cmd_not_implemented(int _ch, uint8_t _cmd)
+uint32_t StorageCtrl_ATA::ata_cmd_not_implemented(int _ch, uint8_t _cmd)
 {
 	PERRF(LOG_HDD, "%s %s: not implemented\n", selected_string(_ch), ata_cmd_string(_cmd));
 	command_aborted(_ch, _cmd);
+	return 0;
 }
 
 void StorageCtrl_ATA::init_send_atapi_command(int _ch, uint8_t _cmd, int _req_len,
@@ -2400,7 +2472,9 @@ void StorageCtrl_ATA::atapi_cmd_read_cd(int _ch, uint8_t _cmd)
 						transfer_length * controller.buffer_size, 1);
 				selected_drive(_ch).cdrom.remaining_blocks = transfer_length;
 				selected_drive(_ch).cdrom.next_lba = lba;
-				start_seek(_ch);
+				//TODO
+				//start_seek(_ch);
+				PERRF_ABORT(LOG_HDD, "CD timers not implemented\n");
 				break;
 			}
 			default:
@@ -2499,7 +2573,9 @@ void StorageCtrl_ATA::atapi_cmd_read(int _ch, uint8_t _cmd)
 			transfer_length * 2048, 1);
 	selected_drive(_ch).cdrom.remaining_blocks = transfer_length;
 	selected_drive(_ch).cdrom.next_lba = lba;
-	start_seek(_ch);
+	//TODO
+	//start_seek(_ch);
+	PERRF_ABORT(LOG_HDD, "CD timers not implemented\n");
 }
 
 void StorageCtrl_ATA::atapi_cmd_seek(int _ch, uint8_t _cmd)
@@ -2665,6 +2741,22 @@ void StorageCtrl_ATA::lower_interrupt(int _ch)
 	m_devices->pic()->lower_irq(m_channels[_ch].irq);
 }
 
+void StorageCtrl_ATA::command_successful(int _ch, int _dev, bool _raise_int)
+{
+	ctrl(_ch,_dev).status.busy = false;
+	ctrl(_ch,_dev).status.err = false;
+	ctrl(_ch,_dev).status.drq = false;
+	ctrl(_ch,_dev).status.drive_ready = true;
+	ctrl(_ch,_dev).status.seek_complete = true;
+	ctrl(_ch,_dev).status.corrected_data = false;
+	ctrl(_ch,_dev).buffer_index = 0;
+	ctrl(_ch,_dev).error_register = 0x00;
+
+	if(_raise_int) {
+		raise_interrupt(_ch);
+	}
+}
+
 void StorageCtrl_ATA::command_aborted(int _ch, uint8_t _cmd)
 {
 	Controller &controller = selected_ctrl(_ch);
@@ -2781,47 +2873,53 @@ int64_t StorageCtrl_ATA::calculate_logical_address(int _ch)
 	return logical_sector;
 }
 
-int64_t StorageCtrl_ATA::increment_address(int _ch, int64_t _sector)
+int64_t StorageCtrl_ATA::increment_address(int _ch, int64_t &_lba_sect, uint8_t _amount)
 {
 	Controller *controller = &selected_ctrl(_ch);
 
-	controller->sector_count--;
-	controller->num_sectors--;
-
+	controller->sector_count -= _amount;
+	controller->num_sectors -= _amount;
+	_lba_sect += _amount;
+	int64_t curr_cyl;
 	if(controller->lba_mode) {
-		_sector++;
 		if(!controller->lba48) {
-			controller->head_no = (uint8_t)((_sector >> 24) & 0xf);
-			controller->cylinder_no = (uint16_t)((_sector >> 8) & 0xffff);
-			controller->sector_no = (uint8_t)((_sector) & 0xff);
+			controller->head_no = (uint8_t)((_lba_sect >> 24) & 0xf);
+			controller->cylinder_no = (uint16_t)((_lba_sect >> 8) & 0xffff);
+			controller->sector_no = (uint8_t)((_lba_sect) & 0xff);
+			curr_cyl = controller->cylinder_no;
 		} else {
-			controller->hob.hcyl = (uint8_t)((_sector >> 40) & 0xff);
-			controller->hob.lcyl = (uint8_t)((_sector >> 32) & 0xff);
-			controller->hob.sector = (uint8_t)((_sector >> 24) & 0xff);
-			controller->cylinder_no = (uint16_t)((_sector >> 8) & 0xffff);
-			controller->sector_no = (uint8_t)((_sector) & 0xff);
+			controller->hob.hcyl = (uint8_t)((_lba_sect >> 40) & 0xff);
+			controller->hob.lcyl = (uint8_t)((_lba_sect >> 32) & 0xff);
+			controller->hob.sector = (uint8_t)((_lba_sect >> 24) & 0xff);
+			controller->cylinder_no = (uint16_t)((_lba_sect >> 8) & 0xffff);
+			controller->sector_no = (uint8_t)((_lba_sect) & 0xff);
+			curr_cyl = controller->cylinder_no | ((_lba_sect >> 16) & 0xffff0000);
 		}
 	} else {
-		controller->sector_no++;
-		const MediaGeometry & geom = selected_storage(_ch).geometry();
-		if(controller->sector_no > geom.spt) {
+		if(_lba_sect >= selected_storage(_ch).sectors()) {
 			controller->sector_no = 1;
-			controller->head_no++;
-			if(controller->head_no >= geom.heads) {
-				controller->head_no = 0;
-				controller->cylinder_no++;
-				if(controller->cylinder_no >= geom.cylinders) {
-					controller->cylinder_no = geom.cylinders - 1;
-				}
-			}
+			controller->head_no = 0;
+			controller->cylinder_no = selected_storage(_ch).geometry().cylinders - 1;
+		} else {
+			int64_t c,h,s;
+			selected_storage(_ch).lba_to_chs(_lba_sect, c,h,s);
+			assert(c <= UINT16_MAX);
+			assert(h <= UINT8_MAX);
+			assert(s <= UINT8_MAX);
+			controller->cylinder_no = c;
+			controller->head_no = h;
+			controller->sector_no = s;
 		}
+		curr_cyl = controller->cylinder_no;
 	}
-	return _sector;
+
+	return curr_cyl;
 }
 
-void StorageCtrl_ATA::ata_read_sector(int _ch, uint8_t *_buffer, unsigned _len)
+void StorageCtrl_ATA::ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, unsigned _len)
 {
 	int sector_count = (_len / 512);
+	assert(sector_count>0);
 	uint8_t *bufptr = _buffer;
 	HardDiskDrive * hdd = dynamic_cast<HardDiskDrive*>(&selected_storage(_ch));
 	assert(hdd != nullptr);
@@ -2829,44 +2927,34 @@ void StorageCtrl_ATA::ata_read_sector(int _ch, uint8_t *_buffer, unsigned _len)
 	PDEBUGF(LOG_V2, LOG_HDD, "reading %d sector(s) at lba=%lld\n",
 			sector_count, calculate_logical_address(_ch));
 
-	do {
+	int64_t prev_cyl, curr_cyl = selected_drive(_ch).curr_cyl;
+	while(sector_count) {
 		int64_t logical_sector = calculate_logical_address(_ch);
 		if(logical_sector < 0) {
 			PDEBUGF(LOG_V2, LOG_HDD, "ata_read_sector: invalid logical sector\n");
 			throw std::exception();
 		}
 
-		hdd->read_sector(logical_sector, bufptr, 512);
-
-		logical_sector = increment_address(_ch, logical_sector);
-		selected_drive(_ch).next_lsector = logical_sector;
-		bufptr += 512;
-	} while(--sector_count > 0);
-}
-
-void StorageCtrl_ATA::ata_write_sector(int _ch, uint8_t *_buffer, unsigned _len)
-{
-	int sector_count = (_len / 512);
-	uint8_t *bufptr = _buffer;
-	HardDiskDrive * hdd = dynamic_cast<HardDiskDrive*>(&selected_storage(_ch));
-	assert(hdd != nullptr);
-
-	PDEBUGF(LOG_V2, LOG_HDD, "writing %d sector(s) at lba=%lld\n",
-			sector_count, calculate_logical_address(_ch));
-
-	do {
-		int64_t logical_sector = calculate_logical_address(_ch);
-		if(logical_sector < 0) {
-			PDEBUGF(LOG_V2, LOG_HDD, "ata_write_sector: invalid logical sector\n");
-			throw std::exception();
+		if(_write) {
+			hdd->write_sector(logical_sector, bufptr, 512);
+		} else {
+			hdd->read_sector(logical_sector, bufptr, 512);
 		}
 
-		hdd->write_sector(logical_sector, bufptr, 512);
-
-		logical_sector = increment_address(_ch, logical_sector);
-		selected_drive(_ch).next_lsector = logical_sector;
+		prev_cyl = curr_cyl;
+		curr_cyl = increment_address(_ch, logical_sector, 1);
+		sector_count--;
 		bufptr += 512;
-	} while(--sector_count > 0);
+		selected_drive(_ch).next_lsector = logical_sector;
+	};
+	if(prev_cyl != curr_cyl) {
+		// don't move the head for the last sector advance
+		curr_cyl--;
+	}
+	if(selected_drive(_ch).curr_cyl != curr_cyl) {
+		selected_drive(_ch).prev_cyl = selected_drive(_ch).curr_cyl;
+	}
+	selected_drive(_ch).curr_cyl = curr_cyl;
 }
 
 void StorageCtrl_ATA::lba48_transform(Controller &_controller, bool _lba48)
@@ -2890,27 +2978,61 @@ void StorageCtrl_ATA::lba48_transform(Controller &_controller, bool _lba48)
 	}
 }
 
-void StorageCtrl_ATA::start_seek(int channel)
+uint32_t StorageCtrl_ATA::seek(int _ch)
 {
-	int64_t new_pos, prev_pos, max_pos;
-	uint64_t seek_time;
-	double fSeekBase, fSeekTime;
+	/* TODO for cdroms use cdrom.curr_lba, cdrom.next_lba */
+	int64_t curr_cyl = selected_drive(_ch).curr_cyl;
+	int64_t dest_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).next_lsector);
 
-	if(selected_is_cd(channel)) {
-		max_pos = selected_drive(channel).cdrom.max_lba;
-		prev_pos = selected_drive(channel).cdrom.curr_lba;
-		new_pos = selected_drive(channel).cdrom.next_lba;
-		fSeekBase = 80000.0;
-	} else {
-		max_pos = selected_storage(channel).sectors() - 1;
-		prev_pos = selected_drive(channel).curr_lsector;
-		new_pos = selected_drive(channel).next_lsector;
-		fSeekBase = 5000.0;
+	if(curr_cyl == dest_cyl) {
+		return 0;
 	}
-	fSeekTime = fSeekBase * (double)abs((int)(new_pos - prev_pos + 1)) / (max_pos + 1);
-	seek_time = (fSeekTime > 10.0) ? (uint32_t)fSeekTime : 10;
-	seek_time = seek_time * 1000;
-	g_machine.activate_timer(selected_timer(channel), seek_time, 0);
+
+	uint32_t exec_time = SEEK_CMD_US;
+
+	/* I empirically determined that the settling time is 70% of the seek
+	 * overhead time derived from spec documents.
+	 */
+	uint32_t ovrh = selected_storage(_ch).performance().seek_overhead_us * 0.70;
+	uint32_t settling_time = 0;
+	if(ovrh >= exec_time){
+		settling_time = ovrh - exec_time;
+	}
+	uint32_t move_time = selected_storage(_ch).seek_move_time_us(curr_cyl, dest_cyl);
+
+	if(dest_cyl == selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).prev_cyl)) {
+		/* If a seek returns to the previous cylinder then the controller
+		 * takes a lot less time to execute the command.
+		 */
+		exec_time *= 0.4;
+	}
+
+	uint32_t total_seek_time = move_time + settling_time + exec_time;
+
+	PDEBUGF(LOG_V2, LOG_HDD, "SEEK %d->%d  exec:%d,settling:%d,total:%d\n",
+			curr_cyl, dest_cyl, exec_time, settling_time, total_seek_time);
+
+	selected_drive(_ch).prev_cyl = curr_cyl;
+	selected_drive(_ch).curr_cyl = dest_cyl;
+
+	selected_storage(_ch).seek(curr_cyl, dest_cyl);
+
+	return total_seek_time;
+}
+
+void StorageCtrl_ATA::activate_command_timer(int _ch, uint32_t _exec_time)
+{
+	if(_exec_time == 0) {
+		_exec_time = MIN_CMD_US;
+	}
+	uint64_t power_up = selected_storage(_ch).power_up_eta_us();
+	if(power_up) {
+		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", power_up);
+		_exec_time += power_up;
+	}
+	g_machine.activate_timer(selected_timer(_ch), uint64_t(_exec_time)*1_us, false);
+
+	PDEBUGF(LOG_V2, LOG_HDD, "command exec time: %dus\n", _exec_time);
 }
 
 const char * StorageCtrl_ATA::device_string(int _ch, int _dev)

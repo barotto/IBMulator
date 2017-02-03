@@ -768,8 +768,8 @@ void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek
 	PDEBUGF(LOG_V2, LOG_HDD, " (exec:%d,seek:%d,rot:%d,xfer:%d), pos:%.2f(%.1f)->%.2f(%d), buf:%d\n",
 			_exec_time, _seek_time, _rot_latency, _xfer_time,
 			m_disk.head_position(), m_disk.pos_to_sect(m_disk.head_position()),
-			m_disk.sect_to_pos(m_disk.hw_sector_number(m_s.cur_sector)),
-			m_disk.hw_sector_number(m_s.cur_sector),
+			m_disk.hw_sect_to_pos(m_disk.chs_to_hw_sector(m_s.cur_sector)),
+			m_disk.chs_to_hw_sector(m_s.cur_sector),
 			m_s.cur_buffer
 			);
 }
