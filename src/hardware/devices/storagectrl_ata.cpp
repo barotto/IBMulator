@@ -301,10 +301,17 @@ void StorageCtrl_ATA::reset(unsigned _type)
 			for(int dev=0; dev<2; dev++) {
 				if(is_hdd(ch, dev)) {
 					m_storage[ch][dev]->power_on(g_machine.get_virt_time_us());
+					uint64_t powerup = m_storage[ch][dev]->power_up_eta_us();
+					if(powerup>0) {
+						ctrl(ch,dev).status.busy        = true;
+						ctrl(ch,dev).status.drive_ready = false;
+						g_machine.activate_timer(m_cmd_timers[ch][dev], powerup*1_us, false);
+					}
 				}
 			}
 		}
 	}
+	update_busy_status();
 }
 
 void StorageCtrl_ATA::power_off()
@@ -427,21 +434,23 @@ void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
 {
 	Controller *controller = &ctrl(_ch, _device);
 	if(is_hdd(_ch, _device)) {
-
-		command_successful(_ch, _device, true);
-
 		switch(controller->current_command) {
+			case 0x00: // not a command, power up finished, no IRQ
+				command_successful(_ch, _device, false);
+				break;
 			case 0x20: // READ SECTORS, with retries
 			case 0x21: // READ SECTORS, without retries
 			case 0x24: // READ SECTORS EXT
 			case 0x29: // READ MULTIPLE EXT
 			case 0xC4: // READ MULTIPLE SECTORS
+				command_successful(_ch, _device, true);
 				controller->status.drq = true;
 				break;
 			case 0x40: // READ VERIFY SECTORS
 			case 0x41: // READ VERIFY SECTORS NO RETRY
 			case 0x42: // READ VERIFY SECTORS EXT
 			{
+				command_successful(_ch, _device, true);
 				int64_t curr_cyl = increment_address(_ch,
 							selected_drive(_ch).next_lsector,
 							controller->num_sectors);
@@ -455,14 +464,17 @@ void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
 			case 0xC5: // WRITE MULTIPLE SECTORS
 			case 0x34: // WRITE SECTORS EXT
 			case 0x39: // WRITE MULTIPLE EXT
+				command_successful(_ch, _device, true);
 				if(controller->num_sectors) {
 					controller->status.drq = true;
 				}
 				break;
 			case 0x90: // EXECUTE DEVICE DIAGNOSTIC
+				command_successful(_ch, _device, true);
 				controller->error_register = 0x01;
 				break;
 			default:
+				command_successful(_ch, _device, true);
 				break;
 		}
 	} else {

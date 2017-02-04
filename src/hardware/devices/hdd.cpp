@@ -202,7 +202,11 @@ void HardDiskDrive::power_off()
 uint64_t HardDiskDrive::power_up_eta_us() const
 {
 	if(m_s.power_on_time) {
-		uint64_t elapsed = g_machine.get_virt_time_us_mt() - m_s.power_on_time;
+		uint64_t now = g_machine.get_virt_time_us_mt();
+		uint64_t elapsed = 0;
+		if(now >= m_s.power_on_time) {
+			elapsed = now - m_s.power_on_time;
+		}
 		if(elapsed >= m_spin_up_duration) {
 			return 0;
 		}
