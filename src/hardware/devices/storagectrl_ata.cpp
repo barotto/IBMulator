@@ -53,6 +53,11 @@ IODEVICE_PORTS(StorageCtrl_ATA) = {
 	{ 0x0376, 0x0376, PORT_8BIT|PORT_RW  }  // Channel 1 Alternate Status R / Adapter Control Reg W
 };
 
+// The ATA specification emulated.
+// Determines how the IDENTIFY DEVICE command responds.
+// Supported versions: 1 to 6.
+#define ATA_VERSION  1
+
 #define ATA_CMD_FN(_hex_, _string_, _fn_) { _hex_, { _string_, &StorageCtrl_ATA::ata_cmd_ ## _fn_ } }
 #define ATAPI_CMD_FN(_hex_, _string_, _fn_) { _hex_, { _string_, &StorageCtrl_ATA::atapi_cmd_ ## _fn_ } }
 
@@ -1363,95 +1368,140 @@ void StorageCtrl_ATA::identify_ata_device(int _ch)
 	// which mode is active.
 	drive.id_drive[63] = 0x0;
 
-	// Word 64 PIO modes supported
-	drive.id_drive[64] = 0x00;
+	if(ATA_VERSION >= 2) {
+		// Word 64 PIO modes supported
+		drive.id_drive[64] = 0x00;
 
-	// Word 65-68 PIO/DMA cycle time (nanoseconds)
-	for(int i=65; i<=68; i++) {
-		drive.id_drive[i] = 120;
+		// Word 65-68 PIO/DMA cycle time (nanoseconds)
+		for(int i=65; i<=68; i++) {
+			drive.id_drive[i] = 120;
+		}
 	}
+	if(ATA_VERSION >= 3) {
+		// Word 69-79 Reserved
 
-	// Word 69-79 Reserved
+		// Word 80: 15-5 reserved
+		//             6 supports ATA/ATAPI-6
+		//             5 supports ATA/ATAPI-5
+		//             4 supports ATA/ATAPI-4
+		//             3 supports ATA-3
+		//             2 supports ATA-2
+		//             1 supports ATA-1
+		//             0 reserved
+		for(int i=1; i<=ATA_VERSION; i++) {
+			drive.id_drive[80] |= (1<<i);
+		}
 
-	// Word 80: 15-5 reserved
-	//             6 supports ATA/ATAPI-6
-	//             5 supports ATA/ATAPI-5
-	//             4 supports ATA/ATAPI-4
-	//             3 supports ATA-3
-	//             2 supports ATA-2
-	//             1 supports ATA-1
-	//             0 reserved
-	drive.id_drive[80] = 0x7e;
+		// Word 81: Minor version number
+		drive.id_drive[81] = 0x00;
 
-	// Word 81: Minor version number
-	drive.id_drive[81] = 0x00;
+		// Word 82: Command set supported.
+		//          15 obsolete
+		//          14 NOP command supported
+		//          13 READ BUFFER command supported
+		//          12 WRITE BUFFER command supported
+		//          11 obsolete
+		//          10 Host protected area feature set supported
+		//           9 DEVICE RESET command supported
+		//           8 SERVICE interrupt supported
+		//           7 release interrupt supported
+		//           6 look-ahead supported
+		//           5 write cache supported
+		//           4 supports PACKET command feature set
+		//           3 supports power management feature set
+		//           2 supports removable media feature set
+		//           1 supports securite mode feature set
+		//           0 support SMART feature set
+		drive.id_drive[82] = 1 << 14;
 
-	// Word 82: 15 obsolete
-	//          14 NOP command supported
-	//          13 READ BUFFER command supported
-	//          12 WRITE BUFFER command supported
-	//          11 obsolete
-	//          10 Host protected area feature set supported
-	//           9 DEVICE RESET command supported
-	//           8 SERVICE interrupt supported
-	//           7 release interrupt supported
-	//           6 look-ahead supported
-	//           5 write cache supported
-	//           4 supports PACKET command feature set
-	//           3 supports power management feature set
-	//           2 supports removable media feature set
-	//           1 supports securite mode feature set
-	//           0 support SMART feature set
-	drive.id_drive[82] = 1 << 14;
+		// Word 83: 15 shall be ZERO
+		//          14 shall be ONE
+		//          13 FLUSH CACHE EXT command supported
+		//          12 FLUSH CACHE command supported
+		//          11 Device configuration overlay supported
+		//          10 48-bit Address feature set supported
+		//           9 Automatic acoustic management supported
+		//           8 SET MAX security supported
+		//           7 reserved for 1407DT PARTIES
+		//           6 SetF sub-command Power-Up supported
+		//           5 Power-Up in standby feature set supported
+		//           4 Removable media notification supported
+		//           3 APM feature set supported
+		//           2 CFA feature set supported
+		//           1 READ/WRITE DMA QUEUED commands supported
+		//           0 Download MicroCode supported
+		drive.id_drive[83] = (1 << 14) | (1 << 13) | (1 << 12) | (1 << 10);
+	}
+	if(ATA_VERSION >= 4) {
+		// Word 84: Command set/feature supported extension.
+		//          14 Shall be set to one
+		drive.id_drive[84] = 1 << 14;
 
-	// Word 83: 15 shall be ZERO
-	//          14 shall be ONE
-	//          13 FLUSH CACHE EXT command supported
-	//          12 FLUSH CACHE command supported
-	//          11 Device configuration overlay supported
-	//          10 48-bit Address feature set supported
-	//           9 Automatic acoustic management supported
-	//           8 SET MAX security supported
-	//           7 reserved for 1407DT PARTIES
-	//           6 SetF sub-command Power-Up supported
-	//           5 Power-Up in standby feature set supported
-	//           4 Removable media notification supported
-	//           3 APM feature set supported
-	//           2 CFA feature set supported
-	//           1 READ/WRITE DMA QUEUED commands supported
-	//           0 Download MicroCode supported
-	drive.id_drive[83] = (1 << 14) | (1 << 13) | (1 << 12) | (1 << 10);
-	drive.id_drive[84] = 1 << 14;
-	drive.id_drive[85] = 1 << 14;
+		// Word 85: Command set/feature enabled. See Word 82.
+		//          14 1=NOP command supported
+		drive.id_drive[85] = 1 << 14;
 
-	// Word 86: 15 shall be ZERO
-	//          14 shall be ONE
-	//          13 FLUSH CACHE EXT command enabled
-	//          12 FLUSH CACHE command enabled
-	//          11 Device configuration overlay enabled
-	//          10 48-bit Address feature set enabled
-	//           9 Automatic acoustic management enabled
-	//           8 SET MAX security enabled
-	//           7 reserved for 1407DT PARTIES
-	//           6 SetF sub-command Power-Up enabled
-	//           5 Power-Up in standby feature set enabled
-	//           4 Removable media notification enabled
-	//           3 APM feature set enabled
-	//           2 CFA feature set enabled
-	//           1 READ/WRITE DMA QUEUED commands enabled
-	//           0 Download MicroCode enabled
-	drive.id_drive[86] = (1 << 14) | (1 << 13) | (1 << 12) | (1 << 10);
-	drive.id_drive[87] = 1 << 14;
+		// Word 86: Command set/feature enabled.
+		//          15 shall be ZERO
+		//          14 shall be ONE
+		//          13 FLUSH CACHE EXT command enabled
+		//          12 FLUSH CACHE command enabled
+		//          11 Device configuration overlay enabled
+		//          10 48-bit Address feature set enabled
+		//           9 Automatic acoustic management enabled
+		//           8 SET MAX security enabled
+		//           7 reserved for 1407DT PARTIES
+		//           6 SetF sub-command Power-Up enabled
+		//           5 Power-Up in standby feature set enabled
+		//           4 Removable media notification enabled
+		//           3 APM feature set enabled
+		//           2 CFA feature set enabled
+		//           1 READ/WRITE DMA QUEUED commands enabled
+		//           0 Download MicroCode enabled
+		drive.id_drive[86] = (1 << 14) | (1 << 13) | (1 << 12) | (1 << 10);
 
-	drive.id_drive[88] = 0x0;
+		// Word 87: Command set/feature default.
+		//          15 Shall be cleared to zero
+		//          14 Shall be set to one
+		//          13-0 Reserved
+		drive.id_drive[87] = 1 << 14;
 
-	drive.id_drive[93] = 1 | (1 << 14) | 0x2000;
-
-	// Word 100-103: 48-bit total number of sectors
-	drive.id_drive[100] = (uint16_t)(storage.sectors() & 0xffff);
-	drive.id_drive[101] = (uint16_t)(storage.sectors() >> 16);
-	drive.id_drive[102] = (uint16_t)(storage.sectors() >> 32);
-	drive.id_drive[103] = (uint16_t)(storage.sectors() >> 48);
+		// Word 88: 15-13 Reserved
+		//          12 1 = Ultra DMA mode 4 is selected
+		//             0 = Ultra DMA mode 4 is not selected
+		//          11 1 = Ultra DMA mode 3 is selected
+		//             0 = Ultra DMA mode 3 is not selected
+		//          10 1 = Ultra DMA mode 2 is selected
+		//             0 = Ultra DMA mode 2 is not selected
+		//          9  1 = Ultra DMA mode 1 is selected
+		//             0 = Ultra DMA mode 1 is not selected
+		//          8  1 = Ultra DMA mode 0 is selected
+		//             0 = Ultra DMA mode 0 is not selected
+		//          7-5 Reserved
+		//          4  1 = Ultra DMA mode 4 and below are supported
+		//          3  1 = Ultra DMA mode 3 and below are supported
+		//          2  1 = Ultra DMA mode 2 and below are supported
+		//          1  1 = Ultra DMA mode 1 and below are supported
+		//          0  1 = Ultra DMA mode 0 is supported
+		drive.id_drive[88] = 0x0;
+	}
+	if(ATA_VERSION >= 5) {
+		// Word 93: Hardware reset result.
+		// The contents of bits 12-0 of this word shall change only during
+		// the execution of a hardware reset.
+		// 14 Shall be set to one.
+		// 13  1 = device detected CBLID- above V iH
+		//     0 = device detected CBLID- below V iL
+		// 0  Shall be set to one.
+		drive.id_drive[93] = 1 | (1 << 14) | 0x2000;
+	}
+	if(ATA_VERSION >= 6) {
+		// Word 100-103: 48-bit total number of sectors
+		drive.id_drive[100] = (uint16_t)(storage.sectors() & 0xffff);
+		drive.id_drive[101] = (uint16_t)(storage.sectors() >> 16);
+		drive.id_drive[102] = (uint16_t)(storage.sectors() >> 32);
+		drive.id_drive[103] = (uint16_t)(storage.sectors() >> 48);
+	}
 
 	// Word 128-159 Vendor unique
 	// Word 160-255 Reserved
