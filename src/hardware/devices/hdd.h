@@ -31,6 +31,7 @@
 class HardDiskDrive : public StorageDev
 {
 protected:
+	std::string m_section;
 	int m_type;
 	uint64_t m_spin_up_duration;
 	std::string m_imgpath;

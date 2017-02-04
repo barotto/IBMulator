@@ -220,6 +220,8 @@ void HardDiskDrive::config_changed(const char *_section)
 	// unmount and save the current image
 	unmount(m_save_on_close, m_read_only);
 
+	m_section = _section;
+
 	//get_enum throws if value is not allowed:
 	int type = g_program.config().get_int(_section, DISK_TYPE);
 	if(type<=0 || type == 15 ||
@@ -280,7 +282,7 @@ void HardDiskDrive::save_state(StateBuf &_state)
 	_state.write(&m_s, {sizeof(m_s), "Hard Disk Drive"});
 
 	if(m_disk) {
-		std::string path = _state.get_basename() + "-hdd.img";
+		std::string path = _state.get_basename() + "-" + m_section + ".img";
 		m_disk->save_state(path.c_str());
 	}
 }
@@ -297,7 +299,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 	// 3. geometry and performance are determined
 	if(m_type > 0) {
 		assert(m_disk != nullptr);
-		std::string imgfile = _state.get_basename() + "-hdd.img";
+		std::string imgfile = _state.get_basename() + "-" + m_section + ".img";
 		if(!FileSys::file_exists(imgfile.c_str())) {
 			PERRF(LOG_HDD, "%s: unable to find state image %s\n", name(), imgfile.c_str());
 			throw std::exception();
@@ -305,7 +307,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 		MediaGeometry geom = m_disk->geometry;
 		m_disk.reset(nullptr); // this calls the destructor and closes the file
 		//the saved state is read only
-		mount(_state.get_basename() + "-hdd.img", geom, true);
+		mount(imgfile, geom, true);
 		m_fx.spin(true, false);
 	} else {
 		m_fx.spin(false, false);
