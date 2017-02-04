@@ -380,8 +380,6 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 		throw std::exception();
 	}
 
-	set_space_time(0.0, 0);
-
 	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
 	m_disk->geometry = _geom;
 

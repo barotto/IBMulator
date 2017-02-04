@@ -100,8 +100,6 @@ protected:
 	DrivePerformance m_performance;
 
 	struct {
-		double   head_pos;
-		uint64_t head_time;
 		uint64_t power_on_time;
 	} m_s;
 
@@ -141,11 +139,9 @@ public:
 	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector, int64_t _xfer_amount);
 	virtual double head_position(double _last_pos, uint32_t _elapsed_time_us) const;
 	virtual double head_position(uint64_t _time_us) const;
-	virtual double head_position() const;
 
 	virtual uint64_t power_up_eta_us() const { return 0; }
 	virtual bool is_powering_up() const { return (power_up_eta_us() > 0); }
-	virtual void set_space_time(double _head_pos, uint64_t _time);
 
 	virtual void read_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}
 	virtual void write_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}

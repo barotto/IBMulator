@@ -519,7 +519,6 @@ void StorageCtrl_PS1::exec_command()
 		m_s.ccb.sect_cnt--;
 	}
 
-	m_disk.set_space_time(m_disk.head_position(cur_time_us), cur_time_us);
 	set_cur_sector(head, start_sector);
 	activate_command_timer(exec_time_us, seek_time_us, rot_latency_us, xfer_time_us);
 
@@ -557,7 +556,6 @@ void StorageCtrl_PS1::exec_read_on_next_sector()
 		rot_latency_us = m_disk.rotational_latency_us(cur_pos, m_s.cur_sector);
 	}
 
-	m_disk.set_space_time(cur_pos, cur_time);
 	activate_command_timer(0, seek_time_us, rot_latency_us, m_disk.performance().sec_xfer_us);
 }
 
@@ -767,7 +765,8 @@ void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek
 			time_us);
 	PDEBUGF(LOG_V2, LOG_HDD, " (exec:%d,seek:%d,rot:%d,xfer:%d), pos:%.2f(%.1f)->%.2f(%d), buf:%d\n",
 			_exec_time, _seek_time, _rot_latency, _xfer_time,
-			m_disk.head_position(), m_disk.pos_to_sect(m_disk.head_position()),
+			m_disk.head_position(g_machine.get_virt_time_us()),
+			m_disk.pos_to_sect(m_disk.head_position(g_machine.get_virt_time_us())),
 			m_disk.hw_sect_to_pos(m_disk.chs_to_hw_sector(m_s.cur_sector)),
 			m_disk.chs_to_hw_sector(m_s.cur_sector),
 			m_s.cur_buffer

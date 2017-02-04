@@ -71,12 +71,6 @@ m_head_accel_factor(0.0)
 	memset(&m_s, 0, sizeof(m_s));
 }
 
-void StorageDev::set_space_time(double _head_pos, uint64_t _head_time)
-{
-	m_s.head_pos = _head_pos;
-	m_s.head_time = _head_time;
-}
-
 int64_t StorageDev::chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const
 {
 	assert(_s > 0);
@@ -129,14 +123,7 @@ double StorageDev::head_position(double _last_pos, uint32_t _elapsed_time_us) co
 
 double StorageDev::head_position(uint64_t _time_us) const
 {
-	assert(_time_us >= m_s.head_time);
-	uint32_t elapsed_time_us = _time_us - m_s.head_time;
-	return head_position(m_s.head_pos, elapsed_time_us);
-}
-
-double StorageDev::head_position() const
-{
-	return m_s.head_pos;
+	return head_position(0.0, _time_us);
 }
 
 void StorageDev::power_on(uint64_t _time)
