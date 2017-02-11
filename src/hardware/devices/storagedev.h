@@ -38,6 +38,7 @@ struct DrivePerformance
 	uint32_t trk_read_us; // Full track read time
 	uint32_t sec_read_us; // Sector read time
 	uint32_t sec_xfer_us; // Sector transfer time, taking interleave into account
+	uint32_t sec2sec_us;  // Time needed to pass from a sector to the next
 };
 
 /**
@@ -137,6 +138,8 @@ public:
 	virtual uint32_t seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl);
 	virtual uint32_t rotational_latency_us(double _start_hw_sector, unsigned _dest_log_sector);
 	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector, int64_t _xfer_amount);
+	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector,
+			int64_t _xfer_amount, uint64_t &_look_ahead_time);
 	virtual double head_position(double _last_pos, uint32_t _elapsed_time_us) const;
 	virtual double head_position(uint64_t _time_us) const;
 
@@ -152,8 +155,9 @@ public:
 	int chs_to_hw_sector(int _sector) const;
 	double hw_sect_to_pos(double _hw_sector) const;
 	int64_t lba_to_cylinder(int64_t _lba) const;
+	int64_t lba_to_head(int64_t _lba) const;
 	void lba_to_chs(int64_t _lba, int64_t &c_, int64_t &h_, int64_t &s_) const;
-	double pos_to_sect(double _head_pos) const;
+	double pos_to_hw_sect(double _head_pos) const;
 };
 
 #endif

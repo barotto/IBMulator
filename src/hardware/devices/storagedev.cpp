@@ -89,7 +89,12 @@ int64_t StorageDev::lba_to_cylinder(int64_t _lba) const
 	return (_lba / (m_geometry.heads * m_geometry.spt));
 }
 
-double StorageDev::pos_to_sect(double _head_pos) const
+int64_t StorageDev::lba_to_head(int64_t _lba) const
+{
+	return (_lba / m_geometry.spt) % m_geometry.heads;
+}
+
+double StorageDev::pos_to_hw_sect(double _head_pos) const
 {
 	double sector = double(m_geometry.spt) + m_track_overhead/m_sector_size;
 	return (_head_pos * sector);
@@ -164,6 +169,7 @@ void StorageDev::config_changed(const char *)
 	m_performance.sec_read_us = round(m_sector_size / bytes_us);
 	m_sector_len = (1.0 / bytes_pt) * m_sector_size;
 	m_performance.sec_xfer_us = double(m_performance.sec_read_us) * std::max(1.0,(double(m_performance.interleave) * 0.8f));
+	m_performance.sec2sec_us = m_performance.sec_read_us * m_performance.interleave;
 }
 
 /**
@@ -254,7 +260,10 @@ uint32_t StorageDev::rotational_latency_us(double _head_position, unsigned _dest
 
 /**
  * Returns the tranfer time in microseconds required to read or write the given
- * amount of sectors. The head is considered already at the right track.
+ * amount of sectors.
+ * No initial seek is calculated so the head is considered already at the right
+ * cylinder. Additional seeks required to complete the transfer are taken into
+ * account.
  *
  * @param _curr_time         the current time (us).
  * @param _first_lba_sector  the first sector to transfer.
@@ -270,7 +279,7 @@ uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sec
 
 	/* 1. wait for the head to position itself upon the right sector (rotational latency)
 	 * 2. transfer the needed sectors or until the end of track (transfer time)
-	 * 3. if transfer not complete and next sector is in next track then seek (trk2trk seek time)
+	 * 3. if transfer not complete and next sector is in next cylinder then seek (trk2trk seek time)
 	 * 4. repeat from 1. until transfer completes
 	 */
 	uint32_t xfer_time = 0;
@@ -285,13 +294,13 @@ uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sec
 		transfer_cnt = std::min(transfer_cnt, _xfer_amount);
 		uint32_t time_amount = 0;
 		time_amount += rotational_latency_us(headpos, s0);
-		time_amount += m_performance.sec_read_us * m_performance.interleave * (transfer_cnt-1);
+		time_amount += m_performance.sec2sec_us * (transfer_cnt-1);
 		time_amount += m_performance.sec_read_us;
 		//time_amount += m_performance.sec_xfer_us;
 		_xfer_amount -= transfer_cnt;
 		xfer_time += time_amount;
 		lba += transfer_cnt;
-		headpos = head_position(headpos, time_amount);
+		//headpos = head_position(headpos, time_amount);
 		headpos = hw_sect_to_pos(chs_to_hw_sector(s0+transfer_cnt));
 		if(_xfer_amount > 0) {
 			lba_to_chs(lba, c1, h, s1);
@@ -308,3 +317,112 @@ uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sec
 	return xfer_time;
 }
 
+/**
+ * Returns the tranfer time in microseconds required to read or write the given
+ * amount of sectors.
+ * No initial seek is calculated so the head is considered already at the right
+ * cylinder. Additional seeks required to complete the transfer are taken into
+ * account. This version uses a look ahead cache that can hold a full track in
+ * memory.
+ * The cache is empty when _curr_time is equal to _look_ahead_time.
+ * _look_ahead_time will be updated with the the current initial cache
+ * operation.
+ *
+ * @param _curr_time         the current time (us).
+ * @param _first_lba_sector  the first sector to transfer.
+ * @param _xfer_amount       the number of sectors to transfer.
+ * @param _look_ahead_time   the time of the initial cache operation on the
+ *                           current track (us)
+ * @return  the tranfer time in microseconds.
+ */
+uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector,
+		int64_t _xfer_amount, uint64_t &_look_ahead_time)
+{
+	uint32_t tot_xfer_time = 0;
+	bool cache_is_empty = (_look_ahead_time >= _curr_time);
+
+	if(cache_is_empty) {
+		// what will the time of the first sector in the cache be?
+		double next_sec_dist = pos_to_hw_sect(head_position(_look_ahead_time));
+		next_sec_dist = next_sec_dist - int(next_sec_dist);
+		_look_ahead_time += m_performance.sec_read_us*next_sec_dist;
+	}
+
+	while(_xfer_amount) {
+		// what time is it? _curr_time
+		// when did the caching started? _look_ahead_time
+		// which CHS sector do we need? s0
+		int64_t c0,h0,s0;
+		lba_to_chs(_xfer_lba_sector, c0, h0, s0);
+
+		// what's the corresponding HW sector?
+		int hw_sector = chs_to_hw_sector(s0);
+
+		bool is_in_cache = false;
+		cache_is_empty = (_look_ahead_time >= _curr_time);
+
+		double hw_cache1, hw_cache2;
+		double curr_head = head_position(_curr_time);
+		if(!cache_is_empty) {
+			// what's the first HW sector in cache?
+			double cache_head = head_position(_look_ahead_time);
+			hw_cache1 = ceil(pos_to_hw_sect(cache_head));
+
+			// what's the last HW sector in cache?
+			hw_cache2 = pos_to_hw_sect(curr_head);
+
+			// is the cache full?
+			bool cache_is_full = (_curr_time - _look_ahead_time) > m_performance.trk_read_us;
+
+			// is s0 in cache?
+			if(cache_is_full) {
+				is_in_cache = true;
+			} else {
+				if(hw_cache2 > hw_cache1) {
+					if(hw_sector>=int(hw_cache1) && hw_sector<int(hw_cache2)) {
+						is_in_cache = true;
+					}
+				} else {
+					if(hw_sector>=int(hw_cache1) || hw_sector<int(hw_cache2)) {
+						is_in_cache = true;
+					}
+				}
+			}
+		}
+
+		int sec_xfer_time = 0;
+		if(!is_in_cache) {
+			// is s0 partially in cache?
+			bool partially_in_cache = !cache_is_empty && (int(floor(hw_cache2)) == hw_sector);
+			if(partially_in_cache) {
+				// rotational latency is 0
+				double frac_hwc2 = hw_cache2 - int(hw_cache2);
+				sec_xfer_time = m_performance.sec_read_us - m_performance.sec_read_us*frac_hwc2;
+			} else {
+				sec_xfer_time = rotational_latency_us(curr_head, s0) + m_performance.sec_read_us;
+			}
+		}
+
+		_xfer_lba_sector++;
+		_xfer_amount--;
+		_curr_time += sec_xfer_time;
+		tot_xfer_time += sec_xfer_time;
+
+		// is the next sector on the next track?
+		if(_xfer_amount && (s0+1 > m_geometry.spt)) {
+			int64_t c1,h1,s1;
+			lba_to_chs(_xfer_lba_sector, c1,h1,s1);
+			// is the next track on the next cylinder?
+			if(c1 != c0) {
+				// seek next cylinder and reset the cache
+				_curr_time += m_performance.trk2trk_us;
+				_look_ahead_time = _curr_time;
+			} else if(h1 != h0) {
+				// different track, reset cache
+				_look_ahead_time = _curr_time;
+			}
+		}
+	}
+
+	return tot_xfer_time;
+}

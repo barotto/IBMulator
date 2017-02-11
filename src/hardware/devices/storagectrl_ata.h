@@ -108,6 +108,7 @@ private:
 		} hob;
 		uint32_t num_sectors; // number of remaining sectors to read or write
 		bool lba48;
+		uint64_t look_ahead_time; // starting time of read buffer operation
 	};
 
 	// FIXME:
@@ -133,8 +134,8 @@ private:
 			int total_bytes_remaining;
 		} atapi;
 		int64_t prev_cyl;
-		int64_t curr_cyl;
-		int64_t next_lsector;
+		int64_t curr_lba;
+		int64_t next_lba;
 		bool status_changed;
 	};
 
@@ -201,7 +202,8 @@ private:
 	void ata_write_next_block(int _ch);
 	uint32_t ata_write_block(int _ch);
 
-	uint32_t seek(int _ch);
+	uint32_t seek(int _ch, uint64_t _curr_time);
+	uint32_t get_seek_time(int _ch, int64_t _c0, int64_t _c1, int64_t _cprev);
 	void activate_command_timer(int _ch, uint32_t _exec_time);
 	void command_timer(int _ch, int _device, uint64_t _time);
 

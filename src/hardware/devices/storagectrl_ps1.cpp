@@ -766,7 +766,7 @@ void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek
 	PDEBUGF(LOG_V2, LOG_HDD, " (exec:%d,seek:%d,rot:%d,xfer:%d), pos:%.2f(%.1f)->%.2f(%d), buf:%d\n",
 			_exec_time, _seek_time, _rot_latency, _xfer_time,
 			m_disk.head_position(g_machine.get_virt_time_us()),
-			m_disk.pos_to_sect(m_disk.head_position(g_machine.get_virt_time_us())),
+			m_disk.pos_to_hw_sect(m_disk.head_position(g_machine.get_virt_time_us())),
 			m_disk.hw_sect_to_pos(m_disk.chs_to_hw_sector(m_s.cur_sector)),
 			m_disk.chs_to_hw_sector(m_s.cur_sector),
 			m_s.cur_buffer
@@ -782,7 +782,7 @@ void StorageCtrl_PS1::command_timer(uint64_t)
 		m_s.ssb.valid = true; //command functions update the SSB so it's valid
 		PDEBUGF(LOG_V2, LOG_HDD, "command exec end: cur.pos: %.2f (%.1f)\n",
 				m_disk.head_position(g_machine.get_virt_time_us()),
-				m_disk.pos_to_sect(m_disk.head_position(g_machine.get_virt_time_us()))
+				m_disk.pos_to_hw_sect(m_disk.head_position(g_machine.get_virt_time_us()))
 				);
 	} else if(m_s.attention_reg & ATT_CSB) {
 		PERRF_ABORT(LOG_HDD, "CSB not implemented\n");

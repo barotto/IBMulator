@@ -25,7 +25,7 @@
 
 /* This is the Bochs' implementation with the following notable differences:
  * 1. DMA transfer modes removed (PIO only), they weren't used by the PS/1 2121
- * 2. realistic read/write/seek timings added
+ * 2. realistic read/write/seek timings added, whith track look-ahead cache
  * 3. 16-bit data transfer only
  * 4. ata/atapi commands refactored
  *
@@ -34,6 +34,31 @@
  *
  * DMA transfer modes to be reimplemented if/when 486-class PS/1's emulation
  * will be added, along with 32-bit I/O.
+ */
+
+/* Notes about the Look-Ahead Cache
+ * --------------------------------
+ * Caching with look-ahead read decreases access time to sequential data in the
+ * drive by temporarily placing small amounts of data in high speed memory.
+ * Cache may contain from 1 to the size of one physical track. No head switching
+ * or seeking occurs during look-ahead.
+ *
+ * The drive caches not only requested sectors, but "look-ahead" and caches all
+ * remaining physical sectors on the current track. The "look-ahead" feature
+ * prepares the drive to transfer cached data when the host request it
+ * (preventing access time delays).
+ *
+ * On a real drive, if the drive is performing a look-ahead cache when a command
+ * is received, it will stop caching and process the command so that look-ahead
+ * caching does not add overhead to command processing.
+ * In this implementation the look-ahead will not be interrupted, resulting in a
+ * slightly faster caching. This should not be easily noticeable, however.
+ *
+ * Resets and Write commands to any of the cached sectors invalidate the whole
+ * cache.
+ *
+ * The cache is only simulated through the comparison of timestamps and no real
+ * disk image buffering is performed.
  */
 
 #include "ibmulator.h"
@@ -368,8 +393,8 @@ void StorageCtrl_ATA::reset_channel(int _ch)
 	m_channels[_ch].drive_select = 0;
 	for(uint8_t dev=0; dev<2; dev ++) {
 		if(drive(_ch,dev).device_type == ATA_DISK) {
-			drive(_ch,dev).next_lsector = 0;
-			drive(_ch,dev).curr_cyl = 0;
+			drive(_ch,dev).next_lba = 0;
+			drive(_ch,dev).curr_lba = 0;
 			drive(_ch,dev).prev_cyl = 0;
 		} else if(drive(_ch,dev).device_type == ATA_CDROM) {
 			// TODO this code block is untested
@@ -430,60 +455,62 @@ void StorageCtrl_ATA::reset_channel(int _ch)
 		ctrl(_ch,dev).features            = 0;
 		ctrl(_ch,dev).mdma_mode           = 0;
 		ctrl(_ch,dev).udma_mode           = 0;
+		ctrl(_ch,dev).look_ahead_time     = g_machine.get_virt_time_us();
 
 		drive(_ch,dev).identify_set = false;
 	}
 }
 
-void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
+void StorageCtrl_ATA::command_timer(int _ch, int _dev, uint64_t /*_time*/)
 {
-	Controller *controller = &ctrl(_ch, _device);
-	if(is_hdd(_ch, _device)) {
+	Controller *controller = &ctrl(_ch, _dev);
+	if(is_hdd(_ch, _dev)) {
 		switch(controller->current_command) {
 			case 0x00: // not a command, power up finished, no IRQ
-				command_successful(_ch, _device, false);
+				command_successful(_ch, _dev, false);
 				break;
 			case 0x20: // READ SECTORS, with retries
 			case 0x21: // READ SECTORS, without retries
 			case 0x24: // READ SECTORS EXT
 			case 0x29: // READ MULTIPLE EXT
 			case 0xC4: // READ MULTIPLE SECTORS
-				command_successful(_ch, _device, true);
+				command_successful(_ch, _dev, true);
 				controller->status.drq = true;
 				break;
 			case 0x40: // READ VERIFY SECTORS
 			case 0x41: // READ VERIFY SECTORS NO RETRY
 			case 0x42: // READ VERIFY SECTORS EXT
 			{
-				command_successful(_ch, _device, true);
-				int64_t curr_cyl = increment_address(_ch,
-							selected_drive(_ch).next_lsector,
+				command_successful(_ch, _dev, true);
+				int64_t next_cyl = increment_address(_ch,
+							drive(_ch,_dev).next_lba,
 							controller->num_sectors);
-				if(selected_drive(_ch).curr_cyl != curr_cyl) {
-					selected_drive(_ch).prev_cyl = selected_drive(_ch).curr_cyl;
+				int64_t curr_cyl = m_storage[_ch][_dev]->lba_to_cylinder(drive(_ch,_dev).curr_lba);
+				if(curr_cyl != next_cyl) {
+					drive(_ch,_dev).prev_cyl = curr_cyl;
 				}
-				selected_drive(_ch).curr_cyl = curr_cyl;
+				drive(_ch,_dev).curr_lba = drive(_ch,_dev).next_lba;
 				break;
 			}
 			case 0x30: // WRITE SECTORS
 			case 0xC5: // WRITE MULTIPLE SECTORS
 			case 0x34: // WRITE SECTORS EXT
 			case 0x39: // WRITE MULTIPLE EXT
-				command_successful(_ch, _device, true);
+				command_successful(_ch, _dev, true);
 				if(controller->num_sectors) {
 					controller->status.drq = true;
 				}
 				break;
 			case 0x90: // EXECUTE DEVICE DIAGNOSTIC
-				command_successful(_ch, _device, true);
+				command_successful(_ch, _dev, true);
 				controller->error_register = 0x01;
 				break;
 			default:
-				command_successful(_ch, _device, true);
+				command_successful(_ch, _dev, true);
 				break;
 		}
 	} else {
-		switch(drive(_ch, _device).atapi.command) {
+		switch(drive(_ch, _dev).atapi.command) {
 			case 0x28: // read (10)
 			case 0xa8: // read (12)
 			case 0xbe: // read cd
@@ -491,7 +518,7 @@ void StorageCtrl_ATA::command_timer(int _ch, int _device, uint64_t /*_time*/)
 				break;
 			default:
 				PERRF(LOG_HDD, "command_timer(): ATAPI command 0x%02x not supported",
-						drive(_ch, _device).atapi.command);
+						drive(_ch, _dev).atapi.command);
 				break;
 		}
 	}
@@ -831,6 +858,8 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 						 * data block to the device
 						 */
 						uint32_t exec_time = ata_write_block(channel);
+						// writes invalidate the whole cache
+						controller->look_ahead_time = g_machine.get_virt_time_us();
 						if(!controller->status.err) {
 							activate_command_timer(channel, exec_time);
 							if(controller->num_sectors) {
@@ -1531,10 +1560,10 @@ uint32_t StorageCtrl_ATA::ata_cmd_calibrate_drive(int _ch, uint8_t _cmd)
 		return 0;
 	}
 	/* move head to cylinder 0, issue IRQ */
-	selected_drive(_ch).next_lsector = 0;
+	selected_drive(_ch).next_lba = 0;
 	controller.cylinder_no = 0;
 
-	uint32_t seek_time = seek(_ch);
+	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us()+CALIB_CMD_US);
 
 	return (CALIB_CMD_US + seek_time);
 }
@@ -1578,7 +1607,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
 		command_aborted(_ch, _cmd);
 		return 0;
 	}
-	selected_drive(_ch).next_lsector = logical_sector;
+	selected_drive(_ch).next_lba = logical_sector;
 
 	PDEBUGF(LOG_V1, LOG_HDD, "%s %s: reading %d sector(s) at lba=%lld (%dB)\n",
 			selected_string(_ch), ata_cmd_string(_cmd), controller.num_sectors, logical_sector,
@@ -1610,30 +1639,34 @@ uint32_t StorageCtrl_ATA::ata_read_next_block(int _ch, uint32_t _cmd_time)
 	ctrl.buffer_size = xfer_amount * 512;
 	ctrl.buffer_index = 0;
 
+	uint64_t now = g_machine.get_virt_time_us() + _cmd_time;
 	/* If the drive is not already on the desired track, an implied seek is
-     * performed.
-     */
-	int64_t curr_cyl = selected_drive(_ch).curr_cyl;
-	uint32_t seek_time = seek(_ch);
+	 * performed.
+	 */
+	int64_t curr_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).curr_lba);
+	uint32_t seek_time = seek(_ch, now);
 
 	// transfer_time_us includes rotational latency and read time
 	uint32_t xfer_time = selected_storage(_ch).transfer_time_us(
-			g_machine.get_virt_time_us() + _cmd_time + seek_time,
-			selected_drive(_ch).next_lsector,
-			xfer_amount
+			now + seek_time,
+			selected_drive(_ch).next_lba,
+			xfer_amount,
+			ctrl.look_ahead_time
 			);
 	uint32_t exec_time = _cmd_time + seek_time + xfer_time;
 
 #ifndef NDEBUG
 	int64_t c0,h0,s0,c1,h1,s1;
-	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lsector, c0,h0,s0);
-	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lsector+xfer_amount, c1,h1,s1);
+	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba, c0,h0,s0);
+	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba+xfer_amount, c1,h1,s1);
 	double hpos = selected_storage(_ch).head_position(g_machine.get_virt_time_us());
-	PDEBUGF(LOG_V2, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=C:%d/S:%.2f, seek:%d, tx:%d\n",
+	PDEBUGF(LOG_V1, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=%d/%d/%.2f, seek:%d, tx:%d\n",
 			c0,h0,s0, c1,h1,s1, xfer_amount,
 			selected_storage(_ch).chs_to_hw_sector(s0),
 			selected_storage(_ch).chs_to_hw_sector(s1),
-			curr_cyl, selected_storage(_ch).pos_to_sect(hpos),
+			curr_cyl,
+			selected_storage(_ch).lba_to_head(selected_drive(_ch).curr_lba),
+			selected_storage(_ch).pos_to_hw_sect(hpos),
 			hpos,
 			seek_time, xfer_time);
 #endif
@@ -1672,14 +1705,16 @@ uint32_t StorageCtrl_ATA::ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd)
 	}
 
 	assert(controller.num_sectors <= 256);
-	selected_drive(_ch).next_lsector = logical_sector;
+	selected_drive(_ch).next_lba = logical_sector;
 
 	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
-	uint32_t seek_time = seek(_ch);
+	uint64_t now = g_machine.get_virt_time_us() + cmd_time;
+	uint32_t seek_time = seek(_ch, now);
 	uint32_t read_time = selected_storage(_ch).transfer_time_us(
-			g_machine.get_virt_time_us() + cmd_time + seek_time,
+			now + seek_time,
 			logical_sector,
-			controller.num_sectors
+			controller.num_sectors,
+			controller.look_ahead_time
 			);
 
 	return (cmd_time + seek_time + read_time);
@@ -1730,7 +1765,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 		return 0;
 	}
 
-	selected_drive(_ch).next_lsector = logical_sector;
+	selected_drive(_ch).next_lba = logical_sector;
 
 	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
 	return (cmd_time);
@@ -1741,13 +1776,13 @@ uint32_t StorageCtrl_ATA::ata_write_block(int _ch)
 	Controller &controller = selected_ctrl(_ch);
 
 	/* If the drive is not already on the desired track, an implied seek is
-     * performed.
-     */
-	uint32_t seek_time = seek(_ch);
+	 * performed.
+	 */
+	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us());
 	int sector_count = (controller.buffer_size / 512);
 	uint32_t xfer_time = selected_storage(_ch).transfer_time_us(
 			g_machine.get_virt_time_us() + seek_time,
-			selected_drive(_ch).next_lsector,
+			selected_drive(_ch).next_lba,
 			sector_count
 			);
 	try {
@@ -2047,14 +2082,11 @@ uint32_t StorageCtrl_ATA::ata_cmd_seek(int _ch, uint8_t _cmd)
 		command_aborted(_ch, _cmd);
 		return 0;
 	}
-	selected_drive(_ch).next_lsector = logical_sector;
+	selected_drive(_ch).next_lba = logical_sector;
 
-	uint32_t seek_time = seek(_ch);
-	if(seek_time == 0) {
-		seek_time = SEEK_CMD_US / 2;
-	}
-	seek_time += selected_storage(_ch).performance().overh_time * 1000.0;
-	return seek_time;
+	uint32_t overhead = selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us() + overhead);
+	return (seek_time + overhead);
 }
 
 uint32_t StorageCtrl_ATA::ata_cmd_read_native_max_address(int _ch, uint8_t _cmd)
@@ -2989,7 +3021,9 @@ void StorageCtrl_ATA::ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, uns
 	PDEBUGF(LOG_V2, LOG_HDD, "reading %d sector(s) at lba=%lld\n",
 			sector_count, calculate_logical_address(_ch));
 
-	int64_t prev_cyl, curr_cyl = selected_drive(_ch).curr_cyl;
+	int64_t c0,c1;
+	int64_t curr_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).curr_lba);
+	c1 = curr_cyl;
 	while(sector_count) {
 		int64_t logical_sector = calculate_logical_address(_ch);
 		if(logical_sector < 0) {
@@ -3003,20 +3037,18 @@ void StorageCtrl_ATA::ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, uns
 			hdd->read_sector(logical_sector, bufptr, 512);
 		}
 
-		prev_cyl = curr_cyl;
-		curr_cyl = increment_address(_ch, logical_sector, 1);
+		c0 = c1;
+		c1 = increment_address(_ch, logical_sector, 1);
 		sector_count--;
 		bufptr += 512;
-		selected_drive(_ch).next_lsector = logical_sector;
+		selected_drive(_ch).next_lba = logical_sector;
 	};
-	if(prev_cyl != curr_cyl) {
-		// don't move the head for the last sector advance
-		curr_cyl--;
+	// don't move the head or switch track for the last sector advance
+	c1 = c0;
+	selected_drive(_ch).curr_lba = selected_drive(_ch).next_lba-1;
+	if(curr_cyl != c1) {
+		selected_drive(_ch).prev_cyl = curr_cyl;
 	}
-	if(selected_drive(_ch).curr_cyl != curr_cyl) {
-		selected_drive(_ch).prev_cyl = selected_drive(_ch).curr_cyl;
-	}
-	selected_drive(_ch).curr_cyl = curr_cyl;
 }
 
 void StorageCtrl_ATA::lba48_transform(Controller &_controller, bool _lba48)
@@ -3040,13 +3072,35 @@ void StorageCtrl_ATA::lba48_transform(Controller &_controller, bool _lba48)
 	}
 }
 
-uint32_t StorageCtrl_ATA::seek(int _ch)
+uint32_t StorageCtrl_ATA::seek(int _ch, uint64_t _curr_time)
 {
 	/* TODO for cdroms use cdrom.curr_lba, cdrom.next_lba */
-	int64_t curr_cyl = selected_drive(_ch).curr_cyl;
-	int64_t dest_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).next_lsector);
+	int64_t curr_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).curr_lba);
+	int64_t dest_cyl = selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).next_lba);
 
 	if(curr_cyl == dest_cyl) {
+		int64_t curr_h = selected_storage(_ch).lba_to_head(selected_drive(_ch).curr_lba);
+		int64_t dest_h = selected_storage(_ch).lba_to_head(selected_drive(_ch).next_lba);
+		if(curr_h != dest_h) {
+			selected_ctrl(_ch).look_ahead_time = _curr_time;
+		}
+		return 0;
+	}
+
+	uint32_t seek_time = get_seek_time(_ch, curr_cyl, dest_cyl, selected_drive(_ch).prev_cyl);
+
+	selected_storage(_ch).seek(curr_cyl, dest_cyl);
+
+	selected_drive(_ch).prev_cyl = curr_cyl;
+	selected_drive(_ch).curr_lba = selected_drive(_ch).next_lba;
+	selected_ctrl(_ch).look_ahead_time = _curr_time + seek_time;
+
+	return seek_time;
+}
+
+uint32_t StorageCtrl_ATA::get_seek_time(int _ch, int64_t _c0, int64_t _c1, int64_t _cprev)
+{
+	if(_c0 == _c1) {
 		return 0;
 	}
 
@@ -3060,9 +3114,9 @@ uint32_t StorageCtrl_ATA::seek(int _ch)
 	if(ovrh >= exec_time){
 		settling_time = ovrh - exec_time;
 	}
-	uint32_t move_time = selected_storage(_ch).seek_move_time_us(curr_cyl, dest_cyl);
+	uint32_t move_time = selected_storage(_ch).seek_move_time_us(_c0, _c1);
 
-	if(dest_cyl == selected_storage(_ch).lba_to_cylinder(selected_drive(_ch).prev_cyl)) {
+	if(_c1 == _cprev) {
 		/* If a seek returns to the previous cylinder then the controller
 		 * takes a lot less time to execute the command.
 		 */
@@ -3072,12 +3126,7 @@ uint32_t StorageCtrl_ATA::seek(int _ch)
 	uint32_t total_seek_time = move_time + settling_time + exec_time;
 
 	PDEBUGF(LOG_V2, LOG_HDD, "SEEK %d->%d  exec:%d,settling:%d,total:%d\n",
-			curr_cyl, dest_cyl, exec_time, settling_time, total_seek_time);
-
-	selected_drive(_ch).prev_cyl = curr_cyl;
-	selected_drive(_ch).curr_cyl = dest_cyl;
-
-	selected_storage(_ch).seek(curr_cyl, dest_cyl);
+			_c0, _c1, exec_time, settling_time, total_seek_time);
 
 	return total_seek_time;
 }

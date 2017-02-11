@@ -508,7 +508,7 @@ int AppConfig::parse_int(const string &_str)
 	// This parses "1234" (decimal) and also "0x4D2" (hex)
 	int n = strtol(value, &end, 0);
 	if(end <= value) {
-		PWARNF(LOG_PROGRAM, "'%s' is not a valid integer\n", value);
+		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not an integer\n", value);
 		throw std::exception();
 	}
 	return n;
@@ -520,7 +520,7 @@ double AppConfig::parse_real(const string &_str)
 	char* end;
 	double n = strtod(value, &end);
 	if(end <= value) {
-		PWARNF(LOG_PROGRAM, "'%s' is not a valid real\n", value);
+		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a real\n", value);
 		throw std::exception();
 	}
 	return n;
@@ -535,7 +535,7 @@ bool AppConfig::parse_bool(string _str)
 	} else if (_str == "false" || _str == "no" || _str == "off" || _str == "0") {
 		return false;
 	} else {
-		PWARNF(LOG_PROGRAM, "'%s' is not a valid bool\n", _str.c_str());
+		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a boolean\n", _str.c_str());
 		throw std::exception();
 	}
 }
@@ -554,7 +554,7 @@ void AppConfig::parse(const string &_filename)
 	m_parsed_file = _filename;
 }
 
-string AppConfig::get(ini_file_t &_values, const string &section, const string &name)
+string AppConfig::get_value(ini_file_t &_values, const string &section, const string &name)
 {
 	string s = make_key(section);
 	string n = make_key(name);
@@ -574,14 +574,14 @@ string AppConfig::get(ini_file_t &_values, const string &section, const string &
 	return value;
 }
 
-string AppConfig::get(const string &section, const string &name)
+string AppConfig::get_value(const string &section, const string &name)
 {
 	string valstr;
 	try {
-		valstr = get(m_values, section, name);
+		valstr = get_value(m_values, section, name);
 	} catch(std::exception &e) {
 		try {
-			valstr = get(ms_def_values, section, name);
+			valstr = get_value(ms_def_values, section, name);
 		} catch(std::exception &e) {
 			PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
 			throw;
@@ -591,48 +591,57 @@ string AppConfig::get(const string &section, const string &name)
 	return valstr;
 }
 
+int AppConfig::try_int(const string &_section, const string &_name)
+{
+	string valstr = get_value(_section, _name);
+	int value = parse_int(valstr);
+	return value;
+}
+
 int AppConfig::get_int(const string &_section, const string &_name)
 {
-	string valstr;
 	int value;
-
 	try {
-		valstr = get(_section, _name);
-		value = parse_int(valstr);
+		value = try_int(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get integer value for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
+	return value;
+}
 
+double AppConfig::try_real(const string &_section, const string &_name)
+{
+	string valstr = get_value(_section, _name);
+	double value = parse_real(valstr);
 	return value;
 }
 
 double AppConfig::get_real(const string &_section, const string &_name)
 {
-	string valstr;
 	double value = 0.0;
-
 	try {
-		valstr = get(_section, _name);
-		value = parse_real(valstr);
+		value = try_real(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get real value for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
+	return value;
+}
 
+bool AppConfig::try_bool(const string &_section, const string &_name)
+{
+	string valstr = get_value(_section, _name);
+	bool value = parse_bool(valstr);
 	return value;
 }
 
 bool AppConfig::get_bool(const string &_section, const string &_name)
 {
-	string valstr;
 	bool value;
-
 	try {
-		valstr = get(_section, _name);
-		value = parse_bool(valstr);
+		value = try_bool(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get bool value for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
-
 	return value;
 }
 
@@ -645,7 +654,7 @@ string AppConfig::get_string(const string &_section, const string &_name)
 {
 	string val;
 	try {
-		val = get(_section, _name);
+		val = get_value(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
@@ -692,7 +701,7 @@ string AppConfig::get_file(const string &_section, const string &_name, FileType
 {
 	string filename;
 	try {
-		filename = get(_section, _name);
+		filename = get_value(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get string [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
@@ -729,7 +738,7 @@ uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_m
 {
 	string enumstr;
 	try {
-		enumstr = get(_section, _name);
+		enumstr = get_value(_section, _name);
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "Unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
@@ -786,7 +795,7 @@ void AppConfig::create_file(const std::string &_filename, bool _comments)
 		}
 
 		for(auto key : section.second) {
-			file << key << "=" << get(section.first, key) << std::endl;
+			file << key << "=" << get_value(section.first, key) << std::endl;
 		}
 		file << std::endl;
 	}

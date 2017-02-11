@@ -53,8 +53,7 @@ private:
 	static std::string make_key(std::string _name);
 	static int value_handler(void* user, const char* section, const char* name, const char* value);
 
-	std::string get(ini_file_t &_values, const std::string &_section, const std::string &_name);
-	std::string get(const std::string &_section, const std::string &_name);
+	std::string get_value(ini_file_t &_values, const std::string &_section, const std::string &_name);
 
 	int parse_int(const std::string &_str);
 	double parse_real(const std::string &_str);
@@ -73,12 +72,17 @@ public:
 
 	void parse(const std::string &_filename);
 
+	std::string get_value(const std::string &_section, const std::string &_name);
+
 	// Return the result of ini_parse(), i.e., 0 on success, line number of
 	// first error on parse error, or -1 on file open error.
 	int get_error();
 
+	int try_int(const std::string &section, const std::string &name);
 	int get_int(const std::string &section, const std::string &name);
+	double try_real(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name);
+	bool try_bool(const std::string &section, const std::string &name);
 	bool get_bool(const std::string &section, const std::string &name);
 	std::string get_string(const std::string &_section, const std::string &_name);
 	uint get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);

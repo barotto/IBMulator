@@ -126,9 +126,9 @@ const MediaGeometry HardDiskDrive::ms_hdd_types[HDD_DRIVES_TABLE_SIZE] = {
  * Type 39 is the Maxtor 7040F1, which was mounted on some later model 2011.
  */
 const std::map<uint, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
-{ 35, { 40.0f, 8.0f, 3600, 4, 5.0f, 0,0,0,0,0,0 } }, //35 30MB
-{ 38, { 40.0f, 9.0f, 3700, 4, 5.0f, 0,0,0,0,0,0 } }, //38 30MB
-{ 39, {  0.0f, 0.0f,    0, 0, 0.0f, 0,0,0,0,0,0 } }, //39 41MB
+{ 35, { 40.0f, 8.0f, 3600, 4, 5.0f, 0,0,0,0,0,0,0 } }, //35 30MB
+{ 38, { 40.0f, 9.0f, 3700, 4, 5.0f, 0,0,0,0,0,0,0 } }, //38 30MB
+{ 39, {  0.0f, 0.0f,    0, 0, 0.0f, 0,0,0,0,0,0,0 } }, //39 41MB
 };
 
 const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
@@ -226,8 +226,16 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	m_section = _section;
 
-	//get_enum throws if value is not allowed:
-	int type = g_program.config().get_int(_section, DISK_TYPE);
+	int type = 0;
+
+	try {
+		type = g_program.config().try_int(_section, DISK_TYPE);
+	} catch(std::exception &) {
+		std::string type_string = g_program.config().get_string(_section, DISK_TYPE);
+		if(type_string == "custom") {
+			type = HDD_CUSTOM_DRIVE_IDX;
+		}
+	}
 	if(type<=0 || type == 15 ||
 	  (type > HDD_DRIVES_TABLE_SIZE && type != HDD_CUSTOM_DRIVE_IDX))
 	{
