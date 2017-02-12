@@ -32,6 +32,7 @@ struct BIOSType
 	std::string type;
 	// TODO the same BIOS can be used for different models. Implement a 1-n relation.
 	unsigned machine;
+	std::string machine_str;
 	uint16_t hdd_ptable_off;
 };
 

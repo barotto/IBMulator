@@ -90,6 +90,7 @@ public:
 	std::string get_file_path(const std::string &_filename, FileType _type);
 	std::string find_file(const std::string &_section, const std::string &_name);
 	std::string find_media(const std::string &_section, const std::string &_name);
+	std::string find_media(const std::string &_filename);
 
 	void set_bool(const std::string &section, const std::string &name, bool _value);
 	void set_string(const std::string &_section, const std::string &_name, std::string _value);

@@ -23,8 +23,10 @@
 #include "hardware/devices.h"
 #include "pic.h"
 #include "cmos.h"
+#include "filesys.h"
 #include <cstring>
 #include <fstream>
+#include <algorithm>
 
 #define CMOS_IRQ 8
 
@@ -104,40 +106,13 @@ void CMOS::remove()
 
 void CMOS::config_changed()
 {
-	//nothing to do.
-	//everything is processed at power on
+	load_image(get_image_filepath(), get_image_template());
 }
 
 void CMOS::reset(unsigned type)
 {
 	if(type==MACHINE_POWER_ON) {
-		memset(&m_s, 0, sizeof(m_s));
-
 		m_s.timeval = time(nullptr);
-
-		std::string binfile = g_program.config().find_file(CMOS_SECTION, CMOS_IMAGE_FILE);
-		std::ifstream fd(binfile.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
-		if(!fd.is_open()) {
-			PERRF(LOG_CMOS,"error opening CMOS image file '%s'\n", binfile.c_str());
-			throw std::exception();
-		}
-		std::streampos size = fd.tellg();
-		if(size != CMOS_SIZE) {
-			PERRF(LOG_CMOS,"CMOS image file size must be %d\n", CMOS_SIZE);
-			throw std::exception();
-		}
-
-		fd.seekg(0, std::ios::beg);
-		fd.read((char*)(m_s.reg), CMOS_SIZE);
-
-		if(fd.rdstate() & std::ifstream::failbit) {
-			PERRF(LOG_CMOS,"error reading CMOS file\n");
-			throw std::exception();
-		}
-
-		fd.close();
-
-		PINFOF(LOG_V0,LOG_CMOS,"CMOS image read from '%s'\n", binfile.c_str());
 
 		m_s.rtc_mode_12hour = ((m_s.reg[REG_STAT_B] & 0x02) == 0);
 		m_s.rtc_mode_binary = ((m_s.reg[REG_STAT_B] & 0x04) != 0);
@@ -209,30 +184,88 @@ void CMOS::power_off()
 {
 	// save CMOS to image file if requested.
 	if(g_program.config().get_bool(CMOS_SECTION,CMOS_IMAGE_SAVE)) {
-		save_image();
+		save_image(get_image_filepath());
 	} else {
 		PINFOF(LOG_V0, LOG_CMOS, "CMOS not saved\n");
 	}
 }
 
-void CMOS::save_image()
+std::string CMOS::get_image_template()
 {
-	std::string binfile = g_program.config().get_file(CMOS_SECTION, CMOS_IMAGE_FILE, FILE_TYPE_USER);
-	std::ofstream fd(binfile.c_str(), std::ofstream::binary);
+	std::string imgtpl = "cmos_" + g_machine.type_str() + ".bin";
+	std::transform(imgtpl.begin(), imgtpl.end(), imgtpl.begin(), ::tolower);
+	return imgtpl;
+}
+
+std::string CMOS::get_image_filepath()
+{
+	std::string filename = g_program.config().get_string(CMOS_SECTION, CMOS_IMAGE_FILE);
+	if(filename == "auto") {
+		filename = get_image_template();
+	}
+	filename = g_program.config().get_file_path(filename, FILE_TYPE_USER);
+	return filename;
+}
+
+void CMOS::load_image(std::string _imgpath, std::string _tplname)
+{
+	if(_imgpath.empty()) {
+		PERRF(LOG_CMOS, "You need to specify a CMOS image file\n");
+		throw std::exception();
+	}
+	if(FileSys::is_directory(_imgpath.c_str())) {
+		PERRF(LOG_CMOS, "Cannot use a directory as an image file\n");
+		throw std::exception();
+	}
+
+	if(!FileSys::file_exists(_imgpath.c_str())) {
+		_imgpath = g_program.config().get_file_path(_tplname, FILE_TYPE_ASSET);
+		if(!FileSys::file_exists(_imgpath.c_str())) {
+			PERRF(LOG_CMOS, "Unable to find the image file '%s'\n", _tplname.c_str());
+			throw std::exception();
+		}
+	}
+	PINFOF(LOG_V0, LOG_CMOS, "Loading CMOS image file '%s'\n", _imgpath.c_str());
+
+	std::ifstream fd(_imgpath.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
 	if(!fd.is_open()) {
-		PERRF(LOG_CMOS,"unable to open CMOS image file '%s' for writing\n", binfile.c_str());
+		PERRF(LOG_CMOS,"Error opening CMOS image file '%s'\n", _imgpath.c_str());
+		throw std::exception();
+	}
+	std::streampos size = fd.tellg();
+	if(size != CMOS_SIZE) {
+		PERRF(LOG_CMOS,"CMOS image file size must be %d\n", CMOS_SIZE);
+		throw std::exception();
+	}
+
+	fd.seekg(0, std::ios::beg);
+	fd.read((char*)(m_s.reg), CMOS_SIZE);
+
+	if(fd.rdstate() & std::ifstream::failbit) {
+		PERRF(LOG_CMOS,"Error reading CMOS image file\n");
+		throw std::exception();
+	}
+
+	fd.close();
+}
+
+void CMOS::save_image(std::string _imgpath)
+{
+	std::ofstream fd(_imgpath.c_str(), std::ofstream::binary);
+	if(!fd.is_open()) {
+		PERRF(LOG_CMOS,"Unable to open CMOS image file '%s' for writing\n", _imgpath.c_str());
 	} else {
 		fd.write((char*)m_s.reg, CMOS_SIZE);
 		if(fd.rdstate() & std::ofstream::failbit) {
-			PERRF(LOG_CMOS,"error writing CMOS image file '%s'\n", binfile.c_str());
+			PERRF(LOG_CMOS,"Error writing CMOS image file '%s'\n", _imgpath.c_str());
 		} else {
-			PINFOF(LOG_V0, LOG_CMOS, "CMOS image saved to '%s'\n", binfile.c_str());
+			PINFOF(LOG_V0, LOG_CMOS, "CMOS image saved to '%s'\n", _imgpath.c_str());
 		}
 		fd.close();
 	}
 }
 
-void CMOS::CRA_change(void)
+void CMOS::CRA_change()
 {
 	uint8_t nibble, dcc;
 

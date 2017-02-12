@@ -73,7 +73,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_FILE,     "cmos.bin" },
+		{ CMOS_IMAGE_FILE,     "auto" },
 		{ CMOS_IMAGE_RTC_INIT, "no" },
 		{ CMOS_IMAGE_SAVE,     "yes" }
 	} },
@@ -236,6 +236,8 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ CMOS_SECTION, ""
 ";      image: Path of the binary file to use for the CMOS initialisation values.\n"
+";             Possible values: auto, or a path string\n"
+";              auto: the file name is automatically set depending on the system model\n"
 "; image_init: Yes if you want to initialise the RTC with the values in the CMOS image\n"
 "; image_save: Yes if you want to save the CMOS in the image file when the machine is powered off\n"
 		},
@@ -258,7 +260,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              Possible values: none, auto, ps1, ata\n"
 ";               none: no hard disk installed\n"
 ";               auto: automatically determined by the system model\n"
-";                ps1: IBM's proprietary 8-bit XTA like controller\n"
+";                ps1: IBM's proprietary 8-bit XTA-like controller\n"
+";                ata: IDE/ATA controller\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -728,6 +731,15 @@ string AppConfig::find_media(const string &_section, const string &_name)
 	string path = get_file(_section, _name, FILE_TYPE_MEDIA);
 	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_USER);
+	}
+	return path;
+}
+
+string AppConfig::find_media(const string &_filename)
+{
+	string path = get_file_path(_filename, FILE_TYPE_MEDIA);
+	if(!FileSys::file_exists(path.c_str())) {
+		path = get_file_path(_filename, FILE_TYPE_USER);
 	}
 	return path;
 }

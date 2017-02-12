@@ -149,6 +149,7 @@ public:
 	inline HWBench & get_bench() { return m_bench; }
 
 	inline unsigned type() const { return m_sysrom.bios().machine; }
+	inline std::string type_str() const { return m_sysrom.bios().machine_str; }
 	inline SystemROM & sys_rom() { return m_sysrom; }
 	inline Devices & devices() { return g_devices; }
 

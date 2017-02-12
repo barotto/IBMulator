@@ -61,6 +61,7 @@ void SystemROM::load(const std::string _romset)
 		delete[] m_data;
 		m_data = nullptr;
 		m_bios.machine = MCH_UNKNOWN;
+		m_bios.machine_str = "unknown";
 		m_bios.hdd_ptable_off = -1;
 	}
 	m_data = new uint8_t[MAX_ROM_SIZE];

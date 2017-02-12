@@ -37,17 +37,12 @@ private:
 		bool     timeval_change;
 		bool     rtc_mode_12hour;
 		bool     rtc_mode_binary;
-		bool     rtc_sync;
 		uint8_t  reg[CMOS_SIZE];
 	} m_s;  // state information
 
 	int m_periodic_timer;
 	int m_one_second_timer;
 	int m_uip_timer; //Update in Progress timer
-
-	void update_clock();
-	void update_timeval();
-	void CRA_change();
 
 public:
 	CMOS(Devices *_dev);
@@ -57,16 +52,11 @@ public:
 	void remove();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
-
-	void periodic_timer(uint64_t);
-	void one_second_timer(uint64_t);
-	void uip_timer(uint64_t);
-
 	void reset(unsigned type);
 	void power_off();
 	void config_changed();
-
-	void save_image();
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
 
 	uint8_t get_reg(uint8_t reg) {
 		return m_s.reg[reg];
@@ -78,8 +68,17 @@ public:
 		return m_s.timeval;
 	}
 
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+private:
+	void update_clock();
+	void update_timeval();
+	void CRA_change();
+	void periodic_timer(uint64_t);
+	void one_second_timer(uint64_t);
+	void uip_timer(uint64_t);
+	std::string get_image_template();
+	std::string get_image_filepath();
+	void load_image(std::string _imgpath, std::string _tplname);
+	void save_image(std::string _imgpath);
 };
 
 #endif
