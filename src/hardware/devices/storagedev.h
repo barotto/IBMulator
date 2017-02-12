@@ -29,7 +29,6 @@ struct DrivePerformance
 	float    seek_trk;   // Track to track seek time in milliseconds
 	unsigned rot_speed;  // Rotational speed in RPM
 	unsigned interleave; // Interleave ratio
-	float    overh_time; // Controller overhead time in milliseconds
 
 	// these are derived values in microseconds calculated from the above:
 	uint32_t seek_avgspeed_us; // Seek average speed

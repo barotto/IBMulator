@@ -126,9 +126,9 @@ const MediaGeometry HardDiskDrive::ms_hdd_types[HDD_DRIVES_TABLE_SIZE] = {
  * Type 39 is the Maxtor 7040F1, which was mounted on some later model 2011.
  */
 const std::map<uint, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
-{ 35, { 40.0f, 8.0f, 3600, 4, 5.0f, 0,0,0,0,0,0,0 } }, //35 30MB
-{ 38, { 40.0f, 9.0f, 3700, 4, 5.0f, 0,0,0,0,0,0,0 } }, //38 30MB
-{ 39, {  0.0f, 0.0f,    0, 0, 0.0f, 0,0,0,0,0,0,0 } }, //39 41MB
+{ 35, { 40.0f, 8.0f, 3600, 4, 0,0,0,0,0,0,0 } }, //35 30MB
+{ 38, { 40.0f, 9.0f, 3700, 4, 0,0,0,0,0,0,0 } }, //38 30MB
+{ 39, {  0.0f, 0.0f,    0, 0, 0,0,0,0,0,0,0 } }, //39 41MB
 };
 
 const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
@@ -276,7 +276,6 @@ void HardDiskDrive::config_changed(const char *_section)
 			m_geometry.cylinders, m_geometry.heads, m_geometry.spt);
 	PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %u RPM\n", m_performance.rot_speed);
 	PINFOF(LOG_V2, LOG_HDD, "  Interleave: %u:1\n", m_performance.interleave);
-	PINFOF(LOG_V2, LOG_HDD, "  Overhead time: %.1f ms\n", m_performance.overh_time);
 	PINFOF(LOG_V2, LOG_HDD, "  Data bits per track: %u\n", m_geometry.spt*512*8);
 	PINFOF(LOG_V2, LOG_HDD, "  Performance characteristics:\n");
 	PINFOF(LOG_V2, LOG_HDD, "    track-to-track seek time: %u us\n", m_performance.trk2trk_us);
@@ -284,7 +283,6 @@ void HardDiskDrive::config_changed(const char *_section)
 	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %u us/cyl\n", m_performance.seek_avgspeed_us);
 	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
 	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %u us\n", m_performance.sec_read_us);
-	PINFOF(LOG_V2, LOG_HDD, "    command overhead: %u us\n", int(m_performance.overh_time*1000.0));
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)
@@ -361,7 +359,6 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the maximum: %u RPM\n", _perf.rot_speed);
 		}
 		_perf.interleave = std::max(1, g_program.config().get_int(_section, DISK_INTERLEAVE));
-		_perf.overh_time = std::max(0.0, g_program.config().get_real(_section, DISK_OVERH_TIME));
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type: %d\n", _type_id);
 		throw std::exception();

@@ -208,7 +208,7 @@ const std::map<int, StorageCtrl_ATA::atapi_command_fn> StorageCtrl_ATA::ms_atapi
 #define DEFAULT_CMD_US  2200u    // default command execution time
 #define SEEK_CMD_US     2940u    // seek exec time
 #define CALIB_CMD_US    500000u  // calibrate exec time
-
+#define CTRL_OVERH_US   3000u    // controller command execution overhead
 
 enum SenseKey
 {
@@ -1613,7 +1613,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_read_sectors(int _ch, uint8_t _cmd)
 			selected_string(_ch), ata_cmd_string(_cmd), controller.num_sectors, logical_sector,
 			controller.num_sectors*512);
 
-	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t cmd_time = DEFAULT_CMD_US + CTRL_OVERH_US;
 	uint32_t exec_time = ata_read_next_block(_ch, cmd_time);
 
 	return exec_time;
@@ -1707,7 +1707,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_read_verify_sectors(int _ch, uint8_t _cmd)
 	assert(controller.num_sectors <= 256);
 	selected_drive(_ch).next_lba = logical_sector;
 
-	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t cmd_time = DEFAULT_CMD_US + CTRL_OVERH_US;
 	uint64_t now = g_machine.get_virt_time_us() + cmd_time;
 	uint32_t seek_time = seek(_ch, now);
 	uint32_t read_time = selected_storage(_ch).transfer_time_us(
@@ -1767,7 +1767,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 
 	selected_drive(_ch).next_lba = logical_sector;
 
-	uint32_t cmd_time = DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0;
+	uint32_t cmd_time = DEFAULT_CMD_US + CTRL_OVERH_US;
 	return (cmd_time);
 }
 
@@ -1825,7 +1825,7 @@ uint32_t StorageCtrl_ATA::ata_cmd_execute_device_diagnostic(int _ch, uint8_t _cm
 	UNUSED(_cmd);
 	set_signature(_ch, slave_is_selected(_ch));
 
-	return (DEFAULT_CMD_US + selected_storage(_ch).performance().overh_time * 1000.0);
+	return (DEFAULT_CMD_US + CTRL_OVERH_US);
 }
 
 uint32_t StorageCtrl_ATA::ata_cmd_initialize_drive_parameters(int _ch, uint8_t _cmd)
@@ -2084,9 +2084,8 @@ uint32_t StorageCtrl_ATA::ata_cmd_seek(int _ch, uint8_t _cmd)
 	}
 	selected_drive(_ch).next_lba = logical_sector;
 
-	uint32_t overhead = selected_storage(_ch).performance().overh_time * 1000.0;
-	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us() + overhead);
-	return (seek_time + overhead);
+	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us() + CTRL_OVERH_US);
+	return (seek_time + CTRL_OVERH_US);
 }
 
 uint32_t StorageCtrl_ATA::ata_cmd_read_native_max_address(int _ch, uint8_t _cmd)

@@ -47,7 +47,8 @@ IODEVICE_PORTS(StorageCtrl_PS1) = {
 #define HDC_DMA  3
 #define HDC_IRQ  14
 
-#define DEFTIME_US   10u  // default busy time
+#define DEFTIME_US    10u   // default busy time
+#define CTRL_OVERH_US 5000u // controller command execution overhead
 
 //Attachment Status Reg bits
 #define ASR_TX_EN    0x1  // Transfer Enable
@@ -458,8 +459,7 @@ void StorageCtrl_PS1::exec_command()
 	uint32_t seek_time_us = 0;
 	uint32_t rot_latency_us = 0;
 	uint32_t xfer_time_us = 0;
-	uint32_t exec_time_us = m_disk.performance().overh_time * 1000.0
-			+ ms_cmd_times[m_s.ccb.command];
+	uint32_t exec_time_us = CTRL_OVERH_US + ms_cmd_times[m_s.ccb.command];
 	unsigned start_sector = m_s.ccb.sector;
 	unsigned head = m_s.ccb.head;
 	bool seek = false;

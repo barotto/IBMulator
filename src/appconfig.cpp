@@ -115,8 +115,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISK_SEEK_MAX,   "40.0" },
 		{ DISK_SEEK_TRK,   "8.0" },
 		{ DISK_ROT_SPEED,  "3600" },
-		{ DISK_INTERLEAVE, "4" },
-		{ DISK_OVERH_TIME, "5.0" }
+		{ DISK_INTERLEAVE, "4" }
 	} },
 
 	{ MIXER_SECTION, {
@@ -288,6 +287,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              35: the IBM WDL-330P 30MB disk drive used on the PS/1 2011\n"
 ";            1-44: other standard types (see the project page for the list of types supported by the BIOS)\n"
 ";              " STR(HDD_CUSTOM_DRIVE_IDX) ": custom type (specify the geometry)\n"
+";          custom: same as 47\n"
 ";     path: Path of the image file to mount\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
@@ -304,7 +304,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   rot_speed: Rotational speed in RPM\n"
 ";              Possible values: any number between 3600 and 7200\n"
 ";  interleave: Interleave ratio\n"
-";  overh_time: Controller overhead time in milliseconds\n"
 		},
 
 		{ MIXER_SECTION,
@@ -425,8 +424,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISK_SEEK_MAX,
 		DISK_SEEK_TRK,
 		DISK_ROT_SPEED,
-		DISK_INTERLEAVE,
-		DISK_OVERH_TIME
+		DISK_INTERLEAVE
 	} },
 	{ MIXER_SECTION, {
 		MIXER_PREBUFFER,
