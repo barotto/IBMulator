@@ -8,16 +8,20 @@ Building IBMulator is a three-step process:
 **NOTE:** Do not use folder names with spaces. I suggest C:\msys64 for MSYS2
 and C:\workspace for source packages.
 
+**NOTE:** You can copy the shell commands in this document and then paste them
+in the MSYS shell pressing the middle mouse button.
+Otherwise press Shift+Ins or click the right mouse button and choose 'paste'.
+
 ## STEP 1. Setup a 64bit MinGW build environment
 We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
 1. Go to the [MSYS2 website](http://www.msys2.org) and follow the instructions
 to install the x86_64 environment.
-2. Open the MSYS2 shell and, with the package manager `pacman`, install  
+2. Open the **MSYS2 MSYS** shell and, with the package manager `pacman`, install  
 the toolchain:  
 `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc`  
 cmake, make, and Autotools:  
-`pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config make pkgconfig autoconf automake libtool intltool`  
+`pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config make pkgconfig autoconf automake libtool`  
 git (otherwise you'll need to juggle with zip files):  
 `pacman -S git`
 3. Install the libraries needed by libRocket and IBMulator  
@@ -27,7 +31,7 @@ git (otherwise you'll need to juggle with zip files):
 `pacman -S mingw-w64-x86_64-libsamplerate`  
 `pacman -S mingw-w64-x86_64-libarchive`  
 Unless you want a static link, install also:  
-`pacman -S mingw-w64-x86_64-freetype`
+`pacman -S mingw-w64-x86_64-freetype`  
 See [below](#statically-linked-version) for an explanation about static/dynamic
 linking.
 
@@ -35,27 +39,36 @@ linking.
 libRocket is a C++ user interface package based on the HTML and CSS standards.  
 IBMulator needs various fixes so use the version from my repository. 
 
-1. Clone the repo:  
+Open the **MSYS2 MinGW 64-bit** shell (you chould read MINGW64 on the command
+line) and:
+
+1. Move inside your workspace:
+`cd /c/workspace`
+2. Clone the repo:  
 `git clone https://github.com/barotto/libRocket.git`
-2. Move inside the libRocket's Build directory:  
+3. Move inside the libRocket's Build directory:  
 `cd libRocket/Build`
-3. Create the Makefile with cmake:  
+4. Create the Makefile with cmake:  
 `cmake -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`
-4. Build and install (change the 4 with the number of your CPU's cores):  
+5. Build and install (change the 4 with the number of your CPU's cores):  
 `make -j4 && make install`
 
 ## STEP 3. Build IBMulator
-1. Clone the repo:  
+Open the **MSYS2 MinGW 64-bit** shell and:
+
+1. Move inside your workspace:
+`cd /c/workspace`
+2. Clone the repo:  
 `git clone https://github.com/barotto/IBMulator.git`
-2. Move inside the IBMulator directory:  
+3. Move inside the IBMulator directory:  
 `cd IBMulator`
-3. run this (only once):
+4. run this (only once):  
 `autoreconf --install`
-4. Configure IBMulator:  
-`./configure --prefix="ABSOLUTE/PATH/TO/INSTALL/DIR"`  
+5. Configure IBMulator:  
+`./configure --prefix="ABSOLUTE\PATH\TO\INSTALL\DIR"`  
 use the `--help` option to see the available build options;  
 see the installation section below for the `--prefix` explanation.
-5. Build:  
+6. Build:  
 `make -j4`
 
 ### Installation
@@ -77,7 +90,7 @@ configure option and `make install` after `make`.
 You need to use an absolute path (without spaces!) so, for example, to create a
 release package inside the source root dir:
 ```
-./configure --prefix="/c/workspace/IBMulator/release/"
+./configure --prefix="C:\workspace\IBMulator\release"
 make
 make install
 ```
@@ -95,7 +108,7 @@ environment variable:
 
 How to modify a system variable depends on the Windows version you are
 using. For example: System->Advanced System Settings->Advanced tab->Environment
-Variables
+Variables.
 
 #### option 2. Copy the library files
 Copy the following DLLs inside the ibmulator.exe folder.  
@@ -174,4 +187,6 @@ cmake command.
 
 ### 3. Build IBMulator
 Follow the **STEP 3** instructions adding `--enable-static` to the configure
-options.
+options.  
+Remember to clean up the sources if you've already done a build:  
+`make clean`
