@@ -39,7 +39,7 @@ linking.
 libRocket is a C++ user interface package based on the HTML and CSS standards.  
 IBMulator needs various fixes so use the version from my repository. 
 
-Open the **MSYS2 MinGW 64-bit** shell (you chould read MINGW64 on the command
+Open the **MSYS2 MinGW 64-bit** shell (you should read MINGW64 on the command
 line) and:
 
 1. Move inside your workspace:
@@ -56,7 +56,7 @@ line) and:
 ## STEP 3. Build IBMulator
 Open the **MSYS2 MinGW 64-bit** shell and:
 
-1. Move inside your workspace:
+1. Move inside your workspace:  
 `cd /c/workspace`
 2. Clone the repo:  
 `git clone https://github.com/barotto/IBMulator.git`
