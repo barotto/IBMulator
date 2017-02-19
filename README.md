@@ -158,70 +158,10 @@ stores new files, like screenshots and savestates
 
 ## COMPILING
 
-### Requirements
+For **Windows** instructions see [BUILD_WINDOWS.md](BUILD_WINDOWS.md)
 
-* GCC 4.9+
-* SDL 2.0.2+
-* SDL_image 2.0.0+
-* libRocket (see notes below)
-* GLEW
-* libarchive (optional)
-* libsamplerate (optional)
+For **Linux** instructions see [BUILD_LINUX.md](BUILD_LINUX.md)
 
-If you cloned the code from the GitHub repo you also need the GNU Autotools.
-
-You need libarchive if you want to use zipped ROM sets.
-
-Without libsamplerate the PC Speaker will not emit any sound and other audio 
-sources will not be played unless they are at the same rate as the mixer. 
-
-### General instructions
-```
-$ ./configure --with-librocket-prefix=PATHTOLIBROCKET  
-$ make  
-$ make install
-```
-Use './configure --help' to read the various compilation options.
-
-If you cloned the code from GitHub, before the 'configure' script you must run:
-```
-$ autoreconf --install
-```
-
-### Linux
-
-Just follow the general instructions. Any missing library will be pointed out;
-use your distributon's software manager to install them (except libRocket, see 
-notes below).
-
-If you are going to compile using your own version of SDL2, you should compile 
-SDL2 with xinerama and xrandr, otherwise you could experience many problems 
-switching to fullscreen, at least on NVIDIA cards with closed drivers.
-
-If you're using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
-
-### Windows
-
-Currently you have two options:
-
-1. under Linux, cross compile with MinGW
-2. under Windows, compile with MinGW + MSYS
-
-Follow the general instructions using this additional 'configure' option: 
---host=x86_64-w64-mingw32
-
-### libRocket
-
-libRocket is a C++ user interface package based on the HTML and CSS standards.
-IBMulator needs various fixes so use the version from my repository.
-```
-$ git clone https://github.com/barotto/libRocket.git
-$ cd libRocket/Build
-$ cmake -G "Unix Makefiles"
-$ make
-```
-Read the build instructions inside the libRocket repo for Windows instructions 
-and additional information.
 
 ## THANKS
 

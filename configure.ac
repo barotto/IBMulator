@@ -30,7 +30,7 @@ AM_CONDITIONAL([GCC], [test x$GXX = xyes])
 
 have_windows="no"
 case "$host_os" in
-   mingw*)
+   msys*|mingw*)
       have_windows="yes"
    ;;
 esac 
@@ -44,6 +44,11 @@ AC_ARG_ENABLE([debug],
 	      [debug=$enableval],
 	      [debug=no])
 
+AC_ARG_ENABLE([static],
+	      AS_HELP_STRING([--enable-static], [enable static linking (Windows only)]),
+	      [static=$enableval],
+	      [static=no])
+	      
 if test "x$debug" = "xyes"
 then
 	CXX_DEFAULTS="-O0 -g3 -Wextra -Wall -ansi -pthread -std=c++11"
@@ -51,18 +56,25 @@ then
 		CXX_DEFAULTS="$CXX_DEFAULTS -rdynamic"
 	fi
 else
-	CXX_DEFAULTS="-O3 -pthread -std=c++11 -fomit-frame-pointer -finline-functions -DNDEBUG" 
+	CXX_DEFAULTS="-O3 -std=c++11 -pthread -fomit-frame-pointer -finline-functions -DNDEBUG" 
 fi
-
-AC_SUBST(CXX_DEFAULTS)
 
 if test x$have_windows = xno ; then
 	separator="/"
+	static="no"
 else
 	separator="\\\\"
 	#-mno-ms-bitfields is required for the __attribute__(packed) to work
 	CXX_DEFAULTS="$CXX_DEFAULTS -mno-ms-bitfields"
 fi
+
+if test x$static = xyes ; then
+	CXX_DEFAULTS=`echo $CXX_DEFAULTS | sed 's/-pthread//'`
+	CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -static -pthread"
+	static="-Wl,-Bstatic"
+fi
+
+AC_SUBST(CXX_DEFAULTS)
 AC_SUBST(separator)
 AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
 	
@@ -79,8 +91,12 @@ AX_CHECK_LIBROCKET
 AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
 
+BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $GLEW_LIBS $OPENGL_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
 
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $OPENGL_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
+if test x$static != xno ; then
+	BASELIBS="$static $BASELIBS"
+fi
+
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
 else
@@ -144,8 +160,20 @@ AC_OUTPUT
 echo ""
 echo "${PACKAGE_NAME} build summary"
 echo "------------------------"
+if test x$have_windows = xno ; then
+	echo "- system       : Unix"
+else
+	echo "- system       : Windows"
+fi
 if test "x$debug" = "xyes"; then
-	echo "- configured for debugging"
+	echo "- configuration: Debug"
+else
+	echo "- configuration: Release"
+fi
+if test "x$static" != "xno"; then
+	echo "- link type    : Static"
+else
+	echo "- link type    : Dynamic"
 fi
 echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
 echo "- SDL_image    : $SDLIMAGE_LIBS"

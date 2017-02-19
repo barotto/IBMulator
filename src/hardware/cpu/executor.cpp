@@ -27,6 +27,7 @@
 #include "hardware/devices.h"
 #include "debugger.h"
 #include <cstring>
+#include <cmath>
 
 CPUExecutor g_cpuexecutor;
 

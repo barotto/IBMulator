@@ -19,6 +19,9 @@ else
 	else
     	OPENGL_LIBS="-lGL"
     fi
+    if test x$static != xno ; then
+    	OPENGL_LIBS="-Wl,-Bdynamic $OPENGL_LIBS $static"
+    fi
 fi
 
 AC_SUBST(OPENGL_LIBS)
@@ -53,11 +56,14 @@ else
 	
 fi
 
-
 if test "$HAVE_GLEW" = "no" ; then
     AC_MSG_ERROR([
 *** Unable to find GLEW
 ]) 
+fi
+
+if test x$static != xno ; then
+	GLEW_CFLAGS="-DGLEW_STATIC"
 fi
 
 AC_SUBST(GLEW_CFLAGS)

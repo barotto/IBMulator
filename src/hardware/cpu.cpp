@@ -29,6 +29,7 @@
 #include "devices/dma.h"
 #include "program.h"
 #include "utils.h"
+#include <cmath>
 
 CPU g_cpu;
 

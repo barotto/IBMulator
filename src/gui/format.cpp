@@ -28,7 +28,7 @@ const Rocket::Core::String & format_uint16(uint16_t _value)
 	return str;
 }
 
-const Rocket::Core::String & format_bit(uint _value)
+const Rocket::Core::String & format_bit(unsigned _value)
 {
 	static Rocket::Core::String str;
 	str.FormatString(2,"%d",_value);
@@ -78,7 +78,7 @@ const char *nibble_to_binary(uint8_t _value, char _buf[5])
     return _buf;
 }
 
-const Rocket::Core::String & format_bin4(uint _value)
+const Rocket::Core::String & format_bin4(unsigned _value)
 {
 	static Rocket::Core::String str;
 	char nibble[5];
@@ -90,7 +90,7 @@ const Rocket::Core::String & format_bin4(uint _value)
 	return str;
 }
 
-const Rocket::Core::String & format_bin8(uint _value)
+const Rocket::Core::String & format_bin8(unsigned _value)
 {
 	static Rocket::Core::String str;
 	char byte[9];
@@ -102,7 +102,7 @@ const Rocket::Core::String & format_bin8(uint _value)
 	return str;
 }
 
-const Rocket::Core::String & format_bin16(uint _value)
+const Rocket::Core::String & format_bin16(unsigned _value)
 {
 	static Rocket::Core::String str;
 	char byte0[9], byte1[9];
@@ -115,7 +115,7 @@ const Rocket::Core::String & format_bin16(uint _value)
 	return str;
 }
 
-const Rocket::Core::String & format_words(uint8_t *_buf, uint _len)
+const Rocket::Core::String & format_words(uint8_t *_buf, unsigned _len)
 {
 	static Rocket::Core::String str, word;
 	str = "";
@@ -139,8 +139,7 @@ const Rocket::Core::String & format_words(uint8_t *_buf, uint _len)
 	return str;
 }
 
-
-const Rocket::Core::String & format_words_string(uint8_t *_buf, uint _len)
+const Rocket::Core::String & format_words_string(uint8_t *_buf, unsigned _len)
 {
 	static Rocket::Core::String str;
 	str = "";

@@ -22,16 +22,11 @@ AC_ARG_WITH(sdl-exec-prefix,[  --with-sdl-exec-prefix=PFX Exec prefix where SDL 
             sdl_exec_prefix="$withval", sdl_exec_prefix="")
 AC_ARG_ENABLE(sdltest, [  --disable-sdltest       Do not try to compile and run a test SDL program],
 		    , enable_sdltest=yes)
-AC_ARG_ENABLE([static-sdl],
-	      AS_HELP_STRING([--enable-static-sdl], [Links to static SDL2 lib]),
-	      [static_sdl=$enableval],
-	      [static_sdl=no])
-	      
-	AC_SUBST([static_sdl])
-	
-	sdl_config_libs="--libs"
-	if test x$static_sdl = xyes; then
+
+	if test x$static != xno; then
 		sdl_config_libs="--static-libs"
+	else
+		sdl_config_libs="--libs"
 	fi
 	
 	min_sdl_version=ifelse([$1], ,2.0.0,$1)
@@ -199,10 +194,12 @@ int main(int argc, char *argv[])
      ifelse([$3], , :, [$3])
   fi
   AC_SUBST(SDL_CFLAGS)
-  if test x$static_sdl = xyes; then
-  	SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
-  	SDL_LIBS="-Wl,-Bstatic -lSDL2 -Wl,-Bdynamic $SDL_LIBS"
-  fi
+ # if test x$static_sdl = xyes; then
+ # 	SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
+ # 	SDL_LIBS="-Wl,-Bstatic -lSDL2 -Wl,-Bdynamic $SDL_LIBS"
+ # fi
+ # SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
+ # SDL_LIBS="-lSDL2 $SDL_LIBS"
   AC_SUBST(SDL_LIBS)
   rm -f conf.sdltest
 ])
@@ -232,10 +229,10 @@ if test "$HAVE_SDLIMAGE" = "no" ; then
     AC_MSG_ERROR([*** Unable to find SDL_image])
 fi
 
-if test "x$static_sdl" = "xyes" ; then
-	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -Wl,-Bstatic -lSDL2_image -Wl,-Bdynamic -lpng12"
-else
-	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
+SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
+
+if test "x$static" != "xno" ; then
+	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
 fi
 
 AC_SUBST([SDLIMAGE_CFLAGS])

@@ -26,6 +26,7 @@
  * Ken Silverman's official web site: "http://www.advsys.net/ken"
  */
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
