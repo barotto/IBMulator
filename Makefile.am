@@ -5,7 +5,8 @@ ACLOCAL_AMFLAGS = -I m4
 dist_pkgdata_DATA = \
 share/ibmulator/icon.ico \
 share/ibmulator/icon.png \
-share/ibmulator/cmos.bin \
+share/ibmulator/cmos_ps1_2011.bin \
+share/ibmulator/cmos_ps1_2121.bin \
 share/ibmulator/hdd.img.zip
 
 keymapsdir = $(pkgdatadir)/keymaps
