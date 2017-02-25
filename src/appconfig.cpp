@@ -700,6 +700,22 @@ string AppConfig::get_string(const string &_section, const string &_name, const 
 	}
 }
 
+string AppConfig::get_string(const string &_section, const string &_name,
+		const std::set<string> _allowed,
+		const string &_default)
+{
+	string value;
+	try {
+		value = get_value(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
+	if(_allowed.find(value) == _allowed.end()) {
+		return _default;
+	}
+	return value;
+}
+
 void AppConfig::set_string(const string &_section, const string &_name, string _value)
 {
 	m_values[make_key(_section)][make_key(_name)] = _value;

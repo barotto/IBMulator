@@ -24,6 +24,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
 typedef std::map<std::string, uint> ini_enum_map_t;
 typedef std::map<std::string, std::string> ini_section_t;
@@ -89,6 +90,7 @@ public:
 	bool get_bool(const std::string &section, const std::string &name, bool _default);
 	std::string get_string(const std::string &_section, const std::string &_name);
 	std::string get_string(const std::string &_section, const std::string &_name, const std::string &_default);
+	std::string get_string(const std::string &_section, const std::string &_name, const std::set<std::string> _allowed, const std::string &_default);
 	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);
 	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map, unsigned _default);
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);

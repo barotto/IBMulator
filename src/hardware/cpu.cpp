@@ -83,24 +83,12 @@ void CPU::config_changed()
 		{ "386DX", 0x0308 }
 	};
 
-	std::string cfgstr = g_program.config().get_string(CPU_SECTION, CPU_MODEL);
-	if(cfgstr == "auto") {
-		m_model = g_machine.model().cpu;
-		m_family = cpu_families[m_model];
-		m_signature = cpu_signatures[m_model];
-	} else {
-		m_model = cfgstr;
-		m_family = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_families);
-		m_signature = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_signatures);
-	}
+	m_model = g_program.config().get_string(CPU_SECTION, CPU_MODEL,
+		{ "286", "386SX", "386DX" }, g_machine.model().cpu);
+	m_family = cpu_families[m_model];
+	m_signature = cpu_signatures[m_model];
 
-	double freq;
-	cfgstr = g_program.config().get_string(CPU_SECTION, CPU_FREQUENCY);
-	if(cfgstr == "auto") {
-		freq = g_machine.model().cpu_freq;
-	} else {
-		freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
-	}
+	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY, g_machine.model().cpu_freq);
 	double cycle = 1000.0 / freq;
 	int icycle = int(cycle);
 	// prefer a faster CPU rounding down at 0.5
@@ -112,6 +100,7 @@ void CPU::config_changed()
 	m_frequency = 1e3 / m_cycle_time; // in MHz
 
 	PINFOF(LOG_V0, LOG_CPU, "Installed CPU: %s @ %.0fMHz\n", m_model.c_str(), freq);
+	PINFOF(LOG_V1, LOG_CPU, "  Family: %d86, Signature: 0x%04x\n", m_family, m_signature);
 	PINFOF(LOG_V1, LOG_CPU, "  Cycle time: %u nsec (%.3fMHz)\n", m_cycle_time, m_frequency);
 
 	g_cpubus.config_changed();
