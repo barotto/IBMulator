@@ -66,7 +66,7 @@ void Memory::reset()
 
 void Memory::config_changed()
 {
-	int ram = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE);
+	int ram = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE, g_machine.model().ram);
 	// the last 512 KiB are reserved for the ROM
 	ram = std::min(16384-512-384, ram);
 	ram = std::max(128, ram);

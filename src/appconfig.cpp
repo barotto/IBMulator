@@ -79,7 +79,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ MEM_SECTION, {
-		{ MEM_RAM_SIZE, "1024" },
+		{ MEM_RAM_SIZE, "auto" },
 		{ MEM_ROMSET,   "PS1_2011_ROM.zip" }
 	} },
 
@@ -246,7 +246,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ MEM_SECTION,
 ";    ram: Size of the RAM in KiB\n"
-";         Possible values: any multiple of 128, maximum 15488 (16M minus 512K for ROM and 384K for upper memory)\n"
+";         Possible values: auto, or an integer multiple of 128.\n"
 "; romset: Path to a bin/zip file or directory containing the ROM set to use (for the correct format see the README)\n"
 		},
 
@@ -612,6 +612,15 @@ int AppConfig::get_int(const string &_section, const string &_name)
 	return value;
 }
 
+int AppConfig::get_int(const string &_section, const string &_name, int _default)
+{
+	try {
+		return try_int(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
+}
+
 double AppConfig::try_real(const string &_section, const string &_name)
 {
 	string valstr = get_value(_section, _name);
@@ -628,6 +637,15 @@ double AppConfig::get_real(const string &_section, const string &_name)
 		PERRF_ABORT(LOG_PROGRAM, "unable to get real value for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
 	return value;
+}
+
+double AppConfig::get_real(const string &_section, const string &_name, double _default)
+{
+	try {
+		return try_real(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
 }
 
 bool AppConfig::try_bool(const string &_section, const string &_name)
@@ -648,6 +666,15 @@ bool AppConfig::get_bool(const string &_section, const string &_name)
 	return value;
 }
 
+bool AppConfig::get_bool(const string &_section, const string &_name, bool _default)
+{
+	try {
+		return try_bool(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
+}
+
 void AppConfig::set_bool(const string &_section, const string &_name, bool _value)
 {
 	m_values[make_key(_section)][make_key(_name)] = _value?"yes":"no";
@@ -661,8 +688,16 @@ string AppConfig::get_string(const string &_section, const string &_name)
 	} catch(std::exception &e) {
 		PERRF_ABORT(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
 	}
-
 	return val;
+}
+
+string AppConfig::get_string(const string &_section, const string &_name, const string &_default)
+{
+	try {
+		return get_value(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
 }
 
 void AppConfig::set_string(const string &_section, const string &_name, string _value)
@@ -746,7 +781,7 @@ string AppConfig::find_media(const string &_filename)
 	return path;
 }
 
-uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_map_t &_enum_map)
+unsigned AppConfig::get_enum(const string &_section, const string &_name, ini_enum_map_t &_enum_map)
 {
 	string enumstr;
 	try {
@@ -760,6 +795,22 @@ uint AppConfig::get_enum(const string &_section, const string &_name, ini_enum_m
 		PERRF(LOG_PROGRAM, "Invalid value '%s' for [%s]:%s\n",
 				enumstr.c_str(), _section.c_str(), _name.c_str());
 		throw std::exception();
+	}
+	return enumvalue->second;
+}
+
+unsigned AppConfig::get_enum(const string &_section, const string &_name,
+		ini_enum_map_t &_enum_map, unsigned _default)
+{
+	string enumstr;
+	try {
+		enumstr = get_value(_section, _name);
+	} catch(std::exception &e) {
+		return _default;
+	}
+	auto enumvalue = _enum_map.find(enumstr);
+	if(enumvalue == _enum_map.end()) {
+		return _default;
 	}
 	return enumvalue->second;
 }

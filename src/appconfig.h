@@ -80,12 +80,17 @@ public:
 
 	int try_int(const std::string &section, const std::string &name);
 	int get_int(const std::string &section, const std::string &name);
+	int get_int(const std::string &section, const std::string &name, int _default);
 	double try_real(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name);
+	double get_real(const std::string &section, const std::string &name, double _default);
 	bool try_bool(const std::string &section, const std::string &name);
 	bool get_bool(const std::string &section, const std::string &name);
+	bool get_bool(const std::string &section, const std::string &name, bool _default);
 	std::string get_string(const std::string &_section, const std::string &_name);
-	uint get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);
+	std::string get_string(const std::string &_section, const std::string &_name, const std::string &_default);
+	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);
+	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map, unsigned _default);
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string get_file_path(const std::string &_filename, FileType _type);
 	std::string find_file(const std::string &_section, const std::string &_name);
