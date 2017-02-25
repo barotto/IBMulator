@@ -170,6 +170,7 @@ public:
 class CPU
 {
 protected:
+	std::string m_model;
 	unsigned m_family;
 	unsigned m_signature;
 	uint32_t m_freq;
@@ -213,6 +214,7 @@ public:
 
 	uint step();
 
+	inline std::string model() const { return m_model; }
 	inline unsigned family() const { return m_family; }
 	inline unsigned signature() const { return m_signature; }
 	inline uint32_t get_freq() { return m_freq; }

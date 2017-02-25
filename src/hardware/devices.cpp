@@ -117,9 +117,9 @@ void Devices::config_changed()
 		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
 	);
 	std::string stg_ctrl = g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD);
-	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->type() == PS1_2011)) {
+	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ps1")) {
 		install<StorageCtrl_PS1>();
-	} else if(stg_ctrl == "ata" || (stg_ctrl == "auto" && m_machine->type() >= PS1_2121)) {
+	} else if(stg_ctrl == "ata" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ata")) {
 		install<StorageCtrl_ATA>();
 	}
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));

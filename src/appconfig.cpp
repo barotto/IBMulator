@@ -38,8 +38,8 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ CPU_SECTION, {
-		{ CPU_MODEL,     "286" },
-		{ CPU_FREQUENCY, "10.0"}
+		{ CPU_MODEL,     "auto" },
+		{ CPU_FREQUENCY, "auto"}
 	} },
 
 	{ GUI_SECTION, {
@@ -183,8 +183,10 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ CPU_SECTION,
-";     model: Possible values: 286, 386SX, 386DX.\n"
+";     model: The CPU model.\n"
+";            Possible values: auto, 286, 386SX, 386DX.\n"
 "; frequency: Frequency in MHz.\n"
+";            Possible values: auto, or an integer number."
 		},
 
 		{ GUI_SECTION,

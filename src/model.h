@@ -30,8 +30,8 @@ struct BIOSType
 {
 	std::string version;
 	std::string type;
-	// TODO the same BIOS can be used for different models. Implement a 1-n relation.
 	unsigned machine;
+	unsigned model;
 	std::string machine_str;
 	uint16_t hdd_ptable_off;
 };
@@ -44,13 +44,19 @@ struct MachineModel
 	std::string cpu;
 	unsigned cpu_freq;
 	unsigned ram;
+	unsigned floppy_a;
+	unsigned floppy_b;
 	std::string hdd_interface;
-	/* TODO the HDD param table does not have all the HDD models */
 	unsigned hdd_type;
 };
 
-// TODO the same machine type is used for different models. Implement a 1-n relation.
 typedef std::map<unsigned, MachineModel> machine_db_t;
 extern machine_db_t g_machine_db;
+
+enum MachineModels {
+	PS1_2011_C34,
+	PS1_2121_B82,
+	PS1_2121_A82
+};
 
 #endif

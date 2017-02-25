@@ -26,31 +26,6 @@
 
 CPUBus g_cpubus;
 
-ini_enum_map_t g_cpu_busw = {
-	{ "286",   2 },
-	{ "386SX", 2 },
-	{ "386DX", 4 }
-};
-
-/* http://www.rcollins.org/secrets/PrefetchQueue.html
- * The 80386 is documented as having a 16-byte prefetch queue. At one time,
- * it did, but due to a bug in the pipelining architecture, Intel had to
- * abandon the 16-byte queue, and only use a 12-byte queue. The change
- * occurred (I believe) between the D0, and D1 step of the '386.
- * The '386SX wasn't affected by the bug, and therefore hasn't changed.
- */
-ini_enum_map_t g_cpu_pqs = {
-	{ "286",   6 },
-	{ "386SX", 16 },
-	{ "386DX", 12 }
-};
-
-ini_enum_map_t g_cpu_pqt = {
-	{ "286",   2 },
-	{ "386SX", 4 },
-	{ "386DX", 4 }
-};
-
 #define CPUBUS_STATE_NAME "CPUBus"
 #define CPU_PQ_ODDPENALTY ((!m_s.pq_valid) && (m_s.pq_tail & 1))
 
@@ -76,9 +51,34 @@ void CPUBus::reset()
 
 void CPUBus::config_changed()
 {
-	m_width = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_busw);
-	m_pq_size = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_pqs);
-	m_pq_thres = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, g_cpu_pqt);
+	ini_enum_map_t cpu_busw = {
+		{ "286",   2 },
+		{ "386SX", 2 },
+		{ "386DX", 4 }
+	};
+
+	/* http://www.rcollins.org/secrets/PrefetchQueue.html
+	 * The 80386 is documented as having a 16-byte prefetch queue. At one time,
+	 * it did, but due to a bug in the pipelining architecture, Intel had to
+	 * abandon the 16-byte queue, and only use a 12-byte queue. The change
+	 * occurred (I believe) between the D0, and D1 step of the '386.
+	 * The '386SX wasn't affected by the bug, and therefore hasn't changed.
+	 */
+	ini_enum_map_t cpu_pqs = {
+		{ "286",   6  },
+		{ "386SX", 16 },
+		{ "386DX", 12 }
+	};
+
+	ini_enum_map_t cpu_pqt = {
+		{ "286",   2 },
+		{ "386SX", 4 },
+		{ "386DX", 4 }
+	};
+
+	m_width = cpu_busw[g_cpu.model()];
+	m_pq_size = cpu_pqs[g_cpu.model()];
+	m_pq_thres = cpu_pqt[g_cpu.model()];
 
 	PINFOF(LOG_V1, LOG_CPU, "Bus width: %d-bit, Prefetch Queue: %d byte\n",
 			m_width*8, m_pq_size);

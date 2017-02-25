@@ -77,24 +77,35 @@ void CPU::config_changed()
 		{ "386SX", CPU_386 },
 		{ "386DX", CPU_386 }
 	};
-
 	static ini_enum_map_t cpu_signatures = {
 		{ "286",   0x0000 },
 		{ "386SX", 0x2308 },
 		{ "386DX", 0x0308 }
 	};
 
-	m_family = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_families);
-	m_signature = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_signatures);
+	std::string cfgstr = g_program.config().get_string(CPU_SECTION, CPU_MODEL);
+	if(cfgstr == "auto") {
+		m_model = g_machine.model().cpu;
+		m_family = cpu_families[m_model];
+		m_signature = cpu_signatures[m_model];
+	} else {
+		m_model = cfgstr;
+		m_family = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_families);
+		m_signature = g_program.config().get_enum(CPU_SECTION, CPU_MODEL, cpu_signatures);
+	}
 
-	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
+	double freq;
+	cfgstr = g_program.config().get_string(CPU_SECTION, CPU_FREQUENCY);
+	if(cfgstr == "auto") {
+		freq = g_machine.model().cpu_freq;
+	} else {
+		freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
+	}
 	m_cycle_time = round(1000.0 / freq);
 	m_freq = round(1e9 / m_cycle_time);
 
-	PINFOF(LOG_V0, LOG_CPU, "Model: %s @ %.3fMHz\n",
-			g_program.config().get_string(CPU_SECTION, CPU_MODEL).c_str(),
-			m_freq / 1.0e6);
-	PINFOF(LOG_V1, LOG_CPU, "Cycle time: %u nsec\n", m_cycle_time);
+	PINFOF(LOG_V0, LOG_CPU, "Installed CPU: %s @ %.0fMHz\n", m_model.c_str(), freq);
+	PINFOF(LOG_V1, LOG_CPU, "  Cycle time: %u nsec (%.3fMHz)\n", m_cycle_time, m_freq / 1.0e6);
 
 	g_cpubus.config_changed();
 	g_cpuexecutor.config_changed();

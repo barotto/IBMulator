@@ -150,6 +150,7 @@ public:
 
 	inline unsigned type() const { return m_sysrom.bios().machine; }
 	inline std::string type_str() const { return m_sysrom.bios().machine_str; }
+	inline const MachineModel & model() const { return g_machine_db[m_sysrom.bios().model]; }
 	inline SystemROM & sys_rom() { return m_sysrom; }
 	inline Devices & devices() { return g_devices; }
 
