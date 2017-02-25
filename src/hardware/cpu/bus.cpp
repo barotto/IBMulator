@@ -80,7 +80,7 @@ void CPUBus::config_changed()
 	m_pq_size = cpu_pqs[g_cpu.model()];
 	m_pq_thres = cpu_pqt[g_cpu.model()];
 
-	PINFOF(LOG_V1, LOG_CPU, "Bus width: %d-bit, Prefetch Queue: %d byte\n",
+	PINFOF(LOG_V1, LOG_CPU, "  Bus width: %d-bit, Prefetch Queue: %d byte\n",
 			m_width*8, m_pq_size);
 }
 

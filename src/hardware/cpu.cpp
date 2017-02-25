@@ -101,11 +101,18 @@ void CPU::config_changed()
 	} else {
 		freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY);
 	}
-	m_cycle_time = round(1000.0 / freq);
-	m_freq = round(1e9 / m_cycle_time);
+	double cycle = 1000.0 / freq;
+	int icycle = int(cycle);
+	// prefer a faster CPU rounding down at 0.5
+	if((cycle - icycle) <= 0.5) {
+		m_cycle_time = icycle;
+	} else {
+		m_cycle_time = icycle + 1;
+	}
+	m_frequency = 1e3 / m_cycle_time; // in MHz
 
 	PINFOF(LOG_V0, LOG_CPU, "Installed CPU: %s @ %.0fMHz\n", m_model.c_str(), freq);
-	PINFOF(LOG_V1, LOG_CPU, "  Cycle time: %u nsec (%.3fMHz)\n", m_cycle_time, m_freq / 1.0e6);
+	PINFOF(LOG_V1, LOG_CPU, "  Cycle time: %u nsec (%.3fMHz)\n", m_cycle_time, m_frequency);
 
 	g_cpubus.config_changed();
 	g_cpuexecutor.config_changed();

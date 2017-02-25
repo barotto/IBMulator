@@ -173,7 +173,7 @@ protected:
 	std::string m_model;
 	unsigned m_family;
 	unsigned m_signature;
-	uint32_t m_freq;
+	double   m_frequency;
 	uint32_t m_cycle_time;
 	Instruction *m_instr;
 	std::function<void(void)> m_shutdown_trap;
@@ -217,9 +217,8 @@ public:
 	inline std::string model() const { return m_model; }
 	inline unsigned family() const { return m_family; }
 	inline unsigned signature() const { return m_signature; }
-	inline uint32_t get_freq() { return m_freq; }
-	GCC_ATTRIBUTE(always_inline)
-	inline uint32_t get_cycle_time_ns() { return m_cycle_time; }
+	inline double frequency() const { return m_frequency; }
+	inline uint32_t cycle_time_ns() const { return m_cycle_time; }
 
 	void interrupt(uint8_t _vector, unsigned _type,	bool _push_error, uint16_t _error_code);
 	void clear_INTR();

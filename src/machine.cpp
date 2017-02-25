@@ -267,7 +267,7 @@ void Machine::config_changed()
 	g_memory.config_changed();
 	g_devices.config_changed();
 
-	m_cpu_cycles = g_cpu.get_freq()/1e6 * m_heartbeat;
+	m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
 	m_cycles_factor = 1.0;
 
 	PINFOF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
@@ -338,7 +338,7 @@ void Machine::core_step(int32_t _cpu_cycles)
 	} else {
 		cycles_left = 1;
 	}
-	uint32_t cycle_time = g_cpu.get_cycle_time_ns();
+	uint32_t cycle_time = g_cpu.cycle_time_ns();
 	while(cycles_left>0) {
 
 		int32_t c = g_cpu.step();
