@@ -25,6 +25,7 @@
 #include "machine.h"
 #include <cstring>
 #include <sstream>
+#include <regex>
 
 /* Assuming the ST412/506 HD format RLL encoding, this should be the anatomy of
  * a sector:
@@ -234,6 +235,8 @@ void HardDiskDrive::config_changed(const char *_section)
 		std::string type_string = g_program.config().get_string(_section, DISK_TYPE);
 		if(type_string == "custom") {
 			type = HDD_CUSTOM_DRIVE_IDX;
+		} else if(type_string == "auto") {
+			type = g_machine.model().hdd_type;
 		}
 	}
 	if(type<=0 || type == 15 ||
@@ -245,7 +248,27 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	m_type = type;
 	m_tmp_disk = false;
-	m_imgpath = g_program.config().find_media(_section, DISK_PATH);
+
+	std::string path_string = g_program.config().get_string(_section, DISK_PATH);
+	if(path_string == "auto") {
+		std::stringstream ss;
+		ss << "hdd-type" << m_type << "-";
+		m_imgpath = g_machine.model().name;
+		std::regex re("[^A-Za-z0-9\\-]");
+		std::string imgname = std::regex_replace(g_machine.model().name,
+				std::regex("[\\s]"), "_");
+		std::regex_replace(std::ostreambuf_iterator<char>(ss),
+				imgname.begin(), imgname.end(),
+				std::regex("[^A-Za-z0-9\\-_]"),
+				"");
+		ss << ".bin";
+		imgname = ss.str();
+		//transform to lowercase?
+		//std::transform(imgname.begin(), imgname.end(), imgname.begin(), ::tolower);
+		m_imgpath = g_program.config().get_file_path(imgname, FILE_TYPE_USER);
+	} else {
+		m_imgpath = g_program.config().find_media(_section, DISK_PATH);
+	}
 
 	get_profile(type, _section, m_geometry, m_performance);
 	StorageDev::config_changed(_section);

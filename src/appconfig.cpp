@@ -88,7 +88,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,   "auto"  },
+		{ DRIVES_FDD_A,   "auto" },
 		{ DRIVES_FDD_B,   "auto" },
 		{ DRIVES_FDD_LAT, "1.0"  },
 		{ DRIVES_HDD,     "auto" }
@@ -109,10 +109,10 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DISK_C_SECTION, {
-		{ DISK_TYPE,       "35" },
+		{ DISK_TYPE,       "auto" },
 		{ DISK_READONLY,   "no" },
 		{ DISK_SAVE,       "yes" },
-		{ DISK_PATH,       "hdd.img" },
+		{ DISK_PATH,       "auto" },
 		{ DISK_CYLINDERS,  "921" },
 		{ DISK_HEADS,      "2" },
 		{ DISK_SPT,        "33" },
@@ -297,14 +297,16 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ DISK_C_SECTION,
 "; Drive C configuration:\n"
-";     type: The standard type of fixed disk.\n"
+";     type: The IBM standard fixed disk type.\n"
 ";           Possible values:\n"
+";            auto: automatically determined by the system model\n"
 ";              15: reserved, don't use\n"
 ";              35: the IBM WDL-330P 30MB disk drive used on the PS/1 2011\n"
 ";            1-44: other standard types (see the project page for the list of types supported by the BIOS)\n"
 ";              " STR(HDD_CUSTOM_DRIVE_IDX) ": custom type (specify the geometry)\n"
-";          custom: same as 47\n"
-";     path: Path of the image file to mount\n"
+";          custom: same as " STR(HDD_CUSTOM_DRIVE_IDX) "\n"
+";     path: Possible values: auto, or the path of the image file to mount.\n"
+";           If you specify a path you must also specify a type.\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
 ";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
