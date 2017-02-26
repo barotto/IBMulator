@@ -29,7 +29,7 @@ std::vector<AudioBuffer> SoundFX::load_samples(const AudioSpec &_spec, const sam
 	std::vector<AudioBuffer> buffers(_samples.size());
 	for(unsigned i=0; i<_samples.size(); ++i) {
 		futures[i] = std::async(std::launch::async, [_spec,i,&buffers,&_samples]() {
-			PINFOF(LOG_V1, LOG_AUDIO, "loading %s for %s sound fx\n",
+			PINFOF(LOG_V2, LOG_AUDIO, "loading %s for %s sound fx\n",
 					_samples[i].file, _samples[i].name);
 			load_audio_file(_samples[i].file, buffers[i], _spec);
 		});

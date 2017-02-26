@@ -412,7 +412,7 @@ bool RocketSystemInterface::LogMessage(Rocket::Core::Log::Type type, const Rocke
 	case Rocket::Core::Log::LT_ALWAYS:
 	case Rocket::Core::Log::LT_ASSERT:
 		logpri = LOG_INFO;
-		verb = LOG_V1;
+		verb = LOG_V2;
 		break;
 	case Rocket::Core::Log::LT_ERROR:
 		logpri = LOG_ERROR;
