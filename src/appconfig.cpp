@@ -88,8 +88,8 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,   "3.5"  },
-		{ DRIVES_FDD_B,   "none" },
+		{ DRIVES_FDD_A,   "auto"  },
+		{ DRIVES_FDD_B,   "auto" },
 		{ DRIVES_FDD_LAT, "1.0"  },
 		{ DRIVES_HDD,     "auto" }
 	} },
@@ -263,9 +263,9 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ DRIVES_SECTION,
 ";    floppy_a: The type of floppy drive A.\n"
-";              Possible values: none, 3.5, 5.25\n"
+";              Possible values: auto, none, 3.5, 5.25\n"
 ";    floppy_b: The type of floppy drive B.\n"
-";              Possible values: none, 3.5, 5.25\n"
+";              Possible values: auto, none, 3.5, 5.25\n"
 "; fdd_latency: A multiplier for the floppy drives rotational latency.\n"
 ";              You can use this parameter to speed up the FDD read/write operations.\n"
 ";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"

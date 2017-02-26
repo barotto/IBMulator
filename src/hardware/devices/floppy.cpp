@@ -348,19 +348,22 @@ unsigned FloppyCtrl::config_drive_type(unsigned drive)
 {
 	assert(drive < 2);
 
-	const char *typekey;
-	if(drive == 0) {
-		typekey = DRIVES_FDD_A;
-	} else {
-		typekey = DRIVES_FDD_B;
-	}
 	uint devtype;
-	try {
-		devtype = g_program.config().get_enum(DRIVES_SECTION, typekey, drive_types);
-	} catch(std::exception &e) {
-		devtype = FDD_NONE;
+	if(drive == 0) {
+		try {
+			devtype = g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_A,
+					drive_types);
+		} catch(std::exception &e) {
+			devtype = g_machine.model().floppy_a;
+		}
+	} else {
+		try {
+			devtype = g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_B,
+					drive_types);
+		} catch(std::exception &e) {
+			devtype = g_machine.model().floppy_b;
+		}
 	}
-
 	return devtype;
 }
 
