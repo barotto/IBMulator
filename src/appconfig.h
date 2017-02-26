@@ -91,8 +91,9 @@ public:
 	std::string get_string(const std::string &_section, const std::string &_name);
 	std::string get_string(const std::string &_section, const std::string &_name, const std::string &_default);
 	std::string get_string(const std::string &_section, const std::string &_name, const std::set<std::string> _allowed, const std::string &_default);
-	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map);
-	unsigned get_enum(const std::string &_section, const std::string &_name, ini_enum_map_t &_enum_map, unsigned _default);
+	unsigned get_enum(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map);
+	unsigned get_enum(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map, unsigned _default);
+	unsigned get_enum_quiet(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map);
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string get_file_path(const std::string &_filename, FileType _type);
 	std::string find_file(const std::string &_section, const std::string &_name);
@@ -142,13 +143,16 @@ public:
 #define DISPLAY_CONTRAST         "contrast"
 #define DISPLAY_SATURATION       "saturation"
 
+#define SYSTEM_SECTION          "system"
+#define SYSTEM_ROMSET           "romset"
+#define SYSTEM_MODEL            "model"
+
 #define CPU_SECTION             "cpu"
 #define CPU_MODEL               "model"
 #define CPU_FREQUENCY           "frequency"
 
 #define MEM_SECTION             "memory"
 #define MEM_RAM_SIZE            "ram"
-#define MEM_ROMSET              "romset"
 
 #define CMOS_SECTION            "cmos"
 #define CMOS_IMAGE_FILE         "image"

@@ -253,7 +253,7 @@ void Machine::config_changed()
 {
 	PINFOF(LOG_V1, LOG_MACHINE, "Loading the SYSTEM ROM\n");
 	try {
-		std::string romset = g_program.config().find_file(MEM_SECTION, MEM_ROMSET);
+		std::string romset = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_ROMSET);
 		m_sysrom.load(romset);
 	} catch(std::exception &e) {
 		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
@@ -262,6 +262,14 @@ void Machine::config_changed()
 		        nullptr);
 		throw;
 	}
+
+	try {
+		m_model = g_program.config().get_enum_quiet(SYSTEM_SECTION, SYSTEM_MODEL, g_ini_model_names);
+	} catch(std::exception &) {
+		m_model = m_sysrom.bios().machine_model;
+	}
+
+	PINFOF(LOG_V0, LOG_MACHINE, "Selected model: %s\n", model().print().c_str());
 
 	g_cpu.config_changed();
 	g_memory.config_changed();

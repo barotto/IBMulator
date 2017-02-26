@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_MODEL_H
 #define IBMULATOR_MODEL_H
 
+#include "appconfig.h"
 #include <string>
 #include <map>
 
@@ -30,30 +31,51 @@ struct BIOSType
 {
 	std::string version;
 	std::string type;
-	unsigned machine;
-	unsigned model;
-	std::string machine_str;
+	unsigned machine_model;
 	uint16_t hdd_ptable_off;
 };
 
 typedef std::map<const std::string, BIOSType> bios_db_t;
-extern bios_db_t g_bios_db;
+extern const bios_db_t g_bios_db;
 
-struct MachineModel
+struct ModelConfig
 {
-	std::string cpu;
+	std::string name;
+	unsigned type;
+	std::string cpu_model;
 	unsigned cpu_freq;
 	unsigned ram;
 	unsigned floppy_a;
 	unsigned floppy_b;
 	std::string hdd_interface;
 	unsigned hdd_type;
+
+	std::string print() const;
 };
 
-typedef std::map<unsigned, MachineModel> machine_db_t;
-extern machine_db_t g_machine_db;
+typedef std::map<int, ModelConfig> machine_db_t;
+extern const machine_db_t g_machine_db;
+extern const ini_enum_map_t g_ini_model_names;
+extern const std::map<unsigned, std::string> g_machine_type_str;
 
-enum MachineModels {
+
+/* There's some confusion about the proper terminology.
+ * "Type" is the 4 digit number with which IBM identified the various PS/1's,
+ * like 2011 and 2121.
+ * "Model" was the combination of machine "Type" with a variation, e.g. 2121-A82,
+ * which identified a particular hardware configuration.
+ * Unfortunately IBM later started to use "Model" to identify the machine "Type"
+ * as well, like it used to do with the PS/2 line.
+ * I use Type in the sense IBM originally intended.
+ */
+enum MachineType {
+	MCH_UNK,
+	PS1_2011,
+	PS1_2121
+};
+
+enum MachineModel {
+	MDL_UNKNOWN,
 	PS1_2011_C34,
 	PS1_2121_B82,
 	PS1_2121_A82

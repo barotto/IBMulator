@@ -67,6 +67,8 @@ public:
 	void write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
 	void seek(unsigned _from_cyl, unsigned _to_cyl);
 
+	static int64_t get_hdd_type_size(int _hdd_type);
+
 private:
 	void get_profile(int _type_id, const char *_section, MediaGeometry &geom_, DrivePerformance &perf_);
 	void mount(std::string _imgpath, MediaGeometry _geom, bool _read_only);

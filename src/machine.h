@@ -41,18 +41,6 @@ typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_st
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
-/* There's some confusion about the proper terminology here.
- * "Type" is the 4 digit number with which IBM identified the various PS/1's, like 2011 and 2121.
- * "Model" is the combination of Type with a particular variation, e.g. 2121-A82
- * Unfortunately people keep using Model to designate the Type.
- * I use Type in the sense IBM intended.
- */
-enum MachineType {
-	PS1_2011,
-	PS1_2121,
-	MCH_UNKNOWN
-};
-
 enum MachineReset {
 	MACHINE_POWER_ON,   // Machine is switched on using the power button
 	MACHINE_HARD_RESET, // Machine RESET triggered by the reset button
@@ -66,6 +54,9 @@ enum MachineReset {
 class Machine
 {
 private:
+	unsigned m_type;
+	std::string m_type_str;
+	unsigned m_model;
 
 	Chrono m_main_chrono;
 	HWBench m_bench;
@@ -148,9 +139,9 @@ public:
 	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
 	inline HWBench & get_bench() { return m_bench; }
 
-	inline unsigned type() const { return m_sysrom.bios().machine; }
-	inline std::string type_str() const { return m_sysrom.bios().machine_str; }
-	inline const MachineModel & model() const { return g_machine_db[m_sysrom.bios().model]; }
+	inline unsigned type() const { return model().type; }
+	inline std::string type_str() const { return g_machine_type_str.at(type()); }
+	inline const ModelConfig & model() const { return g_machine_db.at(m_model); }
 	inline SystemROM & sys_rom() { return m_sysrom; }
 	inline Devices & devices() { return g_devices; }
 

@@ -84,7 +84,7 @@ void CPU::config_changed()
 	};
 
 	m_model = g_program.config().get_string(CPU_SECTION, CPU_MODEL,
-		{ "286", "386SX", "386DX" }, g_machine.model().cpu);
+		{ "286", "386SX", "386DX" }, g_machine.model().cpu_model);
 	m_family = cpu_families[m_model];
 	m_signature = cpu_signatures[m_model];
 

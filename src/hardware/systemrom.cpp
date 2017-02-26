@@ -43,8 +43,6 @@
 SystemROM::SystemROM()
 : m_data(nullptr)
 {
-	m_bios.machine = MCH_UNKNOWN;
-	m_bios.hdd_ptable_off = -1;
 }
 
 SystemROM::~SystemROM()
@@ -60,9 +58,7 @@ void SystemROM::load(const std::string _romset)
 	if(m_data != nullptr) {
 		delete[] m_data;
 		m_data = nullptr;
-		m_bios.machine = MCH_UNKNOWN;
-		m_bios.machine_str = "unknown";
-		m_bios.hdd_ptable_off = -1;
+		m_bios = g_bios_db.at("unknown");
 	}
 	m_data = new uint8_t[MAX_ROM_SIZE];
 	memset(m_data, 0xCC, MAX_ROM_SIZE);
@@ -97,18 +93,18 @@ void SystemROM::load(const std::string _romset)
 	auto biostype = g_bios_db.find(bios_md5);
 	if(biostype != g_bios_db.end()) {
 		m_bios = biostype->second;
-		PINFOF(LOG_V0, LOG_MACHINE, "BIOS version: %s\n", m_bios.version.c_str());
-		PINFOF(LOG_V0, LOG_MACHINE, "BIOS type: %s\n", m_bios.type.c_str());
 	} else {
-		std::string bioshead;
+		m_bios = g_bios_db.at("unknown");
 		for(int i=0; i<69; ++i) {
 			uint8_t c = m_data[BIOS_OFFSET+i];
 			if(c>=0x20 && c<=0x7E) {
-				bioshead += c;
+				m_bios.version += c;
 			}
 		}
-		PINFOF(LOG_V0, LOG_MACHINE, "BIOS header: %s\n", bioshead.c_str());
-		PINFOF(LOG_V0, LOG_MACHINE, "BIOS type: unknown!\n");
+	}
+	PINFOF(LOG_V0, LOG_MACHINE, "BIOS version: %s\n", m_bios.version.c_str());
+	PINFOF(LOG_V0, LOG_MACHINE, "BIOS type: %s\n", m_bios.type.c_str());
+	if(m_bios.machine_model == MDL_UNKNOWN) {
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Unknown BIOS",
 				"You are using an unsupported system ROM.\n"
 				"Please consider sending a copy to the " PACKAGE_NAME "'s author. "

@@ -537,3 +537,13 @@ void HardDiskDrive::seek(unsigned _from_cyl, unsigned _to_cyl)
 {
 	m_fx.seek(_from_cyl, _to_cyl, m_disk->geometry.cylinders);
 }
+
+int64_t HardDiskDrive::get_hdd_type_size(int _hdd_type)
+{
+	if(_hdd_type >= HDD_DRIVES_TABLE_SIZE) {
+		return 0;
+	}
+	const MediaGeometry & geom = ms_hdd_types[_hdd_type];
+	int64_t sectors = uint64_t(geom.spt) * geom.cylinders * geom.heads;
+	return sectors*512;
+}
