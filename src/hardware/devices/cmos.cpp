@@ -184,7 +184,9 @@ void CMOS::power_off()
 {
 	// save CMOS to image file if requested.
 	if(g_program.config().get_bool(CMOS_SECTION,CMOS_IMAGE_SAVE)) {
-		save_image(get_image_filepath());
+		try {
+			save_image(get_image_filepath());
+		} catch(std::exception &) {}
 	} else {
 		PINFOF(LOG_V0, LOG_CMOS, "CMOS not saved\n");
 	}
@@ -219,10 +221,13 @@ void CMOS::load_image(std::string _imgpath, std::string _tplname)
 	}
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
-		_imgpath = g_program.config().get_file_path(_tplname, FILE_TYPE_ASSET);
-		if(!FileSys::file_exists(_imgpath.c_str())) {
-			PERRF(LOG_CMOS, "Unable to find the image file '%s'\n", _tplname.c_str());
-			throw std::exception();
+		std::string assetpath = g_program.config().get_file_path(_tplname, FILE_TYPE_ASSET);
+		if(!FileSys::file_exists(assetpath.c_str())) {
+			PWARNF(LOG_CMOS, "Unable to find the image file '%s', creating new...\n", _tplname.c_str());
+			memset(m_s.reg, 0, CMOS_SIZE);
+			save_image(_imgpath);
+		} else {
+			_imgpath = assetpath;
 		}
 	}
 	PINFOF(LOG_V0, LOG_CMOS, "Loading CMOS image file '%s'\n", _imgpath.c_str());
@@ -254,10 +259,12 @@ void CMOS::save_image(std::string _imgpath)
 	std::ofstream fd(_imgpath.c_str(), std::ofstream::binary);
 	if(!fd.is_open()) {
 		PERRF(LOG_CMOS,"Unable to open CMOS image file '%s' for writing\n", _imgpath.c_str());
+		throw std::exception();
 	} else {
 		fd.write((char*)m_s.reg, CMOS_SIZE);
 		if(fd.rdstate() & std::ofstream::failbit) {
 			PERRF(LOG_CMOS,"Error writing CMOS image file '%s'\n", _imgpath.c_str());
+			throw std::exception();
 		} else {
 			PINFOF(LOG_V0, LOG_CMOS, "CMOS image saved to '%s'\n", _imgpath.c_str());
 		}
