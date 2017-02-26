@@ -38,30 +38,30 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET, "" },
-		{ SYSTEM_MODEL, "auto" }
+		{ SYSTEM_ROMSET, ""     },
+		{ SYSTEM_MODEL,  "auto" }
 	} },
 
 	{ CPU_SECTION, {
 		{ CPU_MODEL,     "auto" },
-		{ CPU_FREQUENCY, "auto"}
+		{ CPU_FREQUENCY, "auto" }
 	} },
 
 	{ GUI_SECTION, {
 		{ GUI_KEYMAP,             "keymaps/pc-us.map"},
-		{ GUI_MOUSE_TYPE,         "ps2" },
-		{ GUI_MOUSE_GRAB,         "yes" },
-		{ GUI_MOUSE_ACCELERATION, "no" },
+		{ GUI_MOUSE_TYPE,         "ps2"    },
+		{ GUI_MOUSE_GRAB,         "yes"    },
+		{ GUI_MOUSE_ACCELERATION, "no"     },
 		{ GUI_GRAB_METHOD,        "MOUSE3" }, //CTRL-F10 or MOUSE3
-		{ GUI_SCREEN_DPI,         "96" },
-		{ GUI_WIDTH,              "640" },
-		{ GUI_HEIGHT,             "480" },
-		{ GUI_FULLSCREEN,         "no" },
-		{ GUI_SHOW_LEDS,          "no" },
+		{ GUI_SCREEN_DPI,         "96"     },
+		{ GUI_WIDTH,              "640"    },
+		{ GUI_HEIGHT,             "480"    },
+		{ GUI_FULLSCREEN,         "no"     },
+		{ GUI_SHOW_LEDS,          "no"     },
 		{ GUI_MODE,               "normal" },
-		{ GUI_BG_R,               "59" },
-		{ GUI_BG_G,               "82" },
-		{ GUI_BG_B,               "98" }
+		{ GUI_BG_R,               "59"     },
+		{ GUI_BG_G,               "82"     },
+		{ GUI_BG_B,               "98"     }
 	} },
 
 	{ DISPLAY_SECTION, {
@@ -69,7 +69,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
 		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
 		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
-		{ DISPLAY_REALISTIC_FILTER,  "bicubic" },
+		{ DISPLAY_REALISTIC_FILTER,  "bicubic"  },
 		{ DISPLAY_REALISTIC_SCALE,   "1.0" },
 		{ DISPLAY_REALISTIC_AMBIENT, "0.6" },
 		{ DISPLAY_BRIGHTNESS,        "1.0" },
@@ -79,8 +79,8 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ CMOS_SECTION, {
 		{ CMOS_IMAGE_FILE,     "auto" },
-		{ CMOS_IMAGE_RTC_INIT, "no" },
-		{ CMOS_IMAGE_SAVE,     "yes" }
+		{ CMOS_IMAGE_RTC_INIT, "no"   },
+		{ CMOS_IMAGE_SAVE,     "yes"  }
 	} },
 
 	{ MEM_SECTION, {
@@ -96,30 +96,30 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DISK_A_SECTION, {
 		{ DISK_TYPE,     "1.44M" },
-		{ DISK_INSERTED, "no" },
-		{ DISK_READONLY, "no" },
-		{ DISK_PATH,     "" }
+		{ DISK_INSERTED, "no"    },
+		{ DISK_READONLY, "no"    },
+		{ DISK_PATH,     ""      }
 	} },
 
 	{ DISK_B_SECTION, {
 		{ DISK_TYPE,     "1.44M" },
-		{ DISK_INSERTED, "no" },
-		{ DISK_READONLY, "no" },
-		{ DISK_PATH,     "" }
+		{ DISK_INSERTED, "no"    },
+		{ DISK_READONLY, "no"    },
+		{ DISK_PATH,     ""      }
 	} },
 
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,       "auto" },
-		{ DISK_READONLY,   "no" },
-		{ DISK_SAVE,       "yes" },
+		{ DISK_READONLY,   "no"   },
+		{ DISK_SAVE,       "yes"  },
 		{ DISK_PATH,       "auto" },
-		{ DISK_CYLINDERS,  "921" },
-		{ DISK_HEADS,      "2" },
-		{ DISK_SPT,        "33" },
+		{ DISK_CYLINDERS,  "921"  },
+		{ DISK_HEADS,      "2"    },
+		{ DISK_SPT,        "33"   },
 		{ DISK_SEEK_MAX,   "40.0" },
-		{ DISK_SEEK_TRK,   "8.0" },
+		{ DISK_SEEK_TRK,   "8.0"  },
 		{ DISK_ROT_SPEED,  "3600" },
-		{ DISK_INTERLEAVE, "4" }
+		{ DISK_INTERLEAVE, "4"    }
 	} },
 
 	{ MIXER_SECTION, {
@@ -142,7 +142,7 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ ADLIB_SECTION, {
-		{ ADLIB_ENABLED, "no"   },
+		{ ADLIB_ENABLED, "no"    },
 		{ ADLIB_RATE,    "48000" },
 		{ ADLIB_VOLUME,  "1.0"   }
 	} },
@@ -157,15 +157,15 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ COM_SECTION, {
-		{ COM_ENABLED, "yes" },
+		{ COM_ENABLED, "yes"  },
 		{ COM_MODE,    "null" },
-		{ COM_DEV,     "" }
+		{ COM_DEV,     ""     }
 	} },
 
 	{ LPT_SECTION, {
-		{ LPT_ENABLED, "yes" },
+		{ LPT_ENABLED, "yes"  },
 		{ LPT_PORT,    "LPT1" },
-		{ LPT_FILE,    "" }
+		{ LPT_FILE,    ""     }
 	} },
 };
 
@@ -191,14 +191,14 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  model: The PS/1 Model. This is also the machine configuration that's used to select proper values for any \"auto\" value in this file.\n"
 ";         Possible values: auto, or a machine model string\n"
 ";          auto: the model is determined by the romset\n"
-";          For the list of supported models and their hardware configuration see " PACKAGE_STRING "'s project site."
+";          For the list of supported models and their hardware configuration see " PACKAGE_STRING "'s project site.\n"
 		},
 
 		{ CPU_SECTION,
 ";     model: The CPU model.\n"
 ";            Possible values: auto, 286, 386SX, 386DX.\n"
 "; frequency: Frequency in MHz.\n"
-";            Possible values: auto, or an integer number."
+";            Possible values: auto, or an integer number.\n"
 		},
 
 		{ GUI_SECTION,
@@ -258,7 +258,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ MEM_SECTION,
 ";    ram: Size of the RAM in KiB\n"
-";         Possible values: auto, or an integer multiple of 128."
+";         Possible values: auto, or an integer multiple of 128.\n"
 		},
 
 		{ DRIVES_SECTION,
