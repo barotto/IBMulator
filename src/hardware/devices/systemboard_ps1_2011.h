@@ -47,6 +47,8 @@ private:
 	void update_POS4_state();
 	void update_POS5_state();
 
+	std::string debug_POS_decode(int _posreg, uint8_t _value);
+
 public:
 	SystemBoard_PS1_2011(Devices* _dev);
 	~SystemBoard_PS1_2011() {}
@@ -56,7 +58,6 @@ public:
 
 	void reset(unsigned type);
 	void config_changed();
-	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
 	void save_state(StateBuf &_state);

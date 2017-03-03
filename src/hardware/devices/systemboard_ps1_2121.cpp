@@ -56,6 +56,9 @@ void SystemBoard_PS1_2121::reset(unsigned _signal)
 
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
 		memset(&m_s.E0_regs, 0, sizeof(m_s.E0_regs));
+
+		// adapter ID taken from the PCem project.
+		SystemBoard::m_s.adapter_ID = 0xE8FE;
 	}
 }
 
@@ -92,9 +95,15 @@ void SystemBoard_PS1_2121::update_E0_state()
 {
 	//TODO RAM control
 
-	/* reg0:bit0 = Enables the first 512KB of RAM
-	 * reg1:bit0 = Enables 512-640KB (128KB) of RAM
-	 */
+	// reg0:bit0 = Enables the first 512KB of RAM
+	bool enable = m_s.E0_regs[0]&1;
+	PDEBUGF(LOG_V2, LOG_MACHINE, "PS/1 2121 port E1[0]:0=%d, %sable RAM 0-512KB (not implemented)\n",
+			enable, (enable)?"en":"dis");
+
+	// reg1:bit0 = Enables 512-640KB (128KB) of RAM
+	enable = m_s.E0_regs[1]&1;
+	PDEBUGF(LOG_V2, LOG_MACHINE, "PS/1 2121 port E1[1]:0=%d, %sable RAM 512-640KB (not implemented)\n",
+			enable, (enable)?"en":"dis");
 }
 
 uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
@@ -104,6 +113,11 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 	switch(_address) {
 		case 0x00E1:
 			value = m_s.E0_regs[m_s.E0_addr];
+			PDEBUGF(LOG_V2, LOG_MACHINE, "read  0xE1[%d] -> 0x%04X\n", m_s.E0_addr, value);
+			return value;
+		case 0x0105:
+			// bit 7 forced high or 128KB of RAM will be missed on cold boot
+			value = SystemBoard::m_s.POS_5 | 0x80;
 			break;
 		case 0x03F3:
 			value = 0;
@@ -124,9 +138,10 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 			}
 			break;
 		default:
-			value = SystemBoard::read(_address, _io_len);
-			break;
+			return SystemBoard::read(_address, _io_len);
 	}
+
+	PDEBUGF(LOG_V2, LOG_MACHINE, "read  0x%03X -> 0x%04X\n", _address, value);
 
 	return value;
 }
@@ -139,15 +154,10 @@ void SystemBoard_PS1_2121::write(uint16_t _address, uint16_t _value, unsigned _i
 			break;
 		case 0x00E1:
 			m_s.E0_regs[m_s.E0_addr] = _value;
-			PDEBUGF(LOG_V2, LOG_MACHINE, "PS/1 2121 port E1[%d] := 0x%02X\n", m_s.E0_addr, _value);
+			PDEBUGF(LOG_V2, LOG_MACHINE, "write 0xE1[%d] <- 0x%04X\n", m_s.E0_addr, _value);
 			if(!SystemBoard::m_s.board_enable) {
 				update_E0_state();
 			}
-			break;
-		case 0x0105:
-			 /* bit 7 forced high or 128KB of RAM will be missed on cold boot */
-			_value |= 0x80;
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 		default:
 			SystemBoard::write(_address, _value, _io_len);

@@ -843,8 +843,7 @@ uint8_t Machine::get_POST_code()
 {
 	SystemBoard * sb = g_devices.sysboard();
 	if(sb != nullptr) {
-		//TODO this is PS/1 specific
-		return g_devices.sysboard()->read(0x0190,1);
+		return sb->get_POST_code();
 	}
 	return 0;
 }

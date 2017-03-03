@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "machine.h"
 #include "systemboard_ps1_2011.h"
+#include "utils.h"
 #include <cstring>
 
 IODEVICE_PORTS(SystemBoard_PS1_2011) = {};
@@ -107,21 +108,14 @@ void SystemBoard_PS1_2011::update_POS5_state()
 	//TODO RAM timings
 }
 
-uint16_t SystemBoard_PS1_2011::read(uint16_t _address, unsigned _io_len)
-{
-	return SystemBoard::read(_address, _io_len);
-}
-
 void SystemBoard_PS1_2011::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 {
 	switch(_address) {
 		case 0x0102:
 			_value |= 0x8; //the serial port is fixed 1 for model 2011
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 		case 0x0103:
 			m_s.HDD_enabled = (_value >> 3) & 1;
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 		case 0x0104:
 			m_s.RAM_bank1_en = (_value >> 0) & 1;
@@ -129,15 +123,34 @@ void SystemBoard_PS1_2011::write(uint16_t _address, uint16_t _value, unsigned _i
 			m_s.RAM_bank3_en = (_value >> 2) & 1;
 			m_s.RAM_bank4_en = (_value >> 3) & 1;
 			m_s.RAM_bank5_en = (_value >> 4) & 1;
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 		case 0x0105:
 			m_s.RAM_fast = (_value >> 3) & 1;
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 		default:
-			SystemBoard::write(_address, _value, _io_len);
 			break;
 	}
+	SystemBoard::write(_address, _value, _io_len);
 }
 
+std::string SystemBoard_PS1_2011::debug_POS_decode(int _posreg, uint8_t _value)
+{
+	switch(_posreg) {
+		case 3: {
+			return bitfield_to_string(_value,
+			{ "b0", "b1", "b2", "HDD_EN",  "b4", "b5", "b6", "b7" },
+			{ "",   "",   "",   "HDD_DIS", "",   "",   "",   ""   });
+		}
+		case 4: {
+			return bitfield_to_string(_value,
+			{ "RAM_B1", "RAM_B2", "RAM_B3", "RAM_B4", "RAM_B5", "b5", "b6", "b7" },
+			{ "",       "",       "",       "",       "",       "",   "",   ""   });
+		}
+		case 5: {
+			return bitfield_to_string(_value,
+			{ "b0", "b1", "b2", "RAM_WS1", "b4", "b5", "b6", "b7" },
+			{ "",   "",   "",   "",         "",   "",   "",   ""  });
+		}
+	}
+	return SystemBoard::debug_POS_decode(_posreg, _value);
+}
