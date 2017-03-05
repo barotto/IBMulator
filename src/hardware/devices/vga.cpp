@@ -60,15 +60,15 @@ IODEVICE_PORTS(VGA) = {
 // of the array.  If out of bounds, do nothing.
 #define SET_TILE_UPDATED(xtile, ytile, value)                   \
   do {                                                          \
-    if(((xtile) < m_s.num_x_tiles) && ((ytile) < m_s.num_y_tiles)) \
-      m_s.vga_tile_updated[(xtile)+(ytile)* m_s.num_x_tiles] = value; \
+    if(((xtile) < m_num_x_tiles) && ((ytile) < m_num_y_tiles)) \
+      m_tile_updated[(xtile)+(ytile)* m_num_x_tiles] = value; \
   } while (0)
 
 // Only reference the array if the tile numbers are within the bounds
 // of the array.  If out of bounds, return 0.
 #define GET_TILE_UPDATED(xtile,ytile)                        \
-  ((((xtile) < m_s.num_x_tiles) && ((ytile) < m_s.num_y_tiles))? \
-     m_s.vga_tile_updated[(xtile)+(ytile)* m_s.num_x_tiles]      \
+  ((((xtile) < m_num_x_tiles) && ((ytile) < m_num_y_tiles))? \
+     m_tile_updated[(xtile)+(ytile)* m_num_x_tiles]      \
      : false)
 
 static const uint16_t charmap_offset[8] = {
@@ -97,20 +97,26 @@ static const uint8_t ccdat[16][4] = {
 
 
 VGA::VGA(Devices *_dev)
-: IODevice(_dev)
+: IODevice(_dev),
+m_max_xres(VGA_MAX_XRES),
+m_max_yres(VGA_MAX_YRES),
+m_memsize(0x40000),
+m_memory(nullptr),
+m_tile_updated(nullptr),
+m_timer_id(NULL_TIMER_HANDLE),
+m_display(nullptr)
 {
-	m_s.memory = nullptr;
-	m_s.vga_tile_updated = nullptr;
-	m_timer_id = NULL_TIMER_HANDLE;
+	m_num_x_tiles = m_max_xres / VGA_X_TILESIZE + ((m_max_xres % VGA_X_TILESIZE) > 0);
+	m_num_y_tiles = m_max_yres / VGA_Y_TILESIZE + ((m_max_yres % VGA_Y_TILESIZE) > 0);
 }
 
 VGA::~VGA()
 {
-	if(m_s.memory != nullptr) {
-		delete[] m_s.memory;
+	if(m_memory != nullptr) {
+		delete[] m_memory;
 	}
-	if(m_s.vga_tile_updated != nullptr) {
-		delete[] m_s.vga_tile_updated;
+	if(m_tile_updated != nullptr) {
+		delete[] m_tile_updated;
 	}
 }
 
@@ -119,6 +125,8 @@ void VGA::install()
 {
 	IODevice::install();
 	g_machine.register_irq(VGA_IRQ, name());
+	m_memory = new uint8_t[m_memsize];
+	m_tile_updated = new bool[m_num_x_tiles * m_num_y_tiles];
 	m_timer_id = g_machine.register_timer(nullptr, name());
 	/*
 	g_memory.register_trap(0xA0000, 0xBFFFF, MEM_TRAP_READ|MEM_TRAP_WRITE,
@@ -137,76 +145,58 @@ void VGA::remove()
 	IODevice::remove();
 	g_machine.unregister_irq(VGA_IRQ);
 	g_machine.unregister_timer(m_timer_id);
+
+	if(m_memory != nullptr) {
+		delete[] m_memory;
+	}
+	if(m_tile_updated != nullptr) {
+		delete[] m_tile_updated;
+	}
 }
 
-void VGA::reset(uint)
+void VGA::reset(unsigned _type)
 {
-	delete[] m_s.memory;
-	delete[] m_s.vga_tile_updated;
+	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
+		memset(&m_s, 0, sizeof(m_s));
 
-	memset(&m_s, 0, sizeof(m_s));
+		m_s.blink_counter = 16;
+		m_s.misc_output.color_emulation  = true;
+		m_s.misc_output.enable_ram = true;
+		m_s.misc_output.horiz_sync_pol = true;
+		m_s.misc_output.vert_sync_pol = true;
+
+		m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = true;
+		m_s.attribute_ctrl.video_status_mux = 0;
+		m_s.line_offset = 80;
+		m_s.line_compare = 0x3FF;
+		m_s.vertical_display_end = 399;
+
+		m_s.attribute_ctrl.video_enabled = true;
+		m_s.attribute_ctrl.color_plane_enable = 0x0f;
+		m_s.pel.dac_state = 0x01;
+		m_s.pel.mask = 0xff;
+		m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
+
+		m_s.sequencer.reset1 = true;
+		m_s.sequencer.reset2 = true;
+		m_s.sequencer.extended_mem = true; // display mem greater than 64K
+		m_s.sequencer.odd_even = true; // use sequential addressing mode
+
+		m_s.plane_offset = 0;
+		m_s.plane_shift = 16;
+		m_s.dac_shift = 2;
+		m_s.last_bpp = 8;
+		m_s.htotal_usec = 31;
+		m_s.vtotal_usec = 14285;
+	}
 
 	m_s.vga_enabled = true;
-	m_s.blink_counter = 16;
-	m_s.misc_output.color_emulation  = true;
-	m_s.misc_output.enable_ram = true;
-	m_s.misc_output.horiz_sync_pol = true;
-	m_s.misc_output.vert_sync_pol = true;
-
-	m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = true;
-	m_s.attribute_ctrl.video_status_mux = 0;
-	m_s.line_offset = 80;
-	m_s.line_compare = 0x3FF;
-	m_s.vertical_display_end = 399;
-
-	m_s.attribute_ctrl.video_enabled = true;
-	m_s.attribute_ctrl.color_plane_enable = 0x0f;
-	m_s.pel.dac_state = 0x01;
-	m_s.pel.mask = 0xff;
-	m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
-
-	m_s.sequencer.reset1 = true;
-	m_s.sequencer.reset2 = true;
-	m_s.sequencer.extended_mem = true; // display mem greater than 64K
-	m_s.sequencer.odd_even = true; // use sequential addressing mode
-
-	m_s.plane_shift = 16;
-	m_s.dac_shift = 2;
-	m_s.last_bpp = 8;
-	m_s.htotal_usec = 31;
-	m_s.vtotal_usec = 14285;
-
-	m_s.max_xres = VGA_MAX_XRES;
-	m_s.max_yres = VGA_MAX_YRES;
-
-	m_s.memsize = 0x40000;
-	m_s.planesize = 0x10000;
-	m_s.memory = new uint8_t[m_s.memsize];
-
-	memset(m_s.memory, 0, m_s.memsize);
-	m_display->lock();
-	m_display->clear_screen();
-	m_display->unlock();
-	g_gui.vga_update();
-
-	m_s.num_x_tiles = m_s.max_xres / VGA_X_TILESIZE + ((m_s.max_xres % VGA_X_TILESIZE) > 0);
-	m_s.num_y_tiles = m_s.max_yres / VGA_Y_TILESIZE + ((m_s.max_yres % VGA_Y_TILESIZE) > 0);
-
-	m_s.vga_tile_updated = new bool[m_s.num_x_tiles * m_s.num_y_tiles];
-
-	for(uint y = 0; y < m_s.num_y_tiles; y++) {
-		for(uint x = 0; x < m_s.num_x_tiles; x++) {
-			SET_TILE_UPDATED(x, y, false);
-		}
-	}
+	clear_screen();
 }
 
 void VGA::power_off()
 {
-	m_display->lock();
-	m_display->clear_screen();
-	m_display->unlock();
-	g_gui.vga_update();
+	clear_screen();
 	g_machine.deactivate_timer(m_timer_id);
 }
 
@@ -217,19 +207,19 @@ void VGA::save_state(StateBuf &_state)
 	StateHeader h;
 	h.name = name();
 	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
+	_state.write(&m_s, h);
 
-	//vga_tile_updated
+	// tiles state
 	h.name = "VGA tupd";
-	h.data_size = sizeof(bool) * m_s.num_x_tiles * m_s.num_y_tiles;
-	_state.write(m_s.vga_tile_updated,h);
+	h.data_size = sizeof(bool) * m_num_x_tiles * m_num_y_tiles;
+	_state.write(m_tile_updated, h);
 
-	//memory
+	// memory
 	h.name = "VGA mem";
-	h.data_size = m_s.memsize;
-	_state.write(m_s.memory,h);
+	h.data_size = m_memsize;
+	_state.write(m_memory, h);
 
-	//display
+	// display
 	m_display->save_state(_state);
 }
 
@@ -239,26 +229,22 @@ void VGA::restore_state(StateBuf &_state)
 
 	StateHeader h;
 
-	//state object
-	delete[] m_s.memory;
-	delete[] m_s.vga_tile_updated;
+	// state object
 	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	//vga_tile_updated
-	m_s.vga_tile_updated = new bool[m_s.num_x_tiles * m_s.num_y_tiles];
+	// tiles state
 	h.name = "VGA tupd";
-	h.data_size = sizeof(bool) * m_s.num_x_tiles * m_s.num_y_tiles;
-	_state.read(m_s.vga_tile_updated,h);
+	h.data_size = sizeof(bool) * m_num_x_tiles * m_num_y_tiles;
+	_state.read(m_tile_updated,h);
 
-	//memory
-	m_s.memory = new uint8_t[m_s.memsize];
+	// memory
 	h.name = "VGA mem";
-	h.data_size = m_s.memsize;
-	_state.read(m_s.memory,h);
+	h.data_size = m_memsize;
+	_state.read(m_memory,h);
 
-	//display
+	// display
 	m_display->restore_state(_state);
 
 	double vfreq = 1000000.0 / m_s.vtotal_usec;
@@ -1085,7 +1071,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 
 	if(charmap_update) {
 		m_display->lock();
-		m_display->set_text_charmap(& m_s.memory[0x20000 + m_s.charmap_address]);
+		m_display->set_text_charmap(& m_memory[0x20000 + m_s.charmap_address]);
 		m_display->unlock();
 		m_s.vga_mem_updated = true;
 	}
@@ -1114,11 +1100,12 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 	} else {
 		byte_offset = saddr + x / 8 + (y * m_s.line_offset);
 	}
+	byte_offset %= 0x10000;
 	attribute =
-		(((plane[0][byte_offset%m_s.planesize] >> bit_no) & 0x01) << 0) |
-		(((plane[1][byte_offset%m_s.planesize] >> bit_no) & 0x01) << 1) |
-		(((plane[2][byte_offset%m_s.planesize] >> bit_no) & 0x01) << 2) |
-		(((plane[3][byte_offset%m_s.planesize] >> bit_no) & 0x01) << 3);
+		(((plane[0][byte_offset] >> bit_no) & 0x01) << 0) |
+		(((plane[1][byte_offset] >> bit_no) & 0x01) << 1) |
+		(((plane[2][byte_offset] >> bit_no) & 0x01) << 2) |
+		(((plane[3][byte_offset] >> bit_no) & 0x01) << 3);
 
 	attribute &= m_s.attribute_ctrl.color_plane_enable;
 	// undocumented feature ???: colors 0..7 high intensity, colors 8..15 blinking
@@ -1158,6 +1145,21 @@ void VGA::lower_interrupt()
 {
 	m_devices->pic()->lower_irq(VGA_IRQ);
 	m_s.CRTC.interrupt = false;
+}
+
+void VGA::clear_screen()
+{
+	memset(m_memory, 0, m_memsize);
+	m_display->lock();
+	m_display->clear_screen();
+	m_display->unlock();
+	g_gui.vga_update();
+
+	for(uint y = 0; y < m_num_y_tiles; y++) {
+		for(uint x = 0; x < m_num_x_tiles; x++) {
+			SET_TILE_UPDATED(x, y, false);
+		}
+	}
 }
 
 bool VGA::skip_update()
@@ -1226,7 +1228,7 @@ void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 		unsigned byte_offset = (plane * 65536)
 		    + (pixely * m_s.line_offset)
 		    + _pixel_x(pixelx);
-		return m_s.memory[(m_s.CRTC.start_address + byte_offset)%m_s.memsize];
+		return m_memory[(m_s.CRTC.start_address + byte_offset)%m_memsize];
 	},
 	false);
 }
@@ -1330,7 +1332,7 @@ void VGA::update(uint64_t _time)
 						byte_offset += (pixelx / 8);
 
 						unsigned bit_no = 7 - (pixelx % 8);
-						uint8_t palette_reg_val = (((m_s.memory[byte_offset%m_s.memsize]) >> bit_no) & 1);
+						uint8_t palette_reg_val = (((m_memory[byte_offset%m_memsize]) >> bit_no) & 1);
 						return m_s.attribute_ctrl.palette_reg[palette_reg_val];
 					},
 					false);
@@ -1339,10 +1341,10 @@ void VGA::update(uint64_t _time)
 					// output data in serial fashion with each display plane
 					// output on its associated serial output.  Standard EGA/VGA format
 					uint8_t *plane[4];
-					plane[0] = &m_s.memory[0 << m_s.plane_shift];
-					plane[1] = &m_s.memory[1 << m_s.plane_shift];
-					plane[2] = &m_s.memory[2 << m_s.plane_shift];
-					plane[3] = &m_s.memory[3 << m_s.plane_shift];
+					plane[0] = &m_memory[0 << m_s.plane_shift];
+					plane[1] = &m_memory[1 << m_s.plane_shift];
+					plane[2] = &m_memory[2 << m_s.plane_shift];
+					plane[3] = &m_memory[3 << m_s.plane_shift];
 					uint16_t line_compare = m_s.line_compare >> m_s.y_doublescan;
 
 					gfx_update([=] (unsigned pixelx, unsigned pixely)
@@ -1368,7 +1370,7 @@ void VGA::update(uint64_t _time)
 					byte_offset += (pixelx / 4);
 
 					uint8_t attribute = 6 - 2*(pixelx % 4);
-					uint8_t palette_reg_val = (m_s.memory[byte_offset%m_s.memsize]) >> attribute;
+					uint8_t palette_reg_val = (m_memory[byte_offset%m_memsize]) >> attribute;
 					palette_reg_val &= 3;
 					return m_s.attribute_ctrl.palette_reg[palette_reg_val];
 				},
@@ -1521,10 +1523,10 @@ void VGA::update(uint64_t _time)
 			cursor_x = ((cursor_address - start_address)/2) % (iWidth/cWidth);
 			cursor_y = ((cursor_address - start_address)/2) / (iWidth/cWidth);
 		}
-		m_display->text_update(m_s.text_snapshot, &m_s.memory[start_address], cursor_x, cursor_y, &tm_info);
+		m_display->text_update(m_s.text_snapshot, &m_memory[start_address], cursor_x, cursor_y, &tm_info);
 		if(m_s.vga_mem_updated) {
 			// screen updated, copy new VGA memory contents into text snapshot
-			memcpy(m_s.text_snapshot, &m_s.memory[start_address], tm_info.line_offset*rows);
+			memcpy(m_s.text_snapshot, &m_memory[start_address], tm_info.line_offset*rows);
 			m_s.vga_mem_updated = false;
 		}
 	}
@@ -1575,24 +1577,25 @@ uint8_t VGA::mem_read(uint32_t addr)
 
 	if(m_s.sequencer.chain_four) {
 		// Mode 13h: 320 x 200 256 color mode: chained pixel representation
-		return m_s.memory[(offset & ~0x03) + (offset % 4)*65536];
+		return m_memory[(offset & ~0x03) + (offset % 4)*65536];
 	}
 
-	plane0 = &m_s.memory[(0 << m_s.plane_shift) + m_s.plane_offset];
-	plane1 = &m_s.memory[(1 << m_s.plane_shift) + m_s.plane_offset];
-	plane2 = &m_s.memory[(2 << m_s.plane_shift) + m_s.plane_offset];
-	plane3 = &m_s.memory[(3 << m_s.plane_shift) + m_s.plane_offset];
+	plane0 = &m_memory[(0 << m_s.plane_shift) + m_s.plane_offset];
+	plane1 = &m_memory[(1 << m_s.plane_shift) + m_s.plane_offset];
+	plane2 = &m_memory[(2 << m_s.plane_shift) + m_s.plane_offset];
+	plane3 = &m_memory[(3 << m_s.plane_shift) + m_s.plane_offset];
 
 	/* addr between 0xA0000 and 0xAFFFF */
 	switch (m_s.graphics_ctrl.read_mode) {
 		case 0: /* read mode 0 */
+		{
 			m_s.graphics_ctrl.latch[0] = plane0[offset];
 			m_s.graphics_ctrl.latch[1] = plane1[offset];
 			m_s.graphics_ctrl.latch[2] = plane2[offset];
 			m_s.graphics_ctrl.latch[3] = plane3[offset];
-			return(m_s.graphics_ctrl.latch[m_s.graphics_ctrl.read_map_select]);
-			break;
 
+			return m_s.graphics_ctrl.latch[m_s.graphics_ctrl.read_map_select];
+		}
 		case 1: /* read mode 1 */
 		{
 			uint8_t color_compare, color_dont_care;
@@ -1619,10 +1622,9 @@ uint8_t VGA::mem_read(uint32_t addr)
 
 			return retval;
 		}
-
-		default:
-			return 0;
 	}
+
+	return  0;
 }
 
 void VGA::mem_write(uint32_t addr, uint8_t value)
@@ -1655,7 +1657,7 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			uint x_tileno, x_tileno2, y_tileno;
 
 			/* CGA 320x200x4 / 640x200x2 start */
-			m_s.memory[offset] = value;
+			m_memory[offset] = value;
 			offset -= m_s.CRTC.start_address;
 			if(offset>=0x2000) {
 				y_tileno = offset - 0x2000;
@@ -1708,7 +1710,7 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 			uint x_tileno, y_tileno;
 
 			// 320 x 200 256 color mode: chained pixel representation
-			m_s.memory[(offset & ~0x03) + (offset % 4)*65536] = value;
+			m_memory[(offset & ~0x03) + (offset % 4)*65536] = value;
 			if(m_s.line_offset > 0) {
 				offset -= m_s.CRTC.start_address;
 				x_tileno = (offset % m_s.line_offset) / (VGA_X_TILESIZE/2);
@@ -1726,10 +1728,10 @@ void VGA::mem_write(uint32_t addr, uint8_t value)
 
 	/* addr between 0xA0000 and 0xAFFFF */
 
-	plane0 = &m_s.memory[(0 << m_s.plane_shift) + m_s.plane_offset];
-	plane1 = &m_s.memory[(1 << m_s.plane_shift) + m_s.plane_offset];
-	plane2 = &m_s.memory[(2 << m_s.plane_shift) + m_s.plane_offset];
-	plane3 = &m_s.memory[(3 << m_s.plane_shift) + m_s.plane_offset];
+	plane0 = &m_memory[(0 << m_s.plane_shift) + m_s.plane_offset];
+	plane1 = &m_memory[(1 << m_s.plane_shift) + m_s.plane_offset];
+	plane2 = &m_memory[(2 << m_s.plane_shift) + m_s.plane_offset];
+	plane3 = &m_memory[(3 << m_s.plane_shift) + m_s.plane_offset];
 
 	switch (m_s.graphics_ctrl.write_mode) {
 		uint i;

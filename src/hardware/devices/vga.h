@@ -157,12 +157,7 @@ protected:
 		uint line_compare;
 		uint vertical_display_end;
 		uint blink_counter;
-		bool  *vga_tile_updated;
-		uint8_t *memory;
-		uint32_t memsize;
-		uint32_t planesize;
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
-		uint8_t tile[VGA_X_TILESIZE * VGA_Y_TILESIZE * 4]; /**< Currently allocates the tile as large as needed. */
 		uint16_t charmap_address;
 		bool x_dotclockdiv2;
 		bool y_doublescan;
@@ -187,15 +182,16 @@ protected:
 		uint16_t last_yres;
 		uint8_t last_bpp;
 		uint8_t last_msl;
-		// maximum resolution and number of tiles
-		uint16_t max_xres;
-		uint16_t max_yres;
-		uint16_t num_x_tiles;
-		uint16_t num_y_tiles;
 	} m_s;  // state information
 
+	uint16_t m_max_xres;
+	uint16_t m_max_yres;
+	uint16_t m_num_x_tiles;
+	uint16_t m_num_y_tiles;
+	uint32_t m_memsize;
+	uint8_t *m_memory;
+	bool *m_tile_updated;
 	int m_timer_id;
-
 	VGADisplay * m_display;
 
 public:
@@ -204,7 +200,7 @@ public:
 
 	void install();
 	void remove();
-	void reset(uint type);
+	void reset(unsigned type);
 	uint16_t read(uint16_t address, uint io_len);
 	void write(uint16_t address, uint16_t value, uint io_len);
 	void power_off();
@@ -230,6 +226,7 @@ private:
 	bool skip_update();
 	void raise_interrupt();
 	void lower_interrupt();
+	void clear_screen();
 
 	template<typename FN>
 	void gfx_update(FN _get_pixel, bool _force_upd);
