@@ -310,7 +310,7 @@ uint GUI::mode()
 void GUI::sig_state_restored()
 {
 	m_windows.interface->sig_state_restored();
-	vga_update();
+	vga_updated();
 }
 
 void GUI::toggle_fullscreen()
@@ -1121,9 +1121,8 @@ void GUI::shutdown()
 
 	ms_rocket_mutex.lock();
 	m_rocket_context->RemoveReference();
-	ms_rocket_mutex.unlock();
-
     Rocket::Core::Shutdown();
+	ms_rocket_mutex.unlock();
 
     shutdown_SDL();
 }

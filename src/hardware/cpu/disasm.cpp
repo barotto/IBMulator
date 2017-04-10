@@ -449,7 +449,7 @@ uint8_t Disasm::getbyte(void)
 	if(m_memory == nullptr) {
 		return 0;
 	}
-	return m_memory->read_notraps<1>(getbyte_mac++);
+	return m_memory->dbg_read_byte(getbyte_mac++);
 }
 
 /*

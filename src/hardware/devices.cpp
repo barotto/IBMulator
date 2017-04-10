@@ -20,7 +20,7 @@
 #include "ibmulator.h"
 #include "devices.h"
 #include "iodevice.h"
-#include "hardware/cpu/core.h"
+#include "hardware/cpu.h"
 #include "machine.h"
 #include "program.h"
 #include <cstring>
@@ -30,6 +30,7 @@
 #include "devices/pit.h"
 #include "devices/dma.h"
 #include "devices/vga.h"
+#include "devices/cf62011bpc.h"
 #include "devices/keyboard.h"
 #include "devices/floppy.h"
 #include "devices/storagectrl_ps1.h"
@@ -72,12 +73,12 @@ void Devices::init(Machine *_machine)
 	m_dma = install<DMA>();
 	m_pic = install<PIC>();
 	m_pit = install<PIT>();
-	m_vga = install<VGA>(); // TODO other VGA models?
 	m_cmos = install<CMOS>();
 	install<Keyboard>();
 
-	// the sysboard will be installed in the config_changed
+	// sysboard and vga will be installed in the config_changed
 	m_sysboard = nullptr;
+	m_vga = nullptr;
 }
 
 void Devices::reset(uint _signal)
@@ -98,17 +99,27 @@ void Devices::config_changed()
 {
 	// install the system board
 	if(m_sysboard) {
+		remove(m_vga->name());
+		m_vga = nullptr;
 		remove(m_sysboard->name());
 		m_sysboard = nullptr;
 	}
+	double bus_timings = g_cpu.frequency()/8.0; // ISA bus 8MHz
 	switch(m_machine->type()) {
 		case PS1_2121:
+			m_vga = install<CF62011BPC>();
+			m_vga->set_timings(bus_timings, VGA_16BIT_SLOW);
+			//m_vga = install<VGA>();
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
 		case PS1_2011:
+			m_vga = install<VGA>();
+			m_vga->set_timings(bus_timings, VGA_8BIT);
 			m_sysboard = install<SystemBoard_PS1_2011>();
 			break;
 		default:
+			m_vga = install<VGA>();
+			m_vga->set_timings(bus_timings, VGA_8BIT);
 			m_sysboard = install<SystemBoard>();
 			break;
 	}

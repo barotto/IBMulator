@@ -262,8 +262,8 @@ enum SegRegIndex {
 #define GET_BASE(S)	 g_cpucore.get_seg_base(REGI_ ## S)
 #define GET_LIMIT(S) g_cpucore.get_seg_limit(REGI_ ## S)
 
-#define GET_PHYADDR(SEG,OFF) g_cpucore.get_phyaddr(REGI_ ## SEG , OFF)
 #define GET_LINADDR(SEG,OFF) g_cpucore.get_linaddr(REGI_ ## SEG , OFF)
+#define DBG_GET_PHYADDR(SEG,OFF) g_cpucore.dbg_get_phyaddr(REGI_ ## SEG , OFF)
 
 #define IP_CHAIN_SIZE 10
 
@@ -328,7 +328,6 @@ protected:
 		m_eflags = (m_eflags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
 	}
 
-	uint32_t translate_linear(uint32_t _linear_addr) const;
 	void handle_mode_change();
 
 public:
@@ -433,7 +432,6 @@ public:
 	inline uint32_t get_seg_limit(unsigned _segidx) const { return m_segregs[_segidx].desc.limit; }
 
 	inline uint32_t get_linaddr(unsigned _segidx, uint32_t _offset) const { return get_seg_base(_segidx) + _offset; }
-	       uint32_t get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory=nullptr) const;
 
 	// convenience funcs used by CPUDebugger
 	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }
@@ -468,6 +466,8 @@ public:
 	inline SegReg & get_GS() { return m_segregs[REGI_GS]; }
 	inline SegReg & get_TR() { return m_segregs[REGI_TR]; }
 	inline SegReg & get_LDTR() { return m_segregs[REGI_LDTR]; }
+
+	uint32_t dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory=nullptr) const;
 
 	void save_state(StateBuf &_state) const;
 	void restore_state(StateBuf &_state);

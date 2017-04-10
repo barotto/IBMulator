@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2017  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -17,44 +17,33 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_SYSTEM_BOARD_PS1_2121_H
-#define IBMULATOR_HW_SYSTEM_BOARD_PS1_2121_H
+#ifndef IBMULATOR_HW_CF62011BPC_H
+#define IBMULATOR_HW_CF62011BPC_H
 
-#include "systemboard.h"
-class FloppyCtrl;
+#include "vga.h"
 
-class SystemBoard_PS1_2121 : public SystemBoard
+class CF62011BPC : public VGA
 {
-	IODEVICE(SystemBoard_PS1_2121, "PS/1 2121 System Board")
+	IODEVICE(CF62011BPC, "TI CF62011BPC")
 
-private:
+protected:
 	struct {
-		// Ports 0x00E0-0x00E1: Memory banks control
-		//   32 banks of 512K each for a maximum of 16MB
-		//   bit 7 = 1  on the last active bank
-		uint8_t E0_addr;
-		uint8_t E1_regs[32];
+		uint8_t xga_reg[0xF];
 	} m_s;
 
-	FloppyCtrl *m_floppy;
-
 public:
-	SystemBoard_PS1_2121(Devices* _dev);
-	~SystemBoard_PS1_2121() {}
+	CF62011BPC(Devices *_dev);
+	~CF62011BPC();
 
 	void install();
 	void remove();
-
-	void reset(unsigned type);
-	void config_changed();
+	void reset(unsigned _type);
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
-
-private:
-	void update_board_state();
+protected:
+	static uint32_t s_read_byte(uint32_t _addr, void *_priv);
+	static void s_write_byte(uint32_t _addr, uint32_t _value, void *_priv);
 };
 
 #endif

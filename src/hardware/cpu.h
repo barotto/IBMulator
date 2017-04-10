@@ -199,8 +199,8 @@ protected:
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
 
-	unsigned get_execution_cycles(bool _memtx);
-	unsigned get_io_cycles(unsigned _io_time);
+	int get_execution_cycles(bool _memtx);
+	int get_io_cycles(int _io_time);
 
 public:
 

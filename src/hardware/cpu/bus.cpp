@@ -26,9 +26,6 @@
 
 CPUBus g_cpubus;
 
-#define CPUBUS_STATE_NAME "CPUBus"
-#define CPU_PQ_ODDPENALTY ((!m_s.pq_valid) && (m_s.pq_tail & 1))
-
 
 CPUBus::CPUBus()
 : m_cycles_ahead(0)
@@ -39,7 +36,6 @@ CPUBus::CPUBus()
 
 void CPUBus::init()
 {
-	m_write_queue.reserve(10);
 }
 
 void CPUBus::reset()
@@ -52,9 +48,9 @@ void CPUBus::reset()
 void CPUBus::config_changed()
 {
 	ini_enum_map_t cpu_busw = {
-		{ "286",   2 },
-		{ "386SX", 2 },
-		{ "386DX", 4 }
+		{ "286",   16 },
+		{ "386SX", 16 },
+		{ "386DX", 32 }
 	};
 
 	/* http://www.rcollins.org/secrets/PrefetchQueue.html
@@ -80,42 +76,25 @@ void CPUBus::config_changed()
 	m_pq_size = cpu_pqs[g_cpu.model()];
 	m_pq_thres = cpu_pqt[g_cpu.model()];
 
+	if(m_width == 16) {
+		fill_pq = &CPUBus::fill_pq_16;
+	} else {
+		fill_pq = &CPUBus::fill_pq_32;
+	}
+
 	PINFOF(LOG_V1, LOG_CPU, "  Bus width: %d-bit, Prefetch Queue: %d byte\n",
-			m_width*8, m_pq_size);
+			m_width, m_pq_size);
 }
 
 void CPUBus::save_state(StateBuf &_state)
 {
-	StateHeader h;
-	h.name = CPUBUS_STATE_NAME;
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
+	_state.write(&m_s, {sizeof(m_s), "CPUBus"});
 }
 
 void CPUBus::restore_state(StateBuf &_state)
 {
-	StateHeader h;
-	h.name = CPUBUS_STATE_NAME;
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s,h);
-	invalidate_pq();
-}
-
-void CPUBus::pq_fill(uint btoread)
-{
-	uint pos = (get_pq_cur_index() + get_pq_cur_size()) % m_pq_size;
-	while(btoread--) {
-		uint32_t addr = m_s.pq_tail;
-		m_s.pq[pos++] = g_memory.read<1>(addr);
-		m_s.pq_tail++;
-		pos %= m_pq_size;
-	}
-	int hadv = m_s.pq_tail-m_s.pq_head-m_pq_size;
-	if(hadv>0) {
-		m_s.pq_head += hadv;
-		m_s.pq_headpos = (m_s.pq_headpos+hadv) % m_pq_size;
-	}
-	m_s.pq_valid = true;
+	_state.read(&m_s, {sizeof(m_s), "CPUBus"});
+	//invalidate_pq(); why?
 }
 
 void CPUBus::reset_pq()
@@ -128,126 +107,259 @@ void CPUBus::reset_pq()
 	} else {
 		m_s.cseip = REG_CS.desc.base + REG_EIP;
 	}
-	m_s.pq_head = m_s.cseip;
-	m_s.pq_headpos = 0;
-	m_s.pq_tail = m_s.cseip;
+	invalidate_pq();
 	m_cycles_ahead = 0;
 }
 
 void CPUBus::update(int _cycles)
 {
+	if(m_mem_r_cycles || m_mem_w_cycles) {
+		m_pmem_cycles += m_cycles_ahead;
+		m_cycles_ahead = 0;
+	}
 	if(m_s.pq_valid) {
 		_cycles -= m_cycles_ahead;
 	}
-	if(_cycles>0) {
+	if(_cycles > 0) {
 		m_cycles_ahead = 0;
-		uint free_space = get_pq_free_space();
-		if(free_space >= m_pq_thres) {
-			uint bytes = CPU_PQ_ODDPENALTY;
-			_cycles -= DRAM_TX_CYCLES*bytes;
-			while(_cycles>0) {
-				bytes += 2;
-				_cycles -= DRAM_TX_CYCLES;
-			}
-			if(bytes>free_space) {
-				bytes = free_space;
-			} else {
-				m_cycles_ahead = (uint)(-1 * _cycles);
-			}
-			pq_fill(bytes);
+		if(USE_PREFETCH_QUEUE && (pq_free_space() >= m_pq_thres)) {
+			_cycles -= (this->*fill_pq)(0, _cycles);
 		}
-	} else {
-		m_cycles_ahead = (uint)(-1 * _cycles);
 	}
-	//flush the write queue
-	for(wq_data& data : m_write_queue) {
-		if(data.len==1) {
-			g_memory.write<1>(data.address, data.data, data.trap_len);
-		} else if (data.len==2) {
-			g_memory.write<2>(data.address, data.data, data.trap_len);
+	if(_cycles <= 0) {
+		m_cycles_ahead = (-1 * _cycles);
+	}
+	m_cycles_ahead += m_mem_w_cycles;
+}
+
+int CPUBus::fill_pq_16(int _amount, int _cycles)
+{
+	uint8_t *pq_ptr;
+	if(m_s.pq_valid && m_s.pq_len) {
+		// move valid bytes to the left
+		int move = m_s.cseip - m_s.pq_left;
+		int len = m_s.pq_len;
+		pq_ptr = &m_s.pq[0];
+		while(len--) {
+			*pq_ptr = *(pq_ptr+move);
+			pq_ptr++;
+		}
+	}
+	m_s.pq_left = m_s.cseip;
+	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - 2;
+	int c = 0;
+	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
+	// fill until the requested amount is reached or there are available cycles
+	// and there are free space in the queue
+	while((_amount>0 || _cycles>c) && m_s.pq_tail <= pq_limit) {
+		int adv = 2 - (m_s.pq_tail & 0x1);
+		if(adv == 1) {
+			*pq_ptr++ = g_memory.read<1>(m_s.pq_tail, c);
 		} else {
-			assert(data.len==4);
-			g_memory.write<4>(data.address, data.data, data.trap_len);
+			*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
 		}
-		m_cycles_ahead += data.cycles;
+		pq_ptr += adv;
+		m_s.pq_tail += adv;
+		_amount -= adv;
+		m_s.pq_len += adv;
 	}
-	m_write_queue.clear();
+	m_s.pq_valid = true;
+	return c;
 }
 
-uint8_t CPUBus::fetchb()
+int CPUBus::fill_pq_32(int _amount, int _cycles)
 {
-	uint8_t b;
-	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.cseip <= m_s.pq_tail);
-		if(m_s.cseip == m_s.pq_tail) {
-			//the pq is empty
-			if(CPU_PQ_ODDPENALTY) {
-				pq_fill(1);
-			} else {
-				pq_fill(2);
-			}
-			m_dram_r += 1;
-			if(m_cycles_ahead) {
-				m_fetch_cycles += m_cycles_ahead;
-				m_cycles_ahead = 0;
-			}
+	uint8_t *pq_ptr;
+	if(m_s.pq_valid && m_s.pq_len) {
+		// move valid bytes to the left
+		int move = m_s.cseip - m_s.pq_left;
+		int len = m_s.pq_len;
+		pq_ptr = &m_s.pq[0];
+		while(len--) {
+			*pq_ptr = *(pq_ptr+move);
+			pq_ptr++;
 		}
-		b = m_s.pq[get_pq_cur_index()];
+	}
+	m_s.pq_left = m_s.cseip;
+	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - 2;
+	int c = 0;
+	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
+	// fill until the requested amount is reached or there are available cycles
+	// and there are free space in the queue
+	while((_amount>0 || _cycles>c) && m_s.pq_tail <= pq_limit) {
+		int adv = 4 - (m_s.pq_tail & 0x3);
+		switch(adv) {
+			case 4: // dword aligned
+				*((uint32_t*)pq_ptr) = g_memory.read<4>(m_s.pq_tail, c);
+				break;
+			case 3: { // 1-byte unaligned (left)
+				uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
+				*pq_ptr = v >> 8;
+				*((uint16_t*)(pq_ptr+1)) = v >> 16;
+				break; }
+			case 2: // word aligned
+				*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
+				break;
+			case 1: // 1-byte unaligned (right)
+				*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
+				break;
+		}
+		pq_ptr += adv;
+		m_s.pq_tail += adv;
+		_amount -= adv;
+		m_s.pq_len += adv;
+	}
+	m_s.pq_valid = true;
+	return c;
+}
+
+template<>
+uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles)
+{
+	if(((_addr&0x1)==0) || (m_width==32 && ((_addr&0x3)==1))) {
+		// even address or a word inside a dword boundary on a 32bit bus
+		return g_memory.read_t<2>(_addr, 2, _cycles);
+	}
+	// odd address and (not 32-bit bus or between dwords)
+	return (
+		g_memory.read_t<1>(_addr,  2, _cycles) |
+		g_memory.read<1>(  _addr+1,   _cycles) << 8
+	);
+}
+
+template<>
+uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles)
+{
+	// this is called only for unaligned cross page dword reads
+	// see cpu/executor/memory.cpp
+	if(m_width == 16) {
+		if(_addr&0x1) {
+			return g_memory.read<1>(_addr,   _cycles) |
+			       g_memory.read<2>(_addr+1, _cycles) << 8;
+		}
+		return g_memory.read<2>(_addr,   _cycles) |
+		       g_memory.read<1>(_addr+2, _cycles) << 16;
 	} else {
-		b = g_memory.read<1>(m_s.cseip);
-		m_dram_r++;
-	}
-	m_s.cseip++;
-	m_s.eip++;
-	return b;
-}
-
-uint16_t CPUBus::fetchw()
-{
-	uint8_t b0, b1;
-	if(USE_PREFETCH_QUEUE) {
-		assert(m_s.cseip <= m_s.pq_tail);
-		if(m_s.cseip >= m_s.pq_tail - 1) {
-			//the pq is empty or not full enough
-			if(CPU_PQ_ODDPENALTY) {
-				m_dram_r += 2;
-				pq_fill(3);
-			} else {
-				m_dram_r += 1;
-				pq_fill(2);
-			}
-			if(m_cycles_ahead) {
-				m_fetch_cycles += m_cycles_ahead;
-				m_cycles_ahead = 0;
-			}
+		if(_addr&0x1) {
+			return g_memory.read<4>(_addr-1, _cycles) >> 8;
 		}
-		b0 = m_s.pq[get_pq_cur_index()];
-		m_s.cseip++;
-		b1 = m_s.pq[get_pq_cur_index()];
-		m_s.cseip++;
-	} else {
-		b0 = g_memory.read<1>(m_s.cseip);
-		b1 = g_memory.read<1>(m_s.cseip+1);
-		m_dram_r += 1+(m_s.cseip & 1);
-		m_s.cseip += 2;
+		assert((_addr&0x3) == 0);
+		return g_memory.read<4>(_addr, _cycles) & 0x00FFFFFF;
 	}
-	m_s.eip += 2;
-	return uint16_t(b1)<<8 | b0;
 }
 
-uint32_t CPUBus::fetchdw()
+template<>
+uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles)
 {
-	uint32_t w0, w1;
-	//TODO STUB
-	w0 = fetchw();
-	w1 = fetchw();
-	return (w1<<16) | w0;
+	if(m_width == 16) {
+		if((_addr&0x1) == 0) {
+			// word aligned
+			return (
+				g_memory.read_t<2>(_addr,   4, _cycles) |
+				g_memory.read<2>(  _addr+2,    _cycles) << 16
+			);
+		}
+		return (
+			g_memory.read_t<1>(_addr,   4, _cycles) |
+			g_memory.read<2>(  _addr+1,    _cycles) << 8   |
+			g_memory.read<1>(  _addr+3,    _cycles) << 24
+		);
+	} else {
+		if((_addr&0x3) == 0) {
+			// dword aligned
+			return g_memory.read_t<4>(_addr, 4, _cycles);
+		}
+		uint32_t v;
+		if((_addr&0x3) == 2) {
+			// word aligned
+			v = g_memory.read<2>(_addr,   _cycles) |
+				g_memory.read<2>(_addr+2, _cycles) << 16;
+		} else if((_addr&0x3) == 1) {
+			// 1-byte unaligned (left)
+			v = g_memory.read<4>(_addr-1, _cycles) >> 8 |
+				g_memory.read<1>(_addr+3, _cycles) << 24;
+		} else {
+			// 1-byte unaligned (right)
+			v = g_memory.read<1>(_addr,   _cycles) |
+				g_memory.read<4>(_addr+1, _cycles) << 8;
+		}
+		g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
+		return v;
+	}
+}
+
+template<>
+void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles)
+{
+	if(((_addr&0x1)==0) || (m_width==32 && ((_addr&0x3)==1))) {
+		// even address or a word inside a dword boundary on a 32bit bus
+		g_memory.write_t<2>(_addr, _data, 2, _cycles);
+		return;
+	}
+	// odd address or word across two dwords on 32-bit bus
+	g_memory.write_t<1>(_addr,   _data,   2, _cycles);
+	g_memory.write<1>(  _addr+1, _data>>8,   _cycles);
+}
+
+template<>
+void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles)
+{
+	// this is called only for unaligned cross page dword writes
+	// see cpu/executor/memory.cpp
+	if(_addr&0x1) {
+		g_memory.write<1>(_addr,   _data,    _cycles);
+		g_memory.write<2>(_addr+1, _data>>8, _cycles);
+	} else {
+		g_memory.write<2>(_addr,   _data,     _cycles);
+		g_memory.write<1>(_addr+2, _data>>16, _cycles);
+	}
+}
+
+template<>
+void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
+{
+	if(m_width == 16) {
+		if((_addr&0x1) == 0) {
+			// word aligned
+			g_memory.write_t<2>(_addr,   _data,    4, _cycles);
+			g_memory.write<2>(  _addr+2, _data>>16,   _cycles);
+		} else {
+			g_memory.write_t<1>(_addr,   _data,    4, _cycles);
+			g_memory.write<2>(  _addr+1, _data>>8,    _cycles);
+			g_memory.write<1>(  _addr+3, _data>>24,   _cycles);
+		}
+	} else {
+		if((_addr&0x3) == 0) {
+			// dword aligned
+			g_memory.write_t<4>(_addr, _data, 4, _cycles);
+			return;
+		}
+		int c;
+		if((_addr&0x3) == 2) {
+			// word aligned
+			g_memory.write<2>(_addr,   _data,     _cycles);
+			g_memory.write<2>(_addr+2, _data>>16, _cycles);
+		} else if((_addr&0x3) == 1) {
+			// 1-byte unaligned (left)
+			uint32_t v = g_memory.read<1>(_addr-1, c);
+			v |= (_data<<8);
+			g_memory.write<4>(_addr-1, v,         _cycles);
+			g_memory.write<1>(_addr+3, _data>>24, _cycles);
+		} else {
+			// 1-byte unaligned (right)
+			g_memory.write<1>(_addr, _data, _cycles);
+			uint32_t v = g_memory.read<1>(_addr+4, c);
+			v = (v<<24) | (_data>>8);
+			g_memory.write<4>(_addr+1, v, _cycles);
+		}
+		g_memory.check_trap(_addr, MEM_TRAP_READ, _data, 4);
+	}
 }
 
 int CPUBus::write_pq_to_logfile(FILE *_dest)
 {
 	int res = 0;
-	if(m_s.pq_valid) {
+	if(pq_is_valid()) {
 		res = fprintf(_dest, "v");
 	} else {
 		res = fprintf(_dest, " ");
@@ -256,7 +368,7 @@ int CPUBus::write_pq_to_logfile(FILE *_dest)
 		return -1;
 	}
 
-	if(is_pq_empty()) {
+	if(pq_is_empty()) {
 		res = fprintf(_dest, "e");
 	} else {
 		res = fprintf(_dest, " ");
@@ -269,13 +381,10 @@ int CPUBus::write_pq_to_logfile(FILE *_dest)
 		return -1;
 	}
 
-	uint idx = get_pq_cur_index();
-	for(uint i=0; i<get_pq_cur_size(); i++) {
-		if(fprintf(_dest, "%02X ", m_s.pq[idx]) < 0) {
+	for(int i=0; i<m_s.pq_len; i++) {
+		if(fprintf(_dest, "%02X ", m_s.pq[pq_idx()+i]) < 0) {
 			return -1;
 		}
-		idx = (idx+1)%m_pq_size;
 	}
-
 	return 0;
 }

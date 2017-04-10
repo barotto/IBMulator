@@ -49,8 +49,14 @@
 
 #if !defined(_MSC_VER)
 	#define GCC_ATTRIBUTE(x) __attribute__ ((x))
+	#define LIKELY(x)    __builtin_expect((x),1)
+	#define UNLIKELY(x)  __builtin_expect((x),0)
+	#define ALWAYS_INLINE GCC_ATTRIBUTE(always_inline)
 #else
 	#define GCC_ATTRIBUTE(x)
+	#define LIKELY(x)   (x)
+	#define UNLIKELY(x) (x)
+	#define ALWAYS_INLINE
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER>=1300)

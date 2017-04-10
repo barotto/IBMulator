@@ -190,6 +190,7 @@ void Machine::init()
 		reset(CPU_SOFT_RESET);
 	});
 	g_memory.init();
+	m_sysrom.init();
 	g_devices.init(this);
 }
 
@@ -259,7 +260,7 @@ void Machine::config_changed()
 		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				"Unable to load the SYSTEM ROM.\nUpdate " PACKAGE ".ini with the correct path.",
-		        nullptr);
+				nullptr);
 		throw;
 	}
 
@@ -272,6 +273,7 @@ void Machine::config_changed()
 	PINFOF(LOG_V0, LOG_MACHINE, "Selected model: %s\n", model().print().c_str());
 
 	g_cpu.config_changed();
+	m_sysrom.config_changed();
 	g_memory.config_changed();
 	g_devices.config_changed();
 
@@ -584,7 +586,7 @@ void Machine::memdump(uint32_t _base, uint32_t _len)
 		uint32_t base = _base;
 		if(len==0) {
 			base = 0;
-			len = g_memory.get_ram_size();
+			len = g_memory.get_buffer_size();
 		}
 		ss << std::hex << std::uppercase << std::internal << std::setfill('0');
 		ss << std::setw(6) << base << "-" << std::setw(4) << len;

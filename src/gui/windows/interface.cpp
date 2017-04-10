@@ -173,7 +173,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 
 	m_display.glintf = GL_RGBA;
 	m_display.glf = GL_RGBA;
-	m_display.gltype = GL_UNSIGNED_BYTE;
+	m_display.gltype = GL_UNSIGNED_INT_8_8_8_8_REV;
 	GLCALL( glGenTextures(1, &m_display.tex) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
 	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
@@ -196,9 +196,6 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 
 	m_display.vga_updated = true;
-
-	//at this point the VGA is already initialised (see machine::init)
-	m_machine->devices().device<VGA>()->attach_display(&m_display.vga);
 
 	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
@@ -487,7 +484,7 @@ void Interface::render_monitor()
 		m_display.vga.unlock();
 
 		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );
-		if(m_display.vga_res != vga_res) {
+		if(!(m_display.vga_res == vga_res)) {
 			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
 					vga_res.x, vga_res.y,
 					0, m_display.glf, m_display.gltype,

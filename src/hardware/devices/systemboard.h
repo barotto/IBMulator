@@ -30,24 +30,12 @@ class SystemBoard : public IODevice
 
 protected:
 	struct {
+		// Programmable Option Select registers (raw values)
+		uint8_t POS[6];
+
 		// Port 0x0094
 		bool VGA_enable;   // bit 5, VGA enable/setup mode
 		bool board_enable; // bit 7, system board enable/setup mode
-
-		// POS register 0 & 1 (Adapter Identification)
-		uint16_t adapter_ID;
-
-		// system board POS register 2
-		bool VGA_awake;    // bit 0, VGA sleep bit
-		bool POS2_bit1;    // bit 1, unknown/unused (floppy enabled?)
-		bool COM_enabled;  // bit 2, COM enabled
-		bool COM_port;     // bit 3, COM port: COM1, COM2
-		bool LPT_enabled;  // bit 4, LPT enabled
-		uint8_t LPT_port;  // bit 5-6, LPT port: LPT1, LPT2, LPT3
-		uint8_t LPT_mode;  // bit 7, LPT normal/extended mode
-
-		// other POS registers (unused by the default board)
-		uint8_t POS_3, POS_4, POS_5;
 
 		//the POST code
 		uint8_t POST;
@@ -68,7 +56,12 @@ protected:
 	virtual void update_POS4_state() {}
 	virtual void update_POS5_state() {}
 	virtual void update_board_state();
-	virtual void update_state();
+
+	virtual void reset_POS2_state();
+	virtual void reset_POS3_state() {}
+	virtual void reset_POS4_state() {}
+	virtual void reset_POS5_state() {}
+	virtual void reset_board_state();
 
 	virtual std::string debug_POS_decode(int _posreg, uint8_t _value);
 

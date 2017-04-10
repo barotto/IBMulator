@@ -77,7 +77,7 @@ const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _s
 
 	static char empty = 0;
 
-	uint32_t start = GET_PHYADDR(CS, _ip);
+	uint32_t start = DBG_GET_PHYADDR(CS, _ip);
 	char dline[200];
 	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory, nullptr, 0, false);
 	if(_size!=nullptr) {
@@ -138,19 +138,19 @@ void SysDebugger286::update()
 	uint8_t buf[len];
 
 	// no #PF in 286 mode
-	read_memory(GET_PHYADDR(CS, REG_IP), buf, len);
+	read_memory(DBG_GET_PHYADDR(CS, REG_IP), buf, len);
 	m_memory.cs_eip->SetInnerRML(format_words(buf, len));
 	m_memory.cs_eip_str->SetInnerRML(format_words_string(buf, len));
 
-	read_memory(GET_PHYADDR(DS, REG_SI), buf, len);
+	read_memory(DBG_GET_PHYADDR(DS, REG_SI), buf, len);
 	m_memory.ds_esi->SetInnerRML(format_words(buf, len));
 	m_memory.ds_esi_str->SetInnerRML(format_words_string(buf, len));
 
-	read_memory(GET_PHYADDR(ES, REG_DI), buf, len);
+	read_memory(DBG_GET_PHYADDR(ES, REG_DI), buf, len);
 	m_memory.es_edi->SetInnerRML(format_words(buf, len));
 	m_memory.es_edi_str->SetInnerRML(format_words_string(buf, len));
 
-	read_memory(GET_PHYADDR(SS, REG_SP), buf, len);
+	read_memory(DBG_GET_PHYADDR(SS, REG_SP), buf, len);
 	m_memory.ss_esp->SetInnerRML(format_words(buf, len));
 	m_memory.ss_esp_str->SetInnerRML(format_words_string(buf, len));
 

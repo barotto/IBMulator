@@ -1144,7 +1144,7 @@ void CPUExecutor::ENTER_o16()
 		 * final value of the stack pointer (within the current stack segment)
 		 * would do so.
 		 */
-		mem_access(REG_SS.desc.base + REG_ESP, 2, IS_USER_PL, true);
+		mmu_lookup(REG_SS.desc.base + REG_ESP, 2, IS_USER_PL, true);
 	} else {
 		uint16_t bp = REG_BP;
 		if(nesting_level > 0) {
@@ -1157,7 +1157,7 @@ void CPUExecutor::ENTER_o16()
 		}
 
 		REG_SP = REG_SP - alloc_size;
-		mem_access(REG_SS.desc.base + REG_SP, 2, IS_USER_PL, true);
+		mmu_lookup(REG_SS.desc.base + REG_SP, 2, IS_USER_PL, true);
 	}
 
 	REG_BP = frame_ptr;
@@ -1187,7 +1187,7 @@ void CPUExecutor::ENTER_o32()
 		 * final value of the stack pointer (within the current stack segment)
 		 * would do so.
 		 */
-		mem_access(REG_SS.desc.base + REG_ESP, 4, IS_USER_PL, true);
+		mmu_lookup(REG_SS.desc.base + REG_ESP, 4, IS_USER_PL, true);
 	} else {
 		uint16_t bp = REG_BP;
 		if(nesting_level > 0) {
@@ -1200,7 +1200,7 @@ void CPUExecutor::ENTER_o32()
 		}
 
 		REG_SP = REG_SP - alloc_size;
-		mem_access(REG_SS.desc.base + REG_SP, 4, IS_USER_PL, true);
+		mmu_lookup(REG_SS.desc.base + REG_SP, 4, IS_USER_PL, true);
 	}
 
 	REG_EBP = frame_ptr;
@@ -1588,7 +1588,7 @@ void CPUExecutor::INSB(uint32_t _offset)
 	 * override is possible.
 	 */
 	seg_check(REG_ES, _offset, 1, true);
-	mem_access(REG_ES.desc.base + _offset, 1, IS_USER_PL, true);
+	mmu_lookup(REG_ES.desc.base + _offset, 1, IS_USER_PL, true);
 
 	uint8_t value = g_devices.read_byte(REG_DX);
 	write_byte(value);
@@ -1623,7 +1623,7 @@ void CPUExecutor::INSW(uint32_t _offset)
 	}
 
 	seg_check(REG_ES, _offset, 2, true);
-	mem_access(REG_ES.desc.base + _offset, 2, IS_USER_PL, true);
+	mmu_lookup(REG_ES.desc.base + _offset, 2, IS_USER_PL, true);
 
 	uint16_t value = g_devices.read_word(REG_DX);
 	write_word(value);
@@ -1658,7 +1658,7 @@ void CPUExecutor::INSD(uint32_t _offset)
 	}
 
 	seg_check(REG_ES, _offset, 4, true);
-	mem_access(REG_ES.desc.base + _offset, 4, IS_USER_PL, true);
+	mmu_lookup(REG_ES.desc.base + _offset, 4, IS_USER_PL, true);
 
 	uint32_t value = g_devices.read_dword(REG_DX);
 	write_dword(value);
@@ -1734,8 +1734,8 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 	if(_vector == 0x21 && ah == 0x4B) {
 		const char *pname;
 		try {
-			uint32_t nameaddr = GET_PHYADDR(DS, REG_DX);
-			pname = (char*)g_memory.get_phy_ptr(nameaddr);
+			uint32_t nameaddr = DBG_GET_PHYADDR(DS, REG_DX);
+			pname = (char*)g_memory.get_buffer_ptr(nameaddr);
 		} catch(CPUException &) {
 			pname = "[unknown]";
 		}
@@ -1746,7 +1746,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 			g_machine.DOS_program_start(pname);
 		} else {
 			//find the INT exit point
-			uint32_t cs = g_memory.read_notraps<2>(0x21*4 + 2);
+			uint32_t cs = g_memory.dbg_read_word(0x21*4 + 2);
 			m_dos_prg_int_exit = (cs<<4) + CPULOG_INT21_EXIT_IP;
 		}
 	}

@@ -253,7 +253,8 @@ public:
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 
-	inline void vga_update() { m_windows.interface->vga_update(); }
+	VGADisplay * vga_display() { assert(m_windows.interface); return m_windows.interface->vga_display(); }
+	void vga_updated() { assert(m_windows.interface); m_windows.interface->vga_updated(); }
 
 	vec2i resize_window(int _width, int _height);
 	int get_window_width() { return m_width; }

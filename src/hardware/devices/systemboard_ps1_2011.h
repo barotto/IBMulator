@@ -24,28 +24,26 @@
 
 class SystemBoard_PS1_2011 : public SystemBoard
 {
-	IODEVICE(SystemBoard_PS1_2011, "System Board PS/1 2011")
+	IODEVICE(SystemBoard_PS1_2011, "PS/1 2011 System Board")
 
 private:
-	struct {
-		// POS register 3
-		bool HDD_enabled; // bit 3, HDD enabled / present
-
-		// POS register 4
-		bool RAM_bank1_en; // bit 0, Enable First 128KB Bank   000000 - O1FFFF
-		bool RAM_bank2_en; // bit 1, Enable Second 128KB Bank  020000 - 03FFFF
-		bool RAM_bank3_en; // bit 2, Enable Third 128KB Bank   040000 - 05FFFF
-		bool RAM_bank4_en; // bit 3, Enable Fourth 128KB Bank  060000 - 07FFFF
-		bool RAM_bank5_en; // bit 4, Enable Fifth 128KB Bank   080000 - 09FFFF
-		                   // bit 5-7, reserved, always 0
-
-		// POS register 5
-		bool RAM_fast; // bit 3, memory timings (wait states?)
-	} m_s;
-
+	// system board POS register 3:
+	//   bit 3, HDD enabled / present
+	// system board POS register 4:
+	//   bit 0, Enable First 128KB Bank   000000 - O1FFFF
+	//   bit 1, Enable Second 128KB Bank  020000 - 03FFFF
+	//   bit 2, Enable Third 128KB Bank   040000 - 05FFFF
+	//   bit 3, Enable Fourth 128KB Bank  060000 - 07FFFF
+	//   bit 4, Enable Fifth 128KB Bank   080000 - 09FFFF
+	//   bit 5-7, reserved, always 0
+	// system board POS register 5:
+	//   bit 3, memory timings (wait states?)
 	void update_POS3_state();
 	void update_POS4_state();
 	void update_POS5_state();
+	void reset_POS3_state();
+	void reset_POS4_state();
+	void reset_POS5_state();
 
 	std::string debug_POS_decode(int _posreg, uint8_t _value);
 

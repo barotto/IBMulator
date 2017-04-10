@@ -22,8 +22,9 @@
 #include "machine.h"
 #include "systemboard.h"
 #include "hardware/memory.h"
-#include "hardware/devices/serial.h"
-#include "hardware/devices/parallel.h"
+#include "vga.h"
+#include "serial.h"
+#include "parallel.h"
 #include "utils.h"
 #include <cstring>
 
@@ -39,7 +40,11 @@ IODEVICE_PORTS(SystemBoard) = {
 };
 
 SystemBoard::SystemBoard(Devices* _dev)
-: IODevice(_dev)
+: IODevice(_dev),
+m_COM_port(1),
+m_LPT_port(0),
+m_parallel(nullptr),
+m_serial(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -49,29 +54,17 @@ void SystemBoard::reset(unsigned _signal)
 	m_s.POST = 0;
 
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+
 		//System Board Enable/Setup Register:
 		m_s.VGA_enable = true;
 		m_s.board_enable = true;
-		update_board_state();
-
-		// POS 0 & 1
-		m_s.adapter_ID = ~0;
-
-		// board POS 2
-		m_s.VGA_awake = true;
-		m_s.POS2_bit1 = false;
-		m_s.COM_enabled = true;
-		m_s.COM_port = m_COM_port;
-		m_s.LPT_enabled = true;
-		m_s.LPT_port = m_LPT_port;
-		m_s.LPT_mode = PARPORT_COMPATIBLE;
-		update_POS2_state();
-
-		// other POS regs
-		m_s.POS_3 = m_s.POS_4 = m_s.POS_5 = ~0;
 
 		//Card Select Feedback
 		m_s.CSF = 0;
+
+		// board POS registers
+		memset(m_s.POS, 0, 5);
+		reset_POS2_state();
 	}
 }
 
@@ -83,9 +76,6 @@ void SystemBoard::config_changed()
 	//TODO m_COM_port = g_program.config().get_enum(COM_SECTION, COM_PORT, Serial::ms_com_ports);
 	m_COM_port = 1;
 	m_LPT_port = g_program.config().get_enum(LPT_SECTION, LPT_PORT, Parallel::ms_lpt_ports);
-
-	m_s.COM_port = m_COM_port;
-	m_s.LPT_port = m_LPT_port;
 }
 
 void SystemBoard::save_state(StateBuf &_state)
@@ -100,34 +90,59 @@ void SystemBoard::restore_state(StateBuf &_state)
 	_state.read(&m_s,{sizeof(m_s), name()});
 }
 
-void SystemBoard::update_state()
+void SystemBoard::reset_POS2_state()
+{
+	m_s.POS[2] = false          << 0 | // unknown bit 0 (enable system board?)
+	             false          << 1 | // unknown bit 1 (enable diskette drive?)
+	             true           << 2 | // COM enabled
+	             (m_COM_port&1) << 3 | // COM port
+	             true           << 4 | // LPT enabled
+	             (m_LPT_port&3) << 5 | // LPT port
+	             PARPORT_COMPATIBLE << 7; // LPT mode
+	update_POS2_state();
+}
+
+void SystemBoard::update_POS2_state()
+{
+	int POS2_bit0   = (m_s.POS[2] >> 0) & 1;
+	int POS2_bit1   = (m_s.POS[2] >> 1) & 1;
+	int COM_enabled = (m_s.POS[2] >> 2) & 1;
+	int COM_port    = (m_s.POS[2] >> 3) & 1;
+	int LPT_enabled = (m_s.POS[2] >> 4) & 1;
+	int LPT_port    = (m_s.POS[2] >> 5) & 3;
+	int LPT_mode    = (m_s.POS[2] >> 7) & 1;
+
+	UNUSED(POS2_bit0);
+	UNUSED(POS2_bit1);
+
+	if(m_parallel) {
+		m_parallel->set_enabled(LPT_enabled);
+		m_parallel->set_mode(LPT_mode);
+		m_parallel->set_port(LPT_port);
+	}
+	if(m_serial) {
+		m_serial->set_enabled(COM_enabled);
+		m_serial->set_port(COM_port);
+	}
+}
+
+void SystemBoard::reset_board_state()
+{
+	reset_POS2_state();
+	reset_POS3_state();
+	reset_POS4_state();
+	reset_POS5_state();
+}
+
+void SystemBoard::update_board_state()
 {
 	update_POS2_state();
 	update_POS3_state();
 	update_POS4_state();
 	update_POS5_state();
-	update_board_state();
 }
 
-void SystemBoard::update_POS2_state()
-{
-	if(m_parallel) {
-		m_parallel->set_enabled(m_s.LPT_enabled);
-		m_parallel->set_mode(m_s.LPT_mode);
-		m_parallel->set_port(m_s.LPT_port);
-	}
-	if(m_serial) {
-		m_serial->set_enabled(m_s.COM_enabled);
-		m_serial->set_port(m_s.COM_port);
-	}
-}
-
-void SystemBoard::update_board_state()
-{
-	//TODO VGA
-}
-
-uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
+uint16_t SystemBoard::read(uint16_t _address, unsigned _io_len)
 {
 	uint8_t value = ~0;
 
@@ -146,30 +161,17 @@ uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
 			value = (m_s.VGA_enable << 5) | (m_s.board_enable << 7);
 			break;
 		case 0x0100:
-			// adapter ID low byte
-			value = m_s.adapter_ID;
-			break;
 		case 0x0101:
-			// adapter ID high byte
-			value = m_s.adapter_ID >> 8;
-			break;
 		case 0x0102:
-			value = m_s.VGA_awake   << 0 |
-			        m_s.POS2_bit1   << 1 |
-			        m_s.COM_enabled << 2 |
-			        m_s.COM_port    << 3 |
-			        m_s.LPT_enabled << 4 |
-			        m_s.LPT_port    << 5 |
-			        m_s.LPT_mode    << 7;
-			break;
 		case 0x0103:
-			value = m_s.POS_3;
-			break;
 		case 0x0104:
-			value = m_s.POS_4;
-			break;
 		case 0x0105:
-			value = m_s.POS_5;
+			if(!m_s.VGA_enable) {
+				// The VGA is in setup mode, it responds to POS registers
+				value = m_devices->vga()->read(_address, _io_len);
+			} else {
+				value = m_s.POS[_address - 0x100];
+			}
 			break;
 		case 0x0190:
 			value = m_s.POST;
@@ -183,7 +185,7 @@ uint16_t SystemBoard::read(uint16_t _address, unsigned /*_io_len*/)
 	return value;
 }
 
-void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/)
+void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 {
 	PDEBUGF(LOG_V2, LOG_MACHINE, "write 0x%03X <- 0x%04X ", _address, _value);
 
@@ -195,56 +197,40 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned /*_io_len*/
 		}
 		case 0x0092: {
 			bool a20 = (_value & 0x02);
-			g_memory.set_A20_line(a20);
 			PDEBUGF(LOG_V2, LOG_MACHINE, "A20:%u\n", a20);
+			g_memory.set_A20_line(a20);
 			if(_value & 0x01) { /* high speed reset */
 				PDEBUGF(LOG_V2, LOG_MACHINE, "iowrite to port 0x92 : reset requested\n");
 				g_machine.reset(CPU_SOFT_RESET);
 			}
 			break;
 		}
-		case 0x0094:
-			m_s.VGA_enable   = (_value >> 5) & 1;
-			m_s.board_enable = (_value >> 7) & 1;
+		case 0x0094: {
+			m_s.VGA_enable = (_value >> 5) & 1;
+			bool board_en  = (_value >> 7) & 1;
 			PDEBUGF(LOG_V2, LOG_MACHINE, "VGA:%d, Board:%d\n",
-					m_s.VGA_enable, m_s.board_enable);
-			update_board_state();
-			break;
-		case 0x102: {
-			m_s.VGA_awake   = (_value >> 0) & 1;
-			m_s.POS2_bit1   = (_value >> 1) & 1;
-			m_s.COM_enabled = (_value >> 2) & 1;
-			m_s.COM_port    = (_value >> 3) & 1;
-			m_s.LPT_enabled = (_value >> 4) & 1;
-			m_s.LPT_port    = (_value >> 5) & 3;
-			m_s.LPT_mode    = (_value >> 7) & 1;
-			PDEBUGF(LOG_V2, LOG_MACHINE, "%s\n", debug_POS_decode(2,_value).c_str());
-			if(!m_s.board_enable) {
-				update_POS2_state();
+					m_s.VGA_enable, board_en);
+			if((!m_s.board_enable) && board_en) {
+				update_board_state();
 			}
+			m_s.board_enable = board_en;
 			break;
 		}
+		case 0x0102:
 		case 0x0103:
-			m_s.POS_3 = _value;
-			PDEBUGF(LOG_V2, LOG_MACHINE, "%s\n", debug_POS_decode(3,_value).c_str());
-			if(!m_s.board_enable) {
-				update_POS3_state();
-			}
-			break;
 		case 0x0104:
-			m_s.POS_4 = _value;
-			PDEBUGF(LOG_V2, LOG_MACHINE, "%s\n", debug_POS_decode(4,_value).c_str());
-			if(!m_s.board_enable) {
-				update_POS4_state();
+		case 0x0105: {
+			if(!m_s.VGA_enable) {
+				// The VGA is in setup mode, it responds to POS registers
+				PDEBUGF(LOG_V2, LOG_MACHINE, "to VGA\n");
+				m_devices->vga()->write(_address, _value, _io_len);
+				return;
 			}
+			int reg = _address - 0x100;
+			m_s.POS[reg] = _value;
+			PDEBUGF(LOG_V2, LOG_MACHINE, "%s\n", debug_POS_decode(reg, _value).c_str());
 			break;
-		case 0x0105:
-			m_s.POS_5 = _value;
-			PDEBUGF(LOG_V2, LOG_MACHINE, "%s\n", debug_POS_decode(5,_value).c_str());
-			if(!m_s.board_enable) {
-				update_POS5_state();
-			}
-			break;
+		}
 		case 0x0191:
 		case 0x0190: {
 			PDEBUGF(LOG_V2, LOG_MACHINE, "\n");
@@ -267,8 +253,8 @@ std::string SystemBoard::debug_POS_decode(int _posreg, uint8_t _value)
 	switch(_posreg) {
 		case 2: {
 			return bitfield_to_string(_value,
-			{ "VGA_EN", "b1", "COM_EN",  "COM1", "LPT_EN",  "LPT_P0=1", "LPT_P1=1", "LPT_EXT"  },
-			{ "VGA_DIS", "",  "COM_DIS", "COM2", "LPT_DIS", "LPT_P0=0", "LPT_P1=0", "LPT_NORM" });
+			{ "b0", "b1", "COM_EN",  "COM1", "LPT_EN",  "LPT_P0=1", "LPT_P1=1", "LPT_EXT"  },
+			{ "",   "",   "COM_DIS", "COM2", "LPT_DIS", "LPT_P0=0", "LPT_P1=0", "LPT_NORM" });
 		}
 		case 3:
 		case 4:

@@ -25,22 +25,8 @@
 #ifndef NDEBUG
 	#include "machine.h"
 #endif
-#include <vector>
 
-#define CPU_PQ_MAX_SIZE      16
-#define DRAM_ACCESS_CYCLES   2
-#define DRAM_WAIT_STATES     1
-#define DRAM_TX_CYCLES (DRAM_ACCESS_CYCLES+DRAM_WAIT_STATES)
-#define DRAM_REFRESH_CYCLES  DRAM_TX_CYCLES*2
-/*TODO
- * The following is an oversimplification of the video memory access time.
- * Also, the video ram wait states depend on the CPU frequency.
- * For an in depth explanation of the Display Adapter Cycle-Eater read Michael
- * Abrash's Graphics Programming Black Book, Ch.4
- */
-#define VRAM_WAIT_STATES     13
-#define VRAM_TX_CYCLES (DRAM_ACCESS_CYCLES+VRAM_WAIT_STATES)
-
+#define CPU_PQ_MAX_SIZE  16
 
 class CPUBus;
 extern CPUBus g_cpubus;
@@ -52,51 +38,24 @@ private:
 	struct {
 		uint32_t cseip;
 		uint32_t eip;
-		uint8_t pq[CPU_PQ_MAX_SIZE];
-		bool pq_valid;
-		uint32_t pq_head;
+		uint8_t  pq[CPU_PQ_MAX_SIZE];
+		bool     pq_valid;
 		uint32_t pq_tail;
-		uint32_t pq_headpos;
+		uint32_t pq_left;
+		int      pq_len;
 	} m_s;
 
-	unsigned m_width;
-	unsigned m_pq_size;
-	unsigned m_pq_thres;
-
-	uint m_dram_r;
-	uint m_dram_w;
-	uint m_vram_r;
-	uint m_vram_w;
-	uint m_mem_cycles;
-	uint m_fetch_cycles;
-	uint m_cycles_ahead;
-	struct wq_data {
-		uint32_t address;
-		uint32_t data;
-		uint8_t len;
-		unsigned cycles;
-		unsigned trap_len;
-	};
-	std::vector<wq_data> m_write_queue;
-
-	void pq_fill(uint toread);
-	GCC_ATTRIBUTE(always_inline)
-	inline uint get_pq_free_space() {
-		return m_pq_size - (m_s.pq_tail-m_s.pq_head) + (m_s.cseip - m_s.pq_head);
-	}
-	GCC_ATTRIBUTE(always_inline)
-	inline uint get_pq_cur_index() {
-		return (m_s.pq_headpos + (m_s.cseip - m_s.pq_head)) % m_pq_size;
-	}
-	inline uint get_pq_cur_size() {
-		return m_pq_size - get_pq_free_space();
-	}
-	inline bool is_pq_empty() {
-		return (m_s.cseip == m_s.pq_tail);
-	}
+	int m_width;
+	int m_pq_size;
+	int m_pq_thres;
+	int m_fetch_cycles;
+	int m_mem_r_cycles;
+	int m_mem_w_cycles;
+	int m_pmem_cycles;   // pipelined memory cycles
+	int m_pfetch_cycles; // pipelined fetch cycles
+	int m_cycles_ahead;
 
 public:
-
 	CPUBus();
 
 	void init();
@@ -104,99 +63,163 @@ public:
 	void config_changed();
 
 	inline void reset_counters() {
-		m_dram_r = 0;
-		m_dram_w = 0;
-		m_vram_r = 0;
-		m_vram_w = 0;
-		m_mem_cycles = 0;
-		m_fetch_cycles = 0;
+		m_fetch_cycles  = 0;
+		m_mem_r_cycles  = 0;
+		m_mem_w_cycles  = 0;
+		m_pmem_cycles   = 0;
+		m_pfetch_cycles = 0;
 	}
 
-	inline uint get_dram_r()  { return m_dram_r; }
-	inline uint get_dram_w()  { return m_dram_w; }
-	inline uint get_dram_tx() { return m_dram_r+m_dram_w; }
-	inline uint get_vram_r()  { return m_vram_r; }
-	inline uint get_vram_w()  { return m_vram_w; }
-	inline uint get_vram_tx() { return m_vram_r+m_vram_w; }
-	inline uint get_mem_cycles()  { return m_mem_cycles; }
-	inline uint get_fetch_cycles(){ return m_fetch_cycles; }
-	inline uint get_cycles_ahead(){ return m_cycles_ahead; }
-	inline bool is_pq_valid() { return m_s.pq_valid; }
+	inline bool memory_accessed() const { return (m_mem_r_cycles || m_mem_w_cycles); }
+	inline int  fetch_cycles() const { return m_fetch_cycles; }
+	inline int  mem_r_cycles() const { return m_mem_r_cycles; }
+	inline int  mem_w_cycles() const { return m_mem_w_cycles; }
+	inline int  mem_tx_cycles() const { return m_mem_r_cycles + m_mem_w_cycles; }
+	inline int  pipelined_mem_cycles() const { return m_pmem_cycles; }
+	inline int  pipelined_fetch_cycles() const { return m_pfetch_cycles; }
+	inline int  cycles_ahead() const { return m_cycles_ahead; }
+	inline bool pq_is_valid() const { return m_s.pq_valid; }
+
 	void update(int _cycles);
 
 	//instruction fetching
-	uint8_t fetchb();
-	uint16_t fetchw();
-	uint32_t fetchdw();
+	#if USE_PREFETCH_QUEUE
+	uint8_t  fetchb()  { return fetch<uint8_t, 1>(); }
+	uint16_t fetchw()  { return fetch<uint16_t,2>(); }
+	uint32_t fetchdw() { return fetch<uint32_t,4>(); }
+	#else
+	uint8_t  fetchb()  { return fetch_noqueue<uint8_t, 1>(); }
+	uint16_t fetchw()  { return fetch_noqueue<uint16_t,2>(); }
+	uint32_t fetchdw() { return fetch_noqueue<uint32_t,4>(); }
+	#endif
 
-	inline uint32_t get_eip() const { return m_s.eip; }
-	inline uint32_t get_cseip() const { return m_s.cseip; }
+	inline uint32_t eip() const { return m_s.eip; }
+	inline uint32_t cseip() const { return m_s.cseip; }
 
 	inline void invalidate_pq() {
 		m_s.pq_valid = false;
+		m_s.pq_len = 0;
+		m_s.pq_left = m_s.cseip;
+		m_s.pq_tail = m_s.pq_left;
 	}
 	void reset_pq();
 
-	template<unsigned LEN>
-	uint32_t mem_read(uint32_t _addr, unsigned _trap_len = LEN)
-	{
-		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_r += LEN; //TODO adapt to the real bus of the VGA
-		} else {
-			/* When the 286 is asked to perform a word-sized access
-			 * starting at an odd address, it actually performs two separate
-			 * accesses, each of which fetches 1 byte, just as the 8088 does for
-			 * all word-sized accesses.
-			 */
-			/* LEN can be 1, 2, or 4. The odd address penalty happens only when
-			 * LEN is 2 or 4, checked by (~LEN & 1)
-			 */
-			m_dram_r += 1 + ((_addr & 1) * (~LEN & 1));
-			if(LEN > m_width) {
-				/* bus width penalty */
-				m_dram_r += LEN/m_width - 1;
-			}
-		}
-		if(m_cycles_ahead) {
-			m_mem_cycles += m_cycles_ahead;
-			m_cycles_ahead = 0;
-		}
-		return g_memory.read<LEN>(_addr, _trap_len);
-	}
-	inline uint64_t mem_read_qword(uint32_t _addr) {
-		uint64_t dw0 = mem_read<4>(_addr);
-		uint64_t dw1 = mem_read<4>(_addr+4);
-		return dw1<<32 | dw0;
-	}
-
-	template<unsigned LEN>
-	void mem_write(uint32_t _addr, uint32_t _data, unsigned _trap_len = LEN) {
-		uint c;
-		if(_addr >= 0xA0000 && _addr <= 0xBFFFF) {
-			m_vram_w += LEN; //TODO adapt to the real bus of the VGA
-			c = VRAM_TX_CYCLES * LEN;
-		} else {
-			/*LEN can be 1,2, or 4. the odd address penalty is only if LEN is 2
-			or 4.*/
-			c = 1 + ((_addr & 1) * (~LEN & 1));
-			if(LEN > m_width) {
-				/* bus width penalty */
-				c += LEN/m_width - 1;
-			}
-			m_dram_w += c;
-			c *= DRAM_TX_CYCLES;
-		}
-		if(m_cycles_ahead) {
-			m_mem_cycles += m_cycles_ahead;
-			m_cycles_ahead = 0;
-		}
-		m_write_queue.push_back({_addr, _data, LEN, c, _trap_len});
-	}
+	template<unsigned> uint32_t mem_read(uint32_t _addr) { assert(false); }
+	template<unsigned> void mem_write(uint32_t _addr, uint32_t _data) { assert(false); }
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
 	int write_pq_to_logfile(FILE *_dest);
+
+private:
+	template<unsigned> uint32_t mem_read(uint32_t _addr, int &_cycles) { assert(false); }
+	template<unsigned> void mem_write(uint32_t _addr, uint32_t _data, int &_cycles) { assert(false); }
+
+	ALWAYS_INLINE
+	inline int pq_free_space() {
+		return m_pq_size - m_s.pq_len;
+	}
+	ALWAYS_INLINE
+	inline int pq_idx() {
+		return m_s.cseip - m_s.pq_left;
+	}
+	ALWAYS_INLINE
+	inline bool pq_is_empty() {
+		return m_s.pq_len == 0;
+	}
+	int fill_pq_16(int _amount, int _cycles);
+	int fill_pq_32(int _amount, int _cycles);
+	int (CPUBus::*fill_pq)(int, int);
+
+	template<class T, int L>
+	T fetch()
+	{
+		if(m_s.pq_len < L) {
+			m_fetch_cycles += (this->*fill_pq)(L-m_s.pq_len, 0);
+			if(m_cycles_ahead) {
+				m_pfetch_cycles += m_cycles_ahead;
+				m_cycles_ahead = 0;
+			}
+		}
+		T data = *(T*)&m_s.pq[pq_idx()];
+		m_s.pq_len -= L;
+		m_s.cseip += L;
+		m_s.eip += L;
+		return data;
+	}
+
+	template<class T, int L>
+	T fetch_noqueue()
+	{
+		T data = mem_read<L>(m_s.cseip);
+		m_s.cseip += L;
+		m_s.eip += L;
+		return data;
+	}
 };
+
+
+template<> inline
+uint32_t CPUBus::mem_read<1>(uint32_t _addr, int &_cycles)
+{
+	return g_memory.read_t<1>(_addr, 1, _cycles);
+}
+template<> uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles);
+template<> uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles);
+template<> uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles);
+
+template<> ALWAYS_INLINE inline
+uint32_t CPUBus::mem_read<1>(uint32_t _addr)
+{
+	return mem_read<1>(_addr, m_mem_r_cycles);
+}
+template<> ALWAYS_INLINE inline
+uint32_t CPUBus::mem_read<2>(uint32_t _addr)
+{
+	return mem_read<2>(_addr, m_mem_r_cycles);
+}
+template<> ALWAYS_INLINE inline
+uint32_t CPUBus::mem_read<3>(uint32_t _addr)
+{
+	return mem_read<3>(_addr, m_mem_r_cycles);
+}
+template<> ALWAYS_INLINE inline
+uint32_t CPUBus::mem_read<4>(uint32_t _addr)
+{
+	return mem_read<4>(_addr, m_mem_r_cycles);
+}
+
+
+template<> inline
+void CPUBus::mem_write<1>(uint32_t _addr, uint32_t _data, int &_cycles)
+{
+	g_memory.write_t<1>(_addr, _data, 1, _cycles);
+}
+template<> void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles);
+template<> void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles);
+template<> void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles);
+
+template<> ALWAYS_INLINE inline
+void CPUBus::mem_write<1>(uint32_t _addr, uint32_t _data)
+{
+	mem_write<1>(_addr, _data, m_mem_w_cycles);
+}
+template<> ALWAYS_INLINE inline
+void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data)
+{
+	mem_write<2>(_addr, _data, m_mem_w_cycles);
+}
+template<> ALWAYS_INLINE inline
+void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data)
+{
+	mem_write<3>(_addr, _data, m_mem_w_cycles);
+}
+template<> ALWAYS_INLINE inline
+void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data)
+{
+	mem_write<4>(_addr, _data, m_mem_w_cycles);
+}
+
 
 #endif

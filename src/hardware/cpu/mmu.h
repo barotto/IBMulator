@@ -35,9 +35,9 @@ class CPUMMU
 {
 private:
 	typedef struct {
-	  uint32_t lpf;   // linear page frame
-	  uint32_t ppf;   // physical page frame
-	  unsigned protection;
+		uint32_t lpf;   // linear page frame
+		uint32_t ppf;   // physical page frame
+		unsigned protection;
 	} TLBEntry;
 
 	TLBEntry m_TLB[TLB_SIZE];
@@ -46,10 +46,9 @@ public:
 	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 	void TLB_check(uint32_t _linear, bool _user, bool _write);
 	void TLB_flush();
-	uint32_t translate_linear(uint32_t _linear_addr, Memory *_memory) const;
+	uint32_t dbg_translate_linear(uint32_t _linear_addr, Memory *_memory) const;
 
 private:
-
 	inline unsigned TLB_index(uint32_t _lpf, unsigned _len) const {
 		return (((_lpf + _len) & ((TLB_SIZE-1) << 12)) >> 12);
 	}

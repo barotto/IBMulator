@@ -253,9 +253,9 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	if(CPULOG_WRITE_TIMINGS) {
 		if(fprintf(_dest, "c=%2u(b=%u,%u,%u),m=%2u ",
 				_entry.cycles,
-				_entry.bus.get_mem_cycles(), _entry.bus.get_fetch_cycles(),
-				_entry.bus.get_cycles_ahead(),
-				_entry.bus.get_dram_tx()) < 0)
+				_entry.bus.pipelined_mem_cycles(), _entry.bus.pipelined_fetch_cycles(),
+				_entry.bus.cycles_ahead(),
+				_entry.bus.mem_tx_cycles()) < 0)
 			return -1;
 	}
 

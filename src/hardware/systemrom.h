@@ -37,12 +37,15 @@ class SystemROM
 private:
 	BIOSType m_bios;
 	uint8_t *m_data;
+	int m_low_mapping, m_high_mapping;
 
 public:
 	SystemROM();
 	~SystemROM();
 
+	void init();
 	void load(const std::string _romset);
+	void config_changed();
 	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
 	const BIOSType & bios() const { return m_bios; }
 
@@ -57,6 +60,11 @@ private:
 	int load_file(const std::string &_filename, uint32_t _destaddr);
 	void load_dir(const std::string &_dirname);
 	void load_archive(const std::string &_filename);
+
+	template<class T>
+	static uint32_t s_read(uint32_t _addr, void *_priv) {
+		return *(T*)&(((SystemROM*)_priv)->m_data)[_addr&0x7FFFF];
+	}
 };
 
 #endif

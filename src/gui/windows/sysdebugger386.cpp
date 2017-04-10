@@ -94,7 +94,7 @@ const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _
 	static char empty = 0;
 
 	//throws CPUException when #PF
-	uint32_t start = GET_PHYADDR(CS, _eip);
+	uint32_t start = DBG_GET_PHYADDR(CS, _eip);
 	char dline[200];
 	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory, nullptr, 0, REG_CS.desc.def);
 	if(_size!=nullptr) {
@@ -171,7 +171,7 @@ void SysDebugger386::update()
 	uint8_t buf[len];
 
 	try {
-		read_memory(GET_PHYADDR(CS, REG_EIP), buf, len);
+		read_memory(DBG_GET_PHYADDR(CS, REG_EIP), buf, len);
 		m_memory.cs_eip->SetInnerRML(format_words(buf, len));
 		m_memory.cs_eip_str->SetInnerRML(format_words_string(buf, len));
 	} catch(...) {
@@ -181,7 +181,7 @@ void SysDebugger386::update()
 	}
 
 	try {
-		read_memory(GET_PHYADDR(DS, REG_ESI), buf, len);
+		read_memory(DBG_GET_PHYADDR(DS, REG_ESI), buf, len);
 		m_memory.ds_esi->SetInnerRML(format_words(buf, len));
 		m_memory.ds_esi_str->SetInnerRML(format_words_string(buf, len));
 	} catch(...) {
@@ -191,7 +191,7 @@ void SysDebugger386::update()
 	}
 
 	try {
-		read_memory(GET_PHYADDR(ES, REG_EDI), buf, len);
+		read_memory(DBG_GET_PHYADDR(ES, REG_EDI), buf, len);
 		m_memory.es_edi->SetInnerRML(format_words(buf, len));
 		m_memory.es_edi_str->SetInnerRML(format_words_string(buf, len));
 	} catch(...) {
@@ -201,7 +201,7 @@ void SysDebugger386::update()
 	}
 
 	try {
-		read_memory(GET_PHYADDR(SS, REG_ESP), buf, len);
+		read_memory(DBG_GET_PHYADDR(SS, REG_ESP), buf, len);
 		m_memory.ss_esp->SetInnerRML(format_words(buf, len));
 		m_memory.ss_esp_str->SetInnerRML(format_words_string(buf, len));
 	} catch(...) {

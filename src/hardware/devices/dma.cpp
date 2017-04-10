@@ -142,8 +142,6 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 	uint8_t retval;
 	uint8_t channel;
 
-	PDEBUGF(LOG_V2, LOG_DMA, "read addr=%04x\n", (unsigned) address);
-
 	bool ma_sl = (address >= 0xc0);
 
 	switch (address) {
@@ -158,12 +156,12 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 			channel = (address >> (1 + ma_sl)) & 0x03;
 			if(m_s.dma[ma_sl].flip_flop==0) {
 				m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
-				return (m_s.dma[ma_sl].chan[channel].current_address & 0xff);
+				retval = (m_s.dma[ma_sl].chan[channel].current_address & 0xff);
 			} else {
 				m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
-				return (m_s.dma[ma_sl].chan[channel].current_address >> 8);
+				retval = (m_s.dma[ma_sl].chan[channel].current_address >> 8);
 			}
-
+			break;
 		case 0x01: /* DMA-1 current count, channel 0 */
 		case 0x03: /* DMA-1 current count, channel 1 */
 		case 0x05: /* DMA-1 current count, channel 2 */
@@ -175,12 +173,12 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 			channel = (address >> (1 + ma_sl)) & 0x03;
 			if(m_s.dma[ma_sl].flip_flop==0) {
 				m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
-				return (m_s.dma[ma_sl].chan[channel].current_count & 0xff);
+				retval = (m_s.dma[ma_sl].chan[channel].current_count & 0xff);
 			} else {
 				m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
-				return (m_s.dma[ma_sl].chan[channel].current_count >> 8);
+				retval = (m_s.dma[ma_sl].chan[channel].current_count >> 8);
 			}
-
+			break;
 		case 0x08: // DMA-1 Status Register
 		case 0xd0: // DMA-2 Status Register
 			// bit 7: 1 = channel 3 request
@@ -194,29 +192,28 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 			// reading this register clears lower 4 bits (hold flags)
 			retval = m_s.dma[ma_sl].status_reg;
 			m_s.dma[ma_sl].status_reg &= 0xf0;
-			return retval;
-
+			break;
 		case 0x0d: // DMA-1: temporary register
 		case 0xda: // DMA-2: temporary register
 			// only used for memory-to-memory transfers
 			// write to 0x0d / 0xda clears temporary register
-			PERRF(LOG_DMA, "DMA-%d: read of temporary register always returns 0\n", ma_sl+1);
-			return 0;
-
+			// read of temporary register always returns 0
+			retval = 0;
+			break;
 		case 0x81: // DMA-1 page register, channel 2
 		case 0x82: // DMA-1 page register, channel 3
 		case 0x83: // DMA-1 page register, channel 1
 		case 0x87: // DMA-1 page register, channel 0
 			channel = channelindex[address - 0x81];
-			return m_s.dma[0].chan[channel].page_reg;
-
+			retval = m_s.dma[0].chan[channel].page_reg;
+			break;
 		case 0x89: // DMA-2 page register, channel 2
 		case 0x8a: // DMA-2 page register, channel 3
 		case 0x8b: // DMA-2 page register, channel 1
 		case 0x8f: // DMA-2 page register, channel 0
 			channel = channelindex[address - 0x89];
-			return m_s.dma[1].chan[channel].page_reg;
-
+			retval = m_s.dma[1].chan[channel].page_reg;
+			break;
 		case 0x80:
 		case 0x84:
 		case 0x85:
@@ -225,21 +222,22 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 		case 0x8c:
 		case 0x8d:
 		case 0x8e:
-			PDEBUGF(LOG_V2, LOG_DMA, "read: extra page register 0x%04x (unused)\n", address);
-			return m_s.ext_page_reg[address & 0x0f];
-
+			// extra page registers, unused
+			retval = m_s.ext_page_reg[address & 0x0f];
+			break;
 		case 0x0f: // DMA-1: undocumented: read all mask bits
 		case 0xde: // DMA-2: undocumented: read all mask bits
 			retval = m_s.dma[ma_sl].mask[0] |
 			   (m_s.dma[ma_sl].mask[1] << 1) |
 			   (m_s.dma[ma_sl].mask[2] << 2) |
 			   (m_s.dma[ma_sl].mask[3] << 3);
-			return (0xf0 | retval);
-
-		default:
-			PERRF(LOG_DMA, "read ignored at port %04xh\n", address);
-			return 0;
+			retval = (0xf0 | retval);
+			break;
 	}
+
+	PDEBUGF(LOG_V2, LOG_DMA, "read  0x%03X -> 0x%04X\n", address, retval);
+
+	return retval;
 }
 
 void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
@@ -247,7 +245,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	uint8_t set_mask_bit;
 	uint8_t channel;
 
-	PDEBUGF(LOG_V2, LOG_DMA, "write: address=%04x value=%02x\n", address, value);
+	PDEBUGF(LOG_V2, LOG_DMA, "write 0x%03X <- 0x%04X ", address, value);
 
 	bool ma_sl = (address >= 0xc0);
 
@@ -261,15 +259,16 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 		case 0xc8:
 		case 0xcc:
 			channel = (address >> (1 + ma_sl)) & 0x03;
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d base and current address, channel %d\n", ma_sl+1, channel);
 			if(m_s.dma[ma_sl].flip_flop==0) { /* 1st byte */
 				m_s.dma[ma_sl].chan[channel].base_address = value;
 				m_s.dma[ma_sl].chan[channel].current_address = value;
+				PDEBUGF(LOG_V2, LOG_DMA, "\n");
 			} else { /* 2nd byte */
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d ch.%d addr", ma_sl+1, channel);
 				m_s.dma[ma_sl].chan[channel].base_address |= (value << 8);
 				m_s.dma[ma_sl].chan[channel].current_address |= (value << 8);
-				PDEBUGF(LOG_V2, LOG_DMA, "    base = %04x\n", m_s.dma[ma_sl].chan[channel].base_address);
-				PDEBUGF(LOG_V2, LOG_DMA, "    curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_address);
+				PDEBUGF(LOG_V2, LOG_DMA, " base = %04x", m_s.dma[ma_sl].chan[channel].base_address);
+				PDEBUGF(LOG_V2, LOG_DMA, " curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_address);
 			}
 			m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
 			break;
@@ -283,26 +282,29 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 		case 0xca:
 		case 0xce:
 			channel = (address >> (1 + ma_sl)) & 0x03;
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d base and current count, channel %d\n", ma_sl+1, channel);
 			if(m_s.dma[ma_sl].flip_flop==0) { /* 1st byte */
 				m_s.dma[ma_sl].chan[channel].base_count = value;
 				m_s.dma[ma_sl].chan[channel].current_count = value;
+				PDEBUGF(LOG_V2, LOG_DMA, "\n");
 			} else { /* 2nd byte */
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d ch.%d count", ma_sl+1, channel);
 				m_s.dma[ma_sl].chan[channel].base_count |= (value << 8);
 				m_s.dma[ma_sl].chan[channel].current_count |= (value << 8);
-				PDEBUGF(LOG_V2, LOG_DMA, "    base = %04x\n", m_s.dma[ma_sl].chan[channel].base_count);
-				PDEBUGF(LOG_V2, LOG_DMA, "    curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_count);
+				PDEBUGF(LOG_V2, LOG_DMA, " base = %04x", m_s.dma[ma_sl].chan[channel].base_count);
+				PDEBUGF(LOG_V2, LOG_DMA, " curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_count);
 			}
 			m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
 			break;
 
 		case 0x08: /* DMA-1: command register */
 		case 0xd0: /* DMA-2: command register */
-			if((value & 0xfb) != 0x00)
-				PERRF(LOG_DMA, "write to command register: value 0x%02x not supported\n", value);
 			m_s.dma[ma_sl].command_reg = value;
 			m_s.dma[ma_sl].ctrl_disabled = (value >> 2) & 0x01;
 			control_HRQ(ma_sl);
+			PDEBUGF(LOG_V2, LOG_DMA, " cmd\n");
+			if((value & 0xfb) != 0x00) {
+				PERRF(LOG_DMA, "DMA command value 0x%02x not supported!\n", value);
+			}
 			break;
 
 		case 0x09: // DMA-1: request register
@@ -312,11 +314,11 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if(value & 0x04) {
 				// set request bit
 				m_s.dma[ma_sl].status_reg |= (1 << (channel+4));
-				PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: set request bit for channel %u\n", ma_sl+1, channel);
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: set request bit for ch.%u\n", ma_sl+1, channel);
 			} else {
 				// clear request bit
 				m_s.dma[ma_sl].status_reg &= ~(1 << (channel+4));
-				PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: cleared request bit for channel %u\n", ma_sl+1, channel);
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: cleared request bit for ch.%u\n", ma_sl+1, channel);
 			}
 			control_HRQ(ma_sl);
 			break;
@@ -326,7 +328,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			set_mask_bit = value & 0x04;
 			channel = value & 0x03;
 			m_s.dma[ma_sl].mask[channel] = (set_mask_bit > 0);
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: set_mask_bit=%u, channel=%u, mask now=%02xh\n",
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: set_mask_bit=%u, ch.=%u, mask now=%02xh\n",
 					ma_sl+1, set_mask_bit, channel, m_s.dma[ma_sl].mask[channel]);
 			control_HRQ(ma_sl);
 			break;
@@ -339,7 +341,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			m_s.dma[ma_sl].chan[channel].mode.autoinit_enable = (value >> 4) & 0x01;
 			m_s.dma[ma_sl].chan[channel].mode.transfer_type = (value >> 2) & 0x03;
 			PDEBUGF(LOG_V2, LOG_DMA,
-					"  DMA-%d: mode register[%u]: mode=%u, dec=%u, autoinit=%u, txtype=%u\n",
+					"DMA-%d: mode reg[%u]: mode=%u, dec=%u, autoinit=%u, txtype=%u\n",
 					ma_sl+1, channel,
 					m_s.dma[ma_sl].chan[channel].mode.mode_type,
 					m_s.dma[ma_sl].chan[channel].mode.address_decrement,
@@ -349,13 +351,13 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 		case 0x0c: /* DMA-1 clear byte flip/flop */
 		case 0xd8: /* DMA-2 clear byte flip/flop */
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: clear flip/flop\n", ma_sl+1);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: clear flip/flop\n", ma_sl+1);
 			m_s.dma[ma_sl].flip_flop = 0;
 			break;
 
 		case 0x0d: // DMA-1: master clear
 		case 0xda: // DMA-2: master clear
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: master clear\n", ma_sl+1);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: master clear\n", ma_sl+1);
 			// writing any value to this port resets DMA controller 1 / 2
 			// same action as a hardware reset
 			// mask register is set (chan 0..3 disabled)
@@ -365,7 +367,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 		case 0x0e: // DMA-1: clear mask register
 		case 0xdc: // DMA-2: clear mask register
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: clear mask register\n", ma_sl+1);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: clear mask reg\n", ma_sl+1);
 			m_s.dma[ma_sl].mask[0] = 0;
 			m_s.dma[ma_sl].mask[1] = 0;
 			m_s.dma[ma_sl].mask[2] = 0;
@@ -375,7 +377,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 		case 0x0f: // DMA-1: write all mask bits
 		case 0xde: // DMA-2: write all mask bits
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-%d: write all mask bits\n", ma_sl+1);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: write all mask bits\n", ma_sl+1);
 			m_s.dma[ma_sl].mask[0] = value & 0x01; value >>= 1;
 			m_s.dma[ma_sl].mask[1] = value & 0x01; value >>= 1;
 			m_s.dma[ma_sl].mask[2] = value & 0x01; value >>= 1;
@@ -390,7 +392,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			/* address bits A16-A23 for DMA channel */
 			channel = channelindex[address - 0x81];
 			m_s.dma[0].chan[channel].page_reg = value;
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-1: page register %d = %02x\n", channel, value);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-1: page reg %d = %02x\n", channel, value);
 			break;
 
 		case 0x89: /* DMA-2 page register, channel 2 */
@@ -400,7 +402,7 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			/* address bits A16-A23 for DMA channel */
 			channel = channelindex[address - 0x89];
 			m_s.dma[1].chan[channel].page_reg = value;
-			PDEBUGF(LOG_V2, LOG_DMA, "  DMA-2: page register %d = %02x\n", channel + 4, value);
+			PDEBUGF(LOG_V2, LOG_DMA, "DMA-2: page reg %d = %02x\n", channel + 4, value);
 			break;
 
 		case 0x80:
@@ -411,12 +413,8 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 		case 0x8c:
 		case 0x8d:
 		case 0x8e:
-			PDEBUGF(LOG_V2, LOG_DMA, "write: extra page register 0x%04x (unused)\n", address);
+			PDEBUGF(LOG_V2, LOG_DMA, "extra page reg (unused)\n");
 			m_s.ext_page_reg[address & 0x0f] = value;
-			break;
-
-		default:
-			PERRF(LOG_DMA, "write ignored: %04xh = %02xh\n", address, value);
 			break;
 	}
 }

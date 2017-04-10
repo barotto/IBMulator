@@ -24,6 +24,48 @@
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
+/* Video timings - values taken from PCem
+
+8-bit - 1mb/sec
+	B = 8 ISA clocks
+	W = 16 ISA clocks
+	D = 32 ISA clocks
+
+Slow 16-bit - 2mb/sec
+	B = 6 ISA clocks
+	W = 8 ISA clocks
+	D = 16 ISA clocks
+
+Fast 16-bit - 4mb/sec
+	B = 3 ISA clocks
+	W = 3 ISA clocks
+	D = 6 ISA clocks
+
+Slow 32-bit - ~8mb/sec
+	B = 4 bus clocks
+	W = 8 bus clocks
+	D = 16 bus clocks
+
+Mid 32-bit -
+	B = 4 bus clocks
+	W = 5 bus clocks
+	D = 10 bus clocks
+
+Fast 32-bit -
+	B = 3 bus clocks
+	W = 3 bus clocks
+	D = 4 bus clocks
+*/
+
+enum VGATimings {
+	VGA_8BIT,
+	VGA_16BIT_SLOW,
+	VGA_16BIT_FAST,
+	VGA_32BIT_SLOW,
+	VGA_32BIT_MID,
+	VGA_32BIT_FAST
+};
+
 #define VGA_WORKERS 4
 
 // text mode blink feature
@@ -193,29 +235,33 @@ protected:
 	bool *m_tile_updated;
 	int m_timer_id;
 	VGADisplay * m_display;
+	int m_mapping;
+	VGATimings m_vga_timing;
+	double m_bus_timing;
 
 public:
 	VGA(Devices *_dev);
-	~VGA();
+	virtual ~VGA();
 
 	void install();
+	void config_changed();
 	void remove();
 	void reset(unsigned type);
 	uint16_t read(uint16_t address, uint io_len);
 	void write(uint16_t address, uint16_t value, uint io_len);
 	void power_off();
 
-	uint8_t mem_read(uint32_t addr);
-	void mem_write(uint32_t addr, uint8_t value);
-	void set_override(bool enabled, void *dev);
-	void redraw_area(uint x0, uint y0, uint width, uint height);
-	void get_text_snapshot(uint8_t **text_snapshot, uint *txHeight, uint *txWidth);
-	void attach_display(VGADisplay *_display) { m_display = _display; }
+	void set_timings(double _bus, VGATimings _vga) {
+		m_bus_timing = _bus;
+		m_vga_timing = _vga;
+	}
 
+	void get_text_snapshot(uint8_t **text_snapshot, uint *txHeight, uint *txWidth);
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-private:
+protected:
+	void redraw_area(uint x0, uint y0, uint width, uint height);
 	void init_iohandlers();
 	void init_systemtimer();
 	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t * const *plane);
@@ -234,6 +280,9 @@ private:
 	void gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size);
 	template <typename FN>
 	void update_mode13(FN _pixel_x, unsigned _pan);
+
+	static uint32_t s_read_byte(uint32_t _addr, void *_priv);
+	static void s_write_byte(uint32_t _addr, uint32_t _value, void *_priv);
 };
 
 #endif

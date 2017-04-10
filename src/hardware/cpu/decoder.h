@@ -198,7 +198,7 @@ public:
 	Instruction * decode();
 	inline uint32_t get_next_cseip() {
 		//return the linear address of the next decoded instruction
-		return g_cpubus.get_cseip();
+		return g_cpubus.cseip();
 	}
 
 private:

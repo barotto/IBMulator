@@ -174,19 +174,13 @@ void CPU::power_off()
 
 uint CPU::step()
 {
-	int cycles, bu_cycles, eu_cycles, decode_cycles, io_cycles, dramtx, vramtx, bu_rops;
 	CPUCore core_log;
 	bool do_log = false;
 
 	g_cpubus.reset_counters();
-	cycles = 0;
-	eu_cycles = 0;
-	bu_cycles = 0;
-	decode_cycles = 0;
-	io_cycles = 0;
-	bu_rops = 0;
-	dramtx = 0;
-	vramtx = 0;
+	int eu_cycles = 0;
+	int decode_cycles = 0;
+	int io_cycles = 0;
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -203,15 +197,15 @@ uint CPU::step()
 				// return a non zero number of elapsed cycles anyway
 				return 1;
 			}
-			// serialize any pending write
+
 			g_cpubus.update(0);
 		}
 
 		// decode and execute the next instruction
 		try {
 			//if the prev instr is the same as the next don't decode
-			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.is_pq_valid()) {
-				if(!g_cpubus.is_pq_valid()) {
+			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.pq_is_valid()) {
+				if(!g_cpubus.pq_is_valid()) {
 
 					// page faults can be generated at this point
 					g_cpubus.reset_pq();
@@ -234,14 +228,11 @@ uint CPU::step()
 				}
 			}
 
-			bu_rops = g_cpubus.get_dram_r();
-
+			// instruction execution
 			g_cpuexecutor.execute(m_instr);
 
-			dramtx = g_cpubus.get_dram_tx() - bu_rops; // instruction execution transfers
-			vramtx = g_cpubus.get_vram_tx();
-			eu_cycles = get_execution_cycles(dramtx||vramtx);
-			unsigned io_time = g_devices.get_last_io_time();
+			eu_cycles = get_execution_cycles(g_cpubus.memory_accessed());
+			int io_time = g_devices.get_last_io_time();
 			if(io_time) {
 				io_cycles = get_io_cycles(io_time);
 			}
@@ -270,26 +261,25 @@ uint CPU::step()
 		eu_cycles = 1;
 	}
 
-	// serialize any pending write
-	if(g_cpubus.is_pq_valid()) {
-		g_cpubus.update(eu_cycles + decode_cycles);
+	if(g_cpubus.pq_is_valid()) {
+		g_cpubus.update(decode_cycles + eu_cycles);
 	} else {
 		g_cpubus.update(0);
 	}
 
 	// determine the total amount of cycles spent
-	bu_cycles = g_cpubus.get_mem_cycles() + m_instr->cycles.bu;
+	int bu_cycles = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
 	if(bu_cycles < 0) {
 		bu_cycles = 0;
 	}
-	bu_cycles += g_cpubus.get_fetch_cycles();
-	dramtx = g_cpubus.get_dram_r() - bu_rops;
-	vramtx = g_cpubus.get_vram_r();
-	cycles += eu_cycles + bu_cycles + decode_cycles + io_cycles +
-			(bu_rops+dramtx)*DRAM_TX_CYCLES +
-			vramtx*VRAM_TX_CYCLES;
-	if((dramtx||bu_rops) && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
-		cycles += DRAM_REFRESH_CYCLES;
+	bu_cycles += g_cpubus.pipelined_fetch_cycles();
+	int bus_cycles = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
+
+	int cycles = eu_cycles + bu_cycles + decode_cycles + io_cycles + bus_cycles;
+
+	if(bus_cycles && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
+		// DRAM refresh
+		cycles += g_memory.dram_cycles();
 	}
 
 	if(CPULOG && do_log) {
@@ -309,7 +299,7 @@ uint CPU::step()
 	return cycles;
 }
 
-unsigned CPU::get_execution_cycles(bool _memtx)
+int CPU::get_execution_cycles(bool _memtx)
 {
 	unsigned cycles_spent = 0;
 	unsigned base = 0;
@@ -331,7 +321,7 @@ unsigned CPU::get_execution_cycles(bool _memtx)
 	}
 	if(m_instr->cycles.noj>0) {
 		//TODO consider the BOUND case
-		if(g_cpubus.is_pq_valid()) {
+		if(g_cpubus.pq_is_valid()) {
 			//jmp not taken
 			cycles_spent += m_instr->cycles.noj;
 		} else {
@@ -344,9 +334,9 @@ unsigned CPU::get_execution_cycles(bool _memtx)
 	return cycles_spent;
 }
 
-unsigned CPU::get_io_cycles(unsigned _io_time)
+int CPU::get_io_cycles(int _io_time)
 {
-	unsigned io_cycles = (_io_time + m_cycle_time - 1) / m_cycle_time; // round up
+	int io_cycles = (_io_time + m_cycle_time - 1) / m_cycle_time; // round up
 	if(io_cycles < m_instr->cycles.base) {
 		io_cycles = 0;
 	} else {

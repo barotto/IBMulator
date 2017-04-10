@@ -420,13 +420,13 @@ void CPUCore::set_CR3(uint32_t _cr3)
 	g_cpummu.TLB_flush();
 }
 
-uint32_t CPUCore::get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory) const
+uint32_t CPUCore::dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory) const
 {
 	if(_memory == nullptr) {
 		_memory = &g_memory;
 	}
 	if(is_paging()) {
-		return g_cpummu.translate_linear(get_linaddr(_segidx, _offset), _memory);
+		return g_cpummu.dbg_translate_linear(get_linaddr(_segidx, _offset), _memory);
 	} else {
 		return get_linaddr(_segidx, _offset);
 	}

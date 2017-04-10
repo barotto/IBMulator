@@ -131,7 +131,7 @@ void SysDebugger::read_memory(uint32_t _address, uint8_t *_buf, uint _len)
 	assert(_buf);
 
 	while(_len--) {
-		*(_buf++) = g_memory.read_notraps<1>(_address++);
+		*(_buf++) = g_memory.dbg_read_byte(_address++);
 	}
 }
 

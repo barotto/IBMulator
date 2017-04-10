@@ -22,20 +22,21 @@
 #include "filesys.h"
 #include "program.h"
 #include "machine.h"
+#include "hardware/cpu.h"
+#include "hardware/cpu/mmu.h"
 #include "hardware/devices/vga.h"
 #include <fstream>
 #include <cstring>
+#include <algorithm>
 
+#define DRAM_TIME_NS 120.0
 
 Memory g_memory;
 
 
 Memory::Memory()
 :
-m_buffer(nullptr),
-m_mainbuf_size(0),
-m_base_size(0),
-m_ext_size(0)
+m_mappings_namecnt(0)
 {
 	/* The 286 and the 386SX both have a 24-bit address bus. The 386DX has a
 	 * 32-bit address bus, but the PS/1 was equipped with the SX variant, so the
@@ -44,23 +45,41 @@ m_ext_size(0)
 	 */
 	m_s.mask = 0x00FFFFFF;
 	m_s.A20_enabled = true;
+	memset(m_s.mapstate, 0, sizeof(m_s.mapstate));
+
+	m_ram.buffer = nullptr;
+	m_ram.buffer_size = 0;
+
+	remap(0, 0xFFFFFFFF);
 }
 
 Memory::~Memory()
 {
-	delete[] m_buffer;
+	delete[] m_ram.buffer;
 }
 
 void Memory::init()
 {
-	//register_trap(0x400, 0x4FF, 3, &Memory::s_debug_40h_trap);
+	//register_trap(0x400, 0x4FF, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_40h_trap);
+	//register_trap(0x500, 0x9ffff, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap_noread);
+	/*
+	for(int i=0; i<0x260000; i+=0x10000) {
+		register_trap(i, i+2, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap_noread);
+	}
+	*/
+
+	// sizes and cycles are finalized in config_changed()
+	m_ram.low_mapping = add_mapping(0x000000, 0xA0000, MEM_MAPPING_INTERNAL,
+			Memory::s_read<uint8_t>, Memory::s_read<uint16_t>, Memory::s_read<uint32_t>, this,
+			Memory::s_write<uint8_t>, Memory::s_write<uint16_t>, Memory::s_write<uint32_t>, this);
+	m_ram.high_mapping = add_mapping(0x100000, 0x00000, MEM_MAPPING_INTERNAL,
+			Memory::s_read<uint8_t>, Memory::s_read<uint16_t>, Memory::s_read<uint32_t>, this,
+			Memory::s_write<uint8_t>, Memory::s_write<uint16_t>, Memory::s_write<uint32_t>, this);
 }
 
 void Memory::reset()
 {
-	memset(m_buffer, 0, m_base_size);
-	memset(m_buffer+MEBIBYTE, 0, m_ext_size);
-
+	memset(m_ram.buffer, 0, m_ram.buffer_size);
 	set_A20_line(true);
 }
 
@@ -71,136 +90,451 @@ void Memory::config_changed()
 	ram = std::min(16384-512-384, ram);
 	ram = std::max(128, ram);
 	ram -= ram % 128;
-	m_base_size = std::min(ram, 640);
-	m_ext_size = ram - m_base_size;
-	m_base_size *= KEBIBYTE;
-	m_ext_size *= KEBIBYTE;
-	m_mainbuf_size = MEBIBYTE + m_ext_size;
-	delete[] m_buffer;
-	m_buffer = new uint8_t[m_mainbuf_size];
-	memset(m_buffer, 0, m_mainbuf_size);
+	ram *= KEBIBYTE;
+
+	uint32_t low_mapping_size = std::min(ram, 0xA0000);
+	uint32_t high_mapping_size = ram - low_mapping_size;
+
+	m_ram.buffer_size = MEBIBYTE + high_mapping_size;
+	delete[] m_ram.buffer;
+	// add 3 extra bytes for unaligned accesses at the end of buffer
+	m_ram.buffer = new uint8_t[m_ram.buffer_size+3];
+
+	resize_mapping(m_ram.low_mapping, 0x000000, low_mapping_size);
+	resize_mapping(m_ram.high_mapping, 0x100000, high_mapping_size);
+
+	m_ram.cycles = 1; // address
+	m_ram.cycles += ceil(DRAM_TIME_NS / g_cpu.cycle_time_ns()); // data
+
+	set_mapping_cycles(m_ram.low_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
+	set_mapping_cycles(m_ram.high_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 
 	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, extended: %uKB)\n",
-			ram, m_base_size/KEBIBYTE, m_ext_size/KEBIBYTE);
-}
+		ram/KEBIBYTE, low_mapping_size/KEBIBYTE, high_mapping_size/KEBIBYTE);
+	PINFOF(LOG_V2, LOG_MEM, " access cycles: %u\n", m_ram.cycles);
 
-#define MEM_STATE_NAME "Memory state"
-#define MEM_DATA_NAME "Memory data"
+	memset(m_s.mapstate, 0, sizeof(m_s.mapstate));
+}
 
 void Memory::save_state(StateBuf &_state)
 {
-	StateHeader h;
-	h.name = MEM_STATE_NAME;
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s, h);
-
-	h.name = MEM_DATA_NAME;
-	h.data_size = m_mainbuf_size;
-	_state.write(m_buffer, h);
+	_state.write(&m_s, {sizeof(m_s), "Memory state"});
+	_state.write(m_ram.buffer, {m_ram.buffer_size, "Memory buffer"});
 }
 
 void Memory::restore_state(StateBuf &_state)
 {
-	StateHeader h;
-	h.name = MEM_STATE_NAME;
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s, h);
+	_state.read(&m_s, {sizeof(m_s), "Memory state"});
+	_state.read(m_ram.buffer, {m_ram.buffer_size, "Memory buffer"});
 
-	h.name = MEM_DATA_NAME;
-	h.data_size = m_mainbuf_size;
-	_state.read(m_buffer, h);
+	// every device that modify mappings during execution (eg. SVGA) must
+	// restore its mappings state
+	remap(0, 0xFFFFFFFF);
+}
+
+int Memory::add_mapping(uint32_t _base, uint32_t _size, unsigned _flags,
+		mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
+		void *_read_priv,
+		mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
+		void *_write_priv)
+{
+	uint64_t end = _base + _size;
+
+	assert(_size % MEM_MAP_GRANULARITY == 0);
+	assert(end / MEM_MAP_GRANULARITY < MEM_MAP_SIZE);
+
+	m_mappings.push_back({
+		++m_mappings_namecnt,
+		true,
+		_base, _size, _flags,
+		{2, 2, 2},
+		{_read_byte, _read_word, _read_dword, _read_priv},
+		{_write_byte, _write_word, _write_dword, _write_priv}
+	});
+
+	remap(_base, end);
+
+	return m_mappings_namecnt;
+}
+
+void Memory::resize_mapping(int _mapping, uint32_t _newbase, uint32_t _newsize)
+{
+	assert(_newsize % MEM_MAP_GRANULARITY == 0);
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		if(it->base != _newbase && (it->enabled && it->size)) {
+			it->enabled = false;
+			remap(it->start(), it->end());
+			it->enabled = true;
+		}
+		it->base = _newbase;
+		it->size = _newsize;
+		assert(it->end() / MEM_MAP_GRANULARITY < MEM_MAP_SIZE);
+		remap(it->start(), it->end());
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+
+void Memory::remove_mapping(int _mapping)
+{
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		if(it->enabled && it->size) {
+			it->enabled = false;
+			remap(it->start(), it->end());
+		}
+		m_mappings.erase(it);
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+
+void Memory::enable_mapping(int _mapping, bool _enabled)
+{
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		if(it->enabled != _enabled) {
+			it->enabled = _enabled;
+			remap(it->start(), it->end());
+		}
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+
+void Memory::set_mapping_rfuncs(int _mapping,
+		mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
+		void *_read_priv)
+{
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		it->read.byte  = _read_byte;
+		it->read.word  = _read_word;
+		it->read.dword = _read_dword;
+		it->read.priv  = _read_priv;
+		remap(it->start(), it->end());
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+void Memory::set_mapping_wfuncs(int _mapping,
+		mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
+		void *_write_priv)
+{
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		it->write.byte  = _write_byte;
+		it->write.word  = _write_word;
+		it->write.dword = _write_dword;
+		it->write.priv  = _write_priv;
+		remap(it->start(), it->end());
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+
+void Memory::set_mapping_cycles(int _mapping, int _byte, int _word, int _dword)
+{
+	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
+	if(it != m_mappings.end()) {
+		it->cycles.byte  = _byte;
+		it->cycles.word  = _word;
+		it->cycles.dword = _dword;
+		// no remap needed
+	} else {
+		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
+	}
+}
+
+void Memory::set_state(uint32_t _base, uint32_t _size, unsigned _state)
+{
+	assert(_size % MEM_MAP_GRANULARITY == 0);
+	assert((_base+_size) / MEM_MAP_GRANULARITY < MEM_MAP_SIZE);
+
+	for(uint32_t block=0; block<_size; block+=MEM_MAP_GRANULARITY) {
+		m_s.mapstate[(_base + block) / MEM_MAP_GRANULARITY] = _state;
+	}
+
+	remap(_base, _base+_size);
 }
 
 void Memory::set_A20_line(bool _enabled)
 {
-	if(_enabled) {
+	if(_enabled && !m_s.A20_enabled) {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line ENABLED\n");
 		m_s.A20_enabled = true;
 		m_s.mask = 0x00ffffff; // 24-bit address bus
-	} else {
+		g_cpummu.TLB_flush();
+	} else if(!_enabled && m_s.A20_enabled) {
 		PDEBUGF(LOG_V2, LOG_MEM, "A20 line DISABLED\n");
 		m_s.A20_enabled = false;
 		m_s.mask = 0x00efffff; // 24-bit address bus with A20 masked
+		g_cpummu.TLB_flush();
 	}
 }
 
-uint8_t Memory::read_byte(uint32_t _address) const noexcept
+template<>
+uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles) const noexcept
 {
-	_address &= m_s.mask;
-
-	//BASE RAM, EXTENDED RAM
-	if(_address < m_base_size || (_address > 0xFFFFF && _address < m_mainbuf_size)) {
-		return m_buffer[_address];
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	if(map->read.byte) {
+		_cycles += map->cycles.byte;
+		return map->read.byte(_addr, map->read.priv);
 	}
-	//SYSTEM ROM
-	//TODO this works only for 24-bit address systems
-	else if((_address >= 0xE0000 && _address <= 0xFFFFF) || _address >= SYS_ROM_ADDR) {
-		return g_machine.sys_rom().read(_address);
-	}
-	//VGA MEMORY
-	else if(_address >= 0xA0000 && _address <= 0xBFFFF) {
-		return g_machine.devices().vga()->mem_read(_address);
-	}
-	//NO DATA
 	return 0xFF;
 }
 
-void Memory::write_byte(uint32_t _address, uint8_t _value) noexcept
+template<>
+uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles) const noexcept
 {
-	_address &= m_s.mask;
-
-	//BASE and EXTENDED RAM
-	if(_address < m_base_size || (_address > 0xFFFFF && _address < m_mainbuf_size)) {
-		m_buffer[_address] = _value;
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	if(map->read.word) {
+		if((_addr&0x1) && (map->flags&MEM_MAPPING_EXTERNAL)) {
+			/* 16bit external bus
+			 * this is the case for 32-bit bus CPU for odd aligned words inside
+			 * dword boundaries
+			 */
+			return (
+				read_mapped<1>(_addr,   _cycles) |
+				read_mapped<1>(_addr+1, _cycles) << 8
+			);
+		}
+		// if odd address then it must be 32-bit internal bus
+		_cycles += map->cycles.word;
+		return map->read.word(_addr, map->read.priv);
 	}
-	//VGA MEMORY
-	else if(_address >= 0xA0000 && _address <= 0xBFFFF) {
-		g_machine.devices().vga()->mem_write(_address, _value);
+	return (
+		read_mapped<1>(_addr,   _cycles) |
+		read_mapped<1>(_addr+1, _cycles) << 8
+	);
+}
+
+template<>
+uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles) const noexcept
+{
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	if(map->read.dword) {
+		_cycles += map->cycles.dword;
+		return map->read.dword(_addr, map->read.priv);
+	}
+	return (
+		read_mapped<2>(_addr,   _cycles) |
+		read_mapped<2>(_addr+2, _cycles) << 16
+	);
+}
+
+template<>
+void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+{
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
+	if(map->write.byte) {
+		_cycles += map->cycles.byte;
+		map->write.byte(_addr, _data, map->write.priv);
 	}
 }
 
-uint64_t Memory::read_qword(uint32_t _address) const noexcept
+template<>
+void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 {
-	uint32_t dw0 = read<4>(_address); //lo dword
-	uint32_t dw1 = read<4>(_address+4); //hi dword
-	uint64_t value = uint64_t(dw1)<<32 | dw0;
-
-	return value;
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
+	if(map->write.word) {
+		if((_addr&0x1) && (map->flags&MEM_MAPPING_EXTERNAL)) {
+			/* 16bit external bus
+			 * this is the case for 32-bit bus CPU for odd aligned words inside
+			 * dword boundaries
+			 */
+			write_mapped<1>(_addr,   _data,    _cycles);
+			write_mapped<1>(_addr+1, _data>>8, _cycles);
+			return;
+		}
+		// if odd address then it must be 32-bit internal bus
+		_cycles += map->cycles.word;
+		map->write.word(_addr, _data, map->write.priv);
+		return;
+	}
+	write_mapped<1>(_addr,   _data,    _cycles);
+	write_mapped<1>(_addr+1, _data>>8, _cycles);
 }
 
-uint64_t Memory::read_qword_notraps(uint32_t _address) const noexcept
+template<>
+void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 {
-	uint32_t dw0 = read_notraps<4>(_address); //lo dword
-	uint32_t dw1 = read_notraps<4>(_address+4); //hi dword
-	return uint64_t(dw1)<<32 | uint64_t(dw0);
+	_addr &= m_s.mask;
+	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
+	if(map->write.dword) {
+		_cycles += map->cycles.dword;
+		map->write.dword(_addr, _data, map->write.priv);
+		return;
+	}
+	write_mapped<2>(_addr,    _data,      _cycles);
+	write_mapped<2>(_addr+2, (_data>>16), _cycles);
 }
 
-uint8_t * Memory::get_phy_ptr(uint32_t _address)
+uint8_t * Memory::get_buffer_ptr(uint32_t _addr)
 {
-	_address &= m_s.mask;
-	if(_address > m_mainbuf_size) {
+	_addr &= m_s.mask;
+	if(_addr > m_ram.buffer_size) {
 		throw std::exception();
 	}
-	return &m_buffer[_address];
+	return &m_ram.buffer[_addr];
 }
 
-void Memory::DMA_read(uint32_t _address, uint16_t _len, uint8_t *_buf)
+void Memory::DMA_read(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
+	int c;
 	for(uint16_t i=0; i<_len; i++) {
-		_buf[i] = read<1>(_address+i);
+		_buf[i] = read<1>(_addr+i, c);
 	}
 }
 
-void Memory::DMA_write(uint32_t _address, uint16_t _len, uint8_t *_buf)
+void Memory::DMA_write(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
+	int c;
 	for(uint16_t i=0; i<_len; i++) {
-		write<1>(_address+i, _buf[i]);
+		write<1>(_addr+i, _buf[i], c);
 	}
+}
+
+void Memory::remap(uint32_t _start, uint32_t _end)
+{
+	if(_start == _end) {
+		return;
+	}
+	static MemMapping nullmap = {
+		0,         // name
+		false,     // enabled
+		0,         // base
+		0,         // size
+		0,         // flags
+		{0, 0, 0}, // cycles
+		{nullptr,nullptr,nullptr, nullptr}, // read
+		{nullptr,nullptr,nullptr, nullptr}  // write
+	};
+	for(uint64_t i=_start; i<_end; i+=MEM_MAP_GRANULARITY) {
+		int index = i / MEM_MAP_GRANULARITY;
+		assert(index < MEM_MAP_SIZE);
+		m_map[index].read = &nullmap;
+		m_map[index].write = &nullmap;
+	}
+	for(auto mapping=m_mappings.begin(); mapping != m_mappings.end(); mapping++) {
+		if(!mapping->enabled || mapping->size == 0) {
+			continue;
+		}
+		if(mapping->start() < _end && mapping->end() > _start) {
+			uint32_t start = mapping->start();
+			uint32_t end = std::min(_end, mapping->end());
+			for(uint64_t i=start; i<end; i+=MEM_MAP_GRANULARITY) {
+				int index = i / MEM_MAP_GRANULARITY;
+				assert(index < MEM_MAP_SIZE);
+				if(mapping->read_is_allowed(m_s.mapstate[index])) {
+					m_map[index].read = &*mapping;
+				}
+				if(mapping->write_is_allowed(m_s.mapstate[index])) {
+					m_map[index].write = &*mapping;
+				}
+			}
+		}
+	}
+	g_cpummu.TLB_flush();
+}
+
+bool Memory::MemMapping::read_is_allowed(unsigned _state)
+{
+	if(!read.byte && !read.word && !read.dword) {
+		return false;
+	}
+	switch(_state & MEM_READ_MASK) {
+		case MEM_READ_ANY:
+			return true;
+		case MEM_READ_DISABLED:
+			return false;
+		case MEM_READ_EXTERNAL:
+			return !(flags & MEM_MAPPING_INTERNAL);
+		case MEM_READ_INTERNAL:
+			return !(flags & MEM_MAPPING_EXTERNAL);
+	}
+	return false;
+}
+
+bool Memory::MemMapping::write_is_allowed(unsigned _state)
+{
+	if(!write.byte && !write.word && !write.dword) {
+		return false;
+	}
+	switch(_state & MEM_WRITE_MASK) {
+		case MEM_WRITE_ANY:
+			return true;
+		case MEM_WRITE_DISABLED:
+			return false;
+		case MEM_WRITE_EXTERNAL:
+			return !(flags & MEM_MAPPING_INTERNAL);
+		case MEM_WRITE_INTERNAL:
+			return !(flags & MEM_MAPPING_EXTERNAL);
+	}
+	return false;
+}
+
+
+/*******************************************************************************
+ * DEBUGGING
+ */
+
+uint8_t  Memory::dbg_read_byte(uint32_t _addr) const noexcept
+{
+	_addr &= m_s.mask;
+	int index = _addr / MEM_MAP_GRANULARITY;
+	assert(index < MEM_MAP_SIZE);
+	MemMapping *map = m_map[index].read;
+	if(map->read.byte) {
+		return map->read.byte(_addr, map->read.priv);
+	}
+	return 0xFF;
+}
+
+uint16_t Memory::dbg_read_word(uint32_t _addr) const noexcept
+{
+	_addr &= m_s.mask;
+	int index = _addr / MEM_MAP_GRANULARITY;
+	assert(index < MEM_MAP_SIZE);
+	MemMapping *map = m_map[index].read;
+	if(map->read.word) {
+		return map->read.word(_addr, map->read.priv);
+	}
+	return (
+		dbg_read_byte(_addr) | dbg_read_byte(_addr+1) << 8
+	);
+}
+
+uint32_t Memory::dbg_read_dword(uint32_t _addr) const noexcept
+{
+	_addr &= m_s.mask;
+	int index = _addr / MEM_MAP_GRANULARITY;
+	assert(index < MEM_MAP_SIZE);
+	MemMapping *map = m_map[index].read;
+	if(map->read.dword) {
+		return map->read.dword(_addr, map->read.priv);
+	}
+	return (
+		dbg_read_word(_addr) | dbg_read_word(_addr+2) << 16
+	);
+}
+
+uint64_t Memory::dbg_read_qword(uint32_t _addr) const noexcept
+{
+	return (
+		uint64_t(dbg_read_dword(_addr)) | uint64_t(dbg_read_dword(_addr+4)) << 32
+	);
 }
 
 void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)
 {
-	if(_address+_len > m_mainbuf_size) {
+	if(_address+_len > m_ram.buffer_size) {
 		PERRF(LOG_MEM, "can't read %u bytes from 0x%06X\n", _len, _address);
 		throw std::exception();
 	}
@@ -211,20 +545,22 @@ void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)
 		throw std::exception();
 	}
 
-	file.write((char*)(m_buffer + _address), _len);
+	file.write((char*)(m_ram.buffer + _address), _len);
 	file.close();
 }
 
 void Memory::check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len)
 const noexcept
 {
-	std::vector<memtrap_interval_t> results;
-	m_traps_tree.findOverlapping(_address, _address, results);
-	for(auto t : results) {
-		if(t.value.mask & _mask) {
-			t.value.func(_address, _mask, _value, _len);
-			if(STOP_AT_MEM_TRAPS) {
-				g_machine.set_single_step(true);
+	if(MEMORY_TRAPS) {
+		std::vector<memtrap_interval_t> results;
+		m_traps_tree.findOverlapping(_address, _address, results);
+		for(auto t : results) {
+			if(t.value.mask & _mask) {
+				t.value.func(_address, _mask, _value, _len);
+				if(STOP_AT_MEM_TRAPS) {
+					g_machine.set_single_step(true);
+				}
 			}
 		}
 	}
@@ -253,7 +589,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		op = read;
 		char * byte0 = buf;
 		while(len--) {
-			uint8_t byte = g_memory.read_notraps<1>(addr++);
+			uint8_t byte = g_memory.dbg_read_byte(addr++);
 			if(byte>=32 && byte<=126) {
 				*byte0 = byte;
 			} else {
@@ -263,7 +599,7 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 		}
 	} else {
 		if(_len==1) {
-			uint8_t byte = g_memory.read_notraps<1>(addr);
+			uint8_t byte = g_memory.dbg_read_byte(addr);
 			if(byte>=32 && byte<=126) {
 				buf[0] = byte;
 			} else {
@@ -287,6 +623,35 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 			break;
 	}
 	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value, buf);
+}
+
+void Memory::s_debug_trap_noread(uint32_t _address,  // address
+		uint8_t  _rw,    // read or write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data length (1=byte, 2=word, 4=dword)
+		)
+{
+	const char *assign="<-", *read="->";
+	const char *op;
+	if(_rw == MEM_TRAP_READ) {
+		op = read;
+	} else {
+		op = assign;
+	}
+	const char *format;
+	switch(_len) {
+		case 1:
+			format = "%d[%04X] %s %02X\n";
+			break;
+		case 2:
+			format = "%d[%04X] %s %04X\n";
+			break;
+		case 4:
+		default:
+			format = "%d[%04X] %s %08X\n";
+			break;
+	}
+	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value);
 }
 
 void Memory::s_debug_40h_trap(uint32_t _address,  // address

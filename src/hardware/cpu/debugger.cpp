@@ -181,17 +181,17 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 				outmask[6] = '8';
 			}
 			try {
-				uint32_t address = _core->get_phyaddr(seg, adr, _memory);
+				uint32_t address = _core->dbg_get_phyaddr(seg, adr, _memory);
 				switch (_opsize) {
-					case 8 : {	uint8_t val = _memory->read_notraps<1>(address);
+					case 8 : {	uint8_t val = _memory->dbg_read_byte(address);
 								outmask[12] = '2';
 								sprintf(result,outmask,prefix,adr,val);
 							}	break;
-					case 16: {	uint16_t val = _memory->read_notraps<2>(address);
+					case 16: {	uint16_t val = _memory->dbg_read_word(address);
 								outmask[12] = '4';
 								sprintf(result,outmask,prefix,adr,val);
 							}	break;
-					case 32: {	uint32_t val = _memory->read_notraps<4>(address);
+					case 32: {	uint32_t val = _memory->dbg_read_dword(address);
 								outmask[12] = '8';
 								sprintf(result,outmask,prefix,adr,val);
 							}	break;
@@ -315,7 +315,7 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 				pos = strchr(pos,' ');
 				pos = skip_blanks(pos);
 				if(pos[0]=='B' && pos[1]=='X') {
-					addr = _core->get_phyaddr(REGI_CS, _core->get_BX());
+					addr = _core->dbg_get_phyaddr(REGI_CS, _core->get_BX());
 				}
 			}
 			if(addr != 0) {
@@ -597,10 +597,10 @@ void CPUDebugger::INT_15_87(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 		return;
 	}
 	try {
-		uint32_t gdt = core->get_phyaddr(REGI_ES, core->get_SI(), mem);
+		uint32_t gdt = core->dbg_get_phyaddr(REGI_ES, core->get_SI(), mem);
 		Descriptor from, to;
-		from = mem->read_qword(gdt+0x10);
-		to   = mem->read_qword(gdt+0x18);
+		from = mem->dbg_read_qword(gdt+0x10);
+		to   = mem->dbg_read_qword(gdt+0x18);
 		snprintf(buf, buflen, ": from 0x%06X to 0x%06X (0x%04X bytes)",
 				from.base, to.base, core->get_CX()*2
 		);
@@ -628,8 +628,8 @@ void CPUDebugger::INT_21_09(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	}
 	char * str;
 	try {
-		uint32_t addr = core->get_phyaddr(REGI_DS, core->get_DX(), mem);
-		str = (char*)mem->get_phy_ptr(addr);
+		uint32_t addr = core->dbg_get_phyaddr(REGI_DS, core->get_DX(), mem);
+		str = (char*)mem->get_buffer_ptr(addr);
 	} catch(...) {
 		return;
 	}
@@ -707,7 +707,7 @@ void CPUDebugger::INT_2F_1123(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 		if(core->get_FLAGS(FMASK_CF) == 0) {
 			buf += strlen(buf);
 			try {
-				filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI(), mem));
+				filename = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_ES, core->get_DI(), mem));
 			} catch(CPUException &) {
 				filename = "[unknown]";
 			}
@@ -717,7 +717,7 @@ void CPUDebugger::INT_2F_1123(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 	}
 	//DS:SI -> ASCIZ filename to canonicalize
 	try {
-		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+		filename = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_SI(), mem));
 	} catch(CPUException &) {
 		filename = "[unknown]";
 	}
@@ -838,7 +838,7 @@ void CPUDebugger::INT_21_4B(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 	//DS:DX -> ASCIZ program name
 	const char * name;
 	try {
-		name = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+		name = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_DX(), mem));
 	} catch(CPUException &) {
 		name = "[unknown]";
 	}
@@ -869,7 +869,7 @@ void CPUDebugger::INT_21_39_A_B_4E(bool call, uint16_t /*ax*/, CPUCore *core, Me
 	//DS:DX -> ASCIZ pathname
 	const char * pathname;
 	try {
-		pathname = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+		pathname = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_DX(), mem));
 	} catch(CPUException &) {
 		pathname = "[unknown]";
 	}
@@ -891,7 +891,7 @@ void CPUDebugger::INT_21_3D(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	//DS:DX -> ASCIZ filename
 	const char * filename;
 	try {
-		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+		filename = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_DX(), mem));
 	} catch(CPUException &) {
 		filename = "[unknown]";
 	}
@@ -982,7 +982,7 @@ void CPUDebugger::INT_21_43(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	//DS:DX -> ASCIZ filename
 	const char * filename;
 	try {
-		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_DX(), mem));
+		filename = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_DX(), mem));
 	} catch(CPUException &) {
 		filename = "[unknown]";
 	}
@@ -1031,12 +1031,12 @@ void CPUDebugger::INT_21_5F03(bool call, uint16_t /*ax*/, CPUCore *core, Memory 
 	}
 	const char *local, *net;
 	try {
-		local = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+		local = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_SI(), mem));
 	} catch(CPUException &) {
 		local = "[unknown]";
 	}
 	try {
-		net = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_ES, core->get_DI(), mem));
+		net = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_ES, core->get_DI(), mem));
 	} catch(CPUException &) {
 		net = "[unknown]";
 	}
@@ -1060,7 +1060,7 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 	//DS:SI -> ASCIZ filename
 	const char * filename;
 	try {
-		filename = (char*)mem->get_phy_ptr(core->get_phyaddr(REGI_DS, core->get_SI(), mem));
+		filename = (char*)mem->get_buffer_ptr(core->dbg_get_phyaddr(REGI_DS, core->get_SI(), mem));
 	} catch(CPUException &) {
 		filename = "[unknown]";
 	}
@@ -1069,7 +1069,7 @@ void CPUDebugger::INT_2B_01(bool call, uint16_t /*ax*/, CPUCore *core, Memory *m
 
 std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, uint16_t _limit)
 {
-	if(_base+_limit > _mem.get_ram_size()) {
+	if(_base+_limit > _mem.get_buffer_size()) {
 		throw std::range_error("descriptor table beyond RAM limit");
 	}
 	std::stringstream output;
@@ -1080,7 +1080,7 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 	output << "index,base,limit/offset,base_15_0/selector,base_23_16/word_count,";
 	output << "AR,type,accessed,DPL,P,valid\n";
 	while(ptr < _base+_limit) {
-		desc = _mem.read_qword(ptr);
+		desc = _mem.dbg_read_qword(ptr);
 
 		// entry number
 		output << std::hex << std::setw(3) << index << ",";

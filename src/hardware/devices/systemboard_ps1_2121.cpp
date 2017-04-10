@@ -22,10 +22,12 @@
 #include "systemboard_ps1_2121.h"
 #include "floppy.h"
 #include <cstring>
+#include <sstream>
 
 IODEVICE_PORTS(SystemBoard_PS1_2121) = {
-	{ 0x0E0, 0x0E0, PORT_8BIT|PORT__W }, // Cfg reg address (IBM PS/1 CLOCK on Ralf Brown's PORTS.TXT)
-	{ 0x0E1, 0x0E1, PORT_8BIT|PORT_RW }, // Cfg registers (IBM PS/1 CLOCK on Ralf Brown's PORTS.TXT)
+	{ 0x0E0, 0x0E0, PORT_8BIT|PORT__W }, // RAM control address
+	{ 0x0E1, 0x0E1, PORT_8BIT|PORT_RW }, // RAM control registers
+	{ 0x0E8, 0x0E8, PORT_8BIT|PORT_R_ }, // RAM control ???
 	{ 0x3F3, 0x3F3, PORT_8BIT|PORT_R_ }  // Floppy drive type
 };
 
@@ -55,18 +57,17 @@ void SystemBoard_PS1_2121::reset(unsigned _signal)
 	m_s.E0_addr = 0;
 
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
-		memset(&m_s.E0_regs, 0, sizeof(m_s.E0_regs));
-
-		// adapter ID taken from the PCem project.
-		SystemBoard::m_s.adapter_ID = 0xE8FE;
+		memset(&m_s.E1_regs, 0, sizeof(m_s.E1_regs));
 	}
 }
 
 void SystemBoard_PS1_2121::config_changed()
 {
 	SystemBoard::config_changed();
+
 	m_floppy = m_devices->device<FloppyCtrl>();
-	update_state();
+
+	reset_board_state();
 }
 
 void SystemBoard_PS1_2121::save_state(StateBuf &_state)
@@ -85,25 +86,17 @@ void SystemBoard_PS1_2121::restore_state(StateBuf &_state)
 	_state.read(&m_s, {sizeof(m_s), name()});
 }
 
-void SystemBoard_PS1_2121::update_state()
+void SystemBoard_PS1_2121::update_board_state()
 {
-	update_E0_state();
-	SystemBoard::update_state();
-}
+	// TODO Memory banks control
+	std::stringstream banks;
+	for(int i=0; i<32; i++) {
+		banks << (m_s.E1_regs[i]&0xF);
+	}
+	auto banks_str = banks.str();
+	PDEBUGF(LOG_V2, LOG_MACHINE, "RAM banks: %s\n", banks_str.c_str());
 
-void SystemBoard_PS1_2121::update_E0_state()
-{
-	//TODO RAM control
-
-	// reg0:bit0 = Enables the first 512KB of RAM
-	bool enable = m_s.E0_regs[0]&1;
-	PDEBUGF(LOG_V2, LOG_MACHINE, "PS/1 2121 port E1[0]:0=%d, %sable RAM 0-512KB (not implemented)\n",
-			enable, (enable)?"en":"dis");
-
-	// reg1:bit0 = Enables 512-640KB (128KB) of RAM
-	enable = m_s.E0_regs[1]&1;
-	PDEBUGF(LOG_V2, LOG_MACHINE, "PS/1 2121 port E1[1]:0=%d, %sable RAM 512-640KB (not implemented)\n",
-			enable, (enable)?"en":"dis");
+	SystemBoard::update_board_state();
 }
 
 uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
@@ -112,12 +105,15 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 
 	switch(_address) {
 		case 0x00E1:
-			value = m_s.E0_regs[m_s.E0_addr];
+			value = m_s.E1_regs[m_s.E0_addr];
 			PDEBUGF(LOG_V2, LOG_MACHINE, "read  0xE1[%d] -> 0x%04X\n", m_s.E0_addr, value);
 			return value;
+		case 0x00E8:
+			value = 0xff;
+			break;
 		case 0x0105:
 			// bit 7 forced high or 128KB of RAM will be missed on cold boot
-			value = SystemBoard::m_s.POS_5 | 0x80;
+			value = SystemBoard::m_s.POS[5] | 0x80;
 			break;
 		case 0x03F3:
 			value = 0;
@@ -153,11 +149,8 @@ void SystemBoard_PS1_2121::write(uint16_t _address, uint16_t _value, unsigned _i
 			m_s.E0_addr = _value;
 			break;
 		case 0x00E1:
-			m_s.E0_regs[m_s.E0_addr] = _value;
+			m_s.E1_regs[m_s.E0_addr] = _value;
 			PDEBUGF(LOG_V2, LOG_MACHINE, "write 0xE1[%d] <- 0x%04X\n", m_s.E0_addr, _value);
-			if(!SystemBoard::m_s.board_enable) {
-				update_E0_state();
-			}
 			break;
 		default:
 			SystemBoard::write(_address, _value, _io_len);

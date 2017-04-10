@@ -42,8 +42,8 @@ Instruction * CPUDecoder::decode()
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
 	m_instr.seg = REGI_NONE;
-	m_instr.eip = g_cpubus.get_eip();
-	m_instr.cseip = g_cpubus.get_cseip();
+	m_instr.eip = g_cpubus.eip();
+	m_instr.cseip = g_cpubus.cseip();
 	m_instr.cycles = {0,0,0,0,0,0,0,0};
 
 restart_opcode:

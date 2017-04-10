@@ -21,6 +21,8 @@
 #include "machine.h"
 #include "md5.h"
 #include "systemrom.h"
+#include "memory.h"
+#include "cpu.h"
 #include "filesys.h"
 #include "utils.h"
 #include <cstring>
@@ -33,35 +35,49 @@
 #include <algorithm>
 #include <SDL2/SDL.h>
 
+#define ROM_TIME_NS    200.0
 #define MAX_ROM_SIZE   0x80000
 #define SYS_ROM_ADDR   0xF80000
 #define BIOS_OFFSET    0x70000
 #define BIOS_SIZE      0x10000
 
 
-
 SystemROM::SystemROM()
-: m_data(nullptr)
+: m_data(nullptr),
+  m_low_mapping(0), m_high_mapping(0)
 {
 }
 
 SystemROM::~SystemROM()
 {
-	if(m_data != nullptr) {
-		delete[] m_data;
-		m_data = nullptr;
-	}
+	delete[] m_data;
+}
+
+void SystemROM::init()
+{
+	m_data = new uint8_t[MAX_ROM_SIZE];
+	memset(m_data, 0, MAX_ROM_SIZE);
+
+	m_low_mapping = g_memory.add_mapping(0xE0000, 0x20000, MEM_MAPPING_EXTERNAL,
+			SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this,
+			nullptr, nullptr, nullptr, nullptr);
+	m_high_mapping = g_memory.add_mapping(0xF80000, 0x80000, MEM_MAPPING_EXTERNAL,
+			SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this,
+			nullptr, nullptr, nullptr, nullptr);
+}
+
+void SystemROM::config_changed()
+{
+	int c = 1 + ceil(ROM_TIME_NS / g_cpu.cycle_time_ns());
+	g_memory.set_mapping_cycles(m_low_mapping, c, c, c*2);
+	g_memory.set_mapping_cycles(m_high_mapping, c, c, c*2);
 }
 
 void SystemROM::load(const std::string _romset)
 {
-	if(m_data != nullptr) {
-		delete[] m_data;
-		m_data = nullptr;
-		m_bios = g_bios_db.at("unknown");
-	}
-	m_data = new uint8_t[MAX_ROM_SIZE];
-	memset(m_data, 0xCC, MAX_ROM_SIZE);
+	assert(m_data != nullptr);
+	m_bios = g_bios_db.at("unknown");
+	memset(m_data, 0, MAX_ROM_SIZE);
 
 	if(FileSys::is_directory(_romset.c_str())) {
 		PINFOF(LOG_V0, LOG_MACHINE, "Loading ROM directory '%s'\n", _romset.c_str());
@@ -312,4 +328,3 @@ void SystemROM::load_archive(const std::string &_filename)
 	throw std::exception();
 #endif
 }
-

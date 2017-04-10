@@ -35,6 +35,25 @@
 #define SYS_ROM_HIBASEADDR  0xFFFFF
 #define MAX_EXT_MEM_SIZE  (MAX_MEM_SIZE - MEBIBYTE - SYS_ROM_SIZE)
 
+#define MEM_MAP_SIZE        0x10000 // 0x40000
+#define MEM_MAP_GRANULARITY 0x10000 // 0x4000
+
+#define MEM_MAPPING_EXTERNAL 1  // memory on external bus
+#define MEM_MAPPING_INTERNAL 2  // system RAM
+
+#define MEM_READ_MASK       0x0f
+#define MEM_READ_ANY        0x00
+#define MEM_READ_DISABLED   0x01
+#define MEM_READ_INTERNAL   0x02
+#define MEM_READ_EXTERNAL   0x04
+
+#define MEM_WRITE_MASK      0xf0
+#define MEM_WRITE_ANY       0x00
+#define MEM_WRITE_DISABLED  0x10
+#define MEM_WRITE_INTERNAL  0x20
+#define MEM_WRITE_EXTERNAL  0x40
+
+
 class Memory;
 extern Memory g_memory;
 
@@ -60,29 +79,69 @@ struct memtrap_t {
 typedef Interval<memtrap_t> memtrap_interval_t;
 typedef IntervalTree<memtrap_t> memtrap_intervalTree_t;
 
+typedef uint32_t (*mem_read_fn_t)(uint32_t _address, void *_privdata);
+typedef void (*mem_write_fn_t)(uint32_t _address, uint32_t _value, void *_privdata);
+
 class Memory
 {
-protected:
+	friend class CPUBus;
 
-	//TODO change these C arrays to std::vector
-	uint8_t *m_buffer;
-	uint m_mainbuf_size;
-	uint m_base_size;
-	uint m_ext_size;
+protected:
+	struct {
+		int low_mapping;
+		int high_mapping;
+		uint8_t *buffer;
+		uint32_t buffer_size;
+		int cycles;
+	} m_ram;
 
 	struct {
 		bool A20_enabled;
 		uint32_t mask;
+		unsigned mapstate[MEM_MAP_SIZE];
 	} m_s;
 
 	memtrap_intervalTree_t m_traps_tree;
 	std::vector<memtrap_interval_t> m_traps_intervals;
 
-	uint8_t read_byte(uint32_t _address) const noexcept;
-	void write_byte(uint32_t _address, uint8_t value) noexcept;
+	struct MemMapping
+	{
+		int name;
+		bool enabled;
+		uint32_t base;
+		uint32_t size;
+		uint32_t flags;
+		struct {
+			int byte, word, dword;
+		} cycles;
+		struct {
+			mem_read_fn_t byte, word, dword;
+			void *priv;
+		} read;
+		struct {
+			mem_write_fn_t byte, word, dword;
+			void *priv;
+		} write;
+
+		bool read_is_allowed(unsigned _state);
+		bool write_is_allowed(unsigned _state);
+		uint32_t start() { return base; }
+		uint32_t end() { return base+size; }
+
+		bool operator==(const MemMapping &_mm) const { return name == _mm.name; }
+		bool operator==(int _mm) const { return name == _mm; }
+	};
+
+	std::list<MemMapping> m_mappings;
+	int m_mappings_namecnt;
+
+	struct MapEntry {
+		MemMapping *read;
+		MemMapping *write;
+	};
+	MapEntry m_map[MEM_MAP_SIZE];
 
 public:
-
 	Memory();
 	~Memory();
 
@@ -91,62 +150,30 @@ public:
 	void config_changed();
 	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
 
-	template<unsigned LEN>
-	uint32_t read_notraps(uint32_t _address) const noexcept
-	{
-		uint32_t b0 = read_byte(_address), b1=0, b2=0, b3=0;
-		if(LEN >= 2) {
-			b1 = read_byte(_address+1);
-		}
-		if(LEN == 4) {
-			b2 = read_byte(_address+2);
-			b3 = read_byte(_address+3);
-		}
-		return (b3<<24 | b2<<16 | b1<<8 | b0);
-	}
-	uint64_t read_qword_notraps(uint32_t _address) const noexcept;
-
-	template<unsigned LEN>
-	uint32_t read(uint32_t _address, unsigned _trap_len = LEN) const noexcept
-	{
-		uint32_t value = read_notraps<LEN>(_address);
-
-		if(MEMORY_TRAPS && _trap_len==LEN) {
-			check_trap(_address, MEM_TRAP_READ, value, LEN);
-		}
-
-		return value;
-	}
-	uint64_t read_qword(uint32_t _address) const noexcept;
-
-	template<unsigned LEN>
-	void write_notraps(uint32_t _address, uint32_t value) noexcept
-	{
-		write_byte(_address, uint8_t(value));
-		if(LEN >=2) {
-			write_byte(_address+1, uint8_t(value>>8));
-		}
-		if(LEN == 4) {
-			write_byte(_address+2, uint8_t(value>>16));
-			write_byte(_address+3, uint8_t(value>>24));
-		}
-	}
-
-	template<unsigned LEN>
-	void write(uint32_t _address, uint32_t _value, unsigned _trap_len = LEN) noexcept
-	{
-		write_notraps<LEN>(_address, _value);
-
-		if(MEMORY_TRAPS && _trap_len==LEN) {
-			check_trap(_address, MEM_TRAP_WRITE, _value, LEN);
-		}
-	}
+	int add_mapping(uint32_t _base, uint32_t _size, unsigned _flags,
+			mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
+			void *_r_priv,
+			mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
+			void *_w_priv);
+	void resize_mapping(int _mapping, uint32_t _newbase, uint32_t _newsize);
+	void enable_mapping(int _mapping, bool _enabled);
+	void remove_mapping(int _mapping);
+	void set_mapping_rfuncs(int _mapping,
+			mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
+			void *_priv_data);
+	void set_mapping_wfuncs(int _mapping,
+			mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
+			void *_priv_data);
+	void set_mapping_cycles(int _mapping, int _byte, int _word, int _dword);
+	void set_state(uint32_t _base, uint32_t _size, unsigned _state);
 
 	void set_A20_line(bool _enabled);
 	inline bool get_A20_line() const { return m_s.A20_enabled; }
 
-	uint8_t *get_phy_ptr(uint32_t _address);
-	uint32_t get_ram_size() { return m_mainbuf_size; }
+	uint8_t *get_buffer_ptr(uint32_t _address);
+	uint32_t get_buffer_size() { return m_ram.buffer_size; }
+
+	inline int dram_cycles() { return m_ram.cycles; }
 
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);
@@ -154,11 +181,76 @@ public:
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);
 
+	uint8_t  dbg_read_byte (uint32_t _addr) const noexcept;
+	uint16_t dbg_read_word (uint32_t _addr) const noexcept;
+	uint32_t dbg_read_dword(uint32_t _addr) const noexcept;
+	uint64_t dbg_read_qword(uint32_t _addr) const noexcept;
 	void dump(const std::string &_filename, uint32_t _address, uint _len);
 	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
 	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
+	static void s_debug_trap_noread(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
+
+private:
+	void remap(uint32_t _start, uint32_t _end);
+
+	// read functions for CPUBus
+	template<unsigned LEN> inline
+	uint32_t read(uint32_t _address, int &_cycles) const noexcept
+	{
+		return read_mapped<LEN>(_address, _cycles);
+	}
+	template<unsigned LEN> inline
+	uint32_t read_t(uint32_t _address, unsigned _trap_len, int &_cycles) const noexcept
+	{
+		#if MEMORY_TRAPS
+		uint32_t value = read_mapped<LEN>(_address, _cycles);
+		check_trap(_address, MEM_TRAP_READ, value, _trap_len);
+		return value;
+		#endif
+		return read_mapped<LEN>(_address, _cycles);
+	}
+	template<unsigned LEN>
+	uint32_t read_mapped(uint32_t _address, int &_cycles) const noexcept { assert(false); return ~0; }
+
+
+	// write functions for CPUBus
+	template<unsigned LEN>
+	void write(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+	{
+		return write_mapped<LEN>(_addr, _data, _cycles);
+	}
+	template<unsigned LEN> inline
+	void write_t(uint32_t _addr, uint32_t _data, unsigned _trap_len, int &_cycles) noexcept
+	{
+		write_mapped<LEN>(_addr, _data, _cycles);
+		#if MEMORY_TRAPS
+		if(_trap_len==LEN) {
+			check_trap(_addr, MEM_TRAP_WRITE, _data, LEN);
+		}
+		#endif
+	}
+	template<unsigned LEN>
+	void write_mapped(uint32_t _addr, uint32_t _data, int &_cycles) noexcept { assert(false); }
+
+
+	// static RAM buffer read/write for mem mapping
+	template<class T>
+	static uint32_t s_read(uint32_t _addr, void *_priv) {
+		return *(T*)(&((Memory*)_priv)->m_ram.buffer[_addr]);
+	}
+	template<class T>
+	static void s_write(uint32_t _addr, uint32_t _value, void *_priv) {
+		*(T*)(&((Memory*)_priv)->m_ram.buffer[_addr]) = _value;
+	}
 };
 
+template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles) const noexcept;
+template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles) const noexcept;
+template<> uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles) const noexcept;
+
+template<> void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
+template<> void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
+template<> void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
 
 #endif

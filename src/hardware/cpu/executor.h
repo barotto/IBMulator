@@ -115,9 +115,9 @@ private:
 	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
 	void io_check(uint16_t _port, unsigned _len);
 
-	void mem_access(uint32_t _linear, unsigned _len, bool _user, bool _write);
+	void mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 
-	uint8_t  read_byte();
+	uint8_t  read_byte() { return g_cpubus.mem_read<1>(m_cached_phy.phy1); }
 	uint16_t read_word();
 	uint32_t read_dword();
 	uint64_t read_qword();
@@ -132,7 +132,7 @@ private:
 	uint32_t read_dword(uint32_t _linear);
 	uint64_t read_qword(uint32_t _linear);
 
-	void write_byte(uint8_t _data);
+	void write_byte(uint8_t _data) { g_cpubus.mem_write<1>(m_cached_phy.phy1, _data); }
 	void write_word(uint16_t _data);
 	void write_dword(uint32_t _data);
 	void write_xpages(uint32_t _data);

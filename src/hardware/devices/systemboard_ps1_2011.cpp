@@ -46,24 +46,9 @@ void SystemBoard_PS1_2011::reset(unsigned _signal)
 	SystemBoard::reset(_signal);
 
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
-		//POS 3
-		SystemBoard::m_s.POS_3 = 0x0F;
-		m_s.HDD_enabled = true;
-		update_POS3_state();
-
-		//POS 4
-		SystemBoard::m_s.POS_4 = 0x1F;
-		m_s.RAM_bank1_en = true;
-		m_s.RAM_bank2_en = true;
-		m_s.RAM_bank3_en = true;
-		m_s.RAM_bank4_en = true;
-		m_s.RAM_bank5_en = true;
-		update_POS4_state();
-
-		//POS 5
-		SystemBoard::m_s.POS_5 = 0x0F;
-		m_s.RAM_fast = true;
-		update_POS5_state();
+		reset_POS3_state();
+		reset_POS4_state();
+		reset_POS5_state();
 	}
 }
 
@@ -72,9 +57,8 @@ void SystemBoard_PS1_2011::config_changed()
 	SystemBoard::config_changed();
 
 	m_COM_port = 1; // COM1 fixed on model 2011
-	SystemBoard::m_s.COM_port = m_COM_port;
 
-	update_state();
+	reset_board_state();
 }
 
 void SystemBoard_PS1_2011::save_state(StateBuf &_state)
@@ -91,6 +75,25 @@ void SystemBoard_PS1_2011::restore_state(StateBuf &_state)
 
 	PINFOF(LOG_V1, LOG_MACHINE, "restoring %s state\n", name());
 	_state.read(&m_s, {sizeof(m_s), name()});
+}
+
+
+void SystemBoard_PS1_2011::reset_POS3_state()
+{
+	SystemBoard::m_s.POS[3] = 0x0F;
+	update_POS3_state();
+}
+
+void SystemBoard_PS1_2011::reset_POS4_state()
+{
+	SystemBoard::m_s.POS[4] = 0x1F;
+	update_POS4_state();
+}
+
+void SystemBoard_PS1_2011::reset_POS5_state()
+{
+	SystemBoard::m_s.POS[5] = 0x0F;
+	update_POS5_state();
 }
 
 void SystemBoard_PS1_2011::update_POS3_state()
@@ -113,19 +116,6 @@ void SystemBoard_PS1_2011::write(uint16_t _address, uint16_t _value, unsigned _i
 	switch(_address) {
 		case 0x0102:
 			_value |= 0x8; //the serial port is fixed 1 for model 2011
-			break;
-		case 0x0103:
-			m_s.HDD_enabled = (_value >> 3) & 1;
-			break;
-		case 0x0104:
-			m_s.RAM_bank1_en = (_value >> 0) & 1;
-			m_s.RAM_bank2_en = (_value >> 1) & 1;
-			m_s.RAM_bank3_en = (_value >> 2) & 1;
-			m_s.RAM_bank4_en = (_value >> 3) & 1;
-			m_s.RAM_bank5_en = (_value >> 4) & 1;
-			break;
-		case 0x0105:
-			m_s.RAM_fast = (_value >> 3) & 1;
 			break;
 		default:
 			break;

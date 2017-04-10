@@ -138,7 +138,8 @@ public:
 	void on_fdd_mount(RC::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
-	void vga_update() { m_display.vga_updated.store(true); }
+	void vga_updated() { m_display.vga_updated.store(true); }
+	VGADisplay * vga_display() { return &m_display.vga; }
 	virtual void render();
 
 	virtual void set_audio_volume(float);
