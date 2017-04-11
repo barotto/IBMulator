@@ -221,10 +221,10 @@ uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles)
 		return g_memory.read_t<2>(_addr, 2, _cycles);
 	}
 	// odd address and (not 32-bit bus or between dwords)
-	return (
-		g_memory.read_t<1>(_addr,  2, _cycles) |
-		g_memory.read<1>(  _addr+1,   _cycles) << 8
-	);
+	uint16_t v = g_memory.read_t<1>(_addr,  2, _cycles) |
+	             g_memory.read<1>(  _addr+1,   _cycles) << 8;
+	g_memory.check_trap(_addr, MEM_TRAP_READ, v, 2);
+	return v;
 }
 
 template<>
@@ -251,25 +251,26 @@ uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles)
 template<>
 uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles)
 {
+	uint32_t v;
 	if(m_width == 16) {
 		if((_addr&0x1) == 0) {
 			// word aligned
-			return (
-				g_memory.read_t<2>(_addr,   4, _cycles) |
-				g_memory.read<2>(  _addr+2,    _cycles) << 16
-			);
+			v =	g_memory.read<2>(_addr,   _cycles) |
+				g_memory.read<2>(_addr+2, _cycles) << 16;
+			g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
+			return v;
+		} else {
+			v =	g_memory.read<1>(_addr,   _cycles) |
+				g_memory.read<2>(_addr+1, _cycles) << 8   |
+				g_memory.read<1>(_addr+3, _cycles) << 24;
+			g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
+			return v;
 		}
-		return (
-			g_memory.read_t<1>(_addr,   4, _cycles) |
-			g_memory.read<2>(  _addr+1,    _cycles) << 8   |
-			g_memory.read<1>(  _addr+3,    _cycles) << 24
-		);
 	} else {
 		if((_addr&0x3) == 0) {
 			// dword aligned
 			return g_memory.read_t<4>(_addr, 4, _cycles);
 		}
-		uint32_t v;
 		if((_addr&0x3) == 2) {
 			// word aligned
 			v = g_memory.read<2>(_addr,   _cycles) |

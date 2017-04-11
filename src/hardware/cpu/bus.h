@@ -169,22 +169,22 @@ template<> uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles);
 template<> uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles);
 template<> uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles);
 
-template<> ALWAYS_INLINE inline
+template<> inline
 uint32_t CPUBus::mem_read<1>(uint32_t _addr)
 {
 	return mem_read<1>(_addr, m_mem_r_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 uint32_t CPUBus::mem_read<2>(uint32_t _addr)
 {
 	return mem_read<2>(_addr, m_mem_r_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 uint32_t CPUBus::mem_read<3>(uint32_t _addr)
 {
 	return mem_read<3>(_addr, m_mem_r_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 uint32_t CPUBus::mem_read<4>(uint32_t _addr)
 {
 	return mem_read<4>(_addr, m_mem_r_cycles);
@@ -200,22 +200,22 @@ template<> void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycle
 template<> void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles);
 template<> void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles);
 
-template<> ALWAYS_INLINE inline
+template<> inline
 void CPUBus::mem_write<1>(uint32_t _addr, uint32_t _data)
 {
 	mem_write<1>(_addr, _data, m_mem_w_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data)
 {
 	mem_write<2>(_addr, _data, m_mem_w_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data)
 {
 	mem_write<3>(_addr, _data, m_mem_w_cycles);
 }
-template<> ALWAYS_INLINE inline
+template<> inline
 void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data)
 {
 	mem_write<4>(_addr, _data, m_mem_w_cycles);

@@ -225,9 +225,7 @@ private:
 	{
 		write_mapped<LEN>(_addr, _data, _cycles);
 		#if MEMORY_TRAPS
-		if(_trap_len==LEN) {
-			check_trap(_addr, MEM_TRAP_WRITE, _data, LEN);
-		}
+		check_trap(_addr, MEM_TRAP_WRITE, _data, _trap_len);
 		#endif
 	}
 	template<unsigned LEN>
