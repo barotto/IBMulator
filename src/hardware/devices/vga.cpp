@@ -139,9 +139,7 @@ void VGA::install()
 		}
 	});
 	*/
-	m_mapping = g_memory.add_mapping(0xA0000, 0x20000, MEM_MAPPING_EXTERNAL,
-			VGA::s_read_byte, nullptr, nullptr, this,
-			VGA::s_write_byte, nullptr, nullptr, this);
+	m_mapping = g_memory.add_mapping(0xA0000, 0x20000, MEM_MAPPING_EXTERNAL);
 }
 
 void VGA::config_changed()
@@ -208,6 +206,8 @@ void VGA::reset(unsigned _type)
 		m_s.pel.dac_state = 0x01;
 		m_s.pel.mask = 0xff;
 		m_s.graphics_ctrl.memory_mapping = 2; // monochrome text mode
+		m_s.graphics_ctrl.memory_offset = 0xB0000;
+		m_s.graphics_ctrl.memory_aperture = 0x8000;
 
 		m_s.sequencer.reset1 = true;
 		m_s.sequencer.reset2 = true;
@@ -221,7 +221,7 @@ void VGA::reset(unsigned _type)
 		m_s.htotal_usec = 31;
 		m_s.vtotal_usec = 14285;
 	}
-
+	update_mem_mapping();
 	m_s.vga_enabled = true;
 	clear_screen();
 }
@@ -286,6 +286,26 @@ void VGA::restore_state(StateBuf &_state)
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 	}
+
+	update_mem_mapping();
+}
+
+void VGA::update_mem_mapping()
+{
+	g_memory.resize_mapping(m_mapping, m_s.graphics_ctrl.memory_offset,
+		m_s.graphics_ctrl.memory_aperture);
+	g_memory.set_mapping_funcs(m_mapping,
+		VGA::s_mem_read<uint8_t>,
+		VGA::s_mem_read<uint16_t>,
+		nullptr,
+		this,
+		VGA::s_mem_write<uint8_t>,
+		VGA::s_mem_write<uint16_t>,
+		nullptr,
+		this);
+	PDEBUGF(LOG_V1, LOG_VGA, "memory mapping: 0x%X .. 0x%X\n",
+		m_s.graphics_ctrl.memory_offset,
+		m_s.graphics_ctrl.memory_offset+m_s.graphics_ctrl.memory_aperture-1);
 }
 
 void VGA::determine_screen_dimensions(uint *piHeight, uint *piWidth)
@@ -359,14 +379,14 @@ void VGA::calculate_retrace_timing()
 	m_s.vrend_usec = m_s.htotal_usec * vrend;
 	m_s.vrspan_usec = m_s.vrend_usec - m_s.vrstart_usec;
 
-	PDEBUGF(LOG_V1, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
+	PDEBUGF(LOG_V2, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
 
 	if(vfreq >= 35.0 && vfreq <= 75.0) {
-		PINFOF(LOG_V1, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
+		PINFOF(LOG_V2, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
 		vertical_retrace(g_machine.get_virt_time_ns());
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
-		PWARNF(LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
+		PDEBUGF(LOG_V2, LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
 	}
 }
 
@@ -639,8 +659,7 @@ uint16_t VGA::read(uint16_t address, uint /*io_len*/)
 
 void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 {
-	uint8_t charmap1, charmap2, prev_memory_mapping;
-	bool prev_video_enabled, prev_line_graphics, prev_int_pal_size, prev_graphics_alpha;
+	uint8_t charmap1, charmap2;
 	bool needs_update = false, charmap_update = false;
 
 	PDEBUGF(LOG_V2, LOG_VGA, "io write to 0x%04x = 0x%02x\n", address, value);
@@ -668,7 +687,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 
 		case 0x03c0: /* Attribute Controller */
 			if(!m_s.attribute_ctrl.flip_flop) { /* address mode */
-				prev_video_enabled = m_s.attribute_ctrl.video_enabled;
+				bool prev_video_enabled = m_s.attribute_ctrl.video_enabled;
 				m_s.attribute_ctrl.video_enabled = (value >> 5) & 0x01;
 
 				PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: video_enabled = %u\n", m_s.attribute_ctrl.video_enabled);
@@ -716,9 +735,9 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 							needs_update = true;
 						}
 						break;
-					case 0x10: // mode control register
-						prev_line_graphics = m_s.attribute_ctrl.mode_ctrl.enable_line_graphics;
-						prev_int_pal_size = m_s.attribute_ctrl.mode_ctrl.internal_palette_size;
+					case 0x10: { // mode control register
+						bool prev_line_graphics = m_s.attribute_ctrl.mode_ctrl.enable_line_graphics;
+						bool prev_int_pal_size = m_s.attribute_ctrl.mode_ctrl.internal_palette_size;
 						m_s.attribute_ctrl.mode_ctrl.graphics_alpha = (value >> 0) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.display_type = (value >> 1) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = (value >> 2) & 0x01;
@@ -734,6 +753,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						}
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: mode control: 0x%02x\n", value);
 						break;
+					}
 					case 0x11: // Overscan Color Register
 						m_s.attribute_ctrl.overscan_color = (value & 0x3f);
 						PDEBUGF(LOG_V2, LOG_VGA, "io write 0x03c0: overscan color = 0x%02x\n", value);
@@ -956,28 +976,47 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x03cf: mode reg: value = 0x%02x", value);
 					}
 					break;
-				case 6: /* Miscellaneous */
-					prev_graphics_alpha = m_s.graphics_ctrl.graphics_alpha;
-					// prev_chain_odd_even = m_s.graphics_ctrl.chain_odd_even;
-					prev_memory_mapping = m_s.graphics_ctrl.memory_mapping;
+				case 6: { /* Miscellaneous */
+					bool prev_graphics_alpha = m_s.graphics_ctrl.graphics_alpha;
+					bool prev_chain_odd_even = m_s.graphics_ctrl.chain_odd_even;
+					uint8_t prev_memory_mapping = m_s.graphics_ctrl.memory_mapping;
 
 					m_s.graphics_ctrl.graphics_alpha = value & 0x01;
 					m_s.graphics_ctrl.chain_odd_even = (value >> 1) & 0x01;
 					m_s.graphics_ctrl.memory_mapping = (value >> 2) & 0x03;
 
-					PDEBUGF(LOG_V2, LOG_VGA, "memory_mapping set to %u\n", m_s.graphics_ctrl.memory_mapping);
-					PDEBUGF(LOG_V2, LOG_VGA, "graphics mode set to %u\n", m_s.graphics_ctrl.graphics_alpha);
-					PDEBUGF(LOG_V2, LOG_VGA, "odd_even mode set to %u\n", m_s.graphics_ctrl.odd_even);
-					PDEBUGF(LOG_V2, LOG_VGA, "io write: 0x3cf: misc reg: value = 0x%02x\n", value);
-
+					switch(m_s.graphics_ctrl.memory_mapping) {
+						case 1: // 0xA0000 .. 0xAFFFF
+							m_s.graphics_ctrl.memory_offset = 0xA0000;
+							m_s.graphics_ctrl.memory_aperture = 0x10000;
+							break;
+						case 2: // 0xB0000 .. 0xB7FFF
+							m_s.graphics_ctrl.memory_offset = 0xB0000;
+							m_s.graphics_ctrl.memory_aperture = 0x8000;
+							break;
+						case 3: // 0xB8000 .. 0xBFFFF
+							m_s.graphics_ctrl.memory_offset = 0xB8000;
+							m_s.graphics_ctrl.memory_aperture = 0x8000;
+							break;
+						default: // 0xA0000 .. 0xBFFFF
+							m_s.graphics_ctrl.memory_offset = 0xA0000;
+							m_s.graphics_ctrl.memory_aperture = 0x20000;
+							break;
+					}
 					if(prev_memory_mapping != m_s.graphics_ctrl.memory_mapping) {
+						update_mem_mapping();
 						needs_update = true;
 					}
 					if(prev_graphics_alpha != m_s.graphics_ctrl.graphics_alpha) {
+						PDEBUGF(LOG_V2, LOG_VGA, "graphics mode = %u\n", m_s.graphics_ctrl.graphics_alpha);
 						needs_update = true;
 						m_s.last_yres = 0;
 					}
+					if(prev_chain_odd_even != m_s.graphics_ctrl.chain_odd_even) {
+						PDEBUGF(LOG_V2, LOG_VGA, "odd_even mode = %u\n", m_s.graphics_ctrl.odd_even);
+					}
 					break;
+				}
 				case 7: /* Color Don't Care */
 					m_s.graphics_ctrl.color_dont_care = value & 0x0f;
 					break;
@@ -1607,42 +1646,27 @@ void VGA::vertical_retrace(uint64_t _time)
 	g_machine.activate_timer(m_timer_id, vbstart*1_us, false);
 }
 
-uint32_t VGA::s_read_byte(uint32_t addr, void *_priv)
+template<>
+uint32_t VGA::s_mem_read<uint8_t>(uint32_t _addr, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
-	uint32_t offset;
-	uint8_t *plane0, *plane1, *plane2, *plane3;
 
-	switch(me.m_s.graphics_ctrl.memory_mapping) {
-		case 1: // 0xA0000 .. 0xAFFFF
-			if(addr > 0xAFFFF) return 0xff;
-			offset = addr & 0xFFFF;
-			break;
-		case 2: // 0xB0000 .. 0xB7FFF
-			if((addr < 0xB0000) || (addr > 0xB7FFF)) return 0xff;
-			offset = addr & 0x7FFF;
-			break;
-		case 3: // 0xB8000 .. 0xBFFFF
-			if(addr < 0xB8000) return 0xff;
-			offset = addr & 0x7FFF;
-			break;
-		default: // 0xA0000 .. 0xBFFFF
-			offset = addr & 0x1FFFF;
-			break;
-	}
+	assert(_addr >= me.m_s.graphics_ctrl.memory_offset && _addr < me.m_s.graphics_ctrl.memory_offset + me.m_s.graphics_ctrl.memory_aperture);
+
+	uint32_t offset = _addr & (me.m_s.graphics_ctrl.memory_aperture - 1);
 
 	if(me.m_s.sequencer.chain_four) {
 		// Mode 13h: 320 x 200 256 color mode: chained pixel representation
 		return me.m_memory[(offset & ~0x03) + (offset % 4)*65536];
 	}
 
-	plane0 = &me.m_memory[(0 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane1 = &me.m_memory[(1 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane2 = &me.m_memory[(2 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane3 = &me.m_memory[(3 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane0 = &me.m_memory[(0 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane1 = &me.m_memory[(1 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane2 = &me.m_memory[(2 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane3 = &me.m_memory[(3 << me.m_s.plane_shift) + me.m_s.plane_offset];
 
 	/* addr between 0xA0000 and 0xAFFFF */
-	switch (me.m_s.graphics_ctrl.read_mode) {
+	switch(me.m_s.graphics_ctrl.read_mode) {
 		case 0: /* read mode 0 */
 		{
 			me.m_s.graphics_ctrl.latch[0] = plane0[offset];
@@ -1680,42 +1704,41 @@ uint32_t VGA::s_read_byte(uint32_t addr, void *_priv)
 		}
 	}
 
-	return  0;
+	return 0;
 }
 
-void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
+template<>
+void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
-	uint32_t offset;
-	uint8_t new_val[4] = {0,0,0,0};
-	uint8_t *plane0, *plane1, *plane2, *plane3;
 
-	switch (me.m_s.graphics_ctrl.memory_mapping) {
-		case 1: // 0xA0000 .. 0xAFFFF
-			if((addr < 0xA0000) || (addr > 0xAFFFF)) return;
-			offset = (uint32_t)addr - 0xA0000;
-			break;
-		case 2: // 0xB0000 .. 0xB7FFF
-			if((addr < 0xB0000) || (addr > 0xB7FFF)) return;
-			offset = (uint32_t)addr - 0xB0000;
-			break;
-		case 3: // 0xB8000 .. 0xBFFFF
-			if((addr < 0xB8000) || (addr > 0xBFFFF)) return;
-			offset = (uint32_t)addr - 0xB8000;
-			break;
-		default: // 0xA0000 .. 0xBFFFF
-			if((addr < 0xA0000) || (addr > 0xBFFFF)) return;
-			offset = (uint32_t)addr - 0xA0000;
-			break;
-	}
+	assert((_addr >= me.m_s.graphics_ctrl.memory_offset) && (_addr < me.m_s.graphics_ctrl.memory_offset + me.m_s.graphics_ctrl.memory_aperture));
+
+	uint32_t offset = _addr & (me.m_s.graphics_ctrl.memory_aperture - 1);
 
 	if(me.m_s.graphics_ctrl.graphics_alpha) {
+		if(me.m_s.sequencer.chain_four) {
+			// 320 x 200 256 color mode: chained pixel representation
+			me.m_memory[(offset & ~0x03) + (offset % 4)*65536] = _value;
+			if(me.m_s.line_offset > 0 && offset >= me.m_s.CRTC.start_address) {
+				offset -= me.m_s.CRTC.start_address;
+				unsigned x_tileno = (offset % me.m_s.line_offset) / (VGA_X_TILESIZE/2);
+				unsigned y_tileno;
+				if(me.m_s.y_doublescan) {
+					y_tileno = (offset / me.m_s.line_offset) / (VGA_Y_TILESIZE/2);
+				} else {
+					y_tileno = (offset / me.m_s.line_offset) / VGA_Y_TILESIZE;
+				}
+				SET_TILE_UPDATED(x_tileno, y_tileno, true, &me);
+				me.m_s.vga_mem_updated = true;
+			}
+			return;
+		}
 		if(me.m_s.graphics_ctrl.memory_mapping == 3) { // 0xB8000 .. 0xBFFFF
-			uint x_tileno, x_tileno2, y_tileno;
-
 			/* CGA 320x200x4 / 640x200x2 start */
-			me.m_memory[offset] = value;
+			me.m_memory[offset] = _value;
 			offset -= me.m_s.CRTC.start_address;
+			unsigned x_tileno, x_tileno2, y_tileno;
 			if(offset>=0x2000) {
 				y_tileno = offset - 0x2000;
 				y_tileno /= (320/4);
@@ -1729,7 +1752,7 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 				x_tileno = offset % (320/4);
 				x_tileno <<= 2; //*=4;
 			}
-			x_tileno2=x_tileno;
+			x_tileno2 = x_tileno;
 			if(me.m_s.graphics_ctrl.shift_reg==0) {
 				x_tileno *= 2;
 				x_tileno2 += 7;
@@ -1763,36 +1786,18 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 		  return;
 		}
 		*/
-		if(me.m_s.sequencer.chain_four) {
-			uint x_tileno, y_tileno;
-
-			// 320 x 200 256 color mode: chained pixel representation
-			me.m_memory[(offset & ~0x03) + (offset % 4)*65536] = value;
-			if(me.m_s.line_offset > 0) {
-				offset -= me.m_s.CRTC.start_address;
-				x_tileno = (offset % me.m_s.line_offset) / (VGA_X_TILESIZE/2);
-				if(me.m_s.y_doublescan) {
-					y_tileno = (offset / me.m_s.line_offset) / (VGA_Y_TILESIZE/2);
-				} else {
-					y_tileno = (offset / me.m_s.line_offset) / VGA_Y_TILESIZE;
-				}
-				me.m_s.vga_mem_updated = true;
-				SET_TILE_UPDATED(x_tileno, y_tileno, true, &me);
-			}
-			return;
-		}
 	}
 
 	/* addr between 0xA0000 and 0xAFFFF */
 
-	plane0 = &me.m_memory[(0 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane1 = &me.m_memory[(1 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane2 = &me.m_memory[(2 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	plane3 = &me.m_memory[(3 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane0 = &me.m_memory[(0 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane1 = &me.m_memory[(1 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane2 = &me.m_memory[(2 << me.m_s.plane_shift) + me.m_s.plane_offset];
+	uint8_t *plane3 = &me.m_memory[(3 << me.m_s.plane_shift) + me.m_s.plane_offset];
+
+	uint8_t new_val[4] = {0,0,0,0};
 
 	switch (me.m_s.graphics_ctrl.write_mode) {
-		uint i;
-
 		case 0: /* write mode 0 */
 		{
 			const uint8_t bitmask = me.m_s.graphics_ctrl.bitmask;
@@ -1800,8 +1805,8 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 			const uint8_t enable_set_reset = me.m_s.graphics_ctrl.enable_set_reset;
 			/* perform rotate on CPU data in case its needed */
 			if(me.m_s.graphics_ctrl.data_rotate) {
-				value = (value >> me.m_s.graphics_ctrl.data_rotate) |
-						(value << (8 - me.m_s.graphics_ctrl.data_rotate));
+				_value = (_value >> me.m_s.graphics_ctrl.data_rotate) |
+				         (_value << (8 - me.m_s.graphics_ctrl.data_rotate));
 			}
 			new_val[0] = me.m_s.graphics_ctrl.latch[0] & ~bitmask;
 			new_val[1] = me.m_s.graphics_ctrl.latch[1] & ~bitmask;
@@ -1811,38 +1816,38 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 				case 0: // replace
 					new_val[0] |= ((enable_set_reset & 1)
 								   ? ((set_reset & 1) ? bitmask : 0)
-								   : (value & bitmask));
+								   : (_value & bitmask));
 					new_val[1] |= ((enable_set_reset & 2)
 								   ? ((set_reset & 2) ? bitmask : 0)
-								   : (value & bitmask));
+								   : (_value & bitmask));
 					new_val[2] |= ((enable_set_reset & 4)
 								   ? ((set_reset & 4) ? bitmask : 0)
-								   : (value & bitmask));
+								   : (_value & bitmask));
 					new_val[3] |= ((enable_set_reset & 8)
 								   ? ((set_reset & 8) ? bitmask : 0)
-								   : (value & bitmask));
+								   : (_value & bitmask));
 					break;
 				case 1: // AND
 					new_val[0] |= ((enable_set_reset & 1)
 								   ? ((set_reset & 1)
 									  ? (me.m_s.graphics_ctrl.latch[0] & bitmask)
 									  : 0)
-								   : (value & me.m_s.graphics_ctrl.latch[0]) & bitmask);
+								   : (_value & me.m_s.graphics_ctrl.latch[0]) & bitmask);
 					new_val[1] |= ((enable_set_reset & 2)
 								   ? ((set_reset & 2)
 									  ? (me.m_s.graphics_ctrl.latch[1] & bitmask)
 									  : 0)
-								   : (value & me.m_s.graphics_ctrl.latch[1]) & bitmask);
+								   : (_value & me.m_s.graphics_ctrl.latch[1]) & bitmask);
 					new_val[2] |= ((enable_set_reset & 4)
 								   ? ((set_reset & 4)
 									  ? (me.m_s.graphics_ctrl.latch[2] & bitmask)
 									  : 0)
-								   : (value & me.m_s.graphics_ctrl.latch[2]) & bitmask);
+								   : (_value & me.m_s.graphics_ctrl.latch[2]) & bitmask);
 					new_val[3] |= ((enable_set_reset & 8)
 								   ? ((set_reset & 8)
 									  ? (me.m_s.graphics_ctrl.latch[3] & bitmask)
 									  : 0)
-								   : (value & me.m_s.graphics_ctrl.latch[3]) & bitmask);
+								   : (_value & me.m_s.graphics_ctrl.latch[3]) & bitmask);
 					break;
 				case 2: // OR
 					new_val[0]
@@ -1850,25 +1855,25 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 						  ? ((set_reset & 1)
 							 ? bitmask
 							 : (me.m_s.graphics_ctrl.latch[0] & bitmask))
-						  : ((value | me.m_s.graphics_ctrl.latch[0]) & bitmask));
+						  : ((_value | me.m_s.graphics_ctrl.latch[0]) & bitmask));
 					new_val[1]
 					  |= ((enable_set_reset & 2)
 						  ? ((set_reset & 2)
 							 ? bitmask
 							 : (me.m_s.graphics_ctrl.latch[1] & bitmask))
-						  : ((value | me.m_s.graphics_ctrl.latch[1]) & bitmask));
+						  : ((_value | me.m_s.graphics_ctrl.latch[1]) & bitmask));
 					new_val[2]
 					  |= ((enable_set_reset & 4)
 						  ? ((set_reset & 4)
 							 ? bitmask
 							 : (me.m_s.graphics_ctrl.latch[2] & bitmask))
-						  : ((value | me.m_s.graphics_ctrl.latch[2]) & bitmask));
+						  : ((_value | me.m_s.graphics_ctrl.latch[2]) & bitmask));
 					new_val[3]
 					  |= ((enable_set_reset & 8)
 						  ? ((set_reset & 8)
 							 ? bitmask
 							 : (me.m_s.graphics_ctrl.latch[3] & bitmask))
-						  : ((value | me.m_s.graphics_ctrl.latch[3]) & bitmask));
+						  : ((_value | me.m_s.graphics_ctrl.latch[3]) & bitmask));
 					break;
 				case 3: // XOR
 					new_val[0]
@@ -1876,25 +1881,25 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 						 ? ((set_reset & 1)
 							? (~me.m_s.graphics_ctrl.latch[0] & bitmask)
 							: (me.m_s.graphics_ctrl.latch[0] & bitmask))
-						 : (value ^ me.m_s.graphics_ctrl.latch[0]) & bitmask);
+						 : (_value ^ me.m_s.graphics_ctrl.latch[0]) & bitmask);
 					new_val[1]
 					  |= ((enable_set_reset & 2)
 						 ? ((set_reset & 2)
 							? (~me.m_s.graphics_ctrl.latch[1] & bitmask)
 							: (me.m_s.graphics_ctrl.latch[1] & bitmask))
-						 : (value ^ me.m_s.graphics_ctrl.latch[1]) & bitmask);
+						 : (_value ^ me.m_s.graphics_ctrl.latch[1]) & bitmask);
 					new_val[2]
 					  |= ((enable_set_reset & 4)
 						 ? ((set_reset & 4)
 							? (~me.m_s.graphics_ctrl.latch[2] & bitmask)
 							: (me.m_s.graphics_ctrl.latch[2] & bitmask))
-						 : (value ^ me.m_s.graphics_ctrl.latch[2]) & bitmask);
+						 : (_value ^ me.m_s.graphics_ctrl.latch[2]) & bitmask);
 					new_val[3]
 					  |= ((enable_set_reset & 8)
 						 ? ((set_reset & 8)
 							? (~me.m_s.graphics_ctrl.latch[3] & bitmask)
 							: (me.m_s.graphics_ctrl.latch[3] & bitmask))
-						 : (value ^ me.m_s.graphics_ctrl.latch[3]) & bitmask);
+						 : (_value ^ me.m_s.graphics_ctrl.latch[3]) & bitmask);
 					break;
 				default:
 					PERRF(LOG_VGA, "vga_mem_write: write mode 0: op = %u\n", me.m_s.graphics_ctrl.raster_op);
@@ -1904,7 +1909,7 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 		break;
 
 		case 1: /* write mode 1 */
-			for(i=0; i<4; i++) {
+			for(int i=0; i<4; i++) {
 				new_val[i] = me.m_s.graphics_ctrl.latch[i];
 			}
 			break;
@@ -1919,50 +1924,50 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 			new_val[3] = me.m_s.graphics_ctrl.latch[3] & ~bitmask;
 			switch (me.m_s.graphics_ctrl.raster_op) {
 				case 0: // write
-					new_val[0] |= (value & 1) ? bitmask : 0;
-					new_val[1] |= (value & 2) ? bitmask : 0;
-					new_val[2] |= (value & 4) ? bitmask : 0;
-					new_val[3] |= (value & 8) ? bitmask : 0;
+					new_val[0] |= (_value & 1) ? bitmask : 0;
+					new_val[1] |= (_value & 2) ? bitmask : 0;
+					new_val[2] |= (_value & 4) ? bitmask : 0;
+					new_val[3] |= (_value & 8) ? bitmask : 0;
 					break;
 				case 1: // AND
-					new_val[0] |= (value & 1)
+					new_val[0] |= (_value & 1)
 					  ? (me.m_s.graphics_ctrl.latch[0] & bitmask)
 					  : 0;
-					new_val[1] |= (value & 2)
+					new_val[1] |= (_value & 2)
 					  ? (me.m_s.graphics_ctrl.latch[1] & bitmask)
 					  : 0;
-					new_val[2] |= (value & 4)
+					new_val[2] |= (_value & 4)
 					  ? (me.m_s.graphics_ctrl.latch[2] & bitmask)
 					  : 0;
-					new_val[3] |= (value & 8)
+					new_val[3] |= (_value & 8)
 					  ? (me.m_s.graphics_ctrl.latch[3] & bitmask)
 					  : 0;
 					break;
 				case 2: // OR
-					new_val[0] |= (value & 1)
+					new_val[0] |= (_value & 1)
 					  ? bitmask
 					  : (me.m_s.graphics_ctrl.latch[0] & bitmask);
-					new_val[1] |= (value & 2)
+					new_val[1] |= (_value & 2)
 					  ? bitmask
 					  : (me.m_s.graphics_ctrl.latch[1] & bitmask);
-					new_val[2] |= (value & 4)
+					new_val[2] |= (_value & 4)
 					  ? bitmask
 					  : (me.m_s.graphics_ctrl.latch[2] & bitmask);
-					new_val[3] |= (value & 8)
+					new_val[3] |= (_value & 8)
 					  ? bitmask
 					  : (me.m_s.graphics_ctrl.latch[3] & bitmask);
 					break;
 				case 3: // XOR
-					new_val[0] |= (value & 1)
+					new_val[0] |= (_value & 1)
 					  ? (~me.m_s.graphics_ctrl.latch[0] & bitmask)
 					  : (me.m_s.graphics_ctrl.latch[0] & bitmask);
-					new_val[1] |= (value & 2)
+					new_val[1] |= (_value & 2)
 					  ? (~me.m_s.graphics_ctrl.latch[1] & bitmask)
 					  : (me.m_s.graphics_ctrl.latch[1] & bitmask);
-					new_val[2] |= (value & 4)
+					new_val[2] |= (_value & 4)
 					  ? (~me.m_s.graphics_ctrl.latch[2] & bitmask)
 					  : (me.m_s.graphics_ctrl.latch[2] & bitmask);
-					new_val[3] |= (value & 8)
+					new_val[3] |= (_value & 8)
 					  ? (~me.m_s.graphics_ctrl.latch[3] & bitmask)
 					  : (me.m_s.graphics_ctrl.latch[3] & bitmask);
 					break;
@@ -1972,56 +1977,56 @@ void VGA::s_write_byte(uint32_t addr, uint32_t value, void *_priv)
 
 		case 3: /* write mode 3 */
 		{
-			const uint8_t bitmask = me.m_s.graphics_ctrl.bitmask & value;
+			const uint8_t bitmask = me.m_s.graphics_ctrl.bitmask & _value;
 			const uint8_t set_reset = me.m_s.graphics_ctrl.set_reset;
 
 			/* perform rotate on CPU data */
 			if(me.m_s.graphics_ctrl.data_rotate) {
-				value = (value >> me.m_s.graphics_ctrl.data_rotate) |
-						(value << (8 - me.m_s.graphics_ctrl.data_rotate));
+				_value = (_value >> me.m_s.graphics_ctrl.data_rotate) |
+				         (_value << (8 - me.m_s.graphics_ctrl.data_rotate));
 			}
 			new_val[0] = me.m_s.graphics_ctrl.latch[0] & ~bitmask;
 			new_val[1] = me.m_s.graphics_ctrl.latch[1] & ~bitmask;
 			new_val[2] = me.m_s.graphics_ctrl.latch[2] & ~bitmask;
 			new_val[3] = me.m_s.graphics_ctrl.latch[3] & ~bitmask;
 
-			value &= bitmask;
+			_value &= bitmask;
 
 			switch (me.m_s.graphics_ctrl.raster_op) {
 				case 0: // write
-					new_val[0] |= (set_reset & 1) ? value : 0;
-					new_val[1] |= (set_reset & 2) ? value : 0;
-					new_val[2] |= (set_reset & 4) ? value : 0;
-					new_val[3] |= (set_reset & 8) ? value : 0;
+					new_val[0] |= (set_reset & 1) ? _value : 0;
+					new_val[1] |= (set_reset & 2) ? _value : 0;
+					new_val[2] |= (set_reset & 4) ? _value : 0;
+					new_val[3] |= (set_reset & 8) ? _value : 0;
 					break;
 				case 1: // AND
-					new_val[0] |= ((set_reset & 1) ? value : 0)
+					new_val[0] |= ((set_reset & 1) ? _value : 0)
 					  & me.m_s.graphics_ctrl.latch[0];
-					new_val[1] |= ((set_reset & 2) ? value : 0)
+					new_val[1] |= ((set_reset & 2) ? _value : 0)
 					  & me.m_s.graphics_ctrl.latch[1];
-					new_val[2] |= ((set_reset & 4) ? value : 0)
+					new_val[2] |= ((set_reset & 4) ? _value : 0)
 					  & me.m_s.graphics_ctrl.latch[2];
-					new_val[3] |= ((set_reset & 8) ? value : 0)
+					new_val[3] |= ((set_reset & 8) ? _value : 0)
 					  & me.m_s.graphics_ctrl.latch[3];
 					break;
 				case 2: // OR
-					new_val[0] |= ((set_reset & 1) ? value : 0)
+					new_val[0] |= ((set_reset & 1) ? _value : 0)
 					  | me.m_s.graphics_ctrl.latch[0];
-					new_val[1] |= ((set_reset & 2) ? value : 0)
+					new_val[1] |= ((set_reset & 2) ? _value : 0)
 					  | me.m_s.graphics_ctrl.latch[1];
-					new_val[2] |= ((set_reset & 4) ? value : 0)
+					new_val[2] |= ((set_reset & 4) ? _value : 0)
 					  | me.m_s.graphics_ctrl.latch[2];
-					new_val[3] |= ((set_reset & 8) ? value : 0)
+					new_val[3] |= ((set_reset & 8) ? _value : 0)
 					  | me.m_s.graphics_ctrl.latch[3];
 					break;
 				case 3: // XOR
-					new_val[0] |= ((set_reset & 1) ? value : 0)
+					new_val[0] |= ((set_reset & 1) ? _value : 0)
 					  ^ me.m_s.graphics_ctrl.latch[0];
-					new_val[1] |= ((set_reset & 2) ? value : 0)
+					new_val[1] |= ((set_reset & 2) ? _value : 0)
 					  ^ me.m_s.graphics_ctrl.latch[1];
-					new_val[2] |= ((set_reset & 4) ? value : 0)
+					new_val[2] |= ((set_reset & 4) ? _value : 0)
 					  ^ me.m_s.graphics_ctrl.latch[2];
-					new_val[3] |= ((set_reset & 8) ? value : 0)
+					new_val[3] |= ((set_reset & 8) ? _value : 0)
 					  ^ me.m_s.graphics_ctrl.latch[3];
 					break;
 			}

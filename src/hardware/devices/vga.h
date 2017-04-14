@@ -175,6 +175,8 @@ protected:
 			                         * 2 = use B0000-B7FFF Monochrome modes
 			                         * 3 = use B8000-BFFFF CGA modes
 			                         */
+			uint32_t memory_offset;
+			uint32_t memory_aperture;
 			uint8_t color_dont_care;
 			uint8_t bitmask;
 			uint8_t latch[4];
@@ -195,6 +197,7 @@ protected:
 
 		bool vga_enabled;
 		bool vga_mem_updated;
+		uint32_t vga_mem_offset;
 		uint line_offset;
 		uint line_compare;
 		uint vertical_display_end;
@@ -261,6 +264,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 protected:
+	virtual void update_mem_mapping();
 	void redraw_area(uint x0, uint y0, uint width, uint height);
 	void init_iohandlers();
 	void init_systemtimer();
@@ -281,8 +285,28 @@ protected:
 	template <typename FN>
 	void update_mode13(FN _pixel_x, unsigned _pan);
 
-	static uint32_t s_read_byte(uint32_t _addr, void *_priv);
-	static void s_write_byte(uint32_t _addr, uint32_t _value, void *_priv);
+	template<class T>
+	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
+	template<class T>
+	static void s_mem_write(uint32_t _addr, uint32_t _value, void *_priv);
 };
+
+template<> uint32_t VGA::s_mem_read<uint8_t> (uint32_t _addr, void *_priv);
+template<> inline
+uint32_t VGA::s_mem_read<uint16_t>(uint32_t _addr, void *_priv)
+{
+	return (s_mem_read<uint8_t>(_addr,   _priv) |
+	        s_mem_read<uint8_t>(_addr+1, _priv) << 8
+	);
+}
+
+template<> void VGA::s_mem_write<uint8_t> (uint32_t _addr, uint32_t _data, void *_priv);
+template<> inline
+void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
+{
+	s_mem_write<uint8_t>(_addr,   _data,    _priv);
+	s_mem_write<uint8_t>(_addr+1, _data>>8, _priv);
+}
+
 
 #endif

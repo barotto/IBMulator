@@ -29,6 +29,8 @@ class CF62011BPC : public VGA
 protected:
 	struct {
 		uint8_t xga_reg[0xF];
+		uint32_t mem_offset;
+		uint32_t mem_aperture;
 	} m_s;
 
 public:
@@ -42,8 +44,13 @@ public:
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
 protected:
-	static uint32_t s_read_byte(uint32_t _addr, void *_priv);
-	static void s_write_byte(uint32_t _addr, uint32_t _value, void *_priv);
+	void update_mem_mapping();
+
+	template<class T>
+	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
+	template<class T>
+	static void s_mem_write(uint32_t _addr, uint32_t _value, void *_priv);
 };
+
 
 #endif

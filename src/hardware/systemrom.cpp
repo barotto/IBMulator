@@ -59,11 +59,9 @@ void SystemROM::init()
 	memset(m_data, 0, MAX_ROM_SIZE);
 
 	m_low_mapping = g_memory.add_mapping(0xE0000, 0x20000, MEM_MAPPING_EXTERNAL,
-			SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this,
-			nullptr, nullptr, nullptr, nullptr);
+		SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this);
 	m_high_mapping = g_memory.add_mapping(0xF80000, 0x80000, MEM_MAPPING_EXTERNAL,
-			SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this,
-			nullptr, nullptr, nullptr, nullptr);
+		SystemROM::s_read<uint8_t>, SystemROM::s_read<uint16_t>, SystemROM::s_read<uint32_t>, this);
 }
 
 void SystemROM::config_changed()

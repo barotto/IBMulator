@@ -35,8 +35,8 @@
 #define SYS_ROM_HIBASEADDR  0xFFFFF
 #define MAX_EXT_MEM_SIZE  (MAX_MEM_SIZE - MEBIBYTE - SYS_ROM_SIZE)
 
-#define MEM_MAP_SIZE        0x10000 // 0x40000
-#define MEM_MAP_GRANULARITY 0x10000 // 0x4000
+#define MEM_MAP_SIZE        0x40000
+#define MEM_MAP_GRANULARITY 0x4000
 
 #define MEM_MAPPING_EXTERNAL 1  // memory on external bus
 #define MEM_MAPPING_INTERNAL 2  // system RAM
@@ -151,19 +151,22 @@ public:
 	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
 
 	int add_mapping(uint32_t _base, uint32_t _size, unsigned _flags,
-			mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
-			void *_r_priv,
-			mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
-			void *_w_priv);
+			mem_read_fn_t _read_byte=nullptr,
+			mem_read_fn_t _read_word=nullptr,
+			mem_read_fn_t _read_dword=nullptr,
+			void *_r_priv=nullptr,
+			mem_write_fn_t _write_byte=nullptr,
+			mem_write_fn_t _write_word=nullptr,
+			mem_write_fn_t _write_dword=nullptr,
+			void *_w_priv=nullptr);
 	void resize_mapping(int _mapping, uint32_t _newbase, uint32_t _newsize);
 	void enable_mapping(int _mapping, bool _enabled);
 	void remove_mapping(int _mapping);
-	void set_mapping_rfuncs(int _mapping,
+	void set_mapping_funcs(int _mapping,
 			mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
-			void *_priv_data);
-	void set_mapping_wfuncs(int _mapping,
+			void *_read_priv,
 			mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
-			void *_priv_data);
+			void *_write_priv);
 	void set_mapping_cycles(int _mapping, int _byte, int _word, int _dword);
 	void set_state(uint32_t _base, uint32_t _size, unsigned _state);
 

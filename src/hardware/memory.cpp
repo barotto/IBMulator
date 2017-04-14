@@ -203,9 +203,11 @@ void Memory::enable_mapping(int _mapping, bool _enabled)
 	}
 }
 
-void Memory::set_mapping_rfuncs(int _mapping,
+void Memory::set_mapping_funcs(int _mapping,
 		mem_read_fn_t _read_byte, mem_read_fn_t _read_word, mem_read_fn_t _read_dword,
-		void *_read_priv)
+		void *_read_priv,
+		mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
+		void *_write_priv)
 {
 	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
 	if(it != m_mappings.end()) {
@@ -213,22 +215,11 @@ void Memory::set_mapping_rfuncs(int _mapping,
 		it->read.word  = _read_word;
 		it->read.dword = _read_dword;
 		it->read.priv  = _read_priv;
-		remap(it->start(), it->end());
-	} else {
-		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
-	}
-}
-void Memory::set_mapping_wfuncs(int _mapping,
-		mem_write_fn_t _write_byte, mem_write_fn_t _write_word, mem_write_fn_t _write_dword,
-		void *_write_priv)
-{
-	auto it = std::find(m_mappings.begin(), m_mappings.end(), _mapping);
-	if(it != m_mappings.end()) {
 		it->write.byte  = _write_byte;
 		it->write.word  = _write_word;
 		it->write.dword = _write_dword;
 		it->write.priv  = _write_priv;
-		remap(it->start(), it->end());
+		// no remap needed
 	} else {
 		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
 	}

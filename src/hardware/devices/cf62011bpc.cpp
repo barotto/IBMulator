@@ -53,11 +53,6 @@ void CF62011BPC::install()
 {
 	VGA::install();
 	IODevice::install(&VGA::ioports()->at(0), VGA::ioports()->size());
-
-	g_memory.set_mapping_rfuncs(m_mapping,
-			CF62011BPC::s_read_byte, nullptr, nullptr, this);
-	g_memory.set_mapping_wfuncs(m_mapping,
-			CF62011BPC::s_write_byte, nullptr, nullptr, this);
 }
 
 void CF62011BPC::remove()
@@ -70,84 +65,87 @@ void CF62011BPC::reset(unsigned _type)
 {
 	memset(m_s.xga_reg, 0, 0xF);
 	m_s.xga_reg[0] = 0x1; // VGA Mode (address decode enabled)
+	m_s.xga_reg[1] = 0x1; // aperture 64KB at address 0xA0000
+	m_s.mem_offset = 0xA0000;
+	m_s.mem_aperture = 0x10000;
 
 	VGA::reset(_type);
 }
 
-uint32_t CF62011BPC::s_read_byte(uint32_t _addr, void *_priv)
+void CF62011BPC::update_mem_mapping()
 {
-	CF62011BPC *me = (CF62011BPC*)_priv;
-	int mode = me->m_s.xga_reg[0] & 0x7;
-	if(mode <= 0x1) {
-		// VGA modes
-		return VGA::s_read_byte(_addr, dynamic_cast<VGA*>(me));
-	} else if(mode == 0x2 || mode == 0x3) {
-		// 132-Column Text Mode
-		PDEBUGF(LOG_V0, LOG_VGA, "Unsupported video mode\n");
-		return 0;
+	int mode = m_s.xga_reg[0] & 0x7;
+	switch(mode) { // Display Mode field (bits 2-0)
+		case 0: // VGA Mode (address decode disabled)
+			PWARNF(LOG_VGA, "VGA Mode 0 (address decode disabled) not supported\n");
+			break;
+		case 1: // VGA Mode (address decode enabled)
+			PDEBUGF(LOG_V1, LOG_VGA, "VGA Mode 1 (address decode enabled)\n");
+			VGA::update_mem_mapping();
+			break;
+		case 2: // 132-Column Text Mode (address decode disabled)
+		case 3: // 132-Column Text Mode (address decode enabled)
+			PWARNF(LOG_VGA, "132-Column text video mode (%d) not supported\n", mode);
+			break;
+		default:
+			// Extended Graphics mode
+			g_memory.resize_mapping(m_mapping, m_s.mem_offset, m_s.mem_aperture);
+			g_memory.set_mapping_funcs(m_mapping,
+				CF62011BPC::s_mem_read<uint8_t>,
+				CF62011BPC::s_mem_read<uint16_t>,
+				CF62011BPC::s_mem_read<uint32_t>,
+				this,
+				CF62011BPC::s_mem_write<uint8_t>,
+				CF62011BPC::s_mem_write<uint16_t>,
+				CF62011BPC::s_mem_write<uint32_t>,
+				this);
+			PDEBUGF(LOG_V1, LOG_VGA, "Extended Graphics mode %d\n", mode);
+			PDEBUGF(LOG_V1, LOG_VGA, "memory mapping: 0x%X .. 0x%X\n",
+					m_s.mem_offset, m_s.mem_offset+m_s.mem_aperture-1);
+			break;
 	}
-	// Extended Graphics modes
-	int aperture = me->m_s.xga_reg[1] & 0x3;
-	if(aperture == 0) {
-		PDEBUGF(LOG_V0, LOG_VGA, "Memory aperture != 64KB not supported\n");
-		return 0;
-	}
-	// aperture=0 no 64KB aperture (1MB or 4MB)
-	// aperture=1 64KB at address 0xA0000
-	// aperture=2 64KB at address 0xB0000
-	uint32_t offset = 0xA0000 + (aperture-1)*0x10000;
-
-	// check for out of window read
-	if(_addr<offset || _addr>=offset+0x10000) {
-		return 0;
-	}
-
-	_addr = (me->m_s.xga_reg[8]&0x3F)*0x10000 + _addr - offset;
-
-	// check for out of memory read
-	if(_addr >= me->m_memsize) {
-		return 0;
-	}
-
-	return me->m_memory[_addr];
 }
 
-void CF62011BPC::s_write_byte(uint32_t _addr, uint32_t _value, void *_priv)
+template<class T>
+uint32_t CF62011BPC::s_mem_read(uint32_t _addr, void *_priv)
 {
 	CF62011BPC *me = (CF62011BPC*)_priv;
-	int mode = me->m_s.xga_reg[0] & 0x7;
-	if(mode <= 0x1) {
-		// VGA modes
-		return VGA::s_write_byte(_addr, _value, dynamic_cast<VGA*>(me));
-	} else if(mode == 0x2 || mode == 0x3) {
-		// 132-Column Text Mode
-		PDEBUGF(LOG_V0, LOG_VGA, "Unsupported video mode\n");
-		return;
-	}
-	// Extended Graphics modes
-	int aperture = me->m_s.xga_reg[1] & 0x3;
-	if(aperture == 0) {
-		PDEBUGF(LOG_V0, LOG_VGA, "Memory aperture != 64KB not supported\n");
-		return;
-	}
-	// aperture=0 no 64KB aperture (1MB or 4MB)
-	// aperture=1 64KB at address 0xA0000
-	// aperture=2 64KB at address 0xB0000
-	uint32_t offset = 0xA0000 + (aperture-1)*0x10000;
 
 	// check for out of window read
-	if(_addr<offset || _addr>=offset+0x10000) {
-		return;
+	if(_addr+sizeof(T) > me->m_s.mem_offset+0x10000) {
+		return 0xFF;
 	}
 
-	_addr = (me->m_s.xga_reg[8]&0x3F)*0x10000 + _addr - offset;
+	int aperture_index = me->m_s.xga_reg[8] & 0x3F;
+	uint32_t addr = aperture_index*0x10000 + _addr - me->m_s.mem_offset;
 
 	// check for out of memory read
-	if(_addr >= me->m_memsize) {
+	if(addr+sizeof(T) > me->m_memsize) {
+		return 0xFF;
+	}
+
+	return *(T*)(&me->m_memory[addr]);
+}
+
+template<class T>
+void CF62011BPC::s_mem_write(uint32_t _addr, uint32_t _value, void *_priv)
+{
+	CF62011BPC *me = (CF62011BPC*)_priv;
+
+	// check for out of window write
+	if(_addr+sizeof(T) > me->m_s.mem_offset+0x10000) {
 		return;
 	}
 
-	me->m_memory[_addr] = _value;
+	int aperture_index = me->m_s.xga_reg[8] & 0x3F;
+	uint32_t addr = aperture_index*0x10000 + _addr - me->m_s.mem_offset;
+
+	// check for out of memory write
+	if(addr+sizeof(T) > me->m_memsize) {
+		return;
+	}
+
+	*(T*)(&me->m_memory[addr]) = _value;
 }
 
 uint16_t CF62011BPC::read(uint16_t _address, unsigned _io_len)
@@ -166,7 +164,7 @@ uint16_t CF62011BPC::read(uint16_t _address, unsigned _io_len)
 
 	uint16_t value = m_s.xga_reg[_address&0xF];
 
-	PDEBUGF(LOG_V2, LOG_MACHINE, "read  0x%03X -> 0x%04X\n", _address, value);
+	PDEBUGF(LOG_V2, LOG_VGA, "read  0x%03X -> 0x%04X\n", _address, value);
 
 	return value;
 }
@@ -177,7 +175,37 @@ void CF62011BPC::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		return VGA::write(_address, _value, _io_len);
 	}
 
-	PDEBUGF(LOG_V2, LOG_MACHINE, "write 0x%03X <- 0x%04X\n", _address, _value);
+	PDEBUGF(LOG_V2, LOG_VGA, "write 0x%03X <- 0x%04X\n", _address, _value);
 
-	m_s.xga_reg[_address&0xF] = _value;
+	_address &= 0xF;
+
+	switch(_address) {
+		case 0: { // Operating Mode Register (Address 21x0)
+			if(_value != m_s.xga_reg[_address]) {
+				m_s.xga_reg[_address] = _value;
+				update_mem_mapping();
+			}
+			break;
+		}
+		case 1: { // Aperture Control Register (Address 21x1)
+			int aperture = _value & 0x3;
+			if(aperture != 0) {
+				// aperture=0 no 64KB aperture (1MB or 4MB) (not emulated)
+				// aperture=1 64KB at address 0xA0000
+				// aperture=2 64KB at address 0xB0000
+				uint32_t new_offset = 0xA0000 + (aperture-1)*0x10000;
+				uint32_t new_aperture = 0x10000;  // fixed 64KB for now
+				if(new_offset != m_s.mem_offset || new_aperture != m_s.mem_aperture) {
+					m_s.mem_offset = new_offset;
+					m_s.mem_aperture = new_aperture;
+					update_mem_mapping();
+				}
+			}
+			m_s.xga_reg[_address] = _value;
+			break;
+		}
+		default:
+			m_s.xga_reg[_address] = _value;
+			break;
+	}
 }
