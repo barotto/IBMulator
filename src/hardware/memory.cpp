@@ -45,7 +45,7 @@ m_mappings_namecnt(0)
 	 */
 	m_s.mask = 0x00FFFFFF;
 	m_s.A20_enabled = true;
-	memset(m_s.mapstate, 0, sizeof(m_s.mapstate));
+	memset(m_s.mapstate, MEM_ANY, sizeof(m_s.mapstate));
 
 	m_ram.buffer = nullptr;
 	m_ram.buffer_size = 0;
@@ -61,10 +61,10 @@ Memory::~Memory()
 void Memory::init()
 {
 	//register_trap(0x400, 0x4FF, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_40h_trap);
-	//register_trap(0x500, 0x9ffff, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap_noread);
+	//register_trap(0x500, 0x9ffff, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap);
 	/*
-	for(int i=0; i<0x260000; i+=0x10000) {
-		register_trap(i, i+2, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap_noread);
+	for(int i=0; i<0x600000; i+=0x10000) {
+		register_trap(i, i+2, MEM_TRAP_READ|MEM_TRAP_WRITE, &Memory::s_debug_trap);
 	}
 	*/
 
@@ -85,15 +85,15 @@ void Memory::reset()
 
 void Memory::config_changed()
 {
-	int ram = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE, g_machine.model().ram);
+	m_ram.size = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE, g_machine.model().ram);
 	// the last 512 KiB are reserved for the ROM
-	ram = std::min(16384-512-384, ram);
-	ram = std::max(128, ram);
-	ram -= ram % 128;
-	ram *= KEBIBYTE;
+	m_ram.size = std::min(16384u-512u-384u, m_ram.size);
+	m_ram.size = std::max(128u, m_ram.size);
+	m_ram.size -= m_ram.size % 128;
+	m_ram.size *= KEBIBYTE;
 
-	uint32_t low_mapping_size = std::min(ram, 0xA0000);
-	uint32_t high_mapping_size = ram - low_mapping_size;
+	uint32_t low_mapping_size = std::min(m_ram.size, 0xA0000u);
+	uint32_t high_mapping_size = m_ram.size - low_mapping_size;
 
 	m_ram.buffer_size = MEBIBYTE + high_mapping_size;
 	delete[] m_ram.buffer;
@@ -110,10 +110,10 @@ void Memory::config_changed()
 	set_mapping_cycles(m_ram.high_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 
 	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, extended: %uKB)\n",
-		ram/KEBIBYTE, low_mapping_size/KEBIBYTE, high_mapping_size/KEBIBYTE);
+		m_ram.size/KEBIBYTE, low_mapping_size/KEBIBYTE, high_mapping_size/KEBIBYTE);
 	PINFOF(LOG_V2, LOG_MEM, " access cycles: %u\n", m_ram.cycles);
 
-	memset(m_s.mapstate, 0, sizeof(m_s.mapstate));
+	memset(m_s.mapstate, MEM_ANY, sizeof(m_s.mapstate));
 }
 
 void Memory::save_state(StateBuf &_state)
@@ -246,6 +246,9 @@ void Memory::set_state(uint32_t _base, uint32_t _size, unsigned _state)
 	for(uint32_t block=0; block<_size; block+=MEM_MAP_GRANULARITY) {
 		m_s.mapstate[(_base + block) / MEM_MAP_GRANULARITY] = _state;
 	}
+
+	PDEBUGF(LOG_V2, LOG_MEM, "state 0x%05X .. 0x%05X : %02X\n",
+			_base, _base+_size-1, _state);
 
 	remap(_base, _base+_size);
 }
@@ -571,6 +574,35 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 {
 	const char *assign="<-", *read="->";
 	const char *op;
+	if(_rw == MEM_TRAP_READ) {
+		op = read;
+	} else {
+		op = assign;
+	}
+	const char *format;
+	switch(_len) {
+		case 1:
+			format = "%d[%04X] %s %02X\n";
+			break;
+		case 2:
+			format = "%d[%04X] %s %04X\n";
+			break;
+		case 4:
+		default:
+			format = "%d[%04X] %s %08X\n";
+			break;
+	}
+	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value);
+}
+
+void Memory::s_debug_trap_ASCII(uint32_t _address,  // address
+		uint8_t  _rw,    // read or write
+		uint32_t _value, // value read or written
+		uint8_t  _len    // data length (1=byte, 2=word, 4=dword)
+		)
+{
+	const char *assign="<-", *read="->";
+	const char *op;
 	uint len = 20;
 	char buf[len+1];
 	buf[0] = 0;
@@ -614,35 +646,6 @@ void Memory::s_debug_trap(uint32_t _address,  // address
 			break;
 	}
 	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value, buf);
-}
-
-void Memory::s_debug_trap_noread(uint32_t _address,  // address
-		uint8_t  _rw,    // read or write
-		uint32_t _value, // value read or written
-		uint8_t  _len    // data length (1=byte, 2=word, 4=dword)
-		)
-{
-	const char *assign="<-", *read="->";
-	const char *op;
-	if(_rw == MEM_TRAP_READ) {
-		op = read;
-	} else {
-		op = assign;
-	}
-	const char *format;
-	switch(_len) {
-		case 1:
-			format = "%d[%04X] %s %02X\n";
-			break;
-		case 2:
-			format = "%d[%04X] %s %04X\n";
-			break;
-		case 4:
-		default:
-			format = "%d[%04X] %s %08X\n";
-			break;
-	}
-	PDEBUGF(LOG_V1, LOG_MEM, format, _len, _address, op, _value);
 }
 
 void Memory::s_debug_40h_trap(uint32_t _address,  // address

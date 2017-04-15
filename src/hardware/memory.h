@@ -25,15 +25,15 @@
 #include "interval_tree.h"
 #include "devices/hddparams.h"
 
-#define KEBIBYTE          1024u
-#define MEBIBYTE          1024u * KEBIBYTE
-#define MAX_MEM_SIZE      16u * MEBIBYTE
-#define MAX_BASE_MEM_SIZE 640u * KEBIBYTE
-#define SYS_ROM_SIZE      512u * KEBIBYTE
-#define SYS_ROM_ADDR      0xF80000
-#define SYS_ROM_LOBASEADDR  0xE0000
-#define SYS_ROM_HIBASEADDR  0xFFFFF
-#define MAX_EXT_MEM_SIZE  (MAX_MEM_SIZE - MEBIBYTE - SYS_ROM_SIZE)
+#define KEBIBYTE           1024u
+#define MEBIBYTE           (1024u * KEBIBYTE)
+#define MAX_MEM_SIZE       (16u * MEBIBYTE)
+#define MAX_BASE_MEM_SIZE  (640u * KEBIBYTE)
+#define SYS_ROM_SIZE       (512u * KEBIBYTE)
+#define SYS_ROM_ADDR       0xF80000
+#define SYS_ROM_LOBASEADDR 0xE0000
+#define SYS_ROM_HIBASEADDR 0xFFFFF
+#define MAX_EXT_MEM_SIZE   (MAX_MEM_SIZE - MEBIBYTE - SYS_ROM_SIZE)
 
 #define MEM_MAP_SIZE        0x40000
 #define MEM_MAP_GRANULARITY 0x4000
@@ -41,18 +41,22 @@
 #define MEM_MAPPING_EXTERNAL 1  // memory on external bus
 #define MEM_MAPPING_INTERNAL 2  // system RAM
 
-#define MEM_READ_MASK       0x0f
-#define MEM_READ_ANY        0x00
-#define MEM_READ_DISABLED   0x01
-#define MEM_READ_INTERNAL   0x02
-#define MEM_READ_EXTERNAL   0x04
+#define MEM_READ_MASK       0x0F
+#define MEM_READ_DISABLED   0x00
+#define MEM_READ_INTERNAL   0x01
+#define MEM_READ_EXTERNAL   0x02
+#define MEM_READ_ANY        0x03
 
-#define MEM_WRITE_MASK      0xf0
-#define MEM_WRITE_ANY       0x00
-#define MEM_WRITE_DISABLED  0x10
-#define MEM_WRITE_INTERNAL  0x20
-#define MEM_WRITE_EXTERNAL  0x40
+#define MEM_WRITE_MASK      0xF0
+#define MEM_WRITE_DISABLED  0x00
+#define MEM_WRITE_INTERNAL  0x10
+#define MEM_WRITE_EXTERNAL  0x20
+#define MEM_WRITE_ANY       0x30
 
+#define MEM_DISABLED (MEM_READ_DISABLED | MEM_WRITE_DISABLED)
+#define MEM_INTERNAL (MEM_READ_INTERNAL | MEM_WRITE_INTERNAL)
+#define MEM_EXTERNAL (MEM_READ_EXTERNAL | MEM_WRITE_EXTERNAL)
+#define MEM_ANY      (MEM_READ_ANY | MEM_WRITE_ANY)
 
 class Memory;
 extern Memory g_memory;
@@ -88,6 +92,7 @@ class Memory
 
 protected:
 	struct {
+		uint32_t size;
 		int low_mapping;
 		int high_mapping;
 		uint8_t *buffer;
@@ -176,7 +181,8 @@ public:
 	uint8_t *get_buffer_ptr(uint32_t _address);
 	uint32_t get_buffer_size() { return m_ram.buffer_size; }
 
-	inline int dram_cycles() { return m_ram.cycles; }
+	inline int dram_cycles() const { return m_ram.cycles; }
+	inline uint32_t dram_size() const { return m_ram.size; }
 
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);
@@ -191,7 +197,7 @@ public:
 	void dump(const std::string &_filename, uint32_t _address, uint _len);
 	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
 	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
-	static void s_debug_trap_noread(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
+	static void s_debug_trap_ASCII(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 
 private:

@@ -34,6 +34,30 @@ private:
 		//   bit 7 = 1  on the last active bank
 		uint8_t E0_addr;
 		uint8_t E1_regs[32];
+		// RAM configuration register at port 0E8h
+		uint8_t E8;
+		/* E8 value  E1 value           RAM installed
+		 * 0000      0-7  11224444      4mb   (2mb expansion)
+		 * 0001      0-4  11224         2.5mb (.5mb expansion)
+		 * 0010      0-11 112244448888  6mb   (4mb expansion)
+		 * 0011      0-3  1122          2mb   (no expansion)
+		 * 0100      0-7  11224444      4mb
+		 * 0101      0-4  11224         2.5mb
+		 * 0110      0-11 112244448888  6mb
+		 * 0111      0-3  1122          2mb
+		 * 1000      0-5  114444        3mb
+		 * 1001      0-2  114           1.5mb
+		 * 1010      0-9  1144448888    5mb
+		 * 1011      0-1  11            1mb
+		 * 1100      0-5  114444        3mb
+		 * 1101      0-2  114           1.5mb
+		 * 1110      0-9  1144448888    5mb
+		 * 1111      0-1  11            1mb
+		 *
+		 * bit 0-1 provides the memory card ID
+		 * bit 2 is probably to select different timings
+		 * if bit 4 is set than 1 meg of on board RAM is disabled.
+		 */
 	} m_s;
 
 	FloppyCtrl *m_floppy;
@@ -55,6 +79,7 @@ public:
 
 private:
 	void update_board_state();
+	void set_memory_state();
 };
 
 #endif
