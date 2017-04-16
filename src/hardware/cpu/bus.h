@@ -79,6 +79,7 @@ public:
 	inline int  pipelined_fetch_cycles() const { return m_pfetch_cycles; }
 	inline int  cycles_ahead() const { return m_cycles_ahead; }
 	inline bool pq_is_valid() const { return m_s.pq_valid; }
+	inline int  width() const { return m_width; }
 
 	void update(int _cycles);
 

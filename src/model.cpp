@@ -77,19 +77,19 @@ const ini_enum_map_t g_ini_model_names = {
 
 const machine_db_t g_machine_db = {
 //
-// Model ID       Model string     Machine   CPU      CPU RAM   floppy A   Floppy B  Storage HDD
-//                                 type      model    MHz                            ctrl    type
-{ MDL_UNKNOWN,  { "Unknown Model", MCH_UNK,  "386SX", 20, 2048, FDD_350HD, FDD_NONE, "ata",  43  } },
-{ PS1_2011_C34, { "PS/1 2011-C34", PS1_2011, "286",   10, 1024, FDD_350HD, FDD_NONE, "ps1",  35  } },
-{ PS1_2121_B82, { "PS/1 2121-B82", PS1_2121, "386SX", 16, 2048, FDD_350HD, FDD_NONE, "ata",  43  } },
-{ PS1_2121_A82, { "PS/1 2121-A82", PS1_2121, "386SX", 20, 2048, FDD_350HD, FDD_NONE, "ata",  43  } }
+// Model ID       Model string     Machine   CPU      CPU RAM   RAM  RAM   ROM   ROM Floppy A   Floppy B  Storage HDD
+//                                 type      model    MHz board exp  speed speed bit                      ctrl    type
+{ MDL_UNKNOWN,  { "Unknown Model", MCH_UNK,  "386SX", 20, 2048, 0,   100,  200,  16,  FDD_350HD, FDD_NONE, "ata",  43  } },
+{ PS1_2011_C34, { "PS/1 2011-C34", PS1_2011, "286",   10, 512,  512, 120,  200,  16,  FDD_350HD, FDD_NONE, "ps1",  35  } },
+{ PS1_2121_B82, { "PS/1 2121-B82", PS1_2121, "386SX", 16, 2048, 0,   100,  200,  16,  FDD_350HD, FDD_NONE, "ata",  43  } },
+{ PS1_2121_A82, { "PS/1 2121-A82", PS1_2121, "386SX", 20, 2048, 0,   100,  200,  16,  FDD_350HD, FDD_NONE, "ata",  43  } }
 };
 
 std::string ModelConfig::print() const
 {
 	std::stringstream ss;
 	ss << name << ", " << cpu_model << " " << cpu_freq << "MHz, ";
-	ss << (double(ram)/1024.0) << "MB RAM, ";
+	ss << (double(board_ram+exp_ram)/1024.0) << "MB RAM, ";
 	switch(floppy_a) {
 		case FDD_525DD: ss << "360KB"; break;
 		case FDD_525HD: ss << "1.2MB"; break;

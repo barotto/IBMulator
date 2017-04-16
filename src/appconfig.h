@@ -152,7 +152,8 @@ public:
 #define CPU_FREQUENCY           "frequency"
 
 #define MEM_SECTION             "memory"
-#define MEM_RAM_SIZE            "ram"
+#define MEM_RAM_EXP             "expansion"
+#define MEM_RAM_SPEED           "speed"
 
 #define CMOS_SECTION            "cmos"
 #define CMOS_IMAGE_FILE         "image"

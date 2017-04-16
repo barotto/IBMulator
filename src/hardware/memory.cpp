@@ -85,7 +85,17 @@ void Memory::reset()
 
 void Memory::config_changed()
 {
-	m_ram.size = g_program.config().get_int(MEM_SECTION, MEM_RAM_SIZE, g_machine.model().ram);
+	static std::map<std::string, unsigned> ram_exp = {
+		{ "none", 0   },
+		{ "512K", 512 },
+		{ "2M",   2  * KEBIBYTE },
+		{ "4M",   4  * KEBIBYTE },
+		{ "6M",   6  * KEBIBYTE },
+		{ "8M",   8  * KEBIBYTE },
+		{ "16M",  16 * KEBIBYTE },
+	};
+	unsigned exp_ram = g_program.config().get_enum(MEM_SECTION, MEM_RAM_EXP, ram_exp, g_machine.model().exp_ram);
+	m_ram.size = g_machine.model().board_ram + exp_ram;
 	// the last 512 KiB are reserved for the ROM
 	m_ram.size = std::min(16384u-512u-384u, m_ram.size);
 	m_ram.size = std::max(128u, m_ram.size);
@@ -103,15 +113,23 @@ void Memory::config_changed()
 	resize_mapping(m_ram.low_mapping, 0x000000, low_mapping_size);
 	resize_mapping(m_ram.high_mapping, 0x100000, high_mapping_size);
 
-	m_ram.cycles = 1; // address
-	m_ram.cycles += ceil(DRAM_TIME_NS / g_cpu.cycle_time_ns()); // data
+	static std::map<std::string, unsigned> ram_speed = {
+		{ "60",  60 },
+		{ "70",  70 },
+		{ "80",  80 },
+		{ "100", 100 },
+		{ "120", 120 },
+	};
+	unsigned speed_ns = g_program.config().get_enum(MEM_SECTION, MEM_RAM_SPEED, ram_speed, g_machine.model().ram_speed);
+	m_ram.cycles = 1 + ceil(speed_ns / g_cpu.cycle_time_ns()); // address + data
 
 	set_mapping_cycles(m_ram.low_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 	set_mapping_cycles(m_ram.high_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 
 	PINFOF(LOG_V0, LOG_MEM, "Installed RAM: %uKB (base: %uKB, extended: %uKB)\n",
 		m_ram.size/KEBIBYTE, low_mapping_size/KEBIBYTE, high_mapping_size/KEBIBYTE);
-	PINFOF(LOG_V2, LOG_MEM, " access cycles: %u\n", m_ram.cycles);
+	PINFOF(LOG_V2, LOG_MEM, "RAM speed: %u ns, %d/%d/%d cycles\n", speed_ns,
+		m_ram.cycles, m_ram.cycles, (g_cpubus.width()==16)?m_ram.cycles*2:m_ram.cycles);
 
 	memset(m_s.mapstate, MEM_ANY, sizeof(m_s.mapstate));
 }

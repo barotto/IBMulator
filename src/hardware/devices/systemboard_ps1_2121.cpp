@@ -132,6 +132,7 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 		case 0x0105:
 			// if RAM is above 6MB, bit 7 forced high or 128KB of RAM will be
 			// missed on cold boot.
+			// maybe this bit controls ROM shadowing on real hardware?
 			value = SystemBoard::m_s.POS[5] | (m_s.E8 & 0x80);
 			break;
 		case 0x03F3:
@@ -171,7 +172,9 @@ void SystemBoard_PS1_2121::write(uint16_t _address, uint16_t _value, unsigned _i
 			PDEBUGF(LOG_V2, LOG_MACHINE, "write 0xE1[%d] <- 0x%04X\n", m_s.E0_addr, _value);
 			if(_value != m_s.E1_regs[m_s.E0_addr]) {
 				m_s.E1_regs[m_s.E0_addr] = _value;
-				if(m_s.E8 <= 0x0F || m_s.E0_addr <= 1) {
+				if(!(m_s.E8&0x80) || m_s.E0_addr <= 1) {
+					// don't disable the bank if it's > 1MB and the installed RAM is more than 6MB
+					// bit7 is used only on IBMulator to check presence of more than 6MB
 					uint32_t base = 0x80000 * m_s.E0_addr;
 					g_memory.set_state(base, 0x80000, (_value!=0) ? MEM_ANY : MEM_EXTERNAL);
 				}

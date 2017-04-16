@@ -44,7 +44,11 @@ struct ModelConfig
 	unsigned type;
 	std::string cpu_model;
 	unsigned cpu_freq;
-	unsigned ram;
+	unsigned board_ram;
+	unsigned exp_ram;
+	unsigned ram_speed;
+	unsigned rom_speed;
+	unsigned rom_bit;
 	unsigned floppy_a;
 	unsigned floppy_b;
 	std::string hdd_interface;

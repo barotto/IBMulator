@@ -84,7 +84,8 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ MEM_SECTION, {
-		{ MEM_RAM_SIZE, "auto" }
+		{ MEM_RAM_EXP,   "auto" },
+		{ MEM_RAM_SPEED, "auto" }
 	} },
 
 	{ DRIVES_SECTION, {
@@ -257,8 +258,14 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ MEM_SECTION,
-";    ram: Size of the RAM in KiB\n"
-";         Possible values: auto, or an integer multiple of 128.\n"
+"; expansion: RAM module installed in the expansion slot.\n"
+";            Possible values: auto, none, 512K, 2M, 4M, 6M, 8M, 16M.\n"
+";             Memory configurations for PS/1 models were:\n"
+";             2011: 512K on board + 512K, 2MB modules\n"
+";             2121: 2M on board + 512K, 2MB, 4MB modules\n"
+";             6M, 8M, and 16M modules never existed.\n"
+";     speed: RAM access time in nanoseconds.\n"
+";            Possible values: auto, 60, 70, 80, 100, 120\n"
 		},
 
 		{ DRIVES_SECTION,
@@ -409,7 +416,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		CPU_FREQUENCY
 	} },
 	{ MEM_SECTION, {
-		MEM_RAM_SIZE
+		MEM_RAM_EXP,
+		MEM_RAM_SPEED
 	} },
 	{ CMOS_SECTION, {
 		CMOS_IMAGE_FILE,

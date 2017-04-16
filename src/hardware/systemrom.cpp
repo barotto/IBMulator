@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <SDL2/SDL.h>
 
-#define ROM_TIME_NS    200.0
 #define MAX_ROM_SIZE   0x80000
 #define SYS_ROM_ADDR   0xF80000
 #define BIOS_OFFSET    0x70000
@@ -66,9 +65,13 @@ void SystemROM::init()
 
 void SystemROM::config_changed()
 {
-	int c = 1 + ceil(ROM_TIME_NS / g_cpu.cycle_time_ns());
-	g_memory.set_mapping_cycles(m_low_mapping, c, c, c*2);
-	g_memory.set_mapping_cycles(m_high_mapping, c, c, c*2);
+	int c = 1 + ceil(g_machine.model().rom_speed / g_cpu.cycle_time_ns());
+	int d = (g_machine.model().rom_bit==32)?c:c*2;
+	g_memory.set_mapping_cycles(m_low_mapping, c,c,d);
+	g_memory.set_mapping_cycles(m_high_mapping, c,c,d);
+
+	PINFOF(LOG_V2, LOG_MACHINE, "ROM speed: %u ns, %d/%d/%d cycles\n",
+		g_machine.model().rom_speed, c,c,d);
 }
 
 void SystemROM::load(const std::string _romset)

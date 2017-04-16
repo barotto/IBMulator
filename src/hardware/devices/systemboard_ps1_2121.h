@@ -56,7 +56,7 @@ private:
 		 *
 		 * bit 0-1 provides the memory card ID
 		 * bit 2 is probably to select different timings
-		 * if bit 4 is set than 1 meg of on board RAM is disabled.
+		 * if bit 4 is set to 1 then 1M of on board RAM is disabled.
 		 */
 	} m_s;
 
