@@ -43,6 +43,9 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+
 protected:
 	void update_mem_mapping();
 

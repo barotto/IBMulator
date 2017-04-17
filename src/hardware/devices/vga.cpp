@@ -174,9 +174,11 @@ void VGA::remove()
 
 	if(m_memory != nullptr) {
 		delete[] m_memory;
+		m_memory = nullptr;
 	}
 	if(m_tile_updated != nullptr) {
 		delete[] m_tile_updated;
+		m_tile_updated = nullptr;
 	}
 
 	g_memory.remove_mapping(m_mapping);
@@ -279,6 +281,9 @@ void VGA::restore_state(StateBuf &_state)
 	_state.read(m_memory, h);
 
 	// display
+	if(!m_display) {
+		m_display = g_gui.vga_display();
+	}
 	m_display->restore_state(_state);
 
 	double vfreq = 1000000.0 / m_s.vtotal_usec;

@@ -72,6 +72,24 @@ void CF62011BPC::reset(unsigned _type)
 	VGA::reset(_type);
 }
 
+void CF62011BPC::save_state(StateBuf &_state)
+{
+	PINFOF(LOG_V1, LOG_VGA, "%s: saving state\n", name());
+
+	_state.write(&m_s, {sizeof(m_s), name()});
+
+	VGA::save_state(_state);
+}
+
+void CF62011BPC::restore_state(StateBuf &_state)
+{
+	PINFOF(LOG_V1, LOG_VGA, "%s: restoring state\n", name());
+
+	_state.read(&m_s, {sizeof(m_s), name()});
+
+	VGA::restore_state(_state);
+}
+
 void CF62011BPC::update_mem_mapping()
 {
 	int mode = m_s.xga_reg[0] & 0x7;
