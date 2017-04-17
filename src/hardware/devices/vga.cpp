@@ -105,7 +105,7 @@ m_tile_updated(nullptr),
 m_timer_id(NULL_TIMER_HANDLE),
 m_display(nullptr),
 m_mapping(0),
-m_vga_timing(VGA_8BIT),
+m_vga_timing(VGA_8BIT_SLOW),
 m_bus_timing(1.0)
 {
 	m_num_x_tiles = m_max_xres / VGA_X_TILESIZE + ((m_max_xres % VGA_X_TILESIZE) > 0);
@@ -144,10 +144,12 @@ void VGA::install()
 
 void VGA::config_changed()
 {
-	const int video_timings[6][3] = {
+	const int video_timings[8][3] = {
 	   // B   W   D
-		{ 8, 16, 32 }, // 8-bit
+		{13, 26, 52 }, // Slow 8-bit
+		{ 8, 16, 32 }, // Fast 8-bit
 		{ 6,  8, 16 }, // Slow 16-bit
+		{ 4,  6, 12 }, // Mid  16-bit
 		{ 3,  3,  6 }, // Fast 16-bit
 		{ 4,  8, 16 }, // Slow 32-bit
 		{ 4,  5, 10 }, // Mid  32-bit
@@ -160,7 +162,7 @@ void VGA::config_changed()
 
 	g_memory.set_mapping_cycles(m_mapping, byte, word, dword);
 
-	PINFOF(LOG_V2, LOG_VGA, "access cycles: b:%d, w:%d, d:%d\n",
+	PINFOF(LOG_V2, LOG_VGA, "VRAM speed: %d/%d/%d cycles\n",
 			byte, word, dword);
 }
 
@@ -234,7 +236,7 @@ void VGA::power_off()
 
 void VGA::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_VGA, "saving state\n");
+	PINFOF(LOG_V1, LOG_VGA, "VGA: saving state\n");
 
 	StateHeader h;
 	h.name = name();
@@ -257,7 +259,7 @@ void VGA::save_state(StateBuf &_state)
 
 void VGA::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_VGA, "restoring state\n");
+	PINFOF(LOG_V1, LOG_VGA, "VGA: restoring state\n");
 
 	StateHeader h;
 

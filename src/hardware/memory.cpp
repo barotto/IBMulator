@@ -121,7 +121,7 @@ void Memory::config_changed()
 		{ "120", 120 },
 	};
 	unsigned speed_ns = g_program.config().get_enum(MEM_SECTION, MEM_RAM_SPEED, ram_speed, g_machine.model().ram_speed);
-	m_ram.cycles = 1 + ceil(speed_ns / g_cpu.cycle_time_ns()); // address + data
+	m_ram.cycles = 1 + ceil(double(speed_ns) / g_cpu.cycle_time_ns()); // address + data
 
 	set_mapping_cycles(m_ram.low_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 	set_mapping_cycles(m_ram.high_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
