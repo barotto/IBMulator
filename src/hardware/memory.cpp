@@ -237,7 +237,7 @@ void Memory::set_mapping_funcs(int _mapping,
 		it->write.word  = _write_word;
 		it->write.dword = _write_dword;
 		it->write.priv  = _write_priv;
-		// no remap needed
+		remap(it->start(), it->end());
 	} else {
 		PERRF(LOG_MEM, "Cannot find mapping %d\n", _mapping);
 	}
