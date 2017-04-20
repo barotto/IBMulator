@@ -27,6 +27,7 @@
 #endif
 
 #define CPU_PQ_MAX_SIZE  16
+#define CPU_BUS_WQ_SIZE  50
 
 class CPUBus;
 extern CPUBus g_cpubus;
@@ -51,9 +52,18 @@ private:
 	int m_fetch_cycles;
 	int m_mem_r_cycles;
 	int m_mem_w_cycles;
+	int m_mem_w_count;
 	int m_pmem_cycles;   // pipelined memory cycles
 	int m_pfetch_cycles; // pipelined fetch cycles
 	int m_cycles_ahead;
+
+	struct wq_data {
+		void (CPUBus::*w_fn)(uint32_t _addr, uint32_t _data, int &_cycles);
+		uint32_t address;
+		uint32_t data;
+	};
+	wq_data m_write_queue[CPU_BUS_WQ_SIZE];
+	int m_wq_idx;
 
 public:
 	CPUBus();
@@ -70,10 +80,9 @@ public:
 		m_pfetch_cycles = 0;
 	}
 
-	inline bool memory_accessed() const { return (m_mem_r_cycles || m_mem_w_cycles); }
+	inline bool memory_accessed() const { return (m_mem_r_cycles || m_wq_idx>=0); }
 	inline int  fetch_cycles() const { return m_fetch_cycles; }
 	inline int  mem_r_cycles() const { return m_mem_r_cycles; }
-	inline int  mem_w_cycles() const { return m_mem_w_cycles; }
 	inline int  mem_tx_cycles() const { return m_mem_r_cycles + m_mem_w_cycles; }
 	inline int  pipelined_mem_cycles() const { return m_pmem_cycles; }
 	inline int  pipelined_fetch_cycles() const { return m_pfetch_cycles; }
@@ -105,8 +114,17 @@ public:
 	}
 	void reset_pq();
 
-	template<unsigned> uint32_t mem_read(uint32_t _addr) { assert(false); }
-	template<unsigned> void mem_write(uint32_t _addr, uint32_t _data) { assert(false); }
+	template<unsigned S> inline uint32_t mem_read(uint32_t _addr)
+	{
+		return p_mem_read<S>(_addr, m_mem_r_cycles);
+	}
+	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
+	{
+		++m_wq_idx;
+		m_write_queue[m_wq_idx].w_fn = &CPUBus::p_mem_write<S>;
+		m_write_queue[m_wq_idx].address = _addr;
+		m_write_queue[m_wq_idx].data = _data;
+	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
@@ -114,8 +132,8 @@ public:
 	int write_pq_to_logfile(FILE *_dest);
 
 private:
-	template<unsigned> uint32_t mem_read(uint32_t _addr, int &_cycles) { assert(false); }
-	template<unsigned> void mem_write(uint32_t _addr, uint32_t _data, int &_cycles) { assert(false); }
+	template<unsigned> uint32_t p_mem_read(uint32_t _addr, int &_cycles) { assert(false); }
+	template<unsigned> void p_mem_write(uint32_t _addr, uint32_t _data, int &_cycles) { assert(false); }
 
 	ALWAYS_INLINE
 	inline int pq_free_space() {
@@ -162,65 +180,22 @@ private:
 
 
 template<> inline
-uint32_t CPUBus::mem_read<1>(uint32_t _addr, int &_cycles)
+uint32_t CPUBus::p_mem_read<1>(uint32_t _addr, int &_cycles)
 {
 	return g_memory.read_t<1>(_addr, 1, _cycles);
 }
-template<> uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles);
-template<> uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles);
-template<> uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles);
+template<> uint32_t CPUBus::p_mem_read<2>(uint32_t _addr, int &_cycles);
+template<> uint32_t CPUBus::p_mem_read<3>(uint32_t _addr, int &_cycles);
+template<> uint32_t CPUBus::p_mem_read<4>(uint32_t _addr, int &_cycles);
 
 template<> inline
-uint32_t CPUBus::mem_read<1>(uint32_t _addr)
-{
-	return mem_read<1>(_addr, m_mem_r_cycles);
-}
-template<> inline
-uint32_t CPUBus::mem_read<2>(uint32_t _addr)
-{
-	return mem_read<2>(_addr, m_mem_r_cycles);
-}
-template<> inline
-uint32_t CPUBus::mem_read<3>(uint32_t _addr)
-{
-	return mem_read<3>(_addr, m_mem_r_cycles);
-}
-template<> inline
-uint32_t CPUBus::mem_read<4>(uint32_t _addr)
-{
-	return mem_read<4>(_addr, m_mem_r_cycles);
-}
-
-
-template<> inline
-void CPUBus::mem_write<1>(uint32_t _addr, uint32_t _data, int &_cycles)
+void CPUBus::p_mem_write<1>(uint32_t _addr, uint32_t _data, int &_cycles)
 {
 	g_memory.write_t<1>(_addr, _data, 1, _cycles);
 }
-template<> void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles);
-template<> void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles);
-template<> void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles);
-
-template<> inline
-void CPUBus::mem_write<1>(uint32_t _addr, uint32_t _data)
-{
-	mem_write<1>(_addr, _data, m_mem_w_cycles);
-}
-template<> inline
-void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data)
-{
-	mem_write<2>(_addr, _data, m_mem_w_cycles);
-}
-template<> inline
-void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data)
-{
-	mem_write<3>(_addr, _data, m_mem_w_cycles);
-}
-template<> inline
-void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data)
-{
-	mem_write<4>(_addr, _data, m_mem_w_cycles);
-}
+template<> void CPUBus::p_mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles);
+template<> void CPUBus::p_mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles);
+template<> void CPUBus::p_mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles);
 
 
 #endif

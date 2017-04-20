@@ -28,9 +28,11 @@ CPUBus g_cpubus;
 
 
 CPUBus::CPUBus()
-: m_cycles_ahead(0)
+: m_cycles_ahead(0),
+  m_wq_idx(-1)
 {
-	memset(&m_s,0,sizeof(m_s));
+	memset(&m_s, 0, sizeof(m_s));
+	memset(&m_write_queue, 0, sizeof(m_write_queue));
 	reset_counters();
 }
 
@@ -113,7 +115,7 @@ void CPUBus::reset_pq()
 
 void CPUBus::update(int _cycles)
 {
-	if(m_mem_r_cycles || m_mem_w_cycles) {
+	if(m_mem_r_cycles || m_wq_idx>=0) {
 		m_pmem_cycles += m_cycles_ahead;
 		m_cycles_ahead = 0;
 	}
@@ -129,6 +131,13 @@ void CPUBus::update(int _cycles)
 	if(_cycles <= 0) {
 		m_cycles_ahead = (-1 * _cycles);
 	}
+	for(int i=0; i<=m_wq_idx; i++) {
+		(this->*m_write_queue[i].w_fn)(
+				m_write_queue[i].address,
+				m_write_queue[i].data,
+				m_mem_w_cycles);
+	}
+	m_wq_idx = -1;
 	m_cycles_ahead += m_mem_w_cycles;
 }
 
@@ -214,7 +223,7 @@ int CPUBus::fill_pq_32(int _amount, int _cycles)
 }
 
 template<>
-uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles)
+uint32_t CPUBus::p_mem_read<2>(uint32_t _addr, int &_cycles)
 {
 	if(((_addr&0x1)==0) || (m_width==32 && ((_addr&0x3)==1))) {
 		// even address or a word inside a dword boundary on a 32bit bus
@@ -228,7 +237,7 @@ uint32_t CPUBus::mem_read<2>(uint32_t _addr, int &_cycles)
 }
 
 template<>
-uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles)
+uint32_t CPUBus::p_mem_read<3>(uint32_t _addr, int &_cycles)
 {
 	// this is called only for unaligned cross page dword reads
 	// see cpu/executor/memory.cpp
@@ -249,7 +258,7 @@ uint32_t CPUBus::mem_read<3>(uint32_t _addr, int &_cycles)
 }
 
 template<>
-uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles)
+uint32_t CPUBus::p_mem_read<4>(uint32_t _addr, int &_cycles)
 {
 	uint32_t v;
 	if(m_width == 16) {
@@ -290,7 +299,7 @@ uint32_t CPUBus::mem_read<4>(uint32_t _addr, int &_cycles)
 }
 
 template<>
-void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles)
+void CPUBus::p_mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles)
 {
 	if(((_addr&0x1)==0) || (m_width==32 && ((_addr&0x3)==1))) {
 		// even address or a word inside a dword boundary on a 32bit bus
@@ -303,7 +312,7 @@ void CPUBus::mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles)
 }
 
 template<>
-void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles)
+void CPUBus::p_mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles)
 {
 	// this is called only for unaligned cross page dword writes
 	// see cpu/executor/memory.cpp
@@ -317,7 +326,7 @@ void CPUBus::mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles)
 }
 
 template<>
-void CPUBus::mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
+void CPUBus::p_mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
 {
 	if(m_width == 16) {
 		if((_addr&0x1) == 0) {
