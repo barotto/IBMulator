@@ -462,6 +462,12 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					PDEBUGF(LOG_V2, LOG_KEYB, "keyboard BIOS version not supported\n");
 					break;
 
+				case 0xa4:
+				case 0xa5:
+				case 0xa6:
+					PDEBUGF(LOG_V2, LOG_KEYB, "keyboard password commands not supported\n");
+					break;
+
 				case 0xa7: // disable the aux device
 					set_aux_clock_enable(false);
 					PDEBUGF(LOG_V2, LOG_KEYB, "aux device disabled\n");
