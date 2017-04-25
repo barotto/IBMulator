@@ -46,7 +46,7 @@ void CPULogger::add_entry(
 		const CPUState &_state,
 		const CPUCore &_core,
 		const CPUBus &_bus,
-		unsigned _cycles)
+		const CPUCycles &_cycles)
 {
 	//don't log outside fixed boundaries
 	if(_instr.cseip<CPULOG_START_ADDR || _instr.cseip>CPULOG_END_ADDR) {
@@ -251,10 +251,20 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_TIMINGS) {
-		if(fprintf(_dest, "c=%2u(b=%u,%u,%u),m=%2u ",
-				_entry.cycles,
-				_entry.bus.pipelined_mem_cycles(), _entry.bus.pipelined_fetch_cycles(),
+		if(fprintf(_dest, "c=%2d(%2d,%2d,%2d,%2d,%2d,%2d)(b=%d,%d,%d),m=%2d ",
+				// cpu
+				_entry.cycles.sum(),
+				_entry.cycles.eu,
+				_entry.cycles.bu,
+				_entry.cycles.decode,
+				_entry.cycles.io,
+				_entry.cycles.bus,
+				_entry.cycles.refresh,
+				// bus
+				_entry.bus.pipelined_mem_cycles(),
+				_entry.bus.pipelined_fetch_cycles(),
 				_entry.bus.cycles_ahead(),
+				// mem transfers
 				_entry.bus.mem_tx_cycles()) < 0)
 			return -1;
 	}

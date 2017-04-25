@@ -70,7 +70,7 @@
 #ifndef NDEBUG
 	//DEBUG
 	#define CONFIG_PARSE      true
-	#define MEMORY_TRAPS      false
+	#define MEMORY_TRAPS      true
 	#define INT_TRAPS         true
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false

@@ -263,9 +263,9 @@ ini_filehelp_t AppConfig::ms_help = {
 ";             Memory configurations for PS/1 models were:\n"
 ";             2011: 512K on board + 512K, 2MB modules\n"
 ";             2121: 2M on board + 512K, 2MB, 4MB modules\n"
-";             6M, 8M, and 16M modules never existed.\n"
+";             6M, 8M, and 16M modules never officialy existed.\n"
 ";     speed: RAM access time in nanoseconds.\n"
-";            Possible values: auto, 60, 70, 80, 100, 120\n"
+";            Possible values: auto, or an integer number\n"
 		},
 
 		{ DRIVES_SECTION,

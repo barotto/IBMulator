@@ -51,4 +51,19 @@ struct CPUState
 	           */
 };
 
+struct CPUCycles
+{
+	int eu;
+	int bu;
+	int decode;
+	int io;
+	int bus;
+	int refresh;
+
+	ALWAYS_INLINE
+	inline int sum() const {
+		return eu + bu + decode + io + bus + refresh;
+	}
+};
+
 #endif

@@ -20,23 +20,23 @@
 #ifndef IBMULATOR_CPU_LOGGER_H
 #define IBMULATOR_CPU_LOGGER_H
 
-#define CPULOG               false   // activate CPU logging?
-#define CPULOG_MAX_SIZE      400000u // number of instruction to log
-#define CPULOG_WRITE_TIME    true   // write instruction machine time?
-#define CPULOG_WRITE_CSEIP   true    // write instruction address as CS:EIP?
-#define CPULOG_WRITE_HEX     true    // write instruction as hex codes?
-#define CPULOG_WRITE_STATE   true   // write the CPU global state?
-#define CPULOG_WRITE_CORE    true   // write the CPU registers?
-#define CPULOG_WRITE_PQ      true    // write the prefetch queue?
-#define CPULOG_WRITE_TIMINGS true    // write various timing values?
-#define CPULOG_START_ADDR    0x00   // lower bound, instr. before this address are not logged
+#define CPULOG               false    // activate CPU logging?
+#define CPULOG_MAX_SIZE      400000u  // number of instruction to log
+#define CPULOG_WRITE_TIME    true     // write instruction machine time?
+#define CPULOG_WRITE_CSEIP   true     // write instruction address as CS:EIP?
+#define CPULOG_WRITE_HEX     true     // write instruction as hex codes?
+#define CPULOG_WRITE_STATE   false    // write the CPU global state?
+#define CPULOG_WRITE_CORE    false    // write the CPU registers?
+#define CPULOG_WRITE_PQ      true     // write the prefetch queue?
+#define CPULOG_WRITE_TIMINGS true     // write various timing values?
+#define CPULOG_START_ADDR    0x00     // lower bound, instr. before this address are not logged
 #define CPULOG_END_ADDR      0xF9FFFF // upper bound, instr. after this address are not logged
-#define CPULOG_LOG_INTS      false   // log INTs' instructions?
-#define CPULOG_INT21_EXIT_IP -1      // the OS dependent IP of the last instr. of INT 21/4B
-                                     // For PC-DOS 4.0 under ROMSHELL is 0x7782,
-                                     //                under plain DOS is 0x7852
-                                     // use -1 to disable (logging starts at INT call)
-#define CPULOG_COUNTERS      false   // count every instruction executed
+#define CPULOG_LOG_INTS      false    // log INTs' instructions?
+#define CPULOG_INT21_EXIT_IP 0x7782   // the OS dependent IP of the last instr. of INT 21/4B
+                                      // For PC-DOS 4.01 under ROMSHELL is 0x7782,
+                                      //                 under plain DOS is 0x7852
+                                      // use -1 to disable (logging starts at INT call)
+#define CPULOG_COUNTERS      false    // count every instruction executed
 
 #include "core.h"
 #include "decoder.h"
@@ -49,7 +49,7 @@ struct CPULogEntry
 	CPUCore core;
 	CPUBus bus;
 	Instruction instr;
-	unsigned cycles;
+	CPUCycles cycles;
 };
 
 class CPULogger
@@ -80,7 +80,7 @@ public:
 		const CPUState &_state,
 		const CPUCore &_core,
 		const CPUBus &_bus,
-		unsigned _cycles
+		const CPUCycles &_cycles
 	);
 	void open_file(const std::string _filename);
 	void close_file();

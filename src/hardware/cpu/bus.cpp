@@ -26,6 +26,9 @@
 
 CPUBus g_cpubus;
 
+#define PIPELINED_ADDR_286  0
+#define PIPELINED_ADDR_386  0
+#define MIN_MEM_CYCLES      2
 
 CPUBus::CPUBus()
 : m_cycles_ahead(0),
@@ -79,9 +82,15 @@ void CPUBus::config_changed()
 	m_pq_thres = cpu_pqt[g_cpu.model()];
 
 	if(m_width == 16) {
-		fill_pq = &CPUBus::fill_pq_16;
+		fill_pq_fn = &CPUBus::fill_pq<2>;
 	} else {
-		fill_pq = &CPUBus::fill_pq_32;
+		fill_pq_fn = &CPUBus::fill_pq<4>;
+	}
+
+	if(g_cpu.family() >= CPU_386) {
+		m_paddress = PIPELINED_ADDR_386;
+	} else {
+		m_paddress = PIPELINED_ADDR_286;
 	}
 
 	PINFOF(LOG_V1, LOG_CPU, "  Bus width: %d-bit, Prefetch Queue: %d byte\n",
@@ -115,7 +124,7 @@ void CPUBus::reset_pq()
 
 void CPUBus::update(int _cycles)
 {
-	if(m_mem_r_cycles || m_wq_idx>=0) {
+	if(m_mem_r_cycles || (m_wq_idx>=0)) {
 		m_pmem_cycles += m_cycles_ahead;
 		m_cycles_ahead = 0;
 	}
@@ -125,7 +134,7 @@ void CPUBus::update(int _cycles)
 	if(_cycles > 0) {
 		m_cycles_ahead = 0;
 		if(USE_PREFETCH_QUEUE && (pq_free_space() >= m_pq_thres)) {
-			_cycles -= (this->*fill_pq)(0, _cycles);
+			_cycles -= (this->*fill_pq_fn)(0, _cycles, 0);
 		}
 	}
 	if(_cycles <= 0) {
@@ -141,7 +150,8 @@ void CPUBus::update(int _cycles)
 	m_cycles_ahead += m_mem_w_cycles;
 }
 
-int CPUBus::fill_pq_16(int _amount, int _cycles)
+template<int Bytes>
+int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 {
 	uint8_t *pq_ptr;
 	if(m_s.pq_valid && m_s.pq_len) {
@@ -155,49 +165,23 @@ int CPUBus::fill_pq_16(int _amount, int _cycles)
 		}
 	}
 	m_s.pq_left = m_s.cseip;
-	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - 2;
-	int c = 0;
+	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - Bytes;
+	int cycles = 0, paddress = _paddress*m_paddress;
 	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
 	// fill until the requested amount is reached or there are available cycles
 	// and there are free space in the queue
-	while((_amount>0 || _cycles>c) && m_s.pq_tail <= pq_limit) {
-		int adv = 2 - (m_s.pq_tail & 0x1);
-		if(adv == 1) {
-			*pq_ptr++ = g_memory.read<1>(m_s.pq_tail, c);
-		} else {
-			*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
-		}
-		pq_ptr += adv;
-		m_s.pq_tail += adv;
-		_amount -= adv;
-		m_s.pq_len += adv;
-	}
-	m_s.pq_valid = true;
-	return c;
-}
-
-int CPUBus::fill_pq_32(int _amount, int _cycles)
-{
-	uint8_t *pq_ptr;
-	if(m_s.pq_valid && m_s.pq_len) {
-		// move valid bytes to the left
-		int move = m_s.cseip - m_s.pq_left;
-		int len = m_s.pq_len;
-		pq_ptr = &m_s.pq[0];
-		while(len--) {
-			*pq_ptr = *(pq_ptr+move);
-			pq_ptr++;
-		}
-	}
-	m_s.pq_left = m_s.cseip;
-	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - 2;
-	int c = 0;
-	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
-	// fill until the requested amount is reached or there are available cycles
-	// and there are free space in the queue
-	while((_amount>0 || _cycles>c) && m_s.pq_tail <= pq_limit) {
-		int adv = 4 - (m_s.pq_tail & 0x3);
+	while((_amount>0 || _cycles>cycles) && m_s.pq_tail <= pq_limit) {
+	// alternative, more permissive strategy:
+	// while((_amount>0 || (_cycles && _cycles>=cycles)) && m_s.pq_tail <= pq_limit) {
+		int adv = Bytes - (m_s.pq_tail & (Bytes-1));
+		int c = 0;
 		switch(adv) {
+			case 2: // word aligned
+				*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
+				break;
+			case 1: // 1-byte unaligned (right)
+				*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
+				break;
 			case 4: // dword aligned
 				*((uint32_t*)pq_ptr) = g_memory.read<4>(m_s.pq_tail, c);
 				break;
@@ -205,21 +189,22 @@ int CPUBus::fill_pq_32(int _amount, int _cycles)
 				uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
 				*pq_ptr = v >> 8;
 				*((uint16_t*)(pq_ptr+1)) = v >> 16;
-				break; }
-			case 2: // word aligned
-				*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
 				break;
-			case 1: // 1-byte unaligned (right)
-				*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
-				break;
+			}
 		}
+#if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)
+		c -= paddress;
+		paddress = m_paddress;
+		c = std::max(c,MIN_MEM_CYCLES);
+#endif
+		cycles += c;
 		pq_ptr += adv;
 		m_s.pq_tail += adv;
 		_amount -= adv;
 		m_s.pq_len += adv;
 	}
 	m_s.pq_valid = true;
-	return c;
+	return cycles;
 }
 
 template<>
@@ -230,8 +215,11 @@ uint32_t CPUBus::p_mem_read<2>(uint32_t _addr, int &_cycles)
 		return g_memory.read_t<2>(_addr, 2, _cycles);
 	}
 	// odd address and (not 32-bit bus or between dwords)
-	uint16_t v = g_memory.read_t<1>(_addr,  2, _cycles) |
-	             g_memory.read<1>(  _addr+1,   _cycles) << 8;
+	int c = -m_paddress;
+	uint16_t v = g_memory.read_t<1>(_addr,  2, c) |
+	             g_memory.read<1>(  _addr+1,   c) << 8;
+	c = std::max(c,MIN_MEM_CYCLES*2);
+	_cycles += c;
 	g_memory.check_trap(_addr, MEM_TRAP_READ, v, 2);
 	return v;
 }
@@ -261,17 +249,24 @@ template<>
 uint32_t CPUBus::p_mem_read<4>(uint32_t _addr, int &_cycles)
 {
 	uint32_t v;
+	int c;
 	if(m_width == 16) {
 		if((_addr&0x1) == 0) {
 			// word aligned
-			v =	g_memory.read<2>(_addr,   _cycles) |
-				g_memory.read<2>(_addr+2, _cycles) << 16;
+			c = -m_paddress;
+			v =	g_memory.read<2>(_addr,   c) |
+				g_memory.read<2>(_addr+2, c) << 16;
+			c = std::max(c,MIN_MEM_CYCLES*2);
+			_cycles += c;
 			g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
 			return v;
 		} else {
+			c = -(m_paddress*2);
 			v =	g_memory.read<1>(_addr,   _cycles) |
 				g_memory.read<2>(_addr+1, _cycles) << 8   |
 				g_memory.read<1>(_addr+3, _cycles) << 24;
+			c = std::max(c,MIN_MEM_CYCLES*3);
+			_cycles += c;
 			g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
 			return v;
 		}
@@ -280,19 +275,22 @@ uint32_t CPUBus::p_mem_read<4>(uint32_t _addr, int &_cycles)
 			// dword aligned
 			return g_memory.read_t<4>(_addr, 4, _cycles);
 		}
+		c = -m_paddress;
 		if((_addr&0x3) == 2) {
 			// word aligned
-			v = g_memory.read<2>(_addr,   _cycles) |
-				g_memory.read<2>(_addr+2, _cycles) << 16;
+			v = g_memory.read<2>(_addr,   c) |
+				g_memory.read<2>(_addr+2, c) << 16;
 		} else if((_addr&0x3) == 1) {
 			// 1-byte unaligned (left)
-			v = g_memory.read<4>(_addr-1, _cycles) >> 8 |
-				g_memory.read<1>(_addr+3, _cycles) << 24;
+			v = g_memory.read<4>(_addr-1, c) >> 8 |
+				g_memory.read<1>(_addr+3, c) << 24;
 		} else {
 			// 1-byte unaligned (right)
-			v = g_memory.read<1>(_addr,   _cycles) |
-				g_memory.read<4>(_addr+1, _cycles) << 8;
+			v = g_memory.read<1>(_addr,   c) |
+				g_memory.read<4>(_addr+1, c) << 8;
 		}
+		c = std::max(c,MIN_MEM_CYCLES*2);
+		_cycles += c;
 		g_memory.check_trap(_addr, MEM_TRAP_READ, v, 4);
 		return v;
 	}
@@ -307,8 +305,11 @@ void CPUBus::p_mem_write<2>(uint32_t _addr, uint32_t _data, int &_cycles)
 		return;
 	}
 	// odd address or word across two dwords on 32-bit bus
-	g_memory.write_t<1>(_addr,   _data,   2, _cycles);
-	g_memory.write<1>(  _addr+1, _data>>8,   _cycles);
+	int c = -m_paddress;
+	g_memory.write_t<1>(_addr,   _data,   2, c);
+	g_memory.write<1>(  _addr+1, _data>>8,   c);
+	c = std::max(c,MIN_MEM_CYCLES*2);
+	_cycles += c;
 }
 
 template<>
@@ -328,40 +329,50 @@ void CPUBus::p_mem_write<3>(uint32_t _addr, uint32_t _data, int &_cycles)
 template<>
 void CPUBus::p_mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
 {
+	int c;
 	if(m_width == 16) {
 		if((_addr&0x1) == 0) {
 			// word aligned
-			g_memory.write_t<2>(_addr,   _data,    4, _cycles);
-			g_memory.write<2>(  _addr+2, _data>>16,   _cycles);
+			c = -m_paddress;
+			g_memory.write_t<2>(_addr,   _data,    4, c);
+			g_memory.write<2>(  _addr+2, _data>>16,   c);
+			c = std::max(c,MIN_MEM_CYCLES*2);
 		} else {
-			g_memory.write_t<1>(_addr,   _data,    4, _cycles);
-			g_memory.write<2>(  _addr+1, _data>>8,    _cycles);
-			g_memory.write<1>(  _addr+3, _data>>24,   _cycles);
+			c = -(m_paddress*2);
+			g_memory.write_t<1>(_addr,   _data,    4, c);
+			g_memory.write<2>(  _addr+1, _data>>8,    c);
+			g_memory.write<1>(  _addr+3, _data>>24,   c);
+			c = std::max(c,MIN_MEM_CYCLES*3);
 		}
+		_cycles += c;
 	} else {
 		if((_addr&0x3) == 0) {
 			// dword aligned
 			g_memory.write_t<4>(_addr, _data, 4, _cycles);
 			return;
 		}
-		int c;
+		c = -m_paddress;
 		if((_addr&0x3) == 2) {
 			// word aligned
-			g_memory.write<2>(_addr,   _data,     _cycles);
-			g_memory.write<2>(_addr+2, _data>>16, _cycles);
+			g_memory.write<2>(_addr,   _data,     c);
+			g_memory.write<2>(_addr+2, _data>>16, c);
 		} else if((_addr&0x3) == 1) {
 			// 1-byte unaligned (left)
-			uint32_t v = g_memory.read<1>(_addr-1, c);
+			int t;
+			uint32_t v = g_memory.read<1>(_addr-1, t);
 			v |= (_data<<8);
-			g_memory.write<4>(_addr-1, v,         _cycles);
-			g_memory.write<1>(_addr+3, _data>>24, _cycles);
+			g_memory.write<4>(_addr-1, v,         c);
+			g_memory.write<1>(_addr+3, _data>>24, c);
 		} else {
 			// 1-byte unaligned (right)
-			g_memory.write<1>(_addr, _data, _cycles);
-			uint32_t v = g_memory.read<1>(_addr+4, c);
+			g_memory.write<1>(_addr, _data, c);
+			int t;
+			uint32_t v = g_memory.read<1>(_addr+4, t);
 			v = (v<<24) | (_data>>8);
-			g_memory.write<4>(_addr+1, v, _cycles);
+			g_memory.write<4>(_addr+1, v, c);
 		}
+		c = std::max(c,MIN_MEM_CYCLES*2);
+		_cycles += c;
 		g_memory.check_trap(_addr, MEM_TRAP_READ, _data, 4);
 	}
 }

@@ -178,9 +178,7 @@ uint CPU::step()
 	bool do_log = false;
 
 	g_cpubus.reset_counters();
-	int eu_cycles = 0;
-	int decode_cycles = 0;
-	int io_cycles = 0;
+	CPUCycles cycles = { 0,0,0,0,0,0 };
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -206,21 +204,13 @@ uint CPU::step()
 			//if the prev instr is the same as the next don't decode
 			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.pq_is_valid()) {
 				if(!g_cpubus.pq_is_valid()) {
-
 					// page faults can be generated at this point
 					g_cpubus.reset_pq();
-
-					/*
-					According to various sources, the decoding time should be
-					proportional to the size of the next instruction (1 cycle per
-					decoded byte). But after some empirical tests, 2 cycles is the
-					best value given the current setup.
-					*/
-					decode_cycles = 2;
+					m_instr = g_cpudecoder.decode();
+					cycles.decode = m_instr->size;
+				} else {
+					m_instr = g_cpudecoder.decode();
 				}
-
-				// TODO actual decoding can be put in a separate thread
-				m_instr = g_cpudecoder.decode();
 
 				if(CPULOG) {
 					do_log = true;
@@ -231,10 +221,10 @@ uint CPU::step()
 			// instruction execution
 			g_cpuexecutor.execute(m_instr);
 
-			eu_cycles = get_execution_cycles(g_cpubus.memory_accessed());
+			cycles.eu = get_execution_cycles(g_cpubus.memory_accessed());
 			int io_time = g_devices.get_last_io_time();
 			if(io_time) {
-				io_cycles = get_io_cycles(io_time);
+				cycles.io = get_io_cycles(io_time);
 			}
 			m_instr->cycles.rep = 0;
 		} catch(CPUException &e) {
@@ -247,44 +237,49 @@ uint CPU::step()
 				}
 			}
 			exception(e);
-			eu_cycles = 15; //just a random number
+			cycles.eu = 15; //just a random number
 		} catch(CPUShutdown &s) {
 			PDEBUGF(LOG_V2, LOG_CPU, "Entering shutdown for %s\n", s.what());
 			g_cpu.enter_sleep_state(CPU_STATE_SHUTDOWN);
-			eu_cycles = 15; //just a random number
+			cycles.eu = 15; //just a random number
 		}
 
 	} else {
 		// the CPU is idle and waiting for an external event
 		wait_for_event();
 		//we need to spend at least 1 cycle, otherwise the timers will never fire
-		eu_cycles = 1;
+		cycles.eu = 1;
 	}
 
 	if(g_cpubus.pq_is_valid()) {
-		g_cpubus.update(decode_cycles + eu_cycles);
+		g_cpubus.update(cycles.decode + cycles.eu);
+		// other possible strategies:
+		// g_cpubus.update(cycles.eu);
+		// g_cpubus.update((!g_cpubus.memory_written()) + cycles.eu);
+		// g_cpubus.update((!g_cpubus.memory_written()) + cycles.decode + cycles.eu);
 	} else {
 		g_cpubus.update(0);
 	}
 
 	// determine the total amount of cycles spent
-	int bu_cycles = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
-	if(bu_cycles < 0) {
-		bu_cycles = 0;
+	cycles.bu = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
+	if(cycles.bu < 0) {
+		cycles.bu = 0;
 	}
-	bu_cycles += g_cpubus.pipelined_fetch_cycles();
-	int bus_cycles = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
+	cycles.bu += g_cpubus.pipelined_fetch_cycles();
+	cycles.bus = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
 
-	int cycles = eu_cycles + bu_cycles + decode_cycles + io_cycles + bus_cycles;
-
-	if(bus_cycles && (g_machine.get_virt_time_ns()%15085)<((cycles*m_cycle_time))) {
+	int tot_cycles = cycles.sum();
+	if(cycles.bus && (g_machine.get_virt_time_ns()%15085)<((tot_cycles*m_cycle_time))) {
 		// DRAM refresh
-		cycles += g_memory.dram_cycles();
+		// TODO count only for DRAM not other bus uses
+		cycles.refresh = g_memory.dram_cycles();
 	}
+	tot_cycles += cycles.refresh;
 
 	if(CPULOG && do_log) {
 		m_logger.add_entry(
-			g_machine.get_virt_time_us(), // time
+			g_machine.get_virt_time_ns(), // time
 			*m_instr,                     // instruction
 			m_s,                          // state
 			core_log,                     // core
@@ -294,9 +289,9 @@ uint CPU::step()
 	}
 
 	m_s.icount++;
-	m_s.ccount += cycles;
+	m_s.ccount += tot_cycles;
 
-	return cycles;
+	return tot_cycles;
 }
 
 int CPU::get_execution_cycles(bool _memtx)

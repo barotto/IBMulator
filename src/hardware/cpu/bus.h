@@ -49,6 +49,7 @@ private:
 	int m_width;
 	int m_pq_size;
 	int m_pq_thres;
+	int m_paddress; // pipelined address
 	int m_fetch_cycles;
 	int m_mem_r_cycles;
 	int m_mem_w_cycles;
@@ -80,7 +81,8 @@ public:
 		m_pfetch_cycles = 0;
 	}
 
-	inline bool memory_accessed() const { return (m_mem_r_cycles || m_wq_idx>=0); }
+	inline bool memory_accessed() const { return (m_mem_r_cycles || (m_wq_idx>=0)); }
+	inline bool memory_written() const { return (m_wq_idx>=0) || m_mem_w_cycles; }
 	inline int  fetch_cycles() const { return m_fetch_cycles; }
 	inline int  mem_r_cycles() const { return m_mem_r_cycles; }
 	inline int  mem_tx_cycles() const { return m_mem_r_cycles + m_mem_w_cycles; }
@@ -94,13 +96,13 @@ public:
 
 	//instruction fetching
 	#if USE_PREFETCH_QUEUE
-	uint8_t  fetchb()  { return fetch<uint8_t, 1>(); }
-	uint16_t fetchw()  { return fetch<uint16_t,2>(); }
-	uint32_t fetchdw() { return fetch<uint32_t,4>(); }
+	inline uint8_t  fetchb()  { return fetch<uint8_t, 1>(); }
+	inline uint16_t fetchw()  { return fetch<uint16_t,2>(); }
+	inline uint32_t fetchdw() { return fetch<uint32_t,4>(); }
 	#else
-	uint8_t  fetchb()  { return fetch_noqueue<uint8_t, 1>(); }
-	uint16_t fetchw()  { return fetch_noqueue<uint16_t,2>(); }
-	uint32_t fetchdw() { return fetch_noqueue<uint32_t,4>(); }
+	inline uint8_t  fetchb()  { return fetch_noqueue<uint8_t, 1>(); }
+	inline uint16_t fetchw()  { return fetch_noqueue<uint16_t,2>(); }
+	inline uint32_t fetchdw() { return fetch_noqueue<uint32_t,4>(); }
 	#endif
 
 	inline uint32_t eip() const { return m_s.eip; }
@@ -120,10 +122,14 @@ public:
 	}
 	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
 	{
-		++m_wq_idx;
-		m_write_queue[m_wq_idx].w_fn = &CPUBus::p_mem_write<S>;
-		m_write_queue[m_wq_idx].address = _addr;
-		m_write_queue[m_wq_idx].data = _data;
+		/* Memory writes need to be executed after a PQ update, because code
+		 * prefetching is done after the instruction execution, in relation to
+		 * the available cpu cycles. The executed instruction could be a mov
+		 * used to modify the code though, and the prefetching would read the
+		 * already modified code in memory.
+		 */
+		assert(m_wq_idx<CPU_BUS_WQ_SIZE-1);
+		m_write_queue[++m_wq_idx] = { &CPUBus::p_mem_write<S>, _addr, _data };
 	}
 
 	void save_state(StateBuf &_state);
@@ -147,15 +153,14 @@ private:
 	inline bool pq_is_empty() {
 		return m_s.pq_len == 0;
 	}
-	int fill_pq_16(int _amount, int _cycles);
-	int fill_pq_32(int _amount, int _cycles);
-	int (CPUBus::*fill_pq)(int, int);
+	template<int Bytes> int fill_pq(int _amount, int _cycles, bool _paddress);
+	int (CPUBus::*fill_pq_fn)(int, int, bool);
 
 	template<class T, int L>
 	T fetch()
 	{
 		if(m_s.pq_len < L) {
-			m_fetch_cycles += (this->*fill_pq)(L-m_s.pq_len, 0);
+			m_fetch_cycles += (this->*fill_pq_fn)(L-m_s.pq_len, 0, m_fetch_cycles>0);
 			if(m_cycles_ahead) {
 				m_pfetch_cycles += m_cycles_ahead;
 				m_cycles_ahead = 0;

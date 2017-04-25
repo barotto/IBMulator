@@ -146,7 +146,7 @@ void VGA::config_changed()
 {
 	const int video_timings[8][3] = {
 	   // B   W   D
-		{13, 26, 52 }, // Slow 8-bit
+		{10, 20, 40 }, // Slow 8-bit
 		{ 8, 16, 32 }, // Fast 8-bit
 		{ 6,  8, 16 }, // Slow 16-bit
 		{ 4,  6, 12 }, // Mid  16-bit
@@ -993,6 +993,9 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					m_s.graphics_ctrl.memory_mapping = (value >> 2) & 0x03;
 
 					switch(m_s.graphics_ctrl.memory_mapping) {
+						case 0: // 0xA0000 .. 0xBFFFF
+							m_s.graphics_ctrl.memory_offset = 0xA0000;
+							m_s.graphics_ctrl.memory_aperture = 0x20000;
 						case 1: // 0xA0000 .. 0xAFFFF
 							m_s.graphics_ctrl.memory_offset = 0xA0000;
 							m_s.graphics_ctrl.memory_aperture = 0x10000;
@@ -1004,10 +1007,6 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						case 3: // 0xB8000 .. 0xBFFFF
 							m_s.graphics_ctrl.memory_offset = 0xB8000;
 							m_s.graphics_ctrl.memory_aperture = 0x8000;
-							break;
-						default: // 0xA0000 .. 0xBFFFF
-							m_s.graphics_ctrl.memory_offset = 0xA0000;
-							m_s.graphics_ctrl.memory_aperture = 0x20000;
 							break;
 					}
 					if(prev_memory_mapping != m_s.graphics_ctrl.memory_mapping) {

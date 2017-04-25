@@ -34,37 +34,45 @@
 #define cNullBlock7 cNullBlock3,cNullBlock3
 #define cNullBlockF cNullBlock7,cNullBlock7
 
-//should be 7, but i try to compensate the 2 decode cycles when the pq is invalid
-#define JMPC 6
-#define LOOPC 7
 
 /* Cycles are reported in the comments as in the Intel's docs, and then adjusted
- * for the program. Memory I/O related cycles are subtracted and incorrect
- * values are corrected through direct HW measurements. Some are just guesswork.
+ * for the program. Many values have been checked through direct HW measurements
+ * but some are just guesswork.
+ *
+ * Both 286 and 386 need a minimum of 2 cycles per memory access (1 for address,
+ * 1 for data) plus some possible amount of wait states.
+ * The 386 also has address pipelining which reduces the memory wait states by 1
+ * for consecutive accesses that have no idle bus states in between.
+ *
+ * Memory timings are heavily influenced by the chipset used. The following
+ * values are tuned upon direct mesurement of a PS/1 2011 (286) and a PS/1 2121
+ * (386SX). Even so, memory access times are generally a bit faster than on real
+ * hardware. Other systems, even with the same CPU and the same DRAM chips,
+ * could behave differently and report different values for the same opcodes.
+ *
+ * For the 286, when the destination operand is memory, a couple of CLK are
+ * subtracted from the values reported in the Intel's docs. I suppose that's
+ * because when the EU sends the data to the BU, the EU is free to execute the
+ * next instruction, even if the current is not actually completed (the data is
+ * still in transit).
+ * For the 386 it should be the same but, at least for this implementation, the
+ * docs values give better results.
  *
  * Jumps/calls to gates and special segments are not taken into consideration.
  * In those cases cycles are Real Mode + PM penalty, so it can be faster than
- * real hw. Memory I/O is always counted tho, so the difference should be
+ * real hw. Memory I/O is always counted though, so the difference should be
  * minimal. The same for RETs and INTs.
- *
- * Note: when the destination operand is memory, the cycles reported by the docs
- * are discounted by a couple ticks. That's because when the EU sends the data
- * to the BU, the EU is free to execute the next instruction, even if the
- * current is not actually completed (the data is still in transit). This is the
- * effect of the quasi-pipelined nature of the 286.
- *
- * The 286 needs 2 cycles to access the memory (excluding any other additional
- * cost like wait-states.) The 386 seems to generally need the same amount, but
- * just 1 cycle in some cases. More details in Abrash's Black Book, CH11.
  */
+
+#define JMPC 7
 
 // prefix none
 static const Cycles cycles_none[256*2] = {
 //              docs:286         386        hw:286               386
-/* 00 ADD eb,rb      2/7         2/7        */ cBaseMem(2,5),    cBaseMem(2,5),
-/* 01 ADD ew,rw      2/7         2/7        */ cBaseMem(2,8),    cBaseMem(2,8),
-/* 02 ADD rb,eb      2/7         2/6        */ cBaseMem(2,5),    cBaseMem(2,4),
-/* 03 ADD rw,ew      2/7         2/6        */ cBaseMem(2,5),    cBaseMem(2,4),
+/* 00 ADD eb,rb      2/7         2/7        */ cBaseMem(2,5),    cBaseMem(2,7),
+/* 01 ADD ew,rw      2/7         2/7        */ cBaseMem(2,5),    cBaseMem(2,7),
+/* 02 ADD rb,eb      2/7         2/6        */ cBaseMem(2,5),    cBaseMem(2,6),
+/* 03 ADD rw,ew      2/7         2/6        */ cBaseMem(2,5),    cBaseMem(2,6),
 /* 04 ADD AL,ib      3           2          */ cBase(3),         cBase(2),
 /* 05 ADD AX,iw      3           2          */ cBase(3),         cBase(2),
 /* 06 PUSH ES        3           2          */ cBase(3),         cBase(2),
@@ -72,58 +80,58 @@ static const Cycles cycles_none[256*2] = {
 // 20 by intel docs - 10 memory operations = 10 cycles for the instruction exec
 // 10 pmode - 3 rmode  = 7 cycles of penalty
 /* 07 POP ES         5,p20       7,p21      */ cBasePM(3,7),      cBasePM(5,8),
-/* 08 OR eb,rb       2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,4), //<-- is this correct?
-/* 09 OR ew,rw       2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 0A OR rb,eb       2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
-/* 0B OR rw,ew       2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
+/* 08 OR eb,rb       2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 09 OR ew,rw       2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 0A OR rb,eb       2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 0B OR rw,ew       2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
 /* 0C OR AL,ib       3           2          */ cBase(3),          cBase(2),
 /* 0D OR AX,iw       3           2          */ cBase(3),          cBase(2),
 /* 0E PUSH CS        3           2          */ cBase(3),          cBase(2),
 /* 0F 2-byte opcode                         */ cNull,             cNull,
-/* 10 ADC eb,rb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5), //<-- is this correct?
-/* 11 ADC ew,rw      2/7         2/7        */ cBaseMem(2,8),     cBaseMem(2,8),
-/* 12 ADC rb,eb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,4),
-/* 13 ADC rw,ew      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,4),
+/* 10 ADC eb,rb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 11 ADC ew,rw      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 12 ADC rb,eb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 13 ADC rw,ew      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
 /* 14 ADC AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 15 ADC AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 16 PUSH SS        3           2          */ cBase(3),          cBase(2),
 /* 17 POP SS         5,p20       7,p21      */ cBasePM(3,7),      cBasePM(5,8),
-/* 18 SBB eb,rb      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 19 SBB ew,rw      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 1A SBB rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
-/* 1B SBB rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
+/* 18 SBB eb,rb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 19 SBB ew,rw      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 1A SBB rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 1B SBB rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
 /* 1C SBB AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 1D SBB AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 1E PUSH DS        3           2          */ cBase(3),          cBase(2),
 /* 1F POP DS         5,p20       7,p21      */ cBasePM(3,7),      cBasePM(5,8),
-/* 20 AND eb,rb      2/7         2/7        */ cBaseMem(2,8),     cBaseMem(2,8),
-/* 21 AND ew,rw      2/7         2/7        */ cBaseMem(2,8),     cBaseMem(2,8),
-/* 22 AND rb,eb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,4),
-/* 23 AND rw,ew      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,4),
+/* 20 AND eb,rb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,8),
+/* 21 AND ew,rw      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,8),
+/* 22 AND rb,eb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 23 AND rw,ew      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
 /* 24 AND AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 25 AND AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 26 seg ovr (ES)                          */ cNull,             cNull,
 /* 27 DAA            3           4          */ cBase(3),          cBase(4),
-/* 28 SUB eb,rb      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 29 SUB ew,rw      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 2A SUB rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
-/* 2B SUB rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
+/* 28 SUB eb,rb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 29 SUB ew,rw      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 2A SUB rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 2B SUB rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
 /* 2C SUB AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 2D SUB AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 2E seg ovr (CS)                          */ cNull,             cNull,
 /* 2F DAS            3           4          */ cBase(3),          cBase(4),
-/* 30 XOR eb,rb      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 31 XOR ew,rw      2/7         2/6        */ cBaseMem(2,8),     cBaseMem(2,7),
-/* 32 XOR rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
-/* 33 XOR rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,5),
+/* 30 XOR eb,rb      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 31 XOR ew,rw      2/7         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 32 XOR rb,eb      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
+/* 33 XOR rw,ew      2/7         2/7        */ cBaseMem(2,5),     cBaseMem(2,7),
 /* 34 XOR AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 35 XOR AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 36 seg ovr (SS)                          */ cNull,             cNull,
 /* 37 AAA            3           4          */ cBase(3),          cBase(4),
-/* 38 CMP eb,rb      2/7         2/5        */ cBaseMem(2,5),     cBaseMem(2,3), //<-- is this correct?
-/* 39 CMP ew,rw      2/7         2/5        */ cBaseMem(2,5),     cBaseMem(2,3), //<-- is this correct?
-/* 3A CMP rb,eb      2/6         2/6        */ cBaseMem(2,4),     cBaseMem(2,4),
-/* 3B CMP rw,ew      2/6         2/6        */ cBaseMem(2,4),     cBaseMem(2,4),
+/* 38 CMP eb,rb      2/7         2/5        */ cBaseMem(2,4),     cBaseMem(2,5),
+/* 39 CMP ew,rw      2/7         2/5        */ cBaseMem(2,4),     cBaseMem(2,5),
+/* 3A CMP rb,eb      2/6         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
+/* 3B CMP rw,ew      2/6         2/6        */ cBaseMem(2,5),     cBaseMem(2,6),
 /* 3C CMP AL,ib      3           2          */ cBase(3),          cBase(2),
 /* 3D CMP AX,iw      3           2          */ cBase(3),          cBase(2),
 /* 3E seg ovr (DS)                          */ cNull,             cNull,
@@ -152,15 +160,15 @@ static const Cycles cycles_none[256*2] = {
 /* 55 PUSH BP        3           2          */ cBase(3),          cBase(2),
 /* 56 PUSH SI        3           2          */ cBase(3),          cBase(2),
 /* 57 PUSH DI        3           2          */ cBase(3),          cBase(2),
-/* 58 POP AX         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 59 POP CX         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5A POP DX         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5B POP BX         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5C POP SP         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5D POP BP         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5E POP SI         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 5F POP DI         5           4          */ cBaseBU(3,-3),     cBaseBU(2,-2),
-/* 60 PUSHA          17          18         */ cBase(17),         cBase(18), //<-- is this correct?
+/* 58 POP AX         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 59 POP CX         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5A POP DX         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5B POP BX         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5C POP SP         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5D POP BP         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5E POP SI         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 5F POP DI         5           4          */ cBaseBU(3,-3),     cBaseBU(3,-2),
+/* 60 PUSHA          17          18         */ cBase(17),         cBase(18),
 /* 61 POPA           19          24         */ cBase(3),          cBase(3),
 //normal cycles are the same as INT
 /* 62 BOUND rw,md    noj13       noj10      */ cBaseNoJ(16,13),   cBaseNoJ(13,10),  //<-- is this correct?
@@ -170,9 +178,9 @@ static const Cycles cycles_none[256*2] = {
 /* 66 op-size ovr                           */ cNull,             cNull,
 /* 67 addr-size ovr                         */ cNull,             cNull,
 /* 68 PUSH dw        3           2          */ cBase(3),          cBase(2),
-/* 69 IMUL rw,ew,iw  21/24       9-22/12-25 */ cBaseMem(21,22),   cBaseMem(6,7),
+/* 69 IMUL rw,ew,iw  21/24       9-22/12-25 */ cBaseMem(21,22),   cBaseMem(9,12),
 /* 6A PUSH ib        3           2          */ cBase(3),          cBase(2),
-/* 6B IMUL rw,ew,ib  21/24       9-14/12-17 */ cBaseMem(21,22),   cBaseMem(6,7),
+/* 6B IMUL rw,ew,ib  21/24       9-14/12-17 */ cBaseMem(21,22),   cBaseMem(9,12),
 /* 6C INSB           5           15,p9-29   */ cBaseRep(5,4,5),   cBaseRep(15,6,13), //TODO? 386 PM
 /* 6D INSW           5           15,p9-29   */ cBaseRep(5,4,5),   cBaseRep(15,6,13), //TODO? 386 PM
 /* 6E OUTSB          5           14,p8-28   */ cBaseRep(3,4,5),   cBaseRep(12,12,5), //TODO? 386 PM
@@ -197,17 +205,17 @@ static const Cycles cycles_none[256*2] = {
 /* 81 Group 1                               */ cNull,             cNull,
 /* 82 alias of 80                           */ cNull,             cNull,
 /* 83 Group 1                               */ cNull,             cNull,
-/* 84 TEST eb,rb     2/6         2/5        */ cBaseMem(2,4),     cBaseMem(2,3),
-/* 85 TEST ew,rw     2/6         2/5        */ cBaseMem(2,4),     cBaseMem(2,3),
-/* 86 XCHG eb,rb     3/5         3/5        */ cBaseMem(3,3),     cBaseMem(3,3),
-/* 87 XCHG ew,rw     3/5         3/5        */ cBaseMem(3,3),     cBaseMem(3,3),
-/* 88 MOV eb,rb      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* 89 MOV ew,rw      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* 8A MOV rb,eb      2/5         2/4        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* 8B MOV rw,ew      2/5         2/4        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* 8C MOV ew,SR      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* 8D LEA rw,m       3           2          */ cBase(3),          cBase(2),
-/* 8E MOV SR,ew      2/5,p17/19  2/5,p18/19 */ cBaseMemPM(2,3,5), cBaseMemPM(2,3,6),
+/* 84 TEST eb,rb     2/6         2/5        */ cBaseMem(2,4),     cBaseMem(2,5),
+/* 85 TEST ew,rw     2/6         2/5        */ cBaseMem(2,4),     cBaseMem(2,5),
+/* 86 XCHG eb,rb     3/5         3/5        */ cBaseMem(3,3),     cBaseMem(3,4),
+/* 87 XCHG ew,rw     3/5         3/5        */ cBaseMem(3,3),     cBaseMem(3,4),
+/* 88 MOV eb,rb      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,3),
+/* 89 MOV ew,rw      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,3),
+/* 8A MOV rb,eb      2/5         2/4        */ cBaseMem(2,3),     cBaseMem(2,4),
+/* 8B MOV rw,ew      2/5         2/4        */ cBaseMem(2,3),     cBaseMem(2,4),
+/* 8C MOV ew,SR      2/3         2/2        */ cBaseMem(2,1),     cBaseMem(2,2),
+/* 8D LEA rw,m       3           2          */ cBase(3),          cBase(6), //t
+/* 8E MOV SR,ew      2/5,p17/19  2/5,p18/19 */ cBaseMemPM(2,3,5), cBaseMemPM(2,7,10),
 /* 8F POP mw         5           5          */ cBase(3),          cBase(3),
 /* 90 NOP            3           3          */ cBase(3),          cBase(3),
 /* 91 XCHG AX,CX     3           3          */ cBase(3),          cBase(3),
@@ -218,7 +226,7 @@ static const Cycles cycles_none[256*2] = {
 /* 96 XCHG AX,SI     3           3          */ cBase(3),          cBase(3),
 /* 97 XCHG AX,DI     3           3          */ cBase(3),          cBase(3),
 /* 98 CBW            2           3          */ cBase(2),          cBase(3),
-/* 99 CWD            2           3          */ cBase(2),          cBase(3),
+/* 99 CWD            2           3          */ cBase(2),          cBase(2), //t
 //for 286 PM mode penalty:
 // 4 cycles for PQ flush and fill
 // 4 cycles for 2 stack pushes
@@ -228,25 +236,25 @@ static const Cycles cycles_none[256*2] = {
 /* 9A CALL cd        13,p26      17,p34     */ cBasePM(5,5),      cBasePM(9,5),
 /* 9B WAIT           3           6          */ cBase(3),          cBase(6),
 /* 9C PUSHF          3           4          */ cBase(3),          cBase(4),
-/* 9D POPF           5           5          */ cBase(3),          cBase(3),
+/* 9D POPF           5           5          */ cBase(5),          cBase(5),
 /* 9E SAHF           2           3          */ cBase(2),          cBase(3),
 /* 9F LAHF           2           2          */ cBase(2),          cBase(2),
-/* A0 MOV AL,xb      5           4          */ cBase(3),          cBase(2),
-/* A1 MOV AX,xw      5           4          */ cBase(3),          cBase(2),
-/* A2 MOV xb,AL      3           2          */ cBase(3),          cBase(2),
-/* A3 MOV xw,AX      3           2          */ cBase(3),          cBase(2),
-/* A4 MOVSB          5           7          */ cBaseRep(3,0,5),   cBaseRep(5,0,5),
-/* A5 MOVSW          5           7          */ cBaseRep(3,0,5),   cBaseRep(5,0,5),
-/* A6 CMPSB          8           10         */ cBaseRep(4,5,5),   cBaseRep(6,5,5),
-/* A7 CMPSW          8           10         */ cBaseRep(4,5,5),   cBaseRep(6,5,5),
+/* A0 MOV AL,xb      5           4          */ cBase(3),          cBase(4),
+/* A1 MOV AX,xw      5           4          */ cBase(3),          cBase(4),
+/* A2 MOV xb,AL      3           2          */ cBase(3),          cBase(3),
+/* A3 MOV xw,AX      3           2          */ cBase(3),          cBase(3),
+/* A4 MOVSB          5           7          */ cBaseRep(5,5,4),   cBaseRep(7,0,5),
+/* A5 MOVSW          5           7          */ cBaseRep(5,5,4),   cBaseRep(7,0,5),
+/* A6 CMPSB          8           10         */ cBaseRep(5,5,5),   cBaseRep(7,5,5),
+/* A7 CMPSW          8           10         */ cBaseRep(5,5,5),   cBaseRep(7,5,5),
 /* A8 TEST AL,ib     3           2          */ cBase(3),          cBase(2),
 /* A9 TEST AX,iw     3           2          */ cBase(3),          cBase(2),
-/* AA STOSB          3           4          */ cBaseRep(3,0,4),   cBaseRep(4,1,5),
-/* AB STOSW          3           4          */ cBaseRep(3,0,4),   cBaseRep(4,1,5),
-/* AC LODSB          5           5          */ cBaseRep(3,2,5),   cBaseRep(3,2,5),
-/* AD LODSW          5           5          */ cBaseRep(3,2,5),   cBaseRep(3,2,5),
-/* AE SCASB          7           7          */ cBaseRep(5,6,5),   cBaseRep(5,6,5),
-/* AF SCASW          7           7          */ cBaseRep(5,6,5),   cBaseRep(5,6,5),
+/* AA STOSB          3           4          */ cBaseRep(3,0,4),   cBaseRep(5,5,5),
+/* AB STOSW          3           4          */ cBaseRep(3,0,4),   cBaseRep(5,5,5),
+/* AC LODSB          5           5          */ cBaseRep(3,2,5),   cBaseRep(5,4,5),
+/* AD LODSW          5           5          */ cBaseRep(3,2,5),   cBaseRep(5,4,5),
+/* AE SCASB          7           7          */ cBaseRep(5,6,5),   cBaseRep(7,6,5),
+/* AF SCASW          7           7          */ cBaseRep(5,6,5),   cBaseRep(7,6,5),
 /* B0 MOV AL,ib      2           2          */ cBase(2),          cBase(2),
 /* B1 MOV CL,ib      2           2          */ cBase(2),          cBase(2),
 /* B2 MOV DL,ib      2           2          */ cBase(2),          cBase(2),
@@ -265,15 +273,15 @@ static const Cycles cycles_none[256*2] = {
 /* BF MOV DI,iw      2           2          */ cBase(2),          cBase(2),
 /* C0 Group 2                               */ cNull,             cNull,
 /* C1 Group 2                               */ cNull,             cNull,
-/* C2 RET iw         11          10         */ cBase(7),          cBase(6),
-/* C3 RET            11          10         */ cBase(7),          cBase(6),
+/* C2 RET iw         11          10         */ cBase(11),         cBase(10),
+/* C3 RET            11          10         */ cBase(11),         cBase(10),
 //for PM mode:
 // 4 cycles for pointer load (2 mem reads)
 // 8 cycles for decriptor load (4 mem reads)
 /* C4 LES rw,ed      7,p21       7,p22      */ cBasePM(3,6),      cBasePM(3,7),
 /* C5 LDS rw,ed      7,p21       7,p22      */ cBasePM(3,6),      cBasePM(3,7),
 /* C6 MOV eb,ib      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2),
-/* C7 MOV ew,iw      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2),
+/* C7 MOV ew,iw      2/3         2/2        */ cBaseMem(2,3),     cBaseMem(2,2), //t
 /* C8 ENTER iw,ib    11          10         */ cBase(12),         cBase(11),
 /* C9 LEAVE          5           4          */ cBase(3),          cBase(2),
 /* CA RET iw         15,p25      18,pm32    */ cBasePM(11,7),     cBasePM(14,12),
@@ -286,10 +294,10 @@ static const Cycles cycles_none[256*2] = {
 /* D1 Group 2                               */ cNull,             cNull,
 /* D2 Group 2                               */ cNull,             cNull,
 /* D3 Group 2                               */ cNull,             cNull,
-/* D4 AAM            16          17         */ cBase(16),         cBase(17),
-/* D5 AAD            14          19         */ cBase(14),         cBase(19),
+/* D4 AAM            16          17         */ cBase(16),         cBase(17), //t
+/* D5 AAD            14          19         */ cBase(14),         cBase(15), //t
 /* D6 SALC           ??          ??         */ cBase(1),          cBase(1),
-/* D7 XLATB          5           5          */ cBase(3),          cBase(3),
+/* D7 XLATB          5           5          */ cBase(3),          cBase(5),
 /* D8 FPU ESC        ??          ??         */ cBase(1),          cBase(1),
 /* D9 FPU ESC        ??          ??         */ cBase(1),          cBase(1),
 /* DA FPU ESC        ??          ??         */ cBase(1),          cBase(1),
@@ -298,24 +306,24 @@ static const Cycles cycles_none[256*2] = {
 /* DD FPU ESC        ??          ??         */ cBase(1),          cBase(1),
 /* DE FPU ESC        ??          ??         */ cBase(1),          cBase(1),
 /* DF FPU ESC        ??          ??         */ cBase(1),          cBase(1),
-/* E0 LOOPNZ cb      8,noj4      11,noj??   */ cBaseNoJ(LOOPC,4), cBaseNoJ(LOOPC,4),
-/* E1 LOOPZ cb       8,noj4      11,noj??   */ cBaseNoJ(LOOPC,4), cBaseNoJ(LOOPC,4),
-/* E2 LOOP cb        8,noj4      11,noj??   */ cBaseNoJ(LOOPC,4), cBaseNoJ(LOOPC,4),
-/* E3 JCXZ cb        8,noj4      11,noj??   */ cBaseNoJ(LOOPC,4), cBaseNoJ(LOOPC,4),
-/* E4 IN AL,ib       5           12,p26     */ cBase(3),          cBasePM(10,14),
-/* E5 IN AX,ib       5           12,p26     */ cBase(3),          cBasePM(10,14),
-/* E6 OUT ib,AL      3           10,p24     */ cBase(3),          cBasePM(10,14),
-/* E7 OUT ib,AX      3           10,p24     */ cBase(3),          cBasePM(10,14),
+/* E0 LOOPNZ cb      8,noj4      11,noj??   */ cBaseNoJ(7,4),     cBaseNoJ(10,4),
+/* E1 LOOPZ cb       8,noj4      11,noj??   */ cBaseNoJ(7,4),     cBaseNoJ(10,4),
+/* E2 LOOP cb        8,noj4      11,noj??   */ cBaseNoJ(7,4),     cBaseNoJ(10,4),
+/* E3 JCXZ cb        8,noj4      11,noj??   */ cBaseNoJ(7,4),     cBaseNoJ(10,4),
+/* E4 IN AL,ib       5           12,p26     */ cBase(5),          cBasePM(12,26),
+/* E5 IN AX,ib       5           12,p26     */ cBase(5),          cBasePM(12,26),
+/* E6 OUT ib,AL      3           10,p24     */ cBase(3),          cBasePM(10,24),
+/* E7 OUT ib,AX      3           10,p24     */ cBase(3),          cBasePM(10,24),
 //TODO are the cycles given in the intel docs inclusive of the time needed
 //to refill the prefetch queue?
-/* E8 CALL cw        7           7          */ cBase(1),          cBase(1),
+/* E8 CALL cw        7           7          */ cBase(1),          cBase(7),
 /* E9 JMP cw         7           7          */ cBase(JMPC),       cBase(JMPC),
 /* EA JMP cd         11,p23      12,p27     */ cBasePM(JMPC,6),   cBasePM(JMPC,6),
 /* EB JMP cb         7           7          */ cBase(JMPC),       cBase(JMPC),
-/* EC IN AL,DX       5           13,p27     */ cBase(5),          cBasePM(11,14),
-/* ED IN AX,DX       5           13,p27     */ cBase(5),          cBasePM(11,14),
-/* EE OUT DX,AL      3           11,p25     */ cBase(3),          cBasePM(11,14),
-/* EF OUT DX,AX      3           11,p25     */ cBase(3),          cBasePM(11,14),
+/* EC IN AL,DX       5           13,p27     */ cBase(5),          cBasePM(13,27),
+/* ED IN AX,DX       5           13,p27     */ cBase(5),          cBasePM(13,27),
+/* EE OUT DX,AL      3           11,p25     */ cBase(3),          cBasePM(11,25),
+/* EF OUT DX,AX      3           11,p25     */ cBase(3),          cBasePM(11,25),
 /* F0 LOCK                                  */ cNull,             cNull,
 /* F1                                       */ cNull,             cNull,
 /* F2 REP/REPE                              */ cNull,             cNull,
@@ -324,12 +332,12 @@ static const Cycles cycles_none[256*2] = {
 /* F5 CMC            2           2          */ cBase(2),          cBase(2),
 /* F6 Group 3                               */ cNull,             cNull,
 /* F7 Group 3                               */ cNull,             cNull,
-/* F8 CLC            2           2          */ cBase(2),          cBase(2),
-/* F9 STC            2           2          */ cBase(2),          cBase(2),
+/* F8 CLC            2           2          */ cBase(2),          cBase(3), //t
+/* F9 STC            2           2          */ cBase(2),          cBase(3), //t
 /* FA CLI            3           3          */ cBase(3),          cBase(3),
-/* FB STI            2           3          */ cBase(2),          cBase(2),
-/* FC CLD            2           2          */ cBase(2),          cBase(2),
-/* FD STD            2           2          */ cBase(2),          cBase(2),
+/* FB STI            2           3          */ cBase(2),          cBase(3),
+/* FC CLD            2           2          */ cBase(2),          cBase(3), //t
+/* FD STD            2           2          */ cBase(2),          cBase(3), //t
 /* FE Group 4                               */ cNull,             cNull,
 /* FF Group 5                               */ cNull,             cNull
 };
@@ -426,126 +434,126 @@ static const Cycles cycles_0F[256*2] = {
 
 // Group 1
 static const Cycles cycles_80[8*2] = {
-/* 80 /0 ADD eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /1 OR  eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /2 ADC eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /3 SBB eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /4 AND eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /5 SUB eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /6 XOR eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,5),
-/* 80 /7 CMP eb,ib  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,3)
+/* 80 /0 ADD eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /1 OR  eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /2 ADC eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /3 SBB eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /4 AND eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /5 SUB eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /6 XOR eb,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 80 /7 CMP eb,ib  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,5)
 };
 static const Cycles cycles_81[8*2] = {
-/* 81 /0 ADD ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /1 OR  ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /2 ADC ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /3 SBB ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /4 AND ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /5 SUB ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /6 XOR ew,iw  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 81 /7 CMP ew,iw  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,3)
+/* 81 /0 ADD ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /1 OR  ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /2 ADC ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /3 SBB ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /4 AND ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /5 SUB ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /6 XOR ew,iw  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 81 /7 CMP ew,iw  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,5) //t
 };
 static const Cycles cycles_83[8*2] = {
-/* 83 /0 ADD ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /1 OR  ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /2 ADC ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /3 SBB ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /4 AND ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /5 SUB ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /6 XOR ew,ib  3/7  2/7  */ cBaseMem(3,8), cBaseMem(2,8),
-/* 83 /7 CMP ew,ib  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,3),
+/* 83 /0 ADD ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /1 OR  ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /2 ADC ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /3 SBB ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /4 AND ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /5 SUB ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /6 XOR ew,ib  3/7  2/7  */ cBaseMem(3,5), cBaseMem(2,7),
+/* 83 /7 CMP ew,ib  3/6  2/5  */ cBaseMem(3,4), cBaseMem(2,5),
 };
 
 // Group 2
 static const Cycles cycles_C0[8*2] = {
-/* C0 /0 ROL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C0 /1 ROR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C0 /2 RCL eb,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* C0 /3 RCR eb,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* C0 /4 SHL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C0 /5 SHR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C0 /6 SAL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C0 /7 SAR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5)
+/* C0 /0 ROL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /1 ROR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /2 RCL eb,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /3 RCR eb,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /4 SHL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /5 SHR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /6 SAL eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C0 /7 SAR eb,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7)
 };
 static const Cycles cycles_C1[8*2] = {
-/* C1 /0 ROL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C1 /1 ROR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C1 /2 RCL ew,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* C1 /3 RCR ew,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* C1 /4 SHL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C1 /5 SHR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C1 /6 SAL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* C1 /7 SAR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5)
+/* C1 /0 ROL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /1 ROR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /2 RCL ew,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /3 RCR ew,ib  5/8  9/10 */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /4 SHL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /5 SHR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /6 SAL ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* C1 /7 SAR ew,ib  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7)
 };
 static const Cycles cycles_D0[8*2] = {
 //286: compensate the m_instr->cycles.extra = 1 in CPUExecutor
-/* D0 /0 ROL eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D0 /1 ROR eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D0 /2 RCL eb,1  2/7  9/10 */ cBaseMem(1,7), cBaseMem(9,8),
-/* D0 /3 RCR eb,1  2/7  9/10 */ cBaseMem(1,7), cBaseMem(9,8),
-/* D0 /4 SHL eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D0 /5 SHR eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D0 /6 SAL eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D0 /7 SAR eb,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5)
+/* D0 /0 ROL eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /1 ROR eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /2 RCL eb,1  2/7  9/10 */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /3 RCR eb,1  2/7  9/10 */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /4 SHL eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /5 SHR eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /6 SAL eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D0 /7 SAR eb,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7)
 };
 static const Cycles cycles_D1[8*2] = {
 //286: compensate the m_instr->cycles.extra = 1 in CPUExecutor
-/* D1 /0 ROL ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D1 /1 ROR ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D1 /2 RCL ew,1  2/7  9/10 */ cBaseMem(1,7), cBaseMem(9,8),
-/* D1 /3 RCR ew,1  2/7  9/10 */ cBaseMem(1,7), cBaseMem(9,8),
-/* D1 /4 SHL ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D1 /5 SHR ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D1 /6 SAL ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5),
-/* D1 /7 SAR ew,1  2/7  3/7  */ cBaseMem(1,7), cBaseMem(3,5)
+/* D1 /0 ROL ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /1 ROR ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /2 RCL ew,1  2/7  9/10 */ cBaseMem(1,4), cBaseMem(3,7), //t
+/* D1 /3 RCR ew,1  2/7  9/10 */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /4 SHL ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /5 SHR ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /6 SAL ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7),
+/* D1 /7 SAR ew,1  2/7  3/7  */ cBaseMem(1,4), cBaseMem(3,7)
 };
 static const Cycles cycles_D2[8*2] = {
-/* D2 /0 ROL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D2 /1 ROR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D2 /2 RCL eb,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* D2 /3 RCR eb,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* D2 /4 SHL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D2 /5 SHR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D2 /6 SAL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D2 /7 SAR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5)
+/* D2 /0 ROL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D2 /1 ROR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D2 /2 RCL eb,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(8,9),
+/* D2 /3 RCR eb,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(8,9),
+/* D2 /4 SHL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D2 /5 SHR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D2 /6 SAL eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D2 /7 SAR eb,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7)
 };
 static const Cycles cycles_D3[8*2] = {
-/* D3 /0 ROL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D3 /1 ROR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D3 /2 RCL ew,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* D3 /3 RCR ew,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(9,8),
-/* D3 /4 SHL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D3 /5 SHR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D3 /6 SAL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5),
-/* D3 /7 SAR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,5)
+/* D3 /0 ROL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D3 /1 ROR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D3 /2 RCL ew,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(8,9), //t
+/* D3 /3 RCR ew,CL  5/8  9/10 */ cBaseMem(5,6), cBaseMem(8,9),
+/* D3 /4 SHL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D3 /5 SHR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D3 /6 SAL ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7),
+/* D3 /7 SAR ew,CL  5/8  3/7  */ cBaseMem(5,6), cBaseMem(3,7)
 };
 
 // Group 3
 static const Cycles cycles_F6[8*2] = {
-/* F6 /0 TEST eb,ib  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
-/* F6 /1 TEST eb,ib  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
-/* F6 /2 NOT eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,4),
-/* F6 /3 NEG eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,4),
-/* F6 /4 MUL eb      13/16  9/12   */ cBaseMem(13,14), cBaseMem(6,7),
-/* F6 /5 IMUL eb     13/16  9/12   */ cBaseMem(13,14), cBaseMem(6,7),
-/* F6 /6 DIV eb      14/17  14/17  */ cBaseMem(14,15), cBaseMem(14,15),
-/* F6 /7 IDIV eb     17/20  19/??  */ cBaseMem(17,18), cBaseMem(19,20)
+/* F6 /0 TEST eb,ib  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,5),
+/* F6 /1 TEST eb,ib  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,5),
+/* F6 /2 NOT eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,7),
+/* F6 /3 NEG eb      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,7),
+/* F6 /4 MUL eb      13/16  9/12   */ cBaseMem(13,14), cBaseMem(9,12), //t
+/* F6 /5 IMUL eb     13/16  9/12   */ cBaseMem(13,14), cBaseMem(9,12),
+/* F6 /6 DIV eb      14/17  14/17  */ cBaseMem(14,15), cBaseMem(15,17),
+/* F6 /7 IDIV eb     17/20  19/??  */ cBaseMem(17,18), cBaseMem(20,22)
 };
-static const Cycles cycles_F7[8 *2] = {
-/* F7 /0 TEST ew,iw  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
-/* F7 /1 TEST ew,iw  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,3),
-/* F7 /2 NOT ew      2/7    2/6    */ cBaseMem(2,8),   cBaseMem(2,4),
-/* F7 /3 NEG ew      2/7    2/6    */ cBaseMem(2,8),   cBaseMem(2,4),
-/* F7 /4 MUL ew      21/24  9/12   */ cBaseMem(21,22), cBaseMem(6,7),
-/* F7 /5 IMUL ew     21/24  9/12   */ cBaseMem(21,22), cBaseMem(6,7),
-/* F7 /6 DIV ew      22/25  22/25  */ cBaseMem(22,23), cBaseMem(22,23),
-/* F7 /7 IDIV ew     25/28  27/??  */ cBaseMem(25,26), cBaseMem(27,28)
+static const Cycles cycles_F7[8*2] = {
+/* F7 /0 TEST ew,iw  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,5),
+/* F7 /1 TEST ew,iw  3/6    2/5    */ cBaseMem(3,4),   cBaseMem(2,5),
+/* F7 /2 NOT ew      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,7),  //t
+/* F7 /3 NEG ew      2/7    2/6    */ cBaseMem(2,5),   cBaseMem(2,7),  //t
+/* F7 /4 MUL ew      21/24  9/12   */ cBaseMem(21,22), cBaseMem(9,12), //t
+/* F7 /5 IMUL ew     21/24  9/12   */ cBaseMem(21,22), cBaseMem(9,12), //t
+/* F7 /6 DIV ew      22/25  22/25  */ cBaseMem(22,23), cBaseMem(23,25),//t
+/* F7 /7 IDIV ew     25/28  27/??  */ cBaseMem(25,26), cBaseMem(28,30) //t
 };
 
 // Group 4
 static const Cycles cycles_FE[8*2] = {
-/* FE /0 INC eb  2/7  2/6  */ cBaseMem(2,5), cBaseMem(2,4),
-/* FE /1 DEC eb  2/7  2/6  */ cBaseMem(2,5), cBaseMem(2,4),
+/* FE /0 INC eb  2/7  2/6  */ cBaseMem(2,5), cBaseMem(2,7),
+/* FE /1 DEC eb  2/7  2/6  */ cBaseMem(2,5), cBaseMem(2,7),
 /* FE /2 illegal op.       */ cNull,         cNull,
 /* FE /3 illegal op.       */ cNull,         cNull,
 /* FE /4 illegal op.       */ cNull,         cNull,
@@ -556,9 +564,9 @@ static const Cycles cycles_FE[8*2] = {
 
 // Group 5
 static const Cycles cycles_FF[8*2] = {
-/* FF /0 INC ew   2/7     2/6     */ cBaseMem(2,8),               cBaseMem(2,4),
-/* FF /1 DEC ew   2/7     2/6     */ cBaseMem(2,8),               cBaseMem(2,4),
-/* FF /2 CALL ew  7/11    7/10    */ cBaseMem(1,3),               cBaseMem(1,2),
+/* FF /0 INC ew   2/7     2/6     */ cBaseMem(2,5),               cBaseMem(2,7),
+/* FF /1 DEC ew   2/7     2/6     */ cBaseMem(2,5),               cBaseMem(2,7),
+/* FF /2 CALL ew  7/11    7/10    */ cBaseMem(1,3),               cBaseMem(1,3),
 /* FF /3 CALL ed  16/29   22,p38  */ cBaseMemPM(3,5,7),           cBaseMemPM(3,4,8),
 /* FF /4 JMP ew   7/11    7/10    */ cBaseMem(JMPC,JMPC+2),       cBaseMem(JMPC,JMPC+1),
 /* FF /5 JMP ed   15,p26  43,p31  */ cBaseMemPM(JMPC+4,JMPC+4,7), cBaseMemPM(JMPC+20,JMPC+20,-10),

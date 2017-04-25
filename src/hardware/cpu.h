@@ -109,7 +109,6 @@ enum CPUExceptionVector {
 
 #include "cpu/executor.h"
 
-
 #define CPU_EVENT_NMI           (1 << 0)
 #define CPU_EVENT_PENDING_INTR  (1 << 1)
 
@@ -180,30 +179,11 @@ protected:
 
 	CPUState m_s;
 
-	void handle_async_event();
-	void mask_event(uint32_t event);
-	void signal_event(uint32_t _event);
-	void clear_event(uint32_t _event);
-	bool is_masked_event(uint32_t _event);
-	bool is_pending(uint32_t _event);
-	bool is_unmasked_event_pending(uint32_t _event);
-	uint32_t unmasked_events_pending();
-	void default_shutdown_trap() {}
-	bool is_double_fault(uint8_t _first_vec, uint8_t _current_vec);
-	bool interrupts_inhibited(unsigned mask);
-	bool v86_redirect_interrupt(uint8_t _vector);
-
-	void wait_for_event();
-
 	CPULogger m_logger;
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
 
-	int get_execution_cycles(bool _memtx);
-	int get_io_cycles(int _io_time);
-
 public:
-
 	CPU();
 	~CPU();
 
@@ -247,6 +227,25 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+protected:
+	void handle_async_event();
+	void mask_event(uint32_t event);
+	void signal_event(uint32_t _event);
+	void clear_event(uint32_t _event);
+	bool is_masked_event(uint32_t _event);
+	bool is_pending(uint32_t _event);
+	bool is_unmasked_event_pending(uint32_t _event);
+	uint32_t unmasked_events_pending();
+	void default_shutdown_trap() {}
+	bool is_double_fault(uint8_t _first_vec, uint8_t _current_vec);
+	bool interrupts_inhibited(unsigned mask);
+	bool v86_redirect_interrupt(uint8_t _vector);
+
+	void wait_for_event();
+
+	int get_execution_cycles(bool _memtx);
+	int get_io_cycles(int _io_time);
 };
 
 
