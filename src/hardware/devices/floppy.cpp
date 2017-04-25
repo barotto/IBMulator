@@ -263,7 +263,6 @@ void FloppyCtrl::install(void)
 		m_media_present[i]         = false;
 		m_device_type[i]           = FDD_NONE;
 		m_disk_changed[i]          = false;
-		m_drive_booted[i]          = false;
 	}
 	m_num_installed_floppies = 0;
 
@@ -340,7 +339,6 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 		} else {
 			m_fx[i].spin(false,false);
 		}
-		m_drive_booted[i] = true;
 	}
 }
 
@@ -476,7 +474,6 @@ void FloppyCtrl::reset(unsigned type)
 		// DIR and CCR affected only by hard reset
 		for(int i=0; i<4; i++) {
 			m_s.DIR[i] |= FDC_DIR_NDSKCHG;
-			m_drive_booted[i] = false;
 		}
 		m_s.data_rate = 2; /* 250 Kbps */
 		m_s.lock = false;
@@ -705,12 +702,6 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			if(prev_normal_op==0 && normal_op) {
 				// transition from RESET to NORMAL
 				g_machine.activate_timer(m_timer, 250_us, false);
-				for(int i=0; i<2; i++) {
-					if(m_device_type[i]!=FDD_NONE && !m_drive_booted[i]) {
-						m_fx[i].boot(m_media_present[i]);
-						m_drive_booted[i] = true;
-					}
-				}
 			} else if(prev_normal_op && normal_op==0) {
 				// transition from NORMAL to RESET
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
@@ -938,9 +929,17 @@ void FloppyCtrl::floppy_command()
 
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u (cur.C=%u)\n", drive, m_s.cur_cylinder[drive]);
 
+			if(m_device_type[drive]!=FDD_NONE && m_s.boot_time[drive]==0) {
+				m_fx[drive].boot(m_media_present[drive]);
+				m_s.boot_time[drive] = g_machine.get_virt_time_ns();
+			}
 			step_delay = calculate_step_delay(drive, m_s.cur_cylinder[drive], 0);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
+			if(m_s.boot_time[drive] + 500_ms < g_machine.get_virt_time_ns()) {
+				play_seek_sound(drive, m_s.cur_cylinder[drive], 0);
+			}
 			g_machine.activate_timer(m_timer, uint64_t(step_delay)*1_us, false);
+
 			/* command head to track 0
 			* controller set to non-busy
 			* error condition noted in Status reg 0's equipment check bit
@@ -951,9 +950,6 @@ void FloppyCtrl::floppy_command()
 			m_s.cylinder[drive] = 0;
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
-
-			play_seek_sound(drive, m_s.cur_cylinder[drive], 0);
-
 			return;
 
 		case 0x08: // sense interrupt status
@@ -1006,8 +1002,9 @@ void FloppyCtrl::floppy_command()
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
 
-			play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
-
+			if(m_s.boot_time[drive] + 500_ms < g_machine.get_virt_time_ns()) {
+				play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
+			}
 			return;
 		}
 		case 0x13: // Configure

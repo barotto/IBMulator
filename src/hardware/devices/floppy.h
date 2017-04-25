@@ -123,6 +123,8 @@ private:
 		uint8_t pretrk;    // precompensation track
 		uint8_t perp_mode; // perpendicular mode
 
+		uint64_t boot_time[4];
+
 	} m_s;  // state information
 
 	// configurations with more than 2 drives are untested
@@ -138,7 +140,6 @@ private:
 	std::mutex m_mutex;     //!< for machine-GUI synchronization
 
 	FloppyFX m_fx[2];
-	bool m_drive_booted[4];
 
 public:
 	FloppyCtrl(Devices *_dev);
