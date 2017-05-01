@@ -205,6 +205,8 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 
 	if(CPULOG_WRITE_CORE) {
 		if(CPU_FAMILY >= CPU_386) {
+			if(fprintf(_dest, "EF=%05X ", _entry.core.get_EFLAGS(FMASK_EFLAGS)) < 0)
+				return -1;
 			if(fprintf(_dest, "EAX=%08X EBX=%08X ECX=%08X EDX=%08X ",
 					_entry.core.get_EAX(), _entry.core.get_EBX(),
 					_entry.core.get_ECX(), _entry.core.get_EDX()) < 0)
@@ -230,6 +232,8 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 					_entry.core.ctl_reg(3)) < 0)
 				return -1;
 		} else {
+			if(fprintf(_dest, "F=%04X ", _entry.core.get_FLAGS(FMASK_FLAGS)) < 0)
+				return -1;
 			if(fprintf(_dest, "AX=%04X BX=%04X CX=%04X DX=%04X ",
 					_entry.core.get_AX(), _entry.core.get_BX(),
 					_entry.core.get_CX(), _entry.core.get_DX()) < 0)
