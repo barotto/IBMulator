@@ -959,18 +959,23 @@ void CPUExecutor::CMPSD_a32()
 
 void CPUExecutor::DAA()
 {
-	if(((REG_AL & 0x0F) > 9) || FLAG_AF) {
-		REG_AL += 6;
-		SET_FLAG(AF, true);
-	} else {
-		SET_FLAG(AF, false);
+	// WARNING: Old Intel docs are wrong!
+	// Used recent (2017) version of the developer's manual.
+
+	uint8_t al = REG_AL;
+	bool cf = false, af = false;
+
+	if(((al & 0x0F) > 0x09) || FLAG_AF) {
+		cf = ((al > 0xF9) || FLAG_CF);
+		REG_AL = REG_AL + 0x06;
+		af = true;
 	}
-	if((REG_AL > 0x9F) || FLAG_CF) {
-		REG_AL += 0x60;
-		SET_FLAG(CF, true);
-	} else {
-		SET_FLAG(CF, false);
+	if((al > 0x99) || FLAG_CF) {
+		REG_AL = REG_AL + 0x60;
+		cf = true;
 	}
+	SET_FLAG(CF, cf);
+	SET_FLAG(AF, af);
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
@@ -978,18 +983,24 @@ void CPUExecutor::DAA()
 
 void CPUExecutor::DAS()
 {
-	if(((REG_AL & 0x0F) > 9) || FLAG_AF) {
-		REG_AL -= 6;
-		SET_FLAG(AF, true);
-	} else {
-		SET_FLAG(AF, false);
+	// WARNING: Old Intel docs are wrong!
+	// Used recent (2017) version of the developer's manual.
+
+	uint8_t al = REG_AL;
+	bool cf = false, af = false;
+
+	if(((al & 0x0F) > 0x09) || FLAG_AF) {
+		cf = (al < 0x06) || FLAG_CF;
+		REG_AL = REG_AL - 0x06;
+		af = true;
 	}
-	if((REG_AL > 0x9F) || FLAG_CF) {
-		REG_AL -= 0x60;
-		SET_FLAG(CF, true);
-	} else {
-		SET_FLAG(CF, false);
+	if((al > 0x99) || FLAG_CF) {
+		REG_AL = REG_AL - 0x60;
+		cf = true;
 	}
+
+	SET_FLAG(CF, cf);
+	SET_FLAG(AF, af);
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
