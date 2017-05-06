@@ -1827,10 +1827,15 @@ case 0xE2:
 }
 
 /* E3  cb     JCXZ cb    Jump short if CX register is zero */
+/* E3  cb     JECXZ cb   Jump short if ECX register is zero */
 case 0xE3:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JCXZ_cb;
+	if(m_instr.addr32) {
+		m_instr.fn = &CPUExecutor::JECXZ_cb;
+	} else {
+		m_instr.fn = &CPUExecutor::JCXZ_cb;
+	}
 	break;
 }
 

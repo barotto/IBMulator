@@ -1208,14 +1208,8 @@ case 0xDF:
 case 0xE0: /* E0 cb   LOOPNZ cb  DEC eCX; jump short if eCX<>0 and ZF=0 */
 case 0xE1: /* E1 cb   LOOPZ cb   DEC eCX; jump short if eCX<>0 and zero (ZF=1) */
 case 0xE2: /* E2 cb   LOOP cb    DEC eCX; jump short if eCX<>0 */
-	PREFIX_NONE;
-
 case 0xE3: /* E3 cb   JECXZ cb   Jump short if ECX register is zero */
-{
-	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JECXZ_cb;
-	break;
-}
+	PREFIX_NONE;
 
 /* E4 ib     IN AL,ib     Input byte from immediate port into AL */
 case 0xE4: PREFIX_NONE;
