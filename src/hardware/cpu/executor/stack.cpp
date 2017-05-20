@@ -21,24 +21,10 @@ void CPUExecutor::stack_push_word(uint16_t _value)
 {
 	if(REG_SS.desc.big) {
 		// StackAddrSize = 32
-		if(REG_ESP == 1) {
-			if(IS_PMODE()) {
-				throw CPUException(CPU_SS_EXC, 0);
-			} else {
-				throw CPUShutdown("insufficient stack space on push");
-			}
-		}
 		REG_ESP -= 2;
 		write_word(REG_SS, REG_ESP, _value);
 	} else {
 		// StackAddrSize = 16
-		if(REG_SP == 1) {
-			if(IS_PMODE()) {
-				throw CPUException(CPU_SS_EXC, 0);
-			} else {
-				throw CPUShutdown("insufficient stack space on push");
-			}
-		}
 		REG_SP -= 2;
 		write_word(REG_SS, REG_SP, _value);
 	}
@@ -48,24 +34,10 @@ void CPUExecutor::stack_push_dword(uint32_t _value)
 {
 	if(REG_SS.desc.big) {
 		// StackAddrSize = 32
-		if(REG_ESP < 4) {
-			if(IS_PMODE()) {
-				throw CPUException(CPU_SS_EXC, 0);
-			} else {
-				throw CPUShutdown("insufficient stack space on push");
-			}
-		}
 		REG_ESP -= 4;
 		write_dword(REG_SS, REG_ESP, _value);
 	} else {
 		// StackAddrSize = 16
-		if(REG_SP < 4) {
-			if(IS_PMODE()) {
-				throw CPUException(CPU_SS_EXC, 0);
-			} else {
-				throw CPUShutdown("insufficient stack space on push");
-			}
-		}
 		REG_SP -= 4;
 		write_dword(REG_SS, REG_SP, _value);
 	}
