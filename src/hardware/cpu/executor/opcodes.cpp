@@ -1150,7 +1150,10 @@ void CPUExecutor::ENTER_o16()
 			stack_push_word(frame_ptr);
 		}
 
-		REG_ESP = REG_ESP - alloc_size;
+		REG_ESP -= alloc_size;
+
+		// ENTER finishes with memory write check on the final stack pointer
+		seg_check(REG_SS, REG_ESP, 2, true, CPU_SS_EXC, 0);
 		/* The ENTER instruction causes a page fault whenever a write using the
 		 * final value of the stack pointer (within the current stack segment)
 		 * would do so.
@@ -1167,7 +1170,9 @@ void CPUExecutor::ENTER_o16()
 			stack_push_word(frame_ptr);
 		}
 
-		REG_SP = REG_SP - alloc_size;
+		REG_SP -= alloc_size;
+
+		seg_check(REG_SS, REG_SP, 2, true, CPU_SS_EXC, 0);
 		mmu_lookup(REG_SS.desc.base + REG_SP, 2, IS_USER_PL, true);
 	}
 
@@ -1193,7 +1198,10 @@ void CPUExecutor::ENTER_o32()
 			stack_push_dword(frame_ptr);
 		}
 
-		REG_ESP = REG_ESP - alloc_size;
+		REG_ESP -= alloc_size;
+
+		// ENTER finishes with memory write check on the final stack pointer
+		seg_check(REG_SS, REG_ESP, 4, true, CPU_SS_EXC, 0);
 		/* The ENTER instruction causes a page fault whenever a write using the
 		 * final value of the stack pointer (within the current stack segment)
 		 * would do so.
@@ -1210,7 +1218,9 @@ void CPUExecutor::ENTER_o32()
 			stack_push_dword(frame_ptr);
 		}
 
-		REG_SP = REG_SP - alloc_size;
+		REG_SP -= alloc_size;
+
+		seg_check(REG_SS, REG_SP, 4, true, CPU_SS_EXC, 0);
 		mmu_lookup(REG_SS.desc.base + REG_SP, 4, IS_USER_PL, true);
 	}
 
