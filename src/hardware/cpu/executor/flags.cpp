@@ -17,6 +17,9 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+
 void CPUExecutor::write_flags(uint16_t _flags,
 		bool _change_IOPL, bool _change_IF, bool _change_NT)
 {

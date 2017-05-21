@@ -17,6 +17,9 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+
 void CPUExecutor::stack_push_word(uint16_t _value)
 {
 	if(REG_SS.desc.big) {

@@ -17,6 +17,10 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+#include "hardware/cpu/mmu.h"
+
 void CPUExecutor::get_SS_ESP_from_TSS(unsigned pl, uint16_t &ss_, uint32_t &esp_)
 {
 	if(!REG_TR.desc.valid) {

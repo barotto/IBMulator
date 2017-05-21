@@ -17,6 +17,10 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+#include "hardware/cpu/mmu.h"
+
 void CPUExecutor::mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write)
 {
 	if(IS_PAGING()) {

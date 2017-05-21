@@ -18,52 +18,32 @@
  */
 
 #include "ibmulator.h"
-#include "machine.h"
-#include "cpu.h"
-#include "core.h"
 #include "executor.h"
-#include "bus.h"
-#include "mmu.h"
-#include "hardware/devices.h"
-#include "debugger.h"
-#include <cstring>
-#include <cmath>
+
 
 CPUExecutor g_cpuexecutor;
 
-/* the parity flag (PF) indicates whether the modulo 2 sum of the low-order
- * eight bits of the operation is even (PF=O) or odd (PF= 1) parity.
- */
-#define PARITY(x) (!(popcnt(x & 0xFF) & 1))
 
-#ifdef __MSC_VER
-#  include <intrin.h>
-#  define __builtin_popcount __popcnt
-#endif
-
-GCC_ATTRIBUTE(always_inline)
-inline uint popcnt(uint _value)
+inline bool rep_string_op(uint16_t _opcode)
 {
-#if 0
-	uint count;
-    __asm__ ("popcnt %1,%0" : "=r"(count) : "rm"(_value) : "cc");
-    return count;
+#if CPU_CHECK_REP_STRING_OP
+	bool strop = (!(_opcode&0x0F00) && (
+		(((_opcode&0x00F0)==0x60) && ((_opcode&0x000F)>=0xC)) // INS/OUTS
+		||
+		(((_opcode&0x00F0)==0xA0) && (
+				(_opcode&0x04) // MOVS/CMPS
+				||
+				((_opcode&0x0F)>=0xA)) // STOS/LODS/SCAS
+		)
+	));
+	if(!strop) {
+		PDEBUGF(LOG_V2, LOG_CPU, "REP on a non string operation: %04X\n", _opcode);
+	}
+	return strop;
 #else
-    // the builtin is translated with the POPCNT instruction only with -mpopcnt
-    // or -msse4.2 flags
-    return __builtin_popcount(_value);
+	return true;
 #endif
 }
-
-#include "executor/access.cpp"
-#include "executor/ctrlxfer.cpp"
-#include "executor/flags.cpp"
-#include "executor/interrupts.cpp"
-#include "executor/memory.cpp"
-#include "executor/modrm.cpp"
-#include "executor/stack.cpp"
-#include "executor/tasks.cpp"
-#include "executor/opcodes.cpp"
 
 
 CPUExecutor::CPUExecutor()
@@ -159,14 +139,14 @@ void CPUExecutor::execute(Instruction * _instr)
 			EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
 			EA_get_offset = &CPUExecutor::EA_get_offset_32;
 			m_addr_mask = 0xFFFFFFFF;
-			if(m_instr->rep) {
+			if(m_instr->rep && rep_string_op(m_instr->opcode)) {
 				exec_fn = &CPUExecutor::rep_32;
 			}
 		} else {
 			EA_get_segreg = &CPUExecutor::EA_get_segreg_16;
 			EA_get_offset = &CPUExecutor::EA_get_offset_16;
 			m_addr_mask = 0xFFFF;
-			if(m_instr->rep) {
+			if(m_instr->rep && rep_string_op(m_instr->opcode)) {
 				exec_fn = &CPUExecutor::rep_16;
 			}
 		}

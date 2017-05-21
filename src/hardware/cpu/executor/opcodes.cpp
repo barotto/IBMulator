@@ -17,6 +17,34 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+#include "hardware/cpu/debugger.h"
+
+/* the parity flag (PF) indicates whether the modulo 2 sum of the low-order
+ * eight bits of the operation is even (PF=O) or odd (PF= 1) parity.
+ */
+#define PARITY(x) (!(popcnt(x & 0xFF) & 1))
+
+#ifdef __MSC_VER
+#  include <intrin.h>
+#  define __builtin_popcount __popcnt
+#endif
+
+GCC_ATTRIBUTE(always_inline)
+inline uint popcnt(uint _value)
+{
+#if 0
+	uint count;
+    __asm__ ("popcnt %1,%0" : "=r"(count) : "rm"(_value) : "cc");
+    return count;
+#else
+    // the builtin is translated with the POPCNT instruction only with -mpopcnt
+    // or -msse4.2 flags
+    return __builtin_popcount(_value);
+#endif
+}
+
 void CPUExecutor::check_CPL_privilege(bool _mode_cond, const char *_opstr)
 {
 	if(_mode_cond && CPL != 0) {

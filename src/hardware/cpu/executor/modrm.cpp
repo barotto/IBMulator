@@ -17,6 +17,9 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+
 SegReg & CPUExecutor::EA_get_segreg_16()
 {
 	switch(m_instr->modrm.rm) {

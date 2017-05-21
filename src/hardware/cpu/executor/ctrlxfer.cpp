@@ -17,6 +17,9 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+
 void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 {
 	Selector   cs_selector;

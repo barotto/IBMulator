@@ -17,6 +17,9 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ibmulator.h"
+#include "hardware/cpu/executor.h"
+
 void CPUExecutor::interrupt(uint8_t _vector)
 {
 	/* In Real Address Mode, the interrupt table can be accessed directly at

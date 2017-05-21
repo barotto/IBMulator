@@ -28,7 +28,7 @@ extern CPUExecutor g_cpuexecutor;
 #include "interval_tree.h"
 #include <stack>
 
-
+#define CPU_CHECK_REP_STRING_OP false
 
 
 enum {

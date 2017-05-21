@@ -12,6 +12,15 @@ libhardware_a_SOURCES = \
 	cpu/decoder/prefix_0F_32.cpp \
 	cpu/decoder.cpp \
 	cpu/executor.cpp \
+	cpu/executor/opcodes.cpp \
+	cpu/executor/access.cpp \
+	cpu/executor/ctrlxfer.cpp \
+	cpu/executor/flags.cpp \
+	cpu/executor/interrupts.cpp \
+	cpu/executor/memory.cpp \
+	cpu/executor/modrm.cpp \
+	cpu/executor/stack.cpp \
+	cpu/executor/tasks.cpp \
 	cpu/logger.cpp \
 	cpu/disasm.cpp \
 	cpu/debugger.cpp \
@@ -103,15 +112,3 @@ noinst_HEADERS = \
 	devices/opl.h \
 	devices/adlib.h \
 	devices/cf62011bpc.h
-
-noinst_EXTRA = \
-	cpu/executor/access.cpp \
-	cpu/executor/calls.cpp \
-	cpu/executor/flags.cpp \
-	cpu/executor/interrupts.cpp \
-	cpu/executor/memory.cpp \
-	cpu/executor/modrm.cpp \
-	cpu/executor/paging.cpp \
-	cpu/executor/stack.cpp \
-	cpu/executor/tasks.cpp \
-	cpu/executor/opcodes.cpp
