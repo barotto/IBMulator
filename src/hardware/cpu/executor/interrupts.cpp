@@ -35,7 +35,7 @@ void CPUExecutor::interrupt(uint8_t _vector)
 	 * (cfr. 5-5)
 	 */
 
-	if((_vector*4+2+1) > GET_LIMIT(IDTR)) {
+	if((_vector*4 + 2u + 1u) > GET_LIMIT(IDTR)) {
 		/* Interrupt Table Limit Too Small (Interrupt 8). This interrupt will
 		 * occur if the limit of the interrupt vector table was changed from
 		 * 3FFH by the LIDT instruction and an interrupt whose vector is outside
@@ -52,7 +52,7 @@ void CPUExecutor::interrupt(uint8_t _vector)
 	stack_push_word(REG_CS.sel.value);
 	stack_push_word(REG_IP);
 
-	uint32_t addr = _vector * 4;
+	uint32_t addr = GET_BASE(IDTR) + _vector * 4;
 	uint16_t new_ip = read_word(addr);
 	uint16_t cs_selector = read_word(addr+2);
 
