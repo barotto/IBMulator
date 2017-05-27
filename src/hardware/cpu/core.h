@@ -235,6 +235,7 @@ enum SegRegIndex {
 #define RESTORE_IP g_cpucore.restore_EIP
 #define REG_EIP g_cpucore.get_EIP()
 #define SET_EIP(value) g_cpucore.set_EIP(value)
+#define COMMIT_EIP() g_cpucore.commit_EIP()
 #define RESTORE_EIP g_cpucore.restore_EIP
 
 #define SET_CS g_cpucore.set_CS
@@ -376,6 +377,9 @@ public:
 	inline void set_EIP(uint32_t _val) {
 		m_prev_eip = m_eip;
 		m_eip = _val;
+	}
+	inline void commit_EIP() {
+		m_prev_eip = m_eip;
 	}
 	inline uint32_t get_EIP() const { return m_eip; }
 	inline void restore_EIP() { m_eip = m_prev_eip; }

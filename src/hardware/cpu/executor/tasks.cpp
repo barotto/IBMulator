@@ -253,7 +253,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	uint16_t trap_word;
 
 	// STEP 6: The new-task state is loaded from the TSS
-	if(REG_TR.desc.is_286_system()) {
+	if(descriptor.is_286_system()) {
 		//286
 		/* incoming TSS is 16bit:
 		 * upper word of EIP is zero'd
@@ -359,6 +359,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	//          descriptor parts of the segment registers.
 
 	SET_EIP(newEIP);
+	COMMIT_EIP();
 
 	REG_EAX = newEAX;
 	REG_ECX = newECX;
