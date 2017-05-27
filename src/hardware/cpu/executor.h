@@ -52,7 +52,7 @@ typedef IntervalTree<inttrap_fun_t> inttrap_intervalTree_t;
 
 class CPUExecutor
 {
-private:
+public:
 
 	Instruction * m_instr;
 	uint m_base_ds;

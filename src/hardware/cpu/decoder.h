@@ -140,7 +140,7 @@ struct Instruction
 	uint size;          // total size of the instruction (prefixes included)
 	Cycles cycles;      // timing information
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; // the instruction bytes (prefixes included)
-	uint16_t opcode;    // main opcode (used only when CPULOG is true)
+	uint16_t opcode;    // main opcode
 };
 
 

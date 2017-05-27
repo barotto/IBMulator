@@ -41,6 +41,7 @@ inline bool rep_string_op(uint16_t _opcode)
 	}
 	return strop;
 #else
+	UNUSED(_opcode);
 	return true;
 #endif
 }
@@ -157,31 +158,33 @@ void CPUExecutor::execute(Instruction * _instr)
 
 void CPUExecutor::rep_16()
 {
-	/* 1. Check the CX register. If it is zero, exit the iteration and move
-	 * to the next instruction.
-	 */
 	if(REG_CX == 0) {
-		//REP finished and IP points to the next instr.
 		return;
 	}
-	/* 2. Acknowledge any pending interrupts.
-	 * this is done in the CPU::step()
-	 * TODO so it checks (E)CX after interrupts; is it really a relevant difference?
-	 */
+
 	try {
-		/* 3. Perform the string operation once.
-		 */
+		// Perform the string operation once.
 		(this->*(m_instr->fn))();
 	} catch(CPUException &e) {
-		//TODO an exception occurred during the instr execution. what should i do?
+		/* A repeating string operation can be suspended by an exception.
+		 * 1. The source and destination registers point to the next string
+		 * elements to be operated on
+		 * 2. The EIP register points to the string instruction
+		 * 3. The ECX register has the value it held following the last
+		 * successful iteration of the instruction.
+		 */
 		RESTORE_EIP();
 		throw;
 	}
 
-	/* 4. Decrement CX by 1; no flags are modified. */
+	// Decrement CX by 1; no flags are modified.
 	REG_CX -= 1;
+	if(REG_CX == 0) {
+		// REP finished and IP points to the next instr.
+		return;
+	}
 
-	/* 5. If the string operation is SCAS or CMPS, check the zero flag.
+	/* If the string operation is SCAS or CMPS, check the zero flag.
 	 * If the repeat condition does not hold, then exit the iteration and
 	 * move to the next instruction. Exit if the prefix is REPE and ZF=O
 	 * (the last comparison was not equal), or if the prefix is REPNE and
@@ -190,12 +193,12 @@ void CPUExecutor::rep_16()
 	if(m_instr->rep_zf) {
 		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF))
 		{
-			//REP finished and IP points to the next instr.
+			// REP finished and IP points to the next instr.
 			return;
 		}
 	}
-	/* 6. Go to step 1 for the next iteration. */
-	//REP not finished so back up
+
+	// REP not finished so back up
 	RESTORE_EIP();
 
 	m_instr->rep_first = false;
@@ -210,12 +213,14 @@ void CPUExecutor::rep_32()
 	try {
 		(this->*(m_instr->fn))();
 	} catch(CPUException &e) {
-		//TODO an exception occurred during the instr execution. what should i do?
 		RESTORE_EIP();
 		throw;
 	}
 
 	REG_ECX -= 1;
+	if(REG_ECX == 0) {
+		return;
+	}
 
 	if(m_instr->rep_zf) {
 		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF)) {

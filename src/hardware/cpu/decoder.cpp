@@ -114,11 +114,13 @@ restart_opcode:
 		}
 		case 0xF2: { // REPNE
 			m_instr.rep = true;
+			m_instr.rep_first = true;
 			m_instr.rep_equal = false;
 			goto restart_opcode;
 		}
 		case 0xF3: { // REP/REPE
 			m_instr.rep = true;
+			m_instr.rep_first = true;
 			m_instr.rep_equal = true;
 			goto restart_opcode;
 		}
@@ -129,9 +131,7 @@ restart_opcode:
 			} else {
 				prefix_0F(opcode,cycles_table,cycles_op);
 			}
-			if(CPULOG) {
-				m_instr.opcode = 0xF00 + opcode;
-			}
+			m_instr.opcode = 0xF00 + opcode;
 			break;
 		}
 		default: {
@@ -140,15 +140,12 @@ restart_opcode:
 			} else {
 				prefix_none(opcode,cycles_table,cycles_op);
 			}
-			if(CPULOG) {
-				m_instr.opcode = opcode;
-			}
+			m_instr.opcode = opcode;
 			break;
 		}
 	}
 	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (CPU_FAMILY-CPU_286)];
 	m_instr.size = m_ilen;
-	m_instr.rep_first = m_instr.rep;
 
 	return &m_instr;
 }
