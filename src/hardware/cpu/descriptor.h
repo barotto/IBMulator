@@ -141,7 +141,11 @@ struct Descriptor
 				limit = (limit << 12) | 0xFFF;
 			}
 		} else {
-			offset = (_data & 0xFFFF) | ((_data >> 32) & 0xFFFF0000);
+			// gates
+			offset = _data & 0xFFFF;
+			if(type >= DESC_TYPE_386_CALL_GATE) {
+				offset |= ((_data >> 32) & 0xFFFF0000);
+			}
 			selector = _data >> 16;
 			word_count = (_data >> 32) & 0x1F;
 		}
