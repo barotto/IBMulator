@@ -310,7 +310,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		case DESC_TYPE_386_TRAP_GATE:
 			break;
 		default:
-			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7}\n",
+			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7,14,15}\n",
 					(unsigned) gate_descriptor.type);
 			throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
@@ -353,7 +353,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			// AR byte must specify available TSS,
 			//   else #GP(TSS selector)
-			if(tss_descriptor.valid==0 || tss_descriptor.segment) {
+			if(!tss_descriptor.valid || tss_descriptor.segment) {
 				PDEBUGF(LOG_V1,LOG_CPU,
 					"interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
@@ -369,7 +369,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 			// TSS must be present, else #NP(TSS selector)
 			if(!tss_descriptor.present) {
-				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): TSS descriptor.p == 0\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): TSS descriptor.present == 0\n");
 				throw CPUException(CPU_NP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 

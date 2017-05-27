@@ -93,17 +93,6 @@ void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)
 void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		unsigned source, bool push_error, uint16_t error_code)
 {
-	uint32_t obase32; // base address of old TSS
-	uint32_t nbase32; // base address of new TSS
-	uint16_t raw_cs_selector, raw_ss_selector, raw_ds_selector,
-		raw_es_selector, raw_fs_selector, raw_gs_selector, raw_ldt_selector;
-	uint16_t trap_word;
-	Descriptor cs_descriptor, ss_descriptor, ldt_descriptor;
-	uint32_t new_TSS_max, old_TSS_max, old_TSS_limit, new_TSS_limit;
-	uint32_t newEAX, newECX, newEDX, newEBX;
-	uint32_t newESP, newEBP, newESI, newEDI;
-	uint32_t newEFLAGS, newEIP, newCR3;
-
 	PDEBUGF(LOG_V2,LOG_CPU,"TASKING: ENTER\n");
 
 	// Discard any traps and inhibits for new context; traps will
@@ -123,28 +112,30 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	//         to verify that the TSS limit is greater than or equal to 67h for
 	//         32-bit TSS or 2Bh for 16-bit TSS.
 
+	uint32_t new_TSS_max;
 	if(descriptor.is_286_system()) {
 		new_TSS_max = 0x2B;
 	} else {
 		new_TSS_max = 0x67;
 	}
 
-	nbase32 = descriptor.base;
-	new_TSS_limit = descriptor.limit;
+	uint32_t nbase32 = descriptor.base; // base address of new TSS
+	uint32_t new_TSS_limit = descriptor.limit;
 
 	if(new_TSS_limit < new_TSS_max) {
 		PERRF(LOG_CPU,"switch_tasks(): new TSS limit < %d\n", new_TSS_max);
 		throw CPUException(CPU_TS_EXC, selector.value & SELECTOR_RPL_MASK);
 	}
 
-	if(REG_TR.desc.type <= 3) {
+	uint32_t old_TSS_max;
+	if(REG_TR.desc.is_286_system()) {
 		old_TSS_max = 0x29;
 	} else {
 		old_TSS_max = 0x5F;
 	}
 
-	obase32 = GET_BASE(TR);        // old TSS.base
-	old_TSS_limit = GET_LIMIT(TR);
+	uint32_t obase32 = GET_BASE(TR);   // base address of old TSS
+	uint32_t old_TSS_limit = GET_LIMIT(TR);
 
 	if(old_TSS_limit < old_TSS_max) {
 		PERRF(LOG_CPU,"switch_tasks(): old TSS limit < %d\n", old_TSS_max);
@@ -252,6 +243,14 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		// set to selector of old task's TSS
 		write_word(nbase32, REG_TR.sel.value);
 	}
+
+	uint32_t newEAX, newECX, newEDX, newEBX;
+	uint32_t newESP, newEBP, newESI, newEDI;
+	uint32_t newEFLAGS, newEIP, newCR3;
+	uint16_t raw_cs_selector, raw_ss_selector, raw_ds_selector;
+	uint16_t raw_es_selector, raw_fs_selector, raw_gs_selector;
+	uint16_t raw_ldt_selector;
+	uint16_t trap_word;
 
 	// STEP 6: The new-task state is loaded from the TSS
 	if(REG_TR.desc.is_286_system()) {
@@ -411,6 +410,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		PINFOF(LOG_V2,LOG_CPU,"switch_tasks(exception after commit point): bad LDT selector TI=1\n");
 		throw CPUException(CPU_TS_EXC, raw_ldt_selector & SELECTOR_RPL_MASK);
 	}
+
+	Descriptor cs_descriptor, ss_descriptor, ldt_descriptor;
 
 	if((raw_ldt_selector & SELECTOR_RPL_MASK) != 0) {
 		try {

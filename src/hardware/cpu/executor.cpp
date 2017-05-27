@@ -248,29 +248,29 @@ void CPUExecutor::illegal_opcode()
 
 uint64_t CPUExecutor::fetch_descriptor(Selector & _selector, uint8_t _exc_vec)
 {
-	uint32_t linaddr = _selector.index * 8;
+	uint32_t base, offset = _selector.index * 8;
 	if(_selector.ti == 0) {
 		//from GDT
-		if((_selector.index*8 + 7u) > SEG_REG(REGI_GDTR).desc.limit) {
+		if((offset + 7u) > SEG_REG(REGI_GDTR).desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: GDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, SEG_REG(REGI_GDTR).desc.limit);
+					offset + 7u, _selector.index, SEG_REG(REGI_GDTR).desc.limit);
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		linaddr += SEG_REG(REGI_GDTR).desc.base;
+		base = SEG_REG(REGI_GDTR).desc.base;
 	} else {
 		// from LDT
 		if(!SEG_REG(REGI_LDTR).desc.valid) {
 			PDEBUGF(LOG_V2, LOG_CPU, "fetch_descriptor: LDTR not valid\n");
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		if((_selector.index*8 + 7u) > SEG_REG(REGI_LDTR).desc.limit) {
+		if((offset + 7u) > SEG_REG(REGI_LDTR).desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,"fetch_descriptor: LDT: index (%x) %x > limit (%x)\n",
-					_selector.index*8 + 7, _selector.index, SEG_REG(REGI_LDTR).desc.limit);
+					offset + 7u, _selector.index, SEG_REG(REGI_LDTR).desc.limit);
 			throw CPUException(_exc_vec, _selector.value & SELECTOR_RPL_MASK);
 		}
-		linaddr += SEG_REG(REGI_LDTR).desc.base;
+		base = SEG_REG(REGI_LDTR).desc.base;
 	}
-	return read_qword(linaddr);
+	return read_qword(base + offset);
 }
 
 void CPUExecutor::touch_segment(Selector &_selector, Descriptor &_descriptor)

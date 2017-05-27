@@ -153,6 +153,8 @@ void CPUBus::update(int _cycles)
 template<int Bytes>
 int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 {
+	UNUSED(_paddress);
+
 	uint8_t *pq_ptr;
 	if(m_s.pq_valid && m_s.pq_len) {
 		// move valid bytes to the left
@@ -166,7 +168,10 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 	}
 	m_s.pq_left = m_s.cseip;
 	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - Bytes;
-	int cycles = 0, paddress = _paddress*m_paddress;
+	int cycles = 0;
+#if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)
+	int paddress = _paddress*m_paddress;
+#endif
 	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
 	// fill until the requested amount is reached or there are available cycles
 	// and there are free space in the queue
