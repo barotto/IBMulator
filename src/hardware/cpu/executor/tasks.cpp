@@ -62,23 +62,21 @@ void CPUExecutor::switch_tasks_load_selector(SegReg &_seg, uint8_t _cs_rpl)
 		}
 
 		/* AR byte must indicate data or readable code segment else #TS(selector) */
-		if(descriptor.segment==0 ||
-			( (descriptor.type & SEG_TYPE_EXECUTABLE) && !(descriptor.type & SEG_TYPE_READABLE) )
-		) {
+		if(!descriptor.segment || (descriptor.is_code_segment() && !descriptor.is_readable())) {
 			PERRF(LOG_CPU,"switch_tasks(%s): not data or readable code\n", _seg.to_string());
 			throw CPUException(CPU_TS_EXC, _seg.sel.value & SELECTOR_RPL_MASK);
 		}
 
 		/* If data or non-conforming code, then both the RPL and the CPL
 		 * must be less than or equal to DPL in AR byte else #GP(selector) */
-		if(!(descriptor.type & SEG_TYPE_EXECUTABLE) || !(descriptor.type & SEG_TYPE_CONFORMING)) {
+		if(descriptor.is_data_segment() || !descriptor.is_conforming()) {
 			if((_seg.sel.rpl > descriptor.dpl) || (_cs_rpl > descriptor.dpl)) {
 				PERRF(LOG_CPU,"switch_tasks(%s): RPL & CPL must be <= DPL\n", _seg.to_string());
 				throw CPUException(CPU_TS_EXC, _seg.sel.value & SELECTOR_RPL_MASK);
 			}
 		}
 
-		if(descriptor.present == false) {
+		if(!descriptor.present) {
 			PERRF(LOG_CPU,"switch_tasks(%s): descriptor not present\n", _seg.to_string());
 			throw CPUException(CPU_TS_EXC, _seg.sel.value & SELECTOR_RPL_MASK);
 		}
