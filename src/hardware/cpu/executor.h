@@ -162,7 +162,7 @@ public:
 	void call_relative(int32_t _offset);
 	void call_16(uint16_t _cs, uint16_t _ip);
 	void call_32(uint16_t _cs, uint32_t _eip);
-	void call_pmode(uint16_t cs_raw, uint16_t disp);
+	void call_pmode(uint16_t cs_raw, uint32_t disp);
 	void call_gate(Descriptor &gate_descriptor);
 	void return_near(uint32_t _newEIP, uint16_t _pop_bytes);
 	void return_far_rmode(uint16_t _newCS, uint32_t _newEIP, uint16_t _pop_bytes);

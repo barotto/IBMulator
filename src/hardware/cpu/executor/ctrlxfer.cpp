@@ -436,7 +436,7 @@ void CPUExecutor::call_32(uint16_t _cs, uint32_t _eip)
 	g_cpubus.invalidate_pq();
 }
 
-void CPUExecutor::call_pmode(uint16_t cs_raw, uint16_t disp)
+void CPUExecutor::call_pmode(uint16_t cs_raw, uint32_t disp)
 {
 	Selector   cs_selector;
 	Descriptor cs_descriptor;
