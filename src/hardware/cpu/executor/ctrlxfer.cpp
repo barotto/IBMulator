@@ -398,17 +398,14 @@ void CPUExecutor::call_16(uint16_t _cs, uint16_t _ip)
 		call_pmode(_cs, _ip);
 		return;
 	}
-
 	//REAL mode
-	stack_push_word(REG_CS.sel.value);
-	stack_push_word(REG_IP);
-
 	// CS LIMIT can't change when in real mode
 	if(_ip > GET_LIMIT(CS)) {
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-
+	stack_push_word(REG_CS.sel.value);
+	stack_push_word(REG_IP);
 	SET_CS(_cs);
 	SET_IP(_ip);
 	g_cpubus.invalidate_pq();
@@ -420,17 +417,14 @@ void CPUExecutor::call_32(uint16_t _cs, uint32_t _eip)
 		call_pmode(_cs, _eip);
 		return;
 	}
-
 	//REAL mode
-	stack_push_dword(REG_CS.sel.value);
-	stack_push_dword(REG_EIP);
-
 	// CS LIMIT can't change when in real mode
 	if(_eip > GET_LIMIT(CS)) {
 		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
-
+	stack_push_dword(REG_CS.sel.value);
+	stack_push_dword(REG_EIP);
 	SET_CS(_cs);
 	SET_EIP(_eip);
 	g_cpubus.invalidate_pq();
