@@ -120,7 +120,7 @@ void CPUExecutor::call_gate(Descriptor &gate_descriptor)
 
 		// save return CS:EIP to be pushed on new stack
 		return_CS = REG_CS.sel.value;
-		return_EIP = (cs_descriptor.big)?(REG_EIP):(REG_IP);
+		return_EIP = (REG_CS.desc.big)?(REG_EIP):(REG_IP);
 
 		// Prepare new stack segment
 		SegReg new_stack;
