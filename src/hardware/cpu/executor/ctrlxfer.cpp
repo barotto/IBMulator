@@ -739,7 +739,7 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		if(_32bit) {
 			ss_selector = stack_read_word(temp_ESP + 16);
 		} else {
-			ss_selector = stack_read_word(uint16_t(temp_ESP + 8));
+			ss_selector = stack_read_word(temp_ESP + 8);
 		}
 
 		/* selector must be non-null, else #GP(0) */

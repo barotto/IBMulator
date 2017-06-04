@@ -1839,7 +1839,12 @@ void CPUExecutor::IRET()
 	if(IS_PMODE()) {
 		iret_pmode(false);
 	} else {
-		// real and v8086 mode
+		// real and v8086 modes
+		if(IS_V8086() && (FLAG_IOPL < 3)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "IRET: IOPL!=3 in v8086 mode\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+
 		uint16_t ip     = stack_pop_word();
 		uint16_t cs_raw = stack_pop_word(); // #SS has higher priority
 		uint16_t flags  = stack_pop_word();
@@ -1850,13 +1855,24 @@ void CPUExecutor::IRET()
 				"IRET: instruction pointer not within code segment limits\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
+
 		SET_CS(cs_raw);
 		SET_IP(ip);
-		write_flags(flags,
-			false, // IOPL
-			true,  // IF
-			false  // NT
+
+		if(CPU_FAMILY == CPU_286) {
+			// in real mode IOPL and NT are always clear
+			write_flags(flags,
+				false, // IOPL
+				true,  // IF
+				false  // NT
 			);
+		} else {
+			write_flags(flags,
+				IS_RMODE(), // IOPL
+				true,       // IF
+				true        // NT
+				);
+		}
 	}
 	g_cpubus.invalidate_pq();
 }
@@ -1868,7 +1884,12 @@ void CPUExecutor::IRETD()
 	if(IS_PMODE()) {
 		iret_pmode(true);
 	} else {
-		// real and v8086 mode
+		// real and v8086 modes
+		if(IS_V8086() && (FLAG_IOPL < 3)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "IRETD: IOPL!=3 in v8086 mode\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+
 		uint32_t eip    = stack_pop_dword();
 		uint16_t cs_raw = stack_pop_dword(); // #SS has higher priority
 		uint32_t eflags = stack_pop_dword();
@@ -1876,17 +1897,19 @@ void CPUExecutor::IRETD()
 		// CS LIMIT can't change when in real/v8086 mode
 		if(eip > REG_CS.desc.limit) {
 			PDEBUGF(LOG_V2, LOG_CPU,
-				"IRET: instruction pointer not within code segment limits\n");
+				"IRETD: instruction pointer not within code segment limits\n");
 			throw CPUException(CPU_GP_EXC, 0);
 		}
+
 		SET_CS(cs_raw);
 		SET_EIP(eip);
+
 		// VM unchanged
 		write_eflags(eflags,
-			false, // IOPL
-			true,  // IF
-			false, // NT,
-			false  // VM
+			IS_RMODE(), // IOPL
+			true,       // IF
+			true,       // NT,
+			false       // VM
 			);
 	}
 	g_cpubus.invalidate_pq();
