@@ -713,19 +713,21 @@ void CPUExecutor::CALL_rel32() { call_relative(int32_t(m_instr->id1)); }
 
 void CPUExecutor::CALL_ew()
 {
+	uint16_t new_IP = load_ew();
+
 	/* push 16 bit EA of next instruction */
 	stack_push_word(REG_IP);
 
-	uint16_t new_IP = load_ew();
 	branch_near(new_IP);
 }
 
 void CPUExecutor::CALL_ed()
 {
+	uint32_t new_EIP = load_ed();
+
 	/* push 32 bit EA of next instruction */
 	stack_push_dword(REG_EIP);
 
-	uint32_t new_EIP = load_ed();
 	branch_near(new_EIP);
 }
 
