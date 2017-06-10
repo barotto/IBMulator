@@ -53,10 +53,10 @@ case 0x01:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::SGDT_o32;
+			m_instr.fn = &CPUExecutor::SGDT;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::SIDT_o32;
+			m_instr.fn = &CPUExecutor::SIDT;
 			break;
 		case 2:
 			m_instr.fn = &CPUExecutor::LGDT_o32;

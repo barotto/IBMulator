@@ -4316,18 +4316,22 @@ void CPUExecutor::SETNLE_eb() /*0F9F*/ { store_eb(!(FLAG_ZF || FLAG_SF!=FLAG_OF)
  * SGDT/SIDT/SLDT-Store Global/Interrupt/Local Descriptor Table Register
  */
 
-void CPUExecutor::SDT(unsigned _reg, uint32_t _base_mask)
+void CPUExecutor::SDT(unsigned _reg)
 {
 	uint16_t limit_16 = SEG_REG(_reg).desc.limit;
-	uint32_t base_32  = SEG_REG(_reg).desc.base & _base_mask;
+	uint32_t base_32  = SEG_REG(_reg).desc.base;
 
 	if(CPU_FAMILY <= CPU_286) {
 		/* Unlike to what described in the iAPX 286 Programmer's Reference Manual,
-		 * the 80286 stores 1s in these upper bits. Windows 3.0 checks these bits to
-		 * detect the 286 (the 386 stores 0s if the operand-size attribute is 16 bits.)
+		 * the last byte is not undefined, it's always 0xFF. Windows 3.0 checks
+		 * this value to detect the 80286.
 		 */
 		base_32 = 0xFF000000 | base_32;
 	}
+	/* For 32-bit CPUs, AMD documentation states that SGDT/SIDT instructions
+	 * ignore any operand size prefixes and always store full 32 bits of base
+	 * address (Intel documentation is wrong).
+	 */
 
 	SegReg & sr = (this->*EA_get_segreg)();
 	uint32_t off = (this->*EA_get_offset)();
@@ -4336,10 +4340,8 @@ void CPUExecutor::SDT(unsigned _reg, uint32_t _base_mask)
 	write_dword(sr, (off+2) & m_addr_mask, base_32);
 }
 
-void CPUExecutor::SGDT_o16() { SDT(REGI_GDTR, 0x00FFFFFF); }
-void CPUExecutor::SGDT_o32() { SDT(REGI_GDTR, 0xFFFFFFFF); }
-void CPUExecutor::SIDT_o16() { SDT(REGI_IDTR, 0x00FFFFFF); }
-void CPUExecutor::SIDT_o32() { SDT(REGI_IDTR, 0xFFFFFFFF); }
+void CPUExecutor::SGDT() { SDT(REGI_GDTR); }
+void CPUExecutor::SIDT() { SDT(REGI_IDTR); }
 
 void CPUExecutor::SLDT_ew()
 {

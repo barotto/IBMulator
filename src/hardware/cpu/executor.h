@@ -271,7 +271,7 @@ public:
 	uint16_t SAR_w(uint16_t _op1, uint8_t _count);
 	uint32_t SAR_d(uint32_t _op1, uint8_t _count);
 
-	void SDT(unsigned _reg, uint32_t _base_mask);
+	void SDT(unsigned _reg);
 
 	uint16_t SHLD_w(uint16_t _op1, uint16_t _op2, uint8_t _count);
 	uint32_t SHLD_d(uint32_t _op1, uint32_t _op2, uint8_t _count);
@@ -845,10 +845,8 @@ public:
 	void SETLE_eb();
 	void SETNLE_eb();
 
-	void SGDT_o16();
-	void SGDT_o32();
-	void SIDT_o16();
-	void SIDT_o32();
+	void SGDT();
+	void SIDT();
 	void SLDT_ew();
 
 	void SHLD_ew_rw_ib();
