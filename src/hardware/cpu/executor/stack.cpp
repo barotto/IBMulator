@@ -24,12 +24,12 @@ void CPUExecutor::stack_push_word(uint16_t _value)
 {
 	if(REG_SS.desc.big) {
 		// StackAddrSize = 32
+		write_word(REG_SS, REG_ESP-2, _value);
 		REG_ESP -= 2;
-		write_word(REG_SS, REG_ESP, _value);
 	} else {
 		// StackAddrSize = 16
+		write_word(REG_SS, uint16_t(REG_SP-2), _value);
 		REG_SP -= 2;
-		write_word(REG_SS, REG_SP, _value);
 	}
 }
 
@@ -37,12 +37,12 @@ void CPUExecutor::stack_push_dword(uint32_t _value)
 {
 	if(REG_SS.desc.big) {
 		// StackAddrSize = 32
+		write_dword(REG_SS, REG_ESP-4, _value);
 		REG_ESP -= 4;
-		write_dword(REG_SS, REG_ESP, _value);
 	} else {
 		// StackAddrSize = 16
+		write_dword(REG_SS, uint16_t(REG_SP-4), _value);
 		REG_SP -= 4;
-		write_dword(REG_SS, REG_SP, _value);
 	}
 }
 
