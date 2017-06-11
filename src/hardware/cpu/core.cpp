@@ -72,6 +72,8 @@ void CPUCore::reset()
 			m_cr[0] |= (CR0MASK_RES386 | CR0MASK_ET);
 			REG_CS.desc.base = 0xFFFF0000;
 			break;
+		default:
+			PERRF_ABORT(LOG_CPU, "unsupported CPU family\n");
 	}
 
 	handle_mode_change();
@@ -326,7 +328,8 @@ void CPUCore::set_SS(Selector &selector, Descriptor &descriptor, uint8_t cpl)
 void CPUCore::set_FLAGS(uint16_t _val)
 {
 	uint16_t f16 = uint16_t(m_eflags);
-	m_eflags = (_val & FMASK_VALID) | (m_eflags & 0x30000);
+	// bit1 is fixed 1
+	m_eflags = (_val & FMASK_VALID) | (m_eflags & 0x30000) | 2;
 	if(m_eflags & FMASK_TF) {
 		g_cpu.set_async_event();
 	}
@@ -338,7 +341,8 @@ void CPUCore::set_FLAGS(uint16_t _val)
 void CPUCore::set_EFLAGS(uint32_t _val)
 {
 	uint32_t f32 = m_eflags;
-	m_eflags = _val & FMASK_VALID;
+	// bit1 is fixed 1
+	m_eflags = (_val & FMASK_VALID) | 2;
 	if(m_eflags & FMASK_TF) {
 		g_cpu.set_async_event();
 	}
