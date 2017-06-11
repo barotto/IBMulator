@@ -135,8 +135,10 @@ extern CPUCore g_cpucore;
 #define CR0MASK_ET (1 << CR0BIT_ET)
 #define CR0MASK_PG (1 << CR0BIT_PG)
 
-#define CR0MASK_ALL 0x8000001F
-#define CR0MASK_MSW 0x0000000F
+#define CR0MASK_RES286  0x0000FFF0
+#define CR0MASK_RES386  0x7FFFFFE0
+#define CR0MASK_DEFINED 0x8000001F
+#define CR0MASK_MSW     0x0000000F
 
 #define GET_CR(REGI)         g_cpucore.ctl_reg(REGI)
 #define GET_CR0(BIT)         g_cpucore.get_CR0(CR0MASK_ ## BIT)
@@ -152,8 +154,8 @@ extern CPUCore g_cpucore;
 #define CR0_ET (GET_CR0(ET) >> CR0BIT_ET)
 #define CR0_PG (GET_CR0(PG) >> CR0BIT_PG)
 
-#define GET_MSW()      (uint16_t(g_cpucore.get_CR0(CR0MASK_MSW)))
-#define SET_MSW(_msw_) (g_cpucore.set_CR0((g_cpucore.get_CR0(CR0MASK_ALL) & ~CR0MASK_MSW) | _msw_))
+#define GET_MSW()      (uint16_t(g_cpucore.get_CR0(0xFFFF)))
+#define SET_MSW(_msw_) (g_cpucore.set_CR0((g_cpucore.get_CR0(CR0MASK_DEFINED) & ~CR0MASK_MSW) | _msw_))
 
 #define REG_CR0 g_cpucore.ctl_reg(0)
 #define REG_CR2 g_cpucore.ctl_reg(2)

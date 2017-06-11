@@ -44,7 +44,7 @@ void CPUCore::reset()
 	memset(m_segregs, 0, sizeof(SegReg)*10);
 
 	m_eflags = 0x00000002;
-	m_cr[0] = 0x0000FFF0;
+	m_cr[0] = 0x0;
 	m_cr[2] = 0x0;
 	m_cr[3] = 0x0;
 	m_eip = 0x0000FFF0;
@@ -64,12 +64,12 @@ void CPUCore::reset()
 
 	switch(CPU_FAMILY) {
 		case CPU_286:
-			m_cr[0] = 0x0000FFF0;
+			m_cr[0] |= CR0MASK_RES286;
 			REG_CS.desc.base = 0xFF0000;
 			break;
 		case CPU_386:
 			m_genregs[REGI_EDX].dword[0] = CPU_SIGNATURE;
-			m_cr[0] = 0x7FFFFFF0;
+			m_cr[0] |= (CR0MASK_RES386 | CR0MASK_ET);
 			REG_CS.desc.base = 0xFFFF0000;
 			break;
 	}
@@ -387,13 +387,22 @@ void CPUCore::set_RF(bool _val)
 
 void CPUCore::set_CR0(uint32_t _cr0)
 {
-	_cr0 &= CR0MASK_ALL;
-
-	/* CR0.ET may be toggled on the 80386 DX, while it is hardwired to 1 on
-	 * the 80386 SX (same difference between the 80486 DX and SX)
-	 */
-	if(CPU_FAMILY == CPU_386 && (CPU_SIGNATURE&CPU_SIG_386SX) == CPU_SIG_386SX) {
-		_cr0 |= CR0MASK_ET;
+	// set reserved bits
+	switch(CPU_FAMILY) {
+		case CPU_286:
+			_cr0 |= CR0MASK_RES286;
+			break;
+		case CPU_386:
+			_cr0 |= CR0MASK_RES386;
+			/* CR0.ET may be toggled on the 80386 DX, while it is hardwired to 1 on
+			 * the 80386 SX (same difference between the 80486 DX and SX)
+			 */
+			if((CPU_SIGNATURE&CPU_SIG_386SX) == CPU_SIG_386SX) {
+				_cr0 |= CR0MASK_ET;
+			}
+			break;
+		default:
+			PERRF_ABORT(LOG_CPU, "unsupported CPU family\n");
 	}
 
 	if((_cr0&CR0MASK_PG) && !(_cr0&CR0MASK_PE)) {
