@@ -496,6 +496,7 @@ public:
 	void INSD_a16();
 	void INSD_a32();
 
+	void INT1();
 	void INT3();
 	void INT_ib();
 	void INTO();

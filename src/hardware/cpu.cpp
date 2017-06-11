@@ -489,6 +489,8 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 			soft_int = true;
 			break;
 		case CPU_PRIVILEGED_SOFTWARE_INTERRUPT:
+			// INT1
+			m_s.EXT = true;
 		case CPU_EXTERNAL_INTERRUPT:
 		case CPU_NMI:
 		case CPU_HARDWARE_EXCEPTION:

@@ -1934,7 +1934,12 @@ case 0xEF:
 
 /* F0  LOCK prefix */
 
-/* F1 prefix, does not generate #UD; ICEBP on 386+ */
+/* F1  Undocumented ICEBP on 386+ */
+case 0xF1:
+{
+	m_instr.fn = &CPUExecutor::INT1;
+	break;
+}
 
 /* F2 REP/REPE prefix */
 

@@ -325,7 +325,7 @@ static const Cycles cycles_none[256*2] = {
 /* EE OUT DX,AL      3           11,p25     */ cBase(3),          cBasePM(11,25),
 /* EF OUT DX,AX      3           11,p25     */ cBase(3),          cBasePM(11,25),
 /* F0 LOCK                                  */ cNull,             cNull,
-/* F1                                       */ cNull,             cNull,
+/* F1 ICEBP                                 */ cNull,             cBasePM(23,10),
 /* F2 REP/REPE                              */ cNull,             cNull,
 /* F3 REPNE                                 */ cNull,             cNull,
 /* F4 HLT            2           5          */ cBase(2),          cBase(5),
