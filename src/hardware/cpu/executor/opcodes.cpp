@@ -3406,8 +3406,9 @@ void CPUExecutor::PUSH_id()    { stack_push_dword(m_instr->id1); }
 
 void CPUExecutor::PUSHA()
 {
+	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+
 	if(!IS_PMODE()) {
-		uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
 		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
@@ -3415,21 +3416,28 @@ void CPUExecutor::PUSHA()
 			throw CPUShutdown("SP=1,3,5 on stack push (PUSHA)");
 		}
 	}
-	uint16_t temp_SP  = REG_SP;
-	stack_push_word(REG_AX);
-	stack_push_word(REG_CX);
-	stack_push_word(REG_DX);
-	stack_push_word(REG_BX);
-	stack_push_word(temp_SP);
-	stack_push_word(REG_BP);
-	stack_push_word(REG_SI);
-	stack_push_word(REG_DI);
+
+	stack_write_word(REG_AX, sp-2);
+	stack_write_word(REG_CX, sp-4);
+	stack_write_word(REG_DX, sp-6);
+	stack_write_word(REG_BX, sp-8);
+	stack_write_word(REG_SP, sp-10);
+	stack_write_word(REG_BP, sp-12);
+	stack_write_word(REG_SI, sp-14);
+	stack_write_word(REG_DI, sp-16);
+
+	if(REG_SS.desc.big) {
+		REG_ESP -= 16;
+	} else {
+		REG_SP -= 16;
+	}
 }
 
 void CPUExecutor::PUSHAD()
 {
+	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+
 	if(!IS_PMODE()) {
-		uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
 		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
@@ -3437,15 +3445,21 @@ void CPUExecutor::PUSHAD()
 			throw CPUShutdown("SP=1,3,5 on stack push (PUSHAD)");
 		}
 	}
-	uint32_t temp_ESP  = REG_ESP;
-	stack_push_dword(REG_EAX);
-	stack_push_dword(REG_ECX);
-	stack_push_dword(REG_EDX);
-	stack_push_dword(REG_EBX);
-	stack_push_dword(temp_ESP);
-	stack_push_dword(REG_EBP);
-	stack_push_dword(REG_ESI);
-	stack_push_dword(REG_EDI);
+
+	stack_write_dword(REG_EAX, sp-4);
+	stack_write_dword(REG_ECX, sp-8);
+	stack_write_dword(REG_EDX, sp-12);
+	stack_write_dword(REG_EBX, sp-16);
+	stack_write_dword(REG_ESP, sp-20);
+	stack_write_dword(REG_EBP, sp-24);
+	stack_write_dword(REG_ESI, sp-28);
+	stack_write_dword(REG_EDI, sp-32);
+
+	if(REG_SS.desc.big) {
+		REG_ESP -= 32;
+	} else {
+		REG_SP -= 32;
+	}
 }
 
 
