@@ -284,7 +284,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 	// interrupt vector must be within IDT table limits,
 	// else #GP(vector*8 + 2 + EXT)
-	if((vector*8 + 7) > GET_LIMIT(IDTR)) {
+	if((vector*8 + 7u) > GET_LIMIT(IDTR)) {
 		PDEBUGF(LOG_V2,LOG_CPU,
 			"interrupt(): vector must be within IDT table limits, IDT.limit = 0x%x\n",
 			GET_LIMIT(IDTR));

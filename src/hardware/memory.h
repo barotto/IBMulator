@@ -216,8 +216,10 @@ private:
 		uint32_t value = read_mapped<LEN>(_address, _cycles);
 		check_trap(_address, MEM_TRAP_READ, value, _trap_len);
 		return value;
-		#endif
+		#else
+		UNUSED(_trap_len);
 		return read_mapped<LEN>(_address, _cycles);
+		#endif
 	}
 	template<unsigned LEN>
 	uint32_t read_mapped(uint32_t _address, int &_cycles) const noexcept { assert(false); return ~0; }
@@ -235,6 +237,8 @@ private:
 		write_mapped<LEN>(_addr, _data, _cycles);
 		#if MEMORY_TRAPS
 		check_trap(_addr, MEM_TRAP_WRITE, _data, _trap_len);
+		#else
+		UNUSED(_trap_len);
 		#endif
 	}
 	template<unsigned LEN>
