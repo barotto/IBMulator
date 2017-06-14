@@ -478,7 +478,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 			}
 
 			// Stack segment DPL matches CS.RPL, else #TS(new stack segment)
-			if(ss_descriptor.dpl != REG_CS.sel.rpl) {
+			if(ss_descriptor.dpl != save_CPL) {
 				PERRF(LOG_CPU,"switch_tasks(exception after commit point): SS.rpl != CS.RPL\n");
 				throw CPUException(CPU_TS_EXC, raw_ss_selector & SELECTOR_RPL_MASK);
 			}
