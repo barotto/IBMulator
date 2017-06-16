@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "machine.h"
 #include "hardware/cpu/executor.h"
 #include "hardware/cpu/debugger.h"
 

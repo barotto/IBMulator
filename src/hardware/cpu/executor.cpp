@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "executor.h"
+#include "machine.h"
 
 
 CPUExecutor g_cpuexecutor;
