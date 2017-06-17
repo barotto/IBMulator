@@ -483,23 +483,34 @@ bool CPU::v86_redirect_interrupt(uint8_t _vector)
 void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t _error_code)
 {
 	bool soft_int = false;
+	const char *typestr = nullptr;
 	switch(_type) {
 		case CPU_SOFTWARE_INTERRUPT:
 		case CPU_SOFTWARE_EXCEPTION:
 			soft_int = true;
 			break;
 		case CPU_PRIVILEGED_SOFTWARE_INTERRUPT:
+			typestr = "PRIVILEGED SOFTWARE";
 			// INT1
 			m_s.EXT = true;
+			break;
 		case CPU_EXTERNAL_INTERRUPT:
+			typestr = "EXTERNAL";
+			break;
 		case CPU_NMI:
+			typestr = "NMI";
+			break;
 		case CPU_HARDWARE_EXCEPTION:
-			PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, TYPE = %u, EXT = %u\n",
-					_vector, _type, m_s.EXT);
+			typestr = "HARDWARE EXCEPTION";
 			break;
 		default:
-			PERRF_ABORT(LOG_CPU, "interrupt(): unknown exception type %d\n", _type);
+			PERRF_ABORT(LOG_CPU, "interrupt(): unknown exception type %u\n", _type);
 			break;
+	}
+
+	if(typestr) {
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, TYPE = %s(%u), EXT = %u\n",
+			_vector, typestr, _type, m_s.EXT);
 	}
 
 	// Discard any traps and inhibits for new context; traps will
@@ -566,9 +577,6 @@ bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 			return false;
 	}
 }
-
-
-
 
 void CPU::exception(CPUException _exc)
 {

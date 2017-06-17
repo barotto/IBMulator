@@ -370,6 +370,7 @@ void Machine::core_step(int32_t _cpu_cycles)
 
 		if(m_breakpoint_cs > 0) {
 			if(m_breakpoint_cs == REG_CS.sel.value && m_breakpoint_eip == REG_EIP) {
+				PINFOF(LOG_V0, LOG_MACHINE, "virtual breakpoint at %04X:%08X\n", m_breakpoint_cs, m_breakpoint_eip);
 				pause();
 				m_breakpoint_clbk();
 				m_breakpoint_cs = 0;

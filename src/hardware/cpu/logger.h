@@ -27,6 +27,7 @@
 #define CPULOG_WRITE_HEX     true     // write instruction as hex codes?
 #define CPULOG_WRITE_STATE   false    // write the CPU global state?
 #define CPULOG_WRITE_CORE    false    // write the CPU registers?
+#define CPULOG_WRITE_SEGREGS false    // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)
 #define CPULOG_WRITE_PQ      true     // write the prefetch queue?
 #define CPULOG_WRITE_TIMINGS true     // write various timing values?
 #define CPULOG_START_ADDR    0x00     // lower bound, instr. before this address are not logged
@@ -68,6 +69,7 @@ private:
 	static int write_entry(FILE *_dest, CPULogEntry &_entry);
 	static const std::string & disasm(CPULogEntry &_log_entry);
 	static void write_counters(const std::string _filename, std::map<int,uint64_t> &_cnt);
+	static int write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_segreg, const char *_name);
 
 public:
 

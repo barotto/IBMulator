@@ -37,7 +37,8 @@ void CPUMMU::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _wri
 {
 	uint32_t error_code = _fault | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
 	SET_CR2(_linear);
-	PDEBUGF(LOG_V2, LOG_CPU, "page fault at %08X:%08X\n", _linear, REG_EIP);
+	PDEBUGF(LOG_V2, LOG_CPU, "page fault at %08X:%08X, %s, %s, %s\n", _linear, REG_EIP,
+			(_fault)?"protection":"not present", (_user)?"user":"supervisor", (_write)?"write":"read");
 	throw CPUException(CPU_PF_EXC, error_code);
 }
 
@@ -150,6 +151,8 @@ uint32_t CPUMMU::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _w
 	TLBEntry *tlbent = &m_TLB[TLB_index(_linear, _len-1)];
 	if(tlbent->lpf != LPF_OF(_linear)) {
 		TLB_miss(_linear, tlbent, _user, _write);
+		PDEBUGF(LOG_V2, LOG_CPU, "TLB lookup for 0x%08x -> 0x%08x\n", _linear,
+				tlbent->ppf | PAGE_OFFSET(_linear));
 	}
 	page_check(tlbent->protection, _linear, _user, _write);
 	uint32_t phy = tlbent->ppf | PAGE_OFFSET(_linear);

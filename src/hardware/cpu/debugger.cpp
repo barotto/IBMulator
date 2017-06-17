@@ -1098,7 +1098,7 @@ std::string CPUDebugger::descriptor_table_to_CSV(Memory &_mem, uint32_t _base, u
 		output << std::hex << std::setw(2) << int(desc.word_count) << ",";
 
 		//AR
-		output << std::hex << std::setw(2) << int(desc.ar) << ",";
+		output << std::hex << std::setw(2) << int(desc.get_AR()) << ",";
 		if(desc.is_system_segment()) {
 			switch(desc.type) {
 				case DESC_TYPE_AVAIL_286_TSS:

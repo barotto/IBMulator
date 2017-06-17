@@ -289,12 +289,12 @@ struct SegReg
 	Selector sel;
 	Descriptor desc;
 
-	inline bool is(const SegReg & _segreg) {
+	inline bool is(const SegReg & _segreg) const {
 		return (this==&_segreg);
 	}
 
 	void validate();
-	const char *to_string();
+	const char *to_string() const;
 };
 
 

@@ -82,7 +82,6 @@ struct Descriptor
 		uint8_t word_count; // Call Gate
 	};
 	uint32_t base;
-	uint8_t ar;
 	// Access Rights (AR) bits:
 	bool accessed; // | bit0 (if segment, 1=has been accessed)
 	uint8_t type;  // | bit0,1,2,3 (b0 if gate)
@@ -97,34 +96,33 @@ struct Descriptor
 	bool granularity;
 	bool valid;
 
-	inline uint8_t get_AR() {
+	inline uint8_t get_AR() const {
+		uint8_t ar = segment << 4 | dpl << 5 | present << 7;
 		if(segment) {
-			ar = type<<1 | accessed;
+			ar |= type<<1 | accessed;
 		} else {
-			ar = type;
+			ar |= type;
 		}
-		ar |= segment << 4 | dpl << 5 | present << 7;
 		return ar;
 	}
 
 	inline void set_AR(uint8_t _AR) {
-		ar = _AR;
 		valid = true;
-		segment = ar & SEG_SEGMENT;
+		segment = _AR & SEG_SEGMENT;
 		if(segment) {
 			//Code or Data Segment Descriptor
-			accessed = ar & 1;
-			type = (ar>>1) & 7;
+			accessed = _AR & 1;
+			type = (_AR>>1) & 7;
 		} else {
 			//System Segment Descriptor or Gate Descriptor
-			type = (ar & 0xF);
+			type = (_AR & 0xF);
 			if(type==DESC_TYPE_INVALID_0 || type==DESC_TYPE_INVALID_8
 			|| type==DESC_TYPE_INVALID_A || type==DESC_TYPE_INVALID_D) {
 				valid = false;
 			}
 		}
-		dpl = (ar>>5) & 3;
-		present = ar & 0x80;
+		dpl = (_AR>>5) & 3;
+		present = _AR & 0x80;
 	}
 
 	inline void operator=(uint64_t _data) {
@@ -166,13 +164,13 @@ struct Descriptor
 		valid = (_cache[1]>>8) & 0x80;
 	}
 
-	inline bool is_data_segment() const   { return (segment && !(ar & SEG_CODE)); }
-	inline bool is_code_segment() const   { return (segment && (ar & SEG_CODE)); }
+	inline bool is_data_segment() const   { return (segment && !(type & SEG_TYPE_CODE)); }
+	inline bool is_code_segment() const   { return (segment && (type & SEG_TYPE_CODE)); }
 	inline bool is_system_segment() const { return !segment; }
-	inline bool is_conforming() const     { return (segment && (ar & SEG_CONFORMING)); }
-	inline bool is_expand_down() const    { return (segment && (ar & SEG_EXP_DOWN)); }
-	inline bool is_readable() const       { return (segment && (ar & SEG_READWRITE)); }
-	inline bool is_writeable() const      { return (segment && (ar & SEG_READWRITE)); }
+	inline bool is_conforming() const     { return (segment && (type & SEG_TYPE_CONFORMING)); }
+	inline bool is_expand_down() const    { return (segment && (type & SEG_TYPE_EXP_DOWN)); }
+	inline bool is_readable() const       { return (segment && (type & SEG_TYPE_READABLE)); }
+	inline bool is_writeable() const      { return (segment && (type & SEG_TYPE_WRITABLE)); }
 	inline bool is_286_system() const     { return (!segment && type <= DESC_TYPE_286_TRAP_GATE); }
 	inline bool is_286_TSS() const        { return (!segment && ((type & 0xD) == 0x1)); }
 	inline bool is_386_system() const     { return (!segment && type >= DESC_TYPE_AVAIL_386_TSS); }
@@ -225,7 +223,7 @@ struct Descriptor
 
  * Call Gate (cf. 286:8-4; 386:6-11)
 
-	7							 0 7                             0
+   7                             0 7                             0
   ╔═══════════════════════════════════════════════════════════════╗
 +7║                  DESTINATION OFFSET 31-16                     ║+6 (386 only)
   ╟───┬───────┬───┬───────────────┬───────────┬───────────────────╢

@@ -159,6 +159,31 @@ void CPULogger::reset_file_counters()
 	m_file_counters.clear();
 }
 
+#define PCPULOG(_dest_, _format_, ...) { \
+	if(fprintf(_dest_, _format_, ## __VA_ARGS__) < 0) \
+		return -1; \
+}
+
+int CPULogger::write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_segreg, const char *_name)
+{
+	PCPULOG(_dest, "%s=[%04X", _name, _segreg.sel.value);
+	PCPULOG(_dest, " %s ", _segreg.desc.segment?"S":"s");
+	if(_core.is_rmode() || _segreg.desc.segment) {
+		PCPULOG(_dest,
+			(CPU_FAMILY <= CPU_286)?"%06X-%04X":"%08X-%08X",
+			_segreg.desc.base, _segreg.desc.limit);
+	}
+	PCPULOG(_dest, " %02X ", _segreg.desc.get_AR());
+	if(CPU_FAMILY >= CPU_286 && (_core.is_rmode() || _segreg.desc.segment)) {
+		PCPULOG(_dest, "%s%s",
+			_segreg.desc.big?"B":"b",
+			_segreg.desc.granularity?"G":"g");
+
+	}
+	PCPULOG(_dest, "%s] ", _segreg.desc.valid?"V":"v");
+	return 0;
+}
+
 int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 {
 	if(CPULOG_WRITE_TIME) {
@@ -215,13 +240,22 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 					_entry.core.get_ESI(), _entry.core.get_EDI(),
 					_entry.core.get_EBP(), _entry.core.get_ESP()) < 0)
 				return -1;
-			if(fprintf(_dest, "ES=%04X DS=%04X SS=%04X FS=%04X GS=%04X ",
-					_entry.core.get_ES().sel.value,
-					_entry.core.get_DS().sel.value,
-					_entry.core.get_SS().sel.value,
-					_entry.core.get_FS().sel.value,
-					_entry.core.get_GS().sel.value) < 0)
-				return -1;
+			if(CPULOG_WRITE_SEGREGS) {
+				write_segreg(_dest, _entry.core, _entry.core.get_CS(), "CS");
+				write_segreg(_dest, _entry.core, _entry.core.get_ES(), "ES");
+				write_segreg(_dest, _entry.core, _entry.core.get_DS(), "DS");
+				write_segreg(_dest, _entry.core, _entry.core.get_SS(), "SS");
+				write_segreg(_dest, _entry.core, _entry.core.get_FS(), "FS");
+				write_segreg(_dest, _entry.core, _entry.core.get_GS(), "GS");
+			} else {
+				if(fprintf(_dest, "ES=%04X DS=%04X SS=%04X FS=%04X GS=%04X ",
+						_entry.core.get_ES().sel.value,
+						_entry.core.get_DS().sel.value,
+						_entry.core.get_SS().sel.value,
+						_entry.core.get_FS().sel.value,
+						_entry.core.get_GS().sel.value) < 0)
+					return -1;
+			}
 			if(fprintf(_dest, "CR0=PE:%d,TS:%d,PG:%d ",
 					bool(_entry.core.get_CR0(CR0MASK_PE)),
 					bool(_entry.core.get_CR0(CR0MASK_TS)),
@@ -242,11 +276,18 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 					_entry.core.get_SI(), _entry.core.get_DI(),
 					_entry.core.get_BP(), _entry.core.get_SP()) < 0)
 				return -1;
-			if(fprintf(_dest, "ES=%04X DS=%04X SS=%04X ",
-					_entry.core.get_ES().sel.value,
-					_entry.core.get_DS().sel.value,
-					_entry.core.get_SS().sel.value) < 0)
-				return -1;
+			if(CPULOG_WRITE_SEGREGS) {
+				write_segreg(_dest, _entry.core, _entry.core.get_CS(), "CS");
+				write_segreg(_dest, _entry.core, _entry.core.get_ES(), "ES");
+				write_segreg(_dest, _entry.core, _entry.core.get_DS(), "DS");
+				write_segreg(_dest, _entry.core, _entry.core.get_SS(), "SS");
+			} else {
+				if(fprintf(_dest, "ES=%04X DS=%04X SS=%04X ",
+						_entry.core.get_ES().sel.value,
+						_entry.core.get_DS().sel.value,
+						_entry.core.get_SS().sel.value) < 0)
+					return -1;
+			}
 			if(fprintf(_dest, "MSW=PE:%d,TS:%d ",
 					bool(_entry.core.get_CR0(CR0MASK_PE)),
 					bool(_entry.core.get_CR0(CR0MASK_TS))) < 0)

@@ -223,7 +223,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 		  )
 		) {
 			PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): not data or readable code (AR=0x%02X)\n",
-					_segreg.to_string(), _value, descriptor.ar);
+					_segreg.to_string(), _value, descriptor.get_AR());
 			throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 		}
 
@@ -421,6 +421,13 @@ void CPUCore::set_CR0(uint32_t _cr0)
 	if(PE_changed) {
 		handle_mode_change();
 	}
+	if(PG_changed) {
+		if(_cr0&CR0MASK_PG) {
+			PDEBUGF(LOG_V2, LOG_CPU, "Paging enabled, CR3=%08X\n", REG_CR3);
+		} else {
+			PDEBUGF(LOG_V2, LOG_CPU, "Paging disabled\n");
+		}
+	}
 	if(CPU_FAMILY >= CPU_386 && (PE_changed || PG_changed)) {
 		// Modification of PG,PE flushes TLB cache according to docs.
 		g_cpummu.TLB_flush();
@@ -445,7 +452,7 @@ uint32_t CPUCore::dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_m
 	}
 }
 
-const char *SegReg::to_string()
+const char *SegReg::to_string() const
 {
 	if (is(REG_ES)) return("ES");
 	else if (is(REG_CS)) return("CS");
