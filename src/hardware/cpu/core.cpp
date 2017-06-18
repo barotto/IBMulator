@@ -49,15 +49,15 @@ void CPUCore::reset()
 	m_cr[3] = 0x0;
 	m_eip = 0x0000FFF0;
 
-	load_segment_real(REG_CS, 0xF000, true);
-	load_segment_real(REG_DS, 0x0000, true);
-	load_segment_real(REG_SS, 0x0000, true);
-	load_segment_real(REG_ES, 0x0000, true);
-	load_segment_real(REG_FS, 0x0000, true);
-	load_segment_real(REG_GS, 0x0000, true);
+	load_segment_defaults(REG_CS, 0xF000);
+	load_segment_defaults(REG_DS, 0x0000);
+	load_segment_defaults(REG_SS, 0x0000);
+	load_segment_defaults(REG_ES, 0x0000);
+	load_segment_defaults(REG_FS, 0x0000);
+	load_segment_defaults(REG_GS, 0x0000);
 
-	load_segment_real(REG_LDTR, 0x0000, true);
-	load_segment_real(REG_TR, 0x0000, true);
+	load_segment_defaults(REG_LDTR, 0x0000);
+	load_segment_defaults(REG_TR, 0x0000);
 
 	set_IDTR(0x000000, 0x03FF);
 	set_GDTR(0x000000, 0x0000);
@@ -119,7 +119,7 @@ void CPUCore::handle_mode_change()
 	}
 }
 
-void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults)
+void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value)
 {
 	/* According to Intel, each time any segment register is loaded in real mode,
 	 * the base address is calculated as 16 times the segment value, while the
@@ -129,20 +129,45 @@ void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value, bool _default
 	 * register is loaded.
 	 * (http://www.rcollins.org/ddj/Aug98/Aug98.html)
 	 */
+	// in real mode CS register is loaded with load_segment_defaults()
+	assert(!_segreg.is(REG_CS));
 
 	_segreg.sel.value = _value;
-	_segreg.sel.cpl = 0; // in real mode the current privilege level is always 0
 	_segreg.desc.base = uint32_t(_value) << 4;
-	if(_defaults) {
+
+	if(is_rmode()) {
+		// in real mode the current privilege level is always 0
+		_segreg.sel.cpl = 0;
+		_segreg.desc.present = true;
+		_segreg.desc.segment = true;
+		_segreg.desc.valid = true;
+	} else {
+		// v8086 mode
+		_segreg.sel.cpl = 3;
+		_segreg.desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
+		_segreg.desc.dpl = 3;
 		_segreg.desc.limit = 0xFFFF;
-		_segreg.desc.set_AR(
-			SEG_ACCESSED |
-			SEG_READWRITE |
-			SEG_EXECUTABLE |
-			SEG_SEGMENT |
-			SEG_PRESENT
-		);
+		_segreg.desc.granularity = false;
+		_segreg.desc.big = false;
 	}
+}
+
+void CPUCore::load_segment_defaults(SegReg & _segreg, uint16_t _value)
+{
+	_segreg.sel.value = _value;
+	_segreg.sel.cpl = is_rmode() ? 0 : 3;
+	_segreg.desc.base = uint32_t(_value) << 4;
+	_segreg.desc.limit = 0xFFFF;
+	_segreg.desc.dpl = is_rmode() ? 0 : 3;
+	_segreg.desc.granularity = false;
+	_segreg.desc.big = false;
+	_segreg.desc.set_AR(
+		SEG_SEGMENT |
+		SEG_PRESENT |
+		SEG_ACCESSED |
+		SEG_READWRITE |
+		SEG_EXECUTABLE
+	);
 }
 
 void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)

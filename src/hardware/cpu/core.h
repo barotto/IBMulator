@@ -321,11 +321,12 @@ protected:
 		if(is_pmode()) {
 			load_segment_protected(_segreg, _value);
 		} else {
-			load_segment_real(_segreg, _value, false);
+			load_segment_real(_segreg, _value);
 		}
 	}
-	void load_segment_real(SegReg & _segreg, uint16_t _value, bool _defaults);
+	void load_segment_real(SegReg & _segreg, uint16_t _value);
 	void load_segment_protected(SegReg & _segreg, uint16_t _value);
+	void load_segment_defaults(SegReg & _segreg, uint16_t _value);
 
 	inline void set_flag(uint8_t _flagnum, bool _val) {
 		m_eflags = (m_eflags &~ (1<<_flagnum)) | ((_val)<<_flagnum);
@@ -346,7 +347,7 @@ public:
 	//only real mode:
 	inline void set_CS(uint16_t _val) {
 		assert(!is_pmode());
-		load_segment_real(m_segregs[REGI_CS], _val, true);
+		load_segment_defaults(m_segregs[REGI_CS], _val);
 	}
 	//only protected mode
 	void set_CS(Selector &sel, Descriptor &desc, uint8_t cpl);
@@ -360,12 +361,8 @@ public:
 	inline void set_FS(uint16_t _val) { load_segment_register(m_segregs[REGI_FS], _val); }
 	inline void set_GS(uint16_t _val) { load_segment_register(m_segregs[REGI_GS], _val); }
 	inline void set_SR(uint8_t _idx, uint16_t _val) {
-		assert(_idx <= REGI_GS);
-		if(_idx == REGI_CS) {
-			set_CS(_val);
-		} else {
-			load_segment_register(m_segregs[_idx], _val);
-		}
+		assert(_idx <= REGI_GS && _idx != REGI_CS);
+		load_segment_register(m_segregs[_idx], _val);
 	}
 	inline void set_IDTR(uint32_t _base, uint32_t _limit) {
 		m_segregs[REGI_IDTR].desc.base = _base;
