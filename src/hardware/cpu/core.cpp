@@ -155,19 +155,37 @@ void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value)
 void CPUCore::load_segment_defaults(SegReg & _segreg, uint16_t _value)
 {
 	_segreg.sel.value = _value;
-	_segreg.sel.cpl = is_rmode() ? 0 : 3;
+	if(is_rmode()) {
+		_segreg.sel.cpl = 0;
+		_segreg.desc.dpl = 0;
+	} else {
+		// V8086
+		assert(_segreg.is(REG_CS));
+		_segreg.sel.cpl = 3;
+		_segreg.desc.dpl = 3;
+	}
 	_segreg.desc.base = uint32_t(_value) << 4;
 	_segreg.desc.limit = 0xFFFF;
-	_segreg.desc.dpl = is_rmode() ? 0 : 3;
 	_segreg.desc.granularity = false;
 	_segreg.desc.big = false;
-	_segreg.desc.set_AR(
-		SEG_SEGMENT |
-		SEG_PRESENT |
-		SEG_ACCESSED |
-		SEG_READWRITE |
-		SEG_EXECUTABLE
-	);
+	if(_segreg.is(REG_LDTR)) {
+		_segreg.desc.set_AR(
+			SEG_PRESENT |
+			DESC_TYPE_LDT_DESC
+		);
+	} else if(_segreg.is(REG_TR)) {
+		_segreg.desc.set_AR(
+			SEG_PRESENT |
+			DESC_TYPE_BUSY_386_TSS
+		);
+	} else {
+		_segreg.desc.set_AR(
+			SEG_SEGMENT |
+			SEG_PRESENT |
+			SEG_ACCESSED |
+			SEG_READWRITE
+		);
+	}
 }
 
 void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
