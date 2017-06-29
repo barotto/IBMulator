@@ -77,7 +77,7 @@ private:
 	void uip_timer(uint64_t);
 	std::string get_image_template();
 	std::string get_image_filepath();
-	void load_image(std::string _imgpath, std::string _tplname);
+	void load_image(std::string _imgpath);
 	void save_image(std::string _imgpath);
 };
 

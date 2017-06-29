@@ -106,7 +106,7 @@ void CMOS::remove()
 
 void CMOS::config_changed()
 {
-	load_image(get_image_filepath(), get_image_template());
+	load_image(get_image_filepath());
 }
 
 void CMOS::reset(unsigned type)
@@ -209,7 +209,7 @@ std::string CMOS::get_image_filepath()
 	return filename;
 }
 
-void CMOS::load_image(std::string _imgpath, std::string _tplname)
+void CMOS::load_image(std::string _imgpath)
 {
 	if(_imgpath.empty()) {
 		PERRF(LOG_CMOS, "You need to specify a CMOS image file\n");
@@ -221,14 +221,9 @@ void CMOS::load_image(std::string _imgpath, std::string _tplname)
 	}
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
-		std::string assetpath = g_program.config().get_file_path(_tplname, FILE_TYPE_ASSET);
-		if(!FileSys::file_exists(assetpath.c_str())) {
-			PWARNF(LOG_CMOS, "Unable to find the image file '%s', creating new...\n", _tplname.c_str());
-			memset(m_s.reg, 0, CMOS_SIZE);
-			save_image(_imgpath);
-		} else {
-			_imgpath = assetpath;
-		}
+		PWARNF(LOG_CMOS, "Unable to find the image file '%s', creating new...\n", _imgpath.c_str());
+		memset(m_s.reg, 0, CMOS_SIZE);
+		save_image(_imgpath);
 	}
 	PINFOF(LOG_V0, LOG_CMOS, "Loading CMOS image file '%s'\n", _imgpath.c_str());
 
