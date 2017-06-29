@@ -91,7 +91,7 @@ void SystemROM::load(const std::string _romset)
 		std::string dir,base,ext;
 		FileSys::get_path_parts(_romset.c_str(), dir, base, ext);
 		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-		if(ext == ".bin") {
+		if(ext == ".bin" || ext == "") {
 			PINFOF(LOG_V0, LOG_MACHINE, "Loading ROM file '%s'\n", _romset.c_str());
 			load_file(_romset, ~0);
 		} else {
