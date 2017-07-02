@@ -89,11 +89,8 @@ struct Descriptor
 	uint8_t dpl;   // | bit5,6 (Descriptor Privilege Level)
 	bool present;  // | bit7 (1=present in real memory)
 	///
-	union {
-		bool big;
-		bool def; // default
-	};
-	bool granularity;
+	bool big;
+	bool page_granular;
 	bool valid;
 
 	inline uint8_t get_AR() const {
@@ -134,8 +131,8 @@ struct Descriptor
 			base_23_16 = _data >> 32;
 			base = base_15_0 | (uint32_t(base_23_16) << 16) | ((_data >> 32) & 0xFF000000 );
 			big = (_data >> 54) & 1;
-			granularity = (_data >> 55) & 1;
-			if(granularity) { // page
+			page_granular = (_data >> 55) & 1;
+			if(page_granular) {
 				limit = (limit << 12) | 0xFFF;
 			}
 		} else {

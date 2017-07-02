@@ -36,8 +36,8 @@ Instruction * CPUDecoder::decode()
 
 	m_ilen = 0;
 	m_instr.valid = true;
-	m_instr.op32 = REG_CS.desc.def;
-	m_instr.addr32 = REG_CS.desc.def;
+	m_instr.op32 = REG_CS.desc.big;
+	m_instr.addr32 = REG_CS.desc.big;
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;

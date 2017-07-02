@@ -147,7 +147,7 @@ void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value)
 		_segreg.desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
 		_segreg.desc.dpl = 3;
 		_segreg.desc.limit = 0xFFFF;
-		_segreg.desc.granularity = false;
+		_segreg.desc.page_granular = false;
 		_segreg.desc.big = false;
 	}
 }
@@ -166,7 +166,7 @@ void CPUCore::load_segment_defaults(SegReg & _segreg, uint16_t _value)
 	}
 	_segreg.desc.base = uint32_t(_value) << 4;
 	_segreg.desc.limit = 0xFFFF;
-	_segreg.desc.granularity = false;
+	_segreg.desc.page_granular = false;
 	_segreg.desc.big = false;
 	if(_segreg.is(REG_LDTR)) {
 		_segreg.desc.set_AR(

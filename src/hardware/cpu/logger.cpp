@@ -177,7 +177,7 @@ int CPULogger::write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_se
 	if(CPU_FAMILY >= CPU_286 && (_core.is_rmode() || _segreg.desc.segment)) {
 		PCPULOG(_dest, "%s%s",
 			_segreg.desc.big?"B":"b",
-			_segreg.desc.granularity?"G":"g");
+			_segreg.desc.page_granular?"G":"g");
 
 	}
 	PCPULOG(_dest, "%s] ", _segreg.desc.valid?"V":"v");
@@ -340,7 +340,7 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 	debugger.disasm(dline, 200u,
 		_log_entry.instr.cseip, _log_entry.instr.eip, nullptr,
 		_log_entry.instr.bytes, _log_entry.instr.size,
-		_log_entry.core.get_CS().desc.def
+		_log_entry.core.get_CS().desc.big
 	);
 	char *analize = empty;
 

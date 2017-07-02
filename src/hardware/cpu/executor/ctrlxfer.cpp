@@ -1066,7 +1066,7 @@ void CPUExecutor::stack_return_to_v86(Selector &cs_selector, uint32_t new_eip, u
 		SEG_REG(sreg).desc.dpl = 3;
 		SEG_REG(sreg).desc.base = SEG_REG(sreg).sel.value << 4;
 		SEG_REG(sreg).desc.limit = 0xFFFF;
-		SEG_REG(sreg).desc.granularity  = false;
+		SEG_REG(sreg).desc.page_granular  = false;
 		SEG_REG(sreg).desc.big  = false;
 		SEG_REG(sreg).sel.rpl = 3;
 	}

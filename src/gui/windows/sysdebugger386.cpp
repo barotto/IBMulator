@@ -96,7 +96,7 @@ const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _
 	//throws CPUException when #PF
 	uint32_t start = DBG_GET_PHYADDR(CS, _eip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory, nullptr, 0, REG_CS.desc.def);
+	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory, nullptr, 0, REG_CS.desc.big);
 	if(_size!=nullptr) {
 		*_size = size;
 	}
