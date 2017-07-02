@@ -121,7 +121,8 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISK_SEEK_MAX,   "40.0" },
 		{ DISK_SEEK_TRK,   "8.0"  },
 		{ DISK_ROT_SPEED,  "3600" },
-		{ DISK_INTERLEAVE, "4"    }
+		{ DISK_INTERLEAVE, "4"    },
+		{ DISK_SPINUP_TIME,"auto" }
 	} },
 
 	{ MIXER_SECTION, {

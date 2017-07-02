@@ -183,6 +183,7 @@ public:
 #define DISK_SEEK_TRK           "seek_trk"
 #define DISK_ROT_SPEED          "rot_speed"
 #define DISK_INTERLEAVE         "interleave"
+#define DISK_SPINUP_TIME        "spin_up_time"
 
 #define MIXER_SECTION           "mixer"
 #define MIXER_RATE              "rate"

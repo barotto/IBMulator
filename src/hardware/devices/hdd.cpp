@@ -290,6 +290,8 @@ void HardDiskDrive::config_changed(const char *_section)
 	}
 
 	m_fx.config_changed();
+	m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
+			m_fx.spin_up_time_us()/1e6) * 1e6;
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d\n", name(), m_type);
 	PINFOF(LOG_V0, LOG_HDD, "  Capacity: %.1fMB, %.1fMiB, %lu sectors\n",
@@ -306,6 +308,7 @@ void HardDiskDrive::config_changed(const char *_section)
 	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %u us/cyl\n", m_performance.seek_avgspeed_us);
 	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
 	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %u us\n", m_performance.sec_read_us);
+	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %u us\n", m_spin_up_duration);
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)
