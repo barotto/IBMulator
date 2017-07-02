@@ -70,10 +70,10 @@
 #include <functional>
 
 IODEVICE_PORTS(StorageCtrl_ATA) = {
-	{ 0x01F0, 0x01F0, PORT_16BIT|PORT_RW }, // Channel 0 Data Register (16-bit)
+	{ 0x01F0, 0x01F0, PORT_16BIT|PORT_32BIT|PORT_RW }, // Channel 0 Data Register (16/32-bit)
 	{ 0x01F1, 0x01F7, PORT_8BIT|PORT_RW  }, // Channel 0 control ports (8-bit)
 	{ 0x03F6, 0x03F6, PORT_8BIT|PORT_RW  }, // Channel 0 Alternate Status R / Adapter Control Reg W
-	{ 0x0170, 0x0170, PORT_16BIT|PORT_RW }, // Channel 1 Data Register (16-bit)
+	{ 0x0170, 0x0170, PORT_16BIT|PORT_32BIT|PORT_RW }, // Channel 1 Data Register (16/32-bit)
 	{ 0x0171, 0x0177, PORT_8BIT|PORT_RW  }, // Channel 1 control ports (8-bit)
 	{ 0x0376, 0x0376, PORT_8BIT|PORT_RW  }  // Channel 1 Alternate Status R / Adapter Control Reg W
 };

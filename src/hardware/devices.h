@@ -36,11 +36,13 @@ extern Devices g_devices;
 
 #define PORT_8BIT  0x01
 #define PORT_16BIT 0x02
-#define PORT_READ  0x04
+#define PORT_32BIT 0x04
+#define PORT_READ  0x08
 #define PORT_R_    PORT_READ
-#define PORT_WRITE 0x08
+#define PORT_WRITE 0x10
 #define PORT__W    PORT_WRITE
 #define PORT_RW    PORT_READ | PORT_WRITE
+
 #define PORT_MAX   0xFFFF
 
 class Devices

@@ -320,9 +320,25 @@ uint16_t Devices::read_word(uint16_t _port)
 
 uint32_t Devices::read_dword(uint16_t _port)
 {
-	uint32_t w0 = read_word(_port);
-	uint32_t w1 = read_word(_port + 2);
-	return w0 | (w1<<16);
+	uint32_t value = ~0;
+	io_handler_t &iohdl = m_read_handlers[_port];
+
+	m_last_io_time = 0;
+	if((iohdl.mask & PORT_32BIT) && !(_port & 1)) {
+		// TODO stub, this depends on the bus width
+		// TODO this implementation requires that the device uses a buffer index
+		uint32_t w0 = iohdl.device->read(_port, 2);
+		uint32_t w1 = iohdl.device->read(_port, 2); // not _port+2, change this with proper 32bit support
+		value = w0 | (w1<<16);
+	} else {
+		uint32_t w0 = read_word(_port);
+		unsigned io_time = m_last_io_time;
+		m_last_io_time = 0;
+		uint32_t w1 = read_word(_port + 2);
+		m_last_io_time += io_time;
+		value = w0 | (w1<<16);
+	}
+	return value;
 }
 
 void Devices::write_byte(uint16_t _port, uint8_t _value)
@@ -364,8 +380,21 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 
 void Devices::write_dword(uint16_t _port, uint32_t _value)
 {
-	write_word(_port, _value);
-	write_word(_port+2, _value>>16);
+	io_handler_t &iohdl = m_write_handlers[_port];
+
+	m_last_io_time = 0;
+	if((iohdl.mask & PORT_32BIT) && !(_port & 1)) {
+		// TODO stub, this depends on the bus width
+		// TODO this implementation requires that the device uses a buffer index
+		iohdl.device->write(_port, _value, 2);
+		iohdl.device->write(_port, _value>>16, 2); // not _port+2, change this with proper 32bit support
+	} else {
+		write_word(_port, _value);
+		unsigned io_time = m_last_io_time;
+		m_last_io_time = 0;
+		write_word(_port+2, _value>>16);
+		m_last_io_time += io_time;
+	}
 }
 
 void Devices::remove(const char *_name)
