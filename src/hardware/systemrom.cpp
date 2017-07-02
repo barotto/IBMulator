@@ -196,7 +196,7 @@ int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
 		PERRF(LOG_MACHINE, "Error opening ROM file '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
-	PINFOF(LOG_MACHINE, LOG_V1, "Loading '%s' ...\n", _filename.c_str());
+	PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' ...\n", _filename.c_str());
 	size = fread((void*)(m_data + _phyaddr), size, 1, file.get());
 	if(size != 1) {
 		PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", _filename.c_str());

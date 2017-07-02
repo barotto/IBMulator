@@ -107,8 +107,8 @@ void CF62011BPC::update_mem_mapping()
 			break;
 		default:
 			// Extended Graphics mode
-			g_memory.resize_mapping(m_mapping, m_s.mem_offset, m_s.mem_aperture);
-			g_memory.set_mapping_funcs(m_mapping,
+			g_memory.resize_mapping(m_mem_mapping, m_s.mem_offset, m_s.mem_aperture);
+			g_memory.set_mapping_funcs(m_mem_mapping,
 				CF62011BPC::s_mem_read<uint8_t>,
 				CF62011BPC::s_mem_read<uint16_t>,
 				CF62011BPC::s_mem_read<uint32_t>,

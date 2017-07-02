@@ -237,10 +237,12 @@ protected:
 	uint16_t m_num_y_tiles;
 	uint32_t m_memsize;
 	uint8_t *m_memory;
+	uint8_t *m_rom;
 	bool *m_tile_updated;
 	int m_timer_id;
 	VGADisplay * m_display;
-	int m_mapping;
+	int m_mem_mapping;
+	int m_rom_mapping;
 	VGATimings m_vga_timing;
 	double m_bus_timing;
 
@@ -267,6 +269,7 @@ public:
 
 protected:
 	virtual void update_mem_mapping();
+	void load_ROM(const std::string &_filename);
 	void redraw_area(uint x0, uint y0, uint width, uint height);
 	void init_iohandlers();
 	void init_systemtimer();
@@ -291,6 +294,11 @@ protected:
 	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
 	template<class T>
 	static void s_mem_write(uint32_t _addr, uint32_t _value, void *_priv);
+
+	template<class T>
+	static uint32_t s_rom_read(uint32_t _addr, void *_priv) {
+		return *(T*)&(((VGA*)_priv)->m_rom)[_addr&0xFFFF];
+	}
 };
 
 template<> uint32_t VGA::s_mem_read<uint8_t> (uint32_t _addr, void *_priv);

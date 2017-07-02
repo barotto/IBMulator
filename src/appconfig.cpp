@@ -39,6 +39,7 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET, ""     },
+		{ SYSTEM_VGAROM, ""     },
 		{ SYSTEM_MODEL,  "auto" }
 	} },
 

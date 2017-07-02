@@ -26,6 +26,7 @@
 #include "hardware/memory.h"
 #include "hardware/devices/pic.h"
 #include "gui/gui.h"
+#include "filesys.h"
 #include <cstring>
 
 using namespace std::placeholders;
@@ -101,10 +102,12 @@ m_max_xres(VGA_MAX_XRES),
 m_max_yres(VGA_MAX_YRES),
 m_memsize(0x40000),
 m_memory(nullptr),
+m_rom(nullptr),
 m_tile_updated(nullptr),
 m_timer_id(NULL_TIMER_HANDLE),
 m_display(nullptr),
-m_mapping(0),
+m_mem_mapping(0),
+m_rom_mapping(0),
 m_vga_timing(VGA_8BIT_SLOW),
 m_bus_timing(1.0)
 {
@@ -117,6 +120,9 @@ VGA::~VGA()
 	if(m_memory != nullptr) {
 		delete[] m_memory;
 	}
+	if(m_rom != nullptr) {
+		delete[] m_rom;
+	}
 	if(m_tile_updated != nullptr) {
 		delete[] m_tile_updated;
 	}
@@ -127,6 +133,7 @@ void VGA::install()
 	IODevice::install();
 	g_machine.register_irq(VGA_IRQ, name());
 	m_memory = new uint8_t[m_memsize];
+	m_rom = new uint8_t[0x10000];
 	m_tile_updated = new bool[m_num_x_tiles * m_num_y_tiles];
 	m_timer_id = g_machine.register_timer(nullptr, name());
 	/*
@@ -139,7 +146,9 @@ void VGA::install()
 		}
 	});
 	*/
-	m_mapping = g_memory.add_mapping(0xA0000, 0x20000, MEM_MAPPING_EXTERNAL);
+	m_mem_mapping = g_memory.add_mapping(0xA0000, 0x20000, MEM_MAPPING_EXTERNAL);
+	m_rom_mapping = g_memory.add_mapping(0xC0000, 0x10000, MEM_MAPPING_EXTERNAL,
+		VGA::s_rom_read<uint8_t>, VGA::s_rom_read<uint16_t>, VGA::s_rom_read<uint32_t>, this);
 }
 
 void VGA::config_changed()
@@ -160,10 +169,22 @@ void VGA::config_changed()
 	unsigned word  = ceil(m_bus_timing * video_timings[m_vga_timing][1]);
 	unsigned dword = ceil(m_bus_timing * video_timings[m_vga_timing][2]);
 
-	g_memory.set_mapping_cycles(m_mapping, byte, word, dword);
+	g_memory.set_mapping_cycles(m_mem_mapping, byte, word, dword);
 
 	PINFOF(LOG_V2, LOG_VGA, "VRAM speed: %d/%d/%d cycles\n",
 			byte, word, dword);
+
+	g_memory.enable_mapping(m_rom_mapping, false);
+	std::string romfile = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_VGAROM);
+	if(!romfile.empty()) {
+		try {
+			load_ROM(romfile);
+			byte = word = ceil(m_bus_timing * 2); // ???
+			dword = word*2;
+			g_memory.set_mapping_cycles(m_rom_mapping, byte, word, dword);
+			g_memory.enable_mapping(m_rom_mapping, true);
+		} catch(std::exception &e) {}
+	}
 }
 
 void VGA::remove()
@@ -176,12 +197,16 @@ void VGA::remove()
 		delete[] m_memory;
 		m_memory = nullptr;
 	}
+	if(m_rom != nullptr) {
+		delete[] m_rom;
+		m_rom = nullptr;
+	}
 	if(m_tile_updated != nullptr) {
 		delete[] m_tile_updated;
 		m_tile_updated = nullptr;
 	}
 
-	g_memory.remove_mapping(m_mapping);
+	g_memory.remove_mapping(m_mem_mapping);
 }
 
 void VGA::reset(unsigned _type)
@@ -299,9 +324,9 @@ void VGA::restore_state(StateBuf &_state)
 
 void VGA::update_mem_mapping()
 {
-	g_memory.resize_mapping(m_mapping, m_s.graphics_ctrl.memory_offset,
+	g_memory.resize_mapping(m_mem_mapping, m_s.graphics_ctrl.memory_offset,
 		m_s.graphics_ctrl.memory_aperture);
-	g_memory.set_mapping_funcs(m_mapping,
+	g_memory.set_mapping_funcs(m_mem_mapping,
 		VGA::s_mem_read<uint8_t>,
 		VGA::s_mem_read<uint16_t>,
 		nullptr,
@@ -313,6 +338,28 @@ void VGA::update_mem_mapping()
 	PDEBUGF(LOG_V1, LOG_VGA, "memory mapping: 0x%X .. 0x%X\n",
 		m_s.graphics_ctrl.memory_offset,
 		m_s.graphics_ctrl.memory_offset+m_s.graphics_ctrl.memory_aperture-1);
+}
+
+void VGA::load_ROM(const std::string &_filename)
+{
+	uint64_t size = FileSys::get_file_size(_filename.c_str());
+	if(size > 0x10000) {
+		PERRF(LOG_VGA, "ROM file '%s' is too big: %d bytes (64K max)\n", size);
+		throw std::exception();
+	}
+
+	auto file = FileSys::make_file(_filename.c_str(), "rb");
+	if(file == nullptr) {
+		PERRF(LOG_VGA, "Error opening ROM file '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
+
+	PINFOF(LOG_V0, LOG_VGA, "Loading ROM '%s'\n", _filename.c_str());
+	size = fread((void*)m_rom, size, 1, file.get());
+	if(size != 1) {
+		PERRF(LOG_VGA, "Error reading ROM file '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
 }
 
 void VGA::determine_screen_dimensions(uint *piHeight, uint *piWidth)

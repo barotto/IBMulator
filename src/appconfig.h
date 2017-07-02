@@ -145,6 +145,7 @@ public:
 
 #define SYSTEM_SECTION          "system"
 #define SYSTEM_ROMSET           "romset"
+#define SYSTEM_VGAROM           "vgarom"
 #define SYSTEM_MODEL            "model"
 
 #define CPU_SECTION             "cpu"
