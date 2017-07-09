@@ -21,6 +21,7 @@
 #include "program.h"
 #include "machine.h"
 #include "hardware/devices.h"
+#include "hardware/memory.h"
 #include "pic.h"
 #include "cmos.h"
 #include "filesys.h"
@@ -107,6 +108,32 @@ void CMOS::remove()
 void CMOS::config_changed()
 {
 	load_image(get_image_filepath());
+
+#if BOCHS_BIOS_COMPAT
+	unsigned memory_in_k = (g_memory.dram_size() / KEBIBYTE);
+	unsigned base_memory_in_k = (memory_in_k <= 512) ? 512 : 640;
+	unsigned extended_memory_in_k = memory_in_k > 1024 ? (memory_in_k - 1024) : 0;
+	if(extended_memory_in_k > 0xfc00) {
+		extended_memory_in_k = 0xfc00;
+	}
+
+	m_s.reg[0x15] = base_memory_in_k;
+	m_s.reg[0x16] = (base_memory_in_k >> 8);
+	m_s.reg[0x17] = (extended_memory_in_k & 0xff);
+	m_s.reg[0x18] = ((extended_memory_in_k >> 8) & 0xff);
+	m_s.reg[0x30] = (extended_memory_in_k & 0xff);
+	m_s.reg[0x31] = ((extended_memory_in_k >> 8) & 0xff);
+
+	unsigned extended_memory_in_64k = memory_in_k > 16384 ? (memory_in_k - 16384) / 64 : 0;
+	// Limit to 3 GB - 16 MB. PCI Memory Address Space starts at 3 GB.
+	if(extended_memory_in_64k > 0xbf00) {
+		extended_memory_in_64k = 0xbf00;
+	}
+
+	m_s.reg[0x34] = (extended_memory_in_64k & 0xff);
+	m_s.reg[0x35] = ((extended_memory_in_64k >> 8) & 0xff);
+#endif
+
 }
 
 void CMOS::reset(unsigned type)

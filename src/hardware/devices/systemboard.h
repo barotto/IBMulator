@@ -24,6 +24,9 @@
 class Parallel;
 class Serial;
 
+
+#define BOCHS_BIOS_MESSAGE_SIZE 80
+
 class SystemBoard : public IODevice
 {
 	IODEVICE(SystemBoard, "System Board")
@@ -42,6 +45,13 @@ protected:
 
 		//Card Selected Feedback
 		uint8_t CSF;
+
+#if BOCHS_BIOS_COMPAT
+		uint8_t bios_message[BOCHS_BIOS_MESSAGE_SIZE];
+		unsigned int bios_message_i;
+		bool bios_panic_flag;
+#endif
+
 	} m_s;
 
 	// config at program launch or when a new config file is loaded:

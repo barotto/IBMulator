@@ -37,6 +37,9 @@ IODEVICE_PORTS(SystemBoard) = {
 	{ 0x100, 0x101, PORT_8BIT|PORT_R_ }, // Programmable Option Select (Adapter ID)
 	{ 0x102, 0x105, PORT_8BIT|PORT_RW }, // Programmable Option Select
 	{ 0x190, 0x191, PORT_8BIT|PORT__W }  // POST procedure codes
+#if BOCHS_BIOS_COMPAT
+	,{ 0x400, 0x403, PORT_8BIT|PORT__W }  // Bochs rombios virtual ports
+#endif
 };
 
 SystemBoard::SystemBoard(Devices* _dev)
@@ -238,6 +241,61 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			m_s.POST = _value;
 			break;
 		}
+
+#if BOCHS_BIOS_COMPAT
+		// 0x400-0x401 are used as panic ports for the rombios
+		case 0x0401:
+			PDEBUGF(LOG_V2, LOG_MACHINE, "\n");
+			if(_value == 0) {
+				// The next message sent to the info port will cause a panic
+				m_s.bios_panic_flag = 1;
+			} else if(m_s.bios_message_i > 0) {
+				// if there are bits of message in the buffer, print them as the
+				// panic message.  Otherwise fall into the next case.
+				if(m_s.bios_message_i >= BOCHS_BIOS_MESSAGE_SIZE)
+					m_s.bios_message_i = BOCHS_BIOS_MESSAGE_SIZE-1;
+				m_s.bios_message[ m_s.bios_message_i] = 0;
+				m_s.bios_message_i = 0;
+				PERRF(LOG_MACHINE, "BIOS: %s\n", m_s.bios_message);
+			}
+			break;
+		case 0x0400:
+			PDEBUGF(LOG_V2, LOG_MACHINE, "\n");
+			if(_value > 0) {
+				PERRF(LOG_MACHINE, "BIOS panic at rombios.c, line %d", _value);
+			}
+			break;
+
+		// 0x0402 is used as the info port for the rombios
+		// 0x0403 is used as the debug port for the rombios
+		case 0x0402:
+		case 0x0403:
+			PDEBUGF(LOG_V2, LOG_MACHINE, "\n");
+			m_s.bios_message[m_s.bios_message_i] = _value;
+			m_s.bios_message_i ++;
+			if(m_s.bios_message_i >= BOCHS_BIOS_MESSAGE_SIZE) {
+				m_s.bios_message[ BOCHS_BIOS_MESSAGE_SIZE - 1] = 0;
+				m_s.bios_message_i = 0;
+				if(_address == 0x403) {
+					PDEBUGF(LOG_V1, LOG_MACHINE, "BIOS: %s\n", m_s.bios_message);
+				} else {
+					PINFOF(LOG_V1, LOG_MACHINE, "BIOS: %s\n", m_s.bios_message);
+				}
+			} else if((_value & 0xff) == '\n') {
+				m_s.bios_message[ m_s.bios_message_i - 1 ] = 0;
+				m_s.bios_message_i = 0;
+				if(m_s.bios_panic_flag == 1) {
+					PERRF(LOG_MACHINE, "BIOS: %s", m_s.bios_message);
+				} else if(_address == 0x403) {
+					PDEBUGF(LOG_V1, LOG_MACHINE, "BIOS: %s\n", m_s.bios_message);
+				} else {
+					PINFOF(LOG_V1, LOG_MACHINE, "BIOS: %s\n", m_s.bios_message);
+				}
+				m_s.bios_panic_flag = 0;
+			}
+			break;
+#endif
+
 		default:
 			PERRF_ABORT(LOG_MACHINE, "Unhandled write to port 0x%04X\n", _address);
 	}
