@@ -224,7 +224,7 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 	// load new SS:ESP values from TSS
 	SET_SS(ss_selector, ss_descriptor, cs_descriptor.dpl);
 
-    if(IS_V8086()) {
+	if(IS_V8086()) {
 		REG_GS.desc.valid = false;
 		REG_GS.sel.value = 0;
 		REG_FS.desc.valid = false;
@@ -233,7 +233,7 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 		REG_DS.sel.value = 0;
 		REG_ES.desc.valid = false;
 		REG_ES.sel.value = 0;
-    }
+	}
 }
 
 void CPUExecutor::interrupt_same_privilege(Descriptor &gate_descriptor,

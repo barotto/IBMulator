@@ -1530,10 +1530,10 @@ int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 
 void CPUExecutor::IMUL_rw_ew()    { store_rw(IMUL_w(load_rw(), load_ew())); }
 void CPUExecutor::IMUL_rd_ed()    { store_rd(IMUL_d(load_rd(), load_ed())); }
-void CPUExecutor::IMUL_rw_ew_ib() {	store_rw(IMUL_w(load_ew(), int8_t(m_instr->ib))); }
-void CPUExecutor::IMUL_rd_ed_ib() {	store_rd(IMUL_d(load_ed(), int8_t(m_instr->ib))); }
-void CPUExecutor::IMUL_rw_ew_iw() {	store_rw(IMUL_w(load_ew(), m_instr->iw1)); }
-void CPUExecutor::IMUL_rd_ed_id() {	store_rd(IMUL_d(load_ed(), m_instr->id1)); }
+void CPUExecutor::IMUL_rw_ew_ib() { store_rw(IMUL_w(load_ew(), int8_t(m_instr->ib))); }
+void CPUExecutor::IMUL_rd_ed_ib() { store_rd(IMUL_d(load_ed(), int8_t(m_instr->ib))); }
+void CPUExecutor::IMUL_rw_ew_iw() { store_rw(IMUL_w(load_ew(), m_instr->iw1)); }
+void CPUExecutor::IMUL_rd_ed_id() { store_rd(IMUL_d(load_ed(), m_instr->id1)); }
 
 
 /*******************************************************************************
@@ -2580,7 +2580,7 @@ uint32_t CPUExecutor::LOOP(uint32_t _count)
 	if(_count != 0) {
 		branch_relative(int8_t(m_instr->ib));
 	}
-    return _count;
+	return _count;
 }
 
 uint32_t CPUExecutor::LOOPZ(uint32_t _count)
@@ -2628,15 +2628,15 @@ uint32_t CPUExecutor::LSL()
 	/* if selector null, clear ZF and done */
 	if((selector.value & SELECTOR_RPL_MASK) == 0) {
 		SET_FLAG(ZF, false);
-	    return 0;
+		return 0;
 	}
 
 	try {
 		descriptor = fetch_descriptor(selector, CPU_GP_EXC);
 	} catch(CPUException &e) {
 		PDEBUGF(LOG_V2, LOG_CPU, "LSL: failed to fetch descriptor\n");
-	    SET_FLAG(ZF, false);
-	    return 0;
+		SET_FLAG(ZF, false);
+		return 0;
 	}
 
 	if(descriptor.is_system_segment()) {
@@ -2755,7 +2755,7 @@ void CPUExecutor::MOV_ed_rd() { store_ed(load_rd()); }
 void CPUExecutor::MOV_rb_eb() { store_rb(load_eb()); }
 void CPUExecutor::MOV_rw_ew() { store_rw(load_ew()); }
 void CPUExecutor::MOV_rd_ed() { store_rd(load_ed()); }
-void CPUExecutor::MOV_SR_ew() {	store_sr(load_ew()); }
+void CPUExecutor::MOV_SR_ew() { store_sr(load_ew()); }
 void CPUExecutor::MOV_AL_xb() { REG_AL = read_byte(SEG_REG(m_base_ds), m_instr->offset); }
 void CPUExecutor::MOV_AX_xw() { REG_AX = read_word(SEG_REG(m_base_ds), m_instr->offset); }
 void CPUExecutor::MOV_EAX_xd(){ REG_EAX = read_dword(SEG_REG(m_base_ds), m_instr->offset); }
@@ -3895,7 +3895,7 @@ void CPUExecutor::RET_far_o32()
 		return_far_pmode(m_instr->iw1, true);
 	} else {
 		uint32_t eip    = stack_pop_dword();
-		uint16_t cs_raw = stack_pop_dword();
+		uint16_t cs_raw = stack_pop_dword(); // dword pop
 
 		return_far_rmode(cs_raw, eip, m_instr->iw1);
 	}
