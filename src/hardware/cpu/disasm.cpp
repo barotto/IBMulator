@@ -71,6 +71,7 @@ Any comments/updates/bug reports to:
 
 #include "ibmulator.h"
 #include "disasm.h"
+#include "hardware/cpu/core.h"
 #include "hardware/memory.h"
 #include <stdio.h>
 #include <string.h>
@@ -449,7 +450,14 @@ uint8_t Disasm::getbyte(void)
 	if(m_memory == nullptr) {
 		return 0;
 	}
-	return m_memory->dbg_read_byte(getbyte_mac++);
+	uint32_t phy;
+	if(m_cpu) {
+		phy = m_cpu->dbg_get_phyaddr(getbyte_mac);
+	} else {
+		phy = getbyte_mac;
+	}
+	getbyte_mac++;
+	return m_memory->dbg_read_byte(phy);
 }
 
 /*
@@ -1089,11 +1097,12 @@ void Disasm::ua_str(char const *str)
  * _instr_buf_len = the length of _instr_buf
  */
 uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
-		Memory *_memory, const uint8_t *_instr_buf, uint _instr_buf_len,
+		CPUCore *_core, Memory *_memory, const uint8_t *_instr_buf, uint _instr_buf_len,
 		bool _cs_def)
 {
   	uint32_t c;
 
+  	m_cpu = _core;
   	m_memory = _memory;
 
 	instruction_offset = _rip;
@@ -1128,6 +1137,7 @@ uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_
 	opmap1=&op386map1;
 	ua_str(op386map1[c]);
 
+	m_cpu = nullptr;
 	m_memory = nullptr;
 
   	if (invalid_opcode) {

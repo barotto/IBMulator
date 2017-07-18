@@ -70,16 +70,14 @@ SysDebugger286::~SysDebugger286()
 const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
-
 	static Rocket::Core::String str;
 
 	str = "";
-
 	static char empty = 0;
 
-	uint32_t start = DBG_GET_PHYADDR(CS, _ip);
+	uint32_t start = GET_LINADDR(CS, _ip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _ip, &g_memory, nullptr, 0, false);
+	uint size = debugger.disasm(dline, 200, start, _ip, nullptr, &g_memory, nullptr, 0, false);
 	if(_size!=nullptr) {
 		*_size = size;
 	}

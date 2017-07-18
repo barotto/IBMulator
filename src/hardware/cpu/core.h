@@ -470,6 +470,7 @@ public:
 	inline SegReg & get_TR() { return m_segregs[REGI_TR]; }
 	inline SegReg & get_LDTR() { return m_segregs[REGI_LDTR]; }
 
+	uint32_t dbg_get_phyaddr(uint32_t _linaddr, Memory *_memory=nullptr) const;
 	uint32_t dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory=nullptr) const;
 
 	void save_state(StateBuf &_state) const;

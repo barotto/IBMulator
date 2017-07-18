@@ -93,6 +93,7 @@ public:
 	inline int  width() const { return m_width; }
 
 	void update(int _cycles);
+	void enable_paging(bool _enabled);
 
 	//instruction fetching
 	#if USE_PREFETCH_QUEUE
@@ -153,7 +154,9 @@ private:
 	inline bool pq_is_empty() {
 		return m_s.pq_len == 0;
 	}
-	template<int Bytes> int fill_pq(int _amount, int _cycles, bool _paddress);
+	uint8_t *move_pq_data();
+	template<int len> uint32_t mmu_read(uint32_t _linear, int &_cycles);
+	template<int bytes, bool paging> int fill_pq(int _amount, int _cycles, bool _paddress);
 	int (CPUBus::*fill_pq_fn)(int, int, bool);
 
 	template<class T, int L>

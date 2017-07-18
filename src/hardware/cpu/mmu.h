@@ -46,7 +46,7 @@ public:
 	uint32_t TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 	void TLB_check(uint32_t _linear, bool _user, bool _write);
 	void TLB_flush();
-	uint32_t dbg_translate_linear(uint32_t _linear_addr, Memory *_memory) const;
+	static uint32_t dbg_translate_linear(uint32_t _linear_addr, uint32_t _pdbr, Memory *_memory);
 
 private:
 	inline unsigned TLB_index(uint32_t _lpf, unsigned _len) const {

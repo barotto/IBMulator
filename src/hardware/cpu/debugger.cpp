@@ -48,9 +48,9 @@ char * skip_blanks(char * str) {
 }
 
 uint CPUDebugger::disasm(char *_buf, uint _buflen, uint32_t _addr, uint32_t _eip,
-		Memory *_mem, const uint8_t *_instr_buf, uint _instr_buf_len, bool _cs_def)
+		CPUCore *_core, Memory *_mem, const uint8_t *_instr_buf, uint _instr_buf_len, bool _cs_def)
 {
-	return m_dasm.disasm(_buf, _buflen, _addr, _eip, _mem, _instr_buf, _instr_buf_len, _cs_def);
+	return m_dasm.disasm(_buf, _buflen, _addr, _eip, _core, _mem, _instr_buf, _instr_buf_len, _cs_def);
 }
 
 unsigned CPUDebugger::last_disasm_opsize()

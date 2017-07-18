@@ -159,8 +159,9 @@ void CPU::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	g_cpubus.restore_state(_state);
+	// restore the core before the bus.
 	g_cpucore.restore_state(_state);
+	g_cpubus.restore_state(_state);
 
 	m_logger.reset_iret_address();
 	disable_prg_log();
@@ -204,7 +205,6 @@ uint CPU::step()
 			//if the prev instr is the same as the next don't decode
 			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.pq_is_valid()) {
 				if(!g_cpubus.pq_is_valid()) {
-					// page faults can be generated at this point
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
 					cycles.decode = m_instr->size;

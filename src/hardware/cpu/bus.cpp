@@ -46,6 +46,7 @@ void CPUBus::init()
 void CPUBus::reset()
 {
 	invalidate_pq();
+	enable_paging(false);
 	update(0);
 	m_cycles_ahead = 0;
 }
@@ -81,12 +82,6 @@ void CPUBus::config_changed()
 	m_pq_size = cpu_pqs[g_cpu.model()];
 	m_pq_thres = cpu_pqt[g_cpu.model()];
 
-	if(m_width == 16) {
-		fill_pq_fn = &CPUBus::fill_pq<2>;
-	} else {
-		fill_pq_fn = &CPUBus::fill_pq<4>;
-	}
-
 	if(g_cpu.family() >= CPU_386) {
 		m_paddress = PIPELINED_ADDR_386;
 	} else {
@@ -105,19 +100,30 @@ void CPUBus::save_state(StateBuf &_state)
 void CPUBus::restore_state(StateBuf &_state)
 {
 	_state.read(&m_s, {sizeof(m_s), "CPUBus"});
-	//invalidate_pq(); why?
+	enable_paging(IS_PAGING());
+}
+
+void CPUBus::enable_paging(bool _enabled)
+{
+	if(_enabled) {
+		if(m_width == 16) {
+			fill_pq_fn = &CPUBus::fill_pq<2,true>;
+		} else {
+			fill_pq_fn = &CPUBus::fill_pq<4,true>;
+		}
+	} else {
+		if(m_width == 16) {
+			fill_pq_fn = &CPUBus::fill_pq<2,false>;
+		} else {
+			fill_pq_fn = &CPUBus::fill_pq<4,false>;
+		}
+	}
 }
 
 void CPUBus::reset_pq()
 {
 	m_s.eip = REG_EIP;
-	if(IS_PAGING()) {
-		m_s.cseip = g_cpummu.TLB_lookup(REG_CS.desc.base + REG_EIP, 1, IS_USER_PL, false);
-		//MMU writes to memory
-		update(0);
-	} else {
-		m_s.cseip = REG_CS.desc.base + REG_EIP;
-	}
+	m_s.cseip = REG_CS.desc.base + REG_EIP;
 	invalidate_pq();
 	m_cycles_ahead = 0;
 }
@@ -150,7 +156,14 @@ void CPUBus::update(int _cycles)
 	m_cycles_ahead += m_mem_w_cycles;
 }
 
-template<int Bytes>
+template<int len>
+uint32_t CPUBus::mmu_read(uint32_t _linear, int &_cycles)
+{
+	uint32_t phy = g_cpummu.TLB_lookup(_linear, len, IS_USER_PL, false);
+	return g_memory.read<len>(phy, _cycles);
+}
+
+template<int bytes, bool paging>
 int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 {
 	UNUSED(_paddress);
@@ -167,7 +180,7 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 		}
 	}
 	m_s.pq_left = m_s.cseip;
-	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - Bytes;
+	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - bytes;
 	int cycles = 0;
 #if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)
 	int paddress = _paddress*m_paddress;
@@ -176,25 +189,64 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 	// fill until the requested amount is reached or there are available cycles
 	// and there are free space in the queue
 	while((_amount>0 || _cycles>cycles) && m_s.pq_tail <= pq_limit) {
-	// alternative, more permissive strategy:
-	// while((_amount>0 || (_cycles && _cycles>=cycles)) && m_s.pq_tail <= pq_limit) {
-		int adv = Bytes - (m_s.pq_tail & (Bytes-1));
+	/* alternative, more permissive strategy:
+	 * while((_amount>0 || (_cycles && _cycles>=cycles)) && m_s.pq_tail <= pq_limit)
+	 */
+		int adv = bytes - (m_s.pq_tail & (bytes-1));
 		int c = 0;
-		switch(adv) {
-			case 2: // word aligned
-				*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
-				break;
-			case 1: // 1-byte unaligned (right)
-				*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
-				break;
-			case 4: // dword aligned
-				*((uint32_t*)pq_ptr) = g_memory.read<4>(m_s.pq_tail, c);
-				break;
-			case 3: { // 1-byte unaligned (left)
-				uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
-				*pq_ptr = v >> 8;
-				*((uint16_t*)(pq_ptr+1)) = v >> 16;
-				break;
+		// one of these if-else blocks should be removed by the compiler
+		if(paging) {
+			// reads must be inside dword boundaries
+			assert((PAGE_OFFSET(m_s.pq_tail) + adv) <= 4096);
+			try {
+				switch(adv) {
+					case 2: // word aligned
+						*((uint16_t*)pq_ptr) = mmu_read<2>(m_s.pq_tail, c);
+						break;
+					case 1: // 1-byte unaligned (right)
+						*pq_ptr = mmu_read<1>(m_s.pq_tail, c);
+						break;
+					case 4: // dword aligned
+						*((uint32_t*)pq_ptr) = mmu_read<4>(m_s.pq_tail, c);
+						break;
+					case 3: { // 1-byte unaligned (left)
+						uint32_t v = mmu_read<4>(m_s.pq_tail-1, c);
+						*pq_ptr = v >> 8;
+						*((uint16_t*)(pq_ptr+1)) = v >> 16;
+						break;
+					}
+				}
+			} catch(CPUException &) {
+				// #PF are catched here
+				if(_amount) {
+					// the requested amount is not present
+					// throw page fault for instruction decoding
+					m_s.pq_valid = false;
+					throw;
+				} else {
+					// no amount required, queue is filled with 0 or more valid bytes
+					// don't throw exceptions for code prefetching
+					m_s.pq_valid = true;
+					return cycles;
+				}
+			}
+		} else {
+			switch(adv) {
+				case 2: // word aligned
+					*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
+					break;
+				case 1: // 1-byte unaligned (right)
+					*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
+					break;
+				case 4: // dword aligned
+					*((uint32_t*)pq_ptr) = g_memory.read<4>(m_s.pq_tail, c);
+					break;
+				case 3: { // 1-byte unaligned (left)
+					uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
+					*pq_ptr = v >> 8;
+					*((uint16_t*)(pq_ptr+1)) = v >> 16;
+					break;
+				}
 			}
 		}
 #if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)

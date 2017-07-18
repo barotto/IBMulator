@@ -95,7 +95,7 @@ public:
 
 	CPUDebugger() {}
 
-	uint disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _ip, Memory *_mem,
+	unsigned disasm(char * _buf, uint _buflen, uint32_t _addr, uint32_t _eip, CPUCore *_core, Memory *_mem,
 			const uint8_t *_instr_buf, uint _instr_buf_len, bool _cs_def);
 	unsigned last_disasm_opsize();
 	char * analyze_instruction(char * _inst, CPUCore *_core, Memory *_mem, uint _opsize);

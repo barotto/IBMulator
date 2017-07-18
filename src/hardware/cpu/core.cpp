@@ -467,8 +467,10 @@ void CPUCore::set_CR0(uint32_t _cr0)
 	if(PG_changed) {
 		if(_cr0&CR0MASK_PG) {
 			PDEBUGF(LOG_V2, LOG_CPU, "Paging enabled, CR3=%08X\n", REG_CR3);
+			g_cpubus.enable_paging(true);
 		} else {
 			PDEBUGF(LOG_V2, LOG_CPU, "Paging disabled\n");
+			g_cpubus.enable_paging(false);
 		}
 	}
 	if(CPU_FAMILY >= CPU_386 && (PE_changed || PG_changed)) {
@@ -483,13 +485,25 @@ void CPUCore::set_CR3(uint32_t _cr3)
 	g_cpummu.TLB_flush();
 }
 
+uint32_t CPUCore::dbg_get_phyaddr(uint32_t _linaddr, Memory *_memory) const
+{
+	if(_memory == nullptr) {
+		_memory = &g_memory;
+	}
+	if(is_paging()) {
+		return CPUMMU::dbg_translate_linear(_linaddr, m_cr[3]&0xFFFFF000, _memory);
+	} else {
+		return _linaddr;
+	}
+}
+
 uint32_t CPUCore::dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory) const
 {
 	if(_memory == nullptr) {
 		_memory = &g_memory;
 	}
 	if(is_paging()) {
-		return g_cpummu.dbg_translate_linear(get_linaddr(_segidx, _offset), _memory);
+		return CPUMMU::dbg_translate_linear(get_linaddr(_segidx, _offset), m_cr[3]&0xFFFFF000, _memory);
 	} else {
 		return get_linaddr(_segidx, _offset);
 	}

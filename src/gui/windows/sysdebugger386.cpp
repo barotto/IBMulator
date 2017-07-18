@@ -86,17 +86,15 @@ SysDebugger386::~SysDebugger386()
 const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
-
 	static RC::String str;
 
 	str = "";
-
 	static char empty = 0;
 
-	//throws CPUException when #PF
-	uint32_t start = DBG_GET_PHYADDR(CS, _eip);
+	uint32_t start = GET_LINADDR(CS, _eip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _eip, &g_memory, nullptr, 0, REG_CS.desc.big);
+	//throws CPUException when #PF at CS:EIP
+	uint size = debugger.disasm(dline, 200, start, _eip, &g_cpucore, &g_memory, nullptr, 0, REG_CS.desc.big);
 	if(_size!=nullptr) {
 		*_size = size;
 	}
@@ -211,17 +209,23 @@ void SysDebugger386::update()
 	}
 
 	RC::String str;
-	uint size;
+	unsigned size;
+	int lines = 3;
 	uint32_t nextip = REG_EIP;
 	try {
 		str = disasm(nextip, true, &size) + "<br />";
+		lines--;
 		nextip += size;
 		str += disasm(nextip, false, &size) + "<br />";
+		lines--;
 		nextip += size;
 		str += disasm(nextip, false, nullptr);
+		lines--;
 	} catch(CPUException &) {
 		// catch any #PF
-		str = "[invalid]";
+		while(lines--) {
+			str += "#PF<br />";
+		}
 	}
 	m_disasm.line0->SetInnerRML(str);
 }

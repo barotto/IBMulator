@@ -173,9 +173,9 @@ void CPUMMU::TLB_flush()
 	}
 }
 
-uint32_t CPUMMU::dbg_translate_linear(uint32_t _linear_addr, Memory *_memory) const
+uint32_t CPUMMU::dbg_translate_linear(uint32_t _linear_addr, uint32_t _pdbr, Memory *_memory)
 {
-	uint32_t ppf = PDBR;
+	uint32_t ppf = _pdbr;
 	for(int table = 1; table>=0; --table) {
 		uint32_t entry_addr = ppf + ((_linear_addr >> (10 + 10*table)) & 0xffc);
 		uint32_t entry = _memory->dbg_read_dword(entry_addr);

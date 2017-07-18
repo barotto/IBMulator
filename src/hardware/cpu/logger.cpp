@@ -337,8 +337,10 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 	static char empty[23] = { 32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,0 };
 
 	char dline[200];
-	debugger.disasm(dline, 200u,
-		_log_entry.instr.cseip, _log_entry.instr.eip, nullptr,
+	debugger.disasm(
+		dline, 200u,
+		_log_entry.instr.cseip, _log_entry.instr.eip,
+		nullptr, nullptr,
 		_log_entry.instr.bytes, _log_entry.instr.size,
 		_log_entry.core.get_CS().desc.big
 	);
