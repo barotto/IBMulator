@@ -27,6 +27,12 @@
  */
 #define PARITY(x) (!(popcnt(x & 0xFF) & 1))
 
+/* Bochs and DosBox compute the undefined flags for AAA and AAS differently
+ * Set to true to use the DosBox version
+ * Set to false to use the Bochs version (validated on P6+)
+ */
+#define USE_DOSBOX_ASCIIOPS false
+
 #ifdef __MSC_VER
 #  include <intrin.h>
 #  define __builtin_popcount __popcnt
@@ -64,8 +70,8 @@ void CPUExecutor::AAA()
 	/* according to the original Intel's 286 manual, only AF and CF are modified
 	 * but it seems OF,SF,ZF,PF are also updated in a specific way (they are not
 	 * undefined).
-	 * used the dosbox algo.
 	 */
+#if USE_DOSBOX_ASCIIOPS
 	SET_FLAG(SF, ((REG_AL >= 0x7a) && (REG_AL <= 0xf9)));
 	if(((REG_AL & 0x0f) > 9)) {
 		SET_FLAG(OF,(REG_AL & 0xf0) == 0x70);
@@ -87,6 +93,24 @@ void CPUExecutor::AAA()
 	}
 	SET_FLAG(PF, PARITY(REG_AL));
 	REG_AL &= 0x0f;
+#else
+	bool af = false;
+	bool cf = false;
+
+	if(((REG_AL & 0x0f) > 9) || FLAG_AF) {
+		REG_AX += 0x106;
+		af = true;
+		cf = true;
+	}
+
+	REG_AL &= 0x0f;
+
+	SET_FLAG(CF, cf);
+	SET_FLAG(AF, af);
+	SET_FLAG(SF, REG_AL & 0x80);
+	SET_FLAG(ZF, REG_AL == 0);
+	SET_FLAG(PF, PARITY(REG_AL));
+#endif
 }
 
 
@@ -142,6 +166,7 @@ void CPUExecutor::AAM()
 
 void CPUExecutor::AAS()
 {
+#if USE_DOSBOX_ASCIIOPS
 	if((REG_AL & 0x0f) > 9) {
 		SET_FLAG(SF, REG_AL > 0x85);
 		REG_AX -= 0x106;
@@ -163,6 +188,24 @@ void CPUExecutor::AAS()
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
 	REG_AL &= 0x0F;
+#else
+	bool af = false;
+	bool cf = false;
+
+	if(((REG_AL & 0x0F) > 0x09) || FLAG_AF) {
+		REG_AX -= 0x106;
+		af = true;
+		cf = true;
+	}
+
+	REG_AL &= 0x0f;
+
+	SET_FLAG(CF, cf);
+	SET_FLAG(AF, af);
+	SET_FLAG(SF, REG_AL & 0x80);
+	SET_FLAG(ZF, REG_AL == 0);
+	SET_FLAG(PF, PARITY(REG_AL));
+#endif
 }
 
 
@@ -420,9 +463,13 @@ void CPUExecutor::BSF_rw_ew()
 			mask <<= 1;
 			count++;
 		}
-
 		store_rw(count);
 		SET_FLAG(ZF, false);
+		SET_FLAG(SF, count & 0x8000);
+		SET_FLAG(AF, false);
+		SET_FLAG(PF, PARITY(count));
+		SET_FLAG(OF, false);
+		SET_FLAG(CF, false);
 	}
 }
 
@@ -439,9 +486,13 @@ void CPUExecutor::BSF_rd_ed()
 			mask <<= 1;
 			count++;
 		}
-
 		store_rd(count);
 		SET_FLAG(ZF, false);
+		SET_FLAG(SF, count & 0x80000000);
+		SET_FLAG(AF, false);
+		SET_FLAG(PF, PARITY(count));
+		SET_FLAG(OF, false);
+		SET_FLAG(CF, false);
 	}
 }
 
@@ -462,9 +513,13 @@ void CPUExecutor::BSR_rw_ew()
 			op1--;
 			op2 <<= 1;
 		}
-
 		store_rw(op1);
 		SET_FLAG(ZF, false);
+		SET_FLAG(SF, op1 & 0x8000);
+		SET_FLAG(AF, false);
+		SET_FLAG(PF, PARITY(op1));
+		SET_FLAG(OF, false);
+		SET_FLAG(CF, false);
 	}
 }
 
@@ -480,9 +535,13 @@ void CPUExecutor::BSR_rd_ed()
 			op1--;
 			op2 <<= 1;
 		}
-
 		store_rd(op1);
 		SET_FLAG(ZF, false);
+		SET_FLAG(SF, op1 & 0x80000000);
+		SET_FLAG(AF, false);
+		SET_FLAG(PF, PARITY(op1));
+		SET_FLAG(OF, false);
+		SET_FLAG(CF, false);
 	}
 }
 
@@ -1410,6 +1469,7 @@ void CPUExecutor::IMUL_eb()
 	int8_t op2 = int8_t(load_eb());
 
 	int16_t product_16 = int16_t(op1) * int16_t(op2);
+	uint8_t product_8 = (product_16 & 0xFF);
 
 	/* now write product back to destination */
 	REG_AX = product_16;
@@ -1424,6 +1484,10 @@ void CPUExecutor::IMUL_eb()
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
 	}
+	SET_FLAG(SF, product_8 & 0x80);
+	SET_FLAG(ZF, product_8 == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_8));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2);
@@ -1453,6 +1517,10 @@ void CPUExecutor::IMUL_ew()
 		SET_FLAG(CF, true);
 		SET_FLAG(OF, true);
 	}
+	SET_FLAG(SF, product_16l & 0x8000);
+	SET_FLAG(ZF, product_16l == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_16l));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_16);
@@ -1482,6 +1550,10 @@ void CPUExecutor::IMUL_ed()
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	}
+	SET_FLAG(SF, product_32l & 0x80000000);
+	SET_FLAG(ZF, product_32l == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_32l));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_32);
@@ -1490,7 +1562,8 @@ void CPUExecutor::IMUL_ed()
 
 int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
 {
-	int32_t product_32  = int32_t(_op1) * int32_t(_op2);
+	int32_t  product_32  = int32_t(_op1) * int32_t(_op2);
+	uint16_t product_16 = (product_32 & 0xFFFF);
 
 	// CF and OF are cleared if the result fits in a r16
 	if(product_32 != int16_t(product_32)) {
@@ -1500,17 +1573,22 @@ int16_t CPUExecutor::IMUL_w(int16_t _op1, int16_t _op2)
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	}
+	SET_FLAG(SF, product_16 & 0x8000);
+	SET_FLAG(ZF, product_16 == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_16));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(_op2);
 	}
 
-	return (product_32 & 0xFFFF);
+	return product_16;
 }
 
 int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 {
-	int64_t product_64  = int64_t(_op1) * int64_t(_op2);
+	int64_t  product_64  = int64_t(_op1) * int64_t(_op2);
+	uint32_t product_32 = uint32_t(product_64 & 0xFFFFFFFF);
 
 	// CF and OF are cleared if the result fits in a r32
 	if(product_64 != int32_t(product_64)) {
@@ -1520,12 +1598,16 @@ int32_t CPUExecutor::IMUL_d(int32_t _op1, int32_t _op2)
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	}
+	SET_FLAG(SF, product_32 & 0x80000000);
+	SET_FLAG(ZF, product_32 == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_32));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(_op2);
 	}
 
-	return (product_64 & 0xFFFFFFFF);
+	return product_32;
 }
 
 void CPUExecutor::IMUL_rw_ew()    { store_rw(IMUL_w(load_rw(), load_ew())); }
@@ -2968,6 +3050,7 @@ void CPUExecutor::MUL_eb()
 
 	uint16_t product_16 = uint16_t(op1_8) * uint16_t(op2_8);
 
+	uint8_t product_8l = product_16 & 0xFF;
 	uint8_t product_8h = product_16 >> 8;
 
 	/* now write product back to destination */
@@ -2980,6 +3063,11 @@ void CPUExecutor::MUL_eb()
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	}
+
+	SET_FLAG(SF, product_8l & 0x80);
+	SET_FLAG(ZF, product_8l == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_8l));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_8);
@@ -3008,6 +3096,11 @@ void CPUExecutor::MUL_ew()
 		SET_FLAG(OF, false);
 	}
 
+	SET_FLAG(SF, product_16l & 0x8000);
+	SET_FLAG(ZF, product_16l == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_16l));
+
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_16);
 	}
@@ -3034,6 +3127,11 @@ void CPUExecutor::MUL_ed()
 		SET_FLAG(CF, false);
 		SET_FLAG(OF, false);
 	}
+
+	SET_FLAG(SF, product_32l & 0x80000000);
+	SET_FLAG(ZF, product_32l == 0);
+	SET_FLAG(AF, false);
+	SET_FLAG(PF, PARITY(product_32l));
 
 	if(CPU_FAMILY == CPU_386) {
 		m_instr->cycles.extra = mul_cycles_386(op2_32);
@@ -3134,6 +3232,7 @@ uint8_t CPUExecutor::OR_b(uint8_t op1, uint8_t op2)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, false);
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
@@ -3147,6 +3246,7 @@ uint16_t CPUExecutor::OR_w(uint16_t op1, uint16_t op2)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, false);
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
@@ -3160,6 +3260,7 @@ uint32_t CPUExecutor::OR_d(uint32_t op1, uint32_t op2)
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(OF, false);
 	SET_FLAG(CF, false);
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
@@ -3961,6 +4062,7 @@ uint8_t CPUExecutor::SHL_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -3993,6 +4095,7 @@ uint16_t CPUExecutor::SHL_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4019,6 +4122,7 @@ uint32_t CPUExecutor::SHL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4052,6 +4156,7 @@ uint8_t CPUExecutor::SHR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4075,6 +4180,7 @@ uint16_t CPUExecutor::SHR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4103,6 +4209,7 @@ uint32_t CPUExecutor::SHR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4136,6 +4243,7 @@ uint8_t CPUExecutor::SAR_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4159,6 +4267,7 @@ uint16_t CPUExecutor::SAR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4182,6 +4291,7 @@ uint32_t CPUExecutor::SAR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4764,6 +4874,7 @@ void CPUExecutor::TEST_b(uint8_t _value1, uint8_t _value2)
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 }
 
 void CPUExecutor::TEST_w(uint16_t _value1, uint16_t _value2)
@@ -4775,6 +4886,7 @@ void CPUExecutor::TEST_w(uint16_t _value1, uint16_t _value2)
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 }
 
 void CPUExecutor::TEST_d(uint32_t _value1, uint32_t _value2)
@@ -4786,6 +4898,7 @@ void CPUExecutor::TEST_d(uint32_t _value1, uint32_t _value2)
 	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 }
 
 void CPUExecutor::TEST_eb_rb() { TEST_b(load_eb(), load_rb()); }
@@ -5026,6 +5139,7 @@ uint8_t CPUExecutor::XOR_b(uint8_t _op1, uint8_t _op2)
 	SET_FLAG(SF, res & 0x80);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
@@ -5039,6 +5153,7 @@ uint16_t CPUExecutor::XOR_w(uint16_t _op1, uint16_t _op2)
 	SET_FLAG(SF, res & 0x8000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
@@ -5052,6 +5167,7 @@ uint32_t CPUExecutor::XOR_d(uint32_t _op1, uint32_t _op2)
 	SET_FLAG(SF, res & 0x80000000);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
+	SET_FLAG(AF, false); // unknown
 
 	return res;
 }
