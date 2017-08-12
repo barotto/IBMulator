@@ -86,7 +86,7 @@ restart_opcode:
 		}
 		case 0x66: { // operand-size
 			if(CPU_FAMILY >= CPU_386) {
-				m_instr.op32 = !m_instr.op32;
+				m_instr.op32 = !REG_CS.desc.big;
 				goto restart_opcode;
 			} else {
 				illegal_opcode();
@@ -95,7 +95,7 @@ restart_opcode:
 		}
 		case 0x67: { // address-size
 			if(CPU_FAMILY >= CPU_386) {
-				m_instr.addr32 = !m_instr.addr32;
+				m_instr.addr32 = !REG_CS.desc.big;
 				goto restart_opcode;
 			} else {
 				illegal_opcode();
