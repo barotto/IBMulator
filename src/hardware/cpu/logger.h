@@ -21,10 +21,12 @@
 #define IBMULATOR_CPU_LOGGER_H
 
 #define CPULOG               false    // activate CPU logging?
+#define CPULOG_FILE          "cpulog.log" // log file name
 #define CPULOG_MAX_SIZE      400000u  // number of instruction to log
 #define CPULOG_WRITE_TIME    true     // write instruction machine time?
 #define CPULOG_WRITE_CSEIP   true     // write instruction address as CS:EIP?
 #define CPULOG_WRITE_HEX     true     // write instruction as hex codes?
+#define CPULOG_WRITE_DISASM  true     // write the disassembled instruction?
 #define CPULOG_WRITE_STATE   false    // write the CPU global state?
 #define CPULOG_WRITE_CORE    false    // write the CPU registers?
 #define CPULOG_WRITE_SEGREGS false    // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)

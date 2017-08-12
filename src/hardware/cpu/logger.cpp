@@ -215,9 +215,11 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		}
 	}
 
-	//the instruction
-	if(fprintf(_dest, "%s  ", disasm(_entry).c_str()) < 0)
-		return -1;
+	if(CPULOG_WRITE_DISASM) {
+		//the instruction
+		if(fprintf(_dest, "%s  ", disasm(_entry).c_str()) < 0)
+			return -1;
+	}
 
 	if(CPULOG_WRITE_STATE) {
 		if(fprintf(_dest, "SE=%d,SM=%d,SA=%d ",

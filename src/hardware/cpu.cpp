@@ -788,6 +788,6 @@ void CPU::DOS_program_finish(std::string _name)
 
 void CPU::write_log()
 {
-	std::string filename = g_program.config().get_cfg_home() + FS_SEP "cpulog.log";
+	std::string filename = g_program.config().get_cfg_home() + FS_SEP CPULOG_FILE;
 	m_logger.dump(filename);
 }
