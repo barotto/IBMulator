@@ -147,8 +147,8 @@ void CPU::save_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s,h);
 
-	g_cpubus.save_state(_state);
 	g_cpucore.save_state(_state);
+	g_cpubus.save_state(_state);
 	//decoder and executor don't have a state to save and restore
 }
 
