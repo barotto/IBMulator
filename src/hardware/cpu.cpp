@@ -524,10 +524,10 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 
 	// software interrupts can be redirected in v8086 mode
 	if((_type!=CPU_SOFTWARE_INTERRUPT) || !IS_V8086() || !v86_redirect_interrupt(_vector)) {
-		if(IS_PMODE()) {
-			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
-		} else {
+		if(IS_RMODE()) {
 			g_cpuexecutor.interrupt(_vector);
+		} else {
+			g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
 		}
 	}
 
@@ -598,7 +598,9 @@ void CPU::exception(CPUException _exc)
 			Single-step: trap.
 			Task-switch breakpoint: trap.
 			*/
-			PERRF_ABORT(LOG_CPU, "not implemented\n");
+			PERRF(LOG_CPU, "not implemented\n");
+			enter_sleep_state(CPU_STATE_HALT);
+			return;
 			break;
 		case CPU_DF_EXC:
 			error_code = 0;
