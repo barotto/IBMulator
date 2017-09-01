@@ -200,7 +200,6 @@ private:
 
 	uint32_t ata_read_next_block(int _ch, uint32_t _seek_time);
 	void ata_write_next_block(int _ch);
-	uint32_t ata_write_block(int _ch);
 
 	uint32_t seek(int _ch, uint64_t _curr_time);
 	uint32_t get_seek_time(int _ch, int64_t _c0, int64_t _c1, int64_t _cprev);

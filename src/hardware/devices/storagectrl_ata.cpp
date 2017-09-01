@@ -497,9 +497,7 @@ void StorageCtrl_ATA::command_timer(int _ch, int _dev, uint64_t /*_time*/)
 			case 0x34: // WRITE SECTORS EXT
 			case 0x39: // WRITE MULTIPLE EXT
 				command_successful(_ch, _dev, true);
-				if(controller->num_sectors) {
-					controller->status.drq = true;
-				}
+				controller->status.drq = true;
 				break;
 			case 0x90: // EXECUTE DEVICE DIAGNOSTIC
 				command_successful(_ch, _dev, true);
@@ -585,9 +583,9 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 
 					// if buffer completely read
 					if(controller->buffer_index >= controller->buffer_size) {
+						controller->status.drq = false;
 						if(controller->num_sectors == 0) {
 							// no more sectors to read
-							controller->status.drq = false;
 							controller->status.err = false;
 							controller->buffer_size = 0;
 						} else {
@@ -595,6 +593,7 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 							uint32_t exec_time = ata_read_next_block(channel, 0);
 							if(!controller->status.err) {
 								activate_command_timer(channel, exec_time);
+								controller->status.busy = true;
 							}
 						}
 					}
@@ -729,19 +728,19 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 			break;
 		case 0x02: // hard disk sector count / interrupt reason 0x1f2
 			value = (!any_is_present(channel)) ? 0 : controller->sector_count;
-			PDEBUGF(LOG_V2, LOG_HDD, "sct cnt  -> 0x%02X\n", value);
+			PDEBUGF(LOG_V2, LOG_HDD, "sct cnt   -> 0x%02X\n", value);
 			break;
 		case 0x03: // sector number 0x1f3
 			value = (!any_is_present(channel)) ? 0 : controller->sector_no;
-			PDEBUGF(LOG_V2, LOG_HDD, "sct num  -> 0x%02X\n", value);
+			PDEBUGF(LOG_V2, LOG_HDD, "sct num   -> 0x%02X\n", value);
 			break;
 		case 0x04: // cylinder low 0x1f4
 			value = (!any_is_present(channel)) ? 0 : (controller->cylinder_no & 0x00ff);
-			PDEBUGF(LOG_V2, LOG_HDD, "cyl low  -> 0x%02X\n", value);
+			PDEBUGF(LOG_V2, LOG_HDD, "cyl low   -> 0x%02X\n", value);
 			break;
 		case 0x05: // cylinder high 0x1f5
 			value = (!any_is_present(channel)) ? 0 : controller->cylinder_no >> 8;
-			PDEBUGF(LOG_V2, LOG_HDD, "cyl high -> 0x%02X\n", value);
+			PDEBUGF(LOG_V2, LOG_HDD, "cyl high  -> 0x%02X\n", value);
 			break;
 		case 0x06: // hard disk drive and head register 0x1f6
 			// b7 Extended data field for ECC
@@ -784,7 +783,7 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 				}
 			}
 			std::string value_str = bitfield_to_string(value,
-			{ "ERR", "IDX", "CORR", "DRQ", "DSC", "DWF", "DRDY", "BSY" },
+			{ "ERR", "IDX", "CORR", "DRQ", "SKC", "WFT", "RDY", "BSY" },
 			{ "", "", "", "", "", "", "", "" });
 			PDEBUGF(LOG_V2, LOG_HDD, "status    -> 0x%02X %s\n", value, value_str.c_str());
 			if(port == 0x07) {
@@ -857,14 +856,28 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 						/* buffer is completely written, we are ready to write
 						 * data block to the device
 						 */
-						uint32_t exec_time = ata_write_block(channel);
+						/* Don't use the timer. Assume the use of an internal
+						 * fast buffer that immediately accept all the written
+						 * sectors.
+						 * The PS/1 BIOS awaits for IRQ 14 for no more than 1000us
+						 * and then throws an error.
+						 * Bochs' BIOS doesn't use the IRQ and doesn't wait at all:
+						 * it just throws an error if BSY bit is set, against
+						 * the ATA protocol spec.
+						 */
+						try {
+							// the following function updates the value of next_lsector
+							// with the first sector of the next block transfer
+							ata_tx_sectors(channel, true, controller->buffer, controller->buffer_size);
+							command_successful(channel, m_channels[channel].drive_select, true);
+						} catch(std::exception &) {
+							command_aborted(channel, controller->current_command);
+						}
 						// writes invalidate the whole cache
 						controller->look_ahead_time = g_machine.get_virt_time_us();
-						if(!controller->status.err) {
-							activate_command_timer(channel, exec_time);
-							if(controller->num_sectors) {
-								ata_write_next_block(channel);
-							}
+						if(!controller->status.err && controller->num_sectors) {
+							ata_write_next_block(channel);
+							controller->status.drq = true;
 						}
 					}
 					break;
@@ -1660,7 +1673,7 @@ uint32_t StorageCtrl_ATA::ata_read_next_block(int _ch, uint32_t _cmd_time)
 	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba, c0,h0,s0);
 	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba+xfer_amount, c1,h1,s1);
 	double hpos = selected_storage(_ch).head_position(g_machine.get_virt_time_us());
-	PDEBUGF(LOG_V1, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=%d/%d/%.2f, seek:%d, tx:%d\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=%d/%d/%.2f, seek:%d, tx:%d\n",
 			c0,h0,s0, c1,h1,s1, xfer_amount,
 			selected_storage(_ch).chs_to_hw_sector(s0),
 			selected_storage(_ch).chs_to_hw_sector(s1),
@@ -1767,34 +1780,14 @@ uint32_t StorageCtrl_ATA::ata_cmd_write_sectors(int _ch, uint8_t _cmd)
 
 	selected_drive(_ch).next_lba = logical_sector;
 
+	PDEBUGF(LOG_V1, LOG_HDD, "%s %s: writing %d sector(s) at lba=%lld (%dB)\n",
+			selected_string(_ch), ata_cmd_string(_cmd), controller.sector_count,
+			logical_sector, controller.sector_count*512);
+
 	uint32_t cmd_time = DEFAULT_CMD_US + CTRL_OVERH_US;
-	return (cmd_time);
-}
-
-uint32_t StorageCtrl_ATA::ata_write_block(int _ch)
-{
-	Controller &controller = selected_ctrl(_ch);
-
-	/* If the drive is not already on the desired track, an implied seek is
-	 * performed.
-	 */
 	uint32_t seek_time = seek(_ch, g_machine.get_virt_time_us());
-	int sector_count = (controller.buffer_size / 512);
-	uint32_t xfer_time = selected_storage(_ch).transfer_time_us(
-			g_machine.get_virt_time_us() + seek_time,
-			selected_drive(_ch).next_lba,
-			sector_count
-			);
-	try {
-		// the following function updates the value of next_lsector
-		// it will point to the first sector of the next block transfer
-		ata_tx_sectors(_ch, true, controller.buffer, controller.buffer_size);
-	} catch(std::exception &) {
-		command_aborted(_ch, controller.current_command);
-		return 0;
-	}
 
-	return (seek_time + xfer_time);
+	return (cmd_time+seek_time);
 }
 
 void StorageCtrl_ATA::ata_write_next_block(int _ch)
@@ -3017,7 +3010,8 @@ void StorageCtrl_ATA::ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, uns
 	HardDiskDrive * hdd = dynamic_cast<HardDiskDrive*>(&selected_storage(_ch));
 	assert(hdd != nullptr);
 
-	PDEBUGF(LOG_V2, LOG_HDD, "reading %d sector(s) at lba=%lld\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "%s %d sector(s) at lba=%lld\n",
+			_write?"writing":"reading",
 			sector_count, calculate_logical_address(_ch));
 
 	int64_t c0,c1;
@@ -3084,6 +3078,8 @@ uint32_t StorageCtrl_ATA::seek(int _ch, uint64_t _curr_time)
 			selected_ctrl(_ch).look_ahead_time = _curr_time;
 		}
 		return 0;
+	} else {
+		selected_ctrl(_ch).status.seek_complete = false;
 	}
 
 	uint32_t seek_time = get_seek_time(_ch, curr_cyl, dest_cyl, selected_drive(_ch).prev_cyl);
