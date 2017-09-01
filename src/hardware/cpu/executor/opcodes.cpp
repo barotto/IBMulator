@@ -23,9 +23,13 @@
 #include "hardware/cpu/debugger.h"
 
 /* the parity flag (PF) indicates whether the modulo 2 sum of the low-order
- * eight bits of the operation is even (PF=O) or odd (PF= 1) parity.
+ * eight bits of the operation is even (PF=O) or odd (PF=1) parity.
  */
+#ifdef __SSE4_2__
 #define PARITY(x) (!(popcnt(x & 0xFF) & 1))
+#else
+#define PARITY(x) (parity_table[x & 0xFF])
+#endif
 
 /* Bochs and DosBox compute the undefined flags for AAA and AAS differently
  * Set to true to use the DosBox version
@@ -42,15 +46,35 @@ GCC_ATTRIBUTE(always_inline)
 inline uint popcnt(uint _value)
 {
 #if 0
-	uint count;
-    __asm__ ("popcnt %1,%0" : "=r"(count) : "rm"(_value) : "cc");
-    return count;
+	unsigned count;
+	__asm__ ("popcnt %1,%0" : "=r"(count) : "rm"(_value) : "cc");
+	return count;
 #else
-    // the builtin is translated with the POPCNT instruction only with -mpopcnt
-    // or -msse4.2 flags
-    return __builtin_popcount(_value);
+	// the builtin is translated with the POPCNT instruction only with -mpopcnt
+	// or -msse4.2 flags
+	return __builtin_popcount(_value);
 #endif
 }
+
+bool parity_table[256] = {
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
+};
+
 
 void CPUExecutor::check_CPL_privilege(bool _mode_cond, const char *_opstr)
 {
@@ -400,7 +424,7 @@ void CPUExecutor::AND_ed_ib() { store_ed(AND_d(load_ed(), int8_t(m_instr->ib)));
 void CPUExecutor::ARPL_ew_rw()
 {
 	if(!IS_PMODE()) {
-		PDEBUGF(LOG_V2, LOG_CPU, "ARPL: not recognized in real mode\n");
+		PDEBUGF(LOG_V2, LOG_CPU, "ARPL: not recognized in real or v8086 mode\n");
 		throw CPUException(CPU_UD_EXC, 0);
 	}
 
