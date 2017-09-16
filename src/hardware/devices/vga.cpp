@@ -1633,6 +1633,7 @@ void VGA::update(uint64_t _time)
 		rows = (VDE+1)/(MSL+1);
 		if((rows * tm_info.line_offset) > (1 << 17)) {
 			PDEBUGF(LOG_V0, LOG_VGA, "update(): text mode: out of memory\n");
+			m_display->unlock();
 			return;
 		}
 		cWidth = ((m_s.sequencer.reg1 & 0x01) == 1) ? 8 : 9;
