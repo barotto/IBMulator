@@ -61,7 +61,7 @@ private:
 	Chrono m_main_chrono;
 	HWBench m_bench;
 
-	uint m_heartbeat;
+	unsigned m_heartbeat;
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
@@ -133,6 +133,7 @@ public:
 	bool main_loop();
 	void config_changed();
 
+	void set_heartbeat(unsigned _us);
 	inline uint64_t get_virt_time_ns() const { return m_s.virt_time; }
 	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_s.virt_time); }
 	inline uint64_t get_virt_time_ns_mt() const { return m_mt_virt_time; }

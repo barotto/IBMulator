@@ -154,7 +154,7 @@ void VGA::install()
 void VGA::config_changed()
 {
 	const int video_timings[8][3] = {
-	   // B   W   D
+		//B   W   D
 		{10, 20, 40 }, // Slow 8-bit
 		{ 8, 16, 32 }, // Fast 8-bit
 		{ 6,  8, 16 }, // Slow 16-bit
@@ -248,7 +248,7 @@ void VGA::reset(unsigned _type)
 		m_s.dac_shift = 2;
 		m_s.last_bpp = 8;
 		m_s.htotal_usec = 31;
-		m_s.vtotal_usec = 14285;
+		m_s.vtotal_usec = 14268; // 70.08 Hz
 	}
 	update_mem_mapping();
 	m_s.vga_enabled = true;
@@ -312,9 +312,11 @@ void VGA::restore_state(StateBuf &_state)
 	m_display->restore_state(_state);
 
 	double vfreq = 1000000.0 / m_s.vtotal_usec;
-	if(vfreq >= 35.0 && vfreq <= 75.0) {
+	if(vfreq >= 50.0 && vfreq <= 75.0) {
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this,_1));
 		g_machine.activate_timer(m_timer_id, uint64_t(m_s.vtotal_usec)*1_us, false);
+		g_machine.set_heartbeat(m_s.vtotal_usec);
+		g_program.set_heartbeat(m_s.vtotal_usec);
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 	}
@@ -435,9 +437,11 @@ void VGA::calculate_retrace_timing()
 
 	PDEBUGF(LOG_V2, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
 
-	if(vfreq >= 35.0 && vfreq <= 75.0) {
-		PINFOF(LOG_V2, LOG_VGA, "vfreq = %.2f Hz\n", vfreq);
+	if(vfreq >= 50.0 && vfreq <= 75.0) {
+		PDEBUGF(LOG_V1, LOG_VGA, "vfreq = %.4f Hz (%u us)\n", vfreq, m_s.vtotal_usec);
 		vertical_retrace(g_machine.get_virt_time_ns());
+		g_machine.set_heartbeat(m_s.vtotal_usec);
+		g_program.set_heartbeat(m_s.vtotal_usec);
 	} else {
 		g_machine.deactivate_timer(m_timer_id);
 		PDEBUGF(LOG_V2, LOG_VGA, "vfreq = %.2f Hz: out of range\n", vfreq);
@@ -1299,8 +1303,8 @@ void VGA::clear_screen()
 	memset(m_memory, 0, m_memsize);
 	m_display->lock();
 	m_display->clear_screen();
+	m_display->set_fb_updated();
 	m_display->unlock();
-	g_gui.vga_updated();
 
 	for(uint y = 0; y < m_num_y_tiles; y++) {
 		for(uint x = 0; x < m_num_x_tiles; x++) {
@@ -1383,6 +1387,9 @@ void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 void VGA::update(uint64_t _time)
 {
 	//this is "vertical blank start"
+	if(g_program.threads_sync()) {
+		m_display->wait();
+	}
 
 	uint iHeight, iWidth;
 	static uint cs_counter = 1; //cursor blink counter
@@ -1679,8 +1686,8 @@ void VGA::update(uint64_t _time)
 		}
 	}
 
+	m_display->set_fb_updated();
 	m_display->unlock();
-	g_gui.vga_updated();
 }
 
 void VGA::vertical_retrace(uint64_t _time)

@@ -20,8 +20,8 @@
 #ifndef IBMULATOR_H
 #define IBMULATOR_H
 
-#define MACHINE_HEARTBEAT    10000
-#define GUI_HEARTBEAT        16666
+#define MACHINE_HEARTBEAT    16683
+#define GUI_HEARTBEAT        16683
 #define CHRONO_RDTSC         false
 #define USE_PREFETCH_QUEUE   true
 #define PIT_CNT1_AUTO_UPDATE false

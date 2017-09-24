@@ -33,8 +33,9 @@ using std::string;
 
 ini_file_t AppConfig::ms_def_values = {
 	{ PROGRAM_SECTION, {
-		{ PROGRAM_MEDIA_DIR,   "" },
-		{ PROGRAM_CAPTURE_DIR, "" }
+		{ PROGRAM_MEDIA_DIR,    ""    },
+		{ PROGRAM_CAPTURE_DIR,  ""    },
+		{ PROGRAM_THREADS_SYNC, "yes" }
 	} },
 
 	{ SYSTEM_SECTION, {

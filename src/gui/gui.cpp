@@ -108,12 +108,25 @@ std::map<std::string, uint> GUI::ms_display_aspect = {
 
 GUI::GUI()
 :
+m_machine(nullptr),
+m_mixer(nullptr),
+m_width(640),
+m_height(480),
+m_SDL_window(nullptr),
+m_SDL_glcontext(nullptr),
+m_SDL_renderer(nullptr),
+m_second_timer(0),
 m_joystick0(JOY_NONE),
 m_joystick1(JOY_NONE),
+m_gui_visible(true),
+m_input_grab(false),
+m_mode(GUI_MODE_NORMAL),
 m_symspeed_factor(1.0),
 m_rocket_renderer(nullptr),
 m_rocket_sys_interface(nullptr),
-m_rocket_file_interface(nullptr)
+m_rocket_file_interface(nullptr),
+m_rocket_context(nullptr),
+m_gl_errors_count(0)
 {
 
 }
@@ -144,14 +157,14 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw std::exception();
 	}
 
-	m_mode = mode();
+	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
 
 	/*** WINDOW CREATION ***/
 	create_window(PACKAGE_STRING, 640, 480, SDL_WINDOW_RESIZABLE);
 
 	glewExperimental = GL_FALSE;
 	GLenum res = glewInit();
-	if(res != GLEW_OK)	{
+	if(res != GLEW_OK) {
 		PERRF(LOG_GUI,"GLEW ERROR: %s\n", glewGetErrorString(res));
 		shutdown_SDL();
 		throw std::exception();
@@ -161,6 +174,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	try {
 		check_device_caps();
+		SDL_GL_SetSwapInterval(!g_program.threads_sync());
 		init_Rocket();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
@@ -302,24 +316,18 @@ vec2i GUI::resize_window(int _w, int _h)
 	return vec2i(m_width, m_height);
 }
 
-uint GUI::mode()
-{
-	return g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
-}
-
 void GUI::sig_state_restored()
 {
 	m_windows.interface->sig_state_restored();
-	vga_updated();
+	m_windows.interface->set_vga_updated();
 }
 
 void GUI::toggle_fullscreen()
 {
 	Uint32 flags = (SDL_GetWindowFlags(m_SDL_window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP);
-    if(SDL_SetWindowFullscreen(m_SDL_window, flags) != 0) {
-        PERRF(LOG_GUI, "Toggling fullscreen mode failed: %s\n", SDL_GetError());
-        return;
-    }
+	if(SDL_SetWindowFullscreen(m_SDL_window, flags) != 0) {
+		PERRF(LOG_GUI, "Toggling fullscreen mode failed: %s\n", SDL_GetError());
+	}
 }
 
 void GUI::check_device_caps()

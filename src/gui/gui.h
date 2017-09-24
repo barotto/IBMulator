@@ -133,7 +133,6 @@ protected:
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
 	int m_joystick0;
 	int m_joystick1;
-
 	bool m_gui_visible;
 	bool m_input_grab;
 	std::string m_grab_method;
@@ -254,14 +253,12 @@ public:
 	void show_dbg_message(const char* _mex);
 
 	VGADisplay * vga_display() { assert(m_windows.interface); return m_windows.interface->vga_display(); }
-	void vga_updated() { assert(m_windows.interface); m_windows.interface->vga_updated(); }
 
 	vec2i resize_window(int _width, int _height);
 	int get_window_width() { return m_width; }
 	int get_window_height() { return m_height; }
 	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
 
-	static uint mode();
 	void sig_state_restored();
 
 	inline Machine *machine() { return m_machine; }

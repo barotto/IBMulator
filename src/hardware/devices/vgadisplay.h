@@ -21,6 +21,7 @@
 #define IBMULATOR_HW_VGADISPLAY_H
 
 #include "statebuf.h"
+#include <condition_variable>
 
 #define VGA_MAX_XRES 720
 #define VGA_MAX_YRES 480
@@ -64,7 +65,9 @@ class VGADisplay
 	} m_s;
 
 	bool m_dim_updated;
-	std::mutex m_lock;
+	std::atomic<bool> m_fb_updated;
+	std::mutex m_mutex;
+	std::condition_variable m_cv;
 
 	static uint8_t ms_font8x16[256][16];
 	static uint8_t ms_font8x8[256][8];
@@ -74,8 +77,15 @@ public:
 	VGADisplay();
 	~VGADisplay();
 
-	inline void lock() { m_lock.lock(); }
-	inline void unlock() { m_lock.unlock(); }
+	inline void lock() { m_mutex.lock(); }
+	inline void unlock() { m_mutex.unlock(); }
+	inline void wait() {
+		std::unique_lock<std::mutex> lock(m_mutex);
+		while(m_fb_updated) {
+			m_cv.wait(lock);
+		}
+	}
+	inline void notify_all() { m_cv.notify_all(); }
 	inline uint get_screen_xres() { return m_s.xres; }
 	inline uint get_screen_yres() { return m_s.yres; }
 	inline uint get_fb_xsize() { return m_s.fb_xsize; }
@@ -99,8 +109,11 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	inline bool get_dimension_updated() { return m_dim_updated; }
-	inline void reset_dimension_updated() { m_dim_updated = false; }
+	inline bool fb_updated() { return m_fb_updated; }
+	inline void set_fb_updated() { m_fb_updated = true; }
+	inline void clear_fb_updated() { m_fb_updated = false; }
+	inline bool dimension_updated() { return m_dim_updated; }
+	inline void clear_dimension_updated() { m_dim_updated = false; }
 
 };
 

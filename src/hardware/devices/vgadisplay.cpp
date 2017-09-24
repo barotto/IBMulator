@@ -86,7 +86,7 @@ void VGADisplay::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_VGA, "saving display state\n");
 
-	std::lock_guard<std::mutex> lock(m_lock);
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	StateHeader h;
 
@@ -105,7 +105,7 @@ void VGADisplay::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_VGA, "restoring display state\n");
 
-	std::lock_guard<std::mutex> lock(m_lock);
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	StateHeader h;
 

@@ -114,6 +114,7 @@ public:
 #define PROGRAM_SECTION         "program"
 #define PROGRAM_MEDIA_DIR       "media_dir"
 #define PROGRAM_CAPTURE_DIR     "capture_dir"
+#define PROGRAM_THREADS_SYNC    "threads_sync"
 
 #define GUI_SECTION             "gui"
 #define GUI_KEYMAP              "keymap"

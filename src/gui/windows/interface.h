@@ -58,7 +58,6 @@ protected:
 	public:
 		VGADisplay vga;
 		vec2i vga_res;
-		std::atomic<bool> vga_updated;
 		GLuint tex;
 		std::vector<uint32_t> tex_buf;
 		GLuint sampler;
@@ -138,7 +137,7 @@ public:
 	void on_fdd_mount(RC::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
-	void vga_updated() { m_display.vga_updated.store(true); }
+	void set_vga_updated() { m_display.vga.set_fb_updated(); }
 	VGADisplay * vga_display() { return &m_display.vga; }
 	virtual void render();
 

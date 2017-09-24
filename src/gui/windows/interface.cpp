@@ -195,7 +195,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 
-	m_display.vga_updated = true;
+	m_display.vga.set_fb_updated();
 
 	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
@@ -470,8 +470,7 @@ void Interface::render_monitor()
 {
 	GLCALL( glActiveTexture(GL_TEXTURE0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-	if(m_display.vga_updated) {
-		m_display.vga_updated = false;
+	if(m_display.vga.fb_updated()) {
 		m_display.vga.lock();
 		vec2i vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
 		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
@@ -481,6 +480,8 @@ void Interface::render_monitor()
 		//a lot of time to complete, bloking the machine emulation thread.
 		//PBOs are a possible alternative, but a memcpy is way simpler.
 		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
+		m_display.vga.clear_fb_updated();
+		m_display.vga.notify_all();
 		m_display.vga.unlock();
 
 		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );

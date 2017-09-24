@@ -44,6 +44,7 @@ std::condition_variable Program::ms_cv;
 
 Program::Program()
 :
+m_threads_sync(false),
 m_machine(nullptr),
 m_gui(nullptr),
 m_restore_fn(nullptr)
@@ -335,7 +336,8 @@ bool Program::initialize(int argc, char** argv)
 		PINFO(LOG_V0, " done\n");
 	}
 
-	m_fpscap = 16666;
+	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
+	m_fpscap = GUI_HEARTBEAT;
 	m_heartbeat = GUI_HEARTBEAT;
 	m_frameskip = 5;
 	m_quit = false;
@@ -529,6 +531,7 @@ void Program::main_loop()
 		uint loops = 0;
 
 		uint64_t time = m_main_chrono.elapsed_usec();
+		/**/
 		if(time < m_fpscap) {
 			uint64_t sleep = (m_fpscap - time) + next_time_diff;
 			uint64_t t0 = m_main_chrono.get_usec();
@@ -536,11 +539,16 @@ void Program::main_loop()
 			uint64_t t1 = m_main_chrono.get_usec();
 			next_time_diff = sleep - (t1 - t0);
 		}
+		/**/
 		time = m_main_chrono.get_usec(m_main_chrono.start());
 
 		m_bench.frame_start();
 
-		while(!m_quit && ((time - m_next_beat) >= m_heartbeat && loops <= m_frameskip))
+		unsigned hb = m_heartbeat;
+		if(m_threads_sync) {
+			m_fpscap = hb;
+		}
+		while(!m_quit && ((time - m_next_beat) >= hb && loops <= m_frameskip))
 		{
 			m_bench.beat_start();
 			m_bench.frameskip = loops;

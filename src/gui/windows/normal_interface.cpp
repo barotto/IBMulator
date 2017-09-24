@@ -171,7 +171,7 @@ void NormalInterface::update()
 
 	if(m_vga_aspect==DISPLAY_ASPECT_ADAPTIVE || m_vga_scaling>0) {
 		m_display.vga.lock();
-		if(m_display.vga.get_dimension_updated()) {
+		if(m_display.vga.dimension_updated()) {
 			uint32_t wflags = m_gui->get_window_flags();
 			//WARNING in order for the MAXIMIZED case to work under X11 you need
 			//SDL 2.0.4 with this patch:
@@ -196,7 +196,7 @@ void NormalInterface::update()
 					m_gui->get_window_height()
 				);
 			}
-			m_display.vga.reset_dimension_updated();
+			m_display.vga.clear_dimension_updated();
 		}
 		m_display.vga.unlock();
 	}

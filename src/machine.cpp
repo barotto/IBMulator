@@ -44,7 +44,7 @@ std::mutex Machine::ms_gui_lock;
 
 Machine::Machine()
 :
-m_heartbeat(MACHINE_HEARTBEAT),
+m_heartbeat(0),
 m_quit(false),
 m_on(false),
 m_cpu_single_step(false),
@@ -277,11 +277,9 @@ void Machine::config_changed()
 	g_memory.config_changed();
 	g_devices.config_changed();
 
-	m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
 	m_cycles_factor = 1.0;
 
-	PINFOF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
-	PINFOF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
+	set_heartbeat(MACHINE_HEARTBEAT);
 
 	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
 	for(unsigned i=0; i<m_num_timers; i++) {
@@ -294,6 +292,16 @@ void Machine::config_changed()
 	PINFOF(LOG_V1, LOG_MACHINE, "DMA channels:\n");
 	for(unsigned i=0; i<8; i++) {
 		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
+	}
+}
+
+void Machine::set_heartbeat(unsigned _usec)
+{
+	if(m_heartbeat != _usec) {
+		m_heartbeat = _usec;
+		m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
+		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
+		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
 	}
 }
 
