@@ -383,6 +383,7 @@ std::map<uint32_t, const char*> CPUDebugger::ms_addrnames = {
  */
 
 #define MAKE_INT_SEL(vec, ax, axlen) ((vec)<<24 | (ax)<<8 | axlen)
+#define DECODE_ALL false
 
 const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 		CPUCore *core, Memory *mem)
@@ -405,7 +406,7 @@ const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 	}
 	if(interr != ms_interrupts.end()) {
 
-		if(!interr->second.decode) {
+		if(!interr->second.decode && !DECODE_ALL) {
 			return nullptr;
 		}
 
@@ -929,7 +930,24 @@ void CPUDebugger::INT_21_3F(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 		return;
 	}
 
-	snprintf(buf, buflen, " : handle=%d, %d bytes, dest buf %04X:%04X",
+	snprintf(buf, buflen, " : handle=%d, bytes=%d, buffer=%04X:%04X",
+			core->get_BX(), core->get_CX(), core->get_DS().sel.value, core->get_DX());
+}
+
+void CPUDebugger::INT_21_40(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	if(!call) {
+		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
+		if(cf) {
+			snprintf(buf, buflen, " ret CF=1: %s", ms_dos_errors[core->get_AX()]);
+		} else {
+			snprintf(buf, buflen, " ret CF=0: %d bytes written", core->get_AX());
+		}
+		return;
+	}
+
+	snprintf(buf, buflen, " : handle=%d, bytes=%d, buffer=%04X:%04X",
 			core->get_BX(), core->get_CX(), core->get_DS().sel.value, core->get_DX());
 }
 
@@ -1280,9 +1298,15 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x2A00, 1), { true,  nullptr,                 "DOS - GET SYSTEM DATE" } },
 	{ MAKE_INT_SEL(0x21, 0x2C00, 1), { false, &CPUDebugger::INT_21_2C, "DOS - GET SYSTEM TIME" } },
 	{ MAKE_INT_SEL(0x21, 0x3000, 1), { true,  &CPUDebugger::INT_21_30, "DOS - GET DOS VERSION" } },
+	{ MAKE_INT_SEL(0x21, 0x3100, 1), { true,  nullptr,                 "DOS - TERMINATE AND STAY RESIDENT" } },
 	{ MAKE_INT_SEL(0x21, 0x3200, 1), { true,  &CPUDebugger::INT_21_32, "DOS - GET DOS DRIVE PARAMETER BLOCK FOR SPECIFIC DRIVE" } },
 	{ MAKE_INT_SEL(0x21, 0x3300, 2), { false, nullptr,                 "DOS - EXTENDED BREAK CHECKING (0)" } },
 	{ MAKE_INT_SEL(0x21, 0x3301, 2), { false, nullptr,                 "DOS - EXTENDED BREAK CHECKING (1)" } },
+	{ MAKE_INT_SEL(0x21, 0x3302, 2), { false, nullptr,                 "DOS - GET AND SET EXTENDED CONTROL-BREAK CHECKING STATE" } },
+	{ MAKE_INT_SEL(0x21, 0x3303, 2), { false, nullptr,                 "DOS - GET CURRENT CPSW STATE" } },
+	{ MAKE_INT_SEL(0x21, 0x3304, 2), { false, nullptr,                 "DOS - SET CPSW STATE" } },
+	{ MAKE_INT_SEL(0x21, 0x3305, 2), { true,  nullptr,                 "DOS - GET BOOT DRIVE" } },
+	{ MAKE_INT_SEL(0x21, 0x3306, 2), { true,  nullptr,                 "DOS - GET TRUE VERSION NUMBER" } },
 	{ MAKE_INT_SEL(0x21, 0x3400, 1), { false, nullptr,                 "DOS - GET ADDRESS OF INDOS FLAG" } },
 	{ MAKE_INT_SEL(0x21, 0x3500, 1), { false, nullptr,                 "DOS - GET INTERRUPT VECTOR" } },
 	{ MAKE_INT_SEL(0x21, 0x3600, 1), { true,  &CPUDebugger::INT_21_36, "DOS - GET FREE DISK SPACE" } },
@@ -1295,16 +1319,22 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x3D00, 1), { true,  &CPUDebugger::INT_21_3D, "DOS - FILE OPEN" } },
 	{ MAKE_INT_SEL(0x21, 0x3E00, 1), { true,  &CPUDebugger::INT_21_3E, "DOS - FILE CLOSE" } },
 	{ MAKE_INT_SEL(0x21, 0x3F00, 1), { true,  &CPUDebugger::INT_21_3F, "DOS - FILE READ" } },
-	{ MAKE_INT_SEL(0x21, 0x4000, 1), { true,  nullptr,                 "DOS - FILE WRITE" } },
+	{ MAKE_INT_SEL(0x21, 0x4000, 1), { true,  &CPUDebugger::INT_21_40, "DOS - FILE WRITE" } },
 	{ MAKE_INT_SEL(0x21, 0x4100, 1), { true,  nullptr,                 "DOS - FILE UNLINK" } },
 	{ MAKE_INT_SEL(0x21, 0x4200, 1), { true,  &CPUDebugger::INT_21_42, "DOS - FILE SEEK" } },
 	{ MAKE_INT_SEL(0x21, 0x4300, 2), { true,  &CPUDebugger::INT_21_43, "DOS - GET FILE ATTRIBUTES" } },
 	{ MAKE_INT_SEL(0x21, 0x4400, 2), { true,  nullptr,                 "DOS - GET DEVICE INFORMATION" } },
 	{ MAKE_INT_SEL(0x21, 0x4401, 2), { true,  nullptr,                 "DOS - SET DEVICE INFORMATION" } },
+	{ MAKE_INT_SEL(0x21, 0x4405, 2), { true,  nullptr,                 "DOS - IOCTL - WRITE TO BLOCK DEVICE CONTROL CHANNEL" } },
 	{ MAKE_INT_SEL(0x21, 0x4408, 2), { true,  nullptr,                 "DOS - IOCTL - CHECK IF BLOCK DEVICE REMOVABLE" } },
+	{ MAKE_INT_SEL(0x21, 0x4409, 2), { true,  nullptr,                 "DOS - IOCTL - CHECK IF BLOCK DEVICE REMOTE" } },
+	{ MAKE_INT_SEL(0x21, 0x440A, 2), { false, nullptr,                 "DOS - IOCTL - CHECK IF HANDLE IS REMOTE" } },
+	{ MAKE_INT_SEL(0x21, 0x440B, 2), { false, nullptr,                 "DOS - IOCTL - SET SHARING RETRY COUNT" } },
+	{ MAKE_INT_SEL(0x21, 0x440C, 2), { false, nullptr,                 "DOS - IOCTL - GENERIC CHARACTER DEVICE REQUEST" } },
 	{ MAKE_INT_SEL(0x21, 0x440D, 2), { true,  &CPUDebugger::INT_21_440D,"DOS - IOCTL - GENERIC BLOCK DEVICE REQUEST" } },
 	{ MAKE_INT_SEL(0x21, 0x440E, 2), { true,  nullptr,                 "DOS - IOCTL - GET LOGICAL DRIVE MAP" } },
 	{ MAKE_INT_SEL(0x21, 0x440F, 2), { true,  nullptr,                 "DOS - IOCTL - SET LOGICAL DRIVE MAP" } },
+	{ MAKE_INT_SEL(0x21, 0x4500, 1), { true,  nullptr,                 "DOS - DUP - DUPLICATE FILE HANDLE" } },
 	{ MAKE_INT_SEL(0x21, 0x4700, 1), { true,  nullptr,                 "DOS - CWD - GET CURRENT DIRECTORY" } },
 	{ MAKE_INT_SEL(0x21, 0x4800, 1), { true,  &CPUDebugger::INT_21_48, "DOS - ALLOCATE MEMORY" } },
 	{ MAKE_INT_SEL(0x21, 0x4900, 1), { true,  nullptr,                 "DOS - FREE MEMORY" } },
@@ -1315,6 +1345,9 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x21, 0x4E00, 1), { true,  &CPUDebugger::INT_21_39_A_B_4E, "DOS - FINDFIRST" } },
 	{ MAKE_INT_SEL(0x21, 0x5000, 1), { true,  nullptr,                 "DOS - SET CURRENT PROCESS ID" } },
 	{ MAKE_INT_SEL(0x21, 0x5200, 1), { false, nullptr,                 "DOS - GET LIST OF LISTS" } },
+	{ MAKE_INT_SEL(0x21, 0x5700, 2), { true,  nullptr,                 "DOS - GET FILE'S LAST-WRITTEN DATE AND TIME" } },
+	{ MAKE_INT_SEL(0x21, 0x5701, 2), { true,  nullptr,                 "DOS - SET FILE'S LAST-WRITTEN DATE AND TIME" } },
+	{ MAKE_INT_SEL(0x21, 0x5800, 1), { true,  nullptr,                 "DOS - GET OR SET MEMORY ALLOCATION STRATEGY" } },
 	{ MAKE_INT_SEL(0x21, 0x5D08, 2), { false, nullptr,                 "DOS NET - SET REDIRECTED PRINTER MODE" } },
 	{ MAKE_INT_SEL(0x21, 0x5D09, 2), { false, nullptr,                 "DOS NET - FLUSH REDIRECTED PRINTER OUTPUT" } },
 	{ MAKE_INT_SEL(0x21, 0x5F02, 2), { true,  nullptr,                 "DOS NET - GET REDIRECTION LIST ENTRY" } },
