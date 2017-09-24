@@ -130,30 +130,34 @@ void CPUBus::reset_pq()
 
 void CPUBus::update(int _cycles)
 {
-	if(m_mem_r_cycles || (m_wq_idx>=0)) {
-		m_pmem_cycles += m_cycles_ahead;
-		m_cycles_ahead = 0;
-	}
-	if(m_s.pq_valid) {
-		_cycles -= m_cycles_ahead;
-	}
-	if(_cycles > 0) {
-		m_cycles_ahead = 0;
-		if(USE_PREFETCH_QUEUE && (pq_free_space() >= m_pq_thres)) {
-			_cycles -= (this->*fill_pq_fn)(0, _cycles, 0);
+#if USE_PREFETCH_QUEUE
+		if(m_mem_r_cycles || (m_wq_idx>=0)) {
+			m_pmem_cycles += m_cycles_ahead;
+			m_cycles_ahead = 0;
 		}
-	}
-	if(_cycles <= 0) {
-		m_cycles_ahead = (-1 * _cycles);
-	}
-	for(int i=0; i<=m_wq_idx; i++) {
-		(this->*m_write_queue[i].w_fn)(
-				m_write_queue[i].address,
-				m_write_queue[i].data,
-				m_mem_w_cycles);
-	}
-	m_wq_idx = -1;
-	m_cycles_ahead += m_mem_w_cycles;
+		if(m_s.pq_valid) {
+			_cycles -= m_cycles_ahead;
+		}
+		if(_cycles > 0) {
+			m_cycles_ahead = 0;
+			if(pq_free_space() >= m_pq_thres) {
+				_cycles -= (this->*fill_pq_fn)(0, _cycles, 0);
+			}
+		}
+		if(_cycles <= 0) {
+			m_cycles_ahead = (-1 * _cycles);
+		}
+		for(int i=0; i<=m_wq_idx; i++) {
+			(this->*m_write_queue[i].w_fn)(
+					m_write_queue[i].address,
+					m_write_queue[i].data,
+					m_mem_w_cycles);
+		}
+		m_wq_idx = -1;
+		m_cycles_ahead += m_mem_w_cycles;
+#else
+		m_mem_r_cycles += m_mem_w_cycles;
+#endif
 }
 
 template<int len>

@@ -21,6 +21,7 @@
 #define IBMULATOR_CPU_BUS_H
 
 #include "core.h"
+#include "mmu.h"
 #include "../memory.h"
 #ifndef NDEBUG
 	#include "machine.h"
@@ -123,6 +124,7 @@ public:
 	}
 	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
 	{
+		#if USE_PREFETCH_QUEUE
 		/* Memory writes need to be executed after a PQ update, because code
 		 * prefetching is done after the instruction execution, in relation to
 		 * the available cpu cycles. The executed instruction could be a mov
@@ -131,6 +133,9 @@ public:
 		 */
 		assert(m_wq_idx<CPU_BUS_WQ_SIZE-1);
 		m_write_queue[++m_wq_idx] = { &CPUBus::p_mem_write<S>, _addr, _data };
+		#else
+		p_mem_write<S>(_addr, _data, m_mem_w_cycles);
+		#endif
 	}
 
 	void save_state(StateBuf &_state);
@@ -179,7 +184,12 @@ private:
 	template<class T, int L>
 	T fetch_noqueue()
 	{
-		T data = mem_read<L>(m_s.cseip);
+		T data;
+		uint32_t phy = m_s.cseip;
+		if(IS_PAGING()) {
+			phy = g_cpummu.TLB_lookup(m_s.cseip, L, IS_USER_PL, false);
+		}
+		data = mem_read<L>(phy);
 		m_s.cseip += L;
 		m_s.eip += L;
 		return data;
