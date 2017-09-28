@@ -222,12 +222,20 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_STATE) {
-		if(fprintf(_dest, "SE=%d,SM=%d,SA=%d ",
+		if(fprintf(_dest, "PE:%d,EM:%d,AE:%d",
 				_entry.state.pending_event,
 				_entry.state.event_mask,
 				_entry.state.async_event
 				) < 0)
 			return -1;
+		if(_entry.core.is_rmode()) {
+			PCPULOG(_dest, ",rmode");
+		} else if(_entry.core.is_pmode()) {
+			PCPULOG(_dest, ",pmode");
+		} else if(_entry.core.is_v8086()) {
+			PCPULOG(_dest, ",v8086");
+		}
+		PCPULOG(_dest, " ");
 	}
 
 	if(CPULOG_WRITE_CORE) {
