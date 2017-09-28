@@ -21,6 +21,7 @@
 #include "machine.h"
 #include "hardware/cpu/executor.h"
 #include "hardware/cpu/debugger.h"
+#include <cmath>
 
 /* the parity flag (PF) indicates whether the modulo 2 sum of the low-order
  * eight bits of the operation is even (PF=O) or odd (PF=1) parity.

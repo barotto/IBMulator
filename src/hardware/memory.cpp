@@ -28,6 +28,7 @@
 #include <fstream>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 
 #define DRAM_TIME_NS 120.0
 
@@ -114,7 +115,7 @@ void Memory::config_changed()
 	resize_mapping(m_ram.high_mapping, 0x100000, high_mapping_size);
 
 	unsigned speed_ns = g_program.config().get_int(MEM_SECTION, MEM_RAM_SPEED, g_machine.model().ram_speed);
-	m_ram.cycles = 1 + ceil(double(speed_ns) / g_cpu.cycle_time_ns()); // address + data
+	m_ram.cycles = 1 + std::ceil(double(speed_ns) / g_cpu.cycle_time_ns()); // address + data
 
 	set_mapping_cycles(m_ram.low_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
 	set_mapping_cycles(m_ram.high_mapping, m_ram.cycles, m_ram.cycles, m_ram.cycles);
