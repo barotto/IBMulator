@@ -22,7 +22,11 @@
 
 #define CPULOG               false    // activate CPU logging?
 #define CPULOG_FILE          "cpulog.log" // log file name
+#if CPULOG
 #define CPULOG_MAX_SIZE      400000u  // number of instruction to log
+#else
+#define CPULOG_MAX_SIZE      1u
+#endif
 #define CPULOG_WRITE_TIME    true     // write instruction machine time?
 #define CPULOG_WRITE_CSEIP   true     // write instruction address as CS:EIP?
 #define CPULOG_WRITE_HEX     true     // write instruction as hex codes?
