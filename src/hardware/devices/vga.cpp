@@ -312,7 +312,7 @@ void VGA::restore_state(StateBuf &_state)
 	m_display->restore_state(_state);
 
 	double vfreq = 1000000.0 / m_s.vtotal_usec;
-	if(vfreq >= 50.0 && vfreq <= 75.0) {
+	if(vfreq > 0.0 && vfreq <= 75.0) {
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update,this,_1));
 		g_machine.activate_timer(m_timer_id, uint64_t(m_s.vtotal_usec)*1_us, false);
 		g_machine.set_heartbeat(m_s.vtotal_usec);
@@ -437,7 +437,7 @@ void VGA::calculate_retrace_timing()
 
 	PDEBUGF(LOG_V2, LOG_VGA, "hfreq = %.1f kHz\n", ((double)hfreq / 1000));
 
-	if(vfreq >= 50.0 && vfreq <= 75.0) {
+	if(vfreq > 0.0 && vfreq <= 75.0) {
 		PDEBUGF(LOG_V1, LOG_VGA, "vfreq = %.4f Hz (%u us)\n", vfreq, m_s.vtotal_usec);
 		vertical_retrace(g_machine.get_virt_time_ns());
 		g_machine.set_heartbeat(m_s.vtotal_usec);
