@@ -20,13 +20,13 @@
 #ifndef IBMULATOR_GUI_STATS_H
 #define IBMULATOR_GUI_STATS_H
 
-#include <Rocket/Core/EventListener.h>
+#include "debugtools.h"
 
 class Machine;
 class GUI;
 class Mixer;
 
-class Stats : public Window
+class Stats : public DebugTools::DebugWindow
 {
 private:
 
@@ -37,14 +37,15 @@ private:
 	Machine * m_machine;
 	Mixer * m_mixer;
 
+	static event_map_t ms_evt_map;
+
 public:
 
-	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer);
+	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, RC::Element *_button);
 	~Stats();
 
 	void update();
-
-	void ProcessEvent(Rocket::Core::Event & event);
+	event_map_t & get_event_map() { return Stats::ms_evt_map; }
 };
 
 #endif

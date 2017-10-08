@@ -20,13 +20,13 @@
 #ifndef IBMULATOR_GUI_DEBUGGER_H
 #define IBMULATOR_GUI_DEBUGGER_H
 
+#include "debugtools.h"
+
 class Machine;
 class GUI;
-class SysDebugger;
 
 
-
-class SysDebugger : public Window
+class SysDebugger : public DebugTools::DebugWindow
 {
 	friend class SysDebugger286;
 	friend class SysDebugger386;
@@ -89,12 +89,13 @@ private:
 	void on_idt_dump(RC::Event &);
 	void on_ldt_dump(RC::Event &);
 	void on_gdt_dump(RC::Event &);
+	void on_close(RC::Event &);
 
 	void read_memory(uint32_t _address, uint8_t *_buf, uint _len);
 
 public:
 
-	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine);
+	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine, RC::Element *_button);
 	virtual ~SysDebugger();
 
 	virtual void update();

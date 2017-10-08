@@ -29,9 +29,13 @@
 #include "hardware/devices/pit.h"
 #include "format.h"
 
-DevStatus::DevStatus(GUI * _gui)
+event_map_t DevStatus::ms_evt_map = {
+	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
+};
+
+DevStatus::DevStatus(GUI * _gui, RC::Element *_button)
 :
-Window(_gui, "devstatus.rml")
+DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 {
 	assert(m_wnd);
 
@@ -195,6 +199,10 @@ void DevStatus::update_pit(uint cnt)
 
 void DevStatus::update()
 {
+	if(!m_enabled) {
+		return;
+	}
+
 	PIC *pic = m_gui->machine()->devices().pic();
 	uint16_t pic_irq = pic->get_irq();
 	uint16_t pic_irr = pic->get_irr();

@@ -44,6 +44,15 @@ div#title_bar
 	z-index: top;
 }
 
+#close
+{
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 24px;
+	height: 24px;
+}
+
 #title
 {
 	padding-left: 0px;

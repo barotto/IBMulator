@@ -1,0 +1,24 @@
+<rml>
+	<head>
+		<title>Debug Tools</title>
+		<link type="text/rcss" href="base.rcss"/>
+		<link type="text/rcss" href="buttons.rcss"/>
+		<link type="text/rcss" href="default.rcss"/>
+		<style>
+			body
+			{
+				width: 260px;
+				position: absolute;
+				top: 0;
+				left: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="tools">
+			<button id="stats" style="width:100px;">Statistics</button>
+			<button id="debugger" style="width:80px;">Debugger</button>
+			<button id="devices" style="width:80px;">Devices</button>
+		</div>
+	</body>
+</rml>

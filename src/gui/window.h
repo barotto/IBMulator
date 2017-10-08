@@ -44,9 +44,9 @@ public:
 	Window(GUI * _gui, const char *_rml);
 	virtual ~Window();
 
-	void show();
-	void hide();
-	void close();
+	virtual void show();
+	virtual void hide();
+	virtual void close();
 	bool is_visible();
 
 	virtual void config_changed() {}
@@ -57,6 +57,7 @@ protected:
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	RC::Element * get_element(const RC::String &_id);
 	void add_events();
+	void add_listener(const RC::String &_element, const RC::String& _event, EventListener* _listener);
 	void remove_events();
 };
 

@@ -59,6 +59,14 @@ void Window::add_events()
 	m_evts_added = true;
 }
 
+void Window::add_listener(const RC::String &_element, const RC::String &_event, RC::EventListener *_listener)
+{
+	RC::Element *el = m_wnd->GetElementById(_element);
+	if(el) {
+		el->AddEventListener(_event, _listener);
+	}
+}
+
 void Window::remove_events()
 {
 	assert(m_wnd);

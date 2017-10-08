@@ -8,7 +8,7 @@
 				width: 270px;
 				height: 480px;
 				position: absolute;
-				top: 0;
+				top: 32px;
 				left: 0;
 			}
 		</style>

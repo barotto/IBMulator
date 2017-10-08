@@ -38,11 +38,8 @@
 #include "windows/desktop.h"
 #include "windows/normal_interface.h"
 #include "windows/realistic_interface.h"
+#include "windows/debugtools.h"
 #include "windows/status.h"
-#include "windows/sysdebugger286.h"
-#include "windows/sysdebugger386.h"
-#include "windows/devstatus.h"
-#include "windows/stats.h"
 
 #include "hardware/cpu.h"
 
@@ -226,7 +223,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 void GUI::config_changed()
 {
-	m_windows.config_changed(this, m_machine);
+	m_windows.config_changed();
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -1429,12 +1426,14 @@ GUI::Windows::Windows()
 :
 visible(true),
 debug_wnds(false),
+status_wnd(false),
 desktop(nullptr),
 interface(nullptr),
-debugger(nullptr),
-stats(nullptr),
 status(nullptr),
-devices(nullptr)
+dbgtools(nullptr),
+dbgmex_timer(NULL_TIMER_HANDLE),
+ifcmex_timer(NULL_TIMER_HANDLE)
+
 {
 
 }
@@ -1460,9 +1459,7 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	}
 
 	//debug
-	debugger = nullptr; // will be created in the config_changed
-	stats = new Stats(_machine, _gui, _mixer);
-	devices = new DevStatus(_gui);
+	dbgtools = new DebugTools(_gui, _machine, _mixer);
 
 	timers.init();
 	ifcmex_timer = timers.register_timer([this](uint64_t){
@@ -1471,8 +1468,8 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 		}
 	}, "main interface messages");
 	dbgmex_timer = timers.register_timer([this](uint64_t){
-		if(debugger) {
-			debugger->show_message("");
+		if(dbgtools) {
+			dbgtools->show_message("");
 		}
 	}, "debug messages");
 
@@ -1482,42 +1479,16 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, &ifacemsg);
 }
 
-void GUI::Windows::config_changed(GUI *_gui, Machine *_machine)
+void GUI::Windows::config_changed()
 {
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 
 	desktop->config_changed();
 	interface->config_changed();
-
 	if(status) {
 		status->config_changed();
 	}
-
-	if(debugger) {
-		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(debugger));
-		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
-			bool dbg_visible = debugger->is_visible();
-			debugger->close();
-			delete debugger;
-			if(CPU_FAMILY >= CPU_386) {
-				debugger = new SysDebugger386(_gui, _machine);
-			} else {
-				debugger = new SysDebugger286(_gui, _machine);
-			}
-			if(dbg_visible) {
-				debugger->show();
-			}
-		}
-	} else {
-		if(CPU_FAMILY >= CPU_386) {
-			debugger = new SysDebugger386(_gui, _machine);
-		} else {
-			debugger = new SysDebugger286(_gui, _machine);
-		}
-	}
-
-	devices->config_changed();
-	stats->config_changed();
+	dbgtools->config_changed();
 }
 
 void GUI::Windows::show_ifc_message(const char* _mex)
@@ -1532,8 +1503,8 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 void GUI::Windows::show_dbg_message(const char* _mex)
 {
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-	if(debugger != nullptr) {
-		debugger->show_message(_mex);
+	if(dbgtools != nullptr) {
+		dbgtools->show_message(_mex);
 		timers.activate_timer(dbgmex_timer, 3000000, false);
 	}
 }
@@ -1552,34 +1523,6 @@ void GUI::Windows::show(bool _value)
 		interface->show();
 	}
 	visible = _value;
-}
-
-void GUI::Windows::invert_visibility()
-{
-	if(debug_wnds) {
-		if(debugger->is_visible()) {
-			debugger->hide();
-			devices->hide();
-			stats->hide();
-		} else {
-			devices->show();
-			debugger->show();
-			stats->show();
-		}
-	}
-	if(interface->is_visible()) {
-		interface->hide();
-	} else {
-		interface->show();
-	}
-
-	if(status_wnd) {
-		if(status->is_visible()) {
-			status->hide();
-		} else {
-			status->show();
-		}
-	}
 }
 
 void GUI::Windows::update(uint64_t _current_time)
@@ -1601,14 +1544,7 @@ void GUI::Windows::update(uint64_t _current_time)
 	interface->update();
 
 	if(debug_wnds) {
-		// quick hack to limit the update freq of the dbg windows
-		static bool dbgupdate = true;
-		dbgupdate = !dbgupdate;
-		if(dbgupdate) {
-			debugger->update();
-			devices->update();
-		}
-		stats->update();
+		dbgtools->update();
 	}
 
 	if(status) {
@@ -1624,19 +1560,15 @@ void GUI::Windows::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
 	if(debug_wnds) {
-		devices->show();
-		debugger->show();
-		stats->show();
+		dbgtools->show();
 	} else {
-		debugger->hide();
-		devices->hide();
-		stats->hide();
+		dbgtools->hide();
 	}
 }
 
 bool GUI::Windows::needs_input()
 {
-	//only debug windows has kb input at the moment
+	//only debug windows have kb input at the moment
 	return debug_wnds;
 }
 
@@ -1650,22 +1582,10 @@ void GUI::Windows::shutdown()
 		status = nullptr;
 	}
 
-	if(debugger) {
-		debugger->close();
-		delete debugger;
-		debugger = nullptr;
-	}
-
-	if(devices) {
-		devices->close();
-		delete devices;
-		devices = nullptr;
-	}
-
-	if(stats) {
-		stats->close();
-		delete stats;
-		stats = nullptr;
+	if(dbgtools) {
+		dbgtools->close();
+		delete dbgtools;
+		dbgtools = nullptr;
 	}
 
 	if(desktop) {

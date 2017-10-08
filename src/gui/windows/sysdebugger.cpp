@@ -33,8 +33,10 @@
 #include "format.h"
 
 
-SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine)
-: Window(_gui, _rml)
+SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine,
+		RC::Element *_button)
+:
+DebugWindow(_gui, _rml, _button)
 {
 	assert(m_wnd);
 

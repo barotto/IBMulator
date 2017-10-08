@@ -29,11 +29,13 @@
 #include <Rocket/Core.h>
 #include <sstream>
 
+event_map_t Stats::ms_evt_map = {
+	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
+};
 
-
-Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer)
+Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, RC::Element *_button)
 :
-Window(_gui, "stats.rml")
+DebugTools::DebugWindow(_gui, "stats.rml", _button)
 {
 	assert(m_wnd);
 	m_stats.fps = get_element("FPS");
@@ -54,6 +56,9 @@ Stats::~Stats()
 
 void Stats::update()
 {
+	if(!m_enabled) {
+		return;
+	}
 	std::stringstream ss;
 	ss << g_program.get_bench();
 	m_stats.fps->SetInnerRML(ss.str().c_str());
@@ -98,7 +103,3 @@ void Stats::update()
 	m_stats.mixer->SetInnerRML(ss.str().c_str());
 }
 
-void Stats::ProcessEvent(Rocket::Core::Event &)
-{
-	//Rocket::Core::Element * el = event.GetTargetElement();
-}

@@ -36,7 +36,8 @@
 
 event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "cancel", "click", FileSelect::on_cancel ),
-	GUI_EVT( "files", "click", FileSelect::on_file )
+	GUI_EVT( "close",  "click", FileSelect::on_cancel ),
+	GUI_EVT( "files",  "click", FileSelect::on_file )
 };
 
 FileSelect::FileSelect(GUI * _gui)

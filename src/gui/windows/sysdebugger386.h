@@ -52,7 +52,7 @@ private:
 
 public:
 
-	SysDebugger386(GUI *_gui, Machine *_machine);
+	SysDebugger386(GUI *_gui, Machine *_machine, RC::Element *_button);
 	~SysDebugger386();
 
 	void update();

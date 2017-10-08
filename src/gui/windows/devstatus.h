@@ -20,32 +20,36 @@
 #ifndef IBMULATOR_GUI_DEVSTATUS_H
 #define IBMULATOR_GUI_DEVSTATUS_H
 
-#include <Rocket/Core/EventListener.h>
+#include "debugtools.h"
 
 class Machine;
 class GUI;
 
-class DevStatus : public Window
+class DevStatus : public DebugTools::DebugWindow
 {
 private:
 
 	struct {
-		Rocket::Core::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
+		RC::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
 		uint16_t irq, irr, imr, isr;
 	} m_pic;
 
 	struct {
-		Rocket::Core::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
+		RC::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
 	} m_pit;
+
+	static event_map_t ms_evt_map;
+
 	void update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn);
 	void update_pit(uint cnt);
 
 public:
 
-	DevStatus(GUI * _gui);
+	DevStatus(GUI * _gui, RC::Element *_button);
 	~DevStatus();
 
 	void update();
+	event_map_t & get_event_map() { return DevStatus::ms_evt_map; }
 };
 
 #endif

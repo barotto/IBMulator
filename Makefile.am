@@ -18,6 +18,7 @@ guidir = $(pkgdatadir)/gui
 dist_gui_DATA = \
 share/ibmulator/gui/base.rcss \
 share/ibmulator/gui/buttons.rcss \
+share/ibmulator/gui/debugtools.rml \
 share/ibmulator/gui/debugger.rcss \
 share/ibmulator/gui/debugger286.rcss \
 share/ibmulator/gui/debugger386.rcss \

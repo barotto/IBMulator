@@ -18,6 +18,7 @@ libgui_a_SOURCES = \
 	windows/interface.cpp \
 	windows/normal_interface.cpp \
 	windows/realistic_interface.cpp \
+	windows/debugtools.cpp \
 	windows/status.cpp \
 	windows/sysdebugger.cpp \
 	windows/sysdebugger286.cpp \
@@ -43,6 +44,7 @@ noinst_HEADERS = \
 	windows/interface.h \
 	windows/normal_interface.h \
 	windows/realistic_interface.h \
+	windows/debugtools.h \
 	windows/status.h \
 	windows/sysdebugger.h \
 	windows/sysdebugger286.h \

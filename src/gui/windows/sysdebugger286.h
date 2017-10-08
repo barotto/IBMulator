@@ -45,7 +45,7 @@ private:
 
 public:
 
-	SysDebugger286(GUI *_gui, Machine *_machine);
+	SysDebugger286(GUI *_gui, Machine *_machine, RC::Element *_button);
 	~SysDebugger286();
 
 	void update();

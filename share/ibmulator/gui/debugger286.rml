@@ -10,13 +10,13 @@
 				width: 440px;
 				height: 600px;
 				position: absolute;
-				bottom: 0;
+				top: 0;
 				right: 0;
 			}
 		</style>
 	</head>
 	<body template="default">
-		<div id="POST">	</div>
+		<div id="POST"></div>
 		<div id="tools">
 			<button id="cmd_switch_power" style="width:30px;"><btnicon /></button>
 			<button id="cmd_pause" style="width:30px;"><btnicon /></button>

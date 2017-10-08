@@ -92,10 +92,8 @@ class Mixer;
 class Desktop;
 class Interface;
 class NormalInterface;
-class SysDebugger;
-class Stats;
 class Status;
-class DevStatus;
+class DebugTools;
 class TextModeInfo;
 
 #include "appconfig.h"
@@ -168,10 +166,8 @@ protected:
 
 		Desktop * desktop;
 		Interface * interface;
-		SysDebugger * debugger;
-		Stats * stats;
 		Status * status;
-		DevStatus * devices;
+		DebugTools * dbgtools;
 
 		std::string last_ifc_mex;
 		std::string last_dbg_mex;
@@ -182,14 +178,13 @@ protected:
 
 		Windows();
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
-		void config_changed(GUI *_gui, Machine *_machine);
+		void config_changed();
 		void update(uint64_t _current_time);
 		void shutdown();
 		void toggle_dbg();
 		void show(bool _value);
 		void toggle();
 		bool needs_input();
-		void invert_visibility();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 

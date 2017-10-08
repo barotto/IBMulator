@@ -9,6 +9,7 @@
 		<handle move_target="#document">
 			<div id="title">ibmulator</div>
 		</handle>
+		<button id="close">X</button>
 	</div>
 	<div id="window">
 		<div id="content">

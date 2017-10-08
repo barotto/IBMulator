@@ -51,10 +51,12 @@ event_map_t SysDebugger286::ms_evt_map = {
 	GUI_EVT( "idt_dump",         "click", SysDebugger::on_idt_dump ),
 	GUI_EVT( "ldt_dump",         "click", SysDebugger::on_ldt_dump ),
 	GUI_EVT( "gdt_dump",         "click", SysDebugger::on_gdt_dump ),
+	GUI_EVT( "close",            "click", DebugTools::DebugWindow::on_close )
 };
 
-SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine)
-: SysDebugger(_gui, "debugger286.rml", _machine)
+SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine, RC::Element *_button)
+:
+SysDebugger(_gui, "debugger286.rml", _machine,  _button)
 {
 	assert(m_wnd);
 
@@ -99,6 +101,10 @@ const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _s
 
 void SysDebugger286::update()
 {
+	if(!m_enabled) {
+		return;
+	}
+
 	SysDebugger::update();
 
 	m_core.eax->SetInnerRML(format_hex16(REG_AX));
