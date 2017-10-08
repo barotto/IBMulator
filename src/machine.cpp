@@ -297,10 +297,16 @@ void Machine::config_changed()
 
 void Machine::set_heartbeat(unsigned _usec)
 {
-	if(m_heartbeat != _usec) {
-		m_heartbeat = _usec;
-		m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
+	unsigned oldbeat = m_heartbeat;
+	double oldcycles = m_cpu_cycles;
+
+	m_heartbeat = _usec;
+	m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
+
+	if(oldbeat != m_heartbeat) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
+	}
+	if(oldcycles != m_cpu_cycles) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
 	}
 }
