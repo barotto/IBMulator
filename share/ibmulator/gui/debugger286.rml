@@ -8,7 +8,7 @@
 			body
 			{
 				width: 440px;
-				height: 600px;
+				height: 610px;
 				position: absolute;
 				top: 0;
 				right: 0;
