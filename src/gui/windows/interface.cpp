@@ -481,7 +481,9 @@ void Interface::render_monitor()
 		//PBOs are a possible alternative, but a memcpy is way simpler.
 		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
 		m_display.vga.clear_fb_updated();
-		m_display.vga.notify_all();
+		if(THREADS_WAIT) {
+			m_display.vga.notify_all();
+		}
 		m_display.vga.unlock();
 
 		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );

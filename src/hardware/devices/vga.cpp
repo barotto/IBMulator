@@ -1387,7 +1387,7 @@ void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 void VGA::update(uint64_t _time)
 {
 	//this is "vertical blank start"
-	if(g_program.threads_sync()) {
+	if(THREADS_WAIT && g_program.threads_sync()) {
 		m_display->wait();
 	}
 

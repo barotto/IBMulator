@@ -22,6 +22,7 @@
 
 #define MACHINE_HEARTBEAT    16683
 #define GUI_HEARTBEAT        16683
+#define THREADS_WAIT         false
 #define CHRONO_RDTSC         false
 #define USE_PREFETCH_QUEUE   true
 #define PIT_CNT1_AUTO_UPDATE false
