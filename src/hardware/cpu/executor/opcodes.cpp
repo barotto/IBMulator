@@ -32,12 +32,6 @@
 #define PARITY(x) (parity_table[x & 0xFF])
 #endif
 
-/* Bochs and DosBox compute the undefined flags for AAA and AAS differently
- * Set to true to use the DosBox version
- * Set to false to use the Bochs version (validated on P6+)
- */
-#define USE_DOSBOX_ASCIIOPS false
-
 #ifdef __MSC_VER
 #  include <intrin.h>
 #  define __builtin_popcount __popcnt
@@ -92,50 +86,51 @@ void CPUExecutor::check_CPL_privilege(bool _mode_cond, const char *_opstr)
 
 void CPUExecutor::AAA()
 {
-	/* according to the original Intel's 286 manual, only AF and CF are modified
-	 * but it seems OF,SF,ZF,PF are also updated in a specific way (they are not
-	 * undefined).
+	/* According to the Intel's IA-32 manual, only AF and CF are modified,
+	 * but OF,SF,ZF,PF are also updated in a specific way that depends on the
+	 * CPU family.
 	 */
-#if USE_DOSBOX_ASCIIOPS
-	SET_FLAG(SF, ((REG_AL >= 0x7a) && (REG_AL <= 0xf9)));
-	if(((REG_AL & 0x0f) > 9)) {
-		SET_FLAG(OF,(REG_AL & 0xf0) == 0x70);
-		REG_AX += 0x106;
-		SET_FLAG(CF, true);
-		SET_FLAG(ZF, REG_AL == 0);
-		SET_FLAG(AF, true);
-	} else if(FLAG_AF) {
-		REG_AX += 0x106;
-		SET_FLAG(CF, true);
-		SET_FLAG(AF, true);
-		SET_FLAG(ZF, false);
-		SET_FLAG(OF, false);
+	if(CPU_FAMILY <= CPU_386) {
+		// TODO verify for 486/586
+		SET_FLAG(SF, ((REG_AL >= 0x7a) && (REG_AL <= 0xf9)));
+		if(((REG_AL & 0x0f) > 9)) {
+			SET_FLAG(OF,(REG_AL & 0xf0) == 0x70);
+			REG_AX += 0x106;
+			SET_FLAG(CF, true);
+			SET_FLAG(ZF, REG_AL == 0);
+			SET_FLAG(AF, true);
+		} else if(FLAG_AF) {
+			REG_AX += 0x106;
+			SET_FLAG(CF, true);
+			SET_FLAG(AF, true);
+			SET_FLAG(ZF, false);
+			SET_FLAG(OF, false);
+		} else {
+			SET_FLAG(CF, false);
+			SET_FLAG(AF, false);
+			SET_FLAG(ZF, REG_AL == 0);
+			SET_FLAG(OF, false);
+		}
+		SET_FLAG(PF, PARITY(REG_AL));
+		REG_AL &= 0x0f;
 	} else {
-		SET_FLAG(CF, false);
-		SET_FLAG(AF, false);
+		// P6+
+		bool af = false;
+		bool cf = false;
+
+		if(((REG_AL & 0x0f) > 9) || FLAG_AF) {
+			REG_AX += 0x106;
+			af = true;
+			cf = true;
+		}
+		REG_AL &= 0x0f;
+
+		SET_FLAG(CF, cf);
+		SET_FLAG(AF, af);
+		SET_FLAG(SF, REG_AL & 0x80);
 		SET_FLAG(ZF, REG_AL == 0);
-		SET_FLAG(OF, false);
+		SET_FLAG(PF, PARITY(REG_AL));
 	}
-	SET_FLAG(PF, PARITY(REG_AL));
-	REG_AL &= 0x0f;
-#else
-	bool af = false;
-	bool cf = false;
-
-	if(((REG_AL & 0x0f) > 9) || FLAG_AF) {
-		REG_AX += 0x106;
-		af = true;
-		cf = true;
-	}
-
-	REG_AL &= 0x0f;
-
-	SET_FLAG(CF, cf);
-	SET_FLAG(AF, af);
-	SET_FLAG(SF, REG_AL & 0x80);
-	SET_FLAG(ZF, REG_AL == 0);
-	SET_FLAG(PF, PARITY(REG_AL));
-#endif
 }
 
 
@@ -145,18 +140,29 @@ void CPUExecutor::AAA()
 
 void CPUExecutor::AAD()
 {
-	//according to the Intel's 286 manual, the immediate value is always 0x0A.
-	//in reality it can be anything.
-	//see http://www.rcollins.org/secrets/opcodes/AAD.html
+	// According to the Intel's 286/386 manuals, the immediate value is always
+	// 0x0A but in reality it can be anything.
+	// See http://www.rcollins.org/secrets/opcodes/AAD.html and current IA-32
+	// manual.
+	uint8_t op1 = REG_AL;
+	uint8_t op2 = m_instr->ib * REG_AH;
 	uint16_t tmp = REG_AL + (m_instr->ib * REG_AH);
 	REG_AX = (tmp & 0xff);
 
+	// The SF, ZF, and PF flags are set according to the resulting binary value
+	// in the AL register.
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
-	SET_FLAG(CF, false);
-	SET_FLAG(OF, false);
-	SET_FLAG(AF, false);
+
+	if(CPU_FAMILY <= CPU_386) {
+		// On the 386, undefined flags are the same as ADD byte.
+		// Validated against 386SX hardware.
+		// TODO verify for 486/586
+		SET_FLAG(CF, REG_AL < op1);
+		SET_FLAG(OF, ((op1 ^ op2 ^ 0x80) & (REG_AL ^ op2)) & 0x80);
+		SET_FLAG(AF, ((op1 ^ op2) ^ REG_AL) & 0x10);
+	}
 }
 
 
@@ -166,9 +172,10 @@ void CPUExecutor::AAD()
 
 void CPUExecutor::AAM()
 {
-	//according to the Intel's 286 manual the immediate value is always 0x0A.
-	//in reality it can be anything.
-	//see http://www.rcollins.org/secrets/opcodes/AAM.html
+	// According to the Intel's 286/386 manuals, the immediate value is always
+	// 0x0A but in reality it can be anything.
+	// See http://www.rcollins.org/secrets/opcodes/AAM.html and current IA-32
+	// manual.
 	if(m_instr->ib == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
@@ -176,12 +183,20 @@ void CPUExecutor::AAM()
 	REG_AH = al / m_instr->ib;
 	REG_AL = al % m_instr->ib;
 
+	// The SF, ZF, and PF flags are set according to the resulting binary value
+	// in the AL register.
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
-	SET_FLAG(CF, false);
-	SET_FLAG(OF, false);
-	SET_FLAG(AF, false);
+
+	if(CPU_FAMILY <= CPU_386) {
+		// On the 386 CF, OF, and AF are cleared.
+		// Validated against 386SX hardware.
+		// TODO verify for 486/586
+		SET_FLAG(CF, false);
+		SET_FLAG(OF, false);
+		SET_FLAG(AF, false);
+	}
 }
 
 
@@ -191,46 +206,46 @@ void CPUExecutor::AAM()
 
 void CPUExecutor::AAS()
 {
-#if USE_DOSBOX_ASCIIOPS
-	if((REG_AL & 0x0f) > 9) {
-		SET_FLAG(SF, REG_AL > 0x85);
-		REG_AX -= 0x106;
-		SET_FLAG(OF, false);
-		SET_FLAG(CF, true);
-		SET_FLAG(AF, true);
-	} else if(FLAG_AF) {
-		SET_FLAG(OF, (REG_AL >= 0x80) && (REG_AL <= 0x85));
-		SET_FLAG(SF, (REG_AL < 0x06) || (REG_AL > 0x85));
-		REG_AX -= 0x106;
-		SET_FLAG(CF, true);
-		SET_FLAG(AF, true);
+	// See comments for AAA.
+	if(CPU_FAMILY <= CPU_386) {
+		if((REG_AL & 0x0f) > 9) {
+			SET_FLAG(SF, REG_AL > 0x85);
+			REG_AX -= 0x106;
+			SET_FLAG(OF, false);
+			SET_FLAG(CF, true);
+			SET_FLAG(AF, true);
+		} else if(FLAG_AF) {
+			SET_FLAG(OF, (REG_AL >= 0x80) && (REG_AL <= 0x85));
+			SET_FLAG(SF, (REG_AL < 0x06) || (REG_AL > 0x85));
+			REG_AX -= 0x106;
+			SET_FLAG(CF, true);
+			SET_FLAG(AF, true);
+		} else {
+			SET_FLAG(SF, REG_AL >= 0x80);
+			SET_FLAG(OF, false);
+			SET_FLAG(CF, false);
+			SET_FLAG(AF, false);
+		}
+		SET_FLAG(ZF, REG_AL == 0);
+		SET_FLAG(PF, PARITY(REG_AL));
+		REG_AL &= 0x0F;
 	} else {
-		SET_FLAG(SF, REG_AL >= 0x80);
-		SET_FLAG(OF, false);
-		SET_FLAG(CF, false);
-		SET_FLAG(AF, false);
+		bool af = false;
+		bool cf = false;
+
+		if(((REG_AL & 0x0F) > 0x09) || FLAG_AF) {
+			REG_AX -= 0x106;
+			af = true;
+			cf = true;
+		}
+		REG_AL &= 0x0f;
+
+		SET_FLAG(CF, cf);
+		SET_FLAG(AF, af);
+		SET_FLAG(SF, REG_AL & 0x80);
+		SET_FLAG(ZF, REG_AL == 0);
+		SET_FLAG(PF, PARITY(REG_AL));
 	}
-	SET_FLAG(ZF, REG_AL == 0);
-	SET_FLAG(PF, PARITY(REG_AL));
-	REG_AL &= 0x0F;
-#else
-	bool af = false;
-	bool cf = false;
-
-	if(((REG_AL & 0x0F) > 0x09) || FLAG_AF) {
-		REG_AX -= 0x106;
-		af = true;
-		cf = true;
-	}
-
-	REG_AL &= 0x0f;
-
-	SET_FLAG(CF, cf);
-	SET_FLAG(AF, af);
-	SET_FLAG(SF, REG_AL & 0x80);
-	SET_FLAG(ZF, REG_AL == 0);
-	SET_FLAG(PF, PARITY(REG_AL));
-#endif
 }
 
 
@@ -1089,11 +1104,28 @@ void CPUExecutor::DAA()
 		REG_AL = REG_AL + 0x60;
 		cf = true;
 	}
+	/* present on Intel's docs, but should not be (bug?)
+	 * doesn't seem to make any difference though.
+	else {
+		cf = false;
+	}
+	*/
+
 	SET_FLAG(CF, cf);
 	SET_FLAG(AF, af);
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
+
+	if(CPU_FAMILY <= CPU_386) {
+		// On the 386 OF is set according to result.
+		// Validated against 386SX hardware.
+		// TODO should be the same for 486/586
+		SET_FLAG(OF, ((al&0x80)==0) && (REG_AL&0x80));
+	} else {
+		// OF is untouched for Pentium II to pre-Pentium 4, and always cleared
+		// for Pentium 4 and later.
+	}
 }
 
 void CPUExecutor::DAS()
@@ -1119,6 +1151,16 @@ void CPUExecutor::DAS()
 	SET_FLAG(SF, REG_AL & 0x80);
 	SET_FLAG(ZF, REG_AL == 0);
 	SET_FLAG(PF, PARITY(REG_AL));
+
+	if(CPU_FAMILY <= CPU_386) {
+		// On the 386 OF is set according to result.
+		// Validated against 386SX hardware.
+		// TODO should be the same for 486/586
+		SET_FLAG(OF, (al&0x80) && ((REG_AL&0x80)==0));
+	} else {
+		// OF is untouched for Pentium II to pre-Pentium 4, and always cleared
+		// for Pentium 4 and later.
+	}
 }
 
 
