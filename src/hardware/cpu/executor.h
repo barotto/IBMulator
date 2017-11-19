@@ -201,6 +201,8 @@ public:
 	uint16_t AND_w(uint16_t op1, uint16_t op2);
 	uint32_t AND_d(uint32_t op1, uint32_t op2);
 
+	void BT_w(uint16_t _op1, uint16_t _op2);
+	void BT_d(uint32_t _op1, uint32_t _op2);
 	uint16_t BT_ew(uint16_t _op2, bool _rmw);
 	uint32_t BT_ed(uint32_t _op2, bool _rmw);
 

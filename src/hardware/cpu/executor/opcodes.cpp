@@ -590,6 +590,32 @@ void CPUExecutor::BSR_rd_ed()
  * BT-Bit Test
  */
 
+void CPUExecutor::BT_w(uint16_t _op1, uint16_t _op2)
+{
+	if(CPU_FAMILY <= CPU_386) {
+		//TODO should be the same for 486/586
+		// same as RCR with initial CF value of 0
+		uint16_t count = (_op2 & 0xf) + 1;
+		uint16_t res = (_op1 >> count) | (_op1 << (17 - count));
+		SET_FLAG(OF, (res ^ (res << 1)) & 0x8000);
+	}
+
+	SET_FLAG(CF, (_op1 >> (_op2 & 0xf)) & 1);
+}
+
+void CPUExecutor::BT_d(uint32_t _op1, uint32_t _op2)
+{
+	if(CPU_FAMILY <= CPU_386) {
+		//TODO should be the same for 486/586
+		// same as RCR with initial CF value of 0
+		uint32_t count = (_op2 & 0x1f) + 1;
+		uint32_t res = (_op1 >> count) | (_op1 << (33 - count));
+		SET_FLAG(OF, (res ^ (res << 1)) & 0x80000000);
+	}
+
+	SET_FLAG(CF, (_op1 >> (_op2 & 0x1f)) & 1);
+}
+
 uint16_t CPUExecutor::BT_ew(uint16_t _op2, bool _rmw)
 {
 	uint16_t op1;
@@ -606,7 +632,7 @@ uint16_t CPUExecutor::BT_ew(uint16_t _op2, bool _rmw)
 		}
 	}
 
-	SET_FLAG(CF, (op1 >> (_op2 & 0xf)) & 1);
+	BT_w(op1, _op2);
 
 	return op1;
 }
@@ -627,7 +653,7 @@ uint32_t CPUExecutor::BT_ed(uint32_t _op2, bool _rmw)
 		}
 	}
 
-	SET_FLAG(CF, (op1 >> (_op2 & 0x1f)) & 1);
+	BT_d(op1, _op2);
 
 	return op1;
 }
@@ -644,16 +670,12 @@ void CPUExecutor::BT_ed_rd()
 
 void CPUExecutor::BT_ew_ib()
 {
-	uint16_t op1 = load_ew();
-
-	SET_FLAG(CF, (op1 >> (m_instr->ib&0xf)) & 1);
+	BT_w(load_ew(), m_instr->ib);
 }
 
 void CPUExecutor::BT_ed_ib()
 {
-	uint32_t op1 = load_ed();
-
-	SET_FLAG(CF, (op1 >> (m_instr->ib&0x1f)) & 1);
+	BT_d(load_ed(), m_instr->ib);
 }
 
 
@@ -683,26 +705,24 @@ void CPUExecutor::BTC_ed_rd()
 
 void CPUExecutor::BTC_ew_ib()
 {
+	uint16_t op2 = m_instr->ib;
 	uint16_t op1 = load_ew();
-	uint8_t index = m_instr->ib & 0xf;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 ^= (1 << index);
+	BT_w(op1, op2);
+	op1 ^= (1 << (op2 & 0xf));
 
 	store_ew(op1);
-	SET_FLAG(CF, cf);
 }
 
 void CPUExecutor::BTC_ed_ib()
 {
+	uint32_t op2 = m_instr->ib;
 	uint32_t op1 = load_ed();
-	uint8_t index = m_instr->ib & 0x1f;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 ^= (1 << index);
+	BT_d(op1, op2);
+	op1 ^= (1 << (op2 & 0x1f));
 
 	store_ed(op1);
-	SET_FLAG(CF, cf);
 }
 
 
@@ -732,26 +752,24 @@ void CPUExecutor::BTR_ed_rd()
 
 void CPUExecutor::BTR_ew_ib()
 {
+	uint16_t op2 = m_instr->ib;
 	uint16_t op1 = load_ew();
-	uint8_t index = m_instr->ib & 0xf;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 &= ~(1 << index);
+	BT_w(op1, op2);
+	op1 &= ~(1 << (op2 & 0xf));
 
 	store_ew(op1);
-	SET_FLAG(CF, cf);
 }
 
 void CPUExecutor::BTR_ed_ib()
 {
+	uint32_t op2 = m_instr->ib;
 	uint32_t op1 = load_ed();
-	uint8_t index = m_instr->ib & 0x1f;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 &= ~(1 << index);
+	BT_d(op1, op2);
+	op1 &= ~(1 << (op2 & 0x1f));
 
 	store_ed(op1);
-	SET_FLAG(CF, cf);
 }
 
 
@@ -781,26 +799,24 @@ void CPUExecutor::BTS_ed_rd()
 
 void CPUExecutor::BTS_ew_ib()
 {
+	uint16_t op2 = m_instr->ib;
 	uint16_t op1 = load_ew();
-	uint8_t index = m_instr->ib & 0xf;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 |= (1 << index);
+	BT_w(op1, op2);
+	op1 |= (1 << (op2 & 0xf));
 
 	store_ew(op1);
-	SET_FLAG(CF, cf);
 }
 
 void CPUExecutor::BTS_ed_ib()
 {
+	uint32_t op2 = m_instr->ib;
 	uint32_t op1 = load_ed();
-	uint8_t index = m_instr->ib & 0x1f;
 
-	bool cf = bool((op1 >> index) & 1);
-	op1 |= (1 << index);
+	BT_d(op1, op2);
+	op1 |= (1 << (op2 & 0x1f));
 
 	store_ed(op1);
-	SET_FLAG(CF, cf);
 }
 
 
@@ -3756,7 +3772,7 @@ uint32_t CPUExecutor::ROL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(OF, bit0 ^ bit31);
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		assert(false);
 	}
 
 	return _op1;
@@ -3835,7 +3851,7 @@ uint32_t CPUExecutor::ROR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(OF, bit30 ^ bit31);
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		assert(false);
 	}
 
 	return _op1;
@@ -3853,28 +3869,34 @@ void CPUExecutor::ROR_ed_CL() { store_ed(ROR_d(load_ed(), REG_CL)); }
 
 uint8_t CPUExecutor::RCL_b(uint8_t _op1, uint8_t _count)
 {
-	_count = (_count & 0x1F) % 9;
+	_count &= 0x1F;
+	uint8_t count = _count % 9;
 
-	if(_count == 0) {
+	if(count == 0) {
+		if(CPU_FAMILY <= CPU_386 && _count) {
+			// if _count == 9 rotate happens and flags are set
+			//TODO should be the same for 486/586
+			SET_FLAG(OF, FLAG_CF ^ (_op1 >> 7));
+		}
 		return _op1;
 	}
 
 	uint8_t res;
 	uint8_t cf = FLAG_CF;
 
-	if(_count == 1) {
+	if(count == 1) {
 		res = (_op1 << 1) | cf;
 	} else {
-		res = (_op1 << _count) | (cf << (_count - 1)) | (_op1 >> (9 - _count));
+		res = (_op1 << count) | (cf << (count - 1)) | (_op1 >> (9 - count));
 	}
 
-	cf = (_op1 >> (8 - _count)) & 1;
+	cf = (_op1 >> (8 - count)) & 1;
 
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 7));
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		m_instr->cycles.extra = count;
 	}
 
 	return res;
@@ -3882,29 +3904,35 @@ uint8_t CPUExecutor::RCL_b(uint8_t _op1, uint8_t _count)
 
 uint16_t CPUExecutor::RCL_w(uint16_t _op1, uint8_t _count)
 {
-	_count = (_count & 0x1F) % 17;
+	_count &= 0x1F;
+	uint8_t count = _count % 17;
 
-	if(_count == 0) {
+	if(count == 0) {
+		if(CPU_FAMILY <= CPU_386 && _count) {
+			// if _count == 17 rotate happens and flags are set
+			//TODO should be the same for 486/586
+			SET_FLAG(OF, FLAG_CF ^ (_op1 >> 15));
+		}
 		return _op1;
 	}
 
 	uint16_t res;
 	uint16_t cf = FLAG_CF;
 
-	if(_count == 1) {
+	if(count == 1) {
 		res = (_op1 << 1) | cf;
-	} else if(_count == 16) {
+	} else if(count == 16) {
 		res = (cf << 15) | (_op1 >> 1);
 	} else { // 2..15
-		res = (_op1 << _count) | (cf << (_count - 1)) | (_op1 >> (17 - _count));
+		res = (_op1 << count) | (cf << (count - 1)) | (_op1 >> (17 - count));
 	}
 
-	cf = (_op1 >> (16 - _count)) & 1;
+	cf = (_op1 >> (16 - count)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, cf ^ (res >> 15));
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		m_instr->cycles.extra = count;
 	}
 
 	return res;
@@ -3932,7 +3960,7 @@ uint32_t CPUExecutor::RCL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(OF, cf ^ (res >> 31));
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		assert(false);
 	}
 
 	return res;
@@ -3950,21 +3978,27 @@ void CPUExecutor::RCL_ed_CL() { store_ed(RCL_d(load_ed(), REG_CL)); }
 
 uint8_t CPUExecutor::RCR_b(uint8_t _op1, uint8_t _count)
 {
-	_count = (_count & 0x1F) % 9;
+	_count &= 0x1F;
+	uint8_t count = _count % 9;
 
-	if(_count == 0) {
+	if(count == 0) {
+		if(CPU_FAMILY <= CPU_386 && _count) {
+			// if _count == 9 rotate happens and flags are set
+			//TODO should be the same for 486/586
+			SET_FLAG(OF, (_op1 ^ (_op1 << 1)) & 0x80);
+		}
 		return _op1;
 	}
 
 	uint8_t cf = FLAG_CF;
-	uint8_t res = (_op1 >> _count) | (cf << (8 - _count)) | (_op1 << (9 - _count));
+	uint8_t res = (_op1 >> count) | (cf << (8 - count)) | (_op1 << (9 - count));
 
-	cf = (_op1 >> (_count - 1)) & 1;
+	cf = (_op1 >> (count - 1)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x80);
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		m_instr->cycles.extra = count;
 	}
 
 	return res;
@@ -3972,21 +4006,27 @@ uint8_t CPUExecutor::RCR_b(uint8_t _op1, uint8_t _count)
 
 uint16_t CPUExecutor::RCR_w(uint16_t _op1, uint8_t _count)
 {
-	_count = (_count & 0x1f) % 17;
+	_count &= 0x1F;
+	uint8_t count = _count % 17;
 
-	if(_count == 0) {
+	if(count == 0) {
+		if(CPU_FAMILY <= CPU_386 && _count) {
+			// if _count == 17 rotate happens and flags are set
+			//TODO should be the same for 486/586
+			SET_FLAG(OF, (_op1 ^ (_op1 << 1)) & 0x8000);
+		}
 		return _op1;
 	}
 
 	uint16_t cf = FLAG_CF;
-	uint16_t res = (_op1 >> _count) | (cf << (16 - _count)) | (_op1 << (17 - _count));
+	uint16_t res = (_op1 >> count) | (cf << (16 - count)) | (_op1 << (17 - count));
 
-	cf = (_op1 >> (_count - 1)) & 1;
+	cf = (_op1 >> (count - 1)) & 1;
 	SET_FLAG(CF, cf);
 	SET_FLAG(OF, (res ^ (res << 1)) & 0x8000);
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		m_instr->cycles.extra = count;
 	}
 
 	return res;
@@ -4014,7 +4054,7 @@ uint32_t CPUExecutor::RCR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(OF, ((res << 1) ^ res) >> 31);
 
 	if(CPU_FAMILY <= CPU_286) {
-		m_instr->cycles.extra = _count;
+		assert(false);
 	}
 
 	return res;
@@ -4113,15 +4153,19 @@ uint8_t CPUExecutor::SHL_b(uint8_t _op1, uint8_t _count)
 		return _op1;
 	}
 
-	uint of = 0, cf = 0;
-	uint8_t res;
+	bool of = 0, cf = 0;
+	uint8_t res = 0;
 
 	if(_count <= 8) {
 		res = (_op1 << _count);
 		cf = (_op1 >> (8 - _count)) & 0x1;
 		of = cf ^ (res >> 7);
 	} else {
-		res = 0;
+		if(CPU_FAMILY <= CPU_386 && (_count == 16 || _count == 24)) {
+			//TODO should be the same for 486/586
+			cf = _op1 & 0x1;
+			of = cf;
+		}
 	}
 
 	SET_FLAG(OF, of);
@@ -4129,7 +4173,7 @@ uint8_t CPUExecutor::SHL_b(uint8_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4146,15 +4190,13 @@ uint16_t CPUExecutor::SHL_w(uint16_t _op1, uint8_t _count)
 		return _op1;
 	}
 
-	uint16_t res;
-	uint of = 0, cf = 0;
+	uint16_t res = 0;
+	bool of = 0, cf = 0;
 
 	if(_count <= 16) {
 		res = (_op1 << _count);
 		cf = (_op1 >> (16 - _count)) & 0x1;
 		of = cf ^ (res >> 15);
-	} else {
-		res = 0;
 	}
 
 	SET_FLAG(OF, of);
@@ -4162,7 +4204,7 @@ uint16_t CPUExecutor::SHL_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4179,7 +4221,7 @@ uint32_t CPUExecutor::SHL_d(uint32_t _op1, uint8_t _count)
 		return _op1;
 	}
 
-	/* count < 32, since only lower 5 bits used */
+	/* count < 32, since only the lower 5 bits are used */
 	uint32_t res = (_op1 << _count);
 
 	bool cf = (_op1 >> (32 - _count)) & 0x1;
@@ -4189,7 +4231,7 @@ uint32_t CPUExecutor::SHL_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4217,13 +4259,21 @@ uint8_t CPUExecutor::SHR_b(uint8_t _op1, uint8_t _count)
 	}
 
 	uint8_t res = _op1 >> _count;
+	bool cf = 0;
+
+	if(CPU_FAMILY <= CPU_386 && (_count == 16 || _count == 24)) {
+		//TODO should be the same for 486/586
+		cf = _op1 & 0x80;
+	} else {
+		cf = (_op1 >> (_count - 1)) & 0x1;
+	}
 
 	SET_FLAG(OF, (((res << 1) ^ res) >> 7) & 0x1);
-	SET_FLAG(CF, (_op1 >> (_count - 1)) & 0x1);
+	SET_FLAG(CF, cf);
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4247,7 +4297,7 @@ uint16_t CPUExecutor::SHR_w(uint16_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x8000);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
@@ -4276,7 +4326,7 @@ uint32_t CPUExecutor::SHR_d(uint32_t _op1, uint8_t _count)
 	SET_FLAG(ZF, res == 0);
 	SET_FLAG(PF, PARITY(res));
 	SET_FLAG(SF, res & 0x80000000);
-	SET_FLAG(AF, false);
+	SET_FLAG(AF, true);
 
 	if(CPU_FAMILY <= CPU_286) {
 		m_instr->cycles.extra = _count;
