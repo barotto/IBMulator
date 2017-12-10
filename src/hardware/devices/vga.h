@@ -137,7 +137,7 @@ protected:
 				bool display_type;
 				bool enable_line_graphics;
 				bool blink_intensity;
-				bool pixel_panning_compat;
+				bool pixel_panning_mode;
 				bool pixel_clock_select;
 				bool internal_palette_size;
 			} mode_ctrl;

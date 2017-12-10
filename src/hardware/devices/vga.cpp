@@ -542,7 +542,7 @@ uint16_t VGA::read(uint16_t address, uint /*io_len*/)
 					(m_s.attribute_ctrl.mode_ctrl.display_type << 1) |
 					(m_s.attribute_ctrl.mode_ctrl.enable_line_graphics << 2) |
 					(m_s.attribute_ctrl.mode_ctrl.blink_intensity << 3) |
-					(m_s.attribute_ctrl.mode_ctrl.pixel_panning_compat << 5) |
+					(m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode << 5) |
 					(m_s.attribute_ctrl.mode_ctrl.pixel_clock_select << 6) |
 					(m_s.attribute_ctrl.mode_ctrl.internal_palette_size << 7);
 					return(retval);
@@ -800,7 +800,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						m_s.attribute_ctrl.mode_ctrl.display_type = (value >> 1) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.enable_line_graphics = (value >> 2) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.blink_intensity = (value >> 3) & 0x01;
-						m_s.attribute_ctrl.mode_ctrl.pixel_panning_compat = (value >> 5) & 0x01;
+						m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode = (value >> 5) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.pixel_clock_select = (value >> 6) & 0x01;
 						m_s.attribute_ctrl.mode_ctrl.internal_palette_size = (value >> 7) & 0x01;
 						if(((value >> 2) & 0x01) != prev_line_graphics) {
@@ -1238,7 +1238,7 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 	uint8_t attribute, bit_no, palette_reg_val, DAC_regno;
 	uint32_t byte_offset;
 	int pan = m_s.attribute_ctrl.horiz_pel_panning;
-	if(pan>=8) {
+	if((pan >= 8) || ((y > lc) && (m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode == 1))) {
 		pan = 0;
 	}
 	if(m_s.x_dotclockdiv2) {
@@ -1602,7 +1602,7 @@ void VGA::update(uint64_t _time)
 		tm_info.h_panning = m_s.attribute_ctrl.horiz_pel_panning & 0x0f;
 		tm_info.v_panning = m_s.CRTC.reg[0x08] & 0x1f;
 		tm_info.line_graphics = m_s.attribute_ctrl.mode_ctrl.enable_line_graphics;
-		tm_info.split_hpanning = m_s.attribute_ctrl.mode_ctrl.pixel_panning_compat;
+		tm_info.split_hpanning = m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode;
 		tm_info.blink_flags = 0;
 		if(m_s.attribute_ctrl.mode_ctrl.blink_intensity) {
 			tm_info.blink_flags |= TEXT_BLINK_MODE;
