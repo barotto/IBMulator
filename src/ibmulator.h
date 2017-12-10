@@ -77,7 +77,7 @@
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0xFF
 	#define UD6_AUTO_DUMP     false
-	#define BOCHS_BIOS_COMPAT true
+	#define BOCHS_BIOS_COMPAT false
 
 	#define LOG_DEBUG_MESSAGES    true
 	#define LOG_MACHINE_TIME      true
