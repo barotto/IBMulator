@@ -1370,14 +1370,22 @@ void VGA::gfx_update(FN _get_pixel, bool _force_upd)
 template <typename FN>
 void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 {
+	uint16_t line_compare = m_s.line_compare >> m_s.y_doublescan;
+
 	gfx_update([=] (unsigned pixelx, unsigned pixely)
 	{
-		pixelx = (pixelx >> 1) + _pan;
-		unsigned plane  = (pixelx % 4);
-		unsigned byte_offset = (plane * 65536)
-		    + (pixely * m_s.line_offset)
-		    + _pixel_x(pixelx);
-		return m_memory[(m_s.CRTC.start_address + byte_offset)%m_memsize];
+		pixelx >>= 1;
+		if(pixely <= line_compare || m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode == 0) {
+			pixelx += _pan;
+		}
+		unsigned plane = (pixelx % 4);
+		unsigned byte_offset = (plane * 65536) + _pixel_x(pixelx);
+		if(pixely > line_compare) {
+			byte_offset += ((pixely - line_compare - 1) * m_s.line_offset);
+		} else {
+			byte_offset += m_s.CRTC.start_address + (pixely * m_s.line_offset);
+		}
+		return m_memory[byte_offset % m_memsize];
 	},
 	false);
 }
