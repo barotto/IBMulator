@@ -21,6 +21,7 @@
 #ifndef IBMULATOR_HW_VGA_H
 #define IBMULATOR_HW_VGA_H
 
+#include "vgacrtc.h"
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
@@ -99,11 +100,11 @@ protected:
 	struct {
 		struct {
 			bool color_emulation;  // 1=color emulation, base address = 3Dx
-								   // 0=mono emulation,  base address = 3Bx
+			                       // 0=mono emulation,  base address = 3Bx
 			bool enable_ram;       // enable CPU access to video memory if set
 			uint8_t clock_select;  // 0=25Mhz 1=28Mhz
 			bool select_high_bank; // when in odd/even modes, select
-								   // high 64k bank if set
+			                       // high 64k bank if set
 			bool horiz_sync_pol;   // bit6: negative if set
 			bool vert_sync_pol;    // bit7: negative if set
 			                       //   bit7,bit6 represent number of lines on display:
@@ -113,13 +114,7 @@ protected:
 			                       //   3 - 480 lines
 		} misc_output;
 
-		struct {
-			uint8_t address;
-			uint8_t reg[0x19];
-			bool write_protect;
-			bool interrupt;
-			uint16_t start_address;
-		} CRTC;
+		VGA_CRTC CRTC;
 
 		struct {
 			bool flip_flop; /* 0 = address, 1 = data-write */

@@ -90,6 +90,7 @@ noinst_HEADERS = \
 	devices/pit.h \
 	devices/pit82c54.h \
 	devices/vga.h \
+	devices/vgacrtc.h \
 	devices/vgadisplay.h \
 	devices/drivefx.h \
 	devices/floppy.h \

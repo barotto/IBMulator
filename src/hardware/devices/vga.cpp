@@ -364,43 +364,39 @@ void VGA::load_ROM(const std::string &_filename)
 	}
 }
 
-void VGA::determine_screen_dimensions(uint *piHeight, uint *piWidth)
+void VGA::determine_screen_dimensions(unsigned *height_, unsigned *width_)
 {
-	int ai[0x20];
-	int i,h,v;
-	for(i = 0 ; i < 0x19 ; i++)
-		ai[i] = m_s.CRTC.reg[i];
-
-	h = (ai[1] + 1) * 8;
-	v = (ai[18] | ((ai[7] & 0x02) << 7) | ((ai[7] & 0x40) << 3)) + 1;
+	int h = (m_s.CRTC.reg[CRTC_END_HDISPLAY] + 1) * 8;
+	int v = (m_s.CRTC.reg[CRTC_VDISPLAY_END] |
+	       ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VDE8) << 7) |
+	       ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VDE9) << 3)) + 1;
 
 	if(m_s.graphics_ctrl.shift_reg == 0) {
-		*piWidth = 640;
-		*piHeight = 480;
-
-		if(m_s.CRTC.reg[6] == 0xBF) {
-			if(m_s.CRTC.reg[23] == 0xA3 && m_s.CRTC.reg[20] == 0x40 && m_s.CRTC.reg[9] == 0x41)
+		*width_ = 640;
+		*height_ = 480;
+		if(m_s.CRTC.reg[CRTC_VTOTAL] == 0xBF) {
+			if(m_s.CRTC.reg[CRTC_MODE_CONTROL] == 0xA3 &&
+			   m_s.CRTC.reg[CRTC_UNDERLINE]    == 0x40 &&
+			   m_s.CRTC.reg[CRTC_MAX_SCANLINE] == 0x41)
 			{
-				*piWidth = 320;
-				*piHeight = 240;
+				*width_ = 320;
+				*height_ = 240;
 			} else {
-				if(m_s.x_dotclockdiv2)
-					h <<= 1;
-				*piWidth = h;
-				*piHeight = v;
+				h <<= m_s.x_dotclockdiv2;
+				*width_ = h;
+				*height_ = v;
 			}
 		} else if((h >= 640) && (v >= 400)) {
-			*piWidth = h;
-			*piHeight = v;
+			*width_ = h;
+			*height_ = v;
 		}
 	} else if(m_s.graphics_ctrl.shift_reg == 2) {
-		*piWidth = h;
-		*piHeight = v;
+		*width_ = h;
+		*height_ = v;
 	} else {
-		if(m_s.x_dotclockdiv2)
-			h <<= 1;
-		*piWidth = h;
-		*piHeight = v;
+		h <<= m_s.x_dotclockdiv2;
+		*width_ = h;
+		*height_ = v;
 	}
 }
 
@@ -410,22 +406,25 @@ void VGA::calculate_retrace_timing()
 	uint32_t htotal, hbstart, hbend, clock, cwidth, vtotal, vrstart, vrend;
 	double hfreq, vfreq;
 
-	htotal = m_s.CRTC.reg[0] + 5;
+	htotal = m_s.CRTC.reg[CRTC_HTOTAL] + 5;
 	htotal <<= m_s.x_dotclockdiv2;
 	cwidth = ((m_s.sequencer.reg1 & 0x01) == 1) ? 8 : 9;
 	clock = dot_clock[m_s.misc_output.clock_select];
 	hfreq = clock / (htotal * cwidth);
 	m_s.htotal_usec = 1000000 / hfreq;
-	hbstart = m_s.CRTC.reg[2];
+	hbstart = m_s.CRTC.reg[CRTC_START_HDISPLAY];
 	m_s.hbstart_usec = (1000000 * hbstart * cwidth) / clock;
-	hbend = (m_s.CRTC.reg[3] & 0x1f) + ((m_s.CRTC.reg[5] & 0x80) >> 2);
+	hbend = (m_s.CRTC.reg[CRTC_END_HBLANK]   & CRTC_EHB40) +
+	       ((m_s.CRTC.reg[CRTC_END_HRETRACE] & CRTC_EHB5) >> 2);
 	hbend = hbstart + ((hbend - hbstart) & 0x3f);
 	m_s.hbend_usec = (1000000 * hbend * cwidth) / clock;
-	vtotal = m_s.CRTC.reg[6] + ((m_s.CRTC.reg[7] & 0x01) << 8) +
-		   ((m_s.CRTC.reg[7] & 0x20) << 4) + 2;
-	vrstart = m_s.CRTC.reg[16] + ((m_s.CRTC.reg[7] & 0x04) << 6) +
-			((m_s.CRTC.reg[7] & 0x80) << 2);
-	vrend = ((m_s.CRTC.reg[17] & 0x0f) - vrstart) & 0x0f;
+	vtotal = m_s.CRTC.reg[CRTC_VTOTAL] +
+	       ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VT8) << 8) +
+	       ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VT9) << 4) + 2;
+	vrstart = m_s.CRTC.reg[CRTC_VRETRACE_START] +
+	        ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VRS8) << 6) +
+	        ((m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VRS9) << 2);
+	vrend = ((m_s.CRTC.reg[CRTC_VRETRACE_END] & CRTC_VRE) - vrstart) & 0x0f;
 	vrend = vrstart + vrend + 1;
 	vfreq = hfreq / vtotal;
 	m_s.vtotal_usec = 1000000.0 / vfreq;
@@ -908,7 +907,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					if(charmap2 > 3) {
 						charmap2 = (charmap2 & 3) + 4;
 					}
-					if(m_s.CRTC.reg[0x09] > 0) {
+					if(m_s.CRTC.reg[CRTC_MAX_SCANLINE] > 0) {
 						m_s.charmap_address = charmap_offset[charmap1];
 						charmap_update = true;
 					}
@@ -968,7 +967,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					uint8_t r = m_s.pel.data[m_s.pel.write_data_register].red;
 					uint8_t g = m_s.pel.data[m_s.pel.write_data_register].green;
 					uint8_t b = m_s.pel.data[m_s.pel.write_data_register].blue;
-					uint8_t sense = r &	g &	b;
+					uint8_t sense = r & g & b;
 					//dac sensing value for color monitor:
 					m_s.pel.dac_sense = (sense & 0x10);
 					r <<= m_s.dac_shift;
@@ -1104,12 +1103,12 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 				PDEBUGF(LOG_V2, LOG_VGA, "write: invalid CRTC register 0x%02x ignored\n", m_s.CRTC.address);
 				return;
 			}
-			if(m_s.CRTC.write_protect && (m_s.CRTC.address < 0x08)) {
-				if(m_s.CRTC.address == 0x07) {
-					m_s.CRTC.reg[m_s.CRTC.address] &= ~0x10;
-					m_s.CRTC.reg[m_s.CRTC.address] |= (value & 0x10);
+			if(m_s.CRTC.write_protect() && (m_s.CRTC.address <= CRTC_OVERFLOW)) {
+				if(m_s.CRTC.address == CRTC_OVERFLOW) {
+					m_s.CRTC.reg[CRTC_OVERFLOW] &= ~CRTC_LC8;
+					m_s.CRTC.reg[CRTC_OVERFLOW] |= (value & CRTC_LC8);
 					m_s.line_compare &= 0x2ff;
-					if(m_s.CRTC.reg[0x07] & 0x10) {
+					if(m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_LC8) {
 						m_s.line_compare |= 0x100;
 					}
 					needs_update = true;
@@ -1122,51 +1121,51 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 				uint8_t oldvalue = m_s.CRTC.reg[m_s.CRTC.address];
 				m_s.CRTC.reg[m_s.CRTC.address] = value;
 				switch (m_s.CRTC.address) {
-					case 0x00:
-					case 0x02:
-					case 0x03:
-					case 0x05:
-					case 0x06:
-					case 0x10:
+					case CRTC_HTOTAL:         // 0x00
+					case CRTC_START_HDISPLAY: // 0x02
+					case CRTC_END_HBLANK:     // 0x03
+					case CRTC_END_HRETRACE:   // 0x05
+					case CRTC_VTOTAL:         // 0x06
+					case CRTC_VRETRACE_START: // 0x10
 						calculate_retrace_timing();
 						break;
-					case 0x07:
+					case CRTC_OVERFLOW: // 0x07
 						m_s.vertical_display_end &= 0xff;
-						if(m_s.CRTC.reg[0x07] & 0x02) {
+						if(m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VDE8) {
 							m_s.vertical_display_end |= 0x100;
 						}
-						if(m_s.CRTC.reg[0x07] & 0x40) {
+						if(m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_VDE9) {
 							m_s.vertical_display_end |= 0x200;
 						}
 						m_s.line_compare &= 0x2ff;
-						if(m_s.CRTC.reg[0x07] & 0x10) {
+						if(m_s.CRTC.reg[CRTC_OVERFLOW] & CRTC_LC8) {
 							m_s.line_compare |= 0x100;
 						}
 						calculate_retrace_timing();
 						needs_update = true;
 						break;
-					case 0x08:
+					case CRTC_PRESET_ROW_SCAN: // 0x08
 						// Vertical pel panning change
 						needs_update = true;
 						break;
-					case 0x09:
+					case CRTC_MAX_SCANLINE: // 0x09
 						m_s.y_doublescan = ((value & 0x9f) > 0);
 						m_s.line_compare &= 0x1ff;
-						if(m_s.CRTC.reg[0x09] & 0x40) {
+						if(m_s.CRTC.reg[CRTC_MAX_SCANLINE] & CRTC_LC9) {
 							m_s.line_compare |= 0x200;
 						}
 						charmap_update = true;
 						needs_update = true;
 						break;
-					case 0x0A:
-					case 0x0B:
-					case 0x0E:
-					case 0x0F:
+					case CRTC_CURSOR_START: // 0x0A
+					case CRTC_CURSOR_END:   // 0x0B
+					case CRTC_CURSOR_HI:    // 0x0E
+					case CRTC_CURSOR_LO:    // 0x0F
 						// Cursor size / location change
 						m_s.vga_mem_updated = true;
 						break;
-					case 0x0C:
-					case 0x0D:
+					case CRTC_STARTADDR_HI: // 0x0C
+					case CRTC_STARTADDR_LO: // 0x0D
 						// Start address change
 						if(m_s.graphics_ctrl.graphics_alpha) {
 							needs_update = true;
@@ -1176,35 +1175,34 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						PDEBUGF(LOG_V2, LOG_VGA, "start address 0x%02X=%02X\n",
 								m_s.CRTC.address, value);
 						break;
-					case 0x11:
-						if(!(m_s.CRTC.reg[0x11] & 0x10)) {
+					case CRTC_VRETRACE_END: // 0x11
+						if(!(m_s.CRTC.reg[CRTC_VRETRACE_END] & CRTC_NCINT)) {
 							lower_interrupt();
 						}
-						m_s.CRTC.write_protect = ((m_s.CRTC.reg[0x11] & 0x80) > 0);
-						if((oldvalue&0xF) != (m_s.CRTC.reg[0x11]&0xF)) {
+						if((oldvalue&0xF) != (m_s.CRTC.reg[CRTC_VRETRACE_END] & CRTC_VRE)) {
 							calculate_retrace_timing();
 						}
 						break;
-					case 0x12:
+					case CRTC_VDISPLAY_END: // 0x12
 						m_s.vertical_display_end &= 0x300;
-						m_s.vertical_display_end |= m_s.CRTC.reg[0x12];
+						m_s.vertical_display_end |= m_s.CRTC.reg[CRTC_VDISPLAY_END];
 						calculate_retrace_timing();
 						break;
-					case 0x13:
-					case 0x14:
-					case 0x17:
+					case CRTC_OFFSET:       // 0x13
+					case CRTC_UNDERLINE:    // 0x14
+					case CRTC_MODE_CONTROL: // 0x17
 						// Line offset change
-						m_s.line_offset = m_s.CRTC.reg[0x13] << 1;
-						if(m_s.CRTC.reg[0x14] & 0x40) {
+						m_s.line_offset = m_s.CRTC.reg[CRTC_OFFSET] << 1;
+						if(m_s.CRTC.reg[CRTC_UNDERLINE] & CRTC_DW) {
 							m_s.line_offset <<= 2;
-						} else if((m_s.CRTC.reg[0x17] & 0x40) == 0) {
+						} else if((m_s.CRTC.reg[CRTC_MODE_CONTROL] & CRTC_BWM) == 0) {
 							m_s.line_offset <<= 1;
 						}
 						needs_update = true;
 						break;
-					case 0x18:
+					case CRTC_LINE_COMPARE: // 0x18
 						m_s.line_compare &= 0x300;
-						m_s.line_compare |= m_s.CRTC.reg[0x18];
+						m_s.line_compare |= m_s.CRTC.reg[CRTC_LINE_COMPARE];
 						needs_update = true;
 						break;
 				}
@@ -1285,7 +1283,7 @@ uint8_t VGA::get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc,
 
 void VGA::raise_interrupt()
 {
-	if(m_s.CRTC.reg[0x11] & 0x10) {
+	if(m_s.CRTC.reg[CRTC_VRETRACE_END] & CRTC_NCINT) {
 		PDEBUGF(LOG_V2, LOG_VGA, "raising IRQ %d\n", VGA_IRQ);
 		m_devices->pic()->raise_irq(VGA_IRQ);
 		m_s.CRTC.interrupt = true;
@@ -1473,7 +1471,7 @@ void VGA::update(uint64_t _time)
 
 		switch (m_s.graphics_ctrl.shift_reg) {
 			case 0: // interleaved shift
-				if((m_s.CRTC.reg[0x17] & 1) == 0) { // CGA 640x200x2
+				if((m_s.CRTC.reg[CRTC_MODE_CONTROL] & CRTC_MAP13) == 0) { // CGA 640x200x2
 
 					gfx_update([=] (unsigned pixelx, unsigned pixely)
 					{
@@ -1540,7 +1538,7 @@ void VGA::update(uint64_t _time)
 				const uint mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
 				pan = mode13_pan_values[pan];
 
-				if(m_s.CRTC.reg[0x14] & 0x40) { // DW set: doubleword mode
+				if(m_s.CRTC.reg[CRTC_UNDERLINE] & CRTC_DW) { // DW set: doubleword mode
 					m_s.CRTC.start_address *= 4;
 					if(m_s.misc_output.select_high_bank != 1) {
 						PERRF(LOG_VGA, "update: select_high_bank != 1\n");
@@ -1552,7 +1550,7 @@ void VGA::update(uint64_t _time)
 					},
 					pan);
 
-				} else if(m_s.CRTC.reg[0x17] & 0x40) { // B/W set: byte mode, modeX
+				} else if(m_s.CRTC.reg[CRTC_MODE_CONTROL] & CRTC_BWM) { // B/W set: byte mode, modeX
 
 					update_mode13([](unsigned _px)
 					{
@@ -1591,31 +1589,34 @@ void VGA::update(uint64_t _time)
 		uint VDE, cols, rows, cWidth;
 		uint8_t MSL;
 
-		tm_info.start_address = 2*((m_s.CRTC.reg[12] << 8) + m_s.CRTC.reg[13]);
-		tm_info.cs_start = m_s.CRTC.reg[0x0a] & 0x3f;
+		tm_info.start_address = 2*((m_s.CRTC.reg[CRTC_STARTADDR_HI] << 8) + m_s.CRTC.reg[CRTC_STARTADDR_LO]);
+		tm_info.cs_start = m_s.CRTC.reg[CRTC_CURSOR_START] & (CRTC_CD|CRTC_CSLS);
 		if(!cs_visible) {
-			tm_info.cs_start |= 0x20;
+			tm_info.cs_start |= CRTC_CD;
 		}
-		tm_info.cs_end = m_s.CRTC.reg[0x0b] & 0x1f;
-		tm_info.line_offset = m_s.CRTC.reg[0x13] << 2;
+		tm_info.cs_end = m_s.CRTC.reg[CRTC_CURSOR_END] & CRTC_CSLE;
+		tm_info.line_offset = m_s.CRTC.reg[CRTC_OFFSET] << 2;
 		tm_info.line_compare = m_s.line_compare;
 		tm_info.h_panning = m_s.attribute_ctrl.horiz_pel_panning & 0x0f;
-		tm_info.v_panning = m_s.CRTC.reg[0x08] & 0x1f;
+		tm_info.v_panning = m_s.CRTC.reg[CRTC_PRESET_ROW_SCAN] & CRTC_PRS;
 		tm_info.line_graphics = m_s.attribute_ctrl.mode_ctrl.enable_line_graphics;
 		tm_info.split_hpanning = m_s.attribute_ctrl.mode_ctrl.pixel_panning_mode;
 		tm_info.blink_flags = 0;
 		if(m_s.attribute_ctrl.mode_ctrl.blink_intensity) {
 			tm_info.blink_flags |= TEXT_BLINK_MODE;
-			if(cs_toggle)
+			if(cs_toggle) {
 				tm_info.blink_flags |= TEXT_BLINK_TOGGLE;
-			if(cs_visible)
+			}
+			if(cs_visible) {
 				tm_info.blink_flags |= TEXT_BLINK_STATE;
+			}
 		}
 		if((m_s.sequencer.reg1 & 0x01) == 0) {
-			if(tm_info.h_panning >= 8)
+			if(tm_info.h_panning >= 8) {
 				tm_info.h_panning = 0;
-			else
+			} else {
 				tm_info.h_panning++;
+			}
 		} else {
 			tm_info.h_panning &= 0x07;
 		}
@@ -1626,8 +1627,8 @@ void VGA::update(uint64_t _time)
 		// Verticle Display End: find out how many lines are displayed
 		VDE = m_s.vertical_display_end;
 		// Maximum Scan Line: height of character cell
-		MSL = m_s.CRTC.reg[0x09] & 0x1f;
-		cols = m_s.CRTC.reg[1] + 1;
+		MSL = m_s.CRTC.reg[CRTC_MAX_SCANLINE] & CRTC_MSL;
+		cols = m_s.CRTC.reg[CRTC_END_HDISPLAY] + 1;
 		// workaround for update() calls before VGABIOS init
 		if(cols == 1) {
 			cols = 80;
@@ -1670,7 +1671,7 @@ void VGA::update(uint64_t _time)
 
 		// pass old text snapshot & new VGA memory contents
 		start_address = tm_info.start_address;
-		cursor_address = 2*((m_s.CRTC.reg[0x0e] << 8) + m_s.CRTC.reg[0x0f]);
+		cursor_address = 2*((m_s.CRTC.reg[CRTC_CURSOR_HI] << 8) + m_s.CRTC.reg[CRTC_CURSOR_LO]);
 		if(cursor_address < start_address) {
 			cursor_x = 0xffff;
 			cursor_y = 0xffff;
@@ -1694,12 +1695,12 @@ void VGA::vertical_retrace(uint64_t _time)
 {
 	m_s.vretrace_time_usec = _time / 1000;
 
-	if(!(m_s.CRTC.reg[0x11] & 0x20) && !skip_update()) {
+	if(!(m_s.CRTC.reg[CRTC_VRETRACE_END] & CRTC_DINT) && !skip_update()) {
 		raise_interrupt();
 	}
 	//the start address is latched at vretrace
 	PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address latch\n");
-	m_s.CRTC.start_address = (m_s.CRTC.reg[0x0c] << 8) | m_s.CRTC.reg[0x0d];
+	m_s.CRTC.latch_start_address();
 
 	//next is the "vblank start"
 	uint64_t vbstart = (m_s.vtotal_usec - m_s.vrstart_usec) + m_s.vblank_usec;
@@ -2173,9 +2174,9 @@ void VGA::get_text_snapshot(uint8_t **text_snapshot, uint *txHeight, uint *txWid
 	if(!m_s.graphics_ctrl.graphics_alpha) {
 		*text_snapshot = &m_s.text_snapshot[0];
 		VDE = m_s.vertical_display_end;
-		MSL = m_s.CRTC.reg[0x09] & 0x1f;
+		MSL = m_s.CRTC.reg[CRTC_MAX_SCANLINE] & CRTC_MSL;
 		*txHeight = (VDE+1)/(MSL+1);
-		*txWidth = m_s.CRTC.reg[1] + 1;
+		*txWidth = m_s.CRTC.reg[CRTC_END_HDISPLAY] + 1;
 	} else {
 		*txHeight = 0;
 		*txWidth = 0;
