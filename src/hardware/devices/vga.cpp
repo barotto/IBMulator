@@ -1589,7 +1589,7 @@ void VGA::update(uint64_t _time)
 		uint VDE, cols, rows, cWidth;
 		uint8_t MSL;
 
-		tm_info.start_address = 2*((m_s.CRTC.reg[CRTC_STARTADDR_HI] << 8) + m_s.CRTC.reg[CRTC_STARTADDR_LO]);
+		tm_info.start_address = 2 * m_s.CRTC.start_address;
 		tm_info.cs_start = m_s.CRTC.reg[CRTC_CURSOR_START] & (CRTC_CD|CRTC_CSLS);
 		if(!cs_visible) {
 			tm_info.cs_start |= CRTC_CD;
