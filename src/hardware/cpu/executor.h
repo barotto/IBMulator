@@ -68,7 +68,9 @@ public:
 	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
 
 	struct {
+		uint32_t lin1;
 		uint32_t phy1;
+		uint32_t lin2;
 		uint32_t phy2;
 		unsigned len1;
 		unsigned len2;
@@ -117,7 +119,7 @@ public:
 
 	void mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
 
-	uint8_t  read_byte() { return g_cpubus.mem_read<1>(m_cached_phy.phy1); }
+	uint8_t  read_byte();
 	uint16_t read_word();
 	uint32_t read_dword();
 	uint64_t read_qword();
@@ -132,7 +134,7 @@ public:
 	uint32_t read_dword(uint32_t _linear);
 	uint64_t read_qword(uint32_t _linear);
 
-	void write_byte(uint8_t _data) { g_cpubus.mem_write<1>(m_cached_phy.phy1, _data); }
+	void write_byte(uint8_t _data);
 	void write_word(uint16_t _data);
 	void write_dword(uint32_t _data);
 	void write_xpages(uint32_t _data);

@@ -27,7 +27,8 @@ extern CPUMMU g_cpummu;
 
 #define TLB_SIZE 1024 // number of entries in the TLB
 
-#define LPF_OF(laddr)      ((laddr) & 0xFFFFF000)
+#define LPF_MASK           0xFFFFF000
+#define LPF_OF(laddr)      ((laddr) & LPF_MASK)
 #define PAGE_OFFSET(laddr) (uint32_t(laddr) & 0xFFF)
 
 

@@ -113,7 +113,7 @@ struct Cycles
 	int pmode;    //!< CPU cycles penalty if protected mode (added to base)
 	int noj;      //!< for jumps if jump not taken
 	int bu;       //!< cycles added to or reduced from the bu cycles count
-				  //   this is a hack, to account for proper bu operations ordering
+	              //   this is a hack, to account for proper bu operations ordering
 };
 
 typedef void (CPUExecutor::*CPUExecutor_fun)();
@@ -136,7 +136,7 @@ struct Instruction
 	bool rep_zf;        // tells the executor that the exit condition is by checking the ZF
 	bool rep_equal;     // true if REPE, false if REPNE
 	uint32_t eip;       // the instruction EIP value
-	uint32_t cseip;     // the instruction physical memory address
+	uint32_t cseip;     // the instruction linear memory address
 	uint size;          // total size of the instruction (prefixes included)
 	Cycles cycles;      // timing information
 	uint8_t bytes[CPU_MAX_INSTR_SIZE]; // the instruction bytes (prefixes included)

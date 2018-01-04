@@ -3099,14 +3099,56 @@ void CPUExecutor::MOV_rd_CR()
 
 void CPUExecutor::MOV_DR_rd()
 {
+	if(REG_DRBIT(7, GD)) {
+		g_cpu.set_debug_trap_bit(CPU_DEBUG_DR_ACCESS_BIT);
+		throw CPUException(CPU_DEBUG_EXC, 0);
+	}
+
 	check_CPL_privilege(!IS_RMODE(), "MOV_DR_rd");
-	REG_DBG(m_instr->modrm.r) = load_ed();
+
+	uint32_t val = load_ed();
+	switch(m_instr->modrm.r) {
+		case 4:
+			// DR4 aliased to DR6 by default
+			// TODO 586+ causes #UD when CR4.DE is set
+		case 6:
+			// On 386/486 bit12 is settable
+			val = (REG_DR(6) & 0xffff0ff0) | (val & 0x0000f00f);
+			// TODO on 586+ bit12 is always zero
+			break;
+		case 5:
+			// DR5 aliased to DR7 by default
+			// TODO 586+ causes #UD when CR4.DE is set
+		case 7:
+			// Note: 486+ ignore GE and LE flags.  On the 386, exact
+			// data breakpoint matching does not occur unless it is enabled
+			// by setting the LE and/or GE flags.
+			// 386/486: all the bits can be set except b10 is always 1
+			val |= 0x00000400;
+			// TODO 586+: bits15,14,12 are hardwired to 0, rest are settable.
+			// bits 11,10 are changeable though reserved.
+			break;
+		default:
+			break;
+	}
+	REG_DR(m_instr->modrm.r) = val;
 }
 
 void CPUExecutor::MOV_rd_DR()
 {
+	if(REG_DRBIT(7, GD)) {
+		g_cpu.set_debug_trap_bit(CPU_DEBUG_DR_ACCESS_BIT);
+		throw CPUException(CPU_DEBUG_EXC, 0);
+	}
+
 	check_CPL_privilege(!IS_RMODE(), "MOV_rd_DR");
-	store_ed(REG_DBG(m_instr->modrm.r));
+
+	uint8_t reg = m_instr->modrm.r;
+	// DR4 aliased to DR6 by default
+	if(reg == 4) reg = 6;
+	// DR5 aliased to DR7 by default
+	if(reg == 5) reg = 7;
+	store_ed(REG_DR(reg));
 }
 
 void CPUExecutor::MOV_TR_rd()

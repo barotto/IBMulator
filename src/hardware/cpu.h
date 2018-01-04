@@ -83,7 +83,7 @@ Sig    Model       Step
  */
 enum CPUExceptionVector {
 	CPU_DIV_ER_EXC      = 0,  // Divide Error exception
-	CPU_DEBUG_EXC       = 1,  // Breakpoint/Single step interrupt
+	CPU_DEBUG_EXC       = 1,  // Breakpoint/Single step interrupt (286) - Debug (386)
 	CPU_NMI_INT         = 2,  // NMI interrupt
 	CPU_BREAKPOINT_INT  = 3,  // INT3 (breakpoint) interrupt
 	CPU_INTO_EXC        = 4,  // INTO detected overflow exception
@@ -109,14 +109,7 @@ enum CPUExceptionVector {
 
 #include "cpu/executor.h"
 
-#define CPU_EVENT_NMI           (1 << 0)
-#define CPU_EVENT_PENDING_INTR  (1 << 1)
 
-#define CPU_INHIBIT_INTERRUPTS  0x01
-#define CPU_INHIBIT_DEBUG       0x02
-
-#define CPU_INHIBIT_INTERRUPTS_BY_MOVSS \
-	(CPU_INHIBIT_INTERRUPTS | CPU_INHIBIT_DEBUG)
 
 // exception types for interrupt method
 enum CPUInterruptType {
@@ -200,16 +193,20 @@ public:
 	inline double frequency() const { return m_frequency; }
 	inline uint32_t cycle_time_ns() const { return m_cycle_time; }
 
-	void interrupt(uint8_t _vector, unsigned _type,	bool _push_error, uint16_t _error_code);
+	void interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t _error_code);
 	void clear_INTR();
 	void raise_INTR();
 	void deliver_NMI();
 	void inhibit_interrupts(unsigned mask);
+	bool interrupts_inhibited(unsigned mask);
 	void interrupt_mask_change();
 	void unmask_event(uint32_t event);
 	inline void set_async_event() { m_s.async_event = true; }
 	inline void clear_inhibit_mask() { m_s.inhibit_mask = 0; }
-	inline void clear_debug_trap() { m_s.debug_trap = false; }
+	inline void set_debug_trap(uint32_t _value) { m_s.debug_trap = _value; }
+	inline void clear_debug_trap() { m_s.debug_trap = 0; }
+	inline void set_debug_trap_bit(uint32_t _bit) { m_s.debug_trap |= _bit; }
+	inline void clear_debug_trap_bit(uint32_t _bit) { m_s.debug_trap &= ~_bit; }
 
 	void set_HRQ(bool _val);
 	bool get_HRQ() { return m_s.HRQ; }
@@ -239,7 +236,6 @@ protected:
 	uint32_t unmasked_events_pending();
 	void default_shutdown_trap() {}
 	bool is_double_fault(uint8_t _first_vec, uint8_t _current_vec);
-	bool interrupts_inhibited(unsigned mask);
 	bool v86_redirect_interrupt(uint8_t _vector);
 
 	void wait_for_event();

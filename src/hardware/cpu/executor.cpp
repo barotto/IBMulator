@@ -86,6 +86,8 @@ void CPUExecutor::execute(Instruction * _instr)
 
 	uint32_t old_eip = REG_EIP;
 
+	// Faults will use previous value of EIP, update before anything that could
+	// throw a CPU exception
 	SET_EIP(REG_EIP + m_instr->size);
 
 	if(INT_TRAPS) {
@@ -105,27 +107,40 @@ void CPUExecutor::execute(Instruction * _instr)
 		}
 	}
 
+	if(old_eip + m_instr->size > GET_LIMIT(CS)) {
+		// Priority 7:
+		//  Code-Segment Limit Violation
+		PERRF(LOG_CPU, "CS limit violation!\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
+	/* All IA-32 processors manage the RF flag as follows. The RF Flag is
+	 * cleared at the start of the instruction after the check for code
+	 * breakpoint, CS limit violation and FP exceptions. Task Switches and IRETD
+	 * instructions transfer the RF image from the TSS/stack to the EFLAGS
+	 * register.
+	 */
+	SET_FLAG(RF, false);
+
 	if(!m_instr->valid) {
+		// Priority 8:
+		//   Illegal opcode
 		illegal_opcode();
+	}
+
+	if(m_instr->size > m_max_instr_size) {
+		/* Priority 8:
+		 *    Instruction length > 15 bytes
+		 * When the CPU detects an instruction that is illegal due to being
+		 * greater than 10 (286) or 15 (386+) bytes in length, it generates
+		 * an exception #13 (General Protection Violation)
+		 */
+		throw CPUException(CPU_GP_EXC, 0);
 	}
 
 	static CPUExecutor_fun exec_fn;
 
 	if(!m_instr->rep || m_instr->rep_first) {
-		if(m_instr->size > m_max_instr_size) {
-			/*
-			 * When the CPU detects an instruction that is illegal due to being
-			 * greater than 10 bytes in length, it generates an exception
-			 * #13 (General Protection Violation)
-			 * [80286 ARPL and Overlength Instructions, 15 October 1984]
-			 */
-			throw CPUException(CPU_GP_EXC, 0);
-		}
-
-		if(old_eip + m_instr->size > GET_LIMIT(CS)) {
-			PERRF(LOG_CPU, "CS limit violation!\n");
-			throw CPUException(CPU_GP_EXC, 0);
-		}
 
 		if(m_instr->seg != REGI_NONE) {
 			m_base_ds = m_instr->seg;

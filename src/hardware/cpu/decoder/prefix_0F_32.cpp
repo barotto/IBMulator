@@ -100,7 +100,7 @@ case 0x07: /* 0F 07      386 LOADALL            Load CPU registers from memory *
 case 0x20: /* 0F 20 /r   MOV r32,CR0/CR2/CR3    Move (control register) to (register) */
 case 0x21: /* 0F 21 /r   MOV r32,DRx            Move (debug register) to (register) */
 case 0x22: /* 0F 22 /r   MOV CR0/CR2/CR3,r32    Move (register) to (control register)  */
-case 0x23: /* 0F 23 /r   MOV DR0 -- 3,r32       Move (register) to (debug register) */
+case 0x23: /* 0F 23 /r   MOV DRx,r32            Move (register) to (debug register) */
 case 0x24: /* 0F 24 /r   MOV r32,TR6/TR7        Move (test register) to (register) */
 case 0x26: /* 0F 26 /r   MOV TR6/TR7,r32        Move (register) to (test register) */
 	PREFIX_0F;

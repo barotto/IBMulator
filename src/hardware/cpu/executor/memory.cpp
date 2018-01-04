@@ -25,18 +25,22 @@ void CPUExecutor::mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _
 {
 	if(IS_PAGING()) {
 		if(LIKELY((PAGE_OFFSET(_linear) + _len) <= 4096)) {
-			m_cached_phy.phy1 = g_cpummu.TLB_lookup(_linear, _len, _user, _write);
+			m_cached_phy.lin1 = _linear;
+			m_cached_phy.phy1 = g_cpummu.TLB_lookup(m_cached_phy.lin1, _len, _user, _write);
 			m_cached_phy.len1 = _len;
 			m_cached_phy.pages = 1;
 		} else {
 			uint32_t page_offset = PAGE_OFFSET(_linear);
 			m_cached_phy.len1 = 4096 - page_offset;
 			m_cached_phy.len2 = _len - m_cached_phy.len1;
-			m_cached_phy.phy1 = g_cpummu.TLB_lookup(_linear, m_cached_phy.len1, _user, _write);
-			m_cached_phy.phy2 = g_cpummu.TLB_lookup(_linear + m_cached_phy.len1, m_cached_phy.len2, _user, _write);
+			m_cached_phy.lin1 = _linear;
+			m_cached_phy.phy1 = g_cpummu.TLB_lookup(m_cached_phy.lin1, m_cached_phy.len1, _user, _write);
+			m_cached_phy.lin2 = _linear + m_cached_phy.len1;
+			m_cached_phy.phy2 = g_cpummu.TLB_lookup(m_cached_phy.lin2, m_cached_phy.len2, _user, _write);
 			m_cached_phy.pages = 2;
 		}
 	} else {
+		m_cached_phy.lin1 = _linear;
 		m_cached_phy.phy1 = _linear;
 		m_cached_phy.len1 = _len;
 		m_cached_phy.pages = 1;
@@ -48,13 +52,28 @@ void CPUExecutor::mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _
  * Reads
  */
 
+uint8_t CPUExecutor::read_byte()
+{
+	if(UNLIKELY(DR7_ENABLED_ANY)) {
+		g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 1, 0x3);
+	}
+	return g_cpubus.mem_read<1>(m_cached_phy.phy1);
+}
+
 uint16_t CPUExecutor::read_word()
 {
 	if(LIKELY(m_cached_phy.pages == 1)) {
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 2, 0x3);
+		}
 		return g_cpubus.mem_read<2>(m_cached_phy.phy1);
 	} else {
 		uint16_t value = g_cpubus.mem_read<1>(m_cached_phy.phy1) |
 		                 g_cpubus.mem_read<1>(m_cached_phy.phy2) << 8;
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 1, 0x3);
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin2, 1, 0x3);
+		}
 		if(MEMORY_TRAPS) {
 			g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_READ, value, 2);
 		}
@@ -65,6 +84,9 @@ uint16_t CPUExecutor::read_word()
 uint32_t CPUExecutor::read_dword()
 {
 	if(LIKELY(m_cached_phy.pages == 1)) {
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 4, 0x3);
+		}
 		return g_cpubus.mem_read<4>(m_cached_phy.phy1);
 	} else {
 		uint32_t value;
@@ -77,6 +99,10 @@ uint32_t CPUExecutor::read_dword()
 		} else { // 3
 			value = g_cpubus.mem_read<3>(m_cached_phy.phy1) |
 			        g_cpubus.mem_read<1>(m_cached_phy.phy2) << 24;
+		}
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, m_cached_phy.len1, 0x3);
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin2, m_cached_phy.len2, 0x3);
 		}
 		if(MEMORY_TRAPS) {
 			g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_READ, value, 4);
@@ -156,13 +182,28 @@ uint64_t CPUExecutor::read_qword(uint32_t _linear)
  * Writes
  */
 
+void CPUExecutor::write_byte(uint8_t _data)
+{
+	if(UNLIKELY(DR7_ENABLED_ANY)) {
+		g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 1, 0x1);
+	}
+	g_cpubus.mem_write<1>(m_cached_phy.phy1, _data);
+}
+
 void CPUExecutor::write_word(uint16_t _data)
 {
 	if(LIKELY(m_cached_phy.pages == 1)) {
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 2, 0x1);
+		}
 		g_cpubus.mem_write<2>(m_cached_phy.phy1, _data);
 	} else {
 		g_cpubus.mem_write<1>(m_cached_phy.phy1, _data);
 		g_cpubus.mem_write<1>(m_cached_phy.phy2, _data>>8);
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 1, 0x1);
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin2, 1, 0x1);
+		}
 		if(MEMORY_TRAPS) {
 			g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_WRITE, _data, 2);
 		}
@@ -172,6 +213,9 @@ void CPUExecutor::write_word(uint16_t _data)
 void CPUExecutor::write_dword(uint32_t _data)
 {
 	if(LIKELY(m_cached_phy.pages == 1)) {
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, 4, 0x1);
+		}
 		g_cpubus.mem_write<4>(m_cached_phy.phy1, _data);
 	} else {
 
@@ -184,6 +228,10 @@ void CPUExecutor::write_dword(uint32_t _data)
 		} else { // 3
 			g_cpubus.mem_write<3>(m_cached_phy.phy1, _data);
 			g_cpubus.mem_write<1>(m_cached_phy.phy2, _data>>24);
+		}
+		if(UNLIKELY(DR7_ENABLED_ANY)) {
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin1, m_cached_phy.len1, 0x1);
+			g_cpucore.match_x86_data_breakpoint(m_cached_phy.lin2, m_cached_phy.len2, 0x1);
 		}
 		if(MEMORY_TRAPS) {
 			g_memory.check_trap(m_cached_phy.phy1, MEM_TRAP_WRITE, _data, 4);

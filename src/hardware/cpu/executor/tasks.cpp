@@ -96,7 +96,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	// Discard any traps and inhibits for new context; traps will
 	// resume upon return.
 	g_cpu.clear_inhibit_mask();
-	g_cpu.clear_debug_trap();
+	g_cpu.clear_debug_trap_bit(CPU_DEBUG_SINGLE_STEP_BIT);
 
 	// STEP 1: The following checks are made before calling task_switch(),
 	//         for JMP & CALL only. These checks are NOT made for exceptions,
@@ -337,8 +337,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	SET_CR0BIT(TS, true);
 
 	// Task switch clears LE/L3/L2/L1/L0 in DR7
-	// TODO
-	//REG_DR7 &= ~0x00000155;
+	REG_DR(7) &= ~0x00000155;
 
 	// Step 10: If call or interrupt, set the NT flag in the eflags
 	//          image stored in new task's TSS.  If IRET or JMP,
@@ -443,14 +442,14 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	}
 
 	if(IS_V8086()) {
-	    // load seg regs as 8086 registers
+		// load seg regs as 8086 registers
 		SET_SS(raw_ss_selector);
-	    SET_DS(raw_ds_selector);
-	    SET_ES(raw_es_selector);
-	    SET_FS(raw_fs_selector);
-	    SET_GS(raw_gs_selector);
-	    SET_CS(raw_cs_selector);
-	    // CPL is set from CS selector
+		SET_DS(raw_ds_selector);
+		SET_ES(raw_es_selector);
+		SET_FS(raw_fs_selector);
+		SET_GS(raw_gs_selector);
+		SET_CS(raw_cs_selector);
+		// CPL is set from CS selector
 	} else {
 		// SS
 		if((raw_ss_selector & SELECTOR_RPL_MASK) != 0) {
@@ -560,13 +559,11 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		}
 	}
 
-	/* TODO
 	if(descriptor.is_386_system() && (trap_word & 0x1)) {
-		debug_trap |= DEBUG_TRAP_TASK_SWITCH_BIT; // BT flag
-		g_cpu.async_event = true; // so processor knows to check
+		g_cpu.set_debug_trap_bit(CPU_DEBUG_TRAP_TASK_SWITCH_BIT);
+		g_cpu.set_async_event();
 		PDEBUGF(LOG_V2, LOG_CPU, "switch_tasks: T bit set in new TSS\n");
 	}
-	*/
 
 	//
 	// Step 12: Begin execution of new task.

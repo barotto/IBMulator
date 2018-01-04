@@ -62,6 +62,15 @@ void CPUCore::reset()
 	set_IDTR(0x000000, 0x03FF);
 	set_GDTR(0x000000, 0x0000);
 
+	for(int r=0; r<4; r++) {
+		m_dr[r] = 0;
+	}
+	m_dr[6] = 0xFFFF1FF0;
+	m_dr[7] = 0x00000400;
+	for(int r=0; r<8; r++) {
+		m_tr[r] = 0;
+	}
+
 	switch(CPU_FAMILY) {
 		case CPU_286:
 			m_cr[0] |= CR0MASK_RES286;
@@ -396,6 +405,7 @@ void CPUCore::set_EFLAGS(uint32_t _val)
 		handle_mode_change();
 	}
 	if(!(f32 & FMASK_RF) && (_val & FMASK_RF)) {
+		// TODO why?
 		g_cpubus.invalidate_pq();
 	}
 }
@@ -428,6 +438,7 @@ void CPUCore::set_RF(bool _val)
 {
 	set_flag(FBITN_RF, _val);
 	if(_val) {
+		// TODO why?
 		g_cpubus.invalidate_pq();
 	}
 }
@@ -483,6 +494,80 @@ void CPUCore::set_CR3(uint32_t _cr3)
 {
 	m_cr[3] = _cr3;
 	g_cpummu.TLB_flush();
+}
+
+uint32_t CPUCore::match_x86_code_breakpoint(uint32_t _linear_addr)
+{
+	/* Instruction breakpoint addresses must have a length specification of 1
+	 * byte (the LENn field is set to 00). Code breakpoints for other operand
+	 * sizes are undefined. The processor recognizes an instruction breakpoint
+	 * address only when it points to the first byte of an instruction. If the
+	 * instruction has prefixes, the breakpoint address must point to the first
+	 * prefix.
+	 */
+	uint32_t debug_trap = 0;
+	for(int n=0; n<4; n++) {
+		if((dr7_rw(n) == 0x0) && _linear_addr == m_dr[n]) {
+			// If any enabled breakpoints matched, then we need to set status
+			// bits for all breakpoints
+			debug_trap |= (1 << n);
+			if(dr7_enabled(n)) {
+				debug_trap |= CPU_DEBUG_TRAP_HIT;
+			}
+		}
+	}
+	return debug_trap;
+}
+
+void CPUCore::match_x86_data_breakpoint(uint32_t _laddr0, unsigned _size, unsigned _rw)
+{
+	/* DR0-DR3 and the LENn fields for each breakpoint define a range of
+	 * sequential byte addresses for a data breakpoint (or I/O for 586+). The
+	 * LENn fields permit specification of a 1-, 2-, or 4-byte range (also
+	 * 8-byte for P4+), beginning at the linear address specified in the
+	 * corresponding debug register (DRn). Two-byte ranges must be aligned on
+	 * word boundaries; 4-byte ranges must be aligned on doubleword boundaries.
+	 * I/O addresses are zero-extended. These requirements are enforced by the
+	 * processor; it uses LENn field bits to mask the lower address bits in the
+	 * debug registers. Unaligned data or I/O breakpoint addresses do not yield
+	 * valid results.
+	 */
+	static uint32_t mask[4] = {
+		0x0, // 00b = 1-byte length.
+		0x1, // 01b = 2-byte length.
+		0x7, // 10b = Undefined (or 8 byte length for P4+).
+		0x3  // 11b = 4-byte length.
+	};
+
+	uint32_t laddr1 = _laddr0 + (_size - 1);
+	uint32_t debug_trap = 0;
+
+	for(unsigned n=0; n<4; n++) {
+		if(dr7_rw(n) != _rw) {
+			continue;
+		}
+		/* A breakpoint is triggered if any of the bytes participating in an
+		 * access is within the range defined by a breakpoint address register
+		 * and its LENn field.
+		 */
+		uint32_t start = m_dr[n] & ~mask[dr7_len(n)];
+		uint32_t end = start + mask[dr7_len(n)];
+		if((_laddr0 <= end) && (start <= laddr1)) {
+			// If any enabled breakpoints matched, then we need to set status
+			// bits for all breakpoints
+			debug_trap |= (1 << n);
+			if(dr7_enabled(n)) {
+				debug_trap |= CPU_DEBUG_TRAP_HIT;
+			}
+		}
+	}
+	if(debug_trap & CPU_DEBUG_TRAP_HIT) {
+		g_cpu.set_debug_trap(debug_trap | CPU_DEBUG_TRAP_DATA);
+		// The processor generates the exception after it executes the
+		// instruction that made the access, so these breakpoint condition
+		// causes a trap-class exception to be generated.
+		g_cpu.set_async_event();
+	}
 }
 
 uint32_t CPUCore::dbg_get_phyaddr(uint32_t _linaddr, Memory *_memory) const

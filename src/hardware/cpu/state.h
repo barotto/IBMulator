@@ -20,6 +20,25 @@
 #ifndef IBMULATOR_CPU_STATE_H
 #define IBMULATOR_CPU_STATE_H
 
+
+#define CPU_EVENT_NMI           (1 << 0)
+#define CPU_EVENT_PENDING_INTR  (1 << 1)
+
+#define CPU_INHIBIT_INTERRUPTS  0x01
+#define CPU_INHIBIT_DEBUG       0x02
+
+#define CPU_DEBUG_TRAP_DATA            (1 << 10)
+#define CPU_DEBUG_TRAP_CODE            (1 << 11)
+#define CPU_DEBUG_TRAP_HIT             (1 << 12)
+#define CPU_DEBUG_DR_ACCESS_BIT        (1 << DR6BIT_BD)
+#define CPU_DEBUG_SINGLE_STEP_BIT      (1 << DR6BIT_BS)
+#define CPU_DEBUG_TRAP_TASK_SWITCH_BIT (1 << DR6BIT_BT)
+#define CPU_DEBUG_ANY                  0xFC00
+
+#define CPU_INHIBIT_INTERRUPTS_BY_MOVSS \
+	(CPU_INHIBIT_INTERRUPTS | CPU_INHIBIT_DEBUG)
+
+
 enum CPUActivityState {
 	CPU_STATE_ACTIVE = 0,
 	CPU_STATE_HALT,
@@ -35,7 +54,7 @@ struct CPUState
 	uint32_t pending_event;
 	uint32_t event_mask;
 	bool     async_event;
-	bool     debug_trap;
+	uint32_t debug_trap;
 
 	/* What events to inhibit at any given time. Certain instructions
 	 * inhibit interrupts, some debug exceptions and single-step traps.

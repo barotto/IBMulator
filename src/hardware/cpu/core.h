@@ -162,11 +162,66 @@ extern CPUCore g_cpucore;
 #define REG_CR3 g_cpucore.ctl_reg(3)
 #define PDBR (REG_CR3 & 0xFFFFF000)
 
-#define IS_PMODE()  g_cpucore.is_pmode()
-#define IS_V8086()  g_cpucore.is_v8086()
-#define IS_RMODE()  g_cpucore.is_rmode()
-#define IS_PAGING() g_cpucore.is_paging()
 
+// Segment Registers
+
+struct SegReg
+{
+	Selector sel;
+	Descriptor desc;
+
+	inline bool is(const SegReg & _segreg) const {
+		return (this==&_segreg);
+	}
+
+	void validate();
+	const char *to_string() const;
+};
+
+enum SegRegIndex {
+	REGI_ES = 0,
+	REGI_CS = 1,
+	REGI_SS = 2,
+	REGI_DS = 3,
+	REGI_FS = 4,
+	REGI_GS = 5,
+
+	REGI_TR,
+	REGI_IDTR,
+	REGI_LDTR,
+	REGI_GDTR
+};
+
+#define SET_CS g_cpucore.set_CS
+#define SET_SS g_cpucore.set_SS
+#define SET_ES g_cpucore.set_ES
+#define SET_DS g_cpucore.set_DS
+#define SET_FS g_cpucore.set_FS
+#define SET_GS g_cpucore.set_GS
+#define SET_IDTR(base,limit) g_cpucore.set_IDTR(base,limit)
+#define SET_GDTR(base,limit) g_cpucore.set_GDTR(base,limit)
+#define SET_SR g_cpucore.set_SR
+
+#define REG_ES g_cpucore.seg_reg(REGI_ES)
+#define REG_DS g_cpucore.seg_reg(REGI_DS)
+#define REG_SS g_cpucore.seg_reg(REGI_SS)
+#define REG_CS g_cpucore.seg_reg(REGI_CS)
+#define REG_FS g_cpucore.seg_reg(REGI_FS)
+#define REG_GS g_cpucore.seg_reg(REGI_GS)
+#define REG_TR g_cpucore.seg_reg(REGI_TR)
+#define REG_LDTR g_cpucore.seg_reg(REGI_LDTR)
+
+#define SEG_REG(idx) g_cpucore.seg_reg(idx)
+
+
+// General Registers
+
+union GenReg
+{
+	uint32_t dword[1];
+	uint16_t word[2];
+	uint8_t  byte[4];
+};
 
 enum GenRegIndex8 {
 	REGI_AL = 0,
@@ -190,22 +245,7 @@ enum GenRegIndex32 {
 	REGI_EDI = 7
 };
 
-enum SegRegIndex {
-	REGI_ES = 0,
-	REGI_CS = 1,
-	REGI_SS = 2,
-	REGI_DS = 3,
-	REGI_FS = 4,
-	REGI_GS = 5,
-
-	REGI_TR,
-	REGI_IDTR,
-	REGI_LDTR,
-	REGI_GDTR
-};
-
 #define REGI_NONE 0xFF
-
 
 #define REG_AL  g_cpucore.gen_reg(REGI_EAX).byte[0]
 #define REG_AH  g_cpucore.gen_reg(REGI_EAX).byte[1]
@@ -232,6 +272,11 @@ enum SegRegIndex {
 #define REG_BP  g_cpucore.gen_reg(REGI_EBP).word[0]
 #define REG_EBP g_cpucore.gen_reg(REGI_EBP).dword[0]
 
+#define GEN_REG(idx) g_cpucore.gen_reg(idx)
+
+
+// Intruction Register
+
 #define REG_IP (uint16_t(g_cpucore.get_EIP() & 0xFFFF))
 #define SET_IP(value) g_cpucore.set_EIP(value & 0xFFFF)
 #define RESTORE_IP g_cpucore.restore_EIP
@@ -239,30 +284,69 @@ enum SegRegIndex {
 #define SET_EIP(value) g_cpucore.set_EIP(value)
 #define COMMIT_EIP() g_cpucore.commit_EIP()
 #define RESTORE_EIP g_cpucore.restore_EIP
+#define CS_EIP g_cpucore.get_linaddr(REGI_CS, REG_EIP)
 
-#define SET_CS g_cpucore.set_CS
-#define SET_SS g_cpucore.set_SS
-#define SET_ES g_cpucore.set_ES
-#define SET_DS g_cpucore.set_DS
-#define SET_FS g_cpucore.set_FS
-#define SET_GS g_cpucore.set_GS
-#define SET_IDTR(base,limit) g_cpucore.set_IDTR(base,limit)
-#define SET_GDTR(base,limit) g_cpucore.set_GDTR(base,limit)
-#define SET_SR g_cpucore.set_SR
 
-#define REG_ES g_cpucore.seg_reg(REGI_ES)
-#define REG_DS g_cpucore.seg_reg(REGI_DS)
-#define REG_SS g_cpucore.seg_reg(REGI_SS)
-#define REG_CS g_cpucore.seg_reg(REGI_CS)
-#define REG_FS g_cpucore.seg_reg(REGI_FS)
-#define REG_GS g_cpucore.seg_reg(REGI_GS)
-#define REG_TR g_cpucore.seg_reg(REGI_TR)
-#define REG_LDTR g_cpucore.seg_reg(REGI_LDTR)
+// Debug Registers (386+)
+/*
+31              23              15              7             0
+╔═══╤═══╤═══╤═══╪═══╤═══╤═══╤═══╪═══╤═╤═════╤═╤═╪═╤═╤═╤═╤═╤═╤═╤═╗
+║LEN│R/W│LEN│R/W│LEN│R/W│LEN│R/W│   │G│     │G│L│G│L│G│L│G│L│G│L║
+║ 3 │ 3 │ 2 │ 2 │ 1 │ 1 │ 0 │ 0 │   │D│     │E│E│3│3│2│2│1│1│0│0║ DR7
+╟───┴───┴───┴───┴───┴───┴───┴───┼─┬─┼─┼─────┴─┴─┴─┴─┴─┴─┼─┼─┼─┼─╢
+║                               │B│B│B│                 │B│B│B│B║
+║                               │T│S│D│                 │3│2│1│0║ DR6
+╚═══════════════╪═══════════════╪═╧═╧═╧═════════╪═══════╧═╧═╧═╧═╝
+*/
 
-#define SEG_REG(idx) g_cpucore.seg_reg(idx)
-#define GEN_REG(idx) g_cpucore.gen_reg(idx)
+#define REG_DR(NUM) g_cpucore.dbg_reg(NUM)
 
-#define GET_BASE(S)	 g_cpucore.get_seg_base(REGI_ ## S)
+#define DR6BIT_B0  0   // breakpoint condition 0 detected
+#define DR6BIT_B1  1   // breakpoint condition 1 detected
+#define DR6BIT_B2  2   // breakpoint condition 2 detected
+#define DR6BIT_B3  3   // breakpoint condition 3 detected
+#define DR6BIT_BD  13  // debug register access detected
+#define DR6BIT_BS  14  // single step
+#define DR6BIT_BT  15  // task switch
+
+#define DR6_MASK  0xE00F
+
+#define DR7BIT_L0  0   // DR0 local address breakpoint enable
+#define DR7BIT_G0  1   // DR0 global address breakpoint enable
+#define DR7BIT_L1  2   // DR1 local address breakpoint enable
+#define DR7BIT_G1  3   // DR1 global address breakpoint enable
+#define DR7BIT_L2  4   // DR2 local address breakpoint enable
+#define DR7BIT_G2  5   // DR2 global address breakpoint enable
+#define DR7BIT_L3  6   // DR3 local address breakpoint enable
+#define DR7BIT_G3  7   // DR3 global address breakpoint enable
+#define DR7BIT_LE  8   // Local exact data breakpoint match enable (386 only)
+#define DR7BIT_GE  9   // Global exact data breakpoint match enable (386 only)
+#define DR7BIT_GD  12  // Global Debug (not documented in the 80386 Programmer's Reference Manual)
+
+#define DR7_MASK  0xFFFF23FF
+
+/* TODO?
+The 486 processor always uses exact data breakpoint matching in debugging. That
+is, if any of the Ln/Gn bits are set, the processor slows execution so that data
+breakpoints are reported for the instruction which triggered the breakpoint,
+rather than the next instruction to execute. In such a case, one-clock
+instructions which access memory will take two clocks to execute.
+In the 386 processor, exact data breakpoint matching will not occur unless it is
+enabled by setting either the LE or the GE bit. The 486 processor ignores these
+bits.
+*/
+
+#define DR7_ENABLED_ANY  (REG_DR(7) & 0xff)
+#define REG_DRBIT(_reg_,_bit_) \
+	((REG_DR(_reg_) & (1 << DR ## _reg_ ## BIT_ ## _bit_)) >> DR ## _reg_ ## BIT_ ## _bit_)
+
+
+// Test Registers (386+)
+
+#define REG_TEST(NUM) g_cpucore.test_reg(NUM)
+
+
+#define GET_BASE(S)  g_cpucore.get_seg_base(REGI_ ## S)
 #define GET_LIMIT(S) g_cpucore.get_seg_limit(REGI_ ## S)
 
 #define GET_LINADDR(SEG,OFF) g_cpucore.get_linaddr(REGI_ ## SEG , OFF)
@@ -273,29 +357,11 @@ enum SegRegIndex {
 #define CPL g_cpucore.get_CPL()
 #define IS_USER_PL (CPL == 3)
 
-#define REG_DBG(NUM) g_cpucore.dbg_reg(NUM)
-#define REG_TEST(NUM) g_cpucore.test_reg(NUM)
 
-
-union GenReg
-{
-	uint32_t dword[1];
-	uint16_t word[2];
-	uint8_t  byte[4];
-};
-
-struct SegReg
-{
-	Selector sel;
-	Descriptor desc;
-
-	inline bool is(const SegReg & _segreg) const {
-		return (this==&_segreg);
-	}
-
-	void validate();
-	const char *to_string() const;
-};
+#define IS_PMODE()  g_cpucore.is_pmode()
+#define IS_V8086()  g_cpucore.is_v8086()
+#define IS_RMODE()  g_cpucore.is_rmode()
+#define IS_PAGING() g_cpucore.is_paging()
 
 
 class CPUCore
@@ -415,6 +481,19 @@ public:
 	inline void set_CR2(uint32_t _cr2) { m_cr[2] = _cr2; }
 	       void set_CR3(uint32_t _cr3);
 
+	inline uint8_t dr7_rw(unsigned _n) {
+		return ((m_dr[7] >> (16 + _n*4)) & 0x3);
+	}
+	inline uint8_t dr7_len(unsigned _n) {
+		return ((m_dr[7] >> (18 + _n*4)) & 0x3);
+	}
+	inline uint8_t dr7_enabled(unsigned _n) {
+		return ((m_dr[7] >> (_n*2)) & 0x3);
+	}
+
+	uint32_t match_x86_code_breakpoint(uint32_t _laddr);
+	void match_x86_data_breakpoint(uint32_t _laddr, unsigned _size, unsigned _rw);
+
 	inline bool is_rmode() const { return !(m_cr[0] & CR0MASK_PE); }
 	inline bool is_pmode() const { return (m_cr[0] & CR0MASK_PE) && !(m_eflags & FMASK_VM); }
 	inline bool is_v8086() const { return (m_eflags & FMASK_VM); }
@@ -434,7 +513,9 @@ public:
 	inline uint32_t get_seg_base(unsigned _segidx) const { return m_segregs[_segidx].desc.base; }
 	inline uint32_t get_seg_limit(unsigned _segidx) const { return m_segregs[_segidx].desc.limit; }
 
-	inline uint32_t get_linaddr(unsigned _segidx, uint32_t _offset) const { return get_seg_base(_segidx) + _offset; }
+	inline uint32_t get_linaddr(unsigned _segidx, uint32_t _offset) const {
+		return get_seg_base(_segidx) + _offset;
+	}
 
 	// convenience funcs used by CPUDebugger
 	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }

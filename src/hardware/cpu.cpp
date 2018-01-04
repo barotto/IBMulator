@@ -22,6 +22,7 @@
 #include "cpu/core.h"
 #include "cpu/decoder.h"
 #include "cpu/executor.h"
+#include "cpu/mmu.h"
 #include "cpu/debugger.h"
 #include "machine.h"
 #include "devices.h"
@@ -35,7 +36,7 @@ CPU g_cpu;
 
 const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
 	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #0  CPU_DIV_ER_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #1  CPU_SINGLE_STEP_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #1  CPU_DEBUG_EXC
 	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #2  CPU_NMI_INT
 	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #3  CPU_BREAKPOINT_INT
 	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #4  CPU_INTO_EXC
@@ -56,6 +57,10 @@ const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
 
 CPU::CPU()
 :
+m_family(0),
+m_signature(0),
+m_frequency(.0),
+m_cycle_time(0),
 m_instr(nullptr)
 {
 	m_shutdown_trap = std::bind(&CPU::default_shutdown_trap,this);
@@ -67,6 +72,11 @@ CPU::~CPU()
 
 void CPU::init()
 {
+	static Instruction nullinstr;
+	nullinstr.valid = false;
+	nullinstr.eip = 0;
+	m_instr = &nullinstr;
+
 	g_cpubus.init();
 }
 
@@ -115,7 +125,7 @@ void CPU::reset(uint _signal)
 	m_s.event_mask = 0;
 	m_s.pending_event = 0;
 	m_s.async_event = false;
-	m_s.debug_trap = false;
+	m_s.debug_trap = 0;
 	m_s.EXT = false;
 	if(_signal==MACHINE_POWER_ON || _signal==MACHINE_HARD_RESET) {
 		m_s.icount = 0;
@@ -202,8 +212,24 @@ uint CPU::step()
 
 		// decode and execute the next instruction
 		try {
+			// When RF is set, it causes any debug fault to be ignored during the next instruction.
+			if(DR7_ENABLED_ANY && !FLAG_RF && m_instr->cseip!=CS_EIP &&
+			  !interrupts_inhibited(CPU_INHIBIT_DEBUG))
+			{
+				// Priority 6:
+				//   Code breakpoint fault.
+				//   Instruction breakpoints are the highest priority debug
+				//   exceptions. They are serviced before any other exceptions
+				//   detected during the decoding or execution of an instruction.
+				uint32_t debug_trap = g_cpucore.match_x86_code_breakpoint(CS_EIP);
+				if(debug_trap & CPU_DEBUG_TRAP_HIT) {
+					m_s.debug_trap = debug_trap | CPU_DEBUG_TRAP_CODE;
+					throw CPUException(CPU_DEBUG_EXC, 0);
+				}
+			}
+
 			//if the prev instr is the same as the next don't decode
-			if(m_instr==nullptr || m_instr->eip!=REG_EIP || !g_cpubus.pq_is_valid()) {
+			if(m_instr->cseip!=CS_EIP || !g_cpubus.pq_is_valid()) {
 				if(!g_cpubus.pq_is_valid()) {
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
@@ -400,33 +426,43 @@ void CPU::wait_for_event()
 
 void CPU::handle_async_event()
 {
-	/* Processing order:
-	 * 1. instruction exception
-	 * 2. single step
-	 * 3. NMI
-	 * 4. NPX segment overrun
-	 * 5. INTR
-	 *
-	 * When simultaneous interrupt requests occur, they are processed in a fixed
-	 * order as shown. Interrupt processing involves saving the flags, the
-	 * return address, and setting CS:IP to point at the first instruction of
-	 * the interrupt handler. If other interrupts remain enabled, they are
-	 * processed before the first instruction of the current interrupt handler
-	 * is executed. The last interrupt processed is therefore the first one
-	 * serviced.
-	 * (80286 programmer's reference manual 5-4)
-	 */
+	// Priority 1: Hardware Reset and Machine Checks
+	//   RESET
+	//   Machine Check
+	// not supported
 
+	// Priority 2: Trap on Task Switch
+	//   T flag in TSS is set
+	if(m_s.debug_trap & CPU_DEBUG_TRAP_TASK_SWITCH_BIT) {
+		throw CPUException(CPU_DEBUG_EXC, 0);
+	}
+
+	// Priority 3: External Hardware Interventions
+	//   FLUSH
+	//   STOPCLK
+	//   SMI
+	//   INIT
+	// TODO 486+
+
+	// Priority 4: Traps on Previous Instruction
+	//   Breakpoints
+	//   Debug Trap Exceptions (TF flag set or data/I-O breakpoint)
+	// A trap may be inhibited on this boundary due to an instruction which loaded SS
 	if(!interrupts_inhibited(CPU_INHIBIT_DEBUG)) {
-	    // A trap may be inhibited on this boundary due to an instruction which loaded SS
-		if(m_s.debug_trap) {
-			exception(CPUException(CPU_DEBUG_EXC, 0)); // no error, not interrupt
-			return;
+		if(m_s.debug_trap & CPU_DEBUG_ANY) {
+			if(m_s.debug_trap & CPU_DEBUG_TRAP_DATA) {
+				// data breakpoint hit, must update any inactive code breakpoint
+				// on previous instruction.
+				m_s.debug_trap |= g_cpucore.match_x86_code_breakpoint(m_instr->cseip);
+			}
+			throw CPUException(CPU_DEBUG_EXC, 0);
+		} else {
+			m_s.debug_trap = 0;
 		}
 	}
 
-	// External Interrupts
-	//   NMI Interrupts
+	// Priority 5: External Interrupts
+	//   Nonmaskable Interrupts (NMI)
 	//   Maskable Hardware Interrupts
 	if(interrupts_inhibited(CPU_INHIBIT_INTERRUPTS)) {
 		// Processing external interrupts is inhibited on this
@@ -434,11 +470,11 @@ void CPU::handle_async_event()
 	} else if(is_unmasked_event_pending(CPU_EVENT_NMI)) {
 		clear_event(CPU_EVENT_NMI);
 		mask_event(CPU_EVENT_NMI);
-		m_s.EXT = 1; /* external event */
+		m_s.EXT = true;
 		interrupt(2, CPU_NMI, false, 0);
 	} else if(is_unmasked_event_pending(CPU_EVENT_PENDING_INTR)) {
 		uint8_t vector = g_devices.pic()->IAC(); // may set INTR with next interrupt
-		m_s.EXT = 1; /* external event */
+		m_s.EXT = true;
 		interrupt(vector, CPU_EXTERNAL_INTERRUPT, 0, 0);
 	} else if(m_s.HRQ) {
 		// assert Hold Acknowledge (HLDA) and go into a bus hold state
@@ -446,33 +482,56 @@ void CPU::handle_async_event()
 	}
 
 	if(FLAG_TF) {
-		m_s.debug_trap = true;
+		// TF is set before execution of next instruction.
+		// Schedule a debug exception (#DB) after execution.
+		m_s.debug_trap |= CPU_DEBUG_SINGLE_STEP_BIT;
+
+		/* As I keep forgetting how the T flag really works inside the emulator,
+		 * here's the sequence:
+		 * 1. an instruction access EFLAGS to update TF, CPUCore::set_EFLAGS() is called
+		 * 2. CPUCore::set_EFLAGS() sets m_s.async_event
+		 * 3. at the next cpu loop iteration, CPU::handle_async_event() is called
+		 * 4. single step bit is set in debug_trap while async_event is kept true
+		 * 5. the next instruction is executed
+		 * 6. at the next cpu loop iteration, CPU::handle_async_event() is called again
+		 * 7. this time CPU::handle_async_event() calls CPU::exception() with #DB (Priority 4)
+		 * 8. interrupt is called, TF is pushed onto the stack, m_s.async_event is cleared
+		 */
 	}
 
-	// Faults from decoding next instruction
-	//   Instruction length > 15 bytes
+	// Priority 6: Code Breakpoint Fault
+	// (handled in the cpu loop, before deconding)
+
+	// Priority 7: Faults from fetching next instruction
+	//   Code page fault (handled during decoding by the bus and mmu units)
+	//   Code segment limit violation (handled during execution by the execution unit
+
+	// Priority 8: Faults from decoding next instruction
+	//   Instruction length > 10/15 bytes
 	//   Illegal opcode
 	//   Coprocessor not available
-	// (handled in main decode loop etc)
+	// (handled during execution by the execution unit)
 
-	// Faults on executing an instruction
-	//   Floating point execution
+	// Priority 9: Faults on executing an instruction
+	//   Floating point execution (TODO)
 	//   Overflow
 	//   Bound error
 	//   Invalid TSS
 	//   Segment not present
 	//   Stack fault
 	//   General protection
-	// (handled by rest of the code)
+	//   Data page fault
+	//   Alignment check (TODO 486+)
+	// (handled during execution by the execution unit)
 
-	if(!(unmasked_events_pending() || m_s.debug_trap || m_s.HRQ)) {
+	if( !(unmasked_events_pending() || m_s.debug_trap || m_s.HRQ) ) {
 		m_s.async_event = false;
 	}
 }
 
 bool CPU::v86_redirect_interrupt(uint8_t _vector)
 {
-	// see Bochs code for CPU 586+
+	// TODO see Bochs code for CPU 586+
 	if(FLAG_IOPL < 3) {
 		PDEBUGF(LOG_V2, LOG_CPU, "Redirecting soft INT in V8086 mode: %d\n", _vector);
 		throw CPUException(CPU_GP_EXC, 0);
@@ -531,7 +590,7 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 		}
 	}
 
-	m_s.EXT = 0;
+	m_s.EXT = false;
 }
 
 bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
@@ -591,16 +650,24 @@ void CPU::exception(CPUException _exc)
 
 	switch(_exc.vector) {
 		case CPU_DEBUG_EXC:
-			/*TODO discriminate between:
-			Instruction address breakpoint: fault.
-			Data address breakpoint: trap.
-			General detect: fault.
-			Single-step: trap.
-			Task-switch breakpoint: trap.
-			*/
-			PERRF(LOG_CPU, "not implemented\n");
-			enter_sleep_state(CPU_STATE_HALT);
-			return;
+			if(m_family >= CPU_386) {
+				// default is trap, so determine only fault conditions
+				if(m_s.debug_trap & CPU_DEBUG_DR_ACCESS_BIT) {
+					// General detect
+					exc_class = CPU_FAULT_EXC;
+				}
+				// Instruction address breakpoint is also a fault, but is thrown
+				// before deconding (Priority 6) so EIP is already at the
+				// faulting instruction.
+
+				// Commit debug events to DR6: preserve BS and BD values, only
+				// software can clear them.
+				REG_DR(6) = (REG_DR(6) & 0xffff6ff0) | (m_s.debug_trap & DR6_MASK);
+
+				// clear GD flag in the DR7 prior entering debug exception handler
+				REG_DR(7) &= ~(1<<DR7BIT_GD);
+			}
+			error_code = (_exc.error_code & 0xfffe) + m_s.EXT;
 			break;
 		case CPU_DF_EXC:
 			error_code = 0;
@@ -617,10 +684,18 @@ void CPU::exception(CPUException _exc)
 		 * causing the fault.
 		 */
 		RESTORE_IP();
+		if(m_family >= CPU_386) {
+			// The processor automatically sets RF in the EFLAGS image on the
+			// stack before entry into any FAULT handler except a debug
+			// exception generated in response to an instruction breakpoint,
+			if(_exc.vector != CPU_DEBUG_EXC || (m_s.debug_trap & CPU_DEBUG_DR_ACCESS_BIT)) {
+				SET_FLAG(RF, true);
+			}
+		}
 	}
 
 	// set EXT in case another exception happens in interrupt()
-	m_s.EXT = 1;
+	m_s.EXT = true;
 
 	try {
 		interrupt(_exc.vector, CPU_HARDWARE_EXCEPTION, push_error, error_code);
