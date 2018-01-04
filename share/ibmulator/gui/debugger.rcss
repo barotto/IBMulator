@@ -63,7 +63,7 @@ table#segments td#DS_ESI_str,
 table#segments td#ES_EDI_str,
 table#segments td#SS_ESP_str,
 {
-	width: 100px;
+	width: 130px;
 }
 
 table tr

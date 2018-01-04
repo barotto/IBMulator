@@ -9,7 +9,7 @@ table#segmentregs
 {
 	position: absolute;
 	top: 0px;
-	left: 175px;
+	left: 200px;
 }
 
 #CSbase,#DSbase,

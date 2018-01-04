@@ -36,7 +36,7 @@ table#segmentregs
 #FSlimit,#GSlimit,
 #TRlimit
 {
-	width: 50px;
+	width: 80px;
 }
 
 table#statusregs
