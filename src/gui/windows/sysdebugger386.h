@@ -35,6 +35,7 @@ private:
 		RC::Element *fsbase,*gsbase;
 		RC::Element *fslimit,*gslimit;
 		RC::Element *cr2, *cr3;
+		RC::Element *dr03[4], *dr6, *dr7;
 	} m_386core;
 
 	struct s_tools {

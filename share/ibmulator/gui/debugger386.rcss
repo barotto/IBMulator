@@ -49,7 +49,7 @@ table#statusregs
 table#flags
 {
 	position: absolute;
-	top: 220px;
+	top: 300px;
 	left: 260px;
 }
 
@@ -58,10 +58,22 @@ table#flags th
 	width: 15px;
 }
 
+table#dr
+{
+	position: absolute;
+	top: 205px;
+	left: 150px;
+}
+
+table#dr td
+{
+	width: 87px;
+}
+
 table#extra
 {
 	position: absolute;
-	top: 380px;
+	top: 423px;
 	left: 260px;
 }
 

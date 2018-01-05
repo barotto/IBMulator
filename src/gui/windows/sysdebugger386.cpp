@@ -77,6 +77,13 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, RC::Element *_butto
 	m_386core.fslimit = get_element("FSlimit");
 	m_386core.gslimit = get_element("GSlimit");
 
+	m_386core.dr03[0] = get_element("DR0");
+	m_386core.dr03[1] = get_element("DR1");
+	m_386core.dr03[2] = get_element("DR2");
+	m_386core.dr03[3] = get_element("DR3");
+	m_386core.dr6 = get_element("DR6");
+	m_386core.dr7 = get_element("DR7");
+
 	m_tools.eip_bp->SetValue(format_hex32(0));
 }
 
@@ -162,6 +169,12 @@ void SysDebugger386::update()
 	m_core.trlimit->SetInnerRML(format_hex32(GET_LIMIT(TR)));
 	m_386core.fslimit->SetInnerRML(format_hex32(GET_LIMIT(FS)));
 	m_386core.gslimit->SetInnerRML(format_hex32(GET_LIMIT(GS)));
+
+	for(int i=0; i<4; i++) {
+		m_386core.dr03[i]->SetInnerRML(format_hex32(REG_DR(i)));
+	}
+	m_386core.dr6->SetInnerRML(format_hex32(REG_DR(6)));
+	m_386core.dr7->SetInnerRML(format_hex32(REG_DR(7)));
 
 	m_386core.cr2->SetInnerRML(format_hex32(REG_CR2));
 	m_386core.cr3->SetInnerRML(format_hex32(REG_CR3));

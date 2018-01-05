@@ -68,12 +68,17 @@
 			<tr><th>GDT</th><td id="GDTbase"></td><td id="GDTlimit"></td><button id="gdt_dump" style="width:25px;"><btnicon /></button></tr>
 			<tr><th>LDT</th><td id="LDT"></td><td id="LDTbase"></td><td id="LDTlimit"></td><button id="ldt_dump" style="width:25px;"><btnicon /></button></tr>
 			</table>
-
+			
+			<table id="dr">
+			<tr><th>DR0</th><td id="DR0"></td><th>DR1</th><td id="DR1"></td></tr>
+			<tr><th>DR2</th><td id="DR2"></td><th>DR3</th><td id="DR3"></td></tr>
+			<tr><th>DR6</th><td id="DR6"></td><th>DR7</th><td id="DR7"></td></tr>
+			</table>
+			
 			<table id="flags">
-			<tr><th>CF</th><td id="CF"></td> <th>PF</th><td id="PF"></td> <th>AF</th><td id="AF"></td></tr>
-			<tr><th>ZF</th><td id="ZF"></td> <th>SF</th><td id="SF"></td> <th>TF</th><td id="TF"></td></tr>
-			<tr><th>IF</th><td id="IF"></td> <th>DF</th><td id="DF"></td> <th>OF</th><td id="OF"></td></tr>
-			<tr><th>PL</th><td id="PL"></td> <th>NT</th><td id="NT"></td> <th>RF</th><td id="RF"></td></tr>
+			<tr><th>CF</th><td id="CF"></td> <th>PF</th><td id="PF"></td> <th>AF</th><td id="AF"></td> <th>ZF</th><td id="ZF"></td></tr>
+			<tr><th>SF</th><td id="SF"></td> <th>TF</th><td id="TF"></td> <th>IF</th><td id="IF"></td> <th>DF</th><td id="DF"></td></tr>
+			<tr><th>OF</th><td id="OF"></td> <th>PL</th><td id="PL"></td> <th>NT</th><td id="NT"></td> <th>RF</th><td id="RF"></td></tr>
 			<tr><th>VM</th><td id="VM"></td> </tr>
 			</table>
 			
