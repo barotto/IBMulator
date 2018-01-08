@@ -186,6 +186,8 @@ void CPU::power_off()
 uint CPU::step()
 {
 	CPUCore core_log;
+	CPUState state_log;
+	CPUException log_exc;
 	bool do_log = false;
 
 	g_cpubus.reset_counters();
@@ -193,43 +195,36 @@ uint CPU::step()
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
-		if(m_s.async_event) {
-			// check on events which occurred for previous instructions (traps)
-			// and ones which are asynchronous to the CPU (hardware interrupts)
-			try {
-				handle_async_event();
-			} catch(CPUException &e) {
-				exception(e);
-			}
-			if(m_s.activity_state != CPU_STATE_ACTIVE) {
-				// something (eg. triple-fault) put the CPU in non active state
-				// return a non zero number of elapsed cycles anyway
-				return 1;
-			}
-
-			g_cpubus.update(0);
-		}
-
-		// decode and execute the next instruction
 		try {
-			// When RF is set, it causes any debug fault to be ignored during the next instruction.
-			if(DR7_ENABLED_ANY && !FLAG_RF && m_instr->cseip!=CS_EIP &&
-			  !interrupts_inhibited(CPU_INHIBIT_DEBUG))
-			{
-				// Priority 6:
-				//   Code breakpoint fault.
-				//   Instruction breakpoints are the highest priority debug
-				//   exceptions. They are serviced before any other exceptions
-				//   detected during the decoding or execution of an instruction.
-				uint32_t debug_trap = g_cpucore.match_x86_code_breakpoint(CS_EIP);
-				if(debug_trap & CPU_DEBUG_TRAP_HIT) {
-					m_s.debug_trap = debug_trap | CPU_DEBUG_TRAP_CODE;
-					throw CPUException(CPU_DEBUG_EXC, 0);
+			if(m_s.async_event) {
+				// check on events which occurred for previous instructions (traps)
+				// and ones which are asynchronous to the CPU (hardware interrupts)
+				handle_async_event();
+				g_cpubus.update(0);
+
+				if(m_s.activity_state != CPU_STATE_ACTIVE) {
+					// something (eg. triple-fault) put the CPU in non active state
+					// return a non zero number of elapsed cycles anyway
+					return 1;
 				}
 			}
 
-			//if the prev instr is the same as the next don't decode
-			if(m_instr->cseip!=CS_EIP || !g_cpubus.pq_is_valid()) {
+			if(m_instr->cseip != CS_EIP) {
+				// When RF is set, it causes any debug fault to be ignored during the next instruction.
+				if(DR7_ENABLED_ANY && !FLAG_RF && !interrupts_inhibited(CPU_INHIBIT_DEBUG)) {
+					// Priority 6:
+					//   Code breakpoint fault.
+					//   Instruction breakpoints are the highest priority debug
+					//   exceptions. They are serviced before any other exceptions
+					//   detected during the decoding or execution of an instruction.
+					uint32_t debug_trap = g_cpucore.match_x86_code_breakpoint(CS_EIP);
+					if(debug_trap & CPU_DEBUG_TRAP_HIT) {
+						m_s.debug_trap = debug_trap | CPU_DEBUG_TRAP_CODE;
+						throw CPUException(CPU_DEBUG_EXC, 0);
+					}
+				}
+
+				// instruction decoding
 				if(!g_cpubus.pq_is_valid()) {
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
@@ -241,6 +236,7 @@ uint CPU::step()
 				if(CPULOG) {
 					do_log = true;
 					core_log = g_cpucore;
+					state_log = m_s;
 				}
 			}
 
@@ -262,12 +258,19 @@ uint CPU::step()
 					g_machine.memdump(REG_CS.desc.base, GET_LIMIT(CS));
 				}
 			}
+			if(CPULOG) {
+				if(!do_log) {
+					m_logger.set_prev_i_exc(e, m_instr->cseip);
+				} else {
+					log_exc = e;
+				}
+			}
 			exception(e);
-			cycles.eu = 15; //just a random number
+			cycles.eu = 5; //just a random number
 		} catch(CPUShutdown &s) {
 			PDEBUGF(LOG_V2, LOG_CPU, "Entering shutdown for %s\n", s.what());
 			g_cpu.enter_sleep_state(CPU_STATE_SHUTDOWN);
-			cycles.eu = 15; //just a random number
+			cycles.eu = 5; //just a random number
 		}
 
 	} else {
@@ -307,7 +310,8 @@ uint CPU::step()
 		m_logger.add_entry(
 			g_machine.get_virt_time_ns(), // time
 			*m_instr,                     // instruction
-			m_s,                          // state
+			state_log,                    // state
+			log_exc,                      // cpu exception?
 			core_log,                     // core
 			g_cpubus,                     // bus
 			cycles                        // cycles used

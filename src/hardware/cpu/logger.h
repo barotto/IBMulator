@@ -27,33 +27,36 @@
 #else
 #define CPULOG_MAX_SIZE      1u
 #endif
-#define CPULOG_WRITE_TIME    true     // write instruction machine time?
-#define CPULOG_WRITE_CSEIP   true     // write instruction address as CS:EIP?
-#define CPULOG_WRITE_HEX     true     // write instruction as hex codes?
-#define CPULOG_WRITE_DISASM  true     // write the disassembled instruction?
-#define CPULOG_WRITE_STATE   false    // write the CPU global state?
-#define CPULOG_WRITE_CORE    false    // write the CPU registers?
-#define CPULOG_WRITE_SEGREGS false    // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)
-#define CPULOG_WRITE_PQ      true     // write the prefetch queue?
-#define CPULOG_WRITE_TIMINGS true     // write various timing values?
-#define CPULOG_START_ADDR    0x00     // lower bound, instr. before this address are not logged
-#define CPULOG_END_ADDR      0xF9FFFF // upper bound, instr. after this address are not logged
-#define CPULOG_LOG_INTS      false    // log INTs' instructions?
-#define CPULOG_INT21_EXIT_IP 0x7782   // the OS dependent IP of the last instr. of INT 21/4B
-                                      // For PC-DOS 4.01 under ROMSHELL is 0x7782,
-                                      //                 under plain DOS is 0x7852
-                                      // use -1 to disable (logging starts at INT call)
-#define CPULOG_COUNTERS      false    // count every instruction executed
+#define CPULOG_WRITE_TIME    true       // write instruction machine time?
+#define CPULOG_WRITE_CSEIP   true       // write instruction address as CS:EIP?
+#define CPULOG_WRITE_HEX     true       // write instruction as hex codes?
+#define CPULOG_WRITE_DISASM  true       // write the disassembled instruction?
+#define CPULOG_WRITE_STATE   true       // write the CPU global state?
+#define CPULOG_WRITE_CORE    true       // write the CPU registers?
+#define CPULOG_DECODE_FLAGS  true       // decode flags register into a string
+#define CPULOG_WRITE_SEGREGS true       // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)
+#define CPULOG_WRITE_PQ      false      // write the prefetch queue?
+#define CPULOG_WRITE_TIMINGS false      // write various timing values?
+#define CPULOG_START_ADDR    0x0        // lower bound, instr. before this address are not logged
+#define CPULOG_END_ADDR      0xFFFFFFFF // upper bound, instr. after this address are not logged
+#define CPULOG_LOG_INTS      true       // log INTs' instructions?
+#define CPULOG_INT21_EXIT_IP -1         // the OS dependent IP of the last instr. of INT 21/4B
+                                        // For PC-DOS 4.01 under ROMSHELL is 0x7782,
+                                        //                 under plain DOS is 0x7852
+                                        // use -1 to disable (logging starts at INT call)
+#define CPULOG_COUNTERS      false      // count every instruction executed
 
 #include "core.h"
 #include "decoder.h"
 #include "state.h"
+#include "exception.h"
 
 struct CPULogEntry
 {
 	uint64_t time;
 	CPUState state;
 	CPUCore core;
+	CPUException exc;
 	CPUBus bus;
 	Instruction instr;
 	CPUCycles cycles;
@@ -76,6 +79,7 @@ private:
 	static const std::string & disasm(CPULogEntry &_log_entry);
 	static void write_counters(const std::string _filename, std::map<int,uint64_t> &_cnt);
 	static int write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_segreg, const char *_name);
+	static const char* decode_eflags(uint32_t _eflags, bool _32bit);
 
 public:
 
@@ -86,10 +90,12 @@ public:
 		uint64_t _time,
 		const Instruction &_instr,
 		const CPUState &_state,
+		const CPUException &_exc,
 		const CPUCore &_core,
 		const CPUBus &_bus,
 		const CPUCycles &_cycles
 	);
+	void set_prev_i_exc(const CPUException &_exc, uint32_t _cseip);
 	void open_file(const std::string _filename);
 	void close_file();
 	void set_iret_address(uint32_t _address);

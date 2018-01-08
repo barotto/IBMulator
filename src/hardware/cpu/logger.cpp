@@ -44,6 +44,7 @@ void CPULogger::add_entry(
 		uint64_t _time,
 		const Instruction &_instr,
 		const CPUState &_state,
+		const CPUException &_exc,
 		const CPUCore &_core,
 		const CPUBus &_bus,
 		const CPUCycles &_cycles)
@@ -57,6 +58,7 @@ void CPULogger::add_entry(
 	m_log[m_log_idx].time = _time;
 	m_log[m_log_idx].instr = _instr;
 	m_log[m_log_idx].state = _state;
+	m_log[m_log_idx].exc = _exc;
 	m_log[m_log_idx].core = _core;
 	m_log[m_log_idx].bus = _bus;
 	m_log[m_log_idx].cycles = _cycles;
@@ -75,6 +77,21 @@ void CPULogger::add_entry(
 		}
 	}
 	m_log_idx = (m_log_idx+1) % CPULOG_MAX_SIZE;
+}
+
+void CPULogger::set_prev_i_exc(const CPUException &_exc, uint32_t _cseip)
+{
+	//don't log outside fixed boundaries
+	if(_cseip<CPULOG_START_ADDR || _cseip>CPULOG_END_ADDR) {
+		return;
+	}
+	unsigned idx;
+	if(m_log_idx != 0) {
+		idx = m_log_idx - 1;
+	} else {
+		idx = CPULOG_MAX_SIZE - 1;
+	}
+	m_log[idx].exc = _exc;
 }
 
 int CPULogger::get_opcode_index(const Instruction &_instr)
@@ -184,6 +201,42 @@ int CPULogger::write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_se
 	return 0;
 }
 
+const char* CPULogger::decode_eflags(uint32_t _eflags, bool _32bit)
+{
+	static char buf[14];
+	if(_32bit) {
+		buf[13] = 0;
+	} else {
+		buf[11] = 0;
+	}
+	int bufcnt = 0;
+	static const char * flags_up   = "CPAZSTIDO NRV";
+	static const char * flags_down = "cpazstido nrv";
+	for(int i=0; i<=(_32bit?17:14); i++) {
+		if(i==1 || i==3 || i==5 || i==13 || i==15) {
+			continue;
+		}
+		assert(bufcnt<13);
+		if(_eflags & (1 << i)) {
+			buf[bufcnt] = flags_up[bufcnt];
+		} else {
+			buf[bufcnt] = flags_down[bufcnt];
+		}
+		bufcnt++;
+	}
+	switch((_eflags & FMASK_IOPL) >> FBITN_IOPL) {
+		case 0:
+			buf[9] = '0'; break;
+		case 1:
+			buf[9] = '1'; break;
+		case 2:
+			buf[9] = '2'; break;
+		case 3:
+			buf[9] = '3'; break;
+	}
+	return buf;
+}
+
 int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 {
 	if(CPULOG_WRITE_TIME) {
@@ -222,10 +275,35 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_STATE) {
-		if(fprintf(_dest, "PE:%d,EM:%d,AE:%d",
+		static const char * exc_names[CPU_MAX_INT] = {
+			"#DE", // CPU_DIV_ER_EXC
+			"#DB", // CPU_DEBUG_EXC
+			"NMI", // CPU_NMI_INT
+			"#BP", // CPU_BREAKPOINT_INT
+			"#OF", // CPU_INTO_EXC
+			"#BR", // CPU_BOUND_EXC
+			"#UD", // CPU_UD_EXC
+			"#NM", // CPU_NM_EXC
+			"#DF", // CPU_DF_EXC
+			"#MP", // CPU_MP_EXC
+			"#TS", // CPU_TS_EXC
+			"#NP", // CPU_NP_EXC
+			"#SS", // CPU_SS_EXC
+			"#GP", // CPU_GP_EXC
+			"#PF", // CPU_PF_EXC
+			"#15", // 15
+			"#MF"  // CPU_MF_EXC
+		};
+		if(_entry.exc.vector < CPU_MAX_INT) {
+			PCPULOG(_dest, "%s(%04x) ", exc_names[_entry.exc.vector],_entry.exc.error_code);
+		} else {
+			PCPULOG(_dest, "          ");
+		}
+		if(fprintf(_dest, "PE:%d,EM:%d,AE:%d,CPL:%d",
 				_entry.state.pending_event,
 				_entry.state.event_mask,
-				_entry.state.async_event
+				_entry.state.async_event,
+				_entry.core.get_CPL()
 				) < 0)
 			return -1;
 		if(_entry.core.is_rmode()) {
@@ -242,6 +320,9 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		if(CPU_FAMILY >= CPU_386) {
 			if(fprintf(_dest, "EF=%05X ", _entry.core.get_EFLAGS(FMASK_EFLAGS)) < 0)
 				return -1;
+			if(CPULOG_DECODE_FLAGS) {
+				PCPULOG(_dest, "%s ", decode_eflags(_entry.core.get_EFLAGS(FMASK_EFLAGS),true));
+			}
 			if(fprintf(_dest, "EAX=%08X EBX=%08X ECX=%08X EDX=%08X ",
 					_entry.core.get_EAX(), _entry.core.get_EBX(),
 					_entry.core.get_ECX(), _entry.core.get_EDX()) < 0)
@@ -278,6 +359,9 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		} else {
 			if(fprintf(_dest, "F=%04X ", _entry.core.get_FLAGS(FMASK_FLAGS)) < 0)
 				return -1;
+			if(CPULOG_DECODE_FLAGS) {
+				PCPULOG(_dest, "%s ", decode_eflags(_entry.core.get_FLAGS(FMASK_FLAGS),false));
+			}
 			if(fprintf(_dest, "AX=%04X BX=%04X CX=%04X DX=%04X ",
 					_entry.core.get_AX(), _entry.core.get_BX(),
 					_entry.core.get_CX(), _entry.core.get_DX()) < 0)

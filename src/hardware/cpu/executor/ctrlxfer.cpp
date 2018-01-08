@@ -655,6 +655,7 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		new_eip     =          stack_read_dword(temp_ESP + 0);
 		if(new_eflags & FMASK_VM) {
 			if(CPL == 0) {
+				PDEBUGF(LOG_V2, LOG_CPU, "iret_pmode: return to V8086 mode\n");
 				stack_return_to_v86(cs_selector, new_eip, new_eflags);
 				return;
 			}
@@ -663,8 +664,8 @@ void CPUExecutor::iret_pmode(bool _32bit)
 	} else {
 		top_nbytes_same = 6;
 		new_eflags  = stack_read_word(temp_ESP + 4);
-	    cs_selector = stack_read_word(temp_ESP + 2);
-	    new_eip     = stack_read_word(temp_ESP + 0);
+		cs_selector = stack_read_word(temp_ESP + 2);
+		new_eip     = stack_read_word(temp_ESP + 0);
 	}
 
 	// return CS selector must be non-null, else #GP(0)
