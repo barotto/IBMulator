@@ -29,24 +29,23 @@ private:
 	CPUCore *m_cpu;
 	Memory *m_memory;
 
-	uint8_t must_do_size;   /* used with size of operand */
-	int wordop;           /* dealing with word or byte operand */
+	bool must_do_size; // used with size of operand
+	bool wordop;       // dealing with word or byte operand
 
 	uint32_t instruction_offset;
 	uint32_t instruction_segment;
 
-	char* ubufs;           /* start of buffer */
-	char* ubufp;           /* last position of buffer */
-	int ubuflen; /* lenght of buffer */
-	int invalid_opcode = 0;
-	int first_space = 1;
+	char* ubufs;  // start of buffer
+	char* ubufp;  // last position of buffer
+	int ubuflen;  // lenght of buffer
+	bool invalid_opcode = false;
+	bool first_space = true;
 
-	int prefix;            /* segment override prefix byte */
-	int modrmv;            /* flag for getting modrm byte */
-	int sibv;              /* flag for getting sib byte   */
-	int opsize;            /* just like it says ...       */
-	int addrsize;
-	//?? int addr32bit=0;
+	int prefix;   // segment override prefix byte
+	int modrmv;   // flag for getting modrm byte
+	int sibv;     // flag for getting sib byte
+	int opsize;   // operand size
+	int addrsize; // address size
 
 	uint32_t getbyte_mac;
 	uint32_t startPtr;
@@ -55,33 +54,29 @@ private:
 
 	char addr_to_hex_buffer[11];
 
-	char *addr_to_hex(uint32_t addr, int splitup);
-	uint8_t getbyte(void);
-	int modrm(void);
-	int sib(void);
-
+	char *addr_to_hex(uint32_t addr, bool splitup);
+	uint8_t getbyte();
+	int modrm();
+	int sib();
 	void uprintf(char const *s, ...);
 	void uputchar(char c);
-
 	int bytes(char c);
-
 	void outhex(char subtype, int extend, int optional, int defsize, int sign);
-
 	void reg_name(int regnum, char size);
-
 	void ua_str(char const *str);
 	void do_sib(int m);
 	void do_modrm(char subtype);
 	void floating_point(int e1);
-
 	void percent(char type, char subtype);
 
 public:
-	uint32_t disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
+	uint32_t disasm(char *_buffer, uint _buffer_len, uint32_t _cs, uint32_t _eip,
 			CPUCore *_core, Memory *_memory, const uint8_t *_instr_buf=nullptr, uint _instr_buf_len=0,
-			bool bit32=false);
+			bool _32bit=false);
 
-	int last_operand_size();
+	int last_operand_size() {
+		return opsize;
+	};
 };
 
 #endif

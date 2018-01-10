@@ -77,9 +77,8 @@ const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _s
 	str = "";
 	static char empty = 0;
 
-	uint32_t start = GET_LINADDR(CS, _ip);
 	char dline[200];
-	uint size = debugger.disasm(dline, 200, start, _ip, nullptr, &g_memory, nullptr, 0, false);
+	unsigned size = debugger.disasm(dline, 200, REG_CS.desc.base, _ip, nullptr, &g_memory, nullptr, 0, false);
 	if(_size!=nullptr) {
 		*_size = size;
 	}

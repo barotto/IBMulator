@@ -99,10 +99,10 @@ const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _
 	str = "";
 	static char empty = 0;
 
-	uint32_t start = GET_LINADDR(CS, _eip);
 	char dline[200];
 	//throws CPUException when #PF at CS:EIP
-	uint size = debugger.disasm(dline, 200, start, _eip, &g_cpucore, &g_memory, nullptr, 0, REG_CS.desc.big);
+	unsigned size = debugger.disasm(dline, 200, REG_CS.desc.base, _eip,
+			&g_cpucore, &g_memory, nullptr, 0, REG_CS.desc.big);
 	if(_size!=nullptr) {
 		*_size = size;
 	}

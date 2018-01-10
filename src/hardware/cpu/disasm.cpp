@@ -80,15 +80,15 @@ Any comments/updates/bug reports to:
 
 /* some defines for extracting instruction bit fields from bytes */
 
-#define MOD(a)	  (((a)>>6)&7)
-#define REG(a)	  (((a)>>3)&7)
-#define RM(a)	  ((a)&7)
+#define MOD(a)    (((a)>>6)&7)
+#define REG(a)    (((a)>>3)&7)
+#define RM(a)     ((a)&7)
 #define SCALE(a)  (((a)>>6)&7)
 #define INDEX(a)  (((a)>>3)&7)
 #define BASE(a)   ((a)&7)
 
 /* Little endian uint read */
-#define	le_uint8(ptr) (*(uint8_t*)ptr)
+#define le_uint8(ptr) (*(uint8_t*)ptr)
 
 inline uint16_t le_uint16(const void* ptr) {
 	const uint8_t* ptr8 = (const uint8_t*)ptr;
@@ -96,7 +96,7 @@ inline uint16_t le_uint16(const void* ptr) {
 }
 inline uint32_t le_uint32(const void* ptr) {
 	const uint8_t* ptr8 = (const uint8_t*)ptr;
-	return (uint32_t)ptr8[0] | (uint32_t)ptr8[1] << 8 |	(uint32_t)ptr8[2] << 16 | (uint32_t)ptr8[3] << 24;
+	return (uint32_t)ptr8[0] | (uint32_t)ptr8[1] << 8 | (uint32_t)ptr8[2] << 16 | (uint32_t)ptr8[3] << 24;
 }
 
 /* Little endian int read */
@@ -111,49 +111,49 @@ inline uint32_t le_uint32(const void* ptr) {
 
 /* Percent tokens in strings:
    First char after '%':
-	A - direct address
-	C - reg of r/m picks control register
-	D - reg of r/m picks debug register
-	E - r/m picks operand
-	F - flags register
-	G - reg of r/m picks general register
-	I - immediate data
-	J - relative IP offset
+   A - direct address
+   C - reg of r/m picks control register
+   D - reg of r/m picks debug register
+   E - r/m picks operand
+   F - flags register
+   G - reg of r/m picks general register
+   I - immediate data
+   J - relative IP offset
 +       K - call/jmp distance
-	M - r/m picks memory
-	O - no r/m, offset only
-	R - mod of r/m picks register only
-	S - reg of r/m picks segment register
-	T - reg of r/m picks test register
-	X - DS:ESI
-	Y - ES:EDI
-	2 - prefix of two-byte opcode
+   M - r/m picks memory
+   O - no r/m, offset only
+   R - mod of r/m picks register only
+   S - reg of r/m picks segment register
+   T - reg of r/m picks test register
+   X - DS:ESI
+   Y - ES:EDI
+   2 - prefix of two-byte opcode
 +       e - put in 'e' if use32 (second char is part of reg name)
 +           put in 'w' for use16 or 'd' for use32 (second char is 'w')
 +       j - put in 'e' in jcxz if prefix==0x66
-	f - floating point (second char is esc value)
-	g - do r/m group 'n', n==0..7
-	p - prefix
-	s - size override (second char is a,o)
+   f - floating point (second char is esc value)
+   g - do r/m group 'n', n==0..7
+   p - prefix
+   s - size override (second char is a,o)
 +       d - put d if double arg, nothing otherwise (pushfd, popfd &c)
 +       w - put w if word, d if double arg, nothing otherwise (lodsw/lodsd)
 +       P - simple prefix
 
    Second char after '%':
-	a - two words in memory (BOUND)
-	b - byte
-	c - byte or word
-	d - dword
+   a - two words in memory (BOUND)
+   b - byte
+   c - byte or word
+   d - dword
 +       f - far call/jmp
 +       n - near call/jmp
         p - 32 or 48 bit pointer
 +       q - byte/word thingy
-	s - six byte pseudo-descriptor
-	v - word or dword
+   s - six byte pseudo-descriptor
+   v - word or dword
         w - word
 +       x - sign extended byte
-	F - use floating regs in mod/rm
-	1-8 - group number, esc value, etc
+   F - use floating regs in mod/rm
+   1-8 - group number, esc value, etc
 */
 
 /* watch out for aad && aam with odd operands */
@@ -165,7 +165,7 @@ static char const * op386map1[256] = {
   "add %Eb,%Gb",      "add %Ev,%Gv",     "add %Gb,%Eb",    "add %Gv,%Ev",
   "add al,%Ib",       "add %eax,%Iv",    "push es",        "pop es",
   "or %Eb,%Gb",       "or %Ev,%Gv",      "or %Gb,%Eb",     "or %Gv,%Ev",
-  "or al,%Ib",        "or %eax,%Iv",     "push cs",        "%2 ",
+  "or al,%Ib",        "or %eax,%Iv",     "push cs",        "%2 ", // <-- second table
 /* 1 */
   "adc %Eb,%Gb",      "adc %Ev,%Gv",     "adc %Gb,%Eb",    "adc %Gv,%Ev",
   "adc al,%Ib",       "adc %eax,%Iv",    "push ss",        "pop ss",
@@ -415,35 +415,29 @@ static const char *floatops[] = { /* assumed " %EF" at end of each.  mod != 3 on
        "fbldt", "fildq", "fbstpt", "fistpq"
 };
 
-char * Disasm::addr_to_hex(uint32_t addr, int splitup)
+char *Disasm::addr_to_hex(uint32_t addr, bool splitup)
 {
-  if (splitup) {
-    if (fp_segment(addr)==0 || fp_offset(addr)==0xffff) /* 'coz of wraparound */
-      sprintf(addr_to_hex_buffer, "%04X", (unsigned)fp_offset(addr) );
-    else
-      sprintf(addr_to_hex_buffer, "%04X:%04X", (unsigned)fp_segment(addr), (unsigned)fp_offset(addr) );
-  } else {
+	if(splitup) {
+		if(fp_segment(addr)==0 || fp_offset(addr)==0xffff) /* 'coz of wraparound */
+			sprintf(addr_to_hex_buffer, "%04X", (unsigned)fp_offset(addr) );
+		else
+			sprintf(addr_to_hex_buffer, "%04X:%04X", (unsigned)fp_segment(addr), (unsigned)fp_offset(addr) );
+	} else {
 #if 0
-	  /* Pet outcommented, reducing address size to 4
-		 when segment is 0 or 0xffff */
-    if (fp_segment(addr)==0 || fp_segment(addr)==0xffff) /* 'coz of wraparound */
-      sprintf(addr_to_hex_buffer, "%04X", (unsigned)fp_offset(addr) );
-    else
+		/* Pet outcommented, reducing address size to 4 when segment is 0 or 0xffff */
+		if(fp_segment(addr)==0 || fp_segment(addr)==0xffff) /* 'coz of wraparound */
+			sprintf(addr_to_hex_buffer, "%04X", (unsigned)fp_offset(addr) );
+		else
 #endif
-
-	sprintf(addr_to_hex_buffer, "%08X", addr );
-
-  }
-
-  return addr_to_hex_buffer;
+			sprintf(addr_to_hex_buffer, "%08X", addr);
+	}
+	return addr_to_hex_buffer;
 }
 
-
-
-uint8_t Disasm::getbyte(void)
+uint8_t Disasm::getbyte()
 {
-	if(instr_buffer_size>0) {
-		uint idx = getbyte_mac - (instruction_segment + instruction_offset);
+	if(instr_buffer_size > 0) {
+		unsigned idx = getbyte_mac - (instruction_segment + instruction_offset);
 		getbyte_mac++;
 		return instr_buffer[idx];
 	}
@@ -465,31 +459,31 @@ uint8_t Disasm::getbyte(void)
    returned a few times...
 */
 
-int Disasm::modrm(void)
+int Disasm::modrm()
 {
-  if (modrmv == -1)
-    modrmv = getbyte();
-  return modrmv;
+	if(modrmv == -1) {
+		modrmv = getbyte();
+	}
+	return modrmv;
 }
 
-int Disasm::sib(void)
+int Disasm::sib()
 {
-  if (sibv == -1)
-    sibv = getbyte();
-  return sibv;
+	if(sibv == -1) {
+		sibv = getbyte();
+	}
+	return sibv;
 }
-
-/*------------------------------------------------------------------------*/
 
 void Disasm::uprintf(char const *s, ...)
 {
-	if(ubuflen<=1)
+	if(ubuflen <= 1) {
 		return;
-
-	va_list	arg_ptr;
-	va_start (arg_ptr, s);
+	}
+	va_list arg_ptr;
+	va_start(arg_ptr, s);
 	vsnprintf(ubufp, ubuflen, s, arg_ptr);
-	while (*ubufp) {
+	while(*ubufp) {
 		ubufp++;
 		ubuflen--;
 	}
@@ -497,665 +491,702 @@ void Disasm::uprintf(char const *s, ...)
 
 void Disasm::uputchar(char c)
 {
-	if(ubuflen<=1)
+	if(ubuflen<=1) {
 		return;
-
-  *ubufp++ = c;
-  *ubufp = 0;
+	}
+	*ubufp++ = c;
+	*ubufp = 0;
 }
-
-/*------------------------------------------------------------------------*/
 
 int Disasm::bytes(char c)
 {
-  switch (c) {
-  case 'b':
-       return 1;
-  case 'w':
-       return 2;
-  case 'd':
-       return 4;
-  case 'v':
-       if (opsize == 32)
-         return 4;
-       else
-         return 2;
-  }
-  return 0;
+	switch (c) {
+	case 'b':
+		return 1;
+	case 'w':
+		return 2;
+	case 'd':
+		return 4;
+	case 'v':
+		if(opsize == 32) {
+			return 4;
+		} else {
+			return 2;
+		}
+	}
+	return 0;
 }
 
-/*------------------------------------------------------------------------*/
 void Disasm::outhex(char subtype, int extend, int optional, int defsize, int sign)
 {
-  int n=0, s=0, i;
-  int32_t delta = 0;
-  unsigned char buff[6];
-  char *name;
-  char  signchar;
+	int n = 0;
+	bool s = false;
+	int32_t delta = 0;
+	unsigned char buff[6];
+	char *name;
+	char signchar;
 
-  switch (subtype) {
-  case 'q':
-       if (wordop) {
-         if (opsize==16) {
-           n = 2;
-         } else {
-           n = 4;
-         }
-       } else {
-         n = 1;
-       }
-       break;
+	switch(subtype) {
+		case 'q':
+			if(wordop) {
+				if(opsize == 16) {
+					n = 2;
+				} else {
+					n = 4;
+				}
+			} else {
+				n = 1;
+			}
+			break;
+		case 'a':
+			break;
+		case 'x':
+			extend = 2;
+			n = 1;
+			break;
+		case 'b':
+			n = 1;
+			break;
+		case 'w':
+			n = 2;
+			break;
+		case 'd':
+			n = 4;
+			break;
+		case 's':
+			n = 6;
+			break;
+		case 'c':
+		case 'v':
+			if(defsize == 32) {
+				n = 4;
+			} else {
+				n = 2;
+			}
+			break;
+		case 'p':
+			if(defsize == 32) {
+				n = 6;
+			} else {
+				n = 4;
+			}
+			s = true;
+			break;
+	}
 
-  case 'a':
-       break;
-  case 'x':
-       extend = 2;
-       n = 1;
-       break;
-  case 'b':
-       n = 1;
-       break;
-  case 'w':
-       n = 2;
-       break;
-  case 'd':
-       n = 4;
-       break;
-  case 's':
-       n = 6;
-       break;
-  case 'c':
-  case 'v':
-       if (defsize == 32)
-         n = 4;
-       else
-         n = 2;
-       break;
-  case 'p':
-       if (defsize == 32)
-         n = 6;
-       else
-         n = 4;
-       s = 1;
-       break;
-  }
-  for (i=0; i<n; i++)
-    buff[i] = getbyte();
-  for (; i<extend; i++)
-    buff[i] = (buff[i-1] & 0x80) ? 0xff : 0;
-  if (s) {
-    uprintf("%02X%02X:", (unsigned)buff[n-1], (unsigned)buff[n-2]);
-    n -= 2;
-  }
-  switch (n) {
-  case 1:
-       delta = le_int8(buff);
-       break;
-  case 2:
-       delta = le_int16(buff);
-       break;
-  case 4:
-       delta = le_int32(buff);
-       break;
-  }
-  if (extend > n) {
-    if (subtype!='x') {
-      if (delta<0) {
-        delta = -delta;
-        signchar = '-';
-      } else
-        signchar = '+';
-      if (delta || !optional)
-		uprintf("%c%0*lX", (char)signchar, (int)(extend), (long)delta);
-    } else {
-      if (extend==2)
-        delta = (uint16_t)delta;
-	  uprintf("%0.*lX", (int)(2*extend), (long)delta );
-    }
-    return;
-  }
-  if ((n == 4) && !sign) {
-    name = addr_to_hex(delta, 0);
-    uprintf("%s", name);
-    return;
-  }
-  switch (n) {
-  case 1:
-       if (sign && (char)delta<0) {
-         delta = -delta;
-         signchar = '-';
-       } else
-         signchar = '+';
-       if (sign)
-		 uprintf("%c%02lX", (char)signchar, delta & 0xFFL);
-       else
-		 uprintf("%02lX", delta & 0xFFL);
-       break;
+	int i;
+	for(i=0; i<n; i++) {
+		buff[i] = getbyte();
+	}
+	for(; i<extend; i++) {
+		buff[i] = (buff[i-1] & 0x80) ? 0xff : 0;
+	}
 
-  case 2:
-       if (sign && delta<0) {
-         signchar = '-';
-         delta = -delta;
-       } else
-         signchar = '+';
-       if (sign)
-		 uprintf("%c%04lX", (char)signchar, delta & 0xFFFFL);
-       else
-		 uprintf("%04lX", delta & 0xFFFFL);
-       break;
+	if(s) {
+		uprintf("%02X%02X:", (unsigned)buff[n-1], (unsigned)buff[n-2]);
+		n -= 2;
+	}
 
-  case 4:
-       if (sign && delta<0) {
-         delta = -delta;
-         signchar = '-';
-       } else
-         signchar = '+';
-       if (sign)
-		 uprintf("%c%08lX", (char)signchar, delta & 0xFFFFFFFFL);
-       else
-		 uprintf("%08lX", delta & 0xFFFFFFFFL);
-       break;
-  }
+	switch(n) {
+		case 1:
+			delta = le_int8(buff);
+			break;
+		case 2:
+			delta = le_int16(buff);
+			break;
+		case 4:
+			delta = le_int32(buff);
+			break;
+	}
+
+	if(extend > n) {
+		if(subtype!='x') {
+			if(delta < 0) {
+				delta = -delta;
+				signchar = '-';
+			} else
+				signchar = '+';
+			if(delta || !optional) {
+				uprintf("%c%0*lX", (char)signchar, (int)(extend), (long)delta);
+			}
+		} else {
+			if(extend == 2) {
+				delta = (uint16_t)delta;
+			}
+			uprintf("%0.*lX", (int)(2*extend), (long)delta );
+		}
+		return;
+	}
+	if((n == 4) && !sign) {
+		name = addr_to_hex(delta, 0);
+		uprintf("%s", name);
+		return;
+	}
+
+	switch (n) {
+		case 1:
+			if(sign && (char)delta<0) {
+				delta = -delta;
+				signchar = '-';
+			} else {
+				signchar = '+';
+			}
+			if(sign) {
+				uprintf("%c%02lX", (char)signchar, delta & 0xFFL);
+			} else {
+				uprintf("%02lX", delta & 0xFFL);
+			}
+			break;
+		case 2:
+			if(sign && delta < 0) {
+				signchar = '-';
+				delta = -delta;
+			} else {
+				signchar = '+';
+			}
+			if(sign) {
+				uprintf("%c%04lX", (char)signchar, delta & 0xFFFFL);
+			} else {
+				uprintf("%04lX", delta & 0xFFFFL);
+			}
+			break;
+		case 4:
+			if(sign && delta<0) {
+				delta = -delta;
+				signchar = '-';
+			} else {
+				signchar = '+';
+			}
+			if(sign) {
+				uprintf("%c%08lX", (char)signchar, delta & 0xFFFFFFFFL);
+			} else {
+				uprintf("%08lX", delta & 0xFFFFFFFFL);
+			}
+			break;
+	}
 }
-
-
-/*------------------------------------------------------------------------*/
 
 void Disasm::reg_name(int regnum, char size)
 {
-  if (size == 'F') { /* floating point register? */
-    uprintf("st(%d)", regnum);
-    return;
-  }
-  if ((((size == 'c') || (size == 'v')) && (opsize == 32)) || (size == 'd'))
-    uputchar('e');
-  if ((size=='q' || size == 'b' || size=='c') && !wordop) {
-    uputchar("acdbacdb"[regnum]);
-    uputchar("llllhhhh"[regnum]);
-  } else {
-    uputchar("acdbsbsd"[regnum]);
-    uputchar("xxxxppii"[regnum]);
-  }
+	if(size == 'F') { /* floating point register? */
+		uprintf("st(%d)", regnum);
+		return;
+	}
+	if((((size == 'c') || (size == 'v')) && (opsize == 32)) || (size == 'd')) {
+		uputchar('e');
+	}
+	if((size=='q' || size == 'b' || size=='c') && !wordop) {
+		uputchar("acdbacdb"[regnum]);
+		uputchar("llllhhhh"[regnum]);
+	} else {
+		uputchar("acdbsbsd"[regnum]);
+		uputchar("xxxxppii"[regnum]);
+	}
 }
-
-
-/*------------------------------------------------------------------------*/
 
 void Disasm::do_sib(int m)
 {
-  int s, i, b;
+	int s = SCALE(sib());
+	int i = INDEX(sib());
+	int b = BASE(sib());
 
-  s = SCALE(sib());
-  i = INDEX(sib());
-  b = BASE(sib());
-  switch (b) {     /* pick base */
-  case 0: ua_str("%p:[eax"); break;
-  case 1: ua_str("%p:[ecx"); break;
-  case 2: ua_str("%p:[edx"); break;
-  case 3: ua_str("%p:[ebx"); break;
-  case 4: ua_str("%p:[esp"); break;
-  case 5:
-       if (m == 0) {
-         ua_str("%p:[");
-         outhex('d', 4, 0, addrsize, 0);
-       } else {
-         ua_str("%p:[ebp");
-       }
-       break;
-  case 6: ua_str("%p:[esi"); break;
-  case 7: ua_str("%p:[edi"); break;
-  }
-  switch (i) {     /* and index */
-  case 0: uprintf("+eax"); break;
-  case 1: uprintf("+ecx"); break;
-  case 2: uprintf("+edx"); break;
-  case 3: uprintf("+ebx"); break;
-  case 4: break;
-  case 5: uprintf("+ebp"); break;
-  case 6: uprintf("+esi"); break;
-  case 7: uprintf("+edi"); break;
-  }
-  if (i != 4) {
-    switch (s) {    /* and scale */
-      case 0: /*uprintf("");*/ break;
-      case 1: uprintf("*2"); break;
-      case 2: uprintf("*4"); break;
-      case 3: uprintf("*8"); break;
-    }
-  }
+	switch(b) {     /* pick base */
+		case 0: ua_str("%p:[eax"); break;
+		case 1: ua_str("%p:[ecx"); break;
+		case 2: ua_str("%p:[edx"); break;
+		case 3: ua_str("%p:[ebx"); break;
+		case 4: ua_str("%p:[esp"); break;
+		case 5:
+			if (m == 0) {
+				ua_str("%p:[");
+				outhex('d', 4, 0, addrsize, 0);
+			} else {
+				ua_str("%p:[ebp");
+			}
+			break;
+		case 6: ua_str("%p:[esi"); break;
+		case 7: ua_str("%p:[edi"); break;
+	}
+	switch(i) {     /* and index */
+		case 0: uprintf("+eax"); break;
+		case 1: uprintf("+ecx"); break;
+		case 2: uprintf("+edx"); break;
+		case 3: uprintf("+ebx"); break;
+		case 4: break;
+		case 5: uprintf("+ebp"); break;
+		case 6: uprintf("+esi"); break;
+		case 7: uprintf("+edi"); break;
+	}
+	if(i != 4) {
+		switch (s) {    /* and scale */
+			case 0: /*uprintf("");*/ break;
+			case 1: uprintf("*2"); break;
+			case 2: uprintf("*4"); break;
+			case 3: uprintf("*8"); break;
+		}
+	}
 }
 
-
-
-/*------------------------------------------------------------------------*/
 void Disasm::do_modrm(char subtype)
 {
-  int mod = MOD(modrm());
-  int rm = RM(modrm());
-  int extend = (addrsize == 32) ? 4 : 2;
+	int mod = MOD(modrm());
+	int rm = RM(modrm());
+	int extend = (addrsize == 32) ? 4 : 2;
 
-  if (mod == 3) { /* specifies two registers */
-    reg_name(rm, subtype);
-    return;
-  }
-  if (must_do_size) {
-    if (wordop) {
-      if (addrsize==32 || opsize==32) {       /* then must specify size */
-		ua_str("dword ");
-      } else {
-		ua_str("word ");
-      }
-    } else {
-	  ua_str("byte ");
-    }
-  }
-  if ((mod == 0) && (rm == 5) && (addrsize == 32)) {/* mem operand with 32 bit ofs */
-    ua_str("%p:[");
-    outhex('d', extend, 0, addrsize, 0);
-    uputchar(']');
-    return;
-  }
-  if ((mod == 0) && (rm == 6) && (addrsize == 16)) { /* 16 bit dsplcmnt */
-    ua_str("%p:[");
-    outhex('w', extend, 0, addrsize, 0);
-    uputchar(']');
-    return;
-  }
-  if ((addrsize != 32) || (rm != 4))
-    ua_str("%p:[");
-  if (addrsize == 16) {
-    switch (rm) {
-    case 0: uprintf("bx+si"); break;
-    case 1: uprintf("bx+di"); break;
-    case 2: uprintf("bp+si"); break;
-    case 3: uprintf("bp+di"); break;
-    case 4: uprintf("si"); break;
-    case 5: uprintf("di"); break;
-    case 6: uprintf("bp"); break;
-    case 7: uprintf("bx"); break;
-    }
-  } else {
-    switch (rm) {
-    case 0: uprintf("eax"); break;
-    case 1: uprintf("ecx"); break;
-    case 2: uprintf("edx"); break;
-    case 3: uprintf("ebx"); break;
-    case 4: do_sib(mod); break;
-    case 5: uprintf("ebp"); break;
-    case 6: uprintf("esi"); break;
-    case 7: uprintf("edi"); break;
-    }
-  }
-  switch (mod) {
-  case 1:
-       outhex('b', extend, 1, addrsize, 0);
-       break;
-  case 2:
-       outhex('v', extend, 1, addrsize, 1);
-       break;
-  }
-  uputchar(']');
+	if(mod == 3) { /* specifies two registers */
+		reg_name(rm, subtype);
+		return;
+	}
+
+	if(must_do_size) {
+		if(wordop) {
+			if(addrsize==32 || opsize==32) { /* then must specify size */
+				ua_str("dword ");
+			} else {
+				ua_str("word ");
+			}
+		} else {
+			ua_str("byte ");
+		}
+	}
+
+	if((mod == 0) && (rm == 5) && (addrsize == 32)) { /* mem operand with 32 bit ofs */
+		ua_str("%p:[");
+		outhex('d', extend, 0, addrsize, 0);
+		uputchar(']');
+		return;
+	}
+
+	if((mod == 0) && (rm == 6) && (addrsize == 16)) { /* 16 bit dsplcmnt */
+		ua_str("%p:[");
+		outhex('w', extend, 0, addrsize, 0);
+		uputchar(']');
+		return;
+	}
+
+	if((addrsize != 32) || (rm != 4)) {
+		ua_str("%p:[");
+	}
+
+	if(addrsize == 16) {
+		switch(rm) {
+			case 0: uprintf("bx+si"); break;
+			case 1: uprintf("bx+di"); break;
+			case 2: uprintf("bp+si"); break;
+			case 3: uprintf("bp+di"); break;
+			case 4: uprintf("si"); break;
+			case 5: uprintf("di"); break;
+			case 6: uprintf("bp"); break;
+			case 7: uprintf("bx"); break;
+		}
+	} else {
+		switch(rm) {
+			case 0: uprintf("eax"); break;
+			case 1: uprintf("ecx"); break;
+			case 2: uprintf("edx"); break;
+			case 3: uprintf("ebx"); break;
+			case 4: do_sib(mod); break;
+			case 5: uprintf("ebp"); break;
+			case 6: uprintf("esi"); break;
+			case 7: uprintf("edi"); break;
+		}
+	}
+
+	switch(mod) {
+		case 1:
+			outhex('b', extend, 1, addrsize, 0);
+			break;
+		case 2:
+			outhex('v', extend, 1, addrsize, 1);
+			break;
+	}
+
+	uputchar(']');
 }
 
-
-
-/*------------------------------------------------------------------------*/
 void Disasm::floating_point(int e1)
 {
-  int esc = e1*8 + REG(modrm());
+	int esc = e1*8 + REG(modrm());
 
-  if ((MOD(modrm()) == 3)&&fspecial[esc]) {
-    if (fspecial[esc][0]) {
-      if (fspecial[esc][0][0] == '*') {
-        ua_str(fspecial[esc][0]+1);
-      } else {
-        ua_str(fspecial[esc][RM(modrm())]);
-      }
-    } else {
-      ua_str(floatops[esc]);
-      ua_str(" %EF");
-    }
-  } else {
-    ua_str(floatops[esc]);
-    ua_str(" %EF");
-  }
+	if((MOD(modrm()) == 3) && fspecial[esc]) {
+		if(fspecial[esc][0]) {
+			if(fspecial[esc][0][0] == '*') {
+				ua_str(fspecial[esc][0]+1);
+			} else {
+				ua_str(fspecial[esc][RM(modrm())]);
+			}
+		} else {
+			ua_str(floatops[esc]);
+			ua_str(" %EF");
+		}
+	} else {
+		ua_str(floatops[esc]);
+		ua_str(" %EF");
+	}
 }
 
-
-/*------------------------------------------------------------------------*/
-/* Main table driver                                                      */
-
-#define INSTRUCTION_SIZE (int)getbyte_mac - (int)startPtr
+#define INSTRUCTION_SIZE ((int)getbyte_mac - (int)startPtr)
 
 void Disasm::percent(char type, char subtype)
 {
-  int32_t vofs = 0;
-  char *name=nullptr;
-  int extend = (addrsize == 32) ? 4 : 2;
-  uint8_t c;
+	int32_t vofs = 0;
+	char *name=nullptr;
+	int extend = (addrsize == 32) ? 4 : 2;
+	uint8_t c;
 
-  switch (type) {
-  case 'A':                          /* direct address */
-       outhex(subtype, extend, 0, addrsize, 0);
-       break;
+	switch (type) {
+		// direct address
+		case 'A':
+			outhex(subtype, extend, 0, addrsize, 0);
+			break;
 
-  case 'C':                          /* reg(r/m) picks control reg */
-       uprintf("CR%d", REG(modrm()));
-       must_do_size = 0;
-       break;
+		// reg(r/m) picks control reg
+		case 'C':
+			uprintf("CR%d", REG(modrm()));
+			must_do_size = false;
+			break;
 
-  case 'D':                          /* reg(r/m) picks debug reg */
-       uprintf("DR%d", REG(modrm()));
-       must_do_size = 0;
-       break;
+		// reg(r/m) picks debug reg
+		case 'D':
+			uprintf("DR%d", REG(modrm()));
+			must_do_size = false;
+			break;
 
-  case 'E':                          /* r/m picks operand */
-       do_modrm(subtype);
-       break;
+		// r/m picks operand
+		case 'E':
+			do_modrm(subtype);
+			break;
 
-  case 'G':                          /* reg(r/m) picks register */
-       if (subtype == 'F')                 /* 80*87 operand?   */
-         reg_name(RM(modrm()), subtype);
-       else
-         reg_name(REG(modrm()), subtype);
-       must_do_size = 0;
-       break;
+		// reg(r/m) picks register
+		case 'G':
+			// FPU operand?
+			if(subtype == 'F') {
+				reg_name(RM(modrm()), subtype);
+			} else {
+				reg_name(REG(modrm()), subtype);
+			}
+			must_do_size = false;
+			break;
 
-  case 'I':                            /* immed data */
-       outhex(subtype, 0, 0, opsize, 0);
-       break;
+		// immed data
+		case 'I':
+			outhex(subtype, 0, 0, opsize, 0);
+			break;
 
-  case 'J': {                           /* relative IP offset */
-	   uint32_t dest = 0;
-       switch (bytes(subtype)) {              /* sizeof offset value */
-       case 1:
-            vofs = (int8_t)getbyte();
-			/* name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
-			 * see comment below.
-			 */
-            dest = instruction_segment + ((instruction_offset+INSTRUCTION_SIZE + vofs) & 0xffff);
-			name = addr_to_hex(dest,0);
-            break;
-       case 2:
-            vofs = getbyte();
-            vofs += getbyte()<<8;
-            vofs = (int16_t)vofs;
-            /*name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
-             * this is not correct! the ip wraps around and must be added to the
-             * current cs. for eg:
-             * E9 2C 20 => jmp cs+(ip+202c & ffff)
-             */
-            dest = instruction_segment + ((instruction_offset+INSTRUCTION_SIZE + vofs) & 0xffff);
-			name = addr_to_hex(dest,0);
-            break;
-			/* i386 */
-       case 4:
-            vofs = (uint32_t)getbyte();           /* yuk! */
-            vofs |= (uint32_t)getbyte() << 8;
-            vofs |= (uint32_t)getbyte() << 16;
-            vofs |= (uint32_t)getbyte() << 24;
-            dest = vofs+instruction_offset+INSTRUCTION_SIZE;
-			name = addr_to_hex(dest,(addrsize == 32)?0:1);
-            break;
-       }
-	   /*if (vofs<0) adapt to the correct behaviour*/
-       if(dest < getbyte_mac)
-		   uprintf("%s ($-%X)", name, getbyte_mac-dest);
-	   else
-		   uprintf("%s ($+%X)", name, dest-getbyte_mac);
-       break;
-  }
-  case 'K':
-       switch (subtype) {
-       case 'f':
-            ua_str("far ");
-            break;
-       case 'n':
-            ua_str("near ");
-            break;
-       case 's':
-            ua_str("short ");
-            break;
-       }
-       break;
+		// relative IP offset
+		case 'J': {
+			uint32_t dest = 0;
+			// sizeof offset value
+			switch(bytes(subtype)) {
+				case 1:
+					vofs = (int8_t)getbyte();
+					/* name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
+					 * see comment below.
+					 */
+					dest = instruction_segment + ((instruction_offset + INSTRUCTION_SIZE + vofs) & 0xffff);
+					name = addr_to_hex(dest, false);
+					break;
+				case 2:
+					vofs = getbyte();
+					vofs |= getbyte()<<8;
+					vofs = (int16_t)vofs;
+					/*name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
+					 * this is not correct! the ip wraps around and must be added to the
+					 * current cs. for eg:
+					 * E9 2C 20 => jmp cs+(ip+202c & ffff)
+					 */
+					dest = instruction_segment + ((instruction_offset + INSTRUCTION_SIZE + vofs) & 0xffff);
+					name = addr_to_hex(dest, false);
+					break;
+					/* i386 */
+				case 4:
+					vofs  = (uint32_t)getbyte();
+					vofs |= (uint32_t)getbyte() << 8;
+					vofs |= (uint32_t)getbyte() << 16;
+					vofs |= (uint32_t)getbyte() << 24;
+					dest = vofs + instruction_offset + INSTRUCTION_SIZE;
+					name = addr_to_hex(dest, (addrsize != 32));
+					break;
+			}
+			// if (vofs<0) adapt to the correct behaviour
+			if(dest < getbyte_mac) {
+				uprintf("%s ($-%X)", name, getbyte_mac-dest);
+			} else {
+				uprintf("%s ($+%X)", name, dest-getbyte_mac);
+			}
+			break;
+		}
+		case 'K':
+			switch (subtype) {
+				case 'f':
+					ua_str("far ");
+					break;
+				case 'n':
+					ua_str("near ");
+					break;
+				case 's':
+					ua_str("short ");
+					break;
+			}
+			break;
 
-  case 'M':                            /* r/m picks memory */
-       do_modrm(subtype);
-       break;
+		// r/m picks memory
+		case 'M':
+			do_modrm(subtype);
+			break;
 
-  case 'O':                            /* offset only */
-       ua_str("%p:[");
-       outhex(subtype, extend, 0, addrsize, 0);
-       uputchar(']');
-       break;
+		// offset only
+		case 'O':
+			ua_str("%p:[");
+			outhex(subtype, extend, 0, addrsize, 0);
+			uputchar(']');
+			break;
 
-  case 'P':                            /* prefix byte (rh) */
-       ua_str("%p:");
-       break;
+		// prefix byte (rh)
+		case 'P':
+			ua_str("%p:");
+			break;
 
-  case 'R':                            /* mod(r/m) picks register */
-       reg_name(RM(modrm()), subtype);      /* rh */
-       must_do_size = 0;
-       break;
+		// mod(r/m) picks register
+		case 'R':
+			// rh
+			reg_name(RM(modrm()), subtype);
+			must_do_size = false;
+			break;
 
-  case 'S':                            /* reg(r/m) picks segment reg */
-       uputchar("ecsdfg"[REG(modrm())]);
-       uputchar('s');
-       must_do_size = 0;
-       break;
+		// reg(r/m) picks segment reg
+		case 'S':
+			uputchar("ecsdfg"[REG(modrm())]);
+			uputchar('s');
+			must_do_size = false;
+			break;
 
-  case 'T':                            /* reg(r/m) picks T reg */
-       uprintf("tr%d", REG(modrm()));
-       must_do_size = 0;
-       break;
+		// reg(r/m) picks T reg
+		case 'T':
+			uprintf("tr%d", REG(modrm()));
+			must_do_size = false;
+			break;
 
-  case 'X':                            /* ds:si type operator */
-       uprintf("ds:[");
-       if (addrsize == 32)
-         uputchar('e');
-       uprintf("si]");
-       break;
+		// ds:si type operator
+		case 'X':
+			uprintf("ds:[");
+			if(addrsize == 32) {
+				uputchar('e');
+			}
+			uprintf("si]");
+			break;
 
-  case 'Y':                            /* es:di type operator */
-       uprintf("es:[");
-       if (addrsize == 32)
-         uputchar('e');
-       uprintf("di]");
-       break;
+		// es:di type operator
+		case 'Y':
+			uprintf("es:[");
+			if(addrsize == 32) {
+				uputchar('e');
+			}
+			uprintf("di]");
+			break;
 
-  case '2':                            /* old [pop cs]! now indexes */
-       c = getbyte();
-       wordop = c & 1;
-       ua_str(second[c]);              /* instructions in 386/486   */
-       break;
+		// 2-byte opcode (0F prefix)
+		case '2':
+			c = getbyte();
+			wordop = c & 1;
+			ua_str(second[c]);
+			break;
 
-  case 'g':                            /* modrm group `subtype' (0--7) */
-       ua_str(groups[subtype-'0'][REG(modrm())]);
-       break;
+		// modrm group `subtype' (0--7)
+		case 'g':
+			ua_str(groups[subtype-'0'][REG(modrm())]);
+			break;
 
-  case 'd':                             /* sizeof operand==dword? */
-       if (opsize == 32)
-         uputchar('d');
-       uputchar(subtype);
-       break;
+		// sizeof operand==dword?
+		case 'd':
+			if(opsize == 32) {
+				uputchar('d');
+			}
+			uputchar(subtype);
+			break;
 
-  case 'w':                             /* insert explicit size specifier */
-       if (opsize == 32)
-         uputchar('d');
-       else
-         uputchar('w');
-       uputchar(subtype);
-       break;
+		// insert explicit size specifier
+		case 'w':
+			if(opsize == 32) {
+				uputchar('d');
+			} else {
+				uputchar('w');
+			}
+			uputchar(subtype);
+			break;
 
-  case 'e':                         /* extended reg name */
-       if (opsize == 32) {
-         if (subtype == 'w')
-           uputchar('d');
-         else {
-           uputchar('e');
-           uputchar(subtype);
-         }
-       } else
-         uputchar(subtype);
-       break;
+		// extended reg name
+		case 'e':
+			if(opsize == 32) {
+				if (subtype == 'w')
+					uputchar('d');
+				else {
+					uputchar('e');
+					uputchar(subtype);
+				}
+			} else {
+				uputchar(subtype);
+			}
+			break;
 
-  case 'f':                    /* '87 opcode */
-       floating_point(subtype-'0');
-       break;
+		// x87 opcode
+		case 'f':
+			floating_point(subtype-'0');
+			break;
 
-  case 'j':
-       if (addrsize==32 || opsize==32) /* both of them?! */
-         uputchar('e');
-       break;
+		case 'j':
+			if(addrsize==32 || opsize==32) { // both of them?!
+				uputchar('e');
+			}
+			break;
 
-  case 'p':                    /* prefix byte */
-       switch (subtype)  {
-       case 'c':
-       case 'd':
-       case 'e':
-       case 'f':
-       case 'g':
-       case 's':
-            prefix = subtype;
-            c = getbyte();
-            wordop = c & 1;
-            ua_str((*opmap1)[c]);
-            break;
-       case ':':
-            if (prefix)
-              uprintf("%cs:", prefix);
-            break;
-       case ' ':
-            c = getbyte();
-            wordop = c & 1;
-            ua_str((*opmap1)[c]);
-            break;
-       }
-       break;
+		// prefix byte
+		case 'p':
+			switch(subtype)  {
+				case 'c':
+				case 'd':
+				case 'e':
+				case 'f':
+				case 'g':
+				case 's':
+					prefix = subtype;
+					c = getbyte();
+					wordop = c & 1;
+					ua_str((*opmap1)[c]);
+					break;
+				case ':':
+					if(prefix) {
+						uprintf("%cs:", prefix);
+					}
+					break;
+				case ' ':
+					c = getbyte();
+					wordop = c & 1;
+					ua_str((*opmap1)[c]);
+					break;
+			}
+			break;
 
-  case 's':                           /* size override */
-       switch (subtype) {
-       case 'a':
-            addrsize = 48 - addrsize;
-            c = getbyte();
-            wordop = c & 1;
-            ua_str((*opmap1)[c]);
-/*            ua_str(opmap1[getbyte()]); */
-            break;
-       case 'o':
-            opsize = 48 - opsize;
-            c = getbyte();
-            wordop = c & 1;
-            ua_str((*opmap1)[c]);
-/*            ua_str(opmap1[getbyte()]); */
-            break;
-       }
-       break;
-   }
+		// size override
+		case 's':
+			switch(subtype) {
+				case 'a':
+					addrsize = 48 - addrsize;
+					c = getbyte();
+					wordop = c & 1;
+					ua_str((*opmap1)[c]);
+					break;
+				case 'o':
+					opsize = 48 - opsize;
+					c = getbyte();
+					wordop = c & 1;
+					ua_str((*opmap1)[c]);
+					break;
+			}
+			break;
+	}
 }
-
 
 void Disasm::ua_str(char const *str)
 {
-	if(ubuflen<=1)
+	if(ubuflen <= 1) {
 		return;
-
-  char c;
-
-  if (str == 0) {
-    invalid_opcode = 1;
-    uprintf("?");
-    return;
-  }
-
-  if (strpbrk(str, "CDFGRST")) /* specifiers for registers=>no size 2b specified */
-    must_do_size = 0;
-
-  while ((c = *str++) != 0) {
-	if (c == ' ' && first_space)
-	{
-		first_space = 0;
-		do
-		{
-			uputchar(' ');
-		} while ( (int)(ubufp - ubufs) < 5 );
 	}
-	else
-    if (c == '%') {
-      c = *str++;
-      percent(c, *str++);
-    } else {
-      uputchar(c);
-    }
-  }
+
+	char c;
+
+	if(str == 0) {
+		invalid_opcode = true;
+		uprintf("?");
+		return;
+	}
+
+	// specifiers for registers=>no size 2b specified
+	if(strpbrk(str, "CDFGRST")) {
+		must_do_size = false;
+	}
+
+	while ((c = *str++) != 0) {
+		if(c == ' ' && first_space) {
+			first_space = false;
+			do {
+				uputchar(' ');
+			} while( (int)(ubufp - ubufs) < 5 );
+		} else {
+			if(c == '%') {
+				c = *str++;
+				percent(c, *str++);
+			} else {
+				uputchar(c);
+			}
+		}
+	}
 }
 
 /*
- * _addr = the memory physical address of the instruction
- * _rip = the offset of the instruction (EIP register)
+ * _buffer = disassembly result
+ * _buffer_len = the length of _buffer
+ * _cs  = the code segment linear base address
+ * _eip = the offset of the instruction (eIP)
  * _instr_buf = a vector containing the instruction to disassemble, if nullptr the instr. will be read from memory
  * _instr_buf_len = the length of _instr_buf
+ * _32bit = true if the code segment is 32 bit
  */
-uint32_t Disasm::disasm(char* _buffer, uint _buffer_len, uint32_t _addr, uint32_t _rip,
-		CPUCore *_core, Memory *_memory, const uint8_t *_instr_buf, uint _instr_buf_len,
-		bool _cs_def)
+uint32_t Disasm::disasm(char *_buffer, unsigned _buffer_len, uint32_t _cs, uint32_t _eip,
+		CPUCore *_core, Memory *_memory, const uint8_t *_instr_buf, unsigned _instr_buf_len,
+		bool _32bit)
 {
-  	uint32_t c;
+	uint32_t cseip = _cs + _eip;
 
-  	m_cpu = _core;
-  	m_memory = _memory;
+	m_cpu = _core;
+	m_memory = _memory;
 
-	instruction_offset = _rip;
-	instruction_segment = _addr - _rip;
+	instruction_segment = _cs;
+	instruction_offset = _eip;
 
 	instr_buffer = _instr_buf;
 	instr_buffer_size = _instr_buf_len;
 
-	/* input buffer */
-	startPtr	= _addr;
-	getbyte_mac = _addr;
+	// input buffer
+	startPtr = cseip;
+	getbyte_mac = cseip;
 
-	/* output buffer */
+	// output buffer
 	ubuflen = _buffer_len;
 	ubufs = _buffer;
 	ubufp = _buffer;
-	first_space = 1;
-
-	//?? addr32bit=1;
+	first_space = true;
 
 	prefix = 0;
-	modrmv = sibv = -1;     /* set modrm and sib flags */
-	if(_cs_def) {
+	modrmv = sibv = -1; // set modrm and sib flags
+	if(_32bit) {
 		opsize = addrsize = 32;
 	} else {
 		opsize = addrsize = 16;
 	}
-	c = getbyte();
+
+	// fetch the first byte of the instruction
+	uint8_t c = getbyte();
+
 	wordop = c & 1;
-	must_do_size = 1;
-	invalid_opcode = 0;
-	opmap1=&op386map1;
+	must_do_size = true;
+	invalid_opcode = false;
+	opmap1 = &op386map1;
+
+	// decode the instruction
 	ua_str(op386map1[c]);
 
 	m_cpu = nullptr;
 	m_memory = nullptr;
 
-  	if (invalid_opcode) {
-		/* restart output buffer */
+	if(invalid_opcode) {
+		// restart output buffer
 		ubufp = _buffer;
-		/* invalid instruction, use db xx */
-    		uprintf("db %02X", (unsigned)c);
+		// invalid instruction, use db xx
+		uprintf("db %02X", (unsigned)c);
 		return 1;
 	}
 
-	return getbyte_mac - _addr;
+	return getbyte_mac - cseip;
 }
-
-int Disasm::last_operand_size()
-{
-	return opsize;
-};
-
-
-
 
