@@ -153,7 +153,6 @@ protected:
 	uint32_t unmasked_events_pending();
 	void default_shutdown_trap() {}
 	bool is_double_fault(uint8_t _first_vec, uint8_t _current_vec);
-	bool v86_redirect_interrupt(uint8_t _vector);
 
 	void wait_for_event();
 
