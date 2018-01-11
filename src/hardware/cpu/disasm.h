@@ -54,8 +54,8 @@ private:
 
 	char addr_to_hex_buffer[11];
 
-	char *addr_to_hex(uint32_t addr, bool splitup);
-	uint8_t getbyte();
+	char *addr_to_hex(uint32_t addr, bool splitup = false);
+	uint32_t getbyte();
 	int modrm();
 	int sib();
 	void uprintf(char const *s, ...);

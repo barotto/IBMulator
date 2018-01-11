@@ -434,7 +434,7 @@ char *Disasm::addr_to_hex(uint32_t addr, bool splitup)
 	return addr_to_hex_buffer;
 }
 
-uint8_t Disasm::getbyte()
+uint32_t Disasm::getbyte()
 {
 	if(instr_buffer_size > 0) {
 		unsigned idx = getbyte_mac - (instruction_segment + instruction_offset);
@@ -829,7 +829,6 @@ void Disasm::floating_point(int e1)
 
 void Disasm::percent(char type, char subtype)
 {
-	int32_t vofs = 0;
 	char *name=nullptr;
 	int extend = (addrsize == 32) ? 4 : 2;
 	uint8_t c;
@@ -875,39 +874,34 @@ void Disasm::percent(char type, char subtype)
 
 		// relative IP offset
 		case 'J': {
-			uint32_t dest = 0;
+			int32_t vofs = 0;
+			uint32_t ip = instruction_offset;
 			// sizeof offset value
 			switch(bytes(subtype)) {
 				case 1:
-					vofs = (int8_t)getbyte();
-					/* name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
-					 * see comment below.
-					 */
-					dest = instruction_segment + ((instruction_offset + INSTRUCTION_SIZE + vofs) & 0xffff);
-					name = addr_to_hex(dest, false);
+					ip += int8_t(getbyte()) + INSTRUCTION_SIZE;
+					if(opsize == 16) {
+						ip &= 0xffff;
+					}
 					break;
 				case 2:
-					vofs = getbyte();
-					vofs |= getbyte()<<8;
-					vofs = (int16_t)vofs;
-					/*name = addr_to_hex(vofs+instruction_offset+INSTRUCTION_SIZE,0);
-					 * this is not correct! the ip wraps around and must be added to the
-					 * current cs. for eg:
-					 * E9 2C 20 => jmp cs+(ip+202c & ffff)
-					 */
-					dest = instruction_segment + ((instruction_offset + INSTRUCTION_SIZE + vofs) & 0xffff);
-					name = addr_to_hex(dest, false);
+					vofs  = getbyte();
+					vofs |= getbyte() << 8;
+					ip += int16_t(vofs) + INSTRUCTION_SIZE;
+					if(opsize == 16) {
+						ip &= 0xffff;
+					}
 					break;
-					/* i386 */
 				case 4:
-					vofs  = (uint32_t)getbyte();
-					vofs |= (uint32_t)getbyte() << 8;
-					vofs |= (uint32_t)getbyte() << 16;
-					vofs |= (uint32_t)getbyte() << 24;
-					dest = vofs + instruction_offset + INSTRUCTION_SIZE;
-					name = addr_to_hex(dest, (addrsize != 32));
+					vofs  = getbyte();
+					vofs |= getbyte() << 8;
+					vofs |= getbyte() << 16;
+					vofs |= getbyte() << 24;
+					ip += vofs + INSTRUCTION_SIZE;
 					break;
 			}
+			uint32_t dest = instruction_segment + ip;
+			name = addr_to_hex(dest);
 			// if (vofs<0) adapt to the correct behaviour
 			if(dest < getbyte_mac) {
 				uprintf("%s ($-%X)", name, getbyte_mac-dest);
