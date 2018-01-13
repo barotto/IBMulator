@@ -425,14 +425,18 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 {
 	CPUDebugger debugger;
 
+	const unsigned dline_len = 37;
+	const unsigned an_len = 11;
+
 	static std::string str;
 	str = "";
 
-	static char empty[23] = { 32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,0 };
+	static char empty[an_len] = { 32,32,32,32,32,32,32,32,32,32,0 };
 
-	char dline[200];
+	char dline[dline_len];
+	memset(dline, 0, dline_len);
 	debugger.disasm(
-		dline, 200u,
+		dline, dline_len,
 		_log_entry.core.get_CS().desc.base, _log_entry.instr.eip,
 		nullptr, nullptr,
 		_log_entry.instr.bytes, _log_entry.instr.size,
@@ -448,21 +452,21 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 	}
 
 	size_t alen = strlen(analize);
-	if(alen<22) {
-		for(size_t i=0; i<22-alen; i++) {
+	if(alen<(an_len-1)) {
+		for(size_t i=0; i<(an_len-1)-alen; i++) {
 			analize[alen+i] = ' ';
 		}
 	}
-	analize[22] = 0;
+	analize[an_len-1] = 0;
 
 	size_t len = strlen(dline);
-	if(len<30) {
-		for(size_t i=0; i<30-len; i++) {
+	if(len<(dline_len-1)) {
+		for(size_t i=0; i<(dline_len-1)-len; i++) {
 			dline[len + i] = ' ';
 		}
 	}
 
-	dline[30] = 0;
+	dline[dline_len-1] = 0;
 
 	str = dline;
 	str = str + " " + analize;
