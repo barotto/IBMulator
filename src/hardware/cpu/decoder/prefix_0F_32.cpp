@@ -21,7 +21,7 @@
 #include "hardware/cpu/decoder.h"
 #include "hardware/cpu/executor.h"
 
-#define PREFIX_0F return prefix_0F(_opcode, ctb_idx_, ctb_op_)
+#define PREFIX_0F prefix_0F(_opcode, ctb_idx_, ctb_op_); return;
 
 void CPUDecoder::prefix_0F_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_)
 {

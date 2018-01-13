@@ -21,7 +21,7 @@
 #include "hardware/cpu/decoder.h"
 #include "hardware/cpu/executor.h"
 
-#define PREFIX_NONE return prefix_none(_opcode, ctb_idx_, ctb_op_)
+#define PREFIX_NONE prefix_none(_opcode, ctb_idx_, ctb_op_); return;
 
 void CPUDecoder::prefix_none_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_)
 {
