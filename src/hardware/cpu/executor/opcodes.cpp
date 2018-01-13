@@ -3628,6 +3628,11 @@ void CPUExecutor::POPAD()
 
 void CPUExecutor::POPF()
 {
+	if(IS_V8086() && (FLAG_IOPL < 3)) {
+		PDEBUGF(LOG_CPU, LOG_V2, "POPF: #GP(0) in v8086 mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
 	uint16_t flags = stack_pop_word();
 	write_flags(flags);
 }
@@ -3638,6 +3643,11 @@ void CPUExecutor::POPFD()
 	 * same write_flags as POPF
 	 * TODO this works only for the 386
 	 */
+	if(IS_V8086() && (FLAG_IOPL < 3)) {
+		PDEBUGF(LOG_CPU, LOG_V2, "POPFD: #GP(0) in v8086 mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	}
+
 	uint16_t flags = uint16_t(stack_pop_dword());
 	write_flags(flags);
 }
