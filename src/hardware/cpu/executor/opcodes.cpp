@@ -917,8 +917,11 @@ void CPUExecutor::CLD()
 
 void CPUExecutor::CLI()
 {
-	if(!IS_RMODE() && (FLAG_IOPL < CPL)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CLI: IOPL < CPL\n");
+	if(IS_PMODE() && (FLAG_IOPL < CPL)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "CLI: IOPL < CPL in protected mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+	} else if(IS_V8086() && (FLAG_IOPL != 3)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "CLI: IOPL != 3 in V8086 mode\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
@@ -4859,10 +4862,14 @@ void CPUExecutor::STD()
 
 void CPUExecutor::STI()
 {
-	if(IS_PMODE() && (CPL > FLAG_IOPL)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "STI: CPL > IOPL in protected mode\n");
+	if(IS_PMODE() && (FLAG_IOPL < CPL)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "STI: IOPL < CPL  in protected mode\n");
+		throw CPUException(CPU_GP_EXC, 0);
+    } else if(IS_V8086() && (FLAG_IOPL != 3)) {
+		PDEBUGF(LOG_V2, LOG_CPU, "STI: IOPL != 3 in V8086 mode\n");
 		throw CPUException(CPU_GP_EXC, 0);
     }
+
 	if(!FLAG_IF) {
 		SET_FLAG(IF, true);
 		g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS);
