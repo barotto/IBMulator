@@ -542,12 +542,12 @@ void PIC::lower_irq(unsigned irq_no)
 {
 	uint8_t mask = (1 << (irq_no & 7));
 	if((irq_no <= 7) && (m_s.master.IRQ_in & mask)) {
-		PDEBUGF(LOG_V2, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
+		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
 				g_machine.get_irq_name(irq_no));
 		m_s.master.IRQ_in &= ~(mask);
 		m_s.master.irr &= ~(mask);
 	} else if((irq_no > 7) && (irq_no <= 15) && (m_s.slave.IRQ_in & mask)) {
-		PDEBUGF(LOG_V2, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
+		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
 				g_machine.get_irq_name(irq_no));
 		m_s.slave.IRQ_in &= ~(mask);
 		m_s.slave.irr &= ~(mask);
@@ -558,13 +558,13 @@ void PIC::raise_irq(unsigned irq_no)
 {
 	uint8_t mask = (1 << (irq_no & 7));
 	if((irq_no <= 7) && !(m_s.master.IRQ_in & mask)) {
-		PDEBUGF(LOG_V2, LOG_PIC, "IRQ line %u (%s) now high (mIMR=%X,mINT=%u,IF=%u)\n", irq_no,
+		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now high (mIMR=%X,mINT=%u,IF=%u)\n", irq_no,
 				g_machine.get_irq_name(irq_no), m_s.master.imr, m_s.master.INT, FLAG_IF);
 		m_s.master.IRQ_in |= mask;
 		m_s.master.irr |= mask;
 		service_master_pic();
 	} else if((irq_no > 7) && (irq_no <= 15) && !(m_s.slave.IRQ_in & mask)) {
-		PDEBUGF(LOG_V2, LOG_PIC, "IRQ line %u (%s) now high (sIMR=%X,sINT=%u,IF=%u)\n", irq_no,
+		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now high (sIMR=%X,sINT=%u,IF=%u)\n", irq_no,
 				g_machine.get_irq_name(irq_no), m_s.slave.imr, m_s.slave.INT, FLAG_IF);
 		m_s.slave.IRQ_in |= mask;
 		m_s.slave.irr |= mask;
@@ -580,7 +580,6 @@ void PIC::set_mode(bool ma_sl, uint8_t mode)
 		m_s.slave.edge_level = mode;
 	}
 }
-
 
 void PIC::set_master_imr(uint8_t _imr)
 {
@@ -784,7 +783,7 @@ void PIC::service_slave_pic()
 }
 
 /* CPU handshakes with PIC after acknowledging interrupt */
-uint8_t PIC::IAC()
+uint8_t PIC::IAC(uint8_t *_irq)
 {
 	uint8_t vector;
 	uint8_t irq;
@@ -835,7 +834,9 @@ uint8_t PIC::IAC()
 	service_master_pic();
 
 	//PDEBUGF(LOG_V2, LOG_PIC, "event at t=%ld IRQ irq=%u vec=%x\n", g_machine.get_virt_time(), irq, vector);
-
+	if(_irq) {
+		*_irq = irq;
+	}
 	return vector;
 }
 

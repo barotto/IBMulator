@@ -85,7 +85,7 @@ public:
 	void lower_irq(unsigned irq_no);
 	void raise_irq(unsigned irq_no);
 	void set_mode(bool ma_sl, uint8_t mode);
-	uint8_t IAC(void);
+	uint8_t IAC(uint8_t *_irq=nullptr);
 
 	inline uint16_t get_irr() const {
 		return (uint16_t(m_s.master.irr) | (uint16_t(m_s.slave.irr)<<8));

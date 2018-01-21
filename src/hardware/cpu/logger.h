@@ -20,10 +20,10 @@
 #ifndef IBMULATOR_CPU_LOGGER_H
 #define IBMULATOR_CPU_LOGGER_H
 
-#define CPULOG               false    // activate CPU logging?
+#define CPULOG               false        // activate CPU logging?
 #define CPULOG_FILE          "cpulog.log" // log file name
 #if CPULOG
-#define CPULOG_MAX_SIZE      400000u  // number of instruction to log
+#define CPULOG_MAX_SIZE      400000u      // number of instructions to log
 #else
 #define CPULOG_MAX_SIZE      1u
 #endif
@@ -51,6 +51,12 @@
 #include "state.h"
 #include "exception.h"
 
+struct CPULogIRQ
+{
+	uint8_t irq;
+	uint8_t vector;
+};
+
 struct CPULogEntry
 {
 	uint64_t time;
@@ -60,6 +66,7 @@ struct CPULogEntry
 	CPUBus bus;
 	Instruction instr;
 	CPUCycles cycles;
+	CPULogIRQ irq;
 };
 
 class CPULogger
@@ -69,6 +76,7 @@ private:
 	uint m_log_size;
 	CPULogEntry m_log[CPULOG_MAX_SIZE];
 	uint32_t m_iret_address;
+	CPULogIRQ m_irq;
 	FILE *m_log_file;
 	std::string m_log_filename;
 	std::map<int,uint64_t> m_global_counters;
@@ -96,6 +104,7 @@ public:
 		const CPUCycles &_cycles
 	);
 	void set_prev_i_exc(const CPUException &_exc, uint32_t _cseip);
+	void set_next_i_irq(uint8_t _irq, uint8_t _vector);
 	void open_file(const std::string _filename);
 	void close_file();
 	void set_iret_address(uint32_t _address);

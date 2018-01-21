@@ -33,6 +33,7 @@ m_log_size(0),
 m_iret_address(0),
 m_log_file(nullptr)
 {
+	m_irq.irq = 0xFF;
 }
 
 CPULogger::~CPULogger()
@@ -50,33 +51,33 @@ void CPULogger::add_entry(
 		const CPUCycles &_cycles)
 {
 	//don't log outside fixed boundaries
-	if(_instr.cseip<CPULOG_START_ADDR || _instr.cseip>CPULOG_END_ADDR) {
-		return;
-	}
+	if(_instr.cseip>=CPULOG_START_ADDR && _instr.cseip<=CPULOG_END_ADDR) {
+		m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
+		m_log[m_log_idx].time = _time;
+		m_log[m_log_idx].instr = _instr;
+		m_log[m_log_idx].state = _state;
+		m_log[m_log_idx].exc = _exc;
+		m_log[m_log_idx].core = _core;
+		m_log[m_log_idx].bus = _bus;
+		m_log[m_log_idx].cycles = _cycles;
+		m_log[m_log_idx].irq = m_irq;
 
-	m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
-	m_log[m_log_idx].time = _time;
-	m_log[m_log_idx].instr = _instr;
-	m_log[m_log_idx].state = _state;
-	m_log[m_log_idx].exc = _exc;
-	m_log[m_log_idx].core = _core;
-	m_log[m_log_idx].bus = _bus;
-	m_log[m_log_idx].cycles = _cycles;
-
-	int opcode_idx;
-	if(CPULOG_COUNTERS) {
-		opcode_idx = get_opcode_index(_instr);
-		m_global_counters[opcode_idx] += 1;
-	}
-
-	if(m_log_file && (CPULOG_LOG_INTS || m_iret_address==0 || m_iret_address==_instr.cseip)) {
-		m_iret_address = 0;
-		write_entry(m_log_file, m_log[m_log_idx]);
+		int opcode_idx;
 		if(CPULOG_COUNTERS) {
-			m_file_counters[opcode_idx] += 1;
+			opcode_idx = get_opcode_index(_instr);
+			m_global_counters[opcode_idx] += 1;
 		}
+
+		if(m_log_file && (CPULOG_LOG_INTS || m_iret_address==0 || m_iret_address==_instr.cseip)) {
+			m_iret_address = 0;
+			write_entry(m_log_file, m_log[m_log_idx]);
+			if(CPULOG_COUNTERS) {
+				m_file_counters[opcode_idx] += 1;
+			}
+		}
+		m_log_idx = (m_log_idx+1) % CPULOG_MAX_SIZE;
 	}
-	m_log_idx = (m_log_idx+1) % CPULOG_MAX_SIZE;
+	m_irq.irq = 0xFF;
 }
 
 void CPULogger::set_prev_i_exc(const CPUException &_exc, uint32_t _cseip)
@@ -92,6 +93,12 @@ void CPULogger::set_prev_i_exc(const CPUException &_exc, uint32_t _cseip)
 		idx = CPULOG_MAX_SIZE - 1;
 	}
 	m_log[idx].exc = _exc;
+}
+
+void CPULogger::set_next_i_irq(uint8_t _irq, uint8_t _vector)
+{
+	m_irq.irq = _irq;
+	m_irq.vector = _vector;
 }
 
 int CPULogger::get_opcode_index(const Instruction &_instr)
@@ -296,6 +303,11 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		};
 		if(_entry.exc.vector < CPU_MAX_INT) {
 			PCPULOG(_dest, "%s(%04x) ", exc_names[_entry.exc.vector],_entry.exc.error_code);
+		} else {
+			PCPULOG(_dest, "          ");
+		}
+		if(_entry.irq.irq < 0xFF) {
+			PCPULOG(_dest, "IRQ%02d[%02X] ", _entry.irq.irq, _entry.irq.vector);
 		} else {
 			PCPULOG(_dest, "          ");
 		}

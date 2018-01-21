@@ -477,9 +477,13 @@ void CPU::handle_async_event()
 		m_s.EXT = true;
 		interrupt(2, CPU_NMI, false, 0);
 	} else if(is_unmasked_event_pending(CPU_EVENT_PENDING_INTR)) {
-		uint8_t vector = g_devices.pic()->IAC(); // may set INTR with next interrupt
+		uint8_t irq;
+		uint8_t vector = g_devices.pic()->IAC(&irq); // may set INTR with next interrupt
 		m_s.EXT = true;
 		interrupt(vector, CPU_EXTERNAL_INTERRUPT, 0, 0);
+		if(CPULOG) {
+			m_logger.set_next_i_irq(irq, vector);
+		}
 	} else if(m_s.HRQ) {
 		// assert Hold Acknowledge (HLDA) and go into a bus hold state
 		g_devices.dma()->raise_HLDA();
@@ -578,7 +582,7 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	// TODO 586+ V8086 soft INT redirection
 
 	if(_type==CPU_SOFTWARE_INTERRUPT && IS_V8086() && (FLAG_IOPL < 3)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "Software INT %d in V8086 mode with IOPL:%d\n", _vector, FLAG_IOPL);
+		PDEBUGF(LOG_V1, LOG_CPU, "Software INT 0x%02X (%d) in V8086 mode with IOPL:%d\n", _vector, _vector, FLAG_IOPL);
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
