@@ -354,6 +354,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_MIXER_VERBOSITY,  LOG_MIXER);
 		g_syslog.set_verbosity(LOG_MEM_VERBOSITY,    LOG_MEM);
 		g_syslog.set_verbosity(LOG_CPU_VERBOSITY,    LOG_CPU);
+		g_syslog.set_verbosity(LOG_MMU_VERBOSITY,    LOG_MMU);
 		g_syslog.set_verbosity(LOG_PIT_VERBOSITY,    LOG_PIT);
 		g_syslog.set_verbosity(LOG_PIC_VERBOSITY,    LOG_PIC);
 		g_syslog.set_verbosity(LOG_DMA_VERBOSITY,    LOG_DMA);

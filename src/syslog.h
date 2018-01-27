@@ -76,6 +76,7 @@ enum e_Syslog_Facilities {
 	LOG_MIXER,
 	LOG_MEM,
 	LOG_CPU,
+	LOG_MMU,
 	LOG_PIT,
 	LOG_PIC,
 	LOG_DMA,

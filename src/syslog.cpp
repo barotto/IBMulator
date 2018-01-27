@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
-/* This first version of this code is from more than 15 years ago, in the dark
+/* The first version of this code is from more than 15 years ago, in the dark
  * ages of C++.
  */
 
@@ -50,6 +50,7 @@ const char* Syslog::m_fac_prefixes[] = {
 	" mix | ",
 	" mem | ",
 	" cpu | ",
+	" mmu | ",
 	" pit | ",
 	" pic | ",
 	" dma | ",
