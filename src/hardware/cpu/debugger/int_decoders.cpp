@@ -51,6 +51,29 @@ void CPUDebugger::INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
+static const char *ctrl_chars[7] = {
+	"\\a",  //07 Alert (Beep, Bell)
+	"\\b",  //08 Backspace
+	"\\t",  //09 Horizontal Tab
+	"\\n",  //0A Newline (Line Feed)
+	"\\v",  //0B Vertical Tab
+	"\\f",  //0C Formfeed
+	"\\r"   //0D Carriage Return
+};
+
+void print_char_to_buf(char c, char* buf, unsigned buflen)
+{
+	if(c>=32 && c!=127) {
+		snprintf(buf, buflen, ": '%c'", c);
+	} else if(c==0) {
+		snprintf(buf, buflen, ": '\\0'");
+	} else if(c>=7 && c<=13) {
+		snprintf(buf, buflen, ": '%s'", ctrl_chars[c-7]);
+	} else {
+		snprintf(buf, buflen, ": 0x%02X", c);
+	}
+}
+
 void CPUDebugger::INT_10(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
@@ -60,33 +83,23 @@ void CPUDebugger::INT_10(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 	}
 	uint8_t ah = ax>>8;
 	uint8_t al = ax&0xFF;
-	static const char *ctrl_chars[7] = {
-		"\a",  //07 Alert (Beep, Bell)
-		"\b",  //08 Backspace
-		"\t",  //09 Horizontal Tab
-		"\n",  //0A Newline (Line Feed)
-		"\v",  //0B Vertical Tab
-		"\f",  //0C Formfeed
-		"\r"   //0D Carriage Return
-	};
 	switch(ah) {
 		case 0x00: // INT 0x29, FAST CONSOLE OUTPUT
 		case 0x09:
+		case 0x0A:
 		case 0x0E: {
-			if(al>=32 && al!=127) {
-				snprintf(buf, buflen, ": '%c'", al);
-			} else if(al==0) {
-				snprintf(buf, buflen, ": '\\0'");
-			} else if(al>=7 && al<=13) {
-				snprintf(buf, buflen, ": '%s'", ctrl_chars[al-7]);
-			} else {
-				snprintf(buf, buflen, ": 0x%02X", al);
-			}
+			print_char_to_buf(al, buf, buflen);
 			break;
 		}
 		case 0x13: {
-			uint32_t addr = core->dbg_get_phyaddr(REGI_ES, core->get_BP(), mem);
-			char *ptr = (char*)mem->get_buffer_ptr(addr);
+			uint32_t addr;
+			char *ptr;
+			try {
+				addr = core->dbg_get_phyaddr(REGI_ES, core->get_BP(), mem);
+				ptr = (char*)mem->get_buffer_ptr(addr);
+			} catch(...) {
+				return;
+			}
 			std::string str;
 			//AL bit 1: string contains alternating characters and attributes
 			int step = (al&2)?2:1;
@@ -231,6 +244,14 @@ void CPUDebugger::INT_1A_00(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	if(!call) {
 		snprintf(buf, buflen, " ret : %u:%u", core->get_CX(), core->get_DX());
 		return;
+	}
+}
+
+void CPUDebugger::INT_21_02(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
+		char* buf, uint buflen)
+{
+	if(call) {
+		print_char_to_buf(core->get_DL(), buf, buflen);
 	}
 }
 
