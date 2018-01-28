@@ -61,8 +61,8 @@ protected:
 
 	static void INT_def_ret(CPUCore *core, char* buf, uint buflen);
 	static void INT_def_ret_errcode(CPUCore *core, char* buf, uint buflen);
+	static void INT_10(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
-	static void INT_10_0E(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_10_12(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_13(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);
 	static void INT_13_02_3_4_C(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen);

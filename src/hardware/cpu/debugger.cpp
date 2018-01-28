@@ -492,19 +492,62 @@ void CPUDebugger::INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory */*mem
 	}
 }
 
-void CPUDebugger::INT_10_0E(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
+void CPUDebugger::INT_10(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 		char* buf, uint buflen)
 {
 	if(!call) {
 		INT_def_ret(core, buf, buflen);
 		return;
 	}
-	//uint8_t ah = ax>>8;
+	uint8_t ah = ax>>8;
 	uint8_t al = ax&0xFF;
-	if(al>=32 && al!=127) {
-		snprintf(buf, buflen, ": '%c'", al);
-	} else {
-		snprintf(buf, buflen, ": 0x%02X", al);
+	static const char *ctrl_chars[7] = {
+		"\a",  //07 Alert (Beep, Bell)
+		"\b",  //08 Backspace
+		"\t",  //09 Horizontal Tab
+		"\n",  //0A Newline (Line Feed)
+		"\v",  //0B Vertical Tab
+		"\f",  //0C Formfeed
+		"\r"   //0D Carriage Return
+	};
+	switch(ah) {
+		case 0x00: // INT 0x29, FAST CONSOLE OUTPUT
+		case 0x09:
+		case 0x0E: {
+			if(al>=32 && al!=127) {
+				snprintf(buf, buflen, ": '%c'", al);
+			} else if(al==0) {
+				snprintf(buf, buflen, ": '\\0'");
+			} else if(al>=7 && al<=13) {
+				snprintf(buf, buflen, ": '%s'", ctrl_chars[al-7]);
+			} else {
+				snprintf(buf, buflen, ": 0x%02X", al);
+			}
+			break;
+		}
+		case 0x13: {
+			uint32_t addr = core->dbg_get_phyaddr(REGI_ES, core->get_BP(), mem);
+			char *ptr = (char*)mem->get_buffer_ptr(addr);
+			std::string str;
+			//AL bit 1: string contains alternating characters and attributes
+			int step = (al&2)?2:1;
+			int len = core->get_CX();
+			for(int i=0; i<len; i++) {
+				char c = *(ptr+i*step);
+				if(c==0) {
+					str += "\\0";
+				} else if(c>=7 && c<=13) {
+					str += ctrl_chars[c-7];
+				} else if(c<32 || c==127) {
+					str += 32;
+				} else {
+					str += c;
+				}
+			}
+			snprintf(buf, buflen, " pos=%dx%d, str=%s",
+				core->get_DH(), core->get_DL(), str.c_str());
+			break;
+		}
 	}
 }
 
@@ -551,12 +594,27 @@ bool CPUDebugger::get_drive_CHS(const CPUCore &_core, int &_drive, int &_C, int 
 	return is_hdd;
 }
 
-void CPUDebugger::INT_13(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/, char* buf, uint buflen)
+void CPUDebugger::INT_13(bool call, uint16_t ax, CPUCore *core, Memory *mem, char* buf, uint buflen)
 {
 	if(!call) {
 		uint cf = core->get_FLAGS(FMASK_CF)>>FBITN_CF;
 		const char * status = ms_disk_status[core->get_AH()];
 		snprintf(buf, buflen, " ret CF=%u: AH=%u (%s)", cf,core->get_AH(),status);
+		if(cf == 0) {
+			if((ax>>8) == 0x25) { // IDENTIFY DRIVE (PS/1)
+				size_t blen = strlen(buf);
+				char model[41];
+				model[40] = 0;
+				uint32_t addr = core->dbg_get_phyaddr(REGI_ES, core->get_BX(), mem);
+				uint8_t *info = (uint8_t*)mem->get_buffer_ptr(addr);
+				memcpy(model, info+0x36, 40);
+				snprintf(buf+blen, buflen-blen, " CHS %d/%d/%d \"%s\"",
+					*(uint16_t*)(info+0x2),
+					*(uint16_t*)(info+0x6),
+					*(uint16_t*)(info+0xC),
+					model);
+			}
+		}
 		return;
 	}
 	snprintf(buf, buflen, " drive=0x%02X", core->get_DL());
@@ -1211,9 +1269,9 @@ int_map_t CPUDebugger::ms_interrupts = {
 	/* INT 10 */
 	{ MAKE_INT_SEL(0x10, 0x0000, 1), { true,  &CPUDebugger::INT_10_00, "VIDEO - SET VIDEO MODE" } },
 	{ MAKE_INT_SEL(0x10, 0x0100, 1), { true,  nullptr,                 "VIDEO - SET TEXT-MODE CURSOR SHAPE" } },
-	{ MAKE_INT_SEL(0x10, 0x0E00, 1), { false, nullptr,                 "TELETYPE OUTPUT" } },
-	{ MAKE_INT_SEL(0x10, 0x0200, 1), { false, nullptr,                 "SET CURSOR POS" } },
-	{ MAKE_INT_SEL(0x10, 0x0900, 1), { false, &CPUDebugger::INT_10_0E, "WRITE CHAR AND ATTR AT CURSOR POS" } },
+	{ MAKE_INT_SEL(0x10, 0x0E00, 1), { false, &CPUDebugger::INT_10,    "VIDEO - TELETYPE OUTPUT" } },
+	{ MAKE_INT_SEL(0x10, 0x0200, 1), { false, nullptr,                 "VIDEO - SET CURSOR POS" } },
+	{ MAKE_INT_SEL(0x10, 0x0900, 1), { false, &CPUDebugger::INT_10,    "VIDEO - WRITE CHAR AND ATTR AT CURSOR POS" } },
 	{ MAKE_INT_SEL(0x10, 0x0F00, 1), { true,  nullptr,                 "VIDEO - GET CURRENT VIDEO MODE" } },
 	{ MAKE_INT_SEL(0x10, 0x1003, 2), { true,  nullptr,                 "VIDEO - TOGGLE INTENSITY/BLINKING BIT" } },
 	{ MAKE_INT_SEL(0x10, 0x1007, 2), { true,  nullptr,                 "VIDEO - GET INDIVIDUAL PALETTE REGISTER" } },
@@ -1223,7 +1281,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x10, 0x1122, 2), { true,  nullptr,                 "VIDEO - GRAPH-MODE CHARGEN - SET ROM 8x14 GRAPHICS CHARS" } },
 	{ MAKE_INT_SEL(0x10, 0x1130, 2), { true,  nullptr,                 "VIDEO - GET FONT INFORMATION" } },
 	{ MAKE_INT_SEL(0x10, 0x1200, 1), { true,  &CPUDebugger::INT_10_12, "" } },
-	{ MAKE_INT_SEL(0x10, 0x1300, 1), { true,  nullptr,                 "WRITE STRING" } },
+	{ MAKE_INT_SEL(0x10, 0x1300, 1), { true,  &CPUDebugger::INT_10,    "VIDEO - WRITE STRING" } },
 	{ MAKE_INT_SEL(0x10, 0x1A00, 2), { true,  nullptr,                 "VIDEO - GET DISPLAY COMBINATION CODE" } },
 	{ MAKE_INT_SEL(0x10, 0x1B00, 2), { true,  nullptr,                 "VIDEO - FUNCTIONALITY/STATE INFORMATION" } },
 	{ MAKE_INT_SEL(0x10, 0x6F00, 2), { true,  nullptr,                 "VIDEO - Video7 VGA,VEGA VGA - INSTALLATION CHECK" } },
@@ -1234,6 +1292,8 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x10, 0xFA00, 1), { true,  nullptr,                 "EGA - INTERROGATE DRIVER" } },
 	/* INT 11 */
 	{ MAKE_INT_SEL(0x11, 0x0000, 0), { true,  nullptr,                 "GET EQUIPMENT LIST" } },
+	/* INT 12 */
+	{ MAKE_INT_SEL(0x12, 0x0000, 0), { false, nullptr,                 "BIOS - GET MEMORY SIZE" } },
 	/* INT 13 */
 	{ MAKE_INT_SEL(0x13, 0x0000, 1), { true,  &CPUDebugger::INT_13,    "DISK - RESET DISK SYSTEM" } },
 	{ MAKE_INT_SEL(0x13, 0x0200, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"DISK - READ SECTOR(S) INTO MEMORY" } },
@@ -1243,10 +1303,14 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x13, 0x0900, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - INITIALIZE CONTROLLER WITH DRIVE PARAMETERS" } },
 	{ MAKE_INT_SEL(0x13, 0x0C00, 1), { true,  &CPUDebugger::INT_13_02_3_4_C,"HARD DISK - SEEK TO CYLINDER" } },
 	{ MAKE_INT_SEL(0x13, 0x1100, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - RECALIBRATE DRIVE" } },
+	{ MAKE_INT_SEL(0x13, 0x1400, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - CONTROLLER INTERNAL DIAGNOSTIC" } },
 	{ MAKE_INT_SEL(0x13, 0x1500, 1), { true,  &CPUDebugger::INT_13,    "DISK - GET DISK TYPE" } },
 	{ MAKE_INT_SEL(0x13, 0x1600, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY - DETECT DISK CHANGE" } },
 	{ MAKE_INT_SEL(0x13, 0x1700, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY DISK - SET MEDIA TYPE FOR FORMAT" } },
 	{ MAKE_INT_SEL(0x13, 0x1800, 1), { true,  &CPUDebugger::INT_13,    "FLOPPY DISK - SET MEDIA TYPE FOR FORMAT (new)" } },
+	{ MAKE_INT_SEL(0x13, 0x2500, 1), { true,  &CPUDebugger::INT_13,    "HARD DISK - IDENTIFY DRIVE (PS/1)" } },
+	/* INT 14 */
+	{ MAKE_INT_SEL(0x14, 0x0000, 1), { false, nullptr,                 "SERIAL - INITIALIZE PORT" } },
 	/* INT 15 */
 	{ MAKE_INT_SEL(0x15, 0x2100, 1), { false, nullptr,                 "POWER-ON SELF-TEST ERROR LOG" } },
 	{ MAKE_INT_SEL(0x15, 0x2300, 2), { true,  nullptr,                 "IBM - GET CMOS 2D-2E DATA" } },
@@ -1258,8 +1322,8 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x15, 0x4F00, 1), { false, nullptr,                 "KEYBOARD INTERCEPT" } },
 	{ MAKE_INT_SEL(0x15, 0x8600, 1), { true,  &CPUDebugger::INT_15_86, "BIOS - WAIT" } },
 	{ MAKE_INT_SEL(0x15, 0x8700, 1), { true,  &CPUDebugger::INT_15_87, "COPY EXTENDED MEM" } },
-	{ MAKE_INT_SEL(0x15, 0x9000, 1), { true,  nullptr,                 "OS HOOK - DEVICE BUSY" } },
-	{ MAKE_INT_SEL(0x15, 0x9100, 1), { true,  nullptr,                 "OS HOOK - DEVICE POST" } },
+	{ MAKE_INT_SEL(0x15, 0x9000, 1), { false, nullptr,                 "OS HOOK - DEVICE BUSY" } },
+	{ MAKE_INT_SEL(0x15, 0x9100, 1), { false, nullptr,                 "OS HOOK - DEVICE POST" } },
 	{ MAKE_INT_SEL(0x15, 0xC000, 1), { true,  nullptr,                 "GET CONFIGURATION" } },
 	{ MAKE_INT_SEL(0x15, 0xC100, 1), { false, nullptr,                 "RETURN EXT-BIOS DATA AREA SEGMENT ADDR" } },
 	{ MAKE_INT_SEL(0x15, 0xC200, 2), { true,  nullptr,                 "POINTING DEV - ENABLE/DISABLE" } },
@@ -1275,9 +1339,14 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x15, 0xC500, 1), { false, nullptr,                 "IBM - ROM BIOS TRACING CALLOUT" } },
 	{ MAKE_INT_SEL(0x15, 0x8800, 1), { false, nullptr,                 "GET EXTENDED MEMORY SIZE" } },
 	/* INT 16 */
+	{ MAKE_INT_SEL(0x16, 0x0000, 1), { false, nullptr,                 "KEYB - GET KEYSTROKE" } },
 	{ MAKE_INT_SEL(0x16, 0x0300, 1), { false, nullptr,                 "KEYB - SET TYPEMATIC RATE AND DELAY" } },
 	{ MAKE_INT_SEL(0x16, 0x1100, 1), { false, nullptr,                 "KEYB - CHECK FOR ENHANCED KEYSTROKE" } },
 	{ MAKE_INT_SEL(0x16, 0x1200, 1), { false, nullptr,                 "KEYB - GET EXTENDED SHIFT STATES" } },
+	/* INT 17 */
+	{ MAKE_INT_SEL(0x17, 0x0000, 1), { false, nullptr,                 "PRINTER - WRITE CHARACTER" } },
+	{ MAKE_INT_SEL(0x17, 0x0100, 1), { false, nullptr,                 "PRINTER - INITIALIZE PORT" } },
+	{ MAKE_INT_SEL(0x17, 0x0200, 1), { false, nullptr,                 "PRINTER - GET STATUS" } },
 	/* INT 1A */
 	{ MAKE_INT_SEL(0x1A, 0x0000, 1), { false, &CPUDebugger::INT_1A_00, "TIME - GET SYSTEM TIME" } },
 	/* INT 1C */
@@ -1359,7 +1428,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	/* INT 28 */
 	{ MAKE_INT_SEL(0x28, 0x0000, 0), { false, nullptr,                 "DOS - IDLE INTERRUPT" } },
 	/* INT 29 */
-	{ MAKE_INT_SEL(0x29, 0x0000, 0), { false, &CPUDebugger::INT_10_0E, "DOS - FAST CONSOLE OUTPUT" } },
+	{ MAKE_INT_SEL(0x29, 0x0000, 0), { false, &CPUDebugger::INT_10,    "DOS - FAST CONSOLE OUTPUT" } },
 	/* INT 2A */
 	{ MAKE_INT_SEL(0x2A, 0x8100, 1), { false, nullptr,                 "DOS NET - END CRITICAL SECTION" } },
 	{ MAKE_INT_SEL(0x2A, 0x8200, 1), { false, nullptr,                 "DOS NET - END CRITICAL SECTIONS 0-7" } },
@@ -1406,8 +1475,9 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x33, 0x0021, 2), { true,  nullptr,                 "MS MOUSE - SOFTWARE RESET" } },
 	{ MAKE_INT_SEL(0x33, 0x0024, 2), { true,  nullptr,                 "MS MOUSE - GET SOFTWARE VERSION, MOUSE TYPE, AND IRQ NUMBER" } },
 	{ MAKE_INT_SEL(0x33, 0x0026, 2), { true,  nullptr,                 "MS MOUSE - GET MAXIMUM VIRTUAL COORDINATES" } },
-	{ MAKE_INT_SEL(0x33, 0x006D, 2), { true,  nullptr,                 "MS MOUSE - GET VERSION STRING" } }
-
+	{ MAKE_INT_SEL(0x33, 0x006D, 2), { true,  nullptr,                 "MS MOUSE - GET VERSION STRING" } },
+	/* INT 40 */
+	{ MAKE_INT_SEL(0x40, 0x0000, 0), { true,  nullptr,                 "DISKETTE - ROM BIOS DISKETTE HANDLER RELOCATED BY HARD DISK BIOS" } }
 };
 
 doscodes_map_t CPUDebugger::ms_dos_errors = {
