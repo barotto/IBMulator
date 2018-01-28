@@ -5,6 +5,9 @@ libhardware_a_SOURCES = \
 	cpu.cpp \
 	cpu/core.cpp \
 	cpu/bus.cpp \
+	cpu/debugger/int_decoders.cpp \
+	cpu/debugger/int_map.cpp \
+	cpu/debugger/int_strings.cpp \
 	cpu/decoder/cycles.cpp \
 	cpu/decoder/prefix_none.cpp \
 	cpu/decoder/prefix_none_32.cpp \
