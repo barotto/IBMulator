@@ -15,14 +15,14 @@ Otherwise press Shift+Ins or click the right mouse button and choose 'paste'.
 ## STEP 1. Setup a 64bit MinGW build environment
 We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
-1. Go to the [MSYS2 website](http://www.msys2.org) and follow the instructions
-to install the x86_64 environment.
-2. Open the **MSYS2 MSYS** shell and, with the package manager `pacman`, install  
-the toolchain:  
+1. Go to the [MSYS2 website](http://www.msys2.org), download the x86_64 package
+and follow the instructions to install the environment.
+2. Open the **MSYS2 MSYS** shell and, with the package manager `pacman`:    
+install the toolchain:  
 `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc`  
-cmake, make, and Autotools:  
+install cmake, make, and Autotools:  
 `pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config make pkgconfig autoconf automake libtool`  
-git (otherwise you'll need to juggle with zip files):  
+install git (unless you want to juggle with zip files):  
 `pacman -S git`
 3. Install the libraries needed by libRocket and IBMulator  
 `pacman -S mingw-w64-x86_64-SDL2`  
@@ -30,14 +30,15 @@ git (otherwise you'll need to juggle with zip files):
 `pacman -S mingw-w64-x86_64-glew`  
 `pacman -S mingw-w64-x86_64-libsamplerate`  
 `pacman -S mingw-w64-x86_64-libarchive`  
-Unless you want a static link, install also:  
+Unless you want to build a statically linked version, also install:  
 `pacman -S mingw-w64-x86_64-freetype`  
 See [below](#statically-linked-version) for an explanation about static/dynamic
 linking.
 
 ## STEP 2. Build libRocket
-libRocket is a C++ user interface package based on the HTML and CSS standards.  
-IBMulator needs various fixes so use the version from my repository. 
+libRocket is a C++ GUI toolkit based on the HTML and CSS standards.  
+IBMulator needs various fixes, so use the version from my repository instead of
+the official one.
 
 Open the **MSYS2 MinGW 64-bit** shell (you should read MINGW64 on the command
 line) and:
@@ -62,7 +63,7 @@ Open the **MSYS2 MinGW 64-bit** shell and:
 `git clone https://github.com/barotto/IBMulator.git`
 3. Move inside the IBMulator directory:  
 `cd IBMulator`
-4. run this (only once):  
+4. run this (only once, not needed if you build again):  
 `autoreconf --install`
 5. Configure IBMulator:  
 `./configure --prefix="ABSOLUTE\PATH\TO\INSTALL\DIR"`  
@@ -72,7 +73,7 @@ see the installation section below for the `--prefix` explanation.
 `make -j4`
 
 ### Installation
-In order to use the program you need to install it first.
+In order to use the program you'll need to install it first.
 
 This is the needed directory structure:
 
@@ -86,22 +87,23 @@ share
 ```
 
 To automatically organize this structure and copy the files use the `--prefix`
-configure option and `make install` after `make`.
-You need to use an absolute path (without spaces!) so, for example, to create a
-release package inside the source root dir:
+configure option and the `make install` command after `make`.
+You'll need to use an absolute path (without spaces!). So, for example, to
+create a release package inside the source directory:
 ```
 ./configure --prefix="C:\workspace\IBMulator\release"
 make
 make install
 ```
 
-You can then move this package wherever you want and name it however you like.  
+You are not forced to keep IBMulator inside the installation directory forever,
+you can move this package wherever you want and name it however you like.  
 
 To complete the installation you now need to make the needed DLLs available
-to ibmulator.exe. You have **2 options**: modify your system PATH variable OR
+to ibmulator.exe. You have **2 options**: modify your PATH system variable OR
 copy the DLLs inside the ibmulator.exe folder.
 
-#### option 1. Modify the system PATH variable
+#### option 1. Modify the PATH system variable
 Assuming that you've installed MSYS2 in C:\msys64, append this to your PATH
 environment variable:  
 `C:\msys64\mingw64\bin;C:\msys64\mingw64\x86_64-w64-mingw32\bin`

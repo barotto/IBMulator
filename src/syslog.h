@@ -28,6 +28,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <functional>
 #include "shared_deque.h"
 
 class Syslog;
