@@ -318,13 +318,13 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// if software interrupt, then gate descripor DPL must be >= CPL,
 	// else #GP(vector * 8 + 2 + EXT)
 	if(soft_int && gate_descriptor.dpl < CPL) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): soft_int && (gate.dpl < CPL)\n");
+		PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): soft_int && (gate.dpl < CPL)\n");
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 
 	// Gate must be present, else #NP(vector * 8 + 2 + EXT)
 	if(!gate_descriptor.present) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate not present\n");
+		PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): gate not present\n");
 		throw CPUException(CPU_NP_EXC, vector*8 + 2);
 	}
 
@@ -338,7 +338,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// must specify global in the local/global bit,
 			//      else #GP(TSS selector)
 			if(tss_selector.ti) {
-				PDEBUGF(LOG_V1,LOG_CPU,
+				PDEBUGF(LOG_V2,LOG_CPU,
 					"interrupt(): tss_selector.ti=1 from gate descriptor - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
@@ -354,7 +354,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// AR byte must specify available TSS,
 			//   else #GP(TSS selector)
 			if(!tss_descriptor.valid || tss_descriptor.segment) {
-				PDEBUGF(LOG_V1,LOG_CPU,
+				PDEBUGF(LOG_V2,LOG_CPU,
 					"interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
@@ -362,14 +362,14 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			if(tss_descriptor.type != DESC_TYPE_AVAIL_286_TSS &&
 			   tss_descriptor.type != DESC_TYPE_AVAIL_386_TSS)
 			{
-				PDEBUGF(LOG_V1,LOG_CPU,
+				PDEBUGF(LOG_V2,LOG_CPU,
 					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// TSS must be present, else #NP(TSS selector)
 			if(!tss_descriptor.present) {
-				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): TSS descriptor.present == 0\n");
+				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): TSS descriptor.present == 0\n");
 				throw CPUException(CPU_NP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
@@ -388,7 +388,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// examine CS selector and descriptor given in gate descriptor
 			// selector must be non-null else #GP(EXT)
 			if((gate_descriptor.selector & SELECTOR_RPL_MASK) == 0) {
-				PDEBUGF(LOG_V1,LOG_CPU,"int_trap_gate(): selector null\n");
+				PDEBUGF(LOG_V2,LOG_CPU,"int_trap_gate(): selector null\n");
 				throw CPUException(CPU_GP_EXC, 0);
 			}
 			cs_selector = gate_descriptor.selector;
@@ -405,14 +405,14 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			// descriptor AR byte must indicate code seg
 			// and code segment descriptor DPL<=CPL, else #GP(selector+EXT)
 			if(!cs_descriptor.valid || !cs_descriptor.is_code_segment() || cs_descriptor.dpl > CPL) {
-				PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
+				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
 						cs_selector.value);
 				throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// segment must be present, else #NP(selector + EXT)
 			if(!cs_descriptor.present) {
-				PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): segment not present\n");
+				PDEBUGF(LOG_V2,LOG_CPU,"interrupt(): segment not present\n");
 				throw CPUException(CPU_NP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
