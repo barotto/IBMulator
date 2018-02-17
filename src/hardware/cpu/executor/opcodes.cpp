@@ -1924,12 +1924,17 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 {
 	uint8_t ah = REG_AH;
 	uint32_t retaddr = REG_CS.desc.base + REG_EIP;
+	static bool in_windows = false;
 
 	if(INT_TRAPS) {
 		std::vector<inttrap_interval_t> results;
 		m_inttraps_tree.findOverlapping(_vector, _vector, results);
 		if(!results.empty()) {
 			bool res = false;
+			if(_vector == 0x20 && in_windows) {
+				// Windows VxD SERVICES: device id (word) + service (word)
+				retaddr += 4;
+			}
 			auto retinfo = m_inttraps_ret.insert(
 				std::pair<uint32_t, std::vector<std::function<bool()>>>(
 					retaddr, std::vector<std::function<bool()>>()
@@ -1937,7 +1942,6 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 			).first;
 			for(auto t : results) {
 				res |= t.value(true, _vector, REG_AX, &g_cpucore, &g_memory);
-
 				auto retfunc = std::bind(t.value, false, _vector, REG_AX, &g_cpucore, &g_memory);
 				retinfo->second.push_back(retfunc);
 			}
@@ -1961,7 +1965,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		}
 		PDEBUGF(LOG_V1, LOG_CPU, "exec %s\n", pname);
 		g_machine.DOS_program_launch(pname);
-		m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr,pname));
+		m_dos_prg.push(std::pair<uint32_t,std::string>(retaddr, pname));
 		if(!CPULOG || CPULOG_INT21_EXIT_IP==-1 || IS_PMODE()) {
 			g_machine.DOS_program_start(pname);
 		} else {
@@ -1971,10 +1975,13 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		}
 	}
 	else if((_vector == 0x21 && (
+			ah==0x00 || //DOS 1+ - TERMINATE PROGRAM
 			ah==0x31 || //DOS 2+ - TERMINATE AND STAY RESIDENT
 			ah==0x4C    //DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
-		)) ||
+		))  ||
 			_vector == 0x27 //DOS 1+ - TERMINATE AND STAY RESIDENT
+			||
+			(_vector == 0x20 && !in_windows) // DOS 1+ - TERMINATE PROGRAM
 	)
 	{
 		std::string oldprg,newprg;
@@ -1987,6 +1994,14 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 		}
 		g_machine.DOS_program_finish(oldprg,newprg);
 		m_dos_prg_int_exit = 0;
+	}
+	else if(_vector == 0x2F && REG_AX == 0x1605) {
+		// WINDOWS ENHANCED MODE & 286 DOSX INIT BROADCAST
+		in_windows = true;
+	}
+	else if(_vector == 0x2F && REG_AX == 0x1606) {
+		// WINDOWS ENHANCED MODE & 286 DOSX EXIT BROADCAST
+		in_windows = false;
 	}
 
 	g_cpu.interrupt(_vector, _type, false, 0);

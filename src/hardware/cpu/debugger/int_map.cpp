@@ -245,6 +245,8 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x1A, 0x0000, 1), { false, &CPUDebugger::INT_1A_00, "TIME - GET SYSTEM TIME" } },
 	/* INT 1C */
 	{ MAKE_INT_SEL(0x1C, 0x0000, 0), { false, nullptr,                 "SYSTEM TIMER TICK" } },
+	/* INT 20 */
+	{ MAKE_INT_SEL(0x20, 0x0000, 0), { true,  &CPUDebugger::INT_20,    "" } }, // DOS terminate program / Windows VxD
 	/* INT 21 */
 	{ MAKE_INT_SEL(0x21, 0x0000, 1), { true,  nullptr,                 "DOS - TERMINATE PROGRAM" } },
 	{ MAKE_INT_SEL(0x21, 0x0100, 1), { true,  nullptr,                 "DOS - READ CHAR FROM STDIN, WITH ECHO" } },
@@ -580,7 +582,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x2F, 0x1686, 2), { true,  nullptr,                 "DPMI - DETECT MODE" } },
 	{ MAKE_INT_SEL(0x2F, 0x1687, 2), { true,  nullptr,                 "DPMI - INSTALLATION CHECK" } },
 	{ MAKE_INT_SEL(0x2F, 0x1688, 2), { true,  nullptr,                 "Windows - GET ALIAS SELECTOR TO LDT" } },
-	{ MAKE_INT_SEL(0x2F, 0x1689, 2), { true,  nullptr,                 "Windows - KERNEL IDLE CALL" } },
+	{ MAKE_INT_SEL(0x2F, 0x1689, 2), { false, nullptr,                 "Windows - KERNEL IDLE CALL" } },
 	{ MAKE_INT_SEL(0x2F, 0x168A, 2), { true,  nullptr,                 "DPMI - GET VENDOR-SPECIFIC API ENTRY POINT" } },
 	{ MAKE_INT_SEL(0x2F, 0x168B, 2), { true,  nullptr,                 "Windows - SET FOCUS TO SPECIFIED VIRTUAL MACHINE" } },
 	{ MAKE_INT_SEL(0x2F, 0x168C, 2), { true,  nullptr,                 "Windows - RESTART COMMAND" } },
@@ -598,8 +600,8 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x2F, 0x4000, 2), { true,  nullptr,                 "Windows - GET VIRTUAL DEVICE DRIVER (VDD) CAPABILTIES" } },
 	{ MAKE_INT_SEL(0x2F, 0x4001, 2), { true,  nullptr,                 "OS/2 compatibility box - SWITCHING DOS TO BACKGROUND" } },
 	{ MAKE_INT_SEL(0x2F, 0x4002, 2), { true,  nullptr,                 "OS/2 compatibility box - SWITCHING DOS TO FOREGROUND" } },
-	{ MAKE_INT_SEL(0x2F, 0x4003, 2), { true,  nullptr,                 "Windows - ENTERING VIDEO DRIVER CRITICAL SECTION" } },
-	{ MAKE_INT_SEL(0x2F, 0x4004, 2), { true,  nullptr,                 "Windows - EXITING VIDEO DRIVER CRITICAL SECTION" } },
+	{ MAKE_INT_SEL(0x2F, 0x4003, 2), { false, nullptr,                 "Windows - ENTERING VIDEO DRIVER CRITICAL SECTION" } },
+	{ MAKE_INT_SEL(0x2F, 0x4004, 2), { false, nullptr,                 "Windows - EXITING VIDEO DRIVER CRITICAL SECTION" } },
 	{ MAKE_INT_SEL(0x2F, 0x4005, 2), { true,  nullptr,                 "Windows - SWITCHING DOS TO BACKGROUND" } },
 	{ MAKE_INT_SEL(0x2F, 0x4006, 2), { true,  nullptr,                 "Windows - SWITCHING DOS TO FOREGROUND" } },
 	{ MAKE_INT_SEL(0x2F, 0x4007, 2), { true,  nullptr,                 "Windows - ENABLE VDD TRAPPING OF VIDEO REGISTERS" } },
@@ -673,6 +675,8 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x2F, 0xB809, 2), { true,  nullptr,                 "NETWORK - GET VERSION" } },
 	{ MAKE_INT_SEL(0x2F, 0xBC00, 2), { true,  nullptr,                 "EGA.SYS - INSTALLATION CHECK" } },
 	{ MAKE_INT_SEL(0x2F, 0xBC06, 2), { true,  nullptr,                 "EGA.SYS - GET VERSION INFO" } },
+	/* INT 30 */
+	{ MAKE_INT_SEL(0x30, 0x0000, 0), { false, nullptr,                 "Windows - PROTECTED-MODE CALLBACK" } },
 	/* INT 33 */
 	{ MAKE_INT_SEL(0x33, 0x0000, 2), { true,  nullptr,                 "MS MOUSE - RESET DRIVER AND READ STATUS" } },
 	{ MAKE_INT_SEL(0x33, 0x0001, 2), { true,  nullptr,                 "MS MOUSE - SHOW MOUSE CURSOR" } },

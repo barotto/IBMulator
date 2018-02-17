@@ -22,6 +22,13 @@
 #include "hardware/cpu.h"
 #include <cstring>
 
+void update_buffer(char* &buf, unsigned &buflen)
+{
+	unsigned len = strlen(buf);
+	buf += len;
+	buflen -= len;
+}
+
 void CPUDebugger::INT_10_00(bool call, uint16_t ax, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {
@@ -244,6 +251,35 @@ void CPUDebugger::INT_1A_00(bool call, uint16_t /*ax*/, CPUCore *core, Memory */
 	if(!call) {
 		snprintf(buf, buflen, " ret : %u:%u", core->get_CX(), core->get_DX());
 		return;
+	}
+}
+
+void CPUDebugger::INT_20(bool call, uint16_t /*ax*/, CPUCore *core, Memory *mem,
+		char* buf, uint buflen)
+{
+	uint32_t vxd = 0;
+	try {
+		uint32_t vxd_addr = core->dbg_get_phyaddr(REGI_CS, core->get_EIP(), mem);
+		vxd = *(uint32_t*)mem->get_buffer_ptr(vxd_addr);
+	} catch(...) {
+		return;
+	}
+	uint16_t service = vxd;
+	uint16_t device = vxd>>16;
+
+	snprintf(buf, buflen, "DOS - TERM. PROG. / Windows - VxD %04x:%04x ", device, service);
+	update_buffer(buf, buflen);
+
+	snprintf(buf, buflen, "%s", CPUDebugger::ms_int20_vxd[device]);
+	update_buffer(buf, buflen);
+
+	if(device == 0x0001) {
+		snprintf(buf, buflen, ":%s", CPUDebugger::ms_int20_vmm[service]);
+		update_buffer(buf, buflen);
+	}
+
+	if(!call) {
+		INT_def_ret(core, buf, buflen);
 	}
 }
 

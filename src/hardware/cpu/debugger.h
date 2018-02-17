@@ -41,7 +41,7 @@ struct int_info_t {
 };
 
 typedef std::map<uint32_t, int_info_t > int_map_t;
-typedef std::map<uint8_t, const char*> doscodes_map_t;
+typedef std::map<uint16_t, const char*> doscodes_map_t;
 
 #define MAKE_INT_SEL(vec, ax, axlen) ((vec)<<24 | (ax)<<8 | axlen)
 #define DECLARE_INT_DECODER(_fn_name_) \
@@ -57,6 +57,8 @@ protected:
 	static doscodes_map_t ms_dos_errors;
 	static doscodes_map_t ms_disk_status;
 	static doscodes_map_t ms_ioctl_code;
+	static doscodes_map_t ms_int20_vxd;
+	static doscodes_map_t ms_int20_vmm;
 
 	static uint32_t get_hex_value(char *_str, char *&_hex, CPUCore *_core);
 	static unsigned get_seg_idx(char *_str);
@@ -86,6 +88,7 @@ private:
 	DECLARE_INT_DECODER(INT_15_86);
 	DECLARE_INT_DECODER(INT_15_87);
 	DECLARE_INT_DECODER(INT_1A_00);
+	DECLARE_INT_DECODER(INT_20);
 	DECLARE_INT_DECODER(INT_21_02);
 	DECLARE_INT_DECODER(INT_21_09);
 	DECLARE_INT_DECODER(INT_21_25);
