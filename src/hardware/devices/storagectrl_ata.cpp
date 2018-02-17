@@ -204,7 +204,7 @@ const std::map<int, StorageCtrl_ATA::atapi_command_fn> StorageCtrl_ATA::ms_atapi
 	ATAPI_CMD_FN(0x4a, "GET EVENT STATUS NOTIFICATION", not_implemented              )
 };
 
-#define MIN_CMD_US      10u      // minimum busy time
+#define MIN_CMD_US      250u     // minimum busy time
 #define DEFAULT_CMD_US  2200u    // default command execution time
 #define SEEK_CMD_US     2940u    // seek exec time
 #define CALIB_CMD_US    500000u  // calibrate exec time
