@@ -316,10 +316,11 @@ void Serial::init_mode_term(uint comn, std::string dev)
 
 	m_s[comn].tty_id = ::open(dev.c_str(), O_RDWR|O_NONBLOCK, 600);
 	if(m_s[comn].tty_id < 0) {
-		PERRF_ABORT(LOG_COM, "open of COM%d (%s) failed\n", comn+1, dev.c_str());
+		PERRF(LOG_COM, "open of COM%d (%s) failed\n", comn+1, dev.c_str());
+		m_s[comn].io_mode = SER_MODE_NULL;
 	} else {
 		m_s[comn].io_mode = SER_MODE_TERM;
-		PDEBUGF(LOG_V2, LOG_COM, "COM%d tty_id: %d\n", comn+1, m_s[comn].tty_id);
+		PINFOF(LOG_V0, LOG_COM, "COM%d tty id: %d\n", comn+1, m_s[comn].tty_id);
 		tcgetattr(m_s[comn].tty_id, &m_s[comn].term_orig);
 		memcpy(&m_s[comn].term_orig, &m_s[comn].term_new, sizeof(struct termios));
 		m_s[comn].term_new.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
@@ -1314,6 +1315,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 						PERRF(LOG_COM, "Could not open '%s' to write COM%d output",
 								dev.c_str(), port+1);
 						m_s[port].io_mode = SER_MODE_NULL;
+						break;
 					}
 				}
 				fputc(m_s[port].tsrbuffer, m_s[port].output);
