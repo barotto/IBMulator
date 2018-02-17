@@ -107,7 +107,7 @@ void CMOS::remove()
 
 void CMOS::config_changed()
 {
-	load_image(get_image_filepath());
+	load_image(get_image_filepath(FILE_TYPE_ASSET));
 
 #if BOCHS_BIOS_COMPAT
 	unsigned memory_in_k = (g_memory.dram_size() / KEBIBYTE);
@@ -212,7 +212,7 @@ void CMOS::power_off()
 	// save CMOS to image file if requested.
 	if(g_program.config().get_bool(CMOS_SECTION,CMOS_IMAGE_SAVE)) {
 		try {
-			save_image(get_image_filepath());
+			save_image(get_image_filepath(FILE_TYPE_USER));
 		} catch(std::exception &) {}
 	} else {
 		PINFOF(LOG_V0, LOG_CMOS, "CMOS not saved\n");
@@ -226,14 +226,26 @@ std::string CMOS::get_image_template()
 	return imgtpl;
 }
 
-std::string CMOS::get_image_filepath()
+std::string CMOS::get_image_filepath(FileType _default)
 {
 	std::string filename = g_program.config().get_string(CMOS_SECTION, CMOS_IMAGE_FILE);
+	std::string filepath;
 	if(filename == "auto") {
+		// use a name based on the current machine model
 		filename = get_image_template();
+		filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);
+		if(_default == FILE_TYPE_ASSET && !FileSys::file_exists(filepath.c_str())) {
+			// first time using this image file, try search in assets dir
+			filepath = g_program.config().get_file_path(filename, FILE_TYPE_ASSET);
+			if(!FileSys::file_exists(filepath.c_str())) {
+				PERRF(LOG_CMOS, "File '%s' is missing from assets directory!\n", filename.c_str());
+				filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);
+			}
+		}
+	} else {
+		filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);
 	}
-	filename = g_program.config().get_file_path(filename, FILE_TYPE_USER);
-	return filename;
+	return filepath;
 }
 
 void CMOS::load_image(std::string _imgpath)

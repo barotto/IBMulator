@@ -76,7 +76,7 @@ private:
 	void one_second_timer(uint64_t);
 	void uip_timer(uint64_t);
 	std::string get_image_template();
-	std::string get_image_filepath();
+	std::string get_image_filepath(FileType _search_assets);
 	void load_image(std::string _imgpath);
 	void save_image(std::string _imgpath);
 };
