@@ -313,14 +313,13 @@ void HardDiskDrive::config_changed(const char *_section)
 	if(path_string == "auto") {
 		std::stringstream ss;
 		ss << "hdd-type" << m_type << "-";
-		std::regex re("[^A-Za-z0-9\\-]");
 		std::string imgname = std::regex_replace(g_machine.model().name,
 				std::regex("[\\s]"), "_");
 		std::regex_replace(std::ostreambuf_iterator<char>(ss),
 				imgname.begin(), imgname.end(),
 				std::regex("[^A-Za-z0-9\\-_]"),
 				"");
-		ss << ".bin";
+		ss << ".img";
 		imgname = ss.str();
 		//transform to lowercase?
 		//std::transform(imgname.begin(), imgname.end(), imgname.begin(), ::tolower);
