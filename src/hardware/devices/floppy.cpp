@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -58,6 +58,7 @@ extern "C" {
 
 #include "ibmulator.h"
 #include "program.h"
+#include "filesys.h"
 #include "machine.h"
 #include "dma.h"
 #include "pic.h"
@@ -69,6 +70,7 @@ extern "C" {
 #include <cstring>
 #include <functional>
 #include <sstream>
+#include <regex>
 #include <iomanip>
 using namespace std::placeholders;
 
@@ -206,14 +208,12 @@ static std::map<std::string, uint> drive_types = {
 };
 
 static std::map<std::string, uint> disk_types_350 = {
-	{ "none", FLOPPY_NONE },
 	{ "720K", FLOPPY_720K },
 	{ "1.44M",FLOPPY_1_44 },
 	{ "2.88M",FLOPPY_2_88 }
 };
 
 static std::map<std::string, uint> disk_types_525 = {
-	{ "none", FLOPPY_NONE },
 	{ "160K", FLOPPY_160K },
 	{ "180K", FLOPPY_180K },
 	{ "320K", FLOPPY_320K },
@@ -342,27 +342,81 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 	}
 }
 
-unsigned FloppyCtrl::config_drive_type(unsigned drive)
+FloppyDriveType FloppyCtrl::config_drive_type(unsigned drive)
 {
 	assert(drive < 2);
 
-	uint devtype;
+	FloppyDriveType devtype;
 	if(drive == 0) {
 		try {
-			devtype = g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_A,
+			devtype = (FloppyDriveType)g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_A,
 					drive_types);
 		} catch(std::exception &e) {
-			devtype = g_machine.model().floppy_a;
+			devtype = (FloppyDriveType)g_machine.model().floppy_a;
 		}
 	} else {
 		try {
-			devtype = g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_B,
+			devtype = (FloppyDriveType)g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_B,
 					drive_types);
 		} catch(std::exception &e) {
-			devtype = g_machine.model().floppy_b;
+			devtype = (FloppyDriveType)g_machine.model().floppy_b;
 		}
 	}
 	return devtype;
+}
+
+FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
+		FloppyDriveType _devtype, FloppyDiskType _disktype)
+{
+	if(FileSys::file_exists(_imgpath.c_str())) {
+		PERRF(LOG_FDC, "Floppy image file '%s' already exists\n", _imgpath.c_str());
+		return FLOPPY_NONE;
+	}
+
+	if(_disktype == FLOPPY_NONE) {
+		switch(_devtype) {
+			case FDD_525DD: _disktype = FLOPPY_360K; break;
+			case FDD_525HD: _disktype = FLOPPY_1_2;  break;
+			case FDD_350DD: _disktype = FLOPPY_720K; break;
+			case FDD_350HD: _disktype = FLOPPY_1_44; break;
+			case FDD_350ED: _disktype = FLOPPY_2_88; break;
+			default:
+				return FLOPPY_NONE;
+		}
+	} else {
+		if(!(floppy_type[_disktype].drive_mask & _devtype)) {
+			PERRF(LOG_FDC, "Floppy drive incompatible with disk type '%s'\n", floppy_type[_disktype].str);
+			return FLOPPY_NONE;
+		}
+	}
+
+	PINFOF(LOG_V0, LOG_FDC, "Creating new image file '%s'...\n", _imgpath.c_str());
+	try {
+		std::string archive = g_program.config().get_file_path("disk_images.zip", FILE_TYPE_ASSET);
+		if(!FileSys::file_exists(archive.c_str())) {
+			PERRF(LOG_FDC, "Cannot find the image file archive 'disk_images.zip'\n");
+			throw std::exception();
+		}
+		std::string imgname = std::regex_replace(floppy_type[_disktype].str,
+				std::regex("[\\.]"), "_");
+		imgname = "floppy-" + imgname + ".img";
+		if(!FileSys::extract_file(archive.c_str(), imgname.c_str(), _imgpath.c_str())) {
+			PERRF(LOG_FDC, "Cannot extract image file '%s'\n", imgname.c_str());
+			throw std::exception();
+		}
+	} catch(std::exception &) {
+		//create a 0-filled image
+		try {
+			FlatMediaImage image;
+			image.create(_imgpath.c_str(), floppy_type[_disktype].sectors);
+			PINFOF(LOG_V0, LOG_FDC, "The image is not pre-formatted: use FORMAT under DOS\n");
+		} catch(std::exception &e) {
+			PERRF(LOG_FDC, "Unable to create the image file\n");
+			throw;
+		}
+	}
+
+	return _disktype;
 }
 
 void FloppyCtrl::floppy_drive_setup(uint drive)
@@ -378,13 +432,13 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 		section = DISK_B_SECTION;
 	}
 
-	unsigned devtype = config_drive_type(drive);
+	FloppyDriveType devtype = config_drive_type(drive);
 	m_device_type[drive] = devtype;
 	std::map<std::string, uint> *mediatypes = nullptr;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;
 		PINFOF(LOG_V0, LOG_FDC, "Installed floppy %s as %s\n",
-				drivename, devtype==FDD_350HD?"3.5 HD":"5.25 HD");
+				drivename, devtype==FDD_350HD?"3.5\" HD":"5.25\" HD");
 		if(devtype == FDD_350HD) {
 			mediatypes = &disk_types_350;
 		} else if(devtype == FDD_525HD) {
@@ -396,16 +450,53 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 		return;
 	}
 
-	uint disktype;
-	try {
-		disktype = g_program.config().get_enum(section, DISK_TYPE, *mediatypes);
-	} catch(std::exception &e) {
-		disktype = FLOPPY_NONE;
-	}
-	bool inserted = g_program.config().get_bool(section, DISK_INSERTED);
-	if(disktype != FLOPPY_NONE && inserted) {
+	std::string diskpath = g_program.config().find_media(section, DISK_PATH);
+	if(!diskpath.empty() && g_program.config().get_bool(section, DISK_INSERTED)) {
+		FloppyDiskType disktype = FLOPPY_NONE;
+		std::string typestr = g_program.config().get_string(section, DISK_TYPE);
 		std::string diskpath = g_program.config().find_media(section, DISK_PATH);
-		insert_media(drive, disktype, diskpath.c_str(), g_program.config().get_bool(section, DISK_READONLY));
+		if(FileSys::is_directory(diskpath.c_str())) {
+			PERRF(LOG_FDC, "The floppy image can't be a directory\n");
+			throw std::exception();
+		}
+		if(typestr == "auto") {
+			uint64_t disksize = FileSys::get_file_size(diskpath.c_str());
+			switch(disksize) {
+				case 0:
+					disktype = create_new_floppy_image(diskpath, devtype, FLOPPY_NONE);
+					break;
+				case 320*512:  disktype = FLOPPY_160K; break;
+				case 360*512:  disktype = FLOPPY_180K; break;
+				case 640*512:  disktype = FLOPPY_320K; break;
+				case 720*512:  disktype = FLOPPY_360K; break;
+				case 1440*512: disktype = FLOPPY_720K; break;
+				case 2400*512: disktype = FLOPPY_1_2;  break;
+				case 2880*512:
+				case 3360*512:
+				case 3444*512:
+				case 3680*512:
+					disktype = FLOPPY_1_44;
+					break;
+				case 5760*512: disktype = FLOPPY_2_88; break;
+				default:
+					PERRF(LOG_FDC, "The floppy image '%s' is of wrong size\n",
+							diskpath.c_str());
+					throw std::exception();
+			}
+		} else {
+			try {
+				disktype = (FloppyDiskType)g_program.config().get_enum(section, DISK_TYPE, *mediatypes);
+			} catch(std::exception &e) {
+				PERRF(LOG_FDC, "Floppy type '%s' not valid for current drive type\n",
+					typestr.c_str());
+				throw;
+			}
+			if(!FileSys::file_exists(diskpath.c_str())) {
+				disktype = create_new_floppy_image(diskpath, devtype, disktype);
+			}
+		}
+		insert_media(drive, disktype, diskpath.c_str(),
+				g_program.config().get_bool(section, DISK_READONLY));
 	}
 }
 

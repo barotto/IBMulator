@@ -289,20 +289,20 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ DISK_A_SECTION,
 "; These options are used to insert a floppy disk at program launch.\n"
-";     path: Path of a floppy image file\n"
+";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
 ";     type: The type of the inserted floppy.\n"
-";           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
+";           Possible values: auto, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_B_SECTION,
 "; These options are used to insert a floppy disk at program launch.\n"
-";     path: Path of a floppy image file\n"
+";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
 ";     type: The type of the inserted floppy.\n"
-";           Possible values: none, 1.44M, 720K, 1.2M, 360K\n"
+";           Possible values: auto, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_C_SECTION,
@@ -316,6 +316,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              " STR(HDD_CUSTOM_DRIVE_IDX) ": custom type (specify the geometry)\n"
 ";          custom: same as " STR(HDD_CUSTOM_DRIVE_IDX) "\n"
 ";     path: Possible values: auto, or the path of the image file to mount.\n"
+";           If the file doesn't exist a new one will be created.\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
 ";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "

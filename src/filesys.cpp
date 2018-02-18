@@ -213,7 +213,7 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 	archive_read_free(ar);
 	return found;
 #else
-	return false;
+	return throw std::exception();
 #endif
 }
 

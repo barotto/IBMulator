@@ -178,9 +178,11 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	static unsigned config_drive_type(unsigned drive);
+	static FloppyDriveType config_drive_type(unsigned drive);
 
 private:
+	FloppyDiskType create_new_floppy_image(std::string _imgpath,
+			FloppyDriveType _devtype, FloppyDiskType _disktype);
 	inline unsigned chs_to_lba(unsigned _d) const;
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned _d) const;
 	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
