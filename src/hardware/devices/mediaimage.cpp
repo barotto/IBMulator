@@ -413,13 +413,13 @@ bool FlatMediaImage::is_valid()
 	PINFOF(LOG_V2, LOG_HDD, "image size: %llu\n", hd_size);
 
 	if(hd_size <= 0) {
-		PERRF(LOG_HDD, "size of disk image not detected / invalid\n");
+		PERRF(LOG_HDD, "Size of the disk image not detected / invalid\n");
 		return false;
 	}
 
 	unsigned sectors = geometry.cylinders * geometry.heads * geometry.spt;
 	if(hd_size != 512 * sectors) {
-		PERRF(LOG_HDD, "size of disk image is wrong, %d bytes instead of %d bytes\n",
+		PERRF(LOG_HDD, "The size of the disk image is wrong: %d bytes found, %d bytes expected\n",
 				hd_size, (512 * sectors));
 		return false;
 	}

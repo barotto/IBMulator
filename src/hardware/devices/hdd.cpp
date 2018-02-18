@@ -144,6 +144,51 @@ const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
 }
 };
 
+const std::map<uint64_t, int> HardDiskDrive::ms_hdd_sizes = {
+  { 10653696, 1  },
+//{ 10653696, 23 },
+//{ 10653696, 25 },
+//{ 10653696, 29 },
+  { 21270528, 41 },
+  { 21272576, 30 },
+  { 21307392, 13 },
+//{ 21307392, 16 },
+//{ 21307392, 24 },
+//{ 21307392, 26 },
+  { 21405696, 36 },
+  { 21411840, 2  },
+//{ 21411840, 6  },
+//{ 21411840, 10 },
+  { 21427200, 34 },
+  { 21430272, 42 },
+  { 31122432, 35 },
+  { 31150080, 38 },
+  { 31436800, 33 },
+  { 31900160, 8  },
+//{ 31900160, 20 },
+//{ 31900160, 22 },
+  { 32117760, 3  },
+  { 32169984, 7  },
+  { 37209600, 11 },
+  { 42412032, 40 },
+  { 42475520, 28 },
+  { 42519040, 17 },
+  { 42522624, 39 },
+  { 42527744, 27 },
+  { 44520960, 32 },
+  { 44599296, 31 },
+  { 44660224, 14 },
+//{ 44660224, 21 },
+  { 46325760, 37 },
+  { 49090560, 5  },
+  { 52093440, 12 },
+  { 59526656, 18 },
+  { 62390272, 19 },
+  { 65454080, 4  },
+  { 84824064, 44 },
+  { 85063680, 43 },
+  { 117504000,9  }
+};
 
 HardDiskDrive::HardDiskDrive()
 :
@@ -227,8 +272,12 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	m_section = _section;
 
-	int type = 0;
+	std::string path_string = g_program.config().get_string(_section, DISK_PATH);
+	if(path_string != "auto") {
+		m_imgpath = g_program.config().find_media(_section, DISK_PATH);
+	}
 
+	int type = 0;
 	try {
 		type = g_program.config().try_int(_section, DISK_TYPE);
 	} catch(std::exception &) {
@@ -237,6 +286,18 @@ void HardDiskDrive::config_changed(const char *_section)
 			type = HDD_CUSTOM_DRIVE_IDX;
 		} else if(type_string == "auto") {
 			type = g_machine.model().hdd_type;
+			if(path_string!="auto" && FileSys::file_exists(m_imgpath.c_str())) {
+				// the user specified an image file with automatic type, try to
+				// determine the standard type using the image size.
+				uint64_t size = FileSys::get_file_size(m_imgpath.c_str());
+				try {
+					type = ms_hdd_sizes.at(size);
+				} catch(std::out_of_range &) {
+					PERRF(LOG_HDD, "%s: I cannot determine the type of '%s'\n",
+							name(), m_imgpath.c_str());
+					throw;
+				}
+			}
 		}
 	}
 	if(type<=0 || type == 15 ||
@@ -249,11 +310,9 @@ void HardDiskDrive::config_changed(const char *_section)
 	m_type = type;
 	m_tmp_disk = false;
 
-	std::string path_string = g_program.config().get_string(_section, DISK_PATH);
 	if(path_string == "auto") {
 		std::stringstream ss;
 		ss << "hdd-type" << m_type << "-";
-		m_imgpath = g_machine.model().name;
 		std::regex re("[^A-Za-z0-9\\-]");
 		std::string imgname = std::regex_replace(g_machine.model().name,
 				std::regex("[\\s]"), "_");
@@ -266,8 +325,6 @@ void HardDiskDrive::config_changed(const char *_section)
 		//transform to lowercase?
 		//std::transform(imgname.begin(), imgname.end(), imgname.begin(), ::tolower);
 		m_imgpath = g_program.config().get_file_path(imgname, FILE_TYPE_USER);
-	} else {
-		m_imgpath = g_program.config().find_media(_section, DISK_PATH);
 	}
 
 	get_profile(type, _section, m_geometry, m_performance);
@@ -293,12 +350,12 @@ void HardDiskDrive::config_changed(const char *_section)
 	m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
 			m_fx.spin_up_time_us()/1e6) * 1e6;
 
-	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d\n", name(), m_type);
+	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==47?" (custom)":"");
 	PINFOF(LOG_V0, LOG_HDD, "  Capacity: %.1fMB, %.1fMiB, %lu sectors\n",
 			double(size())/(1000.0*1000.0), double(size())/(1024.0*1024.0), m_sectors);
-	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_ident.model);
-	PINFOF(LOG_V1, LOG_HDD, "  Geometry: C:%u, H:%u, S:%u\n",
+	PINFOF(LOG_V0, LOG_HDD, "  Geometry: C:%u, H:%u, S:%u\n",
 			m_geometry.cylinders, m_geometry.heads, m_geometry.spt);
+	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_ident.model);
 	PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %u RPM\n", m_performance.rot_speed);
 	PINFOF(LOG_V2, LOG_HDD, "  Interleave: %u:1\n", m_performance.interleave);
 	PINFOF(LOG_V2, LOG_HDD, "  Data bits per track: %u\n", m_geometry.spt*512*8);
