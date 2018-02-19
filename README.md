@@ -4,13 +4,15 @@
 ## WHAT IS IBMULATOR?
 
 IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run 
-with the original ROM. The goal is to create a faithful emulation of the 
-machine, complete of the characteristic 4-quadrant graphical user interface.
+with the original ROM. The goal is to create a faithful simulator capable of
+recreate the look and feel of the real machine.
 
-IBMulator currently emulates only the PS/1 type 2011, with the 80286 CPU.
+IBMulator v0.9 can emulate the following systems:
+- IBM PS/1 model 2011 (286 10MHz)
+- IBM PS/1 model 2121 (386sx 16MHz,20MHz)
 
-In order to use the program you need the original ROM, which is copyrighted by 
-IBM. You won't find it distributed with this package.
+In order to use the program you'll need the original ROM, which is copyrighted
+by IBM. You won't find it distributed with this package.
 
 See the project page at https://barotto.github.io/IBMulator/ for screenshots, 
 videos and additional information.
@@ -32,12 +34,11 @@ A 64-bit Linux or Windows operating system, a OpenGL 3.3 graphics card, and a
 
 ## USAGE
 
-Obtain the original ROM. You have the following options:
+First of all obtain the original ROM. You have the following options:
 
-1. if you have a real PS/1 type 2011, take the program ROMDUMP.EXE in the 
-'extra' folder and put it in an empty floppy disk; insert the floppy disk in 
-your PS/1 and launch the executable: it will create the ROM image on the floppy 
-disk
+1. if you have a real PS/1, take the program ROMDUMP.EXE in the 'extra' folder
+and put it in an empty floppy disk; insert the floppy disk in your PS/1 and
+launch the executable: it will create the ROM image on the floppy disk
 2. or open your PS/1, extract the EPROMs and read them with an EPROM 
 reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
 non-US model)
@@ -50,8 +51,6 @@ Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is
 a good place) and update ibmulator.ini with the file name of the ROM you 
 want to use (see below for the correct format.)
 
-You also want to select (or create) the correct keyboard mapping.
-
 From now on IBMulator is ready to run.
 
 For more information regarding the configuration options, see the comments 
@@ -63,6 +62,19 @@ remove a floppy drive), you need a DOS program called CONFIGUR.EXE, otherwise
 you'll get various POST errors. Likewise, if you want to customize the way the 
 system works, you need to use the program CUSTOMIZ.EXE. Both files are copyright 
 IBM and you have to search the Internet in order to obtain them.
+
+### Keyboard
+
+You may want to select the correct keyboard mapping under the [gui] section.
+
+Currently valid keyboard mappings are:
+- keymaps/pc-us.map (US keyboard)
+- keymaps/pc-it.map (Italian keyboard)
+
+If you want to create a new mapping for your language, use one of the available
+files in the share/ibmulator/keymaps directory as a template.
+
+If you'll create one please consider sending me a copy :-)
 
 ### ROM set
 
@@ -83,8 +95,8 @@ Any other file present in the archive or directory is ignored.
 
 ### HDD image
 
-The first time you launch IBMulator an empty pre-formatted bootable hard disk 
-image will be created.
+The first time you launch IBMulator an empty pre-formatted hard disk image will
+be created.
  
 If you have an original PS/1 backup disk-set you can restore the machine to its 
 factory state. In order to do so:
@@ -103,9 +115,8 @@ determined with:
 ```
 $ fdisk -l hdd.img
 ```
-*Note*: if you change the disk type from the default 35 (WDL-330P) to any 
-other type, the automatically created image will be 0-filled and you'll need to 
-use 'fdisk' and 'format' in order to use it.
+*Note*: if you use the custom HDD type 47, the automatically created image will
+be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it.
 
 ### GUI modes
 
