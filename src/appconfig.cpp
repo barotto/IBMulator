@@ -136,7 +136,7 @@ ini_file_t AppConfig::ms_def_values = {
 	{ PCSPEAKER_SECTION, {
 		{ PCSPEAKER_ENABLED, "yes"   },
 		{ PCSPEAKER_RATE,    "22050" },
-		{ PCSPEAKER_VOLUME,  "1.0"   }
+		{ PCSPEAKER_VOLUME,  "0.3"   }
 	} },
 
 	{ PS1AUDIO_SECTION, {
@@ -148,7 +148,7 @@ ini_file_t AppConfig::ms_def_values = {
 	{ ADLIB_SECTION, {
 		{ ADLIB_ENABLED, "no"    },
 		{ ADLIB_RATE,    "48000" },
-		{ ADLIB_VOLUME,  "1.0"   }
+		{ ADLIB_VOLUME,  "1.4"   }
 	} },
 
 	{ SOUNDFX_SECTION, {
@@ -156,7 +156,7 @@ ini_file_t AppConfig::ms_def_values = {
 		{ SOUNDFX_FDD_SPIN, "0.4" },
 		{ SOUNDFX_FDD_SEEK, "0.4" },
 		{ SOUNDFX_HDD_SPIN, "0.4" },
-		{ SOUNDFX_HDD_SEEK, "0.3" },
+		{ SOUNDFX_HDD_SEEK, "0.4" },
 		{ SOUNDFX_SYSTEM,   "1.0" }
 	} },
 
