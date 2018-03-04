@@ -683,6 +683,11 @@ int AppConfig::get_int(const string &_section, const string &_name, int _default
 	}
 }
 
+void AppConfig::set_int(const string &_section, const string &_name, int _value)
+{
+	m_values[make_key(_section)][make_key(_name)] = std::to_string(_value);
+}
+
 double AppConfig::try_real(const string &_section, const string &_name)
 {
 	string valstr = get_value(_section, _name);
@@ -708,6 +713,11 @@ double AppConfig::get_real(const string &_section, const string &_name, double _
 	} catch(std::exception &e) {
 		return _default;
 	}
+}
+
+void AppConfig::set_real(const string &_section, const string &_name, double _value)
+{
+	m_values[make_key(_section)][make_key(_name)] = std::to_string(_value);
 }
 
 bool AppConfig::try_bool(const string &_section, const string &_name)

@@ -107,7 +107,9 @@ void CMOS::remove()
 
 void CMOS::config_changed()
 {
-	load_image(get_image_filepath(FILE_TYPE_ASSET));
+	std::string path = get_image_filepath(FILE_TYPE_ASSET);
+	g_program.config().set_string(CMOS_SECTION, CMOS_IMAGE_FILE, path);
+	load_image(path);
 
 #if BOCHS_BIOS_COMPAT
 	unsigned memory_in_k = (g_memory.dram_size() / KEBIBYTE);
@@ -210,7 +212,7 @@ void CMOS::restore_state(StateBuf &_state)
 void CMOS::power_off()
 {
 	// save CMOS to image file if requested.
-	if(g_program.config().get_bool(CMOS_SECTION,CMOS_IMAGE_SAVE)) {
+	if(g_program.config().get_bool(CMOS_SECTION, CMOS_IMAGE_SAVE)) {
 		try {
 			save_image(get_image_filepath(FILE_TYPE_USER));
 		} catch(std::exception &) {}

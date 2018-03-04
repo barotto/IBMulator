@@ -201,10 +201,16 @@ static uint16_t drate_in_k[4] = {
 	500, 300, 250, 1000
 };
 
-static std::map<std::string, uint> drive_types = {
+static std::map<std::string, unsigned> drive_str_type = {
 	{ "none", FDD_NONE  },
 	{ "3.5",  FDD_350HD },
 	{ "5.25", FDD_525HD }
+};
+
+static std::map<unsigned, std::string> drive_type_str = {
+	{ FDD_NONE,  "none" },
+	{ FDD_350HD, "3.5"  },
+	{ FDD_525HD, "5.25" }
 };
 
 static std::map<std::string, uint> disk_types_350 = {
@@ -350,14 +356,14 @@ FloppyDriveType FloppyCtrl::config_drive_type(unsigned drive)
 	if(drive == 0) {
 		try {
 			devtype = (FloppyDriveType)g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_A,
-					drive_types);
+					drive_str_type);
 		} catch(std::exception &e) {
 			devtype = (FloppyDriveType)g_machine.model().floppy_a;
 		}
 	} else {
 		try {
 			devtype = (FloppyDriveType)g_program.config().get_enum_quiet(DRIVES_SECTION, DRIVES_FDD_B,
-					drive_types);
+					drive_str_type);
 		} catch(std::exception &e) {
 			devtype = (FloppyDriveType)g_machine.model().floppy_b;
 		}
@@ -434,6 +440,8 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 
 	FloppyDriveType devtype = config_drive_type(drive);
 	m_device_type[drive] = devtype;
+	g_program.config().set_string(DRIVES_SECTION,
+			drive==0?DRIVES_FDD_A:DRIVES_FDD_B, drive_type_str[devtype]);
 	std::map<std::string, uint> *mediatypes = nullptr;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;

@@ -369,6 +369,12 @@ void HardDiskDrive::config_changed(const char *_section)
 	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
 	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %u us\n", m_performance.sec_read_us);
 	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %u us\n", m_spin_up_duration);
+
+	g_program.config().set_int(_section, DISK_TYPE, m_type);
+	g_program.config().set_string(_section, DISK_PATH, m_imgpath);
+	g_program.config().set_int(_section, DISK_CYLINDERS, m_geometry.cylinders);
+	g_program.config().set_int(_section, DISK_HEADS, m_geometry.heads);
+	g_program.config().set_int(_section, DISK_SPT, m_geometry.spt);
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)

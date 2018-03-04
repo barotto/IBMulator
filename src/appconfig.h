@@ -106,6 +106,8 @@ public:
 	std::string find_media(const std::string &_section, const std::string &_name);
 	std::string find_media(const std::string &_filename);
 
+	void set_int(const std::string &_section, const std::string &_name, int _value);
+	void set_real(const std::string &_section, const std::string &_name, double _value);
 	void set_bool(const std::string &section, const std::string &name, bool _value);
 	void set_string(const std::string &_section, const std::string &_name, std::string _value);
 

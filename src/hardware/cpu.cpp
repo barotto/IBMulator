@@ -95,6 +95,7 @@ void CPU::config_changed()
 
 	m_model = g_program.config().get_string(CPU_SECTION, CPU_MODEL,
 		{ "286", "386SX", "386DX" }, g_machine.model().cpu_model);
+	g_program.config().set_string(CPU_SECTION, CPU_MODEL, m_model);
 	m_family = cpu_families[m_model];
 	m_signature = cpu_signatures[m_model];
 
@@ -108,6 +109,7 @@ void CPU::config_changed()
 		m_cycle_time = icycle + 1;
 	}
 	m_frequency = 1e3 / m_cycle_time; // in MHz
+	g_program.config().set_real(CPU_SECTION, CPU_FREQUENCY, freq);
 
 	PINFOF(LOG_V0, LOG_CPU, "Installed CPU: %s @ %.0fMHz\n", m_model.c_str(), freq);
 	PINFOF(LOG_V1, LOG_CPU, "  Family: %d86, Signature: 0x%04x\n", m_family, m_signature);

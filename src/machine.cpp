@@ -256,6 +256,7 @@ void Machine::config_changed()
 	try {
 		std::string romset = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_ROMSET);
 		m_sysrom.load(romset);
+		g_program.config().set_string(SYSTEM_SECTION, SYSTEM_ROMSET, romset);
 	} catch(std::exception &e) {
 		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
@@ -269,6 +270,7 @@ void Machine::config_changed()
 	} catch(std::exception &) {
 		m_model = m_sysrom.bios().machine_model;
 	}
+	g_program.config().set_string(SYSTEM_SECTION, SYSTEM_MODEL, g_machine_db.at(m_model).ini);
 
 	PINFOF(LOG_V0, LOG_MACHINE, "Selected model: %s\n", model().print().c_str());
 

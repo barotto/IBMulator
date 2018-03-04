@@ -40,6 +40,7 @@ extern const bios_db_t g_bios_db;
 
 struct ModelConfig
 {
+	std::string ini;
 	std::string name;
 	unsigned type;
 	std::string cpu_model;
