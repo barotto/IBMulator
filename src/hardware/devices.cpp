@@ -129,11 +129,16 @@ void Devices::config_changed()
 	);
 	std::string stg_ctrl = g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD);
 	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ps1")) {
+		remove(StorageCtrl_ATA::NAME);
 		install<StorageCtrl_PS1>();
 		g_program.config().set_string(DRIVES_SECTION, DRIVES_HDD, "ps1");
 	} else if(stg_ctrl == "ata" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ata")) {
+		remove(StorageCtrl_PS1::NAME);
 		install<StorageCtrl_ATA>();
 		g_program.config().set_string(DRIVES_SECTION, DRIVES_HDD, "ata");
+	} else {
+		remove(StorageCtrl_ATA::NAME);
+		remove(StorageCtrl_PS1::NAME);
 	}
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
 	bool gameport =
