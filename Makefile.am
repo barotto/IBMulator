@@ -7,7 +7,7 @@ share/ibmulator/icon.ico \
 share/ibmulator/icon.png \
 share/ibmulator/cmos_ps1_2011.bin \
 share/ibmulator/cmos_ps1_2121.bin \
-share/ibmulator/hdd.img.zip
+share/ibmulator/disk_images.zip
 
 keymapsdir = $(pkgdatadir)/keymaps
 dist_keymaps_DATA = \

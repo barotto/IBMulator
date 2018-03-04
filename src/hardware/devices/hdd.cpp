@@ -27,6 +27,8 @@
 #include <sstream>
 #include <regex>
 
+#define HDD_IMAGES_ARCHIVE "disk_images.zip"
+
 /* Assuming the ST412/506 HD format RLL encoding, this should be the anatomy of
  * a sector:
  * SYNC   10 bytes 00h
@@ -476,14 +478,16 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
 		PINFOF(LOG_V0, LOG_HDD, "Creating new image file '%s'\n", _imgpath.c_str());
-		if(HAVE_LIBARCHIVE && m_type == 35) {
-			std::string imgsrc = g_program.config().get_file_path("hdd.img.zip", FILE_TYPE_ASSET);
+		if(HAVE_LIBARCHIVE && m_type < HDD_DRIVES_TABLE_SIZE) {
+			std::string imgsrc = g_program.config().get_file_path(HDD_IMAGES_ARCHIVE, FILE_TYPE_ASSET);
 			if(!FileSys::file_exists(imgsrc.c_str())) {
-				PERRF(LOG_HDD, "Cannot find the image file archive 'hdd.img.zip'\n");
+				PERRF(LOG_HDD, "Cannot find the image file archive " HDD_IMAGES_ARCHIVE "\n");
 				throw std::exception();
 			}
-			if(!FileSys::extract_file(imgsrc.c_str(), "hdd.img", _imgpath.c_str())) {
-				PERRF(LOG_HDD, "Cannot extract the image file 'hdd.img' from the archive\n");
+			std::stringstream ss;
+			ss << "hdd-type" << m_type << ".img";
+			if(!FileSys::extract_file(imgsrc.c_str(), ss.str().c_str(), _imgpath.c_str())) {
+				PERRF(LOG_HDD, "Cannot extract image file '%s' from " HDD_IMAGES_ARCHIVE "\n", ss.str().c_str());
 				throw std::exception();
 			}
 		} else {
