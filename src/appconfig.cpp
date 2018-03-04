@@ -31,22 +31,14 @@
 
 using std::string;
 
-ini_file_t AppConfig::ms_def_values = {
+ini_file_t AppConfig::ms_def_values[2] = {
+
+// PROGRAM_CONFIG
+{
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""    },
 		{ PROGRAM_CAPTURE_DIR,  ""    },
 		{ PROGRAM_THREADS_SYNC, "yes" }
-	} },
-
-	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET, ""     },
-		{ SYSTEM_VGAROM, ""     },
-		{ SYSTEM_MODEL,  "auto" }
-	} },
-
-	{ CPU_SECTION, {
-		{ CPU_MODEL,     "auto" },
-		{ CPU_FREQUENCY, "auto" }
 	} },
 
 	{ GUI_SECTION, {
@@ -80,9 +72,72 @@ ini_file_t AppConfig::ms_def_values = {
 	} },
 
 	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_FILE,     "auto" },
-		{ CMOS_IMAGE_RTC_INIT, "no"   },
-		{ CMOS_IMAGE_SAVE,     "yes"  }
+		{ CMOS_IMAGE_RTC_INIT, "no"  },
+		{ CMOS_IMAGE_SAVE,     "yes" }
+	} },
+
+	{ DISK_C_SECTION, {
+		{ DISK_READONLY,   "no"  },
+		{ DISK_SAVE,       "yes" }
+	} },
+
+	{ MIXER_SECTION, {
+		{ MIXER_RATE,      "48000" },
+		{ MIXER_SAMPLES,   "1024"  },
+		{ MIXER_PREBUFFER, "50"    },
+		{ MIXER_VOLUME,    "1.0"   }
+	} },
+
+	{ PCSPEAKER_SECTION, {
+		{ PCSPEAKER_RATE,    "22050" },
+		{ PCSPEAKER_VOLUME,  "0.3"   }
+	} },
+
+	{ PS1AUDIO_SECTION, {
+		{ PS1AUDIO_RATE,    "48000" },
+		{ PS1AUDIO_VOLUME,  "1.0"   }
+	} },
+
+	{ ADLIB_SECTION, {
+		{ ADLIB_RATE,    "48000" },
+		{ ADLIB_VOLUME,  "1.4"   }
+	} },
+
+	{ SOUNDFX_SECTION, {
+		{ SOUNDFX_VOLUME,   "1.0" },
+		{ SOUNDFX_FDD_SPIN, "0.4" },
+		{ SOUNDFX_FDD_SEEK, "0.4" },
+		{ SOUNDFX_HDD_SPIN, "0.4" },
+		{ SOUNDFX_HDD_SEEK, "0.4" },
+		{ SOUNDFX_SYSTEM,   "1.0" }
+	} },
+
+	{ COM_SECTION, {
+		{ COM_MODE,    "null" },
+		{ COM_DEV,     ""     }
+	} },
+
+	{ LPT_SECTION, {
+		{ LPT_PORT,    "LPT1" },
+		{ LPT_FILE,    ""     }
+	} },
+},
+
+//MACHINE_CONFIG
+{
+	{ SYSTEM_SECTION, {
+		{ SYSTEM_ROMSET, ""     },
+		{ SYSTEM_VGAROM, ""     },
+		{ SYSTEM_MODEL,  "auto" }
+	} },
+
+	{ CPU_SECTION, {
+		{ CPU_MODEL,     "auto" },
+		{ CPU_FREQUENCY, "auto" }
+	} },
+
+	{ CMOS_SECTION, {
+		{ CMOS_IMAGE_FILE, "auto" }
 	} },
 
 	{ MEM_SECTION, {
@@ -113,8 +168,6 @@ ini_file_t AppConfig::ms_def_values = {
 
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,       "auto" },
-		{ DISK_READONLY,   "no"   },
-		{ DISK_SAVE,       "yes"  },
 		{ DISK_PATH,       "auto" },
 		{ DISK_CYLINDERS,  "921"  },
 		{ DISK_HEADS,      "2"    },
@@ -126,51 +179,26 @@ ini_file_t AppConfig::ms_def_values = {
 		{ DISK_SPINUP_TIME,"auto" }
 	} },
 
-	{ MIXER_SECTION, {
-		{ MIXER_RATE,      "48000" },
-		{ MIXER_SAMPLES,   "1024"  },
-		{ MIXER_PREBUFFER, "50"    },
-		{ MIXER_VOLUME,    "1.0"   }
-	} },
-
 	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_ENABLED, "yes"   },
-		{ PCSPEAKER_RATE,    "22050" },
-		{ PCSPEAKER_VOLUME,  "0.3"   }
+		{ PCSPEAKER_ENABLED, "yes" }
 	} },
 
 	{ PS1AUDIO_SECTION, {
-		{ PS1AUDIO_ENABLED, "yes"   },
-		{ PS1AUDIO_RATE,    "48000" },
-		{ PS1AUDIO_VOLUME,  "1.0"   }
+		{ PS1AUDIO_ENABLED, "yes" }
 	} },
 
 	{ ADLIB_SECTION, {
-		{ ADLIB_ENABLED, "no"    },
-		{ ADLIB_RATE,    "48000" },
-		{ ADLIB_VOLUME,  "1.4"   }
-	} },
-
-	{ SOUNDFX_SECTION, {
-		{ SOUNDFX_VOLUME,   "1.0" },
-		{ SOUNDFX_FDD_SPIN, "0.4" },
-		{ SOUNDFX_FDD_SEEK, "0.4" },
-		{ SOUNDFX_HDD_SPIN, "0.4" },
-		{ SOUNDFX_HDD_SEEK, "0.4" },
-		{ SOUNDFX_SYSTEM,   "1.0" }
+		{ ADLIB_ENABLED, "no" }
 	} },
 
 	{ COM_SECTION, {
-		{ COM_ENABLED, "yes"  },
-		{ COM_MODE,    "null" },
-		{ COM_DEV,     ""     }
+		{ COM_ENABLED, "yes" }
 	} },
 
 	{ LPT_SECTION, {
-		{ LPT_ENABLED, "yes"  },
-		{ LPT_PORT,    "LPT1" },
-		{ LPT_FILE,    ""     }
-	} },
+		{ LPT_ENABLED, "yes" }
+	} }
+}
 };
 
 ini_filehelp_t AppConfig::ms_help = {
@@ -330,7 +358,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    seek_max: Maximum seek time in milliseconds\n"
 ";    seek_trk: Track-to-track seek time in milliseconds\n"
 ";   rot_speed: Rotational speed in RPM\n"
-";              Possible values: any number between 3600 and 7200\n"
+";              Possible values: auto, or any number between 3600 and 7200\n"
 ";  interleave: Interleave ratio\n"
 		},
 
@@ -509,19 +537,22 @@ void AppConfig::reset()
 	m_values.clear();
 }
 
-void AppConfig::merge(const AppConfig &_config)
+void AppConfig::merge(const AppConfig &_other, ConfigType _type)
 {
-	//deep merge
-	for(auto section : _config.m_values) {
-		//is the current section already present?
-		if(m_values.count(section.first)) {
-			//if so, merge the 2 sections
-			for(auto secval : section.second) {
-				m_values[section.first][secval.first] = secval.second;
+	for(auto othersec : _other.m_values) {
+		auto secname = othersec.first;
+		if(_type != ANY_CONFIG && ms_def_values[_type].find(secname) == ms_def_values[_type].end()) {
+			PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini section [%s]\n", secname.c_str());
+			continue;
+		}
+		for(auto otherentry : othersec.second) {
+			auto key = otherentry.first;
+			if(_type != ANY_CONFIG && ms_def_values[_type][secname].find(key) == ms_def_values[_type][secname].end()) {
+				PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini key [%s]:%s\n", secname.c_str(), key.c_str());
+				continue;
 			}
-		} else {
-			//otherwise just copy it
-			m_values[section.first] = section.second;
+			// it will insert a new section in the current values if not present
+			m_values[secname][key] = otherentry.second;
 		}
 	}
 }
@@ -609,12 +640,16 @@ string AppConfig::get_value(const string &section, const string &name)
 	string valstr;
 	try {
 		valstr = get_value(m_values, section, name);
-	} catch(std::exception &e) {
+	} catch(std::exception &) {
 		try {
-			valstr = get_value(ms_def_values, section, name);
-		} catch(std::exception &e) {
-			PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
-			throw;
+			valstr = get_value(ms_def_values[PROGRAM_CONFIG], section, name);
+		} catch(std::exception &) {
+			try {
+				valstr = get_value(ms_def_values[MACHINE_CONFIG], section, name);
+			} catch(std::exception &) {
+				PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
+				throw;
+			}
 		}
 		PWARNF(LOG_PROGRAM, "[%s]:%s undefined, loading default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
 	}
@@ -899,7 +934,7 @@ void AppConfig::create_file(const std::string &_filename, bool _comments)
 {
 	std::ofstream file(_filename.c_str());
 	if(!file.is_open()) {
-		PERRF(LOG_FS,"unable to open '%s' for writing\n",_filename.c_str());
+		PERRF(LOG_FS,"Cannot open '%s' for writing\n",_filename.c_str());
 		throw std::exception();
 	}
 	if(_comments) {

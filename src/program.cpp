@@ -63,7 +63,7 @@ void Program::save_state(
 	std::function<void(std::string)> _on_fail)
 {
 	if(!m_machine->is_on()) {
-		PINFOF(LOG_V0, LOG_PROGRAM, "the machine is off\n");
+		PINFOF(LOG_V0, LOG_PROGRAM, "The machine needs to be on\n");
 		return;
 	}
 
@@ -73,15 +73,15 @@ void Program::save_state(
 	std::string path = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
 			+ FS_SEP + _name;
 
-	PINFOF(LOG_V0, LOG_PROGRAM, "saving current state in '%s'...\n", path.c_str());
+	PINFOF(LOG_V0, LOG_PROGRAM, "Saving current state in '%s'...\n", path.c_str());
 
 	std::string ini = path + ".ini";
 	try {
 		m_config[1].create_file(ini);
 	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to create config file '%s'\n", ini.c_str());
+		PERRF(LOG_PROGRAM, "Cannot create config file '%s'\n", ini.c_str());
 		if(_on_fail != nullptr) {
-			_on_fail("unable to create config file");
+			_on_fail("Cannot create config file");
 		}
 		return;
 	}
@@ -96,7 +96,7 @@ void Program::save_state(
 
 	m_gui->save_framebuffer(path + ".png", "");
 
-	PINFOF(LOG_V0, LOG_PROGRAM, "current state saved\n");
+	PINFOF(LOG_V0, LOG_PROGRAM, "Current state saved\n");
 	if(_on_success != nullptr) {
 		_on_success();
 	}
@@ -117,28 +117,28 @@ void Program::restore_state(
 		std::string bin = path + ".bin";
 
 		if(!FileSys::file_exists(ini.c_str())) {
-			PERRF(LOG_PROGRAM, "state ini file missing!\n");
+			PERRF(LOG_PROGRAM, "The state ini file is missing!\n");
 			if(_on_fail != nullptr) {
-				_on_fail("State ini file missing");
+				_on_fail("The state ini file is missing!");
 			}
 			return;
 		}
 
 		if(!FileSys::file_exists(bin.c_str())) {
-			PERRF(LOG_PROGRAM, "state bin file missing!\n");
+			PERRF(LOG_PROGRAM, "The state bin file is missing!\n");
 			if(_on_fail) {
-				_on_fail("State bin file missing");
+				_on_fail("The state bin file is missing!");
 			}
 			return;
 		}
 
-		PINFOF(LOG_V0, LOG_PROGRAM, "loading state from '%s'...\n", path.c_str());
+		PINFOF(LOG_V0, LOG_PROGRAM, "Loading state from '%s'...\n", path.c_str());
 
 		AppConfig conf;
 		try {
 			conf.parse(ini);
 		} catch(std::exception &e) {
-			PERRF(LOG_PROGRAM, "unable to parse '%s'\n", ini.c_str());
+			PERRF(LOG_PROGRAM, "Cannot parse '%s'\n", ini.c_str());
 			if(_on_fail != nullptr) {
 				_on_fail("Error while parsing the state ini file");
 			}
@@ -154,7 +154,7 @@ void Program::restore_state(
 		//TODO the config object needs a mutex!
 		//TODO create a revert mechanism?
 		m_config[1].copy(m_config[0]);
-		m_config[1].merge(conf);
+		m_config[1].merge(conf, MACHINE_CONFIG);
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
@@ -179,12 +179,12 @@ void Program::restore_state(
 		g_syslog.cmd_resume();
 
 		if(!state.m_last_restore) {
-			PERRF(LOG_PROGRAM, "the restored state is not valid\n");
+			PERRF(LOG_PROGRAM, "The restored state is not valid\n");
 			if(_on_fail != nullptr) {
 				_on_fail("The restored state is not valid");
 			}
 		} else {
-			PINFOF(LOG_V0, LOG_PROGRAM, "state restored\n");
+			PINFOF(LOG_V0, LOG_PROGRAM, "State restored\n");
 			if(_on_success != nullptr) {
 				_on_success();
 			}

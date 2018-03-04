@@ -146,6 +146,9 @@ const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
 }
 };
 
+/* Disk types 2 and 10, and 13 and 16, have not the same geometry.
+ * TODO: implement a different detection mechanism.
+ */
 const std::map<uint64_t, int> HardDiskDrive::ms_hdd_sizes = {
   { 10653696, 1  },
 //{ 10653696, 23 },
@@ -265,9 +268,8 @@ uint64_t HardDiskDrive::power_up_eta_us() const
 
 void HardDiskDrive::config_changed(const char *_section)
 {
-	// read only and save on close are start up configuration properties
-	m_save_on_close = g_program.config(0).get_bool(_section, DISK_SAVE);
-	m_read_only = g_program.config(0).get_bool(_section, DISK_READONLY);
+	m_save_on_close = g_program.config().get_bool(_section, DISK_SAVE);
+	m_read_only = g_program.config().get_bool(_section, DISK_READONLY);
 
 	// unmount and save the current image
 	unmount(m_save_on_close, m_read_only);

@@ -37,6 +37,12 @@ enum FileType {
 	FILE_TYPE_MEDIA
 };
 
+enum ConfigType {
+	PROGRAM_CONFIG,
+	MACHINE_CONFIG,
+	ANY_CONFIG
+};
+
 class AppConfig
 {
 private:
@@ -47,7 +53,7 @@ private:
 	int m_error;
 
 	ini_file_t m_values;
-	static ini_file_t ms_def_values;
+	static ini_file_t ms_def_values[2];
 	static ini_filehelp_t ms_help;
 	static std::vector<std::pair<std::string, std::vector<std::string>>> ms_keys_order;
 
@@ -106,7 +112,7 @@ public:
 	void create_file(const std::string &_filename, bool _comments=false);
 
 	void reset();
-	void merge(const AppConfig &_config);
+	void merge(const AppConfig &_config, ConfigType _type);
 	void copy(const AppConfig &_config);
 };
 

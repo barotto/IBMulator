@@ -84,8 +84,8 @@ public:
 	unsigned heartbeat() const { return m_heartbeat; }
 	void set_heartbeat(unsigned _us) { m_heartbeat = _us; }
 
-	inline AppConfig & config(unsigned _level=1) {
-		return (_level) ? m_config[1] : m_config[0];
+	inline AppConfig & config() {
+		return m_config[1];
 	}
 	Bench & get_bench() { return m_bench; }
 
