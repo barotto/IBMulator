@@ -188,7 +188,7 @@ void StorageCtrl_PS1::install()
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s\n", name());
 
 	m_disk.set_name("Drive C");
-	m_disk.install();
+	m_disk.install(this);
 }
 
 void StorageCtrl_PS1::remove()

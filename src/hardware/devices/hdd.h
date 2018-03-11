@@ -27,6 +27,7 @@
 #define HDD_DRIVES_TABLE_SIZE 45
 #define HDD_CUSTOM_DRIVE_IDX 47
 
+class StorageCtrl;
 
 class HardDiskDrive : public StorageDev
 {
@@ -39,9 +40,10 @@ protected:
 	bool m_save_on_close;
 	bool m_read_only;
 	bool m_tmp_disk;
+	StorageCtrl *m_ctrl;
 
 	static const MediaGeometry ms_hdd_types[HDD_DRIVES_TABLE_SIZE];
-	static const std::map<uint, DrivePerformance> ms_hdd_performance;
+	static const std::map<unsigned, DrivePerformance> ms_hdd_performance;
 	static const std::map<int, const DriveIdent> ms_hdd_models;
 	static const std::map<uint64_t, int> ms_hdd_sizes;
 
@@ -51,7 +53,7 @@ public:
 	HardDiskDrive();
 	~HardDiskDrive();
 
-	void install();
+	void install(StorageCtrl*);
 	void remove();
 	void power_on(uint64_t _time);
 	void power_off();

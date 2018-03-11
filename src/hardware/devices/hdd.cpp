@@ -23,6 +23,8 @@
 #include "hddparams.h"
 #include "program.h"
 #include "machine.h"
+#include "storagectrl_ps1.h"
+#include "storagectrl_ata.h"
 #include <cstring>
 #include <sstream>
 #include <regex>
@@ -128,10 +130,18 @@ const MediaGeometry HardDiskDrive::ms_hdd_types[HDD_DRIVES_TABLE_SIZE] = {
  * For types other than 35,38 they are currently unknown.
  * Type 39 is the Maxtor 7040F1, which was mounted on some later model 2011.
  */
-const std::map<uint, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
+const std::map<unsigned, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
 { 35, { 40.0f, 8.0f, 3600, 4, 0,0,0,0,0,0,0 } }, //35 30MB
 { 38, { 40.0f, 9.0f, 3700, 4, 0,0,0,0,0,0,0 } }, //38 30MB
-{ 39, {  0.0f, 0.0f,    0, 0, 0,0,0,0,0,0,0 } }, //39 41MB
+//{ 39, {  0.0f, 0.0f,    0, 0, 0,0,0,0,0,0,0 } }, //39 41MB
+};
+
+// TODO this is a stub. implement proper hdd performance characteristics
+static const DrivePerformance default_ps1_perf = {
+	40.0f, 8.0f, 3600, 4, 0,0,0,0,0,0,0   // IBM WDL-330P
+};
+static const DrivePerformance default_ata_perf = {
+	17.0f, 6.0f, 3700, 1, 0,0,0,0,0,0,0   // MAXTOR 7080A
 };
 
 const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
@@ -202,7 +212,8 @@ m_type(0),
 m_spin_up_duration(0.0),
 m_save_on_close(false),
 m_read_only(true),
-m_tmp_disk(false)
+m_tmp_disk(false),
+m_ctrl(nullptr)
 {
 	m_sector_data = 512;
 	m_sector_size = HDD_SECTOR_SIZE;
@@ -217,8 +228,9 @@ HardDiskDrive::~HardDiskDrive()
 	remove();
 }
 
-void HardDiskDrive::install()
+void HardDiskDrive::install(StorageCtrl *_ctrl)
 {
+	m_ctrl = _ctrl;
 	m_fx.install(m_name);
 	m_spin_up_duration = m_fx.spin_up_time_us();
 }
@@ -353,17 +365,19 @@ void HardDiskDrive::config_changed(const char *_section)
 	m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
 			m_fx.spin_up_time_us()/1e6) * 1e6;
 
-	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==47?" (custom)":"");
+	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==HDD_CUSTOM_DRIVE_IDX?" (custom)":"");
+	PINFOF(LOG_V0, LOG_HDD, "  Interface: %s\n", m_ctrl->name());
 	PINFOF(LOG_V0, LOG_HDD, "  Capacity: %.1fMB, %.1fMiB, %lu sectors\n",
 			double(size())/(1000.0*1000.0), double(size())/(1024.0*1024.0), m_sectors);
 	PINFOF(LOG_V0, LOG_HDD, "  Geometry: C:%u, H:%u, S:%u\n",
 			m_geometry.cylinders, m_geometry.heads, m_geometry.spt);
 	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_ident.model);
-	PINFOF(LOG_V2, LOG_HDD, "  Rotational speed: %u RPM\n", m_performance.rot_speed);
-	PINFOF(LOG_V2, LOG_HDD, "  Interleave: %u:1\n", m_performance.interleave);
 	PINFOF(LOG_V2, LOG_HDD, "  Data bits per track: %u\n", m_geometry.spt*512*8);
-	PINFOF(LOG_V2, LOG_HDD, "  Performance characteristics:\n");
-	PINFOF(LOG_V2, LOG_HDD, "    track-to-track seek time: %u us\n", m_performance.trk2trk_us);
+	PINFOF(LOG_V1, LOG_HDD, "  Interleave: %u:1\n", m_performance.interleave);
+	PINFOF(LOG_V1, LOG_HDD, "  Performance characteristics:\n");
+	PINFOF(LOG_V1, LOG_HDD, "    rotational speed: %u rpm\n", m_performance.rot_speed);
+	PINFOF(LOG_V1, LOG_HDD, "    maximum seek time: %.1f ms\n", m_performance.seek_max);
+	PINFOF(LOG_V1, LOG_HDD, "    track-to-track seek time: %.1f ms\n", m_performance.seek_trk);
 	PINFOF(LOG_V2, LOG_HDD, "      seek overhead time: %u us\n", m_performance.seek_overhead_us);
 	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %u us/cyl\n", m_performance.seek_avgspeed_us);
 	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
@@ -371,10 +385,16 @@ void HardDiskDrive::config_changed(const char *_section)
 	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %u us\n", m_spin_up_duration);
 
 	g_program.config().set_int(_section, DISK_TYPE, m_type);
+
 	g_program.config().set_string(_section, DISK_PATH, m_imgpath);
 	g_program.config().set_int(_section, DISK_CYLINDERS, m_geometry.cylinders);
 	g_program.config().set_int(_section, DISK_HEADS, m_geometry.heads);
 	g_program.config().set_int(_section, DISK_SPT, m_geometry.spt);
+
+	g_program.config().set_real(_section, DISK_SEEK_MAX, m_performance.seek_max);
+	g_program.config().set_real(_section, DISK_SEEK_TRK, m_performance.seek_trk);
+	g_program.config().set_int(_section, DISK_ROT_SPEED, m_performance.rot_speed);
+	g_program.config().set_int(_section, DISK_INTERLEAVE, m_performance.interleave);
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)
@@ -421,10 +441,14 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 void HardDiskDrive::get_profile(int _type_id, const char *_section,
 		MediaGeometry &_geom, DrivePerformance &_perf)
 {
-	//the only performance values I have are those of type 35 and 38
-	if(_type_id == 35 || _type_id == 38) {
+	if(ms_hdd_performance.find(_type_id) != ms_hdd_performance.end()) {
 		_perf = ms_hdd_performance.at(_type_id);
 		_geom = ms_hdd_types[_type_id];
+		// ATA drives have a typical interleave of 1:1
+		// TODO this is a stub. implement proper hdd performance characteristics
+		if(dynamic_cast<StorageCtrl_ATA*>(m_ctrl) != nullptr) {
+			_perf.interleave = 1;
+		}
 	} else if(_type_id>0 && _type_id!=15 && _type_id<=HDD_CUSTOM_DRIVE_IDX) {
 		if(_type_id == HDD_CUSTOM_DRIVE_IDX) {
 			_geom.cylinders = g_program.config().get_int(_section, DISK_CYLINDERS);
@@ -440,20 +464,39 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 			PERRF(LOG_HDD, "%s: invalid drive type: %d\n", name(), _type_id);
 			throw std::exception();
 		}
-		_perf.seek_max = std::max(0., g_program.config().get_real(_section, DISK_SEEK_MAX));
-		_perf.seek_trk = std::max(0., g_program.config().get_real(_section, DISK_SEEK_TRK));
-		_perf.rot_speed = std::max(1, g_program.config().get_int(_section, DISK_ROT_SPEED));
-		if(_perf.rot_speed < 3600) {
-			_perf.rot_speed = 3600;
-			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the minimum: %u RPM\n", _perf.rot_speed);
-		} else if(_perf.rot_speed > 7200) {
-			_perf.rot_speed = 7200;
-			PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the maximum: %u RPM\n", _perf.rot_speed);
+		bool is_ata = (dynamic_cast<StorageCtrl_ATA*>(m_ctrl) != nullptr);
+		if(is_ata) {
+			_perf = default_ata_perf;
+		} else {
+			_perf = default_ps1_perf;
 		}
-		_perf.interleave = std::max(1, g_program.config().get_int(_section, DISK_INTERLEAVE));
 	} else {
 		PERRF(LOG_HDD, "Invalid drive type: %d\n", _type_id);
 		throw std::exception();
+	}
+
+	float seek_max = g_program.config().get_real(_section, DISK_SEEK_MAX, -1.);
+	float seek_trk = g_program.config().get_real(_section, DISK_SEEK_TRK, -1.);
+	unsigned rot_speed = g_program.config().get_int(_section, DISK_ROT_SPEED, 0);
+	unsigned interleave = g_program.config().get_int(_section, DISK_INTERLEAVE, 0);
+	if(seek_max > 0.) {
+		_perf.seek_max = seek_max;
+	}
+	if(seek_trk > 0.) {
+		_perf.seek_trk = seek_trk;
+	}
+	if(rot_speed > 0) {
+		_perf.rot_speed = rot_speed;
+	}
+	if(_perf.rot_speed < 3600) {
+		_perf.rot_speed = 3600;
+		PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the minimum: %u RPM\n", _perf.rot_speed);
+	} else if(_perf.rot_speed > 7200) {
+		_perf.rot_speed = 7200;
+		PINFOF(LOG_V0, LOG_HDD, "rotational speed set to the maximum: %u RPM\n", _perf.rot_speed);
+	}
+	if(interleave > 0) {
+		_perf.interleave = interleave;
 	}
 
 	if(_geom.cylinders == 0 || _geom.cylinders > HDD_MAX_CYLINDERS) {

@@ -169,13 +169,13 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,       "auto" },
 		{ DISK_PATH,       "auto" },
-		{ DISK_CYLINDERS,  "921"  },
-		{ DISK_HEADS,      "2"    },
-		{ DISK_SPT,        "33"   },
-		{ DISK_SEEK_MAX,   "40.0" },
-		{ DISK_SEEK_TRK,   "8.0"  },
-		{ DISK_ROT_SPEED,  "3600" },
-		{ DISK_INTERLEAVE, "4"    },
+		{ DISK_CYLINDERS,  "auto" },
+		{ DISK_HEADS,      "auto" },
+		{ DISK_SPT,        "auto" },
+		{ DISK_SEEK_MAX,   "auto" },
+		{ DISK_SEEK_TRK,   "auto" },
+		{ DISK_ROT_SPEED,  "auto" },
+		{ DISK_INTERLEAVE, "auto" },
 		{ DISK_SPINUP_TIME,"auto" }
 	} },
 
@@ -349,17 +349,16 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
 ";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
 "(unless it is write-protected)\n"
-"; The following parameters are used for disk type " STR(HDD_CUSTOM_DRIVE_IDX) " (custom type):\n"
+"; The following parameters are used only for disk type " STR(HDD_CUSTOM_DRIVE_IDX) " (custom type):\n"
 ";   cylinders: Number of cylinders (max. 1024)\n"
 ";       heads: Number of heads (max. 16)\n"
 ";     sectors: Number of sectors per track (max. 63)\n"
 "; Drive capacity is cylinders*heads*sectors*512, for a maximum of 528MB (504MiB)\n"
-"; The following performance parameters are used for any disk type except 35 and 38:\n"
+"; The following performance parameters will be used for any disk type:\n"
 ";    seek_max: Maximum seek time in milliseconds\n"
 ";    seek_trk: Track-to-track seek time in milliseconds\n"
-";   rot_speed: Rotational speed in RPM\n"
-";              Possible values: auto, or any number between 3600 and 7200\n"
-";  interleave: Interleave ratio\n"
+";   rot_speed: Rotational speed in RPM (min. 3600, max. 7200)\n"
+";  interleave: Interleave ratio (typically between 1 and 8)\n"
 		},
 
 		{ MIXER_SECTION,

@@ -300,7 +300,7 @@ void StorageCtrl_ATA::config_changed()
 	// installed I assume an HDD is installed too at ATA0:0
 	m_storage[0][0] = std::unique_ptr<StorageDev>(new HardDiskDrive());
 	m_storage[0][0]->set_name("Drive C");
-	m_storage[0][0]->install();
+	m_storage[0][0]->install(this);
 	m_storage[0][0]->config_changed(DISK_C_SECTION);
 	drive(0,0).device_type = ATA_DISK;
 
@@ -311,7 +311,7 @@ void StorageCtrl_ATA::config_changed()
 		// Compilation enabled to prevent bit rot.
 		m_storage[0][1] = std::unique_ptr<StorageDev>(new CDROMDrive());
 		m_storage[0][1]->set_name("CD-ROM");
-		m_storage[0][1]->install();
+		m_storage[0][1]->install(this);
 		m_storage[0][1]->config_changed(DISK_CD_SECTION);
 		drive(0,1).device_type  = ATA_CDROM;
 		drive(0,1).cdrom.ready = false;

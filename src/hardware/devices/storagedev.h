@@ -23,6 +23,8 @@
 #include "mediaimage.h"
 #include "statebuf.h"
 
+class StorageCtrl;
+
 struct DrivePerformance
 {
 	float    seek_max;   // Maximum seek time in milliseconds
@@ -107,7 +109,7 @@ public:
 	StorageDev();
 	virtual ~StorageDev() {}
 
-	virtual void install() {}
+	virtual void install(StorageCtrl*) {}
 	virtual void remove() {}
 	virtual void power_on(uint64_t _time);
 	virtual void power_off();
