@@ -85,6 +85,8 @@
 	#define LOG_CSIP              true
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
+	#define SHOW_CURRENT_PROGRAM_NAME true
+
 #else
 	//RELEASE
 	#define CONFIG_PARSE      true
@@ -101,6 +103,8 @@
 	#define LOG_MACHINE_TIME_NS   false
 	#define LOG_CSIP              false
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
+
+	#define SHOW_CURRENT_PROGRAM_NAME false
 
 #endif
 

@@ -26,6 +26,7 @@
 #include "chrono.h"
 #include "hwbench.h"
 #include "statebuf.h"
+#include "hardware/cpu.h"
 #include "hardware/systemrom.h"
 #include "hardware/devices.h"
 #include "timers.h"
@@ -144,6 +145,7 @@ public:
 	inline std::string type_str() const { return g_machine_type_str.at(type()); }
 	inline const ModelConfig & model() const { return g_machine_db.at(m_model); }
 	inline SystemROM & sys_rom() { return m_sysrom; }
+	inline CPU & cpu() { return g_cpu; }
 	inline Devices & devices() { return g_devices; }
 
 	int register_timer(timer_fun_t _func, const char *_name);
@@ -205,7 +207,7 @@ public:
 	void DOS_program_launch(std::string _name);
 	void DOS_program_start(std::string _name);
 	void DOS_program_finish(std::string _name, std::string _newname);
-	inline bool is_current_program_name_changed() {
+	inline bool current_program_name_has_changed() {
 		// caller must gain a lock on ms_gui_lock
 		bool changed = m_curr_prgname_changed;
 		m_curr_prgname_changed = false;

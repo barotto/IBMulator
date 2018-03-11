@@ -41,9 +41,10 @@
 #include "windows/debugtools.h"
 #include "windows/status.h"
 
-#include "hardware/cpu.h"
+#include "hardware/devices/systemboard.h"
 
 #include <algorithm>
+#include <iomanip>
 
 
 GUI g_gui;
@@ -112,6 +113,7 @@ m_height(480),
 m_SDL_window(nullptr),
 m_SDL_glcontext(nullptr),
 m_SDL_renderer(nullptr),
+m_curr_model_changed(false),
 m_second_timer(0),
 m_joystick0(JOY_NONE),
 m_joystick1(JOY_NONE),
@@ -224,6 +226,13 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 void GUI::config_changed()
 {
 	m_windows.config_changed();
+
+	m_curr_model = m_machine->devices().sysboard()->model_string();
+	m_curr_model += " (" + m_machine->cpu().model() + "@";
+	std::stringstream ss;
+	ss << std::fixed << std::setprecision(0) << m_machine->cpu().frequency();
+	m_curr_model += ss.str() + "MHz)";
+	m_curr_model_changed = true;
 }
 
 void GUI::create_window(const char * _title, int _width, int _height, int _flags)
@@ -301,7 +310,6 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	SDL_ShowWindow(m_SDL_window);
 
 	m_wnd_title = _title;
-	m_curr_title = m_wnd_title;
 }
 
 vec2i GUI::resize_window(int _w, int _h)
@@ -746,11 +754,8 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		static uint previous = UINT_MAX;
 		expected = 1.0e6 / MACHINE_HEARTBEAT;
 		if(previous < expected && current < expected) {
-			std::string title = m_curr_title + " !";
-			SDL_SetWindowTitle(m_SDL_window, title.c_str());
 			m_windows.interface->show_warning(true);
 		} else {
-			SDL_SetWindowTitle(m_SDL_window, m_curr_title.c_str());
 			m_windows.interface->show_warning(false);
 		}
 		previous = current;
@@ -1094,20 +1099,24 @@ void GUI::update(uint64_t _current_time)
 	m_rocket_context->Update();
 	ms_rocket_mutex.unlock();
 
-	bool title_changed = false;
-	m_machine->ms_gui_lock.lock();
-	if(m_machine->is_current_program_name_changed()) {
-		title_changed = true;
-		m_curr_title = m_machine->get_current_program_name();
-	}
-	m_machine->ms_gui_lock.unlock();
-	if(title_changed) {
-		if(!m_curr_title.empty()) {
-			m_curr_title = m_wnd_title + " - " + m_curr_title;
-		} else {
-			m_curr_title = m_wnd_title;
+	bool title_changed = m_curr_model_changed;
+	if(SHOW_CURRENT_PROGRAM_NAME) {
+		m_machine->ms_gui_lock.lock();
+		if(m_machine->current_program_name_has_changed()) {
+			title_changed = true;
+			m_curr_prog = m_machine->get_current_program_name();
 		}
-		SDL_SetWindowTitle(m_SDL_window, m_curr_title.c_str());
+		m_machine->ms_gui_lock.unlock();
+	}
+	if(title_changed) {
+		m_curr_model_changed = false;
+		std::string curr_title;
+		if(!m_curr_prog.empty()) {
+			curr_title = m_wnd_title + " - " + m_curr_model + " - " + m_curr_prog;
+		} else {
+			curr_title = m_wnd_title + " - " + m_curr_model;
+		}
+		SDL_SetWindowTitle(m_SDL_window, curr_title.c_str());
 	}
 }
 

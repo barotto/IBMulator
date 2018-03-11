@@ -79,6 +79,8 @@ public:
 	SystemBoard(Devices* _dev);
 	~SystemBoard() {}
 
+	virtual std::string model_string() { return ""; }
+
 	void reset(unsigned type);
 	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);

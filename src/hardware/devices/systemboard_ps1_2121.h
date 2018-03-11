@@ -66,6 +66,8 @@ public:
 	SystemBoard_PS1_2121(Devices* _dev);
 	~SystemBoard_PS1_2121() {}
 
+	std::string model_string() { return "PS/1 2121"; }
+
 	void install();
 	void remove();
 

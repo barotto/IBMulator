@@ -126,7 +126,9 @@ protected:
 	SDL_GLContext m_SDL_glcontext;
 	SDL_Renderer * m_SDL_renderer;
 	std::string m_wnd_title;
-	std::string m_curr_title;
+	std::string m_curr_prog;
+	std::string m_curr_model;
+	bool m_curr_model_changed;
 	SDL_TimerID m_second_timer;
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
 	int m_joystick0;
