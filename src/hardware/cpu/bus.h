@@ -23,9 +23,6 @@
 #include "core.h"
 #include "mmu.h"
 #include "../memory.h"
-#ifndef NDEBUG
-	#include "machine.h"
-#endif
 
 #define CPU_PQ_MAX_SIZE  16
 #define CPU_BUS_WQ_SIZE  50
