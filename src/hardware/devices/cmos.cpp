@@ -238,11 +238,12 @@ std::string CMOS::get_image_filepath(FileType _default)
 		filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);
 		if(_default == FILE_TYPE_ASSET && !FileSys::file_exists(filepath.c_str())) {
 			// first time using this image file, try search in assets dir
-			filepath = g_program.config().get_file_path(filename, FILE_TYPE_ASSET);
-			if(!FileSys::file_exists(filepath.c_str())) {
-				PERRF(LOG_CMOS, "File '%s' is missing from assets directory!\n", filename.c_str());
-				filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);
+			std::string asset = g_program.config().get_file_path(filename, FILE_TYPE_ASSET);
+			if(!FileSys::file_exists(asset.c_str())) {
+				PERRF(LOG_CMOS, "File '%s' is missing from assets directory!\n", asset.c_str());
+				throw std::exception();
 			}
+			FileSys::copy_file(asset.c_str(), filepath.c_str());
 		}
 	} else {
 		filepath = g_program.config().get_file_path(filename, FILE_TYPE_USER);

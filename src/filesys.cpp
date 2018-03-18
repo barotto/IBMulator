@@ -217,6 +217,14 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 #endif
 }
 
+void FileSys::copy_file(const char *_from, const char *_to)
+{
+	// TODO maybe use C++17 copy_file in the future?
+	std::ifstream src(_from, std::ios::binary);
+	std::ofstream dst(_to, std::ios::binary);
+	dst << src.rdbuf();
+}
+
 shared_file_ptr FileSys::make_shared_file(const char *_filename, const char *_flags)
 {
 	FILE * const fp = fopen(_filename, _flags);

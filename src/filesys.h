@@ -50,6 +50,7 @@ public:
 			std::string &_dir, std::string &_base, std::string &_ext);
 	static bool extract_file(const char *_archive, const char *_filename,
 			const char *_extract_to);
+	static void copy_file(const char *_from, const char *_to);
 
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
