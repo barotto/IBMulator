@@ -153,14 +153,14 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ DISK_A_SECTION, {
-		{ DISK_TYPE,     "1.44M" },
+		{ DISK_TYPE,     "auto"  },
 		{ DISK_INSERTED, "no"    },
 		{ DISK_READONLY, "no"    },
 		{ DISK_PATH,     ""      }
 	} },
 
 	{ DISK_B_SECTION, {
-		{ DISK_TYPE,     "1.44M" },
+		{ DISK_TYPE,     "auto"  },
 		{ DISK_INSERTED, "no"    },
 		{ DISK_READONLY, "no"    },
 		{ DISK_PATH,     ""      }
