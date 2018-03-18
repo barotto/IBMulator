@@ -140,11 +140,8 @@ protected:
 
 	struct Mouse {
 		bool grab;
-		bool warped;
-
 		Mouse() :
-			grab(true),
-			warped(false)
+			grab(true)
 		{}
 	} m_mouse;
 

@@ -62,10 +62,12 @@ fi
 if test x$have_windows = xno ; then
 	separator="/"
 	static="no"
+	SDL_VERSION=2.0.0
 else
 	separator="\\\\"
 	#-mno-ms-bitfields is required for the __attribute__(packed) to work
 	CXX_DEFAULTS="$CXX_DEFAULTS -mno-ms-bitfields"
+	SDL_VERSION=2.0.8
 fi
 
 if test x$static = xyes ; then
@@ -82,7 +84,6 @@ AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
 #######################################################################
 # Checks for libraries and headers                                    #
 #######################################################################
-SDL_VERSION=2.0.0
 AM_PATH_SDL2($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
 AX_CHECK_SDLIMAGE
 AX_CHECK_OPENGL

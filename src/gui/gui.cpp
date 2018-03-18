@@ -554,11 +554,9 @@ void GUI::input_grab(bool _value)
 {
 	if(m_mouse.grab) {
 		if(_value) {
-			SDL_ShowCursor(0);
-			SDL_SetWindowGrab(m_SDL_window, SDL_TRUE);
+			SDL_SetRelativeMouseMode(SDL_TRUE);
 		} else {
-			SDL_ShowCursor(1);
-			SDL_SetWindowGrab(m_SDL_window, SDL_FALSE);
+			SDL_SetRelativeMouseMode(SDL_FALSE);
 		}
 	}
 	m_input_grab = _value;
@@ -880,25 +878,10 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	switch(_event.type)
 	{
 	case SDL_MOUSEMOTION:
-		if(m_mouse.warped
-			&& _event.motion.x == m_width/2
-			&& _event.motion.y == m_height/2)
-		{
-			// This event was generated as a side effect of the WarpMouse,
-			// and it must be ignored.
-			m_mouse.warped = false;
-			break;
-		}
-
 		buttons  = bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_LEFT));
 		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
 		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) << 2;
-
 		m_machine->mouse_motion(_event.motion.xrel, -_event.motion.yrel, 0, buttons);
-
-		SDL_WarpMouseInWindow(m_SDL_window, m_width/2, m_height/2);
-		m_mouse.warped = true;
-
 		break;
 
 	case SDL_MOUSEBUTTONDOWN:
