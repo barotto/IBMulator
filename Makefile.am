@@ -141,6 +141,8 @@ share/ibmulator/extra/SPKRTONE.EXE \
 share/ibmulator/extra/SPKRWAV.C \
 share/ibmulator/extra/SPKRWAV.EXE \
 share/ibmulator/extra/HDDTEST.C \
-share/ibmulator/extra/FDDTEST.C
+share/ibmulator/extra/FDDTEST.C \
+share/ibmulator/extra/MEMDUMP.C \
+share/ibmulator/extra/MEMDUMP.EXE
 
 EXTRA_DIST = README.md
