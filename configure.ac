@@ -1,7 +1,7 @@
 #######################################################################
 # Initial configuration                                               #
 #######################################################################
-define([IBMULATOR_VERSION],[0.9 WIP])
+define([IBMULATOR_VERSION],[0.9 beta1])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
@@ -62,7 +62,7 @@ fi
 if test x$have_windows = xno ; then
 	separator="/"
 	static="no"
-	SDL_VERSION=2.0.0
+	SDL_VERSION=2.0.4
 else
 	separator="\\\\"
 	#-mno-ms-bitfields is required for the __attribute__(packed) to work
