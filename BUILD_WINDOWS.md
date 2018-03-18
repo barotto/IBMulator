@@ -139,7 +139,7 @@ libpng16-16.dll
 libsamplerate-0.dll
 libstdc++-6.dll
 libtiff-5.dll
-libwebp-6.dll
+libwebp-7.dll
 libwinpthread-1.dll
 SDL2.dll
 SDL2_image.dll
@@ -154,8 +154,7 @@ libRocketCore.dll
 libRocketDebugger.dll
 ```
 
-Keep in mind though that this list can change depending on the current version
-of MSYS2/MinGW.
+**NOTE:** this list can change depending on the current version of MSYS2/MinGW.
 
 ## Statically linked version
 If you want to remove external DLLs dependencies and statically link
@@ -166,13 +165,15 @@ streamlined release package.
 The version of FreeType available through the mingw64 repo is not statically
 linkable because it depends on a HarfBuzz version which, at this time, has
 problems linking to `graphite2.a`. This problem should be resolved in a 
-future MSYS2 version.
+future MSYS2 version.  
+Relevant issue: https://github.com/harfbuzz/harfbuzz/issues/720
 
-First of all remove the previously installed FreeType:  
+Open the **MSYS2 MSYS** shell and remove the previously installed FreeType
+package:  
 `pacman -Rsc mingw-w64-x86_64-freetype`
 
-Move inside your workspace and download, build, and install the current
-version:  
+Open the **MSYS2 MinGW 64-bit** shell and move inside your workspace. Download,
+build, and install the current version of FreeType:  
 ```
 git clone git://git.sv.nongnu.org/freetype/freetype2.git
 cd freetype2
