@@ -145,6 +145,7 @@ void SystemROM::load(const std::string _romset)
 		}
 		PINFOF(LOG_V0, LOG_MACHINE, "BIOS date: %s\n", biosdate.c_str());
 	}
+	PINFOF(LOG_V1, LOG_MACHINE, "BIOS checksum: 0x%02X\n", m_data[BIOS_OFFSET+0xFFFF]);
 }
 
 void SystemROM::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
@@ -160,15 +161,21 @@ void SystemROM::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
 	}
 
 	uint32_t off = BIOS_OFFSET + m_bios.hdd_ptable_off + _table_entry_id*16;
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Custom HDD table_entry_id=%d, addr=%x\n", _table_entry_id, off);
+
+	// update the parameters table
 	size_check<HDDParams, 16>();
 	memcpy(&m_data[off], &_params, 16);
 
-	//update the BIOS checksum
+	// update the BIOS checksum
 	uint8_t sum = 0;
-	for(int i=0; i<BIOS_SIZE; i++) {
-		sum += m_data[BIOS_OFFSET+i];
+	for(int i=0; i<BIOS_SIZE-1; i++) {
+		sum += m_data[BIOS_OFFSET + i];
 	}
-	m_data[BIOS_OFFSET + BIOS_SIZE - 1] = (~sum) + 1;
+	sum = (~sum) + 1;
+	m_data[BIOS_OFFSET + BIOS_SIZE - 1] = sum;
+
+	PDEBUGF(LOG_V1, LOG_MACHINE, "New BIOS checksum: 0x%02X\n", sum);
 }
 
 int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
