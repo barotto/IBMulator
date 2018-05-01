@@ -190,11 +190,12 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 	int paddress = _paddress*m_paddress;
 #endif
 	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
+	int amount = _amount;
 	// fill until the requested amount is reached or there are available cycles
 	// and there are free space in the queue
-	while((_amount>0 || _cycles>cycles) && m_s.pq_tail <= pq_limit) {
+	while((amount>0 || _cycles>cycles) && m_s.pq_tail <= pq_limit) {
 	/* alternative, more permissive strategy:
-	 * while((_amount>0 || (_cycles && _cycles>=cycles)) && m_s.pq_tail <= pq_limit)
+	 * while((amount>0 || (_cycles && _cycles>=cycles)) && m_s.pq_tail <= pq_limit)
 	 */
 		int adv = bytes - (m_s.pq_tail & (bytes-1));
 		int c = 0;
@@ -261,7 +262,7 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 		cycles += c;
 		pq_ptr += adv;
 		m_s.pq_tail += adv;
-		_amount -= adv;
+		amount -= adv;
 		m_s.pq_len += adv;
 	}
 	m_s.pq_valid = true;
