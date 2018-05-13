@@ -1168,6 +1168,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 					case CRTC_STARTADDR_LO: // 0x0D
 						// Start address change
 						if(m_s.graphics_ctrl.graphics_alpha) {
+							m_s.CRTC.start_address_modified = true;
 							needs_update = true;
 						} else {
 							m_s.vga_mem_updated = true;
@@ -1583,7 +1584,21 @@ void VGA::update(uint64_t _time)
 				break;
 		}
 
-		m_s.vga_mem_updated = false;
+		if(m_s.CRTC.start_address_modified) {
+			/* [GitHub's issue #28]
+			 * Some programs (eg. SQ1 VGA) don't wait for display enable (pixel
+			 * data being displayed) to change the start address, so the frame is
+			 * updated before the start address is latched. The result is that
+			 * at the next update, when the address is finally latched, the screen
+			 * is not updated as it should. If this is the case, redraw the whole
+			 * area again.
+			 * See Abrash's Black Book L23-1 to see how to correctly use the
+			 * CRTC start address.
+			 */
+			redraw_area(0, 0, m_s.last_xres, m_s.last_yres);
+		} else {
+			m_s.vga_mem_updated = false;
+		}
 
 	} else {
 

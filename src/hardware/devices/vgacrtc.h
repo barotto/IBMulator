@@ -113,9 +113,11 @@ struct VGA_CRTC
 	uint8_t reg[0x19];
 	bool interrupt;
 	uint16_t start_address;
+	bool start_address_modified;
 
 	void latch_start_address() {
 		start_address = (reg[CRTC_STARTADDR_HI] << 8) | reg[CRTC_STARTADDR_LO];
+		start_address_modified = false;
 	}
 	bool write_protect() const {
 		return ((reg[CRTC_VRETRACE_END] & CRTC_PROT) > 0);
