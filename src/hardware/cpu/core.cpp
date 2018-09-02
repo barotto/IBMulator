@@ -285,7 +285,7 @@ void CPUCore::load_segment_protected(SegReg & _segreg, uint16_t _value)
 			if((selector.rpl > descriptor.dpl) || (CPL > descriptor.dpl)) {
 				PDEBUGF(LOG_V2, LOG_CPU, "load_segment_protected(%s, 0x%04x): RPL & CPL must be <= DPL\n",
 						_segreg.to_string(), _value);
-				CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
+				throw CPUException(CPU_GP_EXC, _value & SELECTOR_RPL_MASK);
 			}
 		}
 
