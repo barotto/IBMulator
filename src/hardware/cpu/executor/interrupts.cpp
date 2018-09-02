@@ -255,6 +255,14 @@ void CPUExecutor::interrupt_same_privilege(Descriptor &gate_descriptor,
 	// push flags onto stack
 	// push current CS selector onto stack
 	// push return IP onto stack
+
+	/* TODO
+	The Intel486 processor implements the error code pushed on the stack as a 16-bit value. When pushed onto a 32-
+	bit stack, the Intel486 processor only pushes 2 bytes and updates ESP by 4. The P6 family and Pentium processors’
+	error code is a full 32 bits with the upper 16 bits set to zero. The P6 family and Pentium processors, therefore, push
+	4 bytes and update ESP by 4. Any code that relies on the state of the upper 16 bits may produce inconsistent
+	results.
+	 */
 	if(gate_descriptor.type >= DESC_TYPE_386_INTR_GATE) {
 		stack_push_dword(GET_EFLAGS());
 		stack_push_dword(REG_CS.sel.value);

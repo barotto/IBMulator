@@ -810,6 +810,12 @@ void CPUExecutor::iret_pmode(bool _32bit)
 		// load the SS-cache with SS descriptor
 		SET_SS(ss_selector, ss_descriptor, cs_selector.rpl);
 		if(ss_descriptor.big) {
+			/* TODO
+			If a call or interrupt is made from a 32-bit stack environment through a 16-bit gate, only 16 bits of the old ESP can
+			be pushed onto the stack. On the subsequent RET/IRET, the 16-bit ESP is popped but the full 32-bit ESP is updated
+			since control is being resumed in a 32-bit stack environment. The Intel486 processor writes the SS selector into the
+			upper 16 bits of ESP. The P6 family and Pentium processors write zeros into the upper 16 bits.
+			*/
 			REG_ESP = new_esp;
 		} else {
 			REG_SP = new_esp;
@@ -989,6 +995,12 @@ void CPUExecutor::return_far_pmode(uint16_t _pop_bytes, bool _32bit)
 		}
 
 		if(ss_descriptor.big) {
+			/* TODO
+			If a call or interrupt is made from a 32-bit stack environment through a 16-bit gate, only 16 bits of the old ESP can
+			be pushed onto the stack. On the subsequent RET/IRET, the 16-bit ESP is popped but the full 32-bit ESP is updated
+			since control is being resumed in a 32-bit stack environment. The Intel486 processor writes the SS selector into the
+			upper 16 bits of ESP. The P6 family and Pentium processors write zeros into the upper 16 bits.
+			*/
 			REG_ESP = return_ESP + _pop_bytes;
 		} else {
 			REG_SP  = uint16_t(return_ESP + _pop_bytes);

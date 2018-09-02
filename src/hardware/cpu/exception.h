@@ -29,27 +29,27 @@
  * an instruction cannot be completed normally. (cfr. 9-1)
  */
 enum CPUExceptionVector {
-	CPU_DIV_ER_EXC      = 0,  // Divide Error exception
-	CPU_DEBUG_EXC       = 1,  // Breakpoint/Single step interrupt (286) - Debug (386)
-	CPU_NMI_INT         = 2,  // NMI interrupt
-	CPU_BREAKPOINT_INT  = 3,  // INT3 (breakpoint) interrupt
-	CPU_INTO_EXC        = 4,  // INTO detected overflow exception
-	CPU_BOUND_EXC       = 5,  // BOUND range exceeded exception
-	CPU_UD_EXC          = 6,  // Undefined opcode exception (rmode/pmode)
-	CPU_NM_EXC          = 7,  // NPX not available exception (rmode/pmode)
-	CPU_IDT_LIMIT_EXC   = 8,  // Interrupt table limit too small exception (rmode)
-	CPU_DF_EXC          = 8,  // Double Fault exception (pmode)
-	CPU_NPX_SEG_OVR_INT = 9,  // NPX segment overrun interrupt (rmode)
-	CPU_MP_EXC          = 9,  // NPX protection fault exception (pmode)
-	CPU_TS_EXC          = 10, // Invalid Task State Segment exception (pmode)
-	CPU_NP_EXC          = 11, // Segment Not Present exception (pmode)
-	CPU_SS_EXC          = 12, // Stack Fault exception (pmode)
-	CPU_SEG_OVR_EXC     = 13, // Segment overrun exception (rmode)
-	CPU_GP_EXC          = 13, // General Protection exception (pmode)
-	CPU_PF_EXC          = 14, // Page fault (pmode)
-	//                    15  // Reserved
-	CPU_NPX_ERR_INT     = 16, // NPX error interrupt (rmode)
-	CPU_MF_EXC          = 16, // Math Fault exception (pmode)
+	CPU_DIV_ER_EXC      = 0,  // #DE Divide Error exception
+	CPU_DEBUG_EXC       = 1,  // #DB Breakpoint/Single step interrupt (286) - Debug (386)
+	CPU_NMI_INT         = 2,  //     NMI interrupt
+	CPU_BREAKPOINT_INT  = 3,  // #BP INT3 (breakpoint) interrupt
+	CPU_INTO_EXC        = 4,  // #OF INTO detected overflow exception
+	CPU_BOUND_EXC       = 5,  // #BR BOUND range exceeded exception
+	CPU_UD_EXC          = 6,  // #UD Undefined opcode exception (rmode/pmode)
+	CPU_NM_EXC          = 7,  // #NM NPX not available exception (rmode/pmode)
+	CPU_IDT_LIMIT_EXC   = 8,  //     Interrupt table limit too small exception (rmode)
+	CPU_DF_EXC          = 8,  // #DF Double Fault exception (pmode)
+	CPU_NPX_SEG_OVR_INT = 9,  //     NPX segment overrun interrupt (rmode)
+	CPU_MP_EXC          = 9,  // #MP NPX protection fault exception (pmode)
+	CPU_TS_EXC          = 10, // #TS Invalid Task State Segment exception (pmode)
+	CPU_NP_EXC          = 11, // #NP Segment Not Present exception (pmode)
+	CPU_SS_EXC          = 12, // #SS Stack Fault exception (pmode)
+	CPU_SEG_OVR_EXC     = 13, //     Segment overrun exception (rmode)
+	CPU_GP_EXC          = 13, // #GP General Protection exception (pmode)
+	CPU_PF_EXC          = 14, // #PF Page fault (pmode)
+	//                    15  //     Reserved
+	CPU_NPX_ERR_INT     = 16, //     NPX error interrupt (rmode)
+	CPU_MF_EXC          = 16, // #MF Math Fault exception (pmode)
 
 	CPU_MAX_INT,
 	CPU_INVALID_INT = CPU_MAX_INT
