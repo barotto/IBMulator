@@ -33,7 +33,7 @@ void CPUExecutor::seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len,
 			PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment limit violation exp.down\n");
 			throw CPUException(_vector, _errcode);
 		}
-	} else if(_offset+_len-1 > _seg.desc.limit) {
+	} else if((_len-1) > _seg.desc.limit || _offset > (_seg.desc.limit-(_len-1))) {
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_read(): segment limit violation\n");
 		throw CPUException(_vector, _errcode);
 	}
@@ -60,7 +60,7 @@ void CPUExecutor::seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len
 			PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment limit violation exp.down\n");
 			throw CPUException(_vector, _errcode);
 		}
-	} else if(_offset+_len-1 > _seg.desc.limit) {
+	} else if((_len-1) > _seg.desc.limit || _offset > (_seg.desc.limit-(_len-1))) {
 		PDEBUGF(LOG_V2, LOG_CPU, "seg_check_write(): segment limit violation\n");
 		throw CPUException(_vector, _errcode);
 	}
