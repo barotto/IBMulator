@@ -207,6 +207,7 @@ private:
 	void prefix_0F(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void prefix_0F_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void illegal_opcode();
+	bool is_lockable();
 
 	inline uint8_t fetchb() {
 		uint8_t b = g_cpubus.fetchb();

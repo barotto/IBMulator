@@ -33,6 +33,7 @@ Instruction * CPUDecoder::decode()
 	uint8_t opcode;
 	unsigned cycles_table = CTB_IDX_NONE;
 	unsigned cycles_op = 0;
+	bool lock = false;
 
 	m_ilen = 0;
 	m_instr.valid = true;
@@ -103,7 +104,7 @@ restart_opcode:
 			}
 		}
 		case 0xF0: { // LOCK
-			PDEBUGF(LOG_V2, LOG_CPU, "LOCK\n");
+			lock = true;
 			goto restart_opcode;
 		}
 		case 0xF1: {
@@ -152,6 +153,11 @@ restart_opcode:
 			break;
 		}
 	}
+	if(UNLIKELY(lock)) {
+		if(!is_lockable() || m_instr.modrm.mod_is_reg()) {
+			illegal_opcode();
+		}
+	}
 	m_instr.cycles = ms_cycles[cycles_table][cycles_op*CPU_COUNT + (CPU_FAMILY-CPU_286)];
 	m_instr.size = m_ilen;
 
@@ -164,4 +170,51 @@ void CPUDecoder::illegal_opcode()
 	 * illegal opcodes throw an exception only when executed.
 	 */
 	m_instr.valid = false;
+}
+
+bool CPUDecoder::is_lockable()
+{
+	switch(m_instr.opcode) {
+		case 0x80:
+		case 0x81:
+		case 0x82:
+		case 0x83:
+			if(m_instr.modrm.n == 7) {
+				// CMP
+				return false;
+			}
+			// ADD, OR, ADC, SBB, AND, SUB, XOR
+			return true;
+		case 0x86:
+		case 0x87:
+			// XCHG
+			return true;
+		case 0xF6:
+		case 0xF7:
+			if(m_instr.modrm.n == 2 || m_instr.modrm.n == 3) {
+				// NOT, NEG
+				return true;
+			}
+			return false;
+		case 0xFE:
+		case 0xFF:
+			if(m_instr.modrm.n <= 1) {
+				// INC, DEC
+				return true;
+			}
+			return false;
+		case 0x0FAB: // BTS
+		case 0x0FB3: // BTR
+		case 0x0FBB: // BTC
+			return true;
+		case 0x0FBA:
+			if(m_instr.modrm.n >= 5) {
+				// BTC, BTR, BTS
+				return true;
+			}
+			return false;
+		default:
+			break;
+	}
+	return false;
 }
