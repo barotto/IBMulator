@@ -138,6 +138,15 @@ void CPUExecutor::execute(Instruction * _instr)
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
+	if(UNLIKELY(m_instr->lock)) {
+		// 80286 in protected mode:
+		// #GP(O) if the current privilege level is bigger (less privileged)
+		// than the I/O privilege level.
+		if(CPU_FAMILY==CPU_286 && IS_PMODE() && CPL>FLAG_IOPL) {
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+	}
+
 	static CPUExecutor_fun exec_fn;
 
 	if(!m_instr->rep || m_instr->rep_first) {

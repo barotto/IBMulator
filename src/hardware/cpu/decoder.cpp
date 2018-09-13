@@ -33,7 +33,6 @@ Instruction * CPUDecoder::decode()
 	uint8_t opcode;
 	unsigned cycles_table = CTB_IDX_NONE;
 	unsigned cycles_op = 0;
-	bool lock = false;
 
 	m_ilen = 0;
 	m_instr.valid = true;
@@ -42,6 +41,7 @@ Instruction * CPUDecoder::decode()
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
+	m_instr.lock = false;
 	m_instr.seg = REGI_NONE;
 	m_instr.eip = g_cpubus.eip();
 	m_instr.cseip = g_cpubus.cseip();
@@ -104,7 +104,7 @@ restart_opcode:
 			}
 		}
 		case 0xF0: { // LOCK
-			lock = true;
+			m_instr.lock = true;
 			goto restart_opcode;
 		}
 		case 0xF1: {
@@ -153,7 +153,7 @@ restart_opcode:
 			break;
 		}
 	}
-	if(UNLIKELY(lock)) {
+	if(UNLIKELY(m_instr.lock) && CPU_FAMILY>CPU_286) {
 		if(!is_lockable() || m_instr.modrm.mod_is_reg()) {
 			illegal_opcode();
 		}

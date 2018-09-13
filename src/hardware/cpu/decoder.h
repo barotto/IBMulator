@@ -135,6 +135,7 @@ struct Instruction
 	bool rep_first;     // true at the first execution of a string operation
 	bool rep_zf;        // tells the executor that the exit condition is by checking the ZF
 	bool rep_equal;     // true if REPE, false if REPNE
+	bool lock;          // true if LOCK prefix present
 	uint32_t eip;       // the instruction EIP value
 	uint32_t cseip;     // the instruction linear memory address
 	uint size;          // total size of the instruction (prefixes included)
