@@ -38,7 +38,7 @@ private:
 	typedef struct {
 		uint32_t lpf;   // linear page frame
 		uint32_t ppf;   // physical page frame
-		unsigned protection;
+		uint32_t protection;
 	} TLBEntry;
 
 	TLBEntry m_TLB[TLB_SIZE];
