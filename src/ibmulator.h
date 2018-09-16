@@ -73,6 +73,7 @@
 	#define CONFIG_PARSE      true
 	#define MEMORY_TRAPS      true
 	#define INT_TRAPS         true
+	#define INT1_PAUSE        false
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0xFF
@@ -92,6 +93,7 @@
 	#define CONFIG_PARSE      true
 	#define MEMORY_TRAPS      false
 	#define INT_TRAPS         false
+	#define INT1_PAUSE        false
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0xFF

@@ -2007,10 +2007,18 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 	g_cpu.interrupt(_vector, _type, false, 0);
 }
 
-void CPUExecutor::INT1()   { INT(1, CPU_PRIVILEGED_SOFTWARE_INTERRUPT); }
 void CPUExecutor::INT3()   { INT(3, CPU_SOFTWARE_EXCEPTION); }
 void CPUExecutor::INT_ib() { INT(m_instr->ib, CPU_SOFTWARE_INTERRUPT); }
 void CPUExecutor::INTO()   { if(FLAG_OF) INT(4, CPU_SOFTWARE_EXCEPTION); }
+
+void CPUExecutor::INT1()
+{
+#if INT1_PAUSE
+	g_machine.set_single_step(true);
+#else
+	INT(1, CPU_PRIVILEGED_SOFTWARE_INTERRUPT);
+#endif
+}
 
 
 /*******************************************************************************
