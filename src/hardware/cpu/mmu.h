@@ -30,6 +30,8 @@ extern CPUMMU g_cpummu;
 #define LPF_MASK           0xFFFFF000
 #define LPF_OF(laddr)      ((laddr) & LPF_MASK)
 #define PAGE_OFFSET(laddr) (uint32_t(laddr) & 0xFFF)
+#define PAGE_DIR_ENTRY(laddr) ((laddr>>22) & 0x3FF)
+#define PAGE_TBL_ENTRY(laddr) ((laddr>>12) & 0x3FF)
 
 
 class CPUMMU
@@ -38,7 +40,7 @@ private:
 	typedef struct {
 		uint32_t lpf;   // linear page frame
 		uint32_t ppf;   // physical page frame
-		uint32_t protection;
+		uint32_t access;
 	} TLBEntry;
 
 	TLBEntry m_TLB[TLB_SIZE];
@@ -55,7 +57,7 @@ private:
 	}
 
 	void TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _write);
-	void page_check(unsigned _protection, uint32_t _linear, bool _user, bool _write);
+	void protection_check(unsigned _protection, uint32_t _linear, bool _write);
 	void page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write);
 };
 

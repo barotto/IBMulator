@@ -33,16 +33,22 @@ enum PageProtection {
 #define PAGE_ACCESSED 0x20
 #define PAGE_DIRTY    0x40
 
-void CPUMMU::page_fault(unsigned _fault, uint32_t _linear, bool _user, bool _write)
+void CPUMMU::page_fault(unsigned _prot, uint32_t _linear, bool _user, bool _write)
 {
-	uint32_t error_code = _fault | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
+	uint32_t error_code = _prot | (uint32_t(_user) << 2) | (uint32_t(_write) << 1);
 	SET_CR2(_linear);
-	PDEBUGF(LOG_V2, LOG_MMU, "page fault at %08X:%08X, %s, %s, %s\n", _linear, REG_EIP,
-			(_fault)?"protection":"not present", (_user)?"user":"supervisor", (_write)?"write":"read");
+	if(_prot) {
+		assert(_user);
+		PDEBUGF(LOG_V1, LOG_MMU, "#PF at %08X, protection, user, %s\n", _linear,
+			(_write)?"write":"read");
+	} else {
+		PDEBUGF(LOG_V2, LOG_MMU, "#PF at %08X, not present, %s, %s\n", _linear,
+			(_user)?"user":"supervisor", (_write)?"write":"read");
+	}
 	throw CPUException(CPU_PF_EXC, error_code);
 }
 
-void CPUMMU::page_check(unsigned _prot, uint32_t _linear, bool _user, bool _write)
+void CPUMMU::protection_check(unsigned _prot, uint32_t _linear, bool _write)
 {
 	static const unsigned combined_protection[16] = {
 		PAGE_SUPER, // super r  super r
@@ -62,13 +68,9 @@ void CPUMMU::page_check(unsigned _prot, uint32_t _linear, bool _user, bool _writ
 		PAGE_READ,  // user  w  user  r
 		PAGE_WRITE  // user  w  user  w
 	};
-	if(_user) {
-		if(combined_protection[_prot] == PAGE_SUPER) {
-			page_fault(PF_PROTECTION, _linear, true, _write);
-		}
-		if(_write && (combined_protection[_prot] == PAGE_READ)) {
-			page_fault(PF_PROTECTION, _linear, true, true);
-		}
+	if(combined_protection[_prot] == PAGE_SUPER ||
+	  (_write && (combined_protection[_prot] == PAGE_READ))) {
+		page_fault(PF_PROTECTION, _linear, true, _write);
 	}
 }
 
@@ -131,27 +133,33 @@ void CPUMMU::TLB_miss(uint32_t _linear, TLBEntry *_tlbent, bool _user, bool _wri
 		ppf = entry[table] & 0xFFFFF000;
 	}
 
-	// Raise protection #PF
-	page_check(prot, _linear, _user, _write);
+	if(_user) {
+		// Raise protection #PF
+		protection_check(prot, _linear, _write);
+	}
 
 	// Update TLB entry
 	_tlbent->lpf = LPF_OF(_linear);
 	_tlbent->ppf = ppf;
-	_tlbent->protection = _write | (_user<<1);
+	_tlbent->access |= _write | (_user<<1);
+
+	PDEBUGF(LOG_V2, LOG_MMU, "  %s %s access, page 0x%08x\n",
+			(_user?"user":"super"), (_write?"w":"r"), _tlbent->ppf);
 
 	// Update PDE A bit
 	if(!(entry[PDIR] & PAGE_ACCESSED)) {
 		entry[PDIR] |= PAGE_ACCESSED;
 		g_cpubus.mem_write<4>(entry_addr[PDIR], entry[PDIR]);
-		PDEBUGF(LOG_V2, LOG_MMU, "Updating PDE A bit for 0x%08x at 0x%08x (0x%08x)\n",
-				_linear, entry_addr[PDIR], entry[PDIR]);
+		PDEBUGF(LOG_V2, LOG_MMU, "Updating PDE %04x A bit, page 0x%08x at 0x%08x (0x%08x)\n",
+				PAGE_DIR_ENTRY(_linear), _tlbent->ppf, entry_addr[PDIR], entry[PDIR]);
 	}
 	// Update PTE A and D bits
 	if(!(entry[PTBL] & PAGE_ACCESSED) || (_write && !(entry[PTBL] & PAGE_DIRTY))) {
 		entry[PTBL] |= (PAGE_ACCESSED | (_write << 6));
 		g_cpubus.mem_write<4>(entry_addr[PTBL], entry[PTBL]);
-		PDEBUGF(LOG_V2, LOG_MMU, "Updating PTE A/D bits for 0x%08x at 0x%08x (0x%08x)\n",
-				_linear, entry_addr[PTBL], entry[PTBL]);
+		PDEBUGF(LOG_V2, LOG_MMU, "Updating PTE %04x %s, page 0x%08x at 0x%08x (0x%08x)\n",
+				PAGE_TBL_ENTRY(_linear), _write?"A/D bits":"A bit",
+				_tlbent->ppf, entry_addr[PTBL], entry[PTBL]);
 	}
 }
 
@@ -171,10 +179,16 @@ uint32_t CPUMMU::TLB_lookup(uint32_t _linear, unsigned _len, bool _user, bool _w
 
 	// check if TLB has page entry
 	if(tlbent->lpf == LPF_OF(_linear)) {
-		// check if TLB permissions allow for access
-		if((tlbent->protection & 2) == _user && (tlbent->protection & 1) == _write) {
+		// check TLB bits for access, allow if:
+		//  on read: is supervisor or there was previous successful user access
+		//  on write: is supervisor or there was previous successful user access AND
+		//            there was previous successful write access
+		if((!_user || (tlbent->access & 2)) &&
+		   (!_write || (tlbent->access & 1))) {
 			return tlbent->ppf | PAGE_OFFSET(_linear);
 		}
+	} else {
+		tlbent->access = 0;
 	}
 	// re-walk page tables and raise faults if necessary
 	TLB_miss(_linear, tlbent, _user, _write);
