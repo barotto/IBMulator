@@ -107,7 +107,7 @@ void CPUExecutor::execute(Instruction * _instr)
 		}
 	}
 
-	if(old_eip + m_instr->size > GET_LIMIT(CS)) {
+	if(old_eip + (m_instr->size-1) > GET_LIMIT(CS)) {
 		// Priority 7:
 		//  Code-Segment Limit Violation
 		PERRF(LOG_CPU, "CS limit violation!\n");
