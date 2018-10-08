@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -70,23 +70,23 @@
 
 #ifndef NDEBUG
 	//DEBUG
-	#define CONFIG_PARSE      true
-	#define MEMORY_TRAPS      true
-	#define INT_TRAPS         true
-	#define INT1_PAUSE        false
-	#define STOP_AT_MEM_TRAPS false
-	#define STOP_AT_EXC       false
-	#define STOP_AT_EXC_VEC   0xFF
-	#define UD6_AUTO_DUMP     false
-	#define BOCHS_BIOS_COMPAT false
+	#define CONFIG_PARSE      true   // enable ini file parsing
+	#define MEMORY_TRAPS      true   // enable memory traps
+	#define INT_TRAPS         true   // enable interrupt traps
+	#define INT1_PAUSE        false  // pause emulation at INT 1
+	#define STOP_AT_MEM_TRAPS false  // pause emulation at memory traps hit
+	#define STOP_AT_EXC       false  // pause emulation at exception defined in STOP_AT_EXC_VEC
+	#define STOP_AT_EXC_VEC   0x3000 // bitmask of exceptions to pause at
+	#define UD6_AUTO_DUMP     false  // automatic memory dump at #UD exception
+	#define BOCHS_BIOS_COMPAT false  // anable legacy Bochs' BIOS compatibility
 
-	#define LOG_DEBUG_MESSAGES    true
-	#define LOG_MACHINE_TIME      true
-	#define LOG_MACHINE_TIME_NS   true
-	#define LOG_CSIP              true
-	#define DEFAULT_LOG_VERBOSITY LOG_V0
+	#define LOG_DEBUG_MESSAGES    true   // enable debug messages logging
+	#define LOG_MACHINE_TIME      true   // enable machine time logging
+	#define LOG_MACHINE_TIME_NS   true   // enable nanosecond time logging
+	#define LOG_CSIP              true   // enable CS:eIP logging
+	#define DEFAULT_LOG_VERBOSITY LOG_V0 // default logger verbosity level
 
-	#define SHOW_CURRENT_PROGRAM_NAME true
+	#define SHOW_CURRENT_PROGRAM_NAME true // enable running DOS program name visualization
 
 #else
 	//RELEASE
@@ -96,7 +96,7 @@
 	#define INT1_PAUSE        false
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
-	#define STOP_AT_EXC_VEC   0xFF
+	#define STOP_AT_EXC_VEC   0
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
 

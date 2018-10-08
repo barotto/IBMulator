@@ -35,23 +35,23 @@
 CPU g_cpu;
 
 const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #0  CPU_DIV_ER_EXC
-	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #1  CPU_DEBUG_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #2  CPU_NMI_INT
-	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #3  CPU_BREAKPOINT_INT
-	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false }, // #4  CPU_INTO_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #5  CPU_BOUND_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #6  CPU_UD_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #7  CPU_NM_EXC
-	{ CPU_DOUBLE_FAULT,     CPU_ABORT_EXC, true  }, // #8  CPU_DF_EXC
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false }, // #9  CPU_MP_EXC (Bochs has benign)
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #10 CPU_TS_EXC
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #11 CPU_NP_EXC
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #12 CPU_SS_EXC
-	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true  }, // #13 CPU_GP_EXC
-	{ CPU_PAGE_FAULTS,      CPU_FAULT_EXC, true  }, // #14 CPU_PF_EXC
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }, // #15 reserved
-	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false }  // #16 CPU_MF_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false, "#DE" }, // #0  CPU_DIV_ER_EXC
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false, "#DB" }, // #1  CPU_DEBUG_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "NMI" }, // #2  CPU_NMI_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false, "#BP" }, // #3  CPU_BREAKPOINT_INT
+	{ CPU_BENIGN_EXC,       CPU_TRAP_EXC,  false, "#OF" }, // #4  CPU_INTO_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "#BR" }, // #5  CPU_BOUND_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "#UD" }, // #6  CPU_UD_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "#NM" }, // #7  CPU_NM_EXC
+	{ CPU_DOUBLE_FAULT,     CPU_ABORT_EXC, true , "#DF" }, // #8  CPU_DF_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, false, "#MP" }, // #9  CPU_MP_EXC (Bochs has benign)
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true , "#TS" }, // #10 CPU_TS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true , "#NP" }, // #11 CPU_NP_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true , "#SS" }, // #12 CPU_SS_EXC
+	{ CPU_CONTRIBUTORY_EXC, CPU_FAULT_EXC, true , "#GP" }, // #13 CPU_GP_EXC
+	{ CPU_PAGE_FAULTS,      CPU_FAULT_EXC, true , "#PF" }, // #14 CPU_PF_EXC
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "res" }, // #15 reserved
+	{ CPU_BENIGN_EXC,       CPU_FAULT_EXC, false, "#MF" }  // #16 CPU_MF_EXC
 };
 
 
@@ -252,8 +252,8 @@ uint CPU::step()
 			}
 			m_instr->cycles.rep = 0;
 		} catch(CPUException &e) {
-			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %u\n", e.vector);
-			if(STOP_AT_EXC && (STOP_AT_EXC_VEC==0xFF || e.vector==STOP_AT_EXC_VEC)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "CPU exception %s\n", e.name());
+			if(STOP_AT_EXC && ((1<<e.vector)&STOP_AT_EXC_VEC)) {
 				g_machine.set_single_step(true);
 				if(e.vector == CPU_UD_EXC && UD6_AUTO_DUMP) {
 					PERRF(LOG_CPU,"illegal opcode at 0x%07X, dumping code segment\n", m_instr->cseip);
@@ -568,8 +568,7 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 	}
 
 	if(typestr) {
-		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, TYPE = %s(%u), EXT = %u\n",
-			_vector, typestr, _type, m_s.EXT);
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): vector = %02x, %s\n", _vector, typestr);
 	}
 
 	// Discard any traps and inhibits for new context; traps will

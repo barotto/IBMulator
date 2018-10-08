@@ -83,6 +83,7 @@ struct CPUExceptionInfo
 	unsigned exc_type;
 	unsigned exc_class;
 	bool push_error;
+	const char *name;
 };
 
 extern const CPUExceptionInfo g_cpu_exceptions[];
@@ -96,6 +97,11 @@ public:
 	CPUException() : vector(CPU_INVALID_INT), error_code(0) { }
 	CPUException(uint8_t _vector, uint16_t _error_code)
 	: vector(_vector), error_code(_error_code) { }
+
+	const char* name() const {
+		assert(vector < CPU_MAX_INT);
+		return g_cpu_exceptions[vector].name;
+	}
 };
 
 class CPUShutdown : public std::runtime_error
