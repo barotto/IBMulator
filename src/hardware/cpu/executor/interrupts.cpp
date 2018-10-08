@@ -135,13 +135,13 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 
 	if(IS_V8086() && cs_descriptor.dpl != 0) {
 		// if code segment DPL != 0 then #GP(new code segment selector)
-		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): code segment DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt_inner_privilege(): code segment DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
 		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// Selector must be non-null else #TS(EXT)
 	if((SS_for_cpl_x & SELECTOR_RPL_MASK) == 0) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS selector null\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_inner_privilege(): SS selector null\n");
 		throw CPUException(CPU_TS_EXC, 0); /* TS(ext) */
 	}
 
@@ -153,21 +153,21 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 	try {
 		ss_descriptor = fetch_descriptor(ss_selector, CPU_TS_EXC);
 	} catch(CPUException &e) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad ss_selector fetch\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_inner_privilege(): bad ss_selector fetch\n");
 		throw;
 	}
 
 	// selector rpl must = dpl of code segment,
 	// else #TS(SS selector + ext)
 	if(ss_selector.rpl != cs_descriptor.dpl) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.rpl != CS.dpl\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_inner_privilege(): SS.rpl != CS.dpl\n");
 		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 	}
 
 	// stack seg DPL must = DPL of code segment,
 	// else #TS(SS selector + ext)
 	if(ss_descriptor.dpl != cs_descriptor.dpl) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS.dpl != CS.dpl\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_inner_privilege(): SS.dpl != CS.dpl\n");
 		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 	}
 
@@ -175,19 +175,19 @@ void CPUExecutor::interrupt_inner_privilege(Descriptor &gate_descriptor,
 	// else #TS(SS selector + EXT)
 	if(!ss_descriptor.valid || !ss_descriptor.is_data_segment() || !ss_descriptor.is_writeable())
 	{
-		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): SS is not writable data segment\n");
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt_inner_privilege(): SS is not writable data segment\n");
 		throw CPUException(CPU_TS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 	}
 
 	// seg must be present, else #SS(SS selector + ext)
 	if(!ss_descriptor.present) {
-		PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): SS not present\n");
+		PDEBUGF(LOG_V1,LOG_CPU, "interrupt_inner_privilege(): SS not present\n");
 		throw CPUException(CPU_SS_EXC, SS_for_cpl_x & SELECTOR_RPL_MASK);
 	}
 
 	// IP must be within CS segment boundaries, else #GP(0)
 	if(gate_descriptor.offset > cs_descriptor.limit) {
-		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): gate EIP > CS.limit\n");
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt_inner_privilege(): gate EIP > CS.limit\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
@@ -242,13 +242,13 @@ void CPUExecutor::interrupt_same_privilege(Descriptor &gate_descriptor,
 {
 	if(IS_V8086() && (cs_descriptor.is_conforming() || cs_descriptor.dpl != 0)) {
 		// if code segment DPL != 0 then #GP(new code segment selector)
-		PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): code segment conforming or DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
+		PDEBUGF(LOG_V2, LOG_CPU, "interrupt_same_privilege(): code segment conforming or DPL(%d) != 0 in v8086 mode\n", cs_descriptor.dpl);
 		throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 	}
 
 	// EIP must be in CS limit else #GP(0)
 	if(gate_descriptor.offset > cs_descriptor.limit) {
-		PDEBUGF(LOG_V1,LOG_CPU,"interrupt(): IP > CS descriptor limit\n");
+		PDEBUGF(LOG_V1,LOG_CPU,"interrupt_same_privilege(): IP > CS descriptor limit\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
@@ -294,7 +294,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// else #GP(vector*8 + 2 + EXT)
 	if((vector*8 + 7u) > GET_LIMIT(IDTR)) {
 		PDEBUGF(LOG_V2,LOG_CPU,
-			"interrupt(): vector must be within IDT table limits, IDT.limit = 0x%x\n",
+			"interrupt_pmode(): vector must be within IDT table limits, IDT.limit = 0x%x\n",
 			GET_LIMIT(IDTR));
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
@@ -303,7 +303,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 	if(!gate_descriptor.valid || gate_descriptor.segment) {
 		PDEBUGF(LOG_V2,LOG_CPU,
-				"interrupt(): gate descriptor is not valid sys seg (vector=0x%02x)\n",
+				"interrupt_pmode(): gate descriptor is not valid sys seg (vector=0x%02x)\n",
 				vector);
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
@@ -318,7 +318,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		case DESC_TYPE_386_TRAP_GATE:
 			break;
 		default:
-			PDEBUGF(LOG_V1,LOG_CPU, "interrupt(): gate.type(%u) != {5,6,7,14,15}\n",
+			PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode(): gate.type(%u) != {5,6,7,14,15}\n",
 					(unsigned) gate_descriptor.type);
 			throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
@@ -326,18 +326,20 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 	// if software interrupt, then gate descripor DPL must be >= CPL,
 	// else #GP(vector * 8 + 2 + EXT)
 	if(soft_int && gate_descriptor.dpl < CPL) {
-		PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): soft_int && (gate.dpl < CPL)\n");
+		PDEBUGF(LOG_V2,LOG_CPU, "interrupt_pmode(): soft_int && (gate.dpl < CPL)\n");
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 
 	// Gate must be present, else #NP(vector * 8 + 2 + EXT)
 	if(!gate_descriptor.present) {
-		PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): gate not present\n");
+		PDEBUGF(LOG_V2,LOG_CPU, "interrupt_pmode(): gate not present\n");
 		throw CPUException(CPU_NP_EXC, vector*8 + 2);
 	}
 
 	switch(gate_descriptor.type) {
 		case DESC_TYPE_TASK_GATE: {
+			PDEBUGF(LOG_V2, LOG_CPU, "interrupt_pmode(): TASK GATE\n");
+
 			Selector tss_selector;
 			Descriptor tss_descriptor;
 
@@ -347,7 +349,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			//      else #GP(TSS selector)
 			if(tss_selector.ti) {
 				PDEBUGF(LOG_V2,LOG_CPU,
-					"interrupt(): tss_selector.ti=1 from gate descriptor - #GP(tss_selector)\n");
+					"interrupt_pmode(): tss_selector.ti=1 from gate descriptor - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
@@ -355,7 +357,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			try {
 				tss_descriptor = fetch_descriptor(tss_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
-				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad tss_selector fetch\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode(): bad TSS selector fetch\n");
 				throw;
 			}
 
@@ -363,7 +365,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			//   else #GP(TSS selector)
 			if(!tss_descriptor.valid || tss_descriptor.segment) {
 				PDEBUGF(LOG_V2,LOG_CPU,
-					"interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
+					"interrupt_pmode(): TSS selector points to invalid or bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
@@ -371,13 +373,13 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			   tss_descriptor.type != DESC_TYPE_AVAIL_386_TSS)
 			{
 				PDEBUGF(LOG_V2,LOG_CPU,
-					"interrupt(): TSS selector points to bad TSS - #GP(tss_selector)\n");
+					"interrupt_pmode(): TSS selector points to bad TSS - #GP(tss_selector)\n");
 				throw CPUException(CPU_GP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// TSS must be present, else #NP(TSS selector)
 			if(!tss_descriptor.present) {
-				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): TSS descriptor.present == 0\n");
+				PDEBUGF(LOG_V2,LOG_CPU, "interrupt_pmode(): TSS descriptor not present\n");
 				throw CPUException(CPU_NP_EXC, tss_selector.value & SELECTOR_RPL_MASK);
 			}
 
@@ -390,13 +392,17 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 		case DESC_TYPE_286_TRAP_GATE:
 		case DESC_TYPE_386_INTR_GATE:
 		case DESC_TYPE_386_TRAP_GATE: {
+			PDEBUGF(LOG_V2, LOG_CPU, "interrupt_pmode(): %s %s GATE\n",
+					gate_descriptor.type&8?"386":"286",
+					gate_descriptor.type&1?"TRAP":"INTR");
+
 			Selector   cs_selector;
 			Descriptor cs_descriptor;
 
 			// examine CS selector and descriptor given in gate descriptor
 			// selector must be non-null else #GP(EXT)
 			if((gate_descriptor.selector & SELECTOR_RPL_MASK) == 0) {
-				PDEBUGF(LOG_V2,LOG_CPU,"int_trap_gate(): selector null\n");
+				PDEBUGF(LOG_V2,LOG_CPU,"interrupt_pmode(): null selector\n");
 				throw CPUException(CPU_GP_EXC, 0);
 			}
 			cs_selector = gate_descriptor.selector;
@@ -406,35 +412,35 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			try {
 				cs_descriptor = fetch_descriptor(cs_selector, CPU_GP_EXC);
 			} catch(CPUException &e) {
-				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode: bad cs_selector fetch\n");
+				PDEBUGF(LOG_V1,LOG_CPU, "interrupt_pmode(): bad CS selector fetch\n");
 				throw;
 			}
 
 			// descriptor AR byte must indicate code seg
 			// and code segment descriptor DPL<=CPL, else #GP(selector+EXT)
 			if(!cs_descriptor.valid || !cs_descriptor.is_code_segment() || cs_descriptor.dpl > CPL) {
-				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): not accessible or not code segment cs=0x%04x\n",
+				PDEBUGF(LOG_V2,LOG_CPU, "interrupt_pmode(): not accessible or not code segment cs=0x%04x\n",
 						cs_selector.value);
 				throw CPUException(CPU_GP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// segment must be present, else #NP(selector + EXT)
 			if(!cs_descriptor.present) {
-				PDEBUGF(LOG_V2,LOG_CPU,"interrupt(): segment not present\n");
+				PDEBUGF(LOG_V2,LOG_CPU,"interrupt_pmode(): segment not present\n");
 				throw CPUException(CPU_NP_EXC, cs_selector.value & SELECTOR_RPL_MASK);
 			}
 
 			// if code segment is non-conforming and DPL < CPL then int to inner priv
 			if(!cs_descriptor.is_conforming() && cs_descriptor.dpl < CPL)
 			{
-				PDEBUGF(LOG_V2, LOG_CPU, "interrupt(): INTERRUPT TO INNER PRIVILEGE\n");
+				PDEBUGF(LOG_V2, LOG_CPU, "interrupt_pmode(): INTERRUPT TO INNER PRIVILEGE\n");
 				interrupt_inner_privilege(gate_descriptor,
 						cs_selector, cs_descriptor,
 						push_error, error_code);
 			}
 			else
 			{
-				PDEBUGF(LOG_V2,LOG_CPU, "interrupt(): INTERRUPT TO SAME PRIVILEGE\n");
+				PDEBUGF(LOG_V2,LOG_CPU, "interrupt_pmode(): INTERRUPT TO SAME PRIVILEGE\n");
 				interrupt_same_privilege(gate_descriptor,
 						cs_selector, cs_descriptor,
 						push_error, error_code);
@@ -467,7 +473,7 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 			break;
 		}
 		default:
-			PERRF_ABORT(LOG_CPU,"bad descriptor type in interrupt()!\n");
+			PERRF_ABORT(LOG_CPU,"interrupt_pmode(): bad descriptor type in interrupt!\n");
 			break;
 	}
 }
