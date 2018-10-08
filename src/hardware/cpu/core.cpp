@@ -48,6 +48,7 @@ void CPUCore::reset()
 	m_cr[2] = 0x0;
 	m_cr[3] = 0x0;
 	m_eip = 0x0000FFF0;
+	m_prev_eip = m_eip;
 
 	load_segment_defaults(REG_CS, 0xF000);
 	load_segment_defaults(REG_DS, 0x0000);

@@ -179,6 +179,10 @@ void CPUExecutor::execute(Instruction * _instr)
 	}
 
 	(this->*exec_fn)();
+
+	if(m_instr && !m_instr->rep) {
+		COMMIT_EIP();
+	}
 }
 
 void CPUExecutor::rep_16()
@@ -206,6 +210,7 @@ void CPUExecutor::rep_16()
 	REG_CX -= 1;
 	if(REG_CX == 0) {
 		// REP finished and IP points to the next instr.
+		COMMIT_EIP();
 		return;
 	}
 
@@ -219,6 +224,7 @@ void CPUExecutor::rep_16()
 		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF))
 		{
 			// REP finished and IP points to the next instr.
+			COMMIT_EIP();
 			return;
 		}
 	}
@@ -244,11 +250,13 @@ void CPUExecutor::rep_32()
 
 	REG_ECX -= 1;
 	if(REG_ECX == 0) {
+		COMMIT_EIP();
 		return;
 	}
 
 	if(m_instr->rep_zf) {
 		if((m_instr->rep_equal && !FLAG_ZF) || (!m_instr->rep_equal && FLAG_ZF)) {
+			COMMIT_EIP();
 			return;
 		}
 	}
