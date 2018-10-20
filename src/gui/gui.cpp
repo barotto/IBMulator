@@ -704,7 +704,19 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 			modifier_key = (_event.key.keysym.mod & KMOD_LALT)?SDLK_LALT:SDLK_RALT;
 			switch(_event.key.keysym.sym) {
 				case SDLK_RETURN: {
-					if(_event.type == SDL_KEYUP) return true;
+					/* SDL fires multiple very fast key press events (key repeat
+					 * without a pause after the first event, issue #38)
+					 * use a static var to ignore all events after the first.
+					 */
+					static bool toggling = false;
+					if(_event.type == SDL_KEYUP) {
+						toggling = false;
+						return true;
+					}
+					if(toggling) {
+						return true;
+					}
+					toggling = true;
 					toggle_fullscreen();
 					return true;
 				}
