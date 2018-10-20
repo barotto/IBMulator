@@ -115,7 +115,10 @@ m_quad_data{
 
 Interface::~Interface()
 {
-	delete m_fs;
+	if(m_fs) {
+		m_fs->close();
+		delete m_fs;
+	}
 }
 
 void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshader)
