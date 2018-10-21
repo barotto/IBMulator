@@ -109,12 +109,18 @@ void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, 
 		throw std::runtime_error("unable to open the file");
 	}
 
+	m_header.ChunkID = WAV_HEADER_RIFF;
 	m_header.ChunkSize = 36;
+	m_header.Format = WAV_HEADER_WAVE;
+	m_header_fmt.Subchunk1ID = WAV_HEADER_FMT;
+	m_header_fmt.Subchunk1Size = WAV_HEADER_SC1_SIZE;
+	m_header_fmt.AudioFormat = WAV_FORMAT_PCM;
 	m_header_fmt.NumChannels = _channels;
 	m_header_fmt.SampleRate = _rate;
 	m_header_fmt.ByteRate = _rate * _channels * (_bits / 8);
 	m_header_fmt.BlockAlign = _channels * (_bits / 8);
 	m_header_fmt.BitsPerSample = _bits;
+	m_header_data.Subchunk2ID = WAV_HEADER_DATA;
 	m_header_data.Subchunk2Size = 0;
 
 	if(fwrite(&m_header, sizeof(m_header), 1, m_file) != 1) {

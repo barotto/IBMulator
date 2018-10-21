@@ -33,8 +33,7 @@
 #define WAV_FORMAT_IEEE_FLOAT 0x0003
 
 struct WAVHeader {
-	uint32_t ChunkID = WAV_HEADER_RIFF;
-	                     //0/4  Contains the letters "RIFF" in ASCII form
+	uint32_t ChunkID;    //0/4  Contains the letters "RIFF" in ASCII form
 	                     //     (0x52494646 big-endian form).
 	uint32_t ChunkSize;  //4/4  36 + SubChunk2Size, or more precisely:
 	                     //     4 + (8 + SubChunk1Size) + (8 + SubChunk2Size)
@@ -43,8 +42,7 @@ struct WAVHeader {
 	                     //     entire file in bytes minus 8 bytes for the
 	                     //     two fields not included in this count:
 	                     //     ChunkID and ChunkSize.
-	uint32_t Format = WAV_HEADER_WAVE;
-	                     //8/4  Contains the letters "WAVE"
+	uint32_t Format;     //8/4  Contains the letters "WAVE"
 	                     //     (0x57415645 big-endian form).
 } GCC_ATTRIBUTE(packed);
 
@@ -54,14 +52,11 @@ struct WAVHeaderFMT {
 	 * The "WAVE" format consists of two subchunks: "fmt " and "data":
 	 * The "fmt " subchunk describes the sound data's format:
 	 */
-	uint32_t Subchunk1ID = WAV_HEADER_FMT;
-	                        //12/4   Contains the letters "fmt "
+	uint32_t Subchunk1ID;   //12/4   Contains the letters "fmt "
 	                        //       (0x666d7420 big-endian form).
-	uint32_t Subchunk1Size = WAV_HEADER_SC1_SIZE;
-	                        //16/4   16 for PCM.  This is the size of the
+	uint32_t Subchunk1Size; //16/4   16 for PCM.  This is the size of the
 	                        //       rest of the Subchunk which follows this number.
-	uint16_t AudioFormat = WAV_FORMAT_PCM;
-	                        //20/2   PCM = 1 (i.e. Linear quantization)
+	uint16_t AudioFormat;   //20/2   PCM = 1 (i.e. Linear quantization)
 	uint16_t NumChannels;   //22/2   Mono = 1, Stereo = 2, etc.
 	uint32_t SampleRate;    //24/4   8000, 44100, etc.
 	uint32_t ByteRate;      //28/4   == SampleRate * NumChannels * BitsPerSample/8
@@ -79,8 +74,7 @@ struct WAVHeaderDATA {
 	/*
 	 * The "data" subchunk contains the size of the data and the actual sound:
 	 */
-	uint32_t Subchunk2ID = WAV_HEADER_DATA;
-	                        //36/4   Contains the letters "data"
+	uint32_t Subchunk2ID;   //36/4   Contains the letters "data"
 	                        //       (0x64617461 big-endian form).
 	uint32_t Subchunk2Size; //40/4   == NumSamples * NumChannels * BitsPerSample/8
                             //       This is the number of bytes in the data.
