@@ -281,8 +281,8 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 	if(srcresult != 0) {
 		throw std::runtime_error(std::string("error resampling: ") + src_strerror(srcresult));
 	}
-	assert(srcdata.output_frames_gen>=0 && srcdata.output_frames_gen<=out_frames);
-	if(srcdata.output_frames_gen != out_frames) {
+	assert(srcdata.output_frames_gen>=0 && unsigned(srcdata.output_frames_gen)<=out_frames);
+	if(unsigned(srcdata.output_frames_gen) != out_frames) {
 		_dest.resize_frames(destframes + srcdata.output_frames_gen);
 		missing = out_frames - srcdata.output_frames_gen;
 	}
