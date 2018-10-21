@@ -26,7 +26,7 @@ if test "$HAVE_LIBARCHIVE" = "1" ; then
 		LIBARCHIVE_LIBS="-larchive"
 	fi
 	if test x$static != xno ; then
-		LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt"
+		LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lzstd -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt"
 		LIBARCHIVE_CFLAGS="-DLIBARCHIVE_STATIC"
 	fi
 fi
