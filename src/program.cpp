@@ -574,14 +574,20 @@ void Program::main_loop()
 
 void Program::start()
 {
-	PDEBUGF(LOG_V2, LOG_PROGRAM, "Program thread started\n");
+	PDEBUGF(LOG_V1, LOG_PROGRAM, "Program thread started\n");
 	std::thread machine(&Machine::start,m_machine);
 	std::thread mixer(&Mixer::start,m_mixer);
 
 	main_loop();
 
+	m_machine->cmd_power_off();
+	m_machine->cmd_quit();
 	machine.join();
+	PDEBUGF(LOG_V1, LOG_PROGRAM, "Machine thread stopped\n");
+
+	m_mixer->cmd_quit();
 	mixer.join();
+	PDEBUGF(LOG_V1, LOG_PROGRAM, "Mixer thread stopped\n");
 
 	m_gui->shutdown();
 }
@@ -589,8 +595,5 @@ void Program::start()
 void Program::stop()
 {
 	m_quit = true;
-	m_machine->cmd_power_off();
-	m_machine->cmd_quit();
-	m_mixer->cmd_quit();
 }
 

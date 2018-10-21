@@ -78,6 +78,7 @@ public:
 	void reset(uint _signal);
 	void power_off();
 	void config_changed();
+	void destroy_all();
 
 	template<class T>
 	inline T* device() {

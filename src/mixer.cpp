@@ -186,7 +186,7 @@ void Mixer::start()
 	m_quit = false;
 	m_start = 0;
 	m_next_beat_diff = 0;
-	PDEBUGF(LOG_V2, LOG_MACHINE, "Mixer thread started\n");
+	PDEBUGF(LOG_V1, LOG_MIXER, "Mixer thread started\n");
 	main_loop();
 }
 

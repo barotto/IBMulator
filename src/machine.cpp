@@ -197,8 +197,10 @@ void Machine::init()
 void Machine::start()
 {
 	m_quit = false;
-	PDEBUGF(LOG_V2, LOG_MACHINE, "Machine thread started\n");
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Machine thread started\n");
 	main_loop();
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Machine thread stopping...\n");
+	g_devices.destroy_all();
 }
 
 void Machine::reset(uint _signal)

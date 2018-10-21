@@ -59,10 +59,6 @@ m_cmos(nullptr)
 
 Devices::~Devices()
 {
-	// call the devices' destructor!
-	for(auto dev : m_devices) {
-		delete dev.second;
-	}
 }
 
 void Devices::init(Machine *_machine)
@@ -156,6 +152,30 @@ void Devices::config_changed()
 	for(auto dev : m_devices) {
 		dev.second->config_changed();
 	}
+}
+
+void Devices::destroy_all()
+{
+	for(int i=0; i<=PORT_MAX; i++) {
+		m_read_handlers[i].device = nullptr;
+		m_read_handlers[i].mask = 0;
+		m_write_handlers[i].device = nullptr;
+		m_write_handlers[i].mask = 0;
+	}
+	for(auto dev : m_devices) {
+		dev.second->remove();
+	}
+	for(auto dev : m_devices) {
+		delete dev.second;
+	}
+	m_devices.clear();
+
+	m_sysboard = nullptr;
+	m_vga = nullptr;
+	m_dma = nullptr;
+	m_pic = nullptr;
+	m_pit = nullptr;
+	m_cmos = nullptr;
 }
 
 void Devices::save_state(StateBuf &_state)
@@ -413,21 +433,3 @@ void Devices::remove(const char *_name)
 	delete m_devices[_name];
 	m_devices.erase(_name);
 }
-/*
-void Devices::remove_all()
-{
-	for(int i=0; i<=PORT_MAX; i++) {
-		m_read_handlers[i].device = nullptr;
-		m_read_handlers[i].mask = 0;
-		m_write_handlers[i].device = nullptr;
-		m_write_handlers[i].mask = 0;
-	}
-	for(auto dev : m_devices) {
-		dev.second->remove();
-	}
-	for(auto dev : m_devices) {
-		delete dev.second;
-	}
-	m_devices.clear();
-}
-*/
