@@ -1046,6 +1046,7 @@ void VGA::write(uint16_t address, uint16_t value, uint /*io_len*/)
 						case 0: // 0xA0000 .. 0xBFFFF
 							m_s.graphics_ctrl.memory_offset = 0xA0000;
 							m_s.graphics_ctrl.memory_aperture = 0x20000;
+							break;
 						case 1: // 0xA0000 .. 0xAFFFF
 							m_s.graphics_ctrl.memory_offset = 0xA0000;
 							m_s.graphics_ctrl.memory_aperture = 0x10000;
