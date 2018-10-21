@@ -141,7 +141,7 @@ public:
 	int write_pq_to_logfile(FILE *_dest);
 
 private:
-	template<unsigned> uint32_t p_mem_read(uint32_t _addr, int &_cycles) { assert(false); }
+	template<unsigned> uint32_t p_mem_read(uint32_t _addr, int &_cycles) { assert(false); return 0; }
 	template<unsigned> void p_mem_write(uint32_t _addr, uint32_t _data, int &_cycles) { assert(false); }
 
 	ALWAYS_INLINE
