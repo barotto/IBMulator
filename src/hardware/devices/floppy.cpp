@@ -1166,25 +1166,30 @@ void FloppyCtrl::floppy_command()
 
 			motor_on = (m_s.DOR>>(drive+4)) & 0x01;
 			if(motor_on == 0) {
-				PERRF_ABORT(LOG_FDC, "format track: motor not on\n");
+				PERRF(LOG_FDC, "format track: motor not on\n");
 				return; // Hang controller?
 			}
 			m_s.head[drive] = (m_s.command[1] >> 2) & 0x01;
-			sector_size = m_s.command[2];
-			m_s.format_count = m_s.command[3];
-			m_s.format_fillbyte = m_s.command[5];
+			sector_size = m_s.command[2]; //N
+			m_s.format_count = m_s.command[3]; //SC
+			m_s.format_fillbyte = m_s.command[5]; //D
 			if(m_device_type[drive] == FDD_NONE) {
-				PERRF_ABORT(LOG_FDC, "format track: bad drive #%d\n", drive);
+				PERRF(LOG_FDC, "format track: bad drive #%d\n", drive);
 				return; // Hang controller?
 			}
 			if(sector_size != 0x02) { // 512 bytes
-				PERRF_ABORT(LOG_FDC, "format track: sector size %d not supported\n", 128<<sector_size);
+				PERRF(LOG_FDC, "format track: sector size %d not supported\n", 128<<sector_size);
 				return; // Hang controller?
 			}
 			if(m_s.format_count != m_media[drive].spt) {
-				PERRF_ABORT(LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
+				/* On real hardware, when you try to format a 720K floppy as 1.44M,
+				 * the drive will happily do so irregardless of the presence of
+				 * the "format hole". Here we eject the media...
+				 */
+				PERRF(LOG_FDC, "Wrong floppy disk type!\n");
+				PDEBUGF(LOG_V0, LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
 						m_s.format_count, m_media[drive].spt);
-				return; // Hang controller?
+				eject_media(drive);
 			}
 			if(m_media_present[drive] == 0) {
 				PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with media not present\n");
