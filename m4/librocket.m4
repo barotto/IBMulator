@@ -40,10 +40,7 @@ LIBROCKET_LIBS="$LIBROCKET_LIBS -lRocketCore -lRocketControls -lRocketDebugger"
 #fi
 
 if test x$static != xno ; then
-	# doesn't work on current version of MSYS2
-	#  LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lintl -liconv -lpcre -lpng16 -lz -lbz2"
-	# so use a specially builded version of freetype2:
-	LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype"
+	LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lintl -liconv -lpcre -lpng16 -lz -lbz2 -lfreetype -lrpcrt4 -ldwrite"
 	LIBROCKET_CFLAGS="-DROCKET_STATIC_LIB"
 fi
 

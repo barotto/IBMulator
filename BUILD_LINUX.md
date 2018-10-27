@@ -1,4 +1,4 @@
-# How to build under Linux
+# How to build on Linux
 
 ## Requirements
 
@@ -40,8 +40,6 @@ manager to install them (except libRocket, see notes below).
 If you are going to compile using your own version of SDL2, you should compile 
 SDL2 with xinerama and xrandr, otherwise you could experience many problems 
 switching to fullscreen, at least on NVIDIA cards with closed drivers.
-
-If you're using Ubuntu 14.04 you can install GCC 4.9 from the Toolchain PPA.
 
 ### libRocket
 
