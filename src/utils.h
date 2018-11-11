@@ -32,6 +32,8 @@ void size_check()
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 std::string bitfield_to_string(uint8_t _bitfield,
+		const std::array<std::string, 8> &_set_names);
+std::string bitfield_to_string(uint8_t _bitfield,
 		const std::array<std::string, 8> &_set_names,
 		const std::array<std::string, 8> &_clear_names);
 

@@ -183,7 +183,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 			m_display.vga.get_screen_xres(), m_display.vga.get_screen_yres(),
 			0, m_display.glf, m_display.gltype, nullptr) );
 
-	m_display.tex_buf.resize(m_display.vga.get_framebuffer_data_size());
+	m_display.tex_buf.resize(m_display.vga.get_fb_size());
 
 	GLCALL( glGenSamplers(1, &m_display.sampler) );
 	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
@@ -482,14 +482,14 @@ void Interface::render_monitor()
 		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
 		//a lot of time to complete, bloking the machine emulation thread.
 		//PBOs are a possible alternative, but a memcpy is way simpler.
-		memcpy(&m_display.tex_buf[0],m_display.vga.get_framebuffer(),m_display.vga.get_framebuffer_data_size());
+		m_display.tex_buf = m_display.vga.get_fb();
 		m_display.vga.clear_fb_updated();
 		if(THREADS_WAIT) {
 			m_display.vga.notify_all();
 		}
 		m_display.vga.unlock();
 
-		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_xsize()) );
+		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_width()) );
 		if(!(m_display.vga_res == vga_res)) {
 			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
 					vga_res.x, vga_res.y,

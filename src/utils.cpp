@@ -19,6 +19,7 @@
 
 #include <string>
 #include <array>
+#include "utils.h"
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
@@ -27,6 +28,12 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 		_str.replace(i, _search.length(), _replace);
 		i = _str.find(_search, i+_replace.length());
 	}
+}
+
+std::string bitfield_to_string(uint8_t _bitfield,
+		const std::array<std::string, 8> &_set_names)
+{
+	return bitfield_to_string(_bitfield, _set_names, {"","","","","","","",""});
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,
@@ -45,5 +52,6 @@ std::string bitfield_to_string(uint8_t _bitfield,
 			}
 		}
 	}
+	s.pop_back();
 	return s;
 }

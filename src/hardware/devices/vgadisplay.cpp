@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,11 +32,8 @@ VGADisplay::VGADisplay()
 	m_s.textmode = true;
 	m_s.xres = 640;
 	m_s.yres = 400;
-	m_s.bpp = 8;
-	m_s.fb_xsize = VGA_MAX_XRES;
-	m_s.fb_ysize = VGA_MAX_YRES;
-	m_s.tile_xsize = VGA_X_TILESIZE;
-	m_s.tile_ysize = VGA_Y_TILESIZE;
+	m_s.fb_width = VGA_MAX_XRES;
+	m_s.fb_height = VGA_MAX_YRES;
 	m_s.charmap_updated = true;
 	m_s.prev_cursor_x = 0;
 	m_s.prev_cursor_y = 0;
@@ -48,8 +45,7 @@ VGADisplay::VGADisplay()
 	m_s.text_cols = 80;
 	m_s.text_rows = 25;
 
-	m_fb = new uint32_t[VGA_MAX_XRES*VGA_MAX_YRES];
-	memset(m_fb, 0, VGA_MAX_XRES*VGA_MAX_YRES*4);
+	m_fb.resize(m_s.fb_width * m_s.fb_height);
 
 	m_s.palette[0]  = PALETTE_ENTRY(  0,   0,   0); // black
 	m_s.palette[1]  = PALETTE_ENTRY(  0,   0, 170); // blue
@@ -68,18 +64,19 @@ VGADisplay::VGADisplay()
 	m_s.palette[14] = PALETTE_ENTRY(255, 255,  85); // yellow
 	m_s.palette[15] = PALETTE_ENTRY(255, 255, 255); // white
 
-	for(uint i=0; i<256; i++) {
-		for(uint j=0; j<16; j++) {
+	for(int i=0; i<256; i++) {
+		for(int j=0; j<16; j++) {
 			m_s.charmap[i*32+j] = ms_font8x16[i][j];
 		}
 	}
 
 	m_dim_updated = false;
+
+	clear_screen();
 }
 
 VGADisplay::~VGADisplay()
 {
-	delete[] m_fb;
 }
 
 void VGADisplay::save_state(StateBuf &_state)
@@ -91,14 +88,10 @@ void VGADisplay::save_state(StateBuf &_state)
 	StateHeader h;
 
 	//state
-	h.name = "VGADisplay";
-	h.data_size = sizeof(m_s);
-	_state.write(&m_s,h);
+	_state.write(&m_s, {sizeof(m_s), "VGADisplay"});
 
 	//framebuffer
-	h.name = "VGADisplay fb";
-	h.data_size = sizeof(uint32_t)*VGA_MAX_XRES*VGA_MAX_YRES;
-	_state.write(m_fb,h);
+	_state.write(&m_fb[0], {m_fb.size()*4, "VGADisplay fb"});
 }
 
 void VGADisplay::restore_state(StateBuf &_state)
@@ -110,30 +103,27 @@ void VGADisplay::restore_state(StateBuf &_state)
 	StateHeader h;
 
 	//state
-	h.name = "VGADisplay";
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s,h);
+	_state.read(&m_s, {sizeof(m_s), "VGADisplay"});
 
 	//framebuffer
-	h.name = "VGADisplay fb";
-	h.data_size = sizeof(uint32_t)*VGA_MAX_XRES*VGA_MAX_YRES;
-	_state.read(m_fb,h);
+	m_fb.resize(m_s.fb_width*m_s.fb_height);
+	_state.read(&m_fb[0], {m_fb.size()*4, "VGADisplay fb"});
 
 	m_dim_updated = true;
 }
 
-// vga_clear_screen()
+// clear_screen()
 //
 // Called to request that the VGA region is cleared.
 void VGADisplay::clear_screen()
 {
-	memset(m_fb, 0, VGA_MAX_XRES*VGA_MAX_YRES*4);
+	std::fill(m_fb.begin(), m_fb.end(), 0);
 }
 
 void VGADisplay::set_text_charmap(uint8_t *_fbuffer)
 {
 	memcpy(&m_s.charmap, _fbuffer, 0x2000);
-	for(uint i=0; i<256; i++) {
+	for(unsigned i=0; i<256; i++) {
 		m_s.char_changed[i] = true;
 	}
 	m_s.charmap_updated = true;
@@ -146,83 +136,73 @@ void VGADisplay::set_text_charbyte(uint16_t _address, uint8_t _data)
 	m_s.charmap_updated = true;
 }
 
-// vga_palette_change()
+// palette_change()
 //
-// Allocate a color in the GUI, for this color, and put
-// it in the colormap location 'index'.
-// returns: 0=no screen update needed (color map change has direct effect)
-//          1=screen updated needed (redraw using current colormap)
-bool VGADisplay::palette_change(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
+// Allocate a color in the GUI, for this color, and put it in the colormap
+// location 'index'.
+void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue)
 {
-	m_s.palette[index] = PALETTE_ENTRY(red, green, blue);
-	return true;
+	m_s.palette[_index] = PALETTE_ENTRY(_red, _green, _blue);
 }
 
-// vga_dimension_update()
+// dimension_update()
 //
-// Called when the VGA mode changes it's X,Y dimensions.
-// Resize the framebuffer to this size.
+// Called when the VGA mode changes its X,Y resolution.
 //
-// x: new VGA x size
-// y: new VGA y size (add headerbar_y parameter from ::specific_init().
-// fheight: new VGA character height in text mode
-// fwidth : new VGA character width in text mode
-// bpp : bits per pixel in graphics mode
-void VGADisplay::dimension_update(uint x, uint y, uint fheight, uint fwidth, uint bpp)
+// _x: new VGA x resolution
+// _y: new VGA y resolution
+// _fwidth : new VGA character width in text mode
+// _fheight: new VGA character height in text mode
+void VGADisplay::dimension_update(unsigned _x, unsigned _y,  unsigned _fwidth, unsigned _fheight)
 {
-	if(x > VGA_MAX_XRES) {
-		PWARNF(LOG_VGA, "requested x res %d is greater than the maximum (%d)\n", x,VGA_MAX_XRES);
+	if(_x > VGA_MAX_XRES) {
+		PWARNF(LOG_VGA, "requested x res %d is greater than the maximum (%d)\n", _x, VGA_MAX_XRES);
 		return;
 	}
-	if(y > VGA_MAX_YRES) {
-		PWARNF(LOG_VGA, "requested y res %d is greater than the maximum (%d)\n", y,VGA_MAX_YRES);
-		return;
-	}
-
-	if(bpp != 8) {
-		//TODO other bit depths?
-		PERRF(LOG_GUI, "%d bpp graphics mode not supported\n", bpp);
+	if(_y > VGA_MAX_YRES) {
+		PWARNF(LOG_VGA, "requested y res %d is greater than the maximum (%d)\n", _y, VGA_MAX_YRES);
 		return;
 	}
 
-	m_s.bpp = bpp;
-
-	m_s.textmode = (fheight > 0);
-	m_s.xres = x;
-	m_s.yres = y;
+	m_s.textmode = (_fheight > 0);
+	m_s.xres = _x;
+	m_s.yres = _y;
 	if(m_s.textmode) {
-		m_s.fontheight = fheight;
-		m_s.fontwidth = fwidth;
-		m_s.text_cols = x / m_s.fontwidth;
-		m_s.text_rows = y / m_s.fontheight;
+		m_s.fontwidth = _fwidth;
+		m_s.fontheight = _fheight;
+		m_s.text_cols = _x / m_s.fontwidth;
+		m_s.text_rows = _y / m_s.fontheight;
 	}
 
-	PINFOF(LOG_V1, LOG_VGA, "resolution: %dx%d\n", x,y);
+	PINFOF(LOG_V1, LOG_VGA, "display: %dx%d\n", _x, _y);
 
 	m_dim_updated = true;
 }
 
-// vga_graphics_tile_update()
+// graphics_update()
 //
-// Called to request that a tile of graphics be drawn to the
-// screen, since info in this region has changed.
+// Called in VGA graphics mode to request that an area be drawn to the screen,
+// since info in this region has changed.
 //
-// tile: array of 8bit values representing a block of pixels with
-//       dimension equal to the 'tile_xsize' & 'tile_ysize' members.
-//       Each value specifies an index into the
-//       array of colors you allocated for vga_palette_change()
-// x0: x origin of tile
-// y0: y origin of tile
-//
+// _x: x origin of tile
+// _y: y origin of tile
+// _width: tile width
+// _height: tile height
+// _snapshot: array of 8bit values representing a block of pixels with
+//       dimension equal to the '_width' & '_height' arguments.
+//       Each value specifies an index into the array of colors allocated
+//       with palette_change()
 // note: origin of tile and of window based on (0,0) being in the upper
 //       left of the window.
-void VGADisplay::graphics_tile_update(uint8_t *_snapshot, uint _x, uint _y)
+void VGADisplay::graphics_update(unsigned _x, unsigned _y,
+		unsigned _width, unsigned _height, uint8_t *_snapshot)
 {
-	uint32_t *buf = m_fb + _y * m_s.fb_xsize + _x;
+	uint32_t *buf = &m_fb[0] + _y * m_s.fb_width + _x;
 
-	int i = m_s.tile_ysize;
-	if(_y+i > m_s.yres)
+	int i = _height;
+	if(_y+i > m_s.yres) {
 		i = m_s.yres - _y;
+	}
 
 	// the tile is outside the display area?
 	if(i<=0) {
@@ -231,34 +211,33 @@ void VGADisplay::graphics_tile_update(uint8_t *_snapshot, uint _x, uint _y)
 
 	do {
 		uint32_t *buf_row = buf;
-		int j = m_s.tile_xsize;
+		int j = _width;
 		do {
 			*buf++ = m_s.palette[*_snapshot++];
 		} while(--j);
-		buf = buf_row + m_s.fb_xsize;
+		buf = buf_row + m_s.fb_width;
 	} while(--i);
 }
 
-// vga_text_update()
+// text_update()
 //
-// Called in a VGA text mode, to update the screen with
-// new content.
+// Called in a VGA text mode, to update the screen with new content.
 //
-// old_text: array of character/attributes making up the contents
-//           of the screen from the last call.  See below
-// new_text: array of character/attributes making up the current
-//           contents, which should now be displayed.  See below
+// _old_text: array of character/attributes making up the contents
+//            of the screen from the last call.  See below
+// _new_text: array of character/attributes making up the current
+//            contents, which should now be displayed.  See below
 //
 // format of old_text & new_text: each is _tm_info->line_offset*text_rows
 //     bytes long. Each character consists of 2 bytes.  The first byte is
 //     the character value, the second is the attribute byte.
 //
-// cursor_x: new x location of cursor
-// cursor_y: new y location of cursor
+// _cursor_x: new x location of cursor
+// _cursor_y: new y location of cursor
 // _tm_info:  this structure contains information for additional
 //           features in text mode (cursor shape, line offset,...)
 void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
-		uint _cursor_x, uint _cursor_y, TextModeInfo *_tm_info)
+		unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info)
 {
 	//PDEBUGF(LOG_V2, LOG_VGA, "text update\n");
 
@@ -275,7 +254,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	}
 
 	uint32_t text_palette[16];
-	uint i;
+	unsigned i;
 	for(i=0; i<16; i++) {
 		text_palette[i] = m_s.palette[_tm_info->actl_palette[i]];
 	}
@@ -290,9 +269,9 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		m_s.line_compare = _tm_info->line_compare;
 	}
 
-	uint32_t *buf_row = m_fb;
+	uint32_t *buf_row = &m_fb[0];
 
-	uint curs;
+	unsigned curs;
 	// first invalidate character at previous and new cursor location
 	if((m_s.prev_cursor_y < m_s.text_rows) && (m_s.prev_cursor_x < m_s.text_cols)) {
 		curs = m_s.prev_cursor_y * _tm_info->line_offset + m_s.prev_cursor_x * 2;
@@ -310,8 +289,8 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	if(m_s.v_panning) {
 		rows++;
 	}
-	uint y = 0;
-	uint cs_y = 0;
+	unsigned y = 0;
+	unsigned cs_y = 0;
 	uint8_t *text_base = _new_text - _tm_info->start_address;
 	uint8_t split_textrow, split_fontrows;
 	if(m_s.line_compare < m_s.yres) {
@@ -325,7 +304,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 
 	do {
 		uint32_t *buf = buf_row;
-		uint hchars = m_s.text_cols;
+		unsigned hchars = m_s.text_cols;
 		if(m_s.h_panning) {
 			hchars++;
 		}
@@ -353,8 +332,8 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		}
 		uint8_t *new_line = _new_text;
 		uint8_t *old_line = _old_text;
-		uint x = 0;
-		uint offset = cs_y * _tm_info->line_offset;
+		unsigned x = 0;
+		unsigned offset = cs_y * _tm_info->line_offset;
 		do {
 			uint8_t cfwidth = m_s.fontwidth;
 			if(m_s.h_panning) {
@@ -420,7 +399,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 						font_row <<= 1;
 					} while(--fontpixels);
 					buf -= cfwidth;
-					buf += m_s.fb_xsize;
+					buf += m_s.fb_width;
 					fontline++;
 				} while(--fontrows);
 
@@ -442,7 +421,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		//PDEBUGF(LOG_V2, LOG_VGA, "\n");
 
 		// go to next character row location
-		buf_row += m_s.fb_xsize * cfheight;
+		buf_row += m_s.fb_width * cfheight;
 		if(!split_screen && (y == split_textrow)) {
 			_new_text = text_base;
 			forceUpdate = true;
@@ -470,14 +449,14 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 void VGADisplay::copy_screen(uint8_t *_buffer)
 {
 	uint8_t *dest = _buffer;
-	uint8_t *src = (uint8_t*)m_fb;
-	const uint w = m_s.xres;
-	const uint h = m_s.yres;
-	const uint bytespp = 4;
-	const uint spitch = m_s.fb_xsize * bytespp;
-	const uint dpitch = w * bytespp;
-	for(uint y=0; y<h; y++) {
-		for(uint x=0; x<w; x++) {
+	uint8_t *src = (uint8_t*)&m_fb[0];
+	const unsigned w = m_s.xres;
+	const unsigned h = m_s.yres;
+	const unsigned bytespp = 4;
+	const unsigned spitch = m_s.fb_width * bytespp;
+	const unsigned dpitch = w * bytespp;
+	for(unsigned y=0; y<h; y++) {
+		for(unsigned x=0; x<w; x++) {
 			*((uint32_t*)(&dest[y*dpitch + x*bytespp])) = *((uint32_t*)(&src[y*spitch + x*bytespp]));
 		}
 	}

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,39 +24,6 @@
 #include "vgacrtc.h"
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
-
-/* Video timings - values taken from PCem
-
-8-bit - 1mb/sec
-	B = 8 ISA clocks
-	W = 16 ISA clocks
-	D = 32 ISA clocks
-
-Slow 16-bit - 2mb/sec
-	B = 6 ISA clocks
-	W = 8 ISA clocks
-	D = 16 ISA clocks
-
-Fast 16-bit - 4mb/sec
-	B = 3 ISA clocks
-	W = 3 ISA clocks
-	D = 6 ISA clocks
-
-Slow 32-bit - ~8mb/sec
-	B = 4 bus clocks
-	W = 8 bus clocks
-	D = 16 bus clocks
-
-Mid 32-bit -
-	B = 4 bus clocks
-	W = 5 bus clocks
-	D = 10 bus clocks
-
-Fast 32-bit -
-	B = 3 bus clocks
-	W = 3 bus clocks
-	D = 4 bus clocks
-*/
 
 enum VGATimings {
 	VGA_8BIT_SLOW,
@@ -97,115 +64,110 @@ class VGA : public IODevice
 	IODEVICE(VGA, "VGA")
 
 protected:
+	// state information
 	struct {
-		struct {
-			bool color_emulation;  // 1=color emulation, base address = 3Dx
-			                       // 0=mono emulation,  base address = 3Bx
-			bool enable_ram;       // enable CPU access to video memory if set
-			uint8_t clock_select;  // 0=25Mhz 1=28Mhz
-			bool select_high_bank; // when in odd/even modes, select
-			                       // high 64k bank if set
-			bool horiz_sync_pol;   // bit6: negative if set
-			bool vert_sync_pol;    // bit7: negative if set
-			                       //   bit7,bit6 represent number of lines on display:
-			                       //   0 = reserved
-			                       //   1 = 400 lines
-			                       //   2 = 350 lines
-			                       //   3 - 480 lines
-		} misc_output;
 
+		// General registers
+		struct {
+			// Miscellaneous Output Register
+			struct {
+				bool io_addr_select;   // bit0: I/O Address Select
+				bool enable_ram;       // bit1: Enable RAM
+				uint8_t clock_select;  // bit2-3: Clock Select
+				bool select_high_bank; // bit5: select high 64k bank
+				uint8_t sync_polarity; // bit6-7: Sync Polarity
+			} misc_output;
+			bool vga_enable; // Video Subsystem Enable Register (bit0)
+		} general;
+
+		// CRT Controller
 		VGA_CRTC CRTC;
 
+		// Attribute Controller
 		struct {
-			bool flip_flop; /* 0 = address, 1 = data-write */
-			uint address;  /* register number */
-			bool video_enabled;
-			uint8_t palette_reg[16];
-			uint8_t overscan_color;
-			uint8_t color_plane_enable;
-			uint8_t video_status_mux; // unused
-			bool video_feedback; // used to fake the correct working of ST01 bits 4,5
-			uint8_t horiz_pel_panning;
-			uint8_t color_select;
+			uint8_t address;            // Address Register
+			bool flip_flop;             // 0=address mode, 1=data-write mode
+			bool palette_enable;        // Address Register bit5: Internal Palette Address Source
+			uint8_t palette_reg[16];    // Internal Palette Registers
+			uint8_t overscan_color;     // Overscan Color Register
+			uint8_t color_plane_enable; // Color Plane Enable Register (bit0-3)
+			uint8_t horiz_pel_panning;  // Horizontal Pixel Panning Register (bit0-3)
+			uint8_t color_select;       // Color Select Register (bit0-3)
+			// Mode Control Register
 			struct {
-				bool graphics_alpha;
-				bool display_type;
-				bool enable_line_graphics;
-				bool blink_intensity;
-				bool pixel_panning_mode;
-				bool pixel_clock_select;
-				bool internal_palette_size;
+				bool graphics_alpha;        // bit0: Graphics/Alphanumeric Mode
+				bool display_type;          // bit1: Mono Emulation
+				bool enable_line_graphics;  // bit2: Enable Line Graphics Character Code
+				bool blink_intensity;       // bit3: Enable Blink/Select Background Intensity
+				bool pel_panning_mode;      // bit5: PEL Panning Compatibility
+				bool pel_clock_select;      // bit6: PEL Width
+				bool internal_palette_size; // bit7: P5, P4 Select
 			} mode_ctrl;
 		} attribute_ctrl;
 
+		// Digital-to-Analog Converter
 		struct {
-			uint8_t write_data_register;
-			uint8_t write_data_cycle; /* 0, 1, 2 */
-			uint8_t read_data_register;
-			uint8_t read_data_cycle; /* 0, 1, 2 */
-			uint8_t dac_state;
+			uint8_t write_data_register; // Palette Address Register (write mode)
+			uint8_t write_data_cycle;    // 0,1,2: current write data cycle
+			uint8_t read_data_register;  // Palette Address Register (read mode)
+			uint8_t read_data_cycle;     // 0,1,2: current read data cycle
+			uint8_t state;               // DAC State Register
 			struct {
-				uint8_t red;
-				uint8_t green;
-				uint8_t blue;
-			} data[256];
-			uint8_t mask;
-			bool dac_sense; // ST0 bit 4 (DAC sensing), used to determine the presence of a color monitor
-		} pel;
+				uint8_t red;             // Palette entry red value (6-bit)
+				uint8_t green;           // Palette entry green value (6-bit)
+				uint8_t blue;            // Palette entry blue value (6-bit)
+			} palette[256];              // Palette Data registers
+			uint8_t pel_mask;            // PEL Mask Register
+		} dac;
 
+		// Graphics Controller
 		struct {
-			uint8_t index;
-			uint8_t set_reset;
-			uint8_t enable_set_reset;
-			uint8_t color_compare;
-			uint8_t data_rotate;
-			uint8_t raster_op;
-			uint8_t read_map_select;
-			uint8_t write_mode;
-			bool read_mode;
-			bool odd_even;
-			bool chain_odd_even;
-			uint8_t shift_reg;
-			bool graphics_alpha;
-			uint8_t memory_mapping; /* 0 = use A0000-BFFFF
-			                         * 1 = use A0000-AFFFF EGA/VGA graphics modes
-			                         * 2 = use B0000-B7FFF Monochrome modes
-			                         * 3 = use B8000-BFFFF CGA modes
-			                         */
-			uint32_t memory_offset;
-			uint32_t memory_aperture;
-			uint8_t color_dont_care;
-			uint8_t bitmask;
-			uint8_t latch[4];
+			uint8_t address;          // Address register
+			uint8_t set_reset;        // Set/Reset register
+			uint8_t enable_set_reset; // Enable Set/Reset register
+			uint8_t color_compare;    // Color Compare register
+			uint8_t data_rotate;      // Data Rotate register
+			uint8_t raster_op;        // Data Rotate register bit3-4: Function Select
+			uint8_t read_map_select;  // Read Map Select register
+			uint8_t write_mode;       // Graphics Mode Register bit0-1: Write Mode
+			bool read_mode;           // Graphics Mode Register bit3: Read Mode
+			bool odd_even;            // Graphics Mode Register bit4: Odd/Even
+			uint8_t shift_c256;       // Graphics Mode Register bit5-6:
+			                          //   Shift Register Mode (5)
+			                          //   Graphics 256 Colour Control (6)
+			bool graphics_mode;       // Miscellaneous Register bit0: Graphics Mode
+			bool chain_odd_even;      // Miscellaneous Register bit1: Odd/Even
+			uint8_t memory_mapping;   // Miscellaneous Register bit2-3: Memory Map
+			uint8_t color_dont_care;  // Color Don't Care Register
+			uint8_t bitmask;          // Bit Mask Register
+			uint32_t memory_offset;   // current phy start address of video memory
+			uint32_t memory_aperture; // current video memory accessible size
+			uint8_t latch[4];         // data latches
 		} graphics_ctrl;
 
+		// Sequencer
 		struct {
-			uint8_t index;
-			uint8_t map_mask;
-			bool reset1;
-			bool reset2;
-			uint8_t reg1;
-			uint8_t char_map_select;
-			bool extended_mem;
-			bool odd_even;
-			bool chain_four;
-			bool clear_screen;
+			uint8_t address;         // Address register
+			uint8_t clocking;        // Clocking Mode register
+			uint8_t map_mask;        // Map Mask register
+			uint8_t char_map_select; // Character Map Select register
+			bool reset_asr;          // Reset register bit0: Asynchronous reset
+			bool reset_sr;           // Reset register bit1: Synchronous reset
+			bool extended_mem;       // Memory Mode register bit1: Extended Memory
+			bool odd_even;           // Memory Mode register bit2: Odd/Even
+			bool chain_four;         // Memory Mode register bit3: Chain 4
+			bool x_dotclockdiv2;     // Clocking Mode register bit3: Dot Clock
 		} sequencer;
 
-		bool vga_enabled;
-		bool vga_mem_updated;
-		uint32_t vga_mem_offset;
-		uint line_offset;
-		uint line_compare;
-		uint vertical_display_end;
-		uint blink_counter;
+		bool needs_update;  // 1=screen needs to be updated
+		bool clear_screen;  // 1=screen must be cleared at next update
+		// text mode support
+		unsigned blink_counter;
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint16_t charmap_address;
-		bool x_dotclockdiv2;
-		bool y_doublescan;
 		// h/v retrace timing
-		uint64_t vblank_time_usec;
-		uint64_t vretrace_time_usec;
+		uint64_t vblank_time_usec;   // Time of the last vblank event
+		uint64_t vretrace_time_usec; // Time of the last vretrace event
 		uint32_t htotal_usec;
 		uint32_t hbstart_usec;
 		uint32_t hbend_usec;
@@ -215,31 +177,31 @@ protected:
 		uint32_t vrstart_usec;
 		uint32_t vrend_usec;
 		uint32_t vrspan_usec;
-		// shift values for extensions
+		// shift values for VBE (TODO)
 		uint8_t  plane_shift;
 		uint32_t plane_offset;
 		uint8_t  dac_shift;
-		// last active resolution and bpp
+		// last active resolution
 		uint16_t last_xres;
 		uint16_t last_yres;
-		uint8_t last_bpp;
 		uint8_t last_msl;
-	} m_s;  // state information
+	} m_s;
 
-	uint16_t m_max_xres;
-	uint16_t m_max_yres;
+	uint8_t  *m_memory;      // video memory buffer
+	uint8_t  *m_rom;         // BIOS code buffer
+	uint32_t m_memsize;      // size of memory buffer
+	int m_mem_mapping;       // video memory mapping ID
+	int m_rom_mapping;       // BIOS mapping ID
+	VGATimings m_vga_timing; // VGA timings
+	double m_bus_timing;     // System bus timings
+	int m_timer_id;          // Machine timer ID, for vblank and vretrace events
+	VGADisplay *m_display;   // VGADisplay object
+	// tiling system
+	uint16_t m_tile_width;
+	uint16_t m_tile_height;
 	uint16_t m_num_x_tiles;
 	uint16_t m_num_y_tiles;
-	uint32_t m_memsize;
-	uint8_t *m_memory;
-	uint8_t *m_rom;
-	bool *m_tile_updated;
-	int m_timer_id;
-	VGADisplay * m_display;
-	int m_mem_mapping;
-	int m_rom_mapping;
-	VGATimings m_vga_timing;
-	double m_bus_timing;
+	std::vector<uint8_t> m_tile_dirty; // don't use bool, it's not thread safe
 
 public:
 	VGA(Devices *_dev);
@@ -248,35 +210,45 @@ public:
 	void install();
 	void config_changed();
 	void remove();
-	void reset(unsigned type);
-	uint16_t read(uint16_t address, uint io_len);
-	void write(uint16_t address, uint16_t value, uint io_len);
+	void reset(unsigned _type);
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+	uint16_t read(uint16_t _address, unsigned _io_len);
+	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 	void power_off();
-
 	void set_timings(double _bus, VGATimings _vga) {
 		m_bus_timing = _bus;
 		m_vga_timing = _vga;
 	}
-
-	void get_text_snapshot(uint8_t **text_snapshot, uint *txHeight, uint *txWidth);
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+	void get_text_snapshot(uint8_t **text_snapshot_, unsigned *txHeight_, unsigned *txWidth_);
 
 protected:
 	virtual void update_mem_mapping();
 	void load_ROM(const std::string &_filename);
-	void redraw_area(uint x0, uint y0, uint width, uint height);
+	void redraw_area(unsigned _x0, unsigned _y0, unsigned _width, unsigned _height);
 	void init_iohandlers();
 	void init_systemtimer();
-	uint8_t get_vga_pixel(uint16_t x, uint16_t y, uint16_t saddr, uint16_t lc, bool bs, uint8_t * const *plane);
+	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _lc, bool _bs, uint8_t * const *_plane);
 	void update(uint64_t _time);
 	void vertical_retrace(uint64_t _time);
-	void determine_screen_dimensions(uint *piHeight, uint *piWidth);
+	void determine_screen_dimensions(unsigned *height_, unsigned *width_);
+	void tiles_update(unsigned _width, unsigned _height);
 	void calculate_retrace_timing();
 	bool skip_update();
 	void raise_interrupt();
 	void lower_interrupt();
 	void clear_screen();
+	void set_tiles_dirty();
+	ALWAYS_INLINE void set_tile_dirty(unsigned _xtile, unsigned _ytile, bool _value) {
+		if(((_xtile) < m_num_x_tiles) && ((_ytile) < m_num_y_tiles)) {
+			m_tile_dirty[(_xtile) + (_ytile)*m_num_x_tiles] = _value;
+		}
+	}
+	ALWAYS_INLINE bool is_tile_dirty(unsigned _xtile, unsigned _ytile) const {
+		return ((((_xtile) < m_num_x_tiles) && ((_ytile) < m_num_y_tiles)) ?
+			m_tile_dirty[(_xtile) + (_ytile)*m_num_x_tiles]
+			: false);
+	}
 
 	template<typename FN>
 	void gfx_update(FN _get_pixel, bool _force_upd);

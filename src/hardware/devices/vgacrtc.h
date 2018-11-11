@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017  Marco Bortolin
+ * Copyright (C) 2017-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,7 +41,7 @@
 #define CRTC_UNDERLINE        0x14  // Index 14h (20) -- Underline Location Register
 #define CRTC_START_VBLANK     0x15  // Index 15h (21) -- Start Vertical Blanking Register
 #define CRTC_END_VBLANK       0x16  // Index 16h (22) -- End Vertical Blanking
-#define CRTC_MODE_CONTROL     0x17  // Index 17h (23) -- CRTC Mode Control Register
+#define CRTC_MODE_CONTROL     0x17  // Index 17h (23) -- CRT Mode Control Register
 #define CRTC_LINE_COMPARE     0x18  // Index 18h (24) -- Line Compare Register
 
 // End Horizontal Blanking Register (Index 03h)
@@ -97,10 +97,10 @@
 // End Vertical Blanking Register (Index 16h)
 #define CRTC_EVB    0x7F  //End Vertical Blanking
 
-// Mode Control Register (Index 17h)
+// CRT Mode Control Register (Index 17h)
 #define CRTC_SE     0x80  // Sync Enable
-#define CRTC_BWM    0x40  // Byte/Word Mode Select
-#define CRTC_AW     0x20  // Address Wrap Select
+#define CRTC_WB     0x40  // Word/Byte Mode Select
+#define CRTC_ADW    0x20  // Address Wrap Select
 #define CRTC_DIV2   0x08  // Divide Memory Address clock by 2
 #define CRTC_SLDIV  0x04  // Divide Scan Line clock by 2
 #define CRTC_MAP14  0x02  // Map Display Address 14
@@ -109,17 +109,21 @@
 
 struct VGA_CRTC
 {
-	uint8_t address;
-	uint8_t reg[0x19];
-	bool interrupt;
-	uint16_t start_address;
-	bool start_address_modified;
+	uint8_t address;               // Current register index
+	uint8_t reg[0x19];             // CRT controller registers 0-18h
+	uint16_t line_offset;          // Screen's logical line width (10-bit)
+	uint16_t line_compare;         // Line compare target (10-bit)
+	uint16_t vertical_display_end; // Vertical-display-enable end position (10-bit)
+	uint16_t start_address;        // Starting address for the regenerative buffer (16-bit)
+	bool y_doublescan;             // 1=double scanning active
+	bool start_address_modified;   // 1=start address value has been modified
+	bool interrupt;                // 1=vretrace interrupt has been raised
 
 	void latch_start_address() {
 		start_address = (reg[CRTC_STARTADDR_HI] << 8) | reg[CRTC_STARTADDR_LO];
 		start_address_modified = false;
 	}
-	bool write_protect() const {
+	bool is_write_protected() const {
 		return ((reg[CRTC_VRETRACE_END] & CRTC_PROT) > 0);
 	}
 };

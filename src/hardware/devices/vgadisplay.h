@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2018  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,6 +21,7 @@
 #define IBMULATOR_HW_VGADISPLAY_H
 
 #include "statebuf.h"
+#include <vector>
 #include <condition_variable>
 
 #define VGA_MAX_XRES 720
@@ -39,17 +40,14 @@ class TextModeInfo;
 
 class VGADisplay
 {
-	uint32_t *m_fb; // the framebuffer
+	std::vector<uint32_t> m_fb; // the framebuffer
 
 	struct {
 		bool textmode;
-		uint xres;
-		uint yres;
-		uint bpp;
-		uint fb_xsize;
-		uint fb_ysize;
-		uint tile_xsize;
-		uint tile_ysize;
+		unsigned xres;
+		unsigned yres;
+		unsigned fb_width;
+		unsigned fb_height;
 
 		uint32_t palette[256];
 
@@ -57,11 +55,11 @@ class VGADisplay
 		bool charmap_updated;
 		bool char_changed[256];
 
-		uint prev_cursor_x, prev_cursor_y;
+		unsigned prev_cursor_x, prev_cursor_y;
 		uint8_t h_panning, v_panning;
 		uint16_t line_compare;
 		int fontwidth, fontheight;
-		uint text_rows, text_cols;
+		unsigned text_rows, text_cols;
 	} m_s;
 
 	bool m_dim_updated;
@@ -77,6 +75,9 @@ public:
 	VGADisplay();
 	~VGADisplay();
 
+	void save_state(StateBuf &_state);
+	void restore_state(StateBuf &_state);
+
 	inline void lock() { m_mutex.lock(); }
 	inline void unlock() { m_mutex.unlock(); }
 	inline void wait() {
@@ -86,28 +87,24 @@ public:
 		}
 	}
 	inline void notify_all() { m_cv.notify_all(); }
-	inline uint get_screen_xres() { return m_s.xres; }
-	inline uint get_screen_yres() { return m_s.yres; }
-	inline uint get_fb_xsize() { return m_s.fb_xsize; }
-	inline uint get_fb_ysize() { return m_s.fb_ysize; }
-	inline uint32_t* get_framebuffer() { return m_fb; }
-	inline uint32_t get_framebuffer_data_size() { return VGA_MAX_XRES*VGA_MAX_YRES*4; }
-	inline uint32_t get_framebuffer_row_length() { return VGA_MAX_XRES*4; }
+	inline unsigned get_screen_xres() const { return m_s.xres; }
+	inline unsigned get_screen_yres() const { return m_s.yres; }
+	inline unsigned get_fb_size() const { return m_fb.size(); }
+	inline unsigned get_fb_width() const { return m_s.fb_width; }
+	inline unsigned get_fb_height() const { return m_s.fb_height; }
+	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
 
 	void set_text_charmap(uint8_t *_fbuffer);
 	void set_text_charbyte(uint16_t _address, uint8_t _data);
-	bool palette_change(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
-	void dimension_update(uint x, uint y, uint fheight=0, uint fwidth=0, uint bpp=8);
-	void graphics_tile_update(uint8_t *snapshot, uint x, uint y);
+	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
+	void dimension_update(unsigned _x, unsigned _y, unsigned _fwidth=0, unsigned _fheight=0);
+	void graphics_update(unsigned _x, unsigned _y, unsigned _width, unsigned _height, uint8_t *_snapshot);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
-			uint _cursor_x, uint _cursor_y, TextModeInfo *_tm_info);
+			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
 	void clear_screen();
 
 	void copy_screen(uint8_t *_buffer);
-	uint32_t get_color(uint8_t index);
-
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
+	uint32_t get_color(uint8_t _index);
 
 	inline bool fb_updated() { return m_fb_updated; }
 	inline void set_fb_updated() { m_fb_updated = true; }
