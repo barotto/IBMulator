@@ -5,8 +5,8 @@
 		<style>
 			body
 			{
-				width: 350px;
-				height: 300px;
+				width: 320px;
+				height: 330px;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -75,6 +75,10 @@
 		</style>
 	</head>
 	<body template="default">
+		<div id="vga">
+			<p>VGA</p>
+			<button id="cmd_dump_vga_state">dump state</button>
+		</div>
 		<div id="pic">
 			<p>PIC</p>
 			<table>

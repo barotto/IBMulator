@@ -20,6 +20,8 @@
 #ifndef IBMULATOR_UTILS_H
 #define IBMULATOR_UTILS_H
 
+#include <vector>
+
 /* Converts a int into a string, to be used in string concatenations */
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -36,6 +38,9 @@ std::string bitfield_to_string(uint8_t _bitfield,
 std::string bitfield_to_string(uint8_t _bitfield,
 		const std::array<std::string, 8> &_set_names,
 		const std::array<std::string, 8> &_clear_names);
+
+const char* register_to_string(uint8_t _register,
+	const std::vector<std::pair<int, std::string> > &_fields);
 
 template<class T>
 inline T clamp(T _value, T _lower, T _upper)

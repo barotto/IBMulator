@@ -18,6 +18,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <array>
 #include "utils.h"
 
@@ -54,4 +55,33 @@ std::string bitfield_to_string(uint8_t _bitfield,
 	}
 	s.pop_back();
 	return s;
+}
+
+const char *register_to_string(uint8_t _register,
+	const std::vector<std::pair<int, std::string> > &_fields)
+{
+	std::ostringstream sstr;
+	thread_local static std::string s;
+
+	sstr << std::hex;
+	int pos = 0;
+	for(auto const &p : _fields) {
+		int bits = p.first;
+		int mask = 0;
+		while(bits--) {
+			mask |= 1<<bits;
+		}
+		if(!p.second.empty()) {
+			sstr << p.second << "=" << (_register >> pos & mask) << " ";
+		}
+		pos += p.first;
+		if(pos > 7) {
+			break;
+		}
+	}
+	s = sstr.str();
+	if(!s.empty()) {
+		s.pop_back();
+	}
+	return s.c_str();
 }

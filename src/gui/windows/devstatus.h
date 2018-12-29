@@ -40,6 +40,7 @@ private:
 
 	static event_map_t ms_evt_map;
 
+	void on_cmd_dump_vga_state(RC::Event &);
 	void update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn);
 	void update_pit(uint cnt);
 

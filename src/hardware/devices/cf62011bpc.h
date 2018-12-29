@@ -46,6 +46,8 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	void state_to_textfile(std::string _filepath);
+
 protected:
 	void update_mem_mapping();
 

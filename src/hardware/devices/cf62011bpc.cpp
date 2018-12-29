@@ -33,6 +33,7 @@
 #include "cf62011bpc.h"
 #include "hardware/memory.h"
 #include "hardware/devices.h"
+#include "filesys.h"
 #include <cstring>
 
 IODEVICE_PORTS(CF62011BPC) = {
@@ -225,5 +226,21 @@ void CF62011BPC::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		default:
 			m_s.xga_reg[_address] = _value;
 			break;
+	}
+}
+
+void CF62011BPC::state_to_textfile(std::string _filepath)
+{
+	// this function is called by the GUI thread
+	VGA::state_to_textfile(_filepath);
+
+	auto file = FileSys::make_file(_filepath.c_str(), "a");
+	if(file.get() == nullptr) {
+		PERRF(LOG_VGA, "cannot open %s for update\n", _filepath.c_str());
+		throw std::exception();
+	}
+	fprintf(file.get(), "\nXGA registers\n");
+	for(int i=0; i<0xf; i++) {
+		fprintf(file.get(), "0x%02X 0x%02X\n", i, m_s.xga_reg[i]);
 	}
 }

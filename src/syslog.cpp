@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
-/* The first version of this code is from more than 15 years ago, in the dark
+/* The first version of this code is from almost 20 years ago, in the dark
  * ages of C++.
+ * TODO I really need to rewrite this over engineered stinking pile of dog turd.
  */
 
 #include "ibmulator.h"

@@ -21,7 +21,13 @@
 #ifndef IBMULATOR_HW_VGA_H
 #define IBMULATOR_HW_VGA_H
 
-#include "vgacrtc.h"
+
+#include "vga_genregs.h"
+#include "vga_sequencer.h"
+#include "vga_crtc.h"
+#include "vga_gfxctrl.h"
+#include "vga_attrctrl.h"
+#include "vga_dac.h"
 #include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
@@ -66,98 +72,12 @@ class VGA : public IODevice
 protected:
 	// state information
 	struct {
-
-		// General registers
-		struct {
-			// Miscellaneous Output Register
-			struct {
-				bool io_addr_select;   // bit0: I/O Address Select
-				bool enable_ram;       // bit1: Enable RAM
-				uint8_t clock_select;  // bit2-3: Clock Select
-				bool select_high_bank; // bit5: select high 64k bank
-				uint8_t sync_polarity; // bit6-7: Sync Polarity
-			} misc_output;
-			bool vga_enable; // Video Subsystem Enable Register (bit0)
-		} general;
-
-		// CRT Controller
-		VGA_CRTC CRTC;
-
-		// Attribute Controller
-		struct {
-			uint8_t address;            // Address Register
-			bool flip_flop;             // 0=address mode, 1=data-write mode
-			bool palette_enable;        // Address Register bit5: Internal Palette Address Source
-			uint8_t palette_reg[16];    // Internal Palette Registers
-			uint8_t overscan_color;     // Overscan Color Register
-			uint8_t color_plane_enable; // Color Plane Enable Register (bit0-3)
-			uint8_t horiz_pel_panning;  // Horizontal Pixel Panning Register (bit0-3)
-			uint8_t color_select;       // Color Select Register (bit0-3)
-			// Mode Control Register
-			struct {
-				bool graphics_alpha;        // bit0: Graphics/Alphanumeric Mode
-				bool display_type;          // bit1: Mono Emulation
-				bool enable_line_graphics;  // bit2: Enable Line Graphics Character Code
-				bool blink_intensity;       // bit3: Enable Blink/Select Background Intensity
-				bool pel_panning_mode;      // bit5: PEL Panning Compatibility
-				bool pel_clock_select;      // bit6: PEL Width
-				bool internal_palette_size; // bit7: P5, P4 Select
-			} mode_ctrl;
-		} attribute_ctrl;
-
-		// Digital-to-Analog Converter
-		struct {
-			uint8_t write_data_register; // Palette Address Register (write mode)
-			uint8_t write_data_cycle;    // 0,1,2: current write data cycle
-			uint8_t read_data_register;  // Palette Address Register (read mode)
-			uint8_t read_data_cycle;     // 0,1,2: current read data cycle
-			uint8_t state;               // DAC State Register
-			struct {
-				uint8_t red;             // Palette entry red value (6-bit)
-				uint8_t green;           // Palette entry green value (6-bit)
-				uint8_t blue;            // Palette entry blue value (6-bit)
-			} palette[256];              // Palette Data registers
-			uint8_t pel_mask;            // PEL Mask Register
-		} dac;
-
-		// Graphics Controller
-		struct {
-			uint8_t address;          // Address register
-			uint8_t set_reset;        // Set/Reset register
-			uint8_t enable_set_reset; // Enable Set/Reset register
-			uint8_t color_compare;    // Color Compare register
-			uint8_t data_rotate;      // Data Rotate register
-			uint8_t raster_op;        // Data Rotate register bit3-4: Function Select
-			uint8_t read_map_select;  // Read Map Select register
-			uint8_t write_mode;       // Graphics Mode Register bit0-1: Write Mode
-			bool read_mode;           // Graphics Mode Register bit3: Read Mode
-			bool odd_even;            // Graphics Mode Register bit4: Odd/Even
-			uint8_t shift_c256;       // Graphics Mode Register bit5-6:
-			                          //   Shift Register Mode (5)
-			                          //   Graphics 256 Colour Control (6)
-			bool graphics_mode;       // Miscellaneous Register bit0: Graphics Mode
-			bool chain_odd_even;      // Miscellaneous Register bit1: Odd/Even
-			uint8_t memory_mapping;   // Miscellaneous Register bit2-3: Memory Map
-			uint8_t color_dont_care;  // Color Don't Care Register
-			uint8_t bitmask;          // Bit Mask Register
-			uint32_t memory_offset;   // current phy start address of video memory
-			uint32_t memory_aperture; // current video memory accessible size
-			uint8_t latch[4];         // data latches
-		} graphics_ctrl;
-
-		// Sequencer
-		struct {
-			uint8_t address;         // Address register
-			uint8_t clocking;        // Clocking Mode register
-			uint8_t map_mask;        // Map Mask register
-			uint8_t char_map_select; // Character Map Select register
-			bool reset_asr;          // Reset register bit0: Asynchronous reset
-			bool reset_sr;           // Reset register bit1: Synchronous reset
-			bool extended_mem;       // Memory Mode register bit1: Extended Memory
-			bool odd_even;           // Memory Mode register bit2: Odd/Even
-			bool chain_four;         // Memory Mode register bit3: Chain 4
-			bool x_dotclockdiv2;     // Clocking Mode register bit3: Dot Clock
-		} sequencer;
+		VGA_GenRegs   gen_regs;
+		VGA_Sequencer sequencer;
+		VGA_CRTC      CRTC;
+		VGA_GfxCtrl   gfx_ctrl;
+		VGA_AttrCtrl  attr_ctrl;
+		VGA_DAC       dac;
 
 		bool needs_update;  // 1=screen needs to be updated
 		bool clear_screen;  // 1=screen must be cleared at next update
@@ -221,6 +141,7 @@ public:
 		m_vga_timing = _vga;
 	}
 	void get_text_snapshot(uint8_t **text_snapshot_, unsigned *txHeight_, unsigned *txWidth_);
+	virtual void state_to_textfile(std::string _filepath);
 
 protected:
 	virtual void update_mem_mapping();

@@ -448,6 +448,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 // xres * yres * 4 bytes. the buffer pitch is always xres*4
 void VGADisplay::copy_screen(uint8_t *_buffer)
 {
+	// this function is called by the GUI thread
 	uint8_t *dest = _buffer;
 	uint8_t *src = (uint8_t*)&m_fb[0];
 	const unsigned w = m_s.xres;

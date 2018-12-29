@@ -34,7 +34,7 @@
 class Syslog;
 extern Syslog g_syslog;
 
-#define LOG_BUFFER_SIZE 500
+#define LOG_BUFFER_SIZE 1000
 
 #define LOG g_syslog.log
 

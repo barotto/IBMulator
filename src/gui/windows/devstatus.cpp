@@ -22,14 +22,17 @@
 #include "gui.h"
 #include "machine.h"
 #include "devstatus.h"
+#include "filesys.h"
 #include <Rocket/Core.h>
 #include <sstream>
 
 #include "hardware/devices/pic.h"
 #include "hardware/devices/pit.h"
+#include "hardware/devices/vga.h"
 #include "format.h"
 
 event_map_t DevStatus::ms_evt_map = {
+	GUI_EVT( "cmd_dump_vga_state", "click", DevStatus::on_cmd_dump_vga_state ),
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
@@ -39,101 +42,40 @@ DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 {
 	assert(m_wnd);
 
-	m_pic.irq_e[0] = get_element("pic_irq_0");
-	m_pic.irq_e[1] = get_element("pic_irq_1");
-	m_pic.irq_e[2] = get_element("pic_irq_2");
-	m_pic.irq_e[3] = get_element("pic_irq_3");
-	m_pic.irq_e[4] = get_element("pic_irq_4");
-	m_pic.irq_e[5] = get_element("pic_irq_5");
-	m_pic.irq_e[6] = get_element("pic_irq_6");
-	m_pic.irq_e[7] = get_element("pic_irq_7");
-	m_pic.irq_e[8] = get_element("pic_irq_8");
-	m_pic.irq_e[9] = get_element("pic_irq_9");
-	m_pic.irq_e[10] = get_element("pic_irq_10");
-	m_pic.irq_e[11] = get_element("pic_irq_11");
-	m_pic.irq_e[12] = get_element("pic_irq_12");
-	m_pic.irq_e[13] = get_element("pic_irq_13");
-	m_pic.irq_e[14] = get_element("pic_irq_14");
-	m_pic.irq_e[15] = get_element("pic_irq_15");
-
+	char buf[3];
+	for(int i=0; i<16; i++) {
+		snprintf(buf, 3, "%d", i);
+		m_pic.irq_e[i] = get_element(RC::String("pic_irq_")+buf);
+		m_pic.irr_e[i] = get_element(RC::String("pic_irr_")+buf);
+		m_pic.imr_e[i] = get_element(RC::String("pic_imr_")+buf);
+		m_pic.isr_e[i] = get_element(RC::String("pic_isr_")+buf);
+		if(i<3) {
+			m_pit.mode[i] = get_element(RC::String("pit_")+buf+"_mode");
+			m_pit.cnt[i] = get_element(RC::String("pit_")+buf+"_cnt");
+			m_pit.gate[i] = get_element(RC::String("pit_")+buf+"_gate");
+			m_pit.out[i] = get_element(RC::String("pit_")+buf+"_out");
+			m_pit.in[i] = get_element(RC::String("pit_")+buf+"_in");
+		}
+	}
 	m_pic.irq = 0;
-
-	m_pic.irr_e[0] = get_element("pic_irr_0");
-	m_pic.irr_e[1] = get_element("pic_irr_1");
-	m_pic.irr_e[2] = get_element("pic_irr_2");
-	m_pic.irr_e[3] = get_element("pic_irr_3");
-	m_pic.irr_e[4] = get_element("pic_irr_4");
-	m_pic.irr_e[5] = get_element("pic_irr_5");
-	m_pic.irr_e[6] = get_element("pic_irr_6");
-	m_pic.irr_e[7] = get_element("pic_irr_7");
-	m_pic.irr_e[8] = get_element("pic_irr_8");
-	m_pic.irr_e[9] = get_element("pic_irr_9");
-	m_pic.irr_e[10] = get_element("pic_irr_10");
-	m_pic.irr_e[11] = get_element("pic_irr_11");
-	m_pic.irr_e[12] = get_element("pic_irr_12");
-	m_pic.irr_e[13] = get_element("pic_irr_13");
-	m_pic.irr_e[14] = get_element("pic_irr_14");
-	m_pic.irr_e[15] = get_element("pic_irr_15");
-
 	m_pic.irr = 0;
-
-	m_pic.imr_e[0] = get_element("pic_imr_0");
-	m_pic.imr_e[1] = get_element("pic_imr_1");
-	m_pic.imr_e[2] = get_element("pic_imr_2");
-	m_pic.imr_e[3] = get_element("pic_imr_3");
-	m_pic.imr_e[4] = get_element("pic_imr_4");
-	m_pic.imr_e[5] = get_element("pic_imr_5");
-	m_pic.imr_e[6] = get_element("pic_imr_6");
-	m_pic.imr_e[7] = get_element("pic_imr_7");
-	m_pic.imr_e[8] = get_element("pic_imr_8");
-	m_pic.imr_e[9] = get_element("pic_imr_9");
-	m_pic.imr_e[10] = get_element("pic_imr_10");
-	m_pic.imr_e[11] = get_element("pic_imr_11");
-	m_pic.imr_e[12] = get_element("pic_imr_12");
-	m_pic.imr_e[13] = get_element("pic_imr_13");
-	m_pic.imr_e[14] = get_element("pic_imr_14");
-	m_pic.imr_e[15] = get_element("pic_imr_15");
-
 	m_pic.imr = 0;
-
-	m_pic.isr_e[0] = get_element("pic_isr_0");
-	m_pic.isr_e[1] = get_element("pic_isr_1");
-	m_pic.isr_e[2] = get_element("pic_isr_2");
-	m_pic.isr_e[3] = get_element("pic_isr_3");
-	m_pic.isr_e[4] = get_element("pic_isr_4");
-	m_pic.isr_e[5] = get_element("pic_isr_5");
-	m_pic.isr_e[6] = get_element("pic_isr_6");
-	m_pic.isr_e[7] = get_element("pic_isr_7");
-	m_pic.isr_e[8] = get_element("pic_isr_8");
-	m_pic.isr_e[9] = get_element("pic_isr_9");
-	m_pic.isr_e[10] = get_element("pic_isr_10");
-	m_pic.isr_e[11] = get_element("pic_isr_11");
-	m_pic.isr_e[12] = get_element("pic_isr_12");
-	m_pic.isr_e[13] = get_element("pic_isr_13");
-	m_pic.isr_e[14] = get_element("pic_isr_14");
-	m_pic.isr_e[15] = get_element("pic_isr_15");
-
 	m_pic.isr = 0;
-
-	m_pit.mode[0] = get_element("pit_0_mode");
-	m_pit.mode[1] = get_element("pit_1_mode");
-	m_pit.mode[2] = get_element("pit_2_mode");
-	m_pit.cnt[0] = get_element("pit_0_cnt");
-	m_pit.cnt[1] = get_element("pit_1_cnt");
-	m_pit.cnt[2] = get_element("pit_2_cnt");
-	m_pit.gate[0] = get_element("pit_0_gate");
-	m_pit.gate[1] = get_element("pit_1_gate");
-	m_pit.gate[2] = get_element("pit_2_gate");
-	m_pit.out[0] = get_element("pit_0_out");
-	m_pit.out[1] = get_element("pit_1_out");
-	m_pit.out[2] = get_element("pit_2_out");
-	m_pit.in[0] = get_element("pit_0_in");
-	m_pit.in[1] = get_element("pit_1_in");
-	m_pit.in[2] = get_element("pit_2_in");
 }
 
 DevStatus::~DevStatus()
 {
+}
+
+void DevStatus::on_cmd_dump_vga_state(RC::Event &)
+{
+	try {
+		std::string filepath = FileSys::get_next_filename(g_program.config().get_cfg_home(), "vga_state_", ".txt");
+		m_gui->machine()->devices().vga()->state_to_textfile(filepath);
+		std::string mex = "VGA state dumped to " + filepath;
+		PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
+		m_gui->show_message(mex.c_str());
+	} catch(std::exception &) {}
 }
 
 void DevStatus::update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn)

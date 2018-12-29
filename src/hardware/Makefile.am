@@ -43,6 +43,12 @@ libhardware_a_SOURCES = \
 	devices/pit.cpp \
 	devices/pit82c54.cpp \
 	devices/vga.cpp \
+	devices/vga_genregs.cpp \
+	devices/vga_crtc.cpp \
+	devices/vga_sequencer.cpp \
+	devices/vga_attrctrl.cpp \
+	devices/vga_gfxctrl.cpp \
+	devices/vga_dac.cpp \
 	devices/vgadisplay.cpp \
 	devices/drivefx.cpp \
 	devices/floppy.cpp \
@@ -93,8 +99,12 @@ noinst_HEADERS = \
 	devices/dma.h \
 	devices/pit.h \
 	devices/pit82c54.h \
+	devices/vga_attrctrl.h \
+	devices/vga_crtc.h \
+	devices/vga_dac.h \
+	devices/vga_genregs.h \
+	devices/vga_gfxctrl.h \
 	devices/vga.h \
-	devices/vgacrtc.h \
 	devices/vgadisplay.h \
 	devices/drivefx.h \
 	devices/floppy.h \
