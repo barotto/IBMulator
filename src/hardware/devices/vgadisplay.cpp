@@ -34,7 +34,6 @@ VGADisplay::VGADisplay()
 	m_s.yres = 400;
 	m_s.fb_width = VGA_MAX_XRES;
 	m_s.fb_height = VGA_MAX_YRES;
-	m_s.charmap_updated = true;
 	m_s.prev_cursor_x = 0;
 	m_s.prev_cursor_y = 0;
 	m_s.h_panning = 0;
@@ -66,9 +65,12 @@ VGADisplay::VGADisplay()
 
 	for(int i=0; i<256; i++) {
 		for(int j=0; j<16; j++) {
-			m_s.charmap[i*32+j] = ms_font8x16[i][j];
+			m_s.charmap[0][i*32+j] = ms_font8x16[i][j];
+			m_s.charmap[1][i*32+j] = ms_font8x16[i][j];
 		}
 	}
+	m_s.charmap_updated = true;
+	m_s.charmap_select = false;
 
 	m_dim_updated = false;
 
@@ -120,20 +122,21 @@ void VGADisplay::clear_screen()
 	std::fill(m_fb.begin(), m_fb.end(), 0);
 }
 
-void VGADisplay::set_text_charmap(uint8_t *_fbuffer)
+void VGADisplay::set_text_charmap(bool _map, uint8_t *_fbuffer)
 {
-	memcpy(&m_s.charmap, _fbuffer, 0x2000);
-	for(unsigned i=0; i<256; i++) {
-		m_s.char_changed[i] = true;
-	}
+	memcpy(&m_s.charmap[_map], _fbuffer, 0x2000);
 	m_s.charmap_updated = true;
 }
 
-void VGADisplay::set_text_charbyte(uint16_t _address, uint8_t _data)
+void VGADisplay::set_text_charbyte(bool _map, uint16_t _address, uint8_t _data)
 {
-	m_s.charmap[_address] = _data;
-	m_s.char_changed[_address >> 5] = true;
+	m_s.charmap[_map][_address] = _data;
 	m_s.charmap_updated = true;
+}
+
+void VGADisplay::enable_AB_charmaps(bool _enable)
+{
+	m_s.charmap_select = _enable;
 }
 
 // palette_change()
@@ -359,6 +362,10 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				} else {
 					bgcolor = text_palette[(_new_text[1] >> 4) & 0x0F];
 				}
+				bool map = 0;
+				if(m_s.charmap_select) {
+					map = (_new_text[1] & 0x08);
+				}
 				bool invert = ((offset == curs) && (cursor_visible));
 				bool gfxcharw9 = ((_tm_info->line_graphics) && ((_new_text[0] & 0xE0) == 0xC0));
 
@@ -367,9 +374,9 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				uint8_t fontline = cfstart;
 				uint8_t *pfont_row;
 				if(y > 0) {
-					pfont_row = &m_s.charmap[(_new_text[0] << 5)];
+					pfont_row = &m_s.charmap[map][(_new_text[0] << 5)];
 				} else {
-					pfont_row = &m_s.charmap[(_new_text[0] << 5) + cfstart];
+					pfont_row = &m_s.charmap[map][(_new_text[0] << 5) + cfstart];
 				}
 				uint32_t *buf_char = buf;
 				do {

@@ -51,9 +51,9 @@ class VGADisplay
 
 		uint32_t palette[256];
 
-		unsigned char charmap[0x2000];
+		uint8_t charmap[2][0x2000];
 		bool charmap_updated;
-		bool char_changed[256];
+		bool charmap_select;
 
 		unsigned prev_cursor_x, prev_cursor_y;
 		uint8_t h_panning, v_panning;
@@ -94,8 +94,9 @@ public:
 	inline unsigned get_fb_height() const { return m_s.fb_height; }
 	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
 
-	void set_text_charmap(uint8_t *_fbuffer);
-	void set_text_charbyte(uint16_t _address, uint8_t _data);
+	void set_text_charmap(bool _map, uint8_t *_fbuffer);
+	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
+	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
 	void dimension_update(unsigned _x, unsigned _y, unsigned _fwidth=0, unsigned _fheight=0);
 	void graphics_update(unsigned _x, unsigned _y, unsigned _width, unsigned _height, uint8_t *_snapshot);

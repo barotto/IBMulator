@@ -84,7 +84,7 @@ protected:
 		// text mode support
 		unsigned blink_counter;
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
-		uint16_t charmap_address;
+		uint16_t charmap_address[2];
 		// h/v retrace timing
 		uint64_t vblank_time_usec;   // Time of the last vblank event
 		uint64_t vretrace_time_usec; // Time of the last vretrace event

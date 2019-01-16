@@ -190,7 +190,10 @@ void VGA::reset(unsigned _type)
 		m_s.dac.state = 0x01;
 		m_s.dac.pel_mask = 0xff;
 
+		// TODO
+		// The blink rate is determined by the vertical sync rate divided by 32
 		m_s.blink_counter = 16;
+
 		m_s.plane_offset = 0;
 		m_s.plane_shift = 16;
 		m_s.dac_shift = 2;
@@ -726,8 +729,8 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				case SEQ_RESET:
 					if(((oldval & SEQ_ASR) == 1) && (m_s.sequencer.reset.ASR == 0)) {
 						m_s.sequencer.char_map = 0;
-						m_s.charmap_address = 0;
-						PDEBUGF(LOG_V2, LOG_VGA, "char_map=0");
+						m_s.charmap_address[0] = 0;
+						m_s.charmap_address[1] = 0;
 						charmap_update = true;
 					}
 					break;
@@ -743,25 +746,21 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					needs_redraw = (oldval != m_s.sequencer.map_mask);
 					break;
 				case SEQ_CHARMAP: {
-					uint8_t charmap1 = _value & (SEQ_MBL|SEQ_MBH);
-					if(charmap1 > 3) {
-						charmap1 = (charmap1 & 3) + 4;
+					uint8_t charmapB = _value & (SEQ_MBL|SEQ_MBH);
+					if(charmapB > 3) {
+						charmapB = (charmapB & 3) + 4;
 					}
-					uint8_t charmap2 = (_value & (SEQ_MAL|SEQ_MAH)) >> 2;
-					if(charmap2 > 3) {
-						charmap2 = (charmap2 & 3) + 4;
+					uint8_t charmapA = (_value & (SEQ_MAL|SEQ_MAH)) >> 2;
+					if(charmapA > 3) {
+						charmapA = (charmapA & 3) + 4;
 					}
-					if(m_s.CRTC.max_scanline > 0) {
-						static const uint16_t charmap_offset[8] = {
-							0x0000, 0x4000, 0x8000, 0xc000,
-							0x2000, 0x6000, 0xa000, 0xe000
-						};
-						m_s.charmap_address = charmap_offset[charmap1];
-						charmap_update = true;
-					}
-					if(charmap2 != charmap1) {
-						PDEBUGF(LOG_V2, LOG_VGA, "map #2 in block #%d unused", charmap2);
-					}
+					static const uint16_t charmap_offset[8] = {
+						0x0000, 0x4000, 0x8000, 0xc000,
+						0x2000, 0x6000, 0xa000, 0xe000
+					};
+					m_s.charmap_address[0] = charmap_offset[charmapB];
+					m_s.charmap_address[1] = charmap_offset[charmapA];
+					charmap_update = true;
 					break;
 				}
 			}
@@ -973,7 +972,9 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 
 	if(charmap_update) {
 		m_display->lock();
-		m_display->set_text_charmap(& m_memory[0x20000 + m_s.charmap_address]);
+		m_display->set_text_charmap(0, &m_memory[0x20000 + m_s.charmap_address[0]]);
+		m_display->set_text_charmap(1, &m_memory[0x20000 + m_s.charmap_address[1]]);
+		m_display->enable_AB_charmaps(m_s.charmap_address[0] != m_s.charmap_address[1]);
 		m_display->unlock();
 		m_s.needs_update = true;
 	}
@@ -1376,7 +1377,7 @@ void VGA::update(uint64_t _time)
 			m_display->unlock();
 			return;
 		}
-		unsigned cWidth = ((m_s.sequencer.clocking & 0x01) == 1) ? 8 : 9;
+		unsigned cWidth = m_s.sequencer.clocking.D89 ? 8 : 9;
 		unsigned iWidth = cWidth * cols;
 		unsigned iHeight = VDE+1;
 		if((iWidth != m_s.last_xres) || (iHeight != m_s.last_yres) || (MSL != m_s.last_msl)) {
@@ -1775,10 +1776,15 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 		plane1[offset] = new_val[1];
 	}
 	if(me.m_s.sequencer.map_mask.M2E) {
-		if((offset & 0xe000) == me.m_s.charmap_address) {
-			me.m_display->lock();
-			me.m_display->set_text_charbyte((offset & 0x1fff), new_val[2]);
-			me.m_display->unlock();
+		if(!me.m_s.gfx_ctrl.misc.GM) {
+			uint32_t mapaddr = offset & 0xe000;
+			if(mapaddr == me.m_s.charmap_address[0] || mapaddr == me.m_s.charmap_address[1]) {
+				me.m_display->lock();
+				me.m_display->set_text_charbyte(
+						(mapaddr == me.m_s.charmap_address[0])?0:1,
+						(offset & 0x1fff), new_val[2]);
+				me.m_display->unlock();
+			}
 		}
 		plane2[offset] = new_val[2];
 	}
