@@ -181,9 +181,9 @@ uint16_t CF62011BPC::read(uint16_t _address, unsigned _io_len)
 		return VGA::read(_address, _io_len);
 	}
 
-	uint16_t value = m_s.xga_reg[_address&0xF];
+	uint16_t value = m_s.xga_reg[_address & 0xF];
 
-	PDEBUGF(LOG_V2, LOG_VGA, "read  0x%03X -> 0x%04X\n", _address, value);
+	PDEBUGF(LOG_V2, LOG_VGA, "r %03Xh XGA REG[%02u]   -> 0x%04X\n", _address, (_address & 0xF),  value);
 
 	return value;
 }
@@ -194,7 +194,7 @@ void CF62011BPC::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		return VGA::write(_address, _value, _io_len);
 	}
 
-	PDEBUGF(LOG_V2, LOG_VGA, "write 0x%03X <- 0x%04X\n", _address, _value);
+	PDEBUGF(LOG_V2, LOG_VGA, "w %03Xh XGA REG[%02u]   <- 0x%04X\n", _address, (_address & 0xF), _value);
 
 	_address &= 0xF;
 

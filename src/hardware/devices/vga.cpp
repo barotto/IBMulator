@@ -511,7 +511,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 
 		case 0x03c5: // Sequencer Registers 00..04
 			retval = m_s.sequencer;
-			PDEBUGF(LOG_V2, LOG_VGA, "SEQ REG[%02x]     -> 0%02X %s\n",
+			PDEBUGF(LOG_V2, LOG_VGA, "SEQ REG[%02x]    -> 0%02X %s\n",
 					m_s.sequencer.address, retval, (const char*)m_s.sequencer);
 			break;
 
@@ -724,7 +724,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			}
 			uint8_t oldval = m_s.sequencer;
 			m_s.sequencer = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, " %s ", (const char*)m_s.sequencer);
+			PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.sequencer);
 			switch (m_s.sequencer.address) {
 				case SEQ_RESET:
 					if(((oldval & SEQ_ASR) == 1) && (m_s.sequencer.reset.ASR == 0)) {
@@ -764,7 +764,6 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					break;
 				}
 			}
-			PDEBUGF(LOG_V2, LOG_VGA, "\n");
 			break;
 		}
 
@@ -901,7 +900,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			}
 			uint8_t oldvalue = m_s.CRTC;
 			m_s.CRTC = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, " %s ", (const char*)m_s.CRTC);
+			PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.CRTC);
 			if(_value != oldvalue) {
 				switch (m_s.CRTC.address) {
 					case CRTC_HTOTAL:          // 0x00
@@ -943,7 +942,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						} else {
 							m_s.needs_update = true;
 						}
-						PDEBUGF(LOG_V2, LOG_VGA, " start address 0x%02X=%02X",
+						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
 						break;
 					case CRTC_VRETRACE_END:   // 0x11
@@ -956,7 +955,6 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						break;
 				}
 			}
-			PDEBUGF(LOG_V2, LOG_VGA, "\n");
 			break;
 		}
 
