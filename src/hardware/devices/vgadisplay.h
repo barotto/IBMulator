@@ -59,7 +59,6 @@ class VGADisplay
 		uint8_t h_panning, v_panning;
 		uint16_t line_compare;
 		int fontwidth, fontheight;
-		unsigned text_rows, text_cols;
 	} m_s;
 
 	bool m_dim_updated;

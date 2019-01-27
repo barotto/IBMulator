@@ -626,6 +626,7 @@ void Interface::print_VGA_text(std::vector<uint16_t> &_text)
 	tminfo.v_panning = 0;
 	tminfo.line_graphics = false;
 	tminfo.split_hpanning = false;
+	tminfo.double_scanning = false;
 	tminfo.blink_flags = 0;
 	for(int i=0; i<16; i++) {
 		tminfo.actl_palette[i] = i;

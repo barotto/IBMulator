@@ -60,6 +60,7 @@ struct TextModeInfo
 	uint8_t  v_panning;
 	bool     line_graphics;
 	bool     split_hpanning;
+	bool     double_scanning;
 	uint8_t  blink_flags;
 	uint8_t  actl_palette[16];
 };

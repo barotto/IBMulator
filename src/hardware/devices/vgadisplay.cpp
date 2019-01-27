@@ -41,8 +41,6 @@ VGADisplay::VGADisplay()
 	m_s.line_compare = 1023;
 	m_s.fontwidth = 8;
 	m_s.fontheight = 16;
-	m_s.text_cols = 80;
-	m_s.text_rows = 25;
 
 	m_fb.resize(m_s.fb_width * m_s.fb_height);
 
@@ -173,8 +171,6 @@ void VGADisplay::dimension_update(unsigned _x, unsigned _y,  unsigned _fwidth, u
 	if(m_s.textmode) {
 		m_s.fontwidth = _fwidth;
 		m_s.fontheight = _fheight;
-		m_s.text_cols = _x / m_s.fontwidth;
-		m_s.text_rows = _y / m_s.fontheight;
 	}
 
 	PINFOF(LOG_V1, LOG_VGA, "display: %dx%d\n", _x, _y);
@@ -244,6 +240,9 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 {
 	//PDEBUGF(LOG_V2, LOG_VGA, "text update\n");
 
+	unsigned yres = m_s.yres >> _tm_info->double_scanning;
+	unsigned text_cols = m_s.xres / m_s.fontwidth;
+	int text_rows = yres / m_s.fontheight;
 	bool forceUpdate = false;
 	bool blink_mode = (_tm_info->blink_flags & TEXT_BLINK_MODE) > 0;
 	bool blink_state = (_tm_info->blink_flags & TEXT_BLINK_STATE) > 0;
@@ -272,50 +271,51 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		m_s.line_compare = _tm_info->line_compare;
 	}
 
+	unsigned line_compare = m_s.line_compare >> _tm_info->double_scanning;
+
 	uint32_t *buf_row = &m_fb[0];
 
 	unsigned curs;
 	// first invalidate character at previous and new cursor location
-	if((m_s.prev_cursor_y < m_s.text_rows) && (m_s.prev_cursor_x < m_s.text_cols)) {
+	if((m_s.prev_cursor_y < (unsigned)text_rows) && (m_s.prev_cursor_x < text_cols)) {
 		curs = m_s.prev_cursor_y * _tm_info->line_offset + m_s.prev_cursor_x * 2;
 		_old_text[curs] = ~_new_text[curs];
 	}
 	bool cursor_visible = ((_tm_info->cs_start <= _tm_info->cs_end) && (_tm_info->cs_start < m_s.fontheight));
-	if((cursor_visible) && (_cursor_y < m_s.text_rows) && (_cursor_x < m_s.text_cols)) {
+	if((cursor_visible) && (_cursor_y < (unsigned)text_rows) && (_cursor_x < text_cols)) {
 		curs = _cursor_y * _tm_info->line_offset + _cursor_x * 2;
 		_old_text[curs] = ~_new_text[curs];
 	} else {
 		curs = 0xffff;
 	}
 
-	int rows = m_s.text_rows;
 	if(m_s.v_panning) {
-		rows++;
+		text_rows++;
 	}
 	unsigned y = 0;
 	unsigned cs_y = 0;
 	uint8_t *text_base = _new_text - _tm_info->start_address;
 	uint8_t split_textrow, split_fontrows;
-	if(m_s.line_compare < m_s.yres) {
-		split_textrow = (m_s.line_compare + m_s.v_panning) / m_s.fontheight;
-		split_fontrows = ((m_s.line_compare + m_s.v_panning) % m_s.fontheight) + 1;
+	if(line_compare < yres) {
+		split_textrow = (line_compare + m_s.v_panning) / m_s.fontheight;
+		split_fontrows = ((line_compare + m_s.v_panning) % m_s.fontheight) + 1;
 	} else {
-		split_textrow = rows + 1;
+		split_textrow = text_rows + 1;
 		split_fontrows = 0;
 	}
 	bool split_screen = false;
 
 	do {
 		uint32_t *buf = buf_row;
-		unsigned hchars = m_s.text_cols;
+		unsigned hchars = text_cols;
 		if(m_s.h_panning) {
 			hchars++;
 		}
 		uint8_t cfheight = m_s.fontheight;
 		uint8_t cfstart = 0;
 		if(split_screen) {
-			if(rows == 1) {
-				cfheight = (m_s.yres - m_s.line_compare - 1) % m_s.fontheight;
+			if(text_rows == 1) {
+				cfheight = (yres - line_compare - 1) % m_s.fontheight;
 				if(cfheight == 0) {
 					cfheight = m_s.fontheight;
 				}
@@ -324,7 +324,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			if(y == 0) {
 				cfheight -= m_s.v_panning;
 				cfstart = m_s.v_panning;
-			} else if(rows == 1) {
+			} else if(text_rows == 1) {
 				cfheight = m_s.v_panning;
 			}
 		}
@@ -340,7 +340,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		do {
 			uint8_t cfwidth = m_s.fontwidth;
 			if(m_s.h_panning) {
-				if(hchars > m_s.text_cols) {
+				if(hchars > text_cols) {
 					cfwidth -= m_s.h_panning;
 				} else if(hchars == 1) {
 					cfwidth = m_s.h_panning;
@@ -386,7 +386,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 					} else {
 						font_row <<= 1;
 					}
-					if(hchars > m_s.text_cols) {
+					if(hchars > text_cols) {
 						font_row <<= m_s.h_panning;
 					}
 					uint8_t fontpixels = cfwidth;
@@ -397,16 +397,19 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 						mask = 0x00;
 					}
 					do {
+						uint32_t color = fgcolor;
 						if((font_row & 0x100) == mask) {
-							*buf = bgcolor;
-						} else {
-							*buf = fgcolor;
+							color = bgcolor;
+						}
+						*buf = color;
+						if(_tm_info->double_scanning) {
+							*(buf + m_s.fb_width) = color;
 						}
 						buf++;
 						font_row <<= 1;
 					} while(--fontpixels);
 					buf -= cfwidth;
-					buf += m_s.fb_width;
+					buf += (m_s.fb_width << _tm_info->double_scanning);
 					fontline++;
 				} while(--fontrows);
 
@@ -417,9 +420,9 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			buf += cfwidth;
 
 			// select next char in old/new text
-			_new_text+=2;
-			_old_text+=2;
-			offset+=2;
+			_new_text += 2;
+			_old_text += 2;
+			offset += 2;
 			x++;
 
 			// process one entire horizontal row
@@ -428,7 +431,8 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		//PDEBUGF(LOG_V2, LOG_VGA, "\n");
 
 		// go to next character row location
-		buf_row += m_s.fb_width * cfheight;
+		buf_row += (m_s.fb_width << _tm_info->double_scanning) * cfheight;
+		//buf_row += (m_s.fb_width) * cfheight;
 		if(!split_screen && (y == split_textrow)) {
 			_new_text = text_base;
 			forceUpdate = true;
@@ -436,15 +440,16 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			if(_tm_info->split_hpanning) {
 				m_s.h_panning = 0;
 			}
-			rows = ((m_s.yres - m_s.line_compare + m_s.fontheight - 2) / m_s.fontheight) + 1;
-			split_screen = 1;
+			text_rows = ((yres - line_compare + m_s.fontheight - 2) / m_s.fontheight) + 1;
+			split_screen = true;
 		} else {
 			_new_text = new_line + _tm_info->line_offset;
 			_old_text = old_line + _tm_info->line_offset;
 			cs_y++;
 			y++;
 		}
-	} while(--rows >= 0);
+	} while(--text_rows >= 0);
+
 	m_s.h_panning = _tm_info->h_panning;
 	m_s.prev_cursor_x = _cursor_x;
 	m_s.prev_cursor_y = _cursor_y;

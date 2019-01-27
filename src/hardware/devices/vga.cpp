@@ -474,7 +474,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 				}
 			}
 
-			// reading this port resets the flip-flop to address mode
+			// reading this port resets the attribute controller flip-flop to address mode
 			m_s.attr_ctrl.flip_flop = false;
 			break;
 		}
@@ -1332,6 +1332,7 @@ void VGA::update(uint64_t _time)
 		tm_info.v_panning = m_s.CRTC.preset_row_scan.SRS;
 		tm_info.line_graphics = m_s.attr_ctrl.attr_mode.ELG;
 		tm_info.split_hpanning = m_s.attr_ctrl.attr_mode.PP;
+		tm_info.double_scanning = m_s.CRTC.max_scanline.DSC;
 		tm_info.blink_flags = 0;
 		if(m_s.attr_ctrl.attr_mode.EB) {
 			tm_info.blink_flags |= TEXT_BLINK_MODE;
