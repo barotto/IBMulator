@@ -4862,9 +4862,9 @@ void CPUExecutor::SMSW_ew()
 	store_ew(msw);
 	if(m_instr->op32 && m_instr->modrm.mod==3) {
 		/* When the destination operand is a 32-bit register the high-order
-		 * 16 bits of the register are cleared.
+		 * 16 bits of the register are from cr0 (tested on 386SX and 486DX hw).
 		 */
-		GEN_REG(m_instr->modrm.rm).word[1] = 0;
+		GEN_REG(m_instr->modrm.rm).word[1] = (REG_CR0 >> 16);
 	}
 }
 
