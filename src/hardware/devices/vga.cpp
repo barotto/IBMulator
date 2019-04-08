@@ -665,9 +665,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 			break;
 		}
 		case 0x03c0: // Attribute Controller
-			if(!m_s.attr_ctrl.flip_flop) {
-				retval = m_s.attr_ctrl.address;
-			}
+			retval = m_s.attr_ctrl.address;
 			PDEBUGF(LOG_V2, LOG_VGA, "ATTR CTRL ADDR  -> 0%02X\n", retval);
 			break;
 
