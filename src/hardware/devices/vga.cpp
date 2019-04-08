@@ -1549,6 +1549,23 @@ void VGA::update_screen(uint64_t _time)
 			break;
 	}
 
+	if(m_s.vmode.mode != VGA_M_TEXT) {
+		if(m_s.CRTC.start_address_modified) {
+			// [GitHub's issue #28]
+			// Some programs (eg. SQ1 VGA) don't wait for display enable (pixel
+			// data being displayed) to change the start address, so the frame is
+			// updated before the start address is latched. The result is that
+			// at the next update, when the address is finally latched, the screen
+			// is not updated as it should. If this is the case, redraw the whole
+			// area again.
+			// See Abrash's Black Book L23-1 to see how to correctly use the
+			// CRTC start address.
+			redraw_area(0, 0, m_s.vmode.xres, m_s.vmode.yres);
+		} else {
+			m_s.needs_update = false;
+		}
+	}
+
 	m_display->set_fb_updated();
 	m_display->unlock();
 }
