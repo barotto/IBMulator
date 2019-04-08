@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018  Marco Bortolin
+ * Copyright (C) 2018-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *

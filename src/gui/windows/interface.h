@@ -23,7 +23,6 @@
 #include "gui/window.h"
 #include "fileselect.h"
 #include "hardware/devices/vga.h"
-#include "hardware/devices/vgadisplay.h"
 #include <Rocket/Core/EventListener.h>
 #include "gui/guifx.h"
 

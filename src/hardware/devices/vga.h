@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2018  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,7 +28,6 @@
 #include "vga_gfxctrl.h"
 #include "vga_attrctrl.h"
 #include "vga_dac.h"
-#include "vgadisplay.h"
 #include "hardware/iodevice.h"
 
 enum VGATimings {
@@ -42,7 +41,32 @@ enum VGATimings {
 	VGA_32BIT_FAST
 };
 
+
 #define VGA_WORKERS 4
+
+enum VGAModes {
+	VGA_M_CGA2,
+	VGA_M_CGA4,
+	VGA_M_EGA,
+	VGA_M_256COL,
+	VGA_M_TEXT
+};
+
+struct VideoModeInfo
+{
+	VGAModes mode;
+	uint16_t xres;
+	uint16_t yres;
+	uint16_t cwidth;
+	uint16_t cheight;
+	uint16_t imgw;
+	uint16_t imgh;
+	uint16_t textcols;
+	uint16_t textrows;
+	struct {
+		uint8_t top, bottom, left, right;
+	} borders;
+};
 
 // text mode blink feature
 #define TEXT_BLINK_MODE      0x01
@@ -60,11 +84,13 @@ struct TextModeInfo
 	uint8_t  v_panning;
 	bool     line_graphics;
 	bool     split_hpanning;
+	bool     double_dot;
 	bool     double_scanning;
 	uint8_t  blink_flags;
 	uint8_t  actl_palette[16];
 };
 
+#include "vgadisplay.h"
 
 class VGA : public IODevice
 {
@@ -81,31 +107,45 @@ protected:
 		VGA_DAC       dac;
 
 		bool needs_update;  // 1=screen needs to be updated
-		bool clear_screen;  // 1=screen must be cleared at next update
 		// text mode support
 		unsigned blink_counter;
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint16_t charmap_address[2];
-		// h/v retrace timing
-		uint64_t vblank_time_usec;   // Time of the last vblank event
-		uint64_t vretrace_time_usec; // Time of the last vretrace event
-		uint32_t htotal_usec;
-		uint32_t hbstart_usec;
-		uint32_t hbend_usec;
-		uint32_t vtotal_usec;
-		uint32_t vblank_usec;
-		uint32_t vbspan_usec;
-		uint32_t vrstart_usec;
-		uint32_t vrend_usec;
-		uint32_t vrspan_usec;
+		// timings
+		uint64_t vblank_time_nsec;   // Time of the last vblank event
+		uint64_t vretrace_time_nsec; // Time of the last vretrace event
+		struct {
+			uint32_t vtotal;         // total number of scanlines
+			uint32_t vdend;          // number of visible scanlines
+			uint32_t vbstart, vbend; // line of v blank start,end
+			uint32_t vrstart, vrend; // line of v retrace start,end
+			uint32_t htotal;         // total number of characters per line
+			uint32_t hdend;          // number of visible characters
+			uint32_t hbstart, hbend; // char of h blank start,end
+			uint32_t hrstart, hrend; // char of h retrace start,end
+			uint32_t cwidth;         // character width in pixels
+			double   hfreq;          // h frequency (kHz)
+			double   vfreq;          // v frequency (Hz)
+		} timings;
+		struct {
+			// horizontal timings
+			uint32_t htotal;         // Horizontal total (how long a line takes, including blank and retrace)
+			uint32_t hbstart, hbend; // Start and End of horizontal blanking
+			uint32_t hrstart, hrend; // Start and End of horizontal retrace
+			// vertical timings
+			uint32_t vtotal;         // Vertical total (including blank and retrace)
+			uint32_t vdend;          // Vertical display end
+			uint32_t vbstart, vbend; // Start and End of vertical blanking
+			uint32_t vbspan;         // vbend-vbstart
+			uint32_t vrstart, vrend; // Start and End of vertical retrace pulse
+			uint32_t vrspan;         // vrend-vrstart
+		} timings_ns;
+		// current mode
+		VideoModeInfo vmode;
 		// shift values for VBE (TODO)
 		uint8_t  plane_shift;
 		uint32_t plane_offset;
 		uint8_t  dac_shift;
-		// last active resolution
-		uint16_t last_xres;
-		uint16_t last_yres;
-		uint8_t last_msl;
 	} m_s;
 
 	uint8_t  *m_memory;      // video memory buffer
@@ -115,7 +155,7 @@ protected:
 	int m_rom_mapping;       // BIOS mapping ID
 	VGATimings m_vga_timing; // VGA timings
 	double m_bus_timing;     // System bus timings
-	int m_timer_id;          // Machine timer ID, for vblank and vretrace events
+	int m_timer_id;          // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
 	// tiling system
 	uint16_t m_tile_width;
@@ -141,7 +181,8 @@ public:
 		m_bus_timing = _bus;
 		m_vga_timing = _vga;
 	}
-	void get_text_snapshot(uint8_t **text_snapshot_, unsigned *txHeight_, unsigned *txWidth_);
+	VGAModes current_mode(uint16_t *imgw_=nullptr, uint16_t *imgh_=nullptr);
+	const char *current_mode_string();
 	virtual void state_to_textfile(std::string _filepath);
 
 protected:
@@ -151,16 +192,16 @@ protected:
 	void init_iohandlers();
 	void init_systemtimer();
 	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _lc, bool _bs, uint8_t * const *_plane);
-	void update(uint64_t _time);
+	void update_video_mode(uint64_t _time);
+	void update_screen(uint64_t _time);
 	void vertical_retrace(uint64_t _time);
-	void determine_screen_dimensions(unsigned *height_, unsigned *width_);
 	void tiles_update(unsigned _width, unsigned _height);
-	void calculate_retrace_timing();
-	bool skip_update();
+	void calculate_timings();
+	bool is_video_disabled();
 	void raise_interrupt();
 	void lower_interrupt();
 	void clear_screen();
-	void set_tiles_dirty();
+	void set_all_tiles_dirty();
 	ALWAYS_INLINE void set_tile_dirty(unsigned _xtile, unsigned _ytile, bool _value) {
 		if(((_xtile) < m_num_x_tiles) && ((_ytile) < m_num_y_tiles)) {
 			m_tile_dirty[(_xtile) + (_ytile)*m_num_x_tiles] = _value;

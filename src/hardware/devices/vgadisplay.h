@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,8 +24,9 @@
 #include <vector>
 #include <condition_variable>
 
-#define VGA_MAX_XRES 720
-#define VGA_MAX_YRES 480
+#define VGA_MAX_XRES 800
+#define VGA_MAX_YRES 600
+#define VGA_MAX_HFREQ 0 //31.5 TODO add ini file setting
 
 #define VGA_X_TILESIZE 16
 #define VGA_Y_TILESIZE 24
@@ -36,18 +37,16 @@
 #define PALETTE_AMASK 0xFF000000
 #define PALETTE_ENTRY(r,g,b) (0xFF<<24 | b<<16 | g<<8 | r)
 
-class TextModeInfo;
 
 class VGADisplay
 {
 	std::vector<uint32_t> m_fb; // the framebuffer
 
 	struct {
-		bool textmode;
-		unsigned xres;
-		unsigned yres;
-		unsigned fb_width;
-		unsigned fb_height;
+		VideoModeInfo mode;
+		bool valid_mode;
+		uint16_t fb_width;
+		uint16_t fb_height;
 
 		uint32_t palette[256];
 
@@ -58,7 +57,6 @@ class VGADisplay
 		unsigned prev_cursor_x, prev_cursor_y;
 		uint8_t h_panning, v_panning;
 		uint16_t line_compare;
-		int fontwidth, fontheight;
 	} m_s;
 
 	bool m_dim_updated;
@@ -86,18 +84,18 @@ public:
 		}
 	}
 	inline void notify_all() { m_cv.notify_all(); }
-	inline unsigned get_screen_xres() const { return m_s.xres; }
-	inline unsigned get_screen_yres() const { return m_s.yres; }
+	inline const VideoModeInfo & mode() const { return m_s.mode; }
 	inline unsigned get_fb_size() const { return m_fb.size(); }
 	inline unsigned get_fb_width() const { return m_s.fb_width; }
 	inline unsigned get_fb_height() const { return m_s.fb_height; }
 	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
+	inline bool is_valid() const { return m_s.valid_mode; }
 
+	void set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfreq);
 	void set_text_charmap(bool _map, uint8_t *_fbuffer);
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
-	void dimension_update(unsigned _x, unsigned _y, unsigned _fwidth=0, unsigned _fheight=0);
 	void graphics_update(unsigned _x, unsigned _y, unsigned _width, unsigned _height, uint8_t *_snapshot);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
@@ -111,7 +109,6 @@ public:
 	inline void clear_fb_updated() { m_fb_updated = false; }
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
-
 };
 
 #endif

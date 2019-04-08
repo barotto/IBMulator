@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018  Marco Bortolin
+ * Copyright (C) 2018-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,9 +23,9 @@
 
 void VGA_GenRegs::registers_to_textfile(FILE *_file)
 {
-	fprintf(_file, "0x%02X  Miscellaneous Output [%s]\n",
-			(uint8_t)misc_output, (const char*)misc_output);
+	fprintf(_file, "0x%02X %*u  Miscellaneous Output [%s]\n",
+			(uint8_t)misc_output, 3, (uint8_t)misc_output, (const char*)misc_output);
 
-	fprintf(_file, "0x%02X  Video Subsystem Enable\n", video_enable);
+	fprintf(_file, "0x%02X %*u  Video Subsystem Enable\n", video_enable, 3, video_enable);
 }
 

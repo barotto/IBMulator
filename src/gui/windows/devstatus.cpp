@@ -70,11 +70,15 @@ DevStatus::~DevStatus()
 void DevStatus::on_cmd_dump_vga_state(RC::Event &)
 {
 	try {
-		std::string filepath = FileSys::get_next_filename(g_program.config().get_cfg_home(), "vga_state_", ".txt");
-		m_gui->machine()->devices().vga()->state_to_textfile(filepath);
-		std::string mex = "VGA state dumped to " + filepath;
-		PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
-		m_gui->show_message(mex.c_str());
+		std::string captpath = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
+		std::string statefile = FileSys::get_next_filename(captpath, "vga_state_", ".txt");
+		if(!statefile.empty()) {
+			m_gui->save_framebuffer(statefile + ".png", "");
+			m_gui->machine()->devices().vga()->state_to_textfile(statefile);
+			std::string mex = "VGA state dumped to " + statefile;
+			PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
+			m_gui->show_message(mex.c_str());
+		}
 	} catch(std::exception &) {}
 }
 

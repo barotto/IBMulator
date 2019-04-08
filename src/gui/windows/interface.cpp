@@ -180,7 +180,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 	GLCALL( glGenTextures(1, &m_display.tex) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
 	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-			m_display.vga.get_screen_xres(), m_display.vga.get_screen_yres(),
+			m_display.vga.get_fb_width(), m_display.vga.get_fb_height(),
 			0, m_display.glf, m_display.gltype, nullptr) );
 
 	m_display.tex_buf.resize(m_display.vga.get_fb_size());
@@ -457,13 +457,13 @@ void Interface::render_quad()
 	GLCALL( glEnableVertexAttribArray(0) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
 	GLCALL( glVertexAttribPointer(
-            0,        // attribute 0. must match the layout in the shader.
-            3,        // size
-            GL_FLOAT, // type
-            GL_FALSE, // normalized?
-            0,        // stride
-            (void*)0  // array buffer offset
-    ) );
+		0,        // attribute 0. must match the layout in the shader.
+		3,        // size
+		GL_FLOAT, // type
+		GL_FALSE, // normalized?
+		0,        // stride
+		(void*)0  // array buffer offset
+	) );
 	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
 	GLCALL( glDisableVertexAttribArray(0) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
@@ -475,7 +475,7 @@ void Interface::render_monitor()
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
 	if(m_display.vga.fb_updated()) {
 		m_display.vga.lock();
-		vec2i vga_res = vec2i(m_display.vga.get_screen_xres(),m_display.vga.get_screen_yres());
+		vec2i vga_res = vec2i(m_display.vga.mode().xres, m_display.vga.mode().yres);
 		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
 		//when the program runs with the default shaders, the load on the GPU is very low
 		//so the drivers lower the clock of the GPU to the minimum value;
@@ -553,8 +553,8 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_display.vga.get_screen_xres(),
-		m_display.vga.get_screen_yres(),
+		m_display.vga.mode().xres,
+		m_display.vga.mode().yres,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,
@@ -569,7 +569,7 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 	if(!_palfile.empty()) {
 		palette = SDL_CreateRGBSurface(
 			0,         //flags (unused)
-			16,	16,    //w x h
+			16, 16,    //w x h
 			32,        //bit depth
 			PALETTE_RMASK,
 			PALETTE_GMASK,
@@ -626,6 +626,7 @@ void Interface::print_VGA_text(std::vector<uint16_t> &_text)
 	tminfo.v_panning = 0;
 	tminfo.line_graphics = false;
 	tminfo.split_hpanning = false;
+	tminfo.double_dot = false;
 	tminfo.double_scanning = false;
 	tminfo.blink_flags = 0;
 	for(int i=0; i<16; i++) {

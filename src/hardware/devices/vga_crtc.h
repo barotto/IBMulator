@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018  Marco Bortolin
+ * Copyright (C) 2017-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -351,8 +351,8 @@ struct VGA_CRTC
 	inline  bool is_write_protected() const {
 		return vretrace_end.PR;
 	}
-	ALWAYS_INLINE bool is_y_doublescan() const {
-		return (max_scanline.MSL || max_scanline.DSC);
+	ALWAYS_INLINE unsigned scanlines_div() const {
+		return ((max_scanline.MSL + 1) << max_scanline.DSC);
 	}
 
 	inline struct VGA_CRTC& operator[](uint8_t _address) {

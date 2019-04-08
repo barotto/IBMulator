@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018  Marco Bortolin
+ * Copyright (C) 2018-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -103,7 +103,7 @@ const char * VGA_GfxCtrl::register_to_string(uint8_t _index) const
 void VGA_GfxCtrl::registers_to_textfile(FILE *_file)
 {
 	for(int i=0; i<GFXC_REGCOUNT; i++) {
-		fprintf(_file, "0x%02X 0x%02X  %s\n", i, get_register(i), register_to_string(i));
+		fprintf(_file, "0x%02X 0x%02X %*u  %s\n", i, get_register(i), 3, get_register(i), register_to_string(i));
 	}
 }
 

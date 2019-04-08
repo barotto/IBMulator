@@ -101,8 +101,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	int disp_w, disp_h;
 	int disp_area_w = _width, disp_area_h = _height;
 	if(m_vga_scaling>0) {
-		disp_w = m_display.vga.get_screen_xres() * m_vga_scaling;
-		disp_h = m_display.vga.get_screen_yres() * m_vga_scaling;
+		disp_w = m_display.vga.mode().xres * m_vga_scaling;
+		disp_h = m_display.vga.mode().yres * m_vga_scaling;
 	} else {
 		disp_w = disp_area_w;
 		disp_h = disp_area_h;
@@ -119,7 +119,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	if(m_vga_aspect == DISPLAY_ASPECT_ORIGINAL) {
 		ratio = 1.333333f; //4:3
 	} else if(m_vga_aspect == DISPLAY_ASPECT_ADAPTIVE) {
-		ratio = float(m_display.vga.get_screen_xres()) / float(m_display.vga.get_screen_yres());
+		ratio = float(m_display.vga.mode().xres) / float(m_display.vga.mode().yres);
 	} else {
 		//SCALED
 		ratio = float(disp_w) / float(disp_h);
@@ -180,8 +180,8 @@ void NormalInterface::update()
 			   !(wflags & SDL_WINDOW_MAXIMIZED) &&
 			   m_vga_scaling)
 			{
-				int w = m_display.vga.get_screen_xres() * m_vga_scaling;
-				int h = m_display.vga.get_screen_yres() * m_vga_scaling;
+				int w = m_display.vga.mode().xres * m_vga_scaling;
+				int h = m_display.vga.mode().yres * m_vga_scaling;
 				if(m_gui_mode == GUI_MODE_NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}
