@@ -78,10 +78,11 @@ void Memory::init()
 			Memory::s_write<uint8_t>, Memory::s_write<uint16_t>, Memory::s_write<uint32_t>, this);
 }
 
-void Memory::reset()
+void Memory::reset(unsigned _signal)
 {
-	memset(m_ram.buffer, 0, m_ram.buffer_size);
-	set_A20_line(true);
+	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+		memset(m_ram.buffer, 0, m_ram.buffer_size);
+	}
 }
 
 void Memory::config_changed()

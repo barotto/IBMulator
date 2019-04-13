@@ -68,6 +68,9 @@ void SystemBoard::reset(unsigned _signal)
 		// board POS registers
 		memset(m_s.POS, 0, 5);
 		reset_POS2_state();
+
+		// for CPU_SOFT_RESET the A20 line is enabled only on 486+ systems.
+		g_memory.set_A20_line(true);
 	}
 }
 

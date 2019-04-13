@@ -210,8 +210,7 @@ void Machine::reset(uint _signal)
 	switch(_signal) {
 		case CPU_SOFT_RESET:
 			PDEBUGF(LOG_V2, LOG_MACHINE, "CPU software reset\n");
-			g_memory.set_A20_line(true);
-			return;
+			break;
 		case MACHINE_HARD_RESET:
 			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
 			break;
@@ -219,7 +218,7 @@ void Machine::reset(uint _signal)
 			PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
 			break;
 		default:
-			PERRF(LOG_MACHINE, "unknown reset signal: %d\n", _signal);
+			PERRF(LOG_MACHINE, "invalid reset signal: %d\n", _signal);
 			throw std::exception();
 	}
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
@@ -231,11 +230,11 @@ void Machine::reset(uint _signal)
 				m_timers[i].time_to_fire = m_timers[i].period;
 			}
 		}
+		m_s.cycles_left = 0;
+		set_DOS_program_name("");
 	}
-	m_s.cycles_left = 0;
-	g_memory.reset();
+	g_memory.reset(_signal);
 	g_devices.reset(_signal);
-	set_DOS_program_name("");
 }
 
 void Machine::power_off()

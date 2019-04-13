@@ -151,7 +151,7 @@ public:
 	~Memory();
 
 	void init();
-	void reset();
+	void reset(unsigned _signal);
 	void config_changed();
 	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
 

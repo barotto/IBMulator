@@ -79,16 +79,18 @@ void Devices::init(Machine *_machine)
 
 void Devices::reset(uint _signal)
 {
-	//only reset signals handled by devices are
-	//MACHINE_HARD_RESET, MACHINE_POWER_ON, and DEVICE_SOFT_RESET.
+	// the only reset signals handled by devices are
+	// MACHINE_HARD_RESET, MACHINE_POWER_ON, and DEVICE_SOFT_RESET,
+	// except system boards which handle A20 state on CPU_SOFT_RESET
+	// TODO pass CPU_SOFT_RESET to all devices and let them decide
 	if(_signal == CPU_SOFT_RESET) {
-		return;
+		m_sysboard->reset(_signal);
+	} else {
+		for(auto dev : m_devices) {
+			dev.second->reset(_signal);
+		}
+		m_last_io_time = 0;
 	}
-	for(auto dev : m_devices) {
-		dev.second->reset(_signal);
-	}
-
-	m_last_io_time = 0;
 }
 
 void Devices::config_changed()
