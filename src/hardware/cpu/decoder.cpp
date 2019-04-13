@@ -108,7 +108,7 @@ restart_opcode:
 			goto restart_opcode;
 		}
 		case 0xF1: {
-			if(CPU_FAMILY >= CPU_386) {
+			if(CPU_FAMILY >= CPU_386 || INT1_PAUSE) {
 				// INT1 - undocumented ICEBP
 				prefix_none(opcode, cycles_table, cycles_op);
 				m_instr.opcode = opcode;
