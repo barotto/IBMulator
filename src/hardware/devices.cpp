@@ -106,7 +106,7 @@ void Devices::config_changed()
 	switch(m_machine->type()) {
 		case PS1_2121:
 			m_vga = install<CF62011BPC>();
-			m_vga->set_timings(bus_timings, VGA_16BIT_MID);
+			m_vga->set_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
 		case PS1_2011:
