@@ -22,10 +22,14 @@
 #include "machine.h"
 #include "mixer.h"
 #include "gui/gui.h"
+#include "filesys.h"
 
 
 int main(int argc, char** argv)
 {
+	std::stringstream ss;
+	LogStream templog(ss, false);
+	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, &templog);
 	g_syslog.set_verbosity(DEFAULT_LOG_VERBOSITY);
 
 	PINFO(LOG_V0, "Program start\n");
@@ -39,9 +43,11 @@ int main(int argc, char** argv)
 		g_program.set_mixer(&g_mixer);
 		g_program.set_gui(&g_gui);
 	} catch(std::exception &e) {
-		PERR("exception caught during initialization! giving up :(\n");
-		std::string message = "A problem occurred during initialisation.\n"
-				"See the log file for more info"
+		std::string message = "A problem occurred during initialisation.\n";
+		std::string logfile = g_program.config().get_cfg_home() + FS_SEP "log.txt";
+		if(FileSys::file_exists(logfile.c_str())) {
+			PERR("exception caught during initialization! giving up :(\n");
+			message += "See the log file for more info"
 #ifndef _WIN32
 				", or start the program in a terminal"
 #endif
@@ -49,12 +55,17 @@ int main(int argc, char** argv)
 				"Use the -v NUM command line switch to enable verbose logging.\n\n"
 				"The log file is here:\n" + g_program.config().get_cfg_home() + FS_SEP"log.txt\n"
 				"The ini file is here:\n" + g_program.config().get_parsed_file();
-
+		} else {
+			message += "Log content:\n";
+			message += ss.str();
+		}
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				message.c_str(),
 				nullptr);
 		return 1;
 	}
+
+	g_syslog.remove(&templog, true);
 
 	g_program.start();
 

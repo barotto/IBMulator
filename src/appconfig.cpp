@@ -668,7 +668,8 @@ int AppConfig::get_int(const string &_section, const string &_name)
 	try {
 		value = try_int(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get integer value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "unable to get integer value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 	return value;
 }
@@ -700,7 +701,8 @@ double AppConfig::get_real(const string &_section, const string &_name)
 	try {
 		value = try_real(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get real value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "unable to get real value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 	return value;
 }
@@ -732,7 +734,8 @@ bool AppConfig::get_bool(const string &_section, const string &_name)
 	try {
 		value = try_bool(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get bool value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "unable to get bool value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 	return value;
 }
@@ -757,7 +760,8 @@ string AppConfig::get_string(const string &_section, const string &_name)
 	try {
 		val = get_value(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 	return val;
 }
@@ -828,7 +832,8 @@ string AppConfig::get_file(const string &_section, const string &_name, FileType
 	try {
 		filename = get_value(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "unable to get string [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "unable to get string [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 
 	if(filename.empty()) {
@@ -874,7 +879,8 @@ unsigned AppConfig::get_enum(const string &_section, const string &_name, const 
 	try {
 		enumstr = get_value(_section, _name);
 	} catch(std::exception &e) {
-		PERRF_ABORT(LOG_PROGRAM, "Unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
+		PERRF(LOG_PROGRAM, "Unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 
 	auto enumvalue = _enum_map.find(enumstr);

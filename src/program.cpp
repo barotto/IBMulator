@@ -252,13 +252,15 @@ bool Program::initialize(int argc, char** argv)
 		//WINDOWS uses LOCALAPPDATA\{DeveloperName\AppName}
 		str = getenv("LOCALAPPDATA");
 		if(str == nullptr) {
-			PERRF_ABORT(LOG_PROGRAM, "Unable to determine the LOCALAPPDATA directory!\n");
+			PERRF(LOG_PROGRAM, "Unable to determine the LOCALAPPDATA directory!\n");
+			throw std::exception();
 		}
 		m_user_dir = str;
 #endif
 		if(!FileSys::is_directory(m_user_dir.c_str())
 		|| access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
-			PERRF_ABORT(LOG_PROGRAM, "Unable to access the user directory!\n");
+			PERRF(LOG_PROGRAM, "Unable to access the user directory: %s\n", m_user_dir.c_str());
+			throw std::exception();
 		}
 		m_user_dir += FS_SEP PACKAGE;
 	}
@@ -300,10 +302,10 @@ bool Program::initialize(int argc, char** argv)
 		} catch(std::exception &e) {
 			int error = m_config[0].get_error();
 			if(error < 0) {
-				PERRF(LOG_PROGRAM, "Unable to open '%s'\n", m_cfg_file.c_str());
+				PERRF(LOG_PROGRAM, "Cannot open '%s'\n", m_cfg_file.c_str());
 				throw;
 			}
-			PERRF(LOG_PROGRAM, "Parse error on line %d in '%s'\n", error, m_cfg_file.c_str());
+			PERRF(LOG_PROGRAM, "Parsing error on line %d in '%s'\n", error, m_cfg_file.c_str());
 			throw;
 		}
 	}
@@ -414,7 +416,7 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	}
 #endif
 
-	PERRF(LOG_PROGRAM, "unable to find the assets!\n");
+	PERRF(LOG_PROGRAM, "Cannot find the assets!\n");
 	throw std::exception();
 }
 
