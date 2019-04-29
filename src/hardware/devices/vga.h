@@ -119,6 +119,7 @@ protected:
 			uint32_t vdend;          // number of visible scanlines
 			uint32_t vbstart, vbend; // line of v blank start,end
 			uint32_t vrstart, vrend; // line of v retrace start,end
+			uint32_t vblank_skip;    // lines of top image offset
 			uint32_t htotal;         // total number of characters per line
 			uint32_t hdend;          // number of visible characters
 			uint32_t hbstart, hbend; // char of h blank start,end

@@ -394,46 +394,6 @@ void VGA::calculate_timings()
 	// The screen refresh frequency
 	m_s.timings.vfreq = clock / (htotal * vtotal);
 
-	// Vertical blanking tricks
-	uint32_t vblank_skip = 0;
-	if(vbstart < vtotal) { // There will be no blanking at all otherwise
-		if(vbend > vtotal) {
-			// Blanking wrap to line vblank_skip
-
-			// blanking wraps to the start of the screen
-			vblank_skip = vbend & 0x7f;
-
-			// on blanking wrap to 0, the first line is not blanked
-			// this is used by the S3 BIOS and other S3 drivers in some SVGA modes
-			if((vbend & 0x7f) == 1) {
-				vblank_skip = 0;
-			}
-
-			// it might also cut some lines off the bottom
-			if (vbstart < vdend) {
-				vdend = vbstart;
-			}
-		} else if(vbstart <= 1) {
-			// Upper vblank_skip lines of the screen blanked
-			// blanking is used to cut lines at the start of the screen
-			vblank_skip = vbend;
-		} else if(vbstart < vdend) {
-			if (vbend < vdend) {
-				// the program wants a black bar somewhere on the screen
-				// Unsupported blanking at line vbstart-vbend
-			} else {
-				// blanking is used to cut off some lines from the bottom
-				vdend = vbstart;
-			}
-		}
-		vdend -= vblank_skip;
-	}
-
-	// Check to prevent useless black areas
-	if(hbstart < hdend) {
-		hdend = hbstart;
-	}
-
 	double invclock_ns = 1e9 / clock;
 	m_s.timings_ns.htotal  = htotal * invclock_ns;
 	m_s.timings_ns.hbstart = hbstart * invclock_ns;
@@ -486,28 +446,88 @@ void VGA::update_video_mode(uint64_t _time)
 	}
 	prev_SO = m_s.sequencer.clocking.SO;
 
-	m_s.vmode.xres = (m_s.timings.hdend * m_s.timings.cwidth) << m_s.sequencer.clocking.DC;
+
+	// IMAGE RESOLUTION
+
+	uint32_t hdend = m_s.timings.hdend;
+	// Check to prevent useless black areas
+	if(m_s.timings.hbstart < m_s.timings.hdend) {
+		hdend = m_s.timings.hbstart;
+	}
+	m_s.vmode.xres = (hdend * m_s.timings.cwidth) << m_s.sequencer.clocking.DC;
+
+	// Vertical blanking tricks
 	m_s.vmode.yres = m_s.timings.vdend;
+	m_s.timings.vblank_skip = 0;
+	if(m_s.timings.vbstart < m_s.timings.vtotal) { // There will be no blanking at all otherwise
+		if(m_s.timings.vbend > m_s.timings.vtotal) {
+			// Blanking wrap to line vblank_skip
+			// this is used for example in Sid & Al's Incredible Toons
+
+			// blanking wraps to the start of the screen
+			m_s.timings.vblank_skip = m_s.timings.vbend & 0x7f;
+
+			// on blanking wrap to 0, the first line is not blanked
+			// this is used by the S3 BIOS and other S3 drivers in some SVGA modes
+			if(m_s.timings.vblank_skip == 1) {
+				m_s.timings.vblank_skip = 0;
+			}
+
+			// it might also cut some lines off the bottom
+			if(m_s.timings.vbstart < m_s.timings.vdend) {
+				m_s.vmode.yres = m_s.timings.vbstart;
+			}
+		} else if(m_s.timings.vbstart <= 1) {
+			// Upper vblank_skip lines of the screen blanked
+			// blanking is used to cut lines at the start of the screen
+			m_s.timings.vblank_skip = m_s.timings.vbend;
+		} else if(m_s.timings.vbstart < m_s.timings.vdend) {
+			if(m_s.timings.vbend < m_s.timings.vdend) {
+				// the program wants a black bar somewhere on the screen
+				// Unsupported blanking at line (vbstart - vbend)
+			} else {
+				// blanking is used to cut off some lines from the bottom
+				m_s.vmode.yres = m_s.timings.vbstart;
+			}
+		}
+		m_s.vmode.yres -= m_s.timings.vblank_skip;
+	}
+
+
+	// BORDERS (TODO)
 
 	uint32_t start = m_s.timings.vbstart;
-	if(m_s.timings.vrstart < m_s.timings.vbstart) {
+	if(m_s.timings.vrstart < m_s.timings.vbstart || m_s.timings.vbstart <= 1) {
 		start = m_s.timings.vrstart;
 	}
 	m_s.vmode.borders.bottom = start - (m_s.timings.vdend-1);
 
-	uint32_t end = m_s.timings.vbend;
-	if(m_s.timings.vbend < m_s.timings.vrend) {
-		end = m_s.timings.vrend;
+	if(m_s.timings.vbend < m_s.timings.vtotal) {
+		uint32_t end = m_s.timings.vbend;
+		if(m_s.timings.vbend < m_s.timings.vrend) {
+			end = m_s.timings.vrend;
+		}
+		m_s.vmode.borders.top = (m_s.timings.vtotal+1) - end;
+	} else {
+		m_s.vmode.borders.top = 0;
 	}
-	m_s.vmode.borders.top = m_s.timings.vtotal - end;
 
-	end = m_s.timings.hbend;
+	uint32_t end = m_s.timings.hbend;
 	if(m_s.timings.hbend < m_s.timings.hrend) {
-		end = m_s.timings.hrend;
+		end = m_s.timings.hrend-1;
 	}
-	// htotal is ajdusted for DC, other values aren't
-	m_s.vmode.borders.left  = (((m_s.timings.htotal>>m_s.sequencer.clocking.DC)-1) - end) * m_s.timings.cwidth;
-	m_s.vmode.borders.right = (m_s.timings.hbstart - (m_s.timings.hdend-1)) * m_s.timings.cwidth;
+	m_s.vmode.borders.left = (((m_s.timings.htotal>>m_s.sequencer.clocking.DC)-1) - end) * m_s.timings.cwidth;
+	m_s.vmode.borders.left <<= m_s.sequencer.clocking.DC;
+
+	if(m_s.timings.hbstart >= m_s.timings.hdend) {
+		m_s.vmode.borders.right = (m_s.timings.hbstart - (m_s.timings.hdend-1)) * m_s.timings.cwidth;
+	} else {
+		m_s.vmode.borders.right = 0;
+	}
+	m_s.vmode.borders.right <<= m_s.sequencer.clocking.DC;
+
+
+	// VIDEO MODE
 
 	m_s.vmode.imgw = m_s.vmode.xres;
 	m_s.vmode.imgh = m_s.vmode.yres;
@@ -582,7 +602,6 @@ void VGA::update_video_mode(uint64_t _time)
 	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
 	g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
 	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
-
 }
 
 uint16_t VGA::read(uint16_t _address, unsigned _io_len)
@@ -1295,7 +1314,7 @@ void VGA::gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size)
 		for(xc=0, xti=0; xc<m_s.vmode.xres; xc+=m_tile_width, xti++) {
 			if(_force_upd || is_tile_dirty(xti, yti)) {
 				for(r=0; r<m_tile_height; r++) {
-					pixely = (yc + r);
+					pixely = (yc + r) + m_s.timings.vblank_skip;
 					row = r * m_tile_width;
 					for(col=0; col<m_tile_width; col++) {
 						pixelx = xc + col;
@@ -2051,6 +2070,7 @@ void VGA::state_to_textfile(std::string _filepath)
 		"  vert display end = line %u\n"
 		"  vert blank start = line %u\n"
 		"  vert blank end = line %u\n"
+		"  vert blank skip = %u lines\n"
 		"  vert retrace start = line %u\n"
 		"  vert retrace end = line %u\n"
 		"  vert freq = %.1f Hz\n"
@@ -2074,6 +2094,7 @@ void VGA::state_to_textfile(std::string _filepath)
 		m_s.timings.vdend,
 		m_s.timings.vbstart,
 		m_s.timings.vbend,
+		m_s.timings.vblank_skip,
 		m_s.timings.vrstart,
 		m_s.timings.vrend,
 		m_s.timings.vfreq,
