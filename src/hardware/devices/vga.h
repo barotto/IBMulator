@@ -129,17 +129,11 @@ protected:
 			double   vfreq;          // v frequency (Hz)
 		} timings;
 		struct {
-			// horizontal timings
 			uint32_t htotal;         // Horizontal total (how long a line takes, including blank and retrace)
 			uint32_t hbstart, hbend; // Start and End of horizontal blanking
-			uint32_t hrstart, hrend; // Start and End of horizontal retrace
-			// vertical timings
 			uint32_t vtotal;         // Vertical total (including blank and retrace)
 			uint32_t vdend;          // Vertical display end
-			uint32_t vbstart, vbend; // Start and End of vertical blanking
-			uint32_t vbspan;         // vbend-vbstart
 			uint32_t vrstart, vrend; // Start and End of vertical retrace pulse
-			uint32_t vrspan;         // vrend-vrstart
 		} timings_ns;
 		// current mode
 		VideoModeInfo vmode;

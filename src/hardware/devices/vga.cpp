@@ -398,17 +398,11 @@ void VGA::calculate_timings()
 	m_s.timings_ns.htotal  = htotal * invclock_ns;
 	m_s.timings_ns.hbstart = hbstart * invclock_ns;
 	m_s.timings_ns.hbend   = hbend * invclock_ns;
-	m_s.timings_ns.hrstart = hrstart * invclock_ns;
-	m_s.timings_ns.hrend   = hrend * invclock_ns;
 
 	m_s.timings_ns.vtotal  = 1e9 / m_s.timings.vfreq;
 	m_s.timings_ns.vdend   = m_s.timings_ns.htotal * vdend;
-	m_s.timings_ns.vbstart = m_s.timings_ns.htotal * vbstart;
-	m_s.timings_ns.vbend   = m_s.timings_ns.htotal * vbend;
-	m_s.timings_ns.vbspan  = m_s.timings_ns.vbend - m_s.timings_ns.vbstart;
 	m_s.timings_ns.vrstart = m_s.timings_ns.htotal * vrstart;
 	m_s.timings_ns.vrend   = m_s.timings_ns.htotal * vrend;
-	m_s.timings_ns.vrspan  = m_s.timings_ns.vrend - m_s.timings_ns.vrstart;
 
 	m_s.timings.vtotal  = vtotal;
 	m_s.timings.vdend   = vdend;
@@ -2106,15 +2100,9 @@ void VGA::state_to_textfile(std::string _filepath)
 	fprintf(file.get(), "%*u  Horizontal Total\n",          8, m_s.timings_ns.htotal);
 	fprintf(file.get(), "%*u  Horizontal Blank Start\n",    8, m_s.timings_ns.hbstart);
 	fprintf(file.get(), "%*u  Horizontal Blank End\n",      8, m_s.timings_ns.hbend);
-	fprintf(file.get(), "%*u  Horizontal Retrace Start\n",  8, m_s.timings_ns.hrstart);
-	fprintf(file.get(), "%*u  Horizontal Retrace End\n",    8, m_s.timings_ns.hrend);
 	fprintf(file.get(), "%*u  Vertical Total\n",            8, m_s.timings_ns.vtotal);
-	fprintf(file.get(), "%*u  Vertical Blank Start\n",      8, m_s.timings_ns.vbstart);
-	fprintf(file.get(), "%*u  Vertical Blank End\n",        8, m_s.timings_ns.vbend);
-	fprintf(file.get(), "%*u  Vertical Blank duration\n",   8, m_s.timings_ns.vbspan);
 	fprintf(file.get(), "%*u  Vertical Retrace Start\n",    8, m_s.timings_ns.vrstart);
 	fprintf(file.get(), "%*u  Vertical Retrace End\n",      8, m_s.timings_ns.vrend);
-	fprintf(file.get(), "%*u  Vertical Retrace duration\n", 8, m_s.timings_ns.vrspan);
 
 	fprintf(file.get(), "\nGeneral registers\n");
 	m_s.gen_regs.registers_to_textfile(file.get());
