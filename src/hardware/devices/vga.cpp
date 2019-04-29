@@ -534,7 +534,7 @@ void VGA::update_video_mode(uint64_t _time)
 	if(m_s.gfx_ctrl.misc.GM) {
 		if(m_s.gfx_ctrl.gfx_mode.C256 == 0) {
 			if(m_s.gfx_ctrl.gfx_mode.SR == 0) {
-				if(m_s.CRTC.mode_control.CMS == 0) { // inverted bit
+				if(m_s.gfx_ctrl.misc.MM == MM_B8000_32K) {
 					// CGA-compatible 640x200 2 colour graphics
 					m_s.vmode.mode = VGA_M_CGA2;
 					m_s.vmode.imgh >>= m_s.CRTC.max_scanline.DSC;
@@ -1058,11 +1058,12 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				}
 				if(prev_memory_mapping != m_s.gfx_ctrl.misc.MM) {
 					update_mem_mapping();
-					needs_redraw = true;
 				}
-				if(prev_graphics_mode != m_s.gfx_ctrl.misc.GM) {
-					needs_redraw = true;
+				if(prev_memory_mapping != m_s.gfx_ctrl.misc.MM ||
+				   prev_graphics_mode != m_s.gfx_ctrl.misc.GM)
+				{
 					calculate_timings();
+					needs_redraw = true;
 				}
 			} else {
 				if(m_s.gfx_ctrl.address == GFXC_GFX_MODE && (
