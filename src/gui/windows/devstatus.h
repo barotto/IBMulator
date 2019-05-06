@@ -30,19 +30,41 @@ class DevStatus : public DebugTools::DebugWindow
 private:
 
 	struct {
+		bool is_running;
+		RC::Element *btn_update;
+		RC::Element *mode, *screen;
+		// CRTC
+		RC::Element *htotal, *hdend, *hblank, *hretr;
+		RC::Element *vtotal, *vdend, *vblank, *vretr;
+		RC::Element *startaddr_hi, *startaddr_lo, *startaddr_latch;
+		RC::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
+	} m_vga;
+	
+	struct {
+		bool is_running;
+		RC::Element *btn_update;
 		RC::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
 		uint16_t irq, irr, imr, isr;
 	} m_pic;
 
 	struct {
+		bool is_running;
+		RC::Element *btn_update;
 		RC::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
 	} m_pit;
 
 	static event_map_t ms_evt_map;
 
-	void on_cmd_dump_vga_state(RC::Event &);
+	void on_cmd_vga_update(RC::Event &);
+	void on_cmd_vga_dump_state(RC::Event &);
+	void on_cmd_vga_screenshot(RC::Event &);
+	void on_cmd_pit_update(RC::Event &);
+	void on_cmd_pic_update(RC::Event &);
+	void update_pit();
+	void update_pit(unsigned cnt);
+	void update_pic();
 	void update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn);
-	void update_pit(uint cnt);
+	void update_vga();
 
 public:
 

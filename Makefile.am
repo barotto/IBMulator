@@ -61,7 +61,8 @@ share/ibmulator/gui/icons/debugger/memory_dump.png \
 share/ibmulator/gui/icons/debugger/processor_dump.png \
 share/ibmulator/gui/icons/debugger/processor_rec.png \
 share/ibmulator/gui/icons/debugger/state_restore.png \
-share/ibmulator/gui/icons/debugger/state_save.png
+share/ibmulator/gui/icons/debugger/state_save.png \
+share/ibmulator/gui/icons/debugger/update.png
 
 guiimagesdir = $(pkgdatadir)/gui/images
 dist_guiimages_DATA = \

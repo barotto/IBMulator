@@ -57,7 +57,7 @@
 	#define GCC_ATTRIBUTE(x)
 	#define LIKELY(x)   (x)
 	#define UNLIKELY(x) (x)
-	#define ALWAYS_INLINE
+	#define ALWAYS_INLINE inline
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER>=1300)
@@ -73,7 +73,7 @@
 	#define CONFIG_PARSE      true   // enable ini file parsing
 	#define MEMORY_TRAPS      true   // enable memory traps
 	#define INT_TRAPS         true   // enable interrupt traps
-	#define INT1_PAUSE        false  // pause emulation at INT 1
+	#define INT1_PAUSE        true   // pause emulation at INT 1
 	#define STOP_AT_MEM_TRAPS false  // pause emulation at memory traps hit
 	#define STOP_AT_EXC       false  // pause emulation at exception defined in STOP_AT_EXC_VEC
 	#define STOP_AT_EXC_VEC   0x3000 // bitmask of exceptions to pause at
@@ -93,7 +93,7 @@
 	#define CONFIG_PARSE      true
 	#define MEMORY_TRAPS      false
 	#define INT_TRAPS         false
-	#define INT1_PAUSE        false
+	#define INT1_PAUSE        true
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0
@@ -110,7 +110,7 @@
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL false
+#define OVERRIDE_VERBOSITY_LEVEL true
 #define LOG_PROGRAM_VERBOSITY  LOG_V0
 #define LOG_FS_VERBOSITY       LOG_V0
 #define LOG_GFX_VERBOSITY      LOG_V0
@@ -125,7 +125,7 @@
 #define LOG_PIC_VERBOSITY      LOG_V0
 #define LOG_DMA_VERBOSITY      LOG_V0
 #define LOG_KEYB_VERBOSITY     LOG_V0
-#define LOG_VGA_VERBOSITY      LOG_V0
+#define LOG_VGA_VERBOSITY      LOG_V1
 #define LOG_CMOS_VERBOSITY     LOG_V0
 #define LOG_FDC_VERBOSITY      LOG_V0
 #define LOG_HDD_VERBOSITY      LOG_V0

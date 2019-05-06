@@ -603,21 +603,11 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F5: {
 					//take screenshot
 					if(_event.type == SDL_KEYUP) return true;
-					std::string path =
-							g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
-					std::string screenfile = FileSys::get_next_filename(path, "screenshot_", ".png");
-					if(!screenfile.empty()) {
-						std::string palfile;
+					take_screenshot(
 						#ifndef NDEBUG
-						palfile = path + FS_SEP + "palette.png";
+						true
 						#endif
-						try {
-							save_framebuffer(screenfile, palfile);
-							std::string mex = "screenshot saved to " + screenfile;
-							PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
-							show_message(mex.c_str());
-						} catch(std::exception &e) { }
-					}
+					);
 					return true;
 				}
 				case SDLK_F6: {
@@ -1277,6 +1267,24 @@ GLuint GUI::load_texture(const std::string &_path, vec2i *_texdim)
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	m_windows.interface->save_framebuffer(_screenfile, _palfile);
+}
+
+void GUI::take_screenshot(bool _with_palette_file)
+{
+	std::string path = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
+	std::string screenfile = FileSys::get_next_filename(path, "screenshot_", ".png");
+	if(!screenfile.empty()) {
+		std::string palfile;
+		if(_with_palette_file) {
+			palfile = path + FS_SEP + "palette.png";
+		}
+		try {
+			save_framebuffer(screenfile, palfile);
+			std::string mex = "screenshot saved to " + screenfile;
+			PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
+			show_message(mex.c_str());
+		} catch(std::exception &e) { }
+	}
 }
 
 void GUI::show_message(const char* _mex)

@@ -3,7 +3,7 @@ body
 	font-family: "ProFontWindows";
 	font-weight: normal;
 	font-style: normal;
-	font-size: 15;
+	font-size: 15px;
 	color: white;
 	background-color: #3C5464A0;
 }
@@ -61,7 +61,7 @@ div#title_bar
 	padding-bottom: 0px;
 
 	font-family: "Nouveau IBM";
-	font-size: 21;
+	font-size: 21px;
 	color: black;
 	width: 100%;
 
@@ -92,7 +92,7 @@ div#content
 
 h2
 {
-	font-size: 18;
+	font-size: 18px;
 }
 
 

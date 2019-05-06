@@ -35,6 +35,13 @@ const Rocket::Core::String & format_bit(unsigned _value)
 	return str;
 }
 
+const Rocket::Core::String & format_hex8(uint8_t _value)
+{
+	static Rocket::Core::String str;
+	str.FormatString(3,"%02X",_value);
+	return str;
+}
+
 const Rocket::Core::String & format_hex16(uint16_t _value)
 {
 	static Rocket::Core::String str;

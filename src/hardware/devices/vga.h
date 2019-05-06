@@ -45,6 +45,7 @@ enum VGATimings {
 #define VGA_WORKERS 4
 
 enum VGAModes {
+	VGA_M_INVALID,
 	VGA_M_CGA2,
 	VGA_M_CGA4,
 	VGA_M_EGA,
@@ -66,6 +67,22 @@ struct VideoModeInfo
 	struct {
 		uint8_t top, bottom, left, right;
 	} borders;
+};
+
+struct VideoTimings
+{
+	uint32_t vtotal;         // total number of scanlines
+	uint32_t vdend;          // number of visible scanlines
+	uint32_t vbstart, vbend; // line of v blank start,end
+	uint32_t vrstart, vrend; // line of v retrace start,end
+	uint32_t vblank_skip;    // lines of top image offset
+	uint32_t htotal;         // total number of characters per line
+	uint32_t hdend;          // number of visible characters
+	uint32_t hbstart, hbend; // char of h blank start,end
+	uint32_t hrstart, hrend; // char of h retrace start,end
+	uint32_t cwidth;         // character width in pixels
+	double   hfreq;          // h frequency (kHz)
+	double   vfreq;          // v frequency (Hz)
 };
 
 // text mode blink feature
@@ -112,25 +129,12 @@ protected:
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint16_t charmap_address[2];
 		// timings
-		uint64_t vblank_time_nsec;   // Time of the last vblank event
 		uint64_t vretrace_time_nsec; // Time of the last vretrace event
-		struct {
-			uint32_t vtotal;         // total number of scanlines
-			uint32_t vdend;          // number of visible scanlines
-			uint32_t vbstart, vbend; // line of v blank start,end
-			uint32_t vrstart, vrend; // line of v retrace start,end
-			uint32_t vblank_skip;    // lines of top image offset
-			uint32_t htotal;         // total number of characters per line
-			uint32_t hdend;          // number of visible characters
-			uint32_t hbstart, hbend; // char of h blank start,end
-			uint32_t hrstart, hrend; // char of h retrace start,end
-			uint32_t cwidth;         // character width in pixels
-			double   hfreq;          // h frequency (kHz)
-			double   vfreq;          // v frequency (Hz)
-		} timings;
+		VideoTimings timings;
 		struct {
 			uint32_t htotal;         // Horizontal total (how long a line takes, including blank and retrace)
 			uint32_t hbstart, hbend; // Start and End of horizontal blanking
+			uint32_t hrstart, hrend; // Start and End of horizontal retrace
 			uint32_t vtotal;         // Vertical total (including blank and retrace)
 			uint32_t vdend;          // Vertical display end
 			uint32_t vrstart, vrend; // Start and End of vertical retrace pulse
@@ -148,7 +152,7 @@ protected:
 	uint32_t m_memsize;      // size of memory buffer
 	int m_mem_mapping;       // video memory mapping ID
 	int m_rom_mapping;       // BIOS mapping ID
-	VGATimings m_vga_timing; // VGA timings
+	VGATimings m_vga_timing; // VGA memory timings
 	double m_bus_timing;     // System bus timings
 	int m_timer_id;          // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
@@ -172,13 +176,18 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 	void power_off();
-	void set_timings(double _bus, VGATimings _vga) {
+	void set_bus_timings(double _bus, VGATimings _vga) {
 		m_bus_timing = _bus;
 		m_vga_timing = _vga;
 	}
-	VGAModes current_mode(uint16_t *imgw_=nullptr, uint16_t *imgh_=nullptr);
 	const char *current_mode_string();
 	virtual void state_to_textfile(std::string _filepath);
+	inline const VideoModeInfo & video_mode() const { return m_s.vmode; }
+	inline const VideoTimings & timings() const { return m_s.timings; }
+	
+	inline const VGA_CRTC & crtc() const { return m_s.CRTC; }
+	
+	void current_scanline(double &scanline_, bool &disp_, bool &hretr_, bool &vretr_);
 
 protected:
 	virtual void update_mem_mapping();

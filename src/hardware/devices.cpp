@@ -106,17 +106,17 @@ void Devices::config_changed()
 	switch(m_machine->type()) {
 		case PS1_2121:
 			m_vga = install<CF62011BPC>();
-			m_vga->set_timings(bus_timings, VGA_16BIT_FAST);
+			m_vga->set_bus_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
 		case PS1_2011:
 			m_vga = install<VGA>();
-			m_vga->set_timings(bus_timings, VGA_8BIT_SLOW);
+			m_vga->set_bus_timings(bus_timings, VGA_8BIT_SLOW);
 			m_sysboard = install<SystemBoard_PS1_2011>();
 			break;
 		default:
 			m_vga = install<VGA>();
-			m_vga->set_timings(bus_timings, VGA_16BIT_FAST);
+			m_vga->set_bus_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard>();
 			break;
 	}

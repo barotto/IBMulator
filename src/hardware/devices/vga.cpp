@@ -81,6 +81,7 @@ m_num_y_tiles(0)
 	unsigned max_x_tiles = VGA_MAX_XRES / VGA_X_TILESIZE + ((VGA_MAX_XRES % VGA_X_TILESIZE) > 0);
 	unsigned max_y_tiles = VGA_MAX_YRES / VGA_Y_TILESIZE + ((VGA_MAX_YRES % VGA_Y_TILESIZE) > 0);
 	m_tile_dirty.reserve(max_x_tiles * max_y_tiles);
+	m_s = {};
 }
 
 VGA::~VGA()
@@ -398,6 +399,8 @@ void VGA::calculate_timings()
 	m_s.timings_ns.htotal  = htotal * invclock_ns;
 	m_s.timings_ns.hbstart = hbstart * invclock_ns;
 	m_s.timings_ns.hbend   = hbend * invclock_ns;
+	m_s.timings_ns.hrstart = hrstart * invclock_ns;
+	m_s.timings_ns.hrend   = hrend * invclock_ns;
 
 	m_s.timings_ns.vtotal  = 1e9 / m_s.timings.vfreq;
 	m_s.timings_ns.vdend   = m_s.timings_ns.htotal * vdend;
@@ -598,6 +601,43 @@ void VGA::update_video_mode(uint64_t _time)
 	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
 }
 
+void VGA::current_scanline(double &scanline_, bool &disp_, bool &hretr_, bool &vretr_)
+{
+	uint64_t now = g_machine.get_virt_time_ns();
+
+	uint64_t display_ns = 0;
+	if(m_s.vretrace_time_nsec) {
+		display_ns = (now - (m_s.vretrace_time_nsec - m_s.timings_ns.vrstart))
+		             % m_s.timings_ns.vtotal;
+	}
+
+	scanline_ = 0;
+	uint64_t line_ns = 0;
+	if(m_s.timings_ns.htotal != 0) {
+		scanline_ = double(display_ns) / m_s.timings_ns.htotal;
+		line_ns = display_ns % m_s.timings_ns.htotal;
+	}
+
+	if(display_ns >= m_s.timings_ns.vdend ||
+	  (line_ns >= m_s.timings_ns.hbstart && line_ns <= m_s.timings_ns.hbend)) {
+		disp_ = false;
+	} else {
+		disp_ = true;
+	}
+
+	if(line_ns >= m_s.timings_ns.hrstart && line_ns <= m_s.timings_ns.hrend) {
+		hretr_ = true;
+	} else {
+		hretr_ = false;
+	}
+
+	if(display_ns >= m_s.timings_ns.vrstart && display_ns <= m_s.timings_ns.vrend) {
+		vretr_ = true;
+	} else {
+		vretr_ = false;
+	}
+}
+
 uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 {
 	UNUSED(_io_len);
@@ -642,20 +682,12 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 			sys_diag ^= 0x30; // bit4-5 system diagnostic
 			retval |= sys_diag;
 
-			uint64_t now = g_machine.get_virt_time_ns();
-
-			uint64_t display_ns = 0;
-			if(m_s.vretrace_time_nsec) {
-				display_ns = (now - (m_s.vretrace_time_nsec - m_s.timings_ns.vrstart))
-				             % m_s.timings_ns.vtotal;
-			}
-
-			double scanline = double(display_ns) / m_s.timings_ns.htotal;
-			uint64_t line_ns = display_ns % m_s.timings_ns.htotal;
+			double scanline;
+			bool disp, vret, hret;
+			current_scanline(scanline, disp, hret, vret);
 
 			const char *mode = "disp";
-			if(display_ns >= m_s.timings_ns.vdend ||
-			  (line_ns >= m_s.timings_ns.hbstart && line_ns <= m_s.timings_ns.hbend)) {
+			if(!disp) {
 				// bit0: Display Enable
 				//       0 = display is in the display mode
 				//       1 = display is not in the display mode; either the
@@ -663,7 +695,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 				retval |= 0x01;
 				mode = "blank";
 			}
-			if(display_ns >= m_s.timings_ns.vrstart && display_ns <= m_s.timings_ns.vrend) {
+			if(vret) {
 				// bit3: Vertical Retrace
 				//       0 = display is in the display mode
 				//       1 = display is in the vertical retrace mode
@@ -671,7 +703,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 				mode = "vret";
 			}
 
-			PDEBUGF(LOG_V2, LOG_VGA, "0x%02X %s disp=%u line=%.2f\n", retval, mode, display_ns, scanline);
+			PDEBUGF(LOG_V2, LOG_VGA, "0x%02X %s line=%.2f\n", retval, mode, scanline);
 
 			// reading this port resets the attribute controller flip-flop to address mode
 			m_s.attr_ctrl.flip_flop = false;
@@ -2100,6 +2132,8 @@ void VGA::state_to_textfile(std::string _filepath)
 	fprintf(file.get(), "%*u  Horizontal Total\n",          8, m_s.timings_ns.htotal);
 	fprintf(file.get(), "%*u  Horizontal Blank Start\n",    8, m_s.timings_ns.hbstart);
 	fprintf(file.get(), "%*u  Horizontal Blank End\n",      8, m_s.timings_ns.hbend);
+	fprintf(file.get(), "%*u  Horizontal Retrace Start\n",  8, m_s.timings_ns.hrstart);
+	fprintf(file.get(), "%*u  Horizontal Retrace End\n",    8, m_s.timings_ns.hrend);
 	fprintf(file.get(), "%*u  Vertical Total\n",            8, m_s.timings_ns.vtotal);
 	fprintf(file.get(), "%*u  Vertical Retrace Start\n",    8, m_s.timings_ns.vrstart);
 	fprintf(file.get(), "%*u  Vertical Retrace End\n",      8, m_s.timings_ns.vrend);

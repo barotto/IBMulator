@@ -243,6 +243,7 @@ public:
 	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
+	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 

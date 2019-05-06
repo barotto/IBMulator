@@ -22,6 +22,7 @@
 
 const Rocket::Core::String & format_uint16(uint16_t _value);
 const Rocket::Core::String & format_bit(unsigned _value);
+const Rocket::Core::String & format_hex8(uint8_t _value);
 const Rocket::Core::String & format_hex16(uint16_t _value);
 const Rocket::Core::String & format_hex24(uint32_t _value);
 const Rocket::Core::String & format_hex32(uint32_t _value);
