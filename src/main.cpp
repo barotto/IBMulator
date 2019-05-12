@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,8 +28,8 @@
 int main(int argc, char** argv)
 {
 	std::stringstream ss;
-	LogStream templog(ss, false);
-	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, &templog);
+	LogStream * templog = new LogStream(ss, true);
+	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, templog);
 	g_syslog.set_verbosity(DEFAULT_LOG_VERBOSITY);
 
 	PINFO(LOG_V0, "Program start\n");
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	g_syslog.remove(&templog, true);
+	g_syslog.remove(templog, false);
 
 	g_program.start();
 
