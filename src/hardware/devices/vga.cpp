@@ -175,6 +175,8 @@ void VGA::reset(unsigned _type)
 
 		m_s = {};
 
+		m_s.blink_counter = VGA_BLINK_COUNTER;
+		
 		// Mode 3+ 80x25,9x16,70Hz,720x400
 		m_s.gen_regs.misc_output.IOS = 1;
 		m_s.gen_regs.misc_output.ERAM = 1;
@@ -189,11 +191,6 @@ void VGA::reset(unsigned _type)
 		m_s.sequencer.set_registers(VGA_Sequencer::modes[0x03]);
 		m_s.dac.state = 0x01;
 		m_s.dac.pel_mask = 0xff;
-
-		// The blink rate is dependent on the vertical frame rate. The on/off state
-		// of the cursor changes every 16 vertical frames, which amounts to 1.875 blinks
-		// per second at 60 vertical frames per second (60/32).
-		m_s.blink_counter = 16;
 
 		// TODO this stuff should be removed until VBE support is added
 		m_s.plane_offset = 0;
@@ -1038,7 +1035,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					m_display->lock();
 					m_display->palette_change(reg, r,g,b);
 					m_display->unlock();
-					needs_redraw = true;
+					
 					PDEBUGF(LOG_V2, LOG_VGA, " palette[%u] = (%u,%u,%u)", reg,r,g,b);
 					if(VGA_STATS_ENABLED) {
 						m_stats.last_pal_line = current_scanline();
@@ -1243,8 +1240,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	}
 }
 
-uint8_t VGA::get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _lc,
-		bool _cur_visible, uint8_t * const *_plane)
+uint8_t VGA::get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _lc, uint8_t * const *_plane)
 {
 	_y /= m_s.CRTC.scanlines_div();
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
@@ -1258,7 +1254,7 @@ uint8_t VGA::get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _
 	if(_y > _lc) {
 		byte_offset = _x / 8 + ((_y - _lc - 1) * m_s.CRTC.latches.line_offset);
 	} else {
-		byte_offset = _saddr + _x / 8 + (_y * m_s.CRTC.latches.line_offset);
+		byte_offset = m_s.CRTC.latches.start_address + _x / 8 + (_y * m_s.CRTC.latches.line_offset);
 	}
 	byte_offset %= 0x10000;
 	uint8_t attribute =
@@ -1270,7 +1266,7 @@ uint8_t VGA::get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _
 	attribute &= m_s.attr_ctrl.color_plane_enable.ECP;
 	if(m_s.attr_ctrl.attr_mode.EB) {
 		// colors 0..7 high intensity, colors 8..15 blinking
-		if(_cur_visible) {
+		if(m_s.blink_visible) {
 			attribute |= 0x08;
 		} else {
 			attribute ^= 0x08;
@@ -1413,44 +1409,8 @@ void VGA::update_mode13(FN _pixel_x, unsigned _pan)
 	false);
 }
 
-void VGA::update_screen(uint64_t _time)
+void VGA::update_screen()
 {
-	UNUSED(_time);
-
-	if(THREADS_WAIT && g_program.threads_sync()) {
-		m_display->wait();
-	}
-
-	static unsigned cs_counter = 1; //cursor blink counter
-	static bool cs_visible = false;
-	bool cs_toggle = false;
-
-	cs_counter--;
-	// no screen update necessary
-	if((!m_s.needs_update) && (cs_counter > 0)) {
-		if(VGA_STATS_ENABLED) {
-			m_stats.updated_pix = 0;
-		}
-		return;
-	}
-
-	if(cs_counter == 0) {
-		cs_counter = m_s.blink_counter;
-		if((m_s.vmode.mode == VGA_M_TEXT) || (m_s.attr_ctrl.attr_mode.EB)) {
-			cs_toggle = true;
-			cs_visible = !cs_visible;
-		} else {
-			if(!m_s.needs_update) {
-				if(VGA_STATS_ENABLED) {
-					m_stats.updated_pix = 0;
-				}
-				return;
-			}
-			cs_toggle = false;
-			cs_visible = false;
-		}
-	}
-
 	m_display->lock();
 
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
@@ -1514,9 +1474,9 @@ void VGA::update_screen(uint64_t _time)
 			uint16_t line_compare = m_s.CRTC.latches.line_compare / m_s.CRTC.scanlines_div();
 			gfx_update([=] (unsigned pixelx, unsigned pixely)
 			{
-				return get_vga_pixel(pixelx, pixely, m_s.CRTC.latches.start_address, line_compare, cs_visible, plane);
+				return get_vga_pixel(pixelx, pixely, line_compare, plane);
 			},
-			cs_toggle);
+			m_s.blink_toggle);
 			break;
 		}
 		case VGA_M_256COL: {
@@ -1565,7 +1525,7 @@ void VGA::update_screen(uint64_t _time)
 			TextModeInfo tm_info;
 			tm_info.start_address = 2 * m_s.CRTC.latches.start_address;
 			tm_info.cs_start = m_s.CRTC.cursor_start;
-			if(!cs_visible) {
+			if(!m_s.blink_visible) {
 				tm_info.cs_start |= CRTC_CO;
 			}
 			tm_info.cs_end = m_s.CRTC.cursor_end.RSCE;
@@ -1580,10 +1540,10 @@ void VGA::update_screen(uint64_t _time)
 			tm_info.blink_flags = 0;
 			if(m_s.attr_ctrl.attr_mode.EB) {
 				tm_info.blink_flags |= TEXT_BLINK_MODE;
-				if(cs_toggle) {
+				if(m_s.blink_toggle) {
 					tm_info.blink_flags |= TEXT_BLINK_TOGGLE;
 				}
-				if(cs_visible) {
+				if(m_s.blink_visible) {
 					tm_info.blink_flags |= TEXT_BLINK_STATE;
 				}
 			}
@@ -1647,11 +1607,17 @@ void VGA::update_screen(uint64_t _time)
 
 void VGA::vertical_retrace(uint64_t _time)
 {
+	if(THREADS_WAIT && g_program.threads_sync()) {
+		m_display->wait();
+	}
+	
 	bool disabled = is_video_disabled();
 
-	if(!disabled) {
-		// update the screen image
-		update_screen(_time);
+	if(!disabled && (m_s.needs_update || 
+		((m_s.vmode.mode==VGA_M_EGA || m_s.vmode.mode==VGA_M_TEXT) && m_s.blink_toggle))
+	)
+	{
+		update_screen();
 	} else if(VGA_STATS_ENABLED) {
 		m_stats.updated_pix = 0;
 	}
@@ -1667,6 +1633,20 @@ void VGA::vertical_retrace(uint64_t _time)
 
 	// the start address is latched at vretrace
 	m_s.CRTC.latch_start_address();
+	
+	// update cursor/blinking status for the next frame
+	m_s.blink_toggle = false;
+	m_s.blink_counter--;
+	if(m_s.blink_counter == 0) {
+		m_s.blink_counter = VGA_BLINK_COUNTER;
+		if((m_s.vmode.mode == VGA_M_TEXT) || (m_s.attr_ctrl.attr_mode.EB)) {
+			m_s.blink_toggle = true;
+			m_s.blink_visible = !m_s.blink_visible;
+		} else {
+			m_s.blink_toggle = false;
+			m_s.blink_visible = false;
+		}
+	}
 }
 
 template<>

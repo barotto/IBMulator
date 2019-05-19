@@ -99,6 +99,11 @@ struct VideoStats
 #define TEXT_BLINK_TOGGLE    0x02
 #define TEXT_BLINK_STATE     0x04
 
+// The blink rate is dependent on the vertical frame rate. The on/off state
+// of the cursor changes every 16 vertical frames, which amounts to 1.875 blinks
+// per second at 60 vertical frames per second (60/32).
+#define VGA_BLINK_COUNTER  16
+
 struct TextModeInfo
 {
 	uint16_t start_address;
@@ -133,8 +138,13 @@ protected:
 		VGA_DAC       dac;
 
 		bool needs_update;  // 1=screen needs to be updated
-		// text mode support
+		
+		// blinking support (text cursor and monochrome gfx)
 		unsigned blink_counter;
+		bool blink_toggle;
+		bool blink_visible;
+		
+		// text mode support
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint16_t charmap_address[2];
 		// timings
@@ -206,9 +216,9 @@ protected:
 	void redraw_all();
 	void init_iohandlers();
 	void init_systemtimer();
-	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _lc, bool _bs, uint8_t * const *_plane);
+	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _lc, uint8_t * const *_plane);
 	void update_video_mode(uint64_t _time);
-	void update_screen(uint64_t _time);
+	void update_screen();
 	void vertical_retrace(uint64_t _time);
 	void tiles_update();
 	void calculate_timings();
