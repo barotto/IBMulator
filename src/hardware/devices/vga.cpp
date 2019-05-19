@@ -73,14 +73,10 @@ m_vga_timing(VGA_8BIT_SLOW),
 m_bus_timing(1.0),
 m_timer_id(NULL_TIMER_HANDLE),
 m_display(nullptr),
-m_tile_width(0),
-m_tile_height(0),
-m_num_x_tiles(0),
-m_num_y_tiles(0)
+m_num_x_tiles(0)
 {
 	unsigned max_x_tiles = VGA_MAX_XRES / VGA_X_TILESIZE + ((VGA_MAX_XRES % VGA_X_TILESIZE) > 0);
-	unsigned max_y_tiles = VGA_MAX_YRES / VGA_Y_TILESIZE + ((VGA_MAX_YRES % VGA_Y_TILESIZE) > 0);
-	m_tile_dirty.reserve(max_x_tiles * max_y_tiles);
+	m_tile_dirty.reserve(max_x_tiles * VGA_MAX_YRES);
 	m_s = {};
 }
 
@@ -203,6 +199,8 @@ void VGA::reset(unsigned _type)
 		m_s.plane_offset = 0;
 		m_s.plane_shift = 16;
 		m_s.dac_shift = 2;
+		
+		m_stats = {};
 	}
 	update_mem_mapping();
 	m_s.gen_regs.video_enable = 1;
@@ -256,7 +254,7 @@ void VGA::restore_state(StateBuf &_state)
 	}
 	m_display->restore_state(_state);
 
-	tiles_update(m_s.vmode.xres, m_s.vmode.yres);
+	tiles_update();
 
 	g_machine.activate_timer(m_timer_id, m_s.timings_ns.vtotal, true);
 	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
@@ -264,6 +262,8 @@ void VGA::restore_state(StateBuf &_state)
 	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
 
 	update_mem_mapping();
+	
+	m_stats = {};
 }
 
 void VGA::update_mem_mapping()
@@ -306,20 +306,11 @@ void VGA::load_ROM(const std::string &_filename)
 	}
 }
 
-void VGA::tiles_update(unsigned _xres, unsigned _yres)
+void VGA::tiles_update()
 {
-	m_tile_width = VGA_X_TILESIZE;
-	m_tile_height = VGA_Y_TILESIZE;
-
-	m_num_x_tiles = _xres / m_tile_width + ((_xres % m_tile_width) > 0);
-	m_num_y_tiles = _yres / m_tile_height + ((_yres % m_tile_height) > 0);
-	m_tile_dirty.resize(m_num_x_tiles * m_num_y_tiles);
-	set_all_tiles_dirty();
-}
-
-void VGA::set_all_tiles_dirty()
-{
-	std::fill(m_tile_dirty.begin(), m_tile_dirty.end(), 1);
+	m_num_x_tiles = m_s.vmode.xres / VGA_X_TILESIZE + ((m_s.vmode.xres % VGA_X_TILESIZE) > 0);
+	m_tile_dirty.resize(m_num_x_tiles * m_s.vmode.yres);
+	redraw_all();
 }
 
 void VGA::calculate_timings()
@@ -586,7 +577,7 @@ void VGA::update_video_mode(uint64_t _time)
 	}
 
 	if(!m_s.sequencer.clocking.SO) {
-		tiles_update(m_s.vmode.xres, m_s.vmode.yres);
+		tiles_update();
 		m_display->lock();
 		m_display->set_mode(m_s.vmode, m_s.timings.hfreq, m_s.timings.vfreq);
 		m_display->unlock();
@@ -599,6 +590,23 @@ void VGA::update_video_mode(uint64_t _time)
 	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
 	g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
 	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
+}
+
+double VGA::current_scanline()
+{
+	uint64_t now = g_machine.get_virt_time_ns();
+	uint64_t display_ns = 0;
+	double scanline = 0.0;
+	
+	if(m_s.vretrace_time_nsec) {
+		display_ns = (now - (m_s.vretrace_time_nsec - m_s.timings_ns.vrstart))
+		             % m_s.timings_ns.vtotal;
+	}
+	if(m_s.timings_ns.htotal != 0) {
+		scanline = double(display_ns) / m_s.timings_ns.htotal;
+	}
+	
+	return scanline;
 }
 
 void VGA::current_scanline(double &scanline_, bool &disp_, bool &hretr_, bool &vretr_)
@@ -1035,6 +1043,9 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					m_display->unlock();
 					needs_redraw = true;
 					PDEBUGF(LOG_V2, LOG_VGA, " palette[%u] = (%u,%u,%u)", reg,r,g,b);
+					if(VGA_STATS_ENABLED) {
+						m_stats.last_pal_line = current_scanline();
+					}
 					break;
 				}
 			}
@@ -1201,6 +1212,9 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						}
 						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
+						if(VGA_STATS_ENABLED) {
+							m_stats.last_saddr_line = current_scanline();
+						}
 						break;
 				}
 			}
@@ -1228,7 +1242,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 
 	if(needs_redraw) {
 		// Mark all video as updated so the changes will go through
-		redraw_area(0, 0, m_s.vmode.xres, m_s.vmode.yres);
+		redraw_all();
 	}
 }
 
@@ -1302,7 +1316,7 @@ void VGA::lower_interrupt()
 void VGA::clear_screen()
 {
 	memset(m_memory, 0, m_memsize);
-	set_all_tiles_dirty();
+	redraw_all();
 
 	m_display->lock();
 	m_display->clear_screen();
@@ -1329,40 +1343,52 @@ bool VGA::is_video_disabled()
 }
 
 template<typename FN>
-void VGA::gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size)
+uint32_t VGA::gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size)
 {
-	unsigned xc, yc, xti, yti, r, row, col, pixelx, pixely;
-	unsigned ystart = m_tile_height * id;
-	unsigned ystep = m_tile_height * pool_size;
-
-	uint8_t tile[m_tile_width * m_tile_height];
-
-	for(yc=ystart, yti=id; yc<m_s.vmode.yres; yc+=ystep, yti+=pool_size) {
-		for(xc=0, xti=0; xc<m_s.vmode.xres; xc+=m_tile_width, xti++) {
-			if(_force_upd || is_tile_dirty(xti, yti)) {
-				for(r=0; r<m_tile_height; r++) {
-					pixely = (yc + r) + m_s.timings.vblank_skip;
-					row = r * m_tile_width;
-					for(col=0; col<m_tile_width; col++) {
-						pixelx = xc + col;
-						tile[row + col] = _get_pixel(pixelx, pixely);
-					}
-				}
-				set_tile_dirty(xti, yti, false);
-				m_display->graphics_update(xc, yc, m_tile_width, m_tile_height, tile);
+	unsigned tile, tx, scanline, pixelx, pixely;
+	std::vector<uint8_t> scanline_data(m_s.vmode.xres);
+	uint32_t tiles_updated = 0;
+	
+	for(scanline = id; scanline < m_s.vmode.yres; scanline += pool_size) {
+		pixelx = 0;
+		pixely = scanline + m_s.timings.vblank_skip;
+		for(tile = 0; tile < m_num_x_tiles; tile++) {
+			if(!_force_upd && !is_tile_dirty(scanline, tile)) {
+				pixelx += VGA_X_TILESIZE;
+				continue;
+			}
+			for(tx = 0; (pixelx < m_s.vmode.xres) && (tx < VGA_X_TILESIZE); tx++, pixelx++) {
+				scanline_data[pixelx] = _get_pixel(pixelx, pixely);
+			}
+			if(VGA_STATS_ENABLED) {
+				tiles_updated++;
 			}
 		}
+		if(_force_upd) {
+			m_display->gfx_scanline_update(scanline, &scanline_data[0]);
+		} else {
+			m_display->gfx_scanline_update(scanline, &scanline_data[0], &m_tile_dirty[scanline*m_num_x_tiles], m_num_x_tiles);
+		}
 	}
+	
+	return tiles_updated;
 }
 
 template<typename FN>
 void VGA::gfx_update(FN _get_pixel, bool _force_upd)
 {
-	std::future<void> w0 = std::async(std::launch::async, [&]() {
-		gfx_update_core(_get_pixel, _force_upd, 0, 2);
+	std::future<uint32_t> w0 = std::async(std::launch::async, [&]() {
+		return gfx_update_core(_get_pixel, _force_upd, 0, 2);
 	});
-	gfx_update_core(_get_pixel, _force_upd, 1, 2);
+	uint32_t w1 = gfx_update_core(_get_pixel, _force_upd, 1, 2);
 	w0.wait();
+	
+	if(_force_upd) {
+		set_all_tiles(VGA_TILE_CLEAN);
+	}
+	if(VGA_STATS_ENABLED) {
+		m_stats.updated_pix = (w0.get() + w1) * VGA_X_TILESIZE;
+	}
 }
 
 template <typename FN>
@@ -1405,6 +1431,9 @@ void VGA::update_screen(uint64_t _time)
 	cs_counter--;
 	// no screen update necessary
 	if((!m_s.needs_update) && (cs_counter > 0)) {
+		if(VGA_STATS_ENABLED) {
+			m_stats.updated_pix = 0;
+		}
 		return;
 	}
 
@@ -1415,6 +1444,9 @@ void VGA::update_screen(uint64_t _time)
 			cs_visible = !cs_visible;
 		} else {
 			if(!m_s.needs_update) {
+				if(VGA_STATS_ENABLED) {
+					m_stats.updated_pix = 0;
+				}
 				return;
 			}
 			cs_toggle = false;
@@ -1606,7 +1638,7 @@ void VGA::update_screen(uint64_t _time)
 			// area again.
 			// See Abrash's Black Book L23-1 to see how to correctly use the
 			// CRTC start address.
-			redraw_area(0, 0, m_s.vmode.xres, m_s.vmode.yres);
+			redraw_all();
 		} else {
 			m_s.needs_update = false;
 		}
@@ -1623,6 +1655,8 @@ void VGA::vertical_retrace(uint64_t _time)
 	if(!disabled) {
 		// update the screen image
 		update_screen(_time);
+	} else if(VGA_STATS_ENABLED) {
+		m_stats.updated_pix = 0;
 	}
 
 	// do vertical retrace
@@ -1703,39 +1737,22 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 	assert((_addr >= me.m_s.gfx_ctrl.memory_offset) && (_addr < me.m_s.gfx_ctrl.memory_offset + me.m_s.gfx_ctrl.memory_aperture));
 
 	uint32_t offset = _addr & (me.m_s.gfx_ctrl.memory_aperture - 1);
-
-	if(me.m_s.gfx_ctrl.misc.GM) {
-		if(me.m_s.sequencer.mem_mode.CH4) {
-			// chained pixel representation
-			me.m_memory[(offset & ~0x03) + (offset % 4)*65536] = _value;
-			if(me.m_s.CRTC.latches.line_offset > 0 && offset >= me.m_s.CRTC.latches.start_address) {
-				offset -= me.m_s.CRTC.latches.start_address;
-				unsigned x_tileno = (offset % me.m_s.CRTC.latches.line_offset) / (me.m_tile_width/2);
-				unsigned y_tileno;
-				y_tileno = (offset / me.m_s.CRTC.latches.line_offset) / (me.m_tile_height/me.m_s.CRTC.scanlines_div());
-				me.set_tile_dirty(x_tileno, y_tileno, true);
-				me.m_s.needs_update = true;
-			}
-			return;
-		}
-		if(me.m_s.gfx_ctrl.misc.MM == MM_B8000_32K) {
+	
+	switch(me.m_s.vmode.mode) {
+		case VGA_M_CGA2:
+		case VGA_M_CGA4: {
 			// 0xB8000 .. 0xBFFFF
 			// CGA 320x200x4 / 640x200x2
 			me.m_memory[offset] = _value;
+
 			offset -= me.m_s.CRTC.latches.start_address;
 			unsigned x_tileno, x_tileno2, y_tileno;
-			if(offset>=0x2000) {
-				y_tileno = offset - 0x2000;
-				y_tileno /= (320/4);
-				y_tileno <<= 1;
-				y_tileno++;
-				x_tileno = (offset - 0x2000) % (320/4);
-				x_tileno <<= 2;
+			if(offset >= 0x2000) {
+				x_tileno = ((offset - 0x2000) % (320/4)) * 4;
+				y_tileno = ((offset - 0x2000) / (320/4)) * 2 + 1;
 			} else {
-				y_tileno = offset / (320/4);
-				y_tileno <<= 1;
-				x_tileno = offset % (320/4);
-				x_tileno <<= 2;
+				x_tileno = (offset % (320/4)) * 4;
+				y_tileno = (offset / (320/4)) * 2;
 			}
 			x_tileno2 = x_tileno;
 			if(me.m_s.gfx_ctrl.gfx_mode.SR == 0) {
@@ -1745,33 +1762,83 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 				x_tileno2 += 3;
 			}
 
-			x_tileno  /= (me.m_tile_width>>me.m_s.sequencer.clocking.DC);
-			x_tileno2 /= (me.m_tile_width>>me.m_s.sequencer.clocking.DC);
-			y_tileno  /= (me.m_tile_height>>me.m_s.CRTC.max_scanline.DSC);
+			unsigned lines = 1 << me.m_s.CRTC.max_scanline.DSC;
+			x_tileno  /= (VGA_X_TILESIZE >> me.m_s.sequencer.clocking.DC);
+			x_tileno2 /= (VGA_X_TILESIZE >> me.m_s.sequencer.clocking.DC);
+			y_tileno  *= lines;
 
-			me.m_s.needs_update = true;
-			me.set_tile_dirty(x_tileno, y_tileno, true);
+			me.set_tiles(y_tileno, lines, x_tileno, VGA_TILE_DIRTY);
 			if(x_tileno2 != x_tileno) {
-				me.set_tile_dirty(x_tileno2, y_tileno, true);
+				me.set_tiles(y_tileno, lines, x_tileno2, VGA_TILE_DIRTY);
 			}
+			me.m_s.needs_update = true;
 			return;
 		}
+		case VGA_M_256COL:
+		case VGA_M_EGA:
+			// addr between 0xA0000 and 0xAFFFF
+			unsigned planes, pels_per_byte, x_tileno, y_tileno;
+			bool dotclock;
+			if(me.m_s.sequencer.mem_mode.CH4) {
+				me.write_mem_chain4(offset, _value);
+				planes = 1;
+			} else {
+				if(me.m_s.sequencer.map_mask == 0) {
+					return;
+				}
+				me.write_mem_planar(offset, _value);
+				planes = 4;
+			}
+			if(me.m_s.vmode.mode == VGA_M_256COL) {
+				dotclock = true;
+				pels_per_byte = 1;
+			} else {
+				dotclock = me.m_s.sequencer.clocking.DC;
+				pels_per_byte = 2;
+			}
+			if(me.m_s.CRTC.latches.line_offset > 0) {
+				if(me.m_s.CRTC.latches.line_compare < me.m_s.CRTC.latches.vdisplay_end) {
+					x_tileno = ((offset % me.m_s.CRTC.latches.line_offset) * ((planes*pels_per_byte)<<dotclock)) / VGA_X_TILESIZE;
+					y_tileno = ((offset / me.m_s.CRTC.latches.line_offset) * me.m_s.CRTC.scanlines_div() + me.m_s.CRTC.latches.line_compare + 1);
+					me.set_tiles(y_tileno, me.m_s.CRTC.scanlines_div(), x_tileno, VGA_TILE_DIRTY);
+					me.m_s.needs_update = true;
+				}
+				if(offset >= me.m_s.CRTC.latches.start_address) {
+					offset -= me.m_s.CRTC.latches.start_address;
+					x_tileno = ((offset % me.m_s.CRTC.latches.line_offset) * ((planes*pels_per_byte)<<dotclock)) / VGA_X_TILESIZE;
+					y_tileno = (offset / me.m_s.CRTC.latches.line_offset) * me.m_s.CRTC.scanlines_div();
+					me.set_tiles(y_tileno, me.m_s.CRTC.scanlines_div(), x_tileno, VGA_TILE_DIRTY);
+					me.m_s.needs_update = true;
+				}
+			}
+			break;
+		case VGA_M_TEXT:
+			if(me.m_s.sequencer.map_mask == 0) {
+				return;
+			}
+			me.write_mem_planar(offset, _value);
+			me.m_s.needs_update = true;
+			break;
+		default:
+			break;
 	}
+}
 
-	// addr between 0xA0000 and 0xAFFFF
+void VGA::write_mem_chain4(uint32_t _offset, uint8_t _value)
+{
+	m_memory[(_offset & ~0x03) + (_offset % 4)*65536] = _value;
+}
 
-	if(me.m_s.sequencer.map_mask == 0) {
-		return;
-	}
-
-	uint8_t *plane0 = &me.m_memory[(0 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	uint8_t *plane1 = &me.m_memory[(1 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	uint8_t *plane2 = &me.m_memory[(2 << me.m_s.plane_shift) + me.m_s.plane_offset];
-	uint8_t *plane3 = &me.m_memory[(3 << me.m_s.plane_shift) + me.m_s.plane_offset];
+void VGA::write_mem_planar(uint32_t _offset, uint8_t _value)
+{
+	uint8_t *plane0 = &m_memory[(0 << m_s.plane_shift) + m_s.plane_offset];
+	uint8_t *plane1 = &m_memory[(1 << m_s.plane_shift) + m_s.plane_offset];
+	uint8_t *plane2 = &m_memory[(2 << m_s.plane_shift) + m_s.plane_offset];
+	uint8_t *plane3 = &m_memory[(3 << m_s.plane_shift) + m_s.plane_offset];
 
 	uint8_t new_val[4] = {0,0,0,0};
 
-	switch (me.m_s.gfx_ctrl.gfx_mode.WM) {
+	switch (m_s.gfx_ctrl.gfx_mode.WM) {
 		case 0:
 		{
 			// Write Mode 0
@@ -1779,25 +1846,25 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 			// in the Data Rotate register. If the set/reset function is enabled for a
 			// specific map, that map receives the 8-bit value contained in the
 			// Set/Reset register.
-			const uint8_t bitmask = me.m_s.gfx_ctrl.bitmask;
-			const bool sr0 = me.m_s.gfx_ctrl.set_reset.SR0;
-			const bool sr1 = me.m_s.gfx_ctrl.set_reset.SR1;
-			const bool sr2 = me.m_s.gfx_ctrl.set_reset.SR2;
-			const bool sr3 = me.m_s.gfx_ctrl.set_reset.SR3;
-			const bool esr0 = me.m_s.gfx_ctrl.enable_set_reset.ESR0;
-			const bool esr1 = me.m_s.gfx_ctrl.enable_set_reset.ESR1;
-			const bool esr2 = me.m_s.gfx_ctrl.enable_set_reset.ESR2;
-			const bool esr3 = me.m_s.gfx_ctrl.enable_set_reset.ESR3;
+			const uint8_t bitmask = m_s.gfx_ctrl.bitmask;
+			const bool sr0 = m_s.gfx_ctrl.set_reset.SR0;
+			const bool sr1 = m_s.gfx_ctrl.set_reset.SR1;
+			const bool sr2 = m_s.gfx_ctrl.set_reset.SR2;
+			const bool sr3 = m_s.gfx_ctrl.set_reset.SR3;
+			const bool esr0 = m_s.gfx_ctrl.enable_set_reset.ESR0;
+			const bool esr1 = m_s.gfx_ctrl.enable_set_reset.ESR1;
+			const bool esr2 = m_s.gfx_ctrl.enable_set_reset.ESR2;
+			const bool esr3 = m_s.gfx_ctrl.enable_set_reset.ESR3;
 			// perform rotate on CPU data in case its needed
-			if(me.m_s.gfx_ctrl.data_rotate.ROTC) {
-				_value = (_value >> me.m_s.gfx_ctrl.data_rotate.ROTC) |
-				         (_value << (8 - me.m_s.gfx_ctrl.data_rotate.ROTC));
+			if(m_s.gfx_ctrl.data_rotate.ROTC) {
+				_value = (_value >> m_s.gfx_ctrl.data_rotate.ROTC) |
+				         (_value << (8 - m_s.gfx_ctrl.data_rotate.ROTC));
 			}
-			new_val[0] = me.m_s.gfx_ctrl.latch[0] & ~bitmask;
-			new_val[1] = me.m_s.gfx_ctrl.latch[1] & ~bitmask;
-			new_val[2] = me.m_s.gfx_ctrl.latch[2] & ~bitmask;
-			new_val[3] = me.m_s.gfx_ctrl.latch[3] & ~bitmask;
-			switch (me.m_s.gfx_ctrl.data_rotate.FS) {
+			new_val[0] = m_s.gfx_ctrl.latch[0] & ~bitmask;
+			new_val[1] = m_s.gfx_ctrl.latch[1] & ~bitmask;
+			new_val[2] = m_s.gfx_ctrl.latch[2] & ~bitmask;
+			new_val[3] = m_s.gfx_ctrl.latch[3] & ~bitmask;
+			switch (m_s.gfx_ctrl.data_rotate.FS) {
 				case 0: // replace
 					new_val[0] |= (esr0 ? (sr0 ? bitmask : 0) : (_value & bitmask));
 					new_val[1] |= (esr1 ? (sr1 ? bitmask : 0) : (_value & bitmask));
@@ -1805,38 +1872,38 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 					new_val[3] |= (esr3 ? (sr3 ? bitmask : 0) : (_value & bitmask));
 					break;
 				case 1: // AND
-					new_val[0] |= esr0 ? (sr0 ? (me.m_s.gfx_ctrl.latch[0] & bitmask) : 0)
-					                   : (_value & me.m_s.gfx_ctrl.latch[0]) & bitmask;
-					new_val[1] |= esr1 ? (sr1 ? (me.m_s.gfx_ctrl.latch[1] & bitmask) : 0)
-					                   : (_value & me.m_s.gfx_ctrl.latch[1]) & bitmask;
-					new_val[2] |= esr2 ? (sr2 ? (me.m_s.gfx_ctrl.latch[2] & bitmask) : 0)
-					                   : (_value & me.m_s.gfx_ctrl.latch[2]) & bitmask;
-					new_val[3] |= esr3 ? (sr3 ? (me.m_s.gfx_ctrl.latch[3] & bitmask) : 0)
-					                   : (_value & me.m_s.gfx_ctrl.latch[3]) & bitmask;
+					new_val[0] |= esr0 ? (sr0 ? (m_s.gfx_ctrl.latch[0] & bitmask) : 0)
+					                   : (_value & m_s.gfx_ctrl.latch[0]) & bitmask;
+					new_val[1] |= esr1 ? (sr1 ? (m_s.gfx_ctrl.latch[1] & bitmask) : 0)
+					                   : (_value & m_s.gfx_ctrl.latch[1]) & bitmask;
+					new_val[2] |= esr2 ? (sr2 ? (m_s.gfx_ctrl.latch[2] & bitmask) : 0)
+					                   : (_value & m_s.gfx_ctrl.latch[2]) & bitmask;
+					new_val[3] |= esr3 ? (sr3 ? (m_s.gfx_ctrl.latch[3] & bitmask) : 0)
+					                   : (_value & m_s.gfx_ctrl.latch[3]) & bitmask;
 					break;
 				case 2: // OR
-					new_val[0] |= esr0 ? (sr0 ? bitmask : (me.m_s.gfx_ctrl.latch[0] & bitmask))
-					                   : ((_value | me.m_s.gfx_ctrl.latch[0]) & bitmask);
-					new_val[1] |= esr1 ? (sr1 ? bitmask : (me.m_s.gfx_ctrl.latch[1] & bitmask))
-					                   : ((_value | me.m_s.gfx_ctrl.latch[1]) & bitmask);
-					new_val[2] |= esr2 ? (sr2 ? bitmask : (me.m_s.gfx_ctrl.latch[2] & bitmask))
-					                   : ((_value | me.m_s.gfx_ctrl.latch[2]) & bitmask);
-					new_val[3] |= esr3 ? (sr3 ? bitmask : (me.m_s.gfx_ctrl.latch[3] & bitmask))
-					                   : ((_value | me.m_s.gfx_ctrl.latch[3]) & bitmask);
+					new_val[0] |= esr0 ? (sr0 ? bitmask : (m_s.gfx_ctrl.latch[0] & bitmask))
+					                   : ((_value | m_s.gfx_ctrl.latch[0]) & bitmask);
+					new_val[1] |= esr1 ? (sr1 ? bitmask : (m_s.gfx_ctrl.latch[1] & bitmask))
+					                   : ((_value | m_s.gfx_ctrl.latch[1]) & bitmask);
+					new_val[2] |= esr2 ? (sr2 ? bitmask : (m_s.gfx_ctrl.latch[2] & bitmask))
+					                   : ((_value | m_s.gfx_ctrl.latch[2]) & bitmask);
+					new_val[3] |= esr3 ? (sr3 ? bitmask : (m_s.gfx_ctrl.latch[3] & bitmask))
+					                   : ((_value | m_s.gfx_ctrl.latch[3]) & bitmask);
 					break;
 				case 3: // XOR
-					new_val[0] |= esr0 ? (sr0 ? (~me.m_s.gfx_ctrl.latch[0] & bitmask)
-					                          : (me.m_s.gfx_ctrl.latch[0] & bitmask))
-					                   : (_value ^ me.m_s.gfx_ctrl.latch[0]) & bitmask;
-					new_val[1] |= esr1 ? (sr1 ? (~me.m_s.gfx_ctrl.latch[1] & bitmask)
-					                          : (me.m_s.gfx_ctrl.latch[1] & bitmask))
-					                   : (_value ^ me.m_s.gfx_ctrl.latch[1]) & bitmask;
-					new_val[2] |= esr2 ? (sr2 ? (~me.m_s.gfx_ctrl.latch[2] & bitmask)
-					                          : (me.m_s.gfx_ctrl.latch[2] & bitmask))
-					                   : (_value ^ me.m_s.gfx_ctrl.latch[2]) & bitmask;
-					new_val[3] |= esr3 ? (sr3 ? (~me.m_s.gfx_ctrl.latch[3] & bitmask)
-					                          : (me.m_s.gfx_ctrl.latch[3] & bitmask))
-					                   : (_value ^ me.m_s.gfx_ctrl.latch[3]) & bitmask;
+					new_val[0] |= esr0 ? (sr0 ? (~m_s.gfx_ctrl.latch[0] & bitmask)
+					                          : (m_s.gfx_ctrl.latch[0] & bitmask))
+					                   : (_value ^ m_s.gfx_ctrl.latch[0]) & bitmask;
+					new_val[1] |= esr1 ? (sr1 ? (~m_s.gfx_ctrl.latch[1] & bitmask)
+					                          : (m_s.gfx_ctrl.latch[1] & bitmask))
+					                   : (_value ^ m_s.gfx_ctrl.latch[1]) & bitmask;
+					new_val[2] |= esr2 ? (sr2 ? (~m_s.gfx_ctrl.latch[2] & bitmask)
+					                          : (m_s.gfx_ctrl.latch[2] & bitmask))
+					                   : (_value ^ m_s.gfx_ctrl.latch[2]) & bitmask;
+					new_val[3] |= esr3 ? (sr3 ? (~m_s.gfx_ctrl.latch[3] & bitmask)
+					                          : (m_s.gfx_ctrl.latch[3] & bitmask))
+					                   : (_value ^ m_s.gfx_ctrl.latch[3]) & bitmask;
 					break;
 			}
 			break;
@@ -1848,7 +1915,7 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 			// Each memory map is written with the contents of the system latches.
 			// These latches are loaded by a system read operation.
 			for(int i=0; i<4; i++) {
-				new_val[i] = me.m_s.gfx_ctrl.latch[i];
+				new_val[i] = m_s.gfx_ctrl.latch[i];
 			}
 			break;
 		}
@@ -1858,16 +1925,16 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 			// Write Mode 2
 			// Memory map n (0 through 3) is filled with 8 bits of the value of data
 			// bit n.
-			const uint8_t bitmask = me.m_s.gfx_ctrl.bitmask;
+			const uint8_t bitmask = m_s.gfx_ctrl.bitmask;
 			const bool p0 = (_value & 1);
 			const bool p1 = (_value & 2);
 			const bool p2 = (_value & 4);
 			const bool p3 = (_value & 8);
-			new_val[0] = me.m_s.gfx_ctrl.latch[0] & ~bitmask;
-			new_val[1] = me.m_s.gfx_ctrl.latch[1] & ~bitmask;
-			new_val[2] = me.m_s.gfx_ctrl.latch[2] & ~bitmask;
-			new_val[3] = me.m_s.gfx_ctrl.latch[3] & ~bitmask;
-			switch (me.m_s.gfx_ctrl.data_rotate.FS) {
+			new_val[0] = m_s.gfx_ctrl.latch[0] & ~bitmask;
+			new_val[1] = m_s.gfx_ctrl.latch[1] & ~bitmask;
+			new_val[2] = m_s.gfx_ctrl.latch[2] & ~bitmask;
+			new_val[3] = m_s.gfx_ctrl.latch[3] & ~bitmask;
+			switch (m_s.gfx_ctrl.data_rotate.FS) {
 				case 0: // write
 					new_val[0] |= p0 ? bitmask : 0;
 					new_val[1] |= p1 ? bitmask : 0;
@@ -1875,22 +1942,22 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 					new_val[3] |= p3 ? bitmask : 0;
 					break;
 				case 1: // AND
-					new_val[0] |= p0 ? (me.m_s.gfx_ctrl.latch[0] & bitmask) : 0;
-					new_val[1] |= p1 ? (me.m_s.gfx_ctrl.latch[1] & bitmask) : 0;
-					new_val[2] |= p2 ? (me.m_s.gfx_ctrl.latch[2] & bitmask) : 0;
-					new_val[3] |= p3 ? (me.m_s.gfx_ctrl.latch[3] & bitmask) : 0;
+					new_val[0] |= p0 ? (m_s.gfx_ctrl.latch[0] & bitmask) : 0;
+					new_val[1] |= p1 ? (m_s.gfx_ctrl.latch[1] & bitmask) : 0;
+					new_val[2] |= p2 ? (m_s.gfx_ctrl.latch[2] & bitmask) : 0;
+					new_val[3] |= p3 ? (m_s.gfx_ctrl.latch[3] & bitmask) : 0;
 					break;
 				case 2: // OR
-					new_val[0] |= p0 ? bitmask : (me.m_s.gfx_ctrl.latch[0] & bitmask);
-					new_val[1] |= p1 ? bitmask : (me.m_s.gfx_ctrl.latch[1] & bitmask);
-					new_val[2] |= p2 ? bitmask : (me.m_s.gfx_ctrl.latch[2] & bitmask);
-					new_val[3] |= p3 ? bitmask : (me.m_s.gfx_ctrl.latch[3] & bitmask);
+					new_val[0] |= p0 ? bitmask : (m_s.gfx_ctrl.latch[0] & bitmask);
+					new_val[1] |= p1 ? bitmask : (m_s.gfx_ctrl.latch[1] & bitmask);
+					new_val[2] |= p2 ? bitmask : (m_s.gfx_ctrl.latch[2] & bitmask);
+					new_val[3] |= p3 ? bitmask : (m_s.gfx_ctrl.latch[3] & bitmask);
 					break;
 				case 3: // XOR
-					new_val[0] |= p0 ? (~me.m_s.gfx_ctrl.latch[0] & bitmask) : (me.m_s.gfx_ctrl.latch[0] & bitmask);
-					new_val[1] |= p1 ? (~me.m_s.gfx_ctrl.latch[1] & bitmask) : (me.m_s.gfx_ctrl.latch[1] & bitmask);
-					new_val[2] |= p2 ? (~me.m_s.gfx_ctrl.latch[2] & bitmask) : (me.m_s.gfx_ctrl.latch[2] & bitmask);
-					new_val[3] |= p3 ? (~me.m_s.gfx_ctrl.latch[3] & bitmask) : (me.m_s.gfx_ctrl.latch[3] & bitmask);
+					new_val[0] |= p0 ? (~m_s.gfx_ctrl.latch[0] & bitmask) : (m_s.gfx_ctrl.latch[0] & bitmask);
+					new_val[1] |= p1 ? (~m_s.gfx_ctrl.latch[1] & bitmask) : (m_s.gfx_ctrl.latch[1] & bitmask);
+					new_val[2] |= p2 ? (~m_s.gfx_ctrl.latch[2] & bitmask) : (m_s.gfx_ctrl.latch[2] & bitmask);
+					new_val[3] |= p3 ? (~m_s.gfx_ctrl.latch[3] & bitmask) : (m_s.gfx_ctrl.latch[3] & bitmask);
 					break;
 			}
 			break;
@@ -1904,25 +1971,25 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 			// effect). Rotated system data is ANDed with the Bit Mask register to
 			// form an 8-bit value that performs the same function as the Bit Mask
 			// register in write modes 0 and 2
-			const uint8_t bitmask = me.m_s.gfx_ctrl.bitmask & _value;
-			const uint8_t v0 = me.m_s.gfx_ctrl.set_reset.SR0 ? _value : 0;
-			const uint8_t v1 = me.m_s.gfx_ctrl.set_reset.SR1 ? _value : 0;
-			const uint8_t v2 = me.m_s.gfx_ctrl.set_reset.SR2 ? _value : 0;
-			const uint8_t v3 = me.m_s.gfx_ctrl.set_reset.SR3 ? _value : 0;
+			const uint8_t bitmask = m_s.gfx_ctrl.bitmask & _value;
+			const uint8_t v0 = m_s.gfx_ctrl.set_reset.SR0 ? _value : 0;
+			const uint8_t v1 = m_s.gfx_ctrl.set_reset.SR1 ? _value : 0;
+			const uint8_t v2 = m_s.gfx_ctrl.set_reset.SR2 ? _value : 0;
+			const uint8_t v3 = m_s.gfx_ctrl.set_reset.SR3 ? _value : 0;
 
 			// perform rotate on CPU data
-			if(me.m_s.gfx_ctrl.data_rotate.ROTC) {
-				_value = (_value >> me.m_s.gfx_ctrl.data_rotate.ROTC) |
-				         (_value << (8 - me.m_s.gfx_ctrl.data_rotate.ROTC));
+			if(m_s.gfx_ctrl.data_rotate.ROTC) {
+				_value = (_value >> m_s.gfx_ctrl.data_rotate.ROTC) |
+				         (_value << (8 - m_s.gfx_ctrl.data_rotate.ROTC));
 			}
-			new_val[0] = me.m_s.gfx_ctrl.latch[0] & ~bitmask;
-			new_val[1] = me.m_s.gfx_ctrl.latch[1] & ~bitmask;
-			new_val[2] = me.m_s.gfx_ctrl.latch[2] & ~bitmask;
-			new_val[3] = me.m_s.gfx_ctrl.latch[3] & ~bitmask;
+			new_val[0] = m_s.gfx_ctrl.latch[0] & ~bitmask;
+			new_val[1] = m_s.gfx_ctrl.latch[1] & ~bitmask;
+			new_val[2] = m_s.gfx_ctrl.latch[2] & ~bitmask;
+			new_val[3] = m_s.gfx_ctrl.latch[3] & ~bitmask;
 
 			_value &= bitmask;
 
-			switch (me.m_s.gfx_ctrl.data_rotate.FS) {
+			switch (m_s.gfx_ctrl.data_rotate.FS) {
 				case 0: // write
 					new_val[0] |= v0;
 					new_val[1] |= v1;
@@ -1930,22 +1997,22 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 					new_val[3] |= v3;
 					break;
 				case 1: // AND
-					new_val[0] |= v0 & me.m_s.gfx_ctrl.latch[0];
-					new_val[1] |= v1 & me.m_s.gfx_ctrl.latch[1];
-					new_val[2] |= v2 & me.m_s.gfx_ctrl.latch[2];
-					new_val[3] |= v3 & me.m_s.gfx_ctrl.latch[3];
+					new_val[0] |= v0 & m_s.gfx_ctrl.latch[0];
+					new_val[1] |= v1 & m_s.gfx_ctrl.latch[1];
+					new_val[2] |= v2 & m_s.gfx_ctrl.latch[2];
+					new_val[3] |= v3 & m_s.gfx_ctrl.latch[3];
 					break;
 				case 2: // OR
-					new_val[0] |= v0 | me.m_s.gfx_ctrl.latch[0];
-					new_val[1] |= v1 | me.m_s.gfx_ctrl.latch[1];
-					new_val[2] |= v2 | me.m_s.gfx_ctrl.latch[2];
-					new_val[3] |= v3 | me.m_s.gfx_ctrl.latch[3];
+					new_val[0] |= v0 | m_s.gfx_ctrl.latch[0];
+					new_val[1] |= v1 | m_s.gfx_ctrl.latch[1];
+					new_val[2] |= v2 | m_s.gfx_ctrl.latch[2];
+					new_val[3] |= v3 | m_s.gfx_ctrl.latch[3];
 					break;
 				case 3: // XOR
-					new_val[0] |= v0 ^ me.m_s.gfx_ctrl.latch[0];
-					new_val[1] |= v1 ^ me.m_s.gfx_ctrl.latch[1];
-					new_val[2] |= v2 ^ me.m_s.gfx_ctrl.latch[2];
-					new_val[3] |= v3 ^ me.m_s.gfx_ctrl.latch[3];
+					new_val[0] |= v0 ^ m_s.gfx_ctrl.latch[0];
+					new_val[1] |= v1 ^ m_s.gfx_ctrl.latch[1];
+					new_val[2] |= v2 ^ m_s.gfx_ctrl.latch[2];
+					new_val[3] |= v3 ^ m_s.gfx_ctrl.latch[3];
 					break;
 			}
 			break;
@@ -1954,65 +2021,27 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 	}
 
 	// planes update
-	if(me.m_s.sequencer.map_mask.M0E) {
-		plane0[offset] = new_val[0];
+	if(m_s.sequencer.map_mask.M0E) {
+		plane0[_offset] = new_val[0];
 	}
-	if(me.m_s.sequencer.map_mask.M1E) {
-		plane1[offset] = new_val[1];
+	if(m_s.sequencer.map_mask.M1E) {
+		plane1[_offset] = new_val[1];
 	}
-	if(me.m_s.sequencer.map_mask.M2E) {
-		if(!me.m_s.gfx_ctrl.misc.GM) {
-			uint32_t mapaddr = offset & 0xe000;
-			if(mapaddr == me.m_s.charmap_address[0] || mapaddr == me.m_s.charmap_address[1]) {
-				me.m_display->lock();
-				me.m_display->set_text_charbyte(
-						(mapaddr == me.m_s.charmap_address[0])?0:1,
-						(offset & 0x1fff), new_val[2]);
-				me.m_display->unlock();
+	if(m_s.sequencer.map_mask.M2E) {
+		if(!m_s.gfx_ctrl.misc.GM) {
+			uint32_t mapaddr = _offset & 0xe000;
+			if(mapaddr == m_s.charmap_address[0] || mapaddr == m_s.charmap_address[1]) {
+				m_display->lock();
+				m_display->set_text_charbyte(
+						(mapaddr == m_s.charmap_address[0])?0:1,
+						(_offset & 0x1fff), new_val[2]);
+				m_display->unlock();
 			}
 		}
-		plane2[offset] = new_val[2];
+		plane2[_offset] = new_val[2];
 	}
-	if(me.m_s.sequencer.map_mask.M3E) {
-		plane3[offset] = new_val[3];
-	}
-
-	me.m_s.needs_update = true;
-
-	// tiles update (graphics mode only)
-	if(!me.m_s.gfx_ctrl.misc.GM) {
-		return;
-	}
-	unsigned x_tileno, y_tileno;
-	if(me.m_s.gfx_ctrl.gfx_mode.C256) {
-		offset -= me.m_s.CRTC.latches.start_address;
-		x_tileno = (offset % me.m_s.CRTC.latches.line_offset) * 4 / (me.m_tile_width / 2);
-		y_tileno = (offset / me.m_s.CRTC.latches.line_offset) / (me.m_tile_height / me.m_s.CRTC.scanlines_div());
-		me.set_tile_dirty(x_tileno, y_tileno, true);
-	} else {
-		if(me.m_s.CRTC.latches.line_compare < me.m_s.CRTC.latches.vdisplay_end) {
-			if(me.m_s.CRTC.latches.line_offset > 0) {
-				if(me.m_s.sequencer.clocking.DC) {
-					x_tileno = (offset % me.m_s.CRTC.latches.line_offset) / (me.m_tile_width / 16);
-				} else {
-					x_tileno = (offset % me.m_s.CRTC.latches.line_offset) / (me.m_tile_width / 8);
-				}
-				y_tileno = ((offset / me.m_s.CRTC.latches.line_offset) * me.m_s.CRTC.scanlines_div() + me.m_s.CRTC.latches.line_compare + 1) / me.m_tile_height;
-				me.set_tile_dirty(x_tileno, y_tileno, true);
-			}
-		}
-		if(offset >= me.m_s.CRTC.latches.start_address) {
-			offset -= me.m_s.CRTC.latches.start_address;
-			if(me.m_s.CRTC.latches.line_offset > 0) {
-				if(me.m_s.sequencer.clocking.DC) {
-					x_tileno = (offset % me.m_s.CRTC.latches.line_offset) / (me.m_tile_width / 16);
-				} else {
-					x_tileno = (offset % me.m_s.CRTC.latches.line_offset) / (me.m_tile_width / 8);
-				}
-				y_tileno = (offset / me.m_s.CRTC.latches.line_offset) / (me.m_tile_height / me.m_s.CRTC.scanlines_div());
-				me.set_tile_dirty(x_tileno, y_tileno, true);
-			}
-		}
+	if(m_s.sequencer.map_mask.M3E) {
+		plane3[_offset] = new_val[3];
 	}
 }
 
@@ -2037,36 +2066,13 @@ const char * VGA::current_mode_string()
 	}
 }
 
-void VGA::redraw_area(unsigned _x0, unsigned _y0, unsigned _width, unsigned _height)
+void VGA::redraw_all()
 {
-	if(_width == 0 || _height == 0) {
-		return;
-	}
-
 	m_s.needs_update = true;
 
 	if(m_s.gfx_ctrl.misc.GM) {
 		// graphics mode
-		unsigned xmax = m_s.vmode.xres;
-		unsigned ymax = m_s.vmode.yres;
-		unsigned xt0 = _x0 / m_tile_width;
-		unsigned yt0 = _y0 / m_tile_height;
-		unsigned xt1, yt1;
-		if(_x0 < xmax) {
-			xt1 = (_x0 + _width  - 1) / m_tile_width;
-		} else {
-			xt1 = (xmax - 1) / m_tile_width;
-		}
-		if(_y0 < ymax) {
-			yt1 = (_y0 + _height - 1) / m_tile_height;
-		} else {
-			yt1 = (ymax - 1) / m_tile_height;
-		}
-		for(unsigned yti=yt0; yti<=yt1; yti++) {
-			for(unsigned xti=xt0; xti<=xt1; xti++) {
-				set_tile_dirty(xti, yti, true);
-			}
-		}
+		set_all_tiles(VGA_TILE_DIRTY);
 	} else {
 		// text mode
 		memset(m_s.text_snapshot, 0, sizeof(m_s.text_snapshot));

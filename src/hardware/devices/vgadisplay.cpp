@@ -189,48 +189,62 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfr
 	m_dim_updated = true;
 }
 
-// graphics_update()
+// gfx_scanline_update()
 //
-// Called in VGA graphics mode to request that an area be drawn to the screen,
-// since info in this region has changed.
+// Called in VGA graphics mode to request that a line be drawn to the screen,
+// since some info in this line has changed.
 //
-// _x: x origin of tile
-// _y: y origin of tile
-// _width: tile width
-// _height: tile height
-// _snapshot: array of 8bit values representing a block of pixels with
-//       dimension equal to the '_width' & '_height' arguments.
-//       Each value specifies an index into the array of colors allocated
-//       with palette_change()
-// note: origin of tile and of window based on (0,0) being in the upper
-//       left of the window.
-void VGADisplay::graphics_update(unsigned _x, unsigned _y,
-		unsigned _width, unsigned _height, uint8_t *_snapshot)
+// _scanline: the line of the framebuffer to be updated.
+// _scandata: array of 8bit palette indices to use to update the framebuffer line.
+// _tiles: array of horizontal tile statuses for the given line; each tile is VGA_X_TILESIZE px wide.
+//         tiles status will be updated with VGA_TILE_CLEAN
+// _tiles_count: elements count of _tiles.
+void VGADisplay::gfx_scanline_update(
+		unsigned _scanline,
+		const uint8_t *_scandata,
+		uint8_t *_tiles,
+		uint16_t _tiles_count)
 {
-	if(!m_s.valid_mode) {
+	if(!m_s.valid_mode || _scanline >= m_s.mode.yres) {
 		return;
 	}
 
-	uint32_t *buf = &m_fb[0] + _y * m_s.fb_width + _x;
-
-	int i = _height;
-	if(_y+i > m_s.mode.yres) {
-		i = m_s.mode.yres - _y;
+	uint32_t *fb_line = &m_fb[0] + _scanline * m_s.fb_width;
+	
+	for(uint16_t tid=0; tid<_tiles_count; tid++, _tiles++) {
+		if(*_tiles == VGA_TILE_CLEAN) {
+			continue;
+		}
+		unsigned pixel_x = tid * VGA_X_TILESIZE;
+		for(int tx=0; tx<VGA_X_TILESIZE; tx++,pixel_x++) {
+			if(pixel_x > m_s.mode.xres) {
+				// the last tile could be wider than needed
+				break;
+			}
+			fb_line[pixel_x] = m_s.palette[_scandata[pixel_x]];
+		};
+		*_tiles = VGA_TILE_CLEAN;
 	}
+}
 
-	// the tile is outside the display area?
-	if(i<=0) {
+// gfx_scanline_update()
+//
+// Called in VGA graphics mode to request that a line be drawn to the screen,
+// since the entire line has changed.
+//
+// _scanline: the line of the framebuffer to be updated.
+// _scandata: array of 8bit palette indices to use to update the framebuffer line.
+void VGADisplay::gfx_scanline_update(unsigned _scanline, const uint8_t *_scandata)
+{
+	if(!m_s.valid_mode || _scanline >= m_s.mode.yres) {
 		return;
 	}
 
-	do {
-		uint32_t *buf_row = buf;
-		int j = _width;
-		do {
-			*buf++ = m_s.palette[*_snapshot++];
-		} while(--j);
-		buf = buf_row + m_s.fb_width;
-	} while(--i);
+	uint32_t *fb_line = &m_fb[0] + _scanline * m_s.fb_width;
+	
+	for(unsigned pixel_x=0; pixel_x<m_s.mode.xres; pixel_x++) {
+		fb_line[pixel_x] = m_s.palette[_scandata[pixel_x]];
+	}
 }
 
 // text_update()

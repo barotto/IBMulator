@@ -78,7 +78,8 @@
 	#define STOP_AT_EXC       false  // pause emulation at exception defined in STOP_AT_EXC_VEC
 	#define STOP_AT_EXC_VEC   0x3000 // bitmask of exceptions to pause at
 	#define UD6_AUTO_DUMP     false  // automatic memory dump at #UD exception
-	#define BOCHS_BIOS_COMPAT false  // anable legacy Bochs' BIOS compatibility
+	#define BOCHS_BIOS_COMPAT false  // enable legacy Bochs' BIOS compatibility
+	#define VGA_STATS_ENABLED true   // enable VGA statistics computation
 
 	#define LOG_DEBUG_MESSAGES    true   // enable debug messages logging
 	#define LOG_MACHINE_TIME      true   // enable machine time logging
@@ -93,12 +94,13 @@
 	#define CONFIG_PARSE      true
 	#define MEMORY_TRAPS      false
 	#define INT_TRAPS         false
-	#define INT1_PAUSE        true
+	#define INT1_PAUSE        false
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
+	#define VGA_STATS_ENABLED false
 
 	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false
@@ -110,7 +112,7 @@
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL true
+#define OVERRIDE_VERBOSITY_LEVEL false
 #define LOG_PROGRAM_VERBOSITY  LOG_V0
 #define LOG_FS_VERBOSITY       LOG_V0
 #define LOG_GFX_VERBOSITY      LOG_V0
@@ -125,7 +127,7 @@
 #define LOG_PIC_VERBOSITY      LOG_V0
 #define LOG_DMA_VERBOSITY      LOG_V0
 #define LOG_KEYB_VERBOSITY     LOG_V0
-#define LOG_VGA_VERBOSITY      LOG_V1
+#define LOG_VGA_VERBOSITY      LOG_V0
 #define LOG_CMOS_VERBOSITY     LOG_V0
 #define LOG_FDC_VERBOSITY      LOG_V0
 #define LOG_HDD_VERBOSITY      LOG_V0

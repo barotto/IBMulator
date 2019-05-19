@@ -94,6 +94,15 @@ DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 	m_pic.irr = 0;
 	m_pic.imr = 0;
 	m_pic.isr = 0;
+	
+	if(VGA_STATS_ENABLED) {
+		m_vga.vga_pix_upd    = get_element("vga_pix_upd");
+		m_vga.vga_upd        = get_element("vga_upd");
+		m_vga.vga_saddr_line = get_element("vga_saddr_line");
+		m_vga.vga_pal_line   = get_element("vga_pal_line");
+	} else {
+		get_element("vga")->RemoveChild(get_element("vga_stats"));
+	}
 }
 
 DevStatus::~DevStatus()
@@ -282,6 +291,21 @@ void DevStatus::update_vga()
 		m_vga.vretr_phase->SetClass("led_active", true);
 	} else {
 		m_vga.vretr_phase->SetClass("led_active", false);
+	}
+	
+	if(VGA_STATS_ENABLED) {
+		const VideoStats & stats = vga->stats();
+		if(stats.updated_pix > 0) {
+			m_vga.vga_upd->SetClass("led_active", true);
+			str.FormatString(10, "%d", stats.updated_pix);
+			m_vga.vga_pix_upd->SetInnerRML(str);
+		} else {
+			m_vga.vga_upd->SetClass("led_active", false);
+		}
+		str.FormatString(10, "%d", stats.last_saddr_line);
+		m_vga.vga_saddr_line->SetInnerRML(str);
+		str.FormatString(10, "%d", stats.last_pal_line);
+		m_vga.vga_pal_line->SetInnerRML(str);
 	}
 }
 

@@ -28,8 +28,9 @@
 #define VGA_MAX_YRES 600
 #define VGA_MAX_HFREQ 0 //31.5 TODO add ini file setting
 
-#define VGA_X_TILESIZE 16
-#define VGA_Y_TILESIZE 24
+#define VGA_X_TILESIZE 16 // should be divisible by 2
+#define VGA_TILE_DIRTY true
+#define VGA_TILE_CLEAN false
 
 #define PALETTE_RMASK 0x000000FF
 #define PALETTE_GMASK 0x0000FF00
@@ -96,7 +97,9 @@ public:
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
-	void graphics_update(unsigned _x, unsigned _y, unsigned _width, unsigned _height, uint8_t *_snapshot);
+	void gfx_scanline_update(unsigned _scanline, const uint8_t *_scandata,
+			uint8_t *_tiles, uint16_t _tiles_count);
+	void gfx_scanline_update(unsigned _scanline, const uint8_t *_scandata);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
 	void clear_screen();

@@ -85,6 +85,15 @@ struct VideoTimings
 	double   vfreq;          // v frequency (Hz)
 };
 
+// Values not used for emulation, only for debugging purposes.
+// Updating needs to be enabled at compile time.
+struct VideoStats
+{
+	uint32_t updated_pix;     // numer of pixel that have been updated on the framebuffer in the last frame
+	uint16_t last_saddr_line; // scanline at which the last start address update happened
+	uint16_t last_pal_line;   // scanline at which the last palette update happened
+};
+
 // text mode blink feature
 #define TEXT_BLINK_MODE      0x01
 #define TEXT_BLINK_TOGGLE    0x02
@@ -157,12 +166,11 @@ protected:
 	int m_timer_id;          // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
 	// tiling system
-	uint16_t m_tile_width;
-	uint16_t m_tile_height;
 	uint16_t m_num_x_tiles;
-	uint16_t m_num_y_tiles;
 	std::vector<uint8_t> m_tile_dirty; // don't use bool, it's not thread safe
 
+	VideoStats m_stats; // Stats update needs to be enabled with VGA_STATS_ENABLED
+	
 public:
 	VGA(Devices *_dev);
 	virtual ~VGA();
@@ -187,40 +195,50 @@ public:
 	
 	inline const VGA_CRTC & crtc() const { return m_s.CRTC; }
 	
+	double current_scanline();
 	void current_scanline(double &scanline_, bool &disp_, bool &hretr_, bool &vretr_);
-
+	
+	const VideoStats & stats() const { return m_stats; }
+	
 protected:
 	virtual void update_mem_mapping();
 	void load_ROM(const std::string &_filename);
-	void redraw_area(unsigned _x0, unsigned _y0, unsigned _width, unsigned _height);
+	void redraw_all();
 	void init_iohandlers();
 	void init_systemtimer();
 	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _saddr, uint16_t _lc, bool _bs, uint8_t * const *_plane);
 	void update_video_mode(uint64_t _time);
 	void update_screen(uint64_t _time);
 	void vertical_retrace(uint64_t _time);
-	void tiles_update(unsigned _width, unsigned _height);
+	void tiles_update();
 	void calculate_timings();
 	bool is_video_disabled();
 	void raise_interrupt();
 	void lower_interrupt();
 	void clear_screen();
-	void set_all_tiles_dirty();
-	ALWAYS_INLINE void set_tile_dirty(unsigned _xtile, unsigned _ytile, bool _value) {
-		if(((_xtile) < m_num_x_tiles) && ((_ytile) < m_num_y_tiles)) {
-			m_tile_dirty[(_xtile) + (_ytile)*m_num_x_tiles] = _value;
+	inline void set_all_tiles(bool _value) {
+		std::fill(m_tile_dirty.begin(), m_tile_dirty.end(), _value);
+	}
+	ALWAYS_INLINE void set_tile(unsigned _scanline, unsigned _xtile, bool _value) {
+		if(_scanline < m_s.vmode.yres && _xtile < m_num_x_tiles) {
+			m_tile_dirty[_scanline*m_num_x_tiles + _xtile] = _value;
 		}
 	}
-	ALWAYS_INLINE bool is_tile_dirty(unsigned _xtile, unsigned _ytile) const {
-		return ((((_xtile) < m_num_x_tiles) && ((_ytile) < m_num_y_tiles)) ?
-			m_tile_dirty[(_xtile) + (_ytile)*m_num_x_tiles]
+	ALWAYS_INLINE void set_tiles(unsigned _scanline, unsigned _lines, unsigned _xtile, bool _value) {
+		for(unsigned l=0; l<_lines; l++) {
+			set_tile(_scanline+l, _xtile, _value);
+		}
+	}
+	ALWAYS_INLINE bool is_tile_dirty(unsigned _scanline, unsigned _xtile) const {
+		return ((_scanline < m_s.vmode.yres && _xtile < m_num_x_tiles) ?
+			m_tile_dirty[_scanline*m_num_x_tiles + _xtile] == VGA_TILE_DIRTY
 			: false);
 	}
 
 	template<typename FN>
 	void gfx_update(FN _get_pixel, bool _force_upd);
 	template<typename FN>
-	void gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size);
+	uint32_t gfx_update_core(FN _get_pixel, bool _force_upd, int id, int pool_size);
 	template <typename FN>
 	void update_mode13(FN _pixel_x, unsigned _pan);
 
@@ -229,6 +247,9 @@ protected:
 	template<class T>
 	static void s_mem_write(uint32_t _addr, uint32_t _value, void *_priv);
 
+	void write_mem_chain4(uint32_t _offset, uint8_t _value);
+	void write_mem_planar(uint32_t _offset, uint8_t _value);
+	
 	template<class T>
 	static uint32_t s_rom_read(uint32_t _addr, void *_priv) {
 		return *(T*)&(((VGA*)_priv)->m_rom)[_addr&0xFFFF];

@@ -38,6 +38,8 @@ private:
 		RC::Element *vtotal, *vdend, *vblank, *vretr;
 		RC::Element *startaddr_hi, *startaddr_lo, *startaddr_latch;
 		RC::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
+		// Stats
+		RC::Element *vga_pix_upd, *vga_upd, *vga_saddr_line, *vga_pal_line;
 	} m_vga;
 	
 	struct {
