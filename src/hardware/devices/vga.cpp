@@ -977,9 +977,6 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					}
 					break;
 				}
-				case SEQ_MAP_MASK:
-					needs_redraw = (oldval != m_s.sequencer.map_mask);
-					break;
 				case SEQ_CHARMAP: {
 					uint8_t charmapB = _value & (SEQ_MBL|SEQ_MBH);
 					if(charmapB > 3) {
