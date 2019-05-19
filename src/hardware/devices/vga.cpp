@@ -1269,7 +1269,7 @@ uint8_t VGA::get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _lc, uint8_t * con
 		if(m_s.blink_visible) {
 			attribute |= 0x08;
 		} else {
-			attribute ^= 0x08;
+			attribute &= ~0x08;
 		}
 	}
 	uint8_t palette_reg_val = m_s.attr_ctrl.palette[attribute];
