@@ -69,7 +69,9 @@
 			#vga_startaddr_latch {
 				width: 35px;
 			}
-			
+			#vga_frame_cnt {
+				width: 50px;
+			}
 			#vga_scanl, #vga_pix_upd {
 				width: 30px;
 			}
@@ -171,11 +173,17 @@
 			<p style="font-size:80%;">Stats</p>
 			<table>
 			<tr>
+				<th class="small" style="width:30px;">frame</th>
+					<td id="vga_frame_cnt" class="small">0</td>
 				<th class="small" style="width:40px;">upd. pix</th>
 					<td id="vga_pix_upd" class="small">0</td>
 					<td id="vga_upd" class="small led">upd</td>
-				<th class="small" style="width:50px;">saddr line</th><td id="vga_saddr_line" class="small">?</td>
-				<th class="small" style="width:50px;">pal line</th><td id="vga_pal_line" class="small">?</td>
+			</tr>
+			<tr>
+				<th class="small" style="width:50px;">saddr line</th>
+					<td id="vga_saddr_line" class="small">?</td>
+				<th class="small" style="width:50px;">pal line</th>
+					<td id="vga_pal_line" class="small">?</td>
 			</tr>
 			</table>
 			</div>

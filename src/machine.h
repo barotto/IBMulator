@@ -80,7 +80,8 @@ private:
 		bool        active;       // false=inactive, true=active.
 		bool        continuous;   // false=one-shot timer, true=continuous periodicity.
 		timer_fun_t fire;         // A callback function for when the timer fires.
-		char        name[TIMER_NAME_LEN];
+		unsigned    func_name;    // An optional name for the callback function
+		char        name[TIMER_NAME_LEN]; // A human readable name for this timer
 	} m_timers[MAX_TIMERS];
 
 	uint m_num_timers;
@@ -148,17 +149,22 @@ public:
 	inline CPU & cpu() { return g_cpu; }
 	inline Devices & devices() { return g_devices; }
 
-	int register_timer(timer_fun_t _func, const char *_name);
+	int register_timer(timer_fun_t _func, const char *_name, unsigned _func_name = 0);
 	void unregister_timer(int &_timer);
 	void activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous);
+	void activate_timer(unsigned _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous);
 	uint64_t get_timer_eta(unsigned _timer) const;
 	void deactivate_timer(unsigned _timer);
-	void set_timer_callback(unsigned _timer, timer_fun_t _func);
+	void set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _func_name = 0);
 	inline bool is_timer_active(unsigned _timer) const {
 		assert(_timer!=0 && _timer<m_num_timers);
 		return m_timers[_timer].active;
 	}
-
+	const Timer & get_timer(unsigned _timer) const {
+		assert(_timer!=0 && _timer<m_num_timers);
+		return m_timers[_timer];
+	}
+	
 	void register_irq(uint8_t irq, const char* name);
 	void unregister_irq(uint8_t _irq);
 	const char* get_irq_name(uint8_t irq);

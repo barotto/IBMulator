@@ -128,6 +128,7 @@ void Machine::restore_state(StateBuf &_state)
 			m_timers[mchtidx].time_to_fire = savtimer->time_to_fire;
 			m_timers[mchtidx].active = savtimer->active;
 			m_timers[mchtidx].continuous = savtimer->continuous;
+			m_timers[mchtidx].func_name = savtimer->func_name;
 		}
 		_state.advance(sizeof(Timer));
 	}
@@ -482,13 +483,13 @@ void Machine::set_single_step(bool _val)
 	m_cpu_single_step = _val;
 }
 
-int Machine::register_timer(timer_fun_t _func, const char *_name)
+int Machine::register_timer(timer_fun_t _func, const char *_name, unsigned _func_name)
 {
 	unsigned timer = NULL_TIMER_HANDLE;
 
 	if(m_num_timers >= MAX_TIMERS) {
-    	PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
-    	throw std::exception();
+		PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
+		throw std::exception();
 	}
 
 	// search for new timer
@@ -514,6 +515,7 @@ int Machine::register_timer(timer_fun_t _func, const char *_name)
 	m_timers[timer].active = false;
 	m_timers[timer].continuous = false;
 	m_timers[timer].fire = _func;
+	m_timers[timer].func_name = _func_name;
 	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name);
 
 	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name);
@@ -533,23 +535,28 @@ void Machine::unregister_timer(int &_timer)
 	_timer = NULL_TIMER_HANDLE;
 }
 
-void Machine::activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous)
+void Machine::activate_timer(unsigned _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous)
 {
 	assert(_timer<m_num_timers);
 
-	// if _nsecs = 0, use default stored in period field
-	if(_nsecs == 0) {
-		_nsecs = m_timers[_timer].period;
+	if(_period_ns == 0) {
+		// use default stored in period field
+		_period_ns = m_timers[_timer].period;
 	}
 
 	m_timers[_timer].active = true;
-	m_timers[_timer].period = _nsecs;
-	m_timers[_timer].time_to_fire = m_s.virt_time + _nsecs;
+	m_timers[_timer].period = _period_ns;
+	m_timers[_timer].time_to_fire = m_s.virt_time + _delay_ns;
 	m_timers[_timer].continuous = _continuous;
 
 	if(m_timers[_timer].time_to_fire < m_s.next_timer_time) {
 		m_s.next_timer_time = m_timers[_timer].time_to_fire;
 	}
+}
+
+void Machine::activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous)
+{
+	activate_timer(_timer, _nsecs, _nsecs, _continuous);
 }
 
 void Machine::deactivate_timer(unsigned _timer)
@@ -570,11 +577,12 @@ uint64_t Machine::get_timer_eta(unsigned _timer) const
 	return (m_timers[_timer].time_to_fire - m_s.virt_time);
 }
 
-void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func)
+void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _func_name)
 {
 	assert(_timer<m_num_timers);
 
 	m_timers[_timer].fire = _func;
+	m_timers[_timer].func_name = _func_name;
 }
 
 void Machine::register_irq(uint8_t _irq, const char* _name)

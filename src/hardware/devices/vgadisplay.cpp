@@ -189,27 +189,27 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfr
 	m_dim_updated = true;
 }
 
-// gfx_scanline_update()
+// gfx_screen_line_update()
 //
 // Called in VGA graphics mode to request that a line be drawn to the screen,
 // since some info in this line has changed.
 //
-// _scanline: the line of the framebuffer to be updated.
-// _scandata: array of 8bit palette indices to use to update the framebuffer line.
+// _yline: the line of the framebuffer to be updated.
+// _linedata: array of 8bit palette indices to use to update the framebuffer line.
 // _tiles: array of horizontal tile statuses for the given line; each tile is VGA_X_TILESIZE px wide.
 //         tiles status will be updated with VGA_TILE_CLEAN
 // _tiles_count: elements count of _tiles.
-void VGADisplay::gfx_scanline_update(
-		unsigned _scanline,
-		const uint8_t *_scandata,
+void VGADisplay::gfx_screen_line_update(
+		unsigned _yline,
+		const uint8_t *_linedata,
 		uint8_t *_tiles,
 		uint16_t _tiles_count)
 {
-	if(!m_s.valid_mode || _scanline >= m_s.mode.yres) {
+	if(!m_s.valid_mode || _yline >= m_s.mode.yres) {
 		return;
 	}
 
-	uint32_t *fb_line = &m_fb[0] + _scanline * m_s.fb_width;
+	uint32_t *fb_line = &m_fb[0] + _yline * m_s.fb_width;
 	
 	for(uint16_t tid=0; tid<_tiles_count; tid++, _tiles++) {
 		if(*_tiles == VGA_TILE_CLEAN) {
@@ -221,7 +221,7 @@ void VGADisplay::gfx_scanline_update(
 				// the last tile could be wider than needed
 				break;
 			}
-			fb_line[pixel_x] = m_s.palette[_scandata[pixel_x]];
+			fb_line[pixel_x] = m_s.palette[_linedata[pixel_x]];
 		};
 		*_tiles = VGA_TILE_CLEAN;
 	}
@@ -232,18 +232,18 @@ void VGADisplay::gfx_scanline_update(
 // Called in VGA graphics mode to request that a line be drawn to the screen,
 // since the entire line has changed.
 //
-// _scanline: the line of the framebuffer to be updated.
-// _scandata: array of 8bit palette indices to use to update the framebuffer line.
-void VGADisplay::gfx_scanline_update(unsigned _scanline, const uint8_t *_scandata)
+// _yline: the line of the framebuffer to be updated.
+// _linedata: array of 8bit palette indices to use to update the framebuffer line.
+void VGADisplay::gfx_screen_line_update(unsigned _yline, const uint8_t *_linedata)
 {
-	if(!m_s.valid_mode || _scanline >= m_s.mode.yres) {
+	if(!m_s.valid_mode || _yline >= m_s.mode.yres) {
 		return;
 	}
 
-	uint32_t *fb_line = &m_fb[0] + _scanline * m_s.fb_width;
+	uint32_t *fb_line = &m_fb[0] + _yline * m_s.fb_width;
 	
 	for(unsigned pixel_x=0; pixel_x<m_s.mode.xres; pixel_x++) {
-		fb_line[pixel_x] = m_s.palette[_scandata[pixel_x]];
+		fb_line[pixel_x] = m_s.palette[_linedata[pixel_x]];
 	}
 }
 

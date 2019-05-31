@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -79,7 +79,6 @@
 	#define STOP_AT_EXC_VEC   0x3000 // bitmask of exceptions to pause at
 	#define UD6_AUTO_DUMP     false  // automatic memory dump at #UD exception
 	#define BOCHS_BIOS_COMPAT false  // enable legacy Bochs' BIOS compatibility
-	#define VGA_STATS_ENABLED true   // enable VGA statistics computation
 
 	#define LOG_DEBUG_MESSAGES    true   // enable debug messages logging
 	#define LOG_MACHINE_TIME      true   // enable machine time logging
@@ -100,7 +99,6 @@
 	#define STOP_AT_EXC_VEC   0
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
-	#define VGA_STATS_ENABLED false
 
 	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false

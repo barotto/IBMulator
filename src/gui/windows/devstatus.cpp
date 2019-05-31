@@ -95,14 +95,11 @@ DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 	m_pic.imr = 0;
 	m_pic.isr = 0;
 	
-	if(VGA_STATS_ENABLED) {
-		m_vga.vga_pix_upd    = get_element("vga_pix_upd");
-		m_vga.vga_upd        = get_element("vga_upd");
-		m_vga.vga_saddr_line = get_element("vga_saddr_line");
-		m_vga.vga_pal_line   = get_element("vga_pal_line");
-	} else {
-		get_element("vga")->RemoveChild(get_element("vga_stats"));
-	}
+	m_vga.frame_cnt  = get_element("vga_frame_cnt");
+	m_vga.pix_upd    = get_element("vga_pix_upd");
+	m_vga.upd        = get_element("vga_upd");
+	m_vga.saddr_line = get_element("vga_saddr_line");
+	m_vga.pal_line   = get_element("vga_pal_line");
 }
 
 DevStatus::~DevStatus()
@@ -272,9 +269,8 @@ void DevStatus::update_vga()
 	m_vga.startaddr_lo->SetInnerRML(format_hex8(vga->crtc().startaddr_lo));
 	m_vga.startaddr_latch->SetInnerRML(format_hex16(vga->crtc().latches.start_address));
 	
-	double scanline = 0.0;
 	bool disp=false, vret=false, hret=false;
-	vga->current_scanline(scanline, disp, hret, vret);
+	double scanline = vga->current_scanline(disp, hret, vret);
 	str.FormatString(10, "%.2f", scanline);
 	m_vga.scanl->SetInnerRML(str);
 	if(disp) {
@@ -293,20 +289,20 @@ void DevStatus::update_vga()
 		m_vga.vretr_phase->SetClass("led_active", false);
 	}
 	
-	if(VGA_STATS_ENABLED) {
-		const VideoStats & stats = vga->stats();
-		if(stats.updated_pix > 0) {
-			m_vga.vga_upd->SetClass("led_active", true);
-			str.FormatString(10, "%d", stats.updated_pix);
-			m_vga.vga_pix_upd->SetInnerRML(str);
-		} else {
-			m_vga.vga_upd->SetClass("led_active", false);
-		}
-		str.FormatString(10, "%d", stats.last_saddr_line);
-		m_vga.vga_saddr_line->SetInnerRML(str);
-		str.FormatString(10, "%d", stats.last_pal_line);
-		m_vga.vga_pal_line->SetInnerRML(str);
+	const VideoStats & stats = vga->stats();
+	str.FormatString(10, "%d", stats.frame_cnt);
+	m_vga.frame_cnt->SetInnerRML(str);
+	if(stats.updated_pix > 0) {
+		m_vga.upd->SetClass("led_active", true);
+		str.FormatString(10, "%d", stats.updated_pix);
+		m_vga.pix_upd->SetInnerRML(str);
+	} else {
+		m_vga.upd->SetClass("led_active", false);
 	}
+	str.FormatString(10, "%d", stats.last_saddr_line);
+	m_vga.saddr_line->SetInnerRML(str);
+	str.FormatString(10, "%d", stats.last_pal_line);
+	m_vga.pal_line->SetInnerRML(str);
 }
 
 void DevStatus::update()

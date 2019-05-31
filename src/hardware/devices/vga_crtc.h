@@ -335,7 +335,6 @@ struct VGA_CRTC
 		uint16_t start_address;    // Starting address for the regenerative buffer (16-bit)
 		uint16_t cursor_location;  // Cursor Location (16-bit)
 	} latches;
-	bool start_address_modified;   // 1=start address value has been modified
 	bool interrupt;                // 1=vretrace interrupt has been raised
 
 	void latch_line_offset();

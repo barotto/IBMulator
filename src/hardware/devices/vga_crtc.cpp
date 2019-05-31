@@ -108,13 +108,9 @@ void VGA_CRTC::set_register(uint8_t _index, uint8_t _v)
 		break;
 	case CRTC_STARTADDR_HI: //0C
 		startaddr_hi = _v;
-		// latched at vertical retrace
-		start_address_modified = true;
 		break;
 	case CRTC_STARTADDR_LO: //0D
 		startaddr_lo = _v;
-		// latched at vertical retrace
-		start_address_modified = true;
 		break;
 	case CRTC_CURSOR_HI: //0E
 		cursor_hi = _v;
@@ -204,7 +200,6 @@ void VGA_CRTC::latch_start_vblank()
 void VGA_CRTC::latch_start_address()
 {
 	latches.start_address = (startaddr_hi << 8) | startaddr_lo;
-	start_address_modified = false;
 }
 
 void VGA_CRTC::latch_cursor_location()
