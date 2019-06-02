@@ -28,6 +28,8 @@ AC_PROG_RANLIB
 
 AM_CONDITIONAL([GCC], [test x$GXX = xyes])
 
+AX_CXX_COMPILE_STDCXX_11
+
 have_windows="no"
 case "$host_os" in
    msys*|mingw*)
@@ -51,12 +53,12 @@ AC_ARG_ENABLE([static],
 	      
 if test "x$debug" = "xyes"
 then
-	CXX_DEFAULTS="-O0 -g3 -Wextra -Wall -ansi -pthread -std=c++11"
+	CXX_DEFAULTS="-O0 -g3 -Wextra -Wall -pthread"
 	if test x$have_windows = xno ; then
 		CXX_DEFAULTS="$CXX_DEFAULTS -rdynamic"
 	fi
 else
-	CXX_DEFAULTS="-O3 -std=c++11 -pthread -fomit-frame-pointer -finline-functions -DNDEBUG" 
+	CXX_DEFAULTS="-O3 -pthread -fomit-frame-pointer -finline-functions -DNDEBUG" 
 fi
 
 if test x$have_windows = xno ; then
