@@ -30,12 +30,16 @@ HWBench::HWBench()
 :
 m_min_btime(UINT_MAX),
 m_max_btime(0),
+m_sum_btime(0),
 m_beat_count(0),
 m_upd_interval(1000),
-m_reset(true),
 m_icount(0),
 m_ccount(0),
+m_heartbeat(0),
+m_reset(true),
+m_chrono(nullptr),
 
+init_time(0),
 ustart(0),
 uend(0),
 update_interval(1000),
@@ -45,11 +49,13 @@ bend(0),
 beat_count(0),
 min_beat_time(UINT_MAX),
 max_beat_time(0),
+avg_beat_time(.0),
 min_bps(0),
 max_bps(0),
 avg_bps(.0),
 avg_ips(.0),
 avg_cps(.0),
+load(.0),
 
 time_elapsed(0),
 endl("\n")
@@ -77,6 +83,7 @@ void HWBench::beat_start()
 		m_beat_count = 0;
 		m_min_btime = UINT_MAX;
 		m_max_btime = 0;
+		m_sum_btime = 0;
 		m_icount = 0;
 		m_ccount = 0;
 		m_reset = false;
@@ -90,13 +97,14 @@ void HWBench::beat_end()
 {
 	bend = m_chrono->get_usec();
 
-	uint btime = bend - bstart;
+	unsigned btime = bend - bstart;
 
 	m_min_btime = std::min(btime,m_min_btime);
 	m_max_btime = std::max(btime,m_max_btime);
+	m_sum_btime += btime;
 	m_beat_count++;
 
-	uint64_t updtime = bend - ustart;
+	unsigned updtime = bend - ustart;
 	if(updtime >= m_upd_interval) {
 		data_update();
 		ustart = bend;
@@ -104,41 +112,32 @@ void HWBench::beat_end()
 	}
 }
 
-
 void HWBench::data_update()
 {
-	time_elapsed = bend - init_time;
-
-	double uea = double(bend - ustart);
-
-	beat_count = m_beat_count;
-
+	time_elapsed  = bend - init_time;
+	beat_count    = m_beat_count;
 	max_beat_time = m_max_btime;
 	min_beat_time = m_min_btime;
+	avg_beat_time = double(m_sum_btime) / m_beat_count;
 
-	avg_bps = double(beat_count) * 1.0e6 / uea;
+	double updtime = double(bend - ustart);
+	
+	avg_bps = double(beat_count) * 1.0e6 / updtime;
 	min_bps = 1.0e6 / max_beat_time;
 	max_bps = 1.0e6 / min_beat_time;
 
-	avg_ips = double(m_icount) * 1.0e6 / uea;
-	avg_cps = double(m_ccount) * 1.0e6 / uea;
+	avg_ips = double(m_icount) * 1.0e6 / updtime;
+	avg_cps = double(m_ccount) * 1.0e6 / updtime;
+	
+	load = avg_beat_time / m_heartbeat;
 }
-
 
 void operator<<(std::ostream& _os, const HWBench &_bench)
 {
+	_os.precision(6);
 	_os << "Sim time (us): " << _bench.time_elapsed << _bench.endl;
-
-	_os << "Sim beats/s: " << _bench.beat_count << _bench.endl;
-	_os << "Max beats/s: ";
-	if(_bench.max_beat_time) {
-		_os << _bench.min_bps;
-	} else {
-		_os << "+inf";
-	}
-	_os << _bench.endl;
-
 	_os << "Avg beats/s: " << _bench.avg_bps << _bench.endl;
+	_os << "Host load: " << _bench.load << _bench.endl;
 
 	double mhz = _bench.avg_cps / 1e6;
 	double mips = _bench.avg_ips / 1e6;

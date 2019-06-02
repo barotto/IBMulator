@@ -313,6 +313,8 @@ void Machine::set_heartbeat(unsigned _usec)
 	if(oldcycles != m_cpu_cycles) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
 	}
+	
+	m_bench.set_heartbeat(m_heartbeat);
 }
 
 bool Machine::main_loop()
@@ -352,6 +354,7 @@ bool Machine::main_loop()
 				m_bench.cpu_cycles(cycles);
 			}
 		}
+
 		m_bench.beat_end();
 	}
 
