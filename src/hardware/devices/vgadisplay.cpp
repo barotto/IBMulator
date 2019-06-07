@@ -37,6 +37,8 @@ VGADisplay::VGADisplay()
 	m_s.mode.textrows = 25;
 	m_s.mode.cwidth = 8;
 	m_s.mode.cheight = 16;
+	m_s.mode.nscans = 1;
+	m_s.mode.ndots = 1;
 
 	m_s.valid_mode = true;
 
@@ -194,22 +196,27 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfr
 // Called in VGA graphics mode to request that a line be drawn to the screen,
 // since some info in this line has changed.
 //
-// _yline: the line of the framebuffer to be updated.
-// _linedata: array of 8bit palette indices to use to update the framebuffer line.
-// _tiles: array of horizontal tile statuses for the given line; each tile is VGA_X_TILESIZE px wide.
-//         tiles status will be updated with VGA_TILE_CLEAN
-// _tiles_count: elements count of _tiles.
+// _fbline: the line of the framebuffer to be updated.
+// _imgline: the line of the rendered image _linedata belongs to
+// _linedata: array of 8bit palette indices to use to update the frambuffer line(s).
+// _tiles: array of horizontal tile states for the given image line; each tile is VGA_X_TILESIZE px wide.
+//         states will be updated with VGA_TILE_CLEAN
+// _tiles_count: size of _tiles.
 void VGADisplay::gfx_screen_line_update(
-		unsigned _yline,
-		const uint8_t *_linedata,
+		unsigned _fbline,
+		unsigned _imgline,
+		std::vector<uint8_t> &_linedata,
 		uint8_t *_tiles,
 		uint16_t _tiles_count)
 {
-	if(!m_s.valid_mode || _yline >= m_s.mode.yres) {
+	if(!m_s.valid_mode || _fbline >= m_s.mode.yres) {
 		return;
 	}
 
-	uint32_t *fb_line = &m_fb[0] + _yline * m_s.fb_width;
+	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
+	int lines_to_upd = m_s.mode.nscans - (_fbline - _imgline * m_s.mode.nscans);
+	assert(lines_to_upd > 0);
+	bool dc = (m_s.mode.ndots == 2);
 	
 	for(uint16_t tid=0; tid<_tiles_count; tid++, _tiles++) {
 		if(*_tiles == VGA_TILE_CLEAN) {
@@ -217,13 +224,26 @@ void VGADisplay::gfx_screen_line_update(
 		}
 		unsigned pixel_x = tid * VGA_X_TILESIZE;
 		for(int tx=0; tx<VGA_X_TILESIZE; tx++,pixel_x++) {
-			if(pixel_x > m_s.mode.xres) {
+			if(pixel_x > m_s.mode.imgw) {
 				// the last tile could be wider than needed
 				break;
 			}
-			fb_line[pixel_x] = m_s.palette[_linedata[pixel_x]];
+			uint32_t color = m_s.palette[_linedata[pixel_x]];
+			uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
+			for(int l=0; l<lines_to_upd; l++,fb_point_ptr+=m_s.fb_width) {
+				*fb_point_ptr = color;
+				if(dc) {
+					*(fb_point_ptr+1) = color;
+				}
+			}
 		};
-		*_tiles = VGA_TILE_CLEAN;
+		if(lines_to_upd == m_s.mode.nscans) {
+			// mark this tile as clean only if we are updating the first of multiple scanlines.
+			// if it's the 2nd, 3rd, 4th scanline and this tile is still marked as dirty,
+			// it means memory data was updated again after the first update so let the next
+			// update cycle refresh this pixel data.
+			*_tiles = VGA_TILE_CLEAN;
+		}
 	}
 }
 
@@ -232,18 +252,30 @@ void VGADisplay::gfx_screen_line_update(
 // Called in VGA graphics mode to request that a line be drawn to the screen,
 // since the entire line has changed.
 //
-// _yline: the line of the framebuffer to be updated.
-// _linedata: array of 8bit palette indices to use to update the framebuffer line.
-void VGADisplay::gfx_screen_line_update(unsigned _yline, const uint8_t *_linedata)
+// _fbline: the line of the framebuffer to be updated.
+// _imgline: the line of the rendered image _linedata belongs to.
+// _linedata: array of 8bit palette indices to use to update the framebuffer line(s).
+void VGADisplay::gfx_screen_line_update(unsigned _fbline, unsigned _imgline,
+		std::vector<uint8_t> &_linedata)
 {
-	if(!m_s.valid_mode || _yline >= m_s.mode.yres) {
+	if(!m_s.valid_mode || _fbline >= m_s.mode.yres) {
 		return;
 	}
 
-	uint32_t *fb_line = &m_fb[0] + _yline * m_s.fb_width;
+	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
+	int lines_to_upd = m_s.mode.nscans - (_fbline - _imgline * m_s.mode.nscans);
+	assert(lines_to_upd > 0);
+	bool dc = (m_s.mode.ndots == 2);
 	
-	for(unsigned pixel_x=0; pixel_x<m_s.mode.xres; pixel_x++) {
-		fb_line[pixel_x] = m_s.palette[_linedata[pixel_x]];
+	for(unsigned pixel_x=0; pixel_x<m_s.mode.imgw; pixel_x++) {
+		uint32_t color = m_s.palette[_linedata[pixel_x]];
+		uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
+		for(int l=0; l<lines_to_upd; l++,fb_point_ptr+=m_s.fb_width) {
+			*fb_point_ptr = color;
+			if(dc) {
+				*(fb_point_ptr+1) = color;
+			}
+		}
 	}
 }
 

@@ -69,6 +69,8 @@ struct VideoModeInfo
 	uint16_t imgh;
 	uint16_t textcols;
 	uint16_t textrows;
+	uint16_t nscans;
+	uint16_t ndots;
 	struct {
 		uint8_t top, bottom, left, right;
 	} borders;
@@ -127,6 +129,9 @@ struct TextModeInfo
 	uint8_t  actl_palette[16];
 };
 
+class VGA;
+typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, std::vector<uint8_t> &line_data_);
+
 #include "vgadisplay.h"
 
 class VGA : public IODevice
@@ -183,6 +188,8 @@ protected:
 	double m_bus_timing;     // System bus timings
 	int m_timer_id;          // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
+	VGADrawFn m_renderer;
+	std::vector<uint8_t> m_line_data_buf[2];
 	// tiling system
 	uint16_t m_num_x_tiles;
 	std::vector<uint8_t> m_tile_dirty; // don't use bool, it's not thread safe
@@ -225,15 +232,14 @@ protected:
 	void redraw_all();
 	void init_iohandlers();
 	void init_systemtimer();
-	uint8_t get_vga_pixel(uint16_t _x, uint16_t _y, uint16_t _lc, uint8_t * const *_plane);
 	void update_video_mode(uint64_t _time);
-	void gfx_update(uint16_t _sl0, uint16_t _sl1);
-	void text_update(uint16_t _l0, uint16_t _l1);
+	
 	void horiz_disp_end(uint64_t _time);
 	void frame_start(uint64_t _time);
 	void frame_end(uint64_t _time);
 	void vertical_retrace(uint64_t _time);
-	void tiles_update();
+	
+	void reset_tiles();
 	void calculate_timings();
 	bool is_video_disabled();
 	void raise_interrupt();
@@ -241,19 +247,17 @@ protected:
 	void clear_screen();
 	
 	void set_all_tiles(bool _value);
-	void set_tile(unsigned _scanline, unsigned _xtile, bool _value);
-	void set_tiles(unsigned _scanline, bool _value);
-	void set_tiles(unsigned _scanline, unsigned _lines, bool _value);
-	void set_tiles(unsigned _scanline, unsigned _lines, unsigned _xtile, bool _value);
-	bool is_tile_dirty(unsigned _scanline, unsigned _xtile) const;
+	void set_tile(unsigned _line_y, unsigned _tile_x, bool _value);
+	void set_tiles(unsigned _line_y, bool _value);
+	bool is_tile_dirty(unsigned _line_y, unsigned _tile_x) const;
 
-	template<typename FN>
-	void gfx_scanline_update(uint16_t _sl0, uint16_t _sl1, FN _get_pixel, bool _force_upd);
-	template<typename FN>
-	uint32_t gfx_scanline_update_thread(uint16_t _sl0, uint16_t _sl1, FN _get_pixel, bool _force_upd, 
-		int _thread_id, int _thread_pool_size);
-	template <typename FN>
-	void gfx_scanline_update_mode13(uint16_t _sl0, uint16_t _sl1, FN _pixel_x, unsigned _pan);
+	void text_update();
+	unsigned gfx_update_thread(int _thread_id, int _thread_pool_size);
+	
+	unsigned draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_data_);
 
 	template<class T>
 	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
@@ -288,43 +292,28 @@ void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
 
 inline void VGA::set_all_tiles(bool _value)
 {
-	std::fill(m_tile_dirty.begin(), m_tile_dirty.end(), _value);
+	assert(m_s.vmode.imgh > 0 && m_num_x_tiles > 0);
+	std::fill(&m_tile_dirty[0], &m_tile_dirty[m_s.vmode.imgh*m_num_x_tiles], _value);
 }
 
-inline void VGA::set_tile(unsigned _scanline, unsigned _xtile, bool _value)
+inline void VGA::set_tile(unsigned _line_y, unsigned _tile_x, bool _value)
 {
-	assert(_scanline < m_s.vmode.yres && _xtile < m_num_x_tiles);
-	m_tile_dirty[_scanline*m_num_x_tiles + _xtile] = _value;
+	assert(_line_y < m_s.vmode.imgh && _tile_x < m_num_x_tiles);
+	m_tile_dirty[_line_y*m_num_x_tiles + _tile_x] = _value;
 }
 
-inline void VGA::set_tiles(unsigned _scanline, bool _value)
+inline void VGA::set_tiles(unsigned _line_y, bool _value)
 {
-	assert(_scanline < m_s.vmode.yres);
-	std::fill(&m_tile_dirty[_scanline*m_num_x_tiles], 
-	          &m_tile_dirty[_scanline*m_num_x_tiles + m_num_x_tiles],
+	assert(_line_y < m_s.vmode.imgh);
+	std::fill(&m_tile_dirty[_line_y*m_num_x_tiles], 
+	          &m_tile_dirty[_line_y*m_num_x_tiles + m_num_x_tiles],
 	          _value);
 }
 
-inline void VGA::set_tiles(unsigned _scanline, unsigned _lines, bool _value)
+inline bool VGA::is_tile_dirty(unsigned _line_y, unsigned _tile_x) const
 {
-	assert(_scanline+_lines <= m_s.vmode.yres);
-	std::fill(&m_tile_dirty[_scanline*m_num_x_tiles], 
-	          &m_tile_dirty[(_scanline+_lines)*m_num_x_tiles],
-	          _value);
-}
-
-inline void VGA::set_tiles(unsigned _scanline, unsigned _lines, unsigned _xtile, bool _value)
-{
-	assert(_lines > 0);
-	while(_lines-- && _scanline+_lines<m_s.vmode.yres) {
-		set_tile(_scanline+_lines, _xtile, _value);
-	};
-}
-
-inline bool VGA::is_tile_dirty(unsigned _scanline, unsigned _xtile) const
-{
-	assert(_scanline < m_s.vmode.yres && _xtile < m_num_x_tiles);
-	return m_tile_dirty[_scanline*m_num_x_tiles + _xtile] == VGA_TILE_DIRTY;
+	assert(_line_y < m_s.vmode.imgh && _tile_x < m_num_x_tiles);
+	return m_tile_dirty[_line_y*m_num_x_tiles + _tile_x] == VGA_TILE_DIRTY;
 }
 
 inline bool VGA::is_video_disabled()
