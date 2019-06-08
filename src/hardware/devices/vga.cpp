@@ -214,12 +214,16 @@ void VGA::reset(unsigned _type)
 		m_stats = {};
 		
 		m_s.render_mode = VGA_RENDER_FRAME;
+		
+		
 	}
-
-	clear_screen();
 	
-	update_mem_mapping();
+	memset(m_memory, 0, m_memsize);
+
 	m_s.gen_regs.video_enable = 1;
+	
+	clear_screen();
+	update_mem_mapping();
 	calculate_timings();
 }
 
@@ -1348,12 +1352,6 @@ void VGA::lower_interrupt()
 
 void VGA::clear_screen()
 {
-	memset(m_memory, 0, m_memsize);
-	
-	if(m_s.vmode.mode != VGA_M_INVALID) {
-		redraw_all();
-	}
-
 	m_display->lock();
 	m_display->clear_screen();
 	m_display->set_fb_updated();
