@@ -32,6 +32,12 @@
 #include "filesys.h"
 #include <cstring>
 
+// bugs on which some demo depends
+// TODO find an easy way to let the user decide
+// TODO create specific VGA card model profiles?
+#define VGA_ENABLE_256COL_ATTC_PS_BIT_BUG false // see comments in draw_gfx_vga256()
+#define VGA_ENABLE_STARTADDR_LATCHING_BUG false // start address is immediately latched
+
 using namespace std::placeholders;
 
 IODEVICE_PORTS(VGA) = {
@@ -213,8 +219,6 @@ void VGA::reset(unsigned _type)
 		m_stats = {};
 		
 		m_s.render_mode = VGA_RENDER_FRAME;
-		
-		
 	}
 	
 	memset(m_memory, 0, m_memsize);
@@ -1294,6 +1298,10 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					case CRTC_STARTADDR_LO:    // 0x0D
 						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
+						if(VGA_ENABLE_STARTADDR_LATCHING_BUG) {
+							m_s.CRTC.latch_start_address();
+							needs_redraw = true;
+						}
 						m_stats.last_saddr_line = current_scanline();
 						break;
 				}
@@ -1508,7 +1516,16 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_dat
 				byte_offset += ((pixel_x >> 1) & ~0x01);
 			}
 			uint8_t DACreg = m_memory[byte_offset % m_memsize];
-			
+			if(VGA_ENABLE_256COL_ATTC_PS_BIT_BUG && m_s.attr_ctrl.attr_mode.PS) {
+				// The only program I know that rely on the PS bit in 256 color
+				// mode is the Copper demo (1992) for the line fading effect.
+				// Official IBM docs say this bit is not used in this mode.
+				// The ONLY hardware that uses this bit in 256 color mode appears
+				// to be the ET4000AX rev. TC6058AF. Tseng Labs fixed this bug in
+				// later chip revisions, which in fact cannot run the Copper
+				// demo correctly.
+				DACreg = (DACreg & 0x0f) | ((m_s.attr_ctrl.color_select) << 4);
+			}
 			line_data_[dot_x] = DACreg;
 		}
 		tiles_updated++;
