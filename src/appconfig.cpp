@@ -127,7 +127,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 {
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET, ""     },
-		{ SYSTEM_VGAROM, ""     },
 		{ SYSTEM_MODEL,  "auto" }
 	} },
 
@@ -145,6 +144,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ MEM_RAM_SPEED, "auto" }
 	} },
 
+	{ VGA_SECTION, {
+		{ VGA_ROM,       ""   }
+	} },
+	
 	{ DRIVES_SECTION, {
 		{ DRIVES_FDD_A,   "auto" },
 		{ DRIVES_FDD_B,   "auto" },
@@ -299,6 +302,11 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: auto, or an integer number\n"
 		},
 
+		{ VGA_SECTION,
+"; Video interface card configuration:\n"
+";     rom: Path to a binary ROM file to load\n"
+		},
+
 		{ DRIVES_SECTION,
 ";    floppy_a: The type of floppy drive A.\n"
 ";              Possible values: auto, none, 3.5, 5.25\n"
@@ -448,6 +456,9 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ MEM_SECTION, {
 		MEM_RAM_EXP,
 		MEM_RAM_SPEED
+	} },
+	{ VGA_SECTION, {
+		VGA_ROM
 	} },
 	{ CMOS_SECTION, {
 		CMOS_IMAGE_FILE,

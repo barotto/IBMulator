@@ -154,7 +154,7 @@ void VGA::config_changed()
 			byte, word, dword);
 
 	g_memory.enable_mapping(m_rom_mapping, false);
-	std::string romfile = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_VGAROM);
+	std::string romfile = g_program.config().find_file(VGA_SECTION, VGA_ROM);
 	if(!romfile.empty()) {
 		try {
 			load_ROM(romfile);

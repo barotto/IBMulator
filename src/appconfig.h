@@ -154,7 +154,6 @@ public:
 
 #define SYSTEM_SECTION          "system"
 #define SYSTEM_ROMSET           "romset"
-#define SYSTEM_VGAROM           "vgarom"
 #define SYSTEM_MODEL            "model"
 
 #define CPU_SECTION             "cpu"
@@ -169,6 +168,9 @@ public:
 #define CMOS_IMAGE_FILE         "image"
 #define CMOS_IMAGE_RTC_INIT     "image_init"
 #define CMOS_IMAGE_SAVE         "image_save"
+
+#define VGA_SECTION             "vga"
+#define VGA_ROM                 "rom"
 
 #define DRIVES_SECTION          "drives"
 #define DRIVES_FDD_A            "floppy_a"
