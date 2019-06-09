@@ -92,7 +92,8 @@ public:
 	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
 	inline bool is_valid() const { return m_s.valid_mode; }
 
-	void set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfreq);
+	void set_mode(const VideoModeInfo &_mode);
+	void set_timings(double _hfreq, double _vfreq);
 	void set_text_charmap(bool _map, uint8_t *_fbuffer);
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);

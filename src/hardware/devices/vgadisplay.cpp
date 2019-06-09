@@ -161,12 +161,12 @@ void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, ui
 //
 // Called when the VGA mode changes.
 //
-void VGADisplay::set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfreq)
+void VGADisplay::set_mode(const VideoModeInfo &_mode)
 {
 	m_s.mode = _mode;
 	m_s.valid_mode = true;
 
-	PINFOF(LOG_V1, LOG_VGA, "screen: %ux%u %.2fkHz %.2fHz\n",
+	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u %.2fkHz %.2fHz\n",
 		_mode.xres, _mode.yres, _hfreq, _vfreq);
 
 	if(_mode.xres > m_s.fb_width) {
@@ -179,16 +179,19 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, double _hfreq, double _vfr
 		m_s.valid_mode = false;
 		m_s.mode.yres = m_s.fb_height;
 	}
-
-	if(VGA_MAX_HFREQ > 0.0 && (_hfreq>VGA_MAX_HFREQ+0.5 || _hfreq<VGA_MAX_HFREQ-0.5)) {
-		PWARNF(LOG_VGA, "frequency (%.2fkHz) out of range\n", _hfreq);
-		m_s.valid_mode = false;
-	}
 	if(!m_s.valid_mode) {
 		clear_screen();
 	}
 
 	m_dim_updated = true;
+}
+
+void VGADisplay::set_timings(double _hfreq, double _vfreq)
+{
+	// TODO this func is a placeholder and serves no purpose right now
+	if(VGA_MAX_HFREQ > 0.0 && (_hfreq>VGA_MAX_HFREQ+0.5 || _hfreq<VGA_MAX_HFREQ-0.5)) {
+		PDEBUGF(LOG_V1, LOG_VGA, "frequency (%.2fkHz) out of range\n", _hfreq);
+	}
 }
 
 // gfx_screen_line_update()

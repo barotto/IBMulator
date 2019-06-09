@@ -74,6 +74,21 @@ struct VideoModeInfo
 	struct {
 		uint8_t top, bottom, left, right;
 	} borders;
+	
+	inline bool operator==(const VideoModeInfo &_rhs) {
+		return (mode==_rhs.mode &&
+				xres==_rhs.xres &&
+				yres==_rhs.yres &&
+				cwidth==_rhs.cwidth &&
+				cheight==_rhs.cheight &&
+				imgw==_rhs.imgw &&
+				imgh==_rhs.imgh &&
+				textcols==_rhs.textcols &&
+				textrows==_rhs.textrows &&
+				nscans==_rhs.nscans &&
+				ndots==_rhs.ndots
+				);
+	}
 };
 
 struct VideoTimings
@@ -232,7 +247,7 @@ protected:
 	void redraw_all();
 	void init_iohandlers();
 	void init_systemtimer();
-	void update_video_mode(uint64_t _time);
+	void update_video_mode();
 	
 	void horiz_disp_end(uint64_t _time);
 	void frame_start(uint64_t _time);

@@ -62,7 +62,6 @@ IODEVICE_PORTS(VGA) = {
 #define VGA_IRQ 9
 
 enum VGATimerFunctionNames {
-	VGA_UPDATE_VIDEO_MODE,
 	VGA_VERTICAL_RETRACE,
 	VGA_HORIZ_DISP_END,
 	VGA_FRAME_START,
@@ -225,6 +224,8 @@ void VGA::reset(unsigned _type)
 	clear_screen();
 	update_mem_mapping();
 	calculate_timings();
+	
+	frame_start(g_machine.get_virt_time_ns());
 }
 
 void VGA::power_off()
@@ -278,9 +279,6 @@ void VGA::restore_state(StateBuf &_state)
 	update_mem_mapping();
 	
 	switch(g_machine.get_timer(m_timer_id).func_name) {
-		case VGA_UPDATE_VIDEO_MODE:
-			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update_video_mode,this,_1), VGA_UPDATE_VIDEO_MODE);
-			break;
 		case VGA_VERTICAL_RETRACE:
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 			break;
@@ -445,19 +443,6 @@ void VGA::calculate_timings()
 	// The screen refresh frequency
 	m_s.timings.vfreq = clock / (htotal * vtotal);
 
-	double invclock_ns = 1e9 / clock;
-	m_s.timings_ns.htotal  = htotal * invclock_ns;
-	m_s.timings_ns.hdend   = hdend * invclock_ns;
-	m_s.timings_ns.hbstart = hbstart * invclock_ns;
-	m_s.timings_ns.hbend   = hbend * invclock_ns;
-	m_s.timings_ns.hrstart = hrstart * invclock_ns;
-	m_s.timings_ns.hrend   = hrend * invclock_ns;
-
-	m_s.timings_ns.vtotal  = 1e9 / m_s.timings.vfreq;
-	m_s.timings_ns.vdend   = m_s.timings_ns.htotal * vdend;
-	m_s.timings_ns.vrstart = m_s.timings_ns.htotal * vrstart;
-	m_s.timings_ns.vrend   = m_s.timings_ns.htotal * vrend;
-
 	m_s.timings.vtotal  = vtotal;
 	m_s.timings.vdend   = vdend;
 	m_s.timings.vbstart = vbstart;
@@ -471,36 +456,41 @@ void VGA::calculate_timings()
 	m_s.timings.hrstart = hrstart;
 	m_s.timings.hrend   = hrend;
 	m_s.timings.cwidth  = cwidth;
+	
+	double invclock_ns = 1e9 / clock;
+	m_s.timings_ns.htotal  = htotal * invclock_ns;
+	m_s.timings_ns.hdend   = hdend * invclock_ns;
+	m_s.timings_ns.hbstart = hbstart * invclock_ns;
+	m_s.timings_ns.hbend   = hbend * invclock_ns;
+	m_s.timings_ns.hrstart = hrstart * invclock_ns;
+	m_s.timings_ns.hrend   = hrend * invclock_ns;
 
-	// Set frame start now but start a mode set after a 1 frame delay
-	// Screen updates are suspended.
-	m_s.frame_start_time_nsec = g_machine.get_virt_time_ns();
-	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update_video_mode,this,_1), VGA_UPDATE_VIDEO_MODE);
-	g_machine.activate_timer(m_timer_id, m_s.timings_ns.vtotal, false);
-	PDEBUGF(LOG_V2, LOG_VGA, "timings setting; mode setting in %lld nsecs...\n", m_s.timings_ns.vtotal);
+	m_s.timings_ns.vdend   = m_s.timings_ns.htotal * vdend;
+	m_s.timings_ns.vrstart = m_s.timings_ns.htotal * vrstart;
+	m_s.timings_ns.vrend   = m_s.timings_ns.htotal * vrend;
+
+	uint32_t vtotal_ns  = 1e9 / m_s.timings.vfreq;
+	
+	if(m_s.timings_ns.vtotal != vtotal_ns) {
+		m_s.timings_ns.vtotal = vtotal_ns;
+		PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
+		g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
+		g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
+		
+		m_display->lock();
+		m_display->set_timings(m_s.timings.hfreq, m_s.timings.vfreq);
+		m_display->unlock();
+	}
+	
+	update_video_mode();
 }
 
-void VGA::update_video_mode(uint64_t _time)
+void VGA::update_video_mode()
 {
-	if(_time == 0) {
-		// Execute the mode set after a 1 frame delay
-		// Screen updates are suspended.
-		m_s.frame_start_time_nsec = g_machine.get_virt_time_ns();
-		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::update_video_mode,this,_1), VGA_UPDATE_VIDEO_MODE);
-		g_machine.activate_timer(m_timer_id, m_s.timings_ns.vtotal, false);
-		PDEBUGF(LOG_V2, LOG_VGA, "mode setting in %lld nsecs...\n", m_s.timings_ns.vtotal);
-		return;
-	}
-
 	PDEBUGF(LOG_V2, LOG_VGA, "mode setting\n");
 	
-	static bool prev_SO = false;
-	if(m_s.sequencer.clocking.SO && prev_SO!=m_s.sequencer.clocking.SO) {
-		clear_screen();
-	}
-	prev_SO = m_s.sequencer.clocking.SO;
-
-
+	VideoModeInfo oldmode = m_s.vmode;
+	
 	// IMAGE RESOLUTION
 
 	uint32_t hdend = m_s.timings.hdend;
@@ -646,10 +636,6 @@ void VGA::update_video_mode(uint64_t _time)
 		m_s.vmode.cheight = 0;
 		m_s.vmode.textrows = 0;
 		m_s.vmode.textcols = 0;
-		if(!m_s.sequencer.clocking.SO) {
-			PINFOF(LOG_V1, LOG_VGA, "mode: %ux%u %s\n",
-				m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string());
-		}
 	} else {
 		m_s.vmode.mode = VGA_M_TEXT;
 		m_s.vmode.imgw >>= m_s.sequencer.clocking.DC;
@@ -668,36 +654,32 @@ void VGA::update_video_mode(uint64_t _time)
 		m_s.vmode.textcols = m_s.vmode.imgw / m_s.vmode.cwidth;
 		m_s.vmode.textrows = m_s.vmode.imgh / m_s.vmode.cheight;
 
-		if(!m_s.sequencer.clocking.SO) {
-			PINFOF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
-				m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string(),
-				m_s.vmode.textcols, m_s.vmode.textrows,
-				m_s.vmode.cwidth, m_s.vmode.cheight);
-		}
-		
 		// TODO do a per-line text renderer?
 		m_s.render_mode = VGA_RENDER_FRAME;
 		m_renderer = nullptr;
 	}
-
-	m_line_data_buf[0].resize(m_s.vmode.imgw);
-	m_line_data_buf[1].resize(m_s.vmode.imgw);
 	
-	if(!m_s.sequencer.clocking.SO) {
+	if(!(oldmode == m_s.vmode)) {
+		if(!m_s.sequencer.clocking.SO) {
+			if(m_s.vmode.mode == VGA_M_TEXT) {
+			PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
+				m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string(),
+				m_s.vmode.textcols, m_s.vmode.textrows,
+				m_s.vmode.cwidth, m_s.vmode.cheight);
+			} else {
+				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s\n",
+					m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string());
+			}
+		}
+		
 		reset_tiles();
 		m_display->lock();
-		m_display->set_mode(m_s.vmode, m_s.timings.hfreq, m_s.timings.vfreq);
+		m_display->set_mode(m_s.vmode);
 		m_display->unlock();
+		
+		m_line_data_buf[0].resize(m_s.vmode.imgw);
+		m_line_data_buf[1].resize(m_s.vmode.imgw);
 	}
-
-	frame_start(_time);
-	
-	set_all_tiles(VGA_TILE_DIRTY);
-	m_s.needs_update = true;
-	
-	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
-	g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
-	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
 }
 
 double VGA::current_scanline()
@@ -1073,9 +1055,18 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					}
 					break;
 				case SEQ_CLOCKING: {
+					static bool prev_SO = false;
+					if(bool(oldval & SEQ_SO) != m_s.sequencer.clocking.SO) {
+						if(prev_SO != m_s.sequencer.clocking.SO && m_s.sequencer.clocking.SO) {
+							clear_screen();
+							PDEBUGF(LOG_V2, LOG_VGA, "Screen off\n");
+						}
+						prev_SO = m_s.sequencer.clocking.SO;
+						oldval &= ~SEQ_SO;
+						_value &= ~SEQ_SO;
+					}
 					if(_value ^ oldval) {
 						calculate_timings();
-						needs_redraw = true;
 					}
 					break;
 				}
@@ -1206,7 +1197,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				  || (m_s.gfx_ctrl.gfx_mode.SR)   != bool(_value & GFXC_SR)
 				)) {
 					PDEBUGF(LOG_V1, LOG_VGA, "mode setting: GFXC_GFX_MODE\n");
-					update_video_mode(0);
+					update_video_mode();
 				}
 
 				m_s.gfx_ctrl = _value;
@@ -1288,7 +1279,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							||     (oldvalue & CRTC_MSL) != m_s.CRTC.max_scanline.MSL
 						) {
 							PDEBUGF(LOG_V1, LOG_VGA, "mode setting: CRTC_MAX_SCANLINE\n");
-							update_video_mode(0);
+							update_video_mode();
 						}
 						break;
 					case CRTC_CURSOR_START:    // 0x0A
@@ -1364,8 +1355,9 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_)
 	// Output data in serial fashion with each display plane
 	// output on its associated serial output.
 	
-	assert(_scanline >= m_s.timings.vblank_skip);
-	assert(_scanline <= m_s.timings.last_vis_sl);
+	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
+		return 0;
+	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
 	uint16_t img_y = fb_y / m_s.vmode.nscans;
@@ -1456,8 +1448,9 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_dat
 	// (format for VGA mode 13h / mode X)
 	// See Abrash's Black Book chapters 47-49 for Mode X.
 	
-	assert(_scanline >= m_s.timings.vblank_skip);
-	assert(_scanline <= m_s.timings.last_vis_sl);
+	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
+		return 0;
+	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
 	uint16_t img_y = fb_y / m_s.vmode.nscans;
@@ -1531,8 +1524,9 @@ unsigned VGA::draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_
 {
 	// CGA compatibility mode, 640x200 2 color (mode 6)
 	
-	assert(_scanline >= m_s.timings.vblank_skip);
-	assert(_scanline <= m_s.timings.last_vis_sl);
+	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
+		return 0;
+	}
 	
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
 	if(pan >= 8) {
@@ -1579,8 +1573,9 @@ unsigned VGA::draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_
 	// Output the data in a CGA-compatible 320x200 4 color graphics
 	// mode (planar shift, modes 4 & 5).
 	
-	assert(_scanline >= m_s.timings.vblank_skip);
-	assert(_scanline <= m_s.timings.last_vis_sl);
+	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
+		return 0;
+	}
 
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
 	if(pan >= 8) {
@@ -1711,7 +1706,9 @@ void VGA::horiz_disp_end(uint64_t _time)
 	
 	m_display->lock();
 	
-	m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_line_data_buf[0]);
+	if(m_renderer) {
+		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_line_data_buf[0]);
+	}
 	
 	m_s.scanline++;
 	
@@ -1722,7 +1719,10 @@ void VGA::horiz_disp_end(uint64_t _time)
 		// the distance to the next scan line is (current time + hborders + hblanking + hretracing)
 		// the start of the next scan line is equivalent to m_s.timings_ns.last_vis_sl;
 		uint32_t frame_start_dist = g_machine.get_virt_time_ns() - m_s.frame_start_time_nsec;
-		uint32_t vretr_dist = m_s.timings_ns.vrstart - frame_start_dist;
+		uint32_t vretr_dist = 10_us;
+		if(m_s.timings_ns.vrstart > frame_start_dist) {
+			vretr_dist = m_s.timings_ns.vrstart - frame_start_dist;
+		}
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 		g_machine.activate_timer(m_timer_id, vretr_dist, false);
 		
@@ -1805,8 +1805,13 @@ void VGA::frame_end(uint64_t _time)
 		m_stats.updated_pix = 0;
 	}
 	
+	uint64_t dist = 10_us;
+	if(m_s.timings_ns.vrstart > m_s.timings_ns.frame_end) {
+		dist = m_s.timings_ns.vrstart - m_s.timings_ns.frame_end;
+	}
+	
 	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
-	g_machine.activate_timer(m_timer_id, m_s.timings_ns.vrstart - m_s.timings_ns.frame_end, false);
+	g_machine.activate_timer(m_timer_id, dist, false);
 }
 
 void VGA::vertical_retrace(uint64_t _time)
@@ -1827,8 +1832,13 @@ void VGA::vertical_retrace(uint64_t _time)
 		m_s.needs_update = true;
 	}
 	
+	uint64_t dist = 10_us;
+	if(m_s.timings_ns.vtotal > m_s.timings_ns.vrstart) {
+		dist = m_s.timings_ns.vtotal - m_s.timings_ns.vrstart;
+	}
+	
 	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::frame_start,this,_1), VGA_FRAME_START);
-	g_machine.activate_timer(m_timer_id, m_s.timings_ns.vtotal - m_s.timings_ns.vrstart, false);
+	g_machine.activate_timer(m_timer_id, dist, false);
 }
 
 template<>
