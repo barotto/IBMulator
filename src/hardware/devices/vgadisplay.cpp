@@ -166,8 +166,7 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 	m_s.mode = _mode;
 	m_s.valid_mode = true;
 
-	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u %.2fkHz %.2fHz\n",
-		_mode.xres, _mode.yres, _hfreq, _vfreq);
+	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u\n", _mode.xres, _mode.yres);
 
 	if(_mode.xres > m_s.fb_width) {
 		PWARNF(LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_s.fb_width);
@@ -188,6 +187,8 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 
 void VGADisplay::set_timings(double _hfreq, double _vfreq)
 {
+	PDEBUGF(LOG_V1, LOG_VGA, "screen: %.2fkHz %.2fHz\n", _hfreq, _vfreq);
+	
 	// TODO this func is a placeholder and serves no purpose right now
 	if(VGA_MAX_HFREQ > 0.0 && (_hfreq>VGA_MAX_HFREQ+0.5 || _hfreq<VGA_MAX_HFREQ-0.5)) {
 		PDEBUGF(LOG_V1, LOG_VGA, "frequency (%.2fkHz) out of range\n", _hfreq);

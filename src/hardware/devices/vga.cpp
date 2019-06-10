@@ -733,10 +733,10 @@ double VGA::current_scanline(bool &disp_, bool &hretr_, bool &vretr_)
 	return scanline;
 }
 
-#if NDEBUG
-#define VGA_LOG_READS
-#else
+#if LOG_DEBUG_MESSAGES
 #define VGA_LOG_READS true &&
+#else
+#define VGA_LOG_READS
 #endif
 
 uint16_t VGA::read(uint16_t _address, unsigned _io_len)
@@ -1259,7 +1259,6 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						calculate_timings();
 						break;
 					case CRTC_VRETRACE_END:   // 0x11
-						m_s.CRTC = _value;
 						if(m_s.CRTC.vretrace_end.CVI == 0) { // inverted bit
 							lower_interrupt();
 						}
@@ -1301,6 +1300,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						if(VGA_ENABLE_STARTADDR_LATCHING_BUG) {
 							m_s.CRTC.latch_start_address();
 							needs_redraw = true;
+							PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address = 0x%04X\n", m_s.CRTC.latches.start_address);
 						}
 						m_stats.last_saddr_line = current_scanline();
 						break;
@@ -1847,6 +1847,7 @@ void VGA::vertical_retrace(uint64_t _time)
 	if(m_s.CRTC.latches.start_address != oldvalue) {
 		set_all_tiles(VGA_TILE_DIRTY);
 		m_s.needs_update = true;
+		PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address = 0x%04X\n", m_s.CRTC.latches.start_address);
 	}
 	
 	uint64_t dist = 10_us;
