@@ -36,7 +36,6 @@
 // TODO find an easy way to let the user decide
 // TODO create specific VGA card model profiles?
 #define VGA_ENABLE_256COL_ATTC_PS_BIT_BUG false // see comments in draw_gfx_vga256()
-#define VGA_ENABLE_STARTADDR_LATCHING_BUG false // start address is immediately latched
 
 using namespace std::placeholders;
 
@@ -370,7 +369,7 @@ void VGA::load_ROM(const std::string &_filename)
 void VGA::reset_tiles()
 {
 	m_num_x_tiles = m_s.vmode.imgw / VGA_X_TILESIZE + ((m_s.vmode.imgw % VGA_X_TILESIZE) > 0);
-	m_tile_dirty.resize(m_num_x_tiles * m_s.vmode.imgh);
+	m_tile_dirty.resize(m_num_x_tiles * m_s.vmode.yres);
 	redraw_all();
 }
 
@@ -1250,13 +1249,22 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					case CRTC_START_HRETRACE:  // 0x04
 					case CRTC_END_HRETRACE:    // 0x05
 					case CRTC_VTOTAL:          // 0x06
-					case CRTC_OVERFLOW:        // 0x07
 					case CRTC_VRETRACE_START:  // 0x10
 					case CRTC_VDISPLAY_END:    // 0x12
 					case CRTC_START_VBLANK:    // 0x15
 					case CRTC_END_VBLANK:      // 0x16
 					case CRTC_MODE_CONTROL:    // 0x17
 						calculate_timings();
+						break;
+					case CRTC_OVERFLOW:        // 0x07
+						if(bool(oldvalue & CRTC_LC8) != m_s.CRTC.overflow.LC8) {
+							// line compare bit 8
+							needs_redraw = true;
+							m_s.force_redraw = 2;
+						}
+						if((oldvalue & ~CRTC_LC8) != (m_s.CRTC.overflow & ~CRTC_LC8)) {
+							calculate_timings();
+						}
 						break;
 					case CRTC_VRETRACE_END:   // 0x11
 						if(m_s.CRTC.vretrace_end.CVI == 0) { // inverted bit
@@ -1271,10 +1279,12 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					case CRTC_LINE_COMPARE:    // 0x18 line compare change
 					case CRTC_PRESET_ROW_SCAN: // 0x08 Vertical pel panning change
 						needs_redraw = true;
+						m_s.force_redraw = 2;
 						break;
 					case CRTC_MAX_SCANLINE:    // 0x09
 						charmap_update = true;
 						needs_redraw = true; // for line compare change
+						m_s.force_redraw = 2;
 						if(bool(oldvalue & CRTC_VBS9) != m_s.CRTC.max_scanline.VBS9) {
 							calculate_timings();
 						} else if(
@@ -1297,11 +1307,6 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					case CRTC_STARTADDR_LO:    // 0x0D
 						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
-						if(VGA_ENABLE_STARTADDR_LATCHING_BUG) {
-							m_s.CRTC.latch_start_address();
-							needs_redraw = true;
-							PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address = 0x%04X\n", m_s.CRTC.latches.start_address);
-						}
 						m_stats.last_saddr_line = current_scanline();
 						break;
 				}
@@ -1357,7 +1362,7 @@ void VGA::clear_screen()
 	m_display->unlock();
 }
 
-unsigned VGA::draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_ega(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_)
 {
 	// Multiplane 16 colour mode, standard EGA/VGA format.
 	// Output data in serial fashion with each display plane
@@ -1368,9 +1373,6 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_)
 	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	uint16_t img_y = fb_y / m_s.vmode.nscans;
-	uint16_t line_y = _scanline / m_s.vmode.nscans;
-	uint16_t line_compare = m_s.CRTC.latches.line_compare / m_s.vmode.nscans;
 	
 	uint8_t *plane[4];
 	plane[0] = &m_memory[0 << m_s.plane_shift];
@@ -1379,29 +1381,26 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_)
 	plane[3] = &m_memory[3 << m_s.plane_shift];
 	
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
-	if((pan >= 8) || ((line_y > line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
+	if((pan >= 8) || ((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
 		pan = 0;
 	}
 
-	uint32_t offset;
-	if(line_y > line_compare) {
-		offset = ((line_y - line_compare - 1) * m_s.CRTC.latches.line_offset);
-	} else {
-		offset = m_s.CRTC.latches.start_address + (line_y * m_s.CRTC.latches.line_offset);
+	if(_scanline < m_s.CRTC.latches.line_compare) {
+		_scanaddr += m_s.CRTC.latches.start_address;
 	}
 	
 	uint16_t tiles_updated = 0;
-	uint16_t dot_x = 0;
+	uint16_t img_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
-		if(!m_s.blink_toggle && !is_tile_dirty(img_y, tile)) {
-			dot_x += VGA_X_TILESIZE;
+		if(!m_s.blink_toggle && !is_tile_dirty(fb_y, tile)) {
+			img_x += VGA_X_TILESIZE;
 			continue;
 		}
 		
-		for(uint16_t tx = 0; (dot_x < m_s.vmode.imgw) && (tx < VGA_X_TILESIZE); tx++,dot_x++) {
-			uint16_t pixel_x = dot_x + pan;
+		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,img_x++) {
+			uint16_t pixel_x = img_x + pan;
 			uint8_t  bit_no = 7 - (pixel_x % 8);
-			uint32_t byte_offset = (pixel_x / 8 + offset) % 0x10000;
+			uint32_t byte_offset = (_scanaddr + pixel_x / 8) % 0x10000;
 
 			uint8_t attribute =
 				(((plane[0][byte_offset] >> bit_no) & 0x01) << 0) |
@@ -1432,24 +1431,24 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_)
 				DAC_regno = (palette_reg_val & 0x3f) | ((m_s.attr_ctrl.color_select & 0x0c) << 4);
 			}
 			// DAC_regno &= video DAC mask register ???
-			line_data_[dot_x] = DAC_regno;
+			line_data_[img_x] = DAC_regno;
 		}
 		
 		tiles_updated++;
 	}
 	
 	if(m_s.blink_toggle) {
-		m_display->gfx_screen_line_update(fb_y, img_y, line_data_);
-		set_tiles(img_y, VGA_TILE_CLEAN);
+		m_display->gfx_screen_line_update(fb_y, line_data_);
+		set_tiles(fb_y, VGA_TILE_CLEAN);
 	} else {
-		m_display->gfx_screen_line_update(fb_y, img_y, line_data_, 
-				&m_tile_dirty[img_y*m_num_x_tiles], m_num_x_tiles);
+		m_display->gfx_screen_line_update(fb_y, line_data_, 
+			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
 	}
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
 
-unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_)
 {
 	// Packed pixel 256 colour mode.
 	// Output the data eight bits at a time from the 4 bit plane
@@ -1461,12 +1460,9 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_dat
 	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	uint16_t img_y = fb_y / m_s.vmode.nscans;
-	uint16_t line_y = _scanline / m_s.vmode.nscans;
-	uint16_t line_compare = m_s.CRTC.latches.line_compare / m_s.vmode.nscans;
 
 	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
-	if((pan >= 8) || ((line_y > line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
+	if((pan >= 8) || ((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
 		pan = 0;
 	}
 	const uint8_t mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
@@ -1487,24 +1483,21 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_dat
 		start_address = m_s.CRTC.latches.start_address * 2;
 	}
 	
-	uint32_t offset;
-	if(line_y > line_compare) {
-		offset = ((line_y - line_compare - 1) * m_s.CRTC.latches.line_offset);
-	} else {
-		offset = start_address + (line_y * m_s.CRTC.latches.line_offset);
+	if(_scanline < m_s.CRTC.latches.line_compare) {
+		_scanaddr += start_address;
 	}
 	
 	uint16_t tiles_updated = 0;
 	uint16_t dot_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
-		if(!is_tile_dirty(img_y, tile)) {
+		if(!is_tile_dirty(fb_y, tile)) {
 			dot_x += VGA_X_TILESIZE;
 			continue;
 		}
-		for(uint16_t tx = 0; (dot_x < m_s.vmode.imgw) && (tx < VGA_X_TILESIZE); tx++, dot_x++) {
+		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++, dot_x++) {
 			uint32_t pixel_x = dot_x + pan;
 			uint32_t plane = (pixel_x % 4);
-			uint32_t byte_offset = (plane * 65536) + offset;
+			uint32_t byte_offset = _scanaddr + (plane * 65536);
 			if(m_s.CRTC.underline.DW) {
 				// DW set: doubleword mode
 				byte_offset += (pixel_x & ~0x03);
@@ -1531,15 +1524,17 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_dat
 		tiles_updated++;
 	}
 	
-	m_display->gfx_screen_line_update(fb_y, img_y, line_data_, 
-			&m_tile_dirty[img_y*m_num_x_tiles], m_num_x_tiles);
+	m_display->gfx_screen_line_update(fb_y, line_data_, 
+			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
 
-unsigned VGA::draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_cga2(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_)
 {
 	// CGA compatibility mode, 640x200 2 color (mode 6)
+	
+	UNUSED(_scanaddr);
 	
 	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
 		return 0;
@@ -1551,17 +1546,16 @@ unsigned VGA::draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_
 	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	uint16_t img_y = fb_y / m_s.vmode.nscans;
 	uint16_t line_y = _scanline >> m_s.CRTC.max_scanline.DSC;
 	
 	uint16_t tiles_updated = 0;
 	uint16_t dot_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
-		if(!is_tile_dirty(img_y, tile)) {
+		if(!is_tile_dirty(fb_y, tile)) {
 			dot_x += VGA_X_TILESIZE;
 			continue;
 		}
-		for(uint16_t tx = 0; (dot_x < m_s.vmode.imgw) && (tx < VGA_X_TILESIZE); tx++, dot_x++) {
+		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++, dot_x++) {
 			uint32_t pixel_x = dot_x + pan;
 			// 0 or 0x2000
 			unsigned byte_offset = m_s.CRTC.latches.start_address + ((line_y & 1) << 13);
@@ -1578,17 +1572,19 @@ unsigned VGA::draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_
 		tiles_updated++;
 	}
 	
-	m_display->gfx_screen_line_update(fb_y, img_y, line_data_,
-			&m_tile_dirty[img_y*m_num_x_tiles], m_num_x_tiles);
+	m_display->gfx_screen_line_update(fb_y, line_data_,
+			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
 
-unsigned VGA::draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_cga4(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_)
 {
 	// Packed pixel 4 colour mode.
 	// Output the data in a CGA-compatible 320x200 4 color graphics
 	// mode (planar shift, modes 4 & 5).
+
+	UNUSED(_scanaddr);
 	
 	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
 		return 0;
@@ -1600,17 +1596,16 @@ unsigned VGA::draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_
 	}
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	uint16_t img_y = fb_y / m_s.vmode.nscans;
 	uint16_t line_y = _scanline >> m_s.CRTC.max_scanline.DSC;
 	
 	uint16_t tiles_updated = 0;
 	uint16_t dot_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
-		if(!is_tile_dirty(img_y, tile)) {
+		if(!is_tile_dirty(fb_y, tile)) {
 			dot_x += VGA_X_TILESIZE;
 			continue;
 		}
-		for(uint16_t tx = 0; (dot_x < m_s.vmode.imgw) && (tx < VGA_X_TILESIZE); tx++,dot_x++) {
+		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,dot_x++) {
 			uint32_t pixel_x = dot_x + pan;
 			// 0 or 0x2000
 			unsigned byte_offset = m_s.CRTC.latches.start_address + ((line_y & 1) << 13);
@@ -1630,21 +1625,39 @@ unsigned VGA::draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_
 		tiles_updated++;
 	}
 	
-	m_display->gfx_screen_line_update(fb_y, img_y, line_data_,
-			&m_tile_dirty[img_y*m_num_x_tiles], m_num_x_tiles);
+	m_display->gfx_screen_line_update(fb_y, line_data_,
+			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
 
-unsigned VGA::gfx_update_thread(int _thread_id, int _thread_pool_size)
+unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
 {
+	assert(m_s.vmode.nscans == 1);
+	
 	unsigned pix_updated = 0;
-
+	uint32_t scanline_addr;
+	
+	if(_thread_id == _thread_lc) {
+		scanline_addr = (_thread_lc - m_s.CRTC.latches.line_compare) * m_s.CRTC.latches.line_offset;
+	} else {
+		scanline_addr = _thread_id * m_s.CRTC.latches.line_offset;
+	}
+	
 	for(unsigned scanline = m_s.timings.vblank_skip+_thread_id;
 		scanline <= m_s.timings.last_vis_sl;
-		scanline += _thread_pool_size)
+		)
 	{
-		pix_updated += (this->*m_renderer)(scanline, m_line_data_buf[_thread_id]);
+		pix_updated += (this->*m_renderer)(scanline, scanline_addr, m_line_data_buf[_thread_id]);
+
+		scanline += VGA_THREAD_POOL_SIZE;
+
+		if(scanline == _thread_lc) {
+			scanline_addr = (_thread_lc - m_s.CRTC.latches.line_compare) * m_s.CRTC.latches.line_offset;
+		} else {
+			scanline_addr += m_s.CRTC.latches.line_offset * VGA_THREAD_POOL_SIZE;
+		}
+		
 	}
 	
 	return pix_updated;
@@ -1724,11 +1737,21 @@ void VGA::horiz_disp_end(uint64_t _time)
 	m_display->lock();
 	
 	if(m_renderer) {
-		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_line_data_buf[0]);
+		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_s.scanline_addr, m_line_data_buf[0]);
 	}
 	
 	m_s.scanline++;
 	
+	if(m_s.scanline == m_s.CRTC.latches.line_compare) {
+		m_s.scanline_addr = 0;
+	} else {
+		int16_t img_line = m_s.scanline;
+		if(m_s.scanline >= m_s.CRTC.latches.line_compare) {
+			img_line = m_s.scanline - m_s.CRTC.latches.line_compare;
+		}
+		m_s.scanline_addr += (img_line%m_s.vmode.nscans)==0?m_s.CRTC.latches.line_offset:0;
+	}
+
 	if(m_s.scanline > m_s.timings.last_vis_sl) {
 		m_stats.updated_pix = m_cur_upd_pix;
 		m_s.scanline = -1;
@@ -1779,6 +1802,7 @@ void VGA::frame_start(uint64_t _time)
 		if(!is_video_disabled()) {
 			// enable per-line rendering, 1 update for every line at hdend
 			m_s.scanline = m_s.timings.vblank_skip; // skip top blank area
+			m_s.scanline_addr = 0;
 			uint32_t first_upd_dist = m_s.scanline * m_s.timings_ns.htotal + m_s.timings_ns.hdend;
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horiz_disp_end,this,_1), VGA_HORIZ_DISP_END);
 			g_machine.activate_timer(m_timer_id, first_upd_dist, m_s.timings_ns.htotal, true);
@@ -1808,10 +1832,19 @@ void VGA::frame_end(uint64_t _time)
 		if(m_s.vmode.mode == VGA_M_TEXT) {
 			text_update();
 		} else {
+			int lc_first_thread = m_s.CRTC.latches.line_compare % VGA_THREAD_POOL_SIZE;
+			uint16_t lc_w[VGA_THREAD_POOL_SIZE];
+			int i=lc_first_thread, j=0;
+			do {
+				lc_w[i] = m_s.CRTC.latches.line_compare + j;
+				i = (i+1) % VGA_THREAD_POOL_SIZE;
+				j++;
+			} while(j<VGA_THREAD_POOL_SIZE);
+			
 			std::future<uint32_t> w0 = std::async(std::launch::async, [&]() {
-				return gfx_update_thread(0, 2);
+				return gfx_update_thread(0, lc_w[0]);
 			});
-			uint32_t w1 = gfx_update_thread(1, 2);
+			uint32_t w1 = gfx_update_thread(1, lc_w[1]);
 			w0.wait();
 			m_stats.updated_pix = (w0.get() + w1);
 		}
@@ -1844,10 +1877,18 @@ void VGA::vertical_retrace(uint64_t _time)
 	// the start address is latched at vretrace
 	uint16_t oldvalue = m_s.CRTC.latches.start_address;
 	m_s.CRTC.latch_start_address();
+	bool redraw = false;
 	if(m_s.CRTC.latches.start_address != oldvalue) {
+		redraw = true;
+		PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address = 0x%04X\n", m_s.CRTC.latches.start_address);
+	}
+	if(m_s.force_redraw) {
+		redraw = true;
+		m_s.force_redraw--;
+	}
+	if(redraw) {
 		set_all_tiles(VGA_TILE_DIRTY);
 		m_s.needs_update = true;
-		PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address = 0x%04X\n", m_s.CRTC.latches.start_address);
 	}
 	
 	uint64_t dist = 10_us;
@@ -1962,7 +2003,7 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 		case VGA_M_256COL:
 		case VGA_M_EGA:
 			// addr between 0xA0000 and 0xAFFFF
-			unsigned planes, pels_per_byte, x_tileno, y_tileno;
+			unsigned planes, pels_per_byte, x_tileno, y_line;
 			if(me.m_s.sequencer.mem_mode.CH4) {
 				me.mem_write_chain4(offset, _value);
 				planes = 1;
@@ -1981,28 +2022,30 @@ void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 			if(me.m_s.CRTC.latches.line_offset > 0) {
 				if(me.m_s.CRTC.latches.line_compare < me.m_s.CRTC.latches.vdisplay_end) {
 					x_tileno = ((offset % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
-					y_tileno = ((offset / me.m_s.CRTC.latches.line_offset) * me.m_s.vmode.nscans + 
+					y_line   = ((offset / me.m_s.CRTC.latches.line_offset) * me.m_s.vmode.nscans + 
 							(me.m_s.CRTC.latches.line_compare - me.m_s.timings.vblank_skip)
 							+ 1);
-					if(y_tileno < me.m_s.vmode.yres && x_tileno < me.m_num_x_tiles) {
-						me.set_tile(y_tileno/me.m_s.vmode.nscans, x_tileno, VGA_TILE_DIRTY);
+					if(x_tileno < me.m_num_x_tiles) {
+						for(uint16_t s=0; y_line<me.m_s.vmode.yres && s<me.m_s.vmode.nscans; s++,y_line++) {
+							me.set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
+						}
 						me.m_s.needs_update = true;
 					}
 				}
 				if(offset >= me.m_s.CRTC.latches.start_address) {
 					offset -= me.m_s.CRTC.latches.start_address;
 					x_tileno = ((offset % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
-					y_tileno = (offset / me.m_s.CRTC.latches.line_offset);
-					if(y_tileno < me.m_s.vmode.imgh && x_tileno < me.m_num_x_tiles) {
-						me.set_tile(y_tileno, x_tileno, VGA_TILE_DIRTY);
+					y_line   = (offset / me.m_s.CRTC.latches.line_offset) * me.m_s.vmode.nscans;
+					if(x_tileno < me.m_num_x_tiles) {
+						for(uint16_t s=0; y_line<me.m_s.vmode.yres && s<me.m_s.vmode.nscans; s++,y_line++) {
+							me.set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
+						}
 						me.m_s.needs_update = true;
 					}
 				}
 			} else {
-				// TODO fix this
 				// a program that set line_offset to 0 is Copper ('92 demo).
-				me.set_all_tiles(VGA_TILE_DIRTY);
-				me.m_s.needs_update = true;
+				me.m_s.force_redraw = 2;
 			}
 			break;
 		case VGA_M_TEXT:

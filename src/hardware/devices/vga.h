@@ -145,9 +145,11 @@ struct TextModeInfo
 };
 
 class VGA;
-typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, std::vector<uint8_t> &line_data_);
+typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
 
 #include "vgadisplay.h"
+
+#define VGA_THREAD_POOL_SIZE 2
 
 class VGA : public IODevice
 {
@@ -163,8 +165,10 @@ protected:
 		VGA_AttrCtrl  attr_ctrl;
 		VGA_DAC       dac;
 
-		bool needs_update;  // 1=screen needs to be updated
-		int16_t scanline;   // scanline counter (per-line rendering)
+		bool needs_update;      // 1=screen needs to be updated (per-frame rendering)
+		unsigned force_redraw;  // buffer needs to be redrawn for this number of frames (per-line rendering)
+		int16_t scanline;       // scanline counter (per-line rendering)
+		uint32_t scanline_addr; // scanline mem address (per-line rendering)
 		VGARenderMode render_mode;
 		// blinking support (text cursor and monochrome gfx)
 		unsigned blink_counter;
@@ -204,12 +208,13 @@ protected:
 	int m_timer_id;          // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
 	VGADrawFn m_renderer;
-	std::vector<uint8_t> m_line_data_buf[2];
+	std::vector<uint8_t> m_line_data_buf[VGA_THREAD_POOL_SIZE];
 	// tiling system
 	uint16_t m_num_x_tiles;
 	std::vector<uint8_t> m_tile_dirty; // don't use bool, it's not thread safe
 
-	VideoStats m_stats; // Stats update needs to be enabled with VGA_STATS_ENABLED
+
+	VideoStats m_stats;
 	uint32_t m_cur_upd_pix;
 	
 public:
@@ -267,12 +272,12 @@ protected:
 	bool is_tile_dirty(unsigned _line_y, unsigned _tile_x) const;
 
 	void text_update();
-	unsigned gfx_update_thread(int _thread_id, int _thread_pool_size);
+	unsigned gfx_update_thread(int _thread_id, uint16_t _line_compare);
 	
-	unsigned draw_gfx_cga2(unsigned _scanline, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_cga4(unsigned _scanline, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_ega(unsigned _scanline, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_vga256(unsigned _scanline, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_cga2(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_cga4(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_ega(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
 
 	template<class T>
 	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
@@ -307,19 +312,19 @@ void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
 
 inline void VGA::set_all_tiles(bool _value)
 {
-	assert(m_s.vmode.imgh > 0 && m_num_x_tiles > 0);
-	std::fill(&m_tile_dirty[0], &m_tile_dirty[m_s.vmode.imgh*m_num_x_tiles], _value);
+	assert(m_s.vmode.yres > 0 && m_num_x_tiles > 0);
+	std::fill(&m_tile_dirty[0], &m_tile_dirty[m_s.vmode.yres*m_num_x_tiles], _value);
 }
 
 inline void VGA::set_tile(unsigned _line_y, unsigned _tile_x, bool _value)
 {
-	assert(_line_y < m_s.vmode.imgh && _tile_x < m_num_x_tiles);
+	assert(_line_y < m_s.vmode.yres && _tile_x < m_num_x_tiles);
 	m_tile_dirty[_line_y*m_num_x_tiles + _tile_x] = _value;
 }
 
 inline void VGA::set_tiles(unsigned _line_y, bool _value)
 {
-	assert(_line_y < m_s.vmode.imgh);
+	assert(_line_y < m_s.vmode.yres);
 	std::fill(&m_tile_dirty[_line_y*m_num_x_tiles], 
 	          &m_tile_dirty[_line_y*m_num_x_tiles + m_num_x_tiles],
 	          _value);
@@ -327,7 +332,7 @@ inline void VGA::set_tiles(unsigned _line_y, bool _value)
 
 inline bool VGA::is_tile_dirty(unsigned _line_y, unsigned _tile_x) const
 {
-	assert(_line_y < m_s.vmode.imgh && _tile_x < m_num_x_tiles);
+	assert(_line_y < m_s.vmode.yres && _tile_x < m_num_x_tiles);
 	return m_tile_dirty[_line_y*m_num_x_tiles + _tile_x] == VGA_TILE_DIRTY;
 }
 

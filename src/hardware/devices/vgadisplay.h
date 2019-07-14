@@ -98,9 +98,9 @@ public:
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
-	void gfx_screen_line_update(unsigned _scanline, unsigned _imgline, std::vector<uint8_t> &_linedata,
+	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata,
 			uint8_t *_tiles, uint16_t _tiles_count);
-	void gfx_screen_line_update(unsigned _scanline, unsigned _imgline, std::vector<uint8_t> &_linedata);
+	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
 	void clear_screen();

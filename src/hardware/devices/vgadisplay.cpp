@@ -201,14 +201,12 @@ void VGADisplay::set_timings(double _hfreq, double _vfreq)
 // since some info in this line has changed.
 //
 // _fbline: the line of the framebuffer to be updated.
-// _imgline: the line of the rendered image _linedata belongs to
-// _linedata: array of 8bit palette indices to use to update the frambuffer line(s).
+// _linedata: array of 8bit palette indices to use to update the framebuffer line.
 // _tiles: array of horizontal tile states for the given image line; each tile is VGA_X_TILESIZE px wide.
 //         states will be updated with VGA_TILE_CLEAN
 // _tiles_count: size of _tiles.
 void VGADisplay::gfx_screen_line_update(
 		unsigned _fbline,
-		unsigned _imgline,
 		std::vector<uint8_t> &_linedata,
 		uint8_t *_tiles,
 		uint16_t _tiles_count)
@@ -218,36 +216,26 @@ void VGADisplay::gfx_screen_line_update(
 	}
 
 	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
-	int lines_to_upd = m_s.mode.nscans - (_fbline - _imgline * m_s.mode.nscans);
-	assert(lines_to_upd > 0);
 	bool dc = (m_s.mode.ndots == 2);
 	
-	for(uint16_t tid=0; tid<_tiles_count; tid++, _tiles++) {
+	for(uint16_t tile_id=0; tile_id<_tiles_count; tile_id++, _tiles++) {
 		if(*_tiles == VGA_TILE_CLEAN) {
 			continue;
 		}
-		unsigned pixel_x = tid * VGA_X_TILESIZE;
-		for(int tx=0; tx<VGA_X_TILESIZE; tx++,pixel_x++) {
+		unsigned pixel_x = tile_id * VGA_X_TILESIZE;
+		for(int tile_x=0; tile_x<VGA_X_TILESIZE; tile_x++,pixel_x++) {
 			if(pixel_x > m_s.mode.imgw) {
 				// the last tile could be wider than needed
 				break;
 			}
 			uint32_t color = m_s.palette[_linedata[pixel_x]];
 			uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
-			for(int l=0; l<lines_to_upd; l++,fb_point_ptr+=m_s.fb_width) {
-				*fb_point_ptr = color;
-				if(dc) {
-					*(fb_point_ptr+1) = color;
-				}
+			*fb_point_ptr = color;
+			if(dc) {
+				*(fb_point_ptr+1) = color;
 			}
 		};
-		if(lines_to_upd == m_s.mode.nscans) {
-			// mark this tile as clean only if we are updating the first of multiple scanlines.
-			// if it's the 2nd, 3rd, 4th scanline and this tile is still marked as dirty,
-			// it means memory data was updated again after the first update so let the next
-			// update cycle refresh this pixel data.
-			*_tiles = VGA_TILE_CLEAN;
-		}
+		*_tiles = VGA_TILE_CLEAN;
 	}
 }
 
@@ -257,9 +245,8 @@ void VGADisplay::gfx_screen_line_update(
 // since the entire line has changed.
 //
 // _fbline: the line of the framebuffer to be updated.
-// _imgline: the line of the rendered image _linedata belongs to.
-// _linedata: array of 8bit palette indices to use to update the framebuffer line(s).
-void VGADisplay::gfx_screen_line_update(unsigned _fbline, unsigned _imgline,
+// _linedata: array of 8bit palette indices to use to update the framebuffer line.
+void VGADisplay::gfx_screen_line_update(unsigned _fbline,
 		std::vector<uint8_t> &_linedata)
 {
 	if(!m_s.valid_mode || _fbline >= m_s.mode.yres) {
@@ -267,18 +254,14 @@ void VGADisplay::gfx_screen_line_update(unsigned _fbline, unsigned _imgline,
 	}
 
 	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
-	int lines_to_upd = m_s.mode.nscans - (_fbline - _imgline * m_s.mode.nscans);
-	assert(lines_to_upd > 0);
 	bool dc = (m_s.mode.ndots == 2);
 	
 	for(unsigned pixel_x=0; pixel_x<m_s.mode.imgw; pixel_x++) {
 		uint32_t color = m_s.palette[_linedata[pixel_x]];
 		uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
-		for(int l=0; l<lines_to_upd; l++,fb_point_ptr+=m_s.fb_width) {
-			*fb_point_ptr = color;
-			if(dc) {
-				*(fb_point_ptr+1) = color;
-			}
+		*fb_point_ptr = color;
+		if(dc) {
+			*(fb_point_ptr+1) = color;
 		}
 	}
 }
