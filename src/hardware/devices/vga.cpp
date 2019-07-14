@@ -1195,16 +1195,18 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					needs_redraw = true;
 				}
 			} else {
+				uint8_t oldvalue = m_s.gfx_ctrl;
+				
+				m_s.gfx_ctrl = _value;
+				PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
+				
 				if(m_s.gfx_ctrl.address == GFXC_GFX_MODE && (
-					 (m_s.gfx_ctrl.gfx_mode.C256) != bool(_value & GFXC_C256)
-				  || (m_s.gfx_ctrl.gfx_mode.SR)   != bool(_value & GFXC_SR)
+					 (m_s.gfx_ctrl.gfx_mode.C256) != bool(oldvalue & GFXC_C256)
+				  || (m_s.gfx_ctrl.gfx_mode.SR)   != bool(oldvalue & GFXC_SR)
 				)) {
 					PDEBUGF(LOG_V1, LOG_VGA, "mode setting: GFXC_GFX_MODE\n");
 					update_video_mode();
 				}
-
-				m_s.gfx_ctrl = _value;
-				PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
 			}
 			break;
 
