@@ -145,7 +145,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ VGA_SECTION, {
-		{ VGA_ROM,       ""   }
+		{ VGA_ROM,           ""   },
+		{ VGA_PS_BIT_BUG,    "no" }
 	} },
 	
 	{ DRIVES_SECTION, {
@@ -304,7 +305,8 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ VGA_SECTION,
 "; Video interface card configuration:\n"
-";     rom: Path to a binary ROM file to load\n"
+";        rom: Path to a binary ROM file to load\n"
+"; ps_bit_bug: Enable the PS bit bug emulation (used by some demo like Copper)\n"
 		},
 
 		{ DRIVES_SECTION,

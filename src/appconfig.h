@@ -171,6 +171,7 @@ public:
 
 #define VGA_SECTION             "vga"
 #define VGA_ROM                 "rom"
+#define VGA_PS_BIT_BUG          "ps_bit_bug"
 
 #define DRIVES_SECTION          "drives"
 #define DRIVES_FDD_A            "floppy_a"

@@ -217,6 +217,11 @@ protected:
 	VideoStats m_stats;
 	uint32_t m_cur_upd_pix;
 	
+	// bugs on which some demos depend
+	struct {
+		bool ps_bit;
+	} m_bugs;
+	
 public:
 	VGA(Devices *_dev);
 	virtual ~VGA();

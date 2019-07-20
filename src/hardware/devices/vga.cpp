@@ -32,10 +32,6 @@
 #include "filesys.h"
 #include <cstring>
 
-// bugs on which some demo depends
-// TODO find an easy way to let the user decide
-// TODO create specific VGA card model profiles?
-#define VGA_ENABLE_256COL_ATTC_PS_BIT_BUG false // see comments in draw_gfx_vga256()
 
 using namespace std::placeholders;
 
@@ -163,6 +159,8 @@ void VGA::config_changed()
 			g_memory.enable_mapping(m_rom_mapping, true);
 		} catch(std::exception &e) {}
 	}
+	
+	m_bugs.ps_bit = g_program.config().get_bool(VGA_SECTION, VGA_PS_BIT_BUG);
 }
 
 void VGA::remove()
@@ -1511,7 +1509,7 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vecto
 				byte_offset += ((pixel_x >> 1) & ~0x01);
 			}
 			uint8_t DACreg = m_memory[byte_offset % m_memsize];
-			if(VGA_ENABLE_256COL_ATTC_PS_BIT_BUG && m_s.attr_ctrl.attr_mode.PS) {
+			if(m_bugs.ps_bit && m_s.attr_ctrl.attr_mode.PS) {
 				// The only program I know that rely on the PS bit in 256 color
 				// mode is the Copper demo (1992) for the line fading effect.
 				// Official IBM docs say this bit is not used in this mode.
