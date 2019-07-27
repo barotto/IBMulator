@@ -1380,9 +1380,11 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint32_t _scanaddr, std::vector<u
 	plane[2] = &m_memory[2 << m_s.plane_shift];
 	plane[3] = &m_memory[3 << m_s.plane_shift];
 	
-	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
-	if((pan >= 8) || ((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
+	uint8_t pan;
+	if((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1)) {
 		pan = 0;
+	} else {
+		pan = m_s.attr_ctrl.horiz_pel_panning & 0x7;
 	}
 
 	if(_scanline < m_s.CRTC.latches.line_compare) {
@@ -1461,12 +1463,12 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vecto
 	
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
 
-	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning;
-	if((pan >= 8) || ((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1))) {
+	uint8_t pan;
+	if((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1)) {
 		pan = 0;
+	} else {
+		pan = (m_s.attr_ctrl.horiz_pel_panning >> 1) & 0x3;
 	}
-	const uint8_t mode13_pan_values[8] = { 0,0,1,0,2,0,3,0 };
-	pan = mode13_pan_values[pan];
 	
 	uint16_t start_address;
 	if(m_s.CRTC.underline.DW) {
