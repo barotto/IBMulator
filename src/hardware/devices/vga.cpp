@@ -1750,6 +1750,12 @@ void VGA::horiz_disp_end(uint64_t _time)
 		int16_t img_line = m_s.scanline;
 		if(m_s.scanline >= m_s.CRTC.latches.line_compare) {
 			img_line = m_s.scanline - m_s.CRTC.latches.line_compare;
+		} else {
+			int vpan = m_s.CRTC.preset_row_scan.SRS;
+			if(vpan > m_s.CRTC.max_scanline.MSL) {
+				vpan = m_s.CRTC.max_scanline.MSL;
+			}
+			img_line += vpan;
 		}
 		m_s.scanline_addr += (img_line%m_s.vmode.nscans)==0?m_s.CRTC.latches.line_offset:0;
 	}
