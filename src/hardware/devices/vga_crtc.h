@@ -367,6 +367,8 @@ struct VGA_CRTC
 	void set_registers(const std::array<uint8_t,CRTC_REGCOUNT>);
 	std::array<uint8_t,CRTC_REGCOUNT> get_registers();
 
+	uint16_t mux_mem_address(uint16_t _row_addr_cnt, uint16_t _row_scan_cnt);
+	
 	// DEBUGGING
 	operator const char*() const { return register_to_string(address); }
 	const char * register_to_string(uint8_t _index) const;

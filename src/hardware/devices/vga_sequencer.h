@@ -120,6 +120,9 @@ struct VGA_Sequencer
 			return ::register_to_string((uint8_t)(*this),
 			{{1,"M0E"},{1,"M1E"},{1,"M2E"},{1,"M3E"}});
 		}
+		bool operator [](uint8_t _map) const {
+			return ((uint8_t)(*this) >> _map) & 1;
+		}
 	} map_mask;            // Index 02h -- Map Mask Register
 
 	struct {

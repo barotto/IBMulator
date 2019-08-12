@@ -143,6 +143,9 @@ struct VGA_GfxCtrl
 			return ::register_to_string((uint8_t)(*this),
 			{{1,"CC0"},{1,"CC1"},{1,"CC"},{1,"CC3"}});
 		}
+		bool operator [](uint8_t _map) const {
+			return ((uint8_t)(*this) >> _map) & 1;
+		}
 	} color_compare;           // Index 02h -- Color Compare
 
 	struct {
@@ -248,6 +251,8 @@ struct VGA_GfxCtrl
 	void set_registers(const std::array<uint8_t,GFXC_REGCOUNT> _regs);
 	std::array<uint8_t,GFXC_REGCOUNT> get_registers();
 
+	void write_data(uint8_t _value, uint8_t data_[4]);
+	
 	// DEBUGGING
 	operator const char*() const { return register_to_string(address); }
 	const char * register_to_string(uint8_t _index) const;

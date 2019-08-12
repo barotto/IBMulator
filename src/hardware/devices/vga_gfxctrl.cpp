@@ -107,3 +107,184 @@ void VGA_GfxCtrl::registers_to_textfile(FILE *_file)
 	}
 }
 
+void VGA_GfxCtrl::write_data(uint8_t _value, uint8_t data_[4])
+{
+	switch (gfx_mode.WM) {
+		case 0:
+		{
+			// Write Mode 0
+			// Each memory map is written with the system data rotated by the count
+			// in the Data Rotate register. If the set/reset function is enabled for a
+			// specific map, that map receives the 8-bit value contained in the
+			// Set/Reset register.
+			const bool sr0 = set_reset.SR0;
+			const bool sr1 = set_reset.SR1;
+			const bool sr2 = set_reset.SR2;
+			const bool sr3 = set_reset.SR3;
+			const bool esr0 = enable_set_reset.ESR0;
+			const bool esr1 = enable_set_reset.ESR1;
+			const bool esr2 = enable_set_reset.ESR2;
+			const bool esr3 = enable_set_reset.ESR3;
+			// perform rotate on CPU data in case its needed
+			if(data_rotate.ROTC) {
+				_value = (_value >> data_rotate.ROTC) |
+				         (_value << (8 - data_rotate.ROTC));
+			}
+			data_[0] = latch[0] & ~bitmask;
+			data_[1] = latch[1] & ~bitmask;
+			data_[2] = latch[2] & ~bitmask;
+			data_[3] = latch[3] & ~bitmask;
+			switch (data_rotate.FS) {
+				case 0: // replace
+					data_[0] |= (esr0 ? (sr0 ? bitmask : 0) : (_value & bitmask));
+					data_[1] |= (esr1 ? (sr1 ? bitmask : 0) : (_value & bitmask));
+					data_[2] |= (esr2 ? (sr2 ? bitmask : 0) : (_value & bitmask));
+					data_[3] |= (esr3 ? (sr3 ? bitmask : 0) : (_value & bitmask));
+					break;
+				case 1: // AND
+					data_[0] |= esr0 ? (sr0 ? (latch[0] & bitmask) : 0)
+					                   : (_value & latch[0]) & bitmask;
+					data_[1] |= esr1 ? (sr1 ? (latch[1] & bitmask) : 0)
+					                   : (_value & latch[1]) & bitmask;
+					data_[2] |= esr2 ? (sr2 ? (latch[2] & bitmask) : 0)
+					                   : (_value & latch[2]) & bitmask;
+					data_[3] |= esr3 ? (sr3 ? (latch[3] & bitmask) : 0)
+					                   : (_value & latch[3]) & bitmask;
+					break;
+				case 2: // OR
+					data_[0] |= esr0 ? (sr0 ? bitmask : (latch[0] & bitmask))
+					                   : ((_value | latch[0]) & bitmask);
+					data_[1] |= esr1 ? (sr1 ? bitmask : (latch[1] & bitmask))
+					                   : ((_value | latch[1]) & bitmask);
+					data_[2] |= esr2 ? (sr2 ? bitmask : (latch[2] & bitmask))
+					                   : ((_value | latch[2]) & bitmask);
+					data_[3] |= esr3 ? (sr3 ? bitmask : (latch[3] & bitmask))
+					                   : ((_value | latch[3]) & bitmask);
+					break;
+				case 3: // XOR
+					data_[0] |= esr0 ? (sr0 ? (~latch[0] & bitmask)
+					                          : (latch[0] & bitmask))
+					                   : (_value ^ latch[0]) & bitmask;
+					data_[1] |= esr1 ? (sr1 ? (~latch[1] & bitmask)
+					                          : (latch[1] & bitmask))
+					                   : (_value ^ latch[1]) & bitmask;
+					data_[2] |= esr2 ? (sr2 ? (~latch[2] & bitmask)
+					                          : (latch[2] & bitmask))
+					                   : (_value ^ latch[2]) & bitmask;
+					data_[3] |= esr3 ? (sr3 ? (~latch[3] & bitmask)
+					                          : (latch[3] & bitmask))
+					                   : (_value ^ latch[3]) & bitmask;
+					break;
+			}
+			break;
+		}
+
+		case 1:
+		{
+			// Write Mode 1
+			// Each memory map is written with the contents of the system latches.
+			// These latches are loaded by a system read operation.
+			for(int i=0; i<4; i++) {
+				data_[i] = latch[i];
+			}
+			break;
+		}
+
+		case 2:
+		{
+			// Write Mode 2
+			// Memory map n (0 through 3) is filled with 8 bits of the value of data
+			// bit n.
+			const bool p0 = (_value & 1);
+			const bool p1 = (_value & 2);
+			const bool p2 = (_value & 4);
+			const bool p3 = (_value & 8);
+			data_[0] = latch[0] & ~bitmask;
+			data_[1] = latch[1] & ~bitmask;
+			data_[2] = latch[2] & ~bitmask;
+			data_[3] = latch[3] & ~bitmask;
+			switch (data_rotate.FS) {
+				case 0: // write
+					data_[0] |= p0 ? bitmask : 0;
+					data_[1] |= p1 ? bitmask : 0;
+					data_[2] |= p2 ? bitmask : 0;
+					data_[3] |= p3 ? bitmask : 0;
+					break;
+				case 1: // AND
+					data_[0] |= p0 ? (latch[0] & bitmask) : 0;
+					data_[1] |= p1 ? (latch[1] & bitmask) : 0;
+					data_[2] |= p2 ? (latch[2] & bitmask) : 0;
+					data_[3] |= p3 ? (latch[3] & bitmask) : 0;
+					break;
+				case 2: // OR
+					data_[0] |= p0 ? bitmask : (latch[0] & bitmask);
+					data_[1] |= p1 ? bitmask : (latch[1] & bitmask);
+					data_[2] |= p2 ? bitmask : (latch[2] & bitmask);
+					data_[3] |= p3 ? bitmask : (latch[3] & bitmask);
+					break;
+				case 3: // XOR
+					data_[0] |= p0 ? (~latch[0] & bitmask) : (latch[0] & bitmask);
+					data_[1] |= p1 ? (~latch[1] & bitmask) : (latch[1] & bitmask);
+					data_[2] |= p2 ? (~latch[2] & bitmask) : (latch[2] & bitmask);
+					data_[3] |= p3 ? (~latch[3] & bitmask) : (latch[3] & bitmask);
+					break;
+			}
+			break;
+		}
+
+		case 3:
+		{
+			// Write Mode 3
+			// Each memory map is written with the 8-bit value contained in the
+			// Set/Reset register for that map (the Enable Set/Reset register has no
+			// effect). Rotated system data is ANDed with the Bit Mask register to
+			// form an 8-bit value that performs the same function as the Bit Mask
+			// register in write modes 0 and 2
+			const uint8_t mask = bitmask & _value;
+			const uint8_t v0 = set_reset.SR0 ? _value : 0;
+			const uint8_t v1 = set_reset.SR1 ? _value : 0;
+			const uint8_t v2 = set_reset.SR2 ? _value : 0;
+			const uint8_t v3 = set_reset.SR3 ? _value : 0;
+
+			// perform rotate on CPU data
+			if(data_rotate.ROTC) {
+				_value = (_value >> data_rotate.ROTC) |
+				         (_value << (8 - data_rotate.ROTC));
+			}
+			data_[0] = latch[0] & ~mask;
+			data_[1] = latch[1] & ~mask;
+			data_[2] = latch[2] & ~mask;
+			data_[3] = latch[3] & ~mask;
+
+			_value &= mask;
+
+			switch (data_rotate.FS) {
+				case 0: // write
+					data_[0] |= v0;
+					data_[1] |= v1;
+					data_[2] |= v2;
+					data_[3] |= v3;
+					break;
+				case 1: // AND
+					data_[0] |= v0 & latch[0];
+					data_[1] |= v1 & latch[1];
+					data_[2] |= v2 & latch[2];
+					data_[3] |= v3 & latch[3];
+					break;
+				case 2: // OR
+					data_[0] |= v0 | latch[0];
+					data_[1] |= v1 | latch[1];
+					data_[2] |= v2 | latch[2];
+					data_[3] |= v3 | latch[3];
+					break;
+				case 3: // XOR
+					data_[0] |= v0 ^ latch[0];
+					data_[1] |= v1 ^ latch[1];
+					data_[2] |= v2 ^ latch[2];
+					data_[3] |= v3 ^ latch[3];
+					break;
+			}
+			break;
+		}
+	}
+}

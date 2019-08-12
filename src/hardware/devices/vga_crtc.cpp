@@ -160,11 +160,13 @@ void VGA_CRTC::set_register(uint8_t _index, uint8_t _v)
 void VGA_CRTC::latch_line_offset()
 {
 	latches.line_offset = offset << 1;
+	/*
 	if(underline.DW) {
 		latches.line_offset <<= 2;
 	} else if(mode_control.WB == 0) {
 		latches.line_offset <<= 1;
 	}
+	*/
 }
 
 void VGA_CRTC::latch_line_compare()
@@ -301,4 +303,50 @@ void VGA_CRTC::registers_to_textfile(FILE *_file)
 	for(int i=0; i<CRTC_REGCOUNT; i++) {
 		fprintf(_file, "0x%02X 0x%02X %*u  %s\n", i, get_register(i), 3, get_register(i), register_to_string(i));
 	}
+}
+
+uint16_t VGA_CRTC::mux_mem_address(uint16_t _row_addr_cnt, uint16_t _row_scan_cnt)
+{
+	uint16_t muxed;
+	
+	if(underline.DW) {
+		// doubleword mode
+		muxed = (_row_addr_cnt << 2) | ((_row_addr_cnt >> 14) & 3);
+	} else if(mode_control.WB) {
+		// byte mode
+		muxed = _row_addr_cnt;
+	} else {
+		// word mode
+		muxed = _row_addr_cnt << 1;
+		if(mode_control.ADW) {
+			// The Address Wrap field (bit 5) selects the
+			// memory-address bit, bit MA 13 or MA 15, that appears
+			// on the output pin MA 0 in the word address mode.
+			// When set to 1, the Address Wrap field bit selects
+			// MA 15.
+			muxed |= (_row_addr_cnt >> 15) & 1;
+		} else {
+			muxed |= (_row_addr_cnt >> 13) & 1;
+		}
+	}
+
+	if(mode_control.SRC == 0) {
+		// The Select Row Scan Counter field (bit 1) selects the
+		// source of bit 14 of the output multiplexer. When set to
+		// 0, bit 1 of the row scan counter is the source. When set
+		// to 1, bit 14 of the address counter is the source.
+		muxed &= ~0x4000;
+		muxed |= (_row_scan_cnt & 2) << 13;
+	}
+	
+	if(mode_control.CMS == 0) {
+		// The CMS 0 field (bit 0) selects the source of bit 13 of the
+		// output multiplexer. When set to 0, bit 0 of the row scan
+		// counter is the source. When set to 1, bit 13 of the
+		// address counter is the source.
+		muxed &= ~0x2000;
+		muxed |= (_row_scan_cnt & 1) << 13;
+	}
+	
+	return muxed;
 }

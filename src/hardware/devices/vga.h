@@ -145,7 +145,7 @@ struct TextModeInfo
 };
 
 class VGA;
-typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
 
 #include "vgadisplay.h"
 
@@ -168,7 +168,8 @@ protected:
 		bool needs_update;      // 1=screen needs to be updated (per-frame rendering)
 		unsigned force_redraw;  // buffer needs to be redrawn for this number of frames (per-line rendering)
 		int16_t scanline;       // scanline counter (per-line rendering)
-		uint32_t scanline_addr; // scanline mem address (per-line rendering)
+		uint16_t mem_addr_counter;
+		//uint32_t scanline_addr; // scanline mem address (per-line rendering)
 		VGARenderMode render_mode;
 		// blinking support (text cursor and monochrome gfx)
 		unsigned blink_counter;
@@ -199,6 +200,7 @@ protected:
 	} m_s;
 
 	uint8_t  *m_memory;      // video memory buffer
+	uint8_t  *m_memory_planes[4];
 	uint8_t  *m_rom;         // BIOS code buffer
 	uint32_t m_memsize;      // size of memory buffer
 	int m_mem_mapping;       // video memory mapping ID
@@ -279,18 +281,15 @@ protected:
 	void text_update();
 	unsigned gfx_update_thread(int _thread_id, uint16_t _line_compare);
 	
-	unsigned draw_gfx_cga2(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_cga4(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_ega(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	//unsigned draw_gfx_cga2(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_cga(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_ega(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_vga256(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
 
 	template<class T>
 	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
 	template<class T>
 	static void s_mem_write(uint32_t _addr, uint32_t _value, void *_priv);
-
-	void mem_write_chain4(uint32_t _offset, uint8_t _value);
-	void mem_write_planar(uint32_t _offset, uint8_t _value);
 	
 	template<class T>
 	static uint32_t s_rom_read(uint32_t _addr, void *_priv) {
