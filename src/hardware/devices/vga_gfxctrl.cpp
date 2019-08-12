@@ -240,24 +240,26 @@ void VGA_GfxCtrl::write_data(uint8_t _value, uint8_t data_[4])
 			// effect). Rotated system data is ANDed with the Bit Mask register to
 			// form an 8-bit value that performs the same function as the Bit Mask
 			// register in write modes 0 and 2
+			
 			const uint8_t mask = bitmask & _value;
-			const uint8_t v0 = set_reset.SR0 ? _value : 0;
-			const uint8_t v1 = set_reset.SR1 ? _value : 0;
-			const uint8_t v2 = set_reset.SR2 ? _value : 0;
-			const uint8_t v3 = set_reset.SR3 ? _value : 0;
-
-			// perform rotate on CPU data
+			
 			if(data_rotate.ROTC) {
 				_value = (_value >> data_rotate.ROTC) |
 				         (_value << (8 - data_rotate.ROTC));
 			}
+			
 			data_[0] = latch[0] & ~mask;
 			data_[1] = latch[1] & ~mask;
 			data_[2] = latch[2] & ~mask;
 			data_[3] = latch[3] & ~mask;
 
 			_value &= mask;
-
+			
+			const uint8_t v0 = set_reset.SR0 ? _value : 0;
+			const uint8_t v1 = set_reset.SR1 ? _value : 0;
+			const uint8_t v2 = set_reset.SR2 ? _value : 0;
+			const uint8_t v3 = set_reset.SR3 ? _value : 0;
+			
 			switch (data_rotate.FS) {
 				case 0: // write
 					data_[0] |= v0;
