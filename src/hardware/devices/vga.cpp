@@ -316,8 +316,8 @@ void VGA::restore_state(StateBuf &_state)
 	};
 	
 	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
-	g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
-	g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
+	g_machine.set_heartbeat(m_s.timings_ns.vtotal);
+	g_program.set_heartbeat(m_s.timings_ns.vtotal);
 	
 	m_stats = {};
 	m_cur_upd_pix = 0;
@@ -479,8 +479,8 @@ void VGA::calculate_timings()
 	if(m_s.timings_ns.vtotal != vtotal_ns) {
 		m_s.timings_ns.vtotal = vtotal_ns;
 		PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
-		g_machine.set_heartbeat(m_s.timings_ns.vtotal/1000);
-		g_program.set_heartbeat(m_s.timings_ns.vtotal/1000);
+		g_machine.set_heartbeat(m_s.timings_ns.vtotal);
+		g_program.set_heartbeat(m_s.timings_ns.vtotal);
 		
 		m_display->lock();
 		m_display->set_timings(m_s.timings.hfreq, m_s.timings.vfreq);
@@ -1694,6 +1694,9 @@ void VGA::horiz_disp_end(uint64_t _time)
 	// skip top blank area
 	if(m_renderer && m_s.scanline >= m_s.timings.vblank_skip) {
 		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_s.mem_addr_counter, m_line_data_buf[0]);
+		if(g_machine.speed_factor() < 1.0 || g_machine.is_paused()) {
+			m_display->set_fb_updated();
+		}
 	}
 	
 	m_s.scanline++;
@@ -1739,13 +1742,11 @@ void VGA::frame_start(uint64_t _time)
 {
 	// this is time 0, the start of the 1st scan line
 	
+	PDEBUGF(LOG_V2, LOG_VGA, "frame start\n");
+	
 	m_s.frame_start_time_nsec = _time;
 	m_cur_upd_pix = 0;
 	m_stats.frame_cnt++;
-	
-	if(THREADS_WAIT && g_program.threads_sync()) {
-		m_display->wait();
-	}
 	
 	// update cursor/blinking status for this frame
 	m_s.blink_toggle = false;
@@ -1833,6 +1834,11 @@ void VGA::vertical_retrace(uint64_t _time)
 	
 	UNUSED(_time);
 	
+	PDEBUGF(LOG_V2, LOG_VGA, "vertical retrace\n");
+	
+	// we can notify the GUI after frame rending is complete or simply at vretrace 
+	m_display->notify_interface();
+	
 	if(m_s.CRTC.vretrace_end.EVI==0 && !is_video_disabled()) { // EVI is an inverted bit
 		raise_interrupt();
 	}
@@ -1868,11 +1874,14 @@ template<>
 uint32_t VGA::s_mem_read<uint8_t>(uint32_t _addr, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
-
+	
+	
 	assert(_addr >= me.m_s.gfx_ctrl.memory_offset && _addr < me.m_s.gfx_ctrl.memory_offset + me.m_s.gfx_ctrl.memory_aperture);
 
 	uint32_t offset = _addr & (me.m_s.gfx_ctrl.memory_aperture - 1);
 
+	PDEBUGF(LOG_V2, LOG_VGA, "mem read 0x%04X\n", offset);
+	
 	uint16_t p_off = offset;
 	if(me.m_s.gfx_ctrl.misc.GM) {
 		if(me.m_s.sequencer.mem_mode.CH4) {
@@ -1940,6 +1949,7 @@ template<>
 void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
+	PDEBUGF(LOG_V2, LOG_VGA, "mem write 0x%04X\n", _addr);
 
 	assert((_addr >= me.m_s.gfx_ctrl.memory_offset) && (_addr < me.m_s.gfx_ctrl.memory_offset + me.m_s.gfx_ctrl.memory_aperture));
 

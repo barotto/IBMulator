@@ -31,23 +31,25 @@ HWBench::HWBench()
 m_min_btime(UINT_MAX),
 m_max_btime(0),
 m_sum_btime(0),
+m_beat_time(0),
 m_beat_count(0),
-m_upd_interval(1000),
+m_upd_interval(1e9),
 m_icount(0),
 m_ccount(0),
-m_heartbeat(0),
 m_reset(true),
 m_chrono(nullptr),
 
 init_time(0),
 ustart(0),
 uend(0),
-update_interval(1000),
+
+heartbeat(0),
 
 bstart(0),
 bend(0),
 beat_count(0),
-min_beat_time(UINT_MAX),
+long_frames(0),
+min_beat_time(LLONG_MAX),
 max_beat_time(0),
 avg_beat_time(.0),
 min_bps(0),
@@ -71,17 +73,23 @@ HWBench::~HWBench()
 void HWBench::init(const Chrono *_chrono, uint _update_interval)
 {
 	m_chrono = _chrono;
-	init_time = m_chrono->get_usec();
+	init_time = m_chrono->get_nsec();
 	ustart = init_time;
-	update_interval = m_upd_interval = (_update_interval * 1.0e3);
+	m_upd_interval = (_update_interval * 1.0e6);
 }
 
+void HWBench::reset()
+{
+	init_time = m_chrono->get_nsec();
+	ustart = init_time;
+	m_reset = true;
+}
 
 void HWBench::beat_start()
 {
 	if(m_reset) {
 		m_beat_count = 0;
-		m_min_btime = UINT_MAX;
+		m_min_btime = LLONG_MAX;
 		m_max_btime = 0;
 		m_sum_btime = 0;
 		m_icount = 0;
@@ -89,20 +97,23 @@ void HWBench::beat_start()
 		m_reset = false;
 	}
 
-	bstart = m_chrono->get_usec();
+	bstart = m_chrono->get_nsec();
 }
 
 //GCC_ATTRIBUTE(optimize("O0")) <- it seems for gcc 4.8+ is not needed anymore
 void HWBench::beat_end()
 {
-	bend = m_chrono->get_usec();
+	bend = m_chrono->get_nsec();
 
-	unsigned btime = bend - bstart;
+	m_beat_time = bend - bstart;
 
-	m_min_btime = std::min(btime,m_min_btime);
-	m_max_btime = std::max(btime,m_max_btime);
-	m_sum_btime += btime;
+	m_min_btime = std::min(m_beat_time, m_min_btime);
+	m_max_btime = std::max(m_beat_time, m_max_btime);
+	m_sum_btime += m_beat_time;
 	m_beat_count++;
+	if(m_beat_time > heartbeat) {
+		long_frames++;
+	}
 
 	unsigned updtime = bend - ustart;
 	if(updtime >= m_upd_interval) {
@@ -122,28 +133,33 @@ void HWBench::data_update()
 
 	double updtime = double(bend - ustart);
 	
-	avg_bps = double(beat_count) * 1.0e6 / updtime;
-	min_bps = 1.0e6 / max_beat_time;
-	max_bps = 1.0e6 / min_beat_time;
+	avg_bps = double(beat_count) * 1.0e9 / updtime;
+	min_bps = 1.0e9 / max_beat_time;
+	max_bps = 1.0e9 / min_beat_time;
 
-	avg_ips = double(m_icount) * 1.0e6 / updtime;
-	avg_cps = double(m_ccount) * 1.0e6 / updtime;
+	avg_ips = double(m_icount) * 1.0e9 / updtime;
+	avg_cps = double(m_ccount) * 1.0e9 / updtime;
 	
-	load = avg_beat_time / m_heartbeat;
+	load = avg_beat_time / heartbeat;
 }
 
-void operator<<(std::ostream& _os, const HWBench &_bench)
+std::ostream& operator<<(std::ostream& _os, const HWBench &_bench)
 {
 	_os.precision(6);
-	_os << "Sim time (us): " << _bench.time_elapsed << _bench.endl;
-	_os << "Avg beats/s: " << _bench.avg_bps << _bench.endl;
+	_os << "Time (s): " << (_bench.time_elapsed / 1e9) << _bench.endl;
+	_os << "Frame time (ms): " << (_bench.m_beat_time / 1e6) << _bench.endl;
+	_os << "Target FPS: " << (1.0e9 / _bench.heartbeat) << _bench.endl;
+	_os << "Curr. FPS: " << _bench.avg_bps << _bench.endl;
 	_os << "Host load: " << _bench.load << _bench.endl;
+	_os << "Missed frames: " << _bench.long_frames << _bench.endl; 
 
 	double mhz = _bench.avg_cps / 1e6;
 	double mips = _bench.avg_ips / 1e6;
 	_os.precision(8);
 	_os << "CPU MHz: " << mhz << _bench.endl;
 	_os << "CPU MIPS: " << mips << _bench.endl;
+	
+	return _os;
 }
 
 

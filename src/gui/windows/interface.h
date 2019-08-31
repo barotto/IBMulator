@@ -69,6 +69,7 @@ protected:
 		float contrast;
 		float saturation;
 		vec2i size; // size in pixel of the destination quad
+		bool resync;
 
 		struct {
 			GLint vgamap;

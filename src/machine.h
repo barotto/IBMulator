@@ -62,7 +62,7 @@ private:
 	Chrono m_main_chrono;
 	HWBench m_bench;
 
-	unsigned m_heartbeat;
+	int64_t m_heartbeat;
 	bool m_quit;
 	bool m_on;
 	bool m_cpu_single_step;
@@ -135,7 +135,7 @@ public:
 	bool main_loop();
 	void config_changed();
 
-	void set_heartbeat(unsigned _us);
+	void set_heartbeat(int64_t _ns);
 	inline uint64_t get_virt_time_ns() const { return m_s.virt_time; }
 	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_s.virt_time); }
 	inline uint64_t get_virt_time_ns_mt() const { return m_mt_virt_time; }
@@ -176,8 +176,9 @@ public:
 	uint8_t get_POST_code();
 	void memdump(uint32_t base=0, uint32_t len=0);
 
-	inline bool is_on() { return m_on; }
-	inline bool is_paused() { return m_cpu_single_step; }
+	inline bool is_on() const { return m_on; }
+	inline bool is_paused() const { return m_cpu_single_step; }
+	inline double speed_factor() const { return m_cycles_factor; }
 
 	//inter-thread commands:
 	void cmd_quit();

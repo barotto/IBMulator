@@ -64,20 +64,22 @@ void Stats::update()
 	m_stats.fps->SetInnerRML(ss.str().c_str());
 
 	ss.str("");
-	uint64_t vtime = m_machine->get_virt_time_ns();
-	ss << "CPU time (ns): " <<  vtime << "<br />";
+	
 	HWBench &hwb = m_machine->get_bench();
-	int64_t vdiff = int64_t(hwb.time_elapsed) - int64_t(vtime)/1000;
-	ss << "CPU time diff: " << int64_t(vdiff/1.0e3) << "<br />";
-
 	ss << hwb;
+	
+	uint64_t vtime = m_machine->get_virt_time_ns_mt();
+	ss << "CPU time (ns): " <<  vtime << "<br />";
+	int64_t vdiff = hwb.time_elapsed - int64_t(vtime);
+	ss << "CPU time diff: " << int64_t(vdiff/1.0e6) << "<br />";
+
 
 	//read the DOS clock from MEM 0040h:006Ch
 	uint32_t ticks = g_memory.dbg_read_dword(0x0400 + 0x006C);
 	uint hour      = ticks / 65543;
 	uint remainder = ticks % 65543;
-	uint minute   = remainder / 1092;
-	remainder = remainder % 1092;
+	uint minute    = remainder / 1092;
+	remainder      = remainder % 1092;
 	uint second    = remainder / 18.21;
 	uint hundredths = fmod(double(remainder),18.21) * 100;
 	ss << "DOS clock: " << hour << ":" << minute << ":" << second << "." << hundredths;
@@ -97,7 +99,14 @@ void Stats::update()
 	ss.str("");
 	ss << "avg bps: " << mixb.avg_bps << "<br />";
 	ss << "beats: " << mixb.beat_count << "<br />";
-	ss << "status: " << m_mixer->get_audio_status() << "<br />";
+	ss << "status: ";
+	switch(m_mixer->get_audio_status()) {
+		case SDL_AUDIO_STOPPED: ss << "stopped"; break;
+		case SDL_AUDIO_PLAYING: ss << "playing"; break;
+		case SDL_AUDIO_PAUSED: ss << "paused"; break;
+		default: ss << "unknown!"; break;
+	}
+	ss << "<br />";
 	ss << "buffer: " << m_mixer->get_buffer_read_avail() << "<br />";
 	ss << "delay: " << m_mixer->get_buffer_len() << "<br />";
 	m_stats.mixer->SetInnerRML(ss.str().c_str());

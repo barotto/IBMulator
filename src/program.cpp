@@ -339,12 +339,9 @@ bool Program::initialize(int argc, char** argv)
 	}
 
 	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
-	m_fpscap = GUI_HEARTBEAT;
-	m_heartbeat = GUI_HEARTBEAT;
-	m_frameskip = 5;
 	m_quit = false;
-	m_next_beat = m_main_chrono.get_usec();
 	m_bench.init(&m_main_chrono, 1000, 1000);
+	set_heartbeat(DEFAULT_HEARTBEAT);
 
 	if(OVERRIDE_VERBOSITY_LEVEL) {
 		g_syslog.set_verbosity(LOG_PROGRAM_VERBOSITY,LOG_PROGRAM);
@@ -526,48 +523,33 @@ void Program::process_evts()
 
 void Program::main_loop()
 {
-	/* http://www.flipcode.com/archives/Main_Loop_with_Fixed_Time_Steps.shtml
-	 * http://www.bulletphysics.org/mediawiki-1.5.8/index.php?title=Canonical_Game_Loop
-	 */
 	int64_t next_time_diff = 0;
+	
 	while(!m_quit) {
-		uint loops = 0;
+		// thread sleep
+		
+		// the time elapsed from the start of the last update
+		int64_t time = m_main_chrono.elapsed_nsec();
 
-		uint64_t time = m_main_chrono.elapsed_usec();
-		/**/
-		if(time < m_fpscap) {
-			uint64_t sleep = (m_fpscap - time) + next_time_diff;
-			uint64_t t0 = m_main_chrono.get_usec();
-			std::this_thread::sleep_for( std::chrono::microseconds(sleep) );
-			uint64_t t1 = m_main_chrono.get_usec();
-			next_time_diff = sleep - (t1 - t0);
+		if(time < m_heartbeat) {
+			int64_t sleep_for = (m_heartbeat - time) + next_time_diff;
+			int64_t t0 = m_main_chrono.get_nsec();
+			std::this_thread::sleep_for( std::chrono::nanoseconds(sleep_for) );
+			int64_t t1 = m_main_chrono.get_nsec();
+			next_time_diff = sleep_for - (t1 - t0);
 		}
-		/**/
-		time = m_main_chrono.get_usec(m_main_chrono.start());
+
+		// frame update
+		
+		// the current wall time, measured from program launch
+		time = m_main_chrono.get_nsec(m_main_chrono.start());
 
 		m_bench.frame_start();
 
-		unsigned hb = m_heartbeat;
-		if(m_threads_sync) {
-			m_fpscap = hb;
-		}
-		while(!m_quit && ((time - m_next_beat) >= hb && loops <= m_frameskip))
-		{
-			m_bench.beat_start();
-			m_bench.frameskip = loops;
-
-			process_evts();
-			m_gui->update(time);
-
-			m_next_beat += m_heartbeat;
-			loops++;
-
-			m_bench.beat_end();
-		}
-
-		// Account for loops overflow causing percent > 1.
-		//float percentWithinTick = std::min(1.f, float(time - g_next_beat)/float(g_heartbeat));
-
+		process_evts();
+		m_gui->update(time);
+		// in the following function, this thread will wait for the Machine 
+		// which will notify on VGA's vertical retrace.
 		m_gui->render();
 
 		m_bench.frame_end();
@@ -599,3 +581,8 @@ void Program::stop()
 	m_quit = true;
 }
 
+void Program::set_heartbeat(int64_t _ns)
+{
+	m_heartbeat = _ns;
+	m_bench.set_heartbeat(_ns);
+}

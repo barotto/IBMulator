@@ -216,6 +216,7 @@ void Machine::reset(uint _signal)
 			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
 			break;
 		case MACHINE_POWER_ON:
+			m_bench.reset();
 			PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
 			break;
 		default:
@@ -283,7 +284,7 @@ void Machine::config_changed()
 
 	m_cycles_factor = 1.0;
 
-	set_heartbeat(MACHINE_HEARTBEAT);
+	set_heartbeat(DEFAULT_HEARTBEAT);
 
 	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
 	for(unsigned i=0; i<m_num_timers; i++) {
@@ -299,16 +300,16 @@ void Machine::config_changed()
 	}
 }
 
-void Machine::set_heartbeat(unsigned _usec)
+void Machine::set_heartbeat(int64_t _nsec)
 {
-	unsigned oldbeat = m_heartbeat;
+	int64_t oldbeat = m_heartbeat;
 	double oldcycles = m_cpu_cycles;
 
-	m_heartbeat = _usec;
-	m_cpu_cycles = g_cpu.frequency() * m_heartbeat;
+	m_heartbeat = _nsec;
+	m_cpu_cycles = g_cpu.frequency() * ((double)m_heartbeat / 1000.0);
 
 	if(oldbeat != m_heartbeat) {
-		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %u usec\n", m_heartbeat);
+		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %u nsec\n", m_heartbeat);
 	}
 	if(oldcycles != m_cpu_cycles) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
@@ -323,25 +324,25 @@ bool Machine::main_loop()
 	static int64_t next_beat_diff = 0L;
 
 	while(true) {
-		uint64_t time = m_main_chrono.elapsed_usec();
+		int64_t time = m_main_chrono.elapsed_nsec();
 		if(time < m_heartbeat) {
-			uint64_t sleep = m_heartbeat - time;
-			uint64_t t0 = m_main_chrono.get_usec();
-			std::this_thread::sleep_for( std::chrono::microseconds(sleep + next_beat_diff) );
+			int64_t sleep = m_heartbeat - time;
+			int64_t t0 = m_main_chrono.get_nsec();
+			std::this_thread::sleep_for( std::chrono::nanoseconds(sleep + next_beat_diff) );
 			m_main_chrono.start();
-			uint64_t t1 = m_main_chrono.get_usec();
+			int64_t t1 = m_main_chrono.get_nsec();
 			next_beat_diff = (sleep + next_beat_diff) - (t1 - t0);
 		} else {
 			m_main_chrono.start();
 		}
-
-		m_bench.beat_start();
 
 		Machine_fun_t fn;
 		while(m_cmd_fifo.pop(fn)) {
 			fn();
 		}
 
+		m_bench.beat_start();
+		
 		if(m_quit) {
 			return false;
 		}
@@ -635,9 +636,10 @@ void Machine::cmd_quit()
 void Machine::cmd_power_on()
 {
 	m_cmd_fifo.push([this] () {
-		if(m_on) return;
+		if(m_on) {
+			return;
+		}
 		reset(MACHINE_POWER_ON);
-		m_on = true;
 	});
 }
 
@@ -798,6 +800,7 @@ void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condi
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
+			m_bench.reset();
 			m_on = true;
 		} catch(std::exception &e) {
 			PERRF(LOG_MACHINE, "error restoring the state\n");

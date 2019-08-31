@@ -37,10 +37,7 @@ class Program
 
 	bool m_threads_sync;
 	double m_freq;
-	uint64_t m_fpscap;
-	std::atomic<unsigned> m_heartbeat;
-	uint64_t m_next_beat;
-	unsigned m_frameskip;
+	std::atomic<int64_t> m_heartbeat;
 	bool m_quit;
 	Chrono m_main_chrono;
 	Bench m_bench;
@@ -81,8 +78,8 @@ public:
 	void stop();
 
 	bool threads_sync() const { return m_threads_sync; }
-	unsigned heartbeat() const { return m_heartbeat; }
-	void set_heartbeat(unsigned _us) { m_heartbeat = _us; }
+	int64_t heartbeat() const { return m_heartbeat; }
+	void set_heartbeat(int64_t _ns);
 
 	inline AppConfig & config() {
 		return m_config[1];

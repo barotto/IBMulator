@@ -173,7 +173,13 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	try {
 		check_device_caps();
-		SDL_GL_SetSwapInterval(!g_program.threads_sync());
+		// TODO SDL supports adaptive sync passing -1 to this function.
+		// Acquire an adaptive sync monitor and test the possibility of
+		// refreshing the screen at VGA native refresh rates.
+		SDL_GL_SetSwapInterval(
+			//!g_program.threads_sync() && 
+			g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC)
+		);
 		init_Rocket();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
@@ -540,7 +546,7 @@ void GUI::GL_debug_output(
 void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
-	GLCALL( glViewport(0,0,	m_width, m_height) );
+	GLCALL( glViewport(0,0, m_width, m_height) );
 	m_windows.interface->render();
 
 	ms_rocket_mutex.lock();
@@ -651,7 +657,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					return true;
 				}
 				case SDLK_F11: {
-					//emulation speed up
+					//emulation speed down
 					if(_event.type == SDL_KEYUP) return true;
 					m_symspeed_factor *= 0.9;
 					if(m_symspeed_factor<1.0 && m_symspeed_factor>0.95) {
@@ -664,7 +670,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					return true;
 				}
 				case SDLK_F12: {
-					//emulation speed down
+					//emulation speed up
 					if(_event.type == SDL_KEYUP) return true;
 					m_symspeed_factor *= 1.1;
 					if(m_symspeed_factor>1.0 && m_symspeed_factor<1.1) {
@@ -750,15 +756,11 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		dispatch_window_event(_event.window);
 	} else if(_event.type == SDL_USEREVENT) {
 		//the 1-second timer
-		uint expected, current = m_machine->get_bench().beat_count;
-		static uint previous = UINT_MAX;
-		expected = 1.0e6 / MACHINE_HEARTBEAT;
-		if(previous < expected && current < expected) {
+		if(m_machine->get_bench().load >= 1.0) {
 			m_windows.interface->show_warning(true);
 		} else {
 			m_windows.interface->show_warning(false);
 		}
-		previous = current;
 	} else if(_event.type == SDL_JOYDEVICEADDED) {
 		SDL_Joystick *joy = SDL_JoystickOpen(_event.jdevice.which);
 		if(joy) {
@@ -1508,7 +1510,7 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(interface != nullptr) {
 		interface->show_message(_mex);
-		timers.activate_timer(ifcmex_timer, 3000000, false);
+		timers.activate_timer(ifcmex_timer, 3e9, false);
 	}
 }
 
@@ -1517,7 +1519,7 @@ void GUI::Windows::show_dbg_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(dbgtools != nullptr) {
 		dbgtools->show_message(_mex);
-		timers.activate_timer(dbgmex_timer, 3000000, false);
+		timers.activate_timer(dbgmex_timer, 3e9, false);
 	}
 }
 

@@ -23,6 +23,7 @@
 #include "statebuf.h"
 #include <vector>
 #include <condition_variable>
+#include <chrono>
 
 #define VGA_MAX_XRES 800
 #define VGA_MAX_YRES 600
@@ -78,13 +79,11 @@ public:
 
 	inline void lock() { m_mutex.lock(); }
 	inline void unlock() { m_mutex.unlock(); }
-	inline void wait() {
+	inline void wait_for_device(unsigned _max_wait_ns) {
 		std::unique_lock<std::mutex> lock(m_mutex);
-		while(m_fb_updated) {
-			m_cv.wait(lock);
-		}
+		m_cv.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
 	}
-	inline void notify_all() { m_cv.notify_all(); }
+	inline void notify_interface() { m_cv.notify_all(); }
 	inline const VideoModeInfo & mode() const { return m_s.mode; }
 	inline unsigned get_fb_size() const { return m_fb.size(); }
 	inline unsigned get_fb_width() const { return m_s.fb_width; }

@@ -30,48 +30,39 @@
 class Bench
 {
 protected:
-	uint m_min_btime;
-	uint m_max_btime;
-	uint m_min_ftime;
-	uint m_max_ftime;
-	uint m_beat_count;
-	uint m_frame_count;
-	uint m_upd_interval;
+	int64_t m_min_ftime;
+	int64_t m_max_ftime;
+	int64_t m_frame_count;
+	int64_t m_upd_interval;
+	
 
 	const Chrono *m_chrono;
 
 public:
-	uint64_t init_time;
+	int64_t init_time;
 	std::chrono::steady_clock::time_point c_init_time;
 
-	uint ustart; //!< update start
-	uint uend; //!< update end
-	uint update_interval; //!< in ms
+	int64_t ustart; //!< update start
+	int64_t uend; //!< update end
+	int64_t update_interval;
 
-	uint bstart; //!< heart beat start
-	uint bend;
-	uint beat_count;
-	uint min_beat_time;
-	uint max_beat_time;
-	uint min_bps;
-	uint max_bps;
-	float avg_bps;
-
-	uint fstart;
-	uint fend;
-	float frame_rate;
-	uint frame_count;
-	uint min_frame_time;
-	uint max_frame_time;
-	uint min_fps;
-	uint max_fps;
-	float avg_fps;
-
-	uint frameskip;
-
-	uint time_elapsed;
+	int64_t heartbeat;
+	
+	int64_t fstart;
+	int64_t fend;
+	int64_t frame_time;
+	double frame_rate;
+	unsigned frame_count;
+	int64_t min_frame_time;
+	int64_t max_frame_time;
+	unsigned min_fps;
+	unsigned max_fps;
+	double avg_fps;
+	unsigned long_frames;
+	
+	int64_t time_elapsed;
 	std::chrono::duration<double> c_time_elapsed;
-	std::vector<int> frame_times;
+	std::vector<int64_t> frame_times;
 
 	bool frame_reset;
 	std::string endl;
@@ -80,10 +71,8 @@ public:
 	~Bench();
 
 	void init(const Chrono *_chrono, int _update_interval, int _rec_buffer_size);
-
-	void beat_start();
-	void beat_end();
-
+	void set_heartbeat(int64_t _nsec) { heartbeat = _nsec; }
+	
 	void frame_start();
 	void frame_end();
 	void data_update();

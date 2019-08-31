@@ -38,7 +38,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""    },
 		{ PROGRAM_CAPTURE_DIR,  ""    },
-		{ PROGRAM_THREADS_SYNC, "yes" }
+		{ PROGRAM_THREADS_SYNC, "yes" },
+		{ PROGRAM_VSYNC,        "no"  },
 	} },
 
 	{ GUI_SECTION, {

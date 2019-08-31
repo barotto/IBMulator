@@ -29,38 +29,41 @@
 class HWBench
 {
 protected:
-	unsigned m_min_btime;
-	unsigned m_max_btime;
-	unsigned m_sum_btime;
-	unsigned m_beat_count;
-	unsigned m_upd_interval;
+	int64_t  m_min_btime;
+	int64_t  m_max_btime;
+	int64_t  m_sum_btime;
+	int64_t  m_beat_time;
+	uint64_t m_beat_count;
+	int64_t  m_upd_interval;
 	uint64_t m_icount;
 	uint64_t m_ccount;
-	unsigned m_heartbeat;
 	bool m_reset;
 	const Chrono *m_chrono;
 
 public:
-	uint64_t init_time;
+	int64_t init_time;
 
-	uint64_t ustart; //!< update start
-	uint64_t uend; //!< update end
-	uint64_t update_interval; //!< in us
+	int64_t ustart; //!< update start
+	int64_t uend; //!< update end
 
-	uint64_t bstart; //!< heart beat start
-	uint64_t bend;
+	int64_t  heartbeat;
+	
+	int64_t  bstart; //!< heart beat start
+	int64_t  bend;
 	unsigned beat_count;
-	unsigned min_beat_time;
-	unsigned max_beat_time;
+	unsigned long_frames;
+	int64_t  min_beat_time;
+	int64_t  max_beat_time;
 	double   avg_beat_time;
 	unsigned min_bps;
 	unsigned max_bps;
 	double avg_bps;
 	double avg_ips;
 	double avg_cps;
-	double load;
+	std::atomic<double> load; // the load value is used in the gui thread to decide
+	                          // if it's safe to keep the synchro between threads 
 
-	uint64_t time_elapsed;
+	int64_t time_elapsed;
 
 	std::string endl;
 
@@ -68,17 +71,20 @@ public:
 	~HWBench();
 
 	void init(const Chrono *_chrono, uint _update_interval);
-	void set_heartbeat(unsigned _usec) { m_heartbeat = _usec; }
+	void reset();
+	void set_heartbeat(int64_t _nsec) { heartbeat = _nsec; }
 	void beat_start();
 	void beat_end();
 	inline void cpu_step() { m_icount++; }
 	inline void cpu_cycles(uint _cycles) { m_ccount += _cycles; }
 
 	void data_update();
+	
+	friend std::ostream& operator<<(std::ostream& out, const HWBench &_bench);
 };
 
 
-void operator<<(std::ostream& _os, const HWBench &_bench);
+std::ostream& operator<<(std::ostream& _os, const HWBench &_bench);
 
 
 

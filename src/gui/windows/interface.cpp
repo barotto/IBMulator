@@ -471,6 +471,29 @@ void Interface::render_quad()
 
 void Interface::render_monitor()
 {
+	// TODO The machine is a different thread and these methods are not thread safe.
+	// They could return garbage, but the worst that would happen is some sporadic
+	// tearing or stuttering. The wait could be skipped (tearing) or could be
+	// called without reason (stuttering) but in any case the program should
+	// not end in a deadlock.
+	if(
+	   g_program.threads_sync() && 
+	   m_machine->is_on() && 
+	  !m_machine->is_paused() && 
+	   m_machine->speed_factor() >= 1.0 &&
+	   m_machine->get_bench().load < 1.0
+	)
+	{
+		try {
+			// Wait for no more than 2 frames.
+			// Using a timeout let us simplify the code at the expense of possible
+			// stuttering, which would happen only in specific and non meaningful
+			// cases like when the user pauses the machine.
+			// I think this is acceptable. 
+			m_display.vga.wait_for_device(g_program.heartbeat() * 2);
+		} catch(std::exception &) {}
+	}
+	
 	GLCALL( glActiveTexture(GL_TEXTURE0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
 	if(m_display.vga.fb_updated()) {
@@ -484,9 +507,6 @@ void Interface::render_monitor()
 		//PBOs are a possible alternative, but a memcpy is way simpler.
 		m_display.tex_buf = m_display.vga.get_fb();
 		m_display.vga.clear_fb_updated();
-		if(THREADS_WAIT) {
-			m_display.vga.notify_all();
-		}
 		m_display.vga.unlock();
 
 		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_width()) );
