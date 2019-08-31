@@ -631,7 +631,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 						_discard_next_key = modifier_key;
 					}
 					g_program.save_state("", [this]() {
-						m_windows.interface->show_message("State saved");
+						show_message("State saved");
 					}, nullptr);
 					return true;
 				}
@@ -642,7 +642,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 						return true;
 					}
 					g_program.restore_state("", [this]() {
-						m_windows.interface->show_message("State restored");
+						show_message("State restored");
 					}, nullptr);
 					return true;
 				}
