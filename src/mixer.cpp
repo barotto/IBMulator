@@ -34,8 +34,16 @@ Mixer g_mixer;
 
 Mixer::Mixer()
 :
+m_start_time(0),
+m_prebuffer(50),
+m_machine(nullptr),
 m_heartbeat(10000),
+m_next_beat_diff(0),
+m_quit(false),
+m_audio_status(SDL_AUDIO_STOPPED),
+m_paused(false),
 m_device(0),
+m_frame_size(512),
 m_audio_capture(false),
 m_global_volume(1.f)
 {
@@ -184,7 +192,7 @@ void Mixer::config_changed()
 void Mixer::start()
 {
 	m_quit = false;
-	m_start = 0;
+	m_start_time = 0;
 	m_next_beat_diff = 0;
 	PDEBUGF(LOG_V1, LOG_MIXER, "Mixer thread started\n");
 	main_loop();
@@ -254,18 +262,20 @@ void Mixer::main_loop()
 				send_packet(mix_size);
 			}
 			if(m_audio_status == SDL_AUDIO_PAUSED) {
-				int elapsed = m_main_chrono.get_msec() - m_start;
-				if(m_start == 0) {
-					m_start = m_main_chrono.get_msec();
+				int elapsed = m_main_chrono.get_msec() - m_start_time;
+				if(m_start_time == 0) {
+					m_start_time = m_main_chrono.get_msec();
 					PDEBUGF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
 				} else if(get_buffer_len() >= m_prebuffer*1000) {
 					SDL_PauseAudioDevice(m_device, 0);
 					PDEBUGF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed, %d bytes/%d usecs of data)\n",
 							elapsed, m_out_buffer.get_read_avail(), get_buffer_len());
-					m_start = 0;
+					m_start_time = 0;
+				} else {
+					PDEBUGF(LOG_V2, LOG_MIXER, "buffer size: %d ms\n", get_buffer_len());
 				}
 			} else {
-				assert(m_start==0);
+				assert(m_start_time==0);
 				double buf_len_s = m_prebuffer/1000.0 + (m_heartbeat*3)/1e6;
 				size_t buf_limit = size_t(buf_len_s*m_device_spec.freq) * m_frame_size;
 				if(m_out_buffer.get_read_avail() > buf_limit) {
@@ -282,7 +292,7 @@ void Mixer::main_loop()
 				}
 			}
 		} else {
-			m_start = 0;
+			m_start_time = 0;
 			if(m_audio_status==SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
 				SDL_PauseAudioDevice(m_device, 1);
 				PDEBUGF(LOG_V1, LOG_MIXER, "paused\n");
@@ -509,7 +519,7 @@ void Mixer::cmd_resume()
 			return;
 		}
 		m_paused = false;
-		m_start = m_main_chrono.get_msec() - m_prebuffer/2;
+		m_start_time = m_main_chrono.get_msec() - m_prebuffer/2;
 	});
 }
 

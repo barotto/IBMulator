@@ -50,7 +50,7 @@ private:
 	RingBuffer m_out_buffer;
 	std::vector<float> m_mix_buffer;
 	WAVFile m_wav;
-	int m_start;
+	int m_start_time;
 
 	int m_prebuffer;
 

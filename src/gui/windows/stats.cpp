@@ -28,6 +28,7 @@
 
 #include <Rocket/Core.h>
 #include <sstream>
+#include <iomanip>
 
 event_map_t Stats::ms_evt_map = {
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
@@ -97,9 +98,15 @@ void Stats::update()
 
 	HWBench &mixb = m_mixer->get_bench();
 	ss.str("");
-	ss << "avg bps: " << mixb.avg_bps << "<br />";
-	ss << "beats: " << mixb.beat_count << "<br />";
-	ss << "status: ";
+	//ss << std::fixed << std::setprecision( 3 );
+	ss << "Mode: " <<
+			m_mixer->get_audio_spec().freq << " Hz, " <<
+			SDL_AUDIO_BITSIZE(m_mixer->get_audio_spec().format) << " bit, " << 
+			(m_mixer->get_audio_spec().channels==1?"mono":"stereo") << 
+			"<br />";
+	
+	ss << "Curr. BPS: " << mixb.avg_bps << "<br />";
+	ss << "Status: ";
 	switch(m_mixer->get_audio_status()) {
 		case SDL_AUDIO_STOPPED: ss << "stopped"; break;
 		case SDL_AUDIO_PLAYING: ss << "playing"; break;
@@ -107,8 +114,8 @@ void Stats::update()
 		default: ss << "unknown!"; break;
 	}
 	ss << "<br />";
-	ss << "buffer: " << m_mixer->get_buffer_read_avail() << "<br />";
-	ss << "delay: " << m_mixer->get_buffer_len() << "<br />";
+	ss << "Buffer size: " << m_mixer->get_buffer_read_avail() << "<br />";
+	ss << "Delay (us): " << m_mixer->get_buffer_len() << "<br />";
 	m_stats.mixer->SetInnerRML(ss.str().c_str());
 }
 

@@ -36,7 +36,8 @@ m_in_time(0),
 m_SRC_state(nullptr),
 m_capture_clbk([](bool){}),
 m_volume(1.f),
-m_category(MixerChannelCategory::AUDIO)
+m_category(MixerChannelCategory::AUDIO),
+m_fr_rem(0.0)
 {
 }
 
@@ -209,7 +210,7 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 		return;
 	}
 	unsigned in_frames;
-	if(_time_span_us>0) {
+	if(_time_span_us > 0) {
 		if(m_first_update) {
 			m_fr_rem = 0.0;
 		}
@@ -221,7 +222,7 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 	}
 
 	if(in_frames == 0) {
-		PDEBUGF(LOG_V2, LOG_MIXER, "channel active but empty\n");
+		PDEBUGF(LOG_V2, LOG_MIXER, "%s: channel is active but empty\n", m_name.c_str());
 		return;
 	}
 
