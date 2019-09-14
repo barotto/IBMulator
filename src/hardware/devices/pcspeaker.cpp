@@ -63,9 +63,11 @@ void PCSpeaker::remove()
 void PCSpeaker::config_changed()
 {
 	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
+	
 	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, rate});
 	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, rate});
 	m_outbuf.reserve_us(50000);
+
 #if HAVE_LIBSAMPLERATE
 	if(m_SRC == nullptr) {
 		int err;
@@ -77,9 +79,14 @@ void PCSpeaker::config_changed()
 		m_pitbuf.reserve_us(50000);
 	}
 #endif
+	
 	float volume = clamp(g_program.config().get_real(PCSPEAKER_SECTION, PCSPEAKER_VOLUME),
 			0.0, 10.0);
+	std::string filters = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_FILTERS, "");
+	
 	m_channel->set_volume(volume);
+	m_channel->set_filters(filters);
+	
 	reset(0);
 }
 

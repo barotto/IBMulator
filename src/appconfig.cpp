@@ -90,17 +90,20 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_RATE,    "22050" },
-		{ PCSPEAKER_VOLUME,  "0.3"   }
+		{ PCSPEAKER_RATE,    "48000" },
+		{ PCSPEAKER_FILTERS, "LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500" },
+		{ PCSPEAKER_VOLUME,  "0.5"   }
 	} },
 
 	{ PS1AUDIO_SECTION, {
 		{ PS1AUDIO_RATE,    "48000" },
+		{ PS1AUDIO_FILTERS, ""      },
 		{ PS1AUDIO_VOLUME,  "1.0"   }
 	} },
 
 	{ ADLIB_SECTION, {
 		{ ADLIB_RATE,    "48000" },
+		{ ADLIB_FILTERS, ""      },
 		{ ADLIB_VOLUME,  "1.4"   }
 	} },
 
@@ -384,20 +387,27 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
-";    rate: Sample rate. Best results with 22050.\n"
-";          Possible values: 22050, 48000, 44100, 32000, 11025.\n"
+";    rate: Sample rate.\n"
+";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
+"; filters: DSP filters. Use them to emulate the response of the typical PC speaker.\n"
+";          Possible values: a list of filter definitions. See the README for more info.\n"
+";          Leave empty to disable\n"
 ";  volume: Audio volume.\n"
 		},
 		{ PS1AUDIO_SECTION,
 "; enabled: Install the PS/1 Audio/Joystick Card.\n"
 ";    rate: Sample rate of the PSG (Programmable Sound Generator). The DAC rate is programmed at run-time.\n"
 ";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
+"; filters: DSP filters, applied to both the DAC and PSG channels.\n"
+";          Possible values: a list of filter definitions. See the README for more info.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ ADLIB_SECTION,
 "; enabled: Install the AdLib Audio Card.\n"
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
 ";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
+"; filters: DSP filters.\n"
+";          Possible values: a list of filter definitions. See the README for more info.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ SOUNDFX_SECTION,
@@ -508,11 +518,13 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ PCSPEAKER_SECTION, {
 		PCSPEAKER_ENABLED,
 		PCSPEAKER_RATE,
+		PCSPEAKER_FILTERS,
 		PCSPEAKER_VOLUME
 	} },
 	{ PS1AUDIO_SECTION, {
 		PS1AUDIO_ENABLED,
 		PS1AUDIO_RATE,
+		PS1AUDIO_FILTERS,
 		PS1AUDIO_VOLUME
 	} },
 	{ ADLIB_SECTION, {
@@ -603,7 +615,7 @@ double AppConfig::parse_real(const string &_str)
 bool AppConfig::parse_bool(string _str)
 {
 	// Convert to lower case to make string comparisons case-insensitive
-	std::transform(_str.begin(), _str.end(), _str.begin(), ::tolower);
+	_str = str_to_lower(_str);
 	if (_str == "true" || _str == "yes" || _str == "on" || _str == "1") {
 		return true;
 	} else if (_str == "false" || _str == "no" || _str == "off" || _str == "0") {
@@ -612,6 +624,15 @@ bool AppConfig::parse_bool(string _str)
 		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a boolean\n", _str.c_str());
 		throw std::exception();
 	}
+}
+
+std::vector<string> AppConfig::parse_tokens(string _str, string _regex_sep)
+{
+	std::regex re(_regex_sep);
+	// -1 = splitting
+	std::sregex_token_iterator first{_str.begin(), _str.end(), re, -1}, last;
+	
+	return {first, last};
 }
 
 int AppConfig::get_error()

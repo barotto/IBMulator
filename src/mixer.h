@@ -96,6 +96,9 @@ public:
 	int get_buffer_len() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_device_spec; }
 
+	template <int Channels>
+	static std::vector<std::shared_ptr<Dsp::Filter>> create_filters(double _rate, std::string _filters_def);
+	
 	bool is_paused() const { return m_paused; }
 	bool is_enabled() const { return (m_device!=0); }
 
@@ -118,5 +121,9 @@ private:
 	void stop_capture();
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 };
+
+
+extern template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<1>(double _rate, std::string _filters_def);
+extern template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<2>(double _rate, std::string _filters_def);
 
 #endif

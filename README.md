@@ -138,6 +138,42 @@ portrait mode (rotated) to render it at real size.
 
 You can select the GUI mode under the [gui] section of the ini file.
 
+### Audio DSP filters
+
+Sound cards' channels can be filtered with IIR filters.
+
+A filter is defined with a string containing the filter name followed by its
+parameters separated by commas, like so:
+```
+LowPass,order=5,cutoff=5000
+```
+Multiple filters can be concatenated with the '|' character, like so:
+```
+LowPass,order=3,cutoff=4000|HighPass,order=10,cutoff=500
+```
+A parameter's value is specified by an integer or real number. This is the list
+of available parameters:
+
+| Parameter name | Description           |
+| -------------- | --------------------- |
+| order          | Filter's order (1-50) |
+| cutoff         | Cutoff frequency (Hz) |
+| center         | Center frequency (Hz) |
+| bw             | Bandwidth (Hz)        |
+| gain           | Gain (dB)             |
+
+This is the list of available filters with their accepted parameters:
+
+| Filter name | Parameters               | Description            |
+| ----------- | -------------------------|----------------------- |
+| LowPass     | order, cutoff            | Butterworth Low Pass   |
+| HighPass    | order, cutoff            | Butterworth High Pass  |
+| BandPass    | order, center, bw        | Butterworth Band Pass  |
+| BandStop    | order, center, bw        | Butterworth Band Stop  |
+| LowShelf    | order, cutoff, gain      | Butterworth Low Shelf  |
+| HighShelf   | order, cutoff, gain      | Butterworth High Shelf |
+| BandShelf   | order, center, bw, gain  | Butterworth Band Shelf |
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)

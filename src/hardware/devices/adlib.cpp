@@ -86,7 +86,9 @@ void AdLib::config_changed()
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
 	float volume = clamp(g_program.config().get_real(ADLIB_SECTION, ADLIB_VOLUME),
 			0.0, 10.0);
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume);
+	std::string filters = g_program.config().get_string(ADLIB_SECTION, ADLIB_FILTERS, "");
+	
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume, filters);
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

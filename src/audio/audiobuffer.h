@@ -137,7 +137,7 @@ const T& AudioBuffer::at(unsigned _pos) const
 	}
 	unsigned byteidx = _pos*sample_size();
 	if(byteidx+sample_size() > m_data.size()) {
-		throw std::out_of_range("");
+		throw std::out_of_range("AudioBuffer::at()");
 	}
 	return reinterpret_cast<const T&>(*(&m_data[byteidx]));
 }

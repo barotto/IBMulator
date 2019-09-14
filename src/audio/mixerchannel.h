@@ -22,7 +22,9 @@
 
 #include <atomic>
 #include <vector>
+#include <memory>
 #include "audiobuffer.h"
+#include "dsp/Dsp.h"
 
 class Mixer;
 
@@ -60,6 +62,7 @@ private:
 	float m_volume;
 	MixerChannelCategory m_category;
 	double m_fr_rem;
+	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
 
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);
@@ -69,6 +72,9 @@ public:
 	void enable(bool _enabled);
 	inline bool is_enabled() { return m_enabled; }
 
+	void set_filters(std::string _filters_def);
+	void set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters);
+	
 	// The mixer thread can call also these methods:
 	void set_in_spec(const AudioSpec &_spec);
 	void set_out_spec(const AudioSpec &_spec);
@@ -98,7 +104,7 @@ public:
 	void on_capture(bool _enable);
 
 private:
-	void reset_SRC();
+	void reset_filters();
 };
 
 

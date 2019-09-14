@@ -20,6 +20,7 @@
 #include <string>
 #include <sstream>
 #include <array>
+#include <algorithm>
 #include "utils.h"
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
@@ -29,6 +30,22 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 		_str.replace(i, _search.length(), _replace);
 		i = _str.find(_search, i+_replace.length());
 	}
+}
+
+std::string str_to_lower(std::string _str)
+{
+	std::transform(_str.begin(), _str.end(), _str.begin(), ::tolower);
+	return _str;
+}
+
+std::string str_trim(std::string _str)
+{
+	const char* ws = " \t\n\r\f\v";
+	
+	_str.erase(0, _str.find_first_not_of(ws));
+	_str.erase(_str.find_last_not_of(ws) + 1);
+	
+	return _str;
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,

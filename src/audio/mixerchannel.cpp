@@ -56,7 +56,7 @@ void MixerChannel::enable(bool _enabled)
 		m_enabled = _enabled;
 		m_disable_time = 0;
 		if(_enabled) {
-			reset_SRC();
+			reset_filters();
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 		} else {
 			m_first_update = true;
@@ -94,8 +94,12 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_us, bool _prebuff
 	return std::make_tuple(active,enabled);
 }
 
-void MixerChannel::reset_SRC()
+void MixerChannel::reset_filters()
 {
+	for(auto &f : m_filters) {
+		f->reset();
+	}
+	
 #if HAVE_LIBSAMPLERATE
 	if(m_SRC_state == nullptr) {
 		const SDL_AudioSpec &spec = m_mixer->get_audio_spec();
@@ -117,7 +121,7 @@ void MixerChannel::set_in_spec(const AudioSpec &_spec)
 		m_in_buffer.set_spec(_spec);
 		// 5 sec. worth of data, how much is enough?
 		m_in_buffer.reserve_us(5e6);
-		reset_SRC();
+		reset_filters();
 	}
 }
 
@@ -128,7 +132,7 @@ void MixerChannel::set_out_spec(const AudioSpec &_spec)
 		 */
 		m_out_buffer.set_spec({AUDIO_FORMAT_F32, _spec.channels, _spec.rate});
 		m_out_buffer.reserve_us(5e6);
-		reset_SRC();
+		reset_filters();
 	}
 }
 
@@ -196,11 +200,51 @@ void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
 	m_out_buffer.pop_frames(_frames_to_pop);
 }
 
+void MixerChannel::set_filters(std::string _filters_def)
+{
+	if(_filters_def.empty()) {
+		m_filters.clear();
+		return;
+	}
+	
+	std::vector<std::shared_ptr<Dsp::Filter>> filters;
+	
+	try {
+		if(m_out_buffer.spec().channels == 1) {
+			filters = Mixer::create_filters<1>(double(m_out_buffer.spec().rate), _filters_def);
+		} else if(m_out_buffer.spec().channels == 2) {
+			filters = Mixer::create_filters<2>(double(m_out_buffer.spec().rate), _filters_def);
+		} else {
+			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
+		}
+	} catch(std::exception &) {
+		return;
+	}
+	
+	set_filters(filters);
+}
+
+void MixerChannel::set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters)
+{
+	// this is called by the machine thread.
+	// don't alter the filters if the channel is active
+	if(m_enabled) {
+		PDEBUGF(LOG_V0, LOG_MIXER, "%s: filters set while channel active!\n", m_name.c_str());
+		return;
+	}
+	
+	m_filters = _filters;
+	
+	for(auto &f : m_filters) {
+		PINFOF(LOG_V1, LOG_MIXER, "%s: adding DSP filter '%s'\n", m_name.c_str(), f->getName().c_str());
+	}
+}
+
 void MixerChannel::flush()
 {
 	m_in_buffer.clear();
 	m_out_buffer.clear();
-	reset_SRC();
+	reset_filters();
 }
 
 void MixerChannel::input_finish(uint64_t _time_span_us)
@@ -226,44 +270,59 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 		return;
 	}
 
-	/* input data -> convert ch/format/rate -> add to output data
-	 * The following procedure could be more efficent using m_out_buffer directly
-	 * but that would require a convoluted conversion function that works on a
-	 * single destination buffer. I'd rather have a slightly less efficent but
-	 * readable and concise procedure.
-	 */
-	/* these work buffers can be static only because the current implementation
-	 * of the mixer is single threaded.
-	 */
+	// input buffer -> convert format&rate -> filters -> convert ch -> output buffer
+	
+	// these work buffers can be static only because the current implementation
+	// of the mixer is single threaded.
 	static AudioBuffer dest[2];
 	unsigned bufidx = 0;
-	AudioBuffer *source=&m_in_buffer;
+	AudioBuffer *source = &m_in_buffer;
 
-	if(m_in_buffer.channels() != m_out_buffer.channels()) {
-		dest[0].set_spec({m_in_buffer.format(),m_out_buffer.channels(),m_in_buffer.rate()});
-		source->convert_channels(dest[0], in_frames);
-		source = &dest[0];
-		bufidx = 1;
-	}
+	// 1. convert format
 	if(m_in_buffer.format() != AUDIO_FORMAT_F32) {
-		dest[bufidx].set_spec({AUDIO_FORMAT_F32,m_out_buffer.channels(),m_in_buffer.rate()});
+		dest[bufidx].set_spec({AUDIO_FORMAT_F32, m_in_buffer.channels(), m_in_buffer.rate()});
 		source->convert_format(dest[bufidx], in_frames);
 		source = &dest[bufidx];
 		bufidx = (bufidx+1)%2;
 	}
+
+	// 2. convert rate, processed frames can be different than in_frames
+	int frames;
 	if(m_in_buffer.rate() != m_out_buffer.rate()) {
-		dest[bufidx].set_spec(m_out_buffer.spec());
+		dest[bufidx].set_spec({AUDIO_FORMAT_F32, m_in_buffer.channels(), m_out_buffer.rate()});
 		unsigned missing = source->convert_rate(dest[bufidx], in_frames, m_SRC_state);
 		if(m_new_data && missing>0) {
 			m_out_buffer.hold_frames<float>(missing);
 		}
-		m_out_buffer.add_frames(dest[bufidx]);
 		m_new_data = false;
+		source = &dest[bufidx];
+		bufidx = (bufidx+1)%2;
+		frames = source->frames();
 	} else {
-		m_out_buffer.add_frames(*source, in_frames);
+		frames = in_frames;
 	}
 
+	if(frames) {
+		
+		// 3. process filters
+		for(auto &f : m_filters) {
+			f->process(frames, &(source->at<float>(0)));
+		}
+		
+		// 4. convert channels
+		if(m_in_buffer.channels() != m_out_buffer.channels()) {
+			dest[bufidx].set_spec(m_out_buffer.spec());
+			source->convert_channels(dest[bufidx], frames);
+			source = &dest[bufidx];
+		}
+		
+		// 5. add to output buffer
+		m_out_buffer.add_frames(*source, frames);
+	}
+
+	// remove processed frames from input buffer
 	m_in_buffer.pop_frames(in_frames);
+
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%dus), out: %d frames (%dus)\n",
 			m_name.c_str(), _time_span_us,
 			in_frames, m_in_buffer.spec().frames_to_us(in_frames),

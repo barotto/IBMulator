@@ -62,10 +62,6 @@ private:
 
 	std::string get_value(ini_file_t &_values, const std::string &_section, const std::string &_name);
 
-	int parse_int(const std::string &_str);
-	double parse_real(const std::string &_str);
-	bool parse_bool(std::string _str);
-
 public:
 	AppConfig();
 
@@ -78,7 +74,12 @@ public:
 	std::string get_cfg_home() const { return m_cfg_home; }
 
 	void parse(const std::string &_filename);
-
+	
+	static int parse_int(const std::string &_str);
+	static double parse_real(const std::string &_str);
+	static bool parse_bool(std::string _str);
+	static std::vector<std::string> parse_tokens(std::string _str, std::string _regex_sep);
+	
 	std::string get_value(const std::string &_section, const std::string &_name);
 
 	// Return the result of ini_parse(), i.e., 0 on success, line number of
@@ -207,16 +208,19 @@ public:
 #define PCSPEAKER_SECTION       "pcspeaker"
 #define PCSPEAKER_ENABLED       "enabled"
 #define PCSPEAKER_RATE          "rate"
+#define PCSPEAKER_FILTERS       "filters"
 #define PCSPEAKER_VOLUME        "volume"
 
 #define PS1AUDIO_SECTION        "ps1audio"
 #define PS1AUDIO_ENABLED        "enabled"
 #define PS1AUDIO_RATE           "rate"
+#define PS1AUDIO_FILTERS        "filters"
 #define PS1AUDIO_VOLUME         "volume"
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"
 #define ADLIB_RATE              "rate"
+#define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
 
 #define SOUNDFX_SECTION         "soundfx"

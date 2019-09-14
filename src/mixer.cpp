@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <cctype>
 #include "filesys.h"
 #include "mixer.h"
 #include "program.h"
@@ -501,6 +502,111 @@ int Mixer::get_buffer_len() const
 	int time_left = frames_in_buffer * usec_per_frame;
 	return time_left;
 }
+
+template <int Channels>
+std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters(double _rate, std::string _filters_def)
+{
+	std::vector<std::shared_ptr<Dsp::Filter>> filters;
+	
+	auto filters_toks = AppConfig::parse_tokens(_filters_def, "\\|");
+	
+	for(auto filter_str : filters_toks) {
+		
+		PDEBUGF(LOG_V2, LOG_MIXER, "Filter definition: %s\n", filter_str.c_str());
+		
+		auto filter_toks = AppConfig::parse_tokens(filter_str, "\\,");
+		if(filter_toks.empty()) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "Invalid filter definition: %s\n", filter_str.c_str());
+			continue;
+		}
+		
+		std::string fname = str_trim(str_to_lower(filter_toks[0]));
+		
+		const std::map<std::string, int> filter_types = {
+			{"lowpass",   1},
+			{"highpass",  2}, 
+			{"bandpass",  3},
+			{"bandstop",  4}, 
+			{"lowshelf",  5}, 
+			{"highshelf", 6},
+			{"bandshelf", 7}
+		};
+		
+		if(filter_types.find(fname) == filter_types.end()) {
+			PERRF(LOG_MIXER, "Invalid filter: %s\n", fname.c_str());
+			continue;
+		}
+		
+		std::shared_ptr<Dsp::Filter> filter;
+
+		switch(filter_types.at(fname)) {
+			case 1: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowPass  <50>,Channels>>(); break;
+			case 2: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighPass <50>,Channels>>(); break;
+			case 3: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandPass <50>,Channels>>(); break;
+			case 4: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandStop <50>,Channels>>(); break;
+			case 5: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowShelf <50>,Channels>>(); break;
+			case 6: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighShelf<50>,Channels>>(); break;
+			case 7: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandShelf<50>,Channels>>(); break;
+			default:
+				PERRF(LOG_MIXER, "Invalid filter: %s\n", fname.c_str());
+				continue;
+		}
+		
+		PDEBUGF(LOG_V1, LOG_MIXER, "Filter: %s\n", filter->getName().c_str());
+		
+		std::map<std::string, Dsp::ParamInfo> param_types = {
+			{"order",  Dsp::ParamInfo::defaultOrderParam()},
+			{"cutoff", Dsp::ParamInfo::defaultFrequencyParam()},
+			{"center", Dsp::ParamInfo::defaultFrequencyParam()},
+			{"bw",     Dsp::ParamInfo::defaultBandwidthHzParam()},
+			{"gain",   Dsp::ParamInfo::defaultGainParam()}
+		};
+		
+		// remove the filter name, parse parameters
+		filter_toks.erase(filter_toks.begin());
+		
+		Dsp::Params fparams;
+		fparams.clear();
+		fparams[Dsp::idSampleRate] = _rate;
+		
+		for(auto filter_par : filter_toks) {
+			
+			auto param_toks = AppConfig::parse_tokens(filter_par, "\\=");
+			if(param_toks.size() != 2) {
+				PERRF(LOG_MIXER, "invalid filter parameter definition: %s\n", filter_par.c_str());
+				continue;
+			}
+			
+			std::string pname = str_trim(str_to_lower(param_toks[0]));
+			
+			if(param_types.find(pname) == param_types.end()) {
+				PERRF(LOG_MIXER, "invalid filter parameter name: %s\n", pname.c_str());
+				continue;
+			}
+			
+			try {
+				fparams[param_types[pname].getId()] = AppConfig::parse_real(param_toks[1]);
+			} catch(std::exception &) {
+				PERRF(LOG_MIXER, "invalid filter parameter value: %s\n", param_toks[1].c_str());
+				continue;
+			}
+			
+			PDEBUGF(LOG_V1, LOG_MIXER, "  %s = %.3f\n",
+					param_types[pname].getName(),
+					fparams[param_types[pname].getId()]
+					);
+		}
+		
+		filter->setParams(fparams);
+		
+		filters.push_back(filter);
+	}
+	
+	return filters;
+}
+
+template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<1>(double _rate, std::string _filters_def);
+template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<2>(double _rate, std::string _filters_def);
 
 void Mixer::cmd_pause()
 {

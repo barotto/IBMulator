@@ -145,8 +145,11 @@ void PS1Audio::config_changed()
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
 	float volume = clamp(g_program.config().get_real(PS1AUDIO_SECTION, PS1AUDIO_VOLUME),
 			0.0, 10.0);
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume);
+	std::string filters = g_program.config().get_string(PS1AUDIO_SECTION, PS1AUDIO_FILTERS, "");
+	
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume, filters);
 	m_DAC_channel->set_volume(volume);
+	m_DAC_channel->set_filters(filters);
 }
 
 void PS1Audio::save_state(StateBuf &_state)
