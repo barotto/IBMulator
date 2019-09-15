@@ -96,6 +96,7 @@ const std::map<int, StorageCtrl_ATA::ata_command_fn> StorageCtrl_ATA::ms_ata_com
 	ATA_CMD_FN(0x34, "WRITE SECTORS EXT",              write_sectors               ),
 	ATA_CMD_FN(0x39, "WRITE MULTIPLE EXT",             write_sectors               ),
 	ATA_CMD_FN(0x30, "WRITE SECTORS",                  write_sectors               ),
+	ATA_CMD_FN(0x31, "WRITE SECTORS NO RETRY",         write_sectors               ),
 	ATA_CMD_FN(0xC5, "WRITE MULTIPLE SECTORS",         write_sectors               ),
 	ATA_CMD_FN(0x90, "EXECUTE DEVICE DIAGNOSTIC",      execute_device_diagnostic   ),
 	ATA_CMD_FN(0x91, "INITIALIZE DRIVE PARAMETERS",    initialize_drive_parameters ),
@@ -127,7 +128,6 @@ const std::map<int, StorageCtrl_ATA::ata_command_fn> StorageCtrl_ATA::ms_ata_com
 	ATA_CMD_FN(0x2A, "READ STREAM DMA",                not_implemented             ),
 	ATA_CMD_FN(0x2B, "READ STREAM PIO",                not_implemented             ),
 	ATA_CMD_FN(0x2F, "READ LOG EXT",                   not_implemented             ),
-	ATA_CMD_FN(0x31, "WRITE SECTORS NO RETRY",         not_implemented             ),
 	ATA_CMD_FN(0x32, "WRITE LONG",                     not_implemented             ),
 	ATA_CMD_FN(0x33, "WRITE LONG NO RETRY",            not_implemented             ),
 	ATA_CMD_FN(0x36, "WRITE DMA QUEUED EXT",           not_implemented             ),
@@ -493,6 +493,7 @@ void StorageCtrl_ATA::command_timer(int _ch, int _dev, uint64_t /*_time*/)
 				break;
 			}
 			case 0x30: // WRITE SECTORS
+			case 0x31: // WRITE SECTORS NO RETRY
 			case 0xC5: // WRITE MULTIPLE SECTORS
 			case 0x34: // WRITE SECTORS EXT
 			case 0x39: // WRITE MULTIPLE EXT
@@ -834,6 +835,7 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 		{
 			switch(controller->current_command) {
 				case 0x30: // WRITE SECTORS
+				case 0x31: // WRITE SECTORS NO RETRY
 				case 0xC5: // WRITE MULTIPLE SECTORS
 				case 0x34: // WRITE SECTORS EXT
 				case 0x39: // WRITE MULTIPLE EXT
