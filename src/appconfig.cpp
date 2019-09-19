@@ -231,7 +231,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  model: The PS/1 Model. This is also the machine configuration that's used to select proper values for any \"auto\" value in this file.\n"
 ";         Possible values: auto, or a machine model string\n"
 ";          auto: the model is determined by the romset\n"
-";          For the list of supported models and their hardware configuration see " PACKAGE_STRING "'s project site.\n"
+";          For the list of supported models and their hardware configuration see " PACKAGE_NAME "'s project site.\n"
 		},
 
 		{ CPU_SECTION,
@@ -248,7 +248,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";               realistic: the system is rendered in its entirety, monitor included\n"
 ";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
 ";              Open a .map file to read comments on how to edit it.\n"
-";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging IBMulator)\n"
+";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"
 "; grab_method: Method to use for mouse grabbing\n"
 ";              Possible values: MOUSE3, CTRL-F10\n"
 ";       mouse: Mouse type.\n"
@@ -310,7 +310,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ VGA_SECTION,
 "; Video interface card configuration:\n"
 ";        rom: Path to a binary ROM file to load\n"
-"; ps_bit_bug: Enable the PS bit bug emulation (used by some demo like Copper)\n"
+"; ps_bit_bug: Enable the PS bit bug emulation (used by some demo, eg. Copper '92)\n"
 		},
 
 		{ DRIVES_SECTION,
@@ -471,7 +471,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MEM_RAM_SPEED
 	} },
 	{ VGA_SECTION, {
-		VGA_ROM
+		VGA_ROM,
+		VGA_PS_BIT_BUG
 	} },
 	{ CMOS_SECTION, {
 		CMOS_IMAGE_FILE,
@@ -530,6 +531,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ ADLIB_SECTION, {
 		ADLIB_ENABLED,
 		ADLIB_RATE,
+		ADLIB_FILTERS,
 		ADLIB_VOLUME
 	} },
 	{ SOUNDFX_SECTION, {
