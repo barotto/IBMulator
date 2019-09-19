@@ -1,7 +1,7 @@
 #######################################################################
 # Initial configuration                                               #
 #######################################################################
-define([IBMULATOR_VERSION],[0.9 beta2])
+define([IBMULATOR_VERSION],[m4_esyscmd_s([git describe --always --dirty | tr -d '\n'])])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
 AC_PREREQ([2.59])
