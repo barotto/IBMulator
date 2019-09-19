@@ -118,8 +118,6 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h unistd.h poll.h sys/poll.h sys/select.h])
 AC_CHECK_HEADERS([execinfo.h])
 AC_CHECK_HEADERS([sys/mman.h])
-AC_CHECK_HEADERS([sys/socket.h])
-AC_CHECK_HEADERS([netinet/in.h])
 
 # GNU C++ demangling support
 AC_CHECK_HEADERS(cxxabi.h)
@@ -134,17 +132,6 @@ AC_CHECK_FUNCS(timegm)
 #################################################################
 AC_C_BIGENDIAN([AC_MSG_ERROR([*** This byte sex is not supported.])])
 AC_TYPE_SIZE_T
-AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
-	[AC_DEFINE(HAVE_SOCKADDR_IN_SIN_LEN,1,[whether sockaddr_in struct has sin_len])],
-	[],
-	[#include <netinet/in.h>])
-AC_CHECK_SIZEOF(char)
-AC_CHECK_SIZEOF(wchar_t)
-AC_CHECK_SIZEOF(short)
-AC_CHECK_SIZEOF(int)
-AC_CHECK_SIZEOF(long)
-AC_CHECK_SIZEOF(long long)
-AC_CHECK_SIZEOF(void*)
 AC_CHECK_TYPE(ushort, unsigned short)
 AC_CHECK_TYPE(uint, unsigned int)
 
