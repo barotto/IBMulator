@@ -12,6 +12,9 @@ C:\msys64 for MSYS2 installation and C:\workspace for source packages.
 in the MSYS shell by pressing the middle mouse button, using Shift+Ins, or
 clicking the right mouse button and choosing 'paste'.
 
+**NOTE:** Current (post march 2019) versions of MSYS2 will produce a binary with
+unstable timings. See GitHub's issue #47.
+
 ## STEP 1. Setup a 64bit MinGW build environment
 We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
@@ -75,7 +78,7 @@ folder of your choosing (see [below](#installation) for more info).
 
 ### Installation
 In order to use the program you'll need to "install" it. The install process is
-not a Windows program installation. It's purpose is to organize executables and
+not a Windows program installation. Itcd s purpose is to organize executables and
 assets inside a folder from which the program can run. 
 
 This is the needed directory structure:
