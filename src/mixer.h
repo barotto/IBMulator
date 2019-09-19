@@ -28,7 +28,7 @@
 #include "audio/wav.h"
 #include <thread>
 #include <cmath>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 class Machine;
 extern Mixer g_mixer;

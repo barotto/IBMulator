@@ -28,7 +28,7 @@
 #include "gui/gui.h"
 #include "utils.h"
 #include "audio/wav.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 Mixer g_mixer;
 

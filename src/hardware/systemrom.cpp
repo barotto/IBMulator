@@ -33,7 +33,7 @@
 #include <archive_entry.h>
 #endif
 #include <algorithm>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #define MAX_ROM_SIZE   0x80000
 #define SYS_ROM_ADDR   0xF80000

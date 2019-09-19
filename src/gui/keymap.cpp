@@ -21,7 +21,7 @@
 #include "program.h"
 #include "keys.h"
 #include "keymap.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 Keymap g_keymap;
 

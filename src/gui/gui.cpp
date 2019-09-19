@@ -33,7 +33,7 @@
 #include "gui/rocket/sys_interface.h"
 #include "gui/rocket/rend_interface.h"
 #include "gui/rocket/file_interface.h"
-#include <SDL2/SDL_image.h>
+#include <SDL_image.h>
 
 #include "windows/desktop.h"
 #include "windows/normal_interface.h"

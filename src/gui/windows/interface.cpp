@@ -24,7 +24,7 @@
 #include "program.h"
 #include "utils.h"
 #include <sys/stat.h>
-#include <SDL2/SDL_image.h>
+#include <SDL_image.h>
 #include <Rocket/Core.h>
 #include "hardware/devices/vga.h"
 #include "hardware/devices/floppy.h"

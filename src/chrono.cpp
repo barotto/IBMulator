@@ -20,7 +20,7 @@
 #include "ibmulator.h"
 #include "chrono.h"
 #include <chrono>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 Chrono_RDTSC::Chrono_RDTSC()
 : m_last_ticks(0)
