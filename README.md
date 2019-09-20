@@ -7,7 +7,7 @@ IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run
 with the original ROM. The goal is to create a faithful simulator capable of
 recreate the look and feel of the real machine.
 
-IBMulator v0.9 can emulate the following systems:
+IBMulator can emulate the following systems:
 - IBM PS/1 model 2011 (286 10MHz)
 - IBM PS/1 model 2121 (386sx 16MHz,20MHz)
 
@@ -28,8 +28,15 @@ To obtain the source code go to github.com/barotto/IBMulator
 
 ## HARDWARE REQUIREMENTS
 
-A 64-bit Linux or Windows operating system, a OpenGL 3.3 graphics card, and a 
-2GHz dual core processor.
+A 64-bit Linux or Windows operating system, an OpenGL 3.3 compatible graphics
+adapter, and a 2GHz dual core processor.
+
+At this stage of developement, optimizations have very low priority, so a
+modern-ish CPU and a discrete graphics card are recommended (I'm developing with
+an i7-2600 and GTX 970.)
+
+Be aware that virtual machines are not generally capable of running IBMulator
+unless they properly implement OpenGL 3.3 acceleration in their guest drivers.
 
 
 ## USAGE
@@ -142,7 +149,7 @@ You can select the GUI mode under the [gui] section of the ini file.
 
 Sound cards' channels can be filtered with IIR filters.
 
-A filter is defined with a string containing the filter name followed by its
+A filter is defined by a string containing the filter name followed by its
 parameters separated by commas, like so:
 ```
 LowPass,order=5,cutoff=5000
@@ -164,15 +171,19 @@ of available parameters:
 
 This is the list of available filters with their accepted parameters:
 
-| Filter name | Parameters               | Description            |
-| ----------- | -------------------------|----------------------- |
-| LowPass     | order, cutoff            | Butterworth Low Pass   |
-| HighPass    | order, cutoff            | Butterworth High Pass  |
-| BandPass    | order, center, bw        | Butterworth Band Pass  |
-| BandStop    | order, center, bw        | Butterworth Band Stop  |
-| LowShelf    | order, cutoff, gain      | Butterworth Low Shelf  |
-| HighShelf   | order, cutoff, gain      | Butterworth High Shelf |
-| BandShelf   | order, center, bw, gain  | Butterworth Band Shelf |
+| Filter name | Parameters               |
+| ----------- | -------------------------|
+| LowPass     | order, cutoff            |
+| HighPass    | order, cutoff            |
+| BandPass    | order, center, bw        |
+| BandStop    | order, center, bw        |
+| LowShelf    | order, cutoff, gain      |
+| HighShelf   | order, cutoff, gain      |
+| BandShelf   | order, center, bw, gain  |
+
+The implemented DSP filter type is the Butterworth filter, a description of
+which can be found on
+[Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
 
 ### Key bindings
 
