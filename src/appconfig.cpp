@@ -434,6 +434,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		PROGRAM_MEDIA_DIR,
 		PROGRAM_CAPTURE_DIR,
 		PROGRAM_THREADS_SYNC,
+		PROGRAM_VSYNC,
 		PROGRAM_FRAMECAP
 	} },
 	{ GUI_SECTION, {
