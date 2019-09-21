@@ -106,7 +106,7 @@ public:
 class Chrono_CPP11
 {
 public:
-	typedef std::chrono::high_resolution_clock::time_point  tick;
+	typedef std::chrono::steady_clock::time_point  tick;
 
 protected:
 
@@ -117,25 +117,25 @@ public:
 
 	Chrono_CPP11() {}
 
-	void calibrate() { m_start = std::chrono::high_resolution_clock::now(); }
+	void calibrate() { m_start = std::chrono::steady_clock::now(); }
 	void calibrate(const Chrono_CPP11 &_c) { m_start = _c.m_start; }
 
 	uint64_t get_freq() const { return 0; }
 
 	inline uint64_t get_nsec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::nanoseconds elapsed =
 				std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_start);
 		return static_cast<uint64_t>(elapsed.count());
 	}
 	inline uint64_t get_usec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::microseconds elapsed =
 				std::chrono::duration_cast<std::chrono::microseconds>(now - m_start);
 		return static_cast<uint64_t>(elapsed.count());
 	}
 	inline uint64_t get_msec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::milliseconds elapsed =
 				std::chrono::duration_cast<std::chrono::milliseconds>(now - m_start);
 		return static_cast<uint64_t>(elapsed.count());
@@ -158,24 +158,24 @@ public:
 	}
 
 	inline tick start() {
-		m_last_ticks = std::chrono::high_resolution_clock::now();
+		m_last_ticks = std::chrono::steady_clock::now();
 		return m_last_ticks;
 	}
 
 	inline uint64_t elapsed_nsec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::nanoseconds elapsed =
 				std::chrono::duration_cast<std::chrono::nanoseconds>(now - m_last_ticks);
 		return static_cast<uint64_t>(elapsed.count());
 	}
 	inline uint64_t elapsed_usec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::microseconds elapsed =
 				std::chrono::duration_cast<std::chrono::microseconds>(now - m_last_ticks);
 		return static_cast<uint64_t>(elapsed.count());
 	}
 	inline uint64_t elapsed_msec() const {
-		tick now = std::chrono::high_resolution_clock::now();
+		tick now = std::chrono::steady_clock::now();
 		std::chrono::milliseconds elapsed =
 				std::chrono::duration_cast<std::chrono::milliseconds>(now - m_last_ticks);
 		return static_cast<uint64_t>(elapsed.count());
