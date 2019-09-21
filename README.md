@@ -185,6 +185,26 @@ The implemented DSP filter type is the Butterworth filter, a description of
 which can be found on
 [Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
 
+### Advanced video and sync settings
+
+The following video and synchronization settings can be used to fix or mitigate
+unstable timings, stuttering, and tearing. They are all under the [program]
+section of the ini file.
+
+* `threads_sync`: force a per-frame synchronization between the GUI and the
+Machine emulation threads. Enabling this option will fix screen tearing but
+could introduce timings instability. Tearing could still occur in fullscreen
+mode unless vsync is also enabled.
+* `vsync`: enables vertical sync, capping the frame rate to the refresh rate
+of your monitor. This can fix screen tearing when IBMulator is in fullscreen
+mode. Enabling vsync disables framecap.
+* `framecap`: put the GUI thread to sleep, capping the framerate to the VGA
+frequency. This setting is used only if vsync is disabled.
+
+You can activate the debug windows to see how things are going, check
+_Target FPS_, _Curr. FPS_, and _Missed frames_ values. When vsync is enabled
+Missed frames will not be shown.
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)

@@ -62,6 +62,9 @@ void Stats::update()
 	}
 	std::stringstream ss;
 	ss << g_program.get_bench();
+	if(!m_gui->vsync()) {
+		ss << "Missed frames: " << g_program.get_bench().long_frames << "<br />";
+	}
 	m_stats.fps->SetInnerRML(ss.str().c_str());
 
 	ss.str("");

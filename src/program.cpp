@@ -45,8 +45,11 @@ std::condition_variable Program::ms_cv;
 Program::Program()
 :
 m_threads_sync(false),
+m_framecap(true),
+m_quit(false),
 m_machine(nullptr),
 m_gui(nullptr),
+m_mixer(nullptr),
 m_restore_fn(nullptr)
 {
 
@@ -339,6 +342,7 @@ bool Program::initialize(int argc, char** argv)
 	}
 
 	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
+	m_framecap = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_FRAMECAP);
 	m_quit = false;
 	m_bench.init(&m_main_chrono, 1000, 1000);
 	set_heartbeat(DEFAULT_HEARTBEAT);
@@ -523,27 +527,26 @@ void Program::process_evts()
 
 void Program::main_loop()
 {
-	int64_t next_time_diff = 0;
+	int64_t time=0, next_time_diff = 0;
 	
 	while(!m_quit) {
-		// thread sleep
-		
-		// the time elapsed from the start of the last update
-		int64_t time = m_main_chrono.elapsed_nsec();
-
-		if(time < m_heartbeat) {
-			int64_t sleep_for = (m_heartbeat - time) + next_time_diff;
-			int64_t t0 = m_main_chrono.get_nsec();
-			std::this_thread::sleep_for( std::chrono::nanoseconds(sleep_for) );
-			int64_t t1 = m_main_chrono.get_nsec();
-			next_time_diff = sleep_for - (t1 - t0);
+		if(!m_gui->vsync() && m_framecap) {
+			// * thread sleep
+			// the time elapsed from the start of the last update
+			time = m_main_chrono.elapsed_nsec();
+			if(time < m_heartbeat) {
+				int64_t sleep_for = (m_heartbeat - time) + next_time_diff;
+				int64_t t0 = m_main_chrono.get_nsec();
+				std::this_thread::sleep_for( std::chrono::nanoseconds(sleep_for) );
+				int64_t t1 = m_main_chrono.get_nsec();
+				next_time_diff = sleep_for - (t1 - t0);
+			}
 		}
-
-		// frame update
 		
+		// * frame update
 		// the current wall time, measured from program launch
 		time = m_main_chrono.get_nsec(m_main_chrono.start());
-
+		
 		m_bench.frame_start();
 
 		process_evts();

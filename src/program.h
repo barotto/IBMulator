@@ -36,7 +36,7 @@ class Program
 	std::string m_datapath;
 
 	bool m_threads_sync;
-	double m_freq;
+	bool m_framecap;
 	std::atomic<int64_t> m_heartbeat;
 	bool m_quit;
 	Chrono m_main_chrono;

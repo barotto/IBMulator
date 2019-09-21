@@ -141,7 +141,6 @@ void operator<<(std::ostream& _os, const Bench &_bench)
 	_os << "Target FPS: " << (1.0e9 / _bench.heartbeat) << _bench.endl;
 	_os << "Curr. FPS: " << _bench.avg_fps << _bench.endl; 
 	//_os << "Frame count: " << _bench.frame_count << _bench.endl;
-	_os << "Missed frames: " << _bench.long_frames << _bench.endl;
 }
 
 

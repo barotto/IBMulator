@@ -120,6 +120,7 @@ m_joystick1(JOY_NONE),
 m_gui_visible(true),
 m_input_grab(false),
 m_mode(GUI_MODE_NORMAL),
+m_vsync(false),
 m_symspeed_factor(1.0),
 m_rocket_renderer(nullptr),
 m_rocket_sys_interface(nullptr),
@@ -171,6 +172,8 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	PINFOF(LOG_V1, LOG_GUI, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
 	glGetError();
 
+	m_vsync = g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC);
+	
 	try {
 		check_device_caps();
 		// TODO SDL supports adaptive sync passing -1 to this function.
@@ -178,7 +181,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		// refreshing the screen at VGA native refresh rates.
 		SDL_GL_SetSwapInterval(
 			//!g_program.threads_sync() && 
-			g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC)
+			m_vsync
 		);
 		init_Rocket();
 		m_windows.init(m_machine, this, m_mixer, m_mode);

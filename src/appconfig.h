@@ -125,6 +125,7 @@ public:
 #define PROGRAM_CAPTURE_DIR     "capture_dir"
 #define PROGRAM_THREADS_SYNC    "threads_sync"
 #define PROGRAM_VSYNC           "vsync"
+#define PROGRAM_FRAMECAP        "framecap"
 
 #define GUI_SECTION             "gui"
 #define GUI_KEYMAP              "keymap"

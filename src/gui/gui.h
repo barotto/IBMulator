@@ -137,6 +137,7 @@ protected:
 	bool m_input_grab;
 	std::string m_grab_method;
 	uint m_mode;
+	bool m_vsync;
 
 	struct Mouse {
 		bool grab;
@@ -258,6 +259,8 @@ public:
 
 	inline Machine *machine() { return m_machine; }
 	inline Mixer *mixer() { return m_mixer; }
+	
+	inline bool vsync() const { return m_vsync; }
 
 private:
 	void show_welcome_screen();

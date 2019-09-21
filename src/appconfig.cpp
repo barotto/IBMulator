@@ -38,8 +38,9 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""    },
 		{ PROGRAM_CAPTURE_DIR,  ""    },
-		{ PROGRAM_THREADS_SYNC, "yes" },
+		{ PROGRAM_THREADS_SYNC, "no"  },
 		{ PROGRAM_VSYNC,        "no"  },
+		{ PROGRAM_FRAMECAP,     "yes" }
 	} },
 
 	{ GUI_SECTION, {
@@ -222,8 +223,11 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ PROGRAM_SECTION,
-";   media_dir: The default directory used to search for floppy and hdd images.\n"
-"; capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
+";    media_dir: The default directory used to search for floppy and hdd images.\n"
+";  capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
+"; threads_sync: Enable per-frame threads synchronization. See the README for more info.\n"
+";        vsync: Enable video vertical synchronization. See the README for more info.\n"
+";     framecap: Limit displayed frames to current VGA frequency. See the README for more info.\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -428,7 +432,9 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_CAPTURE_DIR
+		PROGRAM_CAPTURE_DIR,
+		PROGRAM_THREADS_SYNC,
+		PROGRAM_FRAMECAP
 	} },
 	{ GUI_SECTION, {
 		GUI_MODE,
