@@ -37,9 +37,9 @@ system library.
 Any missing library will be pointed out; use your distributon's software
 manager to install them (except libRocket, see notes below).
 
-If you are going to compile using your own version of SDL2, you should compile 
-SDL2 with xinerama and xrandr, otherwise you could experience many problems 
-switching to fullscreen, at least on NVIDIA cards with closed drivers.
+If you are going to compile using your own version of SDL2, you may want to
+compile SDL2 with xinerama and xrandr support, otherwise you could experience
+problems switching to fullscreen.
 
 ### libRocket
 

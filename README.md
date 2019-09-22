@@ -214,7 +214,7 @@ Missed frames will not be shown.
 * CTRL+F6: start/stop audio capture
 * CTRL+F7: save current state
 * CTRL+F8: load last state
-* CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method)
+* CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method, see ini file)
 * CTRL+F11: CPU emulation speed down
 * CTRL+F12: CPU emulation speed up
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
@@ -225,6 +225,9 @@ Missed frames will not be shown.
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
+
+CTRL+F11 and CTRL+F12 change the speed at which the CPU emulation is performed,
+not its frequency. This is equivalent to warping time.
 
 ### Command line options
 
