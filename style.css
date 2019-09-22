@@ -15,7 +15,6 @@
 html, body {
 	color: #bbbbbb;
 	background-color: #333333;
-	text-shadow: 2px 2px 3px #000;
 }
 
 /*
@@ -25,6 +24,11 @@ html, body {
 	text-shadow: 2px 2px 3px #ccc;
 }
 */
+
+h1, h2, h3, h4 {
+	text-shadow: 2px 2px 3px #000;
+}
+
 h1 {
 	text-align: center;
 	font-family: 'perfect_dos_vga_437_winRg',courier;
@@ -98,3 +102,36 @@ ul.menu {
 .contentBlock {
 	clear: both;
 }
+
+ul, ol {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+li {
+	padding: 0.5em;
+}
+
+table {
+	font-family: sans-serif;
+}
+
+table td {
+	font-size: .35cm;
+	padding: 8px 16px 8px 0;
+	border-bottom: 1px solid #808080;
+}
+
+dt {
+	font-weight: bold;
+}
+
+dd {
+	margin-top: 1em;
+	margin-bottom: 1em;
+}
+
+hr {
+	margin: 2em 0 2em 0;
+}
+
