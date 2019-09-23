@@ -25,6 +25,7 @@
 <hr />
 
 <a href="#top"><h2 id="about">About</h2></a>
+<img src="media/ps1_love.png" style="float:right; padding: 0 0 1em 1em;" />
 <p>
 IBMulator is a free/libre, open source emulator for the <a href="https://en.wikipedia.org/wiki/IBM_PS/1">IBM PS/1</a>, 
 able to run with the original ROM. 
@@ -127,10 +128,10 @@ ROMs and disk images are copyrighted materials and must be downloaded elsewhere
 </ol>
 <h3>Full version</h3>
 <p>
-Please see the <a href="https://github.com/barotto/IBMulator/blob/master/README.md">README</a> file included in the package.
+Please see the <a href="https://github.com/barotto/IBMulator/blob/master/README.md">README</a> file included in the package for detailed instructions on how to configure and use the program.
 </p>
 
-<h3>Supported ROM versions</h3>
+<h3>Supported ROM sets</h3>
 <p>
 This is the list of supported ROM BIOS versions and the default configurations that IBMulator selects when it loads them:
 </p>
@@ -138,7 +139,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 <tr><th>ROM version</th><th>PS/1 model</th><th>CPU</th><th>RAM</th><th>Storage</th></tr>
 <tr>
 	<td>
-		P/N: 1057756 (Original US model)<br />MD5: f605396b48f02c5e81bc9e5e5fb60717
+		P/N: 1057756<br />MD5: f605396b48f02c5e81bc9e5e5fb60717<br />Original US model, w/ ROM drive
 	</td>
 	<td>
 		PS/1 2011-C34
@@ -155,7 +156,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 </tr>
 <tr>
 	<td>
-		P/N: 1057760<br />MD5: 9cac91f1fa7fe58d9509b754785f7fd2
+		P/N: 1057760<br />MD5: 9cac91f1fa7fe58d9509b754785f7fd2<br />US and Intl. models, w/ ROM drive
 	</td>
 	<td>
 		PS/1 2011-C34
@@ -172,7 +173,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 </tr>
 <tr>
 	<td>
-		P/N: 92F9674<br />MD5: 159413f190f075b92ffb882331c70eaf
+		P/N: 92F9674<br />MD5: 159413f190f075b92ffb882331c70eaf<br />US model, w/ ROM drive
 	</td>
 	<td>
 		PS/1 2121-B82
@@ -189,7 +190,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 </tr>
 <tr>
 	<td>
-		P/N: 92F9606<br />MD5: 7b5f6e3803ee57fd95047738d36f12fd
+		P/N: 92F9606<br />MD5: 7b5f6e3803ee57fd95047738d36f12fd<br />Intl. models, w/ ROM drive
 	</td>
 	<td>
 		PS/1 2121-B82
@@ -206,7 +207,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 </tr>
 <tr>
 	<td>
-		P/N: 93F2455<br />MD5: 01ae622ab197b057c92ad7832f868b4c
+		P/N: 93F2455<br />MD5: 01ae622ab197b057c92ad7832f868b4c<br />All models, w/o ROM drive
 	</td>
 	<td>
 		PS/1 2121-A82
@@ -224,11 +225,11 @@ This is the list of supported ROM BIOS versions and the default configurations t
 </table>
 
 <p>
-Everything can be overridden in the ibmulator.ini file.
+Configurations can be overridden in the ibmulator.ini file.
 </p>
 
 <h3>HDD types</h3>
-<p>These are the BIOS supported HDD types:</p>
+<p>These are the HDD types supported by the PS/1 BIOS. This table was defined by IBM and is common to many of the their products of the same era.</p>
 <pre>
 Type   Cyl.   Heads    Sect.   Write    Land     Size
                                p-comp   Zone
