@@ -88,8 +88,31 @@ ul.menu {
 	padding-right: 2em;
 }
 
-.media .images img {
-	float: left;
+.media .images,
+.media .videos {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.media .videos a {
+	position: relative;
+}
+
+.media .videos a:after {
+	content:'';
+	position: absolute;
+	display: block;
+    	left: 50%;
+    	top: 50%;
+    	transform: translate(-50%,-90%);
+	width: 60px;
+	height: 42px;
+	background-image: url(media/yt_logo.png); 
+	opacity: .6;
+}
+
+.media .images img,
+.media .videos img {
 	margin: 2px;
 }
 
