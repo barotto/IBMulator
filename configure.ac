@@ -32,25 +32,25 @@ AX_CXX_COMPILE_STDCXX_11
 
 have_windows="no"
 case "$host_os" in
-   msys*|mingw*)
-      have_windows="yes"
-   ;;
-esac 
+	msys*|mingw*)
+		have_windows="yes"
+	;;
+esac
 AC_SUBST(have_windows)
 
 #######################################################################
 # Some configuration options                                          #
 #######################################################################
 AC_ARG_ENABLE([debug],
-	      AS_HELP_STRING([--enable-debug], [default CXXFLAGS suitable for debugging]),
-	      [debug=$enableval],
-	      [debug=no])
+	AS_HELP_STRING([--enable-debug], [default CXXFLAGS suitable for debugging]),
+	[debug=$enableval],
+	[debug=no])
 
 AC_ARG_ENABLE([static],
-	      AS_HELP_STRING([--enable-static], [enable static linking (Windows only)]),
-	      [static=$enableval],
-	      [static=no])
-	      
+	AS_HELP_STRING([--enable-static], [enable static linking]),
+	[static=$enableval],
+	[static=no])
+
 if test "x$debug" = "xyes"
 then
 	CXX_DEFAULTS="-O0 -g3 -Wextra -Wall -pthread"
@@ -63,7 +63,6 @@ fi
 
 if test x$have_windows = xno ; then
 	separator="/"
-	static="no"
 	SDL_VERSION=2.0.4
 else
 	separator="\\\\"
@@ -73,9 +72,17 @@ else
 fi
 
 if test x$static = xyes ; then
-	CXX_DEFAULTS=`echo $CXX_DEFAULTS | sed 's/-pthread//'`
-	CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -static -pthread"
+	if test x$have_windows = xno ; then
+		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++"
+		static_sdl="no"
+	else
+		CXX_DEFAULTS=`echo $CXX_DEFAULTS | sed 's/-pthread//'`
+		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -static -pthread"
+		static_sdl="yes"
+	fi
 	static="-Wl,-Bstatic"
+else
+	static=""
 fi
 
 AC_SUBST(CXX_DEFAULTS)
@@ -94,11 +101,15 @@ AX_CHECK_LIBROCKET
 AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
 
-BASELIBS="-L. $SDL_LIBS $SDLIMAGE_LIBS $GLEW_LIBS $OPENGL_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
+BASELIBS="-L. $OPENGL_LIBS" # OpenGL libraries can't be static
+SDL_LIBSs=$SDL_LIBS
 
-if test x$static != xno ; then
-	BASELIBS="$static $BASELIBS"
+if test x$static_sdl = xno ; then
+	BASELIBS="$BASELIBS $SDL_LIBS"
+	SDL_LIBSs=""
 fi
+
+BASELIBS="$BASELIBS $static $SDL_LIBSs $SDLIMAGE_LIBS $GLEW_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
 
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
@@ -144,7 +155,7 @@ AC_CONFIG_FILES([
 	src/gui/Makefile
 	src/gui/rocket/Makefile
 ])
-		 
+
 AC_OUTPUT
 
 echo ""

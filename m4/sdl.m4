@@ -23,7 +23,7 @@ AC_ARG_WITH(sdl-exec-prefix,[  --with-sdl-exec-prefix=PFX Exec prefix where SDL 
 AC_ARG_ENABLE(sdltest, [  --disable-sdltest       Do not try to compile and run a test SDL program],
 		    , enable_sdltest=yes)
 
-	if test x$static != xno; then
+	if test x$static_sdl != xno; then
 		sdl_config_libs="--static-libs"
 	else
 		sdl_config_libs="--libs"
@@ -232,7 +232,8 @@ fi
 SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
 
 if test "x$static" != "xno" ; then
-	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
+	#SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
+	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma -ljbig"
 fi
 
 AC_SUBST([SDLIMAGE_CFLAGS])

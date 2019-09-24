@@ -25,8 +25,13 @@ if test "$HAVE_LIBARCHIVE" = "1" ; then
 	else
 		LIBARCHIVE_LIBS="-larchive"
 	fi
-	if test x$static != xno ; then
-		LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lzstd -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt"
+	if test x$static != x ; then
+		if test x$have_windows = xno ; then
+			# this linker definition depends on a libarchive version with almost everything disabled
+			LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -llzo2"
+		else
+			LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lzstd -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt"
+		fi
 		LIBARCHIVE_CFLAGS="-DLIBARCHIVE_STATIC"
 	fi
 fi

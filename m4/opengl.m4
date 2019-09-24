@@ -17,11 +17,8 @@ else
 	if test x$have_windows = xyes ; then
 		OPENGL_LIBS="-lopengl32"
 	else
-    	OPENGL_LIBS="-lGL"
-    fi
-    if test x$static != xno ; then
-    	OPENGL_LIBS="-Wl,-Bdynamic $OPENGL_LIBS $static"
-    fi
+		OPENGL_LIBS="-lGL"
+	fi
 fi
 
 AC_SUBST(OPENGL_LIBS)
@@ -43,16 +40,16 @@ if test x$glew_prefix != x ; then
 	if test x$have_windows = xyes ; then
 		GLEW_LIBS="$glew_prefix/lib/libglew32.a"
 	else
-    	GLEW_LIBS="$glew_prefix/lib/libGLEW.a"
-    fi
+		GLEW_LIBS="$glew_prefix/lib/libGLEW.a"
+	fi
 	
 else
 	AC_CHECK_HEADER(GL/glew.h,, [HAVE_GLEW=no])
 	if test x$have_windows = xyes ; then
 		GLEW_LIBS="-lglew32"
 	else
-    	GLEW_LIBS="-lGLEW"
-    fi
+		GLEW_LIBS="-lGLEW"
+	fi
 	
 fi
 
@@ -62,7 +59,7 @@ if test "$HAVE_GLEW" = "no" ; then
 ]) 
 fi
 
-if test x$static != xno ; then
+if test x$static != x ; then
 	GLEW_CFLAGS="-DGLEW_STATIC"
 fi
 
