@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,15 +31,24 @@ class RocketSystemInterface : public Rocket::Core::SystemInterface
 	static const char keypad_map[2][18];
 
 public:
-    Rocket::Core::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
-    int TranslateMouseButton(Uint8 button);
-	int GetKeyModifiers();
+
+	/// Get the number of seconds elapsed since the start of the application.
+	/// @return Elapsed time, in seconds.
 	float GetElapsedTime();
-    bool LogMessage(Rocket::Core::Log::Type type, const Rocket::Core::String& message);
+	
+	/// Log the specified message.
+	/// @param[in] type Type of log message, ERROR, WARNING, etc.
+	/// @param[in] message Message to log.
+	/// @return True to continue execution, false to break into the debugger.
+	bool LogMessage(Rocket::Core::Log::Type type, const Rocket::Core::String& message);
 
 	static Rocket::Core::word GetCharacterCode(
 			Rocket::Core::Input::KeyIdentifier key_identifier,
 			int key_modifier_state);
+
+	Rocket::Core::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
+	int TranslateMouseButton(Uint8 button);
+	int GetKeyModifiers();
 };
 
 #endif

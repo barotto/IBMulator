@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,7 +24,7 @@
 #include <Rocket/Core/RenderInterface.h>
 
 #if !(SDL_VIDEO_RENDER_OGL)
-    #error "Only the opengl sdl backend is supported."
+	#error "Only the opengl sdl backend is supported."
 #endif
 
 
@@ -52,18 +52,18 @@ public:
 	void SetDimensions(int _width, int _height);
 
 private:
-    SDL_Renderer* mRenderer;
-    SDL_Window* mScreen;
-
-    GLuint m_program;
-    GLuint m_vb;
-    GLuint m_sampler;
+	SDL_Renderer* m_renderer;
+	SDL_Window* m_screen;
+	
+	GLuint m_program;
+	GLuint m_vb;
+	GLuint m_sampler;
 	mat4f  m_projmat;
 
-    struct uniforms {
-    	GLint textured, guitex, P, MV;
-    	uniforms() : textured(-1), guitex(-1), P(-1), MV(-1) {}
-    } m_uniforms;
+	struct uniforms {
+		GLint textured, guitex, P, MV;
+		uniforms() : textured(-1), guitex(-1), P(-1), MV(-1) {}
+	} m_uniforms;
 };
 
 #endif

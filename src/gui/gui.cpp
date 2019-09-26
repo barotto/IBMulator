@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -215,10 +215,10 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
 
 	SDL_SetRenderDrawColor(m_SDL_renderer,
-			g_program.config().get_int(GUI_SECTION, GUI_BG_R),
-			g_program.config().get_int(GUI_SECTION, GUI_BG_G),
-			g_program.config().get_int(GUI_SECTION, GUI_BG_B),
-			255);
+		g_program.config().get_int(GUI_SECTION, GUI_BG_R),
+		g_program.config().get_int(GUI_SECTION, GUI_BG_G),
+		g_program.config().get_int(GUI_SECTION, GUI_BG_B),
+		255);
 
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, nullptr);
 
@@ -314,7 +314,7 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	}
 
 	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, oglIdx,
-			SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+		SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	SDL_ShowWindow(m_SDL_window);
 
@@ -428,7 +428,7 @@ void GUI::init_Rocket()
 
 	Rocket::Core::SetFileInterface(m_rocket_file_interface);
 	Rocket::Core::SetRenderInterface(m_rocket_renderer);
-    Rocket::Core::SetSystemInterface(m_rocket_sys_interface);
+	Rocket::Core::SetSystemInterface(m_rocket_sys_interface);
 
 	if(!Rocket::Core::Initialise()) {
 		PERRF(LOG_GUI, "Unable to initialise libRocket\n");
@@ -869,17 +869,17 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 	uint8_t buttons;
 
 	if(!m_input_grab && (
-			_event.type == SDL_MOUSEMOTION ||
-			_event.type == SDL_MOUSEBUTTONDOWN ||
-			_event.type == SDL_MOUSEBUTTONUP ||
-			_event.type == SDL_MOUSEWHEEL)
+		_event.type == SDL_MOUSEMOTION ||
+		_event.type == SDL_MOUSEBUTTONDOWN ||
+		_event.type == SDL_MOUSEBUTTONUP ||
+		_event.type == SDL_MOUSEWHEEL)
 	) {
 		return;
 	}
 
 	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
 		PDEBUGF(LOG_V2, LOG_GUI, "HW key: type=%d,sym=%d,mod=%d\n",
-				_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
+			_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
 	}
 
 	switch(_event.type)
@@ -914,8 +914,8 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		KeyEntry *entry = g_keymap.find_host_key(_event.key.keysym.sym);
 		if(!entry) {
 			PERRF(LOG_GUI,"host key %d (0x%x) not mapped!\n",
-					(uint) _event.key.keysym.sym,
-					(uint) _event.key.keysym.sym);
+				(uint) _event.key.keysym.sym,
+				(uint) _event.key.keysym.sym);
 			break;
 		}
 		key_event = entry->baseKey;
@@ -926,8 +926,8 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		KeyEntry *entry = g_keymap.find_host_key(_event.key.keysym.sym);
 		if(!entry) {
 			PERRF(LOG_GUI,"host key %d (0x%x) not mapped!\n",
-					(uint) _event.key.keysym.sym,
-					(uint) _event.key.keysym.sym);
+				(uint) _event.key.keysym.sym,
+				(uint) _event.key.keysym.sym);
 			break;
 		}
 		key_event = entry->baseKey;
@@ -1023,23 +1023,23 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 	{
 	case SDL_MOUSEMOTION:
 		m_rocket_context->ProcessMouseMove(
-				event.motion.x, event.motion.y,
-				rockmod
-				);
+			event.motion.x, event.motion.y,
+			rockmod
+			);
 		break;
 
 	case SDL_MOUSEBUTTONDOWN:
 		m_rocket_context->ProcessMouseButtonDown(
-				m_rocket_sys_interface->TranslateMouseButton(event.button.button),
-				rockmod
-				);
+			m_rocket_sys_interface->TranslateMouseButton(event.button.button),
+			rockmod
+			);
 		break;
 
 	case SDL_MOUSEBUTTONUP: {
 		m_rocket_context->ProcessMouseButtonUp(
-				m_rocket_sys_interface->TranslateMouseButton(event.button.button),
-				rockmod
-				);
+			m_rocket_sys_interface->TranslateMouseButton(event.button.button),
+			rockmod
+			);
 		// this is a hack to fix libRocket not updating events targets
 		int x,y;
 		SDL_GetMouseState(&x,&y);
@@ -1048,26 +1048,28 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 	}
 	case SDL_MOUSEWHEEL:
 		m_rocket_context->ProcessMouseWheel(
-				-event.wheel.y,
-				rockmod
-				);
+			-event.wheel.y,
+			rockmod
+			);
 		break;
 
 	case SDL_KEYDOWN: {
 		Rocket::Core::Input::KeyIdentifier key =
-				m_rocket_sys_interface->TranslateKey(event.key.keysym.sym);
-		if(key != Rocket::Core::Input::KI_UNKNOWN)
+			m_rocket_sys_interface->TranslateKey(event.key.keysym.sym);
+		if(key != Rocket::Core::Input::KI_UNKNOWN) {
 			m_rocket_context->ProcessKeyDown(key,rockmod);
+		}
 		Rocket::Core::word w = RocketSystemInterface::GetCharacterCode(key, rockmod);
-		if(w > 0)
+		if(w > 0) {
 			m_rocket_context->ProcessTextInput(w);
+		}
 		break;
 	}
 	case SDL_KEYUP:
 		m_rocket_context->ProcessKeyUp(
-				m_rocket_sys_interface->TranslateKey(event.key.keysym.sym),
-				rockmod
-				);
+			m_rocket_sys_interface->TranslateKey(event.key.keysym.sym),
+			rockmod
+			);
 		break;
 	default:
 		break;
@@ -1112,8 +1114,8 @@ void GUI::update(uint64_t _current_time)
 
 void GUI::shutdown_SDL()
 {
-    SDL_DestroyRenderer(m_SDL_renderer);
-    SDL_DestroyWindow(m_SDL_window);
+	SDL_DestroyRenderer(m_SDL_renderer);
+	SDL_DestroyWindow(m_SDL_window);
 	SDL_VideoQuit();
 }
 
@@ -1125,10 +1127,10 @@ void GUI::shutdown()
 
 	ms_rocket_mutex.lock();
 	m_rocket_context->RemoveReference();
-    Rocket::Core::Shutdown();
+	Rocket::Core::Shutdown();
 	ms_rocket_mutex.unlock();
 
-    shutdown_SDL();
+	shutdown_SDL();
 }
 
 std::string GUI::load_shader_file(const std::string &_path)
@@ -1137,8 +1139,9 @@ std::string GUI::load_shader_file(const std::string &_path)
 	std::ifstream shstream(_path, std::ios::in);
 	if(shstream.is_open()){
 		std::string line = "";
-		while(getline(shstream, line))
+		while(getline(shstream, line)) {
 			shdata += "\n" + line;
+		}
 		shstream.close();
 	} else {
 		PERRF(LOG_GUI, "Unable to open '%s'\n", _path.c_str());
@@ -1240,10 +1243,10 @@ GLuint GUI::load_texture(SDL_Surface *_surface)
 	GLCALL( glGenTextures(1, &gltex) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
 	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
-			_surface->w, _surface->h,
-			0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-			_surface->pixels
-			)
+		_surface->w, _surface->h,
+		0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+		_surface->pixels
+		)
 	);
 	SDL_UnlockSurface(_surface);
 	return gltex;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,8 +37,8 @@ using namespace Rocket::Core;
 
 RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 {
-	mRenderer = _renderer;
-	mScreen = _screen;
+	m_renderer = _renderer;
+	m_screen = _screen;
 	try {
 		std::vector<std::string> vs,fs;
 		std::string shadersdir = GUI::get_shaders_dir();
@@ -91,30 +91,30 @@ void RocketRenderer::RenderGeometry(Vertex* vertices,
 	GLCALL( glEnableVertexAttribArray(1) );
 	GLCALL( glEnableVertexAttribArray(2) );
 	GLCALL( glVertexAttribPointer(
-            0,        // attribute 0 = vertices
-            2,        // size
-            GL_FLOAT, // type
-            GL_FALSE, // normalized?
-            sizeof(Vertex), // stride
-            (void*)0  // array buffer offset
-    ) );
+		0,        // attribute 0 = vertices
+		2,        // size
+		GL_FLOAT, // type
+		GL_FALSE, // normalized?
+		sizeof(Vertex), // stride
+		(void*)0  // array buffer offset
+	) );
 
 	GLCALL( glVertexAttribIPointer(
-            1,        // attribute 1 = colour
-            4,        // size
-		    GL_UNSIGNED_BYTE, // type
-            sizeof(Vertex), // stride
-            (GLvoid*) offsetof(struct Vertex, colour)  // array buffer offset
-    ) );
+		1,        // attribute 1 = colour
+		4,        // size
+		GL_UNSIGNED_BYTE, // type
+		sizeof(Vertex), // stride
+		(GLvoid*) offsetof(struct Vertex, colour)  // array buffer offset
+	) );
 
 	GLCALL( glVertexAttribPointer(
-            2,        // attribute 2 = texcoords
-            2,        // size
-            GL_FLOAT, // type
-            GL_FALSE, // normalized?
-            sizeof(Vertex), // stride
-            (GLvoid*) offsetof(struct Vertex, tex_coord)  // array buffer offset
-    ) );
+		2,        // attribute 2 = texcoords
+		2,        // size
+		GL_FLOAT, // type
+		GL_FALSE, // normalized?
+		sizeof(Vertex), // stride
+		(GLvoid*) offsetof(struct Vertex, tex_coord)  // array buffer offset
+	) );
 
 	GLCALL( glEnable(GL_BLEND) );
 	GLCALL( glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) );
@@ -144,7 +144,7 @@ void RocketRenderer::EnableScissorRegion(bool enable)
 void RocketRenderer::SetScissorRegion(int x, int y, int width, int height)
 {
 	int w_width, w_height;
-	SDL_GetWindowSize(mScreen, &w_width, &w_height);
+	SDL_GetWindowSize(m_screen, &w_width, &w_height);
 	GLCALL( glScissor(x, w_height - (y + height), width, height) );
 }
 
