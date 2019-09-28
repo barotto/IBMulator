@@ -66,7 +66,6 @@ enum DisplayAspect {
 #define JOY_NONE INT_MAX
 
 class GUI;
-extern GUI g_gui;
 
 class RocketRenderer;
 class RocketSystemInterface;
@@ -237,6 +236,8 @@ public:
 	void update(uint64_t _time);
 	void shutdown();
 
+	static GUI * instance();
+	
 	RC::ElementDocument * load_document(const std::string &_filename);
 	static std::string shaders_dir();
 	static std::string images_dir();

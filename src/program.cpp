@@ -48,8 +48,8 @@ m_threads_sync(false),
 m_framecap(true),
 m_quit(false),
 m_machine(nullptr),
-m_gui(nullptr),
 m_mixer(nullptr),
+m_gui(nullptr),
 m_restore_fn(nullptr)
 {
 
@@ -381,7 +381,7 @@ bool Program::initialize(int argc, char** argv)
 	m_mixer->init(m_machine);
 	m_mixer->config_changed();
 	
-	m_gui = &g_gui;
+	m_gui = std::make_unique<GUI>();
 	m_gui->init(m_machine, m_mixer);
 	m_gui->config_changed();
 	

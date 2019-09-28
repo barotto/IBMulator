@@ -185,7 +185,7 @@ void VGA::reset(unsigned _type)
 {
 	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
 		if(!m_display) {
-			m_display = g_gui.vga_display();
+			m_display = GUI::instance()->vga_display();
 		}
 
 		m_s = {};
@@ -270,7 +270,7 @@ void VGA::restore_state(StateBuf &_state)
 
 	// display
 	if(!m_display) {
-		m_display = g_gui.vga_display();
+		m_display = GUI::instance()->vga_display();
 	}
 	m_display->restore_state(_state);
 

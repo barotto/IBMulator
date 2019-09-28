@@ -780,7 +780,7 @@ void Machine::cmd_cycles_adjust(double _factor)
 		std::stringstream ss;
 		ss << "emulation speed at " << std::setprecision(3) << (_factor*100.f) << "%";
 		PINFOF(LOG_V0, LOG_MACHINE, "%s\n", ss.str().c_str());
-		g_gui.show_message(ss.str().c_str());
+		GUI::instance()->show_message(ss.str().c_str());
 	});
 }
 

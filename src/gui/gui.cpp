@@ -47,7 +47,6 @@
 #include <iomanip>
 
 
-GUI g_gui;
 std::mutex GUI::ms_rocket_mutex;
 std::mutex GUI::Windows::s_interface_mutex;
 
@@ -111,7 +110,6 @@ m_mixer(nullptr),
 m_width(640),
 m_height(480),
 m_SDL_window(nullptr),
-m_SDL_glcontext(nullptr),
 m_SDL_renderer(nullptr),
 m_curr_model_changed(false),
 m_second_timer(0),
@@ -126,6 +124,7 @@ m_rocket_renderer(nullptr),
 m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
 m_rocket_context(nullptr),
+m_SDL_glcontext(nullptr),
 m_gl_errors_count(0)
 {
 
@@ -1127,6 +1126,8 @@ void GUI::shutdown_SDL()
 
 void GUI::shutdown()
 {
+	PDEBUGF(LOG_V1, LOG_GUI, "Shutting down the video subsystem\n");
+	
 	SDL_RemoveTimer(m_second_timer);
 
 	m_windows.shutdown();
@@ -1226,6 +1227,11 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 	}
 
 	return progid;
+}
+
+GUI * GUI::instance()
+{
+	return g_program.gui_instance();
 }
 
 std::string GUI::shaders_dir()
