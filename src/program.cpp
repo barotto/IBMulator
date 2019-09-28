@@ -21,7 +21,7 @@
 #include "filesys.h"
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
-#include "gui/gui.h"
+#include "gui/gui_opengl.h"
 #include "program.h"
 #include "machine.h"
 #include "mixer.h"
@@ -381,7 +381,7 @@ bool Program::initialize(int argc, char** argv)
 	m_mixer->init(m_machine);
 	m_mixer->config_changed();
 	
-	m_gui = std::make_unique<GUI>();
+	m_gui = std::make_unique<GUI_OpenGL>();
 	m_gui->init(m_machine, m_mixer);
 	m_gui->config_changed();
 	

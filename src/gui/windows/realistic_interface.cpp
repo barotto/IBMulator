@@ -18,7 +18,7 @@
  */
 
 #include "ibmulator.h"
-#include "gui.h"
+#include "gui_opengl.h"
 #include "machine.h"
 #include "program.h"
 #include "realistic_interface.h"
@@ -152,7 +152,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	std::vector<std::string> vs,fs;
 	vs.push_back(shadersdir + REALISTIC_MONITOR_VS);
 	fs.push_back(shadersdir + REALISTIC_MONITOR_FS);
-	m_monitor.prog = GUI::load_GLSL_program(vs,fs);
+	m_monitor.prog = GUI_OpenGL::load_program(vs,fs);
 	m_monitor.ambient = clamp(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT), 0.0, 1.0);
 	GLCALL( m_monitor.uniforms.mvmat = glGetUniformLocation(m_monitor.prog, "iModelView") );
 	GLCALL( m_monitor.uniforms.ambient = glGetUniformLocation(m_display.prog, "iAmbientLight") );
@@ -164,7 +164,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
 	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
 
-	m_monitor.reflection_map = GUI::load_GL_texture(GUI::images_dir() + REALISTIC_REFLECTION_MAP);
+	m_monitor.reflection_map = GUI_OpenGL::load_texture(GUI::images_dir() + REALISTIC_REFLECTION_MAP);
 	m_rdisplay.reflection_scale = vec2f(1.0,1.0);
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));

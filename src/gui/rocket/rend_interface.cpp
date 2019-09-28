@@ -24,7 +24,7 @@
 #include <SDL_image.h>
 #include <GL/glew.h>
 
-#include "gui.h"
+#include "gui_opengl.h"
 #include "rend_interface.h"
 #include "program.h"
 
@@ -44,7 +44,7 @@ RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 		std::string shadersdir = GUI::shaders_dir();
 		vs.push_back(shadersdir + "gui.vs");
 		fs.push_back(shadersdir + "gui.fs");
-		m_program = GUI::load_GLSL_program(vs,fs);
+		m_program = GUI_OpenGL::load_program(vs,fs);
 		GLCALL( m_uniforms.textured = glGetUniformLocation(m_program, "textured") );
 		GLCALL( m_uniforms.guitex = glGetUniformLocation(m_program, "guitex") );
 		GLCALL( m_uniforms.P = glGetUniformLocation(m_program, "P") );
@@ -181,7 +181,7 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 		return false;
 	}
 	try {
-		texture_handle = GUI::load_GL_texture(surface);
+		texture_handle = GUI_OpenGL::load_texture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		SDL_FreeSurface(surface);

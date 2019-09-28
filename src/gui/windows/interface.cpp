@@ -18,7 +18,7 @@
  */
 
 #include "ibmulator.h"
-#include "gui.h"
+#include "gui_opengl.h"
 #include "machine.h"
 #include "mixer.h"
 #include "program.h"
@@ -142,7 +142,7 @@ void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshade
 	fs.push_back(_fshader);
 
 	try {
-		m_display.prog = GUI::load_GLSL_program(vs,fs);
+		m_display.prog = GUI_OpenGL::load_program(vs,fs);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to create the shader program!\n");
 		throw std::exception();

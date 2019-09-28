@@ -25,6 +25,7 @@
 #include "hardware/devices/vga.h"
 #include <Rocket/Core/EventListener.h>
 #include "gui/guifx.h"
+#include <GL/glew.h>
 
 class Machine;
 class GUI;
