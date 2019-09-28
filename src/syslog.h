@@ -90,10 +90,9 @@ enum e_Syslog_Facilities {
 	LOG_LPT,
 	LOG_COM,
 
-	LOG_FACMAX
+	LOG_FAC_COUNT,
+	LOG_ALL_FACILITIES = LOG_FAC_COUNT
 };
-
-#define LOG_ALL_FACILITIES LOG_FACMAX
 
 enum e_Syslog_Priorities {
 	LOG_DEBUG,
@@ -101,10 +100,9 @@ enum e_Syslog_Priorities {
 	LOG_WARNING,
 	LOG_ERROR,
 
-	LOG_PRIMAX
+	LOG_PRI_COUNT,
+	LOG_ALL_PRIORITIES = LOG_PRI_COUNT
 };
-
-#define LOG_ALL_PRIORITIES LOG_PRIMAX
 
 enum _Syslog_Verbosity {
 	LOG_VERBOSITY_0 = 0, // informazioni di base, errori critici, eccezioni, ...
@@ -128,15 +126,15 @@ private:
 	Logdev* m_default;
 
 	std::list<Logdev*> m_devices;
-	std::list<Logdev*> m_mapped_devices[LOG_PRIMAX][LOG_FACMAX];
-	uint8_t m_linefeed[LOG_PRIMAX][LOG_FACMAX];
+	std::list<Logdev*> m_mapped_devices[LOG_PRI_COUNT][LOG_FAC_COUNT];
+	uint8_t m_linefeed[LOG_PRI_COUNT][LOG_FAC_COUNT];
 
-	static const char* m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRIMAX];
-	static const char* m_fac_prefixes[LOG_FACMAX];
+	static const char* m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRI_COUNT];
+	static const char* m_fac_prefixes[LOG_FAC_COUNT];
 	char m_buf[LOG_BUFFER_SIZE];
 	char m_iconvbuf[LOG_BUFFER_SIZE];
 
-	uint m_verbosity[LOG_FACMAX];
+	uint m_verbosity[LOG_FAC_COUNT];
 
 	std::string m_repeat_str;
 	uint m_repeat_cnt;
@@ -144,7 +142,6 @@ private:
 	/* Multi-threading extension to resolve the blocking behaviour of I/O stream
 	 * writing.
 	 */
-	std::thread m_thread;
 	bool m_stop;
 	std::atomic<bool> m_paused;
 	std::mutex m_log_mutex;
@@ -156,15 +153,17 @@ public:
 	Syslog();
 	~Syslog();
 
+	void start();
+	
 	void add_device(int _priority, int _facility, Logdev* _device);
 	void del_device(int _priority, int _facility, Logdev* _device);
-	void clear_queue(int _priority, int _facility);
 	bool log(int _priority, int _facility, int _verbosity, const char* _format, ...);
 	void remove(Logdev* _dev, bool _erase = false);
-	void set_verbosity(uint _level, uint facility = LOG_FACMAX);
+	void set_verbosity(uint _level, uint facility = LOG_FAC_COUNT);
 
 	void cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_resume();
+	void cmd_quit();
 
 private:
 	bool p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va);

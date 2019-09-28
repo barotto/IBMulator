@@ -19,25 +19,33 @@
 
 #include "ibmulator.h"
 #include "program.h"
-#include "machine.h"
-#include "mixer.h"
-#include "gui/gui.h"
 #include "filesys.h"
+
+#include <sstream>
+#include <SDL.h>
 
 
 int main(int argc, char** argv)
 {
+	// start the SysLog thread as the very first operation so the user can be
+	// notified of possible errors.
+	std::thread syslog(&Syslog::start, &g_syslog);
+	
 	std::stringstream ss;
 	LogStream * templog = new LogStream(ss, true);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, templog);
 	g_syslog.set_verbosity(DEFAULT_LOG_VERBOSITY);
 
 	PINFO(LOG_V0, "Program start\n");
+	
+	bool start = true;
+	int return_value = 0;
 
 	try {
 		if(!g_program.initialize(argc,argv)) {
-			PINFO(LOG_V0, "Manual configuration required. Program stop.\n");
-			return 0;
+			PINFO(LOG_V0, "Manual configuration required\n");
+			start = false;
+			return_value = 0;
 		}
 	} catch(std::exception &e) {
 		std::string message = "A problem occurred during initialisation.\n";
@@ -59,14 +67,21 @@ int main(int argc, char** argv)
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
 				message.c_str(),
 				nullptr);
-		return 1;
+		
+		start = false;
+		return_value = 1;
 	}
 
 	g_syslog.remove(templog, false);
 
-	g_program.start();
+	if(start) {
+		g_program.start();
+	}
 
 	PINFO(LOG_V0, "Program stop\n");
 
-	return 0;
+	g_syslog.cmd_quit();
+	syslog.join();
+	
+	return return_value;
 }
