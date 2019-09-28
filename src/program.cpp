@@ -371,6 +371,20 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
 	}
 
+	m_machine = &g_machine;
+	m_machine->calibrate(m_main_chrono);
+	m_machine->init();
+	m_machine->config_changed();
+
+	m_mixer = &g_mixer;
+	m_mixer->calibrate(m_main_chrono);
+	m_mixer->init(m_machine);
+	m_mixer->config_changed();
+	
+	m_gui = &g_gui;
+	m_gui->init(m_machine, m_mixer);
+	m_gui->config_changed();
+	
 	return true;
 }
 
@@ -465,41 +479,6 @@ void Program::parse_arguments(int argc, char** argv)
 	for(int index = optind; index < argc; index++) {
 		PINFOF(LOG_V0,LOG_PROGRAM,"Non-option argument %s\n", argv[index]);
 	}
-}
-
-void Program::set_gui(GUI *_gui)
-{
-	if(!m_machine) {
-		PERR("Initialize the machine first\n");
-		throw std::exception();
-	}
-	if(!m_mixer) {
-		PERR("Initialize the mixer first\n");
-		throw std::exception();
-	}
-	m_gui = _gui;
-	m_gui->init(m_machine, m_mixer);
-	m_gui->config_changed();
-}
-
-void Program::set_machine(Machine *_machine)
-{
-	m_machine = _machine;
-	m_machine->calibrate(m_main_chrono);
-	m_machine->init();
-	m_machine->config_changed();
-}
-
-void Program::set_mixer(Mixer *_mixer)
-{
-	if(!m_machine) {
-		PERR("Initialize the machine first\n");
-		throw std::exception();
-	}
-	m_mixer = _mixer;
-	m_mixer->calibrate(m_main_chrono);
-	m_mixer->init(m_machine);
-	m_mixer->config_changed();
 }
 
 void Program::process_evts()

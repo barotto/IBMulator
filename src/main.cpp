@@ -39,9 +39,6 @@ int main(int argc, char** argv)
 			PINFO(LOG_V0, "Manual configuration required. Program stop.\n");
 			return 0;
 		}
-		g_program.set_machine(&g_machine);
-		g_program.set_mixer(&g_mixer);
-		g_program.set_gui(&g_gui);
 	} catch(std::exception &e) {
 		std::string message = "A problem occurred during initialisation.\n";
 		std::string logfile = g_program.config().get_cfg_home() + FS_SEP "log.txt";

@@ -69,10 +69,6 @@ public:
 	Program();
 	~Program();
 
-	void set_machine(Machine*);
-	void set_gui(GUI*);
-	void set_mixer(Mixer*);
-
 	bool initialize(int argc, char** argv);
 	void start();
 	void stop();
