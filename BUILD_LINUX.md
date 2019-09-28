@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* GCC 4.9+
+* GCC 5.0+
 * SDL 2.0.4+
 * SDL_image 2.0.0+
 * libRocket (see notes below)
