@@ -124,7 +124,7 @@ Interface::~Interface()
 void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshader)
 {
 	std::vector<std::string> vs,fs;
-	std::string shadersdir = GUI::get_shaders_dir();
+	std::string shadersdir = GUI::shaders_dir();
 
 	m_display.mvmat.load_identity();
 

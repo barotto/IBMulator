@@ -37,11 +37,12 @@ private:
 		bool power, floppy_a, floppy_b, hdd;
 	} m_leds;
 
+	Machine *m_machine;
 	FloppyCtrl *m_floppy;
 	StorageCtrl *m_hdd;
 
 public:
-	Status(GUI * _gui);
+	Status(GUI * _gui, Machine *_machine);
 	~Status();
 
 	void update();

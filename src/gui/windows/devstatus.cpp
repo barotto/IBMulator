@@ -40,12 +40,14 @@ event_map_t DevStatus::ms_evt_map = {
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
-DevStatus::DevStatus(GUI * _gui, RC::Element *_button)
+DevStatus::DevStatus(GUI * _gui, RC::Element *_button, Machine *_machine)
 :
 DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 {
 	assert(m_wnd);
 
+	m_machine = _machine;
+	
 	m_vga.is_running = false;
 	m_vga.btn_update = get_element("cmd_vga_update");
 	
@@ -119,7 +121,7 @@ void DevStatus::on_cmd_vga_dump_state(RC::Event &)
 		std::string statefile = FileSys::get_next_filename(captpath, "vga_state_", ".txt");
 		if(!statefile.empty()) {
 			m_gui->save_framebuffer(statefile + ".png", statefile + ".pal.png");
-			m_gui->machine()->devices().vga()->state_to_textfile(statefile);
+			m_machine->devices().vga()->state_to_textfile(statefile);
 			std::string mex = "VGA state dumped to " + statefile;
 			PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
 			m_gui->show_message(mex.c_str());
@@ -146,7 +148,7 @@ void DevStatus::on_cmd_pic_update(RC::Event &)
 
 void DevStatus::update_pic()
 {
-	PIC *pic = m_gui->machine()->devices().pic();
+	PIC *pic = m_machine->devices().pic();
 	uint16_t pic_irq = pic->get_irq();
 	uint16_t pic_irr = pic->get_irr();
 	uint16_t pic_imr = pic->get_imr();
@@ -212,7 +214,7 @@ void DevStatus::update_pit()
 
 void DevStatus::update_pit(unsigned cnt)
 {
-	const PIT_82C54 & timer = m_gui->machine()->devices().pit()->get_timer();
+	const PIT_82C54 & timer = m_machine->devices().pit()->get_timer();
 
 	m_pit.mode[cnt]->SetInnerRML(format_uint16(timer.read_mode(cnt)));
 	m_pit.cnt[cnt]->SetInnerRML(format_hex32(timer.read_CNT(cnt)));
@@ -230,7 +232,7 @@ void DevStatus::update_pit(unsigned cnt)
 
 void DevStatus::update_vga()
 {
-	VGA *vga = m_gui->machine()->devices().vga();
+	VGA *vga = m_machine->devices().vga();
 	const VideoModeInfo & vm = vga->video_mode();
 	RC::String str;
 	if(vm.mode == VGA_M_TEXT) {
@@ -312,7 +314,7 @@ void DevStatus::update()
 	}
 
 	static bool updated = false;
-	if(m_gui->machine()->is_paused() && !updated) {
+	if(m_machine->is_paused() && !updated) {
 		update_vga();
 		update_pic();
 		update_pit();
@@ -328,7 +330,7 @@ void DevStatus::update()
 		}
 	}
 	
-	if(m_gui->machine()->is_paused()) {
+	if(m_machine->is_paused()) {
 		updated = true;
 	} else {
 		updated = false;

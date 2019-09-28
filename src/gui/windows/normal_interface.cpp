@@ -79,7 +79,7 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 
 	init_gl(
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler),
-		GUI::get_shaders_dir() + "fb-normal.vs",
+		GUI::shaders_dir() + "fb-normal.vs",
 		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER)
 	);
 }
@@ -172,7 +172,7 @@ void NormalInterface::update()
 	if(m_vga_aspect==DISPLAY_ASPECT_ADAPTIVE || m_vga_scaling>0) {
 		m_display.vga.lock();
 		if(m_display.vga.dimension_updated()) {
-			uint32_t wflags = m_gui->get_window_flags();
+			uint32_t wflags = m_gui->window_flags();
 			//WARNING in order for the MAXIMIZED case to work under X11 you need
 			//SDL 2.0.4 with this patch:
 			//https://bugzilla.libsdl.org/show_bug.cgi?id=2793
@@ -192,8 +192,8 @@ void NormalInterface::update()
 				}
 			} else {
 				container_size_changed(
-					m_gui->get_window_width(),
-					m_gui->get_window_height()
+					m_gui->window_width(),
+					m_gui->window_height()
 				);
 			}
 			m_display.vga.clear_dimension_updated();

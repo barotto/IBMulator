@@ -41,7 +41,7 @@ RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 	m_screen = _screen;
 	try {
 		std::vector<std::string> vs,fs;
-		std::string shadersdir = GUI::get_shaders_dir();
+		std::string shadersdir = GUI::shaders_dir();
 		vs.push_back(shadersdir + "gui.vs");
 		fs.push_back(shadersdir + "gui.fs");
 		m_program = GUI::load_GLSL_program(vs,fs);
@@ -181,7 +181,7 @@ bool RocketRenderer::LoadTexture(TextureHandle& texture_handle,
 		return false;
 	}
 	try {
-		texture_handle = GUI::load_texture(surface);
+		texture_handle = GUI::load_GL_texture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		SDL_FreeSurface(surface);

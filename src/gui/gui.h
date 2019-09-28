@@ -123,7 +123,6 @@ protected:
 	int m_width;
 	int m_height;
 	SDL_Window *m_SDL_window;
-	SDL_GLContext m_SDL_glcontext;
 	SDL_Renderer * m_SDL_renderer;
 	std::string m_wnd_title;
 	std::string m_curr_prog;
@@ -190,9 +189,9 @@ protected:
 
 	} m_windows;
 
-	void create_window(const char * _title, int _width, int _height, int _flags);
-	void check_device_caps();
 	void init_Rocket();
+	void set_window_icon();
+	void show_welcome_screen();
 	void render_vga();
 	void update_window_size(int _w, int _h);
 	void update_display_size();
@@ -200,26 +199,28 @@ protected:
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
-
-	int m_gl_errors_count;
-	static void GL_debug_output(GLenum source, GLenum type, GLuint id,
-			GLenum severity, GLsizei length,
-			const GLchar* message, GLvoid* userParam);
-
-
+	void shutdown_SDL();
+	
 	void dispatch_hw_event(const SDL_Event &_event);
 	void dispatch_rocket_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
 	bool dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key);
-	void load_splash_image();
-
+	
 	static Uint32 every_second(Uint32 interval, void *param);
 
-	void shutdown_SDL();
-
 	static std::string load_shader_file(const std::string &_path);
-	static std::vector<GLuint> attach_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program);
 
+	// OpenGL specific members:
+	SDL_GLContext m_SDL_glcontext;
+	int m_gl_errors_count;
+	void create_GL_window(int _flags);
+	void check_device_GL_caps();
+	
+	static std::vector<GLuint> attach_GLSL_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program);
+	static void GL_debug_output(GLenum source, GLenum type, GLuint id,
+		GLenum severity, GLsizei length,
+		const GLchar* message, GLvoid* userParam);
+	
 public:
 	static std::map<std::string, uint> ms_gui_modes;
 	static std::map<std::string, uint> ms_gui_sampler;
@@ -237,34 +238,30 @@ public:
 	void shutdown();
 
 	RC::ElementDocument * load_document(const std::string &_filename);
-	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
-	static std::string get_shaders_dir();
-	static std::string get_images_dir();
-	static GLuint load_texture(SDL_Surface *_surface);
-	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
-
+	static std::string shaders_dir();
+	static std::string images_dir();
+	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 
-	VGADisplay * vga_display() { assert(m_windows.interface); return m_windows.interface->vga_display(); }
-
 	vec2i resize_window(int _width, int _height);
-	int get_window_width() { return m_width; }
-	int get_window_height() { return m_height; }
-	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
-
+	
+	inline VGADisplay * vga_display() const {
+		assert(m_windows.interface); return m_windows.interface->vga_display();
+	}
+	inline int window_width() const { return m_width; }
+	inline int window_height() const { return m_height; }
+	inline uint32_t window_flags() const { return SDL_GetWindowFlags(m_SDL_window); }
+	inline bool vsync() const { return m_vsync; }
+	
 	void sig_state_restored();
 
-	inline Machine *machine() { return m_machine; }
-	inline Mixer *mixer() { return m_mixer; }
-	
-	inline bool vsync() const { return m_vsync; }
-
-private:
-	void show_welcome_screen();
-
+	// OpenGL specific members:
+	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
+	static GLuint load_GL_texture(SDL_Surface *_surface);
+	static GLuint load_GL_texture(const std::string &_path, vec2i *_texdim=nullptr);
 };
 
 

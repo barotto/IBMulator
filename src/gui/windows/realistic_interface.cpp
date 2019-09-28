@@ -137,7 +137,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 			g_program.config().get_int(GUI_SECTION, GUI_HEIGHT)
 		);
 	}
-	std::string shadersdir = GUI::get_shaders_dir();
+	std::string shadersdir = GUI::shaders_dir();
 	init_gl(
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, GUI::ms_gui_sampler),
 		shadersdir + REALISTIC_VGA_VS,
@@ -164,7 +164,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
 	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
 
-	m_monitor.reflection_map = GUI::load_texture(GUI::get_images_dir() + REALISTIC_REFLECTION_MAP);
+	m_monitor.reflection_map = GUI::load_GL_texture(GUI::images_dir() + REALISTIC_REFLECTION_MAP);
 	m_rdisplay.reflection_scale = vec2f(1.0,1.0);
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
@@ -368,7 +368,7 @@ void RealisticInterface::on_dragstart(RC::Event &_event)
 
 void RealisticInterface::on_power(RC::Event &_evt)
 {
-	bool on = m_gui->machine()->is_on();
+	bool on = m_machine->is_on();
 	Interface::on_power(_evt);
 	m_real_audio.update(!on, true);
 }

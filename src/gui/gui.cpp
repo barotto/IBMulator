@@ -142,8 +142,29 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 {
 	m_machine = _machine;
 	m_mixer = _mixer;
+	
+	// configuration variables
 	m_assets_path = g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP;
-
+	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
+	m_vsync = g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC);
+	m_grab_method = str_to_lower(g_program.config().get_string(GUI_SECTION, GUI_GRAB_METHOD));
+	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
+	struct {
+		int r,g,b;
+	} backcolor = {
+		g_program.config().get_int(GUI_SECTION, GUI_BG_R),
+		g_program.config().get_int(GUI_SECTION, GUI_BG_G),
+		g_program.config().get_int(GUI_SECTION, GUI_BG_B)
+	};
+	
+	try {
+		g_keymap.load(g_program.config().find_file(GUI_SECTION, GUI_KEYMAP));
+	} catch(std::exception &e) {
+		PERRF(LOG_GUI, "Cannot load the keymap!\n");
+		throw;
+	}
+	
+	// VIDEO INITIALIZATION
 	if(SDL_VideoInit(nullptr) != 0) {
 		PERRF(LOG_GUI, "unable to initialize SDL video: %s\n", SDL_GetError());
 		throw std::exception();
@@ -156,33 +177,23 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		PERRF(LOG_GUI, "SDL_GetVideoDriver(): %s\n", SDL_GetError());
 		throw std::exception();
 	}
-
-	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
-
-	/*** WINDOW CREATION ***/
-	create_window(PACKAGE_STRING, 640, 480, SDL_WINDOW_RESIZABLE);
-
-	glewExperimental = GL_FALSE;
-	GLenum res = glewInit();
-	if(res != GLEW_OK) {
-		PERRF(LOG_GUI,"GLEW ERROR: %s\n", glewGetErrorString(res));
-		shutdown_SDL();
-		throw std::exception();
-	}
-	PINFOF(LOG_V1, LOG_GUI, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
-	glGetError();
-
-	m_vsync = g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC);
 	
+	// WINDOW CREATION
+	// initial defaults, will be updated later on in the resize_window
+	m_width = 640;
+	m_height = 480;
+	m_wnd_title = PACKAGE_STRING;
 	try {
-		check_device_caps();
-		// TODO SDL supports adaptive sync passing -1 to this function.
-		// Acquire an adaptive sync monitor and test the possibility of
-		// refreshing the screen at VGA native refresh rates.
-		SDL_GL_SetSwapInterval(
-			//!g_program.threads_sync() && 
-			m_vsync
-		);
+		create_GL_window(SDL_WINDOW_RESIZABLE);
+	} catch(std::exception &) {
+		shutdown_SDL();
+		throw;
+	}
+
+	PINFOF(LOG_V0,LOG_GUI, "Selected video mode: %dx%d\n", m_width, m_height);
+	
+	// INTERFACE INITIALIZATION
+	try {
 		init_Rocket();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
@@ -192,36 +203,22 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	vec2i wsize = m_windows.interface->get_size();
 	resize_window(wsize.x, wsize.y);
-	m_rocket_renderer->SetDimensions(wsize.x,wsize.y);
 
+	SDL_ShowWindow(m_SDL_window);
 	SDL_SetWindowPosition(m_SDL_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	
 	if(g_program.config().get_bool(GUI_SECTION, GUI_FULLSCREEN)) {
 		toggle_fullscreen();
 	}
 
-	try {
-		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
-	} catch(std::exception &e) {
-		PERRF(LOG_GUI, "Unable to load the keymap!\n");
-		shutdown_SDL();
-		throw std::exception();
-	}
-
 	m_gui_visible = true;
 	m_input_grab = false;
-	m_grab_method = g_program.config().get_string(GUI_SECTION,GUI_GRAB_METHOD);
-	std::transform(m_grab_method.begin(), m_grab_method.end(), m_grab_method.begin(), ::tolower);
 
-	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
-
-	SDL_SetRenderDrawColor(m_SDL_renderer,
-		g_program.config().get_int(GUI_SECTION, GUI_BG_R),
-		g_program.config().get_int(GUI_SECTION, GUI_BG_G),
-		g_program.config().get_int(GUI_SECTION, GUI_BG_B),
-		255);
+	SDL_SetRenderDrawColor(m_SDL_renderer, backcolor.r, backcolor.g, backcolor.b, 255);
 
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, nullptr);
 
+	// JOYSTICK SUPPORT
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
 		PWARNF(LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
 	} else {
@@ -229,6 +226,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
 	}
 
+	// DONE
 	show_welcome_screen();
 }
 
@@ -244,60 +242,39 @@ void GUI::config_changed()
 	m_curr_model_changed = true;
 }
 
-void GUI::create_window(const char * _title, int _width, int _height, int _flags)
+void GUI::set_window_icon()
 {
-	int x, y;
-	int display = 0;
-
-	int ndisplays = SDL_GetNumVideoDisplays();
-	if(display > ndisplays-1) {
-		display = 0;
-	}
-
-	if(_flags & SDL_WINDOW_FULLSCREEN) {
-		assert(_flags & 0x00001000); //check the DESKTOP mode
-		/* desktop mode is the only mode that really works. don't even think
-		 * using the "real" fullscreen mode.
-		 */
-		SDL_DisplayMode desktop;
-		SDL_GetDesktopDisplayMode(display, &desktop);
-		x = 0;
-		y = 0;
-		m_width = desktop.w;
-		m_height = desktop.h;
-	} else {
-		x = SDL_WINDOWPOS_CENTERED;
-		y = SDL_WINDOWPOS_CENTERED;
-		m_width = _width;
-		m_height = _height;
-	}
-
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-	m_SDL_window = SDL_CreateWindow(_title, x, y, m_width, m_height, _flags | SDL_WINDOW_OPENGL);
-	if(!m_SDL_window) {
-		PERRF(LOG_GUI, "SDL_CreateWindow(): %s\n", SDL_GetError());
-		throw std::exception();
-	}
-
+	//this function must be called before SDL_CreateRenderer!
+	
 #ifndef _WIN32
-	//the program icon
 	std::string iconfile = g_program.config().get_assets_home() + FS_SEP "icon.png";
 	SDL_Surface* icon = IMG_Load(iconfile.c_str());
 	if(icon) {
-		//this function must be called before SDL_CreateRenderer!
 		SDL_SetWindowIcon(m_SDL_window, icon);
 		SDL_FreeSurface(icon);
 	} else {
 		PERRF(LOG_GUI, "unable to load app icon '%s'\n", iconfile.c_str());
 	}
 #endif
+}
 
-	PINFOF(LOG_V0,LOG_GUI,"Selected video mode: %dx%d\n", m_width, m_height);
+void GUI::create_GL_window(int _flags)
+{
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+	m_SDL_window = SDL_CreateWindow(m_wnd_title.c_str(), 
+		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+		m_width, m_height, _flags | SDL_WINDOW_OPENGL);
+
+	if(!m_SDL_window) {
+		PERRF(LOG_GUI, "SDL_CreateWindow(): %s\n", SDL_GetError());
+		throw std::exception();
+	}
+	
+	set_window_icon();
 
 	m_SDL_glcontext = SDL_GL_CreateContext(m_SDL_window);
 	if(!m_SDL_glcontext) {
-		SDL_DestroyWindow(m_SDL_window);
 		PERRF(LOG_GUI, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
 		throw std::exception();
 	}
@@ -316,9 +293,26 @@ void GUI::create_window(const char * _title, int _width, int _height, int _flags
 	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, oglIdx,
 		SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-	SDL_ShowWindow(m_SDL_window);
-
-	m_wnd_title = _title;
+	if(!m_SDL_renderer) {
+		PERRF(LOG_GUI, "SDL_CreateRenderer(): %s\n", SDL_GetError());
+		throw std::exception();
+	}
+	
+	glewExperimental = GL_FALSE;
+	GLenum res = glewInit();
+	if(res != GLEW_OK) {
+		PERRF(LOG_GUI,"GLEW ERROR: %s\n", glewGetErrorString(res));
+		throw std::exception();
+	}
+	PINFOF(LOG_V1, LOG_GUI, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
+	glGetError();
+	
+	check_device_GL_caps();
+	
+	// TODO SDL supports adaptive sync passing -1 to this function.
+	// Acquire an adaptive sync monitor and test the possibility of
+	// refreshing the screen at VGA native refresh rates.
+	SDL_GL_SetSwapInterval(m_vsync);
 }
 
 vec2i GUI::resize_window(int _w, int _h)
@@ -326,7 +320,9 @@ vec2i GUI::resize_window(int _w, int _h)
 	SDL_SetWindowSize(m_SDL_window, _w, _h);
 	SDL_GetWindowSize(m_SDL_window, &m_width, &m_height);
 	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
+	
 	update_window_size(m_width, m_height);
+	
 	return vec2i(m_width, m_height);
 }
 
@@ -344,7 +340,7 @@ void GUI::toggle_fullscreen()
 	}
 }
 
-void GUI::check_device_caps()
+void GUI::check_device_GL_caps()
 {
 	const GLubyte* vendor;
 	GLCALL( vendor = glGetString(GL_VENDOR) );
@@ -549,7 +545,11 @@ void GUI::GL_debug_output(
 void GUI::render()
 {
 	SDL_RenderClear(m_SDL_renderer);
-	GLCALL( glViewport(0,0, m_width, m_height) );
+	
+	// viewport setting should be irrelevant, I'll keep it for completeness.
+	SDL_Rect rect{0,0,m_width,m_height};
+	SDL_RenderSetViewport(m_SDL_renderer, &rect);
+	
 	m_windows.interface->render();
 
 	ms_rocket_mutex.lock();
@@ -1114,8 +1114,14 @@ void GUI::update(uint64_t _current_time)
 
 void GUI::shutdown_SDL()
 {
-	SDL_DestroyRenderer(m_SDL_renderer);
-	SDL_DestroyWindow(m_SDL_window);
+	if(m_SDL_renderer) {
+		SDL_DestroyRenderer(m_SDL_renderer);
+		m_SDL_renderer = nullptr;
+	}
+	if(m_SDL_window) {
+		SDL_DestroyWindow(m_SDL_window);
+		m_SDL_window = nullptr;
+	}
 	SDL_VideoQuit();
 }
 
@@ -1150,7 +1156,7 @@ std::string GUI::load_shader_file(const std::string &_path)
 	return shdata;
 }
 
-std::vector<GLuint> GUI::attach_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program)
+std::vector<GLuint> GUI::attach_GLSL_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program)
 {
 	std::vector<GLuint> sh_ids;
 	for(auto sh : _sh_paths) {
@@ -1188,8 +1194,8 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 	GLCALL( progid = glCreateProgram() );
 
 	// Load and attach Shaders to Program
-	std::vector<GLuint> vsids = attach_shaders(_vs_paths, GL_VERTEX_SHADER, progid);
-	std::vector<GLuint> fsids = attach_shaders(_fs_paths, GL_FRAGMENT_SHADER, progid);
+	std::vector<GLuint> vsids = attach_GLSL_shaders(_vs_paths, GL_VERTEX_SHADER, progid);
+	std::vector<GLuint> fsids = attach_GLSL_shaders(_fs_paths, GL_FRAGMENT_SHADER, progid);
 
 	// Link the Program
 	GLCALL( glLinkProgram(progid) );
@@ -1222,17 +1228,17 @@ GLuint GUI::load_GLSL_program(const std::vector<std::string> &_vs_paths, std::ve
 	return progid;
 }
 
-std::string GUI::get_shaders_dir()
+std::string GUI::shaders_dir()
 {
 	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
 }
 
-std::string GUI::get_images_dir()
+std::string GUI::images_dir()
 {
 	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "images" FS_SEP;
 }
 
-GLuint GUI::load_texture(SDL_Surface *_surface)
+GLuint GUI::load_GL_texture(SDL_Surface *_surface)
 {
 	assert(_surface);
 	if(_surface->format->BytesPerPixel != 4) {
@@ -1252,7 +1258,7 @@ GLuint GUI::load_texture(SDL_Surface *_surface)
 	return gltex;
 }
 
-GLuint GUI::load_texture(const std::string &_path, vec2i *_texdim)
+GLuint GUI::load_GL_texture(const std::string &_path, vec2i *_texdim)
 {
 	SDL_Surface *surface = IMG_Load(_path.c_str());
 	if(!surface) {
@@ -1260,7 +1266,7 @@ GLuint GUI::load_texture(const std::string &_path, vec2i *_texdim)
 	}
 	GLuint gltex;
 	try {
-		gltex = load_texture(surface);
+		gltex = load_GL_texture(surface);
 	} catch(std::exception &e) {
 		SDL_FreeSurface(surface);
 		throw;
@@ -1471,7 +1477,7 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	interface->show();
 
 	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_LEDS)) {
-		status = new Status(_gui);
+		status = new Status(_gui, _machine);
 		status->show();
 		status_wnd = true;
 	} else {

@@ -29,7 +29,7 @@
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/storagectrl.h"
 
-Status::Status(GUI * _gui)
+Status::Status(GUI * _gui, Machine *_machine)
 :
 Window(_gui, "status.rml")
 {
@@ -38,6 +38,10 @@ Window(_gui, "status.rml")
 	m_status.floppy_a_led = get_element("floppy_a_led");
 	m_status.floppy_b_led = get_element("floppy_b_led");
 	m_status.hdd_led = get_element("hdd_led");
+	
+	m_machine = _machine;
+	m_floppy = nullptr;
+	m_hdd = nullptr;
 }
 
 Status::~Status()
@@ -49,10 +53,10 @@ void Status::update()
 	bool motor;
 
 	//Power led
-	if(m_gui->machine()->is_on() && m_leds.power==false) {
+	if(m_machine->is_on() && m_leds.power==false) {
 		m_leds.power = true;
 		m_status.power_led->SetClass("led_active", true);
-	} else if(!m_gui->machine()->is_on() && m_leds.power==true) {
+	} else if(!m_machine->is_on() && m_leds.power==true) {
 		m_leds.power = false;
 		m_status.power_led->SetClass("led_active", false);
 	}
@@ -91,8 +95,8 @@ void Status::update()
 
 void Status::config_changed()
 {
-	m_floppy = m_gui->machine()->devices().device<FloppyCtrl>();
-	m_hdd = m_gui->machine()->devices().device<StorageCtrl>();
+	m_floppy = m_machine->devices().device<FloppyCtrl>();
+	m_hdd = m_machine->devices().device<StorageCtrl>();
 	m_leds.power = false;
 	m_leds.floppy_a = false;
 	m_leds.floppy_b = false;
