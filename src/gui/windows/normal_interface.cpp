@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -77,10 +77,15 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 
 	m_size = vec2i(w,h);
 
-	init_gl(
-		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler),
-		GUI::shaders_dir() + "fb-normal.vs",
-		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_NORMAL_SHADER)
+	m_screen = std::make_unique<InterfaceScreen>(_gui);
+	
+	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
+	
+	PINFOF(LOG_V1, LOG_GUI, "Using VGA shader: %s\n", frag_sh.c_str());
+	
+	m_screen->renderer()->load_vga_program(
+		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
+		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler)
 	);
 }
 
@@ -101,8 +106,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	int disp_w, disp_h;
 	int disp_area_w = _width, disp_area_h = _height;
 	if(m_vga_scaling>0) {
-		disp_w = m_display.vga.mode().xres * m_vga_scaling;
-		disp_h = m_display.vga.mode().yres * m_vga_scaling;
+		disp_w = m_screen->vga.display.mode().xres * m_vga_scaling;
+		disp_h = m_screen->vga.display.mode().yres * m_vga_scaling;
 	} else {
 		disp_w = disp_area_w;
 		disp_h = disp_area_h;
@@ -119,7 +124,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	if(m_vga_aspect == DISPLAY_ASPECT_ORIGINAL) {
 		ratio = 1.333333f; //4:3
 	} else if(m_vga_aspect == DISPLAY_ASPECT_ADAPTIVE) {
-		ratio = float(m_display.vga.mode().xres) / float(m_display.vga.mode().yres);
+		ratio = float(m_screen->vga.display.mode().xres) / float(m_screen->vga.display.mode().yres);
 	} else {
 		//SCALED
 		ratio = float(disp_w) / float(disp_h);
@@ -149,12 +154,12 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		xs = float(disp_w)/float(_width);
 	}
 
-	m_display.size.x = disp_w;
-	m_display.size.y = disp_h;
-	m_display.mvmat.load_scale(xs, ys, 1.0);
-	m_display.mvmat.load_translation(xt, yt, 0.0);
+	m_screen->vga.size.x = disp_w;
+	m_screen->vga.size.y = disp_h;
+	m_screen->vga.mvmat.load_scale(xs, ys, 1.0);
+	m_screen->vga.mvmat.load_translation(xt, yt, 0.0);
 
-	m_size = m_display.size;
+	m_size = m_screen->vga.size;
 	if(m_gui_mode == GUI_MODE_NORMAL) {
 		m_size.y += sysunit_h;
 	}
@@ -170,8 +175,8 @@ void NormalInterface::update()
 	Interface::update();
 
 	if(m_vga_aspect==DISPLAY_ASPECT_ADAPTIVE || m_vga_scaling>0) {
-		m_display.vga.lock();
-		if(m_display.vga.dimension_updated()) {
+		m_screen->vga.display.lock();
+		if(m_screen->vga.display.dimension_updated()) {
 			uint32_t wflags = m_gui->window_flags();
 			//WARNING in order for the MAXIMIZED case to work under X11 you need
 			//SDL 2.0.4 with this patch:
@@ -180,8 +185,8 @@ void NormalInterface::update()
 			   !(wflags & SDL_WINDOW_MAXIMIZED) &&
 			   m_vga_scaling)
 			{
-				int w = m_display.vga.mode().xres * m_vga_scaling;
-				int h = m_display.vga.mode().yres * m_vga_scaling;
+				int w = m_screen->vga.display.mode().xres * m_vga_scaling;
+				int h = m_screen->vga.display.mode().yres * m_vga_scaling;
 				if(m_gui_mode == GUI_MODE_NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}
@@ -196,9 +201,9 @@ void NormalInterface::update()
 					m_gui->window_height()
 				);
 			}
-			m_display.vga.clear_dimension_updated();
+			m_screen->vga.display.clear_dimension_updated();
 		}
-		m_display.vga.unlock();
+		m_screen->vga.display.unlock();
 	}
 
 	if(is_visible()) {

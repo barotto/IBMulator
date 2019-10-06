@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -18,7 +18,8 @@
  */
 
 #include "ibmulator.h"
-#include "gui_opengl.h"
+#include "gui/gui_opengl.h"
+#include "screen_renderer_opengl.h"
 #include "machine.h"
 #include "mixer.h"
 #include "program.h"
@@ -26,7 +27,7 @@
 #include <sys/stat.h>
 #include <SDL_image.h>
 #include <Rocket/Core.h>
-#include "hardware/devices/vga.h"
+
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/storagectrl.h"
 using namespace std::placeholders;
@@ -74,41 +75,112 @@ bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 	return false;
 }
 
+InterfaceScreen::InterfaceScreen(GUI *_gui)
+{
+	switch(_gui->renderer()) {
+		case GUI_RENDERER_OPENGL:
+			m_renderer = std::make_unique<ScreenRenderer_OpenGL>();
+			dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get())->init(vga.display);
+			break;
+		default:
+			// errors should be detected during GUI object creation
+			PDEBUGF(LOG_V0, LOG_GUI, "Invalid renderer!\n");
+			return;
+	}
+	
+	vga.mvmat.load_identity();
+	vga.res = 0;
+	vga.size = 0;
+	vga.brightness = 1.f;
+	vga.contrast = 1.f;
+	vga.saturation = 1.f;
+}
 
-Interface::Display::Display()
-{}
+InterfaceScreen::~InterfaceScreen()
+{
+}
 
-Interface::Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml)
+void InterfaceScreen::render()
+{
+	sync_with_device();
+	
+	m_renderer->render_vga(vga.mvmat, vga.size,
+		vga.brightness, vga.contrast, vga.saturation,
+		0, 0, 0);
+}
+
+void InterfaceScreen::sync_with_device()
+{
+	// TODO The machine is a different thread and these methods are not thread safe.
+	// They could return garbage, but the worst that would happen is some sporadic
+	// tearing or stuttering. The wait could be skipped (tearing) or could be
+	// called without reason (stuttering) but in any case the program should
+	// not end in a deadlock.
+	if(
+	   g_program.threads_sync() && 
+	   g_machine.is_on() && 
+	  !g_machine.is_paused() && 
+	   g_machine.speed_factor() >= 1.0 &&
+	   g_machine.get_bench().load < 1.0
+	)
+	{
+		try {
+			// Wait for no more than 2 frames.
+			// Using a timeout let us simplify the code at the expense of possible
+			// stuttering, which would happen only in specific and non meaningful
+			// cases like when the user pauses the machine.
+			// I think this is acceptable. 
+			vga.display.wait_for_device(g_program.heartbeat() * 2);
+		} catch(std::exception &) {}
+	}
+	
+	if(vga.display.fb_updated()) {
+		vga.display.lock();
+		vec2i vga_res = vec2i(vga.display.mode().xres, vga.display.mode().yres);
+		// this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
+		// when the program runs with the default shaders, the load on the GPU is very low
+		// so the drivers lower the GPU's clocks to the minimum value;
+		// the result is the GPU's memory controller load goes high and glTexSubImage2D takes
+		// a lot of time to complete, bloking the machine emulation thread.
+		// PBOs are a possible alternative, but a memcpy is way simpler.
+		m_vga_buf = vga.display.get_fb();
+		vga.display.clear_fb_updated();
+		vga.display.unlock();
+		
+		// now the Machine thread is free to continue emulation
+		// meanwhile we start rendering the last VGA image
+		m_renderer->store_vga_framebuffer(m_vga_buf, vga_res);
+	}
+}
+
+
+Interface::Interface(Machine *_machine, GUI *_gui, Mixer *_mixer, const char *_rml)
 :
 Window(_gui, _rml),
-m_quad_data{
-	-1.0f, -1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	 1.0f,  1.0f, 0.0f
-}
+m_size(0),
+m_curr_drive(0),
+m_floppy_present(false),
+m_floppy_changed(false),
+m_machine(_machine),
+m_mixer(_mixer),
+m_floppy(nullptr),
+m_hdd(nullptr)
 {
 	assert(m_wnd);
-	m_machine = _machine;
-	m_mixer = _mixer;
-
+	
 	m_buttons.power = get_element("power");
 	m_buttons.fdd_select = get_element("fdd_select");
-	m_warning = get_element("warning");
-	m_message = get_element("message");
 	m_status.fdd_led = get_element("fdd_led");
 	m_status.hdd_led = get_element("hdd_led");
 	m_status.fdd_disk = get_element("fdd_disk");
+	m_warning = get_element("warning");
+	m_message = get_element("message");
 
 	m_leds.power = false;
 
 	m_fs = new FileSelect(_gui);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
-
-	m_size = 0;
 
 	m_audio.init(_mixer);
 }
@@ -119,91 +191,6 @@ Interface::~Interface()
 		m_fs->close();
 		delete m_fs;
 	}
-}
-
-void Interface::init_gl(uint _sampler, std::string _vshader, std::string _fshader)
-{
-	std::vector<std::string> vs,fs;
-	std::string shadersdir = GUI::shaders_dir();
-
-	m_display.mvmat.load_identity();
-
-	if(_sampler == DISPLAY_SAMPLER_NEAREST || _sampler == DISPLAY_SAMPLER_BILINEAR) {
-		fs.push_back(shadersdir + "filter_bilinear.fs");
-	} else if(_sampler == DISPLAY_SAMPLER_BICUBIC) {
-		fs.push_back(shadersdir + "filter_bicubic.fs");
-	} else {
-		PERRF(LOG_GUI, "Invalid sampler interpolation method\n");
-		throw std::exception();
-	}
-
-	vs.push_back(_vshader);
-	fs.push_back(shadersdir + "color_functions.glsl");
-	fs.push_back(_fshader);
-
-	try {
-		m_display.prog = GUI_OpenGL::load_program(vs,fs);
-	} catch(std::exception &e) {
-		PERRF(LOG_GUI, "Unable to create the shader program!\n");
-		throw std::exception();
-	}
-
-	//find the uniforms
-	GLCALL( m_display.uniforms.vgamap = glGetUniformLocation(m_display.prog, "iVGAMap") );
-	if(m_display.uniforms.vgamap == -1) {
-		PWARNF(LOG_GUI, "iVGAMap not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.brightness = glGetUniformLocation(m_display.prog, "iBrightness") );
-	if(m_display.uniforms.brightness == -1) {
-		PWARNF(LOG_GUI, "iBrightness not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.contrast = glGetUniformLocation(m_display.prog, "iContrast") );
-	if(m_display.uniforms.contrast == -1) {
-		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.saturation = glGetUniformLocation(m_display.prog, "iSaturation") );
-	if(m_display.uniforms.saturation == -1) {
-		PWARNF(LOG_GUI, "iSaturation not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.mvmat = glGetUniformLocation(m_display.prog, "iModelView") );
-	if(m_display.uniforms.mvmat == -1) {
-		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
-	}
-	GLCALL( m_display.uniforms.size = glGetUniformLocation(m_display.prog, "iDisplaySize") );
-	if(m_display.uniforms.size == -1) {
-		PWARNF(LOG_GUI, "iDisplaySize not found in shader program\n");
-	}
-
-	m_display.glintf = GL_RGBA;
-	m_display.glf = GL_RGBA;
-	m_display.gltype = GL_UNSIGNED_INT_8_8_8_8_REV;
-	GLCALL( glGenTextures(1, &m_display.tex) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-			m_display.vga.get_fb_width(), m_display.vga.get_fb_height(),
-			0, m_display.glf, m_display.gltype, nullptr) );
-
-	m_display.tex_buf.resize(m_display.vga.get_fb_size());
-
-	GLCALL( glGenSamplers(1, &m_display.sampler) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
-	GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER) );
-	if(_sampler == DISPLAY_SAMPLER_NEAREST) {
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST) );
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST) );
-	} else {
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
-		GLCALL( glSamplerParameteri(m_display.sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
-	}
-
-	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
-
-	m_display.vga.set_fb_updated();
-
-	GLCALL( glGenBuffers(1, &m_vertex_buffer) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(m_quad_data), m_quad_data, GL_DYNAMIC_DRAW) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
 }
 
 void Interface::config_changed()
@@ -447,106 +434,9 @@ void Interface::show_warning(bool _show)
 	}
 }
 
-void Interface::render()
+void Interface::render_screen()
 {
-	render_monitor();
-}
-
-void Interface::render_quad()
-{
-	GLCALL( glEnableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer) );
-	GLCALL( glVertexAttribPointer(
-		0,        // attribute 0. must match the layout in the shader.
-		3,        // size
-		GL_FLOAT, // type
-		GL_FALSE, // normalized?
-		0,        // stride
-		(void*)0  // array buffer offset
-	) );
-	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
-	GLCALL( glDisableVertexAttribArray(0) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, 0) );
-}
-
-void Interface::render_monitor()
-{
-	// TODO The machine is a different thread and these methods are not thread safe.
-	// They could return garbage, but the worst that would happen is some sporadic
-	// tearing or stuttering. The wait could be skipped (tearing) or could be
-	// called without reason (stuttering) but in any case the program should
-	// not end in a deadlock.
-	if(
-	   g_program.threads_sync() && 
-	   m_machine->is_on() && 
-	  !m_machine->is_paused() && 
-	   m_machine->speed_factor() >= 1.0 &&
-	   m_machine->get_bench().load < 1.0
-	)
-	{
-		try {
-			// Wait for no more than 2 frames.
-			// Using a timeout let us simplify the code at the expense of possible
-			// stuttering, which would happen only in specific and non meaningful
-			// cases like when the user pauses the machine.
-			// I think this is acceptable. 
-			m_display.vga.wait_for_device(g_program.heartbeat() * 2);
-		} catch(std::exception &) {}
-	}
-	
-	GLCALL( glActiveTexture(GL_TEXTURE0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_display.tex) );
-	if(m_display.vga.fb_updated()) {
-		m_display.vga.lock();
-		vec2i vga_res = vec2i(m_display.vga.mode().xres, m_display.vga.mode().yres);
-		//this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
-		//when the program runs with the default shaders, the load on the GPU is very low
-		//so the drivers lower the clock of the GPU to the minimum value;
-		//the result is the GPU memory controller load goes high and glTexSubImage2D takes
-		//a lot of time to complete, bloking the machine emulation thread.
-		//PBOs are a possible alternative, but a memcpy is way simpler.
-		m_display.tex_buf = m_display.vga.get_fb();
-		m_display.vga.clear_fb_updated();
-		m_display.vga.unlock();
-
-		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, m_display.vga.get_fb_width()) );
-		if(!(m_display.vga_res == vga_res)) {
-			GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, m_display.glintf,
-					vga_res.x, vga_res.y,
-					0, m_display.glf, m_display.gltype,
-					&m_display.tex_buf[0]) );
-			m_display.vga_res = vga_res;
-		} else {
-			GLCALL( glTexSubImage2D(GL_TEXTURE_2D, 0,
-					0, 0,
-					vga_res.x, vga_res.y,
-					m_display.glf, m_display.gltype,
-					&m_display.tex_buf[0]) );
-		}
-		GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
-	}
-	GLCALL( glBindSampler(0, m_display.sampler) );
-	GLCALL( glUseProgram(m_display.prog) );
-	GLCALL( glUniform1i(m_display.uniforms.vgamap, 0) );
-	if(m_machine->is_on()) {
-		GLCALL( glUniform1f(m_display.uniforms.brightness, m_display.brightness) );
-		GLCALL( glUniform1f(m_display.uniforms.contrast, m_display.contrast) );
-		GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
-	} else {
-		GLCALL( glUniform1f(m_display.uniforms.brightness, 1.f) );
-		GLCALL( glUniform1f(m_display.uniforms.contrast, 1.f) );
-		GLCALL( glUniform1f(m_display.uniforms.saturation, 1.f) );
-	}
-	GLCALL( glUniform1f(m_display.uniforms.saturation, m_display.saturation) );
-	GLCALL( glUniformMatrix4fv(m_display.uniforms.mvmat, 1, GL_FALSE, m_display.mvmat.data()) );
-	GLCALL( glUniform2iv(m_display.uniforms.size, 1, m_display.size) );
-	render_vga();
-}
-
-void Interface::render_vga()
-{
-	GLCALL( glDisable(GL_BLEND) );
-	render_quad();
+	m_screen->render();
 }
 
 void Interface::set_audio_volume(float _volume)
@@ -556,25 +446,25 @@ void Interface::set_audio_volume(float _volume)
 
 void Interface::set_video_brightness(float _level)
 {
-	m_display.brightness = _level;
+	m_screen->vga.brightness = _level;
 }
 
 void Interface::set_video_contrast(float _level)
 {
-	m_display.contrast = _level;
+	m_screen->vga.contrast = _level;
 }
 
 void Interface::set_video_saturation(float _level)
 {
-	m_display.saturation = _level;
+	m_screen->vga.saturation = _level;
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_display.vga.mode().xres,
-		m_display.vga.mode().yres,
+		m_screen->vga.display.mode().xres,
+		m_screen->vga.display.mode().yres,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,
@@ -602,18 +492,18 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 			throw std::exception();
 		}
 	}
-	m_display.vga.lock();
+	m_screen->vga.display.lock();
 		SDL_LockSurface(surface);
-		m_display.vga.copy_screen((uint8_t*)surface->pixels);
+		m_screen->vga.display.copy_screen((uint8_t*)surface->pixels);
 		SDL_UnlockSurface(surface);
 		if(palette) {
 			SDL_LockSurface(palette);
 			for(uint i=0; i<256; i++) {
-				((uint32_t*)palette->pixels)[i] = m_display.vga.get_color(i);
+				((uint32_t*)palette->pixels)[i] = m_screen->vga.display.get_color(i);
 			}
 			SDL_UnlockSurface(palette);
 		}
-	m_display.vga.unlock();
+	m_screen->vga.display.unlock();
 
 	int result = IMG_SavePNG(surface, _screenfile.c_str());
 	SDL_FreeSurface(surface);
@@ -653,8 +543,9 @@ void Interface::print_VGA_text(std::vector<uint16_t> &_text)
 		tminfo.actl_palette[i] = i;
 	}
 	std::vector<uint16_t> oldtxt(80*25,0);
-	m_display.vga.text_update(
-			(uint8_t*)(oldtxt.data()),
-			(uint8_t*)(_text.data()),
-			0, 0, &tminfo);
+	m_screen->vga.display.text_update(
+		(uint8_t*)(oldtxt.data()),
+		(uint8_t*)(_text.data()),
+		0, 0, &tminfo
+	);
 }

@@ -22,6 +22,7 @@
 
 #include "matrix.h"
 #include <Rocket/Core/RenderInterface.h>
+#include <GL/glew.h>
 
 #if !(SDL_VIDEO_RENDER_OGL)
 	#error "Only the opengl sdl backend is supported."

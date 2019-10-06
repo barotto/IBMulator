@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,11 +21,11 @@
 #define IBMULATOR_GUI_INTERFACE_H
 
 #include "gui/window.h"
+#include "gui/guifx.h"
+#include "screen_renderer.h"
 #include "fileselect.h"
 #include "hardware/devices/vga.h"
 #include <Rocket/Core/EventListener.h>
-#include "gui/guifx.h"
-#include <GL/glew.h>
 
 class Machine;
 class GUI;
@@ -51,42 +51,42 @@ public:
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
 };
 
-class Interface : public Window
+
+class InterfaceScreen
 {
 protected:
-	class Display {
-	public:
-		VGADisplay vga;
-		vec2i vga_res;
-		GLuint tex;
-		std::vector<uint32_t> tex_buf;
-		GLuint sampler;
-		GLint  glintf;
-		GLenum glf;
-		GLenum gltype;
-		GLuint prog;
-		mat4f mvmat;
+	std::unique_ptr<ScreenRenderer> m_renderer;
+	std::vector<uint32_t> m_vga_buf; // local copy of the VGA framebuffer
+	
+public:
+	struct {
+		VGADisplay display; // GUI-Machine interface
+		
+		vec2i res;          // last vga resolution
+		vec2i size;         // size in pixels of the vga image inside the interface
+		mat4f mvmat;        // position of the vga image inside the interface
+		
 		float brightness;
 		float contrast;
 		float saturation;
-		vec2i size; // size in pixel of the destination quad
-		bool resync;
+	} vga;
+	
+public:
+	InterfaceScreen(GUI *_gui);
+	virtual ~InterfaceScreen();
+	
+	ScreenRenderer * renderer() { return m_renderer.get(); }
+	virtual void render();
+	
+protected:
+	void sync_with_device();
+};
 
-		struct {
-			GLint vgamap;
-			GLint brightness;
-			GLint contrast;
-			GLint saturation;
-			GLint mvmat;
-			GLint size;
-		} uniforms;
 
-		Display();
-
-	} m_display;
-
-	GLuint  m_vertex_buffer;
-	GLfloat m_quad_data[18];
+class Interface : public Window
+{
+protected:
+	std::unique_ptr<InterfaceScreen> m_screen;
 
 	vec2i m_size; // current size of the interface
 
@@ -107,7 +107,6 @@ protected:
 	RC::Element * m_warning;
 	RC::Element * m_message;
 
-	bool m_drive_b;
 	uint m_curr_drive;
 	bool m_floppy_present;
 	bool m_floppy_changed;
@@ -138,9 +137,9 @@ public:
 	void on_fdd_mount(RC::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
-	void set_vga_updated() { m_display.vga.set_fb_updated(); }
-	VGADisplay * vga_display() { return &m_display.vga; }
-	virtual void render();
+	void set_vga_updated() { m_screen->vga.display.set_fb_updated(); }
+	VGADisplay * vga_display() { return & m_screen->vga.display; }
+	void render_screen();
 
 	virtual void set_audio_volume(float);
 	virtual void set_video_brightness(float);
@@ -151,12 +150,6 @@ public:
 	void print_VGA_text(std::vector<uint16_t> &_text);
 
 	virtual void sig_state_restored() {}
-
-protected:
-	void init_gl(uint _vga_sampler, std::string _vga_vshader, std::string _vga_fshader);
-	virtual void render_monitor();
-	virtual void render_vga();
-	void render_quad();
 
 private:
 	void update_floppy_disk(std::string _filename);

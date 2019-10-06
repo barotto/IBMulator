@@ -17,6 +17,7 @@ libgui_a_SOURCES = \
 	window.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
+	windows/screen_renderer_opengl.cpp \
 	windows/normal_interface.cpp \
 	windows/realistic_interface.cpp \
 	windows/debugtools.cpp \
@@ -44,6 +45,8 @@ noinst_HEADERS = \
 	window.h \
 	windows/desktop.h \
 	windows/interface.h \
+	windows/screen_renderer.h \
+	windows/screen_renderer_opengl.h \
 	windows/normal_interface.h \
 	windows/realistic_interface.h \
 	windows/debugtools.h \

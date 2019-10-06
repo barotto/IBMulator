@@ -27,6 +27,10 @@
 #include "timers.h"
 #include <atomic>
 
+enum GUIRenderer {
+	GUI_RENDERER_OPENGL
+};
+
 enum GUIMode {
 	GUI_MODE_NORMAL,
 	GUI_MODE_COMPACT,
@@ -48,6 +52,7 @@ enum DisplayAspect {
 #define JOY_NONE INT_MAX
 
 class GUI;
+class GUI_OpenGL;
 
 class RocketRenderer;
 class RocketSystemInterface;
@@ -202,14 +207,16 @@ public:
 	GUI();
 	virtual ~GUI();
 
+	static GUI * instance();
+	
+	virtual GUIRenderer renderer() const = 0;
+	
 	void init(Machine *_machine, Mixer *_mixer);
 	void config_changed();
 	void render();
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
-
-	static GUI * instance();
 	
 	RC::ElementDocument * load_document(const std::string &_filename);
 	static std::string shaders_dir();

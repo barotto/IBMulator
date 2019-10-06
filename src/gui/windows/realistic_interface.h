@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -47,6 +47,25 @@ public:
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
 };
 
+
+class RealisticScreen : public InterfaceScreen
+{
+public:
+	struct {
+		mat4f mvmat;
+		float ambient;
+	} monitor;
+
+	vec2f vga_image_scale;
+	vec2f vga_reflection_scale;
+	
+	RealisticScreen(GUI *_gui);
+	~RealisticScreen();
+	
+	void render();
+};
+
+
 class RealisticInterface : public Interface
 {
 private:
@@ -66,29 +85,6 @@ private:
 
 	int   m_drag_start_x;
 	float m_drag_start_left;
-
-	struct Monitor {
-		mat4f mvmat;
-		GLuint prog;
-		float  ambient;
-		GLuint reflection_map;
-		GLuint reflection_sampler;
-		struct {
-			GLint mvmat;
-			GLint ambient;
-			GLint reflection_map;
-		} uniforms;
-	} m_monitor;
-
-	struct {
-		vec2f reflection_scale;
-		struct {
-			GLint ambient;
-			GLint reflection_map;
-			GLint vga_scale;
-			GLint reflection_scale;
-		} uniforms;
-	} m_rdisplay;
 
 	static event_map_t ms_evt_map;
 
@@ -140,8 +136,7 @@ private:
 	void  on_dragstart(RC::Event &);
 	void  on_power(RC::Event &);
 
-	void render_monitor();
-	void render_vga();
+	inline RealisticScreen * screen() { return (RealisticScreen *)m_screen.get(); }
 };
 
 #endif

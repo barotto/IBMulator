@@ -169,7 +169,7 @@ void GUI_OpenGL::check_device_GL_caps()
 }
 
 std::vector<GLuint> GUI_OpenGL::attach_shaders(
-	const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program)
+	const std::vector<std::string> _sh_paths, GLuint _sh_type, GLuint _program)
 {
 	std::vector<GLuint> sh_ids;
 	for(auto sh : _sh_paths) {
@@ -201,8 +201,16 @@ std::vector<GLuint> GUI_OpenGL::attach_shaders(
 }
 
 GLuint GUI_OpenGL::load_program(
-	const std::vector<std::string> &_vs_paths, std::vector<std::string> &_fs_paths)
+	const std::vector<std::string> _vs_paths, std::vector<std::string> _fs_paths)
 {
+	PDEBUGF(LOG_V1, LOG_GUI, "Loading GLSL program:\n");
+	for( auto s : _vs_paths ) {
+		PDEBUGF(LOG_V1, LOG_GUI, " %s\n", s.c_str());
+	}
+	for( auto s : _fs_paths ) {
+		PDEBUGF(LOG_V1, LOG_GUI, " %s\n", s.c_str());
+	}
+	
 	// Create the Program
 	GLuint progid;
 	GLCALL( progid = glCreateProgram() );

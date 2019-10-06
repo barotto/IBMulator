@@ -303,7 +303,9 @@ void GUI::render()
 	SDL_Rect rect{0,0,m_width,m_height};
 	SDL_RenderSetViewport(m_SDL_renderer, &rect);
 	
-	m_windows.interface->render();
+	// this is a rendering of the screen only (which includes the VGA image).
+	// GUI controls are rendered later by the rocket context
+	m_windows.interface->render_screen();
 
 	ms_rocket_mutex.lock();
 	m_rocket_context->Render();

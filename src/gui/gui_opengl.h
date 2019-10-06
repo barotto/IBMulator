@@ -21,6 +21,7 @@
 #define IBMULATOR_GUI_OPENGL_H
 
 #include "gui.h"
+#include <GL/glew.h>
 
 class GUI_OpenGL : public GUI
 {
@@ -32,7 +33,7 @@ protected:
 	void check_device_GL_caps();
 	
 	static std::vector<GLuint> attach_shaders(
-		const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program);
+		const std::vector<std::string> _sh_paths, GLuint _sh_type, GLuint _program);
 	static void GL_debug_output(GLenum source, GLenum type, GLuint id,
 		GLenum severity, GLsizei length,
 		const GLchar* message, GLvoid* userParam);
@@ -40,8 +41,10 @@ protected:
 public:
 	GUI_OpenGL();
 	~GUI_OpenGL();
+	
+	GUIRenderer renderer() const { return GUI_RENDERER_OPENGL; }
 
-	static GLuint load_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
+	static GLuint load_program(const std::vector<std::string> _vs_path, std::vector<std::string> _fs_path);
 	static GLuint load_texture(SDL_Surface *_surface);
 	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 	
