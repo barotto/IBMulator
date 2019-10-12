@@ -31,6 +31,7 @@ protected:
 	
 	void create_window(int _flags);
 	void check_device_GL_caps();
+	void create_rocket_renderer();
 	
 	static std::vector<GLuint> attach_shaders(
 		const std::vector<std::string> _sh_paths, GLuint _sh_type, GLuint _program);

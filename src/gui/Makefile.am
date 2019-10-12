@@ -12,6 +12,7 @@ libgui_a_SOURCES = \
 	keymap.cpp \
 	rocket/file_interface.cpp \
 	rocket/rend_interface.cpp \
+	rocket/rend_interface_opengl.cpp \
 	rocket/sys_interface.cpp \
 	format.cpp \
 	window.cpp \
@@ -40,6 +41,7 @@ noinst_HEADERS = \
 	keymap.h \
 	rocket/file_interface.h \
 	rocket/rend_interface.h \
+	rocket/rend_interface_opengl.h \
 	rocket/sys_interface.h \
 	format.h \
 	window.h \

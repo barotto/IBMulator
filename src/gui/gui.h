@@ -23,6 +23,7 @@
 #include <SDL.h>
 #include <Rocket/Core/Input.h>
 #include <Rocket/Core/Types.h>
+#include "rocket/rend_interface.h"
 #include "matrix.h"
 #include "timers.h"
 #include <atomic>
@@ -54,7 +55,7 @@ enum DisplayAspect {
 class GUI;
 class GUI_OpenGL;
 
-class RocketRenderer;
+
 class RocketSystemInterface;
 class RocketFileInterface;
 
@@ -136,7 +137,7 @@ protected:
 	// mutex must be locked before any access to the libRocket's objects
 	// TODO this mutex is currently used by 1 thread only (GUI). remove?
 	static std::mutex ms_rocket_mutex;
-	RocketRenderer * m_rocket_renderer;
+	std::unique_ptr<RocketRenderer> m_rocket_renderer;
 	RocketSystemInterface * m_rocket_sys_interface;
 	RocketFileInterface * m_rocket_file_interface;
 	Rocket::Core::Context * m_rocket_context;
@@ -197,6 +198,7 @@ protected:
 	static std::string load_shader_file(const std::string &_path);
 
 	virtual void create_window(int _flags) = 0;
+	virtual void create_rocket_renderer() = 0;
 	
 public:
 	static std::map<std::string, uint> ms_gui_modes;

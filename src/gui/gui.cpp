@@ -30,9 +30,8 @@
 #include <Rocket/Core.h>
 #include <Rocket/Controls.h>
 #include <Rocket/Debugger.h>
-#include "gui/rocket/sys_interface.h"
-#include "gui/rocket/rend_interface.h"
-#include "gui/rocket/file_interface.h"
+#include "rocket/sys_interface.h"
+#include "rocket/file_interface.h"
 #include <SDL_image.h>
 
 #include "windows/desktop.h"
@@ -96,7 +95,6 @@ m_input_grab(false),
 m_mode(GUI_MODE_NORMAL),
 m_vsync(false),
 m_symspeed_factor(1.0),
-m_rocket_renderer(nullptr),
 m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
 m_rocket_context(nullptr)
@@ -105,7 +103,6 @@ m_rocket_context(nullptr)
 
 GUI::~GUI()
 {
-	delete m_rocket_renderer;
 	delete m_rocket_sys_interface;
 	delete m_rocket_file_interface;
 }
@@ -257,12 +254,13 @@ void GUI::toggle_fullscreen()
 
 void GUI::init_Rocket()
 {
-	m_rocket_renderer = new RocketRenderer(m_SDL_renderer, m_SDL_window);
+	create_rocket_renderer();
+	
 	m_rocket_sys_interface = new RocketSystemInterface();
 	m_rocket_file_interface = new RocketFileInterface(m_assets_path.c_str());
 
 	Rocket::Core::SetFileInterface(m_rocket_file_interface);
-	Rocket::Core::SetRenderInterface(m_rocket_renderer);
+	Rocket::Core::SetRenderInterface(m_rocket_renderer.get());
 	Rocket::Core::SetSystemInterface(m_rocket_sys_interface);
 
 	if(!Rocket::Core::Initialise()) {

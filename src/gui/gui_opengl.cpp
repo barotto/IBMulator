@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "gui_opengl.h"
+#include "rocket/rend_interface_opengl.h"
 #include <SDL.h>
 #include <SDL_image.h>
 #include <GL/glew.h>
@@ -166,6 +167,11 @@ void GUI_OpenGL::check_device_GL_caps()
 #endif
 		m_gl_errors_count = 0;
 	}
+}
+
+void GUI_OpenGL::create_rocket_renderer()
+{
+	m_rocket_renderer = std::make_unique<RocketRenderer_OpenGL>(m_SDL_renderer, m_SDL_window);
 }
 
 std::vector<GLuint> GUI_OpenGL::attach_shaders(
