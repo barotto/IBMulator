@@ -153,7 +153,6 @@ AC_CONFIG_FILES([
 	src/audio/Makefile
 	src/hardware/Makefile
 	src/gui/Makefile
-	src/gui/rocket/Makefile
 ])
 
 AC_OUTPUT

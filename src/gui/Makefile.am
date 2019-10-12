@@ -1,4 +1,3 @@
-SUBDIRS = rocket
 AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src
  
 
