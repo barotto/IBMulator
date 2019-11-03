@@ -171,7 +171,7 @@ if test "x$debug" = "xyes"; then
 else
 	echo "- configuration: Release"
 fi
-if test "x$static" != "xno"; then
+if test "x$static" != "x"; then
 	echo "- link type    : Static"
 else
 	echo "- link type    : Dynamic"
