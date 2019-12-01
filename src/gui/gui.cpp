@@ -713,6 +713,13 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					m_machine->send_key_to_kbctrl(KEY_SYSREQ, KEY_PRESSED);
 					return true;
 				}
+				case SDLK_END: {
+					//send Break
+					PDEBUGF(LOG_V2, LOG_GUI, "Break sent to guest OS\n");
+					if(_event.type == SDL_KEYUP) return true;
+					m_machine->send_key_to_kbctrl(KEY_BREAK, KEY_PRESSED);
+					return true;
+				}
 			}
 		} else if(_event.key.keysym.mod & KMOD_ALT) {
 			switch(_event.key.keysym.sym) {

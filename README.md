@@ -205,7 +205,8 @@ Missed frames will not be shown.
 * CTRL+F11: CPU emulation speed down
 * CTRL+F12: CPU emulation speed up
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
-* CTRL+INS: send SysReq to the guest OS
+* CTRL+INS: send SysRq to the guest OS
+* CTRL+END: send Break to the guest OS
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program
