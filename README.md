@@ -70,19 +70,6 @@ you'll get various POST errors. Likewise, if you want to customize the way the
 system works, you need to use the program CUSTOMIZ.EXE. Both files are copyright 
 IBM and you have to search the Internet in order to obtain them.
 
-### Keyboard
-
-You may want to select the correct keyboard mapping under the [gui] section.
-
-Currently valid keyboard mappings are:
-- keymaps/pc-us.map (US keyboard)
-- keymaps/pc-it.map (Italian keyboard)
-
-If you want to create a new mapping for your language, use one of the available
-files in the share/ibmulator/keymaps directory as a template.
-
-If you'll create one please consider sending me a copy :-)
-
 ### ROM set
 
 A ROM set can be:

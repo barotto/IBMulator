@@ -7,12 +7,8 @@ share/ibmulator/icon.ico \
 share/ibmulator/icon.png \
 share/ibmulator/cmos_ps1_2011.bin \
 share/ibmulator/cmos_ps1_2121.bin \
-share/ibmulator/disk_images.zip
-
-keymapsdir = $(pkgdatadir)/keymaps
-dist_keymaps_DATA = \
-share/ibmulator/keymaps/pc-it.map \
-share/ibmulator/keymaps/pc-us.map
+share/ibmulator/disk_images.zip \
+share/ibmulator/keymap.map
 
 guidir = $(pkgdatadir)/gui
 dist_gui_DATA = \

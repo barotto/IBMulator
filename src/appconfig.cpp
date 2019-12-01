@@ -44,7 +44,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ GUI_SECTION, {
-		{ GUI_KEYMAP,             "keymaps/pc-us.map"},
+		{ GUI_KEYMAP,             ""       },
 		{ GUI_MOUSE_TYPE,         "ps2"    },
 		{ GUI_MOUSE_GRAB,         "yes"    },
 		{ GUI_MOUSE_ACCELERATION, "no"     },
@@ -250,8 +250,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                 compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
 ";               realistic: the system is rendered in its entirety, monitor included\n"
-";      keymap: Keymap table file. The file format is taken from Bochs, with some differences.\n"
-";              Open a .map file to read comments on how to edit it.\n"
+";      keymap: Keymap table file. If none specified the default keymap.map file in the share dir will be used.\n"
 ";        grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"
 "; grab_method: Method to use for mouse grabbing\n"
 ";              Possible values: MOUSE3, CTRL-F10\n"
@@ -637,11 +636,7 @@ bool AppConfig::parse_bool(string _str)
 
 std::vector<string> AppConfig::parse_tokens(string _str, string _regex_sep)
 {
-	std::regex re(_regex_sep);
-	// -1 = splitting
-	std::sregex_token_iterator first{_str.begin(), _str.end(), re, -1}, last;
-	
-	return {first, last};
+	return str_parse_tokens(_str, _regex_sep);
 }
 
 int AppConfig::get_error()

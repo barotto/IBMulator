@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,39 +26,36 @@
 // Structure of an element of the keymap table
 struct KeyEntry
 {
-	uint32_t baseKey;  // base key
-	uint32_t modKey;   // modifier key that must be held down
-	int32_t ascii;     // ascii equivalent, if any
-	uint32_t hostKey;  // value that the host's OS or library recognizes
+	uint32_t key;          // ibmulator key code
+	uint32_t host_key;     // host key code
+	std::string host_name; // host key name
 };
 
 class Keymap
 {
 private:
-	uint32_t convert_string_to_key(const char *);
-
-	KeyEntry *m_keymapTable;
-	uint16_t  m_keymapCount;
-
-	unsigned char *m_lineptr;
-	int m_lineCount;
-
-	void init_parse();
-	void init_parse_line(char *_line_to_parse);
-	int get_next_word(char *_output);
-	int get_next_keymap_line(std::ifstream &_fp, char *_sym, char *_modsym,
-			int32_t *_ascii, char *_hostsym);
+	std::map<uint32_t, KeyEntry> m_keys_by_keycode;
+	std::map<uint32_t, KeyEntry> m_keys_by_scancode;
 
 public:
 	Keymap();
 	~Keymap();
 
 	void load(const std::string &_filename);
-	bool is_loaded();
+	KeyEntry *find_host_key(uint32_t _key_code, uint32_t _scan_code);
 
-	KeyEntry *find_host_key(uint32_t _hostkeynum);
-	KeyEntry *find_ascii_char(uint8_t _ascii);
-	const char *get_key_name(uint32_t _key);
+public:
+	static std::map<std::string, uint32_t> ms_keycode_table;
+	static std::map<std::string, uint32_t> ms_sdl_keycode_table;
+	static std::map<std::string, uint32_t> ms_sdl_scancode_table;
+	static std::map<uint32_t, std::string> ms_keycode_str_table;
+	static std::map<uint32_t, std::string> ms_sdl_keycode_str_table;
+	static std::map<uint32_t, std::string> ms_sdl_scancode_str_table;
+	
+private:
+	int parse_next_line(std::ifstream &_fp, int &_linec, std::string &basesym_, std::string  &hostsym_);
+	uint32_t convert_string_to_key(std::map<std::string, uint32_t> &_dictionary,
+			const std::string &_string);
 };
 
 extern Keymap g_keymap;

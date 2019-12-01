@@ -21,6 +21,7 @@
 #include <sstream>
 #include <array>
 #include <algorithm>
+#include <regex>
 #include "utils.h"
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
@@ -46,6 +47,15 @@ std::string str_trim(std::string _str)
 	_str.erase(_str.find_last_not_of(ws) + 1);
 	
 	return _str;
+}
+
+std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep)
+{
+	std::regex re(_regex_sep);
+	// -1 = splitting
+	std::sregex_token_iterator first{_str.begin(), _str.end(), re, -1}, last;
+	
+	return {first, last};
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,

@@ -677,13 +677,13 @@ scancode g_scancodes[KEY_NBKEYS][3] =
    { "\x8D" ,     "\xF0\x8D" },
  },
 
- { // KEY_ALT_SYSREQ
+ { // KEY_SYSREQ
    { "\x54" ,   "\xD4" },
    { "\x84" ,   "\xF0\x84" },
    { "\x57" ,   "\xF0\x57" },
  },
 
- { // KEY_CTRL_BREAK
+ { // KEY_BREAK
    { "\xE0\x46" , "\xE0\xC6" },
    { "\xE0\x7E" , "\xE0\xF0\x7E" },
    { "\x62" ,     "\xF0\x62" },

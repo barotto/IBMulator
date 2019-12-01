@@ -204,7 +204,7 @@ public:
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 
 	//used by the GUI. inter threading considerations are in keyboard.h/cpp
-	void send_key_to_kbctrl(uint32_t key);
+	void send_key_to_kbctrl(uint32_t _key, uint32_t _event);
 	void register_mouse_fun(mouse_fun_t mouse_fun);
 	void mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _button_state);
 	void register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t _button_fun);

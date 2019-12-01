@@ -836,9 +836,9 @@ void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_c
 	});
 }
 
-void Machine::send_key_to_kbctrl(uint32_t _key)
+void Machine::send_key_to_kbctrl(uint32_t _key, uint32_t _event)
 {
-	g_devices.device<Keyboard>()->gen_scancode(_key);
+	g_devices.device<Keyboard>()->gen_scancode(_key, _event);
 }
 
 void Machine::register_mouse_fun(mouse_fun_t _mouse_fun)

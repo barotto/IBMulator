@@ -22,6 +22,7 @@
 #define IBMULATOR_HW_KEYBOARD_H
 
 #include "hardware/iodevice.h"
+#include "gui/keymap.h"
 #include <mutex>
 
 
@@ -192,7 +193,7 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
-	void gen_scancode(uint32_t key);
+	void gen_scancode(uint32_t _key, uint32_t _event);
 	void mouse_motion(int delta_x, int delta_y, int delta_z, unsigned button_state);
 
 	void save_state(StateBuf &_state);

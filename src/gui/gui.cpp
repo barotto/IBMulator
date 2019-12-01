@@ -199,8 +199,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		toggle_fullscreen();
 	}
 
+	auto keymap = g_program.config().find_file(GUI_SECTION, GUI_KEYMAP);
+	if(keymap.empty()) {
+		keymap = g_program.config().get_file_path("keymap.map", FILE_TYPE_ASSET);
+	}
 	try {
-		g_keymap.load(g_program.config().find_file(GUI_SECTION,GUI_KEYMAP));
+		g_keymap.load(keymap);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to load the keymap!\n");
 		shutdown_SDL();
@@ -579,11 +583,14 @@ void GUI::toggle_input_grab()
 bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key)
 {
 	_discard_next_key = 0;
-	SDL_Keycode modifier_key = 0;
+	SDL_Keycode modifier_key_code = 0;
+	SDL_Scancode modifier_key_scan = SDL_SCANCODE_UNKNOWN;
 
 	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
 		if(_event.key.keysym.mod & KMOD_CTRL) {
-			modifier_key = (_event.key.keysym.mod & KMOD_RCTRL)?SDLK_RCTRL:SDLK_LCTRL;
+			modifier_key_code = (_event.key.keysym.mod & KMOD_RCTRL)?SDLK_RCTRL:SDLK_LCTRL;
+			modifier_key_scan = (_event.key.keysym.mod & KMOD_RCTRL)?SDL_SCANCODE_RCTRL:SDL_SCANCODE_LCTRL;
+			KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
 			switch(_event.key.keysym.sym) {
 				case SDLK_F1: {
 					//show/hide main interface
@@ -597,7 +604,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F3: {
 					//machine on/off
 					if(_event.type == SDL_KEYUP) {
-						_discard_next_key = modifier_key;
+						if(entry) {
+							_discard_next_key = modifier_key_code;
+						}
 						return true;
 					}
 					m_machine->cmd_switch_power();
@@ -628,10 +637,12 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F7: {
 					//save current machine state
 					if(_event.type == SDL_KEYUP) return true;
-					KeyEntry *entry = g_keymap.find_host_key(modifier_key);
+					KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
 					if(entry) {
-						m_machine->send_key_to_kbctrl(entry->baseKey | KEY_RELEASED);
-						_discard_next_key = modifier_key;
+						// send the CTRL key up event to the machine before saving 
+						m_machine->send_key_to_kbctrl(entry->key, KEY_RELEASED);
+						// then ignore it when it occurs
+						_discard_next_key = modifier_key_code;
 					}
 					g_program.save_state("", [this]() {
 						show_message("State saved");
@@ -641,7 +652,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F8: {
 					//load last machine state
 					if(_event.type == SDL_KEYUP) {
-						_discard_next_key = modifier_key;
+						if(entry) {
+							_discard_next_key = modifier_key_code;
+						}
 						return true;
 					}
 					g_program.restore_state("", [this]() {
@@ -686,21 +699,22 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				}
 				case SDLK_DELETE: {
 					//send CTRL+ALT+CANC
+					PDEBUGF(LOG_V2, LOG_GUI, "CTRL+ALT+CANC sent to guest OS\n");
 					if(_event.type == SDL_KEYUP) return true;
 					//CTRL has been already sent
-					m_machine->send_key_to_kbctrl(KEY_ALT_L);
-					m_machine->send_key_to_kbctrl(KEY_DELETE);
+					m_machine->send_key_to_kbctrl(KEY_ALT_L, KEY_PRESSED);
+					m_machine->send_key_to_kbctrl(KEY_DELETE, KEY_PRESSED);
 					return true;
 				}
 				case SDLK_INSERT: {
 					//send SysReq
+					PDEBUGF(LOG_V2, LOG_GUI, "SysReq sent to guest OS\n");
 					if(_event.type == SDL_KEYUP) return true;
-					m_machine->send_key_to_kbctrl(KEY_ALT_SYSREQ);
+					m_machine->send_key_to_kbctrl(KEY_SYSREQ, KEY_PRESSED);
 					return true;
 				}
 			}
 		} else if(_event.key.keysym.mod & KMOD_ALT) {
-			modifier_key = (_event.key.keysym.mod & KMOD_LALT)?SDLK_LALT:SDLK_RALT;
 			switch(_event.key.keysym.sym) {
 				case SDLK_RETURN: {
 					/* SDL fires multiple very fast key press events (key repeat
@@ -748,6 +762,33 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 		}
 	}
 	return false;
+}
+
+static void debug_key_print(const SDL_Event &_event, const KeyEntry *_kentry, const char *_handler)
+{
+	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
+		std::string mod1 = bitfield_to_string(_event.key.keysym.mod&0xff,
+		{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
+		
+		std::string mod2 = bitfield_to_string((_event.key.keysym.mod>>8)&0xff,
+		{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
+		if(!mod1.empty()) {
+			mod2 = " " + mod2;
+		}
+		
+		PDEBUGF(LOG_V2, LOG_GUI, "%s: evt=%s,sym=%s,code=%s,mod=[%s%s]",
+				_handler,
+				(_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
+				Keymap::ms_sdl_keycode_str_table[_event.key.keysym.sym].c_str(),
+				Keymap::ms_sdl_scancode_str_table[_event.key.keysym.scancode].c_str(),
+				mod1.c_str(), mod2.c_str());
+		if(_kentry) {
+			PDEBUGF(LOG_V2, LOG_GUI, " -> %s (%s)",
+				Keymap::ms_keycode_str_table[_kentry->key].c_str(),
+				_kentry->host_name.c_str());
+		}
+		PDEBUGF(LOG_V2, LOG_GUI, "\n");
+	}
 }
 
 void GUI::dispatch_event(const SDL_Event &_event)
@@ -823,16 +864,19 @@ void GUI::dispatch_event(const SDL_Event &_event)
 				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick1])
 			);
 		}
+	} else if(_event.type == SDL_JOYAXISMOTION || 
+			_event.type == SDL_JOYBUTTONDOWN ||
+			_event.type == SDL_JOYBUTTONUP)
+	{
+		dispatch_hw_event(_event);
 	} else {
 		if(discard_next_key && (_event.key.keysym.sym == discard_next_key)) {
-			discard_next_key = 0;
-			PDEBUGF(LOG_V2, LOG_GUI, "Discarded key: type=%d,sym=%d,mod=%d\n",
-					_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
+			discard_next_key = SDLK_UNKNOWN;
+			debug_key_print(_event, nullptr, "Discarded");
 			return;
 		}
-		if(dispatch_special_keys(_event,discard_next_key)) {
-			PDEBUGF(LOG_V2, LOG_GUI, "Special key: type=%d,sym=%d,mod=%d\n",
-					_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
+		if(dispatch_special_keys(_event, discard_next_key)) {
+			debug_key_print(_event, nullptr, "Special");
 			special_key = true;
 			return;
 		}
@@ -841,11 +885,6 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			return;
 		}
 		switch(_event.type) {
-			case SDL_JOYAXISMOTION:
-			case SDL_JOYBUTTONDOWN:
-			case SDL_JOYBUTTONUP:
-				dispatch_hw_event(_event);
-				break;
 			case SDL_KEYDOWN:
 			case SDL_KEYUP:
 				if(m_windows.needs_input() && !special_key) {
@@ -864,10 +903,6 @@ void GUI::dispatch_event(const SDL_Event &_event)
 
 void GUI::dispatch_hw_event(const SDL_Event &_event)
 {
-	uint32_t key_event;
-	uint8_t mouse_state;
-	uint8_t buttons;
-
 	if(!m_input_grab && (
 			_event.type == SDL_MOUSEMOTION ||
 			_event.type == SDL_MOUSEBUTTONDOWN ||
@@ -877,63 +912,61 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 		return;
 	}
 
+	KeyEntry *entry = nullptr;
 	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
-		PDEBUGF(LOG_V2, LOG_GUI, "HW key: type=%d,sym=%d,mod=%d\n",
-				_event.type, _event.key.keysym.sym, _event.key.keysym.mod);
+		entry = g_keymap.find_host_key(_event.key.keysym.sym, _event.key.keysym.scancode);
+		debug_key_print(_event, entry, "HW event");
 	}
 
 	switch(_event.type)
 	{
-	case SDL_MOUSEMOTION:
+	case SDL_MOUSEMOTION: {
+		uint8_t buttons;
 		buttons  = bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_LEFT));
 		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
 		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) << 2;
 		m_machine->mouse_motion(_event.motion.xrel, -_event.motion.yrel, 0, buttons);
 		break;
-
+	}
 	case SDL_MOUSEBUTTONDOWN:
-	case SDL_MOUSEBUTTONUP:
+	case SDL_MOUSEBUTTONUP: {
 		if(_event.button.button == SDL_BUTTON_MIDDLE) {
 			break;
 		}
 
-		mouse_state = SDL_GetMouseState(nullptr, nullptr);
-
+		uint8_t mouse_state = SDL_GetMouseState(nullptr, nullptr);
+		uint8_t buttons;
 		buttons  = bool(mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT));
 		buttons |= bool(mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
 		buttons |= bool(mouse_state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) << 2;
 		m_machine->mouse_motion(0,0,0, buttons);
 
 		break;
-
+	}
 	case SDL_MOUSEWHEEL:
 		//no wheel on the ps/1. should I implement it for IM?
 		break;
 
 	case SDL_KEYDOWN: {
-		KeyEntry *entry = g_keymap.find_host_key(_event.key.keysym.sym);
 		if(!entry) {
-			PERRF(LOG_GUI,"host key %d (0x%x) not mapped!\n",
-					(uint) _event.key.keysym.sym,
-					(uint) _event.key.keysym.sym);
+			PERRF(LOG_GUI,"host key %s [%s] not mapped\n",
+					Keymap::ms_sdl_keycode_str_table[_event.key.keysym.sym].c_str(),
+					Keymap::ms_sdl_scancode_str_table[_event.key.keysym.scancode].c_str());
 			break;
 		}
-		key_event = entry->baseKey;
-		m_machine->send_key_to_kbctrl(key_event);
+		if(entry->key == KEY_UNHANDLED) {
+			PDEBUGF(LOG_GUI, LOG_V2, "host key '%s' ignored\n", 
+					entry->host_name.c_str());
+			break;
+		}
+		m_machine->send_key_to_kbctrl(entry->key, KEY_PRESSED);
 		break;
 	}
 	case SDL_KEYUP: {
-		KeyEntry *entry = g_keymap.find_host_key(_event.key.keysym.sym);
-		if(!entry) {
-			PERRF(LOG_GUI,"host key %d (0x%x) not mapped!\n",
-					(uint) _event.key.keysym.sym,
-					(uint) _event.key.keysym.sym);
+		if(!entry || entry->key == KEY_UNHANDLED) {
 			break;
 		}
-		key_event = entry->baseKey;
-		if(key_event == KEY_UNHANDLED)
-			break;
-		m_machine->send_key_to_kbctrl(key_event | KEY_RELEASED);
+		m_machine->send_key_to_kbctrl(entry->key, KEY_RELEASED);
 		break;
 	}
 	case SDL_JOYAXISMOTION: {

@@ -644,7 +644,7 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	}
 }
 
-void Keyboard::gen_scancode(uint32_t key)
+void Keyboard::gen_scancode(uint32_t _key, uint32_t _event)
 {
 	//thread safety: this procedure is called only by the GUI via the Machine
 	unsigned char *scancode;
@@ -655,8 +655,9 @@ void Keyboard::gen_scancode(uint32_t key)
 		return;
 	}
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): %s %s\n",
-			g_keymap.get_key_name(key), (key >> 31)?"released":"pressed");
+	PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): %s (%d) %s\n",
+			Keymap::ms_keycode_str_table[_key].c_str(), _key,
+			(_event & KEY_RELEASED)?"released":"pressed");
 
 	if(!m_s.kbd_ctrl.scancodes_translate) {
 		PDEBUGF(LOG_V2, LOG_KEYB, "keyboard: gen_scancode with scancode_translate cleared\n");
@@ -668,10 +669,11 @@ void Keyboard::gen_scancode(uint32_t key)
 	}
 
 	// Switch between make and break code
-	if(key & KEY_RELEASED)
-		scancode = (unsigned char*)g_scancodes[(key&0xFF)][m_s.kbd_ctrl.current_scancodes_set].brek;
-	else
-		scancode = (unsigned char*)g_scancodes[(key&0xFF)][m_s.kbd_ctrl.current_scancodes_set].make;
+	if(_event & KEY_RELEASED) {
+		scancode = (unsigned char*)g_scancodes[_key&0xFF][m_s.kbd_ctrl.current_scancodes_set].brek;
+	} else {
+		scancode = (unsigned char*)g_scancodes[_key&0xFF][m_s.kbd_ctrl.current_scancodes_set].make;
+	}
 
 	if(m_s.kbd_ctrl.scancodes_translate) {
 		// Translate before send
