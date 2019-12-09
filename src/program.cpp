@@ -22,6 +22,7 @@
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
 #include "gui/gui_opengl.h"
+#include "gui/gui_sdl2d.h"
 #include "program.h"
 #include "machine.h"
 #include "mixer.h"
@@ -381,7 +382,24 @@ bool Program::initialize(int argc, char** argv)
 	m_mixer->init(m_machine);
 	m_mixer->config_changed();
 	
-	m_gui = std::make_unique<GUI_OpenGL>();
+	static std::map<std::string, unsigned> renderers = {
+		{ "opengl", GUI_RENDERER_OPENGL },
+		{ "accelerated", GUI_RENDERER_SDL2D },
+	};
+	switch(m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers)) {
+		case GUI_RENDERER_OPENGL:
+			PINFOF(LOG_V0, LOG_GUI, "Using OpenGL renderer\n");
+			m_gui = std::make_unique<GUI_OpenGL>();
+			break;
+		case GUI_RENDERER_SDL2D:
+			PINFOF(LOG_V0, LOG_GUI, "Using accelerated 2D renderer\n");
+			m_gui = std::make_unique<GUI_SDL2D>();
+			break;
+		default:
+			assert(false);
+			break;
+	}
+	
 	m_gui->init(m_machine, m_mixer);
 	m_gui->config_changed();
 	

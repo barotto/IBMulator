@@ -98,7 +98,7 @@
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
 
-	#define LOG_DEBUG_MESSAGES    true
+	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false
 	#define LOG_MACHINE_TIME_NS   false
 	#define LOG_CSIP              false
@@ -108,12 +108,12 @@
 
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL true
+#define OVERRIDE_VERBOSITY_LEVEL false
 #define LOG_PROGRAM_VERBOSITY  LOG_V0
 #define LOG_FS_VERBOSITY       LOG_V0
 #define LOG_GFX_VERBOSITY      LOG_V0
 #define LOG_INPUT_VERBOSITY    LOG_V0
-#define LOG_GUI_VERBOSITY      LOG_V1
+#define LOG_GUI_VERBOSITY      LOG_V0
 #define LOG_MACHINE_VERBOSITY  LOG_V0
 #define LOG_MIXER_VERBOSITY    LOG_V0
 #define LOG_MEM_VERBOSITY      LOG_V0

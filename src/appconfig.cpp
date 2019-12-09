@@ -44,6 +44,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ GUI_SECTION, {
+		{ GUI_RENDERER,           "opengl" },
 		{ GUI_KEYMAP,             "keymaps/pc-us.map"},
 		{ GUI_MOUSE_TYPE,         "ps2"    },
 		{ GUI_MOUSE_GRAB,         "yes"    },
