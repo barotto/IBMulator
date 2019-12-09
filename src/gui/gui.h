@@ -29,7 +29,8 @@
 #include <atomic>
 
 enum GUIRenderer {
-	GUI_RENDERER_OPENGL
+	GUI_RENDERER_OPENGL,
+	GUI_RENDERER_SDL2D
 };
 
 enum GUIMode {
@@ -124,6 +125,7 @@ protected:
 	std::string m_grab_method;
 	uint m_mode;
 	bool m_vsync;
+	SDL_Color m_backcolor;
 
 	struct Mouse {
 		bool grab;
@@ -215,7 +217,6 @@ public:
 	
 	void init(Machine *_machine, Mixer *_mixer);
 	void config_changed();
-	void render();
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
@@ -223,6 +224,10 @@ public:
 	RC::ElementDocument * load_document(const std::string &_filename);
 	static std::string shaders_dir();
 	static std::string images_dir();
+	
+	virtual uintptr_t load_texture(SDL_Surface *_surface) = 0;
+	virtual uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr) = 0;
+	virtual void render();
 	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void take_screenshot(bool _with_palette_file = false);

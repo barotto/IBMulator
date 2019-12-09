@@ -81,8 +81,6 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 	
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
 	
-	PINFOF(LOG_V1, LOG_GUI, "Using VGA shader: %s\n", frag_sh.c_str());
-	
 	m_screen->renderer()->load_vga_program(
 		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler)

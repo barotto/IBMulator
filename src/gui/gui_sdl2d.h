@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -17,27 +17,28 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_GUI_REND_INTERFACE_H
-#define IBMULATOR_GUI_REND_INTERFACE_H
+#ifndef IBMULATOR_GUI_SDL2D_H
+#define IBMULATOR_GUI_SDL2D_H
 
-#include <SDL.h>
-#include <Rocket/Core/RenderInterface.h>
+#include "gui.h"
 
-
-class RocketRenderer : public Rocket::Core::RenderInterface
+class GUI_SDL2D : public GUI
 {
 protected:
-	SDL_Renderer *m_renderer;
-	SDL_Window *m_screen;
-
-public:
-	RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen);
-	virtual ~RocketRenderer();
-
-	virtual bool LoadTexture(Rocket::Core::TextureHandle& texture_handle,
-			Rocket::Core::Vector2i& texture_dimensions, const Rocket::Core::String& source);
 	
-	virtual void SetDimensions(int _width, int _height);
+	void create_window(int _flags);
+	void create_rocket_renderer();
+	
+public:
+	GUI_SDL2D();
+	~GUI_SDL2D();
+	
+	GUIRenderer renderer() const { return GUI_RENDERER_SDL2D; }
+	SDL_Renderer *sdl_renderer() const { return m_SDL_renderer; }
+	void render();
+	
+	uintptr_t load_texture(SDL_Surface *_surface);
+	uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 };
 
 #endif

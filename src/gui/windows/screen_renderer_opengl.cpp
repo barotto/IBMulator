@@ -95,6 +95,7 @@ void ScreenRenderer_OpenGL::load_vga_program(std::string _vshader, std::string _
 	}
 	
 	// prepare the program sources
+	PINFOF(LOG_V1, LOG_GUI, "Using VGA shader: %s\n", _fshader.c_str());
 	vs.push_back(_vshader);
 	fs.push_back(shadersdir + "color_functions.glsl");
 	fs.push_back(_fshader);
@@ -159,7 +160,7 @@ void ScreenRenderer_OpenGL::load_monitor_program(
 	GLCALL( m_monitor.uniforms.ambient = glGetUniformLocation(m_monitor.program, "iAmbientLight") );
 	GLCALL( m_monitor.uniforms.reflection_map = glGetUniformLocation(m_monitor.program, "iReflectionMap") );
 	
-	m_monitor.reflection_map = GUI_OpenGL::load_texture(_reflection_map);
+	m_monitor.reflection_map = GUI::instance()->load_texture(_reflection_map);
 
 	GLCALL( glGenSamplers(1, &m_monitor.reflection_sampler) );
 	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );

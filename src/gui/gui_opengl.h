@@ -44,10 +44,11 @@ public:
 	~GUI_OpenGL();
 	
 	GUIRenderer renderer() const { return GUI_RENDERER_OPENGL; }
+	void render();
 
 	static GLuint load_program(const std::vector<std::string> _vs_path, std::vector<std::string> _fs_path);
-	static GLuint load_texture(SDL_Surface *_surface);
-	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
+	uintptr_t load_texture(SDL_Surface *_surface);
+	uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 	
 };
 

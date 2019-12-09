@@ -5,6 +5,7 @@ noinst_LIBRARIES = libgui.a
 libgui_a_SOURCES = \
 	gui.cpp \
 	gui_opengl.cpp \
+	gui_sdl2d.cpp \
 	guifx.cpp \
 	vector.cpp \
 	matrix.cpp \
@@ -12,12 +13,14 @@ libgui_a_SOURCES = \
 	rocket/file_interface.cpp \
 	rocket/rend_interface.cpp \
 	rocket/rend_interface_opengl.cpp \
+	rocket/rend_interface_sdl2d.cpp \
 	rocket/sys_interface.cpp \
 	format.cpp \
 	window.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
 	windows/screen_renderer_opengl.cpp \
+	windows/screen_renderer_sdl2d.cpp \
 	windows/normal_interface.cpp \
 	windows/realistic_interface.cpp \
 	windows/debugtools.cpp \
@@ -32,6 +35,7 @@ libgui_a_SOURCES = \
 noinst_HEADERS = \
 	gui.h \
 	gui_opengl.h \
+	gui_sdl2d.h \
 	guifx.h \
 	vector.h \
 	vector.inl.h \
@@ -41,6 +45,7 @@ noinst_HEADERS = \
 	rocket/file_interface.h \
 	rocket/rend_interface.h \
 	rocket/rend_interface_opengl.h \
+	rocket/rend_interface_sdl2d.h \
 	rocket/sys_interface.h \
 	format.h \
 	window.h \
@@ -48,6 +53,7 @@ noinst_HEADERS = \
 	windows/interface.h \
 	windows/screen_renderer.h \
 	windows/screen_renderer_opengl.h \
+	windows/screen_renderer_sdl2d.h \
 	windows/normal_interface.h \
 	windows/realistic_interface.h \
 	windows/debugtools.h \

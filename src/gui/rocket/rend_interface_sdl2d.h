@@ -17,34 +17,22 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_GUI_REND_INTERFACE_OPENGL_H
-#define IBMULATOR_GUI_REND_INTERFACE_OPENGL_H
+#ifndef IBMULATOR_GUI_REND_INTERFACE_SDL2D_H
+#define IBMULATOR_GUI_REND_INTERFACE_SDL2D_H
 
 #include "rend_interface.h"
 #include "gui/matrix.h"
-#include <GL/glew.h>
-
-#if !(SDL_VIDEO_RENDER_OGL)
-	#error "Only the opengl sdl backend is supported."
-#endif
 
 
-class RocketRenderer_OpenGL : public RocketRenderer
+class RocketRenderer_SDL2D : public RocketRenderer
 {
 protected:
-	GLuint m_program;
-	GLuint m_vb;
-	GLuint m_sampler;
-	mat4f  m_projmat;
-
-	struct uniforms {
-		GLint textured, guitex, P, MV;
-		uniforms() : textured(-1), guitex(-1), P(-1), MV(-1) {}
-	} m_uniforms;
+	SDL_Rect m_scissor_region;
+	bool m_scissor_enabled;
 
 public:
-	RocketRenderer_OpenGL(SDL_Renderer * _renderer, SDL_Window * _screen);
-	~RocketRenderer_OpenGL();
+	RocketRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen);
+	~RocketRenderer_SDL2D();
 
 	/// Called by Rocket when it wants to render geometry that it does not wish to optimise.
 	void RenderGeometry(Rocket::Core::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f& translation);
@@ -58,8 +46,6 @@ public:
 	bool GenerateTexture(Rocket::Core::TextureHandle& texture_handle, const Rocket::Core::byte* source, const Rocket::Core::Vector2i& source_dimensions);
 	/// Called by Rocket when a loaded texture is no longer required.
 	void ReleaseTexture(Rocket::Core::TextureHandle texture_handle);
-
-	void SetDimensions(int _width, int _height);
 };
 
 #endif

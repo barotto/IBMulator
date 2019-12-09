@@ -162,8 +162,6 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
 	
-	PINFOF(LOG_V1, LOG_GUI, "Using VGA shader: %s\n", frag_sh.c_str());
-	
 	screen()->renderer()->load_vga_program(
 		GUI::shaders_dir() + REALISTIC_VGA_VS, frag_sh,
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, GUI::ms_gui_sampler)

@@ -118,12 +118,11 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_vsync = g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC);
 	m_grab_method = str_to_lower(g_program.config().get_string(GUI_SECTION, GUI_GRAB_METHOD));
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
-	struct {
-		int r,g,b;
-	} backcolor = {
-		g_program.config().get_int(GUI_SECTION, GUI_BG_R),
-		g_program.config().get_int(GUI_SECTION, GUI_BG_G),
-		g_program.config().get_int(GUI_SECTION, GUI_BG_B)
+	m_backcolor = {
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_R)),
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_G)),
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_B)),
+		255
 	};
 	
 	try {
@@ -182,8 +181,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	m_gui_visible = true;
 	m_input_grab = false;
-
-	SDL_SetRenderDrawColor(m_SDL_renderer, backcolor.r, backcolor.g, backcolor.b, 255);
 
 	m_second_timer = SDL_AddTimer(1000, GUI::every_second, nullptr);
 
@@ -291,15 +288,10 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 	return document;
 }
 
-
-
 void GUI::render()
 {
+	SDL_SetRenderDrawColor(m_SDL_renderer, m_backcolor.r, m_backcolor.g, m_backcolor.b, m_backcolor.a);
 	SDL_RenderClear(m_SDL_renderer);
-	
-	// viewport setting should be irrelevant, I'll keep it for completeness.
-	SDL_Rect rect{0,0,m_width,m_height};
-	SDL_RenderSetViewport(m_SDL_renderer, &rect);
 	
 	// this is a rendering of the screen only (which includes the VGA image).
 	// GUI controls are rendered later by the rocket context

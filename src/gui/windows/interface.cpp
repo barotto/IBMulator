@@ -19,7 +19,9 @@
 
 #include "ibmulator.h"
 #include "gui/gui_opengl.h"
+#include "gui/gui_sdl2d.h"
 #include "screen_renderer_opengl.h"
+#include "screen_renderer_sdl2d.h"
 #include "machine.h"
 #include "mixer.h"
 #include "program.h"
@@ -78,14 +80,22 @@ bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 InterfaceScreen::InterfaceScreen(GUI *_gui)
 {
 	switch(_gui->renderer()) {
-		case GUI_RENDERER_OPENGL:
+		case GUI_RENDERER_OPENGL: {
 			m_renderer = std::make_unique<ScreenRenderer_OpenGL>();
 			dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get())->init(vga.display);
 			break;
-		default:
+		}
+		case GUI_RENDERER_SDL2D: {
+			m_renderer = std::make_unique<ScreenRenderer_SDL2D>();
+			SDL_Renderer *sdlrend = dynamic_cast<GUI_SDL2D*>(_gui)->sdl_renderer();
+			dynamic_cast<ScreenRenderer_SDL2D*>(m_renderer.get())->init(vga.display, sdlrend);
+			break;
+		}
+		default: {
 			// errors should be detected during GUI object creation
 			PDEBUGF(LOG_V0, LOG_GUI, "Invalid renderer!\n");
 			return;
+		}
 	}
 	
 	vga.mvmat.load_identity();

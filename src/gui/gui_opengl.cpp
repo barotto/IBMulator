@@ -36,6 +36,12 @@ GUI_OpenGL::~GUI_OpenGL()
 {
 }
 
+void GUI_OpenGL::render()
+{
+	GLCALL( glViewport(0,0, m_width, m_height) );
+	GUI::render();
+}
+
 void GUI_OpenGL::create_window(int _flags)
 {
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -256,7 +262,7 @@ GLuint GUI_OpenGL::load_program(
 	return progid;
 }
 
-GLuint GUI_OpenGL::load_texture(SDL_Surface *_surface)
+uintptr_t GUI_OpenGL::load_texture(SDL_Surface *_surface)
 {
 	assert(_surface);
 	if(_surface->format->BytesPerPixel != 4) {
@@ -276,7 +282,7 @@ GLuint GUI_OpenGL::load_texture(SDL_Surface *_surface)
 	return gltex;
 }
 
-GLuint GUI_OpenGL::load_texture(const std::string &_path, vec2i *_texdim)
+uintptr_t GUI_OpenGL::load_texture(const std::string &_path, vec2i *_texdim)
 {
 	SDL_Surface *surface = IMG_Load(_path.c_str());
 	if(!surface) {
