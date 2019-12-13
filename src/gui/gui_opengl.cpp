@@ -44,6 +44,8 @@ void GUI_OpenGL::render()
 
 void GUI_OpenGL::create_window(int _flags)
 {
+	PINFOF(LOG_V0, LOG_GUI, "Using the OpenGL renderer\n");
+	
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 	m_SDL_window = SDL_CreateWindow(m_wnd_title.c_str(), 

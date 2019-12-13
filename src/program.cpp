@@ -383,18 +383,25 @@ bool Program::initialize(int argc, char** argv)
 	m_mixer->config_changed();
 	
 	static std::map<std::string, unsigned> renderers = {
+		{ "", GUI_RENDERER_OPENGL },
 		{ "opengl", GUI_RENDERER_OPENGL },
 		{ "accelerated", GUI_RENDERER_SDL2D },
+		{ "software", GUI_RENDERER_SDL2D },
 	};
-	switch(m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers)) {
+	unsigned renderer = m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers);
+	switch(renderer) {
 		case GUI_RENDERER_OPENGL:
-			PINFOF(LOG_V0, LOG_GUI, "Using OpenGL renderer\n");
 			m_gui = std::make_unique<GUI_OpenGL>();
 			break;
-		case GUI_RENDERER_SDL2D:
-			PINFOF(LOG_V0, LOG_GUI, "Using accelerated 2D renderer\n");
-			m_gui = std::make_unique<GUI_SDL2D>();
+		case GUI_RENDERER_SDL2D: {
+			std::string flavor = m_config[0].get_string(GUI_SECTION, GUI_RENDERER);
+			if(flavor == "accelerated") {
+				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_ACCELERATED);
+			} else {
+				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_SOFTWARE);
+			}
 			break;
+		}
 		default:
 			assert(false);
 			break;

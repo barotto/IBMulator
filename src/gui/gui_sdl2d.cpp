@@ -25,7 +25,14 @@
 
 
 GUI_SDL2D::GUI_SDL2D()
-: GUI()
+: m_rendflags(SDL_RENDERER_ACCELERATED),
+  GUI()
+{
+}
+
+GUI_SDL2D::GUI_SDL2D(unsigned _rendflags)
+: m_rendflags(_rendflags),
+  GUI()
 {
 }
 
@@ -42,6 +49,12 @@ void GUI_SDL2D::render()
 
 void GUI_SDL2D::create_window(int _flags)
 {
+	if(m_rendflags & SDL_RENDERER_ACCELERATED) {
+		PINFOF(LOG_V0, LOG_GUI, "Using the hardware accelerated renderer\n");
+	} else {
+		PINFOF(LOG_V0, LOG_GUI, "Using the software renderer\n");
+	}
+	
 	m_SDL_window = SDL_CreateWindow(m_wnd_title.c_str(), 
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
 		m_width, m_height, _flags);
@@ -53,11 +66,10 @@ void GUI_SDL2D::create_window(int _flags)
 	
 	set_window_icon();
 
-	Uint32 flags = SDL_RENDERER_ACCELERATED;
 	if(m_vsync) {
-		flags |= SDL_RENDERER_PRESENTVSYNC;
+		m_rendflags |= SDL_RENDERER_PRESENTVSYNC;
 	}
-	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, -1, flags);
+	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, -1, m_rendflags);
 
 	if(!m_SDL_renderer) {
 		PERRF(LOG_GUI, "SDL_CreateRenderer(): %s\n", SDL_GetError());

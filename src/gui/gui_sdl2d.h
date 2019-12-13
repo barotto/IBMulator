@@ -25,12 +25,14 @@
 class GUI_SDL2D : public GUI
 {
 protected:
+	unsigned m_rendflags;
 	
 	void create_window(int _flags);
 	void create_rocket_renderer();
 	
 public:
 	GUI_SDL2D();
+	GUI_SDL2D(unsigned _rendflags);
 	~GUI_SDL2D();
 	
 	GUIRenderer renderer() const { return GUI_RENDERER_SDL2D; }
