@@ -96,6 +96,23 @@ void ScreenRenderer_SDL2D::store_vga_framebuffer(
 	}
 }
 
+void ScreenRenderer_SDL2D::mvmat_to_rect(const mat4f &_mvmat, SDL_Rect &rect_)
+{
+	SDL_Rect vport;
+	SDL_RenderGetViewport(m_sdl_renderer, &vport);
+	float vw = float(vport.w), vh = float(vport.h);
+	
+	vec3f scale = _mvmat.get_scale();
+	rect_.w = vw * scale.x;
+	rect_.h = vh * scale.y;
+	
+	vec3f tr = _mvmat.get_translation();
+	float xpos = (vw - float(rect_.w)) / 2.f;
+	rect_.x = xpos + ((vw * tr.x) / 2.f);
+	float ypos = (vh - float(rect_.h)) / 2.f;
+	rect_.y = ypos - ((vh * tr.y) / 2.f);
+}
+
 void ScreenRenderer_SDL2D::render_vga(const mat4f &_mvmat, const vec2i &_display_size, 
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale)
@@ -112,28 +129,19 @@ void ScreenRenderer_SDL2D::render_vga(const mat4f &_mvmat, const vec2i &_display
 		PDEBUGF(LOG_V0, LOG_GUI, "VGA texture is not ready!");
 		return;
 	}
-	SDL_Rect vport;
-	SDL_RenderGetViewport(m_sdl_renderer, &vport);
-	float vw = float(vport.w), vh = float(vport.h);
 	
 	SDL_Rect dest = {0,0,0,0};
-	
-	vec3f scale = _mvmat.get_scale();
-	dest.w = vw * scale.x;
-	dest.h = vh * scale.y;
-	
-	vec3f tr = _mvmat.get_translation();
-	float xpos = (vw - float(dest.w)) / 2.f;
-	dest.x = xpos + ((vw * tr.x) / 2.f);
-	float ypos = (vh - float(dest.h)) / 2.f;
-	dest.y = ypos - ((vh * tr.y) / 2.f);
-	
+	mvmat_to_rect(_mvmat, dest);
 	SDL_RenderCopy(m_sdl_renderer, m_vga.texture, &m_vga.res, &dest);
 }
 
 void ScreenRenderer_SDL2D::render_monitor(const mat4f &_mvmat, float _ambient)
 {
-	UNUSED(_mvmat);
 	UNUSED(_ambient);
+	
+	SDL_Rect dest = {0,0,0,0};
+	mvmat_to_rect(_mvmat, dest);
+	SDL_SetRenderDrawColor(m_sdl_renderer, 0,0,0,255);
+	SDL_RenderFillRect(m_sdl_renderer, &dest);
 }
 

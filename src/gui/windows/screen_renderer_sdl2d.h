@@ -49,6 +49,9 @@ public:
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale);
 	void render_monitor(const mat4f &_mvmat, float _ambient);
+	
+private:
+	void mvmat_to_rect(const mat4f &_mvmat, SDL_Rect &rect_);
 };
 
 #endif
