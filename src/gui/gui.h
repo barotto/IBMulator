@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,29 +21,17 @@
 #define IBMULATOR_GUI_H
 
 #include <SDL.h>
-#include <GL/glew.h>
 #include <Rocket/Core/Input.h>
 #include <Rocket/Core/Types.h>
+#include "rocket/rend_interface.h"
 #include "matrix.h"
 #include "timers.h"
 #include <atomic>
 
-#define GUI_OPENGL_MAJOR_VER 3
-#define GUI_OPENGL_MINOR_VER 3
-
-const char * GetGLErrorString(GLenum _error_code);
-
-#define OGL_NO_ERROR_CHECKING 0
-#define OGL_ARB_DEBUG_OUTPUT 1
-#define OGL_GET_ERROR 2
-
-#define GUI_STOP_ON_ERRORS 1
-#define GUI_ARB_DEBUG_OUTPUT_LIMIT 1000
-#define GUI_GL_GHOSTHUNTING true
-
-//#define OGL_DEBUG_TYPE OGL_NO_ERROR_CHECKING
-//#define OGL_DEBUG_TYPE OGL_ARB_DEBUG_OUTPUT
-#define OGL_DEBUG_TYPE OGL_GET_ERROR
+enum GUIRenderer {
+	GUI_RENDERER_OPENGL,
+	GUI_RENDERER_SDL2D
+};
 
 enum GUIMode {
 	GUI_MODE_NORMAL,
@@ -66,9 +54,9 @@ enum DisplayAspect {
 #define JOY_NONE INT_MAX
 
 class GUI;
-extern GUI g_gui;
+class GUI_OpenGL;
 
-class RocketRenderer;
+
 class RocketSystemInterface;
 class RocketFileInterface;
 
@@ -123,7 +111,6 @@ protected:
 	int m_width;
 	int m_height;
 	SDL_Window *m_SDL_window;
-	SDL_GLContext m_SDL_glcontext;
 	SDL_Renderer * m_SDL_renderer;
 	std::string m_wnd_title;
 	std::string m_curr_prog;
@@ -138,6 +125,7 @@ protected:
 	std::string m_grab_method;
 	uint m_mode;
 	bool m_vsync;
+	SDL_Color m_backcolor;
 
 	struct Mouse {
 		bool grab;
@@ -151,7 +139,7 @@ protected:
 	// mutex must be locked before any access to the libRocket's objects
 	// TODO this mutex is currently used by 1 thread only (GUI). remove?
 	static std::mutex ms_rocket_mutex;
-	RocketRenderer * m_rocket_renderer;
+	std::unique_ptr<RocketRenderer> m_rocket_renderer;
 	RocketSystemInterface * m_rocket_sys_interface;
 	RocketFileInterface * m_rocket_file_interface;
 	Rocket::Core::Context * m_rocket_context;
@@ -190,9 +178,9 @@ protected:
 
 	} m_windows;
 
-	void create_window(const char * _title, int _width, int _height, int _flags);
-	void check_device_caps();
 	void init_Rocket();
+	void set_window_icon();
+	void show_welcome_screen();
 	void render_vga();
 	void update_window_size(int _w, int _h);
 	void update_display_size();
@@ -200,26 +188,20 @@ protected:
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
-
-	int m_gl_errors_count;
-	static void GL_debug_output(GLenum source, GLenum type, GLuint id,
-			GLenum severity, GLsizei length,
-			const GLchar* message, GLvoid* userParam);
-
-
+	void shutdown_SDL();
+	
 	void dispatch_hw_event(const SDL_Event &_event);
 	void dispatch_rocket_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
 	bool dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key);
-	void load_splash_image();
-
+	
 	static Uint32 every_second(Uint32 interval, void *param);
 
-	void shutdown_SDL();
-
 	static std::string load_shader_file(const std::string &_path);
-	static std::vector<GLuint> attach_shaders(const std::vector<std::string> &_sh_paths, GLuint _sh_type, GLuint _program);
 
+	virtual void create_window(int _flags) = 0;
+	virtual void create_rocket_renderer() = 0;
+	
 public:
 	static std::map<std::string, uint> ms_gui_modes;
 	static std::map<std::string, uint> ms_gui_sampler;
@@ -227,88 +209,43 @@ public:
 
 public:
 	GUI();
-	~GUI();
+	virtual ~GUI();
 
+	static GUI * instance();
+	
+	virtual GUIRenderer renderer() const = 0;
+	
 	void init(Machine *_machine, Mixer *_mixer);
 	void config_changed();
-	void render();
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
-
+	
 	RC::ElementDocument * load_document(const std::string &_filename);
-	static GLuint load_GLSL_program(const std::vector<std::string> &_vs_path, std::vector<std::string> &_fs_path);
-	static std::string get_shaders_dir();
-	static std::string get_images_dir();
-	static GLuint load_texture(SDL_Surface *_surface);
-	static GLuint load_texture(const std::string &_path, vec2i *_texdim=nullptr);
-
+	static std::string shaders_dir();
+	static std::string images_dir();
+	
+	virtual uintptr_t load_texture(SDL_Surface *_surface) = 0;
+	virtual uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr) = 0;
+	virtual void render();
+	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 
-	VGADisplay * vga_display() { assert(m_windows.interface); return m_windows.interface->vga_display(); }
-
 	vec2i resize_window(int _width, int _height);
-	int get_window_width() { return m_width; }
-	int get_window_height() { return m_height; }
-	uint32_t get_window_flags() { return SDL_GetWindowFlags(m_SDL_window); }
-
-	void sig_state_restored();
-
-	inline Machine *machine() { return m_machine; }
-	inline Mixer *mixer() { return m_mixer; }
 	
+	inline VGADisplay * vga_display() const {
+		assert(m_windows.interface); return m_windows.interface->vga_display();
+	}
+	inline int window_width() const { return m_width; }
+	inline int window_height() const { return m_height; }
+	inline uint32_t window_flags() const { return SDL_GetWindowFlags(m_SDL_window); }
 	inline bool vsync() const { return m_vsync; }
-
-private:
-	void show_welcome_screen();
-
+	
+	void sig_state_restored();
 };
-
-
-
-#if GUI_STOP_ON_ERRORS
-	#define GUI_PRINT_ERROR_FUNC PERRFEX_ABORT
-#else
-	#define GUI_PRINT_ERROR_FUNC PERRFEX
-#endif
-#if !defined(NDEBUG) && (OGL_DEBUG_TYPE == OGL_GET_ERROR)
-	#if defined(GUI_GL_GHOSTHUNTING)
-	#define GLCALL(X) \
-	{\
-		GLenum glerrcode = glGetError();\
-		if(glerrcode != GL_NO_ERROR)\
-			GUI_PRINT_ERROR_FUNC(LOG_GUI, "ghost GL Error: %d (%s)\n",glerrcode,GetGLErrorString(glerrcode));\
-		X;\
-		glerrcode = glGetError();\
-		if(glerrcode != GL_NO_ERROR)\
-			GUI_PRINT_ERROR_FUNC(LOG_GUI, #X" GL Error: %d (%s)\n",glerrcode,GetGLErrorString(glerrcode));\
-	}
-	#define GLCALL_NOGHOST(X) \
-	{\
-		X;\
-		GLenum glerrcode = glGetError();\
-		if(glerrcode != GL_NO_ERROR)\
-			GUI_PRINT_ERROR_FUNC(LOG_GUI, #X" GL Error: %d (%s)\n",glerrcode,GetGLErrorString(glerrcode));\
-	}
-	#else
-	#define GLCALL(X) \
-	{\
-		X;\
-		GLenum glerrcode = glGetError();\
-		if(glerrcode != GL_NO_ERROR)\
-			GUI_PRINT_ERROR_FUNC(LOG_GUI, #X" GL Error: %d (%s)\n",glerrcode,GetGLErrorString(glerrcode));\
-	}
-	#define GLCALL_NOGHOST(X) GLCALL(X)
-	#endif
-#else
-	#define GLCALL(X) X
-	#define GLCALL_NOGHOST(X) X
-#endif
-
-
 
 
 #endif

@@ -720,6 +720,20 @@ mat3<T> mat4<T>::rot() const
 
 
 template<class T>
+vec3<T> mat4<T>::get_scale() const
+{
+	return vec3<T>(m_data[0], m_data[5], m_data[10]);
+}
+
+
+template<class T>
+vec3<T> mat4<T>::scale() const
+{
+	return get_scale();
+}
+
+
+template<class T>
 bool mat4<T>::is_identity()
 {
 	bool diag = (m_data[0] == (T)1 && m_data[5] == (T)1 && m_data[10] == (T)1 && m_data[15] == (T)1);

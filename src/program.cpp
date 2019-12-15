@@ -21,7 +21,8 @@
 #include "filesys.h"
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
-#include "gui/gui.h"
+#include "gui/gui_opengl.h"
+#include "gui/gui_sdl2d.h"
 #include "program.h"
 #include "machine.h"
 #include "mixer.h"
@@ -48,8 +49,8 @@ m_threads_sync(false),
 m_framecap(true),
 m_quit(false),
 m_machine(nullptr),
-m_gui(nullptr),
 m_mixer(nullptr),
+m_gui(nullptr),
 m_restore_fn(nullptr)
 {
 
@@ -371,6 +372,44 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
 	}
 
+	m_machine = &g_machine;
+	m_machine->calibrate(m_main_chrono);
+	m_machine->init();
+	m_machine->config_changed();
+
+	m_mixer = &g_mixer;
+	m_mixer->calibrate(m_main_chrono);
+	m_mixer->init(m_machine);
+	m_mixer->config_changed();
+	
+	static std::map<std::string, unsigned> renderers = {
+		{ "", GUI_RENDERER_OPENGL },
+		{ "opengl", GUI_RENDERER_OPENGL },
+		{ "accelerated", GUI_RENDERER_SDL2D },
+		{ "software", GUI_RENDERER_SDL2D },
+	};
+	unsigned renderer = m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers);
+	switch(renderer) {
+		case GUI_RENDERER_OPENGL:
+			m_gui = std::make_unique<GUI_OpenGL>();
+			break;
+		case GUI_RENDERER_SDL2D: {
+			std::string flavor = m_config[0].get_string(GUI_SECTION, GUI_RENDERER);
+			if(flavor == "accelerated") {
+				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_ACCELERATED);
+			} else {
+				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_SOFTWARE);
+			}
+			break;
+		}
+		default:
+			assert(false);
+			break;
+	}
+	
+	m_gui->init(m_machine, m_mixer);
+	m_gui->config_changed();
+	
 	return true;
 }
 
@@ -465,41 +504,6 @@ void Program::parse_arguments(int argc, char** argv)
 	for(int index = optind; index < argc; index++) {
 		PINFOF(LOG_V0,LOG_PROGRAM,"Non-option argument %s\n", argv[index]);
 	}
-}
-
-void Program::set_gui(GUI *_gui)
-{
-	if(!m_machine) {
-		PERR("Initialize the machine first\n");
-		throw std::exception();
-	}
-	if(!m_mixer) {
-		PERR("Initialize the mixer first\n");
-		throw std::exception();
-	}
-	m_gui = _gui;
-	m_gui->init(m_machine, m_mixer);
-	m_gui->config_changed();
-}
-
-void Program::set_machine(Machine *_machine)
-{
-	m_machine = _machine;
-	m_machine->calibrate(m_main_chrono);
-	m_machine->init();
-	m_machine->config_changed();
-}
-
-void Program::set_mixer(Mixer *_mixer)
-{
-	if(!m_machine) {
-		PERR("Initialize the machine first\n");
-		throw std::exception();
-	}
-	m_mixer = _mixer;
-	m_mixer->calibrate(m_main_chrono);
-	m_mixer->init(m_machine);
-	m_mixer->config_changed();
 }
 
 void Program::process_evts()

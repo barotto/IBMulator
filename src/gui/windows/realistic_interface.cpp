@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -18,7 +18,7 @@
  */
 
 #include "ibmulator.h"
-#include "gui.h"
+#include "gui_opengl.h"
 #include "machine.h"
 #include "program.h"
 #include "realistic_interface.h"
@@ -99,8 +99,28 @@ bool RealisticFX::create_sound_samples(uint64_t _time_span_us, bool, bool)
 			m_buffers[POWER_UP], m_buffers[POWER_ON], m_buffers[POWER_DOWN]);
 }
 
+RealisticScreen::RealisticScreen(GUI *_gui)
+: InterfaceScreen(_gui),
+vga_image_scale(REALISTIC_VGA_SCALE)
+{
+}
 
-RealisticInterface::RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
+RealisticScreen::~RealisticScreen()
+{
+}
+
+void RealisticScreen::render()
+{
+	m_renderer->render_monitor(monitor.mvmat, monitor.ambient);
+	
+	sync_with_device();
+	m_renderer->render_vga(
+		vga.mvmat, vga.size,
+		vga.brightness, vga.contrast, vga.saturation,
+		monitor.ambient, vga_image_scale, vga_reflection_scale);
+}
+
+RealisticInterface::RealisticInterface(Machine *_machine, GUI *_gui, Mixer *_mixer)
 :
 Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 {
@@ -137,36 +157,26 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 			g_program.config().get_int(GUI_SECTION, GUI_HEIGHT)
 		);
 	}
-	std::string shadersdir = GUI::get_shaders_dir();
-	init_gl(
-		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, GUI::ms_gui_sampler),
-		shadersdir + REALISTIC_VGA_VS,
-		g_program.config().find_file(DISPLAY_SECTION,DISPLAY_REALISTIC_SHADER)
+	
+	m_screen = std::make_unique<RealisticScreen>(_gui);
+	
+	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
+	
+	screen()->renderer()->load_vga_program(
+		GUI::shaders_dir() + REALISTIC_VGA_VS, frag_sh,
+		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, GUI::ms_gui_sampler)
 	);
-	GLCALL( m_rdisplay.uniforms.ambient = glGetUniformLocation(m_display.prog, "iAmbientLight") );
-	GLCALL( m_rdisplay.uniforms.reflection_map = glGetUniformLocation(m_display.prog, "iReflectionMap") );
-	GLCALL( m_rdisplay.uniforms.reflection_scale = glGetUniformLocation(m_display.prog, "iReflectionScale") );
-	GLCALL( m_rdisplay.uniforms.vga_scale = glGetUniformLocation(m_display.prog, "iVGAScale") );
-
-	m_monitor.mvmat.load_identity();
-	std::vector<std::string> vs,fs;
-	vs.push_back(shadersdir + REALISTIC_MONITOR_VS);
-	fs.push_back(shadersdir + REALISTIC_MONITOR_FS);
-	m_monitor.prog = GUI::load_GLSL_program(vs,fs);
-	m_monitor.ambient = clamp(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT), 0.0, 1.0);
-	GLCALL( m_monitor.uniforms.mvmat = glGetUniformLocation(m_monitor.prog, "iModelView") );
-	GLCALL( m_monitor.uniforms.ambient = glGetUniformLocation(m_display.prog, "iAmbientLight") );
-	GLCALL( m_monitor.uniforms.reflection_map = glGetUniformLocation(m_monitor.prog, "iReflectionMap") );
-
-	GLCALL( glGenSamplers(1, &m_monitor.reflection_sampler) );
-	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER) );
-	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER) );
-	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
-	GLCALL( glSamplerParameteri(m_monitor.reflection_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
-
-	m_monitor.reflection_map = GUI::load_texture(GUI::get_images_dir() + REALISTIC_REFLECTION_MAP);
-	m_rdisplay.reflection_scale = vec2f(1.0,1.0);
-
+	
+	screen()->renderer()->load_monitor_program(
+		GUI::shaders_dir() + REALISTIC_MONITOR_VS,
+		GUI::shaders_dir() + REALISTIC_MONITOR_FS,
+		GUI::images_dir() + REALISTIC_REFLECTION_MAP
+	);
+	
+	screen()->monitor.mvmat.load_identity();
+	screen()->monitor.ambient = clamp(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT), 0.0, 1.0);
+	screen()->vga_reflection_scale = vec2f(1.0,1.0);
+	
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
@@ -227,18 +237,18 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 
 	system.y = _height;
 	system.x = system.y * sys_ratio;
-	disp  = display_size(_width, _height, system.x, ms_monitor_bezelw+ms_vga_left, disp_scale*REALISTIC_VGA_SCALE, 4.f/3.f);
+	disp  = display_size(_width, _height, system.x, ms_monitor_bezelw+ms_vga_left, disp_scale*screen()->vga_image_scale.x, 4.f/3.f);
 	mdisp = display_size(_width, _height, system.x, ms_monitor_bezelw-1.f, 1.f, ms_monitor_width/ms_monitor_height);
-	m_rdisplay.reflection_scale = disp / mdisp;
+	screen()->vga_reflection_scale = disp / mdisp;
 	if(system.x > _width) {
 		system.x = _width;
 		system.y = system.x * 1.f/sys_ratio;
 	}
 	m_size = system;
-	m_display.size.x = round(disp.x);
-	m_display.size.y = round(disp.y);
-	display_transform(_width, _height, disp, system, m_display.mvmat);
-	display_transform(_width, _height, mdisp, system, m_monitor.mvmat);
+	screen()->vga.size.x = round(disp.x);
+	screen()->vga.size.y = round(disp.y);
+	display_transform(_width, _height, disp, system, screen()->vga.mvmat);
+	display_transform(_width, _height, mdisp, system, screen()->monitor.mvmat);
 
 	char buf[10];
 	snprintf(buf, 10, "%upx", m_size.x);
@@ -262,35 +272,6 @@ void RealisticInterface::update()
 	} else {
 		m_led_power->SetClass("active", false);
 	}
-}
-
-void RealisticInterface::render_monitor()
-{
-	GLCALL( glUseProgram(m_monitor.prog) );
-	GLCALL( glUniformMatrix4fv(m_monitor.uniforms.mvmat, 1, GL_FALSE, m_monitor.mvmat.data()) );
-	GLCALL( glActiveTexture(GL_TEXTURE0) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_monitor.reflection_map) );
-	GLCALL( glBindSampler(0, m_monitor.reflection_sampler) );
-	GLCALL( glUniform1i(m_monitor.uniforms.reflection_map, 0) );
-	GLCALL( glUniform1f(m_monitor.uniforms.ambient, m_monitor.ambient) );
-	GLCALL( glDisable(GL_BLEND) );
-	render_quad();
-
-	Interface::render_monitor();
-}
-
-void RealisticInterface::render_vga()
-{
-	//m_display.prog is active
-	// texunit0 is the VGA image
-	GLCALL( glActiveTexture(GL_TEXTURE1) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, m_monitor.reflection_map) );
-	GLCALL( glBindSampler(1, m_monitor.reflection_sampler) );
-	GLCALL( glUniform1i(m_rdisplay.uniforms.reflection_map, 1) );
-	GLCALL( glUniform2f(m_rdisplay.uniforms.reflection_scale, m_rdisplay.reflection_scale.x, m_rdisplay.reflection_scale.y) );
-	GLCALL( glUniform2f(m_rdisplay.uniforms.vga_scale, REALISTIC_VGA_SCALE, REALISTIC_VGA_SCALE) );
-	GLCALL( glUniform1f(m_rdisplay.uniforms.ambient, m_monitor.ambient) );
-	render_quad();
 }
 
 void RealisticInterface::set_slider_value(RC::Element *_slider, float _xleft, float _value)
@@ -368,7 +349,7 @@ void RealisticInterface::on_dragstart(RC::Event &_event)
 
 void RealisticInterface::on_power(RC::Event &_evt)
 {
-	bool on = m_gui->machine()->is_on();
+	bool on = m_machine->is_on();
 	Interface::on_power(_evt);
 	m_real_audio.update(!on, true);
 }

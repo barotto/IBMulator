@@ -44,6 +44,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ GUI_SECTION, {
+		{ GUI_RENDERER,           "opengl" },
 		{ GUI_KEYMAP,             ""       },
 		{ GUI_MOUSE_TYPE,         "ps2"    },
 		{ GUI_MOUSE_GRAB,         "yes"    },
@@ -246,6 +247,11 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ GUI_SECTION,
+";    renderer: What video system to use for rendering. Use the one most compatible with your system."
+";              Possible values: opengl, hard2d, soft2d.\n"
+";               opengl: default 3D accelerated renderer with shaders support\n"
+";               accelerated: hardware accelerated renderer without shaders support\n"
+";               software: software renderer without shaders support\n"
 ";        mode: Possible values: normal, compact, realistic.\n"
 ";                  normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                 compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"

@@ -146,6 +146,8 @@ public:
 	inline vec3<T> trans() const; //alias of get_translation()
 	inline mat3<T> get_rotation() const;
 	inline mat3<T> rot() const; //alias of get_rotation()
+	inline vec3<T> get_scale() const;
+	inline vec3<T> scale() const;
 
 	void copy_from(const T* _data);
 	void transpose();

@@ -115,7 +115,7 @@ void Mixer::start_capture()
 			m_wav.open_write(path.c_str(), m_device_spec.freq, SDL_AUDIO_BITSIZE(m_device_spec.format), m_device_spec.channels);
 			std::string mex = "started audio recording to " + path;
 			PINFOF(LOG_V0, LOG_MIXER, "%s\n", mex.c_str());
-			g_gui.show_message(mex.c_str());
+			GUI::instance()->show_message(mex.c_str());
 		} catch(std::exception &e) { }
 	}
 	for(auto ch : m_mix_channels) {
@@ -135,7 +135,7 @@ void Mixer::stop_capture()
 		ch.second->on_capture(false);
 	}
 	PINFOF(LOG_V0, LOG_MIXER, "audio recording stopped\n");
-	g_gui.show_message("audio recording stopped");
+	GUI::instance()->show_message("audio recording stopped");
 }
 
 void Mixer::config_changed()

@@ -167,7 +167,7 @@ void SysDebugger::update()
 	m_core.a20->SetInnerRML(format_bit(g_memory.get_A20_line()));
 
 	RC::String str;
-	str.FormatString(3, "%02X", m_gui->machine()->get_POST_code());
+	str.FormatString(3, "%02X", m_machine->get_POST_code());
 	m_post->SetInnerRML(str);
 
 	if(m_machine->is_paused() && m_tools.led_pause==false) {

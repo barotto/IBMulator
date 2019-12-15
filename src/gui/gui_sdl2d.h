@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -17,38 +17,30 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_GUI_STATUS_H
-#define IBMULATOR_GUI_STATUS_H
+#ifndef IBMULATOR_GUI_SDL2D_H
+#define IBMULATOR_GUI_SDL2D_H
 
-#include <Rocket/Core/EventListener.h>
+#include "gui.h"
 
-class GUI;
-class FloppyCtrl;
-class StorageCtrl;
-
-class Status : public Window
+class GUI_SDL2D : public GUI
 {
-private:
-	struct {
-		Rocket::Core::Element *power_led, *floppy_a_led, *floppy_b_led, *hdd_led;
-	} m_status;
-
-	struct {
-		bool power, floppy_a, floppy_b, hdd;
-	} m_leds;
-
-	Machine *m_machine;
-	FloppyCtrl *m_floppy;
-	StorageCtrl *m_hdd;
-
+protected:
+	unsigned m_rendflags;
+	
+	void create_window(int _flags);
+	void create_rocket_renderer();
+	
 public:
-	Status(GUI * _gui, Machine *_machine);
-	~Status();
-
-	void update();
-	void config_changed();
-
-	void ProcessEvent(Rocket::Core::Event & event);
+	GUI_SDL2D();
+	GUI_SDL2D(unsigned _rendflags);
+	~GUI_SDL2D();
+	
+	GUIRenderer renderer() const { return GUI_RENDERER_SDL2D; }
+	SDL_Renderer *sdl_renderer() const { return m_SDL_renderer; }
+	void render();
+	
+	uintptr_t load_texture(SDL_Surface *_surface);
+	uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr);
 };
 
 #endif

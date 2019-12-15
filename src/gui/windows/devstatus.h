@@ -29,6 +29,8 @@ class DevStatus : public DebugTools::DebugWindow
 {
 private:
 
+	Machine *m_machine;
+	
 	struct {
 		bool is_running;
 		RC::Element *btn_update;
@@ -71,7 +73,7 @@ private:
 
 public:
 
-	DevStatus(GUI * _gui, RC::Element *_button);
+	DevStatus(GUI * _gui, RC::Element *_button, Machine *_machine);
 	~DevStatus();
 
 	void update();

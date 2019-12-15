@@ -88,7 +88,7 @@ void Stats::update()
 	uint hundredths = fmod(double(remainder),18.21) * 100;
 	ss << "DOS clock: " << hour << ":" << minute << ":" << second << "." << hundredths;
 	ss << "<br />";
-	CMOS *cmos = m_gui->machine()->devices().cmos();
+	CMOS *cmos = m_machine->devices().cmos();
 	hour = cmos->get_reg(4);
 	hour = ((hour>>4)*10) + (hour&0xF);
 	minute = cmos->get_reg(2);

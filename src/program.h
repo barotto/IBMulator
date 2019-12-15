@@ -43,8 +43,8 @@ class Program
 	Bench m_bench;
 
 	Machine *m_machine;
-	GUI *m_gui;
 	Mixer *m_mixer;
+	std::unique_ptr<GUI> m_gui;
 
 	std::string m_user_dir; // the directory where the user keeps files like ibmulator.ini
 	std::string m_cfg_file; // the full path of ibmulator.ini
@@ -69,10 +69,6 @@ public:
 	Program();
 	~Program();
 
-	void set_machine(Machine*);
-	void set_gui(GUI*);
-	void set_mixer(Mixer*);
-
 	bool initialize(int argc, char** argv);
 	void start();
 	void stop();
@@ -89,6 +85,10 @@ public:
 	void save_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
 	void restore_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
 
+	GUI * gui_instance() const {
+		return m_gui.get();
+	}
+	
 	static void check_state_bufsize(uint8_t *_buf, size_t _exp_size);
 };
 

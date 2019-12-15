@@ -43,7 +43,7 @@ m_machine(_machine)
 	m_debugger = nullptr; // will be created in the config_changed
 	m_stats = new Stats(_machine, _gui, _mixer, get_element("stats"));
 	m_stats->enable();
-	m_devices = new DevStatus(_gui, get_element("devices"));
+	m_devices = new DevStatus(_gui, get_element("devices"), _machine);
 }
 
 DebugTools::~DebugTools()

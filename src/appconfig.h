@@ -127,7 +127,9 @@ public:
 #define PROGRAM_VSYNC           "vsync"
 #define PROGRAM_FRAMECAP        "framecap"
 
+
 #define GUI_SECTION             "gui"
+#define GUI_RENDERER            "renderer"
 #define GUI_KEYMAP              "keymap"
 #define GUI_MOUSE_TYPE          "mouse"
 #define GUI_MOUSE_GRAB          "grab"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2019  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -18,7 +18,10 @@
  */
 /* The first version of this code is from almost 20 years ago, in the dark
  * ages of C++.
+ * 
  * TODO I really need to rewrite this over engineered stinking pile of dog turd.
+ * 
+ * Sorry fo the non english comments.
  */
 
 #include "ibmulator.h"
@@ -35,7 +38,7 @@ Syslog g_syslog;
 
 using namespace std;
 
-const char* Syslog::m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRIMAX] = {
+const char* Syslog::m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRI_COUNT] = {
 	{ "[DBG0]", "[INF0]", "[WRN0]", "[ERR0]" },
 	{ "[DBG1]", "[INF1]", "[WRN1]", "[ERR1]" },
 	{ "[DBG2]", "[INF2]", "[WRN2]", "[ERR2]" }
@@ -75,27 +78,25 @@ m_repeat_cnt(0),
 m_stop(false),
 m_paused(false)
 {
-	for(int pri=0; pri<LOG_PRIMAX; pri++) {
-		for(int fac=0; fac<LOG_FACMAX; fac++) {
+	for(int pri=0; pri<LOG_PRI_COUNT; pri++) {
+		for(int fac=0; fac<LOG_FAC_COUNT; fac++) {
 			add_device(pri,fac,m_default);
 		}
 	}
 
-	memset(m_linefeed, 1, LOG_PRIMAX*LOG_FACMAX);
+	memset(m_linefeed, 1, LOG_PRI_COUNT*LOG_FAC_COUNT);
 	memset(m_verbosity, 0, sizeof(m_verbosity));
-
-	m_thread = std::thread(&Syslog::main_loop,this);
 }
 
 
-/** Distrugge tutti i dispositivi per cui è responsabile.
-*/
 Syslog::~Syslog()
 {
-	m_cmd_queue.push([this](){
-		m_stop = true;
-	});
-	m_thread.join();
+}
+
+void Syslog::start()
+{
+	m_stop = false;
+	main_loop();
 
 	auto it = m_devices.begin();
 	while(it != m_devices.end()) {
@@ -129,27 +130,29 @@ void Syslog::add_device(int _priority, int _facility, Logdev* _device)
 {
 	assert(_device);
 
-	if(_priority==LOG_PRIMAX) {
-		if(_facility==LOG_FACMAX) {
-			for(int pri=0; pri<LOG_PRIMAX; pri++) {
-				for(int fac=0; fac<LOG_FACMAX; fac++) {
+	if(_priority == LOG_ALL_PRIORITIES) {
+		if(_facility == LOG_ALL_FACILITIES) {
+			for(int pri=0; pri<LOG_PRI_COUNT; pri++) {
+				for(int fac=0; fac<LOG_FAC_COUNT; fac++) {
 					add_device(pri,fac,_device);
 				}
 			}
 		} else {
-			for(int pri=0; pri<LOG_PRIMAX; pri++) {
+			for(int pri=0; pri<LOG_PRI_COUNT; pri++) {
 				add_device(pri,_facility,_device);
 			}
 		}
 		return;
 	}
-	if(_facility==LOG_FACMAX) {
-		for(int fac=0; fac<LOG_FACMAX; fac++) {
+	if(_facility == LOG_ALL_FACILITIES) {
+		for(int fac=0; fac<LOG_FAC_COUNT; fac++) {
 			add_device(_priority,fac,_device);
 		}
 		return;
 	}
 
+	std::lock_guard<std::mutex> lock(m_log_mutex);
+	
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 
 	// se il dispositivo è già presente in questa lista pri x fac esci
@@ -177,6 +180,8 @@ void Syslog::add_device(int _priority, int _facility, Logdev* _device)
 void Syslog::del_device(int _priority, int _facility, Logdev* _device)
 {
 	assert(_device);
+	
+	std::lock_guard<std::mutex> lock(m_log_mutex);
 
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 
@@ -195,13 +200,6 @@ void Syslog::del_device(int _priority, int _facility, Logdev* _device)
 }
 
 
-/** Cancella la coda di device alle coordinate _priority x _facility */
-void Syslog::clear_queue(int _priority, int _facility)
-{
-	m_mapped_devices[_priority][_facility].clear();
-}
-
-
 /** Scrive una stringa sui dispositivi registrati per la priorità e facility in ingresso.
 @param _priority priorità
 @param _facility facility
@@ -210,6 +208,8 @@ void Syslog::clear_queue(int _priority, int _facility)
 */
 bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _format, ...)
 {
+	std::lock_guard<std::mutex> lock(m_log_mutex);
+	
 	va_list ap;
 
 	if(_verbosity > int(m_verbosity[_facility])) {
@@ -235,7 +235,7 @@ Chiamata da log(int, int, int, const char*, ...).
 bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
 {
 	assert(_format);
-
+	
 	if(_verbosity > int(m_verbosity[_facility])) {
 		return false;
 	}
@@ -244,8 +244,6 @@ bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _fo
 
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 	if(devlist.empty()) return false;
-
-	std::lock_guard<std::mutex> lock(m_log_mutex);
 
 	if(_format[0] == '\n' && _format[1] == 0) {
 		put_all(devlist,"","\n");
@@ -314,6 +312,8 @@ il responsabile della sua gestione (nel caso in cui sia vero anche _device->sysl
 void Syslog::remove(Logdev* _device, bool _erase)
 {
 	assert(_device);
+	
+	std::lock_guard<std::mutex> lock(m_log_mutex);
 
 	LOGREFSLIST::iterator refit = _device->m_log_refs.begin();
 	for(refit = _device->m_log_refs.begin(); refit != _device->m_log_refs.end(); refit++) {
@@ -352,9 +352,11 @@ void Syslog::put_all(list<Logdev*>& _devlist, string _prefix, string _mex)
 */
 void Syslog::set_verbosity(uint _level, uint _facility)
 {
-	if(_facility >= LOG_FACMAX) {
+	std::lock_guard<std::mutex> lock(m_log_mutex);
+	
+	if(_facility >= LOG_FAC_COUNT) {
 		//sets the same verbosity for all facilities
-		for(uint i=0; i<LOG_FACMAX; i++) {
+		for(uint i=0; i<LOG_FAC_COUNT; i++) {
 			m_verbosity[i] = _level;
 		}
 		return;
@@ -406,6 +408,13 @@ void Syslog::cmd_resume()
 		m_paused = false;
 	}
 	m_pause_cond.notify_one();
+}
+
+void Syslog::cmd_quit()
+{
+	m_cmd_queue.push([this](){
+		m_stop = true;
+	});
 }
 
 
