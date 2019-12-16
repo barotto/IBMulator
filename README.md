@@ -28,15 +28,12 @@ To obtain the source code go to github.com/barotto/IBMulator
 
 ## HARDWARE REQUIREMENTS
 
-A 64-bit Linux or Windows operating system, an OpenGL 3.3 compatible graphics
-adapter, and a 2GHz dual core processor.
+A 64-bit Linux or Windows operating system and a 2GHz dual core processor.
 
-At this stage of developement, optimizations have very low priority, so a
-modern-ish CPU and a discrete graphics card are recommended (I'm developing with
-an i7-2600 and GTX 970.)
+At this stage of development optimizations have very low priority, so a
+modern-ish CPU and a discrete graphics card are recommended.
 
-Be aware that virtual machines are not generally capable of running IBMulator
-unless they properly implement OpenGL 3.3 acceleration in their guest drivers.
+For shaders support you'll also need an OpenGL 3.3 compatible graphics adapter.
 
 
 ## USAGE
