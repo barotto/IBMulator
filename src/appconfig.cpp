@@ -248,7 +248,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ GUI_SECTION,
 ";    renderer: What video system to use for rendering. Use the one most compatible with your system."
-";              Possible values: opengl, hard2d, soft2d.\n"
+";              Possible values: opengl, accelerated, software.\n"
 ";               opengl: default 3D accelerated renderer with shaders support\n"
 ";               accelerated: hardware accelerated renderer without shaders support\n"
 ";               software: software renderer without shaders support\n"
