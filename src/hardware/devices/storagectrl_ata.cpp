@@ -2553,6 +2553,8 @@ void StorageCtrl_ATA::atapi_cmd_read_cd(int _ch, uint8_t _cmd)
 				break;
 			case 0xf8:
 				controller.buffer_size = 2352;
+				// TODO is this correct?
+				[[gnu::fallthrough]];
 			case 0x10:
 			{
 				init_send_atapi_command(_ch, _cmd,

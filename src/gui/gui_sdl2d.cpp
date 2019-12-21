@@ -25,14 +25,14 @@
 
 
 GUI_SDL2D::GUI_SDL2D()
-: m_rendflags(SDL_RENDERER_ACCELERATED),
-  GUI()
+: GUI(),
+  m_rendflags(SDL_RENDERER_ACCELERATED)
 {
 }
 
 GUI_SDL2D::GUI_SDL2D(unsigned _rendflags)
-: m_rendflags(_rendflags),
-  GUI()
+: GUI(),
+  m_rendflags(_rendflags)
 {
 }
 

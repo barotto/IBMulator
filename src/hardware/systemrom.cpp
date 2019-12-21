@@ -182,7 +182,7 @@ int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
 {
 	uint64_t size = FileSys::get_file_size(_filename.c_str());
 
-	if(_phyaddr == ~0) {
+	if(_phyaddr == uint32_t(~0)) {
 		if(size > MAX_ROM_SIZE) {
 			PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size\n", _filename.c_str());
 			throw std::exception();

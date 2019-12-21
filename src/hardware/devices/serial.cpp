@@ -492,6 +492,7 @@ void Serial::init_mode_pipe(uint comn, std::string dev, uint mode)
 			m_s[comn].pipe = pipe;
 		}
 	#else
+		UNUSED(comn);
 		PERRF_ABORT(LOG_COM, "support for serial mode 'pipe-%s' not available\n", server?"server":"client");
 	#endif
 }
@@ -676,7 +677,6 @@ uint16_t Serial::read(uint16_t address, unsigned /*io_len*/)
 	}
 
 	uint8_t offset, val;
-	uint16_t ret16;
 
 	offset = address & 0x07;
 
