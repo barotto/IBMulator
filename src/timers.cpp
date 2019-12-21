@@ -25,7 +25,13 @@
 
 EventTimers::EventTimers()
 {
-	memset(&m_s, 0, sizeof(m_s));
+	m_s.time = 0;
+	m_s.next_timer_time = 0;
+	for(int i=0; i<MAX_TIMERS; i++) {
+		m_s.timers[i].in_use = false;
+	}
+	m_mt_time = 0;
+	m_num_timers = 0;
 }
 
 EventTimers::~EventTimers()
