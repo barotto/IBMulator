@@ -66,7 +66,6 @@ extern "C" {
 #include "hardware/devices.h"
 #include "hardware/devices/systemboard.h"
 #include "floppy.h"
-#include "vvfat.h"
 #include <cstring>
 #include <functional>
 #include <sstream>
@@ -2016,25 +2015,6 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		PERRF(LOG_FDC, "media type %s not valid for this floppy drive (%02Xh)\n",
 				floppy_type[_type].str, floppy_type[_type].drive_mask);
 		return false;
-	}
-
-	// use virtual VFAT support if requested
-	if(!strncmp(_path, "vvfat:", 6) && (_devtype == FDD_350HD)) {
-		vvfat = new VVFATMediaImage(1474560, "", !write_protected);
-		if(vvfat != nullptr) {
-			if(vvfat->open(_path + 6) == 0) {
-				type         = FLOPPY_1_44;
-				tracks       = vvfat->geometry.cylinders;
-				heads        = vvfat->geometry.heads;
-				spt          = vvfat->geometry.spt;
-				sectors      = 2880;
-				vvfat_floppy = true;
-				fd           = 0;
-			}
-		}
-		if(vvfat_floppy) {
-			return true;
-		}
 	}
 
 	// open media file (image file or device)
