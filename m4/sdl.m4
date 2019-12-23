@@ -231,9 +231,8 @@ fi
 
 SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
 
-if test "x$static" != "xno" ; then
-	#SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
-	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma -ljbig"
+if test x$static != x ; then
+	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
 fi
 
 AC_SUBST([SDLIMAGE_CFLAGS])

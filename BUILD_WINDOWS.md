@@ -162,7 +162,9 @@ libRocketCore.dll
 libRocketDebugger.dll
 ```
 
-**NOTE:** this list can change depending on the current version of MSYS2/MinGW.
+**NOTE:** this list changes periodically depending on the current version of
+MSYS2/MinGW. You can use the Dependency Walker program to determine the up to
+date list of libraries.
 
 
 ## Debugging
