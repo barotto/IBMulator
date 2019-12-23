@@ -558,4 +558,5 @@ void Interface::print_VGA_text(std::vector<uint16_t> &_text)
 		(uint8_t*)(_text.data()),
 		0, 0, &tminfo
 	);
+	set_vga_updated();
 }
