@@ -142,17 +142,24 @@ ROMs and disk images are copyrighted material and must be downloaded elsewhere
 Please see the <a href="https://github.com/barotto/IBMulator/blob/master/README.md">README</a> file included in the package for detailed instructions on how to configure and use the program.
 </p>
 
-<h3>Supported ROM sets</h3>
+<h3>Supported ROMs</h3>
 <p>
-This is the list of supported ROM BIOS versions and the default configurations that IBMulator selects when it loads them:
+This is the list of supported ROM BIOS versions and the default configurations that IBMulator selects when it loads them.
+</p>
+<p>
+Please note that the P/N and MD5 values refer only to the 64K BIOS code part of the ROM, loaded at offset 0xFF0000. The data part (the so called ROM drive) is not taken into consideration. IBMulator uses the computed MD5 value only to select the actual hardware configuration to use for the "auto" values in the ini file. 
+</p>
+<p>
+IBM installed the same ROM BIOS for multiple 2011 / 2121 models. The system configurations reported here and selected by IBMulator are just for your convenience, as every aspect of them can be overridden using the ibmulator.ini file.
 </p>
 <table>
-<tr><th>ROM version</th><th>PS/1 model</th><th>CPU</th><th>RAM</th><th>Storage</th></tr>
+<tr><th rowspan="2">ROM version</th><th colspan="4" class="vline">Configuration selected by IBMulator</th></tr>
+<tr><th class="vline">PS/1 model</th><th>CPU</th><th>RAM</th><th>Storage</th></tr>
 <tr>
 	<td>
 		P/N: 1057756<br />MD5: f605396b48f02c5e81bc9e5e5fb60717<br />Original US model, w/ ROM drive
 	</td>
-	<td>
+	<td class="vline">
 		PS/1 2011-C34
 	</td>
 	<td>
@@ -169,7 +176,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 	<td>
 		P/N: 1057760<br />MD5: 9cac91f1fa7fe58d9509b754785f7fd2<br />US and Intl. models, w/ ROM drive
 	</td>
-	<td>
+	<td class="vline">
 		PS/1 2011-C34
 	</td>
 	<td>
@@ -186,7 +193,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 	<td>
 		P/N: 92F9674<br />MD5: 159413f190f075b92ffb882331c70eaf<br />US model, w/ ROM drive
 	</td>
-	<td>
+	<td class="vline">
 		PS/1 2121-B82
 	</td>
 	<td>
@@ -203,7 +210,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 	<td>
 		P/N: 92F9606<br />MD5: 7b5f6e3803ee57fd95047738d36f12fd<br />Intl. models, w/ ROM drive
 	</td>
-	<td>
+	<td class="vline">
 		PS/1 2121-B82
 	</td>
 	<td>
@@ -220,7 +227,7 @@ This is the list of supported ROM BIOS versions and the default configurations t
 	<td>
 		P/N: 93F2455<br />MD5: 01ae622ab197b057c92ad7832f868b4c<br />All models, w/o ROM drive
 	</td>
-	<td>
+	<td class="vline">
 		PS/1 2121-A82
 	</td>
 	<td>
@@ -234,10 +241,6 @@ This is the list of supported ROM BIOS versions and the default configurations t
 	</td>
 </tr>
 </table>
-
-<p>
-Configurations can be overridden in the ibmulator.ini file.
-</p>
 
 <h3>HDD types</h3>
 <p>These are the HDD types supported by the PS/1 BIOS.<br />This table was defined by IBM and is common to many of the their products of the same era. While rendered irrelevant with the introduction of the ATA interface in the 2121 model, it's still present in its BIOS and it can be used in IBMulator to quickly specify a geometry and create a pre-formatted disk.</p>

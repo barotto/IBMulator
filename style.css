@@ -145,6 +145,12 @@ table td {
 	border-bottom: 1px solid #808080;
 }
 
+table th.vline,
+table td.vline {
+	padding-left: 8px;
+	border-left: 1px solid #808080;
+}
+
 dt {
 	font-weight: bold;
 }
