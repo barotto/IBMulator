@@ -147,13 +147,13 @@ Please see the <a href="https://github.com/barotto/IBMulator/blob/master/README.
 This is the list of supported ROM BIOS versions and the default configurations that IBMulator selects when it loads them.
 </p>
 <p>
-Please note that the P/N and MD5 values refer only to the 64K BIOS code part of the ROM, loaded at offset 0xFF0000. The data part (the so called ROM drive) is not taken into consideration. IBMulator uses the computed MD5 value only to select the actual hardware configuration to use for the "auto" values in the ini file. 
+Please note that the P/N and MD5 values refer only to the 64K BIOS code part of the ROM, loaded at offset 0xFF0000. The additional part with the BASIC interpreter and the ROM drive is not taken into consideration. IBMulator uses the computed MD5 value only to select the actual hardware configuration to use for the "auto" values in the ini file. 
 </p>
 <p>
-IBM installed the same ROM BIOS for multiple 2011 / 2121 models. The system configurations reported here and selected by IBMulator are just for your convenience, as every aspect of them can be overridden using the ibmulator.ini file.
+IBM used the same ROM BIOS for multiple 2011 / 2121 models and the system configurations reported here and selected by IBMulator are just for your convenience. Every aspect of them can be overridden using the ibmulator.ini file.
 </p>
 <table>
-<tr><th rowspan="2">ROM version</th><th colspan="4" class="vline">Configuration selected by IBMulator</th></tr>
+<tr><th rowspan="2">ROM BIOS version</th><th colspan="4" class="vline">Configuration selected by IBMulator</th></tr>
 <tr><th class="vline">PS/1 model</th><th>CPU</th><th>RAM</th><th>Storage</th></tr>
 <tr>
 	<td>
