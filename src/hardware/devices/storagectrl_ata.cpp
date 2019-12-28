@@ -248,9 +248,11 @@ void StorageCtrl_ATA::install()
 	m_channels[0].irq = 14;
 	m_channels[0].ioaddr1 = 0x01f0;
 	m_channels[0].ioaddr2 = 0x03f0;
-	m_channels[1].irq = 15;
-	m_channels[1].ioaddr1 = 0x0170;
-	m_channels[1].ioaddr2 = 0x0370;
+	if(ATA_MAX_CHANNEL > 1) {
+		m_channels[1].irq = 15;
+		m_channels[1].ioaddr1 = 0x0170;
+		m_channels[1].ioaddr2 = 0x0370;
+	}
 
 	using namespace std::placeholders;
 	for(int channel=0; channel<ATA_MAX_CHANNEL; channel++) {
