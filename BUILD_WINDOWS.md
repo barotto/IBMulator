@@ -179,3 +179,11 @@ You don't need to install the program in order to debug it, just run
 ibmulator.exe inside the `src` directory.
 
 If you don't want to interact with gdb, you can use an IDE like Eclipse CDT.
+
+Sometimes using gdb is too inconveninent and slow and the only thing you want is
+a backtrace. A useful tool to catch and analyze segmentation faults is
+`catchsegv`, which is included in the `drmingw` package:  
+`pacman -S mingw-w64-x86_64-drmingw`
+
+To catch a segmentation fault and obtain a backtrace run:  
+`catchsegv src/ibmulator.exe`
