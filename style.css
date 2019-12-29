@@ -36,19 +36,14 @@ h1 {
 	font-weight: normal;
 }
 
-h2, h3 {
-	text-align: left;
-	font-family: courier;
-	font-size: .6cm;
-}
-
 h2 {
 	font-family: 'perfect_dos_vga_437_winRg',courier;
-	font-size: 28px;
+	font-size: .7cm;
 	font-weight: normal;
 }
 
 h3 {
+	font-family: courier;
 	font-size: .5cm;
 }
 
@@ -62,6 +57,7 @@ a {
 	font-family: courier;
 	text-decoration: none;
 	font-weight: bold;
+	font-size: .45cm;
 }
 
 a:hover {
@@ -70,7 +66,7 @@ a:hover {
 
 body {
 	text-align: left;
-	font-family: sans-serif;
+	font-family: arial, sans-serif;
 	font-size: .4cm;
 	margin: 1% 8% 8% 8%;
 }
@@ -135,12 +131,8 @@ li {
 	padding: 0.5em;
 }
 
-table {
-	font-family: sans-serif;
-}
-
 table td {
-	font-size: .35cm;
+	
 	padding: 8px 16px 8px 0;
 	border-bottom: 1px solid #808080;
 }
