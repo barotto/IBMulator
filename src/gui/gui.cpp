@@ -243,7 +243,6 @@ vec2i GUI::resize_window(int _w, int _h)
 void GUI::sig_state_restored()
 {
 	m_windows.interface->sig_state_restored();
-	m_windows.interface->set_vga_updated();
 }
 
 void GUI::toggle_fullscreen()
@@ -1095,7 +1094,7 @@ void GUI::show_welcome_screen()
 	ps("\n\nFor more information read the README file and visit the project page at\n", 0xf, bg, bd);
 	ps("http://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
 
-	m_windows.interface->print_VGA_text(text);
+	m_machine->cmd_print_VGA_text(text);
 }
 
 

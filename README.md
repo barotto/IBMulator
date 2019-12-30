@@ -169,25 +169,36 @@ The implemented DSP filter type is the Butterworth filter, a description of
 which can be found on
 [Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
 
-### Advanced video and sync settings
+### Advanced video and synchronization settings
 
 The following video and synchronization settings can be used to fix or mitigate
-unstable timings, stuttering, and tearing. They are all under the [program]
-section of the ini file.
+unstable timings, stuttering, and tearing. They are all under the `[program]`
+section of the ini file. Use the combination that works best for you.
 
+For a more in depth explanation of what's going on see this 
+[wiki page](https://github.com/barotto/IBMulator/wiki/Tearing-and-stuttering-in-emulators).
+
+* `double_buffer`: enables the use of an internal buffer between the Machine
+emulation thread and the GUI thread. It will fix emulation related tearing, but
+will also add some lag. Visible tearing could still occur in fullscreen mode
+unless `vsync` is also enabled. 
+* `vsync`: enables vertical synchronization between the GUI thread and your GPU,
+capping the frame rate to the refresh rate of your monitor. This can fix screen
+tearing when IBMulator is in fullscreen mode. Enabling `vsync` disables 
+`framecap`.
+* `framecap`: it puts the GUI thread to sleep, capping the framerate to the VGA
+frequency. This setting is used only if `vsync` is disabled. It will introduce
+input lag.
 * `threads_sync`: force a per-frame synchronization between the GUI and the
-Machine emulation threads. Enabling this option will fix screen tearing but
-could introduce timings instability. Tearing could still occur in fullscreen
-mode unless vsync is also enabled.
-* `vsync`: enables vertical sync, capping the frame rate to the refresh rate
-of your monitor. This can fix screen tearing when IBMulator is in fullscreen
-mode. Enabling vsync disables framecap.
-* `framecap`: put the GUI thread to sleep, capping the framerate to the VGA
-frequency. This setting is used only if vsync is disabled.
+Machine emulation threads. Enabling this option will fix emulation related
+tearing but could introduce timings instability. Visible tearing could still
+occur in fullscreen mode unless `vsync` is also enabled. It is used only if
+`double_buffer` is disabled. This option is deprecated and you should enable
+`double_buffer` instead.
 
 You can activate the debug windows to see how things are going, check
-_Target FPS_, _Curr. FPS_, and _Missed frames_ values. When vsync is enabled
-Missed frames will not be shown.
+_Target FPS_, _Curr. FPS_, and _Missed frames_ values. When v-sync is enabled
+_Missed frames_ will not be shown.
 
 ### Key bindings
 

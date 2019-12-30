@@ -824,6 +824,13 @@ void Machine::cmd_eject_media(uint _drive)
 	});
 }
 
+void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
+{
+	m_cmd_fifo.push([=] () {
+		g_devices.vga()->print_text(_text);
+	});
+}
+
 void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {

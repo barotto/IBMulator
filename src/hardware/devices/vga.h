@@ -253,6 +253,8 @@ public:
 	
 	const VideoStats & stats() const { return m_stats; }
 	
+	void print_text(std::vector<uint16_t> _text);
+	
 protected:
 	virtual void update_mem_mapping();
 	void load_ROM(const std::string &_filename);

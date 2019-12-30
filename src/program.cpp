@@ -342,6 +342,7 @@ bool Program::initialize(int argc, char** argv)
 		PINFO(LOG_V0, " done\n");
 	}
 
+	m_double_buffer = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_DOUBLE_BUFFER);
 	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
 	m_framecap = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_FRAMECAP);
 	m_quit = false;

@@ -137,7 +137,6 @@ public:
 	void on_fdd_mount(RC::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
-	void set_vga_updated() { m_screen->vga.display.set_fb_updated(); }
 	VGADisplay * vga_display() { return & m_screen->vga.display; }
 	void render_screen();
 
@@ -147,7 +146,6 @@ public:
 	virtual void set_video_saturation(float);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
-	void print_VGA_text(std::vector<uint16_t> &_text);
 
 	virtual void sig_state_restored() {}
 

@@ -200,6 +200,7 @@ public:
 	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp);
 	void cmd_eject_media(uint _drive);
+	void cmd_print_VGA_text(std::vector<uint16_t> _text);
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 

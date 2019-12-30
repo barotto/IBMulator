@@ -2066,6 +2066,43 @@ void VGA::redraw_all()
 	}
 }
 
+void VGA::print_text(std::vector<uint16_t> _text)
+{
+	// must be called by the Machine thread
+
+	TextModeInfo tminfo;
+	tminfo.start_address = 0;
+	tminfo.cs_start = 1;
+	tminfo.cs_end = 0;
+	tminfo.line_offset = 80*2;
+	tminfo.line_compare = 1023;
+	tminfo.h_panning = 0;
+	tminfo.v_panning = 0;
+	tminfo.line_graphics = false;
+	tminfo.split_hpanning = false;
+	tminfo.double_dot = false;
+	tminfo.double_scanning = false;
+	tminfo.blink_flags = 0;
+	for(int i=0; i<16; i++) {
+		tminfo.actl_palette[i] = i;
+	}
+	std::vector<uint16_t> oldtxt(80*25,0);
+	
+	if(!m_display) {
+		m_display = GUI::instance()->vga_display();
+	}
+	m_display->lock();
+	m_display->text_update(
+		(uint8_t*)(oldtxt.data()),
+		(uint8_t*)(_text.data()),
+		0, 0, &tminfo
+	);
+	m_display->set_fb_updated();
+	m_display->unlock();
+	
+	m_display->notify_interface();
+}
+
 void VGA::state_to_textfile(std::string _filepath)
 {
 	// this function is called by the GUI thread

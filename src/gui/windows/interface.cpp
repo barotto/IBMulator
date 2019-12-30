@@ -144,21 +144,26 @@ void InterfaceScreen::sync_with_device()
 		} catch(std::exception &) {}
 	}
 	
-	if(vga.display.fb_updated()) {
+	if(g_program.double_buffer()) {
 		vga.display.lock();
-		vec2i vga_res = vec2i(vga.display.mode().xres, vga.display.mode().yres);
+		vec2i vga_res = vec2i(vga.display.last_mode().xres, vga.display.last_mode().yres);
 		// this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
 		// when the program runs with the default shaders, the load on the GPU is very low
 		// so the drivers lower the GPU's clocks to the minimum value;
 		// the result is the GPU's memory controller load goes high and glTexSubImage2D takes
 		// a lot of time to complete, bloking the machine emulation thread.
 		// PBOs are a possible alternative, but a memcpy is way simpler.
+		m_vga_buf = vga.display.get_last_fb();
+		vga.display.unlock();
+		// now the Machine thread is free to continue emulation
+		// meanwhile we start rendering the last VGA image
+		m_renderer->store_vga_framebuffer(m_vga_buf, vga_res);
+	} else if(vga.display.fb_updated()) {
+		vga.display.lock();
+		vec2i vga_res = vec2i(vga.display.mode().xres, vga.display.mode().yres);
 		m_vga_buf = vga.display.get_fb();
 		vga.display.clear_fb_updated();
 		vga.display.unlock();
-		
-		// now the Machine thread is free to continue emulation
-		// meanwhile we start rendering the last VGA image
 		m_renderer->store_vga_framebuffer(m_vga_buf, vga_res);
 	}
 }
@@ -534,29 +539,3 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 	}
 }
 
-void Interface::print_VGA_text(std::vector<uint16_t> &_text)
-{
-	TextModeInfo tminfo;
-	tminfo.start_address = 0;
-	tminfo.cs_start = 1;
-	tminfo.cs_end = 0;
-	tminfo.line_offset = 80*2;
-	tminfo.line_compare = 1023;
-	tminfo.h_panning = 0;
-	tminfo.v_panning = 0;
-	tminfo.line_graphics = false;
-	tminfo.split_hpanning = false;
-	tminfo.double_dot = false;
-	tminfo.double_scanning = false;
-	tminfo.blink_flags = 0;
-	for(int i=0; i<16; i++) {
-		tminfo.actl_palette[i] = i;
-	}
-	std::vector<uint16_t> oldtxt(80*25,0);
-	m_screen->vga.display.text_update(
-		(uint8_t*)(oldtxt.data()),
-		(uint8_t*)(_text.data()),
-		0, 0, &tminfo
-	);
-	set_vga_updated();
-}

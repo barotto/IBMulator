@@ -42,8 +42,8 @@
 
 class VGADisplay
 {
-	std::vector<uint32_t> m_fb; // the framebuffer
-
+	std::vector<uint32_t> m_fb; // the current framebuffer, constantly updating
+	
 	struct {
 		VideoModeInfo mode;
 		bool valid_mode;
@@ -61,11 +61,15 @@ class VGADisplay
 		uint16_t line_compare;
 	} m_s;
 
-	bool m_dim_updated;
+	std::atomic<bool> m_dim_updated;
 	std::atomic<bool> m_fb_updated;
 	std::mutex m_mutex;
 	std::condition_variable m_cv;
 
+	// internal double buffering
+	std::vector<uint32_t> m_last_fb; // the last complete framebuffer content
+	VideoModeInfo m_last_mode; // the last videomode, relative to the last framebuffer
+	
 	static uint8_t ms_font8x16[256][16];
 	static uint8_t ms_font8x8[256][8];
 
@@ -83,13 +87,14 @@ public:
 		std::unique_lock<std::mutex> lock(m_mutex);
 		m_cv.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
 	}
-	inline void notify_interface() { m_cv.notify_all(); }
+	void notify_interface();
 	inline const VideoModeInfo & mode() const { return m_s.mode; }
+	inline const VideoModeInfo & last_mode() const { return m_last_mode; }
 	inline unsigned get_fb_size() const { return m_fb.size(); }
 	inline unsigned get_fb_width() const { return m_s.fb_width; }
 	inline unsigned get_fb_height() const { return m_s.fb_height; }
 	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
-	inline bool is_valid() const { return m_s.valid_mode; }
+	inline const std::vector<uint32_t>& get_last_fb() const { return m_last_fb; }
 
 	void set_mode(const VideoModeInfo &_mode);
 	void set_timings(double _hfreq, double _vfreq);
@@ -111,6 +116,7 @@ public:
 	inline void set_fb_updated() { m_fb_updated = true; }
 	inline void clear_fb_updated() { m_fb_updated = false; }
 	inline bool dimension_updated() { return m_dim_updated; }
+	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
 };
 

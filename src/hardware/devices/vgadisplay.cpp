@@ -23,6 +23,7 @@
 #include "ibmulator.h"
 #include "vga.h"
 #include "vgafont.h"
+#include "program.h"
 #include <cstring>
 
 
@@ -81,9 +82,12 @@ VGADisplay::VGADisplay()
 	m_s.charmap_updated = true;
 	m_s.charmap_select = false;
 
-	m_dim_updated = false;
-
+	m_last_mode = m_s.mode;
+	m_last_fb.resize(m_s.fb_width * m_s.fb_height);
+	
 	clear_screen();
+	set_fb_updated();
+	set_dimension_updated();
 }
 
 VGADisplay::~VGADisplay()
@@ -120,7 +124,31 @@ void VGADisplay::restore_state(StateBuf &_state)
 	m_fb.resize(m_s.fb_width*m_s.fb_height);
 	_state.read(&m_fb[0], {m_fb.size()*4, "VGADisplay fb"});
 
-	m_dim_updated = true;
+	set_fb_updated();
+	set_dimension_updated();
+}
+
+// notify_interface()
+//
+// Called by the Machine thread (VGA) to update the internal buffer and notify
+// waiting threads.
+void VGADisplay::notify_interface()
+{
+	// if double buffering is enabled do a full copy
+	if(g_program.double_buffer()) {
+		// we must lock the display because another thread could be reading
+		// the internal buffer
+		lock();
+		m_last_fb = m_fb;
+		if(!(m_s.mode == m_last_mode)) {
+			set_dimension_updated();
+		}
+		m_last_mode = m_s.mode;
+		unlock();
+	}
+	
+	// if other threads are waiting for the frame buffer to be updated notify them
+	m_cv.notify_all();
 }
 
 // clear_screen()
@@ -129,6 +157,9 @@ void VGADisplay::restore_state(StateBuf &_state)
 void VGADisplay::clear_screen()
 {
 	std::fill(m_fb.begin(), m_fb.end(), 0);
+	if(g_program.double_buffer()) {
+		std::fill(m_last_fb.begin(), m_last_fb.end(), 0);
+	}
 }
 
 void VGADisplay::set_text_charmap(bool _map, uint8_t *_fbuffer)
@@ -182,7 +213,7 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 		clear_screen();
 	}
 
-	m_dim_updated = true;
+	set_dimension_updated();
 }
 
 void VGADisplay::set_timings(double _hfreq, double _vfreq)
