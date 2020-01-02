@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include <vector>
 #include <condition_variable>
 #include <chrono>
+#include <SDL.h>
 
 #define VGA_MAX_XRES 800
 #define VGA_MAX_YRES 600
@@ -118,6 +119,16 @@ public:
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
+	
+	// screen recording (TODO temporary)
+	void toggle_recording();
+	void start_recording();
+	void stop_recording();
+private:
+	SDL_Surface *m_rec_surface;
+	std::string m_rec_dir;
+	int m_rec_framecnt;
+	void record_frame();
 };
 
 #endif

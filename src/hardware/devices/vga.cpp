@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1838,6 +1838,13 @@ void VGA::vertical_retrace(uint64_t _time)
 	
 	// we can notify the GUI after frame rending is complete or simply at vretrace 
 	m_display->notify_interface();
+	
+	static uint64_t last_beat_count = 0;
+	if(g_machine.get_bench().total_beat_count != last_beat_count+1) {
+		PDEBUGF(LOG_V1, LOG_VGA, "frames desync: %d machine beats per VGA frame\n", 
+			(g_machine.get_bench().total_beat_count - last_beat_count));
+	}
+	last_beat_count = g_machine.get_bench().total_beat_count;
 	
 	if(m_s.CRTC.vretrace_end.EVI==0 && !is_video_disabled()) { // EVI is an inverted bit
 		raise_interrupt();

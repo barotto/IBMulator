@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -345,6 +345,15 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 						input_grab(false);
 					}
 					return true;
+				}
+				case SDLK_F2: {
+					// screen recording
+					if(ENABLE_VGA_SCREEN_RECORDING) {
+						if(_event.type == SDL_KEYUP) return true;
+						m_machine->cmd_toggle_VGA_rec();
+						return true;
+					}
+					break;
 				}
 				case SDLK_F3: {
 					//machine on/off

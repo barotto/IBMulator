@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -828,6 +828,13 @@ void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
 {
 	m_cmd_fifo.push([=] () {
 		g_devices.vga()->print_text(_text);
+	});
+}
+
+void Machine::cmd_toggle_VGA_rec()
+{
+	m_cmd_fifo.push([=] () {
+		GUI::instance()->vga_display()->toggle_recording();
 	});
 }
 

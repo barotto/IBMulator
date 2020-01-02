@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,7 +48,8 @@ heartbeat(0),
 bstart(0),
 bend(0),
 beat_count(0),
-long_frames(0),
+total_beat_count(0),
+missed_frames(0),
 min_beat_time(LLONG_MAX),
 max_beat_time(0),
 avg_beat_time(.0),
@@ -82,6 +83,7 @@ void HWBench::reset()
 {
 	init_time = m_chrono->get_nsec();
 	ustart = init_time;
+	total_beat_count = 0;
 	m_reset = true;
 }
 
@@ -111,8 +113,9 @@ void HWBench::beat_end()
 	m_max_btime = std::max(m_beat_time, m_max_btime);
 	m_sum_btime += m_beat_time;
 	m_beat_count++;
+	total_beat_count++;
 	if(m_beat_time > heartbeat) {
-		long_frames++;
+		missed_frames++;
 	}
 
 	unsigned updtime = bend - ustart;
@@ -151,7 +154,7 @@ std::ostream& operator<<(std::ostream& _os, const HWBench &_bench)
 	_os << "Target FPS: " << (1.0e9 / _bench.heartbeat) << _bench.endl;
 	_os << "Curr. FPS: " << _bench.avg_bps << _bench.endl;
 	_os << "Host load: " << _bench.load << _bench.endl;
-	_os << "Missed frames: " << _bench.long_frames << _bench.endl; 
+	_os << "Missed frames: " << _bench.missed_frames << _bench.endl;
 
 	double mhz = _bench.avg_cps / 1e6;
 	double mips = _bench.avg_ips / 1e6;

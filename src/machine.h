@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -201,6 +201,7 @@ public:
 	void cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp);
 	void cmd_eject_media(uint _drive);
 	void cmd_print_VGA_text(std::vector<uint16_t> _text);
+	void cmd_toggle_VGA_rec();
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 

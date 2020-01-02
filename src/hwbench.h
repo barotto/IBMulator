@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -51,7 +51,8 @@ public:
 	int64_t  bstart; //!< heart beat start
 	int64_t  bend;
 	unsigned beat_count;
-	unsigned long_frames;
+	uint64_t total_beat_count;
+	unsigned missed_frames;
 	int64_t  min_beat_time;
 	int64_t  max_beat_time;
 	double   avg_beat_time;

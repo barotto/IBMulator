@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -173,6 +173,29 @@ std::string FileSys::get_next_filename(const std::string &_dir,
 		return "";
 	}
 	return fname;
+}
+
+std::string FileSys::get_next_dirname(const std::string &_basedir,
+		const std::string &_basename)
+{
+	std::stringstream ss;
+	int counter = 0;
+	std::string dname;
+	do {
+		ss.str("");
+		ss << _basedir << FS_SEP << _basename;
+		ss.width(4);
+		ss.fill('0');
+		ss << counter;
+		counter++;
+		dname = ss.str();
+	} while(is_directory(dname.c_str()) && counter<10000);
+	
+	if(counter>=10000) {
+		return "";
+	}
+	
+	return dname;
 }
 
 bool FileSys::extract_file(const char *_archive, const char *_filename, const char *_extract_to)
