@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -206,6 +206,9 @@ void Mixer::main_loop()
 	uint64_t time_span_us;
 
 	while(true) {
+		
+		m_bench.frame_start();
+		
 		time_span_us = m_main_chrono.elapsed_usec();
 		uint64_t time_slept = 0;
 		if(time_span_us < m_heartbeat) {
@@ -222,7 +225,7 @@ void Mixer::main_loop()
 			m_main_chrono.start();
 		}
 
-		m_bench.beat_start();
+		m_bench.sim_start();
 
 		Mixer_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -304,7 +307,7 @@ void Mixer::main_loop()
 		}
 
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
-		m_bench.beat_end();
+		m_bench.frame_end();
 	}
 }
 

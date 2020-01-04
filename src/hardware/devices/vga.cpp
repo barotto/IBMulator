@@ -1839,12 +1839,12 @@ void VGA::vertical_retrace(uint64_t _time)
 	// we can notify the GUI after frame rending is complete or simply at vretrace 
 	m_display->notify_interface();
 	
-	static uint64_t last_beat_count = 0;
-	if(g_machine.get_bench().total_beat_count != last_beat_count+1) {
+	static uint64_t mch_last_frame_count = 0;
+	if(g_machine.get_bench().tot_frame_count != mch_last_frame_count+1) {
 		PDEBUGF(LOG_V1, LOG_VGA, "frames desync: %d machine beats per VGA frame\n", 
-			(g_machine.get_bench().total_beat_count - last_beat_count));
+			(g_machine.get_bench().tot_frame_count - mch_last_frame_count));
 	}
-	last_beat_count = g_machine.get_bench().total_beat_count;
+	mch_last_frame_count = g_machine.get_bench().tot_frame_count;
 	
 	if(m_s.CRTC.vretrace_end.EVI==0 && !is_video_disabled()) { // EVI is an inverted bit
 		raise_interrupt();

@@ -29,59 +29,82 @@
 class HWBench
 {
 protected:
-	int64_t  m_min_btime;
-	int64_t  m_max_btime;
-	int64_t  m_sum_btime;
-	int64_t  m_beat_time;
-	uint64_t m_beat_count;
+	const Chrono *m_chrono;
+	
+	int64_t  m_init_time;
 	int64_t  m_upd_interval;
+	
+	int64_t  m_sim_time;
+	int64_t  m_min_sim_time;
+	int64_t  m_max_sim_time;
+	int64_t  m_sum_sim_time;
+	
+	int64_t  m_frame_time;
+	int64_t  m_min_frame_time;
+	int64_t  m_max_frame_time;
+	int64_t  m_sum_frame_time;
+	int64_t  m_sum_frame_time2;
+	
+	uint64_t m_upd_frame_count;
 	uint64_t m_icount;
 	uint64_t m_ccount;
-	bool m_reset;
-	const Chrono *m_chrono;
-
-public:
-	int64_t init_time;
-
-	int64_t ustart; //!< update start
-	int64_t uend; //!< update end
-
-	int64_t  heartbeat;
 	
-	int64_t  bstart; //!< heart beat start
-	int64_t  bend;
-	unsigned beat_count;
-	uint64_t total_beat_count;
-	unsigned missed_frames;
-	int64_t  min_beat_time;
-	int64_t  max_beat_time;
-	double   avg_beat_time;
-	unsigned min_bps;
-	unsigned max_bps;
-	double avg_bps;
-	double avg_ips;
-	double avg_cps;
+	int64_t  m_frame_start; // frame start time
+	int64_t  m_sim_start;   // simulation start time
+	int64_t  m_frame_end;   // frame end time
+	
+	int64_t  m_upd_start;
+	int64_t  m_upd_end;
+	
+	bool m_upd_reset;
+	
+public:
+	int64_t  heartbeat; // duration in ns of each heartbeat or target frame time
+	                    // measured frame time must be as close as possible to this value
+	
+	int64_t  time_elapsed;
+	uint64_t tot_frame_count;
+	unsigned late_frames;
+	
+	// simulation time = time spent simulating the machine
+	int64_t  min_sim_time;
+	int64_t  max_sim_time;
+	double   avg_sim_time;
+	
+	// frame time (or beat time) is the total time spent simulating + sleeping
+	int64_t  min_frame_time;
+	int64_t  max_frame_time;
+	double   avg_frame_time;
+	double   std_frame_time; // Standard deviation
+	
+	unsigned min_fps;
+	unsigned max_fps;
+	double   avg_fps;
+	
+	double avg_ips; // average CPU instructions per second
+	double avg_cps; // average CPU cycles per second
+	
 	std::atomic<double> load; // the load value is used in the gui thread to decide
 	                          // if it's safe to keep the synchro between threads 
 
-	int64_t time_elapsed;
-
 	std::string endl;
 
+	
 	HWBench();
 	~HWBench();
 
-	void init(const Chrono *_chrono, uint _update_interval);
+	void init(const Chrono *_chrono, unsigned _update_interval);
 	void reset();
 	void set_heartbeat(int64_t _nsec) { heartbeat = _nsec; }
-	void beat_start();
-	void beat_end();
+	void frame_start();
+	void sim_start();
+	void frame_end();
 	inline void cpu_step() { m_icount++; }
-	inline void cpu_cycles(uint _cycles) { m_ccount += _cycles; }
+	inline void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }
 
 	void data_update();
 	
-	friend std::ostream& operator<<(std::ostream& out, const HWBench &_bench);
+	friend std::ostream& operator<<(std::ostream& _os, const HWBench &_bench);
 };
 
 

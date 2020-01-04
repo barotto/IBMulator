@@ -324,6 +324,9 @@ bool Machine::main_loop()
 	static int64_t next_beat_diff = 0L;
 
 	while(true) {
+		
+		m_bench.frame_start();
+		
 		int64_t time = m_main_chrono.elapsed_nsec();
 		if(time < m_heartbeat) {
 			int64_t sleep = m_heartbeat - time;
@@ -341,7 +344,7 @@ bool Machine::main_loop()
 			fn();
 		}
 
-		m_bench.beat_start();
+		m_bench.sim_start();
 		
 		if(m_quit) {
 			return false;
@@ -356,7 +359,7 @@ bool Machine::main_loop()
 			}
 		}
 
-		m_bench.beat_end();
+		m_bench.frame_end();
 	}
 
 	return true;

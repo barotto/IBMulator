@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -73,9 +73,9 @@ void Stats::update()
 	ss << hwb;
 	
 	uint64_t vtime = m_machine->get_virt_time_ns_mt();
-	ss << "CPU time (ns): " <<  vtime << "<br />";
+	ss << "CPU clock (ns): " <<  vtime << "<br />";
 	int64_t vdiff = hwb.time_elapsed - int64_t(vtime);
-	ss << "CPU time diff: " << int64_t(vdiff/1.0e6) << "<br />";
+	ss << "CPU clock diff: " << int64_t(vdiff/1.0e6) << "<br />";
 
 
 	//read the DOS clock from MEM 0040h:006Ch
@@ -108,7 +108,7 @@ void Stats::update()
 			(m_mixer->get_audio_spec().channels==1?"mono":"stereo") << 
 			"<br />";
 	
-	ss << "Curr. BPS: " << mixb.avg_bps << "<br />";
+	ss << "Curr. FPS: " << mixb.avg_fps << "<br />";
 	ss << "Status: ";
 	switch(m_mixer->get_audio_status()) {
 		case SDL_AUDIO_STOPPED: ss << "stopped"; break;
