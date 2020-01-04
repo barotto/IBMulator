@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,12 +44,12 @@ protected:
 
 	uint64_t m_last_ticks;
 
-	GCC_ATTRIBUTE(always_inline)
+	GCC_ATTRIBUTE(optimize("O0"))
 	static inline uint64_t get_ticks()
 	{
-	    uint32_t low, high;
-	    __asm__ __volatile__ ("rdtscp" : "=a" (low), "=d" (high));
-	    return ((uint64_t)high << 32) | low;
+		uint32_t low, high;
+		__asm__ __volatile__ ("rdtscp" : "=a" (low), "=d" (high));
+		return (uint64_t(high) << 32) | low;
 	}
 
 	inline uint64_t elapsed_ticks() const {
@@ -69,6 +69,10 @@ public:
 
 	inline uint64_t get_freq() const { return m_freq_hz; }
 
+	inline uint64_t get_nsec() const {
+		return uint64_t(double(get_ticks())*m_cyc_ns_inv);
+	}
+	
 	inline uint64_t get_usec() const {
 		return uint64_t(double(get_ticks())*m_cyc_us_inv);
 	}
@@ -94,6 +98,9 @@ public:
 		return m_last_ticks;
 	}
 
+	inline uint64_t elapsed_nsec() const {
+		return get_nsec(elapsed_ticks());
+	}
 	inline uint64_t elapsed_usec() const {
 		return get_usec(elapsed_ticks());
 	}

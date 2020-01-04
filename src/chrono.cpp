@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,12 @@
 #include <SDL.h>
 
 Chrono_RDTSC::Chrono_RDTSC()
-: m_last_ticks(0)
+:
+m_freq_hz(0),
+m_cyc_ms_inv(.0),
+m_cyc_us_inv(.0),
+m_cyc_ns_inv(.0),
+m_last_ticks(0)
 {
 }
 
@@ -48,18 +53,18 @@ void Chrono_RDTSC::calibrate()
 #else
 void Chrono_RDTSC::calibrate()
 {
-	auto time0 = std::chrono::high_resolution_clock::now();
+	auto time0 = std::chrono::steady_clock::now();
 	volatile uint64_t time0_c = Chrono_RDTSC::get_ticks();
-	auto time1 = std::chrono::high_resolution_clock::now();
+	auto time1 = std::chrono::steady_clock::now();
 	volatile uint64_t time1_c = Chrono_RDTSC::get_ticks();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time1-time0);
-	while(elapsed.count() < 2000000) {
-		time1 = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0);
+	while(elapsed.count() < 1000000000LL) {
+		time1 = std::chrono::steady_clock::now();
 		time1_c = Chrono_RDTSC::get_ticks();
-		elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time1-time0);
+		elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(time1-time0);
 	}
 	double freq = time1_c - time0_c;
-	freq /= double(elapsed.count()) / 1000000.0;
+	freq /= double(elapsed.count()) / 1.0e9;
 	set_freq(freq);
 }
 #endif
