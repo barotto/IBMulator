@@ -21,7 +21,7 @@
 #define IBMULATOR_MIXER_H
 
 #include "shared_queue.h"
-#include "chrono.h"
+#include "pacer.h"
 #include "hwbench.h"
 #include "audio/ring_buffer.h"
 #include "audio/mixerchannel.h"
@@ -55,7 +55,7 @@ private:
 	int m_prebuffer;
 
 	Machine *m_machine;
-	Chrono m_main_chrono;
+	Pacer m_pacer;
 	HWBench m_bench;
 	uint m_heartbeat;
 	int64_t m_next_beat_diff;
@@ -88,7 +88,7 @@ public:
 			const std::string &_name);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
-	void calibrate(const Chrono &_c);
+	void calibrate(const Pacer &_c);
 	unsigned heartbeat() const { return m_heartbeat; }
 	inline HWBench & get_bench() { return m_bench; }
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }

@@ -40,11 +40,9 @@ DebugTools::DebugWindow(_gui, "stats.rml", _button)
 {
 	assert(m_wnd);
 	m_stats.fps = get_element("FPS");
-	g_program.get_bench().endl = "<br />";
 
 	m_machine = _machine;
 	m_stats.machine = get_element("machine");
-	m_machine->get_bench().endl = "<br />";
 
 	m_mixer = _mixer;
 	m_stats.mixer = get_element("mixer");
@@ -54,29 +52,20 @@ Stats::~Stats()
 {
 }
 
-
 void Stats::update()
 {
 	if(!m_enabled) {
 		return;
 	}
 	std::stringstream ss;
-	ss << g_program.get_bench();
-	if(!m_gui->vsync()) {
-		ss << "Missed frames: " << g_program.get_bench().long_frames << "<br />";
-	}
+	print(ss, g_program.get_bench());
+
 	m_stats.fps->SetInnerRML(ss.str().c_str());
 
 	ss.str("");
 	
 	HWBench &hwb = m_machine->get_bench();
-	ss << hwb;
-	
-	uint64_t vtime = m_machine->get_virt_time_ns_mt();
-	ss << "CPU clock (ns): " <<  vtime << "<br />";
-	int64_t vdiff = hwb.time_elapsed - int64_t(vtime);
-	ss << "CPU clock diff: " << int64_t(vdiff/1.0e6) << "<br />";
-
+	print(ss, hwb);
 
 	//read the DOS clock from MEM 0040h:006Ch
 	uint32_t ticks = g_memory.dbg_read_dword(0x0400 + 0x006C);
@@ -122,3 +111,67 @@ void Stats::update()
 	m_stats.mixer->SetInnerRML(ss.str().c_str());
 }
 
+static const std::string endline = "<br />";
+
+void Stats::print(std::ostream &_os, const Bench &_bench)
+{
+	_os << std::fixed;
+	_os.precision(6);
+	_os << "Time (s): " << (_bench.time_elapsed / 1e9) << endline;
+	_os << "Target FPS: " << (1.0e9 / _bench.heartbeat) << endline;
+	_os << "Curr. FPS: " << _bench.avg_fps << endline; 
+	_os << "Target Frame time (ms): " << (_bench.heartbeat / 1e6) << endline;
+	_os << "-- curr. time: " << (_bench.frame_time / 1e6) << endline;
+	_os.precision(3);
+	_os << "-- min/avg/max: " << 
+			(_bench.min_frame_time / 1e6) << "/" <<
+			(_bench.avg_frame_time / 1e6) << "/" <<
+			(_bench.max_frame_time / 1e6) << endline;
+	_os.precision(6);
+	_os << "-- std. dev: " << (_bench.std_frame_time / 1e6) << endline;
+	_os << "-- render time: " << (_bench.load_time / 1e6) << endline;
+	_os.precision(3);
+	_os << "-- min/avg/max: " << 
+			(_bench.min_load_time / 1e6) << "/" <<
+			(_bench.avg_load_time / 1e6) << "/" <<
+			(_bench.max_load_time / 1e6) << endline;
+	_os.precision(6);
+	_os << "Load: " << _bench.load << endline;
+}
+
+void Stats::print(std::ostream &_os, const HWBench &_bench)
+{
+	_os << std::fixed;
+	_os.precision(6);
+	_os << "Time (s): " << (_bench.time_elapsed / 1e9) << endline;
+	_os << "Target FPS: " << (1.0e9 / _bench.heartbeat) << endline;
+	_os << "Target Frame time (ms): " << (_bench.heartbeat / 1e6) << endline;
+	_os << "-- curr. time: " << (_bench.frame_time / 1e6) << endline;
+	_os.precision(3);
+	_os << "-- min/avg/max: " << 
+			(_bench.min_frame_time / 1e6) << "/" <<
+			(_bench.avg_frame_time / 1e6) << "/" <<
+			(_bench.max_frame_time / 1e6) << endline;
+	_os.precision(6);
+	_os << "-- std. dev: " << (_bench.std_frame_time / 1e6) << endline;
+	_os << "-- sim. time: " << (_bench.load_time / 1e6) << endline;
+	_os.precision(3);
+	_os << "-- min/avg/max: " << 
+			(_bench.min_load_time / 1e6) << "/" <<
+			(_bench.avg_load_time / 1e6) << "/" <<
+			(_bench.max_load_time / 1e6) << endline;
+	_os.precision(6);
+	_os << "Host load: " << _bench.load << endline;
+	_os << "Late frames: " << _bench.late_frames << endline;
+
+	double mhz = _bench.avg_cps / 1e6;
+	double mips = _bench.avg_ips / 1e6;
+	_os.precision(8);
+	_os << "CPU MHz: " << mhz << endline;
+	_os << "CPU MIPS: " << mips << endline;
+	
+	uint64_t vtime = m_machine->get_virt_time_ns_mt();
+	_os << "CPU clock (ns): " <<  vtime << "<br />";
+	int64_t vdiff = _bench.time_elapsed - int64_t(vtime);
+	_os << "CPU clock diff: " << int64_t(vdiff/1.0e6) << "<br />";
+}

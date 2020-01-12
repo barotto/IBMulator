@@ -23,7 +23,7 @@
 #include <functional>
 #include <mutex>
 #include "circular_fifo.h"
-#include "chrono.h"
+#include "pacer.h"
 #include "hwbench.h"
 #include "statebuf.h"
 #include "hardware/cpu.h"
@@ -59,7 +59,7 @@ private:
 	std::string m_type_str;
 	unsigned m_model;
 
-	Chrono m_main_chrono;
+	Pacer m_pacer;
 	HWBench m_bench;
 
 	int64_t m_heartbeat;
@@ -130,7 +130,7 @@ public:
 	~Machine();
 
 	void init();
-	void calibrate(const Chrono &_c);
+	void calibrate(const Pacer &_p);
 	void start();
 	bool main_loop();
 	void config_changed();

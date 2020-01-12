@@ -73,16 +73,16 @@ void Mixer::sdl_callback(void *userdata, Uint8 *stream, int len)
 	}
 }
 
-void Mixer::calibrate(const Chrono &_c)
+void Mixer::calibrate(const Pacer &_p)
 {
-	m_main_chrono.calibrate(_c);
+	m_pacer.calibrate(_p);
 }
 
 void Mixer::init(Machine *_machine)
 {
 	m_machine = _machine;
-	m_main_chrono.start();
-	m_bench.init(&m_main_chrono, 1000);
+	m_pacer.start();
+	m_bench.init(&m_pacer.chrono(), 1000);
 
 	m_paused = true;
 
@@ -160,6 +160,7 @@ void Mixer::config_changed()
 
 		m_frame_size = m_device_spec.channels * (SDL_AUDIO_BITSIZE(m_device_spec.format) / 8);
 		m_heartbeat = round(1e6 / (double(m_device_spec.freq) / 512.0));
+		m_pacer.set_heartbeat(m_heartbeat*1000);
 
 		PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat);
 
@@ -209,23 +210,9 @@ void Mixer::main_loop()
 		
 		m_bench.frame_start();
 		
-		time_span_us = m_main_chrono.elapsed_usec();
-		uint64_t time_slept = 0;
-		if(time_span_us < m_heartbeat) {
-			uint64_t sleep = m_heartbeat - time_span_us;
-			uint64_t t0 = m_main_chrono.get_usec();
-			std::this_thread::sleep_for( std::chrono::microseconds(sleep + m_next_beat_diff) );
-			m_main_chrono.start();
-			uint64_t t1 = m_main_chrono.get_usec();
-			assert(t1 >= t0);
-			time_slept = (t1 - t0);
-			time_span_us += time_slept;
-			m_next_beat_diff = (sleep+m_next_beat_diff) - time_slept;
-		} else {
-			m_main_chrono.start();
-		}
+		time_span_us = m_pacer.wait() / 1000;
 
-		m_bench.sim_start();
+		m_bench.load_start();
 
 		Mixer_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -266,9 +253,9 @@ void Mixer::main_loop()
 				send_packet(mix_size);
 			}
 			if(m_audio_status == SDL_AUDIO_PAUSED) {
-				int elapsed = m_main_chrono.get_msec() - m_start_time;
+				int elapsed = m_pacer.chrono().get_msec() - m_start_time;
 				if(m_start_time == 0) {
-					m_start_time = m_main_chrono.get_msec();
+					m_start_time = m_pacer.chrono().get_msec();
 					PDEBUGF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
 				} else if(get_buffer_len() >= m_prebuffer*1000) {
 					SDL_PauseAudioDevice(m_device, 0);
@@ -628,7 +615,7 @@ void Mixer::cmd_resume()
 			return;
 		}
 		m_paused = false;
-		m_start_time = m_main_chrono.get_msec() - m_prebuffer/2;
+		m_start_time = m_pacer.chrono().get_msec() - m_prebuffer/2;
 	});
 }
 

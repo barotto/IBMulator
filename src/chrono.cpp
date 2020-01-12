@@ -66,6 +66,7 @@ void Chrono_RDTSC::calibrate()
 	double freq = time1_c - time0_c;
 	freq /= double(elapsed.count()) / 1.0e9;
 	set_freq(freq);
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "%llu Hz\n", freq);
 }
 #endif
 
@@ -81,4 +82,14 @@ void Chrono_RDTSC::set_freq(uint64_t _freq_hz)
 void Chrono_RDTSC::calibrate(const Chrono_RDTSC &_c)
 {
 	set_freq(_c.get_freq());
+}
+
+void Chrono_CPP11::calibrate()
+{
+	m_start = std::chrono::steady_clock::now();
+}
+
+void Chrono_CPP11::calibrate(const Chrono_CPP11 &_c)
+{
+	m_start = _c.m_start;
 }

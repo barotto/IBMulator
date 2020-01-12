@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,67 +21,79 @@
 #ifndef IBMULATOR_BENCH_H
 #define IBMULATOR_BENCH_H
 
-#include <chrono>
 #include <iostream>
 #include <vector>
 #include "chrono.h"
 
-
 class Bench
 {
 protected:
-	int64_t m_min_ftime;
-	int64_t m_max_ftime;
-	int64_t m_frame_count;
-	int64_t m_upd_interval;
-	
-
 	const Chrono *m_chrono;
-
-public:
-	int64_t init_time;
-	std::chrono::steady_clock::time_point c_init_time;
-
-	int64_t ustart; //!< update start
-	int64_t uend; //!< update end
-	int64_t update_interval;
-
-	int64_t heartbeat;
 	
-	int64_t fstart;
-	int64_t fend;
-	int64_t frame_time;
-	double frame_rate;
-	unsigned frame_count;
-	int64_t min_frame_time;
-	int64_t max_frame_time;
+	int64_t  m_init_time;
+	int64_t  m_upd_interval;
+	
+	int64_t  m_min_load_time;
+	int64_t  m_max_load_time;
+	int64_t  m_sum_load_time;
+	
+	int64_t  m_min_frame_time;
+	int64_t  m_max_frame_time;
+	int64_t  m_sum_frame_time;
+	int64_t  m_sum_frame_time2;
+	
+	uint64_t m_upd_frame_count;
+	
+	int64_t  m_frame_start; // frame start time
+	int64_t  m_load_start;  // computation start time
+	int64_t  m_frame_end;   // frame end time
+	
+	int64_t  m_upd_start;
+	int64_t  m_upd_end;
+	
+	bool m_upd_reset;
+	
+public:
+	int64_t  heartbeat; // duration in ns of each heartbeat or target frame time
+	                    // measured frame time must be as close as possible to this value
+	
+	int64_t  time_elapsed;
+	uint64_t tot_frame_count;
+	unsigned late_frames;
+	
+	// time spent doing computation
+	int64_t  load_time;
+	int64_t  min_load_time;
+	int64_t  max_load_time;
+	double   avg_load_time;
+	
+	// frame time (or beat time) is the total time spent computing + sleeping
+	int64_t  frame_time;
+	int64_t  min_frame_time;
+	int64_t  max_frame_time;
+	double   avg_frame_time;
+	double   std_frame_time; // Standard deviation
+	
 	unsigned min_fps;
 	unsigned max_fps;
-	double avg_fps;
-	unsigned long_frames;
+	double   avg_fps;
 	
-	int64_t time_elapsed;
-	std::chrono::duration<double> c_time_elapsed;
-	std::vector<int64_t> frame_times;
+	std::atomic<double> load; // the load value can be used by multiple threads
 
-	bool frame_reset;
-	std::string endl;
-
+	
 	Bench();
-	~Bench();
+	virtual ~Bench();
 
-	void init(const Chrono *_chrono, int _update_interval, int _rec_buffer_size);
+	void init(const Chrono *_chrono, unsigned _update_interval);
+	void reset();
 	void set_heartbeat(int64_t _nsec) { heartbeat = _nsec; }
+	virtual void frame_start();
+	virtual void load_start();
+	virtual void frame_end();
 	
-	void frame_start();
-	void frame_end();
-	void data_update();
+protected:
+	virtual void data_update();
 };
-
-
-void operator<<(std::ostream& _os, const Bench &_bench);
-
-
 
 
 #endif

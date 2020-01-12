@@ -5,7 +5,7 @@
 		<style>
 			body
 			{
-				width: 320px;
+				width: 350px;
 				height: 560px;
 				position: absolute;
 				top: 32px;

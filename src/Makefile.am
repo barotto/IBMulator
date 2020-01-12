@@ -10,6 +10,7 @@ ibmulator_SOURCES = \
 	chrono.cpp \
 	timers.cpp \
 	filesys.cpp \
+	pacer.cpp \
 	hwbench.cpp \
 	ini/ini.cpp \
 	machine.cpp \
@@ -31,6 +32,7 @@ noinst_HEADERS = \
 	timers.h \
 	circular_fifo.h \
 	filesys.h \
+	pacer.h \
 	hwbench.h \
 	ibmulator.h \
 	interval_tree.h \

@@ -169,9 +169,9 @@ void Machine::restore_state(StateBuf &_state)
 	PINFOF(LOG_V0, LOG_MACHINE, "Machine state restored\n");
 }
 
-void Machine::calibrate(const Chrono &_c)
+void Machine::calibrate(const Pacer &_p)
 {
-	m_main_chrono.calibrate(_c);
+	m_pacer.calibrate(_p);
 }
 
 void Machine::init()
@@ -181,8 +181,8 @@ void Machine::init()
 	 * by slowing emulation down when virtual time gets ahead of real time.
 	 */
 
-	m_main_chrono.start();
-	m_bench.init(&m_main_chrono, 1000);
+	m_pacer.start();
+	m_bench.init(&m_pacer.chrono(), 1000);
 	m_s.curr_prgname[0] = 0;
 	m_num_timers = 0;
 
@@ -315,36 +315,26 @@ void Machine::set_heartbeat(int64_t _nsec)
 		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
 	}
 	
+	m_pacer.set_heartbeat(m_heartbeat);
 	m_bench.set_heartbeat(m_heartbeat);
 }
 
 bool Machine::main_loop()
 {
 	static double cycles_rem = 0.0;
-	static int64_t next_beat_diff = 0L;
 
 	while(true) {
 		
 		m_bench.frame_start();
 		
-		int64_t time = m_main_chrono.elapsed_nsec();
-		if(time < m_heartbeat) {
-			int64_t sleep = m_heartbeat - time;
-			int64_t t0 = m_main_chrono.get_nsec();
-			std::this_thread::sleep_for( std::chrono::nanoseconds(sleep + next_beat_diff) );
-			m_main_chrono.start();
-			int64_t t1 = m_main_chrono.get_nsec();
-			next_beat_diff = (sleep + next_beat_diff) - (t1 - t0);
-		} else {
-			m_main_chrono.start();
-		}
+		m_pacer.wait();
 
 		Machine_fun_t fn;
 		while(m_cmd_fifo.pop(fn)) {
 			fn();
 		}
 
-		m_bench.sim_start();
+		m_bench.load_start();
 		
 		if(m_quit) {
 			return false;

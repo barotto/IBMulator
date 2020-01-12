@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -17,36 +17,38 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef IBMULATOR_PACER_H
+#define IBMULATOR_PACER_H
 
-#ifndef IBMULATOR_HWBENCH_H
-#define IBMULATOR_HWBENCH_H
+#include "chrono.h"
 
-
-#include <iostream>
-#include <vector>
-#include "bench.h"
-
-class HWBench : public Bench
+class Pacer
 {
 protected:
-	uint64_t m_icount;
-	uint64_t m_ccount;
+	Chrono m_chrono;
+	int64_t m_heartbeat;
+	int64_t m_next_beat_diff;
+	int64_t m_loop_cost;
+	int64_t m_sleep_cost;
+	int64_t m_sleep_thres;
+	bool m_busy_loop;
+	bool m_skip;
 	
 public:
-	double avg_ips; // average CPU instructions per second
-	double avg_cps; // average CPU cycles per second
+	Pacer();
+	virtual ~Pacer();
 	
-	HWBench();
-	virtual ~HWBench();
-
-	void frame_start();
+	void calibrate();
+	void calibrate(const Pacer &_p);
+	void start();
+	const Chrono & chrono() const { return m_chrono; }
+	void set_heartbeat(int64_t _nsec) { m_heartbeat = _nsec; }
+	int64_t wait();
+	void skip() { m_skip = true; }
 	
-	inline void cpu_step() { m_icount++; }
-	inline void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }
-	
-protected:
-	void data_update();
+private: 
+	std::pair<double,double> sample_sleep(int64_t _target, int _samples);
+	std::pair<double,double> sample_loop(int64_t _target, int _samples);
 };
-
 
 #endif

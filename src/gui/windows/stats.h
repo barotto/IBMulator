@@ -46,6 +46,10 @@ public:
 
 	void update();
 	event_map_t & get_event_map() { return Stats::ms_evt_map; }
+	
+private:
+	void print(std::ostream &_os, const Bench &_bench);
+	void print(std::ostream &_os, const HWBench &_bench);
 };
 
 #endif

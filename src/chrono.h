@@ -65,7 +65,7 @@ public:
 	Chrono_RDTSC();
 
 	void calibrate();
-	void calibrate(const Chrono_RDTSC &);
+	void calibrate(const Chrono_RDTSC &_c);
 
 	inline uint64_t get_freq() const { return m_freq_hz; }
 
@@ -124,8 +124,8 @@ public:
 
 	Chrono_CPP11() {}
 
-	void calibrate() { m_start = std::chrono::steady_clock::now(); }
-	void calibrate(const Chrono_CPP11 &_c) { m_start = _c.m_start; }
+	void calibrate();
+	void calibrate(const Chrono_CPP11 &_c);
 
 	uint64_t get_freq() const { return 0; }
 

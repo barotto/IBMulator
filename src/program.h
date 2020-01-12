@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_PROGRAM_H
 #define IBMULATOR_PROGRAM_H
 
-#include "chrono.h"
+#include "pacer.h"
 #include "bench.h"
 #include "appconfig.h"
 #include <condition_variable>
@@ -40,7 +40,7 @@ class Program
 	bool m_framecap;
 	std::atomic<int64_t> m_heartbeat;
 	bool m_quit;
-	Chrono m_main_chrono;
+	Pacer m_pacer;
 	Bench m_bench;
 
 	Machine *m_machine;

@@ -334,20 +334,10 @@ bool Program::initialize(int argc, char** argv)
 
 	init_SDL();
 
-	PINFO(LOG_V0, "Calibrating...");
-	m_main_chrono.calibrate();
-	if(CHRONO_RDTSC) {
-		PINFO(LOG_V0, " %llu Hz\n", m_main_chrono.get_freq());
-	} else {
-		PINFO(LOG_V0, " done\n");
-	}
-
 	m_double_buffer = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_DOUBLE_BUFFER);
 	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
 	m_framecap = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_FRAMECAP);
 	m_quit = false;
-	m_bench.init(&m_main_chrono, 1000, 1000);
-	set_heartbeat(DEFAULT_HEARTBEAT);
 
 	if(OVERRIDE_VERBOSITY_LEVEL) {
 		g_syslog.set_verbosity(LOG_PROGRAM_VERBOSITY,LOG_PROGRAM);
@@ -372,14 +362,19 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_LPT_VERBOSITY,    LOG_LPT);
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
 	}
-
+	
+	m_pacer.calibrate();
+	m_bench.init(&m_pacer.chrono(), 1000);
+	set_heartbeat(DEFAULT_HEARTBEAT);
+	m_pacer.start();
+	
 	m_machine = &g_machine;
-	m_machine->calibrate(m_main_chrono);
+	m_machine->calibrate(m_pacer);
 	m_machine->init();
 	m_machine->config_changed();
 
 	m_mixer = &g_mixer;
-	m_mixer->calibrate(m_main_chrono);
+	m_mixer->calibrate(m_pacer);
 	m_mixer->init(m_machine);
 	m_mixer->config_changed();
 	
@@ -535,27 +530,16 @@ void Program::main_loop()
 	int64_t time=0, next_time_diff = 0;
 	
 	while(!m_quit) {
+		m_bench.frame_start();
+		
 		if(!m_gui->vsync() && m_framecap) {
-			// * thread sleep
-			// the time elapsed from the start of the last update
-			time = m_main_chrono.elapsed_nsec();
-			if(time < m_heartbeat) {
-				int64_t sleep_for = (m_heartbeat - time) + next_time_diff;
-				int64_t t0 = m_main_chrono.get_nsec();
-				std::this_thread::sleep_for( std::chrono::nanoseconds(sleep_for) );
-				int64_t t1 = m_main_chrono.get_nsec();
-				next_time_diff = sleep_for - (t1 - t0);
-			}
+			m_pacer.wait();
 		}
 		
-		// * frame update
-		// the current wall time, measured from program launch
-		time = m_main_chrono.get_nsec(m_main_chrono.start());
+		m_bench.load_start();
 		
-		m_bench.frame_start();
-
 		process_evts();
-		m_gui->update(time);
+		m_gui->update(m_pacer.chrono().get_nsec());
 		// in the following function, this thread will wait for the Machine 
 		// which will notify on VGA's vertical retrace.
 		m_gui->render();
@@ -592,5 +576,6 @@ void Program::stop()
 void Program::set_heartbeat(int64_t _ns)
 {
 	m_heartbeat = _ns;
+	m_pacer.set_heartbeat(_ns);
 	m_bench.set_heartbeat(_ns);
 }
