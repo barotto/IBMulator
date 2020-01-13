@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,18 +20,21 @@
 #include "ibmulator.h"
 #include "gui_sdl2d.h"
 #include "rocket/rend_interface_sdl2d.h"
+#include <Rocket/Core.h>
 #include <SDL.h>
 #include <SDL_image.h>
 
 
 GUI_SDL2D::GUI_SDL2D()
 : GUI(),
+  m_SDL_renderer(nullptr),
   m_rendflags(SDL_RENDERER_ACCELERATED)
 {
 }
 
 GUI_SDL2D::GUI_SDL2D(unsigned _rendflags)
 : GUI(),
+  m_SDL_renderer(nullptr),
   m_rendflags(_rendflags)
 {
 }
@@ -44,7 +47,19 @@ void GUI_SDL2D::render()
 {
 	SDL_Rect rect{0,0,m_width,m_height};
 	SDL_RenderSetViewport(m_SDL_renderer, &rect);
-	GUI::render();
+	
+	SDL_SetRenderDrawColor(m_SDL_renderer, m_backcolor.r, m_backcolor.g, m_backcolor.b, m_backcolor.a);
+	SDL_RenderClear(m_SDL_renderer);
+	
+	// this is a rendering of the screen only (which includes the VGA image).
+	// GUI controls are rendered later by the rocket context
+	m_windows.interface->render_screen();
+
+	ms_rocket_mutex.lock();
+	m_rocket_context->Render();
+	ms_rocket_mutex.unlock();
+
+	SDL_RenderPresent(m_SDL_renderer);
 }
 
 void GUI_SDL2D::create_window(int _flags)
@@ -80,6 +95,15 @@ void GUI_SDL2D::create_window(int _flags)
 void GUI_SDL2D::create_rocket_renderer()
 {
 	m_rocket_renderer = std::make_unique<RocketRenderer_SDL2D>(m_SDL_renderer, m_SDL_window);
+}
+
+void GUI_SDL2D::shutdown_SDL()
+{
+	if(m_SDL_renderer) {
+		SDL_DestroyRenderer(m_SDL_renderer);
+		m_SDL_renderer = nullptr;
+	}
+	GUI::shutdown_SDL();
 }
 
 uintptr_t GUI_SDL2D::load_texture(SDL_Surface *_surface)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,10 +25,12 @@
 class GUI_SDL2D : public GUI
 {
 protected:
+	SDL_Renderer * m_SDL_renderer;
 	unsigned m_rendflags;
 	
 	void create_window(int _flags);
 	void create_rocket_renderer();
+	void shutdown_SDL();
 	
 public:
 	GUI_SDL2D();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -111,7 +111,6 @@ protected:
 	int m_width;
 	int m_height;
 	SDL_Window *m_SDL_window;
-	SDL_Renderer * m_SDL_renderer;
 	std::string m_wnd_title;
 	std::string m_curr_prog;
 	std::string m_curr_model;
@@ -188,7 +187,8 @@ protected:
 	void toggle_input_grab();
 	void input_grab(bool _value);
 	void toggle_fullscreen();
-	void shutdown_SDL();
+	
+	virtual void shutdown_SDL();
 	
 	void dispatch_hw_event(const SDL_Event &_event);
 	void dispatch_rocket_event(const SDL_Event &event);
@@ -227,7 +227,7 @@ public:
 	
 	virtual uintptr_t load_texture(SDL_Surface *_surface) = 0;
 	virtual uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr) = 0;
-	virtual void render();
+	virtual void render() = 0;
 	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	void take_screenshot(bool _with_palette_file = false);

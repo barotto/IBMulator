@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "gui_opengl.h"
 #include "rocket/rend_interface_opengl.h"
+#include <Rocket/Core.h>
 #include <SDL.h>
 #include <SDL_image.h>
 #include <GL/glew.h>
@@ -39,7 +40,22 @@ GUI_OpenGL::~GUI_OpenGL()
 void GUI_OpenGL::render()
 {
 	GLCALL( glViewport(0,0, m_width, m_height) );
-	GUI::render();
+	GLCALL( glClearColor(
+			float(m_backcolor.r)/255.f,
+			float(m_backcolor.g)/255.f,
+			float(m_backcolor.b)/255.f,
+			float(m_backcolor.a)/255.f) );
+	GLCALL( glClear(GL_COLOR_BUFFER_BIT) );
+	
+	// this is a rendering of the screen only (which includes the VGA image).
+	// GUI controls are rendered later by the rocket context
+	m_windows.interface->render_screen();
+
+	ms_rocket_mutex.lock();
+	m_rocket_context->Render();
+	ms_rocket_mutex.unlock();
+
+	SDL_GL_SwapWindow(m_SDL_window);
 }
 
 void GUI_OpenGL::create_window(int _flags)
@@ -65,25 +81,6 @@ void GUI_OpenGL::create_window(int _flags)
 		throw std::exception();
 	}
 
-	int oglIdx = -1;
-	int nRD = SDL_GetNumRenderDrivers();
-	for(int i=0; i<nRD; i++) {
-		SDL_RendererInfo info;
-		if(SDL_GetRenderDriverInfo(i, &info) == 0) {
-			if(strcmp(info.name, "opengl") == 0) {
-				oglIdx = i;
-			}
-		}
-	}
-
-	m_SDL_renderer = SDL_CreateRenderer(m_SDL_window, oglIdx,
-		SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	if(!m_SDL_renderer) {
-		PERRF(LOG_GUI, "SDL_CreateRenderer(): %s\n", SDL_GetError());
-		throw std::exception();
-	}
-	
 	glewExperimental = GL_FALSE;
 	GLenum res = glewInit();
 	if(res != GLEW_OK) {
@@ -179,7 +176,7 @@ void GUI_OpenGL::check_device_GL_caps()
 
 void GUI_OpenGL::create_rocket_renderer()
 {
-	m_rocket_renderer = std::make_unique<RocketRenderer_OpenGL>(m_SDL_renderer, m_SDL_window);
+	m_rocket_renderer = std::make_unique<RocketRenderer_OpenGL>(nullptr, m_SDL_window);
 }
 
 std::vector<GLuint> GUI_OpenGL::attach_shaders(

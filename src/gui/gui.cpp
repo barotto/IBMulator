@@ -85,7 +85,6 @@ m_mixer(nullptr),
 m_width(640),
 m_height(480),
 m_SDL_window(nullptr),
-m_SDL_renderer(nullptr),
 m_curr_model_changed(false),
 m_second_timer(0),
 m_joystick0(JOY_NONE),
@@ -290,22 +289,6 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 	}
 
 	return document;
-}
-
-void GUI::render()
-{
-	SDL_SetRenderDrawColor(m_SDL_renderer, m_backcolor.r, m_backcolor.g, m_backcolor.b, m_backcolor.a);
-	SDL_RenderClear(m_SDL_renderer);
-	
-	// this is a rendering of the screen only (which includes the VGA image).
-	// GUI controls are rendered later by the rocket context
-	m_windows.interface->render_screen();
-
-	ms_rocket_mutex.lock();
-	m_rocket_context->Render();
-	ms_rocket_mutex.unlock();
-
-	SDL_RenderPresent(m_SDL_renderer);
 }
 
 void GUI::input_grab(bool _value)
@@ -908,10 +891,6 @@ void GUI::update(uint64_t _current_time)
 
 void GUI::shutdown_SDL()
 {
-	if(m_SDL_renderer) {
-		SDL_DestroyRenderer(m_SDL_renderer);
-		m_SDL_renderer = nullptr;
-	}
 	if(m_SDL_window) {
 		SDL_DestroyWindow(m_SDL_window);
 		m_SDL_window = nullptr;
