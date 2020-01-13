@@ -68,6 +68,11 @@ void GUI_SDL2D::create_window(int _flags)
 		PINFOF(LOG_V0, LOG_GUI, "Using the hardware accelerated renderer\n");
 	} else {
 		PINFOF(LOG_V0, LOG_GUI, "Using the software renderer\n");
+		if(m_vsync) {
+			// force vsync disabled or the renderer creation will fail
+			m_vsync = false;
+			PINFOF(LOG_V0, LOG_GUI, "VSync is unsupported by this renderer and will be disabled\n");
+		}
 	}
 	
 	m_SDL_window = SDL_CreateWindow(m_wnd_title.c_str(), 
