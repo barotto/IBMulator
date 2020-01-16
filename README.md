@@ -169,6 +169,15 @@ The implemented DSP filter type is the Butterworth filter, a description of
 which can be found on
 [Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
 
+A possible filter combination to emulate the response of the typical PC speaker
+could be:
+```
+LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500
+```
+
+The most effective values depend on your particular audio setup so you'll have
+to experiment.
+
 ### Key bindings
 
 * CTRL+F1: show/hide the main interface (only if GUI is in compact mode)

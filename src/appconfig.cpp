@@ -91,7 +91,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 
 	{ PCSPEAKER_SECTION, {
 		{ PCSPEAKER_RATE,    "48000" },
-		{ PCSPEAKER_FILTERS, "LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500" },
+		{ PCSPEAKER_FILTERS, ""      },
 		{ PCSPEAKER_VOLUME,  "0.5"   }
 	} },
 
@@ -408,7 +408,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    rate: Sample rate of the PSG (Programmable Sound Generator). The DAC rate is programmed at run-time.\n"
 ";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters, applied to both the DAC and PSG channels.\n"
-";          Possible values: a list of filter definitions. See the README for more info.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ ADLIB_SECTION,
@@ -416,7 +415,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
 ";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters.\n"
-";          Possible values: a list of filter definitions. See the README for more info.\n"
 ";  volume: Audio volume.\n"
 		},
 		{ SOUNDFX_SECTION,
