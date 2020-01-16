@@ -57,6 +57,7 @@ class InterfaceScreen
 protected:
 	std::unique_ptr<ScreenRenderer> m_renderer;
 	std::vector<uint32_t> m_vga_buf; // local copy of the VGA framebuffer
+	GUI *m_gui;
 	
 public:
 	struct {

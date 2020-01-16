@@ -37,15 +37,12 @@ ini_file_t AppConfig::ms_def_values[2] = {
 {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""    },
-		{ PROGRAM_CAPTURE_DIR,  ""    },
-		{ PROGRAM_DOUBLE_BUFFER,"yes" },
-		{ PROGRAM_VSYNC,        "no"  },
-		{ PROGRAM_FRAMECAP,     "yes" },
-		{ PROGRAM_THREADS_SYNC, "no"  }
+		{ PROGRAM_CAPTURE_DIR,  ""    }
 	} },
 
 	{ GUI_SECTION, {
 		{ GUI_RENDERER,           "opengl" },
+		{ GUI_FRAMECAP,           "vga"    },
 		{ GUI_KEYMAP,             ""       },
 		{ GUI_MOUSE_TYPE,         "ps2"    },
 		{ GUI_MOUSE_GRAB,         "yes"    },
@@ -227,10 +224,6 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ PROGRAM_SECTION,
 ";     media_dir: The default directory used to search for floppy and hdd images.\n"
 ";   capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
-"; double_buffer: Enable internal double buffering. See the README for mode info.\n"
-";         vsync: Enable video vertical synchronization. See the README for more info.\n"
-";      framecap: Limit displayed frames to current VGA frequency. See the README for more info.\n"
-";  threads_sync: Enable per-frame threads synchronization (deprecated). See the README for more info.\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -251,9 +244,14 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ GUI_SECTION,
 ";    renderer: What video system to use for rendering. Use the one most compatible with your system.\n"
 ";              Possible values: opengl, accelerated, software.\n"
-";               opengl: default 3D accelerated renderer with shaders support\n"
+";                    opengl: default 3D accelerated renderer with shaders support\n"
 ";               accelerated: hardware accelerated renderer without shaders support\n"
-";               software: software renderer without shaders support\n"
+";                  software: software renderer without shaders support\n"
+";    framecap: Method to use to limit the number of displayed frames per second.\n"
+";              Possible values:\n"
+";                 vga: limited by the emulated VGA frequency\n"
+";               vsync: limited by the host monitor frequency (incompatible with the software renderer)\n"
+";                  no: no limits\n"
 ";        mode: Possible values: normal, compact, realistic.\n"
 ";                  normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                 compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
@@ -439,14 +437,11 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_CAPTURE_DIR,
-		PROGRAM_DOUBLE_BUFFER,
-		PROGRAM_VSYNC,
-		PROGRAM_FRAMECAP,
-		PROGRAM_THREADS_SYNC
+		PROGRAM_CAPTURE_DIR
 	} },
 	{ GUI_SECTION, {
 		GUI_RENDERER,
+		GUI_FRAMECAP,
 		GUI_MODE,
 		GUI_KEYMAP,
 		GUI_MOUSE_GRAB,

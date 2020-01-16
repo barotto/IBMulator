@@ -25,6 +25,7 @@
 #include "vgafont.h"
 #include "program.h"
 #include "filesys.h"
+#include "gui/gui.h"
 #include <SDL_image.h>
 #include <cstring>
 #include <sstream>
@@ -141,7 +142,7 @@ void VGADisplay::restore_state(StateBuf &_state)
 void VGADisplay::notify_interface()
 {
 	// if double buffering is enabled do a full copy
-	if(g_program.double_buffer()) {
+	if(GUI::instance()->vga_buffering_enabled()) {
 		// we must lock the display because another thread could be reading
 		// the internal buffer
 		lock();
@@ -167,7 +168,8 @@ void VGADisplay::notify_interface()
 void VGADisplay::clear_screen()
 {
 	std::fill(m_fb.begin(), m_fb.end(), 0);
-	if(g_program.double_buffer()) {
+	if(GUI::instance()->vga_buffering_enabled()) {
+		// TODO is this necessary?
 		std::fill(m_last_fb.begin(), m_last_fb.end(), 0);
 	}
 }

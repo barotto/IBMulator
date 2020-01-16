@@ -45,8 +45,6 @@ std::condition_variable Program::ms_cv;
 
 Program::Program()
 :
-m_threads_sync(false),
-m_framecap(true),
 m_quit(false),
 m_machine(nullptr),
 m_mixer(nullptr),
@@ -334,9 +332,6 @@ bool Program::initialize(int argc, char** argv)
 
 	init_SDL();
 
-	m_double_buffer = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_DOUBLE_BUFFER);
-	m_threads_sync = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_THREADS_SYNC);
-	m_framecap = m_config[0].get_bool(PROGRAM_SECTION, PROGRAM_FRAMECAP);
 	m_quit = false;
 
 	if(OVERRIDE_VERBOSITY_LEVEL) {
@@ -532,7 +527,7 @@ void Program::main_loop()
 	while(!m_quit) {
 		m_bench.frame_start();
 		
-		if(!m_gui->vsync() && m_framecap) {
+		if(!m_gui->vsync_enabled()) {
 			m_pacer.wait();
 		}
 		

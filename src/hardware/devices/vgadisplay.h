@@ -84,9 +84,9 @@ public:
 
 	inline void lock() { m_mutex.lock(); }
 	inline void unlock() { m_mutex.unlock(); }
-	inline void wait_for_device(unsigned _max_wait_ns) {
+	inline std::cv_status wait_for_device(unsigned _max_wait_ns) {
 		std::unique_lock<std::mutex> lock(m_mutex);
-		m_cv.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
+		return m_cv.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
 	}
 	void notify_interface();
 	inline const VideoModeInfo & mode() const { return m_s.mode; }

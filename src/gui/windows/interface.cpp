@@ -79,6 +79,7 @@ bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 
 InterfaceScreen::InterfaceScreen(GUI *_gui)
 {
+	m_gui = _gui;
 	switch(_gui->renderer()) {
 		case GUI_RENDERER_OPENGL: {
 			m_renderer = std::make_unique<ScreenRenderer_OpenGL>();
@@ -126,25 +127,32 @@ void InterfaceScreen::sync_with_device()
 	// tearing or stuttering. The wait could be skipped (tearing) or could be
 	// called without reason (stuttering) but in any case the program should
 	// not end in a deadlock.
-	if(
-	   g_program.threads_sync() && 
-	   g_machine.is_on() && 
-	  !g_machine.is_paused() && 
-	   g_machine.speed_factor() >= 1.0 &&
-	   g_machine.get_bench().load < 1.0
-	)
+	if(m_gui->threads_sync_enabled())
 	{
-		try {
-			// Wait for no more than 2 frames.
-			// Using a timeout let us simplify the code at the expense of possible
-			// stuttering, which would happen only in specific and non meaningful
-			// cases like when the user pauses the machine.
-			// I think this is acceptable. 
-			vga.display.wait_for_device(g_program.heartbeat() * 2);
-		} catch(std::exception &) {}
+		if(
+			g_machine.is_on() && 
+			!g_machine.is_paused() && 
+			g_machine.speed_factor() >= 1.0 &&
+			g_machine.get_bench().load < 1.0
+		) {
+			try {
+				// Wait for no more than 2 frames.
+				// Using a timeout let us simplify the code at the expense of possible
+				// stuttering, which would happen only in specific and non meaningful
+				// cases like when the user pauses the machine.
+				// I think this is acceptable. 
+				vga.display.wait_for_device(g_program.heartbeat() * 2);
+			} catch(std::exception &) {}
+			
+			g_program.pacer().skip();
+		}
+	}
+	else
+	{
+		g_program.pacer().skip();
 	}
 	
-	if(g_program.double_buffer()) {
+	if(m_gui->vga_buffering_enabled()) {
 		vga.display.lock();
 		vec2i vga_res = vec2i(vga.display.last_mode().xres, vga.display.last_mode().yres);
 		// this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:

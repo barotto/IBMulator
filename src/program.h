@@ -35,9 +35,6 @@ class Program
 {
 	std::string m_datapath;
 
-	bool m_double_buffer;
-	bool m_threads_sync;
-	bool m_framecap;
 	std::atomic<int64_t> m_heartbeat;
 	bool m_quit;
 	Pacer m_pacer;
@@ -74,11 +71,10 @@ public:
 	void start();
 	void stop();
 
-	bool double_buffer() const { return m_double_buffer; }
-	bool threads_sync() const { return m_threads_sync; }
 	int64_t heartbeat() const { return m_heartbeat; }
 	void set_heartbeat(int64_t _ns);
-
+	Pacer & pacer() { return m_pacer; }
+	
 	inline AppConfig & config() {
 		return m_config[1];
 	}

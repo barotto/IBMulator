@@ -51,6 +51,12 @@ enum DisplayAspect {
 	DISPLAY_ASPECT_SCALED
 };
 
+enum FrameCapMethods {
+	GUI_FRAMECAP_VGA,
+	GUI_FRAMECAP_VSYNC,
+	GUI_FRAMECAP_OFF
+};
+
 #define JOY_NONE INT_MAX
 
 class GUI;
@@ -123,7 +129,10 @@ protected:
 	bool m_input_grab;
 	std::string m_grab_method;
 	uint m_mode;
+	unsigned m_framecap;
 	bool m_vsync;
+	bool m_vga_buffering;
+	bool m_threads_sync;
 	SDL_Color m_backcolor;
 
 	struct Mouse {
@@ -242,7 +251,9 @@ public:
 	inline int window_width() const { return m_width; }
 	inline int window_height() const { return m_height; }
 	inline uint32_t window_flags() const { return SDL_GetWindowFlags(m_SDL_window); }
-	inline bool vsync() const { return m_vsync; }
+	inline bool vsync_enabled() const { return m_vsync; }
+	inline bool vga_buffering_enabled() const { return m_vga_buffering; }
+	inline bool threads_sync_enabled() const { return m_threads_sync; }
 	
 	void sig_state_restored();
 };

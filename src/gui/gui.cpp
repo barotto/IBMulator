@@ -92,7 +92,10 @@ m_joystick1(JOY_NONE),
 m_gui_visible(true),
 m_input_grab(false),
 m_mode(GUI_MODE_NORMAL),
+m_framecap(GUI_FRAMECAP_VGA),
 m_vsync(false),
+m_vga_buffering(false),
+m_threads_sync(false),
 m_symspeed_factor(1.0),
 m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
@@ -113,8 +116,40 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	
 	// configuration variables
 	m_assets_path = g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP;
+	
+	static std::map<std::string, unsigned> framecap = {
+		{ "", GUI_FRAMECAP_VGA },
+		{ "vga", GUI_FRAMECAP_VGA },
+		{ "vsync", GUI_FRAMECAP_VSYNC },
+		{ "no", GUI_FRAMECAP_OFF },
+		{ "off", GUI_FRAMECAP_OFF }
+	};
+	m_framecap = g_program.config().get_enum(GUI_SECTION, GUI_FRAMECAP, framecap);
+	switch(m_framecap) {
+		case GUI_FRAMECAP_VGA:
+			m_vsync = false;
+			m_threads_sync = true;
+			m_vga_buffering = false;
+			PINFOF(LOG_V0, LOG_GUI, "Limiting FPS to the emulated VGA frequency\n");
+			break;
+		case GUI_FRAMECAP_VSYNC:
+			m_vsync = true;
+			m_threads_sync = false;
+			m_vga_buffering = true;
+			PINFOF(LOG_V0, LOG_GUI, "Enabling VSync\n");
+			break;
+		case GUI_FRAMECAP_OFF:
+			m_vsync = false;
+			m_threads_sync = false;
+			m_vga_buffering = true;
+			break;
+		default:
+			// errors should be detected by the get_enum()
+			assert(false);
+			break;
+	}
+	
 	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
-	m_vsync = g_program.config().get_bool(PROGRAM_SECTION, PROGRAM_VSYNC);
 	m_grab_method = str_to_lower(g_program.config().get_string(GUI_SECTION, GUI_GRAB_METHOD));
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
 	m_backcolor = {
