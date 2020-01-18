@@ -800,8 +800,8 @@ void GUI::update_window_size(int _w, int _h)
 void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 {
 	switch(_event.event) {
-		case SDL_WINDOWEVENT_RESIZED: {
-			PDEBUGF(LOG_V1, LOG_GUI, "%ux%u\n", _event.data1, _event.data2);
+		case SDL_WINDOWEVENT_SIZE_CHANGED: {
+			PDEBUGF(LOG_V1, LOG_GUI, "Window resized to %ux%u\n", _event.data1, _event.data2);
 			update_window_size(_event.data1, _event.data2);
 			break;
 		}
@@ -825,6 +825,7 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 		case SDL_WINDOWEVENT_CLOSE:
 			break;
 		default:
+			PDEBUGF(LOG_V2, LOG_GUI, "Unhandled SDL window event: %d\n", _event.event);
 			break;
 	}
 
