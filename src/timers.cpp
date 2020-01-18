@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -214,6 +214,11 @@ void EventTimers::unregister_timer(unsigned _timer)
 
 void EventTimers::activate_timer(unsigned _timer, uint64_t _period, bool _continuous)
 {
+	activate_timer(_timer, m_s.time, _period, _continuous);
+}
+
+void EventTimers::activate_timer(unsigned _timer, uint64_t _start, uint64_t _period, bool _continuous)
+{
 	assert(_timer<m_num_timers);
 
 	if(_period == 0) {
@@ -223,7 +228,7 @@ void EventTimers::activate_timer(unsigned _timer, uint64_t _period, bool _contin
 
 	m_s.timers[_timer].active = true;
 	m_s.timers[_timer].period = _period;
-	m_s.timers[_timer].time_to_fire = m_s.time + _period;
+	m_s.timers[_timer].time_to_fire = _start + _period;
 	m_s.timers[_timer].continuous = _continuous;
 
 	if(m_s.timers[_timer].time_to_fire < m_s.next_timer_time) {

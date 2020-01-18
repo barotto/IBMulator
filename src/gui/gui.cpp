@@ -279,6 +279,11 @@ void GUI::sig_state_restored()
 	m_windows.interface->sig_state_restored();
 }
 
+bool GUI::is_fullscreen()
+{
+	return (SDL_GetWindowFlags(m_SDL_window) & SDL_WINDOW_FULLSCREEN);
+}
+
 void GUI::toggle_fullscreen()
 {
 	Uint32 flags = (SDL_GetWindowFlags(m_SDL_window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -1225,7 +1230,7 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(interface != nullptr) {
 		interface->show_message(_mex);
-		timers.activate_timer(ifcmex_timer, 3e9, false);
+		timers.activate_timer(ifcmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
 	}
 }
 
@@ -1234,7 +1239,7 @@ void GUI::Windows::show_dbg_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	if(dbgtools != nullptr) {
 		dbgtools->show_message(_mex);
-		timers.activate_timer(dbgmex_timer, 3e9, false);
+		timers.activate_timer(dbgmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
 	}
 }
 

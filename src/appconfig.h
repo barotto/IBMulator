@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -123,6 +123,7 @@ public:
 #define PROGRAM_SECTION         "program"
 #define PROGRAM_MEDIA_DIR       "media_dir"
 #define PROGRAM_CAPTURE_DIR     "capture_dir"
+#define PROGRAM_FILE_DIALOGS    "file_dialogs"
 
 #define GUI_SECTION             "gui"
 #define GUI_RENDERER            "renderer"

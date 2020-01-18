@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <SDL_image.h>
 #include <Rocket/Core.h>
+
+#include "tinyfiledialogs/tinyfiledialogs.h"
 
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/storagectrl.h"
@@ -264,7 +266,8 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 {
 	struct stat sb;
 	if((stat(_img_path.c_str(), &sb) != 0) || S_ISDIR(sb.st_mode)) {
-		PERRF(LOG_GUI, "unable to read '%s'\n", _img_path.c_str());
+		PERRF(LOG_GUI, "Unable to read '%s'\n", _img_path.c_str());
+		m_fs->hide();
 		return;
 	}
 
@@ -276,8 +279,9 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 			struct stat other_s;
 			if(stat(other.c_str(), &other_s) == 0) {
 				if(other_s.st_dev == sb.st_dev && other_s.st_ino == sb.st_ino) {
-					PERRF(LOG_GUI, "can't mount '%s' on drive %s because is already mounted on drive %s\n",
-							_img_path.c_str(), m_curr_drive?"A":"B", m_curr_drive?"B":"A");
+					PERRF(LOG_GUI, "Can't mount '%s' on drive %s because it's already mounted on drive %s\n",
+							_img_path.c_str(), m_curr_drive?"B":"A", m_curr_drive?"A":"B");
+					m_fs->hide();
 					return;
 				}
 			}
@@ -308,7 +312,8 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 			type = FLOPPY_1_44;
 			break;
 		default:
-			PERRF(LOG_GUI, "unable to determine the type of '%s'\n", _img_path.c_str());
+			PERRF(LOG_GUI, "Unable to determine the type of '%s'\n", _img_path.c_str());
+			m_fs->hide();
 			return;
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "mounting '%s' on floppy %s %s\n", _img_path.c_str(),
@@ -440,12 +445,35 @@ void Interface::on_fdd_mount(RC::Event &)
 			floppy_dir = g_program.config().get_cfg_home();
 		}
 	}
-	try {
-		m_fs->set_current_dir(floppy_dir);
-	} catch(std::exception &e) {
-		return;
+	
+	if(g_program.config().get_string(PROGRAM_SECTION, PROGRAM_FILE_DIALOGS, "custom") == "native") {
+		floppy_dir += "/";
+		const char *filter_patterns[2] = { "*.img", "*.ima" };
+		if(m_gui->is_fullscreen()) {
+			// native dialogs don't play well when the application they're called by
+			// is rendered fullscreen.
+			// the user will have to switch back to fullscreen, can't auto do it.
+			m_gui->toggle_fullscreen();
+		}
+		const char *openfile = tinyfd_openFileDialog(
+			"Select floppy image",
+			floppy_dir.c_str(),
+			2, // aNumOfFilterPatterns
+			filter_patterns,
+			"Floppy disk (*.img, *.ima)",
+			0 // aAllowMultipleSelects
+		);
+		if(openfile) {
+			on_floppy_mount(openfile, false);
+		}
+	} else {
+		try {
+			m_fs->set_current_dir(floppy_dir);
+		} catch(std::exception &e) {
+			return;
+		}
+		m_fs->show();
 	}
-	m_fs->show();
 }
 
 void Interface::show_warning(bool _show)

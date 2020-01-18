@@ -195,7 +195,6 @@ protected:
 	void update_display_size_realistic();
 	void toggle_input_grab();
 	void input_grab(bool _value);
-	void toggle_fullscreen();
 	
 	virtual void shutdown_SDL();
 	
@@ -244,6 +243,8 @@ public:
 	void show_dbg_message(const char* _mex);
 
 	vec2i resize_window(int _width, int _height);
+	bool is_fullscreen();
+	void toggle_fullscreen();
 	
 	inline VGADisplay * vga_display() const {
 		assert(m_windows.interface); return m_windows.interface->vga_display();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,8 +36,9 @@ ini_file_t AppConfig::ms_def_values[2] = {
 // PROGRAM_CONFIG
 {
 	{ PROGRAM_SECTION, {
-		{ PROGRAM_MEDIA_DIR,    ""    },
-		{ PROGRAM_CAPTURE_DIR,  ""    }
+		{ PROGRAM_MEDIA_DIR,    ""       },
+		{ PROGRAM_CAPTURE_DIR,  ""       },
+		{ PROGRAM_FILE_DIALOGS, "custom" }
 	} },
 
 	{ GUI_SECTION, {
@@ -224,6 +225,9 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ PROGRAM_SECTION,
 ";     media_dir: The default directory used to search for floppy and hdd images.\n"
 ";   capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
+";  file_dialogs: The type of file select dialogs to use:\n"
+";                 custom: use the " PACKAGE_NAME "'s custom implementation\n"
+";                 native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -435,7 +439,8 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_CAPTURE_DIR
+		PROGRAM_CAPTURE_DIR,
+		PROGRAM_FILE_DIALOGS
 	} },
 	{ GUI_SECTION, {
 		GUI_RENDERER,

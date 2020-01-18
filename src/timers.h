@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -74,6 +74,7 @@ public:
 	unsigned register_timer(timer_fun_t _func, const char *_name);
 	void unregister_timer(unsigned _timer);
 	void activate_timer(unsigned _timer, uint64_t _period, bool _continuous);
+	void activate_timer(unsigned _timer, uint64_t _start, uint64_t _period, bool _continuous);
 	uint64_t get_timer_eta(unsigned _timer) const;
 	void deactivate_timer(unsigned _timer);
 	void set_timer_callback(unsigned _timer, timer_fun_t _func);

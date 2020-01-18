@@ -22,6 +22,7 @@ ibmulator_SOURCES = \
 	statebuf.cpp \
 	syslog.cpp \
 	utils.cpp \
+	tinyfiledialogs/tinyfiledialogs.c \
 	wincompat/mkstemp.cpp \
 	wincompat/realpath.cpp 
 	
@@ -48,6 +49,7 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	utils.h \
+	tinyfiledialogs/tinyfiledialogs.h \
 	wincompat.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
