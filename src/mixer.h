@@ -58,7 +58,6 @@ private:
 	Pacer m_pacer;
 	HWBench m_bench;
 	uint m_heartbeat;
-	int64_t m_next_beat_diff;
 
 	bool m_quit; //how about an std::atomic?
 	SDL_AudioStatus m_audio_status;

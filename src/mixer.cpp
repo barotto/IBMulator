@@ -39,7 +39,6 @@ m_start_time(0),
 m_prebuffer(50),
 m_machine(nullptr),
 m_heartbeat(10000),
-m_next_beat_diff(0),
 m_quit(false),
 m_audio_status(SDL_AUDIO_STOPPED),
 m_paused(false),
@@ -195,7 +194,6 @@ void Mixer::start()
 {
 	m_quit = false;
 	m_start_time = 0;
-	m_next_beat_diff = 0;
 	PDEBUGF(LOG_V1, LOG_MIXER, "Mixer thread started\n");
 	main_loop();
 }
