@@ -34,6 +34,7 @@ m_disable_timeout(0),
 m_first_update(true),
 m_in_time(0),
 m_SRC_state(nullptr),
+m_new_data(true),
 m_capture_clbk([](bool){}),
 m_volume(1.f),
 m_category(MixerChannelCategory::AUDIO),
@@ -110,9 +111,10 @@ void MixerChannel::reset_filters()
 		}
 	} else {
 		src_reset(m_SRC_state);
-		m_new_data = true;
 	}
 #endif
+	
+	m_new_data = true;
 }
 
 void MixerChannel::set_in_spec(const AudioSpec &_spec)
