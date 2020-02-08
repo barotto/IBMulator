@@ -126,9 +126,6 @@ VGADisplay::VGADisplay()
 	set_fb_updated();
 	set_dimension_updated();
 	
-	m_rec_surface = nullptr;
-	m_rec_framecnt = 0;
-	
 	m_buffering = false;
 }
 
@@ -187,10 +184,6 @@ void VGADisplay::notify_interface()
 		m_last_mode = m_s.mode;
 		m_last_timings = m_s.timings;
 		unlock();
-	}
-	
-	if(m_rec_surface) {
-		record_frame();
 	}
 	
 	// if other threads are waiting for the frame buffer to be updated notify them
@@ -261,10 +254,6 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 	}
 
 	set_dimension_updated();
-	
-	if(m_rec_surface) {
-		start_recording();
-	}
 }
 
 void VGADisplay::set_timings(const VideoTimings &_timings)
@@ -609,98 +598,4 @@ void VGADisplay::copy_screen(uint8_t *_dest)
 uint32_t VGADisplay::get_color(uint8_t _index)
 {
 	return m_s.palette[_index];
-}
-
-
-// Screen recording
-// TODO it's a barebones PNG frame dumper, will be refactored in a screen recorder
-// class someday, maybe, hopefully before the end of this decade.
-// currently used for debugging purposes only.
-void VGADisplay::toggle_recording()
-{
-	if(m_rec_surface) {
-		stop_recording();
-	} else {
-		start_recording();
-	}
-}
-
-void VGADisplay::start_recording()
-{
-	// must be called by the Machine thread
-
-	stop_recording();
-	
-	if(!m_s.valid_mode) {
-		PERRF(LOG_VGA, "cannot start recording: screen mode invalid\n");
-		return;
-	}
-	
-	std::string capture_dir = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
-	m_rec_dir = FileSys::get_next_dirname(capture_dir, "screenseq_");
-	if(m_rec_dir.empty()) {
-		PERRF(LOG_VGA, "error creating screen recording directory\n");
-		return;
-	}
-	try {
-		FileSys::create_dir(m_rec_dir.c_str());
-	} catch(std::exception &e) {
-		PERRF(LOG_VGA, "error creating screen recording directory '%s'\n", m_rec_dir.c_str());
-		m_rec_dir = "";
-		return;
-	}
-	
-	m_rec_surface = SDL_CreateRGBSurface(
-		0,
-		m_s.mode.xres,
-		m_s.mode.yres,
-		32,
-		PALETTE_RMASK,
-		PALETTE_GMASK,
-		PALETTE_BMASK,
-		PALETTE_AMASK
-	);
-	if(!m_rec_surface) {
-		PERRF(LOG_VGA, "error creating screen recording surface\n");
-		return;
-	}
-	
-	PINFOF(LOG_V0, LOG_VGA, "Started recording\n");
-}
-
-void VGADisplay::stop_recording()
-{
-	// must be called by the Machine thread
-	
-	if(m_rec_surface) {
-		SDL_FreeSurface(m_rec_surface);
-		m_rec_surface = nullptr;
-		PINFOF(LOG_V0, LOG_VGA, "Stopped recording: %d frames recorded\n", m_rec_framecnt);
-	}
-	m_rec_framecnt = 0;
-}
-
-void VGADisplay::record_frame()
-{
-	// must be called by the Machine thread
-
-	SDL_LockSurface(m_rec_surface);
-	copy_screen((uint8_t*)m_rec_surface->pixels);
-	SDL_UnlockSurface(m_rec_surface);
-
-	std::stringstream recfile;
-	recfile << m_rec_dir << FS_SEP << "frame_";
-	recfile.width(4);
-	recfile.fill('0');
-	recfile << m_rec_framecnt << ".png";
-
-	int result = IMG_SavePNG(m_rec_surface, recfile.str().c_str());
-
-	if(result < 0) {
-		PERRF(LOG_VGA, "error saving frame to PNG\n");
-		stop_recording();
-		return;
-	}
-	
-	m_rec_framecnt++;
 }

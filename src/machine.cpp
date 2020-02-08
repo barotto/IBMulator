@@ -824,13 +824,6 @@ void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
 	});
 }
 
-void Machine::cmd_toggle_VGA_rec()
-{
-	m_cmd_fifo.push([=] () {
-		GUI::instance()->vga_display()->toggle_recording();
-	});
-}
-
 void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_fifo.push([&] () {

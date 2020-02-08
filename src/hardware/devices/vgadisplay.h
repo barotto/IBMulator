@@ -142,16 +142,6 @@ public:
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
-	
-	// screen recording (TODO temporary)
-	void toggle_recording();
-	void start_recording();
-	void stop_recording();
-private:
-	SDL_Surface *m_rec_surface;
-	std::string m_rec_dir;
-	int m_rec_framecnt;
-	void record_frame();
 };
 
 #endif

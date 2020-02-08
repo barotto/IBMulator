@@ -85,7 +85,6 @@
 	#define DEFAULT_LOG_VERBOSITY LOG_V0 // default logger verbosity level
 
 	#define SHOW_CURRENT_PROGRAM_NAME true // enable running DOS program name visualization
-	#define ENABLE_VGA_SCREEN_RECORDING true // enable CTRL+F2 command for VGA frame recording
 
 #else
 	//RELEASE
@@ -106,7 +105,6 @@
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 	#define SHOW_CURRENT_PROGRAM_NAME false
-	#define ENABLE_VGA_SCREEN_RECORDING false
 
 #endif
 
