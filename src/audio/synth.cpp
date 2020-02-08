@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -249,7 +249,7 @@ void Synth::restore_state(StateBuf &_state)
 void Synth::on_capture(bool _start)
 {
 	if(_start) {
-		std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
+		std::string path = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 		std::string name = m_name;
 		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 		name = std::regex_replace(name, std::regex("\\s+"), "");

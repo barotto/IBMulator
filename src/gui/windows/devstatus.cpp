@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -117,7 +117,7 @@ void DevStatus::on_cmd_vga_update(RC::Event &)
 void DevStatus::on_cmd_vga_dump_state(RC::Event &)
 {
 	try {
-		std::string captpath = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
+		std::string captpath = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
 		std::string statefile = FileSys::get_next_filename(captpath, "vga_state_", ".txt");
 		if(!statefile.empty()) {
 			m_gui->save_framebuffer(statefile + ".png", statefile + ".pal.png");

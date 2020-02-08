@@ -72,7 +72,7 @@ void Program::save_state(
 	if(_name.empty()) {
 		_name = "state";
 	}
-	std::string path = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+	std::string path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER)
 			+ FS_SEP + _name;
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "Saving current state in '%s'...\n", path.c_str());
@@ -113,7 +113,7 @@ void Program::restore_state(
 	 * otherwise a deadlock on the libRocket mutex caused by the SysLog will occur.
 	 */
 	m_restore_fn = [=](){
-		std::string path = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER)
+		std::string path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER)
 				+ FS_SEP + (_name.empty()?"state":_name);
 		std::string ini = path + ".ini";
 		std::string bin = path + ".bin";
@@ -317,12 +317,12 @@ bool Program::initialize(int argc, char** argv)
 	PINFO(LOG_V1,"assets directory: %s\n", m_datapath.c_str());
 
 	//Capture dir, create if not exists
-	std::string capture_dir = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
+	std::string capture_dir = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	if(capture_dir.empty()) {
 		capture_dir = m_user_dir + FS_SEP "capture";
 	}
 	FileSys::create_dir(capture_dir.c_str());
-	m_config[0].set_string(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, capture_dir);
+	m_config[0].set_string(CAPTURE_SECTION, CAPTURE_DIR, capture_dir);
 	PINFO(LOG_V1,"capture directory: %s\n", capture_dir.c_str());
 
 	std::string dumplog = m_config[0].get_file_path("log.txt", FILE_TYPE_USER);

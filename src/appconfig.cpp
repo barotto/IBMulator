@@ -37,7 +37,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""       },
-		{ PROGRAM_CAPTURE_DIR,  ""       },
 		{ PROGRAM_FILE_DIALOGS, "custom" }
 	} },
 
@@ -59,7 +58,11 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_BG_G,               "82"     },
 		{ GUI_BG_B,               "98"     }
 	} },
-
+	{ CAPTURE_SECTION, {
+		{ CAPTURE_DIR,           ""    },
+		{ CAPTURE_VIDEO_FORMAT,  "png" },
+		{ CAPTURE_VIDEO_QUALITY, "80"  }
+	} },
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_NORMAL_ASPECT,     "original" },
 		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
@@ -224,7 +227,6 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ PROGRAM_SECTION,
 ";     media_dir: The default directory used to search for floppy and hdd images.\n"
-";   capture_dir: Directory where things like wave files, savestates and screenshots get captured.\n"
 ";  file_dialogs: The type of file select dialogs to use:\n"
 ";                 custom: use the " PACKAGE_NAME "'s custom implementation\n"
 ";                 native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
@@ -274,7 +276,15 @@ ini_filehelp_t AppConfig::ms_help = {
 ";      bg_XXX: Background window color\n"
 ";   show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact GUI mode)\n"
 		},
-
+		{ CAPTURE_SECTION,
+";     directory: Directory where things like video, audio, savestates, and screenshots get captured.\n"
+";  video_format: Format to be used for video recordings.\n"
+";                 Possible values: png, jpg\n"
+";                  png: sequence of png files in a directory.\n"
+";                  jpg: sequence of jpeg files in a directory (lossy).\n"
+"; video_quality: Compression quality for lossy video formats.\n"
+";                 Possible values: integer number from 1 to 100.\n"
+		},
 		{ DISPLAY_SECTION,
 "; The following parameters are used for normal and compact GUI modes only:\n"
 ";    normal_aspect: VGA aspect ratio\n"
@@ -439,7 +449,6 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_CAPTURE_DIR,
 		PROGRAM_FILE_DIALOGS
 	} },
 	{ GUI_SECTION, {
@@ -459,6 +468,11 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_BG_G,
 		GUI_BG_B,
 		GUI_SHOW_LEDS
+	} },
+	{ CAPTURE_SECTION, {
+		CAPTURE_DIR,
+		CAPTURE_VIDEO_FORMAT,
+		CAPTURE_VIDEO_QUALITY
 	} },
 	{ DISPLAY_SECTION, {
 		DISPLAY_NORMAL_ASPECT,

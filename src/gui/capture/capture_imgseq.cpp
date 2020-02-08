@@ -24,13 +24,16 @@
 #include <SDL_image.h>
 
 
-CaptureImgSeq::CaptureImgSeq(CaptureFormat _img_format)
+CaptureImgSeq::CaptureImgSeq(CaptureFormat _format, int _quality)
 :
 CaptureTarget(),
-m_format(_img_format),
+m_format(_format),
+m_quality(_quality),
 m_surface(nullptr),
 m_framecnt(0)
 {
+	PDEBUGF(LOG_V1, LOG_GUI, "Recording to sequence of files, format:%d quality:%d\n",
+		_format, _quality);
 }
 
 CaptureImgSeq::~CaptureImgSeq()
@@ -41,20 +44,20 @@ CaptureImgSeq::~CaptureImgSeq()
 std::string CaptureImgSeq::open(std::string _dir_path)
 {
 	if(!m_dir.empty()) {
-		PDEBUGF(LOG_V0, LOG_PROGRAM, "Close this target first.\n");
+		PDEBUGF(LOG_V0, LOG_GUI, "Capture: close this target first.\n");
 		throw std::exception();
 	}
 	
 	m_dir = FileSys::get_next_dirname(_dir_path, "video_");
 	if(m_dir.empty()) {
-		PERRF(LOG_PROGRAM, "Error creating screen recording directory.\n");
+		PERRF(LOG_GUI, "Capture: error creating screen recording directory.\n");
 		throw std::exception();
 	}
 	
 	try {
 		FileSys::create_dir(m_dir.c_str());
 	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "Error creating screen recording directory '%s'.\n", m_dir.c_str());
+		PERRF(LOG_GUI, "Capture: error creating screen recording directory '%s'.\n", m_dir.c_str());
 		m_dir = "";
 		throw;
 	}
@@ -80,7 +83,7 @@ void CaptureImgSeq::free_surface()
 void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo &_mode)
 {
 	if(m_dir == "") {
-		PDEBUGF(LOG_V0, LOG_PROGRAM, "This target is not open!\n");
+		PDEBUGF(LOG_V0, LOG_GUI, "Capture: this target is not open!\n");
 		throw std::exception();
 	}
 	
@@ -97,7 +100,7 @@ void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo
 			PALETTE_AMASK
 		);
 		if(!m_surface) {
-			PERRF(LOG_PROGRAM, "Error creating screen recording surface\n");
+			PERRF(LOG_GUI, "Capture: error creating screen recording surface\n");
 			throw std::exception();
 		}
 		m_cur_mode = _mode;
@@ -119,13 +122,17 @@ void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo
 			imgfile << ".png";
 			result = IMG_SavePNG(m_surface, imgfile.str().c_str());
 			break;
+		case CaptureFormat::JPG:
+			imgfile << ".jpg";
+			result = IMG_SaveJPG(m_surface, imgfile.str().c_str(), m_quality);
+			break;
 		default:
-			PDEBUGF(LOG_V0, LOG_PROGRAM, "Invalid recording format!\n");
+			PDEBUGF(LOG_V0, LOG_GUI, "Capture: invalid recording format!\n");
 			throw std::exception();
 	}
 
 	if(result < 0) {
-		PERRF(LOG_PROGRAM, "Error saving frame to image file.\n");
+		PERRF(LOG_GUI, "Capture: error saving frame to image file.\n");
 		throw std::exception();
 	}
 	

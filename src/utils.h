@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -96,6 +96,13 @@ inline uint8_t packet_field(uint8_t *packet, unsigned byte, unsigned start, unsi
 inline uint16_t packet_word(uint8_t *packet, unsigned byte)
 {
 	return ( (uint16_t(packet[byte]) << 8) | packet[byte+1] );
+}
+
+// Converts a strongly typed enum class to integer
+template <typename E>
+constexpr auto ec_to_i(E e) noexcept
+{
+	return static_cast<std::underlying_type_t<E>>(e);
 }
 
 #endif

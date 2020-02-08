@@ -28,7 +28,6 @@ Capture::Capture(VGADisplay *_vgadisp)
 :
 m_quit(false),
 m_recording(false),
-m_rec_mode(CaptureMode::NONE),
 m_vga_display(_vgadisp)
 {
 }
@@ -45,8 +44,6 @@ void Capture::init()
 	m_silence_channel = g_mixer.register_channel(
 		std::bind(&Capture::create_silence_samples, this, _1, _2, _3),
 		"Capture silence");
-	
-	m_rec_mode = CaptureMode::IMGSEQ;
 }
 
 void Capture::calibrate(const Pacer &_p)
@@ -170,7 +167,7 @@ void Capture::start_capture()
 
 	std::string destdir;
 	try {
-		destdir = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
+		destdir = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Capture: cannot find the destination directory\n");
 		throw;
@@ -180,11 +177,24 @@ void Capture::start_capture()
 		throw std::exception();
 	}
 	
-	switch(m_rec_mode) {
-		case CaptureMode::IMGSEQ:
-			m_rec_target = std::make_unique<CaptureImgSeq>(CaptureFormat::PNG);
+	static std::map<std::string, unsigned> formats = {
+		{ "",    ec_to_i(CaptureFormat::PNG) },
+		{ "png", ec_to_i(CaptureFormat::PNG) },
+		{ "jpg", ec_to_i(CaptureFormat::JPG) }
+	};
+	CaptureFormat format = static_cast<CaptureFormat>(
+		g_program.config().get_enum(CAPTURE_SECTION, CAPTURE_VIDEO_FORMAT, formats, ec_to_i(CaptureFormat::PNG))
+	);
+	int quality = g_program.config().get_int(CAPTURE_SECTION, CAPTURE_VIDEO_QUALITY, 80);
+	quality = clamp(quality, 1, 100);
+	
+	switch(format) {
+		case CaptureFormat::PNG:
+		case CaptureFormat::JPG:
+		{
+			m_rec_target = std::make_unique<CaptureImgSeq>(format, quality);
 			break;
-		case CaptureMode::VIDEOFILE:
+		}
 		default:
 			PDEBUGF(LOG_V0, LOG_GUI, "Capture: invalid recording mode\n");
 			throw std::exception();

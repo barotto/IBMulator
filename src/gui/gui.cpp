@@ -1009,7 +1009,7 @@ void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 
 void GUI::take_screenshot(bool _with_palette_file)
 {
-	std::string path = g_program.config().find_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR);
+	std::string path = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
 	std::string screenfile = FileSys::get_next_filename(path, "screenshot_", ".png");
 	if(!screenfile.empty()) {
 		std::string palfile;

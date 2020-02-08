@@ -107,7 +107,7 @@ void Mixer::start_capture()
 		PERRF(LOG_MIXER, "unable to start audio recording\n");
 		return;
 	}
-	std::string path = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_CAPTURE_DIR, FILE_TYPE_USER);
+	std::string path = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	path = FileSys::get_next_filename(path, "sound_", ".wav");
 	if(!path.empty()) {
 		try {

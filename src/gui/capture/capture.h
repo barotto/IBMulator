@@ -35,6 +35,7 @@ enum class CaptureMode {
 enum class CaptureFormat {
 	NONE,
 	PNG,
+	JPG,
 	ZMBV
 };
 
@@ -44,7 +45,6 @@ private:
 	Pacer m_pacer;
 	bool m_quit;
 	bool m_recording;
-	CaptureMode m_rec_mode;
 	std::unique_ptr<CaptureTarget> m_rec_target;
 	shared_queue<Capture_fun_t> m_cmd_queue;
 	VGADisplay *m_vga_display;

@@ -26,6 +26,7 @@
 class CaptureImgSeq : public CaptureTarget
 {
 	CaptureFormat m_format;
+	int m_quality;
 	std::string m_dir;
 	SDL_Surface *m_surface;
 	VideoModeInfo m_cur_mode;
@@ -34,7 +35,7 @@ class CaptureImgSeq : public CaptureTarget
 	void free_surface();
 	
 public:
-	CaptureImgSeq(CaptureFormat _img_format);
+	CaptureImgSeq(CaptureFormat _format, int _quality);
 	virtual ~CaptureImgSeq();
 	
 	virtual std::string open(std::string _dir_path);

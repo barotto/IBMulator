@@ -122,7 +122,6 @@ public:
 
 #define PROGRAM_SECTION         "program"
 #define PROGRAM_MEDIA_DIR       "media_dir"
-#define PROGRAM_CAPTURE_DIR     "capture_dir"
 #define PROGRAM_FILE_DIALOGS    "file_dialogs"
 
 #define GUI_SECTION             "gui"
@@ -142,6 +141,11 @@ public:
 #define GUI_BG_R                "bg_red"
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"
+
+#define CAPTURE_SECTION         "capture"
+#define CAPTURE_DIR             "directory"
+#define CAPTURE_VIDEO_FORMAT    "video_format"
+#define CAPTURE_VIDEO_QUALITY   "video_quality"
 
 #define DISPLAY_SECTION          "display"
 #define DISPLAY_NORMAL_ASPECT    "normal_aspect"
