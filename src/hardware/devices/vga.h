@@ -75,7 +75,7 @@ struct VideoModeInfo
 		uint8_t top, bottom, left, right;
 	} borders;
 	
-	inline bool operator==(const VideoModeInfo &_rhs) {
+	inline bool operator==(const VideoModeInfo &_rhs) const {
 		return (mode==_rhs.mode &&
 				xres==_rhs.xres &&
 				yres==_rhs.yres &&

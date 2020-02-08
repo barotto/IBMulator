@@ -30,7 +30,9 @@ libgui_a_SOURCES = \
 	windows/sysdebugger386.cpp \
 	windows/stats.cpp \
 	windows/devstatus.cpp \
-	windows/fileselect.cpp
+	windows/fileselect.cpp \
+	capture/capture.cpp \
+	capture/capture_imgseq.cpp
 
 noinst_HEADERS = \
 	gui.h \
@@ -63,5 +65,7 @@ noinst_HEADERS = \
 	windows/sysdebugger386.h \
 	windows/stats.h \
 	windows/devstatus.h \
-	windows/fileselect.h
+	windows/fileselect.h \
+	capture/capture.h \
+	capture/capture_imgseq.h
 	

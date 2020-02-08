@@ -40,16 +40,37 @@
 #define PALETTE_AMASK 0xFF000000
 #define PALETTE_ENTRY(r,g,b) (0xFF<<24 | b<<16 | g<<8 | r)
 
+class FrameBuffer
+{
+	std::vector<uint32_t> m_buffer;
+	uint16_t m_width;
+	uint16_t m_height;
+	unsigned m_bypp;
+	
+public:
+	FrameBuffer();
+	~FrameBuffer();
+	
+	inline uint16_t width() const { return m_width; }
+	inline uint16_t height() const { return m_height; }
+	inline uint16_t pitch() const { return m_width * m_bypp; }
+	inline size_t size() const { return m_buffer.size(); }
+	inline size_t size_bytes() const { return m_buffer.size() * m_bypp; }
+	
+	void clear();
+	void copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const;
+	
+	inline uint32_t & operator[](size_t _pos) { return m_buffer[_pos]; }
+};
 
 class VGADisplay
 {
-	std::vector<uint32_t> m_fb; // the current framebuffer, constantly updating
+	FrameBuffer m_fb; // the current framebuffer, constantly updating
 	
 	struct {
 		VideoModeInfo mode;
+		VideoTimings timings;
 		bool valid_mode;
-		uint16_t fb_width;
-		uint16_t fb_height;
 
 		uint32_t palette[256];
 
@@ -68,8 +89,10 @@ class VGADisplay
 	std::condition_variable m_cv;
 
 	// internal double buffering
-	std::vector<uint32_t> m_last_fb; // the last complete framebuffer content
+	bool m_buffering; 
+	FrameBuffer m_last_fb; // the last complete framebuffer content
 	VideoModeInfo m_last_mode; // the last videomode, relative to the last framebuffer
+	VideoTimings m_last_timings; 
 	
 	static uint8_t ms_font8x16[256][16];
 	static uint8_t ms_font8x8[256][8];
@@ -91,14 +114,12 @@ public:
 	void notify_interface();
 	inline const VideoModeInfo & mode() const { return m_s.mode; }
 	inline const VideoModeInfo & last_mode() const { return m_last_mode; }
-	inline unsigned get_fb_size() const { return m_fb.size(); }
-	inline unsigned get_fb_width() const { return m_s.fb_width; }
-	inline unsigned get_fb_height() const { return m_s.fb_height; }
-	inline const std::vector<uint32_t>& get_fb() const { return m_fb; }
-	inline const std::vector<uint32_t>& get_last_fb() const { return m_last_fb; }
+	inline const VideoTimings & last_timings() const { return m_last_timings; }
+	inline const FrameBuffer & framebuffer() const { return m_fb; }
+	inline const FrameBuffer & last_framebuffer() const { return m_last_fb; }
 
 	void set_mode(const VideoModeInfo &_mode);
-	void set_timings(double _hfreq, double _vfreq);
+	void set_timings(const VideoTimings &_timings);
 	void set_text_charmap(bool _map, uint8_t *_fbuffer);
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);
@@ -113,6 +134,8 @@ public:
 	void copy_screen(uint8_t *_buffer);
 	uint32_t get_color(uint8_t _index);
 
+	void enable_buffering(bool _enable) { m_buffering = _enable; }
+	
 	inline bool fb_updated() { return m_fb_updated; }
 	inline void set_fb_updated() { m_fb_updated = true; }
 	inline void clear_fb_updated() { m_fb_updated = false; }

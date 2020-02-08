@@ -62,6 +62,7 @@ enum FrameCapMethods {
 class GUI;
 class GUI_OpenGL;
 
+class Capture;
 
 class RocketSystemInterface;
 class RocketFileInterface;
@@ -186,6 +187,9 @@ protected:
 
 	} m_windows;
 
+	std::unique_ptr<Capture> m_capture;
+	std::thread m_capture_thread;
+	
 	void init_Rocket();
 	void set_window_icon();
 	void show_welcome_screen();

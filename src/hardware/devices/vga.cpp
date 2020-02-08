@@ -483,7 +483,7 @@ void VGA::calculate_timings()
 		g_program.set_heartbeat(m_s.timings_ns.vtotal);
 		
 		m_display->lock();
-		m_display->set_timings(m_s.timings.hfreq, m_s.timings.vfreq);
+		m_display->set_timings(m_s.timings);
 		m_display->unlock();
 	}
 	

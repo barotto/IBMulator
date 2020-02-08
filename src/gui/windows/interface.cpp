@@ -163,18 +163,18 @@ void InterfaceScreen::sync_with_device()
 		// the result is the GPU's memory controller load goes high and glTexSubImage2D takes
 		// a lot of time to complete, bloking the machine emulation thread.
 		// PBOs are a possible alternative, but a memcpy is way simpler.
-		m_vga_buf = vga.display.get_last_fb();
+		FrameBuffer vga_buf = vga.display.last_framebuffer();
 		vga.display.unlock();
 		// now the Machine thread is free to continue emulation
 		// meanwhile we start rendering the last VGA image
-		m_renderer->store_vga_framebuffer(m_vga_buf, vga_res);
+		m_renderer->store_vga_framebuffer(vga_buf, vga_res);
 	} else if(vga.display.fb_updated()) {
 		vga.display.lock();
 		vec2i vga_res = vec2i(vga.display.mode().xres, vga.display.mode().yres);
-		m_vga_buf = vga.display.get_fb();
+		FrameBuffer vga_buf = vga.display.framebuffer();
 		vga.display.clear_fb_updated();
 		vga.display.unlock();
-		m_renderer->store_vga_framebuffer(m_vga_buf, vga_res);
+		m_renderer->store_vga_framebuffer(vga_buf, vga_res);
 	}
 }
 

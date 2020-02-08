@@ -30,6 +30,42 @@
 #include <cstring>
 #include <sstream>
 
+FrameBuffer::FrameBuffer()
+:
+m_width(VGA_MAX_XRES),
+m_height(VGA_MAX_YRES),
+m_bypp(4)
+{
+	m_buffer.resize(m_width * m_height);
+}
+
+FrameBuffer::~FrameBuffer()
+{}
+
+void FrameBuffer::clear()
+{
+	std::fill(m_buffer.begin(), m_buffer.end(), 0);
+}
+
+void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const
+{
+	uint8_t *src = (uint8_t*)&m_buffer[0];
+	const unsigned w = _mode.xres;
+	if(w > m_width) {
+		return;
+	}
+	const unsigned h = _mode.yres;
+	if(h > m_height) {
+		return;
+	}
+	const unsigned spitch = m_width * m_bypp;
+	const unsigned dpitch = w * m_bypp;
+	for(unsigned y=0; y<h; y++) {
+		for(unsigned x=0; x<w; x++) {
+			*((uint32_t*)(&_dest[y*dpitch + x*m_bypp])) = *((uint32_t*)(&src[y*spitch + x*m_bypp]));
+		}
+	}
+}
 
 VGADisplay::VGADisplay()
 {
@@ -44,11 +80,10 @@ VGADisplay::VGADisplay()
 	m_s.mode.cheight = 16;
 	m_s.mode.nscans = 1;
 	m_s.mode.ndots = 1;
+	
+	m_s.timings.vfreq = 70.0;
 
 	m_s.valid_mode = true;
-
-	m_s.fb_width = VGA_MAX_XRES;
-	m_s.fb_height = VGA_MAX_YRES;
 
 	m_s.prev_cursor_x = 0;
 	m_s.prev_cursor_y = 0;
@@ -57,8 +92,6 @@ VGADisplay::VGADisplay()
 	m_s.v_panning = 0;
 
 	m_s.line_compare = 1023;
-
-	m_fb.resize(m_s.fb_width * m_s.fb_height);
 
 	m_s.palette[0]  = PALETTE_ENTRY(  0,   0,   0); // black
 	m_s.palette[1]  = PALETTE_ENTRY(  0,   0, 170); // blue
@@ -87,7 +120,7 @@ VGADisplay::VGADisplay()
 	m_s.charmap_select = false;
 
 	m_last_mode = m_s.mode;
-	m_last_fb.resize(m_s.fb_width * m_s.fb_height);
+	m_last_timings = m_s.timings;
 	
 	clear_screen();
 	set_fb_updated();
@@ -95,6 +128,8 @@ VGADisplay::VGADisplay()
 	
 	m_rec_surface = nullptr;
 	m_rec_framecnt = 0;
+	
+	m_buffering = false;
 }
 
 VGADisplay::~VGADisplay()
@@ -113,7 +148,7 @@ void VGADisplay::save_state(StateBuf &_state)
 	_state.write(&m_s, {sizeof(m_s), "VGADisplay"});
 
 	//framebuffer
-	_state.write(&m_fb[0], {m_fb.size()*4, "VGADisplay fb"});
+	_state.write(&m_fb[0], {m_fb.size_bytes(), "VGADisplay fb"});
 }
 
 void VGADisplay::restore_state(StateBuf &_state)
@@ -128,8 +163,7 @@ void VGADisplay::restore_state(StateBuf &_state)
 	_state.read(&m_s, {sizeof(m_s), "VGADisplay"});
 
 	//framebuffer
-	m_fb.resize(m_s.fb_width*m_s.fb_height);
-	_state.read(&m_fb[0], {m_fb.size()*4, "VGADisplay fb"});
+	_state.read(&m_fb[0], {m_fb.size_bytes(), "VGADisplay fb"});
 
 	set_fb_updated();
 	set_dimension_updated();
@@ -142,7 +176,7 @@ void VGADisplay::restore_state(StateBuf &_state)
 void VGADisplay::notify_interface()
 {
 	// if double buffering is enabled do a full copy
-	if(GUI::instance()->vga_buffering_enabled()) {
+	if(GUI::instance()->vga_buffering_enabled() || m_buffering) {
 		// we must lock the display because another thread could be reading
 		// the internal buffer
 		lock();
@@ -151,6 +185,7 @@ void VGADisplay::notify_interface()
 			set_dimension_updated();
 		}
 		m_last_mode = m_s.mode;
+		m_last_timings = m_s.timings;
 		unlock();
 	}
 	
@@ -167,10 +202,10 @@ void VGADisplay::notify_interface()
 // Called to request that the VGA region is cleared.
 void VGADisplay::clear_screen()
 {
-	std::fill(m_fb.begin(), m_fb.end(), 0);
-	if(GUI::instance()->vga_buffering_enabled()) {
+	m_fb.clear();
+	if(GUI::instance()->vga_buffering_enabled() || m_buffering) {
 		// TODO is this necessary?
-		std::fill(m_last_fb.begin(), m_last_fb.end(), 0);
+		m_last_fb.clear();
 	}
 }
 
@@ -211,15 +246,15 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 
 	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u\n", _mode.xres, _mode.yres);
 
-	if(_mode.xres > m_s.fb_width) {
-		PWARNF(LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_s.fb_width);
+	if(_mode.xres > m_fb.width()) {
+		PWARNF(LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_fb.width());
 		m_s.valid_mode = false;
-		m_s.mode.xres = m_s.fb_width;
+		m_s.mode.xres = m_fb.width();
 	}
-	if(_mode.yres > m_s.fb_height) {
-		PWARNF(LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.yres, m_s.fb_height);
+	if(_mode.yres > m_fb.height()) {
+		PWARNF(LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.yres, m_fb.height());
 		m_s.valid_mode = false;
-		m_s.mode.yres = m_s.fb_height;
+		m_s.mode.yres = m_fb.height();
 	}
 	if(!m_s.valid_mode) {
 		clear_screen();
@@ -232,13 +267,14 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 	}
 }
 
-void VGADisplay::set_timings(double _hfreq, double _vfreq)
+void VGADisplay::set_timings(const VideoTimings &_timings)
 {
-	PDEBUGF(LOG_V1, LOG_VGA, "screen: %.2fkHz %.2fHz\n", _hfreq, _vfreq);
+	m_s.timings = _timings;
 	
-	// TODO this func is a placeholder and serves no purpose right now
-	if(VGA_MAX_HFREQ > 0.0 && (_hfreq>VGA_MAX_HFREQ+0.5 || _hfreq<VGA_MAX_HFREQ-0.5)) {
-		PDEBUGF(LOG_V1, LOG_VGA, "frequency (%.2fkHz) out of range\n", _hfreq);
+	PDEBUGF(LOG_V1, LOG_VGA, "screen: %.2fkHz %.2fHz\n", _timings.hfreq, _timings.vfreq);
+	
+	if(VGA_MAX_HFREQ > 0.0 && (_timings.hfreq>VGA_MAX_HFREQ+0.5 || _timings.hfreq<VGA_MAX_HFREQ-0.5)) {
+		PDEBUGF(LOG_V1, LOG_VGA, "frequency (%.2fkHz) out of range\n", _timings.hfreq);
 	}
 }
 
@@ -262,7 +298,7 @@ void VGADisplay::gfx_screen_line_update(
 		return;
 	}
 
-	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
+	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_fb.width();
 	bool dc = (m_s.mode.ndots == 2);
 	
 	for(uint16_t tile_id=0; tile_id<_tiles_count; tile_id++, _tiles++) {
@@ -300,7 +336,7 @@ void VGADisplay::gfx_screen_line_update(unsigned _fbline,
 		return;
 	}
 
-	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_s.fb_width;
+	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_fb.width();
 	bool dc = (m_s.mode.ndots == 2);
 	
 	for(unsigned pixel_x=0; pixel_x<m_s.mode.imgw; pixel_x++) {
@@ -501,7 +537,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 							*(buf+1) = color;
 						}
 						if(_tm_info->double_scanning) {
-							uint32_t *dbufptr = buf + m_s.fb_width;
+							uint32_t *dbufptr = buf + m_fb.width();
 							*dbufptr = color;
 							if(_tm_info->double_dot) {
 								*(dbufptr+1) = color;
@@ -511,7 +547,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 						font_row *= 2;
 					} while(--fontpixels);
 					buf -= cfwidth<<_tm_info->double_dot;
-					buf += (m_s.fb_width << _tm_info->double_scanning);
+					buf += (m_fb.width() << _tm_info->double_scanning);
 					fontline++;
 				} while(--fontrows);
 
@@ -533,7 +569,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		//PDEBUGF(LOG_V2, LOG_VGA, "\n");
 
 		// go to next character row location
-		buf_row += (m_s.fb_width << _tm_info->double_scanning) * cfheight;
+		buf_row += (m_fb.width() << _tm_info->double_scanning) * cfheight;
 
 		if(!split_screen && (y == split_textrow)) {
 			_new_text = text_base;
@@ -560,24 +596,12 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 // copy_screen
 // Copies the screen to a provided buffer. The buffer must be big enough to hold
 // xres * yres * 4 bytes. the buffer pitch is always xres*4
-void VGADisplay::copy_screen(uint8_t *_buffer)
+void VGADisplay::copy_screen(uint8_t *_dest)
 {
 	if(!m_s.valid_mode) {
 		return;
 	}
-
-	uint8_t *dest = _buffer;
-	uint8_t *src = (uint8_t*)&m_fb[0];
-	const unsigned w = m_s.mode.xres;
-	const unsigned h = m_s.mode.yres;
-	const unsigned bytespp = 4;
-	const unsigned spitch = m_s.fb_width * bytespp;
-	const unsigned dpitch = w * bytespp;
-	for(unsigned y=0; y<h; y++) {
-		for(unsigned x=0; x<w; x++) {
-			*((uint32_t*)(&dest[y*dpitch + x*bytespp])) = *((uint32_t*)(&src[y*spitch + x*bytespp]));
-		}
-	}
+	m_fb.copy_screen_to(_dest, m_s.mode);
 }
 
 // get_color

@@ -40,6 +40,8 @@
 #include "windows/debugtools.h"
 #include "windows/status.h"
 
+#include "capture/capture.h"
+
 #include "hardware/devices/systemboard.h"
 
 #include <algorithm>
@@ -231,6 +233,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
 	}
 
+	// CAPTURE THREAD
+	m_capture = std::make_unique<Capture>(vga_display());
+	m_capture->calibrate(g_program.pacer());
+	m_capture->init();
+	m_capture_thread = std::thread(&Capture::start, m_capture.get());
+	
 	// DONE
 	show_welcome_screen();
 }
@@ -245,6 +253,12 @@ void GUI::config_changed()
 	ss << std::fixed << std::setprecision(0) << m_machine->cpu().frequency();
 	m_curr_model += ss.str() + "MHz)";
 	m_curr_model_changed = true;
+	
+	std::mutex m;
+	std::condition_variable cv;
+	std::unique_lock<std::mutex> lock(m);
+	m_capture->sig_config_changed(m, cv);
+	cv.wait(lock);
 }
 
 void GUI::set_window_icon()
@@ -371,12 +385,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				}
 				case SDLK_F2: {
 					// screen recording
-					if(ENABLE_VGA_SCREEN_RECORDING) {
-						if(_event.type == SDL_KEYUP) return true;
-						m_machine->cmd_toggle_VGA_rec();
-						return true;
-					}
-					break;
+					if(_event.type == SDL_KEYUP) return true;
+					m_capture->cmd_toggle_capture();
+					return true;
 				}
 				case SDLK_F3: {
 					//machine on/off
@@ -941,6 +952,10 @@ void GUI::shutdown_SDL()
 
 void GUI::shutdown()
 {
+	m_capture->cmd_quit();
+	m_capture_thread.join();
+	PDEBUGF(LOG_V1, LOG_GUI, "Capture thread stopped\n");
+	
 	PDEBUGF(LOG_V1, LOG_GUI, "Shutting down the video subsystem\n");
 	
 	SDL_RemoveTimer(m_second_timer);

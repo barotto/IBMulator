@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -42,7 +42,7 @@ ScreenRenderer_OpenGL::~ScreenRenderer_OpenGL()
 
 void ScreenRenderer_OpenGL::init(VGADisplay &_vga)
 {
-	m_vga.fb_width = _vga.get_fb_width();
+	m_vga.fb_width = _vga.framebuffer().width();
 	
 	// prepare the VGA framebuffer texture
 	m_vga.glintformat = GL_RGBA;
@@ -173,9 +173,10 @@ void ScreenRenderer_OpenGL::load_monitor_program(
 // _fb_data : the framebuffer pixel data, can be larger than the current VGA resolution
 // _vga_res : the current VGA resolution, can be smaller than the framebuffer data
 void ScreenRenderer_OpenGL::store_vga_framebuffer(
-		std::vector<uint32_t> &_fb_data, const vec2i &_vga_res)
+		FrameBuffer &_fb, const vec2i &_vga_res)
 {
-	assert(unsigned(_vga_res.x * _vga_res.y) <= _fb_data.size());
+	assert(unsigned(_vga_res.x * _vga_res.y) <= _fb.size());
+	assert(_fb.width() == m_vga.fb_width);
 	
 	GLCALL( glActiveTexture(GL_TEXTURE0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, m_vga.texture) );
@@ -188,7 +189,7 @@ void ScreenRenderer_OpenGL::store_vga_framebuffer(
 				_vga_res.x, _vga_res.y, // width, height
 				0,                      // border
 				m_vga.glformat, m_vga.gltype,
-				&_fb_data[0]
+				&_fb[0]
 		) );
 		m_vga.res = _vga_res;
 	} else {
@@ -197,7 +198,7 @@ void ScreenRenderer_OpenGL::store_vga_framebuffer(
 			0, 0,                   // xoffset, yoffset
 			_vga_res.x, _vga_res.y, // width, height
 			m_vga.glformat, m_vga.gltype,
-			&_fb_data[0]
+			&_fb[0]
 		) );
 	}
 	GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );

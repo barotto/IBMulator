@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,8 +33,8 @@ ScreenRenderer_SDL2D::~ScreenRenderer_SDL2D()
 void ScreenRenderer_SDL2D::init(VGADisplay &_vga, SDL_Renderer *_sdl_renderer)
 {
 	m_sdl_renderer = _sdl_renderer;
-	m_vga.fb_width = _vga.get_fb_width();
-	m_vga.fb_height = _vga.get_fb_height();
+	m_vga.fb_width = _vga.framebuffer().width();
+	m_vga.fb_height = _vga.framebuffer().height();
 	m_vga.texture = nullptr;
 }
 
@@ -85,12 +85,13 @@ void ScreenRenderer_SDL2D::load_monitor_program(
 // _fb_data : the framebuffer pixel data, can be larger than the current VGA resolution
 // _vga_res : the current VGA resolution, can be smaller than the framebuffer data
 void ScreenRenderer_SDL2D::store_vga_framebuffer(
-		std::vector<uint32_t> &_fb_data, const vec2i &_vga_res)
+		FrameBuffer &_fb, const vec2i &_vga_res)
 {
-	assert(unsigned(_vga_res.x * _vga_res.y) <= _fb_data.size());
+	assert(unsigned(_vga_res.x * _vga_res.y) <= _fb.size());
+	assert(_fb.width() == m_vga.fb_width);
 	
 	m_vga.res = {0, 0, _vga_res.x, _vga_res.y};
-	int result = SDL_UpdateTexture(m_vga.texture, &m_vga.res, &_fb_data[0], m_vga.fb_width*4);
+	int result = SDL_UpdateTexture(m_vga.texture, &m_vga.res, &_fb[0], _fb.pitch());
 	if(!result) {
 		PDEBUGF(LOG_V0, LOG_GUI, "Cannot update VGA texture: %s\n", SDL_GetError());
 	}
