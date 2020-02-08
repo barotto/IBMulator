@@ -383,12 +383,6 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					}
 					return true;
 				}
-				case SDLK_F2: {
-					// screen recording
-					if(_event.type == SDL_KEYUP) return true;
-					m_capture->cmd_toggle_capture();
-					return true;
-				}
 				case SDLK_F3: {
 					//machine on/off
 					if(_event.type == SDL_KEYUP) {
@@ -423,6 +417,12 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					return true;
 				}
 				case SDLK_F7: {
+					// screen recording
+					if(_event.type == SDL_KEYUP) return true;
+					m_capture->cmd_toggle_capture();
+					return true;
+				}
+				case SDLK_F8: {
 					//save current machine state
 					if(_event.type == SDL_KEYUP) return true;
 					KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
@@ -437,7 +437,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					}, nullptr);
 					return true;
 				}
-				case SDLK_F8: {
+				case SDLK_F9: {
 					//load last machine state
 					if(_event.type == SDL_KEYUP) {
 						if(entry) {

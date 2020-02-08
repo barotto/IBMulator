@@ -185,8 +185,9 @@ to experiment.
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
-* CTRL+F7: save current state
-* CTRL+F8: load last state
+* CTRL+F7: start/stop video capture
+* CTRL+F8: save current state
+* CTRL+F9: load last state
 * CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method, see ini file)
 * CTRL+F11: CPU emulation speed down
 * CTRL+F12: CPU emulation speed up
