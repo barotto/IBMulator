@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -356,7 +356,7 @@ void AudioBuffer::load(const WAVFile &_wav)
 			throw std::logic_error("unsupported data format");
 	}
 	set_spec({format,  _wav.channels(), _wav.rate()});
-	m_data = _wav.read();
+	m_data = _wav.read_audio_data();
 }
 
 void AudioBuffer::u8_to_f32(const std::vector<uint8_t> &_source,

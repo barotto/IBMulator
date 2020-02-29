@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -39,7 +39,9 @@ enum class MixerChannelCategory
 {
 	AUDIO   = 0,
 	SOUNDFX = 1,
-	GUI     = 2
+	GUI     = 2,
+	
+	MAX
 };
 
 class MixerChannel

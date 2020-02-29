@@ -19,6 +19,7 @@ ibmulator_SOURCES = \
 	mixer.cpp \
 	model.cpp \
 	program.cpp \
+	riff.cpp \
 	statebuf.cpp \
 	syslog.cpp \
 	utils.cpp \
@@ -44,6 +45,7 @@ noinst_HEADERS = \
 	mixer.h \
 	model.h \
 	program.h \
+	riff.h \
 	shared_queue.h \
 	shared_deque.h \
 	statebuf.h \

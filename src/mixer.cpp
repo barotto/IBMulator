@@ -35,6 +35,7 @@ Mixer g_mixer;
 
 Mixer::Mixer()
 :
+m_mix_bufsize(0),
 m_start_time(0),
 m_prebuffer(50),
 m_machine(nullptr),
@@ -45,7 +46,8 @@ m_paused(false),
 m_device(0),
 m_frame_size(512),
 m_audio_capture(false),
-m_global_volume(1.f)
+m_global_volume(1.f),
+m_capture_sink(-1)
 {
 	m_out_buffer.set_size(MIXER_BUFSIZE);
 	memset(&m_device_spec, 0, sizeof(SDL_AudioSpec));
@@ -104,7 +106,7 @@ void Mixer::init(Machine *_machine)
 void Mixer::start_capture()
 {
 	if(!is_enabled()) {
-		PERRF(LOG_MIXER, "unable to start audio recording\n");
+		PERRF(LOG_MIXER, "Unable to start audio recording\n");
 		return;
 	}
 	std::string path = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
@@ -112,10 +114,17 @@ void Mixer::start_capture()
 	if(!path.empty()) {
 		try {
 			m_wav.open_write(path.c_str(), m_device_spec.freq, SDL_AUDIO_BITSIZE(m_device_spec.format), m_device_spec.channels);
+			m_capture_sink = register_sink(
+				std::bind(&Mixer::audio_sink, this, std::placeholders::_1, std::placeholders::_2)
+			);
 			std::string mex = "started audio recording to " + path;
 			PINFOF(LOG_V0, LOG_MIXER, "%s\n", mex.c_str());
 			GUI::instance()->show_message(mex.c_str());
-		} catch(std::exception &e) { }
+		} catch(std::exception &e) {
+			if(m_wav.is_open()) {
+				m_wav.close();
+			}
+		}
 	}
 	for(auto ch : m_mix_channels) {
 		ch.second->on_capture(true);
@@ -128,7 +137,14 @@ void Mixer::stop_capture()
 	if(!is_enabled()) {
 		return;
 	}
-	m_wav.close();
+	if(m_wav.is_open()) {
+		try {
+			m_wav.close();
+		} catch(std::runtime_error &e) {
+			PINFOF(LOG_V0, LOG_MIXER, "wav file error: %s\n", e.what());
+		}
+		unregister_sink(m_capture_sink);
+	}
 	m_audio_capture = false;
 	for(auto ch : m_mix_channels) {
 		ch.second->on_capture(false);
@@ -168,7 +184,11 @@ void Mixer::config_changed()
 		int buf_len = std::max(m_prebuffer*2, 1000); //msecs
 		int buf_frames = (m_device_spec.freq * buf_len) / 1000;
 		m_out_buffer.set_size(buf_frames * m_frame_size);
-		m_mix_buffer.resize(buf_frames * m_device_spec.channels);
+		m_mix_bufsize = buf_frames * m_device_spec.channels;
+		for(auto &buf : m_ch_mix) {
+			buf.resize(m_mix_bufsize);
+		}
+		m_out_mix.resize(m_mix_bufsize);
 
 		PDEBUGF(LOG_V1, LOG_MIXER, "prebuffer: %d msec., ring buffer: %d bytes\n",
 				m_prebuffer, buf_frames * m_frame_size);
@@ -335,7 +355,7 @@ void Mixer::start_wave_playback(int _frequency, int _bits, int _channels, int _s
 		PERRF(LOG_MIXER, "We didn't get the requested audio format\n");
 		SDL_CloseAudioDevice(m_device);
 		m_device = 0;
-	    throw std::exception();
+		throw std::exception();
 	}
 
 	SDL_PauseAudioDevice(m_device, 1);
@@ -356,33 +376,57 @@ void Mixer::stop_wave_playback()
 size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels,
 		uint64_t _time_span_us)
 {
-	size_t mixlen = std::numeric_limits<size_t>::max();
-	unsigned frames;
-	static double missing = 0.0;
+	size_t samples = std::numeric_limits<size_t>::max();
+	static double missing_frames = 0.0;
 	if(m_audio_status == SDL_AUDIO_PAUSED) {
 		//the mixer is prebuffering
-		missing = 0.0;
+		missing_frames = 0.0;
 	}
-	double reqframes = us_to_frames(_time_span_us, m_device_spec.freq) + missing;
+	double reqframes = us_to_frames(_time_span_us, m_device_spec.freq) + missing_frames;
 	for(auto ch : _channels) {
-		frames = std::min(unsigned(reqframes), ch.first->out().frames());
-		mixlen = std::min(mixlen, size_t(frames*m_device_spec.channels));
+		unsigned chframes = std::min(unsigned(reqframes), ch.first->out().frames());
+		samples = std::min(samples, size_t(chframes*m_device_spec.channels));
 	}
-	missing = reqframes - mixlen;
+	missing_frames = reqframes - samples/m_device_spec.channels;
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "mixspan: %llu, mixlen: %d (req.: %.2f), missing: %.2f\n",
-			_time_span_us, mixlen, reqframes*m_device_spec.channels, missing);
+	PDEBUGF(LOG_V2, LOG_MIXER, "mixspan: %llu, samples: %d (req.: %.2f), missing frames: %.2f\n",
+			_time_span_us, samples, reqframes*m_device_spec.channels, missing_frames);
 
-	if(mixlen==0) {
+	if(samples == 0) {
 		return 0;
 	}
-	mixlen = std::min(mixlen, m_mix_buffer.size());
-	frames = mixlen / m_device_spec.channels;
-	std::fill(m_mix_buffer.begin(), m_mix_buffer.begin()+mixlen, 0.f);
+	samples = std::min(samples, m_mix_bufsize);
+	
+	float volume = m_global_volume;
+	if(volume > 1.f) {
+		volume = (exp(volume) - 1.f)/(M_E - 1.f);
+	}
+	
+	std::fill(m_out_mix.begin(), m_out_mix.begin()+samples, 0.f);
+	for(int cat=0; cat<ec_to_i(MixerChannelCategory::MAX); cat++) {
+		mix_channels(m_ch_mix[cat], _channels, cat, samples);
+		for(size_t i=0; i<samples; i++) {
+			m_out_mix[i] += m_ch_mix[cat][i] * volume;
+		}
+	}
+
+	return samples;
+}
+
+void Mixer::mix_channels(std::vector<float> &_buf,
+	const std::vector<std::pair<MixerChannel*,bool>> &_channels,
+	int _chcat, size_t _samples)
+{
+	unsigned frames = _samples / m_device_spec.channels;
+	std::fill(_buf.begin(), _buf.begin()+_samples, 0.f);
 	for(auto ch : _channels) {
+		int chcat = ec_to_i(ch.first->category());
+		if(chcat != _chcat) {
+			continue;
+		}
 		const float *chdata = &ch.first->out().at<float>(0);
 		unsigned chframes = ch.first->out().frames();
-		float cat_volume = m_channels_volume[static_cast<int>(ch.first->category())];
+		float cat_volume = m_channels_volume[chcat];
 		if(cat_volume > 1.f) {
 			cat_volume = (exp(cat_volume) - 1.f)/(M_E - 1.f);
 		}
@@ -390,71 +434,86 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 		if(ch_volume > 1.f) {
 			ch_volume = (exp(ch_volume) - 1.f)/(M_E - 1.f);
 		}
-		for(size_t i=0; i<mixlen; i++) {
+		for(size_t i=0; i<_samples; i++) {
 			float v1,v2;
 			if(i<chframes) {
 				v1 = chdata[i] * ch_volume * cat_volume;
 			} else {
 				v1 = 0.f;
 			}
-			v2 = m_mix_buffer[i];
-			m_mix_buffer[i] = v1 + v2;
+			v2 = _buf[i];
+			_buf[i] = v1 + v2;
 		}
 		ch.first->pop_out_frames(frames);
 	}
-
-	return mixlen;
 }
 
-bool Mixer::send_packet(size_t _len)
+void Mixer::send_to_sinks(const std::vector<int16_t> &_data, int _category)
+{
+	std::lock_guard<std::mutex> lock(m_sinks_mutex);
+	
+	// _category will be MixerChannelCategory::MAX for the global mix
+	for(auto sink : m_sinks) {
+		if(sink != nullptr) {
+			try {
+				sink(_data, _category);
+			} catch(...) {}
+		}
+	}
+}
+
+bool Mixer::send_packet(size_t _samples)
 {
 	if(m_device == 0) {
 		return false;
 	}
-	bool ret = true;
-	std::vector<int16_t> buf(_len);
-	size_t bytes = _len;
+	if(SDL_AUDIO_BITSIZE(m_device_spec.format) != 16) {
+		PERRF(LOG_MIXER, "Unsupported bit depth\n");
+		return false;
+	}
+	
 	float volume = m_global_volume;
 	if(volume > 1.f) {
 		volume = (exp(volume) - 1.f)/(M_E - 1.f);
 	}
-	//convert from float
-	switch(SDL_AUDIO_BITSIZE(m_device_spec.format)) {
-		case 16:
-			for(size_t i=0; i<_len; i++) {
-				int32_t ival = (m_mix_buffer[i]*volume) * 32768.f;
-				if(ival < -32768) {
-					ival = -32768;
-				}
-				if(ival > 32767) {
-					ival = 32767;
-				}
-				buf[i] = ival;
-			}
-			bytes = _len*2;
-			break;
-		default:
-			PERRF_ABORT(LOG_MIXER, "unsupported bit depth\n");
-			return false;
+	
+	// fixed signed 16 bit sample size
+	const size_t bytes = _samples * 2;
+	std::vector<int16_t> tmpbuf(_samples);
+	
+	for(int cat=0; cat<ec_to_i(MixerChannelCategory::MAX); cat++) {
+		assert(m_ch_mix[cat].size() >= _samples);
+		for(size_t i=0; i<_samples; i++) {
+			tmpbuf[i] = AudioBuffer::f32_to_s16(m_ch_mix[cat][i]);
+		}
+		send_to_sinks(tmpbuf, cat);
 	}
 
+	assert(m_out_mix.size() >= _samples);
+	for(size_t i=0; i<_samples; i++) {
+		tmpbuf[i] = AudioBuffer::f32_to_s16(m_out_mix[i]);
+	}
+	send_to_sinks(tmpbuf, ec_to_i(MixerChannelCategory::MAX));
+	
 	PDEBUGF(LOG_V2, LOG_MIXER, "buf write: %d frames, %d bytes, buf fullness: %d\n",
-			_len / m_device_spec.channels, bytes, (m_out_buffer.get_read_avail() + bytes));
+			_samples / m_device_spec.channels, bytes, (m_out_buffer.get_read_avail() + bytes));
 
-	if(m_out_buffer.write((uint8_t*)&buf[0], bytes) < bytes) {
-		PERRF(LOG_MIXER, "audio buffer overflow\n");
-		ret = false;
+	if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
+		PERRF(LOG_MIXER, "Audio buffer overflow\n");
+		return false;
 	}
+	return true;
+}
 
-	if(m_wav.is_open()) {
+void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
+{
+	if(_category == ec_to_i(MixerChannelCategory::AUDIO)) {
 		try {
-			m_wav.write((uint8_t*)&buf[0], bytes);
+			m_wav.write_audio_data(&_data[0], _data.size()*2);
 		} catch(std::exception &e) {
-			cmd_stop_capture();
+			stop_capture();
 		}
 	}
-
-	return ret;
 }
 
 std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
@@ -470,6 +529,30 @@ std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _call
 void Mixer::unregister_channel(std::shared_ptr<MixerChannel> _channel)
 {
 	m_mix_channels.erase(_channel->name());
+}
+
+int Mixer::register_sink(AudioSinkHandler _sink)
+{
+	// called by multiple threads
+	std::lock_guard<std::mutex> lock(m_sinks_mutex);
+	
+	for(size_t i=0; i<m_sinks.size(); i++) {
+		if(m_sinks[i] == nullptr) {
+			m_sinks[i] = _sink;
+			return int(i);
+		}
+	}
+	throw std::exception();
+}
+
+void Mixer::unregister_sink(int _id)
+{
+	// called by multiple threads
+	std::lock_guard<std::mutex> lock(m_sinks_mutex);
+	
+	if(_id>=0 && _id<int(m_sinks.size())) {
+		m_sinks[_id] = nullptr;
+	}
 }
 
 void Mixer::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)

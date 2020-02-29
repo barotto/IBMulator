@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,12 +43,15 @@ extern Mixer g_mixer;
 
 
 typedef std::function<void()> Mixer_fun_t;
+typedef std::function<void(const std::vector<int16_t> &_data, int _category)> AudioSinkHandler;
 
 class Mixer
 {
 private:
-	RingBuffer m_out_buffer;
-	std::vector<float> m_mix_buffer;
+	RingBuffer m_out_buffer; // the SDL multithread-safe output buffer
+	std::vector<float> m_out_mix;
+	std::vector<float> m_ch_mix[ec_to_i(MixerChannelCategory::MAX)];
+	size_t m_mix_bufsize;
 	WAVFile m_wav;
 	int m_start_time;
 
@@ -74,6 +77,10 @@ private:
 	float m_global_volume;
 	std::array<float,3> m_channels_volume;
 
+	std::array<AudioSinkHandler,2> m_sinks;
+	std::mutex m_sinks_mutex;
+	int m_capture_sink;
+	
 public:
 	Mixer();
 	~Mixer();
@@ -87,6 +94,9 @@ public:
 			const std::string &_name);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
+	int register_sink(AudioSinkHandler _sink);
+	void unregister_sink(int _id);
+	
 	void calibrate(const Pacer &_c);
 	unsigned heartbeat() const { return m_heartbeat; }
 	inline HWBench & get_bench() { return m_bench; }
@@ -115,9 +125,12 @@ private:
 	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
 	void stop_wave_playback();
 	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);
+	void mix_channels(std::vector<float> &_buf, const std::vector<std::pair<MixerChannel*,bool>> &_channels, int _chcat, size_t _mixlen);
 	bool send_packet(size_t _len);
+	void send_to_sinks(const std::vector<int16_t> &_data, int _category);
 	void start_capture();
 	void stop_capture();
+	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 };
 

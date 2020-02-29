@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,166 +23,69 @@
 #include <cstring>
 
 WAVFile::WAVFile()
-: m_file(nullptr),
-  m_datasize(0),
-  m_write_mode(false)
+: RIFFFile()
 {
-	size_check<WAVHeader,12>();
-	size_check<WAVHeaderFMT,26>();
-	size_check<WAVHeaderDATA,8>();
+	size_check<WAVFormatEx,16+2>();
 }
 
 WAVFile::~WAVFile()
 {
-	if(m_file) {
-		close();
-	}
 }
 
-void WAVFile::open_read(const char *_filepath)
+RIFFHeader WAVFile::open_read(const char *_filepath)
 {
-	if(m_file) {
-		throw std::runtime_error("the file is already open");
+	RIFFFile::open_read(_filepath);
+	if(m_header.fileType != FOURCC_WAVE) {
+		throw std::runtime_error("not a wave file");
 	}
-
-	memset(&m_header, 0, sizeof(m_header));
-	m_datasize = 0;
-	m_write_mode = false;
-
-	m_file = fopen(_filepath, "rb");
-	if(m_file == nullptr) {
-		throw std::runtime_error("unable to open the file");
-	}
-
-	// Main header
-	if(fread(&m_header, sizeof(m_header), 1, m_file) != 1) {
-		throw std::runtime_error("unable to read the main header");
-	}
-	if(m_header.ChunkID != WAV_HEADER_RIFF || m_header.Format != WAV_HEADER_WAVE) {
-		throw std::runtime_error("not a wav file");
-	}
-
+	
 	// FMT header
-	if(fread(&m_header_fmt, sizeof(m_header_fmt), 1, m_file) != 1) {
-		throw std::runtime_error("unable to read the FMT header");
-	}
-	if(m_header_fmt.Subchunk1ID != WAV_HEADER_FMT) {
+	RIFFChunkHeader fmt = read_chunk_header();
+	if(fmt.chunkID != FOURCC_WAVE_FMT) {
 		throw std::runtime_error("invalid FMT header");
 	}
-	if(m_header_fmt.AudioFormat != WAV_FORMAT_PCM) {
+	
+	read(&m_format, sizeof(m_format));
+	
+	if(m_format.audioFormat != WAV_FORMAT_PCM) {
 		throw std::runtime_error("unsupported format (not a PCM file)");
 	}
 
-	/* Find the DATA chunk skipping any other RIFF extensions */
-	fseek(m_file, 16, SEEK_SET);
-	uint32_t chunk_name = WAV_HEADER_FMT;
-	uint32_t chunk_size = 0;
-	while(chunk_name != WAV_HEADER_DATA) {
-		if(fread(&chunk_size, 4, 1, m_file) != 1) {
-			throw std::runtime_error("unable to find the data chunk");
-		}
-		if(fseek(m_file, chunk_size, SEEK_CUR) != 0) {
-			throw std::runtime_error("unable to find the data chunk");
-		}
-		if(fread(&chunk_name, 4, 1, m_file) != 1) {
-			throw std::runtime_error("unable to find the data chunk");
-		}
+	// Find the DATA chunk skipping any other RIFF extensions
+	read_skip_chunk();
+	try {
+		read_find_chunk(FOURCC_WAVE_DATA);
+	} catch(std::runtime_error &) {
+		throw std::runtime_error("unable to find the DATA chunk");
 	}
-	if(fread(&chunk_size, 4, 1, m_file) != 1) {
-		throw std::runtime_error("invalid DATA header");
-	}
-	m_header_data.Subchunk2ID = chunk_name;
-	m_header_data.Subchunk2Size = chunk_size;
+	
+	return m_header;
 }
 
 void WAVFile::open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, uint16_t _channels)
 {
-	if(m_file) {
-		throw std::runtime_error("the file is already open");
-	}
+	RIFFFile::open_write(_filepath, FOURCC_WAVE);
 
-	m_datasize = 0;
-	m_write_mode = true;
+	m_format.audioFormat   = WAV_FORMAT_PCM;
+	m_format.numChannels   = _channels;
+	m_format.sampleRate    = _rate;
+	m_format.byteRate      = _rate * _channels * (_bits / 8);
+	m_format.blockAlign    = _channels * (_bits / 8);
+	m_format.bitsPerSample = _bits;
+	
+	// -2 because there's no ExtraParamSize for PCM
+	write_chunk(FOURCC_WAVE_FMT, &m_format, sizeof(WAVFormatEx)-2);
 
-	m_file = fopen(_filepath, "wb");
-	if(m_file == nullptr) {
-		throw std::runtime_error("unable to open the file");
-	}
-
-	m_header.ChunkID = WAV_HEADER_RIFF;
-	m_header.ChunkSize = 36;
-	m_header.Format = WAV_HEADER_WAVE;
-	m_header_fmt.Subchunk1ID = WAV_HEADER_FMT;
-	m_header_fmt.Subchunk1Size = WAV_HEADER_SC1_SIZE;
-	m_header_fmt.AudioFormat = WAV_FORMAT_PCM;
-	m_header_fmt.NumChannels = _channels;
-	m_header_fmt.SampleRate = _rate;
-	m_header_fmt.ByteRate = _rate * _channels * (_bits / 8);
-	m_header_fmt.BlockAlign = _channels * (_bits / 8);
-	m_header_fmt.BitsPerSample = _bits;
-	m_header_data.Subchunk2ID = WAV_HEADER_DATA;
-	m_header_data.Subchunk2Size = 0;
-
-	if(fwrite(&m_header, sizeof(m_header), 1, m_file) != 1) {
-		throw std::runtime_error("unable to write");
-	}
-	if(fwrite(&m_header_fmt, sizeof(m_header_fmt)-2, 1, m_file) != 1) {
-		throw std::runtime_error("unable to write");
-	}
-	if(fwrite(&m_header_data, sizeof(m_header_data), 1, m_file) != 1) {
-		throw std::runtime_error("unable to write");
-	}
+	write_chunk_start(FOURCC_WAVE_DATA);
 }
 
-std::vector<uint8_t> WAVFile::read() const
+std::vector<uint8_t> WAVFile::read_audio_data() const
 {
-	std::vector<uint8_t> samples;
-
-	if(!m_file || m_write_mode || m_header_data.Subchunk2Size == 0) {
-		return samples;
-	}
-
-	samples.resize(m_header_data.Subchunk2Size);
-
-	size_t bytes = fread(&samples[0], 1, m_header_data.Subchunk2Size, m_file);
-	if(bytes == 0) {
-		throw std::runtime_error("unable to read");
-	}
-	if(bytes < m_header_data.Subchunk2Size) {
-		throw std::runtime_error("the file is of wrong size");
-	}
-
-	return samples;
+	return read_chunk_data();
 }
 
-void WAVFile::write(const uint8_t *_data, size_t _len)
+void WAVFile::write_audio_data(const void *_data, uint32_t _len)
 {
-	if(!m_file || !m_write_mode) {
-		return;
-	}
-	if(fwrite(_data, _len, 1, m_file) != 1) {
-		throw std::runtime_error("unable to write");
-	}
-	m_datasize += _len;
-}
-
-void WAVFile::close()
-{
-	if(!m_file) {
-		return;
-	}
-
-	if(m_write_mode) {
-		uint32_t ChunkSize = 36 + m_datasize;
-		fseek(m_file, 4, SEEK_SET);
-		fwrite(&ChunkSize, sizeof(ChunkSize), 1, m_file);
-
-		uint32_t Subchunk2Size = m_datasize;
-		fseek(m_file, 40, SEEK_SET);
-		fwrite(&Subchunk2Size, sizeof(Subchunk2Size), 1, m_file);
-	}
-
-	fclose(m_file);
-	m_file = nullptr;
+	write_chunk_data(_data, _len);
 }
 

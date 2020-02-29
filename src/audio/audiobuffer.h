@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -89,7 +89,6 @@ public:
 	//other than WAVs will ever be used.
 	void load(const WAVFile &_wav);
 
-private:
 	constexpr static float u8_to_f32(uint8_t _s) {
 		return (float(_s) - 128.f) / 128.f;
 	}
@@ -102,6 +101,8 @@ private:
 	inline static int16_t f32_to_s16(float _s) {
 		return int16_t(clamp((_s*32768.f), -32768.f, 32767.f));
 	}
+	
+private:
 	static void u8_to_f32(const std::vector<uint8_t> &_source,
 			std::vector<uint8_t> &_dest, unsigned _samples);
 	static void s16_to_f32(const std::vector<uint8_t> &_source,
