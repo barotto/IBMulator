@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -104,6 +104,8 @@ void PS1Audio::install()
 				_vgm.set_clock(PS1AUDIO_INPUT_CLOCK);
 				_vgm.set_SN76489_feedback(6);
 				_vgm.set_SN76489_shift_width(16);
+				_vgm.set_tag_system("IBM PC");
+				_vgm.set_tag_notes("IBM PS/1 Audio Card direct dump.");
 			}
 		}
 	);

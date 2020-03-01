@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -58,6 +58,8 @@ void AdLib::install()
 			if(_start) {
 				_vgm.set_chip(VGMFile::YM3812);
 				_vgm.set_clock(3579545);
+				_vgm.set_tag_system("IBM PC");
+				_vgm.set_tag_notes("AdLib direct dump.");
 			}
 		}
 	);

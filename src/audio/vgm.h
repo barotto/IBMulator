@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,6 +25,8 @@
 #define VGM_IDENT       0x206d6756 // "Vgm "
 #define VGM_VERSION     0x00000170 // 1.70
 #define VGM_DATA_OFFSET 0xCC;
+#define GD3_IDENT       0x20336447 // "Gd3 "
+#define GD3_VERSION     0x00000100 // 1.00
 
 struct VGMHeader {
 
@@ -92,7 +94,15 @@ struct VGMHeader {
 } GCC_ATTRIBUTE(packed);
 
 
+struct GD3TagHeader {
+	uint32_t ident;
+	uint32_t version;
+	uint32_t datalen;
+} GCC_ATTRIBUTE(packed);
+
+
 #define SIZEOF_VGMHEADER 256
+#define SIZEOF_GD3HEADER 12
 
 
 class VGMFile
@@ -114,6 +124,12 @@ private:
 	VGMHeader m_header;
 	ChipType m_chip;
 	std::string m_filepath;
+	struct {
+		std::u16string track;
+		std::u16string game;
+		std::u16string system;
+		std::u16string notes;
+	} m_gd3tag;
 
 public:
 
@@ -130,6 +146,10 @@ public:
 	void set_SN76489_feedback(uint16_t _value);
 	void set_SN76489_shift_width(uint8_t _value);
 	void set_SN76489_flags(uint8_t _value);
+	void set_tag_track(const std::string &_track);
+	void set_tag_game(const std::string &_game);
+	void set_tag_system(const std::string &_system);
+	void set_tag_notes(const std::string &_notes);
 	void close();
 };
 

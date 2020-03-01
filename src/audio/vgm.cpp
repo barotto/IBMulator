@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@ VGMFile::VGMFile()
 m_chip(SN76489)
 {
 	size_check<VGMHeader,SIZEOF_VGMHEADER>();
+	size_check<GD3TagHeader,SIZEOF_GD3HEADER>();
 	m_events.reserve(50000);
 }
 
@@ -67,6 +68,30 @@ void VGMFile::set_SN76489_shift_width(uint8_t _value)
 void VGMFile::set_SN76489_flags(uint8_t _value)
 {
 	m_header.SN76489_flags = _value;
+}
+
+void VGMFile::set_tag_track(const std::string &_track)
+{
+	std::u16string u16tmp(_track.begin(), _track.end());
+	m_gd3tag.track = u16tmp;
+}
+
+void VGMFile::set_tag_game(const std::string &_game)
+{
+	std::u16string u16tmp(_game.begin(), _game.end());
+	m_gd3tag.game = u16tmp;
+}
+
+void VGMFile::set_tag_system(const std::string &_system)
+{
+	std::u16string u16tmp(_system.begin(), _system.end());
+	m_gd3tag.system = u16tmp;
+}
+
+void VGMFile::set_tag_notes(const std::string &_notes)
+{
+	std::u16string u16tmp(_notes.begin(), _notes.end());
+	m_gd3tag.notes = u16tmp;
 }
 
 void VGMFile::command(uint64_t _time, uint8_t _command, uint32_t _data)
@@ -169,9 +194,65 @@ void VGMFile::close()
 		}
 	}
 
+	// end of sound data command
+	uint8_t endofdata = 0x66;
+	fwrite(&endofdata, 1, 1, file.get());
+	
+	// tot_num_samples
 	fseek(file.get(), 0x18, SEEK_SET);
 	fwrite(&total_samples, 4, 1, file.get());
 
+	// GD3 tag
+	fseek(file.get(), 0, SEEK_END);
+	uint32_t gd3_pos = ftell(file.get());
+	GD3TagHeader gd3_header;
+	gd3_header.ident = GD3_IDENT;
+	gd3_header.version = GD3_VERSION;
+	gd3_header.datalen = 0;
+	fwrite(&gd3_header, SIZEOF_GD3HEADER, 1, file.get());
+	
+	char16_t null = 0;
+	
+	// "Track name (in English characters)\0"
+	// since C++11 the returned string array is null-terminated
+	gd3_header.datalen += fwrite(m_gd3tag.track.data(), 1, m_gd3tag.track.size()*2 + 2, file.get());
+	// "Track name (in Japanese characters)\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	
+	// "Game name (in English characters)\0"
+	gd3_header.datalen += fwrite(m_gd3tag.game.data(), 1, m_gd3tag.game.size()*2 + 2, file.get());
+	// "Game name (in Japanese characters)\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	
+	// "System name (in English characters)\0"
+	gd3_header.datalen += fwrite(m_gd3tag.system.data(), 1, m_gd3tag.system.size()*2 + 2, file.get());
+	// "System name (in Japanese characters)\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	
+	// "Name of Original Track Author (in English characters)\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	// "Name of Original Track Author (in Japanese characters)\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	
+	// "Date of game's release written in the form yyyy/mm/dd, or just yyyy/mm or yyyy if month and day is not known\0"
+	gd3_header.datalen += fwrite(&null, 1, 2, file.get());
+	
+	// "Name of person who converted it to a VGM file.\0"
+	std::string pkgstr(PACKAGE_STRING);
+	std::u16string u16tmp(pkgstr.begin(), pkgstr.end());
+	gd3_header.datalen += fwrite(u16tmp.data(), 1, u16tmp.size() * 2 + 2, file.get());
+	
+	// "Notes\0"
+	gd3_header.datalen += fwrite(m_gd3tag.notes.data(), 1, m_gd3tag.notes.size()*2 + 2, file.get());
+	
+	fseek(file.get(), gd3_pos+8, SEEK_SET);
+	fwrite(&gd3_header.datalen, 4, 1, file.get());
+	
+	fseek(file.get(), 20, SEEK_SET);
+	gd3_pos -= 20;
+	fwrite(&gd3_pos, 4, 1, file.get());
+	
+	// EOF_offset
 	fseek(file.get(), 0, SEEK_END);
 	uint32_t file_len = ftell(file.get());
 	file_len -= 4;
