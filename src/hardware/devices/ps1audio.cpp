@@ -57,7 +57,11 @@ IODEVICE_PORTS(PS1Audio) = {
 #define PS1AUDIO_IRQ 7
 
 PS1Audio::PS1Audio(Devices *_dev)
-: IODevice(_dev)
+: IODevice(_dev),
+m_DAC_timer(NULL_TIMER_HANDLE),
+m_DAC_empty_samples(0),
+m_DAC_newdata(true),
+m_DAC_last_value(0)
 {
 	m_DAC_samples.reserve(PS1AUDIO_FIFO_SIZE*2);
 }
