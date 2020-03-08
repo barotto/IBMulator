@@ -81,6 +81,8 @@ private:
 	std::mutex m_sinks_mutex;
 	int m_capture_sink;
 	
+	std::shared_ptr<MixerChannel> m_silence_channel;
+	
 public:
 	Mixer();
 	~Mixer();
@@ -132,6 +134,7 @@ private:
 	void stop_capture();
 	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
+	bool create_silence_samples(uint64_t _time_span_us, bool, bool);
 };
 
 

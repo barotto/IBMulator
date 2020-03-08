@@ -101,6 +101,12 @@ void Mixer::init(Machine *_machine)
 		PINFOF(LOG_V1, LOG_MIXER, "Audio device %d: %s\n", i, SDL_GetAudioDeviceName(i, 0));
 	}
 	m_paused = false;
+	
+	using namespace std::placeholders;
+	m_silence_channel = register_channel(
+		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
+		"Silence"
+	);
 }
 
 void Mixer::start_capture()
@@ -197,6 +203,10 @@ void Mixer::config_changed()
 			ch.second->set_out_spec({AUDIO_FORMAT_F32,
 				unsigned(m_device_spec.channels),unsigned(m_device_spec.freq)});
 		}
+		
+		m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, unsigned(m_device_spec.freq)});
+		m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_device_spec.channels), unsigned(m_device_spec.freq)});
+		
 	} catch(std::exception &e) {
 		PERRF(LOG_MIXER, "wave audio output disabled\n");
 	}
@@ -539,6 +549,7 @@ int Mixer::register_sink(AudioSinkHandler _sink)
 	for(size_t i=0; i<m_sinks.size(); i++) {
 		if(m_sinks[i] == nullptr) {
 			m_sinks[i] = _sink;
+			m_silence_channel->enable(true);
 			return int(i);
 		}
 	}
@@ -553,6 +564,11 @@ void Mixer::unregister_sink(int _id)
 	if(_id>=0 && _id<int(m_sinks.size())) {
 		m_sinks[_id] = nullptr;
 	}
+	bool empty = false;
+	for(auto sink : m_sinks) {
+		empty |= (sink==nullptr);
+	}
+	m_silence_channel->enable(!empty);
 }
 
 void Mixer::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
@@ -572,6 +588,44 @@ int Mixer::get_buffer_len() const
 	double frames_in_buffer = bytes / m_frame_size;
 	int time_left = frames_in_buffer * usec_per_frame;
 	return time_left;
+}
+
+bool Mixer::create_silence_samples(uint64_t _time_span_us, bool _prebuf, bool _firstupd)
+{
+	// this channel will render silence basing its timing on the machine.
+	// it's active when there are sinks registered, so that they can record
+	// audio cards output with a constant passage of time.
+	
+	UNUSED(_prebuf);
+	
+	static uint64_t prev_mtime_us = 0;
+	static double gen_frames_rem = .0;
+	
+	uint64_t cur_mtime_us = g_machine.get_virt_time_us_mt();
+	uint64_t elapsed_us = 0;
+	
+	if(_firstupd) {
+		elapsed_us = _time_span_us;
+	} else {
+		assert(cur_mtime_us >= prev_mtime_us);
+		elapsed_us = cur_mtime_us - prev_mtime_us;
+	}
+	prev_mtime_us = cur_mtime_us;
+	
+	double elapsed_frames = m_silence_channel->in_spec().us_to_frames(elapsed_us);
+	elapsed_frames += gen_frames_rem;
+	
+	unsigned needed_frames = round(m_silence_channel->in_spec().us_to_frames(_time_span_us));
+	unsigned gen_frames = elapsed_frames;
+	gen_frames_rem = elapsed_frames - double(gen_frames);
+	
+	m_silence_channel->in().fill_frames_silence(gen_frames);
+	m_silence_channel->input_finish();
+	
+	PDEBUGF(LOG_V2, LOG_MIXER, "Silence: mix time: %04d us, frames: %d, machine time: %d us, created frames: %d\n",
+			_time_span_us, needed_frames, elapsed_us, gen_frames);
+
+	return true;
 }
 
 template <int Channels>
