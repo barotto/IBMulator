@@ -49,6 +49,16 @@ class FrameBuffer
 	
 public:
 	FrameBuffer();
+	FrameBuffer(const FrameBuffer &_fb) :
+		m_buffer(_fb.m_buffer),
+		m_width(_fb.m_width),
+		m_height(_fb.m_height),
+		m_bypp(_fb.m_bypp) {}
+	FrameBuffer(FrameBuffer &&_fb) :
+		m_buffer(std::move(_fb.m_buffer)),
+		m_width(_fb.m_width),
+		m_height(_fb.m_height),
+		m_bypp(_fb.m_bypp) {}
 	~FrameBuffer();
 	
 	inline uint16_t width() const { return m_width; }
@@ -61,7 +71,28 @@ public:
 	void copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const;
 	
 	inline uint32_t & operator[](size_t _pos) { return m_buffer[_pos]; }
+	
+	FrameBuffer & operator=(const FrameBuffer &_fb) {
+		m_buffer = _fb.m_buffer;
+		m_width = _fb.m_width;
+		m_height = _fb.m_height;
+		m_bypp = _fb.m_bypp;
+		return *this;
+	}
+	FrameBuffer & operator=(FrameBuffer &&_fb) {
+		m_buffer = std::move(_fb.m_buffer);
+		m_width = _fb.m_width;
+		m_height = _fb.m_height;
+		m_bypp = _fb.m_bypp;
+		return *this;
+	}
 };
+
+typedef std::function<void(
+	const FrameBuffer &_buffer,
+	const VideoModeInfo &_mode,
+	const VideoTimings &_timings
+)> VideoSinkHandler;
 
 class VGADisplay
 {
@@ -88,6 +119,8 @@ class VGADisplay
 	std::mutex m_mutex;
 	std::condition_variable m_cv;
 
+	std::array<VideoSinkHandler,2> m_sinks;
+	
 	// internal double buffering
 	bool m_buffering; 
 	FrameBuffer m_last_fb; // the last complete framebuffer content
@@ -105,6 +138,9 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	int register_sink(VideoSinkHandler _sink);
+	void unregister_sink(int _id);
+	
 	inline void lock() { m_mutex.lock(); }
 	inline void unlock() { m_mutex.unlock(); }
 	inline std::cv_status wait_for_device(unsigned _max_wait_ns) {
@@ -112,11 +148,11 @@ public:
 		return m_cv.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
 	}
 	void notify_interface();
+	inline const FrameBuffer & framebuffer() const { return m_fb; }
 	inline const VideoModeInfo & mode() const { return m_s.mode; }
+	inline const FrameBuffer & last_framebuffer() const { return m_last_fb; }
 	inline const VideoModeInfo & last_mode() const { return m_last_mode; }
 	inline const VideoTimings & last_timings() const { return m_last_timings; }
-	inline const FrameBuffer & framebuffer() const { return m_fb; }
-	inline const FrameBuffer & last_framebuffer() const { return m_last_fb; }
 
 	void set_mode(const VideoModeInfo &_mode);
 	void set_timings(const VideoTimings &_timings);

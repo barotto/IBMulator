@@ -24,6 +24,7 @@
 #include "shared_queue.h"
 #include "pacer.h"
 #include "capture_target.h"
+#include "videoframe.h"
 
 typedef std::function<void()> Capture_fun_t;
 
@@ -48,11 +49,14 @@ private:
 	std::unique_ptr<CaptureTarget> m_rec_target;
 	shared_queue<Capture_fun_t> m_cmd_queue;
 	VGADisplay *m_vga_display;
-	std::shared_ptr<MixerChannel> m_silence_channel;
+	int m_video_sink;
+	shared_queue<VideoFrame> m_frames;
 	
 	void main_loop();
 	void capture_loop();
-	bool create_silence_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	void video_sink(const FrameBuffer &_buffer, const VideoModeInfo &_mode,
+		const VideoTimings &_timings);
+	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	
 public:
 	Capture(VGADisplay *_vgadisp);

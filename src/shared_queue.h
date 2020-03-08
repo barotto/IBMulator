@@ -1,3 +1,22 @@
+/*
+ * Copyright (C) 2015-2020  Marco Bortolin
+ *
+ * This file is part of IBMulator.
+ *
+ * IBMulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * IBMulator is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 /** ==========================================================================
 * 2010 by KjellKod.cc. This is PUBLIC DOMAIN to use at your own risk and comes
 * with no warranties. This code is yours to share, use and modify with no
@@ -36,11 +55,11 @@ public:
 
 	shared_queue() {}
 
-	void push(T item)
+	void push(T&& item)
 	{
 		{
 			std::lock_guard<std::mutex> lock(m_);
-			queue_.push(item);
+			queue_.push(std::forward<T>(item));
 		}
 		data_cond_.notify_one();
 	}
@@ -92,6 +111,23 @@ public:
 		queue_.pop();
 	}
 
+	// Try to retrieve, if no items wait till an item is available or the timeout
+	// has expired. if return value is  std::cv_status::timeout then no value was popped. 
+	std::cv_status wait_for_and_pop(T& popped_item, unsigned _max_wait_ns)
+	{
+		std::unique_lock<std::mutex> lock(m_);
+		std::cv_status event = std::cv_status::no_timeout;
+		while(queue_.empty()) {
+			event = data_cond_.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
+			if(event == std::cv_status::timeout) {
+				return event;
+			}
+		}
+		popped_item = std::move(queue_.front());
+		queue_.pop();
+		return event;
+	}
+	
 	bool empty() const
 	{
 		std::lock_guard<std::mutex> lock(m_);

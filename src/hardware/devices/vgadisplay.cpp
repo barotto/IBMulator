@@ -172,22 +172,55 @@ void VGADisplay::restore_state(StateBuf &_state)
 // waiting threads.
 void VGADisplay::notify_interface()
 {
+	lock();
+	
 	// if double buffering is enabled do a full copy
 	if(GUI::instance()->vga_buffering_enabled() || m_buffering) {
 		// we must lock the display because another thread could be reading
 		// the internal buffer
-		lock();
 		m_last_fb = m_fb;
 		if(!(m_s.mode == m_last_mode)) {
 			set_dimension_updated();
 		}
 		m_last_mode = m_s.mode;
 		m_last_timings = m_s.timings;
-		unlock();
+		
 	}
 	
-	// if other threads are waiting for the frame buffer to be updated notify them
+	for(auto sink : m_sinks) {
+		if(sink != nullptr) {
+			try {
+				sink(m_fb, m_s.mode, m_s.timings);
+			} catch(...) {}
+		}
+	}
+	
+	unlock();
+	
+	// notify any thread that are waiting on our condition variable
 	m_cv.notify_all();
+}
+
+int VGADisplay::register_sink(VideoSinkHandler _sink)
+{
+	// called by multiple threads, needs to be locked
+	std::lock_guard<std::mutex> lock(m_mutex);
+	for(size_t i=0; i<m_sinks.size(); i++) {
+		if(m_sinks[i] == nullptr) {
+			m_sinks[i] = _sink;
+			return int(i);
+		}
+	}
+	throw std::exception();
+}
+
+void VGADisplay::unregister_sink(int _id)
+{
+	// called by multiple threads, needs to be locked
+	std::lock_guard<std::mutex> lock(m_mutex);
+	if(_id>=0 && _id<int(m_sinks.size())) {
+		m_sinks[_id] = nullptr;
+	}
 }
 
 // clear_screen()

@@ -28,7 +28,8 @@ Capture::Capture(VGADisplay *_vgadisp)
 :
 m_quit(false),
 m_recording(false),
-m_vga_display(_vgadisp)
+m_vga_display(_vgadisp),
+m_video_sink(-1)
 {
 }
 
@@ -39,11 +40,6 @@ Capture::~Capture()
 void Capture::init()
 {
 	m_pacer.start();
-	
-	using namespace std::placeholders;
-	m_silence_channel = g_mixer.register_channel(
-		std::bind(&Capture::create_silence_samples, this, _1, _2, _3),
-		"Capture silence");
 }
 
 void Capture::calibrate(const Pacer &_p)
@@ -84,13 +80,10 @@ void Capture::capture_loop()
 		}
 		if(g_machine.is_on() && !g_machine.is_paused()) {
 			try {
-				auto result = m_vga_display->wait_for_device(g_program.heartbeat() * 2);
+				VideoFrame frame;
+				auto result = m_frames.wait_for_and_pop(frame, g_program.heartbeat() * 2);
 				if(result == std::cv_status::no_timeout) {
-					m_vga_display->lock();
-					VideoModeInfo mode = m_vga_display->last_mode();
-					FrameBuffer fb = m_vga_display->last_framebuffer();
-					m_vga_display->unlock();
-					m_rec_target->push_video_frame(fb, mode);
+					m_rec_target->push_video_frame(frame.buffer, frame.mode);
 				}
 			} catch(std::exception &) {
 				stop_capture();
@@ -161,6 +154,20 @@ void Capture::sig_config_changed(std::mutex &_mutex, std::condition_variable &_c
 	});
 }
 
+void Capture::video_sink(const FrameBuffer &_buffer, const VideoModeInfo &_mode,
+	const VideoTimings &_timings)
+{
+	// called by the Machine thread
+	m_frames.push(VideoFrame(_buffer, _mode, _timings));
+}
+
+void Capture::audio_sink(const std::vector<int16_t> &_data, int _category)
+{
+	// TODO
+	UNUSED(_data);
+	UNUSED(_category);
+}
+
 void Capture::start_capture()
 {
 	assert(!m_recording);
@@ -203,7 +210,16 @@ void Capture::start_capture()
 	std::string dest = m_rec_target->open(destdir); // can throw
 	
 	m_vga_display->enable_buffering(true);
-	//m_silence_channel->enable(true);
+	
+	try {
+		m_video_sink = m_vga_display->register_sink(
+			std::bind(&Capture::video_sink, this, 
+				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+		);
+	} catch(std::exception &) {
+		m_rec_target->close();
+		throw;
+	}
 	
 	m_recording = true;
 	
@@ -219,16 +235,14 @@ void Capture::stop_capture()
 	assert(m_recording);
 	
 	m_rec_target->close();
-	m_silence_channel->enable(false);
+	m_rec_target.reset(nullptr);
+	m_vga_display->unregister_sink(m_video_sink);
+	m_video_sink = -1;
+	m_frames.clear();
+	
 	m_recording = false;
 	
 	std::string mex = "Video recording stopped";
 	PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
 	GUI::instance()->show_message(mex.c_str());
-}
-
-// this function is called by the Mixer thread
-bool Capture::create_silence_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd)
-{
-	return false;
 }
