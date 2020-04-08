@@ -96,7 +96,10 @@ public:
 	inline bool is_open_read() const { return is_open() && !m_write_mode; }
 	inline bool is_open_write() const { return is_open() && m_write_mode; }
 	
+	uint32_t file_size() const ;
+	
 	void close();
+	void close_file() noexcept;
 	
 protected:
 
@@ -104,6 +107,8 @@ protected:
 		HEADER,
 		DATA
 	};
+	
+	void reset();
 	
 	void read(void *_buffer, uint32_t _size);
 	void write(const void *_data, uint32_t _len);
@@ -114,18 +119,20 @@ protected:
 	void read_skip_chunk() const;
 	RIFFChunkHeader read_find_chunk(uint32_t _code);
 	
-	void write_list_start(uint32_t _code);
+	long int write_list_start(uint32_t _code);
 	void write_list_end();
-	void write_chunk(uint32_t _code, const void *_data, uint32_t _len);
-	void write_chunk_start(uint32_t _code);
+	long int write_chunk(uint32_t _code, const void *_data, uint32_t _len);
+	long int write_chunk_start(uint32_t _code);
 	void write_chunk_data(const void *_data, uint32_t _len);
-	void write_chunk_end();
-	void write_end();
-	
-	void close_file() noexcept;
+	uint32_t write_chunk_end();
+	void write_update(long int _pos, const void *_data, uint32_t _len);
+	virtual void write_end();
+
+	long int get_cur_pos() const;
+	long int get_cur_size() const;
+	void set_cur_pos(long int _pos);
 
 private:
-	long int get_cur_pos() const;
 	long int get_ckdata_size(const RIFFChunkHeader&, long int _pos = -1) const;
 	bool is_offset_overflow(long int _pos, uint64_t _size) const;
 };

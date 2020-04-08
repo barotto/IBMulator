@@ -24,7 +24,7 @@
 #include <SDL_image.h>
 
 
-CaptureImgSeq::CaptureImgSeq(CaptureFormat _format, int _quality)
+CaptureImgSeq::CaptureImgSeq(CaptureMode _format, int _quality)
 :
 CaptureTarget(),
 m_format(_format),
@@ -38,7 +38,7 @@ m_framecnt(0)
 
 CaptureImgSeq::~CaptureImgSeq()
 {
-	close();
+	free_surface();
 }
 
 std::string CaptureImgSeq::open(std::string _dir_path)
@@ -67,6 +67,8 @@ std::string CaptureImgSeq::open(std::string _dir_path)
 
 void CaptureImgSeq::close()
 {
+	PINFOF(LOG_V1, LOG_GUI, "Recorded %d frames\n", m_framecnt);
+
 	m_dir = "";
 	m_framecnt = 0;
 	free_surface();
@@ -80,19 +82,19 @@ void CaptureImgSeq::free_surface()
 	}
 }
 
-void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo &_mode)
+void CaptureImgSeq::push_video_frame(const VideoFrame &_vf)
 {
 	if(m_dir == "") {
 		PDEBUGF(LOG_V0, LOG_GUI, "Capture: this target is not open!\n");
 		throw std::exception();
 	}
 	
-	if(!(_mode == m_cur_mode) || !m_surface) {
+	if(!(_vf.mode == m_cur_mode) || !m_surface) {
 		free_surface();
 		m_surface = SDL_CreateRGBSurface(
 			0,
-			_mode.xres,
-			_mode.yres,
+			_vf.mode.xres,
+			_vf.mode.yres,
 			32,
 			PALETTE_RMASK,
 			PALETTE_GMASK,
@@ -103,11 +105,11 @@ void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo
 			PERRF(LOG_GUI, "Capture: error creating screen recording surface\n");
 			throw std::exception();
 		}
-		m_cur_mode = _mode;
+		m_cur_mode = _vf.mode;
 	}
 	
 	SDL_LockSurface(m_surface);
-	_fb.copy_screen_to((uint8_t*)m_surface->pixels, _mode);
+	_vf.buffer.copy_screen_to((uint8_t*)m_surface->pixels, _vf.mode);
 	SDL_UnlockSurface(m_surface);
 
 	std::stringstream imgfile;
@@ -118,11 +120,11 @@ void CaptureImgSeq::push_video_frame(const FrameBuffer &_fb, const VideoModeInfo
 	
 	int result = 0;
 	switch(m_format) {
-		case CaptureFormat::PNG:
+		case CaptureMode::PNG:
 			imgfile << ".png";
 			result = IMG_SavePNG(m_surface, imgfile.str().c_str());
 			break;
-		case CaptureFormat::JPG:
+		case CaptureMode::JPG:
 			imgfile << ".jpg";
 			result = IMG_SaveJPG(m_surface, imgfile.str().c_str(), m_quality);
 			break;

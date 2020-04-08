@@ -28,16 +28,12 @@
 
 typedef std::function<void()> Capture_fun_t;
 
+// enum classes are a PITA...
 enum class CaptureMode {
-	NONE,
-	IMGSEQ,
-	VIDEOFILE
-};
-enum class CaptureFormat {
 	NONE,
 	PNG,
 	JPG,
-	ZMBV
+	AVI
 };
 
 class Capture
@@ -50,7 +46,10 @@ private:
 	shared_queue<Capture_fun_t> m_cmd_queue;
 	VGADisplay *m_vga_display;
 	int m_video_sink;
-	shared_queue<VideoFrame> m_frames;
+	shared_queue<VideoFrame> m_video_frames;
+	Mixer *m_mixer;
+	int m_audio_sink;
+	RingBuffer m_audio_buffer;
 	
 	void main_loop();
 	void capture_loop();
@@ -59,7 +58,7 @@ private:
 	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	
 public:
-	Capture(VGADisplay *_vgadisp);
+	Capture(VGADisplay *_vgadisp, Mixer *_mixer);
 	~Capture();
 
 	void init();

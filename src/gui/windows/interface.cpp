@@ -102,7 +102,6 @@ InterfaceScreen::InterfaceScreen(GUI *_gui)
 	}
 	
 	vga.mvmat.load_identity();
-	vga.res = 0;
 	vga.size = 0;
 	vga.brightness = 1.f;
 	vga.contrast = 1.f;

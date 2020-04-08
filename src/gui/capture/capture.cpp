@@ -22,14 +22,17 @@
 #include "filesys.h"
 #include "capture.h"
 #include "capture_imgseq.h"
+#include "capture_videofile.h"
 #include "gui/gui.h"
 
-Capture::Capture(VGADisplay *_vgadisp)
+Capture::Capture(VGADisplay *_vgadisp, Mixer *_mixer)
 :
 m_quit(false),
 m_recording(false),
 m_vga_display(_vgadisp),
-m_video_sink(-1)
+m_video_sink(-1),
+m_mixer(_mixer),
+m_audio_sink(-1)
 {
 }
 
@@ -81,9 +84,19 @@ void Capture::capture_loop()
 		if(g_machine.is_on() && !g_machine.is_paused()) {
 			try {
 				VideoFrame frame;
-				auto result = m_frames.wait_for_and_pop(frame, g_program.heartbeat() * 2);
+				auto result = m_video_frames.wait_for_and_pop(frame, g_program.heartbeat() * 2);
 				if(result == std::cv_status::no_timeout) {
-					m_rec_target->push_video_frame(frame.buffer, frame.mode);
+					m_rec_target->push_video_frame(frame);
+					
+					size_t avail = m_audio_buffer.get_read_avail();
+					if(avail) {
+						std::vector<uint8_t> audio_stream;
+						audio_stream.resize(avail);
+						size_t bytes = m_audio_buffer.read(&audio_stream[0], avail);
+						assert(bytes <= avail);
+						assert((bytes&1) == 0);
+						m_rec_target->push_audio_data((int16_t*)(&audio_stream[0]), bytes/2);
+					}
 				}
 			} catch(std::exception &) {
 				stop_capture();
@@ -158,14 +171,19 @@ void Capture::video_sink(const FrameBuffer &_buffer, const VideoModeInfo &_mode,
 	const VideoTimings &_timings)
 {
 	// called by the Machine thread
-	m_frames.push(VideoFrame(_buffer, _mode, _timings));
+	m_video_frames.push(VideoFrame(_buffer, _mode, _timings));
 }
 
 void Capture::audio_sink(const std::vector<int16_t> &_data, int _category)
 {
-	// TODO
-	UNUSED(_data);
-	UNUSED(_category);
+	// called bu the Mixer thread
+	if(_category == ec_to_i(MixerChannelCategory::AUDIO)) {
+		size_t data_len = _data.size() * 2;
+		size_t written = m_audio_buffer.write((uint8_t*)(&_data[0]), data_len);
+		if(written < data_len) {
+			PDEBUGF(LOG_V0, LOG_GUI, "Capture: audio buffer overrun: lost data: %d bytes\n", data_len-written);
+		}
+	}
 }
 
 void Capture::start_capture()
@@ -184,22 +202,54 @@ void Capture::start_capture()
 		throw std::exception();
 	}
 	
-	static std::map<std::string, unsigned> formats = {
-		{ "",    ec_to_i(CaptureFormat::PNG) },
-		{ "png", ec_to_i(CaptureFormat::PNG) },
-		{ "jpg", ec_to_i(CaptureFormat::JPG) }
+	// enum classes are a PITA!
+	static std::map<std::string, unsigned> modes = {
+		{ "",    ec_to_i(CaptureMode::AVI) },
+		{ "png", ec_to_i(CaptureMode::PNG) },
+		{ "jpg", ec_to_i(CaptureMode::JPG) },
+		{ "avi", ec_to_i(CaptureMode::AVI) },
 	};
-	CaptureFormat format = static_cast<CaptureFormat>(
-		g_program.config().get_enum(CAPTURE_SECTION, CAPTURE_VIDEO_FORMAT, formats, ec_to_i(CaptureFormat::PNG))
+	CaptureMode mode = static_cast<CaptureMode>(
+		g_program.config().get_enum(CAPTURE_SECTION, CAPTURE_VIDEO_MODE, modes, ec_to_i(CaptureMode::AVI))
 	);
-	int quality = g_program.config().get_int(CAPTURE_SECTION, CAPTURE_VIDEO_QUALITY, 80);
-	quality = clamp(quality, 1, 100);
 	
-	switch(format) {
-		case CaptureFormat::PNG:
-		case CaptureFormat::JPG:
+	int video_quality = g_program.config().get_int(CAPTURE_SECTION, CAPTURE_VIDEO_QUALITY, 80);
+	video_quality = clamp(video_quality, 1, 100);
+	
+	switch(mode) {
+		case CaptureMode::PNG:
+		case CaptureMode::JPG:
 		{
-			m_rec_target = std::make_unique<CaptureImgSeq>(format, quality);
+			m_rec_target = std::make_unique<CaptureImgSeq>(mode, video_quality);
+			break;
+		}
+		case CaptureMode::AVI:
+		{
+			static std::map<std::string, unsigned> encoders = {
+				{ "",     AVI_VIDEO_ZMBV },
+				{ "zmbv", AVI_VIDEO_ZMBV },
+				{ "mpng", AVI_VIDEO_MPNG },
+				{ "bmp",  AVI_VIDEO_BMP  }
+			};
+			unsigned video_encoder =
+				g_program.config().get_enum(CAPTURE_SECTION, CAPTURE_VIDEO_FORMAT, encoders, AVI_VIDEO_ZMBV);
+			
+			SDL_AudioSpec spec = m_mixer->get_audio_spec();
+			if(SDL_AUDIO_BITSIZE(spec.format) != 16) {
+				PERRF(LOG_GUI, "Unsupported audio bit depth\n");
+				throw std::exception();
+			}
+			
+			m_rec_target = std::make_unique<CaptureVideoFile>(
+					video_encoder,
+					video_quality,
+					AVI_AUDIO_PCM,
+					0,
+					spec.channels,
+					spec.freq
+			);
+			
+			m_audio_buffer.set_size(spec.freq * spec.channels * 2);
 			break;
 		}
 		default:
@@ -216,6 +266,14 @@ void Capture::start_capture()
 			std::bind(&Capture::video_sink, this, 
 				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 		);
+
+		if(m_rec_target->has_audio()) {
+			m_audio_sink = m_mixer->register_sink(
+				std::bind(&Capture::audio_sink, this, 
+					std::placeholders::_1, std::placeholders::_2)
+			);
+		}
+		
 	} catch(std::exception &) {
 		m_rec_target->close();
 		throw;
@@ -223,10 +281,11 @@ void Capture::start_capture()
 	
 	m_recording = true;
 	
-	std::string mex = "Started video recording in " + dest;
+	std::string mex = "Started video recording to " + dest;
 	PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
 	GUI::instance()->show_message(mex.c_str());
 	
+	// can throw, caller should catch
 	capture_loop();
 }
 
@@ -236,9 +295,14 @@ void Capture::stop_capture()
 	
 	m_rec_target->close();
 	m_rec_target.reset(nullptr);
+	
 	m_vga_display->unregister_sink(m_video_sink);
 	m_video_sink = -1;
-	m_frames.clear();
+	m_video_frames.clear();
+	
+	m_mixer->unregister_sink(m_audio_sink);
+	m_audio_sink = -1;
+	m_audio_buffer.clear();
 	
 	m_recording = false;
 	

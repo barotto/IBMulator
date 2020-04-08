@@ -100,6 +100,7 @@ AX_CHECK_GLEW
 AX_CHECK_LIBROCKET
 AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
+AX_CHECK_ZLIB
 
 BASELIBS="-L. $GLEW_LIBS $OPENGL_LIBS"
 SDL_LIBSs=$SDL_LIBS
@@ -109,7 +110,7 @@ if test x$static_sdl = xno ; then
 	SDL_LIBSs=""
 fi
 
-BASELIBS="$BASELIBS $static $SDL_LIBSs $SDLIMAGE_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS"
+BASELIBS="$BASELIBS $static $SDL_LIBSs $SDLIMAGE_LIBS $LIBROCKET_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS $ZLIB_LIBS"
 
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
@@ -118,7 +119,7 @@ else
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS"
+BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -175,18 +176,24 @@ if test "x$static" != "x"; then
 else
 	echo "- link type    : Dynamic"
 fi
+echo "- OpenGL       : Yes ($OPENGL_LIBS $GLEW_LIBS)"
 echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
-echo "- SDL_image    : $SDLIMAGE_LIBS"
-echo "- libRocket    : $LIBROCKET_LIBS"
+echo "- SDL_image    : Yes ($SDLIMAGE_LIBS)"
+echo "- libRocket    : Yes ($LIBROCKET_LIBS)"
 if test "x$LIBARCHIVE_LIBS" = "x"; then
 	echo "- libarchive   : NO (zipped ROM sets loading disabled)"
 else
-	echo "- libarchive   : $LIBARCHIVE_LIBS"
+	echo "- libarchive   : Yes ($LIBARCHIVE_LIBS)"
 fi
 if test "x$LIBSAMPLERATE_LIBS" = "x"; then
 	echo "- libsamplerate: NO (samples playback disabled)"
 else
-	echo "- libsamplerate: $LIBSAMPLERATE_LIBS"
+	echo "- libsamplerate: Yes ($LIBSAMPLERATE_LIBS)"
 fi
-echo "- OpenGL       : $OPENGL_LIBS $GLEW_LIBS"
+if test "x$ZLIB_LIBS" = "x"; then
+	echo "- zlib         : NO (ZMBV video capture format disabled)"
+else
+	echo "- zlib         : Yes ($ZLIB_LIBS)"
+fi
+
 echo "- prefix       : ${prefix}"

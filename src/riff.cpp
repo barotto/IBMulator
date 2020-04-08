@@ -25,13 +25,9 @@
 
 RIFFFile::RIFFFile()
 :
-m_file(nullptr),
-m_write_mode(false),
-m_write_size(0),
-m_chunk_rpos(0),
-m_chunk_wstart(false),
-m_chunk_wpos(0)
+m_file(nullptr)
 {
+	reset();
 	size_check<RIFFHeader,12>();
 	size_check<RIFFChunkHeader,8>();
 }
@@ -41,6 +37,16 @@ RIFFFile::~RIFFFile()
 	if(is_open()) {
 		close_file();
 	}
+}
+
+void RIFFFile::reset()
+{
+	m_lists_w = std::stack<long int>();
+	m_write_mode = false;
+	m_write_size = 0;
+	m_chunk_rpos = 0;
+	m_chunk_wstart = false;
+	m_chunk_wpos = 0;
 }
 
 RIFFHeader RIFFFile::open_read(const char *_filepath)
@@ -80,8 +86,16 @@ void RIFFFile::open_write(const char *_filepath, uint32_t _file_type)
 	}
 	
 	m_write_mode = true;
-	// fileSize includes the size of the fileType plus the size of the data that follows
-	m_write_size = sizeof(RIFFHeader::fileType);
+	m_write_size = sizeof(RIFFHeader);
+}
+
+uint32_t RIFFFile::file_size() const
+{
+	if(m_write_mode) {
+		return m_write_size;
+	} else {
+		return m_header.fileSize + 8;
+	}
 }
 
 void RIFFFile::close()
@@ -91,6 +105,15 @@ void RIFFFile::close()
 		write_end();
 	}
 	close_file();
+}
+
+void RIFFFile::close_file() noexcept
+{
+	if(is_open()) {
+		reset();
+		fclose(m_file);
+	}
+	m_file = nullptr;
 }
 
 void RIFFFile::read(void *_buffer, uint32_t _size)
@@ -213,7 +236,7 @@ RIFFChunkHeader RIFFFile::read_find_chunk(uint32_t _code)
 	return header;
 }
 
-void RIFFFile::write_list_start(uint32_t _code)
+long int RIFFFile::write_list_start(uint32_t _code)
 {
 	assert(is_open_write());
 
@@ -234,6 +257,9 @@ void RIFFFile::write_list_start(uint32_t _code)
 	
 	m_lists_w.push(curpos);
 	m_write_size += sizeof(RIFFListHeader);
+	
+	// return the lists's data position
+	return get_cur_pos();
 }
 
 void RIFFFile::write_list_end()
@@ -266,14 +292,15 @@ void RIFFFile::write_list_end()
 	fseek(m_file, curpos, SEEK_SET);
 }
 
-void RIFFFile::write_chunk(uint32_t _code, const void *_data, uint32_t _len)
+long int RIFFFile::write_chunk(uint32_t _code, const void *_data, uint32_t _len)
 {
-	write_chunk_start(_code);
+	long int data_pos = write_chunk_start(_code);
 	write_chunk_data(_data, _len);
 	write_chunk_end();
+	return data_pos;
 }
 
-void RIFFFile::write_chunk_start(uint32_t _code)
+long int RIFFFile::write_chunk_start(uint32_t _code)
 {
 	assert(is_open_write());
 
@@ -295,6 +322,9 @@ void RIFFFile::write_chunk_start(uint32_t _code)
 	
 	m_write_size += sizeof(RIFFChunkHeader);
 	m_chunk_wstart = true;
+	
+	// return the chunk's data position so that it can easily be updated
+	return get_cur_pos();
 }
 
 void RIFFFile::write_chunk_data(const void *_data, uint32_t _len)
@@ -302,7 +332,9 @@ void RIFFFile::write_chunk_data(const void *_data, uint32_t _len)
 	assert(is_open_write());
 	assert(m_chunk_wstart);
 	
-	if(m_chunk_whead.chunkSize > (UINT32_MAX - _len) || m_write_size > (RIFF_MAX_FILESIZE - _len)) {
+	if((sizeof(RIFFChunkHeader) + m_chunk_whead.chunkSize) > (UINT32_MAX - _len)
+		|| m_write_size > (RIFF_MAX_FILESIZE - _len))
+	{
 		throw std::runtime_error("file is too big");
 	}
 	
@@ -314,7 +346,7 @@ void RIFFFile::write_chunk_data(const void *_data, uint32_t _len)
 	m_chunk_whead.chunkSize += _len;
 }
 
-void RIFFFile::write_chunk_end()
+uint32_t RIFFFile::write_chunk_end()
 {
 	assert(is_open_write());
 	assert(m_chunk_wstart);
@@ -349,6 +381,31 @@ void RIFFFile::write_chunk_end()
 	}
 	
 	m_chunk_wstart = false;
+	
+	// return the total chunk size: header + data + pad
+	return sizeof(RIFFChunkHeader) + m_chunk_whead.chunkSize + (m_chunk_whead.chunkSize & 1);
+}
+
+void RIFFFile::write_update(long int _pos, const void *_data, uint32_t _len)
+{
+	long int cur_size = get_cur_size();
+	long int last_pos = get_cur_pos();
+	
+	assert(_pos + _len <= cur_size);
+	
+	if(fseek(m_file, _pos, SEEK_SET) != 0) {
+		throw std::runtime_error("unable to find chunk data");
+	}
+	
+	if(fwrite(_data, _len, 1, m_file) != 1) {
+		throw std::runtime_error("unable to write data");
+	}
+	
+	assert(get_cur_pos() <= cur_size);
+	
+	if(fseek(m_file, last_pos, SEEK_SET) != 0) {
+		throw std::runtime_error("unable to complete write_update");
+	}
 }
 
 void RIFFFile::write_end()
@@ -367,8 +424,9 @@ void RIFFFile::write_end()
 	}
 	
 	fseek(m_file, RIFF_HEADER_FILESIZE_POS, SEEK_SET);
-	uint32_t filesize32 = m_write_size;
-	if(fwrite(&filesize32, 4, 1, m_file) != 1) {
+	// fileSize includes the size of RIFFHeader::fileType plus the size of the data that follows
+	m_header.fileSize = m_write_size - 8;
+	if(fwrite(&m_header.fileSize, 4, 1, m_file) != 1) {
 		throw std::runtime_error("unable to update file header");
 	}
 	
@@ -376,21 +434,42 @@ void RIFFFile::write_end()
 	m_write_mode = false;
 }
 
-void RIFFFile::close_file() noexcept
-{
-	assert(is_open());
-
-	fclose(m_file);
-	m_file = nullptr;
-}
-
 long int RIFFFile::get_cur_pos() const
 {
+	assert(is_open());
+	
 	long int pos = ftell(m_file);
 	if(pos == -1) {
 		throw std::runtime_error("file too big");
 	}
 	return pos;
+}
+
+long int RIFFFile::get_cur_size() const
+{
+	assert(is_open());
+	
+	long int lastpos = get_cur_pos();
+	
+	if(fseek(m_file, 0, SEEK_END) < 0) {
+		throw std::runtime_error("cannot get file size");
+	}
+	
+	long int size = get_cur_pos();
+	
+	if(fseek(m_file, lastpos, SEEK_SET) < 0) {
+		throw std::runtime_error("cannot get file size");
+	}
+	
+	return size;
+}
+
+
+void RIFFFile::set_cur_pos(long int _pos)
+{
+	if(fseek(m_file, _pos, SEEK_SET) < 0) {
+		throw std::runtime_error("cannot set file position");
+	}
 }
 
 long int RIFFFile::get_ckdata_size(const RIFFChunkHeader &_hdr, long int _data_pos) const

@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_CAPTURE_TARGET_H
 #define IBMULATOR_CAPTURE_TARGET_H
 
-#include "hardware/devices/vga.h"
+#include "videoframe.h"
 
 class CaptureTarget
 {
@@ -30,10 +30,11 @@ public:
 	virtual ~CaptureTarget() {}
 	
 	virtual std::string open(std::string _dir_path) = 0;
-	virtual void close() {}
+	virtual void close() = 0;
+	virtual bool has_audio() const = 0;
 	
-	virtual void push_video_frame(const FrameBuffer &, const VideoModeInfo &) {}
-	virtual void push_audio_frame(uint8_t *) {}
+	virtual void push_video_frame(const VideoFrame &) {}
+	virtual void push_audio_data(const int16_t *, uint32_t) {}
 };
 
 #endif

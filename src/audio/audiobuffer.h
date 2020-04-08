@@ -57,6 +57,8 @@ public:
 	void resize_frames_silence(unsigned _num_frames);
 	void clear();
 	void reserve_us(uint64_t _us);
+	void reserve_frames(unsigned _frames);
+	void reserve_bytes(uint64_t _bytes);
 	template<typename T> void add_samples(const std::vector<T> &_data);
 	template<typename T> void add_samples(const std::vector<T> &_data, unsigned _count);
 	void add_frames(const AudioBuffer &_source);

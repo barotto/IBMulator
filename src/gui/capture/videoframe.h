@@ -20,6 +20,8 @@
 #ifndef IBMULATOR_VIDEOFRAME_H
 #define IBMULATOR_VIDEOFRAME_H
 
+#include "hardware/devices/vga.h"
+
 struct VideoFrame
 {
 	FrameBuffer buffer;

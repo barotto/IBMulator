@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -104,6 +104,7 @@ struct VideoTimings
 	uint16_t hrstart, hrend; // char of h retrace start,end
 	uint16_t cwidth;         // character width in pixels
 	uint16_t last_vis_sl;    // the last visible scan line (0-based!)
+	double   clock;          // pixel clock
 	double   hfreq;          // h frequency (kHz)
 	double   vfreq;          // v frequency (Hz)
 };

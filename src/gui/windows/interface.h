@@ -62,7 +62,6 @@ public:
 	struct {
 		VGADisplay display; // GUI-Machine interface
 		
-		vec2i res;          // last vga resolution
 		vec2i size;         // size in pixels of the vga image inside the interface
 		mat4f mvmat;        // position of the vga image inside the interface
 		

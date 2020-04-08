@@ -17,32 +17,39 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_CAPTURE_IMGSEQ_H
-#define IBMULATOR_CAPTURE_IMGSEQ_H
+#ifndef IBMULATOR_CAPTURE_VIDEOFILE_H
+#define IBMULATOR_CAPTURE_VIDEOFILE_H
 
+#include "avi.h"
 #include "capture_target.h"
-#include <SDL.h>
 
-class CaptureImgSeq : public CaptureTarget
+class CaptureVideoFile : public CaptureTarget
 {
-	CaptureMode m_format;
-	int m_quality;
-	std::string m_dir;
-	SDL_Surface *m_surface;
+	std::string m_file_path;
+	std::string m_dir_path;
+	AVIWriteOptions m_avi_options;
+	AVIFile m_avi;
 	VideoModeInfo m_cur_mode;
-	int m_framecnt;
-	
-	void free_surface();
+	VideoTimings m_cur_timings;
 	
 public:
-	CaptureImgSeq(CaptureMode _format, int _quality);
-	virtual ~CaptureImgSeq();
+
+	CaptureVideoFile(
+		unsigned _video_encoder, unsigned _video_quality,
+		unsigned _audio_encoder, unsigned _audio_quality,
+		unsigned _audio_ch, unsigned _audio_freq);
+	virtual ~CaptureVideoFile();
 	
 	virtual std::string open(std::string _dir_path);
 	virtual void close();
-	virtual bool has_audio() const { return false; }
+	virtual bool has_audio() const { return true; }
 	
-	virtual void push_video_frame(const VideoFrame &_vf);
+	void push_video_frame(const VideoFrame &_vf);
+	void push_audio_data(const int16_t *_samples, uint32_t _count);
+	
+private:
+
+	void open_AVI(const VideoFrame &_vf);
 };
 
 #endif

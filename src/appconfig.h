@@ -144,6 +144,7 @@ public:
 
 #define CAPTURE_SECTION         "capture"
 #define CAPTURE_DIR             "directory"
+#define CAPTURE_VIDEO_MODE      "video_mode"
 #define CAPTURE_VIDEO_FORMAT    "video_format"
 #define CAPTURE_VIDEO_QUALITY   "video_quality"
 

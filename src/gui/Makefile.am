@@ -32,7 +32,12 @@ libgui_a_SOURCES = \
 	windows/devstatus.cpp \
 	windows/fileselect.cpp \
 	capture/capture.cpp \
-	capture/capture_imgseq.cpp
+	capture/capture_imgseq.cpp \
+	capture/capture_videofile.cpp \
+	capture/avi.cpp \
+	capture/videoencoder_bmp.cpp \
+	capture/videoencoder_mpng.cpp \
+	capture/videoencoder_zmbv.cpp
 
 noinst_HEADERS = \
 	gui.h \
@@ -67,5 +72,11 @@ noinst_HEADERS = \
 	windows/devstatus.h \
 	windows/fileselect.h \
 	capture/capture.h \
-	capture/capture_imgseq.h
+	capture/capture_imgseq.h \
+	capture/capture_videofile.h \
+	capture/avi.h \
+	capture/videoencoder.h \
+	capture/videoencoder_bmp.h \
+	capture/videoencoder_mpng.h \
+	capture/videoencoder_zmbv.h
 	

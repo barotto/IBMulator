@@ -39,6 +39,7 @@
 #define PALETTE_BMASK 0x00FF0000
 #define PALETTE_AMASK 0xFF000000
 #define PALETTE_ENTRY(r,g,b) (0xFF<<24 | b<<16 | g<<8 | r)
+#define PALETTE_SDL2_FORMAT SDL_PIXELFORMAT_ABGR8888
 
 class FrameBuffer
 {
@@ -71,6 +72,7 @@ public:
 	void copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const;
 	
 	inline uint32_t & operator[](size_t _pos) { return m_buffer[_pos]; }
+	inline const uint32_t & operator[](size_t _pos) const { return m_buffer[_pos]; }
 	
 	FrameBuffer & operator=(const FrameBuffer &_fb) {
 		m_buffer = _fb.m_buffer;

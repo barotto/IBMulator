@@ -441,7 +441,7 @@ void VGA::calculate_timings()
 		clock = 28322000.0;
 		break;
 	}
-
+	m_s.timings.clock = clock;
 	m_s.timings.hfreq = (clock / (htotal * cwidth))/1000.0;
 	clock /= cwidth;
 

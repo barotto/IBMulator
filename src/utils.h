@@ -105,4 +105,9 @@ constexpr auto ec_to_i(E e) noexcept
 	return static_cast<std::underlying_type_t<E>>(e);
 }
 
+inline size_t round_to_dword(size_t _bits)
+{
+	return (((_bits + 31) & ~31) >> 3);
+}
+
 #endif
