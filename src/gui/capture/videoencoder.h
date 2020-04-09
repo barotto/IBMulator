@@ -45,8 +45,8 @@ struct BitmapInfoHeader {
 } GCC_ATTRIBUTE(packed);
 
 enum BitmapCompression {
-	BI_RGB       = 0, // Uncompressed RGB.
-	BI_BITFIELDS = 3, // Uncompressed RGB with color masks for 16-bpp and 32-bpp bitmaps.
+	BMP_RGB       = 0, // Uncompressed RGB.
+	BMP_BITFIELDS = 3  // Uncompressed RGB with color masks for 16-bpp and 32-bpp bitmaps.
 };
 
 // Video encoders don't convert between video formats, you set them up with an image

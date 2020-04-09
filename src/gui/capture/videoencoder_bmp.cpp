@@ -70,7 +70,7 @@ void VideoEncoder_BMP::setup_compress(BitmapInfoHeader &_format)
 		case 24:
 		case 32:
 			_format.size = sizeof(BitmapInfoHeader) - (4*4);
-			_format.compression = BI_RGB;
+			_format.compression = BMP_RGB;
 			_format.clrUsed = 0;
 			_format.clrImportant = 0; 
 			_format.clrMasks[0] = 0x00FF0000;
