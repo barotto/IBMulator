@@ -12,9 +12,6 @@ C:\msys64 for MSYS2 installation and C:\workspace for source packages.
 in the MSYS shell by pressing the middle mouse button, using Shift+Ins, or
 clicking the right mouse button and choosing 'paste'.
 
-**NOTE:** Current (post march 2019) versions of MSYS2 will produce a binary with
-unstable timings when the thread_sync program option is enabled. See GitHub's
-issue #47.
 
 ## STEP 1. Setup a 64bit MinGW build environment
 We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
@@ -53,6 +50,7 @@ line) and:
 for static linking add `-DBUILD_SHARED_LIBS=OFF`
 5. Build and install (change the 4 with the number of your CPU's cores):  
 `make -j4 && make install`
+
 
 ## STEP 3. Build IBMulator
 Open the **MSYS2 MinGW 64-bit** shell and:

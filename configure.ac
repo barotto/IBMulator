@@ -191,7 +191,7 @@ else
 	echo "- libsamplerate: Yes ($LIBSAMPLERATE_LIBS)"
 fi
 if test "x$ZLIB_LIBS" = "x"; then
-	echo "- zlib         : NO (ZMBV video capture format disabled)"
+	echo "- zlib         : NO (ZMBV video compression disabled)"
 else
 	echo "- zlib         : Yes ($ZLIB_LIBS)"
 fi
