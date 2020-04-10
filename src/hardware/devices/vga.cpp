@@ -674,13 +674,15 @@ void VGA::update_video_mode()
 	if(!(oldmode == m_s.vmode)) {
 		if(!m_s.sequencer.clocking.SO) {
 			if(m_s.vmode.mode == VGA_M_TEXT) {
-			PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
-				m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string(),
-				m_s.vmode.textcols, m_s.vmode.textrows,
-				m_s.vmode.cwidth, m_s.vmode.cheight);
+				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
+					m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string(),
+					m_s.vmode.textcols, m_s.vmode.textrows,
+					m_s.vmode.cwidth, m_s.vmode.cheight);
 			} else {
 				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s\n",
 					m_s.vmode.imgw, m_s.vmode.imgh, current_mode_string());
+				PDEBUGF(LOG_V1, LOG_VGA, "renderer: %s\n",
+					m_s.render_mode==VGA_RENDER_LINE?"scanlines":"frame");
 			}
 		}
 		
@@ -1795,7 +1797,9 @@ void VGA::frame_end(uint64_t _time)
 		m_display->lock();
 		if(m_s.vmode.mode == VGA_M_TEXT) {
 			text_update();
-		} else {
+		} else if(m_s.render_mode == VGA_RENDER_FRAME) {
+			// This frame's rendering happens only if rendering mode did not change
+			// since the last frame_start.
 			int lc_first_thread = m_s.CRTC.latches.line_compare % VGA_THREAD_POOL_SIZE;
 			uint16_t lc_w[VGA_THREAD_POOL_SIZE];
 			int i=lc_first_thread, j=0;
@@ -1811,6 +1815,8 @@ void VGA::frame_end(uint64_t _time)
 			uint32_t w1 = gfx_update_thread(1, lc_w[1]);
 			w0.wait();
 			m_stats.updated_pix = (w0.get() + w1);
+		} else {
+			m_stats.updated_pix = 0;
 		}
 		m_display->set_fb_updated();
 		m_display->unlock();
