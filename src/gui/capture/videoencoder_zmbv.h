@@ -90,7 +90,7 @@ public:
 	VideoEncoder_ZMBV();
 	~VideoEncoder_ZMBV();
 	
-	const char *name() { return "DosBox Capture Codec (ZMBV)"; }
+	const char *name() { return "DOSBox Capture Codec (ZMBV)"; }
 	uint32_t fourcc() { return FOURCC("ZMBV"); }
 	const BitmapInfoHeader &format() { return m_format; }
 	std::string format_string();

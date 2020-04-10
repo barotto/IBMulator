@@ -282,7 +282,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     directory: Directory where things like video, audio, savestates, and screenshots get captured.\n"
 ";  video_format: Format to use for video recordings.\n"
 ";                Possible values: zmbv, mpng\n"
-";                 zmbv: DosBox Capture Codec\n"
+";                 zmbv: DOSBox Capture Codec\n"
 ";                 mpng: Motion PNG\n"
 		},
 
