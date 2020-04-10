@@ -415,7 +415,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters. Use them to emulate the response of the typical PC speaker.\n"
 ";          Possible values: a list of filter definitions. See the README for more info.\n"
-";          Leave empty to disable\n"
+";          Example: LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500\n"
 ";  volume: Audio volume.\n"
 		},
 		{ PS1AUDIO_SECTION,
