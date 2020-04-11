@@ -123,6 +123,7 @@ public:
 #define PROGRAM_SECTION         "program"
 #define PROGRAM_MEDIA_DIR       "media_dir"
 #define PROGRAM_FILE_DIALOGS    "file_dialogs"
+#define PROGRAM_WAIT_METHOD     "timing"
 
 #define GUI_SECTION             "gui"
 #define GUI_RENDERER            "renderer"

@@ -27,7 +27,6 @@
 #include <cctype>
 #include <cstdlib>
 #include "ini/ini.h"
-#include "hardware/devices/hdd.h"
 
 using std::string;
 
@@ -37,7 +36,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""       },
-		{ PROGRAM_FILE_DIALOGS, "custom" }
+		{ PROGRAM_FILE_DIALOGS, "custom" },
+		{ PROGRAM_WAIT_METHOD,  "auto"   }
 	} },
 
 	{ GUI_SECTION, {

@@ -22,6 +22,13 @@
 
 #include "chrono.h"
 
+enum PacerWaitMethod
+{
+	PACER_WAIT_AUTO,
+	PACER_WAIT_SLEEP,
+	PACER_WAIT_BUSYLOOP
+};
+
 class Pacer
 {
 protected:
@@ -31,14 +38,14 @@ protected:
 	int64_t m_loop_cost;
 	int64_t m_sleep_cost;
 	int64_t m_sleep_thres;
-	bool m_busy_loop;
+	bool m_half_busy_loop;
 	bool m_skip;
 	
 public:
 	Pacer();
 	virtual ~Pacer();
 	
-	void calibrate();
+	void calibrate(PacerWaitMethod _method);
 	void calibrate(const Pacer &_p);
 	void start();
 	const Chrono & chrono() const { return m_chrono; }
@@ -46,7 +53,9 @@ public:
 	int64_t wait();
 	void skip() { m_skip = true; }
 	
-private: 
+private:
+	void set_forced_sleep();
+	void set_forced_busyloop();
 	std::pair<double,double> sample_sleep(int64_t _target, int _samples);
 	std::pair<double,double> sample_loop(int64_t _target, int _samples);
 };

@@ -358,7 +358,15 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
 	}
 	
-	m_pacer.calibrate();
+	static std::map<std::string, unsigned> waitmethods = {
+		{ "",      PACER_WAIT_AUTO },
+		{ "auto",  PACER_WAIT_AUTO },
+		{ "sleep", PACER_WAIT_SLEEP },
+		{ "loop",  PACER_WAIT_BUSYLOOP }
+	};
+	PacerWaitMethod waitm = (PacerWaitMethod)m_config[0].get_enum(
+			PROGRAM_SECTION, PROGRAM_WAIT_METHOD, waitmethods);
+	m_pacer.calibrate(waitm);
 	m_bench.init(&m_pacer.chrono(), 1000);
 	set_heartbeat(DEFAULT_HEARTBEAT);
 	m_pacer.start();

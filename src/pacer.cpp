@@ -50,7 +50,7 @@ m_next_beat_diff(0),
 m_loop_cost(0),
 m_sleep_cost(0),
 m_sleep_thres(1),
-m_busy_loop(false),
+m_half_busy_loop(false),
 m_skip(false)
 {
 }
@@ -69,11 +69,23 @@ static bool is_within(double _avg, double _target, double _sdev, double _t)
 	return (_avg > _target*(1.0 - 1.0*_t)) && (_avg < _target*(1.0 + 1.0*_t)) && (_sdev < _avg*_t);
 }
 
-void Pacer::calibrate()
+void Pacer::calibrate(PacerWaitMethod _method)
 {
 	PINFO(LOG_V0, "Calibrating...\n");
 	
 	m_chrono.calibrate();
+	
+	switch(_method) {
+		case PACER_WAIT_SLEEP:
+			set_forced_sleep();
+			return;
+		case PACER_WAIT_BUSYLOOP:
+			set_forced_busyloop();
+			return;
+		case PACER_WAIT_AUTO:
+		default:
+			break;
+	}
 	
 	// I don't actually know what I'm doing here, schedulers are a tough topic.
 	// My goal is to determine the minimum _reliable_ sleep time. It does not
@@ -112,7 +124,7 @@ void Pacer::calibrate()
 		if(is_within(avg, m_sleep_thres, std, 0.1)) {
 			// stable timings, no busy loop needed
 			PINFOF(LOG_V0, LOG_PROGRAM, "This system has high precision timing. Impressive, very nice.\n");
-			m_busy_loop = false;
+			m_half_busy_loop = false;
 			goto report;
 		}
 	} else {
@@ -121,7 +133,7 @@ void Pacer::calibrate()
 	}
 	
 	// timings are wonky, use a busy loop for half the needed sleep time.
-	m_busy_loop = true;
+	m_half_busy_loop = true;
 	
 	// try 1 millisecond resolution
 	msavg = 0.0;
@@ -157,8 +169,10 @@ garbage:
 	PINFOF(LOG_V0, LOG_PROGRAM, "Using a busy loop for frame pacing, system load will be high, sorry :(\n");
 	
 report:
-	PDEBUGF(LOG_V0, LOG_PROGRAM, "sleep cost: %d, sleep threshold: %d, busy loop: %d, loop cost: %d\n",
-		m_sleep_cost, m_sleep_thres, m_busy_loop, m_loop_cost);
+	PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %d ns, sleep threshold: %d ns\n",
+		m_sleep_cost, m_sleep_thres);
+	PINFOF(LOG_V1, LOG_PROGRAM, " Half busy loop: %s, loop cost: %d\n",
+		m_half_busy_loop?"yes":"no", m_loop_cost);
 }
 
 void Pacer::calibrate(const Pacer &_p)
@@ -167,7 +181,7 @@ void Pacer::calibrate(const Pacer &_p)
 	m_sleep_cost = _p.m_sleep_cost;
 	m_sleep_thres = _p.m_sleep_thres;
 	m_loop_cost = _p.m_loop_cost;
-	m_busy_loop = _p.m_busy_loop;
+	m_half_busy_loop = _p.m_half_busy_loop;
 }
 
 void Pacer::start()
@@ -191,7 +205,7 @@ int64_t Pacer::wait()
 		t0 = m_chrono.get_nsec();
 		if(sleep > 0) {
 			if(sleep >= m_sleep_thres) {
-				int64_t delay_ns = (sleep >> m_busy_loop) - m_sleep_cost;
+				int64_t delay_ns = (sleep >> m_half_busy_loop) - m_sleep_cost;
 				//PDEBUGF(LOG_V2, LOG_PROGRAM, "sleep for %d ns\n", delay_ns);
 				if(delay_ns > 0) {
 					sleep_for(delay_ns);
@@ -216,6 +230,40 @@ int64_t Pacer::wait()
 	m_chrono.start();
 	
 	return time + time_slept;
+}
+
+void Pacer::set_forced_sleep()
+{
+	m_half_busy_loop = false; // don't use half time busy loops
+	double avg, std;
+	std::tie(avg,std) = sample_sleep(1, 50);
+	if(is_within(std,avg,0.2) && avg < 100000) {
+		m_sleep_cost = int64_t(avg + std);
+	} else {
+		m_sleep_cost = 0;
+	}
+	m_sleep_thres = 0; // always use sleep
+	m_loop_cost = LLONG_MAX; // never compensate undershoots with busy loops
+	
+	PINFOF(LOG_V0, LOG_PROGRAM, "Timing forced to thread sleep.\n");
+	PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %d ns\n", m_sleep_cost);
+}
+
+void Pacer::set_forced_busyloop()
+{
+	m_half_busy_loop = false; // don't use half time busy loops
+	double avg, std;
+	std::tie(avg,std) = sample_loop(1e6, 100);
+	if(is_within(std,avg,0.2)) {
+		m_loop_cost = int64_t(avg + std);
+	} else {
+		m_loop_cost = 0;
+	}
+	m_sleep_cost = 0;
+	m_sleep_thres = LLONG_MAX; // never use sleep
+	
+	PINFOF(LOG_V0, LOG_PROGRAM, "Timing forced to busy loop.\n");
+	PINFOF(LOG_V1, LOG_PROGRAM, " Loop cost: %d ns\n", m_loop_cost);
 }
 
 std::pair<double,double> Pacer::sample_sleep(int64_t _target_ns, int _samples)
