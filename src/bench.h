@@ -90,6 +90,7 @@ public:
 	virtual void frame_start();
 	virtual void load_start();
 	virtual void frame_end();
+	virtual void pause();
 	
 protected:
 	virtual void data_update();

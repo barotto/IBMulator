@@ -22,7 +22,7 @@
 
 #include <functional>
 #include <mutex>
-#include "circular_fifo.h"
+#include "shared_queue.h"
 #include "pacer.h"
 #include "hwbench.h"
 #include "statebuf.h"
@@ -101,6 +101,8 @@ private:
 
 	bool m_curr_prgname_changed;
 
+	void main_loop();
+	void run_loop();
 	void core_step(int32_t _cpu_cycles);
 	void pause();
 	void resume();
@@ -108,7 +110,7 @@ private:
 	void power_off();
 	bool update_timers(uint64_t _vtime);
 
-	CircularFifo<Machine_fun_t,10> m_cmd_fifo;
+	shared_queue<Machine_fun_t> m_cmd_queue;
 
 	mouse_fun_t m_mouse_fun;
 	joystick_mfun_t m_joystick_mfun;
@@ -132,7 +134,6 @@ public:
 	void init();
 	void calibrate(const Pacer &_p);
 	void start();
-	bool main_loop();
 	void config_changed();
 
 	void set_heartbeat(int64_t _ns);

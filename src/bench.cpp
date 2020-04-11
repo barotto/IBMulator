@@ -99,6 +99,21 @@ void Bench::reset()
 	m_upd_reset = true;
 }
 
+void Bench::pause()
+{
+	load = .0;
+	load_time = 0;
+	min_load_time = 0;
+	max_load_time = 0;
+	avg_load_time = .0;
+	
+	frame_time = 0;
+	min_frame_time = 0;
+	max_frame_time = 0;
+	avg_frame_time = .0;
+	std_frame_time = .0;
+}
+
 void Bench::frame_start()
 {
 	if(m_upd_reset) {

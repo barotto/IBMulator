@@ -53,6 +53,15 @@ void HWBench::frame_start()
 	Bench::frame_start();
 }
 
+void HWBench::pause()
+{
+	Bench::pause();
+	m_icount = 0;
+	m_ccount = 0;
+	avg_ips = .0;
+	avg_cps = .0;
+}
+
 void HWBench::data_update()
 {
 	Bench::data_update();

@@ -39,6 +39,7 @@ public:
 	HWBench();
 	virtual ~HWBench();
 
+	void pause();
 	void frame_start();
 	
 	inline void cpu_step() { m_icount++; }

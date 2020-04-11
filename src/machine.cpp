@@ -319,40 +319,53 @@ void Machine::set_heartbeat(int64_t _nsec)
 	m_bench.set_heartbeat(m_heartbeat);
 }
 
-bool Machine::main_loop()
+void Machine::main_loop()
 {
-	static double cycles_rem = 0.0;
-
 	while(true) {
+		PDEBUGF(LOG_V1, LOG_MACHINE, "waiting...\n");
+		Machine_fun_t fn;
+		m_cmd_queue.wait_and_pop(fn);
+		fn();
 		
+		if(m_on && !m_cpu_single_step) {
+			run_loop();
+		}
+		if(m_quit) {
+			return;
+		}
+		
+		m_bench.pause();
+	}
+}
+
+void Machine::run_loop()
+{
+	PDEBUGF(LOG_V1, LOG_MACHINE, "running...\n");
+	
+	static double cycles_rem = 0.0;
+	while(true) {
 		m_bench.frame_start();
 		
 		m_pacer.wait();
 
 		Machine_fun_t fn;
-		while(m_cmd_fifo.pop(fn)) {
+		while(m_cmd_queue.try_and_pop(fn)) {
 			fn();
+		}
+		if(m_quit || !m_on || m_cpu_single_step) {
+			return;
 		}
 
 		m_bench.load_start();
 		
-		if(m_quit) {
-			return false;
-		}
-		if(m_on) {
-			if(!m_cpu_single_step) {
-				double needed_cycles = m_cpu_cycles * m_cycles_factor;
-				int32_t cycles = round(needed_cycles + cycles_rem);
-				cycles_rem += needed_cycles - cycles;
-				core_step(cycles);
-				m_bench.cpu_cycles(cycles);
-			}
-		}
+		double needed_cycles = m_cpu_cycles * m_cycles_factor;
+		int32_t cycles = round(needed_cycles + cycles_rem);
+		cycles_rem += needed_cycles - cycles;
+		core_step(cycles);
+		m_bench.cpu_cycles(cycles);
 
 		m_bench.frame_end();
 	}
-
-	return true;
 }
 
 void Machine::core_step(int32_t _cpu_cycles)
@@ -621,14 +634,14 @@ void Machine::memdump(uint32_t _base, uint32_t _len)
 
 void Machine::cmd_quit()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		m_quit = true;
 	});
 }
 
 void Machine::cmd_power_on()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		if(m_on) {
 			return;
 		}
@@ -638,21 +651,21 @@ void Machine::cmd_power_on()
 
 void Machine::cmd_power_off()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		power_off();
 	});
 }
 
 void Machine::cmd_cpu_step()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		core_step(0);
 	});
 }
 
 void Machine::cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		m_breakpoint_cs = _cs;
 		m_breakpoint_eip = _eip;
 		m_breakpoint_clbk = _callback;
@@ -661,21 +674,21 @@ void Machine::cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void
 
 void Machine::cmd_soft_reset()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		reset(CPU_SOFT_RESET);
 	});
 }
 
 void Machine::cmd_reset()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		reset(MACHINE_HARD_RESET);
 	});
 }
 
 void Machine::cmd_switch_power()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		if(m_on) {
 			power_off();
 		} else {
@@ -686,7 +699,7 @@ void Machine::cmd_switch_power()
 
 void Machine::cmd_pause()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		if(!m_cpu_single_step) {
 			pause();
 			PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
@@ -696,7 +709,7 @@ void Machine::cmd_pause()
 
 void Machine::cmd_resume()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		if(m_cpu_single_step) {
 			resume();
 			PINFOF(LOG_V0, LOG_MACHINE, "emulation resumed\n");
@@ -706,14 +719,14 @@ void Machine::cmd_resume()
 
 void Machine::cmd_memdump(uint32_t _base, uint32_t _len)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		memdump(_base,_len);
 	});
 }
 
 void Machine::cmd_dtdump(const std::string &_name)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		uint32_t base;
 		uint16_t limit;
 		if(_name == "GDT") {
@@ -754,21 +767,21 @@ void Machine::cmd_dtdump(const std::string &_name)
 
 void Machine::cmd_cpulog()
 {
-	m_cmd_fifo.push([this] () {
+	m_cmd_queue.push([this] () {
 		g_cpu.write_log();
 	});
 }
 
 void Machine::cmd_prg_cpulog(std::string _prg_name)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		g_cpu.enable_prg_log(_prg_name);
 	});
 }
 
 void Machine::cmd_cycles_adjust(double _factor)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		m_cycles_factor = _factor;
 		std::stringstream ss;
 		ss << "emulation speed at " << std::setprecision(3) << (_factor*100.f) << "%";
@@ -779,7 +792,7 @@ void Machine::cmd_cycles_adjust(double _factor)
 
 void Machine::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
-	m_cmd_fifo.push([&] () {
+	m_cmd_queue.push([&] () {
 		std::unique_lock<std::mutex> lock(_mutex);
 		save_state(_state);
 		_cv.notify_one();
@@ -788,7 +801,7 @@ void Machine::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::conditio
 
 void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
-	m_cmd_fifo.push([&] () {
+	m_cmd_queue.push([&] () {
 		std::unique_lock<std::mutex> lock(_mutex);
 		_state.m_last_restore = true;
 		try {
@@ -805,28 +818,28 @@ void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condi
 
 void Machine::cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		g_devices.device<FloppyCtrl>()->insert_media(_drive, _type, _file.c_str(), _wp);
 	});
 }
 
 void Machine::cmd_eject_media(uint _drive)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		g_devices.device<FloppyCtrl>()->eject_media(_drive);
 	});
 }
 
 void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
 {
-	m_cmd_fifo.push([=] () {
+	m_cmd_queue.push([=] () {
 		g_devices.vga()->print_text(_text);
 	});
 }
 
 void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
-	m_cmd_fifo.push([&] () {
+	m_cmd_queue.push([&] () {
 		std::unique_lock<std::mutex> lock(_mutex);
 		if(m_on) {
 			power_off();
