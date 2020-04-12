@@ -251,10 +251,6 @@ void MixerChannel::flush()
 
 void MixerChannel::input_finish(uint64_t _time_span_us)
 {
-	if(!m_mixer->is_enabled()) {
-		m_in_buffer.clear();
-		return;
-	}
 	unsigned in_frames;
 	if(_time_span_us > 0) {
 		if(m_first_update) {

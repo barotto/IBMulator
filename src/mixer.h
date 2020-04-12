@@ -35,10 +35,11 @@ extern Mixer g_mixer;
 
 #define MIXER_WAVEPACKETSIZE  8192
 #define MIXER_BUFSIZE  MIXER_WAVEPACKETSIZE * 8
+#define MIXER_FREQUENCY 48000
 #define MIXER_CHANNELS  1
-#define MIXER_BIT_DEPTH 16
-#define MIXER_MIN_RATE 8000
-#define MIXER_MAX_RATE 49716
+#define MIXER_FORMAT    AUDIO_S16
+#define MIXER_MIN_RATE  8000
+#define MIXER_MAX_RATE  49716
 #define MIXER_TIME_TOLERANCE 1.45
 
 
@@ -66,7 +67,7 @@ private:
 	SDL_AudioStatus m_audio_status;
 	std::atomic<bool> m_paused;
 	SDL_AudioDeviceID m_device;
-	SDL_AudioSpec m_device_spec;
+	SDL_AudioSpec m_audio_spec;
 	int m_frame_size;
 
 	shared_queue<Mixer_fun_t> m_cmd_queue;
@@ -105,13 +106,12 @@ public:
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }
 	inline SDL_AudioStatus get_audio_status() const { return SDL_GetAudioDeviceStatus(m_device); }
 	int get_buffer_len() const;
-	inline const SDL_AudioSpec & get_audio_spec() { return m_device_spec; }
+	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
 
 	template <int Channels>
 	static std::vector<std::shared_ptr<Dsp::Filter>> create_filters(double _rate, std::string _filters_def);
 	
 	bool is_paused() const { return m_paused; }
-	bool is_enabled() const { return (m_device!=0); }
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
@@ -124,11 +124,11 @@ public:
 	void cmd_set_category_volume(MixerChannelCategory _cat, float _volume);
 
 private:
-	void start_wave_playback(int _frequency, int _bits, int _channels, int _samples);
-	void stop_wave_playback();
+	void open_audio_device(int _frequency, SDL_AudioFormat _format, int _channels, int _samples);
+	void close_audio_device();
 	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);
 	void mix_channels(std::vector<float> &_buf, const std::vector<std::pair<MixerChannel*,bool>> &_channels, int _chcat, size_t _mixlen);
-	bool send_packet(size_t _len);
+	void send_packet(size_t _len);
 	void send_to_sinks(const std::vector<int16_t> &_data, int _category);
 	void start_capture();
 	void stop_capture();

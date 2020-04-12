@@ -450,7 +450,7 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
 	bool chactive = true;
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04d us, samples at %d Hz: ",
-			_time_span_us, freq, DACsamples, round(frames_to_us(DACsamples, freq)));
+			_time_span_us, freq);
 
 	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, freq});
 
@@ -486,7 +486,7 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
 	m_DAC_channel->input_finish();
 
 	unsigned total = presamples + DACsamples + postsamples;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%d+%d+%d (%d us)\n",
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%d+%d+%d (%.0f us)\n",
 			presamples, DACsamples, postsamples, frames_to_us(total, freq));
 
 	return chactive;
