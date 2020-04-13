@@ -235,9 +235,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	// CAPTURE THREAD
 	m_capture = std::make_unique<Capture>(vga_display(), m_mixer);
-	m_capture->calibrate(g_program.pacer());
-	m_capture->init();
-	m_capture_thread = std::thread(&Capture::start, m_capture.get());
+	m_capture_thread = std::thread(&Capture::thread_start, m_capture.get());
 	
 	// DONE
 	show_welcome_screen();

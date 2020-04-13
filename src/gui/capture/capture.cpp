@@ -40,39 +40,29 @@ Capture::~Capture()
 {
 }
 
-void Capture::init()
+void Capture::thread_start()
 {
-	m_pacer.start();
-}
-
-void Capture::calibrate(const Pacer &_p)
-{
-	m_pacer.calibrate(_p);
-}
-
-void Capture::start()
-{
-	m_quit = false;
-
-	PDEBUGF(LOG_V1, LOG_GUI, "Capture: thread started\n");
-	main_loop();
-}
-
-void Capture::main_loop()
-{
+	PDEBUGF(LOG_V0, LOG_GUI, "Capture: thread started\n");
+	
 	while(true) {
+		PDEBUGF(LOG_V1, LOG_GUI, "Capture: waiting for commands\n");
 		Capture_fun_t fn;
 		m_cmd_queue.wait_and_pop(fn);
 		fn();
-		
+		if(m_recording) {
+			capture_loop();
+		}
 		if(m_quit) {
 			return;
 		}
 	}
+	
+	PDEBUGF(LOG_V0, LOG_GUI, "Capture: thread stopped\n");
 }
 
 void Capture::capture_loop()
 {
+	PDEBUGF(LOG_V1, LOG_GUI, "Capture: running\n");
 	while(true) {
 		Capture_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -81,29 +71,27 @@ void Capture::capture_loop()
 		if(!m_recording) {
 			return;
 		}
-		if(g_machine.is_on() && !g_machine.is_paused()) {
-			try {
-				VideoFrame frame;
-				auto result = m_video_frames.wait_for_and_pop(frame, g_program.heartbeat() * 2);
-				if(result == std::cv_status::no_timeout) {
-					m_rec_target->push_video_frame(frame);
-					
-					size_t avail = m_audio_buffer.get_read_avail();
-					if(avail) {
-						std::vector<uint8_t> audio_stream;
-						audio_stream.resize(avail);
-						size_t bytes = m_audio_buffer.read(&audio_stream[0], avail);
-						assert(bytes <= avail);
-						assert((bytes&1) == 0);
-						m_rec_target->push_audio_data((int16_t*)(&audio_stream[0]), bytes/2);
-					}
+		try {
+			VideoFrame frame;
+			// This thread's frequency will be auto capped to the vga fps.
+			// When the machine is paused this 'wait' will timeout within 2 frames time;
+			auto result = m_video_frames.wait_for_and_pop(frame, g_machine.get_heartbeat() * 2);
+			if(result == std::cv_status::no_timeout) {
+				m_rec_target->push_video_frame(frame);
+				
+				size_t avail = m_audio_buffer.get_read_avail();
+				if(avail) {
+					std::vector<uint8_t> audio_stream;
+					audio_stream.resize(avail);
+					size_t bytes = m_audio_buffer.read(&audio_stream[0], avail);
+					assert(bytes <= avail);
+					assert((bytes&1) == 0);
+					m_rec_target->push_audio_data((int16_t*)(&audio_stream[0]), bytes/2);
 				}
-			} catch(std::exception &) {
-				stop_capture();
-				return;
 			}
-		} else {
-			m_pacer.wait();
+		} catch(std::exception &) {
+			stop_capture();
+			return;
 		}
 	}
 }
@@ -156,12 +144,14 @@ void Capture::cmd_toggle_capture()
 
 void Capture::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 {
-	//this signal should be preceded by a pause command
 	m_cmd_queue.push([&] () {
 		//PDEBUGF(LOG_V2, LOG_GUI, "Capture: updating configuration\n");
 		std::unique_lock<std::mutex> lock(_mutex);
 		if(m_recording) {
 			stop_capture();
+			try {
+				start_capture();
+			} catch(...) {}
 		}
 		_cv.notify_one();
 	});
@@ -190,6 +180,8 @@ void Capture::start_capture()
 {
 	assert(!m_recording);
 
+	PDEBUGF(LOG_V1, LOG_GUI, "Capture: starting recording\n");
+	
 	std::string destdir;
 	try {
 		destdir = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
@@ -284,9 +276,6 @@ void Capture::start_capture()
 	std::string mex = "Started video recording to " + dest;
 	PINFOF(LOG_V0, LOG_GUI, "%s\n", mex.c_str());
 	GUI::instance()->show_message(mex.c_str());
-	
-	// can throw, caller should catch
-	capture_loop();
 }
 
 void Capture::stop_capture()

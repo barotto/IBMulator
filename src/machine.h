@@ -137,6 +137,7 @@ public:
 	void config_changed();
 
 	void set_heartbeat(int64_t _ns);
+	inline int64_t get_heartbeat() const { return m_heartbeat; }
 	inline uint64_t get_virt_time_ns() const { return m_s.virt_time; }
 	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_s.virt_time); }
 	inline uint64_t get_virt_time_ns_mt() const { return m_mt_virt_time; }

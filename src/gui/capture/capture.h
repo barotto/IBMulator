@@ -39,7 +39,6 @@ enum class CaptureMode {
 class Capture
 {
 private:
-	Pacer m_pacer;
 	bool m_quit;
 	bool m_recording;
 	std::unique_ptr<CaptureTarget> m_rec_target;
@@ -51,7 +50,6 @@ private:
 	int m_audio_sink;
 	RingBuffer m_audio_buffer;
 	
-	void main_loop();
 	void capture_loop();
 	void video_sink(const FrameBuffer &_buffer, const VideoModeInfo &_mode,
 		const VideoTimings &_timings);
@@ -61,17 +59,14 @@ public:
 	Capture(VGADisplay *_vgadisp, Mixer *_mixer);
 	~Capture();
 
-	void init();
-	void calibrate(const Pacer &_c);
-	void start();
-	void set_heartbeat(int64_t _ns);
+	void thread_start();
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_start_capture();
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
-
+	
 private:
 	void start_capture();
 	void stop_capture();

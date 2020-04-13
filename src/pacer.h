@@ -40,6 +40,7 @@ protected:
 	int64_t m_sleep_thres;
 	bool m_half_busy_loop;
 	bool m_skip;
+	bool m_external_sync;
 	
 public:
 	Pacer();
@@ -52,6 +53,8 @@ public:
 	void set_heartbeat(int64_t _nsec) { m_heartbeat = _nsec; }
 	int64_t wait();
 	void skip() { m_skip = true; }
+	void set_external_sync(bool _set) { m_external_sync = _set; }
+	bool is_external_sync() const { return m_external_sync; }
 	
 private:
 	void set_forced_sleep();

@@ -160,7 +160,8 @@ void Program::restore_state(
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
-		m_mixer->cmd_pause();
+		// mixer pause cmd is issued by the machine
+		m_machine->cmd_pause();
 
 		m_machine->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
@@ -171,8 +172,6 @@ void Program::restore_state(
 		m_machine->cmd_restore_state(state, ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		m_mixer->cmd_resume();
-
 		// we need to pause the syslog because it'll use the GUI otherwise
 		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
@@ -180,6 +179,9 @@ void Program::restore_state(
 		m_gui->sig_state_restored();
 		g_syslog.cmd_resume();
 
+		// mixer resume cmd is issued by the machine
+		m_machine->cmd_resume();
+		
 		if(!state.m_last_restore) {
 			PERRF(LOG_PROGRAM, "The restored state is not valid\n");
 			if(_on_fail != nullptr) {
@@ -409,6 +411,8 @@ bool Program::initialize(int argc, char** argv)
 	m_gui->init(m_machine, m_mixer);
 	m_gui->config_changed();
 	
+	m_pacer.set_external_sync(m_gui->vsync_enabled());
+	
 	return true;
 }
 
@@ -530,14 +534,10 @@ void Program::process_evts()
 
 void Program::main_loop()
 {
-	int64_t time=0, next_time_diff = 0;
-	
 	while(!m_quit) {
 		m_bench.frame_start();
 		
-		if(!m_gui->vsync_enabled()) {
-			m_pacer.wait();
-		}
+		m_pacer.wait();
 		
 		m_bench.load_start();
 		
@@ -545,6 +545,7 @@ void Program::main_loop()
 		m_gui->update(m_pacer.chrono().get_nsec());
 		// in the following function, this thread will wait for the Machine 
 		// which will notify on VGA's vertical retrace.
+		// see InterfaceScreen::sync_with_device()
 		m_gui->render();
 
 		m_bench.frame_end();

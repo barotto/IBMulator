@@ -51,7 +51,8 @@ m_loop_cost(0),
 m_sleep_cost(0),
 m_sleep_thres(1),
 m_half_busy_loop(false),
-m_skip(false)
+m_skip(false),
+m_external_sync(false)
 {
 }
 
@@ -193,7 +194,7 @@ int64_t Pacer::wait()
 {
 	int64_t time = m_chrono.elapsed_nsec();
 	
-	if(m_skip) {
+	if(m_skip || m_external_sync) {
 		m_skip = false;
 		return time;
 	}
