@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -80,7 +80,9 @@ std::string bitfield_to_string(uint8_t _bitfield,
 			}
 		}
 	}
-	s.pop_back();
+	if(!s.empty()) {
+		s.pop_back();
+	}
 	return s;
 }
 
