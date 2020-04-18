@@ -37,9 +37,9 @@ Mixer::Mixer()
 :
 m_mix_bufsize(0),
 m_start_time(0),
-m_prebuffer(50),
+m_prebuffer_us(50000),
 m_machine(nullptr),
-m_heartbeat(10000),
+m_heartbeat_us(10000),
 m_quit(false),
 m_audio_status(SDL_AUDIO_STOPPED),
 m_paused(false),
@@ -49,8 +49,7 @@ m_audio_capture(false),
 m_global_volume(1.f),
 m_capture_sink(-1)
 {
-	m_out_buffer.set_size(MIXER_BUFSIZE);
-	memset(&m_audio_spec, 0, sizeof(SDL_AudioSpec));
+	SDL_zero(m_audio_spec);
 	//sane defaults used to initialise the channels before the audio device
 	m_audio_spec.freq = MIXER_FREQUENCY;
 	m_audio_spec.channels = MIXER_CHANNELS;
@@ -69,7 +68,7 @@ void Mixer::sdl_callback(void *userdata, Uint8 *stream, int len)
 		/* buffer underrun is normal when the audio ring buffer is emptying and
 		 * channels are all disabled.
 		 */
-		PDEBUGF(LOG_V1, LOG_MIXER, "buffer underrun\n");
+		PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer underrun\n");
 		memset(&stream[bytes], mixer->m_audio_spec.silence, len-bytes);
 	}
 }
@@ -167,7 +166,8 @@ void Mixer::config_changed()
 	}
 
 	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	m_prebuffer = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); //msecs
+	int prebuf_ms = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); // msec
+	m_prebuffer_us = prebuf_ms * 1000; // usec
 	int samples = g_program.config().get_int(MIXER_SECTION, MIXER_SAMPLES);
 	m_frame_size = 0;
 
@@ -185,15 +185,15 @@ void Mixer::config_changed()
 			m_audio_spec.freq, SDL_AUDIO_BITSIZE(m_audio_spec.format), m_audio_spec.channels, m_audio_spec.samples);
 	
 	m_frame_size = m_audio_spec.channels * (SDL_AUDIO_BITSIZE(m_audio_spec.format) / 8);
-	m_heartbeat = round(1e6 / (double(m_audio_spec.freq) / 512.0));
-	m_pacer.set_heartbeat(m_heartbeat*1000);
+	m_heartbeat_us = round(1e6 / (double(m_audio_spec.freq) / 512.0));
+	m_pacer.set_heartbeat(m_heartbeat_us * 1000);
 
-	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat);
+	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat_us);
 	
-	m_prebuffer = clamp(m_prebuffer, int(m_heartbeat/1000), int(m_heartbeat/100)); //msecs
+	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
 	
-	int buf_len = std::max(m_prebuffer*2, 1000); //msecs
-	int buf_frames = (m_audio_spec.freq * buf_len) / 1000;
+	int64_t buf_len_us = std::max(m_prebuffer_us*2, 1000000UL);
+	int64_t buf_frames = (m_audio_spec.freq * buf_len_us) / 1000000;
 	m_out_buffer.set_size(buf_frames * m_frame_size);
 	
 	m_mix_bufsize = buf_frames * m_audio_spec.channels;
@@ -202,8 +202,8 @@ void Mixer::config_changed()
 	}
 	m_out_mix.resize(m_mix_bufsize);
 
-	PINFOF(LOG_V1, LOG_MIXER, " Prebuffer: %d msec., ring buffer: %d bytes\n",
-			m_prebuffer, buf_frames * m_frame_size);
+	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %d bytes\n",
+			prebuf_ms, buf_frames * m_frame_size);
 
 	for(auto ch : m_mix_channels) {
 		ch.second->set_out_spec({AUDIO_FORMAT_F32,
@@ -268,48 +268,62 @@ void Mixer::main_loop()
 		}
 
 		if(!active_channels.empty()) {
+			// channels are active, mix them!
 			size_t mix_size = mix_channels(active_channels, time_span_us);
 			if(mix_size > 0) {
+				// if there's audio data available, send it to device output buffer and sinks
 				send_packet(mix_size);
 			}
+			
 			if(m_audio_status == SDL_AUDIO_PAUSED) {
-				int elapsed = m_pacer.chrono().get_msec() - m_start_time;
+				int elapsed = m_pacer.chrono().get_usec() - m_start_time;
 				if(m_start_time == 0) {
-					m_start_time = m_pacer.chrono().get_msec();
-					PDEBUGF(LOG_V1, LOG_MIXER, "prebuffering %d msecs\n", m_prebuffer);
-				} else if(get_buffer_len() >= m_prebuffer*1000) {
+					// audio starting to get prebuffered
+					m_start_time = m_pacer.chrono().get_usec();
+					PDEBUGF(LOG_V1, LOG_MIXER, "Prebuffering for %d us\n", m_prebuffer_us);
+				} else if(get_buffer_read_avail_us() >= m_prebuffer_us) {
+					// audio prebuffered enough, start output to audio device
 					SDL_PauseAudioDevice(m_device, 0);
-					PDEBUGF(LOG_V1, LOG_MIXER, "playing (%d msecs elapsed, %d bytes/%d usecs of data)\n",
-							elapsed, m_out_buffer.get_read_avail(), get_buffer_len());
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing (%d us elapsed, %d bytes/%d us of data)\n",
+						elapsed, m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 					m_start_time = 0;
 				} else {
-					PDEBUGF(LOG_V2, LOG_MIXER, "buffer size: %d ms\n", get_buffer_len());
+					// audio is currently prebuffering
+					PDEBUGF(LOG_V2, LOG_MIXER, "  buffer size: %d us\n", get_buffer_read_avail_us());
 				}
 			} else if(m_audio_status == SDL_AUDIO_PLAYING) {
 				assert(m_start_time==0);
-				double buf_len_s = m_prebuffer/1000.0 + (m_heartbeat*3)/1e6;
+				double buf_len_s = m_prebuffer_us/1e6 + (m_heartbeat_us*3)/1e6;
 				size_t buf_limit = size_t(buf_len_s*m_audio_spec.freq) * m_frame_size;
 				if(m_out_buffer.get_read_avail() > buf_limit) {
+					// audio device is not reading its buffer fast enough, drop some data
 					buf_limit = m_out_buffer.shrink_data(buf_limit);
-					PDEBUGF(LOG_V1, LOG_MIXER, "out buffer overrun, limited to %d bytes\n", buf_limit);
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun, limited to %d bytes\n", buf_limit);
 				} else {
-					buf_len_s = m_prebuffer/1000.0 - (m_heartbeat*3)/1e6;
-					buf_len_s = std::max(m_heartbeat/1e6, buf_len_s);
+					buf_len_s = m_prebuffer_us/1e6 - (m_heartbeat_us*3)/1e6;
+					buf_len_s = std::max(m_heartbeat_us/1e6, buf_len_s);
 					buf_limit = size_t(buf_len_s*m_audio_spec.freq) * m_frame_size;
 					if(m_out_buffer.get_read_avail() <= buf_limit) {
-						PDEBUGF(LOG_V1, LOG_MIXER, "out buffer underrun\n", buf_limit);
+						// we can't keep up with audio device demands so
+						// restart prebuffering
+						PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer underrun\n", buf_limit);
 						SDL_PauseAudioDevice(m_device, 1);
 					}
 				}
 			}
 		} else {
+			// there's no active channels
 			m_start_time = 0;
-			if(m_audio_status==SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
+			if(m_audio_status == SDL_AUDIO_PLAYING && m_out_buffer.get_read_avail() == 0) {
+				// audio device buffer has been emptied, pause the device 
 				SDL_PauseAudioDevice(m_device, 1);
-				PDEBUGF(LOG_V1, LOG_MIXER, "paused\n");
-			} else if(m_audio_status==SDL_AUDIO_PAUSED && m_out_buffer.get_read_avail() != 0) {
+				PDEBUGF(LOG_V1, LOG_MIXER, "Device paused\n");
+			} else if(m_audio_status == SDL_AUDIO_PAUSED && m_out_buffer.get_read_avail() != 0) {
+				// there's data in the output buffer, but the device is not active.
+				// it happens when channels deactivate before the prebuffering period is over
 				SDL_PauseAudioDevice(m_device, 0);
-				PDEBUGF(LOG_V1, LOG_MIXER, "playing\n");
+				PDEBUGF(LOG_V1, LOG_MIXER, "Device playing (%d bytes/%d us of data)\n",
+					m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 			}
 		}
 
@@ -563,12 +577,12 @@ void Mixer::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 	});
 }
 
-int Mixer::get_buffer_len() const
+uint64_t Mixer::get_buffer_read_avail_us() const
 {
 	double bytes = m_out_buffer.get_read_avail();
 	double usec_per_frame = 1000000.0 / double(m_audio_spec.freq);
 	double frames_in_buffer = bytes / m_frame_size;
-	int time_left = frames_in_buffer * usec_per_frame;
+	uint64_t time_left = frames_in_buffer * usec_per_frame;
 	return time_left;
 }
 
@@ -732,7 +746,7 @@ void Mixer::cmd_resume()
 			return;
 		}
 		m_paused = false;
-		m_start_time = m_pacer.chrono().get_msec() - m_prebuffer/2;
+		m_start_time = m_pacer.chrono().get_msec() - m_prebuffer_us/2;
 	});
 }
 

@@ -192,7 +192,7 @@ void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, u
 
 void MixerChannel::play_loop(const AudioBuffer &_wave)
 {
-	if(m_in_buffer.duration_us() < m_mixer->heartbeat()) {
+	if(m_in_buffer.duration_us() < m_mixer->heartbeat_us()) {
 		play(_wave);
 	}
 }

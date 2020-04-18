@@ -33,14 +33,12 @@
 class Machine;
 extern Mixer g_mixer;
 
-#define MIXER_WAVEPACKETSIZE  8192
-#define MIXER_BUFSIZE  MIXER_WAVEPACKETSIZE * 8
+
 #define MIXER_FREQUENCY 48000
 #define MIXER_CHANNELS  1
 #define MIXER_FORMAT    AUDIO_S16
 #define MIXER_MIN_RATE  8000
 #define MIXER_MAX_RATE  49716
-#define MIXER_TIME_TOLERANCE 1.45
 
 
 typedef std::function<void()> Mixer_fun_t;
@@ -56,12 +54,12 @@ private:
 	WAVFile m_wav;
 	int m_start_time;
 
-	int m_prebuffer;
+	uint64_t m_prebuffer_us;
 
 	Machine *m_machine;
 	Pacer m_pacer;
 	HWBench m_bench;
-	uint m_heartbeat;
+	uint64_t m_heartbeat_us;
 
 	bool m_quit; //how about an std::atomic?
 	SDL_AudioStatus m_audio_status;
@@ -101,11 +99,11 @@ public:
 	void unregister_sink(int _id);
 	
 	void calibrate(const Pacer &_c);
-	unsigned heartbeat() const { return m_heartbeat; }
+	unsigned heartbeat_us() const { return m_heartbeat_us; }
 	inline HWBench & get_bench() { return m_bench; }
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }
 	inline SDL_AudioStatus get_audio_status() const { return SDL_GetAudioDeviceStatus(m_device); }
-	int get_buffer_len() const;
+	uint64_t get_buffer_read_avail_us() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
 
 	template <int Channels>

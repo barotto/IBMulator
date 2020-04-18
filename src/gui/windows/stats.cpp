@@ -107,7 +107,7 @@ void Stats::update()
 	}
 	ss << "<br />";
 	ss << "Buffer size: " << m_mixer->get_buffer_read_avail() << "<br />";
-	ss << "Delay (us): " << m_mixer->get_buffer_len() << "<br />";
+	ss << "Delay (us): " << m_mixer->get_buffer_read_avail_us() << "<br />";
 	m_stats.mixer->SetInnerRML(ss.str().c_str());
 }
 
