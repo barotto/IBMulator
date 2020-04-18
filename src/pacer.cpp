@@ -196,6 +196,7 @@ int64_t Pacer::wait()
 	
 	if(m_skip || m_external_sync) {
 		m_skip = false;
+		m_chrono.start();
 		return time;
 	}
 	

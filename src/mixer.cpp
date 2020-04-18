@@ -746,7 +746,9 @@ void Mixer::cmd_resume()
 			return;
 		}
 		m_paused = false;
-		m_start_time = m_pacer.chrono().get_msec() - m_prebuffer_us/2;
+		// audio device status is "paused".
+		// if channels are active then prebuffering will be reactivated.
+		m_start_time = m_pacer.chrono().get_usec();
 	});
 }
 
