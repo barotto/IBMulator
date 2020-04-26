@@ -38,7 +38,6 @@ protected:
 	int64_t m_loop_cost;
 	int64_t m_sleep_cost;
 	int64_t m_sleep_thres;
-	bool m_half_busy_loop;
 	bool m_skip;
 	bool m_external_sync;
 	
@@ -48,6 +47,8 @@ public:
 	
 	void calibrate(PacerWaitMethod _method);
 	void calibrate(const Pacer &_p);
+	void set_forced_sleep();
+	void set_forced_busyloop();
 	void start();
 	const Chrono & chrono() const { return m_chrono; }
 	void set_heartbeat(int64_t _nsec) { m_heartbeat = _nsec; }
@@ -57,8 +58,6 @@ public:
 	bool is_external_sync() const { return m_external_sync; }
 	
 private:
-	void set_forced_sleep();
-	void set_forced_busyloop();
 	std::pair<double,double> sample_sleep(int64_t _target, int _samples);
 	std::pair<double,double> sample_loop(int64_t _target, int _samples);
 };
