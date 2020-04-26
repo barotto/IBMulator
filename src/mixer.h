@@ -89,7 +89,6 @@ public:
 	void init(Machine *);
 	void config_changed();
 	void start();
-	void main_loop();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
 			const std::string &_name);
@@ -122,6 +121,7 @@ public:
 	void cmd_set_category_volume(MixerChannelCategory _cat, float _volume);
 
 private:
+	void main_loop();
 	void open_audio_device(int _frequency, SDL_AudioFormat _format, int _channels, int _samples);
 	void close_audio_device();
 	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);

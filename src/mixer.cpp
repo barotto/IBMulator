@@ -192,7 +192,7 @@ void Mixer::config_changed()
 	
 	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
 	
-	int64_t buf_len_us = std::max(m_prebuffer_us*2, 1000000UL);
+	int64_t buf_len_us = std::max(m_prebuffer_us*2, uint64_t(1000000U));
 	int64_t buf_frames = (m_audio_spec.freq * buf_len_us) / 1000000;
 	m_out_buffer.set_size(buf_frames * m_frame_size);
 	
@@ -248,11 +248,12 @@ void Mixer::main_loop()
 		while(m_cmd_queue.try_and_pop(fn)) {
 			fn();
 		}
-
+		while(m_paused) {
+			m_cmd_queue.wait_and_pop(fn);
+			fn();
+		}
 		if(m_quit) {
 			return;
-		} else if(m_paused) {
-			continue;
 		}
 		
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
@@ -736,6 +737,7 @@ void Mixer::cmd_pause()
 		if(m_device && m_audio_status==SDL_AUDIO_PLAYING) {
 			SDL_PauseAudioDevice(m_device, 1);
 		}
+		PDEBUGF(LOG_V1, LOG_MIXER, "Mixing paused\n");
 	});
 }
 
@@ -749,12 +751,15 @@ void Mixer::cmd_resume()
 		// audio device status is "paused".
 		// if channels are active then prebuffering will be reactivated.
 		m_start_time = m_pacer.chrono().get_usec();
+		m_pacer.start();
+		PDEBUGF(LOG_V1, LOG_MIXER, "Mixing resumed\n");
 	});
 }
 
 void Mixer::cmd_quit()
 {
 	m_cmd_queue.push([this] () {
+		m_paused = false;
 		m_quit = true;
 		if(m_audio_capture) {
 			stop_capture();
