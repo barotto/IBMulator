@@ -233,6 +233,9 @@ SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
 
 if test x$static != x ; then
 	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
+	if test x$have_windows = xno ; then
+		SDLIMAGE_LIBS="$SDLIMAGE_LIBS -ljbig -lzstd"
+	fi
 fi
 
 AC_SUBST([SDLIMAGE_CFLAGS])

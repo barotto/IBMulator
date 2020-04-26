@@ -73,7 +73,10 @@ fi
 
 if test x$static = xyes ; then
 	if test x$have_windows = xno ; then
-		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++"
+		# the no-pie flag serves two purposes: allows to link with a couple of non PIE
+		# compiled libraries and allows to launch the executable in nautilus by double clicking
+		# (the latter is due to a nautilus bug)
+		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -no-pie"
 		static_sdl="no"
 	else
 		CXX_DEFAULTS=`echo $CXX_DEFAULTS | sed 's/-pthread//'`
