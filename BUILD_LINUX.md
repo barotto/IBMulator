@@ -3,19 +3,22 @@
 ## Requirements
 
 * GCC 5.0+
-* SDL 2.0.4+
+* SDL 2.0.8+
 * SDL_image 2.0.0+
 * libRocket (see notes below)
 * GLEW
 * libarchive (optional)
 * libsamplerate (optional)
+* zlib (optional)
 
 If you cloned the code from the GitHub repo you also need the GNU Autotools.
 
 You need libarchive if you want to use zipped ROM sets.
 
 Without libsamplerate the PC Speaker will not emit any sound and other audio 
-sources will not be played unless they are at the same rate as the mixer. 
+sources will not be played unless they are at the same rate as the mixer.
+
+Without zlib the ZMBV compressed video capture format will not work.
 
 ## General instructions
 If you cloned the code from GitHub run:  
@@ -36,10 +39,6 @@ system library.
 
 Any missing library will be pointed out; use your distributon's software
 manager to install them (except libRocket, see notes below).
-
-If you are going to compile using your own version of SDL2, you may want to
-compile SDL2 with xinerama and xrandr support, otherwise you could experience
-problems switching to fullscreen.
 
 ### libRocket
 
