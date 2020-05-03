@@ -31,10 +31,10 @@ static inline void sleep_for(int64_t _ns)
 {
 	#ifdef _WIN32
 	// the current Windows/MinGW situation is that std::this_thread::sleep_for()
-	// and nanosleep take a minimum of 15ms and are therefore useless.
+	// and nanosleep() take a minimum of 15ms and are therefore useless.
 	// SDL_Delay (which uses Sleep()) is usually more "precise" with a 1ms
 	// granularity (and a ~1ms cost), which is a value I can work with. 
-	SDL_Delay(_ns/1e6);
+	SDL_Delay(_ns/1000000);
 	#else
 	// on Linux sleep_for() is actually very good, with a minimum sleep time of
 	// only ~54000ns and a very high precision (usually within 1000ns).
@@ -106,12 +106,16 @@ void Pacer::calibrate(PacerWaitMethod _method)
 	
 	std::tie(avg,std) = sample_loop(1e6, 100);
 	PDEBUGF(LOG_V0, LOG_PROGRAM, "Loop cost (avg/sdev): %.3f/%.3f ns\n", avg, std);
-	if(is_within(std,avg,0.2)) {
+	if(is_within(std, avg, 0.2)) {
 		m_loop_cost = int64_t(avg + std);
 	} else {
 		m_loop_cost = 0;
 	}
+
+	m_sleep_cost = 0;
+	m_sleep_thres = LLONG_MAX;
 	
+#ifndef _WIN32
 	// try to sleep for 1 ns. I'm not expecting to actually sleep for such a low
 	// period, instead I'm trying to determine the lowest possible period of time
 	// that it takes to call a non-zero sleep.
@@ -126,48 +130,31 @@ void Pacer::calibrate(PacerWaitMethod _method)
 		std::tie(avg,std) = sample_sleep(m_sleep_thres - m_sleep_cost, 50);
 		PDEBUGF(LOG_V0, LOG_PROGRAM, "Tried to sleep for %d ns: avg %.3f sdev %.3f ns\n", m_sleep_thres, avg, std);
 		if(is_within(avg, m_sleep_thres, std, 0.1)) {
-			// stable timings, no busy loop needed
 			PINFOF(LOG_V0, LOG_PROGRAM, "This system has high precision timing. Impressive, very nice.\n");
 			goto report;
 		}
-	} else {
-		m_sleep_cost = 0;
-		m_sleep_thres = LLONG_MAX;
 	}
+#endif
 	
 	// try 1 millisecond resolution
 	msavg = 0.0;
 	for(int64_t thres=1e6; thres<=5e6; thres+=1e6) {
-		std::tie(avg,std) = sample_sleep(thres - m_sleep_cost, 10);
+		std::tie(avg,std) = sample_sleep(thres, 10);
 		PDEBUGF(LOG_V0, LOG_PROGRAM, "Tried to sleep for %.1f ms: avg %.6f, sdev %.6f ms\n", 
 				thres/1.0e6, avg/1.0e6, std/1.0e6);
-		if(!is_within(std, avg, 0.5)) {
-			// too unstable
-			goto garbage;
-		}
+		double sum = avg + std;
 		if(avg > thres) {
 			msavg += (avg - thres) ;
 		} else {
 			msavg += (thres - avg);
 		}
 	}
-	// it seems sleeping is giving stable results, let's determine the cost
 	msavg /= 5.0;
-	if(msavg > 2e6) {
-		// lol, nope
-		goto garbage;
-	}
 	m_sleep_cost = msavg;
 	m_sleep_thres = 2e6;
+
 	PINFOF(LOG_V0, LOG_PROGRAM, "This system has low precision timing.\n");
-	goto report;
-	
-garbage:
-	// this system is garbage, use a busy loop only
-	m_sleep_thres = LLONG_MAX;
-	PINFOF(LOG_V0, LOG_PROGRAM, "This system has very low precision timing.\n");
-	PINFOF(LOG_V0, LOG_PROGRAM, "Using a busy loop for frame pacing, system load will be high, sorry :(\n");
-	
+
 report:
 	PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %d ns, sleep threshold: %d ns\n",
 		m_sleep_cost, m_sleep_thres);
@@ -201,19 +188,18 @@ int64_t Pacer::wait()
 	if(time < m_heartbeat) {
 		int64_t t0, t1, diff;
 		int64_t sleep = (m_heartbeat - time) + m_next_beat_diff;
+		//PDEBUGF(LOG_V2, LOG_PROGRAM, "sleep for %d ns\n", sleep);
 		t0 = m_chrono.get_nsec();
 		if(sleep > 0) {
-			if(sleep >= m_sleep_thres) {
-				int64_t delay_ns = sleep - m_sleep_cost;
-				//PDEBUGF(LOG_V2, LOG_PROGRAM, "sleep for %d ns\n", delay_ns);
-				if(delay_ns > 0) {
-					sleep_for(delay_ns);
-				}
+			int64_t delay_ns = sleep - m_sleep_cost;
+			if(delay_ns > m_sleep_thres) {
+				//PDEBUGF(LOG_V2, LOG_PROGRAM, "  delay %d\n", delay_ns);
+				sleep_for(delay_ns);
 			}
 			t1 = m_chrono.get_nsec();
 			diff = sleep - (t1 - t0);
 			if(diff > m_loop_cost) {
-				//PDEBUGF(LOG_V2, LOG_PROGRAM, "loop for %d ns\n", diff);
+				//PDEBUGF(LOG_V2, LOG_PROGRAM, "  loop %d\n", diff);
 				int64_t tloop, tstart;
 				tloop = tstart = t1;
 				while((tloop - tstart) < (diff - m_loop_cost)) {
@@ -225,6 +211,7 @@ int64_t Pacer::wait()
 		assert(t1 > t0);
 		time_slept = t1 - t0;
 		m_next_beat_diff = sleep - time_slept;
+		//PDEBUGF(LOG_V2, LOG_PROGRAM, "  slept %d ns, diff %d\n", time_slept, m_next_beat_diff);
 	}
 	m_chrono.start();
 	
@@ -248,7 +235,7 @@ void Pacer::set_forced_busyloop()
 {
 	double avg, std;
 	std::tie(avg,std) = sample_loop(1e6, 100);
-	if(is_within(std,avg,0.2)) {
+	if(is_within(std, avg, 0.2)) {
 		m_loop_cost = int64_t(avg + std);
 	} else {
 		m_loop_cost = 0;
