@@ -1,19 +1,23 @@
 # IBMulator Keymap file
 #
-# The keymap file describes the layout of a keyboard, and how it translates
-# into IBMulator's key codes.
+# The keymap file describes the layout of your keyboard, and how it translates
+# into IBMulator's keys.
 #
 # You can either use SDL keycodes (which can depend on the current keymap loaded
-# in your operating system) or scancodes (which represent physical keyboard keys
-# and are not affected by any remapping). Note that there are scancodes not
-# mapped to any keycode.
+# in your operating system) or SDL scancodes (which represent physical keyboard
+# keys and are not affected by any remapping).
 # 
-# See https://wiki.libsdl.org/SDL_Keycode for the list of symbols.
-#
 # Format:
-#  KEY_*      SDLK_*
-#  or
-#  KEY_*      SDL_SCANCODE_*
+#  KEY_*   SDLK_*
+# or
+#  KEY_*   SDL_SCANCODE_*
+#
+# where:
+#  KEY_*          = IBMulator's key
+#  SDLK_*         = SDL keycode symbol
+#  SDL_SCANCODE_* = SDL scancode symbol
+#
+# See https://wiki.libsdl.org/SDL_Keycode for the list of SDL symbols.
 #
 
 KEY_CTRL_L         SDLK_LCTRL
