@@ -53,9 +53,9 @@ void HWBench::frame_start()
 	Bench::frame_start();
 }
 
-void HWBench::pause()
+void HWBench::reset_values()
 {
-	Bench::pause();
+	Bench::reset_values();
 	m_icount = 0;
 	m_ccount = 0;
 	avg_ips = .0;

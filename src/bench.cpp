@@ -51,6 +51,7 @@ m_frame_end(0),
 
 m_upd_start(0),
 m_upd_end(0),
+m_upd_count(0),
 
 m_upd_reset(true),
 
@@ -61,15 +62,17 @@ tot_frame_count(0),
 late_frames(0),
 
 load_time(0),
-min_load_time(LLONG_MAX),
+min_load_time(0),
 max_load_time(0),
 avg_load_time(.0),
 
 frame_time(0),
-min_frame_time(LLONG_MAX),
+min_frame_time(0),
 max_frame_time(0),
 avg_frame_time(.0),
 std_frame_time(.0),
+cavg_frame_time(.0),
+cavg_std_frame_time(.0),
 
 min_fps(0),
 max_fps(0),
@@ -83,23 +86,29 @@ Bench::~Bench()
 {
 }
 
-void Bench::init(const Chrono *_chrono, uint _update_interval)
+void Bench::init(const Chrono *_chrono, unsigned _upd_interval_ms)
 {
 	m_chrono = _chrono;
-	m_init_time = m_chrono->get_nsec();
-	m_upd_start = m_init_time;
-	m_upd_interval = (_update_interval * 1.0e6);
+	m_upd_interval = (_upd_interval_ms * 1.0e6);
 }
 
-void Bench::reset()
+void Bench::start()
 {
 	m_init_time = m_chrono->get_nsec();
 	m_upd_start = m_init_time;
 	tot_frame_count = 0;
-	m_upd_reset = true;
+	
+	reset_values();
 }
 
-void Bench::pause()
+void Bench::set_heartbeat(int64_t _nsec)
+{
+	heartbeat = _nsec;
+
+	reset_values();
+}
+
+void Bench::reset_values()
 {
 	load = .0;
 	load_time = 0;
@@ -112,10 +121,18 @@ void Bench::pause()
 	max_frame_time = 0;
 	avg_frame_time = .0;
 	std_frame_time = .0;
+
+	cavg_frame_time = .0;
+	cavg_std_frame_time = .0;
+	
+	m_upd_reset = true;
+	m_upd_count = 0;
 }
 
 void Bench::frame_start()
 {
+	m_frame_start = m_chrono->get_nsec();
+	
 	if(m_upd_reset) {
 		m_upd_frame_count = 0;
 		m_min_load_time = LLONG_MAX;
@@ -126,9 +143,8 @@ void Bench::frame_start()
 		m_sum_frame_time = 0;
 		m_sum_frame_time2 = 0;
 		m_upd_reset = false;
+		m_upd_start = m_frame_start;
 	}
-
-	m_frame_start = m_chrono->get_nsec();
 }
 
 void Bench::load_start()
@@ -160,15 +176,16 @@ void Bench::frame_end()
 	}
 
 	unsigned updtime = m_frame_end - m_upd_start;
-	if(updtime >= m_upd_interval) {
+	if(!m_upd_reset && updtime >= m_upd_interval) {
 		data_update();
-		m_upd_start = m_frame_end;
 		m_upd_reset = true;
 	}
 }
 
 void Bench::data_update()
 {
+	m_upd_count++;
+	
 	time_elapsed  = m_frame_end - m_init_time;
 	
 	min_load_time = m_min_load_time;
@@ -178,9 +195,11 @@ void Bench::data_update()
 	min_frame_time = m_min_frame_time;
 	max_frame_time = m_max_frame_time;
 	avg_frame_time = double(m_sum_frame_time) / m_upd_frame_count;
+	cavg_frame_time = cavg_frame_time + (avg_frame_time - cavg_frame_time) / m_upd_count;
 	
 	double msum2 = double(m_sum_frame_time2) / m_upd_frame_count;
 	std_frame_time = sqrt(msum2 - double(avg_frame_time*avg_frame_time));
+	cavg_std_frame_time = cavg_std_frame_time + (std_frame_time - cavg_std_frame_time) / m_upd_count;
 	
 	double updtime = double(m_frame_end - m_upd_start);
 	

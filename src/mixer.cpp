@@ -234,15 +234,13 @@ void Mixer::main_loop()
 {
 	std::vector<std::pair<MixerChannel*,bool>> active_channels;
 
-	uint64_t time_span_us;
-
+	m_bench.start();
+	
 	while(true) {
 		
 		m_bench.frame_start();
 		
-		time_span_us = m_pacer.wait() / 1000;
-
-		m_bench.load_start();
+		uint64_t time_span_us = m_pacer.wait() / 1000;
 
 		Mixer_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -255,6 +253,8 @@ void Mixer::main_loop()
 		if(m_quit) {
 			return;
 		}
+		
+		m_bench.load_start();
 		
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
 		
@@ -752,6 +752,7 @@ void Mixer::cmd_resume()
 		// if channels are active then prebuffering will be reactivated.
 		m_start_time = m_pacer.chrono().get_usec();
 		m_pacer.start();
+		m_bench.start();
 		PDEBUGF(LOG_V1, LOG_MIXER, "Mixing resumed\n");
 	});
 }

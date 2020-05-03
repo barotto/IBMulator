@@ -216,7 +216,7 @@ void Machine::reset(uint _signal)
 			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
 			break;
 		case MACHINE_POWER_ON:
-			m_bench.reset();
+			m_bench.start();
 			PINFOF(LOG_V0, LOG_MACHINE, "Machine power on\n");
 			break;
 		default:
@@ -333,8 +333,6 @@ void Machine::main_loop()
 		if(m_quit) {
 			return;
 		}
-		
-		m_bench.pause();
 	}
 }
 
@@ -343,6 +341,9 @@ void Machine::run_loop()
 	PDEBUGF(LOG_V1, LOG_MACHINE, "running...\n");
 	
 	static double cycles_rem = 0.0;
+	
+	m_bench.reset_values();
+	
 	while(true) {
 		m_bench.frame_start();
 		
@@ -806,7 +807,7 @@ void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condi
 		_state.m_last_restore = true;
 		try {
 			restore_state(_state);
-			m_bench.reset();
+			m_bench.start();
 			m_on = true;
 		} catch(std::exception &e) {
 			PERRF(LOG_MACHINE, "error restoring the state\n");
@@ -834,6 +835,13 @@ void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
 {
 	m_cmd_queue.push([=] () {
 		g_devices.vga()->print_text(_text);
+	});
+}
+
+void Machine::cmd_reset_bench()
+{
+	m_cmd_queue.push([=] () {
+		m_bench.reset_values();
 	});
 }
 

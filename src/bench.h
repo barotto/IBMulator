@@ -50,6 +50,7 @@ protected:
 	
 	int64_t  m_upd_start;
 	int64_t  m_upd_end;
+	int64_t  m_upd_count;
 	
 	bool m_upd_reset;
 	
@@ -68,15 +69,18 @@ public:
 	double   avg_load_time;
 	
 	// frame time (or beat time) is the total time spent computing + sleeping
-	int64_t  frame_time;
-	int64_t  min_frame_time;
-	int64_t  max_frame_time;
-	double   avg_frame_time;
-	double   std_frame_time; // Standard deviation
+	int64_t  frame_time; // Frame time, real time
+	int64_t  min_frame_time; // Minimum frame time, periodic, reset
+	int64_t  max_frame_time; // Maximum frame time, periodic, reset
+	double   avg_frame_time; // Average frame time, periodic, reset
+	double   std_frame_time; // Standard deviation of frame times, periodic, reset
+	double   cavg_frame_time; // Cumulative Average frame time, periodic, no reset
+	double   cavg_std_frame_time; // Cumulative Average of std frame time, periodic, no reset
 	
 	unsigned min_fps;
 	unsigned max_fps;
 	double   avg_fps;
+	//double   mavg_fps;
 	
 	std::atomic<double> load; // the load value can be used by multiple threads
 
@@ -84,13 +88,13 @@ public:
 	Bench();
 	virtual ~Bench();
 
-	void init(const Chrono *_chrono, unsigned _update_interval);
-	void reset();
-	void set_heartbeat(int64_t _nsec) { heartbeat = _nsec; }
+	void init(const Chrono *_chrono, unsigned _upd_interval_ms);
+	void start();
+	void set_heartbeat(int64_t _nsec);
+	virtual void reset_values();
 	virtual void frame_start();
 	virtual void load_start();
 	virtual void frame_end();
-	virtual void pause();
 	
 protected:
 	virtual void data_update();

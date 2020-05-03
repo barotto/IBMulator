@@ -31,6 +31,7 @@
 #include <iomanip>
 
 event_map_t Stats::ms_evt_map = {
+	GUI_EVT( "cmd_reset", "click", Stats::on_cmd_reset ),
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
@@ -129,6 +130,9 @@ void Stats::print(std::ostream &_os, const Bench &_bench)
 			(_bench.max_frame_time / 1e6) << endline;
 	_os.precision(6);
 	_os << "-- std. dev: " << (_bench.std_frame_time / 1e6) << endline;
+	_os << "-- cum. avg: " << 
+		(_bench.cavg_frame_time / 1e6) << "/" <<
+		(_bench.cavg_std_frame_time / 1e6) << endline;
 	_os << "-- render time: " << (_bench.load_time / 1e6) << endline;
 	_os.precision(3);
 	_os << "-- min/avg/max: " << 
@@ -154,6 +158,9 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 			(_bench.max_frame_time / 1e6) << endline;
 	_os.precision(6);
 	_os << "-- std. dev: " << (_bench.std_frame_time / 1e6) << endline;
+	_os << "-- cum. avg: " << 
+		(_bench.cavg_frame_time / 1e6) << "/" <<
+		(_bench.cavg_std_frame_time / 1e6) << endline;
 	_os << "-- sim. time: " << (_bench.load_time / 1e6) << endline;
 	_os.precision(3);
 	_os << "-- min/avg/max: " << 
@@ -174,4 +181,13 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 	_os << "CPU clock (ns): " <<  vtime << "<br />";
 	int64_t vdiff = _bench.time_elapsed - int64_t(vtime);
 	_os << "CPU clock diff: " << int64_t(vdiff/1.0e6) << "<br />";
+}
+
+void Stats::on_cmd_reset(RC::Event &)
+{
+	// same thread
+	g_program.get_bench().reset_values();
+	
+	// different thread
+	m_machine->cmd_reset_bench();
 }

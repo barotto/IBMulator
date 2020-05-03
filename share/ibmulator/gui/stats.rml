@@ -11,9 +11,16 @@
 				top: 32px;
 				left: 0;
 			}
+			#cmd_reset btnicon {
+				icon-decorator: image;
+				icon-image: icons/debugger/update.png 0px 0px 16px 16px;
+			}
 		</style>
 	</head>
 	<body template="default">
+		<div id="tools">
+			<button id="cmd_reset" style="width:30px;"><btnicon /></button>
+		</div>
 		<h2>Main process</h2>
 		<p id="FPS"></p>
 		<h2>Machine</h2>

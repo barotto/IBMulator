@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -39,6 +39,8 @@ private:
 
 	static event_map_t ms_evt_map;
 
+	void on_cmd_reset(RC::Event &);
+	
 public:
 
 	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, RC::Element *_button);

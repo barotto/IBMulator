@@ -534,6 +534,8 @@ void Program::process_evts()
 
 void Program::main_loop()
 {
+	m_bench.start();
+
 	while(!m_quit) {
 		m_bench.frame_start();
 		
