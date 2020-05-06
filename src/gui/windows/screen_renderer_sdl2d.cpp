@@ -92,7 +92,7 @@ void ScreenRenderer_SDL2D::store_vga_framebuffer(
 	
 	m_vga.res = {0, 0, _vga_res.x, _vga_res.y};
 	int result = SDL_UpdateTexture(m_vga.texture, &m_vga.res, &_fb[0], _fb.pitch());
-	if(!result) {
+	if(result < 0) {
 		PDEBUGF(LOG_V0, LOG_GUI, "Cannot update VGA texture: %s\n", SDL_GetError());
 	}
 }
