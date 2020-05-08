@@ -321,7 +321,13 @@ If you want to put the ROM somewhere else then write its full path in the ini fi
 
 <dt>I can't seem to manually navigate to my disk images on the D: drive, from the floppy file explorer. What now?</dt>
 <dd>
-Unfortunately IBMulator is still incomplete. On Windows the floppy file explorer can't move from a drive partition letter to another, so I suggest you to put the full path of your disk images directory in the media_dir ini file setting, under the [program] section. As to why IBMulator can't do something so basic as to navigate to a different drive letter, please consider that I'm a Linux developer and on Linux there's no such thing as a "drive letter" ;)
+Unfortunately IBMulator is still incomplete and on Windows the floppy image file dialog can't move from a drive partition letter to another.<br />
+You have two options: 
+<ol>
+<li>put the full path of your disk images directory in the media_dir ini file setting, under the [program] section</li>
+<li>use the value "native" in the [program]:file_dialogs ini file setting.</li>
+</ol>
+As to why IBMulator can't do something so basic as to navigate to a different drive letter, please consider that I'm a Linux developer and on Linux there's no such thing as a "drive letter" ;)
 </dd>
 
 
