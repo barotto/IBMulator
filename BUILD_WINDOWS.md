@@ -17,14 +17,11 @@ clicking the right mouse button and choosing 'paste'.
 We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
 1. Go to the [MSYS2 website](http://www.msys2.org), download the x86_64 package
-and follow its install instructions.
-2. Open the **MSYS2 MSYS** shell and using the package manager `pacman`:    
-install the toolchain:  
-`pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc`  
-install cmake, make, Autotools, and git:  
-`pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config make pkgconfig autoconf automake libtool git`  
-3. Install the libraries needed by libRocket and IBMulator  
-`pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-libarchive mingw-w64-x86_64-freetype`
+and follow its installation instructions.
+2. Open the **MSYS2 MSYS** shell and install the toolchain:  
+`pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config make pkgconfig autoconf automake libtool git`
+3. Install the libraries needed by libRocket and IBMulator:  
+`pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-libarchive mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
 
 You can compile IBMulator with dynamic or static linking; see
 [below](#installation) for more info on the two versions. I suggest static
@@ -48,8 +45,8 @@ line) and:
 4. Create the Makefile with cmake:  
 `cmake -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
 for static linking add `-DBUILD_SHARED_LIBS=OFF`
-5. Build and install (change the 4 with the number of your CPU's cores):  
-`make -j4 && make install`
+5. Build and install (change the 8 with the number of your CPU's cores):  
+`make -j8 && make install`
 
 
 ## STEP 3. Build IBMulator
@@ -68,17 +65,19 @@ Open the **MSYS2 MinGW 64-bit** shell and:
 for static linking add `--enable-static`  
 use the `--help` option to see the available build options;  
 use the `--prefix` option to install the program with all its assets inside a
-folder of your choosing (see [below](#installation) for more info).
+folder of your choosing (see [below](#installation) for more info).  
+Example:
+`./configure --prefix=/c/workspace/IBMulator/release --enable-static`
 6. Build:  
-`make -j4`
+`make -j8`
 7. Install if you used the `--prefix` option:  
 `make install`
 
 
 ### Installation
 In order to use the program you'll need to "install" it. The install process is
-not a Windows program installation. Its purpose is to organize executables and
-assets inside a folder from which the program can run. 
+not a Windows program installation. Its purpose is to organize the executable and
+its assets inside a folder from which the program can run. 
 
 This is the needed directory structure:
 
@@ -121,6 +120,10 @@ Variables.
 #### option 2: copy the library files
 Copy the following DLLs inside IBMulator's `bin` folder.  
 
+**NOTE:** this list changes periodically depending on the current version of
+MSYS2/MinGW. You can use the Dependency Walker program to determine the up to
+date list of libraries.
+
 From C:\msys64\mingw64\bin:  
 
 ```
@@ -138,7 +141,6 @@ libintl-8.dll
 libjpeg-8.dll
 liblz4.dll
 liblzma-5.dll
-libnettle-6.dll
 libpcre-1.dll
 libpng16-16.dll
 libsamplerate-0.dll
@@ -159,10 +161,6 @@ libRocketControls.dll
 libRocketCore.dll
 libRocketDebugger.dll
 ```
-
-**NOTE:** this list changes periodically depending on the current version of
-MSYS2/MinGW. You can use the Dependency Walker program to determine the up to
-date list of libraries.
 
 
 ## Debugging
