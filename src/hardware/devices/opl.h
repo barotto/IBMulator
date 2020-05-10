@@ -109,7 +109,7 @@ private:
 		int32_t  left_pan, right_pan;    // OPL3 stereo panning amount
 
 		ChipTypes type;
-		double    recipsamp;	       // inverse of sampling rate
+		double    recipsamp;           // inverse of sampling rate
 
 		void enable(uint8_t *wave_sel, unsigned regbase, uint32_t act_type);
 		void disable(uint32_t act_type);
@@ -146,11 +146,11 @@ private:
 	} m_s;
 
 	std::string m_name;
-	ChipTypes m_type;
-	int       m_samplerate;
-	uint32_t  m_generator_add;
-	uint32_t  m_vibtab_add;
-	uint32_t  m_tremtab_add;
+	ChipTypes   m_type;
+	int         m_samplerate;
+	uint32_t    m_generator_add;
+	uint32_t    m_vibtab_add;
+	uint32_t    m_tremtab_add;
 
 	std::function<void(bool)> m_irqfn;
 

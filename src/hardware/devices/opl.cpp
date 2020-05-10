@@ -36,51 +36,51 @@
 
 constexpr const char * OPL::ChipNames[];
 
-#define FL05	0.5
-#define FL2		2.0
+#define FL05 0.5
+#define FL2  2.0
 
-#define FIXEDPT			0x10000		// fixed-point calculations using 16+16
-#define FIXEDPT_LFO		0x1000000	// fixed-point calculations using 8+24
+#define FIXEDPT      0x10000    // fixed-point calculations using 16+16
+#define FIXEDPT_LFO  0x1000000  // fixed-point calculations using 8+24
 
-#define WAVEPREC		1024		// waveform precision (10 bits)
+#define WAVEPREC  1024  // waveform precision (10 bits)
 
-#define INTFREQU		(14318180.0 / 288.0) // clocking of the chip
+#define INTFREQU  (14318180.0 / 288.0) // clocking of the chip
 
-#define OF_TYPE_ATT			0
-#define OF_TYPE_DEC			1
-#define OF_TYPE_REL			2
-#define OF_TYPE_SUS			3
-#define OF_TYPE_SUS_NOKEEP	4
-#define OF_TYPE_OFF			5
+#define OF_TYPE_ATT         0
+#define OF_TYPE_DEC         1
+#define OF_TYPE_REL         2
+#define OF_TYPE_SUS         3
+#define OF_TYPE_SUS_NOKEEP  4
+#define OF_TYPE_OFF         5
 
-#define ARC_CONTROL			0x00
-#define ARC_TVS_KSR_MUL		0x20
-#define ARC_KSL_OUTLEV		0x40
-#define ARC_ATTR_DECR		0x60
-#define ARC_SUSL_RELR		0x80
-#define ARC_FREQ_NUM		0xa0
-#define ARC_KON_BNUM		0xb0
-#define ARC_PERC_MODE		0xbd
-#define ARC_FEEDBACK		0xc0
-#define ARC_WAVE_SEL		0xe0
+#define ARC_CONTROL      0x00
+#define ARC_TVS_KSR_MUL  0x20
+#define ARC_KSL_OUTLEV   0x40
+#define ARC_ATTR_DECR    0x60
+#define ARC_SUSL_RELR    0x80
+#define ARC_FREQ_NUM     0xa0
+#define ARC_KON_BNUM     0xb0
+#define ARC_PERC_MODE    0xbd
+#define ARC_FEEDBACK     0xc0
+#define ARC_WAVE_SEL     0xe0
 
-#define ARC_SECONDSET		0x100 // second operator set for OPL3
+#define ARC_SECONDSET  0x100 // second operator set for OPL3
 
-#define OP_ACT_OFF			0x00
-#define OP_ACT_NORMAL		0x01 // regular channel activated (bitmasked)
-#define OP_ACT_PERC			0x02 // percussion channel activated (bitmasked)
+#define OP_ACT_OFF     0x00
+#define OP_ACT_NORMAL  0x01 // regular channel activated (bitmasked)
+#define OP_ACT_PERC    0x02 // percussion channel activated (bitmasked)
 
-#define BLOCKBUF_SIZE		512
+#define BLOCKBUF_SIZE  512
 
 // vibrato constants
-#define VIBTAB_SIZE			8
-#define VIBFAC				70/50000 // no braces, integer mul/div
+#define VIBTAB_SIZE  8
+#define VIBFAC       70/50000 // no braces, integer mul/div
 
 // tremolo constants and table
-#define TREMTAB_SIZE		53
-#define TREM_FREQ			3.7 // tremolo at 3.7hz
+#define TREMTAB_SIZE  53
+#define TREM_FREQ     3.7 // tremolo at 3.7hz
 
-static int16_t wavtable[WAVEPREC*3];	// wave form table
+static int16_t wavtable[WAVEPREC*3]; // wave form table
 
 // vibrato/tremolo tables
 static int32_t vib_table[VIBTAB_SIZE];
@@ -99,7 +99,7 @@ static int32_t *tremval1, *tremval2, *tremval3, *tremval4;
 
 // key scale level lookup table
 static const double kslmul[4] = {
-	0.0, 0.5, 0.25, 1.0		// -> 0, 3, 1.5, 6 dB/oct
+	0.0, 0.5, 0.25, 1.0 // -> 0, 3, 1.5, 6 dB/oct
 };
 
 // frequency multiplicator lookup table
@@ -111,7 +111,7 @@ static const double frqmul_tab[16] = {
 static uint8_t kslev[8][16];
 
 // map a channel number to the register offset of the modulator (=register base)
-static const uint8_t modulatorbase[9]	= {
+static const uint8_t modulatorbase[9] = {
 	0,1,2,
 	8,9,10,
 	16,17,18
@@ -119,12 +119,12 @@ static const uint8_t modulatorbase[9]	= {
 
 // map a register base to a modulator operator number or operator number
 static const uint8_t regbase2modop[44] = {
-	0,1,2,0,1,2,0,0,3,4,5,3,4,5,0,0,6,7,8,6,7,8,					// first set
-	18,19,20,18,19,20,0,0,21,22,23,21,22,23,0,0,24,25,26,24,25,26	// second set
+	0,1,2,0,1,2,0,0,3,4,5,3,4,5,0,0,6,7,8,6,7,8,                  // first set
+	18,19,20,18,19,20,0,0,21,22,23,21,22,23,0,0,24,25,26,24,25,26 // second set
 };
 static const uint8_t regbase2op[44] = {
-	0,1,2,9,10,11,0,0,3,4,5,12,13,14,0,0,6,7,8,15,16,17,			// first set
-	18,19,20,27,28,29,0,0,21,22,23,30,31,32,0,0,24,25,26,33,34,35	// second set
+	0,1,2,9,10,11,0,0,3,4,5,12,13,14,0,0,6,7,8,15,16,17,          // first set
+	18,19,20,27,28,29,0,0,21,22,23,30,31,32,0,0,24,25,26,33,34,35 // second set
 };
 
 // start of the waveform
@@ -540,7 +540,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 					return;
 				}
 			}
-			if((_val&0x30) == 0x30) {		// BassDrum active
+			if((_val&0x30) == 0x30) { // BassDrum active
 				m_s.op[6].enable(m_s.wave_sel,16,OP_ACT_PERC);
 				m_s.op[6].change_frequency(m_s.regs,6,16);
 				m_s.op[6+9].enable(m_s.wave_sel,16+3,OP_ACT_PERC);
@@ -549,25 +549,25 @@ void OPL::write(unsigned _port, uint8_t _val)
 				m_s.op[6].disable(OP_ACT_PERC);
 				m_s.op[6+9].disable(OP_ACT_PERC);
 			}
-			if((_val&0x28) == 0x28) {		// Snare active
+			if((_val&0x28) == 0x28) { // Snare active
 				m_s.op[16].enable(m_s.wave_sel,17+3,OP_ACT_PERC);
 				m_s.op[16].change_frequency(m_s.regs,7,17+3);
 			} else {
 				m_s.op[16].disable(OP_ACT_PERC);
 			}
-			if((_val&0x24) == 0x24) {		// TomTom active
+			if((_val&0x24) == 0x24) { // TomTom active
 				m_s.op[8].enable(m_s.wave_sel,18,OP_ACT_PERC);
 				m_s.op[8].change_frequency(m_s.regs,8,18);
 			} else {
 				m_s.op[8].disable(OP_ACT_PERC);
 			}
-			if((_val&0x22) == 0x22) {		// Cymbal active
+			if((_val&0x22) == 0x22) { // Cymbal active
 				m_s.op[8+9].enable(m_s.wave_sel,18+3,OP_ACT_PERC);
 				m_s.op[8+9].change_frequency(m_s.regs,8,18+3);
 			} else {
 				m_s.op[8+9].disable(OP_ACT_PERC);
 			}
-			if((_val&0x21) == 0x21) {		// Hihat active
+			if((_val&0x21) == 0x21) { // Hihat active
 				m_s.op[7].enable(m_s.wave_sel,17,OP_ACT_PERC);
 				m_s.op[7].change_frequency(m_s.regs,7,17);
 			} else {
@@ -590,8 +590,8 @@ void OPL::write(unsigned _port, uint8_t _val)
 
 			if(_val&32) {
 				// operator switched on
-				m_s.op[opbase].enable(m_s.wave_sel,modbase,OP_ACT_NORMAL);		// modulator (if 2op)
-				m_s.op[opbase+9].enable(m_s.wave_sel,modbase+3,OP_ACT_NORMAL);	// carrier (if 2op)
+				m_s.op[opbase].enable(m_s.wave_sel,modbase,OP_ACT_NORMAL);     // modulator (if 2op)
+				m_s.op[opbase+9].enable(m_s.wave_sel,modbase+3,OP_ACT_NORMAL); // carrier (if 2op)
 				if(m_type == OPL3) {
 					// for 4op channels all four operators are switched on
 					if((m_s.regs[0x105]&1) && m_s.op[opbase].is_4op) {
@@ -652,10 +652,10 @@ void OPL::write(unsigned _port, uint8_t _val)
 		unsigned base = (m_s.reg_index-ARC_WAVE_SEL)&0xff;
 		if((num<6) && (base<22)) {
 			if(m_type == OPL3) {
-				int wselbase = second_set?(base+22):base;	// for easier mapping onto wave_sel[]
+				int wselbase = second_set?(base+22):base; // for easier mapping onto wave_sel[]
 				// change waveform
 				if(m_s.regs[0x105]&1) {
-					m_s.wave_sel[wselbase] = _val&7;	// opl3 mode enabled, all waveforms accessible
+					m_s.wave_sel[wselbase] = _val&7; // opl3 mode enabled, all waveforms accessible
 				} else {
 					m_s.wave_sel[wselbase] = _val&3;
 				}
@@ -767,7 +767,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 						vibval1 = vibval_const;
 					}
 					if(cptr[9].tremolo) {
-						tremval1 = trem_lut;	// tremolo enabled, use table
+						tremval1 = trem_lut; // tremolo enabled, use table
 					} else {
 						tremval1 = tremval_const;
 					}
@@ -802,12 +802,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 						vibval2 = vibval_const;
 					}
 					if(cptr[0].tremolo) {
-						tremval1 = trem_lut;	// tremolo enabled, use table
+						tremval1 = trem_lut; // tremolo enabled, use table
 					} else {
 						tremval1 = tremval_const;
 					}
 					if(cptr[9].tremolo) {
-						tremval2 = trem_lut;	// tremolo enabled, use table
+						tremval2 = trem_lut; // tremolo enabled, use table
 					} else {
 						tremval2 = tremval_const;
 					}
@@ -841,7 +841,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				}
 
 				if(cptr[0].tremolo) {
-					tremval3 = trem_lut;	// tremolo enabled, use table
+					tremval3 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval3 = tremval_const;
 				}
@@ -879,12 +879,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				}
 
 				if(cptr[0].tremolo) {
-					tremval1 = trem_lut;	// tremolo enabled, use table
+					tremval1 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval1 = tremval_const;
 				}
 				if(cptr[9].tremolo) {
-					tremval2 = trem_lut;	// tremolo enabled, use table
+					tremval2 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval2 = tremval_const;
 				}
@@ -900,7 +900,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				}
 
 				if(cptr[9].tremolo) {
-					tremval4 = trem_lut;	// tremolo enabled, use table
+					tremval4 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval4 = tremval_const;
 				}
@@ -912,13 +912,13 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 						&m_s.op[7+9],vibval2[i],
 						&m_s.op[8+9],vibval4[i]);
 
-					m_s.op[7].exec(); //Hihat
+					m_s.op[7].exec();   // Hihat
 					m_s.op[7].output(0,tremval1[i]);
 
-					m_s.op[7+9].exec(); //Snare
+					m_s.op[7+9].exec(); // Snare
 					m_s.op[7+9].output(0,tremval2[i]);
 
-					m_s.op[8+9].exec(); //Cymbal
+					m_s.op[8+9].exec(); // Cymbal
 					m_s.op[8+9].output(0,tremval4[i]);
 
 					int32_t chanval = (m_s.op[7].cval + m_s.op[7+9].cval + m_s.op[8+9].cval)*2;
@@ -944,8 +944,8 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				if(cur_ch < 9) {
 					cptr = &m_s.op[cur_ch];
 				} else {
-					cptr = &m_s.op[cur_ch+9];	// second set is operator18-operator35
-					k += (-9+256);		// second set uses registers 0x100 onwards
+					cptr = &m_s.op[cur_ch+9]; // second set is operator18-operator35
+					k += (-9+256);            // second set uses registers 0x100 onwards
 				}
 				// check if this operator is part of a 4-op
 				if((m_s.regs[0x105]&1) && cptr->is_4op_attached) {
@@ -971,7 +971,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval1 = vibval_const;
 							}
 							if(cptr[0].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
@@ -997,12 +997,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval1 = vibval_const;
 							}
 							if(cptr[9].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
 							if(cptr[3].tremolo) {
-								tremval2 = trem_lut;	// tremolo enabled, use table
+								tremval2 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval2 = tremval_const;
 							}
@@ -1024,7 +1024,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 
 						if(cptr[3+9].op_state != OF_TYPE_OFF) {
 							if(cptr[3+9].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
@@ -1051,7 +1051,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval1 = vibval_const;
 							}
 							if(cptr[0].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
@@ -1076,17 +1076,17 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval1 = vibval_const;
 							}
 							if(cptr[9].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
 							if(cptr[3].tremolo) {
-								tremval2 = trem_lut;	// tremolo enabled, use table
+								tremval2 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval2 = tremval_const;
 							}
 							if(cptr[3+9].tremolo) {
-								tremval3 = trem_lut;	// tremolo enabled, use table
+								tremval3 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval3 = tremval_const;
 							}
@@ -1134,12 +1134,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 					vibval2 = vibval_const;
 				}
 				if(cptr[0].tremolo) {
-					tremval1 = trem_lut;	// tremolo enabled, use table
+					tremval1 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval1 = tremval_const;
 				}
 				if(cptr[9].tremolo) {
-					tremval2 = trem_lut;	// tremolo enabled, use table
+					tremval2 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval2 = tremval_const;
 				}
@@ -1160,7 +1160,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 					CHANVAL_OUT
 				}
 
-			} else { //if(m_s.regs[ARC_FEEDBACK+k]&1)
+			} else { // if(m_s.regs[ARC_FEEDBACK+k]&1)
 
 				if(m_type==OPL3 && (m_s.regs[0x105]&1) && cptr->is_4op) {
 					if(m_s.regs[ARC_FEEDBACK+k+3]&1) {
@@ -1183,12 +1183,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval2 = vibval_const;
 							}
 							if(cptr[0].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
 							if(cptr[9].tremolo) {
-								tremval2 = trem_lut;	// tremolo enabled, use table
+								tremval2 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval2 = tremval_const;
 							}
@@ -1210,12 +1210,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 
 						if((cptr[3].op_state != OF_TYPE_OFF) || (cptr[3+9].op_state != OF_TYPE_OFF)) {
 							if(cptr[3].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
 							if(cptr[3+9].tremolo) {
-								tremval2 = trem_lut;	// tremolo enabled, use table
+								tremval2 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval2 = tremval_const;
 							}
@@ -1256,22 +1256,22 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 								vibval2 = vibval_const;
 							}
 							if(cptr[0].tremolo) {
-								tremval1 = trem_lut;	// tremolo enabled, use table
+								tremval1 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval1 = tremval_const;
 							}
 							if(cptr[9].tremolo) {
-								tremval2 = trem_lut;	// tremolo enabled, use table
+								tremval2 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval2 = tremval_const;
 							}
 							if(cptr[3].tremolo) {
-								tremval3 = trem_lut;	// tremolo enabled, use table
+								tremval3 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval3 = tremval_const;
 							}
 							if(cptr[3+9].tremolo) {
-								tremval4 = trem_lut;	// tremolo enabled, use table
+								tremval4 = trem_lut; // tremolo enabled, use table
 							} else {
 								tremval4 = tremval_const;
 							}
@@ -1321,12 +1321,12 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 					vibval2 = vibval_const;
 				}
 				if(cptr[0].tremolo) {
-					tremval1 = trem_lut;	// tremolo enabled, use table
+					tremval1 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval1 = tremval_const;
 				}
 				if(cptr[9].tremolo) {
-					tremval2 = trem_lut;	// tremolo enabled, use table
+					tremval2 = trem_lut; // tremolo enabled, use table
 				} else {
 					tremval2 = tremval_const;
 				}
@@ -1368,7 +1368,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				}
 			}
 		} else {
-			//OPL2 (mono)
+			// OPL2 (mono)
 			// convert to 16bit samples
 			for(i=0; i<endframes; i++,_buffer+=_stride) {
 				clipit16(outbufl[i], _buffer);
@@ -1424,8 +1424,8 @@ void OPL::init_tables()
 
 	for(i=0; i<TREMTAB_SIZE; i++) {
 		// 0.0 .. -26/26*4.8/6 == [0.0 .. -0.8], 4/53 steps == [1 .. 0.57]
-		double trem_val1=(double)(((double)trem_table_int[i])*4.8/26.0/6.0);             // 4.8db
-		double trem_val2=(double)((double)((int32_t)(trem_table_int[i]/4))*1.2/6.0/6.0); // 1.2db (larger stepping)
+		double trem_val1 = (double)(((double)trem_table_int[i])*4.8/26.0/6.0);             // 4.8db
+		double trem_val2 = (double)((double)((int32_t)(trem_table_int[i]/4))*1.2/6.0/6.0); // 1.2db (larger stepping)
 
 		trem_table[i] = (int32_t)(pow(FL2,trem_val1)*FIXEDPT);
 		trem_table[TREMTAB_SIZE+i] = (int32_t)(pow(FL2,trem_val2)*FIXEDPT);
@@ -1437,14 +1437,14 @@ void OPL::init_tables()
 
 	// create waveform tables
 	for(i=0; i<(WAVEPREC>>1); i++) {
-		wavtable[(i<<1)  +WAVEPREC]	= (int16_t)(16384*sin((double)((i<<1)  )*M_PI*2/WAVEPREC));
-		wavtable[(i<<1)+1+WAVEPREC]	= (int16_t)(16384*sin((double)((i<<1)+1)*M_PI*2/WAVEPREC));
-		wavtable[i]					= wavtable[(i<<1)  +WAVEPREC];
+		wavtable[(i<<1)  +WAVEPREC] = (int16_t)(16384*sin((double)((i<<1)  )*M_PI*2/WAVEPREC));
+		wavtable[(i<<1)+1+WAVEPREC] = (int16_t)(16384*sin((double)((i<<1)+1)*M_PI*2/WAVEPREC));
+		wavtable[i]                 = wavtable[(i<<1) + WAVEPREC];
 		// alternative: (zero-less)
 		/*
-		wavtable[(i<<1)  +WAVEPREC]	= (int16_t)(16384*sin((double)((i<<2)+1)*PI/WAVEPREC));
-		wavtable[(i<<1)+1+WAVEPREC]	= (int16_t)(16384*sin((double)((i<<2)+3)*PI/WAVEPREC));
-		wavtable[i]					= wavtable[(i<<1)-1+WAVEPREC];
+		wavtable[(i<<1)  +WAVEPREC] = (int16_t)(16384*sin((double)((i<<2)+1)*PI/WAVEPREC));
+		wavtable[(i<<1)+1+WAVEPREC] = (int16_t)(16384*sin((double)((i<<2)+3)*PI/WAVEPREC));
+		wavtable[i]                 = wavtable[(i<<1)-1+WAVEPREC];
 		*/
 	}
 	for(i=0; i<(WAVEPREC>>3); i++) {
@@ -1453,8 +1453,8 @@ void OPL::init_tables()
 	}
 
 	// key scale level table verified ([table in book]*8/3)
-	kslev[7][0] = 0;	kslev[7][1] = 24;	kslev[7][2] = 32;	kslev[7][3] = 37;
-	kslev[7][4] = 40;	kslev[7][5] = 43;	kslev[7][6] = 45;	kslev[7][7] = 47;
+	kslev[7][0] = 0;  kslev[7][1] = 24; kslev[7][2] = 32; kslev[7][3] = 37;
+	kslev[7][4] = 40; kslev[7][5] = 43; kslev[7][6] = 45; kslev[7][7] = 47;
 	kslev[7][8] = 48;
 	for(i=9; i<16; i++) {
 		kslev[7][i] = (uint8_t)(i+41);
@@ -1537,7 +1537,7 @@ void OPL::Operator::off()
 // or when the keep-sustained bit is turned off (->sustain_nokeep)
 void OPL::Operator::sustain()
 {
-	uint32_t num_steps_add = generator_pos/FIXEDPT;	// number of (standardized) samples
+	uint32_t num_steps_add = generator_pos/FIXEDPT; // number of (standardized) samples
 	for(uint32_t ct=0; ct<num_steps_add; ct++) {
 		cur_env_step++;
 	}
@@ -1553,9 +1553,9 @@ void OPL::Operator::release()
 		amp *= releasemul;
 	}
 
-	uint32_t num_steps_add = generator_pos/FIXEDPT;	// number of (standardized) samples
+	uint32_t num_steps_add = generator_pos/FIXEDPT; // number of (standardized) samples
 	for(uint32_t ct=0; ct<num_steps_add; ct++) {
-		cur_env_step++;						// sample counter
+		cur_env_step++; // sample counter
 		if((cur_env_step & env_step_r)==0) {
 			if(amp <= 0.00000001) {
 				// release phase finished, turn off this operator
@@ -1579,7 +1579,7 @@ void OPL::Operator::decay()
 		amp *= decaymul;
 	}
 
-	uint32_t num_steps_add = generator_pos/FIXEDPT;	// number of (standardized) samples
+	uint32_t num_steps_add = generator_pos/FIXEDPT; // number of (standardized) samples
 	for(uint32_t ct=0; ct<num_steps_add; ct++) {
 		cur_env_step++;
 		if((cur_env_step & env_step_d)==0) {
@@ -1606,10 +1606,10 @@ void OPL::Operator::attack()
 {
 	amp = ((a3*amp + a2)*amp + a1)*amp + a0;
 
-	uint32_t num_steps_add = generator_pos/FIXEDPT;		// number of (standardized) samples
+	uint32_t num_steps_add = generator_pos/FIXEDPT;	 // number of (standardized) samples
 	for(uint32_t ct=0; ct<num_steps_add; ct++) {
-		cur_env_step++;	// next sample
-		if((cur_env_step & env_step_a)==0) {		// check if next step already reached
+		cur_env_step++; // next sample
+		if((cur_env_step & env_step_a)==0) { // check if next step already reached
 			if(amp > 1.0) {
 				// attack phase finished, next: decay
 				op_state = OF_TYPE_DEC;
@@ -1618,7 +1618,7 @@ void OPL::Operator::attack()
 			}
 			step_skip_pos_a <<= 1;
 			if(step_skip_pos_a==0) step_skip_pos_a = 1;
-			if(step_skip_pos_a & env_step_skip_a) {	// check if required to skip next step
+			if(step_skip_pos_a & env_step_skip_a) { // check if required to skip next step
 				step_amp = amp;
 			}
 		}
@@ -1646,7 +1646,7 @@ void OPL::Operator::change_attackrate(uint8_t *regs, unsigned regbase)
 		env_step_skip_a = step_skip_mask[step_num];
 
 		if(step_skip>=(type==OPL3?60:62)) {
-			a0 = (double)(2.0);	// something that triggers an immediate transition to amp:=1.0
+			a0 = (double)(2.0); // something that triggers an immediate transition to amp:=1.0
 			a1 = (double)(0.0);
 			a2 = (double)(0.0);
 			a3 = (double)(0.0);
@@ -1707,7 +1707,7 @@ void OPL::Operator::change_waveform(uint8_t *wave_sel, unsigned regbase)
 {
 	if(type == OPL3) {
 		if(regbase>=ARC_SECONDSET) {
-			regbase -= (ARC_SECONDSET-22);	// second set starts at 22
+			regbase -= (ARC_SECONDSET-22); // second set starts at 22
 		}
 	}
 	// waveform selection
@@ -1782,7 +1782,7 @@ void OPL::Operator::enable(uint8_t *wave_sel, unsigned regbase, uint32_t act_typ
 	if(act_state == OP_ACT_OFF) {
 		int wselbase = regbase;
 		if(wselbase>=ARC_SECONDSET) {
-			wselbase -= (ARC_SECONDSET-22);	// second set starts at 22
+			wselbase -= (ARC_SECONDSET-22); // second set starts at 22
 		}
 
 		tcount = wavestart[wave_sel[wselbase]]*FIXEDPT;
@@ -1847,8 +1847,8 @@ void OPL::Timer::clear()
 
 bool OPL::Timer::timeout()
 {
-	//reloads the preset value
-	//DOSBox doesn't do this!
+	// reloads the preset value
+	// DOSBox doesn't do this!
 	toggle(true);
 	if(masked) {
 		return false;
