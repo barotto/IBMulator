@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  * Adapted for IBMulator.
  */
 
@@ -700,16 +700,10 @@ inline void clipit16(int32_t ival, int16_t* outval)
 
 void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 {
+	assert(_stride > 0);
+	
 	int i, endframes;
 	Operator* cptr;
-	int stride = _stride;
-	if(stride <= 0) {
-		if(m_type == OPL3) {
-			stride = 2;
-		} else {
-			stride = 1;
-		}
-	}
 
 	// output buffers, left and right channel for OPL3 stereo
 	int32_t outbufl[BLOCKBUF_SIZE];
@@ -1351,25 +1345,29 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 				}
 			}
 		}
-
+		
 		if(m_type == OPL3) {
 			if(m_s.regs[0x105]&1) {
 				// convert to 16bit samples (stereo)
-				for(i=0; i<endframes; i++,_buffer+=stride) {
+				for(i=0; i<endframes; i++,_buffer+=_stride) {
 					clipit16(outbufl[i], _buffer);
-					clipit16(outbufr[i], _buffer+1);
+					if(_stride >= 2) {
+						clipit16(outbufr[i], _buffer+1);
+					}
 				}
 			} else {
 				// convert to 16bit samples (mono)
-				for(i=0; i<endframes; i++,_buffer+=stride) {
+				for(i=0; i<endframes; i++,_buffer+=_stride) {
 					clipit16(outbufl[i], _buffer);
-					clipit16(outbufl[i], _buffer+1);
+					if(_stride >= 2) {
+						clipit16(outbufl[i], _buffer+1);
+					}
 				}
 			}
 		} else {
 			//OPL2 (mono)
 			// convert to 16bit samples
-			for(i=0; i<endframes; i++,_buffer+=stride) {
+			for(i=0; i<endframes; i++,_buffer+=_stride) {
 				clipit16(outbufl[i], _buffer);
 			}
 		}
