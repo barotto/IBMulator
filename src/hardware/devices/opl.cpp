@@ -34,6 +34,8 @@
 #include "machine.h"
 #include "opl.h"
 
+constexpr const char * OPL::ChipNames[];
+
 #define FL05	0.5
 #define FL2		2.0
 
@@ -193,17 +195,18 @@ OPL::OPL()
 	init_tables();
 }
 
-void OPL::install(ChipTypes _type, bool _timers)
+void OPL::install(ChipTypes _type, std::string _name, bool _timers)
 {
+	m_name = _name;
 	m_type = _type;
 	if(_timers) {
-		std::string timername = std::string(name()) + " T1";
+		std::string timername = _name + " T1";
 		m_s.timers[T1].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T1),
 				timername.c_str());
 		assert(m_s.timers[T1].index != NULL_TIMER_HANDLE);
 
-		timername = std::string(name()) + " T2";
+		timername = _name + " T2";
 		m_s.timers[T2].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T2),
 				timername.c_str());

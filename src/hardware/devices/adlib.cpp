@@ -40,7 +40,7 @@ AdLib::~AdLib()
 void AdLib::install()
 {
 	IODevice::install();
-	m_OPL.install(OPL::OPL2, true);
+	m_OPL.install(OPL::OPL2, OPL::ChipNames[OPL::OPL2], true);
 
 	Synth::set_chip(0, &m_OPL);
 	Synth::install("AdLib", 5000,

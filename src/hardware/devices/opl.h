@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * OPL2/OPL3 emulation library.
  *
@@ -41,6 +41,10 @@ class OPL : public SynthChip
 public:
 	enum ChipTypes {
 		OPL2, OPL3
+	};
+	constexpr static const char * ChipNames[] = {
+		"YM262", // OPL2
+		"YM3812" // OPL3
 	};
 
 private:
@@ -141,6 +145,7 @@ private:
 		uint32_t tremtab_pos;  // tremolo counter
 	} m_s;
 
+	std::string m_name;
 	ChipTypes m_type;
 	int       m_samplerate;
 	uint32_t  m_generator_add;
@@ -152,7 +157,8 @@ private:
 public:
 	OPL();
 	~OPL() {}
-	void install(ChipTypes _type, bool _timers);
+	
+	void install(ChipTypes _type, std::string _name, bool _timers);
 	void remove();
 	void config_changed(int _samplerate);
 	uint8_t read(unsigned _port);
@@ -163,7 +169,7 @@ public:
 	void restore_state(StateBuf &_state);
 	void generate(int16_t *_buffer, int _frames, int _stride);
 	bool is_silent();
-	const char *name() { return (m_type==OPL3?"YM262":"YM3812"); }
+	const char *name() { return m_name.c_str(); }
 	void set_IRQ_callback(std::function<void(bool)> _fn) {
 		m_irqfn = _fn;
 	}
