@@ -43,8 +43,8 @@ public:
 		OPL2, OPL3
 	};
 	constexpr static const char * ChipNames[] = {
-		"YM262", // OPL2
-		"YM3812" // OPL3
+		"YM3812", // OPL2
+		"YM262"   // OPL3
 	};
 
 private:
