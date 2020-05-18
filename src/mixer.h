@@ -35,7 +35,7 @@ extern Mixer g_mixer;
 
 
 #define MIXER_FREQUENCY 48000
-#define MIXER_CHANNELS  1
+#define MIXER_CHANNELS  2
 #define MIXER_FORMAT    AUDIO_S16
 #define MIXER_MIN_RATE  8000
 #define MIXER_MAX_RATE  49716

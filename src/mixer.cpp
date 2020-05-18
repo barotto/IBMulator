@@ -435,7 +435,7 @@ void Mixer::mix_channels(std::vector<float> &_buf,
 			continue;
 		}
 		const float *chdata = &ch.first->out().at<float>(0);
-		unsigned chframes = ch.first->out().frames();
+		unsigned chsamples = ch.first->out().samples();
 		float cat_volume = m_channels_volume[chcat];
 		if(cat_volume > 1.f) {
 			cat_volume = (exp(cat_volume) - 1.f)/(M_E - 1.f);
@@ -446,7 +446,7 @@ void Mixer::mix_channels(std::vector<float> &_buf,
 		}
 		for(size_t i=0; i<_samples; i++) {
 			float v1,v2;
-			if(i<chframes) {
+			if(i<chsamples) {
 				v1 = chdata[i] * ch_volume * cat_volume;
 			} else {
 				v1 = 0.f;
