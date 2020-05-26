@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -211,9 +211,10 @@ void MixerChannel::set_filters(std::string _filters_def)
 	std::vector<std::shared_ptr<Dsp::Filter>> filters;
 	
 	try {
-		if(m_out_buffer.spec().channels == 1) {
+		// filters are applied after rate conversion and before channels conversion
+		if(m_in_buffer.spec().channels == 1) {
 			filters = Mixer::create_filters<1>(double(m_out_buffer.spec().rate), _filters_def);
-		} else if(m_out_buffer.spec().channels == 2) {
+		} else if(m_in_buffer.spec().channels == 2) {
 			filters = Mixer::create_filters<2>(double(m_out_buffer.spec().rate), _filters_def);
 		} else {
 			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
