@@ -284,7 +284,7 @@ public:
                 Filter& filter)
   {
     for (int i = 0; i < Channels; ++i)
-      filter.process (numSamples, arrayOfChannels, Channels, m_state[i]);
+      filter.process (numSamples, arrayOfChannels+i, Channels, m_state[i]);
   }
 
 private:
