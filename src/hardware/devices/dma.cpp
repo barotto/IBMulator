@@ -233,6 +233,9 @@ uint16_t DMA::read(uint16_t address, unsigned /*io_len*/)
 			   (m_s.dma[ma_sl].mask[3] << 3);
 			retval = (0xf0 | retval);
 			break;
+		default:
+			PDEBUGF(LOG_V0, LOG_DMA, "unhandled read from port 0x%04X!\n", address);
+			return ~0;
 	}
 
 	PDEBUGF(LOG_V2, LOG_DMA, "read  0x%03X -> 0x%04X\n", address, retval);
@@ -341,12 +344,16 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			m_s.dma[ma_sl].chan[channel].mode.autoinit_enable = (value >> 4) & 0x01;
 			m_s.dma[ma_sl].chan[channel].mode.transfer_type = (value >> 2) & 0x03;
 			PDEBUGF(LOG_V2, LOG_DMA,
-					"DMA-%d: mode reg[%u]: mode=%u, dec=%u, autoinit=%u, txtype=%u\n",
+					"DMA-%d: mode reg[%u]: mode=%u, dec=%u, autoinit=%u, txtype=%u (%s)\n",
 					ma_sl+1, channel,
 					m_s.dma[ma_sl].chan[channel].mode.mode_type,
 					m_s.dma[ma_sl].chan[channel].mode.address_decrement,
 					m_s.dma[ma_sl].chan[channel].mode.autoinit_enable,
-					m_s.dma[ma_sl].chan[channel].mode.transfer_type);
+					m_s.dma[ma_sl].chan[channel].mode.transfer_type,
+					m_s.dma[ma_sl].chan[channel].mode.transfer_type==0?"verify":
+						(m_s.dma[ma_sl].chan[channel].mode.transfer_type==1?"write":
+							(m_s.dma[ma_sl].chan[channel].mode.transfer_type==2?"read":
+								"undefined")));
 			break;
 
 		case 0x0c: /* DMA-1 clear byte flip/flop */
@@ -416,6 +423,9 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			PDEBUGF(LOG_V2, LOG_DMA, "extra page reg (unused)\n");
 			m_s.ext_page_reg[address & 0x0f] = value;
 			break;
+		default:
+			PDEBUGF(LOG_V0, LOG_DMA, "unhandled write to port 0x%04X!\n", address);
+			break;
 	}
 }
 
@@ -424,6 +434,8 @@ void DMA::set_DRQ(unsigned channel, bool val)
 	uint32_t dma_base, dma_roof;
 	uint8_t ma_sl;
 
+	PDEBUGF(LOG_V1, LOG_DMA, "set_DRQ: ch.=%d, val=%d\n", channel, val);
+	
 	if(channel > 7) {
 		PERRF(LOG_DMA, "set_DRQ() channel > 7\n");
 		return;
@@ -556,6 +568,8 @@ void DMA::raise_HLDA(void)
 	if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 1) { // write
 		// DMA controlled xfer of bytes from I/O to Memory
 
+		PDEBUGF(LOG_V2, LOG_DMA, "writing to memory max. %d bytes <- ch.%d\n", maxlen, channel);
+		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
 				len = m_h[channel].dmaWrite8(buffer, maxlen);
@@ -576,6 +590,8 @@ void DMA::raise_HLDA(void)
 	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 2) { // read
 		// DMA controlled xfer of bytes from Memory to I/O
 
+		PDEBUGF(LOG_V2, LOG_DMA, "reading from memory max. %d bytes -> ch.%d\n", maxlen, channel);
+		
 		if(!ma_sl) {
 			g_memory.DMA_read(phy_addr, maxlen, buffer);
 
@@ -592,6 +608,8 @@ void DMA::raise_HLDA(void)
 	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 0) {
 		// verify
 
+		PDEBUGF(LOG_V2, LOG_DMA, "verify max. %d bytes, ch.%d\n", maxlen, channel);
+		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
 				len = m_h[channel].dmaWrite8(buffer, 1);
