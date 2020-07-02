@@ -526,7 +526,8 @@ void DMA::raise_HLDA(void)
 	unsigned channel;
 	uint32_t phy_addr;
 	uint8_t ma_sl = 0;
-	uint16_t maxlen, len = 1;
+	uint32_t maxlen;
+	uint16_t len = 1;
 	uint8_t buffer[DMA_BUFFER_SIZE];
 
 	m_s.HLDA = true;
@@ -555,7 +556,7 @@ void DMA::raise_HLDA(void)
 	           (m_s.dma[ma_sl].chan[channel].current_address << ma_sl);
 
 	if(!m_s.dma[ma_sl].chan[channel].mode.address_decrement) {
-		maxlen = (m_s.dma[ma_sl].chan[channel].current_count + 1) << ma_sl;
+		maxlen = (uint32_t(m_s.dma[ma_sl].chan[channel].current_count) + 1) << ma_sl;
 		m_s.TC = (maxlen <= DMA_BUFFER_SIZE);
 		if(maxlen > DMA_BUFFER_SIZE) {
 			maxlen = DMA_BUFFER_SIZE;
