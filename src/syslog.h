@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -87,6 +87,7 @@ enum e_Syslog_Facilities {
 	LOG_FDC,
 	LOG_HDD,
 	LOG_AUDIO,
+	LOG_GAMEPORT,
 	LOG_LPT,
 	LOG_COM,
 

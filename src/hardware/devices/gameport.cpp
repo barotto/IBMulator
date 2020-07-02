@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -70,7 +70,7 @@ void GamePort::config_changed()
 
 void GamePort::save_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_AUDIO, "GamePort: saving state\n");
+	PINFOF(LOG_V1, LOG_GAMEPORT, "GamePort: saving state\n");
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	StateHeader h;
 	h.name = name();
@@ -80,7 +80,7 @@ void GamePort::save_state(StateBuf &_state)
 
 void GamePort::restore_state(StateBuf &_state)
 {
-	PINFOF(LOG_V1, LOG_AUDIO, "GamePort: restoring state\n");
+	PINFOF(LOG_V1, LOG_GAMEPORT, "GamePort: restoring state\n");
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	StateHeader h;
 	h.name = name();
@@ -91,7 +91,7 @@ void GamePort::restore_state(StateBuf &_state)
 uint16_t GamePort::read(uint16_t _address, unsigned)
 {
 	if(_address != 0x201) {
-		PERRF(LOG_AUDIO, "GamePort: unhandled read from port %0x04X!\n", _address);
+		PERRF(LOG_GAMEPORT, "GamePort: unhandled read from port %0x04X!\n", _address);
 		return ~0;
 	}
 
@@ -125,7 +125,7 @@ uint16_t GamePort::read(uint16_t _address, unsigned)
 		value &= ~128;
 	}
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "GamePort: read from port 201h -> 0x%02X\n", value);
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "GamePort: read from port 201h -> 0x%02X\n", value);
 
 	return uint16_t(value);
 }
@@ -133,11 +133,11 @@ uint16_t GamePort::read(uint16_t _address, unsigned)
 void GamePort::write(uint16_t _address, uint16_t _value, unsigned)
 {
 	if(_address != 0x201) {
-		PERRF(LOG_AUDIO, "GamePort: unhandled write to port 0x%04X!\n", _address);
+		PERRF(LOG_GAMEPORT, "GamePort: unhandled write to port 0x%04X!\n", _address);
 		return;
 	}
 	uint8_t value = _value & 0xFF;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "GamePort: write to port 201h <- 0x%02X\n", value);
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "GamePort: write to port 201h <- 0x%02X\n", value);
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	/*
 	 * A write to port 201 causes all stick inputs to go high for a value specified by
@@ -153,7 +153,7 @@ void GamePort::write(uint16_t _address, uint16_t _value, unsigned)
 void GamePort::joystick_motion(int _jid, int _axis, int _value)
 {
 	if(_jid > 1) {
-		PDEBUGF(LOG_V0, LOG_AUDIO, "GamePort: invalid joystick id %d\n", _jid);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid joystick id %d\n", _jid);
 		return;
 	}
 	std::lock_guard<std::mutex> lock(m_stick_lock);
@@ -168,11 +168,11 @@ void GamePort::joystick_motion(int _jid, int _axis, int _value)
 void GamePort::joystick_button(int _jid, int _button, int _state)
 {
 	if(_jid > 1) {
-		PDEBUGF(LOG_V0, LOG_AUDIO, "GamePort: invalid joystick id %d\n", _jid);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid joystick id %d\n", _jid);
 		return;
 	}
 	if(_button > 1) {
-		PDEBUGF(LOG_V0, LOG_AUDIO, "GamePort: invalid button id %d\n", _button);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid button id %d\n", _button);
 		return;
 	}
 	std::lock_guard<std::mutex> lock(m_stick_lock);
