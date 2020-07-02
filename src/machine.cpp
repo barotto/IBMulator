@@ -347,7 +347,7 @@ void Machine::run_loop()
 	while(true) {
 		m_bench.frame_start();
 		
-		m_pacer.wait();
+		uint64_t time_span = m_pacer.wait();
 
 		Machine_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -362,6 +362,7 @@ void Machine::run_loop()
 		double needed_cycles = m_cpu_cycles * m_cycles_factor;
 		int32_t cycles = round(needed_cycles + cycles_rem);
 		cycles_rem += needed_cycles - cycles;
+		PDEBUGF(LOG_V2, LOG_MACHINE, "Core step, elapsed=%d, cycles=%d\n", time_span, cycles);
 		core_step(cycles);
 		m_bench.cpu_cycles(cycles);
 

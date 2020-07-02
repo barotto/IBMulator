@@ -303,8 +303,11 @@ void CPUExecutor::interrupt_pmode(uint8_t vector, bool soft_int,
 
 	if(!gate_descriptor.valid || gate_descriptor.segment) {
 		PDEBUGF(LOG_V2,LOG_CPU,
-				"interrupt_pmode(): gate descriptor is not valid sys seg (vector=0x%02x)\n",
-				vector);
+			"interrupt_pmode(): gate descriptor is %s%s seg type=0x%x (vector=0x%02x)\n",
+			(gate_descriptor.valid)?"":"not valid ",
+			(gate_descriptor.segment)?"non sys":"",
+			gate_descriptor.type,
+			vector);
 		throw CPUException(CPU_GP_EXC, vector*8 + 2);
 	}
 

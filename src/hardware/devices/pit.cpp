@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -155,7 +155,7 @@ uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 			PDEBUGF(LOG_V2, LOG_PIT, "T2 -> %02d\n", value);
 			break;
 		case 0x43: /* Control Byte Register */
-	    	PDEBUGF(LOG_V2, LOG_PIT, "Control Word Reg. -> 0\n");
+			PDEBUGF(LOG_V2, LOG_PIT, "Control Word Reg. -> 0\n");
 			break;
 		case 0x61: {
 			/* AT, port 61h */
@@ -163,7 +163,7 @@ uint16_t PIT::read(uint16_t address, unsigned /*io_len*/)
 			value = (m_s.timer.read_OUT(2) << 5) |
 			        (refresh_clock_div2    << 4) |
 			        (m_s.speaker_data_on   << 1) |
-				    (m_s.timer.read_GATE(2) ? 1 : 0);
+			        (m_s.timer.read_GATE(2) ? 1 : 0);
 			PDEBUGF(LOG_V2, LOG_PIT, "SysCtrlB -> %02Xh\n", value);
 			break;
 		}
@@ -318,16 +318,16 @@ void PIT::update_systimer(uint64_t _cpu_time)
 		g_machine.activate_timer(m_systimer, next_event_eta, false);
 		PDEBUGF(LOG_V2, LOG_PIT, "next event: T%d, %u CLK, %llu nsecs (%.2f CLK)\n",
 				timer, next_event, next_event_eta, (double(next_event_eta)/PIT_CLK_TIME));
-	} else {
-		PDEBUGF(LOG_V2, LOG_PIT, "no events\n");
 	}
 }
 
 void PIT::irq0_handler(bool value, uint32_t)
 {
 	if(value == true) {
+		PDEBUGF(LOG_V1, LOG_PIT, "raising IRQ %d\n", PIT_IRQ);
 		m_devices->pic()->raise_irq(PIT_IRQ);
 	} else {
+		PDEBUGF(LOG_V2, LOG_PIT, "lowering IRQ %d\n", PIT_IRQ);
 		m_devices->pic()->lower_irq(PIT_IRQ);
 	}
 }
