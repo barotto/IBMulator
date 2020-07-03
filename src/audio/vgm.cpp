@@ -96,12 +96,47 @@ void VGMFile::set_tag_notes(const std::string &_notes)
 
 void VGMFile::command(uint64_t _time, uint8_t _command, uint32_t _data)
 {
-	m_events.push_back({_time,_command,0,_data});
+	m_events.push_back({_time,_command,0,0,_data});
 }
 
-void VGMFile::command(uint64_t _time, uint8_t _command, uint32_t _reg, uint32_t _data)
+void VGMFile::command(uint64_t _time, uint8_t _command, uint8_t _chip, 
+		uint32_t _reg, uint32_t _data)
 {
-	m_events.push_back({_time,_command,_reg,_data});
+	m_events.push_back({_time,_command,_chip,_reg,_data});
+}
+
+void VGMFile::write_event(FILE *file, const VGMEvent &e)
+{
+	if(fwrite(&e.cmd, 1, 1, file) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
+	//the command data
+	size_t wresult = 0;
+	size_t size = 0;
+	switch(e.cmd) {
+		case 0x50: // PSG (SN76489/SN76496)
+			// write value dd
+			size = 1;
+			wresult = fwrite(&e.data, 1, 1, file);
+			break;
+		case 0x5A: // OPL2
+		case 0xAA: // second OPL2
+		case 0x5E: // OPL3 port 0
+		case 0x5F: // OPL3 port 1
+			// write value aa dd
+			size = 2;
+			wresult = fwrite(&e.reg, 1, 1, file);
+			wresult += fwrite(&e.data, 1, 1, file);
+			break;
+		default:
+			PERRF(LOG_FS, "unsupported command\n");
+			throw std::exception();
+	}
+	if(wresult != size) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 }
 
 void VGMFile::close()
@@ -165,33 +200,7 @@ void VGMFile::close()
 		}
 		prev_time = e.time;
 
-		//the command
-		if(fwrite(&e.cmd, 1, 1, file.get()) != 1) {
-			PERRF(LOG_FS, "error writing to file\n");
-			throw std::exception();
-		}
-		//the command data
-		size_t wresult = 1;
-		size_t size = 1;
-		switch(e.cmd) {
-			case 0x50:
-				//PSG (SN76489/SN76496) write value dd
-				wresult = fwrite(&e.data, 1, 1, file.get());
-				break;
-			case 0x5A:
-				//YM3812 write value aa dd
-				size = 2;
-				wresult = fwrite(&e.reg, 1, 1, file.get());
-				wresult += fwrite(&e.data, 1, 1, file.get());
-				break;
-			default:
-				PERRF(LOG_FS, "unsupported command\n");
-				throw std::exception();
-		}
-		if(wresult != size) {
-			PERRF(LOG_FS, "error writing to file\n");
-			throw std::exception();
-		}
+		write_event(file.get(), e);
 	}
 
 	// end of sound data command

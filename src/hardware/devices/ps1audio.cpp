@@ -95,9 +95,7 @@ void PS1Audio::install()
 	Synth::install("PS/1 PSG", 2500,
 		[this](Event &_event) {
 			m_PSG.write(_event.value);
-			if(Synth::is_capturing()) {
-				Synth::capture_command(0x50, _event);
-			}
+			Synth::capture_command(0x50, _event);
 		},
 		[this](AudioBuffer &_buffer, int _frames) {
 			m_PSG.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
@@ -109,7 +107,7 @@ void PS1Audio::install()
 				_vgm.set_SN76489_feedback(6);
 				_vgm.set_SN76489_shift_width(16);
 				_vgm.set_tag_system("IBM PC");
-				_vgm.set_tag_notes("IBM PS/1 Audio Card direct dump.");
+				_vgm.set_tag_notes("IBM PS/1 Audio Card");
 			}
 		}
 	);
@@ -353,7 +351,12 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 				Synth::enable_channel();
 			}
 			if(push || Synth::is_channel_enabled()) {
-				Synth::add_event({g_machine.get_virt_time_ns(), 0, value});
+				Synth::add_event({
+					g_machine.get_virt_time_ns(), 
+					0,       // chip
+					0, 0,    // reg port, register
+					0, value // value port, value
+				});
 			}
 			break;
 		}

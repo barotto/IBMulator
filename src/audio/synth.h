@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -42,7 +42,10 @@ class Synth
 public:
 	struct Event {
 		uint64_t time;
+		uint16_t chip;
+		uint16_t reg_port;
 		uint16_t reg;
+		uint16_t value_port;
 		uint16_t value;
 	};
 
@@ -93,7 +96,9 @@ public:
 		return m_vgm.is_open();
 	}
 	inline void capture_command(int _cmd, const Event &_e) {
-		m_vgm.command(NSEC_TO_USEC(_e.time), _cmd, _e.reg, _e.value);
+		if(is_capturing()) {
+			m_vgm.command(NSEC_TO_USEC(_e.time), _cmd, _e.chip, _e.reg, _e.value);
+		}
 	}
 	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool);
 	void save_state(StateBuf &_state);

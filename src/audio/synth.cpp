@@ -280,6 +280,7 @@ void Synth::enable_channel()
 	if(!m_channel->is_enabled()) {
 		m_last_time = 0;
 		m_channel->enable(true);
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: enabled\n", m_name.c_str());
 	}
 }
 

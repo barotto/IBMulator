@@ -110,13 +110,15 @@ class VGMFile
 public:
 	enum ChipType {
 		SN76489 = 3,
-		YM3812  = 20
+		YM3812  = 20,
+		YMF262  = 23
 	};
 
 private:
 	struct VGMEvent {
 		uint64_t time;
 		uint8_t  cmd;
+		uint8_t  chip;
 		uint32_t reg;
 		uint32_t data;
 	};
@@ -140,7 +142,7 @@ public:
 	const char* name() { return m_filepath.c_str(); }
 	inline bool is_open() { return !m_filepath.empty(); };
 	void command(uint64_t _time, uint8_t _command, uint32_t _data);
-	void command(uint64_t _time, uint8_t _command, uint32_t _reg, uint32_t _data);
+	void command(uint64_t _time, uint8_t _command, uint8_t _chip, uint32_t _reg, uint32_t _data);
 	void set_chip(ChipType _chip);
 	void set_clock(uint32_t _value);
 	void set_SN76489_feedback(uint16_t _value);
@@ -151,6 +153,10 @@ public:
 	void set_tag_system(const std::string &_system);
 	void set_tag_notes(const std::string &_notes);
 	void close();
+
+private:
+
+	void write_event(FILE *file, const VGMEvent &e);
 };
 
 #endif

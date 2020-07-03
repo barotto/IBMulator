@@ -47,9 +47,7 @@ void AdLib::install()
 		[this](Event &_event) {
 			m_OPL.write(0, _event.reg);
 			m_OPL.write(1, _event.value);
-			if(Synth::is_capturing()) {
-				Synth::capture_command(0x5A, _event);
-			}
+			Synth::capture_command(0x5A, _event);
 		},
 		[this](AudioBuffer &_buffer, int _frames) {
 			m_OPL.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
@@ -63,6 +61,8 @@ void AdLib::install()
 			}
 		}
 	);
+	
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s\n", name());
 }
 
 void AdLib::remove()
@@ -120,8 +120,9 @@ void AdLib::write(uint16_t _address, uint16_t _value, unsigned)
 					PDEBUGF(LOG_V2, LOG_AUDIO, "AdLib: reg %02Xh <- %02Xh\n", m_s.reg_index, _value);
 					Synth::add_event({
 						g_machine.get_virt_time_ns(),
-						m_s.reg_index,
-						uint8_t(_value)
+						0, // chip
+						0, m_s.reg_index,
+						1, uint8_t(_value)
 					});
 					Synth::enable_channel();
 					break;
