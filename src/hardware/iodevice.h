@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,22 +29,23 @@ class Devices;
 		static constexpr const char* NAME = _DEVNAME_; \
 		virtual const char *name() { return _CLASSNAME_::NAME; } \
 	protected: \
-		static const IODevice::IOPorts ms_ioports; \
+		static IODevice::IOPorts ms_ioports; \
 		virtual const IOPorts * ioports() { return &_CLASSNAME_::ms_ioports; }
 
 #define IODEVICE_PORTS(_CLASSNAME_) \
-		const IODevice::IOPorts _CLASSNAME_::ms_ioports
+		IODevice::IOPorts _CLASSNAME_::ms_ioports
 
 class IODevice
 {
-protected:
-	Devices *m_devices;
-
+public:
 	struct IOPortsInterval {
 		uint16_t from, to;
 		uint8_t  mask;
 	};
 	typedef std::vector<IOPortsInterval> IOPorts;
+	
+protected:
+	Devices *m_devices;
 
 	IODEVICE(IODevice, "null device")
 
@@ -69,6 +70,7 @@ public:
 protected:
 	void install(const IOPortsInterval *_io, unsigned _len);
 	void remove(const IOPortsInterval *_io, unsigned _len);
+	static void rebase_ports(IOPorts::iterator _port0, IOPorts::iterator _portN, unsigned _old_base, unsigned _new_base);
 };
 
 

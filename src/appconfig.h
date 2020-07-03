@@ -230,6 +230,17 @@ public:
 #define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
 
+#define SBLASTER_SECTION        "sblaster"
+#define SBLASTER_ENABLED        "enabled"
+#define SBLASTER_MODEL          "model"
+#define SBLASTER_IOBASE         "iobase"
+#define SBLASTER_DMA            "dma"
+#define SBLASTER_IRQ            "irq"
+#define SBLASTER_DAC_VOLUME     "dac_volume"
+#define SBLASTER_OPL_RATE       "opl_rate"
+#define SBLASTER_OPL_FILTERS    "opl_filters"
+#define SBLASTER_OPL_VOLUME     "opl_volume"
+
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_VOLUME          "volume"
 #define SOUNDFX_FDD_SPIN        "fdd_spin"

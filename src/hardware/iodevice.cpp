@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -74,5 +74,18 @@ void IODevice::remove(const IOPortsInterval *_io, unsigned _len)
 			}
 		}
 		_io++;
+	}
+}
+
+void IODevice::rebase_ports(IOPorts::iterator _port0, IOPorts::iterator _portN, unsigned _old_base, unsigned _new_base)
+{
+	IOPorts::iterator port = _port0;
+	while(port != _portN) {
+		assert(port->from >= _old_base);
+		assert(port->to >= _old_base);
+		assert(port->from <= port->to);
+		port->from = port->from - _old_base + _new_base;
+		port->to = port->to - _old_base + _new_base;
+		port++;
 	}
 }

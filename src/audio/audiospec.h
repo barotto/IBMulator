@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,6 +44,10 @@ inline double frames_to_us(unsigned _frames, unsigned _rate) {
 	return (double(_frames) / double(_rate)) * 1e6;
 }
 
+inline double frames_to_ns(unsigned _frames, unsigned _rate) {
+	return (double(_frames) / double(_rate)) * 1e9;
+}
+
 struct AudioSpec
 {
 	AudioFormat format;
@@ -56,6 +60,30 @@ struct AudioSpec
 	bool operator!=(const AudioSpec &_s) const {
 		return !(*this==_s);
 	}
+	unsigned sample_size() const {
+		return SDL_AUDIO_BITSIZE(format) / 8;
+	}
+	unsigned frame_size() const {
+		return sample_size() * channels;
+	}
+	uint64_t frame_time_us() const {
+		return 1000000L / rate;
+	}
+	uint64_t frame_time_ns() const {
+		return 1000000000L / rate;
+	}
+	unsigned bytes_per_sec() const {
+		return frame_size() * rate;
+	}
+	unsigned bytes_to_frames(unsigned _bytes) {
+		return _bytes / frame_size();
+	}
+	uint64_t duration_us(unsigned _frames) const {
+		return frames_to_us(_frames);
+	}
+	uint64_t duration_ns(unsigned _frames) const {
+		return frames_to_ns(_frames);
+	}
 	double us_to_frames(uint64_t _us) const {
 		return ::us_to_frames(_us, rate);
 	}
@@ -64,6 +92,9 @@ struct AudioSpec
 	}
 	uint64_t frames_to_us(unsigned _frames) const {
 		return round(::frames_to_us(_frames, rate));
+	}
+	uint64_t frames_to_ns(unsigned _frames) const {
+		return round(::frames_to_ns(_frames, rate));
 	}
 	unsigned frames_to_samples(unsigned _frames) const {
 		return _frames*channels;

@@ -47,8 +47,8 @@ public:
 	unsigned channels() const { return m_spec.channels; }
 	unsigned rate() const { return m_spec.rate; }
 	const AudioSpec & spec() const { return m_spec; }
-	unsigned sample_size() const { return SDL_AUDIO_BITSIZE(m_spec.format)/8; }
-	unsigned frame_size() const { return sample_size()*m_spec.channels; }
+	unsigned sample_size() const { return m_spec.sample_size(); }
+	unsigned frame_size() const { return m_spec.frame_size(); }
 	unsigned frames() const { return (m_data.size()/frame_size()); }
 	unsigned samples() const { return (m_data.size()/sample_size()); }
 	uint64_t duration_us() const { return m_spec.frames_to_us(frames()); }
@@ -61,11 +61,13 @@ public:
 	void reserve_bytes(uint64_t _bytes);
 	template<typename T> void add_samples(const std::vector<T> &_data);
 	template<typename T> void add_samples(const std::vector<T> &_data, unsigned _count);
+	template<typename T> void add_samples(const T *_data, unsigned _count);
 	void add_frames(const AudioBuffer &_source);
 	void add_frames(const AudioBuffer &_source, unsigned _frames_count);
 	void pop_frames(unsigned _frames_to_pop);
 	template<typename T> unsigned fill_samples(unsigned _samples, T _value);
 	template<typename T> unsigned fill_samples_us(uint64_t _duration_us, T _value);
+	template<typename T> unsigned fill_frames(unsigned _frames, T _value[]);
 	unsigned fill_frames_silence(unsigned _samples);
 	unsigned fill_samples_silence(unsigned _samples);
 	unsigned fill_us_silence(uint64_t _duration_us);
@@ -169,6 +171,17 @@ void AudioBuffer::add_samples(const std::vector<T> &_data, unsigned _count)
 }
 
 template<typename T>
+void AudioBuffer::add_samples(const T *_data, unsigned _count)
+{
+	if(sizeof(T) != sample_size()) {
+		throw std::logic_error("invalid type");
+	}
+	auto start = reinterpret_cast<const uint8_t*>(&(*_data));
+	auto end = start + sizeof(T)*_count;
+	m_data.insert(m_data.end(), start, end);
+}
+
+template<typename T>
 unsigned AudioBuffer::fill_samples(unsigned _samples, T _value)
 {
 	unsigned i = samples();
@@ -185,6 +198,19 @@ unsigned AudioBuffer::fill_samples_us(uint64_t _duration_us, T _value)
 	unsigned samples = round(m_spec.us_to_samples(_duration_us));
 	fill_samples(samples, _value);
 	return samples;
+}
+
+template<typename T>
+unsigned AudioBuffer::fill_frames(unsigned _frames, T _value[])
+{
+	unsigned f = frames();
+	resize_frames(f + _frames);
+	for(; f<frames(); ++f) {
+		for(unsigned c=0; c<m_spec.channels; ++c) {
+			(*this).operator[]<T>(f*m_spec.channels + c) = _value[c];
+		}
+	}
+	return _frames;
 }
 
 template<typename T>

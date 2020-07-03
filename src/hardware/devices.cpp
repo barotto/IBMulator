@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,6 +43,7 @@
 #include "devices/ps1audio.h"
 #include "devices/adlib.h"
 #include "devices/gameport.h"
+#include "devices/sblaster.h"
 
 Devices g_devices;
 
@@ -139,9 +140,42 @@ void Devices::config_changed()
 		remove(StorageCtrl_PS1::NAME);
 	}
 	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
+	
 	bool gameport =
 	install_only_if<PS1Audio>(g_program.config().get_bool(PS1AUDIO_SECTION, PS1AUDIO_ENABLED));
-	install_only_if<AdLib>(g_program.config().get_bool(ADLIB_SECTION, ADLIB_ENABLED));
+	
+	bool adlib = g_program.config().get_bool(ADLIB_SECTION, ADLIB_ENABLED);
+	if(g_program.config().get_bool(SBLASTER_SECTION, SBLASTER_ENABLED)) {
+		static std::map<std::string, unsigned> sbmodels = {
+			{ "",       SBlaster::SB1,   },
+			{ "sb1",    SBlaster::SB1,   },
+			{ "sb2",    SBlaster::SB2,   },
+			// TODO
+			// { "sbpro1", SBlaster::SBPRO1 },
+			// { "sbpro2", SBlaster::SBPRO2 },
+		};
+		unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
+		switch(sb_model) {
+			case SBlaster::SB1   : install<SBlaster>(); break;
+			case SBlaster::SB2   : install<SBlaster2>(); break;
+			// TODO
+			// case SBlaster::SBPRO1: install<SBlasterPro>(); break;
+			// case SBlaster::SBPRO2: install<SBlasterPro2>(); break;
+			default:
+				PERRF(LOG_MACHINE, "Invalid Sound Blaster model\n");
+				break;
+		}
+		// AdLib can't be installed with Sound Blaster
+		if(adlib) {
+			PINFOF(LOG_V0, LOG_MACHINE, "Cannot install AdLib card with Sound Blaster card\n");
+		}
+		adlib = false;
+		gameport = true;
+	} else {
+		remove(SBlaster::NAME);
+	}
+	install_only_if<AdLib>(adlib);
+	
 	install_only_if<GamePort>(gameport);
 	install_only_if<Serial>(g_program.config().get_bool(COM_SECTION, COM_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));

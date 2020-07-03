@@ -112,6 +112,17 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ ADLIB_VOLUME,  "1.4"   }
 	} },
 
+	{ SBLASTER_SECTION, {
+		{ SBLASTER_MODEL,       "sb2"   },
+		{ SBLASTER_DAC_VOLUME,  "1.0"   },
+		{ SBLASTER_OPL_RATE,    "48000" },
+		{ SBLASTER_OPL_FILTERS, ""      },
+		{ SBLASTER_OPL_VOLUME,  "1.4"   },
+		{ SBLASTER_IOBASE,      "0x220" },
+		{ SBLASTER_DMA,         "1"     },
+		{ SBLASTER_IRQ,         "7"     }
+	} },
+	
 	{ SOUNDFX_SECTION, {
 		{ SOUNDFX_VOLUME,   "1.0" },
 		{ SOUNDFX_FDD_SPIN, "0.4" },
@@ -204,6 +215,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ ADLIB_ENABLED, "no" }
 	} },
 
+	{ SBLASTER_SECTION, {
+		{ SBLASTER_ENABLED, "no" }
+	} },
+	
 	{ COM_SECTION, {
 		{ COM_ENABLED, "yes" }
 	} },
@@ -426,11 +441,28 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  volume: Audio volume.\n"
 		},
 		{ ADLIB_SECTION,
-"; enabled: Install the AdLib Audio Card.\n"
+"; enabled: Install the AdLib Audio Card (cannot be installed with Sound Blaster).\n"
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
 ";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters.\n"
 ";  volume: Audio volume.\n"
+		},
+		{ SBLASTER_SECTION,
+";     enabled: Install a Sound Blaster audio card.\n"
+";       model: The model of the installed card.\n"
+";              Possible values: sb1, sb2\n"
+";  dac_volume: DAC's audio volume.\n"
+";    opl_rate: OPL chip's sample rate. The real hardware uses a frequency of 49716Hz.\n"
+";              Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
+"; opl_filters: DSP filters for the OPL chip\n"
+";              Possible values: a list of filter definitions. See the README for more info.\n"
+";  opl_volume: OPL chip's audio volume.\n"
+";      iobase: The I/O base address, as an hexadecimal number.\n"
+";              Possible values: 0x220, 0x240.\n"
+";         irq: The IRQ channel number.\n"
+";              Possible values: 2, 5, 7, 10.\n"
+";         dma: The DMA channel number.\n"
+";              Possible values: 0, 1, 3.\n"
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
@@ -561,6 +593,17 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		ADLIB_RATE,
 		ADLIB_FILTERS,
 		ADLIB_VOLUME
+	} },
+	{ SBLASTER_SECTION, {
+		SBLASTER_ENABLED,
+		SBLASTER_MODEL,
+		SBLASTER_DAC_VOLUME,
+		SBLASTER_OPL_RATE,
+		SBLASTER_OPL_FILTERS,
+		SBLASTER_OPL_VOLUME,
+		SBLASTER_IOBASE,
+		SBLASTER_DMA,
+		SBLASTER_IRQ
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
