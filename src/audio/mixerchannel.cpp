@@ -122,7 +122,6 @@ void MixerChannel::set_in_spec(const AudioSpec &_spec)
 		m_in_buffer.set_spec(_spec);
 		// 5 sec. worth of data, how much is enough?
 		m_in_buffer.reserve_us(5e6);
-		reset_filters();
 	}
 }
 
@@ -211,10 +210,10 @@ void MixerChannel::set_filters(std::string _filters_def)
 	std::vector<std::shared_ptr<Dsp::Filter>> filters;
 	
 	try {
-		// filters are applied after rate conversion and before channels conversion
-		if(m_in_buffer.spec().channels == 1) {
+		// filters are applied after rate and channels conversion
+		if(m_out_buffer.spec().channels == 1) {
 			filters = Mixer::create_filters<1>(double(m_out_buffer.spec().rate), _filters_def);
-		} else if(m_in_buffer.spec().channels == 2) {
+		} else if(m_out_buffer.spec().channels == 2) {
 			filters = Mixer::create_filters<2>(double(m_out_buffer.spec().rate), _filters_def);
 		} else {
 			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
@@ -268,7 +267,7 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 		return;
 	}
 
-	// input buffer -> convert format&rate -> filters -> convert ch -> output buffer
+	// input buffer -> convert format&rate -> convert ch -> filters -> output buffer
 	
 	// these work buffers can be static only because the current implementation
 	// of the mixer is single threaded.
@@ -302,16 +301,16 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 
 	if(frames) {
 		
-		// 3. process filters
-		for(auto &f : m_filters) {
-			f->process(frames, &(source->at<float>(0)));
-		}
-		
-		// 4. convert channels
+		// 3. convert channels
 		if(m_in_buffer.channels() != m_out_buffer.channels()) {
 			dest[bufidx].set_spec(m_out_buffer.spec());
 			source->convert_channels(dest[bufidx], frames);
 			source = &dest[bufidx];
+		}
+		
+		// 4. process filters
+		for(auto &f : m_filters) {
+			f->process(frames, &(source->at<float>(0)));
 		}
 		
 		// 5. add to output buffer
