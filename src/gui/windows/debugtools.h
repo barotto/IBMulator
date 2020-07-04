@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017  Marco Bortolin
+ * Copyright (C) 2017-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -55,7 +55,8 @@ private:
 	void on_stats(RC::Event &);
 	void on_debugger(RC::Event &);
 	void on_devices(RC::Event &);
-
+	void on_close(RC::Event &);
+	
 public:
 	DebugTools(GUI * _gui, Machine *_machine, Mixer *_mixer);
 	~DebugTools();

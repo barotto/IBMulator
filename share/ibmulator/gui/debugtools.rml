@@ -7,10 +7,14 @@
 		<style>
 			body
 			{
-				width: 260px;
+				width: 280px;
 				position: absolute;
 				top: 0;
 				left: 0;
+			}
+			#close {
+				width: 20px;
+				height: 20px;
 			}
 		</style>
 	</head>
@@ -19,6 +23,7 @@
 			<button id="stats" style="width:100px;">Statistics</button>
 			<button id="debugger" style="width:80px;">Debugger</button>
 			<button id="devices" style="width:80px;">Devices</button>
+			<button id="close">X</button>
 		</div>
 	</body>
 </rml>

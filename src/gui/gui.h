@@ -245,7 +245,8 @@ public:
 	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
-
+	void toggle_dbg_windows();
+	
 	vec2i resize_window(int _width, int _height);
 	bool is_fullscreen();
 	void toggle_fullscreen();

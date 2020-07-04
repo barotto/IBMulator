@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,6 +32,7 @@ event_map_t DebugTools::ms_evt_map = {
 	GUI_EVT( "stats",    "click", DebugTools::on_stats ),
 	GUI_EVT( "debugger", "click", DebugTools::on_debugger ),
 	GUI_EVT( "devices",  "click", DebugTools::on_devices ),
+	GUI_EVT( "close",    "click", DebugTools::on_close )
 };
 
 DebugTools::DebugTools(GUI *_gui, Machine *_machine, Mixer *_mixer)
@@ -102,6 +103,11 @@ void DebugTools::on_debugger(RC::Event &)
 void DebugTools::on_devices(RC::Event &)
 {
 	m_devices->toggle();
+}
+
+void DebugTools::on_close(RC::Event &)
+{
+	m_gui->toggle_dbg_windows();
 }
 
 void DebugTools::hide()

@@ -395,7 +395,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F4: {
 					//show/hide debug windows
 					if(_event.type == SDL_KEYUP) return true;
-					m_windows.toggle_dbg();
+					toggle_dbg_windows();
 					return true;
 				}
 				case SDLK_F5: {
@@ -506,6 +506,8 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					m_machine->send_key_to_kbctrl(KEY_BREAK, KEY_PRESSED);
 					return true;
 				}
+				default:
+					break;
 			}
 		} else if(_event.key.keysym.mod & KMOD_ALT) {
 			switch(_event.key.keysym.sym) {
@@ -535,6 +537,8 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					}
 					return true;
 				}
+				default:
+					break;
 			}
 		}
 	} else {
@@ -552,6 +556,8 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				}
 				break;
 			}
+			default:
+				break;
 		}
 	}
 	return false;
@@ -1033,6 +1039,11 @@ void GUI::show_dbg_message(const char* _mex)
 {
 	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
 	m_windows.last_dbg_mex = _mex;
+}
+
+void GUI::toggle_dbg_windows()
+{
+	m_windows.toggle_dbg();
 }
 
 Uint32 GUI::every_second(Uint32 interval, void */*param*/)
