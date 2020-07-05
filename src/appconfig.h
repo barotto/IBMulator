@@ -242,6 +242,7 @@ public:
 #define SBLASTER_OPL_VOLUME     "opl_volume"
 
 #define SOUNDFX_SECTION         "soundfx"
+#define SOUNDFX_ENABLED         "enabled"
 #define SOUNDFX_VOLUME          "volume"
 #define SOUNDFX_FDD_SPIN        "fdd_spin"
 #define SOUNDFX_FDD_SEEK        "fdd_seek"

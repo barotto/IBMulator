@@ -124,6 +124,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ SOUNDFX_SECTION, {
+		{ SOUNDFX_ENABLED,  "yes" },
 		{ SOUNDFX_VOLUME,   "1.0" },
 		{ SOUNDFX_FDD_SPIN, "0.4" },
 		{ SOUNDFX_FDD_SEEK, "0.4" },
@@ -466,7 +467,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
-";   volume: General volume of the sound effects. Set to 0.0 to disable, 1.0 for normal.\n"
+";  enabled: Enable sound effects emulation.\n"
+";   volume: General volume of the sound effects.\n"
 "; fdd_seek: Volume of FDD seeks.\n"
 "; fdd_spin: Volume of FDD spin noise.\n"
 "; hdd_seek: Volume of HDD seeks.\n"
@@ -607,6 +609,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_VOLUME,
+		SOUNDFX_ENABLED,
 		SOUNDFX_FDD_SPIN,
 		SOUNDFX_FDD_SEEK,
 		SOUNDFX_HDD_SPIN,

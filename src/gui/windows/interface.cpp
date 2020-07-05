@@ -206,7 +206,10 @@ m_hdd(nullptr)
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
 
-	m_audio.init(_mixer);
+	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+	if(m_audio_enabled) {
+		m_audio.init(_mixer);
+	}
 }
 
 Interface::~Interface()
@@ -319,7 +322,10 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 			m_curr_drive?"B":"A", _write_protect?"(write protected)":"");
 	m_machine->cmd_insert_media(m_curr_drive, type, _img_path, _write_protect);
 	m_fs->hide();
-	m_audio.use_floppy(true);
+
+	if(m_audio_enabled) {
+		m_audio.use_floppy(true);
+	}
 }
 
 void Interface::update()
@@ -410,7 +416,7 @@ void Interface::on_fdd_select(RC::Event &)
 void Interface::on_fdd_eject(RC::Event &)
 {
 	m_machine->cmd_eject_media(m_curr_drive);
-	if(m_floppy->is_media_present(m_curr_drive)) {
+	if(m_audio_enabled && m_floppy->is_media_present(m_curr_drive)) {
 		m_audio.use_floppy(false);
 	}
 }

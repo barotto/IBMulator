@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -213,7 +213,8 @@ m_spin_up_duration(0.0),
 m_save_on_close(false),
 m_read_only(true),
 m_tmp_disk(false),
-m_ctrl(nullptr)
+m_ctrl(nullptr),
+m_fx_enabled(false)
 {
 	m_sector_data = 512;
 	m_sector_size = HDD_SECTOR_SIZE;
@@ -231,14 +232,19 @@ HardDiskDrive::~HardDiskDrive()
 void HardDiskDrive::install(StorageCtrl *_ctrl)
 {
 	m_ctrl = _ctrl;
-	m_fx.install(m_name);
-	m_spin_up_duration = m_fx.spin_up_time_us();
+	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+	if(m_fx_enabled) {
+		m_fx.install(m_name);
+	}
 }
 
 void HardDiskDrive::remove()
 {
 	unmount(m_save_on_close, m_read_only);
-	m_fx.remove();
+	
+	if(m_fx_enabled) {
+		m_fx.remove();
+	}
 }
 
 void HardDiskDrive::power_on(uint64_t _time)
@@ -247,7 +253,9 @@ void HardDiskDrive::power_on(uint64_t _time)
 
 	if(m_disk) {
 		m_s.power_on_time = _time+1;
-		m_fx.spin(true, true);
+		if(m_fx_enabled) {
+			m_fx.spin(true, true);
+		}
 	} else {
 		m_s.power_on_time = 0;
 	}
@@ -257,7 +265,7 @@ void HardDiskDrive::power_off()
 {
 	StorageDev::power_off();
 
-	if(m_disk) {
+	if(m_fx_enabled && m_disk) {
 		m_fx.spin(false, true);
 	}
 }
@@ -361,9 +369,13 @@ void HardDiskDrive::config_changed(const char *_section)
 		m_ident.set_model(ss.str().c_str());
 	}
 
-	m_fx.config_changed();
-	m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
-			m_fx.spin_up_time_us()/1e6) * 1e6;
+	if(m_fx_enabled) {
+		m_fx.config_changed();
+		m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
+				m_fx.spin_up_time_us()/1e6) * 1e6;
+	} else {
+		m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME, 10) * USEC_PER_SECOND;
+	}
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==HDD_CUSTOM_DRIVE_IDX?" (custom)":"");
 	PINFOF(LOG_V0, LOG_HDD, "  Interface: %s\n", m_ctrl->name());
@@ -413,7 +425,9 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "%s: restoring state\n", name());
 
-	m_fx.clear_events();
+	if(m_fx_enabled) {
+		m_fx.clear_events();
+	}
 
 	// restore_state comes after config_changed, so:
 	// 1. the old disk has been serialized and unmounted
@@ -430,8 +444,10 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 		m_disk.reset(nullptr); // this calls the destructor and closes the file
 		//the saved state is read only
 		mount(imgfile, geom, true);
-		m_fx.spin(true, false);
-	} else {
+		if(m_fx_enabled) {
+			m_fx.spin(true, false);
+		}
+	} else if(m_fx_enabled) {
 		m_fx.spin(false, false);
 	}
 
@@ -672,7 +688,9 @@ void HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 
 void HardDiskDrive::seek(unsigned _from_cyl, unsigned _to_cyl)
 {
-	m_fx.seek(_from_cyl, _to_cyl, m_disk->geometry.cylinders);
+	if(m_fx_enabled) {
+		m_fx.seek(_from_cyl, _to_cyl, m_disk->geometry.cylinders);
+	}
 }
 
 int64_t HardDiskDrive::get_hdd_type_size(int _hdd_type)

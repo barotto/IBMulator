@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2018  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -271,8 +271,11 @@ void FloppyCtrl::install(void)
 	}
 	m_num_installed_floppies = 0;
 
-	m_fx[0].install("A");
-	m_fx[1].install("B");
+	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+	if(m_fx_enabled) {
+		m_fx[0].install("A");
+		m_fx[1].install("B");
+	}
 }
 
 void FloppyCtrl::remove()
@@ -287,8 +290,10 @@ void FloppyCtrl::remove()
 	g_machine.unregister_irq(FLOPPY_IRQ);
 	g_machine.unregister_timer(m_timer);
 
-	m_fx[0].remove();
-	m_fx[1].remove();
+	if(m_fx_enabled) {
+		m_fx[0].remove();
+		m_fx[1].remove();
+	}
 }
 
 void FloppyCtrl::config_changed()
@@ -307,14 +312,17 @@ void FloppyCtrl::config_changed()
 
 	m_num_installed_floppies = 0;
 
+	//TODO drives should be setup in the install()
 	floppy_drive_setup(0);
 	floppy_drive_setup(1);
 
 	m_latency_mult = g_program.config().get_real(DRIVES_SECTION, DRIVES_FDD_LAT);
 	m_latency_mult = clamp(m_latency_mult,0.0,1.0);
 
-	for(int i=0; i<2; i++) {
-		m_fx[i].config_changed();
+	if(m_fx_enabled) {
+		for(int i=0; i<2; i++) {
+			m_fx[i].config_changed();
+		}
 	}
 }
 
@@ -337,12 +345,14 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	for(int i=0; i<2; i++) {
-		m_fx[i].snatch(false);
-		if(is_motor_spinning(i)) {
-			m_fx[i].spin(true,false);
-		} else {
-			m_fx[i].spin(false,false);
+	if(m_fx_enabled) {
+		for(int i=0; i<2; i++) {
+			m_fx[i].snatch(false);
+			if(is_motor_spinning(i)) {
+				m_fx[i].spin(true,false);
+			} else {
+				m_fx[i].spin(false,false);
+			}
 		}
 	}
 }
@@ -602,9 +612,11 @@ void FloppyCtrl::reset(unsigned type)
 
 void FloppyCtrl::power_off()
 {
-	for(int i=0; i<2; i++) {
-		if(is_motor_spinning(i)) {
-			m_fx[i].spin(false, true);
+	if(m_fx_enabled) {
+		for(int i=0; i<2; i++) {
+			if(is_motor_spinning(i)) {
+				m_fx[i].spin(false, true);
+			}
 		}
 	}
 	m_s.DOR = 0;
@@ -816,12 +828,14 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			if(m_device_type[drive_sel] == FDD_NONE) {
 				PDEBUGF(LOG_V0, LOG_FDC, "WARNING: non existing drive selected\n");
 			}
-			for(int i=0; i<2; i++) {
-				bool is_spinning = is_motor_spinning(i);
-				if(is_spinning && !was_spinning[i]) {
-					m_fx[i].spin(true, true);
-				} else if(!is_spinning && was_spinning[i]) {
-					m_fx[i].spin(false, true);
+			if(m_fx_enabled) {
+				for(int i=0; i<2; i++) {
+					bool is_spinning = is_motor_spinning(i);
+					if(is_spinning && !was_spinning[i]) {
+						m_fx[i].spin(true, true);
+					} else if(!is_spinning && was_spinning[i]) {
+						m_fx[i].spin(false, true);
+					}
 				}
 			}
 			break;
@@ -1028,7 +1042,9 @@ void FloppyCtrl::floppy_command()
 			PDEBUGF(LOG_V1, LOG_FDC, "recalibrate DRV%u (cur.C=%u)\n", drive, m_s.cur_cylinder[drive]);
 
 			if(m_device_type[drive]!=FDD_NONE && m_s.boot_time[drive]==0) {
-				m_fx[drive].boot(m_media_present[drive]);
+				if(m_fx_enabled) {
+					m_fx[drive].boot(m_media_present[drive]);
+				}
 				m_s.boot_time[drive] = g_machine.get_virt_time_ns();
 			}
 			step_delay = calculate_step_delay(drive, m_s.cur_cylinder[drive], 0);
@@ -1700,6 +1716,11 @@ void FloppyCtrl::increment_sector(void)
 void FloppyCtrl::play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl)
 {
 	assert(_drive<2);
+	
+	if(!m_fx_enabled) {
+		return;
+	}
+	
 	if(is_motor_on(_drive)) {
 		m_fx[_drive].seek(_from_cyl, _to_cyl, 80);
 	} else {
@@ -1718,7 +1739,7 @@ void FloppyCtrl::eject_media(uint _drive)
 		PERRF(LOG_FDC, "only 2 drives supported\n");
 		return;
 	}
-	if(is_motor_spinning(_drive)) {
+	if(m_fx_enabled && is_motor_spinning(_drive)) {
 		m_fx[_drive].spin(false,true);
 	}
 	m_media[_drive].close();
@@ -1772,7 +1793,9 @@ bool FloppyCtrl::insert_media(uint _drive, uint _mediatype, const char *_path, b
 	g_program.config().set_string(drivename, DISK_TYPE, floppy_type[_mediatype].str);
 
 	m_disk_changed[_drive] = true;
-	m_fx[_drive].snatch();
+	if(m_fx_enabled) {
+		m_fx[_drive].snatch();
+	}
 
 	return true;
 }

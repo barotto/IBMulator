@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2012  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -139,6 +139,7 @@ private:
 	bool m_disk_changed[4]; //!< used by the GUI to know when a disk has been changed
 	std::mutex m_mutex;     //!< for machine-GUI synchronization
 
+	bool m_fx_enabled;
 	FloppyFX m_fx[2];
 
 public:

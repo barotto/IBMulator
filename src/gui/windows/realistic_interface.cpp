@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -181,7 +181,10 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 
-	m_real_audio.init(_mixer);
+	m_real_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+	if(m_real_audio_enabled) {
+		m_real_audio.init(_mixer);
+	}
 }
 
 RealisticInterface::~RealisticInterface()
@@ -304,7 +307,9 @@ void RealisticInterface::set_video_contrast(float _value)
 
 void RealisticInterface::sig_state_restored()
 {
-	m_real_audio.update(true, false);
+	if(m_real_audio_enabled) {
+		m_real_audio.update(true, false);
+	}
 }
 
 float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
@@ -351,6 +356,8 @@ void RealisticInterface::on_power(RC::Event &_evt)
 {
 	bool on = m_machine->is_on();
 	Interface::on_power(_evt);
-	m_real_audio.update(!on, true);
+	if(m_real_audio_enabled) {
+		m_real_audio.update(!on, true);
+	}
 }
 

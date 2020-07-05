@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -47,6 +47,7 @@ protected:
 	static const std::map<int, const DriveIdent> ms_hdd_models;
 	static const std::map<uint64_t, int> ms_hdd_sizes;
 
+	bool m_fx_enabled;
 	HardDriveFX m_fx;
 
 public:

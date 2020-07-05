@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -88,6 +88,7 @@ private:
 
 	static event_map_t ms_evt_map;
 
+	bool m_real_audio_enabled;
 	RealisticFX m_real_audio;
 
 	static constexpr float ms_min_slider_val = 0.0f;

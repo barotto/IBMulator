@@ -116,6 +116,7 @@ protected:
 	FloppyCtrl *m_floppy;
 	StorageCtrl *m_hdd;
 
+	bool m_audio_enabled;
 	InterfaceFX m_audio;
 
 public:
