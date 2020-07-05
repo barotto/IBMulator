@@ -113,14 +113,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SBLASTER_SECTION, {
-		{ SBLASTER_MODEL,       "sb2"   },
 		{ SBLASTER_DAC_VOLUME,  "1.0"   },
 		{ SBLASTER_OPL_RATE,    "48000" },
 		{ SBLASTER_OPL_FILTERS, ""      },
-		{ SBLASTER_OPL_VOLUME,  "1.4"   },
-		{ SBLASTER_IOBASE,      "0x220" },
-		{ SBLASTER_DMA,         "1"     },
-		{ SBLASTER_IRQ,         "7"     }
+		{ SBLASTER_OPL_VOLUME,  "1.4"   }
 	} },
 	
 	{ SOUNDFX_SECTION, {
@@ -217,7 +213,11 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SBLASTER_SECTION, {
-		{ SBLASTER_ENABLED, "no" }
+		{ SBLASTER_ENABLED, "no"    },
+		{ SBLASTER_MODEL,   "sb2"   },
+		{ SBLASTER_IOBASE,  "0x220" },
+		{ SBLASTER_DMA,     "1"     },
+		{ SBLASTER_IRQ,     "7"     }
 	} },
 	
 	{ COM_SECTION, {
