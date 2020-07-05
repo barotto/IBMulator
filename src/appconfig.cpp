@@ -608,8 +608,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		SBLASTER_IRQ
 	} },
 	{ SOUNDFX_SECTION, {
-		SOUNDFX_VOLUME,
 		SOUNDFX_ENABLED,
+		SOUNDFX_VOLUME,
 		SOUNDFX_FDD_SPIN,
 		SOUNDFX_FDD_SEEK,
 		SOUNDFX_HDD_SPIN,
