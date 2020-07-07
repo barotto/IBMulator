@@ -865,10 +865,9 @@ void SBlaster::restore_state(StateBuf &_state)
 	} else {
 		m_dac_channel->set_volume(.0f);
 	}
-	if(m_s.dsp.mode != DSP::Mode::NONE ||
-		m_s.dac.state != DAC::State::STOPPED ||
-		m_s.dac.used != 0)
-	{
+	if(m_s.dac.state != DAC::State::STOPPED || m_s.dac.used != 0) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP:%d, DAC:%d,%d\n", short_name(),
+				m_s.dsp.mode, m_s.dac.state, m_s.dac.used);
 		m_dac_channel->enable(true);
 	}
 }
