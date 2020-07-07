@@ -1719,14 +1719,14 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
 	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
 	unsigned pre_frames = 0, post_frames = 0;
 	unsigned dac_frames = m_s.dac.spec.samples_to_frames(m_s.dac.used);
-	unsigned needed_frames = round(us_to_frames(_time_span_us, m_s.dac.spec.rate));
+	double needed_frames = us_to_frames(_time_span_us, m_s.dac.spec.rate);
 	bool chactive = true;
-	static int balance = 0;
+	static double balance = 0.0;
 
 	m_dac_channel->set_in_spec(m_s.dac.spec);
 	
 	if(m_s.dac.newdata) {
-		balance = 0;
+		balance = 0.0;
 	}
 	
 	if(m_s.dac.newdata && (dac_frames < needed_frames)) {
@@ -1751,18 +1751,16 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
 
 	balance -= needed_frames;
 	
-	//if(m_s.dac.state == DAC::State::STOPPED && (dac_frames < needed_frames) && pre_frames==0) {
 	if(m_s.dac.state == DAC::State::STOPPED && (balance <= 0) && pre_frames==0) {
 		chactive = !m_dac_channel->check_disable_time(mtime_us);
-		//post_frames = needed_frames - dac_frames;
-		post_frames = balance * -1;
+		post_frames = balance * -1.0;
 		m_dac_channel->in().fill_samples<uint8_t>(post_frames*m_s.dac.spec.channels, m_s.dac.silence);
 		m_s.dac.last_value[0] = m_s.dac.last_value[1] = m_s.dac.silence;
-		balance = 0;
+		balance += post_frames;
 	}
 	
 	unsigned total = pre_frames + dac_frames + post_frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04d us, %d needed samples at %d Hz, rendered %d+%d+%d (%.0f us), balance=%d\n",
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04d us, %.2f needed samples at %d Hz, rendered %d+%d+%d (%.0f us), balance=%.2f\n",
 			short_name(), _time_span_us, needed_frames, m_s.dac.spec.rate,
 			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
 	
