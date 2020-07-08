@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -242,6 +242,9 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			PDEBUGF(LOG_V2, LOG_MACHINE, "\n");
 			PINFOF(LOG_V1, LOG_MACHINE, "POST code %02X\n", _value);
 			m_s.POST = _value;
+			if(STOP_AT_POST_CODE && _value == STOP_AT_POST_CODE) {
+				g_machine.set_single_step(true);
+			}
 			break;
 		}
 

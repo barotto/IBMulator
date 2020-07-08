@@ -75,6 +75,7 @@
 	#define STOP_AT_MEM_TRAPS false  // pause emulation at memory traps hit
 	#define STOP_AT_EXC       false  // pause emulation at exception defined in STOP_AT_EXC_VEC
 	#define STOP_AT_EXC_VEC   0x3000 // bitmask of exceptions to pause at
+	#define STOP_AT_POST_CODE 0      // POST code to pause emulation at. 0 to disable.
 	#define UD6_AUTO_DUMP     false  // automatic memory dump at #UD exception
 	#define BOCHS_BIOS_COMPAT false  // enable legacy Bochs' BIOS compatibility
 
@@ -95,6 +96,7 @@
 	#define STOP_AT_MEM_TRAPS false
 	#define STOP_AT_EXC       false
 	#define STOP_AT_EXC_VEC   0
+	#define STOP_AT_POST_CODE 0
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
 
