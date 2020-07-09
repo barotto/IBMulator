@@ -119,7 +119,7 @@ void Program::restore_state(
 		std::string bin = path + ".bin";
 
 		if(!FileSys::file_exists(ini.c_str())) {
-			PERRF(LOG_PROGRAM, "The state ini file is missing!\n");
+			PERRF(LOG_PROGRAM, "The state ini file '%s' is missing!\n", ini.c_str());
 			if(_on_fail != nullptr) {
 				_on_fail("The state ini file is missing!");
 			}
@@ -127,7 +127,7 @@ void Program::restore_state(
 		}
 
 		if(!FileSys::file_exists(bin.c_str())) {
-			PERRF(LOG_PROGRAM, "The state bin file is missing!\n");
+			PERRF(LOG_PROGRAM, "The state bin '%s' file is missing!\n", ini.c_str());
 			if(_on_fail) {
 				_on_fail("The state bin file is missing!");
 			}
@@ -319,13 +319,14 @@ bool Program::initialize(int argc, char** argv)
 	PINFO(LOG_V1,"assets directory: %s\n", m_datapath.c_str());
 
 	//Capture dir, create if not exists
-	std::string capture_dir = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
-	if(capture_dir.empty()) {
-		capture_dir = m_user_dir + FS_SEP "capture";
+	std::string capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+	if(capture_dir_path.empty()) {
+		std::string capture_dir = "capture";
+		m_config[0].set_string(CAPTURE_SECTION, CAPTURE_DIR, capture_dir);
+		capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	}
-	FileSys::create_dir(capture_dir.c_str());
-	m_config[0].set_string(CAPTURE_SECTION, CAPTURE_DIR, capture_dir);
-	PINFO(LOG_V1,"capture directory: %s\n", capture_dir.c_str());
+	FileSys::create_dir(capture_dir_path.c_str());
+	PINFO(LOG_V1,"capture directory: %s\n", capture_dir_path.c_str());
 
 	std::string dumplog = m_config[0].get_file_path("log.txt", FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
