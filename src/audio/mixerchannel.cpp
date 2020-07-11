@@ -88,7 +88,9 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_us, bool _prebuff
 		 * but its input buffer could have some samples left to process
 		 */
 		if(m_in_buffer.frames()) {
-			input_finish(_time_span_us);
+			input_finish(0);
+		}
+		if(m_out_buffer.frames()) {
 			active = true;
 		}
 	}
