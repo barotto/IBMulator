@@ -7,7 +7,7 @@
 		<style>
 			body
 			{
-				width: 280px;
+				width: 360px;
 				position: absolute;
 				top: 0;
 				left: 0;
@@ -23,6 +23,7 @@
 			<button id="stats" style="width:100px;">Statistics</button>
 			<button id="debugger" style="width:80px;">Debugger</button>
 			<button id="devices" style="width:80px;">Devices</button>
+			<button id="mixer" style="width:80px;">Mixer</button>
 			<button id="close">X</button>
 		</div>
 	</body>

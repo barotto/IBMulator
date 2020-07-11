@@ -526,7 +526,9 @@ void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
 std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
 		const std::string &_name)
 {
-	auto ch = std::make_shared<MixerChannel>(this, _callback, _name);
+	static int chcount = 0;
+	chcount++;
+	auto ch = std::make_shared<MixerChannel>(this, _callback, _name, chcount);
 	m_mix_channels[_name] = ch;
 	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels),
 		unsigned(m_audio_spec.freq)});
@@ -807,4 +809,14 @@ void Mixer::cmd_set_category_volume(MixerChannelCategory _cat, float _volume)
 	m_cmd_queue.push([=] () {
 		m_channels_volume[static_cast<int>(_cat)] = std::max(0.f,_volume);
 	});
+}
+
+std::vector<std::shared_ptr<MixerChannel>> Mixer::dbg_get_channels()
+{
+	// not mt safe.
+	std::vector<std::shared_ptr<MixerChannel>> chs;
+	for(auto ch : m_mix_channels) {
+		chs.push_back(ch.second);
+	}
+	return chs;
 }

@@ -23,6 +23,7 @@
 #include "sysdebugger286.h"
 #include "sysdebugger386.h"
 #include "devstatus.h"
+#include "mixerstate.h"
 #include "hardware/cpu.h"
 
 #include <Rocket/Core.h>
@@ -32,6 +33,7 @@ event_map_t DebugTools::ms_evt_map = {
 	GUI_EVT( "stats",    "click", DebugTools::on_stats ),
 	GUI_EVT( "debugger", "click", DebugTools::on_debugger ),
 	GUI_EVT( "devices",  "click", DebugTools::on_devices ),
+	GUI_EVT( "mixer",    "click", DebugTools::on_mixer ),
 	GUI_EVT( "close",    "click", DebugTools::on_close )
 };
 
@@ -45,6 +47,7 @@ m_machine(_machine)
 	m_stats = new Stats(_machine, _gui, _mixer, get_element("stats"));
 	m_stats->enable();
 	m_devices = new DevStatus(_gui, get_element("devices"), _machine);
+	m_mixer = new MixerState(_gui, get_element("mixer"), _mixer);
 }
 
 DebugTools::~DebugTools()
@@ -60,6 +63,10 @@ DebugTools::~DebugTools()
 	if(m_stats) {
 		m_stats->close();
 		delete m_stats;
+	}
+	if(m_mixer) {
+		m_mixer->close();
+		delete m_mixer;
 	}
 }
 
@@ -88,6 +95,7 @@ void DebugTools::config_changed()
 	}
 	m_devices->config_changed();
 	m_stats->config_changed();
+	m_mixer->config_changed();
 }
 
 void DebugTools::on_stats(RC::Event &)
@@ -105,6 +113,11 @@ void DebugTools::on_devices(RC::Event &)
 	m_devices->toggle();
 }
 
+void DebugTools::on_mixer(RC::Event &)
+{
+	m_mixer->toggle();
+}
+
 void DebugTools::on_close(RC::Event &)
 {
 	m_gui->toggle_dbg_windows();
@@ -115,6 +128,7 @@ void DebugTools::hide()
 	m_debugger->hide();
 	m_stats->hide();
 	m_devices->hide();
+	m_mixer->hide();
 	Window::hide();
 }
 
@@ -123,6 +137,7 @@ void DebugTools::show()
 	m_debugger->show();
 	m_stats->show();
 	m_devices->show();
+	m_mixer->show();
 	Window::show();
 }
 
@@ -136,6 +151,7 @@ void DebugTools::update()
 		m_devices->update();
 	}
 	m_stats->update();
+	m_mixer->update();
 }
 
 void DebugTools::show_message(const char* _mex)

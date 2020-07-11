@@ -23,11 +23,12 @@
 
 
 MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
-		const std::string &_name)
+		const std::string &_name, int _id)
 :
 m_mixer(_mixer),
 m_enabled(false),
 m_name(_name),
+m_id(_id),
 m_update_clbk(_callback),
 m_disable_time(0),
 m_disable_timeout(0),

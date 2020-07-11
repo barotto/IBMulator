@@ -28,7 +28,9 @@ share/ibmulator/gui/fileselect.rml \
 share/ibmulator/gui/normal_interface.rml \
 share/ibmulator/gui/realistic_interface.rml \
 share/ibmulator/gui/stats.rml \
-share/ibmulator/gui/status.rml
+share/ibmulator/gui/status.rml \
+share/ibmulator/gui/mixerstate.rml \
+share/ibmulator/gui/tables.rcss
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \

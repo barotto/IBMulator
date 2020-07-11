@@ -1,0 +1,37 @@
+<rml>
+	<head>
+		<title>Mixer</title>
+		<link type="text/template" href="default.rml" />
+		<link type="text/rcss" href="tables.rcss"/>
+		<style>
+			body
+			{
+				width: 600px;
+				height: 400px;
+				position: absolute;
+				top: 60px;
+				left: 0px;
+			}
+			th, td {
+				width: 12.5%;
+				font-size: 10px;
+			}
+			th.cs2 {
+				width: 25%;
+			}
+			th.cs3 {
+				width: 37.5%;
+			}
+			.enabled {
+				color: #000000ff;
+				background-color: #FFE600FF;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<p id="state"></p>
+		<table id="channels">
+			
+		</table>
+	</body>
+</rml>

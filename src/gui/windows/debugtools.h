@@ -50,11 +50,12 @@ public:
 private:
 	static event_map_t ms_evt_map;
 	Machine *m_machine;
-	DebugWindow *m_stats, *m_debugger, *m_devices;
+	DebugWindow *m_stats, *m_debugger, *m_devices, *m_mixer;
 
 	void on_stats(RC::Event &);
 	void on_debugger(RC::Event &);
 	void on_devices(RC::Event &);
+	void on_mixer(RC::Event &);
 	void on_close(RC::Event &);
 	
 public:

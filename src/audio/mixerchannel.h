@@ -51,6 +51,7 @@ private:
 	//enabling/disabling can be performed by the machine thread
 	std::atomic<bool> m_enabled;
 	std::string m_name;
+	int m_id;
 	MixerChannel_handler m_update_clbk;
 	std::atomic<uint64_t> m_disable_time;
 	uint64_t m_disable_timeout;
@@ -67,7 +68,7 @@ private:
 	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
 
 public:
-	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name);
+	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id);
 	~MixerChannel();
 
 	// The machine thread can call only these methods:
@@ -98,6 +99,7 @@ public:
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }
 	const char* name() const { return m_name.c_str(); }
+	int id() const { return m_id; }
 
 	std::tuple<bool,bool> update(uint64_t _time_span_us, bool _prebuffering);
 	void set_disable_time(uint64_t _time) { m_disable_time = _time; }
