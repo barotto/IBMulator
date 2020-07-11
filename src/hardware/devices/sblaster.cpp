@@ -960,6 +960,9 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 {
 	// From Memory to I/O
 	// DAC
+	
+	m_devices->dma()->set_DRQ(m_dma, false);
+	
 	if(m_s.dma.mode != DMA::Mode::DMA8) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: read event with engine off\n", short_name());
 		return 0;
@@ -970,9 +973,6 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	}
 	
 	uint64_t now = g_machine.get_virt_time_ns();
-	
-	m_devices->dma()->set_DRQ(m_dma, false);
-	static uint64_t last_ns = 0;
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 
@@ -990,13 +990,19 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	m_s.dac.state = DAC::State::ACTIVE;
 	g_machine.deactivate_timer(m_dac_timer);
 	
-	unsigned len = 0;
-	unsigned frames = 0;
-	do {
-		frames += dsp_decode(_buffer[len++]);
-		m_s.dma.left--;
-	} while ((len < _maxlen) && (m_s.dma.left != 0xffff));
-	
+	// Real hardware reads 1 sample at a time.
+	// This is computationally more expensive as this func, and all the DMA
+	// procedure (DRQ, HLDA), must be called 512 times instead of only 1.
+	// But doing so is closer to real hardware and solves DAC's overflow when
+	// the guest program restarts the DMA before TC.
+	// A possible alternative for the DAC's overflow problem would be using audio
+	// timestamps or an intermediate buffer with a timer or taking only a limited
+	// amount of samples in the dac_create_samples func, but the DMA would still
+	// report an incorrect count value via its status ports (don't know if it would
+	// make any real world difference tho).
+	// TODO SB Pro cards in stereo mode read samples at double the audio frame rate.
+	unsigned frames = dsp_decode(*_buffer);
+	m_s.dma.left--;
 	m_s.dma.drq = true;
 	m_s.dma.irq = false;
 	if(m_s.dma.left == 0xffff) {
@@ -1008,8 +1014,8 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 		}
 	}
 	
-	// calculate the time needed by the DAC to consume len bytes then fire the dma timer
-	// to terminate or request more data
+	// calculate the time needed by the DAC to consume the produced frames then
+	// fire the dma timer to terminate or request more data
 	uint64_t dma_timer_ns = m_s.dac.spec.duration_ns(frames);
 	uint64_t drq_time = (now - m_s.dma.drq_time);
 	m_s.dma.drq_time = 0;
@@ -1020,10 +1026,10 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA8: read %d of %d bytes, frames=%d, left=%db, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%dns\n", 
-			short_name(), len, _maxlen, frames,m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA8: read 1 of %d bytes, frames=%d, left=%db, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%dns\n", 
+			short_name(), _maxlen, frames,m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
 	
-	return len;
+	return 1;
 }
 
 uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen)
