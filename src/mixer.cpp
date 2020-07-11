@@ -206,6 +206,7 @@ void Mixer::config_changed()
 			prebuf_ms, buf_frames * m_frame_size);
 
 	for(auto ch : m_mix_channels) {
+		ch.second->flush();
 		ch.second->set_out_spec({AUDIO_FORMAT_F32,
 			unsigned(m_audio_spec.channels),unsigned(m_audio_spec.freq)});
 	}
