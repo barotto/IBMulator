@@ -220,10 +220,10 @@ SBlaster::SBlaster(Devices *_dev)
 : IODevice(_dev), Synth(),
 m_iobase(0), m_irq(0), m_dma(0),
 m_dsp_ver(0x105),
+m_dac_volume(.0f),
 m_dsp_timer(NULL_TIMER_HANDLE),
-m_dac_timer(NULL_TIMER_HANDLE),
 m_dma_timer(NULL_TIMER_HANDLE),
-m_dac_volume(.0f)
+m_dac_timer(NULL_TIMER_HANDLE)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -575,6 +575,8 @@ uint16_t SBlasterPro::read_fm(uint16_t _address)
 
 uint16_t SBlaster::read_mixer(uint16_t _address)
 {
+	UNUSED(_address);
+	
 	PDEBUGF(LOG_V0, LOG_AUDIO, "%s: Mixer not installed!\n", short_name());
 	return ~0;
 }
@@ -801,6 +803,9 @@ void SBlaster::dsp_start_cmd(const DSPCmd *_cmd)
 
 void SBlaster::write_mixer(uint16_t _address, uint16_t _value)
 {
+	UNUSED(_address);
+	UNUSED(_value);
+	
 	PDEBUGF(LOG_V0, LOG_AUDIO, "%s: Mixer not installed!\n", short_name());
 }
 
