@@ -1553,7 +1553,7 @@ void SBlaster::dsp_cmd_aux_status()
 {
 	// only doc found on this is http://the.earth.li/~tfm/oldpage/sb_dsp.html
 	m_s.dsp.flush_data();
-	m_s.dsp.add_data(!m_s.dac.speaker | 0x12);
+	m_s.dsp.add_data((!m_s.dac.speaker) | 0x12);
 }
 
 void SBlaster::DSP::flush_data()
