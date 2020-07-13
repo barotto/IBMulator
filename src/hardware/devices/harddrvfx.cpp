@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -67,7 +67,7 @@ void HardDriveFX::install(const std::string &_name)
 
 uint64_t HardDriveFX::spin_up_time_us() const
 {
-	return m_buffers[HDD_SPIN_UP].duration_us();
+	return round(m_buffers[HDD_SPIN_UP].duration_us());
 }
 
 void HardDriveFX::config_changed()

@@ -151,7 +151,7 @@ void PS1Audio::config_changed()
 			0.0, 10.0);
 	std::string filters = g_program.config().get_string(PS1AUDIO_SECTION, PS1AUDIO_FILTERS, "");
 	
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume, filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
 	m_DAC_channel->set_volume(volume);
 	m_DAC_channel->set_filters(filters);
 }
@@ -455,7 +455,7 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04d us, samples at %d Hz: ",
 			_time_span_us, freq);
 
-	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, freq});
+	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, double(freq)});
 
 	if(m_DAC_newdata && (DACsamples < needed_samples)) {
 		presamples = needed_samples - DACsamples;

@@ -261,7 +261,7 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 		throw std::logic_error("unsupported format");
 	}
 	_frames_count = std::min(frames(),_frames_count);
-	double rate_ratio = double(destspec.rate)/double(m_spec.rate);
+	double rate_ratio = destspec.rate / m_spec.rate;
 	unsigned out_frames = unsigned(ceil(double(_frames_count) * rate_ratio));
 	if(out_frames==0) {
 		return 0;
@@ -365,7 +365,7 @@ void AudioBuffer::load(const WAVFile &_wav)
 		default:
 			throw std::logic_error("unsupported data format");
 	}
-	set_spec({format,  _wav.channels(), _wav.rate()});
+	set_spec({format,  _wav.channels(), double(_wav.rate())});
 	m_data = _wav.read_audio_data();
 }
 

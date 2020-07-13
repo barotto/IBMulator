@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -87,7 +87,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 		}
 	} while(1);
 
-	unsigned in_duration = _channel.in().duration_us();
+	unsigned in_duration = round(_channel.in().duration_us());
 	if(in_duration < _time_span_us) {
 		unsigned fill_us = _time_span_us - in_duration;
 		unsigned samples = _channel.in().fill_us_silence(fill_us);

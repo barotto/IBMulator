@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,8 +64,8 @@ void PCSpeaker::config_changed()
 {
 	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
 	
-	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, rate});
-	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, rate});
+	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(rate)});
+	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, double(rate)});
 	m_outbuf.reserve_us(50000);
 
 #if HAVE_LIBSAMPLERATE
@@ -208,7 +208,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_us, bool, bool)
 
 	uint64_t pit_ticks = g_devices.pit()->get_pit_ticks_mt();
 
-	double needed_frames = double(_time_span_us) * double(m_outbuf.rate())/1e6;
+	double needed_frames = double(_time_span_us) * m_outbuf.rate()/1e6;
 	size_t size = m_events.size();
 
 	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix time: %04d usecs, samples: %.1f, evnts: %d, ",

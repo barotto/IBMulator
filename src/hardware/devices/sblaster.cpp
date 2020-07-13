@@ -423,19 +423,19 @@ void SBlaster::config_changed()
 void SBlaster::configure_synth(unsigned _rate, float _volume, std::string _filters)
 {
 	// mono
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, _rate}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(_rate)}, _volume, _filters);
 }
 
 void SBlasterPro::configure_synth(unsigned _rate, float _volume, std::string _filters)
 {
 	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, _rate}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, _filters);
 }
 
 void SBlasterPro2::configure_synth(unsigned _rate, float _volume, std::string _filters)
 {
 	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, _rate}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, _filters);
 }
 
 void SBlaster::remove()
@@ -1016,7 +1016,7 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	
 	// calculate the time needed by the DAC to consume the produced frames then
 	// fire the dma timer to terminate or request more data
-	uint64_t dma_timer_ns = m_s.dac.spec.duration_ns(frames);
+	uint64_t dma_timer_ns = m_s.dac.period_ns * frames;
 	uint64_t drq_time = (now - m_s.dma.drq_time);
 	m_s.dma.drq_time = 0;
 	if(drq_time <= dma_timer_ns) {
@@ -1068,7 +1068,7 @@ uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen)
 	}
 	unsigned frames = len / m_s.dac.spec.channels;
 	
-	uint64_t dma_timer_ns = m_s.dac.spec.duration_ns(frames);
+	uint64_t dma_timer_ns = m_s.dac.period_ns * frames;
 	uint64_t drq_time = (g_machine.get_virt_time_ns() - m_s.dma.drq_time);
 	m_s.dma.drq_time = 0;
 	if(drq_time <= dma_timer_ns) {
@@ -1360,7 +1360,7 @@ void SBlaster::dsp_cmd_set_time_const()
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	dsp_update_frequency();
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: rate=%d, DAC rate=%d\n",
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: rate=%d, DAC rate=%.2f\n",
 			short_name(), time_const_to_freq(m_s.dsp.time_const), m_s.dac.spec.rate);
 }
 
@@ -1385,8 +1385,8 @@ void SBlaster::dsp_cmd_direct_dac_8()
 	assert(m_s.dac.sample_time_ns[0] < now);
 	if(m_s.dac.used) {
 		double avg_diff = (now - m_s.dac.sample_time_ns[0]) / m_s.dac.used;
-		unsigned avg_rate = NSEC_PER_SECOND / avg_diff;
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: direct DAC avg.rate=%dHz\n",
+		double avg_rate = NSEC_PER_SECOND / avg_diff;
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: direct DAC avg.rate=%.2fHz\n",
 				short_name(), avg_rate);
 		m_s.dac.spec.rate = avg_rate;
 		
@@ -1407,7 +1407,7 @@ void SBlaster::dsp_cmd_dma_adc(uint8_t _bits, bool _auto_init, bool _hispeed)
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	dma_start(_auto_init);
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s DMA ADC 8-bit %dHz\n", short_name(),
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s DMA ADC 8-bit %.2fHz\n", short_name(),
 			_auto_init?"auto-init":"single cycle",
 			m_s.dac.spec.rate);
 }
@@ -1429,7 +1429,7 @@ void SBlaster::dsp_cmd_dma_dac(uint8_t _bits, bool _autoinit, bool _hispeed)
 	dma_start(_autoinit);
 	dac_set_state(DAC::State::ACTIVE);
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s %s DMA DAC %d-bit %s %dHz\n", short_name(),
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s %s DMA DAC %d-bit %s %.2fHz\n", short_name(),
 			_autoinit?"auto-init":"single-cycle",
 			_hispeed?"high-speed":"",
 			_bits & 0x1f,
@@ -1687,9 +1687,17 @@ void SBlaster::dsp_update_frequency()
 		freq >>= 1;
 	}
 	
-	m_s.dac.spec.rate = freq;
-	m_s.dac.period_ns = NSEC_PER_SECOND / freq;
+	// IBMulator's time is a uint64_t of nanoseconds and that's the resolution of
+	// its internal timers. 
+	// TODO use integer rate if/when IBMulator's timers will switch to double of seconds.
+
+	// Calculate an integer sample period in ns and derive a sample rate from it.
+	m_s.dac.period_ns = round(1e9 / double(freq));
+	m_s.dac.spec.rate = 1e9 / double(m_s.dac.period_ns);
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
+	
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: rate=%.3f Hz, period=%d ns\n", short_name(),
+			m_s.dac.spec.rate, m_s.dac.period_ns);
 }
 
 void SBlaster::dac_timer(uint64_t)
@@ -1765,7 +1773,7 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
 	}
 	
 	unsigned total = pre_frames + dac_frames + post_frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04d us, %.2f needed samples at %d Hz, rendered %d+%d+%d (%.0f us), balance=%.2f\n",
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04d us, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
 			short_name(), _time_span_us, needed_frames, m_s.dac.spec.rate,
 			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
 	

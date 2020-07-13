@@ -147,19 +147,19 @@ void MixerChannel::play(const AudioBuffer &_wave)
 		return;
 	}
 	m_in_buffer.add_frames(_wave);
-	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: %d frames (%dus), in buf: %d samples (%dus)\n",
+	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: %d frames (%.2fus), in buf: %d samples (%.2fus)\n",
 			m_name.c_str(),
 			_wave.frames(), _wave.duration_us(),
 			m_in_buffer.samples(), m_in_buffer.duration_us()
 			);
 }
 
-void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist)
+void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist_us)
 {
-	play_frames(_wave, _wave.frames(), _time_dist);
+	play_frames(_wave, _wave.frames(), _time_dist_us);
 }
 
-void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist)
+void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist_us)
 {
 	/* this work buffers can be static only because the current implementation
 	 * of the mixer is single threaded.
@@ -167,10 +167,10 @@ void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_
 	static AudioBuffer temp;
 	temp = _wave;
 	temp.apply_volume(_volume);
-	play_frames(temp, temp.frames(), _time_dist);
+	play_frames(temp, temp.frames(), _time_dist_us);
 }
 
-void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, uint64_t _time_dist)
+void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, uint64_t _time_dist_us)
 {
 	/* This function plays the given sound sample at the specified time distance
 	 * from the start of the samples input buffer, filling with silence if needed.
@@ -180,12 +180,12 @@ void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, u
 				m_name.c_str());
 		return;
 	}
-	unsigned inbuf_frames = round(m_in_buffer.spec().us_to_frames(_time_dist));
+	unsigned inbuf_frames = round(m_in_buffer.spec().us_to_frames(_time_dist_us));
 	m_in_buffer.resize_frames_silence(inbuf_frames);
 	m_in_buffer.add_frames(_wave, _frames_cnt);
-	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%dus), in buf: %d samples (%dus)\n",
+	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %d frames (%dus), wav: %d frames (%.2fus), in buf: %d samples (%.2fus)\n",
 			m_name.c_str(),
-			inbuf_frames, _time_dist,
+			inbuf_frames, _time_dist_us,
 			_frames_cnt, _wave.spec().frames_to_us(_frames_cnt),
 			m_in_buffer.samples(), m_in_buffer.duration_us()
 			);
@@ -215,9 +215,9 @@ void MixerChannel::set_filters(std::string _filters_def)
 	try {
 		// filters are applied after rate and channels conversion
 		if(m_out_buffer.spec().channels == 1) {
-			filters = Mixer::create_filters<1>(double(m_out_buffer.spec().rate), _filters_def);
+			filters = Mixer::create_filters<1>(m_out_buffer.spec().rate, _filters_def);
 		} else if(m_out_buffer.spec().channels == 2) {
-			filters = Mixer::create_filters<2>(double(m_out_buffer.spec().rate), _filters_def);
+			filters = Mixer::create_filters<2>(m_out_buffer.spec().rate, _filters_def);
 		} else {
 			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
 		}
@@ -323,7 +323,7 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 	// remove processed frames from input buffer
 	m_in_buffer.pop_frames(in_frames);
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%dus), out: %d frames (%dus)\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%.2fus), out: %d frames (%.2fus)\n",
 			m_name.c_str(), _time_span_us,
 			in_frames, m_in_buffer.spec().frames_to_us(in_frames),
 			m_out_buffer.frames(), m_out_buffer.duration_us());

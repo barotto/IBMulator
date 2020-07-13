@@ -32,27 +32,27 @@ enum AudioFormat
 	AUDIO_FORMAT_F32 = AUDIO_F32
 };
 
-inline double us_to_frames(uint64_t _us, unsigned _rate) {
-	return double(_us) * double(_rate)/1e6;
+inline double us_to_frames(uint64_t _us, double _rate) {
+	return double(_us) * (_rate / 1e6);
 }
 
-inline double us_to_samples(uint64_t _us, unsigned _rate, unsigned _ch) {
+inline double us_to_samples(uint64_t _us, double _rate, unsigned _ch) {
 	return us_to_frames(_us,_rate) * _ch;
 }
 
-inline double frames_to_us(unsigned _frames, unsigned _rate) {
-	return (double(_frames) / double(_rate)) * 1e6;
+inline double frames_to_us(unsigned _frames, double _rate) {
+	return (double(_frames) / _rate) * 1e6;
 }
 
-inline double frames_to_ns(unsigned _frames, unsigned _rate) {
-	return (double(_frames) / double(_rate)) * 1e9;
+inline double frames_to_ns(unsigned _frames, double _rate) {
+	return (double(_frames) / _rate) * 1e9;
 }
 
 struct AudioSpec
 {
 	AudioFormat format;
 	unsigned channels;
-	unsigned rate;      //frames per second
+	double rate;
 
 	bool operator==(const AudioSpec &_s) const {
 		return (format==_s.format) && (channels==_s.channels) && (rate==_s.rate);
@@ -66,35 +66,17 @@ struct AudioSpec
 	unsigned frame_size() const {
 		return sample_size() * channels;
 	}
-	uint64_t frame_time_us() const {
-		return 1000000L / rate;
-	}
-	uint64_t frame_time_ns() const {
-		return 1000000000L / rate;
-	}
-	unsigned bytes_per_sec() const {
-		return frame_size() * rate;
-	}
-	unsigned bytes_to_frames(unsigned _bytes) {
-		return _bytes / frame_size();
-	}
-	uint64_t duration_us(unsigned _frames) const {
-		return frames_to_us(_frames);
-	}
-	uint64_t duration_ns(unsigned _frames) const {
-		return frames_to_ns(_frames);
-	}
 	double us_to_frames(uint64_t _us) const {
 		return ::us_to_frames(_us, rate);
 	}
 	double us_to_samples(uint64_t _us) const {
 		return ::us_to_samples(_us, rate, channels);
 	}
-	uint64_t frames_to_us(unsigned _frames) const {
-		return round(::frames_to_us(_frames, rate));
+	double frames_to_us(unsigned _frames) const {
+		return ::frames_to_us(_frames, rate);
 	}
-	uint64_t frames_to_ns(unsigned _frames) const {
-		return round(::frames_to_ns(_frames, rate));
+	double frames_to_ns(unsigned _frames) const {
+		return ::frames_to_ns(_frames, rate);
 	}
 	unsigned frames_to_samples(unsigned _frames) const {
 		return _frames*channels;

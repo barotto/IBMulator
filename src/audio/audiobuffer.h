@@ -45,13 +45,13 @@ public:
 	void set_spec(const AudioSpec &_spec);
 	AudioFormat format() const { return m_spec.format; }
 	unsigned channels() const { return m_spec.channels; }
-	unsigned rate() const { return m_spec.rate; }
+	double rate() const { return m_spec.rate; }
 	const AudioSpec & spec() const { return m_spec; }
 	unsigned sample_size() const { return m_spec.sample_size(); }
 	unsigned frame_size() const { return m_spec.frame_size(); }
 	unsigned frames() const { return (m_data.size()/frame_size()); }
 	unsigned samples() const { return (m_data.size()/sample_size()); }
-	uint64_t duration_us() const { return m_spec.frames_to_us(frames()); }
+	double duration_us() const { return m_spec.frames_to_us(frames()); }
 	void resize_frames(unsigned _num_frames);
 	void resize_samples(unsigned _num_samples);
 	void resize_frames_silence(unsigned _num_frames);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -121,7 +121,7 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, boo
 			const AudioBuffer *wave;
 			if(_evt.userdata) {
 				m_channels.seek->play(ms_buffers[_evt.userdata], _time_span);
-				m_booting = _evt.time + ms_buffers[_evt.userdata].duration_us();
+				m_booting = _evt.time + round(ms_buffers[_evt.userdata].duration_us());
 				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu\n",
 						m_channels.seek->name(), m_booting);
 				return;
@@ -140,7 +140,7 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, boo
 				wave = &ms_buffers[FDD_SEEK_DOWN];
 			}
 			unsigned frames = wave->frames() * absdist;
-			uint64_t duration = wave->spec().frames_to_us(frames);
+			uint64_t duration = round(wave->spec().frames_to_us(frames));
 			m_channels.seek->play_frames(*wave, frames, _time_span);
 			m_channels.seek->play(ms_buffers[FDD_SEEK_STEP], 1.0-absdist, _time_span+duration);
 		});

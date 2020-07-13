@@ -85,12 +85,12 @@ void MixerState::update()
 			case AUDIO_FORMAT_S16: ss << "S16"; break;
 			case AUDIO_FORMAT_F32: ss << "F32"; break;
 		}
-		ss << " " << ch.ch->in().spec().rate << "Hz";
+		ss << " " << unsigned(round(ch.ch->in().spec().rate)) << "Hz";
 		ch.in_format->SetInnerRML(ss.str().c_str());
 		ch.in_frames->SetInnerRML(RC::String(20,"%d",ch.ch->in().frames()));
-		ch.in_us->SetInnerRML(RC::String(20,"%d",ch.ch->in().duration_us()));
+		ch.in_us->SetInnerRML(RC::String(20,"%.0f",ch.ch->in().duration_us()));
 		ch.out_frames->SetInnerRML(RC::String(20,"%d",ch.ch->out().frames()));
-		ch.out_us->SetInnerRML(RC::String(20,"%d",ch.ch->out().duration_us()));
+		ch.out_us->SetInnerRML(RC::String(20,"%.0f",ch.ch->out().duration_us()));
 	}
 }
 

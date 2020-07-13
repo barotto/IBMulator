@@ -92,7 +92,7 @@ void Synth::config_changed(const AudioSpec &_spec, float _volume, std::string _f
 {
 	m_channel->set_in_spec(_spec);
 	m_buffer.set_spec(_spec);
-	m_frames_per_ns = double(_spec.rate) / 1e9;
+	m_frames_per_ns = _spec.rate / 1e9;
 	if(m_chips[0]) {
 		m_chips[0]->config_changed(_spec.rate);
 	}
@@ -167,7 +167,7 @@ bool Synth::create_samples(uint64_t _time_span_us, bool, bool)
 	m_last_time = mtime_ns;
 	m_channel->input_finish();
 
-	double needed_frames = double(_time_span_us) * double(m_buffer.rate())/1e6;
+	double needed_frames = double(_time_span_us) * m_buffer.rate()/1e6;
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04d usecs, frames needed:%.1f, generated:%d\n",
 			m_name.c_str(), _time_span_us, needed_frames, generated_frames);
 

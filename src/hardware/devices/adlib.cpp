@@ -90,7 +90,7 @@ void AdLib::config_changed()
 			0.0, 10.0);
 	std::string filters = g_program.config().get_string(ADLIB_SECTION, ADLIB_FILTERS, "");
 	
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, rate}, volume, filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

@@ -208,11 +208,11 @@ void Mixer::config_changed()
 	for(auto ch : m_mix_channels) {
 		ch.second->flush();
 		ch.second->set_out_spec({AUDIO_FORMAT_F32,
-			unsigned(m_audio_spec.channels),unsigned(m_audio_spec.freq)});
+			unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
 	}
 	
-	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, unsigned(m_audio_spec.freq)});
-	m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), unsigned(m_audio_spec.freq)});
+	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(m_audio_spec.freq)});
+	m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
 	
 	// let the GUI interfaces set the AUDIO category volume
 	m_channels_volume[static_cast<int>(MixerChannelCategory::SOUNDFX)] =
@@ -532,7 +532,7 @@ std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _call
 	auto ch = std::make_shared<MixerChannel>(this, _callback, _name, chcount);
 	m_mix_channels[_name] = ch;
 	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels),
-		unsigned(m_audio_spec.freq)});
+		double(m_audio_spec.freq)});
 	return ch;
 }
 
