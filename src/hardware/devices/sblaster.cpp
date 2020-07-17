@@ -1296,9 +1296,8 @@ void SBlaster::dma_start(bool _autoinit)
 	m_s.dma.mode = DMA::Mode::DMA8;
 	m_s.dma.autoinit = _autoinit;
 	
-	g_machine.deactivate_timer(m_dma_timer);
-	m_devices->dma()->set_DRQ(m_dma, true);
-	m_s.dma.drq_time = g_machine.get_virt_time_ns();
+	m_s.dma.irq = false;
+	m_s.dma.drq = true;
 	
 	dsp_change_mode(DSP::Mode::DMA);
 	
@@ -1411,6 +1410,8 @@ void SBlaster::dsp_cmd_dma_adc(uint8_t _bits, bool _auto_init, bool _hispeed)
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	dma_start(_auto_init);
+	g_machine.deactivate_timer(m_dma_timer);
+	dma_timer(0); // DRQ
 	
 	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s DMA ADC 8-bit %.2fHz\n", short_name(),
 			_auto_init?"auto-init":"single cycle",
@@ -1432,6 +1433,15 @@ void SBlaster::dsp_cmd_dma_dac(uint8_t _bits, bool _autoinit, bool _hispeed)
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	dma_start(_autoinit);
+	g_machine.deactivate_timer(m_dma_timer);
+	if(m_s.dac.state == DAC::State::WAITING) {
+		// keep a regular flow of generated samples
+		uint64_t dac_eta = g_machine.get_timer_eta(m_dac_timer);
+		g_machine.activate_timer(m_dma_timer, dac_eta, false);
+	} else {
+		// DRQ
+		dma_timer(0);
+	}
 	dac_set_state(DAC::State::ACTIVE);
 	
 	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s %s DMA DAC %d-bit %s %.2fHz\n", short_name(),
