@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -37,7 +37,7 @@ void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_c
 {
 	m_channel = _mixer->register_channel(_channel_fn, _channel_name);
 	m_channel->set_category(MixerChannelCategory::SOUNDFX);
-	m_channel->set_disable_timeout(1000000);
+	m_channel->set_disable_timeout(1_s);
 	m_channel->set_in_spec(_spec);
 
 	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);

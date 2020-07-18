@@ -43,7 +43,7 @@ void AdLib::install()
 	m_OPL.install(OPL::OPL2, OPL::ChipNames[OPL::OPL2], true);
 
 	Synth::set_chip(0, &m_OPL);
-	Synth::install("AdLib", 5000,
+	Synth::install("AdLib", 5_s,
 		[this](Event &_event) {
 			m_OPL.write(0, _event.reg);
 			m_OPL.write(1, _event.value);

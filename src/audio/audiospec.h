@@ -32,8 +32,16 @@ enum AudioFormat
 	AUDIO_FORMAT_F32 = AUDIO_F32
 };
 
+inline double ns_to_frames(uint64_t _ns, double _rate) {
+	return double(_ns) * (_rate / 1e9);
+}
+
 inline double us_to_frames(uint64_t _us, double _rate) {
 	return double(_us) * (_rate / 1e6);
+}
+
+inline double ns_to_samples(uint64_t _ns, double _rate, unsigned _ch) {
+	return ns_to_frames(_ns,_rate) * _ch;
 }
 
 inline double us_to_samples(uint64_t _us, double _rate, unsigned _ch) {
@@ -66,11 +74,17 @@ struct AudioSpec
 	unsigned frame_size() const {
 		return sample_size() * channels;
 	}
+	double ns_to_frames(uint64_t _ns) const {
+		return ::ns_to_frames(_ns, rate);
+	}
 	double us_to_frames(uint64_t _us) const {
 		return ::us_to_frames(_us, rate);
 	}
 	double us_to_samples(uint64_t _us) const {
 		return ::us_to_samples(_us, rate, channels);
+	}
+	double ns_to_samples(uint64_t _ns) const {
+		return ::ns_to_samples(_ns, rate, channels);
 	}
 	double frames_to_us(unsigned _frames) const {
 		return ::frames_to_us(_frames, rate);

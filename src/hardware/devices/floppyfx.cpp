@@ -110,12 +110,12 @@ void FloppyFX::boot(bool _wdisk)
 }
 
 //this method is called by the Mixer thread
-bool FloppyFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, bool _first_upd)
+bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
 {
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
 	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
-		_time_span_us, _first_upd,
+		_time_span_ns, _first_upd,
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
 			const AudioBuffer *wave;
@@ -147,7 +147,7 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, boo
 }
 
 //this method is called by the Mixer thread
-bool FloppyFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
+bool FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 {
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
@@ -160,6 +160,6 @@ bool FloppyFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
 	}
 	m_spin_change = false;
 
-	return SoundFX::play_motor(_time_span_us, *m_channels.spin, spin, change_state,
+	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
 			*spinup, ms_buffers[FDD_SPIN], ms_buffers[FDD_SPIN_DOWN]);
 }

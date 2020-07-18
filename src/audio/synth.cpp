@@ -36,7 +36,7 @@ m_capture_fn(nullptr)
 {
 }
 
-void Synth::install(std::string _name, int _chtimeout,
+void Synth::install(std::string _name, uint64_t _chtimeout_ns,
 		synthfunc_t _synthcmd,
 		genfunc_t   _generate,
 		captfunc_t  _capture)
@@ -50,7 +50,7 @@ void Synth::install(std::string _name, int _chtimeout,
 	m_channel = g_mixer.register_channel(
 		std::bind(&Synth::create_samples, this, _1, _2, _3),
 		m_name);
-	m_channel->set_disable_timeout(_chtimeout * 1000);
+	m_channel->set_disable_timeout(_chtimeout_ns);
 	if(_capture) {
 		m_channel->register_capture_clbk(std::bind(
 				&Synth::on_capture, this, _1));
@@ -124,7 +124,7 @@ unsigned Synth::generate(uint64_t _delta_ns)
 	return frames;
 }
 
-bool Synth::create_samples(uint64_t _time_span_us, bool, bool)
+bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 {
 	//this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_evt_lock);
@@ -140,7 +140,7 @@ bool Synth::create_samples(uint64_t _time_span_us, bool, bool)
 	while(next_event.time < mtime_ns) {
 		empty = !m_events.try_and_copy(event);
 		if(empty || event.time > mtime_ns) {
-			if(is_silent() && m_channel->check_disable_time(mtime_ns/1000)) {
+			if(is_silent() && m_channel->check_disable_time(mtime_ns)) {
 				m_last_time = 0;
 				return false;
 			} else if(m_last_time) {
@@ -167,12 +167,12 @@ bool Synth::create_samples(uint64_t _time_span_us, bool, bool)
 	m_last_time = mtime_ns;
 	m_channel->input_finish();
 
-	double needed_frames = double(_time_span_us) * m_buffer.rate()/1e6;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04d usecs, frames needed:%.1f, generated:%d\n",
-			m_name.c_str(), _time_span_us, needed_frames, generated_frames);
+	double needed_frames = double(_time_span_ns) * m_buffer.rate()/1e9;
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04llu nsecs, frames needed:%.1f, generated:%d\n",
+			m_name.c_str(), _time_span_ns, needed_frames, generated_frames);
 
 	if(!empty) {
-		m_channel->set_disable_time(mtime_ns/1000);
+		m_channel->set_disable_time(mtime_ns);
 	}
 	return true;
 }

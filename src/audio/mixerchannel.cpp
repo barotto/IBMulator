@@ -67,7 +67,7 @@ void MixerChannel::enable(bool _enabled)
 	}
 }
 
-std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_us, bool _prebuffering)
+std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuffering)
 {
 	assert(m_update_clbk);
 
@@ -78,7 +78,7 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_us, bool _prebuff
 		 * before calling the update
 		 */
 		m_first_update = false;
-		enabled = m_update_clbk(_time_span_us, _prebuffering, first_upd);
+		enabled = m_update_clbk(_time_span_ns, _prebuffering, first_upd);
 		if(enabled || m_out_buffer.frames()>0) {
 			active = true;
 		}
@@ -251,14 +251,14 @@ void MixerChannel::flush()
 	reset_filters();
 }
 
-void MixerChannel::input_finish(uint64_t _time_span_us)
+void MixerChannel::input_finish(uint64_t _time_span_ns)
 {
 	unsigned in_frames;
-	if(_time_span_us > 0) {
+	if(_time_span_ns > 0) {
 		if(m_first_update) {
 			m_fr_rem = 0.0;
 		}
-		double frames = m_in_buffer.us_to_frames(_time_span_us) + m_fr_rem;
+		double frames = m_in_buffer.ns_to_frames(_time_span_ns) + m_fr_rem;
 		in_frames = unsigned(frames);
 		m_fr_rem = frames - in_frames;
 	} else {
@@ -323,17 +323,17 @@ void MixerChannel::input_finish(uint64_t _time_span_us)
 	// remove processed frames from input buffer
 	m_in_buffer.pop_frames(in_frames);
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%dus): in: %d frames (%.2fus), out: %d frames (%.2fus)\n",
-			m_name.c_str(), _time_span_us,
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%lluns): in: %d frames (%.2fus), out: %d frames (%.2fus)\n",
+			m_name.c_str(), _time_span_ns,
 			in_frames, m_in_buffer.spec().frames_to_us(in_frames),
 			m_out_buffer.frames(), m_out_buffer.duration_us());
 }
 
-bool MixerChannel::check_disable_time(uint64_t _now_us)
+bool MixerChannel::check_disable_time(uint64_t _now_ns)
 {
-	if(m_disable_time && (_now_us - m_disable_time >= m_disable_timeout)) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %d us of silence\n",
-				m_name.c_str(), (_now_us - m_disable_time));
+	if(m_disable_time && (_now_ns - m_disable_time >= m_disable_timeout)) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %llu ns of silence\n",
+				m_name.c_str(), (_now_ns - m_disable_time));
 		enable(false);
 		return true;
 	}

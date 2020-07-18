@@ -139,6 +139,11 @@ unsigned AudioBuffer::fill_us_silence(uint64_t _duration_us)
 	return fill_samples_silence(round(m_spec.us_to_samples(_duration_us)));
 }
 
+unsigned AudioBuffer::fill_ns_silence(uint64_t _duration_ns)
+{
+	return fill_samples_silence(round(m_spec.ns_to_samples(_duration_ns)));
+}
+
 void AudioBuffer::convert(const AudioSpec &_new_spec)
 {
 	if(_new_spec == m_spec) {
@@ -309,6 +314,11 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 double AudioBuffer::us_to_frames(uint64_t _us)
 {
 	return std::min(double(frames()), m_spec.us_to_frames(_us));
+}
+
+double AudioBuffer::ns_to_frames(uint64_t _ns)
+{
+	return std::min(double(frames()), m_spec.ns_to_frames(_ns));
 }
 
 double AudioBuffer::us_to_samples(uint64_t _us)

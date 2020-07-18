@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -22,7 +22,7 @@
 #include "drivefx.h"
 #include <cfloat>
 
-const uint64_t CHANNELS_TIMEOUT = 1000000;
+const uint64_t CHANNELS_TIMEOUT = 1_s;
 
 
 DriveFX::DriveFX()

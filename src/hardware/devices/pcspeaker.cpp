@@ -52,7 +52,7 @@ void PCSpeaker::install()
 	m_channel = g_mixer.register_channel(
 		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
 		name());
-	m_channel->set_disable_timeout(2500000);
+	m_channel->set_disable_timeout(5_s);
 }
 
 void PCSpeaker::remove()
@@ -202,22 +202,22 @@ void PCSpeaker::add_event(uint64_t _ticks, bool _active, bool _out)
 }
 
 // this function is called by the Mixer thread
-bool PCSpeaker::create_samples(uint64_t _time_span_us, bool, bool)
+bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 {
 	m_mutex.lock();
 
 	uint64_t pit_ticks = g_devices.pit()->get_pit_ticks_mt();
 
-	double needed_frames = double(_time_span_us) * m_outbuf.rate()/1e6;
+	double needed_frames = double(_time_span_ns) * m_outbuf.rate()/1e9;
 	size_t size = m_events.size();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix time: %04d usecs, samples: %.1f, evnts: %d, ",
-			_time_span_us, needed_frames, size);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix time: %04llu nsecs, samples: %.1f, evnts: %d, ",
+			_time_span_ns, needed_frames, size);
 
 	if(size==0 || m_events[0].ticks > pit_ticks) {
 		m_mutex.unlock();
 		unsigned samples = unsigned(std::max(0, int(needed_frames + m_samples_rem)));
-		if(m_channel->check_disable_time(NSEC_TO_USEC(pit_ticks*PIT_CLK_TIME))) {
+		if(m_channel->check_disable_time(pit_ticks*PIT_CLK_TIME)) {
 			m_last_time = 0;
 			PDEBUGF(LOG_V2, LOG_AUDIO, "ch disable\n");
 			return false;

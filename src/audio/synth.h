@@ -73,7 +73,7 @@ public:
 	Synth();
 	virtual ~Synth() {}
 
-	void install(std::string _name, int _chtimeout,
+	void install(std::string _name, uint64_t _chtimeout_ns,
 			synthfunc_t _synthcmd,
 			genfunc_t   _generate,
 			captfunc_t  _capture);

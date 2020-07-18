@@ -278,7 +278,7 @@ void SBlaster::install_dsp()
 	m_dac_channel = g_mixer.register_channel(
 		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
 		"SBlaster DAC");
-	m_dac_channel->set_disable_timeout(1000000);
+	m_dac_channel->set_disable_timeout(5_s);
 }
 
 void SBlaster::install()
@@ -290,7 +290,7 @@ void SBlaster::install()
 	m_OPL[0].install(OPL::OPL2, OPL::ChipNames[OPL::OPL2], true);
 	
 	Synth::set_chip(0, &m_OPL[0]);
-	Synth::install(std::string(short_name()) + " FM", 5000,
+	Synth::install(std::string(short_name()) + " FM", 5_s,
 		[this](Event &_event) {
 			m_OPL[0].write(0, _event.reg);
 			m_OPL[0].write(1, _event.value);
@@ -323,7 +323,7 @@ void SBlasterPro::install()
 
 	Synth::set_chip(0, &m_OPL[0]);
 	Synth::set_chip(1, &m_OPL[1]);
-	Synth::install(std::string(short_name()) + " FM", 5000,
+	Synth::install(std::string(short_name()) + " FM", 5_s,
 		[this](Event &_event) {
 			m_OPL[_event.chip].write(0, _event.reg);
 			m_OPL[_event.chip].write(1, _event.value);
@@ -356,7 +356,7 @@ void SBlasterPro2::install()
 	m_OPL[0].install(OPL::OPL3, OPL::ChipNames[OPL::OPL3], true);
 	
 	Synth::set_chip(0, &m_OPL[0]);
-	Synth::install(std::string(short_name()) + " FM", 5000,
+	Synth::install(std::string(short_name()) + " FM", 5_s,
 		[this](Event &_event) {
 			m_OPL[0].write(_event.reg_port, _event.reg);
 			m_OPL[0].write(_event.value_port, _event.value);
@@ -1737,17 +1737,17 @@ void SBlaster::dac_timer(uint64_t)
 }
 
 //this method is called by the Mixer thread
-bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
+bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 {
 	// TODO SB16
 	// everything here assumes u8 sample data type.
 	
 	m_dac_mutex.lock();
 	
-	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
+	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 	unsigned pre_frames = 0, post_frames = 0;
 	unsigned dac_frames = m_s.dac.spec.samples_to_frames(m_s.dac.used);
-	double needed_frames = us_to_frames(_time_span_us, m_s.dac.spec.rate);
+	double needed_frames = ns_to_frames(_time_span_ns, m_s.dac.spec.rate);
 	bool chactive = true;
 	static double balance = 0.0;
 
@@ -1773,14 +1773,14 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
 			m_s.dac.last_value[1] = m_s.dac.data[m_s.dac.used-1];
 		}
 		m_s.dac.used = 0;
-		m_dac_channel->set_disable_time(mtime_us);
+		m_dac_channel->set_disable_time(mtime_ns);
 		balance += dac_frames;
 	}
 
 	balance -= needed_frames;
 	
 	if(m_s.dac.state == DAC::State::STOPPED && (balance <= 0) && pre_frames==0) {
-		chactive = !m_dac_channel->check_disable_time(mtime_us);
+		chactive = !m_dac_channel->check_disable_time(mtime_ns);
 		post_frames = balance * -1.0;
 		m_dac_channel->in().fill_samples<uint8_t>(post_frames*m_s.dac.spec.channels, m_s.dac.silence);
 		m_s.dac.last_value[0] = m_s.dac.last_value[1] = m_s.dac.silence;
@@ -1788,8 +1788,8 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_us, bool, bool)
 	}
 	
 	unsigned total = pre_frames + dac_frames + post_frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04d us, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
-			short_name(), _time_span_us, needed_frames, m_s.dac.spec.rate,
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04llu ns, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
+			short_name(), _time_span_ns, needed_frames, m_s.dac.spec.rate,
 			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
 	
 	m_s.dac.newdata &= (dac_frames == 0);

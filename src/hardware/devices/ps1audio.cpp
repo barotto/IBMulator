@@ -87,12 +87,12 @@ void PS1Audio::install()
 	m_DAC_channel = g_mixer.register_channel(
 		std::bind(&PS1Audio::create_DAC_samples, this, _1, _2, _3),
 		"PS/1 DAC");
-	m_DAC_channel->set_disable_timeout(1000000);
+	m_DAC_channel->set_disable_timeout(5_s);
 
 	m_PSG.install(PS1AUDIO_INPUT_CLOCK);
 
 	Synth::set_chip(0, &m_PSG);
-	Synth::install("PS/1 PSG", 2500,
+	Synth::install("PS/1 PSG", 5_s,
 		[this](Event &_event) {
 			m_PSG.write(_event.value);
 			Synth::capture_command(0x50, _event);
@@ -441,19 +441,16 @@ void PS1Audio::FIFO_timer(uint64_t)
 }
 
 //this method is called by the Mixer thread
-bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
+bool PS1Audio::create_DAC_samples(uint64_t _time_span_ns, bool, bool)
 {
 	m_DAC_lock.lock();
 	unsigned freq = m_DAC_freq;
 	unsigned DACsamples = m_DAC_samples.size();
 
-	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
+	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 	unsigned presamples = 0, postsamples = 0;
-	unsigned needed_samples = round(us_to_frames(_time_span_us, freq));
+	unsigned needed_samples = round(ns_to_frames(_time_span_ns, freq));
 	bool chactive = true;
-
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04d us, samples at %d Hz: ",
-			_time_span_us, freq);
 
 	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, double(freq)});
 
@@ -466,11 +463,11 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
 		m_DAC_channel->in().add_samples(m_DAC_samples);
 		m_DAC_last_value = m_DAC_samples.back();
 		m_DAC_samples.clear();
-		m_DAC_channel->set_disable_time(mtime_us);
+		m_DAC_channel->set_disable_time(mtime_ns);
 	}
 
 	if(!m_DAC_active && (DACsamples < needed_samples) && presamples==0) {
-		chactive = !m_DAC_channel->check_disable_time(mtime_us);
+		chactive = !m_DAC_channel->check_disable_time(mtime_ns);
 		postsamples = needed_samples - DACsamples;
 		/* Some programs feed the DAC with 8-bit signed samples (eg Space
 		 * Quest 4), while others with 8-bit unsigned samples. The real HW
@@ -489,8 +486,8 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_us, bool, bool)
 	m_DAC_channel->input_finish();
 
 	unsigned total = presamples + DACsamples + postsamples;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%d+%d+%d (%.0f us)\n",
-			presamples, DACsamples, postsamples, frames_to_us(total, freq));
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04llu ns, samples at %d Hz: %d+%d+%d (%.0f us)\n",
+			_time_span_ns, freq, presamples, DACsamples, postsamples, frames_to_us(total, freq));
 
 	return chactive;
 }

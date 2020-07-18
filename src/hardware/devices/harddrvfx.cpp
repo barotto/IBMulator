@@ -79,12 +79,12 @@ void HardDriveFX::config_changed()
 }
 
 //this method is called by the Mixer thread
-bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, bool _first_upd)
+bool HardDriveFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
 {
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
 	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
-		_time_span_us, _first_upd,
+		_time_span_ns, _first_upd,
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
 			AudioBuffer *wave = &m_buffers[HDD_SEEK];
@@ -97,12 +97,12 @@ bool HardDriveFX::create_seek_samples(uint64_t _time_span_us, bool /*_prebuf*/, 
 }
 
 //this method is called by the Mixer thread
-bool HardDriveFX::create_spin_samples(uint64_t _time_span_us, bool, bool)
+bool HardDriveFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 {
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
 	m_spin_change = false;
 
-	return SoundFX::play_motor(_time_span_us, *m_channels.spin, spin, change_state,
+	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
 		m_buffers[HDD_SPIN_UP], m_buffers[HDD_SPIN], m_buffers[HDD_SPIN_DOWN]);
 }

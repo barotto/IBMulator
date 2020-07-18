@@ -89,13 +89,13 @@ void RealisticFX::update(bool _power_on, bool _change_state)
 }
 
 //this method is called by the Mixer thread
-bool RealisticFX::create_sound_samples(uint64_t _time_span_us, bool, bool)
+bool RealisticFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 {
 	bool power_on = m_power_on;
 	bool change_state = m_change_state;
 	m_change_state = false;
 
-	return SoundFX::play_motor(_time_span_us, *m_channel, power_on, change_state,
+	return SoundFX::play_motor(_time_span_ns, *m_channel, power_on, change_state,
 			m_buffers[POWER_UP], m_buffers[POWER_ON], m_buffers[POWER_DOWN]);
 }
 

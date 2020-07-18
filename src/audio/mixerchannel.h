@@ -101,10 +101,10 @@ public:
 	const char* name() const { return m_name.c_str(); }
 	int id() const { return m_id; }
 
-	std::tuple<bool,bool> update(uint64_t _time_span_us, bool _prebuffering);
+	std::tuple<bool,bool> update(uint64_t _time_span_ns, bool _prebuffering);
 	void set_disable_time(uint64_t _time) { m_disable_time = _time; }
-	bool check_disable_time(uint64_t _now_us);
-	void set_disable_timeout(uint64_t _timeout_us) { m_disable_timeout = _timeout_us; }
+	bool check_disable_time(uint64_t _now_ns);
+	void set_disable_timeout(uint64_t _timeout_ns) { m_disable_timeout = _timeout_ns; }
 
 	void register_capture_clbk(std::function<void(bool _enable)> _fn);
 	void on_capture(bool _enable);

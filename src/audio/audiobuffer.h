@@ -52,6 +52,7 @@ public:
 	unsigned frames() const { return (m_data.size()/frame_size()); }
 	unsigned samples() const { return (m_data.size()/sample_size()); }
 	double duration_us() const { return m_spec.frames_to_us(frames()); }
+	double duration_ns() const { return m_spec.frames_to_ns(frames()); }
 	void resize_frames(unsigned _num_frames);
 	void resize_samples(unsigned _num_samples);
 	void resize_frames_silence(unsigned _num_frames);
@@ -71,6 +72,7 @@ public:
 	unsigned fill_frames_silence(unsigned _samples);
 	unsigned fill_samples_silence(unsigned _samples);
 	unsigned fill_us_silence(uint64_t _duration_us);
+	unsigned fill_ns_silence(uint64_t _duration_ns);
 	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0, T _v1);
 	template<typename T> unsigned fill_frames_fade(unsigned _frames, T _v0l, T _v0r, T _v1);
 	template<typename T> unsigned hold_frames(unsigned _frames);
@@ -79,6 +81,7 @@ public:
 	void convert_channels(AudioBuffer &_dest, unsigned _frames_count);
 	unsigned convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_src);
 	double us_to_frames(uint64_t _us);
+	double ns_to_frames(uint64_t _ns);
 	double us_to_samples(uint64_t _us);
 	void apply_volume(float _volume);
 

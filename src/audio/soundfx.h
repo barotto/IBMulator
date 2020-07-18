@@ -44,7 +44,7 @@ public:
 		const AudioBuffer &_power_down);
 
 	template<class Event, class EventQueue>
-	bool play_timed_events(uint64_t _time_span_us, bool _first_upd,
+	bool play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play);
 
@@ -58,14 +58,14 @@ protected:
 
 
 template<class Event, class EventQueue>
-bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
+bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play)
 {
 	uint64_t mtime_us = g_machine.get_virt_time_us_mt();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix span: %04d us (1st upd:%d), cue time:%lld us, events:%d\n",
-			_channel.name(), _time_span_us, _first_upd, m_audio_cue_time, _events.size());
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix span: %04llu ns (1st upd:%d), cue time:%lld us, events:%d\n",
+			_channel.name(), _time_span_ns, _first_upd, m_audio_cue_time, _events.size());
 
 	unsigned evtcnt = 0;
 
@@ -87,23 +87,23 @@ bool SoundFX::play_timed_events(uint64_t _time_span_us, bool _first_upd,
 		}
 	} while(1);
 
-	unsigned in_duration = round(_channel.in().duration_us());
-	if(in_duration < _time_span_us) {
-		unsigned fill_us = _time_span_us - in_duration;
-		unsigned samples = _channel.in().fill_us_silence(fill_us);
-		assert(samples == round(_channel.in().spec().us_to_samples(fill_us)));
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: silence fill: %d frames (%d us)\n",
+	unsigned in_duration = round(_channel.in().duration_ns());
+	if(in_duration < _time_span_ns) {
+		unsigned fill_ns = _time_span_ns - in_duration;
+		unsigned samples = _channel.in().fill_ns_silence(fill_ns);
+		assert(samples == round(_channel.in().spec().ns_to_samples(fill_ns)));
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: silence fill: %d frames (%d ns)\n",
 				_channel.name(),
 				_channel.in().spec().samples_to_frames(samples),
-				fill_us
+				fill_ns
 				);
 	}
 	m_audio_cue_time = mtime_us;
-	_channel.input_finish(_time_span_us);
+	_channel.input_finish(_time_span_ns);
 	if(evtcnt == 0) {
-		return _channel.check_disable_time(mtime_us);
+		return _channel.check_disable_time(mtime_us*1000);
 	}
-	_channel.set_disable_time(mtime_us);
+	_channel.set_disable_time(mtime_us*1000);
 	return true;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -86,8 +86,7 @@ private:
 	void FIFO_timer(uint64_t);
 	void raise_interrupt();
 	void lower_interrupt();
-	bool create_DAC_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
-	bool create_PSG_samples(uint64_t _time_span_us, bool _prebuf, bool _first_upd);
+	bool create_DAC_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
 	void DAC_activate();
 	void DAC_deactivate();
 	void on_PSG_capture(bool _enable);

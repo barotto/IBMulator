@@ -241,7 +241,7 @@ void Mixer::main_loop()
 		
 		m_bench.frame_start();
 		
-		uint64_t time_span_us = m_pacer.wait() / 1000;
+		uint64_t time_span_ns = m_pacer.wait();
 
 		Mixer_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -263,7 +263,7 @@ void Mixer::main_loop()
 		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
 		for(auto ch : m_mix_channels) {
 			bool active,enabled;
-			std::tie(active,enabled) = ch.second->update(time_span_us, prebuffering);
+			std::tie(active,enabled) = ch.second->update(time_span_ns, prebuffering);
 			if(active) {
 				active_channels.push_back(std::pair<MixerChannel*,bool>(ch.second.get(),enabled));
 			}
@@ -271,7 +271,7 @@ void Mixer::main_loop()
 
 		if(!active_channels.empty()) {
 			// channels are active, mix them!
-			size_t mix_size = mix_channels(active_channels, time_span_us);
+			size_t mix_size = mix_channels(active_channels, time_span_ns);
 			if(mix_size > 0) {
 				// if there's audio data available, send it to device output buffer and sinks
 				send_packet(mix_size);
@@ -383,7 +383,7 @@ void Mixer::close_audio_device()
 }
 
 size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels,
-		uint64_t _time_span_us)
+		uint64_t _time_span_ns)
 {
 	size_t samples = std::numeric_limits<size_t>::max();
 	static double missing_frames = 0.0;
@@ -391,7 +391,7 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 		// the mixer is prebuffering or output device doesn't work
 		missing_frames = 0.0;
 	}
-	double reqframes = us_to_frames(_time_span_us, m_audio_spec.freq) + missing_frames;
+	double reqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq) + missing_frames;
 	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %d channels:\n", _channels.size());
 	for(auto ch : _channels) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "  %s: %d samples avail\n", ch.first->name(), ch.first->out().frames());
@@ -400,8 +400,8 @@ size_t Mixer::mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_ch
 	}
 	missing_frames = reqframes - samples/m_audio_spec.channels;
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "  mixspan: %llu us, samples: %d (req.: %.2f), missing frames: %.2f\n",
-			_time_span_us, samples, reqframes*m_audio_spec.channels, missing_frames);
+	PDEBUGF(LOG_V2, LOG_MIXER, "  mixspan: %llu ns, samples: %d (req.: %.2f), missing frames: %.2f\n",
+			_time_span_ns, samples, reqframes*m_audio_spec.channels, missing_frames);
 
 	if(samples == 0) {
 		return 0;
@@ -590,7 +590,7 @@ uint64_t Mixer::get_buffer_read_avail_us() const
 	return time_left;
 }
 
-bool Mixer::create_silence_samples(uint64_t _time_span_us, bool _prebuf, bool _firstupd)
+bool Mixer::create_silence_samples(uint64_t _time_span_ns, bool _prebuf, bool _firstupd)
 {
 	// this channel will render silence basing its timing on the machine.
 	// it's active when there are sinks registered, so that they can record
@@ -598,32 +598,32 @@ bool Mixer::create_silence_samples(uint64_t _time_span_us, bool _prebuf, bool _f
 	
 	UNUSED(_prebuf);
 	
-	static uint64_t prev_mtime_us = 0;
+	static uint64_t prev_mtime_ns = 0;
 	static double gen_frames_rem = .0;
 	
-	uint64_t cur_mtime_us = g_machine.get_virt_time_us_mt();
-	uint64_t elapsed_us = 0;
+	uint64_t cur_mtime_ns = g_machine.get_virt_time_ns_mt();
+	uint64_t elapsed_ns = 0;
 	
 	if(_firstupd) {
-		elapsed_us = _time_span_us;
+		elapsed_ns = _time_span_ns;
 	} else {
-		assert(cur_mtime_us >= prev_mtime_us);
-		elapsed_us = cur_mtime_us - prev_mtime_us;
+		assert(cur_mtime_ns >= prev_mtime_ns);
+		elapsed_ns = cur_mtime_ns - prev_mtime_ns;
 	}
-	prev_mtime_us = cur_mtime_us;
+	prev_mtime_ns = cur_mtime_ns;
 	
-	double elapsed_frames = m_silence_channel->in_spec().us_to_frames(elapsed_us);
+	double elapsed_frames = m_silence_channel->in_spec().ns_to_frames(elapsed_ns);
 	elapsed_frames += gen_frames_rem;
 	
-	unsigned needed_frames = round(m_silence_channel->in_spec().us_to_frames(_time_span_us));
+	unsigned needed_frames = round(m_silence_channel->in_spec().ns_to_frames(_time_span_ns));
 	unsigned gen_frames = elapsed_frames;
 	gen_frames_rem = elapsed_frames - double(gen_frames);
 	
 	m_silence_channel->in().fill_frames_silence(gen_frames);
 	m_silence_channel->input_finish();
 	
-	PDEBUGF(LOG_V2, LOG_MIXER, "Silence: mix time: %04d us, frames: %d, machine time: %d us, created frames: %d\n",
-			_time_span_us, needed_frames, elapsed_us, gen_frames);
+	PDEBUGF(LOG_V2, LOG_MIXER, "Silence: mix time: %04llu ns, frames: %d, machine time: %llu ns, created frames: %d\n",
+			_time_span_ns, needed_frames, elapsed_ns, gen_frames);
 
 	return true;
 }
