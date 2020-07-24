@@ -4,6 +4,7 @@ noinst_LIBRARIES = libaudio.a
 libaudio_a_SOURCES = \
 	audiobuffer.cpp \
 	audiospec.cpp \
+	convert.cpp \
 	mixerchannel.cpp \
 	ring_buffer.cpp \
 	soundfx.cpp \
@@ -23,6 +24,7 @@ libaudio_a_SOURCES = \
 noinst_HEADERS = \
 	audiobuffer.h \
 	audiospec.h \
+	convert.h \
 	mixerchannel.h \
 	ring_buffer.h \
 	soundfx.h \

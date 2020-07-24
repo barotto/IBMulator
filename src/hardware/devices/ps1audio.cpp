@@ -34,11 +34,10 @@
 #include "hardware/devices/ps1audio.h"
 #include "hardware/devices/pic.h"
 #include "filesys.h"
+#include "audio/convert.h"
 #include <cstring>
 
 #define PS1AUDIO_INPUT_CLOCK 4000000
-#define PS1AUDIO_DAC_EMPTY_THRESHOLD 1000 // number of empty DAC samples after
-                                          // which the FIFO timer will be auto-deactivated
 
 IODEVICE_PORTS(PS1Audio) = {
 	{ 0x200, 0x200, PORT_8BIT|PORT_RW },  // ADC (R) / DAC (W)
@@ -58,12 +57,8 @@ IODEVICE_PORTS(PS1Audio) = {
 
 PS1Audio::PS1Audio(Devices *_dev)
 : IODevice(_dev),
-m_DAC_timer(NULL_TIMER_HANDLE),
-m_DAC_empty_samples(0),
-m_DAC_newdata(true),
-m_DAC_last_value(0)
+m_fifo_timer(NULL_TIMER_HANDLE)
 {
-	m_DAC_samples.reserve(PS1AUDIO_FIFO_SIZE*2);
 }
 
 PS1Audio::~PS1Audio()
@@ -78,27 +73,28 @@ void PS1Audio::install()
 	//the DAC emulation can surely be done without a machine timer, but I find
 	//this approach way easier to read and follow.
 	using namespace std::placeholders;
-	m_DAC_timer = g_machine.register_timer(
-		std::bind(&PS1Audio::FIFO_timer, this, _1),
+	m_fifo_timer = g_machine.register_timer(
+		std::bind(&PS1Audio::fifo_timer, this, _1),
 		"PS/1 DAC" // name
 	);
 
 	using namespace std::placeholders;
-	m_DAC_channel = g_mixer.register_channel(
-		std::bind(&PS1Audio::create_DAC_samples, this, _1, _2, _3),
+	m_dac.channel = g_mixer.register_channel(
+		std::bind(&PS1Audio::dac_create_samples, this, _1, _2, _3),
 		"PS/1 DAC");
-	m_DAC_channel->set_disable_timeout(5_s);
+	m_dac.channel->set_disable_timeout(3_s);
+	m_dac.state = DAC::State::STOPPED;
+	
+	m_psg.install(PS1AUDIO_INPUT_CLOCK);
 
-	m_PSG.install(PS1AUDIO_INPUT_CLOCK);
-
-	Synth::set_chip(0, &m_PSG);
+	Synth::set_chip(0, &m_psg);
 	Synth::install("PS/1 PSG", 5_s,
 		[this](Event &_event) {
-			m_PSG.write(_event.value);
+			m_psg.write(_event.value);
 			Synth::capture_command(0x50, _event);
 		},
 		[this](AudioBuffer &_buffer, int _frames) {
-			m_PSG.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
+			m_psg.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
 		},
 		[this](bool _start, VGMFile& _vgm) {
 			if(_start) {
@@ -118,29 +114,27 @@ void PS1Audio::remove()
 	IODevice::remove();
 	Synth::remove();
 	g_machine.unregister_irq(PS1AUDIO_IRQ);
-	g_machine.unregister_timer(m_DAC_timer);
-	g_mixer.unregister_channel(m_DAC_channel);
+	g_machine.unregister_timer(m_fifo_timer);
+	g_mixer.unregister_channel(m_dac.channel);
 }
 
 void PS1Audio::reset(unsigned _type)
 {
 	Synth::reset();
 
+	m_s.fifo.reset(_type);
 	m_s.control_reg = 0;
 	lower_interrupt();
-
-	m_DAC_channel->enable(false);
-	std::lock_guard<std::mutex> lock(m_DAC_lock);
-	m_s.DAC.reset(_type);
-	m_DAC_samples.clear();
-	m_DAC_last_value = 128;
-	DAC_deactivate();
+	
+	std::lock_guard<std::mutex> lock(m_dac.mutex);
+	m_dac.reset();
+	dac_set_state(DAC::State::STOPPED);
 }
 
 void PS1Audio::power_off()
 {
 	Synth::power_off();
-	m_DAC_channel->enable(false);
+	m_dac.channel->enable(false);
 }
 
 void PS1Audio::config_changed()
@@ -152,8 +146,8 @@ void PS1Audio::config_changed()
 	std::string filters = g_program.config().get_string(PS1AUDIO_SECTION, PS1AUDIO_FILTERS, "");
 	
 	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
-	m_DAC_channel->set_volume(volume);
-	m_DAC_channel->set_filters(filters);
+	m_dac.channel->set_volume(volume);
+	m_dac.channel->set_filters(filters);
 }
 
 void PS1Audio::save_state(StateBuf &_state)
@@ -169,16 +163,12 @@ void PS1Audio::restore_state(StateBuf &_state)
 	_state.read(&m_s, {sizeof(m_s), name()});
 	Synth::restore_state(_state);
 
-	m_DAC_channel->enable(false);
-	m_DAC_samples.clear();
-	m_DAC_last_value = 128;
-	m_DAC_empty_samples = 0;
-	if(m_s.DAC.reload_reg != 0) {
-		m_DAC_freq = 1000000 / (int(m_s.DAC.reload_reg)+1);
-		DAC_activate();
-	} else {
-		m_DAC_freq = 0;
-		DAC_deactivate();
+	// no mutex lock necessary, at this stage the mixer is stopped
+	dac_set_state(DAC::State::STOPPED);
+	m_dac.reset();
+
+	if(m_s.fifo.reload_reg != 0) {
+		dac_set_state(DAC::State::ACTIVE);
 	}
 }
 
@@ -202,29 +192,29 @@ uint16_t PS1Audio::read(uint16_t _address, unsigned)
 	switch(_address) {
 		case 0x200:
 			//Analog to Digital Converter Data
-			PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 ADC: read from port 200h\n");
+			PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 ADC: read from port 200h: not implemented!\n");
 			//TODO
 			break;
 		case 0x202: {
 			//Control Register
 			value = 0;
 			value |= m_s.control_reg & 1; //AIE-0 Ext Int Enable
-			value |= m_s.DAC.almost_empty << 1; //IR-1 Almost Empty Int
-			value |= (m_s.DAC.read_avail  == 0) << 2; //FE-2 FIFO Empty
-			value |= (m_s.DAC.write_avail == 0) << 3; //FF-3 FIFO Full
+			value |= m_s.fifo.almost_empty << 1; //IR-1 Almost Empty Int
+			value |= (m_s.fifo.read_avail  == 0) << 2; //FE-2 FIFO Empty
+			value |= (m_s.fifo.write_avail == 0) << 3; //FF-3 FIFO Full
 			//ADR-4 ADC Data Rdy TODO
 			//JIE-5 Joystick Int TODO
 			//JM-6 RIN0 Bit ???
 			//RIO-7 RIN1 Bit ???
 			if(value & 2) {
 				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: AE Int (FIFO:%db, limit:%db)\n",
-						m_s.DAC.read_avail, m_s.DAC.almost_empty_value);
+						m_s.fifo.read_avail, m_s.fifo.almost_empty_value);
 			}
 			break;
 		}
 		case 0x203:
 			//FIFO Timer reload value
-			value = m_s.DAC.reload_reg;
+			value = m_s.fifo.reload_reg;
 			break;
 		case 0x204:
 			//Joystick (X Axis Stick A) P0
@@ -280,11 +270,12 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 	switch(_address) {
 		case 0x200:
 			//Digital to Analog Converter
-			m_s.DAC.write(value);
+			m_s.fifo.write(value);
 			//if the DAC is fetching from the FIFO but the timer is stopped
 			//(for eg. because the fifo was empty long enough) then restart it
-			if(m_s.DAC.reload_reg>0 && !g_machine.is_timer_active(m_DAC_timer)) {
-				DAC_activate();
+			if(m_s.fifo.reload_reg>0 && m_dac.state != DAC::State::ACTIVE) {
+				std::lock_guard<std::mutex> lock(m_dac.mutex);
+				dac_set_state(DAC::State::ACTIVE);
 			}
 			break;
 		case 0x202:
@@ -292,7 +283,7 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 			m_s.control_reg = value;
 			if(!(_value & 2)) {
 				//The interrupt flag is cleared by writing a 0 then a 1 to this bit.
-				m_s.DAC.almost_empty = false;
+				m_s.fifo.almost_empty = false;
 				lower_interrupt();
 				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1: AE Int disabled\n");
 			} else {
@@ -313,24 +304,16 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 			break;
 		case 0x203:
 			//FIFO Timer reload value
-			if(value>0 && value<22) {
-				//TODO FIXME F14 sets a value of 1 (2us), which is unmanageable
-				//what's the real hardware behaviour?
-				PDEBUGF(LOG_V0, LOG_AUDIO, "PS/1 DAC: reload value out of range: %d\n", value);
-				return;
-			}
-			m_s.DAC.reload_reg = value;
+			m_s.fifo.reload_reg = value;
 			if(value != 0) {
 				//a change in frequency or a DAC start.
-				m_DAC_freq = 1000000 / (unsigned(value)+1);
-				DAC_activate();
-			} else {
-				DAC_deactivate();
+				std::lock_guard<std::mutex> lock(m_dac.mutex);
+				dac_set_state(DAC::State::ACTIVE);
 			}
 			break;
 		case 0x204:
 			//Almost empty value
-			m_s.DAC.almost_empty_value = uint16_t(value) * 4;
+			m_s.fifo.almost_empty_value = uint16_t(value) * 4;
 			break;
 		case 0x205: {
 			//Sound Generator
@@ -386,89 +369,138 @@ void PS1Audio::write(uint16_t _address, uint16_t _value, unsigned)
 	}
 }
 
-void PS1Audio::DAC_activate()
+void PS1Audio::dac_set_state(DAC::State _to_state)
 {
-	m_DAC_lock.lock();
-	int value = int(m_s.DAC.reload_reg) + 1;
-	//The time between reloads is one cycle longer than the value written to the reload register.
-	g_machine.activate_timer(m_DAC_timer, uint64_t(value)*1_us, true);
-	m_DAC_channel->enable(true);
-	m_DAC_newdata = true;
-	m_DAC_active = true;
-	m_DAC_lock.unlock();
-
-	PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer activated, %dus (%dHz)\n",
-			value, 1000000/value);
-}
-
-void PS1Audio::DAC_deactivate()
-{
-	if(g_machine.is_timer_active(m_DAC_timer)) {
-		g_machine.deactivate_timer(m_DAC_timer);
-		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: FIFO timer deactivated\n");
+	// caller must lock dac mutex
+	
+	switch(_to_state) {
+		case DAC::State::ACTIVE: {
+			if(m_dac.state == DAC::State::STOPPED) {
+				m_dac.channel->enable(true);
+				m_dac.new_data = true;
+				m_dac.used = 0;
+				m_dac.empty_samples = 0;
+				PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: activated\n");
+			} else if(m_dac.state == DAC::State::WAITING) {
+				PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: reactivated\n");
+			}
+			uint64_t old_period = m_dac.period_ns;
+			dac_update_frequency();
+			if(old_period != m_dac.period_ns) {
+				g_machine.activate_timer(m_fifo_timer, m_dac.period_ns, true);
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: FIFO timer period %d ns (%.2f Hz)\n",
+						m_dac.period_ns, m_dac.rate);
+			}
+			break;
+		}
+		case DAC::State::WAITING:
+			if(m_dac.state != DAC::State::WAITING) {
+				PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: waiting\n");
+			}
+			break;
+		case DAC::State::STOPPED:
+			if(m_dac.state != DAC::State::STOPPED) {
+				g_machine.deactivate_timer(m_fifo_timer);
+				m_dac.period_ns = 0;
+				PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: deactivated\n");
+			}
+			break;
 	}
-	m_DAC_active = false;
+	m_dac.state = _to_state;
 }
 
-void PS1Audio::FIFO_timer(uint64_t)
+void PS1Audio::dac_update_frequency()
 {
-	//A	pulse is generated on overflow and is used to latch data into the ADC
-	//latch and to read data out of the FIFO.
-	uint8_t value = m_DAC_last_value;
-	if(m_s.DAC.read_avail > 0) {
-		value = m_s.DAC.read();
-		m_DAC_empty_samples = 0;
+	uint64_t fifo_rate_us = m_s.fifo.reload_reg;
+	// The time between reloads is one cycle longer than the value written to the reload register.
+	fifo_rate_us++;
+	if(fifo_rate_us < 45) {
+		// Limits are documented as "The FIFO Timer is clocked at 1 MHz", and 
+		// "The maximum time is 256 microsecond."
+		// Set 22kHz which is a reasonable value.
+		// F-14 is the only game I know of that uses a reload of 1 to play samples.
+		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: rate out of range: %d us\n", fifo_rate_us);
+		fifo_rate_us = 45;
+	}
+	uint64_t old_period = m_dac.period_ns;
+	double old_rate = m_dac.rate;
+	m_dac.period_ns = fifo_rate_us * 1_us;
+	m_dac.rate = 1e9 / double(m_dac.period_ns);
+	m_dac.empty_timeout = 1 * m_dac.rate; // 1 second worth of samples
+	if(m_dac.used && m_dac.period_ns != old_period) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: frequency change while dac is filled with %d samples at %.2f Hz\n",
+				m_dac.used, m_dac.rate);
+		// Convert the audio data in the DAC buffer to the new rate.
+		// Use a fast resampler, it's usually just a handful of samples.
+		static std::array<uint8_t,DAC::BUF_SIZE> tempbuf;
+		size_t generated = Audio::Convert::resample_mono<uint8_t>(m_dac.data, m_dac.used, old_rate, &tempbuf[0], DAC::BUF_SIZE, m_dac.rate);
+		memcpy(m_dac.data, &tempbuf[0], generated);
+		m_dac.used = generated;
+	}
+}
+
+void PS1Audio::fifo_timer(uint64_t)
+{
+	// A pulse is generated on overflow and is used to latch data into the ADC
+	// latch and to read data out of the FIFO.
+	uint8_t sample = m_dac.last_value;
+	if(m_s.fifo.read_avail > 0) {
+		sample = m_s.fifo.read();
+		m_dac.empty_samples = 0;
 	} else {
-		m_DAC_empty_samples++;
+		std::lock_guard<std::mutex> lock(m_dac.mutex);
+		dac_set_state(DAC::State::WAITING);
+		m_dac.empty_samples++;
 	}
-	if(	//m_s.DAC.almost_empty_value &&
-		m_s.DAC.read_avail==m_s.DAC.almost_empty_value &&
-		(m_s.control_reg & 2) )
-	{
-		m_s.DAC.almost_empty = true;
+	if(m_s.fifo.read_avail == m_s.fifo.almost_empty_value && (m_s.control_reg & 2) ) {
+		m_s.fifo.almost_empty = true;
 		raise_interrupt();
 	}
-	if(m_DAC_empty_samples > PS1AUDIO_DAC_EMPTY_THRESHOLD) {
-		/* lots of software don't disable the FIFO timer so the channel remains
-		 * open. If the DAC has been empty for long enough, stop the timer.
-		 */
-		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: empty\n");
-		DAC_deactivate();
+	
+	std::lock_guard<std::mutex> lock(m_dac.mutex);
+	if(m_dac.empty_samples > m_dac.empty_timeout) {
+		dac_set_state(DAC::State::STOPPED);
 	} else {
-		std::lock_guard<std::mutex> lock(m_DAC_lock);
-		m_DAC_samples.push_back(value);
+		m_dac.add_sample(sample);
 	}
 }
 
 //this method is called by the Mixer thread
-bool PS1Audio::create_DAC_samples(uint64_t _time_span_ns, bool, bool)
+bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 {
-	m_DAC_lock.lock();
-	unsigned freq = m_DAC_freq;
-	unsigned DACsamples = m_DAC_samples.size();
-
+	m_dac.mutex.lock();
+	
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 	unsigned presamples = 0, postsamples = 0;
-	unsigned needed_samples = round(ns_to_frames(_time_span_ns, freq));
+	double needed_samples = ns_to_frames(_time_span_ns, m_dac.rate);
+	unsigned samples = m_dac.used;
 	bool chactive = true;
+	static double balance = 0.0;
 
-	m_DAC_channel->set_in_spec({AUDIO_FORMAT_U8, 1, double(freq)});
+	m_dac.channel->set_in_spec({AUDIO_FORMAT_U8, 1, m_dac.rate});
 
-	if(m_DAC_newdata && (DACsamples < needed_samples)) {
-		presamples = needed_samples - DACsamples;
-		m_DAC_channel->in().fill_samples<uint8_t>(presamples, m_DAC_last_value);
+	if(m_dac.new_data) {
+		balance = 0.0;
+	}
+	
+	if(m_dac.new_data && (samples < needed_samples)) {
+		presamples = needed_samples - samples;
+		m_dac.channel->in().fill_samples<uint8_t>(presamples, m_dac.last_value);
+		balance += presamples;
 	}
 
-	if(DACsamples > 0) {
-		m_DAC_channel->in().add_samples(m_DAC_samples);
-		m_DAC_last_value = m_DAC_samples.back();
-		m_DAC_samples.clear();
-		m_DAC_channel->set_disable_time(mtime_ns);
+	if(samples > 0) {
+		m_dac.channel->in().add_samples(m_dac.data, samples);
+		m_dac.channel->set_disable_time(mtime_ns);
+		m_dac.used = 0;
+		balance += samples;
 	}
 
-	if(!m_DAC_active && (DACsamples < needed_samples) && presamples==0) {
-		chactive = !m_DAC_channel->check_disable_time(mtime_ns);
-		postsamples = needed_samples - DACsamples;
+	balance -= needed_samples;
+	
+	if(m_dac.state == DAC::State::STOPPED && (balance <= 0) && presamples==0) {
+		chactive = !m_dac.channel->check_disable_time(mtime_ns);
+		postsamples = balance * -1.0;
 		/* Some programs feed the DAC with 8-bit signed samples (eg Space
 		 * Quest 4), while others with 8-bit unsigned samples. The real HW
 		 * DAC *should* work with unsigned values (see eg. the POST beep
@@ -476,23 +508,45 @@ bool PS1Audio::create_DAC_samples(uint64_t _time_span_ns, bool, bool)
 		 * way to know the type of the samples used so in order to avoid
 		 * pops fade to the final value of 128.
 		 */
-		m_DAC_channel->in().fill_frames_fade<uint8_t>(postsamples, m_DAC_last_value, 128);
-		m_DAC_last_value = 128;
+		m_dac.channel->in().fill_frames_fade<uint8_t>(postsamples, m_dac.last_value, 128);
+		m_dac.last_value = 128;
+		balance += postsamples;
 	}
+	
+	m_dac.new_data &= (samples == 0);
+	m_dac.mutex.unlock();
 
-	m_DAC_newdata &= (DACsamples == 0);
-	m_DAC_lock.unlock();
+	m_dac.channel->input_finish();
 
-	m_DAC_channel->input_finish();
-
-	unsigned total = presamples + DACsamples + postsamples;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04llu ns, samples at %d Hz: %d+%d+%d (%.0f us)\n",
-			_time_span_ns, freq, presamples, DACsamples, postsamples, frames_to_us(total, freq));
+	unsigned total = presamples + samples + postsamples;
+	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04llu ns, samples at %.2f Hz: %d+%d+%d (%.2f ns), balance: %.2f\n",
+			_time_span_ns, m_dac.rate, presamples, samples, postsamples, frames_to_ns(total, m_dac.rate),
+			balance);
 
 	return chactive;
 }
 
-void PS1Audio::DAC::reset(unsigned _type)
+void PS1Audio::DAC::reset()
+{
+	used = 0;
+	last_value = 128;
+	new_data = true;
+	empty_samples = 0;
+	period_ns = 0;
+	rate = 0.0;
+}
+
+void PS1Audio::DAC::add_sample(uint8_t _sample)
+{
+	// caller must lock dac mutex
+	if(used < BUF_SIZE) {
+		data[used] = _sample;
+		used++;
+	}
+	last_value = _sample;
+}
+
+void PS1Audio::FIFO::reset(unsigned _type)
 {
 	// The reload register is not affected by a reset. It must be initialized at POR.
 	if(_type == MACHINE_POWER_ON) {
@@ -506,26 +560,27 @@ void PS1Audio::DAC::reset(unsigned _type)
 	almost_empty = false;
 }
 
-uint8_t PS1Audio::DAC::read()
+uint8_t PS1Audio::FIFO::read()
 {
 	if(read_avail == 0) {
 		return 0;
 	}
-	uint8_t value = FIFO[read_ptr];
+	uint8_t value = data[read_ptr];
 	read_ptr = (read_ptr + 1) % PS1AUDIO_FIFO_SIZE;
 	write_avail += 1;
 	read_avail -= 1;
 	almost_empty = false;
+
 	return value;
 }
 
-void PS1Audio::DAC::write(uint8_t _data)
+void PS1Audio::FIFO::write(uint8_t _data)
 {
 	if(write_avail == 0) {
 		// If the FIFO is full, any additional attempted writing of data results in lost data.
 		return;
 	}
-	FIFO[write_ptr] = _data;
+	data[write_ptr] = _data;
 	write_ptr = (write_ptr + 1) % PS1AUDIO_FIFO_SIZE;
 	write_avail -= 1;
 	read_avail += 1;

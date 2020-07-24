@@ -35,7 +35,35 @@ class PS1Audio : public IODevice, protected Synth
 private:
 	struct DAC
 	{
-		uint8_t  FIFO[PS1AUDIO_FIFO_SIZE];
+		constexpr static unsigned BUF_SIZE  = 4096;
+		
+		enum State {
+			ACTIVE, WAITING, STOPPED
+		};
+		State state;
+
+		uint8_t  data[BUF_SIZE];
+		double   rate;
+		uint64_t period_ns;
+		unsigned used;
+		
+		bool     new_data;
+		uint8_t  last_value;
+		uint32_t empty_samples;
+		uint32_t empty_timeout;
+		
+		std::mutex mutex;
+		std::shared_ptr<MixerChannel> channel;
+		
+		void reset();
+		void add_sample(uint8_t _sample);
+	};
+	
+	struct FIFO
+	{
+		constexpr static unsigned FIFO_SIZE = 2048;
+		
+		uint8_t  data[FIFO_SIZE];
 		uint32_t read_ptr;
 		uint32_t write_ptr;
 		uint32_t write_avail;
@@ -44,28 +72,21 @@ private:
 		uint64_t timer_last_time;
 		uint16_t almost_empty_value;
 		bool     almost_empty;
-
+		
 		void reset(unsigned type);
 		uint8_t read();
 		void write(uint8_t _data);
 	};
 
 	struct {
-		struct DAC     DAC;
+		FIFO    fifo;
 		uint8_t control_reg;
 	} m_s;
-	SN76496 m_PSG;
 
-	std::mutex m_DAC_lock;
-	int m_DAC_timer;
-	int m_DAC_empty_samples;
-	//the DAC frequency value is written by the machine and read by the mixer
-	std::atomic<unsigned> m_DAC_freq;
-	std::atomic<bool> m_DAC_active;
-	bool m_DAC_newdata;
-	std::vector<uint8_t> m_DAC_samples;
-	std::shared_ptr<MixerChannel> m_DAC_channel;
-	uint8_t m_DAC_last_value;
+	DAC     m_dac;
+	SN76496 m_psg;
+
+	int m_fifo_timer;
 
 public:
 	PS1Audio(Devices *_dev);
@@ -83,13 +104,15 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
-	void FIFO_timer(uint64_t);
+	void fifo_timer(uint64_t);
+	bool dac_create_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void dac_set_state(DAC::State _state);
+	void dac_update_frequency();
+	
 	void raise_interrupt();
 	void lower_interrupt();
-	bool create_DAC_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
-	void DAC_activate();
-	void DAC_deactivate();
-	void on_PSG_capture(bool _enable);
+	
+	void on_psg_capture(bool _enable);
 };
 
 #endif
