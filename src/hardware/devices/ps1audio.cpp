@@ -485,7 +485,13 @@ bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	
 	if(m_dac.new_data && (samples < needed_samples)) {
 		presamples = needed_samples - samples;
-		m_dac.channel->in().fill_samples<uint8_t>(presamples, m_dac.last_value);
+		// Some programs feed the DAC with 8-bit signed samples (eg Space
+		// Quest 4), while others with 8-bit unsigned samples. The real HW
+		// DAC *should* work with unsigned values (see eg. the POST beep
+		// sound, which is emitted with the DAC not the PSG). There's no
+		// way to know the type of the samples used so in order to avoid
+		// pops interpolate from silence (128) to the last value.
+		m_dac.channel->in().fill_frames_fade<uint8_t>(presamples, 128, m_dac.last_value);
 		balance += presamples;
 	}
 
@@ -501,13 +507,7 @@ bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	if(m_dac.state == DAC::State::STOPPED && (balance <= 0) && presamples==0) {
 		chactive = !m_dac.channel->check_disable_time(mtime_ns);
 		postsamples = balance * -1.0;
-		/* Some programs feed the DAC with 8-bit signed samples (eg Space
-		 * Quest 4), while others with 8-bit unsigned samples. The real HW
-		 * DAC *should* work with unsigned values (see eg. the POST beep
-		 * sound, which is emitted with the DAC not the PSG). There's no
-		 * way to know the type of the samples used so in order to avoid
-		 * pops fade to the final value of 128.
-		 */
+		// See the comment above
 		m_dac.channel->in().fill_frames_fade<uint8_t>(postsamples, m_dac.last_value, 128);
 		m_dac.last_value = 128;
 		balance += postsamples;
