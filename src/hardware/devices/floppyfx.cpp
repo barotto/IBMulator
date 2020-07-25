@@ -40,6 +40,7 @@ FloppyFX::FloppyFX()
 :
 DriveFX()
 {
+	reset();
 }
 
 FloppyFX::~FloppyFX()
@@ -64,6 +65,12 @@ void FloppyFX::install(const std::string &_drive)
 	if(ms_buffers.empty()) {
 		ms_buffers = SoundFX::load_samples(spec, ms_samples);
 	}
+}
+
+void FloppyFX::reset()
+{
+	m_booting = 0;
+	m_snatch = false;
 }
 
 void FloppyFX::config_changed()

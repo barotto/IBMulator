@@ -347,7 +347,7 @@ void FloppyCtrl::restore_state(StateBuf &_state)
 
 	if(m_fx_enabled) {
 		for(int i=0; i<2; i++) {
-			m_fx[i].snatch(false);
+			m_fx[i].reset();
 			if(is_motor_spinning(i)) {
 				m_fx[i].spin(true,false);
 			} else {
@@ -557,6 +557,12 @@ void FloppyCtrl::reset(unsigned type)
 	if(type == MACHINE_POWER_ON) {
 		// DMA is enabled from start
 		memset(&m_s, 0, sizeof(m_s));
+		
+		if(m_fx_enabled) {
+			for(int i=0; i<2; i++) {
+				m_fx[i].reset();
+			}
+		}
 	} else {
 		/* Hardware RESET clears all registers except those programmed by
 		 * the SPECIFY command.

@@ -52,6 +52,7 @@ public:
 	~FloppyFX();
 
 	void install(const std::string &_drive);
+	void reset();
 	void config_changed();
 	void spin(bool _spinning, bool _change_state);
 	void snatch(bool _value=true) { m_snatch = _value; }
