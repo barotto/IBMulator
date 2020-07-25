@@ -47,7 +47,7 @@ PIT::~PIT()
 void PIT::install()
 {
 	IODevice::install();
-	g_machine.register_irq(PIT_IRQ, "8254 PIT");
+	g_machine.register_irq(PIT_IRQ, name());
 
 	m_systimer = g_machine.register_timer(
 		std::bind(&PIT::handle_systimer, this, std::placeholders::_1),
@@ -59,7 +59,7 @@ void PIT::install()
 void PIT::remove()
 {
 	IODevice::remove();
-	g_machine.unregister_irq(PIT_IRQ);
+	g_machine.unregister_irq(PIT_IRQ, name());
 	g_machine.unregister_timer(m_systimer);
 }
 

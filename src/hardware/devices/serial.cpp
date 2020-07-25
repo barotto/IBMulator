@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -136,7 +136,7 @@ void Serial::remove()
 
 	if(m_s[0].port < 2) {
 		IODevice::remove(&ioports()->at(m_s[0].port), 1);
-		g_machine.unregister_irq(m_s[0].IRQ);
+		g_machine.unregister_irq(m_s[0].IRQ, name());
 		m_s[0].port = 0xFF;
 	}
 
@@ -270,14 +270,14 @@ void Serial::set_port(uint8_t _port)
 
 	if(m_s[0].port < 2) {
 		IODevice::remove(&ioports()->at(m_s[0].port), 1);
-		g_machine.unregister_irq(m_s[0].IRQ);
+		g_machine.unregister_irq(m_s[0].IRQ, name());
 	}
 
 	m_s[0].port = _port;
 	IODevice::install(&ioports()->at(m_s[0].port), 1);
 
 	m_s[0].IRQ = ms_irqs[_port];
-	g_machine.register_irq(m_s[0].IRQ, pname);
+	g_machine.register_irq(m_s[0].IRQ, name());
 
 	PINFOF(LOG_V0, LOG_COM, "%s at 0x%04x, irq %d (mode: %s)\n",
 			pname,

@@ -32,6 +32,7 @@ void size_check()
 	static_assert(_expected == _real, "Incorrect size!");
 }
 
+std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 std::string str_to_lower(std::string _str);
 std::string str_trim(std::string _str);

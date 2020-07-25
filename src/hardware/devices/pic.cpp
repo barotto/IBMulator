@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,13 +44,13 @@ PIC::~PIC()
 void PIC::install()
 {
 	IODevice::install();
-	g_machine.register_irq(2, "cascade");
+	g_machine.register_irq(2, name());
 }
 
 void PIC::remove()
 {
 	IODevice::remove();
-	g_machine.unregister_irq(2);
+	g_machine.unregister_irq(2, name());
 }
 
 void PIC::reset(unsigned)
@@ -543,12 +543,12 @@ void PIC::lower_irq(unsigned irq_no)
 	uint8_t mask = (1 << (irq_no & 7));
 	if((irq_no <= 7) && (m_s.master.IRQ_in & mask)) {
 		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
-				g_machine.get_irq_name(irq_no));
+				g_machine.get_irq_names(irq_no).c_str());
 		m_s.master.IRQ_in &= ~(mask);
 		m_s.master.irr &= ~(mask);
 	} else if((irq_no > 7) && (irq_no <= 15) && (m_s.slave.IRQ_in & mask)) {
 		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now low\n", irq_no,
-				g_machine.get_irq_name(irq_no));
+				g_machine.get_irq_names(irq_no).c_str());
 		m_s.slave.IRQ_in &= ~(mask);
 		m_s.slave.irr &= ~(mask);
 	}
@@ -559,13 +559,13 @@ void PIC::raise_irq(unsigned irq_no)
 	uint8_t mask = (1 << (irq_no & 7));
 	if((irq_no <= 7) && !(m_s.master.IRQ_in & mask)) {
 		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now high (mIMR=%X,mINT=%u,IF=%u)\n", irq_no,
-				g_machine.get_irq_name(irq_no), m_s.master.imr, m_s.master.INT, FLAG_IF);
+				g_machine.get_irq_names(irq_no).c_str(), m_s.master.imr, m_s.master.INT, FLAG_IF);
 		m_s.master.IRQ_in |= mask;
 		m_s.master.irr |= mask;
 		service_master_pic();
 	} else if((irq_no > 7) && (irq_no <= 15) && !(m_s.slave.IRQ_in & mask)) {
 		PDEBUGF(LOG_V1, LOG_PIC, "IRQ line %u (%s) now high (sIMR=%X,sINT=%u,IF=%u)\n", irq_no,
-				g_machine.get_irq_name(irq_no), m_s.slave.imr, m_s.slave.INT, FLAG_IF);
+				g_machine.get_irq_names(irq_no).c_str(), m_s.slave.imr, m_s.slave.INT, FLAG_IF);
 		m_s.slave.IRQ_in |= mask;
 		m_s.slave.irr |= mask;
 		service_slave_pic();
@@ -698,7 +698,7 @@ void PIC::service_master_pic()
 			if( !(m_s.master.special_mask && ((isr >> irq) & 0x01)) ) {
 				if(unmasked_requests & (1 << irq)) {
 					PDEBUGF(LOG_V2, LOG_PIC, "signalling IRQ %u (%s)\n", irq,
-							g_machine.get_irq_name(irq));
+							g_machine.get_irq_names(irq).c_str());
 					m_s.master.INT = true;
 					m_s.master.irq = irq;
 					g_cpu.raise_INTR();

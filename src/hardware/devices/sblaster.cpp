@@ -444,7 +444,7 @@ void SBlaster::remove()
 	Synth::remove();
 	
 	m_devices->dma()->unregister_channel(m_dma);
-	g_machine.unregister_irq(m_irq);
+	g_machine.unregister_irq(m_irq, name());
 	
 	g_machine.unregister_timer(m_dsp_timer);
 	g_machine.unregister_timer(m_dma_timer);

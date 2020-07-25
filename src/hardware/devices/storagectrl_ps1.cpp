@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -198,7 +198,7 @@ void StorageCtrl_PS1::remove()
 	m_disk.remove();
 
 	m_devices->dma()->unregister_channel(HDC_DMA);
-	g_machine.unregister_irq(HDC_IRQ);
+	g_machine.unregister_irq(HDC_IRQ, name());
 	g_machine.unregister_timer(m_cmd_timer);
 	g_machine.unregister_timer(m_dma_timer);
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2017  Marco Bortolin
+ * Copyright (C) 2017-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -273,7 +273,7 @@ void StorageCtrl_ATA::remove()
 	StorageCtrl::remove();
 
 	for(int channel=0; channel<ATA_MAX_CHANNEL; channel++) {
-		g_machine.unregister_irq(m_channels[channel].irq);
+		g_machine.unregister_irq(m_channels[channel].irq, name());
 		for(int device=0; device<2; device ++) {
 			if(drive(channel,device).device_type != ATA_NONE) {
 				m_storage[channel][device]->remove();

@@ -113,7 +113,7 @@ void PS1Audio::remove()
 {
 	IODevice::remove();
 	Synth::remove();
-	g_machine.unregister_irq(PS1AUDIO_IRQ);
+	g_machine.unregister_irq(PS1AUDIO_IRQ, name());
 	g_machine.unregister_timer(m_fifo_timer);
 	g_mixer.unregister_channel(m_dac.channel);
 }

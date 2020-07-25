@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -98,8 +98,8 @@ void Keyboard::install()
 void Keyboard::remove()
 {
 	IODevice::remove();
-	g_machine.unregister_irq(KEYB_IRQ);
-	g_machine.unregister_irq(MOUSE_IRQ);
+	g_machine.unregister_irq(KEYB_IRQ, "Keyboard controller (kbd)");
+	g_machine.unregister_irq(MOUSE_IRQ, "Keyboard controller (mouse)");
 	g_machine.unregister_timer(m_timer);
 }
 

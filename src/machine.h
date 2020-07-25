@@ -95,7 +95,7 @@ private:
 
 	std::atomic<uint64_t> m_mt_virt_time;
 
-	std::string m_irq_names[16];
+	std::vector<std::string> m_irq_names[16];
 
 	SystemROM m_sysrom;
 
@@ -168,8 +168,8 @@ public:
 	}
 	
 	void register_irq(uint8_t irq, const char* name);
-	void unregister_irq(uint8_t _irq);
-	const char* get_irq_name(uint8_t irq);
+	void unregister_irq(uint8_t _irq, const char* name);
+	std::string get_irq_names(uint8_t irq);
 
 	void reset(uint _signal);
 	//this is not the x86 DEBUG single step, it's a machine emulation single step

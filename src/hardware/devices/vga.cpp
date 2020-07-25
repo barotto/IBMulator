@@ -166,7 +166,7 @@ void VGA::config_changed()
 void VGA::remove()
 {
 	IODevice::remove();
-	g_machine.unregister_irq(VGA_IRQ);
+	g_machine.unregister_irq(VGA_IRQ, name());
 	g_machine.unregister_timer(m_timer_id);
 
 	if(m_memory != nullptr) {

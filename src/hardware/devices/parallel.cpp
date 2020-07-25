@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -77,7 +77,7 @@ void Parallel::remove()
 {
 	if(m_s.port < 3) {
 		IODevice::remove(&ioports()->at(m_s.port), 1);
-		g_machine.unregister_irq(ms_irqs[m_s.port]);
+		g_machine.unregister_irq(ms_irqs[m_s.port], name());
 		m_s.port = 0xFF;
 	}
 }
@@ -156,12 +156,12 @@ void Parallel::set_port(uint8_t _port)
 
 	if(m_s.port < 3) {
 		IODevice::remove(&ioports()->at(m_s.port), 1);
-		g_machine.unregister_irq(ms_irqs[m_s.port]);
+		g_machine.unregister_irq(ms_irqs[m_s.port], name());
 	}
 
 	m_s.port = _port;
 	IODevice::install(&ioports()->at(m_s.port), 1);
-	g_machine.register_irq(ms_irqs[m_s.port], pname);
+	g_machine.register_irq(ms_irqs[m_s.port], name());
 
 	g_program.config().set_string(LPT_SECTION, LPT_PORT, pname);
 
@@ -340,7 +340,7 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			} else {
 				if(m_s.CONTROL.irq == 1) {
 					m_s.CONTROL.irq = 0;
-					g_machine.unregister_irq(ms_irqs[m_s.port]);
+					g_machine.unregister_irq(ms_irqs[m_s.port], name());
 					PDEBUGF(LOG_V2, LOG_LPT, "polling mode selected\n");
 				}
 			}

@@ -287,7 +287,7 @@ void FloppyCtrl::remove()
 	}
 
 	m_devices->dma()->unregister_channel(FLOPPY_DMA_CHAN);
-	g_machine.unregister_irq(FLOPPY_IRQ);
+	g_machine.unregister_irq(FLOPPY_IRQ, name());
 	g_machine.unregister_timer(m_timer);
 
 	if(m_fx_enabled) {

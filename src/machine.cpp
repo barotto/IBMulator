@@ -290,9 +290,9 @@ void Machine::config_changed()
 	for(unsigned i=0; i<m_num_timers; i++) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
 	}
-	PINFOF(LOG_V1, LOG_MACHINE, "IRQ channels:\n");
+	PINFOF(LOG_V1, LOG_MACHINE, "IRQ lines:\n");
 	for(unsigned i=0; i<16; i++) {
-		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_irq_names[i].c_str());
+		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, get_irq_names(i).c_str());
 	}
 	PINFOF(LOG_V1, LOG_MACHINE, "DMA channels:\n");
 	for(unsigned i=0; i<8; i++) {
@@ -600,19 +600,32 @@ void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _f
 void Machine::register_irq(uint8_t _irq, const char* _name)
 {
 	assert(_irq<16);
-	m_irq_names[_irq] = _name;
+	if(!m_irq_names[_irq].empty()) {
+		PWARNF(LOG_MACHINE, "Possible conflict for IRQ %d:\n", _irq);
+		for(auto &dev : m_irq_names[_irq]) {
+			PWARNF(LOG_MACHINE, "  %s\n", dev.c_str());
+		}
+		PWARNF(LOG_MACHINE, "  %s\n", _name);
+	}
+	m_irq_names[_irq].push_back(std::string(_name));
 }
 
-void Machine::unregister_irq(uint8_t _irq)
+void Machine::unregister_irq(uint8_t _irq, const char *_name)
 {
 	assert(_irq<16);
-	m_irq_names[_irq] = "";
+	for(auto it = m_irq_names[_irq].begin(); it != m_irq_names[_irq].end(); it++) {
+		if(it->compare(_name) == 0) {
+			m_irq_names[_irq].erase(it);
+			return;
+		}
+	}
+	PDEBUGF(LOG_V0, LOG_MACHINE, "'%s' is not a valid device name for IRQ %d\n", _name, _irq);
 }
 
-const char* Machine::get_irq_name(uint8_t _irq)
+std::string Machine::get_irq_names(uint8_t _irq)
 {
 	assert(_irq<16);
-	return m_irq_names[_irq].c_str();
+	return str_implode(m_irq_names[_irq]);
 }
 
 void Machine::memdump(uint32_t _base, uint32_t _len)

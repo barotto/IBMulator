@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -99,7 +99,7 @@ void CMOS::install()
 void CMOS::remove()
 {
 	IODevice::remove();
-	g_machine.unregister_irq(CMOS_IRQ);
+	g_machine.unregister_irq(CMOS_IRQ, name());
 	g_machine.unregister_timer(m_periodic_timer);
 	g_machine.unregister_timer(m_one_second_timer);
 	g_machine.unregister_timer(m_uip_timer);

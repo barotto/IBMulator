@@ -22,7 +22,17 @@
 #include <array>
 #include <algorithm>
 #include <regex>
+#include <numeric>
 #include "utils.h"
+
+std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim)
+{
+	// thanks, random internet stranger @stackoverflow!
+	return std::accumulate(_list.begin(), _list.end(), std::string(), 
+		[&](const std::string& a, const std::string& b) -> std::string { 
+			return a + (a.length() > 0 ? _delim : "") + b; 
+		} );
+}
 
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
