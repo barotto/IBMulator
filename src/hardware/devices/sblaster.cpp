@@ -465,7 +465,7 @@ void SBlaster::dsp_reset()
 		// The DSP reset command behaves differently while the DSP is in high-speed mode. It
 		// terminates high-speed mode and restores all DSP parameters to the states prior to
 		// entering the high-speed mode.
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: reset (High Speed)\n", short_name());
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset (High Speed)\n", short_name());
 		dsp_change_mode(DSP::Mode::NONE);
 		dac_set_state(DAC::State::STOPPED);
 		dma_stop();
@@ -473,7 +473,7 @@ void SBlaster::dsp_reset()
 		return;
 	}
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: reset\n", short_name());
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset\n", short_name());
 	
 	lower_interrupt();
 	
@@ -627,7 +627,7 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 			break;
 	}
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: read  0x%x -> 0x%02X\n", short_name(), _address, value);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: read  0x%x -> 0x%02X\n", short_name(), _address, value);
 	
 	return value;
 }
@@ -713,7 +713,7 @@ void SBlasterPro2::write_fm(uint16_t _address, uint16_t _value)
 
 void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 {
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: write 0x%x <- 0x%02x", short_name(), _address, _value);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: write 0x%x <- 0x%02x", short_name(), _address, _value);
 	
 	switch(_address) {
 		case 0x6: case 0x7: // DSP reset
@@ -818,7 +818,7 @@ void SBlaster::write_fm(uint8_t _chip, uint16_t _address, uint16_t _value)
 		{
 			m_s.opl.reg[_chip] = _value;
 			m_s.opl.reg_port[_chip] = port;
-			PDEBUGF(LOG_V2, LOG_AUDIO, "%s: FM: write c%d:p%d index   <- %02Xh\n",
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s FM: write c%d:p%d index   <- %02Xh\n",
 					short_name(), _chip, _address, _value);
 			break;
 		}
@@ -842,7 +842,7 @@ void SBlaster::write_fm(uint8_t _chip, uint16_t _address, uint16_t _value)
 					Synth::enable_channel();
 					break;
 			}
-			PDEBUGF(LOG_V2, LOG_AUDIO, "%s: FM: write c%d:p%d reg %02Xh <- %02Xh\n",
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s FM: write c%d:p%d reg %02Xh <- %02Xh\n",
 					short_name(), _chip, _address, reg, _value
 			);
 			break;
@@ -871,7 +871,7 @@ void SBlaster::restore_state(StateBuf &_state)
 		m_dac_channel->set_volume(.0f);
 	}
 	if(m_s.dac.state != DAC::State::STOPPED || m_s.dac.used != 0) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP:%d, DAC:%d,%d\n", short_name(),
+		PDEBUGF(LOG_V2, LOG_AUDIO, "  DSP mode:%d, DAC state:%d,%d\n", short_name(),
 				m_s.dsp.mode, m_s.dac.state, m_s.dac.used);
 		m_dac_channel->enable(true);
 	}
@@ -905,11 +905,11 @@ void SBlaster::dma_timer(uint64_t _time)
 		m_s.dma.irq = false;
 	}
 	if(m_s.dma.drq) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: requesting data\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: requesting data\n", short_name());
 		m_devices->dma()->set_DRQ(m_dma, true);
 		m_s.dma.drq_time = g_machine.get_virt_time_ns();
 	} else if(_time != 0) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: stopping\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: stopping\n", short_name());
 		std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 		dsp_change_mode(DSP::Mode::NONE);
 		if(m_s.dac.state != DAC::State::STOPPED) {
@@ -969,11 +969,11 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	m_devices->dma()->set_DRQ(m_dma, false);
 	
 	if(m_s.dma.mode != DMA::Mode::DMA8) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: read event with engine off\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: read event with engine off\n", short_name());
 		return 0;
 	}
 	if(!_maxlen) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: mem read buffer empty\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: mem read buffer empty\n", short_name());
 		return 0;
 	}
 	
@@ -1031,7 +1031,7 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA8: read 1 of %d bytes, frames=%d, left=%db, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%dns\n", 
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: read 1 of %d bytes, frames=%d, left=%db, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%dns\n", 
 			short_name(), _maxlen, frames,m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
 	
 	return 1;
@@ -1041,7 +1041,7 @@ uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen)
 {
 	// From I/O to Memory
 	if(m_s.dma.mode == DMA::Mode::NONE || !_maxlen) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: write event with engine off\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: write event with engine off\n", short_name());
 		return 0;
 	}
 	
@@ -1083,7 +1083,7 @@ uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA8: written %d of %d bytes, left=%d, drq_time=%lluns, timer_ns=%dns\n", 
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: written %d of %d bytes, left=%d, drq_time=%lluns, timer_ns=%dns\n", 
 			short_name(), len, _maxlen, m_s.dma.left, drq_time, dma_timer_ns);
 	
 	return len;
@@ -1116,7 +1116,7 @@ void SBlaster::dsp_exec_cmd(const DSPCmd *_cmd)
 	try {
 		_cmd->fn(*this);
 	} catch(std::exception &) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: Error executing command 0x%02x\n",
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: Error executing command 0x%02x\n",
 				short_name(), m_s.dsp.cmd);
 	}
 	
@@ -1152,7 +1152,7 @@ void SBlaster::dsp_change_mode(DSP::Mode _mode)
 				dma_stop();
 				break;
 		}
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: mode %s\n", short_name(), modestr);
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: mode %s\n", short_name(), modestr);
 		m_s.dsp.mode = _mode;
 	}
 }
@@ -1301,7 +1301,7 @@ void SBlaster::dma_start(bool _autoinit)
 	
 	dsp_change_mode(DSP::Mode::DMA);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: started\n", short_name());
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: started\n", short_name());
 }
 
 void SBlaster::dma_stop()
@@ -1313,13 +1313,13 @@ void SBlaster::dma_stop()
 			m_s.dma.drq_time = 0;
 		}
 		g_machine.deactivate_timer(m_dma_timer);
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: stopped\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: stopped\n", short_name());
 	}
 }
 
 void SBlaster::dsp_cmd_unimpl()
 {
-	PDEBUGF(LOG_V0, LOG_AUDIO, "%s: DSP: Command 0x%02x not implemented\n", short_name(), m_s.dsp.cmd);
+	PDEBUGF(LOG_V0, LOG_AUDIO, "%s DSP: Command 0x%02x not implemented\n", short_name(), m_s.dsp.cmd);
 }
 
 void SBlaster::dsp_cmd_status()
@@ -1364,14 +1364,14 @@ void SBlaster::dsp_cmd_set_time_const()
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	dsp_update_frequency();
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: rate=%d, DAC rate=%.2f\n",
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: rate=%d, DAC rate=%.2f\n",
 			short_name(), time_const_to_freq(m_s.dsp.time_const), m_s.dac.spec.rate);
 }
 
 void SBlaster::dsp_cmd_set_dma_block()
 {
 	m_s.dma.count = m_s.dsp.in.data[0] + (m_s.dsp.in.data[1] << 8);
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DMA: block size=%d bytes\n", short_name(), uint32_t(m_s.dma.count) + 1);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: block size=%d bytes\n", short_name(), uint32_t(m_s.dma.count) + 1);
 }
 
 void SBlaster::dsp_cmd_direct_dac_8()
@@ -1390,7 +1390,7 @@ void SBlaster::dsp_cmd_direct_dac_8()
 	if(m_s.dac.used) {
 		double avg_diff = (now - m_s.dac.sample_time_ns[0]) / m_s.dac.used;
 		double avg_rate = NSEC_PER_SECOND / avg_diff;
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: direct DAC avg.rate=%.2fHz\n",
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: direct DAC avg.rate=%.2fHz\n",
 				short_name(), avg_rate);
 		m_s.dac.spec.rate = avg_rate;
 		
@@ -1413,7 +1413,7 @@ void SBlaster::dsp_cmd_dma_adc(uint8_t _bits, bool _auto_init, bool _hispeed)
 	g_machine.deactivate_timer(m_dma_timer);
 	dma_timer(0); // DRQ
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s DMA ADC 8-bit %.2fHz\n", short_name(),
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: starting %s DMA ADC 8-bit %.2fHz\n", short_name(),
 			_auto_init?"auto-init":"single cycle",
 			m_s.dac.spec.rate);
 }
@@ -1444,7 +1444,7 @@ void SBlaster::dsp_cmd_dma_dac(uint8_t _bits, bool _autoinit, bool _hispeed)
 	}
 	dac_set_state(DAC::State::ACTIVE);
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DSP: starting %s %s DMA DAC %d-bit %s %.2fHz\n", short_name(),
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: starting %s %s DMA DAC %d-bit %s %.2fHz\n", short_name(),
 			_autoinit?"auto-init":"single-cycle",
 			_hispeed?"high-speed":"",
 			_bits & 0x1f,
@@ -1455,7 +1455,7 @@ void SBlaster::dsp_cmd_dma_dac(uint8_t _bits, bool _autoinit, bool _hispeed)
 void SBlaster::dsp_cmd_pause_dma_8()
 {
 	if(m_s.dma.mode != DMA::Mode::DMA8) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: pause DMA requested with DMA not active\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: pause DMA requested with DMA not active\n", short_name());
 		return;
 	}
 	
@@ -1469,7 +1469,7 @@ void SBlaster::dsp_cmd_pause_dma_8()
 void SBlaster::dsp_cmd_continue_dma_8()
 {
 	if(m_s.dma.mode != DMA::Mode::DMA8) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: continue DMA requested with DMA not active\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: continue DMA requested with DMA not active\n", short_name());
 		return;
 	}
 	// DMA engine is active, so there was a timer set that has been stopped.
@@ -1484,7 +1484,7 @@ void SBlaster::dsp_cmd_continue_dma_8()
 void SBlaster::dsp_cmd_exit_ai_dma_8()
 {
 	if(m_s.dma.mode != DMA::Mode::DMA8) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: exit auto init while DMA not active\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: exit auto init while DMA not active\n", short_name());
 	}
 	// Exits at the end of the current 8-bit auto-init DMA block transfer
 	m_s.dma.autoinit = false;
@@ -1644,11 +1644,11 @@ void SBlaster::dac_set_state(DAC::State _to_state)
 				m_s.dac.flush_data();
 				m_s.dac.newdata = true;
 				m_s.dac.last_value[0] = m_s.dac.last_value[1] = m_s.dac.silence;
-				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: activated\n", short_name());
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: activated\n", short_name());
 				break;
 			} else if(m_s.dac.state == DAC::State::WAITING) {
 				// dac is generating samples, stop it
-				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: reactivated\n", short_name());
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: reactivated\n", short_name());
 				g_machine.deactivate_timer(m_dac_timer);
 				break;
 			}
@@ -1657,14 +1657,14 @@ void SBlaster::dac_set_state(DAC::State _to_state)
 			m_s.dac.sample_time_ns[0] = g_machine.get_virt_time_ns();
 			// start generating samples now, no delay
 			g_machine.activate_timer(m_dac_timer, 0, m_s.dac.period_ns, true);
-			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: waiting, cycle period=%dns\n", short_name(), m_s.dac.period_ns);
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: waiting, cycle period=%dns\n", short_name(), m_s.dac.period_ns);
 			break;
 		case DAC::State::STOPPED:
 			if(m_s.dac.state != DAC::State::STOPPED) {
 				g_machine.deactivate_timer(m_dac_timer);
 				// don't disable che channel, the Mixer is responsible for that.
 				// samples that are already in the DAC buffer will continue to play.
-				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: deactivated\n", short_name());
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: deactivated\n", short_name());
 			}
 			break;
 	}
@@ -1711,7 +1711,7 @@ void SBlaster::dsp_update_frequency()
 	m_s.dac.spec.rate = 1e9 / double(m_s.dac.period_ns);
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DSP: rate=%.3f Hz, period=%d ns\n", short_name(),
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: rate=%.3f Hz, period=%d ns\n", short_name(),
 			m_s.dac.spec.rate, m_s.dac.period_ns);
 }
 
@@ -1725,13 +1725,13 @@ void SBlaster::dac_timer(uint64_t)
 			//TODO
 			//m_s.dac.add_sample(m_s.dac.last_value[1]);
 		}
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: adding fills\n", short_name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: adding fills\n", short_name());
 		if((g_machine.get_virt_time_ns() - m_s.dac.sample_time_ns[0]) > m_s.dac.timeout_ns) {
-			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: timeout expired\n", short_name());
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: timeout expired\n", short_name());
 			dac_set_state(DAC::State::STOPPED);
 		}
 	} else {
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: DAC: timeout expired\n", short_name());
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: timeout expired\n", short_name());
 		dac_set_state(DAC::State::STOPPED);
 	}
 }
@@ -1788,7 +1788,7 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	}
 	
 	unsigned total = pre_frames + dac_frames + post_frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: DAC: mix: %04llu ns, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: mix: %04llu ns, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
 			short_name(), _time_span_ns, needed_frames, m_s.dac.spec.rate,
 			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
 	
