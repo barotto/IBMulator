@@ -461,21 +461,23 @@ void SBlaster::reset(unsigned)
 
 void SBlaster::dsp_reset()
 {
+	lower_interrupt();
+	
 	if(m_s.dsp.high_speed) {
 		// The DSP reset command behaves differently while the DSP is in high-speed mode. It
 		// terminates high-speed mode and restores all DSP parameters to the states prior to
 		// entering the high-speed mode.
 		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset (High Speed)\n", short_name());
+		std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 		dsp_change_mode(DSP::Mode::NONE);
 		dac_set_state(DAC::State::STOPPED);
 		dma_stop();
 		dsp_update_frequency();
+		m_s.dsp.state = DSP::State::NORMAL;
 		return;
 	}
 	
 	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset\n", short_name());
-	
-	lower_interrupt();
 	
 	// reset the DSP
 	m_s.dsp.flush_data();
