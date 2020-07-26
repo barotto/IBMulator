@@ -357,6 +357,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_FDC_VERBOSITY,    LOG_FDC);
 		g_syslog.set_verbosity(LOG_HDD_VERBOSITY,    LOG_HDD);
 		g_syslog.set_verbosity(LOG_AUDIO_VERBOSITY,  LOG_AUDIO);
+		g_syslog.set_verbosity(LOG_GAMEPORT_VERBOSITY,LOG_GAMEPORT);
 		g_syslog.set_verbosity(LOG_LPT_VERBOSITY,    LOG_LPT);
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
 	}
