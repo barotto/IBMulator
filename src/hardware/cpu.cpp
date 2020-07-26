@@ -198,7 +198,7 @@ uint CPU::step()
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
 		try {
-			if(m_s.async_event) {
+			if(UNLIKELY(m_s.async_event)) {
 				// check on events which occurred for previous instructions (traps)
 				// and ones which are asynchronous to the CPU (hardware interrupts)
 				handle_async_event();
@@ -211,9 +211,9 @@ uint CPU::step()
 				}
 			}
 
-			if(m_instr->cseip != CS_EIP) {
+			if(LIKELY(m_instr->cseip != CS_EIP)) {
 				// When RF is set, it causes any debug fault to be ignored during the next instruction.
-				if(DR7_ENABLED_ANY && !FLAG_RF && !interrupts_inhibited(CPU_INHIBIT_DEBUG)) {
+				if(UNLIKELY(DR7_ENABLED_ANY && !FLAG_RF && !interrupts_inhibited(CPU_INHIBIT_DEBUG))) {
 					// Priority 6:
 					//   Code breakpoint fault.
 					//   Instruction breakpoints are the highest priority debug
@@ -227,7 +227,7 @@ uint CPU::step()
 				}
 
 				// instruction decoding
-				if(!g_cpubus.pq_is_valid()) {
+				if(UNLIKELY(!g_cpubus.pq_is_valid())) {
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
 					cycles.decode = m_instr->size;
