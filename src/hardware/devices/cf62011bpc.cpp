@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017  Marco Bortolin
+ * Copyright (C) 2017-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -96,7 +96,7 @@ void CF62011BPC::update_mem_mapping()
 	int mode = m_s.xga_reg[0] & 0x7;
 	switch(mode) { // Display Mode field (bits 2-0)
 		case 0: // VGA Mode (address decode disabled)
-			PWARNF(LOG_VGA, "VGA Mode 0 (address decode disabled) not supported\n");
+			PWARNF(LOG_V1, LOG_VGA, "VGA Mode 0 (address decode disabled) not supported\n");
 			break;
 		case 1: // VGA Mode (address decode enabled)
 			PDEBUGF(LOG_V1, LOG_VGA, "VGA Mode 1 (address decode enabled)\n");
@@ -104,7 +104,7 @@ void CF62011BPC::update_mem_mapping()
 			break;
 		case 2: // 132-Column Text Mode (address decode disabled)
 		case 3: // 132-Column Text Mode (address decode enabled)
-			PWARNF(LOG_VGA, "132-Column text video mode (%d) not supported\n", mode);
+			PWARNF(LOG_V1, LOG_VGA, "132-Column text video mode (%d) not supported\n", mode);
 			break;
 		default:
 			// Extended Graphics mode

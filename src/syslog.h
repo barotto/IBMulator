@@ -39,11 +39,11 @@ extern Syslog g_syslog;
 #define LOG g_syslog.log
 
 #define PINFO(verb,format,...)	LOG(LOG_INFO,LOG_PROGRAM,verb,format, ## __VA_ARGS__)
-#define PWARN(format,...)		LOG(LOG_WARNING,LOG_PROGRAM,LOG_V1,format, ## __VA_ARGS__)
+#define PWARN(format,...)		LOG(LOG_WARNING,LOG_PROGRAM,LOG_V0,format, ## __VA_ARGS__)
 #define PERR(format,...)		LOG(LOG_ERROR,LOG_PROGRAM,LOG_V0,format, ## __VA_ARGS__)
 
 #define PINFOF(verb,fac,format,...)	LOG(LOG_INFO,fac,verb,format, ## __VA_ARGS__)
-#define PWARNF(fac,format,...)		LOG(LOG_WARNING,fac,LOG_V1,format, ## __VA_ARGS__)
+#define PWARNF(verb,fac,format,...)	LOG(LOG_WARNING,fac,verb,format, ## __VA_ARGS__)
 #define PERRF(fac,format,...)		LOG(LOG_ERROR,fac,LOG_V0,format, ## __VA_ARGS__)
 
 #define PERRFEX(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__) }

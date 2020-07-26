@@ -757,7 +757,7 @@ string AppConfig::get_value(const string &section, const string &name)
 				throw;
 			}
 		}
-		PWARNF(LOG_PROGRAM, "[%s]:%s undefined, loading default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
+		PWARNF(LOG_V1, LOG_PROGRAM, "[%s]:%s undefined, using default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
 	}
 	return valstr;
 }

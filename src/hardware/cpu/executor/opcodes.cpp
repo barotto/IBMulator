@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1426,8 +1426,8 @@ void CPUExecutor::HLT()
 	check_CPL_privilege(!IS_RMODE(), "HLT");
 
 	if(!FLAG_IF) {
-		PWARNF(LOG_CPU, "HLT instruction with IF=0!");
-		PWARNF(LOG_CPU, " CS:IP=%04X:%04X\n", REG_CS.sel.value, REG_IP);
+		PWARNF(LOG_V2, LOG_CPU, "HLT instruction with IF=0!");
+		PWARNF(LOG_V2, LOG_CPU, " CS:IP=%04X:%04X\n", REG_CS.sel.value, REG_IP);
 	}
 
 	// stops instruction execution and places the processor in a

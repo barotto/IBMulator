@@ -1230,7 +1230,7 @@ void FloppyCtrl::floppy_command()
 			m_s.format_count <<= 2;
 
 			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
-				PWARNF(LOG_FDC, "format track: non-DMA floppy format unimplemented\n");
+				PWARNF(LOG_V1, LOG_FDC, "format track: non-DMA floppy format unimplemented\n");
 			} else {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
@@ -2177,7 +2177,7 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		type = _type;
 #ifdef __linux__
 		if(ioctl(fd, FDGETPRM, &floppy_geom) < 0) {
-			PWARNF(LOG_FDC, "cannot determine media geometry, trying to use defaults\n");
+			PWARNF(LOG_V1, LOG_FDC, "cannot determine media geometry, trying to use defaults\n");
 			tracks  = floppy_type[_type].trk;
 			heads   = floppy_type[_type].hd;
 			spt     = floppy_type[_type].spt;

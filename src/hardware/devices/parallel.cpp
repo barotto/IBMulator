@@ -208,7 +208,7 @@ void Parallel::virtual_printer()
 			m_s.STATUS.ack = 0;
 			m_s.STATUS.busy = 1;
 		} else {
-			PWARNF(LOG_LPT, "printer is offline\n");
+			PWARNF(LOG_V1, LOG_LPT, "printer is offline\n");
 		}
 	} else {
 		if(m_s.output != nullptr) {
@@ -231,7 +231,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 					if(!m_s.CONTROL.input) {
 						retval = m_s.data;
 					} else {
-						PWARNF(LOG_LPT, "read: input mode not supported\n");
+						PWARNF(LOG_V1, LOG_LPT, "read: input mode not supported\n");
 					}
 				} else {
 					retval = m_s.data;

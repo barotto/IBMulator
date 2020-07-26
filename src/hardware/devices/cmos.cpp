@@ -263,7 +263,7 @@ void CMOS::load_image(std::string _imgpath)
 	}
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
-		PWARNF(LOG_CMOS, "Unable to find the image file '%s', creating new...\n", _imgpath.c_str());
+		PWARNF(LOG_V0, LOG_CMOS, "Unable to find the image file '%s', creating new...\n", _imgpath.c_str());
 		memset(m_s.reg, 0, CMOS_SIZE);
 		save_image(_imgpath);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -141,7 +141,7 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	}
 
 	if(obase32 == nbase32) {
-		PWARNF(LOG_CPU, "switch_tasks(): switching to the same TSS!\n");
+		PWARNF(LOG_V2, LOG_CPU, "switch_tasks(): switching to the same TSS!\n");
 	}
 
 	// Check that old TSS, new TSS, and all segment descriptors

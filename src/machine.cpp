@@ -601,11 +601,11 @@ void Machine::register_irq(uint8_t _irq, const char* _name)
 {
 	assert(_irq<16);
 	if(!m_irq_names[_irq].empty()) {
-		PWARNF(LOG_MACHINE, "Possible conflict for IRQ %d:\n", _irq);
+		PWARNF(LOG_V0, LOG_MACHINE, "Possible conflict for IRQ %d:\n", _irq);
 		for(auto &dev : m_irq_names[_irq]) {
-			PWARNF(LOG_MACHINE, "  %s\n", dev.c_str());
+			PWARNF(LOG_V0, LOG_MACHINE, "  %s\n", dev.c_str());
 		}
-		PWARNF(LOG_MACHINE, "  %s\n", _name);
+		PWARNF(LOG_V0, LOG_MACHINE, "  %s\n", _name);
 	}
 	m_irq_names[_irq].push_back(std::string(_name));
 }
@@ -758,7 +758,7 @@ void Machine::cmd_dtdump(const std::string &_name)
 			return;
 		}
 		if(limit == 0) {
-			PWARNF(LOG_MACHINE, "%s is empty\n", _name.c_str());
+			PWARNF(LOG_V0, LOG_MACHINE, "%s is empty\n", _name.c_str());
 			return;
 		}
 		std::stringstream filename;

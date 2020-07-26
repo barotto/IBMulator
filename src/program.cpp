@@ -279,7 +279,7 @@ bool Program::initialize(int argc, char** argv)
 	PINFO(LOG_V1,"ini file: %s\n", m_cfg_file.c_str());
 
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
-		PWARNF(LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
+		PWARNF(LOG_V0, LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
 		try {
 			m_config[0].create_file(m_cfg_file, true);
 			std::string message = "The configuration file " PACKAGE ".ini has been created in " +
@@ -290,7 +290,7 @@ bool Program::initialize(int argc, char** argv)
 					nullptr);
 			return false;
 		} catch(std::exception &e) {
-			PWARNF(LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
+			PWARNF(LOG_V0, LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
 			std::string message = "A problem occurred trying to create " PACKAGE ".ini in " +
 					m_user_dir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",

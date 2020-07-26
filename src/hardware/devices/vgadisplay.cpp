@@ -273,12 +273,12 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode)
 	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u\n", _mode.xres, _mode.yres);
 
 	if(_mode.xres > m_fb.width()) {
-		PWARNF(LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_fb.width());
+		PWARNF(LOG_V1, LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_fb.width());
 		m_s.valid_mode = false;
 		m_s.mode.xres = m_fb.width();
 	}
 	if(_mode.yres > m_fb.height()) {
-		PWARNF(LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.yres, m_fb.height());
+		PWARNF(LOG_V1, LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.yres, m_fb.height());
 		m_s.valid_mode = false;
 		m_s.mode.yres = m_fb.height();
 	}

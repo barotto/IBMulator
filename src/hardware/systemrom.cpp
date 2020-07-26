@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -137,7 +137,7 @@ void SystemROM::load(const std::string _romset)
 	uint8_t modelID = m_data[BIOS_OFFSET+0xFFFE];
 	PINFOF(LOG_V0, LOG_MACHINE, "BIOS system model ID: 0x%02X\n", modelID);
 	if(modelID != 0xFC && modelID != 0xF8) {
-		PWARNF(LOG_MACHINE, "Unsupported system model ID!\n");
+		PWARNF(LOG_V0, LOG_MACHINE, "Unsupported system model ID!\n");
 	} else {
 		std::string biosdate;
 		for(int i=0; i<8; i++) {
@@ -290,7 +290,7 @@ void SystemROM::load_archive(const std::string &_filename)
 				throw std::exception();
 			}
 			if(f80000found && singlerom) {
-				PWARNF(LOG_MACHINE, "Single ROM file F80000.BIN already loaded\n");
+				PWARNF(LOG_V0, LOG_MACHINE, "Single ROM file F80000.BIN already loaded\n");
 				break;
 			}
 			//read the rom

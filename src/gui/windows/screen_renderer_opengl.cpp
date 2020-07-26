@@ -111,27 +111,27 @@ void ScreenRenderer_OpenGL::load_vga_program(std::string _vshader, std::string _
 	//find the uniforms
 	GLCALL( m_vga.uniforms.vga_map = glGetUniformLocation(m_vga.program, "iVGAMap") );
 	if(m_vga.uniforms.vga_map == -1) {
-		PWARNF(LOG_GUI, "iVGAMap not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iVGAMap not found in shader program\n");
 	}
 	GLCALL( m_vga.uniforms.brightness = glGetUniformLocation(m_vga.program, "iBrightness") );
 	if(m_vga.uniforms.brightness == -1) {
-		PWARNF(LOG_GUI, "iBrightness not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iBrightness not found in shader program\n");
 	}
 	GLCALL( m_vga.uniforms.contrast = glGetUniformLocation(m_vga.program, "iContrast") );
 	if(m_vga.uniforms.contrast == -1) {
-		PWARNF(LOG_GUI, "iContrast not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iContrast not found in shader program\n");
 	}
 	GLCALL( m_vga.uniforms.saturation = glGetUniformLocation(m_vga.program, "iSaturation") );
 	if(m_vga.uniforms.saturation == -1) {
-		PWARNF(LOG_GUI, "iSaturation not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iSaturation not found in shader program\n");
 	}
 	GLCALL( m_vga.uniforms.mvmat = glGetUniformLocation(m_vga.program, "iModelView") );
 	if(m_vga.uniforms.mvmat == -1) {
-		PWARNF(LOG_GUI, "iModelView not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iModelView not found in shader program\n");
 	}
 	GLCALL( m_vga.uniforms.display_size = glGetUniformLocation(m_vga.program, "iDisplaySize") );
 	if(m_vga.uniforms.display_size == -1) {
-		PWARNF(LOG_GUI, "iDisplaySize not found in shader program\n");
+		PWARNF(LOG_V2, LOG_GUI, "iDisplaySize not found in shader program\n");
 	}
 
 	// additional uniforms, don't notify the user

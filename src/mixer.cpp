@@ -365,7 +365,7 @@ void Mixer::open_audio_device(int _frequency, SDL_AudioFormat _format, int _chan
 		close_audio_device();
 		throw std::exception();
 	} else if(want.freq != m_audio_spec.freq) {
-		PWARNF(LOG_MIXER, "Requested frequency of %d Hz not accepted by the audio driver, using %d Hz\n",
+		PWARNF(LOG_V0, LOG_MIXER, "Requested frequency of %d Hz not accepted by the audio driver, using %d Hz\n",
 			want.freq, m_audio_spec.freq);
 	}
 

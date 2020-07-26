@@ -227,7 +227,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	// JOYSTICK SUPPORT
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
-		PWARNF(LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
+		PWARNF(LOG_V0, LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
 	} else {
 		SDL_JoystickEventState(SDL_ENABLE);
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
@@ -624,7 +624,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 				SDL_JoystickNumButtons(joy)
 			);
 		} else {
-			PWARNF(LOG_GUI, "Couldn't open Joystick %d\n", _event.jdevice.which);
+			PWARNF(LOG_V0, LOG_GUI, "Couldn't open Joystick n.%d\n", _event.jdevice.which);
 		}
 	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
 		PDEBUGF(LOG_V1, LOG_GUI, "Joystick id=%d has been removed\n", _event.jdevice.which);
