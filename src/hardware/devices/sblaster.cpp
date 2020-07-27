@@ -226,6 +226,7 @@ m_dma_timer(NULL_TIMER_HANDLE),
 m_dac_timer(NULL_TIMER_HANDLE)
 {
 	memset(&m_s, 0, sizeof(m_s));
+	m_s.dac.device = this;
 }
 
 SBlaster::~SBlaster()
@@ -508,6 +509,7 @@ void SBlaster::dsp_reset()
 	m_s.dac.spec.channels = 1;
 	dsp_update_frequency();
 	m_s.dac.speaker = false;
+	m_s.dac.irq_count = 0;
 	m_s.dac.state = DAC::State::STOPPED;
 	g_machine.deactivate_timer(m_dac_timer);
 	m_dac_channel->enable(false);
@@ -865,6 +867,7 @@ void SBlaster::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_AUDIO, "%s: restoring state\n", full_name());
 	_state.read(&m_s, {sizeof(m_s), name()});
+	m_s.dac.device = this;
 	Synth::restore_state(_state);
 	
 	if(m_s.dac.speaker) {
@@ -1509,17 +1512,17 @@ void SBlaster::dsp_cmd_get_copyright()
 
 void SBlaster::dsp_cmd_pause_dac()
 {
-	if(m_s.dma.mode != DMA::Mode::NONE) {
-		return;
-	}
-	
 	uint32_t count = m_s.dsp.in.data[0] + (m_s.dsp.in.data[1] << 8) + 1;
-	uint64_t timer_ns = count * m_s.dac.period_ns;
-
-	m_s.dma.drq = false;
-	m_s.dma.irq = true;
 	
-	g_machine.activate_timer(m_dma_timer, timer_ns, false);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: firing IRQ in %d samples / %llu ns\n", short_name(),
+			count, (count * m_s.dac.period_ns));
+	
+	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
+	m_s.dac.irq_count = count;
+	if(m_s.dac.state == DAC::State::STOPPED) {
+		dac_set_state(DAC::State::ACTIVE);
+		dac_set_state(DAC::State::WAITING);
+	}
 }
 
 void SBlaster::dsp_cmd_identify()
@@ -1618,6 +1621,12 @@ void SBlaster::DAC::add_sample(uint8_t _sample)
 		last_value[0] = _sample;
 	} else {
 		//TODO
+	}
+	if(irq_count) {
+		irq_count--;
+		if(irq_count == 0) {
+			device->raise_interrupt();
+		}
 	}
 }
 
@@ -1728,7 +1737,7 @@ void SBlaster::dac_timer(uint64_t)
 			//m_s.dac.add_sample(m_s.dac.last_value[1]);
 		}
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: adding fills\n", short_name());
-		if((g_machine.get_virt_time_ns() - m_s.dac.sample_time_ns[0]) > m_s.dac.timeout_ns) {
+		if(!m_s.dac.irq_count && (g_machine.get_virt_time_ns() - m_s.dac.sample_time_ns[0]) > m_s.dac.timeout_ns) {
 			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: timeout expired\n", short_name());
 			dac_set_state(DAC::State::STOPPED);
 		}

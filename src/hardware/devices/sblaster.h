@@ -148,6 +148,8 @@ protected:
 		uint64_t timeout_ns;
 		AudioSpec spec;
 		bool speaker;
+		uint32_t irq_count;
+		SBlaster *device;
 		
 		void flush_data();
 		void add_sample(uint8_t _sample);
