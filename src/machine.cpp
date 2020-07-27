@@ -601,6 +601,11 @@ void Machine::register_irq(uint8_t _irq, const char* _name)
 {
 	assert(_irq<16);
 	if(!m_irq_names[_irq].empty()) {
+		for(auto it = m_irq_names[_irq].begin(); it != m_irq_names[_irq].end(); it++) {
+			if(it->compare(_name) == 0) {
+				return;
+			}
+		}
 		PWARNF(LOG_V0, LOG_MACHINE, "Possible conflict for IRQ %d:\n", _irq);
 		for(auto &dev : m_irq_names[_irq]) {
 			PWARNF(LOG_V0, LOG_MACHINE, "  %s\n", dev.c_str());
