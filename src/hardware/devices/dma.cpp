@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -265,13 +265,14 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if(m_s.dma[ma_sl].flip_flop==0) { /* 1st byte */
 				m_s.dma[ma_sl].chan[channel].base_address = value;
 				m_s.dma[ma_sl].chan[channel].current_address = value;
-				PDEBUGF(LOG_V2, LOG_DMA, "\n");
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: ch.%d addr (first byte)\n", ma_sl+1, channel);
 			} else { /* 2nd byte */
-				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d ch.%d addr", ma_sl+1, channel);
 				m_s.dma[ma_sl].chan[channel].base_address |= (value << 8);
 				m_s.dma[ma_sl].chan[channel].current_address |= (value << 8);
-				PDEBUGF(LOG_V2, LOG_DMA, " base = %04x", m_s.dma[ma_sl].chan[channel].base_address);
-				PDEBUGF(LOG_V2, LOG_DMA, " curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_address);
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: ch.%d addr base = %04x curr = %04x\n",
+						ma_sl+1, channel,
+						m_s.dma[ma_sl].chan[channel].base_address,
+						m_s.dma[ma_sl].chan[channel].current_address);
 			}
 			m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
 			break;
@@ -288,13 +289,15 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if(m_s.dma[ma_sl].flip_flop==0) { /* 1st byte */
 				m_s.dma[ma_sl].chan[channel].base_count = value;
 				m_s.dma[ma_sl].chan[channel].current_count = value;
-				PDEBUGF(LOG_V2, LOG_DMA, "\n");
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: ch.%d count (first byte)\n", ma_sl+1, channel);
 			} else { /* 2nd byte */
-				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d ch.%d count", ma_sl+1, channel);
 				m_s.dma[ma_sl].chan[channel].base_count |= (value << 8);
 				m_s.dma[ma_sl].chan[channel].current_count |= (value << 8);
-				PDEBUGF(LOG_V2, LOG_DMA, " base = %04x", m_s.dma[ma_sl].chan[channel].base_count);
-				PDEBUGF(LOG_V2, LOG_DMA, " curr = %04x\n", m_s.dma[ma_sl].chan[channel].current_count);
+				PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: ch.%d count base = %04x (%d bytes), curr = %04x\n",
+						ma_sl+1, channel,
+						m_s.dma[ma_sl].chan[channel].base_count,
+						int(m_s.dma[ma_sl].chan[channel].base_count)+1,
+						m_s.dma[ma_sl].chan[channel].current_count);
 			}
 			m_s.dma[ma_sl].flip_flop = !m_s.dma[ma_sl].flip_flop;
 			break;
@@ -432,15 +435,15 @@ void DMA::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 void DMA::set_DRQ(unsigned channel, bool val)
 {
 	uint32_t dma_base, dma_roof;
-	uint8_t ma_sl;
+	uint8_t ma_sl = (channel > 3) ? 1 : 0;
 
-	PDEBUGF(LOG_V1, LOG_DMA, "set_DRQ: ch.=%d, val=%d\n", channel, val);
+	PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: DRQ ch.=%d %s\n", ma_sl+1, channel, val?"on":"off");
 	
 	if(channel > 7) {
 		PERRF(LOG_DMA, "set_DRQ() channel > 7\n");
 		return;
 	}
-	ma_sl = (channel > 3)?1:0;
+	
 	m_s.dma[ma_sl].DRQ[channel & 0x03] = val;
 	if(!m_channels[channel].used) {
 		PERRF(LOG_DMA, "set_DRQ(): channel %d not connected to device\n", channel);
@@ -562,6 +565,7 @@ void DMA::raise_HLDA(void)
 			maxlen = DMA_BUFFER_SIZE;
 		}
 	} else {
+		// address decrement mode, 1 byte at a time
 		m_s.TC = (m_s.dma[ma_sl].chan[channel].current_count == 0);
 		maxlen = 1 << ma_sl;
 	}
@@ -569,7 +573,8 @@ void DMA::raise_HLDA(void)
 	if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 1) { // write
 		// DMA controlled xfer of bytes from I/O to Memory
 
-		PDEBUGF(LOG_V2, LOG_DMA, "writing to memory max. %d bytes <- ch.%d\n", maxlen, channel);
+		PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: writing to memory at %08x max %d bytes fomr ch.%d (count=%04x)\n",
+				ma_sl+1, phy_addr, maxlen, channel, m_s.dma[ma_sl].chan[channel].current_count);
 		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
@@ -591,7 +596,8 @@ void DMA::raise_HLDA(void)
 	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 2) { // read
 		// DMA controlled xfer of bytes from Memory to I/O
 
-		PDEBUGF(LOG_V2, LOG_DMA, "reading from memory max. %d bytes -> ch.%d\n", maxlen, channel);
+		PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: reading from memory at %08x max. %d bytes to ch.%d (count=%04x)\n",
+				ma_sl+1, phy_addr, maxlen, channel, m_s.dma[ma_sl].chan[channel].current_count);
 		
 		if(!ma_sl) {
 			g_memory.DMA_read(phy_addr, maxlen, buffer);
@@ -606,10 +612,9 @@ void DMA::raise_HLDA(void)
 				len = m_h[channel].dmaRead16((uint16_t*)buffer, maxlen / 2);
 			}
 		}
-	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 0) {
-		// verify
+	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 0) { // verify
 
-		PDEBUGF(LOG_V2, LOG_DMA, "verify max. %d bytes, ch.%d\n", maxlen, channel);
+		PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: verify max. %d bytes, ch.%d\n", ma_sl+1, maxlen, channel);
 		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
@@ -621,7 +626,7 @@ void DMA::raise_HLDA(void)
 			if(m_h[channel].dmaWrite16) {
 				len = m_h[channel].dmaWrite16((uint16_t*)buffer, 1);
 			} else {
-				PERRF(LOG_DMA, "no dmaWrite handler for channel %u.", channel);
+				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
 		}
 	} else {
@@ -634,6 +639,7 @@ void DMA::raise_HLDA(void)
 	if(!m_s.dma[ma_sl].chan[channel].mode.address_decrement) {
 		m_s.dma[ma_sl].chan[channel].current_address += len;
 	} else {
+		// address decrement mode
 		m_s.dma[ma_sl].chan[channel].current_address--;
 	}
 	m_s.dma[ma_sl].chan[channel].current_count -= len;
