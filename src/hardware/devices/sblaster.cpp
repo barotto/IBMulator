@@ -27,6 +27,7 @@
 #include "sblaster.h"
 #include "pic.h"
 #include "dma.h"
+#include "audio/convert.h"
 
 IODEVICE_PORTS(SBlaster) = {};
 
@@ -1367,9 +1368,20 @@ void SBlaster::dsp_cmd_set_time_const()
 	m_s.dsp.time_const = m_s.dsp.in.data[0];
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
+	int old_dac_period_ns = m_s.dac.period_ns;
 	dsp_update_frequency();
+	if(m_s.dac.state == DAC::State::WAITING && old_dac_period_ns != m_s.dac.period_ns) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: updating timer period to new value of %llu ns\n",
+				short_name(), m_s.dac.period_ns);
+		int dac_eta = g_machine.get_timer_eta(m_dac_timer);
+		int new_eta = int(m_s.dac.period_ns) - (old_dac_period_ns - dac_eta);
+		if(new_eta < 0) {
+			new_eta = 0;
+		}
+		g_machine.activate_timer(m_dac_timer, new_eta, m_s.dac.period_ns, true);
+	}
 	
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: rate=%d, DAC rate=%.2f\n",
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: set rate=%d, actual DAC rate=%.3f\n",
 			short_name(), time_const_to_freq(m_s.dsp.time_const), m_s.dac.spec.rate);
 }
 
@@ -1716,14 +1728,27 @@ void SBlaster::dsp_update_frequency()
 	// IBMulator's time is a uint64_t of nanoseconds and that's the resolution of
 	// its internal timers. 
 	// TODO use integer rate if/when IBMulator's timers will switch to double of seconds.
-
+	uint64_t old_period = m_s.dac.period_ns;
+	double old_rate = m_s.dac.spec.rate;
 	// Calculate an integer sample period in ns and derive a sample rate from it.
 	m_s.dac.period_ns = round(1e9 / double(freq));
 	m_s.dac.spec.rate = 1e9 / double(m_s.dac.period_ns);
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: rate=%.3f Hz, period=%d ns\n", short_name(),
-			m_s.dac.spec.rate, m_s.dac.period_ns);
+	if(m_s.dac.period_ns != old_period) {
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: new rate=%.3f Hz, period=%d ns\n", short_name(),
+				m_s.dac.spec.rate, m_s.dac.period_ns);
+		if(m_s.dac.used) {
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: resampling %u samples from %.3f Hz\n",
+					short_name(), m_s.dac.used, old_rate);
+			static std::array<uint8_t,DAC::BUFSIZE> tempbuf;
+			// TODO stereo, SB16
+			size_t generated = Audio::Convert::resample_mono<uint8_t>(
+					m_s.dac.data, m_s.dac.used, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
+			memcpy(m_s.dac.data, &tempbuf[0], generated);
+			m_s.dac.used = generated;
+		}
+	}
 }
 
 void SBlaster::dac_timer(uint64_t)
