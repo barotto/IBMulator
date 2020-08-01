@@ -290,13 +290,13 @@ void Machine::config_changed()
 	for(unsigned i=0; i<m_num_timers; i++) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
 	}
-	PINFOF(LOG_V1, LOG_MACHINE, "IRQ lines:\n");
+	PINFOF(LOG_V0, LOG_MACHINE, "IRQ lines:\n");
 	for(unsigned i=0; i<16; i++) {
-		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, get_irq_names(i).c_str());
+		PINFOF(LOG_V0, LOG_MACHINE, "   %u: %s\n", i, get_irq_names(i).c_str());
 	}
-	PINFOF(LOG_V1, LOG_MACHINE, "DMA channels:\n");
+	PINFOF(LOG_V0, LOG_MACHINE, "DMA channels:\n");
 	for(unsigned i=0; i<8; i++) {
-		PINFOF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
+		PINFOF(LOG_V0, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
 	}
 }
 
