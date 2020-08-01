@@ -101,18 +101,18 @@ void MixerState::config_changed()
 	std::stringstream ss;
 	ss << "<tr><th class=\"normal\">Channels</th>";
 	ss << "<th>in format</th>";
-	ss << "<th>in frames</th>";
-	ss << "<th>in duration</th>";
-	ss << "<th>out frames</th>";
-	ss << "<th>out duration</th>";
+	ss << "<th class=\"data\">in frames</th>";
+	ss << "<th class=\"data\">in us</th>";
+	ss << "<th class=\"data\">out frames</th>";
+	ss << "<th class=\"data\">out us</th>";
 	ss << "</tr>";
 	for(auto ch : chs) {
 		ss << "<tr><th id=\"" << ch->id() << "\">" << ch->name() << "</th>";
 		ss << "<td id=\"" << ch->id() << "_inf\"></td>";
-		ss << "<td id=\"" << ch->id() << "_infr\"></td>";
-		ss << "<td id=\"" << ch->id() << "_inus\"></td>";
-		ss << "<td id=\"" << ch->id() << "_outfr\"></td>";
-		ss << "<td id=\"" << ch->id() << "_outus\"></td>";
+		ss << "<td class=\"data\" id=\"" << ch->id() << "_infr\"></td>";
+		ss << "<td class=\"data\" id=\"" << ch->id() << "_inus\"></td>";
+		ss << "<td class=\"data\" id=\"" << ch->id() << "_outfr\"></td>";
+		ss << "<td class=\"data\" id=\"" << ch->id() << "_outus\"></td>";
 		ss << "</tr>";
 	}
 	m_divs.channels->SetInnerRML(ss.str().c_str());

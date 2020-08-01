@@ -49,8 +49,8 @@ FloppyFX::~FloppyFX()
 
 void FloppyFX::install(const std::string &_drive)
 {
-	std::string spin = "FDD-spin-" + _drive;
-	std::string seek = "FDD-seek-" + _drive;
+	std::string spin = "Drive " + _drive + " spin";
+	std::string seek = "Drive " + _drive + " seek";
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
 	using namespace std::placeholders;

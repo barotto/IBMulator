@@ -279,7 +279,7 @@ void SBlaster::install_dsp()
 	
 	m_dac_channel = g_mixer.register_channel(
 		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
-		"SBlaster DAC");
+		std::string(short_name()) + " DAC");
 	m_dac_channel->set_disable_timeout(5_s);
 }
 

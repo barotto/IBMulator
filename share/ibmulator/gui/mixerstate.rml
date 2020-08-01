@@ -6,21 +6,20 @@
 		<style>
 			body
 			{
-				width: 600px;
+				width: 490px;
 				height: 400px;
 				position: absolute;
-				top: 60px;
+				top: 30px;
 				left: 0px;
 			}
 			th, td {
-				width: 12.5%;
+				width: 18%;
 				font-size: 10px;
+				text-align: center;
 			}
-			th.cs2 {
-				width: 25%;
-			}
-			th.cs3 {
-				width: 37.5%;
+			th.data, td.data {
+				width: 12%;
+				font-size: 10px;
 			}
 			.enabled {
 				color: #000000ff;
