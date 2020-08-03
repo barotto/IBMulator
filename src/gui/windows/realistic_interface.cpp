@@ -266,14 +266,13 @@ void RealisticInterface::display_transform(int _width, int _height,
 void RealisticInterface::container_size_changed(int _width, int _height)
 {
 	vec2f system, disp, mdisp;
-	float disp_scale = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
 	const float sys_ratio = ms_width / ms_height;
 	int system_top = 0;
 	
 	if(m_cur_zoom == ZoomMode::SCREEN) {
 		disp  = display_size(_width, _height,
 				ms_vga_left, // x offset
-				disp_scale * screen()->vga_image_scale.x, // scale
+				screen()->vga_image_scale.x, // scale
 				4.f / 3.f // aspect
 				);
 		mdisp = display_size(_width, _height,
@@ -294,7 +293,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 		system_top = 0;
 		disp  = display_size(system.x, system.y,
 				ms_monitor_bezelw + ms_vga_left, // x offset
-				disp_scale * screen()->vga_image_scale.x, // scale
+				screen()->vga_image_scale.x, // scale
 				4.f / 3.f // aspect
 				);
 		mdisp = display_size(system.x, system.y,

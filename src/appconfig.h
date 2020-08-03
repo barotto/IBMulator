@@ -156,7 +156,6 @@ public:
 #define DISPLAY_NORMAL_FILTER    "normal_filter"
 #define DISPLAY_REALISTIC_SHADER "realistic_shader"
 #define DISPLAY_REALISTIC_FILTER "realistic_filter"
-#define DISPLAY_REALISTIC_SCALE  "realistic_scale"
 #define DISPLAY_REALISTIC_AMBIENT "realistic_ambient"
 #define DISPLAY_BRIGHTNESS       "brightness"
 #define DISPLAY_CONTRAST         "contrast"

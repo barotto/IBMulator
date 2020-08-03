@@ -70,7 +70,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
 		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
 		{ DISPLAY_REALISTIC_FILTER,  "bicubic"  },
-		{ DISPLAY_REALISTIC_SCALE,   "1.0" },
 		{ DISPLAY_REALISTIC_AMBIENT, "0.6" },
 		{ DISPLAY_BRIGHTNESS,        "1.0" },
 		{ DISPLAY_CONTRAST,          "1.0" },
@@ -318,8 +317,6 @@ ini_filehelp_t AppConfig::ms_help = {
 "; realistic_shader: GLSL fragment shader to use for VGA rendering\n"
 "; realistic_filter: VGA scaling filter\n"
 ";                   Possible values: nearest, bilinear, bicubic\n"
-";  realistic_scale: VGA dimensions as a scaling factor. Use this to adjust the image size.\n"
-";                   1.0 is the original VGA image size and ~1.2 fills the screen.\n"
 ";realistic_ambient: Intensity of the ambient light. It is a weight for the monitor reflection map.\n"
 ";                   Use a number between 0.0 and 1.0. 0.0 gives a pitch-black monitor.\n"
 "; The following parameters are used for any GUI mode:\n"
@@ -492,6 +489,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_RENDERER,
 		GUI_FRAMECAP,
 		GUI_MODE,
+		GUI_REALISTIC_ZOOM,
 		GUI_KEYMAP,
 		GUI_MOUSE_GRAB,
 		GUI_GRAB_METHOD,
@@ -516,7 +514,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DISPLAY_NORMAL_FILTER,
 		DISPLAY_REALISTIC_SHADER,
 		DISPLAY_REALISTIC_FILTER,
-		DISPLAY_REALISTIC_SCALE,
 		DISPLAY_REALISTIC_AMBIENT,
 		DISPLAY_BRIGHTNESS,
 		DISPLAY_CONTRAST,
