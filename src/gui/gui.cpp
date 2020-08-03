@@ -373,10 +373,16 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 			KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
 			switch(_event.key.keysym.sym) {
 				case SDLK_F1: {
-					//show/hide main interface
-					if(_event.type == SDL_KEYUP || m_mode!=GUI_MODE_COMPACT) return true;
-					m_windows.toggle();
-					if(m_windows.visible) {
+					// interface action
+					if(_event.type == SDL_KEYUP) {
+						return true;
+					}
+					{
+						std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+						m_windows.interface->action(0);
+						m_windows.interface->container_size_changed(m_width, m_height);
+					}
+					if(m_mode == GUI_MODE_COMPACT && m_windows.interface->is_visible()) {
 						input_grab(false);
 					}
 					return true;
@@ -454,7 +460,11 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					if(_event.type == SDL_KEYUP) return true;
 					toggle_input_grab();
 					if(m_mode == GUI_MODE_COMPACT) {
-						m_windows.show(!m_input_grab);
+						if(m_input_grab) {
+							m_windows.interface->hide();
+						} else {
+							m_windows.interface->show();
+						}
 					}
 					return true;
 				}
@@ -550,7 +560,11 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					if(_event.type == SDL_MOUSEBUTTONUP) return true;
 					toggle_input_grab();
 					if(m_mode == GUI_MODE_COMPACT) {
-						m_windows.show(!m_input_grab);
+						if(m_input_grab) {
+							m_windows.interface->hide();
+						} else {
+							m_windows.interface->show();
+						}
 					}
 					return true;
 				}
@@ -1266,22 +1280,6 @@ void GUI::Windows::show_dbg_message(const char* _mex)
 		dbgtools->show_message(_mex);
 		timers.activate_timer(dbgmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
 	}
-}
-
-void GUI::Windows::toggle()
-{
-	show(!visible);
-}
-
-void GUI::Windows::show(bool _value)
-{
-	//show only the main interface
-	if(!_value) {
-		interface->hide();
-	} else {
-		interface->show();
-	}
-	visible = _value;
 }
 
 void GUI::Windows::update(uint64_t _current_time)

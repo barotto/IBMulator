@@ -179,8 +179,6 @@ protected:
 		void update(uint64_t _current_time);
 		void shutdown();
 		void toggle_dbg();
-		void show(bool _value);
-		void toggle();
 		bool needs_input();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);

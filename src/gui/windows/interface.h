@@ -140,6 +140,8 @@ public:
 	VGADisplay * vga_display() { return & m_screen->vga.display; }
 	void render_screen();
 
+	virtual void action(int) {}
+	
 	virtual void set_audio_volume(float);
 	virtual void set_video_brightness(float);
 	virtual void set_video_contrast(float);

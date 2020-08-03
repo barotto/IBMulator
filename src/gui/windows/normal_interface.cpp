@@ -221,6 +221,17 @@ void NormalInterface::update()
 	}
 }
 
+void NormalInterface::action(int)
+{
+	if(m_gui_mode == GUI_MODE_COMPACT) {
+		if(is_visible()) {
+			hide();
+		} else {
+			show();
+		}
+	}
+}
+
 void NormalInterface::on_pause(RC::Event &)
 {
 	if(m_machine->is_paused()) {

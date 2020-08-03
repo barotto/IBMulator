@@ -33,6 +33,8 @@
 #define REALISTIC_REFLECTION_MAP  "realistic_reflection.png"
 #define REALISTIC_VGA_SCALE       1.05f // determines the VGA border size
 
+constexpr float RealisticInterface::ms_zoomin_factors[];
+
 /* Anatomy of the "realistic" monitor:
  ___________________
 /   _____________   \
@@ -135,6 +137,19 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	m_brightness_slider = get_element("brightness_slider");
 	m_contrast_slider = get_element("contrast_slider");
 
+	m_scale = 1.f;
+	m_display_align = DisplayAlign::TOP;
+	m_cur_zoom = ZoomMode::WHOLE;
+	
+	static std::map<std::string, unsigned> modes = {
+		{ "",        ZoomMode::CYCLE   },
+		{ "cycle",   ZoomMode::CYCLE   },
+		{ "monitor", ZoomMode::MONITOR },
+		{ "bezel",   ZoomMode::BEZEL   },
+		{ "screen",  ZoomMode::SCREEN  }
+	};
+	m_zoom_mode = g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_ZOOM, modes, ZoomMode::CYCLE);
+	
 	float slider_width = m_volume_slider->GetProperty<float>("width");
 	m_slider_len_p = ms_slider_length/ms_width * 100.f - slider_width;
 	m_volume_left_min = m_volume_slider->GetProperty<float>("left");
@@ -191,25 +206,30 @@ RealisticInterface::~RealisticInterface()
 {
 }
 
-vec2f RealisticInterface::display_size(int _width, int _height, float _sys_w, float _xoffset, float _scale, float _aspect)
+vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, float _scale, float _aspect)
 {
-	vec2f disp;
+	vec2f size;
 
-	const float sys_ratio = ms_width / ms_height;
 	const float abs_disp_w = ms_width - _xoffset*2.f;
 	const float wdisp_ratio = abs_disp_w / ms_width;
-
-	if(_sys_w > _width) {
-		disp.x = float(_width) * wdisp_ratio;
-		disp.x *= _scale;
-		disp.y = disp.x * 1.f/_aspect;
+	
+	if(m_cur_zoom == ZoomMode::SCREEN) {
+		float h = float(_width) * 1.0/_aspect;
+		if(h > _height) {
+			size.y = float(_height) * wdisp_ratio * _scale;
+			size.x = size.y * _aspect;
+		} else {
+			size.x = float(_width) * wdisp_ratio * _scale;
+			size.y = size.x * 1.0/_aspect;
+		}
 	} else {
+		const float sys_ratio = ms_width / ms_height;
 		const float hdisp_ratio = sys_ratio * wdisp_ratio * 1.f/_aspect;
-		disp.y = float(_height) * hdisp_ratio;
-		disp.y *= _scale;
-		disp.x = disp.y * _aspect;
+		size.y = float(_height) * hdisp_ratio;
+		size.y *= _scale;
+		size.x = size.y * _aspect;
 	}
-	return disp;
+	return size;
 }
 
 void RealisticInterface::display_transform(int _width, int _height,
@@ -219,15 +239,26 @@ void RealisticInterface::display_transform(int _width, int _height,
 
 	scale.x = _disp.x / float(_width);  // VGA width (screen ratio)
 	scale.y = _disp.y / float(_height); // VGA height (screen ratio)
-	float monitor_h = (((ms_monitor_height+ms_monitor_bezelh*2.f)*_system.y)/ms_height) / float(_height);
-	float sysy = _system.y / float(_height);
-	float disp_offset = monitor_h - scale.y;
+	
 	trans.x = 0.f;
-	if(RealisticInterface::ms_align_top) {
-		trans.y = 1.0 - scale.y - disp_offset;
-	} else {
-		trans.y = -1.0 + (sysy-monitor_h)*2.f + disp_offset + scale.y;
+	
+	float monitor_h = (((ms_monitor_height+ms_monitor_bezelh*2.f) / ms_height) * _system.y) / float(_height);
+	float sysy = _system.y / float(_height);
+	switch(m_display_align) {
+		case DisplayAlign::TOP:
+			trans.y = 1.0 - monitor_h;
+			break;
+		case DisplayAlign::TOP_NOBEZEL:
+			monitor_h = (((ms_monitor_height) / ms_height) * _system.y) / float(_height);
+			trans.y = 1.0f - monitor_h;
+			break;
+		case DisplayAlign::BOTTOM:
+			trans.y = -1.0 + (2.f * sysy) - monitor_h;
+			break;
+		default:
+			return;
 	}
+
 	_mvmat.load_scale(scale.x, scale.y, 1.0);
 	_mvmat.load_translation(trans.x, trans.y, 0.0);
 }
@@ -237,16 +268,43 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	vec2f system, disp, mdisp;
 	float disp_scale = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_SCALE);
 	const float sys_ratio = ms_width / ms_height;
-
-	system.y = _height;
-	system.x = system.y * sys_ratio;
-	disp  = display_size(_width, _height, system.x, ms_monitor_bezelw+ms_vga_left, disp_scale*screen()->vga_image_scale.x, 4.f/3.f);
-	mdisp = display_size(_width, _height, system.x, ms_monitor_bezelw-1.f, 1.f, ms_monitor_width/ms_monitor_height);
-	screen()->vga_reflection_scale = disp / mdisp;
-	if(system.x > _width) {
-		system.x = _width;
+	int system_top = 0;
+	
+	if(m_cur_zoom == ZoomMode::SCREEN) {
+		disp  = display_size(_width, _height,
+				ms_vga_left, // x offset
+				disp_scale * screen()->vga_image_scale.x, // scale
+				4.f / 3.f // aspect
+				);
+		mdisp = display_size(_width, _height,
+				0.f, // x offset
+				1.f, // scale
+				ms_monitor_width / ms_monitor_height // aspect
+				);
+		system.x = ms_width * (mdisp.x / ms_monitor_width);
 		system.y = system.x * 1.f/sys_ratio;
+		system_top = -(ms_monitor_bezelh * (mdisp.y / ms_monitor_height));
+	} else {
+		system.y = _height * m_scale;
+		system.x = system.y * sys_ratio;
+		if(system.x > _width) {
+			system.x = _width;
+			system.y = system.x * 1.f/sys_ratio;
+		}
+		system_top = 0;
+		disp  = display_size(system.x, system.y,
+				ms_monitor_bezelw + ms_vga_left, // x offset
+				disp_scale * screen()->vga_image_scale.x, // scale
+				4.f / 3.f // aspect
+				);
+		mdisp = display_size(system.x, system.y,
+				ms_monitor_bezelw - 1.f, // x offset
+				1.f, // scale
+				ms_monitor_width / ms_monitor_height // aspect
+				);
 	}
+	screen()->vga_reflection_scale = disp / mdisp;
+
 	m_size = system;
 	screen()->vga.size.x = round(disp.x);
 	screen()->vga.size.y = round(disp.y);
@@ -258,6 +316,8 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	m_system->SetProperty("width", buf);
 	snprintf(buf, 10, "%upx", m_size.y);
 	m_system->SetProperty("height", buf);
+	snprintf(buf, 10, "%dpx", system_top);
+	m_system->SetProperty("top", buf);
 }
 
 void RealisticInterface::update()
@@ -285,6 +345,32 @@ void RealisticInterface::set_slider_value(RC::Element *_slider, float _xleft, fl
 	static char buf[10];
 	snprintf(buf, 10, "%.1f%%", slider_left);
 	_slider->SetProperty("left", buf);
+}
+
+void RealisticInterface::action(int)
+{
+	if(m_zoom_mode == ZoomMode::CYCLE) {
+		m_cur_zoom = (m_cur_zoom + 1) % (ZoomMode::MAX_ZOOM+1);
+	} else {
+		if(m_cur_zoom == ZoomMode::WHOLE) {
+			m_cur_zoom = m_zoom_mode;
+		} else {
+			m_cur_zoom = ZoomMode::WHOLE;
+		}
+	}
+	m_scale = ms_zoomin_factors[m_cur_zoom];
+	switch(m_cur_zoom) {
+		case ZoomMode::WHOLE:
+		case ZoomMode::MONITOR:
+		case ZoomMode::BEZEL:
+			m_display_align = DisplayAlign::TOP;
+			break;
+		case ZoomMode::SCREEN:
+			m_display_align = DisplayAlign::TOP_NOBEZEL;
+			break;
+		default:
+			break;
+	}
 }
 
 void RealisticInterface::set_audio_volume(float _value)

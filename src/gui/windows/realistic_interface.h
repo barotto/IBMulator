@@ -86,6 +86,17 @@ private:
 	int   m_drag_start_x;
 	float m_drag_start_left;
 
+	float m_scale;
+	enum DisplayAlign {
+		TOP, TOP_NOBEZEL, BOTTOM
+	};
+	unsigned m_display_align;
+	enum ZoomMode {
+		WHOLE, MONITOR, BEZEL, SCREEN, CYCLE, MAX_ZOOM=SCREEN 
+	};
+	unsigned m_cur_zoom;
+	unsigned m_zoom_mode;
+	
 	static event_map_t ms_evt_map;
 
 	bool m_real_audio_enabled;
@@ -105,8 +116,8 @@ private:
 	static constexpr float ms_vga_left       =   86.0f; // offset of the VGA image from the left bezel
 	static constexpr float ms_slider_length  =  100.0f; // slider horizontal movement length
 
-	// the alignment is specified in the rml file:
-	static constexpr bool ms_align_top = false;
+	// scale factors at the available zoom levels:
+	static constexpr float ms_zoomin_factors[] = { 1.f, 1.26f, 1.4f, 0.f };
 
 public:
 
@@ -118,14 +129,16 @@ public:
 
 	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
 
+	void action(int);
+	
 	void set_audio_volume(float _value);
 	void set_video_brightness(float _value);
 	void set_video_contrast(float _value);
-
+	
 	void sig_state_restored();
 
 private:
-	vec2f display_size(int _width, int _height, float _sys_w, float _xoffset, float _scale, float _aspect);
+	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);
 	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
 
 	void set_slider_value(RC::Element *_slider, float _xmin, float _value);
