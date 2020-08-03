@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2020  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -73,8 +73,9 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
 		m_vga_scaling = 0;
 	}
-	h += std::min(256, w/4); //the sysunit proportions are 4:1
-
+	if(m_gui_mode == GUI_MODE_NORMAL) {
+		h += std::min(256, w/4); //the sysunit proportions are 4:1
+	}
 	m_size = vec2i(w,h);
 
 	m_screen = std::make_unique<InterfaceScreen>(_gui);
