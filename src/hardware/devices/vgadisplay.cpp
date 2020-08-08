@@ -44,7 +44,7 @@ FrameBuffer::~FrameBuffer()
 
 void FrameBuffer::clear()
 {
-	std::fill(m_buffer.begin(), m_buffer.end(), 0);
+	std::fill(m_buffer.begin(), m_buffer.end(), PALETTE_AMASK);
 }
 
 void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const
