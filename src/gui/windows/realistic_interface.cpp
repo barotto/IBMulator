@@ -132,6 +132,9 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	m_floppy_disk = get_element("floppy_disk");
 	m_floppy_disk->SetClass("disk", m_floppy_present);
 	m_led_power = get_element("power_led");
+	m_led_power_bloom = get_element("power_led_bloom");
+	m_led_fdd_bloom = get_element("fdd_led_bloom");
+	m_led_hdd_bloom = get_element("hdd_led_bloom");
 
 	m_volume_slider = get_element("volume_slider");
 	m_brightness_slider = get_element("brightness_slider");
@@ -322,17 +325,27 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 void RealisticInterface::update()
 {
 	Interface::update();
-
+	if(m_leds.fdd) {
+		m_led_fdd_bloom->SetClass("active", true);
+	} else {
+		m_led_fdd_bloom->SetClass("active", false);
+	}
 	if(m_floppy_present) {
 		m_floppy_disk->SetClass("present", true);
 	} else {
 		m_floppy_disk->SetClass("present", false);
 	}
-
+	if(m_leds.hdd) {
+		m_led_hdd_bloom->SetClass("active", true);
+	} else {
+		m_led_hdd_bloom->SetClass("active", false);
+	}
 	if(m_leds.power) {
 		m_led_power->SetClass("active", true);
+		m_led_power_bloom->SetClass("active", true);
 	} else {
 		m_led_power->SetClass("active", false);
+		m_led_power_bloom->SetClass("active", false);
 	}
 }
 

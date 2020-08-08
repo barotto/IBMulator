@@ -37,27 +37,44 @@
 				bottom: 23.5%;
 				background-color: #00000000;
 			}
-			#power_led {
-				width: 4%;
-				height: 3%;
+			#power_led,
+			#power_led_bloom {
+				width: 3%;
+				height: 2%;
 				position: absolute;
-				right: 19.0%;
-				bottom: 29.0%;
-				background-color: #000000FF;
+				right: 19.5%;
+				bottom: 29.4%;
 			}
 			#power_led.active {
 				background-color: #0EFF1AFF;
 			}
-			#fdd_led {
-				width: 3%;
-				height: 2%;
+			#power_led_bloom {
+				background-decorator: image;
+				background-image: images/realistic_power_led_bloom.png;
+				visibility: hidden;
+				/*background-color: #FF00003F;*/
+			}
+			#system.dark #power_led_bloom.active {
+				visibility: visible;
+			}
+			#fdd_led,
+			#fdd_led_bloom {
+				width: 4%;
+				height: 2.7%;
 				position: absolute;
-				left: 17.0%;
-				bottom: 10.0%;
-				background-color: #000000FF;
+				left: 16.5%;
+				bottom: 9.6%;
 			}
 			#fdd_led.active {
 				background-color: #FFEE00FF;
+			}
+			#fdd_led_bloom {
+				background-decorator: image;
+				background-image: images/realistic_fdd_led_bloom.png;
+				visibility: hidden;
+			}
+			#system.dark #fdd_led_bloom.active {
+				visibility: visible;
 			}
 			#floppy_disk {
 				position: absolute;
@@ -132,6 +149,19 @@
 			#hdd_led.active {
 				background-color: #FFEE00FF;
 			}
+			#hdd_led_bloom {
+				width: 8.7%;
+				height: 20.1%;
+				position: absolute;
+				right: 15.0%;
+				bottom: 0%;
+				background-decorator: image;
+				background-image: images/realistic_hdd_led_bloom.png;
+				visibility: hidden;
+			}
+			#system.dark #hdd_led_bloom.active {
+				visibility: visible;
+			}
 			.slider {
 				position: absolute;
 				top: 72.7%;
@@ -185,6 +215,9 @@
 			<div id="fdd_led"></div>
 			<div id="hdd_led"></div>
 			<div id="sysbkgd"></div>
+			<div id="hdd_led_bloom"></div>
+			<div id="fdd_led_bloom"></div>
+			<div id="power_led_bloom"></div>
 			<div id="power"></div>
 			<div id="floppy_disk"></div>
 			<div class="slider" id="volume_slider"></div>

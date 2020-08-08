@@ -72,7 +72,10 @@ private:
 
 	RC::Element *m_system,
 	            *m_floppy_disk,
-	            *m_led_power;
+	            *m_led_power,
+	            *m_led_power_bloom,
+	            *m_led_fdd_bloom,
+	            *m_led_hdd_bloom;
 
 	RC::Element *m_volume_slider,
 	            *m_brightness_slider,
