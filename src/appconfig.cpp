@@ -71,7 +71,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
 		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
 		{ DISPLAY_REALISTIC_FILTER,  "bicubic"  },
-		{ DISPLAY_REALISTIC_AMBIENT, "0.6" },
+		{ DISPLAY_REALISTIC_AMBIENT, "1.0" },
 		{ DISPLAY_BRIGHTNESS,        "1.0" },
 		{ DISPLAY_CONTRAST,          "1.0" },
 		{ DISPLAY_SATURATION,        "1.0" }
