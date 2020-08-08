@@ -130,7 +130,7 @@ public:
 	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
 
 	void action(int);
-	
+	void switch_power();
 	void set_audio_volume(float _value);
 	void set_video_brightness(float _value);
 	void set_video_contrast(float _value);

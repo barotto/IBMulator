@@ -374,8 +374,7 @@ void Interface::update()
 
 void Interface::on_power(RC::Event &)
 {
-	m_machine->cmd_switch_power();
-	m_machine->cmd_resume();
+	switch_power();
 }
 
 void Interface::show_message(const char* _mex)
@@ -493,6 +492,12 @@ void Interface::show_warning(bool _show)
 void Interface::render_screen()
 {
 	m_screen->render();
+}
+
+void Interface::switch_power()
+{
+	m_machine->cmd_switch_power();
+	m_machine->cmd_resume();
 }
 
 void Interface::set_audio_volume(float _volume)

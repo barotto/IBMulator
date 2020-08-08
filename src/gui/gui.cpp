@@ -403,7 +403,7 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 						}
 						return true;
 					}
-					m_machine->cmd_switch_power();
+					m_windows.interface->switch_power();
 					return true;
 				}
 				case SDLK_F4: {

@@ -50,7 +50,7 @@ constexpr float RealisticInterface::ms_zoomin_factors[];
 */
 
 event_map_t RealisticInterface::ms_evt_map = {
-	GUI_EVT( "power",     "click", RealisticInterface::on_power ),
+	GUI_EVT( "power",     "click", Interface::on_power ),
 	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
 	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
 	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
@@ -383,6 +383,15 @@ void RealisticInterface::action(int _action)
 	}
 }
 
+void RealisticInterface::switch_power()
+{
+	bool on = m_machine->is_on();
+	Interface::switch_power();
+	if(m_real_audio_enabled) {
+		m_real_audio.update(!on, true);
+	}
+}
+
 void RealisticInterface::set_audio_volume(float _value)
 {
 	Interface::set_audio_volume(_value);
@@ -446,14 +455,5 @@ void RealisticInterface::on_dragstart(RC::Event &_event)
 	m_drag_start_x = _event.GetParameter("mouse_x",0);
 	m_drag_start_left = slider->GetProperty<float>("left");
 	PDEBUGF(LOG_V2, LOG_GUI, "slider start: x=%d\n",m_drag_start_x);
-}
-
-void RealisticInterface::on_power(RC::Event &_evt)
-{
-	bool on = m_machine->is_on();
-	Interface::on_power(_evt);
-	if(m_real_audio_enabled) {
-		m_real_audio.update(!on, true);
-	}
 }
 

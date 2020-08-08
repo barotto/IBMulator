@@ -141,7 +141,7 @@ public:
 	void render_screen();
 
 	virtual void action(int) {}
-	
+	virtual void switch_power();
 	virtual void set_audio_volume(float);
 	virtual void set_video_brightness(float);
 	virtual void set_video_contrast(float);
