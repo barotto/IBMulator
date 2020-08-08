@@ -24,7 +24,10 @@
 				top: 0;
 				left: 0;
 				background-decorator: image;
-    			background-image: images/realistic_interface.png 0px 0px 1100px 1200px;
+				background-image: images/realistic_interface.png;
+			}
+			#system.dark #sysbkgd {
+				background-image: images/realistic_interface_dark.png;
 			}
 			#power {
 				width: 5%;
@@ -60,14 +63,18 @@
 				position: absolute;
 				text-align: center;
 				width: 33.235%;
-				height: 12.465%;				
+				height: 12.465%;
 				bottom: 7.560%;
 				left: 12.056%;
 				background-color: #3F7CB600;
 			}
 			#floppy_disk.present {
 				background-decorator: image;
-    			background-image: images/realistic_floppy_r.png 0px 0px 366px 150px;
+				background-image: images/realistic_floppy_r.png;
+			}
+			#system.dark #floppy_disk.present {
+				background-decorator: image;
+				background-image: images/realistic_floppy_r_dark.png;
 			}
 			#fdd_select {
 				position: absolute;
@@ -80,11 +87,11 @@
 			}
 			#fdd_select.a {
 				background-decorator: image;
-    			background-image: icons/buttonA.png 12px 12px 90px 90px;
+				background-image: icons/buttonA.png 12px 12px 90px 90px;
 			}
 			#fdd_select.b {
 				background-decorator: image;
-    			background-image: icons/buttonB.png 12px 12px 90px 90px;
+				background-image: icons/buttonB.png 12px 12px 90px 90px;
 			}
 			#fdd_eject {
 				position: absolute;
@@ -111,8 +118,8 @@
 				left: 12.0%;
 				background-color: #3F7CB600;
 				shadow-font-effect: shadow;
-    			shadow-offset: -1px 1px;
-			    shadow-color: black;
+				shadow-offset: -1px 1px;
+				shadow-color: black;
 			}
 			#hdd_led {
 				width: 3%;
@@ -131,7 +138,10 @@
 				width: 2.2%;
 				height: 3.5%;
 				background-decorator: image;
-    			background-image: images/realistic_slider.png 0px 0px 47px 73px;
+				background-image: images/realistic_slider.png;
+			}
+			#system.dark .slider {
+				background-image: images/realistic_slider_dark.png;
 			}
 			#volume_slider {
 				left: 15.5%;

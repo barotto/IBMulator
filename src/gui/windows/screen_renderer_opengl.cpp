@@ -149,8 +149,16 @@ void ScreenRenderer_OpenGL::load_monitor_program(
 	std::string _vshader, std::string _fshader,
 	std::string _reflection_map)
 {
+	std::string shadersdir = GUI::shaders_dir();
 	try {
-		m_monitor.program = GUI_OpenGL::load_program({_vshader}, {_fshader});
+		m_monitor.program = GUI_OpenGL::load_program(
+				{
+					_vshader
+				},
+				{
+					shadersdir + "color_functions.glsl",
+					_fshader
+				});
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to create the shader program!\n");
 		throw std::exception();

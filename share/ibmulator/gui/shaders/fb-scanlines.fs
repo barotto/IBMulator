@@ -61,41 +61,12 @@ vec2 warp = vec2(1.0/64.0, 1.0/48.0);
 float maskDark  = 0.5;
 float maskLight = 1.5;
 
+vec3 ToLinear(vec3 c);
+vec3 ToSrgb(vec3 c);
 vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
 
 //------------------------------------------------------------------------
 
-// sRGB to Linear.
-// Assuing using sRGB typed textures this should not be needed.
-float ToLinear1(float c) 
-{
-	if(c<=0.04045) {
-		return c/12.92;
-	} else {
-		return pow((c+0.055)/1.055, 2.4);
-	}
-}
-
-vec3 ToLinear(vec3 c) 
-{
-	return vec3(ToLinear1(c.r), ToLinear1(c.g), ToLinear1(c.b));
-}
-
-// Linear to sRGB.
-// Assuing using sRGB typed textures this should not be needed.
-float ToSrgb1(float c)
-{
-	if(c<0.0031308) { 
-		return c*12.92;
-	} else { 
-		return 1.055*pow(c,0.41666) - 0.055;
-	}
-}
-
-vec3 ToSrgb(vec3 c)
-{
-	return vec3(ToSrgb1(c.r), ToSrgb1(c.g), ToSrgb1(c.b));
-}
 
 // Testing only, something to help generate a dark signal for bloom test.
 // Set to zero, or remove Test() if using this shader.

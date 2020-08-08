@@ -31,7 +31,7 @@
 #define REALISTIC_MONITOR_FS      "monitor.fs"
 #define REALISTIC_VGA_VS          "fb-realistic.vs"
 #define REALISTIC_REFLECTION_MAP  "realistic_reflection.png"
-#define REALISTIC_VGA_SCALE       1.05f // determines the VGA border size
+#define REALISTIC_VGA_BORDER      1.0f
 
 constexpr float RealisticInterface::ms_zoomin_factors[];
 
@@ -103,7 +103,7 @@ bool RealisticFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 
 RealisticScreen::RealisticScreen(GUI *_gui)
 : InterfaceScreen(_gui),
-vga_image_scale(REALISTIC_VGA_SCALE)
+vga_image_scale(REALISTIC_VGA_BORDER)
 {
 }
 
@@ -189,7 +189,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	);
 	
 	screen()->monitor.mvmat.load_identity();
-	screen()->monitor.ambient = clamp(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT), 0.0, 1.0);
+	screen()->monitor.ambient = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
 	screen()->vga_reflection_scale = vec2f(1.0,1.0);
 	
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
@@ -272,7 +272,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	if(m_cur_zoom == ZoomMode::SCREEN) {
 		disp  = display_size(_width, _height,
 				ms_vga_left, // x offset
-				screen()->vga_image_scale.x, // scale
+				1.0f, // scale
 				4.f / 3.f // aspect
 				);
 		mdisp = display_size(_width, _height,
@@ -293,7 +293,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 		system_top = 0;
 		disp  = display_size(system.x, system.y,
 				ms_monitor_bezelw + ms_vga_left, // x offset
-				screen()->vga_image_scale.x, // scale
+				1.0f, // scale
 				4.f / 3.f // aspect
 				);
 		mdisp = display_size(system.x, system.y,
@@ -346,29 +346,40 @@ void RealisticInterface::set_slider_value(RC::Element *_slider, float _xleft, fl
 	_slider->SetProperty("left", buf);
 }
 
-void RealisticInterface::action(int)
+void RealisticInterface::action(int _action)
 {
-	if(m_zoom_mode == ZoomMode::CYCLE) {
-		m_cur_zoom = (m_cur_zoom + 1) % (ZoomMode::MAX_ZOOM+1);
-	} else {
-		if(m_cur_zoom == ZoomMode::WHOLE) {
-			m_cur_zoom = m_zoom_mode;
+	if(_action == 0) {
+		if(m_zoom_mode == ZoomMode::CYCLE) {
+			m_cur_zoom = (m_cur_zoom + 1) % (ZoomMode::MAX_ZOOM+1);
 		} else {
-			m_cur_zoom = ZoomMode::WHOLE;
+			if(m_cur_zoom == ZoomMode::WHOLE) {
+				m_cur_zoom = m_zoom_mode;
+			} else {
+				m_cur_zoom = ZoomMode::WHOLE;
+			}
 		}
-	}
-	m_scale = ms_zoomin_factors[m_cur_zoom];
-	switch(m_cur_zoom) {
-		case ZoomMode::WHOLE:
-		case ZoomMode::MONITOR:
-		case ZoomMode::BEZEL:
-			m_display_align = DisplayAlign::TOP;
-			break;
-		case ZoomMode::SCREEN:
-			m_display_align = DisplayAlign::TOP_NOBEZEL;
-			break;
-		default:
-			break;
+		m_scale = ms_zoomin_factors[m_cur_zoom];
+		switch(m_cur_zoom) {
+			case ZoomMode::WHOLE:
+			case ZoomMode::MONITOR:
+			case ZoomMode::BEZEL:
+				m_display_align = DisplayAlign::TOP;
+				break;
+			case ZoomMode::SCREEN:
+				m_display_align = DisplayAlign::TOP_NOBEZEL;
+				break;
+			default:
+				break;
+		}
+	} else if(_action == 1) {
+		if(m_system->IsClassSet("dark")) {
+			m_system->SetClass("dark", false);
+			screen()->monitor.ambient =
+				g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
+		} else {
+			m_system->SetClass("dark", true);
+			screen()->monitor.ambient = 0.0;
+		}
 	}
 }
 

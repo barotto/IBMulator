@@ -109,9 +109,9 @@ private:
 	// all values are expressed in pixels.
 	static constexpr float ms_width          = 1100.0f; // texture width
 	static constexpr float ms_height         = 1200.0f; // texture height
-	static constexpr float ms_monitor_width  =  862.0f; // monitor width, bezel excluded
-	static constexpr float ms_monitor_height =  650.0f; // monitor height, bezel excluded
-	static constexpr float ms_monitor_bezelw =  119.0f; // monitor bezel width (should be ms_width-ms_monitor_width/2)
+	static constexpr float ms_monitor_width  =  858.0f; // monitor width, bezel excluded
+	static constexpr float ms_monitor_height =  648.0f; // monitor height, bezel excluded
+	static constexpr float ms_monitor_bezelw =  121.0f; // monitor bezel width (should be ms_width-ms_monitor_width/2)
 	static constexpr float ms_monitor_bezelh =  106.0f; // monitor bezel height
 	static constexpr float ms_vga_left       =   86.0f; // offset of the VGA image from the left bezel
 	static constexpr float ms_slider_length  =  100.0f; // slider horizontal movement length

@@ -180,9 +180,12 @@ to experiment.
 
 ### Key bindings
 
-* CTRL+F1: GUI interface action:
-  * compact mode: show/hide the main interface
-  * realistic mode: toggle zoomed view
+* CTRL+F1: GUI mode action:
+  * compact mode:
+    * short press: show/hide the main interface
+  * realistic mode:
+    * short press: toggle zoomed view
+    * long press: switch between bright and dark interfaces
 * CTRL+F3: toggle the machine power button
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot

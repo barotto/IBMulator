@@ -54,6 +54,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_FULLSCREEN,         "no"     },
 		{ GUI_SHOW_LEDS,          "no"     },
 		{ GUI_MODE,               "normal" },
+		{ GUI_REALISTIC_ZOOM,     "cycle"  },
 		{ GUI_BG_R,               "59"     },
 		{ GUI_BG_G,               "82"     },
 		{ GUI_BG_B,               "98"     }
@@ -278,7 +279,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                     normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                    compact: the system unit disappears when input is grabbed or CTRL-F1 is pressed\n"
 ";                  realistic: the system is rendered in its entirety, monitor included\n"
-"; realistic_zoom: Zoom level to activate when the CTRL-F1 is pressed in realistic mode.\n"
+"; realistic_zoom: Zoom level to activate when CTRL-F1 is pressed in realistic mode.\n"
 ";                 Possible values: cycle, monitor, bezel, screen.\n"
 ";         keymap: Keymap table file. If none specified the default keymap.map file in the share dir will be used.\n"
 ";           grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"

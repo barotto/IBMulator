@@ -374,16 +374,24 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 			switch(_event.key.keysym.sym) {
 				case SDLK_F1: {
 					// interface action
+					static int repeat = 0;
+					if(_event.key.repeat) {
+						if(++repeat == 1 && _event.type == SDL_KEYDOWN) {
+							std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+							m_windows.interface->action(1);
+							m_windows.interface->container_size_changed(m_width, m_height);
+						}
+					}
 					if(_event.type == SDL_KEYUP) {
-						return true;
-					}
-					{
-						std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-						m_windows.interface->action(0);
-						m_windows.interface->container_size_changed(m_width, m_height);
-					}
-					if(m_mode == GUI_MODE_COMPACT && m_windows.interface->is_visible()) {
-						input_grab(false);
+						if(!repeat) {
+							std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+							m_windows.interface->action(0);
+							m_windows.interface->container_size_changed(m_width, m_height);
+							if(m_mode == GUI_MODE_COMPACT && m_windows.interface->is_visible()) {
+								input_grab(false);
+							}
+						}
+						repeat = 0;
 					}
 					return true;
 				}
