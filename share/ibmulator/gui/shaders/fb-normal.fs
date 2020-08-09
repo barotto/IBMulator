@@ -10,11 +10,11 @@ uniform float iContrast;
 uniform float iSaturation;
 
 vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
-vec3 BrightnessSaturationContrast(vec3 color, float brt, vec3 brtcol, float sat, float con);
+vec3 BrightnessSaturationContrast(vec4 color, float brt, vec3 brtcol, float sat, float con);
 
 void main()
 {
 	oColor = FetchTexel(iVGAMap, UV);
-	oColor.rgb = BrightnessSaturationContrast(oColor.rgb, iBrightness, vec3(1.0), iSaturation, iContrast);
+	oColor.rgb = BrightnessSaturationContrast(oColor, iBrightness, vec3(1.0), iSaturation, iContrast);
 	oColor.a = 1.0;
 }
