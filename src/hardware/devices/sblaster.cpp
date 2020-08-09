@@ -591,13 +591,7 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 	uint8_t value = ~0;
 	switch(_address) {
 		case 0xa: case 0xb: // Read Data
-			if(m_s.dsp.state == DSP::State::NORMAL) {
-				value = m_s.dsp.read_data();
-			} else {
-				// TODO not sure what the real HW value is, needs testing.
-				// usually 0xff is the common value for "no value"
-				value = 0xff;
-			}
+			value = m_s.dsp.read_data();
 			break;
 		case 0xc: case 0xd: // Write-Buffer Status
 			switch(m_s.dsp.state) {
@@ -625,7 +619,6 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 			}
 			break;
 		case 0xe: case 0xf: // Read-Buffer Status
-			// TODO should we return 0x7f if busy even when data present?
 			// interrupt is acknowledged by reading the DSP Read-Buffer Status port once.
 			lower_interrupt();
 			if(m_s.dsp.out.used) {
