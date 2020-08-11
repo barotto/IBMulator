@@ -898,6 +898,8 @@ void SBlaster::dma_timer(uint64_t _time)
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: requesting data\n", short_name());
 		m_devices->dma()->set_DRQ(m_dma, true);
 		m_s.dma.drq_time = g_machine.get_virt_time_ns();
+		// What's the correct timeout? Ideal timing would be 0ns.
+		g_machine.activate_timer(m_dac_timer, m_s.dac.period_ns, false);
 	} else if(_time != 0) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: stopping\n", short_name());
 		std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
