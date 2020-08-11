@@ -974,7 +974,7 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 
 	double avg_rate = m_s.dac.spec.rate;
-#ifndef NDEBUG
+#ifdef LOG_DEBUG_MESSAGES
 	assert(m_s.dac.sample_time_ns[0] < now);
 	if(m_s.dac.used) {
 		unsigned frames = m_s.dac.used / m_s.dac.spec.frame_size();
@@ -1471,15 +1471,21 @@ void SBlaster::dsp_cmd_dma_dac(uint8_t _bits, bool _autoinit, bool _hispeed)
 	m_s.dsp.adpcm.have_reference = _bits & REF;
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
-	dma_start(_autoinit);
-	g_machine.deactivate_timer(m_dma_timer);
+	uint64_t dma_timer_eta = 0;
 	if(m_s.dac.state == DAC::State::WAITING) {
 		// keep a regular flow of generated samples
-		uint64_t dac_eta = g_machine.get_timer_eta(m_dac_timer);
-		g_machine.activate_timer(m_dma_timer, dac_eta, false);
-	} else {
-		// DRQ
-		dma_timer(0);
+		dma_timer_eta = g_machine.get_timer_eta(m_dac_timer);
+	}
+	
+	dma_start(_autoinit);
+	
+	if(!g_machine.is_timer_active(m_dma_timer)) {
+		if(dma_timer_eta) {
+			g_machine.activate_timer(m_dma_timer, dma_timer_eta, false);
+		} else {
+			// DRQ
+			dma_timer(0);
+		}
 	}
 	dac_set_state(DAC::State::ACTIVE);
 	
