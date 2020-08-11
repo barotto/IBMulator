@@ -93,11 +93,15 @@ protected:
 		uint8_t cmd_in_pos;
 		uint8_t cmd_in[BUFSIZE];
 
-		struct {
+		struct DataBuffer {
 			uint8_t lastval;
 			uint8_t data[BUFSIZE];
 			uint8_t pos;
 			uint8_t used;
+			
+			void flush();
+			void write(uint8_t _data);
+			uint8_t read();
 		} in, out;
 
 		struct {
@@ -106,10 +110,6 @@ protected:
 			int step_size;
 		} adpcm;
 		uint8_t test_reg;
-		
-		void flush_data();
-		void add_data(uint8_t _data);
-		uint8_t read_data();
 	};
 	
 	struct DMA {
@@ -236,6 +236,7 @@ protected:
 	void mixer_reset();
 	
 	void dsp_reset();
+	void dsp_read_in_buffer();
 	void dsp_change_mode(DSP::Mode _mode);
 	void dsp_start_cmd(const DSPCmd *);
 	void dsp_exec_cmd(const DSPCmd *);

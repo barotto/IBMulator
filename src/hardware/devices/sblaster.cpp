@@ -68,6 +68,7 @@ static const char *SB16_COPYRIGHT = "COPYRIGHT (C) CREATIVE TECHNOLOGY LTD, 1992
 // This busy time is completely made up, no docs. 
 #define SB_DSP_BUSYTIME_NS  10000
 #define SB_DAC_TIMEOUT      1_s
+#define SB_DEFAULT_CMD_TIME 1_us // TODO what's the proper value?
 
 enum DSPVMask {
 	DSP1 = 0x1, DSP2 = 0x2, DSP3 = 0x4, DSP4 = 0x8, DSPALL = 0xf
@@ -458,6 +459,7 @@ void SBlaster::reset(unsigned)
 	Synth::reset();
 	m_s.dsp.high_speed = false;
 	dsp_reset();
+	m_s.dsp.out.lastval = SB_DSP_RSTRDY;
 	mixer_reset();
 }
 
@@ -482,11 +484,11 @@ void SBlaster::dsp_reset()
 	PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset\n", short_name());
 	
 	// reset the DSP
-	m_s.dsp.flush_data();
-	m_s.dsp.out.lastval = SB_DSP_RSTRDY;
+	m_s.dsp.in.flush();
+	m_s.dsp.out.flush();
 	m_s.dsp.cmd = SB_DSP_NOCMD;
 	m_s.dsp.cmd_len = 0;
-	m_s.dsp.in.pos = 0;
+	m_s.dsp.cmd_in_pos = 0;
 	m_s.dsp.state = DSP::State::NORMAL;
 	m_s.dsp.mode = DSP::Mode::NONE;
 	m_s.dsp.time_const = 45;
@@ -588,12 +590,14 @@ uint16_t SBlaster::read_mixer(uint16_t _address)
 
 uint16_t SBlaster::read_dsp(uint16_t _address)
 {
-	uint8_t value = ~0;
+	uint8_t value = 0x7f;
 	switch(_address) {
 		case 0xa: case 0xb: // Read Data
-			value = m_s.dsp.read_data();
+			value = m_s.dsp.out.read();
 			break;
 		case 0xc: case 0xd: // Write-Buffer Status
+			// If bit-7 is 0, the DSP buffer is empty and is ready to
+			// receive commands or data.
 			switch(m_s.dsp.state) {
 				case DSP::State::NORMAL: {
 					int busy = g_machine.get_virt_time_ns() % m_s.dac.period_ns;
@@ -603,18 +607,17 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 						// and 8 will have the busy bit clear.
 						
 						// DSP is busy processing
-						value = 0xff;
+						value |= 0x80;
 					} else {
-						// If bit-7 is 0, the DSP buffer is empty and is ready to
-						// receive commands or data.
-						value = 0x7f;
+						value |= (m_s.dsp.in.used >= DSP::BUFSIZE) << 7;
 					}
 					break;
 				}
 				case DSP::State::EXEC_CMD:
 				case DSP::State::RESET_START:
 				case DSP::State::RESET:
-					value = 0xff;
+					// Respond with "busy", but if the program writes don't discard.
+					value |= 0x80;
 					break;
 			}
 			break;
@@ -622,10 +625,10 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 			// interrupt is acknowledged by reading the DSP Read-Buffer Status port once.
 			lower_interrupt();
 			if(m_s.dsp.out.used) {
-				value = 0xff;
-			} else {
-				value = 0x7f;
+				value |= 0x80;
 			}
+			// Real hardware probably returns something else for bits 0-6.
+			// Eg. SB Pro 2 returns 0x2A for empty and 0xAA for full.
 			break;
 		default:
 			assert(false);
@@ -730,9 +733,12 @@ void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 				g_machine.deactivate_timer(m_dsp_timer);
 				PDEBUGF(LOG_V2, LOG_AUDIO, " Reset start\n");
 			} else if(!reset && m_s.dsp.state == DSP::State::RESET_START) {
-				m_s.dsp.state = DSP::State::RESET;
-				g_machine.activate_timer(m_dsp_timer, 20_us, false);
 				PDEBUGF(LOG_V2, LOG_AUDIO, " Reset\n");
+				// do the reset procedure now and flush the data buffers.
+				dsp_reset();
+				m_s.dsp.state = DSP::State::RESET;
+				// complete the reset successfully with 0xAA result after 20 us.
+				g_machine.activate_timer(m_dsp_timer, 50_us, false);
 			} else {
 				PDEBUGF(LOG_V2, LOG_AUDIO, " Invalid reset procedure?\n");
 			}
@@ -740,36 +746,15 @@ void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 		}
 		case 0xc: case 0xd: // DSP Write Command/Data
 		{
-			if(m_s.dsp.state != DSP::State::NORMAL || m_s.dsp.high_speed) {
-				PDEBUGF(LOG_V2, LOG_AUDIO, " write while busy, ignored\n");
+			if(m_s.dsp.high_speed) {
+				// TODO is this correct?
+				PDEBUGF(LOG_V2, LOG_AUDIO, " write in high speed, ignored\n");
 				break;
 			}
-			switch(m_s.dsp.cmd) {
-				case SB_DSP_NOCMD: {
-					const DSPCmd *cmd = dsp_decode_cmd(_value);
-					if(cmd) {
-						PDEBUGF(LOG_V2, LOG_AUDIO, " %s\n", cmd->desc);
-						m_s.dsp.cmd = _value;
-						m_s.dsp.cmd_len = cmd->len;
-						m_s.dsp.in.pos = 0;
-						if(!m_s.dsp.cmd_len) {
-							dsp_start_cmd(cmd);
-						}
-					} else {
-						PDEBUGF(LOG_V2, LOG_AUDIO, " Unknown command\n");
-					}
-					break;
-				}
-				default: {
-					PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
-					assert(m_s.dsp.in.pos < DSP::BUFSIZE);
-					m_s.dsp.in.data[m_s.dsp.in.pos] = _value;
-					m_s.dsp.in.pos++;
-					if(m_s.dsp.in.pos >= m_s.dsp.cmd_len) {
-						dsp_start_cmd(dsp_decode_cmd(m_s.dsp.cmd));
-					}
-					break;
-				}
+			PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
+			m_s.dsp.in.write(_value);
+			if(m_s.dsp.state == DSP::State::NORMAL) {
+				dsp_read_in_buffer();
 			}
 			break;
 		}
@@ -798,12 +783,11 @@ void SBlaster::dsp_start_cmd(const DSPCmd *_cmd)
 	assert(_cmd);
 
 	m_s.dsp.state = DSP::State::EXEC_CMD;
-	
-	if(_cmd->time_us) {
-		g_machine.activate_timer(m_dsp_timer, US_TO_NS(_cmd->time_us), false);
-	} else {
-		dsp_exec_cmd(_cmd);
+	uint64_t cmdtime = US_TO_NS(_cmd->time_us);
+	if(!cmdtime) {
+		cmdtime = SB_DEFAULT_CMD_TIME;
 	}
+	g_machine.activate_timer(m_dsp_timer, cmdtime, false);
 }
 
 void SBlaster::write_mixer(uint16_t _address, uint16_t _value)
@@ -1099,8 +1083,12 @@ void SBlaster::dsp_timer(uint64_t)
 {
 	switch(m_s.dsp.state) {
 		case DSP::State::RESET:
-			dsp_reset();
-			m_s.dsp.add_data(SB_DSP_RSTRDY);
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: reset complete\n", short_name());
+			m_s.dsp.state = DSP::State::NORMAL;
+			m_s.dsp.out.write(SB_DSP_RSTRDY);
+			if(m_s.dsp.in.used) {
+				dsp_read_in_buffer();
+			}
 			return;
 		case DSP::State::RESET_START:
 			break;
@@ -1112,6 +1100,34 @@ void SBlaster::dsp_timer(uint64_t)
 			return;
 	}
 	assert(false);
+}
+
+void SBlaster::dsp_read_in_buffer()
+{
+	while(m_s.dsp.in.used) {
+		uint8_t value = m_s.dsp.in.read();
+		if(m_s.dsp.cmd == SB_DSP_NOCMD) {
+			const DSPCmd *cmd = dsp_decode_cmd(value);
+			if(cmd) {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: cmd 0x%02x: %s\n", short_name(), value, cmd->desc);
+				m_s.dsp.cmd = value;
+				m_s.dsp.cmd_len = cmd->len;
+				if(!m_s.dsp.cmd_len) {
+					dsp_start_cmd(cmd);
+					return;
+				}
+			} else {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: cmd 0x%02x: unknown\n", short_name(), value);
+			}
+		} else {
+			m_s.dsp.cmd_in[m_s.dsp.cmd_in_pos] = value;
+			m_s.dsp.cmd_in_pos++;
+			if(m_s.dsp.cmd_in_pos >= m_s.dsp.cmd_len) {
+				dsp_start_cmd(dsp_decode_cmd(m_s.dsp.cmd));
+				return;
+			}
+		}
+	}
 }
 
 void SBlaster::dsp_exec_cmd(const DSPCmd *_cmd)
@@ -1128,8 +1144,12 @@ void SBlaster::dsp_exec_cmd(const DSPCmd *_cmd)
 	
 	m_s.dsp.cmd = SB_DSP_NOCMD;
 	m_s.dsp.cmd_len = 0;
-	m_s.dsp.in.pos = 0;
+	m_s.dsp.cmd_in_pos = 0;
 	m_s.dsp.state = DSP::State::NORMAL;
+	
+	if(m_s.dsp.in.used) {
+		dsp_read_in_buffer();
+	}
 }
 
 void SBlaster::dsp_change_mode(DSP::Mode _mode)
@@ -1330,14 +1350,14 @@ void SBlaster::dsp_cmd_unimpl()
 
 void SBlaster::dsp_cmd_status()
 {
-	m_s.dsp.flush_data();
+	m_s.dsp.out.flush();
 	if( ISDSPV(2) ) {
-		m_s.dsp.add_data(0x88);
+		m_s.dsp.out.write(0x88);
 	} else if( ISDSPV(3) ) {
-		m_s.dsp.add_data(0x7b);
+		m_s.dsp.out.write(0x7b);
 	} else {
 		// Everything enabled
-		m_s.dsp.add_data(0xff);
+		m_s.dsp.out.write(0xff);
 	}
 }
 
@@ -1355,17 +1375,17 @@ void SBlaster::dsp_cmd_speaker_off()
 
 void SBlaster::dsp_cmd_speaker_status()
 {
-	m_s.dsp.flush_data();
+	m_s.dsp.out.flush();
 	if(m_s.dac.speaker) {
-		m_s.dsp.add_data(0xff);
+		m_s.dsp.out.write(0xff);
 	} else {
-		m_s.dsp.add_data(0x00);
+		m_s.dsp.out.write(0x00);
 	}
 }
 
 void SBlaster::dsp_cmd_set_time_const()
 {
-	m_s.dsp.time_const = m_s.dsp.in.data[0];
+	m_s.dsp.time_const = m_s.dsp.cmd_in[0];
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 	int old_dac_period_ns = m_s.dac.period_ns;
@@ -1387,7 +1407,7 @@ void SBlaster::dsp_cmd_set_time_const()
 
 void SBlaster::dsp_cmd_set_dma_block()
 {
-	m_s.dma.count = m_s.dsp.in.data[0] + (m_s.dsp.in.data[1] << 8);
+	m_s.dma.count = m_s.dsp.cmd_in[0] + (m_s.dsp.cmd_in[1] << 8);
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: block size=%d bytes\n", short_name(), uint32_t(m_s.dma.count) + 1);
 }
 
@@ -1416,7 +1436,7 @@ void SBlaster::dsp_cmd_direct_dac_8()
 	}
 	
 	m_s.dac.sample_time_ns[m_s.dac.used>0] = now;
-	m_s.dac.add_sample(m_s.dsp.in.data[0]);
+	m_s.dac.add_sample(m_s.dsp.cmd_in[0]);
 }
 
 void SBlaster::dsp_cmd_dma_adc(uint8_t _bits, bool _auto_init, bool _hispeed)
@@ -1509,22 +1529,22 @@ void SBlaster::dsp_cmd_exit_ai_dma_8()
 
 void SBlaster::dsp_cmd_get_version()
 {
-	m_s.dsp.flush_data();
-	m_s.dsp.add_data(DSPVHI);
-	m_s.dsp.add_data(DSPVLO);
+	m_s.dsp.out.flush();
+	m_s.dsp.out.write(DSPVHI);
+	m_s.dsp.out.write(DSPVLO);
 }
 
 void SBlaster::dsp_cmd_get_copyright()
 {
-	m_s.dsp.flush_data();
+	m_s.dsp.out.flush();
 	for(size_t i=0; i<=strlen(SB16_COPYRIGHT); i++) {
-		m_s.dsp.add_data(SB16_COPYRIGHT[i]);
+		m_s.dsp.out.write(SB16_COPYRIGHT[i]);
 	}
 }
 
 void SBlaster::dsp_cmd_pause_dac()
 {
-	uint32_t count = m_s.dsp.in.data[0] + (m_s.dsp.in.data[1] << 8) + 1;
+	uint32_t count = m_s.dsp.cmd_in[0] + (m_s.dsp.cmd_in[1] << 8) + 1;
 	
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: firing IRQ in %d samples / %llu ns\n", short_name(),
 			count, (count * m_s.dac.period_ns));
@@ -1539,8 +1559,8 @@ void SBlaster::dsp_cmd_pause_dac()
 
 void SBlaster::dsp_cmd_identify()
 {
-	m_s.dsp.flush_data();
-	m_s.dsp.add_data(~m_s.dsp.in.data[0]);
+	m_s.dsp.out.flush();
+	m_s.dsp.out.write(~m_s.dsp.cmd_in[0]);
 }
 
 void SBlaster::dsp_cmd_identify_dma()
@@ -1548,7 +1568,7 @@ void SBlaster::dsp_cmd_identify_dma()
 	// DMA identification routine, reverse engineered from SB16 firmware
 	// see https://github.com/joncampbell123/dosbox-x/issues/1044#issuecomment-480115593
 	
-	m_s.dma.identify.vadd += m_s.dsp.in.data[0] ^ m_s.dma.identify.vxor;
+	m_s.dma.identify.vadd += m_s.dsp.cmd_in[0] ^ m_s.dma.identify.vxor;
 	m_s.dma.identify.vxor = (m_s.dma.identify.vxor >> 2u) | (m_s.dma.identify.vxor << 6u);
 	m_s.dma.mode = DMA::Mode::IDENTIFY;
 	m_devices->dma()->set_DRQ(m_dma, true);
@@ -1561,57 +1581,57 @@ void SBlaster::dsp_cmd_trigger_irq_8()
 
 void SBlaster::dsp_cmd_write_test_reg()
 {
-	m_s.dsp.test_reg = m_s.dsp.in.data[0];
+	m_s.dsp.test_reg = m_s.dsp.cmd_in[0];
 }
 
 void SBlaster::dsp_cmd_read_test_reg()
 {
-	m_s.dsp.flush_data();
-	m_s.dsp.add_data(m_s.dsp.test_reg);
+	m_s.dsp.out.flush();
+	m_s.dsp.out.write(m_s.dsp.test_reg);
 }
 
 void SBlaster::dsp_cmd_f8_unknown()
 {
-	m_s.dsp.flush_data();
-	m_s.dsp.add_data(0);
+	m_s.dsp.out.flush();
+	m_s.dsp.out.write(0);
 }
 
 void SBlaster::dsp_cmd_aux_status()
 {
 	// only doc found on this is http://the.earth.li/~tfm/oldpage/sb_dsp.html
-	m_s.dsp.flush_data();
-	m_s.dsp.add_data((!m_s.dac.speaker) | 0x12);
+	m_s.dsp.out.flush();
+	m_s.dsp.out.write((!m_s.dac.speaker) | 0x12);
 }
 
-void SBlaster::DSP::flush_data()
+void SBlaster::DSP::DataBuffer::flush()
 {
-	out.used = 0;
-	out.pos = 0;
+	used = 0;
+	pos = 0;
 }
 
-void SBlaster::DSP::add_data(uint8_t _data)
+void SBlaster::DSP::DataBuffer::write(uint8_t _data)
 {
-	if(out.used < BUFSIZE) {
-		unsigned start = out.used + out.pos;
+	if(used < BUFSIZE) {
+		unsigned start = used + pos;
 		if(start >= BUFSIZE) {
 			start -= BUFSIZE;
 		}
-		out.data[start] = _data;
-		out.used++;
+		data[start] = _data;
+		used++;
 	}
 }
 
-uint8_t SBlaster::DSP::read_data()
+uint8_t SBlaster::DSP::DataBuffer::read()
 {
-	if(out.used) {
-		out.lastval = out.data[out.pos];
-		out.pos++;
-		if(out.pos >= BUFSIZE) {
-			out.pos -= BUFSIZE;
+	if(used) {
+		lastval = data[pos];
+		pos++;
+		if(pos >= BUFSIZE) {
+			pos -= BUFSIZE;
 		}
-		out.used--;
+		used--;
 	}
-	return out.lastval;
+	return lastval;
 }
 
 void SBlaster::DAC::flush_data()
