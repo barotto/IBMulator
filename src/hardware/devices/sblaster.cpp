@@ -421,6 +421,12 @@ void SBlaster::config_changed()
 	
 	m_dac_volume = clamp(g_program.config().get_real(SBLASTER_SECTION, SBLASTER_DAC_VOLUME),
 			0.0, 10.0);
+	
+	std::string dac_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_FILTERS, "");
+	if(!dac_filters.empty()) {
+		m_dac_channel->set_filters(dac_filters);
+	}
+	
 }
 
 void SBlaster::configure_synth(unsigned _rate, float _volume, std::string _filters)

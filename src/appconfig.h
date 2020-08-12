@@ -236,6 +236,7 @@ public:
 #define SBLASTER_IOBASE         "iobase"
 #define SBLASTER_DMA            "dma"
 #define SBLASTER_IRQ            "irq"
+#define SBLASTER_DAC_FILTERS    "dac_filters"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
 #define SBLASTER_OPL_RATE       "opl_rate"
 #define SBLASTER_OPL_FILTERS    "opl_filters"

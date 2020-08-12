@@ -113,6 +113,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SBLASTER_SECTION, {
+		{ SBLASTER_DAC_FILTERS, ""      },
 		{ SBLASTER_DAC_VOLUME,  "1.0"   },
 		{ SBLASTER_OPL_RATE,    "48000" },
 		{ SBLASTER_OPL_FILTERS, ""      },
@@ -452,10 +453,12 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     enabled: Install a Sound Blaster audio card.\n"
 ";       model: The model of the installed card.\n"
 ";              Possible values: sb1, sb2\n"
+"; dac_filters: Audio filters for the DAC\n"
+";              Possible values: a list of filter definitions. See the README for more info.\n"
 ";  dac_volume: DAC's audio volume.\n"
 ";    opl_rate: OPL chip's sample rate. The real hardware uses a frequency of 49716Hz.\n"
 ";              Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
-"; opl_filters: DSP filters for the OPL chip\n"
+"; opl_filters: Audio filters for the OPL chip\n"
 ";              Possible values: a list of filter definitions. See the README for more info.\n"
 ";  opl_volume: OPL chip's audio volume.\n"
 ";      iobase: The I/O base address, as an hexadecimal number.\n"
@@ -599,6 +602,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ SBLASTER_SECTION, {
 		SBLASTER_ENABLED,
 		SBLASTER_MODEL,
+		SBLASTER_DAC_FILTERS,
 		SBLASTER_DAC_VOLUME,
 		SBLASTER_OPL_RATE,
 		SBLASTER_OPL_FILTERS,
