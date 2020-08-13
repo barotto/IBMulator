@@ -282,6 +282,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  realistic: the system is rendered in its entirety, monitor included\n"
 "; realistic_zoom: Zoom level to activate when CTRL-F1 is pressed in realistic mode.\n"
 ";                 Possible values: cycle, monitor, bezel, screen.\n"
+";realistic_style: Initial interface style when in realistic mode. Keep CTRL-F1 pressed to switch.\n"
+";                 Possible values: bright, dark.\n"
 ";         keymap: Keymap table file. If none specified the default keymap.map file in the share dir will be used.\n"
 ";           grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"
 ";    grab_method: Method to use for mouse grabbing\n"

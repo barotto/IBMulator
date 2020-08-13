@@ -140,6 +140,7 @@ public:
 #define GUI_SHOW_LEDS           "show_leds"
 #define GUI_MODE                "mode"
 #define GUI_REALISTIC_ZOOM      "realistic_zoom"
+#define GUI_REALISTIC_STYLE     "realistic_style"
 #define GUI_BG_R                "bg_red"
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"

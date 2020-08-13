@@ -153,6 +153,14 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	};
 	m_zoom_mode = g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_ZOOM, modes, ZoomMode::CYCLE);
 	
+	
+	static std::map<std::string, unsigned> dark = {
+		{ "",        false },
+		{ "bright",  false },
+		{ "dark",    true  }
+	};
+	m_system->SetClass("dark", g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_STYLE, dark, false));
+	
 	float slider_width = m_volume_slider->GetProperty<float>("width");
 	m_slider_len_p = ms_slider_length/ms_width * 100.f - slider_width;
 	m_volume_left_min = m_volume_slider->GetProperty<float>("left");
