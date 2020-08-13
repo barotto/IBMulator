@@ -147,14 +147,16 @@ void Devices::config_changed()
 	bool adlib = g_program.config().get_bool(ADLIB_SECTION, ADLIB_ENABLED);
 	if(g_program.config().get_bool(SBLASTER_SECTION, SBLASTER_ENABLED)) {
 		static std::map<std::string, unsigned> sbmodels = {
-			{ "",       SBlaster::SB1,   },
+			{ "",       SBlaster::SB2,   },
 			{ "sb1",    SBlaster::SB1,   },
 			{ "sb2",    SBlaster::SB2,   },
 			// TODO
 			// { "sbpro1", SBlaster::SBPRO1 },
 			// { "sbpro2", SBlaster::SBPRO2 },
 		};
-		unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
+		// TODO
+		// unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
+		unsigned sb_model = SBlaster::SB2;
 		switch(sb_model) {
 			case SBlaster::SB1   : install<SBlaster>(); break;
 			case SBlaster::SB2   : install<SBlaster2>(); break;

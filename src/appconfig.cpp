@@ -450,9 +450,13 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  volume: Audio volume.\n"
 		},
 		{ SBLASTER_SECTION,
-";     enabled: Install a Sound Blaster audio card.\n"
-";       model: The model of the installed card.\n"
-";              Possible values: sb1, sb2\n"
+";     enabled: Install the Sound Blaster 2.0 audio card.\n"
+";      iobase: The I/O base address, as an hexadecimal number.\n"
+";              Possible values: 0x220, 0x240.\n"
+";         irq: The IRQ line number.\n"
+";              Possible values: 3, 5, 7.\n"
+";         dma: The DMA channel number.\n"
+";              Possible values: 0, 1, 3.\n"
 "; dac_filters: Audio filters for the DAC\n"
 ";              Possible values: a list of filter definitions. See the README for more info.\n"
 ";  dac_volume: DAC's audio volume.\n"
@@ -461,12 +465,6 @@ ini_filehelp_t AppConfig::ms_help = {
 "; opl_filters: Audio filters for the OPL chip\n"
 ";              Possible values: a list of filter definitions. See the README for more info.\n"
 ";  opl_volume: OPL chip's audio volume.\n"
-";      iobase: The I/O base address, as an hexadecimal number.\n"
-";              Possible values: 0x220, 0x240.\n"
-";         irq: The IRQ channel number.\n"
-";              Possible values: 2, 5, 7, 10.\n"
-";         dma: The DMA channel number.\n"
-";              Possible values: 0, 1, 3.\n"
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
@@ -601,15 +599,14 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ SBLASTER_SECTION, {
 		SBLASTER_ENABLED,
-		SBLASTER_MODEL,
+		SBLASTER_IOBASE,
+		SBLASTER_DMA,
+		SBLASTER_IRQ,
 		SBLASTER_DAC_FILTERS,
 		SBLASTER_DAC_VOLUME,
 		SBLASTER_OPL_RATE,
 		SBLASTER_OPL_FILTERS,
-		SBLASTER_OPL_VOLUME,
-		SBLASTER_IOBASE,
-		SBLASTER_DMA,
-		SBLASTER_IRQ
+		SBLASTER_OPL_VOLUME
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_ENABLED,
