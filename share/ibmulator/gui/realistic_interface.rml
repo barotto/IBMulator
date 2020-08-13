@@ -35,7 +35,6 @@
 				position: absolute;
 				right: 15%;
 				bottom: 23.5%;
-				background-color: #00000000;
 			}
 			#power_led,
 			#power_led_bloom {
@@ -45,6 +44,13 @@
 				right: 19.5%;
 				bottom: 29.4%;
 			}
+			#power_led {
+				background-color: #023104ff;
+			}
+			#system.dark #power_led {
+				background-color: #000000ff;
+			}
+			#system.dark #power_led.active,
 			#power_led.active {
 				background-color: #0EFF1AFF;
 			}
@@ -52,7 +58,6 @@
 				background-decorator: image;
 				background-image: images/realistic_power_led_bloom.png;
 				visibility: hidden;
-				/*background-color: #FF00003F;*/
 			}
 			#system.dark #power_led_bloom.active {
 				visibility: visible;
@@ -65,6 +70,13 @@
 				left: 16.5%;
 				bottom: 9.6%;
 			}
+			#fdd_led {
+				background-color: #3f3b00ff;
+			}
+			#system.dark #fdd_led {
+				background-color: #000000ff;
+			}
+			#system.dark #fdd_led.active,
 			#fdd_led.active {
 				background-color: #FFEE00FF;
 			}
@@ -146,6 +158,13 @@
 				bottom: 10.5%;
 				background-color: #000000FF;
 			}
+			#hdd_led {
+				background-color: #3f3b00ff;
+			}
+			#system.dark #hdd_led {
+				background-color: #000000ff;
+			}
+			#system.dark #hdd_led.active,
 			#hdd_led.active {
 				background-color: #FFEE00FF;
 			}
