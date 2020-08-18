@@ -35,8 +35,7 @@ GUIFX::~GUIFX()
 void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_channel_name,
 		const AudioSpec &_spec)
 {
-	m_channel = _mixer->register_channel(_channel_fn, _channel_name);
-	m_channel->set_category(MixerChannelCategory::SOUNDFX);
+	m_channel = _mixer->register_channel(_channel_fn, _channel_name, MixerChannel::Category::SOUNDFX);
 	m_channel->set_disable_timeout(1_s);
 	m_channel->set_in_spec(_spec);
 

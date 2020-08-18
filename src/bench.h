@@ -30,6 +30,8 @@ class Bench
 protected:
 	const Chrono *m_chrono;
 	
+	double   m_heartbeat_fps;
+	
 	int64_t  m_init_time;
 	int64_t  m_upd_interval;
 	
@@ -82,15 +84,15 @@ public:
 	double   avg_fps;
 	//double   mavg_fps;
 	
-	std::atomic<double> load; // the load value can be used by multiple threads
-
+	std::atomic<double> load;
+	std::atomic<double> avg_load; // the load value can be used by multiple threads
 	
 	Bench();
 	virtual ~Bench();
 
-	void init(const Chrono *_chrono, unsigned _upd_interval_ms);
-	void start();
-	void set_heartbeat(int64_t _nsec);
+	virtual void init(const Chrono *_chrono, unsigned _upd_interval_ms);
+	virtual void start();
+	virtual void set_heartbeat(int64_t _nsec);
 	virtual void reset_values();
 	virtual void frame_start();
 	virtual void load_start();

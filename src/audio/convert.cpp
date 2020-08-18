@@ -31,9 +31,18 @@ unsigned resample_mono(
 		const T *_in, unsigned _in_samples, double _in_rate,
 		      T *_out, unsigned _out_size, double _out_rate)
 {
-	// _out_size is the capacity of _out in number of elements (samples)
 	double rate_ratio = _in_rate / _out_rate;
-	unsigned out_samples = unsigned(double(_in_samples) * rate_ratio) + 1;
+	return resample_mono<T>(_in, _in_samples, _out, _out_size, rate_ratio);
+}
+
+template <typename T>
+unsigned resample_mono(
+		const T *_in, unsigned _in_samples,
+		      T *_out, unsigned _out_size,
+		      double _ratio)
+{
+	// _out_size is the capacity of _out in number of elements (samples)
+	unsigned out_samples = unsigned(double(_in_samples) * _ratio) + 1;
 	out_samples = std::min(out_samples, _out_size);
 	
 	double src_sample = 0;
@@ -48,7 +57,7 @@ unsigned resample_mono(
 		_out[dst_sample] = _in[unsigned(src_sample)];
 
 		dst_sample += 1;
-		src_sample += 1.0 / rate_ratio;
+		src_sample += 1.0 / _ratio;
 	}
 	
 	return dst_sample;
@@ -56,14 +65,12 @@ unsigned resample_mono(
 
 template <typename T>
 unsigned resample_stereo(
-		const T *_in, unsigned _in_frames, double _in_rate,
-		      T *_out, unsigned _out_size, double _out_rate)
+		const T *_in, unsigned _in_frames,
+		      T *_out, unsigned _out_size,
+		      double _ratio)
 {
-	// TODO FIXME not tested!
-	
 	// _out_size is the capacity of _out in number of elements (samples)
-	double rate_ratio = _in_rate / _out_rate;
-	unsigned out_frames = unsigned(double(_in_frames) * rate_ratio) + 1;
+	unsigned out_frames = unsigned(double(_in_frames) * _ratio) + 1;
 	_out_size &= ~1; // it's stereo, so force the value even
 	out_frames = std::min(out_frames, _out_size/2);
 	
@@ -80,7 +87,7 @@ unsigned resample_stereo(
 		_out[dst_sample + 1] = _in[unsigned(src_frame)*2 + 1];
 
 		dst_sample += 2;
-		src_frame  += 1.0 / rate_ratio;
+		src_frame  += 1.0 / _ratio;
 	}
 	
 	// return the generated samples, not frames
@@ -92,6 +99,16 @@ unsigned resample_mono<uint8_t>(
 		const uint8_t *_in, unsigned _in_samples, double _in_rate,
 		      uint8_t *_out, unsigned _out_size, double _out_rate);
 
+template
+unsigned resample_mono<float>(
+		const float *_in, unsigned _in_samples,
+		      float *_out, unsigned _out_size,
+		      double _ratio);
 
+template
+unsigned resample_stereo<float>(
+		const float *_in, unsigned _in_frames,
+		      float *_out, unsigned _out_size,
+		      double _ratio);
 }
 }

@@ -49,12 +49,15 @@ class Mixer
 private:
 	RingBuffer m_out_buffer; // the SDL multithread-safe output buffer
 	std::vector<float> m_out_mix;
-	std::vector<float> m_ch_mix[ec_to_i(MixerChannelCategory::MAX)];
-	size_t m_mix_bufsize;
+	std::vector<float> m_ch_mix[MixerChannel::Category::MAX];
+	size_t m_mix_bufsize_fr;
+	size_t m_mix_bufsize_sa;
+	size_t m_mix_bufsize_by;
 	WAVFile m_wav;
 	int m_start_time;
 
 	uint64_t m_prebuffer_us;
+	size_t   m_prebuffer_fr;
 
 	Machine *m_machine;
 	Pacer m_pacer;
@@ -91,7 +94,7 @@ public:
 	void start();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
-			const std::string &_name);
+			const std::string &_name, MixerChannel::Category);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
 	int register_sink(AudioSinkHandler _sink);
@@ -103,6 +106,7 @@ public:
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }
 	inline SDL_AudioStatus get_audio_status() const { return SDL_GetAudioDeviceStatus(m_device); }
 	uint64_t get_buffer_read_avail_us() const;
+	size_t get_buffer_read_avail_fr() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
 
 	template <int Channels>
@@ -118,15 +122,15 @@ public:
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
 	void cmd_set_global_volume(float _volume);
-	void cmd_set_category_volume(MixerChannelCategory _cat, float _volume);
+	void cmd_set_category_volume(MixerChannel::Category _cat, float _volume);
 
 private:
 	void main_loop();
 	void open_audio_device(int _frequency, SDL_AudioFormat _format, int _channels, int _samples);
 	void close_audio_device();
-	size_t mix_channels(const std::vector<std::pair<MixerChannel*,bool>> &_channels, uint64_t _time_span_us);
-	void mix_channels(std::vector<float> &_buf, const std::vector<std::pair<MixerChannel*,bool>> &_channels, int _chcat, size_t _mixlen);
-	void send_packet(size_t _len);
+	void mix_channels(const std::vector<MixerChannel*> &_channels, double _audio_factor);
+	void mix_channels(std::vector<float> &_buf, const std::vector<MixerChannel*> &_channels, int _chcat, size_t _frames);
+	void limit_audio_data(const std::vector<MixerChannel*> &_channels, double _audio_factor);
 	void send_to_sinks(const std::vector<int16_t> &_data, int _category);
 	void start_capture();
 	void stop_capture();

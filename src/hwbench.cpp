@@ -32,8 +32,12 @@ HWBench::HWBench()
 Bench(),
 m_icount(0),
 m_ccount(0),
+m_virt_start(0),
+m_virt_end(0),
 avg_ips(.0),
-avg_cps(.0)
+avg_cps(.0),
+virt_frame_time(0),
+virt_speed_factor(1.0)
 {
 }
 
@@ -42,24 +46,45 @@ HWBench::~HWBench()
 {
 }
 
+void HWBench::start()
+{
+	Bench::start();
+	
+	virt_speed_factor = 0.0;
 
-void HWBench::frame_start()
+}
+
+void HWBench::frame_start(uint64_t _virt_ns)
 {
 	if(m_upd_reset) {
 		m_icount = 0;
 		m_ccount = 0;
 	}
+	m_virt_start = _virt_ns;
 	
 	Bench::frame_start();
+}
+
+void HWBench::frame_end(uint64_t _virt_ns)
+{
+	Bench::frame_end();
+	
+	m_virt_end = _virt_ns;
+	
+	virt_frame_time = m_virt_end - m_virt_start;
+	double v = double(virt_frame_time) / double(frame_time);
+	virt_speed_factor = virt_speed_factor + ( v - virt_speed_factor ) / 15.0;
 }
 
 void HWBench::reset_values()
 {
 	Bench::reset_values();
+	
 	m_icount = 0;
 	m_ccount = 0;
 	avg_ips = .0;
 	avg_cps = .0;
+	virt_frame_time = 0;
 }
 
 void HWBench::data_update()

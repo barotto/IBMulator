@@ -1696,7 +1696,7 @@ void VGA::horiz_disp_end(uint64_t _time)
 	// skip top blank area
 	if(m_renderer && m_s.scanline >= m_s.timings.vblank_skip) {
 		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_s.mem_addr_counter, m_line_data_buf[0]);
-		if(g_machine.speed_factor() < 1.0 || g_machine.is_paused()) {
+		if(g_machine.cycles_factor() < 1.0 || g_machine.is_paused()) {
 			m_display->set_fb_updated();
 		}
 	}

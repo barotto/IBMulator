@@ -23,7 +23,7 @@
 
 
 MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
-		const std::string &_name, int _id)
+		const std::string &_name, int _id, Category _cat)
 :
 m_mixer(_mixer),
 m_enabled(false),
@@ -33,12 +33,13 @@ m_update_clbk(_callback),
 m_disable_time(0),
 m_disable_timeout(0),
 m_first_update(true),
+m_last_time_span_ns(0),
 m_in_time(0),
 m_SRC_state(nullptr),
 m_new_data(true),
 m_capture_clbk([](bool){}),
 m_volume(1.f),
-m_category(MixerChannelCategory::AUDIO),
+m_category(_cat),
 m_fr_rem(0.0)
 {
 }
@@ -70,7 +71,7 @@ void MixerChannel::enable(bool _enabled)
 std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuffering)
 {
 	assert(m_update_clbk);
-
+	m_last_time_span_ns = _time_span_ns;
 	bool active=false,enabled=false;
 	if(m_enabled) {
 		bool first_upd = m_first_update;
@@ -82,6 +83,8 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuff
 		if(enabled || m_out_buffer.frames()>0) {
 			active = true;
 		}
+		PDEBUGF(LOG_V2, LOG_MIXER, "%s: updated, enabled=%d, active=%d\n",
+				m_name.c_str(), enabled, active);
 	} else {
 		enabled = false;
 		/* On the previous iteration the channel could have been disabled
@@ -323,10 +326,11 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 	// remove processed frames from input buffer
 	m_in_buffer.pop_frames(in_frames);
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%lluns): in: %d frames (%.2fus), out: %d frames (%.2fus)\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%lluns): in: %d frames (%.2fus), out: %d frames (%.2fus), rem: %.2f\n",
 			m_name.c_str(), _time_span_ns,
 			in_frames, m_in_buffer.spec().frames_to_us(in_frames),
-			m_out_buffer.frames(), m_out_buffer.duration_us());
+			m_out_buffer.frames(), m_out_buffer.duration_us(),
+			m_fr_rem);
 }
 
 bool MixerChannel::check_disable_time(uint64_t _now_ns)

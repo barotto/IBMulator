@@ -35,17 +35,18 @@ typedef std::function<bool(
 	)> MixerChannel_handler;
 
 
-enum class MixerChannelCategory
-{
-	AUDIO   = 0,
-	SOUNDFX = 1,
-	GUI     = 2,
-	
-	MAX
-};
-
 class MixerChannel
 {
+public:
+	enum Category
+	{
+		AUDIO   = 0,
+		SOUNDFX = 1,
+		GUI     = 2,
+		
+		MAX
+	};
+	
 private:
 	Mixer *m_mixer;
 	//enabling/disabling can be performed by the machine thread
@@ -56,6 +57,7 @@ private:
 	std::atomic<uint64_t> m_disable_time;
 	uint64_t m_disable_timeout;
 	bool m_first_update;
+	uint64_t m_last_time_span_ns;
 	AudioBuffer m_in_buffer;
 	AudioBuffer m_out_buffer;
 	uint64_t m_in_time;
@@ -63,12 +65,12 @@ private:
 	bool m_new_data;
 	std::function<void(bool)> m_capture_clbk;
 	float m_volume;
-	MixerChannelCategory m_category;
+	Category m_category;
 	double m_fr_rem;
 	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
 
 public:
-	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id);
+	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id, Category _cat);
 	~MixerChannel();
 
 	// The machine thread can call only these methods:
@@ -94,8 +96,7 @@ public:
 	void pop_out_frames(unsigned _count);
 	void flush();
 
-	void set_category(MixerChannelCategory _cat) { m_category = _cat; }
-	MixerChannelCategory category() const { return m_category; }
+	Category category() const { return m_category; }
 	void set_volume(float _vol) { m_volume = _vol; }
 	float volume() const { return m_volume; }
 	const char* name() const { return m_name.c_str(); }

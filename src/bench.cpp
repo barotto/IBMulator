@@ -31,6 +31,8 @@ Bench::Bench()
 :
 m_chrono(nullptr),
 
+m_heartbeat_fps(60.0),
+
 m_init_time(0),
 m_upd_interval(1e9),
 
@@ -55,7 +57,7 @@ m_upd_count(0),
 
 m_upd_reset(true),
 
-heartbeat(0),
+heartbeat(16666),
 
 time_elapsed(0),
 tot_frame_count(0),
@@ -97,6 +99,7 @@ void Bench::start()
 	m_init_time = m_chrono->get_nsec();
 	m_upd_start = m_init_time;
 	tot_frame_count = 0;
+	load = .0;
 	
 	reset_values();
 }
@@ -110,7 +113,9 @@ void Bench::set_heartbeat(int64_t _nsec)
 
 void Bench::reset_values()
 {
-	load = .0;
+	m_heartbeat_fps = (1.0e9 / heartbeat);
+	
+	avg_load = .0;
 	load_time = 0;
 	min_load_time = 0;
 	max_load_time = 0;
@@ -162,6 +167,9 @@ void Bench::frame_end()
 	m_max_load_time = std::max(load_time, m_max_load_time);
 	m_sum_load_time += load_time;
 
+	double l = double(load_time) / heartbeat;
+	load = load + ( l - load ) / (15.0);
+	
 	frame_time = m_frame_end - m_frame_start;
 	m_min_frame_time = std::min(frame_time, m_min_frame_time);
 	m_max_frame_time = std::max(frame_time, m_max_frame_time);
@@ -207,6 +215,6 @@ void Bench::data_update()
 	max_fps = 1.0e9 / min_load_time;
 	avg_fps = double(m_upd_frame_count) * 1.0e9 / updtime;
 	
-	load = avg_load_time / heartbeat;
+	avg_load = avg_load_time / heartbeat;
 }
 

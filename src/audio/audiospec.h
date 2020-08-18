@@ -32,19 +32,19 @@ enum AudioFormat
 	AUDIO_FORMAT_F32 = AUDIO_F32
 };
 
-inline double ns_to_frames(uint64_t _ns, double _rate) {
+inline double ns_to_frames(int64_t _ns, double _rate) {
 	return double(_ns) * (_rate / 1e9);
 }
 
-inline double us_to_frames(uint64_t _us, double _rate) {
+inline double us_to_frames(int64_t _us, double _rate) {
 	return double(_us) * (_rate / 1e6);
 }
 
-inline double ns_to_samples(uint64_t _ns, double _rate, unsigned _ch) {
+inline double ns_to_samples(int64_t _ns, double _rate, unsigned _ch) {
 	return ns_to_frames(_ns,_rate) * _ch;
 }
 
-inline double us_to_samples(uint64_t _us, double _rate, unsigned _ch) {
+inline double us_to_samples(int64_t _us, double _rate, unsigned _ch) {
 	return us_to_frames(_us,_rate) * _ch;
 }
 

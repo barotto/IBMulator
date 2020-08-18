@@ -49,7 +49,7 @@ void Synth::install(std::string _name, uint64_t _chtimeout_ns,
 	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
 		std::bind(&Synth::create_samples, this, _1, _2, _3),
-		m_name);
+		m_name, MixerChannel::Category::AUDIO);
 	m_channel->set_disable_timeout(_chtimeout_ns);
 	if(_capture) {
 		m_channel->register_capture_clbk(std::bind(

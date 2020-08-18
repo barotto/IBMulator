@@ -167,7 +167,7 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 			(_bench.min_load_time / 1e6) << "/" <<
 			(_bench.avg_load_time / 1e6) << "/" <<
 			(_bench.max_load_time / 1e6) << endline;
-	_os.precision(6);
+	_os.precision(3);
 	_os << "Host load: " << _bench.load << endline;
 	_os << "Late frames: " << _bench.late_frames << endline;
 
@@ -176,7 +176,8 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 	_os.precision(8);
 	_os << "CPU MHz: " << mhz << endline;
 	_os << "CPU MIPS: " << mips << endline;
-	
+	_os.precision(3);
+	_os << "CPU frame time (ns): " << _bench.virt_frame_time << " (" << _bench.virt_speed_factor << ")<br />";
 	uint64_t vtime = m_machine->get_virt_time_ns_mt();
 	_os << "CPU clock (ns): " <<  vtime << "<br />";
 	int64_t vdiff = _bench.time_elapsed - int64_t(vtime);

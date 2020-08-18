@@ -72,6 +72,7 @@ private:
 	double m_cpu_cycles;
 	uint m_cpu_cycle_time;
 	double m_cycles_factor;
+	std::atomic<double> m_vspeed_factor;
 
 	struct Timer {
 		bool        in_use;       // Timer slot is in-use (currently registered).
@@ -180,7 +181,8 @@ public:
 
 	inline bool is_on() const { return m_on; }
 	inline bool is_paused() const { return m_cpu_single_step; }
-	inline double speed_factor() const { return m_cycles_factor; }
+	inline double cycles_factor() const { return m_cycles_factor; }
+	inline double vspeed_factor() const { return m_vspeed_factor; }
 
 	//inter-thread commands:
 	void cmd_quit();

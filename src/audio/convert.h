@@ -32,9 +32,16 @@ namespace Convert
 			      T *_out, unsigned _out_size, double _out_rate);
 	
 	template<typename T>
+	unsigned resample_mono(
+			const T *_in, unsigned _in_samples,
+			      T *_out, unsigned _out_size,
+			      double _ratio);
+	
+	template<typename T>
 	unsigned resample_stereo(
-			const T *_in, unsigned _in_frames, double _in_rate,
-			      T *_out, unsigned _out_size, double _out_rate);
+			const T *_in, unsigned _in_frames,
+			      T *_out, unsigned _out_size,
+			      double _ratio);
 
 	
 }

@@ -51,7 +51,7 @@ void PCSpeaker::install()
 	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
 		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
-		name());
+		name(), MixerChannel::Category::AUDIO);
 	m_channel->set_disable_timeout(5_s);
 }
 

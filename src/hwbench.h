@@ -29,18 +29,25 @@
 class HWBench : public Bench
 {
 protected:
+
 	uint64_t m_icount;
 	uint64_t m_ccount;
+	uint64_t m_virt_start;
+	uint64_t m_virt_end;
 	
 public:
 	double avg_ips; // average CPU instructions per second
 	double avg_cps; // average CPU cycles per second
+	uint64_t virt_frame_time;
+	double virt_speed_factor;
 	
 	HWBench();
 	virtual ~HWBench();
 
+	void start();
 	void reset_values();
-	void frame_start();
+	void frame_start(uint64_t _virt_ns);
+	void frame_end(uint64_t _virt_ns);
 	
 	inline void cpu_step() { m_icount++; }
 	inline void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }

@@ -81,7 +81,7 @@ void PS1Audio::install()
 	using namespace std::placeholders;
 	m_dac.channel = g_mixer.register_channel(
 		std::bind(&PS1Audio::dac_create_samples, this, _1, _2, _3),
-		"PS/1 DAC");
+		"PS/1 DAC", MixerChannel::Category::AUDIO);
 	m_dac.channel->set_disable_timeout(3_s);
 	m_dac.state = DAC::State::STOPPED;
 	

@@ -133,7 +133,7 @@ void InterfaceScreen::sync_with_device()
 		if(
 			g_machine.is_on() && 
 			!g_machine.is_paused() && 
-			g_machine.speed_factor() >= 1.0 &&
+			g_machine.cycles_factor() >= 1.0 &&
 			g_machine.get_bench().load < 1.0
 		) {
 			try {
@@ -502,7 +502,7 @@ void Interface::switch_power()
 
 void Interface::set_audio_volume(float _volume)
 {
-	m_mixer->cmd_set_category_volume(MixerChannelCategory::AUDIO, _volume);
+	m_mixer->cmd_set_category_volume(MixerChannel::Category::AUDIO, _volume);
 }
 
 void Interface::set_video_brightness(float _level)

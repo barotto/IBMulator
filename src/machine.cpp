@@ -283,6 +283,7 @@ void Machine::config_changed()
 	g_devices.config_changed();
 
 	m_cycles_factor = 1.0;
+	m_vspeed_factor = 1.0;
 
 	set_heartbeat(DEFAULT_HEARTBEAT);
 
@@ -345,7 +346,8 @@ void Machine::run_loop()
 	m_bench.reset_values();
 	
 	while(true) {
-		m_bench.frame_start();
+		uint64_t vstart = m_s.virt_time;
+		m_bench.frame_start(vstart);
 		
 		uint64_t time_span = m_pacer.wait();
 
@@ -366,7 +368,12 @@ void Machine::run_loop()
 		core_step(cycles);
 		m_bench.cpu_cycles(cycles);
 
-		m_bench.frame_end();
+		uint64_t vend = m_s.virt_time;
+		double vframe_time = double(vend - vstart);
+		
+		m_bench.frame_end(vend);
+		
+		m_vspeed_factor = vframe_time / m_bench.frame_time;
 	}
 }
 
@@ -621,6 +628,7 @@ void Machine::unregister_irq(uint8_t _irq, const char *_name)
 	for(auto it = m_irq_names[_irq].begin(); it != m_irq_names[_irq].end(); it++) {
 		if(it->compare(_name) == 0) {
 			m_irq_names[_irq].erase(it);
+			PDEBUGF(LOG_V1, LOG_MACHINE, "removing '%s' from IRQ %d\n", _name, _irq);
 			return;
 		}
 	}
