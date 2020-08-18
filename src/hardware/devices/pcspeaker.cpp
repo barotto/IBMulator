@@ -308,7 +308,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 
 	if(chan_disable) {
 		m_s.level = 0.0;
-		m_channel->set_disable_time(NSEC_TO_USEC(pit_ticks*PIT_CLK_TIME));
+		m_channel->set_disable_time(pit_ticks*PIT_CLK_TIME);
 	}
 
 	m_last_time = pit_ticks;
