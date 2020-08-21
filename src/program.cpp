@@ -166,10 +166,10 @@ void Program::restore_state(
 		m_machine->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		m_mixer->sig_config_changed(ms_lock, ms_cv);
-		ms_cv.wait(restore_lock);
-
 		m_machine->cmd_restore_state(state, ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
+		
+		m_mixer->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
 		// we need to pause the syslog because it'll use the GUI otherwise

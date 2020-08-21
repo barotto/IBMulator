@@ -36,8 +36,11 @@ Mixer g_mixer;
 
 Mixer::Mixer()
 :
+m_mix_bufsize_fr(0),
 m_mix_bufsize_sa(0),
+m_mix_bufsize_by(0),
 m_start_time(0),
+m_prev_vtime(0),
 m_prebuffer_us(50000),
 m_prebuffer_fr(2400),
 m_machine(nullptr),
@@ -168,6 +171,8 @@ void Mixer::config_changed()
 		stop_capture();
 	}
 
+	m_prev_vtime = m_machine->get_virt_time_ns_mt();
+	
 	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	int prebuf_ms = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); // msec
 	m_prebuffer_us = prebuf_ms * 1000; // usec
@@ -232,6 +237,7 @@ void Mixer::start()
 {
 	m_quit = false;
 	m_start_time = 0;
+	m_prev_vtime = 0;
 	PDEBUGF(LOG_V1, LOG_MIXER, "Mixer thread started\n");
 	main_loop();
 }
@@ -267,16 +273,17 @@ void Mixer::main_loop()
 		active_channels.clear();
 		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
 		
-		uint64_t audio_time_ns = time_span_ns;
+		uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
+		uint64_t audio_time_ns = cur_vtime - m_prev_vtime;
+		m_prev_vtime = cur_vtime;
+		
 		double vfactor = 1.0; // machine's virtual time multiplier 
 		if(m_machine->is_on() &&
 		  (m_machine->get_bench().load > 0.9 || m_machine->cycles_factor() != 1.0))
 		{
 			vfactor = m_machine->vspeed_factor();
 			int vfactor_1000 = round(vfactor * 1000.0);
-			if(vfactor_1000 != 1000) {
-				audio_time_ns = round(vfactor * audio_time_ns);
-			} else {
+			if(vfactor_1000 == 1000) {
 				vfactor = 1.0;
 			}
 		}

@@ -55,7 +55,8 @@ private:
 	size_t m_mix_bufsize_by;
 	WAVFile m_wav;
 	int m_start_time;
-
+	uint64_t m_prev_vtime;
+	
 	uint64_t m_prebuffer_us;
 	size_t   m_prebuffer_fr;
 
