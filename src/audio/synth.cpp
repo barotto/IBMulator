@@ -119,7 +119,7 @@ unsigned Synth::generate(uint64_t _delta_ns)
 		m_channel->in().add_frames(m_buffer);
 	}
 	m_fr_rem += dframes - frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: frames needed:%.1f, generated:%d, rem:%.1f\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: frames needed:%.1f, generated:%d, rem:%.1f\n",
 			m_name.c_str(), dframes, frames, m_fr_rem);
 	return frames;
 }
@@ -136,7 +136,7 @@ bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 	next_event.time = 0;
 	bool empty = m_events.empty();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %d events\n", m_name.c_str(), m_events.size());
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: %d events\n", m_name.c_str(), m_events.size());
 	while(next_event.time < mtime_ns) {
 		empty = !m_events.try_and_copy(event);
 		if(empty || event.time > mtime_ns) {
@@ -152,7 +152,7 @@ bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 		}
 		m_last_time = 0;
 
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %02Xh <- %02Xh\n", m_name.c_str(), event.reg, event.value);
+		PDEBUGF(LOG_V2, LOG_MIXER, "%s: %02Xh <- %02Xh\n", m_name.c_str(), event.reg, event.value);
 		m_synthcmd_fn(event);
 
 		m_events.try_and_pop();
@@ -168,7 +168,7 @@ bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 	m_channel->input_finish();
 
 	double needed_frames = double(_time_span_ns) * m_buffer.rate()/1e9;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix %04llu nsecs, frames needed:%.1f, generated:%d\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: update: %04llu nsecs, frames needed: %.1f, generated: %d\n",
 			m_name.c_str(), _time_span_ns, needed_frames, generated_frames);
 
 	if(!empty) {

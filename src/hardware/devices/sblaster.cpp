@@ -1770,16 +1770,16 @@ void SBlaster::dsp_update_frequency()
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
 	
 	if(m_s.dac.period_ns != old_period) {
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: new rate=%.3f Hz, period=%d ns\n", short_name(),
-				m_s.dac.spec.rate, m_s.dac.period_ns);
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: old rate=%.3f Hz, new rate=%.3f Hz, period=%d ns\n", short_name(),
+				old_rate, m_s.dac.spec.rate, m_s.dac.period_ns);
 		if(m_s.dac.used) {
-			PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: resampling %u samples from %.3f Hz\n",
-					short_name(), m_s.dac.used, old_rate);
 			static std::array<uint8_t,DAC::BUFSIZE> tempbuf;
 			// TODO stereo, SB16
 			size_t generated = Audio::Convert::resample_mono<uint8_t>(
 					m_s.dac.data, m_s.dac.used, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
 			memcpy(m_s.dac.data, &tempbuf[0], generated);
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: resampled %u samples at %.3f Hz, to %d samples at %.3f Hz\n",
+					short_name(), m_s.dac.used, old_rate, generated, m_s.dac.spec.rate);
 			m_s.dac.used = generated;
 		}
 	}
@@ -1858,7 +1858,7 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	}
 	
 	unsigned total = pre_frames + dac_frames + post_frames;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: mix: %04llu ns, %.2f needed samples at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s DAC: update: %04llu ns, %.2f needed frames at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
 			short_name(), _time_span_ns, needed_frames, m_s.dac.spec.rate,
 			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
 	

@@ -519,7 +519,7 @@ bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	m_dac.channel->input_finish();
 
 	unsigned total = presamples + samples + postsamples;
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: mix time: %04llu ns, samples at %.2f Hz: %d+%d+%d (%.2f ns), balance: %.2f\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "PS/1 DAC: mix time: %04llu ns, samples at %.2f Hz: %d+%d+%d (%.2f ns), balance: %.2f\n",
 			_time_span_ns, m_dac.rate, presamples, samples, postsamples, frames_to_ns(total, m_dac.rate),
 			balance);
 

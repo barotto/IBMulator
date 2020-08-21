@@ -66,6 +66,7 @@ void Mixer::sdl_callback(void *userdata, Uint8 *stream, int len)
 {
 	Mixer * mixer = static_cast<Mixer*>(userdata);
 	size_t bytes = mixer->m_out_buffer.read(stream, len);
+	PDEBUGF(LOG_V2, LOG_MIXER, "Device buffer read: %d bytes\n", len);
 	if(bytes<unsigned(len)) {
 		/* buffer underrun is normal when the audio ring buffer is emptying and
 		 * channels are all disabled.
@@ -307,12 +308,12 @@ void Mixer::main_loop()
 				} else if(get_buffer_read_avail_us() >= m_prebuffer_us) {
 					// audio prebuffered enough, start output to audio device
 					SDL_PauseAudioDevice(m_device, 0);
-					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing (%d us elapsed, %d bytes/%d us of data)\n",
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing: %d us elapsed, %d bytes / %d us of data\n",
 						elapsed, m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 					m_start_time = 0;
 				} else {
 					// audio is currently prebuffering
-					PDEBUGF(LOG_V2, LOG_MIXER, "  buffer size: %d us\n", get_buffer_read_avail_us());
+					PDEBUGF(LOG_V2, LOG_MIXER, "Prebuffering, elapsed = %d us\n", elapsed);
 				}
 			} else if(m_audio_status == SDL_AUDIO_PLAYING) {
 				assert(m_start_time==0);
@@ -334,6 +335,8 @@ void Mixer::main_loop()
 					}
 				}
 			}
+			PDEBUGF(LOG_V2, LOG_MIXER, "  buffer size: %d bytes / %d us\n",
+					m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 		} else {
 			// there's no active channels
 			m_start_time = 0;
@@ -410,19 +413,20 @@ void Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, double _au
 	
 	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %d channels:\n", _channels.size());
 	for(auto ch : _channels) {
-		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames avail\n",
+		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames / %.0f us avail\n",
 				ch->name(),
 				ch->category()==MixerChannel::Category::AUDIO?"audio":
 					ch->category()==MixerChannel::Category::GUI?"GUI":
 						"soundfx",
-				ch->out().frames());
+				ch->out().frames(), ch->out().duration_us());
 	}
 	
 	int avail_us = get_buffer_read_avail_us();
 	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
-	PDEBUGF(LOG_V2, LOG_MIXER, "  buf.us: %d, req.frames: %.2f\n", avail_us, reqframes);
+	PDEBUGF(LOG_V2, LOG_MIXER, "  curr. buffer size: %d us, req. frames: %.2f\n", avail_us, reqframes);
 	
 	if(reqframes < 1.0) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "  no frames required, skipping mix.\n");
 		return;
 	}
 	int cat_count[MixerChannel::Category::MAX];

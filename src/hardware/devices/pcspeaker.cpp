@@ -211,7 +211,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 	double needed_frames = double(_time_span_ns) * m_outbuf.rate()/1e9;
 	size_t size = m_events.size();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "PC speaker: mix time: %04llu nsecs, samples: %.1f, evnts: %d, ",
+	PDEBUGF(LOG_V2, LOG_MIXER, "PC-Speaker: update: %04llu nsecs, samples: %.1f, evnts: %d, ",
 			_time_span_ns, needed_frames, size);
 
 	if(size==0 || m_events[0].ticks > pit_ticks) {
@@ -219,16 +219,16 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 		unsigned samples = unsigned(std::max(0, int(needed_frames + m_samples_rem)));
 		if(m_channel->check_disable_time(pit_ticks*PIT_CLK_TIME)) {
 			m_last_time = 0;
-			PDEBUGF(LOG_V2, LOG_AUDIO, "ch disable\n");
+			PDEBUGF(LOG_V2, LOG_MIXER, "ch disable\n");
 			return false;
 		} else if(m_last_time && samples) {
-			PDEBUGF(LOG_V2, LOG_AUDIO, "silence fill: %u samples", samples);
+			PDEBUGF(LOG_V2, LOG_MIXER, "silence fill: %u samples", samples);
 			m_channel->in().fill_samples<float>(samples, 0.0);
 		}
 		m_last_time = pit_ticks;
 		m_samples_rem += needed_frames - samples;
 		m_channel->input_finish();
-		PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
+		PDEBUGF(LOG_V2, LOG_MIXER, "\n");
 		return true;
 	}
 
@@ -242,7 +242,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 		//fill the gap
 		samples = m_events[0].ticks - m_last_time;
 		m_pitbuf.fill_samples<float>(samples, m_s.level);
-		PDEBUGF(LOG_V2, LOG_AUDIO, "pregap fill: %d, ", samples);
+		PDEBUGF(LOG_V2, LOG_MIXER, "pregap fill: %d, ", samples);
 	}
 
 	uint64_t evnts_begin = m_events[0].ticks;
@@ -281,14 +281,14 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 	bool chan_disable = m_events.empty();
 	m_mutex.unlock();
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "evnts len: %llu nsec, PIT ticks: %d, ",
+	PDEBUGF(LOG_V2, LOG_MIXER, "evnts len: %llu nsec, PIT ticks: %d, ",
 			(end - evnts_begin), m_pitbuf.frames());
 
 	if(end < pit_ticks) {
 		//fill the gap
 		samples = m_events[0].ticks - m_last_time;
 		m_pitbuf.fill_samples<float>(samples, m_s.level);
-		PDEBUGF(LOG_V2, LOG_AUDIO, "postgap fill: %d, ", samples);
+		PDEBUGF(LOG_V2, LOG_MIXER, "postgap fill: %d, ", samples);
 	}
 
 	// rate conversion from 1.193MHz to current speaker rate
@@ -303,7 +303,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 	m_samples_rem += needed_frames - m_outbuf.frames() + missing;
 	m_samples_rem = std::min(m_samples_rem, needed_frames);
 
-	PDEBUGF(LOG_V2, LOG_AUDIO, "audio samples: %d, remainder: %.1f\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "PC-Speaker: audio samples: %d, remainder: %.1f\n",
 			m_outbuf.frames(), m_samples_rem);
 
 	if(chan_disable) {
