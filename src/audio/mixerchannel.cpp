@@ -294,7 +294,8 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 	if(m_in_buffer.rate() != m_out_buffer.rate()) {
 		dest[bufidx].set_spec({AUDIO_FORMAT_F32, m_in_buffer.channels(), m_out_buffer.rate()});
 		unsigned missing = source->convert_rate(dest[bufidx], in_frames, m_SRC_state);
-		if(m_new_data && missing>0) {
+		if(m_new_data && missing>1) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "%s: adding %d samples\n", m_name.c_str(), missing);
 			m_out_buffer.hold_frames<float>(missing);
 		}
 		m_new_data = false;

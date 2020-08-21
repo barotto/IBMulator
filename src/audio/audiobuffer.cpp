@@ -287,6 +287,7 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 	srcdata.src_ratio = rate_ratio;
 	int srcresult;
 	if(_SRC != nullptr) {
+		src_set_ratio(_SRC, rate_ratio);
 		srcdata.end_of_input = 0;
 		srcresult = src_process(_SRC, &srcdata);
 	} else {
