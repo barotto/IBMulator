@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "convert.h"
+#include <cmath>
 
 namespace Audio
 {
@@ -31,7 +32,7 @@ unsigned resample_mono(
 		const T *_in, unsigned _in_samples, double _in_rate,
 		      T *_out, unsigned _out_size, double _out_rate)
 {
-	double rate_ratio = _in_rate / _out_rate;
+	double rate_ratio = _out_rate / _in_rate;
 	return resample_mono<T>(_in, _in_samples, _out, _out_size, rate_ratio);
 }
 
@@ -42,7 +43,7 @@ unsigned resample_mono(
 		      double _ratio)
 {
 	// _out_size is the capacity of _out in number of elements (samples)
-	unsigned out_samples = unsigned(double(_in_samples) * _ratio) + 1;
+	unsigned out_samples = size_t(ceil(double(_in_samples) * _ratio));
 	out_samples = std::min(out_samples, _out_size);
 	
 	double src_sample = 0;
@@ -70,7 +71,7 @@ unsigned resample_stereo(
 		      double _ratio)
 {
 	// _out_size is the capacity of _out in number of elements (samples)
-	unsigned out_frames = unsigned(double(_in_frames) * _ratio) + 1;
+	unsigned out_frames = size_t(ceil(double(_in_frames) * _ratio));
 	_out_size &= ~1; // it's stereo, so force the value even
 	out_frames = std::min(out_frames, _out_size/2);
 	
