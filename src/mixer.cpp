@@ -171,7 +171,7 @@ void Mixer::config_changed()
 		stop_capture();
 	}
 
-	m_prev_vtime = m_machine->get_virt_time_ns_mt();
+	m_prev_vtime = 0;
 	
 	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	int prebuf_ms = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); // msec
@@ -275,18 +275,22 @@ void Mixer::main_loop()
 		
 		uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
 		uint64_t audio_time_ns = cur_vtime - m_prev_vtime;
-		m_prev_vtime = cur_vtime;
-		
-		double vfactor = 1.0; // machine's virtual time multiplier 
+		double vfactor = m_machine->vspeed_factor(); // machine's virtual time multiplier 
+		if(m_prev_vtime == 0) {
+			audio_time_ns = time_span_ns * vfactor;
+		}
 		if(m_machine->is_on() &&
 		  (m_machine->get_bench().load > 0.9 || m_machine->cycles_factor() != 1.0))
 		{
-			vfactor = m_machine->vspeed_factor();
 			int vfactor_1000 = round(vfactor * 1000.0);
 			if(vfactor_1000 == 1000) {
 				vfactor = 1.0;
 			}
+		} else {
+			vfactor = 1.0;
 		}
+		m_prev_vtime = cur_vtime;
+
 		for(auto ch : m_mix_channels) {
 			bool active,enabled;
 			uint64_t time_ns = time_span_ns;
