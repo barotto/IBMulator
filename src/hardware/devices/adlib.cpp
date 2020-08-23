@@ -49,8 +49,8 @@ void AdLib::install()
 			m_OPL.write(1, _event.value);
 			Synth::capture_command(0x5A, _event);
 		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_OPL.generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
+		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+			m_OPL.generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 1);
 		},
 		[this](bool _start, VGMFile& _vgm) {
 			if(_start) {

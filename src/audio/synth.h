@@ -50,7 +50,7 @@ public:
 	};
 
 	typedef std::function<void(Event&)> synthfunc_t;
-	typedef std::function<void(AudioBuffer&,int)> genfunc_t;
+	typedef std::function<void(AudioBuffer&,int,int)> genfunc_t;
 	typedef std::function<void(bool, VGMFile&)> captfunc_t;
 
 private:
@@ -60,10 +60,11 @@ private:
 	int         m_rate;
 	double      m_frames_per_ns;
 	uint64_t    m_last_time;
+	bool        m_new_data;
 	VGMFile     m_vgm;
 	std::mutex  m_evt_lock;
 	shared_deque<Event> m_events;
-	AudioBuffer m_buffer;
+	//AudioBuffer m_buffer;
 	double      m_fr_rem;
 	synthfunc_t m_synthcmd_fn;
 	genfunc_t   m_generate_fn;
@@ -105,7 +106,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
-	unsigned generate(uint64_t _delta_ns);
+	unsigned generate(AudioBuffer &_outbuffer, uint64_t _delta_ns);
 	bool is_silent();
 	void on_capture(bool _start);
 };

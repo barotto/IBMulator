@@ -69,7 +69,7 @@ public:
 	template<typename T> unsigned fill_samples(unsigned _samples, T _value);
 	template<typename T> unsigned fill_samples_us(uint64_t _duration_us, T _value);
 	template<typename T> unsigned fill_frames(unsigned _frames, T _value[]);
-	unsigned fill_frames_silence(unsigned _samples);
+	unsigned fill_frames_silence(unsigned _frames);
 	unsigned fill_samples_silence(unsigned _samples);
 	unsigned fill_us_silence(uint64_t _duration_us);
 	unsigned fill_ns_silence(uint64_t _duration_ns);

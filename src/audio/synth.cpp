@@ -29,6 +29,7 @@ m_chips{nullptr,nullptr},
 m_rate(0),
 m_frames_per_ns(0),
 m_last_time(0),
+m_new_data(true),
 m_fr_rem(0.0),
 m_synthcmd_fn(nullptr),
 m_generate_fn(nullptr),
@@ -73,7 +74,6 @@ void Synth::reset()
 	std::lock_guard<std::mutex> lock(m_evt_lock);
 	m_channel->enable(false);
 	m_events.clear();
-	m_buffer.clear();
 	m_fr_rem = 0.0;
 	if(m_chips[0]) {
 		m_chips[0]->reset();
@@ -91,7 +91,6 @@ void Synth::power_off()
 void Synth::config_changed(const AudioSpec &_spec, float _volume, std::string _filters)
 {
 	m_channel->set_in_spec(_spec);
-	m_buffer.set_spec(_spec);
 	m_frames_per_ns = _spec.rate / 1e9;
 	if(m_chips[0]) {
 		m_chips[0]->config_changed(_spec.rate);
@@ -109,14 +108,16 @@ void Synth::set_chip(int _id, SynthChip *_chip)
 	m_chips[_id] = _chip;
 }
 
-unsigned Synth::generate(uint64_t _delta_ns)
+unsigned Synth::generate(AudioBuffer &_outbuffer, uint64_t _delta_ns)
 {
+	// called by the Mixer thread
+	
 	double dframes = m_frames_per_ns * _delta_ns;
 	int frames = round(dframes + m_fr_rem);
 	if(frames > 0) {
-		m_buffer.resize_frames(frames);
-		m_generate_fn(m_buffer, frames);
-		m_channel->in().add_frames(m_buffer);
+		unsigned f = _outbuffer.frames();
+		_outbuffer.resize_frames(f + frames);
+		m_generate_fn(_outbuffer, f * _outbuffer.spec().channels, frames);
 	}
 	m_fr_rem += dframes - frames;
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s: frames needed:%.1f, generated:%d, rem:%.1f\n",
@@ -126,7 +127,9 @@ unsigned Synth::generate(uint64_t _delta_ns)
 
 bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 {
-	//this lock is to prevent a sudden queue clear on reset
+	// called by the Mixer thread
+	
+	// this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_evt_lock);
 
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
@@ -135,20 +138,26 @@ bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 	unsigned generated_frames = 0;
 	next_event.time = 0;
 	bool empty = m_events.empty();
-
+	double needed_frames = double(_time_span_ns) * m_channel->in_spec().rate/1e9;
+	
+	static AudioBuffer outbuffer;
+	outbuffer.set_spec(m_channel->in_spec());
+	
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s: %d events\n", m_name.c_str(), m_events.size());
 	while(next_event.time < mtime_ns) {
 		empty = !m_events.try_and_copy(event);
 		if(empty || event.time > mtime_ns) {
 			if(is_silent() && m_channel->check_disable_time(mtime_ns)) {
 				m_last_time = 0;
+				PDEBUGF(LOG_V1, LOG_MIXER, "%s: exiting with %d samples without finishing...\n",
+						m_name.c_str(), generated_frames);
 				return false;
 			} else if(m_last_time) {
-				generated_frames += generate(mtime_ns - m_last_time);
+				generated_frames += generate(outbuffer, mtime_ns - m_last_time);
 			}
 			break;
 		} else if(m_last_time) {
-			generated_frames += generate(event.time - m_last_time);
+			generated_frames += generate(outbuffer, event.time - m_last_time);
 		}
 		m_last_time = 0;
 
@@ -161,15 +170,22 @@ bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
 			next_event.time = mtime_ns;
 		}
 		if(next_event.time > event.time) {
-			generated_frames += generate(next_event.time - event.time);
+			generated_frames += generate(outbuffer, next_event.time - event.time);
 		}
 	}
 	m_last_time = mtime_ns;
+	int preframes = needed_frames - generated_frames;
+	if(m_new_data && preframes > 0) {
+		m_channel->in().fill_frames_silence(preframes);
+	} else {
+		preframes = 0;
+	}
+	m_new_data = false;
+	m_channel->in().add_frames(outbuffer);
 	m_channel->input_finish();
 
-	double needed_frames = double(_time_span_ns) * m_buffer.rate()/1e9;
-	PDEBUGF(LOG_V2, LOG_MIXER, "%s: update: %04llu nsecs, frames needed: %.1f, generated: %d\n",
-			m_name.c_str(), _time_span_ns, needed_frames, generated_frames);
+	PDEBUGF(LOG_V2, LOG_MIXER, "%s: update: %04llu nsecs, frames needed: %.1f, generated: %d+%d\n",
+			m_name.c_str(), _time_span_ns, needed_frames, preframes, generated_frames);
 
 	if(!empty) {
 		m_channel->set_disable_time(mtime_ns);
@@ -279,6 +295,7 @@ void Synth::enable_channel()
 {
 	if(!m_channel->is_enabled()) {
 		m_last_time = 0;
+		m_new_data = true;
 		m_channel->enable(true);
 		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: enabled\n", m_name.c_str());
 	}

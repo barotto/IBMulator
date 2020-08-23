@@ -299,8 +299,8 @@ void SBlaster::install()
 			m_OPL[0].write(1, _event.value);
 			capture_command(0x5A, _event);
 		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(0), _frames, 1);
+		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 1);
 		},
 		[this](bool _start, VGMFile& _vgm) {
 			if(_start) {
@@ -332,9 +332,9 @@ void SBlasterPro::install()
 			m_OPL[_event.chip].write(1, _event.value);
 			capture_command(0x5A + 0x50*_event.chip, _event);
 		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(0), _frames, 2); // left
-			m_OPL[1].generate(&_buffer.operator[]<int16_t>(1), _frames, 2); // right
+		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset  ), _frames, 2); // left
+			m_OPL[1].generate(&_buffer.operator[]<int16_t>(_sample_offset+1), _frames, 2); // right
 		},
 		[this](bool _start, VGMFile& _vgm) {
 			if(_start) {
@@ -365,8 +365,8 @@ void SBlasterPro2::install()
 			m_OPL[0].write(_event.value_port, _event.value);
 			capture_command(0x5E + (_event.reg_port>>1), _event);
 		},
-		[this](AudioBuffer &_buffer, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(0), _frames, 2);
+		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 2);
 		},
 		[this](bool _start, VGMFile& _vgm) {
 			if(_start) {
