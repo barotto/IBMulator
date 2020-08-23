@@ -867,6 +867,7 @@ void SBlaster::restore_state(StateBuf &_state)
 	if(m_s.dac.state != DAC::State::STOPPED || m_s.dac.used != 0) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "  DSP mode:%d, DAC state:%d,%d\n", short_name(),
 				m_s.dsp.mode, m_s.dac.state, m_s.dac.used);
+		m_s.dac.newdata = true;
 		m_dac_channel->enable(true);
 	}
 }
@@ -1832,14 +1833,8 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	}
 
 	if(dac_frames > 0) {
+		// TODO FIXME for stereo use only complete frames
 		m_dac_channel->in().add_samples(m_s.dac.data, m_s.dac.used);
-		//TODO remove this
-		if(m_s.dac.spec.channels == 1) {
-			m_s.dac.last_value[0] = m_s.dac.data[m_s.dac.used-1];
-		} else {
-			m_s.dac.last_value[0] = m_s.dac.data[m_s.dac.used-2];
-			m_s.dac.last_value[1] = m_s.dac.data[m_s.dac.used-1];
-		}
 		m_s.dac.used = 0;
 		m_dac_channel->set_disable_time(mtime_ns);
 		balance += dac_frames;
