@@ -194,8 +194,8 @@ to experiment.
 * CTRL+F8: save current state
 * CTRL+F9: load last state
 * CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method, see ini file)
-* CTRL+F11: CPU emulation speed down
-* CTRL+F12: CPU emulation speed up
+* CTRL+F11: emulation speed down
+* CTRL+F12: emulation speed up
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
@@ -206,8 +206,8 @@ to experiment.
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
 
-CTRL+F11 and CTRL+F12 change the speed at which the CPU emulation is performed,
-not its frequency. This is equivalent to warping time.
+CTRL+F11 and CTRL+F12 change the speed at which the emulation of the entire
+machine is performed. This is equivalent to warping time.
 
 ### Command line options
 

@@ -50,6 +50,8 @@ m_on(false),
 m_cpu_single_step(false),
 m_breakpoint_cs(0),
 m_breakpoint_eip(0),
+m_cycles_factor(1.0),
+m_vspeed_factor(1.0),
 m_mouse_fun(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
@@ -281,9 +283,6 @@ void Machine::config_changed()
 	m_sysrom.config_changed();
 	g_memory.config_changed();
 	g_devices.config_changed();
-
-	m_cycles_factor = 1.0;
-	m_vspeed_factor = 1.0;
 
 	set_heartbeat(DEFAULT_HEARTBEAT);
 
@@ -730,7 +729,8 @@ void Machine::cmd_pause()
 	m_cmd_queue.push([this] () {
 		if(!m_cpu_single_step) {
 			pause();
-			PINFOF(LOG_V0, LOG_MACHINE, "emulation paused\n");
+			PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
+			GUI::instance()->show_message("Emulation paused");
 		}
 	});
 }
@@ -740,7 +740,8 @@ void Machine::cmd_resume()
 	m_cmd_queue.push([this] () {
 		if(m_cpu_single_step) {
 			resume();
-			PINFOF(LOG_V0, LOG_MACHINE, "emulation resumed\n");
+			PINFOF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
+			GUI::instance()->show_message("Emulation resumed");
 		}
 	});
 }
@@ -812,8 +813,11 @@ void Machine::cmd_cycles_adjust(double _factor)
 	m_cmd_queue.push([=] () {
 		m_cycles_factor = _factor;
 		std::stringstream ss;
-		ss << "emulation speed at " << std::setprecision(3) << (_factor*100.f) << "%";
+		ss << "Emulation speed at ";
+		ss << std::setprecision(3);
+		ss << (_factor * 100.f) << "%";
 		PINFOF(LOG_V0, LOG_MACHINE, "%s\n", ss.str().c_str());
+		PDEBUGF(LOG_V0, LOG_MACHINE, "%f cycles per beat\n", m_cpu_cycles * m_cycles_factor);
 		GUI::instance()->show_message(ss.str().c_str());
 	});
 }

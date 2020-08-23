@@ -481,26 +481,39 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 				case SDLK_F11: {
 					//emulation speed down
 					if(_event.type == SDL_KEYUP) return true;
-					m_symspeed_factor *= 0.9;
-					if(m_symspeed_factor<1.0 && m_symspeed_factor>0.95) {
-						m_symspeed_factor = 1.0;
-					} else if(m_symspeed_factor<0.0000001) {
-						m_symspeed_factor = 0.0;
-						m_machine->cmd_pause();
+					double factor = m_symspeed_factor / 1.1;
+					if(factor > 0.91 && factor < 1.09) {
+						factor = 1.0;
+						if(_event.key.repeat) {
+							m_machine->cmd_cycles_adjust(factor);
+							return true;
+						}
 					}
-					m_machine->cmd_cycles_adjust(m_symspeed_factor);
+					if(factor < 0.00002) {
+						m_machine->cmd_pause();
+					} else {
+						m_symspeed_factor = factor;
+						m_machine->cmd_cycles_adjust(m_symspeed_factor);
+					}
 					return true;
 				}
 				case SDLK_F12: {
 					//emulation speed up
 					if(_event.type == SDL_KEYUP) return true;
-					m_symspeed_factor *= 1.1;
-					if(m_symspeed_factor>1.0 && m_symspeed_factor<1.1) {
-						m_symspeed_factor = 1.0;
-					} else if(m_symspeed_factor>2.0) {
-						m_symspeed_factor = 2.0;
+					double factor = m_symspeed_factor * 1.1;
+					if(factor > 0.91 && factor < 1.09) {
+						factor = 1.0;
+						if(_event.key.repeat) {
+							m_machine->cmd_cycles_adjust(factor);
+							return true;
+						}
 					}
-					m_machine->cmd_cycles_adjust(m_symspeed_factor);
+					if(factor < 5.0) {
+						m_symspeed_factor = factor;
+						m_machine->cmd_cycles_adjust(m_symspeed_factor);
+					} else {
+						m_machine->cmd_cycles_adjust(5.0);
+					}
 					return true;
 				}
 				case SDLK_DELETE: {
