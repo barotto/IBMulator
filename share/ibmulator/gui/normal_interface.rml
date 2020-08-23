@@ -187,7 +187,7 @@
 				padding: 1em;
 				text-align: center;
 				font-size: 12px;
-				background-color: #383938FF;
+				background-color: #383938AA;
 				visibility: hidden;
 			}
 		</style>
@@ -212,8 +212,8 @@
 			</div>
 			
 			<div id="warning"></div>
-			<div id="message"></div>
 		</div>
+		<div id="message"></div>
 
 	</body>
 </rml>

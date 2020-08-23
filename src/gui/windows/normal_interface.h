@@ -47,6 +47,9 @@ public:
 	void container_size_changed(int _width, int _height);
 
 	void action(int);
+	bool is_system_visible();
+	void hide_system();
+	void show_system();	
 	
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 

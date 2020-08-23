@@ -225,12 +225,27 @@ void NormalInterface::update()
 void NormalInterface::action(int)
 {
 	if(m_gui_mode == GUI_MODE_COMPACT) {
-		if(is_visible()) {
-			hide();
+		if(is_system_visible()) {
+			hide_system();
 		} else {
-			show();
+			show_system();
 		}
 	}
+}
+
+bool NormalInterface::is_system_visible()
+{
+	return (m_sysunit->GetProperty("visibility")->ToString() != "hidden");
+}
+
+void NormalInterface::hide_system()
+{
+	m_sysunit->SetProperty("visibility", "hidden");
+}
+
+void NormalInterface::show_system()
+{
+	m_sysunit->SetProperty("visibility", "visible");
 }
 
 void NormalInterface::on_pause(RC::Event &)

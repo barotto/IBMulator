@@ -387,7 +387,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 							std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 							m_windows.interface->action(0);
 							m_windows.interface->container_size_changed(m_width, m_height);
-							if(m_mode == GUI_MODE_COMPACT && m_windows.interface->is_visible()) {
+							if(m_mode == GUI_MODE_COMPACT &&
+							  dynamic_cast<NormalInterface*>(m_windows.interface)->is_system_visible())
+							{
 								input_grab(false);
 							}
 						}
@@ -469,9 +471,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					toggle_input_grab();
 					if(m_mode == GUI_MODE_COMPACT) {
 						if(m_input_grab) {
-							m_windows.interface->hide();
+							dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
 						} else {
-							m_windows.interface->show();
+							dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
 						}
 					}
 					return true;
@@ -569,9 +571,9 @@ bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_n
 					toggle_input_grab();
 					if(m_mode == GUI_MODE_COMPACT) {
 						if(m_input_grab) {
-							m_windows.interface->hide();
+							dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
 						} else {
-							m_windows.interface->show();
+							dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
 						}
 					}
 					return true;
