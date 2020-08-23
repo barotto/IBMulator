@@ -514,14 +514,12 @@ void SBlaster::dsp_reset()
 	
 	// reset the DAC
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
-	m_s.dac.change_format(AUDIO_FORMAT_U8);
 	m_s.dac.spec.channels = 1;
 	dsp_update_frequency();
+	dac_set_state(DAC::State::STOPPED);
+	m_s.dac.change_format(AUDIO_FORMAT_U8);
 	m_s.dac.speaker = false;
 	m_s.dac.irq_count = 0;
-	m_s.dac.state = DAC::State::STOPPED;
-	g_machine.deactivate_timer(m_dac_timer);
-	m_dac_channel->enable(false);
 	m_dac_channel->set_volume(.0f);
 }
 
