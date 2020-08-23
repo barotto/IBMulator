@@ -305,7 +305,7 @@ void Mixer::main_loop()
 
 		if(!active_channels.empty()) {
 
-			mix_channels(active_channels, vfactor);
+			mix_channels(time_span_ns, active_channels, vfactor);
 			
 			// TODO this is a HACK
 			limit_audio_data(active_channels, vfactor);
@@ -417,7 +417,7 @@ void Mixer::close_audio_device()
 	}
 }
 
-void Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, double _audio_factor)
+void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels, double _audio_factor)
 {
 	assert(!_channels.empty());
 	assert(_audio_factor != 0.0);
@@ -434,6 +434,8 @@ void Mixer::mix_channels(const std::vector<MixerChannel*> &_channels, double _au
 	
 	int avail_us = get_buffer_read_avail_us();
 	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
+	double treqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq);
+	reqframes = std::max(reqframes, treqframes);
 	PDEBUGF(LOG_V2, LOG_MIXER, "  curr. buffer size: %d us, req. frames: %.2f\n", avail_us, reqframes);
 	
 	if(reqframes < 1.0) {
