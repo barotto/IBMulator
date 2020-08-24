@@ -100,9 +100,7 @@ void Capture::cmd_quit()
 {
 	m_cmd_queue.push([this] () {
 		m_quit = true;
-		if(m_recording) {
-			stop_capture();
-		}
+		assert(!m_recording);
 	});
 }
 
@@ -123,7 +121,20 @@ void Capture::cmd_start_capture()
 void Capture::cmd_stop_capture()
 {
 	m_cmd_queue.push([this] () {
-		stop_capture();
+		if(m_recording) {
+			stop_capture();
+		}
+	});
+}
+
+void Capture::cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&] () {
+		std::unique_lock<std::mutex> lock(_mutex);
+		if(m_recording) {
+			stop_capture();
+		}
+		_cv.notify_one();
 	});
 }
 

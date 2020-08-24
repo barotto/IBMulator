@@ -160,9 +160,11 @@ void Program::restore_state(
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
-		// mixer pause cmd is issued by the machine
 		m_machine->cmd_pause();
-
+		
+		m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
+		
 		m_machine->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
@@ -558,20 +560,34 @@ void Program::main_loop()
 
 void Program::start()
 {
-	PDEBUGF(LOG_V1, LOG_PROGRAM, "Program thread started\n");
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "Program thread started\n");
 	std::thread machine(&Machine::start,m_machine);
 	std::thread mixer(&Mixer::start,m_mixer);
 
 	main_loop();
 
+	std::unique_lock<std::mutex> lock(ms_lock);
+	
 	m_machine->cmd_power_off();
+
+	// Capture thread needs Mixer and Machine to be alive when stopping
+	m_gui->cmd_stop_capture_and_signal(ms_lock, ms_cv);
+	ms_cv.wait(lock);
+	
+	// Mixer needs Machine to be alive when stopping capture
+	m_mixer->cmd_stop_capture();
+	// Wait for the Mixer to stop accesing its channels
+	m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
+	ms_cv.wait(lock);
+	
+	// Now it's safe to destroy the Machine and all its devices
 	m_machine->cmd_quit();
 	machine.join();
-	PDEBUGF(LOG_V1, LOG_PROGRAM, "Machine thread stopped\n");
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "Machine thread stopped\n");
 
 	m_mixer->cmd_quit();
 	mixer.join();
-	PDEBUGF(LOG_V1, LOG_PROGRAM, "Mixer thread stopped\n");
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "Mixer thread stopped\n");
 
 	m_gui->shutdown();
 }

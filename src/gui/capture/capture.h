@@ -65,6 +65,7 @@ public:
 	void cmd_quit();
 	void cmd_start_capture();
 	void cmd_stop_capture();
+	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_toggle_capture();
 	
 private:

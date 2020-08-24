@@ -991,6 +991,11 @@ void GUI::shutdown_SDL()
 	SDL_VideoQuit();
 }
 
+void GUI::cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_capture->cmd_stop_capture_and_signal(_mutex, _cv);
+}
+
 void GUI::shutdown()
 {
 	m_capture->cmd_quit();

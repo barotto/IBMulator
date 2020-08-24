@@ -230,6 +230,7 @@ public:
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
+	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	
 	RC::ElementDocument * load_document(const std::string &_filename);
 	static std::string shaders_dir();

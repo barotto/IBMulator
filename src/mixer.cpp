@@ -871,14 +871,30 @@ std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters(double _rate, st
 template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<1>(double _rate, std::string _filters_def);
 template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<2>(double _rate, std::string _filters_def);
 
-void Mixer::cmd_pause()
+void Mixer::pause()
 {
-	m_cmd_queue.push([this] () {
+	if(!m_paused) {
 		m_paused = true;
 		if(m_device && m_audio_status==SDL_AUDIO_PLAYING) {
 			SDL_PauseAudioDevice(m_device, 1);
 		}
-		PDEBUGF(LOG_V1, LOG_MIXER, "Mixing paused\n");
+		PDEBUGF(LOG_V0, LOG_MIXER, "Mixer paused\n");
+	}
+}
+
+void Mixer::cmd_pause()
+{
+	m_cmd_queue.push([this] () {
+		pause();
+	});
+}
+
+void Mixer::cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&](){
+		std::unique_lock<std::mutex> lock(_mutex);
+		pause();
+		_cv.notify_one();
 	});
 }
 
@@ -901,11 +917,9 @@ void Mixer::cmd_resume()
 void Mixer::cmd_quit()
 {
 	m_cmd_queue.push([this] () {
+		assert(!m_audio_capture);
 		m_paused = false;
 		m_quit = true;
-		if(m_audio_capture) {
-			stop_capture();
-		}
 		close_audio_device();
 		SDL_AudioQuit();
 	});
@@ -921,7 +935,9 @@ void Mixer::cmd_start_capture()
 void Mixer::cmd_stop_capture()
 {
 	m_cmd_queue.push([this] () {
-		stop_capture();
+		if(m_audio_capture) {
+			stop_capture();
+		}
 	});
 }
 

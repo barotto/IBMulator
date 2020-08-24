@@ -118,6 +118,7 @@ public:
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_pause();
+	void cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_resume();
 	void cmd_start_capture();
 	void cmd_stop_capture();
@@ -127,6 +128,7 @@ public:
 
 private:
 	void main_loop();
+	void pause();
 	void open_audio_device(int _frequency, SDL_AudioFormat _format, int _channels, int _samples);
 	void close_audio_device();
 	void mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels, double _audio_factor);
