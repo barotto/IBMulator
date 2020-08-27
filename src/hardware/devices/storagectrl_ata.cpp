@@ -548,7 +548,8 @@ uint16_t StorageCtrl_ATA::read(uint16_t _address, unsigned _len)
 	if(channel == ATA_MAX_CHANNEL) {
 		channel = 0;
 		if((_address < 0x03f6) || (_address > 0x03f7)) {
-			PERRF_ABORT(LOG_HDD, "unable to find ATA channel\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "channel not present\n");
+			return ~0;
 		} else {
 			port = _address - 0x03e0;
 		}
@@ -823,7 +824,8 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 	}
 	if(channel == ATA_MAX_CHANNEL) {
 		if(_address != 0x03f6) {
-			PERRF_ABORT(LOG_HDD, "unable to find ATA channel\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "channel not present\n");
+			return;
 		} else {
 			channel = 0;
 			port = _address - 0x03e0;
