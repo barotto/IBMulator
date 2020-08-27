@@ -40,11 +40,11 @@ vec2 Warp(vec2 pos, vec2 warp_amount)
 
 void main()
 {
-	vec2 pos = Warp(UV, warp);
+	vec2 pos = Warp(UV * (convergence*2.0 + 1.0) - convergence, warp);
 	float chabx = clamp(abs(pos.x*2.0 - 1.0) + 0.5, 0.0, 1.0) * convergence;
-	vec2 rOffset = vec2(0.0*chabx,0.0);
-	vec2 gOffset = vec2(1.0*chabx,0.0);
-	vec2 bOffset = vec2(2.0*chabx,0.0);
+	vec2 rOffset = vec2(-1.0*chabx, 0.0);
+	vec2 gOffset = vec2( 0.0*chabx, 0.0);
+	vec2 bOffset = vec2( 1.0*chabx, 0.0);
 	
 	vec4 red = FetchTexel(iVGAMap, pos - rOffset);
 	float rValue = ToLinear(red.rgb).r;
