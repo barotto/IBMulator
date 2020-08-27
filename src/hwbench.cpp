@@ -37,7 +37,8 @@ m_virt_end(0),
 avg_ips(.0),
 avg_cps(.0),
 virt_frame_time(0),
-virt_speed_factor(1.0)
+vtime_ratio(1.0),
+cavg_vtime_ratio(1.0)
 {
 }
 
@@ -50,8 +51,8 @@ void HWBench::start()
 {
 	Bench::start();
 	
-	virt_speed_factor = 0.0;
-
+	vtime_ratio = 1.0;
+	cavg_vtime_ratio = 1.0;
 }
 
 void HWBench::frame_start(uint64_t _virt_ns)
@@ -72,8 +73,14 @@ void HWBench::frame_end(uint64_t _virt_ns)
 	m_virt_end = _virt_ns;
 	
 	virt_frame_time = m_virt_end - m_virt_start;
-	double v = double(virt_frame_time) / double(frame_time);
-	virt_speed_factor = virt_speed_factor + ( v - virt_speed_factor ) / 15.0;
+	vtime_ratio = double(virt_frame_time) / double(frame_time);
+	cavg_vtime_ratio = cavg_vtime_ratio + ( vtime_ratio - cavg_vtime_ratio ) / 60.0;
+}
+
+bool HWBench::is_stressed()
+{
+	int vtime_ratio_1000 = round(cavg_vtime_ratio * 1000.0);
+	return (load > 0.95 && vtime_ratio_1000 < 999);
 }
 
 void HWBench::reset_values()

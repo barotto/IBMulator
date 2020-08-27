@@ -274,20 +274,15 @@ void Mixer::main_loop()
 		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
 		
 		uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
+		double vtime_ratio = m_machine->vtime_ratio();
 		uint64_t audio_time_ns = cur_vtime - m_prev_vtime;
-		double vfactor = m_machine->vspeed_factor(); // machine's virtual time multiplier 
 		if(m_prev_vtime == 0) {
-			audio_time_ns = time_span_ns * vfactor;
+			audio_time_ns = time_span_ns * vtime_ratio;
 		}
-		if(m_machine->is_on() &&
-		  (m_machine->get_bench().load > 0.9 || m_machine->cycles_factor() != 1.0))
+		if(!m_machine->is_on() ||
+		  (m_machine->cycles_factor() == 1.0 && !m_machine->get_bench().is_stressed()))
 		{
-			int vfactor_1000 = round(vfactor * 1000.0);
-			if(vfactor_1000 == 1000) {
-				vfactor = 1.0;
-			}
-		} else {
-			vfactor = 1.0;
+			vtime_ratio = 1.0;
 		}
 		m_prev_vtime = cur_vtime;
 
@@ -305,10 +300,9 @@ void Mixer::main_loop()
 
 		if(!active_channels.empty()) {
 
-			mix_channels(time_span_ns, active_channels, vfactor);
+			mix_channels(time_span_ns, active_channels, vtime_ratio);
 			
-			// TODO this is a HACK
-			limit_audio_data(active_channels, vfactor);
+			limit_audio_data(active_channels, vtime_ratio);
 			
 			if(m_audio_status == SDL_AUDIO_PAUSED) {
 				int elapsed = m_pacer.chrono().get_usec() - m_start_time;
@@ -417,10 +411,11 @@ void Mixer::close_audio_device()
 	}
 }
 
-void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels, double _audio_factor)
+void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels,
+		double _vtime_ratio)
 {
 	assert(!_channels.empty());
-	assert(_audio_factor != 0.0);
+	assert(_vtime_ratio != 0.0);
 	
 	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %d channels:\n", _channels.size());
 	for(auto ch : _channels) {
@@ -453,24 +448,24 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	for(auto ch : _channels) {
 		size_t chframes = ch->out().frames();
 		if(ch->category() == MixerChannel::Category::AUDIO) {
-			chframes = size_t(ceil(double(chframes) / _audio_factor));
+			chframes = size_t(ceil(double(chframes) / _vtime_ratio));
 		}
 		cat_count[ch->category()]++;
 		chframes = std::min(size_t(reqframes), chframes);
 		frames = std::min(frames, chframes);
 	}
-	audio_frames = size_t(double(frames) * _audio_factor);
+	audio_frames = size_t(double(frames) * _vtime_ratio);
 	if(audio_frames > m_mix_bufsize_fr) {
 		// this shouldn't happen!
 		audio_frames = m_mix_bufsize_fr;
-		frames = audio_frames / _audio_factor;
+		frames = audio_frames / _vtime_ratio;
 		PDEBUGF(LOG_V0, LOG_MIXER, "mixing amount exceeded the available buffers size!\n");
 	}
 	size_t samples = frames * m_audio_spec.channels;
 	size_t audio_samples = audio_frames * m_audio_spec.channels;
 	
 	PDEBUGF(LOG_V2, LOG_MIXER, "  mixing frames: %d, samples: %d, AUDIO factor: %.3f\n",
-			frames, samples, _audio_factor);
+			frames, samples, _vtime_ratio);
 	
 	if(!frames) {
 		return;
@@ -502,18 +497,18 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 	
 	// stretch emulated audio cards channels to result size if necessary
-	if(cat_count[MixerChannel::Category::AUDIO] && _audio_factor != 1.0) {
+	if(cat_count[MixerChannel::Category::AUDIO] && _vtime_ratio != 1.0) {
 		static std::vector<float> atmpbuf;
 		atmpbuf.resize(samples);
 		size_t generated = 0;
 		if(m_audio_spec.channels == 1) {
 			generated = Audio::Convert::resample_mono<float>(
 				&m_ch_mix[MixerChannel::Category::AUDIO][0], audio_frames,
-				&atmpbuf[0], samples, 1.0/_audio_factor);
+				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		} else {
 			generated = Audio::Convert::resample_stereo<float>(
 				&m_ch_mix[MixerChannel::Category::AUDIO][0], audio_frames,
-				&atmpbuf[0], samples, 1.0/_audio_factor);
+				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		}
 		memcpy(&m_ch_mix[MixerChannel::Category::AUDIO][0], &atmpbuf[0], generated*sizeof(float));
 		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %d samples\n", generated);
@@ -552,16 +547,14 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 
 void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double _audio_factor)
 {
-	// TODO this is a hack.
 	// Sometimes samples accumulate in channels' output buffers causing delays.
-	// this happens for various reasons:
-	// 1. bugs
-	// 2. AUDIO and SOUNDFX channels are on different unsynchronized threads
+	// this happens because:
+	// 1. AUDIO and SOUNDFX channels are on different time domains
+	// 2. Machine (AUDIO) and Mixer are different and unsynchronized threads
 	// 3. Mixer works with arbitrary amount of data with no timestamps
-	// 4. bugs
-	// Probably one of the bugs is the audio stretching during mixing is not precise enough and when
-	// time varies wildly during high loads it ends up generating too many/few samples.
-	// This hack reads how much data there is on output buffers and equalizes the amount of samples
+	// 4. When load is high, the Machine can't run in real time and can't produce enough audio data 
+
+	// This function reads how much data there is on output buffers and equalizes the amount of samples
 	// This only works on non-AUDIO class channels, as AUDIO channels can't be trimmed.
 	
 	// step 1: determine how much data there is in channels of the AUDIO category.

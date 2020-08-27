@@ -177,7 +177,8 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 	_os << "CPU MHz: " << mhz << endline;
 	_os << "CPU MIPS: " << mips << endline;
 	_os.precision(3);
-	_os << "CPU frame time (ns): " << _bench.virt_frame_time << " (" << _bench.virt_speed_factor << ")<br />";
+	_os << "CPU frame time (ns): " << _bench.virt_frame_time << "<br />";
+	_os << "CPU time ratio: " << _bench.vtime_ratio << " - " << _bench.cavg_vtime_ratio << "<br />";
 	uint64_t vtime = m_machine->get_virt_time_ns_mt();
 	_os << "CPU clock (ns): " <<  vtime << "<br />";
 	int64_t vdiff = _bench.time_elapsed - int64_t(vtime);

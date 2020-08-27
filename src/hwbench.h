@@ -39,7 +39,8 @@ public:
 	double avg_ips; // average CPU instructions per second
 	double avg_cps; // average CPU cycles per second
 	uint64_t virt_frame_time;
-	double virt_speed_factor;
+	std::atomic<double> vtime_ratio;      // virtual/real speed ratio
+	std::atomic<double> cavg_vtime_ratio; // cumulative average of virtual/real time ratio over the last 60 frames
 	
 	HWBench();
 	virtual ~HWBench();
@@ -51,6 +52,8 @@ public:
 	
 	inline void cpu_step() { m_icount++; }
 	inline void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }
+	
+	bool is_stressed();
 	
 protected:
 	void data_update();

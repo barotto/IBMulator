@@ -51,7 +51,7 @@ m_cpu_single_step(false),
 m_breakpoint_cs(0),
 m_breakpoint_eip(0),
 m_cycles_factor(1.0),
-m_vspeed_factor(1.0),
+m_vtime_ratio(1.0),
 m_mouse_fun(nullptr)
 {
 	memset(&m_s, 0, sizeof(m_s));
@@ -372,7 +372,7 @@ void Machine::run_loop()
 		
 		m_bench.frame_end(vend);
 		
-		m_vspeed_factor = vframe_time / m_bench.frame_time;
+		m_vtime_ratio = vframe_time / m_bench.frame_time;
 	}
 }
 
