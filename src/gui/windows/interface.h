@@ -103,7 +103,7 @@ protected:
 		bool power, fdd, hdd;
 	} m_leds;
 
-	RC::Element * m_warning;
+	RC::Element * m_speed, *m_speed_value;
 	RC::Element * m_message;
 
 	uint m_curr_drive;
@@ -128,7 +128,6 @@ public:
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 
-	void show_warning(bool _show);
 	void show_message(const char* _mex);
 
 	void on_power(RC::Event &);

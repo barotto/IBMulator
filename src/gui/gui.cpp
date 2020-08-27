@@ -636,11 +636,6 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		dispatch_window_event(_event.window);
 	} else if(_event.type == SDL_USEREVENT) {
 		//the 1-second timer
-		if(m_machine->get_bench().load >= 1.0) {
-			m_windows.interface->show_warning(true);
-		} else {
-			m_windows.interface->show_warning(false);
-		}
 	} else if(_event.type == SDL_JOYDEVICEADDED) {
 		SDL_Joystick *joy = SDL_JoystickOpen(_event.jdevice.which);
 		if(joy) {

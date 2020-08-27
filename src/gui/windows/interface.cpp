@@ -197,7 +197,8 @@ m_hdd(nullptr)
 	m_status.fdd_led = get_element("fdd_led");
 	m_status.hdd_led = get_element("hdd_led");
 	m_status.fdd_disk = get_element("fdd_disk");
-	m_warning = get_element("warning");
+	m_speed = get_element("speed");
+	m_speed_value = get_element("speed_value");
 	m_message = get_element("message");
 
 	m_leds.power = false;
@@ -369,6 +370,29 @@ void Interface::update()
 			m_leds.power = false;
 			m_buttons.power->SetClass("active", false);
 		}
+
+		if(m_machine->is_on()) {
+			int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
+			m_speed_value->SetInnerRML(RC::String(10, "%d%%", vtime_ratio_1000/10));
+			if(m_machine->cycles_factor() != 1.0) {
+				m_speed->SetClass("warning", false);
+				if(m_machine->get_bench().load > 1.0) {
+					m_speed->SetClass("slow", true);
+				} else {
+					m_speed->SetClass("slow", false);
+				}
+				m_speed->SetProperty("visibility", "visible");
+			} else {
+				if(m_machine->get_bench().is_stressed()) {
+					m_speed->SetClass("warning", true);
+					m_speed->SetProperty("visibility", "visible");
+				} else {
+					m_speed->SetProperty("visibility", "hidden");
+				}
+			}
+		} else {
+			m_speed->SetProperty("visibility", "hidden");
+		}
 	}
 }
 
@@ -477,15 +501,6 @@ void Interface::on_fdd_mount(RC::Event &)
 			return;
 		}
 		m_fs->show();
-	}
-}
-
-void Interface::show_warning(bool _show)
-{
-	if(_show) {
-		m_warning->SetProperty("visibility", "visible");
-	} else {
-		m_warning->SetProperty("visibility", "hidden");
 	}
 }
 

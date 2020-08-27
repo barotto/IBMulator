@@ -1,0 +1,27 @@
+#speed {
+	position: absolute;
+	text-align: center;
+	font-size: 0.8em;
+	width: 2em;
+	/*height: 1.5em;*/
+	top: 1em;
+	right: 1em;
+	padding: 0.3em;
+	background-color: #00aa0088;
+	visibility: visible;
+}
+#speed.slow {
+	background-color: #aaaa0088;
+}
+#speed.warning {
+	width: 2em;
+	height: 3em;
+	padding-top: 0;
+	background-color: #ff000088;
+}
+#speed.warning .warning_icon {
+	width: 2em;
+	height: 2em;
+	background-decorator: image;
+	background-image: icons/warning.png 0px 0px 100px 100px;
+}

@@ -2,6 +2,7 @@
 	<head>
 		<title>IBMulator</title>
 		<link type="text/rcss" href="base.rcss"/>
+		<link type="text/rcss" href="speed_indicator.rcss"/>
 		<style>
 			body
 			{
@@ -163,23 +164,6 @@
 			#hdd_led.active {
 				background-color: #FFEE00FF;
 			}
-			#warning {
-				position: absolute;
-				text-align: center;
-				/*
-				width: 7.0%;
-				height: 28.0%;
-				top: 0%;
-				left: 46%;
-				*/
-				width: 4.0%;
-				height: 14.0%;
-				top: 0%;
-				left: 1%;
-				background-decorator: image;
-    			background-image: icons/warning.png 12px 12px 90px 90px;
-    			visibility: hidden;
-			}
 			#message {
 				position: absolute;
 				bottom: 0;
@@ -210,8 +194,10 @@
 				<btn id="restore" />
 				<btn id="exit" />
 			</div>
-			
-			<div id="warning"></div>
+		</div>
+		<div id="speed">
+			<div class="warning_icon"></div>
+			<div id="speed_value">100%</div>
 		</div>
 		<div id="message"></div>
 
