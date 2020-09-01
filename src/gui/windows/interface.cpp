@@ -133,7 +133,7 @@ void InterfaceScreen::sync_with_device()
 		if(
 			g_machine.is_on() && 
 			!g_machine.is_paused() && 
-			g_machine.cycles_factor() >= 1.0 &&
+			g_machine.cycles_factor() == 1.0 &&
 			g_machine.get_bench().load < 1.0
 		) {
 			try {
