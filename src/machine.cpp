@@ -184,7 +184,7 @@ void Machine::init()
 	 */
 
 	m_pacer.start();
-	m_bench.init(&m_pacer.chrono(), 1000);
+	m_bench.init(m_pacer.chrono(), 1000);
 	m_s.curr_prgname[0] = 0;
 	m_num_timers = 0;
 
@@ -347,8 +347,6 @@ void Machine::run_loop()
 	while(true) {
 		uint64_t vstart = m_s.virt_time;
 		m_bench.frame_start(vstart);
-		
-		uint64_t time_span = m_pacer.wait();
 
 		Machine_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
@@ -357,22 +355,33 @@ void Machine::run_loop()
 		if(m_quit || !m_on || m_cpu_single_step) {
 			return;
 		}
-
-		m_bench.load_start();
 		
 		double needed_cycles = m_cpu_cycles * m_cycles_factor;
 		int32_t cycles = round(needed_cycles + cycles_rem);
 		cycles_rem += needed_cycles - cycles;
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Core step, elapsed=%d, cycles=%d\n", time_span, cycles);
 		core_step(cycles);
 		m_bench.cpu_cycles(cycles);
 
 		uint64_t vend = m_s.virt_time;
 		double vframe_time = double(vend - vstart);
 		
+		m_bench.load_end();
+		
+		uint64_t sleep_time = m_pacer.wait(m_bench.load_time, m_bench.frame_time);
+		
 		m_bench.frame_end(vend);
 		
 		m_vtime_ratio = vframe_time / m_bench.frame_time;
+		
+		PDEBUGF(LOG_V2, LOG_MACHINE,
+			"Core step, fstart=%lld, fend=%lld, lend=%lld, sleep_time=%llu, "
+			"cycles=%d, load_time=%d, frame_time=%lld (%lld), vframe_time=%.0f, vratio=%.4f\n",
+			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
+			sleep_time, cycles,
+			m_bench.load_time,
+			m_bench.frame_time, (m_bench.frame_time - m_heartbeat),
+			vframe_time,
+			m_vtime_ratio.load());
 	}
 }
 

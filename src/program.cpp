@@ -373,7 +373,7 @@ bool Program::initialize(int argc, char** argv)
 	PacerWaitMethod waitm = (PacerWaitMethod)m_config[0].get_enum(
 			PROGRAM_SECTION, PROGRAM_WAIT_METHOD, waitmethods);
 	m_pacer.calibrate(waitm);
-	m_bench.init(&m_pacer.chrono(), 1000);
+	m_bench.init(m_pacer.chrono(), 1000);
 	set_heartbeat(DEFAULT_HEARTBEAT);
 	m_pacer.start();
 	
@@ -542,11 +542,7 @@ void Program::main_loop()
 
 	while(!m_quit) {
 		m_bench.frame_start();
-		
-		m_pacer.wait();
-		
-		m_bench.load_start();
-		
+
 		process_evts();
 		m_gui->update(m_pacer.chrono().get_nsec());
 		// in the following function, this thread will wait for the Machine 
@@ -554,6 +550,10 @@ void Program::main_loop()
 		// see InterfaceScreen::sync_with_device()
 		m_gui->render();
 
+		m_bench.load_end();
+		
+		m_pacer.wait(m_bench.load_time, m_bench.frame_time);
+		
 		m_bench.frame_end();
 	}
 }

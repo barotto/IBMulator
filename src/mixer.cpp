@@ -88,7 +88,7 @@ void Mixer::init(Machine *_machine)
 {
 	m_machine = _machine;
 	m_pacer.start();
-	m_bench.init(&m_pacer.chrono(), 1000);
+	m_bench.init(m_pacer.chrono(), 1000);
 
 	m_paused = true;
 
@@ -195,6 +195,7 @@ void Mixer::config_changed()
 	m_frame_size = m_audio_spec.channels * (SDL_AUDIO_BITSIZE(m_audio_spec.format) / 8);
 	m_heartbeat_us = round(1e6 / (double(m_audio_spec.freq) / 512.0));
 	m_pacer.set_heartbeat(m_heartbeat_us * 1000);
+	m_bench.set_heartbeat(m_heartbeat_us * 1000);
 
 	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat_us);
 	
@@ -248,25 +249,28 @@ void Mixer::main_loop()
 
 	m_bench.start();
 	
+	uint64_t time_span_ns = 0;
+	
 	while(true) {
 		
 		m_bench.frame_start(0);
-		
-		uint64_t time_span_ns = m_pacer.wait();
 
 		Mixer_fun_t fn;
 		while(m_cmd_queue.try_and_pop(fn)) {
 			fn();
 		}
-		while(m_paused) {
-			m_cmd_queue.wait_and_pop(fn);
-			fn();
+		if(m_paused) {
+			while(m_paused) {
+				m_cmd_queue.wait_and_pop(fn);
+				fn();
+			}
+			time_span_ns = m_heartbeat_us * 1000;
+		} else {
+			time_span_ns = m_bench.frame_time;
 		}
 		if(m_quit) {
 			return;
 		}
-		
-		m_bench.load_start();
 		
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
 		
@@ -286,15 +290,17 @@ void Mixer::main_loop()
 		}
 		m_prev_vtime = cur_vtime;
 
-		for(auto ch : m_mix_channels) {
-			bool active,enabled;
-			uint64_t time_ns = time_span_ns;
-			if(ch.second->category() == MixerChannel::Category::AUDIO) {
-				time_ns = audio_time_ns;
-			}
-			std::tie(active,enabled) = ch.second->update(time_ns, prebuffering);
-			if(active) {
-				active_channels.push_back(ch.second.get());
+		if(time_span_ns) {
+			for(auto ch : m_mix_channels) {
+				bool active,enabled;
+				uint64_t time_ns = time_span_ns;
+				if(ch.second->category() == MixerChannel::Category::AUDIO) {
+					time_ns = audio_time_ns;
+				}
+				std::tie(active,enabled) = ch.second->update(time_ns, prebuffering);
+				if(active) {
+					active_channels.push_back(ch.second.get());
+				}
 			}
 		}
 
@@ -359,7 +365,20 @@ void Mixer::main_loop()
 		}
 
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
+		
+		m_bench.load_end();
+		
+		int64_t sleep_time = m_pacer.wait(m_bench.load_time, m_bench.frame_time);
+		
 		m_bench.frame_end(0);
+		
+		PDEBUGF(LOG_V2, LOG_MIXER,
+			"Mixer step, fstart=%lld, fend=%lld, lend=%lld, time_span_ns=%llu, sleep_time=%llu, "
+			"load_time=%d, frame_time=%lld (%lld)\n",
+			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
+			time_span_ns, sleep_time,
+			m_bench.load_time,
+			m_bench.frame_time, (m_bench.frame_time - m_bench.heartbeat));
 	}
 }
 
@@ -903,6 +922,7 @@ void Mixer::cmd_resume()
 		m_start_time = m_pacer.chrono().get_usec();
 		m_pacer.start();
 		m_bench.start();
+		m_bench.frame_start(0);
 		PDEBUGF(LOG_V1, LOG_MIXER, "Mixing resumed\n");
 	});
 }

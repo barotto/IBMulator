@@ -46,7 +46,7 @@ static inline void sleep_for(int64_t _ns)
 Pacer::Pacer()
 :
 m_heartbeat(0),
-m_next_beat_diff(0),
+m_frame_time_diff(0),
 m_loop_cost(0),
 m_sleep_cost(0),
 m_sleep_thres(1),
@@ -172,34 +172,37 @@ void Pacer::calibrate(const Pacer &_p)
 void Pacer::start()
 {
 	m_chrono.start();
+	m_frame_time_diff = 0;
 }
 
-int64_t Pacer::wait()
+int64_t Pacer::wait(int64_t _load_time, int64_t _prev_frame_time)
 {
-	int64_t time = m_chrono.elapsed_nsec();
-	
 	if(m_skip || m_external_sync) {
 		m_skip = false;
+		m_frame_time_diff = 0;
 		m_chrono.start();
-		return time;
+		return 0;
 	}
-	
+
 	int64_t time_slept = 0;
-	if(time < m_heartbeat) {
+	if(_load_time < m_heartbeat) {
+		if(_prev_frame_time) {
+			m_frame_time_diff += m_heartbeat - _prev_frame_time;
+		}
 		int64_t t0, t1, diff;
-		int64_t sleep = (m_heartbeat - time) + m_next_beat_diff;
-		//PDEBUGF(LOG_V2, LOG_PROGRAM, "sleep for %d ns\n", sleep);
+		int64_t sleep_time = (m_heartbeat - _load_time) + m_frame_time_diff;
+		//PDEBUGF(LOG_V2, LOG_MACHINE, "  fdiff=%lld, sleep for %d ns\n", fdiff, sleep_time);
 		t0 = m_chrono.get_nsec();
-		if(sleep > 0) {
-			int64_t delay_ns = sleep - m_sleep_cost;
+		if(sleep_time > 0) {
+			int64_t delay_ns = sleep_time - m_sleep_cost;
 			if(delay_ns > m_sleep_thres) {
-				//PDEBUGF(LOG_V2, LOG_PROGRAM, "  delay %d\n", delay_ns);
+				//PDEBUGF(LOG_V2, LOG_MACHINE, "  delay %d\n", delay_ns);
 				sleep_for(delay_ns);
 			}
 			t1 = m_chrono.get_nsec();
-			diff = sleep - (t1 - t0);
+			diff = sleep_time - (t1 - t0);
 			if(diff > m_loop_cost) {
-				//PDEBUGF(LOG_V2, LOG_PROGRAM, "  loop %d\n", diff);
+				//PDEBUGF(LOG_V2, LOG_MACHINE, "  loop %d\n", diff);
 				int64_t tloop, tstart;
 				tloop = tstart = t1;
 				while((tloop - tstart) < (diff - m_loop_cost)) {
@@ -210,12 +213,14 @@ int64_t Pacer::wait()
 		t1 = m_chrono.get_nsec();
 		assert(t1 > t0);
 		time_slept = t1 - t0;
-		m_next_beat_diff = sleep - time_slept;
-		//PDEBUGF(LOG_V2, LOG_PROGRAM, "  slept %d ns, diff %d\n", time_slept, m_next_beat_diff);
+		//PDEBUGF(LOG_V2, LOG_MACHINE, "  t0=%lld, t1=%lld, time_slept=%lld, rem=%d\n", t0, t1, time_slept, m_frame_time_diff);
+	} else {
+		m_frame_time_diff = 0;
 	}
+	
 	m_chrono.start();
 	
-	return time + time_slept;
+	return time_slept;
 }
 
 void Pacer::set_forced_sleep()

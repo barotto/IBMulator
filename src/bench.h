@@ -28,7 +28,7 @@
 class Bench
 {
 protected:
-	const Chrono *m_chrono;
+	Chrono m_chrono;
 	
 	double   m_heartbeat_fps;
 	
@@ -45,9 +45,9 @@ protected:
 	int64_t  m_sum_frame_time2;
 	
 	uint64_t m_upd_frame_count;
-	
+
 	int64_t  m_frame_start; // frame start time
-	int64_t  m_load_start;  // computation start time
+	int64_t  m_load_end;  // computation end time
 	int64_t  m_frame_end;   // frame end time
 	
 	int64_t  m_upd_start;
@@ -90,13 +90,17 @@ public:
 	Bench();
 	virtual ~Bench();
 
-	virtual void init(const Chrono *_chrono, unsigned _upd_interval_ms);
+	virtual void init(const Chrono &_chrono, unsigned _upd_interval_ms);
 	virtual void start();
 	virtual void set_heartbeat(int64_t _nsec);
 	virtual void reset_values();
 	virtual void frame_start();
-	virtual void load_start();
+	virtual void load_end();
 	virtual void frame_end();
+	
+	inline int64_t get_frame_start() const { return m_frame_start; }
+	inline int64_t get_load_end() const { return m_load_end; }
+	inline int64_t get_frame_end() const { return m_frame_end; }
 	
 protected:
 	virtual void data_update();

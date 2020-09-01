@@ -34,7 +34,7 @@ class Pacer
 protected:
 	Chrono m_chrono;
 	int64_t m_heartbeat;
-	int64_t m_next_beat_diff;
+	int64_t m_frame_time_diff;
 	int64_t m_loop_cost;
 	int64_t m_sleep_cost;
 	int64_t m_sleep_thres;
@@ -52,7 +52,7 @@ public:
 	void start();
 	const Chrono & chrono() const { return m_chrono; }
 	void set_heartbeat(int64_t _nsec) { m_heartbeat = _nsec; }
-	int64_t wait();
+	int64_t wait(int64_t _elapsed_ns, int64_t _prev_frame_time);
 	void skip() { m_skip = true; }
 	void set_external_sync(bool _set) { m_external_sync = _set; }
 	bool is_external_sync() const { return m_external_sync; }

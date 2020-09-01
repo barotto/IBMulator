@@ -29,8 +29,6 @@
 
 Bench::Bench()
 :
-m_chrono(nullptr),
-
 m_heartbeat_fps(60.0),
 
 m_init_time(0),
@@ -48,7 +46,7 @@ m_sum_frame_time2(0),
 m_upd_frame_count(0),
 
 m_frame_start(0),
-m_load_start(0),
+m_load_end(0),
 m_frame_end(0),
 
 m_upd_start(0),
@@ -88,7 +86,7 @@ Bench::~Bench()
 {
 }
 
-void Bench::init(const Chrono *_chrono, unsigned _upd_interval_ms)
+void Bench::init(const Chrono &_chrono, unsigned _upd_interval_ms)
 {
 	m_chrono = _chrono;
 	m_upd_interval = (_upd_interval_ms * 1.0e6);
@@ -96,10 +94,13 @@ void Bench::init(const Chrono *_chrono, unsigned _upd_interval_ms)
 
 void Bench::start()
 {
-	m_init_time = m_chrono->get_nsec();
+	m_init_time = m_chrono.get_nsec();
 	m_upd_start = m_init_time;
 	tot_frame_count = 0;
 	load = .0;
+	
+	load_time = 0;
+	frame_time = 0;
 	
 	reset_values();
 }
@@ -107,7 +108,7 @@ void Bench::start()
 void Bench::set_heartbeat(int64_t _nsec)
 {
 	heartbeat = _nsec;
-
+	
 	reset_values();
 }
 
@@ -116,12 +117,11 @@ void Bench::reset_values()
 	m_heartbeat_fps = (1.0e9 / heartbeat);
 	
 	avg_load = .0;
-	load_time = 0;
+	
 	min_load_time = 0;
 	max_load_time = 0;
 	avg_load_time = .0;
 	
-	frame_time = 0;
 	min_frame_time = 0;
 	max_frame_time = 0;
 	avg_frame_time = .0;
@@ -136,7 +136,7 @@ void Bench::reset_values()
 
 void Bench::frame_start()
 {
-	m_frame_start = m_chrono->get_nsec();
+	m_frame_start = m_chrono.get_nsec();
 	
 	if(m_upd_reset) {
 		m_upd_frame_count = 0;
@@ -152,23 +152,23 @@ void Bench::frame_start()
 	}
 }
 
-void Bench::load_start()
+void Bench::load_end()
 {
-	m_load_start = m_chrono->get_nsec();
+	m_load_end = m_chrono.get_nsec();
+	load_time = m_load_end - m_frame_start;
+	
+	m_min_load_time = std::min(load_time, m_min_load_time);
+	m_max_load_time = std::max(load_time, m_max_load_time);
+	m_sum_load_time += load_time;
+	
+	double l = double(load_time) / heartbeat;
+	load = load + ( l - load ) / (15.0);
 }
 
 //GCC_ATTRIBUTE(optimize("O0")) <- it seems for gcc 4.8+ is not needed anymore
 void Bench::frame_end()
 {
-	m_frame_end = m_chrono->get_nsec();
-
-	load_time = m_frame_end - m_load_start;
-	m_min_load_time = std::min(load_time, m_min_load_time);
-	m_max_load_time = std::max(load_time, m_max_load_time);
-	m_sum_load_time += load_time;
-
-	double l = double(load_time) / heartbeat;
-	load = load + ( l - load ) / (15.0);
+	m_frame_end = m_chrono.get_nsec();
 	
 	frame_time = m_frame_end - m_frame_start;
 	m_min_frame_time = std::min(frame_time, m_min_frame_time);
