@@ -436,20 +436,26 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	assert(!_channels.empty());
 	assert(_vtime_ratio != 0.0);
 	
+	// do we want to mix AUDIO cards channels with the global mix?
+	// slower than this is useless, obnoxious, and constantly triggers prebuffering anyway
+	// (constant prebuffering could be fixed with a more precise resampling, but it's not worth it)
+	const bool do_mix_audio_ch = (_vtime_ratio >= 0.01);
+	
 	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %d channels:\n", _channels.size());
 	for(auto ch : _channels) {
-		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames / %.0f us avail\n",
+		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames / %d samples / %.3f us avail\n",
 				ch->name(),
 				ch->category()==MixerChannel::Category::AUDIO?"audio":
 					ch->category()==MixerChannel::Category::GUI?"GUI":
 						"soundfx",
-				ch->out().frames(), ch->out().duration_us());
+				ch->out().frames(), ch->out().samples(), ch->out().duration_us());
 	}
 	
 	int avail_us = get_buffer_read_avail_us();
 	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
 	double treqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq);
 	reqframes = std::max(reqframes, treqframes);
+	double reqsamples = reqframes * m_audio_spec.channels;
 	PDEBUGF(LOG_V2, LOG_MIXER, "  curr. buffer size: %d us, req. frames: %.2f\n", avail_us, reqframes);
 	
 	if(reqframes < 1.0) {
@@ -462,31 +468,56 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 	
 	// determine the available amount of samples
-	size_t frames = m_mix_bufsize_fr;
+	size_t frames = std::numeric_limits<size_t>::max();
 	size_t audio_frames = frames;
-	for(auto ch : _channels) {
-		size_t chframes = ch->out().frames();
-		if(ch->category() == MixerChannel::Category::AUDIO) {
-			chframes = size_t(ceil(double(chframes) / _vtime_ratio));
+	if(do_mix_audio_ch) {
+		for(auto ch : _channels) {
+			size_t chframes = ch->out().frames();
+			if(ch->category() == MixerChannel::Category::AUDIO) {
+				chframes = size_t(ceil(double(chframes) / _vtime_ratio));
+			}
+			cat_count[ch->category()]++;
+			chframes = std::min(size_t(reqframes), chframes);
+			frames = std::min(frames, chframes);
 		}
-		cat_count[ch->category()]++;
-		chframes = std::min(size_t(reqframes), chframes);
-		frames = std::min(frames, chframes);
+		audio_frames = size_t(double(frames) * _vtime_ratio);
+		if(audio_frames > m_mix_bufsize_fr) {
+			// this shouldn't happen!
+			audio_frames = m_mix_bufsize_fr;
+			frames = audio_frames / _vtime_ratio;
+			PDEBUGF(LOG_V0, LOG_MIXER, "the mixing amount exceeded the available buffers size!\n");
+		}
+	} else {
+		for(auto ch : _channels) {
+			size_t chframes = ch->out().frames();
+			cat_count[ch->category()]++;
+			chframes = std::min(size_t(reqframes), chframes);
+			if(ch->category() == MixerChannel::Category::AUDIO) {
+				audio_frames = std::min(audio_frames, chframes);
+			} else {
+				frames = std::min(frames, chframes);
+			}
+		}
 	}
-	audio_frames = size_t(double(frames) * _vtime_ratio);
-	if(audio_frames > m_mix_bufsize_fr) {
-		// this shouldn't happen!
-		audio_frames = m_mix_bufsize_fr;
-		frames = audio_frames / _vtime_ratio;
-		PDEBUGF(LOG_V0, LOG_MIXER, "mixing amount exceeded the available buffers size!\n");
+	if(frames == std::numeric_limits<size_t>::max()) {
+		frames = 0;
+	}
+	if(audio_frames == std::numeric_limits<size_t>::max()) {
+		audio_frames = 0;
 	}
 	size_t samples = frames * m_audio_spec.channels;
 	size_t audio_samples = audio_frames * m_audio_spec.channels;
 	
-	PDEBUGF(LOG_V2, LOG_MIXER, "  mixing frames: %d, samples: %d, AUDIO factor: %.3f\n",
-			frames, samples, _vtime_ratio);
-	
-	if(!frames) {
+	PDEBUGF(LOG_V2, LOG_MIXER, "  mixing frames: %d, samples: %d, "
+			"AUDIO frames: %d, AUDIO samples: %d, AUDIO factor: %.3f, AUDIO mix: %s\n",
+			frames, samples,
+			audio_frames, audio_samples, 
+			_vtime_ratio, do_mix_audio_ch?"yes":"no");
+
+	if(!frames && !audio_frames) {
+		return;
+	}
+	if(cat_count[MixerChannel::Category::AUDIO] && !audio_frames && do_mix_audio_ch) {
 		return;
 	}
 
@@ -505,6 +536,10 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			sa = audio_samples;
 		}
 		
+		if(!fr) {
+			continue;
+		}
+		
 		mix_channels(m_ch_mix[cat], _channels, cat, fr);
 		
 		tmpbuf.resize(sa);
@@ -513,6 +548,16 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		}
 		
 		send_to_sinks(tmpbuf, cat);
+	}
+	
+	if(!do_mix_audio_ch) {
+		// exclude AUDIO cards
+		cat_count[MixerChannel::Category::AUDIO] = 0;
+		if(!samples) {
+			// no channels other than audio cards? then force silence.
+			// continue tho, as sinks may still need to receive data
+			samples = round(reqsamples);
+		}
 	}
 	
 	// stretch emulated audio cards channels to result size if necessary
@@ -558,6 +603,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	// send global mix to output device
 	const size_t bytes = samples * 2;
 	if(m_device && m_audio_status != SDL_AUDIO_STOPPED) {
+		PDEBUGF(LOG_MIXER, LOG_V2, "  sending %d bytes to the output device\n", bytes);
 		if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
 			PERRF(LOG_MIXER, "Audio buffer overflow\n");
 		}
@@ -651,6 +697,7 @@ void Mixer::send_to_sinks(const std::vector<int16_t> &_data, int _category)
 	for(auto sink : m_sinks) {
 		if(sink != nullptr) {
 			try {
+				PDEBUGF(LOG_V2, LOG_MIXER, "  dumping %d bytes of data for cat %d\n", _data.size(), _category);
 				sink(_data, _category);
 			} catch(...) {}
 		}
