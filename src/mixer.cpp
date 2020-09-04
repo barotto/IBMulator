@@ -480,7 +480,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			chframes = std::min(size_t(reqframes), chframes);
 			frames = std::min(frames, chframes);
 		}
-		audio_frames = size_t(double(frames) * _vtime_ratio);
+		audio_frames = size_t(ceil(double(frames) * _vtime_ratio));
 		if(audio_frames > m_mix_bufsize_fr) {
 			// this shouldn't happen!
 			audio_frames = m_mix_bufsize_fr;
