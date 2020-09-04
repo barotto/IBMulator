@@ -514,10 +514,8 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			audio_frames, audio_samples, 
 			_vtime_ratio, do_mix_audio_ch?"yes":"no");
 
-	if(!frames && !audio_frames) {
-		return;
-	}
 	if(cat_count[MixerChannel::Category::AUDIO] && !audio_frames && do_mix_audio_ch) {
+		// not enough material to create a mix
 		return;
 	}
 
