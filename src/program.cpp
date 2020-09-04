@@ -91,8 +91,20 @@ void Program::save_state(
 	StateBuf state(path);
 
 	std::unique_lock<std::mutex> lock(ms_lock);
+	
+	bool paused = m_machine->is_paused();
+	if(!paused) {
+		m_machine->cmd_pause();
+		m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
+		ms_cv.wait(lock);
+	}
+	
 	m_machine->cmd_save_state(state, ms_lock, ms_cv);
 	ms_cv.wait(lock);
+	
+	if(!paused) {
+		m_machine->cmd_resume();
+	}
 
 	state.save(path + ".bin");
 
