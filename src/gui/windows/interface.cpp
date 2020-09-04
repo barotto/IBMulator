@@ -372,22 +372,31 @@ void Interface::update()
 		}
 
 		if(m_machine->is_on()) {
-			int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
-			m_speed_value->SetInnerRML(RC::String(10, "%d%%", vtime_ratio_1000/10));
-			if(m_machine->cycles_factor() != 1.0) {
+			if(m_machine->is_paused()) {
 				m_speed->SetClass("warning", false);
-				if(m_machine->get_bench().load > 1.0) {
-					m_speed->SetClass("slow", true);
-				} else {
-					m_speed->SetClass("slow", false);
-				}
+				m_speed->SetClass("slow", false);
+				m_speed->SetClass("paused", true);
+				m_speed_value->SetInnerRML("paused");
 				m_speed->SetProperty("visibility", "visible");
 			} else {
-				if(m_machine->get_bench().is_stressed()) {
-					m_speed->SetClass("warning", true);
+				m_speed->SetClass("paused", false);
+				int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
+				m_speed_value->SetInnerRML(RC::String(10, "%d%%", vtime_ratio_1000/10));
+				if(m_machine->cycles_factor() != 1.0) {
+					m_speed->SetClass("warning", false);
+					if(m_machine->get_bench().load > 1.0) {
+						m_speed->SetClass("slow", true);
+					} else {
+						m_speed->SetClass("slow", false);
+					}
 					m_speed->SetProperty("visibility", "visible");
 				} else {
-					m_speed->SetProperty("visibility", "hidden");
+					if(m_machine->get_bench().is_stressed()) {
+						m_speed->SetClass("warning", true);
+						m_speed->SetProperty("visibility", "visible");
+					} else {
+						m_speed->SetProperty("visibility", "hidden");
+					}
 				}
 			}
 		} else {

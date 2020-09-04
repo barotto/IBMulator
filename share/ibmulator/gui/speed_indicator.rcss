@@ -10,6 +10,10 @@
 	background-color: #00aa0088;
 	visibility: visible;
 }
+#speed.paused {
+	width: 3em;
+	background-color: #aaaa0088;
+}
 #speed.slow {
 	background-color: #aaaa0088;
 }
