@@ -91,7 +91,7 @@ void GamePort::restore_state(StateBuf &_state)
 uint16_t GamePort::read(uint16_t _address, unsigned)
 {
 	if(_address != 0x201) {
-		PERRF(LOG_GAMEPORT, "GamePort: unhandled read from port %0x04X!\n", _address);
+		PERRF(LOG_GAMEPORT, "unhandled read from port %0x04X!\n", _address);
 		return ~0;
 	}
 
@@ -125,7 +125,7 @@ uint16_t GamePort::read(uint16_t _address, unsigned)
 		value &= ~128;
 	}
 
-	PDEBUGF(LOG_V2, LOG_GAMEPORT, "GamePort: read from port 201h -> 0x%02X\n", value);
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "read from port 201h -> 0x%02X\n", value);
 
 	return uint16_t(value);
 }
@@ -133,11 +133,11 @@ uint16_t GamePort::read(uint16_t _address, unsigned)
 void GamePort::write(uint16_t _address, uint16_t _value, unsigned)
 {
 	if(_address != 0x201) {
-		PERRF(LOG_GAMEPORT, "GamePort: unhandled write to port 0x%04X!\n", _address);
+		PERRF(LOG_GAMEPORT, "unhandled write to port 0x%04X!\n", _address);
 		return;
 	}
 	uint8_t value = _value & 0xFF;
-	PDEBUGF(LOG_V2, LOG_GAMEPORT, "GamePort: write to port 201h <- 0x%02X\n", value);
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "write to port 201h <- 0x%02X\n", value);
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	/*
 	 * A write to port 201 causes all stick inputs to go high for a value specified by
@@ -153,9 +153,12 @@ void GamePort::write(uint16_t _address, uint16_t _value, unsigned)
 void GamePort::joystick_motion(int _jid, int _axis, int _value)
 {
 	if(_jid > 1) {
-		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid joystick id %d\n", _jid);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "Invalid joystick id %d\n", _jid);
 		return;
 	}
+	
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "Joystick %s: axis %d = %d\n", _jid?"B":"A", _axis, _value);
+	
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	float value = float(_value) / 32768.f;
 	if(_axis == 0) {
@@ -168,13 +171,16 @@ void GamePort::joystick_motion(int _jid, int _axis, int _value)
 void GamePort::joystick_button(int _jid, int _button, int _state)
 {
 	if(_jid > 1) {
-		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid joystick id %d\n", _jid);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "Invalid joystick id %d\n", _jid);
 		return;
 	}
 	if(_button > 1) {
-		PDEBUGF(LOG_V0, LOG_GAMEPORT, "GamePort: invalid button id %d\n", _button);
+		PDEBUGF(LOG_V0, LOG_GAMEPORT, "Invalid button id %d\n", _button);
 		return;
 	}
+	
+	PDEBUGF(LOG_V2, LOG_GAMEPORT, "Joystick %s: button %d = %d\n", _jid?"B":"A", _button, _state);
+	
 	std::lock_guard<std::mutex> lock(m_stick_lock);
 	m_s.stick[_jid].button[_button] = _state;
 }

@@ -641,6 +641,8 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		if(joy) {
 			m_SDL_joysticks.push_back(joy);
 			int jinstance = m_SDL_joysticks.size()-1;
+			PDEBUGF(LOG_V1, LOG_GUI, "Joystick SDL index %d / instance id %d has been added\n",
+					_event.jdevice.which, jinstance);
 			int jid = JOY_NONE;
 			if(m_joystick0 == JOY_NONE) {
 				m_joystick0 = jinstance;
@@ -648,18 +650,22 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			} else if(m_joystick1 == JOY_NONE) {
 				m_joystick1 = jinstance;
 				jid = 1;
+			} else {
+				jid = 2;
 			}
-			PINFOF(LOG_V0, LOG_GUI, "Joystick %d: %s (%d axes, %d buttons)\n",
-				jid,
-				SDL_JoystickName(joy),
-				SDL_JoystickNumAxes(joy),
-				SDL_JoystickNumButtons(joy)
-			);
+			if(jid < 2) {
+				PINFOF(LOG_V0, LOG_GUI, "Joystick %s: %s (%d axes, %d buttons)\n",
+					jid?"B":"A",
+					SDL_JoystickName(joy),
+					SDL_JoystickNumAxes(joy),
+					SDL_JoystickNumButtons(joy)
+				);
+			}
 		} else {
-			PWARNF(LOG_V0, LOG_GUI, "Couldn't open Joystick n.%d\n", _event.jdevice.which);
+			PWARNF(LOG_V0, LOG_GUI, "Couldn't open Joystick index %d\n", _event.jdevice.which);
 		}
 	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
-		PDEBUGF(LOG_V1, LOG_GUI, "Joystick id=%d has been removed\n", _event.jdevice.which);
+		PDEBUGF(LOG_V1, LOG_GUI, "Joystick SDL instance id %d has been removed\n", _event.jdevice.which);
 		assert(_event.jdevice.which <= Sint32(m_SDL_joysticks.size()));
 		SDL_Joystick *joy = m_SDL_joysticks[_event.jdevice.which];
 		if(SDL_JoystickGetAttached(joy)) {
@@ -667,11 +673,11 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		}
 		m_SDL_joysticks[_event.jdevice.which] = nullptr;
 		if(m_joystick0 == _event.jdevice.which) {
-			PINFOF(LOG_V1, LOG_GUI, "Joystick 0 has been removed\n");
+			PINFOF(LOG_V1, LOG_GUI, "Joystick A has been removed\n");
 			m_joystick0 = m_joystick1;
 			m_joystick1 = JOY_NONE;
 		} else if(m_joystick1 == _event.jdevice.which) {
-			PINFOF(LOG_V1, LOG_GUI, "Joystick 1 has been removed\n");
+			PINFOF(LOG_V1, LOG_GUI, "Joystick B has been removed\n");
 			m_joystick1 = JOY_NONE;
 		}
 		if(m_joystick1==JOY_NONE && m_joystick0!=JOY_NONE && SDL_NumJoysticks()>1) {
@@ -682,14 +688,14 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			}
 		}
 		if(m_joystick0 != JOY_NONE) {
-			PINFOF(LOG_V0, LOG_GUI, "Joystick 0: %s (%d axes, %d buttons)\n",
+			PINFOF(LOG_V0, LOG_GUI, "Joystick A: %s (%d axes, %d buttons)\n",
 				SDL_JoystickName(m_SDL_joysticks[m_joystick0]),
 				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick0]),
 				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick0])
 			);
 		}
 		if(m_joystick1 != JOY_NONE) {
-			PINFOF(LOG_V0, LOG_GUI, "Joystick 1: %s (%d axes, %d buttons)\n",
+			PINFOF(LOG_V0, LOG_GUI, "Joystick B: %s (%d axes, %d buttons)\n",
 				SDL_JoystickName(m_SDL_joysticks[m_joystick1]),
 				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick1]),
 				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick1])
@@ -807,9 +813,11 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 			jid = 0;
 		} else if(m_joystick1 == _event.jaxis.which) {
 			jid = 1;
+		} else {
+			jid = 2;
 		}
 		if(jid <= 1 && _event.jaxis.axis <= 1) {
-			PDEBUGF(LOG_V2, LOG_GUI, "Joy %d axis %d: %d\n", jid, _event.jaxis.axis, _event.jaxis.value);
+			PDEBUGF(LOG_V2, LOG_GUI, "Joystick %s axis %d: %d\n", jid?"B":"A", _event.jaxis.axis, _event.jaxis.value);
 			m_machine->joystick_motion(jid, _event.jaxis.axis, _event.jaxis.value);
 		}
 		break;
@@ -822,9 +830,11 @@ void GUI::dispatch_hw_event(const SDL_Event &_event)
 			jid = 0;
 		} else if(m_joystick1 == _event.jbutton.which) {
 			jid = 1;
+		} else {
+			jid = 2;
 		}
 		if(jid <= 1 && _event.jbutton.button <= 1) {
-			PDEBUGF(LOG_V2, LOG_GUI, "Joy %d btn %d: %d\n", jid, _event.jbutton.button, _event.jbutton.state);
+			PDEBUGF(LOG_V2, LOG_GUI, "Joystick %s btn %d: %d\n", jid?"B":"A", _event.jbutton.button, _event.jbutton.state);
 			m_machine->joystick_button(jid, _event.jbutton.button, _event.jbutton.state);
 		}
 		break;
