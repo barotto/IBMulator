@@ -922,14 +922,14 @@ void Machine::register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t
 
 void Machine::joystick_motion(int _jid, int _axis, int _value)
 {
-	if(m_joystick_mfun) {
+	if(m_on && m_joystick_mfun) {
 		m_joystick_mfun(_jid, _axis, _value);
 	}
 }
 
 void Machine::joystick_button(int _jid, int _button, int _state)
 {
-	if(m_joystick_bfun) {
+	if(m_on && m_joystick_bfun) {
 		m_joystick_bfun(_jid, _button, _state);
 	}
 }
