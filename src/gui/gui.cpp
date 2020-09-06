@@ -231,16 +231,19 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	} else {
 		SDL_JoystickEventState(SDL_ENABLE);
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
-
+		int connected = SDL_NumJoysticks();
+		
 		m_joystick[0].x_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_X, 0);
 		m_joystick[0].y_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_Y, 1);
 		m_joystick[0].b1_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_B1, 0);
 		m_joystick[0].b2_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_B2, 1);
+		m_joystick[0].show_message = (connected < 1);
 		
 		m_joystick[1].x_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_X, 0);
 		m_joystick[1].y_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_Y, 1);
 		m_joystick[1].b1_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_B1, 0);
 		m_joystick[1].b2_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_B2, 1);
+		m_joystick[1].show_message = (connected < 2);
 	}
 
 	// CAPTURE THREAD
@@ -642,6 +645,24 @@ void GUI::dispatch_event(const SDL_Event &_event)
 	static bool special_key = false;
 	static SDL_Keycode discard_next_key = 0;
 
+	auto print_joy_message = [this](SDL_Joystick *joy, int jid, bool forced = false) {
+		char *mex;
+		if(asprintf(&mex,
+				"Joystick %s: %s (%d axes, %d buttons)",
+				jid?"B":"A",
+				SDL_JoystickName(joy),
+				SDL_JoystickNumAxes(joy),
+				SDL_JoystickNumButtons(joy)) > 0)
+		{
+			PINFOF(LOG_V0, LOG_GUI, "%s\n", mex);
+			if(m_joystick[jid].show_message || forced) {
+				show_message(mex);
+			}
+			free(mex);
+		}
+		m_joystick[jid].show_message = true;
+	};
+	
 	if(_event.type == SDL_WINDOWEVENT) {
 		dispatch_window_event(_event.window);
 	} else if(_event.type == SDL_USEREVENT) {
@@ -664,12 +685,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 				jid = 2;
 			}
 			if(jid < 2) {
-				PINFOF(LOG_V0, LOG_GUI, "Joystick %s: %s (%d axes, %d buttons)\n",
-					jid?"B":"A",
-					SDL_JoystickName(joy),
-					SDL_JoystickNumAxes(joy),
-					SDL_JoystickNumButtons(joy)
-				);
+				print_joy_message(joy, jid);
 				PINFOF(LOG_V0, LOG_GUI, "  using axis %d for X, axis %d for Y, button %d for b1, button %d for b2\n",
 						m_joystick[jid].x_axis, m_joystick[jid].y_axis, m_joystick[jid].b1_btn, m_joystick[jid].b2_btn);
 			}
@@ -683,11 +699,13 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		if(SDL_JoystickGetAttached(joy)) {
 			SDL_JoystickClose(joy);
 		}
+		bool notify_user = false;
 		m_SDL_joysticks[_event.jdevice.which] = nullptr;
 		if(m_joystick[0].id == _event.jdevice.which) {
 			PINFOF(LOG_V1, LOG_GUI, "Joystick A has been removed\n");
 			m_joystick[0].id = m_joystick[1].id;
 			m_joystick[1].id = JOY_NONE;
+			notify_user = (m_joystick[0].id != JOY_NONE);
 		} else if(m_joystick[1].id == _event.jdevice.which) {
 			PINFOF(LOG_V1, LOG_GUI, "Joystick B has been removed\n");
 			m_joystick[1].id = JOY_NONE;
@@ -696,22 +714,15 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			for(int j=0; j<int(m_SDL_joysticks.size()); j++) {
 				if(m_SDL_joysticks[j]!=nullptr && j!=m_joystick[0].id) {
 					m_joystick[1].id = j;
+					notify_user = true;
 				}
 			}
 		}
-		if(m_joystick[0].id != JOY_NONE) {
-			PINFOF(LOG_V0, LOG_GUI, "Joystick A: %s (%d axes, %d buttons)\n",
-				SDL_JoystickName(m_SDL_joysticks[m_joystick[0].id]),
-				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick[0].id]),
-				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick[0].id])
-			);
+		if(notify_user && m_joystick[0].id != JOY_NONE) {
+			print_joy_message(m_SDL_joysticks[m_joystick[0].id], 0, true);
 		}
-		if(m_joystick[1].id != JOY_NONE) {
-			PINFOF(LOG_V0, LOG_GUI, "Joystick B: %s (%d axes, %d buttons)\n",
-				SDL_JoystickName(m_SDL_joysticks[m_joystick[1].id]),
-				SDL_JoystickNumAxes(m_SDL_joysticks[m_joystick[1].id]),
-				SDL_JoystickNumButtons(m_SDL_joysticks[m_joystick[1].id])
-			);
+		if(notify_user && m_joystick[1].id != JOY_NONE) {
+			print_joy_message(m_SDL_joysticks[m_joystick[1].id], 1, true);
 		}
 	} else if(_event.type == SDL_JOYAXISMOTION || 
 			_event.type == SDL_JOYBUTTONDOWN ||

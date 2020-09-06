@@ -145,6 +145,7 @@ protected:
 		int id;
 		int x_axis, y_axis;
 		int b1_btn, b2_btn;
+		bool show_message;
 	} m_joystick[2];
 	
 	double m_symspeed_factor;
