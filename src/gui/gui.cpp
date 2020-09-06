@@ -26,6 +26,7 @@
 #include "keys.h"
 #include "keymap.h"
 #include "utils.h"
+#include "wincompat.h"
 
 #include <Rocket/Core.h>
 #include <Rocket/Controls.h>

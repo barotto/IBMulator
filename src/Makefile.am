@@ -25,7 +25,8 @@ ibmulator_SOURCES = \
 	utils.cpp \
 	tinyfiledialogs/tinyfiledialogs.c \
 	wincompat/mkstemp.cpp \
-	wincompat/realpath.cpp 
+	wincompat/realpath.cpp \
+	wincompat/asprintf.cpp
 	
 noinst_HEADERS = \
 	appconfig.h \

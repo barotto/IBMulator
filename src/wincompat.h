@@ -9,6 +9,7 @@
 int mkstemp(char *tmpl);
 int mkostemp(char *tmpl, int flags);
 char * realpath(const char *name, char *resolved);
+int asprintf(char **strp, const char *format, ...);
 
 #endif
 

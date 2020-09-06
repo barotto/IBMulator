@@ -28,6 +28,7 @@
 #include "pic.h"
 #include "dma.h"
 #include "audio/convert.h"
+#include "wincompat.h"
 
 IODEVICE_PORTS(SBlaster) = {};
 
