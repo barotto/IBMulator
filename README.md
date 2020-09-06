@@ -178,6 +178,20 @@ LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500
 The most effective values depend on your particular audio setup so you'll have
 to experiment.
 
+### Joysticks
+
+IBMulator supports Game Port emulation with dual 2-axes / 2-buttons joysticks.
+
+If your controllers are already connected when IBMulator starts, joysticks A & B
+will be mapped according to the order by which the SDL library reports them.
+
+Otherwise, joysticks A & B mapping will depend by the order you plug your
+game controllers in your system: first one will be joystick A, second one
+joystick B, and any subsequent controller will be ignored.
+
+The axes and buttons mapping can be specified in the [gameport] section of the
+ini file.
+
 ### Key bindings
 
 * CTRL+F1: GUI mode action:

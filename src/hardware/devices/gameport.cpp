@@ -48,6 +48,8 @@ void GamePort::install()
 		std::bind(&GamePort::joystick_motion, this, _1, _2, _3),
 		std::bind(&GamePort::joystick_button, this, _1, _2, _3)
 	);
+	
+	PINFOF(LOG_V0, LOG_GAMEPORT, "Installed Game Port\n");
 }
 
 void GamePort::remove()

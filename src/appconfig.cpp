@@ -120,6 +120,18 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SBLASTER_OPL_VOLUME,  "1.4"   }
 	} },
 	
+	{ GAMEPORT_SECTION, {
+		{ GAMEPORT_ENABLED,  "yes" },
+		{ GAMEPORT_JOY_A_X,  "0"   },
+		{ GAMEPORT_JOY_A_Y,  "1"   },
+		{ GAMEPORT_JOY_A_B1, "0"   },
+		{ GAMEPORT_JOY_A_B2, "1"   },
+		{ GAMEPORT_JOY_B_X,  "0"   },
+		{ GAMEPORT_JOY_B_Y,  "1"   },
+		{ GAMEPORT_JOY_B_B1, "0"   },
+		{ GAMEPORT_JOY_B_B2, "1"   }
+	} },
+	
 	{ SOUNDFX_SECTION, {
 		{ SOUNDFX_ENABLED,  "yes" },
 		{ SOUNDFX_VOLUME,   "1.0" },
@@ -468,6 +480,14 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              Possible values: a list of filter definitions. See the README for more info.\n"
 ";  opl_volume: OPL chip's audio volume.\n"
 		},
+		{ GAMEPORT_SECTION, 
+"; enabled: Install the Game Port.\n"
+"; The following parameters can be used to map your controller(s) to the emulated joystick(s):\n"
+";  joy#_x: controller's axis identifier for the joystick's X axis.\n"
+";  joy#_y: controller's axis identifier for the joystick's Y axis.\n"
+"; joy#_b1: controller's button identifier for the joystick's button 1.\n"
+"; joy#_b2: controller's button identifier for the joystick's button 2.\n"
+		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
 ";  enabled: Enable sound effects emulation.\n"
@@ -609,6 +629,17 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		SBLASTER_OPL_RATE,
 		SBLASTER_OPL_FILTERS,
 		SBLASTER_OPL_VOLUME
+	} },
+	{ GAMEPORT_SECTION, {
+		GAMEPORT_ENABLED,
+		GAMEPORT_JOY_A_X,
+		GAMEPORT_JOY_A_Y,
+		GAMEPORT_JOY_A_B1,
+		GAMEPORT_JOY_A_B2,
+		GAMEPORT_JOY_B_X,
+		GAMEPORT_JOY_B_Y,
+		GAMEPORT_JOY_B_B1,
+		GAMEPORT_JOY_B_B2
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_ENABLED,

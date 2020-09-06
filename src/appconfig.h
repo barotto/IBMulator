@@ -243,6 +243,17 @@ public:
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_VOLUME     "opl_volume"
 
+#define GAMEPORT_SECTION        "gameport"
+#define GAMEPORT_ENABLED        "enabled"
+#define GAMEPORT_JOY_A_X        "joyA_x"
+#define GAMEPORT_JOY_A_Y        "joyA_y"
+#define GAMEPORT_JOY_A_B1       "joyA_b1"
+#define GAMEPORT_JOY_A_B2       "joyA_b2"
+#define GAMEPORT_JOY_B_X        "joyB_x"
+#define GAMEPORT_JOY_B_Y        "joyB_y"
+#define GAMEPORT_JOY_B_B1       "joyB_b1"
+#define GAMEPORT_JOY_B_B2       "joyB_b2"
+
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_ENABLED         "enabled"
 #define SOUNDFX_VOLUME          "volume"

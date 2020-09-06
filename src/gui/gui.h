@@ -124,8 +124,6 @@ protected:
 	bool m_curr_model_changed;
 	SDL_TimerID m_second_timer;
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
-	int m_joystick0;
-	int m_joystick1;
 	bool m_gui_visible;
 	bool m_input_grab;
 	std::string m_grab_method;
@@ -143,6 +141,12 @@ protected:
 		{}
 	} m_mouse;
 
+	struct Joystick {
+		int id;
+		int x_axis, y_axis;
+		int b1_btn, b2_btn;
+	} m_joystick[2];
+	
 	double m_symspeed_factor;
 
 	// mutex must be locked before any access to the libRocket's objects
