@@ -154,12 +154,13 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	m_zoom_mode = g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_ZOOM, modes, ZoomMode::CYCLE);
 	
 	
-	static std::map<std::string, unsigned> dark = {
+	static std::map<std::string, unsigned> dark_val = {
 		{ "",        false },
 		{ "bright",  false },
 		{ "dark",    true  }
 	};
-	m_system->SetClass("dark", g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_STYLE, dark, false));
+	bool dark_style = g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_STYLE, dark_val, false);
+	m_system->SetClass("dark", dark_style);
 	
 	float slider_width = m_volume_slider->GetProperty<float>("width");
 	m_slider_len_p = ms_slider_length/ms_width * 100.f - slider_width;
@@ -200,7 +201,11 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	);
 	
 	screen()->monitor.mvmat.load_identity();
-	screen()->monitor.ambient = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
+	if(dark_style) {
+		screen()->monitor.ambient = 0.0;
+	} else {
+		screen()->monitor.ambient = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
+	}
 	screen()->vga_reflection_scale = vec2f(1.0,1.0);
 	
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
