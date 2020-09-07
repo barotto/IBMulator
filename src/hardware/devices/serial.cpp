@@ -265,7 +265,7 @@ void Serial::set_port(uint8_t _port)
 		return;
 	}
 
-	char pname[5];
+	char pname[20];
 	sprintf(pname, "COM%d", _port+1);
 
 	if(m_s[0].port < 2) {

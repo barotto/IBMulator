@@ -3151,8 +3151,8 @@ void StorageCtrl_ATA::activate_command_timer(int _ch, uint32_t _exec_time)
 
 const char * StorageCtrl_ATA::device_string(int _ch, int _dev)
 {
-	static char name[7];
-	snprintf(name, 7, "ATA%d-%d", _ch, _dev);
+	static char name[50];
+	snprintf(name, 50, "ATA%d-%d", _ch, _dev);
 	return name;
 }
 
