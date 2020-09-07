@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, templog);
 	g_syslog.set_verbosity(DEFAULT_LOG_VERBOSITY);
 
-	PINFO(LOG_V0, "Program start\n");
+	PINFO(LOG_V0, PACKAGE_STRING" started\n");
 	
 	bool start = true;
 	int return_value = 0;
