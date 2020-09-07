@@ -55,9 +55,9 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_SHOW_LEDS,          "no"     },
 		{ GUI_MODE,               "normal" },
 		{ GUI_REALISTIC_ZOOM,     "cycle"  },
-		{ GUI_BG_R,               "59"     },
-		{ GUI_BG_G,               "82"     },
-		{ GUI_BG_B,               "98"     }
+		{ GUI_BG_R,               "30"     },
+		{ GUI_BG_G,               "30"     },
+		{ GUI_BG_B,               "30"     }
 	} },
 	{ CAPTURE_SECTION, {
 		{ CAPTURE_DIR,           ""     },
