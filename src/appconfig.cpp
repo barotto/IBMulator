@@ -55,6 +55,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_SHOW_LEDS,          "no"     },
 		{ GUI_MODE,               "normal" },
 		{ GUI_REALISTIC_ZOOM,     "cycle"  },
+		{ GUI_REALISTIC_STYLE,    "bright" },
 		{ GUI_BG_R,               "30"     },
 		{ GUI_BG_G,               "30"     },
 		{ GUI_BG_B,               "30"     }
@@ -514,6 +515,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_FRAMECAP,
 		GUI_MODE,
 		GUI_REALISTIC_ZOOM,
+		GUI_REALISTIC_STYLE,
 		GUI_KEYMAP,
 		GUI_MOUSE_GRAB,
 		GUI_GRAB_METHOD,
