@@ -1216,23 +1216,32 @@ void GUI::show_welcome_screen()
 	cx = bd;
 	if(m_mode == GUI_MODE_COMPACT) {
 		ps("\nTo show/hide the interface press ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
-		ps(" or grab the mouse\n", 0xf, bg, bd);
+		ps(" or grab the mouse.\n", 0xf, bg, bd);
+	} else if(m_mode == GUI_MODE_REALISTIC) {
+		ps("\nTo zoom in on the monitor press ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
+		ps("\nTo switch between the interface styles keep ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
+		ps(" pressed.\n", 0xf, bg, bd);
 	} else {
 		cy++;
 	}
+	ps("To start/stop the machine press ", 0xf, bg, bd); ps("CTRL+F3\n", 0xe, bg, bd);
 	ps("To grab the mouse press ", 0xf, bg, bd);
 	if(m_grab_method.compare("ctrl-f10") == 0) {
 		ps("CTRL+F10\n", 0xe, bg, bd);
 	} else {
 		ps("the middle mouse button\n", 0xe, bg, bd);
 	}
-	ps("To start/stop the machine press ", 0xf, bg, bd); ps("CTRL+F3\n", 0xe, bg, bd);
+	if(m_mode == GUI_MODE_REALISTIC) {
+		ps("To pause the machine press ", 0xf, bg, bd); ps("ALT+PAUSE\n", 0xe, bg, bd);
+		ps("To save the machine's state press ", 0xf, bg, bd); ps("CTRL+F8", 0xe, bg, bd);
+		ps(" and to load it press ", 0xf, bg, bd); ps("CTRL+F9\n", 0xe, bg, bd);
+	}
 	ps("To toggle fullscreen mode press ", 0xf, bg, bd); ps("ALT+ENTER", 0xe, bg, bd);
 	ps(" and to close the emulator ", 0xf, bg, bd); ps("ALT+F4\n", 0xe, bg, bd);
 	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
 	ps(g_program.config().get_parsed_file().c_str(), 0xe, bg, bd);
 	ps("\n\nFor more information read the README file and visit the project page at\n", 0xf, bg, bd);
-	ps("http://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
+	ps("https://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
 
 	m_machine->cmd_print_VGA_text(text);
 }
