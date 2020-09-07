@@ -41,7 +41,7 @@ LIBROCKET_LIBS="$LIBROCKET_LIBS -lRocketCore -lRocketControls -lRocketDebugger"
 
 if test x$static != x ; then
 	if test x$have_windows = xyes ; then
-		LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lintl -liconv -lpcre -lpng -lz -lbz2 -lfreetype -lrpcrt4 -ldwrite"
+		LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lintl -liconv -lpcre -lpng -lz -lbz2 -lfreetype -lrpcrt4 -ldwrite -lbrotlidec-static -lbrotlicommon-static"
 	else
 		LIBROCKET_LIBS="$LIBROCKET_LIBS -lfreetype -lharfbuzz -lglib-2.0 -lpcre -lpng -lz -lbz2 -lfreetype"
 	fi
