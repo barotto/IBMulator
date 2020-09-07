@@ -30,7 +30,8 @@ share/ibmulator/gui/realistic_interface.rml \
 share/ibmulator/gui/stats.rml \
 share/ibmulator/gui/status.rml \
 share/ibmulator/gui/mixerstate.rml \
-share/ibmulator/gui/tables.rcss
+share/ibmulator/gui/tables.rcss \
+share/ibmulator/gui/speed_indicator.rcss
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
@@ -75,7 +76,13 @@ share/ibmulator/gui/images/sysunit_no_disk.png \
 share/ibmulator/gui/images/realistic_interface.png \
 share/ibmulator/gui/images/realistic_floppy_r.png \
 share/ibmulator/gui/images/realistic_reflection.png \
-share/ibmulator/gui/images/realistic_slider.png
+share/ibmulator/gui/images/realistic_slider.png \
+share/ibmulator/gui/images/realistic_fdd_led_bloom.png \
+share/ibmulator/gui/images/realistic_floppy_r_dark.png \
+share/ibmulator/gui/images/realistic_hdd_led_bloom.png \
+share/ibmulator/gui/images/realistic_interface_dark.png \
+share/ibmulator/gui/images/realistic_power_led_bloom.png \
+share/ibmulator/gui/images/realistic_slider_dark.png
 
 guishadersdir = $(pkgdatadir)/gui/shaders
 dist_guishaders_DATA = \
