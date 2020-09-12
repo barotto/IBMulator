@@ -8,14 +8,14 @@ with the original ROM. The goal is to create a faithful simulator capable of
 recreate the look and feel of the real machine.
 
 IBMulator can emulate the following systems:
-- IBM PS/1 model 2011 (286 10MHz)
-- IBM PS/1 model 2121 (386sx 16MHz,20MHz)
+- IBM PS/1 model 2011 (286 @ 10MHz)
+- IBM PS/1 model 2121 (386SX @ 16MHz ~ 20MHz)
 
 In order to use the program you'll need the original ROM, which is copyrighted
 by IBM. You won't find it distributed with this package.
 
-See the project page at https://barotto.github.io/IBMulator/ for screenshots, 
-videos and additional information.
+See the **[project site](https://barotto.github.io/IBMulator)** for screenshots,
+videos, FAQs, and additional information.
 
 
 ## LICENSE
@@ -23,7 +23,7 @@ videos and additional information.
 IBMulator is distributed under the GNU GPL version 3 or (at your option) any 
 later version. See COPYING for details.
 
-To obtain the source code go to github.com/barotto/IBMulator
+To obtain the source code go to https://github.com/barotto/IBMulator
 
 
 ## HARDWARE REQUIREMENTS
@@ -51,13 +51,14 @@ non-US model)
 Launch IBMulator. A window will inform you that the file ibmulator.ini has 
 been created and where it is placed.
 
-Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is 
-a good place) and update ibmulator.ini with the file name of the ROM you 
-want to use (see below for the correct format.)
+Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is
+a good place) and update ibmulator.ini in the [system] section with the file
+name of the ROM set. 
 
 From now on IBMulator is ready to run.
 
-For more information regarding the configuration options, see the comments 
+You're not required to do anything else but IBMulator is very configurable. For
+more information regarding the various configuration options, see the comments 
 inside ibmulator.ini.
 
 Being a faithful emulator of the PS/1, to configure the system (ie. the PS/1, 
@@ -75,7 +76,7 @@ A ROM set can be:
 2. a file with the *.BIN extension, named as you like
 3. a directory 
 
-A ZIP archive or directory must contain (case insensitive):
+Inside a ZIP file or directory there must be (file names are case insensitive):
 
 * FC0000.BIN : the system BIOS ROM, 256KiB
 * F80000.BIN : the regional ROM, 256KiB, optional, only for non-US versions. For
@@ -98,7 +99,18 @@ factory state. In order to do so:
 
 Under Linux you can mount the HDD image using this command:
 ```
-$ mount -o loop,offset=16896 hdd.img /mnt/loop
+$ udisksctl loop-setup -f hdd.img
+```
+
+In order to mount partitioned loop devices, you'll probably require to add this
+kernel parameter to your grub configuration:
+```
+loop.max_part=31
+```
+
+Alternatively you can use the mount command:
+```
+$ sudo mount -o loop,offset=16896 hdd.img /mnt/loop
 ```
 
 The offset value is equal to "start sector"*512. The start sector value can be 
@@ -123,9 +135,10 @@ itself at the bottom of the VGA display and is always visible.
 to truly experience the PS/1. In this mode the system is rendered in its 
 entirety, monitor included. There are no additional buttons and controls except 
 the originals: volume, brightness, contrast, power, and floppy (you need to use 
-the key bindings for any extra function.) The PS/1 type 2011 is 32 cm (12.6") 
-wide and 34.9 cm (13.74") tall, so you need at least a 24" 16:10 monitor in 
-portrait mode (rotated) to render it at real size.
+the key bindings for any extra function). Two styles are available in this mode:
+"bright" (daytime) and "dark" (nighttime). You can also zoom in to the monitor
+to have a better view. See ibmulator.ini and the Key bindings section for more
+info.
 
 You can select the GUI mode under the [gui] section of the ini file.
 
@@ -178,19 +191,38 @@ LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500
 The most effective values depend on your particular audio setup so you'll have
 to experiment.
 
-### Joysticks
+### Joystick
 
 IBMulator supports Game Port emulation with dual 2-axes / 2-buttons joysticks.
 
-If your controllers are already connected when IBMulator starts, joysticks A & B
-will be mapped according to the order by which the SDL library reports them.
+If your game controllers are already connected when IBMulator starts,
+joysticks A & B will be mapped according to the order by which the SDL library
+reports them.
 
-Otherwise, joysticks A & B mapping will depend by the order you plug your
-game controllers in your system: first one will be joystick A, second one
+Otherwise, joysticks A & B mapping will depend by the order you plug your game
+controllers in your system: the first one will be joystick A, the second one
 joystick B, and any subsequent controller will be ignored.
 
 The axes and buttons mapping can be specified in the [gameport] section of the
 ini file.
+
+### Emulation speed adjustments
+
+The entire machine emulation speed can be altered with CTRL+F11 (slow down) and
+CTRL+F12 (speed up). This is equivalent to warping time and it can go as low as
+0.01% and as high as 500% the normal speed.
+
+An indicator in the upper right corner of the screen will show the current speed
+when different from 100%. When the indicator is shown, video rendering will be
+desynchronized and tearing will be visible despite the vsync setting. Sound from
+emulated audio cards will accelerate or decelerate accordingly as well.
+
+If capturing is enabled the resulting files will be at 100% speed regardless,
+without stuttering.
+
+The speed actually achievable depends on how fast your PC is. Keep in mind that
+the higher the emulated CPU core frequency is, the hardest it is to then
+accelerate it.
 
 ### Key bindings
 
@@ -199,7 +231,7 @@ ini file.
     * short press: show/hide the main interface
   * realistic mode:
     * short press: toggle zoomed view
-    * long press: switch between bright and dark interfaces
+    * long press: switch between bright and dark styles
 * CTRL+F3: toggle the machine power button
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot
@@ -219,9 +251,6 @@ ini file.
 
 If the grab method is 'MOUSE3', use the central mouse button to lock the
 mouse.
-
-CTRL+F11 and CTRL+F12 change the speed at which the emulation of the entire
-machine is performed. This is equivalent to warping time.
 
 ### Command line options
 
