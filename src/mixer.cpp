@@ -434,7 +434,6 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		double _vtime_ratio)
 {
 	assert(!_channels.empty());
-	assert(_vtime_ratio != 0.0);
 	
 	// do we want to mix AUDIO cards channels with the global mix?
 	// slower than this is useless, obnoxious, and constantly triggers prebuffering anyway
@@ -471,21 +470,32 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	size_t frames = std::numeric_limits<size_t>::max();
 	size_t audio_frames = frames;
 	if(do_mix_audio_ch) {
+		assert(_vtime_ratio != 0.0);
+		size_t resampled_reqframes = size_t(ceil(double(reqframes) * _vtime_ratio));
 		for(auto ch : _channels) {
 			size_t chframes = ch->out().frames();
-			if(ch->category() == MixerChannel::Category::AUDIO) {
-				chframes = size_t(ceil(double(chframes) / _vtime_ratio));
-			}
 			cat_count[ch->category()]++;
-			chframes = std::min(size_t(reqframes), chframes);
-			frames = std::min(frames, chframes);
+			if(ch->category() == MixerChannel::Category::AUDIO) {
+				chframes = std::min(resampled_reqframes, chframes);
+				audio_frames = std::min(audio_frames, chframes);
+			} else {
+				chframes = std::min(size_t(reqframes), chframes);
+				frames = std::min(frames, chframes);
+			}
 		}
-		audio_frames = size_t(ceil(double(frames) * _vtime_ratio));
-		if(audio_frames > m_mix_bufsize_fr) {
-			// this shouldn't happen!
-			audio_frames = m_mix_bufsize_fr;
-			frames = audio_frames / _vtime_ratio;
-			PDEBUGF(LOG_V0, LOG_MIXER, "the mixing amount exceeded the available buffers size!\n");
+		if(audio_frames != std::numeric_limits<size_t>::max()) {
+			if(_vtime_ratio != 1.0) {
+				// we need to reconcile the two audio domains
+				size_t resampled_audio_frames = size_t(ceil(double(audio_frames) / _vtime_ratio));
+				if(frames >= resampled_audio_frames) {
+					frames = resampled_audio_frames;
+				} else {
+					audio_frames = size_t(ceil(double(frames) * _vtime_ratio));
+				}
+			} else {
+				frames = std::min(frames, audio_frames);
+				audio_frames = frames;
+			}
 		}
 	} else {
 		for(auto ch : _channels) {
@@ -539,6 +549,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		}
 		
 		mix_channels(m_ch_mix[cat], _channels, cat, fr);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %d frames for category %d\n", fr, cat);
 		
 		tmpbuf.resize(sa);
 		for(size_t i=0; i<sa; i++) {
@@ -549,13 +560,13 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 	
 	if(!do_mix_audio_ch) {
+		if(!samples) {
+			// no channels other than audio cards? then we're done.
+			// TODO consider continuing for the global mix sinks
+			return;
+		}
 		// exclude AUDIO cards
 		cat_count[MixerChannel::Category::AUDIO] = 0;
-		if(!samples) {
-			// no channels other than audio cards? then force silence.
-			// continue tho, as sinks may still need to receive data
-			samples = round(reqsamples);
-		}
 	}
 	
 	// stretch emulated audio cards channels to result size if necessary
@@ -573,7 +584,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		}
 		memcpy(&m_ch_mix[MixerChannel::Category::AUDIO][0], &atmpbuf[0], generated*sizeof(float));
-		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %d samples\n", generated);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %d frames\n", generated / m_audio_spec.channels);
 	}
 
 	// create the global mix
@@ -590,6 +601,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			m_out_mix[i] += m_ch_mix[cat][i] * volume;
 		}
 	}
+	PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %d frames for global mix\n", frames);
 	
 	// send global mix to sinks
 	tmpbuf.resize(samples);
@@ -601,7 +613,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	// send global mix to output device
 	const size_t bytes = samples * 2;
 	if(m_device && m_audio_status != SDL_AUDIO_STOPPED) {
-		PDEBUGF(LOG_MIXER, LOG_V2, "  sending %d bytes to the output device\n", bytes);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  sending %d bytes to the output device\n", bytes);
 		if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
 			PERRF(LOG_MIXER, "Audio buffer overflow\n");
 		}
