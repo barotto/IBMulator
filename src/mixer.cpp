@@ -330,10 +330,12 @@ void Mixer::main_loop()
 				assert(m_start_time==0);
 				double buf_len_s = m_prebuffer_us/1e6 + (m_heartbeat_us*3)/1e6;
 				size_t buf_limit = size_t(buf_len_s*m_audio_spec.freq) * m_frame_size;
-				if(m_out_buffer.get_read_avail() > buf_limit) {
+				size_t read_avail = m_out_buffer.get_read_avail();
+				if(read_avail > buf_limit) {
 					// audio device is not reading its buffer fast enough, drop some data
-					buf_limit = m_out_buffer.shrink_data(buf_limit);
-					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun, limited to %d bytes\n", buf_limit);
+					buf_limit = m_out_buffer.shrink_data(m_prebuffer_fr*m_frame_size);
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun: %u bytes, limited to %d bytes\n",
+							read_avail, buf_limit);
 				} else {
 					buf_len_s = m_prebuffer_us/1e6 - (m_heartbeat_us*3)/1e6;
 					buf_len_s = std::max(m_heartbeat_us/1e6, buf_len_s);
