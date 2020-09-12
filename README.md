@@ -5,7 +5,7 @@
 
 IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run 
 with the original ROM. The goal is to create a faithful simulator capable of
-recreate the look and feel of the real machine.
+recreating the look and feel of the real machine.
 
 IBMulator can emulate the following systems:
 - IBM PS/1 model 2011 (286 @ 10MHz)
