@@ -397,15 +397,22 @@ void FlatMediaImage::restore_state(const char *backup_fname)
 
 void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
 {
-    std::ofstream ofs(_pathname, std::ios::binary | std::ios::out);
-    if(!ofs.is_open()) {
-    	throw std::exception();
-    }
-    ofs.seekp((_sectors*512) - 1);
-    ofs.write("", 1);
-    if(!ofs.good()) {
-    	throw std::exception();
-    }
+	if(_sectors == 0) {
+		throw std::exception();
+	}
+	std::ofstream ofs(_pathname, std::ios::binary | std::ios::out);
+	if(!ofs.is_open()) {
+		PERRF(LOG_HDD, "Cannot create '%s'. Does the destination directory exist? Is it writible?\n", _pathname);
+		throw std::exception();
+	}
+	unsigned bytes = _sectors * 512;
+	ofs.seekp(bytes - 1);
+	ofs.write("", 1);
+	if(!ofs.good()) {
+		PERRF(LOG_HDD, "Cannot pre-allocate %u bytes for '%s'. Check the available space on the destination drive.\n",
+			bytes, _pathname);
+		throw std::exception();
+	}
 }
 
 bool FlatMediaImage::is_valid()
