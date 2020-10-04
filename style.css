@@ -158,7 +158,16 @@ hr {
 
 #donations {
 	float: right;
-	font-size: 0.6em;
+	font-size: 0.7em;
 	text-align: center;
 	padding: 0 0 1em 1em;
+}
+
+#donations a {
+	font-size: 1em;
+	color: white;
+}
+
+#donations a:hover {
+	color: #22aaee;
 }
