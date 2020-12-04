@@ -76,7 +76,7 @@ protected:
 			RESET_START, RESET, NORMAL, EXEC_CMD
 		};
 		enum Mode {
-			NONE, DAC, DMA, DMA_PAUSED
+			NONE, DAC, DMA, DMA_PAUSED, MIDI_UART
 		};
 		enum Decoder {
 			PCM, ADPCM2, ADPCM3, ADPCM4
@@ -87,6 +87,8 @@ protected:
 		
 		uint8_t time_const; // the time constant as set by the guest, the DAC/ADC rate could be different
 		bool high_speed;
+		bool midi_polling;
+		bool midi_timestamps;
 		
 		uint8_t cmd;
 		uint8_t cmd_len;
@@ -271,6 +273,8 @@ protected:
 	void dsp_cmd_read_test_reg();
 	void dsp_cmd_f8_unknown();
 	void dsp_cmd_aux_status();
+	void dsp_cmd_midi_uart(bool _polling, bool _timestamps);
+	void dsp_cmd_midi_out();
 	
 	void dac_timer(uint64_t);
 	bool dac_create_samples(uint64_t _time_span_us, bool, bool);

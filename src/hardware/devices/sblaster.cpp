@@ -90,6 +90,8 @@ constexpr bool AUTO = true;
 constexpr bool SINGLE = false;
 constexpr bool HI = true;
 constexpr bool LO = false;
+constexpr bool MIDIPOLL = true;
+constexpr bool MIDIINT = false;
 
 // TODO: the command jump table has no dummy code for unimplemented commands. Every
 // function 00-FF has some code to run. However, the jump addresses are repeated.
@@ -119,11 +121,11 @@ const std::multimap<int, SBlaster::DSPCmd> SBlaster::ms_dsp_commands = {
 	DSP_CMD( 0x31, DSPALL,         0, 0,      &SBlaster::dsp_cmd_unimpl,                          "Int mode MIDI input" ),
 	DSP_CMD( 0x32, DSPALL,         0, 0,      &SBlaster::dsp_cmd_unimpl,                          "Poll mode MIDI input w/ time stamp" ),
 	DSP_CMD( 0x33, DSPALL,         0, 0,      &SBlaster::dsp_cmd_unimpl,                          "Int mode MIDI input w/ time stamp" ),
-	DSP_CMD( 0x34, DSP2|DSP3|DSP4, 0, 0,      &SBlaster::dsp_cmd_unimpl,                          "UART poll mode MIDI I/O" ),
-	DSP_CMD( 0x35, DSP2|DSP3|DSP4, 0, 0,      &SBlaster::dsp_cmd_unimpl,                          "UART int mode MIDI I/O" ),
-	DSP_CMD( 0x36, DSP2|DSP3|DSP4, 0, 0,      &SBlaster::dsp_cmd_unimpl,                          "UART poll mode MIDI I/O w/ time stamp" ),
-	DSP_CMD( 0x37, DSP2|DSP3|DSP4, 0, 0,      &SBlaster::dsp_cmd_unimpl,                          "UART int mode MIDI I/O w/ time stamp" ),
-	DSP_CMD( 0x38, DSPALL,         1, 0,      &SBlaster::dsp_cmd_unimpl,                          "MIDI output" ),
+	DSP_CMD( 0x34, DSP2|DSP3|DSP4, 0, 0, bind(&SBlaster::dsp_cmd_midi_uart, _1, MIDIPOLL, false), "UART poll mode MIDI I/O" ),
+	DSP_CMD( 0x35, DSP2|DSP3|DSP4, 0, 0, bind(&SBlaster::dsp_cmd_midi_uart, _1, MIDIINT, false),  "UART int mode MIDI I/O" ),
+	DSP_CMD( 0x36, DSP2|DSP3|DSP4, 0, 0, bind(&SBlaster::dsp_cmd_midi_uart, _1, MIDIPOLL, true),  "UART poll mode MIDI I/O w/ time stamp" ),
+	DSP_CMD( 0x37, DSP2|DSP3|DSP4, 0, 0, bind(&SBlaster::dsp_cmd_midi_uart, _1, MIDIINT, true),   "UART int mode MIDI I/O w/ time stamp" ),
+	DSP_CMD( 0x38, DSPALL,         1, 0,      &SBlaster::dsp_cmd_midi_out,                        "MIDI output" ),
 	DSP_CMD( 0x40, DSPALL,         1, 0,      &SBlaster::dsp_cmd_set_time_const,                  "Set Time Constant" ),
 	DSP_CMD( 0x41, DSP4,           2, 0,      &SBlaster::dsp_cmd_unimpl,                          "Set Output Samplerate" ),
 	DSP_CMD( 0x42, DSP4,           2, 0,      &SBlaster::dsp_cmd_unimpl,                          "Set Input Samplerate" ),
@@ -474,11 +476,12 @@ void SBlaster::dsp_reset()
 {
 	lower_interrupt();
 	
-	if(m_s.dsp.high_speed) {
-		// The DSP reset command behaves differently while the DSP is in high-speed mode. It
-		// terminates high-speed mode and restores all DSP parameters to the states prior to
-		// entering the high-speed mode.
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset (High Speed)\n", short_name());
+	if(m_s.dsp.high_speed || m_s.dsp.mode == DSP::Mode::MIDI_UART) {
+		// The DSP reset command behaves differently while the DSP is in high-speed mode or MIDI. It
+		// terminates high-speed/MIDI mode and restores all DSP parameters to the states prior to
+		// entering the high-speed/MIDI mode.
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: reset (%s)\n", short_name(), 
+				m_s.dsp.high_speed?"High Speed":"MIDI UART");
 		std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
 		dsp_change_mode(DSP::Mode::NONE);
 		dac_set_state(DAC::State::STOPPED);
@@ -1115,6 +1118,11 @@ void SBlaster::dsp_read_in_buffer()
 	while(m_s.dsp.in.used) {
 		uint8_t value = m_s.dsp.in.read();
 		if(m_s.dsp.cmd == SB_DSP_NOCMD) {
+			if(m_s.dsp.mode == DSP::Mode::MIDI_UART) {
+				m_s.dsp.cmd_in[0] = value;
+				dsp_cmd_midi_out();
+				continue;
+			}
 			const DSPCmd *cmd = dsp_decode_cmd(value);
 			if(cmd) {
 				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: cmd 0x%02x: %s\n", short_name(), value, cmd->desc);
@@ -1184,6 +1192,9 @@ void SBlaster::dsp_change_mode(DSP::Mode _mode)
 			case DSP::Mode::DMA_PAUSED:
 				modestr = "DMA_PAUSED";
 				dma_stop();
+				break;
+			case DSP::Mode::MIDI_UART:
+				modestr = "MIDI_UART";
 				break;
 		}
 		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: mode %s\n", short_name(), modestr);
@@ -1615,6 +1626,18 @@ void SBlaster::dsp_cmd_aux_status()
 	// only doc found on this is http://the.earth.li/~tfm/oldpage/sb_dsp.html
 	m_s.dsp.out.flush();
 	m_s.dsp.out.write((!m_s.dac.speaker) | 0x12);
+}
+
+void SBlaster::dsp_cmd_midi_uart(bool _polling, bool _timestamps)
+{
+	dsp_change_mode(DSP::Mode::MIDI_UART);
+	m_s.dsp.midi_polling = _polling;
+	m_s.dsp.midi_timestamps = _timestamps;
+}
+
+void SBlaster::dsp_cmd_midi_out()
+{
+	g_mixer.midi()->cmd_put_byte(m_s.dsp.cmd_in[0]);
 }
 
 void SBlaster::DSP::DataBuffer::flush()
