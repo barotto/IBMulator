@@ -240,6 +240,13 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SBLASTER_IRQ,     "7"     }
 	} },
 	
+	{ MPU401_SECTION, {
+		{ MPU401_ENABLED,  "no"          },
+		{ MPU401_IOBASE,   "0x330"       },
+		{ MPU401_IRQ,      "9"           },
+		{ MPU401_MODE,     "intelligent" }
+	} },
+	
 	{ COM_SECTION, {
 		{ COM_ENABLED, "yes" }
 	} },
@@ -505,6 +512,15 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  joy#_y: controller's axis identifier for the joystick's Y axis.\n"
 "; joy#_b1: controller's button identifier for the joystick's button 1.\n"
 "; joy#_b2: controller's button identifier for the joystick's button 2.\n"
+		},
+		{ MPU401_SECTION,
+"; enabled: Install the MPU-401 interface card.\n"
+";  iobase: The I/O base address, as an hexadecimal number.\n"
+";          Possible values: 0x330, 0x300\n"
+";     irq: The IRQ line number.\n"
+";          Possible values: 3, 5, 7\n"
+";    mode: Mode of operation.\n"
+";          Possible values: intelligent, uart.\n"
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"

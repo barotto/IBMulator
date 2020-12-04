@@ -248,6 +248,12 @@ public:
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_VOLUME     "opl_volume"
 
+#define MPU401_SECTION          "mpu401"
+#define MPU401_ENABLED          "enabled"
+#define MPU401_IOBASE           "iobase"
+#define MPU401_IRQ              "irq"
+#define MPU401_MODE             "mode"
+
 #define GAMEPORT_SECTION        "gameport"
 #define GAMEPORT_ENABLED        "enabled"
 #define GAMEPORT_JOY_A_X        "joyA_x"

@@ -44,6 +44,7 @@
 #include "devices/adlib.h"
 #include "devices/gameport.h"
 #include "devices/sblaster.h"
+#include "devices/mpu401.h"
 
 Devices g_devices;
 
@@ -179,6 +180,8 @@ void Devices::config_changed()
 		remove(SBlaster::NAME);
 	}
 	install_only_if<AdLib>(adlib);
+	
+	install_only_if<MPU401>(g_program.config().get_bool(MPU401_SECTION, MPU401_ENABLED));
 	
 	install_only_if<Serial>(g_program.config().get_bool(COM_SECTION, COM_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));

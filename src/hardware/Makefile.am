@@ -69,7 +69,8 @@ libhardware_a_SOURCES = \
 	devices/opl.cpp \
 	devices/adlib.cpp \
 	devices/cf62011bpc.cpp \
-	devices/sblaster.cpp
+	devices/sblaster.cpp \
+	devices/mpu401.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -126,4 +127,5 @@ noinst_HEADERS = \
 	devices/opl.h \
 	devices/adlib.h \
 	devices/cf62011bpc.h \
-	devices/sblaster.h
+	devices/sblaster.h \
+	devices/mpu401.h

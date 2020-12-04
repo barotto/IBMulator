@@ -48,10 +48,12 @@ IODEVICE_PORTS(PS1Audio) = {
 	{ 0x205, 0x205, PORT_8BIT|PORT_RW }, // Joystick (Y Axis Stick A) P1 (R) / Sound Generator (W)
 	{ 0x206, 0x206, PORT_8BIT|PORT_R_ }, // Joystick (X Axis Stick B) P2
 	{ 0x207, 0x207, PORT_8BIT|PORT_R_ }, // Joystick (Y Axis Stick B) P3
+	/* UART MIDI is managed by the MPU-401 device, disable these ports to avoid conflicts
 	{ 0x330, 0x330, PORT_8BIT|PORT_RW }, // MIDI TXD Register
 	{ 0x331, 0x331, PORT_8BIT|PORT_RW }, // MIDI IER Register
 	{ 0x332, 0x332, PORT_8BIT|PORT_RW }, // MIDI IIR Register
 	{ 0x335, 0x335, PORT_8BIT|PORT_RW }  // MIDI LSR Register
+	*/
 };
 #define PS1AUDIO_IRQ 7
 
