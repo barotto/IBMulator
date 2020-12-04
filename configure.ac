@@ -105,7 +105,20 @@ AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
 AX_CHECK_ZLIB
 
-BASELIBS="-L. $GLEW_LIBS $OPENGL_LIBS"
+if test x$have_windows = xno ; then
+	# ALSA
+	PKG_CHECK_MODULES(ALSA, alsa, HAVE_ALSA="yes", HAVE_ALSA="no")
+	AC_SUBST(ALSA_CFLAGS)
+	AC_SUBST(ALSA_LIBS)
+	AM_CONDITIONAL(HAVE_ALSA, test x$HAVE_ALSA = xyes)
+fi
+if test "x$HAVE_ALSA" == xyes ; then
+	AC_DEFINE(HAVE_ALSA, [1], [whether to build in Alsa support])
+else
+	AC_DEFINE(HAVE_ALSA, [0], [whether to build in Alsa support])
+fi
+
+BASELIBS="-L. $GLEW_LIBS $OPENGL_LIBS $ALSA_LIBS"
 SDL_LIBSs=$SDL_LIBS
 
 if test x$static_sdl = xno ; then
@@ -122,7 +135,7 @@ else
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
+BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $LIBROCKET_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -197,6 +210,13 @@ if test "x$ZLIB_LIBS" = "x"; then
 	echo "- zlib         : NO (ZMBV video compression disabled)"
 else
 	echo "- zlib         : Yes ($ZLIB_LIBS)"
+fi
+if test "x$ALSA_LIBS" != "x"; then
+	echo "- ALSA         : Yes ($ALSA_LIBS)"
+else
+	if test x$have_windows = xno ; then
+	echo "- ALSA         : NO (MIDI output disabled)"
+	fi
 fi
 
 echo "- prefix       : ${prefix}"

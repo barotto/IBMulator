@@ -224,6 +224,30 @@ The speed actually achievable depends on how fast your PC is. Keep in mind that
 the higher the emulated CPU core frequency is, the hardest it is to then
 accelerate it.
 
+### MIDI output
+
+In order to hear MIDI music you need to use an external sequencer, either
+software (FluidSynth, Munt, ...) or hardware.
+
+The MIDI device must be connected to the host system before IBMulator starts.
+
+#### Linux
+
+On Linux the ALSA subsystem is used. The `[midi]:device` value must be set with
+the ALSA port of the device you want to use. For example:
+```
+[midi]
+device=128:0
+```
+
+Port 128:0 is usually the default one for software synths.
+
+To know the value to use you can launch IBMulator with the `[midi]:device`
+configuration empty and look at the log file, or use the command:
+```
+$ pmidi -l
+```
+
 ### Key bindings
 
 * CTRL+F1: GUI mode action:

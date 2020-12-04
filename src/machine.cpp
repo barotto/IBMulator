@@ -160,11 +160,6 @@ void Machine::restore_state(StateBuf &_state)
 		throw;
 	}
 
-	if(_state.get_bytesleft() != 0) {
-		PERRF(LOG_MACHINE, "state buffer size mismatch\n");
-		throw std::exception();
-	}
-
 	std::unique_lock<std::mutex> lock(ms_gui_lock);
 	m_curr_prgname_changed = true;
 
@@ -216,6 +211,7 @@ void Machine::reset(uint _signal)
 			break;
 		case MACHINE_HARD_RESET:
 			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
+			g_mixer.midi()->cmd_stop_device();
 			break;
 		case MACHINE_POWER_ON:
 			m_bench.start();
@@ -251,6 +247,7 @@ void Machine::power_off()
 	m_on = false;
 	g_cpu.power_off();
 	g_devices.power_off();
+	g_mixer.midi()->cmd_stop_device();
 
 	set_DOS_program_name("");
 }

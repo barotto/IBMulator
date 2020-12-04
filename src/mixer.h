@@ -26,6 +26,7 @@
 #include "audio/ring_buffer.h"
 #include "audio/mixerchannel.h"
 #include "audio/wav.h"
+#include "audio/midi.h"
 #include <thread>
 #include <cmath>
 #include <SDL.h>
@@ -86,6 +87,9 @@ private:
 	
 	std::shared_ptr<MixerChannel> m_silence_channel;
 	
+	std::unique_ptr<MIDI> m_midi;
+	std::thread m_midi_thread;
+	
 public:
 	Mixer();
 	~Mixer();
@@ -115,11 +119,15 @@ public:
 	
 	bool is_paused() const { return m_paused; }
 
+	MIDI * midi() { return m_midi.get(); }
+	
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_pause();
 	void cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_resume();
+	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
+	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_start_capture();
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
@@ -140,6 +148,7 @@ private:
 	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 	bool create_silence_samples(uint64_t _time_span_us, bool, bool);
+	void stop_midi();
 	
 public:
 	// debugging functions, don't use

@@ -102,6 +102,9 @@ void Program::save_state(
 	m_machine->cmd_save_state(state, ms_lock, ms_cv);
 	ms_cv.wait(lock);
 	
+	m_mixer->cmd_save_state(state, ms_lock, ms_cv);
+	ms_cv.wait(lock);
+	
 	if(!paused) {
 		m_machine->cmd_resume();
 	}
@@ -186,6 +189,9 @@ void Program::restore_state(
 		m_mixer->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
+		m_mixer->cmd_restore_state(state, ms_lock, ms_cv);
+		ms_cv.wait(restore_lock);
+		
 		// we need to pause the syslog because it'll use the GUI otherwise
 		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
@@ -374,6 +380,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(LOG_GAMEPORT_VERBOSITY,LOG_GAMEPORT);
 		g_syslog.set_verbosity(LOG_LPT_VERBOSITY,    LOG_LPT);
 		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
+		g_syslog.set_verbosity(LOG_MIDI_VERBOSITY,   LOG_MIDI);
 	}
 	
 	static std::map<std::string, unsigned> waitmethods = {

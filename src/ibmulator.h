@@ -133,6 +133,7 @@
 #define LOG_GAMEPORT_VERBOSITY LOG_V0
 #define LOG_LPT_VERBOSITY      LOG_V0
 #define LOG_COM_VERBOSITY      LOG_V0
+#define LOG_MIDI_VERBOSITY     LOG_V0
 
 #include "syslog.h"
 

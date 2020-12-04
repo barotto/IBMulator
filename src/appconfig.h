@@ -213,6 +213,11 @@ public:
 #define MIXER_PREBUFFER         "prebuffer"
 #define MIXER_VOLUME            "volume"
 
+#define MIDI_SECTION            "midi"
+#define MIDI_ENABLED            "enabled"
+#define MIDI_DEVICE             "device"
+#define MIDI_DEVTYPE            "device_type"
+
 #define PCSPEAKER_SECTION       "pcspeaker"
 #define PCSPEAKER_ENABLED       "enabled"
 #define PCSPEAKER_RATE          "rate"

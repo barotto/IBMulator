@@ -95,6 +95,12 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ MIXER_VOLUME,    "1.0"   }
 	} },
 
+	{ MIDI_SECTION, {
+		{ MIDI_ENABLED,      "no"    },
+		{ MIDI_DEVICE,       ""      },
+		{ MIDI_DEVTYPE,      "GM"    }
+	} },
+	
 	{ PCSPEAKER_SECTION, {
 		{ PCSPEAKER_RATE,    "48000" },
 		{ PCSPEAKER_FILTERS, ""      },
@@ -441,6 +447,17 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number, 1.0 is nominal. When in realistic GUI mode it's clamped to 1.3\n"
 		},
+		{ MIDI_SECTION,
+";     enabled: Enable MIDI output.\n"
+";      device: MIDI device to use. See the README for more info.\n"
+"; device_type: Type of the connected device (it determines the reset and load state procedures).\n"
+";              Possible values:\n"
+";               MT-32: Roland MT-32/CM-32L/CM-64 and compatible devices, including the Munt emulator\n"
+";                  LA: same as MT-32\n"
+";                  GS: Roland General Standard device (ie. SC-55 and SC-88)\n"
+";                  GM: General MIDI device (default)\n"
+";                  XG: Yamaha XG device\n"
+		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
 ";    rate: Sample rate.\n"
@@ -602,6 +619,11 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MIXER_RATE,
 		MIXER_SAMPLES,
 		MIXER_VOLUME
+	} },
+	{ MIDI_SECTION, {
+		MIDI_ENABLED,
+		MIDI_DEVICE,
+		MIDI_DEVTYPE
 	} },
 	{ PCSPEAKER_SECTION, {
 		PCSPEAKER_ENABLED,

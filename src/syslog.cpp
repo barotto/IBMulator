@@ -66,7 +66,8 @@ const char* Syslog::m_fac_prefixes[] = {
 	" aud | ",
 	" game| ",
 	" lpt | ",
-	" com | "
+	" com | ",
+	" midi| "
 };
 
 

@@ -114,6 +114,10 @@ void Mixer::init(Machine *_machine)
 		PINFOF(LOG_V1, LOG_MIXER, "Audio device %d: %s\n", i, SDL_GetAudioDeviceName(i, 0));
 		PINFOF(LOG_V1, LOG_MIXER, "  Driver: %s\n", SDL_GetAudioDriver(i));
 	}
+	
+	// MIDI THREAD
+	m_midi = std::make_unique<MIDI>();
+	m_midi_thread = std::thread(&MIDI::thread_start, m_midi.get());
 }
 
 void Mixer::start_capture()
@@ -228,6 +232,12 @@ void Mixer::config_changed()
 	// let the GUI interfaces set the AUDIO category volume
 	m_channels_volume[static_cast<int>(MixerChannel::Category::SOUNDFX)] =
 			g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+
+	std::mutex m;
+	std::condition_variable cv;
+	std::unique_lock<std::mutex> lock(m);
+	m_midi->sig_config_changed(m, cv);
+	cv.wait(lock);
 
 	if(capture) {
 		start_capture();
@@ -430,6 +440,12 @@ void Mixer::close_audio_device()
 		m_device = 0;
 		m_audio_status = SDL_AUDIO_STOPPED;
 	}
+}
+
+void Mixer::stop_midi()
+{
+	m_midi->cmd_quit();
+	m_midi_thread.join();
 }
 
 void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels,
@@ -986,6 +1002,20 @@ void Mixer::cmd_resume()
 	});
 }
 
+void Mixer::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&] () {
+		m_midi->cmd_save_state(_state, _mutex, _cv);
+	});
+}
+
+void Mixer::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&] () {
+		m_midi->cmd_restore_state(_state, _mutex, _cv);
+	});
+}
+
 void Mixer::cmd_quit()
 {
 	m_cmd_queue.push([this] () {
@@ -994,6 +1024,7 @@ void Mixer::cmd_quit()
 		m_quit = true;
 		close_audio_device();
 		SDL_AudioQuit();
+		stop_midi();
 	});
 }
 
