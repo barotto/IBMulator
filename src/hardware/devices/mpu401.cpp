@@ -159,10 +159,10 @@ void MPU401::reset(unsigned _type)
 	clear_queue();
 	
 	m_s.condbuf.counter = 0;
-	m_s.condbuf.type = MPU401::DataType::OVERFLOW;
+	m_s.condbuf.type = MPU401::DataType::T_OVERFLOW;
 	
 	for(int i=0; i<8; i++) {
-		m_s.playbuf[i].type = MPU401::DataType::OVERFLOW;
+		m_s.playbuf[i].type = MPU401::DataType::T_OVERFLOW;
 		m_s.playbuf[i].counter = 0;
 	}
 }
@@ -208,14 +208,14 @@ uint16_t MPU401::read(uint16_t _address, unsigned _io_len)
 			if(value == MPU401_MSG_COMMAND_REQ) {
 				m_s.state.data_onoff = 0;
 				m_s.state.cond_req = true;
-				if(m_s.condbuf.type != MPU401::DataType::OVERFLOW) {
+				if(m_s.condbuf.type != MPU401::DataType::T_OVERFLOW) {
 					m_s.state.block_ack = true;
 					write_command(m_s.condbuf.value[0]);
 					if(m_s.state.command_byte) {
 						write_data(m_s.condbuf.value[1]);
 					}
 				}
-				m_s.condbuf.type = MPU401::DataType::OVERFLOW;
+				m_s.condbuf.type = MPU401::DataType::T_OVERFLOW;
 			}
 			if(value == MPU401_MSG_END || value == MPU401_MSG_CLOCK || value == MPU401_MSG_ACK) {
 				m_s.state.data_onoff = -1;
@@ -451,10 +451,10 @@ void MPU401::write_command(unsigned _val)
 				}
 				for(int i=0; i<8; i++) {
 					m_s.playbuf[i].counter = 0;
-					m_s.playbuf[i].type = MPU401::DataType::OVERFLOW;
+					m_s.playbuf[i].type = MPU401::DataType::T_OVERFLOW;
 				}
 				m_s.condbuf.counter = 0;
-				m_s.condbuf.type = MPU401::DataType::OVERFLOW;
+				m_s.condbuf.type = MPU401::DataType::T_OVERFLOW;
 				if(!(m_s.state.conductor = m_s.state.cond_set)) {
 					m_s.state.cond_req = 0;
 				}
@@ -631,9 +631,9 @@ void MPU401::write_data(unsigned _val)
 				m_s.condbuf.counter = (int)_val;
 				break;
 			case 1: // Command byte #1
-				m_s.condbuf.type = MPU401::DataType::COMMAND;
+				m_s.condbuf.type = MPU401::DataType::T_COMMAND;
 				if(_val == 0xf8 || _val == 0xf9) {
-					m_s.condbuf.type = MPU401::DataType::OVERFLOW;
+					m_s.condbuf.type = MPU401::DataType::T_OVERFLOW;
 				}
 				m_s.condbuf.value[m_s.condbuf.vlength] = (uint8_t)_val;
 				m_s.condbuf.vlength++;
@@ -679,28 +679,28 @@ void MPU401::write_data(unsigned _val)
 				switch(_val & 0xf0) {
 					case 0xf0: // System message or mark
 						if(_val > 0xf7) {
-							m_s.playbuf[m_s.state.channel].type = MPU401::DataType::MARK;
+							m_s.playbuf[m_s.state.channel].type = MPU401::DataType::T_MARK;
 							m_s.playbuf[m_s.state.channel].sys_val = (uint8_t)_val;
 							length = 1;
 						} else {
 							PDEBUGF(LOG_V0, LOG_AUDIO, "%s: illegal message\n", name());
-							m_s.playbuf[m_s.state.channel].type = MPU401::DataType::MIDI_SYS;
+							m_s.playbuf[m_s.state.channel].type = MPU401::DataType::T_MIDI_SYS;
 							m_s.playbuf[m_s.state.channel].sys_val = (uint8_t)_val;
 							length = 1;
 						}
 						break;
 					case 0xc0: case 0xd0: // MIDI Message
-						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::MIDI_NORM;
+						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::T_MIDI_NORM;
 						length = m_s.playbuf[m_s.state.channel].length = 2;
 						break;
 					case 0x80: case 0x90: case 0xa0:  case 0xb0: case 0xe0: 
-						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::MIDI_NORM;
+						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::T_MIDI_NORM;
 						length = m_s.playbuf[m_s.state.channel].length = 3;
 						break;
 					default: // MIDI data with running status
 						posd++;
 						m_s.playbuf[m_s.state.channel].vlength++;
-						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::MIDI_NORM;
+						m_s.playbuf[m_s.state.channel].type = MPU401::DataType::T_MIDI_NORM;
 						length = m_s.playbuf[m_s.state.channel].length;
 						break;
 				}
@@ -827,7 +827,7 @@ void MPU401::update_track(uint8_t chan)
 	
 	if(m_s.state.amask & (1<<chan)) {
 		m_s.playbuf[chan].vlength = 0;
-		m_s.playbuf[chan].type = MPU401::DataType::OVERFLOW;
+		m_s.playbuf[chan].type = MPU401::DataType::T_OVERFLOW;
 		m_s.playbuf[chan].counter = 0xf0;
 		m_s.state.req_mask |= (1 << chan);
 	} else {
@@ -884,9 +884,9 @@ void MPU401::intelligent_out(uint8_t _chan)
 {
 	unsigned val;
 	switch(m_s.playbuf[_chan].type) {
-		case MPU401::DataType::OVERFLOW:
+		case MPU401::DataType::T_OVERFLOW:
 			break;
-		case MPU401::DataType::MARK:
+		case MPU401::DataType::T_MARK:
 			val = m_s.playbuf[_chan].sys_val;
 			if(val == 0xfc) {
 				g_mixer.midi()->cmd_put_byte(val);
@@ -894,7 +894,7 @@ void MPU401::intelligent_out(uint8_t _chan)
 				m_s.state.req_mask &= ~(1 << _chan);
 			}
 			break;
-		case MPU401::DataType::MIDI_NORM:
+		case MPU401::DataType::T_MIDI_NORM:
 			for(unsigned i=0; i<m_s.playbuf[_chan].vlength; i++) {
 				g_mixer.midi()->cmd_put_byte(m_s.playbuf[_chan].value[i]);
 			}

@@ -35,7 +35,7 @@ class MPU401 : public IODevice
 	};
 	
 	enum DataType {
-		OVERFLOW, MARK, MIDI_SYS, MIDI_NORM, COMMAND
+		T_OVERFLOW, T_MARK, T_MIDI_SYS, T_MIDI_NORM, T_COMMAND
 	};
 	
 	unsigned m_iobase;
