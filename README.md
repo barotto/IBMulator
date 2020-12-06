@@ -243,10 +243,35 @@ device=128:0
 Port 128:0 is usually the default one for software synths.
 
 To know the value to use you can launch IBMulator with the `[midi]:device`
-configuration empty and look at the log file, or use the command:
+configuration empty and look at the log file, or use the `pmidi` program:
 ```
 $ pmidi -l
 ```
+
+#### SysEx delays and the Roland MT-32 "Exc. Buffer overflow" error
+
+Using the `[midi]:sysex_delay` ini parameter, SysEx messages can be delayed for
+a specified amount of milliseconds to accommodate external MIDI modules needs.
+
+If you're the lucky owner of a real Roland MT-32 sound module and you're getting
+the "Exc. Buffer overflow" error, you can increase this value until the problem
+is solved.
+
+Another symptom of a needed extra delay is when the wrong instruments or sounds
+are played. For example, on Sierra adventure games, without a proper SysEx delay
+you would not get a buffer overflow error but still sounds would not be uploaded
+to the unit correctly and you would hear the wrong sound effects.
+
+Set the value to `auto` to use a default amount of delay, which is applied only
+when `[midi]:device_type` is set to `MT-32` or `LA`.
+
+Delays specified as a positive integer number will be applied regardles of the
+device type. A typical value for MT-32 external modules is `20` or more.
+
+Higher values will increase the machine state restore times when SysEx data is
+present. If you're using the Munt MT-32 emulator or any other software synth you
+can set this parameter to `0` to disable all delays.
+
 
 ### Key bindings
 

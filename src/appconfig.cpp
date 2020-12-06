@@ -98,7 +98,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ MIDI_SECTION, {
 		{ MIDI_ENABLED,      "no"    },
 		{ MIDI_DEVICE,       ""      },
-		{ MIDI_DEVTYPE,      "GM"    }
+		{ MIDI_DEVTYPE,      "GM"    },
+		{ MIDI_DELAY,        "auto"  }
 	} },
 	
 	{ PCSPEAKER_SECTION, {
@@ -464,6 +465,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  GS: Roland General Standard device (ie. SC-55 and SC-88)\n"
 ";                  GM: General MIDI device (default)\n"
 ";                  XG: Yamaha XG device\n"
+"; sysex_delay: Minimum amount of delay in milliseconds for SysEx messages. See the README for more info.\n"
+";              Possible values: auto, or an integer number (0 to disable all delays).\n"
 		},
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
@@ -639,7 +642,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ MIDI_SECTION, {
 		MIDI_ENABLED,
 		MIDI_DEVICE,
-		MIDI_DEVTYPE
+		MIDI_DEVTYPE,
+		MIDI_DELAY
 	} },
 	{ PCSPEAKER_SECTION, {
 		PCSPEAKER_ENABLED,

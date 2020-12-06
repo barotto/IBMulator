@@ -30,6 +30,8 @@ typedef std::function<void()> MIDI_fun_t;
 class MIDI
 {
 private:
+	friend class MIDIDev;
+	
 	bool m_quit;
 	shared_queue<MIDI_fun_t> m_cmd_queue;
 	std::unique_ptr<MIDIDev> m_device;
@@ -70,6 +72,7 @@ private:
 	} m_s;
 	
 	std::vector<uint8_t> m_sysex_data;
+	int m_min_sysex_delay;
 	
 	void open_device(std::string _conf);
 	void close_device();

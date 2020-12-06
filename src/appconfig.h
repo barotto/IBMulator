@@ -217,6 +217,7 @@ public:
 #define MIDI_ENABLED            "enabled"
 #define MIDI_DEVICE             "device"
 #define MIDI_DEVTYPE            "device_type"
+#define MIDI_DELAY              "sysex_delay"
 
 #define PCSPEAKER_SECTION       "pcspeaker"
 #define PCSPEAKER_ENABLED       "enabled"

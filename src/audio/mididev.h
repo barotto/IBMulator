@@ -20,6 +20,8 @@
 #ifndef IBMULATOR_MIDIDEV_H
 #define IBMULATOR_MIDIDEV_H
 
+class MIDI;
+
 class MIDIDev
 {
 public:
@@ -31,9 +33,10 @@ protected:
 	std::string m_conf;
 	std::string m_name;
 	Type m_type;
+	MIDI *m_instance;
 	
 public:	
-	MIDIDev();
+	MIDIDev(MIDI *_instance);
 	virtual ~MIDIDev() {}
 	virtual void open(std::string _conf) {
 		UNUSED(_conf);

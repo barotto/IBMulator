@@ -19,10 +19,12 @@
 
 #include "ibmulator.h"
 #include "program.h"
-#include "mididev.h"
+#include "midi.h"
 
-MIDIDev::MIDIDev()
+MIDIDev::MIDIDev(MIDI *_instance)
 {
+	m_instance = _instance;
+	
 	static std::map<std::string, unsigned> devtypes = {
 		{ "",      Type::GM },
 		{ "MT-32", Type::LA },
@@ -57,5 +59,6 @@ void MIDIDev::reset()
 	};
 	
 	PDEBUGF(LOG_V0, LOG_MIDI, "%s: resetting device\n", name());
-	send_sysex(&syx[m_type][0], syx[m_type].size());
+	// don't send directly with a send_sysex because delays must be accounted for.
+	m_instance->put_bytes(syx[m_type]);
 }

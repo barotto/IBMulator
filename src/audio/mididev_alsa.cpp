@@ -28,9 +28,9 @@
 #include <sstream>
 #include <regex>
 
-MIDIDev_ALSA::MIDIDev_ALSA()
+MIDIDev_ALSA::MIDIDev_ALSA(MIDI *_instance)
 :
-MIDIDev(),
+MIDIDev(_instance),
 m_seq_client(-1),
 m_seq_port(-1),
 m_this_port(-1),

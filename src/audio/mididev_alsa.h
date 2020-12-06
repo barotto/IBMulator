@@ -34,7 +34,7 @@ private:
 	snd_seq_t *m_seq_handle;
 	
 public:
-	MIDIDev_ALSA();
+	MIDIDev_ALSA(MIDI *_instance);
 	~MIDIDev_ALSA();
 	void open(std::string _conf);
 	bool is_open() {

@@ -67,6 +67,13 @@ template<class T>
 #include <chrono>
 #include <future>
 
+inline uint64_t get_curtime_ms()
+{
+	return std::chrono::time_point_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now()
+	).time_since_epoch().count();
+}
+
 template <class callable, class... arguments>
 	void timed_event(int _after_ms, callable&& _func, arguments&&... _args)
 {

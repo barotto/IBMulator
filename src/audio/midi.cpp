@@ -27,9 +27,12 @@
 #endif
 #include <chrono>
 
+#define MIN_MT32_SYSEX_DELAY 20
+
 MIDI::MIDI()
 :
-m_quit(false)
+m_quit(false),
+m_min_sysex_delay(0)
 {
 	
 }
@@ -69,6 +72,22 @@ void MIDI::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 			}
 		}
 		
+		m_min_sysex_delay = 0;
+		if(is_device_open()) {
+			try {
+				m_min_sysex_delay = g_program.config().try_int(MIDI_SECTION, MIDI_DELAY);
+				if(m_min_sysex_delay < 0) {
+					m_min_sysex_delay = 0;
+				}
+			} catch(std::exception &) {
+				std::string delay_string = g_program.config().get_string(MIDI_SECTION, MIDI_DELAY, "no");
+				if(delay_string == "auto" && m_device->type() == MIDIDev::Type::LA) {
+					m_min_sysex_delay = MIN_MT32_SYSEX_DELAY;
+				}
+			}
+		}
+		PINFOF(LOG_V0, LOG_MIDI, "Minimum delay for SysEx messages: %d ms.\n", m_min_sysex_delay);
+		
 		_cv.notify_one();
 	});
 }
@@ -98,7 +117,7 @@ void MIDI::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::conditio
 void MIDI::open_device(std::string _conf)
 {
 	if(HAVE_ALSA) {
-		m_device = std::make_unique<MIDIDev_ALSA>();
+		m_device = std::make_unique<MIDIDev_ALSA>(this);
 	} else {
 		PWARNF(LOG_V1, LOG_MIDI, "MIDI output is NOT available with this build!\n");
 		return;
@@ -545,13 +564,14 @@ void MIDI::put_bytes(const std::vector<uint8_t> &_data, bool _save)
 
 void MIDI::put_byte(uint8_t _data, bool _save)
 {
-	if(is_device_open() && m_device->type() == MIDIDev::Type::LA) {
-		uint64_t now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
+	if(is_device_open() && m_s.sysex.delay_ms > 0) {
+		uint64_t now_ms = get_curtime_ms();
 		uint64_t elapsed_ms = now_ms - m_s.sysex.start_ms;
 		if(elapsed_ms < m_s.sysex.delay_ms) {
 			uint64_t ms = m_s.sysex.delay_ms - elapsed_ms;
-			PDEBUGF(LOG_V2, LOG_MIDI, "Sleeping for %llu ms for SysEx delay\n", ms);
+			PDEBUGF(LOG_V2, LOG_MIDI, "Sleeping for %llu ms for SysEx delay...\n", ms);
 			std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+			PDEBUGF(LOG_V2, LOG_MIDI, "  slept for %llu ms\n", get_curtime_ms() - now_ms);
 		}
 	}
 
@@ -576,30 +596,36 @@ void MIDI::put_byte(uint8_t _data, bool _save)
 			assert(m_s.sysex.buf_used < (SYSEX_SIZE-1));
 			m_s.sysex.buf[m_s.sysex.buf_used++] = 0xf7;
 
-			bool allreset = false;
+			bool logmex = true;
+			m_s.sysex.delay_ms = 0;
 			if(m_s.sysex.is_mt_32()) {
 				if(m_s.sysex.buf[5] == 0x7F) {
-					m_s.sysex.delay_ms = 290; // All Parameters reset
-					allreset = true;
+					m_s.sysex.delay_ms = 290; // All Parameters reset (DOSBox value)
+					logmex = false;
 					PDEBUGF(LOG_V2, LOG_MIDI, "SysEx: MT-32 All Parameters reset, delay: %d ms\n", m_s.sysex.delay_ms);
 				} else if(m_s.sysex.buf[5] == 0x10 && m_s.sysex.buf[6] == 0x00 && m_s.sysex.buf[7] == 0x04) {
-					m_s.sysex.delay_ms = 145; // Viking Child
+					m_s.sysex.delay_ms = 145; // Viking Child (DOSBox value)
 				} else if(m_s.sysex.buf[5] == 0x10 && m_s.sysex.buf[6] == 0x00 && m_s.sysex.buf[7] == 0x01) {
-					m_s.sysex.delay_ms = 30; // Dark Sun 1
+					m_s.sysex.delay_ms = 30; // Dark Sun 1 (DOSBox value)
 				} else {
 					m_s.sysex.delay_ms = int(((float)(m_s.sysex.buf_used) * 1.25f) * 1000.0f / 3125.0f) + 2;
 				}
-				m_s.sysex.start_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
+			}
+			if(m_s.sysex.delay_ms < m_min_sysex_delay || m_min_sysex_delay == 0) {
+				m_s.sysex.delay_ms = m_min_sysex_delay;
 			}
 			
-			if(!allreset) {
+			if(logmex) {
 				PDEBUGF(LOG_V2, LOG_MIDI, "SysEx: address:[%02X %02X %02X], length: %d bytes, delay: %d ms\n",
 					m_s.sysex.buf[5], m_s.sysex.buf[6], m_s.sysex.buf[7], m_s.sysex.buf_used, m_s.sysex.delay_ms);
 			}
 			if(is_device_open()) {
+				PDEBUGF(LOG_V2, LOG_MIDI, "SysEx: elapsed time: %llu ms\n", get_curtime_ms() - m_s.sysex.start_ms);
 				m_device->send_sysex(m_s.sysex.buf, m_s.sysex.buf_used);
 			}
-			
+
+			m_s.sysex.start_ms = get_curtime_ms();
+
 			// TODO sysex file capture
 			
 			if(_save) {
