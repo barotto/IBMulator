@@ -124,6 +124,8 @@ void Program::restore_state(
 	std::function<void()> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
+	m_gui->show_message("Restoring state...");
+
 	/* The actual restore needs to be executed outside libRocket's event manager,
 	 * otherwise a deadlock on the libRocket mutex caused by the SysLog will occur.
 	 */
@@ -539,11 +541,6 @@ void Program::process_evts()
 
 		m_gui->dispatch_event(event);
 
-		if(m_restore_fn != nullptr) {
-			m_restore_fn();
-			m_restore_fn = nullptr;
-		}
-
 		switch(event.type)
 		{
 		case SDL_QUIT:
@@ -569,6 +566,11 @@ void Program::main_loop()
 		// see InterfaceScreen::sync_with_device()
 		m_gui->render();
 
+		if(m_restore_fn != nullptr) {
+			m_restore_fn();
+			m_restore_fn = nullptr;
+		}
+		
 		m_bench.load_end();
 		
 		m_pacer.wait(m_bench.load_time, m_bench.frame_time);
