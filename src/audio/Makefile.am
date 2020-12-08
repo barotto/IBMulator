@@ -8,6 +8,7 @@ libaudio_a_SOURCES = \
 	midi.cpp \
 	mididev.cpp \
 	mididev_alsa.cpp \
+	mididev_win32.cpp \
 	mixerchannel.cpp \
 	ring_buffer.cpp \
 	soundfx.cpp \

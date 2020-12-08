@@ -110,8 +110,14 @@ if test x$have_windows = xno ; then
 	PKG_CHECK_MODULES(ALSA, alsa, HAVE_ALSA="yes", HAVE_ALSA="no")
 	AC_SUBST(ALSA_CFLAGS)
 	AC_SUBST(ALSA_LIBS)
-	AM_CONDITIONAL(HAVE_ALSA, test x$HAVE_ALSA = xyes)
+	AC_DEFINE(HAVE_WINMM, [0], [whether to build in Windows Multimedia support])
+else
+	# Windows Multimedia
+	AC_DEFINE(HAVE_WINMM, [1], [whether to build in Windows Multimedia support])
 fi
+
+AM_CONDITIONAL(HAVE_ALSA, test x$HAVE_ALSA = xyes)
+
 if test "x$HAVE_ALSA" == xyes ; then
 	AC_DEFINE(HAVE_ALSA, [1], [whether to build in Alsa support])
 else
@@ -211,11 +217,11 @@ if test "x$ZLIB_LIBS" = "x"; then
 else
 	echo "- zlib         : Yes ($ZLIB_LIBS)"
 fi
-if test "x$ALSA_LIBS" != "x"; then
-	echo "- ALSA         : Yes ($ALSA_LIBS)"
-else
-	if test x$have_windows = xno ; then
-	echo "- ALSA         : NO (MIDI output disabled)"
+if test x$have_windows = xno ; then
+	if test "x$ALSA_LIBS" != "x"; then
+		echo "- ALSA         : Yes ($ALSA_LIBS)"
+	else
+		echo "- ALSA         : NO (MIDI output disabled)"
 	fi
 fi
 

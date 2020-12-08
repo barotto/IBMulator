@@ -21,11 +21,9 @@
 #include "ibmulator.h"
 #include "midi.h"
 #include "program.h"
-#include "gui/gui.h"
-#if HAVE_ALSA
 #include "mididev_alsa.h"
-#endif
-#include <chrono>
+#include "mididev_win32.h"
+#include "utils.h"
 
 #define MIN_MT32_SYSEX_DELAY 20
 
@@ -118,6 +116,8 @@ void MIDI::open_device(std::string _conf)
 {
 	if(HAVE_ALSA) {
 		m_device = std::make_unique<MIDIDev_ALSA>(this);
+	} else if(HAVE_WINMM) {
+		m_device = std::make_unique<MIDIDev_Win32>(this);
 	} else {
 		PWARNF(LOG_V1, LOG_MIDI, "MIDI output is NOT available with this build!\n");
 		return;

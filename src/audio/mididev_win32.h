@@ -17,45 +17,45 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_MIDIDEV_ALSA_H
-#define IBMULATOR_MIDIDEV_ALSA_H
+#ifndef IBMULATOR_MIDIDEV_WIN32_H
+#define IBMULATOR_MIDIDEV_WIN32_H
 
-#if HAVE_ALSA
+#if HAVE_WINMM
 
-#define USE_DRAIN 1
-#include <alsa/asoundlib.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <mmsystem.h>
 
-class MIDIDev_ALSA : public MIDIDev
+class MIDIDev_Win32 : public MIDIDev
 {
-private:
-	int m_seq_client;
-	int m_seq_port;
-	int m_this_port;
-	snd_seq_t *m_seq_handle;
+	int m_devid;
+	std::string m_devname;
+	HANDLE m_event;
+	HMIDIOUT m_out;
 	
 public:
-	MIDIDev_ALSA(MIDI *_instance);
-	~MIDIDev_ALSA();
+	MIDIDev_Win32(MIDI *_instance);
+	~MIDIDev_Win32();
 	void open(std::string _conf);
 	bool is_open() {
-		return (m_seq_handle != nullptr);
+		return (m_devid >= 0);
 	}
 	void close();
 	void send_event(uint8_t _msg[3]);
 	void send_sysex(uint8_t * _sysex, int _len);
-
+	
 private:
-	void parse_addr(std::string _arg);
-	void show_port_list();
-	void send_event(snd_seq_event_t &_ev, bool _flush);
+	void find_device(std::string _arg);
+	void list_available_devices();
+
 };
 
 #else
 
-class MIDIDev_ALSA : public MIDIDev
+class MIDIDev_Win32 : public MIDIDev
 {
 public:
-	MIDIDev_ALSA(MIDI *_instance) : MIDIDev(_instance) {}
+	MIDIDev_Win32(MIDI *_instance) : MIDIDev(_instance) {}
 };
 
 #endif

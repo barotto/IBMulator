@@ -77,7 +77,7 @@ private:
 	void open_device(std::string _conf);
 	void close_device();
 	void stop_and_silence_device();
-	bool is_device_open() { return (m_device != nullptr); }
+	bool is_device_open() { return (m_device != nullptr && m_device->is_open()); }
 	void put_byte(uint8_t _data, bool _save = false);
 	void put_bytes(const std::vector<uint8_t> &_data, bool _save = false);
 	
