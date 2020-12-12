@@ -96,7 +96,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ MIDI_SECTION, {
-		{ MIDI_ENABLED,      "no"    },
+		{ MIDI_ENABLED,      "yes"   },
 		{ MIDI_DEVICE,       ""      },
 		{ MIDI_DEVTYPE,      ""      },
 		{ MIDI_DELAY,        "auto"  }
