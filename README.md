@@ -231,6 +231,25 @@ software (FluidSynth, Munt, ...) or hardware.
 
 The MIDI device must be connected to the host system before IBMulator starts.
 
+#### Windows
+
+The `[midi]:device` ini setting should be set either with the MIDI device number
+you want to use or its name.
+
+For example:
+```
+[midi]
+device=1
+```
+or
+```
+[midi]
+device=MT-32 Synth Emulator
+```
+
+If left empty then the default device #0 is used, which usually is the
+Microsoft GS Wavetable Synth.
+
 #### Linux
 
 On Linux the ALSA subsystem is used. The `[midi]:device` value must be set with
@@ -240,7 +259,7 @@ the ALSA port of the device you want to use. For example:
 device=128:0
 ```
 
-Port 128:0 is usually the default one for software synths.
+Port 128:0 is usually a safe bet if you're using a software synth.
 
 To know the value to use you can launch IBMulator with the `[midi]:device`
 configuration empty and look at the log file, or use the `pmidi` program:
