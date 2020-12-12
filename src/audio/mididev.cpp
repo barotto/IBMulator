@@ -26,28 +26,31 @@ MIDIDev::MIDIDev(MIDI *_instance)
 	m_instance = _instance;
 	
 	static std::map<std::string, unsigned> devtypes = {
-		{ "",      Type::GM },
-		{ "MT-32", Type::LA },
-		{ "MT32",  Type::LA },
-		{ "LA",    Type::LA },
-		{ "GS",    Type::GS },
-		{ "GM",    Type::GM },
-		{ "XG",    Type::XG }
+		{ "",      Type::UNKNOWN },
+		{ "MT-32", Type::LA      },
+		{ "MT32",  Type::LA      },
+		{ "LA",    Type::LA      },
+		{ "GS",    Type::GS      },
+		{ "GM",    Type::GM      },
+		{ "XG",    Type::XG      }
 	};
 	m_type = static_cast<Type>(
-		g_program.config().get_enum(MIDI_SECTION, MIDI_DEVTYPE, devtypes, Type::GM)
+		g_program.config().get_enum(MIDI_SECTION, MIDI_DEVTYPE, devtypes, Type::UNKNOWN)
 	);
 	switch(m_type) {
-		case Type::LA: m_name="LA"; break;
-		case Type::GS: m_name="GS"; break;
-		case Type::GM: m_name="GM"; break;
-		case Type::XG: m_name="XG"; break;
+		case Type::LA: m_name = " LA"; break;
+		case Type::GS: m_name = " GS"; break;
+		case Type::GM: m_name = " GM"; break;
+		case Type::XG: m_name = " XG"; break;
+		default: m_name = ""; break;
 	}
 }
 
 void MIDIDev::reset()
 {
-	std::vector<uint8_t> syx[] = {
+	std::vector<std::vector<uint8_t>> reset_syx = {
+		// UNKNOWN
+		{},
 		// LA
 		{ 0xf0, 0x41, 0x10, 0x16, 0x12, 0x7f, 0x01, 0xf7 },
 		// GS
@@ -59,6 +62,14 @@ void MIDIDev::reset()
 	};
 	
 	PDEBUGF(LOG_V0, LOG_MIDI, "%s: resetting device\n", name());
-	// don't send directly with a send_sysex because delays must be accounted for.
-	m_instance->put_bytes(syx[m_type]);
+	
+	// don't send the message directly with a send_sysex because delays must be accounted for.
+	if(m_type == Type::UNKNOWN) {
+		// send all the reset messages, the attached device will ignore those not relevant
+		for(size_t i=1; i<reset_syx.size(); i++) {
+			m_instance->put_bytes(reset_syx[i]);
+		}
+	} else {
+		m_instance->put_bytes(reset_syx[m_type]);
+	}
 }

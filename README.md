@@ -258,15 +258,14 @@ the "Exc. Buffer overflow" error, you can increase this value until the problem
 is solved.
 
 Another symptom of a needed extra delay is when the wrong instruments or sounds
-are played. For example, on Sierra adventure games, without a proper SysEx delay
-you would not get a buffer overflow error but still sounds would not be uploaded
-to the unit correctly and you would hear the wrong sound effects.
+are played. For example, in Sierra's adventure games, without a proper SysEx
+delay you would not get a buffer overflow error but still data would not be
+uploaded to the unit correctly and you would hear the wrong sound effects.
 
-Set the value to `auto` to use a default amount of delay, which is applied only
-when `[midi]:device_type` is set to `MT-32` or `LA`.
-
-Delays specified as a positive integer number will be applied regardles of the
-device type. A typical value for MT-32 external modules is `20` or more.
+Set the value to `auto` to use a default amount of delay to all MT-32 SysEx
+messages. Delays specified as a positive integer number will be applied
+regardless of the device model for which they are sent. A typical value for
+MT-32 external modules is `20` or more.
 
 Higher values will increase the machine state restore times when SysEx data is
 present. If you're using the Munt MT-32 emulator or any other software synth you

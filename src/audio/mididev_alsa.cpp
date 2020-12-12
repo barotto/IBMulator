@@ -36,7 +36,7 @@ m_seq_port(-1),
 m_this_port(-1),
 m_seq_handle(nullptr)
 {
-	m_name = "ALSA " + m_name;
+	m_name = "ALSA" + m_name;
 }
 
 MIDIDev_ALSA::~MIDIDev_ALSA()

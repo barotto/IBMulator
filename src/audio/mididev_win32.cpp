@@ -36,7 +36,7 @@ m_devid(-1),
 m_event(NULL),
 m_out(NULL)
 {
-	m_name = "Win32 " + m_name;
+	m_name = "Win32" + m_name;
 }
 
 MIDIDev_Win32::~MIDIDev_Win32()

@@ -26,7 +26,7 @@ class MIDIDev
 {
 public:
 	enum Type {
-		LA, GS, GM, XG
+		UNKNOWN, LA, GS, GM, XG
 	};
 	
 protected:

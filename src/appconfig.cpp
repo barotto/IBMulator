@@ -98,7 +98,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ MIDI_SECTION, {
 		{ MIDI_ENABLED,      "no"    },
 		{ MIDI_DEVICE,       ""      },
-		{ MIDI_DEVTYPE,      "GM"    },
+		{ MIDI_DEVTYPE,      ""      },
 		{ MIDI_DELAY,        "auto"  }
 	} },
 	
@@ -458,13 +458,6 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ MIDI_SECTION,
 ";     enabled: Enable MIDI output.\n"
 ";      device: MIDI device to use. See the README for more info.\n"
-"; device_type: Type of the connected device (it determines the reset and load state procedures).\n"
-";              Possible values:\n"
-";               MT-32: Roland MT-32/CM-32L/CM-64 and compatible devices, including the Munt emulator\n"
-";                  LA: same as MT-32\n"
-";                  GS: Roland General Standard device (ie. SC-55 and SC-88)\n"
-";                  GM: General MIDI device (default)\n"
-";                  XG: Yamaha XG device\n"
 "; sysex_delay: Minimum amount of delay in milliseconds for SysEx messages. See the README for more info.\n"
 ";              Possible values: auto, or an integer number (0 to disable all delays).\n"
 		},
@@ -642,7 +635,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ MIDI_SECTION, {
 		MIDI_ENABLED,
 		MIDI_DEVICE,
-		MIDI_DEVTYPE,
 		MIDI_DELAY
 	} },
 	{ PCSPEAKER_SECTION, {

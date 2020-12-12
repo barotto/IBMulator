@@ -78,13 +78,15 @@ void MIDI::sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv)
 					m_min_sysex_delay = 0;
 				}
 			} catch(std::exception &) {
-				std::string delay_string = g_program.config().get_string(MIDI_SECTION, MIDI_DELAY, "no");
-				if(delay_string == "auto" && m_device->type() == MIDIDev::Type::LA) {
-					m_min_sysex_delay = MIN_MT32_SYSEX_DELAY;
+				std::string delay_string = g_program.config().get_string(MIDI_SECTION, MIDI_DELAY, "auto");
+				if(delay_string == "auto") {
+					m_min_sysex_delay = -1;
 				}
 			}
+			if(m_min_sysex_delay >= 0) {
+				PINFOF(LOG_V0, LOG_MIDI, "Minimum delay for SysEx messages: %d ms.\n", m_min_sysex_delay);
+			}
 		}
-		PINFOF(LOG_V0, LOG_MIDI, "Minimum delay for SysEx messages: %d ms.\n", m_min_sysex_delay);
 		
 		_cv.notify_one();
 	});
@@ -609,6 +611,11 @@ void MIDI::put_byte(uint8_t _data, bool _save)
 					m_s.sysex.delay_ms = 30; // Dark Sun 1 (DOSBox value)
 				} else {
 					m_s.sysex.delay_ms = int(((float)(m_s.sysex.buf_used) * 1.25f) * 1000.0f / 3125.0f) + 2;
+				}
+				if(m_min_sysex_delay < 0 && m_s.sysex.delay_ms < MIN_MT32_SYSEX_DELAY) {
+					// this is a MT-32 sysex message and delays are set to auto, so assume the worst case
+					// (old MT-32 board) and set the minimum amount needed
+					m_s.sysex.delay_ms = MIN_MT32_SYSEX_DELAY;
 				}
 			}
 			if(m_s.sysex.delay_ms < m_min_sysex_delay || m_min_sysex_delay == 0) {

@@ -61,7 +61,7 @@ private:
 		struct SysEx {
 			uint8_t  buf[SYSEX_SIZE] = {};
 			unsigned buf_used;
-			unsigned delay_ms;
+			int delay_ms;
 			uint64_t start_ms;
 			SysEx() : buf_used(0), delay_ms(0), start_ms(0) { }
 			bool is_mt_32() const {
