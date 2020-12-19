@@ -227,23 +227,21 @@ accelerate it.
 ### MIDI output
 
 In order to hear MIDI music you need to use an external sequencer, either
-software (FluidSynth, Munt, ...) or hardware.
+software (FluidSynth, Munt, etc.) or hardware.
 
 The MIDI device must be connected to the host system before IBMulator starts.
 
 #### Windows
 
-The `[midi]:device` ini setting should be set either with the MIDI device number
-you want to use or its name.
+The `device` key in the `[midi]` ini section should be set either with the MIDI
+device number you want to use or its name.
 
 For example:
 ```
-[midi]
 device=1
 ```
 or
 ```
-[midi]
 device=MT-32 Synth Emulator
 ```
 
@@ -252,17 +250,26 @@ Microsoft GS Wavetable Synth.
 
 #### Linux
 
-On Linux the ALSA subsystem is used. The `[midi]:device` value must be set with
-the ALSA port of the device you want to use. For example:
+On Linux the ALSA subsystem is used. The `[midi]:device` key can be set with the
+ALSA port of the device you want to use. For example:
 ```
-[midi]
 device=128:0
 ```
+A string corresponding to the client name is also valid (port 0 will be used):
+```
+device=Munt MT-32
+```
+or if you want to use a specific port add its number after the name string:
+```
+device=My Synth:1
+```
 
-Port 128:0 is usually a safe bet if you're using a software synth.
+If you leave the `device` key value empty, IBMulator will use the first suitable
+port it will find.
 
-To know the value to use you can launch IBMulator with the `[midi]:device`
-configuration empty and look at the log file, or use the `pmidi` program:
+To get the list of valid name strings and available ports you can launch
+IBMulator with the `device` configuration empty and look at the log file, or use
+the `pmidi` program:
 ```
 $ pmidi -l
 ```

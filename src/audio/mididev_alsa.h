@@ -30,6 +30,8 @@ class MIDIDev_ALSA : public MIDIDev
 private:
 	int m_seq_client;
 	int m_seq_port;
+	std::string m_seq_client_name;
+	std::string m_seq_port_name;
 	int m_this_port;
 	snd_seq_t *m_seq_handle;
 	
@@ -46,7 +48,8 @@ public:
 
 private:
 	void parse_addr(std::string _arg);
-	void show_port_list();
+	void list_available_ports();
+	void cycle_ports(std::function<bool(int,int,const char*, const char*)> _on_port);
 	void send_event(snd_seq_event_t &_ev, bool _flush);
 };
 

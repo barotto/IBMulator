@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2002-2020  The DOSBox Team
  * Copyright (C) 2020  Marco Bortolin
  *
  * This file is part of IBMulator.
@@ -16,6 +15,9 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ */
+/*
+ * Portions of code copyright (C) 2002-2020 The DOSBox Team
  */
 
 #include "ibmulator.h"
@@ -55,44 +57,66 @@ void MIDIDev_ALSA::parse_addr(std::string _arg)
 		return;
 	}
 
-	std::regex re("^([0-9]*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
+	// try number:number
+	std::regex num_num("^([0-9]*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
 	std::smatch match;
-	if(!std::regex_match(_arg, match, re) || match.size() != 3) {
-		throw std::exception();
+	if(std::regex_match(_arg, match, num_num) && match.size() == 3) {
+		m_seq_client = std::stoi(match[1].str());
+		m_seq_port = std::stoi(match[2].str());
+		PDEBUGF(LOG_V2, LOG_MIDI, "%s: client #%d : port #%d\n", name(), m_seq_client, m_seq_port);
+	} else {
+		// try string:number
+		std::regex str_num("^(.*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
+		if(std::regex_match(_arg, match, str_num) && match.size() == 3) {
+			m_seq_client_name = match[1];
+			m_seq_port = std::stoi(match[2].str());
+			PDEBUGF(LOG_V2, LOG_MIDI, "%s: client '%s' : port #%d\n", name(), m_seq_client_name.c_str(), m_seq_port);
+		} else {
+			// try string:0
+			m_seq_client_name = _arg;
+			m_seq_port = 0;
+			PDEBUGF(LOG_V2, LOG_MIDI, "%s: client '%s' (:0)\n", name(), m_seq_client_name.c_str());
+		}
 	}
-	
-	m_seq_client = std::stoi(match[1].str());
-	m_seq_port = std::stoi(match[2].str());
-	
-	PDEBUGF(LOG_V2, LOG_MIDI, "%s: port %d:%d\n", name(), m_seq_client, m_seq_port);
 }
 
-void MIDIDev_ALSA::show_port_list()
+void MIDIDev_ALSA::cycle_ports(std::function<bool(int,int,const char*, const char*)> _on_port)
 {
-	snd_seq_client_info_t *cinfo;
-	snd_seq_client_info_alloca(&cinfo);
-	snd_seq_client_info_set_client(cinfo, -1);
-	PINFOF(LOG_V0, LOG_MIDI, " Port     %-30.30s    %s\n", "Client name", "Port name");
+	snd_seq_client_info_t *client_info;
+	snd_seq_client_info_alloca(&client_info);
+	snd_seq_client_info_set_client(client_info, -1);
 
-	while(snd_seq_query_next_client(m_seq_handle, cinfo) >= 0) {
-		int client = snd_seq_client_info_get_client(cinfo);
-		snd_seq_port_info_t *pinfo;
-		snd_seq_port_info_alloca(&pinfo);
-		snd_seq_port_info_set_client(pinfo, client);
-
-		snd_seq_port_info_set_port(pinfo, -1);
-		while(snd_seq_query_next_port(m_seq_handle, pinfo) >= 0) {
+	while(snd_seq_query_next_client(m_seq_handle, client_info) >= 0) {
+		int client = snd_seq_client_info_get_client(client_info);
+		snd_seq_port_info_t *port_info;
+		snd_seq_port_info_alloca(&port_info);
+		snd_seq_port_info_set_client(port_info, client);
+		snd_seq_port_info_set_port(port_info, -1);
+		while(snd_seq_query_next_port(m_seq_handle, port_info) >= 0) {
 			unsigned cap = (SND_SEQ_PORT_CAP_SUBS_WRITE|SND_SEQ_PORT_CAP_WRITE);
-			if((snd_seq_port_info_get_capability(pinfo) & cap) == cap) {
-				PINFOF(LOG_V0, LOG_MIDI, "%3d:%-3d   %-30.30s    %s\n",
-					snd_seq_port_info_get_client(pinfo),
-					snd_seq_port_info_get_port(pinfo),
-					snd_seq_client_info_get_name(cinfo),
-					snd_seq_port_info_get_name(pinfo)
-					);
+			if((snd_seq_port_info_get_capability(port_info) & cap) == cap) {
+				if(!_on_port(
+					snd_seq_port_info_get_client(port_info),
+					snd_seq_port_info_get_port(port_info),
+					snd_seq_client_info_get_name(client_info),
+					snd_seq_port_info_get_name(port_info)
+				))
+				{
+					return;
+				}
 			}
 		}
 	}
+}
+
+void MIDIDev_ALSA::list_available_ports()
+{
+	PINFOF(LOG_V0, LOG_MIDI, " Port     %-30.30s    %s\n", "Client name", "Port name");
+
+	cycle_ports([](int _cid, int _pid, const char* _cname, const char* _pname) {
+		PINFOF(LOG_V0, LOG_MIDI, "%3d:%-3d   %-30.30s    %s\n", _cid, _pid, _cname, _pname);
+		return true;
+	});
 }
 
 void MIDIDev_ALSA::open(std::string _conf)
@@ -102,23 +126,75 @@ void MIDIDev_ALSA::open(std::string _conf)
 		throw std::exception();
 	}
 	
-	if(!_conf.empty()) { 
+	bool show_list = true;
+	bool found = false;
+	if(_conf.empty()) {
+		PWARNF(LOG_V0, LOG_MIDI, "%s: Device configuration is missing in [%s]:%s.\n", name(), MIDI_SECTION, MIDI_DEVICE);
+		PINFOF(LOG_V0, LOG_MIDI, "%s: Available ports:\n", name());
+		list_available_ports();
+		show_list = false;
+		
+		// search for the first available write capable port, except the kernel provided "Midi Through"
+		cycle_ports([this](int _cid, int _pid, const char *_cname, const char *_pname) {
+			if(std::string(_cname) != "Midi Through") {
+				m_seq_client = _cid;
+				m_seq_port = _pid;
+				m_seq_client_name = _cname;
+				m_seq_port_name = _pname;
+				return false;
+			}
+			return true;
+		});
+		
+		if(m_seq_client != -1) {
+			PINFOF(LOG_V0, LOG_MIDI, "%s: Trying with port %d:%d ...\n", name(), m_seq_client, m_seq_port);
+			found = true;
+		} else {
+			PWARNF(LOG_V0, LOG_MIDI, "%s: No suitable port found!\n", name());
+			throw std::exception();
+		}
+	} else { 
 		try {
 			parse_addr(_conf);
+			m_conf = _conf;
 		} catch(std::exception &) {
 			PERRF(LOG_MIDI, "%s: Invalid port '%s'\n", name(), _conf.c_str());
 			close();
 			throw;
 		}
-	} else {
-		PWARNF(LOG_V0, LOG_MIDI, "%s: Device configuration is missing in [%s]:%s.\n", name(), MIDI_SECTION, MIDI_DEVICE);
-		PINFOF(LOG_V0, LOG_MIDI, "%s: Please use one of the following available ports:\n", name());
-		show_port_list();
-		close();
-		throw std::exception();
 	}
 	
-	m_conf = _conf;
+	// if client is defined, port number is always defined
+	if(m_seq_client > 0 && m_seq_client_name.empty()) {
+		cycle_ports([&](int _cid, int _pid, const char *_cname, const char *_pname) {
+			if(_cid == m_seq_client && _pid == m_seq_port) {
+				m_seq_client_name = _cname;
+				m_seq_port_name = _pname;
+				found = true;
+				return false;
+			}
+			return true;
+		});
+	} else if(m_seq_client < 0 && !m_seq_client_name.empty()) {
+		cycle_ports([&](int _cid, int _pid, const char *_cname, const char *_pname) {
+			if(m_seq_client_name == _cname && _pid == m_seq_port) {
+				m_seq_client = _cid;
+				m_seq_port_name = _pname;
+				found = true;
+				return false;
+			}
+			return true;
+		});
+	}
+	
+	if(!found) {
+		PERRF(LOG_MIDI, "%s: Invalid port '%s'\n", name(), _conf.c_str());
+		if(show_list) {
+			PINFOF(LOG_V0, LOG_MIDI, "%s: Available ports:\n", name());
+			list_available_ports();
+		}
+		throw std::exception();
+	}
 	
 	int this_client = snd_seq_client_id(m_seq_handle);
 	snd_seq_set_client_name(m_seq_handle, PACKAGE_NAME);
@@ -142,14 +218,19 @@ void MIDIDev_ALSA::open(std::string _conf)
 
 	if(snd_seq_connect_to(m_seq_handle, m_this_port, m_seq_client, m_seq_port) < 0) {
 		PERRF(LOG_MIDI, "%s: Cannot subscribe to MIDI port %d:%d\n", name(), m_seq_client, m_seq_port);
-		PINFOF(LOG_V0, LOG_MIDI, "%s: Please use one of the following available ports:\n", name());
-		show_port_list();
+		if(show_list) {
+			PINFOF(LOG_V0, LOG_MIDI, "%s: Available ports:\n", name());
+			list_available_ports();
+		}
 		close();
 		throw std::exception();
 	}
 
-	PINFOF(LOG_V0, LOG_MIDI, "%s: Client initialized, port: %d:%d\n",
-		name(), m_seq_client, m_seq_port);
+	PINFOF(LOG_V0, LOG_MIDI, "%s: Using client '%s' (%d) on port '%s' (%d)\n",
+		name(),
+		m_seq_client_name.c_str(), m_seq_client,
+		m_seq_port_name.c_str(), m_seq_port
+	);
 }
 
 void MIDIDev_ALSA::close()
@@ -159,6 +240,10 @@ void MIDIDev_ALSA::close()
 		snd_seq_close(m_seq_handle);
 		m_seq_handle = nullptr;
 	}
+	m_seq_client = -1;
+	m_seq_port = -1;
+	m_seq_client_name = "";
+	m_seq_port_name = "";
 }
 
 void MIDIDev_ALSA::send_event(uint8_t _msg[3])
