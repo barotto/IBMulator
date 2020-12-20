@@ -9,6 +9,7 @@ libaudio_a_SOURCES = \
 	mididev.cpp \
 	mididev_alsa.cpp \
 	mididev_win32.cpp \
+	midifile.cpp \
 	mixerchannel.cpp \
 	ring_buffer.cpp \
 	soundfx.cpp \
@@ -32,6 +33,8 @@ noinst_HEADERS = \
 	midi.h \
 	mididev.h \
 	mididev_alsa.h \
+	mididev_win32.h \
+	midifile.h \
 	mixerchannel.h \
 	ring_buffer.h \
 	soundfx.h \

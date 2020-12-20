@@ -1637,7 +1637,7 @@ void SBlaster::dsp_cmd_midi_uart(bool _polling, bool _timestamps)
 
 void SBlaster::dsp_cmd_midi_out()
 {
-	g_mixer.midi()->cmd_put_byte(m_s.dsp.cmd_in[0]);
+	g_mixer.midi()->cmd_put_byte(m_s.dsp.cmd_in[0], g_machine.get_virt_time_ns());
 }
 
 void SBlaster::DSP::DataBuffer::flush()

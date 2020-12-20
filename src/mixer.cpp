@@ -142,6 +142,7 @@ void Mixer::start_capture()
 	for(auto ch : m_mix_channels) {
 		ch.second->on_capture(true);
 	}
+	m_midi->cmd_start_capture();
 	m_audio_capture = true;
 }
 
@@ -159,6 +160,7 @@ void Mixer::stop_capture()
 	for(auto ch : m_mix_channels) {
 		ch.second->on_capture(false);
 	}
+	m_midi->cmd_stop_capture();
 	PINFOF(LOG_V0, LOG_MIXER, "audio recording stopped\n");
 	GUI::instance()->show_message("audio recording stopped");
 }

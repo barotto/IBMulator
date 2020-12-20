@@ -22,6 +22,31 @@
 
 #include <vector>
 
+#ifdef __GNUC__
+#define bswap16 __builtin_bswap16
+#define bswap32 __builtin_bswap32
+#else
+#error TODO define byteswap functions
+#endif
+
+inline uint32_t to_bigendian_32(uint32_t _hostval)
+{
+#ifdef WORDS_BIGENDIAN
+	return _hostval;
+#else
+	return bswap32(_hostval);
+#endif
+}
+
+inline uint16_t to_bigendian_16(uint16_t _hostval)
+{
+#ifdef WORDS_BIGENDIAN
+	return _hostval;
+#else
+	return bswap16(_hostval);
+#endif
+}
+
 /* Converts a int into a string, to be used in string concatenations */
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)

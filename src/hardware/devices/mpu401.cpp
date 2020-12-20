@@ -318,17 +318,17 @@ void MPU401::write_command(unsigned _val)
 		switch(_val & 3) {
 			// MIDI stop, start, continue
 			case 1: {
-				g_mixer.midi()->cmd_put_byte(0xfc);
+				g_mixer.midi()->cmd_put_byte(0xfc, g_machine.get_virt_time_ns());
 				m_s.clock.cth_savecount = m_s.clock.cth_counter;
 				break;
 			}
 			case 2: {
-				g_mixer.midi()->cmd_put_byte(0xfa);
+				g_mixer.midi()->cmd_put_byte(0xfa, g_machine.get_virt_time_ns());
 				m_s.clock.cth_counter = m_s.clock.cth_savecount = 0;
 				break;
 			}
 			case 3: {
-				g_mixer.midi()->cmd_put_byte(0xfb);
+				g_mixer.midi()->cmd_put_byte(0xfb, g_machine.get_virt_time_ns());
 				m_s.clock.cth_counter = m_s.clock.cth_savecount;
 				break;
 			}
@@ -346,7 +346,7 @@ void MPU401::write_command(unsigned _val)
 				}
 				m_s.state.playing = false;
 				for(uint8_t i=0xb0; i<0xbf; i++) { // All notes off
-					g_mixer.midi()->cmd_put_bytes({i, 0x7b, 0x00});
+					g_mixer.midi()->cmd_put_bytes({i, 0x7b, 0x00}, g_machine.get_virt_time_ns());
 				}
 				break;
 			case 0x8: // Play
@@ -447,7 +447,7 @@ void MPU401::write_command(unsigned _val)
 				PDEBUGF(LOG_V2, LOG_AUDIO, "%s: cmd: clear play\n", name());
 				for(uint8_t i=0xb0; i<0xbf; i++) {
 					// All notes off
-					g_mixer.midi()->cmd_put_bytes({i, 0x7b, 0x00});
+					g_mixer.midi()->cmd_put_bytes({i, 0x7b, 0x00}, g_machine.get_virt_time_ns());
 				}
 				for(int i=0; i<8; i++) {
 					m_s.playbuf[i].counter = 0;
@@ -489,7 +489,7 @@ void MPU401::write_command(unsigned _val)
 void MPU401::write_data(unsigned _val)
 {
 	if(m_s.mode == MPU401::Mode::UART) {
-		g_mixer.midi()->cmd_put_byte(_val);
+		g_mixer.midi()->cmd_put_byte(_val, g_machine.get_virt_time_ns());
 		return;
 	}
 	
@@ -566,7 +566,7 @@ void MPU401::write_data(unsigned _val)
 					return;
 				default: // MIDI with running status
 					cnt++;
-					g_mixer.midi()->cmd_put_byte(m_s.playbuf[m_s.state.channel].value[0]);
+					g_mixer.midi()->cmd_put_byte(m_s.playbuf[m_s.state.channel].value[0], g_machine.get_virt_time_ns());
 					// TODO: is this break or return?
 					// dosbox doesn's have neither...
 					break;
@@ -574,7 +574,7 @@ void MPU401::write_data(unsigned _val)
 		}
 		if(cnt < length) {
 			cnt++;
-			g_mixer.midi()->cmd_put_byte((uint8_t)_val);
+			g_mixer.midi()->cmd_put_byte((uint8_t)_val, g_machine.get_virt_time_ns());
 		}
 		if(cnt == length) {
 			m_s.state.wsd = 0;
@@ -585,7 +585,7 @@ void MPU401::write_data(unsigned _val)
 	
 	if(m_s.state.wsm) { // Directly send system message
 		if(_val == MPU401_MSG_EOX) {
-			g_mixer.midi()->cmd_put_byte(MPU401_MSG_EOX);
+			g_mixer.midi()->cmd_put_byte(MPU401_MSG_EOX, g_machine.get_virt_time_ns());
 			m_s.state.wsm = 0;
 			return;
 		}
@@ -601,7 +601,7 @@ void MPU401::write_data(unsigned _val)
 			}
 		}
 		if(length == 0 || cnt < length) {
-			g_mixer.midi()->cmd_put_byte((uint8_t)_val);
+			g_mixer.midi()->cmd_put_byte((uint8_t)_val, g_machine.get_virt_time_ns());
 			cnt++;
 		}
 		if(cnt == length) {
@@ -889,14 +889,14 @@ void MPU401::intelligent_out(uint8_t _chan)
 		case MPU401::DataType::T_MARK:
 			val = m_s.playbuf[_chan].sys_val;
 			if(val == 0xfc) {
-				g_mixer.midi()->cmd_put_byte(val);
+				g_mixer.midi()->cmd_put_byte(val, g_machine.get_virt_time_ns());
 				m_s.state.amask &= ~(1 << _chan);
 				m_s.state.req_mask &= ~(1 << _chan);
 			}
 			break;
 		case MPU401::DataType::T_MIDI_NORM:
 			for(unsigned i=0; i<m_s.playbuf[_chan].vlength; i++) {
-				g_mixer.midi()->cmd_put_byte(m_s.playbuf[_chan].value[i]);
+				g_mixer.midi()->cmd_put_byte(m_s.playbuf[_chan].value[i], g_machine.get_virt_time_ns());
 			}
 			break;
 		default:

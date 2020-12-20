@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2002-2020  The DOSBox Team
  * Copyright (C) 2020  Marco Bortolin
  *
  * This file is part of IBMulator.
@@ -17,6 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*
+ * Portions of code copyright (C) 2002-2020 The DOSBox Team
+ */
 
 #include "ibmulator.h"
 #include "midi.h"
@@ -24,13 +26,15 @@
 #include "mididev_alsa.h"
 #include "mididev_win32.h"
 #include "utils.h"
+#include "filesys.h"
 
 #define MIN_MT32_SYSEX_DELAY 20
 
 MIDI::MIDI()
 :
 m_quit(false),
-m_min_sysex_delay(0)
+m_min_sysex_delay(0),
+m_last_evt_time(0)
 {
 	
 }
@@ -154,17 +158,17 @@ void MIDI::close_device()
 	m_device = nullptr;
 }
 
-void MIDI::cmd_put_byte(uint8_t _byte)
+void MIDI::cmd_put_byte(uint8_t _byte, uint64_t _time_ns)
 {
 	m_cmd_queue.push([=] () {
-		put_byte(_byte, true);
+		put_byte(_byte, true, _time_ns);
 	});
 }
 
-void MIDI::cmd_put_bytes(const std::vector<uint8_t> &_bytes)
+void MIDI::cmd_put_bytes(const std::vector<uint8_t> &_bytes, uint64_t _time_ns)
 {
 	m_cmd_queue.push([=] () {
-		put_bytes(_bytes, true);
+		put_bytes(_bytes, true, _time_ns);
 	});
 }
 
@@ -183,6 +187,49 @@ void MIDI::cmd_stop_device()
 	});
 }
 
+void MIDI::cmd_start_capture()
+{
+	m_cmd_queue.push([=] () {
+		m_midifile.close();
+		std::string path = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+		path = FileSys::get_next_filename(path, "midi_", ".mid");
+		if(!path.empty()) {
+			try {
+				m_midifile.open_write(path.c_str(),  0, 500);
+				m_midifile.write_new_track();
+				m_midifile.write_text("Dumped with " PACKAGE_STRING);
+				PINFOF(LOG_V0, LOG_MIDI, "Raw MIDI commands recording started to %s\n", path.c_str());
+			} catch(std::exception &e) {
+				m_midifile.close_file();
+				PERRF(LOG_MIDI, "Failed to open capture file: %s\n", e.what());
+			}
+		}
+		m_last_evt_time = 0;
+	});
+}
+
+void MIDI::cmd_stop_capture()
+{
+	m_cmd_queue.push([=] () {
+		
+		bool remove = ((m_midifile.mex_count() == 0) && (m_midifile.sys_count() == 0));
+		PINFOF(LOG_V0, LOG_MIDI, "MIDI messages written to file: %u\n",
+				m_midifile.mex_count() + m_midifile.sys_count());
+		try {
+			m_midifile.close();
+			PINFOF(LOG_V0, LOG_MIDI, "Raw MIDI commands recording stopped\n");
+		} catch(std::exception &e) {
+			m_midifile.close_file();
+			PERRF(LOG_MIDI, "Failed to finish capture: %s\n", e.what());
+			remove = true;
+		}
+		if(remove) {
+			PINFOF(LOG_V0, LOG_MIDI, "Deleting empty MIDI file\n");
+			::remove(m_midifile.path());
+		}
+	});
+}
+
 void MIDI::stop_and_silence_device()
 {
 	PDEBUGF(LOG_V0, LOG_MIDI, "Silencing the device...\n");
@@ -194,6 +241,8 @@ void MIDI::stop_and_silence_device()
 	for(uint8_t lcv=0; lcv<=0xf; lcv++) {
 		put_bytes({ uint8_t(0xb0 + lcv), 0x78, 0x00, 0x79, 0x00, 0x7b, 0x00 });
 	}
+	
+	m_last_evt_time = 0;
 }
 
 void MIDI::save_state(StateBuf &_state)
@@ -534,6 +583,22 @@ void MIDI::save_sysex(const State::SysEx &_sysex)
 	m_sysex_data.insert(m_sysex_data.end(), _sysex.buf, _sysex.buf+_sysex.buf_used);
 }
 
+uint32_t MIDI::get_delta(uint64_t _time_ns)
+{
+	uint32_t delta;
+	if(m_last_evt_time) {
+		if(_time_ns < m_last_evt_time) {
+			delta = 0;
+		} else {
+			delta = (_time_ns - m_last_evt_time) / 1000000u;
+		}
+	} else {
+		delta = 0;
+	}
+	m_last_evt_time = _time_ns;
+	return delta;
+}
+
 static uint8_t MIDI_evt_len[256] = {
 	0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  // 0x00
 	0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  // 0x10
@@ -557,14 +622,14 @@ static uint8_t MIDI_evt_len[256] = {
 	0,2,3,2, 0,0,1,0, 1,0,1,1, 1,0,1,0   // 0xf0
 };
 
-void MIDI::put_bytes(const std::vector<uint8_t> &_data, bool _save)
+void MIDI::put_bytes(const std::vector<uint8_t> &_data, bool _save, uint64_t _time)
 {
 	for(uint8_t b : _data) {
-		put_byte(b, _save);
+		put_byte(b, _save, _time);
 	}
 }
 
-void MIDI::put_byte(uint8_t _data, bool _save)
+void MIDI::put_byte(uint8_t _data, bool _save, uint64_t _time_ns)
 {
 	if(is_device_open() && m_s.sysex.delay_ms > 0) {
 		uint64_t now_ms = get_curtime_ms();
@@ -633,7 +698,9 @@ void MIDI::put_byte(uint8_t _data, bool _save)
 
 			m_s.sysex.start_ms = get_curtime_ms();
 
-			// TODO sysex file capture
+			if(m_midifile.is_open()) {
+				m_midifile.write_sysex(m_s.sysex.buf, m_s.sysex.buf_used, get_delta(_time_ns));
+			}
 			
 			if(_save) {
 				save_sysex(m_s.sysex);
@@ -656,8 +723,6 @@ void MIDI::put_byte(uint8_t _data, bool _save)
 		m_s.cmd_buf[m_s.cmd_pos++] = _data;
 		if(m_s.cmd_pos >= m_s.cmd_len) {
 			
-			// TODO cmd file capture
-			
 			switch(m_s.cmd_len) {
 				case 1: PDEBUGF(LOG_V2, LOG_MIDI, "command: %02X\n", m_s.cmd_buf[0]); break;
 				case 2: PDEBUGF(LOG_V2, LOG_MIDI, "command: %02X %02X\n", m_s.cmd_buf[0], m_s.cmd_buf[1]); break;
@@ -667,6 +732,11 @@ void MIDI::put_byte(uint8_t _data, bool _save)
 			if(is_device_open()) {
 				m_device->send_event(m_s.cmd_buf);
 			}
+			
+			if(m_midifile.is_open()) {
+				m_midifile.write_message(m_s.cmd_buf, m_s.cmd_len, get_delta(_time_ns));
+			}
+			
 			m_s.cmd_pos = 1; // Use Running status
 
 			if(_save) {

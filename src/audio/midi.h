@@ -22,6 +22,7 @@
 
 #include "shared_queue.h"
 #include "mididev.h"
+#include "midifile.h"
 #include "statebuf.h"
 
 #define SYSEX_SIZE 8192
@@ -74,12 +75,16 @@ private:
 	std::vector<uint8_t> m_sysex_data;
 	int m_min_sysex_delay;
 	
+	MIDIFile m_midifile;
+	uint64_t m_last_evt_time;
+	
 	void open_device(std::string _conf);
 	void close_device();
 	void stop_and_silence_device();
 	bool is_device_open() { return (m_device != nullptr && m_device->is_open()); }
-	void put_byte(uint8_t _data, bool _save = false);
-	void put_bytes(const std::vector<uint8_t> &_data, bool _save = false);
+	void put_byte(uint8_t _data, bool _save = false, uint64_t _time = 0);
+	void put_bytes(const std::vector<uint8_t> &_data, bool _save = false, uint64_t _time = 0);
+	uint32_t get_delta(uint64_t _time_ns);
 	
 	void save_message(uint8_t *_cmd_buf);
 	void save_sysex(const State::SysEx &_sysex);
@@ -96,9 +101,11 @@ public:
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
-	void cmd_put_byte(uint8_t _data);
-	void cmd_put_bytes(const std::vector<uint8_t> &_data);
+	void cmd_put_byte(uint8_t _data, uint64_t _time);
+	void cmd_put_bytes(const std::vector<uint8_t> &_data, uint64_t _time);
 	void cmd_stop_device();
+	void cmd_start_capture();
+	void cmd_stop_capture();
 	void cmd_quit();
 };
 
