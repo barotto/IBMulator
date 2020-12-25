@@ -244,7 +244,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ MPU401_SECTION, {
 		{ MPU401_ENABLED,  "no"          },
 		{ MPU401_IOBASE,   "0x330"       },
-		{ MPU401_IRQ,      "9"           },
+		{ MPU401_IRQ,      "3"           },
 		{ MPU401_MODE,     "intelligent" }
 	} },
 	
@@ -665,6 +665,12 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		SBLASTER_OPL_RATE,
 		SBLASTER_OPL_FILTERS,
 		SBLASTER_OPL_VOLUME
+	} },
+	{ MPU401_SECTION, {
+		MPU401_ENABLED,
+		MPU401_IOBASE,
+		MPU401_IRQ,
+		MPU401_MODE
 	} },
 	{ GAMEPORT_SECTION, {
 		GAMEPORT_ENABLED,
