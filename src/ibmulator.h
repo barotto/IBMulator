@@ -44,7 +44,6 @@
 #include <sys/types.h>
 #include <cstdio>
 #include <stdexcept>
-#include <cassert>
 
 #if !defined(_MSC_VER)
 	#define GCC_ATTRIBUTE(x) __attribute__ ((x))
@@ -86,7 +85,8 @@
 	#define DEFAULT_LOG_VERBOSITY LOG_V0 // default logger verbosity level
 
 	#define SHOW_CURRENT_PROGRAM_NAME true // enable running DOS program name visualization
-
+	
+	#include <cassert>
 #else
 	//RELEASE
 	#define CONFIG_PARSE      true
@@ -108,6 +108,15 @@
 
 	#define SHOW_CURRENT_PROGRAM_NAME false
 
+	#define ENABLE_ASSERTS false // enable the assert macro
+
+	#if ENABLE_ASSERTS
+		#undef NDEBUG
+		#include <cassert>
+		#define NDEBUG
+	#else
+		#include <cassert>
+	#endif
 #endif
 
 #define OVERRIDE_VERBOSITY_LEVEL false
