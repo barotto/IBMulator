@@ -1,4 +1,4 @@
-AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src
+AM_CXXFLAGS = @CXX_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@
 	
 noinst_LIBRARIES = libaudio.a
 libaudio_a_SOURCES = \

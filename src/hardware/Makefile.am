@@ -1,4 +1,4 @@
-AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src
+AM_CXXFLAGS = @CXX_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@
 	
 noinst_LIBRARIES = libhardware.a
 libhardware_a_SOURCES = \

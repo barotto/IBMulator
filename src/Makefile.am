@@ -1,4 +1,4 @@
-AM_CXXFLAGS = @CXX_DEFAULTS@ @BASECFLAGS@ -I$(top_srcdir)/src -DDATA_PATH=\"$(pkgdatadir)\" 
+AM_CXXFLAGS = @CXX_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@ -DDATA_PATH=\"$(pkgdatadir)\" 
 
 SUBDIRS = audio hardware gui
 
