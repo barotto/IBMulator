@@ -20,6 +20,7 @@
 <li><a href="#media">Media</a></li>
 <li><a href="#download">Download</a></li>
 <li><a href="#usage">Usage</a>
+<li><a href="#roadmap">Roadmap</a></li>
 <li><a href="#FAQ">FAQ</a>
 <li><a href="#tools">Tools</a></li>
 <li><a href="#contact">Contact</a></li>
@@ -66,7 +67,7 @@ IBMulator can emulate the following systems:
 </ul>
 
 <p>
-The program is still in active development so expect bugs and missing features.
+The program is still in <a href="#roadmap">active development</a> so expect bugs and missing features.
 </p>
 
 <hr />
@@ -91,7 +92,7 @@ The program is still in active development so expect bugs and missing features.
 <li><strong>Multiplatform.</strong><br />Runs in Windows and Linux, 64-bit only though because this is the 21st century.</li>
 </ul>
 
-<h3>List of devices currently emulated</h3>
+<h3>List of currently emulated devices</h3>
 <ul>
 <li>Intel 80286 and 80386 (SX & DX), with undefined behaviours, prefetch queue, and instruction timings</li>
 <li>IBM PS/1 model 2011, 2121 system boards, with POS and other control registers</li>
@@ -102,30 +103,6 @@ The program is still in active development so expect bugs and missing features.
 <li>IBM PS/1 Audio Card, AdLib, Creative Sound Blaster 2.01, Roland MPU-401, PC-Speaker (with PWM support)</li>
 <li>Game, Serial (COM), and Parallel (LPT) ports</li>
 </ul>
-
-<h3>Features likely to be implemented in the not so distant future</h3>
-<ul>
-<li>Multiple save states.</li>
-<li>Sound Blaster Pro & Pro 2 emulation.</li>
-<li>More VGA shaders.</li>
-<li>OSD for controlling stuff like audio levels at run time.</li>
-<li>Configurable CPU core, in order to disable unneeded emulated features and speed up the program on slower machines.</li>
-</ul>
-
-<h3>Features I wish to implement some day, maybe ...</h3>
-<ul>
-<li>Comprehensive configuration GUI.</li>
-<li>Sound Blaster 16 emulation.</li>
-<li>Code optimizations and multithreaded CPU core.</li>
-<li>Emulation of other PS/1 models, like the 2133 (80486).</li>
-<li>NE2000 network card emulation.</li>
-<li>3D interface mode with VR support.</li>
-</ul>
-
-<!--h3>What I'm currently working on for the next version</h3>
-<ul>
-<li>...TBD...</li>
-</ul-->
 
 <hr />
 
@@ -167,11 +144,25 @@ The program is still in active development so expect bugs and missing features.
 Latest version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.12">v0.12</a> (released 25/dec/2020)
 <br /><br />
 </p>
+
 <p>
-If you're feeling brave and want to try bleeding edge code (or if you want to contribute), use the git
-repository: <a href="https://github.com/barotto/IBMulator">https://github.com/barotto/IBMulator</a>
+If the precompiled binaries are not of your liking you can recompile them from the
+<a href="https://github.com/barotto/IBMulator/tree/master">master branch</a>
+<br />
+See the build instructions for more info:
+<a href="https://github.com/barotto/IBMulator/blob/master/BUILD_WINDOWS.md">Windows</a> | 
+<a href="https://github.com/barotto/IBMulator/blob/master/BUILD_LINUX.md">Linux</a>
 </p>
+
 <p>
+If you're feeling brave and want to try bleeding edge code (or you want to contribute), use the 
+<a href="https://github.com/barotto/IBMulator/tree/unstable">unstable branch</a>
+</p>
+
+<p>Other branches may be present from time to time to test specific features before merging them into unstable and, eventually, master.</p>
+
+<p>
+<br /><br />
 ROMs and disk images are copyrighted material and must be downloaded elsewhere 
 (<a href="https://www.google.com/search?q=ibm+ps%2F1+rom+images">hint</a>).
 </p>
@@ -191,7 +182,8 @@ ROMs and disk images are copyrighted material and must be downloaded elsewhere
 Please see the <a href="https://github.com/barotto/IBMulator/blob/master/README.md">README</a> file included in the package for detailed instructions on how to configure and use the program.
 </p>
 
-<h3>Supported ROMs</h3>
+<h3>Additional info</h3>
+<h4>Supported ROMs</h4>
 <p>
 This is the list of supported ROM BIOS versions and the default configurations that IBMulator selects when it loads them.
 </p>
@@ -291,8 +283,8 @@ IBM used the same ROM BIOS for multiple 2011 / 2121 models and the system config
 </tr>
 </table>
 
-<h3>HDD types</h3>
-<p>These are the HDD types supported by the PS/1 BIOS.<br />This table was defined by IBM and is common to many of the their products of the same era. While rendered irrelevant with the introduction of the ATA interface in the 2121 model, it's still present in its BIOS and it can be used in IBMulator to quickly specify a geometry and create a pre-formatted disk.</p>
+<h4>HDD types</h4>
+<p>These are the HDD types supported by the PS/1 BIOS.<br />This table was defined by IBM and is common to many (all?) of the their products of the '80s and early '90s.<br />While rendered irrelevant with the introduction of the ATA interface in the 2121 model, the HDD table is still present in the BIOS and can be used by IBMulator to quickly specify a geometry and create a pre-formatted disk.</p>
 <pre>
 Type   Cyl.   Heads    Sect.   Write    Land     Size
                                p-comp   Zone
@@ -347,12 +339,40 @@ Type   Cyl.   Heads    Sect.   Write    Land     Size
 47             -- user defined type --
 </pre>
 <p>
-<em>Note:</em> "type 47" is an IBMulator only feature, as the original BIOS does not have an interface to define a custom geometry.
+<em>Note:</em> "type 47" is an IBMulator only feature. In the original BIOS the last 3 table entries are blank and the PS/1 has no means to define a custom geometry.
 </p>
 <p>
-<em>Note:</em> the biggest formattable HDD you can define (type 47) for model 2011 is 496MiB (CHS 1024/16/62), due to a BIOS bug that limits the sectors per track to 62 instead of 63. The fact that such a bug exists is unsurprising as back then no HDD had 63 physical sectors per track.
+<em>Note:</em> the biggest formattable HDD you can define (type 47) for model 2011 is 496MiB (CHS 1024/16/62), due to a BIOS bug that limits the sectors per track to 62 instead of 63. The fact that such a bug exists is unsurprising as back then there were no HDD with 63 physical sectors per track to use.
 </p>
 
+
+<hr />
+
+<a href="#roadmap"><h2 id="roadmap">Roadmap</h2></a>
+
+<h3>What you'll find in the next version</h3>
+<ul>
+<li>Complete rewrite of the input system with remappable events and key bindings.</li>
+</ul>
+
+<h3>Features likely to be implemented in the not so distant future</h3>
+<ul>
+<li>Multiple save states.</li>
+<li>Sound Blaster Pro & Pro 2 emulation.</li>
+<li>More VGA shaders.</li>
+<li>OSD for controlling stuff like audio levels at run time.</li>
+<li>Configurable CPU core, in order to disable unneeded emulated features and speed up the program on slower machines.</li>
+</ul>
+
+<h3>Features I wish to implement some day, maybe ...</h3>
+<ul>
+<li>Comprehensive configuration GUI.</li>
+<li>Sound Blaster 16 emulation.</li>
+<li>Code optimizations and multithreaded CPU core.</li>
+<li>Emulation of other PS/1 models, like the 2133 (80486).</li>
+<li>NE2000 network card emulation.</li>
+<li>3D interface mode with VR support.</li>
+</ul>
 
 <hr />
 
