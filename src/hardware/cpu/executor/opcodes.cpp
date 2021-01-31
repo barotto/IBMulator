@@ -3297,7 +3297,7 @@ void CPUExecutor::MUL_ed()
 void CPUExecutor::NEG_eb()
 {
 	uint8_t op1 = load_eb();
-	uint8_t res = -(int8_t)(op1);
+	uint8_t res = -op1;
 	store_eb(res);
 
 	SET_FLAG(CF, op1);
@@ -3311,7 +3311,7 @@ void CPUExecutor::NEG_eb()
 void CPUExecutor::NEG_ew()
 {
 	uint16_t op1 = load_ew();
-	uint16_t res = -(int16_t)(op1);
+	uint16_t res = -op1;
 	store_ew(res);
 
 	SET_FLAG(CF, op1);
@@ -3325,7 +3325,7 @@ void CPUExecutor::NEG_ew()
 void CPUExecutor::NEG_ed()
 {
 	uint32_t op1 = load_ed();
-	uint32_t res = -(int32_t)(op1);
+	uint32_t res = -op1;
 	store_ed(res);
 
 	SET_FLAG(CF, op1);
