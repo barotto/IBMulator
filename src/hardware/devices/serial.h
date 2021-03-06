@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -276,7 +276,8 @@ private:
 	void rx_timer(uint8_t, uint64_t);
 	void fifo_timer(uint8_t, uint64_t);
 
-	void mouse_motion(int delta_x, int delta_y, int delta_z, unsigned button_state);
+	void mouse_button(MouseButton _button, bool _state);
+	void mouse_motion(int delta_x, int delta_y, int delta_z);
 	void update_mouse_data(void);
 
 	void init_mode_file(uint port, std::string dev);

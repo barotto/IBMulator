@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2009  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,7 +22,7 @@
 #define IBMULATOR_HW_KEYBOARD_H
 
 #include "hardware/iodevice.h"
-#include "gui/keymap.h"
+#include "keys.h"
 #include <mutex>
 
 
@@ -37,7 +37,6 @@
 #define MOUSE_MODE_WRAP   13
 #define MOUSE_BUFF_SIZE   48
 
-
 enum {
 	KBD_TYPE_XT,
 	KBD_TYPE_AT,
@@ -50,7 +49,6 @@ enum {
 class Keyboard : public IODevice
 {
 	IODEVICE(Keyboard, "Keyboard Controller");
-
 private:
 	struct State {
 		struct {
@@ -101,7 +99,7 @@ private:
 			uint8_t mode;
 			uint8_t saved_mode;  // the mode prior to entering wrap mode
 			bool    enable;
-			uint8_t button_status;
+			uint8_t buttons_state = 0;
 			int16_t delayed_dx;
 			int16_t delayed_dy;
 			int16_t delayed_dz;
@@ -193,8 +191,9 @@ public:
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 
-	void gen_scancode(uint32_t _key, uint32_t _event);
-	void mouse_motion(int delta_x, int delta_y, int delta_z, unsigned button_state);
+	void gen_scancode(Keys _key, uint32_t _event);
+	void mouse_button(MouseButton _button, bool _state);
+	void mouse_motion(int delta_x, int delta_y, int delta_z);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

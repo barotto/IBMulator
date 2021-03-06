@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,44 +20,177 @@
 #ifndef IBMULATOR_KEYMAP_H
 #define IBMULATOR_KEYMAP_H
 
-// In case of unknown symbol
-#define KEYMAP_UNKNOWN   0xFFFFFFFF
+#include "keys.h"
 
-// Structure of an element of the keymap table
-struct KeyEntry
-{
-	uint32_t key;          // ibmulator key code
-	uint32_t host_key;     // host key code
-	std::string host_name; // host key name
+struct InputEvent {
+	enum class Type {
+		INPUT_NONE,
+		INPUT_KEY,
+		INPUT_JOY_BUTTON,
+		INPUT_JOY_AXIS,
+		INPUT_MOUSE_BUTTON,
+		INPUT_MOUSE_AXIS
+	};
+	enum class State {
+		INPUT_NONE,
+		INPUT_PRESS,
+		INPUT_RELEASE,
+		INPUT_MOTION
+	};
+	
+	Type type = Type::INPUT_NONE;
+	State state = State::INPUT_NONE;
+	
+	struct Key {
+		SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;  // SDL physical key code
+		SDL_Keycode  sym = SDLK_UNKNOWN;               // SDL virtual key code
+		uint16_t     mod = 0;                          // key modifiers
+		
+		uint64_t to_index() const {
+			// scancode value is always limited to 16bit
+			return (uint64_t(sym)<<32 | scancode<<16 | mod);
+		}
+		bool operator<(const Key &_rhs) const {
+			return (to_index() < _rhs.to_index());
+		}
+		bool is_key_modifier();
+	} key;
+	
+	struct Pointing {
+		uint8_t type = 0;
+		uint8_t which = 0;
+		uint8_t button = 0;
+		uint8_t axis = 0;
+		
+		uint32_t to_index() const {
+			return (type<<24 | which<<16 | button<<8 | axis);
+		}
+		bool operator<(const Pointing &_rhs) const {
+			return (to_index() < _rhs.to_index());
+		}
+	} pointing;
+	
+	std::string name;
+	
+	void parse_token(const std::string &_tok);
+};
+
+struct ProgramEvent {
+	enum class Type {
+		EVT_NONE = 0,
+		EVT_PROGRAM_FUNC = 1,
+		EVT_KEY = 2,
+		EVT_JOY_BUTTON = 4,
+		EVT_JOY_AXIS = 8,
+		EVT_MOUSE_BUTTON = 16,
+		EVT_MOUSE_AXIS = 32
+	};
+	
+	enum class Func {
+		FUNC_NONE,
+		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
+		FUNC_TOGGLE_POWER,         // toggle the machine's power button
+		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
+		FUNC_TOGGLE_DBG_WND,       // show / hide the debug windows
+		FUNC_TAKE_SCREENSHOT,      // take a screenshot
+		FUNC_TOGGLE_AUDIO_CAPTURE, // start / stop audio capture
+		FUNC_TOGGLE_VIDEO_CAPTURE, // start / stop video capture
+		FUNC_QUICK_SAVE_STATE,     // quick save the current emulator's state
+		FUNC_QUICK_LOAD_STATE,     // quick load the last saved state
+		FUNC_GRAB_MOUSE,           // lock / unlock mouse to emulator
+		FUNC_SYS_SPEED_UP,         // increase emulation speed (whole system)
+		FUNC_SYS_SPEED_DOWN,       // decrease emulation speed (whole system)
+		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
+		FUNC_EXIT                  // close program
+	};
+	
+	Type type = Type::EVT_NONE;
+	Func func = Func::FUNC_NONE;
+	Keys key = KEY_NONE;
+	
+	struct Joy {
+		uint8_t which = 0;
+		uint8_t button = 0;
+		uint8_t axis = 0;
+		bool operator==(const ProgramEvent::Joy &_rhs) const {
+			return (which == _rhs.which && button == _rhs.button && axis == _rhs.axis);
+		}
+	} joy;
+	
+	struct Mouse {
+		MouseButton button = MouseButton::MOUSE_NOBTN;
+		uint8_t axis = 0;
+		bool operator==(const ProgramEvent::Mouse &_rhs) const {
+			return (button == _rhs.button && axis == _rhs.axis);
+		}
+	} mouse;
+	
+	std::string name;
+	
+	ProgramEvent() {}
+	ProgramEvent(const std::string &_tok);
+	
+	bool operator==(const ProgramEvent &_rhs) const {
+		return (type == _rhs.type && func == _rhs.func && key == _rhs.key &&
+				joy == _rhs.joy && mouse == _rhs.mouse);
+	}
 };
 
 class Keymap
 {
+public:
+	struct Binding {
+		InputEvent ievt; 
+		std::vector<ProgramEvent> pevt;
+		std::string name;
+		
+		Binding(InputEvent _ie, std::vector<ProgramEvent> _pe, std::string _n) : 
+			ievt(_ie), pevt(_pe), name(_n) {}
+		
+		bool has_prg_event(ProgramEvent) const;
+		bool is_pevt_keycombo();
+		void remove_pevt_kmods();
+	};
+
 private:
-	std::map<uint32_t, KeyEntry> m_keys_by_keycode;
-	std::map<uint32_t, KeyEntry> m_keys_by_scancode;
-
-public:
-	Keymap();
-	~Keymap();
-
-	void load(const std::string &_filename);
-	KeyEntry *find_host_key(uint32_t _key_code, uint32_t _scan_code);
-
-public:
-	static std::map<std::string, uint32_t> ms_keycode_table;
-	static std::map<std::string, uint32_t> ms_sdl_keycode_table;
-	static std::map<std::string, uint32_t> ms_sdl_scancode_table;
-	static std::map<uint32_t, std::string> ms_keycode_str_table;
-	static std::map<uint32_t, std::string> ms_sdl_keycode_str_table;
-	static std::map<uint32_t, std::string> ms_sdl_scancode_str_table;
+	std::list<Binding> m_bindings;
+	std::map<uint64_t, const Binding*> m_kbindings;
+	std::map<uint32_t, const Binding*> m_pbindings;
 	
-private:
-	int parse_next_line(std::ifstream &_fp, int &_linec, std::string &basesym_, std::string  &hostsym_);
-	uint32_t convert_string_to_key(std::map<std::string, uint32_t> &_dictionary,
-			const std::string &_string);
-};
+public:
+	void load(const std::string &_filename);
 
-extern Keymap g_keymap;
+	const Binding *find_sdl_binding(const SDL_KeyboardEvent &_event) const;
+	const Binding *find_sdl_binding(const SDL_MouseMotionEvent &_event) const;
+	const Binding *find_sdl_binding(const SDL_MouseButtonEvent &_event) const;
+	const Binding *find_sdl_binding(uint8_t _joyid, const SDL_JoyAxisEvent &_event) const;
+	const Binding *find_sdl_binding(uint8_t _joyid, const SDL_JoyButtonEvent &_event) const;
+	
+	std::vector<const Keymap::Binding *> find_prg_bindings(const ProgramEvent &_event) const;
+	
+	static SDL_Keycode get_SDL_Keycode_from_name(const std::string &);
+	static SDL_Scancode get_SDL_Scancode_from_name(const std::string &);
+	static std::string get_name_from_SDL_Keycode(SDL_Keycode &);
+	static std::string get_name_from_SDL_Scancode(SDL_Scancode &_scancode);
+
+	static const std::map<std::string, uint32_t> ms_sdl_kmod_table;
+	static const std::map<std::string, Keys> ms_keycode_table;
+	static const std::map<std::string, SDL_Keycode> ms_sdl_keycode_table;
+	static const std::map<std::string, SDL_Scancode> ms_sdl_scancode_table;
+	static const std::map<Keys, std::string> ms_keycode_str_table;
+	static const std::map<SDL_Keycode, std::string> ms_sdl_keycode_str_table;
+	static const std::map<SDL_Scancode, std::string> ms_sdl_scancode_str_table;
+	static const std::map<std::string, ProgramEvent::Func> ms_prog_funcs_table;
+
+private:
+	void add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name);
+	void add_binding(const InputEvent::Key &_kevt, const Binding *_binding);
+	
+	const Binding *find_input_binding(const InputEvent::Key &_kevt) const;
+	const Binding *find_input_binding(const InputEvent::Pointing &_pevt) const;
+
+	std::string parse_next_line(std::ifstream &_fp, int &_linec,
+			std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_);
+};
 
 #endif

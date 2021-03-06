@@ -1,133 +1,224 @@
 # IBMulator Keymap file
 #
-# The keymap file describes the layout of your keyboard, and how it translates
-# into IBMulator's keys.
+# The keymap file maps input events to program or emulator events.
 #
-# You can either use SDL keycodes (which can depend on the current keymap loaded
-# in your operating system) or SDL scancodes (which represent physical keyboard
-# keys and are not affected by any remapping).
-# 
-# Format:
-#  KEY_*   SDLK_*
-# or
-#  KEY_*   SDL_SCANCODE_*
+# For keyboard events IBMulator uses the SDL library's identifiers.
+# Refer to https://wiki.libsdl.org/SDL_Keycode for the list of SDL symbols.
 #
-# where:
-#  KEY_*          = IBMulator's key
-#  SDLK_*         = SDL keycode symbol
-#  SDL_SCANCODE_* = SDL scancode symbol
+# The general syntax for this file is:
+# INPUT_EVENT = IBMULATOR_EVENT
 #
-# See https://wiki.libsdl.org/SDL_Keycode for the list of SDL symbols.
+# INPUT_EVENT can be:
+#  SDLK_*               : SDL keyboard keycode symbol
+#  SDL_SCANCODE_*       : SDL keyboard scancode symbol
+#  KMOD_*+(KMOD_*+)...  : SDL keyboard modifier(s) followed by 1 of SDLK_* or SDL_SCANCODE_*
+#  JOY_j_BUTTON_n       : joystick / controller j's button number n (j and n start from 0)
+#  JOY_j_AXIS_n         : joystick / controller j's axis number n (j and n start from 0)
+#  MOUSE_AXIS_n         : mouse axis n
+#  MOUSE_BUTTON_n       : mouse button n
 #
+# IBMULATOR_EVENT can be:
+#  KEY_*            : a guest (emulator) keyboard key
+#  JOY_j_BUTTON_n   : joystick j's button number n (j=A or B, n=1 or 2)
+#  JOY_j_AXIS_n     : joystick j's axis n (j=A or B, n=X or Y)
+#  MOUSE_BUTTON_n   : mouse button n (1=left, 2=center, 3=right)
+#  MOUSE_AXIS_n     : mouse axis n (n=X or Y)
+#  FUNC_*           : GUI, program, or emulator function
+#
+#  AXIS events can be mapped only to other AXIS type of events.
+#  For modifier+key combos to actually work you must specify them with the
+#  modifier(s) first, like:
+#    KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB
+#
+# Valid KMOD_* keyboard modifiers are:
+#  KMOD_SHIFT  : any shift
+#  KMOD_LSHIFT : left shift
+#  KMOD_RSHIFT : right shift
+#  KMOD_CTRL   : any control
+#  KMOD_LCTRL  : left control
+#  KMOD_RCTRL  : right control
+#  KMOD_ALT    : any alt
+#  KMOD_LALT   : left alt
+#  KMOD_RALT   : right alt
+#  KMOD_GUI    : any meta (the "Win" key)
+#  KMOD_LGUI   : left meta
+#  KMOD_RGUI   : right meta
+#
+# SDL keycodes depend on the current keyboard layout loaded in your operating system.
+# SDL scancodes represent physical keyboard keys and are not affected by any OS remapping.
+#
+# Valid FUNC_* functions are:
+#  FUNC_GUI_MODE_ACTION      : GUI Mode action (see README; can be binded to keyboard events only)
+#  FUNC_TOGGLE_POWER         : toggle the machine's power button
+#  FUNC_TOGGLE_PAUSE         : pause / resume emulation
+#  FUNC_TOGGLE_DBG_WND       : show / hide the debug windows
+#  FUNC_TAKE_SCREENSHOT      : take a screenshot
+#  FUNC_TOGGLE_AUDIO_CAPTURE : start / stop audio capture
+#  FUNC_TOGGLE_VIDEO_CAPTURE : start / stop video capture
+#  FUNC_QUICK_SAVE_STATE     : quick save the current emulator's state
+#  FUNC_QUICK_LOAD_STATE     : quick load the last saved state
+#  FUNC_GRAB_MOUSE           : lock / unlock mouse to emulator
+#  FUNC_SYS_SPEED_UP         : increase emulation speed (whole system)
+#  FUNC_SYS_SPEED_DOWN       : decrease emulation speed (whole system)
+#  FUNC_TOGGLE_FULLSCREEN    : toggle fullscreen mode
+#  FUNC_EXIT                 : close IBMulator
 
-KEY_CTRL_L         SDLK_LCTRL
-KEY_SHIFT_L        SDLK_LSHIFT
-KEY_F1             SDLK_F1
-KEY_F2             SDLK_F2
-KEY_F3             SDLK_F3
-KEY_F4             SDLK_F4
-KEY_F5             SDLK_F5
-KEY_F6             SDLK_F6
-KEY_F7             SDLK_F7
-KEY_F8             SDLK_F8
-KEY_F9             SDLK_F9
-KEY_F10            SDLK_F10
-KEY_F11            SDLK_F11
-KEY_F12            SDLK_F12
-KEY_CTRL_R         SDLK_RCTRL
-KEY_SHIFT_R        SDLK_RSHIFT
-KEY_CAPS_LOCK      SDLK_CAPSLOCK
-KEY_NUM_LOCK       SDLK_NUMLOCKCLEAR
-KEY_ALT_L          SDLK_LALT
-KEY_ALT_R          SDLK_RALT
-KEY_A              SDLK_a
-KEY_B              SDLK_b
-KEY_C              SDLK_c
-KEY_D              SDLK_d
-KEY_E              SDLK_e
-KEY_F              SDLK_f
-KEY_G              SDLK_g
-KEY_H              SDLK_h
-KEY_I              SDLK_i
-KEY_J              SDLK_j
-KEY_K              SDLK_k
-KEY_L              SDLK_l
-KEY_M              SDLK_m
-KEY_N              SDLK_n
-KEY_O              SDLK_o
-KEY_P              SDLK_p
-KEY_Q              SDLK_q
-KEY_R              SDLK_r
-KEY_S              SDLK_s
-KEY_T              SDLK_t
-KEY_U              SDLK_u
-KEY_V              SDLK_v
-KEY_W              SDLK_w
-KEY_X              SDLK_x
-KEY_Y              SDLK_y
-KEY_Z              SDLK_z
-KEY_0              SDLK_0
-KEY_1              SDLK_1
-KEY_2              SDLK_2
-KEY_3              SDLK_3
-KEY_4              SDLK_4
-KEY_5              SDLK_5
-KEY_6              SDLK_6
-KEY_7              SDLK_7
-KEY_8              SDLK_8
-KEY_9              SDLK_9
-KEY_ESC            SDLK_ESCAPE
-KEY_SPACE          SDLK_SPACE
-KEY_SINGLE_QUOTE   SDL_SCANCODE_APOSTROPHE
-KEY_COMMA          SDL_SCANCODE_COMMA
-KEY_PERIOD         SDL_SCANCODE_PERIOD
-KEY_SLASH          SDL_SCANCODE_SLASH
-KEY_SEMICOLON      SDL_SCANCODE_SEMICOLON
-KEY_EQUALS         SDL_SCANCODE_EQUALS
-KEY_LEFT_BRACKET   SDL_SCANCODE_LEFTBRACKET
-KEY_BACKSLASH      SDL_SCANCODE_BACKSLASH
-KEY_RIGHT_BRACKET  SDL_SCANCODE_RIGHTBRACKET
-KEY_MINUS          SDL_SCANCODE_MINUS
-KEY_GRAVE          SDL_SCANCODE_GRAVE
-KEY_BACKSPACE      SDLK_BACKSPACE
-KEY_ENTER          SDLK_RETURN
-KEY_TAB            SDLK_TAB
-KEY_LEFT_BACKSLASH SDL_SCANCODE_NONUSBACKSLASH
-KEY_PRINT          SDLK_PRINTSCREEN
-KEY_SCRL_LOCK      SDLK_SCROLLLOCK
-KEY_PAUSE          SDLK_PAUSE
-KEY_INSERT         SDLK_INSERT
-KEY_DELETE         SDLK_DELETE
-KEY_HOME           SDLK_HOME
-KEY_END            SDLK_END
-KEY_PAGE_UP        SDLK_PAGEUP
-KEY_PAGE_DOWN      SDLK_PAGEDOWN
-KEY_KP_ADD         SDLK_KP_PLUS
-KEY_KP_SUBTRACT    SDLK_KP_MINUS
-KEY_KP_END         SDLK_KP_1
-KEY_KP_DOWN        SDLK_KP_2
-KEY_KP_PAGE_DOWN   SDLK_KP_3
-KEY_KP_LEFT        SDLK_KP_4
-KEY_KP_RIGHT       SDLK_KP_6
-KEY_KP_HOME        SDLK_KP_7
-KEY_KP_UP          SDLK_KP_8
-KEY_KP_PAGE_UP     SDLK_KP_9
-KEY_KP_INSERT      SDLK_KP_0
-KEY_KP_DELETE      SDLK_KP_PERIOD
-KEY_KP_5           SDLK_KP_5
-KEY_UP             SDLK_UP
-KEY_DOWN           SDLK_DOWN
-KEY_LEFT           SDLK_LEFT
-KEY_RIGHT          SDLK_RIGHT
-KEY_KP_ENTER       SDLK_KP_ENTER
-KEY_KP_MULTIPLY    SDLK_KP_MULTIPLY
-KEY_KP_DIVIDE      SDLK_KP_DIVIDE
 
-# usually sent with special combinations (see README)
-# KEY_SYSREQ
-# KEY_BREAK
+### Mouse bindings
 
-# keys not present in the standard pre-Win95 keyboards
+MOUSE_AXIS_X   = MOUSE_AXIS_X
+MOUSE_AXIS_Y   = MOUSE_AXIS_Y
+MOUSE_BUTTON_1 = MOUSE_BUTTON_1
+MOUSE_BUTTON_2 = MOUSE_BUTTON_2
+MOUSE_BUTTON_3 = FUNC_GRAB_MOUSE
+
+
+### Joystick bindings
+
+JOY_0_AXIS_0   = JOY_A_AXIS_X
+JOY_0_AXIS_1   = JOY_A_AXIS_Y
+JOY_0_BUTTON_0 = JOY_A_BUTTON_1
+JOY_0_BUTTON_1 = JOY_A_BUTTON_2
+#JOY_0_BUTTON_2 = FUNC_QUICK_SAVE_STATE
+#JOY_0_BUTTON_3 = FUNC_QUICK_LOAD_STATE
+
+JOY_1_AXIS_0   = JOY_B_AXIS_X
+JOY_1_AXIS_1   = JOY_B_AXIS_Y
+JOY_1_BUTTON_0 = JOY_B_BUTTON_1
+JOY_1_BUTTON_1 = JOY_B_BUTTON_2
+
+
+### Functions 
+
+KMOD_CTRL + SDLK_F1    = FUNC_GUI_MODE_ACTION
+KMOD_CTRL + SDLK_F3    = FUNC_TOGGLE_POWER
+KMOD_CTRL + SDLK_F4    = FUNC_TOGGLE_DBG_WND
+KMOD_CTRL + SDLK_F5    = FUNC_TAKE_SCREENSHOT
+KMOD_CTRL + SDLK_F6    = FUNC_TOGGLE_AUDIO_CAPTURE
+KMOD_CTRL + SDLK_F7    = FUNC_TOGGLE_VIDEO_CAPTURE
+KMOD_CTRL + SDLK_F8    = FUNC_QUICK_SAVE_STATE
+KMOD_CTRL + SDLK_F9    = FUNC_QUICK_LOAD_STATE
+KMOD_CTRL + SDLK_F10   = FUNC_GRAB_MOUSE
+KMOD_CTRL + SDLK_F11   = FUNC_SYS_SPEED_UP
+KMOD_CTRL + SDLK_F12   = FUNC_SYS_SPEED_DOWN
+KMOD_ALT + SDLK_RETURN = FUNC_TOGGLE_FULLSCREEN
+KMOD_ALT + SDLK_PAUSE  = FUNC_TOGGLE_PAUSE
+KMOD_ALT + SDLK_F4     = FUNC_EXIT
+
+
+### Keyboard bindings
+
+KMOD_CTRL + SDLK_INSERT  = KEY_SYSREQ
+KMOD_CTRL + SDLK_END     = KEY_BREAK
+KMOD_CTRL + SDLK_DELETE  = KEY_CTRL_L + KEY_ALT_L + KEY_DELETE
+KMOD_CTRL + SDLK_TAB     = KEY_ALT_L + KEY_TAB
+
+SDLK_LCTRL                  = KEY_CTRL_L
+SDLK_LSHIFT                 = KEY_SHIFT_L
+SDLK_F1                     = KEY_F1
+SDLK_F2                     = KEY_F2
+SDLK_F3                     = KEY_F3
+SDLK_F4                     = KEY_F4
+SDLK_F5                     = KEY_F5
+SDLK_F6                     = KEY_F6
+SDLK_F7                     = KEY_F7
+SDLK_F8                     = KEY_F8
+SDLK_F9                     = KEY_F9
+SDLK_F10                    = KEY_F10
+SDLK_F11                    = KEY_F11
+SDLK_F12                    = KEY_F12
+SDLK_RCTRL                  = KEY_CTRL_R
+SDLK_RSHIFT                 = KEY_SHIFT_R
+SDLK_CAPSLOCK               = KEY_CAPS_LOCK
+SDLK_NUMLOCKCLEAR           = KEY_NUM_LOCK
+SDLK_LALT                   = KEY_ALT_L
+SDLK_RALT                   = KEY_ALT_R
+SDLK_a                      = KEY_A
+SDLK_b                      = KEY_B
+SDLK_c                      = KEY_C
+SDLK_d                      = KEY_D
+SDLK_e                      = KEY_E
+SDLK_f                      = KEY_F
+SDLK_g                      = KEY_G
+SDLK_h                      = KEY_H
+SDLK_i                      = KEY_I
+SDLK_j                      = KEY_J
+SDLK_k                      = KEY_K
+SDLK_l                      = KEY_L
+SDLK_m                      = KEY_M
+SDLK_n                      = KEY_N
+SDLK_o                      = KEY_O
+SDLK_p                      = KEY_P
+SDLK_q                      = KEY_Q
+SDLK_r                      = KEY_R
+SDLK_s                      = KEY_S
+SDLK_t                      = KEY_T
+SDLK_u                      = KEY_U
+SDLK_v                      = KEY_V
+SDLK_w                      = KEY_W
+SDLK_x                      = KEY_X
+SDLK_y                      = KEY_Y
+SDLK_z                      = KEY_Z
+SDLK_0                      = KEY_0
+SDLK_1                      = KEY_1
+SDLK_2                      = KEY_2
+SDLK_3                      = KEY_3
+SDLK_4                      = KEY_4
+SDLK_5                      = KEY_5
+SDLK_6                      = KEY_6
+SDLK_7                      = KEY_7
+SDLK_8                      = KEY_8
+SDLK_9                      = KEY_9
+SDLK_ESCAPE                 = KEY_ESC
+SDLK_SPACE                  = KEY_SPACE
+SDL_SCANCODE_APOSTROPHE     = KEY_SINGLE_QUOTE
+SDL_SCANCODE_COMMA          = KEY_COMMA
+SDL_SCANCODE_PERIOD         = KEY_PERIOD
+SDL_SCANCODE_SLASH          = KEY_SLASH
+SDL_SCANCODE_SEMICOLON      = KEY_SEMICOLON
+SDL_SCANCODE_EQUALS         = KEY_EQUALS
+SDL_SCANCODE_LEFTBRACKET    = KEY_LEFT_BRACKET
+SDL_SCANCODE_BACKSLASH      = KEY_BACKSLASH
+SDL_SCANCODE_RIGHTBRACKET   = KEY_RIGHT_BRACKET
+SDL_SCANCODE_MINUS          = KEY_MINUS
+SDL_SCANCODE_GRAVE          = KEY_GRAVE
+SDLK_BACKSPACE              = KEY_BACKSPACE
+SDLK_RETURN                 = KEY_ENTER
+SDLK_TAB                    = KEY_TAB
+SDL_SCANCODE_NONUSBACKSLASH = KEY_LEFT_BACKSLASH
+SDLK_PRINTSCREEN            = KEY_PRINT
+SDLK_SCROLLLOCK             = KEY_SCRL_LOCK
+SDLK_PAUSE                  = KEY_PAUSE
+SDLK_INSERT                 = KEY_INSERT
+SDLK_DELETE                 = KEY_DELETE
+SDLK_HOME                   = KEY_HOME
+SDLK_END                    = KEY_END
+SDLK_PAGEUP                 = KEY_PAGE_UP
+SDLK_PAGEDOWN               = KEY_PAGE_DOWN
+SDLK_KP_PLUS                = KEY_KP_ADD
+SDLK_KP_MINUS               = KEY_KP_SUBTRACT
+SDLK_KP_1                   = KEY_KP_END
+SDLK_KP_2                   = KEY_KP_DOWN
+SDLK_KP_3                   = KEY_KP_PAGE_DOWN
+SDLK_KP_4                   = KEY_KP_LEFT
+SDLK_KP_6                   = KEY_KP_RIGHT
+SDLK_KP_7                   = KEY_KP_HOME
+SDLK_KP_8                   = KEY_KP_UP
+SDLK_KP_9                   = KEY_KP_PAGE_UP
+SDLK_KP_0                   = KEY_KP_INSERT
+SDLK_KP_PERIOD              = KEY_KP_DELETE
+SDLK_KP_5                   = KEY_KP_5
+SDLK_UP                     = KEY_UP
+SDLK_DOWN                   = KEY_DOWN
+SDLK_LEFT                   = KEY_LEFT
+SDLK_RIGHT                  = KEY_RIGHT
+SDLK_KP_ENTER               = KEY_KP_ENTER
+SDLK_KP_MULTIPLY            = KEY_KP_MULTIPLY
+SDLK_KP_DIVIDE              = KEY_KP_DIVIDE
+
+
+
+# keys not present in the standard pre-Win95 keyboards (TODO)
 # KEY_MENU
 # KEY_WIN_L
 # KEY_WIN_R

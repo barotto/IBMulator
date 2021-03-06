@@ -127,7 +127,7 @@ IBMulator has 3 different GUI modes.
 
 * **Compact**: in this mode the VGA image fills the available window space and 
 the control panel, in the shape of the PS/1 system unit, disappears when input 
-is grabbed or CTRL-F1 is pressed. Use this mode if you want an experience 
+is grabbed or CTRL+F1 is pressed. Use this mode if you want an experience 
 similar to DOSBox.
 * **Normal**: this is the default mode. The control panel / system unit places 
 itself at the bottom of the VGA display and is always visible.
@@ -203,14 +203,13 @@ Otherwise, joysticks A & B mapping will depend by the order you plug your game
 controllers in your system: the first one will be joystick A, the second one
 joystick B, and any subsequent controller will be ignored.
 
-The axes and buttons mapping can be specified in the [gameport] section of the
-ini file.
+The axes and buttons mapping can be specified in the `keymap.map` file.
 
 ### Emulation speed adjustments
 
-The entire machine emulation speed can be altered with CTRL+F11 (slow down) and
-CTRL+F12 (speed up). This is equivalent to warping time and it can go as low as
-0.01% and as high as 500% the normal speed.
+The entire machine's emulation speed can be altered with CTRL+F11 (slow down)
+and CTRL+F12 (speed up). This is equivalent to warping time and it can go as low
+as 0.01% and as high as 500% the normal speed.
 
 An indicator in the upper right corner of the screen will show the current speed
 when different from 100%. When the indicator is shown, video rendering will be
@@ -288,7 +287,7 @@ are played. For example, in Sierra's adventure games, without a proper SysEx
 delay you would not get a buffer overflow error but still data would not be
 uploaded to the unit correctly and you would hear the wrong sound effects.
 
-Set the value to `auto` to use a default amount of delay to all MT-32 SysEx
+Set the value to `auto` to apply a default amount of delay to all MT-32 SysEx
 messages. Delays specified as a positive integer number will be applied
 regardless of the device model for which they are sent. A typical value for
 MT-32 external modules is `20` or more.
@@ -299,6 +298,9 @@ can set this parameter to `0` to disable all delays.
 
 
 ### Key bindings
+
+These are the default key combinations. They can be changed by editing the
+`keymap.map` file, whose path is specified with the `[gui]:keymap` ini value.
 
 * CTRL+F1: GUI mode action:
   * compact mode:
@@ -313,18 +315,18 @@ can set this parameter to `0` to disable all delays.
 * CTRL+F7: start/stop video capture
 * CTRL+F8: save current state
 * CTRL+F9: load last state
-* CTRL+F10: mouse grab (only if CTRL+F10 is the mouse grab method, see ini file)
+* CTRL+F10: mouse grab
 * CTRL+F11: emulation speed down
 * CTRL+F12: emulation speed up
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
+* CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program
 
-If the grab method is 'MOUSE3', use the central mouse button to lock the
-mouse.
+The mouse can be grabbed with the central mouse button as well.
 
 ### Command line options
 

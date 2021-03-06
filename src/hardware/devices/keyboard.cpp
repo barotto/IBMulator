@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -158,6 +158,7 @@ void Keyboard::reset(unsigned _type)
 	m_s.mouse.saved_mode      = 0;
 	m_s.mouse.enable          = false;
 	// don't reset the button_status, it depends on the current state of the real mouse
+	// m_s.mouse.buttons_state
 	m_s.mouse.delayed_dx      = 0;
 	m_s.mouse.delayed_dy      = 0;
 	m_s.mouse.delayed_dz      = 0;
@@ -186,7 +187,8 @@ void Keyboard::config_changed()
 	uint mouse = g_program.config().get_enum(GUI_SECTION, GUI_MOUSE_TYPE, g_mouse_types);
 	if((mouse == MOUSE_TYPE_PS2) || (mouse == MOUSE_TYPE_IMPS2)) {
 		g_machine.register_mouse_fun(
-			std::bind(&Keyboard::mouse_motion, this, _1, _2, _3, _4)
+			std::bind(&Keyboard::mouse_motion, this, _1, _2, _3),
+			std::bind(&Keyboard::mouse_button, this, _1, _2)
 		);
 		PINFOF(LOG_V0, LOG_KEYB, "Installed PS/2 mouse\n");
 	}
@@ -644,7 +646,7 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	}
 }
 
-void Keyboard::gen_scancode(uint32_t _key, uint32_t _event)
+void Keyboard::gen_scancode(Keys _key, uint32_t _event)
 {
 	//thread safety: this procedure is called only by the GUI via the Machine
 	unsigned char *scancode;
@@ -656,7 +658,7 @@ void Keyboard::gen_scancode(uint32_t _key, uint32_t _event)
 	}
 
 	PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): %s (%d) %s\n",
-			Keymap::ms_keycode_str_table[_key].c_str(), _key,
+			Keymap::ms_keycode_str_table.at(_key).c_str(), _key,
 			(_event & KEY_RELEASED)?"released":"pressed");
 
 	if(!m_s.kbd_ctrl.scancodes_translate) {
@@ -834,6 +836,7 @@ bool Keyboard::mouse_enQ_packet(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4)
 	std::lock_guard<std::mutex> lock(m_mouse_lock);
 
 	if((m_s.mouse_buffer.num_elements + bytes) >= MOUSE_BUFF_SIZE) {
+		PDEBUGF(LOG_V0, LOG_KEYB, "Mouse buffer overrun!\n");
 		return false; /* buffer doesn't have the space */
 	}
 
@@ -1333,7 +1336,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			case 0xeb: // Read Data (send a packet when in Remote Mode)
 				controller_enQ(0xFA, 1); // ACK
 				// perhaps we should be adding some movement here.
-				mouse_enQ_packet(((m_s.mouse.button_status & 0x0f) | 0x08),
+				mouse_enQ_packet(((m_s.mouse.buttons_state & 0x0f) | 0x08),
 						0x00, 0x00, 0x00); // bit3 of first byte always set
 				//assumed we really aren't in polling mode, a rather odd assumption.
 				PERRF(LOG_KEYB, "mouse: Warning: Read Data command partially supported\n");
@@ -1363,7 +1366,7 @@ void Keyboard::create_mouse_packet(bool force_enq)
 
 	int16_t delta_x = m_s.mouse.delayed_dx;
 	int16_t delta_y = m_s.mouse.delayed_dy;
-	uint8_t button_state = m_s.mouse.button_status | 0x08;
+	uint8_t button_state = m_s.mouse.buttons_state | 0x08;
 
 	if(!force_enq && !delta_x && !delta_y) {
 		return;
@@ -1413,14 +1416,41 @@ void Keyboard::create_mouse_packet(bool force_enq)
 	mouse_enQ_packet(b1, b2, b3, b4);
 }
 
-void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_state)
+void Keyboard::mouse_button(MouseButton _button, bool _state)
 {
-	bool force_enq = false;
-
 	// don't generate interrupts if we are in remote mode.
 	if(m_s.mouse.mode == MOUSE_MODE_REMOTE) {
 		// is there any point in doing any work if we don't act on the result?
 		// so go home.
+		return;
+	}
+	
+	unsigned buttons_state = m_s.mouse.buttons_state;
+	int btnid = ec_to_i(_button) - 1;
+	buttons_state &= ~(1 << btnid);
+	buttons_state |= (_state << btnid);
+
+	if(m_s.mouse.buttons_state == buttons_state) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse button: useless call. ignoring.\n");
+		return;
+	} else {
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse buttons: btns=%d\n", buttons_state);
+	}
+
+	m_s.mouse.buttons_state = buttons_state;
+	
+	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
+		return;
+	}
+	
+	create_mouse_packet(true);
+}
+
+void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z)
+{
+	bool force_enq = false;
+
+	if(m_s.mouse.mode == MOUSE_MODE_REMOTE) {
 		return;
 	}
 
@@ -1428,23 +1458,17 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_s
 		delta_z = 0;
 	}
 
-	button_state &= 0x7;
-
-	if((delta_x==0) && (delta_y==0) && (delta_z==0)
-			&& (m_s.mouse.button_status == button_state))
+	if((delta_x==0) && (delta_y==0) && (delta_z==0))
 	{
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse: useless call. ignoring.\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: useless call. ignoring.\n");
 		return;
 	} else {
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: dx=%d, dy=%d, dz=%d, btns=%d\n",
-				delta_x, delta_y, delta_z, button_state);
+		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: dx=%d, dy=%d, dz=%d\n", delta_x, delta_y, delta_z);
 	}
 
-	if((m_s.mouse.button_status != button_state) || delta_z) {
+	if(delta_z) {
 		force_enq = true;
 	}
-
-	m_s.mouse.button_status = button_state;
 
 	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
 		return;
@@ -1483,8 +1507,8 @@ uint8_t Keyboard::State::Mouse::get_status_byte()
 	uint8_t ret = (uint8_t) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
 	ret |= (enable << 5);
 	ret |= (scaling == 1) ? 0 : (1 << 4);
-	ret |= ((button_status & 0x1) << 2); // left button
-	ret |= ((button_status & 0x2) >> 1); // right button
+	ret |= ((buttons_state & 0x1) << 2); // left button
+	ret |= ((buttons_state & 0x2) >> 1); // right button
 	return ret;
 }
 

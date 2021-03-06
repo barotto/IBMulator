@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2009  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,6 +33,6 @@ struct scancode
 };
 
 // Scancodes table
-extern scancode g_scancodes[KEY_NBKEYS][3];
+extern const scancode g_scancodes[KEY_NBKEYS][3];
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@
 #include "hardware/cpu.h"
 #include "hardware/systemrom.h"
 #include "hardware/devices.h"
+#include "hardware/devices/keyboard.h"
 #include "timers.h"
 
 class CPU;
@@ -38,7 +39,8 @@ class Machine;
 extern Machine g_machine;
 
 typedef std::function<void()> Machine_fun_t;
-typedef std::function<void(int delta_x, int delta_y, int delta_z, uint button_state)> mouse_fun_t;
+typedef std::function<void(int _delta_x, int _delta_y, int _delta_z)> mouse_mfun_t;
+typedef std::function<void(MouseButton _button, bool _state)> mouse_bfun_t;
 typedef std::function<void(int _jid, int _axis, int _value)> joystick_mfun_t;
 typedef std::function<void(int _jid, int _button, int _state)> joystick_bfun_t;
 
@@ -113,9 +115,10 @@ private:
 
 	shared_queue<Machine_fun_t> m_cmd_queue;
 
-	mouse_fun_t m_mouse_fun;
-	joystick_mfun_t m_joystick_mfun;
-	joystick_bfun_t m_joystick_bfun;
+	mouse_mfun_t m_mouse_mfun = nullptr;
+	mouse_bfun_t m_mouse_bfun = nullptr;
+	joystick_mfun_t m_joystick_mfun = nullptr;
+	joystick_bfun_t m_joystick_bfun = nullptr;
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
@@ -210,9 +213,10 @@ public:
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 
 	//used by the GUI. inter threading considerations are in keyboard.h/cpp
-	void send_key_to_kbctrl(uint32_t _key, uint32_t _event);
-	void register_mouse_fun(mouse_fun_t mouse_fun);
-	void mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _button_state);
+	void send_key_to_kbctrl(Keys _key, uint32_t _event);
+	void register_mouse_fun(mouse_mfun_t _mouse_mfun, mouse_bfun_t _mouse_bfun);
+	void mouse_motion(int _delta_x, int _delta_y, int _delta_z);
+	void mouse_button(MouseButton _button, bool _state);
 	void register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t _button_fun);
 	void joystick_motion(int _jid, int _axis, int _value);
 	void joystick_button(int _jid, int _button, int _state);

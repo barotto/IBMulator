@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -80,6 +80,23 @@ std::map<std::string, uint> GUI::ms_display_aspect = {
 	{ "scaled", DISPLAY_ASPECT_SCALED }
 };
 
+const std::map<ProgramEvent::Func, std::function<void(GUI&,GUI::EventPhase)>> GUI::ms_event_funcs = {
+	{ ProgramEvent::Func::FUNC_NONE,                 &GUI::pevt_func_none                 },
+	{ ProgramEvent::Func::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
+	{ ProgramEvent::Func::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
+	{ ProgramEvent::Func::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
+	{ ProgramEvent::Func::FUNC_TOGGLE_DBG_WND,       &GUI::pevt_func_toggle_dbg_wnd       },
+	{ ProgramEvent::Func::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
+	{ ProgramEvent::Func::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
+	{ ProgramEvent::Func::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
+	{ ProgramEvent::Func::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
+	{ ProgramEvent::Func::FUNC_QUICK_LOAD_STATE,     &GUI::pevt_func_quick_load_state     },
+	{ ProgramEvent::Func::FUNC_GRAB_MOUSE,           &GUI::pevt_func_grab_mouse           },
+	{ ProgramEvent::Func::FUNC_SYS_SPEED_UP,         &GUI::pevt_func_sys_speed_up         },
+	{ ProgramEvent::Func::FUNC_SYS_SPEED_DOWN,       &GUI::pevt_func_sys_speed_down       },
+	{ ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
+	{ ProgramEvent::Func::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
+};
 
 GUI::GUI()
 :
@@ -153,7 +170,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	}
 	
 	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
-	m_grab_method = str_to_lower(g_program.config().get_string(GUI_SECTION, GUI_GRAB_METHOD));
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
 	m_backcolor = {
 		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_R)),
@@ -209,12 +225,31 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		toggle_fullscreen();
 	}
 
-	auto keymap = g_program.config().find_file(GUI_SECTION, GUI_KEYMAP);
-	if(keymap.empty()) {
-		keymap = g_program.config().get_file_path("keymap.map", FILE_TYPE_ASSET);
-	}
+	std::string keymap_file;
+	auto keymap_default = g_program.config().get_file_path("keymap.map", FILE_TYPE_ASSET);
+	
 	try {
-		g_keymap.load(keymap);
+		keymap_file = g_program.config().get_file(GUI_SECTION, GUI_KEYMAP, FILE_TYPE_USER);
+		if(keymap_file.empty()) {
+			keymap_file = keymap_default;
+		} else {
+			if(!FileSys::file_exists(keymap_file.c_str())) {
+				PWARNF(LOG_V0, LOG_GUI, "The kemap file '%s' doesn't exists, creating...\n", keymap_file.c_str());
+				try {
+					FileSys::copy_file(keymap_default.c_str(), keymap_file.c_str());
+				} catch(std::exception &e) {
+					PWARNF(LOG_V0, LOG_GUI, "Unable to create the keymap file, using the default one\n");
+					keymap_file = keymap_default;
+				}
+			}
+		}
+	} catch(std::exception &e) {
+		PWARNF(LOG_V0, LOG_GUI, "The keymap file name is undefined, using the default one\n");
+		keymap_file = keymap_default;
+	}
+	
+	try {
+		m_keymap.load(keymap_file);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "Unable to load the keymap!\n");
 		shutdown_SDL();
@@ -233,17 +268,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		SDL_JoystickEventState(SDL_ENABLE);
 		PDEBUGF(LOG_V2, LOG_GUI, "Joy evt state: %d\n", SDL_JoystickEventState(SDL_QUERY));
 		int connected = SDL_NumJoysticks();
-		
-		m_joystick[0].x_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_X, 0);
-		m_joystick[0].y_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_Y, 1);
-		m_joystick[0].b1_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_B1, 0);
-		m_joystick[0].b2_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_A_B2, 1);
 		m_joystick[0].show_message = (connected < 1);
-		
-		m_joystick[1].x_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_X, 0);
-		m_joystick[1].y_axis = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_Y, 1);
-		m_joystick[1].b1_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_B1, 0);
-		m_joystick[1].b2_btn = g_program.config().get_int(GAMEPORT_SECTION, GAMEPORT_JOY_B_B2, 1);
 		m_joystick[1].show_message = (connected < 2);
 	}
 
@@ -374,278 +399,442 @@ void GUI::toggle_input_grab()
 	input_grab(!m_input_grab);
 }
 
-bool GUI::dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key)
+void GUI::send_key_to_machine(Keys _key, uint32_t _keystate)
 {
-	_discard_next_key = 0;
-	SDL_Keycode modifier_key_code = 0;
-	SDL_Scancode modifier_key_scan = SDL_SCANCODE_UNKNOWN;
-
-	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
-		if(_event.key.keysym.mod & KMOD_CTRL) {
-			modifier_key_code = (_event.key.keysym.mod & KMOD_RCTRL)?SDLK_RCTRL:SDLK_LCTRL;
-			modifier_key_scan = (_event.key.keysym.mod & KMOD_RCTRL)?SDL_SCANCODE_RCTRL:SDL_SCANCODE_LCTRL;
-			KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
-			switch(_event.key.keysym.sym) {
-				case SDLK_F1: {
-					// interface action
-					static int repeat = 0;
-					if(_event.key.repeat) {
-						if(++repeat == 1 && _event.type == SDL_KEYDOWN) {
-							std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-							m_windows.interface->action(1);
-							m_windows.interface->container_size_changed(m_width, m_height);
-						}
-					}
-					if(_event.type == SDL_KEYUP) {
-						if(!repeat) {
-							std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-							m_windows.interface->action(0);
-							m_windows.interface->container_size_changed(m_width, m_height);
-							if(m_mode == GUI_MODE_COMPACT &&
-							  dynamic_cast<NormalInterface*>(m_windows.interface)->is_system_visible())
-							{
-								input_grab(false);
-							}
-						}
-						repeat = 0;
-					}
-					return true;
-				}
-				case SDLK_F3: {
-					//machine on/off
-					if(_event.type == SDL_KEYUP) {
-						if(entry) {
-							_discard_next_key = modifier_key_code;
-						}
-						return true;
-					}
-					m_windows.interface->switch_power();
-					return true;
-				}
-				case SDLK_F4: {
-					//show/hide debug windows
-					if(_event.type == SDL_KEYUP) return true;
-					toggle_dbg_windows();
-					return true;
-				}
-				case SDLK_F5: {
-					//take screenshot
-					if(_event.type == SDL_KEYUP) return true;
-					take_screenshot(
-						#ifndef NDEBUG
-						true
-						#endif
-					);
-					return true;
-				}
-				case SDLK_F6: {
-					//start/stop audio capture
-					if(_event.type == SDL_KEYUP) return true;
-					m_mixer->cmd_toggle_capture();
-					return true;
-				}
-				case SDLK_F7: {
-					// screen recording
-					if(_event.type == SDL_KEYUP) return true;
-					m_capture->cmd_toggle_capture();
-					return true;
-				}
-				case SDLK_F8: {
-					//save current machine state
-					if(_event.type == SDL_KEYUP) return true;
-					KeyEntry *entry = g_keymap.find_host_key(modifier_key_code, modifier_key_scan);
-					if(entry) {
-						// send the CTRL key up event to the machine before saving 
-						m_machine->send_key_to_kbctrl(entry->key, KEY_RELEASED);
-						// then ignore it when it occurs
-						_discard_next_key = modifier_key_code;
-					}
-					g_program.save_state("", [this]() {
-						show_message("State saved");
-					}, nullptr);
-					return true;
-				}
-				case SDLK_F9: {
-					//load last machine state
-					if(_event.type == SDL_KEYUP) {
-						if(entry) {
-							_discard_next_key = modifier_key_code;
-						}
-						return true;
-					}
-					g_program.restore_state("", [this]() {
-						show_message("State restored");
-					}, nullptr);
-					return true;
-				}
-				case SDLK_F10: {
-					//mouse grab
-					if(m_grab_method.compare("ctrl-f10") != 0) return false;
-					if(_event.type == SDL_KEYUP) return true;
-					toggle_input_grab();
-					if(m_mode == GUI_MODE_COMPACT) {
-						if(m_input_grab) {
-							dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
-						} else {
-							dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
-						}
-					}
-					return true;
-				}
-				case SDLK_F11: {
-					//emulation speed down
-					if(_event.type == SDL_KEYUP) return true;
-					double factor = m_symspeed_factor / 1.1;
-					if(factor > 0.91 && factor < 1.09) {
-						factor = 1.0;
-						if(_event.key.repeat) {
-							m_machine->cmd_cycles_adjust(factor);
-							return true;
-						}
-					}
-					if(factor < 0.00002) {
-						m_machine->cmd_pause();
-					} else {
-						m_symspeed_factor = factor;
-						m_machine->cmd_cycles_adjust(m_symspeed_factor);
-					}
-					return true;
-				}
-				case SDLK_F12: {
-					//emulation speed up
-					if(_event.type == SDL_KEYUP) return true;
-					double factor = m_symspeed_factor * 1.1;
-					if(factor > 0.91 && factor < 1.09) {
-						factor = 1.0;
-						if(_event.key.repeat) {
-							m_machine->cmd_cycles_adjust(factor);
-							return true;
-						}
-					}
-					if(factor < 5.0) {
-						m_symspeed_factor = factor;
-						m_machine->cmd_cycles_adjust(m_symspeed_factor);
-					} else {
-						m_machine->cmd_cycles_adjust(5.0);
-					}
-					return true;
-				}
-				case SDLK_DELETE: {
-					//send CTRL+ALT+CANC
-					PDEBUGF(LOG_V2, LOG_GUI, "CTRL+ALT+CANC sent to guest OS\n");
-					if(_event.type == SDL_KEYUP) return true;
-					//CTRL has been already sent
-					m_machine->send_key_to_kbctrl(KEY_ALT_L, KEY_PRESSED);
-					m_machine->send_key_to_kbctrl(KEY_DELETE, KEY_PRESSED);
-					return true;
-				}
-				case SDLK_INSERT: {
-					//send SysReq
-					PDEBUGF(LOG_V2, LOG_GUI, "SysReq sent to guest OS\n");
-					if(_event.type == SDL_KEYUP) return true;
-					m_machine->send_key_to_kbctrl(KEY_SYSREQ, KEY_PRESSED);
-					return true;
-				}
-				case SDLK_END: {
-					//send Break
-					PDEBUGF(LOG_V2, LOG_GUI, "Break sent to guest OS\n");
-					if(_event.type == SDL_KEYUP) return true;
-					m_machine->send_key_to_kbctrl(KEY_BREAK, KEY_PRESSED);
-					return true;
-				}
-				default:
-					break;
-			}
-		} else if(_event.key.keysym.mod & KMOD_ALT) {
-			switch(_event.key.keysym.sym) {
-				case SDLK_RETURN: {
-					/* SDL fires multiple very fast key press events (key repeat
-					 * without a pause after the first event, issue #38)
-					 * use a static var to ignore all events after the first.
-					 */
-					static bool toggling = false;
-					if(_event.type == SDL_KEYUP) {
-						toggling = false;
-						return true;
-					}
-					if(toggling) {
-						return true;
-					}
-					toggling = true;
-					toggle_fullscreen();
-					return true;
-				}
-				case SDLK_PAUSE: {
-					if(_event.type == SDL_KEYUP) return true;
-					if(m_machine->is_paused()) {
-						m_machine->cmd_resume();
-					} else {
-						m_machine->cmd_pause();
-					}
-					return true;
-				}
-				default:
-					break;
-			}
+	if(m_machine->is_on()) {
+		if(_keystate == KEY_PRESSED && m_key_state[_key]) {
+			PDEBUGF(LOG_V2, LOG_GUI, "key %s already pressed\n", 
+					Keymap::ms_keycode_str_table.at(_key).c_str());
+		} else if(_keystate == KEY_RELEASED && !m_key_state[_key]) {
+			PDEBUGF(LOG_V2, LOG_GUI, "key %s already released\n", 
+					Keymap::ms_keycode_str_table.at(_key).c_str());
+		} else {
+			m_machine->send_key_to_kbctrl(_key, _keystate);
 		}
+	}
+	m_key_state[_key] = (_keystate == KEY_PRESSED);
+}
+
+void GUI::pevt_key(Keys _key, EventPhase _phase)
+{
+	auto sendk = [=](EventPhase ph) {
+		if(m_machine->is_on()) {
+			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: keyboard key %s: %s\n", 
+					Keymap::ms_keycode_str_table.at(_key).c_str(),
+					ph==EventPhase::EVT_START?"KEY_PRESSED":"KEY_RELEASED");
+		}
+		send_key_to_machine(_key, ph==EventPhase::EVT_START?KEY_PRESSED:KEY_RELEASED);
+	};
+	if(_phase == EventPhase::EVT_REPEAT) {
+		// key repeats are managed by the guest OS
+		return;
+	}
+	if(_phase == EventPhase::EVT_ONESHOT) {
+		sendk(EventPhase::EVT_START);
+		sendk(EventPhase::EVT_END);
 	} else {
-		switch(_event.type) {
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP: {
-				if(_event.button.button == SDL_BUTTON_MIDDLE) {
-					if(m_grab_method.compare("mouse3") != 0) return false;
-					if(_event.type == SDL_MOUSEBUTTONUP) return true;
-					toggle_input_grab();
-					if(m_mode == GUI_MODE_COMPACT) {
-						if(m_input_grab) {
-							dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
-						} else {
-							dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
-						}
-					}
-					return true;
+		sendk(_phase);
+	}
+}
+
+void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
+{
+	int amount = 0;
+	switch(_event.type) {
+		case SDL_MOUSEMOTION: {
+			// direct translation, value is the non zero relative amount
+			if(_event.motion.xrel != 0) {
+				amount = _event.motion.xrel;
+			} else {
+				amount = _event.motion.yrel;
+			}
+			break;
+		}
+		case SDL_JOYAXISMOTION: {
+			// TODO: this is useless
+			amount = _event.jaxis.value>0 ? 1 : -1;
+			break;
+		}
+		case SDL_KEYDOWN:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_JOYBUTTONDOWN:
+		default:
+			return;
+	}
+	int x_amount = 0;
+	int y_amount = 0;
+	if(_axis == 0) {
+		x_amount = amount;
+	} else {
+		y_amount = -amount;
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _axis?"Y":"X", _axis?y_amount:x_amount);
+	m_machine->mouse_motion(x_amount, y_amount, 0);
+}
+
+void GUI::pevt_mouse_button(MouseButton _button, EventPhase _phase)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse button %d: \n", ec_to_i(_button), _phase==EventPhase::EVT_START?"pressed":"released");
+	m_machine->mouse_button(_button, _phase==EventPhase::EVT_START);
+}
+
+void GUI::pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event)
+{
+	int value = 0;
+	switch(_event.type) {
+		case SDL_MOUSEMOTION: {
+			double amount = .0;
+			if(_event.motion.x != 0) {
+				amount = _event.motion.x - (m_width / 2.0);
+				amount /= (m_width / 2.0);
+			} else {
+				amount = _event.motion.y - (m_height / 2.0);
+				amount /= (m_height / 2.0);
+			}
+			value = amount * 32768.0;
+			break;
+		}
+		case SDL_JOYAXISMOTION: {
+			value = _event.jaxis.value;
+			break;
+		}
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		default:
+			break;
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: %d\n", _jid?"B":"A", _axis, value);
+	m_machine->joystick_motion(_jid, _axis, value);
+}
+
+void GUI::pevt_joy_button(uint8_t _jid, uint8_t _button, EventPhase _phase)
+{
+	int state = 0;
+	if(_phase == EventPhase::EVT_START) {
+		state = 1;
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s btn %d: %d\n", _jid?"B":"A", _button, state);
+	m_machine->joystick_button(_jid, _button, state);
+}
+
+bool GUI::on_event_binding(const SDL_Event &_event, const Keymap::Binding &_binding, bool _guest_input, uint32_t _type_mask)
+{
+	bool gui_input = !_guest_input;
+	
+	for(auto const & pevt : _binding.pevt) {
+		
+		PDEBUGF(LOG_V2, LOG_GUI, "  evt=%x,mask=%x\n", ec_to_i(pevt.type), _type_mask);
+		
+		if(ec_to_i(pevt.type) & _type_mask) {
+			PDEBUGF(LOG_V2, LOG_GUI, "  masked event\n");
+			continue;
+		}
+		
+		EventPhase phase;
+		if(_event.type == SDL_KEYDOWN || _event.type == SDL_MOUSEBUTTONDOWN || _event.type == SDL_JOYBUTTONDOWN) {
+			if(_event.type == SDL_KEYDOWN && _event.key.repeat) {
+				phase = EventPhase::EVT_REPEAT;
+			} else {
+				phase = EventPhase::EVT_START;
+			}
+		} else if(_event.type == SDL_KEYUP || _event.type == SDL_MOUSEBUTTONUP || _event.type == SDL_JOYBUTTONUP) {
+			phase = EventPhase::EVT_END;
+		} else if(_event.type == SDL_MOUSEMOTION || _event.type == SDL_JOYAXISMOTION) {
+			phase = EventPhase::EVT_ONESHOT;
+		} else {
+			// ???
+			PDEBUGF(LOG_V0, LOG_GUI, "  unexpected SDL event type %d\n", _event.type);
+			phase = EventPhase::EVT_END;
+		}
+
+		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: %s%s\n", pevt.name.c_str(),
+				phase==EventPhase::EVT_REPEAT?" (repeat)":"");
+
+		switch(pevt.type) {
+			case ProgramEvent::Type::EVT_KEY:
+				if(_guest_input) {
+					pevt_key(pevt.key, phase);
 				}
 				break;
-			}
+			case ProgramEvent::Type::EVT_PROGRAM_FUNC:
+				gui_input = false;
+				ms_event_funcs.at(pevt.func)(*this, phase);
+				break;
+			case ProgramEvent::Type::EVT_MOUSE_AXIS:
+				if(_guest_input) {
+					pevt_mouse_axis(pevt.mouse.axis, _event);
+				}
+				break;
+			case ProgramEvent::Type::EVT_MOUSE_BUTTON:
+				if(_guest_input) {
+					pevt_mouse_button(pevt.mouse.button, phase);
+				}
+				break;
+			case ProgramEvent::Type::EVT_JOY_AXIS:
+				if(_guest_input) {
+					pevt_joy_axis(pevt.joy.which, pevt.joy.axis, _event);
+				}
+				break;
+			case ProgramEvent::Type::EVT_JOY_BUTTON:
+				if(_guest_input) {
+					pevt_joy_button(pevt.joy.which, pevt.joy.button, phase);
+				}
+				break;
 			default:
 				break;
 		}
 	}
-	return false;
+	
+	return gui_input;
 }
 
-static void debug_key_print(const SDL_Event &_event, const KeyEntry *_kentry, const char *_handler)
+void GUI::on_keyboard_event(const SDL_Event &_event)
 {
-	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
-		std::string mod1 = bitfield_to_string(_event.key.keysym.mod&0xff,
-		{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
-		
-		std::string mod2 = bitfield_to_string((_event.key.keysym.mod>>8)&0xff,
-		{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
-		if(!mod1.empty()) {
-			mod2 = " " + mod2;
+	std::string mod1 = bitfield_to_string(_event.key.keysym.mod & 0xff,
+	{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
+	
+	std::string mod2 = bitfield_to_string((_event.key.keysym.mod >> 8) & 0xff,
+	{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
+	if(!mod1.empty()) {
+		mod2 = " " + mod2;
+	}
+	
+	PDEBUGF(LOG_V2, LOG_GUI, "Key: evt=%s, sym=%s, code=%s, mod=[%s%s]\n",
+			(_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
+			Keymap::ms_sdl_keycode_str_table.find(_event.key.keysym.sym)->second.c_str(),
+			Keymap::ms_sdl_scancode_str_table.find(_event.key.keysym.scancode)->second.c_str(),
+			mod1.c_str(), mod2.c_str());
+	
+	bool guest_input = m_input_grab || !m_windows.need_input();
+	bool gui_input = !guest_input;
+	
+	static const Keymap::Binding *combo = nullptr;
+	const Keymap::Binding *binding_ptr = m_keymap.find_sdl_binding(_event.key);
+	
+	if(binding_ptr) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
+		Keymap::Binding binding = *binding_ptr;
+		if(binding.is_pevt_keycombo()) {
+			// a key combo is always modifier(s) + key
+			if(_event.type == SDL_KEYDOWN) {
+				if(binding_ptr == combo) {
+					binding.remove_pevt_kmods();
+				} else {
+					// release all key modifiers
+					for(auto k : {
+						KEY_CTRL_L  ,
+						KEY_SHIFT_L ,
+						KEY_CTRL_R  ,
+						KEY_SHIFT_R ,
+						KEY_ALT_L   ,
+						KEY_ALT_R   ,
+						KEY_WIN_L   ,
+						KEY_WIN_R
+					}) {
+						if(m_key_state[k]) {
+							send_key_to_machine(k, KEY_RELEASED);
+						}
+					}
+					combo = binding_ptr;
+				}
+			} else if(_event.type == SDL_KEYUP && combo) {
+				if(binding_ptr == combo) {
+					// release everything except the modifiers
+					binding.remove_pevt_kmods();
+				}
+			}
+		} else if(_event.type == SDL_KEYUP && combo) {
+			if(binding.ievt.key.is_key_modifier()) {
+				// release the combo
+				binding = *combo;
+				combo = nullptr;
+			}
+			//else {
+			//	release this key
+			//	keep combo modifiers pressed
+			//}
 		}
-		
-		PDEBUGF(LOG_V2, LOG_GUI, "%s: evt=%s,sym=%s,code=%s,mod=[%s%s]",
-				_handler,
-				(_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
-				Keymap::ms_sdl_keycode_str_table[_event.key.keysym.sym].c_str(),
-				Keymap::ms_sdl_scancode_str_table[_event.key.keysym.scancode].c_str(),
-				mod1.c_str(), mod2.c_str());
-		if(_kentry) {
-			PDEBUGF(LOG_V2, LOG_GUI, " -> %s (%s)",
-				Keymap::ms_keycode_str_table[_kentry->key].c_str(),
-				_kentry->host_name.c_str());
-		}
-		PDEBUGF(LOG_V2, LOG_GUI, "\n");
+		//else if(_event.type == SDL_KEYDOWN && combo) {
+		//	just execute the binding while keeping the prev combo modifiers pressed
+		//}
+		gui_input = on_event_binding(_event, binding, guest_input);
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+	}
+	if(gui_input) {
+		dispatch_rocket_event(_event);
 	}
 }
 
-void GUI::dispatch_event(const SDL_Event &_event)
+void GUI::on_mouse_motion_event(const SDL_Event &_event)
 {
-	static bool special_key = false;
-	static SDL_Keycode discard_next_key = 0;
+	// mouse motion events are 2-in-1 (X and Y axes)
+	
+	PDEBUGF(LOG_V2, LOG_GUI, "Mouse motion: x:%d,y:%d\n", _event.motion.xrel, _event.motion.yrel);
+	
+	bool guest_input = m_input_grab;
+	
+	const Keymap::Binding *binding_x=nullptr, *binding_y=nullptr;
+	SDL_Event mevent;
+	
+	memcpy(&mevent, &_event, sizeof(SDL_Event));
+	
+	uint32_t evtmask = 0;
+	bool bind_x_map_x = false;
+	bool bind_x_map_y = false;
+	bool bind_y_map_x = false;
+	bool bind_y_map_y = false;
+	ProgramEvent x_mapping, y_mapping;
+	
+	x_mapping.type = y_mapping.type = ProgramEvent::Type::EVT_MOUSE_AXIS;
+	y_mapping.mouse.axis = 1;
+	
+	if(_event.motion.xrel) {
+		mevent.motion.yrel = 0;
+		binding_x = m_keymap.find_sdl_binding(mevent.motion);
+		if(binding_x) {
+			bind_x_map_x = binding_x->has_prg_event(x_mapping);
+			bind_x_map_y = binding_x->has_prg_event(y_mapping);
+			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis X: %s\n", binding_x->name.c_str());
+		} else {
+			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis X\n");
+		}
+	}
+	if(_event.motion.yrel) {
+		mevent.motion.xrel = 0;
+		mevent.motion.yrel = _event.motion.yrel;
+		binding_y = m_keymap.find_sdl_binding(mevent.motion);
+		if(binding_y) {
+			bind_y_map_x = binding_y->has_prg_event(x_mapping);
+			bind_y_map_y = binding_y->has_prg_event(y_mapping);
+			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis Y: %s\n", binding_y->name.c_str());
+		} else {
+			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis Y\n");
+		}
+	}
+	
+	// check if bindings have mouse mappings to X and Y
+	if(guest_input && (
+	   (bind_x_map_x && bind_y_map_y) ||
+	   (bind_x_map_y && bind_y_map_x) // inverted mouse? lol ok.
+	))
+	{
+		// if so translate mouse to mouse as a special case (combine in a single event)
+		// otherwise pointer motion would not work on the guest
+		int xrel, yrel;
+		if(bind_x_map_x) {
+			xrel = _event.motion.xrel;
+		} else if(bind_y_map_x) {
+			xrel = -_event.motion.yrel;
+		}
+		if(bind_y_map_y) {
+			yrel = _event.motion.yrel;
+		} else  if(bind_x_map_y) {
+			yrel = -_event.motion.xrel;
+		}
+		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse X,Y axis: %d,%d pixels\n", xrel,yrel);
+		m_machine->mouse_motion(xrel, -yrel, 0);
+		evtmask = ec_to_i(ProgramEvent::Type::EVT_MOUSE_AXIS);
+	}
 
+	// even if input is not grabbed, bindings could still be mapped to functions
+	if(binding_x) {
+		mevent.motion.x = _event.motion.x;
+		mevent.motion.xrel = _event.motion.xrel;
+		mevent.motion.y = 0;
+		mevent.motion.yrel = 0;
+		on_event_binding(mevent, *binding_x, guest_input, evtmask);
+		if(bind_x_map_x || bind_x_map_y) {
+			// don't send double mouse events to the guest! 
+			evtmask = ec_to_i(ProgramEvent::Type::EVT_MOUSE_AXIS);
+		}
+	}
+	if(binding_y) {
+		mevent.motion.x = 0;
+		mevent.motion.xrel = 0;
+		mevent.motion.y = _event.motion.y;
+		mevent.motion.yrel = _event.motion.yrel;
+		on_event_binding(mevent, *binding_y, guest_input, evtmask);
+	}
+	
+	if(!guest_input) {
+		dispatch_rocket_event(_event);
+	}
+}
+
+void GUI::on_mouse_button_event(const SDL_Event &_event)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "Mouse button: %d\n", _event.button.button);
+	
+	bool guest_input = m_input_grab;
+	bool gui_input = !guest_input;
+	
+	const Keymap::Binding *binding = m_keymap.find_sdl_binding(_event.button);
+	
+	if(binding) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
+		gui_input = on_event_binding(_event, *binding, guest_input);
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+	}
+	if(gui_input) {
+		dispatch_rocket_event(_event);
+	}
+}
+
+void GUI::on_joystick_motion_event(const SDL_Event &_event)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "Joystick motion: joy:%d, axis:%d\n", _event.jaxis.which, _event.jaxis.axis);
+	
+	assert(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
+	
+	int jid = JOY_NONE;
+	if(m_joystick[0].id == _event.jaxis.which) {
+		jid = 0;
+	} else if(m_joystick[1].id == _event.jaxis.which) {
+		jid = 1;
+	} else {
+		return;
+	}
+	
+	const Keymap::Binding *binding = m_keymap.find_sdl_binding(jid, _event.jaxis);
+	if(binding) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
+		on_event_binding(_event, *binding, true);
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+	}
+}
+
+void GUI::on_joystick_button_event(const SDL_Event &_event)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "Joystick button: joy:%d, button:%d, state:%d\n",
+			_event.jbutton.which, _event.jbutton.button, _event.jbutton.state);
+	
+	assert(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
+	
+	int jid = JOY_NONE;
+	if(m_joystick[0].id == _event.jbutton.which) {
+		jid = 0;
+	} else if(m_joystick[1].id == _event.jbutton.which) {
+		jid = 1;
+	} else {
+		return;
+	}
+	
+	const Keymap::Binding *binding = m_keymap.find_sdl_binding(jid, _event.jbutton);
+	if(binding) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
+		on_event_binding(_event, *binding, true);
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+	}
+}
+
+void GUI::on_joystick_event(const SDL_Event &_event)
+{
 	auto print_joy_message = [this](SDL_Joystick *joy, int jid, bool forced = false) {
 		char *mex;
 		if(asprintf(&mex,
@@ -664,11 +853,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		m_joystick[jid].show_message = true;
 	};
 	
-	if(_event.type == SDL_WINDOWEVENT) {
-		dispatch_window_event(_event.window);
-	} else if(_event.type == SDL_USEREVENT) {
-		//the 1-second timer
-	} else if(_event.type == SDL_JOYDEVICEADDED) {
+	if(_event.type == SDL_JOYDEVICEADDED) {
 		SDL_Joystick *joy = SDL_JoystickOpen(_event.jdevice.which);
 		if(joy) {
 			m_SDL_joysticks.push_back(joy);
@@ -687,8 +872,6 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			}
 			if(jid < 2) {
 				print_joy_message(joy, jid);
-				PINFOF(LOG_V0, LOG_GUI, "  using axis %d for X, axis %d for Y, button %d for b1, button %d for b2\n",
-						m_joystick[jid].x_axis, m_joystick[jid].y_axis, m_joystick[jid].b1_btn, m_joystick[jid].b2_btn);
 			}
 		} else {
 			PWARNF(LOG_V0, LOG_GUI, "Couldn't open Joystick index %d\n", _event.jdevice.which);
@@ -696,6 +879,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 	} else if(_event.type == SDL_JOYDEVICEREMOVED) {
 		PDEBUGF(LOG_V1, LOG_GUI, "Joystick SDL instance id %d has been removed\n", _event.jdevice.which);
 		assert(_event.jdevice.which <= Sint32(m_SDL_joysticks.size()));
+		
 		SDL_Joystick *joy = m_SDL_joysticks[_event.jdevice.which];
 		if(SDL_JoystickGetAttached(joy)) {
 			SDL_JoystickClose(joy);
@@ -725,162 +909,42 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		if(notify_user && m_joystick[1].id != JOY_NONE) {
 			print_joy_message(m_SDL_joysticks[m_joystick[1].id], 1, true);
 		}
-	} else if(_event.type == SDL_JOYAXISMOTION || 
-			_event.type == SDL_JOYBUTTONDOWN ||
-			_event.type == SDL_JOYBUTTONUP)
-	{
-		dispatch_hw_event(_event);
-	} else {
-		if(discard_next_key && (_event.key.keysym.sym == discard_next_key)) {
-			discard_next_key = SDLK_UNKNOWN;
-			debug_key_print(_event, nullptr, "Discarded");
-			return;
-		}
-		if(dispatch_special_keys(_event, discard_next_key)) {
-			debug_key_print(_event, nullptr, "Special");
-			special_key = true;
-			return;
-		}
-		if(m_input_grab) {
-			dispatch_hw_event(_event);
-			return;
-		}
-		switch(_event.type) {
-			case SDL_KEYDOWN:
-			case SDL_KEYUP:
-				if(m_windows.needs_input() && !special_key) {
-					dispatch_rocket_event(_event);
-				} else {
-					dispatch_hw_event(_event);
-					special_key = false;
-				}
-				break;
-			default:
-				dispatch_rocket_event(_event);
-				break;
-		}
 	}
 }
 
-void GUI::dispatch_hw_event(const SDL_Event &_event)
+void GUI::dispatch_event(const SDL_Event &_event)
 {
-	if(!m_input_grab && (
-		_event.type == SDL_MOUSEMOTION ||
-		_event.type == SDL_MOUSEBUTTONDOWN ||
-		_event.type == SDL_MOUSEBUTTONUP ||
-		_event.type == SDL_MOUSEWHEEL)
-	) {
-		return;
-	}
-
-	KeyEntry *entry = nullptr;
-	if(_event.type == SDL_KEYDOWN || _event.type == SDL_KEYUP) {
-		entry = g_keymap.find_host_key(_event.key.keysym.sym, _event.key.keysym.scancode);
-		debug_key_print(_event, entry, "HW event");
-	}
-
-	switch(_event.type)
-	{
-	case SDL_MOUSEMOTION: {
-		uint8_t buttons;
-		buttons  = bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_LEFT));
-		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
-		buttons |= bool(_event.motion.state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) << 2;
-		m_machine->mouse_motion(_event.motion.xrel, -_event.motion.yrel, 0, buttons);
-		break;
-	}
-	case SDL_MOUSEBUTTONDOWN:
-	case SDL_MOUSEBUTTONUP: {
-		if(_event.button.button == SDL_BUTTON_MIDDLE) {
+	switch(_event.type) {
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			on_keyboard_event(_event);
 			break;
-		}
-
-		uint8_t mouse_state = SDL_GetMouseState(nullptr, nullptr);
-		uint8_t buttons;
-		buttons  = bool(mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT));
-		buttons |= bool(mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT)) << 1;
-		buttons |= bool(mouse_state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) << 2;
-		m_machine->mouse_motion(0,0,0, buttons);
-
-		break;
-	}
-	case SDL_MOUSEWHEEL:
-		//no wheel on the ps/1. should I implement it for IM?
-		break;
-
-	case SDL_KEYDOWN: {
-		if(!entry) {
-			PERRF(LOG_GUI,"host key %s [%s] not mapped\n",
-					Keymap::ms_sdl_keycode_str_table[_event.key.keysym.sym].c_str(),
-					Keymap::ms_sdl_scancode_str_table[_event.key.keysym.scancode].c_str());
+		case SDL_MOUSEMOTION:
+			on_mouse_motion_event(_event);
 			break;
-		}
-		if(entry->key == KEY_UNHANDLED) {
-			PDEBUGF(LOG_GUI, LOG_V2, "host key '%s' ignored\n", 
-					entry->host_name.c_str());
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+			on_mouse_button_event(_event);
 			break;
-		}
-		m_machine->send_key_to_kbctrl(entry->key, KEY_PRESSED);
-		break;
-	}
-	case SDL_KEYUP: {
-		if(!entry || entry->key == KEY_UNHANDLED) {
+		case SDL_JOYAXISMOTION:
+			on_joystick_motion_event(_event);
 			break;
-		}
-		m_machine->send_key_to_kbctrl(entry->key, KEY_RELEASED);
-		break;
-	}
-	case SDL_JOYAXISMOTION: {
-		assert(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
-		int jid = JOY_NONE;
-		if(m_joystick[0].id == _event.jaxis.which) {
-			jid = 0;
-		} else if(m_joystick[1].id == _event.jaxis.which) {
-			jid = 1;
-		} else {
-			jid = 2;
-		}
-		if(jid <= 1) {
-			int axis = 2;
-			if(_event.jaxis.axis == m_joystick[jid].x_axis) {
-				axis = 0;
-			} else if(_event.jaxis.axis == m_joystick[jid].y_axis) {
-				axis = 1;
-			}
-			if(axis <= 1) {
-				PDEBUGF(LOG_V2, LOG_GUI, "Joystick %s axis %d: %d\n", jid?"B":"A", axis, _event.jaxis.value);
-				m_machine->joystick_motion(jid, axis, _event.jaxis.value);
-			}
-		}
-		break;
-	}
-	case SDL_JOYBUTTONDOWN:
-	case SDL_JOYBUTTONUP: {
-		assert(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
-		int jid = JOY_NONE;
-		if(m_joystick[0].id == _event.jbutton.which) {
-			jid = 0;
-		} else if(m_joystick[1].id == _event.jbutton.which) {
-			jid = 1;
-		} else {
-			jid = 2;
-		}
-		if(jid <= 1) {
-			int btn = 2;
-			if(_event.jbutton.button == m_joystick[jid].b1_btn) {
-				btn = 0;
-			} else if(_event.jbutton.button == m_joystick[jid].b2_btn) {
-				btn = 1;
-			}
-			if(btn <= 1) {
-				PDEBUGF(LOG_V2, LOG_GUI, "Joystick %s btn %d: %d\n", jid?"B":"A", btn, _event.jbutton.state);
-				m_machine->joystick_button(jid, btn, _event.jbutton.state);
-			}
-		}
-		break;
-	}
-	default:
-		break;
+		case SDL_JOYBUTTONDOWN:
+		case SDL_JOYBUTTONUP:
+			on_joystick_button_event(_event);
+			break;
+		case SDL_JOYDEVICEADDED:
+		case SDL_JOYDEVICEREMOVED:
+			on_joystick_event(_event);
+			break;
+		case SDL_WINDOWEVENT:
+			dispatch_window_event(_event.window);
+			break;
+		case SDL_USEREVENT:
+			//the 1-second timer
+			break;
+		default:
+			break;
 	}
 }
 
@@ -925,7 +989,6 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 			PDEBUGF(LOG_V2, LOG_GUI, "Unhandled SDL window event: %d\n", _event.event);
 			break;
 	}
-
 }
 
 void GUI::dispatch_rocket_event(const SDL_Event &event)
@@ -1213,37 +1276,309 @@ void GUI::show_welcome_screen()
 "\xCD\xCD\xB9",
 0xf, bg, 0);
 
+	ProgramEvent evt;
+	evt.type = ProgramEvent::Type::EVT_PROGRAM_FUNC;
+	std::vector<const Keymap::Binding *> bindings;
+
 	cx = bd;
-	if(m_mode == GUI_MODE_COMPACT) {
-		ps("\nTo show/hide the interface press ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
-		ps(" or grab the mouse.\n", 0xf, bg, bd);
-	} else if(m_mode == GUI_MODE_REALISTIC) {
-		ps("\nTo zoom in on the monitor press ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
-		ps("\nTo switch between the interface styles keep ", 0xf, bg, bd); ps("CTRL+F1", 0xe, bg, bd);
-		ps(" pressed.\n", 0xf, bg, bd);
-	} else {
-		cy++;
+	evt.func = ProgramEvent::Func::FUNC_GUI_MODE_ACTION;
+	bindings = m_keymap.find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		if(m_mode == GUI_MODE_COMPACT) {
+			ps("\nTo show/hide the interface press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			ps(" or grab the mouse.\n", 0xf, bg, bd);
+		} else if(m_mode == GUI_MODE_REALISTIC) {
+			ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			ps("\nTo switch between the interface styles keep ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			ps(" pressed.\n", 0xf, bg, bd);
+		} else {
+			cy++;
+		}
 	}
-	ps("To start/stop the machine press ", 0xf, bg, bd); ps("CTRL+F3\n", 0xe, bg, bd);
-	ps("To grab the mouse press ", 0xf, bg, bd);
-	if(m_grab_method.compare("ctrl-f10") == 0) {
-		ps("CTRL+F10\n", 0xe, bg, bd);
-	} else {
-		ps("the middle mouse button\n", 0xe, bg, bd);
+
+	evt.func = ProgramEvent::Func::FUNC_TOGGLE_POWER;
+	bindings = m_keymap.find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To start/stop the machine press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	
+	evt.func = ProgramEvent::Func::FUNC_GRAB_MOUSE;
+	bindings = m_keymap.find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To grab the mouse press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
 	}
 	if(m_mode == GUI_MODE_REALISTIC) {
-		ps("To pause the machine press ", 0xf, bg, bd); ps("ALT+PAUSE\n", 0xe, bg, bd);
-		ps("To save the machine's state press ", 0xf, bg, bd); ps("CTRL+F8", 0xe, bg, bd);
-		ps(" and to load it press ", 0xf, bg, bd); ps("CTRL+F9\n", 0xe, bg, bd);
+		evt.func = ProgramEvent::Func::FUNC_TOGGLE_PAUSE;
+		bindings = m_keymap.find_prg_bindings(evt);
+		if(!bindings.empty()) {
+			ps("To pause the machine press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			ps("\n", 0xe, bg, bd);
+		}
+		evt.func = ProgramEvent::Func::FUNC_QUICK_SAVE_STATE;
+		bindings = m_keymap.find_prg_bindings(evt);
+		if(!bindings.empty()) {
+			ps("To save the machine's state press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			evt.func = ProgramEvent::Func::FUNC_QUICK_LOAD_STATE;
+			bindings = m_keymap.find_prg_bindings(evt);
+			if(!bindings.empty()) {
+				ps("\nTo load the last saved state press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+				ps("\n", 0xe, bg, bd);
+			}
+		}
 	}
-	ps("To toggle fullscreen mode press ", 0xf, bg, bd); ps("ALT+ENTER", 0xe, bg, bd);
-	ps(" and to close the emulator ", 0xf, bg, bd); ps("ALT+F4\n", 0xe, bg, bd);
+	evt.func = ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN;
+	bindings = m_keymap.find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To toggle fullscreen mode press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	evt.func = ProgramEvent::Func::FUNC_EXIT;
+	bindings = m_keymap.find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To close the emulator press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
 	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
 	ps(g_program.config().get_parsed_file().c_str(), 0xe, bg, bd);
 	ps("\n\nFor more information read the README file and visit the project page at\n", 0xf, bg, bd);
 	ps("https://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
 
 	m_machine->cmd_print_VGA_text(text);
+}
+
+void GUI::pevt_func_none(EventPhase)
+{
+	PDEBUGF(LOG_V0, LOG_GUI, "Unknown func event!\n");
+}
+
+void GUI::pevt_func_gui_mode_action(EventPhase _phase)
+{
+	PDEBUGF(LOG_V1, LOG_GUI, "GUI mode action func event\n");
+	
+	static int repeat = 0;
+	if(_phase == EventPhase::EVT_REPEAT) {
+		if(++repeat == 1) {
+			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+			m_windows.interface->action(1);
+			m_windows.interface->container_size_changed(m_width, m_height);
+		}
+	} else if(_phase == EventPhase::EVT_END) {
+		if(!repeat) {
+			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+			m_windows.interface->action(0);
+			m_windows.interface->container_size_changed(m_width, m_height);
+			if(m_mode == GUI_MODE_COMPACT &&
+			  dynamic_cast<NormalInterface*>(m_windows.interface)->is_system_visible())
+			{
+				input_grab(false);
+			}
+		}
+		repeat = 0;
+	}
+}
+
+void GUI::pevt_func_toggle_power(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle machine power button func event\n");
+	
+	m_windows.interface->switch_power();
+}
+
+void GUI::pevt_func_toggle_pause(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle pause func event\n");
+	
+	if(m_machine->is_paused()) {
+		m_machine->cmd_resume();
+	} else {
+		m_machine->cmd_pause();
+	}
+}
+
+void GUI::pevt_func_toggle_dbg_wnd(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle debugging windows func event\n");
+	toggle_dbg_windows();
+}
+
+void GUI::pevt_func_take_screenshot(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Take screenshot func event\n");
+	
+	take_screenshot(
+		#ifndef NDEBUG
+		true
+		#endif
+	);
+}
+
+void GUI::pevt_func_toggle_audio_capture(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle audio capture func event\n");
+	
+	m_mixer->cmd_toggle_capture();
+}
+
+void GUI::pevt_func_toggle_video_capture(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle video capture func event\n");
+	
+	m_capture->cmd_toggle_capture();
+}
+
+void GUI::pevt_func_quick_save_state(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Quick save func event\n");
+	
+	// don't save key presses in a machine state.
+	// every keypress must be neutralized by a release before save.
+	for(const auto & [key, state] : m_key_state) {
+		if(state) {
+			// the eventual physical key releases will not be sent to the guest again,
+			// as the keys' states are checked in send_key_to_machine()
+			send_key_to_machine(key, KEY_RELEASED);
+		}
+	}
+	
+	g_program.save_state("", [this](){
+		show_message("State saved");
+	}, nullptr);
+}
+
+void GUI::pevt_func_quick_load_state(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Quick load func event\n");
+	
+	for(const auto & [key, state] : m_key_state) {
+		if(state) {
+			send_key_to_machine(key, KEY_RELEASED);
+		}
+	}
+	
+	g_program.restore_state("", [this](){
+		show_message("State restored");
+	}, nullptr);
+}
+
+void GUI::pevt_func_grab_mouse(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Grab mouse func event\n");
+	
+	toggle_input_grab();
+	
+	if(m_mode == GUI_MODE_COMPACT) {
+		if(m_input_grab) {
+			dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
+		} else {
+			dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
+		}
+	}
+}
+
+void GUI::pevt_func_sys_speed_up(EventPhase _phase)
+{
+	if(_phase == EventPhase::EVT_END) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "System speed up func event\n");
+	
+	double factor = m_symspeed_factor * 1.1;
+	if(factor > 0.91 && factor < 1.09) {
+		factor = 1.0;
+		if(_phase == EventPhase::EVT_REPEAT) {
+			m_machine->cmd_cycles_adjust(factor);
+			return;
+		}
+	}
+	if(factor < 5.0) {
+		m_symspeed_factor = factor;
+		m_machine->cmd_cycles_adjust(m_symspeed_factor);
+	} else {
+		m_machine->cmd_cycles_adjust(5.0);
+	}
+}
+
+void GUI::pevt_func_sys_speed_down(EventPhase _phase)
+{
+	if(_phase == EventPhase::EVT_END) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "System speed down func event\n");
+	
+	double factor = m_symspeed_factor / 1.1;
+	if(factor > 0.91 && factor < 1.09) {
+		factor = 1.0;
+		if(_phase == EventPhase::EVT_REPEAT) {
+			m_machine->cmd_cycles_adjust(factor);
+			return;
+		}
+	}
+	if(factor < 0.00002) {
+		m_machine->cmd_pause();
+	} else {
+		m_symspeed_factor = factor;
+		m_machine->cmd_cycles_adjust(m_symspeed_factor);
+	}
+}
+
+void GUI::pevt_func_toggle_fullscreen(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle fullscreen func event\n");
+
+	toggle_fullscreen();
+}
+
+void GUI::pevt_func_exit(EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Quit func event\n");
+	SDL_Event sdlevent;
+	sdlevent.type = SDL_QUIT;
+	SDL_PushEvent(&sdlevent);
 }
 
 
@@ -1405,7 +1740,7 @@ void GUI::Windows::toggle_dbg()
 	}
 }
 
-bool GUI::Windows::needs_input()
+bool GUI::Windows::need_input()
 {
 	//only debug windows have kb input at the moment
 	return debug_wnds;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2009  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,8 +45,11 @@ unsigned char g_translation8042[256] = {
 // for each set (mf1/xt , mf2/at , mf3/ps2)
 // The table must be in KEY order
 //
-scancode g_scancodes[KEY_NBKEYS][3] =
+const scancode g_scancodes[KEY_NBKEYS][3] =
 {
+ // KEY_NONE
+ { {"",""},{"",""},{"",""} },
+ 
  { // KEY_CTRL_L ( ibm 58)
    { "\x1D" , "\x9D" },
    { "\x14" , "\xF0\x14" },

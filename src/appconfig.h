@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -132,7 +132,6 @@ public:
 #define GUI_MOUSE_TYPE          "mouse"
 #define GUI_MOUSE_GRAB          "grab"
 #define GUI_MOUSE_ACCELERATION  "mouse_accel"
-#define GUI_GRAB_METHOD         "grab_method"
 #define GUI_SCREEN_DPI          "dpi"
 #define GUI_WIDTH               "width"
 #define GUI_HEIGHT              "height"
@@ -257,14 +256,6 @@ public:
 
 #define GAMEPORT_SECTION        "gameport"
 #define GAMEPORT_ENABLED        "enabled"
-#define GAMEPORT_JOY_A_X        "joyA_x"
-#define GAMEPORT_JOY_A_Y        "joyA_y"
-#define GAMEPORT_JOY_A_B1       "joyA_b1"
-#define GAMEPORT_JOY_A_B2       "joyA_b2"
-#define GAMEPORT_JOY_B_X        "joyB_x"
-#define GAMEPORT_JOY_B_Y        "joyB_y"
-#define GAMEPORT_JOY_B_B1       "joyB_b1"
-#define GAMEPORT_JOY_B_B2       "joyB_b2"
 
 #define SOUNDFX_SECTION         "soundfx"
 #define SOUNDFX_ENABLED         "enabled"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,6 +46,12 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 std::string str_to_lower(std::string _str)
 {
 	std::transform(_str.begin(), _str.end(), _str.begin(), ::tolower);
+	return _str;
+}
+
+std::string str_to_upper(std::string _str)
+{
+	std::transform(_str.begin(), _str.end(), _str.begin(), ::toupper);
 	return _str;
 }
 

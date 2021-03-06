@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,8 +60,25 @@ void size_check()
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 std::string str_to_lower(std::string _str);
+std::string str_to_upper(std::string _str);
 std::string str_trim(std::string _str);
 std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep);
+
+template<typename ... Args>
+std::string str_format(const char *_format, Args ... _args)
+{
+	// TODO please reconsider for C++20
+	int size = std::snprintf(nullptr, 0, _format, _args ...);
+	if(size < 0) {
+		throw std::runtime_error("Error during string formatting.");
+	}
+	std::string buf;
+	if(size) {
+		buf.resize(size); // size in number of characters (null term excluded)
+		snprintf(&buf[0], size+1, _format, _args ...); // size in char+null!
+	}
+	return buf;
+}
 
 std::string bitfield_to_string(uint8_t _bitfield,
 		const std::array<std::string, 8> &_set_names);

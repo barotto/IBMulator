@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -370,7 +370,8 @@ void Serial::init_mode_mouse(uint comn)
 		(mouse_type == MOUSE_TYPE_SERIAL_WHEEL) ||
 		(mouse_type == MOUSE_TYPE_SERIAL_MSYS)) {
 		g_machine.register_mouse_fun(
-			std::bind(&Serial::mouse_motion, this, _1, _2, _3, _4)
+			std::bind(&Serial::mouse_motion, this, _1, _2, _3),
+			std::bind(&Serial::mouse_button, this, _1, _2)
 		);
 	}
 }
@@ -1539,7 +1540,25 @@ void Serial::fifo_timer(uint8_t port, uint64_t)
 	raise_interrupt(port, SER_INT_FIFO);
 }
 
-void Serial::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_state)
+void Serial::mouse_button(MouseButton _button, bool _state)
+{
+	if(mouse_port == -1) {
+		PERRF(LOG_COM, "mouse not connected to a serial port\n");
+		return;
+	}
+	
+	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
+	if(!m_s[mouse_port].modem_cntl.dtr || !m_s[mouse_port].modem_cntl.rts) {
+		return;
+	}
+
+	int btnid = ec_to_i(_button) - 1;
+	mouse_buttons &= ~(1 << btnid);
+	mouse_buttons |= (_state << btnid);
+	mouse_update = true;
+}
+
+void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 {
 	if(mouse_port == -1) {
 		PERRF(LOG_COM, "mouse not connected to a serial port\n");
@@ -1563,9 +1582,8 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z, uint button_sta
 
 	mouse_delayed_dx += delta_x;
 	mouse_delayed_dy -= delta_y;
-	mouse_delayed_dz = delta_z;
-	mouse_buttons = button_state;
-	mouse_update = 1;
+	mouse_delayed_dz  = delta_z;
+	mouse_update = true;
 }
 
 void Serial::update_mouse_data()

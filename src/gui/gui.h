@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,6 +26,7 @@
 #include "rocket/rend_interface.h"
 #include "matrix.h"
 #include "timers.h"
+#include "keymap.h"
 #include <atomic>
 
 enum GUIRenderer {
@@ -126,14 +127,14 @@ protected:
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
 	bool m_gui_visible;
 	bool m_input_grab;
-	std::string m_grab_method;
 	uint m_mode;
 	unsigned m_framecap;
 	bool m_vsync;
 	bool m_vga_buffering;
 	bool m_threads_sync;
 	SDL_Color m_backcolor;
-
+	Keymap m_keymap;
+	
 	struct Mouse {
 		bool grab;
 		Mouse() :
@@ -143,8 +144,6 @@ protected:
 
 	struct Joystick {
 		int id;
-		int x_axis, y_axis;
-		int b1_btn, b2_btn;
 		bool show_message;
 	} m_joystick[2];
 	
@@ -184,7 +183,7 @@ protected:
 		void update(uint64_t _current_time);
 		void shutdown();
 		void toggle_dbg();
-		bool needs_input();
+		bool need_input();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 
@@ -205,10 +204,8 @@ protected:
 	
 	virtual void shutdown_SDL();
 	
-	void dispatch_hw_event(const SDL_Event &_event);
 	void dispatch_rocket_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
-	bool dispatch_special_keys(const SDL_Event &_event, SDL_Keycode &_discard_next_key);
 	
 	static Uint32 every_second(Uint32 interval, void *param);
 
@@ -266,6 +263,47 @@ public:
 	inline bool threads_sync_enabled() const { return m_threads_sync; }
 	
 	void sig_state_restored();
+	
+private:
+	void on_keyboard_event(const SDL_Event &_event);
+	void on_mouse_motion_event(const SDL_Event &_event);
+	void on_mouse_button_event(const SDL_Event &_event);
+	void on_joystick_motion_event(const SDL_Event &_event);
+	void on_joystick_button_event(const SDL_Event &_event);
+	void on_joystick_event(const SDL_Event &_event);
+	
+	enum class EventPhase {
+		EVT_START, EVT_REPEAT, EVT_END, EVT_ONESHOT
+	};
+	
+	bool on_event_binding(const SDL_Event &_event, const Keymap::Binding &_binding,
+			bool _guest_input, uint32_t _mask = 0);
+	
+	void pevt_key(Keys _key, EventPhase);
+	void pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event);
+	void pevt_mouse_button(MouseButton _button, EventPhase _phase);
+	void pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event);
+	void pevt_joy_button(uint8_t _jid, uint8_t _button, EventPhase _phase);
+
+	static const std::map<ProgramEvent::Func, std::function<void(GUI&, EventPhase)>> ms_event_funcs;
+	std::map<Keys, bool> m_key_state;
+	void send_key_to_machine(Keys _key, uint32_t _event);
+	
+	void pevt_func_none(EventPhase);
+	void pevt_func_gui_mode_action(EventPhase);
+	void pevt_func_toggle_power(EventPhase);
+	void pevt_func_toggle_pause(EventPhase);
+	void pevt_func_toggle_dbg_wnd(EventPhase);
+	void pevt_func_take_screenshot(EventPhase);
+	void pevt_func_toggle_audio_capture(EventPhase);
+	void pevt_func_toggle_video_capture(EventPhase);
+	void pevt_func_quick_save_state(EventPhase);
+	void pevt_func_quick_load_state(EventPhase);
+	void pevt_func_grab_mouse(EventPhase);
+	void pevt_func_sys_speed_up(EventPhase);
+	void pevt_func_sys_speed_down(EventPhase);
+	void pevt_func_toggle_fullscreen(EventPhase);
+	void pevt_func_exit(EventPhase);
 };
 
 

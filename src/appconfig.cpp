@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,24 +41,23 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ GUI_SECTION, {
-		{ GUI_RENDERER,           "opengl" },
-		{ GUI_FRAMECAP,           "vga"    },
-		{ GUI_KEYMAP,             ""       },
-		{ GUI_MOUSE_TYPE,         "ps2"    },
-		{ GUI_MOUSE_GRAB,         "yes"    },
-		{ GUI_MOUSE_ACCELERATION, "no"     },
-		{ GUI_GRAB_METHOD,        "MOUSE3" }, //CTRL-F10 or MOUSE3
-		{ GUI_SCREEN_DPI,         "96"     },
-		{ GUI_WIDTH,              "640"    },
-		{ GUI_HEIGHT,             "480"    },
-		{ GUI_FULLSCREEN,         "no"     },
-		{ GUI_SHOW_LEDS,          "no"     },
-		{ GUI_MODE,               "normal" },
-		{ GUI_REALISTIC_ZOOM,     "cycle"  },
-		{ GUI_REALISTIC_STYLE,    "bright" },
-		{ GUI_BG_R,               "30"     },
-		{ GUI_BG_G,               "30"     },
-		{ GUI_BG_B,               "30"     }
+		{ GUI_RENDERER,           "opengl"     },
+		{ GUI_FRAMECAP,           "vga"        },
+		{ GUI_KEYMAP,             "keymap.map" },
+		{ GUI_MOUSE_TYPE,         "ps2"        },
+		{ GUI_MOUSE_GRAB,         "yes"        },
+		{ GUI_MOUSE_ACCELERATION, "no"         },
+		{ GUI_SCREEN_DPI,         "96"         },
+		{ GUI_WIDTH,              "640"        },
+		{ GUI_HEIGHT,             "480"        },
+		{ GUI_FULLSCREEN,         "no"         },
+		{ GUI_SHOW_LEDS,          "no"         },
+		{ GUI_MODE,               "normal"     },
+		{ GUI_REALISTIC_ZOOM,     "cycle"      },
+		{ GUI_REALISTIC_STYLE,    "bright"     },
+		{ GUI_BG_R,               "30"         },
+		{ GUI_BG_G,               "30"         },
+		{ GUI_BG_B,               "30"         }
 	} },
 	{ CAPTURE_SECTION, {
 		{ CAPTURE_DIR,           ""     },
@@ -129,15 +128,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ GAMEPORT_SECTION, {
-		{ GAMEPORT_ENABLED,  "yes" },
-		{ GAMEPORT_JOY_A_X,  "0"   },
-		{ GAMEPORT_JOY_A_Y,  "1"   },
-		{ GAMEPORT_JOY_A_B1, "0"   },
-		{ GAMEPORT_JOY_A_B2, "1"   },
-		{ GAMEPORT_JOY_B_X,  "0"   },
-		{ GAMEPORT_JOY_B_Y,  "1"   },
-		{ GAMEPORT_JOY_B_B1, "0"   },
-		{ GAMEPORT_JOY_B_B2, "1"   }
+		{ GAMEPORT_ENABLED,  "yes" }
 	} },
 	
 	{ SOUNDFX_SECTION, {
@@ -313,8 +304,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                 Possible values: bright, dark.\n"
 ";         keymap: Keymap table file. If none specified the default keymap.map file in the share dir will be used.\n"
 ";           grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"
-";    grab_method: Method to use for mouse grabbing\n"
-";                 Possible values: MOUSE3, CTRL-F10\n"
 ";          mouse: Mouse type.\n"
 ";                 Possible values: none, ps2, serial\n"
 ";    mouse_accel: Enable mouse acceleration\n"
@@ -372,7 +361,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";             Memory configurations for PS/1 models were:\n"
 ";             2011: 512K on board + 512K, 2MB modules\n"
 ";             2121: 2M on board + 512K, 2MB, 4MB modules\n"
-";             6M, 8M, and 16M modules never officialy existed.\n"
+";             6M, 8M, and 16M modules never officially existed.\n"
 ";     speed: RAM access time in nanoseconds.\n"
 ";            Possible values: auto, or an integer number\n"
 		},
@@ -503,11 +492,6 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ GAMEPORT_SECTION, 
 "; enabled: Install the Game Port.\n"
-"; The following parameters can be used to map your controller(s) to the emulated joystick(s):\n"
-";  joy#_x: controller's axis identifier for the joystick's X axis.\n"
-";  joy#_y: controller's axis identifier for the joystick's Y axis.\n"
-"; joy#_b1: controller's button identifier for the joystick's button 1.\n"
-"; joy#_b2: controller's button identifier for the joystick's button 2.\n"
 		},
 		{ MPU401_SECTION,
 "; enabled: Install the MPU-401 interface card.\n"
@@ -547,7 +531,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_REALISTIC_STYLE,
 		GUI_KEYMAP,
 		GUI_MOUSE_GRAB,
-		GUI_GRAB_METHOD,
 		GUI_MOUSE_TYPE,
 		GUI_MOUSE_ACCELERATION,
 		GUI_WIDTH,
@@ -673,15 +656,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		MPU401_MODE
 	} },
 	{ GAMEPORT_SECTION, {
-		GAMEPORT_ENABLED,
-		GAMEPORT_JOY_A_X,
-		GAMEPORT_JOY_A_Y,
-		GAMEPORT_JOY_A_B1,
-		GAMEPORT_JOY_A_B2,
-		GAMEPORT_JOY_B_X,
-		GAMEPORT_JOY_B_Y,
-		GAMEPORT_JOY_B_B1,
-		GAMEPORT_JOY_B_B2
+		GAMEPORT_ENABLED
 	} },
 	{ SOUNDFX_SECTION, {
 		SOUNDFX_ENABLED,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -18,7 +18,41 @@
  */
 
 // The SDL tables are taken from SDL 2.0.10
-std::map<std::string, uint32_t> Keymap::ms_keycode_table = {
+
+const std::map<std::string, uint32_t> Keymap::ms_sdl_kmod_table = {
+	{ "KMOD_LSHIFT", KMOD_LSHIFT },
+	{ "KMOD_RSHIFT", KMOD_RSHIFT },
+	{ "KMOD_LCTRL",  KMOD_LCTRL  },
+	{ "KMOD_RCTRL",  KMOD_RCTRL  },
+	{ "KMOD_LALT",   KMOD_LALT   },
+	{ "KMOD_RALT",   KMOD_RALT   },
+	{ "KMOD_LGUI",   KMOD_LGUI   },
+	{ "KMOD_RGUI",   KMOD_RGUI   },
+	{ "KMOD_CTRL",   KMOD_CTRL   },
+	{ "KMOD_SHIFT",  KMOD_SHIFT  },
+	{ "KMOD_ALT",    KMOD_ALT    },
+	{ "KMOD_GUI",    KMOD_GUI    }
+};
+
+const std::map<std::string, ProgramEvent::Func> Keymap::ms_prog_funcs_table = {
+	{ "FUNC_NONE",                  ProgramEvent::Func::FUNC_NONE                 },
+	{ "FUNC_GUI_MODE_ACTION",       ProgramEvent::Func::FUNC_GUI_MODE_ACTION      },
+	{ "FUNC_TOGGLE_POWER",          ProgramEvent::Func::FUNC_TOGGLE_POWER         },
+	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::Func::FUNC_TOGGLE_PAUSE         },
+	{ "FUNC_TOGGLE_DBG_WND",        ProgramEvent::Func::FUNC_TOGGLE_DBG_WND       },
+	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::Func::FUNC_TAKE_SCREENSHOT      },
+	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::Func::FUNC_TOGGLE_AUDIO_CAPTURE },
+	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::Func::FUNC_TOGGLE_VIDEO_CAPTURE },
+	{ "FUNC_QUICK_SAVE_STATE",      ProgramEvent::Func::FUNC_QUICK_SAVE_STATE     },
+	{ "FUNC_QUICK_LOAD_STATE",      ProgramEvent::Func::FUNC_QUICK_LOAD_STATE     },
+	{ "FUNC_GRAB_MOUSE",            ProgramEvent::Func::FUNC_GRAB_MOUSE           },
+	{ "FUNC_SYS_SPEED_UP",          ProgramEvent::Func::FUNC_SYS_SPEED_UP         },
+	{ "FUNC_SYS_SPEED_DOWN",        ProgramEvent::Func::FUNC_SYS_SPEED_DOWN       },
+	{ "FUNC_TOGGLE_FULLSCREEN",     ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN    },
+	{ "FUNC_EXIT",                  ProgramEvent::Func::FUNC_EXIT                 }
+};
+
+const std::map<std::string, Keys> Keymap::ms_keycode_table = {
 	{ "KEY_CTRL_L", KEY_CTRL_L },
 	{ "KEY_SHIFT_L", KEY_SHIFT_L },
 	{ "KEY_F1", KEY_F1 },
@@ -140,7 +174,7 @@ std::map<std::string, uint32_t> Keymap::ms_keycode_table = {
 	{ "KEY_POWER_WAKE", KEY_POWER_WAKE },
 };
 
-std::map<std::string, uint32_t> Keymap::ms_sdl_keycode_table = {
+const std::map<std::string, SDL_Keycode> Keymap::ms_sdl_keycode_table = {
 	{ "SDLK_RETURN", SDLK_RETURN },
 	{ "SDLK_ESCAPE", SDLK_ESCAPE },
 	{ "SDLK_BACKSPACE", SDLK_BACKSPACE },
@@ -395,7 +429,7 @@ std::map<std::string, uint32_t> Keymap::ms_sdl_keycode_table = {
 	{ "SDLK_AUDIOFASTFORWARD", SDLK_AUDIOFASTFORWARD }
 };
 
-std::map<std::string, uint32_t> Keymap::ms_sdl_scancode_table = {
+const std::map<std::string, SDL_Scancode> Keymap::ms_sdl_scancode_table = {
 	{ "SDL_SCANCODE_A", SDL_SCANCODE_A },
 	{ "SDL_SCANCODE_B", SDL_SCANCODE_B },
 	{ "SDL_SCANCODE_C", SDL_SCANCODE_C },
@@ -660,7 +694,7 @@ std::map<std::string, uint32_t> Keymap::ms_sdl_scancode_table = {
 	{ "SDL_SCANCODE_AUDIOFASTFORWARD", SDL_SCANCODE_AUDIOFASTFORWARD }
 };
 
-std::map<uint32_t, std::string> Keymap::ms_keycode_str_table = {
+const std::map<Keys, std::string> Keymap::ms_keycode_str_table = {
 	{ KEY_CTRL_L, "KEY_CTRL_L" },
 	{ KEY_SHIFT_L, "KEY_SHIFT_L" },
 	{ KEY_F1, "KEY_F1" },
@@ -782,7 +816,7 @@ std::map<uint32_t, std::string> Keymap::ms_keycode_str_table = {
 	{ KEY_POWER_WAKE, "KEY_POWER_WAKE" }
 };
 
-std::map<uint32_t, std::string> Keymap::ms_sdl_keycode_str_table = {
+const std::map<SDL_Keycode, std::string> Keymap::ms_sdl_keycode_str_table = {
 	{ SDLK_UNKNOWN, "SDLK_UNKNOWN" },
 	
 	{ SDLK_RETURN, "SDLK_RETURN" },
@@ -1039,7 +1073,7 @@ std::map<uint32_t, std::string> Keymap::ms_sdl_keycode_str_table = {
 	{ SDLK_AUDIOFASTFORWARD, "SDLK_AUDIOFASTFORWARD" }
 };
 
-std::map<uint32_t, std::string> Keymap::ms_sdl_scancode_str_table = {
+const std::map<SDL_Scancode, std::string> Keymap::ms_sdl_scancode_str_table = {
 	{ SDL_SCANCODE_UNKNOWN, "SDL_SCANCODE_UNKNOWN" },
 	
 	{ SDL_SCANCODE_A, "SDL_SCANCODE_A" },

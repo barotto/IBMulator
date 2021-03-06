@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -51,8 +51,7 @@ m_cpu_single_step(false),
 m_breakpoint_cs(0),
 m_breakpoint_eip(0),
 m_cycles_factor(1.0),
-m_vtime_ratio(1.0),
-m_mouse_fun(nullptr)
+m_vtime_ratio(1.0)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -894,20 +893,28 @@ void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_c
 	});
 }
 
-void Machine::send_key_to_kbctrl(uint32_t _key, uint32_t _event)
+void Machine::send_key_to_kbctrl(Keys _key, uint32_t _event)
 {
 	g_devices.device<Keyboard>()->gen_scancode(_key, _event);
 }
 
-void Machine::register_mouse_fun(mouse_fun_t _mouse_fun)
+void Machine::register_mouse_fun(mouse_mfun_t _mouse_mfun, mouse_bfun_t _mouse_bfun)
 {
-	m_mouse_fun = _mouse_fun;
+	m_mouse_mfun = _mouse_mfun;
+	m_mouse_bfun = _mouse_bfun;
 }
 
-void Machine::mouse_motion(int _delta_x, int _delta_y, int _delta_z, uint _button_state)
+void Machine::mouse_motion(int _delta_x, int _delta_y, int _delta_z)
 {
-	if(m_mouse_fun) {
-		m_mouse_fun(_delta_x, _delta_y, _delta_z, _button_state);
+	if(m_mouse_mfun) {
+		m_mouse_mfun(_delta_x, _delta_y, _delta_z);
+	}
+}
+
+void Machine::mouse_button(MouseButton _button, bool _state)
+{
+	if(m_mouse_bfun) {
+		m_mouse_bfun(_button, _state);
 	}
 }
 

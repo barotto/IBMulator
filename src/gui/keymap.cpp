@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,141 +20,588 @@
 #include "ibmulator.h"
 #include "program.h"
 #include "keys.h"
-#include "keymap.h"
 #include "utils.h"
 #include <SDL.h>
+#include "keymap.h"
+#include <algorithm>
+#include <regex>
 
 #include "keytables.cpp"
 
-Keymap g_keymap;
-
-
-Keymap::Keymap()
+void InputEvent::parse_token(const std::string &_tok)
 {
+	if(!name.empty()) {
+		name += "+";
+	}
+	name += str_to_upper(_tok);
+	str_replace_all(name, "KMOD_", "");
+	str_replace_all(name, "SDLK_", "");
+	str_replace_all(name, "SDL_SCANCODE_", "");
+	
+	// is it an SDL scancode?
+	key.scancode = Keymap::get_SDL_Scancode_from_name(_tok);
+	if(key.scancode != SDL_SCANCODE_UNKNOWN) {
+		type = Type::INPUT_KEY;
+		key.sym = SDLK_UNKNOWN;
+		PDEBUGF(LOG_V2, LOG_GUI, "  scancode: 0x%x (%s)\n", key.scancode, _tok.c_str());
+		return;
+	}
+	// is it an SDL keycode?
+	key.sym = Keymap::get_SDL_Keycode_from_name(_tok);
+	if(key.sym != SDLK_UNKNOWN) {
+		type = Type::INPUT_KEY;
+		key.scancode = SDL_SCANCODE_UNKNOWN;
+		PDEBUGF(LOG_V2, LOG_GUI, "  keycode: 0x%x (%s)\n", key.sym, _tok.c_str());
+		return;
+	}
+	// is it an SDL keymod?
+	auto mod = Keymap::ms_sdl_kmod_table.find(_tok);
+	if(mod != Keymap::ms_sdl_kmod_table.end()) {
+		type = Type::INPUT_KEY;
+		key.mod |= mod->second;
+		PDEBUGF(LOG_V2, LOG_GUI, "  modifier: 0x%x (%s)\n", mod->second, _tok.c_str());
+		return;
+	}
+	// is it joystick?
+	// using a regular expression as indices can be arbitrarily big numbers
+	std::smatch match;
+	std::regex jre("^JOY_([^_]+)_([^_]+)_([^_]+)$"); // don't match with \\d+, I want to give the user good feedback
+	if(std::regex_match(_tok, match, jre)) {
+		assert(match.size() == 4);
+		try {
+			pointing.which = std::stoi(match[1].str());
+		} catch(std::exception &e) {
+			throw std::runtime_error(std::string("invalid Joystick index number ") + match[1].str());
+		}
+		if(match[2].str() == "BUTTON") {
+			try {
+				pointing.button = std::stoi(match[3].str());
+			} catch(std::exception &e) {
+				throw std::runtime_error(std::string("invalid Joystick button number ") + match[3].str());
+			}
+			type = Type::INPUT_JOY_BUTTON;
+		} else if(match[2].str() == "AXIS") {
+			try {
+				pointing.axis = std::stoi(match[3].str());
+			} catch(std::exception &e) {
+				throw std::runtime_error(std::string("invalid Joystick axis number ") + match[3].str());
+			}
+			type = Type::INPUT_JOY_AXIS;
+		} else {
+			throw std::runtime_error("invalid Joystick input event: must be JOY_j_BUTTON_n or JOY_j_AXIS_n");
+		}
+		pointing.type = ec_to_i(type);
+		return;
+	}
+	// is it mouse?
+	std::regex mre("^MOUSE_([^_]+)_([^_]+)$");
+	if(std::regex_match(_tok, match, mre)) {
+		assert(match.size() == 3);
+		if(match[1].str() == "BUTTON") {
+			try {
+				pointing.button = std::stoi(match[2].str());
+			} catch(std::exception &e) {
+				throw std::runtime_error(std::string("invalid Mouse button number ") + match[2].str());
+			}
+			type = Type::INPUT_MOUSE_BUTTON;
+		} else if(match[1].str() == "AXIS") {
+			if(match[2].str() == "X") {
+				pointing.axis = 0;
+			} else if(match[2].str() == "Y") {
+				pointing.axis = 1;
+			} else {
+				throw std::runtime_error(std::string("invalid Mouse axis letter ") + match[3].str() + ": must be X or Y");
+			}
+			type = Type::INPUT_MOUSE_AXIS;
+		} else {
+			throw std::runtime_error("invalid Mouse input event: must be MOUSE_BUTTON_n or MOUSE_AXIS_(X|Y)");
+		}
+		pointing.type = ec_to_i(type);
+		return;
+	}
+	// oops
+	throw std::runtime_error("unrecognized identifier");
 }
 
-Keymap::~Keymap()
+bool InputEvent::Key::is_key_modifier()
 {
+	if(scancode) {
+		return (
+			scancode == SDL_SCANCODE_LCTRL  ||
+			scancode == SDL_SCANCODE_LSHIFT ||
+			scancode == SDL_SCANCODE_LALT   ||
+			scancode == SDL_SCANCODE_LGUI   ||
+			scancode == SDL_SCANCODE_RCTRL  ||
+			scancode == SDL_SCANCODE_RSHIFT ||
+			scancode == SDL_SCANCODE_RALT   ||
+			scancode == SDL_SCANCODE_RGUI
+		);
+	} else {
+		// keycode
+		return (
+			sym == SDLK_LCTRL  ||
+			sym == SDLK_LSHIFT ||
+			sym == SDLK_LALT   ||
+			sym == SDLK_LGUI   ||
+			sym == SDLK_RCTRL  ||
+			sym == SDLK_RSHIFT ||
+			sym == SDLK_RALT   ||
+			sym == SDLK_RGUI
+		);
+	}
+}
+
+ProgramEvent::ProgramEvent(const std::string &_tok)
+{
+	std::smatch match;
+	
+	// is it a FUNC?
+	if(std::regex_match(_tok, match, std::regex("^FUNC_.+$"))) {
+		auto funcp = Keymap::ms_prog_funcs_table.find(_tok);
+		if(funcp != Keymap::ms_prog_funcs_table.end()) {
+			type = Type::EVT_PROGRAM_FUNC;
+			func = funcp->second;
+			name = _tok;
+			return;
+		}
+		throw std::runtime_error(std::string("invalid program Function ") + match[0].str());
+	}
+	// is it a guest KEY event?
+	if(std::regex_match(_tok, match, std::regex("^KEY_.+$"))) {
+		auto keyp = Keymap::ms_keycode_table.find(_tok);
+		if(keyp != Keymap::ms_keycode_table.end()) {
+			type = Type::EVT_KEY;
+			key = keyp->second;
+			name = _tok;
+			return;
+		}
+		throw std::runtime_error(std::string("invalid emulated keyboard Key ") + match[0].str());
+	}
+	// is it a guest event of JOY?
+	if(std::regex_match(_tok, match, std::regex("^JOY_([^_]+)_([^_]+)_([^_]+)$"))) {
+		assert(match.size() == 4);
+		if(match[1].str() == "A") {
+			joy.which = 0;
+		} else if(match[1].str() == "B") {
+			joy.which = 1;
+		} else {
+			throw std::runtime_error(std::string("invalid emulated Joystick letter ") + match[1].str() + ": must be A or B");
+		}
+		if(match[2].str() == "BUTTON") {
+			try {
+				joy.button = std::stoi(match[3].str());
+			} catch(std::exception &e) {
+				throw std::runtime_error(std::string("invalid emulated Joystick button number ") + match[3].str());
+			}
+			if(joy.button != 1 && joy.button != 2) {
+				throw std::runtime_error(str_format("invalid emulated Joystick button number %d: must be 1 or 2", joy.button));
+			}
+			joy.button--;
+			type = Type::EVT_JOY_BUTTON;
+			name = _tok;
+		} else if(match[2].str() == "AXIS") {
+			if(match[3].str() == "X") {
+				joy.axis = 0;
+			} else if(match[3].str() == "Y") {
+				joy.axis = 1;
+			} else {
+				throw std::runtime_error(std::string("invalid emulated Joystick axis letter ") + match[3].str() + ": must be X or Y");
+			}
+			type = Type::EVT_JOY_AXIS;
+			name = _tok;
+		} else {
+			throw std::runtime_error("invalid emulated Joystick event: must be JOY_(A|B)_BUTTON_(1|2) or JOY_(A|B)_AXIS_(X|Y)");
+		}
+		return;
+	}
+	// is it a guest MOUSE event?
+	if(std::regex_match(_tok, match, std::regex("^MOUSE_([^_]+)_([^_]+)$"))) {
+		assert(match.size() == 3);
+		if(match[1].str() == "BUTTON") {
+			try {
+				mouse.button = static_cast<MouseButton>(std::stoi(match[2].str()));
+			} catch(std::exception &e) {
+				throw std::runtime_error(std::string("invalid emulated Mouse button number ") + match[2].str());
+			}
+			type = Type::EVT_MOUSE_BUTTON;
+			name = _tok;
+		} else if(match[1].str() == "AXIS") {
+			if(match[2].str() == "X") {
+				mouse.axis = 0;
+			} else if(match[2].str() == "Y") {
+				mouse.axis = 1;
+			} else {
+				throw std::runtime_error(std::string("invalid emulated Mouse axis letter ") + match[2].str() + ": must be X or Y");
+			}
+			type = Type::EVT_MOUSE_AXIS;
+			name = _tok;
+		} else {
+			throw std::runtime_error("invalid emulated Mouse event: must be MOUSE_BUTTON_n or MOUSE_AXIS_(X|Y)");
+		}
+		return;
+	}
+	// oops
+	throw std::runtime_error("unrecognized identifier");
+}
+
+bool Keymap::Binding::has_prg_event(ProgramEvent _evt) const 
+{
+	for(auto & pe : pevt) {
+		if(pe == _evt) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static constexpr bool is_key_modifier(Keys key)
+{
+	return (
+		key == KEY_CTRL_L  ||
+		key == KEY_SHIFT_L ||
+		key == KEY_CTRL_R  ||
+		key == KEY_SHIFT_R ||
+		key == KEY_ALT_L   ||
+		key == KEY_ALT_R   ||
+		key == KEY_WIN_L   ||
+		key == KEY_WIN_R
+	);
+}
+
+bool Keymap::Binding::is_pevt_keycombo()
+{
+	bool mod = false;
+	bool key = false;
+	for(auto &evt : pevt) {
+		if(evt.type == ProgramEvent::Type::EVT_KEY) {
+			mod |= is_key_modifier(evt.key);
+			key |= !is_key_modifier(evt.key);
+		}
+	}
+	return (mod && key);
+}
+
+void Keymap::Binding::remove_pevt_kmods()
+{
+	for(auto evt = pevt.begin(); evt != pevt.end(); ) {
+		if((*evt).type == ProgramEvent::Type::EVT_KEY && is_key_modifier((*evt).key)) {
+			evt = pevt.erase(evt);
+		} else {
+			++evt;
+		}
+	}
+}
+
+const Keymap::Binding *Keymap::find_sdl_binding(const SDL_KeyboardEvent &_event) const
+{
+	uint16_t kmodmask = 0;
+	switch(_event.keysym.sym) {
+		case SDLK_LCTRL:  kmodmask = KMOD_LCTRL; break;
+		case SDLK_LSHIFT: kmodmask = KMOD_LSHIFT; break;
+		case SDLK_LALT:   kmodmask = KMOD_LALT; break;
+		case SDLK_LGUI:   kmodmask = KMOD_LGUI; break;
+		case SDLK_RCTRL:  kmodmask = KMOD_RCTRL; break;
+		case SDLK_RSHIFT: kmodmask = KMOD_RSHIFT; break;
+		case SDLK_RALT:   kmodmask = KMOD_RALT; break;
+		case SDLK_RGUI:   kmodmask = KMOD_RGUI; break;
+			break;
+		default:
+			break;
+	}
+
+	auto find = [&](uint16_t _modmask)->const Binding * {
+		// search the keycode first
+		InputEvent::Key kevt;
+		kevt.mod = _event.keysym.mod & _modmask;
+		kevt.sym = _event.keysym.sym;
+		const Binding * binding = find_input_binding(kevt);
+		if(!binding) {
+			// then the scancode
+			kevt.sym = SDLK_UNKNOWN;
+			kevt.scancode = _event.keysym.scancode;
+			binding = find_input_binding(kevt);
+		}
+		return binding;
+	};
+	
+	// search key w/ mod
+	const Binding * binding = find( (KMOD_CTRL|KMOD_ALT|KMOD_SHIFT|KMOD_GUI) & ~kmodmask );
+	
+	if(!binding) {
+		// search key w/o mod
+		binding = find( 0 );
+	}
+	
+	return binding;
+}
+
+const Keymap::Binding *Keymap::find_sdl_binding(const SDL_MouseMotionEvent &_event) const
+{
+	InputEvent::Pointing mevt;
+	mevt.type = ec_to_i(InputEvent::Type::INPUT_MOUSE_AXIS);
+	if(_event.xrel != 0) {
+		mevt.axis = 0;
+	} else if(_event.yrel != 0) {
+		mevt.axis = 1;
+	} else {
+		PDEBUGF(LOG_V0, LOG_GUI, "mouse motion event with no motion?");
+		return nullptr;
+	}
+	return find_input_binding(mevt);
+}
+
+const Keymap::Binding *Keymap::find_sdl_binding(const SDL_MouseButtonEvent &_event) const
+{
+	InputEvent::Pointing mevt;
+	mevt.type = ec_to_i(InputEvent::Type::INPUT_MOUSE_BUTTON);
+	if(_event.button == 2) {
+		mevt.button = 3;
+	} else if(_event.button == 3) {
+		mevt.button = 2;
+	} else {
+		mevt.button = _event.button;
+	}
+	return find_input_binding(mevt);
+}
+
+const Keymap::Binding *Keymap::find_sdl_binding(uint8_t _joyid, const SDL_JoyAxisEvent &_event) const
+{
+	InputEvent::Pointing jevt;
+	jevt.type = ec_to_i(InputEvent::Type::INPUT_JOY_AXIS);
+	jevt.which = _joyid;
+	jevt.axis = _event.axis;
+	return find_input_binding(jevt);
+}
+
+const Keymap::Binding *Keymap::find_sdl_binding(uint8_t _joyid, const SDL_JoyButtonEvent &_event) const
+{
+	InputEvent::Pointing jevt;
+	jevt.type = ec_to_i(InputEvent::Type::INPUT_JOY_BUTTON);
+	jevt.which = _joyid;
+	jevt.button = _event.button;
+	return find_input_binding(jevt);
+}
+
+const Keymap::Binding *Keymap::find_input_binding(const InputEvent::Key &_kevt) const
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "  searching key event 0x%llX\n", _kevt.to_index());
+	auto b = m_kbindings.find(_kevt.to_index());
+	if(b != m_kbindings.end()) {
+		return b->second;
+	}
+	return nullptr;
+}
+
+std::vector<const Keymap::Binding *> Keymap::find_prg_bindings(const ProgramEvent &_event) const
+{
+	std::vector<const Binding *> result;
+	for(auto & binding : m_bindings) {
+		for(auto & prgevt : binding.pevt) {
+			if(prgevt == _event) {
+				result.push_back(&binding);
+			}
+		}
+	}
+	return result;
+}
+
+const Keymap::Binding *Keymap::find_input_binding(const InputEvent::Pointing &_pevt) const
+{
+	auto b = m_pbindings.find(_pevt.to_index());
+	if(b != m_pbindings.end()) {
+		return b->second;
+	}
+	return nullptr;
+}
+
+SDL_Keycode Keymap::get_SDL_Keycode_from_name(const std::string &_name)
+{
+	auto k = Keymap::ms_sdl_keycode_table.find(_name);
+	if(k != Keymap::ms_sdl_keycode_table.end()) {
+		return k->second;
+	}
+	return SDLK_UNKNOWN;
+}
+
+SDL_Scancode Keymap::get_SDL_Scancode_from_name(const std::string &_name)
+{
+	auto s = Keymap::ms_sdl_scancode_table.find(_name);
+	if(s != Keymap::ms_sdl_scancode_table.end()) {
+		return s->second;
+	}
+	return SDL_SCANCODE_UNKNOWN;
+}
+
+std::string Keymap::get_name_from_SDL_Keycode(SDL_Keycode &_keycode)
+{
+	auto k = Keymap::ms_sdl_keycode_str_table.find(_keycode);
+	if(k != Keymap::ms_sdl_keycode_str_table.end()) {
+		return k->second;
+	}
+	return "";
+}
+
+std::string Keymap::get_name_from_SDL_Scancode(SDL_Scancode &_scancode)
+{
+	auto k = Keymap::ms_sdl_scancode_str_table.find(_scancode);
+	if(k != Keymap::ms_sdl_scancode_str_table.end()) {
+		return k->second;
+	}
+	return "";
 }
 
 void Keymap::load(const std::string &_filename)
 {
-	std::ifstream keymapFile(_filename.c_str(), std::ios::in);
-	if(!keymapFile.is_open()) {
+	std::ifstream keymap_file(_filename.c_str(), std::ios::in);
+	if(!keymap_file.is_open()) {
 		PERRF(LOG_MACHINE,"Unable to open keymap file '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
 
-	PINFOF(LOG_V0, LOG_GUI, "Loading keymap from '%s'\n", _filename.c_str());
+	PINFOF(LOG_V0, LOG_GUI, "Loading keymap from '%s':\n", _filename.c_str());
 
-	// Read keymap file one line at a time
+	// Read the keymap definition file one line at a time
 	int linec = 0;
+	int total = 0;
 	while(true) {
-		std::string base_sym, host_sym;
-		if(parse_next_line(keymapFile, linec, base_sym, host_sym) < 0) {
-			//EOF
-			break;
-		}
-		
-		// convert KEY_* symbols to values
-		uint32_t base_key = convert_string_to_key(Keymap::ms_keycode_table, base_sym);
-		if(base_key == KEYMAP_UNKNOWN) {
-			PERRF(LOG_GUI,"line %d: unknown KEY constant '%s'\n", linec, base_sym.c_str());
+		std::vector<std::string> itoks, ptoks;
+		std::string line;
+		try {
+			line = parse_next_line(keymap_file, linec, itoks, ptoks);
+			if(line.empty()) {
+				// EOF
+				break;
+			}
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_GUI, "  line %d: %s\n", linec, e.what());
 			continue;
 		}
-
-		// convert SDL_* symbols to values
-		uint32_t host_key = convert_string_to_key(Keymap::ms_sdl_keycode_table, host_sym);
-		uint32_t host_scan = convert_string_to_key(Keymap::ms_sdl_scancode_table, host_sym);
-		if(host_key == KEYMAP_UNKNOWN && host_scan == KEYMAP_UNKNOWN) {
-			// check if it's a hex value
+		
+		assert(itoks.size());
+		assert(ptoks.size());
+		
+		InputEvent ievt;
+		std::vector<ProgramEvent> pevts;
+		
+		for(auto &it : itoks) {
 			try {
-				host_key = std::stol(host_sym);
-			} catch(...) {
-				host_key = KEYMAP_UNKNOWN;
+				ievt.parse_token(it);
+			} catch(std::runtime_error &e) {
+				PERRF(LOG_GUI, "  line %d: %s: %s\n", linec, it.c_str(), e.what());
+				continue;
 			}
 		}
-		
-		if(host_key != KEYMAP_UNKNOWN) {
-			m_keys_by_keycode[host_key] = KeyEntry{base_key, host_key, host_sym};
-			PINFOF(LOG_V2, LOG_GUI, "base_key='%s' (%d), keycode='%s' (0x%x)\n",
-					base_sym.c_str(), base_key, host_sym.c_str(), host_key);
-		} else if(host_scan != KEYMAP_UNKNOWN){
-			m_keys_by_scancode[host_scan] = KeyEntry{base_key, host_scan, host_sym};
-			PINFOF(LOG_V2, LOG_GUI, "base_key='%s' (%d), scancode='%s' (%d)\n",
-					base_sym.c_str(), base_key, host_sym.c_str(), host_scan);
-		} else {
-			PERRF(LOG_GUI, "line %d: unknown host key name '%s'\n", linec, host_sym.c_str());
-			continue;
+		for(auto &pt : ptoks) {
+			try {
+				pevts.emplace_back(pt);
+			} catch(std::runtime_error &e) {
+				PERRF(LOG_GUI, "  line %d: %s: %s\n", linec, pt.c_str(), e.what());
+				continue;
+			}
 		}
+		total++;
+		add_binding(ievt, pevts, line);
+		PDEBUGF(LOG_V2, LOG_GUI, "  (%d) %s\n", total, line.c_str());
 	}
 
-	PINFOF(LOG_V1, LOG_GUI, "Loaded %d symbols\n",
-			m_keys_by_keycode.size() + m_keys_by_scancode.size());
-	keymapFile.close();
+	PINFOF(LOG_V0, LOG_GUI, "  loaded %d bindings.\n", total);
+	keymap_file.close();
 }
 
-KeyEntry *Keymap::find_host_key(uint32_t _key_code, uint32_t _scan_code)
+void Keymap::add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name)
 {
-	// keycode table takes precedence
-	auto code = m_keys_by_keycode.find(_key_code);
-	if(code == m_keys_by_keycode.end()) {
-		auto scan = m_keys_by_scancode.find(_scan_code);
-		if(scan != m_keys_by_scancode.end()) {
-			PDEBUGF(LOG_V2, LOG_GUI, "key 0x%x matched scancodes table\n", _scan_code);
-			return &scan->second;
-		}
-	} else {
-		PDEBUGF(LOG_V2, LOG_GUI, "key 0x%x matched keycodes table\n", _key_code);
-		return &code->second;
+	m_bindings.emplace_back(_ievt, _pevts, _name);
+	
+	switch(_ievt.type) {
+		case InputEvent::Type::INPUT_KEY:
+			add_binding(_ievt.key, &m_bindings.back());
+			return;
+		case InputEvent::Type::INPUT_JOY_BUTTON:
+		case InputEvent::Type::INPUT_JOY_AXIS:
+		case InputEvent::Type::INPUT_MOUSE_BUTTON:
+		case InputEvent::Type::INPUT_MOUSE_AXIS:
+			m_pbindings[_ievt.pointing.to_index()] = &m_bindings.back();
+			return;
+		default:
+			break;
 	}
-	PDEBUGF(LOG_V0, LOG_GUI, "key 0x%x / 0x%x is unmapped\n", _key_code, _scan_code);
-	return nullptr;
+	assert(false);
 }
 
-int Keymap::parse_next_line(std::ifstream &_fp, int &_linec,
-		std::string &basesym_, std::string  &hostsym_)
+void Keymap::add_binding(const InputEvent::Key &_kevt, const Binding *_binding)
 {
-	std::vector<std::string> tokens;
+	auto mod_split = [&](int _all, int _left, int _right) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  splitting modifier for binding 0x%llX\n", _kevt.to_index());
+		InputEvent::Key k(_kevt);
+		k.mod &= ~_all;
+		k.mod |= _left;
+		add_binding(k, _binding);
+		k.mod &= ~_left;
+		k.mod |= _right;
+		add_binding(k, _binding);
+	};
+	if((_kevt.mod & KMOD_SHIFT) == KMOD_SHIFT) {
+		// any shift key
+		mod_split(KMOD_SHIFT, KMOD_LSHIFT, KMOD_RSHIFT);
+		return;
+	}
+	if((_kevt.mod & KMOD_CTRL) == KMOD_CTRL) {
+		// any control key
+		mod_split(KMOD_CTRL, KMOD_LCTRL, KMOD_RCTRL);
+		return;
+	}
+	if((_kevt.mod & KMOD_ALT) == KMOD_ALT) {
+		// any alt key
+		mod_split(KMOD_ALT, KMOD_LALT, KMOD_RALT);
+		return;
+	}
+	if((_kevt.mod & KMOD_GUI) == KMOD_GUI) {
+		// any gui key
+		mod_split(KMOD_GUI, KMOD_LGUI, KMOD_RGUI);
+		return;
+	}
+	// add
+	PDEBUGF(LOG_V2, LOG_GUI, "  adding key binding 0x%llX\n", _kevt.to_index());
+	m_kbindings[_kevt.to_index()] = _binding;
+}
+
+std::string Keymap::parse_next_line(std::ifstream &_fp, int &_linec,
+		std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_)
+{
+	std::string line;
 	
 	while(true) {
-		std::string line;
 		std::getline(_fp, line);
 		if(!_fp.good()) {
-			return -1;  // EOF
+			return "";  // EOF
 		}
 		_linec++;
 		
-		tokens = str_parse_tokens(line, "\\s+");
-		if(tokens.empty() || (tokens.size() == 1 && tokens[0].empty())) {
-			// nothing but spaces until end of line
+		line = line.substr(0, line.find_first_of("#"));
+		line = str_trim(line);
+		
+		auto line_tokens = str_parse_tokens(line, "\\s*=\\s*");
+		if(line_tokens.empty() || (line_tokens.size() == 1 && str_trim(line_tokens[0]).length() == 0)) {
+			// nothing of value found, skip
 			continue;
 		}
-		if(tokens[0][0] == '#') {
-			// nothing but a comment
-			continue;
+		if(line_tokens.size() != 2) {
+			throw std::runtime_error(str_format(
+				"expected 'INPUT_EVENT = IBMULATOR_EVENT', found '%s' instead", line.c_str()
+			));
 		}
-		if(tokens.size() != 2) {
-			PERRF(LOG_GUI, "keymap line %d: expected 2 columns, found %d instead\n",
-					_linec, tokens.size());
-			throw std::exception();
+		
+		itoks_ = str_parse_tokens(line_tokens[0], "\\+");
+		ptoks_ = str_parse_tokens(line_tokens[1], "\\+");
+		for(auto &s : itoks_) {
+			s = str_trim(s);
+		}
+		for(auto &s : ptoks_) {
+			s = str_trim(s);
 		}
 		
 		break;
 	}
 	
-	basesym_ = tokens[0];
-	hostsym_ = tokens[1];
-	
-	return 0;
-}
-
-uint32_t Keymap::convert_string_to_key(std::map<std::string, uint32_t> &_dictionary,
-		const std::string &_string)
-{
-	auto key = _dictionary.find(_string);
-	if(key == _dictionary.end()) {
-		return KEYMAP_UNKNOWN;
-	}
-	return key->second;
+	return line;
 }
