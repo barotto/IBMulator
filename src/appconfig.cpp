@@ -367,8 +367,11 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ VGA_SECTION,
 "; Video interface card configuration:\n"
-";        rom: Path to a binary ROM file to load\n"
-"; ps_bit_bug: Enable the PS bit bug emulation (used by some demo, eg. Copper '92)\n"
+";        rom: Path to a binary ROM file to load.\n"
+";              The PS/1 BIOS won't use it but other BIOSes might require it.\n"
+"; ps_bit_bug: Enable the Palette Size (PS) bit bug emulation.\n"
+";              This VGA Attribute Controller's bit is not used in 256-color mode, except in the ET4000AX rev. TC6058AF\n"
+";              (req. by Copper '92 demo).\n"
 		},
 
 		{ DRIVES_SECTION,
