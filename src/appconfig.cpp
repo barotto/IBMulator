@@ -303,7 +303,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";realistic_style: Initial interface style when in realistic mode. Keep CTRL-F1 pressed to switch.\n"
 ";                 Possible values: bright, dark.\n"
 ";         keymap: Keymap table file. If none specified the default keymap.map file in the share dir will be used.\n"
-";           grab: If 'no' then the mouse will not be hidden when grabbed (useful when debugging " PACKAGE_NAME ")\n"
 ";          mouse: Mouse type.\n"
 ";                 Possible values: none, ps2, serial\n"
 ";    mouse_accel: Enable mouse acceleration\n"
@@ -530,7 +529,6 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_REALISTIC_ZOOM,
 		GUI_REALISTIC_STYLE,
 		GUI_KEYMAP,
-		GUI_MOUSE_GRAB,
 		GUI_MOUSE_TYPE,
 		GUI_MOUSE_ACCELERATION,
 		GUI_WIDTH,
