@@ -285,25 +285,26 @@ private:
 	void pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event);
 	void pevt_joy_button(uint8_t _jid, uint8_t _button, EventPhase _phase);
 
-	static const std::map<ProgramEvent::Func, std::function<void(GUI&, EventPhase)>> ms_event_funcs;
+	static const std::map<ProgramEvent::FuncName, std::function<void(GUI&, const ProgramEvent::Func&, EventPhase)>> ms_event_funcs;
 	std::map<Keys, bool> m_key_state;
 	void send_key_to_machine(Keys _key, uint32_t _event);
 	
-	void pevt_func_none(EventPhase);
-	void pevt_func_gui_mode_action(EventPhase);
-	void pevt_func_toggle_power(EventPhase);
-	void pevt_func_toggle_pause(EventPhase);
-	void pevt_func_toggle_dbg_wnd(EventPhase);
-	void pevt_func_take_screenshot(EventPhase);
-	void pevt_func_toggle_audio_capture(EventPhase);
-	void pevt_func_toggle_video_capture(EventPhase);
-	void pevt_func_quick_save_state(EventPhase);
-	void pevt_func_quick_load_state(EventPhase);
-	void pevt_func_grab_mouse(EventPhase);
-	void pevt_func_sys_speed_up(EventPhase);
-	void pevt_func_sys_speed_down(EventPhase);
-	void pevt_func_toggle_fullscreen(EventPhase);
-	void pevt_func_exit(EventPhase);
+	void pevt_func_none(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_sys_speed(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_sys_speed_up(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
 };
 
 

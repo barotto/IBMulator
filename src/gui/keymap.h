@@ -86,7 +86,7 @@ struct ProgramEvent {
 		EVT_MOUSE_AXIS = 32
 	};
 	
-	enum class Func {
+	enum class FuncName {
 		FUNC_NONE,
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
@@ -100,13 +100,21 @@ struct ProgramEvent {
 		FUNC_GRAB_MOUSE,           // lock / unlock mouse to emulator
 		FUNC_SYS_SPEED_UP,         // increase emulation speed (whole system)
 		FUNC_SYS_SPEED_DOWN,       // decrease emulation speed (whole system)
+		FUNC_SYS_SPEED,            // set emulation speed to specified % (2 params: speed,momentary?)
 		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
 		FUNC_EXIT                  // close program
 	};
 	
 	Type type = Type::EVT_NONE;
-	Func func = Func::FUNC_NONE;
 	Keys key = KEY_NONE;
+	
+	struct Func {
+		FuncName name = FuncName::FUNC_NONE;
+		int params[2] = {0,0};
+		bool operator==(const ProgramEvent::Func &_rhs) const {
+			return (name == _rhs.name);
+		}
+	} func;
 	
 	struct Joy {
 		uint8_t which = 0;
@@ -180,7 +188,7 @@ public:
 	static const std::map<Keys, std::string> ms_keycode_str_table;
 	static const std::map<SDL_Keycode, std::string> ms_sdl_keycode_str_table;
 	static const std::map<SDL_Scancode, std::string> ms_sdl_scancode_str_table;
-	static const std::map<std::string, ProgramEvent::Func> ms_prog_funcs_table;
+	static const std::map<std::string, ProgramEvent::FuncName> ms_prog_funcs_table;
 
 private:
 	void add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name);

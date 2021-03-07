@@ -315,13 +315,15 @@ These are the default key combinations. They can be changed by editing the
 * CTRL+F7: start/stop video capture
 * CTRL+F8: save current state
 * CTRL+F9: load last state
-* CTRL+F10: mouse grab
+* CTRL+F10: grab the mouse
 * CTRL+F11: emulation speed down
 * CTRL+F12: emulation speed up
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
 * CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
+* ALT+F11: set emulation speed to 10% (momentary)
+* ALT+F12: set emulation speed to 500% (momentary)
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program

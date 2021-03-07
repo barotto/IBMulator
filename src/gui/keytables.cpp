@@ -34,22 +34,23 @@ const std::map<std::string, uint32_t> Keymap::ms_sdl_kmod_table = {
 	{ "KMOD_GUI",    KMOD_GUI    }
 };
 
-const std::map<std::string, ProgramEvent::Func> Keymap::ms_prog_funcs_table = {
-	{ "FUNC_NONE",                  ProgramEvent::Func::FUNC_NONE                 },
-	{ "FUNC_GUI_MODE_ACTION",       ProgramEvent::Func::FUNC_GUI_MODE_ACTION      },
-	{ "FUNC_TOGGLE_POWER",          ProgramEvent::Func::FUNC_TOGGLE_POWER         },
-	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::Func::FUNC_TOGGLE_PAUSE         },
-	{ "FUNC_TOGGLE_DBG_WND",        ProgramEvent::Func::FUNC_TOGGLE_DBG_WND       },
-	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::Func::FUNC_TAKE_SCREENSHOT      },
-	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::Func::FUNC_TOGGLE_AUDIO_CAPTURE },
-	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::Func::FUNC_TOGGLE_VIDEO_CAPTURE },
-	{ "FUNC_QUICK_SAVE_STATE",      ProgramEvent::Func::FUNC_QUICK_SAVE_STATE     },
-	{ "FUNC_QUICK_LOAD_STATE",      ProgramEvent::Func::FUNC_QUICK_LOAD_STATE     },
-	{ "FUNC_GRAB_MOUSE",            ProgramEvent::Func::FUNC_GRAB_MOUSE           },
-	{ "FUNC_SYS_SPEED_UP",          ProgramEvent::Func::FUNC_SYS_SPEED_UP         },
-	{ "FUNC_SYS_SPEED_DOWN",        ProgramEvent::Func::FUNC_SYS_SPEED_DOWN       },
-	{ "FUNC_TOGGLE_FULLSCREEN",     ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN    },
-	{ "FUNC_EXIT",                  ProgramEvent::Func::FUNC_EXIT                 }
+const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table = {
+	{ "FUNC_NONE",                  ProgramEvent::FuncName::FUNC_NONE                 },
+	{ "FUNC_GUI_MODE_ACTION",       ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION      },
+	{ "FUNC_TOGGLE_POWER",          ProgramEvent::FuncName::FUNC_TOGGLE_POWER         },
+	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE         },
+	{ "FUNC_TOGGLE_DBG_WND",        ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND       },
+	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT      },
+	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE },
+	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE },
+	{ "FUNC_QUICK_SAVE_STATE",      ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE     },
+	{ "FUNC_QUICK_LOAD_STATE",      ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE     },
+	{ "FUNC_GRAB_MOUSE",            ProgramEvent::FuncName::FUNC_GRAB_MOUSE           },
+	{ "FUNC_SYS_SPEED",             ProgramEvent::FuncName::FUNC_SYS_SPEED            },
+	{ "FUNC_SYS_SPEED_UP",          ProgramEvent::FuncName::FUNC_SYS_SPEED_UP         },
+	{ "FUNC_SYS_SPEED_DOWN",        ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN       },
+	{ "FUNC_TOGGLE_FULLSCREEN",     ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN    },
+	{ "FUNC_EXIT",                  ProgramEvent::FuncName::FUNC_EXIT                 }
 };
 
 const std::map<std::string, Keys> Keymap::ms_keycode_table = {

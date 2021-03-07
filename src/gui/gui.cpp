@@ -80,22 +80,24 @@ std::map<std::string, uint> GUI::ms_display_aspect = {
 	{ "scaled", DISPLAY_ASPECT_SCALED }
 };
 
-const std::map<ProgramEvent::Func, std::function<void(GUI&,GUI::EventPhase)>> GUI::ms_event_funcs = {
-	{ ProgramEvent::Func::FUNC_NONE,                 &GUI::pevt_func_none                 },
-	{ ProgramEvent::Func::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
-	{ ProgramEvent::Func::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
-	{ ProgramEvent::Func::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
-	{ ProgramEvent::Func::FUNC_TOGGLE_DBG_WND,       &GUI::pevt_func_toggle_dbg_wnd       },
-	{ ProgramEvent::Func::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
-	{ ProgramEvent::Func::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
-	{ ProgramEvent::Func::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
-	{ ProgramEvent::Func::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
-	{ ProgramEvent::Func::FUNC_QUICK_LOAD_STATE,     &GUI::pevt_func_quick_load_state     },
-	{ ProgramEvent::Func::FUNC_GRAB_MOUSE,           &GUI::pevt_func_grab_mouse           },
-	{ ProgramEvent::Func::FUNC_SYS_SPEED_UP,         &GUI::pevt_func_sys_speed_up         },
-	{ ProgramEvent::Func::FUNC_SYS_SPEED_DOWN,       &GUI::pevt_func_sys_speed_down       },
-	{ ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
-	{ ProgramEvent::Func::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
+const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEvent::Func&,GUI::EventPhase)>>
+	GUI::ms_event_funcs = {
+	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
+	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND,       &GUI::pevt_func_toggle_dbg_wnd       },
+	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
+	{ ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
+	{ ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE,     &GUI::pevt_func_quick_load_state     },
+	{ ProgramEvent::FuncName::FUNC_GRAB_MOUSE,           &GUI::pevt_func_grab_mouse           },
+	{ ProgramEvent::FuncName::FUNC_SYS_SPEED_UP,         &GUI::pevt_func_sys_speed_up         },
+	{ ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN,       &GUI::pevt_func_sys_speed_down       },
+	{ ProgramEvent::FuncName::FUNC_SYS_SPEED,            &GUI::pevt_func_sys_speed            },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
+	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
 };
 
 GUI::GUI()
@@ -560,7 +562,7 @@ bool GUI::on_event_binding(const SDL_Event &_event, const Keymap::Binding &_bind
 				break;
 			case ProgramEvent::Type::EVT_PROGRAM_FUNC:
 				gui_input = false;
-				ms_event_funcs.at(pevt.func)(*this, phase);
+				ms_event_funcs.at(pevt.func.name)(*this, pevt.func, phase);
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_AXIS:
 				if(_guest_input) {
@@ -1281,7 +1283,7 @@ void GUI::show_welcome_screen()
 	std::vector<const Keymap::Binding *> bindings;
 
 	cx = bd;
-	evt.func = ProgramEvent::Func::FUNC_GUI_MODE_ACTION;
+	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
 	bindings = m_keymap.find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		if(m_mode == GUI_MODE_COMPACT) {
@@ -1299,7 +1301,7 @@ void GUI::show_welcome_screen()
 		}
 	}
 
-	evt.func = ProgramEvent::Func::FUNC_TOGGLE_POWER;
+	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_POWER;
 	bindings = m_keymap.find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To start/stop the machine press ", 0xf, bg, bd);
@@ -1307,7 +1309,7 @@ void GUI::show_welcome_screen()
 		ps("\n", 0xe, bg, bd);
 	}
 	
-	evt.func = ProgramEvent::Func::FUNC_GRAB_MOUSE;
+	evt.func.name = ProgramEvent::FuncName::FUNC_GRAB_MOUSE;
 	bindings = m_keymap.find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To grab the mouse press ", 0xf, bg, bd);
@@ -1315,19 +1317,19 @@ void GUI::show_welcome_screen()
 		ps("\n", 0xe, bg, bd);
 	}
 	if(m_mode == GUI_MODE_REALISTIC) {
-		evt.func = ProgramEvent::Func::FUNC_TOGGLE_PAUSE;
+		evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE;
 		bindings = m_keymap.find_prg_bindings(evt);
 		if(!bindings.empty()) {
 			ps("To pause the machine press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			ps("\n", 0xe, bg, bd);
 		}
-		evt.func = ProgramEvent::Func::FUNC_QUICK_SAVE_STATE;
+		evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE;
 		bindings = m_keymap.find_prg_bindings(evt);
 		if(!bindings.empty()) {
 			ps("To save the machine's state press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			evt.func = ProgramEvent::Func::FUNC_QUICK_LOAD_STATE;
+			evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE;
 			bindings = m_keymap.find_prg_bindings(evt);
 			if(!bindings.empty()) {
 				ps("\nTo load the last saved state press ", 0xf, bg, bd);
@@ -1336,14 +1338,14 @@ void GUI::show_welcome_screen()
 			}
 		}
 	}
-	evt.func = ProgramEvent::Func::FUNC_TOGGLE_FULLSCREEN;
+	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN;
 	bindings = m_keymap.find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To toggle fullscreen mode press ", 0xf, bg, bd);
 		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 		ps("\n", 0xe, bg, bd);
 	}
-	evt.func = ProgramEvent::Func::FUNC_EXIT;
+	evt.func.name = ProgramEvent::FuncName::FUNC_EXIT;
 	bindings = m_keymap.find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To close the emulator press ", 0xf, bg, bd);
@@ -1358,12 +1360,12 @@ void GUI::show_welcome_screen()
 	m_machine->cmd_print_VGA_text(text);
 }
 
-void GUI::pevt_func_none(EventPhase)
+void GUI::pevt_func_none(const ProgramEvent::Func&, EventPhase)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Unknown func event!\n");
 }
 
-void GUI::pevt_func_gui_mode_action(EventPhase _phase)
+void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase _phase)
 {
 	PDEBUGF(LOG_V1, LOG_GUI, "GUI mode action func event\n");
 	
@@ -1389,7 +1391,7 @@ void GUI::pevt_func_gui_mode_action(EventPhase _phase)
 	}
 }
 
-void GUI::pevt_func_toggle_power(EventPhase _phase)
+void GUI::pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1399,7 +1401,7 @@ void GUI::pevt_func_toggle_power(EventPhase _phase)
 	m_windows.interface->switch_power();
 }
 
-void GUI::pevt_func_toggle_pause(EventPhase _phase)
+void GUI::pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1413,7 +1415,7 @@ void GUI::pevt_func_toggle_pause(EventPhase _phase)
 	}
 }
 
-void GUI::pevt_func_toggle_dbg_wnd(EventPhase _phase)
+void GUI::pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1422,7 +1424,7 @@ void GUI::pevt_func_toggle_dbg_wnd(EventPhase _phase)
 	toggle_dbg_windows();
 }
 
-void GUI::pevt_func_take_screenshot(EventPhase _phase)
+void GUI::pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1436,7 +1438,7 @@ void GUI::pevt_func_take_screenshot(EventPhase _phase)
 	);
 }
 
-void GUI::pevt_func_toggle_audio_capture(EventPhase _phase)
+void GUI::pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1446,7 +1448,7 @@ void GUI::pevt_func_toggle_audio_capture(EventPhase _phase)
 	m_mixer->cmd_toggle_capture();
 }
 
-void GUI::pevt_func_toggle_video_capture(EventPhase _phase)
+void GUI::pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1456,7 +1458,7 @@ void GUI::pevt_func_toggle_video_capture(EventPhase _phase)
 	m_capture->cmd_toggle_capture();
 }
 
-void GUI::pevt_func_quick_save_state(EventPhase _phase)
+void GUI::pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1478,7 +1480,7 @@ void GUI::pevt_func_quick_save_state(EventPhase _phase)
 	}, nullptr);
 }
 
-void GUI::pevt_func_quick_load_state(EventPhase _phase)
+void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1496,7 +1498,7 @@ void GUI::pevt_func_quick_load_state(EventPhase _phase)
 	}, nullptr);
 }
 
-void GUI::pevt_func_grab_mouse(EventPhase _phase)
+void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1514,7 +1516,7 @@ void GUI::pevt_func_grab_mouse(EventPhase _phase)
 	}
 }
 
-void GUI::pevt_func_sys_speed_up(EventPhase _phase)
+void GUI::pevt_func_sys_speed_up(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase == EventPhase::EVT_END) {
 		return;
@@ -1537,7 +1539,7 @@ void GUI::pevt_func_sys_speed_up(EventPhase _phase)
 	}
 }
 
-void GUI::pevt_func_sys_speed_down(EventPhase _phase)
+void GUI::pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase == EventPhase::EVT_END) {
 		return;
@@ -1560,7 +1562,35 @@ void GUI::pevt_func_sys_speed_down(EventPhase _phase)
 	}
 }
 
-void GUI::pevt_func_toggle_fullscreen(EventPhase _phase)
+void GUI::pevt_func_sys_speed(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_func.params[1]) {
+		// momentary
+		if(_phase == EventPhase::EVT_REPEAT) {
+			return;
+		}
+		PDEBUGF(LOG_V1, LOG_GUI, "System speed func event, speed=%d%%, momentary\n", _func.params[0]);
+		if(_phase == EventPhase::EVT_START) {
+			m_symspeed_factor = double(_func.params[0]) / 100.0;
+		} else {
+			m_symspeed_factor = 1.0;
+		}
+	} else {
+		// constant
+		if(_phase != EventPhase::EVT_START) {
+			return;
+		}
+		PDEBUGF(LOG_V1, LOG_GUI, "System speed func event, speed=%d%%\n", _func.params[0]);
+		if(m_symspeed_factor != 1.0) {
+			m_symspeed_factor = 1.0;
+		} else {
+			m_symspeed_factor = double(_func.params[0]) / 100.0;
+		}
+	}
+	m_machine->cmd_cycles_adjust(m_symspeed_factor);
+}
+
+void GUI::pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -1570,7 +1600,7 @@ void GUI::pevt_func_toggle_fullscreen(EventPhase _phase)
 	toggle_fullscreen();
 }
 
-void GUI::pevt_func_exit(EventPhase _phase)
+void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;

@@ -157,14 +157,27 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 	
 	// is it a FUNC?
 	if(std::regex_match(_tok, match, std::regex("^FUNC_.+$"))) {
-		auto funcp = Keymap::ms_prog_funcs_table.find(_tok);
+		std::string func_name = _tok;
+		// parse possible parameters
+		if(std::regex_match(_tok, match, std::regex("^(FUNC_[^\\(]+)\\((.+)\\)$")) && match.size() == 3) {
+			func_name = match[1].str();
+			auto params = str_parse_tokens(match[2].str(), ",");
+			if(params.empty()) {
+				// this should never happen
+				throw std::runtime_error(std::string("invalid parameters for Function ") + _tok);
+			}
+			for(int i=0; i<params.size() && i<2; i++) {
+				func.params[i] = atoi(params[i].c_str());
+			}
+		}
+		auto funcp = Keymap::ms_prog_funcs_table.find(func_name);
 		if(funcp != Keymap::ms_prog_funcs_table.end()) {
 			type = Type::EVT_PROGRAM_FUNC;
-			func = funcp->second;
+			func.name = funcp->second;
 			name = _tok;
 			return;
 		}
-		throw std::runtime_error(std::string("invalid program Function ") + match[0].str());
+		throw std::runtime_error(std::string("invalid program Function ") + func_name);
 	}
 	// is it a guest KEY event?
 	if(std::regex_match(_tok, match, std::regex("^KEY_.+$"))) {
