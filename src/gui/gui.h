@@ -133,7 +133,8 @@ protected:
 	bool m_vga_buffering;
 	bool m_threads_sync;
 	SDL_Color m_backcolor;
-	Keymap m_keymap;
+	std::vector<Keymap> m_keymaps;
+	unsigned m_current_keymap;
 	
 	struct Mouse {
 		bool grab;
@@ -265,6 +266,8 @@ public:
 	void sig_state_restored();
 	
 private:
+	void load_keymap(const std::string &_filename);
+	
 	void on_keyboard_event(const SDL_Event &_event);
 	void on_mouse_motion_event(const SDL_Event &_event);
 	void on_mouse_button_event(const SDL_Event &_event);
@@ -304,6 +307,7 @@ private:
 	void pevt_func_sys_speed_up(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_switch_keymap(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
 };
 

@@ -97,6 +97,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN,       &GUI::pevt_func_sys_speed_down       },
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED,            &GUI::pevt_func_sys_speed            },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
+	{ ProgramEvent::FuncName::FUNC_SWITCH_KEYMAP,        &GUI::pevt_func_switch_keymap        },
 	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
 };
 
@@ -116,6 +117,7 @@ m_framecap(GUI_FRAMECAP_VGA),
 m_vsync(false),
 m_vga_buffering(false),
 m_threads_sync(false),
+m_current_keymap(0),
 m_symspeed_factor(1.0),
 m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
@@ -227,34 +229,33 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		toggle_fullscreen();
 	}
 
-	std::string keymap_file;
+	auto keymap_value = g_program.config().get_string(GUI_SECTION, GUI_KEYMAP);
 	auto keymap_default = g_program.config().get_file_path("keymap.map", FILE_TYPE_ASSET);
-	
-	try {
-		keymap_file = g_program.config().get_file(GUI_SECTION, GUI_KEYMAP, FILE_TYPE_USER);
-		if(keymap_file.empty()) {
-			keymap_file = keymap_default;
-		} else {
-			if(!FileSys::file_exists(keymap_file.c_str())) {
-				PWARNF(LOG_V0, LOG_GUI, "The kemap file '%s' doesn't exists, creating...\n", keymap_file.c_str());
-				try {
-					FileSys::copy_file(keymap_default.c_str(), keymap_file.c_str());
-				} catch(std::exception &e) {
-					PWARNF(LOG_V0, LOG_GUI, "Unable to create the keymap file, using the default one\n");
-					keymap_file = keymap_default;
-				}
+	if(keymap_value.empty()) {
+		keymap_value = keymap_default;
+	}
+	auto keymaps = str_parse_tokens(keymap_value, "\\s*\\|\\s*");
+	for(auto &keymap : keymaps) {
+		if(keymap.empty()) {
+			continue;
+		}
+		auto path = g_program.config().get_file_path(keymap, FILE_TYPE_USER);
+		if(!FileSys::file_exists(path.c_str())) {
+			PWARNF(LOG_V0, LOG_GUI, "The keymap file '%s' doesn't exists, creating...\n", keymap.c_str());
+			try {
+				FileSys::copy_file(keymap_default.c_str(), path.c_str());
+			} catch(std::exception &e) {
+				PWARNF(LOG_V0, LOG_GUI, "  cannot create the keymap file!\n");
+				continue;
 			}
 		}
-	} catch(std::exception &e) {
-		PWARNF(LOG_V0, LOG_GUI, "The keymap file name is undefined, using the default one\n");
-		keymap_file = keymap_default;
+		try {
+			load_keymap(path);
+		} catch(std::exception &) {}
 	}
-	
-	try {
-		m_keymap.load(keymap_file);
-	} catch(std::exception &e) {
-		PERRF(LOG_GUI, "Unable to load the keymap!\n");
+	if(m_keymaps.empty()) {
 		shutdown_SDL();
+		PERRF(LOG_GUI, "No available valid keymaps!\n");
 		throw std::exception();
 	}
 
@@ -280,6 +281,18 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	
 	// DONE
 	show_welcome_screen();
+}
+
+void GUI::load_keymap(const std::string &_filename)
+{
+	m_keymaps.emplace_back();
+	try {
+		m_keymaps.back().load(_filename);
+	} catch(std::exception &e) {
+		m_keymaps.pop_back();
+		PERRF(LOG_GUI, "Unable to load keymap '%s'\n", _filename.c_str());
+		throw std::exception();
+	}
 }
 
 void GUI::config_changed()
@@ -613,7 +626,7 @@ void GUI::on_keyboard_event(const SDL_Event &_event)
 	bool gui_input = !guest_input;
 	
 	static const Keymap::Binding *combo = nullptr;
-	const Keymap::Binding *binding_ptr = m_keymap.find_sdl_binding(_event.key);
+	const Keymap::Binding *binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_event.key);
 	
 	if(binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
@@ -695,7 +708,7 @@ void GUI::on_mouse_motion_event(const SDL_Event &_event)
 	
 	if(_event.motion.xrel) {
 		mevent.motion.yrel = 0;
-		binding_x = m_keymap.find_sdl_binding(mevent.motion);
+		binding_x = m_keymaps[m_current_keymap].find_sdl_binding(mevent.motion);
 		if(binding_x) {
 			bind_x_map_x = binding_x->has_prg_event(x_mapping);
 			bind_x_map_y = binding_x->has_prg_event(y_mapping);
@@ -707,7 +720,7 @@ void GUI::on_mouse_motion_event(const SDL_Event &_event)
 	if(_event.motion.yrel) {
 		mevent.motion.xrel = 0;
 		mevent.motion.yrel = _event.motion.yrel;
-		binding_y = m_keymap.find_sdl_binding(mevent.motion);
+		binding_y = m_keymaps[m_current_keymap].find_sdl_binding(mevent.motion);
 		if(binding_y) {
 			bind_y_map_x = binding_y->has_prg_event(x_mapping);
 			bind_y_map_y = binding_y->has_prg_event(y_mapping);
@@ -773,7 +786,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_event)
 	bool guest_input = m_input_grab;
 	bool gui_input = !guest_input;
 	
-	const Keymap::Binding *binding = m_keymap.find_sdl_binding(_event.button);
+	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(_event.button);
 	
 	if(binding) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
@@ -801,7 +814,7 @@ void GUI::on_joystick_motion_event(const SDL_Event &_event)
 		return;
 	}
 	
-	const Keymap::Binding *binding = m_keymap.find_sdl_binding(jid, _event.jaxis);
+	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(jid, _event.jaxis);
 	if(binding) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
 		on_event_binding(_event, *binding, true);
@@ -826,7 +839,7 @@ void GUI::on_joystick_button_event(const SDL_Event &_event)
 		return;
 	}
 	
-	const Keymap::Binding *binding = m_keymap.find_sdl_binding(jid, _event.jbutton);
+	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(jid, _event.jbutton);
 	if(binding) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
 		on_event_binding(_event, *binding, true);
@@ -1284,7 +1297,7 @@ void GUI::show_welcome_screen()
 
 	cx = bd;
 	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
-	bindings = m_keymap.find_prg_bindings(evt);
+	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		if(m_mode == GUI_MODE_COMPACT) {
 			ps("\nTo show/hide the interface press ", 0xf, bg, bd);
@@ -1302,7 +1315,7 @@ void GUI::show_welcome_screen()
 	}
 
 	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_POWER;
-	bindings = m_keymap.find_prg_bindings(evt);
+	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To start/stop the machine press ", 0xf, bg, bd);
 		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
@@ -1310,7 +1323,7 @@ void GUI::show_welcome_screen()
 	}
 	
 	evt.func.name = ProgramEvent::FuncName::FUNC_GRAB_MOUSE;
-	bindings = m_keymap.find_prg_bindings(evt);
+	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To grab the mouse press ", 0xf, bg, bd);
 		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
@@ -1318,19 +1331,19 @@ void GUI::show_welcome_screen()
 	}
 	if(m_mode == GUI_MODE_REALISTIC) {
 		evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE;
-		bindings = m_keymap.find_prg_bindings(evt);
+		bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 		if(!bindings.empty()) {
 			ps("To pause the machine press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			ps("\n", 0xe, bg, bd);
 		}
 		evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE;
-		bindings = m_keymap.find_prg_bindings(evt);
+		bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 		if(!bindings.empty()) {
 			ps("To save the machine's state press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE;
-			bindings = m_keymap.find_prg_bindings(evt);
+			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 			if(!bindings.empty()) {
 				ps("\nTo load the last saved state press ", 0xf, bg, bd);
 				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
@@ -1339,14 +1352,14 @@ void GUI::show_welcome_screen()
 		}
 	}
 	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN;
-	bindings = m_keymap.find_prg_bindings(evt);
+	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To toggle fullscreen mode press ", 0xf, bg, bd);
 		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 		ps("\n", 0xe, bg, bd);
 	}
 	evt.func.name = ProgramEvent::FuncName::FUNC_EXIT;
-	bindings = m_keymap.find_prg_bindings(evt);
+	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		ps("To close the emulator press ", 0xf, bg, bd);
 		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
@@ -1598,6 +1611,20 @@ void GUI::pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase _pha
 	PDEBUGF(LOG_V1, LOG_GUI, "Toggle fullscreen func event\n");
 
 	toggle_fullscreen();
+}
+
+void GUI::pevt_func_switch_keymap(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Switch keymap func event\n");
+	
+	m_current_keymap = (m_current_keymap + 1) % m_keymaps.size();
+	
+	std::string mex = "Current keymap: ";
+	mex += m_keymaps[m_current_keymap].name();
+	show_message(mex.c_str());
 }
 
 void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)

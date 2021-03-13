@@ -467,7 +467,7 @@ void Keymap::load(const std::string &_filename)
 {
 	std::ifstream keymap_file(_filename.c_str(), std::ios::in);
 	if(!keymap_file.is_open()) {
-		PERRF(LOG_MACHINE,"Unable to open keymap file '%s'\n", _filename.c_str());
+		PERRF(LOG_GUI, "Unable to open keymap file '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
 
@@ -519,6 +519,7 @@ void Keymap::load(const std::string &_filename)
 
 	PINFOF(LOG_V0, LOG_GUI, "  loaded %d bindings.\n", total);
 	keymap_file.close();
+	m_name = _filename;
 }
 
 void Keymap::add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name)

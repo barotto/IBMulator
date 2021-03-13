@@ -63,6 +63,7 @@
 #  FUNC_SYS_SPEED_DOWN       : decrease emulation speed (whole system)
 #  FUNC_SYS_SPEED(X,1|0)     : set the emulation speed to X%, 1=momentary, 0=latched
 #  FUNC_TOGGLE_FULLSCREEN    : toggle fullscreen mode
+#  FUNC_SWITCH_KEYMAP        : change the active keymap to the next available one
 #  FUNC_EXIT                 : close IBMulator
 
 
@@ -105,6 +106,7 @@ KMOD_CTRL + SDLK_F9    = FUNC_QUICK_LOAD_STATE
 KMOD_CTRL + SDLK_F10   = FUNC_GRAB_MOUSE
 KMOD_CTRL + SDLK_F11   = FUNC_SYS_SPEED_UP
 KMOD_CTRL + SDLK_F12   = FUNC_SYS_SPEED_DOWN
+KMOD_ALT + SDLK_F10    = FUNC_SWITCH_KEYMAP
 KMOD_ALT + SDLK_F11    = FUNC_SYS_SPEED(500,1)
 KMOD_ALT + SDLK_F12    = FUNC_SYS_SPEED(10,1)
 KMOD_ALT + SDLK_RETURN = FUNC_TOGGLE_FULLSCREEN

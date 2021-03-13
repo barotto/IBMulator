@@ -322,6 +322,7 @@ These are the default key combinations. They can be changed by editing the
 * CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
+* ALT+F10: change the active keymap to the next available one
 * ALT+F11: set emulation speed to 10% (momentary)
 * ALT+F12: set emulation speed to 500% (momentary)
 * ALT+ENTER: toggle fullscreen mode

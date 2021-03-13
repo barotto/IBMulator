@@ -102,6 +102,7 @@ struct ProgramEvent {
 		FUNC_SYS_SPEED_DOWN,       // decrease emulation speed (whole system)
 		FUNC_SYS_SPEED,            // set emulation speed to specified % (2 params: speed,momentary?)
 		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
+		FUNC_SWITCH_KEYMAP,        // change the active keymap to the next in the keymaps list
 		FUNC_EXIT                  // close program
 	};
 	
@@ -164,9 +165,11 @@ private:
 	std::list<Binding> m_bindings;
 	std::map<uint64_t, const Binding*> m_kbindings;
 	std::map<uint32_t, const Binding*> m_pbindings;
+	std::string m_name;
 	
 public:
 	void load(const std::string &_filename);
+	const char *name() const { return m_name.c_str(); }
 
 	const Binding *find_sdl_binding(const SDL_KeyboardEvent &_event) const;
 	const Binding *find_sdl_binding(const SDL_MouseMotionEvent &_event) const;
