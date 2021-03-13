@@ -742,12 +742,12 @@ void GUI::on_mouse_motion_event(const SDL_Event &_event)
 		if(bind_x_map_x) {
 			xrel = _event.motion.xrel;
 		} else if(bind_y_map_x) {
-			xrel = -_event.motion.yrel;
+			xrel = _event.motion.yrel;
 		}
 		if(bind_y_map_y) {
 			yrel = _event.motion.yrel;
-		} else  if(bind_x_map_y) {
-			yrel = -_event.motion.xrel;
+		} else if(bind_x_map_y) {
+			yrel = _event.motion.xrel;
 		}
 		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse X,Y axis: %d,%d pixels\n", xrel,yrel);
 		m_machine->mouse_motion(xrel, -yrel, 0);
