@@ -296,11 +296,34 @@ Higher values will increase the machine state restore times when SysEx data is
 present. If you're using the Munt MT-32 emulator or any other software synth you
 can set this parameter to `0` to disable all delays.
 
+### Keymaps
 
-### Key bindings
+A keymap is a file that defines mappings between input events, like key presses,
+and emulator's events.
 
-These are the default key combinations. They can be changed by editing the
-`keymap.map` file, whose path is specified with the `[gui]:keymap` ini value.
+When the emulator is launched for the first time a default keymap is copied
+inside the user directory.
+
+Multiple output events can be concatenated to form a macro, for example:
+```
+JOY_0_BUTTON_2 = KEY_D + KEY_I + KEY_R + KEY_ENTER
+```
+
+For the syntax and identifiers to use to define custom key bindings please see
+the comments inside the default keymap file.
+
+IBMulator can load multiple keymaps, although only one can be active at any
+given time. This can be useful for switching controls depending on the running
+program.
+
+To specify the keymap(s) to load use the `[gui]:keymap` ini file value.  
+You can load multiple keymaps concatenating their name with the `|` character,
+like so:
+```
+keymap=my_keymap_1.map|my_keymap_2.map
+```
+
+#### Default key bindings
 
 * CTRL+F1: GUI mode action:
   * compact mode:

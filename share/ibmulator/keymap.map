@@ -25,9 +25,12 @@
 #  MOUSE_AXIS_n     : mouse axis n (n=X or Y)
 #  FUNC_*           : GUI, program, or emulator function
 #
-#  Multiple events can be concatenated with '+'.
+#  Multiple events can be concatenated with '+'. This allows to form macros:
+#    JOY_0_BUTTON_2 = KEY_D + KEY_I + KEY_R + KEY_ENTER
+#  
 #  AXIS events can be mapped only to other AXIS type of events.
-#  For modifier+key combos to actually work you must specify them with the
+#
+#  For "modifier + key" combos to actually work you must specify them with the
 #  modifier(s) first, like:
 #    KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB
 #
