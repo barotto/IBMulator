@@ -19,9 +19,9 @@ AC_LANG_PUSH([C++])
 if test x$librocket_prefix != x ; then
 	LIBROCKET_CFLAGS="-I$librocket_prefix/include"
 	LIBROCKET_LIBS="-L$librocket_prefix/lib"
-	AC_CHECK_HEADERS([$librocket_prefix/include/Rocket/Core.h],, [HAVE_LIBROCKET=no])
+	AC_CHECK_HEADER($librocket_prefix/include/Rocket/Core.h,, [HAVE_LIBROCKET=no])
 else
-	AC_CHECK_HEADERS([Rocket/Core.h],, [HAVE_LIBROCKET=no])
+	AC_CHECK_HEADER(Rocket/Core.h,, [HAVE_LIBROCKET=no])
 fi
 AC_LANG_POP([C++])
 

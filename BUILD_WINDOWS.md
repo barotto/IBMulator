@@ -118,49 +118,8 @@ using. For example: System->Advanced System Settings->Advanced tab->Environment
 Variables.
 
 #### option 2: copy the library files
-Copy the following DLLs inside IBMulator's `bin` folder.  
-
-**NOTE:** this list changes periodically depending on the current version of
-MSYS2/MinGW. You can use the Dependency Walker program to determine the up to
-date list of libraries.
-
-From C:\msys64\mingw64\bin:  
-
-```
-glew32.dll
-libarchive-13.dll
-libbz2-1.dll
-libexpat-1.dll
-libfreetype-6.dll
-libgcc_s_seh-1.dll
-libglib-2.0-0.dll
-libgraphite2.dll
-libharfbuzz-0.dll
-libiconv-2.dll
-libintl-8.dll
-libjpeg-8.dll
-liblz4.dll
-liblzma-5.dll
-libpcre-1.dll
-libpng16-16.dll
-libsamplerate-0.dll
-libstdc++-6.dll
-libtiff-5.dll
-libwebp-7.dll
-libwinpthread-1.dll
-libzstd.dll
-SDL2.dll
-SDL2_image.dll
-zlib1.dll
-```
-
-From the libRocket/Build directory:  
-
-```
-libRocketControls.dll
-libRocketCore.dll
-libRocketDebugger.dll
-```
+Use Dependency Walker to determine the up to date list of DLLs the executable
+depends on and copy them inside the IBMulator's `bin` folder. 
 
 
 ## Debugging

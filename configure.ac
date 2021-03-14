@@ -8,7 +8,7 @@ AC_PREREQ([2.59])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 AM_INIT_AUTOMAKE([subdir-objects])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 
 #AM_MAINTAINER_MODE
 
@@ -148,7 +148,6 @@ AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you a
 AC_DEFINE_UNQUOTED([SDL_MIN_VER],[$sdl_minor_version],[The SDL min version you are compiling with])
 
 AC_HEADER_DIRENT
-AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h unistd.h poll.h sys/poll.h sys/select.h])
 AC_CHECK_HEADERS([execinfo.h])
 AC_CHECK_HEADERS([sys/mman.h])
