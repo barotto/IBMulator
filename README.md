@@ -347,7 +347,7 @@ keymap=my_keymap_1.map|my_keymap_2.map
 * CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
-* ALT+F10: change the active keymap to the next available one
+* SHIFT+SPACE: change the active keymap to the next available one
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program

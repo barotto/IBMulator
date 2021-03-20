@@ -307,7 +307,7 @@ private:
 	void pevt_func_sys_speed_up(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
-	void pevt_func_switch_keymap(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
 };
 

@@ -50,7 +50,7 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_SYS_SPEED_UP",          ProgramEvent::FuncName::FUNC_SYS_SPEED_UP         },
 	{ "FUNC_SYS_SPEED_DOWN",        ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN       },
 	{ "FUNC_TOGGLE_FULLSCREEN",     ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN    },
-	{ "FUNC_SWITCH_KEYMAP",         ProgramEvent::FuncName::FUNC_SWITCH_KEYMAP        },
+	{ "FUNC_SWITCH_KEYMAPS",        ProgramEvent::FuncName::FUNC_SWITCH_KEYMAPS       },
 	{ "FUNC_EXIT",                  ProgramEvent::FuncName::FUNC_EXIT                 }
 };
 

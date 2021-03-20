@@ -102,7 +102,7 @@ struct ProgramEvent {
 		FUNC_SYS_SPEED_DOWN,       // decrease emulation speed (whole system)
 		FUNC_SYS_SPEED,            // set emulation speed to specified % (2 params: speed,momentary?)
 		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
-		FUNC_SWITCH_KEYMAP,        // change the active keymap to the next in the keymaps list
+		FUNC_SWITCH_KEYMAPS,       // change the active keymap to the next in the keymaps list
 		FUNC_EXIT                  // close program
 	};
 	

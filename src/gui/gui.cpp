@@ -97,7 +97,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN,       &GUI::pevt_func_sys_speed_down       },
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED,            &GUI::pevt_func_sys_speed            },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
-	{ ProgramEvent::FuncName::FUNC_SWITCH_KEYMAP,        &GUI::pevt_func_switch_keymap        },
+	{ ProgramEvent::FuncName::FUNC_SWITCH_KEYMAPS,       &GUI::pevt_func_switch_keymaps       },
 	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
 };
 
@@ -1613,7 +1613,7 @@ void GUI::pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase _pha
 	toggle_fullscreen();
 }
 
-void GUI::pevt_func_switch_keymap(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
