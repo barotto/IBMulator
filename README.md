@@ -339,15 +339,15 @@ keymap=my_keymap_1.map|my_keymap_2.map
 * CTRL+F8: save current state
 * CTRL+F9: load last state
 * CTRL+F10: grab the mouse
-* CTRL+F11: emulation speed down
-* CTRL+F12: emulation speed up
+* CTRL+F11: decrease emulation speed
+* ALT+F11: set emulation speed to 10% (momentary)
+* CTRL+F12: increase emulation speed
+* ALT+F12: set emulation speed to 500% (momentary)
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
 * CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
 * ALT+F10: change the active keymap to the next available one
-* ALT+F11: set emulation speed to 10% (momentary)
-* ALT+F12: set emulation speed to 500% (momentary)
 * ALT+ENTER: toggle fullscreen mode
 * ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program
