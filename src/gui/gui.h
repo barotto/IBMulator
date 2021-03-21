@@ -290,10 +290,10 @@ private:
 			bool _guest_input, uint32_t _mask = 0);
 	
 	void pevt_key(Keys _key, EventPhase);
-	void pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event);
-	void pevt_mouse_button(MouseButton _button, EventPhase _phase);
-	void pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event);
-	void pevt_joy_button(uint8_t _jid, uint8_t _button, EventPhase _phase);
+	void pevt_mouse_axis(const ProgramEvent::Mouse &, const SDL_Event &_event);
+	void pevt_mouse_button(const ProgramEvent::Mouse &, EventPhase _phase);
+	void pevt_joy_axis(const ProgramEvent::Joy &, const SDL_Event &_event);
+	void pevt_joy_button(const ProgramEvent::Joy &, EventPhase _phase);
 
 	static const std::map<ProgramEvent::FuncName, std::function<void(GUI&, const ProgramEvent::Func&, EventPhase)>> ms_event_funcs;
 	std::map<Keys, bool> m_key_state;

@@ -159,7 +159,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 	if(std::regex_match(_tok, match, std::regex("^FUNC_.+$"))) {
 		std::string func_name = _tok;
 		// parse possible parameters
-		if(std::regex_match(_tok, match, std::regex("^(FUNC_[^\\(]+)\\((.+)\\)$")) && match.size() == 3) {
+		if(std::regex_match(_tok, match, std::regex("^(FUNC_[^\\(]+)\\((.+)\\)$")) && match[2].matched) {
 			func_name = match[1].str();
 			auto params = str_parse_tokens(match[2].str(), ",");
 			if(params.empty()) {
@@ -223,13 +223,13 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 			type = Type::EVT_JOY_AXIS;
 			name = _tok;
 		} else {
-			throw std::runtime_error("invalid emulated Joystick event: must be JOY_(A|B)_BUTTON_(1|2) or JOY_(A|B)_AXIS_(X|Y)");
+			throw std::runtime_error("invalid emulated Joystick event: must be JOY_[A|B]_BUTTON_[1|2] or JOY_[A|B]_AXIS_[X|Y]");
 		}
 		return;
 	}
 	// is it a guest MOUSE event?
-	if(std::regex_match(_tok, match, std::regex("^MOUSE_([^_]+)_([^_]+)$"))) {
-		assert(match.size() == 3);
+	if(std::regex_match(_tok, match, std::regex("^MOUSE_([^_]+)_([^\\(]+)(\\((.+)\\))?$"))) {
+		assert(match.size() == 5);
 		if(match[1].str() == "BUTTON") {
 			try {
 				mouse.button = static_cast<MouseButton>(std::stoi(match[2].str()));
@@ -249,7 +249,17 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 			type = Type::EVT_MOUSE_AXIS;
 			name = _tok;
 		} else {
-			throw std::runtime_error("invalid emulated Mouse event: must be MOUSE_BUTTON_n or MOUSE_AXIS_(X|Y)");
+			throw std::runtime_error("invalid emulated Mouse event: must be MOUSE_BUTTON_n or MOUSE_AXIS_[X|Y]");
+		}
+		if(match[4].matched) {
+			auto params = str_parse_tokens(match[4].str(), ",");
+			if(params.empty()) {
+				// this should never happen
+				throw std::runtime_error(std::string("invalid parameters for ") + _tok);
+			}
+			for(int i=0; i<params.size() && i<2; i++) {
+				mouse.params[i] = atoi(params[i].c_str());
+			}
 		}
 		return;
 	}

@@ -482,7 +482,7 @@ void GUI::pevt_key(Keys _key, EventPhase _phase)
 	}
 }
 
-void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
+void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_event)
 {
 	int amount = 0;
 	switch(_event.type) {
@@ -495,39 +495,58 @@ void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
 			}
 			int x_amount = 0;
 			int y_amount = 0;
-			if(_axis == 0) {
+			if(_mouse.axis == 0) {
 				x_amount = amount;
 			} else {
 				y_amount = -amount;
 			}
-			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _axis?"Y":"X", _axis?y_amount:x_amount);
+			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.axis?y_amount:x_amount);
 			m_machine->mouse_motion(x_amount, y_amount, 0);
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
 			if(!_event.jaxis.value) {
-				if(_axis == 0) {
+				if(_mouse.axis == 0) {
 					m_mouse.x_speed = 0.0;
 					m_mouse.x_rel = 0.0;
 				} else {
 					m_mouse.y_speed = 0.0;
 					m_mouse.y_rel = 0.0;
 				}
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _axis?"Y":"X");
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _mouse.axis?"Y":"X");
 				if(m_mouse.x_speed == 0.0 && m_mouse.y_speed == 0.0) {
 					m_mouse.disable_timer();
 				}
 			} else {
-				double amount = double(_event.jaxis.value) / 32768.0;
-				//TODO should it be configurable?
-				const double max_speed = 10.0; // pixels per 10ms
-				amount *= max_speed;
-				if(_axis == 0) {
+				double value = double(_event.jaxis.value) / 32768.0;
+				double amount = 0.0;
+				switch(_mouse.params[0]) {
+					case 1:
+						amount = smoothstep(0.0, 1.0, std::fabs(value));
+						break;
+					case 2:
+						amount = smootherstep(0.0, 1.0, std::fabs(value));
+						break;
+					case 0:
+					default:
+						// linear
+						amount = std::fabs(value);
+						break;
+				}
+				if(value < 0.0) {
+					amount  = -amount;
+				}
+				int speed = _mouse.params[1]; // pixels per 10ms
+				if(speed <= 0) {
+					speed = 10;
+				}
+				amount *= speed;
+				if(_mouse.axis == 0) {
 					m_mouse.x_speed = amount;
 				} else {
 					m_mouse.y_speed = amount;
 				}
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.2f pixels/10ms\n", _axis?"Y":"X", amount);
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.3f->%.3f pixels/10ms\n", _mouse.axis?"Y":"X", value, amount);
 				m_mouse.enable_timer();
 			}
 			return;
@@ -540,13 +559,13 @@ void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
 	}
 }
 
-void GUI::pevt_mouse_button(MouseButton _button, EventPhase _phase)
+void GUI::pevt_mouse_button(const ProgramEvent::Mouse &_mouse, EventPhase _phase)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse button %d: \n", ec_to_i(_button), _phase==EventPhase::EVT_START?"pressed":"released");
-	m_machine->mouse_button(_button, _phase==EventPhase::EVT_START);
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse button %d: \n", ec_to_i(_mouse.button), _phase==EventPhase::EVT_START?"pressed":"released");
+	m_machine->mouse_button(_mouse.button, _phase==EventPhase::EVT_START);
 }
 
-void GUI::pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event)
+void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event)
 {
 	int value = 0;
 	switch(_event.type) {
@@ -573,18 +592,18 @@ void GUI::pevt_joy_axis(uint8_t _jid, uint8_t _axis, const SDL_Event &_event)
 		default:
 			break;
 	}
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: %d\n", _jid?"B":"A", _axis, value);
-	m_machine->joystick_motion(_jid, _axis, value);
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: %d\n", _joy.which?"B":"A", _joy.axis, value);
+	m_machine->joystick_motion(_joy.which, _joy.axis, value);
 }
 
-void GUI::pevt_joy_button(uint8_t _jid, uint8_t _button, EventPhase _phase)
+void GUI::pevt_joy_button(const ProgramEvent::Joy &_joy, EventPhase _phase)
 {
 	int state = 0;
 	if(_phase == EventPhase::EVT_START) {
 		state = 1;
 	}
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s btn %d: %d\n", _jid?"B":"A", _button, state);
-	m_machine->joystick_button(_jid, _button, state);
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s btn %d: %d\n", _joy.which?"B":"A", _joy.button, state);
+	m_machine->joystick_button(_joy.which, _joy.button, state);
 }
 
 bool GUI::on_event_binding(const SDL_Event &_event, const Keymap::Binding &_binding, bool _guest_input, uint32_t _type_mask)
@@ -632,22 +651,22 @@ bool GUI::on_event_binding(const SDL_Event &_event, const Keymap::Binding &_bind
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_AXIS:
 				if(_guest_input) {
-					pevt_mouse_axis(pevt.mouse.axis, _event);
+					pevt_mouse_axis(pevt.mouse, _event);
 				}
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_BUTTON:
 				if(_guest_input) {
-					pevt_mouse_button(pevt.mouse.button, phase);
+					pevt_mouse_button(pevt.mouse, phase);
 				}
 				break;
 			case ProgramEvent::Type::EVT_JOY_AXIS:
 				if(_guest_input) {
-					pevt_joy_axis(pevt.joy.which, pevt.joy.axis, _event);
+					pevt_joy_axis(pevt.joy, _event);
 				}
 				break;
 			case ProgramEvent::Type::EVT_JOY_BUTTON:
 				if(_guest_input) {
-					pevt_joy_button(pevt.joy.which, pevt.joy.button, phase);
+					pevt_joy_button(pevt.joy, phase);
 				}
 				break;
 			default:
@@ -834,7 +853,7 @@ void GUI::on_mouse_motion_event(const SDL_Event &_event)
 
 void GUI::on_mouse_button_event(const SDL_Event &_event)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "Mouse button: %d\n", _event.button.button);
+	PDEBUGF(LOG_V0, LOG_GUI, "Mouse button: %d\n", _event.button.button);
 	
 	bool guest_input = m_input_grab;
 	bool gui_input = !guest_input;

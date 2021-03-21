@@ -105,6 +105,20 @@ template<class T>
 	return (T(1)-_t)*_v0 + _t*_v1;
 }
 
+template<class T>
+	T smoothstep(T _edge0, T _edge1, T _x)
+{
+	_x = clamp((_x - _edge0) / (_edge1 - _edge0), T(0.0), T(1.0)); 
+	return _x * _x * (3 - 2 * _x);
+}
+
+template<class T>
+	T smootherstep(T _edge0, T _edge1, T _x)
+{
+	_x = clamp((_x - _edge0) / (_edge1 - _edge0), T(0.0), T(1.0));
+	return _x * _x * _x * (_x * (_x * 6 - 15) + 10);
+}
+
 #include <functional>
 #include <chrono>
 #include <future>

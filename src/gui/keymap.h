@@ -129,6 +129,7 @@ struct ProgramEvent {
 	struct Mouse {
 		MouseButton button = MouseButton::MOUSE_NOBTN;
 		uint8_t axis = 0;
+		int params[2] = {0,0};
 		bool operator==(const ProgramEvent::Mouse &_rhs) const {
 			return (button == _rhs.button && axis == _rhs.axis);
 		}
