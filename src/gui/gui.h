@@ -123,7 +123,6 @@ protected:
 	std::string m_curr_prog;
 	std::string m_curr_model;
 	bool m_curr_model_changed;
-	SDL_TimerID m_second_timer;
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
 	bool m_gui_visible;
 	bool m_input_grab;
@@ -136,11 +135,20 @@ protected:
 	std::vector<Keymap> m_keymaps;
 	unsigned m_current_keymap;
 	
+	enum TimedEvents {
+		GUI_TEVT_NONE, GUI_TEVT_MOUSE
+	};
+	
 	struct Mouse {
-		bool grab;
-		Mouse() :
-			grab(true)
-		{}
+		bool grab = true;
+		double x_speed = 0.0;
+		double y_speed = 0.0;
+		double x_rel = 0.0;
+		double y_rel = 0.0;
+		SDL_TimerID events_timer = 0;
+		void enable_timer();
+		void disable_timer();
+		static Uint32 sdl_events_generator(Uint32 interval, void *param);
 	} m_mouse;
 
 	struct Joystick {
@@ -207,9 +215,8 @@ protected:
 	
 	void dispatch_rocket_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
+	void dispatch_user_event(const SDL_UserEvent &_event);
 	
-	static Uint32 every_second(Uint32 interval, void *param);
-
 	static std::string load_shader_file(const std::string &_path);
 
 	virtual void create_window(int _flags) = 0;

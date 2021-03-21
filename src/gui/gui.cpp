@@ -109,7 +109,6 @@ m_width(640),
 m_height(480),
 m_SDL_window(nullptr),
 m_curr_model_changed(false),
-m_second_timer(0),
 m_gui_visible(true),
 m_input_grab(false),
 m_mode(GUI_MODE_NORMAL),
@@ -262,8 +261,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_gui_visible = true;
 	m_input_grab = false;
 
-	m_second_timer = SDL_AddTimer(1000, GUI::every_second, nullptr);
-
 	// JOYSTICK SUPPORT
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
 		PWARNF(LOG_V0, LOG_GUI, "Unable to init SDL Joystick subsystem: %s\n", SDL_GetError());
@@ -397,6 +394,39 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 	return document;
 }
 
+void GUI::Mouse::enable_timer()
+{
+	if(!events_timer) {
+		events_timer = SDL_AddTimer(10, GUI::Mouse::sdl_events_generator, nullptr);
+	}
+}
+
+void GUI::Mouse::disable_timer()
+{
+	if(events_timer) {
+		SDL_RemoveTimer(events_timer);
+		events_timer = 0;
+	}
+}
+
+Uint32 GUI::Mouse::sdl_events_generator(Uint32 interval, void *)
+{
+	SDL_Event event;
+	SDL_UserEvent userevent;
+
+	userevent.type = SDL_USEREVENT;
+	userevent.code = GUI::TimedEvents::GUI_TEVT_MOUSE;
+	userevent.data1 = nullptr;
+	userevent.data2 = nullptr;
+
+	event.type = SDL_USEREVENT;
+	event.user = userevent;
+
+	SDL_PushEvent(&event);
+
+	return interval;
+}
+
 void GUI::input_grab(bool _value)
 {
 	if(m_mouse.grab) {
@@ -463,12 +493,44 @@ void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
 			} else {
 				amount = _event.motion.yrel;
 			}
+			int x_amount = 0;
+			int y_amount = 0;
+			if(_axis == 0) {
+				x_amount = amount;
+			} else {
+				y_amount = -amount;
+			}
+			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _axis?"Y":"X", _axis?y_amount:x_amount);
+			m_machine->mouse_motion(x_amount, y_amount, 0);
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
-			// TODO: this is useless
-			amount = _event.jaxis.value>0 ? 1 : -1;
-			break;
+			if(!_event.jaxis.value) {
+				if(_axis == 0) {
+					m_mouse.x_speed = 0.0;
+					m_mouse.x_rel = 0.0;
+				} else {
+					m_mouse.y_speed = 0.0;
+					m_mouse.y_rel = 0.0;
+				}
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _axis?"Y":"X");
+				if(m_mouse.x_speed == 0.0 && m_mouse.y_speed == 0.0) {
+					m_mouse.disable_timer();
+				}
+			} else {
+				double amount = double(_event.jaxis.value) / 32768.0;
+				//TODO should it be configurable?
+				const double max_speed = 10.0; // pixels per 10ms
+				amount *= max_speed;
+				if(_axis == 0) {
+					m_mouse.x_speed = amount;
+				} else {
+					m_mouse.y_speed = amount;
+				}
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.2f pixels/10ms\n", _axis?"Y":"X", amount);
+				m_mouse.enable_timer();
+			}
+			return;
 		}
 		case SDL_KEYDOWN:
 		case SDL_MOUSEBUTTONDOWN:
@@ -476,15 +538,6 @@ void GUI::pevt_mouse_axis(uint8_t _axis, const SDL_Event &_event)
 		default:
 			return;
 	}
-	int x_amount = 0;
-	int y_amount = 0;
-	if(_axis == 0) {
-		x_amount = amount;
-	} else {
-		y_amount = -amount;
-	}
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _axis?"Y":"X", _axis?y_amount:x_amount);
-	m_machine->mouse_motion(x_amount, y_amount, 0);
 }
 
 void GUI::pevt_mouse_button(MouseButton _button, EventPhase _phase)
@@ -956,7 +1009,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			dispatch_window_event(_event.window);
 			break;
 		case SDL_USEREVENT:
-			//the 1-second timer
+			dispatch_user_event(_event.user);
 			break;
 		default:
 			break;
@@ -1002,6 +1055,31 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 			break;
 		default:
 			PDEBUGF(LOG_V2, LOG_GUI, "Unhandled SDL window event: %d\n", _event.event);
+			break;
+	}
+}
+
+void GUI::dispatch_user_event(const SDL_UserEvent &_event)
+{
+	switch(_event.code) {
+		case GUI::TimedEvents::GUI_TEVT_MOUSE: {
+			int x_amount = 0, y_amount = 0;
+			if(m_mouse.x_speed != 0.0) {
+				m_mouse.x_rel += m_mouse.x_speed;
+				x_amount = int(m_mouse.x_rel);
+				m_mouse.x_rel -= double(x_amount);
+			}
+			if(m_mouse.y_speed != 0.0) {
+				m_mouse.y_rel += m_mouse.y_speed;
+				y_amount = int(m_mouse.y_rel);
+				m_mouse.y_rel -= double(y_amount);
+			}
+			if(x_amount != 0 || y_amount != 0) {
+				m_machine->mouse_motion(x_amount, -y_amount, 0);
+			}
+			return;
+		}
+		default:
 			break;
 	}
 }
@@ -1127,7 +1205,7 @@ void GUI::shutdown()
 	
 	PDEBUGF(LOG_V1, LOG_GUI, "Shutting down the video subsystem\n");
 	
-	SDL_RemoveTimer(m_second_timer);
+	m_mouse.disable_timer();
 
 	m_windows.shutdown();
 
@@ -1209,24 +1287,6 @@ void GUI::show_dbg_message(const char* _mex)
 void GUI::toggle_dbg_windows()
 {
 	m_windows.toggle_dbg();
-}
-
-Uint32 GUI::every_second(Uint32 interval, void */*param*/)
-{
-	SDL_Event event;
-	SDL_UserEvent userevent;
-
-	userevent.type = SDL_USEREVENT;
-	userevent.code = 0;
-	userevent.data1 = nullptr;
-	userevent.data2 = nullptr;
-
-	event.type = SDL_USEREVENT;
-	event.user = userevent;
-
-	SDL_PushEvent(&event);
-
-	return interval;
 }
 
 void GUI::show_welcome_screen()
