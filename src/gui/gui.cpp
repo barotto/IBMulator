@@ -1457,29 +1457,29 @@ void GUI::pevt_func_none(const ProgramEvent::Func&, EventPhase)
 	PDEBUGF(LOG_V0, LOG_GUI, "Unknown func event!\n");
 }
 
-void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
 {
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	
 	PDEBUGF(LOG_V1, LOG_GUI, "GUI mode action func event\n");
 	
-	static int repeat = 0;
-	if(_phase == EventPhase::EVT_REPEAT) {
-		if(++repeat == 1) {
-			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-			m_windows.interface->action(1);
-			m_windows.interface->container_size_changed(m_width, m_height);
-		}
-	} else if(_phase == EventPhase::EVT_END) {
-		if(!repeat) {
-			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
-			m_windows.interface->action(0);
-			m_windows.interface->container_size_changed(m_width, m_height);
+	int action = _func.params[0] - 1;
+	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	m_windows.interface->action(action);
+	m_windows.interface->container_size_changed(m_width, m_height);
+	switch(action) {
+		case 0: {
 			if(m_mode == GUI_MODE_COMPACT &&
 			  dynamic_cast<NormalInterface*>(m_windows.interface)->is_system_visible())
 			{
 				input_grab(false);
 			}
+			break;
 		}
-		repeat = 0;
+		case 1: break;
+		default: return;
 	}
 }
 

@@ -222,9 +222,9 @@ void NormalInterface::update()
 	}
 }
 
-void NormalInterface::action(int)
+void NormalInterface::action(int _action)
 {
-	if(m_gui_mode == GUI_MODE_COMPACT) {
+	if((m_gui_mode == GUI_MODE_COMPACT) && (_action == 0)) {
 		if(is_system_visible()) {
 			hide_system();
 		} else {

@@ -325,12 +325,11 @@ keymap=my_keymap_1.map|my_keymap_2.map
 
 #### Default key bindings
 
-* CTRL+F1: GUI mode action:
-  * compact mode:
-    * short press: show/hide the main interface
-  * realistic mode:
-    * short press: toggle zoomed view
-    * long press: switch between bright and dark styles
+* CTRL+F1: GUI mode action 1:
+    * compact mode: toggle the main interface window
+    * realistic mode: toggle zoomed view
+* SHIFT+F1: GUI mode action 2:
+    * realistic mode: switch between bright and dark styles
 * CTRL+F3: toggle the machine power button
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot
