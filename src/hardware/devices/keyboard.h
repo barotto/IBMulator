@@ -49,6 +49,14 @@ enum {
 class Keyboard : public IODevice
 {
 	IODEVICE(Keyboard, "Keyboard Controller");
+
+public:
+	struct Typematic {
+		int delay_ms = 500;
+		double cps = 10.9;
+		void set(uint8_t _delay, uint8_t _repeat);
+	};
+	
 private:
 	struct State {
 		struct {
@@ -178,6 +186,7 @@ private:
 	int m_timer;
 
 	bool m_mouse_acc;
+	Typematic m_typematic;
 
 public:
 	Keyboard(Devices *_dev);
@@ -194,6 +203,7 @@ public:
 	void gen_scancode(Keys _key, uint32_t _event);
 	void mouse_button(MouseButton _button, bool _state);
 	void mouse_motion(int delta_x, int delta_y, int delta_z);
+	inline Typematic typematic() const { return m_typematic; }
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

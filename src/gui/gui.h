@@ -136,24 +136,100 @@ protected:
 	unsigned m_current_keymap;
 	
 	enum TimedEvents {
-		GUI_TEVT_NONE, GUI_TEVT_MOUSE
+		GUI_TEVT_PEVT = 0,
+		GUI_TEVT_MOUSE,
+		GUI_TEVT_JOYSTICK,
+
+		GUI_TEVT_COUNT
 	};
+	static Uint32 ms_sdl_user_evt_id;
 	
 	struct Mouse {
+		enum Axis {
+			X,Y
+		};
 		bool grab = true;
-		double x_speed = 0.0;
-		double y_speed = 0.0;
-		double x_rel = 0.0;
-		double y_rel = 0.0;
+		double speed[2] = {.0,.0};
+		double maxspeed[2] = {.0,.0};
+		double rel[2] = {.0,.0};
+		double accel[2] = {.0,.0};
 		SDL_TimerID events_timer = 0;
 		void enable_timer();
 		void disable_timer();
-		static Uint32 sdl_events_generator(Uint32 interval, void *param);
+		static Uint32 s_sdl_timer_callback(Uint32 interval, void *param);
+		void generate_sdl_event();
+		void update(double _time);
+		void stop(Axis _axis);
+		void send(Machine *_machine);
 	} m_mouse;
 
+	enum class EventPhase {
+		EVT_START, EVT_REPEAT, EVT_END, EVT_ONESHOT
+	};
+
+	struct RunningEvents {
+		struct Event {
+			Sint32 code = 0;
+			SDL_Event sdl_evt;
+			Keymap::Binding binding; // copy!
+			EventPhase init_phase = EventPhase::EVT_START;
+			unsigned pevt_idx = 0;
+			SDL_TimerID events_timer = 0;
+			std::shared_ptr<Event> combo_link;
+
+			Event(Sint32, const SDL_Event &, const Keymap::Binding *, EventPhase);
+			~Event();
+
+			void enable_timer(Uint32 _interval_ms);
+			void disable_timer();
+			void restart();
+			bool is_running() const { return events_timer != 0; }
+			static Uint32 s_sdl_timer_callback(Uint32 interval, void *param);
+			void generate_sdl_event();
+			void link_to(std::shared_ptr<Event> _evt) { combo_link = _evt; };
+		};
+
+		std::map<Sint32, std::shared_ptr<Event>> events;
+		Sint32 count = 0;
+
+		std::shared_ptr<Event> start_new(const SDL_Event &, const Keymap::Binding *, EventPhase _init_phase = EventPhase::EVT_START);
+		std::shared_ptr<Event> find(SDL_Event _sdl_evt);
+		std::shared_ptr<Event> find(Sint32 _code);
+		std::vector<std::shared_ptr<Event>> find_mods(unsigned _sdl_mod);
+		void stop_group(const std::string &_grp_name);
+		bool is_active(std::shared_ptr<GUI::RunningEvents::Event> _evt);
+		void remove(std::shared_ptr<Event>);
+		void reset();
+	} m_running_events;
+
+
 	struct Joystick {
-		int id;
+		// host side
+		// there's no direct mapping to VM joysticks. that's done via a keymap.
+		int sdl_id;
 		bool show_message;
+
+		// vm side
+		// sharing the structure with the host side.
+		enum Axis {
+			X,Y, MAX_AXIS
+		};
+		enum Joy {
+			A,B, MAX_JOY
+		};
+		Joy which;
+		int value[2] = {0,0};
+		int maxvalue[2] = {0,0};
+		int speed[2] = {0,0};
+		SDL_TimerID events_timer = 0;
+
+		void enable_timer();
+		void disable_timer();
+		static Uint32 s_sdl_timer_callback(Uint32 interval, void *param);
+		void generate_sdl_event();
+		void update(int _time_ms);
+		void stop(Axis _axis);
+		void send(Machine *_machine);
 	} m_joystick[2];
 	
 	double m_symspeed_factor;
@@ -275,25 +351,22 @@ public:
 private:
 	void load_keymap(const std::string &_filename);
 	
+	static EventPhase get_event_phase(EventPhase _phase, const Keymap::Binding *);
 	void on_keyboard_event(const SDL_Event &_event);
 	void on_mouse_motion_event(const SDL_Event &_event);
 	void on_mouse_button_event(const SDL_Event &_event);
 	void on_joystick_motion_event(const SDL_Event &_event);
 	void on_joystick_button_event(const SDL_Event &_event);
 	void on_joystick_event(const SDL_Event &_event);
-	
-	enum class EventPhase {
-		EVT_START, EVT_REPEAT, EVT_END, EVT_ONESHOT
-	};
-	
-	bool on_event_binding(const SDL_Event &_event, const Keymap::Binding &_binding,
-			bool _guest_input, uint32_t _mask = 0);
+
+	void on_event_binding(RunningEvents::Event &, EventPhase, uint32_t _mask = 0);
+	void run_event_functions(const Keymap::Binding *_binding, EventPhase _phase);
 	
 	void pevt_key(Keys _key, EventPhase);
-	void pevt_mouse_axis(const ProgramEvent::Mouse &, const SDL_Event &_event);
-	void pevt_mouse_button(const ProgramEvent::Mouse &, EventPhase _phase);
-	void pevt_joy_axis(const ProgramEvent::Joy &, const SDL_Event &_event);
-	void pevt_joy_button(const ProgramEvent::Joy &, EventPhase _phase);
+	void pevt_mouse_axis(const ProgramEvent::Mouse &, const SDL_Event &, EventPhase);
+	void pevt_mouse_button(const ProgramEvent::Mouse &, EventPhase);
+	void pevt_joy_axis(const ProgramEvent::Joy &, const SDL_Event &, EventPhase);
+	void pevt_joy_button(const ProgramEvent::Joy &, EventPhase);
 
 	static const std::map<ProgramEvent::FuncName, std::function<void(GUI&, const ProgramEvent::Func&, EventPhase)>> ms_event_funcs;
 	std::map<Keys, bool> m_key_state;

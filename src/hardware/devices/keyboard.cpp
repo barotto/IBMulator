@@ -223,6 +223,8 @@ void Keyboard::restore_state(StateBuf &_state)
 	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
+
+	m_typematic.set(m_s.kbd_buffer.delay, m_s.kbd_buffer.repeat_rate);
 }
 
 // flush internal buffer and reset keyboard settings to power-up condition
@@ -243,8 +245,9 @@ void Keyboard::reset_internals(bool powerup)
 
 	if(powerup) {
 		m_s.kbd_buffer.expecting_led_write = false;
-		m_s.kbd_buffer.delay = 1; // 500 mS
+		m_s.kbd_buffer.delay = 1; // 500 ms
 		m_s.kbd_buffer.repeat_rate = 0x0b; // 10.9 chars/sec
+		m_typematic.set(m_s.kbd_buffer.delay, m_s.kbd_buffer.repeat_rate);
 	}
 }
 
@@ -878,6 +881,20 @@ void Keyboard::mouse_enQ(uint8_t mouse_data)
 	}
 }
 
+void Keyboard::Typematic::set(uint8_t _delay, uint8_t _repeat)
+{
+	switch(_delay & 0x03) {
+		case 0: delay_ms = 250; break;
+		case 1: delay_ms = 500; break;
+		case 2: delay_ms = 750; break;
+		case 3: delay_ms = 1000; break;
+		default: break;
+	}
+	_repeat &= 0x1f;
+	// no idea what's this gibberish (Bochs' stuff)
+	cps = 1 / ((double)(8 + (_repeat & 0x07)) * (double)exp(log((double)2) * (double)((_repeat >> 3) & 0x03)) * 0.00417);
+}
+
 void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 {
 	PDEBUGF(LOG_V2, LOG_KEYB, "controller passed byte %02xh to keyboard\n", value);
@@ -885,15 +902,11 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 	if(m_s.kbd_buffer.expecting_typematic) {
 		m_s.kbd_buffer.expecting_typematic = false;
 		m_s.kbd_buffer.delay = (value >> 5) & 0x03;
-		switch ( m_s.kbd_buffer.delay) {
-			case 0: PINFOF(LOG_V1, LOG_KEYB, "setting delay to 250 mS (unused)\n"); break;
-			case 1: PINFOF(LOG_V1, LOG_KEYB, "setting delay to 500 mS (unused)\n"); break;
-			case 2: PINFOF(LOG_V1, LOG_KEYB, "setting delay to 750 mS (unused)\n"); break;
-			case 3: PINFOF(LOG_V1, LOG_KEYB, "setting delay to 1000 mS (unused)\n"); break;
-		}
 		m_s.kbd_buffer.repeat_rate = value & 0x1f;
-		double cps = 1 /((double)(8 + (value & 0x07)) * (double)exp(log((double)2) * (double)((value >> 3) & 0x03)) * 0.00417);
-		PINFOF(LOG_V1, LOG_KEYB, "setting repeat rate to %.1f cps (unused)\n", cps);
+
+		m_typematic.set(m_s.kbd_buffer.delay, m_s.kbd_buffer.repeat_rate);
+		PINFOF(LOG_V1, LOG_KEYB, "setting Typematic delay to %d ms, repeat rate to %.1f cps\n", m_typematic.delay_ms, m_typematic.cps);
+
 		kbd_enQ(0xFA); // send ACK
 		return;
 	}
@@ -1418,6 +1431,8 @@ void Keyboard::create_mouse_packet(bool force_enq)
 
 void Keyboard::mouse_button(MouseButton _button, bool _state)
 {
+	// GUI facing function
+
 	// don't generate interrupts if we are in remote mode.
 	if(m_s.mouse.mode == MOUSE_MODE_REMOTE) {
 		// is there any point in doing any work if we don't act on the result?
@@ -1448,6 +1463,8 @@ void Keyboard::mouse_button(MouseButton _button, bool _state)
 
 void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z)
 {
+	// GUI facing function
+
 	bool force_enq = false;
 
 	if(m_s.mouse.mode == MOUSE_MODE_REMOTE) {
@@ -1530,6 +1547,7 @@ uint8_t Keyboard::State::Mouse::get_resolution_byte()
 			break;
 		default:
 			PERRF(LOG_KEYB, "mouse: invalid resolution_cpmm\n");
+			break;
 	};
 	return ret;
 }

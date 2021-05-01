@@ -301,16 +301,11 @@ can set this parameter to `0` to disable all delays.
 A keymap is a file that defines mappings between input events, like key presses,
 and emulator's events.
 
-When the emulator is launched for the first time a default keymap is copied
-inside the user directory.
+When IBMulator is launched for the first time a default keymap is copied inside
+the user's directory.
 
-Multiple output events can be concatenated to form a macro, for example:
-```
-JOY_0_BUTTON_2 = KEY_D + KEY_I + KEY_R + KEY_ENTER
-```
-
-For the syntax and identifiers to use to define custom key bindings please see
-the comments inside the default keymap file.
+For the syntax and identifiers to use to define custom key bindings and macros 
+please see the comments inside the default keymap file.
 
 IBMulator can load multiple keymaps, although only one can be active at any
 given time. This can be useful for switching controls depending on the running
@@ -320,7 +315,7 @@ To specify the keymap(s) to load use the `[gui]:keymap` ini file value.
 You can load multiple keymaps concatenating their name with the `|` character,
 like so:
 ```
-keymap=my_keymap_1.map|my_keymap_2.map
+keymap = my_keymap_1.map | my_keymap_2.map
 ```
 
 #### Default key bindings

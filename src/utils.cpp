@@ -65,13 +65,23 @@ std::string str_trim(std::string _str)
 	return _str;
 }
 
+std::string str_compress_spaces(std::string _str)
+{
+	return std::regex_replace(_str, std::regex("[' ']{2,}"), " ");
+}
+
 std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep)
 {
 	std::regex re(_regex_sep);
-	// -1 = splitting
-	std::sregex_token_iterator first{_str.begin(), _str.end(), re, -1}, last;
-	
-	return {first, last};
+	std::vector<std::string> tokens;
+	std::sregex_token_iterator it{_str.begin(), _str.end(), re, -1}, end;
+	for(; it != end; it++) {
+		auto s = str_trim(*it);
+		if(!s.empty()) {
+			tokens.push_back(s);
+		}
+	}
+	return tokens;
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,

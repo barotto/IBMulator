@@ -123,7 +123,7 @@ void InputEvent::parse_token(const std::string &_tok)
 	throw std::runtime_error("unrecognized identifier");
 }
 
-bool InputEvent::Key::is_key_modifier()
+bool InputEvent::Key::is_key_modifier() const
 {
 	if(scancode) {
 		return (
@@ -166,7 +166,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				// this should never happen
 				throw std::runtime_error(std::string("invalid parameters for Function ") + _tok);
 			}
-			for(int i=0; i<params.size() && i<2; i++) {
+			for(unsigned i=0; i<params.size() && i<2; i++) {
 				func.params[i] = atoi(params[i].c_str());
 			}
 		}
@@ -191,8 +191,8 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 		throw std::runtime_error(std::string("invalid emulated keyboard Key ") + match[0].str());
 	}
 	// is it a guest event of JOY?
-	if(std::regex_match(_tok, match, std::regex("^JOY_([^_]+)_([^_]+)_([^_]+)$"))) {
-		assert(match.size() == 4);
+	if(std::regex_match(_tok, match, std::regex("^JOY_([^_]+)_([^_]+)_([^\\(_]+)(\\((.+)\\))?$"))) {
+		assert(match.size() == 6);
 		if(match[1].str() == "A") {
 			joy.which = 0;
 		} else if(match[1].str() == "B") {
@@ -224,6 +224,23 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 			name = _tok;
 		} else {
 			throw std::runtime_error("invalid emulated Joystick event: must be JOY_[A|B]_BUTTON_[1|2] or JOY_[A|B]_AXIS_[X|Y]");
+		}
+		if(match[5].matched) {
+			auto params = str_parse_tokens(match[5].str(), ",");
+			if(params.empty()) {
+				// if the regex is correct this should never happen
+				throw std::runtime_error(std::string("invalid parameters for ") + _tok);
+			}
+			for(unsigned i=0; i<params.size() && i<3; i++) {
+				auto lowc = str_to_lower(params[i]);
+				if(lowc == "max") {
+					joy.params[i] = 32767;
+				} else if(lowc == "-max") {
+					joy.params[i] = -32768;
+				} else {
+					joy.params[i] = atoi(params[i].c_str());
+				}
+			}
 		}
 		return;
 	}
@@ -257,20 +274,86 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				// this should never happen
 				throw std::runtime_error(std::string("invalid parameters for ") + _tok);
 			}
-			for(int i=0; i<params.size() && i<2; i++) {
+			for(unsigned i=0; i<params.size() && i<3; i++) {
 				mouse.params[i] = atoi(params[i].c_str());
 			}
 		}
 		return;
 	}
+	// maybe it's a CMD?
+	// keep it the last check as commands don't have a prefix
+	if(std::regex_match(_tok, match, std::regex("^([^\\(]+)(\\((.+)\\))?$", std::regex::ECMAScript|std::regex::icase))) {
+		auto cmdp = Keymap::ms_commands_table.find(str_to_upper(match[1].str()));
+		if(cmdp != Keymap::ms_commands_table.end()) {
+			type = Type::EVT_COMMAND;
+			command.name = cmdp->second;
+			name = _tok;
+			if(match[3].matched) {
+				auto params = str_parse_tokens(match[3].str(), ",");
+				for(unsigned i=0; i<params.size() && i<2; i++) {
+					auto const_value = Keymap::ms_constants_table.find(str_to_upper(params[i].c_str()));
+					if(const_value != Keymap::ms_constants_table.end()) {
+						command.params[i] = const_value->second;
+					} else {
+						command.params[i] = atoi(params[i].c_str());
+					}
+				}
+			}
+			return;
+		}
+	}
+	// oops
+	throw std::runtime_error("unrecognized identifier " + _tok);
+}
+
+ProgramEvent::ProgramEvent(const char *_tok)
+: ProgramEvent(std::string(_tok))
+{
+}
+
+void Keymap::Binding::parse_option(std::string _tok)
+{
+	std::smatch match;
+
+	if(std::regex_match(_tok, match, std::regex("^MODE:(.+)$", std::regex::ECMAScript|std::regex::icase))) {
+		auto mode_str = str_to_lower(match[1].str());
+		if(mode_str == "1shot") {
+			mode = Mode::ONE_SHOT;
+		} else if(mode_str == "default") {
+			mode = Mode::DEFAULT;
+		} else {
+			throw std::runtime_error("invalid mode of operation");
+		}
+		return;
+	}
+	if(std::regex_match(_tok, match, std::regex("^GROUP:(.+)$", std::regex::ECMAScript|std::regex::icase))) {
+		group = match[1].str();
+		return;
+	}
+
 	// oops
 	throw std::runtime_error("unrecognized identifier");
 }
 
-bool Keymap::Binding::has_prg_event(ProgramEvent _evt) const 
+
+bool Keymap::Binding::has_prg_event(const ProgramEvent &_evt) const 
 {
 	for(auto & pe : pevt) {
 		if(pe == _evt) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Keymap::Binding::has_cmd_event(ProgramEvent::CommandName _cmd_name, size_t _start_idx) const
+{
+	if(pevt.empty()) {
+		return false;
+	}
+	size_t idx = std::min(pevt.size()-1, _start_idx);
+	for(; idx<pevt.size(); idx++) {
+		if(pevt[idx].type == ProgramEvent::Type::EVT_COMMAND && pevt[idx].command.name == _cmd_name) {
 			return true;
 		}
 	}
@@ -291,7 +374,20 @@ static constexpr bool is_key_modifier(Keys key)
 	);
 }
 
-bool Keymap::Binding::is_pevt_keycombo()
+bool ProgramEvent::is_key_modifier() const
+{
+	return (type == Type::EVT_KEY && ::is_key_modifier(key)); 
+}
+
+bool Keymap::Binding::is_ievt_keycombo() const
+{
+	return (
+		(ievt.type == InputEvent::Type::INPUT_KEY) &&
+		(ievt.key.mod)
+	);
+}
+
+bool Keymap::Binding::is_pevt_keycombo() const
 {
 	bool mod = false;
 	bool key = false;
@@ -304,13 +400,11 @@ bool Keymap::Binding::is_pevt_keycombo()
 	return (mod && key);
 }
 
-void Keymap::Binding::remove_pevt_kmods()
+void Keymap::Binding::mask_pevt_kmods(bool _mask)
 {
-	for(auto evt = pevt.begin(); evt != pevt.end(); ) {
-		if((*evt).type == ProgramEvent::Type::EVT_KEY && is_key_modifier((*evt).key)) {
-			evt = pevt.erase(evt);
-		} else {
-			++evt;
+	for(auto &evt : pevt) {
+		if(evt.is_key_modifier()) {
+			evt.masked = _mask;
 		}
 	}
 }
@@ -407,7 +501,6 @@ const Keymap::Binding *Keymap::find_sdl_binding(uint8_t _joyid, const SDL_JoyBut
 
 const Keymap::Binding *Keymap::find_input_binding(const InputEvent::Key &_kevt) const
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "  searching key event 0x%llX\n", _kevt.to_index());
 	auto b = m_kbindings.find(_kevt.to_index());
 	if(b != m_kbindings.end()) {
 		return b->second;
@@ -487,10 +580,10 @@ void Keymap::load(const std::string &_filename)
 	int linec = 0;
 	int total = 0;
 	while(true) {
-		std::vector<std::string> itoks, ptoks;
+		std::vector<std::string> itoks, ptoks, opt_toks;
 		std::string line;
 		try {
-			line = parse_next_line(keymap_file, linec, itoks, ptoks);
+			line = parse_next_line(keymap_file, linec, itoks, ptoks, opt_toks);
 			if(line.empty()) {
 				// EOF
 				break;
@@ -523,8 +616,16 @@ void Keymap::load(const std::string &_filename)
 			}
 		}
 		total++;
-		add_binding(ievt, pevts, line);
-		PDEBUGF(LOG_V2, LOG_GUI, "  (%d) %s\n", total, line.c_str());
+		auto binding = add_binding(ievt, pevts, line);
+		for(auto &ot : opt_toks) {
+			try {
+				binding->parse_option(ot);
+			} catch(std::runtime_error &e) {
+				PERRF(LOG_GUI, "  line %d: %s: %s\n", linec, ot.c_str(), e.what());
+				continue;
+			}
+		}
+		PDEBUGF(LOG_V0, LOG_GUI, "  (%d) %s\n", total, line.c_str());
 	}
 
 	PINFOF(LOG_V0, LOG_GUI, "  loaded %d bindings.\n", total);
@@ -532,24 +633,109 @@ void Keymap::load(const std::string &_filename)
 	m_name = _filename;
 }
 
-void Keymap::add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name)
+void Keymap::expand_macros(std::vector<ProgramEvent> &_pevts)
 {
-	m_bindings.emplace_back(_ievt, _pevts, _name);
+	for(size_t i=0; i<_pevts.size(); i++) {
+		if(_pevts[i].type == ProgramEvent::Type::EVT_COMMAND) {
+			switch(_pevts[i].command.name) {
+				case ProgramEvent::CommandName::CMD_AUTOFIRE: {
+					int time = _pevts[i].command.params[0];
+					if(time <= 0) {
+						time = 0;
+					}
+					// catching exception is not necessary as long as events are well formed
+					// keep it for debugging tho
+					try {
+						std::string wait = "wait(" + std::to_string(time/2) + ")";
+						_pevts.insert(_pevts.begin() + i, {
+							wait,
+							"release",
+							wait,
+							"repeat"
+						});
+						i += 4;
+					} catch(std::runtime_error &e) {
+						PDEBUGF(LOG_V2, LOG_GUI, "%s\n", e.what());
+					}
+					_pevts.erase(_pevts.begin() + i);
+					break;
+				}
+				default: {
+					break;
+				}
+			}
+		}
+	}
 	
+}
+
+bool Keymap::apply_typematic(std::vector<ProgramEvent> &_pevts)
+{
+	bool is_typematic = true;
+	int modifiers = 0;
+	int key_idx = -1;
+	for(size_t i=0; i<_pevts.size() && is_typematic; i++) {
+		if(_pevts[i].type != ProgramEvent::Type::EVT_KEY) {
+			is_typematic = false;
+		} else {
+			if(is_key_modifier(_pevts[i].key)) {
+				if(key_idx >= 0) {
+					// a modifier after the main key?
+					is_typematic = false;
+				} else {
+					modifiers++;
+				}
+			} else {
+				if(key_idx >= 0) {
+					// this is a macro
+					is_typematic = false;
+				}
+				key_idx = i;
+			}
+		}
+	}
+	
+	if(key_idx >= 0 && is_typematic) {
+		try {
+			_pevts.insert(_pevts.end(), {
+				"wait(tmd)",
+				_pevts[key_idx],
+				"wait(tmr)",
+				"skip_to(" + std::to_string(key_idx+3) + ")"
+			});
+		} catch(std::runtime_error &e) {
+			PDEBUGF(LOG_V2, LOG_GUI, "%s\n", e.what());
+		}
+		return true;
+	}
+	return false;
+}
+
+Keymap::Binding * Keymap::add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name)
+{
+	// check for special cases.
+	expand_macros(_pevts);
+	bool tm = apply_typematic(_pevts);
+
+	m_bindings.emplace_back(_ievt, _pevts, _name);
+	auto binding = &m_bindings.back();
+	if(tm) {
+		binding->group = "typematic";
+	}
 	switch(_ievt.type) {
 		case InputEvent::Type::INPUT_KEY:
-			add_binding(_ievt.key, &m_bindings.back());
-			return;
+			add_binding(_ievt.key, binding);
+			return binding;
 		case InputEvent::Type::INPUT_JOY_BUTTON:
 		case InputEvent::Type::INPUT_JOY_AXIS:
 		case InputEvent::Type::INPUT_MOUSE_BUTTON:
 		case InputEvent::Type::INPUT_MOUSE_AXIS:
-			m_pbindings[_ievt.pointing.to_index()] = &m_bindings.back();
-			return;
+			m_pbindings[_ievt.pointing.to_index()] = binding;
+			return binding;
 		default:
-			break;
+			assert(false);
+			return nullptr;
 	}
-	assert(false);
 }
 
 void Keymap::add_binding(const InputEvent::Key &_kevt, const Binding *_binding)
@@ -590,7 +776,8 @@ void Keymap::add_binding(const InputEvent::Key &_kevt, const Binding *_binding)
 }
 
 std::string Keymap::parse_next_line(std::ifstream &_fp, int &_linec,
-		std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_)
+		std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_,
+		std::vector<std::string> &opt_toks_)
 {
 	std::string line;
 	
@@ -602,7 +789,7 @@ std::string Keymap::parse_next_line(std::ifstream &_fp, int &_linec,
 		_linec++;
 		
 		line = line.substr(0, line.find_first_of("#"));
-		line = str_trim(line);
+		line = str_trim(str_compress_spaces(line));
 		
 		auto line_tokens = str_parse_tokens(line, "\\s*=\\s*");
 		if(line_tokens.empty() || (line_tokens.size() == 1 && str_trim(line_tokens[0]).length() == 0)) {
@@ -616,13 +803,11 @@ std::string Keymap::parse_next_line(std::ifstream &_fp, int &_linec,
 		}
 		
 		itoks_ = str_parse_tokens(line_tokens[0], "\\+");
-		ptoks_ = str_parse_tokens(line_tokens[1], "\\+");
-		for(auto &s : itoks_) {
-			s = str_trim(s);
+		auto out_toks = str_parse_tokens(line_tokens[1], ";");
+		if(out_toks.size() > 1) {
+			opt_toks_ = str_parse_tokens(out_toks[1], "\\s+");
 		}
-		for(auto &s : ptoks_) {
-			s = str_trim(s);
-		}
+		ptoks_ = str_parse_tokens(out_toks[0], "\\+");
 		
 		break;
 	}

@@ -51,6 +51,7 @@
 
 std::mutex GUI::ms_rocket_mutex;
 std::mutex GUI::Windows::s_interface_mutex;
+Uint32 GUI::ms_sdl_user_evt_id = 0;
 
 ini_enum_map_t g_mouse_types = {
 	{ "none", MOUSE_TYPE_NONE },
@@ -122,8 +123,10 @@ m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
 m_rocket_context(nullptr)
 {
-	m_joystick[0].id = JOY_NONE;
-	m_joystick[1].id = JOY_NONE;
+	m_joystick[0].sdl_id = JOY_NONE;
+	m_joystick[1].sdl_id = JOY_NONE;
+	m_joystick[0].which = Joystick::Joy::A;
+	m_joystick[1].which = Joystick::Joy::B;
 }
 
 GUI::~GUI()
@@ -276,6 +279,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_capture = std::make_unique<Capture>(vga_display(), m_mixer);
 	m_capture_thread = std::thread(&Capture::thread_start, m_capture.get());
 	
+	// User defined events
+	if(!ms_sdl_user_evt_id) {
+		ms_sdl_user_evt_id = SDL_RegisterEvents(TimedEvents::GUI_TEVT_COUNT);
+		PDEBUGF(LOG_V2, LOG_GUI, "Registered %d SDL user events\n", TimedEvents::GUI_TEVT_COUNT);
+	}
+	
 	// DONE
 	show_welcome_screen();
 }
@@ -397,7 +406,8 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 void GUI::Mouse::enable_timer()
 {
 	if(!events_timer) {
-		events_timer = SDL_AddTimer(10, GUI::Mouse::sdl_events_generator, nullptr);
+		events_timer = SDL_AddTimer(10, GUI::Mouse::s_sdl_timer_callback, this);
+		PDEBUGF(LOG_V2, LOG_GUI, "  mouse motion events generator enabled\n");
 	}
 }
 
@@ -406,16 +416,24 @@ void GUI::Mouse::disable_timer()
 	if(events_timer) {
 		SDL_RemoveTimer(events_timer);
 		events_timer = 0;
+		PDEBUGF(LOG_V2, LOG_GUI, "  mouse motion events generator disabled\n");
 	}
 }
 
-Uint32 GUI::Mouse::sdl_events_generator(Uint32 interval, void *)
+Uint32 GUI::Mouse::s_sdl_timer_callback(Uint32 interval, void *obj)
 {
+	static_cast<GUI::Mouse*>(obj)->generate_sdl_event();
+	return interval;
+}
+
+void GUI::Mouse::generate_sdl_event()
+{
+	// this function is called by a different thread
 	SDL_Event event;
 	SDL_UserEvent userevent;
 
-	userevent.type = SDL_USEREVENT;
-	userevent.code = GUI::TimedEvents::GUI_TEVT_MOUSE;
+	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_MOUSE;
+	userevent.code = 0;
 	userevent.data1 = nullptr;
 	userevent.data2 = nullptr;
 
@@ -423,8 +441,193 @@ Uint32 GUI::Mouse::sdl_events_generator(Uint32 interval, void *)
 	event.user = userevent;
 
 	SDL_PushEvent(&event);
+}
 
+void GUI::Mouse::update(double _time)
+{
+	speed[Axis::X] += accel[Axis::X] * _time;
+	speed[Axis::Y] += accel[Axis::Y] * _time;
+
+	if((maxspeed[Axis::X] > 0 && speed[Axis::X] > maxspeed[Axis::X]) || 
+	   (maxspeed[Axis::X] < 0 && speed[Axis::X] < maxspeed[Axis::X]))
+	{
+		speed[Axis::X] = maxspeed[Axis::X];
+	}
+	if((maxspeed[Axis::Y] > 0 && speed[Axis::Y] > maxspeed[Axis::Y]) || 
+	   (maxspeed[Axis::Y] < 0 && speed[Axis::Y] < maxspeed[Axis::Y]))
+	{
+		speed[Axis::Y] = maxspeed[Axis::Y];
+	}
+
+	rel[Axis::X] += speed[Axis::X];
+	rel[Axis::Y] += speed[Axis::Y];
+}
+
+void GUI::Mouse::stop(Axis _axis)
+{
+	speed[_axis] = .0;
+	accel[_axis] = .0;
+	rel[_axis] = .0;
+	if(speed[Axis::X] == 0.0 && speed[Axis::Y] == 0.0) {
+		disable_timer();
+	}
+}
+
+void GUI::Mouse::send(Machine *_machine)
+{
+	int x_amount = int(rel[Axis::X]);
+	rel[Axis::X] -= double(x_amount);
+
+	int y_amount = int(rel[Axis::Y]);
+	rel[Axis::Y] -= double(y_amount);
+
+	if(x_amount != 0 || y_amount != 0) {
+		_machine->mouse_motion(x_amount, y_amount, 0);
+	}
+}
+
+void GUI::Joystick::enable_timer()
+{
+	if(!events_timer) {
+		events_timer = SDL_AddTimer(10, GUI::Joystick::s_sdl_timer_callback, this);
+		PDEBUGF(LOG_V2, LOG_GUI,
+			"  joystick motion events generator enabled: X=s:%d,v:%d,m:%d/Y=s:%d,v:%d,m:%d\n",
+			speed[Axis::X], value[Axis::X], maxvalue[Axis::X],
+			speed[Axis::Y], value[Axis::Y], maxvalue[Axis::Y]
+		);
+	}
+}
+
+void GUI::Joystick::disable_timer()
+{
+	if(events_timer) {
+		SDL_RemoveTimer(events_timer);
+		events_timer = 0;
+		PDEBUGF(LOG_V2, LOG_GUI,
+			"  joystick motion events generator disabled: X=s:%d,v:%d,m:%d/Y=s:%d,v:%d,m:%d\n",
+			speed[Axis::X], value[Axis::X], maxvalue[Axis::X],
+			speed[Axis::Y], value[Axis::Y], maxvalue[Axis::Y]
+		);
+	}
+}
+
+Uint32 GUI::Joystick::s_sdl_timer_callback(Uint32 interval, void *obj)
+{
+	static_cast<GUI::Joystick*>(obj)->generate_sdl_event();
 	return interval;
+}
+
+void GUI::Joystick::generate_sdl_event()
+{
+	// this function is called by a different thread
+	SDL_Event event;
+	SDL_UserEvent userevent;
+
+	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_JOYSTICK;
+	userevent.code = which;
+	userevent.data1 = nullptr;
+	userevent.data2 = nullptr;
+
+	event.type = SDL_USEREVENT;
+	event.user = userevent;
+
+	SDL_PushEvent(&event);
+}
+
+void GUI::Joystick::update(int _time_ms)
+{
+	for(int axis=Axis::X; axis<Axis::MAX_AXIS; axis++) {
+		int oldvalue = value[axis];
+		value[axis] += speed[axis] * _time_ms;
+
+		if((maxvalue[axis] > 0 && value[axis] > maxvalue[axis]) || 
+		   (maxvalue[axis] < 0 && value[axis] < maxvalue[axis]) ||
+		   (maxvalue[axis] == 0 && value[axis] < 0 && oldvalue > 0) ||
+		   (maxvalue[axis] == 0 && value[axis] > 0 && oldvalue < 0)
+		   )
+		{
+			value[axis] = maxvalue[axis];
+		}
+	}
+}
+
+void GUI::Joystick::stop(Axis _axis)
+{
+	speed[_axis] = 0;
+	if(speed[Axis::X] == 0 && speed[Axis::Y] == 0) {
+		disable_timer();
+	}
+}
+
+void GUI::Joystick::send(Machine *_machine)
+{
+	for(int axis=Axis::X; axis<Axis::MAX_AXIS; axis++) {
+		if(speed[axis] != 0) {
+			_machine->joystick_motion(which, axis, value[axis]);
+			if((maxvalue[axis] > 0 && value[axis] >= maxvalue[axis]) ||
+			   (maxvalue[axis] < 0 && value[axis] <= maxvalue[axis]) ||
+			   (maxvalue[axis] == 0 && value[axis] == 0))
+			{
+				speed[axis] = 0;
+				//stop(static_cast<Axis>(axis));
+			}
+		}
+	}
+	if(speed[Axis::X] == 0 && speed[Axis::Y] == 0) {
+		disable_timer();
+	}
+}
+
+void GUI::RunningEvents::Event::enable_timer(Uint32 _interval_ms)
+{
+	disable_timer();
+	events_timer = SDL_AddTimer(_interval_ms,
+		&GUI::RunningEvents::Event::s_sdl_timer_callback,
+		(void*)(intptr_t(code))
+	);
+}
+
+void GUI::RunningEvents::Event::disable_timer()
+{
+	if(events_timer) {
+		SDL_RemoveTimer(events_timer);
+		events_timer = 0;
+	}
+}
+
+void GUI::RunningEvents::Event::restart()
+{
+	disable_timer();
+	pevt_idx = 0;
+}
+
+Uint32 GUI::RunningEvents::Event::s_sdl_timer_callback(Uint32 _interval, void *_obj)
+{
+	auto evt_code = intptr_t(_obj);
+	auto event = g_program.gui_instance()->m_running_events.find(evt_code);
+	if(event) {
+		event->generate_sdl_event();
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "Event code %d expired\n", evt_code);
+	}
+	// returning 0 will disable the timer
+	return 0;
+}
+
+void GUI::RunningEvents::Event::generate_sdl_event()
+{
+	SDL_Event event;
+	SDL_UserEvent userevent;
+
+	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_PEVT;
+	userevent.code = code;
+	userevent.data1 = nullptr;
+	userevent.data2 = nullptr;
+
+	event.type = SDL_USEREVENT;
+	event.user = userevent;
+
+	SDL_PushEvent(&event);
 }
 
 void GUI::input_grab(bool _value)
@@ -447,12 +650,8 @@ void GUI::toggle_input_grab()
 void GUI::send_key_to_machine(Keys _key, uint32_t _keystate)
 {
 	if(m_machine->is_on()) {
-		if(_keystate == KEY_PRESSED && m_key_state[_key]) {
-			PDEBUGF(LOG_V2, LOG_GUI, "key %s already pressed\n", 
-					Keymap::ms_keycode_str_table.at(_key).c_str());
-		} else if(_keystate == KEY_RELEASED && !m_key_state[_key]) {
-			PDEBUGF(LOG_V2, LOG_GUI, "key %s already released\n", 
-					Keymap::ms_keycode_str_table.at(_key).c_str());
+		if(_keystate == KEY_RELEASED && !m_key_state[_key]) {
+			PDEBUGF(LOG_V2, LOG_GUI, "key %s not pressed\n", Keymap::ms_keycode_str_table.at(_key).c_str());
 		} else {
 			m_machine->send_key_to_kbctrl(_key, _keystate);
 		}
@@ -470,10 +669,6 @@ void GUI::pevt_key(Keys _key, EventPhase _phase)
 		}
 		send_key_to_machine(_key, ph==EventPhase::EVT_START?KEY_PRESSED:KEY_RELEASED);
 	};
-	if(_phase == EventPhase::EVT_REPEAT) {
-		// key repeats are managed by the guest OS
-		return;
-	}
 	if(_phase == EventPhase::EVT_ONESHOT) {
 		sendk(EventPhase::EVT_START);
 		sendk(EventPhase::EVT_END);
@@ -482,71 +677,63 @@ void GUI::pevt_key(Keys _key, EventPhase _phase)
 	}
 }
 
-void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_event)
+void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_event, EventPhase _phase)
 {
-	int amount = 0;
 	switch(_event.type) {
 		case SDL_MOUSEMOTION: {
 			// direct translation, value is the non zero relative amount
+			int amount = 0;
 			if(_event.motion.xrel != 0) {
 				amount = _event.motion.xrel;
 			} else {
-				amount = _event.motion.yrel;
+				amount = -_event.motion.yrel;
 			}
-			int x_amount = 0;
-			int y_amount = 0;
-			if(_mouse.axis == 0) {
-				x_amount = amount;
-			} else {
-				y_amount = -amount;
-			}
-			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.axis?y_amount:x_amount);
-			m_machine->mouse_motion(x_amount, y_amount, 0);
+			m_mouse.rel[_mouse.axis] += amount;
+			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", amount);
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
-			if(!_event.jaxis.value) {
-				if(_mouse.axis == 0) {
-					m_mouse.x_speed = 0.0;
-					m_mouse.x_rel = 0.0;
+			if(_phase == EventPhase::EVT_ONESHOT) {
+				if(_event.jaxis.value < 0) {
+					m_mouse.rel[_mouse.axis] += -1.0 * _mouse.params[0];
 				} else {
-					m_mouse.y_speed = 0.0;
-					m_mouse.y_rel = 0.0;
+					m_mouse.rel[_mouse.axis] += _mouse.params[0];
 				}
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.params[0]);
+			} else if(_phase == EventPhase::EVT_END || _event.jaxis.value == 0) {
 				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _mouse.axis?"Y":"X");
-				if(m_mouse.x_speed == 0.0 && m_mouse.y_speed == 0.0) {
-					m_mouse.disable_timer();
-				}
+				m_mouse.stop(static_cast<Mouse::Axis>(_mouse.axis));
 			} else {
 				double value = double(_event.jaxis.value) / 32768.0;
-				double amount = 0.0;
-				switch(_mouse.params[0]) {
+				double amount = smoothstep(0.0, 1.0, std::fabs(value));
+				m_mouse.maxspeed[_mouse.axis] = _mouse.params[0]; // pixels per 10ms
+				if(value < .0) {
+					m_mouse.maxspeed[_mouse.axis] *= -1.0;
+				}
+				if(_phase != EventPhase::EVT_ONESHOT) {
+					m_mouse.maxspeed[_mouse.axis] = amount * m_mouse.maxspeed[_mouse.axis];
+				}
+				double accel = double(_mouse.params[2]) / 1000.0;
+				if(accel == .0) {
+					accel = 0.005;
+				}
+				switch(_mouse.params[1]) {
 					case 1:
-						amount = smoothstep(0.0, 1.0, std::fabs(value));
-						break;
-					case 2:
-						amount = smootherstep(0.0, 1.0, std::fabs(value));
+						// accelerated
+						if(m_mouse.maxspeed[_mouse.axis] < .0) {
+							m_mouse.accel[_mouse.axis] = -accel;
+						} else {
+							m_mouse.accel[_mouse.axis] = accel;
+						}
 						break;
 					case 0:
 					default:
-						// linear
-						amount = std::fabs(value);
+						// continuous/proportional
+						m_mouse.accel[_mouse.axis] = m_mouse.maxspeed[_mouse.axis];
 						break;
 				}
-				if(value < 0.0) {
-					amount  = -amount;
-				}
-				int speed = _mouse.params[1]; // pixels per 10ms
-				if(speed <= 0) {
-					speed = 10;
-				}
-				amount *= speed;
-				if(_mouse.axis == 0) {
-					m_mouse.x_speed = amount;
-				} else {
-					m_mouse.y_speed = amount;
-				}
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.3f->%.3f pixels/10ms\n", _mouse.axis?"Y":"X", value, amount);
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.3f->%.3f pixels/10ms^2, max:%.3f\n",
+						_mouse.axis?"Y":"X", value, m_mouse.accel[_mouse.axis], m_mouse.maxspeed[_mouse.axis]);
 				m_mouse.enable_timer();
 			}
 			return;
@@ -554,6 +741,38 @@ void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_e
 		case SDL_KEYDOWN:
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_JOYBUTTONDOWN:
+			if(_phase == EventPhase::EVT_ONESHOT) {
+				m_mouse.rel[_mouse.axis] += _mouse.params[0];
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.params[0]);
+			} else if(_phase == EventPhase::EVT_END) {
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _mouse.axis?"Y":"X");
+				m_mouse.stop(static_cast<Mouse::Axis>(_mouse.axis));
+			} else {
+				m_mouse.maxspeed[_mouse.axis] = _mouse.params[0]; // pixels per 10ms
+				double accel = double(_mouse.params[2]) / 1000.0;
+				if(accel == .0) {
+					accel = 0.005;
+				}
+				switch(_mouse.params[1]) {
+					case 1:
+						// accelerated
+						if(m_mouse.maxspeed[_mouse.axis] < .0) {
+							m_mouse.accel[_mouse.axis] = -accel;
+						} else {
+							m_mouse.accel[_mouse.axis] = accel;
+						}
+						break;
+					case 0:
+					default:
+						// continuous
+						m_mouse.accel[_mouse.axis] = m_mouse.maxspeed[_mouse.axis];
+						break;
+				}
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %.3f pixels/10ms^2, max:%.3f\n",
+						_mouse.axis?"Y":"X", m_mouse.accel[_mouse.axis], m_mouse.maxspeed[_mouse.axis]);
+				m_mouse.enable_timer();
+			}
+			return;
 		default:
 			return;
 	}
@@ -565,7 +784,7 @@ void GUI::pevt_mouse_button(const ProgramEvent::Mouse &_mouse, EventPhase _phase
 	m_machine->mouse_button(_mouse.button, _phase==EventPhase::EVT_START);
 }
 
-void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event)
+void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event, EventPhase _phase)
 {
 	int value = 0;
 	switch(_event.type) {
@@ -578,345 +797,788 @@ void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event)
 				amount = _event.motion.y - (m_height / 2.0);
 				amount /= (m_height / 2.0);
 			}
-			value = amount * 32768.0;
+			m_joystick[_joy.which].speed[_joy.axis] = 0;
+			m_joystick[_joy.which].value[_joy.axis] = amount * 32768.0;
+			m_joystick[_joy.which].maxvalue[_joy.axis] = m_joystick[_joy.which].value[_joy.axis];
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
-			value = _event.jaxis.value;
+			m_joystick[_joy.which].speed[_joy.axis] = 0;
+			m_joystick[_joy.which].value[_joy.axis] = _event.jaxis.value;
+			m_joystick[_joy.which].maxvalue[_joy.axis] = m_joystick[_joy.which].value[_joy.axis];
 			break;
 		}
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
 		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEBUTTONUP: {
+			int maxvalue = _joy.params[0];
+			int speed = _joy.params[2]==0 ? 500 : _joy.params[2];
+			if(_phase == EventPhase::EVT_END) {
+				int curmax = m_joystick[_joy.which].maxvalue[_joy.axis];
+				if(std::signbit(maxvalue) != std::signbit(curmax)) {
+					PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: skip end\n",
+							_joy.which?"B":"A", _joy.axis);
+					return;
+				}
+				m_joystick[_joy.which].maxvalue[_joy.axis] = 0;
+				if(m_joystick[_joy.which].value[_joy.axis] == 0) {
+					PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: value already 0\n",
+							_joy.which?"B":"A", _joy.axis);
+					return;
+				}
+				switch(_joy.params[1]) {
+					case 1: // constant speed
+						if(m_joystick[_joy.which].value[_joy.axis] < 0) {
+							m_joystick[_joy.which].speed[_joy.axis] = speed;
+						} else {
+							m_joystick[_joy.which].speed[_joy.axis] = -speed;
+						}
+						if(m_joystick[_joy.which].value[_joy.axis] != 0) {
+							m_joystick[_joy.which].enable_timer();
+						}
+						return;
+					case 0:
+					default: // immediate
+						m_joystick[_joy.which].speed[_joy.axis] = 0;
+						m_joystick[_joy.which].value[_joy.axis] = 0;
+						m_joystick[_joy.which].maxvalue[_joy.axis] = 0;
+						break;
+				}
+			} else if(_phase == EventPhase::EVT_START) {
+				switch(_joy.params[1]) {
+					case 1: // constant speed
+						m_joystick[_joy.which].maxvalue[_joy.axis] = maxvalue;
+						if(maxvalue < 0) {
+							m_joystick[_joy.which].speed[_joy.axis] = -speed;
+						} else {
+							m_joystick[_joy.which].speed[_joy.axis] = speed;
+						}
+						if(m_joystick[_joy.which].value[_joy.axis] != maxvalue) {
+							m_joystick[_joy.which].enable_timer();
+						}
+						return;
+					case 0:
+					default: // immediate
+						m_joystick[_joy.which].speed[_joy.axis] = 0;
+						m_joystick[_joy.which].value[_joy.axis] = maxvalue;
+						m_joystick[_joy.which].maxvalue[_joy.axis] = maxvalue;
+						break;
+				}
+			}
+			break;
+		}
 		default:
 			break;
 	}
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: %d\n", _joy.which?"B":"A", _joy.axis, value);
-	m_machine->joystick_motion(_joy.which, _joy.axis, value);
+
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s axis %d: %d\n",
+			_joy.which?"B":"A", _joy.axis, m_joystick[_joy.which].value[_joy.axis]);
+
+	m_machine->joystick_motion(_joy.which, _joy.axis, m_joystick[_joy.which].value[_joy.axis]);
 }
 
 void GUI::pevt_joy_button(const ProgramEvent::Joy &_joy, EventPhase _phase)
 {
-	int state = 0;
-	if(_phase == EventPhase::EVT_START) {
-		state = 1;
-	}
+	int state = _phase == EventPhase::EVT_START;
 	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: joystick %s btn %d: %d\n", _joy.which?"B":"A", _joy.button, state);
 	m_machine->joystick_button(_joy.which, _joy.button, state);
 }
 
-bool GUI::on_event_binding(const SDL_Event &_event, const Keymap::Binding &_binding, bool _guest_input, uint32_t _type_mask)
+void GUI::run_event_functions(const Keymap::Binding *_binding, EventPhase _phase)
 {
-	bool gui_input = !_guest_input;
-	
-	for(auto const & pevt : _binding.pevt) {
-		
-		PDEBUGF(LOG_V2, LOG_GUI, "  evt=%x,mask=%x\n", ec_to_i(pevt.type), _type_mask);
-		
-		if(ec_to_i(pevt.type) & _type_mask) {
-			PDEBUGF(LOG_V2, LOG_GUI, "  masked event\n");
+	for(auto & pevt : _binding->pevt) {
+		if(pevt.type != ProgramEvent::Type::EVT_PROGRAM_FUNC) {
 			continue;
 		}
-		
-		EventPhase phase;
-		if(_event.type == SDL_KEYDOWN || _event.type == SDL_MOUSEBUTTONDOWN || _event.type == SDL_JOYBUTTONDOWN) {
-			if(_event.type == SDL_KEYDOWN && _event.key.repeat) {
-				phase = EventPhase::EVT_REPEAT;
-			} else {
-				phase = EventPhase::EVT_START;
-			}
-		} else if(_event.type == SDL_KEYUP || _event.type == SDL_MOUSEBUTTONUP || _event.type == SDL_JOYBUTTONUP) {
-			phase = EventPhase::EVT_END;
-		} else if(_event.type == SDL_MOUSEMOTION || _event.type == SDL_JOYAXISMOTION) {
-			phase = EventPhase::EVT_ONESHOT;
-		} else {
-			// ???
-			PDEBUGF(LOG_V0, LOG_GUI, "  unexpected SDL event type %d\n", _event.type);
-			phase = EventPhase::EVT_END;
+		PDEBUGF(LOG_V2, LOG_GUI, "function %d\n", ec_to_i(pevt.func.name));
+		ms_event_funcs.at(pevt.func.name)(*this, pevt.func, _phase);
+	}
+}
+
+void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint32_t _type_mask)
+{
+	if(!_event.binding.pevt.size()) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  nothing to do\n");
+		return;
+	}
+	if(_phase == EventPhase::EVT_END) {
+		_event.pevt_idx = 0;
+	} else {
+		// search for running events of the same group and stop them
+		if(!_event.binding.group.empty()) {
+			m_running_events.stop_group(_event.binding.group);
+		}
+	}
+
+	static uint64_t sd_last_event = 0;
+	PDEBUGF(LOG_V2, LOG_GUI, "  %llu event exec: \"%s\", phase:%d\n",
+		get_curtime_ms()-sd_last_event, _event.binding.name.c_str(), ec_to_i(_phase)
+	);
+	sd_last_event = get_curtime_ms();
+
+	if(_event.pevt_idx >= _event.binding.pevt.size()) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  nothing to do\n");
+		return;
+	}
+
+	while(_event.pevt_idx < _event.binding.pevt.size()) {
+		auto pevt = &_event.binding.pevt[_event.pevt_idx];
+
+		PDEBUGF(LOG_V2, LOG_GUI, "  evt[%d] = type:%d, \"%s\", ",
+			_event.pevt_idx+1, ec_to_i(pevt->type), pevt->name.c_str()
+		);
+
+		if((ec_to_i(pevt->type) & _type_mask) || pevt->masked) {
+			PDEBUGF(LOG_V2, LOG_GUI, "masked\n");
+			_event.pevt_idx++;
+			continue;
 		}
 
-		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: %s%s\n", pevt.name.c_str(),
-				phase==EventPhase::EVT_REPEAT?" (repeat)":"");
-
-		switch(pevt.type) {
+		bool skipped = false;
+		switch(pevt->type) {
 			case ProgramEvent::Type::EVT_KEY:
-				if(_guest_input) {
-					pevt_key(pevt.key, phase);
-				}
+				PDEBUGF(LOG_V2, LOG_GUI, "keyboard key\n");
+				pevt_key(pevt->key, _phase);
 				break;
 			case ProgramEvent::Type::EVT_PROGRAM_FUNC:
-				gui_input = false;
-				ms_event_funcs.at(pevt.func.name)(*this, pevt.func, phase);
+				PDEBUGF(LOG_V2, LOG_GUI, "function %d\n", ec_to_i(pevt->func.name));
+				ms_event_funcs.at(pevt->func.name)(*this, pevt->func, _phase);
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_AXIS:
-				if(_guest_input) {
-					pevt_mouse_axis(pevt.mouse, _event);
-				}
+				PDEBUGF(LOG_V2, LOG_GUI, "mouse axis\n");
+				pevt_mouse_axis(pevt->mouse, _event.sdl_evt, _phase);
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_BUTTON:
-				if(_guest_input) {
-					pevt_mouse_button(pevt.mouse, phase);
-				}
+				PDEBUGF(LOG_V2, LOG_GUI, "mouse button\n");
+				pevt_mouse_button(pevt->mouse, _phase);
 				break;
 			case ProgramEvent::Type::EVT_JOY_AXIS:
-				if(_guest_input) {
-					pevt_joy_axis(pevt.joy, _event);
-				}
+				PDEBUGF(LOG_V2, LOG_GUI, "joy axis\n");
+				pevt_joy_axis(pevt->joy, _event.sdl_evt, _phase);
 				break;
 			case ProgramEvent::Type::EVT_JOY_BUTTON:
-				if(_guest_input) {
-					pevt_joy_button(pevt.joy, phase);
+				PDEBUGF(LOG_V2, LOG_GUI, "joy button\n");
+				pevt_joy_button(pevt->joy, _phase);
+				break;
+			case ProgramEvent::Type::EVT_COMMAND: {
+				if(_phase == EventPhase::EVT_END) {
+					skipped = true;
+					break;
+				}
+				switch(pevt->command.name) {
+					case ProgramEvent::CommandName::CMD_WAIT: {
+						// set a timer and exit this function
+						int ms = pevt->command.params[0];
+						if(ms < 0) {
+							Keyboard::Typematic tm;
+							if(m_machine->is_on()) {
+								tm = m_machine->devices().device<Keyboard>()->typematic();
+							}
+							// special cases
+							switch(ms) {
+								case ProgramEvent::Constant::CONST_TYPEMATIC_DELAY:
+									ms = tm.delay_ms;
+									break;
+								case ProgramEvent::Constant::CONST_TYPEMATIC_RATE:
+									ms = std::round(1000.0 / tm.cps);
+									break;
+								default:
+									break;
+							}
+						}
+						PDEBUGF(LOG_V2, LOG_GUI, "wait %d ms\n", ms);
+						if(ms < 0) {
+							ms = 0;
+						}
+						_event.pevt_idx++;
+						_event.enable_timer(Uint32(ms));
+						return;
+					}
+					case ProgramEvent::CommandName::CMD_RELEASE:
+					{
+						// user provided indices are 1-based
+						unsigned idx = unsigned(pevt->command.params[0]);
+						unsigned end_idx;
+						if(idx == 0) {
+							// release all
+							end_idx = _event.binding.pevt.size() - 1;
+						} else if(idx > _event.binding.pevt.size()) {
+							PDEBUGF(LOG_V2, LOG_GUI, "invalid index\n");
+							_event.pevt_idx++;
+							continue;
+						} else {
+							idx--;
+							end_idx = idx;
+						}
+						PDEBUGF(LOG_V2, LOG_GUI, "release %u-%u\n", idx, end_idx);
+						for(; idx<=end_idx; idx++) {
+							switch(_event.binding.pevt[idx].type) {
+								case ProgramEvent::Type::EVT_KEY:
+									pevt_key(_event.binding.pevt[idx].key, EventPhase::EVT_END);
+									break;
+								case ProgramEvent::Type::EVT_MOUSE_BUTTON:
+									pevt_mouse_button(_event.binding.pevt[idx].mouse, EventPhase::EVT_END);
+									break;
+								case ProgramEvent::Type::EVT_JOY_BUTTON:
+									pevt_joy_button(_event.binding.pevt[idx].joy, EventPhase::EVT_END);
+									break;
+								default:{
+									//PDEBUGF(LOG_V2, LOG_GUI, "  not a button (%d=>%s)\n", idx, _binding.pevt[idx].name.c_str());
+									break;
+								}
+							}
+						}
+						break;
+					}
+					case ProgramEvent::CommandName::CMD_SKIP_TO:
+					{
+						unsigned idx = unsigned(pevt->command.params[0]);
+						if(idx > 0) {
+							idx--;
+						}
+						if(idx < _event.binding.pevt.size()) {
+							_event.pevt_idx = idx;
+							if(!_event.binding.has_cmd_event(ProgramEvent::CommandName::CMD_WAIT, idx)) {
+								PDEBUGF(LOG_V2, LOG_GUI, "repeating from %d (wait)\n", idx+1);
+								_event.enable_timer(0);
+								return;
+							}
+							PDEBUGF(LOG_V2, LOG_GUI, "repeat from %d\n", idx+1);
+							continue;
+						} else {
+							PDEBUGF(LOG_V2, LOG_GUI, "repeat invalid index %d\n", idx+1);
+						}
+						break;
+					}
+					default:
+					{
+						PDEBUGF(LOG_V2, LOG_GUI, "command ignored\n");
+						break;
+					}
+				}
+				break;
+			}
+			default:
+				PDEBUGF(LOG_V2, LOG_GUI, "unknown event!\n");
+				break;
+		}
+		if(skipped) {
+			PDEBUGF(LOG_V2, LOG_GUI, "skipped\n");
+		}
+		_event.pevt_idx++;
+	}
+}
+
+GUI::RunningEvents::Event::Event(Sint32 _code, const SDL_Event &_sdl_evt,
+		const Keymap::Binding *_binding, EventPhase _init_phase)
+: code(_code), init_phase(_init_phase)
+{
+	std::memcpy(&sdl_evt, &_sdl_evt, sizeof(SDL_Event));
+	if(_binding) {
+		binding = *_binding;
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "  Event created: %d\n", code);
+}
+
+GUI::RunningEvents::Event::~Event()
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "  Event destroyed: %d\n", code);
+}
+
+std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::start_new(
+		const SDL_Event &_sdl_evt, const Keymap::Binding *_binding, EventPhase _init_phase)
+{
+	auto running_evt = find(_sdl_evt);
+	if(running_evt) {
+		remove(running_evt);
+	}
+	running_evt = std::make_shared<RunningEvents::Event>(count, _sdl_evt, _binding, _init_phase);
+	events[count] = running_evt;
+	count++;
+	return running_evt;
+}
+
+std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(SDL_Event _sdl_evt)
+{
+	for(auto [k, evt] : events) {
+		switch(evt->sdl_evt.type) {
+			case SDL_KEYDOWN:
+				if((_sdl_evt.type == SDL_KEYDOWN || _sdl_evt.type == SDL_KEYUP) &&
+					(evt->sdl_evt.key.keysym.sym == _sdl_evt.key.keysym.sym))
+				{
+					return evt;
+				}
+				break;
+			case SDL_MOUSEMOTION:
+				if(_sdl_evt.type == SDL_MOUSEMOTION) {
+					if((evt->sdl_evt.motion.xrel && _sdl_evt.motion.xrel) ||
+					   (evt->sdl_evt.motion.yrel && _sdl_evt.motion.yrel))
+					{
+						return evt;
+					}
+				}
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				if((_sdl_evt.type == SDL_MOUSEBUTTONDOWN || _sdl_evt.type == SDL_MOUSEBUTTONUP) &&
+				   (evt->sdl_evt.button.button == _sdl_evt.button.button))
+				{
+					return evt;
+				}
+				break;
+			case SDL_JOYAXISMOTION:
+				if(_sdl_evt.type == SDL_JOYAXISMOTION) {
+					if(evt->sdl_evt.jaxis.which == _sdl_evt.jaxis.which && 
+					   evt->sdl_evt.jaxis.axis == _sdl_evt.jaxis.axis)
+					{
+						return evt;
+					}
+				}
+				break;
+			case SDL_JOYBUTTONDOWN:
+				if(_sdl_evt.type == SDL_JOYBUTTONDOWN || _sdl_evt.type == SDL_JOYBUTTONUP) {
+					if(evt->sdl_evt.jbutton.which == _sdl_evt.jbutton.which && 
+					   evt->sdl_evt.jbutton.button == _sdl_evt.jbutton.button)
+					{
+						return evt;
+					}
 				}
 				break;
 			default:
 				break;
 		}
 	}
-	
-	return gui_input;
+	return nullptr;
 }
 
-void GUI::on_keyboard_event(const SDL_Event &_event)
+std::vector<std::shared_ptr<GUI::RunningEvents::Event>> GUI::RunningEvents::find_mods(unsigned _sdl_mod)
 {
-	std::string mod1 = bitfield_to_string(_event.key.keysym.mod & 0xff,
+	std::vector<std::shared_ptr<GUI::RunningEvents::Event>> running_evts;
+	for(auto [k, evt] : events) {
+		if(evt->sdl_evt.type != SDL_KEYDOWN) {
+			continue;
+		}
+		if((_sdl_mod & KMOD_LSHIFT) && evt->sdl_evt.key.keysym.sym == SDLK_LSHIFT) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_RSHIFT) && evt->sdl_evt.key.keysym.sym == SDLK_RSHIFT) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_LALT) && evt->sdl_evt.key.keysym.sym == SDLK_LALT) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_RALT) && evt->sdl_evt.key.keysym.sym == SDLK_RALT) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_LCTRL) && evt->sdl_evt.key.keysym.sym == SDLK_LCTRL) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_RCTRL) && evt->sdl_evt.key.keysym.sym == SDLK_RCTRL) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_LGUI) && evt->sdl_evt.key.keysym.sym == SDLK_LGUI) {
+			running_evts.push_back(evt);
+		}
+		if((_sdl_mod & KMOD_RGUI) && evt->sdl_evt.key.keysym.sym == SDLK_RGUI) {
+			running_evts.push_back(evt);
+		}
+	}
+	return running_evts;
+}
+
+void GUI::RunningEvents::stop_group(const std::string &_grp_name)
+{
+	for(auto & re : events) {
+		if(re.second->is_running() && re.second->binding.group == _grp_name) {
+			re.second->disable_timer();
+		}
+	}
+}
+
+std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(Sint32 _code)
+{
+	auto it = events.find(_code);
+	if(it != events.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
+bool GUI::RunningEvents::is_active(std::shared_ptr<GUI::RunningEvents::Event> _evt)
+{
+	auto it = events.find(_evt->code);
+	return(it != events.end());
+}
+
+void GUI::RunningEvents::remove(std::shared_ptr<Event> _evt)
+{
+	_evt->disable_timer();
+	if(is_active(_evt)) {
+		events.erase(_evt->code);
+		PDEBUGF(LOG_V2, LOG_GUI, "running events: %u\n", events.size());
+	}
+}
+
+void GUI::RunningEvents::reset()
+{
+	for(auto & evt : events) {
+		evt.second->disable_timer();
+	}
+	events.clear();
+}
+
+GUI::EventPhase GUI::get_event_phase(GUI::EventPhase _phase, const Keymap::Binding *_binding)
+{
+	if(_binding) {
+		if(_binding->mode == Keymap::Binding::Mode::DEFAULT) {
+			switch(_phase) {
+			case EventPhase::EVT_START:
+			case EventPhase::EVT_END:
+			case EventPhase::EVT_REPEAT:
+				return _phase;
+			case EventPhase::EVT_ONESHOT:
+				return EventPhase::EVT_START;
+			default:
+				return _phase;
+			}
+		} else if(_binding->mode == Keymap::Binding::Mode::ONE_SHOT) {
+			return EventPhase::EVT_ONESHOT;
+		}
+	}
+	return _phase;
+}
+
+void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
+{
+	bool gui_input = !(m_input_grab || !m_windows.need_input());
+
+	EventPhase phase;
+	if(_sdl_event.type == SDL_KEYDOWN) {
+		if(_sdl_event.key.repeat) {
+			if(!gui_input) {
+				// repeats go to the GUI only
+				return;
+			}
+			phase = EventPhase::EVT_REPEAT;
+		} else {
+			phase = EventPhase::EVT_START;
+		}
+	} else if(_sdl_event.type == SDL_KEYUP) {
+		phase = EventPhase::EVT_END;
+	} else  {
+		assert(false);
+	}
+
+	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
+	phase = get_event_phase(phase, binding_ptr);
+
+	if(gui_input) {
+		// do gui stuff
+		if(binding_ptr) {
+			// but first run any FUNC_*
+			run_event_functions(binding_ptr, phase);
+		}
+		dispatch_rocket_event(_sdl_event);
+		return;
+	}
+
+	std::string mod1 = bitfield_to_string(_sdl_event.key.keysym.mod & 0xff,
 	{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
-	
-	std::string mod2 = bitfield_to_string((_event.key.keysym.mod >> 8) & 0xff,
+
+	std::string mod2 = bitfield_to_string((_sdl_event.key.keysym.mod >> 8) & 0xff,
 	{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
 	if(!mod1.empty()) {
 		mod2 = " " + mod2;
 	}
-	
+
 	PDEBUGF(LOG_V2, LOG_GUI, "Key: evt=%s, sym=%s, code=%s, mod=[%s%s]\n",
-			(_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
-			Keymap::ms_sdl_keycode_str_table.find(_event.key.keysym.sym)->second.c_str(),
-			Keymap::ms_sdl_scancode_str_table.find(_event.key.keysym.scancode)->second.c_str(),
+			(_sdl_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
+			Keymap::ms_sdl_keycode_str_table.find(_sdl_event.key.keysym.sym)->second.c_str(),
+			Keymap::ms_sdl_scancode_str_table.find(_sdl_event.key.keysym.scancode)->second.c_str(),
 			mod1.c_str(), mod2.c_str());
-	
-	bool guest_input = m_input_grab || !m_windows.need_input();
-	bool gui_input = !guest_input;
-	
-	static const Keymap::Binding *combo = nullptr;
-	const Keymap::Binding *binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_event.key);
-	
 	if(binding_ptr) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
-		Keymap::Binding binding = *binding_ptr;
-		if(binding.is_pevt_keycombo()) {
-			// a key combo is always modifier(s) + key
-			if(_event.type == SDL_KEYDOWN) {
-				if(binding_ptr == combo) {
-					binding.remove_pevt_kmods();
-				} else {
-					// release all key modifiers
-					for(auto k : {
-						KEY_CTRL_L  ,
-						KEY_SHIFT_L ,
-						KEY_CTRL_R  ,
-						KEY_SHIFT_R ,
-						KEY_ALT_L   ,
-						KEY_ALT_R   ,
-						KEY_WIN_L   ,
-						KEY_WIN_R
-					}) {
-						if(m_key_state[k]) {
-							send_key_to_machine(k, KEY_RELEASED);
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
+	}
+	
+	// keyboard events need to account for the special case of key combos triggered by key combos,
+	// where a key combo is modifier + key
+
+	std::shared_ptr<RunningEvents::Event> running_evt;
+	bool finish = false;
+	if(phase == EventPhase::EVT_START) {
+		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
+			// this is true only for the main combo key.
+			running_evt = m_running_events.find(_sdl_event);
+			if(!running_evt) {
+				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+				// we need to neutralize any key modifiers sent to the machine by the
+				// binding of the key modifiers of this input combo event (re-read if unclear).
+				// find the starting combo key(s), which are always modifiers
+				auto modifier_evts = m_running_events.find_mods(binding_ptr->ievt.key.mod);
+				assert(!modifier_evts.empty());
+				PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
+				for(auto & modifier_evt : modifier_evts) {
+					// 1. link this event
+					modifier_evt->link_to(running_evt);
+					// 2. mask any key modifier for the machine, so they won't be sent anymore by timed commands
+					modifier_evt->binding.mask_pevt_kmods();
+					// 3. release any key modifier sent to the machine by this binding
+					for(auto &pevt : modifier_evt->binding.pevt) {
+						if(pevt.is_key_modifier() && m_key_state[pevt.key]) {
+							PDEBUGF(LOG_V2, LOG_GUI, "  releasing mod %s\n",
+									Keymap::ms_keycode_str_table.at(pevt.key).c_str());
+							send_key_to_machine(pevt.key, KEY_RELEASED);
 						}
 					}
-					combo = binding_ptr;
 				}
-			} else if(_event.type == SDL_KEYUP && combo) {
-				if(binding_ptr == combo) {
-					// release everything except the modifiers
-					binding.remove_pevt_kmods();
-				}
+			} else {
+				running_evt->restart();
 			}
-		} else if(_event.type == SDL_KEYUP && combo) {
-			if(binding.ievt.key.is_key_modifier()) {
-				// release the combo
-				binding = *combo;
-				combo = nullptr;
-			}
-			//else {
-			//	release this key
-			//	keep combo modifiers pressed
-			//}
+		} else {
+			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 		}
-		//else if(_event.type == SDL_KEYDOWN && combo) {
-		//	just execute the binding while keeping the prev combo modifiers pressed
-		//}
-		gui_input = on_event_binding(_event, binding, guest_input);
+	} else if(phase == EventPhase::EVT_END) {
+		running_evt = m_running_events.find(_sdl_event);
+		if(!running_evt) {
+			PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
+			return;
+		}
+		if(running_evt->binding.is_ievt_keycombo() && running_evt->binding.is_pevt_keycombo()) {
+			// this is true only for the main combo key.
+			// release everything on the guest except the modifiers.
+			running_evt->binding.mask_pevt_kmods();
+			running_evt->disable_timer();
+		} else {
+			finish = true;
+		}
 	} else {
-		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+		// ONE SHOT
+		running_evt = m_running_events.start_new(_sdl_event, binding_ptr, phase);
 	}
-	if(gui_input) {
-		dispatch_rocket_event(_event);
+
+	on_event_binding(*running_evt, phase);
+
+	if(finish || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
+		if(running_evt->combo_link && m_running_events.is_active(running_evt->combo_link)) {
+			// release combo modifiers
+			PDEBUGF(LOG_V2, LOG_GUI, "  output combo finish\n");
+			running_evt->combo_link->binding.mask_pevt_kmods(false);
+			on_event_binding(*running_evt->combo_link, phase);
+			m_running_events.remove(running_evt->combo_link);
+		}
+		m_running_events.remove(running_evt);
 	}
 }
 
-void GUI::on_mouse_motion_event(const SDL_Event &_event)
+void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 {
+	if(!m_input_grab) {
+		dispatch_rocket_event(_sdl_event);
+		return;
+	}
+
 	// mouse motion events are 2-in-1 (X and Y axes)
-	
-	PDEBUGF(LOG_V2, LOG_GUI, "Mouse motion: x:%d,y:%d\n", _event.motion.xrel, _event.motion.yrel);
-	
-	bool guest_input = m_input_grab;
-	
-	const Keymap::Binding *binding_x=nullptr, *binding_y=nullptr;
-	SDL_Event mevent;
-	
-	memcpy(&mevent, &_event, sizeof(SDL_Event));
-	
-	uint32_t evtmask = 0;
-	bool bind_x_map_x = false;
-	bool bind_x_map_y = false;
-	bool bind_y_map_x = false;
-	bool bind_y_map_y = false;
-	ProgramEvent x_mapping, y_mapping;
-	
-	x_mapping.type = y_mapping.type = ProgramEvent::Type::EVT_MOUSE_AXIS;
-	y_mapping.mouse.axis = 1;
-	
-	if(_event.motion.xrel) {
-		mevent.motion.yrel = 0;
-		binding_x = m_keymaps[m_current_keymap].find_sdl_binding(mevent.motion);
-		if(binding_x) {
-			bind_x_map_x = binding_x->has_prg_event(x_mapping);
-			bind_x_map_y = binding_x->has_prg_event(y_mapping);
-			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis X: %s\n", binding_x->name.c_str());
-		} else {
-			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis X\n");
-		}
-	}
-	if(_event.motion.yrel) {
-		mevent.motion.xrel = 0;
-		mevent.motion.yrel = _event.motion.yrel;
-		binding_y = m_keymaps[m_current_keymap].find_sdl_binding(mevent.motion);
-		if(binding_y) {
-			bind_y_map_x = binding_y->has_prg_event(x_mapping);
-			bind_y_map_y = binding_y->has_prg_event(y_mapping);
-			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis Y: %s\n", binding_y->name.c_str());
-		} else {
-			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis Y\n");
-		}
-	}
-	
-	// check if bindings have mouse mappings to X and Y
-	if(guest_input && (
-	   (bind_x_map_x && bind_y_map_y) ||
-	   (bind_x_map_y && bind_y_map_x) // inverted mouse? lol ok.
-	))
-	{
-		// if so translate mouse to mouse as a special case (combine in a single event)
-		// otherwise pointer motion would not work on the guest
-		int xrel, yrel;
-		if(bind_x_map_x) {
-			xrel = _event.motion.xrel;
-		} else if(bind_y_map_x) {
-			xrel = _event.motion.yrel;
-		}
-		if(bind_y_map_y) {
-			yrel = _event.motion.yrel;
-		} else if(bind_x_map_y) {
-			yrel = _event.motion.xrel;
-		}
-		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse X,Y axis: %d,%d pixels\n", xrel,yrel);
-		m_machine->mouse_motion(xrel, -yrel, 0);
-		evtmask = ec_to_i(ProgramEvent::Type::EVT_MOUSE_AXIS);
-	}
 
-	// even if input is not grabbed, bindings could still be mapped to functions
-	if(binding_x) {
-		mevent.motion.x = _event.motion.x;
-		mevent.motion.xrel = _event.motion.xrel;
-		mevent.motion.y = 0;
-		mevent.motion.yrel = 0;
-		on_event_binding(mevent, *binding_x, guest_input, evtmask);
-		if(bind_x_map_x || bind_x_map_y) {
-			// don't send double mouse events to the guest! 
-			evtmask = ec_to_i(ProgramEvent::Type::EVT_MOUSE_AXIS);
+	PDEBUGF(LOG_V2, LOG_GUI, "Mouse motion: x:%d,y:%d\n", _sdl_event.motion.xrel, _sdl_event.motion.yrel);
+
+	auto on_mouse_axis_event = [&](const char *_axis_name, SDL_Event _axis_evt) {
+		auto binding = m_keymaps[m_current_keymap].find_sdl_binding(_axis_evt.motion);
+		if(binding) {
+			// events are ONE SHOT only because mouse motion is relative
+			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis %s: %s\n", _axis_name, binding->name.c_str());
+			auto running_evt = m_running_events.start_new(_axis_evt, binding, EventPhase::EVT_ONESHOT);
+			on_event_binding(*running_evt, EventPhase::EVT_ONESHOT);
+			if(!running_evt->is_running()) {
+				m_running_events.remove(running_evt);
+			}
+		} else {
+			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis %s\n", _axis_name);
 		}
+	};
+
+	SDL_Event axis_event;
+	if(_sdl_event.motion.xrel) {
+		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
+		axis_event.motion.y = 0;
+		axis_event.motion.yrel = 0;
+		on_mouse_axis_event("X", axis_event);
 	}
-	if(binding_y) {
-		mevent.motion.x = 0;
-		mevent.motion.xrel = 0;
-		mevent.motion.y = _event.motion.y;
-		mevent.motion.yrel = _event.motion.yrel;
-		on_event_binding(mevent, *binding_y, guest_input, evtmask);
-	}
-	
-	if(!guest_input) {
-		dispatch_rocket_event(_event);
+	if(_sdl_event.motion.yrel) {
+		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
+		axis_event.motion.x = 0;
+		axis_event.motion.xrel = 0;
+		on_mouse_axis_event("Y", axis_event);
 	}
 }
 
-void GUI::on_mouse_button_event(const SDL_Event &_event)
+void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 {
-	PDEBUGF(LOG_V0, LOG_GUI, "Mouse button: %d\n", _event.button.button);
-	
-	bool guest_input = m_input_grab;
-	bool gui_input = !guest_input;
-	
-	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(_event.button);
-	
-	if(binding) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
-		gui_input = on_event_binding(_event, *binding, guest_input);
+	EventPhase phase;
+	if(_sdl_event.type == SDL_MOUSEBUTTONDOWN) {
+		phase = EventPhase::EVT_START;
+	} else if(_sdl_event.type == SDL_MOUSEBUTTONUP) {
+		phase = EventPhase::EVT_END;
+	} else  {
+		assert(false);
+	}
+
+	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
+	phase = get_event_phase(phase, binding_ptr);
+
+	if(!m_input_grab) {
+		// do gui stuff
+		if(binding_ptr) {
+			// but first run any FUNC_*
+			run_event_functions(binding_ptr, phase);
+		}
+		dispatch_rocket_event(_sdl_event);
+		return;
+	}
+
+	PDEBUGF(LOG_V2, LOG_GUI, "Mouse button: %d\n", _sdl_event.button.button);
+
+	if(binding_ptr) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 	} else {
 		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+		return;
 	}
-	if(gui_input) {
-		dispatch_rocket_event(_event);
+
+	std::shared_ptr<RunningEvents::Event> running_evt;
+	if(phase == EventPhase::EVT_START || phase == EventPhase::EVT_ONESHOT) {
+		running_evt = m_running_events.start_new(_sdl_event, binding_ptr, phase);
+	} else {
+		running_evt = m_running_events.find(_sdl_event);
+		if(!running_evt) {
+			return;
+		}
+	}
+
+	on_event_binding(*running_evt, phase);
+
+	if(phase == EventPhase::EVT_END || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
+		m_running_events.remove(running_evt);
 	}
 }
 
-void GUI::on_joystick_motion_event(const SDL_Event &_event)
+void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "Joystick motion: joy:%d, axis:%d\n", _event.jaxis.which, _event.jaxis.axis);
-	
-	assert(_event.jaxis.which < Sint32(m_SDL_joysticks.size()));
-	
+	// joystick events are for the machine only
+	// TODO add support for GUI navigation with gamepads
+
+	PDEBUGF(LOG_V2, LOG_GUI, "Joystick motion: joy:%d, axis:%d, value:%d\n",
+			_sdl_evt.jaxis.which, _sdl_evt.jaxis.axis, _sdl_evt.jaxis.value);
+
+	assert(_sdl_evt.jaxis.which < Sint32(m_SDL_joysticks.size()));
+
 	int jid = JOY_NONE;
-	if(m_joystick[0].id == _event.jaxis.which) {
+	if(m_joystick[0].sdl_id == _sdl_evt.jaxis.which) {
 		jid = 0;
-	} else if(m_joystick[1].id == _event.jaxis.which) {
+	} else if(m_joystick[1].sdl_id == _sdl_evt.jaxis.which) {
 		jid = 1;
 	} else {
 		return;
 	}
-	
-	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(jid, _event.jaxis);
-	if(binding) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
-		on_event_binding(_event, *binding, true);
+
+	EventPhase phase1;
+	if(_sdl_evt.jaxis.value == 0) {
+		phase1 = EventPhase::EVT_END;
 	} else {
+		phase1 = EventPhase::EVT_START;
+	}
+
+	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(jid, _sdl_evt.jaxis);
+
+	if(!binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+		return;
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
+
+	EventPhase phase = get_event_phase(phase1, binding_ptr);
+
+	std::shared_ptr<GUI::RunningEvents::Event> running_evt;
+	if(phase == EventPhase::EVT_ONESHOT) {
+		// search for a previous event start
+		running_evt = m_running_events.find(_sdl_evt);
+		if(running_evt) {
+			if(phase1 == EventPhase::EVT_END && !running_evt->is_running()) {
+				m_running_events.remove(running_evt);
+			}
+		} else {
+			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr, phase);
+			on_event_binding(*running_evt, phase);
+		}
+	} else {
+		if(phase == EventPhase::EVT_START) {
+			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr, phase);
+		} else if(phase == EventPhase::EVT_END) {
+			running_evt = m_running_events.find(_sdl_evt);
+			if(!running_evt) {
+				PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
+				return;
+			}
+			running_evt->sdl_evt.jaxis.value = _sdl_evt.jaxis.value;
+		}
+		on_event_binding(*running_evt, phase);
+		if(phase == EventPhase::EVT_END) {
+			m_running_events.remove(running_evt);
+		}
 	}
 }
 
-void GUI::on_joystick_button_event(const SDL_Event &_event)
+void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 {
+	// joystick events are for the machine only
+	// TODO add support for GUI navigation with gamepads
+
 	PDEBUGF(LOG_V2, LOG_GUI, "Joystick button: joy:%d, button:%d, state:%d\n",
-			_event.jbutton.which, _event.jbutton.button, _event.jbutton.state);
-	
-	assert(_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
-	
+			_sdl_event.jbutton.which, _sdl_event.jbutton.button, _sdl_event.jbutton.state);
+
+	assert(_sdl_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
+
 	int jid = JOY_NONE;
-	if(m_joystick[0].id == _event.jbutton.which) {
+	if(m_joystick[0].sdl_id == _sdl_event.jbutton.which) {
 		jid = 0;
-	} else if(m_joystick[1].id == _event.jbutton.which) {
+	} else if(m_joystick[1].sdl_id == _sdl_event.jbutton.which) {
 		jid = 1;
 	} else {
 		return;
 	}
-	
-	const Keymap::Binding *binding = m_keymaps[m_current_keymap].find_sdl_binding(jid, _event.jbutton);
-	if(binding) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding->name.c_str());
-		on_event_binding(_event, *binding, true);
+
+	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(jid, _sdl_event.jbutton);
+
+	if(binding_ptr) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 	} else {
 		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+		return;
+	}
+
+	EventPhase phase;
+	if(_sdl_event.type == SDL_JOYBUTTONDOWN) {
+		phase = EventPhase::EVT_START;
+	} else if(_sdl_event.type == SDL_JOYBUTTONUP) {
+		phase = EventPhase::EVT_END;
+	} else  {
+		assert(false);
+	}
+	phase = get_event_phase(phase, binding_ptr);
+	
+	std::shared_ptr<RunningEvents::Event> running_evt;
+	if(phase == EventPhase::EVT_START || phase == EventPhase::EVT_ONESHOT) {
+		running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+	} else {
+		running_evt = m_running_events.find(_sdl_event);
+		if(!running_evt) {
+			return;
+		}
+	}
+
+	on_event_binding(*running_evt, phase);
+
+	if(phase == EventPhase::EVT_END || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
+		m_running_events.remove(running_evt);
 	}
 }
 
@@ -948,11 +1610,11 @@ void GUI::on_joystick_event(const SDL_Event &_event)
 			PDEBUGF(LOG_V1, LOG_GUI, "Joystick SDL index %d / instance id %d has been added\n",
 					_event.jdevice.which, jinstance);
 			int jid = JOY_NONE;
-			if(m_joystick[0].id == JOY_NONE) {
-				m_joystick[0].id = jinstance;
+			if(m_joystick[0].sdl_id == JOY_NONE) {
+				m_joystick[0].sdl_id = jinstance;
 				jid = 0;
-			} else if(m_joystick[1].id == JOY_NONE) {
-				m_joystick[1].id = jinstance;
+			} else if(m_joystick[1].sdl_id == JOY_NONE) {
+				m_joystick[1].sdl_id = jinstance;
 				jid = 1;
 			} else {
 				jid = 2;
@@ -973,28 +1635,28 @@ void GUI::on_joystick_event(const SDL_Event &_event)
 		}
 		bool notify_user = false;
 		m_SDL_joysticks[_event.jdevice.which] = nullptr;
-		if(m_joystick[0].id == _event.jdevice.which) {
+		if(m_joystick[0].sdl_id == _event.jdevice.which) {
 			PINFOF(LOG_V1, LOG_GUI, "Joystick A has been removed\n");
-			m_joystick[0].id = m_joystick[1].id;
-			m_joystick[1].id = JOY_NONE;
-			notify_user = (m_joystick[0].id != JOY_NONE);
-		} else if(m_joystick[1].id == _event.jdevice.which) {
+			m_joystick[0].sdl_id = m_joystick[1].sdl_id;
+			m_joystick[1].sdl_id = JOY_NONE;
+			notify_user = (m_joystick[0].sdl_id != JOY_NONE);
+		} else if(m_joystick[1].sdl_id == _event.jdevice.which) {
 			PINFOF(LOG_V1, LOG_GUI, "Joystick B has been removed\n");
-			m_joystick[1].id = JOY_NONE;
+			m_joystick[1].sdl_id = JOY_NONE;
 		}
-		if(m_joystick[1].id==JOY_NONE && m_joystick[0].id!=JOY_NONE && SDL_NumJoysticks()>1) {
+		if(m_joystick[1].sdl_id==JOY_NONE && m_joystick[0].sdl_id!=JOY_NONE && SDL_NumJoysticks()>1) {
 			for(int j=0; j<int(m_SDL_joysticks.size()); j++) {
-				if(m_SDL_joysticks[j]!=nullptr && j!=m_joystick[0].id) {
-					m_joystick[1].id = j;
+				if(m_SDL_joysticks[j]!=nullptr && j!=m_joystick[0].sdl_id) {
+					m_joystick[1].sdl_id = j;
 					notify_user = true;
 				}
 			}
 		}
-		if(notify_user && m_joystick[0].id != JOY_NONE) {
-			print_joy_message(m_SDL_joysticks[m_joystick[0].id], 0, true);
+		if(notify_user && m_joystick[0].sdl_id != JOY_NONE) {
+			print_joy_message(m_SDL_joysticks[m_joystick[0].sdl_id], 0, true);
 		}
-		if(notify_user && m_joystick[1].id != JOY_NONE) {
-			print_joy_message(m_SDL_joysticks[m_joystick[1].id], 1, true);
+		if(notify_user && m_joystick[1].sdl_id != JOY_NONE) {
+			print_joy_message(m_SDL_joysticks[m_joystick[1].sdl_id], 1, true);
 		}
 	}
 }
@@ -1027,10 +1689,8 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		case SDL_WINDOWEVENT:
 			dispatch_window_event(_event.window);
 			break;
-		case SDL_USEREVENT:
-			dispatch_user_event(_event.user);
-			break;
 		default:
+			dispatch_user_event(_event.user);
 			break;
 	}
 }
@@ -1080,26 +1740,25 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 
 void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 {
-	switch(_event.code) {
-		case GUI::TimedEvents::GUI_TEVT_MOUSE: {
-			int x_amount = 0, y_amount = 0;
-			if(m_mouse.x_speed != 0.0) {
-				m_mouse.x_rel += m_mouse.x_speed;
-				x_amount = int(m_mouse.x_rel);
-				m_mouse.x_rel -= double(x_amount);
-			}
-			if(m_mouse.y_speed != 0.0) {
-				m_mouse.y_rel += m_mouse.y_speed;
-				y_amount = int(m_mouse.y_rel);
-				m_mouse.y_rel -= double(y_amount);
-			}
-			if(x_amount != 0 || y_amount != 0) {
-				m_machine->mouse_motion(x_amount, -y_amount, 0);
-			}
-			return;
+	if(_event.type == ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_MOUSE) {
+		if(m_mouse.events_timer) {
+			m_mouse.update(10.0);
+			// mouse state is sent to the machine once per frame in GUI::update()
 		}
-		default:
-			break;
+	} else if(_event.type == ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_JOYSTICK) {
+		if(m_joystick[_event.code].events_timer) {
+			m_joystick[_event.code].update(10.0);
+			m_joystick[_event.code].send(m_machine);
+		}
+	} else if(_event.type == ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_PEVT) {
+		auto running_event = m_running_events.find(_event.code);
+		if(running_event) {
+			PDEBUGF(LOG_V2, LOG_GUI, "Timed event\n");
+			on_event_binding(*running_event, running_event->init_phase);
+			if(!running_event->is_running()) {
+				m_running_events.remove(running_event);
+			}
+		}
 	}
 }
 
@@ -1168,6 +1827,8 @@ void GUI::dispatch_rocket_event(const SDL_Event &event)
 
 void GUI::update(uint64_t _current_time)
 {
+	m_mouse.send(m_machine);
+
 	m_windows.update(_current_time);
 
 	/* during a libRocket Context update no other thread can call any windows
@@ -1697,10 +2358,16 @@ void GUI::pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase _phase)
 	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
+
 	PDEBUGF(LOG_V1, LOG_GUI, "Switch keymap func event\n");
-	
+	if(m_keymaps.size() <= 1) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  only 1 keymap installed\n");
+		return;
+	}
+
+	m_running_events.reset();
 	m_current_keymap = (m_current_keymap + 1) % m_keymaps.size();
-	
+
 	std::string mex = "Current keymap: ";
 	mex += m_keymaps[m_current_keymap].name();
 	show_message(mex.c_str());

@@ -53,7 +53,7 @@ struct InputEvent {
 		bool operator<(const Key &_rhs) const {
 			return (to_index() < _rhs.to_index());
 		}
-		bool is_key_modifier();
+		bool is_key_modifier() const;
 	} key;
 	
 	struct Pointing {
@@ -76,6 +76,7 @@ struct InputEvent {
 };
 
 struct ProgramEvent {
+	// FIXME how about using oop principles? (how about no?)
 	enum class Type {
 		EVT_NONE = 0,
 		EVT_PROGRAM_FUNC = 1,
@@ -83,7 +84,8 @@ struct ProgramEvent {
 		EVT_JOY_BUTTON = 4,
 		EVT_JOY_AXIS = 8,
 		EVT_MOUSE_BUTTON = 16,
-		EVT_MOUSE_AXIS = 32
+		EVT_MOUSE_AXIS = 32,
+		EVT_COMMAND = 64
 	};
 	
 	enum class FuncName {
@@ -106,7 +108,22 @@ struct ProgramEvent {
 		FUNC_EXIT                  // close program
 	};
 	
+	enum class CommandName {
+		CMD_NONE,
+		CMD_WAIT,
+		CMD_RELEASE,
+		CMD_SKIP_TO,
+		CMD_AUTOFIRE
+	};
+	
+	enum Constant {
+		CONST_TYPEMATIC_DELAY = -1,
+		CONST_TYPEMATIC_RATE = -2
+	};
+	
 	Type type = Type::EVT_NONE;
+	bool masked = false;
+	
 	Keys key = KEY_NONE;
 	
 	struct Func {
@@ -121,6 +138,7 @@ struct ProgramEvent {
 		uint8_t which = 0;
 		uint8_t button = 0;
 		uint8_t axis = 0;
+		int params[3] = {0,0,0};
 		bool operator==(const ProgramEvent::Joy &_rhs) const {
 			return (which == _rhs.which && button == _rhs.button && axis == _rhs.axis);
 		}
@@ -129,37 +147,60 @@ struct ProgramEvent {
 	struct Mouse {
 		MouseButton button = MouseButton::MOUSE_NOBTN;
 		uint8_t axis = 0;
-		int params[2] = {0,0};
+		int params[3] = {0,0,0};
 		bool operator==(const ProgramEvent::Mouse &_rhs) const {
 			return (button == _rhs.button && axis == _rhs.axis);
 		}
 	} mouse;
 	
+	struct Command {
+		CommandName name = CommandName::CMD_NONE;
+		int params[2] = {0,0};
+		bool operator==(const ProgramEvent::Command &_rhs) const {
+			return (name == _rhs.name);
+		}
+	} command;
+	
 	std::string name;
 	
 	ProgramEvent() {}
 	ProgramEvent(const std::string &_tok);
+	ProgramEvent(const char *_tok);
 	
 	bool operator==(const ProgramEvent &_rhs) const {
 		return (type == _rhs.type && func == _rhs.func && key == _rhs.key &&
-				joy == _rhs.joy && mouse == _rhs.mouse);
+				joy == _rhs.joy && mouse == _rhs.mouse && command == _rhs.command);
 	}
+	
+	bool is_key_modifier() const;
 };
 
 class Keymap
 {
 public:
 	struct Binding {
-		InputEvent ievt; 
+		InputEvent ievt;
 		std::vector<ProgramEvent> pevt;
+		enum class Mode {
+			DEFAULT, ONE_SHOT
+			// TODO LATCHED
+		} mode = Mode::DEFAULT;
 		std::string name;
-		
+		std::string group;
+
+		Binding() {}
 		Binding(InputEvent _ie, std::vector<ProgramEvent> _pe, std::string _n) : 
 			ievt(_ie), pevt(_pe), name(_n) {}
-		
-		bool has_prg_event(ProgramEvent) const;
-		bool is_pevt_keycombo();
-		void remove_pevt_kmods();
+
+		bool operator!=(const Binding &_rhs) const {
+			return (name != _rhs.name);
+		}
+		void parse_option(std::string);
+		bool has_prg_event(const ProgramEvent&) const;
+		bool has_cmd_event(ProgramEvent::CommandName _cmd, size_t _idx_from = 0) const;
+		bool is_ievt_keycombo() const;
+		bool is_pevt_keycombo() const;
+		void mask_pevt_kmods(bool _mask = true);
 	};
 
 private:
@@ -193,16 +234,22 @@ public:
 	static const std::map<SDL_Keycode, std::string> ms_sdl_keycode_str_table;
 	static const std::map<SDL_Scancode, std::string> ms_sdl_scancode_str_table;
 	static const std::map<std::string, ProgramEvent::FuncName> ms_prog_funcs_table;
+	static const std::map<std::string, ProgramEvent::CommandName> ms_commands_table;
+	static const std::map<std::string, ProgramEvent::Constant> ms_constants_table;
 
 private:
-	void add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name);
+	Binding * add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name);
 	void add_binding(const InputEvent::Key &_kevt, const Binding *_binding);
 	
 	const Binding *find_input_binding(const InputEvent::Key &_kevt) const;
 	const Binding *find_input_binding(const InputEvent::Pointing &_pevt) const;
 
 	std::string parse_next_line(std::ifstream &_fp, int &_linec,
-			std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_);
+			std::vector<std::string> &itoks_, std::vector<std::string> &ptoks_,
+			std::vector<std::string> &opt_toks_);
+	
+	void expand_macros(std::vector<ProgramEvent> &_pevts);
+	bool apply_typematic(std::vector<ProgramEvent> &_pevts);
 };
 
 #endif

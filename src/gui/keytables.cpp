@@ -54,6 +54,21 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_EXIT",                  ProgramEvent::FuncName::FUNC_EXIT                 }
 };
 
+const std::map<std::string, ProgramEvent::CommandName> Keymap::ms_commands_table = {
+	{ "WAIT",     ProgramEvent::CommandName::CMD_WAIT     },
+	{ "RELEASE",  ProgramEvent::CommandName::CMD_RELEASE  },
+	{ "REPEAT",   ProgramEvent::CommandName::CMD_SKIP_TO  },
+	{ "SKIP_TO",  ProgramEvent::CommandName::CMD_SKIP_TO  },
+	{ "AUTOFIRE", ProgramEvent::CommandName::CMD_AUTOFIRE }
+};
+
+const std::map<std::string, ProgramEvent::Constant> Keymap::ms_constants_table = {
+	{ "TMD", ProgramEvent::Constant::CONST_TYPEMATIC_DELAY },
+	{ "TMR", ProgramEvent::Constant::CONST_TYPEMATIC_RATE  }
+};
+
+
+
 const std::map<std::string, Keys> Keymap::ms_keycode_table = {
 	{ "KEY_CTRL_L", KEY_CTRL_L },
 	{ "KEY_SHIFT_L", KEY_SHIFT_L },
