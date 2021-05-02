@@ -30,16 +30,18 @@
 
 void InputEvent::parse_token(const std::string &_tok)
 {
+	auto uptok = str_to_upper(_tok);
+
 	if(!name.empty()) {
 		name += "+";
 	}
-	name += str_to_upper(_tok);
+	name += uptok;
 	str_replace_all(name, "KMOD_", "");
 	str_replace_all(name, "SDLK_", "");
 	str_replace_all(name, "SDL_SCANCODE_", "");
 	
 	// is it an SDL scancode?
-	key.scancode = Keymap::get_SDL_Scancode_from_name(_tok);
+	key.scancode = Keymap::get_SDL_Scancode_from_name(uptok);
 	if(key.scancode != SDL_SCANCODE_UNKNOWN) {
 		type = Type::INPUT_KEY;
 		key.sym = SDLK_UNKNOWN;
@@ -47,7 +49,7 @@ void InputEvent::parse_token(const std::string &_tok)
 		return;
 	}
 	// is it an SDL keycode?
-	key.sym = Keymap::get_SDL_Keycode_from_name(_tok);
+	key.sym = Keymap::get_SDL_Keycode_from_name(uptok);
 	if(key.sym != SDLK_UNKNOWN) {
 		type = Type::INPUT_KEY;
 		key.scancode = SDL_SCANCODE_UNKNOWN;
@@ -55,7 +57,7 @@ void InputEvent::parse_token(const std::string &_tok)
 		return;
 	}
 	// is it an SDL keymod?
-	auto mod = Keymap::ms_sdl_kmod_table.find(_tok);
+	auto mod = Keymap::ms_sdl_kmod_table.find(uptok);
 	if(mod != Keymap::ms_sdl_kmod_table.end()) {
 		type = Type::INPUT_KEY;
 		key.mod |= mod->second;
@@ -66,7 +68,7 @@ void InputEvent::parse_token(const std::string &_tok)
 	// using a regular expression as indices can be arbitrarily big numbers
 	std::smatch match;
 	std::regex jre("^JOY_([^_]+)_([^_]+)_([^_]+)$"); // don't match with \\d+, I want to give the user good feedback
-	if(std::regex_match(_tok, match, jre)) {
+	if(std::regex_match(uptok, match, jre)) {
 		assert(match.size() == 4);
 		try {
 			pointing.which = std::stoi(match[1].str());
@@ -95,7 +97,7 @@ void InputEvent::parse_token(const std::string &_tok)
 	}
 	// is it mouse?
 	std::regex mre("^MOUSE_([^_]+)_([^_]+)$");
-	if(std::regex_match(_tok, match, mre)) {
+	if(std::regex_match(uptok, match, mre)) {
 		assert(match.size() == 3);
 		if(match[1].str() == "BUTTON") {
 			try {
@@ -154,12 +156,13 @@ bool InputEvent::Key::is_key_modifier() const
 ProgramEvent::ProgramEvent(const std::string &_tok)
 {
 	std::smatch match;
-	
+	auto uptok = str_to_upper(_tok);
+
 	// is it a FUNC?
-	if(std::regex_match(_tok, match, std::regex("^FUNC_.+$"))) {
-		std::string func_name = _tok;
+	if(std::regex_match(uptok, match, std::regex("^FUNC_.+$"))) {
+		std::string func_name;
 		// parse possible parameters
-		if(std::regex_match(_tok, match, std::regex("^(FUNC_[^\\(]+)\\((.+)\\)$")) && match[2].matched) {
+		if(std::regex_match(uptok, match, std::regex("^(FUNC_[^\\(]+)\\((.+)\\)$")) && match[2].matched) {
 			func_name = match[1].str();
 			auto params = str_parse_tokens(match[2].str(), ",");
 			if(params.empty()) {
@@ -169,29 +172,31 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 			for(unsigned i=0; i<params.size() && i<2; i++) {
 				func.params[i] = atoi(params[i].c_str());
 			}
+		} else {
+			func_name = uptok;
 		}
 		auto funcp = Keymap::ms_prog_funcs_table.find(func_name);
 		if(funcp != Keymap::ms_prog_funcs_table.end()) {
 			type = Type::EVT_PROGRAM_FUNC;
 			func.name = funcp->second;
-			name = _tok;
+			name = func_name;
 			return;
 		}
-		throw std::runtime_error(std::string("invalid program Function ") + func_name);
+		throw std::runtime_error(std::string("invalid program Function ") + _tok);
 	}
 	// is it a guest KEY event?
-	if(std::regex_match(_tok, match, std::regex("^KEY_.+$"))) {
+	if(std::regex_match(uptok, match, std::regex("^KEY_.+$"))) {
 		auto keyp = Keymap::ms_keycode_table.find(_tok);
 		if(keyp != Keymap::ms_keycode_table.end()) {
 			type = Type::EVT_KEY;
 			key = keyp->second;
-			name = _tok;
+			name = uptok;
 			return;
 		}
-		throw std::runtime_error(std::string("invalid emulated keyboard Key ") + match[0].str());
+		throw std::runtime_error(std::string("invalid emulated keyboard Key ") + _tok);
 	}
 	// is it a guest event of JOY?
-	if(std::regex_match(_tok, match, std::regex("^JOY_([^_]+)_([^_]+)_([^\\(_]+)(\\((.+)\\))?$"))) {
+	if(std::regex_match(uptok, match, std::regex("^JOY_([^_]+)_([^_]+)_([^\\(_]+)(\\((.+)\\))?$"))) {
 		assert(match.size() == 6);
 		if(match[1].str() == "A") {
 			joy.which = 0;
@@ -211,7 +216,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 			}
 			joy.button--;
 			type = Type::EVT_JOY_BUTTON;
-			name = _tok;
+			name = uptok;
 		} else if(match[2].str() == "AXIS") {
 			if(match[3].str() == "X") {
 				joy.axis = 0;
@@ -221,7 +226,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				throw std::runtime_error(std::string("invalid emulated Joystick axis letter ") + match[3].str() + ": must be X or Y");
 			}
 			type = Type::EVT_JOY_AXIS;
-			name = _tok;
+			name = uptok;
 		} else {
 			throw std::runtime_error("invalid emulated Joystick event: must be JOY_[A|B]_BUTTON_[1|2] or JOY_[A|B]_AXIS_[X|Y]");
 		}
@@ -232,10 +237,9 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				throw std::runtime_error(std::string("invalid parameters for ") + _tok);
 			}
 			for(unsigned i=0; i<params.size() && i<3; i++) {
-				auto lowc = str_to_lower(params[i]);
-				if(lowc == "max") {
+				if(params[i] == "MAX") {
 					joy.params[i] = 32767;
-				} else if(lowc == "-max") {
+				} else if(params[i] == "-MAX") {
 					joy.params[i] = -32768;
 				} else {
 					joy.params[i] = atoi(params[i].c_str());
@@ -245,7 +249,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 		return;
 	}
 	// is it a guest MOUSE event?
-	if(std::regex_match(_tok, match, std::regex("^MOUSE_([^_]+)_([^\\(]+)(\\((.+)\\))?$"))) {
+	if(std::regex_match(uptok, match, std::regex("^MOUSE_([^_]+)_([^\\(]+)(\\((.+)\\))?$"))) {
 		assert(match.size() == 5);
 		if(match[1].str() == "BUTTON") {
 			try {
@@ -254,7 +258,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				throw std::runtime_error(std::string("invalid emulated Mouse button number ") + match[2].str());
 			}
 			type = Type::EVT_MOUSE_BUTTON;
-			name = _tok;
+			name = uptok;
 		} else if(match[1].str() == "AXIS") {
 			if(match[2].str() == "X") {
 				mouse.axis = 0;
@@ -264,7 +268,7 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 				throw std::runtime_error(std::string("invalid emulated Mouse axis letter ") + match[2].str() + ": must be X or Y");
 			}
 			type = Type::EVT_MOUSE_AXIS;
-			name = _tok;
+			name = uptok;
 		} else {
 			throw std::runtime_error("invalid emulated Mouse event: must be MOUSE_BUTTON_n or MOUSE_AXIS_[X|Y]");
 		}
@@ -282,12 +286,12 @@ ProgramEvent::ProgramEvent(const std::string &_tok)
 	}
 	// maybe it's a CMD?
 	// keep it the last check as commands don't have a prefix
-	if(std::regex_match(_tok, match, std::regex("^([^\\(]+)(\\((.+)\\))?$", std::regex::ECMAScript|std::regex::icase))) {
+	if(std::regex_match(uptok, match, std::regex("^([^\\(]+)(\\((.+)\\))?$"))) {
 		auto cmdp = Keymap::ms_commands_table.find(str_to_upper(match[1].str()));
 		if(cmdp != Keymap::ms_commands_table.end()) {
 			type = Type::EVT_COMMAND;
 			command.name = cmdp->second;
-			name = _tok;
+			name = uptok;
 			if(match[3].matched) {
 				auto params = str_parse_tokens(match[3].str(), ",");
 				for(unsigned i=0; i<params.size() && i<2; i++) {
@@ -314,25 +318,26 @@ ProgramEvent::ProgramEvent(const char *_tok)
 void Keymap::Binding::parse_option(std::string _tok)
 {
 	std::smatch match;
+	auto uptok = str_to_upper(_tok);
 
-	if(std::regex_match(_tok, match, std::regex("^MODE:(.+)$", std::regex::ECMAScript|std::regex::icase))) {
+	if(std::regex_match(uptok, match, std::regex("^MODE:(.+)$"))) {
 		auto mode_str = str_to_lower(match[1].str());
-		if(mode_str == "1shot") {
+		if(match[1].str() == "1SHOT") {
 			mode = Mode::ONE_SHOT;
-		} else if(mode_str == "default") {
+		} else if(match[1].str() == "DEFAULT") {
 			mode = Mode::DEFAULT;
 		} else {
-			throw std::runtime_error("invalid mode of operation");
+			throw std::runtime_error(std::string("invalid mode of operation ") + _tok);
 		}
 		return;
 	}
-	if(std::regex_match(_tok, match, std::regex("^GROUP:(.+)$", std::regex::ECMAScript|std::regex::icase))) {
+	if(std::regex_match(uptok, match, std::regex("^GROUP:(.+)$"))) {
 		group = match[1].str();
 		return;
 	}
 
 	// oops
-	throw std::runtime_error("unrecognized identifier");
+	throw std::runtime_error(std::string("unrecognized identifier") + _tok);
 }
 
 

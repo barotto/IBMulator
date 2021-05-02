@@ -118,6 +118,9 @@
 #  - Normal 'D' key press, but if kept pressed for >250ms runs the DOS 'dir' command instead of typematic repeats:
 #     SDLK_d = KEY_D + wait(250) + KEY_I + KEY_R + KEY_ENTER
 #
+#
+# Keywords and identifiers are case insensitive, so for example `SDLK_a` is the same as `sdlk_a` and `SDLK_A`.
+#
 
 ### Mouse bindings
 
