@@ -7,7 +7,7 @@
 #
 #
 # The general syntax for this file is:
-#  INPUT_EVENT = IBMULATOR_EVENT [+IBMULATOR_EVENT...]
+#  INPUT_EVENT = IBMULATOR_EVENT [+IBMULATOR_EVENT...] [; OPTION...]
 #
 #
 # INPUT_EVENT can be:
@@ -34,6 +34,16 @@
 #  REPEAT              : equivalent to SKIP_TO(1)
 #  AUTOFIRE(x)         : will be expanded to WAIT(x/2) + RELEASE + WAIT(x/2) + REPEAT
 #                        default for x is 50, ie. ~20 clicks per second
+#
+#
+# OPTION can be:
+#  MODE:m              : macro execution mode; possible values for `m` are:
+#                        default: default mode of execution, macro starts when the binding is activated and ends when deactivated
+#                        1shot: macro starts when the binding is activated and ends immediately
+#  GROUP:g             : timed macros belonging to the same group `g` can't run concurrently
+#
+# To specify multiple binding options separate them with spaces.
+#
 #
 # SKIP_TO and REPEAT have an implicit minimum wait time dependent on the screen refresh rate.
 # To avoid event spamming, they should be used in conjunction with WAIT.

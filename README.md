@@ -305,7 +305,7 @@ Along with simple key presses or axes motion, a keymap allows you to specify
 macros with multiple timed commands too.
 
 The general syntax for a binding line in the keymap file is:  
-`INPUT_EVENT = IBMULATOR_EVENT [+IBMULATOR_EVENT...]`
+`INPUT_EVENT = IBMULATOR_EVENT [+IBMULATOR_EVENT...] [; OPTION...]`
 
 `INPUT_EVENT` can be:
 * `SDLK_*`: SDL keyboard keycode symbol
@@ -329,9 +329,18 @@ buttons have n>3)
 * `RELEASE(i)`: release key/button at index i (1-based); if i=0 or not specified
 then all keys will be released
 * `SKIP_TO(i)`: skip event execution to event at index i (1-based)
-* `REPEAT`: equivalent to SKIP_TO(1)
+* `REPEAT`: equivalent to `SKIP_TO(1)`
 * `AUTOFIRE(x)`: will be expanded to `WAIT(x/2) + RELEASE + WAIT(x/2) + REPEAT`;
 default for x is 50, ie. ~20 clicks per second
+
+`OPTION` can be:
+* `MODE:m`: macro execution mode; `m` can be:
+ * `default`: default mode of execution, i.e. macro starts when the binding is
+activated and ends when deactivated
+ * `1shot`: macro starts when the binding is activated and ends immediately
+* `GROUP:g`: timed macros belonging to the same group `g` can't run concurrently
+
+To specify multiple binding options separate them with spaces.
 
 For keyboard events IBMulator uses the SDL library's identifiers.  Refer to
 https://wiki.libsdl.org/SDL_Keycode for the list of SDL symbols.
@@ -385,9 +394,10 @@ Valid `FUNC_* ` functions are:
 buttons, all optional:
 * argument 1 (`p`): amount of pixels / maximum speed of the mouse pointer
 (per 10ms, default 10)
-* argument 2 (`t`): type of movement, 0=continuous/proportional, 1=accelerated
-(default 0)
+* argument 2 (`t`): type of movement, 0=continuous/proportional, 1=accelerated,
+2=single shot (default 0)
 * argument 3 (`a`): amount of acceleration (default 5, applied only when t=1)
+
 These parameters won't apply when a mouse axis is mapped to a mouse axis; in
 that case a direct (relative movement) translation will be applied.
 For buttons to mouse axis you'll have to specify the direction; for joystick /

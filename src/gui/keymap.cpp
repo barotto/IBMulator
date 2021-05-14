@@ -321,13 +321,12 @@ void Keymap::Binding::parse_option(std::string _tok)
 	auto uptok = str_to_upper(_tok);
 
 	if(std::regex_match(uptok, match, std::regex("^MODE:(.+)$"))) {
-		auto mode_str = str_to_lower(match[1].str());
 		if(match[1].str() == "1SHOT") {
 			mode = Mode::ONE_SHOT;
 		} else if(match[1].str() == "DEFAULT") {
 			mode = Mode::DEFAULT;
 		} else {
-			throw std::runtime_error(std::string("invalid mode of operation ") + _tok);
+			throw std::runtime_error(std::string("invalid binding mode ") + _tok);
 		}
 		return;
 	}

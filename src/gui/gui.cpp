@@ -467,7 +467,6 @@ void GUI::Mouse::stop(Axis _axis)
 {
 	speed[_axis] = .0;
 	accel[_axis] = .0;
-	rel[_axis] = .0;
 	if(speed[Axis::X] == 0.0 && speed[Axis::Y] == 0.0) {
 		disable_timer();
 	}
@@ -661,58 +660,60 @@ void GUI::send_key_to_machine(Keys _key, uint32_t _keystate)
 
 void GUI::pevt_key(Keys _key, EventPhase _phase)
 {
-	auto sendk = [=](EventPhase ph) {
-		if(m_machine->is_on()) {
-			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: keyboard key %s: %s\n", 
-					Keymap::ms_keycode_str_table.at(_key).c_str(),
-					ph==EventPhase::EVT_START?"KEY_PRESSED":"KEY_RELEASED");
-		}
-		send_key_to_machine(_key, ph==EventPhase::EVT_START?KEY_PRESSED:KEY_RELEASED);
-	};
-	if(_phase == EventPhase::EVT_ONESHOT) {
-		sendk(EventPhase::EVT_START);
-		sendk(EventPhase::EVT_END);
-	} else {
-		sendk(_phase);
+	if(m_machine->is_on()) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  pevt: keyboard key %s: %s\n", 
+				Keymap::ms_keycode_str_table.at(_key).c_str(),
+				_phase==EventPhase::EVT_START?"KEY_PRESSED":"KEY_RELEASED");
 	}
+	send_key_to_machine(_key, _phase==EventPhase::EVT_START?KEY_PRESSED:KEY_RELEASED);
 }
 
-void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_event, EventPhase _phase)
+void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_sdl_evt,
+		EventPhase _phase, Keymap::Binding::Mode _mode)
 {
-	switch(_event.type) {
+	int pixper10ms = _mouse.params[0]==0 ? 10 : _mouse.params[0];
+
+	switch(_sdl_evt.type) {
 		case SDL_MOUSEMOTION: {
+			if(_phase == EventPhase::EVT_END) {
+				return;
+			}
 			// direct translation, value is the non zero relative amount
 			int amount = 0;
-			if(_event.motion.xrel != 0) {
-				amount = _event.motion.xrel;
+			if(_sdl_evt.motion.xrel != 0) {
+				amount = _sdl_evt.motion.xrel;
 			} else {
-				amount = -_event.motion.yrel;
+				amount = -_sdl_evt.motion.yrel;
 			}
 			m_mouse.rel[_mouse.axis] += amount;
 			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", amount);
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
-			if(_phase == EventPhase::EVT_ONESHOT) {
-				if(_event.jaxis.value < 0) {
-					m_mouse.rel[_mouse.axis] += -1.0 * _mouse.params[0];
-				} else {
-					m_mouse.rel[_mouse.axis] += _mouse.params[0];
-				}
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.params[0]);
-			} else if(_phase == EventPhase::EVT_END || _event.jaxis.value == 0) {
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _mouse.axis?"Y":"X");
+			if(_phase == EventPhase::EVT_END || _sdl_evt.jaxis.value == 0) {
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: stop\n", _mouse.axis?"Y":"X");
 				m_mouse.stop(static_cast<Mouse::Axis>(_mouse.axis));
 			} else {
-				double value = double(_event.jaxis.value) / 32768.0;
+				if(_mouse.params[1] == 2) {
+					// single shot
+					int amount = 0;
+					if(_sdl_evt.jaxis.value < 0) {
+						amount = -1.0 * pixper10ms;
+					} else {
+						amount = pixper10ms;
+					}
+					m_mouse.rel[_mouse.axis] += amount;
+					PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: single shot %d pixels\n", _mouse.axis?"Y":"X", amount);
+					return;
+				}
+				// accelerated and continuous/proportional
+				double value = double(_sdl_evt.jaxis.value) / 32768.0;
 				double amount = smoothstep(0.0, 1.0, std::fabs(value));
-				m_mouse.maxspeed[_mouse.axis] = _mouse.params[0]; // pixels per 10ms
+				m_mouse.maxspeed[_mouse.axis] = pixper10ms;
 				if(value < .0) {
 					m_mouse.maxspeed[_mouse.axis] *= -1.0;
 				}
-				if(_phase != EventPhase::EVT_ONESHOT) {
-					m_mouse.maxspeed[_mouse.axis] = amount * m_mouse.maxspeed[_mouse.axis];
-				}
+				m_mouse.maxspeed[_mouse.axis] = amount * m_mouse.maxspeed[_mouse.axis];
 				double accel = double(_mouse.params[2]) / 1000.0;
 				if(accel == .0) {
 					accel = 0.005;
@@ -741,14 +742,14 @@ void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_e
 		case SDL_KEYDOWN:
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_JOYBUTTONDOWN:
-			if(_phase == EventPhase::EVT_ONESHOT) {
-				m_mouse.rel[_mouse.axis] += _mouse.params[0];
-				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", _mouse.params[0]);
+			if(_mode == Keymap::Binding::Mode::ONE_SHOT) {
+				m_mouse.rel[_mouse.axis] += pixper10ms;
+				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", pixper10ms);
 			} else if(_phase == EventPhase::EVT_END) {
 				PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: 0.00 pixels/10ms\n", _mouse.axis?"Y":"X");
 				m_mouse.stop(static_cast<Mouse::Axis>(_mouse.axis));
 			} else {
-				m_mouse.maxspeed[_mouse.axis] = _mouse.params[0]; // pixels per 10ms
+				m_mouse.maxspeed[_mouse.axis] = pixper10ms;
 				double accel = double(_mouse.params[2]) / 1000.0;
 				if(accel == .0) {
 					accel = 0.005;
@@ -947,7 +948,7 @@ void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_AXIS:
 				PDEBUGF(LOG_V2, LOG_GUI, "mouse axis\n");
-				pevt_mouse_axis(pevt->mouse, _event.sdl_evt, _phase);
+				pevt_mouse_axis(pevt->mouse, _event.sdl_evt, _phase, _event.binding.mode);
 				break;
 			case ProgramEvent::Type::EVT_MOUSE_BUTTON:
 				PDEBUGF(LOG_V2, LOG_GUI, "mouse button\n");
@@ -1071,8 +1072,8 @@ void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint
 }
 
 GUI::RunningEvents::Event::Event(Sint32 _code, const SDL_Event &_sdl_evt,
-		const Keymap::Binding *_binding, EventPhase _init_phase)
-: code(_code), init_phase(_init_phase)
+		const Keymap::Binding *_binding)
+: code(_code)
 {
 	std::memcpy(&sdl_evt, &_sdl_evt, sizeof(SDL_Event));
 	if(_binding) {
@@ -1087,13 +1088,13 @@ GUI::RunningEvents::Event::~Event()
 }
 
 std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::start_new(
-		const SDL_Event &_sdl_evt, const Keymap::Binding *_binding, EventPhase _init_phase)
+		const SDL_Event &_sdl_evt, const Keymap::Binding *_binding)
 {
 	auto running_evt = find(_sdl_evt);
 	if(running_evt) {
 		remove(running_evt);
 	}
-	running_evt = std::make_shared<RunningEvents::Event>(count, _sdl_evt, _binding, _init_phase);
+	running_evt = std::make_shared<RunningEvents::Event>(count, _sdl_evt, _binding);
 	events[count] = running_evt;
 	count++;
 	return running_evt;
@@ -1227,27 +1228,6 @@ void GUI::RunningEvents::reset()
 	events.clear();
 }
 
-GUI::EventPhase GUI::get_event_phase(GUI::EventPhase _phase, const Keymap::Binding *_binding)
-{
-	if(_binding) {
-		if(_binding->mode == Keymap::Binding::Mode::DEFAULT) {
-			switch(_phase) {
-			case EventPhase::EVT_START:
-			case EventPhase::EVT_END:
-			case EventPhase::EVT_REPEAT:
-				return _phase;
-			case EventPhase::EVT_ONESHOT:
-				return EventPhase::EVT_START;
-			default:
-				return _phase;
-			}
-		} else if(_binding->mode == Keymap::Binding::Mode::ONE_SHOT) {
-			return EventPhase::EVT_ONESHOT;
-		}
-	}
-	return _phase;
-}
-
 void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 {
 	bool gui_input = !(m_input_grab || !m_windows.need_input());
@@ -1270,7 +1250,6 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
-	phase = get_event_phase(phase, binding_ptr);
 
 	if(gui_input) {
 		// do gui stuff
@@ -1299,11 +1278,24 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	if(binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
 	}
+
+	std::shared_ptr<RunningEvents::Event> running_evt;
+
+	if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+		if(phase == EventPhase::EVT_START) {
+			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+			on_event_binding(*running_evt, EventPhase::EVT_START);
+			if(!running_evt->is_running()) {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
+				m_running_events.remove(running_evt);
+			}
+		}
+		return;
+	}
 	
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
 
-	std::shared_ptr<RunningEvents::Event> running_evt;
 	bool finish = false;
 	if(phase == EventPhase::EVT_START) {
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
@@ -1352,13 +1344,12 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			finish = true;
 		}
 	} else {
-		// ONE SHOT
-		running_evt = m_running_events.start_new(_sdl_event, binding_ptr, phase);
+		assert(false);
 	}
 
 	on_event_binding(*running_evt, phase);
 
-	if(finish || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
+	if(finish) {
 		if(running_evt->combo_link && m_running_events.is_active(running_evt->combo_link)) {
 			// release combo modifiers
 			PDEBUGF(LOG_V2, LOG_GUI, "  output combo finish\n");
@@ -1384,11 +1375,12 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 	auto on_mouse_axis_event = [&](const char *_axis_name, SDL_Event _axis_evt) {
 		auto binding = m_keymaps[m_current_keymap].find_sdl_binding(_axis_evt.motion);
 		if(binding) {
-			// events are ONE SHOT only because mouse motion is relative
+			// events are ONE SHOT only because mouse motion is relative and there's no END condition
 			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis %s: %s\n", _axis_name, binding->name.c_str());
-			auto running_evt = m_running_events.start_new(_axis_evt, binding, EventPhase::EVT_ONESHOT);
-			on_event_binding(*running_evt, EventPhase::EVT_ONESHOT);
+			auto running_evt = m_running_events.start_new(_axis_evt, binding);
+			on_event_binding(*running_evt, EventPhase::EVT_START);
 			if(!running_evt->is_running()) {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
 				m_running_events.remove(running_evt);
 			}
 		} else {
@@ -1423,7 +1415,6 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
-	phase = get_event_phase(phase, binding_ptr);
 
 	if(!m_input_grab) {
 		// do gui stuff
@@ -1444,9 +1435,13 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 		return;
 	}
 
+	if(phase == EventPhase::EVT_END && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+		return;
+	}
+
 	std::shared_ptr<RunningEvents::Event> running_evt;
-	if(phase == EventPhase::EVT_START || phase == EventPhase::EVT_ONESHOT) {
-		running_evt = m_running_events.start_new(_sdl_event, binding_ptr, phase);
+	if(phase == EventPhase::EVT_START) {
+		running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 	} else {
 		running_evt = m_running_events.find(_sdl_event);
 		if(!running_evt) {
@@ -1456,8 +1451,18 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 
 	on_event_binding(*running_evt, phase);
 
-	if(phase == EventPhase::EVT_END || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
-		m_running_events.remove(running_evt);
+	switch(running_evt->binding.mode) {
+		case Keymap::Binding::Mode::ONE_SHOT:
+			if(phase == EventPhase::EVT_START && !running_evt->is_running()) {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
+				m_running_events.remove(running_evt);
+			}
+			break;
+		default:
+			if(phase == EventPhase::EVT_END) {
+				m_running_events.remove(running_evt);
+			}
+			break;
 	}
 }
 
@@ -1480,11 +1485,11 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 		return;
 	}
 
-	EventPhase phase1;
+	EventPhase phase;
 	if(_sdl_evt.jaxis.value == 0) {
-		phase1 = EventPhase::EVT_END;
+		phase = EventPhase::EVT_END;
 	} else {
-		phase1 = EventPhase::EVT_START;
+		phase = EventPhase::EVT_START;
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(jid, _sdl_evt.jaxis);
@@ -1495,23 +1500,35 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 	}
 	PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 
-	EventPhase phase = get_event_phase(phase1, binding_ptr);
-
 	std::shared_ptr<GUI::RunningEvents::Event> running_evt;
-	if(phase == EventPhase::EVT_ONESHOT) {
-		// search for a previous event start
+	if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  1shot mode\n");
 		running_evt = m_running_events.find(_sdl_evt);
 		if(running_evt) {
-			if(phase1 == EventPhase::EVT_END && !running_evt->is_running()) {
-				m_running_events.remove(running_evt);
+			if(phase == EventPhase::EVT_END) {
+				if(!running_evt->is_running()) {
+					m_running_events.remove(running_evt);
+				} else {
+					running_evt->remove = true;
+				}
 			}
 		} else {
-			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr, phase);
-			on_event_binding(*running_evt, phase);
+			if(phase == EventPhase::EVT_END) {
+				PDEBUGF(LOG_V2, LOG_GUI, "  event end without a start\n");
+				return;
+			}
+			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
+			on_event_binding(*running_evt, EventPhase::EVT_START);
+			if(running_evt->is_running()) {
+				running_evt->remove = false;
+			} else {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
+				// dont remove now, it will at the end or when timer stops
+			}
 		}
 	} else {
 		if(phase == EventPhase::EVT_START) {
-			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr, phase);
+			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
 		} else if(phase == EventPhase::EVT_END) {
 			running_evt = m_running_events.find(_sdl_evt);
 			if(!running_evt) {
@@ -1560,13 +1577,15 @@ void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 		phase = EventPhase::EVT_START;
 	} else if(_sdl_event.type == SDL_JOYBUTTONUP) {
 		phase = EventPhase::EVT_END;
+		if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+			return;
+		}
 	} else  {
 		assert(false);
 	}
-	phase = get_event_phase(phase, binding_ptr);
-	
+
 	std::shared_ptr<RunningEvents::Event> running_evt;
-	if(phase == EventPhase::EVT_START || phase == EventPhase::EVT_ONESHOT) {
+	if(phase == EventPhase::EVT_START) {
 		running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 	} else {
 		running_evt = m_running_events.find(_sdl_event);
@@ -1577,8 +1596,18 @@ void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 
 	on_event_binding(*running_evt, phase);
 
-	if(phase == EventPhase::EVT_END || (phase == EventPhase::EVT_ONESHOT && !running_evt->is_running())) {
-		m_running_events.remove(running_evt);
+	switch(running_evt->binding.mode) {
+		case Keymap::Binding::Mode::ONE_SHOT:
+			if(phase == EventPhase::EVT_START && !running_evt->is_running()) {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
+				m_running_events.remove(running_evt);
+			}
+			break;
+		default:
+			if(phase == EventPhase::EVT_END) {
+				m_running_events.remove(running_evt);
+			}
+			break;
 	}
 }
 
@@ -1754,8 +1783,11 @@ void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 		auto running_event = m_running_events.find(_event.code);
 		if(running_event) {
 			PDEBUGF(LOG_V2, LOG_GUI, "Timed event\n");
-			on_event_binding(*running_event, running_event->init_phase);
+			on_event_binding(*running_event, EventPhase::EVT_START);
 			if(!running_event->is_running()) {
+				if(running_event->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
+					on_event_binding(*running_event, EventPhase::EVT_END);
+				}
 				m_running_events.remove(running_event);
 			}
 		}

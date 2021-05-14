@@ -164,7 +164,7 @@ protected:
 	} m_mouse;
 
 	enum class EventPhase {
-		EVT_START, EVT_REPEAT, EVT_END, EVT_ONESHOT
+		EVT_START, EVT_REPEAT, EVT_END
 	};
 
 	struct RunningEvents {
@@ -172,12 +172,12 @@ protected:
 			Sint32 code = 0;
 			SDL_Event sdl_evt;
 			Keymap::Binding binding; // copy!
-			EventPhase init_phase = EventPhase::EVT_START;
 			unsigned pevt_idx = 0;
 			SDL_TimerID events_timer = 0;
 			std::shared_ptr<Event> combo_link;
+			bool remove = true;
 
-			Event(Sint32, const SDL_Event &, const Keymap::Binding *, EventPhase);
+			Event(Sint32, const SDL_Event &, const Keymap::Binding *);
 			~Event();
 
 			void enable_timer(Uint32 _interval_ms);
@@ -192,7 +192,7 @@ protected:
 		std::map<Sint32, std::shared_ptr<Event>> events;
 		Sint32 count = 0;
 
-		std::shared_ptr<Event> start_new(const SDL_Event &, const Keymap::Binding *, EventPhase _init_phase = EventPhase::EVT_START);
+		std::shared_ptr<Event> start_new(const SDL_Event &, const Keymap::Binding *);
 		std::shared_ptr<Event> find(SDL_Event _sdl_evt);
 		std::shared_ptr<Event> find(Sint32 _code);
 		std::vector<std::shared_ptr<Event>> find_mods(unsigned _sdl_mod);
@@ -350,8 +350,7 @@ public:
 	
 private:
 	void load_keymap(const std::string &_filename);
-	
-	static EventPhase get_event_phase(EventPhase _phase, const Keymap::Binding *);
+
 	void on_keyboard_event(const SDL_Event &_event);
 	void on_mouse_motion_event(const SDL_Event &_event);
 	void on_mouse_button_event(const SDL_Event &_event);
@@ -363,7 +362,7 @@ private:
 	void run_event_functions(const Keymap::Binding *_binding, EventPhase _phase);
 	
 	void pevt_key(Keys _key, EventPhase);
-	void pevt_mouse_axis(const ProgramEvent::Mouse &, const SDL_Event &, EventPhase);
+	void pevt_mouse_axis(const ProgramEvent::Mouse &, const SDL_Event &, EventPhase, Keymap::Binding::Mode);
 	void pevt_mouse_button(const ProgramEvent::Mouse &, EventPhase);
 	void pevt_joy_axis(const ProgramEvent::Joy &, const SDL_Event &, EventPhase);
 	void pevt_joy_button(const ProgramEvent::Joy &, EventPhase);
