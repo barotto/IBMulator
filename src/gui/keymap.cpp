@@ -629,6 +629,12 @@ void Keymap::load(const std::string &_filename)
 				continue;
 			}
 		}
+		if(binding->mode == Binding::Mode::DEFAULT) {
+			bool tm = apply_typematic(binding->pevt);
+			if(tm && binding->group.empty()) {
+				binding->group = "typematic";
+			}
+		}
 		PDEBUGF(LOG_V0, LOG_GUI, "  (%d) %s\n", total, line.c_str());
 	}
 
@@ -717,15 +723,11 @@ bool Keymap::apply_typematic(std::vector<ProgramEvent> &_pevts)
 
 Keymap::Binding * Keymap::add_binding(InputEvent &_ievt, std::vector<ProgramEvent> &_pevts, std::string &_name)
 {
-	// check for special cases.
 	expand_macros(_pevts);
-	bool tm = apply_typematic(_pevts);
 
 	m_bindings.emplace_back(_ievt, _pevts, _name);
 	auto binding = &m_bindings.back();
-	if(tm) {
-		binding->group = "typematic";
-	}
+
 	switch(_ievt.type) {
 		case InputEvent::Type::INPUT_KEY:
 			add_binding(_ievt.key, binding);
