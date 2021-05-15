@@ -187,6 +187,7 @@ public:
 		} mode = Mode::DEFAULT;
 		std::string name;
 		std::string group;
+		bool typematic = true;
 
 		Binding() {}
 		Binding(InputEvent _ie, std::vector<ProgramEvent> _pe, std::string _n) : 

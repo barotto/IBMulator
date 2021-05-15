@@ -41,6 +41,7 @@
 #                        default: default mode of execution, macro starts when the binding is activated and ends when deactivated
 #                        1shot: macro starts when the binding is activated and ends immediately
 #  GROUP:g             : timed macros belonging to the same group `g` can't run concurrently
+#  TYPEMATIC:NO        : disables the typematic keyboard feature
 #
 # To specify multiple binding options separate them with spaces.
 #

@@ -335,10 +335,12 @@ default for x is 50, ie. ~20 clicks per second
 
 `OPTION` can be:
 * `MODE:m`: macro execution mode; `m` can be:
- * `default`: default mode of execution, i.e. macro starts when the binding is
+    * `default`: default mode of execution, i.e. macro starts when the binding is
 activated and ends when deactivated
- * `1shot`: macro starts when the binding is activated and ends immediately
-* `GROUP:g`: timed macros belonging to the same group `g` can't run concurrently
+    * `1shot`: macro starts when the binding is activated and ends immediately
+* `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run
+concurrently
+* `TYPEMATIC:NO`: disables the typematic keyboard feature
 
 To specify multiple binding options separate them with spaces.
 

@@ -334,7 +334,13 @@ void Keymap::Binding::parse_option(std::string _tok)
 		group = match[1].str();
 		return;
 	}
-
+	if(std::regex_match(uptok, match, std::regex("^TYPEMATIC:(.+)$"))) {
+		if(match[1].str() == "NO") {
+			typematic = false;
+		}
+		return;
+	}
+	
 	// oops
 	throw std::runtime_error(std::string("unrecognized identifier") + _tok);
 }
@@ -629,9 +635,9 @@ void Keymap::load(const std::string &_filename)
 				continue;
 			}
 		}
-		if(binding->mode == Binding::Mode::DEFAULT) {
-			bool tm = apply_typematic(binding->pevt);
-			if(tm && binding->group.empty()) {
+		if(binding->typematic && binding->mode == Binding::Mode::DEFAULT) {
+			binding->typematic = apply_typematic(binding->pevt);
+			if(binding->typematic && binding->group.empty()) {
 				binding->group = "typematic";
 			}
 		}
