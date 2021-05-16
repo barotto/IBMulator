@@ -1279,24 +1279,11 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
 	}
 
-	std::shared_ptr<RunningEvents::Event> running_evt;
-
-	if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
-		if(phase == EventPhase::EVT_START) {
-			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
-			on_event_binding(*running_evt, EventPhase::EVT_START);
-			if(!running_evt->is_running()) {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				m_running_events.remove(running_evt);
-			}
-		}
-		return;
-	}
-	
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
 
-	bool finish = false;
+	std::shared_ptr<RunningEvents::Event> running_evt;
+	bool finish = (binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT);
 	if(phase == EventPhase::EVT_START) {
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
 			// this is true only for the main combo key.
@@ -1311,7 +1298,9 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 				PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
 				for(auto & modifier_evt : modifier_evts) {
 					// 1. link this event
-					modifier_evt->link_to(running_evt);
+					if(binding_ptr->mode != Keymap::Binding::Mode::ONE_SHOT) {
+						modifier_evt->link_to(running_evt);
+					}
 					// 2. mask any key modifier for the machine, so they won't be sent anymore by timed commands
 					modifier_evt->binding.mask_pevt_kmods();
 					// 3. release any key modifier sent to the machine by this binding
@@ -1330,6 +1319,9 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 		}
 	} else if(phase == EventPhase::EVT_END) {
+		if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+			return;
+		}
 		running_evt = m_running_events.find(_sdl_event);
 		if(!running_evt) {
 			PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
@@ -1350,11 +1342,17 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	on_event_binding(*running_evt, phase);
 
 	if(finish) {
+		if(running_evt->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
+			if(running_evt->is_running()) {
+				return;
+			}
+			on_event_binding(*running_evt, EventPhase::EVT_END);
+		}
 		if(running_evt->combo_link && m_running_events.is_active(running_evt->combo_link)) {
 			// release combo modifiers
 			PDEBUGF(LOG_V2, LOG_GUI, "  output combo finish\n");
 			running_evt->combo_link->binding.mask_pevt_kmods(false);
-			on_event_binding(*running_evt->combo_link, phase);
+			on_event_binding(*running_evt->combo_link, EventPhase::EVT_END);
 			m_running_events.remove(running_evt->combo_link);
 		}
 		m_running_events.remove(running_evt);
