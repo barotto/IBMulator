@@ -335,8 +335,8 @@ default for x is 50, ie. ~20 clicks per second
 
 `OPTION` can be:
 * `MODE:m`: macro execution mode; `m` can be:
-    * `default`: default mode of execution, i.e. macro starts when the binding is
-activated and ends when deactivated
+    * `default`: default mode of execution, i.e. macro starts when the binding
+is activated and ends when deactivated
     * `1shot`: macro starts when the binding is activated and ends immediately
 * `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run
 concurrently
@@ -400,10 +400,13 @@ buttons, all optional:
 2=single shot (default 0)
 * argument 3 (`a`): amount of acceleration (default 5, applied only when t=1)
 
+For buttons to mouse axis you must specify the direction with the sign of `p`;
+for joystick/gamepad axes to mouse axes the direction is auto determined and a
+negative `p` value will invert the direction.
 These parameters won't apply when a mouse axis is mapped to a mouse axis; in
-that case a direct (relative movement) translation will be applied.
-For buttons to mouse axis you'll have to specify the direction; for joystick /
-gamepad axes to mouse axes the direction is auto determined.
+that case a direct (relative movement) translation will be applied (only
+exception is the first parameter `p` that can be set to `-1` to invert the
+axis).
 
 `JOY_j_AXIS_n` events can have 3 arguments when they are mapped to buttons:
 * argument 1 (`v`): stop value, from -32768 to 32767 (sign sets the direction);

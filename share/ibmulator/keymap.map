@@ -92,8 +92,8 @@
 #  argument 1 (p): amount of pixels / maximum speed of the mouse pointer (per 10ms, default 10)
 #  argument 2 (t): type of movement, 0=continuous/proportional, 1=accelerated (default 0)
 #  argument 3 (a): amount of acceleration (default 5, applied only when t=1)
-# This won't apply when a mouse axis is mapped to a mouse axis; in that case a direct (relative movement) translation will be applied.
-# For buttons to mouse axis you'll have to specify the direction, for joy axis to mouse axis the direction is auto determined. 
+# For buttons to mouse axis you must specify the direction with the sign of `p`; for joystick/gamepad axes to mouse axes the direction is auto determined and a negative `p` value will invert the direction.
+# These parameters won't apply when a mouse axis is mapped to a mouse axis; in that case a direct (relative movement) translation will be applied (only exception is the first parameter `p` that can be set to `-1` to invert the axis).
 # Examples:
 #  SDLK_UP = MOUSE_AXIS_Y(10,1)       # accelerated movement with a max. speed of 10pix per 10ms
 #  SDLK_LEFT = MOUSE_AXIS_X(-5,0)     # -5pix per 10ms constant speed

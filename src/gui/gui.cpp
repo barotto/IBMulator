@@ -679,11 +679,13 @@ void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_s
 				return;
 			}
 			// direct translation, value is the non zero relative amount
+			// param 0 sets the direction
 			int amount = 0;
+			int sign = pixper10ms < 0 ? -1 : 1;
 			if(_sdl_evt.motion.xrel != 0) {
-				amount = _sdl_evt.motion.xrel;
+				amount = sign * _sdl_evt.motion.xrel;
 			} else {
-				amount = -_sdl_evt.motion.yrel;
+				amount = -1 * sign * _sdl_evt.motion.yrel;
 			}
 			m_mouse.rel[_mouse.axis] += amount;
 			PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse %s axis: %d pixels\n", _mouse.axis?"Y":"X", amount);
