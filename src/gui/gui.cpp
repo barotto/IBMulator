@@ -793,6 +793,10 @@ void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event, 
 	switch(_event.type) {
 		case SDL_MOUSEMOTION: {
 			double amount = .0;
+			double maxvalue = _joy.params[0];
+			if(maxvalue == 0.0) {
+				maxvalue = 32768.0;
+			}
 			if(_event.motion.x != 0) {
 				amount = _event.motion.x - (m_width / 2.0);
 				amount /= (m_width / 2.0);
@@ -801,13 +805,17 @@ void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event, 
 				amount /= (m_height / 2.0);
 			}
 			m_joystick[_joy.which].speed[_joy.axis] = 0;
-			m_joystick[_joy.which].value[_joy.axis] = amount * 32768.0;
+			m_joystick[_joy.which].value[_joy.axis] = amount * maxvalue;
 			m_joystick[_joy.which].maxvalue[_joy.axis] = m_joystick[_joy.which].value[_joy.axis];
 			break;
 		}
 		case SDL_JOYAXISMOTION: {
+			double maxvalue = _joy.params[0];
+			if(maxvalue == 0.0) {
+				maxvalue = 32768.0;
+			}
 			m_joystick[_joy.which].speed[_joy.axis] = 0;
-			m_joystick[_joy.which].value[_joy.axis] = _event.jaxis.value;
+			m_joystick[_joy.which].value[_joy.axis] = maxvalue * (_event.jaxis.value / 32768.0);
 			m_joystick[_joy.which].maxvalue[_joy.axis] = m_joystick[_joy.which].value[_joy.axis];
 			break;
 		}

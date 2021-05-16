@@ -408,12 +408,16 @@ that case a direct (relative movement) translation will be applied (only
 exception is the first parameter `p` that can be set to `-1` to invert the
 axis).
 
-`JOY_j_AXIS_n` events can have 3 arguments when they are mapped to buttons:
+`JOY_j_AXIS_n` events can have 3 arguments:
 * argument 1 (`v`): stop value, from -32768 to 32767 (sign sets the direction);
 you can also use `-max` and `max` strings (no default)
 * argument 2 (`t`): type of stick movement, 0=immediate, 1=constant speed
 (default 0)
 * argument 3 (`a`): speed of stick movement (default 500, applied only when t=1)
+
+Parameters `t` and `a` are applied only for keys and buttons; movement is
+automatically determined when you map mouse and joystick axes (a negative `v`
+value will invert the direction).
 
 `KEY_*` events have an implicit chain of commands at the end to emulate
 typematic repeats, but only when the key event is not part of a macro (except

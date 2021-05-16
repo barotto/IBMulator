@@ -107,6 +107,9 @@
 #                  you can also use -max and max strings (no default)
 #  argument 2 (t): type of stick movement, 0=immediate, 1=constant speed (default 0)
 #  argument 3 (a): speed of stick movement (default 500, applied only when t=1)
+# Parameters `t` and `a` are applied only for keys and buttons; movement is
+automatically determined when you map mouse and joystick axes (a negative `v`
+value will invert the direction).
 # Examples:
 #  SDLK_KP_2 = JOY_A_AXIS_Y(max,1)  # stick movement at constant speed from 0 to 32767
 #  SDLK_KP_4 = JOY_A_AXIS_X(-max,0) # immediate stick movement to -32768
