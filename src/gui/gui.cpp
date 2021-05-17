@@ -1287,13 +1287,15 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			mod1.c_str(), mod2.c_str());
 	if(binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
 	}
 
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
 
 	std::shared_ptr<RunningEvents::Event> running_evt;
-	bool finish = (binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT);
+	bool finish = (binding_ptr && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT);
 	if(phase == EventPhase::EVT_START) {
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
 			// this is true only for the main combo key.
@@ -1329,7 +1331,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 		}
 	} else if(phase == EventPhase::EVT_END) {
-		if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
+		if(binding_ptr && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
 			return;
 		}
 		running_evt = m_running_events.find(_sdl_event);
