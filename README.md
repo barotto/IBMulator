@@ -301,6 +301,20 @@ can set this parameter to `0` to disable all delays.
 A keymap is a file that defines mappings between input events, like key presses,
 and emulator's events.
 
+When IBMulator is launched for the first time a default keymap named
+`keymap.map` is copied inside the user's directory.
+
+IBMulator can load multiple keymaps, although only one can be active at any
+given time. This can be useful for switching controls depending on the running
+program.
+
+To specify the keymap(s) to load use the `[gui]:keymap` ini file value.  
+You can load multiple keymaps concatenating their name with the `|` character,
+like so:
+```
+keymap = my_keymap_1.map | my_keymap_2.map
+```
+
 Along with simple key presses or axes motion, a keymap allows you to specify
 macros with multiple timed commands too.
 
@@ -334,22 +348,29 @@ then all keys will be released
 default for x is 50, ie. ~20 clicks per second
 
 `OPTION` can be:
-* `MODE:m`: macro execution mode; `m` can be:
+* `MODE:m`: macro execution mode; possible values for `m` are:
     * `default`: default mode of execution, i.e. macro starts when the binding
 is activated and ends when deactivated
-    * `1shot`: macro starts when the binding is activated and ends immediately
+    * `1shot`: macro starts and ends immediately; timed macros will run until
+their completion (endless macros will run forever)
+    * `latched`: macro starts when the binding is activated and ends when it's
+activated again
 * `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run
 concurrently
 * `TYPEMATIC:NO`: disables the typematic keyboard feature
 
 To specify multiple binding options separate them with spaces.
 
-For keyboard events IBMulator uses the SDL library's identifiers.  Refer to
+For keyboard events IBMulator uses the SDL library's identifiers. Refer to
 https://wiki.libsdl.org/SDL_Keycode for the list of SDL symbols.
 
-`SKIP_TO` and `REPEAT` have an implicit minimum wait time dependent on the
-screen refresh rate. To avoid event spamming, they should be used in conjunction
-with `WAIT`.
+SDL keycodes depend on the current keyboard layout loaded in your operating
+system. SDL scancodes represent physical keyboard keys and are not affected by
+any OS remapping.
+
+`SKIP_TO` and `REPEAT` commands have an implicit minimum wait time dependent on
+the screen refresh rate. To avoid event spamming, they should be used in
+conjunction with `WAIT`.
 
 Valid `KMOD_*` keyboard modifiers are:
 * `KMOD_SHIFT`: any shift
@@ -365,13 +386,12 @@ Valid `KMOD_*` keyboard modifiers are:
 * `KMOD_LGUI`: left meta
 * `KMOD_RGUI`: right meta
 
-SDL keycodes depend on the current keyboard layout loaded in your operating
-system. SDL scancodes represent physical keyboard keys and are not affected by
-any OS remapping.
-
-For "modifier + key" combos to work you must specify them with the modifier(s)
-first, for example:  
+Key modifiers bindings have some limitations:
+* you must specify combos with the modifier(s) first, for example:
 `KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB`
+* SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when
+their mode of operation is not `default` and they are also used in combos (e.g.
+`KMOD_CTRL + SDLK_TAB`)
 
 Valid `FUNC_* ` functions are:
 * `FUNC_GUI_MODE_ACTION(x)`: GUI Mode action number x (see below)
@@ -440,20 +460,8 @@ command instead of typematic repeats:
 SDLK_d = KEY_D + wait(250) + KEY_I + KEY_R + KEY_ENTER
 ```
 
-When IBMulator is launched for the first time a default keymap is copied inside
-the user's directory. For the full list of identifiers and additional info
-please see the default keymap file.
-
-IBMulator can load multiple keymaps, although only one can be active at any
-given time. This can be useful for switching controls depending on the running
-program.
-
-To specify the keymap(s) to load use the `[gui]:keymap` ini file value.  
-You can load multiple keymaps concatenating their name with the `|` character,
-like so:
-```
-keymap = my_keymap_1.map | my_keymap_2.map
-```
+For the full list of identifiers and additional info please see the default
+keymap file.
 
 #### Default key bindings
 

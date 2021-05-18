@@ -182,8 +182,7 @@ public:
 		InputEvent ievt;
 		std::vector<ProgramEvent> pevt;
 		enum class Mode {
-			DEFAULT, ONE_SHOT
-			// TODO LATCHED
+			DEFAULT, ONE_SHOT, LATCHED
 		} mode = Mode::DEFAULT;
 		std::string name;
 		std::string group;

@@ -38,13 +38,17 @@
 #
 # OPTION can be:
 #  MODE:m              : macro execution mode; possible values for `m` are:
-#                        default: default mode of execution, macro starts when the binding is activated and ends when deactivated
-#                        1shot: macro starts when the binding is activated and ends immediately
+#                         default: default mode of execution, macro starts when the binding is activated and ends when deactivated
+#                         1shot: macro starts and ends immediately; timed macros will run until their completion (endless macros will run forever)
+#                         latched: macro starts when the binding is activated and ends when it's activated again
 #  GROUP:g             : timed macros belonging to the same group `g` can't run concurrently
 #  TYPEMATIC:NO        : disables the typematic keyboard feature
 #
 # To specify multiple binding options separate them with spaces.
 #
+#
+# SDL keycodes depend on the current keyboard layout loaded in your operating system.
+# SDL scancodes represent physical keyboard keys and are not affected by any OS remapping.
 #
 # SKIP_TO and REPEAT have an implicit minimum wait time dependent on the screen refresh rate.
 # To avoid event spamming, they should be used in conjunction with WAIT.
@@ -63,11 +67,10 @@
 #  KMOD_LGUI   : left meta
 #  KMOD_RGUI   : right meta
 #
-# SDL keycodes depend on the current keyboard layout loaded in your operating system.
-# SDL scancodes represent physical keyboard keys and are not affected by any OS remapping.
-#
-# For modifier+key combos to work you must specify them with the modifier(s) first, for example:
-#   KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB
+# Key modifiers bindings have some limitations:
+#  - you must specify combos with the modifier(s) first, for example:
+#     KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB
+#  - SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when their mode of operation is not `default` and they are also used in combos (e.g. `KMOD_CTRL + SDLK_TAB`)
 #
 # Valid FUNC_* functions are:
 #  FUNC_GUI_MODE_ACTION(x)   : GUI Mode action x (see README "Default key bindings")

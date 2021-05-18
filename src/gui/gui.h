@@ -175,6 +175,7 @@ protected:
 			unsigned pevt_idx = 0;
 			SDL_TimerID events_timer = 0;
 			std::shared_ptr<Event> combo_link;
+			bool linked = false;
 			bool remove = true;
 
 			Event(Sint32, const SDL_Event &, const Keymap::Binding *);
@@ -357,6 +358,7 @@ private:
 	void on_joystick_motion_event(const SDL_Event &_event);
 	void on_joystick_button_event(const SDL_Event &_event);
 	void on_joystick_event(const SDL_Event &_event);
+	void on_button_event(const SDL_Event &, const Keymap::Binding *, EventPhase);
 
 	void on_event_binding(RunningEvents::Event &, EventPhase, uint32_t _mask = 0);
 	void run_event_functions(const Keymap::Binding *_binding, EventPhase _phase);

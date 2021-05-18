@@ -323,6 +323,8 @@ void Keymap::Binding::parse_option(std::string _tok)
 	if(std::regex_match(uptok, match, std::regex("^MODE:(.+)$"))) {
 		if(match[1].str() == "1SHOT") {
 			mode = Mode::ONE_SHOT;
+		} else if(match[1].str() == "LATCHED") {
+			mode = Mode::LATCHED;
 		} else if(match[1].str() == "DEFAULT") {
 			mode = Mode::DEFAULT;
 		} else {
@@ -635,7 +637,7 @@ void Keymap::load(const std::string &_filename)
 				continue;
 			}
 		}
-		if(binding->typematic && binding->mode == Binding::Mode::DEFAULT) {
+		if(binding->typematic && binding->mode != Binding::Mode::ONE_SHOT) {
 			binding->typematic = apply_typematic(binding->pevt);
 			if(binding->typematic && binding->group.empty()) {
 				binding->group = "typematic";

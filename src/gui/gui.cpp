@@ -1223,10 +1223,12 @@ bool GUI::RunningEvents::is_active(std::shared_ptr<GUI::RunningEvents::Event> _e
 
 void GUI::RunningEvents::remove(std::shared_ptr<Event> _evt)
 {
-	_evt->disable_timer();
-	if(is_active(_evt)) {
-		events.erase(_evt->code);
-		PDEBUGF(LOG_V2, LOG_GUI, "running events: %u\n", events.size());
+	if(_evt) {
+		_evt->disable_timer();
+		if(is_active(_evt)) {
+			events.erase(_evt->code);
+			PDEBUGF(LOG_V2, LOG_GUI, "running events: %u\n", events.size());
+		}
 	}
 }
 
@@ -1285,16 +1287,48 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			Keymap::ms_sdl_keycode_str_table.find(_sdl_event.key.keysym.sym)->second.c_str(),
 			Keymap::ms_sdl_scancode_str_table.find(_sdl_event.key.keysym.scancode)->second.c_str(),
 			mod1.c_str(), mod2.c_str());
-	if(binding_ptr) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
-	} else {
-		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
-	}
 
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
 
 	std::shared_ptr<RunningEvents::Event> running_evt;
+
+	if(binding_ptr) {
+		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
+		running_evt = m_running_events.find(_sdl_event);
+		if((running_evt && running_evt->binding.mode == Keymap::Binding::Mode::LATCHED) || 
+		   (!running_evt && binding_ptr->mode == Keymap::Binding::Mode::LATCHED)
+		) {
+			if(phase != EventPhase::EVT_START) {
+				return;
+			}
+			running_evt = m_running_events.find(_sdl_event);
+			if(!running_evt) {
+				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+				if(binding_ptr->is_ievt_keycombo()) {
+					// this is true only for the main combo key.
+					// terminate any events belonging to modifiers
+					auto modifier_evts = m_running_events.find_mods(binding_ptr->ievt.key.mod);
+					assert(!modifier_evts.empty());
+					PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
+					for(auto & modifier_evt : modifier_evts) {
+						on_event_binding(*modifier_evt, EventPhase::EVT_END);
+						m_running_events.remove(modifier_evt);
+					}
+				}
+				on_event_binding(*running_evt, EventPhase::EVT_START);
+			} else {
+				on_event_binding(*running_evt, EventPhase::EVT_END);
+				m_running_events.remove(running_evt);
+			}
+			return;
+		}
+	} else {
+		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+	}
+
+	// DEFAULT and ONE_SHOT modes
+
 	bool finish = (binding_ptr && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT);
 	if(phase == EventPhase::EVT_START) {
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
@@ -1306,12 +1340,12 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 				// binding of the key modifiers of this input combo event (re-read if unclear).
 				// find the starting combo key(s), which are always modifiers
 				auto modifier_evts = m_running_events.find_mods(binding_ptr->ievt.key.mod);
-				assert(!modifier_evts.empty());
 				PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
 				for(auto & modifier_evt : modifier_evts) {
 					// 1. link this event
 					if(binding_ptr->mode != Keymap::Binding::Mode::ONE_SHOT) {
 						modifier_evt->link_to(running_evt);
+						running_evt->linked = true;
 					}
 					// 2. mask any key modifier for the machine, so they won't be sent anymore by timed commands
 					modifier_evt->binding.mask_pevt_kmods();
@@ -1323,6 +1357,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 							send_key_to_machine(pevt.key, KEY_RELEASED);
 						}
 					}
+					modifier_evt->binding.mode = Keymap::Binding::Mode::DEFAULT;
 				}
 			} else {
 				running_evt->restart();
@@ -1342,7 +1377,9 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		if(running_evt->binding.is_ievt_keycombo() && running_evt->binding.is_pevt_keycombo()) {
 			// this is true only for the main combo key.
 			// release everything on the guest except the modifiers.
-			running_evt->binding.mask_pevt_kmods();
+			if(running_evt->linked) {
+				running_evt->binding.mask_pevt_kmods();
+			}
 			running_evt->disable_timer();
 		} else {
 			finish = true;
@@ -1445,35 +1482,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 		return;
 	}
 
-	if(phase == EventPhase::EVT_END && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
-		return;
-	}
-
-	std::shared_ptr<RunningEvents::Event> running_evt;
-	if(phase == EventPhase::EVT_START) {
-		running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
-	} else {
-		running_evt = m_running_events.find(_sdl_event);
-		if(!running_evt) {
-			return;
-		}
-	}
-
-	on_event_binding(*running_evt, phase);
-
-	switch(running_evt->binding.mode) {
-		case Keymap::Binding::Mode::ONE_SHOT:
-			if(phase == EventPhase::EVT_START && !running_evt->is_running()) {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				m_running_events.remove(running_evt);
-			}
-			break;
-		default:
-			if(phase == EventPhase::EVT_END) {
-				m_running_events.remove(running_evt);
-			}
-			break;
-	}
+	on_button_event(_sdl_event, binding_ptr, phase);
 }
 
 void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
@@ -1511,46 +1520,75 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 	PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 
 	std::shared_ptr<GUI::RunningEvents::Event> running_evt;
-	if(binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  1shot mode\n");
-		running_evt = m_running_events.find(_sdl_evt);
-		if(running_evt) {
-			if(phase == EventPhase::EVT_END) {
-				if(!running_evt->is_running()) {
-					m_running_events.remove(running_evt);
+	switch(binding_ptr->mode) {
+		case Keymap::Binding::Mode::ONE_SHOT:
+			PDEBUGF(LOG_V2, LOG_GUI, "  1shot mode\n");
+			running_evt = m_running_events.find(_sdl_evt);
+			if(running_evt) {
+				if(phase == EventPhase::EVT_END) {
+					if(!running_evt->is_running()) {
+						m_running_events.remove(running_evt);
+					} else {
+						running_evt->remove = true;
+					}
+				}
+				// start, old event
+				// do nothing
+			} else {
+				if(phase == EventPhase::EVT_END) {
+					PDEBUGF(LOG_V2, LOG_GUI, "  event end without a start\n");
+					return;
+				}
+				// start, new event
+				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
+				on_event_binding(*running_evt, EventPhase::EVT_START);
+				if(running_evt->is_running()) {
+					running_evt->remove = false;
 				} else {
-					running_evt->remove = true;
+					on_event_binding(*running_evt, EventPhase::EVT_END);
+					// dont remove now, it will at the end or when timer stops
 				}
 			}
-		} else {
-			if(phase == EventPhase::EVT_END) {
-				PDEBUGF(LOG_V2, LOG_GUI, "  event end without a start\n");
-				return;
-			}
-			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
-			on_event_binding(*running_evt, EventPhase::EVT_START);
-			if(running_evt->is_running()) {
-				running_evt->remove = false;
-			} else {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				// dont remove now, it will at the end or when timer stops
-			}
-		}
-	} else {
-		if(phase == EventPhase::EVT_START) {
-			running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
-		} else if(phase == EventPhase::EVT_END) {
+			break;
+		case Keymap::Binding::Mode::LATCHED:
 			running_evt = m_running_events.find(_sdl_evt);
-			if(!running_evt) {
-				PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
-				return;
+			if(running_evt) {
+				if(phase == EventPhase::EVT_END) {
+					running_evt->remove = true;
+					return;
+				}
+				// start
+				if(running_evt->remove) {
+					on_event_binding(*running_evt, EventPhase::EVT_END);
+					m_running_events.remove(running_evt);
+				}
+			} else {
+				if(phase == EventPhase::EVT_END) {
+					PDEBUGF(LOG_V2, LOG_GUI, "  event end without a start\n");
+					return;
+				}
+				// start
+				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
+				on_event_binding(*running_evt, EventPhase::EVT_START);
+				running_evt->remove = false;
 			}
-			running_evt->sdl_evt.jaxis.value = _sdl_evt.jaxis.value;
-		}
-		on_event_binding(*running_evt, phase);
-		if(phase == EventPhase::EVT_END) {
-			m_running_events.remove(running_evt);
-		}
+			break;
+		default:
+			if(phase == EventPhase::EVT_START) {
+				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
+			} else if(phase == EventPhase::EVT_END) {
+				running_evt = m_running_events.find(_sdl_evt);
+				if(!running_evt) {
+					PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
+					return;
+				}
+				running_evt->sdl_evt.jaxis.value = _sdl_evt.jaxis.value;
+			}
+			on_event_binding(*running_evt, phase);
+			if(phase == EventPhase::EVT_END) {
+				m_running_events.remove(running_evt);
+			}
+		break;
 	}
 }
 
@@ -1594,27 +1632,52 @@ void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 		assert(false);
 	}
 
-	std::shared_ptr<RunningEvents::Event> running_evt;
-	if(phase == EventPhase::EVT_START) {
-		running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
-	} else {
-		running_evt = m_running_events.find(_sdl_event);
-		if(!running_evt) {
-			return;
-		}
+	on_button_event(_sdl_event, binding_ptr, phase);
+}
+
+void GUI::on_button_event(const SDL_Event &_sdl_event, const Keymap::Binding *_binding_ptr, EventPhase _phase)
+{
+	if(!_binding_ptr) {
+		return;
 	}
 
-	on_event_binding(*running_evt, phase);
+	std::shared_ptr<RunningEvents::Event> running_evt;
 
-	switch(running_evt->binding.mode) {
+	switch(_binding_ptr->mode) {
 		case Keymap::Binding::Mode::ONE_SHOT:
-			if(phase == EventPhase::EVT_START && !running_evt->is_running()) {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				m_running_events.remove(running_evt);
+			if(_phase == EventPhase::EVT_START) {
+				running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
+				on_event_binding(*running_evt, _phase);
+				if(!running_evt->is_running()) {
+					on_event_binding(*running_evt, EventPhase::EVT_END);
+					m_running_events.remove(running_evt);
+				}
+			}
+			break;
+		case Keymap::Binding::Mode::LATCHED:
+			if(_phase == EventPhase::EVT_START) {
+				running_evt = m_running_events.find(_sdl_event);
+				if(running_evt) {
+					on_event_binding(*running_evt, EventPhase::EVT_END);
+					m_running_events.remove(running_evt);
+				} else {
+					running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
+					on_event_binding(*running_evt, EventPhase::EVT_START);
+				}
 			}
 			break;
 		default:
-			if(phase == EventPhase::EVT_END) {
+			if(_phase == EventPhase::EVT_START) {
+				running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
+				on_event_binding(*running_evt, _phase);
+			} else {
+				running_evt = m_running_events.find(_sdl_event);
+				if(!running_evt) {
+					// this happens when events are run with GUI input active
+					PDEBUGF(LOG_V2, LOG_GUI, "  no running event\n");
+					return;
+				}
+				on_event_binding(*running_evt, _phase);
 				m_running_events.remove(running_evt);
 			}
 			break;
