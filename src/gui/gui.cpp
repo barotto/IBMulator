@@ -627,6 +627,8 @@ void GUI::RunningEvents::Event::generate_sdl_event()
 	event.user = userevent;
 
 	SDL_PushEvent(&event);
+
+	disable_timer();
 }
 
 void GUI::input_grab(bool _value)
