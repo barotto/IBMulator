@@ -1543,6 +1543,7 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
 				on_event_binding(*running_evt, EventPhase::EVT_START);
 				if(running_evt->is_running()) {
+					// event will be removed at the end
 					running_evt->remove = false;
 				} else {
 					on_event_binding(*running_evt, EventPhase::EVT_END);
@@ -1857,11 +1858,11 @@ void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 		if(running_event) {
 			PDEBUGF(LOG_V2, LOG_GUI, "Timed event\n");
 			on_event_binding(*running_event, EventPhase::EVT_START);
-			if(!running_event->is_running()) {
-				if(running_event->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
-					on_event_binding(*running_event, EventPhase::EVT_END);
+			if(!running_event->is_running() && running_event->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
+				on_event_binding(*running_event, EventPhase::EVT_END);
+				if(running_event->remove) {
+					m_running_events.remove(running_event);
 				}
-				m_running_events.remove(running_event);
 			}
 		}
 	}
