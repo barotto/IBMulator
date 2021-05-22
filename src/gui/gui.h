@@ -125,7 +125,6 @@ protected:
 	bool m_curr_model_changed;
 	std::vector<SDL_Joystick*> m_SDL_joysticks;
 	bool m_gui_visible;
-	bool m_input_grab;
 	uint m_mode;
 	unsigned m_framecap;
 	bool m_vsync;
@@ -167,7 +166,7 @@ protected:
 		EVT_START, EVT_REPEAT, EVT_END
 	};
 
-	struct RunningEvents {
+	struct InputSystem {
 		struct Event {
 			Sint32 code = 0;
 			SDL_Event sdl_evt;
@@ -192,17 +191,18 @@ protected:
 
 		GUI * gui;
 		std::map<Sint32, std::shared_ptr<Event>> events;
-		Sint32 count = 0;
+		Sint32 evt_count = 0;
+		bool grab = false;
 
-		std::shared_ptr<Event> start_new(const SDL_Event &, const Keymap::Binding *);
+		std::shared_ptr<Event> start_evt(const SDL_Event &, const Keymap::Binding *);
 		std::shared_ptr<Event> find(SDL_Event _sdl_evt);
 		std::shared_ptr<Event> find(Sint32 _code);
 		std::vector<std::shared_ptr<Event>> find_mods(unsigned _sdl_mod);
-		void stop_group(RunningEvents::Event &_event);
-		bool is_active(std::shared_ptr<GUI::RunningEvents::Event> _evt);
+		void stop_group(InputSystem::Event &_event);
+		bool is_active(std::shared_ptr<GUI::InputSystem::Event> _evt);
 		void remove(std::shared_ptr<Event>);
 		void reset();
-	} m_running_events;
+	} m_input;
 
 
 	struct Joystick {
@@ -286,7 +286,6 @@ protected:
 	void update_window_size(int _w, int _h);
 	void update_display_size();
 	void update_display_size_realistic();
-	void toggle_input_grab();
 	void input_grab(bool _value);
 	
 	virtual void shutdown_SDL();
@@ -361,7 +360,7 @@ private:
 	void on_joystick_event(const SDL_Event &_event);
 	void on_button_event(const SDL_Event &, const Keymap::Binding *, EventPhase);
 
-	void on_event_binding(RunningEvents::Event &, EventPhase, uint32_t _mask = 0);
+	void run_event_binding(InputSystem::Event &, EventPhase, uint32_t _mask = 0);
 	void run_event_functions(const Keymap::Binding *_binding, EventPhase _phase);
 	
 	void pevt_key(Keys _key, EventPhase);

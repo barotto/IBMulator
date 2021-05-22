@@ -111,7 +111,6 @@ m_height(480),
 m_SDL_window(nullptr),
 m_curr_model_changed(false),
 m_gui_visible(true),
-m_input_grab(false),
 m_mode(GUI_MODE_NORMAL),
 m_framecap(GUI_FRAMECAP_VGA),
 m_vsync(false),
@@ -123,7 +122,7 @@ m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
 m_rocket_context(nullptr)
 {
-	m_running_events.gui = this;
+	m_input.gui = this;
 	m_joystick[0].sdl_id = JOY_NONE;
 	m_joystick[1].sdl_id = JOY_NONE;
 	m_joystick[0].which = Joystick::Joy::A;
@@ -263,7 +262,6 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	}
 
 	m_gui_visible = true;
-	m_input_grab = false;
 
 	// JOYSTICK SUPPORT
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
@@ -578,16 +576,16 @@ void GUI::Joystick::send(Machine *_machine)
 	}
 }
 
-void GUI::RunningEvents::Event::enable_timer(Uint32 _interval_ms)
+void GUI::InputSystem::Event::enable_timer(Uint32 _interval_ms)
 {
 	disable_timer();
 	events_timer = SDL_AddTimer(_interval_ms,
-		&GUI::RunningEvents::Event::s_sdl_timer_callback,
+		&GUI::InputSystem::Event::s_sdl_timer_callback,
 		(void*)(intptr_t(code))
 	);
 }
 
-void GUI::RunningEvents::Event::disable_timer()
+void GUI::InputSystem::Event::disable_timer()
 {
 	if(events_timer) {
 		SDL_RemoveTimer(events_timer);
@@ -595,16 +593,16 @@ void GUI::RunningEvents::Event::disable_timer()
 	}
 }
 
-void GUI::RunningEvents::Event::restart()
+void GUI::InputSystem::Event::restart()
 {
 	disable_timer();
 	pevt_idx = 0;
 }
 
-Uint32 GUI::RunningEvents::Event::s_sdl_timer_callback(Uint32 _interval, void *_obj)
+Uint32 GUI::InputSystem::Event::s_sdl_timer_callback(Uint32 _interval, void *_obj)
 {
 	auto evt_code = intptr_t(_obj);
-	auto event = g_program.gui_instance()->m_running_events.find(evt_code);
+	auto event = g_program.gui_instance()->m_input.find(evt_code);
 	if(event) {
 		event->generate_sdl_event();
 	} else {
@@ -614,7 +612,7 @@ Uint32 GUI::RunningEvents::Event::s_sdl_timer_callback(Uint32 _interval, void *_
 	return 0;
 }
 
-void GUI::RunningEvents::Event::generate_sdl_event()
+void GUI::InputSystem::Event::generate_sdl_event()
 {
 	SDL_Event event;
 	SDL_UserEvent userevent;
@@ -641,12 +639,7 @@ void GUI::input_grab(bool _value)
 			SDL_SetRelativeMouseMode(SDL_FALSE);
 		}
 	}
-	m_input_grab = _value;
-}
-
-void GUI::toggle_input_grab()
-{
-	input_grab(!m_input_grab);
+	m_input.grab = _value;
 }
 
 void GUI::send_key_to_machine(Keys _key, uint32_t _keystate)
@@ -910,7 +903,7 @@ void GUI::run_event_functions(const Keymap::Binding *_binding, EventPhase _phase
 	}
 }
 
-void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint32_t _type_mask)
+void GUI::run_event_binding(InputSystem::Event &_event, EventPhase _phase, uint32_t _type_mask)
 {
 	if(!_event.binding.pevt.size()) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  nothing to do\n");
@@ -921,7 +914,7 @@ void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint
 	} else {
 		// search for running events of the same group and stop them
 		if(!_event.binding.group.empty()) {
-			m_running_events.stop_group(_event);
+			m_input.stop_group(_event);
 		}
 	}
 
@@ -1084,7 +1077,7 @@ void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint
 	}
 }
 
-GUI::RunningEvents::Event::Event(Sint32 _code, const SDL_Event &_sdl_evt,
+GUI::InputSystem::Event::Event(Sint32 _code, const SDL_Event &_sdl_evt,
 		const Keymap::Binding *_binding)
 : code(_code)
 {
@@ -1095,25 +1088,25 @@ GUI::RunningEvents::Event::Event(Sint32 _code, const SDL_Event &_sdl_evt,
 	PDEBUGF(LOG_V2, LOG_GUI, "  Event created: %d\n", code);
 }
 
-GUI::RunningEvents::Event::~Event()
+GUI::InputSystem::Event::~Event()
 {
 	PDEBUGF(LOG_V2, LOG_GUI, "  Event destroyed: %d\n", code);
 }
 
-std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::start_new(
+std::shared_ptr<GUI::InputSystem::Event> GUI::InputSystem::start_evt(
 		const SDL_Event &_sdl_evt, const Keymap::Binding *_binding)
 {
 	auto running_evt = find(_sdl_evt);
 	if(running_evt) {
 		remove(running_evt);
 	}
-	running_evt = std::make_shared<RunningEvents::Event>(count, _sdl_evt, _binding);
-	events[count] = running_evt;
-	count++;
+	running_evt = std::make_shared<InputSystem::Event>(evt_count, _sdl_evt, _binding);
+	events[evt_count] = running_evt;
+	evt_count++;
 	return running_evt;
 }
 
-std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(SDL_Event _sdl_evt)
+std::shared_ptr<GUI::InputSystem::Event> GUI::InputSystem::find(SDL_Event _sdl_evt)
 {
 	for(auto [k, evt] : events) {
 		switch(evt->sdl_evt.type) {
@@ -1165,9 +1158,9 @@ std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(SDL_Event _s
 	return nullptr;
 }
 
-std::vector<std::shared_ptr<GUI::RunningEvents::Event>> GUI::RunningEvents::find_mods(unsigned _sdl_mod)
+std::vector<std::shared_ptr<GUI::InputSystem::Event>> GUI::InputSystem::find_mods(unsigned _sdl_mod)
 {
-	std::vector<std::shared_ptr<GUI::RunningEvents::Event>> running_evts;
+	std::vector<std::shared_ptr<GUI::InputSystem::Event>> running_evts;
 	for(auto [k, evt] : events) {
 		if(evt->sdl_evt.type != SDL_KEYDOWN) {
 			continue;
@@ -1200,7 +1193,7 @@ std::vector<std::shared_ptr<GUI::RunningEvents::Event>> GUI::RunningEvents::find
 	return running_evts;
 }
 
-void GUI::RunningEvents::stop_group(RunningEvents::Event &_event)
+void GUI::InputSystem::stop_group(InputSystem::Event &_event)
 {
 	for(auto it = events.begin(); it != events.end(); ) {
 		if(it->second->binding.group == _event.binding.group &&
@@ -1208,7 +1201,7 @@ void GUI::RunningEvents::stop_group(RunningEvents::Event &_event)
 		) {
 			it->second->disable_timer();
 			if(it->second->binding.mode ==  Keymap::Binding::Mode::LATCHED) {
-				gui->on_event_binding(*(it->second), EventPhase::EVT_END);
+				gui->run_event_binding(*(it->second), EventPhase::EVT_END);
 				it = events.erase(it);
 			} else {
 				it++;
@@ -1219,7 +1212,7 @@ void GUI::RunningEvents::stop_group(RunningEvents::Event &_event)
 	}
 }
 
-std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(Sint32 _code)
+std::shared_ptr<GUI::InputSystem::Event> GUI::InputSystem::find(Sint32 _code)
 {
 	auto it = events.find(_code);
 	if(it != events.end()) {
@@ -1228,13 +1221,13 @@ std::shared_ptr<GUI::RunningEvents::Event> GUI::RunningEvents::find(Sint32 _code
 	return nullptr;
 }
 
-bool GUI::RunningEvents::is_active(std::shared_ptr<GUI::RunningEvents::Event> _evt)
+bool GUI::InputSystem::is_active(std::shared_ptr<GUI::InputSystem::Event> _evt)
 {
 	auto it = events.find(_evt->code);
 	return(it != events.end());
 }
 
-void GUI::RunningEvents::remove(std::shared_ptr<Event> _evt)
+void GUI::InputSystem::remove(std::shared_ptr<Event> _evt)
 {
 	if(_evt) {
 		_evt->disable_timer();
@@ -1245,7 +1238,7 @@ void GUI::RunningEvents::remove(std::shared_ptr<Event> _evt)
 	}
 }
 
-void GUI::RunningEvents::reset()
+void GUI::InputSystem::reset()
 {
 	for(auto & evt : events) {
 		evt.second->disable_timer();
@@ -1255,7 +1248,7 @@ void GUI::RunningEvents::reset()
 
 void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 {
-	bool gui_input = !(m_input_grab || !m_windows.need_input());
+	bool gui_input = !(m_input.grab || !m_windows.need_input());
 
 	EventPhase phase;
 	if(_sdl_event.type == SDL_KEYDOWN) {
@@ -1275,7 +1268,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
-	auto running_evt = m_running_events.find(_sdl_event);
+	auto running_evt = m_input.find(_sdl_event);
 
 	// events are not created when gui is active, if one is present skip this
 	if(!running_evt && gui_input) {
@@ -1315,22 +1308,22 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 				return;
 			}
 			if(!running_evt) {
-				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+				running_evt = m_input.start_evt(_sdl_event, binding_ptr);
 				if(binding_ptr->is_ievt_keycombo()) {
 					// this is true only for the main combo key.
 					// terminate any events belonging to modifiers
-					auto modifier_evts = m_running_events.find_mods(binding_ptr->ievt.key.mod);
+					auto modifier_evts = m_input.find_mods(binding_ptr->ievt.key.mod);
 					assert(!modifier_evts.empty());
 					PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
 					for(auto & modifier_evt : modifier_evts) {
-						on_event_binding(*modifier_evt, EventPhase::EVT_END);
-						m_running_events.remove(modifier_evt);
+						run_event_binding(*modifier_evt, EventPhase::EVT_END);
+						m_input.remove(modifier_evt);
 					}
 				}
-				on_event_binding(*running_evt, EventPhase::EVT_START);
+				run_event_binding(*running_evt, EventPhase::EVT_START);
 			} else {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				m_running_events.remove(running_evt);
+				run_event_binding(*running_evt, EventPhase::EVT_END);
+				m_input.remove(running_evt);
 			}
 			return;
 		}
@@ -1345,11 +1338,11 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
 			// this is true only for the main combo key.
 			if(!running_evt) {
-				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+				running_evt = m_input.start_evt(_sdl_event, binding_ptr);
 				// we need to neutralize any key modifiers sent to the machine by the
 				// binding of the key modifiers of this input combo event (re-read if unclear).
 				// find the starting combo key(s), which are always modifiers
-				auto modifier_evts = m_running_events.find_mods(binding_ptr->ievt.key.mod);
+				auto modifier_evts = m_input.find_mods(binding_ptr->ievt.key.mod);
 				PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
 				for(auto & modifier_evt : modifier_evts) {
 					// 1. link this event
@@ -1373,7 +1366,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 				running_evt->restart();
 			}
 		} else {
-			running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
+			running_evt = m_input.start_evt(_sdl_event, binding_ptr);
 		}
 	} else if(phase == EventPhase::EVT_END) {
 		if(binding_ptr && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
@@ -1397,29 +1390,29 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		assert(false);
 	}
 
-	on_event_binding(*running_evt, phase);
+	run_event_binding(*running_evt, phase);
 
 	if(finish) {
 		if(running_evt->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
 			if(running_evt->is_running()) {
 				return;
 			}
-			on_event_binding(*running_evt, EventPhase::EVT_END);
+			run_event_binding(*running_evt, EventPhase::EVT_END);
 		}
-		if(running_evt->combo_link && m_running_events.is_active(running_evt->combo_link)) {
+		if(running_evt->combo_link && m_input.is_active(running_evt->combo_link)) {
 			// release combo modifiers
 			PDEBUGF(LOG_V2, LOG_GUI, "  output combo finish\n");
 			running_evt->combo_link->binding.mask_pevt_kmods(false);
-			on_event_binding(*running_evt->combo_link, EventPhase::EVT_END);
-			m_running_events.remove(running_evt->combo_link);
+			run_event_binding(*running_evt->combo_link, EventPhase::EVT_END);
+			m_input.remove(running_evt->combo_link);
 		}
-		m_running_events.remove(running_evt);
+		m_input.remove(running_evt);
 	}
 }
 
 void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 {
-	if(!m_input_grab) {
+	if(!m_input.grab) {
 		dispatch_rocket_event(_sdl_event);
 		return;
 	}
@@ -1433,11 +1426,11 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 		if(binding) {
 			// events are ONE SHOT only because mouse motion is relative and there's no END condition
 			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis %s: %s\n", _axis_name, binding->name.c_str());
-			auto running_evt = m_running_events.start_new(_axis_evt, binding);
-			on_event_binding(*running_evt, EventPhase::EVT_START);
+			auto running_evt = m_input.start_evt(_axis_evt, binding);
+			run_event_binding(*running_evt, EventPhase::EVT_START);
 			if(!running_evt->is_running()) {
-				on_event_binding(*running_evt, EventPhase::EVT_END);
-				m_running_events.remove(running_evt);
+				run_event_binding(*running_evt, EventPhase::EVT_END);
+				m_input.remove(running_evt);
 			}
 		} else {
 			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis %s\n", _axis_name);
@@ -1471,9 +1464,9 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
-	auto running_evt = m_running_events.find(_sdl_event);
+	auto running_evt = m_input.find(_sdl_event);
 
-	if(!running_evt && !m_input_grab) {
+	if(!running_evt && !m_input.grab) {
 		// do gui stuff
 		if(binding_ptr) {
 			// but first run any FUNC_*
@@ -1529,15 +1522,15 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 	}
 	PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 
-	std::shared_ptr<GUI::RunningEvents::Event> running_evt;
+	std::shared_ptr<GUI::InputSystem::Event> running_evt;
 	switch(binding_ptr->mode) {
 		case Keymap::Binding::Mode::ONE_SHOT:
 			PDEBUGF(LOG_V2, LOG_GUI, "  1shot mode\n");
-			running_evt = m_running_events.find(_sdl_evt);
+			running_evt = m_input.find(_sdl_evt);
 			if(running_evt) {
 				if(phase == EventPhase::EVT_END) {
 					if(!running_evt->is_running()) {
-						m_running_events.remove(running_evt);
+						m_input.remove(running_evt);
 					} else {
 						running_evt->remove = true;
 					}
@@ -1550,19 +1543,19 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 					return;
 				}
 				// start, new event
-				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
-				on_event_binding(*running_evt, EventPhase::EVT_START);
+				running_evt = m_input.start_evt(_sdl_evt, binding_ptr);
+				run_event_binding(*running_evt, EventPhase::EVT_START);
 				if(running_evt->is_running()) {
 					// event will be removed at the end
 					running_evt->remove = false;
 				} else {
-					on_event_binding(*running_evt, EventPhase::EVT_END);
+					run_event_binding(*running_evt, EventPhase::EVT_END);
 					// dont remove now, it will at the end or when timer stops
 				}
 			}
 			break;
 		case Keymap::Binding::Mode::LATCHED:
-			running_evt = m_running_events.find(_sdl_evt);
+			running_evt = m_input.find(_sdl_evt);
 			if(running_evt) {
 				if(phase == EventPhase::EVT_END) {
 					running_evt->remove = true;
@@ -1570,8 +1563,8 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 				}
 				// start
 				if(running_evt->remove) {
-					on_event_binding(*running_evt, EventPhase::EVT_END);
-					m_running_events.remove(running_evt);
+					run_event_binding(*running_evt, EventPhase::EVT_END);
+					m_input.remove(running_evt);
 				}
 			} else {
 				if(phase == EventPhase::EVT_END) {
@@ -1579,25 +1572,25 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 					return;
 				}
 				// start
-				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
-				on_event_binding(*running_evt, EventPhase::EVT_START);
+				running_evt = m_input.start_evt(_sdl_evt, binding_ptr);
+				run_event_binding(*running_evt, EventPhase::EVT_START);
 				running_evt->remove = false;
 			}
 			break;
 		default:
 			if(phase == EventPhase::EVT_START) {
-				running_evt = m_running_events.start_new(_sdl_evt, binding_ptr);
+				running_evt = m_input.start_evt(_sdl_evt, binding_ptr);
 			} else if(phase == EventPhase::EVT_END) {
-				running_evt = m_running_events.find(_sdl_evt);
+				running_evt = m_input.find(_sdl_evt);
 				if(!running_evt) {
 					PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
 					return;
 				}
 				running_evt->sdl_evt.jaxis.value = _sdl_evt.jaxis.value;
 			}
-			on_event_binding(*running_evt, phase);
+			run_event_binding(*running_evt, phase);
 			if(phase == EventPhase::EVT_END) {
-				m_running_events.remove(running_evt);
+				m_input.remove(running_evt);
 			}
 		break;
 	}
@@ -1652,44 +1645,44 @@ void GUI::on_button_event(const SDL_Event &_sdl_event, const Keymap::Binding *_b
 		return;
 	}
 
-	std::shared_ptr<RunningEvents::Event> running_evt;
+	std::shared_ptr<InputSystem::Event> running_evt;
 
 	switch(_binding_ptr->mode) {
 		case Keymap::Binding::Mode::ONE_SHOT:
 			if(_phase == EventPhase::EVT_START) {
-				running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
-				on_event_binding(*running_evt, _phase);
+				running_evt = m_input.start_evt(_sdl_event, _binding_ptr);
+				run_event_binding(*running_evt, _phase);
 				if(!running_evt->is_running()) {
-					on_event_binding(*running_evt, EventPhase::EVT_END);
-					m_running_events.remove(running_evt);
+					run_event_binding(*running_evt, EventPhase::EVT_END);
+					m_input.remove(running_evt);
 				}
 			}
 			break;
 		case Keymap::Binding::Mode::LATCHED:
 			if(_phase == EventPhase::EVT_START) {
-				running_evt = m_running_events.find(_sdl_event);
+				running_evt = m_input.find(_sdl_event);
 				if(running_evt) {
-					on_event_binding(*running_evt, EventPhase::EVT_END);
-					m_running_events.remove(running_evt);
+					run_event_binding(*running_evt, EventPhase::EVT_END);
+					m_input.remove(running_evt);
 				} else {
-					running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
-					on_event_binding(*running_evt, EventPhase::EVT_START);
+					running_evt = m_input.start_evt(_sdl_event, _binding_ptr);
+					run_event_binding(*running_evt, EventPhase::EVT_START);
 				}
 			}
 			break;
 		default:
 			if(_phase == EventPhase::EVT_START) {
-				running_evt = m_running_events.start_new(_sdl_event, _binding_ptr);
-				on_event_binding(*running_evt, _phase);
+				running_evt = m_input.start_evt(_sdl_event, _binding_ptr);
+				run_event_binding(*running_evt, _phase);
 			} else {
-				running_evt = m_running_events.find(_sdl_event);
+				running_evt = m_input.find(_sdl_event);
 				if(!running_evt) {
 					// this happens when events are run with GUI input active
 					PDEBUGF(LOG_V2, LOG_GUI, "  no running event\n");
 					return;
 				}
-				on_event_binding(*running_evt, _phase);
-				m_running_events.remove(running_evt);
+				run_event_binding(*running_evt, _phase);
+				m_input.remove(running_evt);
 			}
 			break;
 	}
@@ -1864,14 +1857,14 @@ void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 			m_joystick[_event.code].send(m_machine);
 		}
 	} else if(_event.type == ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_PEVT) {
-		auto running_event = m_running_events.find(_event.code);
+		auto running_event = m_input.find(_event.code);
 		if(running_event) {
 			PDEBUGF(LOG_V2, LOG_GUI, "Timed event\n");
-			on_event_binding(*running_event, EventPhase::EVT_START);
+			run_event_binding(*running_event, EventPhase::EVT_START);
 			if(!running_event->is_running() && running_event->binding.mode == Keymap::Binding::Mode::ONE_SHOT) {
-				on_event_binding(*running_event, EventPhase::EVT_END);
+				run_event_binding(*running_event, EventPhase::EVT_END);
 				if(running_event->remove) {
-					m_running_events.remove(running_event);
+					m_input.remove(running_event);
 				}
 			}
 		}
@@ -2374,10 +2367,10 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Grab mouse func event\n");
 	
-	toggle_input_grab();
+	input_grab(!m_input.grab);
 	
 	if(m_mode == GUI_MODE_COMPACT) {
-		if(m_input_grab) {
+		if(m_input.grab) {
 			dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
 		} else {
 			dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
@@ -2468,7 +2461,7 @@ void GUI::pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase _phase)
 		return;
 	}
 
-	m_running_events.reset();
+	m_input.reset();
 	m_current_keymap = (m_current_keymap + 1) % m_keymaps.size();
 
 	std::string mex = "Current keymap: ";
