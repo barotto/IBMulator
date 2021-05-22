@@ -123,6 +123,7 @@ m_rocket_sys_interface(nullptr),
 m_rocket_file_interface(nullptr),
 m_rocket_context(nullptr)
 {
+	m_running_events.gui = this;
 	m_joystick[0].sdl_id = JOY_NONE;
 	m_joystick[1].sdl_id = JOY_NONE;
 	m_joystick[0].which = Joystick::Joy::A;
@@ -920,7 +921,7 @@ void GUI::on_event_binding(RunningEvents::Event &_event, EventPhase _phase, uint
 	} else {
 		// search for running events of the same group and stop them
 		if(!_event.binding.group.empty()) {
-			m_running_events.stop_group(_event.binding.group);
+			m_running_events.stop_group(_event);
 		}
 	}
 
@@ -1199,11 +1200,21 @@ std::vector<std::shared_ptr<GUI::RunningEvents::Event>> GUI::RunningEvents::find
 	return running_evts;
 }
 
-void GUI::RunningEvents::stop_group(const std::string &_grp_name)
+void GUI::RunningEvents::stop_group(RunningEvents::Event &_event)
 {
-	for(auto & re : events) {
-		if(re.second->is_running() && re.second->binding.group == _grp_name) {
-			re.second->disable_timer();
+	for(auto it = events.begin(); it != events.end(); ) {
+		if(it->second->binding.group == _event.binding.group &&
+		   it->second->code != _event.code
+		) {
+			it->second->disable_timer();
+			if(it->second->binding.mode ==  Keymap::Binding::Mode::LATCHED) {
+				gui->on_event_binding(*(it->second), EventPhase::EVT_END);
+				it = events.erase(it);
+			} else {
+				it++;
+			}
+		} else {
+			it++;
 		}
 	}
 }
@@ -2425,29 +2436,16 @@ void GUI::pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase _phase)
 
 void GUI::pevt_func_sys_speed(const ProgramEvent::Func &_func, EventPhase _phase)
 {
-	if(_func.params[1]) {
-		// momentary
-		if(_phase == EventPhase::EVT_REPEAT) {
-			return;
-		}
-		PDEBUGF(LOG_V1, LOG_GUI, "System speed func event, speed=%d%%, momentary\n", _func.params[0]);
-		if(_phase == EventPhase::EVT_START) {
-			m_symspeed_factor = double(_func.params[0]) / 100.0;
-		} else {
-			m_symspeed_factor = 1.0;
-		}
-	} else {
-		// constant
-		if(_phase != EventPhase::EVT_START) {
-			return;
-		}
-		PDEBUGF(LOG_V1, LOG_GUI, "System speed func event, speed=%d%%\n", _func.params[0]);
-		if(m_symspeed_factor != 1.0) {
-			m_symspeed_factor = 1.0;
-		} else {
-			m_symspeed_factor = double(_func.params[0]) / 100.0;
-		}
+	if(_phase == EventPhase::EVT_REPEAT) {
+		return;
 	}
+	PDEBUGF(LOG_V1, LOG_GUI, "System speed func event, speed=%d%%\n", _func.params[0]);
+	if(_phase == EventPhase::EVT_START) {
+		m_symspeed_factor = double(_func.params[0]) / 100.0;
+	} else {
+		m_symspeed_factor = 1.0;
+	}
+
 	m_machine->cmd_cycles_adjust(m_symspeed_factor);
 }
 

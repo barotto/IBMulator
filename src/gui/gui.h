@@ -190,6 +190,7 @@ protected:
 			void link_to(std::shared_ptr<Event> _evt) { combo_link = _evt; };
 		};
 
+		GUI * gui;
 		std::map<Sint32, std::shared_ptr<Event>> events;
 		Sint32 count = 0;
 
@@ -197,7 +198,7 @@ protected:
 		std::shared_ptr<Event> find(SDL_Event _sdl_evt);
 		std::shared_ptr<Event> find(Sint32 _code);
 		std::vector<std::shared_ptr<Event>> find_mods(unsigned _sdl_mod);
-		void stop_group(const std::string &_grp_name);
+		void stop_group(RunningEvents::Event &_event);
 		bool is_active(std::shared_ptr<GUI::RunningEvents::Event> _evt);
 		void remove(std::shared_ptr<Event>);
 		void reset();
