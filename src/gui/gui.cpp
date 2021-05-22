@@ -1275,8 +1275,10 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
+	auto running_evt = m_running_events.find(_sdl_event);
 
-	if(gui_input) {
+	// events are not created when gui is active, if one is present skip this
+	if(!running_evt && gui_input) {
 		// do gui stuff
 		if(binding_ptr) {
 			// but first run any FUNC_*
@@ -1304,18 +1306,14 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
 
-	std::shared_ptr<RunningEvents::Event> running_evt;
-
 	if(binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: \"%s\"\n", binding_ptr->name.c_str());
-		running_evt = m_running_events.find(_sdl_event);
 		if((running_evt && running_evt->binding.mode == Keymap::Binding::Mode::LATCHED) || 
 		   (!running_evt && binding_ptr->mode == Keymap::Binding::Mode::LATCHED)
 		) {
 			if(phase != EventPhase::EVT_START) {
 				return;
 			}
-			running_evt = m_running_events.find(_sdl_event);
 			if(!running_evt) {
 				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 				if(binding_ptr->is_ievt_keycombo()) {
@@ -1346,7 +1344,6 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	if(phase == EventPhase::EVT_START) {
 		if(binding_ptr && binding_ptr->is_ievt_keycombo()) {
 			// this is true only for the main combo key.
-			running_evt = m_running_events.find(_sdl_event);
 			if(!running_evt) {
 				running_evt = m_running_events.start_new(_sdl_event, binding_ptr);
 				// we need to neutralize any key modifiers sent to the machine by the
@@ -1382,7 +1379,6 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		if(binding_ptr && binding_ptr->mode == Keymap::Binding::Mode::ONE_SHOT) {
 			return;
 		}
-		running_evt = m_running_events.find(_sdl_event);
 		if(!running_evt) {
 			PDEBUGF(LOG_V2, LOG_GUI, "  no running event found\n");
 			return;
@@ -1475,8 +1471,9 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
+	auto running_evt = m_running_events.find(_sdl_event);
 
-	if(!m_input_grab) {
+	if(!running_evt && !m_input_grab) {
 		// do gui stuff
 		if(binding_ptr) {
 			// but first run any FUNC_*
