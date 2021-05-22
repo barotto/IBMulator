@@ -1783,6 +1783,11 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		case SDL_MOUSEBUTTONUP:
 			on_mouse_button_event(_event);
 			break;
+		case SDL_MOUSEWHEEL:
+			if(!m_input.grab) {
+				dispatch_rocket_event(_event);
+			}
+			break;
 		case SDL_JOYAXISMOTION:
 			on_joystick_motion_event(_event);
 			break;
