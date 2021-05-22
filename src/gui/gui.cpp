@@ -818,7 +818,9 @@ void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event, 
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
 		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP: {
+		case SDL_MOUSEBUTTONUP:
+		case SDL_JOYBUTTONDOWN:
+		case SDL_JOYBUTTONUP: {
 			int maxvalue = _joy.params[0];
 			int speed = _joy.params[2]==0 ? 500 : _joy.params[2];
 			if(_phase == EventPhase::EVT_END) {
