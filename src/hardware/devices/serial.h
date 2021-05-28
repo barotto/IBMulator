@@ -56,7 +56,9 @@
 
 #include "keyboard.h"
 
-#define SERIAL_INTERFACES 2
+#define SER_INTERFACES  2
+#define SER_ENABLE_RAW  false // enable raw serial port access (NOT IMPLEMENTED)
+#define SER_TERM_BRKINT false // if true when in term mode CTRL-C will cause SIGINT
 
 #define PC_CLOCK_XTL   1843200.0
 
@@ -215,7 +217,7 @@ private:
 	// COM3, B can be set to COM2 or COM4.
 
 	struct {
-		UART16550A uart[SERIAL_INTERFACES];
+		UART16550A uart[SER_INTERFACES];
 		struct {
 			// mouse state (on the attached mouse device itself)
 			int detect = 0; // detection protocol state
@@ -274,7 +276,7 @@ private:
 				default: return "Serial port ?";
 			}
 		}
-	} m_host[SERIAL_INTERFACES];
+	} m_host[SER_INTERFACES];
 
 	bool m_enabled = false; // POS determines the device state
 

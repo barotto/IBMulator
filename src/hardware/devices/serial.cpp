@@ -51,7 +51,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#if USE_RAW_SERIAL
+#if SER_ENABLE_RAW
 	// TODO missing?
 	#include "serial_raw.h"
 #endif
@@ -83,7 +83,7 @@ Serial::Serial(Devices *_dev)
 : IODevice(_dev)
 {
 	std::memset(&m_s, 0, sizeof(m_s));
-	for(int i=0; i<SERIAL_INTERFACES; i++) {
+	for(int i=0; i<SER_INTERFACES; i++) {
 		m_host[i].interface_id = i;
 		m_host[i].io_mode = SER_MODE_NULL;
 		m_host[i].tty_id = -1;
@@ -204,7 +204,7 @@ void Serial::config_changed()
 
 void Serial::close()
 {
-	for(int i=0; i<SERIAL_INTERFACES; i++) {
+	for(int i=0; i<SER_INTERFACES; i++) {
 		switch(m_host[i].io_mode) {
 			case SER_MODE_MOUSE:
 				if((m_mouse.type == MOUSE_TYPE_SERIAL) ||
@@ -231,7 +231,7 @@ void Serial::close()
 				#endif
 				break;
 			case SER_MODE_RAW:
-				#if USE_RAW_SERIAL
+				#if SER_ENABLE_RAW
 				delete m_host[i].raw;
 				m_host[i].raw = nullptr;
 				#endif
@@ -349,13 +349,13 @@ void Serial::Interface::init_mode_term(std::string dev)
 		term_new.c_cflag &= ~(CSIZE|PARENB);
 		term_new.c_cflag |= CS8;
 		term_new.c_oflag |= OPOST | ONLCR;  // Enable NL to CR-NL translation
-		if(!TRUE_CTLC) {
-			// ctl-C will exit the emulator
+		if(SER_TERM_BRKINT) {
+			// Ctrl-C will cause SIGINT and exit the emulator
 			term_new.c_iflag &= ~IGNBRK;
 			term_new.c_iflag |= BRKINT;
 			term_new.c_lflag |= ISIG;
 		} else {
-			// ctl-C will be delivered to the serial comn
+			// Ctrl-C will be delivered to the serial comn
 			term_new.c_iflag |= IGNBRK;
 			term_new.c_iflag &= ~BRKINT;
 		}
@@ -381,7 +381,7 @@ void Serial::Interface::init_mode_term(std::string dev)
 
 void Serial::Interface::init_mode_raw(std::string dev)
 {
-	#if USE_RAW_SERIAL
+	#if SER_ENABLE_RAW
 
 	if(dev.empty()) {
 		throw std::runtime_error("device name not specified");
@@ -858,7 +858,7 @@ uint16_t Serial::read(uint16_t address, unsigned /*io_len*/)
 			break;
 
 		case SER_MSR: // MODEM status register
-			#if USE_RAW_SERIAL
+			#if SER_ENABLE_RAW
 			if(m_host[port].io_mode == SER_MODE_RAW) {
 				bool prev_cts = m_s.uart[port].modem_status.cts;
 				bool prev_dsr = m_s.uart[port].modem_status.dsr;
@@ -926,7 +926,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 
 	bool gen_int = false;
 	uint8_t offset, new_wordlen;
-	#if USE_RAW_SERIAL
+	#if SER_ENABLE_RAW
 	bool mcr_changed = 0;
 	uint8_t p_mode;
 	#endif
@@ -1109,7 +1109,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			new_wordlen = value & 0x03;
 			PDEBUGF(LOG_V2, LOG_COM, "LCR %s\n", 
 					bitfield_to_string(value, { "wl0", "wl1", "stop", "par", "epar", "spar", "brk", "dlab" }).c_str());
-			#if USE_RAW_SERIAL
+			#if SER_ENABLE_RAW
 			if(m_host[port].io_mode == SER_MODE_RAW) {
 				if(m_s.uart[port].line_cntl.wordlen_sel != new_wordlen) {
 					m_host[port].raw->set_data_bits(new_wordlen + 5);
@@ -1133,7 +1133,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					m_host[port].raw->set_break(new_b6);
 				}
 			}
-			#endif // USE_RAW_SERIAL
+			#endif
 			// These are ignored, but set them up so they can be read back
 			m_s.uart[port].line_cntl.stopbits = new_b2;
 			m_s.uart[port].line_cntl.parity_enable = new_b3;
@@ -1154,7 +1154,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 						restart_timer = true;
 						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
 								m_s.uart[port].name(), m_s.uart[port].baudrate);
-						#if USE_RAW_SERIAL
+						#if SER_ENABLE_RAW
 						if(m_host[port].io_mode == SER_MODE_RAW) {
 							m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
 						}
@@ -1193,7 +1193,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					m_s.mouse.detect = 2;
 				}
 			}
-			#if USE_RAW_SERIAL
+			#if SER_ENABLE_RAW
 			if(m_host[port].io_mode == SER_MODE_RAW) {
 				mcr_changed = (m_s.uart[port].modem_cntl.dtr != new_b0) |
 						(m_s.uart[port].modem_cntl.rts != new_b1);
@@ -1208,7 +1208,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 				m_s.uart[port].modem_cntl.local_loopback = new_b4;
 				if(m_s.uart[port].modem_cntl.local_loopback) {
 					// transition to loopback mode
-					#if USE_RAW_SERIAL
+					#if SER_ENABLE_RAW
 					if(m_host[port].io_mode == SER_MODE_RAW) {
 						if(m_s.uart[port].modem_cntl.dtr || m_s.uart[port].modem_cntl.rts) {
 							m_host[port].raw->set_modem_control(0);
@@ -1216,7 +1216,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					}
 					#endif
 					if(m_s.uart[port].line_cntl.break_cntl) {
-						#if USE_RAW_SERIAL
+						#if SER_ENABLE_RAW
 						if(m_host[port].io_mode == SER_MODE_RAW) {
 							m_host[port].raw->set_break(0);
 						}
@@ -1227,7 +1227,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					}
 				} else {
 					// transition to normal mode
-					#if USE_RAW_SERIAL
+					#if SER_ENABLE_RAW
 					if(m_host[port].io_mode == SER_MODE_RAW) {
 						mcr_changed = 1;
 						if(m_s.uart[port].line_cntl.break_cntl) {
@@ -1293,7 +1293,7 @@ void Serial::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 				}
 
 				if(m_host[port].io_mode == SER_MODE_RAW) {
-					#if USE_RAW_SERIAL
+					#if SER_ENABLE_RAW
 					if(mcr_changed) {
 						m_host[port].raw->set_modem_control(value & 0x03);
 					}
@@ -1419,7 +1419,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 				#endif
 				break;
 			case SER_MODE_RAW:
-				#if USE_RAW_SERIAL
+				#if SER_ENABLE_RAW
 				if(m_host[port].raw->ready_transmit()) {
 					m_host[port].raw->transmit(m_s.uart[port].tsrbuffer);
 				} else {
@@ -1530,7 +1530,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				#endif
 				break;
 			case SER_MODE_RAW:
-				#if USE_RAW_SERIAL
+				#if SER_ENABLE_RAW
 				int data;
 				if((data_ready = m_host[port].raw->ready_receive())) {
 					data = m_host[port].raw->receive();

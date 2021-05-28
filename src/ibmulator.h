@@ -31,11 +31,8 @@
  */
 
 #define PATHNAME_LEN 512
-
-#define N_SERIAL_PORTS 1 // DONT'T TOUCH IT! IT MUST BE 1
 #define N_PARALLEL_PORTS 1
-#define USE_RAW_SERIAL 0
-#define TRUE_CTLC 0
+
 
 #include "config.h"
 #include <cstdint>
