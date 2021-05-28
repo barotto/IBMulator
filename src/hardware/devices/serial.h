@@ -64,16 +64,16 @@
 #define SER_RXPOLL  1
 #define SER_RXWAIT  2
 
-#define SER_THR  0 //3f8
-#define SER_RBR  0 //3f8
-#define SER_IER  1 //3f9
-#define SER_IIR  2 //3fa
-#define SER_FCR  2 //3fa
-#define SER_LCR  3 //3fb
-#define SER_MCR  4 //3fc
-#define SER_LSR  5 //3fd
-#define SER_MSR  6 //3fe
-#define SER_SCR  7 //3ff
+#define SER_THR  0   // 3f8 Transmit Buffer
+#define SER_RBR  0   // 3f8 Receive Buffer
+#define SER_IER  1   // 3f9 Interrupt Enable Register
+#define SER_IIR  2   // 3fa Interrupt ID Register
+#define SER_FCR  2   // 3fa FIFO Control Register
+#define SER_LCR  3   // 3fb Line Control Register
+#define SER_MCR  4   // 3fc MODEM Control Register
+#define SER_LSR  5   // 3fd Line Status Register
+#define SER_MSR  6   // 3fe MODEM Status Register
+#define SER_SCR  7   // 3ff Scratch Register
 
 #define SER_MODE_NULL          0
 #define SER_MODE_FILE          1
@@ -196,7 +196,17 @@ private:
 		uint8_t  divisor_lsb;   // Divisor latch, least-sig. byte
 		uint8_t  divisor_msb;   // Divisor latch, most-sig. byte
 
-		uint8_t port; // the POS selectable port index
+		uint8_t port; // the POS selectable COM port index
+
+		constexpr const char * name() const {
+			switch(port) {
+				case 0: return "COM1";
+				case 1: return "COM2";
+				case 2: return "COM3";
+				case 3: return "COM4";
+				default: return "COM?";
+			}
+		}
 	};
 
 	// The PS/1 2011 and 2121 have only 1 serial connector and its port is
@@ -207,7 +217,8 @@ private:
 	struct {
 		UART16550A uart[SERIAL_INTERFACES];
 		struct {
-			int detect = 0;
+			// mouse state (on the attached mouse device itself)
+			int detect = 0; // detection protocol state
 			struct {
 				uint8_t data[MOUSE_BUFF_SIZE];
 				int head;
@@ -216,20 +227,29 @@ private:
 		} mouse;
 	} m_s;
 
-	struct {
-		int  rx_timer;
-		int  tx_timer;
-		int  fifo_timer;
+	struct Interface {
+		int interface_id;
+
+		int rx_timer;
+		int tx_timer;
+		int fifo_timer;
 
 		int io_mode;
-		int tty_id;
+
+		// socket server/client mode
 		SOCKET socket_id;
+
+		// file mode
+		std::string filename;
 		FILE *output;
 
+		// pipe mode (Win only)
 		#if SER_WIN32
 		HANDLE pipe;
 		#endif
 
+		// term mode (POSIX only)
+		int tty_id; // TODO move inside the prepro if?
 		#if SER_POSIX
 		struct termios term_orig, term_new;
 		#endif
@@ -237,6 +257,23 @@ private:
 		#if SERIAL_RAW
 		serial_raw* raw;
 		#endif
+
+		void init_mode_file(std::string dev);
+		void init_mode_term(std::string dev);
+		void init_mode_raw(std::string dev);
+		void init_mode_mouse();
+		void init_mode_socket(std::string dev, unsigned mode);
+		void init_mode_pipe(std::string dev, unsigned mode);
+
+		constexpr const char * name() const {
+			switch(interface_id) {
+				case 0: return "Serial port A";
+				case 1: return "Serial port B";
+				case 2: return "Serial port C";
+				case 3: return "Serial port D";
+				default: return "Serial port ?";
+			}
+		}
 	} m_host[SERIAL_INTERFACES];
 
 	bool m_enabled = false; // POS determines the device state
@@ -281,13 +318,6 @@ private:
 	void mouse_button(MouseButton _button, bool _state);
 	void mouse_motion(int delta_x, int delta_y, int delta_z);
 	void update_mouse_data(void);
-
-	void init_mode_file(uint port, std::string dev);
-	void init_mode_term(uint port, std::string dev);
-	void init_mode_raw(uint port, std::string dev);
-	void init_mode_mouse(uint port);
-	void init_mode_socket(uint port, std::string dev, uint mode);
-	void init_mode_pipe(uint port, std::string dev, uint mode);
 
 	void close();
 };
