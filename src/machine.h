@@ -155,7 +155,7 @@ public:
 	inline CPU & cpu() { return g_cpu; }
 	inline Devices & devices() { return g_devices; }
 
-	int register_timer(timer_fun_t _func, const char *_name, unsigned _func_name = 0);
+	int register_timer(timer_fun_t _func, const std::string &_name, unsigned _func_name = 0);
 	void unregister_timer(int &_timer);
 	void activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous);
 	void activate_timer(unsigned _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous);

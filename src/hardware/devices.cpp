@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -183,7 +183,7 @@ void Devices::config_changed()
 	
 	install_only_if<MPU401>(g_program.config().get_bool(MPU401_SECTION, MPU401_ENABLED));
 	
-	install_only_if<Serial>(g_program.config().get_bool(COM_SECTION, COM_ENABLED));
+	install_only_if<Serial>(g_program.config().get_bool(SERIAL_SECTION, SERIAL_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));
 
 	PINFOF(LOG_V2, LOG_MACHINE, "Installed devices:\n");

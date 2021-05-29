@@ -506,7 +506,7 @@ void Machine::set_single_step(bool _val)
 	m_cpu_single_step = _val;
 }
 
-int Machine::register_timer(timer_fun_t _func, const char *_name, unsigned _func_name)
+int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigned _func_name)
 {
 	unsigned timer = NULL_TIMER_HANDLE;
 
@@ -518,7 +518,7 @@ int Machine::register_timer(timer_fun_t _func, const char *_name, unsigned _func
 	// search for new timer
 	for(unsigned i = 0; i < m_num_timers; i++) {
 		//check if there's another timer with the same name
-		if(m_timers[i].in_use && strcmp(m_timers[i].name, _name)==0) {
+		if(m_timers[i].in_use && strcmp(m_timers[i].name, _name.c_str())==0) {
 			//cannot be 2 timers with the same name
 			return NULL_TIMER_HANDLE;
 		}
@@ -539,9 +539,9 @@ int Machine::register_timer(timer_fun_t _func, const char *_name, unsigned _func
 	m_timers[timer].continuous = false;
 	m_timers[timer].fire = _func;
 	m_timers[timer].func_name = _func_name;
-	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name);
+	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name.c_str());
 
-	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name);
+	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name.c_str());
 
 	return timer;
 }

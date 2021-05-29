@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -128,7 +128,7 @@ void SystemBoard::update_POS2_state()
 	}
 	if(m_serial) {
 		m_serial->set_enabled(COM_enabled);
-		m_serial->set_port(COM_port);
+		m_serial->set_port(0, COM_port?0:1);
 	}
 }
 

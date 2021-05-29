@@ -141,9 +141,15 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SOUNDFX_SYSTEM,   "1.0" }
 	} },
 
-	{ COM_SECTION, {
-		{ COM_MODE,    "null" },
-		{ COM_DEV,     ""     }
+	{ SERIAL_SECTION, {
+		{ SERIAL_A_MODE,    "null" },
+		{ SERIAL_A_DEV,     ""     },
+		{ SERIAL_B_MODE,    "null" },
+		{ SERIAL_B_DEV,     ""     },
+		{ SERIAL_C_MODE,    "null" },
+		{ SERIAL_C_DEV,     ""     },
+		{ SERIAL_D_MODE,    "null" },
+		{ SERIAL_D_DEV,     ""     }
 	} },
 
 	{ LPT_SECTION, {
@@ -239,8 +245,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ MPU401_MODE,     "intelligent" }
 	} },
 	
-	{ COM_SECTION, {
-		{ COM_ENABLED, "yes" }
+	{ SERIAL_SECTION, {
+		{ SERIAL_ENABLED, "yes" }
 	} },
 
 	{ LPT_SECTION, {
@@ -516,7 +522,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
 		},
 
-		{ COM_SECTION, "" },
+		{ SERIAL_SECTION, "" },
 
 		{ LPT_SECTION, "" },
 };
@@ -669,10 +675,10 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		SOUNDFX_HDD_SEEK,
 		SOUNDFX_SYSTEM
 	} },
-	{ COM_SECTION, {
-		COM_ENABLED,
-		COM_MODE,
-		COM_DEV
+	{ SERIAL_SECTION, {
+		SERIAL_ENABLED,
+		SERIAL_A_MODE,
+		SERIAL_A_DEV
 	} },
 	{ LPT_SECTION, {
 		LPT_ENABLED,

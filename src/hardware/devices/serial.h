@@ -56,8 +56,8 @@
 
 #include "keyboard.h"
 
-#define SER_INTERFACES  2
-#define SER_ENABLE_RAW  false // enable raw serial port access (NOT IMPLEMENTED)
+#define SER_PORTS       1     // number of serial ports (1 to 4)
+#define SER_ENABLE_RAW  false // enable raw serial port access (TODO NOT IMPLEMENTED)
 #define SER_TERM_BRKINT false // if true when in term mode CTRL-C will cause SIGINT
 
 #define PC_CLOCK_XTL   1843200.0
@@ -106,9 +106,23 @@ class Serial : public IODevice
 	IODEVICE(Serial, "Serial")
 
 private:
-	struct UART16550A {
-		bool enabled;
+	enum ComName {
+		SER_COM1 = 0,
+		SER_COM2 = 1,
+		SER_COM3 = 2,
+		SER_COM4 = 3,
+		SER_COM_DISABLED = 0xFF
+	};
 
+	enum PortName {
+		SER_PORT_A = 0,
+		SER_PORT_B = 1,
+		SER_PORT_C = 2,
+		SER_PORT_D = 3,
+		SER_PORT_DISABLED = 0xFF
+	};
+
+	struct UART16550A {
 		//
 		// UART internal state
 		//
@@ -198,26 +212,27 @@ private:
 		uint8_t  divisor_lsb;   // Divisor latch, least-sig. byte
 		uint8_t  divisor_msb;   // Divisor latch, most-sig. byte
 
-		uint8_t port; // the POS selectable COM port index
+		uint8_t  com; // the POS selectable COM port index
 
 		constexpr const char * name() const {
-			switch(port) {
-				case 0: return "COM1";
-				case 1: return "COM2";
-				case 2: return "COM3";
-				case 3: return "COM4";
+			switch(com) {
+				case SER_COM1: return "COM1";
+				case SER_COM2: return "COM2";
+				case SER_COM3: return "COM3";
+				case SER_COM4: return "COM4";
 				default: return "COM?";
 			}
 		}
 	};
 
-	// The PS/1 2011 and 2121 have only 1 serial connector and its port is
-	// controlled by POS register 2 to either COM1 or COM2.
-	// The PS/1 2133 has 2 serial connectors (A and B). A can be set to COM1 or
-	// COM3, B can be set to COM2 or COM4.
+	// The PS/1 2011 has 1 serial port that can only be set to COM1
+	// The PS/1 2121 has 1 serial port that can be set to either COM1 or COM2.
+	// The PS/1 2133 has 2 serial ports (A and B). A can be set to COM1 or COM3,
+	// B can be set to COM2 or COM4.
 
 	struct {
-		UART16550A uart[SER_INTERFACES];
+		UART16550A uart[SER_PORTS];
+		uint8_t portmap[4];
 		struct {
 			// mouse state (on the attached mouse device itself)
 			int detect = 0; // detection protocol state
@@ -229,8 +244,8 @@ private:
 		} mouse;
 	} m_s;
 
-	struct Interface {
-		int interface_id;
+	struct Port {
+		int port_id;
 
 		int rx_timer;
 		int tx_timer;
@@ -268,20 +283,20 @@ private:
 		void init_mode_pipe(std::string dev, unsigned mode);
 
 		constexpr const char * name() const {
-			switch(interface_id) {
-				case 0: return "Serial port A";
-				case 1: return "Serial port B";
-				case 2: return "Serial port C";
-				case 3: return "Serial port D";
+			switch(port_id) {
+				case SER_PORT_A: return "Serial port A";
+				case SER_PORT_B: return "Serial port B";
+				case SER_PORT_C: return "Serial port C";
+				case SER_PORT_D: return "Serial port D";
 				default: return "Serial port ?";
 			}
 		}
-	} m_host[SER_INTERFACES];
+	} m_host[SER_PORTS];
 
 	bool m_enabled = false; // POS determines the device state
 
 	struct {
-		int port = -1;
+		int port = SER_PORT_DISABLED;
 		int type = 0;
 		int delayed_dx = 0;
 		int delayed_dy = 0;
@@ -301,7 +316,7 @@ public:
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);
 
-	void set_port(uint8_t _port);
+	void set_port(uint8_t _port, uint8_t _com);
 	void set_enabled(bool _enabled);
 
 	void save_state(StateBuf &_state);
