@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -130,11 +130,13 @@ private:
 	std::list<Logdev*> m_devices;
 	std::list<Logdev*> m_mapped_devices[LOG_PRI_COUNT][LOG_FAC_COUNT];
 	uint8_t m_linefeed[LOG_PRI_COUNT][LOG_FAC_COUNT];
+	struct{
+		std::string prefix, message;
+	} m_linebuf[LOG_PRI_COUNT][LOG_FAC_COUNT];
 
 	static const char* m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRI_COUNT];
 	static const char* m_fac_prefixes[LOG_FAC_COUNT];
-	char m_buf[LOG_BUFFER_SIZE];
-	char m_iconvbuf[LOG_BUFFER_SIZE];
+
 
 	uint m_verbosity[LOG_FAC_COUNT];
 

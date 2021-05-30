@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -210,14 +210,18 @@ void Syslog::del_device(int _priority, int _facility, Logdev* _device)
 */
 bool Syslog::log(int _priority, int _facility, int _verbosity, const char* _format, ...)
 {
+	assert(_format);
+
 	std::lock_guard<std::mutex> lock(m_log_mutex);
-	
-	va_list ap;
 
 	if(_verbosity > int(m_verbosity[_facility])) {
 		return false;
 	}
+	if(_format[0] == 0) {
+		return false;
+	}
 
+	va_list ap;
 	va_start(ap, _format);
 	bool res = p_log(_priority,_facility,_verbosity,_format,ap);
 	va_end(ap);
@@ -237,30 +241,19 @@ Chiamata da log(int, int, int, const char*, ...).
 bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _format, va_list _va)
 {
 	assert(_format);
-	
-	if(_verbosity > int(m_verbosity[_facility])) {
-		return false;
-	}
-
-	if(_format[0] == 0) return false;
+	assert(_verbosity <= int(m_verbosity[_facility]));
 
 	list<Logdev*>& devlist = m_mapped_devices[_priority][_facility];
 	if(devlist.empty()) return false;
 
-	if(_format[0] == '\n' && _format[1] == 0) {
-		put_all(devlist,"","\n");
-		m_linefeed[_priority][_facility] = 1;
-		return true;
-	}
-
-	int len = vsnprintf(m_buf, LOG_BUFFER_SIZE, _format, _va);
+	char buf[LOG_BUFFER_SIZE];
+	int len = vsnprintf(buf, LOG_BUFFER_SIZE, _format, _va);
 	if(len > LOG_BUFFER_SIZE) {
-		m_buf[LOG_BUFFER_SIZE-2] = '\n';
+		buf[LOG_BUFFER_SIZE-2] = '\n';
 		len = LOG_BUFFER_SIZE-1;
 	}
-	string prefix, tocompare;
-	if(m_linefeed[_priority][_facility]) {
-		//this 'if' should be based on the output device, not the pri-fac combo!
+
+	if(m_linebuf[_priority][_facility].prefix.empty()) {
 		std::stringstream temp;
 		if(LOG_MACHINE_TIME) {
 			if(LOG_MACHINE_TIME_NS) {
@@ -279,28 +272,29 @@ bool Syslog::p_log(int _priority, int _facility, int _verbosity, const char* _fo
 			}
 			temp << " " << setw(2) << (uint)(g_machine.get_POST_code()) << " ";
 		}
-		prefix += temp.str();
-		prefix += m_pri_prefixes[_verbosity][_priority];
-		prefix += m_fac_prefixes[_facility];
-		tocompare += m_pri_prefixes[_verbosity][_priority];
-		tocompare += m_fac_prefixes[_facility];
+		m_linebuf[_priority][_facility].prefix = temp.str();
+		m_linebuf[_priority][_facility].prefix += m_pri_prefixes[_verbosity][_priority];
+		m_linebuf[_priority][_facility].prefix += m_fac_prefixes[_facility];
 	}
-	tocompare += m_buf;
+	m_linebuf[_priority][_facility].message += buf;
 
-	if(m_linefeed[_priority][_facility] && tocompare.compare(m_repeat_str) == 0) {
-		m_linefeed[_priority][_facility] = 1;
-		m_repeat_cnt++;
-	} else {
-		if(m_repeat_cnt>0) {
-			std::stringstream ss;
-			ss << "last message repeated " << m_repeat_cnt << " more times" << std::endl;
-			put_all(devlist, "", ss.str());
+	if(buf[len-1] == '\n') {
+		if(m_repeat_str == m_linebuf[_priority][_facility].message) {
+			m_repeat_cnt++;
+		} else {
+			if(m_repeat_cnt > 0) {
+				std::stringstream ss;
+				ss << "last message repeated " << m_repeat_cnt << " more times\n";
+				put_all(devlist, "", ss.str());
+			}
+			put_all(devlist, m_linebuf[_priority][_facility].prefix, m_linebuf[_priority][_facility].message);
+			m_repeat_cnt = 0;
+			m_repeat_str = m_linebuf[_priority][_facility].message;
 		}
-		m_repeat_cnt = 0;
-		m_repeat_str = tocompare;
-		m_linefeed[_priority][_facility] = (int)(m_buf[len-1] == '\n');
-		put_all(devlist, prefix, m_buf);
+		m_linebuf[_priority][_facility].message.clear();
+		m_linebuf[_priority][_facility].prefix.clear();
 	}
+
 	return true;
 }
 
@@ -370,6 +364,7 @@ void Syslog::set_verbosity(uint _level, uint _facility)
 const char* Syslog::convert(const char *from_charset, const char *to_charset,
 		char *instr, size_t inlen)
 {
+	char m_iconvbuf[LOG_BUFFER_SIZE];
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	size_t inleft = inlen;
