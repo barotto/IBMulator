@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -116,34 +116,8 @@
 	#endif
 #endif
 
-#define OVERRIDE_VERBOSITY_LEVEL false
-#define LOG_PROGRAM_VERBOSITY  LOG_V0
-#define LOG_FS_VERBOSITY       LOG_V0
-#define LOG_GFX_VERBOSITY      LOG_V0
-#define LOG_INPUT_VERBOSITY    LOG_V0
-#define LOG_GUI_VERBOSITY      LOG_V0
-#define LOG_MACHINE_VERBOSITY  LOG_V0
-#define LOG_MIXER_VERBOSITY    LOG_V0
-#define LOG_MEM_VERBOSITY      LOG_V0
-#define LOG_CPU_VERBOSITY      LOG_V0
-#define LOG_MMU_VERBOSITY      LOG_V0
-#define LOG_PIT_VERBOSITY      LOG_V0
-#define LOG_PIC_VERBOSITY      LOG_V0
-#define LOG_DMA_VERBOSITY      LOG_V0
-#define LOG_KEYB_VERBOSITY     LOG_V0
-#define LOG_VGA_VERBOSITY      LOG_V0
-#define LOG_CMOS_VERBOSITY     LOG_V0
-#define LOG_FDC_VERBOSITY      LOG_V0
-#define LOG_HDD_VERBOSITY      LOG_V0
-#define LOG_AUDIO_VERBOSITY    LOG_V0
-#define LOG_GAMEPORT_VERBOSITY LOG_V0
-#define LOG_LPT_VERBOSITY      LOG_V0
-#define LOG_COM_VERBOSITY      LOG_V0
-#define LOG_MIDI_VERBOSITY     LOG_V0
 
 #include "syslog.h"
-
-
 
 
 #endif

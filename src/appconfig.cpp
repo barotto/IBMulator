@@ -157,6 +157,33 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ LPT_PORT,    "LPT1" },
 		{ LPT_FILE,    ""     }
 	} },
+
+	{ LOG_SECTION, {
+		{ LOG_OVERRIDE_VERBOSITY, "no"},
+		{ LOG_PROGRAM_VERBOSITY,  "0" },
+		{ LOG_FS_VERBOSITY,       "0" },
+		{ LOG_GFX_VERBOSITY,      "0" },
+		{ LOG_INPUT_VERBOSITY,    "0" },
+		{ LOG_GUI_VERBOSITY,      "0" },
+		{ LOG_MACHINE_VERBOSITY,  "0" },
+		{ LOG_MIXER_VERBOSITY,    "0" },
+		{ LOG_MEM_VERBOSITY,      "0" },
+		{ LOG_CPU_VERBOSITY,      "0" },
+		{ LOG_MMU_VERBOSITY,      "0" },
+		{ LOG_PIT_VERBOSITY,      "0" },
+		{ LOG_PIC_VERBOSITY,      "0" },
+		{ LOG_DMA_VERBOSITY,      "0" },
+		{ LOG_KEYB_VERBOSITY,     "0" },
+		{ LOG_VGA_VERBOSITY,      "0" },
+		{ LOG_CMOS_VERBOSITY,     "0" },
+		{ LOG_FDC_VERBOSITY,      "0" },
+		{ LOG_HDD_VERBOSITY,      "0" },
+		{ LOG_AUDIO_VERBOSITY,    "0" },
+		{ LOG_GAMEPORT_VERBOSITY, "0" },
+		{ LOG_LPT_VERBOSITY,      "0" },
+		{ LOG_COM_VERBOSITY,      "0" },
+		{ LOG_MIDI_VERBOSITY,     "0" }
+	} },
 },
 
 //MACHINE_CONFIG

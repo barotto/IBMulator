@@ -359,30 +359,30 @@ bool Program::initialize(int argc, char** argv)
 
 	m_quit = false;
 
-	if(OVERRIDE_VERBOSITY_LEVEL) {
-		g_syslog.set_verbosity(LOG_PROGRAM_VERBOSITY,LOG_PROGRAM);
-		g_syslog.set_verbosity(LOG_FS_VERBOSITY,     LOG_FS);
-		g_syslog.set_verbosity(LOG_GFX_VERBOSITY,    LOG_GFX);
-		g_syslog.set_verbosity(LOG_INPUT_VERBOSITY,  LOG_INPUT);
-		g_syslog.set_verbosity(LOG_GUI_VERBOSITY,    LOG_GUI);
-		g_syslog.set_verbosity(LOG_MACHINE_VERBOSITY,LOG_MACHINE);
-		g_syslog.set_verbosity(LOG_MIXER_VERBOSITY,  LOG_MIXER);
-		g_syslog.set_verbosity(LOG_MEM_VERBOSITY,    LOG_MEM);
-		g_syslog.set_verbosity(LOG_CPU_VERBOSITY,    LOG_CPU);
-		g_syslog.set_verbosity(LOG_MMU_VERBOSITY,    LOG_MMU);
-		g_syslog.set_verbosity(LOG_PIT_VERBOSITY,    LOG_PIT);
-		g_syslog.set_verbosity(LOG_PIC_VERBOSITY,    LOG_PIC);
-		g_syslog.set_verbosity(LOG_DMA_VERBOSITY,    LOG_DMA);
-		g_syslog.set_verbosity(LOG_KEYB_VERBOSITY,   LOG_KEYB);
-		g_syslog.set_verbosity(LOG_VGA_VERBOSITY,    LOG_VGA);
-		g_syslog.set_verbosity(LOG_CMOS_VERBOSITY,   LOG_CMOS);
-		g_syslog.set_verbosity(LOG_FDC_VERBOSITY,    LOG_FDC);
-		g_syslog.set_verbosity(LOG_HDD_VERBOSITY,    LOG_HDD);
-		g_syslog.set_verbosity(LOG_AUDIO_VERBOSITY,  LOG_AUDIO);
-		g_syslog.set_verbosity(LOG_GAMEPORT_VERBOSITY,LOG_GAMEPORT);
-		g_syslog.set_verbosity(LOG_LPT_VERBOSITY,    LOG_LPT);
-		g_syslog.set_verbosity(LOG_COM_VERBOSITY,    LOG_COM);
-		g_syslog.set_verbosity(LOG_MIDI_VERBOSITY,   LOG_MIDI);
+	if(m_config[0].get_bool(LOG_SECTION, LOG_OVERRIDE_VERBOSITY)) {
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_PROGRAM_VERBOSITY),  LOG_PROGRAM);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_FS_VERBOSITY),       LOG_FS);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GFX_VERBOSITY),      LOG_GFX);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_INPUT_VERBOSITY),    LOG_INPUT);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GUI_VERBOSITY),      LOG_GUI);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MACHINE_VERBOSITY),  LOG_MACHINE);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIXER_VERBOSITY),    LOG_MIXER);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MEM_VERBOSITY),      LOG_MEM);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_CPU_VERBOSITY),      LOG_CPU);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MMU_VERBOSITY),      LOG_MMU);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_PIT_VERBOSITY),      LOG_PIT);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_PIC_VERBOSITY),      LOG_PIC);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_DMA_VERBOSITY),      LOG_DMA);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_KEYB_VERBOSITY),     LOG_KEYB);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_VGA_VERBOSITY),      LOG_VGA);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_CMOS_VERBOSITY),     LOG_CMOS);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_FDC_VERBOSITY),      LOG_FDC);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_HDD_VERBOSITY),      LOG_HDD);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_AUDIO_VERBOSITY),    LOG_AUDIO);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GAMEPORT_VERBOSITY), LOG_GAMEPORT);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_LPT_VERBOSITY),      LOG_LPT);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_COM_VERBOSITY),      LOG_COM);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIDI_VERBOSITY),     LOG_MIDI);
 	}
 	
 	static std::map<std::string, unsigned> waitmethods = {
