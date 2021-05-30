@@ -143,14 +143,14 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SERIAL_SECTION, {
-		{ SERIAL_A_MODE,    "null" },
-		{ SERIAL_A_DEV,     ""     },
-		{ SERIAL_B_MODE,    "null" },
-		{ SERIAL_B_DEV,     ""     },
-		{ SERIAL_C_MODE,    "null" },
-		{ SERIAL_C_DEV,     ""     },
-		{ SERIAL_D_MODE,    "null" },
-		{ SERIAL_D_DEV,     ""     }
+		{ SERIAL_A_MODE,    "dummy" },
+		{ SERIAL_A_DEV,     ""      },
+		{ SERIAL_B_MODE,    "dummy" },
+		{ SERIAL_B_DEV,     ""      },
+		{ SERIAL_C_MODE,    "dummy" },
+		{ SERIAL_C_DEV,     ""      },
+		{ SERIAL_D_MODE,    "dummy" },
+		{ SERIAL_D_DEV,     ""      }
 	} },
 
 	{ LPT_SECTION, {

@@ -72,13 +72,13 @@ IODEVICE_PORTS(Serial) = {
 };
 
 static ini_enum_map_t serial_modes = {
-	{ "null", SER_MODE_NULL },
+	{ "dummy", SER_MODE_DUMMY },
 	{ "file", SER_MODE_FILE },
 	{ "term", SER_MODE_TERM },
 	{ "raw", SER_MODE_RAW },
 	{ "mouse", SER_MODE_MOUSE },
-	{ "socket-client", SER_MODE_SOCKET_CLIENT },
-	{ "socket-server", SER_MODE_SOCKET_SERVER },
+	{ "net-client", SER_MODE_NET_CLIENT },
+	{ "net-server", SER_MODE_NET_SERVER },
 	{ "pipe-client", SER_MODE_PIPE_CLIENT },
 	{ "pipe-server", SER_MODE_PIPE_SERVER }
 };
@@ -89,7 +89,7 @@ Serial::Serial(Devices *_dev)
 	std::memset(&m_s, 0, sizeof(m_s));
 	for(int i=0; i<SER_PORTS; i++) {
 		m_host[i].port_id = i;
-		m_host[i].io_mode = SER_MODE_NULL;
+		m_host[i].io_mode = SER_MODE_DUMMY;
 		m_host[i].tty_id = -1;
 		m_host[i].socket_id = -1;
 		m_host[i].output = nullptr;
@@ -164,7 +164,7 @@ void Serial::config_changed()
 		mode = g_program.config().get_enum(SERIAL_SECTION, mode_name, serial_modes);
 		dev = g_program.config().get_string(SERIAL_SECTION, dev_name);
 
-		if(mode != SER_MODE_NULL) {
+		if(mode != SER_MODE_DUMMY) {
 			PINFOF(LOG_V0, LOG_COM, "%s: initializing mode '%s' on device '%s'\n",
 					m_host[i].name(),
 					g_program.config().get_string(SERIAL_SECTION, mode_name).c_str(),
@@ -207,22 +207,22 @@ void Serial::config_changed()
 				case SER_MODE_RAW:
 					m_host[i].init_mode_raw(dev);
 					break;
-				case SER_MODE_SOCKET_CLIENT:
-				case SER_MODE_SOCKET_SERVER:
+				case SER_MODE_NET_CLIENT:
+				case SER_MODE_NET_SERVER:
 					m_host[i].init_mode_socket(dev, mode);
 					break;
 				case SER_MODE_PIPE_CLIENT:
 				case SER_MODE_PIPE_SERVER:
 					m_host[i].init_mode_pipe(dev, mode);
 					break;
-				case SER_MODE_NULL:
+				case SER_MODE_DUMMY:
 					break;
 				default:
 					throw std::runtime_error("unknown mode");
 			}
 		} catch(std::runtime_error &e) {
 			PERRF(LOG_COM, "%s: initialization error: %s\n", m_host[i].name(), e.what());
-			m_host[i].io_mode = SER_MODE_NULL;
+			m_host[i].io_mode = SER_MODE_DUMMY;
 			throw;
 		}
 	}
@@ -262,8 +262,8 @@ void Serial::close()
 				m_host[i].raw = nullptr;
 				#endif
 				break;
-			case SER_MODE_SOCKET_CLIENT:
-			case SER_MODE_SOCKET_SERVER:
+			case SER_MODE_NET_CLIENT:
+			case SER_MODE_NET_SERVER:
 				if(m_host[i].socket_id != INVALID_SOCKET) {
 					closesocket(m_host[i].socket_id);
 					m_host[i].socket_id = INVALID_SOCKET;
@@ -281,7 +281,7 @@ void Serial::close()
 			default:
 				break;
 		}
-		m_host[i].io_mode = SER_MODE_NULL;
+		m_host[i].io_mode = SER_MODE_DUMMY;
 	}
 }
 
@@ -503,7 +503,7 @@ void Serial::Port::init_mode_socket(std::string dev, uint mode)
 		throw std::runtime_error("socket creation failed for " + dev);
 	}
 
-	bool server_mode = (mode == SER_MODE_SOCKET_SERVER);
+	bool server_mode = (mode == SER_MODE_NET_SERVER);
 	if(server_mode) {
 		if(::bind(socket, (sockaddr *) &sin, sizeof (sin)) < 0 || ::listen(socket, SOMAXCONN) < 0) {
 			closesocket(socket);
@@ -1437,7 +1437,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 					if(m_host[port].output == nullptr) {
 						PERRF(LOG_COM, "%s: could not open file '%s' to write\n",
 								m_host[port].name(), m_host[port].filename.c_str());
-						m_host[port].io_mode = SER_MODE_NULL;
+						m_host[port].io_mode = SER_MODE_DUMMY;
 						break;
 					} else {
 						PINFOF(LOG_V0, LOG_COM, "%s: opened output file '%s'\n",
@@ -1470,8 +1470,8 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 			case SER_MODE_MOUSE:
 				PDEBUGF(LOG_V1, LOG_COM, "%s: write to mouse ignored: 0x%02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 				break;
-			case SER_MODE_SOCKET_CLIENT:
-			case SER_MODE_SOCKET_SERVER:
+			case SER_MODE_NET_CLIENT:
+			case SER_MODE_NET_SERVER:
 				if(m_host[port].socket_id >= 0) {
 					PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 					#if SER_WIN32
@@ -1543,8 +1543,8 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 	}
 	if((!m_s.uart[port].line_status.rxdata_ready) || m_s.uart[port].fifo_cntl.enable) {
 		switch (m_host[port].io_mode) {
-			case SER_MODE_SOCKET_CLIENT:
-			case SER_MODE_SOCKET_SERVER:
+			case SER_MODE_NET_CLIENT:
+			case SER_MODE_NET_SERVER:
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
 				if(!m_s.uart[port].line_status.rxdata_ready) {
 					tval.tv_sec  = 0;

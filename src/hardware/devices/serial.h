@@ -79,13 +79,13 @@
 #define SER_MSR  6   // 3fe MODEM Status Register
 #define SER_SCR  7   // 3ff Scratch Register
 
-#define SER_MODE_NULL          0
+#define SER_MODE_DUMMY         0
 #define SER_MODE_FILE          1
 #define SER_MODE_TERM          2
 #define SER_MODE_RAW           3
 #define SER_MODE_MOUSE         4
-#define SER_MODE_SOCKET_CLIENT 5
-#define SER_MODE_SOCKET_SERVER 6
+#define SER_MODE_NET_CLIENT    5
+#define SER_MODE_NET_SERVER    6
 #define SER_MODE_PIPE_CLIENT   7
 #define SER_MODE_PIPE_SERVER   8
 
