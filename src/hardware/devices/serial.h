@@ -54,11 +54,13 @@
 	#include <winsock2.h>
 #endif
 
-#include "keyboard.h"
-
 #define SER_PORTS       1     // number of serial ports (1 to 4)
 #define SER_ENABLE_RAW  false // enable raw serial port access (TODO NOT IMPLEMENTED)
 #define SER_TERM_BRKINT false // if true when in term mode CTRL-C will cause SIGINT
+
+#if (SER_PORTS > 4)
+#error "SER_PORTS cannot be bigger than 4"
+#endif
 
 #define PC_CLOCK_XTL   1843200.0
 

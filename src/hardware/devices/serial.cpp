@@ -152,11 +152,6 @@ void Serial::config_changed()
 	m_enabled = false; // POS determines the general state
 
 	for(int i=0; i<SER_PORTS; i++) {
-		if(i > SER_PORT_D) {
-			assert(false);
-			PDEBUGF(LOG_V0, LOG_COM, "invalid port %d\n", i);
-			break;
-		}
 		uint8_t mode;
 		std::string dev, mode_name, dev_name;
 		switch(i) {
@@ -197,6 +192,10 @@ void Serial::config_changed()
 							std::bind(&Serial::mouse_motion, this, _1, _2, _3),
 							std::bind(&Serial::mouse_button, this, _1, _2)
 						);
+						PINFOF(LOG_V0, LOG_COM, "%s: mouse installed\n", m_host[i].name());
+					} else {
+						PWARNF(LOG_V0, LOG_COM, "%s: mouse mode is enabled but the mouse type is '%s'\n",
+								m_host[i].name(), g_program.config().get_string(GUI_SECTION, GUI_MOUSE_TYPE).c_str());
 					}
 					break;
 				case SER_MODE_FILE:
@@ -530,7 +529,7 @@ void Serial::Port::init_mode_socket(std::string dev, uint mode)
 
 	if(socket > 0) {
 		io_mode = mode;
-		PINFOF(LOG_V0, LOG_COM, "%s: inet %s initilized: host:%s, port:%u (socket_id:%d)\n",
+		PINFOF(LOG_V0, LOG_COM, "%s: inet %s initialized: host:%s, port:%u (socket_id:%d)\n",
 				name(), server_mode ? "server" : "client", host.c_str(), port, socket);
 	}
 }
@@ -1308,7 +1307,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			} else {
 				if(m_host[port].io_mode == SER_MODE_MOUSE) {
 					if(m_s.mouse.detect == 2) {
-						PDEBUGF(LOG_V2, LOG_COM, "%s: mouse detection mode\n",
+						PDEBUGF(LOG_V1, LOG_COM, "%s: mouse detection mode\n",
 								m_host[port].name());
 						if((m_mouse.type == MOUSE_TYPE_SERIAL) || 
 						   (m_mouse.type == MOUSE_TYPE_SERIAL_MSYS))
@@ -1450,11 +1449,11 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 				break;
 			case SER_MODE_TERM:
 				#if SER_POSIX
-				PDEBUGF(LOG_V1, LOG_COM, "%s: write: '%c'\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
+				PDEBUGF(LOG_V1, LOG_COM, "%s: term write: '%c'\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 				if(m_host[port].tty_id >= 0) {
 					ssize_t res = ::write(m_host[port].tty_id, (void*) & m_s.uart[port].tsrbuffer, 1);
 					if(res != 1) {
-						PWARNF(LOG_V1, LOG_COM, "%s: write failed!\n", m_host[port].name());
+						PWARNF(LOG_V1, LOG_COM, "%s: term write failed!\n", m_host[port].name());
 					}
 				}
 				#endif
@@ -1474,13 +1473,13 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 			case SER_MODE_SOCKET_CLIENT:
 			case SER_MODE_SOCKET_SERVER:
 				if(m_host[port].socket_id >= 0) {
-					PDEBUGF(LOG_V1, LOG_COM, "%s: write byte [%02x]\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
+					PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 					#if SER_WIN32
 					::send(m_s[port].socket_id, (const char*) & m_s[port].tsrbuffer, 1, 0);
 					#else
 					ssize_t res = ::write(m_host[port].socket_id, (void*)&m_s.uart[port].tsrbuffer, 1);
 					if(res != 1) {
-						PWARNF(LOG_V1, LOG_COM, "%s: write failed!\n", m_host[port].name());
+						PWARNF(LOG_V1, LOG_COM, "%s: sock write failed!\n", m_host[port].name());
 					}
 					#endif
 				}
@@ -1563,7 +1562,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 							::read(socketid, &chbuf, 1);
 						#endif
 						if(bytes > 0) {
-							PDEBUGF(LOG_V1, LOG_COM, "%s: read byte [%02x]\n", m_host[port].name(), chbuf);
+							PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: %02x\n", m_host[port].name(), chbuf);
 							data_ready = true;
 						}
 					}
@@ -1618,9 +1617,12 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
 				if((m_host[port].tty_id >= 0) && (select(m_host[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1)) {
 					ssize_t res = ::read(m_host[port].tty_id, &chbuf, 1);
-					assert(res==1);
-					PDEBUGF(LOG_V2, LOG_COM, "%s: read: '%c'\n", m_host[port].name(), chbuf);
-					data_ready = 1;
+					if(res == 1) {
+						PDEBUGF(LOG_V1, LOG_COM, "%s: term read: '%c'\n", m_host[port].name(), chbuf);
+						data_ready = true;
+					} else {
+						PWARNF(LOG_V0, LOG_COM, "%s: error reading from term\n", m_host[port].name());
+					}
 				}
 				#endif
 				break;
@@ -1632,7 +1634,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 					chbuf = m_s.mouse.buffer.data[m_s.mouse.buffer.head];
 					m_s.mouse.buffer.head = (m_s.mouse.buffer.head + 1) % MOUSE_BUFF_SIZE;
 					m_s.mouse.buffer.elements--;
-					data_ready = 1;
+					data_ready = true;
 				}
 				break;
 			case SER_MODE_PIPE_CLIENT:
@@ -1644,7 +1646,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 						avail > 0)
 				{
 					ReadFile(m_s[port].pipe, &chbuf, 1, &avail, nullptr);
-					data_ready = 1;
+					data_ready = true;
 				}
 				#endif
 				break;
