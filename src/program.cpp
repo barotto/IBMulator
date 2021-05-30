@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -350,7 +350,7 @@ bool Program::initialize(int argc, char** argv)
 	FileSys::create_dir(capture_dir_path.c_str());
 	PINFO(LOG_V1,"capture directory: %s\n", capture_dir_path.c_str());
 
-	std::string dumplog = m_config[0].get_file_path("log.txt", FILE_TYPE_USER);
+	std::string dumplog = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
 
 	m_config[1].copy(m_config[0]);

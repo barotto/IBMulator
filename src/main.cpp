@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 		}
 	} catch(std::exception &e) {
 		std::string message = "A problem occurred during initialisation.\n";
-		std::string logfile = g_program.config().get_cfg_home() + FS_SEP "log.txt";
+		std::string logfile = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
 		if(FileSys::file_exists(logfile.c_str())) {
 			PERR("exception caught during initialization! giving up :(\n");
 			message += "See the log file for more info"
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 #endif
 				".\n"
 				"Use the -v NUM command line switch to enable verbose logging.\n\n"
-				"The log file is here:\n" + g_program.config().get_cfg_home() + FS_SEP"log.txt\n"
+				"The log file is here:\n" + logfile + "\n"
 				"The ini file is here:\n" + g_program.config().get_parsed_file();
 		} else {
 			message += "Log content:\n";

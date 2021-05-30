@@ -37,7 +37,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""       },
 		{ PROGRAM_FILE_DIALOGS, "custom" },
-		{ PROGRAM_WAIT_METHOD,  "auto"   }
+		{ PROGRAM_WAIT_METHOD,  "auto"   },
+		{ PROGRAM_LOG_FILE,     "log.txt"}
 	} },
 
 	{ GUI_SECTION, {
@@ -272,6 +273,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  file_dialogs: The type of file select dialogs to use:\n"
 ";                 custom: use the " PACKAGE_NAME "'s custom implementation\n"
 ";                 native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
+";      log_file: path of the log file\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -530,7 +532,8 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_FILE_DIALOGS
+		PROGRAM_FILE_DIALOGS,
+		PROGRAM_LOG_FILE
 	} },
 	{ GUI_SECTION, {
 		GUI_RENDERER,
