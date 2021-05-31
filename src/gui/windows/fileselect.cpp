@@ -246,13 +246,12 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 
 	std::set<DirEntry> cur_dir;
 
-	_path += FS_SEP;
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		DirEntry de;
 		de.name = ent->d_name;
-		std::string fullpath = _path + de.name;
+		std::string fullpath = _path + FS_SEP + de.name;
 		if(stat(fullpath.c_str(), &sb) != 0) {
 			continue;
 		}
@@ -267,6 +266,9 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 		de.size = sb.st_size;
 		if(S_ISDIR(sb.st_mode)) {
 			if(de.name == ".") {
+				continue;
+			}
+			if(de.name == ".." && _path.length() <= FS_PATH_MIN) {
 				continue;
 			}
 			de.is_dir = true;
