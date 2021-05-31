@@ -447,8 +447,9 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	 * DATA dir priorities:
 	 * 1. DATA_HOME env variable
 	 * 2. dirname(argv[0]) + /../share/PACKAGE
-	 * 3. XGD_DATA_HOME env + PACKAGE define
-	 * 4. DATA_PATH define
+	 * 3. XDG_DATA_HOME env + PACKAGE define
+	 * 4. $HOME/.local/share + PACKAGE define
+	 * 5. DATA_PATH define
 	 */
 	char rpbuf[PATH_MAX];
 	std::string datapath;
@@ -470,17 +471,30 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 		return std::string(rpbuf);
 	}
 
-	//3. XGD_DATA_HOME env + PACKAGE define
+#ifndef _WIN32
+	//3. XDG_DATA_HOME env + PACKAGE define
 	edatapath = getenv("XDG_DATA_HOME");
 	if(edatapath != nullptr) {
 		datapath = std::string(edatapath) + FS_SEP PACKAGE;
 		if(FileSys::is_directory(datapath.c_str())) {
 			return datapath;
 		}
+	} else {
+		//4. $HOME/.local/share + PACKAGE define
+		edatapath = getenv("HOME");
+		PDEBUGF(LOG_V1, LOG_PROGRAM, "home %s\n", edatapath);
+		if(edatapath != nullptr) {
+			datapath = std::string(edatapath) + FS_SEP ".local" FS_SEP "share" FS_SEP PACKAGE;
+			PDEBUGF(LOG_V1, LOG_PROGRAM, "datapath %s\n", datapath.c_str());
+			if(FileSys::is_directory(datapath.c_str())) {
+				return datapath;
+			}
+		}
 	}
+#endif
 
 #ifdef DATA_PATH
-	//4. DATA_PATH define
+	//5. DATA_PATH define
 	if(FileSys::is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != nullptr) {
 		return std::string(rpbuf);
 	}
