@@ -85,7 +85,7 @@
 #  FUNC_GRAB_MOUSE           : lock / unlock mouse to emulator
 #  FUNC_SYS_SPEED_UP         : increase emulation speed (whole system)
 #  FUNC_SYS_SPEED_DOWN       : decrease emulation speed (whole system)
-#  FUNC_SYS_SPEED(x,m)       : set the emulation speed to x%, mode m (1=momentary, 0=latched)
+#  FUNC_SYS_SPEED(x)         : set the emulation speed to x% (whole system)
 #  FUNC_TOGGLE_FULLSCREEN    : toggle fullscreen mode
 #  FUNC_SWITCH_KEYMAPS       : change the active keymap to the next available one
 #  FUNC_EXIT                 : close IBMulator
@@ -110,9 +110,7 @@
 #                  you can also use -max and max strings (no default)
 #  argument 2 (t): type of stick movement, 0=immediate, 1=constant speed (default 0)
 #  argument 3 (a): speed of stick movement (default 500, applied only when t=1)
-# Parameters `t` and `a` are applied only for keys and buttons; movement is
-automatically determined when you map mouse and joystick axes (a negative `v`
-value will invert the direction).
+# Parameters `t` and `a` are applied only for keys and buttons; movement is automatically determined when you map mouse and joystick axes (a negative `v` value will invert the direction).
 # Examples:
 #  SDLK_KP_2 = JOY_A_AXIS_Y(max,1)  # stick movement at constant speed from 0 to 32767
 #  SDLK_KP_4 = JOY_A_AXIS_X(-max,0) # immediate stick movement to -32768
@@ -173,9 +171,9 @@ KMOD_CTRL + SDLK_F8     = FUNC_QUICK_SAVE_STATE
 KMOD_CTRL + SDLK_F9     = FUNC_QUICK_LOAD_STATE
 KMOD_CTRL + SDLK_F10    = FUNC_GRAB_MOUSE
 KMOD_CTRL + SDLK_F11    = FUNC_SYS_SPEED_DOWN
-KMOD_ALT + SDLK_F11     = FUNC_SYS_SPEED(10,1)
+KMOD_ALT + SDLK_F11     = FUNC_SYS_SPEED(10); mode:latched group:sysspeed
 KMOD_CTRL + SDLK_F12    = FUNC_SYS_SPEED_UP
-KMOD_ALT + SDLK_F12     = FUNC_SYS_SPEED(500,1)
+KMOD_ALT + SDLK_F12     = FUNC_SYS_SPEED(500); mode:latched group:sysspeed
 KMOD_SHIFT + SDLK_SPACE = FUNC_SWITCH_KEYMAPS
 KMOD_ALT + SDLK_RETURN  = FUNC_TOGGLE_FULLSCREEN
 KMOD_ALT + SDLK_PAUSE   = FUNC_TOGGLE_PAUSE
