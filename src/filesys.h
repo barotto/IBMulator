@@ -22,9 +22,11 @@
 
 #ifndef _WIN32
 	#define FILETIME time_t
+	#define FS_PATH_MIN 1
 #else
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
+	#define FS_PATH_MIN 3
 #endif
 
 #include <memory>

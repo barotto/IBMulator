@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "gui.h"
+#include "filesys.h"
 #include <algorithm>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -91,15 +92,21 @@ void FileSelect::on_file(RC::Event &_event)
 	if(it->is_dir) {
 		if(it->name == "..") {
 			size_t pos = path.rfind(FS_SEP);
-			if(pos==std::string::npos) {
+			if(pos == std::string::npos) {
 				return;
 			}
-			path = path.substr(0,pos);
+			if(pos == 0) {
+				// the root on unix
+				pos = 1;
+			}
+			path = path.substr(0, pos);
 		} else {
 			path += FS_SEP;
 			path += it->name;
 		}
-		set_current_dir(path);
+		try {
+			set_current_dir(path);
+		} catch(...) { }
 		return;
 	}
 	if(m_select_callbk != nullptr) {
@@ -209,32 +216,36 @@ void FileSelect::set_current_dir(const std::string &_path)
 {
 	char buf[PATH_MAX];
 	if(realpath(_path.c_str(), buf) == nullptr) {
-		PERRF(LOG_GUI, "unable to set the current path to '%s'\n", _path.c_str());
+		PERRF(LOG_GUI, "The path to '%s' cannot be resolved\n", _path.c_str());
 		throw std::exception();
 	}
-	m_cwd = buf;
-
-	if(m_cwd.rfind(FS_SEP) == m_cwd.size()-1) {
-		m_cwd.pop_back();
+	std::string new_cwd = buf;
+	if(new_cwd.size() > FS_PATH_MIN && new_cwd.rfind(FS_SEP) == new_cwd.size()-1) {
+		new_cwd.pop_back();
 	}
 
-	read_dir(m_cwd, "(\\.img|\\.ima|\\.flp)$");
-	//read_dir(m_cwd, "");
+	try {
+		m_cur_dir = read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
+	} catch(std::exception &e) {
+		return;
+	}
+	m_cwd = new_cwd;
 	m_cwd_el->SetInnerRML(m_cwd.c_str());
 	NotifyRowChange("files");
 }
 
-void FileSelect::read_dir(std::string _path, std::string _ext)
+std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::string _ext)
 {
-	m_cur_dir.clear();
-
 	DIR *dir;
 	struct dirent *ent;
 
 	if((dir = opendir(_path.c_str())) == nullptr) {
-		PERRF(LOG_FS, "Unable to open directory %s\n", _path.c_str());
+		PERRF(LOG_GUI, "Cannot open directory '%s' for reading\n", _path.c_str());
 		throw std::exception();
 	}
+
+	std::set<DirEntry> cur_dir;
+
 	_path += FS_SEP;
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
 	while((ent = readdir(dir)) != nullptr) {
@@ -266,13 +277,14 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 				continue;
 			}
 		}
-		m_cur_dir.insert(de);
+		cur_dir.insert(de);
 	}
 
 	if(closedir(dir) != 0) {
-		PERRF(LOG_FS, "Unable to close directory %s\n", _path.c_str());
-		throw std::exception();
+		PWARNF(LOG_V1, LOG_GUI, "Cannot close directory '%s'\n", _path.c_str());
 	}
+
+	return cur_dir;
 }
 
 

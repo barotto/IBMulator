@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,7 +60,7 @@ private:
 	void on_cancel(RC::Event &);
 	void on_file(RC::Event &);
 
-	void read_dir(std::string _path, std::string _ext);
+	std::set<DirEntry> read_dir(std::string _path, std::string _ext);
 
 public:
 
