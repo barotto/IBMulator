@@ -291,14 +291,14 @@ bool Program::initialize(int argc, char** argv)
 		m_user_dir += FS_SEP PACKAGE;
 	}
 	FileSys::create_dir(m_user_dir.c_str());
-	PINFO(LOG_V1,"user directory: %s\n", m_user_dir.c_str());
+	PINFO(LOG_V1,"User directory: %s\n", m_user_dir.c_str());
 	m_config[0].set_cfg_home(m_user_dir);
 
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
 	if(m_cfg_file.empty()) {
 		m_cfg_file = cfgfile;
 	}
-	PINFO(LOG_V1,"ini file: %s\n", m_cfg_file.c_str());
+	PINFO(LOG_V1,"INI file: %s\n", m_cfg_file.c_str());
 
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_V0, LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
@@ -338,7 +338,7 @@ bool Program::initialize(int argc, char** argv)
 
 	m_datapath = get_assets_dir(argc,argv);
 	m_config[0].set_assets_home(m_datapath);
-	PINFO(LOG_V1,"assets directory: %s\n", m_datapath.c_str());
+	PINFO(LOG_V1,"Assets directory: %s\n", m_datapath.c_str());
 
 	//Capture dir, create if not exists
 	std::string capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
@@ -348,7 +348,7 @@ bool Program::initialize(int argc, char** argv)
 		capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	}
 	FileSys::create_dir(capture_dir_path.c_str());
-	PINFO(LOG_V1,"capture directory: %s\n", capture_dir_path.c_str());
+	PINFO(LOG_V1,"Capture directory: %s\n", capture_dir_path.c_str());
 
 	std::string dumplog = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
@@ -460,9 +460,11 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	}
 
 	//2. dirname(argv[0]) + /../share/PACKAGE
-	char *buf = strdup(argv[0]); //dirname modifies the string!
-	datapath = dirname(buf);
-	free(buf);
+	if(realpath(argv[0], rpbuf) == nullptr) {
+		PERRF(LOG_PROGRAM, "Unexpected error encountered while trying to find the executable location\n");
+		throw std::exception();
+	}
+	datapath = dirname(rpbuf);
 	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE;
 	if(realpath(datapath.c_str(), rpbuf) != nullptr && FileSys::is_directory(rpbuf)) {
 		return std::string(rpbuf);
@@ -484,7 +486,11 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	}
 #endif
 
-	PERRF(LOG_PROGRAM, "Cannot find the assets!\n");
+	PERRF(LOG_PROGRAM, "Cannot find the assets directory!\n");
+	PERRF(LOG_PROGRAM, "Please verify that the .." FS_SEP "share" FS_SEP PACKAGE " directory exists\n");
+#ifdef _WIN32
+	PERRF(LOG_PROGRAM, "and that the installation path doesn't have non-US characters (known bug #43)\n");
+#endif
 	throw std::exception();
 }
 
@@ -498,7 +504,7 @@ void Program::parse_arguments(int argc, char** argv)
 		switch(c) {
 			case 'c':
 				if(!FileSys::file_exists(optarg)) {
-					PERRF(LOG_PROGRAM, "The specified config file doesn't exists\n");
+					PERRF(LOG_PROGRAM, "The specified configuration file doesn't exist\n");
 				} else {
 					m_cfg_file = optarg;
 				}
