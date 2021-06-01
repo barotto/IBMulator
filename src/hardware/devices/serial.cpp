@@ -738,11 +738,17 @@ void Serial::raise_interrupt(uint8_t port, int type)
 			}
 			break;
 		default:
-			break;
+			PDEBUGF(LOG_V0, LOG_COM, "invalid int type!\n");
+			return;
 	}
 
 	if(gen_int && m_s.uart[port].modem_cntl.out2) {
-		PDEBUGF(LOG_V2, LOG_COM, "%s: raising IRQ %u\n", m_s.uart[port].name(), m_s.uart[port].IRQ);
+		constexpr const char * int_names[] = {
+			"IER", "RXDATA", "TXHOLD", "RXLSTAT", "MODSTAT", "FIFO"
+		};
+		PDEBUGF(LOG_V2, LOG_COM, "%s: raising IRQ %u (%s)\n",
+			m_s.uart[port].name(), m_s.uart[port].IRQ, int_names[type]
+		);
 		m_devices->pic()->raise_irq(m_s.uart[port].IRQ);
 	}
 }
@@ -1639,6 +1645,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 					chbuf = m_s.mouse.buffer.data[m_s.mouse.buffer.head];
 					m_s.mouse.buffer.head = (m_s.mouse.buffer.head + 1) % MOUSE_BUFF_SIZE;
 					m_s.mouse.buffer.elements--;
+					PDEBUGF(LOG_V1, LOG_COM, "%s: mouse read: 0x%02x\n", m_host[port].name(), chbuf);
 					data_ready = true;
 				}
 				break;
@@ -1665,15 +1672,19 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 			}
 		} else {
 			if(!m_s.uart[port].fifo_cntl.enable) {
+				// TODO why? is it an attempt to solve some net related issue?
 				db_usec = 100000; // Poll frequency is 100ms
 			}
 		}
-	} else { //if((m_s.uart[port].line_status.rxdata_ready == 0) || (m_s.uart[port].fifo_cntl.enable)) {
-		// Poll at 4x baud rate to see if the next-char can
-		// be read
+	} else {
+		// Poll at 4x baud rate to see if the next-char can be read
+		// TODO why? is it an attempt to solve some net related issue? 
 		db_usec *= 4;
 	}
 
+	if(db_usec != m_s.uart[port].databyte_usec) {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: next rx timer: %u us\n", m_host[port].name(), db_usec);
+	}
 	// not continuous
 	g_machine.activate_timer(m_host[port].rx_timer, uint64_t(db_usec)*1_us, false);
 }
@@ -1694,9 +1705,11 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 		PERRF(LOG_COM, "Mouse not connected to a serial port\n");
 		return;
 	}
-	
+
 	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
 	if(!m_s.uart[m_mouse.port].modem_cntl.dtr || !m_s.uart[m_mouse.port].modem_cntl.rts) {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse button: ignored (dtr/rts not up)\n",
+			m_host[m_mouse.port].name());
 		return;
 	}
 
@@ -1706,6 +1719,9 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 	m_mouse.buttons &= ~(1 << btnid);
 	m_mouse.buttons |= (_state << btnid);
 	m_mouse.update = true;
+
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse button: id=%u, state=%u\n", m_host[m_mouse.port].name(),
+		ec_to_i(_button), _state);
 }
 
 void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
@@ -1719,10 +1735,22 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 		return;
 	}
 
-	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
-	if(!m_s.uart[m_mouse.port].modem_cntl.dtr || !m_s.uart[m_mouse.port].modem_cntl.rts) {
+	if((delta_x==0) && (delta_y==0) && (delta_z==0))
+	{
+		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: useless call. ignoring.\n",
+			m_host[m_mouse.port].name());
 		return;
 	}
+
+	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
+	if(!m_s.uart[m_mouse.port].modem_cntl.dtr || !m_s.uart[m_mouse.port].modem_cntl.rts) {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: ignored (dtr/rts not up)\n",
+			m_host[m_mouse.port].name());
+		return;
+	}
+
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: d:[%d,%d,%d]->", m_host[m_mouse.port].name(),
+		delta_x, delta_y, delta_z);
 
 	// scale down the motion
 	if((delta_x < -1) || (delta_x > 1)) {
@@ -1743,6 +1771,9 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 	m_mouse.delayed_dy -= delta_y;
 	m_mouse.delayed_dz  = delta_z;
 	m_mouse.update = true;
+
+	PDEBUGF(LOG_V2, LOG_COM, "[%d,%d], delayed:[%d,%d,%d]\n",
+		delta_x, delta_y, m_mouse.delayed_dx, m_mouse.delayed_dy, m_mouse.delayed_dz);
 }
 
 void Serial::update_mouse_data()
@@ -1774,6 +1805,8 @@ void Serial::update_mouse_data()
 	}
 	button_state = m_mouse.buttons;
 
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse d:[%d,%d", m_host[m_mouse.port].name(),
+		delta_x, delta_y);
 	int nbytes;
 	uint8_t mouse_data[5];
 	if(m_mouse.type != MOUSE_TYPE_SERIAL_MSYS) {
@@ -1789,6 +1822,7 @@ void Serial::update_mouse_data()
 		nbytes = 3;
 		if(m_mouse.type == MOUSE_TYPE_SERIAL_WHEEL) {
 			nbytes = 4;
+			PDEBUGF(LOG_V2, LOG_COM, ",%d", m_mouse.delayed_dz);
 		}
 	} else {
 		b1 = (uint8_t) (delta_x / 2);
@@ -1803,10 +1837,18 @@ void Serial::update_mouse_data()
 	}
 
 	// enqueue mouse data in multibyte internal mouse buffer
+	PDEBUGF(LOG_V2, LOG_COM, "], b:0x%x, data:0x[", button_state);
 	for(int i = 0; i < nbytes; i++) {
 		int tail = (m_s.mouse.buffer.head + m_s.mouse.buffer.elements) % MOUSE_BUFF_SIZE;
 		m_s.mouse.buffer.data[tail] = mouse_data[i];
 		m_s.mouse.buffer.elements++;
+		PDEBUGF(LOG_V2, LOG_COM, "%02x%s", mouse_data[i],
+			(m_s.mouse.buffer.elements >= MOUSE_BUFF_SIZE)?" OF":"");
+		if(i < nbytes - 1) {
+			PDEBUGF(LOG_V2, LOG_COM, ",");
+		}
 	}
+	PDEBUGF(LOG_V2, LOG_COM, "]\n");
+
 	m_mouse.update = false;
 }
