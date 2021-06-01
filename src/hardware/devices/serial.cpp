@@ -1671,14 +1671,16 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				rx_fifo_enq(port, chbuf);
 			}
 		} else {
-			if(!m_s.uart[port].fifo_cntl.enable) {
-				// TODO why? is it an attempt to solve some net related issue?
+			if(!m_s.uart[port].fifo_cntl.enable && m_host[port].io_mode != SER_MODE_MOUSE) {
+				// why does Bochs use this particular value?
+				// idk but it has the effect of making the mouse motion stuttery.
 				db_usec = 100000; // Poll frequency is 100ms
 			}
 		}
 	} else {
 		// Poll at 4x baud rate to see if the next-char can be read
-		// TODO why? is it an attempt to solve some net related issue? 
+		// why does Bochs use this particular value?
+		// is it an attempt to solve some net related issue?
 		db_usec *= 4;
 	}
 
