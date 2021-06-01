@@ -594,6 +594,8 @@ void Serial::lower_interrupt(uint8_t port)
 
 void Serial::reset(unsigned)
 {
+	{
+	std::lock_guard<std::mutex> lock(m_mouse.mtx);
 	m_mouse.delayed_dx = 0;
 	m_mouse.delayed_dy = 0;
 	m_mouse.delayed_dz = 0;
@@ -603,6 +605,7 @@ void Serial::reset(unsigned)
 	m_s.mouse.buffer.elements = 0;
 	std::memset(m_s.mouse.buffer.data, 0, MOUSE_BUFF_SIZE);
 	m_s.mouse.buffer.head = 0;
+	}
 
 	// Put the UART registers into their RESET state
 
@@ -1309,6 +1312,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					if(m_s.mouse.detect == 2) {
 						PDEBUGF(LOG_V1, LOG_COM, "%s: mouse detection mode\n",
 								m_host[port].name());
+						std::lock_guard<std::mutex> lock(m_mouse.mtx);
 						if((m_mouse.type == MOUSE_TYPE_SERIAL) || 
 						   (m_mouse.type == MOUSE_TYPE_SERIAL_MSYS))
 						{
@@ -1626,7 +1630,8 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				}
 				#endif
 				break;
-			case SER_MODE_MOUSE:
+			case SER_MODE_MOUSE: {
+				std::lock_guard<std::mutex> lock(m_mouse.mtx);
 				if(m_mouse.update && (m_s.mouse.buffer.elements == 0)) {
 					update_mouse_data();
 				}
@@ -1637,6 +1642,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 					data_ready = true;
 				}
 				break;
+			}
 			case SER_MODE_PIPE_CLIENT:
 			case SER_MODE_PIPE_SERVER:
 				#if SER_WIN32
@@ -1680,6 +1686,8 @@ void Serial::fifo_timer(uint8_t port, uint64_t)
 
 void Serial::mouse_button(MouseButton _button, bool _state)
 {
+	// This function is called by the GUI thread
+
 	if(m_mouse.port == SER_PORT_DISABLED) {
 		// This condition should not happen. Evts are fired only if mouse is enabled at init.
 		assert(false);
@@ -1692,6 +1700,8 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 		return;
 	}
 
+	std::lock_guard<std::mutex> lock(m_mouse.mtx);
+
 	int btnid = ec_to_i(_button) - 1;
 	m_mouse.buttons &= ~(1 << btnid);
 	m_mouse.buttons |= (_state << btnid);
@@ -1700,6 +1710,8 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 
 void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 {
+	// This function is called by the GUI thread
+
 	if(m_mouse.port == SER_PORT_DISABLED) {
 		// This condition should not happen. Evts are fired only if mouse is enabled at init.
 		assert(false);
@@ -1725,6 +1737,8 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 	if(delta_x < -128) { delta_x = -128; }
 	if(delta_y < -128) { delta_y = -128; }
 
+	std::lock_guard<std::mutex> lock(m_mouse.mtx);
+
 	m_mouse.delayed_dx += delta_x;
 	m_mouse.delayed_dy -= delta_y;
 	m_mouse.delayed_dz  = delta_z;
@@ -1733,6 +1747,9 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 
 void Serial::update_mouse_data()
 {
+	// This function is called by the Machine thread
+	// mouse mutex must be locked by the caller!
+
 	int delta_x, delta_y;
 	uint8_t b1, b2, b3, button_state;
 	if(m_mouse.delayed_dx > 127) {

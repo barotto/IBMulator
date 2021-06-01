@@ -305,6 +305,7 @@ private:
 		int delayed_dz = 0;
 		uint8_t buttons = 0;
 		bool update = false;
+		std::mutex mtx;
 	} m_mouse;
 
 public:
