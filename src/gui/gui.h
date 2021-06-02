@@ -248,23 +248,22 @@ protected:
 	public:
 		static std::mutex s_interface_mutex;
 
-		bool visible;
-		bool debug_wnds;
-		bool status_wnd;
+		bool visible = false;
+		bool debug_wnds = false;
+		bool status_wnd = false;
 
-		Desktop * desktop;
-		Interface * interface;
-		Status * status;
-		DebugTools * dbgtools;
+		std::unique_ptr<Desktop>    desktop;
+		std::unique_ptr<Interface>  interface;
+		std::unique_ptr<Status>     status;
+		std::unique_ptr<DebugTools> dbgtools;
 
 		std::string last_ifc_mex;
 		std::string last_dbg_mex;
 
 		EventTimers timers;
-		unsigned dbgmex_timer;
-		unsigned ifcmex_timer;
+		unsigned dbgmex_timer = NULL_TIMER_HANDLE;
+		unsigned ifcmex_timer = NULL_TIMER_HANDLE;
 
-		Windows();
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void config_changed();
 		void update(uint64_t _current_time);

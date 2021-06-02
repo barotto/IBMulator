@@ -2249,7 +2249,7 @@ void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase 
 	switch(action) {
 		case 0: {
 			if(m_mode == GUI_MODE_COMPACT &&
-			  dynamic_cast<NormalInterface*>(m_windows.interface)->is_system_visible())
+			  dynamic_cast<NormalInterface*>(m_windows.interface.get())->is_system_visible())
 			{
 				input_grab(false);
 			}
@@ -2378,9 +2378,9 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	
 	if(m_mode == GUI_MODE_COMPACT) {
 		if(m_input.grab) {
-			dynamic_cast<NormalInterface*>(m_windows.interface)->hide_system();
+			dynamic_cast<NormalInterface*>(m_windows.interface.get())->hide_system();
 		} else {
-			dynamic_cast<NormalInterface*>(m_windows.interface)->show_system();
+			dynamic_cast<NormalInterface*>(m_windows.interface.get())->show_system();
 		}
 	}
 }
@@ -2518,36 +2518,20 @@ public:
 	}
 };
 
-GUI::Windows::Windows()
-:
-visible(true),
-debug_wnds(false),
-status_wnd(false),
-desktop(nullptr),
-interface(nullptr),
-status(nullptr),
-dbgtools(nullptr),
-dbgmex_timer(NULL_TIMER_HANDLE),
-ifcmex_timer(NULL_TIMER_HANDLE)
-
-{
-
-}
-
 void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
-	desktop = new Desktop(_gui);
+	desktop = std::make_unique<Desktop>(_gui);
 	desktop->show();
 
 	if(_mode == GUI_MODE_REALISTIC) {
-		interface = new RealisticInterface(_machine,_gui,_mixer);
+		interface = std::make_unique<RealisticInterface>(_machine, _gui, _mixer);
 	} else {
-		interface = new NormalInterface(_machine,_gui,_mixer);
+		interface = std::make_unique<NormalInterface>(_machine, _gui, _mixer);
 	}
 	interface->show();
 
 	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_LEDS)) {
-		status = new Status(_gui, _machine);
+		status = std::make_unique<Status>(_gui, _machine);
 		status->show();
 		status_wnd = true;
 	} else {
@@ -2555,7 +2539,7 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	}
 
 	//debug
-	dbgtools = new DebugTools(_gui, _machine, _mixer);
+	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
 
 	timers.init();
 	ifcmex_timer = timers.register_timer([this](uint64_t){
@@ -2658,26 +2642,22 @@ void GUI::Windows::shutdown()
 
 	if(status) {
 		status->close();
-		delete status;
-		status = nullptr;
+		status.reset(nullptr);
 	}
 
 	if(dbgtools) {
 		dbgtools->close();
-		delete dbgtools;
-		dbgtools = nullptr;
+		dbgtools.reset(nullptr);
 	}
 
 	if(desktop) {
 		desktop->close();
-		delete desktop;
-		desktop = nullptr;
+		desktop.reset(nullptr);
 	}
 
 	if(interface) {
 		interface->close();
-		delete interface;
-		interface = nullptr;
+		interface.reset(nullptr);
 	}
 }
 
