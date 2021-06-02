@@ -48,6 +48,7 @@ public:
 	virtual void hide();
 	virtual void close();
 	bool is_visible();
+	bool is_loaded() const { return m_wnd; }
 
 	virtual void config_changed() {}
 	virtual void update();

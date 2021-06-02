@@ -30,8 +30,8 @@ Window::Window(GUI * _gui, const char *_rml)
 {
 	m_wnd = _gui->load_document(_rml);
 	if(!m_wnd) {
-		PERRF(LOG_GUI,"unable to load the %s interface\n", _rml);
-		return;
+		PERRF(LOG_GUI, "Cannot load the '%s' interface\n", _rml);
+		throw std::exception();
 	}
 }
 

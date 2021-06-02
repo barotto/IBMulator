@@ -131,8 +131,12 @@ m_rocket_context(nullptr)
 
 GUI::~GUI()
 {
-	delete m_rocket_sys_interface;
-	delete m_rocket_file_interface;
+	if(m_rocket_sys_interface) {
+		delete m_rocket_sys_interface;
+	}
+	if(m_rocket_file_interface) {
+		delete m_rocket_file_interface;
+	}
 }
 
 void GUI::init(Machine *_machine, Mixer *_mixer)
@@ -396,7 +400,7 @@ Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
 		}
 		PDEBUGF(LOG_V2,LOG_GUI,"Document \"%s\" loaded\n", _filename.c_str());
 	} else {
-		PERRF(LOG_GUI, "Document \"%s\" is nullptr\n", _filename.c_str());
+		PERRF(LOG_GUI, "Cannot load document file: '%s'\n", _filename.c_str());
 	}
 
 	return document;

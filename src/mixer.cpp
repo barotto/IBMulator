@@ -165,7 +165,7 @@ void Mixer::stop_capture()
 	GUI::instance()->show_message("audio recording stopped");
 }
 
-void Mixer::config_changed()
+void Mixer::config_changed() noexcept
 {
 	//before the config can change the audio playback must be stopped
 	if(m_device) {
@@ -253,6 +253,15 @@ void Mixer::start()
 	m_prev_vtime = 0;
 	PDEBUGF(LOG_V1, LOG_MIXER, "Mixer thread started\n");
 	main_loop();
+}
+
+void Mixer::shutdown()
+{
+	// to be called only by the Mixer thread or before the Mixer thread is started
+	assert(!m_audio_capture);
+	close_audio_device();
+	SDL_AudioQuit();
+	stop_midi();
 }
 
 void Mixer::main_loop()
@@ -1021,12 +1030,9 @@ void Mixer::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::conditi
 void Mixer::cmd_quit()
 {
 	m_cmd_queue.push([this] () {
-		assert(!m_audio_capture);
 		m_paused = false;
 		m_quit = true;
-		close_audio_device();
-		SDL_AudioQuit();
-		stop_midi();
+		shutdown();
 	});
 }
 

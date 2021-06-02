@@ -432,10 +432,16 @@ bool Program::initialize(int argc, char** argv)
 			assert(false);
 			break;
 	}
-	
-	m_gui->init(m_machine, m_mixer);
+
+	try {
+		m_gui->init(m_machine, m_mixer);
+	} catch(...) {
+		// the Machine and Mixer threads are not started yet, but the MIDI thread is
+		m_mixer->shutdown();
+		throw;
+	}
 	m_gui->config_changed();
-	
+
 	m_pacer.set_external_sync(m_gui->vsync_enabled());
 	
 	return true;

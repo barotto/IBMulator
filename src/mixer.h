@@ -95,8 +95,9 @@ public:
 	~Mixer();
 
 	void init(Machine *);
-	void config_changed();
+	void config_changed() noexcept;
 	void start();
+	void shutdown();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
 			const std::string &_name, MixerChannel::Category);
