@@ -445,65 +445,78 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 {
 	/*
 	 * DATA dir priorities:
-	 * 1. DATA_HOME env variable
+	 * 1. IBMULATOR_DATA_PATH env variable
 	 * 2. dirname(argv[0]) + /../share/PACKAGE
 	 * 3. XDG_DATA_HOME env + PACKAGE define
 	 * 4. $HOME/.local/share + PACKAGE define
 	 * 5. DATA_PATH define
 	 */
 	char rpbuf[PATH_MAX];
-	std::string datapath;
+	std::vector<std::string> paths;
 
-	//1. DATA_HOME env variable
-	const char* edatapath = getenv("DATA_HOME");
-	if(edatapath != nullptr) {
-		return std::string(edatapath);
+	//1. DATA_PATH env variable
+	const char* envstr = getenv("IBMULATOR_DATA_PATH");
+	if(envstr) {
+		if(realpath(envstr, rpbuf)) {
+			paths.emplace_back(rpbuf);
+		} else {
+			PERRF(LOG_PROGRAM, "IBMULATOR_DATA_PATH is set, but '%s' cannot be resolved.\n", envstr);
+			throw std::exception();
+		}
 	}
 
 	//2. dirname(argv[0]) + /../share/PACKAGE
-	if(realpath(argv[0], rpbuf) == nullptr) {
-		PERRF(LOG_PROGRAM, "Unexpected error encountered while trying to find the executable location\n");
-		throw std::exception();
-	}
-	datapath = dirname(rpbuf);
-	datapath += std::string(FS_SEP) + ".." FS_SEP "share" FS_SEP PACKAGE;
-	if(realpath(datapath.c_str(), rpbuf) != nullptr && FileSys::is_directory(rpbuf)) {
-		return std::string(rpbuf);
+	if(realpath(argv[0], rpbuf)) {
+		std::string datapath = dirname(rpbuf);
+		datapath += FS_SEP ".." FS_SEP "share" FS_SEP PACKAGE;
+		if(realpath(datapath.c_str(), rpbuf)) {
+			paths.emplace_back(rpbuf);
+		} else {
+			PWARNF(LOG_V0, LOG_PROGRAM, "The 'share" FS_SEP PACKAGE"' directory cannot be found!\n");
+		}
+	} else {
+		PWARNF(LOG_V0, LOG_PROGRAM, "Cannot resolve the executable path: %s\n", argv[0]);
 	}
 
 #ifndef _WIN32
 	//3. XDG_DATA_HOME env + PACKAGE define
-	edatapath = getenv("XDG_DATA_HOME");
-	if(edatapath != nullptr) {
-		datapath = std::string(edatapath) + FS_SEP PACKAGE;
-		if(FileSys::is_directory(datapath.c_str())) {
-			return datapath;
-		}
-	} else {
-		//4. $HOME/.local/share + PACKAGE define
-		edatapath = getenv("HOME");
-		PDEBUGF(LOG_V1, LOG_PROGRAM, "home %s\n", edatapath);
-		if(edatapath != nullptr) {
-			datapath = std::string(edatapath) + FS_SEP ".local" FS_SEP "share" FS_SEP PACKAGE;
-			PDEBUGF(LOG_V1, LOG_PROGRAM, "datapath %s\n", datapath.c_str());
-			if(FileSys::is_directory(datapath.c_str())) {
-				return datapath;
-			}
-		}
+	envstr = getenv("XDG_DATA_HOME");
+	if(envstr) {
+		paths.emplace_back(std::string(envstr) + FS_SEP PACKAGE);
+	}
+
+	//4. $HOME/.local/share + PACKAGE define
+	envstr = getenv("HOME");
+	if(envstr) {
+		paths.emplace_back(std::string(envstr) + FS_SEP ".local" FS_SEP "share" FS_SEP PACKAGE);
 	}
 #endif
 
 #ifdef DATA_PATH
 	//5. DATA_PATH define
-	if(FileSys::is_directory(DATA_PATH) && realpath(DATA_PATH, rpbuf) != nullptr) {
-		return std::string(rpbuf);
+	if(realpath(DATA_PATH, rpbuf)) {
+		paths.emplace_back(rpbuf);
 	}
 #endif
 
+	for(auto & path : paths) {
+		PINFOF(LOG_V2, LOG_PROGRAM, "Searching assets in '%s'...", path.c_str());
+		if(FileSys::is_directory(path.c_str())) {
+			if(!FileSys::is_file_readable(path.c_str())) {
+				PINFOF(LOG_V2, LOG_PROGRAM, " the directory is not readable!\n");
+			} else {
+				PINFOF(LOG_V2, LOG_PROGRAM, " directory found.\n");
+				return path;
+			}
+		} else {
+			PINFOF(LOG_V2, LOG_PROGRAM, " directory not found.\n");
+		}
+	}
+
 	PERRF(LOG_PROGRAM, "Cannot find the assets directory!\n");
-	PERRF(LOG_PROGRAM, "Please verify that the .." FS_SEP "share" FS_SEP PACKAGE " directory exists\n");
+	PERRF(LOG_PROGRAM, "Please verify that the 'share" FS_SEP PACKAGE "' directory exists\n");
 #ifdef _WIN32
-	PERRF(LOG_PROGRAM, "and that the installation path doesn't have non-US characters (known bug #43)\n");
+	PERRF(LOG_PROGRAM, "and that " PACKAGE_NAME "'s installation path has only US characters in it (see bug #43)\n");
 #endif
 	throw std::exception();
 }
