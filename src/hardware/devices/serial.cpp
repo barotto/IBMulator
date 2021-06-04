@@ -1533,43 +1533,26 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 
 void Serial::rx_timer(uint8_t port, uint64_t)
 {
-	#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-	struct timeval tval;
-	fd_set fds;
-	#endif
 	bool data_ready = false;
 	int db_usec = m_s.uart[port].databyte_usec;
-	unsigned char chbuf = 0;
+	uint8_t chbuf = 0;
 
-	if(m_host[port].io_mode == SER_MODE_TERM) {
-		#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-		tval.tv_sec  = 0;
-		tval.tv_usec = 0;
-		FD_ZERO(&fds);
-		if(m_host[port].tty_id >= 0) {
-			FD_SET(m_host[port].tty_id, &fds);
-		}
-		#endif
-	}
 	if((!m_s.uart[port].line_status.rxdata_ready) || m_s.uart[port].fifo_cntl.enable) {
 		switch (m_host[port].io_mode) {
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
 				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-				if(!m_s.uart[port].line_status.rxdata_ready) {
-					tval.tv_sec  = 0;
-					tval.tv_usec = 0;
+				if(m_host[port].socket_id >= 0 && !m_s.uart[port].line_status.rxdata_ready) {
+					struct timeval tval = {0,0};
+					fd_set fds;
 					FD_ZERO(&fds);
-					SOCKET socketid = m_host[port].socket_id;
-					if(socketid >= 0) {
-						FD_SET(socketid, &fds);
-					}
-					if((socketid >= 0) && (select(socketid+1, &fds, nullptr, nullptr, &tval) == 1)) {
+					FD_SET(m_host[port].socket_id, &fds);
+					if(select(m_host[port].socket_id + 1, &fds, nullptr, nullptr, &tval) == 1) {
 						ssize_t bytes = (ssize_t)
 						#if SER_WIN32
-							::recv(socketid, (char*) &chbuf, 1, 0);
+							::recv(m_host[port].socket_id, (char*) &chbuf, 1, 0);
 						#else
-							::read(socketid, &chbuf, 1);
+							::read(m_host[port].socket_id, &chbuf, 1);
 						#endif
 						if(bytes > 0) {
 							PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: %02x\n", m_host[port].name(), chbuf);
@@ -1624,14 +1607,20 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				#endif
 				break;
 			case SER_MODE_TERM:
-				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-				if((m_host[port].tty_id >= 0) && (select(m_host[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1)) {
-					ssize_t res = ::read(m_host[port].tty_id, &chbuf, 1);
-					if(res == 1) {
-						PDEBUGF(LOG_V1, LOG_COM, "%s: term read: '%c'\n", m_host[port].name(), chbuf);
-						data_ready = true;
-					} else {
-						PWARNF(LOG_V0, LOG_COM, "%s: error reading from term\n", m_host[port].name());
+				#if HAVE_SYS_SELECT_H && SER_POSIX
+				if(m_host[port].tty_id >= 0) {
+					struct timeval tval = {0,0};
+					fd_set fds;
+					FD_ZERO(&fds);
+					FD_SET(m_host[port].tty_id, &fds);
+					if(select(m_host[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1) {
+						ssize_t res = ::read(m_host[port].tty_id, &chbuf, 1);
+						if(res == 1) {
+							PDEBUGF(LOG_V1, LOG_COM, "%s: term read: '%c'\n", m_host[port].name(), chbuf);
+							data_ready = true;
+						} else {
+							PWARNF(LOG_V0, LOG_COM, "%s: error reading from term\n", m_host[port].name());
+						}
 					}
 				}
 				#endif
