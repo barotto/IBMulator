@@ -290,9 +290,10 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 			if(m_s.kbd_ctrl.Qsize) {
 				update_controller_Q();
 			}
+			PDEBUGF(LOG_V2, LOG_KEYB, "lowering IRQ%d\n", MOUSE_IRQ);
 			m_devices->pic()->lower_irq(MOUSE_IRQ);
 			activate_timer();
-			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read from 0x60 -> 0x%02X\n", val);
+			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read from 0x60 -> 0x%02X (outb)\n", val);
 			return val;
 		} else if(m_s.kbd_ctrl.outb) { /* kbd byte available */
 			val = m_s.kbd_ctrl.kbd_output_buffer;
@@ -303,9 +304,10 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 			if(m_s.kbd_ctrl.Qsize) {
 				update_controller_Q();
 			}
+			PDEBUGF(LOG_V2, LOG_KEYB, "lowering IRQ%d\n", KEYB_IRQ);
 			m_devices->pic()->lower_irq(KEYB_IRQ);
 			activate_timer();
-			PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x60 -> 0x%02X\n", val);
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] read from 0x60 -> 0x%02X (outb)\n", val);
 			return val;
 		} else {
 			//m_s.kbd_buffer.num_elements is not thread safe, but it's just a debug print...
@@ -324,7 +326,7 @@ uint16_t Keyboard::read(uint16_t address, unsigned /*io_len*/)
 		       m_s.kbd_ctrl.outb;
 
 		m_s.kbd_ctrl.tim = false;
-		PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x64 -> 0x%02X\n", val);
+		PDEBUGF(LOG_V2, LOG_KEYB, "read from 0x64 -> 0x%02X (status)\n", val);
 		return val;
 	}
 
@@ -660,12 +662,12 @@ void Keyboard::gen_scancode(Keys _key, uint32_t _event)
 		return;
 	}
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): %s (%d) %s\n",
+	PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] gen_scancode(): %s (%d) %s\n",
 			Keymap::ms_keycode_str_table.at(_key).c_str(), _key,
 			(_event & KEY_RELEASED)?"released":"pressed");
 
 	if(!m_s.kbd_ctrl.scancodes_translate) {
-		PDEBUGF(LOG_V2, LOG_KEYB, "keyboard: gen_scancode with scancode_translate cleared\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] gen_scancode with scancode_translate cleared\n");
 	}
 
 	// Ignore scancode if scanning is disabled
@@ -688,7 +690,7 @@ void Keyboard::gen_scancode(Keys _key, uint32_t _event)
 			if(scancode[i] == 0xF0)
 				escaped=0x80;
 			else {
-				PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): writing translated %02x\n", g_translation8042[scancode[i]] | escaped);
+				PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] gen_scancode(): writing translated %02x\n", g_translation8042[scancode[i]] | escaped);
 				kbd_enQ(g_translation8042[scancode[i]] | escaped);
 				escaped=0x00;
 			}
@@ -696,7 +698,7 @@ void Keyboard::gen_scancode(Keys _key, uint32_t _event)
 	} else {
 		// Send raw data
 		for(i=0; i<strlen((const char *)scancode); i++) {
-			PDEBUGF(LOG_V2, LOG_KEYB, "gen_scancode(): writing raw %02x\n",scancode[i]);
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] gen_scancode(): writing raw %02x\n",scancode[i]);
 			kbd_enQ(scancode[i]);
 		}
 	}
@@ -748,7 +750,8 @@ void Keyboard::controller_enQ(uint8_t data, unsigned source)
 {
 	// source is 0 for keyboard, 1 for mouse
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "controller_enQ(%02x) source=%02x\n", (unsigned) data,source);
+	PDEBUGF(LOG_V2, LOG_KEYB, "controller enqueue=%02x, source=%02x (%s)\n",
+			(unsigned) data, source, source?"(mouse)":"(keyboard)");
 
 	// see if we need to Q this byte from the controller
 	// remember this includes mouse bytes.
@@ -786,7 +789,7 @@ void Keyboard::kbd_enQ_imm(uint8_t val)
 	std::lock_guard<std::mutex> lock(m_kbd_lock);
 
 	if(m_s.kbd_buffer.num_elements >= KBD_ELEMENTS) {
-		PERRF(LOG_KEYB, "internal keyboard buffer full (imm)\n");
+		PERRF(LOG_KEYB, "[keybd] internal buffer full (imm)\n");
 		return;
 	}
 
@@ -808,23 +811,22 @@ void Keyboard::kbd_enQ(uint8_t scancode)
 
 	std::lock_guard<std::mutex> lock(m_kbd_lock);
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "kbd_enQ(0x%02X)\n", (unsigned) scancode);
+	PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] enqueue=0x%02X\n", (unsigned) scancode);
 
 	if(m_s.kbd_buffer.num_elements >= KBD_ELEMENTS) {
-		PINFOF(LOG_V1, LOG_KEYB, "internal keyboard buffer full, ignoring scancode.(%02x)\n",
+		PINFOF(LOG_V1, LOG_KEYB, "[keybd] internal buffer full, ignoring scancode %02x\n",
 				(unsigned) scancode);
 		return;
 	}
 
 	/* enqueue scancode in multibyte internal keyboard buffer */
-	PDEBUGF(LOG_V2, LOG_KEYB, "kbd_enQ: putting scancode 0x%02X in internal buffer\n", (unsigned) scancode);
 	tail = (m_s.kbd_buffer.head +  m_s.kbd_buffer.num_elements) % KBD_ELEMENTS;
 	m_s.kbd_buffer.buffer[tail] = scancode;
 	m_s.kbd_buffer.num_elements++;
 
 	if(!m_s.kbd_ctrl.outb && m_s.kbd_ctrl.kbd_clock_enabled) {
 		activate_timer();
-		PDEBUGF(LOG_V2, LOG_KEYB, "activating timer...\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] activating timer...\n");
 		return;
 	}
 }
@@ -839,7 +841,7 @@ bool Keyboard::mouse_enQ_packet(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4)
 	std::lock_guard<std::mutex> lock(m_mouse_lock);
 
 	if((m_s.mouse_buffer.num_elements + bytes) >= MOUSE_BUFF_SIZE) {
-		PDEBUGF(LOG_V0, LOG_KEYB, "Mouse buffer overrun!\n");
+		PDEBUGF(LOG_V0, LOG_KEYB, "[mouse] buffer overrun!\n");
 		return false; /* buffer doesn't have the space */
 	}
 
@@ -860,24 +862,24 @@ void Keyboard::mouse_enQ(uint8_t mouse_data)
 	/* this method should be called only by mouse_enQ_packet, otherwise rethink
 	 * the internal buffer mutex locking procedure
 	 */
-	int tail;
-
-	PDEBUGF(LOG_V2, LOG_KEYB, "mouse_enQ(%02x)\n", mouse_data);
+	PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] enqueue=%02x\n", mouse_data);
 
 	if(m_s.mouse_buffer.num_elements >= MOUSE_BUFF_SIZE) {
-		PERRF(LOG_KEYB, "[mouse] internal mouse buffer full, ignoring mouse data.(%02x)\n",
+		PERRF(LOG_KEYB, "[mouse] internal buffer full, ignoring data %02x\n",
 				mouse_data);
 		return;
 	}
 
 	/* enqueue mouse data in multibyte internal mouse buffer */
-	tail = (m_s.mouse_buffer.head +  m_s.mouse_buffer.num_elements) % MOUSE_BUFF_SIZE;
+	int tail = (m_s.mouse_buffer.head +  m_s.mouse_buffer.num_elements) % MOUSE_BUFF_SIZE;
 	m_s.mouse_buffer.buffer[tail] = mouse_data;
 	m_s.mouse_buffer.num_elements++;
 
 	if(!m_s.kbd_ctrl.outb && m_s.kbd_ctrl.aux_clock_enabled) {
 		activate_timer();
-		return;
+	} else {
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] timer not activated, kbd_ctrl.outb=%d, aux_clock_enabled=%d\n",
+				m_s.kbd_ctrl.outb, m_s.kbd_ctrl.aux_clock_enabled);
 	}
 }
 
@@ -897,7 +899,7 @@ void Keyboard::Typematic::set(uint8_t _delay, uint8_t _repeat)
 
 void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 {
-	PDEBUGF(LOG_V2, LOG_KEYB, "controller passed byte %02xh to keyboard\n", value);
+	PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] controller passed byte %02xh to keyboard\n", value);
 
 	if(m_s.kbd_buffer.expecting_typematic) {
 		m_s.kbd_buffer.expecting_typematic = false;
@@ -905,7 +907,7 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 		m_s.kbd_buffer.repeat_rate = value & 0x1f;
 
 		m_typematic.set(m_s.kbd_buffer.delay, m_s.kbd_buffer.repeat_rate);
-		PINFOF(LOG_V1, LOG_KEYB, "setting Typematic delay to %d ms, repeat rate to %.1f cps\n", m_typematic.delay_ms, m_typematic.cps);
+		PINFOF(LOG_V1, LOG_KEYB, "[keybd] setting Typematic delay to %d ms, repeat rate to %.1f cps\n", m_typematic.delay_ms, m_typematic.cps);
 
 		kbd_enQ(0xFA); // send ACK
 		return;
@@ -914,7 +916,7 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 	if(m_s.kbd_buffer.expecting_led_write) {
 		m_s.kbd_buffer.expecting_led_write = false;
 		m_s.kbd_buffer.led_status = value;
-		PDEBUGF(LOG_V2, LOG_KEYB, "LED status set to %02x\n", (unsigned)  m_s.kbd_buffer.led_status);
+		PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] LED status set to %02x\n", (unsigned)  m_s.kbd_buffer.led_status);
 		/*
 		g_gui.statusbar_setitem( m_statusbar_id[0], value & 0x02);
 		g_gui.statusbar_setitem( m_statusbar_id[1], value & 0x04);
@@ -929,10 +931,10 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 		if(value != 0) {
 			if(value < 4) {
 				m_s.kbd_ctrl.current_scancodes_set = (value-1);
-				PINFOF(LOG_V1, LOG_KEYB, "Switched to scancode set %d\n", (unsigned)  m_s.kbd_ctrl.current_scancodes_set + 1);
+				PINFOF(LOG_V1, LOG_KEYB, "[keybd] switched to scancode set %d\n", (unsigned)  m_s.kbd_ctrl.current_scancodes_set + 1);
 				kbd_enQ(0xFA);
 			} else {
-				PERRF(LOG_KEYB, "Received scancodes set out of range: %d\n", value);
+				PERRF(LOG_KEYB, "[keybd] received scancodes set out of range: %d\n", value);
 				kbd_enQ(0xFF); // send ERROR
 			}
 		} else {
@@ -966,12 +968,12 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 
 		case 0xf0: // Select alternate scan code set
 			m_s.kbd_ctrl.expecting_scancodes_set = 1;
-			PDEBUGF(LOG_V2, LOG_KEYB, "Expecting scancode set info...\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] expecting scancode set info...\n");
 			kbd_enQ(0xFA); // send ACK
 			break;
 
 		case 0xf2:  // identify keyboard
-			PDEBUGF(LOG_V2, LOG_KEYB, "identify keyboard command received\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] identify keyboard command received\n");
 
 			// XT sends nothing, AT sends ACK
 			// MFII with translation sends ACK+ABh+41h
@@ -990,7 +992,7 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 
 		case 0xf3:  // typematic info
 			m_s.kbd_buffer.expecting_typematic = true;
-			PDEBUGF(LOG_V2, LOG_KEYB, "setting typematic info\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] setting typematic info\n");
 			kbd_enQ(0xFA); // send ACK
 			break;
 
@@ -1003,22 +1005,22 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 			reset_internals(true);
 			kbd_enQ(0xFA); // send ACK
 			m_s.kbd_buffer.scanning_enabled = false;
-			PDEBUGF(LOG_V2, LOG_KEYB, "reset-disable command received\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] reset-disable command received\n");
 			break;
 
 		case 0xf6:  // reset keyboard to power-up settings and enable scanning
 			reset_internals(true);
 			kbd_enQ(0xFA); // send ACK
 			m_s.kbd_buffer.scanning_enabled = true;
-			PDEBUGF(LOG_V2, LOG_KEYB, "reset-enable command received\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] reset-enable command received\n");
 			break;
 
 		case 0xfe:  // resend. aiiee.
-			PERRF(LOG_KEYB, "got 0xFE (resend)");
+			PERRF(LOG_KEYB, "[keybd] got 0xFE (resend)");
 			break;
 
 		case 0xff:  // reset: internal keyboard reset and afterwards the BAT
-			PDEBUGF(LOG_V2, LOG_KEYB, "reset command received\n");
+			PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] reset command received\n");
 			reset_internals(true);
 			kbd_enQ(0xFA); // send ACK
 			m_s.kbd_ctrl.bat_in_progress = true;
@@ -1037,7 +1039,7 @@ void Keyboard::kbd_ctrl_to_kbd(uint8_t value)
 		case 0xfc:  // PS/2 Set Key Type to Make/Break
 		case 0xfd:  // PS/2 Set Key Type to Make
 		default:
-			PERRF(LOG_KEYB, "kbd_ctrl_to_kbd(): got value of 0x%02X\n", value);
+			PERRF(LOG_KEYB, "[keybd] kbd_ctrl_to_kbd(): got value of 0x%02X\n", value);
 			kbd_enQ(0xFE); /* send NACK */
 			break;
 	}
@@ -1049,11 +1051,13 @@ void Keyboard::timer_handler(uint64_t)
 
 	retval = periodic(KBD_SERIAL_DELAY);
 
-	if(retval&0x01) {
+	if(retval & 0x01) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "raising IRQ%d\n", KEYB_IRQ);
 		m_devices->pic()->raise_irq(KEYB_IRQ);
 	}
 
-	if(retval&0x02) {
+	if(retval & 0x02) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "raising IRQ%d\n", MOUSE_IRQ);
 		m_devices->pic()->raise_irq(MOUSE_IRQ);
 	}
 }
@@ -1098,10 +1102,12 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 
 	/* nothing in outb, look for possible data xfer from keyboard or mouse */
 	if(m_s.kbd_buffer.num_elements &&
-			(m_s.kbd_ctrl.kbd_clock_enabled || m_s.kbd_ctrl.bat_in_progress)) {
+	  (m_s.kbd_ctrl.kbd_clock_enabled || m_s.kbd_ctrl.bat_in_progress))
+	{
 		m_s.kbd_ctrl.kbd_output_buffer = m_s.kbd_buffer.buffer[m_s.kbd_buffer.head];
 		m_s.kbd_ctrl.outb = true;
-		PDEBUGF(LOG_V2, LOG_KEYB, "key in internal buffer waiting = 0x%02x\n",m_s.kbd_ctrl.kbd_output_buffer);
+		PDEBUGF(LOG_V2, LOG_KEYB, "[keybd] byte in internal buffer waiting = 0x%02x\n",
+				m_s.kbd_ctrl.kbd_output_buffer);
 		// commented out since this would override the current state of the
 		// mouse buffer flag - no bug seen - just seems wrong (das)
 		//     m_s.kbd_ctrl.auxb = false;
@@ -1117,14 +1123,13 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 			m_s.kbd_ctrl.aux_output_buffer = m_s.mouse_buffer.buffer[m_s.mouse_buffer.head];
 			m_s.kbd_ctrl.outb = true;
 			m_s.kbd_ctrl.auxb = true;
-			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] key in internal buffer waiting = 0x%02x\n", m_s.kbd_ctrl.aux_output_buffer);
+			PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] byte in internal buffer waiting = 0x%02x\n",
+					m_s.kbd_ctrl.aux_output_buffer);
 			m_s.mouse_buffer.head = ( m_s.mouse_buffer.head + 1) % MOUSE_BUFF_SIZE;
 			m_s.mouse_buffer.num_elements--;
 			if(m_s.kbd_ctrl.allow_irq12) {
 				m_s.kbd_ctrl.irq12_requested = true;
 			}
-		} else {
-			PDEBUGF(LOG_V2, LOG_KEYB, "no keys waiting\n");
 		}
 	}
 	return retval;
@@ -1133,6 +1138,7 @@ unsigned Keyboard::periodic(uint32_t usec_delta)
 void Keyboard::activate_timer(uint32_t _usec_delta)
 {
 	if(m_s.kbd_ctrl.timer_pending == 0) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "timer activated, delta=%uus\n", _usec_delta);
 		m_s.kbd_ctrl.timer_pending = _usec_delta;
 	}
 }
@@ -1145,7 +1151,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 		is_ps2 = 1;
 	}
 
-	PDEBUGF(LOG_V2, LOG_KEYB, "MOUSE: kbd_ctrl_to_mouse(%02xh)", (unsigned) value);
+	PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] kbd_ctrl_to_mouse(%02xh)", (unsigned) value);
 	PDEBUGF(LOG_V2, LOG_KEYB, "  enable = %u", (unsigned)  m_s.mouse.enable);
 	PDEBUGF(LOG_V2, LOG_KEYB, "  allow_irq12 = %u", (unsigned)  m_s.kbd_ctrl.allow_irq12);
 	PDEBUGF(LOG_V2, LOG_KEYB, "  aux_clock_enabled = %u\n", (unsigned)  m_s.kbd_ctrl.aux_clock_enabled);
@@ -1159,17 +1165,17 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 
 			case 0xf3: // Set Mouse Sample Rate
 				m_s.mouse.sample_rate = value;
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: sampling rate set: %d Hz\n", value);
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] sampling rate set: %d Hz\n", value);
 				if((value == 200) && (!m_s.mouse.im_request)) {
 					m_s.mouse.im_request = 1;
 				} else if((value == 100) && (m_s.mouse.im_request == 1)) {
 					m_s.mouse.im_request = 2;
 				} else if((value == 80) && (m_s.mouse.im_request == 2)) {
 					if(m_s.mouse.type == MOUSE_TYPE_IMPS2) {
-						PINFOF(LOG_V1, LOG_KEYB, "wheel mouse mode enabled\n");
+						PINFOF(LOG_V1, LOG_KEYB, "[mouse] wheel mouse mode enabled\n");
 						m_s.mouse.im_mode = true;
 					} else {
-						PINFOF(LOG_V1, LOG_KEYB, "wheel mouse mode request rejected\n");
+						PINFOF(LOG_V1, LOG_KEYB, "[mouse] wheel mouse mode request rejected\n");
 					}
 					m_s.mouse.im_request = 0;
 				} else {
@@ -1193,15 +1199,15 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 						m_s.mouse.resolution_cpmm = 8;
 						break;
 					default:
-						PDEBUGF(LOG_V1, LOG_KEYB, "mouse: unknown resolution %d\n", value);
+						PDEBUGF(LOG_V1, LOG_KEYB, "[mouse] unknown resolution %d\n", value);
 						break;
 				}
-				PDEBUGF(LOG_V1, LOG_KEYB, "mouse: resolution set to %d counts per mm\n", m_s.mouse.resolution_cpmm);
+				PDEBUGF(LOG_V1, LOG_KEYB, "[mouse] resolution set to %d counts per mm\n", m_s.mouse.resolution_cpmm);
 				controller_enQ(0xFA, 1); // ack
 				break;
 
 			default:
-				PERRF(LOG_KEYB, "MOUSE: unknown last command (%02xh)\n", (unsigned)  m_s.kbd_ctrl.last_mouse_command);
+				PERRF(LOG_KEYB, "[mouse] unknown last command (%02xh)\n", (unsigned)  m_s.kbd_ctrl.last_mouse_command);
 				break;
 		}
 	} else {
@@ -1213,7 +1219,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			// if not a reset command or reset wrap mode
 			// then just echo the byte.
 			if((value != 0xff) && (value != 0xec)) {
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: wrap mode: ignoring command 0x%02X\n",value);
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] wrap mode: ignoring command 0x%02X\n",value);
 				controller_enQ(value, 1);
 				// bail out
 				return;
@@ -1224,13 +1230,13 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			case 0xe6: // Set Mouse Scaling to 1:1
 				controller_enQ(0xFA, 1); // ACK
 				m_s.mouse.scaling = 2;
-				PDEBUGF(LOG_V1, LOG_KEYB, "mouse: scaling set to 1:1\n");
+				PDEBUGF(LOG_V1, LOG_KEYB, "[mouse] scaling set to 1:1\n");
 				break;
 
 			case 0xe7: // Set Mouse Scaling to 2:1
 				controller_enQ(0xFA, 1); // ACK
 				m_s.mouse.scaling = 2;
-				PDEBUGF(LOG_V1, LOG_KEYB, "mouse: scaling set to 2:1\n");
+				PDEBUGF(LOG_V1, LOG_KEYB, "[mouse] scaling set to 2:1\n");
 				break;
 
 			case 0xe8: // Set Mouse Resolution
@@ -1239,7 +1245,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				break;
 
 			case 0xea: // Set Stream Mode
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: stream mode on\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] stream mode on\n");
 				m_s.mouse.mode = MOUSE_MODE_STREAM;
 				controller_enQ(0xFA, 1); // ACK
 				break;
@@ -1247,7 +1253,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			case 0xec: // Reset Wrap Mode
 				// unless we are in wrap mode ignore the command
 				if( m_s.mouse.mode == MOUSE_MODE_WRAP) {
-					PDEBUGF(LOG_V2, LOG_KEYB, "mouse: wrap mode off\n");
+					PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] wrap mode off\n");
 					// restore previous mode except disable stream mode reporting.
 					// ### TODO disabling reporting in stream mode
 					m_s.mouse.mode =  m_s.mouse.saved_mode;
@@ -1257,14 +1263,14 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			case 0xee: // Set Wrap Mode
 				// ### TODO flush output queue.
 				// ### TODO disable interrupts if in stream mode.
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: wrap mode on\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] wrap mode on\n");
 				m_s.mouse.saved_mode =  m_s.mouse.mode;
 				m_s.mouse.mode = MOUSE_MODE_WRAP;
 				controller_enQ(0xFA, 1); // ACK
 				break;
 
 			case 0xf0: // Set Remote Mode (polling mode, i.e. not stream mode.)
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: remote mode on\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] remote mode on\n");
 				// ### TODO should we flush/discard/ignore any already queued packets?
 				m_s.mouse.mode = MOUSE_MODE_REMOTE;
 				controller_enQ(0xFA, 1); // ACK
@@ -1276,7 +1282,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 					controller_enQ(0x03, 1); // Device ID (wheel z-mouse)
 				else
 					controller_enQ(0x00, 1); // Device ID (standard)
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: read mouse ID\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] read mouse ID\n");
 				break;
 
 			case 0xf3: // Set Mouse Sample Rate (sample rate written to port 60h)
@@ -1289,7 +1295,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				if(is_ps2) {
 					m_s.mouse.enable = true;
 					controller_enQ(0xFA, 1); // ACK
-					PDEBUGF(LOG_V2, LOG_KEYB, "mouse enabled (stream mode)\n");
+					PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] mouse enabled (stream mode)\n");
 				} else {
 					// a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
 					controller_enQ(0xFE, 1); // RESEND
@@ -1300,7 +1306,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 			case 0xf5: // Disable (in stream mode)
 				m_s.mouse.enable = false;
 				controller_enQ(0xFA, 1); // ACK
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse disabled (stream mode)\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] mouse disabled (stream mode)\n");
 				break;
 
 			case 0xf6: // Set Defaults
@@ -1310,7 +1316,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				m_s.mouse.enable = false;
 				m_s.mouse.mode            = MOUSE_MODE_STREAM;
 				controller_enQ(0xFA, 1); // ACK
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: set defaults\n");
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] set defaults\n");
 				break;
 
 			case 0xff: // Reset
@@ -1322,13 +1328,13 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 					m_s.mouse.mode            = MOUSE_MODE_RESET;
 					m_s.mouse.enable = false;
 					if(m_s.mouse.im_mode)
-						PINFOF(LOG_V1, LOG_KEYB, "wheel mouse mode disabled\n");
+						PINFOF(LOG_V1, LOG_KEYB, "[mouse] wheel mouse mode disabled\n");
 						m_s.mouse.im_mode         = 0;
 						/* (mch) NT expects an ack here */
 						controller_enQ(0xFA, 1); // ACK
 						controller_enQ(0xAA, 1); // completion code
 						controller_enQ(0x00, 1); // ID code (standard after reset)
-						PDEBUGF(LOG_V2, LOG_KEYB, "mouse reset\n");
+						PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] mouse reset\n");
 				} else {
 					// a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
 					controller_enQ(0xFE, 1); // RESEND
@@ -1342,7 +1348,7 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				controller_enQ(status_byte, 1); // status
 				controller_enQ(m_s.mouse.get_resolution_byte(), 1); // resolution
 				controller_enQ(m_s.mouse.sample_rate, 1); // sample rate
-				PDEBUGF(LOG_V2, LOG_KEYB, "mouse: get mouse information: 0x%02X\n", status_byte);
+				PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] get mouse information: 0x%02X\n", status_byte);
 				break;
 			}
 
@@ -1352,17 +1358,17 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 				mouse_enQ_packet(((m_s.mouse.buttons_state & 0x0f) | 0x08),
 						0x00, 0x00, 0x00); // bit3 of first byte always set
 				//assumed we really aren't in polling mode, a rather odd assumption.
-				PERRF(LOG_KEYB, "mouse: Warning: Read Data command partially supported\n");
+				PERRF(LOG_KEYB, "[mouse] Warning: Read Data command partially supported\n");
 				break;
 
 			case 0xbb: // OS/2 Warp 3 uses this command
-				PERRF(LOG_KEYB, "mouse: ignoring 0xbb command\n");
+				PERRF(LOG_KEYB, "[mouse] ignoring 0xbb command\n");
 				break;
 
 			default:
 				// If PS/2 mouse present, send NACK for unknown commands, otherwise ignore
 				if(is_ps2) {
-					PERRF(LOG_KEYB, "kbd_ctrl_to_mouse(): got value of 0x%02X\n", value);
+					PERRF(LOG_KEYB, "[mouse] kbd_ctrl_to_mouse(): got value of 0x%02X\n", value);
 					controller_enQ(0xFE, 1); /* send NACK */
 				}
 				break;
@@ -1374,14 +1380,19 @@ void Keyboard::create_mouse_packet(bool force_enq)
 {
 	uint8_t b1, b2, b3, b4;
 
-	if(m_s.mouse_buffer.num_elements && !force_enq)
+	if(m_s.mouse_buffer.num_elements && !force_enq) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] packet ignored/dropped, elements in buffer=%d\n",
+				m_s.mouse_buffer.num_elements);
 		return;
+	}
 
 	int16_t delta_x = m_s.mouse.delayed_dx;
 	int16_t delta_y = m_s.mouse.delayed_dy;
 	uint8_t button_state = m_s.mouse.buttons_state | 0x08;
 
 	if(!force_enq && !delta_x && !delta_y) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] packet ignored/dropped, delta_x=%d, delta_y=%d\n",
+				delta_x, delta_y);
 		return;
 	}
 
@@ -1446,10 +1457,10 @@ void Keyboard::mouse_button(MouseButton _button, bool _state)
 	buttons_state |= (_state << btnid);
 
 	if(m_s.mouse.buttons_state == buttons_state) {
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse button: useless call. ignoring.\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] button: useless call. ignoring.\n");
 		return;
 	} else {
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse buttons: btns=%d\n", buttons_state);
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] buttons: btns=%d\n", buttons_state);
 	}
 
 	m_s.mouse.buttons_state = buttons_state;
@@ -1477,10 +1488,10 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z)
 
 	if((delta_x==0) && (delta_y==0) && (delta_z==0))
 	{
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: useless call. ignoring.\n");
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] motion: useless call. ignoring.\n");
 		return;
 	} else {
-		PDEBUGF(LOG_V2, LOG_KEYB, "mouse motion: dx=%d, dy=%d, dz=%d\n", delta_x, delta_y, delta_z);
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] motion: dx=%d, dy=%d, dz=%d\n", delta_x, delta_y, delta_z);
 	}
 
 	if(delta_z) {
@@ -1488,6 +1499,8 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z)
 	}
 
 	if(!m_s.mouse.enable || !m_s.kbd_ctrl.self_test_completed) {
+		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] motion: ignored, enable=%d, self_test_completed=%d\n",
+				m_s.mouse.enable, m_s.kbd_ctrl.self_test_completed);
 		return;
 	}
 
@@ -1546,7 +1559,7 @@ uint8_t Keyboard::State::Mouse::get_resolution_byte()
 			ret = 3;
 			break;
 		default:
-			PERRF(LOG_KEYB, "mouse: invalid resolution_cpmm\n");
+			PERRF(LOG_KEYB, "[mouse] invalid resolution_cpmm\n");
 			break;
 	};
 	return ret;
