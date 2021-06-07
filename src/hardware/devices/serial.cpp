@@ -1566,6 +1566,11 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 
 void Serial::rx_timer(uint8_t port, uint64_t)
 {
+	if(!m_s.enabled || m_host[port].io_mode == SER_MODE_NONE || m_host[port].io_mode == SER_MODE_DUMMY) {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: rx timer disabled\n", m_host[port].name());
+		return;
+	}
+
 	bool data_ready = false;
 	int db_usec = m_s.uart[port].databyte_usec;
 	uint8_t chbuf = 0;
