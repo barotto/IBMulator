@@ -45,7 +45,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_RENDERER,           "opengl"     },
 		{ GUI_FRAMECAP,           "vga"        },
 		{ GUI_KEYMAP,             "keymap.map" },
-		{ GUI_MOUSE_TYPE,         "ps2"        },
 		{ GUI_MOUSE_GRAB,         "yes"        },
 		{ GUI_MOUSE_ACCELERATION, "no"         },
 		{ GUI_SCREEN_DPI,         "96"         },
@@ -142,17 +141,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SOUNDFX_SYSTEM,   "1.0" }
 	} },
 
-	{ SERIAL_SECTION, {
-		{ SERIAL_A_MODE,    "dummy" },
-		{ SERIAL_A_DEV,     ""      },
-		{ SERIAL_B_MODE,    "dummy" },
-		{ SERIAL_B_DEV,     ""      },
-		{ SERIAL_C_MODE,    "dummy" },
-		{ SERIAL_C_DEV,     ""      },
-		{ SERIAL_D_MODE,    "dummy" },
-		{ SERIAL_D_DEV,     ""      }
-	} },
-
 	{ LPT_SECTION, {
 		{ LPT_PORT,    "LPT1" },
 		{ LPT_FILE,    ""     }
@@ -188,6 +176,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 
 //MACHINE_CONFIG
 {
+	{ GUI_SECTION, {
+		{ GUI_MOUSE_TYPE, "ps2" },
+	} },
+
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET, ""     },
 		{ SYSTEM_MODEL,  "auto" }
@@ -274,7 +266,15 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ SERIAL_SECTION, {
-		{ SERIAL_ENABLED, "yes" }
+		{ SERIAL_ENABLED, "yes"  },
+		{ SERIAL_A_MODE,  "auto" },
+		{ SERIAL_A_DEV,   ""     },
+		{ SERIAL_B_MODE,  "auto" },
+		{ SERIAL_B_DEV,   ""     },
+		{ SERIAL_C_MODE,  "auto" },
+		{ SERIAL_C_DEV,   ""     },
+		{ SERIAL_D_MODE,  "auto" },
+		{ SERIAL_D_DEV,   ""     }
 	} },
 
 	{ LPT_SECTION, {

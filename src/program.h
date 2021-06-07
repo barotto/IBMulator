@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -74,10 +74,14 @@ public:
 	int64_t heartbeat() const { return m_heartbeat; }
 	void set_heartbeat(int64_t _ns);
 	Pacer & pacer() { return m_pacer; }
-	
+
 	inline AppConfig & config() {
 		return m_config[1];
 	}
+	inline AppConfig & initial_config() {
+		return m_config[0];
+	}
+
 	Bench & get_bench() { return m_bench; }
 
 	void save_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);

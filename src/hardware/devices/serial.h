@@ -79,17 +79,21 @@
 #define SER_MSR  6   // 3fe MODEM Status Register
 #define SER_SCR  7   // 3ff Scratch Register
 
-#define SER_MODE_DUMMY         0
-#define SER_MODE_FILE          1
-#define SER_MODE_TERM          2
-#define SER_MODE_RAW           3
-#define SER_MODE_MOUSE         4
-#define SER_MODE_NET_CLIENT    5
-#define SER_MODE_NET_SERVER    6
-#define SER_MODE_PIPE_CLIENT   7
-#define SER_MODE_PIPE_SERVER   8
+enum SerialPortMode {
+	SER_MODE_INVALID,
+	SER_MODE_NONE,         // no i/o, no device connected
+	SER_MODE_DUMMY,        // no i/o, dummy device connected (CTS and DSR asserted)
+	SER_MODE_FILE,         // file output
+	SER_MODE_TERM,         // tty input/output (Linux only)
+	SER_MODE_RAW,          // raw hardware serial port access (TODO)
+	SER_MODE_MOUSE,        // serial mouse connected
+	SER_MODE_NET_CLIENT,   // null-modem, network client input/output
+	SER_MODE_NET_SERVER,   // null-modem, network server input/output
+	SER_MODE_PIPE_CLIENT,  // null-modem, pipe client input/output (Windows only)
+	SER_MODE_PIPE_SERVER   // null-modem, pipe server input/output (Windows only)
+};
 
-enum {
+enum SerialIntType {
 	SER_INT_IER,
 	SER_INT_RXDATA,
 	SER_INT_TXHOLD,
@@ -178,8 +182,8 @@ private:
 		} line_cntl;
 		// MODEM Control Register (r/w)
 		struct {
-			bool    dtr;             // DTR output value
-			bool    rts;             // RTS output value
+			bool    dtr;             // DTR (Data Terminal Ready)
+			bool    rts;             // RTS (Request-to-send)
 			bool    out1;            // OUTPUT1 value
 			bool    out2;            // OUTPUT2 value
 			bool    local_loopback;  // 1=loopback mode
@@ -200,11 +204,11 @@ private:
 			bool    delta_cts;       // 1=CTS changed since last read
 			bool    delta_dsr;       // 1=DSR changed since last read
 			bool    ri_trailedge;    // 1=RI moved from low->high
-			bool    delta_dcd;       // 1=CD changed since last read
-			bool    cts;             // CTS input value
-			bool    dsr;             // DSR input value
-			bool    ri;              // RI input value
-			bool    dcd;             // DCD input value
+			bool    delta_dcd;       // 1=DCD changed since last read
+			bool    cts;             // CTS (Clear To Send)
+			bool    dsr;             // DSR (Data Set Ready)
+			bool    ri;              // RI (Ring Indicator)
+			bool    dcd;             // DCD (Data Carrier Detect)
 		} modem_status;
 
 		uint8_t  scratch;       // Scratch Register (r/w)
@@ -227,12 +231,14 @@ private:
 		}
 	};
 
-	// The PS/1 2011 has 1 serial port that can only be set to COM1
-	// The PS/1 2121 has 1 serial port that can be set to either COM1 or COM2.
-	// The PS/1 2133 has 2 serial ports (A and B). A can be set to COM1 or COM3,
-	// B can be set to COM2 or COM4.
+	// The PS/1 2011 has 1 serial port that can only be set to COM1 or DISABLED
+	// The PS/1 2121 has 1 serial port that can be set to COM1, COM2, or DISABLED.
+	// The PS/1 2133 has 2 serial ports (A and B):
+	//   A can be set to COM1, COM3, DISABLED
+	//   B can be set to COM2, COM4, DISABLED
 
 	struct {
+		bool enabled; // TODO this should probably go inside uart or removed; reevaluate for 2133
 		UART16550A uart[SER_PORTS];
 		uint8_t portmap[4];
 		struct {
@@ -281,7 +287,7 @@ private:
 		void init_mode_term(std::string dev);
 		void init_mode_raw(std::string dev);
 		void init_mode_mouse();
-		void init_mode_socket(std::string dev, unsigned mode);
+		void init_mode_net(std::string dev, unsigned mode);
 		void init_mode_pipe(std::string dev, unsigned mode);
 
 		constexpr const char * name() const {
@@ -295,8 +301,6 @@ private:
 		}
 	} m_host[SER_PORTS];
 
-	bool m_enabled = false; // POS determines the device state
-
 	struct {
 		int port = SER_PORT_DISABLED;
 		int type = 0;
@@ -306,6 +310,14 @@ private:
 		uint8_t buttons = 0;
 		bool update = false;
 		std::mutex mtx;
+
+		void reset() {
+			delayed_dx = 0;
+			delayed_dy = 0;
+			delayed_dz = 0;
+			buttons = 0;
+			update = false;
+		}
 	} m_mouse;
 
 public:
@@ -339,7 +351,7 @@ private:
 	void mouse_motion(int delta_x, int delta_y, int delta_z);
 	void update_mouse_data(void);
 
-	void close();
+	void close(unsigned _port);
 };
 
 #endif
