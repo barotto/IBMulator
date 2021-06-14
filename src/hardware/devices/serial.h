@@ -87,10 +87,10 @@ enum SerialPortMode {
 	SER_MODE_TERM,         // tty input/output (Linux only)
 	SER_MODE_RAW,          // raw hardware serial port access (TODO)
 	SER_MODE_MOUSE,        // serial mouse connected
-	SER_MODE_NET_CLIENT,   // null-modem, network client input/output
-	SER_MODE_NET_SERVER,   // null-modem, network server input/output
-	SER_MODE_PIPE_CLIENT,  // null-modem, pipe client input/output (Windows only)
-	SER_MODE_PIPE_SERVER   // null-modem, pipe server input/output (Windows only)
+	SER_MODE_NET_CLIENT,   // network client input/output
+	SER_MODE_NET_SERVER,   // network server input/output
+	SER_MODE_PIPE_CLIENT,  // pipe client input/output (Windows only)
+	SER_MODE_PIPE_SERVER   // pipe server input/output (Windows only)
 };
 
 enum SerialIntType {
@@ -262,7 +262,19 @@ private:
 		int io_mode;
 
 		// socket server/client mode
-		SOCKET socket_id;
+		#if SER_POSIX
+		std::string server_host;
+		unsigned long server_port;
+		std::string client_name;
+		std::atomic<SOCKET> server_socket_id;
+		std::atomic<SOCKET> client_socket_id;
+		std::thread server_thread;
+		std::mutex server_mtx;
+		std::condition_variable client_socket_cv;
+		unsigned send_retry_cnt = 0;
+		#endif
+		void start_net_server();
+		void close_client_socket();
 
 		// file mode
 		std::string filename;

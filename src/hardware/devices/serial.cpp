@@ -36,6 +36,7 @@
 	#include <sys/types.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
+	#include <arpa/inet.h>
 	#include <netdb.h>
 	#include <unistd.h>
 	#define closesocket(s) ::close(s)
@@ -71,6 +72,8 @@ IODEVICE_PORTS(Serial) = {
 	{ 0x2E8, 0x2EF, PORT_8BIT|PORT_RW }  // COM4
 };
 
+#define SEND_RETRY_LIMIT 10
+
 Serial::Serial(Devices *_dev)
 : IODevice(_dev)
 {
@@ -94,7 +97,11 @@ void Serial::install()
 		m_host[p].port_id = p;
 		m_host[p].io_mode = SER_MODE_NONE;
 		m_host[p].tty_id = -1;
-		m_host[p].socket_id = -1;
+		#if SER_POSIX
+		m_host[p].server_port = 0;
+		m_host[p].server_socket_id = INVALID_SOCKET;
+		m_host[p].client_socket_id = INVALID_SOCKET;
+		#endif
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
 			std::bind(&Serial::tx_timer, this, 0, _1),
@@ -297,11 +304,22 @@ void Serial::close(unsigned _port)
 			break;
 		case SER_MODE_NET_CLIENT:
 		case SER_MODE_NET_SERVER:
-			if(m_host[_port].socket_id != INVALID_SOCKET) {
-				closesocket(m_host[_port].socket_id);
-				m_host[_port].socket_id = INVALID_SOCKET;
+			#if SER_POSIX
+			if(m_host[_port].server_socket_id != INVALID_SOCKET) {
+				// net server may be accepting connections
+				::shutdown(m_host[_port].server_socket_id, SHUT_RDWR);
 			}
+			if(m_host[_port].client_socket_id != INVALID_SOCKET) {
+				// net server may be waiting on the client socket to be closed
+				m_host[_port].close_client_socket();
+			}
+			if(m_host[_port].server_thread.joinable()) {
+				// net server is dead
+				m_host[_port].server_thread.join();
+			}
+			m_host[_port].server_socket_id = INVALID_SOCKET;
 			break;
+			#endif
 		case SER_MODE_PIPE_CLIENT:
 		case SER_MODE_PIPE_SERVER:
 			#if SER_WIN32
@@ -451,6 +469,7 @@ void Serial::Port::init_mode_term(std::string dev)
 
 	#else
 
+	UNUSED(dev);
 	throw std::runtime_error("tty mode support not available");
 
 	#endif
@@ -468,6 +487,7 @@ void Serial::Port::init_mode_raw(std::string dev)
 
 	#else
 
+	UNUSED(dev);
 	throw std::runtime_error("support for raw serial mode not available");
 
 	#endif
@@ -478,12 +498,88 @@ void Serial::Port::init_mode_mouse()
 	io_mode = SER_MODE_MOUSE;
 }
 
-void Serial::Port::init_mode_net(std::string dev, uint mode)
+void Serial::Port::start_net_server()
 {
+	#if SER_POSIX
+
+	sockaddr addr;
+	socklen_t addrlen = sizeof(sockaddr);
+
+	while(true) {
+		{
+			std::unique_lock<std::mutex> lock(server_mtx);
+			client_socket_cv.wait(lock, [this] { return client_socket_id == INVALID_SOCKET; });
+		}
+		PINFOF(LOG_V1, LOG_COM, "%s: waiting for client to connect to host:%s, port:%d\n",
+			name(), server_host.c_str(), server_port);
+		SOCKET client_sock = INVALID_SOCKET;
+		if((client_sock = ::accept(server_socket_id, &addr, &addrlen)) == INVALID_SOCKET) {
+			switch(errno) {
+				case ECONNABORTED: // connection has been aborted.
+				case EPROTO:       // protocol error
+				case EPERM:        // firewall rules forbid connection.
+					PERRF(LOG_COM, "%s: connection failed\n", name());
+					continue;
+				case EINTR:  // interrupted by a signal
+				case EBADF:  // not an open file descriptor.
+				case EINVAL: // socket not listening for connections
+				default:
+					PINFOF(LOG_V1, LOG_COM, "%s: closing the net server (%d)\n", name(), errno);
+					return;
+			}
+		} else {
+			if(::fcntl(client_sock, F_SETFL, ::fcntl(client_sock, F_GETFL) | O_NONBLOCK) < 0) {
+				PERRF(LOG_COM, "%s: cannot set socket as non-blocking\n", name());
+				closesocket(client_sock);
+				continue;
+			}
+			client_socket_id = client_sock;
+			char ip[INET6_ADDRSTRLEN] = "client";
+			if(addr.sa_family == AF_INET) { 
+				sockaddr_in *saddr_in = (sockaddr_in *)&addr;
+				//char *ip = inet_ntoa(saddr_in->sin_addr);
+				::inet_ntop(AF_INET, &(saddr_in->sin_addr), ip, INET_ADDRSTRLEN);
+			} else if(addr.sa_family == AF_INET6) {
+				sockaddr_in6 *saddr_in6 = (sockaddr_in6 *)&addr;
+				::inet_ntop(AF_INET6, &(saddr_in6->sin6_addr), ip, INET6_ADDRSTRLEN);
+			}
+			client_name = ip;
+			std::stringstream ss;
+			ss << name() << ": " << client_name << " connected";
+			PINFOF(LOG_V0, LOG_COM, "%s\n", ss.str().c_str());
+			GUI::instance()->show_message(ss.str().c_str());
+		}
+	}
+
+	#endif
+}
+
+void Serial::Port::close_client_socket()
+{
+	#if SER_POSIX
+	PINFOF(LOG_V1, LOG_COM, "%s: closing the client connection\n", name());
+	std::lock_guard<std::mutex> lock(server_mtx);
+	closesocket(client_socket_id);
+	client_socket_id = INVALID_SOCKET;
+	if(io_mode == SER_MODE_NET_CLIENT) {
+		io_mode = SER_MODE_DUMMY;
+	} else {
+		std::stringstream ss;
+		ss << name() << ": " << client_name << " disconnected";
+		GUI::instance()->show_message(ss.str().c_str());
+		client_socket_cv.notify_all();
+	}
+	#endif
+}
+
+void Serial::Port::init_mode_net(std::string dev, unsigned mode)
+{
+	#if SER_POSIX
+
 	if(dev.empty()) {
 		throw std::runtime_error("device address not specified");
 	}
-	
+
 	#if SER_WIN32
 	static bool winsock_init = false;
 	if(!winsock_init) {
@@ -500,6 +596,9 @@ void Serial::Port::init_mode_net(std::string dev, uint mode)
 	}
 	#endif
 
+	server_socket_id = INVALID_SOCKET;
+	client_socket_id = INVALID_SOCKET;
+
 	auto address = str_parse_tokens(dev, ":");
 
 	if(address.size() < 2) {
@@ -509,65 +608,68 @@ void Serial::Port::init_mode_net(std::string dev, uint mode)
 		throw std::runtime_error("invalid address, must be 'host:port'");
 	}
 
-	auto host = address[0];
-	unsigned long port = 0;
+	server_host = address[0];
+	server_port = 0;
 	try {
-		port = std::stoul(address[1]);
+		server_port = std::stoul(address[1]);
 	} catch(...) {
 		throw std::runtime_error("invalid port number");
 	}
-	if(port < 1024 || port > 65535) {
+	if(server_port < 1024 || server_port > 65535) {
 		throw std::runtime_error("port number must be between 1024 and 65535");
 	}
 
-	struct hostent *hp = gethostbyname(host.c_str());
+	struct hostent *hp = gethostbyname(server_host.c_str());
 	if(!hp) {
-		throw std::runtime_error("host name lookup failed for '" + host + "'");
+		throw std::runtime_error("host name lookup failed for '" + server_host + "'");
 	}
 
 	struct sockaddr_in sin;
-	memset((char*) &sin, 0, sizeof(sin));
+	memset((char*)&sin, 0, sizeof(sin));
 	#if HAVE_SOCKADDR_IN_SIN_LEN
 	sin.sin_len = sizeof(sin);
 	#endif
-	memcpy((char*) &(sin.sin_addr), hp->h_addr, hp->h_length);
+	memcpy((char*)&(sin.sin_addr), hp->h_addr, hp->h_length);
 	sin.sin_family = hp->h_addrtype;
-	sin.sin_port = htons(port);
+	sin.sin_port = htons(server_port);
 
-	SOCKET socket = ::socket(AF_INET, SOCK_STREAM, 0);
-	if(socket == INVALID_SOCKET) {
+	SOCKET socket_id = ::socket(AF_INET, SOCK_STREAM, 0);
+	if(socket_id == INVALID_SOCKET) {
 		throw std::runtime_error("socket creation failed for " + dev);
 	}
 
 	bool server_mode = (mode == SER_MODE_NET_SERVER);
 	if(server_mode) {
-		if(::bind(socket, (sockaddr *) &sin, sizeof (sin)) < 0 || ::listen(socket, SOMAXCONN) < 0) {
-			closesocket(socket);
-			socket = (SOCKET) -1;
+		if(::bind(socket_id, (sockaddr*)&sin, sizeof(sin)) < 0 || ::listen(socket_id, SOMAXCONN) < 0) {
+			closesocket(socket_id);
 			throw std::runtime_error("cannot listen to " + dev);
-		} else {
-			PINFOF(LOG_V0, LOG_COM, "%s: waiting for client to connect to host:%s, port:%d\n",
-					name(), host.c_str(), port);
-			SOCKET client;
-			if((client = ::accept(socket, nullptr, 0)) == INVALID_SOCKET) {
-				throw std::runtime_error("accept() failed for " + dev);
-			}
-			closesocket(socket);
-			socket = client;
 		}
-	} else if(::connect(socket, (sockaddr *) &sin, sizeof (sin)) < 0) {
-		closesocket(socket);
-		socket = (SOCKET) -1;
-		throw std::runtime_error("connection to '" + dev + "' failed");
+		server_socket_id = socket_id;
+		server_thread = std::thread(&Serial::Port::start_net_server, this);
+		PINFOF(LOG_V0, LOG_COM, "%s: net server initialized\n", name());
+	} else {
+		if(::connect(socket_id, (sockaddr*)&sin, sizeof(sin)) < 0) {
+			closesocket(socket_id);
+			throw std::runtime_error("connection to '" + dev + "' failed");
+		}
+		if(::fcntl(socket_id, F_SETFL, ::fcntl(socket_id, F_GETFL) | O_NONBLOCK) < 0) {
+			closesocket(socket_id);
+			throw std::runtime_error("cannot set socket as non-blocking");
+		}
+		client_socket_id = socket_id;
+		PINFOF(LOG_V0, LOG_COM, "%s: net client initialized: connected to %s:%u\n",
+				name(), server_host.c_str(), server_port, socket_id);
 	}
 
-	socket_id = socket;
+	io_mode = mode;
 
-	if(socket > 0) {
-		io_mode = mode;
-		PINFOF(LOG_V0, LOG_COM, "%s: inet %s initialized: host:%s, port:%u (socket_id:%d)\n",
-				name(), server_mode ? "server" : "client", host.c_str(), port, socket);
-	}
+	#else
+
+	UNUSED(dev);
+	UNUSED(mode);
+	throw std::runtime_error("support for 'net' modes not available");
+
+	#endif
 }
 
 void Serial::Port::init_mode_pipe(std::string dev, unsigned mode)
@@ -610,6 +712,8 @@ void Serial::Port::init_mode_pipe(std::string dev, unsigned mode)
 
 	#else
 
+	UNUSED(dev);
+	UNUSED(mode);
 	throw std::runtime_error("support for 'pipe' modes not available");
 
 	#endif
@@ -1466,7 +1570,7 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 
 void Serial::tx_timer(uint8_t port, uint64_t)
 {
-	bool gen_int = false;
+	bool sent = true;
 
 	if(m_s.uart[port].modem_cntl.local_loopback) {
 		rx_fifo_enq(port, m_s.uart[port].tsrbuffer);
@@ -1486,8 +1590,13 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 								m_host[port].name(), m_host[port].filename.c_str());
 					}
 				}
-				fputc(m_s.uart[port].tsrbuffer, m_host[port].output);
-				fflush(m_host[port].output);
+				if(fputc(m_s.uart[port].tsrbuffer, m_host[port].output) == EOF) {
+					PERRF(LOG_COM, "%s: cannot write to file!\n");
+					close(port);
+					m_host[port].io_mode = SER_MODE_DUMMY;
+				} else {
+					fflush(m_host[port].output);
+				}
 				break;
 			case SER_MODE_TERM:
 				#if SER_POSIX
@@ -1515,17 +1624,34 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 				break;
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				if(m_host[port].socket_id >= 0) {
+				#if SER_POSIX
+				if(m_host[port].client_socket_id != INVALID_SOCKET) {
 					PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
-					#if SER_WIN32
-					::send(m_s[port].socket_id, (const char*) & m_s[port].tsrbuffer, 1, 0);
-					#else
-					ssize_t res = ::write(m_host[port].socket_id, (void*)&m_s.uart[port].tsrbuffer, 1);
-					if(res != 1) {
-						PWARNF(LOG_V1, LOG_COM, "%s: sock write failed!\n", m_host[port].name());
+					ssize_t res = (ssize_t)::send(m_host[port].client_socket_id, (const char*)&m_s.uart[port].tsrbuffer, 1, 0);
+					if(res <= 0) {
+						if(errno == ECONNRESET) {
+							PINFOF(LOG_V0, LOG_COM, "%s: connection reset by peer\n", m_host[port].name());
+							m_host[port].close_client_socket();
+						} else if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
+							PDEBUGF(LOG_V1, LOG_COM, "%s: send cannot be executed (%u)\n", m_host[port].name(), errno);
+							// TODO this condition is untested
+							if(m_host[port].send_retry_cnt >= SEND_RETRY_LIMIT) {
+								PDEBUGF(LOG_V1, LOG_COM, "%s: data tx failed, connection reset\n", m_host[port].name());
+								m_host[port].close_client_socket();
+								m_host[port].send_retry_cnt = 0;
+							} else {
+								m_host[port].send_retry_cnt++;
+								sent = false;
+							}
+						} else {
+							PWARNF(LOG_V1, LOG_COM, "%s: sock write failed!\n", m_host[port].name());
+							m_host[port].close_client_socket();
+						}
+					} else {
+						m_host[port].send_retry_cnt = 0;
 					}
-					#endif
 				}
+				#endif
 				break;
 			case SER_MODE_PIPE_CLIENT:
 			case SER_MODE_PIPE_SERVER:
@@ -1541,16 +1667,19 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		}
 	}
 
-	m_s.uart[port].line_status.tsr_empty = true;
-	if(m_s.uart[port].fifo_cntl.enable && (m_s.uart[port].tx_fifo_end > 0)) {
-		m_s.uart[port].tsrbuffer = m_s.uart[port].tx_fifo[0];
-		m_s.uart[port].line_status.tsr_empty = false;
-		memcpy(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
-		gen_int = (--m_s.uart[port].tx_fifo_end == 0);
-	} else if(!m_s.uart[port].line_status.thr_empty) {
-		m_s.uart[port].tsrbuffer = m_s.uart[port].thrbuffer;
-		m_s.uart[port].line_status.tsr_empty = false;
-		gen_int = true;
+	bool gen_int = false;
+	if(sent) {
+		m_s.uart[port].line_status.tsr_empty = true;
+		if(m_s.uart[port].fifo_cntl.enable && (m_s.uart[port].tx_fifo_end > 0)) {
+			m_s.uart[port].tsrbuffer = m_s.uart[port].tx_fifo[0];
+			m_s.uart[port].line_status.tsr_empty = false;
+			memcpy(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
+			gen_int = (--m_s.uart[port].tx_fifo_end == 0);
+		} else if(!m_s.uart[port].line_status.thr_empty) {
+			m_s.uart[port].tsrbuffer = m_s.uart[port].thrbuffer;
+			m_s.uart[port].line_status.tsr_empty = false;
+			gen_int = true;
+		}
 	}
 	if(!m_s.uart[port].line_status.tsr_empty) {
 		if(gen_int) {
@@ -1579,23 +1708,19 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 		switch (m_host[port].io_mode) {
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				#if HAVE_SYS_SELECT_H && SERIAL_ENABLE
-				if(m_host[port].socket_id >= 0 && !m_s.uart[port].line_status.rxdata_ready) {
-					struct timeval tval = {0,0};
-					fd_set fds;
-					FD_ZERO(&fds);
-					FD_SET(m_host[port].socket_id, &fds);
-					if(select(m_host[port].socket_id + 1, &fds, nullptr, nullptr, &tval) == 1) {
-						ssize_t bytes = (ssize_t)
-						#if SER_WIN32
-							::recv(m_host[port].socket_id, (char*) &chbuf, 1, 0);
-						#else
-							::read(m_host[port].socket_id, &chbuf, 1);
-						#endif
-						if(bytes > 0) {
-							PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: %02x\n", m_host[port].name(), chbuf);
-							data_ready = true;
+				#if SER_POSIX
+				if(m_host[port].client_socket_id != INVALID_SOCKET && !m_s.uart[port].line_status.rxdata_ready) {
+					ssize_t bytes = (ssize_t)::recv(m_host[port].client_socket_id, (char*)&chbuf, 1, 0);
+					if(bytes > 0) {
+						PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: %02x\n", m_host[port].name(), chbuf);
+						data_ready = true;
+					} else if(bytes == 0 || (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN)) {
+						PINFOF(LOG_V0, LOG_COM, "%s: connection terminated", m_host[port].name());
+						if(bytes < 0) {
+							PINFOF(LOG_V0, LOG_COM, " (error=%u)", errno);
 						}
+						PINFOF(LOG_V0, LOG_COM, "\n");
+						m_host[port].close_client_socket();
 					}
 				}
 				#endif
