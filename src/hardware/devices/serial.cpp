@@ -1088,6 +1088,7 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 			} else if(m_s.uart[port].tx_interrupt) {
 				m_s.uart[port].int_ident.int_ID = 0x1;
 				m_s.uart[port].int_ident.ipending = 0;
+				m_s.uart[port].tx_interrupt = 0;
 			} else if(m_s.uart[port].ms_interrupt) {
 				m_s.uart[port].int_ident.int_ID = 0x0;
 				m_s.uart[port].int_ident.ipending = 0;
@@ -1095,7 +1096,6 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 				m_s.uart[port].int_ident.int_ID = 0x0;
 				m_s.uart[port].int_ident.ipending = 1;
 			}
-			m_s.uart[port].tx_interrupt = 0;
 
 			val = m_s.uart[port].int_ident.ipending  |
 				(m_s.uart[port].int_ident.int_ID << 1) |
