@@ -1250,6 +1250,10 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				PDEBUGF(LOG_V2, LOG_COM, "div LSB\n");
 			} else {
 				PDEBUGF(LOG_V2, LOG_COM, "TX buff\n");
+				if(m_s.uart[port].tx_interrupt) {
+					m_s.uart[port].tx_interrupt = 0;
+					lower_interrupt(port);
+				}
 				uint8_t bitmask = 0xff >> (3 - m_s.uart[port].line_cntl.wordlen_sel);
 				_value &= bitmask;
 				if(m_s.uart[port].line_status.thr_empty) {
@@ -1275,9 +1279,6 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						g_machine.activate_timer(m_host[port].tx_timer,
 								uint64_t(m_s.uart[port].databyte_usec)*1_us,
 								false); // not continuous
-					} else {
-						m_s.uart[port].tx_interrupt = 0;
-						lower_interrupt(port);
 					}
 				} else {
 					if(m_s.uart[port].fifo_cntl.enable) {
