@@ -23,7 +23,7 @@
 #include "shared_queue.h"
 #include "pacer.h"
 #include "hwbench.h"
-#include "audio/ring_buffer.h"
+#include "ring_buffer.h"
 #include "audio/mixerchannel.h"
 #include "audio/wav.h"
 #include "audio/midi.h"

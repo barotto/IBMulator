@@ -21,18 +21,6 @@
 #include "ring_buffer.h"
 #include <cstring>
 
-RingBuffer::RingBuffer()
-:
-m_size(0),
-m_read_ptr(0),
-m_write_ptr(0),
-m_write_avail(0)
-{
-}
-
-RingBuffer::~RingBuffer( )
-{
-}
 
 void RingBuffer::set_size(size_t _size)
 {

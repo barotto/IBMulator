@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,12 +24,12 @@
 
 class RingBuffer
 {
-private:
+protected:
 	std::vector<uint8_t> m_data;
-	size_t m_size;
-	size_t m_read_ptr;
-	size_t m_write_ptr;
-	size_t m_write_avail;
+	size_t m_size = 0;
+	size_t m_read_ptr = 0;
+	size_t m_write_ptr = 0;
+	size_t m_write_avail = 0;
 	mutable std::mutex m_mutex;
 
 	RingBuffer& operator=(const RingBuffer&) = delete;
@@ -37,15 +37,14 @@ private:
 	RingBuffer(const RingBuffer&&) = delete;
 
 public:
-
-	RingBuffer();
-	~RingBuffer();
+	RingBuffer() {}
+	virtual ~RingBuffer() {}
 
 	void set_size(size_t _size);
 	void clear();
 
-	size_t read(uint8_t *_data, size_t _len);
-	size_t write(uint8_t *_data, size_t _len);
+	virtual size_t read(uint8_t *_data, size_t _len);
+	virtual size_t write(uint8_t *_data, size_t _len);
 	size_t shrink_data(size_t _limit);
 
 	void get_status(size_t &_size, size_t &_wr_avail, size_t &_rd_avail) const;

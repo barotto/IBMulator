@@ -11,7 +11,6 @@ libaudio_a_SOURCES = \
 	mididev_win32.cpp \
 	midifile.cpp \
 	mixerchannel.cpp \
-	ring_buffer.cpp \
 	soundfx.cpp \
 	synth.cpp \
 	vgm.cpp \
@@ -36,7 +35,6 @@ noinst_HEADERS = \
 	mididev_win32.h \
 	midifile.h \
 	mixerchannel.h \
-	ring_buffer.h \
 	soundfx.h \
 	synth.h \
 	vgm.h \

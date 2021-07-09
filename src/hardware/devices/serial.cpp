@@ -34,7 +34,7 @@
 
 #if SER_POSIX
 	#include <sys/types.h>
-	#include <sys/socket.h>
+#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <netdb.h>
@@ -101,6 +101,7 @@ void Serial::install()
 		m_host[p].server_port = 0;
 		m_host[p].server_socket_id = INVALID_SOCKET;
 		m_host[p].client_socket_id = INVALID_SOCKET;
+		m_host[p].tx_data.set_size(SER_TX_BUF_LEN);
 		#endif
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
@@ -308,14 +309,15 @@ void Serial::close(unsigned _port)
 			if(m_host[_port].server_socket_id != INVALID_SOCKET) {
 				// net server may be accepting connections
 				::shutdown(m_host[_port].server_socket_id, SHUT_RDWR);
+				closesocket(m_host[_port].server_socket_id);
 			}
 			if(m_host[_port].client_socket_id != INVALID_SOCKET) {
 				// net server may be waiting on the client socket to be closed
 				m_host[_port].close_client_socket();
 			}
-			if(m_host[_port].server_thread.joinable()) {
-				// net server is dead
-				m_host[_port].server_thread.join();
+			if(m_host[_port].net_thread.joinable()) {
+				PDEBUGF(LOG_V1, LOG_COM, "%s: waiting for net thread...\n", m_host[_port].name());
+				m_host[_port].net_thread.join();
 			}
 			m_host[_port].server_socket_id = INVALID_SOCKET;
 			break;
@@ -354,6 +356,13 @@ void Serial::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
+	#if SER_POSIX
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		m_host[p].rx_data.clear();
+		m_host[p].tx_data.clear();
+	}
+	#endif
+	
 	std::lock_guard<std::mutex> mlock(m_mouse.mtx);
 	m_mouse.reset();
 }
@@ -505,11 +514,9 @@ void Serial::Port::start_net_server()
 	sockaddr addr;
 	socklen_t addrlen = sizeof(sockaddr);
 
+	PDEBUGF(LOG_V0, LOG_COM, "%s: server thread started\n", name());
+
 	while(true) {
-		{
-			std::unique_lock<std::mutex> lock(server_mtx);
-			client_socket_cv.wait(lock, [this] { return client_socket_id == INVALID_SOCKET; });
-		}
 		PINFOF(LOG_V1, LOG_COM, "%s: waiting for client to connect to host:%s, port:%d\n",
 			name(), server_host.c_str(), server_port);
 		SOCKET client_sock = INVALID_SOCKET;
@@ -528,11 +535,6 @@ void Serial::Port::start_net_server()
 					return;
 			}
 		} else {
-			if(::fcntl(client_sock, F_SETFL, ::fcntl(client_sock, F_GETFL) | O_NONBLOCK) < 0) {
-				PERRF(LOG_COM, "%s: cannot set socket as non-blocking\n", name());
-				closesocket(client_sock);
-				continue;
-			}
 			client_socket_id = client_sock;
 			char ip[INET6_ADDRSTRLEN] = "client";
 			if(addr.sa_family == AF_INET) { 
@@ -548,6 +550,113 @@ void Serial::Port::start_net_server()
 			ss << name() << ": " << client_name << " connected";
 			PINFOF(LOG_V0, LOG_COM, "%s\n", ss.str().c_str());
 			GUI::instance()->show_message(ss.str().c_str());
+
+			net_data_loop();
+
+			ss.str("");
+			ss << name() << ": " << client_name << " disconnected";
+			GUI::instance()->show_message(ss.str().c_str());
+		}
+	}
+	PDEBUGF(LOG_V0, LOG_COM, "%s: server thread terminated\n", name());
+
+	#endif
+}
+
+void Serial::Port::start_net_client()
+{
+	#if SER_POSIX
+
+	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread started\n", name());
+
+	net_data_loop();
+
+	std::stringstream ss;
+	ss << name() << ": " << server_host << " disconnected";
+	GUI::instance()->show_message(ss.str().c_str());
+	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread terminated\n", name());
+
+	#endif
+}
+
+void Serial::Port::net_data_loop()
+{
+	#if SER_POSIX
+
+	PDEBUGF(LOG_V1, LOG_COM, "%s: starting tx thread ...\n", name());
+	auto tx_thread = std::thread(&Serial::Port::net_tx_loop, this);
+
+	while(true) {
+		uint8_t chbuf;
+		if(client_socket_id == INVALID_SOCKET) {
+			break;
+		}
+		ssize_t bytes = (ssize_t)::recv(client_socket_id, (char*)&chbuf, 1, 0);
+		if(bytes > 0) {
+			if(g_machine.is_on()) {
+				if(rx_data.force_push(chbuf)) {
+					PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: [ %02x ]\n", name(), chbuf);
+				} else {
+					PDEBUGF(LOG_V1, LOG_COM, "%s: rx buffer overflow: [ %02x ]\n", name(), chbuf);
+				}
+			}
+		} else {
+			PINFOF(LOG_V0, LOG_COM, "%s: connection terminated", name());
+			if(bytes < 0) {
+				PINFOF(LOG_V0, LOG_COM, " (%u)", errno);
+			}
+			PINFOF(LOG_V0, LOG_COM, "\n");
+			close_client_socket();
+			break;
+		}
+	}
+
+	tx_thread.join();
+	PDEBUGF(LOG_V1, LOG_COM, "%s: tx thread terminated\n", name());
+
+	#endif
+}
+
+size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, unsigned _max_wait_ns)
+{
+	if(get_read_avail() < SER_TX_BUF_THRE) {
+		std::unique_lock<std::mutex> lock(m_mutex);
+		m_data_cond.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
+	}
+	return RingBuffer::read(_data, _len);
+}
+
+size_t Serial::Port::TXFifo::write(uint8_t *_data, size_t _len)
+{
+	size_t len = RingBuffer::write(_data, _len);
+	if(get_read_avail() >= SER_TX_BUF_THRE) {
+		m_data_cond.notify_one();
+	}
+	return len;
+}
+
+void Serial::Port::net_tx_loop()
+{
+	#if SER_POSIX
+	std::array<uint8_t, SER_TX_BUF_LEN> tx_buf;
+
+	while(true) {
+		if(client_socket_id == INVALID_SOCKET) {
+			break;
+		}
+		size_t len = tx_data.read(&tx_buf[0], SER_TX_BUF_LEN, 1000000);
+		if(len) {
+			PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: [ ", name());
+			for(size_t i=0; i<len; i++) {
+				PDEBUGF(LOG_V1, LOG_COM, "%02x ", tx_buf[i]);
+			}
+			PDEBUGF(LOG_V1, LOG_COM, "]\n");
+			ssize_t res = (ssize_t)::send(client_socket_id, (const char*)&tx_buf[0], len, 0);
+			if(res < 0) {
+				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", errno);
+			} else if(res != len) {
+				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", len, res, errno);
+			}
 		}
 	}
 
@@ -557,18 +666,13 @@ void Serial::Port::start_net_server()
 void Serial::Port::close_client_socket()
 {
 	#if SER_POSIX
+	if(client_socket_id == INVALID_SOCKET) {
+		return;
+	}
 	PINFOF(LOG_V1, LOG_COM, "%s: closing the client connection\n", name());
-	std::lock_guard<std::mutex> lock(server_mtx);
+	::shutdown(client_socket_id, SHUT_RDWR);
 	closesocket(client_socket_id);
 	client_socket_id = INVALID_SOCKET;
-	if(io_mode == SER_MODE_NET_CLIENT) {
-		io_mode = SER_MODE_DUMMY;
-	} else {
-		std::stringstream ss;
-		ss << name() << ": " << client_name << " disconnected";
-		GUI::instance()->show_message(ss.str().c_str());
-		client_socket_cv.notify_all();
-	}
 	#endif
 }
 
@@ -645,18 +749,15 @@ void Serial::Port::init_mode_net(std::string dev, unsigned mode)
 			throw std::runtime_error("cannot listen to " + dev);
 		}
 		server_socket_id = socket_id;
-		server_thread = std::thread(&Serial::Port::start_net_server, this);
+		net_thread = std::thread(&Serial::Port::start_net_server, this);
 		PINFOF(LOG_V0, LOG_COM, "%s: net server initialized\n", name());
 	} else {
 		if(::connect(socket_id, (sockaddr*)&sin, sizeof(sin)) < 0) {
 			closesocket(socket_id);
 			throw std::runtime_error("connection to '" + dev + "' failed");
 		}
-		if(::fcntl(socket_id, F_SETFL, ::fcntl(socket_id, F_GETFL) | O_NONBLOCK) < 0) {
-			closesocket(socket_id);
-			throw std::runtime_error("cannot set socket as non-blocking");
-		}
 		client_socket_id = socket_id;
+		net_thread = std::thread(&Serial::Port::start_net_client, this);
 		PINFOF(LOG_V0, LOG_COM, "%s: net client initialized: connected to %s:%u\n",
 				name(), server_host.c_str(), server_port, socket_id);
 	}
@@ -735,6 +836,12 @@ void Serial::lower_interrupt(uint8_t port)
 void Serial::reset(unsigned _type)
 {
 	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
+		#if SER_POSIX
+		for(unsigned p=0; p<SER_PORTS; p++) {
+			m_host[p].rx_data.clear();
+			m_host[p].tx_data.clear();
+		}
+		#endif
 		std::lock_guard<std::mutex> lock(m_mouse.mtx);
 		m_mouse.reset();
 		m_s.mouse.detect = 0;
@@ -995,7 +1102,7 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 				(m_s.uart[port].fifo_cntl.enable ? 0xc0 : 0x00);
 			PDEBUGF(LOG_V2, LOG_COM, "0x%02x IIR int:%x %s\n", val,
 					m_s.uart[port].int_ident.int_ID,
-					m_s.uart[port].int_ident.ipending?"pending":"");
+					m_s.uart[port].int_ident.ipending?"":"pending");
 
 			lower_interrupt(port);
 			break;
@@ -1137,7 +1244,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	bool new_b7 = (_value & 0x80) >> 7;
 
 	switch(_address & 0x07) {
-		case SER_THR: // transmit buffer, or divisor latch LSB if DLAB set
+		case SER_THR: // Transmit Holding Register, or Divisor Latch LSB if DLAB set
 			if(m_s.uart[port].line_cntl.dlab) {
 				m_s.uart[port].divisor_lsb = _value;
 				PDEBUGF(LOG_V2, LOG_COM, "div LSB\n");
@@ -1357,6 +1464,8 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				// and there is a valid baudrate.
 				m_s.uart[port].databyte_usec = (uint32_t)(1000000.0 / m_s.uart[port].baudrate *
 						(m_s.uart[port].line_cntl.wordlen_sel + 7));
+				PDEBUGF(LOG_V1, LOG_COM, "%s: rx timer set to %u us\n",
+						m_host[port].name(), m_s.uart[port].databyte_usec);
 				g_machine.activate_timer(m_host[port].rx_timer,
 						uint64_t(m_s.uart[port].databyte_usec)*1_us,
 						false); // not continuous
@@ -1626,29 +1735,9 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 			case SER_MODE_NET_SERVER:
 				#if SER_POSIX
 				if(m_host[port].client_socket_id != INVALID_SOCKET) {
-					PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
-					ssize_t res = (ssize_t)::send(m_host[port].client_socket_id, (const char*)&m_s.uart[port].tsrbuffer, 1, 0);
-					if(res <= 0) {
-						if(errno == ECONNRESET) {
-							PINFOF(LOG_V0, LOG_COM, "%s: connection reset by peer\n", m_host[port].name());
-							m_host[port].close_client_socket();
-						} else if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
-							PDEBUGF(LOG_V1, LOG_COM, "%s: send cannot be executed (%u)\n", m_host[port].name(), errno);
-							// TODO this condition is untested
-							if(m_host[port].send_retry_cnt >= SEND_RETRY_LIMIT) {
-								PDEBUGF(LOG_V1, LOG_COM, "%s: data tx failed, connection reset\n", m_host[port].name());
-								m_host[port].close_client_socket();
-								m_host[port].send_retry_cnt = 0;
-							} else {
-								m_host[port].send_retry_cnt++;
-								sent = false;
-							}
-						} else {
-							PWARNF(LOG_V1, LOG_COM, "%s: sock write failed!\n", m_host[port].name());
-							m_host[port].close_client_socket();
-						}
-					} else {
-						m_host[port].send_retry_cnt = 0;
+					sent = m_host[port].tx_data.write(&m_s.uart[port].tsrbuffer, 1);
+					if(!sent) {
+						PDEBUGF(LOG_V0, LOG_COM, "%s: tx buffer overflow: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 					}
 				}
 				#endif
@@ -1710,18 +1799,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 			case SER_MODE_NET_SERVER:
 				#if SER_POSIX
 				if(m_host[port].client_socket_id != INVALID_SOCKET && !m_s.uart[port].line_status.rxdata_ready) {
-					ssize_t bytes = (ssize_t)::recv(m_host[port].client_socket_id, (char*)&chbuf, 1, 0);
-					if(bytes > 0) {
-						PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: %02x\n", m_host[port].name(), chbuf);
-						data_ready = true;
-					} else if(bytes == 0 || (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN)) {
-						PINFOF(LOG_V0, LOG_COM, "%s: connection terminated", m_host[port].name());
-						if(bytes < 0) {
-							PINFOF(LOG_V0, LOG_COM, " (error=%u)", errno);
-						}
-						PINFOF(LOG_V0, LOG_COM, "\n");
-						m_host[port].close_client_socket();
-					}
+					data_ready = m_host[port].rx_data.pop(chbuf);
 				}
 				#endif
 				break;

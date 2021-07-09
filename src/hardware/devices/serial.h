@@ -21,6 +21,9 @@
 #ifndef IBMULATOR_HW_SERIAL_H
 #define IBMULATOR_HW_SERIAL_H
 
+#include "shared_fifo.h"
+#include "ring_buffer.h"
+
 // Peter Grehan (grehan@iprg.nokia.com) coded most of this
 // serial emulation.
 
@@ -68,8 +71,8 @@
 #define SER_RXPOLL  1
 #define SER_RXWAIT  2
 
-#define SER_THR  0   // 3f8 Transmit Buffer
-#define SER_RBR  0   // 3f8 Receive Buffer
+#define SER_THR  0   // 3f8 Transmit Holding Register
+#define SER_RBR  0   // 3f8 Receiver Buffer Register
 #define SER_IER  1   // 3f9 Interrupt Enable Register
 #define SER_IIR  2   // 3fa Interrupt ID Register
 #define SER_FCR  2   // 3fa FIFO Control Register
@@ -105,6 +108,11 @@ enum SerialIntType {
 #if USE_RAW_SERIAL
 class serial_raw;
 #endif
+
+// TODO these are arbitrary values
+#define SER_RX_BUF_LEN  1024
+#define SER_TX_BUF_THRE 16
+#define SER_TX_BUF_LEN (SER_TX_BUF_THRE * 2)
 
 
 class Serial : public IODevice
@@ -262,18 +270,28 @@ private:
 		int io_mode;
 
 		// socket server/client mode
+
+		class TXFifo : public RingBuffer {
+		protected:
+			std::condition_variable m_data_cond;
+		public:
+			virtual size_t read(uint8_t *_data, size_t _len, unsigned _max_wait_ns);
+			virtual size_t write(uint8_t *_data, size_t _len);
+		};
 		#if SER_POSIX
 		std::string server_host;
 		unsigned long server_port;
 		std::string client_name;
 		std::atomic<SOCKET> server_socket_id;
 		std::atomic<SOCKET> client_socket_id;
-		std::thread server_thread;
-		std::mutex server_mtx;
-		std::condition_variable client_socket_cv;
-		unsigned send_retry_cnt = 0;
+		std::thread net_thread;
+		SharedFifo<uint8_t, SER_RX_BUF_LEN> rx_data;
+		TXFifo tx_data;
 		#endif
 		void start_net_server();
+		void start_net_client();
+		void net_data_loop();
+		void net_tx_loop();
 		void close_client_socket();
 
 		// file mode
