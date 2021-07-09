@@ -1269,7 +1269,9 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							m_s.uart[port].line_status.thr_empty = 1;
 						}
 						m_s.uart[port].line_status.tsr_empty = 0;
-						raise_interrupt(port, SER_INT_TXHOLD);
+						if(m_s.uart[port].line_status.thr_empty) {
+							raise_interrupt(port, SER_INT_TXHOLD);
+						}
 						g_machine.activate_timer(m_host[port].tx_timer,
 								uint64_t(m_s.uart[port].databyte_usec)*1_us,
 								false); // not continuous
