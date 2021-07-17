@@ -101,6 +101,7 @@ private:
 	std::vector<std::string> m_irq_names[16];
 
 	SystemROM m_sysrom;
+	void load_bios_patches();
 
 	bool m_curr_prgname_changed;
 

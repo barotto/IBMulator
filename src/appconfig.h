@@ -165,6 +165,7 @@ public:
 #define SYSTEM_SECTION          "system"
 #define SYSTEM_ROMSET           "romset"
 #define SYSTEM_MODEL            "model"
+#define SYSTEM_BIOS_PATCHES     "bios_patches"
 
 #define CPU_SECTION             "cpu"
 #define CPU_MODEL               "model"

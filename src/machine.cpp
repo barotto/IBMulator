@@ -29,6 +29,7 @@
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/dma.h"
 #include "hardware/devices/systemboard.h"
+#include "filesys.h"
 
 #include "gui/gui.h"
 #include <sstream>
@@ -257,6 +258,7 @@ void Machine::config_changed()
 	try {
 		std::string romset = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_ROMSET);
 		m_sysrom.load(romset);
+		load_bios_patches();
 		g_program.config().set_string(SYSTEM_SECTION, SYSTEM_ROMSET, romset);
 	} catch(std::exception &e) {
 		PERRF(LOG_MACHINE, "unable to load the SYSTEM ROM!\n");
@@ -293,6 +295,50 @@ void Machine::config_changed()
 	PINFOF(LOG_V0, LOG_MACHINE, "DMA channels:\n");
 	for(unsigned i=0; i<8; i++) {
 		PINFOF(LOG_V0, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
+	}
+}
+
+void Machine::load_bios_patches()
+{
+	std::string bios_patches = g_program.config().get_string(SYSTEM_SECTION, SYSTEM_BIOS_PATCHES, "");
+	auto patches_toks = AppConfig::parse_tokens(bios_patches, "\\|");
+	int count = 0;
+	for(auto patch_str : patches_toks) {
+		PINFOF(LOG_V0, LOG_MACHINE, "Applying BIOS patch: %s\n", patch_str.c_str());
+		auto patch_toks = AppConfig::parse_tokens(patch_str, "\\,");
+		if(patch_toks.size() != 2) {
+			PERRF(LOG_MACHINE, "Invalid BIOS patch definition: %s\n", patch_str.c_str());
+			continue;
+		}
+		std::string file_name = str_trim(patch_toks[0]);
+		std::string file_path = g_program.config().find_media(file_name);
+		if(!FileSys::file_exists(file_path.c_str())) {
+			PERRF(LOG_MACHINE, "Invalid BIOS patch file: %s\n", file_name.c_str());
+			continue;
+		}
+		auto param_toks = AppConfig::parse_tokens(patch_toks[1], "\\=");
+		if(param_toks[0] != "offset") {
+			PERRF(LOG_MACHINE, "Invalid BIOS patch parameter: %s\n", param_toks[0].c_str());
+			continue;
+		}
+		int offset = 0;
+		try {
+			offset = AppConfig::parse_int(param_toks[1]);
+		} catch(std::exception &) {
+			PERRF(LOG_MACHINE, "Invalid BIOS patch offset value: %s\n", param_toks[1].c_str());
+			continue;
+		}
+		try {
+			m_sysrom.load_bios_patch(file_path, offset);
+			count++;
+		} catch(std::exception &) {
+			continue;
+		}
+	}
+
+	if(count) {
+		PINFOF(LOG_V1, LOG_MACHINE, "Successfully installed %d BIOS patches\n", count);
+		m_sysrom.update_bios_checksum();
 	}
 }
 

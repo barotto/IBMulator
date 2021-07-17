@@ -181,8 +181,9 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET, ""     },
-		{ SYSTEM_MODEL,  "auto" }
+		{ SYSTEM_ROMSET,       ""     },
+		{ SYSTEM_MODEL,        "auto" },
+		{ SYSTEM_BIOS_PATCHES, ""     }
 	} },
 
 	{ CPU_SECTION, {

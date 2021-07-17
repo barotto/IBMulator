@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,7 +46,9 @@ public:
 	void init();
 	void load(const std::string _romset);
 	void config_changed();
+	void load_bios_patch(std::string _patch_file, unsigned _patch_offset);
 	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
+	void update_bios_checksum();
 	const BIOSType & bios() const { return m_bios; }
 
 	inline uint8_t read(uint32_t _phy) const {
@@ -60,6 +62,7 @@ private:
 	int load_file(const std::string &_filename, uint32_t _destaddr);
 	void load_dir(const std::string &_dirname);
 	void load_archive(const std::string &_filename);
+	
 
 	template<class T>
 	static uint32_t s_read(uint32_t _addr, void *_priv) {

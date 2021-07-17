@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -126,7 +126,7 @@ void SystemROM::load(const std::string _romset)
 				"You are using an unsupported system ROM.\n"
 				"Please consider sending a copy to the " PACKAGE_NAME "'s author. "
 				"Thank you! :)",
-		        nullptr);
+				nullptr);
 	}
 
 	/* Model  Submdl  Rev     BIOS date       System
@@ -146,6 +146,31 @@ void SystemROM::load(const std::string _romset)
 		PINFOF(LOG_V0, LOG_MACHINE, "BIOS date: %s\n", biosdate.c_str());
 	}
 	PINFOF(LOG_V1, LOG_MACHINE, "BIOS checksum: 0x%02X\n", m_data[BIOS_OFFSET+0xFFFF]);
+}
+
+void SystemROM::load_bios_patch(std::string _patch_file, unsigned _patch_offset)
+{
+	if(_patch_offset >= BIOS_SIZE) {
+		PERRF(LOG_MACHINE, "BIOS patch offset value exceeds 0x%x limit\n", BIOS_SIZE);
+		throw std::exception();
+	}
+
+	uint64_t patch_size = FileSys::get_file_size(_patch_file.c_str());
+	if(_patch_offset + patch_size > BIOS_SIZE) {
+		PERRF(LOG_MACHINE, "BIOS patch is too big\n");
+		throw std::exception();
+	}
+
+	auto file = FileSys::make_file(_patch_file.c_str(), "rb");
+	if(file == nullptr) {
+		PERRF(LOG_MACHINE, "Error opening file '%s'\n", _patch_file.c_str());
+		throw std::exception();
+	}
+
+	if(fread(static_cast<void*>(&m_data[BIOS_OFFSET + _patch_offset]), patch_size, 1, file.get()) != 1) {
+		PERRF(LOG_MACHINE, "Error reading BIOS patch file '%s'\n", _patch_file.c_str());
+		throw std::exception();
+	}
 }
 
 void SystemROM::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
@@ -168,6 +193,12 @@ void SystemROM::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
 	memcpy(&m_data[off], &_params, 16);
 
 	// update the BIOS checksum
+	update_bios_checksum();
+}
+
+void SystemROM::update_bios_checksum()
+{
+	uint8_t old_sum = m_data[BIOS_OFFSET + BIOS_SIZE - 1];
 	uint8_t sum = 0;
 	for(int i=0; i<BIOS_SIZE-1; i++) {
 		sum += m_data[BIOS_OFFSET + i];
@@ -175,7 +206,9 @@ void SystemROM::inject_custom_hdd_params(int _table_entry_id, HDDParams _params)
 	sum = (~sum) + 1;
 	m_data[BIOS_OFFSET + BIOS_SIZE - 1] = sum;
 
-	PDEBUGF(LOG_V1, LOG_MACHINE, "New BIOS checksum: 0x%02X\n", sum);
+	if(old_sum != sum) {
+		PINFOF(LOG_V1, LOG_MACHINE, "New BIOS checksum: 0x%02X\n", sum);
+	}
 }
 
 int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
