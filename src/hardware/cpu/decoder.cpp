@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,7 +21,6 @@
 #include "decoder.h"
 #include "core.h"
 #include "executor.h"
-#include "logger.h"
 #include "../memory.h"
 #include "hardware/cpu.h"
 

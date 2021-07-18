@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -144,6 +144,7 @@ struct Instruction
 	uint16_t opcode;    // main opcode
 };
 
+#include "logger.h"
 
 class CPUDecoder
 {
@@ -212,33 +213,33 @@ private:
 
 	inline uint8_t fetchb() {
 		uint8_t b = g_cpubus.fetchb();
-		#ifndef NDEBUG
-		if(m_ilen < CPU_MAX_INSTR_SIZE) {
-			m_instr.bytes[m_ilen] = b;
+		if(CPULOG && (CPULOG_WRITE_HEX || CPULOG_WRITE_DISASM)) {
+			if(m_ilen < CPU_MAX_INSTR_SIZE) {
+				m_instr.bytes[m_ilen] = b;
+			}
 		}
-		#endif
 		m_ilen += 1;
 		return b;
 	}
 
 	inline uint16_t fetchw() {
 		uint16_t w = g_cpubus.fetchw();
-		#ifndef NDEBUG
-		if(m_ilen+1 < CPU_MAX_INSTR_SIZE) {
-			*(uint16_t*)(&m_instr.bytes[m_ilen]) = w;
+		if(CPULOG && (CPULOG_WRITE_HEX || CPULOG_WRITE_DISASM)) {
+			if(m_ilen+1 < CPU_MAX_INSTR_SIZE) {
+				*(uint16_t*)(&m_instr.bytes[m_ilen]) = w;
+			}
 		}
-		#endif
 		m_ilen += 2;
 		return w;
 	}
 
 	inline uint32_t fetchdw() {
 		uint32_t dw = g_cpubus.fetchdw();
-		#ifndef NDEBUG
-		if(m_ilen+3 < CPU_MAX_INSTR_SIZE) {
-			*(uint32_t*)(&m_instr.bytes[m_ilen]) = dw;
+		if(CPULOG && (CPULOG_WRITE_HEX || CPULOG_WRITE_DISASM)) {
+			if(m_ilen+3 < CPU_MAX_INSTR_SIZE) {
+				*(uint32_t*)(&m_instr.bytes[m_ilen]) = dw;
+			}
 		}
-		#endif
 		m_ilen += 4;
 		return dw;
 	}
