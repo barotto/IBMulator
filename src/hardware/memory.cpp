@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -478,6 +478,8 @@ bool Memory::MemMapping::read_is_allowed(unsigned _state)
 			return !(flags & MEM_MAPPING_INTERNAL);
 		case MEM_READ_INTERNAL:
 			return !(flags & MEM_MAPPING_EXTERNAL);
+		default:
+			break;
 	}
 	return false;
 }
@@ -496,6 +498,8 @@ bool Memory::MemMapping::write_is_allowed(unsigned _state)
 			return !(flags & MEM_MAPPING_INTERNAL);
 		case MEM_WRITE_INTERNAL:
 			return !(flags & MEM_MAPPING_EXTERNAL);
+		default:
+			break;
 	}
 	return false;
 }

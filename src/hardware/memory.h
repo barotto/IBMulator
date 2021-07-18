@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -229,7 +229,7 @@ private:
 	template<unsigned LEN>
 	void write(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 	{
-		return write_mapped<LEN>(_addr, _data, _cycles);
+		write_mapped<LEN>(_addr, _data, _cycles);
 	}
 	template<unsigned LEN> inline
 	void write_t(uint32_t _addr, uint32_t _data, unsigned _trap_len, int &_cycles) noexcept
