@@ -234,9 +234,9 @@ fi
 SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lSDL2_image"
 
 if test x$static != x ; then
-	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma"
+	SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lpng -ltiff -ljpeg -lwebp -lz -llzma -ljbig"
 	if test x$have_windows = xno ; then
-		SDLIMAGE_LIBS="$SDLIMAGE_LIBS -ljbig -lzstd"
+		SDLIMAGE_LIBS="$SDLIMAGE_LIBS -lzstd"
 	else
 		SDLIMAGE_LIBS="$SDLIMAGE_LIBS -ldeflate"
 	fi

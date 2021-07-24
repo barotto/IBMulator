@@ -332,7 +332,7 @@ void Serial::close(unsigned _port)
 		case SER_MODE_PIPE_SERVER:
 			#if SER_WIN32
 			if(m_host[_port].pipe) {
-				CloseHandle(m_host[i].pipe);
+				CloseHandle(m_host[_port].pipe);
 				m_host[_port].pipe = INVALID_HANDLE_VALUE;
 			}
 			#endif
@@ -1940,18 +1940,19 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				break;
 			}
 			case SER_MODE_PIPE_CLIENT:
-			case SER_MODE_PIPE_SERVER:
+			case SER_MODE_PIPE_SERVER: {
 				#if SER_WIN32
 				DWORD avail = 0;
-				if(m_s[port].pipe &&
-						PeekNamedPipe(m_s[port].pipe, nullptr, 0, nullptr, &avail, nullptr) &&
+				if(m_host[port].pipe &&
+						PeekNamedPipe(m_host[port].pipe, nullptr, 0, nullptr, &avail, nullptr) &&
 						avail > 0)
 				{
-					ReadFile(m_s[port].pipe, &chbuf, 1, &avail, nullptr);
+					ReadFile(m_host[port].pipe, &chbuf, 1, &avail, nullptr);
 					data_ready = true;
 				}
 				#endif
 				break;
+			}
 			default:
 				break;
 		}
