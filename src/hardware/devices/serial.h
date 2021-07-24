@@ -109,10 +109,8 @@ enum SerialIntType {
 class serial_raw;
 #endif
 
-// TODO these are arbitrary values
+// TODO this value is arbitrary
 #define SER_RX_BUF_LEN  1024
-#define SER_TX_BUF_THRE 16
-#define SER_TX_BUF_LEN (SER_TX_BUF_THRE * 2)
 
 
 class Serial : public IODevice
@@ -273,10 +271,15 @@ private:
 
 		class TXFifo : public RingBuffer {
 		protected:
+			std::atomic<unsigned> m_threshold;
 			std::condition_variable m_data_cond;
 		public:
-			virtual size_t read(uint8_t *_data, size_t _len, unsigned _max_wait_ns);
+			virtual size_t read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns);
 			virtual size_t write(uint8_t *_data, size_t _len);
+			void set_threshold(int _baudrate, double _delay_ms) {
+				m_threshold = _delay_ms * double(_baudrate)/10000.0 + 1;
+			}
+			unsigned get_threshold() const { return m_threshold; }
 		};
 		#if SER_POSIX
 		std::string server_host;
@@ -287,6 +290,7 @@ private:
 		std::thread net_thread;
 		SharedFifo<uint8_t, SER_RX_BUF_LEN> rx_data;
 		TXFifo tx_data;
+		double tx_delay_ms;
 		#endif
 		void start_net_server();
 		void start_net_client();
@@ -317,7 +321,7 @@ private:
 		void init_mode_term(std::string dev);
 		void init_mode_raw(std::string dev);
 		void init_mode_mouse();
-		void init_mode_net(std::string dev, unsigned mode);
+		void init_mode_net(std::string dev, unsigned mode, double txdelay);
 		void init_mode_pipe(std::string dev, unsigned mode);
 
 		constexpr const char * name() const {

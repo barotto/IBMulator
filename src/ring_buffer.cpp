@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,6 +30,12 @@ void RingBuffer::set_size(size_t _size)
 	m_size = _size;
 	assert(m_data.size() == m_size);
 	p_clear();
+}
+
+size_t RingBuffer::get_size() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	return m_size;
 }
 
 void RingBuffer::clear()

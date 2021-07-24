@@ -72,7 +72,8 @@ IODEVICE_PORTS(Serial) = {
 	{ 0x2E8, 0x2EF, PORT_8BIT|PORT_RW }  // COM4
 };
 
-#define SEND_RETRY_LIMIT 10
+#define SEND_MAX_DELAY_MS 200
+#define SEND_MAX_DELAY_NS 200_ms
 
 Serial::Serial(Devices *_dev)
 : IODevice(_dev)
@@ -101,7 +102,6 @@ void Serial::install()
 		m_host[p].server_port = 0;
 		m_host[p].server_socket_id = INVALID_SOCKET;
 		m_host[p].client_socket_id = INVALID_SOCKET;
-		m_host[p].tx_data.set_size(SER_TX_BUF_LEN);
 		#endif
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
@@ -146,18 +146,18 @@ void Serial::config_changed()
 	}
 
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		std::string mode_name, dev_name;
-		switch(p) {
-			case SER_PORT_A: mode_name = SERIAL_A_MODE; dev_name = SERIAL_A_DEV; break;
-			case SER_PORT_B: mode_name = SERIAL_B_MODE; dev_name = SERIAL_B_DEV; break;
-			case SER_PORT_C: mode_name = SERIAL_C_MODE; dev_name = SERIAL_C_DEV; break;
-			case SER_PORT_D: mode_name = SERIAL_D_MODE; dev_name = SERIAL_D_DEV; break;
-			default: assert(false); break;
-		}
-		auto initial_mode_str = g_program.initial_config().get_string(SERIAL_SECTION, mode_name);
-		auto new_mode_str = g_program.config().get_string(SERIAL_SECTION, mode_name);
+		const std::string mode_name[] = {
+			SERIAL_A_MODE,SERIAL_B_MODE,SERIAL_C_MODE,SERIAL_D_MODE
+		}, dev_name[] = {
+			SERIAL_A_DEV,SERIAL_B_DEV,SERIAL_C_DEV,SERIAL_D_DEV
+		}, tx_delay_name[] = {
+			SERIAL_A_TX_DELAY,SERIAL_B_TX_DELAY,SERIAL_C_TX_DELAY,SERIAL_D_TX_DELAY
+		};
 
-		unsigned new_mode = g_program.config().get_enum(SERIAL_SECTION, mode_name, {
+		auto initial_mode_str = g_program.initial_config().get_string(SERIAL_SECTION, mode_name[p]);
+		auto new_mode_str = g_program.config().get_string(SERIAL_SECTION, mode_name[p]);
+
+		unsigned new_mode = g_program.config().get_enum(SERIAL_SECTION, mode_name[p], {
 			{ "none",  SER_MODE_NONE  },
 			{ "dummy", SER_MODE_DUMMY },
 			{ "mouse", SER_MODE_MOUSE },
@@ -197,7 +197,7 @@ void Serial::config_changed()
 				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing 'mouse' mode\n", m_host[p].name());
 			} else if(initial_mode_str == new_mode_str) {
 				// if mode is different but strings are the same then this is initial config.
-				dev = g_program.initial_config().get_string(SERIAL_SECTION, dev_name);
+				dev = g_program.initial_config().get_string(SERIAL_SECTION, dev_name[p]);
 			} else {
 				// this is a state restore, current host port config will not be changed
 				// open network connections will be kept open
@@ -232,7 +232,7 @@ void Serial::config_changed()
 						PWARNF(LOG_V0, LOG_COM, "%s: mouse mode is enabled but the mouse type is '%s'\n",
 								m_host[p].name(), g_program.config().get_string(GUI_SECTION, GUI_MOUSE_TYPE).c_str());
 					}
-					g_program.config().set_string(SERIAL_SECTION, mode_name, "mouse");
+					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "mouse");
 					break;
 				case SER_MODE_FILE:
 					m_host[p].init_mode_file(dev);
@@ -244,18 +244,20 @@ void Serial::config_changed()
 					m_host[p].init_mode_raw(dev);
 					break;
 				case SER_MODE_NET_CLIENT:
-				case SER_MODE_NET_SERVER:
-					m_host[p].init_mode_net(dev, new_mode);
+				case SER_MODE_NET_SERVER: {
+					double tx_delay = g_program.initial_config().get_real(SERIAL_SECTION, tx_delay_name[p]);
+					m_host[p].init_mode_net(dev, new_mode, tx_delay);
 					break;
+				}
 				case SER_MODE_PIPE_CLIENT:
 				case SER_MODE_PIPE_SERVER:
 					m_host[p].init_mode_pipe(dev, new_mode);
 					break;
 				case SER_MODE_DUMMY:
-					g_program.config().set_string(SERIAL_SECTION, mode_name, "dummy");
+					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "dummy");
 					break;
 				case SER_MODE_NONE:
-					g_program.config().set_string(SERIAL_SECTION, mode_name, "none");
+					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "none");
 					break;
 				default:
 					throw std::runtime_error("unknown mode");
@@ -358,8 +360,12 @@ void Serial::restore_state(StateBuf &_state)
 
 	#if SER_POSIX
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		m_host[p].rx_data.clear();
-		m_host[p].tx_data.clear();
+		if((m_host[p].io_mode == SER_MODE_NET_CLIENT || m_host[p].io_mode == SER_MODE_NET_SERVER))
+		{
+			m_host[p].rx_data.clear();
+			m_host[p].tx_data.clear();
+			m_host[p].tx_data.set_threshold(m_s.uart[p].baudrate, m_host[p].tx_delay_ms);
+		}
 	}
 	#endif
 	
@@ -617,9 +623,9 @@ void Serial::Port::net_data_loop()
 	#endif
 }
 
-size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, unsigned _max_wait_ns)
+size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns)
 {
-	if(get_read_avail() < SER_TX_BUF_THRE) {
+	if(get_read_avail() < m_threshold) {
 		std::unique_lock<std::mutex> lock(m_mutex);
 		m_data_cond.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
 	}
@@ -629,7 +635,7 @@ size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, unsigned _max_wai
 size_t Serial::Port::TXFifo::write(uint8_t *_data, size_t _len)
 {
 	size_t len = RingBuffer::write(_data, _len);
-	if(get_read_avail() >= SER_TX_BUF_THRE) {
+	if(get_read_avail() >= m_threshold) {
 		m_data_cond.notify_one();
 	}
 	return len;
@@ -638,24 +644,36 @@ size_t Serial::Port::TXFifo::write(uint8_t *_data, size_t _len)
 void Serial::Port::net_tx_loop()
 {
 	#if SER_POSIX
-	std::array<uint8_t, SER_TX_BUF_LEN> tx_buf;
+	std::vector<uint8_t> tx_buf(tx_data.get_size());
 
 	while(true) {
 		if(client_socket_id == INVALID_SOCKET) {
 			break;
 		}
-		size_t len = tx_data.read(&tx_buf[0], SER_TX_BUF_LEN, 1000000);
+		uint64_t wait_ns = SEND_MAX_DELAY_NS;
+		if(tx_delay_ms > 0.0) {
+			wait_ns = tx_delay_ms * 1_ms;
+			if(g_machine.cycles_factor() < 1.0) {
+				// if the machine is slowed down we need to wait more for the same amount of data
+				wait_ns *= (1.0 / g_machine.cycles_factor());
+			}
+			if(wait_ns > SEND_MAX_DELAY_NS) {
+				wait_ns = SEND_MAX_DELAY_NS;
+			}
+		}
+		size_t len = tx_data.get_threshold();
+		len = tx_data.read(&tx_buf[0], len, wait_ns);
 		if(len) {
-			PDEBUGF(LOG_V1, LOG_COM, "%s: sock write: [ ", name());
+			PDEBUGF(LOG_V1, LOG_COM, "%s: sock write (%u): [ ", name(), len);
 			for(size_t i=0; i<len; i++) {
 				PDEBUGF(LOG_V1, LOG_COM, "%02x ", tx_buf[i]);
 			}
 			PDEBUGF(LOG_V1, LOG_COM, "]\n");
 			ssize_t res = (ssize_t)::send(client_socket_id, (const char*)&tx_buf[0], len, 0);
 			if(res < 0) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", errno);
+				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", name(), errno);
 			} else if(res != len) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", len, res, errno);
+				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", name(), len, res, errno);
 			}
 		}
 	}
@@ -676,7 +694,7 @@ void Serial::Port::close_client_socket()
 	#endif
 }
 
-void Serial::Port::init_mode_net(std::string dev, unsigned mode)
+void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms)
 {
 	#if SER_POSIX
 
@@ -741,6 +759,24 @@ void Serial::Port::init_mode_net(std::string dev, unsigned mode)
 	if(socket_id == INVALID_SOCKET) {
 		throw std::runtime_error("socket creation failed for " + dev);
 	}
+
+	if(_tx_delay_ms > SEND_MAX_DELAY_MS) {
+		_tx_delay_ms = SEND_MAX_DELAY_MS;
+	} else if(_tx_delay_ms < 0.0) {
+		_tx_delay_ms = 0.0;
+	}
+	tx_delay_ms = _tx_delay_ms;
+	if(tx_delay_ms > 0.0) {
+		// set an initial threshold for the highest possible speed of 115200 bps
+		// the threshold is adjusted when the baud rate divisor is updated
+		tx_data.set_threshold(115200, tx_delay_ms);
+		tx_data.set_size(tx_data.get_threshold() * 2.0); // TODO: random number?
+	} else {
+		tx_data.set_threshold(0, 0);
+		tx_data.set_size(10); // TODO: random number?
+	}
+	PINFOF(LOG_V2, LOG_COM, "%s: tx buffer: %u bytes, delay: %.1f ms\n",
+			name(), tx_data.get_size(), _tx_delay_ms);
 
 	bool server_mode = (mode == SER_MODE_NET_SERVER);
 	if(server_mode) {
@@ -1447,6 +1483,13 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						restart_timer = true;
 						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
 								m_s.uart[port].name(), m_s.uart[port].baudrate);
+						if((m_host[port].io_mode == SER_MODE_NET_CLIENT || m_host[port].io_mode == SER_MODE_NET_SERVER) &&
+							m_host[port].tx_delay_ms > 0.0)
+						{
+							m_host[port].tx_data.set_threshold(new_baudrate, m_host[port].tx_delay_ms);
+							PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
+									m_host[port].name(), m_host[port].tx_data.get_threshold(), m_host[port].tx_delay_ms);
+						}
 						#if SER_ENABLE_RAW
 						if(m_host[port].io_mode == SER_MODE_RAW) {
 							m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);

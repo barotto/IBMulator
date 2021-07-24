@@ -267,15 +267,19 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ SERIAL_SECTION, {
-		{ SERIAL_ENABLED, "yes"  },
-		{ SERIAL_A_MODE,  "auto" },
-		{ SERIAL_A_DEV,   ""     },
-		{ SERIAL_B_MODE,  "auto" },
-		{ SERIAL_B_DEV,   ""     },
-		{ SERIAL_C_MODE,  "auto" },
-		{ SERIAL_C_DEV,   ""     },
-		{ SERIAL_D_MODE,  "auto" },
-		{ SERIAL_D_DEV,   ""     }
+		{ SERIAL_ENABLED,    "yes"  },
+		{ SERIAL_A_MODE,     "auto" },
+		{ SERIAL_A_DEV,      ""     },
+		{ SERIAL_A_TX_DELAY, "20"   },
+		{ SERIAL_B_MODE,     "auto" },
+		{ SERIAL_B_DEV,      ""     },
+		{ SERIAL_B_TX_DELAY, "20"   },
+		{ SERIAL_C_MODE,     "auto" },
+		{ SERIAL_C_DEV,      ""     },
+		{ SERIAL_C_TX_DELAY, "20"   },
+		{ SERIAL_D_MODE,     "auto" },
+		{ SERIAL_D_DEV,      ""     },
+		{ SERIAL_D_TX_DELAY, "20"   }
 	} },
 
 	{ LPT_SECTION, {
@@ -709,7 +713,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ SERIAL_SECTION, {
 		SERIAL_ENABLED,
 		SERIAL_A_MODE,
-		SERIAL_A_DEV
+		SERIAL_A_DEV,
+		SERIAL_A_TX_DELAY
 	} },
 	{ LPT_SECTION, {
 		LPT_ENABLED,

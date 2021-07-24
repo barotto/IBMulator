@@ -41,6 +41,7 @@ public:
 	virtual ~RingBuffer() {}
 
 	void set_size(size_t _size);
+	size_t get_size() const;
 	void clear();
 
 	virtual size_t read(uint8_t *_data, size_t _len);
