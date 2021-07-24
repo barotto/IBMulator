@@ -291,6 +291,7 @@ private:
 		SharedFifo<uint8_t, SER_RX_BUF_LEN> rx_data;
 		TXFifo tx_data;
 		double tx_delay_ms;
+		bool tcp_nodelay;
 		#endif
 		void start_net_server();
 		void start_net_client();
@@ -321,7 +322,7 @@ private:
 		void init_mode_term(std::string dev);
 		void init_mode_raw(std::string dev);
 		void init_mode_mouse();
-		void init_mode_net(std::string dev, unsigned mode, double txdelay);
+		void init_mode_net(std::string dev, unsigned mode, double txdelay, bool tcp_nodelay);
 		void init_mode_pipe(std::string dev, unsigned mode);
 
 		constexpr const char * name() const {

@@ -34,7 +34,8 @@
 
 #if SER_POSIX
 	#include <sys/types.h>
-#include <sys/socket.h>
+	#include <sys/socket.h>
+	#include <netinet/tcp.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <netdb.h>
@@ -152,6 +153,8 @@ void Serial::config_changed()
 			SERIAL_A_DEV,SERIAL_B_DEV,SERIAL_C_DEV,SERIAL_D_DEV
 		}, tx_delay_name[] = {
 			SERIAL_A_TX_DELAY,SERIAL_B_TX_DELAY,SERIAL_C_TX_DELAY,SERIAL_D_TX_DELAY
+		}, tcp_nodelay_name[] = {
+			SERIAL_A_TCP_NODELAY,SERIAL_B_TCP_NODELAY,SERIAL_C_TCP_NODELAY,SERIAL_D_TCP_NODELAY
 		};
 
 		auto initial_mode_str = g_program.initial_config().get_string(SERIAL_SECTION, mode_name[p]);
@@ -246,7 +249,8 @@ void Serial::config_changed()
 				case SER_MODE_NET_CLIENT:
 				case SER_MODE_NET_SERVER: {
 					double tx_delay = g_program.initial_config().get_real(SERIAL_SECTION, tx_delay_name[p]);
-					m_host[p].init_mode_net(dev, new_mode, tx_delay);
+					bool tcp_nodelay = g_program.initial_config().get_bool(SERIAL_SECTION, tcp_nodelay_name[p]);
+					m_host[p].init_mode_net(dev, new_mode, tx_delay, tcp_nodelay);
 					break;
 				}
 				case SER_MODE_PIPE_CLIENT:
@@ -589,6 +593,14 @@ void Serial::Port::net_data_loop()
 {
 	#if SER_POSIX
 
+	if(tcp_nodelay) {
+		PDEBUGF(LOG_V1, LOG_COM, "%s: setting TCP_NODELAY ...\n", name());
+		int one = 1;
+		if(::setsockopt(client_socket_id, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
+			PERRF(LOG_COM, "%s: error setting TCP_NODELAY option (%d)\n", name(), errno);
+		}
+	}
+
 	PDEBUGF(LOG_V1, LOG_COM, "%s: starting tx thread ...\n", name());
 	auto tx_thread = std::thread(&Serial::Port::net_tx_loop, this);
 
@@ -694,7 +706,7 @@ void Serial::Port::close_client_socket()
 	#endif
 }
 
-void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms)
+void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms, bool _tcp_nodelay)
 {
 	#if SER_POSIX
 
@@ -775,8 +787,9 @@ void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_dela
 		tx_data.set_threshold(0, 0);
 		tx_data.set_size(10); // TODO: random number?
 	}
-	PINFOF(LOG_V2, LOG_COM, "%s: tx buffer: %u bytes, delay: %.1f ms\n",
-			name(), tx_data.get_size(), _tx_delay_ms);
+	tcp_nodelay = _tcp_nodelay;
+	PINFOF(LOG_V2, LOG_COM, "%s: tx buffer: %u bytes, delay: %.1f ms, tcp_nodelay: %d\n",
+			name(), tx_data.get_size(), tx_delay_ms, tcp_nodelay);
 
 	bool server_mode = (mode == SER_MODE_NET_SERVER);
 	if(server_mode) {
