@@ -1496,6 +1496,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						restart_timer = true;
 						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
 								m_s.uart[port].name(), m_s.uart[port].baudrate);
+						#if SER_POSIX
 						if((m_host[port].io_mode == SER_MODE_NET_CLIENT || m_host[port].io_mode == SER_MODE_NET_SERVER) &&
 							m_host[port].tx_delay_ms > 0.0)
 						{
@@ -1503,6 +1504,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
 									m_host[port].name(), m_host[port].tx_data.get_threshold(), m_host[port].tx_delay_ms);
 						}
+						#endif
 						#if SER_ENABLE_RAW
 						if(m_host[port].io_mode == SER_MODE_RAW) {
 							m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
