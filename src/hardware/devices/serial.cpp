@@ -42,13 +42,22 @@
 	#include <unistd.h>
 	#define closesocket(s) ::close(s)
 	#define INVALID_SOCKET -1
+	#define SD_BOTH SHUT_RDWR
+	inline static int get_neterr() {
+		return errno;
+	}
 #endif
 #if SER_WIN32
 	//#include <winioctl.h>
 	//#include <io.h>
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
 	#if !defined(FILE_FLAG_FIRST_PIPE_INSTANCE)
 		#define FILE_FLAG_FIRST_PIPE_INSTANCE 0
 	#endif
+	inline static int get_neterr() {
+		return WSAGetLastError();
+	}
 #endif
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -99,11 +108,9 @@ void Serial::install()
 		m_host[p].port_id = p;
 		m_host[p].io_mode = SER_MODE_NONE;
 		m_host[p].tty_id = -1;
-		#if SER_POSIX
 		m_host[p].server_port = 0;
 		m_host[p].server_socket_id = INVALID_SOCKET;
 		m_host[p].client_socket_id = INVALID_SOCKET;
-		#endif
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
 			std::bind(&Serial::tx_timer, this, 0, _1),
@@ -311,10 +318,9 @@ void Serial::close(unsigned _port)
 			break;
 		case SER_MODE_NET_CLIENT:
 		case SER_MODE_NET_SERVER:
-			#if SER_POSIX
 			if(m_host[_port].server_socket_id != INVALID_SOCKET) {
 				// net server may be accepting connections
-				::shutdown(m_host[_port].server_socket_id, SHUT_RDWR);
+				::shutdown(m_host[_port].server_socket_id, SD_BOTH);
 				closesocket(m_host[_port].server_socket_id);
 			}
 			if(m_host[_port].client_socket_id != INVALID_SOCKET) {
@@ -327,7 +333,6 @@ void Serial::close(unsigned _port)
 			}
 			m_host[_port].server_socket_id = INVALID_SOCKET;
 			break;
-			#endif
 		case SER_MODE_PIPE_CLIENT:
 		case SER_MODE_PIPE_SERVER:
 			#if SER_WIN32
@@ -362,7 +367,6 @@ void Serial::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
-	#if SER_POSIX
 	for(unsigned p=0; p<SER_PORTS; p++) {
 		if((m_host[p].io_mode == SER_MODE_NET_CLIENT || m_host[p].io_mode == SER_MODE_NET_SERVER))
 		{
@@ -371,8 +375,7 @@ void Serial::restore_state(StateBuf &_state)
 			m_host[p].tx_data.set_threshold(m_s.uart[p].baudrate, m_host[p].tx_delay_ms);
 		}
 	}
-	#endif
-	
+
 	std::lock_guard<std::mutex> mlock(m_mouse.mtx);
 	m_mouse.reset();
 }
@@ -519,8 +522,6 @@ void Serial::Port::init_mode_mouse()
 
 void Serial::Port::start_net_server()
 {
-	#if SER_POSIX
-
 	sockaddr addr;
 	socklen_t addrlen = sizeof(sockaddr);
 
@@ -531,17 +532,25 @@ void Serial::Port::start_net_server()
 			name(), server_host.c_str(), server_port);
 		SOCKET client_sock = INVALID_SOCKET;
 		if((client_sock = ::accept(server_socket_id, &addr, &addrlen)) == INVALID_SOCKET) {
-			switch(errno) {
-				case ECONNABORTED: // connection has been aborted.
-				case EPROTO:       // protocol error
-				case EPERM:        // firewall rules forbid connection.
+			switch(get_neterr()) {
+				#if SER_WIN32
+				case WSAECONNRESET:
+				case WSAENETDOWN:
 					PERRF(LOG_COM, "%s: connection failed\n", name());
 					continue;
-				case EINTR:  // interrupted by a signal
-				case EBADF:  // not an open file descriptor.
-				case EINVAL: // socket not listening for connections
+				#else
+				case EPERM:        // firewall rules forbid connection
+				case ECONNABORTED: // connection has been aborted.
+					PERRF(LOG_COM, "%s: connection failed\n", name());
+					continue;
+				case ENETDOWN: case EPROTO: case ENOPROTOOPT: case EHOSTDOWN:
+				case ENONET: case EHOSTUNREACH: case EOPNOTSUPP: case ENETUNREACH:
+					// already-pending network errors, treat them like EAGAIN by retrying
+					PWARNF(LOG_V0, LOG_COM, "%s: retrying connection ...\n", name());
+					continue;
+				#endif
 				default:
-					PINFOF(LOG_V1, LOG_COM, "%s: closing the net server (%d)\n", name(), errno);
+					PINFOF(LOG_V1, LOG_COM, "%s: closing the net server (%d)\n", name(), get_neterr());
 					return;
 			}
 		} else {
@@ -569,14 +578,10 @@ void Serial::Port::start_net_server()
 		}
 	}
 	PDEBUGF(LOG_V0, LOG_COM, "%s: server thread terminated\n", name());
-
-	#endif
 }
 
 void Serial::Port::start_net_client()
 {
-	#if SER_POSIX
-
 	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread started\n", name());
 
 	net_data_loop();
@@ -585,19 +590,15 @@ void Serial::Port::start_net_client()
 	ss << name() << ": " << server_host << " disconnected";
 	GUI::instance()->show_message(ss.str().c_str());
 	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread terminated\n", name());
-
-	#endif
 }
 
 void Serial::Port::net_data_loop()
 {
-	#if SER_POSIX
-
 	if(tcp_nodelay) {
 		PDEBUGF(LOG_V1, LOG_COM, "%s: setting TCP_NODELAY ...\n", name());
 		int one = 1;
-		if(::setsockopt(client_socket_id, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
-			PERRF(LOG_COM, "%s: error setting TCP_NODELAY option (%d)\n", name(), errno);
+		if(::setsockopt(client_socket_id, IPPROTO_TCP, TCP_NODELAY, (char *) &one, sizeof(one)) != 0) {
+			PERRF(LOG_COM, "%s: error setting TCP_NODELAY option (%d)\n", name(), get_neterr());
 		}
 	}
 
@@ -621,7 +622,7 @@ void Serial::Port::net_data_loop()
 		} else {
 			PINFOF(LOG_V0, LOG_COM, "%s: connection terminated", name());
 			if(bytes < 0) {
-				PINFOF(LOG_V0, LOG_COM, " (%u)", errno);
+				PINFOF(LOG_V0, LOG_COM, " (%u)", get_neterr());
 			}
 			PINFOF(LOG_V0, LOG_COM, "\n");
 			close_client_socket();
@@ -631,8 +632,6 @@ void Serial::Port::net_data_loop()
 
 	tx_thread.join();
 	PDEBUGF(LOG_V1, LOG_COM, "%s: tx thread terminated\n", name());
-
-	#endif
 }
 
 size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns)
@@ -655,7 +654,6 @@ size_t Serial::Port::TXFifo::write(uint8_t *_data, size_t _len)
 
 void Serial::Port::net_tx_loop()
 {
-	#if SER_POSIX
 	std::vector<uint8_t> tx_buf(tx_data.get_size());
 
 	while(true) {
@@ -683,33 +681,27 @@ void Serial::Port::net_tx_loop()
 			PDEBUGF(LOG_V1, LOG_COM, "]\n");
 			ssize_t res = (ssize_t)::send(client_socket_id, (const char*)&tx_buf[0], len, 0);
 			if(res < 0) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", name(), errno);
+				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", name(), get_neterr());
 			} else if(res != len) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", name(), len, res, errno);
+				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", name(), len, res, get_neterr());
 			}
 		}
 	}
-
-	#endif
 }
 
 void Serial::Port::close_client_socket()
 {
-	#if SER_POSIX
 	if(client_socket_id == INVALID_SOCKET) {
 		return;
 	}
 	PINFOF(LOG_V1, LOG_COM, "%s: closing the client connection\n", name());
-	::shutdown(client_socket_id, SHUT_RDWR);
+	::shutdown(client_socket_id, SD_BOTH);
 	closesocket(client_socket_id);
 	client_socket_id = INVALID_SOCKET;
-	#endif
 }
 
 void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms, bool _tcp_nodelay)
 {
-	#if SER_POSIX
-
 	if(dev.empty()) {
 		throw std::runtime_error("device address not specified");
 	}
@@ -812,14 +804,6 @@ void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_dela
 	}
 
 	io_mode = mode;
-
-	#else
-
-	UNUSED(dev);
-	UNUSED(mode);
-	throw std::runtime_error("support for 'net' modes not available");
-
-	#endif
 }
 
 void Serial::Port::init_mode_pipe(std::string dev, unsigned mode)
@@ -885,12 +869,10 @@ void Serial::lower_interrupt(uint8_t port)
 void Serial::reset(unsigned _type)
 {
 	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
-		#if SER_POSIX
 		for(unsigned p=0; p<SER_PORTS; p++) {
 			m_host[p].rx_data.clear();
 			m_host[p].tx_data.clear();
 		}
-		#endif
 		std::lock_guard<std::mutex> lock(m_mouse.mtx);
 		m_mouse.reset();
 		m_s.mouse.detect = 0;
@@ -1496,7 +1478,6 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						restart_timer = true;
 						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
 								m_s.uart[port].name(), m_s.uart[port].baudrate);
-						#if SER_POSIX
 						if((m_host[port].io_mode == SER_MODE_NET_CLIENT || m_host[port].io_mode == SER_MODE_NET_SERVER) &&
 							m_host[port].tx_delay_ms > 0.0)
 						{
@@ -1504,7 +1485,6 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
 									m_host[port].name(), m_host[port].tx_data.get_threshold(), m_host[port].tx_delay_ms);
 						}
-						#endif
 						#if SER_ENABLE_RAW
 						if(m_host[port].io_mode == SER_MODE_RAW) {
 							m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
@@ -1794,14 +1774,12 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 				break;
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				#if SER_POSIX
 				if(m_host[port].client_socket_id != INVALID_SOCKET) {
 					sent = m_host[port].tx_data.write(&m_s.uart[port].tsrbuffer, 1);
 					if(!sent) {
 						PDEBUGF(LOG_V0, LOG_COM, "%s: tx buffer overflow: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 					}
 				}
-				#endif
 				break;
 			case SER_MODE_PIPE_CLIENT:
 			case SER_MODE_PIPE_SERVER:
@@ -1858,11 +1836,9 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 		switch (m_host[port].io_mode) {
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				#if SER_POSIX
 				if(m_host[port].client_socket_id != INVALID_SOCKET && !m_s.uart[port].line_status.rxdata_ready) {
 					data_ready = m_host[port].rx_data.pop(chbuf);
 				}
-				#endif
 				break;
 			case SER_MODE_RAW:
 				#if SER_ENABLE_RAW

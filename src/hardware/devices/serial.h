@@ -281,7 +281,6 @@ private:
 			}
 			unsigned get_threshold() const { return m_threshold; }
 		};
-		#if SER_POSIX
 		std::string server_host;
 		unsigned long server_port;
 		std::string client_name;
@@ -292,7 +291,6 @@ private:
 		TXFifo tx_data;
 		double tx_delay_ms;
 		bool tcp_nodelay;
-		#endif
 		void start_net_server();
 		void start_net_client();
 		void net_data_loop();
