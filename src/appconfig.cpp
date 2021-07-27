@@ -271,19 +271,19 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SERIAL_A_MODE,        "auto" },
 		{ SERIAL_A_DEV,         ""     },
 		{ SERIAL_A_TX_DELAY,    "20"   },
-		{ SERIAL_A_TCP_NODELAY, "true" },
+		{ SERIAL_A_TCP_NODELAY, "yes"  },
 		{ SERIAL_B_MODE,        "auto" },
 		{ SERIAL_B_DEV,         ""     },
 		{ SERIAL_B_TX_DELAY,    "20"   },
-		{ SERIAL_B_TCP_NODELAY, "true" },
+		{ SERIAL_B_TCP_NODELAY, "yes"  },
 		{ SERIAL_C_MODE,        "auto" },
 		{ SERIAL_C_DEV,         ""     },
 		{ SERIAL_C_TX_DELAY,    "20"   },
-		{ SERIAL_C_TCP_NODELAY, "true" },
+		{ SERIAL_C_TCP_NODELAY, "yes"  },
 		{ SERIAL_D_MODE,        "auto" },
 		{ SERIAL_D_DEV,         ""     },
 		{ SERIAL_D_TX_DELAY,    "20"   },
-		{ SERIAL_D_TCP_NODELAY, "true" }
+		{ SERIAL_D_TCP_NODELAY, "yes"  }
 	} },
 
 	{ LPT_SECTION, {

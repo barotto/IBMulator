@@ -287,7 +287,10 @@ configuration options:
 (default: `20`); the higher this value the higher the latency, but reducing this
 too much will also increase the network load.
 * `tcp_nodelay`: if `yes` the TCP_NODELAY socket option of the host OS will be
-enabled, which will disable the Nagle's algorithm (default: `no`).
+enabled, which will disable the Nagle's algorithm (default: `yes`).
+
+To reduce the chances of desynchronization try using the same configuration for
+both client and server.
 
 Network modes have some limitations:
 * changing the emulator's speed will probably result in desynchronization;
