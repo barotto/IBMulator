@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,6 +28,7 @@
 
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/storagectrl.h"
+#include "hardware/devices/serial.h"
 
 Status::Status(GUI * _gui, Machine *_machine)
 :
@@ -38,10 +39,12 @@ Window(_gui, "status.rml")
 	m_status.floppy_a_led = get_element("floppy_a_led");
 	m_status.floppy_b_led = get_element("floppy_b_led");
 	m_status.hdd_led = get_element("hdd_led");
+	m_status.net_led = get_element("net_led");
 	
 	m_machine = _machine;
 	m_floppy = nullptr;
 	m_hdd = nullptr;
+	m_serial = nullptr;
 }
 
 Status::~Status()
@@ -91,20 +94,41 @@ void Status::update()
 			m_status.hdd_led->SetClass("led_active", false);
 		}
 	}
+	if(m_serial && m_serial->is_network_mode(0)) {
+		if(m_serial->is_network_connected(0)) {
+			bool is_rx = m_serial->is_network_rx_active(0);
+			bool is_tx = m_serial->is_network_tx_active(0);
+			if((is_rx||is_tx) && m_leds.net != LEDStatus::LED_ACTIVE) {
+				m_status.net_led->SetClassNames("led led_active");
+				m_leds.net = LEDStatus::LED_ACTIVE;
+			} else if(!(is_rx||is_tx) && m_leds.net != LEDStatus::LED_INACTIVE) {
+				m_status.net_led->SetClassNames("led led_inactive");
+				m_leds.net = LEDStatus::LED_INACTIVE;
+			}
+		} else if(m_leds.net != LEDStatus::LED_ERROR) {
+			m_status.net_led->SetClassNames("led led_error");
+			m_leds.net = LEDStatus::LED_ERROR;
+		}
+	}
 }
 
 void Status::config_changed()
 {
 	m_floppy = m_machine->devices().device<FloppyCtrl>();
 	m_hdd = m_machine->devices().device<StorageCtrl>();
+	m_serial = m_machine->devices().device<Serial>();
 	m_leds.power = false;
 	m_leds.floppy_a = false;
 	m_leds.floppy_b = false;
 	m_leds.hdd = false;
+	m_leds.net = LEDStatus::LED_HIDDEN;
+
 	m_status.power_led->SetClass("led_active", false);
 	m_status.floppy_a_led->SetClass("led_active", false);
 	m_status.floppy_b_led->SetClass("led_active", false);
 	m_status.hdd_led->SetClass("led_active", false);
+
+	m_status.net_led->SetClassNames("led");
 }
 
 void Status::ProcessEvent(Rocket::Core::Event &)

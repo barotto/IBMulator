@@ -370,6 +370,11 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	bool is_network_mode(uint8_t _port) const;
+	bool is_network_connected(uint8_t _port) const;
+	bool is_network_rx_active(uint8_t _port) const;
+	bool is_network_tx_active(uint8_t _port) const;
+
 private:
 	void lower_interrupt(uint8_t port);
 	void raise_interrupt(uint8_t port, int type);

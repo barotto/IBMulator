@@ -5,7 +5,7 @@
 		<style>
 			body
 			{
-				width: 132px;
+				width: 165px;
 				height: 12px;
 				position: absolute;
 				bottom: 0;
@@ -28,6 +28,16 @@
 				visibility: visible;
 				background-color: #FFE600A0;
 			}
+			.led_inactive
+			{
+				visibility: visible;
+				background-color: #B5B5B5A0;
+			}
+			.led_error
+			{
+				visibility: visible;
+				background-color: #EC4C4CA0;
+			}
 			#power_led {
 				display: none;
 				background-color: #045100A0;
@@ -38,13 +48,22 @@
 				background-color: #94E400A0;
 			}
 			#floppy_a_led {
-				left: 33;
+				left: 33px;
 			}
 			#floppy_b_led {
 				left: 66px;
 			}
 			#hdd_led {
 				left: 99px;
+			}
+			#net_led {
+				left: 132px;
+			}
+			#net_led.led_inactive {
+				background-color: #548200A0;
+			}
+			#net_led.led_active {
+				background-color: #94E400A0;
 			}
 		</style>
 	</head>
@@ -53,5 +72,6 @@
 		<div id="floppy_a_led" class="led">A</div>
 		<div id="floppy_b_led" class="led">B</div>
 		<div id="hdd_led" class="led">C</div>
+		<div id="net_led" class="led">NET</div>
 	</body>
 </rml>

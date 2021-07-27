@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,21 +25,28 @@
 class GUI;
 class FloppyCtrl;
 class StorageCtrl;
+class Serial;
 
 class Status : public Window
 {
 private:
+	enum LEDStatus {
+		LED_HIDDEN, LED_ACTIVE, LED_INACTIVE, LED_ERROR
+	};
 	struct {
 		Rocket::Core::Element *power_led, *floppy_a_led, *floppy_b_led, *hdd_led;
+		Rocket::Core::Element *net_led; //, *net_tx_led;
 	} m_status;
 
 	struct {
 		bool power, floppy_a, floppy_b, hdd;
+		LEDStatus net;
 	} m_leds;
 
 	Machine *m_machine;
 	FloppyCtrl *m_floppy;
 	StorageCtrl *m_hdd;
+	Serial *m_serial;
 
 public:
 	Status(GUI * _gui, Machine *_machine);

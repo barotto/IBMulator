@@ -37,6 +37,7 @@ public:
 	bool push(const Element &_item);
 	bool force_push(const Element &_item);
 	bool pop(Element &item_);
+	bool was_empty() const;
 	void clear();
 };
 
@@ -86,6 +87,12 @@ void SharedFifo<Element, Size>::clear()
 	std::queue<Element>().swap(m_data);
 }
 
+template<typename Element, size_t Size>
+bool SharedFifo<Element, Size>::was_empty() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
 
+	return m_data.empty();
+}
 
 #endif

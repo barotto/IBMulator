@@ -368,8 +368,7 @@ void Serial::restore_state(StateBuf &_state)
 	_state.read(&m_s,h);
 
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		if((m_host[p].io_mode == SER_MODE_NET_CLIENT || m_host[p].io_mode == SER_MODE_NET_SERVER))
-		{
+		if(is_network_mode(p)) {
 			m_host[p].rx_data.clear();
 			m_host[p].tx_data.clear();
 			m_host[p].tx_data.set_threshold(m_s.uart[p].baudrate, m_host[p].tx_delay_ms);
@@ -378,6 +377,37 @@ void Serial::restore_state(StateBuf &_state)
 
 	std::lock_guard<std::mutex> mlock(m_mouse.mtx);
 	m_mouse.reset();
+}
+
+bool Serial::is_network_mode(uint8_t _port) const
+{
+	assert(_port < SER_PORTS);
+	switch(m_host[_port].io_mode) {
+		case SER_MODE_NET_CLIENT: 
+		case SER_MODE_NET_SERVER:
+			return true;
+		default:
+			break;
+	}
+	return false;
+}
+
+bool Serial::is_network_connected(uint8_t _port) const
+{
+	assert(_port < SER_PORTS);
+	return (m_host[_port].client_socket_id != INVALID_SOCKET);
+}
+
+bool Serial::is_network_rx_active(uint8_t _port) const
+{
+	assert(_port < SER_PORTS);
+	return !(m_host[_port].rx_data.was_empty());
+}
+
+bool Serial::is_network_tx_active(uint8_t _port) const
+{
+	assert(_port < SER_PORTS);
+	return (m_host[_port].tx_data.get_read_avail());
 }
 
 void Serial::set_port(uint8_t _port, uint8_t _com)
@@ -1478,9 +1508,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						restart_timer = true;
 						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
 								m_s.uart[port].name(), m_s.uart[port].baudrate);
-						if((m_host[port].io_mode == SER_MODE_NET_CLIENT || m_host[port].io_mode == SER_MODE_NET_SERVER) &&
-							m_host[port].tx_delay_ms > 0.0)
-						{
+						if(is_network_mode(port) && m_host[port].tx_delay_ms > 0.0) {
 							m_host[port].tx_data.set_threshold(new_baudrate, m_host[port].tx_delay_ms);
 							PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
 									m_host[port].name(), m_host[port].tx_data.get_threshold(), m_host[port].tx_delay_ms);

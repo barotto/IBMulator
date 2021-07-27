@@ -356,7 +356,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
 ";            dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";         bg_XXX: Background window color\n"
-";      show_leds: Show or hide the drives motor activity led at the bottom-right (useful in compact GUI mode)\n"
+";      show_leds: Show or hide status LEDs on the bottom-right of the screen.\n"
 		},
 
 		{ CAPTURE_SECTION,
