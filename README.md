@@ -223,6 +223,79 @@ The speed actually achievable depends on how fast your PC is. Keep in mind that
 the higher the emulated CPU core frequency is, the hardest it is to then
 accelerate it.
 
+### Serial port
+
+The serial port can be configured to connect to various devices via the
+`[serial]:mode` configuration option:
+
+* `auto`: the attached device is either a mouse or a dummy device without
+input/output; to connect a serial mouse set `[gui]:mouse` to `serial`.
+* `dummy`: dummy connection with no I/O.
+* `file`: dump the serial output to a file; the `dev` parameter must be set with
+the path to the file.
+* `term`: terminal connection for Linux systems. This can be a real serial
+line, or a pty. To use a pty launch a terminal emulator (eg. xterm), launch the
+`tty` command and use the result as the `dev` parameter.
+* `net-server`: network server that accepts incoming connections; the `dev`
+paramenter must be set with the address and port to listen to in the form
+`address:port`, for example `dev=192.168.1.100:6667`.
+* `net-client`: network client that connects to a network server at launch; the 
+`dev` paramenter must be set with the address and port to connect to in the form
+`address:port`, for example `dev=192.168.1.100:6667`.
+
+If you need to use both a mouse and a serial device, you have to configure a
+PS/2 mouse in `[gui]:mouse` (default).
+
+The serial port will keep connections open when a state is restored. The only
+exception is for the serial mouse, which takes precedence and will always be
+reconnected if the machine is configured with one when a state is saved.
+In this case, any open connection will be closed before the serial mouse is
+reconnected.
+
+#### Null modem connections
+
+`net-server` and `net-client` modes can be used to create a null modem
+connection between two instances of IBMulator or between IBMulator and DOSBox.
+
+To establish a network connection with DOSBox you need to configure DOSBox's
+serial port with `transparent:1`, for example:
+
+```
+serial1=nullmodem server:192.168.1.100 port:6667 transparent:1
+```
+
+Network connections with emulators other than DOSBox, while not tested are still
+expected to work, provided no data is transmitted other than what is generated
+by the running guest program.
+
+It's currently not possible to use programs that rely on hardware handshaking
+to operate.
+
+When IBMulator is configured as a server it will remain listening for incoming
+connections on the configured address:port after it is started, and will start
+listening again after a client disconnects.  
+If IBMulator is configured as a client and it fails to connect to a server, it
+has to be restarted to retry the connection.
+
+You can enable the status indicators with `[gui]:show_leds` to see the current
+status of the connection. When a connection is successfully established the
+`NET` indicator will appear green.
+
+To reduce latency and improve responsiveness you can use two additional
+configuration options:
+* `tx_delay`: data is accumulated and sent every this amount of milliseconds
+(default: `20`); the higher this value the higher the latency, but reducing this
+too much will also increase the network load.
+* `tcp_nodelay`: if `yes` the TCP_NODELAY socket option of the host OS will be
+enabled, which will disable the Nagle's algorithm (default: `no`).
+
+Network modes have some limitations:
+* changing the emulator's speed will probably result in desynchronization;
+* save states won't work while the serial port is in use, as it's currently not
+possible to save and restore the same state on both the client and the server
+(you can always save just before starting using the port, ie. just before
+establishing a null modem connection in a game).
+
 ### MIDI output
 
 In order to hear MIDI music you need to use an external sequencer, either
@@ -475,8 +548,8 @@ keymap file.
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
 * CTRL+F7: start/stop video capture
-* CTRL+F8: save current state
-* CTRL+F9: load last state
+* CTRL+F8: quick save current state
+* CTRL+F9: quick load last state
 * CTRL+F10: grab the mouse
 * CTRL+F11: decrease emulation speed
 * ALT+F11: set emulation speed to 10% (press again to reset)

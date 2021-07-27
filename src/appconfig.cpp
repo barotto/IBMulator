@@ -560,7 +560,20 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
 		},
 
-		{ SERIAL_SECTION, "" },
+		{ SERIAL_SECTION,
+";     enabled: Install the Serial Port.\n"
+";        mode: Mode of operation.\n"
+";              Possible values:\n"
+";               auto: let the system decide (depends on the [gui]:mouse setting and restored states)\n"
+";               dummy: no input/output, dummy serial device attached\n" 
+";               file: write output to a file\n"
+";               term: terminal connection (Linux only)\n"
+";               net-server: network server that accepts incoming connections\n"
+";               net-client: network client for connecting to a network server\n"
+";         dev: address or path of the attached serial device (see the README).\n"
+";    tx_delay: wait time for network data transmissions in milliseconds (net modes only).\n"
+"; tcp_nodelay: use the TCP_NODELAY socket option (net modes only).\n"
+		},
 
 		{ LPT_SECTION, "" },
 };
