@@ -87,6 +87,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND,    &GUI::pevt_func_toggle_status_ind    },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND,       &GUI::pevt_func_toggle_dbg_wnd       },
 	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
@@ -2288,6 +2289,15 @@ void GUI::pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase _phase)
 	}
 }
 
+void GUI::pevt_func_toggle_status_ind(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle status indicators func event\n");
+	m_windows.toggle_status();
+}
+
 void GUI::pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
@@ -2534,12 +2544,11 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	}
 	interface->show();
 
+	status = std::make_unique<Status>(_gui, _machine);
+	status_wnd = false;
 	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_LEDS)) {
-		status = std::make_unique<Status>(_gui, _machine);
 		status->show();
 		status_wnd = true;
-	} else {
-		status_wnd = false;
 	}
 
 	//debug
@@ -2631,6 +2640,16 @@ void GUI::Windows::toggle_dbg()
 		dbgtools->show();
 	} else {
 		dbgtools->hide();
+	}
+}
+
+void GUI::Windows::toggle_status()
+{
+	status_wnd = !status_wnd;
+	if(status_wnd) {
+		status->show();
+	} else {
+		status->hide();
 	}
 }
 

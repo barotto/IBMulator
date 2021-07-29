@@ -268,6 +268,7 @@ protected:
 		void config_changed();
 		void update(uint64_t _current_time);
 		void shutdown();
+		void toggle_status();
 		void toggle_dbg();
 		bool need_input();
 		void show_ifc_message(const char* _mex);
@@ -376,6 +377,7 @@ private:
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_status_ind(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase);

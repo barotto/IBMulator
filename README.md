@@ -277,9 +277,9 @@ listening again after a client disconnects.
 If IBMulator is configured as a client and it fails to connect to a server, it
 has to be restarted to retry the connection.
 
-You can enable the status indicators with `[gui]:show_leds` to see the current
-status of the connection. When a connection is successfully established the
-`NET` indicator will appear green.
+You can enable the status indicators with `[gui]:show_leds` or `SHIFT+F4` to see
+the current status of the connection. When a connection is successfully
+established the `NET` indicator will appear green.
 
 To reduce latency and improve responsiveness you can use two additional
 configuration options:
@@ -473,6 +473,7 @@ Valid `FUNC_* ` functions are:
 * `FUNC_GUI_MODE_ACTION(x)`: GUI Mode action number x (see below)
 * `FUNC_TOGGLE_POWER`: toggle the machine's power button
 * `FUNC_TOGGLE_PAUSE`: pause / resume emulation
+* `FUNC_TOGGLE_STATUS_IND`: show / hide the status indicators
 * `FUNC_TOGGLE_DBG_WND`: show / hide the debug windows
 * `FUNC_TAKE_SCREENSHOT`: take a screenshot
 * `FUNC_TOGGLE_AUDIO_CAPTURE`: start / stop audio capture
@@ -547,6 +548,7 @@ keymap file.
 * SHIFT+F1: GUI mode action 2:
     * realistic mode: switch between bright and dark styles
 * CTRL+F3: toggle the machine power button
+* SHIFT+F4: show/hide the status indicators
 * CTRL+F4: show/hide the debug windows
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture

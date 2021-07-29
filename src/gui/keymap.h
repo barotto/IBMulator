@@ -93,6 +93,7 @@ struct ProgramEvent {
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
+		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators
 		FUNC_TOGGLE_DBG_WND,       // show / hide the debug windows
 		FUNC_TAKE_SCREENSHOT,      // take a screenshot
 		FUNC_TOGGLE_AUDIO_CAPTURE, // start / stop audio capture
