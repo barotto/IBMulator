@@ -35,12 +35,12 @@ Status::Status(GUI * _gui, Machine *_machine)
 Window(_gui, "status.rml")
 {
 	assert(m_wnd);
-	m_indicators.power = get_element("power");
-	m_indicators.floppy_a = get_element("floppy_a");
-	m_indicators.floppy_b = get_element("floppy_b");
-	m_indicators.hdd = get_element("hdd");
-	m_indicators.net = get_element("net");
-	
+	m_indicators.power.el = get_element("power");
+	m_indicators.floppy_a.el = get_element("floppy_a");
+	m_indicators.floppy_b.el = get_element("floppy_b");
+	m_indicators.hdd.el = get_element("hdd");
+	m_indicators.net.el = get_element("net");
+
 	m_machine = _machine;
 	m_floppy = nullptr;
 	m_hdd = nullptr;
@@ -51,62 +51,58 @@ Status::~Status()
 {
 }
 
+void Status::Indicator::set(Status::LED _s)
+{
+	if(status != _s) {
+		status = _s;
+		el->SetClassNames(cls[ec_to_i(_s)]);
+	}
+}
+
 void Status::update()
 {
 	//Power
-	if(m_machine->is_on() && m_status.power == LED::IDLE) {
-		m_status.power = LED::ACTIVE;
-		m_indicators.power->SetClassNames("active");
-	} else if(!m_machine->is_on() && m_status.power == LED::ACTIVE) {
-		m_status.power = LED::IDLE;
-		m_indicators.power->SetClassNames("idle");
+	if(m_machine->is_on()) {
+		m_indicators.power.set(LED::ACTIVE);
+	} else {
+		m_indicators.power.set(LED::IDLE);
 	}
-	if(m_floppy) {
-		bool motor;
-		//Floppy A
-		motor = m_floppy->is_motor_on(0);
-		if(motor && m_status.floppy_a == LED::IDLE) {
-			m_status.floppy_a = LED::ACTIVE;
-			m_indicators.floppy_a->SetClassNames("active");
-		} else if(!motor && m_status.floppy_a == LED::ACTIVE) {
-			m_status.floppy_a = LED::IDLE;
-			m_indicators.floppy_a->SetClassNames("idle");
-		}
-		//Floppy B
-		motor = m_floppy->is_motor_on(1);
-		if(motor && m_status.floppy_b == LED::IDLE) {
-			m_status.floppy_b = LED::ACTIVE;
-			m_indicators.floppy_b->SetClassNames("active");
-		} else if(!motor && m_status.floppy_b == LED::ACTIVE) {
-			m_status.floppy_b = LED::IDLE;
-			m_indicators.floppy_b->SetClassNames("idle");
+
+	//Floppy A
+	if(m_floppy && !m_indicators.floppy_a.is(LED::HIDDEN)) {
+		if(m_floppy->is_motor_on(0)) {
+			m_indicators.floppy_a.set(LED::ACTIVE);
+		} else {
+			m_indicators.floppy_a.set(LED::IDLE);
 		}
 	}
-	if(m_hdd) {
-		//HDD
-		bool hdd_busy = m_hdd->is_busy();
-		if(hdd_busy && m_status.hdd == LED::IDLE) {
-			m_status.hdd = LED::ACTIVE;
-			m_indicators.hdd->SetClassNames("active");
-		} else if(!hdd_busy && m_status.hdd == LED::ACTIVE) {
-			m_status.hdd = LED::IDLE;
-			m_indicators.hdd->SetClassNames("idle");
+	//Floppy B
+	if(m_floppy && !m_indicators.floppy_b.is(LED::HIDDEN)) {
+		if(m_floppy->is_motor_on(1)) {
+			m_indicators.floppy_b.set(LED::ACTIVE);
+		} else {
+			m_indicators.floppy_b.set(LED::IDLE);
 		}
 	}
+
+	//HDD
+	if(m_hdd && !m_indicators.hdd.is(LED::HIDDEN)) {
+		if(m_hdd->is_busy()) {
+			m_indicators.hdd.set(LED::ACTIVE);
+		} else {
+			m_indicators.hdd.set(LED::IDLE);
+		}
+	}
+	
 	if(m_serial && m_serial->is_network_mode(0)) {
 		if(m_serial->is_network_connected(0)) {
-			bool is_rx = m_serial->is_network_rx_active(0);
-			bool is_tx = m_serial->is_network_tx_active(0);
-			if((is_rx||is_tx) && m_status.net != LED::ACTIVE) {
-				m_indicators.net->SetClassNames("active");
-				m_status.net = LED::ACTIVE;
-			} else if(!(is_rx||is_tx) && m_status.net != LED::IDLE) {
-				m_indicators.net->SetClassNames("idle");
-				m_status.net = LED::IDLE;
+			if(m_serial->is_network_rx_active(0) || m_serial->is_network_tx_active(0)) {
+				m_indicators.net.set(LED::ACTIVE);
+			} else {
+				m_indicators.net.set(LED::IDLE);
 			}
-		} else if(m_status.net != LED::ERROR) {
-			m_indicators.net->SetClassNames("error");
-			m_status.net = LED::ERROR;
+		} else  {
+			m_indicators.net.set(LED::ERROR);
 		}
 	}
 }
@@ -117,18 +113,31 @@ void Status::config_changed()
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 	m_serial = m_machine->devices().device<Serial>();
 
-	m_status.power = LED::IDLE;
-	m_status.floppy_a = LED::IDLE;
-	m_status.floppy_b = LED::IDLE;
-	m_status.hdd = LED::IDLE;
-	m_status.net = LED::HIDDEN;
+	m_indicators.power.set(LED::IDLE);
 
-	m_indicators.power->SetClassNames("idle");
-	m_indicators.floppy_a->SetClassNames("idle");
-	m_indicators.floppy_b->SetClassNames("idle");
-	m_indicators.hdd->SetClassNames("idle");
+	if(m_hdd) {
+		m_indicators.hdd.set(LED::IDLE);
+	} else {
+		m_indicators.hdd.set(LED::HIDDEN);
+	}
 
-	m_indicators.net->SetClassNames("hidden");
+	if(m_floppy && m_floppy->drive_type(0)) {
+		m_indicators.floppy_a.set(LED::IDLE);
+	} else {
+		m_indicators.floppy_a.set(LED::HIDDEN);
+	}
+
+	if(m_floppy && m_floppy->drive_type(1)) {
+		m_indicators.floppy_b.set(LED::IDLE);
+	} else {
+		m_indicators.floppy_b.set(LED::HIDDEN);
+	}
+
+	if(m_serial && m_serial->is_network_mode(0)) {
+		m_indicators.net.set(LED::ERROR);
+	} else {
+		m_indicators.net.set(LED::HIDDEN);
+	}
 }
 
 void Status::ProcessEvent(Rocket::Core::Event &)

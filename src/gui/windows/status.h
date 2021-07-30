@@ -33,14 +33,21 @@ private:
 	enum class LED {
 		HIDDEN, IDLE, ACTIVE, ERROR
 	};
-	struct {
-		Rocket::Core::Element *power, *floppy_a, *floppy_b, *hdd;
-		Rocket::Core::Element *net;
-	} m_indicators;
+	
+	struct Indicator {
+		static constexpr const char* cls[] = {
+			"hidden", "idle", "active", "error"
+		};
+		Rocket::Core::Element *el;
+		LED status;
+
+		bool is(LED _s) const { return status == _s; }
+		void set(LED _s);
+	};
 
 	struct {
-		LED power, floppy_a, floppy_b, hdd, net;
-	} m_status;
+		Indicator power, floppy_a, floppy_b, hdd, net;
+	} m_indicators;
 
 	Machine *m_machine;
 	const FloppyCtrl *m_floppy;
