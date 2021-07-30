@@ -30,23 +30,22 @@ class Serial;
 class Status : public Window
 {
 private:
-	enum LEDStatus {
-		LED_HIDDEN, LED_ACTIVE, LED_INACTIVE, LED_ERROR
+	enum class LED {
+		HIDDEN, IDLE, ACTIVE, ERROR
 	};
 	struct {
-		Rocket::Core::Element *power_led, *floppy_a_led, *floppy_b_led, *hdd_led;
-		Rocket::Core::Element *net_led; //, *net_tx_led;
-	} m_status;
+		Rocket::Core::Element *power, *floppy_a, *floppy_b, *hdd;
+		Rocket::Core::Element *net;
+	} m_indicators;
 
 	struct {
-		bool power, floppy_a, floppy_b, hdd;
-		LEDStatus net;
-	} m_leds;
+		LED power, floppy_a, floppy_b, hdd, net;
+	} m_status;
 
 	Machine *m_machine;
-	FloppyCtrl *m_floppy;
-	StorageCtrl *m_hdd;
-	Serial *m_serial;
+	const FloppyCtrl *m_floppy;
+	const StorageCtrl *m_hdd;
+	const Serial *m_serial;
 
 public:
 	Status(GUI * _gui, Machine *_machine);
