@@ -35,15 +35,15 @@ public:
 		IND_CNT
 	};
 	enum class LED : int {
-		HIDDEN, IDLE, ACTIVE, ERROR, UNSET
+		HIDDEN, IDLE, ACTIVE, ATTN, INVALID
 	};
 private:
 	struct Indicator {
 		static constexpr const char* cls[] = {
-			"hidden", "idle", "active", "error"
+			"hidden", "idle", "active", "attn"
 		};
 		Rocket::Core::Element *el = nullptr;
-		LED status = LED::UNSET;
+		LED status = LED::INVALID;
 
 		bool is(LED _s) const { return status == _s; }
 		void set(LED _s);

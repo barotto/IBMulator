@@ -105,7 +105,7 @@ void Status::update()
 				m_indicators[IND::NET].set(LED::IDLE);
 			}
 		} else  {
-			m_indicators[IND::NET].set(LED::ERROR);
+			m_indicators[IND::NET].set(LED::ATTN);
 		}
 	}
 
@@ -147,7 +147,7 @@ void Status::config_changed()
 	}
 
 	if(m_serial && m_serial->is_network_mode(0)) {
-		m_indicators[IND::NET].set(LED::ERROR);
+		m_indicators[IND::NET].set(LED::ATTN);
 	} else {
 		m_indicators[IND::NET].set(LED::HIDDEN);
 	}

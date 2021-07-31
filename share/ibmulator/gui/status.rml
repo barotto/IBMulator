@@ -24,7 +24,7 @@
 			.hidden { display: none; }
 			.idle   { background-color: #023b00A0; }
 			.active { background-color: #94E400A0; }
-			.error  { background-color: #ff2020A0; }
+			.attn   { background-color: #ff2020A0; }
 			#floppy_a.idle, #floppy_b.idle, #hdd.idle {
 				background-color: #564300A0;
 			}
