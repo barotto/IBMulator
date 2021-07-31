@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -119,6 +119,7 @@ public:
 	static std::vector<std::shared_ptr<Dsp::Filter>> create_filters(double _rate, std::string _filters_def);
 	
 	bool is_paused() const { return m_paused; }
+	bool is_recording() const { return m_audio_capture; }
 
 	MIDI * midi() { return m_midi.get(); }
 	

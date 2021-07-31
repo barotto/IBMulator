@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -67,7 +67,9 @@ public:
 	void cmd_stop_capture();
 	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_toggle_capture();
-	
+
+	bool is_recording() const { return m_recording; }
+
 private:
 	void start_capture();
 	void stop_capture();

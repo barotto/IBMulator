@@ -2090,6 +2090,16 @@ void GUI::toggle_dbg_windows()
 	m_windows.toggle_dbg();
 }
 
+bool GUI::is_video_recording() const
+{
+	return m_capture->is_recording();
+}
+
+bool GUI::is_audio_recording() const
+{
+	return m_mixer->is_recording();
+}
+
 void GUI::show_welcome_screen()
 {
 	std::vector<uint16_t> text(80*25,0x0000);
@@ -2546,7 +2556,7 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 
 	status = std::make_unique<Status>(_gui, _machine);
 	status_wnd = false;
-	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_LEDS)) {
+	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_INDICATORS)) {
 		status->show();
 		status_wnd = true;
 	}

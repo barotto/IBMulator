@@ -29,25 +29,27 @@ class Serial;
 
 class Status : public Window
 {
-private:
-	enum class LED {
-		HIDDEN, IDLE, ACTIVE, ERROR
+public:
+	enum IND {
+		PWR, FLP_A, FLP_B, HDD, NET, AUDREC, VIDREC,
+		IND_CNT
 	};
-	
+	enum class LED : int {
+		HIDDEN, IDLE, ACTIVE, ERROR, UNSET
+	};
+private:
 	struct Indicator {
 		static constexpr const char* cls[] = {
 			"hidden", "idle", "active", "error"
 		};
-		Rocket::Core::Element *el;
-		LED status;
+		Rocket::Core::Element *el = nullptr;
+		LED status = LED::UNSET;
 
 		bool is(LED _s) const { return status == _s; }
 		void set(LED _s);
 	};
 
-	struct {
-		Indicator power, floppy_a, floppy_b, hdd, net;
-	} m_indicators;
+	Indicator m_indicators[IND_CNT];
 
 	Machine *m_machine;
 	const FloppyCtrl *m_floppy;
@@ -60,6 +62,9 @@ public:
 
 	void update();
 	void config_changed();
+	void set_indicator(IND _ind, LED _s) {
+		m_indicators[_ind].set(_s);
+	}
 
 	void ProcessEvent(Rocket::Core::Event & event);
 };

@@ -277,8 +277,8 @@ listening again after a client disconnects.
 If IBMulator is configured as a client and it fails to connect to a server, it
 has to be restarted to retry the connection.
 
-You can enable the status indicators with `[gui]:show_leds` or `SHIFT+F4` to see
-the current status of the connection. When a connection is successfully
+You can enable the status indicators with `[gui]:show_indicators` or `SHIFT+F4`
+to see the current status of the connection. When a connection is successfully
 established the `NET` indicator will appear green.
 
 To reduce latency and improve responsiveness you can use two additional

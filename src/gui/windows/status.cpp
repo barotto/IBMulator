@@ -35,11 +35,13 @@ Status::Status(GUI * _gui, Machine *_machine)
 Window(_gui, "status.rml")
 {
 	assert(m_wnd);
-	m_indicators.power.el = get_element("power");
-	m_indicators.floppy_a.el = get_element("floppy_a");
-	m_indicators.floppy_b.el = get_element("floppy_b");
-	m_indicators.hdd.el = get_element("hdd");
-	m_indicators.net.el = get_element("net");
+	m_indicators[IND::PWR   ].el = get_element("power");
+	m_indicators[IND::FLP_A ].el = get_element("floppy_a");
+	m_indicators[IND::FLP_B ].el = get_element("floppy_b");
+	m_indicators[IND::HDD   ].el = get_element("hdd");
+	m_indicators[IND::NET   ].el = get_element("net");
+	m_indicators[IND::AUDREC].el = get_element("audrec");
+	m_indicators[IND::VIDREC].el = get_element("vidrec");
 
 	m_machine = _machine;
 	m_floppy = nullptr;
@@ -63,47 +65,60 @@ void Status::update()
 {
 	//Power
 	if(m_machine->is_on()) {
-		m_indicators.power.set(LED::ACTIVE);
+		m_indicators[IND::PWR].set(LED::ACTIVE);
 	} else {
-		m_indicators.power.set(LED::IDLE);
+		m_indicators[IND::PWR].set(LED::IDLE);
 	}
 
 	//Floppy A
-	if(m_floppy && !m_indicators.floppy_a.is(LED::HIDDEN)) {
+	if(m_floppy && !m_indicators[IND::FLP_A].is(LED::HIDDEN)) {
 		if(m_floppy->is_motor_on(0)) {
-			m_indicators.floppy_a.set(LED::ACTIVE);
+			m_indicators[IND::FLP_A].set(LED::ACTIVE);
 		} else {
-			m_indicators.floppy_a.set(LED::IDLE);
+			m_indicators[IND::FLP_A].set(LED::IDLE);
 		}
 	}
 	//Floppy B
-	if(m_floppy && !m_indicators.floppy_b.is(LED::HIDDEN)) {
+	if(m_floppy && !m_indicators[IND::FLP_B].is(LED::HIDDEN)) {
 		if(m_floppy->is_motor_on(1)) {
-			m_indicators.floppy_b.set(LED::ACTIVE);
+			m_indicators[IND::FLP_B].set(LED::ACTIVE);
 		} else {
-			m_indicators.floppy_b.set(LED::IDLE);
+			m_indicators[IND::FLP_B].set(LED::IDLE);
 		}
 	}
 
 	//HDD
-	if(m_hdd && !m_indicators.hdd.is(LED::HIDDEN)) {
+	if(m_hdd && !m_indicators[IND::HDD].is(LED::HIDDEN)) {
 		if(m_hdd->is_busy()) {
-			m_indicators.hdd.set(LED::ACTIVE);
+			m_indicators[IND::HDD].set(LED::ACTIVE);
 		} else {
-			m_indicators.hdd.set(LED::IDLE);
+			m_indicators[IND::HDD].set(LED::IDLE);
 		}
 	}
-	
+
+	//Network
 	if(m_serial && m_serial->is_network_mode(0)) {
 		if(m_serial->is_network_connected(0)) {
 			if(m_serial->is_network_rx_active(0) || m_serial->is_network_tx_active(0)) {
-				m_indicators.net.set(LED::ACTIVE);
+				m_indicators[IND::NET].set(LED::ACTIVE);
 			} else {
-				m_indicators.net.set(LED::IDLE);
+				m_indicators[IND::NET].set(LED::IDLE);
 			}
 		} else  {
-			m_indicators.net.set(LED::ERROR);
+			m_indicators[IND::NET].set(LED::ERROR);
 		}
+	}
+
+	//Audio & Video recording
+	if(m_gui->is_audio_recording()) {
+		m_indicators[IND::AUDREC].set(LED::ACTIVE);
+	} else {
+		m_indicators[IND::AUDREC].set(LED::IDLE);
+	}
+	if(m_gui->is_video_recording()) {
+		m_indicators[IND::VIDREC].set(LED::ACTIVE);
+	} else {
+		m_indicators[IND::VIDREC].set(LED::IDLE);
 	}
 }
 
@@ -113,30 +128,28 @@ void Status::config_changed()
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 	m_serial = m_machine->devices().device<Serial>();
 
-	m_indicators.power.set(LED::IDLE);
-
 	if(m_hdd) {
-		m_indicators.hdd.set(LED::IDLE);
+		m_indicators[IND::HDD].set(LED::IDLE);
 	} else {
-		m_indicators.hdd.set(LED::HIDDEN);
+		m_indicators[IND::HDD].set(LED::HIDDEN);
 	}
 
 	if(m_floppy && m_floppy->drive_type(0)) {
-		m_indicators.floppy_a.set(LED::IDLE);
+		m_indicators[IND::FLP_A].set(LED::IDLE);
 	} else {
-		m_indicators.floppy_a.set(LED::HIDDEN);
+		m_indicators[IND::FLP_A].set(LED::HIDDEN);
 	}
 
 	if(m_floppy && m_floppy->drive_type(1)) {
-		m_indicators.floppy_b.set(LED::IDLE);
+		m_indicators[IND::FLP_B].set(LED::IDLE);
 	} else {
-		m_indicators.floppy_b.set(LED::HIDDEN);
+		m_indicators[IND::FLP_B].set(LED::HIDDEN);
 	}
 
 	if(m_serial && m_serial->is_network_mode(0)) {
-		m_indicators.net.set(LED::ERROR);
+		m_indicators[IND::NET].set(LED::ERROR);
 	} else {
-		m_indicators.net.set(LED::HIDDEN);
+		m_indicators[IND::NET].set(LED::HIDDEN);
 	}
 }
 

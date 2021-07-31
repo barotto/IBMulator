@@ -332,7 +332,9 @@ public:
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 	void toggle_dbg_windows();
-	
+	bool is_video_recording() const;
+	bool is_audio_recording() const;
+
 	vec2i resize_window(int _width, int _height);
 	bool is_fullscreen();
 	void toggle_fullscreen();

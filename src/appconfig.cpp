@@ -51,7 +51,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_WIDTH,              "640"        },
 		{ GUI_HEIGHT,             "480"        },
 		{ GUI_FULLSCREEN,         "no"         },
-		{ GUI_SHOW_LEDS,          "no"         },
+		{ GUI_SHOW_INDICATORS,    "no"         },
 		{ GUI_MODE,               "normal"     },
 		{ GUI_REALISTIC_ZOOM,     "cycle"      },
 		{ GUI_REALISTIC_STYLE,    "bright"     },
@@ -356,7 +356,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     fullscreen: Start directly in fullscreen. (Press ALT-Enter to go back)\n"
 ";            dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";         bg_XXX: Background window color\n"
-";      show_leds: Show or hide status LEDs on the bottom-right of the screen.\n"
+";show_indicators: Show or hide status indicators on the bottom-right of the screen.\n"
 		},
 
 		{ CAPTURE_SECTION,
@@ -600,7 +600,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_BG_R,
 		GUI_BG_G,
 		GUI_BG_B,
-		GUI_SHOW_LEDS
+		GUI_SHOW_INDICATORS
 	} },
 	{ CAPTURE_SECTION, {
 		CAPTURE_DIR,
