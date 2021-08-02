@@ -468,6 +468,8 @@ Key modifiers bindings have some limitations:
 * SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when
 their mode of operation is not `default` and they are also used in combos (e.g.
 `KMOD_CTRL + SDLK_TAB`)
+* on keyboards with the `AltGr` key the `KMOD_RALT` modifier might not work, as
+`AltGr` could be translated with `LCTRL+RALT` by the host OS.
 
 Valid `FUNC_* ` functions are:
 * `FUNC_GUI_MODE_ACTION(x)`: GUI Mode action number x (see below)
@@ -557,16 +559,16 @@ keymap file.
 * CTRL+F9: quick load last state
 * CTRL+F10: grab the mouse
 * CTRL+F11: decrease emulation speed
-* ALT+F11: set emulation speed to 10% (press again to reset)
+* SHIFT+F11: set emulation speed to 10% (press again to reset)
 * CTRL+F12: increase emulation speed
-* ALT+F12: set emulation speed to 500% (press again to reset)
+* SHIFT+F12: set emulation speed to 500% (press again to reset)
 * CTRL+DEL: send CTRL+ALT+DEL to the guest OS
 * CTRL+TAB: send ALT+TAB to the guest OS
 * CTRL+INS: send SysRq to the guest OS
 * CTRL+END: send Break to the guest OS
 * SHIFT+SPACE: change the active keymap to the next available one
+* SHIFT+PAUSE: pause/resume emulation
 * ALT+ENTER: toggle fullscreen mode
-* ALT+PAUSE: pause/resume emulation
 * ALT+F4: exit the program
 
 The mouse can be grabbed with the central mouse button as well.

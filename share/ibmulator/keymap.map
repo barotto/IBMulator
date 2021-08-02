@@ -71,6 +71,7 @@
 #  - you must specify combos with the modifier(s) first, for example:
 #     KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB
 #  - SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when their mode of operation is not `default` and they are also used in combos (e.g. `KMOD_CTRL + SDLK_TAB`)
+#  - on keyboards with the AltGr key the KMOD_RALT modifier might not work, as AltGr could be translated with LCTRL+RALT by the host OS
 #
 # Valid FUNC_* functions are:
 #  FUNC_GUI_MODE_ACTION(x)   : GUI Mode action x (see README "Default key bindings")
@@ -173,12 +174,12 @@ KMOD_CTRL + SDLK_F8     = FUNC_QUICK_SAVE_STATE
 KMOD_CTRL + SDLK_F9     = FUNC_QUICK_LOAD_STATE
 KMOD_CTRL + SDLK_F10    = FUNC_GRAB_MOUSE
 KMOD_CTRL + SDLK_F11    = FUNC_SYS_SPEED_DOWN
-KMOD_ALT + SDLK_F11     = FUNC_SYS_SPEED(10); mode:latched group:sysspeed
+KMOD_SHIFT + SDLK_F11   = FUNC_SYS_SPEED(10); mode:latched group:sysspeed
 KMOD_CTRL + SDLK_F12    = FUNC_SYS_SPEED_UP
-KMOD_ALT + SDLK_F12     = FUNC_SYS_SPEED(500); mode:latched group:sysspeed
+KMOD_SHIFT + SDLK_F12   = FUNC_SYS_SPEED(500); mode:latched group:sysspeed
 KMOD_SHIFT + SDLK_SPACE = FUNC_SWITCH_KEYMAPS
+KMOD_SHIFT + SDLK_PAUSE = FUNC_TOGGLE_PAUSE
 KMOD_ALT + SDLK_RETURN  = FUNC_TOGGLE_FULLSCREEN
-KMOD_ALT + SDLK_PAUSE   = FUNC_TOGGLE_PAUSE
 KMOD_ALT + SDLK_F4      = FUNC_EXIT
 
 
