@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -226,7 +226,6 @@ m_fx_enabled(false)
 
 HardDiskDrive::~HardDiskDrive()
 {
-	remove();
 }
 
 void HardDiskDrive::install(StorageCtrl *_ctrl)

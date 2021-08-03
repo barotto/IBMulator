@@ -606,6 +606,8 @@ void GUI::InputSystem::Event::restart()
 
 Uint32 GUI::InputSystem::Event::s_sdl_timer_callback(Uint32 _interval, void *_obj)
 {
+	UNUSED(_interval);
+
 	auto evt_code = intptr_t(_obj);
 	auto event = g_program.gui_instance()->m_input.find(evt_code);
 	if(event) {
@@ -790,7 +792,6 @@ void GUI::pevt_mouse_button(const ProgramEvent::Mouse &_mouse, EventPhase _phase
 
 void GUI::pevt_joy_axis(const ProgramEvent::Joy &_joy, const SDL_Event &_event, EventPhase _phase)
 {
-	int value = 0;
 	switch(_event.type) {
 		case SDL_MOUSEMOTION: {
 			double amount = .0;

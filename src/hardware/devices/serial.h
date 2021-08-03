@@ -265,7 +265,7 @@ private:
 		int tx_timer;
 		int fifo_timer;
 
-		int io_mode;
+		unsigned io_mode;
 
 		// socket server/client mode
 

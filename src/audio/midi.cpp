@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -634,7 +634,7 @@ void MIDI::put_byte(uint8_t _data, bool _save, uint64_t _time_ns)
 	if(is_device_open() && m_s.sysex.delay_ms > 0) {
 		uint64_t now_ms = get_curtime_ms();
 		uint64_t elapsed_ms = now_ms - m_s.sysex.start_ms;
-		if(elapsed_ms < m_s.sysex.delay_ms) {
+		if(elapsed_ms < unsigned(m_s.sysex.delay_ms)) {
 			uint64_t ms = m_s.sysex.delay_ms - elapsed_ms;
 			PDEBUGF(LOG_V2, LOG_MIDI, "Sleeping for %llu ms for SysEx delay...\n", ms);
 			std::this_thread::sleep_for(std::chrono::milliseconds(ms));
@@ -669,7 +669,7 @@ void MIDI::put_byte(uint8_t _data, bool _save, uint64_t _time_ns)
 				if(m_s.sysex.buf[5] == 0x7F) {
 					m_s.sysex.delay_ms = 290; // All Parameters reset (DOSBox value)
 					logmex = false;
-					PDEBUGF(LOG_V2, LOG_MIDI, "SysEx: MT-32 All Parameters reset, delay: %d ms\n", m_s.sysex.delay_ms);
+					PDEBUGF(LOG_V2, LOG_MIDI, "SysEx: MT-32 All Parameters reset, delay: %u ms\n", m_s.sysex.delay_ms);
 				} else if(m_s.sysex.buf[5] == 0x10 && m_s.sysex.buf[6] == 0x00 && m_s.sysex.buf[7] == 0x04) {
 					m_s.sysex.delay_ms = 145; // Viking Child (DOSBox value)
 				} else if(m_s.sysex.buf[5] == 0x10 && m_s.sysex.buf[6] == 0x00 && m_s.sysex.buf[7] == 0x01) {

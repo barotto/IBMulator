@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -196,7 +196,7 @@ void MIDIDev_ALSA::open(std::string _conf)
 		throw std::exception();
 	}
 	
-	int this_client = snd_seq_client_id(m_seq_handle);
+	// int this_client = snd_seq_client_id(m_seq_handle);
 	snd_seq_set_client_name(m_seq_handle, PACKAGE_NAME);
 	
 	unsigned caps = SND_SEQ_PORT_CAP_READ;

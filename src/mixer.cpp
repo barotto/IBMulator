@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -483,7 +483,6 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
 	double treqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq);
 	reqframes = std::max(reqframes, treqframes);
-	double reqsamples = reqframes * m_audio_spec.channels;
 	PDEBUGF(LOG_V2, LOG_MIXER, "  curr. buffer size: %d us, req. frames: %.2f\n", avail_us, reqframes);
 	
 	if(reqframes < 1.0) {

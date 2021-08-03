@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,10 +30,12 @@
 static inline void sleep_for(int64_t _ns)
 {
 	#ifdef _WIN32
-	// the current Windows/MinGW situation is that std::this_thread::sleep_for()
-	// and nanosleep() take a minimum of 15ms and are therefore useless.
-	// SDL_Delay (which uses Sleep()) is usually more "precise" with a 1ms
-	// granularity (and a ~1ms cost), which is a value I can work with. 
+	// std::this_thread::sleep_for() and nanosleep() by default take a minimum
+	// of 15ms and are therefore useless. To increase the resolution
+	// timeBeginPeriod() and timeEndPeriod() must be used. Since timers have a
+	// bit of complexity, just use SDL which will take care of the details.
+	// SDL_Delay() (which uses Sleep()) has a 1ms granularity and a ~1ms cost,
+	// which are values I can work with.
 	SDL_Delay(_ns/1000000);
 	#else
 	// on Linux sleep_for() is actually very good, with a minimum sleep time of
@@ -142,7 +144,6 @@ void Pacer::calibrate(PacerWaitMethod _method)
 		std::tie(avg,std) = sample_sleep(thres, 10);
 		PDEBUGF(LOG_V0, LOG_PROGRAM, "Tried to sleep for %.1f ms: avg %.6f, sdev %.6f ms\n", 
 				thres/1.0e6, avg/1.0e6, std/1.0e6);
-		double sum = avg + std;
 		if(avg > thres) {
 			msavg += (avg - thres) ;
 		} else {

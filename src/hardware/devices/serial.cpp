@@ -712,7 +712,7 @@ void Serial::Port::net_tx_loop()
 			ssize_t res = (ssize_t)::send(client_socket_id, (const char*)&tx_buf[0], len, 0);
 			if(res < 0) {
 				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", name(), get_neterr());
-			} else if(res != len) {
+			} else if(size_t(res) != len) {
 				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", name(), len, res, get_neterr());
 			}
 		}
@@ -1857,7 +1857,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 	}
 
 	bool data_ready = false;
-	int db_usec = m_s.uart[port].databyte_usec;
+	uint64_t db_usec = m_s.uart[port].databyte_usec;
 	uint8_t chbuf = 0;
 
 	if((!m_s.uart[port].line_status.rxdata_ready) || m_s.uart[port].fifo_cntl.enable) {

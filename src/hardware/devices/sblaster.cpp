@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1407,13 +1407,13 @@ void SBlaster::dsp_cmd_set_time_const()
 	m_s.dsp.time_const = m_s.dsp.cmd_in[0];
 	
 	std::lock_guard<std::mutex> dac_lock(m_dac_mutex);
-	int old_dac_period_ns = m_s.dac.period_ns;
+	uint64_t old_dac_period_ns = m_s.dac.period_ns;
 	dsp_update_frequency();
 	if(m_s.dac.state == DAC::State::WAITING && old_dac_period_ns != m_s.dac.period_ns) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: updating timer period to new value of %llu ns\n",
 				short_name(), m_s.dac.period_ns);
-		int dac_eta = g_machine.get_timer_eta(m_dac_timer);
-		int new_eta = int(m_s.dac.period_ns) - (old_dac_period_ns - dac_eta);
+		int64_t dac_eta = g_machine.get_timer_eta(m_dac_timer);
+		int64_t new_eta = int64_t(m_s.dac.period_ns) - (int64_t(old_dac_period_ns) - dac_eta);
 		if(new_eta < 0) {
 			new_eta = 0;
 		}
