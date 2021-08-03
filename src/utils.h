@@ -123,6 +123,7 @@ template<class T>
 #include <functional>
 #include <chrono>
 #include <future>
+#include <thread>
 
 inline uint64_t get_curtime_ms()
 {
