@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -420,7 +420,7 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 			return -1;
 	}
 
-	if(USE_PREFETCH_QUEUE && CPULOG_WRITE_PQ) {
+	if(CPU_USE_PQ && CPULOG_WRITE_PQ) {
 		if(fprintf(_dest, "pq=") < 0)
 			return -1;
 		if(_entry.bus.write_pq_to_logfile(_dest) < 0)

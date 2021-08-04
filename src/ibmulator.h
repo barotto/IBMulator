@@ -22,17 +22,8 @@
 
 #define DEFAULT_HEARTBEAT    16683333
 #define CHRONO_RDTSC         false
-#define USE_PREFETCH_QUEUE   true
-#define PIT_CNT1_AUTO_UPDATE false
 
-
-/*
- * For CPU logging options see hardware/cpu/logger.h
- */
-
-#define PATHNAME_LEN 512
-#define N_PARALLEL_PORTS 1
-
+// For CPU logging options see hardware/cpu/logger.h
 
 #include "config.h"
 #include <cstdint>
@@ -42,22 +33,14 @@
 #include <cstdio>
 #include <stdexcept>
 
-#if !defined(_MSC_VER)
+#if defined(__GNUC__)
+	// both gcc and clang define __GNUC__
 	#define GCC_ATTRIBUTE(x) __attribute__ ((x))
 	#define LIKELY(x)    __builtin_expect((x),1)
 	#define UNLIKELY(x)  __builtin_expect((x),0)
 	#define ALWAYS_INLINE GCC_ATTRIBUTE(always_inline)
 #else
-	#define GCC_ATTRIBUTE(x)
-	#define LIKELY(x)   (x)
-	#define UNLIKELY(x) (x)
-	#define ALWAYS_INLINE inline
-#endif
-
-#if defined(_MSC_VER) && (_MSC_VER>=1300)
-	#define MSC_ALIGN(x) __declspec(align(x))
-#else
-	#define MSC_ALIGN(x)
+	#error unsupported compiler
 #endif
 
 #define UNUSED(x) ((void)x)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include "mmu.h"
 #include "../memory.h"
 
+#define CPU_USE_PQ       true
 #define CPU_PQ_MAX_SIZE  16
 #define CPU_BUS_WQ_SIZE  50
 
@@ -94,7 +95,7 @@ public:
 	void enable_paging(bool _enabled);
 
 	//instruction fetching
-	#if USE_PREFETCH_QUEUE
+	#if CPU_USE_PQ
 	inline uint8_t  fetchb()  { return fetch<uint8_t, 1>(); }
 	inline uint16_t fetchw()  { return fetch<uint16_t,2>(); }
 	inline uint32_t fetchdw() { return fetch<uint32_t,4>(); }
@@ -121,7 +122,7 @@ public:
 	}
 	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
 	{
-		#if USE_PREFETCH_QUEUE
+		#if CPU_USE_PQ
 		/* Memory writes need to be executed after a PQ update, because code
 		 * prefetching is done after the instruction execution, in relation to
 		 * the available cpu cycles. The executed instruction could be a mov

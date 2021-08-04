@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -130,7 +130,7 @@ void CPUBus::reset_pq()
 
 void CPUBus::update(int _cycles)
 {
-#if USE_PREFETCH_QUEUE
+#if CPU_USE_PQ
 		if(m_mem_r_cycles || (m_wq_idx>=0)) {
 			m_pmem_cycles += m_cycles_ahead;
 			m_cycles_ahead = 0;

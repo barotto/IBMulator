@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -47,6 +47,7 @@
 #include "machine.h"
 #include "pit82c54.h"
 
+#define PIT_CNT1_AUTO_UPDATE false
 
 void PIT_82C54::init()
 {
