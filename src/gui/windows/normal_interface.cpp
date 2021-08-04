@@ -189,6 +189,7 @@ void NormalInterface::update()
 				if(m_gui_mode == GUI_MODE_NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}
+				// gui lock already acquired in GUI::update()
 				vec2i size = m_gui->resize_window(w,h);
 				if(size.x!=w || size.y!=h) {
 					//not enough space?

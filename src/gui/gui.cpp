@@ -343,10 +343,8 @@ vec2i GUI::resize_window(int _w, int _h)
 {
 	SDL_SetWindowSize(m_SDL_window, _w, _h);
 	SDL_GetWindowSize(m_SDL_window, &m_width, &m_height);
-	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
-	
 	update_window_size(m_width, m_height);
-	
+	PINFOF(LOG_V0,LOG_GUI,"Window resized to %dx%d\n", m_width, m_height);
 	return vec2i(m_width, m_height);
 }
 
@@ -1816,9 +1814,9 @@ void GUI::dispatch_event(const SDL_Event &_event)
 
 void GUI::update_window_size(int _w, int _h)
 {
+	// the caller should acquire a lock on ms_rocket_mutex
 	m_width = _w;
 	m_height = _h;
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
 	m_rocket_renderer->SetDimensions(m_width, m_height);
 	m_windows.interface->container_size_changed(m_width, m_height);
@@ -1828,8 +1826,11 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 {
 	switch(_event.event) {
 		case SDL_WINDOWEVENT_SIZE_CHANGED: {
-			PDEBUGF(LOG_V1, LOG_GUI, "Window resized to %ux%u\n", _event.data1, _event.data2);
+			{
+			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
 			update_window_size(_event.data1, _event.data2);
+			}
+			PDEBUGF(LOG_V1, LOG_GUI, "Window resized to %ux%u\n", _event.data1, _event.data2);
 			break;
 		}
 		case SDL_WINDOWEVENT_MINIMIZED:
