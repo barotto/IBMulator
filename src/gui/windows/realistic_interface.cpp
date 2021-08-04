@@ -208,9 +208,9 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 	}
 	screen()->vga_reflection_scale = vec2f(1.0,1.0);
 	
-	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
-	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
-	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
+	RealisticInterface::set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
+	RealisticInterface::set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
+	RealisticInterface::set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 
 	m_real_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_real_audio_enabled) {
