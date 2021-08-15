@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020  Marco Bortolin
+ * Copyright (C) 2017-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,39 +36,44 @@ public:
 
 	protected:
 		bool m_enabled;
-		RC::Element *m_button;
+		Rml::Element *m_button;
 
 	public:
-		void show();
+		virtual void show();
 		void enable(bool _value = true);
 		void toggle();
-		void on_close(RC::Event &);
+		void on_close(Rml::Event &);
 
-		DebugWindow(GUI * _gui, const char *_rml, RC::Element *_button);
+		DebugWindow(GUI * _gui, const char *_rml, Rml::Element *_button);
 	};
 
 private:
 	static event_map_t ms_evt_map;
 	Machine *m_machine;
-	DebugWindow *m_stats, *m_debugger, *m_devices, *m_mixer;
+	Mixer *m_mixer;
+	DebugWindow *m_statsw, *m_debuggerw, *m_devicesw, *m_mixerw;
 
-	void on_stats(RC::Event &);
-	void on_debugger(RC::Event &);
-	void on_devices(RC::Event &);
-	void on_mixer(RC::Event &);
-	void on_close(RC::Event &);
+	void on_stats(Rml::Event &);
+	void on_debugger(Rml::Event &);
+	void on_devices(Rml::Event &);
+	void on_mixer(Rml::Event &);
+	void on_close(Rml::Event &);
 	
 public:
 	DebugTools(GUI * _gui, Machine *_machine, Mixer *_mixer);
 	~DebugTools();
 
-	void config_changed();
-	void show();
-	void hide();
-	void update();
+	virtual void create();
+	virtual void show();
+	virtual void hide();
+	virtual void update();
+	virtual void config_changed();
 	void show_message(const char* _mex);
 
 	event_map_t & get_event_map() { return DebugTools::ms_evt_map; }
+	
+protected:
+	
 };
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,13 +32,13 @@ private:
 
 	Mixer *m_mixer;
 	struct {
-		Rocket::Core::Element *state, *channels;
+		Rml::Element *state, *channels;
 	} m_divs;
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;
-		RC::Element *enabled;
-		RC::Element *in_format, *in_frames, *in_us;
-		RC::Element *out_frames, *out_us;
+		Rml::Element *enabled;
+		Rml::Element *in_format, *in_frames, *in_us;
+		Rml::Element *out_frames, *out_us;
 	};
 	std::vector<Channel> m_channels;
 	
@@ -46,11 +46,12 @@ private:
 
 public:
 
-	MixerState(GUI *_gui, RC::Element *_button, Mixer *_mixer);
+	MixerState(GUI *_gui, Rml::Element *_button, Mixer *_mixer);
 	~MixerState();
 
-	void update();
-	void config_changed();
+	virtual void create();
+	virtual void update();
+	virtual void config_changed();
 	
 	event_map_t & get_event_map() { return MixerState::ms_evt_map; }
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,27 +21,26 @@
 #include "rend_interface_sdl2d.h"
 #include "gui_sdl2d.h"
 #include "program.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <SDL_image.h>
 
-using namespace Rocket::Core;
 
-RocketRenderer_SDL2D::RocketRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen)
-: RocketRenderer(_renderer, _screen),
+RmlRenderer_SDL2D::RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen)
+: RmlRenderer(_renderer, _screen),
 m_scissor_enabled(false)
 {
 }
 
-RocketRenderer_SDL2D::~RocketRenderer_SDL2D()
+RmlRenderer_SDL2D::~RmlRenderer_SDL2D()
 {
 }
 
-// Called by Rocket when it wants to render geometry that it does not wish to optimise.
-void RocketRenderer_SDL2D::RenderGeometry(
-		Vertex *_vertices, int _num_vertices,
+// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
+void RmlRenderer_SDL2D::RenderGeometry(
+		Rml::Vertex *_vertices, int _num_vertices,
 		int *_indices, int _num_indices,
-		const TextureHandle _texture,
-		const Vector2f &_translation)
+		const Rml::TextureHandle _texture,
+		const Rml::Vector2f &_translation)
 {
 	UNUSED(_num_vertices);
 	
@@ -60,9 +59,9 @@ void RocketRenderer_SDL2D::RenderGeometry(
 	for(int i=0; i<_num_indices; i+=6) {
 		int id = _indices[i];
 		assert(id < _num_vertices);
-		Vertex *tl = &_vertices[id], *br = tl;
+		Rml::Vertex *tl = &_vertices[id], *br = tl;
 		for(int v=i; v<i+6; v++) {
-			Vertex *vert = &_vertices[_indices[v]];
+			Rml::Vertex *vert = &_vertices[_indices[v]];
 			if(vert->position.x <= tl->position.x && vert->position.y <= tl->position.y) {
 				tl = vert;
 			}
@@ -100,22 +99,22 @@ void RocketRenderer_SDL2D::RenderGeometry(
 }
 
 
-// Called by Rocket when it wants to enable or disable scissoring to clip content.
-void RocketRenderer_SDL2D::EnableScissorRegion(bool _enable)
+// Called by RmlUi when it wants to enable or disable scissoring to clip content.
+void RmlRenderer_SDL2D::EnableScissorRegion(bool _enable)
 {
 	m_scissor_enabled = _enable;
 }
 
-// Called by Rocket when it wants to change the scissor region.
-void RocketRenderer_SDL2D::SetScissorRegion(int _x, int _y, int _width, int _height)
+// Called by RmlUi when it wants to change the scissor region.
+void RmlRenderer_SDL2D::SetScissorRegion(int _x, int _y, int _width, int _height)
 {
 	m_scissor_region = {_x, _y, _width, _height};
 }
 
-// Called by Rocket when a texture is required to be built from an
+// Called by RmlUi when a texture is required to be built from an
 // internally-generated sequence of pixels.
-bool RocketRenderer_SDL2D::GenerateTexture(TextureHandle &_texture,
-		const byte *_source, const Vector2i &_source_dim)
+bool RmlRenderer_SDL2D::GenerateTexture(Rml::TextureHandle &_texture,
+		const Rml::byte *_source, const Rml::Vector2i &_source_dim)
 {
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 	SDL_Texture *texture = SDL_CreateTexture(m_renderer,
@@ -126,14 +125,14 @@ bool RocketRenderer_SDL2D::GenerateTexture(TextureHandle &_texture,
 	SDL_UpdateTexture(texture, nullptr, _source, _source_dim.x * 4);
 	SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 	
-	_texture = TextureHandle((void*)texture);
+	_texture = reinterpret_cast<Rml::TextureHandle>(texture);
 	
 	return true;
 }
 
-// Called by Rocket when a loaded texture is no longer required.
-void RocketRenderer_SDL2D::ReleaseTexture(TextureHandle _texture)
+// Called by RmlUi when a loaded texture is no longer required.
+void RmlRenderer_SDL2D::ReleaseTexture(Rml::TextureHandle _texture)
 {
-	SDL_DestroyTexture((SDL_Texture*)_texture);
+	SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(_texture));
 }
 

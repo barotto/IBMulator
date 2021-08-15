@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,9 +21,7 @@
 #include "file_interface.h"
 #include <stdio.h>
 
-using namespace Rocket::Core;
-
-RocketFileInterface::RocketFileInterface(const String & _root)
+RmlFileInterface::RmlFileInterface(const std::string &_root)
 :
 root(_root)
 {
@@ -31,40 +29,40 @@ root(_root)
 }
 
 // Opens a file.
-FileHandle RocketFileInterface::Open(const String& path)
+Rml::FileHandle RmlFileInterface::Open(const std::string &_path)
 {
-	if(path == "") return 0;
+	if(_path == "") return 0;
 
 	// Attempt to open the file relative to the application's root.
-	FILE* fp = fopen((root + path).CString(), "rb");
-	if (fp != nullptr) {
-		return (FileHandle) fp;
+	FILE* fp = fopen((root + _path).c_str(), "rb");
+	if(fp != nullptr) {
+		return reinterpret_cast<Rml::FileHandle>(fp);
 	}
 	// Attempt to open the file relative to the current working directory.
-	fp = fopen(path.CString(), "rb");
-	return (FileHandle) fp;
+	fp = fopen(_path.c_str(), "rb");
+	return reinterpret_cast<Rml::FileHandle>(fp);
 }
 
 // Closes a previously opened file.
-void RocketFileInterface::Close(FileHandle file)
+void RmlFileInterface::Close(Rml::FileHandle _file)
 {
-	fclose((FILE*) file);
+	fclose(reinterpret_cast<FILE*>(_file));
 }
 
 // Reads data from a previously opened file.
-size_t RocketFileInterface::Read(void* buffer, size_t size, FileHandle file)
+size_t RmlFileInterface::Read(void* _buffer, size_t _size, Rml::FileHandle _file)
 {
-	return fread(buffer, 1, size, (FILE*) file);
+	return fread(_buffer, 1, _size, reinterpret_cast<FILE*>(_file));
 }
 
 // Seeks to a point in a previously opened file.
-bool RocketFileInterface::Seek(FileHandle file, long offset, int origin)
+bool RmlFileInterface::Seek(Rml::FileHandle _file, long _offset, int _origin)
 {
-	return fseek((FILE*) file, offset, origin) == 0;
+	return fseek(reinterpret_cast<FILE*>(_file), _offset, _origin) == 0;
 }
 
 // Returns the current position of the file pointer.
-size_t RocketFileInterface::Tell(FileHandle file)
+size_t RmlFileInterface::Tell(Rml::FileHandle _file)
 {
-	return ftell((FILE*) file);
+	return ftell(reinterpret_cast<FILE*>(_file));
 }

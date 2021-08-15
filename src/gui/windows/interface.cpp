@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,7 +28,7 @@
 #include "utils.h"
 #include <sys/stat.h>
 #include <SDL_image.h>
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 
 #include "tinyfiledialogs/tinyfiledialogs.h"
 
@@ -181,16 +181,22 @@ void InterfaceScreen::sync_with_device()
 Interface::Interface(Machine *_machine, GUI *_gui, Mixer *_mixer, const char *_rml)
 :
 Window(_gui, _rml),
-m_size(0),
-m_curr_drive(0),
-m_floppy_present(false),
-m_floppy_changed(false),
 m_machine(_machine),
-m_mixer(_mixer),
-m_floppy(nullptr),
-m_hdd(nullptr)
+m_mixer(_mixer)
 {
-	assert(m_wnd);
+}
+
+Interface::~Interface()
+{
+	if(m_fs) {
+		m_fs->close();
+		delete m_fs;
+	}
+}
+
+void Interface::create()
+{
+	Window::create();
 	
 	m_buttons.power = get_element("power");
 	m_buttons.fdd_select = get_element("fdd_select");
@@ -203,21 +209,14 @@ m_hdd(nullptr)
 
 	m_leds.power = false;
 
-	m_fs = new FileSelect(_gui);
+	m_fs = new FileSelect(m_gui);
+	m_fs->create();
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
 
 	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_audio_enabled) {
-		m_audio.init(_mixer);
-	}
-}
-
-Interface::~Interface()
-{
-	if(m_fs) {
-		m_fs->close();
-		delete m_fs;
+		m_audio.init(m_mixer);
 	}
 }
 
@@ -381,7 +380,8 @@ void Interface::update()
 			} else {
 				m_speed->SetClass("paused", false);
 				int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
-				m_speed_value->SetInnerRML(RC::String(10, "%d%%", vtime_ratio_1000/10));
+				static std::string str(10,0);
+				m_speed_value->SetInnerRML(str_format(str, "%d%%", vtime_ratio_1000/10));
 				if(m_machine->cycles_factor() != 1.0) {
 					m_speed->SetClass("warning", false);
 					if(m_machine->get_bench().load > 1.0) {
@@ -405,25 +405,25 @@ void Interface::update()
 	}
 }
 
-void Interface::on_power(RC::Event &)
+void Interface::on_power(Rml::Event &)
 {
 	switch_power();
 }
 
 void Interface::show_message(const char* _mex)
 {
-	Rocket::Core::String str(_mex);
-	str.Replace("\n", "<br />");
+	std::string str(_mex);
+	str_replace_all(str, "\n", "<br />");
 
 	m_message->SetInnerRML(str);
-	if(str.Empty()) {
+	if(str.empty()) {
 		m_message->SetProperty("visibility", "hidden");
 	} else {
 		m_message->SetProperty("visibility", "visible");
 	}
 }
 
-void Interface::on_fdd_select(RC::Event &)
+void Interface::on_fdd_select(Rml::Event &)
 {
 	m_status.fdd_disk->SetInnerRML("");
 	if(m_curr_drive == 0) {
@@ -445,7 +445,7 @@ void Interface::on_fdd_select(RC::Event &)
 	}
 }
 
-void Interface::on_fdd_eject(RC::Event &)
+void Interface::on_fdd_eject(Rml::Event &)
 {
 	m_machine->cmd_eject_media(m_curr_drive);
 	if(m_audio_enabled && m_floppy->is_media_present(m_curr_drive)) {
@@ -453,7 +453,7 @@ void Interface::on_fdd_eject(RC::Event &)
 	}
 }
 
-void Interface::on_fdd_mount(RC::Event &)
+void Interface::on_fdd_mount(Rml::Event &)
 {
 	if(m_floppy == nullptr) {
 		show_message("floppy drives not present");

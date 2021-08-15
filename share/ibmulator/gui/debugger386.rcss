@@ -1,25 +1,6 @@
-table th
+#cpucore
 {
-	width: 25px;
-}
-
-table#generalregs td
-{
-	width: 80px;
-}
-
-table#generalregs
-{
-	position: absolute;
-	top: 0px;
-	left: 0px;
-}
-
-table#segmentregs
-{
-	position: absolute;
-	top: 0px;
-	left: 150px;
+	height: 355px;
 }
 
 #CSbase,#DSbase,
@@ -39,41 +20,31 @@ table#segmentregs
 	width: 80px;
 }
 
-table#statusregs
+#statusregs
 {
-	position: absolute;
-	top: 240px;
+	top: 190px;
 	left: 0px;
 }
 
-table#flags
+#flags
 {
-	position: absolute;
-	top: 300px;
+	top: 240px;
 	left: 260px;
 }
 
-table#flags th
+#dr
 {
-	width: 15px;
-}
-
-table#dr
-{
-	position: absolute;
-	top: 205px;
+	top: 160px;
 	left: 150px;
 }
-
-table#dr td
+#dr td
 {
-	width: 87px;
+	width: 82px;
 }
 
-table#extra
+#extra
 {
-	position: absolute;
-	top: 423px;
+	top: 335px;
 	left: 260px;
 }
 
@@ -82,41 +53,23 @@ table#extra
 	width: 80px;
 }
 
-#PE,#TS,#PG
+#PE,#PG
 {
-	width: 10px;
+	width: 23px;
+}
+#TS
+{
+	width: 22px;
 }
 
-table#desctables
+#desctables
 {
-	position: absolute;
-	top: 365px;
+	top: 290px;
 	left: 0px;
-}
-
-table#segments th
-{
-	width: 50px;
-}
-
-#memory
-{
-	top: 460px;
-}
-
-#disasm
-{
-	top: 580px;
-}
-
-#message
-{
-	top: 580px;
 }
 
 #fs_dump btnicon,
 #gs_dump btnicon
 {
-	icon-decorator: image;
-	icon-image: icons/debugger/memory_dump.png 0px 0px 16px 16px;
+	decorator: image(icons/debugger/memory_dump.png );
 }

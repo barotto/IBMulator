@@ -12,77 +12,102 @@
 	margin-bottom: 8px;
 }
 
-table th
+button
 {
-	display: inline-block;
-	padding: 5px;
-	background-color: #FF5555d0;
-	font-weight: bold;
-	width: 20px;
-	text-align: center;
+	width: 30px;
 }
 
-table td
+th
 {
-	display: inline-block;
-	padding: 5px;
-	background-color: #38A838d0;
+	width: 35px;
+}
+
+td
+{
+	width: 50px;
+}
+
+.t
+{
 	width: 40px;
-	text-align: center;
 }
 
-table#flags td
+#generalregs,
+#segmentregs,
+#statusregs,
+#desctables,
+#dr,
+#flags,
+#extra
 {
-	width: 10px;
+	position: absolute;
+}
+
+#generalregs
+{
+	top: 0px;
+	left: 0px;
+}
+#generalregs td
+{
+	width: 80px;
+}
+
+#segmentregs
+{
+	top: 0px;
+	left: 150px;
+}
+
+#flags td
+{
+	width: 20px;
+}
+#flags th
+{
+	width: 25px;
 }
 
 #CPL,#A20
 {
-	width: 10px;
+	width: 20px;
 }
 
-table#segments
+#memory, #disasm
 {
-	position: absolute;
-	top: 0px;
+	margin-top: 10px;
+}
+
+#memory
+{
 	left: 0px;
 }
-
-table#segments th
+#memory th
 {
-	width: 40px;
+	width: 60px;
 }
-
-table#segments td
+#memory td
 {
 	width: 240px;
 }
 
-table#segments td#CS_EIP_str,
-table#segments td#DS_ESI_str,
-table#segments td#ES_EDI_str,
-table#segments td#SS_ESP_str,
+#memory #CS_EIP_str,
+#memory #DS_ESI_str,
+#memory #ES_EDI_str,
+#memory #SS_ESP_str,
 {
 	width: 130px;
 }
 
-table tr
-{
-	display: block;
-	margin-top: 1px;
-}
-
 #disasm
 {
-	font-size: 12px;
-	top: 450px;
-	background-color: #000000ff;
 	padding: 4px;
+	font-size: 12px;
+	background-color: #000000ff;
 }
 
 #message
 {
-	top: 450px;
 	padding: 4px;
 	font-size: 11px;
 	background-color: #383938FF;
@@ -97,30 +122,38 @@ table tr
 	background-color: #000000ff;
 }
 
-#CPU_step btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/cpu_step.png 0px 0px 16px 16px;
+#CPU_step btnicon
+{
+	decorator: image(icons/debugger/cpu_step.png);
 }
-#CPU_skip btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/cpu_skip.png 0px 0px 16px 16px;
+#CPU_skip btnicon
+{
+	decorator: image(icons/debugger/cpu_skip.png);
 }
-#CPU_bp_btn btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/cpu_breakp.png 0px 0px 16px 16px;
+#CPU_bp_btn btnicon
+{
+	decorator: image(icons/debugger/cpu_breakp.png);
 }
-#cmd_switch_power btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/control_power.png 0px 0px 16px 16px;
+#cmd_switch_power btnicon
+{
+	decorator: image(icons/debugger/control_power.png);
 }
-#cmd_pause btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/control_pause.png 0px 0px 16px 16px;
+#cmd_pause btnicon
+{
+	decorator: image(icons/debugger/control_pause.png);
 }
-#cmd_pause.on btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/control_run.png 0px 0px 16px 16px;
+#cmd_pause.on btnicon
+{
+	decorator: image(icons/debugger/control_run.png);
 }
+
+#cs_dump,#ds_dump,#ss_dump,#es_dump,
+#fs_dump,#gs_dump,
+#idt_dump,#gdt_dump,#ldt_dump
+{
+	width: 25px;
+}
+
 #mem_dump btnicon,
 #cs_dump btnicon,
 #ds_dump btnicon,
@@ -130,22 +163,21 @@ table tr
 #gdt_dump btnicon,
 #ldt_dump btnicon
 {
-	icon-decorator: image;
-	icon-image: icons/debugger/memory_dump.png 0px 0px 16px 16px;
+	decorator: image(icons/debugger/memory_dump.png);
 }
-#cmd_save_state btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/state_save.png 0px 0px 16px 16px;
+#cmd_save_state btnicon
+{
+	decorator: image(icons/debugger/state_save.png);
 }
-#cmd_restore_state btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/state_restore.png 0px 0px 16px 16px;
+#cmd_restore_state btnicon
+{
+	decorator: image(icons/debugger/state_restore.png);
 }
-#log_prg_toggle btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/processor_rec.png 0px 0px 16px 16px;
+#log_prg_toggle btnicon
+{
+	decorator: image(icons/debugger/processor_rec.png);
 }
-#log_write btnicon {
-	icon-decorator: image;
-	icon-image: icons/debugger/processor_dump.png 0px 0px 16px 16px;
+#log_write btnicon
+{
+	decorator: image(icons/debugger/processor_dump.png);
 }

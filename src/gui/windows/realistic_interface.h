@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,7 @@
 #include "interface.h"
 #include "mixer.h"
 #include "audio/soundfx.h"
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 
 class Machine;
 class GUI;
@@ -70,39 +70,39 @@ class RealisticInterface : public Interface
 {
 private:
 
-	RC::Element *m_system,
-	            *m_floppy_disk,
-	            *m_led_power,
-	            *m_led_power_bloom,
-	            *m_led_fdd_bloom,
-	            *m_led_hdd_bloom;
+	Rml::Element *m_system = nullptr,
+	             *m_floppy_disk = nullptr,
+	             *m_led_power = nullptr,
+	             *m_led_power_bloom = nullptr,
+	             *m_led_fdd_bloom = nullptr,
+	             *m_led_hdd_bloom = nullptr;
 
-	RC::Element *m_volume_slider,
-	            *m_brightness_slider,
-	            *m_contrast_slider;
+	Rml::Element *m_volume_slider = nullptr,
+	             *m_brightness_slider = nullptr,
+	             *m_contrast_slider = nullptr;
 
-	float m_slider_len_p;
-	float m_volume_left_min;
-	float m_brightness_left_min;
-	float m_contrast_left_min;
+	float m_slider_len_p = 0;
+	float m_volume_left_min = 0;
+	float m_brightness_left_min = 0;
+	float m_contrast_left_min = 0;
 
-	int   m_drag_start_x;
-	float m_drag_start_left;
+	int   m_drag_start_x = 0;
+	float m_drag_start_left = .0f;
 
-	float m_scale;
+	float m_scale = .0f;
 	enum DisplayAlign {
 		TOP, TOP_NOBEZEL, BOTTOM
 	};
-	unsigned m_display_align;
+	unsigned m_display_align = DisplayAlign::TOP;
 	enum ZoomMode {
 		WHOLE, MONITOR, BEZEL, SCREEN, CYCLE, MAX_ZOOM=SCREEN 
 	};
-	unsigned m_cur_zoom;
-	unsigned m_zoom_mode;
+	unsigned m_cur_zoom = ZoomMode::WHOLE;
+	unsigned m_zoom_mode = ZoomMode::CYCLE;
 	
 	static event_map_t ms_evt_map;
 
-	bool m_real_audio_enabled;
+	bool m_real_audio_enabled = false;
 	RealisticFX m_real_audio;
 
 	static constexpr float ms_min_slider_val = 0.0f;
@@ -127,7 +127,9 @@ public:
 	RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
 	~RealisticInterface();
 
-	void update();
+	virtual void create();
+	virtual void update();
+
 	void container_size_changed(int _width, int _height);
 
 	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
@@ -144,14 +146,14 @@ private:
 	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);
 	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
 
-	void set_slider_value(RC::Element *_slider, float _xmin, float _value);
+	void set_slider_value(Rml::Element *_slider, float _xmin, float _value);
 
-	float on_slider_drag(RC::Event &_event, float _xmin);
-	void  on_volume_drag(RC::Event &);
-	void  on_brightness_drag(RC::Event &);
-	void  on_contrast_drag(RC::Event &);
-	void  on_dragstart(RC::Event &);
-	void  on_power(RC::Event &);
+	float on_slider_drag(Rml::Event &_event, float _xmin);
+	void  on_volume_drag(Rml::Event &);
+	void  on_brightness_drag(Rml::Event &);
+	void  on_contrast_drag(Rml::Event &);
+	void  on_dragstart(Rml::Event &);
+	void  on_power(Rml::Event &);
 
 	inline RealisticScreen * screen() { return (RealisticScreen *)m_screen.get(); }
 };

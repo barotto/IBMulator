@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,29 +21,31 @@
 #define IBMULATOR_GUI_WINDOW_H
 
 
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 #include <functional>
 
 class GUI;
 class Window;
 
-typedef void (RC::EventListener::*event_handler_t)(RC::Event &);
-typedef std::pair<RC::String,RC::String> event_map_key_t;
+typedef void (Rml::EventListener::*event_handler_t)(Rml::Event &);
+typedef std::pair<std::string,std::string> event_map_key_t;
 typedef std::map<event_map_key_t, event_handler_t> event_map_t;
 #define GUI_EVT(id, type, fn) { {id, type}, static_cast<event_handler_t>(&fn) }
 
-class Window : public RC::EventListener
+class Window : public Rml::EventListener
 {
 protected:
-	GUI * m_gui;
-	RC::ElementDocument * m_wnd;
+	GUI *m_gui;
+	std::string m_rml_docfile;
+	Rml::ElementDocument *m_wnd;
 	static event_map_t ms_event_map;
 	bool m_evts_added;
 
 public:
 	Window(GUI * _gui, const char *_rml);
-	virtual ~Window();
+	virtual ~Window() {}
 
+	virtual void create();
 	virtual void show();
 	virtual void hide();
 	virtual void close();
@@ -54,11 +56,11 @@ public:
 	virtual void update();
 
 protected:
-	void ProcessEvent(RC::Event &);
+	void ProcessEvent(Rml::Event &);
 	virtual event_map_t & get_event_map() { return ms_event_map; }
-	RC::Element * get_element(const RC::String &_id);
+	Rml::Element * get_element(const std::string &_id);
 	void add_events();
-	void add_listener(const RC::String &_element, const RC::String& _event, EventListener* _listener);
+	void add_listener(const std::string &_element, const std::string &_event, EventListener *_listener);
 	void remove_events();
 };
 

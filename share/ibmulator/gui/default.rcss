@@ -12,36 +12,27 @@ body.window
 {
 	padding-top: 20px;
 	padding-bottom: 10px;
-	
-	/*min-width: 250px;*/
-	/*max-width: 800px;*/
-	
-	/*min-height: 135px;*/
-	/*max-height: 700px;*/
 }
 
 div#title_bar
 {
 	z-index: 1;
-
 	position: absolute;
 	top: 0px;
 	left: 0px;
-	
 	text-align: center;
-	
 	background-color: #FFFFFFA0;
 }
 
 #resize
 {
-	position: absolute; 
-	width: 16px; 
-	height: 16px; 
-	bottom: 0px; 
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	bottom: 0px;
 	right: 0px;
 	background-color: #FFFFFFA0;
-	z-index: top;
+	z-index: 9999;
 }
 
 #close
@@ -64,12 +55,6 @@ div#title_bar
 	font-size: 21px;
 	color: black;
 	width: 100%;
-
-/*
-	outline-font-effect: outline;
-	outline-width: 1px;
-	outline-color: black;
-*/
 }
 
 div#window
@@ -92,15 +77,57 @@ div#content
 
 h2
 {
+	display: block;
 	font-size: 18px;
 }
-
-
-
-
 
 scrollbarhorizontal
 {
 	width: 0px;
 	height: 0px;
+}
+
+table
+{
+	box-sizing: border-box;
+	display: table;
+}
+
+thead, tbody, tfoot
+{
+	display: table-row-group;
+}
+
+tr
+{
+	box-sizing: border-box;
+	display: table-row;
+}
+
+th
+{
+	box-sizing: border-box;
+	display: table-cell;
+
+	background-color: #FF5555d0;
+	font-weight: bold;
+	text-align: center;
+	vertical-align: middle;
+}
+
+td
+{
+	box-sizing: border-box;
+	display: table-cell;
+
+	padding: 2px;
+	background-color: #38A838d0;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.t
+{
+	padding: 0;
+	background-color: #00000000;
 }

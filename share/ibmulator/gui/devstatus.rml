@@ -6,62 +6,74 @@
 			body
 			{
 				width: 380px;
-				height: 600px;
+				height: 550px;
 				position: absolute;
 				bottom: 0;
 				right: 0;
 			}
-			div#window
+			section
 			{
-				
-			}
-			table {
 				display: block;
+				margin-bottom: 10px;
+				padding-top: 5px;
 			}
-			table tr {
-				display: block;
+			.tools
+			{
+				position: relative;
+				margin-bottom: 8px;
+			}
+			tr {
 				margin-top: 1px;
 			}
-			tr th {
-				display: inline-block;
+			th {
 				padding: 5px;
-				text-align: center;
-				margin: 1px;
-				background-color: #FF5555d0;
 			}
-			tr th.small {
+			th.small {
+				padding: 1px;
 				font-size: 10px;
 			}
-			tr th.large {
+			th.large {
 				font-size: 12px;
 			}
-			tr td {
-				margin: 1px;
-				display: inline-block;
-				background-color: #38A838d0;
+			td {
+				margin-left: 1px;
 			}
-			tr td.small {
-				padding: 4px 5px;
+			td.small {
+				padding: 4px;
 				font-size: 10px;
 			}
-			tr td.large {
+			td.large {
 				padding: 4px 5px;
 				font-size: 12px;
 			}
-			
-			#vga tr td {
+			td.led {
+				margin-left: 2px;
+				background-color: #564300FF;
+			}
+			td.led_active {
+				color: #000000;
+				background-color: #FFE600FF;
+			}
+
+			#vga th {
+				width: 45px;
+			}
+			#vga td {
 				text-align: left;
+			}
+			#vga td.led {
+				text-align: center;
 			}
 			#vga_mode, #vga_screen {
 				width: 260px;
 			}
 			#vga_vtotal, #vga_vdend, 
 			#vga_htotal, #vga_hdend {
-				width: 20px;
+				width: 30px;
 			}
 			#vga_vblank, #vga_vretr, 
 			#vga_hblank, #vga_hretr {
-				width: 35px;
+				width: 45px;
 			}
 			#vga_startaddr_hi, #vga_startaddr_lo {
 				width: 20px;
@@ -73,96 +85,95 @@
 				width: 50px;
 			}
 			#vga_scanl, #vga_pix_upd {
-				width: 30px;
+				width: 40px;
 			}
 			#vga_disp_phase, #vga_hretr_phase, #vga_vretr_phase {
-				width: 25px;
+				width: 40px;
 			}
 			#vga_upd {
-				width: 15px;
+				width: 40px;
 			}
 			#vga_saddr_line, #vga_pal_line {
 				width: 30px;
 			}
-			
-			#pic tr th {
+
+			#pic th {
+				width: 50px;
 				font-size: 10px;
-				width: 20px;
-				background-color: #FF5555d0;
+				padding: 0;
 			}
-			#pic tr td {
-				width: 10px;
+			#pic td {
+				width: 15px;
 				font-size: 9px;
+				padding: 0;
+				text-align: center;
+				
+			}
+
+			#pit table {
+				max-width: 300px;
+			}
+			#pit th {
 				padding: 2px;
-				text-align: center;
-			}
-			
-			#pit tr th {
-				display: inline-block;
-				padding: 5px;
-				background-color: #FF5555d0;
 				font-size: 10px;
-				width: 40px;
-				text-align: center;
-			}	
-			#pit tr td {
-				display: inline-block;
-				padding: 5px;
-				font-size: 10px;
-				width: 40px;
-				text-align: center;
+				margin-left: 1px;
 			}
-			
+			#pit td {
+				padding: 2px;
+				font-size: 10px;
+				margin-left: 1px;
+			}
+
 			#cmd_vga_update btnicon,
 			#cmd_pit_update btnicon,
-			#cmd_pic_update btnicon, {
-				icon-decorator: image;
-				icon-image: icons/debugger/update.png 0px 0px 16px 16px;
+			#cmd_pic_update btnicon
+			{
+				decorator: image(icons/debugger/update.png);
 			}
-			
-			td.led {
-				background-color: #564300FF;
-			}
-			td.led_active {
-				background-color: #FFE600FF;
-			}
+
+
 		</style>
 	</head>
 	<body template="default">
-		<div id="vga">
-			<p>VGA</p>
-			<button id="cmd_vga_update" style="width:30px; margin-right:10px;"><btnicon /></button>
-			<button id="cmd_vga_screenshot" style="width:100px; margin-right:10px;">screenshot</button>
-			<button id="cmd_vga_dump_state" style="width:100px;">dump state</button>
+		<section id="vga">
+			<h2>VGA</h2>
+			<div class="tools">
+				<button id="cmd_vga_update"><btnicon /></button>
+				<button id="cmd_vga_screenshot" class="text">screenshot</button>
+				<button id="cmd_vga_dump_state" class="text">dump state</button>
+			</div>
 			<table>
-				<tr><th class="large" style="width:40px;">mode</th><td class="large" id="vga_mode">?</td></tr>
-				<tr><th class="large" style="width:40px;">screen</th><td class="large" id="vga_screen">?</td></tr>
+				<tr><th class="large" style="width:50px;">mode</th><td class="large" id="vga_mode">?</td></tr>
+				<tr><th class="large" style="width:50px;">screen</th><td class="large" id="vga_screen">?</td></tr>
 			</table>
 			<p style="font-size:80%;">CRT Controller</p>
 			<table>
 				<tr>
-					<th class="small" style="width:34px;">htotal</th><td  class="small" id="vga_htotal">?</td>
-					<th class="small" style="width:34px;">hdend</th><td  class="small" id="vga_hdend">?</td>
-					<th class="small" style="width:34px;">hblank</th><td  class="small" id="vga_hblank">?</td>
-					<th class="small" style="width:34px;">hretr</th><td  class="small" id="vga_hretr">?</td>
+					<th class="small">htotal</th> <td class="small" id="vga_htotal">?</td>
+					<th class="small">hdend</th>  <td class="small" id="vga_hdend">?</td>
+					<th class="small">hblank</th> <td class="small" id="vga_hblank">?</td>
+					<th class="small">hretr</th>  <td class="small" id="vga_hretr">?</td>
 				</tr>
-				
+			</table>
+			<table>
 				<tr>
-					<th class="small" style="width:34px;">vtotal</th><td  class="small" id="vga_vtotal">?</td>
-					<th class="small" style="width:34px;">vdend</th><td  class="small" id="vga_vdend">?</td>
-					<th class="small" style="width:34px;">vblank</th><td  class="small" id="vga_vblank">?</td>
-					<th class="small" style="width:34px;">vretr</th><td  class="small" id="vga_vretr">?</td>
+					<th class="small">vtotal</th> <td class="small" id="vga_vtotal">?</td>
+					<th class="small">vdend</th>  <td class="small" id="vga_vdend">?</td>
+					<th class="small">vblank</th> <td class="small" id="vga_vblank">?</td>
+					<th class="small">vretr</th>  <td class="small" id="vga_vretr">?</td>
 				</tr>
-				
+			</table>
+			<table>
 				<tr>
 					<th class="small" style="width:70px;">start address</th>
 					<td  class="small" id="vga_startaddr_hi">?</td>
 					<td  class="small" id="vga_startaddr_lo">?</td>
 					<td  class="small" id="vga_startaddr_latch">?</td>
 				</tr>
-				
+			</table>
+			<table>
 				<tr>
-					<th class="small" style="width:40px;">scanline</th>
+					<th class="small">scanline</th>
 					<td id="vga_scanl" class="small">?</td>
 					<td id="vga_disp_phase" class="small led">disp</td>
 					<td id="vga_hretr_phase" class="small led">hretr</td>
@@ -172,25 +183,25 @@
 			<div id="vga_stats">
 			<p style="font-size:80%;">Stats</p>
 			<table>
-			<tr>
-				<th class="small" style="width:30px;">frame</th>
-					<td id="vga_frame_cnt" class="small">0</td>
-				<th class="small" style="width:40px;">upd. pix</th>
-					<td id="vga_pix_upd" class="small">0</td>
-					<td id="vga_upd" class="small led">upd</td>
-			</tr>
-			<tr>
-				<th class="small" style="width:50px;">saddr line</th>
-					<td id="vga_saddr_line" class="small">?</td>
-				<th class="small" style="width:50px;">pal line</th>
-					<td id="vga_pal_line" class="small">?</td>
-			</tr>
+				<tr>
+					<th class="small">frame</th>
+						<td id="vga_frame_cnt" class="small">0</td>
+					<th class="small">upd. pix</th>
+						<td id="vga_pix_upd" class="small">0</td>
+						<td id="vga_upd" class="small led">upd</td>
+				</tr>
+				<tr>
+					<th class="small">saddr line</th>
+						<td id="vga_saddr_line" class="small">?</td>
+					<th class="small">pal line</th>
+						<td id="vga_pal_line" class="small">?</td>
+				</tr>
 			</table>
 			</div>
-		</div>
-		<div id="pic">
-			<p>PIC</p>
-			<button id="cmd_pic_update" style="width:30px;"><btnicon /></button>
+		</section>
+		<section id="pic">
+			<h2>PIC</h2>
+			<button id="cmd_pic_update"><btnicon /></button>
 			<table>
 			<tr>
 				<th>IRQ</th>
@@ -237,18 +248,18 @@
 				<td id="pic_isr_14" class="led">14</td><td id="pic_isr_15" class="led">15</td>
 			</tr>
 			</table>
-		</div>
-		<div id="pit">
-			<p>PIT</p>
-			<button id="cmd_pit_update" style="width:30px;"><btnicon /></button>
+		</section>
+		<section id="pit">
+			<h2>PIT</h2>
+			<button id="cmd_pit_update"><btnicon /></button>
 			<table>
-				<tr><th>&nbsp;</th>  <th>C0</th>                <th>C1</th>                <th>C2</th></tr>
+				<tr><th class="t"></th>  <th>C0</th>                <th>C1</th>                <th>C2</th></tr>
 				<tr><th>mode</th>    <td id="pit_0_mode">0</td> <td id="pit_1_mode">0</td> <td id="pit_2_mode">0</td> </tr>
 				<tr><th>CNT</th>     <td id="pit_0_cnt">0</td>  <td id="pit_1_cnt">0</td>  <td id="pit_2_cnt">0</td>  </tr>
 				<tr><th>GATE</th>    <td id="pit_0_gate">0</td> <td id="pit_1_gate">0</td> <td id="pit_2_gate">0</td> </tr>
 				<tr><th>OUT</th>     <td id="pit_0_out" class="led">0</td>  <td id="pit_1_out" class="led">0</td>  <td id="pit_2_out" class="led">0</td>  </tr>
 				<tr><th>in</th>      <td id="pit_0_in">0</td>  <td id="pit_1_in">0</td>  <td id="pit_2_in">0</td>  </tr>
 			</table>
-		</div>
+		</section>
 	</body>
 </rml>

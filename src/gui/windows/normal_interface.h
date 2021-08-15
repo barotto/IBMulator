@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,7 +21,7 @@
 #define IBMULATOR_GUI_NORMAL_INTERFACE_H
 
 #include "interface.h"
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 
 class Machine;
 class GUI;
@@ -29,13 +29,13 @@ class GUI;
 class NormalInterface : public Interface
 {
 private:
-	uint m_vga_aspect;
-	uint m_vga_scaling;
+	uint m_vga_aspect = 0;
+	uint m_vga_scaling = 0;
 
-	RC::Element *m_sysunit, *m_sysbkgd;
-	RC::Element *m_btn_pause;
-	bool m_led_pause;
-	uint m_gui_mode;
+	Rml::Element *m_sysunit = nullptr, *m_sysbkgd = nullptr;
+	Rml::Element *m_btn_pause = nullptr;
+	bool m_led_pause = false;
+	uint m_gui_mode = 0;
 
 public:
 	static event_map_t ms_evt_map;
@@ -43,7 +43,9 @@ public:
 	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
 	~NormalInterface();
 
-	void update();
+	virtual void create();
+	virtual void update();
+
 	void container_size_changed(int _width, int _height);
 
 	void action(int);
@@ -54,10 +56,10 @@ public:
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 
 private:
-	void on_pause(RC::Event &);
-	void on_save(RC::Event &);
-	void on_restore(RC::Event &);
-	void on_exit(RC::Event &);
+	void on_pause(Rml::Event &);
+	void on_save(Rml::Event &);
+	void on_restore(Rml::Event &);
+	void on_exit(Rml::Event &);
 };
 
 #endif

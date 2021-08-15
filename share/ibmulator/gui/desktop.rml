@@ -10,7 +10,7 @@
 				top: 0;
 				left: 0;
 				background-color: #FF000000;
-				z-index: bottom;
+				z-index: 0;
 			}
 		</style>
 	</head>

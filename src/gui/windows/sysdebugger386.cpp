@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,8 +27,7 @@
 #include "hardware/cpu/debugger.h"
 #include "sysdebugger386.h"
 #include <cstdio>
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
+#include <RmlUi/Core.h>
 
 #include "format.h"
 
@@ -56,10 +55,18 @@ event_map_t SysDebugger386::ms_evt_map = {
 	GUI_EVT( "close",            "click", DebugTools::DebugWindow::on_close )
 };
 
-SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, RC::Element *_button)
+SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_button)
 : SysDebugger(_gui, "debugger386.rml", _machine, _button)
 {
-	assert(m_wnd);
+}
+
+SysDebugger386::~SysDebugger386()
+{
+}
+
+void SysDebugger386::create()
+{
+	SysDebugger::create();
 
 	m_386core.rf = get_element("RF");
 	m_386core.vm = get_element("VM");
@@ -87,16 +94,9 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, RC::Element *_butto
 	m_tools.eip_bp->SetValue(format_hex32(0));
 }
 
-SysDebugger386::~SysDebugger386()
-{
-}
-
-const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _size)
+const std::string & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
-	static RC::String str;
-
-	str = "";
 	static char empty = 0;
 
 	char dline[200];
@@ -120,7 +120,8 @@ const RC::String & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * _
 
 	dline[30] = 0;
 
-	str.FormatString(100, "%04X:%08X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _eip, dline, res);
+	static std::string str(100,0);
+	str_format(str, "%04X:%08X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _eip, dline, res);
 
 	return str;
 };
@@ -226,7 +227,7 @@ void SysDebugger386::update()
 		m_memory.ss_esp_str->SetInnerRML("#PF");
 	}
 
-	RC::String str;
+	std::string str;
 	unsigned size;
 	int lines = 3;
 	uint32_t nextip = REG_EIP;
@@ -248,7 +249,7 @@ void SysDebugger386::update()
 	m_disasm.line0->SetInnerRML(str);
 }
 
-void SysDebugger386::on_CPU_skip(RC::Event &)
+void SysDebugger386::on_CPU_skip(Rml::Event &)
 {
 	if(m_machine->is_paused()) {
 		uint size;
@@ -263,12 +264,12 @@ void SysDebugger386::on_CPU_skip(RC::Event &)
 	}
 }
 
-void SysDebugger386::on_fs_dump(RC::Event &)
+void SysDebugger386::on_fs_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_FS.desc.base, REG_FS.desc.limit);
 }
 
-void SysDebugger386::on_gs_dump(RC::Event &)
+void SysDebugger386::on_gs_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_GS.desc.base, REG_GS.desc.limit);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,7 +26,7 @@
 #include "hardware/memory.h"
 #include "hardware/devices/cmos.h"
 
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <sstream>
 #include <iomanip>
 
@@ -35,22 +35,25 @@ event_map_t Stats::ms_evt_map = {
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
-Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, RC::Element *_button)
+Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, Rml::Element *_button)
 :
-DebugTools::DebugWindow(_gui, "stats.rml", _button)
+DebugTools::DebugWindow(_gui, "stats.rml", _button),
+m_machine(_machine), m_mixer(_mixer)
 {
-	assert(m_wnd);
-	m_stats.fps = get_element("FPS");
 
-	m_machine = _machine;
-	m_stats.machine = get_element("machine");
-
-	m_mixer = _mixer;
-	m_stats.mixer = get_element("mixer");
 }
 
 Stats::~Stats()
 {
+}
+
+void Stats::create()
+{
+	DebugTools::DebugWindow::create();
+
+	m_stats.fps = get_element("FPS");
+	m_stats.machine = get_element("machine");
+	m_stats.mixer = get_element("mixer");
 }
 
 void Stats::update()
@@ -185,7 +188,7 @@ void Stats::print(std::ostream &_os, const HWBench &_bench)
 	_os << "CPU clock diff: " << int64_t(vdiff/1.0e6) << "<br />";
 }
 
-void Stats::on_cmd_reset(RC::Event &)
+void Stats::on_cmd_reset(Rml::Event &)
 {
 	// same thread
 	g_program.get_bench().reset_values();

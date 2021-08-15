@@ -11,9 +11,9 @@
 				top: 32px;
 				left: 0;
 			}
-			#cmd_reset btnicon {
-				icon-decorator: image;
-				icon-image: icons/debugger/update.png 0px 0px 16px 16px;
+			#cmd_reset btnicon
+			{
+				decorator: image(icons/debugger/update.png);
 			}
 		</style>
 	</head>

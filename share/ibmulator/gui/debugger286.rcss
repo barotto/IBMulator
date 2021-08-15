@@ -1,11 +1,14 @@
-table#generalregs
+#cpucore
 {
-	position: absolute;
-	top: 0px;
-	left: 0px;
+	height: 245px;
 }
 
-table#segmentregs
+#generalregs td
+{
+	width: 50px;
+}
+
+#segmentregs
 {
 	position: absolute;
 	top: 0px;
@@ -20,35 +23,26 @@ table#segmentregs
 	width: 50px;
 }
 
-table#statusregs
+#statusregs
 {
-	position: absolute;
-	top: 130px;
+	top: 100px;
 	left: 0px;
 }
 
-table#flags
+#flags
 {
-	position: absolute;
-	top: 160px;
-	left: 230px;
+	top: 120px;
+	left: 250px;
 }
 
-table#extra
+#extra
 {
-	position: absolute;
-	top: 285px;
-	left: 230px;
+	top: 220px;
+	left: 250px;
 }
 
-table#desctables
+#desctables
 {
-	position: absolute;
-	top: 230px;
+	top: 175px;
 	left: 0px;
-}
-
-#memory
-{
-	top: 330px;
 }

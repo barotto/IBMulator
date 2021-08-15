@@ -29,64 +29,48 @@
 				height: 100%;
 				top: 0;
 				left: 0;
-				background-decorator: image;
-    			background-image: images/sysunit_no_disk.png 0px 0px 1024px 256px;
+				decorator: image(images/sysunit_no_disk.png);
 			}
 			#sysbkgd.disk {
-				background-decorator: image;
-    			background-image: images/sysunit_disk_r.png 0px 0px 1024px 256px;
+				decorator: image(images/sysunit_disk_r.png);
 			}
 			#sysctrl {
 				width: 36%;
-				/*max-width: 500px;*/
 				height: 28%;
-				/*max-height: 90px;*/
 				position: absolute;
 				right: 0;
 				top: 0;
-				/*
-				bottom: 165px;
-				margin-left: auto;
-				margin-right: auto;
-				*/
 				background-color: #3F7CB6A0;
 			}
 			btn {
 				position: absolute;
 				top: 0;
 				width: 20%;
-				/*max-width: 100px;*/
 				height: 100%;
-				/*background-color: #3F7CB6A0;*/
 			}
-			
+
 			#power {
 				left: 0;
-    			background-decorator: image;
-    			background-image: icons/power.png 0px 0px 100px 100px;
+				decorator: image(icons/power.png);
 			}
 			#power.active {
 				background-color: #94E400A0;
 			}
 			#pause {
 				left: 20%;
-				background-decorator: image;
-    			background-image: icons/pause.png 0px 0px 100px 100px;
+				decorator: image(icons/pause.png);
 			}
 			#pause.resume {
 				background-color: #FFEF38A0;
-				background-decorator: image;
-    			background-image: icons/resume.png 0px 0px 100px 100px;
+				decorator: image(icons/resume.png);
 			}
 			#save {
 				left: 40%;
-				background-decorator: image;
-    			background-image: icons/save.png 0px 0px 100px 100px;
+				decorator: image(icons/save.png);
 			}
 			#restore {
 				left: 60%;
-				background-decorator: image;
-    			background-image: icons/restore.png 0px 0px 100px 100px;
+				decorator: image(icons/restore.png);
 			}
 			#restore.active {
 				background-color: #94E400A0;
@@ -94,8 +78,7 @@
 			#exit {
 				left: 80%;
 				background-color: #B63D3FA0;
-				background-decorator: image;
-    			background-image: icons/exit.png 0px 0px 100px 100px;
+				decorator: image(icons/exit.png);
 			}
 			#fdd_led {
 				width: 4%;
@@ -118,12 +101,10 @@
 				background-color: #3F7CB6A0;
 			}
 			#fdd_select.a {
-				background-decorator: image;
-    			background-image: icons/buttonA.png 12px 12px 90px 90px;
+				decorator: image(icons/buttonA.png);
 			}
 			#fdd_select.b {
-				background-decorator: image;
-    			background-image: icons/buttonB.png 12px 12px 90px 90px;
+				decorator: image(icons/buttonB.png);
 			}
 			#fdd_eject {
 				position: absolute;
@@ -149,9 +130,7 @@
 				top: 18%;
 				left: 6.5%;
 				background-color: #3F7CB600;
-				shadow-font-effect: shadow;
-    			shadow-offset: -1px 1px;
-			    shadow-color: black;
+				font-effect: shadow(-1px 1px black);
 			}
 			#hdd_led {
 				width: 4%;
@@ -177,16 +156,15 @@
 		</style>
 	</head>
 	<body>
-	
 		<div id="sysunit">
 			<div id="hdd_led"></div>
 			<div id="fdd_led"></div>
 			<div id="sysbkgd"></div>
 			<div id="fdd_disk"></div>
-			<div id="fdd_mount"></div>			
+			<div id="fdd_mount"></div>
 			<div id="fdd_select" class="a"></div>
 			<div id="fdd_eject"></div>
-			
+
 			<div id="sysctrl">
 				<btn id="power" />
 				<btn id="pause" />

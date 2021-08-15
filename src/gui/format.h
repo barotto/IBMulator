@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,17 +20,19 @@
 #ifndef IBMULATOR_GUI_FORMAT_H
 #define IBMULATOR_GUI_FORMAT_H
 
-const Rocket::Core::String & format_uint16(uint16_t _value);
-const Rocket::Core::String & format_bit(unsigned _value);
-const Rocket::Core::String & format_hex8(uint8_t _value);
-const Rocket::Core::String & format_hex16(uint16_t _value);
-const Rocket::Core::String & format_hex24(uint32_t _value);
-const Rocket::Core::String & format_hex32(uint32_t _value);
+#include <string>
+
+const std::string & format_uint16(uint16_t _value);
+const std::string & format_bit(unsigned _value);
+const std::string & format_hex8(uint8_t _value);
+const std::string & format_hex16(uint16_t _value);
+const std::string & format_hex24(uint32_t _value);
+const std::string & format_hex32(uint32_t _value);
 const char *byte_to_binary(uint8_t _value, char _buf[9]);
-const Rocket::Core::String & format_bin4(unsigned _value);
-const Rocket::Core::String & format_bin8(unsigned _value);
-const Rocket::Core::String & format_bin16(unsigned _value);
-const Rocket::Core::String & format_words(uint8_t *_buf, unsigned _len);
-const Rocket::Core::String & format_words_string(uint8_t *_buf, unsigned _len);
+const std::string & format_bin4(unsigned _value);
+const std::string & format_bin8(unsigned _value);
+const std::string & format_bin16(unsigned _value);
+const std::string & format_words(uint8_t *_buf, unsigned _len);
+const std::string & format_words_string(uint8_t *_buf, unsigned _len);
 
 #endif

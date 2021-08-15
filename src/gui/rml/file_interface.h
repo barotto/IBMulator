@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,33 +20,33 @@
 #ifndef IBMULATOR_GUI_FILE_INTERFACE_H
 #define IBMULATOR_GUI_FILE_INTERFACE_H
 
-#include <Rocket/Core/String.h>
-#include <Rocket/Core/FileInterface.h>
+#include <RmlUi/Core/FileInterface.h>
 
 
-class RocketFileInterface : public Rocket::Core::FileInterface
+class RmlFileInterface : public Rml::FileInterface
 {
 public:
 
-	RocketFileInterface(const Rocket::Core::String & _root);
+	RmlFileInterface(const std::string &_root);
+	virtual ~RmlFileInterface() {}
 
 	/// Opens a file.
-	virtual Rocket::Core::FileHandle Open(const Rocket::Core::String& path);
+	virtual Rml::FileHandle Open(const std::string &_path);
 
 	/// Closes a previously opened file.
-	virtual void Close(Rocket::Core::FileHandle file);
+	virtual void Close(Rml::FileHandle file);
 
 	/// Reads data from a previously opened file.
-	virtual size_t Read(void* buffer, size_t size, Rocket::Core::FileHandle file);
+	virtual size_t Read(void* buffer, size_t size, Rml::FileHandle file);
 
 	/// Seeks to a point in a previously opened file.
-	virtual bool Seek(Rocket::Core::FileHandle file, long offset, int origin);
+	virtual bool Seek(Rml::FileHandle file, long offset, int origin);
 
 	/// Returns the current position of the file pointer.
-	virtual size_t Tell(Rocket::Core::FileHandle file);
+	virtual size_t Tell(Rml::FileHandle file);
 
 private:
-	Rocket::Core::String root;
+	std::string root;
 };
 
 #endif

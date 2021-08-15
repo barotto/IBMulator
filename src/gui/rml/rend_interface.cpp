@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,29 +20,27 @@
 #include "ibmulator.h"
 #include "rend_interface.h"
 #include "gui.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <SDL_image.h>
 
-using namespace Rocket::Core;
-
-RocketRenderer::RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
-: Rocket::Core::RenderInterface(),
+RmlRenderer::RmlRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
+: Rml::RenderInterface(),
 m_renderer(_renderer),
 m_screen(_screen)
 {
 }
 
-RocketRenderer::~RocketRenderer()
+RmlRenderer::~RmlRenderer()
 {
 }
 
-// Called by Rocket when a texture is required by the library.
-bool RocketRenderer::LoadTexture(TextureHandle &texture_handle,
-		Vector2i &texture_dimensions, const String &source)
+// Called by RmlUi when a texture is required by the library.
+bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
+		Rml::Vector2i &texture_dimensions, const std::string &source)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture %s\n", source.CString());
-	FileInterface *file_interface = GetFileInterface();
-	FileHandle file_handle = file_interface->Open(source);
+	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture %s\n", source.c_str());
+	Rml::FileInterface *file_interface = Rml::GetFileInterface();
+	Rml::FileHandle file_handle = file_interface->Open(source);
 	if (!file_handle)
 		return false;
 
@@ -55,15 +53,15 @@ bool RocketRenderer::LoadTexture(TextureHandle &texture_handle,
 	file_interface->Close(file_handle);
 
 	size_t i;
-	for(i = source.Length() - 1; i > 0; i--) {
+	for(i = source.length() - 1; i > 0; i--) {
 		if(source[i] == '.') {
 			break;
 		}
 	}
 
-	String extension = source.Substring(i+1, source.Length()-i);
+	std::string extension = source.substr(i+1, source.length()-i);
 	SDL_Surface *surface = IMG_LoadTyped_RW(SDL_RWFromMem(&buffer[0], buffer_size), 1,
-			extension.CString());
+			extension.c_str());
 
 	if(!surface) {
 		return false;
@@ -75,11 +73,11 @@ bool RocketRenderer::LoadTexture(TextureHandle &texture_handle,
 		SDL_FreeSurface(surface);
 		return false;
 	}
-	texture_dimensions = Vector2i(surface->w, surface->h);
+	texture_dimensions = Rml::Vector2i(surface->w, surface->h);
 	SDL_FreeSurface(surface);
 	return true;
 }
 
-void RocketRenderer::SetDimensions(int, int)
+void RmlRenderer::SetDimensions(int, int)
 {
 }

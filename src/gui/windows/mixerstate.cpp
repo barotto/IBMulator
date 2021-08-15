@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,25 +22,29 @@
 #include "gui.h"
 #include "mixer.h"
 #include "mixerstate.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 
 event_map_t MixerState::ms_evt_map = {
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
-MixerState::MixerState(GUI *_gui, RC::Element *_button, Mixer *_mixer)
+MixerState::MixerState(GUI *_gui, Rml::Element *_button, Mixer *_mixer)
 :
-DebugTools::DebugWindow(_gui, "mixerstate.rml", _button)
+DebugTools::DebugWindow(_gui, "mixerstate.rml", _button),
+m_mixer(_mixer)
 {
-	assert(m_wnd);
-
-	m_mixer = _mixer;
-	m_divs.state = get_element("state");
-	m_divs.channels = get_element("channels");
 }
 
 MixerState::~MixerState()
 {
+}
+
+void MixerState::create()
+{
+	DebugTools::DebugWindow::create();
+
+	m_divs.state = get_element("state");
+	m_divs.channels = get_element("channels");
 }
 
 void MixerState::update()
@@ -87,10 +91,11 @@ void MixerState::update()
 		}
 		ss << " " << unsigned(round(ch.ch->in().spec().rate)) << "Hz";
 		ch.in_format->SetInnerRML(ss.str().c_str());
-		ch.in_frames->SetInnerRML(RC::String(20,"%d",ch.ch->in().frames()));
-		ch.in_us->SetInnerRML(RC::String(20,"%.0f",ch.ch->in().duration_us()));
-		ch.out_frames->SetInnerRML(RC::String(20,"%d",ch.ch->out().frames()));
-		ch.out_us->SetInnerRML(RC::String(20,"%.0f",ch.ch->out().duration_us()));
+		static std::string str(20,0);
+		ch.in_frames->SetInnerRML(str_format(str, "%d", ch.ch->in().frames()));
+		ch.in_us->SetInnerRML(str_format(str, "%.0f",ch.ch->in().duration_us()));
+		ch.out_frames->SetInnerRML(str_format(str, "%d",ch.ch->out().frames()));
+		ch.out_us->SetInnerRML(str_format(str, "%.0f",ch.ch->out().duration_us()));
 	}
 }
 
@@ -116,16 +121,15 @@ void MixerState::config_changed()
 		ss << "</tr>";
 	}
 	m_divs.channels->SetInnerRML(ss.str().c_str());
-	
-	
+
 	m_channels.clear();
 	for(auto ch : chs) {
 		m_channels.push_back({
 			ch,
-			get_element(RC::String(10,"%d",ch->id())),
-			get_element(RC::String(20,"%d_inf",ch->id())),
-			get_element(RC::String(20,"%d_infr",ch->id())), get_element(RC::String(20,"%d_inus",ch->id())),
-			get_element(RC::String(20,"%d_outfr",ch->id())), get_element(RC::String(20,"%d_outus",ch->id())),
+			get_element(str_format("%d",ch->id())),
+			get_element(str_format("%d_inf",ch->id())),
+			get_element(str_format("%d_infr",ch->id())), get_element(str_format("%d_inus",ch->id())),
+			get_element(str_format("%d_outfr",ch->id())), get_element(str_format("%d_outus",ch->id())),
 		});
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -17,114 +17,100 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <Rocket/Core/Types.h>
+#include "utils.h"
 #include "format.h"
+#include <cstring>
 
 
-const Rocket::Core::String & format_uint16(uint16_t _value)
+const std::string & format_uint16(uint16_t _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(6,"%u",_value);
+	static std::string str("65535");
+	str_format(str, "%u", _value);
 	return str;
 }
 
-const Rocket::Core::String & format_bit(unsigned _value)
+const std::string & format_bit(unsigned _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(2,"%d",_value);
+	static std::string str("1");
+	str_format(str, "%u", _value);
 	return str;
 }
 
-const Rocket::Core::String & format_hex8(uint8_t _value)
+const std::string & format_hex8(uint8_t _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(3,"%02X",_value);
+	static std::string str("FF");
+	str_format_sized(str, "%02X", _value);
 	return str;
 }
 
-const Rocket::Core::String & format_hex16(uint16_t _value)
+const std::string & format_hex16(uint16_t _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(5,"%04X",_value);
+	static std::string str("FFFF");
+	str_format_sized(str, "%04X", _value);
 	return str;
 }
 
-const Rocket::Core::String & format_hex24(uint32_t _value)
+const std::string & format_hex24(uint32_t _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(7,"%06X",_value);
+	static std::string str("FFFFFF");
+	str_format_sized(str, "%06X", _value);
 	return str;
 }
 
-const Rocket::Core::String & format_hex32(uint32_t _value)
+const std::string & format_hex32(uint32_t _value)
 {
-	static Rocket::Core::String str;
-	str.FormatString(9,"%08X",_value);
+	static std::string str("FFFFFFFF");
+	str_format_sized(str, "%08X", _value);
 	return str;
 }
 
 const char *byte_to_binary(uint8_t _value, char _buf[9])
 {
-    _buf[0] = '\0';
+	_buf[0] = '\0';
 
-    for(int i = 128; i > 0; i >>= 1) {
-        strcat(_buf, ((_value & i) == i) ? "1" : "0");
-    }
+	for(int i = 128; i > 0; i >>= 1) {
+		strcat(_buf, ((_value & i) == i) ? "1" : "0");
+	}
 
-    return _buf;
+	return _buf;
 }
 
 const char *nibble_to_binary(uint8_t _value, char _buf[5])
 {
-    _buf[0] = '\0';
+	_buf[0] = '\0';
 
-    for(int i = 8; i > 0; i >>= 1) {
-        strcat(_buf, ((_value & i) == i) ? "1" : "0");
-    }
+	for(int i = 8; i > 0; i >>= 1) {
+		strcat(_buf, ((_value & i) == i) ? "1" : "0");
+	}
 
-    return _buf;
+	return _buf;
 }
 
-const Rocket::Core::String & format_bin4(unsigned _value)
+const std::string & format_bin4(unsigned _value)
 {
-	static Rocket::Core::String str;
-	char nibble[5];
-
-	nibble_to_binary(_value&0xF, nibble);
-
-	str.FormatString(5,"%s",nibble);
-
+	static std::string str("1111");
+	nibble_to_binary(_value&0xF, str.data());
 	return str;
 }
 
-const Rocket::Core::String & format_bin8(unsigned _value)
+const std::string & format_bin8(unsigned _value)
 {
-	static Rocket::Core::String str;
-	char byte[9];
-
-	byte_to_binary(uint8_t(_value), byte);
-
-	str.FormatString(9,"%s",byte);
-
+	static std::string str("11111111");
+	byte_to_binary(uint8_t(_value), str.data());
 	return str;
 }
 
-const Rocket::Core::String & format_bin16(unsigned _value)
+const std::string & format_bin16(unsigned _value)
 {
-	static Rocket::Core::String str;
-	char byte0[9], byte1[9];
-
-	byte_to_binary(uint8_t(_value), byte0);
-	byte_to_binary(uint8_t(_value>>8), byte1);
-
-	str.FormatString(17,"%s%s",byte1,byte0);
-
+	static std::string str("0000000011111111");
+	byte_to_binary(uint8_t(_value), &str[0]);
+	byte_to_binary(uint8_t(_value>>8), &str[8]);
 	return str;
 }
 
-const Rocket::Core::String & format_words(uint8_t *_buf, unsigned _len)
+const std::string & format_words(uint8_t *_buf, unsigned _len)
 {
-	static Rocket::Core::String str, word;
+	static std::string str, word("FFFF");
 	str = "";
 	int byte0, byte1;
 	while(_len) {
@@ -136,7 +122,7 @@ const Rocket::Core::String & format_words(uint8_t *_buf, unsigned _len)
 		} else {
 			byte1 = 0;
 		}
-		word.FormatString(5,"%02X%02X",byte0,byte1);
+		str_format_sized(word, "%02X%02X", byte0, byte1);
 		str += word;
 		if(_len) {
 			str += " ";
@@ -146,9 +132,9 @@ const Rocket::Core::String & format_words(uint8_t *_buf, unsigned _len)
 	return str;
 }
 
-const Rocket::Core::String & format_words_string(uint8_t *_buf, unsigned _len)
+const std::string & format_words_string(uint8_t *_buf, unsigned _len)
 {
-	static Rocket::Core::String str;
+	static std::string str;
 	str = "";
 	char byte0;
 	while(_len--) {

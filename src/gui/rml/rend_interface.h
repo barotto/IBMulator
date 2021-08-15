@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,21 +21,21 @@
 #define IBMULATOR_GUI_REND_INTERFACE_H
 
 #include <SDL.h>
-#include <Rocket/Core/RenderInterface.h>
+#include <RmlUi/Core/RenderInterface.h>
 
 
-class RocketRenderer : public Rocket::Core::RenderInterface
+class RmlRenderer : public Rml::RenderInterface
 {
 protected:
 	SDL_Renderer *m_renderer;
 	SDL_Window *m_screen;
 
 public:
-	RocketRenderer(SDL_Renderer * _renderer, SDL_Window * _screen);
-	virtual ~RocketRenderer();
+	RmlRenderer(SDL_Renderer * _renderer, SDL_Window * _screen);
+	virtual ~RmlRenderer();
 
-	virtual bool LoadTexture(Rocket::Core::TextureHandle& texture_handle,
-			Rocket::Core::Vector2i& texture_dimensions, const Rocket::Core::String& source);
+	virtual bool LoadTexture(Rml::TextureHandle &_texture_handle,
+			Rml::Vector2i &_texture_dimensions, const std::string &_source);
 	
 	virtual void SetDimensions(int _width, int _height);
 };

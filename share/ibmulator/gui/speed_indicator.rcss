@@ -26,6 +26,5 @@
 #speed.warning .warning_icon {
 	width: 2em;
 	height: 2em;
-	background-decorator: image;
-	background-image: icons/warning.png 0px 0px 100px 100px;
+	decorator: image(icons/warning.png none fill left top);
 }

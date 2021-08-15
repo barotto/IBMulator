@@ -13,7 +13,6 @@
 				max-height: 768px;
 				margin: auto;
 				background-color: #3C5464FF;
-				
 			}
 			div#window
 			{
@@ -23,74 +22,67 @@
 			{
 				background-color: #FFFFFFFF;
 			}
-			#cwd {
+			#cwd
+			{
 				width: 95%;
 				margin: 0 auto 0 auto;
-				/*font-family: "Nouveau IBM";*/
 				font-size: 20px;
 				text-align: right;
-				shadow-font-effect: shadow;
-    			shadow-offset: -2px 2px;
-			    shadow-color: black;
-			    overflow: hidden auto;
+				font-effect: shadow(-2px 2px black);
+				overflow: hidden auto;
 			}
-			#list {
+			#list
+			{
 				background-color: #FCFCA8FF;
-				/*width: 95%;*/
 				width: 100%;
 				height: 85%;
 				margin: 0 auto 20px auto;
+			}
+			@spritesheet
+			{
+				src: images/romshell_datagrid_rl.png;
+
+				datag-tl: 0px 0px 6px 6px;
+				datag-t:  7px 0px 528px 6px;
+				datag-tr: 528px 0px 7px 6px;
+
+				datag-bl: 0px 184px 28px 7px;
+				datag-b:  28px 184px 500px 7px;
+				datag-br: 528px 184px 7px 7px;
+
+				datag-l: 0px 11px 28px 173px;
+				datag-c: 28px 11px 500px 173px;
+				datag-r: 528px 6px 7px 178px;
 			}
 			datagrid
 			{
 				width: 80%;
 				height: 85%;
-				padding: 2% 28px 2% 4px;
+				padding: 20px 28px 4px 4px;
 				margin: auto;
-				/*font-family: "Nouveau IBM";*/
 				font-size: 20px;
 				color: black;
-				min-rows: 10;
-				
-				background-decorator: tiled-box;
-				
-				background-top-left-image: images/romshell_datagrid_rl.png 0px 0px 6px 6px;
-				background-top-image: images/romshell_datagrid_rl.png stretch 7px 0px 528px 6px;
-				background-top-right-image: images/romshell_datagrid_rl.png 528px 0px 535px 6px;
-				
-				background-bottom-left-image: images/romshell_datagrid_rl.png 0px 184px 28px 191px;
-				background-bottom-image: images/romshell_datagrid_rl.png stretch 28px 184px 528px 191px;
-				background-bottom-right-image: images/romshell_datagrid_rl.png 528px 184px 535px 191px;
-				
-				background-left-image: images/romshell_datagrid_rl.png stretch 0px 11px 28px 184px;
-				background-center-image: images/romshell_datagrid_rl.png stretch 28px 11px 528px 184px;
-				background-right-image: images/romshell_datagrid_rl.png stretch 528px 6px 535px 184px;
-
+				decorator: tiled-box(
+					datag-tl, datag-t, datag-tr,
+					datag-l,  datag-c, datag-r,
+					datag-bl, datag-b, datag-br
+				);
 			}
 			datagrid datagridheader
 			{
 				height: 0;
+			}
+			@spritesheet
+			{
+				src: images/romshell_datagridcell.png;
+				datarow: 26px 0px 2px 22px;
 			}
 			datagrid datagridrow
 			{
 				padding-left: 26px;
 				padding-top: 1px;
 				height: 34px;
-				background-decorator: image;
-				background-image: images/romshell_datagridcell.png 26px 0px 28px 22px;
-			}
-			datagrid datagridcell
-			{
-				/*
-				width: auto;
-				height: 22px;
-				padding: 0px 0px 0px 26px;
-				
-				background-decorator: tiled-horizontal;
-				background-left-image: images/romshell_datagridcell.png 0px 0px 25px 23px;
-				background-center-image: images/romshell_datagridcell.png stretch 26px 0px 28px 23px;
-				background-right-image: images/romshell_datagridcell.png 194px 0px 196px 23px;
-				*/
+				decorator: image(datarow);
 			}
 			#buttons {
 				position:absolute;
@@ -99,7 +91,6 @@
 				width: 20em;
 				height: 25px;
 			}
-			
 			#wprotect {
 				position: absolute;
 				left:0;
@@ -108,18 +99,26 @@
 				position: absolute;
 				right:0;
 			}
+			@spritesheet
+			{
+				src: icons/file_select.png;
+				directory: 64px 0px 32px 32px;
+				floppy_3_5: 0px 0px 32px 32px;
+				floppy_5_14: 32px 0px 32px 32px;
+				hdd: 96px 0px 32px 32px;
+			}
+			.name {
+			}
 			.DIR {
 				height: 32px;
 				width: 32px;
-				background-decorator: image;
-				background-image: icons/file_select.png 64px 0px 96px 32px;
+				decorator: image(directory);
 			}
 			.floppy_720,
 			.floppy_1_44 {
 				height: 32px;
 				width: 32px;
-				background-decorator: image;
-				background-image: icons/file_select.png 0px 0px 32px 32px;
+				decorator: image(floppy_3_5);
 			}
 			.floppy_160,
 			.floppy_180,
@@ -128,14 +127,12 @@
 			.floppy_1_20 {
 				height: 32px;
 				width: 32px;
-				background-decorator: image;
-				background-image: icons/file_select.png 32px 0px 64px 32px;
+				decorator: image(floppy_5_14);
 			}
 			.hdd {
 				height: 32px;
 				width: 32px;
-				background-decorator: image;
-				background-image: icons/file_select.png 96px 0px 128px 32px;
+				decorator: image(hdd);
 			}
 		</style>
 	</head>

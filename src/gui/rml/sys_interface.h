@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,11 +21,11 @@
 #define IBMULATOR_GUI_SYS_INTERFACE_H
 
 #include <SDL.h>
-#include <Rocket/Core/SystemInterface.h>
-#include <Rocket/Core/Input.h>
+#include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/Input.h>
 
 
-class RocketSystemInterface : public Rocket::Core::SystemInterface
+class RmlSystemInterface : public Rml::SystemInterface
 {
 	static const char ascii_map[4][51];
 	static const char keypad_map[2][18];
@@ -34,19 +34,19 @@ public:
 
 	/// Get the number of seconds elapsed since the start of the application.
 	/// @return Elapsed time, in seconds.
-	float GetElapsedTime();
+	double GetElapsedTime();
 	
 	/// Log the specified message.
 	/// @param[in] type Type of log message, ERROR, WARNING, etc.
 	/// @param[in] message Message to log.
 	/// @return True to continue execution, false to break into the debugger.
-	bool LogMessage(Rocket::Core::Log::Type type, const Rocket::Core::String& message);
+	bool LogMessage(Rml::Log::Type _type, const std::string &_message);
 
-	static Rocket::Core::word GetCharacterCode(
-			Rocket::Core::Input::KeyIdentifier key_identifier,
+	static char GetCharacterCode(
+			Rml::Input::KeyIdentifier key_identifier,
 			int key_modifier_state);
 
-	Rocket::Core::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
+	Rml::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
 	int TranslateMouseButton(Uint8 button);
 	int GetKeyModifiers();
 };

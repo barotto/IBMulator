@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,9 +25,7 @@
 #include "devstatus.h"
 #include "mixerstate.h"
 #include "hardware/cpu.h"
-
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
+#include <RmlUi/Core.h>
 
 event_map_t DebugTools::ms_evt_map = {
 	GUI_EVT( "stats",    "click", DebugTools::on_stats ),
@@ -40,103 +38,123 @@ event_map_t DebugTools::ms_evt_map = {
 DebugTools::DebugTools(GUI *_gui, Machine *_machine, Mixer *_mixer)
 :
 Window(_gui, "debugtools.rml"),
-m_machine(_machine)
+m_machine(_machine),
+m_mixer(_mixer),
+m_statsw(nullptr), m_debuggerw(nullptr), m_devicesw(nullptr), m_mixerw(nullptr)
 {
-	assert(m_wnd);
-	m_debugger = nullptr; // will be created in the config_changed
-	m_stats = new Stats(_machine, _gui, _mixer, get_element("stats"));
-	m_devices = new DevStatus(_gui, get_element("devices"), _machine);
-	m_mixer = new MixerState(_gui, get_element("mixer"), _mixer);
 }
 
 DebugTools::~DebugTools()
 {
-	if(m_debugger) {
-		m_debugger->close();
-		delete m_debugger;
+	if(m_debuggerw) {
+		m_debuggerw->close();
+		delete m_debuggerw;
 	}
-	if(m_devices) {
-		m_devices->close();
-		delete m_devices;
+	if(m_devicesw) {
+		m_devicesw->close();
+		delete m_devicesw;
 	}
-	if(m_stats) {
-		m_stats->close();
-		delete m_stats;
+	if(m_statsw) {
+		m_statsw->close();
+		delete m_statsw;
 	}
-	if(m_mixer) {
-		m_mixer->close();
-		delete m_mixer;
+	if(m_mixerw) {
+		m_mixerw->close();
+		delete m_mixerw;
+	}
+}
+
+void DebugTools::create()
+{
+	Window::create();
+
+	if(m_debuggerw) {
+		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(m_debuggerw));
+		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
+			bool enabled = m_debuggerw->m_enabled;
+			m_debuggerw->close();
+			delete m_debuggerw;
+			if(CPU_FAMILY >= CPU_386) {
+				m_debuggerw = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
+			} else {
+				m_debuggerw = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
+			}
+			m_debuggerw->create();
+			m_debuggerw->enable(enabled);
+			m_debuggerw->show();
+		}
+	} else {
+		if(CPU_FAMILY >= CPU_386) {
+			m_debuggerw = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
+		} else {
+			m_debuggerw = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
+		}
+		m_debuggerw->create();
+	}
+	if(!m_statsw) {
+		m_statsw = new Stats(m_machine, m_gui, m_mixer, get_element("stats"));
+		m_statsw->create();
+	}
+	if(!m_devicesw) {
+		m_devicesw = new DevStatus(m_gui, get_element("devices"), m_machine);
+		m_devicesw->create();
+	}
+	if(!m_mixerw) {
+		m_mixerw = new MixerState(m_gui, get_element("mixer"), m_mixer);
+		m_mixerw->create();
 	}
 }
 
 void DebugTools::config_changed()
 {
-	if(m_debugger) {
-		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(m_debugger));
-		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
-			bool enabled = m_debugger->m_enabled;
-			m_debugger->close();
-			delete m_debugger;
-			if(CPU_FAMILY >= CPU_386) {
-				m_debugger = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
-			} else {
-				m_debugger = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
-			}
-			m_debugger->enable(enabled);
-			m_debugger->show();
-		}
-	} else {
-		if(CPU_FAMILY >= CPU_386) {
-			m_debugger = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
-		} else {
-			m_debugger = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
-		}
-	}
-	m_devices->config_changed();
-	m_stats->config_changed();
-	m_mixer->config_changed();
+	create();
+
+	m_debuggerw->config_changed();
+	m_devicesw->config_changed();
+	m_statsw->config_changed();
+	m_mixerw->config_changed();
 }
 
-void DebugTools::on_stats(RC::Event &)
+void DebugTools::on_stats(Rml::Event &)
 {
-	m_stats->toggle();
+	m_statsw->toggle();
 }
 
-void DebugTools::on_debugger(RC::Event &)
+void DebugTools::on_debugger(Rml::Event &)
 {
-	m_debugger->toggle();
+	m_debuggerw->toggle();
 }
 
-void DebugTools::on_devices(RC::Event &)
+void DebugTools::on_devices(Rml::Event &)
 {
-	m_devices->toggle();
+	m_devicesw->toggle();
 }
 
-void DebugTools::on_mixer(RC::Event &)
+void DebugTools::on_mixer(Rml::Event &)
 {
-	m_mixer->toggle();
+	m_mixerw->toggle();
 }
 
-void DebugTools::on_close(RC::Event &)
+void DebugTools::on_close(Rml::Event &)
 {
 	m_gui->toggle_dbg_windows();
 }
 
 void DebugTools::hide()
 {
-	m_debugger->hide();
-	m_stats->hide();
-	m_devices->hide();
-	m_mixer->hide();
+	m_debuggerw->hide();
+	m_statsw->hide();
+	m_devicesw->hide();
+	m_mixerw->hide();
 	Window::hide();
 }
 
 void DebugTools::show()
 {
-	m_debugger->show();
-	m_stats->show();
-	m_devices->show();
-	m_mixer->show();
+	m_debuggerw->show();
+	m_statsw->show();
+	m_devicesw->show();
+	m_mixerw->show();
 	Window::show();
 }
 
@@ -146,17 +164,17 @@ void DebugTools::update()
 	static bool dbgupdate = true;
 	dbgupdate = !dbgupdate;
 	if(dbgupdate) {
-		m_debugger->update();
-		m_devices->update();
+		m_debuggerw->update();
+		m_devicesw->update();
 	}
-	m_stats->update();
-	m_mixer->update();
+	m_statsw->update();
+	m_mixerw->update();
 }
 
 void DebugTools::show_message(const char* _mex)
 {
-	if(m_debugger) {
-		((SysDebugger*)m_debugger)->show_message(_mex);
+	if(m_debuggerw) {
+		((SysDebugger*)m_debuggerw)->show_message(_mex);
 	}
 }
 
@@ -164,7 +182,7 @@ void DebugTools::show_message(const char* _mex)
  * DebugTools::DebugWindow
  */
 
-DebugTools::DebugWindow::DebugWindow(GUI * _gui, const char *_rml, RC::Element *_button)
+DebugTools::DebugWindow::DebugWindow(GUI * _gui, const char *_rml, Rml::Element *_button)
 :
 Window(_gui, _rml),
 m_enabled(false),
@@ -179,7 +197,7 @@ void DebugTools::DebugWindow::show()
 	}
 }
 
-void DebugTools::DebugWindow::on_close(RC::Event &)
+void DebugTools::DebugWindow::on_close(Rml::Event &)
 {
 	enable(false);
 	Window::hide();

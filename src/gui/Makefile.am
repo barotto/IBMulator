@@ -10,11 +10,11 @@ libgui_a_SOURCES = \
 	vector.cpp \
 	matrix.cpp \
 	keymap.cpp \
-	rocket/file_interface.cpp \
-	rocket/rend_interface.cpp \
-	rocket/rend_interface_opengl.cpp \
-	rocket/rend_interface_sdl2d.cpp \
-	rocket/sys_interface.cpp \
+	rml/file_interface.cpp \
+	rml/rend_interface.cpp \
+	rml/rend_interface_opengl.cpp \
+	rml/rend_interface_sdl2d.cpp \
+	rml/sys_interface.cpp \
 	format.cpp \
 	window.cpp \
 	windows/desktop.cpp \
@@ -50,11 +50,11 @@ noinst_HEADERS = \
 	matrix.h \
 	matrix.inl.h \
 	keymap.h \
-	rocket/file_interface.h \
-	rocket/rend_interface.h \
-	rocket/rend_interface_opengl.h \
-	rocket/rend_interface_sdl2d.h \
-	rocket/sys_interface.h \
+	rml/file_interface.h \
+	rml/rend_interface.h \
+	rml/rend_interface_opengl.h \
+	rml/rend_interface_sdl2d.h \
+	rml/sys_interface.h \
 	format.h \
 	window.h \
 	windows/desktop.h \

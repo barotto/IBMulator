@@ -20,7 +20,9 @@
 #ifndef IBMULATOR_UTILS_H
 #define IBMULATOR_UTILS_H
 
+#include <string>
 #include <vector>
+#include <array>
 
 #ifdef __GNUC__
 #define bswap16 __builtin_bswap16
@@ -68,7 +70,10 @@ std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_s
 template<typename ... Args>
 std::string str_format(const char *_format, Args ... _args)
 {
-	// TODO please reconsider for C++20
+	// TODO reconsider for C++20?
+	// lol no, std::format is incompatible with printf format
+	// I have better things to do than convert every single format string to std::format
+
 	int size = std::snprintf(nullptr, 0, _format, _args ...);
 	if(size < 0) {
 		throw std::runtime_error("Error during string formatting.");
@@ -79,6 +84,29 @@ std::string str_format(const char *_format, Args ... _args)
 		snprintf(&buf[0], size+1, _format, _args ...); // size in char+null!
 	}
 	return buf;
+}
+
+template<typename ... Args>
+std::string & str_format(std::string &_result, const char *_format, Args ... _args)
+{
+	int size = std::snprintf(nullptr, 0, _format, _args ...);
+	if(size < 0) {
+		throw std::runtime_error("Error during string formatting.");
+	}
+	_result.resize(size);
+	if(size) {
+		snprintf(_result.data(), _result.size()+1, _format, _args ...);
+	}
+	return _result;
+}
+
+template<typename ... Args>
+std::string & str_format_sized(std::string &_result, const char *_format, Args ... _args)
+{
+	if(_result.size()) {
+		snprintf(_result.data(), _result.size()+1, _format, _args ...);
+	}
+	return _result;
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,

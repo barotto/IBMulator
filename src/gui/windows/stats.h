@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,7 +31,7 @@ class Stats : public DebugTools::DebugWindow
 private:
 
 	struct {
-		Rocket::Core::Element *fps, *machine, *mixer;
+		Rml::Element *fps, *machine, *mixer;
 	} m_stats;
 
 	Machine * m_machine;
@@ -39,14 +39,16 @@ private:
 
 	static event_map_t ms_evt_map;
 
-	void on_cmd_reset(RC::Event &);
+	void on_cmd_reset(Rml::Event &);
 	
 public:
 
-	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, RC::Element *_button);
+	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, Rml::Element *_button);
 	~Stats();
+	
+	virtual void create();
+	virtual void update();
 
-	void update();
 	event_map_t & get_event_map() { return Stats::ms_evt_map; }
 	
 private:

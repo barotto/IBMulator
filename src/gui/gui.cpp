@@ -28,11 +28,10 @@
 #include "utils.h"
 #include "wincompat.h"
 
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
-#include <Rocket/Debugger.h>
-#include "rocket/sys_interface.h"
-#include "rocket/file_interface.h"
+#include <RmlUi/Core.h>
+#include <RmlUi/Debugger.h>
+#include "rml/sys_interface.h"
+#include "rml/file_interface.h"
 #include <SDL_image.h>
 
 #include "windows/desktop.h"
@@ -49,7 +48,7 @@
 #include <iomanip>
 
 
-std::mutex GUI::ms_rocket_mutex;
+std::mutex GUI::ms_rml_mutex;
 std::mutex GUI::Windows::s_interface_mutex;
 Uint32 GUI::ms_sdl_user_evt_id = 0;
 
@@ -119,9 +118,9 @@ m_vga_buffering(false),
 m_threads_sync(false),
 m_current_keymap(0),
 m_symspeed_factor(1.0),
-m_rocket_sys_interface(nullptr),
-m_rocket_file_interface(nullptr),
-m_rocket_context(nullptr)
+m_rml_sys_interface(nullptr),
+m_rml_file_interface(nullptr),
+m_rml_context(nullptr)
 {
 	m_input.gui = this;
 	m_joystick[0].sdl_id = JOY_NONE;
@@ -132,11 +131,11 @@ m_rocket_context(nullptr)
 
 GUI::~GUI()
 {
-	if(m_rocket_sys_interface) {
-		delete m_rocket_sys_interface;
+	if(m_rml_sys_interface) {
+		delete m_rml_sys_interface;
 	}
-	if(m_rocket_file_interface) {
-		delete m_rocket_file_interface;
+	if(m_rml_file_interface) {
+		delete m_rml_file_interface;
 	}
 }
 
@@ -219,7 +218,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	
 	// INTERFACE INITIALIZATION
 	try {
-		init_Rocket();
+		init_rmlui();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
 		shutdown_SDL();
@@ -366,34 +365,33 @@ void GUI::toggle_fullscreen()
 	}
 }
 
-void GUI::init_Rocket()
+void GUI::init_rmlui()
 {
-	create_rocket_renderer();
+	create_renderer();
 	
-	m_rocket_sys_interface = new RocketSystemInterface();
-	m_rocket_file_interface = new RocketFileInterface(m_assets_path.c_str());
+	m_rml_sys_interface = new RmlSystemInterface();
+	m_rml_file_interface = new RmlFileInterface(m_assets_path.c_str());
 
-	Rocket::Core::SetFileInterface(m_rocket_file_interface);
-	Rocket::Core::SetRenderInterface(m_rocket_renderer.get());
-	Rocket::Core::SetSystemInterface(m_rocket_sys_interface);
+	Rml::SetFileInterface(m_rml_file_interface);
+	Rml::SetRenderInterface(m_rml_renderer.get());
+	Rml::SetSystemInterface(m_rml_sys_interface);
 
-	if(!Rocket::Core::Initialise()) {
-		PERRF(LOG_GUI, "Unable to initialise libRocket\n");
+	if(!Rml::Initialise()) {
+		PERRF(LOG_GUI, "Unable to initialise RmlUi\n");
 		throw std::exception();
 	}
-	Rocket::Core::FontDatabase::LoadFontFace("fonts/ProFontWindows.ttf");
-	Rocket::Core::FontDatabase::LoadFontFace("fonts/Nouveau_IBM.ttf");
-	m_rocket_context = Rocket::Core::CreateContext("default", Rocket::Core::Vector2i(m_width, m_height));
-	Rocket::Debugger::Initialise(m_rocket_context);
-	Rocket::Controls::Initialise();
+	Rml::LoadFontFace("fonts/ProFontWindows.ttf");
+	Rml::LoadFontFace("fonts/Nouveau_IBM.ttf");
+	m_rml_context = Rml::CreateContext("default", Rml::Vector2i(m_width, m_height));
+	Rml::Debugger::Initialise(m_rml_context);
 }
 
-Rocket::Core::ElementDocument * GUI::load_document(const std::string &_filename)
+Rml::ElementDocument * GUI::load_document(const std::string &_filename)
 {
-	RC::ElementDocument * document = m_rocket_context->LoadDocument(_filename.c_str());
+	Rml::ElementDocument * document = m_rml_context->LoadDocument(_filename.c_str());
 
 	if(document) {
-		RC::Element * title = document->GetElementById("title");
+		Rml::Element * title = document->GetElementById("title");
 		if(title) {
 			title->SetInnerRML(document->GetTitle());
 		}
@@ -1283,7 +1281,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			// but first run any FUNC_*
 			run_event_functions(binding_ptr, phase);
 		}
-		dispatch_rocket_event(_sdl_event);
+		dispatch_rml_event(_sdl_event);
 		return;
 	}
 
@@ -1419,7 +1417,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 {
 	if(!m_input.grab) {
-		dispatch_rocket_event(_sdl_event);
+		dispatch_rml_event(_sdl_event);
 		return;
 	}
 
@@ -1478,7 +1476,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 			// but first run any FUNC_*
 			run_event_functions(binding_ptr, phase);
 		}
-		dispatch_rocket_event(_sdl_event);
+		dispatch_rml_event(_sdl_event);
 		return;
 	}
 
@@ -1789,7 +1787,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			break;
 		case SDL_MOUSEWHEEL:
 			if(!m_input.grab) {
-				dispatch_rocket_event(_event);
+				dispatch_rml_event(_event);
 			}
 			break;
 		case SDL_JOYAXISMOTION:
@@ -1814,11 +1812,11 @@ void GUI::dispatch_event(const SDL_Event &_event)
 
 void GUI::update_window_size(int _w, int _h)
 {
-	// the caller should acquire a lock on ms_rocket_mutex
+	// the caller should acquire a lock on ms_rml_mutex
 	m_width = _w;
 	m_height = _h;
-	m_rocket_context->SetDimensions(Rocket::Core::Vector2i(m_width,m_height));
-	m_rocket_renderer->SetDimensions(m_width, m_height);
+	m_rml_context->SetDimensions(Rml::Vector2i(m_width,m_height));
+	m_rml_renderer->SetDimensions(m_width, m_height);
 	m_windows.interface->container_size_changed(m_width, m_height);
 }
 
@@ -1827,7 +1825,7 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 	switch(_event.event) {
 		case SDL_WINDOWEVENT_SIZE_CHANGED: {
 			{
-			std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+			std::lock_guard<std::mutex> lock(ms_rml_mutex);
 			update_window_size(_event.data1, _event.data2);
 			}
 			PDEBUGF(LOG_V1, LOG_GUI, "Window resized to %ux%u\n", _event.data1, _event.data2);
@@ -1885,62 +1883,58 @@ void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 	}
 }
 
-void GUI::dispatch_rocket_event(const SDL_Event &event)
+void GUI::dispatch_rml_event(const SDL_Event &event)
 {
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
-	int rockmod = m_rocket_sys_interface->GetKeyModifiers();
+	int rmlmod = m_rml_sys_interface->GetKeyModifiers();
 
 	switch(event.type)
 	{
 	case SDL_MOUSEMOTION:
-		m_rocket_context->ProcessMouseMove(
+		m_rml_context->ProcessMouseMove(
 			event.motion.x, event.motion.y,
-			rockmod
+			rmlmod
 			);
 		break;
 
 	case SDL_MOUSEBUTTONDOWN:
-		m_rocket_context->ProcessMouseButtonDown(
-			m_rocket_sys_interface->TranslateMouseButton(event.button.button),
-			rockmod
+		m_rml_context->ProcessMouseButtonDown(
+			m_rml_sys_interface->TranslateMouseButton(event.button.button),
+			rmlmod
 			);
 		break;
 
 	case SDL_MOUSEBUTTONUP: {
-		m_rocket_context->ProcessMouseButtonUp(
-			m_rocket_sys_interface->TranslateMouseButton(event.button.button),
-			rockmod
+		m_rml_context->ProcessMouseButtonUp(
+			m_rml_sys_interface->TranslateMouseButton(event.button.button),
+			rmlmod
 			);
-		// this is a hack to fix libRocket not updating events targets
-		int x,y;
-		SDL_GetMouseState(&x,&y);
-		m_rocket_context->ProcessMouseMove(x, y, rockmod);
 		break;
 	}
 	case SDL_MOUSEWHEEL:
-		m_rocket_context->ProcessMouseWheel(
+		m_rml_context->ProcessMouseWheel(
 			-event.wheel.y,
-			rockmod
+			rmlmod
 			);
 		break;
 
 	case SDL_KEYDOWN: {
-		Rocket::Core::Input::KeyIdentifier key =
-			m_rocket_sys_interface->TranslateKey(event.key.keysym.sym);
-		if(key != Rocket::Core::Input::KI_UNKNOWN) {
-			m_rocket_context->ProcessKeyDown(key,rockmod);
+		Rml::Input::KeyIdentifier key =
+			m_rml_sys_interface->TranslateKey(event.key.keysym.sym);
+		if(key != Rml::Input::KI_UNKNOWN) {
+			m_rml_context->ProcessKeyDown(key,rmlmod);
 		}
-		Rocket::Core::word w = RocketSystemInterface::GetCharacterCode(key, rockmod);
-		if(w > 0) {
-			m_rocket_context->ProcessTextInput(w);
+		char c = RmlSystemInterface::GetCharacterCode(key, rmlmod);
+		if(c > 0) {
+			m_rml_context->ProcessTextInput(c);
 		}
 		break;
 	}
 	case SDL_KEYUP:
-		m_rocket_context->ProcessKeyUp(
-			m_rocket_sys_interface->TranslateKey(event.key.keysym.sym),
-			rockmod
+		m_rml_context->ProcessKeyUp(
+			m_rml_sys_interface->TranslateKey(event.key.keysym.sym),
+			rmlmod
 			);
 		break;
 	default:
@@ -1954,16 +1948,16 @@ void GUI::update(uint64_t _current_time)
 
 	m_windows.update(_current_time);
 
-	/* during a libRocket Context update no other thread can call any windows
+	/* during a RmlUi Context update no other thread can call any windows
 	 * related functions
 	 * TODO Interface messages are outside event handlers and SysLog doesn't
 	 * write messages on the interface directly anymore, so this mutex is
-	 * useless now because no other thread is accessing libRocket's context.
+	 * useless now because no other thread is accessing RmlUi's context.
 	 * Consider removing it?
 	 */
-	ms_rocket_mutex.lock();
-	m_rocket_context->Update();
-	ms_rocket_mutex.unlock();
+	ms_rml_mutex.lock();
+	m_rml_context->Update();
+	ms_rml_mutex.unlock();
 
 	bool title_changed = m_curr_model_changed;
 	if(SHOW_CURRENT_PROGRAM_NAME) {
@@ -2012,10 +2006,9 @@ void GUI::shutdown()
 
 	m_windows.shutdown();
 
-	ms_rocket_mutex.lock();
-	m_rocket_context->RemoveReference();
-	Rocket::Core::Shutdown();
-	ms_rocket_mutex.unlock();
+	ms_rml_mutex.lock();
+	Rml::Shutdown();
+	ms_rml_mutex.unlock();
 
 	shutdown_SDL();
 }
@@ -2260,7 +2253,7 @@ void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase 
 	PDEBUGF(LOG_V1, LOG_GUI, "GUI mode action func event\n");
 	
 	int action = _func.params[0] - 1;
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	m_windows.interface->action(action);
 	m_windows.interface->container_size_changed(m_width, m_height);
 	switch(action) {
@@ -2586,7 +2579,7 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 
 void GUI::Windows::config_changed()
 {
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
 	desktop->config_changed();
 	interface->config_changed();
@@ -2598,7 +2591,7 @@ void GUI::Windows::config_changed()
 
 void GUI::Windows::show_ifc_message(const char* _mex)
 {
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(interface != nullptr) {
 		interface->show_message(_mex);
 		timers.activate_timer(ifcmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
@@ -2607,7 +2600,7 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 
 void GUI::Windows::show_dbg_message(const char* _mex)
 {
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(dbgtools != nullptr) {
 		dbgtools->show_message(_mex);
 		timers.activate_timer(dbgmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
@@ -2627,8 +2620,8 @@ void GUI::Windows::update(uint64_t _current_time)
 	}
 	s_interface_mutex.unlock();
 
-	// updates can't call any function that needs a lock on ms_rocket_mutex
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	// updates can't call any function that needs a lock on ms_rml_mutex
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
 	interface->update();
 
@@ -2673,7 +2666,7 @@ bool GUI::Windows::need_input()
 
 void GUI::Windows::shutdown()
 {
-	std::lock_guard<std::mutex> lock(ms_rocket_mutex);
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
 	if(status) {
 		status->close();

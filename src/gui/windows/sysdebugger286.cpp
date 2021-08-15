@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,8 +27,7 @@
 #include "hardware/cpu/debugger.h"
 #include "sysdebugger286.h"
 #include <cstdio>
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
+#include <RmlUi/Core.h>
 
 #include "format.h"
 
@@ -54,27 +53,27 @@ event_map_t SysDebugger286::ms_evt_map = {
 	GUI_EVT( "close",            "click", DebugTools::DebugWindow::on_close )
 };
 
-SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine, RC::Element *_button)
+SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine, Rml::Element *_button)
 :
 SysDebugger(_gui, "debugger286.rml", _machine,  _button)
 {
-	assert(m_wnd);
-
-	m_tools.eip_bp->SetValue(format_hex16(0));
-
-	m_286core.msw = get_element("MSW");
 }
 
 SysDebugger286::~SysDebugger286()
 {
 }
 
-const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _size)
+void SysDebugger286::create()
+{
+	SysDebugger::create();
+
+	m_tools.eip_bp->SetValue(format_hex16(0));
+	m_286core.msw = get_element("MSW");
+}
+
+const std::string & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _size)
 {
 	CPUDebugger debugger;
-	static Rocket::Core::String str;
-
-	str = "";
 	static char empty = 0;
 
 	char dline[200];
@@ -93,7 +92,8 @@ const RC::String & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _s
 
 	dline[30] = 0;
 
-	str.FormatString(100, "%04X:%04X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _ip, dline, res);
+	static std::string str(100,0);
+	str_format(str, "%04X:%04X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _ip, dline, res);
 
 	return str;
 };
@@ -157,7 +157,7 @@ void SysDebugger286::update()
 	m_memory.ss_esp->SetInnerRML(format_words(buf, len));
 	m_memory.ss_esp_str->SetInnerRML(format_words_string(buf, len));
 
-	Rocket::Core::String str;
+	std::string str;
 	uint size;
 	uint16_t nextip = REG_IP;
 	str = disasm(nextip, true, &size) + "<br />";
@@ -168,7 +168,7 @@ void SysDebugger286::update()
 	m_disasm.line0->SetInnerRML(str);
 }
 
-void SysDebugger286::on_CPU_skip(RC::Event &)
+void SysDebugger286::on_CPU_skip(Rml::Event &)
 {
 	if(m_machine->is_paused()) {
 		uint size;

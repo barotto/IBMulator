@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,7 @@
 #include "utils.h"
 #include <sys/stat.h>
 
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 
 #define REALISTIC_MONITOR_VS      "fb-normal.vs"
 #define REALISTIC_MONITOR_FS      "monitor.fs"
@@ -126,7 +126,15 @@ RealisticInterface::RealisticInterface(Machine *_machine, GUI *_gui, Mixer *_mix
 :
 Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 {
-	assert(m_wnd);
+}
+
+RealisticInterface::~RealisticInterface()
+{
+}
+
+void RealisticInterface::create()
+{
+	Interface::create();
 
 	m_system = get_element("system");
 	m_floppy_disk = get_element("floppy_disk");
@@ -185,7 +193,7 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 		);
 	}
 	
-	m_screen = std::make_unique<RealisticScreen>(_gui);
+	m_screen = std::make_unique<RealisticScreen>(m_gui);
 	
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
 	
@@ -214,12 +222,8 @@ Interface(_machine, _gui, _mixer, "realistic_interface.rml")
 
 	m_real_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_real_audio_enabled) {
-		m_real_audio.init(_mixer);
+		m_real_audio.init(m_mixer);
 	}
-}
-
-RealisticInterface::~RealisticInterface()
-{
 }
 
 vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, float _scale, float _aspect)
@@ -326,13 +330,9 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	display_transform(_width, _height, disp, system, screen()->vga.mvmat);
 	display_transform(_width, _height, mdisp, system, screen()->monitor.mvmat);
 
-	char buf[10];
-	snprintf(buf, 10, "%upx", m_size.x);
-	m_system->SetProperty("width", buf);
-	snprintf(buf, 10, "%upx", m_size.y);
-	m_system->SetProperty("height", buf);
-	snprintf(buf, 10, "%dpx", system_top);
-	m_system->SetProperty("top", buf);
+	m_system->SetProperty("width",  str_format("%upx", m_size.x));
+	m_system->SetProperty("height", str_format("%upx", m_size.y));
+	m_system->SetProperty("top",    str_format("%dpx", system_top));
 }
 
 void RealisticInterface::update()
@@ -362,14 +362,12 @@ void RealisticInterface::update()
 	}
 }
 
-void RealisticInterface::set_slider_value(RC::Element *_slider, float _xleft, float _value)
+void RealisticInterface::set_slider_value(Rml::Element *_slider, float _xleft, float _value)
 {
 	_value = clamp(_value,ms_min_slider_val,ms_max_slider_val);
 	_value = (_value - ms_min_slider_val) / (ms_max_slider_val - ms_min_slider_val);
 	float slider_left = _xleft + m_slider_len_p*_value;
-	static char buf[10];
-	snprintf(buf, 10, "%.1f%%", slider_left);
-	_slider->SetProperty("left", buf);
+	_slider->SetProperty("left", str_format("%.1f%%", slider_left));
 }
 
 void RealisticInterface::action(int _action)
@@ -443,7 +441,7 @@ void RealisticInterface::sig_state_restored()
 	}
 }
 
-float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
+float RealisticInterface::on_slider_drag(Rml::Event &_event, float _xmin)
 {
 	int x = _event.GetParameter("mouse_x",0);
 	float dx = x - m_drag_start_x;
@@ -454,30 +452,30 @@ float RealisticInterface::on_slider_drag(RC::Event &_event, float _xmin)
 	return ((slider_left-_xmin)/m_slider_len_p);
 }
 
-void RealisticInterface::on_volume_drag(RC::Event &_event)
+void RealisticInterface::on_volume_drag(Rml::Event &_event)
 {
 	float value = on_slider_drag(_event, m_volume_left_min);
 	value = lerp(ms_min_slider_val, ms_max_slider_val, value);
 	set_audio_volume(value);
 }
 
-void RealisticInterface::on_brightness_drag(RC::Event &_event)
+void RealisticInterface::on_brightness_drag(Rml::Event &_event)
 {
 	float value = on_slider_drag(_event, m_brightness_left_min);
 	value = lerp(ms_min_slider_val, ms_max_slider_val, value);
 	set_video_brightness(value);
 }
 
-void RealisticInterface::on_contrast_drag(RC::Event &_event)
+void RealisticInterface::on_contrast_drag(Rml::Event &_event)
 {
 	float value = on_slider_drag(_event, m_contrast_left_min);
 	value = lerp(ms_min_slider_val, ms_max_slider_val, value);
 	set_video_contrast(value);
 }
 
-void RealisticInterface::on_dragstart(RC::Event &_event)
+void RealisticInterface::on_dragstart(Rml::Event &_event)
 {
-	RC::Element * slider = _event.GetTargetElement();
+	Rml::Element * slider = _event.GetTargetElement();
 	m_drag_start_x = _event.GetParameter("mouse_x",0);
 	m_drag_start_left = slider->GetProperty<float>("left");
 	PDEBUGF(LOG_V2, LOG_GUI, "slider start: x=%d\n",m_drag_start_x);

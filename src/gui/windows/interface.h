@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,7 @@
 #include "screen_renderer.h"
 #include "fileselect.h"
 #include "hardware/devices/vga.h"
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 
 class Machine;
 class GUI;
@@ -87,42 +87,43 @@ class Interface : public Window
 protected:
 	std::unique_ptr<InterfaceScreen> m_screen;
 
-	vec2i m_size; // current size of the interface
+	vec2i m_size = 0; // current size of the interface
 
 	struct {
-		RC::Element *power;
-		RC::Element *fdd_select;
+		Rml::Element *power;
+		Rml::Element *fdd_select;
 	} m_buttons;
 
 	struct {
-		RC::Element *fdd_led, *hdd_led;
-		RC::Element *fdd_disk;
+		Rml::Element *fdd_led, *hdd_led;
+		Rml::Element *fdd_disk;
 	} m_status;
 
 	struct {
 		bool power, fdd, hdd;
 	} m_leds;
 
-	RC::Element * m_speed, *m_speed_value;
-	RC::Element * m_message;
+	Rml::Element *m_speed = nullptr, *m_speed_value = nullptr;
+	Rml::Element *m_message = nullptr;
 
-	uint m_curr_drive;
-	bool m_floppy_present;
-	bool m_floppy_changed;
+	uint m_curr_drive = 0;
+	bool m_floppy_present = false;
+	bool m_floppy_changed = false;
 
 	Machine *m_machine;
 	Mixer *m_mixer;
-	FileSelect *m_fs;
-	FloppyCtrl *m_floppy;
-	StorageCtrl *m_hdd;
+	FileSelect *m_fs = nullptr;
+	FloppyCtrl *m_floppy = nullptr;
+	StorageCtrl *m_hdd = nullptr;
 
-	bool m_audio_enabled;
+	bool m_audio_enabled = false;
 	InterfaceFX m_audio;
 
 public:
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
 	virtual ~Interface();
 
+	virtual void create();
 	virtual void update();
 	virtual void config_changed();
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
@@ -130,10 +131,10 @@ public:
 
 	void show_message(const char* _mex);
 
-	void on_power(RC::Event &);
-	void on_fdd_select(RC::Event &);
-	void on_fdd_eject(RC::Event &);
-	void on_fdd_mount(RC::Event &);
+	void on_power(Rml::Event &);
+	void on_fdd_select(Rml::Event &);
+	void on_fdd_eject(Rml::Event &);
+	void on_fdd_mount(Rml::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 
 	VGADisplay * vga_display() { return & m_screen->vga.display; }

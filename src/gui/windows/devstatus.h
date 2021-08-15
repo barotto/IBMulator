@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,38 +33,38 @@ private:
 	
 	struct {
 		bool is_running;
-		RC::Element *btn_update;
-		RC::Element *mode, *screen;
+		Rml::Element *btn_update;
+		Rml::Element *mode, *screen;
 		// CRTC
-		RC::Element *htotal, *hdend, *hblank, *hretr;
-		RC::Element *vtotal, *vdend, *vblank, *vretr;
-		RC::Element *startaddr_hi, *startaddr_lo, *startaddr_latch;
-		RC::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
+		Rml::Element *htotal, *hdend, *hblank, *hretr;
+		Rml::Element *vtotal, *vdend, *vblank, *vretr;
+		Rml::Element *startaddr_hi, *startaddr_lo, *startaddr_latch;
+		Rml::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
 		// Stats
-		RC::Element *frame_cnt;
-		RC::Element *pix_upd, *upd, *saddr_line, *pal_line;
+		Rml::Element *frame_cnt;
+		Rml::Element *pix_upd, *upd, *saddr_line, *pal_line;
 	} m_vga;
 	
 	struct {
 		bool is_running;
-		RC::Element *btn_update;
-		RC::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
+		Rml::Element *btn_update;
+		Rml::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
 		uint16_t irq, irr, imr, isr;
 	} m_pic;
 
 	struct {
 		bool is_running;
-		RC::Element *btn_update;
-		RC::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
+		Rml::Element *btn_update;
+		Rml::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
 	} m_pit;
 
 	static event_map_t ms_evt_map;
 
-	void on_cmd_vga_update(RC::Event &);
-	void on_cmd_vga_dump_state(RC::Event &);
-	void on_cmd_vga_screenshot(RC::Event &);
-	void on_cmd_pit_update(RC::Event &);
-	void on_cmd_pic_update(RC::Event &);
+	void on_cmd_vga_update(Rml::Event &);
+	void on_cmd_vga_dump_state(Rml::Event &);
+	void on_cmd_vga_screenshot(Rml::Event &);
+	void on_cmd_pit_update(Rml::Event &);
+	void on_cmd_pic_update(Rml::Event &);
 	void update_pit();
 	void update_pit(unsigned cnt);
 	void update_pic();
@@ -73,10 +73,11 @@ private:
 
 public:
 
-	DevStatus(GUI * _gui, RC::Element *_button, Machine *_machine);
+	DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine);
 	~DevStatus();
 
-	void update();
+	virtual void create();
+	virtual void update();
 	event_map_t & get_event_map() { return DevStatus::ms_evt_map; }
 };
 

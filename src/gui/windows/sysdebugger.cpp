@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,20 +27,26 @@
 #include "hardware/cpu/debugger.h"
 #include "sysdebugger.h"
 #include <cstdio>
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
+#include <RmlUi/Core.h>
 
 #include "format.h"
 
 
 SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine,
-		RC::Element *_button)
+		Rml::Element *_button)
 :
-DebugWindow(_gui, _rml, _button)
+DebugWindow(_gui, _rml, _button),
+m_machine(_machine)
 {
-	assert(m_wnd);
+}
 
-	m_machine = _machine;
+SysDebugger::~SysDebugger()
+{
+}
+
+void SysDebugger::create()
+{
+	DebugTools::DebugWindow::create();
 
 	m_core.eax = get_element("EAX");
 	m_core.ebx = get_element("EBX");
@@ -112,20 +118,16 @@ DebugWindow(_gui, _rml, _button)
 	m_tools.led_pause = false;
 	m_tools.btn_bp = get_element("CPU_bp_btn");
 	m_tools.log_prg_name =
-		dynamic_cast<Rocket::Controls::ElementFormControlInput*>(get_element("log_prg_name"));
+		dynamic_cast<Rml::ElementFormControlInput*>(get_element("log_prg_name"));
 	m_tools.log_prg_toggle = get_element("log_prg_toggle");
-	m_tools.cs_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("CS_bp"));
-	m_tools.eip_bp = dynamic_cast<RCN::ElementFormControlInput*>(get_element("EIP_bp"));
+	m_tools.cs_bp = dynamic_cast<Rml::ElementFormControlInput*>(get_element("CS_bp"));
+	m_tools.eip_bp = dynamic_cast<Rml::ElementFormControlInput*>(get_element("EIP_bp"));
 	m_tools.cs_bp->SetValue(format_hex16(0));
 
 	m_disasm.line0 = get_element("disasm");
 
 	m_post = get_element("POST");
 	m_message = get_element("message");
-}
-
-SysDebugger::~SysDebugger()
-{
 }
 
 void SysDebugger::read_memory(uint32_t _address, uint8_t *_buf, uint _len)
@@ -166,9 +168,8 @@ void SysDebugger::update()
 
 	m_core.a20->SetInnerRML(format_bit(g_memory.get_A20_line()));
 
-	RC::String str;
-	str.FormatString(3, "%02X", m_machine->get_POST_code());
-	m_post->SetInnerRML(str);
+	static std::string str(10,0);
+	m_post->SetInnerRML(str_format(str, "%02X", m_machine->get_POST_code()));
 
 	if(m_machine->is_paused() && m_tools.led_pause==false) {
 		m_tools.led_pause = true;
@@ -188,20 +189,20 @@ void SysDebugger::update()
 
 void SysDebugger::show_message(const char* _mex)
 {
-	Rocket::Core::String str(_mex);
-	str.Replace("\n", "<br />");
-	if(str.Empty()) {
+	std::string str(_mex);
+	str_replace_all(str, "\n", "<br />");
+	if(str.empty()) {
 		str = "&nbsp;";
 	}
 	m_message->SetInnerRML(str);
 }
 
-void SysDebugger::on_cmd_switch_power(RC::Event &)
+void SysDebugger::on_cmd_switch_power(Rml::Event &)
 {
 	m_machine->cmd_switch_power();
 }
 
-void SysDebugger::on_cmd_pause(RC::Event &)
+void SysDebugger::on_cmd_pause(Rml::Event &)
 {
 	if(m_machine->is_paused()) {
 		m_machine->cmd_resume();
@@ -210,60 +211,60 @@ void SysDebugger::on_cmd_pause(RC::Event &)
 	}
 }
 
-void SysDebugger::on_mem_dump(RC::Event &)
+void SysDebugger::on_mem_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(0, 0);
 }
 
-void SysDebugger::on_cs_dump(RC::Event &)
+void SysDebugger::on_cs_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_CS.desc.base, REG_CS.desc.limit);
 }
 
-void SysDebugger::on_ds_dump(RC::Event &)
+void SysDebugger::on_ds_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_DS.desc.base, REG_DS.desc.limit);
 }
 
-void SysDebugger::on_ss_dump(RC::Event &)
+void SysDebugger::on_ss_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_SS.desc.base, REG_SS.desc.limit);
 }
 
-void SysDebugger::on_es_dump(RC::Event &)
+void SysDebugger::on_es_dump(Rml::Event &)
 {
 	m_machine->cmd_memdump(REG_ES.desc.base, REG_ES.desc.limit);
 }
 
-void SysDebugger::on_cmd_save_state(RC::Event &)
+void SysDebugger::on_cmd_save_state(Rml::Event &)
 {
 	g_program.save_state("", nullptr, nullptr);
 }
 
-void SysDebugger::on_cmd_restore_state(RC::Event &)
+void SysDebugger::on_cmd_restore_state(Rml::Event &)
 {
 	g_program.restore_state("", nullptr, nullptr);
 }
 
-void SysDebugger::on_CPU_step(RC::Event &)
+void SysDebugger::on_CPU_step(Rml::Event &)
 {
 	if(m_machine->is_paused()) {
 		m_machine->cmd_cpu_step();
 	}
 }
 
-void SysDebugger::on_CPU_bp_btn(RC::Event &)
+void SysDebugger::on_CPU_bp_btn(Rml::Event &)
 {
 	// this works only in real address mode
 	if(!m_tools.btn_bp->IsClassSet("on")) {
-		RC::String cs_str = m_tools.cs_bp->GetValue();
+		Rml::String cs_str = m_tools.cs_bp->GetValue();
 		uint32_t cs,eip;
-		if(!sscanf(cs_str.CString(), "%x", &cs)) {
+		if(!sscanf(cs_str.c_str(), "%x", &cs)) {
 			m_gui->show_dbg_message("invalid breakpoint Code Segment");
 			return;
 		}
-		RC::String eip_str = m_tools.eip_bp->GetValue();
-		if(!sscanf(eip_str.CString(), "%x", &eip)) {
+		Rml::String eip_str = m_tools.eip_bp->GetValue();
+		if(!sscanf(eip_str.c_str(), "%x", &eip)) {
 			m_gui->show_dbg_message("invalid breakpoint Offset");
 			return;
 		}
@@ -274,7 +275,7 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 				m_tools.btn_bp->SetClass("on", false);
 			});
 			std::stringstream ss;
-			ss << "breakpoint set to " << cs_str.CString() << ":" << eip_str.CString();
+			ss << "breakpoint set to " << cs_str.c_str() << ":" << eip_str.c_str();
 			m_gui->show_dbg_message(ss.str().c_str());
 			m_tools.btn_bp->SetClass("on", true);
 		}
@@ -284,7 +285,7 @@ void SysDebugger::on_CPU_bp_btn(RC::Event &)
 	}
 }
 
-void SysDebugger::on_log_prg_toggle(RC::Event &)
+void SysDebugger::on_log_prg_toggle(Rml::Event &)
 {
 	if(CPULOG) {
 		if(m_tools.log_prg_toggle->IsClassSet("on")) {
@@ -292,10 +293,10 @@ void SysDebugger::on_log_prg_toggle(RC::Event &)
 			m_machine->cmd_prg_cpulog("");
 			m_gui->show_dbg_message("program CPU logging deactivated");
 		} else {
-			Rocket::Core::String str = m_tools.log_prg_name->GetValue();
+			std::string str = m_tools.log_prg_name->GetValue();
 			if(str != "") {
 				m_tools.log_prg_toggle->SetClass("on", true);
-				m_machine->cmd_prg_cpulog(str.CString());
+				m_machine->cmd_prg_cpulog(str.c_str());
 				m_gui->show_dbg_message("program CPU logging activated");
 			} else {
 				m_gui->show_dbg_message("specify a program name");
@@ -306,7 +307,7 @@ void SysDebugger::on_log_prg_toggle(RC::Event &)
 	}
 }
 
-void SysDebugger::on_log_write(RC::Event &)
+void SysDebugger::on_log_write(Rml::Event &)
 {
 	if(CPULOG) {
 		m_machine->cmd_cpulog();
@@ -316,17 +317,17 @@ void SysDebugger::on_log_write(RC::Event &)
 	}
 }
 
-void SysDebugger::on_idt_dump(RC::Event &)
+void SysDebugger::on_idt_dump(Rml::Event &)
 {
 	m_machine->cmd_dtdump("IDT");
 }
 
-void SysDebugger::on_ldt_dump(RC::Event &)
+void SysDebugger::on_ldt_dump(Rml::Event &)
 {
 	m_machine->cmd_dtdump("LDT");
 }
 
-void SysDebugger::on_gdt_dump(RC::Event &)
+void SysDebugger::on_gdt_dump(Rml::Event &)
 {
 	m_machine->cmd_dtdump("GDT");
 }

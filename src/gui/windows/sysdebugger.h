@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,74 +35,72 @@ private:
 	Machine *m_machine;
 
 	struct s_core {
-		RC::Element *eax,*ebx,*ecx,*edx;
-		RC::Element *ebp,*esi,*edi,*esp;
-		RC::Element *cs,*ds,*ss,*es,*tr;
-		RC::Element *eip,*eflags,*cpl;
-		RC::Element *cf, *pf, *af, *zf, *sf, *tf,
-		            *iff, *df, *of, *pl, *nt;
-		RC::Element *csbase,*dsbase,*esbase,*ssbase,*trbase;
-		RC::Element *cslimit,*dslimit,*eslimit,*sslimit,*trlimit;
-		RC::Element *ldt, *ldtbase, *ldtlimit;
-		RC::Element *idtbase, *idtlimit;
-		RC::Element *gdtbase, *gdtlimit;
-
-		RC::Element *a20;
+		Rml::Element *eax,*ebx,*ecx,*edx,
+		             *ebp,*esi,*edi,*esp,
+		             *cs,*ds,*ss,*es,*tr,
+		             *eip,*eflags,*cpl,
+		             *cf, *pf, *af, *zf, *sf, *tf,
+		             *iff, *df, *of, *pl, *nt,
+		             *csbase,*dsbase,*esbase,*ssbase,*trbase,
+		             *cslimit,*dslimit,*eslimit,*sslimit,*trlimit,
+		             *ldt, *ldtbase, *ldtlimit,
+		             *idtbase, *idtlimit,
+		             *gdtbase, *gdtlimit,
+		             *a20;
 	} m_core;
 
 	struct s_memory {
-		RC::Element *cs_eip, *cs_eip_str;
-		RC::Element *ds_esi, *ds_esi_str;
-		RC::Element *es_edi, *es_edi_str;
-		RC::Element *ss_esp, *ss_esp_str;
+		Rml::Element *cs_eip, *cs_eip_str,
+		             *ds_esi, *ds_esi_str,
+		             *es_edi, *es_edi_str,
+		             *ss_esp, *ss_esp_str;
 	} m_memory;
 
 	struct s_tools {
-		RC::Element *btn_power, *btn_pause, *btn_bp;
+		Rml::Element *btn_power, *btn_pause, *btn_bp;
 		bool led_power, led_pause;
-		RCN::ElementFormControl *log_prg_name;
-		RC::Element *log_prg_toggle;
-		RCN::ElementFormControl *cs_bp,*eip_bp;
+		Rml::ElementFormControl *log_prg_name;
+		Rml::Element *log_prg_toggle;
+		Rml::ElementFormControl *cs_bp,*eip_bp;
 	} m_tools;
 
 	struct s_disasm {
-		RC::Element *line0;
+		Rml::Element *line0;
 	} m_disasm;
 
-	RC::Element *m_post;
-	RC::Element *m_message;
+	Rml::Element *m_post = nullptr;
+	Rml::Element *m_message = nullptr;
 
-	void on_cmd_switch_power(RC::Event &);
-	void on_cmd_pause(RC::Event &);
-	void on_cmd_resume(RC::Event &);
-	void on_cmd_save_state(RC::Event &);
-	void on_cmd_restore_state(RC::Event &);
-	void on_CPU_step(RC::Event &);
-	void on_CPU_bp_btn(RC::Event &);
-	void on_log_prg_toggle(RC::Event &);
-	void on_log_write(RC::Event &);
-	void on_mem_dump(RC::Event &);
-	void on_cs_dump(RC::Event &);
-	void on_ds_dump(RC::Event &);
-	void on_ss_dump(RC::Event &);
-	void on_es_dump(RC::Event &);
-	void on_idt_dump(RC::Event &);
-	void on_ldt_dump(RC::Event &);
-	void on_gdt_dump(RC::Event &);
-	void on_close(RC::Event &);
+	void on_cmd_switch_power(Rml::Event &);
+	void on_cmd_pause(Rml::Event &);
+	void on_cmd_resume(Rml::Event &);
+	void on_cmd_save_state(Rml::Event &);
+	void on_cmd_restore_state(Rml::Event &);
+	void on_CPU_step(Rml::Event &);
+	void on_CPU_bp_btn(Rml::Event &);
+	void on_log_prg_toggle(Rml::Event &);
+	void on_log_write(Rml::Event &);
+	void on_mem_dump(Rml::Event &);
+	void on_cs_dump(Rml::Event &);
+	void on_ds_dump(Rml::Event &);
+	void on_ss_dump(Rml::Event &);
+	void on_es_dump(Rml::Event &);
+	void on_idt_dump(Rml::Event &);
+	void on_ldt_dump(Rml::Event &);
+	void on_gdt_dump(Rml::Event &);
+	void on_close(Rml::Event &);
 
 	void read_memory(uint32_t _address, uint8_t *_buf, uint _len);
 
 public:
 
-	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine, RC::Element *_button);
+	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine, Rml::Element *_button);
 	virtual ~SysDebugger();
 
+	virtual void create();
 	virtual void update();
+
 	void show_message(const char* _mex);
-
-private:
-
 };
 
 #endif

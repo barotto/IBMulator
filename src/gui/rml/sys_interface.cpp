@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,12 +19,12 @@
 
 #include "ibmulator.h"
 #include "gui/gui.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include "sys_interface.h"
 
-Rocket::Core::Input::KeyIdentifier RocketSystemInterface::TranslateKey(SDL_Keycode sdlkey)
+Rml::Input::KeyIdentifier RmlSystemInterface::TranslateKey(SDL_Keycode sdlkey)
 {
-	using namespace Rocket::Core::Input;
+	using namespace Rml::Input;
 
 	switch(sdlkey) {
 		case SDLK_UNKNOWN: return KI_UNKNOWN;
@@ -144,7 +144,7 @@ Rocket::Core::Input::KeyIdentifier RocketSystemInterface::TranslateKey(SDL_Keyco
 	return KI_UNKNOWN;
 }
 
-int RocketSystemInterface::TranslateMouseButton(Uint8 button)
+int RmlSystemInterface::TranslateMouseButton(Uint8 button)
 {
 	switch(button)
 	{
@@ -159,68 +159,68 @@ int RocketSystemInterface::TranslateMouseButton(Uint8 button)
 	}
 }
 
-int RocketSystemInterface::GetKeyModifiers()
+int RmlSystemInterface::GetKeyModifiers()
 {
 	SDL_Keymod sdlMods = SDL_GetModState();
 
 	int retval = 0;
 
 	if(sdlMods & KMOD_CTRL) {
-		retval |= Rocket::Core::Input::KM_CTRL;
+		retval |= Rml::Input::KM_CTRL;
 	}
 
 	if(sdlMods & KMOD_SHIFT) {
-		retval |= Rocket::Core::Input::KM_SHIFT;
+		retval |= Rml::Input::KM_SHIFT;
 	}
 
 	if(sdlMods & KMOD_ALT) {
-		retval |= Rocket::Core::Input::KM_ALT;
+		retval |= Rml::Input::KM_ALT;
 	}
 
 	return retval;
 }
 
-float RocketSystemInterface::GetElapsedTime()
+double RmlSystemInterface::GetElapsedTime()
 {
-	return SDL_GetTicks() / 1000;
+	return double(SDL_GetTicks()) / 1000.0;
 }
 
-bool RocketSystemInterface::LogMessage(Rocket::Core::Log::Type type, const Rocket::Core::String& message)
+bool RmlSystemInterface::LogMessage(Rml::Log::Type type, const std::string &message)
 {
 	int logpri = LOG_DEBUG;
 	int verb = LOG_V0;
 	switch(type)
 	{
-	case Rocket::Core::Log::LT_INFO:
-	case Rocket::Core::Log::LT_ALWAYS:
-	case Rocket::Core::Log::LT_ASSERT:
+	case Rml::Log::LT_INFO:
+	case Rml::Log::LT_ALWAYS:
+	case Rml::Log::LT_ASSERT:
 		logpri = LOG_INFO;
 		verb = LOG_V2;
 		break;
-	case Rocket::Core::Log::LT_ERROR:
+	case Rml::Log::LT_ERROR:
 		logpri = LOG_ERROR;
 		verb = LOG_V0;
 		break;
-	case Rocket::Core::Log::LT_WARNING:
+	case Rml::Log::LT_WARNING:
 		logpri = LOG_WARNING;
 		verb = LOG_V1;
 		break;
-	case Rocket::Core::Log::LT_DEBUG:
+	case Rml::Log::LT_DEBUG:
 		logpri = LOG_DEBUG;
 		verb = LOG_V2;
 		break;
-	case Rocket::Core::Log::LT_MAX:
+	case Rml::Log::LT_MAX:
 		break;
 	};
 
-	LOG(logpri,LOG_GUI,verb,"%s\n", message.CString());
+	LOG(logpri,LOG_GUI,verb,"%s\n", message.c_str());
 
 	return true;
 };
 
 
 
-const char RocketSystemInterface::ascii_map[4][51] =
+const char RmlSystemInterface::ascii_map[4][51] =
 {
 	// shift off and capslock off
 	{
@@ -443,7 +443,7 @@ const char RocketSystemInterface::ascii_map[4][51] =
 	}
 };
 
-const char RocketSystemInterface::keypad_map[2][18] =
+const char RmlSystemInterface::keypad_map[2][18] =
 {
 	{
 		'0',
@@ -488,42 +488,45 @@ const char RocketSystemInterface::keypad_map[2][18] =
 	}
 };
 
-Rocket::Core::word RocketSystemInterface::GetCharacterCode(
-		Rocket::Core::Input::KeyIdentifier key_identifier,
+char RmlSystemInterface::GetCharacterCode(
+		Rml::Input::KeyIdentifier key_identifier,
 		int key_modifier_state)
 {
 	// Check if we have a keycode capable of generating characters on the main keyboard (ie, not on the numeric
 	// keypad; that is dealt with below).
-	if (key_identifier <= Rocket::Core::Input::KI_OEM_102)
+	if(key_identifier <= Rml::Input::KI_OEM_102)
 	{
 		// Get modifier states
-		bool shift = (key_modifier_state & Rocket::Core::Input::KM_SHIFT) > 0;
-		bool capslock = (key_modifier_state & Rocket::Core::Input::KM_CAPSLOCK) > 0;
+		bool shift = (key_modifier_state & Rml::Input::KM_SHIFT) > 0;
+		bool capslock = (key_modifier_state & Rml::Input::KM_CAPSLOCK) > 0;
 
 		// Return character code based on identifier and modifiers
-		if (shift && !capslock)
-			return RocketSystemInterface::ascii_map[1][key_identifier];
+		if(shift && !capslock) {
+			return RmlSystemInterface::ascii_map[1][key_identifier];
+		}
 
-		if (shift && capslock)
-			return RocketSystemInterface::ascii_map[2][key_identifier];
+		if(shift && capslock) {
+			return RmlSystemInterface::ascii_map[2][key_identifier];
+		}
 
-		if (!shift && capslock)
-			return RocketSystemInterface::ascii_map[3][key_identifier];
+		if(!shift && capslock) {
+			return RmlSystemInterface::ascii_map[3][key_identifier];
+		}
 
-		return RocketSystemInterface::ascii_map[0][key_identifier];
+		return RmlSystemInterface::ascii_map[0][key_identifier];
 	}
-
 	// Check if we have a keycode from the numeric keypad.
-	else if (key_identifier <= Rocket::Core::Input::KI_OEM_NEC_EQUAL)
+	else if(key_identifier <= Rml::Input::KI_OEM_NEC_EQUAL)
 	{
-		if (key_modifier_state & Rocket::Core::Input::KM_NUMLOCK)
-			return RocketSystemInterface::keypad_map[0][key_identifier - Rocket::Core::Input::KI_NUMPAD0];
-		else
-			return RocketSystemInterface::keypad_map[1][key_identifier - Rocket::Core::Input::KI_NUMPAD0];
+		if(key_modifier_state & Rml::Input::KM_NUMLOCK) {
+			return RmlSystemInterface::keypad_map[0][key_identifier - Rml::Input::KI_NUMPAD0];
+		} else {
+			return RmlSystemInterface::keypad_map[1][key_identifier - Rml::Input::KI_NUMPAD0];
+		}
 	}
-
-	else if (key_identifier == Rocket::Core::Input::KI_RETURN)
+	else if(key_identifier == Rml::Input::KI_RETURN) {
 		return '\n';
+	}
 
 	return 0;
 }

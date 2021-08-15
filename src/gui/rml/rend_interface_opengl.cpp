@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,17 +21,16 @@
 #include "rend_interface_opengl.h"
 #include "gui_opengl.h"
 #include "program.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <SDL_image.h>
 
 #if !(SDL_VIDEO_RENDER_OGL)
     #error "Only the opengl sdl backend is supported."
 #endif
 
-using namespace Rocket::Core;
 
-RocketRenderer_OpenGL::RocketRenderer_OpenGL(SDL_Renderer * _renderer, SDL_Window * _screen)
-: RocketRenderer(_renderer, _screen)
+RmlRenderer_OpenGL::RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_screen)
+: RmlRenderer(_renderer, _screen)
 {
 	try {
 		m_program = GUI_OpenGL::load_program({GUI::shaders_dir()+"gui.vs"}, {GUI::shaders_dir()+"gui.fs"});
@@ -51,15 +50,15 @@ RocketRenderer_OpenGL::RocketRenderer_OpenGL(SDL_Renderer * _renderer, SDL_Windo
 	GLCALL( glSamplerParameteri(m_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
 }
 
-RocketRenderer_OpenGL::~RocketRenderer_OpenGL()
+RmlRenderer_OpenGL::~RmlRenderer_OpenGL()
 {
 }
 
-// Called by Rocket when it wants to render geometry that it does not wish to optimise.
-void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
+// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
+void RmlRenderer_OpenGL::RenderGeometry(Rml::Vertex* vertices,
 		int num_vertices, int* indices, int num_indices,
-		const TextureHandle texture,
-		const Vector2f& translation)
+		const Rml::TextureHandle texture,
+		const Rml::Vector2f &translation)
 {
 	GLCALL( glBindSampler(0, m_sampler) );
 	GLCALL( glUseProgram(m_program) );
@@ -80,7 +79,7 @@ void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
 	GLCALL( glUniformMatrix4fv(m_uniforms.MV, 1, GL_FALSE, mv.data()) );
 
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vb) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * num_vertices, vertices, GL_DYNAMIC_DRAW) );
+	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Rml::Vertex) * num_vertices, vertices, GL_DYNAMIC_DRAW) );
 	GLCALL( glEnableVertexAttribArray(0) );
 	GLCALL( glEnableVertexAttribArray(1) );
 	GLCALL( glEnableVertexAttribArray(2) );
@@ -89,7 +88,7 @@ void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
 		2,        // size
 		GL_FLOAT, // type
 		GL_FALSE, // normalized?
-		sizeof(Vertex), // stride
+		sizeof(Rml::Vertex), // stride
 		(void*)0  // array buffer offset
 	) );
 
@@ -97,8 +96,8 @@ void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
 		1,        // attribute 1 = colour
 		4,        // size
 		GL_UNSIGNED_BYTE, // type
-		sizeof(Vertex), // stride
-		(GLvoid*) offsetof(struct Vertex, colour)  // array buffer offset
+		sizeof(Rml::Vertex), // stride
+		(GLvoid*) offsetof(Rml::Vertex, colour)  // array buffer offset
 	) );
 
 	GLCALL( glVertexAttribPointer(
@@ -106,8 +105,8 @@ void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
 		2,        // size
 		GL_FLOAT, // type
 		GL_FALSE, // normalized?
-		sizeof(Vertex), // stride
-		(GLvoid*) offsetof(struct Vertex, tex_coord)  // array buffer offset
+		sizeof(Rml::Vertex), // stride
+		(GLvoid*) offsetof(Rml::Vertex, tex_coord)  // array buffer offset
 	) );
 
 	GLCALL( glEnable(GL_BLEND) );
@@ -124,8 +123,8 @@ void RocketRenderer_OpenGL::RenderGeometry(Vertex* vertices,
 }
 
 
-// Called by Rocket when it wants to enable or disable scissoring to clip content.
-void RocketRenderer_OpenGL::EnableScissorRegion(bool enable)
+// Called by RmlUi when it wants to enable or disable scissoring to clip content.
+void RmlRenderer_OpenGL::EnableScissorRegion(bool enable)
 {
 	if(enable) {
 		GLCALL( glEnable(GL_SCISSOR_TEST) );
@@ -134,18 +133,18 @@ void RocketRenderer_OpenGL::EnableScissorRegion(bool enable)
 	}
 }
 
-// Called by Rocket when it wants to change the scissor region.
-void RocketRenderer_OpenGL::SetScissorRegion(int x, int y, int width, int height)
+// Called by RmlUi when it wants to change the scissor region.
+void RmlRenderer_OpenGL::SetScissorRegion(int x, int y, int width, int height)
 {
 	int w_width, w_height;
 	SDL_GetWindowSize(m_screen, &w_width, &w_height);
 	GLCALL( glScissor(x, w_height - (y + height), width, height) );
 }
 
-// Called by Rocket when a texture is required to be built from an
-//internally-generated sequence of pixels.
-bool RocketRenderer_OpenGL::GenerateTexture(TextureHandle& texture_handle,
-		const byte* source, const Vector2i& source_dimensions)
+// Called by RmlUi when a texture is required to be built from an
+// internally-generated sequence of pixels.
+bool RmlRenderer_OpenGL::GenerateTexture(Rml::TextureHandle &texture_handle,
+		const Rml::byte *source, const Rml::Vector2i &source_dimensions)
 {
 	#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 		/*
@@ -179,14 +178,14 @@ bool RocketRenderer_OpenGL::GenerateTexture(TextureHandle& texture_handle,
 	return true;
 }
 
-// Called by Rocket when a loaded texture is no longer required.
-void RocketRenderer_OpenGL::ReleaseTexture(TextureHandle texture_handle)
+// Called by RmlUi when a loaded texture is no longer required.
+void RmlRenderer_OpenGL::ReleaseTexture(Rml::TextureHandle texture_handle)
 {
 	GLuint gltex = texture_handle;
 	GLCALL( glDeleteTextures(1, &gltex) );
 }
 
-void RocketRenderer_OpenGL::SetDimensions(int _width, int _height)
+void RmlRenderer_OpenGL::SetDimensions(int _width, int _height)
 {
 	m_projmat = mat4_ortho<float>(0, _width, _height, 0, 0, 1);
 }

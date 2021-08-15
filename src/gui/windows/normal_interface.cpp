@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,7 @@
 #include "utils.h"
 #include <sys/stat.h>
 
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 
 
 event_map_t NormalInterface::ms_evt_map = {
@@ -43,7 +43,15 @@ NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
 :
 Interface(_machine, _gui, _mixer, "normal_interface.rml")
 {
-	assert(m_wnd);
+}
+
+NormalInterface::~NormalInterface()
+{
+}
+
+void NormalInterface::create()
+{
+	Interface::create();
 
 	m_sysunit = get_element("sysunit");
 	m_sysbkgd = get_element("sysbkgd");
@@ -78,7 +86,7 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 	}
 	m_size = vec2i(w,h);
 
-	m_screen = std::make_unique<InterfaceScreen>(_gui);
+	m_screen = std::make_unique<InterfaceScreen>(m_gui);
 	
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
 	
@@ -86,10 +94,6 @@ Interface(_machine, _gui, _mixer, "normal_interface.rml")
 		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler)
 	);
-}
-
-NormalInterface::~NormalInterface()
-{
 }
 
 void NormalInterface::container_size_changed(int _width, int _height)
@@ -162,11 +166,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	if(m_gui_mode == GUI_MODE_NORMAL) {
 		m_size.y += sysunit_h;
 	}
-	char buf[10];
-	snprintf(buf, 10, "%upx", sysunit_w);
-	m_sysunit->SetProperty("width", buf);
-	snprintf(buf, 10, "%upx", sysunit_h);
-	m_sysunit->SetProperty("height", buf);
+	m_sysunit->SetProperty("width", str_format("%upx", sysunit_w));
+	m_sysunit->SetProperty("height", str_format("%upx", sysunit_h));
 }
 
 void NormalInterface::update()
@@ -249,7 +250,7 @@ void NormalInterface::show_system()
 	m_sysunit->SetProperty("visibility", "visible");
 }
 
-void NormalInterface::on_pause(RC::Event &)
+void NormalInterface::on_pause(Rml::Event &)
 {
 	if(m_machine->is_paused()) {
 		m_machine->cmd_resume();
@@ -258,7 +259,7 @@ void NormalInterface::on_pause(RC::Event &)
 	}
 }
 
-void NormalInterface::on_save(RC::Event &)
+void NormalInterface::on_save(Rml::Event &)
 {
 	//TODO file select window to choose the destination
 	g_program.save_state("", [this]() {
@@ -266,7 +267,7 @@ void NormalInterface::on_save(RC::Event &)
 	}, nullptr);
 }
 
-void NormalInterface::on_restore(RC::Event &)
+void NormalInterface::on_restore(Rml::Event &)
 {
 	//TODO file select window to choose the source
 	g_program.restore_state("", [this]() {
@@ -274,7 +275,7 @@ void NormalInterface::on_restore(RC::Event &)
 	}, nullptr);
 }
 
-void NormalInterface::on_exit(RC::Event &)
+void NormalInterface::on_exit(Rml::Event &)
 {
 	g_program.stop();
 }

@@ -21,13 +21,14 @@
 #define IBMULATOR_GUI_H
 
 #include <SDL.h>
-#include <Rocket/Core/Input.h>
-#include <Rocket/Core/Types.h>
-#include "rocket/rend_interface.h"
+#include <RmlUi/Core/Input.h>
+#include <RmlUi/Core/Types.h>
+#include "rml/rend_interface.h"
 #include "matrix.h"
 #include "timers.h"
 #include "keymap.h"
 #include <atomic>
+#include <climits>
 
 enum GUIRenderer {
 	GUI_RENDERER_OPENGL,
@@ -65,21 +66,15 @@ class GUI_OpenGL;
 
 class Capture;
 
-class RocketSystemInterface;
-class RocketFileInterface;
+class RmlSystemInterface;
+class RmlFileInterface;
 
-namespace Rocket {
-namespace Core {
+namespace Rml {
 	class Context;
 	class Element;
 	class ElementDocument;
-}
-namespace Controls {
 	class ElementFormControl;
 }
-}
-#define RC Rocket::Core
-#define RCN Rocket::Controls
 
 #include "windows/interface.h"
 
@@ -236,13 +231,13 @@ protected:
 	
 	double m_symspeed_factor;
 
-	// mutex must be locked before any access to the libRocket's objects
+	// mutex must be locked before any access to the RmlUi's objects
 	// TODO this mutex is currently used by 1 thread only (GUI). remove?
-	static std::mutex ms_rocket_mutex;
-	std::unique_ptr<RocketRenderer> m_rocket_renderer;
-	RocketSystemInterface * m_rocket_sys_interface;
-	RocketFileInterface * m_rocket_file_interface;
-	Rocket::Core::Context * m_rocket_context;
+	static std::mutex ms_rml_mutex;
+	std::unique_ptr<RmlRenderer> m_rml_renderer;
+	RmlSystemInterface * m_rml_sys_interface;
+	RmlFileInterface * m_rml_file_interface;
+	Rml::Context * m_rml_context;
 
 	class Windows {
 	public:
@@ -279,7 +274,7 @@ protected:
 	std::unique_ptr<Capture> m_capture;
 	std::thread m_capture_thread;
 	
-	void init_Rocket();
+	void init_rmlui();
 	void set_window_icon();
 	void show_welcome_screen();
 	void render_vga();
@@ -290,14 +285,14 @@ protected:
 	
 	virtual void shutdown_SDL();
 	
-	void dispatch_rocket_event(const SDL_Event &event);
+	void dispatch_rml_event(const SDL_Event &event);
 	void dispatch_window_event(const SDL_WindowEvent &_event);
 	void dispatch_user_event(const SDL_UserEvent &_event);
 	
 	static std::string load_shader_file(const std::string &_path);
 
 	virtual void create_window(int _flags) = 0;
-	virtual void create_rocket_renderer() = 0;
+	virtual void create_renderer() = 0;
 	
 public:
 	static std::map<std::string, uint> ms_gui_modes;
@@ -319,7 +314,7 @@ public:
 	void shutdown();
 	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	
-	RC::ElementDocument * load_document(const std::string &_filename);
+	Rml::ElementDocument * load_document(const std::string &_filename);
 	static std::string shaders_dir();
 	static std::string images_dir();
 	

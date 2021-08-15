@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,7 +29,7 @@ class SysDebugger286 : public SysDebugger
 {
 private:
 	struct s_286core {
-		RC::Element *msw;
+		Rml::Element *msw;
 	} m_286core;
 
 	struct s_tools {
@@ -38,17 +38,19 @@ private:
 
 	static event_map_t ms_evt_map;
 
-	void on_CPU_skip(RC::Event &);
-	void on_CPU_bp_btn(RC::Event &);
+	void on_CPU_skip(Rml::Event &);
+	void on_CPU_bp_btn(Rml::Event &);
 
-	const RC::String & disasm(uint16_t _ip, bool _analyze, uint * _size);
+	const std::string & disasm(uint16_t _ip, bool _analyze, uint * _size);
 
 public:
 
-	SysDebugger286(GUI *_gui, Machine *_machine, RC::Element *_button);
+	SysDebugger286(GUI *_gui, Machine *_machine, Rml::Element *_button);
 	~SysDebugger286();
 
-	void update();
+	virtual void create();
+	virtual void update();
+
 	event_map_t & get_event_map() { return SysDebugger286::ms_evt_map; }
 };
 

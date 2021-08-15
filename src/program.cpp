@@ -126,8 +126,8 @@ void Program::restore_state(
 {
 	m_gui->show_message("Restoring state...");
 
-	/* The actual restore needs to be executed outside libRocket's event manager,
-	 * otherwise a deadlock on the libRocket mutex caused by the SysLog will occur.
+	/* The actual restore needs to be executed outside RmlUi's event manager,
+	 * otherwise a deadlock on the RmlUi mutex caused by the SysLog will occur.
 	 */
 	m_restore_fn = [=](){
 		std::string path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER)

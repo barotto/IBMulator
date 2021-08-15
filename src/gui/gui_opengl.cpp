@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,8 +19,8 @@
 
 #include "ibmulator.h"
 #include "gui_opengl.h"
-#include "rocket/rend_interface_opengl.h"
-#include <Rocket/Core.h>
+#include "rml/rend_interface_opengl.h"
+#include <RmlUi/Core.h>
 #include <SDL.h>
 #include <SDL_image.h>
 #include <GL/glew.h>
@@ -48,12 +48,12 @@ void GUI_OpenGL::render()
 	GLCALL( glClear(GL_COLOR_BUFFER_BIT) );
 	
 	// this is a rendering of the screen only (which includes the VGA image).
-	// GUI controls are rendered later by the rocket context
+	// GUI controls are rendered later by the RmlUi context
 	m_windows.interface->render_screen();
 
-	ms_rocket_mutex.lock();
-	m_rocket_context->Render();
-	ms_rocket_mutex.unlock();
+	ms_rml_mutex.lock();
+	m_rml_context->Render();
+	ms_rml_mutex.unlock();
 
 	SDL_GL_SwapWindow(m_SDL_window);
 }
@@ -174,9 +174,9 @@ void GUI_OpenGL::check_device_GL_caps()
 	}
 }
 
-void GUI_OpenGL::create_rocket_renderer()
+void GUI_OpenGL::create_renderer()
 {
-	m_rocket_renderer = std::make_unique<RocketRenderer_OpenGL>(nullptr, m_SDL_window);
+	m_rml_renderer = std::make_unique<RmlRenderer_OpenGL>(nullptr, m_SDL_window);
 }
 
 std::vector<GLuint> GUI_OpenGL::attach_shaders(

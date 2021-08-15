@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_GUI_STATUS_H
 #define IBMULATOR_GUI_STATUS_H
 
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 
 class GUI;
 class FloppyCtrl;
@@ -42,7 +42,7 @@ private:
 		static constexpr const char* cls[] = {
 			"hidden", "idle", "active", "attn"
 		};
-		Rocket::Core::Element *el = nullptr;
+		Rml::Element *el = nullptr;
 		LED status = LED::INVALID;
 
 		bool is(LED _s) const { return status == _s; }
@@ -52,21 +52,23 @@ private:
 	Indicator m_indicators[IND_CNT];
 
 	Machine *m_machine;
-	const FloppyCtrl *m_floppy;
-	const StorageCtrl *m_hdd;
-	const Serial *m_serial;
+	const FloppyCtrl *m_floppy = nullptr;
+	const StorageCtrl *m_hdd = nullptr;
+	const Serial *m_serial = nullptr;
 
 public:
 	Status(GUI * _gui, Machine *_machine);
 	~Status();
 
-	void update();
-	void config_changed();
+	virtual void create();
+	virtual void update();
+	virtual void config_changed();
+
 	void set_indicator(IND _ind, LED _s) {
 		m_indicators[_ind].set(_s);
 	}
 
-	void ProcessEvent(Rocket::Core::Event & event);
+	void ProcessEvent(Rml::Event &) {}
 };
 
 #endif

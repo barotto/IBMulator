@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,16 +21,13 @@
 #define IBMULATOR_GUI_DESKTOP_H
 
 
-#include <Rocket/Core/EventListener.h>
+#include <RmlUi/Core/EventListener.h>
 
 
 class GUI;
 
 class Desktop : public Window
 {
-private:
-	Rocket::Core::Element *background;
-
 public:
 	Desktop(GUI * _gui);
 	~Desktop();

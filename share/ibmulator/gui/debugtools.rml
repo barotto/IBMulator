@@ -7,23 +7,27 @@
 		<style>
 			body
 			{
-				width: 360px;
+				width: auto;
 				position: absolute;
 				top: 0;
 				left: 0;
 			}
+			button {
+				width: auto;
+				padding: 2px 6px 2px 6px;
+			}
 			#close {
-				width: 20px;
+				position: relative;
 				height: 20px;
 			}
 		</style>
 	</head>
 	<body>
 		<div id="tools">
-			<button id="stats" style="width:100px;">Statistics</button>
-			<button id="debugger" style="width:80px;">Debugger</button>
-			<button id="devices" style="width:80px;">Devices</button>
-			<button id="mixer" style="width:80px;">Mixer</button>
+			<button id="stats">Statistics</button>
+			<button id="debugger">Debugger</button>
+			<button id="devices">Devices</button>
+			<button id="mixer">Mixer</button>
 			<button id="close">X</button>
 		</div>
 	</body>

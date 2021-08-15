@@ -27,9 +27,8 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include <Rocket/Core.h>
-#include <Rocket/Controls.h>
-#include <Rocket/Core/TypeConverter.h>
+#include <RmlUi/Core.h>
+#include <RmlUi/Core/TypeConverter.h>
 
 #ifdef _WIN32
 #include "wincompat.h"
@@ -43,48 +42,49 @@ event_map_t FileSelect::ms_evt_map = {
 
 FileSelect::FileSelect(GUI * _gui)
 :
-Window(_gui, "fileselect.rml"),
-Rocket::Controls::DataSource("file_select")
+Rml::DataSource("file_select"),
+Window(_gui, "fileselect.rml")
 {
-	assert(m_wnd);
-	m_select_callbk = nullptr;
-	m_cancel_callbk = nullptr;
-	m_cwd_el = get_element("cwd");
-	m_wprotect = dynamic_cast<RCN::ElementFormControl*>(get_element("wprotect"));
 }
 
 FileSelect::~FileSelect()
 {
 }
 
+void FileSelect::create()
+{
+	Window::create();
+
+	m_cwd_el = get_element("cwd");
+	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
+}
 
 void FileSelect::update()
 {
-
 }
 
-void FileSelect::on_file(RC::Event &_event)
+void FileSelect::on_file(Rml::Event &_event)
 {
-	RC::Element * el = _event.GetTargetElement();
-	RCN::ElementDataGridCell *cell = dynamic_cast<RCN::ElementDataGridCell *>(el);
+	Rml::Element * el = _event.GetTargetElement();
+	Rml::ElementDataGridCell *cell = dynamic_cast<Rml::ElementDataGridCell *>(el);
 	if(cell == nullptr) {
 		//try the parent?
-		cell = dynamic_cast<RCN::ElementDataGridCell *>(el->GetParentNode());
+		cell = dynamic_cast<Rml::ElementDataGridCell *>(el->GetParentNode());
 		if(cell == nullptr) {
 			//give up
 			return;
 		}
 	}
-	RCN::ElementDataGridRow *row =
-			dynamic_cast<RCN::ElementDataGridRow *>(cell->GetParentNode());
+	Rml::ElementDataGridRow *row =
+			dynamic_cast<Rml::ElementDataGridRow *>(cell->GetParentNode());
 	if(row == nullptr) {
 		return;
 	}
 	int row_index = row->GetTableRelativeIndex();
-	RC::StringList sl;
+	std::vector<std::string> sl;
 
 	GetRow(sl, "files", row_index, {"name"});
-	PDEBUGF(LOG_V1, LOG_GUI, "clicked on row %u=%s\n", row_index, sl[0].CString());
+	PDEBUGF(LOG_V1, LOG_GUI, "clicked on row %u=%s\n", row_index, sl[0].c_str());
 
 	auto it = m_cur_dir.begin();
 	advance(it,row_index);
@@ -119,7 +119,7 @@ void FileSelect::on_file(RC::Event &_event)
 	}
 }
 
-void FileSelect::on_cancel(RC::Event &)
+void FileSelect::on_cancel(Rml::Event &)
 {
 	if(m_cancel_callbk != nullptr) {
 		m_cancel_callbk();
@@ -128,8 +128,8 @@ void FileSelect::on_cancel(RC::Event &)
 	}
 }
 
-void FileSelect::GetRow(RC::StringList& row, const RC::String& table, int row_index,
-		const RC::StringList& columns)
+void FileSelect::GetRow(std::vector<std::string> &row, const std::string &table, int row_index,
+		const std::vector<std::string> &columns)
 {
 	if(table != "files") {
 		return;
@@ -140,9 +140,7 @@ void FileSelect::GetRow(RC::StringList& row, const RC::String& table, int row_in
 	{
 		if (columns[i] == "name")
 		{
-			std::string name = it->name;
-			//std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-			row.push_back(RC::String(name.c_str()));
+			row.push_back(str_format("<div class=\"name\">%s</div>", it->name.c_str()));
 		}
 		else if (columns[i] == "label")
 		{
@@ -152,7 +150,7 @@ void FileSelect::GetRow(RC::StringList& row, const RC::String& table, int row_in
 		}
 		else if (columns[i] == "type")
 		{
-			RC::String formatted = "<div class=\"";
+			std::string formatted = "<div class=\"";
 			if(it->is_dir) {
 				formatted += "DIR";
 			} else {
@@ -189,7 +187,7 @@ void FileSelect::GetRow(RC::StringList& row, const RC::String& table, int row_in
 	}
 }
 
-int FileSelect::GetNumRows(const RC::String &_table)
+int FileSelect::GetNumRows(const Rml::String &_table)
 {
 	if(_table != "files") {
 		return 0;
@@ -199,17 +197,17 @@ int FileSelect::GetNumRows(const RC::String &_table)
 
 bool FileSelect::DirEntry::operator<(const FileSelect::DirEntry &_other) const
 {
-    if(is_dir) {
-    	if(_other.is_dir) {
-    		return name < _other.name;
-    	}
-    	return true;
-    } else {
-    	if(_other.is_dir) {
-    		return false;
-    	}
-    	return name < _other.name;
-    }
+	if(is_dir) {
+		if(_other.is_dir) {
+			return name < _other.name;
+		}
+		return true;
+	} else {
+		if(_other.is_dir) {
+			return false;
+		}
+		return name < _other.name;
+	}
 }
 
 void FileSelect::set_current_dir(const std::string &_path)
@@ -290,8 +288,8 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 }
 
 
-void FileSelectTypeFormatter::FormatData(RC::String& formatted_,
-		const RC::StringList& _raw)
+void FileSelectTypeFormatter::FormatData(std::string &formatted_,
+		const std::vector<std::string> &_raw)
 {
-	formatted_ = "<div class=\"" + _raw[0] + "\"></div>";
+	formatted_ = _raw[0];
 }

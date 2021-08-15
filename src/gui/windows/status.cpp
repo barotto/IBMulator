@@ -23,7 +23,7 @@
 #include "gui.h"
 #include "status.h"
 
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <sstream>
 
 #include "hardware/devices/floppy.h"
@@ -32,9 +32,19 @@
 
 Status::Status(GUI * _gui, Machine *_machine)
 :
-Window(_gui, "status.rml")
+Window(_gui, "status.rml"),
+m_machine(_machine)
 {
-	assert(m_wnd);
+}
+
+Status::~Status()
+{
+}
+
+void Status::create()
+{
+	Window::create();
+
 	m_indicators[IND::PWR   ].el = get_element("power");
 	m_indicators[IND::FLP_A ].el = get_element("floppy_a");
 	m_indicators[IND::FLP_B ].el = get_element("floppy_b");
@@ -42,15 +52,6 @@ Window(_gui, "status.rml")
 	m_indicators[IND::NET   ].el = get_element("net");
 	m_indicators[IND::AUDREC].el = get_element("audrec");
 	m_indicators[IND::VIDREC].el = get_element("vidrec");
-
-	m_machine = _machine;
-	m_floppy = nullptr;
-	m_hdd = nullptr;
-	m_serial = nullptr;
-}
-
-Status::~Status()
-{
 }
 
 void Status::Indicator::set(Status::LED _s)
@@ -151,9 +152,4 @@ void Status::config_changed()
 	} else {
 		m_indicators[IND::NET].set(LED::HIDDEN);
 	}
-}
-
-void Status::ProcessEvent(Rocket::Core::Event &)
-{
-	//Rocket::Core::Element * el = event.GetTargetElement();
 }

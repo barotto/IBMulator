@@ -16,7 +16,7 @@
 				display: inline-block;
 				width: 33px;
 				height: 12px;
-				font-size: 12;
+				font-size: 12px;
 				text-align: center;
 				padding-top: 0px;
 				float: right;

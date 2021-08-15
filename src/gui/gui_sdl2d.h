@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,7 +29,7 @@ protected:
 	unsigned m_rendflags;
 	
 	void create_window(int _flags);
-	void create_rocket_renderer();
+	void create_renderer();
 	void shutdown_SDL();
 	
 public:

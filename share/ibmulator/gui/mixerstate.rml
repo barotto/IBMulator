@@ -2,7 +2,6 @@
 	<head>
 		<title>Mixer</title>
 		<link type="text/template" href="default.rml" />
-		<link type="text/rcss" href="tables.rcss"/>
 		<style>
 			body
 			{
@@ -12,13 +11,24 @@
 				top: 30px;
 				left: 0px;
 			}
-			th, td {
-				width: 18%;
-				font-size: 10px;
+			tr {
+				margin-top: 1px;
+			}
+			th {
+				width: 20%;
+				padding: 4px;
 				text-align: center;
+				margin: 1px;
+				font-size: 10px;
+			}
+			td {
+				width: 20%;
+				padding: 4px;
+				margin: 1px;
+				font-size: 10px;
 			}
 			th.data, td.data {
-				width: 12%;
+				width: 13%;
 				font-size: 10px;
 			}
 			.enabled {
@@ -30,7 +40,6 @@
 	<body template="default">
 		<p id="state"></p>
 		<table id="channels">
-			
 		</table>
 	</body>
 </rml>

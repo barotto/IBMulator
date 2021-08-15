@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,34 +29,36 @@ class SysDebugger386 : public SysDebugger
 {
 private:
 	struct s_386core {
-		RC::Element *rf,*vm;
-		RC::Element *pe,*pg,*ts;
-		RC::Element *fs,*gs;
-		RC::Element *fsbase,*gsbase;
-		RC::Element *fslimit,*gslimit;
-		RC::Element *cr2, *cr3;
-		RC::Element *dr03[4], *dr6, *dr7;
+		Rml::Element *rf,*vm;
+		Rml::Element *pe,*pg,*ts;
+		Rml::Element *fs,*gs;
+		Rml::Element *fsbase,*gsbase;
+		Rml::Element *fslimit,*gslimit;
+		Rml::Element *cr2, *cr3;
+		Rml::Element *dr03[4], *dr6, *dr7;
 	} m_386core;
 
 	struct s_tools {
-		RCN::ElementFormControl *cs_bp,*eip_bp;
+		Rml::ElementFormControl *cs_bp,*eip_bp;
 	} m_386tools;
 
 	static event_map_t ms_evt_map;
 
-	void on_CPU_skip(RC::Event &);
-	void on_CPU_bp_btn(RC::Event &);
-	void on_fs_dump(RC::Event &);
-	void on_gs_dump(RC::Event &);
+	void on_CPU_skip(Rml::Event &);
+	void on_CPU_bp_btn(Rml::Event &);
+	void on_fs_dump(Rml::Event &);
+	void on_gs_dump(Rml::Event &);
 
-	const RC::String & disasm(uint32_t _eip, bool _analyze, uint * _size);
+	const std::string & disasm(uint32_t _eip, bool _analyze, uint * _size);
 
 public:
 
-	SysDebugger386(GUI *_gui, Machine *_machine, RC::Element *_button);
+	SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_button);
 	~SysDebugger386();
 
-	void update();
+	virtual void create();
+	virtual void update();
+
 	event_map_t & get_event_map() { return SysDebugger386::ms_evt_map; }
 };
 

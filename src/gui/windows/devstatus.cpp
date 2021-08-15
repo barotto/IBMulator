@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,7 @@
 #include "machine.h"
 #include "devstatus.h"
 #include "filesys.h"
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 #include <sstream>
 
 #include "hardware/devices/pic.h"
@@ -40,14 +40,21 @@ event_map_t DevStatus::ms_evt_map = {
 	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
 };
 
-DevStatus::DevStatus(GUI * _gui, RC::Element *_button, Machine *_machine)
+DevStatus::DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine)
 :
-DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
+DebugTools::DebugWindow(_gui, "devstatus.rml", _button),
+m_machine(_machine)
 {
-	assert(m_wnd);
+}
 
-	m_machine = _machine;
-	
+DevStatus::~DevStatus()
+{
+}
+
+void DevStatus::create()
+{
+	DebugTools::DebugWindow::create();
+
 	m_vga.is_running = false;
 	m_vga.btn_update = get_element("cmd_vga_update");
 	
@@ -77,19 +84,17 @@ DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 	m_pic.is_running = false;
 	m_pic.btn_update = get_element("cmd_pic_update");
 	
-	char buf[3];
 	for(int i=0; i<16; i++) {
-		snprintf(buf, 3, "%d", i);
-		m_pic.irq_e[i] = get_element(RC::String("pic_irq_")+buf);
-		m_pic.irr_e[i] = get_element(RC::String("pic_irr_")+buf);
-		m_pic.imr_e[i] = get_element(RC::String("pic_imr_")+buf);
-		m_pic.isr_e[i] = get_element(RC::String("pic_isr_")+buf);
+		m_pic.irq_e[i] = get_element(str_format("pic_irq_%d", i));
+		m_pic.irr_e[i] = get_element(str_format("pic_irr_%d", i));
+		m_pic.imr_e[i] = get_element(str_format("pic_imr_%d", i));
+		m_pic.isr_e[i] = get_element(str_format("pic_isr_%d", i));
 		if(i<3) {
-			m_pit.mode[i] = get_element(RC::String("pit_")+buf+"_mode");
-			m_pit.cnt[i] = get_element(RC::String("pit_")+buf+"_cnt");
-			m_pit.gate[i] = get_element(RC::String("pit_")+buf+"_gate");
-			m_pit.out[i] = get_element(RC::String("pit_")+buf+"_out");
-			m_pit.in[i] = get_element(RC::String("pit_")+buf+"_in");
+			m_pit.mode[i] = get_element(str_format("pit_%d_mode", i));
+			m_pit.cnt[i]  = get_element(str_format("pit_%d_cnt", i));
+			m_pit.gate[i] = get_element(str_format("pit_%d_gate", i));
+			m_pit.out[i]  = get_element(str_format("pit_%d_out", i));
+			m_pit.in[i]   = get_element(str_format("pit_%d_in", i));
 		}
 	}
 	m_pic.irq = 0;
@@ -104,17 +109,13 @@ DebugTools::DebugWindow(_gui, "devstatus.rml", _button)
 	m_vga.pal_line   = get_element("vga_pal_line");
 }
 
-DevStatus::~DevStatus()
-{
-}
-
-void DevStatus::on_cmd_vga_update(RC::Event &)
+void DevStatus::on_cmd_vga_update(Rml::Event &)
 {
 	m_vga.is_running = !m_vga.is_running;
 	m_vga.btn_update->SetClass("on", m_vga.is_running);
 }
 
-void DevStatus::on_cmd_vga_dump_state(RC::Event &)
+void DevStatus::on_cmd_vga_dump_state(Rml::Event &)
 {
 	try {
 		std::string captpath = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
@@ -129,18 +130,18 @@ void DevStatus::on_cmd_vga_dump_state(RC::Event &)
 	} catch(std::exception &) {}
 }
 
-void DevStatus::on_cmd_vga_screenshot(RC::Event &)
+void DevStatus::on_cmd_vga_screenshot(Rml::Event &)
 {
 	m_gui->take_screenshot(true);
 }
 
-void DevStatus::on_cmd_pit_update(RC::Event &)
+void DevStatus::on_cmd_pit_update(Rml::Event &)
 {
 	m_pit.is_running = !m_pit.is_running;
 	m_pit.btn_update->SetClass("on", m_pit.is_running);
 }
 
-void DevStatus::on_cmd_pic_update(RC::Event &)
+void DevStatus::on_cmd_pic_update(Rml::Event &)
 {
 	m_pic.is_running = !m_pic.is_running;
 	m_pic.btn_update->SetClass("on", m_pic.is_running);
@@ -234,38 +235,34 @@ void DevStatus::update_vga()
 {
 	VGA *vga = m_machine->devices().vga();
 	const VideoModeInfo & vm = vga->video_mode();
-	RC::String str;
+	static std::string str(100,'0');
+
 	if(vm.mode == VGA_M_TEXT) {
-		str.FormatString(100, "%ux%u %s %ux%u %ux%u",
+		str_format(str, "%ux%u %s %ux%u %ux%u",
 			vm.imgw, vm.imgh, vga->current_mode_string(),
 			vm.textcols, vm.textrows,
 			vm.cwidth, vm.cheight);
 	} else {
-		str.FormatString(100, "%ux%u %s",
+		str_format(str, "%ux%u %s",
 			vm.imgw, vm.imgh, vga->current_mode_string());
 	}
 	m_vga.mode->SetInnerRML(str);
 
 	const VideoTimings & vt = vga->timings();
-	str.FormatString(100, "%ux%u/%u-%u:%u-%u %.2fkHz %.2fHz",
+	m_vga.screen->SetInnerRML(str_format(str, "%ux%u/%u-%u:%u-%u %.2fkHz %.2fHz",
 		vm.xres, vm.yres,
 		vm.borders.top, vm.borders.bottom, vm.borders.left, vm.borders.right,
-		vt.hfreq, vt.vfreq);
-	m_vga.screen->SetInnerRML(str);
+		vt.hfreq, vt.vfreq));
 
 	m_vga.htotal->SetInnerRML(format_uint16(vt.htotal));
 	m_vga.hdend->SetInnerRML(format_uint16(vt.hdend));
-	str.FormatString(10, "%d-%d", vt.hbstart, vt.hbend);
-	m_vga.hblank->SetInnerRML(str);
-	str.FormatString(10, "%d-%d", vt.hrstart, vt.hrend);
-	m_vga.hretr->SetInnerRML(str);
+	m_vga.hblank->SetInnerRML(str_format(str, "%d-%d", vt.hbstart, vt.hbend));
+	m_vga.hretr->SetInnerRML(str_format(str, "%d-%d", vt.hrstart, vt.hrend));
 	
 	m_vga.vtotal->SetInnerRML(format_uint16(vt.vtotal));
 	m_vga.vdend->SetInnerRML(format_uint16(vt.vdend));
-	str.FormatString(10, "%d-%d", vt.vbstart, vt.vbend);
-	m_vga.vblank->SetInnerRML(str);
-	str.FormatString(10, "%d-%d", vt.vrstart, vt.vrend);
-	m_vga.vretr->SetInnerRML(str);
+	m_vga.vblank->SetInnerRML(str_format(str, "%d-%d", vt.vbstart, vt.vbend));
+	m_vga.vretr->SetInnerRML(str_format(str, "%d-%d", vt.vrstart, vt.vrend));
 	
 	m_vga.startaddr_hi->SetInnerRML(format_hex8(vga->crtc().startaddr_hi));
 	m_vga.startaddr_lo->SetInnerRML(format_hex8(vga->crtc().startaddr_lo));
@@ -273,8 +270,7 @@ void DevStatus::update_vga()
 	
 	bool disp=false, vret=false, hret=false;
 	double scanline = vga->current_scanline(disp, hret, vret);
-	str.FormatString(10, "%.2f", scanline);
-	m_vga.scanl->SetInnerRML(str);
+	m_vga.scanl->SetInnerRML(str_format(str, "%.2f", scanline));
 	if(disp) {
 		m_vga.disp_phase->SetClass("led_active", true);
 	} else {
@@ -292,19 +288,15 @@ void DevStatus::update_vga()
 	}
 	
 	const VideoStats & stats = vga->stats();
-	str.FormatString(10, "%d", stats.frame_cnt);
-	m_vga.frame_cnt->SetInnerRML(str);
+	m_vga.frame_cnt->SetInnerRML(str_format(str, "%d", stats.frame_cnt));
 	if(stats.updated_pix > 0) {
 		m_vga.upd->SetClass("led_active", true);
-		str.FormatString(10, "%d", stats.updated_pix);
-		m_vga.pix_upd->SetInnerRML(str);
+		m_vga.pix_upd->SetInnerRML(str_format(str, "%d", stats.updated_pix));
 	} else {
 		m_vga.upd->SetClass("led_active", false);
 	}
-	str.FormatString(10, "%d", stats.last_saddr_line);
-	m_vga.saddr_line->SetInnerRML(str);
-	str.FormatString(10, "%d", stats.last_pal_line);
-	m_vga.pal_line->SetInnerRML(str);
+	m_vga.saddr_line->SetInnerRML(str_format(str, "%d", stats.last_saddr_line));
+	m_vga.pal_line->SetInnerRML(str_format(str, "%d", stats.last_pal_line));
 }
 
 void DevStatus::update()

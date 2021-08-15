@@ -20,31 +20,31 @@
 #ifndef IBMULATOR_GUI_FILESELECT_H
 #define IBMULATOR_GUI_FILESELECT_H
 
-#include <Rocket/Controls/DataSource.h>
-#include <Rocket/Core/EventListener.h>
-#include <Rocket/Controls/DataFormatter.h>
+#include <RmlUi/Core/Elements/DataSource.h>
+#include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/Elements/DataFormatter.h>
 
 class GUI;
 
-class FileSelectTypeFormatter : public RCN::DataFormatter
+class FileSelectTypeFormatter : public Rml::DataFormatter
 {
 public:
-	FileSelectTypeFormatter() : RCN::DataFormatter("file_type") {}
+	FileSelectTypeFormatter() : Rml::DataFormatter("file_type") {}
 	~FileSelectTypeFormatter() {}
 
-	void FormatData(RC::String& formatted_data, const RC::StringList& raw_data);
+	void FormatData(std::string &formatted_data, const std::vector<std::string> &raw_data);
 };
 
-class FileSelect : public Window, public Rocket::Controls::DataSource
+class FileSelect : public Rml::DataSource, public Window
 {
 private:
-	std::function<void(std::string,bool)> m_select_callbk;
-	std::function<void()> m_cancel_callbk;
+	std::function<void(std::string,bool)> m_select_callbk = nullptr;
+	std::function<void()> m_cancel_callbk = nullptr;
 
 	static event_map_t ms_evt_map;
 	std::string m_cwd;
-	RC::Element *m_cwd_el;
-	RCN::ElementFormControl *m_wprotect;
+	Rml::Element *m_cwd_el = nullptr;
+	Rml::ElementFormControl *m_wprotect = nullptr;
 
 	FileSelectTypeFormatter m_formatter;
 
@@ -53,12 +53,12 @@ private:
 		std::string name;
 		size_t size;
 		bool is_dir;
-	    bool operator<(const DirEntry& _other) const;
+		bool operator<(const DirEntry& _other) const;
 	};
 	std::set<DirEntry> m_cur_dir;
 
-	void on_cancel(RC::Event &);
-	void on_file(RC::Event &);
+	void on_cancel(Rml::Event &);
+	void on_file(Rml::Event &);
 
 	std::set<DirEntry> read_dir(std::string _path, std::string _ext);
 
@@ -70,14 +70,15 @@ public:
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
 
-	void update();
+	virtual void create();
+	virtual void update();
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
 
 	void set_current_dir(const std::string &_path);
 
-	void GetRow(RC::StringList& row, const RC::String& table,
-			int row_index, const RC::StringList& columns);
-	int GetNumRows(const RC::String& table);
+	virtual void GetRow(std::vector<std::string> &row, const std::string &table,
+			int row_index, const std::vector<std::string> &columns);
+	virtual int GetNumRows(const Rml::String &table);
 };
 
 

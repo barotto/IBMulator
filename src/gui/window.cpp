@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,26 +20,17 @@
 #include "ibmulator.h"
 #include "gui.h"
 
-#include <Rocket/Core.h>
+#include <RmlUi/Core.h>
 
 
 event_map_t Window::ms_event_map = {};
 
 Window::Window(GUI * _gui, const char *_rml)
-: m_gui(_gui), m_evts_added(false)
+: m_gui(_gui),
+  m_rml_docfile(_rml),
+  m_wnd(nullptr),
+  m_evts_added(false)
 {
-	m_wnd = _gui->load_document(_rml);
-	if(!m_wnd) {
-		PERRF(LOG_GUI, "Cannot load the '%s' interface\n", _rml);
-		throw std::exception();
-	}
-}
-
-Window::~Window()
-{
-	if(m_wnd) {
-		m_wnd->RemoveReference();
-	}
 }
 
 void Window::add_events()
@@ -49,7 +40,7 @@ void Window::add_events()
 	}
 	assert(m_wnd);
 	event_map_t & evtmap = get_event_map();
-	std::set<RC::String> evtnames;
+	std::set<std::string> evtnames;
 	for(auto i : evtmap) {
 		evtnames.insert(i.first.second);
 	}
@@ -59,9 +50,9 @@ void Window::add_events()
 	m_evts_added = true;
 }
 
-void Window::add_listener(const RC::String &_element, const RC::String &_event, RC::EventListener *_listener)
+void Window::add_listener(const std::string &_element, const std::string &_event, Rml::EventListener *_listener)
 {
-	RC::Element *el = m_wnd->GetElementById(_element);
+	Rml::Element *el = m_wnd->GetElementById(_element);
 	if(el) {
 		el->AddEventListener(_event, _listener);
 	}
@@ -71,7 +62,7 @@ void Window::remove_events()
 {
 	assert(m_wnd);
 	event_map_t & evtmap = get_event_map();
-	std::set<RC::String> evtnames;
+	std::set<std::string> evtnames;
 	for(auto i : evtmap) {
 		evtnames.insert(i.first.second);
 	}
@@ -81,58 +72,77 @@ void Window::remove_events()
 	m_evts_added = false;
 }
 
+void Window::create()
+{
+	// it turns out with RmlUi you can't load a document in the constructor, bummer
+	if(m_rml_docfile.empty()) {
+		throw std::exception();
+	}
+	if(!m_wnd) {
+		m_wnd = m_gui->load_document(m_rml_docfile);
+		if(!m_wnd) {
+			PERRF(LOG_GUI, "Cannot load the '%s' document file\n", m_rml_docfile.c_str());
+			m_rml_docfile.clear();
+			throw std::exception();
+		}
+	}
+}
+
 void Window::show()
 {
-	assert(m_wnd);
+	create();
 	add_events();
 	m_wnd->Show();
 }
 
 void Window::hide()
 {
-	assert(m_wnd);
-	m_wnd->Hide();
+	if(m_wnd) {
+		m_wnd->Hide();
+	}
 }
 
 void Window::close()
 {
-	assert(m_wnd);
-	m_wnd->Close();
-	remove_events();
+	if(m_wnd) {
+		m_wnd->Close();
+		remove_events();
+	}
 }
 
 bool Window::is_visible()
 {
-	assert(m_wnd);
-	return m_wnd->IsVisible();
+	if(m_wnd) {
+		return m_wnd->IsVisible();
+	}
+	return false;
 }
 
 void Window::update()
 {
-	assert(m_wnd);
 }
 
-RC::Element * Window::get_element(const RC::String &_id)
+Rml::Element * Window::get_element(const std::string &_id)
 {
 	assert(m_wnd);
-	RC::Element * el = m_wnd->GetElementById(_id);
+	Rml::Element *el = m_wnd->GetElementById(_id);
 	if(!el) {
-		PERRF(LOG_GUI, "element %s not found!\n", _id.CString());
+		PERRF(LOG_GUI, "element %s not found!\n", _id.c_str());
 	}
 	return el;
 }
 
-void Window::ProcessEvent(RC::Event &_event)
+void Window::ProcessEvent(Rml::Event &_event)
 {
-	RC::Element *el = _event.GetTargetElement();
-	const RC::String &type = _event.GetType();
+	Rml::Element *el = _event.GetTargetElement();
+	const std::string &type = _event.GetType();
 	event_map_t & evtmap = get_event_map();
 	auto hit = evtmap.find( event_map_key_t(el->GetId(),type) );
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
 		fn = hit->second;
 	} else {
-		RC::Element *parent = el->GetParentNode();
+		Rml::Element *parent = el->GetParentNode();
 		while(parent) {
 			hit = evtmap.find(event_map_key_t(
 				parent->GetId(),
