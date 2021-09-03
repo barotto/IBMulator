@@ -1,6 +1,6 @@
 <rml>
 	<head>
-		<title>IBMulator</title>
+		<title>Interface</title>
 		<link type="text/rcss" href="base.rcss"/>
 		<link type="text/rcss" href="speed_indicator.rcss"/>
 		<style>

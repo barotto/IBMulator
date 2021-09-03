@@ -27,9 +27,7 @@ event_map_t Window::ms_event_map = {};
 
 Window::Window(GUI * _gui, const char *_rml)
 : m_gui(_gui),
-  m_rml_docfile(_rml),
-  m_wnd(nullptr),
-  m_evts_added(false)
+  m_rml_docfile(_rml)
 {
 }
 
@@ -40,36 +38,19 @@ void Window::add_events()
 	}
 	assert(m_wnd);
 	event_map_t & evtmap = get_event_map();
-	std::set<std::string> evtnames;
-	for(auto i : evtmap) {
-		evtnames.insert(i.first.second);
-	}
-	for(auto e : evtnames) {
-		m_wnd->AddEventListener(e, this);
+	for(auto evt : evtmap) {
+		if(evt.first.first == "*") {
+			m_wnd->AddEventListener(evt.first.second, this);
+		} else {
+			Rml::Element * el = get_element(evt.first.first);
+			if(el) {
+				el->AddEventListener(evt.first.second, this);
+			} else {
+				m_wnd->AddEventListener(evt.first.second, this);
+			}
+		}
 	}
 	m_evts_added = true;
-}
-
-void Window::add_listener(const std::string &_element, const std::string &_event, Rml::EventListener *_listener)
-{
-	Rml::Element *el = m_wnd->GetElementById(_element);
-	if(el) {
-		el->AddEventListener(_event, _listener);
-	}
-}
-
-void Window::remove_events()
-{
-	assert(m_wnd);
-	event_map_t & evtmap = get_event_map();
-	std::set<std::string> evtnames;
-	for(auto i : evtmap) {
-		evtnames.insert(i.first.second);
-	}
-	for(auto e : evtnames) {
-		m_wnd->RemoveEventListener(e, this);
-	}
-	m_evts_added = false;
 }
 
 void Window::create()
@@ -92,12 +73,17 @@ void Window::show()
 {
 	create();
 	add_events();
-	m_wnd->Show();
+	if(m_wnd && !m_wnd->IsVisible()) {
+		if(m_modal != Rml::ModalFlag::None) {
+			m_wnd->SetClass("modal", true);
+		}
+		m_wnd->Show(m_modal);
+	}
 }
 
 void Window::hide()
 {
-	if(m_wnd) {
+	if(m_wnd && m_wnd->IsVisible()) {
 		m_wnd->Hide();
 	}
 }
@@ -105,8 +91,16 @@ void Window::hide()
 void Window::close()
 {
 	if(m_wnd) {
+		hide();
 		m_wnd->Close();
-		remove_events();
+		m_gui->unload_document(m_wnd);
+	}
+}
+
+void Window::focus()
+{
+	if(m_wnd) {
+		m_wnd->Focus();
 	}
 }
 
@@ -138,6 +132,7 @@ void Window::ProcessEvent(Rml::Event &_event)
 	const std::string &type = _event.GetType();
 	event_map_t & evtmap = get_event_map();
 	auto hit = evtmap.find( event_map_key_t(el->GetId(),type) );
+	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'\n", type.c_str(), el->GetId().c_str());
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
 		fn = hit->second;
@@ -155,7 +150,35 @@ void Window::ProcessEvent(Rml::Event &_event)
 			parent = parent->GetParentNode();
 		}
 	}
+	if(!fn) {
+		hit = evtmap.find(event_map_key_t("*", type));
+		if(hit != evtmap.end()) {
+			fn = hit->second;
+		}
+	}
 	if(fn) {
 		(this->*fn)(_event);
+	}
+}
+
+Rml::Input::KeyIdentifier Window::get_key_identifier(Rml::Event &_ev) const
+{
+	return (Rml::Input::KeyIdentifier) _ev.GetParameter<int>("key_identifier",
+				Rml::Input::KeyIdentifier::KI_UNKNOWN);
+}
+
+void Window::on_cancel(Rml::Event &)
+{
+	hide();
+}
+
+void Window::on_keydown(Rml::Event &_ev)
+{
+	switch(get_key_identifier(_ev)) {
+		case Rml::Input::KeyIdentifier::KI_ESCAPE:
+			on_cancel(_ev);
+			break;
+		default:
+			break;
 	}
 }

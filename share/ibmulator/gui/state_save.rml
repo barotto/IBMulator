@@ -1,0 +1,24 @@
+<rml>
+	<head>
+		<title>Save state</title>
+		<link type="text/template" href="default.rml" />
+		<link type="text/rcss" href="state_dialog.rcss"/>
+		<style>
+
+
+		</style>
+	</head>
+	<body template="default">
+		<div id="list"></div>
+		<div id="buttons">
+			<button id="new_save" class="romshell">New save</button>
+			<button id="cancel" class="romshell">Cancel</button>
+		</div>
+		<div id="desc_dialog" class="hidden">
+			<div id="desc_mask">
+				<div id="desc_title">Description</div>
+				<input type="text" id="desc" size=30 />
+			</div>
+		</div>
+	</body>
+</rml>

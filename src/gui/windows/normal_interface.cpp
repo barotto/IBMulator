@@ -31,8 +31,8 @@
 event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT( "power",     "click", Interface::on_power ),
 	GUI_EVT( "pause",     "click", NormalInterface::on_pause ),
-	GUI_EVT( "save",      "click", NormalInterface::on_save ),
-	GUI_EVT( "restore",   "click", NormalInterface::on_restore ),
+	GUI_EVT( "save",      "click", Interface::on_save_state ),
+	GUI_EVT( "restore",   "click", Interface::on_load_state ),
 	GUI_EVT( "exit",      "click", NormalInterface::on_exit ),
 	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
 	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
@@ -257,22 +257,6 @@ void NormalInterface::on_pause(Rml::Event &)
 	} else {
 		m_machine->cmd_pause();
 	}
-}
-
-void NormalInterface::on_save(Rml::Event &)
-{
-	//TODO file select window to choose the destination
-	g_program.save_state("", [this]() {
-		m_gui->show_message("State saved");
-	}, nullptr);
-}
-
-void NormalInterface::on_restore(Rml::Event &)
-{
-	//TODO file select window to choose the source
-	g_program.restore_state("", [this]() {
-		m_gui->show_message("State restored");
-	}, nullptr);
 }
 
 void NormalInterface::on_exit(Rml::Event &)

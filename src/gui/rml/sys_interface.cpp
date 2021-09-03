@@ -28,6 +28,7 @@ Rml::Input::KeyIdentifier RmlSystemInterface::TranslateKey(SDL_Keycode sdlkey)
 
 	switch(sdlkey) {
 		case SDLK_UNKNOWN: return KI_UNKNOWN;
+		case SDLK_ESCAPE: return KI_ESCAPE;
 		case SDLK_SPACE: return KI_SPACE;
 		case SDLK_0: return KI_0;
 		case SDLK_1: return KI_1;

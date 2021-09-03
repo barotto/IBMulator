@@ -136,7 +136,7 @@ protected:
 
 		GUI_TEVT_COUNT
 	};
-	static Uint32 ms_sdl_user_evt_id;
+	inline static Uint32 ms_sdl_user_evt_id;
 	
 	struct Mouse {
 		enum Axis {
@@ -233,19 +233,23 @@ protected:
 
 	// mutex must be locked before any access to the RmlUi's objects
 	// TODO this mutex is currently used by 1 thread only (GUI). remove?
-	static std::mutex ms_rml_mutex;
+	inline static std::mutex ms_rml_mutex;
 	std::unique_ptr<RmlRenderer> m_rml_renderer;
 	RmlSystemInterface * m_rml_sys_interface;
 	RmlFileInterface * m_rml_file_interface;
 	Rml::Context * m_rml_context;
 
-	class Windows {
+	class WindowManager : public Rml::EventListener {
 	public:
-		static std::mutex s_interface_mutex;
+		GUI *m_gui;
+		inline static std::mutex s_interface_mutex;
 
-		bool visible = false;
 		bool debug_wnds = false;
 		bool status_wnd = false;
+		int windows_count = 0; // debug
+		int docs_count = 0;    // debug
+		Rml::ElementDocument *last_focus_doc = nullptr;
+		Rml::ElementDocument *revert_focus = nullptr;
 
 		std::unique_ptr<Desktop>    desktop;
 		std::unique_ptr<Interface>  interface;
@@ -265,10 +269,18 @@ protected:
 		void shutdown();
 		void toggle_status();
 		void toggle_dbg();
-		bool need_input();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
-
+		Rml::ElementDocument * current_doc();
+		bool need_input();
+		void ProcessEvent(Rml::Event &);
+		void register_document(Rml::ElementDocument *_doc);
+		static constexpr Rml::EventId listening_evts[] = {
+			Rml::EventId::Show,
+			Rml::EventId::Hide,
+			Rml::EventId::Unload,
+			Rml::EventId::Focus
+		};
 	} m_windows;
 
 	std::unique_ptr<Capture> m_capture;
@@ -281,7 +293,6 @@ protected:
 	void update_window_size(int _w, int _h);
 	void update_display_size();
 	void update_display_size_realistic();
-	void input_grab(bool _value);
 	
 	virtual void shutdown_SDL();
 	
@@ -315,6 +326,7 @@ public:
 	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	
 	Rml::ElementDocument * load_document(const std::string &_filename);
+	void unload_document(Rml::ElementDocument *);
 	static std::string shaders_dir();
 	static std::string images_dir();
 	
@@ -323,10 +335,13 @@ public:
 	virtual void render() = 0;
 	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
+	SDL_Surface * copy_framebuffer();
 	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
 	void toggle_dbg_windows();
+	void grab_input(bool _value);
+	bool is_input_grabbed();
 	bool is_video_recording() const;
 	bool is_audio_recording() const;
 
@@ -379,6 +394,8 @@ private:
 	void pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_save_state(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_load_state(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase);

@@ -555,8 +555,10 @@ keymap file.
 * CTRL+F5: take a screenshot
 * CTRL+F6: start/stop audio capture
 * CTRL+F7: start/stop video capture
-* CTRL+F8: quick save current state
-* CTRL+F9: quick load last state
+* SHIFT+F8: open the save state dialog
+* SHIFT+F9: open the load state dialog
+* CTRL+F8: quick save state
+* CTRL+F9: quick load state
 * CTRL+F10: grab the mouse
 * CTRL+F11: decrease emulation speed
 * SHIFT+F11: set emulation speed to 10% (press again to reset)

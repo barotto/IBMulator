@@ -23,6 +23,7 @@
 #include "pacer.h"
 #include "bench.h"
 #include "appconfig.h"
+#include "state_record.h"
 #include <condition_variable>
 
 class GUI;
@@ -84,8 +85,8 @@ public:
 
 	Bench & get_bench() { return m_bench; }
 
-	void save_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
-	void restore_state(std::string _path, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
+	void save_state(StateRecord::Info _info, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
+	void restore_state(StateRecord::Info _info, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
 
 	GUI * gui_instance() const {
 		return m_gui.get();

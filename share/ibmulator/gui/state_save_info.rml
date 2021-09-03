@@ -1,0 +1,44 @@
+<rml>
+	<head>
+		<title>Save state</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 400px;
+				height: 100px;
+				min-height: 100px;
+				min-width: 400px;
+				margin: auto;
+				background-color: #3C5464FF;
+			}
+			div#window
+			{
+				padding: 20px;
+			}
+			#buttons {
+				position: absolute;
+				bottom: 20px;
+				right: 40px;
+				left: 40px;
+				text-align: right;
+			}
+			button.romshell
+			{
+				margin-left: 10px;
+			}
+			#desc {
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="info">
+			<input type="text" id="desc"/>
+		</div>
+		<div id="buttons">
+			<button id="save" class="romshell">Save</button>
+			<button id="cancel" class="romshell">Cancel</button>
+		</div>
+	</body>
+</rml>

@@ -32,6 +32,10 @@ libgui_a_SOURCES = \
 	windows/devstatus.cpp \
 	windows/mixerstate.cpp \
 	windows/fileselect.cpp \
+	windows/state_dialog.cpp \
+	windows/state_save.cpp \
+	windows/state_save_info.cpp \
+	windows/state_load.cpp \
 	capture/capture.cpp \
 	capture/capture_imgseq.cpp \
 	capture/capture_videofile.cpp \
@@ -73,6 +77,10 @@ noinst_HEADERS = \
 	windows/devstatus.h \
 	windows/mixerstate.h \
 	windows/fileselect.h \
+	windows/state_dialog.h \
+	windows/state_save.h \
+	windows/state_save_info.h \
+	windows/state_load.h \
 	capture/capture.h \
 	capture/capture_imgseq.h \
 	capture/capture_videofile.h \

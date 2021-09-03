@@ -197,8 +197,8 @@ public:
 	void cmd_soft_reset();
 	void cmd_reset();
 	void cmd_switch_power();
-	void cmd_pause();
-	void cmd_resume();
+	void cmd_pause(bool _show_notice=true);
+	void cmd_resume(bool _show_notice=true);
 	void cmd_memdump(uint32_t base=0, uint32_t len=0);
 	void cmd_dtdump(const std::string &_name);
 	void cmd_cpulog();

@@ -24,6 +24,9 @@
 #include "gui/guifx.h"
 #include "screen_renderer.h"
 #include "fileselect.h"
+#include "state_save.h"
+#include "state_save_info.h"
+#include "state_load.h"
 #include "hardware/devices/vga.h"
 #include <RmlUi/Core/EventListener.h>
 
@@ -112,7 +115,10 @@ protected:
 
 	Machine *m_machine;
 	Mixer *m_mixer;
-	FileSelect *m_fs = nullptr;
+	std::unique_ptr<FileSelect> m_fs;
+	std::unique_ptr<StateSave> m_state_save;
+	std::unique_ptr<StateSaveInfo> m_state_save_info;
+	std::unique_ptr<StateLoad> m_state_load;
 	FloppyCtrl *m_floppy = nullptr;
 	StorageCtrl *m_hdd = nullptr;
 
@@ -125,17 +131,22 @@ public:
 
 	virtual void create();
 	virtual void update();
+	virtual void close();
 	virtual void config_changed();
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 
 	void show_message(const char* _mex);
 
+	void save_state(StateRecord::Info _info);
+	
 	void on_power(Rml::Event &);
 	void on_fdd_select(Rml::Event &);
 	void on_fdd_eject(Rml::Event &);
 	void on_fdd_mount(Rml::Event &);
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
+	void on_save_state(Rml::Event &);
+	void on_load_state(Rml::Event &);
 
 	VGADisplay * vga_display() { return & m_screen->vga.display; }
 	void render_screen();
@@ -148,11 +159,15 @@ public:
 	virtual void set_video_saturation(float);
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
-
+	SDL_Surface * copy_framebuffer();
+	
 	virtual void sig_state_restored() {}
 
 private:
 	void update_floppy_disk(std::string _filename);
+
+	void show_state_dialog(bool _save);
+	void show_state_info_dialog(StateRecord::Info _info);
 };
 
 #endif

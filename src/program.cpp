@@ -26,9 +26,9 @@
 #include "program.h"
 #include "machine.h"
 #include "mixer.h"
-#include "statebuf.h"
 #include <cstdio>
 #include <libgen.h>
+#include <state_record.h>
 #include <thread>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -60,67 +60,100 @@ Program::~Program()
 }
 
 void Program::save_state(
-	std::string _name,
+	StateRecord::Info _info,
 	std::function<void()> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
 	if(!m_machine->is_on()) {
-		PINFOF(LOG_V0, LOG_PROGRAM, "The machine needs to be on\n");
+		PINFOF(LOG_V0, LOG_PROGRAM, "The machine must be on\n");
 		return;
 	}
-
-	if(_name.empty()) {
-		_name = "state";
-	}
-	std::string path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER)
-			+ FS_SEP + _name;
-
-	PINFOF(LOG_V0, LOG_PROGRAM, "Saving current state in '%s'...\n", path.c_str());
-
-	std::string ini = path + ".ini";
-	try {
-		m_config[1].create_file(ini);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "Cannot create config file '%s'\n", ini.c_str());
-		if(_on_fail != nullptr) {
-			_on_fail("Cannot create config file");
+	
+	std::string capture_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+	if(capture_path.empty()) {
+		PERRF(LOG_PROGRAM, "The capture directory is not set\n");
+		if(_on_fail) {
+			_on_fail("The capture directory is not set");
 		}
 		return;
 	}
 
-	StateBuf state(path);
+	if(_info.name.empty()) {
+		try {
+			_info.name = FileSys::get_next_dirname(capture_path, STATE_RECORD_BASE);
+		} catch(std::runtime_error &) {
+			PERRF(LOG_PROGRAM, "Too many savestates!\n");
+			if(_on_fail) {
+				_on_fail("Too many savestates!");
+			}
+			return;
+		}
+	}
 
-	std::unique_lock<std::mutex> lock(ms_lock);
-	
+	std::optional<StateRecord> sstate;
+	try {
+		sstate.emplace(capture_path, _info.name);
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_PROGRAM, "%s\n", e.what());
+		if(_on_fail) {
+			_on_fail(e.what());
+		}
+		return;
+	}
+
+	PINFOF(LOG_V0, LOG_PROGRAM, "Saving current state in '%s'...\n", sstate->path());
+
+	sstate->info().desc = _info.desc;
+	sstate->config().copy(m_config[1]);
+
 	bool paused = m_machine->is_paused();
-	if(!paused) {
-		m_machine->cmd_pause();
-		m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
+	{
+		std::unique_lock<std::mutex> lock(ms_lock);
+
+		if(!paused) {
+			m_machine->cmd_pause(false);
+			m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
+			ms_cv.wait(lock);
+		}
+
+		m_machine->cmd_save_state(sstate->state(), ms_lock, ms_cv);
+		ms_cv.wait(lock);
+
+		m_mixer->cmd_save_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(lock);
 	}
-	
-	m_machine->cmd_save_state(state, ms_lock, ms_cv);
-	ms_cv.wait(lock);
-	
-	m_mixer->cmd_save_state(state, ms_lock, ms_cv);
-	ms_cv.wait(lock);
-	
-	if(!paused) {
-		m_machine->cmd_resume();
+
+	try {
+		sstate->set_framebuffer(m_gui->copy_framebuffer());
+	} catch(...) {
+		if(_on_fail) {
+			_on_fail("Error copying the framebuffer");
+		}
+		return;
 	}
 
-	state.save(path + ".bin");
+	try {
+		sstate->save();
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_PROGRAM, "%s\n", e.what());
+		if(_on_fail) {
+			_on_fail(e.what());
+		}
+		return;
+	}
 
-	m_gui->save_framebuffer(path + ".png", "");
+	if(!paused) {
+		m_machine->cmd_resume(false);
+	}
 
-	PINFOF(LOG_V0, LOG_PROGRAM, "Current state saved\n");
+	PINFOF(LOG_V0, LOG_PROGRAM, "State saved\n");
 	if(_on_success != nullptr) {
 		_on_success();
 	}
 }
 
 void Program::restore_state(
-	std::string _name,
+	StateRecord::Info _info,
 	std::function<void()> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
@@ -130,70 +163,70 @@ void Program::restore_state(
 	 * otherwise a deadlock on the RmlUi mutex caused by the SysLog will occur.
 	 */
 	m_restore_fn = [=](){
-		std::string path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER)
-				+ FS_SEP + (_name.empty()?"state":_name);
-		std::string ini = path + ".ini";
-		std::string bin = path + ".bin";
-
-		if(!FileSys::file_exists(ini.c_str())) {
-			PERRF(LOG_PROGRAM, "The state ini file '%s' is missing!\n", ini.c_str());
-			if(_on_fail != nullptr) {
-				_on_fail("The state ini file is missing!");
-			}
-			return;
-		}
-
-		if(!FileSys::file_exists(bin.c_str())) {
-			PERRF(LOG_PROGRAM, "The state bin '%s' file is missing!\n", ini.c_str());
+		std::string capture_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+		if(capture_path.empty()) {
+			PERRF(LOG_PROGRAM, "The capture directory is not set\n");
 			if(_on_fail) {
-				_on_fail("The state bin file is missing!");
+				_on_fail("The capture directory is not set");
+			}
+			return;
+		}
+		if(_info.name.empty()) {
+			assert(false);
+			return;
+		}
+
+		std::string statepath = capture_path + FS_SEP + _info.name;
+		if(!FileSys::is_directory(statepath.c_str())) {
+			// the only case this is true should be the quicksave directory
+			// any other case is a bug
+			PERRF(LOG_PROGRAM, "Save state not present\n");
+			if(_on_fail) {
+				_on_fail("Save state not present");
 			}
 			return;
 		}
 
-		PINFOF(LOG_V0, LOG_PROGRAM, "Loading state from '%s'...\n", path.c_str());
-
-		AppConfig conf;
+		std::optional<StateRecord> sstate;
 		try {
-			conf.parse(ini);
-		} catch(std::exception &e) {
-			PERRF(LOG_PROGRAM, "Cannot parse '%s'\n", ini.c_str());
-			if(_on_fail != nullptr) {
-				_on_fail("Error while parsing the state ini file");
+			sstate.emplace(capture_path, _info.name);
+			sstate->load();
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_PROGRAM, "%s\n", e.what());
+			if(_on_fail) {
+				_on_fail(e.what());
 			}
 			return;
 		}
 
-		StateBuf state(path);
-
-		state.load(bin);
+		PINFOF(LOG_V0, LOG_PROGRAM, "Loading state from '%s'...\n", sstate->path());
 
 		//from this point, any error in the restore procedure will render the
 		//machine inconsistent and it should be terminated
 		//TODO the config object needs a mutex!
 		//TODO create a revert mechanism?
 		m_config[1].copy(m_config[0]);
-		m_config[1].merge(conf, MACHINE_CONFIG);
+		m_config[1].merge(sstate->config(), MACHINE_CONFIG);
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
 
 		m_machine->cmd_pause();
-		
+
 		m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
-		
+
 		m_machine->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		m_machine->cmd_restore_state(state, ms_lock, ms_cv);
+		m_machine->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
-		
+
 		m_mixer->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		m_mixer->cmd_restore_state(state, ms_lock, ms_cv);
+		m_mixer->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
-		
+
 		// we need to pause the syslog because it'll use the GUI otherwise
 		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
@@ -202,9 +235,9 @@ void Program::restore_state(
 		g_syslog.cmd_resume();
 
 		// mixer resume cmd is issued by the machine
-		m_machine->cmd_resume();
-		
-		if(!state.m_last_restore) {
+		m_machine->cmd_resume(false);
+
+		if(!sstate->state().m_last_restore) {
 			PERRF(LOG_PROGRAM, "The restored state is not valid\n");
 			if(_on_fail != nullptr) {
 				_on_fail("The restored state is not valid");

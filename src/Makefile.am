@@ -21,6 +21,7 @@ ibmulator_SOURCES = \
 	program.cpp \
 	riff.cpp \
 	ring_buffer.cpp \
+	state_record.cpp \
 	statebuf.cpp \
 	syslog.cpp \
 	utils.cpp \
@@ -52,6 +53,7 @@ noinst_HEADERS = \
 	shared_queue.h \
 	shared_deque.h \
 	shared_fifo.h \
+	state_record.h \
 	statebuf.h \
 	syslog.h \
 	utils.h \

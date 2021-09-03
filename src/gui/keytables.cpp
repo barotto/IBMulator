@@ -44,6 +44,8 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT      },
 	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE },
 	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE },
+	{ "FUNC_SAVE_STATE",            ProgramEvent::FuncName::FUNC_SAVE_STATE           },
+	{ "FUNC_LOAD_STATE",            ProgramEvent::FuncName::FUNC_LOAD_STATE           },
 	{ "FUNC_QUICK_SAVE_STATE",      ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE     },
 	{ "FUNC_QUICK_LOAD_STATE",      ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE     },
 	{ "FUNC_GRAB_MOUSE",            ProgramEvent::FuncName::FUNC_GRAB_MOUSE           },

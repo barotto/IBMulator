@@ -18,10 +18,6 @@
 			{
 				padding: 5px 15px 5px 15px;
 			}
-			div#title_bar
-			{
-				background-color: #FFFFFFFF;
-			}
 			#cwd
 			{
 				width: 95%;

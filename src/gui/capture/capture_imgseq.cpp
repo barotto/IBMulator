@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,10 +48,11 @@ std::string CaptureImgSeq::open(std::string _dir_path)
 		throw std::exception();
 	}
 	
-	m_dir = FileSys::get_next_dirname(_dir_path, "video_");
-	if(m_dir.empty()) {
+	try {
+		m_dir = _dir_path + FS_SEP + FileSys::get_next_dirname(_dir_path, "video_");
+	} catch(std::runtime_error &) {
 		PERRF(LOG_GUI, "Capture: error creating screen recording directory.\n");
-		throw std::exception();
+		throw;
 	}
 	
 	try {

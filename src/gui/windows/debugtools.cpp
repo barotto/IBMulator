@@ -39,29 +39,29 @@ DebugTools::DebugTools(GUI *_gui, Machine *_machine, Mixer *_mixer)
 :
 Window(_gui, "debugtools.rml"),
 m_machine(_machine),
-m_mixer(_mixer),
-m_statsw(nullptr), m_debuggerw(nullptr), m_devicesw(nullptr), m_mixerw(nullptr)
+m_mixer(_mixer)
 {
 }
 
 DebugTools::~DebugTools()
 {
+}
+
+void DebugTools::close()
+{
 	if(m_debuggerw) {
 		m_debuggerw->close();
-		delete m_debuggerw;
 	}
 	if(m_devicesw) {
 		m_devicesw->close();
-		delete m_devicesw;
 	}
 	if(m_statsw) {
 		m_statsw->close();
-		delete m_statsw;
 	}
 	if(m_mixerw) {
 		m_mixerw->close();
-		delete m_mixerw;
 	}
+	Window::close();
 }
 
 void DebugTools::create()
@@ -69,15 +69,15 @@ void DebugTools::create()
 	Window::create();
 
 	if(m_debuggerw) {
-		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(m_debuggerw));
+		bool dbg_is_286 = bool(dynamic_cast<SysDebugger286*>(m_debuggerw.get()));
 		if((dbg_is_286 && CPU_FAMILY>CPU_286) || (!dbg_is_286 && CPU_FAMILY==CPU_286)) {
 			bool enabled = m_debuggerw->m_enabled;
 			m_debuggerw->close();
-			delete m_debuggerw;
+			m_debuggerw.reset(nullptr);
 			if(CPU_FAMILY >= CPU_386) {
-				m_debuggerw = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
+				m_debuggerw = std::make_unique<SysDebugger386>(m_gui, m_machine, get_element("debugger"));
 			} else {
-				m_debuggerw = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
+				m_debuggerw = std::make_unique<SysDebugger286>(m_gui, m_machine, get_element("debugger"));
 			}
 			m_debuggerw->create();
 			m_debuggerw->enable(enabled);
@@ -85,22 +85,22 @@ void DebugTools::create()
 		}
 	} else {
 		if(CPU_FAMILY >= CPU_386) {
-			m_debuggerw = new SysDebugger386(m_gui, m_machine, get_element("debugger"));
+			m_debuggerw = std::make_unique<SysDebugger386>(m_gui, m_machine, get_element("debugger"));
 		} else {
-			m_debuggerw = new SysDebugger286(m_gui, m_machine, get_element("debugger"));
+			m_debuggerw = std::make_unique<SysDebugger286>(m_gui, m_machine, get_element("debugger"));
 		}
 		m_debuggerw->create();
 	}
 	if(!m_statsw) {
-		m_statsw = new Stats(m_machine, m_gui, m_mixer, get_element("stats"));
+		m_statsw = std::make_unique<Stats>(m_machine, m_gui, m_mixer, get_element("stats"));
 		m_statsw->create();
 	}
 	if(!m_devicesw) {
-		m_devicesw = new DevStatus(m_gui, get_element("devices"), m_machine);
+		m_devicesw = std::make_unique<DevStatus>(m_gui, get_element("devices"), m_machine);
 		m_devicesw->create();
 	}
 	if(!m_mixerw) {
-		m_mixerw = new MixerState(m_gui, get_element("mixer"), m_mixer);
+		m_mixerw = std::make_unique<MixerState>(m_gui, get_element("mixer"), m_mixer);
 		m_mixerw->create();
 	}
 }
@@ -174,7 +174,7 @@ void DebugTools::update()
 void DebugTools::show_message(const char* _mex)
 {
 	if(m_debuggerw) {
-		((SysDebugger*)m_debuggerw)->show_message(_mex);
+		(dynamic_cast<SysDebugger*>(m_debuggerw.get()))->show_message(_mex);
 	}
 }
 

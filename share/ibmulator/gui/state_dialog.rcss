@@ -1,0 +1,128 @@
+body
+{
+	width: 88%;
+	height: 90%;
+	min-width: 300px;
+	min-height: 400px;
+	margin: auto;
+}
+div#window
+{
+	padding: 20px;
+}
+
+#list
+{
+	display: block;
+	position: absolute;
+	height: auto;
+	bottom: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	margin: 40px 5px 55px 5px;
+	overflow: auto;
+	padding: 0px 10px 0 10px;
+}
+
+#desc_dialog  {
+	position: absolute;
+	bottom: 0;
+	top: 25px;
+	left: 0;
+	right: 0;
+	background-color: #000000a0;
+}
+
+#desc_dialog.hidden {
+	display: none;
+}
+
+#desc_mask {
+	width: 50%;
+	height: 320px;
+	margin: auto;
+	background-color: #000000ff;
+}
+
+#buttons {
+	position: absolute;
+	bottom: 20px;
+	right: 40px;
+	left: 40px;
+	text-align: right;
+}
+
+button.romshell
+{
+	margin-left: 10px;
+}
+
+.entry {
+	display: inline-block;
+	width: 235px;
+	height: 240px;
+	background-color: #28374d;
+	margin: 15px 15px 0 0;
+}
+
+.entry .data
+{
+	position: absolute;
+	top: -4px;
+	left: 4px;
+	width: 235px;
+	height: 240px;
+	background-color: #587fa3;
+}
+
+.entry .data .screen {
+	display: block;
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	right: 5px;
+	height: 165px;
+
+	border: 1px;
+	border-color: #28374d;
+}
+
+.entry .data .screen img {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.entry .data .desc {
+	display: block;
+	position: absolute;
+	top: 170px;
+	left: 5px;
+	right: 5px;
+	padding: 5px;
+	height: 35px;
+	overflow: hidden;
+}
+
+.entry .data .date {
+	display: block;
+	position: absolute;
+	top: 220px;
+	left: 5px;
+	right: 5px;
+	padding: 0 5px 0 5px;
+	overflow: hidden;
+	font-size: 12px;
+}
+
+.entry .target {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+

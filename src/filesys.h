@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,7 +40,7 @@ public:
 	static std::string get_next_filename(const std::string &_dir,
 			const std::string &_basename, const std::string &_ext);
 	static std::string get_next_dirname(const std::string &_basedir,
-			const std::string &_basename);
+			const std::string &_basename, unsigned _limit = 10000);
 	static bool is_directory(const char *_path);
 	static bool file_exists(const char *_path);
 	static bool is_file_readable(const char *_path);

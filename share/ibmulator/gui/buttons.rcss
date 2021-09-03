@@ -44,6 +44,7 @@ button.text
 button.romshell,
 input.checkbox.romshell
 {
+	display: inline-block;
 	font-family: "Nouveau IBM";
 	font-size: 16px;
 	height: 22px;
@@ -61,6 +62,8 @@ input.checkbox.romshell
 
 button.romshell
 {
+	padding-left: 10px;
+	padding-right: 6px;
 	decorator: tiled-horizontal( button-l, button-c, button-r );
 }
 
@@ -86,9 +89,20 @@ input.checkbox.romshell:checked
 
 input.text
 {
+	display: inline-block;
+	box-sizing: border-box;
 	background-color: #5555FFA0;
 	padding-top: 2px;
 	padding-left: 4px;
+	height: 22px;
+	line-height: 14px;
+	border: 1px;
+	border-color: #5555FFA0;
+}
+
+input.text:focus
+{
+	border-color: #ff9854A0;
 }
 
 scrollbarvertical
@@ -114,7 +128,7 @@ scrollbarvertical
 
 scrollbarvertical slidertrack
 {
-	background-color: #3c5464;
+	background-color: #2c3e4aa0;
 }
 
 scrollbarvertical sliderbar

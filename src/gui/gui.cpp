@@ -47,11 +47,6 @@
 #include <algorithm>
 #include <iomanip>
 
-
-std::mutex GUI::ms_rml_mutex;
-std::mutex GUI::Windows::s_interface_mutex;
-Uint32 GUI::ms_sdl_user_evt_id = 0;
-
 ini_enum_map_t g_mouse_types = {
 	{ "none", MOUSE_TYPE_NONE },
 	{ "ps2", MOUSE_TYPE_PS2 },
@@ -91,6 +86,8 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
+	{ ProgramEvent::FuncName::FUNC_SAVE_STATE,           &GUI::pevt_func_save_state           },
+	{ ProgramEvent::FuncName::FUNC_LOAD_STATE,           &GUI::pevt_func_load_state           },
 	{ ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
 	{ ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE,     &GUI::pevt_func_quick_load_state     },
 	{ ProgramEvent::FuncName::FUNC_GRAB_MOUSE,           &GUI::pevt_func_grab_mouse           },
@@ -395,12 +392,20 @@ Rml::ElementDocument * GUI::load_document(const std::string &_filename)
 		if(title) {
 			title->SetInnerRML(document->GetTitle());
 		}
-		PDEBUGF(LOG_V2,LOG_GUI,"Document \"%s\" loaded\n", _filename.c_str());
+		PDEBUGF(LOG_V1, LOG_GUI, "Document \"%s\" loaded\n", _filename.c_str());
+		m_windows.register_document(document);
 	} else {
 		PERRF(LOG_GUI, "Cannot load document file: '%s'\n", _filename.c_str());
 	}
 
 	return document;
+}
+
+void GUI::unload_document(Rml::ElementDocument *)
+{
+	// *after* the ElementDocument::Close() has been called, a context update is
+	// necessary to avoid event listeners lifetime problems
+	m_rml_context->Update();
 }
 
 void GUI::Mouse::enable_timer()
@@ -633,7 +638,7 @@ void GUI::InputSystem::Event::generate_sdl_event()
 	disable_timer();
 }
 
-void GUI::input_grab(bool _value)
+void GUI::grab_input(bool _value)
 {
 	if(m_mouse.grab) {
 		if(_value) {
@@ -643,6 +648,11 @@ void GUI::input_grab(bool _value)
 		}
 	}
 	m_input.grab = _value;
+}
+
+bool GUI::is_input_grabbed()
+{
+	return m_input.grab;
 }
 
 void GUI::send_key_to_machine(Keys _key, uint32_t _keystate)
@@ -1277,7 +1287,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	// events are not created when gui is active, if one is present skip this
 	if(!running_evt && gui_input) {
 		// do gui stuff
-		if(binding_ptr) {
+		if(binding_ptr && !m_windows.current_doc()->IsModal()) {
 			// but first run any FUNC_*
 			run_event_functions(binding_ptr, phase);
 		}
@@ -1472,7 +1482,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 
 	if(!running_evt && !m_input.grab) {
 		// do gui stuff
-		if(binding_ptr) {
+		if(binding_ptr && !m_windows.current_doc()->IsModal()) {
 			// but first run any FUNC_*
 			run_event_functions(binding_ptr, phase);
 		}
@@ -1912,13 +1922,19 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 			);
 		break;
 	}
-	case SDL_MOUSEWHEEL:
+	case SDL_MOUSEWHEEL: {
 		m_rml_context->ProcessMouseWheel(
 			-event.wheel.y,
 			rmlmod
 			);
+		// TODO this is a hack to solve a RmlUi issue where it won't
+		// update the element below the pointer
+		// https://github.com/mikke89/RmlUi/issues/220
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		m_rml_context->ProcessMouseMove(x, y, rmlmod);
 		break;
-
+	}
 	case SDL_KEYDOWN: {
 		Rml::Input::KeyIdentifier key =
 			m_rml_sys_interface->TranslateKey(event.key.keysym.sym);
@@ -2048,6 +2064,11 @@ std::string GUI::images_dir()
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	m_windows.interface->save_framebuffer(_screenfile, _palfile);
+}
+
+SDL_Surface * GUI::copy_framebuffer()
+{
+	return m_windows.interface->copy_framebuffer();
 }
 
 void GUI::take_screenshot(bool _with_palette_file)
@@ -2261,7 +2282,7 @@ void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase 
 			if(m_mode == GUI_MODE_COMPACT &&
 			  dynamic_cast<NormalInterface*>(m_windows.interface.get())->is_system_visible())
 			{
-				input_grab(false);
+				grab_input(false);
 			}
 			break;
 		}
@@ -2346,15 +2367,16 @@ void GUI::pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase _
 	m_capture->cmd_toggle_capture();
 }
 
-void GUI::pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_save_state(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
-	PDEBUGF(LOG_V1, LOG_GUI, "Quick save func event\n");
+	PDEBUGF(LOG_V1, LOG_GUI, "Save func event\n");
 	
 	// don't save key presses in a machine state.
-	// every keypress must be neutralized by a release before save.
+	// every keypress must be neutralized by a release before opening the save dialog.
+	// key release events will be intercepted by gui elements
 	for(const auto & [key, state] : m_key_state) {
 		if(state) {
 			// the eventual physical key releases will not be sent to the guest again,
@@ -2362,10 +2384,40 @@ void GUI::pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase _phas
 			send_key_to_machine(key, KEY_RELEASED);
 		}
 	}
+	Rml::Event e;
+	m_windows.interface->on_save_state(e);
+}
+
+void GUI::pevt_func_load_state(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Load func event\n");
 	
-	g_program.save_state("", [this](){
-		show_message("State saved");
-	}, nullptr);
+	for(const auto & [key, state] : m_key_state) {
+		if(state) {
+			send_key_to_machine(key, KEY_RELEASED);
+		}
+	}
+	Rml::Event e;
+	m_windows.interface->on_load_state(e);
+}
+
+void GUI::pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Quick save func event\n");
+
+	for(const auto & [key, state] : m_key_state) {
+		if(state) {
+			send_key_to_machine(key, KEY_RELEASED);
+		}
+	}
+
+	m_windows.interface->save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0});
 }
 
 void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phase)
@@ -2381,7 +2433,7 @@ void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phas
 		}
 	}
 	
-	g_program.restore_state("", [this](){
+	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0}, [this](){
 		show_message("State restored");
 	}, nullptr);
 }
@@ -2393,7 +2445,7 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Grab mouse func event\n");
 	
-	input_grab(!m_input.grab);
+	grab_input(!m_input.grab);
 	
 	if(m_mode == GUI_MODE_COMPACT) {
 		if(m_input.grab) {
@@ -2507,10 +2559,6 @@ void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)
 }
 
 
-/*******************************************************************************
- * Windows
- */
-
 class SysDbgMessage : public Logdev
 {
 private:
@@ -2537,8 +2585,10 @@ public:
 	}
 };
 
-void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
+void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
+	m_gui = _gui;
+
 	desktop = std::make_unique<Desktop>(_gui);
 	desktop->show();
 
@@ -2575,9 +2625,11 @@ void GUI::Windows::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 	static IfaceMessage ifacemsg(_gui, false);
 	g_syslog.add_device(LOG_INFO, LOG_MACHINE, &sysdbgmsg);
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, &ifacemsg);
+	
+	interface->focus();
 }
 
-void GUI::Windows::config_changed()
+void GUI::WindowManager::config_changed()
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
@@ -2589,7 +2641,7 @@ void GUI::Windows::config_changed()
 	dbgtools->config_changed();
 }
 
-void GUI::Windows::show_ifc_message(const char* _mex)
+void GUI::WindowManager::show_ifc_message(const char* _mex)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(interface != nullptr) {
@@ -2598,7 +2650,7 @@ void GUI::Windows::show_ifc_message(const char* _mex)
 	}
 }
 
-void GUI::Windows::show_dbg_message(const char* _mex)
+void GUI::WindowManager::show_dbg_message(const char* _mex)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(dbgtools != nullptr) {
@@ -2607,7 +2659,7 @@ void GUI::Windows::show_dbg_message(const char* _mex)
 	}
 }
 
-void GUI::Windows::update(uint64_t _current_time)
+void GUI::WindowManager::update(uint64_t _current_time)
 {
 	s_interface_mutex.lock();
 	if(!last_ifc_mex.empty()) {
@@ -2636,9 +2688,19 @@ void GUI::Windows::update(uint64_t _current_time)
 	// timers are where the timed windows events take place
 	// like the interface messages clears
 	while(!timers.update(_current_time));
+	
+	if(revert_focus) {
+		if(revert_focus->IsVisible()) {
+			PDEBUGF(LOG_V1, LOG_GUI, "Switching focus to '%s'\n", revert_focus->GetTitle().c_str());
+			revert_focus->Focus();
+		} else {
+			interface->focus();
+		}
+	}
+	revert_focus = nullptr;
 }
 
-void GUI::Windows::toggle_dbg()
+void GUI::WindowManager::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
 	if(debug_wnds) {
@@ -2648,7 +2710,7 @@ void GUI::Windows::toggle_dbg()
 	}
 }
 
-void GUI::Windows::toggle_status()
+void GUI::WindowManager::toggle_status()
 {
 	status_wnd = !status_wnd;
 	if(status_wnd) {
@@ -2658,16 +2720,76 @@ void GUI::Windows::toggle_status()
 	}
 }
 
-bool GUI::Windows::need_input()
+Rml::ElementDocument * GUI::WindowManager::current_doc()
 {
-	//only debug windows have kb input at the moment
-	return debug_wnds;
+	return m_gui->m_rml_context->GetFocusElement()->GetOwnerDocument();
 }
 
-void GUI::Windows::shutdown()
+bool GUI::WindowManager::need_input()
+{
+	return (current_doc() != interface->m_wnd);
+}
+
+void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
+{
+	Rml::ElementDocument *doc = dynamic_cast<Rml::ElementDocument *>(_ev.GetTargetElement());
+	std::string title;
+	if(doc) {
+		title = doc->GetTitle();
+	}
+	bool is_window = _ev.GetTargetElement()->IsClassSet("window");
+	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'\n", _ev.GetType().c_str(), title.c_str());
+	switch(_ev.GetId()) {
+		case Rml::EventId::Show:
+			if(is_window) {
+				windows_count++;
+				PDEBUGF(LOG_V1, LOG_GUI, "  window '%s' shown (%d)\n", 
+						title.c_str(), windows_count);
+			}
+			break;
+		case Rml::EventId::Hide:
+			if(is_window) {
+				windows_count--;
+				PDEBUGF(LOG_V1, LOG_GUI, " window '%s' hidden (%d)\n", 
+						title.c_str(), windows_count);
+			}
+			break;
+		case Rml::EventId::Unload:
+			if(doc) {
+				docs_count--;
+				PDEBUGF(LOG_V1, LOG_GUI, "  registered docs: %d\n", docs_count);
+			}
+			break;
+		case Rml::EventId::Focus:
+			if(!is_window && title != "Interface") {
+				if(last_focus_doc) {
+					revert_focus = last_focus_doc;
+				}
+			} else if(doc) {
+				revert_focus = nullptr;
+				last_focus_doc = doc;
+			}
+			break;
+		default:
+			break;
+	}
+
+}
+
+void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
+{
+	for(auto id : listening_evts) {
+		_doc->AddEventListener(id, this);
+	}
+	docs_count++;
+	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %d\n", docs_count);
+}
+
+void GUI::WindowManager::shutdown()
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %d\n", docs_count);
 	if(status) {
 		status->close();
 		status.reset(nullptr);
@@ -2687,5 +2809,7 @@ void GUI::Windows::shutdown()
 		interface->close();
 		interface.reset(nullptr);
 	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutted down: registered docs: %d\n", docs_count);
 }
 

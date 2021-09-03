@@ -51,7 +51,10 @@ private:
 	static event_map_t ms_evt_map;
 	Machine *m_machine;
 	Mixer *m_mixer;
-	DebugWindow *m_statsw, *m_debuggerw, *m_devicesw, *m_mixerw;
+	std::unique_ptr<DebugWindow> m_statsw;
+	std::unique_ptr<DebugWindow> m_debuggerw;
+	std::unique_ptr<DebugWindow> m_devicesw;
+	std::unique_ptr<DebugWindow> m_mixerw;
 
 	void on_stats(Rml::Event &);
 	void on_debugger(Rml::Event &);
@@ -67,6 +70,7 @@ public:
 	virtual void show();
 	virtual void hide();
 	virtual void update();
+	virtual void close();
 	virtual void config_changed();
 	void show_message(const char* _mex);
 

@@ -775,24 +775,28 @@ void Machine::cmd_switch_power()
 	});
 }
 
-void Machine::cmd_pause()
+void Machine::cmd_pause(bool _show_notice)
 {
-	m_cmd_queue.push([this] () {
+	m_cmd_queue.push([&] () {
 		if(!m_cpu_single_step) {
 			pause();
-			PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
-			GUI::instance()->show_message("Emulation paused");
+			if(_show_notice) {
+				PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
+				GUI::instance()->show_message("Emulation paused");
+			}
 		}
 	});
 }
 
-void Machine::cmd_resume()
+void Machine::cmd_resume(bool _show_notice)
 {
-	m_cmd_queue.push([this] () {
+	m_cmd_queue.push([&] () {
 		if(m_cpu_single_step) {
 			resume();
-			PINFOF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
-			GUI::instance()->show_message("Emulation resumed");
+			if(_show_notice) {
+				PINFOF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
+				GUI::instance()->show_message("Emulation resumed");
+			}
 		}
 	});
 }

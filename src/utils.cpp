@@ -84,6 +84,17 @@ std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_s
 	return tokens;
 }
 
+std::string str_format_time(time_t _time, const std::string &_fmt)
+{
+	std::stringstream s;
+	s.imbue(std::locale(""));
+	auto &tmput = std::use_facet<std::time_put<char>>(s.getloc());
+	std::tm *my_time = std::localtime(&_time);
+	std::string fmt = "%x %X";
+	tmput.put({s}, s, ' ', my_time, &_fmt[0], &_fmt[0]+_fmt.size());
+	return s.str();
+}
+
 std::string bitfield_to_string(uint8_t _bitfield,
 		const std::array<std::string, 8> &_set_names)
 {

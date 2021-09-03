@@ -66,6 +66,7 @@ std::string str_to_upper(std::string _str);
 std::string str_trim(std::string _str);
 std::string str_compress_spaces(std::string _str);
 std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep);
+std::string str_format_time(time_t _time, const std::string &_fmt);
 
 template<typename ... Args>
 std::string str_format(const char *_format, Args ... _args)

@@ -21,8 +21,9 @@
 #define IBMULATOR_GUI_WINDOW_H
 
 
-#include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core.h>
 #include <functional>
+
 
 class GUI;
 class Window;
@@ -34,12 +35,14 @@ typedef std::map<event_map_key_t, event_handler_t> event_map_t;
 
 class Window : public Rml::EventListener
 {
+	friend class GUI;
 protected:
 	GUI *m_gui;
 	std::string m_rml_docfile;
-	Rml::ElementDocument *m_wnd;
+	Rml::ElementDocument *m_wnd = nullptr;
 	static event_map_t ms_event_map;
-	bool m_evts_added;
+	bool m_evts_added = false;
+	Rml::ModalFlag m_modal = Rml::ModalFlag::None;
 
 public:
 	Window(GUI * _gui, const char *_rml);
@@ -49,19 +52,29 @@ public:
 	virtual void show();
 	virtual void hide();
 	virtual void close();
+	virtual void focus();
+
 	bool is_visible();
 	bool is_loaded() const { return m_wnd; }
 
+	void set_modal(bool _modal) {
+		m_modal = _modal ? Rml::ModalFlag::Modal : Rml::ModalFlag::None;
+	}
+
 	virtual void config_changed() {}
 	virtual void update();
+
+	Rml::ElementDocument *document() { return m_wnd; }
+
+	virtual void on_cancel(Rml::Event &);
+	virtual void on_keydown(Rml::Event &);
 
 protected:
 	void ProcessEvent(Rml::Event &);
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	Rml::Element * get_element(const std::string &_id);
 	void add_events();
-	void add_listener(const std::string &_element, const std::string &_event, EventListener *_listener);
-	void remove_events();
+	Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &) const;
 };
 
 #endif

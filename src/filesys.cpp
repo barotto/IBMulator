@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -98,37 +98,38 @@ uint64_t FileSys::get_file_size(const char *_path)
 int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime)
 {
 #ifdef _WIN32
+
+	HANDLE hFile = CreateFile(_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
+	if(hFile == INVALID_HANDLE_VALUE) {
+		return -1;
+	}
 	if(_fsize != nullptr) {
-		HANDLE hFile = CreateFile(_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
-		if(hFile != INVALID_HANDLE_VALUE) {
-			ULARGE_INTEGER FileSize;
-			FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
-			if(_mtime != nullptr) {
-				GetFileTime(hFile, nullptr, nullptr, _mtime);
-			}
-			CloseHandle(hFile);
-			if((FileSize.LowPart != INVALID_FILE_SIZE) || (GetLastError() == NO_ERROR)) {
-				*_fsize = FileSize.QuadPart;
-			} else {
-				return -1;
-			}
+		ULARGE_INTEGER FileSize;
+		FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
+		if((FileSize.LowPart != INVALID_FILE_SIZE) || (GetLastError() == NO_ERROR)) {
+			*_fsize = FileSize.QuadPart;
 		} else {
 			return -1;
 		}
 	}
-#else
-	if(_fsize != nullptr) {
-		struct stat stat_buf;
-		if(stat(_path, &stat_buf)) {
-			return -1;
-		}
-
-		*_fsize = (uint64_t)stat_buf.st_size;
-
-		if(_mtime != nullptr) {
-			*_mtime = stat_buf.st_mtime;
-		}
+	if(_mtime != nullptr) {
+		GetFileTime(hFile, nullptr, nullptr, _mtime);
 	}
+	CloseHandle(hFile);
+
+#else
+
+	struct stat stat_buf;
+	if(stat(_path, &stat_buf)) {
+		return -1;
+	}
+	if(_fsize != nullptr) {
+		*_fsize = (uint64_t)stat_buf.st_size;
+	}
+	if(_mtime != nullptr) {
+		*_mtime = stat_buf.st_mtime;
+	}
+
 #endif
 
 	return 0;
@@ -176,23 +177,24 @@ std::string FileSys::get_next_filename(const std::string &_dir,
 }
 
 std::string FileSys::get_next_dirname(const std::string &_basedir,
-		const std::string &_basename)
+		const std::string &_basename, unsigned _limit)
 {
 	std::stringstream ss;
-	int counter = 0;
-	std::string dname;
+	unsigned counter = 0;
+	std::string dname, dpath;
 	do {
 		ss.str("");
-		ss << _basedir << FS_SEP << _basename;
+		ss << _basename;
 		ss.width(4);
 		ss.fill('0');
 		ss << counter;
 		counter++;
 		dname = ss.str();
-	} while(is_directory(dname.c_str()) && counter<10000);
+		dpath = _basedir + FS_SEP + dname;
+	} while(is_directory(dpath.c_str()) && counter<_limit);
 	
-	if(counter>=10000) {
-		return "";
+	if(counter >= _limit) {
+		throw std::runtime_error("limit reached");
 	}
 	
 	return dname;

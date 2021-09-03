@@ -188,10 +188,27 @@ m_mixer(_mixer)
 
 Interface::~Interface()
 {
+}
+
+void Interface::close()
+{
 	if(m_fs) {
 		m_fs->close();
-		delete m_fs;
+		m_fs.reset(nullptr);
 	}
+	if(m_state_save) {
+		m_state_save->close();
+		m_state_save.reset(nullptr);
+	}
+	if(m_state_load) {
+		m_state_load->close();
+		m_state_load.reset(nullptr);
+	}
+	if(m_state_save_info) {
+		m_state_save_info->close();
+		m_state_save_info.reset(nullptr);
+	}
+	Window::close();
 }
 
 void Interface::create()
@@ -209,10 +226,21 @@ void Interface::create()
 
 	m_leds.power = false;
 
-	m_fs = new FileSelect(m_gui);
+	m_fs = std::make_unique<FileSelect>(m_gui);
 	m_fs->create();
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
+
+	m_state_save = std::make_unique<StateSave>(m_gui);
+	m_state_save->create();
+	m_state_save->set_modal(true);
+	m_state_save_info = std::make_unique<StateSaveInfo>(m_gui);
+	m_state_save_info->create();
+	m_state_save_info->set_modal(true);
+
+	m_state_load = std::make_unique<StateLoad>(m_gui);
+	m_state_load->create();
+	m_state_load->set_modal(true);
 
 	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_audio_enabled) {
@@ -513,6 +541,103 @@ void Interface::on_fdd_mount(Rml::Event &)
 	}
 }
 
+void Interface::show_state_dialog(bool _save)
+{
+	try {
+		std::string dir = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+		if(dir.empty()) {
+			throw std::runtime_error("Capture directory not set!");
+		}
+		if(dir != StateDialog::current_dir()) {
+			StateDialog::set_current_dir(dir);
+			m_state_save->set_dirty();
+			m_state_load->set_dirty();
+		}
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_GUI, "%s\n", e.what());
+		return;
+	}
+
+	bool machine_was_paused = m_machine->is_paused();
+	bool input_was_grabbed = m_gui->is_input_grabbed();
+	auto dialog_end = [=]() {
+		if(!machine_was_paused) {
+			m_machine->cmd_resume(false);
+		}
+		m_gui->grab_input(input_was_grabbed);
+	};
+	m_machine->cmd_pause(false);
+	m_gui->grab_input(false);
+	if(_save) {
+		m_state_save->update();
+		m_state_save->set_callbacks(
+			// save
+			[=](StateRecord::Info _info)
+			{
+				m_state_save->hide();
+				if(_info.name == QUICKSAVE_RECORD) {
+					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0});
+					dialog_end();
+				} else {
+					m_state_save_info->set_callbacks(
+						[=](StateRecord::Info _info)
+						{
+							save_state(_info);
+							m_state_save_info->hide();
+							dialog_end();
+						},
+						dialog_end
+					);
+					m_state_save_info->set_state(_info);
+					m_state_save_info->show();
+				}
+			},
+			// cancel
+			dialog_end
+		);
+		m_state_save->show();
+	} else {
+		m_state_load->update();
+		m_state_load->set_callbacks(
+			[=](StateRecord::Info _info)
+			{
+				g_program.restore_state(_info, [this]() {
+					m_gui->show_message("State restored");
+				}, nullptr);
+				m_state_load->hide();
+				dialog_end();
+			},
+			dialog_end
+		);
+		m_state_load->show();
+	}
+}
+
+void Interface::on_save_state(Rml::Event &)
+{
+	if(m_machine->is_on()) {
+		show_state_dialog(true);
+	} else {
+		m_gui->show_message("The machine must be on");
+	}
+}
+
+void Interface::on_load_state(Rml::Event &)
+{
+	show_state_dialog(false);
+}
+
+void Interface::save_state(StateRecord::Info _info)
+{
+	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.desc.c_str());
+	g_program.save_state(_info, [this]() {
+		m_gui->show_message("State saved");
+		StateDialog::reload_current_dir();
+		m_state_save->set_dirty();
+		m_state_load->set_dirty();
+	}, nullptr);
+}
+
 void Interface::render_screen()
 {
 	m_screen->render();
@@ -608,4 +733,32 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 		}
 	}
 }
+
+SDL_Surface * Interface::copy_framebuffer()
+{
+	m_screen->vga.display.lock();
+	SDL_Surface * surface = SDL_CreateRGBSurface(
+		0,
+		m_screen->vga.display.mode().xres,
+		m_screen->vga.display.mode().yres,
+		32,
+		PALETTE_RMASK,
+		PALETTE_GMASK,
+		PALETTE_BMASK,
+		PALETTE_AMASK
+	);
+	if(surface) {
+		SDL_LockSurface(surface);
+		m_screen->vga.display.copy_screen((uint8_t*)surface->pixels);
+		SDL_UnlockSurface(surface);
+	}
+	m_screen->vga.display.unlock();
+
+	if(!surface) {
+		PERRF(LOG_GUI, "Error creating buffer surface\n");
+		throw std::exception();
+	}
+	return surface;
+}
+
 
