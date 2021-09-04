@@ -212,7 +212,9 @@ int64_t Pacer::wait(int64_t _load_time, int64_t _prev_frame_time)
 			}
 		}
 		t1 = m_chrono.get_nsec();
-		assert(t1 > t0);
+		if(t1 < t0) {
+			PDEBUGF(LOG_V0, LOG_PROGRAM, "negative time span: t1:%llu < t0:%llu\n");
+		}
 		time_slept = t1 - t0;
 		//PDEBUGF(LOG_V2, LOG_MACHINE, "  t0=%lld, t1=%lld, time_slept=%lld, rem=%d\n", t0, t1, time_slept, m_frame_time_diff);
 	} else {
