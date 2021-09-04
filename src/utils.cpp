@@ -86,13 +86,34 @@ std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_s
 
 std::string str_format_time(time_t _time, const std::string &_fmt)
 {
+#if 1
+
+	std::string s(100,0);
+	size_t size = std::strftime(s.data(), 100, _fmt.c_str(), std::localtime(&_time));
+	if(size == 0) {
+		return "";
+	}
+	s.resize(size);
+	return s;
+
+#else
+
+	// In MinGW the only currently supported locale is "C".
+	// Practically C++ locales work only on Linux.
+	// Keeping this implementation here waiting for better times.
+
 	std::stringstream s;
-	s.imbue(std::locale(""));
+	try {
+		s.imbue(std::locale(""));
+	} catch(std::runtime_error &) {
+		// It throws an exception when compiled with MinGW and run in a terminal.
+	}
 	auto &tmput = std::use_facet<std::time_put<char>>(s.getloc());
 	std::tm *my_time = std::localtime(&_time);
-	std::string fmt = "%x %X";
 	tmput.put({s}, s, ' ', my_time, &_fmt[0], &_fmt[0]+_fmt.size());
 	return s.str();
+
+#endif
 }
 
 std::string bitfield_to_string(uint8_t _bitfield,

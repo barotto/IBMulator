@@ -271,6 +271,8 @@ void Program::init_SDL()
 
 bool Program::initialize(int argc, char** argv)
 {
+	setlocale(LC_ALL, "");
+
 	std::string home, cfgfile, datapath;
 	char *str;
 	parse_arguments(argc, argv);
