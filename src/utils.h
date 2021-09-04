@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <stdexcept>
 
 #ifdef __GNUC__
 #define bswap16 __builtin_bswap16

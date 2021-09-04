@@ -35,7 +35,7 @@ public:
 	struct Info {
 		std::string name;
 		std::string desc;
-		FILETIME mtime;
+		time_t mtime;
 	};
 private:
 	std::string m_path;
@@ -76,7 +76,7 @@ public:
 
 	const std::string & name() const { return m_info.name; }
 	const std::string & desc() const { return m_info.desc; }
-	FILETIME mtime() const { return m_info.mtime; }
+	time_t mtime() const { return m_info.mtime; }
 
 	void set_framebuffer(SDL_Surface *_fb);
 

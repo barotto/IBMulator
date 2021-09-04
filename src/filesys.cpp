@@ -135,6 +135,22 @@ int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtim
 	return 0;
 }
 
+time_t FileSys::filetime_to_time_t(const FILETIME &_ftime)
+{
+#ifdef _WIN32
+
+	ULARGE_INTEGER large;
+	large.LowPart = _ftime.dwLowDateTime;
+	large.HighPart = _ftime.dwHighDateTime;
+	return large.QuadPart / 10000000ULL - 11644473600ULL;
+
+#else
+
+	return _ftime;
+
+#endif
+}
+
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {

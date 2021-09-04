@@ -48,9 +48,12 @@ m_state(m_basefile)
 			throw std::runtime_error("The info file cannot be read");
 		}
 		uint64_t fsize = 0;
-		if(FileSys::get_file_stats(m_info_path.c_str(), &fsize, &m_info.mtime) < 0) {
+		FILETIME mtime;
+		if(FileSys::get_file_stats(m_info_path.c_str(), &fsize, &mtime) < 0) {
 			throw std::runtime_error(str_format("Error accessing '%s'", m_info_path.c_str()).c_str());
 		}
+		m_info.mtime = FileSys::filetime_to_time_t(mtime);
+
 		if(fsize) {
 			std::ifstream infofile(m_info_path.c_str());
 			if(!infofile.is_open()) {

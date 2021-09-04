@@ -57,6 +57,8 @@ public:
 
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
+
+	static time_t filetime_to_time_t(const FILETIME &_ftime);
 };
 
 #endif
