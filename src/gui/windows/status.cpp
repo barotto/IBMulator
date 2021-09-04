@@ -56,7 +56,7 @@ void Status::create()
 
 void Status::Indicator::set(Status::LED _s)
 {
-	if(status != _s) {
+	if(el && status != _s) {
 		status = _s;
 		el->SetClassNames(cls[ec_to_i(_s)]);
 	}

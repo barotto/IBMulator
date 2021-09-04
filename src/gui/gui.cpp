@@ -2600,6 +2600,7 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	interface->show();
 
 	status = std::make_unique<Status>(_gui, _machine);
+	status->create();
 	status_wnd = false;
 	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_INDICATORS)) {
 		status->show();
