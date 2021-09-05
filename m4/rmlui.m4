@@ -31,11 +31,11 @@ if test "$HAVE_RMLUI" = "no" ; then
 ]) 
 fi
 
-RMLUI_LIBS="$RMLUI_LIBS -lRmlCore -lRmlDebugger"
+RMLUI_LIBS="$RMLUI_LIBS -lRmlDebugger -lRmlCore"
 
 if test x$static != x ; then
 	if test x$have_windows = xyes ; then
-		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lintl -liconv -lpcre -lpng -lz -lbz2 -lfreetype -lrpcrt4 -ldwrite -lbrotlidec-static -lbrotlicommon-static"
+		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -lgraphite2 -lglib-2.0 -lpcre -lpng -lz -lbz2 -lfreetype -lrpcrt4 -lbrotlidec-static -lbrotlicommon-static"
 	else
 		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -lglib-2.0 -lpcre -lpng -lz -lbz2 -lfreetype"
 	fi
