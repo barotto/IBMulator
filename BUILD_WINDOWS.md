@@ -2,7 +2,7 @@
 Building IBMulator is a three-step process:
 
 1. setup a 64bit MinGW build environment
-2. build libRocket
+2. build RmlUi
 3. build IBMulator
 
 **NOTE:** Do not use folder names with spaces. In this document I'll use
@@ -20,7 +20,7 @@ We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 and follow its installation instructions.
 2. Open the **MSYS2 MSYS** shell and install the toolchain:  
 `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake make autoconf automake libtool git`
-3. Install the libraries needed by libRocket and IBMulator:  
+3. Install the libraries needed by RmlUi and IBMulator:  
 `pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
 
 You can compile IBMulator with dynamic or static linking; see
@@ -28,10 +28,8 @@ You can compile IBMulator with dynamic or static linking; see
 linking to get a more convenient and smaller package.  
 
 
-## STEP 2. Build libRocket
-libRocket is a C++ GUI toolkit based on the HTML and CSS standards.  
-IBMulator needs various fixes, so use the version from my repository instead of
-the official one.
+## STEP 2. Build RmlUi
+RmlUi is a C++ GUI toolkit based on the HTML and CSS standards.  
 
 Open the **MSYS2 MinGW 64-bit** shell (you should read MINGW64 on the command
 line) and:
@@ -39,11 +37,11 @@ line) and:
 1. Move inside your workspace:
 `cd /c/workspace`
 2. Clone the repo:  
-`git clone https://github.com/barotto/libRocket.git`
-3. Move inside the libRocket's Build directory:  
-`cd libRocket/Build`
+`git clone https://github.com/mikke89/RmlUi`
+3. Create and move inside the build directory:  
+`mkdir RmlUi/build && cd RmlUi/build`
 4. Create the Makefile with cmake:  
-`cmake -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
+`cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
 for static linking add `-DBUILD_SHARED_LIBS=OFF`
 5. Build and install (change the 8 with the number of your CPU's cores):  
 `make -j8 && make install`
@@ -127,7 +125,7 @@ Install the GDB debugger:
 `pacman -S gdb`
 
 Use dynamic linking and build a debug version of the executable:
-1. configure libRocket with `-DCMAKE_BUILD_TYPE=Debug`
+1. configure RmlUi with `-DCMAKE_BUILD_TYPE=Debug`
 2. configure IBMulator with `--enable-debug`
 
 You don't need to install the program in order to debug it, just run

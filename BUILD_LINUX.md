@@ -6,7 +6,7 @@
 * GCC 7.0+
 * SDL 2.0.8+
 * SDL_image 2.0.0+
-* libRocket (see notes below)
+* RmlUi (see notes below)
 * GLEW
 * libarchive (optional)
 * libsamplerate (optional)
@@ -27,29 +27,28 @@ $ autoreconf --install
 
 Then configure, build, and install:  
 ```
-$ ./configure --with-librocket-prefix=PATH/TO/LIBROCKET  
+$ ./configure --with-rmlui-prefix=PATH/TO/RMLUI  
 $ make  
 $ make install
 ```  
 Use `./configure --help` to read the various compilation options.
 
-You can omit the `--with-librocket-prefix` if you installed libRocket has a
+You can omit the `--with-rmlui-prefix` if you installed RmlUi has a
 system library.
 
 Any missing library will be pointed out; use your distributon's software
-manager to install them (except libRocket, see notes below).
+manager to install them (except RmlUi, see notes below).
 
-### libRocket
+### RmlUi
 
-libRocket is a C++ user interface package based on the HTML and CSS standards.
+RmlUi is a C++ user interface library based on the HTML and CSS standards.
 
-To compile libRocket you'll need cmake and libfreetype.
+To compile RmlUi you'll need cmake and libfreetype.
 
-IBMulator needs various fixes so use the version from my repository.  
 ```
-$ git clone https://github.com/barotto/libRocket.git
-$ cd libRocket/Build
-$ cmake -G "Unix Makefiles"
+$ git clone https://github.com/mikke89/RmlUi
+$ mkdir RmlUi/build && cd RmlUi/build
+$ cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 $ make
 ```
 
@@ -102,11 +101,11 @@ $ make -j24
 $ make install
 ```
 
-Compile libRocket with the static lib option enabled:
+Compile RmlUi with the shared libs option disabled:
 ```
-$ cd libRocket/Build/  
-$ cmake -G "Unix Makefiles" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
--DCMAKE_INSTALL_PREFIX:PATH=/home/marco/workspace/libRocket/release
+$ cd RmlUi/build/  
+$ cmake .. -G "Unix Makefiles" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_INSTALL_PREFIX:PATH=/home/marco/workspace/RmlUi/release
 $ make -j24  
 $ make install
 ```
@@ -115,7 +114,7 @@ Configure IBMulator:
 ```
 $ ./configure --prefix=/home/marco/workspace/IBMulator/release \
 --enable-static --disable-sdltest \
---with-librocket-prefix=/home/marco/workspace/libRocket/release \
+--with-rmlui-prefix=/home/marco/workspace/RmlUi/release \
 --with-glew-prefix=/home/marco/workspace/glew/release \
 --with-libarchive-prefix=/home/marco/workspace/libarchive/release
 ```
