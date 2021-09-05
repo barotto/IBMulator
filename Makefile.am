@@ -30,7 +30,11 @@ share/ibmulator/gui/realistic_interface.rml \
 share/ibmulator/gui/stats.rml \
 share/ibmulator/gui/status.rml \
 share/ibmulator/gui/mixerstate.rml \
-share/ibmulator/gui/speed_indicator.rcss
+share/ibmulator/gui/speed_indicator.rcss \
+share/ibmulator/gui/state_dialog.rcss \
+share/ibmulator/gui/state_load.rml \
+share/ibmulator/gui/state_save.rml \
+share/ibmulator/gui/state_save_info.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
