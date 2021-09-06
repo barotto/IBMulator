@@ -88,8 +88,11 @@ std::string str_format_time(time_t _time, const std::string &_fmt)
 {
 #if 1
 
+	std::string old_locale(setlocale(LC_TIME, NULL));
+	setlocale(LC_TIME, "");
 	std::string s(100,0);
 	size_t size = std::strftime(s.data(), 100, _fmt.c_str(), std::localtime(&_time));
+	setlocale(LC_TIME, old_locale.c_str());
 	if(size == 0) {
 		return "";
 	}
