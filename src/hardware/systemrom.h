@@ -38,6 +38,7 @@ private:
 	BIOSType m_bios;
 	uint8_t *m_data;
 	int m_low_mapping, m_high_mapping;
+	std::string m_romset;
 
 public:
 	SystemROM();
@@ -50,6 +51,7 @@ public:
 	void inject_custom_hdd_params(int _table_entry_id, HDDParams _params);
 	void update_bios_checksum();
 	const BIOSType & bios() const { return m_bios; }
+	const std::string & romset() const { return m_romset; }
 
 	inline uint8_t read(uint32_t _phy) const {
 		assert(m_data);

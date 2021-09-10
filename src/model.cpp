@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -96,6 +96,7 @@ std::string ModelConfig::print() const
 		case FDD_350DD: ss << "720KB"; break;
 		case FDD_350HD: ss << "1.44MB"; break;
 		case FDD_350ED: ss << "2.88MB"; break;
+		default: break;
 	}
 	switch(floppy_b) {
 		case FDD_525DD: ss << " and 360KB"; break;
@@ -103,6 +104,7 @@ std::string ModelConfig::print() const
 		case FDD_350DD: ss << " and 720KB"; break;
 		case FDD_350HD: ss << " and 1.44MB"; break;
 		case FDD_350ED: ss << " and 2.88MB"; break;
+		default: break;
 	}
 	ss << " diskette drive, ";
 	int64_t hddsize = HardDiskDrive::get_hdd_type_size(hdd_type);

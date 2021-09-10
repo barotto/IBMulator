@@ -29,6 +29,9 @@
 #include "hardware/devices/floppy.h"
 #include "hardware/devices/dma.h"
 #include "hardware/devices/systemboard.h"
+#include "hardware/devices/storagectrl.h"
+#include "hardware/devices/storagectrl_ata.h"
+#include "hardware/devices/storagectrl_ps1.h"
 #include "filesys.h"
 
 #include "gui/gui.h"
@@ -281,6 +284,30 @@ void Machine::config_changed()
 	m_sysrom.config_changed();
 	g_memory.config_changed();
 	g_devices.config_changed();
+
+	m_configured_model = model();
+	m_configured_model.cpu_model = g_cpu.model();
+	m_configured_model.cpu_freq = unsigned(g_cpu.frequency());
+	m_configured_model.exp_ram = g_memory.dram_exp();
+	auto flpctrl = g_devices.device<FloppyCtrl>();
+	if(flpctrl) {
+		m_configured_model.floppy_a = flpctrl->drive_type(0);
+		m_configured_model.floppy_b = flpctrl->drive_type(1);
+	} else {
+		m_configured_model.floppy_a = FDD_NONE;
+		m_configured_model.floppy_b = FDD_NONE;
+	}
+	// TODO what if there's more than 1 storage controller?
+	auto hddctrl = g_devices.device<StorageCtrl>();
+	m_configured_model.hdd_interface = "";
+	if(hddctrl) {
+		if(strcmp(hddctrl->name(), StorageCtrl_ATA::NAME) == 0) {
+			m_configured_model.hdd_interface = "ata";
+		}
+		else if(strcmp(hddctrl->name(), StorageCtrl_PS1::NAME) == 0) {
+			m_configured_model.hdd_interface = "ps1";
+		}
+	}
 
 	set_heartbeat(DEFAULT_HEARTBEAT);
 

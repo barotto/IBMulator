@@ -297,7 +297,7 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	std::string path_string = g_program.config().get_string(_section, DISK_PATH);
 	if(path_string != "auto") {
-		m_imgpath = g_program.config().find_media(_section, DISK_PATH);
+		m_path = g_program.config().find_media(_section, DISK_PATH);
 	}
 
 	int type = 0;
@@ -309,15 +309,15 @@ void HardDiskDrive::config_changed(const char *_section)
 			type = HDD_CUSTOM_DRIVE_IDX;
 		} else if(type_string == "auto") {
 			type = g_machine.model().hdd_type;
-			if(path_string!="auto" && FileSys::file_exists(m_imgpath.c_str())) {
+			if(path_string!="auto" && FileSys::file_exists(m_path.c_str())) {
 				// the user specified an image file with automatic type, try to
 				// determine the standard type using the image size.
-				uint64_t size = FileSys::get_file_size(m_imgpath.c_str());
+				uint64_t size = FileSys::get_file_size(m_path.c_str());
 				try {
 					type = ms_hdd_sizes.at(size);
 				} catch(std::out_of_range &) {
 					PERRF(LOG_HDD, "%s: I cannot determine the type of '%s'\n",
-							name(), m_imgpath.c_str());
+							name(), m_path.c_str());
 					throw;
 				}
 			}
@@ -346,13 +346,13 @@ void HardDiskDrive::config_changed(const char *_section)
 		imgname = ss.str();
 		//transform to lowercase?
 		//std::transform(imgname.begin(), imgname.end(), imgname.begin(), ::tolower);
-		m_imgpath = g_program.config().get_file_path(imgname, FILE_TYPE_USER);
+		m_path = g_program.config().get_file_path(imgname, FILE_TYPE_USER);
 	}
 
 	get_profile(type, _section, m_geometry, m_performance);
 	StorageDev::config_changed(_section);
 
-	mount(m_imgpath, m_geometry, m_read_only);
+	mount(m_path, m_geometry, m_read_only);
 
 	auto model = ms_hdd_models.find(type);
 	if(model != ms_hdd_models.end()) {
@@ -397,7 +397,7 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	g_program.config().set_int(_section, DISK_TYPE, m_type);
 
-	g_program.config().set_string(_section, DISK_PATH, m_imgpath);
+	g_program.config().set_string(_section, DISK_PATH, m_path);
 	g_program.config().set_int(_section, DISK_CYLINDERS, m_geometry.cylinders);
 	g_program.config().set_int(_section, DISK_HEADS, m_geometry.heads);
 	g_program.config().set_int(_section, DISK_SPT, m_geometry.spt);
@@ -614,14 +614,14 @@ void HardDiskDrive::unmount(bool _save, bool _read_only)
 		} else {
 			// make the current disk state permanent.
 			bool save = true;
-			if(FileSys::file_exists(m_imgpath.c_str())) {
-				if(FileSys::get_file_size(m_imgpath.c_str()) != size()) {
+			if(FileSys::file_exists(m_path.c_str())) {
+				if(FileSys::get_file_size(m_path.c_str()) != size()) {
 					//TODO this is true only for flat media images
 					PINFOF(LOG_V0, LOG_HDD, "%s: disk geometry mismatch, temporary image not saved!\n",
 							name());
 					save = false;
 				}
-				if(!FileSys::is_file_writeable(m_imgpath.c_str())) {
+				if(!FileSys::is_file_writeable(m_path.c_str())) {
 					PINFOF(LOG_V0, LOG_HDD, "%s: image file is write protected, temporary image not saved!\n",
 							name());
 					save = false;
@@ -629,8 +629,8 @@ void HardDiskDrive::unmount(bool _save, bool _read_only)
 			}
 			if(save) {
 				PINFOF(LOG_V0, LOG_HDD,
-						"Saving %s image to '%s'\n", name(), m_imgpath.c_str());
-				m_disk->save_state(m_imgpath.c_str());
+						"Saving %s image to '%s'\n", name(), m_path.c_str());
+				m_disk->save_state(m_path.c_str());
 			}
 		}
 	}

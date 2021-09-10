@@ -2417,7 +2417,7 @@ void GUI::pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase _phas
 		}
 	}
 
-	m_windows.interface->save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0});
+	m_windows.interface->save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
 }
 
 void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phase)
@@ -2433,7 +2433,7 @@ void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phas
 		}
 	}
 	
-	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0}, [this](){
+	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0}, [this](){
 		show_message("State restored");
 	}, nullptr);
 }

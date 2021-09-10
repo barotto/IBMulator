@@ -41,12 +41,7 @@ void StateSave::update()
 	if(m_dirty) {
 		m_list_el->SetInnerRML("");
 		m_list_el->AppendChild(StateDialog::DirEntry::create_element(
-			m_wnd,
-			"new_save_entry", // id
-			"",               // screen
-			"NEW SAVE",       // desc
-			""                // date
-		));
+			m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0} ));
 		for(auto &de : ms_cur_dir) {
 			m_list_el->AppendChild(de.create_element(m_wnd));
 		}
@@ -75,7 +70,7 @@ void StateSave::on_entry(Rml::Event &_ev)
 		return;
 	}
 	if(id == QUICKSAVE_RECORD) {
-		m_save_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0});
+		m_save_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
 	} else if(id == "new_save" || id == "new_save_entry") {
 		m_save_callbk({});
 	} else {

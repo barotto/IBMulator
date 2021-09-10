@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2017-2020  Marco Bortolin
+ * Copyright (C) 2017-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -297,6 +297,7 @@ void StorageCtrl_ATA::config_changed()
 			drive(ch,dev).device_type = ATA_NONE;
 		}
 	}
+	m_devices_cnt = 0;
 
 	// TODO Currently CD-ROM is not implemented so if this controller is
 	// installed I assume an HDD is installed too at ATA0:0
@@ -305,6 +306,7 @@ void StorageCtrl_ATA::config_changed()
 	m_storage[0][0]->install(this);
 	m_storage[0][0]->config_changed(DISK_C_SECTION);
 	drive(0,0).device_type = ATA_DISK;
+	m_devices_cnt++;
 
 	if(0) {
 		// TODO
@@ -321,6 +323,7 @@ void StorageCtrl_ATA::config_changed()
 		set_cd_media_status(0, 1,
 				g_program.config().get_bool(DISK_CD_SECTION, DISK_INSERTED),
 				false);
+		m_devices_cnt++;
 	}
 }
 
@@ -388,6 +391,19 @@ void StorageCtrl_ATA::restore_state(StateBuf &_state)
 		}
 	}
 	update_busy_status();
+}
+
+const StorageDev * StorageCtrl_ATA::get_device(int _dev_idx)
+{
+	int idx = 0;
+	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
+		for(int dev=0; dev<2; dev++) {
+			if(drive_is_present(ch,dev) && idx++ == _dev_idx) {
+				return m_storage[ch][dev].get();
+			}
+		}
+	}
+	return nullptr;
 }
 
 void StorageCtrl_ATA::reset_channel(int _ch)

@@ -41,7 +41,7 @@ StateSaveInfo::~StateSaveInfo()
 
 void StateSaveInfo::show()
 {
-	m_desc_el->SetValue(m_state_info.desc);
+	m_desc_el->SetValue(m_state_info.user_desc);
 	Window::show();
 	m_desc_el->Focus();
 }
@@ -54,7 +54,7 @@ void StateSaveInfo::create()
 
 void StateSaveInfo::on_save(Rml::Event &)
 {
-	m_state_info.desc = m_desc_el->GetValue();
+	m_state_info.user_desc = m_desc_el->GetValue();
 	if(m_save_callbk) {
 		m_save_callbk(m_state_info);
 	}

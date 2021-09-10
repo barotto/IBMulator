@@ -52,10 +52,8 @@ protected:
 		Rml::ElementPtr create_element(Rml::ElementDocument *_doc) const;
 		static Rml::ElementPtr create_element(
 			Rml::ElementDocument *_doc,
-			const std::string &_id,
 			const std::string &_screen,
-			const std::string &_desc,
-			const std::string &_date
+			const StateRecord::Info &_info
 		);
 	};
 	inline static std::string ms_cur_path;

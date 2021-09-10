@@ -9,6 +9,7 @@
 				height: 100px;
 				min-height: 100px;
 				min-width: 400px;
+				max-height: 100px;
 				margin: auto;
 				background-color: #3C5464FF;
 			}
@@ -19,8 +20,8 @@
 			#buttons {
 				position: absolute;
 				bottom: 20px;
-				right: 40px;
-				left: 40px;
+				right: 20px;
+				left: 20px;
 				text-align: right;
 			}
 			button.romshell
@@ -34,6 +35,7 @@
 	</head>
 	<body template="default">
 		<div id="info">
+			Enter a description:
 			<input type="text" id="desc"/>
 		</div>
 		<div id="buttons">

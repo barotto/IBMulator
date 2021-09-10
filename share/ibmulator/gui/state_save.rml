@@ -5,6 +5,16 @@
 		<link type="text/rcss" href="state_dialog.rcss"/>
 		<style>
 
+		.entry .data .action
+		{
+			background-color: #aa000000;
+			decorator: image(icons/save.png);
+		}
+
+		.entry:hover .data .action
+		{
+			background-color: #aa0000ff;
+		}
 
 		</style>
 	</head>

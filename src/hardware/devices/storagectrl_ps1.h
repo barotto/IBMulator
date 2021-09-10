@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -156,6 +156,9 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+	int installed_devices() const { return 1; }
+	const StorageDev * get_device(int) { return &m_disk; }
 
 	bool is_busy() const {
 		// this function is called by the GUI thread.

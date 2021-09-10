@@ -79,6 +79,7 @@ void SystemROM::load(const std::string _romset)
 	assert(m_data != nullptr);
 	m_bios = g_bios_db.at("unknown");
 	memset(m_data, 0, MAX_ROM_SIZE);
+	m_romset.clear();
 
 	if(FileSys::is_directory(_romset.c_str())) {
 		PINFOF(LOG_V0, LOG_MACHINE, "Loading ROM directory '%s'\n", _romset.c_str());
@@ -99,6 +100,7 @@ void SystemROM::load(const std::string _romset)
 			load_archive(_romset);
 		}
 	}
+	m_romset = _romset;
 
 	MD5 md5;
 	md5.update(&m_data[BIOS_OFFSET], BIOS_SIZE);

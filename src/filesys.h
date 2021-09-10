@@ -49,6 +49,7 @@ public:
 	static void create_dir(const char *_path);
 	static int get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime);
 	static const char* get_temp_dir();
+	static std::string get_basename(const char *_path);
 	static bool get_path_parts(const char *_path,
 			std::string &_dir, std::string &_base, std::string &_ext);
 	static bool extract_file(const char *_archive, const char *_filename,

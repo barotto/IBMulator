@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -82,6 +82,7 @@ class StorageDev
 {
 protected:
 	std::string m_name; // Device name (used for logging)
+	std::string m_path; // File system path to data
 
 	int64_t m_sectors;       // Total number of sectors
 	int m_sector_data;       // Data bytes per sector
@@ -117,13 +118,14 @@ public:
 	virtual void save_state(StateBuf &) {}
 	virtual void restore_state(StateBuf &) {}
 
-	const char * name() { return m_name.c_str(); }
-	const char * vendor() { return m_ident.vendor; }
-	const char * product() { return m_ident.product; }
-	const char * revision() { return m_ident.revision; }
-	const char * model() { return m_ident.model; }
-	const char * serial() { return m_ident.serial; }
-	const char * firmware() { return m_ident.firmware; }
+	const char * name() const { return m_name.c_str(); }
+	const char * path() const { return m_path.c_str(); }
+	const char * vendor() const { return m_ident.vendor; }
+	const char * product() const { return m_ident.product; }
+	const char * revision() const { return m_ident.revision; }
+	const char * model() const { return m_ident.model; }
+	const char * serial() const { return m_ident.serial; }
+	const char * firmware() const { return m_ident.firmware; }
 
 	bool insert_media(const char */*_path*/) { return false; }
 	void eject_media() {}

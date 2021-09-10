@@ -59,10 +59,11 @@ m_state(m_basefile)
 			if(!infofile.is_open()) {
 				throw std::runtime_error(str_format("Cannot open '%s' for reading", m_info_path.c_str()).c_str());
 			}
-			std::getline(infofile, m_info.desc);
+			std::getline(infofile, m_info.user_desc);
 			if(infofile.fail()) {
 				throw std::runtime_error(str_format("Error reading from '%s'", m_info_path.c_str()).c_str());
 			}
+			std::getline(infofile, m_info.config_desc);
 		}
 
 		if(!FileSys::is_file_readable(m_ini_path.c_str())) {
@@ -127,7 +128,7 @@ void StateRecord::save()
 	if(!infofile.is_open()) {
 		throw std::runtime_error(str_format("Cannot open '%s' for writing", m_info_path.c_str()).c_str());
 	}
-	infofile.write(m_info.desc.c_str(), m_info.desc.size());
+	infofile << m_info.user_desc << "\n" << m_info.config_desc;
 	if(infofile.fail()) {
 		throw std::runtime_error(str_format("Error writing to '%s'", m_info_path.c_str()).c_str());
 	}

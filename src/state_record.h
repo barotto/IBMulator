@@ -34,7 +34,8 @@ class StateRecord
 public:
 	struct Info {
 		std::string name;
-		std::string desc;
+		std::string user_desc;
+		std::string config_desc;
 		time_t mtime;
 	};
 private:
@@ -69,13 +70,15 @@ public:
 		return *this;
 	}
 	Info & info() { return m_info; }
+	const Info & info() const { return m_info; }
 	StateBuf & state() { return m_state; }
 	AppConfig & config() { return m_config; }
 	std::string & screen() { return m_screen_path; }
 	const std::string & screen() const { return m_screen_path; }
 
 	const std::string & name() const { return m_info.name; }
-	const std::string & desc() const { return m_info.desc; }
+	const std::string & user_desc() const { return m_info.user_desc; }
+	const std::string & config_desc() const { return m_info.config_desc; }
 	time_t mtime() const { return m_info.mtime; }
 
 	void set_framebuffer(SDL_Surface *_fb);

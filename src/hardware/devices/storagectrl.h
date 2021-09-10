@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,6 +21,7 @@
 #define IBMULATOR_HW_STORAGECTRL_H
 
 #include "hardware/iodevice.h"
+#include "storagedev.h"
 
 #define HDC_CUSTOM_BIOS_IDX  1 // table index where to inject the custom hdd parameters
                                // using an index >44 confuses CONFIGUR.EXE
@@ -33,6 +34,9 @@ class StorageCtrl : public IODevice
 public:
 	StorageCtrl(Devices *_dev);
 	virtual ~StorageCtrl();
+
+	virtual int installed_devices() const { return 0; }
+	virtual const StorageDev * get_device(int) { return nullptr; }
 
 	virtual bool is_busy() const { return false; }
 };

@@ -21,6 +21,11 @@
 #include "filesys.h"
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
+#include "hardware/devices/sblaster.h"
+#include "hardware/devices/ps1audio.h"
+#include "hardware/devices/adlib.h"
+#include "hardware/devices/pcspeaker.h"
+#include "hardware/devices/storagectrl.h"
 #include "gui/gui_opengl.h"
 #include "gui/gui_sdl2d.h"
 #include "program.h"
@@ -103,7 +108,7 @@ void Program::save_state(
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "Saving current state in '%s'...\n", sstate->path());
 
-	sstate->info().desc = _info.desc;
+	sstate->info().user_desc = _info.user_desc;
 	sstate->config().copy(m_config[1]);
 
 	bool paused = m_machine->is_paused();
@@ -130,6 +135,46 @@ void Program::save_state(
 			_on_fail("Error copying the framebuffer");
 		}
 		return;
+	}
+
+	// prepare the configuration description
+	const ModelConfig & mcfg = m_machine->configured_model();
+	sstate->info().config_desc  = "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "<br />";
+	sstate->info().config_desc += "CPU: " + str_format("%s @ %u MHz", mcfg.cpu_model.c_str(), mcfg.cpu_freq) + "<br />";
+	sstate->info().config_desc += "RAM: " + str_format("%u KiB + %u KiB", mcfg.board_ram, mcfg.exp_ram) + "<br />";
+	// TODO consider more than 1 controller
+	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
+	if(hddctrl) {
+		for(int i=0; i<hddctrl->installed_devices(); i++) {
+			const StorageDev *dev = hddctrl->get_device(i);
+			if(dev) {
+				sstate->info().config_desc += str_format("%s: %u MiB %s", 
+						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
+						+ "<br />";
+				sstate->info().config_desc += FileSys::get_basename(dev->path()) + "<br />";
+			}
+		}
+	}
+	// TODO classify expansion cards so that we can ask for all audio cards etc...
+	sstate->info().config_desc  += "Audio: ";
+	std::vector<std::string> audiocards;
+	SBlaster *sb = m_machine->devices().device<SBlaster>();
+	if(sb) {
+		audiocards.emplace_back(sb->short_name());
+	}
+	if(m_machine->devices().device<AdLib>()) {
+		audiocards.emplace_back("AdLib");
+	}
+	if(m_machine->devices().device<PS1Audio>()) {
+		audiocards.emplace_back("PS/1");
+	}
+	if(m_machine->devices().device<PCSpeaker>()) {
+		audiocards.emplace_back("PC-Speaker");
+	}
+	if(audiocards.empty()) {
+		sstate->info().config_desc  += "none";
+	} else {
+		sstate->info().config_desc  += str_implode(audiocards, ", ");
 	}
 
 	try {

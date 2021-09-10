@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -149,6 +149,7 @@ private:
 
 	std::unique_ptr<StorageDev> m_storage[ATA_MAX_CHANNEL][2];
 	int m_cmd_timers[ATA_MAX_CHANNEL][2];
+	int m_devices_cnt = 0;
 
 	std::atomic<bool> m_busy;
 
@@ -174,8 +175,10 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	// these functions are called by the GUI thread.
+	int installed_devices() const { return m_devices_cnt; }
+	const StorageDev * get_device(int);
 	bool is_busy() const {
-		// this function is called by the GUI thread.
 		return m_busy;
 	}
 

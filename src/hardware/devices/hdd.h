@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,7 +35,6 @@ protected:
 	std::string m_section;
 	int m_type;
 	uint64_t m_spin_up_duration;
-	std::string m_imgpath;
 	std::unique_ptr<MediaImage> m_disk;
 	bool m_save_on_close;
 	bool m_read_only;

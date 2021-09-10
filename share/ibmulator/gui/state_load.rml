@@ -3,6 +3,20 @@
 		<title>Load state</title>
 		<link type="text/template" href="default.rml" />
 		<link type="text/rcss" href="state_dialog.rcss"/>
+		<style>
+
+		.entry .data .action
+		{
+			background-color: #00aa0000;
+			decorator: image(icons/restore.png);
+		}
+
+		.entry:hover .data .action
+		{
+			background-color: #00aa00ff;
+		}
+
+		</style>
 	</head>
 	<body template="default">
 		<div id="list"></div>

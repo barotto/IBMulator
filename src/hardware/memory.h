@@ -98,6 +98,7 @@ protected:
 		uint8_t *buffer;
 		uint32_t buffer_size;
 		int cycles;
+		unsigned exp;
 	} m_ram;
 
 	struct {
@@ -183,6 +184,7 @@ public:
 
 	inline int dram_cycles() const { return m_ram.cycles; }
 	inline uint32_t dram_size() const { return m_ram.size; }
+	inline unsigned dram_exp() const { return m_ram.exp; }
 
 	void DMA_read(uint32_t addr, uint16_t len, uint8_t *buf);
 	void DMA_write(uint32_t addr, uint16_t len, uint8_t *buf);

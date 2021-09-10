@@ -151,6 +151,20 @@ time_t FileSys::filetime_to_time_t(const FILETIME &_ftime)
 #endif
 }
 
+std::string FileSys::get_basename(const char *_path)
+{
+	// POSIX's basename() version modifies the path argument
+	// The GNU version returns the empty string when path has a trailing slash
+	std::string path(_path);
+	if(path.empty()) {
+		return "";
+	}
+	if(path.size() > 1 && path.back() == FS_SEP[0]) {
+		path.resize(path.size() - 1);
+	}
+	return std::string(basename(path.data()));
+}
+
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {

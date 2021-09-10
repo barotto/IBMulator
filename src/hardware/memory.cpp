@@ -105,10 +105,10 @@ void Memory::config_changed()
 		{ 8  * KEBIBYTE, "8M"   },
 		{ 16 * KEBIBYTE, "16M"  },
 	};
-	unsigned exp_ram = g_program.config().get_enum(MEM_SECTION, MEM_RAM_EXP, ram_str_size, g_machine.model().exp_ram);
-	g_program.config().set_string(MEM_SECTION, MEM_RAM_EXP, ram_size_str[exp_ram]);
+	m_ram.exp = g_program.config().get_enum(MEM_SECTION, MEM_RAM_EXP, ram_str_size, g_machine.model().exp_ram);
+	g_program.config().set_string(MEM_SECTION, MEM_RAM_EXP, ram_size_str[m_ram.exp]);
 
-	m_ram.size = g_machine.model().board_ram + exp_ram;
+	m_ram.size = g_machine.model().board_ram + m_ram.exp;
 	// the last 512 KiB are reserved for the ROM
 	m_ram.size = std::min(16384u-512u-384u, m_ram.size);
 	m_ram.size = std::max(128u, m_ram.size);

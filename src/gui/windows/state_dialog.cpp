@@ -83,10 +83,8 @@ void StateDialog::set_current_dir(const std::string &_path)
 
 Rml::ElementPtr StateDialog::DirEntry::create_element(
 		Rml::ElementDocument *_doc,
-		const std::string &_id,
 		const std::string &_screen,
-		const std::string &_desc,
-		const std::string &_date
+		const StateRecord::Info &_info
 )
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
@@ -101,10 +99,19 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 			inner += "<img src=\"/" + _screen + "\" />";
 		}
 		inner += "</div>";
-		inner += "<div class=\"desc\">" + _desc + "</div>";
-		inner += "<div class=\"date\">" + _date + "</div>";
+		inner += "<div class=\"desc\">" + _info.user_desc + "</div>";
+		if(_info.mtime) {
+			inner += "<div class=\"date\">" + str_format_time(_info.mtime, "%x %R") + "</div>";
+		}
+		if(_info.name != "new_save_entry") {
+			inner += "<div class=\"name\">" + _info.name + "</div>";
+		}
+		if(!_info.config_desc.empty()) {
+			inner += "<div class=\"config\">" + _info.config_desc + "</div>";
+		}
+		inner += "<div class=\"action\"></div>";
 	inner += "</div>";
-	inner += "<div class=\"target\" id=\"" + _id + "\"></div>";
+	inner += "<div class=\"target\" id=\"" + _info.name + "\"></div>";
 	child->SetInnerRML(inner);
 
 	return child;
@@ -114,10 +121,8 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(Rml::ElementDocument *_doc
 {
 	return create_element(
 		_doc,
-		rec->name(),
 		rec->screen(),
-		rec->desc(),
-		str_format_time(rec->mtime(), "%x %X")
+		rec->info()
 	);
 }
 

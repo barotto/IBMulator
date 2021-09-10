@@ -57,9 +57,8 @@ enum MachineReset {
 class Machine
 {
 private:
-	unsigned m_type;
-	std::string m_type_str;
 	unsigned m_model;
+	ModelConfig m_configured_model;
 
 	Pacer m_pacer;
 	HWBench m_bench;
@@ -152,6 +151,7 @@ public:
 	inline unsigned type() const { return model().type; }
 	inline std::string type_str() const { return g_machine_type_str.at(type()); }
 	inline const ModelConfig & model() const { return g_machine_db.at(m_model); }
+	inline const ModelConfig & configured_model() const { return m_configured_model; }
 	inline SystemROM & sys_rom() { return m_sysrom; }
 	inline CPU & cpu() { return g_cpu; }
 	inline Devices & devices() { return g_devices; }

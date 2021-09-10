@@ -576,7 +576,7 @@ void Interface::show_state_dialog(bool _save)
 			{
 				m_state_save->hide();
 				if(_info.name == QUICKSAVE_RECORD) {
-					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, 0});
+					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
 					dialog_end();
 				} else {
 					m_state_save_info->set_callbacks(
@@ -629,7 +629,7 @@ void Interface::on_load_state(Rml::Event &)
 
 void Interface::save_state(StateRecord::Info _info)
 {
-	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.desc.c_str());
+	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.user_desc.c_str());
 	g_program.save_state(_info, [this]() {
 		m_gui->show_message("State saved");
 		StateDialog::reload_current_dir();
