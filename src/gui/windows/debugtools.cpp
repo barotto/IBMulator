@@ -197,7 +197,7 @@ void DebugTools::DebugWindow::show()
 	}
 }
 
-void DebugTools::DebugWindow::on_close(Rml::Event &)
+void DebugTools::DebugWindow::on_cancel(Rml::Event &)
 {
 	enable(false);
 	Window::hide();

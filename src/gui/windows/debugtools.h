@@ -42,7 +42,7 @@ public:
 		virtual void show();
 		void enable(bool _value = true);
 		void toggle();
-		void on_close(Rml::Event &);
+		void on_cancel(Rml::Event &);
 
 		DebugWindow(GUI * _gui, const char *_rml, Rml::Element *_button);
 	};

@@ -25,7 +25,8 @@
 #include <RmlUi/Core.h>
 
 event_map_t MixerState::ms_evt_map = {
-	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
+	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_cancel ),
+	GUI_EVT( "*",   "keydown", Window::on_keydown )
 };
 
 MixerState::MixerState(GUI *_gui, Rml::Element *_button, Mixer *_mixer)

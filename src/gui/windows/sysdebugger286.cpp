@@ -50,7 +50,8 @@ event_map_t SysDebugger286::ms_evt_map = {
 	GUI_EVT( "idt_dump",         "click", SysDebugger::on_idt_dump ),
 	GUI_EVT( "ldt_dump",         "click", SysDebugger::on_ldt_dump ),
 	GUI_EVT( "gdt_dump",         "click", SysDebugger::on_gdt_dump ),
-	GUI_EVT( "close",            "click", DebugTools::DebugWindow::on_close )
+	GUI_EVT( "close",            "click", DebugTools::DebugWindow::on_cancel ),
+	GUI_EVT( "*",              "keydown", Window::on_keydown )
 };
 
 SysDebugger286::SysDebugger286(GUI *_gui, Machine *_machine, Rml::Element *_button)

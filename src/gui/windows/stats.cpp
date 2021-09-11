@@ -32,7 +32,8 @@
 
 event_map_t Stats::ms_evt_map = {
 	GUI_EVT( "cmd_reset", "click", Stats::on_cmd_reset ),
-	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
+	GUI_EVT( "close",     "click", DebugTools::DebugWindow::on_cancel ),
+	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
 Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, Rml::Element *_button)

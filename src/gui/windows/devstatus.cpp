@@ -34,10 +34,11 @@
 event_map_t DevStatus::ms_evt_map = {
 	GUI_EVT( "cmd_vga_dump_state", "click", DevStatus::on_cmd_vga_dump_state ),
 	GUI_EVT( "cmd_vga_screenshot", "click", DevStatus::on_cmd_vga_screenshot ),
-	GUI_EVT( "cmd_vga_update", "click", DevStatus::on_cmd_vga_update ),
-	GUI_EVT( "cmd_pit_update", "click", DevStatus::on_cmd_pit_update ),
-	GUI_EVT( "cmd_pic_update", "click", DevStatus::on_cmd_pic_update ),
-	GUI_EVT( "close", "click", DebugTools::DebugWindow::on_close )
+	GUI_EVT( "cmd_vga_update",     "click", DevStatus::on_cmd_vga_update ),
+	GUI_EVT( "cmd_pit_update",     "click", DevStatus::on_cmd_pit_update ),
+	GUI_EVT( "cmd_pic_update",     "click", DevStatus::on_cmd_pic_update ),
+	GUI_EVT( "close",              "click", DebugTools::DebugWindow::on_cancel ),
+	GUI_EVT( "*",                "keydown", Window::on_keydown )
 };
 
 DevStatus::DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine)
