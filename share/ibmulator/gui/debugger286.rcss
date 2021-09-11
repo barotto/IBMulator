@@ -1,18 +1,18 @@
 #cpucore
 {
-	height: 245px;
+	height: 245dp;
 }
 
 #generalregs td
 {
-	width: 50px;
+	width: 50dp;
 }
 
 #segmentregs
 {
 	position: absolute;
-	top: 0px;
-	left: 200px;
+	top: 0;
+	left: 200dp;
 }
 
 #CSbase,#DSbase,
@@ -20,29 +20,29 @@
 #TRbase,
 #LDTbase, #GDTbase, #IDTbase
 {
-	width: 50px;
+	width: 50dp;
 }
 
 #statusregs
 {
-	top: 100px;
-	left: 0px;
+	top: 100dp;
+	left: 0;
 }
 
 #flags
 {
-	top: 120px;
-	left: 250px;
+	top: 120dp;
+	left: 250dp;
 }
 
 #extra
 {
-	top: 220px;
-	left: 250px;
+	top: 220dp;
+	left: 250dp;
 }
 
 #desctables
 {
-	top: 175px;
-	left: 0px;
+	top: 175dp;
+	left: 0dp;
 }

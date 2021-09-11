@@ -7,8 +7,8 @@
 		<style>
 			body
 			{
-				width: 470px;
-				height: 510px;
+				width: 470dp;
+				height: 510dp;
 				position: absolute;
 				top: 0;
 				right: 0;

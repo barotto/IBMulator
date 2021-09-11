@@ -1,9 +1,7 @@
 #speed {
 	position: absolute;
 	text-align: center;
-	font-size: 0.8em;
-	width: 2em;
-	/*height: 1.5em;*/
+	font-size: 12dp;
 	top: 1em;
 	right: 1em;
 	padding: 0.3em;
@@ -11,7 +9,6 @@
 	visibility: visible;
 }
 #speed.paused {
-	width: 3em;
 	background-color: #aaaa0088;
 }
 #speed.slow {

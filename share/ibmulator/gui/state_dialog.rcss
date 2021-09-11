@@ -2,13 +2,13 @@ body
 {
 	width: 88%;
 	height: 90%;
-	min-width: 300px;
-	min-height: 400px;
+	min-width: 300dp;
+	min-height: 400dp;
 	margin: auto;
 }
 div#window
 {
-	padding: 20px;
+	padding: 20dp;
 }
 
 #list
@@ -20,15 +20,15 @@ div#window
 	top: 0;
 	left: 0;
 	right: 0;
-	margin: 40px 5px 55px 5px;
+	margin: 40dp 5dp 55dp 5dp;
 	overflow: auto;
-	padding: 0px 10px 0 10px;
+	padding: 0dp 10dp 0 10dp;
 }
 
 #desc_dialog  {
 	position: absolute;
 	bottom: 0;
-	top: 25px;
+	top: 25dp;
 	left: 0;
 	right: 0;
 	background-color: #000000a0;
@@ -40,39 +40,39 @@ div#window
 
 #desc_mask {
 	width: 50%;
-	height: 320px;
+	height: 320dp;
 	margin: auto;
 	background-color: #000000ff;
 }
 
 #buttons {
 	position: absolute;
-	bottom: 20px;
-	right: 40px;
-	left: 40px;
+	bottom: 20dp;
+	right: 40dp;
+	left: 40dp;
 	text-align: right;
 }
 
 button.romshell
 {
-	margin-left: 10px;
+	margin-left: 10dp;
 }
 
 .entry {
 	display: inline-block;
-	width: 235px;
-	height: 240px;
+	width: 235dp;
+	height: 240dp;
 	background-color: #28374d;
-	margin: 15px 15px 0 0;
+	margin: 15dp 15dp 0 0;
 }
 
 .entry .data
 {
 	position: absolute;
-	top: -4px;
-	left: 4px;
-	width: 235px;
-	height: 240px;
+	top: -4dp;
+	left: 4dp;
+	width: 235dp;
+	height: 240dp;
 	background-color: #587fa3;
 }
 
@@ -84,12 +84,12 @@ button.romshell
 .entry .data .screen {
 	display: block;
 	position: absolute;
-	top: 5px;
-	left: 5px;
-	right: 5px;
-	height: 165px;
+	top: 5dp;
+	left: 5dp;
+	right: 5dp;
+	height: 165dp;
 
-	border: 1px;
+	border: 1dp;
 	border-color: #28374d;
 }
 
@@ -104,11 +104,11 @@ button.romshell
 .entry .data .desc {
 	display: block;
 	position: absolute;
-	top: 170px;
-	left: 5px;
-	right: 5px;
-	padding: 5px;
-	height: 35px;
+	top: 170dp;
+	left: 5dp;
+	right: 5dp;
+	padding: 5dp;
+	height: 35dp;
 	overflow: hidden;
 }
 
@@ -117,22 +117,22 @@ button.romshell
 {
 	display: block;
 	position: absolute;
-	top: 220px;
-	padding: 0 5px 0 5px;
+	top: 220dp;
+	padding: 0 5dp 0 5dp;
 	overflow: hidden;
-	font-size: 12px;
+	font-size: 12dp;
 }
 
 .entry .data .name
 {
-	left: 5px;
+	left: 5dp;
 	right: 50%;
 	text-align: left;
 }
 
 .entry .data .date
 {
-	right: 5px;
+	right: 5dp;
 	left: 50%;
 	text-align: right;
 }
@@ -140,13 +140,13 @@ button.romshell
 .entry .data .config
 {
 	position: absolute;
-	top: 5px;
-	left: 5px;
-	right: 5px;
-	height: 145px;
+	top: 5dp;
+	left: 5dp;
+	right: 5dp;
+	height: 145dp;
 
-	padding: 10px;
-	font-size: 12px;
+	padding: 10dp;
+	font-size: 12dp;
 	visibility: hidden;
 	overflow: hidden;
 	background-color: #00000000;
@@ -163,17 +163,17 @@ button.romshell
 {
 	visibility: hidden;
 	position: absolute;
-	right: 10px;
-	top: 140px;
-	width: 30px;
-	height: 30px;
+	right: 10dp;
+	top: 140dp;
+	width: 30dp;
+	height: 30dp;
 	transition: background-color top 0.5s 0 exponential-out;
 }
 
 .entry:hover .data .action
 {
 	visibility: visible;
-	top: 135px;
+	top: 135dp;
 }
 
 .entry .target {

@@ -6,7 +6,7 @@
 			body
 			{
 				width: 100%;
-				height: 12px;
+				height: 12dp;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -14,11 +14,11 @@
 			div
 			{
 				display: inline-block;
-				width: 33px;
-				height: 12px;
-				font-size: 12px;
+				width: 33dp;
+				height: 12dp;
+				font-size: 12dp;
 				text-align: center;
-				padding-top: 0px;
+				padding-top: 0;
 				float: right;
 			}
 			.hidden { display: none; }

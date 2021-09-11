@@ -16,9 +16,7 @@
 			}
 			#sysunit {
 				width: 100%;
-				max-width: 1024px;
 				height: 33%;
-				max-height: 256px;
 				position: absolute;
 				bottom: 0;
 				margin-left: auto;
@@ -131,7 +129,7 @@
 				top: 18%;
 				left: 6.5%;
 				background-color: #3F7CB600;
-				font-effect: shadow(-1px 1px black);
+				font-effect: shadow(-1dp 1dp black);
 			}
 			#hdd_led {
 				width: 4%;
@@ -150,7 +148,7 @@
 				margin: 1em;
 				padding: 1em;
 				text-align: center;
-				font-size: 12px;
+				font-size: 12dp;
 				background-color: #383938AA;
 				visibility: hidden;
 			}

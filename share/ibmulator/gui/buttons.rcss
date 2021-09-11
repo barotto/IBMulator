@@ -3,9 +3,9 @@ input.submit,
 input.checkbox
 {
 	display: inline-block;
-	height: 20px;
-	padding-top: 1px;
-	font-size: 18px;
+	height: 20dp;
+	padding-top: 1dp;
+	font-size: 18dp;
 	text-align: center;
 	tab-index: auto;
 	color: #000000ff;
@@ -26,19 +26,19 @@ button.on
 btnicon
 {
 	display: block;
-	width: 16px;
-	height: 16px;
-	margin-top: 1px;
-	margin-left: 6px;
-	margin-right: 6px;
+	width: 16dp;
+	height: 16dp;
+	margin-top: 1dp;
+	margin-left: 6dp;
+	margin-right: 6dp;
 }
 
 button.text
 {
-	vertical-align: 7px;
+	vertical-align: 7dp;
 	width: auto;
-	padding: 0 4px 1px 4px;
-	margin: 0 0 0 1px;
+	padding: 0 4dp 1dp 4dp;
+	margin: 0 0 0 1dp;
 }
 
 button.romshell,
@@ -46,8 +46,8 @@ input.checkbox.romshell
 {
 	display: inline-block;
 	font-family: "Nouveau IBM";
-	font-size: 16px;
-	height: 22px;
+	font-size: 16dp;
+	height: 22dp;
 	background-color: #FFFFFF00;
 	color: white;
 }
@@ -62,8 +62,8 @@ input.checkbox.romshell
 
 button.romshell
 {
-	padding-left: 10px;
-	padding-right: 6px;
+	padding-left: 10dp;
+	padding-right: 6dp;
 	decorator: tiled-horizontal( button-l, button-c, button-r );
 }
 
@@ -78,7 +78,7 @@ button.romshell
 
 input.checkbox.romshell
 {
-	padding-left: 20px;
+	padding-left: 20dp;
 	decorator: tiled-horizontal( check-l, check-c, check-r );
 }
 
@@ -92,11 +92,11 @@ input.text
 	display: inline-block;
 	box-sizing: border-box;
 	background-color: #5555FFA0;
-	padding-top: 2px;
-	padding-left: 4px;
-	height: 22px;
-	line-height: 14px;
-	border: 1px;
+	padding-top: 2dp;
+	padding-left: 4dp;
+	height: 22dp;
+	line-height: 14dp;
+	border: 1dp;
 	border-color: #5555FFA0;
 }
 
@@ -107,10 +107,10 @@ input.text:focus
 
 scrollbarvertical
 {
-	margin-top: 0px;
-	margin-bottom: 0px;
-	margin-right: 0px;
-	width: 26px;
+	margin-top: 0;
+	margin-bottom: 0;
+	margin-right: 0;
+	width: 26dp;
 	z-index: 99;
 }
 
@@ -134,21 +134,21 @@ scrollbarvertical slidertrack
 scrollbarvertical sliderbar
 {
 	margin-left: 0px;
-	width: 26px;
-	min-height: 26px;
+	width: 26dp;
+	min-height: 26dp;
 	decorator: tiled-vertical(sliderbar-t, sliderbar-c, sliderbar-b);
 }
 
 scrollbarvertical sliderarrowdec
 {
-	width: 26px;
-	height: 26px;
+	width: 26dp;
+	height: 26dp;
 	decorator: image(sliderdec);
 }
 
 scrollbarvertical sliderarrowinc
 {
-	width: 26px;
-	height: 26px;
+	width: 26dp;
+	height: 26dp;
 	decorator: image(sliderinc);
 }

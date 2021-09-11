@@ -1,6 +1,6 @@
 #cpucore
 {
-	height: 355px;
+	height: 355dp;
 }
 
 #CSbase,#DSbase,
@@ -9,7 +9,7 @@
 #TRbase,
 #LDTbase, #GDTbase, #IDTbase
 {
-	width: 80px;
+	width: 80dp;
 }
 
 #CSlimit,#DSlimit,
@@ -17,55 +17,55 @@
 #FSlimit,#GSlimit,
 #TRlimit
 {
-	width: 80px;
+	width: 80dp;
 }
 
 #statusregs
 {
-	top: 190px;
-	left: 0px;
+	top: 190dp;
+	left: 0;
 }
 
 #flags
 {
-	top: 240px;
-	left: 260px;
+	top: 240dp;
+	left: 260dp;
 }
 
 #dr
 {
-	top: 160px;
-	left: 150px;
+	top: 160dp;
+	left: 150dp;
 }
 #dr td
 {
-	width: 82px;
+	width: 82dp;
 }
 
 #extra
 {
-	top: 335px;
-	left: 260px;
+	top: 335dp;
+	left: 260dp;
 }
 
 #EFLAGS,#EIP,#CR2,#CR3
 {
-	width: 80px;
+	width: 80dp;
 }
 
 #PE,#PG
 {
-	width: 23px;
+	width: 23dp;
 }
 #TS
 {
-	width: 22px;
+	width: 22dp;
 }
 
 #desctables
 {
-	top: 290px;
-	left: 0px;
+	top: 290dp;
+	left: 0;
 }
 
 #fs_dump btnicon,

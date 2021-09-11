@@ -11,14 +11,15 @@
 				position: absolute;
 				top: 0;
 				left: 0;
+				background-color: #00000000;
 			}
 			button {
 				width: auto;
-				padding: 2px 6px 2px 6px;
+				padding: 2dp 6dp 2dp 6dp;
 			}
 			#close {
 				position: relative;
-				height: 20px;
+				height: 20dp;
 			}
 		</style>
 	</head>

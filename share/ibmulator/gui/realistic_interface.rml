@@ -140,7 +140,7 @@
 				bottom: 14%;
 				left: 12.0%;
 				background-color: #3F7CB600;
-				font-effect: shadow(-1px 1px black);
+				font-effect: shadow(-1dp 1dp black);
 			}
 			#hdd_led {
 				width: 3%;

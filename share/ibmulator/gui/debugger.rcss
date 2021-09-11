@@ -10,28 +10,28 @@
 
 #tools, #tools2
 {
-	height: 20px;
-	margin-bottom: 8px;
+	height: 20dp;
+	margin-bottom: 8dp;
 }
 
 button
 {
-	width: 30px;
+	width: 30dp;
 }
 
 th
 {
-	width: 35px;
+	width: 35dp;
 }
 
 td
 {
-	width: 50px;
+	width: 50dp;
 }
 
 .t
 {
-	width: 40px;
+	width: 40dp;
 }
 
 #generalregs,
@@ -47,50 +47,50 @@ td
 
 #generalregs
 {
-	top: 0px;
-	left: 0px;
+	top: 0;
+	left: 0;
 }
 #generalregs td
 {
-	width: 80px;
+	width: 80dp;
 }
 
 #segmentregs
 {
-	top: 0px;
-	left: 150px;
+	top: 0;
+	left: 150dp;
 }
 
 #flags td
 {
-	width: 20px;
+	width: 20dp;
 }
 #flags th
 {
-	width: 25px;
+	width: 25dp;
 }
 
 #CPL,#A20
 {
-	width: 20px;
+	width: 20dp;
 }
 
 #memory, #disasm
 {
-	margin-top: 10px;
+	margin-top: 10dp;
 }
 
 #memory
 {
-	left: 0px;
+	left: 0;
 }
 #memory th
 {
-	width: 60px;
+	width: 60dp;
 }
 #memory td
 {
-	width: 240px;
+	width: 240dp;
 }
 
 #memory #CS_EIP_str,
@@ -98,20 +98,20 @@ td
 #memory #ES_EDI_str,
 #memory #SS_ESP_str,
 {
-	width: 130px;
+	width: 130dp;
 }
 
 #disasm
 {
-	padding: 4px;
-	font-size: 12px;
+	padding: 4dp;
+	font-size: 12dp;
 	background-color: #000000ff;
 }
 
 #message
 {
-	padding: 4px;
-	font-size: 11px;
+	padding: 4dp;
+	font-size: 11dp;
 	background-color: #383938FF;
 }
 
@@ -119,8 +119,8 @@ td
 {
 	position: relative;
 	float: right;
-	width: 15px;
-	padding: 5px;
+	width: 15dp;
+	padding: 5dp;
 	background-color: #000000ff;
 }
 
@@ -153,7 +153,7 @@ td
 #fs_dump,#gs_dump,
 #idt_dump,#gdt_dump,#ldt_dump
 {
-	width: 25px;
+	width: 25dp;
 }
 
 #mem_dump btnicon,

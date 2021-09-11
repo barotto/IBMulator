@@ -6,25 +6,25 @@
 			body
 			{
 				width: 90%;
-				max-width: 1024px;
-				min-width: 640px;
+				max-width: 1024dp;
+				min-width: 640dp;
 				height: 90%;
-				min-height: 440px;
-				max-height: 768px;
+				min-height: 440dp;
+				max-height: 768dp;
 				margin: auto;
 				background-color: #3C5464FF;
 			}
 			div#window
 			{
-				padding: 5px 15px 5px 15px;
+				padding: 5dp 15dp 5dp 15dp;
 			}
 			#cwd
 			{
 				width: 95%;
 				margin: 0 auto 0 auto;
-				font-size: 20px;
+				font-size: 20dp;
 				text-align: right;
-				font-effect: shadow(-2px 2px black);
+				font-effect: shadow(-2dp 2dp black);
 				overflow: hidden auto;
 			}
 			#list
@@ -32,7 +32,7 @@
 				background-color: #FCFCA8FF;
 				width: 100%;
 				height: 85%;
-				margin: 0 auto 20px auto;
+				margin: 0 auto 20dp auto;
 			}
 			@spritesheet
 			{
@@ -54,9 +54,9 @@
 			{
 				width: 80%;
 				height: 85%;
-				padding: 20px 28px 4px 4px;
+				padding: 20dp 28dp 4dp 4dp;
 				margin: auto;
-				font-size: 20px;
+				font-size: 20dp;
 				color: black;
 				decorator: tiled-box(
 					datag-tl, datag-t, datag-tr,
@@ -75,25 +75,27 @@
 			}
 			datagrid datagridrow
 			{
-				padding-left: 26px;
-				padding-top: 1px;
-				height: 34px;
+				padding-left: 26dp;
+				padding-top: 1dp;
+				height: 34dp;
 				decorator: image(datarow);
 			}
 			#buttons {
 				position:absolute;
 				bottom: 2%;
-				right: 40px;
-				width: 20em;
-				height: 25px;
+				right: 40dp;
+				width: 300dp;
+				height: 25dp;
 			}
 			#wprotect {
 				position: absolute;
-				left:0;
+				left: 0;
+				width: 150dp;
 			}
 			#cancel {
 				position: absolute;
-				right:0;
+				right: 0;
+				width: 80dp;
 			}
 			@spritesheet
 			{
@@ -104,16 +106,17 @@
 				hdd: 96px 0px 32px 32px;
 			}
 			.name {
+				padding-left: 5dp;
 			}
 			.DIR {
-				height: 32px;
-				width: 32px;
+				height: 32dp;
+				width: 32dp;
 				decorator: image(directory);
 			}
 			.floppy_720,
 			.floppy_1_44 {
-				height: 32px;
-				width: 32px;
+				height: 32dp;
+				width: 32dp;
 				decorator: image(floppy_3_5);
 			}
 			.floppy_160,
@@ -121,13 +124,13 @@
 			.floppy_320,
 			.floppy_360,
 			.floppy_1_20 {
-				height: 32px;
-				width: 32px;
+				height: 32dp;
+				width: 32dp;
 				decorator: image(floppy_5_14);
 			}
 			.hdd {
-				height: 32px;
-				width: 32px;
+				height: 32dp;
+				width: 32dp;
 				decorator: image(hdd);
 			}
 		</style>
@@ -142,8 +145,8 @@
 		</datagrid>
 		</div>
 		<div id="buttons">
-			<input id="wprotect" type="checkbox" class="romshell" style="width: 10em;">Write protect</input>
-			<button id="cancel" class="romshell" style="width: 6em;">Cancel</button>
+			<input id="wprotect" type="checkbox" class="romshell">Write protect</input>
+			<button id="cancel" class="romshell">Cancel</button>
 		</div>
 	</body>
 </rml>

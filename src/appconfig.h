@@ -144,6 +144,7 @@ public:
 #define GUI_BG_R                "bg_red"
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"
+#define GUI_UI_SCALING          "ui_scaling"
 
 #define CAPTURE_SECTION         "capture"
 #define CAPTURE_DIR             "directory"

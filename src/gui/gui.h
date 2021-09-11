@@ -113,6 +113,7 @@ protected:
 	std::string m_assets_path;
 	int m_width;
 	int m_height;
+	double m_scaling_factor;
 	SDL_Window *m_SDL_window;
 	std::string m_wnd_title;
 	std::string m_curr_prog;
@@ -354,6 +355,7 @@ public:
 	}
 	inline int window_width() const { return m_width; }
 	inline int window_height() const { return m_height; }
+	inline double scaling_factor() const { return m_scaling_factor; }
 	inline uint32_t window_flags() const { return SDL_GetWindowFlags(m_SDL_window); }
 	inline bool vsync_enabled() const { return m_vsync; }
 	inline bool vga_buffering_enabled() const { return m_vga_buffering; }

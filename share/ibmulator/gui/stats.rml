@@ -5,11 +5,15 @@
 		<style>
 			body
 			{
-				width: 350px;
-				height: 560px;
+				width: 350dp;
+				height: 560dp;
 				position: absolute;
-				top: 32px;
+				top: 32dp;
 				left: 0;
+			}
+			#cmd_reset
+			{
+				width: 30dp;
 			}
 			#cmd_reset btnicon
 			{
@@ -19,7 +23,7 @@
 	</head>
 	<body template="default">
 		<div id="tools">
-			<button id="cmd_reset" style="width:30px;"><btnicon /></button>
+			<button id="cmd_reset"><btnicon /></button>
 		</div>
 		<h2>Main process</h2>
 		<p id="FPS"></p>

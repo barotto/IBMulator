@@ -3,21 +3,21 @@ body
 	font-family: "ProFontWindows";
 	font-weight: normal;
 	font-style: normal;
-	font-size: 15px;
+	font-size: 15dp;
 	color: white;
 	background-color: #3C5464A0;
 }
 
 body.window
 {
-	padding-top: 20px;
-	padding-bottom: 10px;
+	padding-top: 20dp;
+	padding-bottom: 10dp;
 }
 
 body.modal
 {
 	background-color: #3C5464ff;
-	border: 2px;
+	border: 2dp;
 	border-color: #28374d;
 }
 
@@ -25,8 +25,8 @@ body.modal
 {
 	z-index: 1;
 	position: absolute;
-	top: 0px;
-	left: 0px;
+	top: 0;
+	left: 0;
 	text-align: center;
 	background-color: #FFFFFFA0;
 }
@@ -39,10 +39,10 @@ body:focus #title_bar
 #resize
 {
 	position: absolute;
-	width: 16px;
-	height: 16px;
-	bottom: 0px;
-	right: 0px;
+	width: 16dp;
+	height: 16dp;
+	bottom: 0;
+	right: 0;
 	background-color: #FFFFFFA0;
 	z-index: 9999;
 }
@@ -52,28 +52,28 @@ body:focus #title_bar
 	position: absolute;
 	top: 0;
 	right: 0;
-	width: 24px;
-	height: 24px;
+	width: 24dp;
+	height: 24dp;
 }
 
 #title
 {
-	padding-left: 0px;
-	padding-right: 0px;
-	padding-top: 0px;
-	padding-bottom: 0px;
+	padding-left: 0;
+	padding-right: 0;
+	padding-top: 0;
+	padding-bottom: 0;
 
 	font-family: "Nouveau IBM";
-	font-size: 21px;
+	font-size: 21dp;
 	color: black;
 	width: 100%;
-	height: 25px;
+	height: 25dp;
 }
 
 div#window
 {
 	width: auto;
-	padding: 10px 15px;
+	padding: 10dp 15dp;
 }
 
 div#content
@@ -91,13 +91,13 @@ div#content
 h2
 {
 	display: block;
-	font-size: 18px;
+	font-size: 18dp;
 }
 
 scrollbarhorizontal
 {
-	width: 0px;
-	height: 0px;
+	width: 0;
+	height: 0;
 }
 
 table
@@ -133,7 +133,7 @@ td
 	box-sizing: border-box;
 	display: table-cell;
 
-	padding: 2px;
+	padding: 2dp;
 	background-color: #38A838d0;
 	text-align: center;
 	vertical-align: middle;

@@ -214,6 +214,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	PINFOF(LOG_V0,LOG_GUI, "Selected video mode: %dx%d\n", m_width, m_height);
 	
 	// INTERFACE INITIALIZATION
+	m_scaling_factor = g_program.config().get_real(GUI_SECTION, GUI_UI_SCALING, 1.0);
 	try {
 		init_rmlui();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
@@ -381,6 +382,8 @@ void GUI::init_rmlui()
 	Rml::LoadFontFace("fonts/Nouveau_IBM.ttf");
 	m_rml_context = Rml::CreateContext("default", Rml::Vector2i(m_width, m_height));
 	Rml::Debugger::Initialise(m_rml_context);
+
+	m_rml_context->SetDensityIndependentPixelRatio(m_scaling_factor);
 }
 
 Rml::ElementDocument * GUI::load_document(const std::string &_filename)
@@ -1454,12 +1457,16 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 	SDL_Event axis_event;
 	if(_sdl_event.motion.xrel) {
 		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
+		//axis_event.motion.x *= m_scaling_factor;
+		//axis_event.motion.xrel *= m_scaling_factor;
 		axis_event.motion.y = 0;
 		axis_event.motion.yrel = 0;
 		on_mouse_axis_event("X", axis_event);
 	}
 	if(_sdl_event.motion.yrel) {
 		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
+		//axis_event.motion.y *= m_scaling_factor;
+		//axis_event.motion.yrel *= m_scaling_factor;
 		axis_event.motion.x = 0;
 		axis_event.motion.xrel = 0;
 		on_mouse_axis_event("Y", axis_event);

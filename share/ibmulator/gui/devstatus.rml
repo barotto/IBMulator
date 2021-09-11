@@ -5,8 +5,8 @@
 		<style>
 			body
 			{
-				width: 380px;
-				height: 550px;
+				width: 380dp;
+				height: 550dp;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -14,40 +14,40 @@
 			section
 			{
 				display: block;
-				margin-bottom: 10px;
-				padding-top: 5px;
+				margin-bottom: 10dp;
+				padding-top: 5dp;
 			}
 			.tools
 			{
 				position: relative;
-				margin-bottom: 8px;
+				margin-bottom: 8dp;
 			}
 			tr {
-				margin-top: 1px;
+				margin-top: 1dp;
 			}
 			th {
-				padding: 5px;
+				padding: 5dp;
 			}
 			th.small {
-				padding: 1px;
-				font-size: 10px;
+				padding: 1dp;
+				font-size: 10dp;
 			}
 			th.large {
-				font-size: 12px;
+				font-size: 12dp;
 			}
 			td {
-				margin-left: 1px;
+				margin-left: 1dp;
 			}
 			td.small {
-				padding: 4px;
-				font-size: 10px;
+				padding: 4dp;
+				font-size: 10dp;
 			}
 			td.large {
-				padding: 4px 5px;
-				font-size: 12px;
+				padding: 4dp 5dp;
+				font-size: 12dp;
 			}
 			td.led {
-				margin-left: 2px;
+				margin-left: 2dp;
 				background-color: #564300FF;
 			}
 			td.led_active {
@@ -56,7 +56,7 @@
 			}
 
 			#vga th {
-				width: 45px;
+				width: 45dp;
 			}
 			#vga td {
 				text-align: left;
@@ -65,63 +65,62 @@
 				text-align: center;
 			}
 			#vga_mode, #vga_screen {
-				width: 260px;
+				width: 260dp;
 			}
 			#vga_vtotal, #vga_vdend, 
 			#vga_htotal, #vga_hdend {
-				width: 30px;
+				width: 30dp;
 			}
 			#vga_vblank, #vga_vretr, 
 			#vga_hblank, #vga_hretr {
-				width: 45px;
+				width: 45dp;
 			}
 			#vga_startaddr_hi, #vga_startaddr_lo {
-				width: 20px;
+				width: 20dp;
 			}
 			#vga_startaddr_latch {
-				width: 35px;
+				width: 35dp;
 			}
 			#vga_frame_cnt {
-				width: 50px;
+				width: 50dp;
 			}
 			#vga_scanl, #vga_pix_upd {
-				width: 40px;
+				width: 40dp;
 			}
 			#vga_disp_phase, #vga_hretr_phase, #vga_vretr_phase {
-				width: 40px;
+				width: 40dp;
 			}
 			#vga_upd {
-				width: 40px;
+				width: 40dp;
 			}
 			#vga_saddr_line, #vga_pal_line {
-				width: 30px;
+				width: 30dp;
 			}
 
 			#pic th {
-				width: 50px;
-				font-size: 10px;
+				width: 50dp;
+				font-size: 10dp;
 				padding: 0;
 			}
 			#pic td {
-				width: 15px;
-				font-size: 9px;
+				width: 15dp;
+				font-size: 9dp;
 				padding: 0;
 				text-align: center;
-				
 			}
 
 			#pit table {
-				max-width: 300px;
+				max-width: 300dp;
 			}
 			#pit th {
-				padding: 2px;
-				font-size: 10px;
-				margin-left: 1px;
+				padding: 2dp;
+				font-size: 10dp;
+				margin-left: 1dp;
 			}
 			#pit td {
-				padding: 2px;
-				font-size: 10px;
-				margin-left: 1px;
+				padding: 2dp;
+				font-size: 10dp;
+				margin-left: 1dp;
 			}
 
 			#cmd_vga_update btnicon,
@@ -143,8 +142,8 @@
 				<button id="cmd_vga_dump_state" class="text">dump state</button>
 			</div>
 			<table>
-				<tr><th class="large" style="width:50px;">mode</th><td class="large" id="vga_mode">?</td></tr>
-				<tr><th class="large" style="width:50px;">screen</th><td class="large" id="vga_screen">?</td></tr>
+				<tr><th class="large" style="width:50dp;">mode</th><td class="large" id="vga_mode">?</td></tr>
+				<tr><th class="large" style="width:50dp;">screen</th><td class="large" id="vga_screen">?</td></tr>
 			</table>
 			<p style="font-size:80%;">CRT Controller</p>
 			<table>
@@ -165,7 +164,7 @@
 			</table>
 			<table>
 				<tr>
-					<th class="small" style="width:70px;">start address</th>
+					<th class="small" style="width:70dp;">start address</th>
 					<td  class="small" id="vga_startaddr_hi">?</td>
 					<td  class="small" id="vga_startaddr_lo">?</td>
 					<td  class="small" id="vga_startaddr_latch">?</td>
