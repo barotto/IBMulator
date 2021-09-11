@@ -2231,15 +2231,15 @@ void GUI::show_welcome_screen()
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			ps("\n", 0xe, bg, bd);
 		}
-		evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE;
+		evt.func.name = ProgramEvent::FuncName::FUNC_SAVE_STATE;
 		bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 		if(!bindings.empty()) {
 			ps("To save the machine's state press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			evt.func.name = ProgramEvent::FuncName::FUNC_QUICK_LOAD_STATE;
+			evt.func.name = ProgramEvent::FuncName::FUNC_LOAD_STATE;
 			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 			if(!bindings.empty()) {
-				ps("\nTo load the last saved state press ", 0xf, bg, bd);
+				ps("\nTo load a saved state press ", 0xf, bg, bd);
 				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 				ps("\n", 0xe, bg, bd);
 			}

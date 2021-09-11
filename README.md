@@ -480,8 +480,10 @@ Valid `FUNC_* ` functions are:
 * `FUNC_TAKE_SCREENSHOT`: take a screenshot
 * `FUNC_TOGGLE_AUDIO_CAPTURE`: start / stop audio capture
 * `FUNC_TOGGLE_VIDEO_CAPTURE`: start / stop video capture
-* `FUNC_QUICK_SAVE_STATE`: quick save the current emulator's state
-* `FUNC_QUICK_LOAD_STATE`: quick load the last saved state
+* `FUNC_SAVE_STATE`: open the save state dialog
+* `FUNC_LOAD_STATE`: open the load state dialog
+* `FUNC_QUICK_SAVE_STATE`: save the state to the quicksave slot
+* `FUNC_QUICK_LOAD_STATE`: load the state from the quicksave slot
 * `FUNC_GRAB_MOUSE`: lock / unlock mouse to emulator
 * `FUNC_SYS_SPEED_UP`: increase emulation speed (whole system)
 * `FUNC_SYS_SPEED_DOWN`: decrease emulation speed (whole system)
