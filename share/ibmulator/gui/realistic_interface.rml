@@ -24,11 +24,10 @@
 				height: 100%;
 				top: 0;
 				left: 0;
-				background-decorator: image;
-				background-image: images/realistic_interface.png;
+				decorator: image(images/realistic_interface.png);
 			}
 			#system.dark #sysbkgd {
-				background-image: images/realistic_interface_dark.png;
+				decorator: image(images/realistic_interface_dark.png);
 			}
 			#power {
 				width: 5%;
@@ -56,8 +55,7 @@
 				background-color: #0EFF1AFF;
 			}
 			#power_led_bloom {
-				background-decorator: image;
-				background-image: images/realistic_power_led_bloom.png;
+				decorator: image(images/realistic_power_led_bloom.png);
 				visibility: hidden;
 			}
 			#system.dark #power_led_bloom.active {
@@ -82,8 +80,7 @@
 				background-color: #FFEE00FF;
 			}
 			#fdd_led_bloom {
-				background-decorator: image;
-				background-image: images/realistic_fdd_led_bloom.png;
+				decorator: image(images/realistic_fdd_led_bloom.png);
 				visibility: hidden;
 			}
 			#system.dark #fdd_led_bloom.active {
@@ -99,12 +96,10 @@
 				background-color: #3F7CB600;
 			}
 			#floppy_disk.present {
-				background-decorator: image;
-				background-image: images/realistic_floppy_r.png;
+				decorator: image(images/realistic_floppy_r.png);
 			}
 			#system.dark #floppy_disk.present {
-				background-decorator: image;
-				background-image: images/realistic_floppy_r_dark.png;
+				decorator: image(images/realistic_floppy_r_dark.png);
 			}
 			#fdd_select {
 				position: absolute;
@@ -116,12 +111,10 @@
 				background-color: #3F7CB6A0;
 			}
 			#fdd_select.a {
-				background-decorator: image;
-				background-image: icons/buttonA.png 12px 12px 90px 90px;
+				decorator: image(images/buttonA.png);
 			}
 			#fdd_select.b {
-				background-decorator: image;
-				background-image: icons/buttonB.png 12px 12px 90px 90px;
+				decorator: image(images/buttonB.png);
 			}
 			#fdd_eject {
 				position: absolute;
@@ -144,12 +137,10 @@
 				position: absolute;
 				text-align: center;
 				width: 33.0%;
-				bottom: 15%;
+				bottom: 14%;
 				left: 12.0%;
 				background-color: #3F7CB600;
-				shadow-font-effect: shadow;
-				shadow-offset: -1px 1px;
-				shadow-color: black;
+				font-effect: shadow(-1px 1px black);
 			}
 			#hdd_led {
 				width: 3%;
@@ -175,8 +166,7 @@
 				position: absolute;
 				right: 15.0%;
 				bottom: 0%;
-				background-decorator: image;
-				background-image: images/realistic_hdd_led_bloom.png;
+				decorator: image(images/realistic_hdd_led_bloom.png);
 				visibility: hidden;
 			}
 			#system.dark #hdd_led_bloom.active {
@@ -187,11 +177,10 @@
 				top: 72.7%;
 				width: 2.2%;
 				height: 3.5%;
-				background-decorator: image;
-				background-image: images/realistic_slider.png;
+				decorator: image(images/realistic_slider.png);
 			}
 			#system.dark .slider {
-				background-image: images/realistic_slider_dark.png;
+				decorator: image(images/realistic_slider_dark.png);
 			}
 			#volume_slider {
 				left: 15.5%;
