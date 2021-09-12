@@ -139,7 +139,7 @@
 		<div id="cwd"></div>
 		<div id="list">
 		<datagrid id="files" source="file_select.files">
-			<col fields="type" formatter="file_type" width="40px"></col>
+			<col fields="type" formatter="file_type" width="32dp"></col>
 			<col fields="name"></col>
 			<!-- <col fields="label" width="30%"></col> -->
 		</datagrid>
