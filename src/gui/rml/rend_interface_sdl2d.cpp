@@ -89,6 +89,8 @@ void RmlRenderer_SDL2D::RenderGeometry(
 			src.h = br->tex_coord.y * float(h) - src.y;
 			SDL_SetTextureColorMod((SDL_Texture*)_texture,
 				tl->colour.red, tl->colour.green, tl->colour.blue);
+			SDL_SetTextureAlphaMod((SDL_Texture*)_texture,
+				tl->colour.alpha);
 			SDL_RenderCopy(m_renderer, (SDL_Texture*)_texture, &src, &rect);
 		} else {
 			SDL_SetRenderDrawColor(m_renderer,

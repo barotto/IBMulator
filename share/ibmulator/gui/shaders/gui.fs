@@ -12,7 +12,7 @@ void main()
 {
 	if(textured) {
 		vec4 texcol = texture( guitex, UV_ );
-		glColor = vec4(color_.xyz*texcol.xyz, texcol.a);
+		glColor = vec4(color_.xyz*texcol.xyz, color_.a*texcol.a);
 	} else {
 		glColor = color_;
 	}
