@@ -2,7 +2,7 @@
 	<head>
 		<title>Load state</title>
 		<link type="text/template" href="default.rml" />
-		<link type="text/rcss" href="state_dialog.rcss"/>
+		<link type="text/template" href="state_dialog.rml" />
 		<style>
 
 		.entry .data .action
@@ -19,9 +19,8 @@
 		</style>
 	</head>
 	<body template="default">
-		<div id="list"></div>
-		<div id="buttons">
-			<button id="cancel" class="romshell" style="width: 6em;">Cancel</button>
-		</div>
+		<template src="state_dialog">
+			<button id="cancel" class="romshell">Cancel</button>
+		</template>
 	</body>
 </rml>

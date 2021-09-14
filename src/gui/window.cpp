@@ -161,10 +161,24 @@ void Window::ProcessEvent(Rml::Event &_event)
 	}
 }
 
-Rml::Input::KeyIdentifier Window::get_key_identifier(Rml::Event &_ev) const
+Rml::Input::KeyIdentifier Window::get_key_identifier(Rml::Event &_ev)
 {
 	return (Rml::Input::KeyIdentifier) _ev.GetParameter<int>("key_identifier",
 				Rml::Input::KeyIdentifier::KI_UNKNOWN);
+}
+
+std::string Window::get_form_input_value(Rml::Event &_ev)
+{
+	Rml::Element *el = _ev.GetTargetElement();
+	do {
+		auto input = dynamic_cast<Rml::ElementFormControlInput*>(el);
+		if(input) {
+			return input->GetValue();
+		}
+		el = el->GetParentNode();
+	} while(el);
+
+	return "";
 }
 
 void Window::on_cancel(Rml::Event &)

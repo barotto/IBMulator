@@ -26,8 +26,7 @@
 class StateLoad : public StateDialog
 {
 private:
-	std::function<void(StateRecord::Info)> m_load_callbk = nullptr;
-	std::function<void()> m_cancel_callbk = nullptr;
+
 	static event_map_t ms_evt_map;
 
 public:
@@ -35,20 +34,11 @@ public:
 	StateLoad(GUI * _gui) : StateDialog(_gui, "state_load.rml") {}
 	virtual ~StateLoad() {}
 
-	virtual void update();
-
-	void set_callbacks(std::function<void(StateRecord::Info)> _on_load,
-			std::function<void()> _on_cancel) {
-		m_load_callbk = _on_load;
-		m_cancel_callbk = _on_cancel;
-	}
-	
 	event_map_t & get_event_map() { return StateLoad::ms_evt_map; }
 
 private:
 
 	void on_entry(Rml::Event &);
-	void on_cancel(Rml::Event &);
 };
 
 

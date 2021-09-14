@@ -56,14 +56,62 @@ protected:
 			const StateRecord::Info &_info
 		);
 	};
+	struct DirEntryOrderDate {
+		bool operator()(const DirEntry &_first, const DirEntry &_other) const {
+			if(_first.rec->name() == QUICKSAVE_RECORD) {
+				return true;
+			} else if(_other.rec->name() == QUICKSAVE_RECORD) {
+				return false;
+			} else if(_first.rec->mtime() == _other.rec->mtime()) {
+				return _first.rec->name() < _other.rec->name();
+			} else {
+				return _first.rec->mtime() > _other.rec->mtime();
+			}
+		}
+	};
+	struct DirEntryOrderDesc {
+		bool operator()(const DirEntry &_first, const DirEntry &_other) const {
+			if(_first.rec->name() == QUICKSAVE_RECORD) {
+				return true;
+			} else if(_other.rec->name() == QUICKSAVE_RECORD) {
+				return false;
+			} else if(_first.rec->user_desc() == _other.rec->user_desc()) {
+				return _first.rec->name() < _other.rec->name();
+			} else {
+				return _first.rec->user_desc() < _other.rec->user_desc();
+			}
+		}
+	};
+	struct DirEntryOrderSlot {
+		bool operator()(const DirEntry &_first, const DirEntry &_other) const {
+			if(_first.rec->name() == QUICKSAVE_RECORD) {
+				return true;
+			} else if(_other.rec->name() == QUICKSAVE_RECORD) {
+				return false;
+			} else {
+				return _first.rec->name() < _other.rec->name();
+			}
+		}
+	};
 	inline static std::string ms_cur_path;
-	inline static std::set<DirEntry> ms_cur_dir;
+	inline static std::set<DirEntry, DirEntryOrderDate> ms_cur_dir_date;
+	inline static std::set<DirEntry, DirEntryOrderDesc> ms_cur_dir_desc;
+	inline static std::set<DirEntry, DirEntryOrderSlot> ms_cur_dir_slot;
 	inline static std::map<std::string, StateRecord> ms_rec_map;
 
-	Rml::Element *m_list_el = nullptr;
+	Rml::Element *m_entries_el = nullptr;
+	Rml::Element *m_panel_el = nullptr;
+	Rml::Element *m_panel_screen_el = nullptr;
+	Rml::Element *m_panel_config_el = nullptr;
 	inline static bool ms_dirty = true;
 	bool m_dirty = true;
+	enum class Order {
+		BY_DATE, BY_DESC, BY_SLOT
+	} m_order = Order::BY_DATE;
 
+	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
+	std::function<void()> m_cancel_callbk = nullptr;
+	
 public:
 
 	StateDialog(GUI *_gui, const char *_doc) : Window(_gui,_doc) {}
@@ -72,6 +120,13 @@ public:
 	virtual void create();
 	virtual void update();
 
+	void set_callbacks(
+		std::function<void(StateRecord::Info)> _on_action,
+		std::function<void()> _on_cancel) {
+		m_action_callbk = _on_action;
+		m_cancel_callbk = _on_cancel;
+	}
+	
 	void set_dirty() {
 		ms_dirty = true;
 		m_dirty = true;
@@ -82,6 +137,13 @@ public:
 		set_current_dir("");
 	}
 	static const std::string & current_dir() { return ms_cur_path; }
+
+	virtual void on_cancel(Rml::Event &_ev);
+
+	void on_entry_over(Rml::Event &_ev);
+	void on_entry_out(Rml::Event &_ev);
+	void on_mode(Rml::Event &_ev);
+	void on_order(Rml::Event &_ev);
 };
 
 

@@ -49,7 +49,9 @@ share/ibmulator/gui/icons/power.png \
 share/ibmulator/gui/icons/restore.png \
 share/ibmulator/gui/icons/resume.png \
 share/ibmulator/gui/icons/save.png \
-share/ibmulator/gui/icons/warning.png
+share/ibmulator/gui/icons/warning.png \
+share/ibmulator/gui/icons/list.png \
+share/ibmulator/gui/icons/grid.png
 
 guiiconsdebuggerdir = $(pkgdatadir)/gui/icons/debugger
 dist_guiiconsdebugger_DATA = \

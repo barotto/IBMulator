@@ -26,29 +26,18 @@
 class StateSave : public StateDialog
 {
 private:
-	std::function<void(StateRecord::Info)> m_save_callbk = nullptr;
-	std::function<void()> m_cancel_callbk = nullptr;
+
 	static event_map_t ms_evt_map;
-	
+
 public:
 
 	StateSave(GUI * _gui) : StateDialog(_gui, "state_save.rml") {}
 	virtual ~StateSave() {}
 
-	virtual void update();
-
-	void set_callbacks(
-		std::function<void(StateRecord::Info)> _on_save,
-		std::function<void()> _on_cancel) {
-		m_save_callbk = _on_save;
-		m_cancel_callbk = _on_cancel;
-	}
-
 	event_map_t & get_event_map() { return StateSave::ms_evt_map; }
 
 private:
 
-	void on_cancel(Rml::Event &);
 	void on_entry(Rml::Event &);
 };
 

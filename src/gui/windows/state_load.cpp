@@ -27,47 +27,31 @@
 #include <RmlUi/Core.h>
 
 event_map_t StateLoad::ms_evt_map = {
-	GUI_EVT( "cancel", "click",   StateLoad::on_cancel ),
-	GUI_EVT( "close",  "click",   StateLoad::on_cancel ),
-	GUI_EVT( "list",   "click",   StateLoad::on_entry  ),
-	GUI_EVT( "*",      "keydown", Window::on_keydown   )
+	GUI_EVT( "cancel",  "click",     StateDialog::on_cancel ),
+	GUI_EVT( "close",   "click",     StateDialog::on_cancel ),
+	GUI_EVT( "entries", "click",     StateLoad::on_entry ),
+	GUI_EVT( "entries", "mouseover", StateDialog::on_entry_over ),
+	GUI_EVT( "entries", "mouseout",  StateDialog::on_entry_out ),
+	GUI_EVT( "mode",    "click",     StateDialog::on_mode ),
+	GUI_EVT( "order",   "click",     StateDialog::on_order ),
+	GUI_EVT( "*",       "keydown",   Window::on_keydown )
 };
-
-void StateLoad::update()
-{
-	StateDialog::update();
-	if(m_dirty) {
-		m_list_el->SetInnerRML("");
-		for(auto &de : ms_cur_dir) {
-			m_list_el->AppendChild(de.create_element(m_wnd));
-		}
-		m_dirty = false;
-	}
-}
 
 void StateLoad::on_entry(Rml::Event &_ev)
 {
 	auto id = _ev.GetTargetElement()->GetId();
-	if(id.empty() || id == "list") {
+	if(id.empty() || id == "entries") {
 		return;
 	}
 	PDEBUGF(LOG_V2, LOG_GUI, "StateLoad: id:%s\n", id.c_str());
 
-	if(!m_load_callbk) {
+	if(!m_action_callbk) {
 		assert(false);
 		return;
 	}
 	try {
-		m_load_callbk(ms_rec_map.at(id).info());
+		m_action_callbk(ms_rec_map.at(id).info());
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateLoad: invalid id!\n");
 	}
-}
-
-void StateLoad::on_cancel(Rml::Event &_ev)
-{
-	if(m_cancel_callbk) {
-		m_cancel_callbk();
-	}
-	Window::on_cancel(_ev);
 }

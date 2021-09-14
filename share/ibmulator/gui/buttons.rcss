@@ -1,6 +1,7 @@
 button,
 input.submit,
-input.checkbox
+input.checkbox,
+input.radio
 {
 	display: inline-block;
 	height: 20dp;
@@ -42,7 +43,8 @@ button.text
 }
 
 button.romshell,
-input.checkbox.romshell
+input.checkbox.romshell,
+input.radio.romshell
 {
 	display: inline-block;
 	font-family: "Nouveau IBM";
@@ -56,7 +58,7 @@ input.checkbox.romshell
 {
 	src: images/romshell_button.png;
 	button-l: 0px 0px 4px 23px;
-	button-c: 4px 0px 116px 23px;
+	button-c: 5px 0px 1px 23px;
 	button-r: 120px 0px 2px 23px;
 }
 
@@ -65,6 +67,36 @@ button.romshell
 	padding-left: 10dp;
 	padding-right: 6dp;
 	decorator: tiled-horizontal( button-l, button-c, button-r );
+}
+
+@spritesheet
+{
+	src: images/romshell_button.png;
+	radio-l: 0px 0px 4px 23px;
+	radio-c: 5px 0px 1px 23px;
+	radio-r: 120px 0px 2px 23px;
+	radio-on-l: 0px 23px 4px 23px;
+	radio-on-c: 5px 23px 1px 23px;
+	radio-on-r: 118px 23px 4px 23px;
+}
+
+input.radio.romshell
+{
+	padding-left: 10dp;
+	padding-right: 6dp;
+	decorator: tiled-horizontal( radio-l, radio-c, radio-r );
+}
+
+input.radio.romshell btnicon
+{
+	margin-left: 0;
+	margin-right: 0;
+}
+
+input.radio.romshell:checked
+{
+	color: #000000;
+	decorator: tiled-horizontal( radio-on-l, radio-on-c, radio-on-r );
 }
 
 @spritesheet

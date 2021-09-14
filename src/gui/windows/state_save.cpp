@@ -27,60 +27,40 @@
 #include <RmlUi/Core.h>
 
 event_map_t StateSave::ms_evt_map = {
-	GUI_EVT( "cancel",   "click",   StateSave::on_cancel ),
-	GUI_EVT( "close",    "click",   StateSave::on_cancel ),
-	GUI_EVT( "list",     "click",   StateSave::on_entry  ),
-	GUI_EVT( "new_save", "click",   StateSave::on_entry  ),
-	GUI_EVT( "*",        "keydown", Window::on_keydown   )
+	GUI_EVT( "cancel",   "click",     StateDialog::on_cancel ),
+	GUI_EVT( "close",    "click",     StateDialog::on_cancel ),
+	GUI_EVT( "entries",  "click",     StateSave::on_entry ),
+	GUI_EVT( "entries",  "mouseover", StateDialog::on_entry_over ),
+	GUI_EVT( "entries",  "mouseout",  StateDialog::on_entry_out ),
+	GUI_EVT( "new_save", "click",     StateSave::on_entry ),
+	GUI_EVT( "mode",     "click",     StateDialog::on_mode ),
+	GUI_EVT( "order",    "click",     StateDialog::on_order),
+	GUI_EVT( "*",        "keydown",   Window::on_keydown )
 };
-
-void StateSave::update()
-{
-	StateDialog::update();
-
-	if(m_dirty) {
-		m_list_el->SetInnerRML("");
-		m_list_el->AppendChild(StateDialog::DirEntry::create_element(
-			m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0} ));
-		for(auto &de : ms_cur_dir) {
-			m_list_el->AppendChild(de.create_element(m_wnd));
-		}
-		m_dirty = false;
-	}
-}
-
-void StateSave::on_cancel(Rml::Event &_ev)
-{
-	if(m_cancel_callbk) {
-		m_cancel_callbk();
-	}
-	StateDialog::on_cancel(_ev);
-}
 
 void StateSave::on_entry(Rml::Event &_ev)
 {
 	auto id = _ev.GetTargetElement()->GetId();
-	if(id.empty() || id == "list") {
+	if(id.empty() || id == "entries") {
 		return;
 	}
 	PDEBUGF(LOG_V2, LOG_GUI, "StateSave: id:%s\n", id.c_str());
 
-	if(!m_save_callbk) {
+	if(!m_action_callbk) {
 		assert(false);
 		return;
 	}
 	if(id == QUICKSAVE_RECORD) {
-		m_save_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
+		m_action_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
 	} else if(id == "new_save" || id == "new_save_entry") {
-		m_save_callbk({});
+		m_action_callbk({});
 	} else {
 		try {
 			StateRecord &state = ms_rec_map.at(id);
-			m_save_callbk(state.info());
+			m_action_callbk(state.info());
 		} catch(...) {
 			PDEBUGF(LOG_V0, LOG_GUI, "StateSave: invalid entry id!\n");
 			hide();
 		}
 	}
 }
-

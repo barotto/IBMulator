@@ -1,0 +1,173 @@
+#entries.list
+{
+	position: absolute;
+	bottom: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	margin: 40dp 260dp 55dp 5dp;
+	overflow: auto;
+	padding: 0 8dp 0 0;
+}
+
+#panel.list 
+{
+	position: absolute;
+	right: 10dp;
+	top: 40dp;
+	width: 240dp;
+	bottom: 55dp;
+	margin: 4dp;
+
+	border-left: 1dp;
+	border-color: #28374d;
+}
+
+.list #panel_data
+{
+	position: absolute;
+	top: -4dp;
+	left: 6dp;
+	width: 100%;
+	height: 100%;
+}
+
+.list #panel_screen
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 240dp;
+	height: 180dp;
+	border: 1dp;
+	border-color: #28374d;
+}
+
+.list #panel_screen img
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	transition: opacity 0.2s 0 exponential-out;
+}
+
+.list #panel_screen.visible img
+{
+	opacity: 1;
+}
+
+.list #panel_config
+{
+	position: absolute;
+	top: 185dp;
+	left: 0;
+	width: 100%;
+	font-size: 13dp;
+	padding: 4dp;
+	opacity: 0;
+	transition: opacity 0.2s 0 exponential-out;
+}
+
+.list #panel_config.visible
+{
+	opacity: 1;
+}
+
+.list .entry
+{
+	display: inline-block;
+	width: 100%;
+	height: 50dp;
+	background-color: #28374d;
+	margin: 4dp 0 6dp 0;
+}
+
+.list .entry .data
+{
+	position: absolute;
+	top: -4dp;
+	left: 4dp;
+	width: 100%;
+	height: 50dp;
+	background-color: #587fa3;
+}
+
+.list .entry:hover .data
+{
+	background-color: #6795be;
+}
+
+.list .entry .data .screen,
+.list .entry .data .screen img
+{
+	display: none;
+}
+
+.list .entry .data .desc
+{
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding: 5dp;
+	right: 0;
+	height: 20dp;
+	overflow: hidden;
+}
+
+.list .entry .data .name,
+.list .entry .data .date
+{
+	display: block;
+	position: absolute;
+	bottom: 0;
+	padding: 5dp;
+	overflow: hidden;
+	font-size: 12dp;
+}
+
+.list .entry .data .name
+{
+	left: 0;
+	text-align: left;
+}
+
+.list .entry .data .date
+{
+	right: 0;
+	text-align: right;
+}
+
+.list .entry .data .config
+{
+	display: none;
+}
+
+.list .entry .data .action
+{
+	visibility: hidden;
+	position: absolute;
+	right: 5dp;
+	bottom: 0dp;
+	width: 30dp;
+	height: 30dp;
+	transition: background-color top bottom 0.5s 0 exponential-out;
+}
+
+.list .entry:hover .data .action
+{
+	visibility: visible;
+	bottom: 10dp;
+}
+
+.list .entry .target
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}

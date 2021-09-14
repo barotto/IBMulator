@@ -74,7 +74,9 @@ protected:
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	Rml::Element * get_element(const std::string &_id);
 	void add_events();
-	Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &) const;
+
+	static Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &);
+	static std::string get_form_input_value(Rml::Event &);
 };
 
 #endif
