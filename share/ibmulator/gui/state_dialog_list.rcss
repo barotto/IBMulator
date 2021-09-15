@@ -100,10 +100,21 @@
 	background-color: #6795be;
 }
 
-.list .entry .data .screen,
+.list .entry .data .screen
+{
+	position: absolute;
+	top: 5dp;
+	left: 5dp;
+	width: 52dp;
+	height: 38dp;
+	border: 1dp;
+	border-color: #28374d;
+}
+
 .list .entry .data .screen img
 {
-	display: none;
+	width: 100%;
+	height: 100%;
 }
 
 .list .entry .data .desc
@@ -111,10 +122,10 @@
 	display: block;
 	position: absolute;
 	top: 0;
-	left: 0;
+	left: 60dp;
 	padding: 5dp;
 	right: 0;
-	height: 20dp;
+	height: 18dp;
 	overflow: hidden;
 }
 
@@ -131,7 +142,7 @@
 
 .list .entry .data .name
 {
-	left: 0;
+	left: 60dp;
 	text-align: left;
 }
 
@@ -150,7 +161,7 @@
 {
 	visibility: hidden;
 	position: absolute;
-	right: 5dp;
+	left: 17dp;
 	bottom: 0dp;
 	width: 30dp;
 	height: 30dp;
@@ -161,6 +172,11 @@
 {
 	visibility: visible;
 	bottom: 10dp;
+}
+
+.list .entry:hover .data .screen img
+{
+	image-color: #a0a0a0;
 }
 
 .list .entry .target
