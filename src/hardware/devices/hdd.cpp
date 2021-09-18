@@ -638,7 +638,9 @@ void HardDiskDrive::unmount(bool _save, bool _read_only)
 	m_disk->close();
 	if(m_tmp_disk) {
 		PDEBUGF(LOG_V0, LOG_HDD, "Removing temporary image file '%s'\n", m_disk->get_name().c_str());
-		::remove(m_disk->get_name().c_str());
+		if(::remove(m_disk->get_name().c_str()) != 0) {
+			PERRF(LOG_HDD, "Error removing temporary image file '%s'\n", m_disk->get_name().c_str());
+		}
 	}
 	m_disk.reset(nullptr);
 }

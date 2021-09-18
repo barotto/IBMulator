@@ -258,6 +258,7 @@ void StorageCtrl_ATA::install()
 	for(int channel=0; channel<ATA_MAX_CHANNEL; channel++) {
 		g_machine.register_irq(m_channels[channel].irq, name());
 		for(uint8_t device=0; device<2; device ++) {
+			drive(channel,device).device_type = ATA_NONE;
 			m_cmd_timers[channel][device] = g_machine.register_timer(
 				std::bind(&StorageCtrl_ATA::command_timer, this, channel, device, _1),
 				device_string(channel, device)
@@ -293,7 +294,10 @@ void StorageCtrl_ATA::config_changed()
 	 * HDD not present: ATA0:0 CD-ROM
 	 */
 	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {
-		for(uint8_t dev=0; dev<2; dev ++) {
+		for(uint8_t dev=0; dev<2; dev++) {
+			if(drive_is_present(ch,dev)) {
+				m_storage[ch][dev]->remove();
+			}
 			drive(ch,dev).device_type = ATA_NONE;
 		}
 	}
