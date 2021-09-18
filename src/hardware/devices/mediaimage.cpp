@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -310,7 +310,7 @@ fd(-1)
 
 FlatMediaImage::~FlatMediaImage()
 {
-	close();
+	FlatMediaImage::close();
 }
 
 int FlatMediaImage::open(const char* _pathname, int _flags)
