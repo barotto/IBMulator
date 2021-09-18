@@ -439,7 +439,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 			PERRF(LOG_HDD, "%s: unable to find state image %s\n", name(), imgfile.c_str());
 			throw std::exception();
 		}
-		MediaGeometry geom = m_disk->geometry;
+		MediaGeometry geom = m_disk->geometry();
 		m_disk.reset(nullptr); // this calls the destructor and closes the file
 		//the saved state is read only
 		mount(imgfile, geom, true);
@@ -540,7 +540,7 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 	}
 
 	m_disk = std::unique_ptr<FlatMediaImage>(new FlatMediaImage());
-	m_disk->geometry = _geom;
+	m_disk->geometry() = _geom;
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
 		PINFOF(LOG_V0, LOG_HDD, "Creating new image file '%s'\n", _imgpath.c_str());
@@ -690,7 +690,7 @@ void HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 void HardDiskDrive::seek(unsigned _from_cyl, unsigned _to_cyl)
 {
 	if(m_fx_enabled) {
-		m_fx.seek(_from_cyl, _to_cyl, m_disk->geometry.cylinders);
+		m_fx.seek(_from_cyl, _to_cyl, m_disk->geometry().cylinders);
 	}
 }
 

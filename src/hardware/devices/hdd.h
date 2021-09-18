@@ -62,7 +62,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 	int type() const { return m_type; }
-	uint64_t size() const { return m_disk->hd_size; }
+	uint64_t size() const { return m_disk->size(); }
 
 	uint64_t power_up_eta_us() const;
 
