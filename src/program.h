@@ -87,6 +87,7 @@ public:
 
 	void save_state(StateRecord::Info _info, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
 	void restore_state(StateRecord::Info _info, std::function<void()> _on_success, std::function<void(std::string)> _on_fail);
+	void delete_state(StateRecord::Info _info);
 
 	GUI * gui_instance() const {
 		return m_gui.get();

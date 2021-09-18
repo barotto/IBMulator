@@ -2098,14 +2098,28 @@ void GUI::take_screenshot(bool _with_palette_file)
 
 void GUI::show_message(const char* _mex)
 {
+	// Can be called by any thread
 	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
 	m_windows.last_ifc_mex = _mex;
 }
 
 void GUI::show_dbg_message(const char* _mex)
 {
+	// Can be called by any thread
 	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
 	m_windows.last_dbg_mex = _mex;
+}
+
+void GUI::show_message_box(const std::string &_title, const std::string &_message,
+		MessageBox::Type _type, 
+		std::function<void()> _on_action1, std::function<void()> _on_action2)
+{
+	// This function can be called by the GUI thread only!
+	m_windows.message_box->set_title(_title);
+	m_windows.message_box->set_message(_message);
+	m_windows.message_box->set_type(_type);
+	m_windows.message_box->set_callbacks(_on_action1, _on_action2);
+	m_windows.message_box->show();
 }
 
 void GUI::toggle_dbg_windows()
@@ -2613,6 +2627,10 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 		status->show();
 		status_wnd = true;
 	}
+
+	message_box = std::make_unique<MessageBox>(m_gui);
+	message_box->create();
+	message_box->set_modal(true);
 
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);

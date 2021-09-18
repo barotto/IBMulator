@@ -21,6 +21,8 @@
 #include "state_dialog.h"
 #include "filesys.h"
 #include "utils.h"
+#include "gui/gui.h"
+#include "program.h"
 #include <dirent.h>
 #include <sys/stat.h>
 #include <regex>
@@ -34,6 +36,7 @@ void StateDialog::create()
 	m_panel_el = get_element("panel");
 	m_panel_screen_el = get_element("panel_screen");
 	m_panel_config_el = get_element("panel_config");
+	m_buttons_entry_el = get_element("buttons_entry");
 }
 
 void StateDialog::update()
@@ -44,11 +47,8 @@ void StateDialog::update()
 		ms_dirty = false;
 	}
 	if(m_dirty) {
+		entry_deselect();
 		m_entries_el->SetInnerRML("");
-		/*
-		m_entries_el->AppendChild(StateDialog::DirEntry::create_element(
-			m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0} ));
-		*/
 		switch(m_order) {
 			case Order::BY_DATE: {
 				for(auto &de : ms_cur_dir_date) {
@@ -116,15 +116,17 @@ void StateDialog::set_current_dir(const std::string &_path)
 	closedir(dir);
 }
 
-void StateDialog::on_entry_over(Rml::Event &_ev)
+void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
 {
-	auto id = _ev.GetTargetElement()->GetId();
-	if(id.empty() || id == "entries") {
-		return;
-	}
-
 	try {
-		auto &rec = ms_rec_map.at(id);
+		entry_deselect();
+
+		auto &rec = ms_rec_map.at(_rec_name);
+
+		m_selected_entry = _entry;
+		m_selected_entry->SetClass("selected", true);
+		m_selected_id = _rec_name;
+
 		m_panel_config_el->SetInnerRML("");
 		if(!rec.screen().empty()) {
 			// adding an additional '/' because RmlUI strips it off for unknown reasons
@@ -136,15 +138,24 @@ void StateDialog::on_entry_over(Rml::Event &_ev)
 			m_panel_config_el->SetInnerRML(rec.info().config_desc);
 			m_panel_config_el->SetClass("visible", true);
 		}
+		m_buttons_entry_el->SetClass("visible", true);
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
 	}
 }
 
-void StateDialog::on_entry_out(Rml::Event &_ev)
+void StateDialog::entry_deselect()
 {
+	if(m_selected_entry) {
+		m_selected_entry->SetClass("selected", false);
+		m_selected_id = "";
+	}
+	m_selected_entry = nullptr;
+	m_panel_screen_el->SetInnerRML("");
 	m_panel_screen_el->SetClass("visible", false);
+	m_panel_config_el->SetInnerRML("");
 	m_panel_config_el->SetClass("visible", false);
+	m_buttons_entry_el->SetClass("visible", false);
 }
 
 void StateDialog::on_mode(Rml::Event &_ev)
@@ -154,6 +165,7 @@ void StateDialog::on_mode(Rml::Event &_ev)
 		m_entries_el->SetClassNames(value);
 		m_panel_el->SetClassNames(value);
 	}
+	entry_deselect();
 }
 
 void StateDialog::on_order(Rml::Event &_ev)
@@ -183,6 +195,44 @@ void StateDialog::on_cancel(Rml::Event &_ev)
 	Window::on_cancel(_ev);
 }
 
+void StateDialog::on_action(Rml::Event &)
+{
+	if(!m_selected_id.empty()) {
+		action_on_record(m_selected_id);
+	}
+}
+
+void StateDialog::on_delete(Rml::Event &)
+{
+	if(!m_selected_id.empty()) {
+		delete_record(m_selected_id);
+	}
+}
+
+void StateDialog::delete_record(std::string _name)
+{
+	m_gui->show_message_box(
+		"Delete State",
+		str_format("Do you want to delete slot %s?", _name.c_str()),
+		MessageBox::Type::MSGB_YES_NO,
+		[=]()
+		{
+			PDEBUGF(LOG_V0, LOG_GUI, "Delete record: %s\n", _name.c_str());
+			entry_deselect();
+			try {
+				g_program.delete_state(ms_rec_map.at(_name).info());
+			} catch(std::runtime_error &e) {
+				PERRF(LOG_GUI, "Error deleting state record: %s\n", e.what());
+			} catch(std::out_of_range &) {
+				PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid state id!\n");
+			}
+			reload_current_dir();
+			set_dirty();
+			update();
+		}
+	);
+}
+
 Rml::ElementPtr StateDialog::DirEntry::create_element(
 		Rml::ElementDocument *_doc,
 		const std::string &_screen,
@@ -191,6 +241,7 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
 	child->SetClassNames("entry");
+	child->SetId(_info.name);
 
 	std::string inner;
 	inner += "<div class=\"data\">";
@@ -211,9 +262,10 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 		if(!_info.config_desc.empty()) {
 			inner += "<div class=\"config\">" + _info.config_desc + "</div>";
 		}
-		inner += "<div class=\"action\"></div>";
 	inner += "</div>";
-	inner += "<div class=\"target\" id=\"" + _info.name + "\"></div>";
+	inner += "<div class=\"target\"></div>";
+	inner += "<div class=\"action\"></div>";
+	inner += "<div class=\"delete\"></div>";
 	child->SetInnerRML(inner);
 
 	return child;

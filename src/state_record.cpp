@@ -20,12 +20,15 @@
 #include "ibmulator.h"
 #include "state_record.h"
 #include "utils.h"
+#include <regex>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <SDL_image.h>
 
 StateRecord::StateRecord(std::string _basepath, std::string _name)
 :
 m_path(_basepath + FS_SEP + _name),
-m_basefile(m_path + FS_SEP + "state"),
+m_basefile(m_path + FS_SEP + STATE_FILE_BASE),
 m_state(m_basefile)
 {
 	m_info.name = _name;
@@ -153,4 +156,45 @@ void StateRecord::save()
 			throw std::runtime_error(str_format("Cannot save the screen to '%s'", m_screen_path.c_str()).c_str());
 		}
 	}
+}
+
+void StateRecord::remove()
+{
+	if(!FileSys::is_directory(m_path.c_str())) {
+		throw std::runtime_error("The state directory does not exist or is not accessible");
+	}
+
+	::remove(m_info_path.c_str());
+	::remove(m_ini_path.c_str());
+	::remove(m_state_path.c_str());
+	::remove(m_screen_path.c_str());
+
+	// remove disk images
+	DIR *dir;
+	if((dir = opendir(m_path.c_str())) == nullptr) {
+		throw std::runtime_error("Cannot open directory for reading\n");
+	}
+
+	struct dirent *ent;
+	std::regex re("^(" STATE_FILE_BASE "-.*\\.img)$", std::regex::ECMAScript|std::regex::icase);
+	while((ent = readdir(dir)) != nullptr) {
+		struct stat sb;
+		std::string fullpath = m_path + FS_SEP + ent->d_name;
+		if(stat(fullpath.c_str(), &sb)!=0 || S_ISDIR(sb.st_mode)) {
+			continue;
+		}
+		if(std::regex_search(ent->d_name, re)) {
+			::remove(fullpath.c_str());
+		}
+	}
+
+	if(closedir(dir) != 0) {
+		PWARNF(LOG_V1, LOG_GUI, "Cannot close directory '%s'\n", m_path.c_str());
+	}
+	
+	if(::remove(m_path.c_str()) != 0) {
+		throw std::runtime_error(str_format("Cannot remove directory '%s'", m_path.c_str()).c_str());
+	}
+
+	m_path = "";
 }

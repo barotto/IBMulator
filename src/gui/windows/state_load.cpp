@@ -30,28 +30,43 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "cancel",  "click",     StateDialog::on_cancel ),
 	GUI_EVT( "close",   "click",     StateDialog::on_cancel ),
 	GUI_EVT( "entries", "click",     StateLoad::on_entry ),
-	GUI_EVT( "entries", "mouseover", StateDialog::on_entry_over ),
-	GUI_EVT( "entries", "mouseout",  StateDialog::on_entry_out ),
 	GUI_EVT( "mode",    "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",   "click",     StateDialog::on_order ),
+	GUI_EVT( "action",  "click",     StateDialog::on_action ),
+	GUI_EVT( "delete",  "click",     StateDialog::on_delete ),
 	GUI_EVT( "*",       "keydown",   Window::on_keydown )
 };
 
-void StateLoad::on_entry(Rml::Event &_ev)
+void StateLoad::action_on_record(std::string _rec_name)
 {
-	auto id = _ev.GetTargetElement()->GetId();
-	if(id.empty() || id == "entries") {
-		return;
-	}
-	PDEBUGF(LOG_V2, LOG_GUI, "StateLoad: id:%s\n", id.c_str());
+	PDEBUGF(LOG_V2, LOG_GUI, "StateLoad: id:%s\n", _rec_name.c_str());
 
 	if(!m_action_callbk) {
 		assert(false);
 		return;
 	}
 	try {
-		m_action_callbk(ms_rec_map.at(id).info());
+		m_action_callbk(ms_rec_map.at(_rec_name).info());
 	} catch(std::out_of_range &) {
-		PDEBUGF(LOG_V0, LOG_GUI, "StateLoad: invalid id!\n");
+		PDEBUGF(LOG_V0, LOG_GUI, "StateLoad: invalid slot id!\n");
 	}
 }
+
+void StateLoad::on_entry(Rml::Event &_ev)
+{
+	Rml::Element *el = _ev.GetTargetElement();
+	Rml::Element *entry = el->GetParentNode();
+
+	if(el->IsClassSet("action")) {
+		action_on_record(entry->GetId());
+		return;
+	}
+	if(el->IsClassSet("delete")) {
+		delete_record(entry->GetId());
+		return;
+	}
+	if(el->IsClassSet("target") && m_entries_el->IsClassSet("list")) {
+		entry_select(entry->GetId(), entry);
+	}
+}
+

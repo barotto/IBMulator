@@ -2,8 +2,8 @@ body
 {
 	width: 88%;
 	height: 90%;
-	min-width: 620dp;
-	min-height: 400dp;
+	min-width: 640dp;
+	min-height: 450dp;
 	margin: auto;
 }
 
@@ -40,6 +40,18 @@ div#window
 	margin-right: 10dp;
 }
 
+#buttons_entry
+{
+	display: inline-block;
+	margin-right: 10dp;
+	visibility: hidden;
+}
+
+#buttons_entry.visible
+{
+	visibility: visible;
+}
+
 #mode input
 {
 	width: 18dp;
@@ -74,4 +86,22 @@ div#window
 input.radio.romshell:checked btnicon
 {
 	image-color: #000000;
+}
+
+.entry .action,
+.entry .delete
+{
+	width: 30dp;
+	height: 30dp;
+}
+
+.entry .delete
+{
+	background-color: #aa0000;
+	decorator: image(icons/trashcan.png);
+}
+
+.entry .delete:hover
+{
+	decorator: image(icons/trashcan_open.png);
 }

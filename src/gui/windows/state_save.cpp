@@ -30,37 +30,69 @@ event_map_t StateSave::ms_evt_map = {
 	GUI_EVT( "cancel",   "click",     StateDialog::on_cancel ),
 	GUI_EVT( "close",    "click",     StateDialog::on_cancel ),
 	GUI_EVT( "entries",  "click",     StateSave::on_entry ),
-	GUI_EVT( "entries",  "mouseover", StateDialog::on_entry_over ),
-	GUI_EVT( "entries",  "mouseout",  StateDialog::on_entry_out ),
-	GUI_EVT( "new_save", "click",     StateSave::on_entry ),
 	GUI_EVT( "mode",     "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",    "click",     StateDialog::on_order),
+	GUI_EVT( "action",   "click",     StateDialog::on_action ),
+	GUI_EVT( "delete",   "click",     StateDialog::on_delete ),
 	GUI_EVT( "*",        "keydown",   Window::on_keydown )
 };
 
-void StateSave::on_entry(Rml::Event &_ev)
+void StateSave::update()
 {
-	auto id = _ev.GetTargetElement()->GetId();
-	if(id.empty() || id == "entries") {
-		return;
+	if(m_dirty) {
+		StateDialog::update();
+		auto newsave = StateDialog::DirEntry::create_element(
+				m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0} );
+		auto first = m_entries_el->GetFirstChild();
+		if(first) {
+			m_entries_el->InsertBefore(std::move(newsave), first);
+		} else {
+			m_entries_el->AppendChild(std::move(newsave));
+		}
+	} else {
+		StateDialog::update();
 	}
-	PDEBUGF(LOG_V2, LOG_GUI, "StateSave: id:%s\n", id.c_str());
+}
+
+void StateSave::action_on_record(std::string _rec_name)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "StateSave: id:%s\n", _rec_name.c_str());
 
 	if(!m_action_callbk) {
 		assert(false);
 		return;
 	}
-	if(id == QUICKSAVE_RECORD) {
+	if(_rec_name == QUICKSAVE_RECORD) {
 		m_action_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
-	} else if(id == "new_save" || id == "new_save_entry") {
+	} else if(_rec_name == "new_save" || _rec_name == "new_save_entry") {
 		m_action_callbk({});
 	} else {
 		try {
-			StateRecord &state = ms_rec_map.at(id);
+			StateRecord &state = ms_rec_map.at(_rec_name);
 			m_action_callbk(state.info());
 		} catch(...) {
-			PDEBUGF(LOG_V0, LOG_GUI, "StateSave: invalid entry id!\n");
+			PDEBUGF(LOG_V0, LOG_GUI, "StateSave: invalid slot id!\n");
 			hide();
 		}
+	}
+}
+
+void StateSave::on_entry(Rml::Event &_ev)
+{
+	Rml::Element *el = _ev.GetTargetElement();
+	Rml::Element *entry = el->GetParentNode();
+	std::string id = entry->GetId();
+
+	if(el->IsClassSet("action") || id == "new_save_entry") {
+		entry_deselect();
+		action_on_record(id);
+		return;
+	}
+	if(el->IsClassSet("delete")) {
+		delete_record(id);
+		return;
+	}
+	if(el->IsClassSet("target") && m_entries_el->IsClassSet("list")) {
+		entry_select(id, entry);
 	}
 }

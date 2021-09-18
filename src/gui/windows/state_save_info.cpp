@@ -52,6 +52,14 @@ void StateSaveInfo::create()
 	m_desc_el = dynamic_cast<Rml::ElementFormControlInput*>(get_element("desc"));
 }
 
+void StateSaveInfo::set_state(StateRecord::Info _info)
+{
+	m_state_info = _info;
+	if(!_info.name.empty()) {
+		get_element("name")->SetInnerRML(std::string(" for slot ") + _info.name);
+	}
+}
+
 void StateSaveInfo::on_save(Rml::Event &)
 {
 	m_state_info.user_desc = m_desc_el->GetValue();

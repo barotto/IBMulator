@@ -26,6 +26,7 @@
 #include <SDL.h>
 
 #define STATE_RECORD_BASE "savestate_"
+#define STATE_FILE_BASE   "state"
 #define QUICKSAVE_RECORD  STATE_RECORD_BASE "quick"
 #define QUICKSAVE_DESC    "QUICKSAVE"
 
@@ -87,6 +88,7 @@ public:
 
 	void save();
 	void load();
+	void remove();
 };
 
 #endif

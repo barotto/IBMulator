@@ -34,6 +34,10 @@ public:
 	StateSave(GUI * _gui) : StateDialog(_gui, "state_save.rml") {}
 	virtual ~StateSave() {}
 
+	virtual void update();
+
+	void action_on_record(std::string _rec_name);
+
 	event_map_t & get_event_map() { return StateSave::ms_evt_map; }
 
 private:

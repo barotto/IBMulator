@@ -17,46 +17,50 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_GUI_STATEINFO_H
-#define IBMULATOR_GUI_STATEINFO_H
+#ifndef IBMULATOR_GUI_MESSAGEBOX_H
+#define IBMULATOR_GUI_MESSAGEBOX_H
 
 #include "../window.h"
-#include "state_record.h"
 #include <RmlUi/Core.h>
 
-class StateSaveInfo : public Window
+class MessageBox : public Window
 {
+public:
+
+	enum class Type {
+		MSGB_OK,
+		MSGB_YES_NO
+	};
+
 private:
 
 	static event_map_t ms_evt_map;
-	std::function<void(StateRecord::Info)> m_save_callbk = nullptr;
-	std::function<void()> m_cancel_callbk = nullptr;
-	Rml::ElementFormControl *m_desc_el = nullptr;
-	StateRecord::Info m_state_info;
+	std::function<void()> m_action1_clbk = nullptr;
+	std::function<void()> m_action2_clbk = nullptr;
+	Type m_type = Type::MSGB_OK;
 
 public:
 
-	StateSaveInfo(GUI * _gui);
-	virtual ~StateSaveInfo();
+	MessageBox(GUI * _gui);
+	virtual ~MessageBox();
 
-	void show();
+	void create();
 
-	virtual void create();
-
-	void set_state(StateRecord::Info _info);
+	void set_type(Type);
 	void set_callbacks(
-		std::function<void(StateRecord::Info)> _save_callback,
-		std::function<void()> _cancel_callback = nullptr) {
-		m_save_callbk = _save_callback;
-		m_cancel_callbk = _cancel_callback;
+		std::function<void()> _action1,
+		std::function<void()> _action2) {
+		m_action1_clbk = _action1;
+		m_action2_clbk = _action2;
 	}
+	void set_title(const std::string &);
+	void set_message(const std::string &);
 
-	event_map_t & get_event_map() { return StateSaveInfo::ms_evt_map; }
+	event_map_t & get_event_map() { return MessageBox::ms_evt_map; }
 
 private:
 
-	void on_save(Rml::Event &);
-	void on_cancel(Rml::Event &);
+	void on_action(Rml::Event &);
 	void on_keydown(Rml::Event &_ev);
 };
 

@@ -1,4 +1,4 @@
-<template name="state_dialog" content="buttons_right">
+<template name="state_dialog" content="action">
 <head>
 	<link type="text/rcss" href="state_dialog.rcss"/>
 	<link type="text/rcss" href="state_dialog_list.rcss"/>
@@ -25,6 +25,11 @@
 		</div>
 	</form>
 	<div id="buttons_right">
+		<div id="buttons_entry">
+			<button id="delete" class="romshell entry_button">Delete</button>
+			<button id="action" class="romshell entry_button"></button>
+		</div>
+		<button id="cancel" class="romshell">Cancel</button>
 	</div>
 </body>
 </template>

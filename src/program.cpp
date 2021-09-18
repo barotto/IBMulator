@@ -296,6 +296,27 @@ void Program::restore_state(
 	};
 }
 
+void Program::delete_state(StateRecord::Info _info)
+{
+	std::string capture_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
+	if(capture_path.empty()) {
+		throw std::runtime_error("The capture directory is not set");
+	}
+	if(_info.name.empty()) {
+		assert(false);
+		return;
+	}
+	// check the path before constructing the state record, otherwise it'll
+	// create a new directory if it doesn't exist
+	std::string statepath = capture_path + FS_SEP + _info.name;
+	if(!FileSys::is_directory(statepath.c_str())) {
+		throw std::runtime_error("Invalid state record path");
+	}
+
+	StateRecord sstate(capture_path, _info.name);
+	sstate.remove();
+}
+
 void Program::init_SDL()
 {
 	SDL_version compiled;

@@ -34,9 +34,6 @@
 
 .list #panel_screen
 {
-	position: absolute;
-	top: 0;
-	left: 0;
 	width: 240dp;
 	height: 180dp;
 	border: 1dp;
@@ -45,9 +42,6 @@
 
 .list #panel_screen img
 {
-	position: absolute;
-	top: 0;
-	left: 0;
 	width: 100%;
 	height: 100%;
 	opacity: 0;
@@ -61,12 +55,10 @@
 
 .list #panel_config
 {
-	position: absolute;
-	top: 185dp;
-	left: 0;
 	width: 100%;
 	font-size: 13dp;
 	padding: 4dp;
+	overflow: hidden;
 	opacity: 0;
 	transition: opacity 0.2s 0 exponential-out;
 }
@@ -98,6 +90,16 @@
 .list .entry:hover .data
 {
 	background-color: #6795be;
+}
+
+.list .entry.selected .data
+{
+	background-color: #fcfca6;
+}
+
+.list .entry.selected *
+{
+	color: #000000;
 }
 
 .list .entry .data .screen
@@ -157,26 +159,10 @@
 	display: none;
 }
 
-.list .entry .data .action
+.list .entry .action,
+.list .entry .delete,
 {
-	visibility: hidden;
-	position: absolute;
-	left: 17dp;
-	bottom: 0dp;
-	width: 30dp;
-	height: 30dp;
-	transition: background-color top bottom 0.5s 0 exponential-out;
-}
-
-.list .entry:hover .data .action
-{
-	visibility: visible;
-	bottom: 10dp;
-}
-
-.list .entry:hover .data .screen img
-{
-	image-color: #a0a0a0;
+	display: none;
 }
 
 .list .entry .target

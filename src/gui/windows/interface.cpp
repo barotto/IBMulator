@@ -561,6 +561,7 @@ void Interface::show_state_dialog(bool _save)
 	bool machine_was_paused = m_machine->is_paused();
 	bool input_was_grabbed = m_gui->is_input_grabbed();
 	auto dialog_end = [=]() {
+		m_state_save->hide();
 		if(!machine_was_paused) {
 			m_machine->cmd_resume(false);
 		}
@@ -574,7 +575,6 @@ void Interface::show_state_dialog(bool _save)
 			// save
 			[=](StateRecord::Info _info)
 			{
-				m_state_save->hide();
 				if(_info.name == QUICKSAVE_RECORD) {
 					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
 					dialog_end();
@@ -585,8 +585,7 @@ void Interface::show_state_dialog(bool _save)
 							save_state(_info);
 							m_state_save_info->hide();
 							dialog_end();
-						},
-						dialog_end
+						}
 					);
 					m_state_save_info->set_state(_info);
 					m_state_save_info->show();

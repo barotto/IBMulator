@@ -122,6 +122,7 @@ Rml::Element * Window::get_element(const std::string &_id)
 	Rml::Element *el = m_wnd->GetElementById(_id);
 	if(!el) {
 		PERRF(LOG_GUI, "element %s not found!\n", _id.c_str());
+		throw std::exception();
 	}
 	return el;
 }

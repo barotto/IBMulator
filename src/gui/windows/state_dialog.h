@@ -103,11 +103,14 @@ protected:
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_panel_screen_el = nullptr;
 	Rml::Element *m_panel_config_el = nullptr;
+	Rml::Element *m_buttons_entry_el = nullptr;
 	inline static bool ms_dirty = true;
 	bool m_dirty = true;
 	enum class Order {
 		BY_DATE, BY_DESC, BY_SLOT
 	} m_order = Order::BY_DATE;
+	Rml::Element *m_selected_entry = nullptr;
+	std::string m_selected_id;
 
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
@@ -138,10 +141,16 @@ public:
 	}
 	static const std::string & current_dir() { return ms_cur_path; }
 
+	virtual void action_on_record(std::string _rec_name) = 0;
+	virtual void delete_record(std::string _rec_name);
+
 	virtual void on_cancel(Rml::Event &_ev);
 
-	void on_entry_over(Rml::Event &_ev);
-	void on_entry_out(Rml::Event &_ev);
+	void entry_select(std::string _slot_id, Rml::Element *_entry);
+	void entry_deselect();
+
+	void on_action(Rml::Event &);
+	void on_delete(Rml::Event &);
 	void on_mode(Rml::Event &_ev);
 	void on_order(Rml::Event &_ev);
 };

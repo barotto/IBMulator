@@ -34,7 +34,8 @@ share/ibmulator/gui/speed_indicator.rcss \
 share/ibmulator/gui/state_dialog.rcss \
 share/ibmulator/gui/state_load.rml \
 share/ibmulator/gui/state_save.rml \
-share/ibmulator/gui/state_save_info.rml
+share/ibmulator/gui/state_save_info.rml \
+share/ibmulator/gui/message_box.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
@@ -47,11 +48,15 @@ share/ibmulator/gui/icons/file_select.png \
 share/ibmulator/gui/icons/pause.png \
 share/ibmulator/gui/icons/power.png \
 share/ibmulator/gui/icons/restore.png \
+share/ibmulator/gui/icons/restore_up.png \
 share/ibmulator/gui/icons/resume.png \
 share/ibmulator/gui/icons/save.png \
+share/ibmulator/gui/icons/save_down.png \
 share/ibmulator/gui/icons/warning.png \
 share/ibmulator/gui/icons/list.png \
-share/ibmulator/gui/icons/grid.png
+share/ibmulator/gui/icons/grid.png \
+share/ibmulator/gui/icons/trashcan.png \
+share/ibmulator/gui/icons/trashcan_open.png
 
 guiiconsdebuggerdir = $(pkgdatadir)/gui/icons/debugger
 dist_guiiconsdebugger_DATA = \

@@ -4,24 +4,22 @@
 		<link type="text/template" href="default.rml" />
 		<link type="text/template" href="state_dialog.rml" />
 		<style>
-
-		.entry .data .action
-		{
-			background-color: #aa000000;
-			decorator: image(icons/save.png);
-		}
-
-		.entry:hover .data .action
-		{
-			background-color: #aa0000ff;
-		}
-
+			.entry .action
+			{
+				background-color: #3F7CB6;
+				decorator: image(icons/save.png);
+			}
+			.entry .action:hover
+			{
+				decorator: image(icons/save_down.png);
+			}
+			#new_save_entry .delete
+			{
+				display: none;
+			}
 		</style>
 	</head>
 	<body template="default">
-		<template src="state_dialog">
-			<button id="new_save" class="romshell">New save</button>
-			<button id="cancel" class="romshell">Cancel</button>
-		</template>
+		<template src="state_dialog">Save</template>
 	</body>
 </rml>
