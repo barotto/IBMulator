@@ -41,7 +41,6 @@ guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
 share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \
-share/ibmulator/gui/icons/continue.png \
 share/ibmulator/gui/icons/exit.png \
 share/ibmulator/gui/icons/file_select_g.png \
 share/ibmulator/gui/icons/file_select.png \
