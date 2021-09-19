@@ -26,7 +26,9 @@ share/ibmulator/gui/desktop.rml \
 share/ibmulator/gui/devstatus.rml \
 share/ibmulator/gui/fileselect.rml \
 share/ibmulator/gui/normal_interface.rml \
+share/ibmulator/gui/normal_interface.rcss \
 share/ibmulator/gui/realistic_interface.rml \
+share/ibmulator/gui/realistic_interface.rcss \
 share/ibmulator/gui/stats.rml \
 share/ibmulator/gui/status.rml \
 share/ibmulator/gui/mixerstate.rml \
