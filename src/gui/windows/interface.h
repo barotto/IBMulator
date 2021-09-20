@@ -157,6 +157,8 @@ public:
 	virtual void set_video_brightness(float);
 	virtual void set_video_contrast(float);
 	virtual void set_video_saturation(float);
+	
+	virtual bool is_system_visible() const { return true; }
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	SDL_Surface * copy_framebuffer();

@@ -550,6 +550,7 @@ keymap file.
     * compact mode: toggle the main interface window
     * realistic mode: toggle zoomed view
 * SHIFT+F1: GUI mode action 2:
+    * normal and compact modes: switch between normal and compact modes
     * realistic mode: switch between bright and dark styles
 * CTRL+F3: toggle the machine power button
 * SHIFT+F4: show/hide the status indicators

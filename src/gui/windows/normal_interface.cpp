@@ -58,7 +58,10 @@ void NormalInterface::create()
 	m_sysbkgd->SetClass("disk", m_floppy_present);
 	m_btn_pause = get_element("pause");
 	m_led_pause = false;
-	m_gui_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, GUI::ms_gui_modes);
+	m_cur_zoom = static_cast<ZoomMode>(g_program.config().get_enum(GUI_SECTION, GUI_MODE, {
+			{ "normal", ec_to_i(ZoomMode::NORMAL) },
+			{ "compact", ec_to_i(ZoomMode::COMPACT) }
+	}, ec_to_i(ZoomMode::NORMAL)));
 	m_vga_aspect = g_program.config().get_enum(DISPLAY_SECTION,DISPLAY_NORMAL_ASPECT,
 		GUI::ms_display_aspect);
 
@@ -81,7 +84,7 @@ void NormalInterface::create()
 		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
 		m_vga_scaling = 0;
 	}
-	if(m_gui_mode == GUI_MODE_NORMAL) {
+	if(m_cur_zoom == ZoomMode::NORMAL) {
 		h += std::min(256, w/4); //the sysunit proportions are 4:1
 	}
 	m_size = vec2i(w,h);
@@ -116,7 +119,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		disp_h = disp_area_h;
 	}
 
-	if(m_gui_mode == GUI_MODE_NORMAL) {
+	if(m_cur_zoom == ZoomMode::NORMAL) {
 		disp_area_h = _height - sysunit_h;
 	}
 
@@ -143,7 +146,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		ratio = float(disp_w) / float(disp_h);
 	}
 	ys = float(disp_h)/float(_height);
-	if(m_gui_mode == GUI_MODE_NORMAL) {
+	if(m_cur_zoom == ZoomMode::NORMAL) {
 		yt = 1.f - ys; //aligned to top
 	}
 	if(ys>1.f) {
@@ -226,8 +229,35 @@ void NormalInterface::update()
 
 void NormalInterface::action(int _action)
 {
-	if((m_gui_mode == GUI_MODE_COMPACT) && (_action == 0)) {
-		if(is_system_visible()) {
+	switch(m_cur_zoom) {
+		case ZoomMode::COMPACT: {
+			if(_action == 0) {
+				if(is_system_visible()) {
+					hide_system();
+				} else {
+					show_system();
+				}
+			} else if(_action == 1) {
+				m_cur_zoom = ZoomMode::NORMAL;
+				show_system();
+			}
+			break;
+		}
+		case ZoomMode::NORMAL:
+			if(_action == 1) {
+				m_cur_zoom = ZoomMode::COMPACT;
+				if(m_gui->is_input_grabbed()) {
+					hide_system();
+				}
+			}
+			break;
+	}
+}
+
+void NormalInterface::grab_input(bool _grabbed)
+{
+	if(m_cur_zoom == ZoomMode::COMPACT) {
+		if(_grabbed) {
 			hide_system();
 		} else {
 			show_system();
@@ -235,7 +265,7 @@ void NormalInterface::action(int _action)
 	}
 }
 
-bool NormalInterface::is_system_visible()
+bool NormalInterface::is_system_visible() const
 {
 	return (m_sysunit->GetProperty("visibility")->ToString() != "hidden");
 }

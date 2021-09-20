@@ -37,7 +37,6 @@ enum GUIRenderer {
 
 enum GUIMode {
 	GUI_MODE_NORMAL,
-	GUI_MODE_COMPACT,
 	GUI_MODE_REALISTIC
 };
 

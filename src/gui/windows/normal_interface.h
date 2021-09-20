@@ -28,6 +28,11 @@ class GUI;
 
 class NormalInterface : public Interface
 {
+public:
+	enum class ZoomMode: unsigned {
+		NORMAL, COMPACT
+	};
+
 private:
 	uint m_vga_aspect = 0;
 	uint m_vga_scaling = 0;
@@ -35,7 +40,8 @@ private:
 	Rml::Element *m_sysunit = nullptr, *m_sysbkgd = nullptr;
 	Rml::Element *m_btn_pause = nullptr;
 	bool m_led_pause = false;
-	uint m_gui_mode = 0;
+	unsigned m_gui_mode = 0;
+	ZoomMode m_cur_zoom = ZoomMode::NORMAL;
 
 public:
 	static event_map_t ms_evt_map;
@@ -49,10 +55,12 @@ public:
 	void container_size_changed(int _width, int _height);
 
 	void action(int);
-	bool is_system_visible();
+	void grab_input(bool _grabbed);
+	bool is_system_visible() const;
 	void hide_system();
-	void show_system();	
-	
+	void show_system();
+	ZoomMode zoom_mode() const { return m_cur_zoom; }
+
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 
 private:

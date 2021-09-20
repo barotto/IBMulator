@@ -57,7 +57,7 @@ ini_enum_map_t g_mouse_types = {
 };
 
 std::map<std::string, uint> GUI::ms_gui_modes = {
-	{ "compact",   GUI_MODE_COMPACT },
+	{ "compact",   GUI_MODE_NORMAL },
 	{ "normal",    GUI_MODE_NORMAL },
 	{ "realistic", GUI_MODE_REALISTIC }
 };
@@ -2171,7 +2171,14 @@ void GUI::show_welcome_screen()
 "\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
 "\xCD\xCD\xBB",
 0xf, bg, 0);
-	for(int i=1; i<=((m_mode==GUI_MODE_COMPACT)?17:23); i++) {
+	int height = 23;
+	if(m_mode == GUI_MODE_NORMAL &&
+	   dynamic_cast<NormalInterface*>(m_windows.interface.get())->zoom_mode() 
+	       == NormalInterface::ZoomMode::COMPACT)
+	{
+		height = 17;
+	}
+	for(int i=1; i<=height; i++) {
 		ps("\xBA                                                                              \xBA",
 				0xf, bg, 0);
 	}
@@ -2207,7 +2214,7 @@ void GUI::show_welcome_screen()
 	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
 	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
-		if(m_mode == GUI_MODE_COMPACT) {
+		if(m_mode == GUI_MODE_NORMAL && height < 23) {
 			ps("\nTo show/hide the interface press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			ps(" or grab the mouse.\n", 0xf, bg, bd);
@@ -2296,19 +2303,11 @@ void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase 
 	
 	int action = _func.params[0] - 1;
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
+	bool was_visible = m_windows.interface->is_system_visible();
 	m_windows.interface->action(action);
 	m_windows.interface->container_size_changed(m_width, m_height);
-	switch(action) {
-		case 0: {
-			if(m_mode == GUI_MODE_COMPACT &&
-			  dynamic_cast<NormalInterface*>(m_windows.interface.get())->is_system_visible())
-			{
-				grab_input(false);
-			}
-			break;
-		}
-		case 1: break;
-		default: return;
+	if(!was_visible && m_windows.interface->is_system_visible()) {
+		grab_input(false);
 	}
 }
 
@@ -2468,12 +2467,8 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	
 	grab_input(!m_input.grab);
 	
-	if(m_mode == GUI_MODE_COMPACT) {
-		if(m_input.grab) {
-			dynamic_cast<NormalInterface*>(m_windows.interface.get())->hide_system();
-		} else {
-			dynamic_cast<NormalInterface*>(m_windows.interface.get())->show_system();
-		}
+	if(m_mode == GUI_MODE_NORMAL) {
+		dynamic_cast<NormalInterface*>(m_windows.interface.get())->grab_input(m_input.grab);
 	}
 }
 
