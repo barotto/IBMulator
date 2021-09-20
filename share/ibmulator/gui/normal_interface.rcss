@@ -25,67 +25,71 @@
 
 #sysctrl
 {
-	width: 36%;
-	height: 28%;
+	width: 29%;
+	height: 23%;
 	position: absolute;
 	right: 0;
-	top: 0;
-	background-color: #3F7CB6A0;
+	top: 1%;
 }
 
 btn
 {
-	position: absolute;
-	top: 0;
+	image-color: #00000070;
+	display: inline-block;
 	width: 20%;
 	height: 100%;
+	transition: image-color 0.2s 0 exponential-out;
+}
+
+btn:hover,
+btn.active,
+btn.active:hover
+{
+	image-color: #ffffffa0;
 }
 
 #power
 {
-	left: 0;
 	decorator: image(icons/power.png);
 }
 
-#power.active
+#power.active,
+#power.active:hover,
 {
-	background-color: #94E400A0;
+	image-color: #a6ff00;
+	decorator: image(icons/power_active.png);
 }
 
 #pause
 {
-	left: 20%;
 	decorator: image(icons/pause.png);
 }
 
-#pause.resume
+#pause.resume,
+#pause.resume:hover
 {
-	background-color: #FFEF38A0;
-	decorator: image(icons/resume.png);
+	image-color: #FFEF38;
+	decorator: image(icons/resume_active.png);
 }
 
 #save
 {
-	left: 40%;
 	decorator: image(icons/save.png);
 }
 
 #restore
 {
-	left: 60%;
 	decorator: image(icons/restore.png);
-}
-
-#restore.active
-{
-	background-color: #94E400A0;
 }
 
 #exit
 {
-	left: 80%;
-	background-color: #B63D3FA0;
 	decorator: image(icons/exit.png);
+}
+
+#exit:hover
+{
+	image-color: #B63D3F;
 }
 
 #fdd_led
@@ -107,11 +111,12 @@ btn
 {
 	position: absolute;
 	text-align: center;
-	width: 3.5%;
-	height: 13.5%;
-	top: 38%;
-	left: 8.5%;
-	background-color: #3F7CB6A0;
+	width: 6%;
+	height: 24%;
+	top: 34%;
+	left: 6.5%;
+	image-color: #505050;
+	transition: image-color 0.2s 0 exponential-out;
 }
 
 #fdd_select.a
@@ -122,6 +127,11 @@ btn
 #fdd_select.b
 {
 	decorator: image(icons/buttonB.png);
+}
+
+#fdd_select:hover
+{
+	image-color: #e0e0e0;
 }
 
 #fdd_eject 

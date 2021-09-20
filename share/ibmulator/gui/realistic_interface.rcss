@@ -128,21 +128,27 @@
 {
 	position: absolute;
 	text-align: center;
-	width: 3.5%;
-	height: 3.0%;
-	bottom: 9.5%;
+	width: 4.5%;
+	height: 4.1%;
+	bottom: 9%;
 	left: 13.0%;
-	background-color: #3F7CB6A0;
+	image-color: #505050;
+	transition: image-color 0.2s 0 exponential-out;
 }
 
 #fdd_select.a
 {
-	decorator: image(images/buttonA.png);
+	decorator: image(icons/buttonA.png);
 }
 
 #fdd_select.b
 {
-	decorator: image(images/buttonB.png);
+	decorator: image(icons/buttonB.png);
+}
+
+#fdd_select:hover
+{
+	image-color: #e0e0e0;
 }
 
 #fdd_eject

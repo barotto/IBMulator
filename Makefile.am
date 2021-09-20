@@ -48,9 +48,11 @@ share/ibmulator/gui/icons/file_select_g.png \
 share/ibmulator/gui/icons/file_select.png \
 share/ibmulator/gui/icons/pause.png \
 share/ibmulator/gui/icons/power.png \
+share/ibmulator/gui/icons/power_active.png \
 share/ibmulator/gui/icons/restore.png \
 share/ibmulator/gui/icons/restore_up.png \
 share/ibmulator/gui/icons/resume.png \
+share/ibmulator/gui/icons/resume_active.png \
 share/ibmulator/gui/icons/save.png \
 share/ibmulator/gui/icons/save_down.png \
 share/ibmulator/gui/icons/warning.png \
