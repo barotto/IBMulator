@@ -62,14 +62,34 @@ void NormalInterface::create()
 			{ "normal", ec_to_i(ZoomMode::NORMAL) },
 			{ "compact", ec_to_i(ZoomMode::COMPACT) }
 	}, ec_to_i(ZoomMode::NORMAL)));
-	m_vga_aspect = g_program.config().get_enum(DISPLAY_SECTION,DISPLAY_NORMAL_ASPECT,
-		GUI::ms_display_aspect);
-
+	
+	std::string aspect_s = g_program.config().get_string(DISPLAY_SECTION, DISPLAY_NORMAL_ASPECT);
+	unsigned wr, hr;
+	if(sscanf(aspect_s.c_str(), "%u:%u", &wr, &hr) == 2) {
+		if(hr != 0) {
+			m_aspect_ratio = double(wr) / double(hr);
+			m_aspect_mode = DISPLAY_ASPECT_FIXED;
+		} else {
+			PERRF(LOG_GUI, "Invalid H parameter value for [" DISPLAY_SECTION "]:" DISPLAY_NORMAL_ASPECT "\n");
+			throw std::exception();
+		}
+		PDEBUGF(LOG_V0, LOG_GUI, "Fixed display ratio: %u:%u (%.6f)\n", wr, hr, m_aspect_ratio);
+	} else {
+		m_aspect_ratio = .0;
+		m_aspect_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_ASPECT,
+			GUI::ms_display_aspect);
+	}
+	m_scale_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_SCALE,
+		GUI::ms_display_scale);
+	if(m_scale_mode == DISPLAY_SCALE_1X || m_scale_mode == DISPLAY_SCALE_INTEGER) {
+		m_scale_integer = true;
+	}
 	int w,h;
-	//try to parse the width as a scaling factor
+	// try to parse the width as a scaling factor
+	// window auto-resizing mode (undocumented and incomplete)
 	std::string widths = g_program.config().get_string(GUI_SECTION, GUI_WIDTH);
 	if(widths.at(widths.length()-1) == 'x') {
-		int scan = sscanf(widths.c_str(), "%ux", &m_vga_scaling);
+		int scan = sscanf(widths.c_str(), "%ux", &m_window_scaling);
 		if(scan == 1) {
 			//sensible defaults
 			w = 640;
@@ -82,7 +102,7 @@ void NormalInterface::create()
 		//try as a pixel int value
 		w = g_program.config().get_int(GUI_SECTION, GUI_WIDTH);
 		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
-		m_vga_scaling = 0;
+		m_window_scaling = 0;
 	}
 	if(m_cur_zoom == ZoomMode::NORMAL) {
 		h += std::min(256, w/4); //the sysunit proportions are 4:1
@@ -92,11 +112,13 @@ void NormalInterface::create()
 	m_screen = std::make_unique<InterfaceScreen>(m_gui);
 	
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
-	
 	m_screen->renderer()->load_vga_program(
 		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
 		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler)
 	);
+	if(!m_scale_integer) {
+		m_screen->vga.pmat = mat4_ortho<float>(0, 1.0, 1.0, 0, 0, 1);
+	}
 }
 
 void NormalInterface::container_size_changed(int _width, int _height)
@@ -109,59 +131,87 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	sysunit_w = std::min(sysunit_w, (uint)_width);
 	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
 
-	int disp_w, disp_h;
+	float disp_w, disp_h;
 	int disp_area_w = _width, disp_area_h = _height;
-	if(m_vga_scaling>0) {
-		disp_w = m_screen->vga.display.mode().xres * m_vga_scaling;
-		disp_h = m_screen->vga.display.mode().yres * m_vga_scaling;
+	if(m_cur_zoom == ZoomMode::NORMAL) {
+		disp_area_h -= sysunit_h;
+	}
+	if(m_window_scaling > 0) {
+		disp_w = m_screen->vga.display.mode().xres * m_window_scaling;
+		disp_h = m_screen->vga.display.mode().yres * m_window_scaling;
 	} else {
 		disp_w = disp_area_w;
 		disp_h = disp_area_h;
 	}
-
-	if(m_cur_zoom == ZoomMode::NORMAL) {
-		disp_area_h = _height - sysunit_h;
-	}
-
-	disp_w = std::min(disp_w,disp_area_w);
-	disp_h = std::min(disp_h,disp_area_h);
 
 	float ratio;
-	if(m_vga_aspect == DISPLAY_ASPECT_ORIGINAL) {
-		ratio = 1.333333f; //4:3
-	} else if(m_vga_aspect == DISPLAY_ASPECT_ADAPTIVE) {
-		ratio = float(m_screen->vga.display.mode().xres) / float(m_screen->vga.display.mode().yres);
+	switch(m_aspect_mode) {
+		case DISPLAY_ASPECT_FIXED:
+			ratio = m_aspect_ratio;
+			break;
+		case DISPLAY_ASPECT_VGA:
+			if(m_scale_integer) {
+				ratio = float(m_screen->vga.display.mode().imgw) / float(m_screen->vga.display.mode().imgh);
+			} else {
+				ratio = float(m_screen->vga.display.mode().xres) / float(m_screen->vga.display.mode().yres);
+			}
+			break;
+		case DISPLAY_ASPECT_AREA:
+			ratio = float(disp_area_w) / float(disp_area_h);
+			break;
+		default:
+			assert(false);
+			break;
+	}
+	if(m_scale_mode == DISPLAY_SCALE_1X) {
+		disp_w = m_screen->vga.display.mode().imgw;
+		disp_h = m_screen->vga.display.mode().imgh;
 	} else {
-		//SCALED
-		ratio = float(disp_w) / float(disp_h);
-	}
-	disp_w = round(float(disp_h) * ratio);
-	xs = float(disp_w)/float(_width);
-	if(xs>1.0f) {
-		disp_w = disp_area_w;
-		xs = 1.0f;
-		disp_h = round(float(disp_w) / ratio);
-	}
-	if(m_vga_aspect == DISPLAY_ASPECT_SCALED) {
-		ratio = float(disp_w) / float(disp_h);
-	}
-	ys = float(disp_h)/float(_height);
-	if(m_cur_zoom == ZoomMode::NORMAL) {
-		yt = 1.f - ys; //aligned to top
-	}
-	if(ys>1.f) {
-		disp_h = disp_area_h;
-		ys = float(disp_h)/float(_height);
-		yt = 0.f;
-		if(m_vga_aspect == DISPLAY_ASPECT_SCALED) {
-			ratio = float(disp_w) / float(disp_h);
+		disp_w = disp_h * ratio;
+		xs = disp_w / float(_width);
+		if(xs > 1.0f) {
+			disp_w = disp_area_w;
+			xs = 1.0f;
+			disp_h = disp_w / ratio;
 		}
-		disp_w = round(float(disp_h) * ratio);
-		xs = float(disp_w)/float(_width);
+		ys = disp_h / float(_height);
+		if(ys > 1.0f) {
+			disp_h = disp_area_h;
+			ys = disp_h / float(_height);
+			disp_w = disp_h * ratio;
+			xs = disp_w / float(_width);
+		}
+	}
+	if(m_scale_integer) {
+		int multw = disp_w / m_screen->vga.display.mode().imgw;
+		int multh = disp_h / m_screen->vga.display.mode().imgh;
+		disp_w = m_screen->vga.display.mode().imgw;
+		disp_h = m_screen->vga.display.mode().imgh;
+		if(multw > 0) {
+			disp_w *= multw;
+		}
+		if(multh > 0) {
+			disp_h *= multh;
+		}
+		xs = disp_w;
+		ys = disp_h;
+		xt = int((_width - disp_w) / 2);
+		if(m_cur_zoom == ZoomMode::COMPACT) {
+			yt = int((_height - disp_h) / 2);
+		}
+		m_screen->vga.pmat = mat4_ortho<float>(0, _width, _height, 0, 0, 1);
+		PINFOF(LOG_V2, LOG_GUI, "VGA resized to: %dx%d (x:%dx,y:%dx,ratio:%.3f)\n",
+				int(disp_w),int(disp_h), multw, multh, xs/ys);
+	} else {
+		xt = (1.0 - xs) / 2.0;
+		if(m_cur_zoom == ZoomMode::COMPACT) {
+			yt = (1.0 - ys) / 2.0;
+		}
 	}
 
 	m_screen->vga.size.x = disp_w;
 	m_screen->vga.size.y = disp_h;
+
 	m_screen->vga.mvmat.load_scale(xs, ys, 1.0);
 	m_screen->vga.mvmat.load_translation(xt, yt, 0.0);
 
@@ -177,20 +227,19 @@ void NormalInterface::update()
 {
 	Interface::update();
 
-	if(m_vga_aspect==DISPLAY_ASPECT_ADAPTIVE || m_vga_scaling>0) {
+	if(m_scale_integer || m_window_scaling > 0)
+	{
 		m_screen->vga.display.lock();
 		if(m_screen->vga.display.dimension_updated()) {
 			uint32_t wflags = m_gui->window_flags();
-			//WARNING in order for the MAXIMIZED case to work under X11 you need
-			//SDL 2.0.4 with this patch:
-			//https://bugzilla.libsdl.org/show_bug.cgi?id=2793
 			if(!(wflags & SDL_WINDOW_FULLSCREEN)&&
 			   !(wflags & SDL_WINDOW_MAXIMIZED) &&
-			   m_vga_scaling)
+			   m_window_scaling)
 			{
-				int w = m_screen->vga.display.mode().xres * m_vga_scaling;
-				int h = m_screen->vga.display.mode().yres * m_vga_scaling;
-				if(m_gui_mode == GUI_MODE_NORMAL) {
+				// TODO incomplete, will not resize properly when ratio is fixed
+				int w = m_screen->vga.display.mode().xres * m_window_scaling;
+				int h = m_screen->vga.display.mode().yres * m_window_scaling;
+				if(m_cur_zoom == ZoomMode::NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}
 				// gui lock already acquired in GUI::update()
@@ -240,6 +289,7 @@ void NormalInterface::action(int _action)
 			} else if(_action == 1) {
 				m_cur_zoom = ZoomMode::NORMAL;
 				show_system();
+				m_gui->show_message("Normal interface mode");
 			}
 			break;
 		}
@@ -249,6 +299,7 @@ void NormalInterface::action(int _action)
 				if(m_gui->is_input_grabbed()) {
 					hide_system();
 				}
+				m_gui->show_message("Compact interface mode");
 			}
 			break;
 	}

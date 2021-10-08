@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,12 +32,12 @@ public:
 	
 	virtual void load_vga_program(std::string _vshader, std::string _fshader, unsigned _sampler) = 0;
 	virtual void store_vga_framebuffer(FrameBuffer &_fb_data, const vec2i &_vga_res) = 0;
-	virtual void render_vga(const mat4f &_mvmat, const vec2i &_display_size,
+	virtual void render_vga(const mat4f &_pmat, const mat4f &_mvmat, const vec2i &_display_size,
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale) = 0;
 	
 	virtual void load_monitor_program(std::string _vshader, std::string _fshader, std::string _reflection_map) = 0;
-	virtual void render_monitor(const mat4f &_mvmat, float _ambient) = 0;
+	virtual void render_monitor(const mat4f &_pmat, const mat4f &_mvmat, float _ambient) = 0;
 };
 
 #endif

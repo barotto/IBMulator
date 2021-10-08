@@ -47,9 +47,15 @@ enum DisplaySampler {
 };
 
 enum DisplayAspect {
-	DISPLAY_ASPECT_ORIGINAL,
-	DISPLAY_ASPECT_ADAPTIVE,
-	DISPLAY_ASPECT_SCALED
+	DISPLAY_ASPECT_FIXED,
+	DISPLAY_ASPECT_VGA,
+	DISPLAY_ASPECT_AREA
+};
+
+enum DisplayScale {
+	DISPLAY_SCALE_1X,
+	DISPLAY_SCALE_FILL,
+	DISPLAY_SCALE_INTEGER
 };
 
 enum FrameCapMethods {
@@ -310,6 +316,7 @@ public:
 	static std::map<std::string, uint> ms_gui_modes;
 	static std::map<std::string, uint> ms_gui_sampler;
 	static std::map<std::string, uint> ms_display_aspect;
+	static std::map<std::string, uint> ms_display_scale;
 
 public:
 	GUI();

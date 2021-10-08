@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -97,24 +97,24 @@ void ScreenRenderer_SDL2D::store_vga_framebuffer(
 	}
 }
 
-void ScreenRenderer_SDL2D::mvmat_to_rect(const mat4f &_mvmat, SDL_Rect &rect_)
+SDL_Rect ScreenRenderer_SDL2D::to_rect(const mat4f &_pmat, const mat4f &_mvmat)
 {
 	SDL_Rect vport;
+	SDL_Rect dest = {0,0,0,0};
 	SDL_RenderGetViewport(m_sdl_renderer, &vport);
-	float vw = float(vport.w), vh = float(vport.h);
-	
-	vec3f scale = _mvmat.get_scale();
-	rect_.w = vw * scale.x;
-	rect_.h = vh * scale.y;
-	
-	vec3f tr = _mvmat.get_translation();
-	float xpos = (vw - float(rect_.w)) / 2.f;
-	rect_.x = xpos + ((vw * tr.x) / 2.f);
-	float ypos = (vh - float(rect_.h)) / 2.f;
-	rect_.y = ypos - ((vh * tr.y) / 2.f);
+	vec3f v0 = (_pmat * (_mvmat * vec4f(0.f,0.f,0.f,1.f))).xyz();
+	vec3f v1 = (_pmat * (_mvmat * vec4f(1.f,1.f,0.f,1.f))).xyz();
+	v0 = (v0 + 1.f) / 2.f;
+	v1 = (v1 + 1.f) / 2.f;
+	dest.x = v0.x * vport.w;
+	dest.y = (1.f - v0.y) * vport.h;
+	dest.w = std::abs(v1.x - v0.x) * vport.w;
+	dest.h = std::abs(v1.y - v0.y) * vport.h;
+	return dest;
 }
 
-void ScreenRenderer_SDL2D::render_vga(const mat4f &_mvmat, const vec2i &_display_size, 
+void ScreenRenderer_SDL2D::render_vga(const mat4f &_pmat, const mat4f &_mvmat,
+		const vec2i &_display_size, 
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale)
 {
@@ -130,19 +130,16 @@ void ScreenRenderer_SDL2D::render_vga(const mat4f &_mvmat, const vec2i &_display
 		PDEBUGF(LOG_V0, LOG_GUI, "VGA texture is not ready!");
 		return;
 	}
-	
-	SDL_Rect dest = {0,0,0,0};
-	mvmat_to_rect(_mvmat, dest);
-	SDL_RenderCopy(m_sdl_renderer, m_vga.texture, &m_vga.res, &dest);
+	SDL_Rect rect = to_rect(_pmat, _mvmat);
+	SDL_RenderCopy(m_sdl_renderer, m_vga.texture, &m_vga.res, &rect);
 }
 
-void ScreenRenderer_SDL2D::render_monitor(const mat4f &_mvmat, float _ambient)
+void ScreenRenderer_SDL2D::render_monitor(const mat4f &_pmat, const mat4f &_mvmat, float _ambient)
 {
 	UNUSED(_ambient);
 	
-	SDL_Rect dest = {0,0,0,0};
-	mvmat_to_rect(_mvmat, dest);
+	SDL_Rect rect = to_rect(_pmat, _mvmat);
 	SDL_SetRenderDrawColor(m_sdl_renderer, 0,0,0,255);
-	SDL_RenderFillRect(m_sdl_renderer, &dest);
+	SDL_RenderFillRect(m_sdl_renderer, &rect);
 }
 

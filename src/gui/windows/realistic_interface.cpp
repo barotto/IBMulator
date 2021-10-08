@@ -113,11 +113,11 @@ RealisticScreen::~RealisticScreen()
 
 void RealisticScreen::render()
 {
-	m_renderer->render_monitor(monitor.mvmat, monitor.ambient);
+	m_renderer->render_monitor(monitor.pmat, monitor.mvmat, monitor.ambient);
 	
 	sync_with_device();
 	m_renderer->render_vga(
-		vga.mvmat, vga.size,
+		vga.pmat, vga.mvmat, vga.size,
 		vga.brightness, vga.contrast, vga.saturation,
 		monitor.ambient, vga_image_scale, vga_reflection_scale);
 }
@@ -207,7 +207,9 @@ void RealisticInterface::create()
 		GUI::shaders_dir() + REALISTIC_MONITOR_FS,
 		GUI::images_dir() + REALISTIC_REFLECTION_MAP
 	);
-	
+	screen()->vga.pmat = mat4_ortho<float>(0, 1.0, 1.0, 0, 0, 1);
+
+	screen()->monitor.pmat = mat4_ortho<float>(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
 	screen()->monitor.mvmat.load_identity();
 	if(dark_style) {
 		screen()->monitor.ambient = 0.0;
@@ -234,17 +236,17 @@ vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, 
 	const float wdisp_ratio = abs_disp_w / ms_width;
 	
 	if(m_cur_zoom == ZoomMode::SCREEN) {
-		float h = float(_width) * 1.0/_aspect;
+		float h = float(_width) / _aspect;
 		if(h > _height) {
 			size.y = float(_height) * wdisp_ratio * _scale;
 			size.x = size.y * _aspect;
 		} else {
 			size.x = float(_width) * wdisp_ratio * _scale;
-			size.y = size.x * 1.0/_aspect;
+			size.y = size.x / _aspect;
 		}
 	} else {
 		const float sys_ratio = ms_width / ms_height;
-		const float hdisp_ratio = sys_ratio * wdisp_ratio * 1.f/_aspect;
+		const float hdisp_ratio = (sys_ratio * wdisp_ratio) / _aspect;
 		size.y = float(_height) * hdisp_ratio;
 		size.y *= _scale;
 		size.x = size.y * _aspect;
@@ -252,83 +254,71 @@ vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, 
 	return size;
 }
 
-void RealisticInterface::display_transform(int _width, int _height,
-		const vec2f &_disp, const vec2f &_system, mat4f &_mvmat)
-{
-	vec2f scale, trans;
-
-	scale.x = _disp.x / float(_width);  // VGA width (screen ratio)
-	scale.y = _disp.y / float(_height); // VGA height (screen ratio)
-	
-	trans.x = 0.f;
-	
-	float monitor_h = (((ms_monitor_height+ms_monitor_bezelh*2.f) / ms_height) * _system.y) / float(_height);
-	float sysy = _system.y / float(_height);
-	switch(m_display_align) {
-		case DisplayAlign::TOP:
-			trans.y = 1.0 - monitor_h;
-			break;
-		case DisplayAlign::TOP_NOBEZEL:
-			monitor_h = (((ms_monitor_height) / ms_height) * _system.y) / float(_height);
-			trans.y = 1.0f - monitor_h;
-			break;
-		case DisplayAlign::BOTTOM:
-			trans.y = -1.0 + (2.f * sysy) - monitor_h;
-			break;
-		default:
-			return;
-	}
-
-	_mvmat.load_scale(scale.x, scale.y, 1.0);
-	_mvmat.load_translation(trans.x, trans.y, 0.0);
-}
-
 void RealisticInterface::container_size_changed(int _width, int _height)
 {
-	vec2f system, disp, mdisp;
+	// sizes_in pixels
+	vec2f sys_size, vga_size, mon_size;
 	const float sys_ratio = ms_width / ms_height;
 	int system_top = 0;
 	
 	if(m_cur_zoom == ZoomMode::SCREEN) {
-		disp  = display_size(_width, _height,
+		vga_size  = display_size(_width, _height,
 				ms_vga_left, // x offset
-				1.0f, // scale
+				1.f, // scale
 				4.f / 3.f // aspect
 				);
-		mdisp = display_size(_width, _height,
+		mon_size = display_size(_width, _height,
 				0.f, // x offset
 				1.f, // scale
 				ms_monitor_width / ms_monitor_height // aspect
 				);
-		system.x = ms_width * (mdisp.x / ms_monitor_width);
-		system.y = system.x * 1.f/sys_ratio;
-		system_top = -(ms_monitor_bezelh * (mdisp.y / ms_monitor_height));
+		sys_size.x = ms_width * (mon_size.x / ms_monitor_width);
+		sys_size.y = sys_size.x / sys_ratio;
+		system_top = -(ms_monitor_bezelh * (mon_size.y / ms_monitor_height));
 	} else {
-		system.y = _height * m_scale;
-		system.x = system.y * sys_ratio;
-		if(system.x > _width) {
-			system.x = _width;
-			system.y = system.x * 1.f/sys_ratio;
+		sys_size.y = _height * m_scale;
+		sys_size.x = sys_size.y * sys_ratio;
+		if(sys_size.x > _width) {
+			sys_size.x = _width;
+			sys_size.y = sys_size.x / sys_ratio;
 		}
 		system_top = 0;
-		disp  = display_size(system.x, system.y,
-				ms_monitor_bezelw + ms_vga_left, // x offset
-				1.0f, // scale
-				4.f / 3.f // aspect
-				);
-		mdisp = display_size(system.x, system.y,
-				ms_monitor_bezelw - 1.f, // x offset
-				1.f, // scale
-				ms_monitor_width / ms_monitor_height // aspect
-				);
+		vga_size = display_size(sys_size.x, sys_size.y,
+					ms_monitor_bezelw + ms_vga_left, // x offset
+					1.f, // scale
+					4.f / 3.f // aspect
+					);
+		mon_size = display_size(sys_size.x, sys_size.y,
+					ms_monitor_bezelw - 1.f, // x offset
+					1.f, // scale
+					ms_monitor_width / ms_monitor_height // aspect
+					);
 	}
-	screen()->vga_reflection_scale = disp / mdisp;
+	screen()->vga_reflection_scale = vga_size / mon_size;
 
-	m_size = system;
-	screen()->vga.size.x = round(disp.x);
-	screen()->vga.size.y = round(disp.y);
-	display_transform(_width, _height, disp, system, screen()->vga.mvmat);
-	display_transform(_width, _height, mdisp, system, screen()->monitor.mvmat);
+	m_size = sys_size;
+	screen()->vga.size.x = round(vga_size.x);
+	screen()->vga.size.y = round(vga_size.y);
+
+	vec2f scale, trans;
+	scale.x = mon_size.x / _width;
+	scale.y = mon_size.y / _height;
+	trans.x = (1.f - scale.x) / 2.f;
+	if(m_display_align == DisplayAlign::TOP_NOBEZEL) {
+		trans.y = 0;
+	} else {
+		trans.y = (ms_monitor_bezelh / ms_height * sys_size.y) / float(_height);
+	}
+	screen()->monitor.mvmat.load_scale(scale.x, scale.y, 1.0);
+	screen()->monitor.mvmat.load_translation(trans.x, trans.y, 0.0);
+	
+	float vga_scale_y = vga_size.y / _height;
+	trans.y = trans.y + scale.y/2.f - vga_scale_y/2.f;
+	scale.x = vga_size.x / _width;
+	scale.y = vga_scale_y;
+	trans.x = (1.f - scale.x) / 2.f;
+	screen()->vga.mvmat.load_scale(scale.x, scale.y, 1.0);
+	screen()->vga.mvmat.load_translation(trans.x, trans.y, 0.0);
 
 	m_system->SetProperty("width",  str_format("%upx", m_size.x));
 	m_system->SetProperty("height", str_format("%upx", m_size.y));

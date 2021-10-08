@@ -34,8 +34,11 @@ public:
 	};
 
 private:
-	uint m_vga_aspect = 0;
-	uint m_vga_scaling = 0;
+	unsigned m_aspect_mode = 0;
+	double   m_aspect_ratio = .0;
+	unsigned m_window_scaling = 0;
+	unsigned m_scale_mode = 0;
+	bool     m_scale_integer = false;
 
 	Rml::Element *m_sysunit = nullptr, *m_sysbkgd = nullptr;
 	Rml::Element *m_btn_pause = nullptr;

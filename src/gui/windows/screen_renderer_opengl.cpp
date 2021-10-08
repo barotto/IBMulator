@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,12 +25,12 @@ ScreenRenderer_OpenGL::ScreenRenderer_OpenGL()
 :
 m_vertex_buffer(GL_INVALID_VALUE),
 m_quad_data{
-	-1.0f, -1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	-1.0f,  1.0f, 0.0f,
-	 1.0f, -1.0f, 0.0f,
-	 1.0f,  1.0f, 0.0f
+	0.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	1.0f, 1.0f, 0.0f
 }
 {
 	m_monitor.reflection_map = GL_INVALID_VALUE;
@@ -129,6 +129,11 @@ void ScreenRenderer_OpenGL::load_vga_program(std::string _vshader, std::string _
 	if(m_vga.uniforms.mvmat == -1) {
 		PWARNF(LOG_V2, LOG_GUI, "iModelView not found in shader program\n");
 	}
+	GLCALL( m_vga.uniforms.pmat = glGetUniformLocation(m_vga.program, "iProjection") );
+	if(m_vga.uniforms.pmat == -1) {
+		PWARNF(LOG_V2, LOG_GUI, "iProjection not found in shader program\n");
+	}
+
 	GLCALL( m_vga.uniforms.display_size = glGetUniformLocation(m_vga.program, "iDisplaySize") );
 	if(m_vga.uniforms.display_size == -1) {
 		PWARNF(LOG_V2, LOG_GUI, "iDisplaySize not found in shader program\n");
@@ -164,6 +169,7 @@ void ScreenRenderer_OpenGL::load_monitor_program(
 		throw std::exception();
 	}
 	
+	GLCALL( m_monitor.uniforms.pmat = glGetUniformLocation(m_monitor.program, "iProjection") );
 	GLCALL( m_monitor.uniforms.mvmat = glGetUniformLocation(m_monitor.program, "iModelView") );
 	GLCALL( m_monitor.uniforms.ambient = glGetUniformLocation(m_monitor.program, "iAmbientLight") );
 	GLCALL( m_monitor.uniforms.reflection_map = glGetUniformLocation(m_monitor.program, "iReflectionMap") );
@@ -212,13 +218,14 @@ void ScreenRenderer_OpenGL::store_vga_framebuffer(
 	GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
 }
 
-void ScreenRenderer_OpenGL::render_vga(const mat4f &_mvmat, const vec2i &_display_size, 
+void ScreenRenderer_OpenGL::render_vga(const mat4f &_pmat, const mat4f &_mvmat, const vec2i &_display_size, 
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale)
 {
 	// enable VGA shader program and set its uniforms
 	GLCALL( glUseProgram(m_vga.program) );
 	GLCALL( glUniformMatrix4fv(m_vga.uniforms.mvmat, 1, GL_FALSE, _mvmat.data()) );
+	GLCALL( glUniformMatrix4fv(m_vga.uniforms.pmat, 1, GL_FALSE, _pmat.data()) );
 	GLCALL( glUniform2iv(m_vga.uniforms.display_size, 1, _display_size) );
 	if(g_machine.is_on()) {
 		GLCALL( glUniform1f(m_vga.uniforms.brightness, _brightness) );
@@ -251,7 +258,7 @@ void ScreenRenderer_OpenGL::render_vga(const mat4f &_mvmat, const vec2i &_displa
 	render_quad();
 }
 
-void ScreenRenderer_OpenGL::render_monitor(const mat4f &_mvmat, float _ambient)
+void ScreenRenderer_OpenGL::render_monitor(const mat4f &_pmat, const mat4f &_mvmat, float _ambient)
 {
 	// draw the base structure with reflections, onto which the VGA image will be superimposed
 	
@@ -262,6 +269,7 @@ void ScreenRenderer_OpenGL::render_monitor(const mat4f &_mvmat, float _ambient)
 	GLCALL( glBindSampler(0, m_monitor.reflection_sampler) );
 	GLCALL( glUniform1i(m_monitor.uniforms.reflection_map, 0) );
 	
+	GLCALL( glUniformMatrix4fv(m_monitor.uniforms.pmat, 1, GL_FALSE, _pmat.data()) );
 	GLCALL( glUniformMatrix4fv(m_monitor.uniforms.mvmat, 1, GL_FALSE, _mvmat.data()) );
 	GLCALL( glUniform1f(m_monitor.uniforms.ambient, _ambient) );
 	

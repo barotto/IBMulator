@@ -7,10 +7,10 @@ layout(location = 0) in vec3 iVertex;
 out vec2 UV;
 
 uniform mat4 iModelView;
+uniform mat4 iProjection;
 
 void main()
 {
-	gl_Position = iModelView * vec4(iVertex,1);
-	UV = (iVertex.xy + vec2(1,1)) / 2.0;
-	UV.y = 1.0 - UV.y;
+	gl_Position = iProjection * (iModelView * vec4(iVertex,1));
+	UV = iVertex.xy;
 }

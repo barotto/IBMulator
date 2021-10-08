@@ -52,6 +52,7 @@ class RealisticScreen : public InterfaceScreen
 {
 public:
 	struct {
+		mat4f pmat;
 		mat4f mvmat;
 		float ambient;
 	} monitor;
@@ -91,7 +92,7 @@ private:
 
 	float m_scale = .0f;
 	enum DisplayAlign {
-		TOP, TOP_NOBEZEL, BOTTOM
+		TOP, TOP_NOBEZEL
 	};
 	unsigned m_display_align = DisplayAlign::TOP;
 	enum ZoomMode {
@@ -144,7 +145,6 @@ public:
 
 private:
 	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);
-	void  display_transform(int _width, int _height, const vec2f &_disp, const vec2f &_system, mat4f &_mvmat);
 
 	void set_slider_value(Rml::Element *_slider, float _xmin, float _value);
 

@@ -70,9 +70,14 @@ std::map<std::string, uint> GUI::ms_gui_sampler = {
 };
 
 std::map<std::string, uint> GUI::ms_display_aspect = {
-	{ "original", DISPLAY_ASPECT_ORIGINAL },
-	{ "adaptive", DISPLAY_ASPECT_ADAPTIVE },
-	{ "scaled", DISPLAY_ASPECT_SCALED }
+	{ "vga",  DISPLAY_ASPECT_VGA },
+	{ "area", DISPLAY_ASPECT_AREA }
+};
+
+std::map<std::string, uint> GUI::ms_display_scale = {
+	{ "1x",      DISPLAY_SCALE_1X },
+	{ "fill",    DISPLAY_SCALE_FILL },
+	{ "integer", DISPLAY_SCALE_INTEGER }
 };
 
 const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEvent::Func&,GUI::EventPhase)>>

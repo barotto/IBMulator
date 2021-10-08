@@ -7,14 +7,12 @@ out vec2 ReflectionUV;
 
 uniform vec2 iVGAScale;
 uniform vec2 iReflectionScale;
+uniform mat4 iProjection;
 uniform mat4 iModelView;
 
 void main()
 {
-	gl_Position = iModelView * vec4(iVertex,1);
-	UV = (iVertex.xy*iVGAScale + vec2(1,1)) / 2.0;
-	UV.y = 1.0 - UV.y;
-
-	ReflectionUV = (iVertex.xy*iReflectionScale + vec2(1,1)) / 2.0;
-	ReflectionUV.y = 1.0 - ReflectionUV.y;
+	gl_Position = iProjection * (iModelView * vec4(iVertex,1));
+	UV = iVertex.xy * iVGAScale;
+	ReflectionUV = iVertex.xy*iReflectionScale - vec2((iReflectionScale - 1.0) / 2.0);
 }

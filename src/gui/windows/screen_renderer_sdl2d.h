@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020  Marco Bortolin
+ * Copyright (C) 2019-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,13 +45,13 @@ public:
 	
 	void store_vga_framebuffer(FrameBuffer &_fb, const vec2i &_vga_res);
 	
-	void render_vga(const mat4f &_mvmat, const vec2i &_display_size, 
+	void render_vga(const mat4f &_pmat, const mat4f &_mvmat, const vec2i &_display_size, 
 		float _brightness, float _contrast, float _saturation, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale);
-	void render_monitor(const mat4f &_mvmat, float _ambient);
+	void render_monitor(const mat4f &_pmat, const mat4f &_mvmat, float _ambient);
 	
 private:
-	void mvmat_to_rect(const mat4f &_mvmat, SDL_Rect &rect_);
+	SDL_Rect to_rect(const mat4f &_pmat, const mat4f &_mvmat);
 };
 
 #endif

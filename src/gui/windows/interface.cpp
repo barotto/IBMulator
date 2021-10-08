@@ -102,6 +102,7 @@ InterfaceScreen::InterfaceScreen(GUI *_gui)
 	}
 	
 	vga.mvmat.load_identity();
+	vga.pmat.load_identity();
 	vga.size = 0;
 	vga.brightness = 1.f;
 	vga.contrast = 1.f;
@@ -116,7 +117,7 @@ void InterfaceScreen::render()
 {
 	sync_with_device();
 	
-	m_renderer->render_vga(vga.mvmat, vga.size,
+	m_renderer->render_vga(vga.pmat, vga.mvmat, vga.size,
 		vga.brightness, vga.contrast, vga.saturation,
 		0, 0, 0);
 }

@@ -66,8 +66,9 @@ public:
 		VGADisplay display; // GUI-Machine interface
 		
 		vec2i size;         // size in pixels of the vga image inside the interface
-		mat4f mvmat;        // position of the vga image inside the interface
-		
+		mat4f mvmat;        // position and size of the vga image inside the interface
+		mat4f pmat;         // projection matrix
+
 		float brightness;
 		float contrast;
 		float saturation;

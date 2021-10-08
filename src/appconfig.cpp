@@ -67,11 +67,12 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ CAPTURE_VIDEO_QUALITY, "80"   }
 	} },
 	{ DISPLAY_SECTION, {
-		{ DISPLAY_NORMAL_ASPECT,     "original" },
-		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
+		{ DISPLAY_NORMAL_SCALE,      "fill" },
+		{ DISPLAY_NORMAL_ASPECT,     "4:3"  },
 		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
-		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
+		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
 		{ DISPLAY_REALISTIC_FILTER,  "bicubic"  },
+		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
 		{ DISPLAY_REALISTIC_AMBIENT, "1.0" },
 		{ DISPLAY_BRIGHTNESS,        "1.0" },
 		{ DISPLAY_CONTRAST,          "1.0" },
@@ -371,18 +372,22 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ DISPLAY_SECTION,
 "; The following parameters are used for normal and compact GUI modes only:\n"
-";    normal_aspect: VGA aspect ratio\n"
-";                   Possible values: original, adaptive, scaled.\n"
-";                    original: 4:3 aspect ratio\n"
-";                    adaptive: screen will be scaled maintaining the aspect ratio of the current video mode\n"
-";                      scaled: screen will be scaled to fill your monitor\n"
-";    normal_shader: GLSL fragment shader to use for VGA rendering\n"
-";    normal_filter: VGA scaling filter\n"
+";     normal_scale: VGA image scaling mode.\n"
+";                   Possible values: fill, integer\n"
+";                       fill: scale to fill the available area\n"
+";                    integer: scale only at integer multiples\n"
+";    normal_aspect: VGA aspect ratio.\n"
+";                   Possible values: W:H, vga, area\n"
+";                     W:H: use the specified aspect ratio (4:3, 16:10, ...)\n"
+";                     vga: maintain the current VGA mode ratio\n"
+";                    area: same as the available viewing area\n"
+";    normal_filter: VGA scaling filter.\n"
 ";                   Possible values: nearest, bilinear, bicubic\n"
+";    normal_shader: GLSL fragment shader to use for VGA rendering\n"
 "; The following parameters are used for realistic GUI mode only:\n"
-"; realistic_shader: GLSL fragment shader to use for VGA rendering\n"
 "; realistic_filter: VGA scaling filter\n"
 ";                   Possible values: nearest, bilinear, bicubic\n"
+"; realistic_shader: GLSL fragment shader to use for VGA rendering\n"
 ";realistic_ambient: Intensity of the ambient light. It is a weight for the monitor reflection map.\n"
 ";                   Use a number between 0.0 and 1.0. 0.0 gives a pitch-black monitor.\n"
 "; The following parameters are used for any GUI mode:\n"
@@ -610,11 +615,12 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		CAPTURE_VIDEO_FORMAT,
 	} },
 	{ DISPLAY_SECTION, {
+		DISPLAY_NORMAL_SCALE,
 		DISPLAY_NORMAL_ASPECT,
-		DISPLAY_NORMAL_SHADER,
 		DISPLAY_NORMAL_FILTER,
-		DISPLAY_REALISTIC_SHADER,
+		DISPLAY_NORMAL_SHADER,
 		DISPLAY_REALISTIC_FILTER,
+		DISPLAY_REALISTIC_SHADER,
 		DISPLAY_REALISTIC_AMBIENT,
 		DISPLAY_BRIGHTNESS,
 		DISPLAY_CONTRAST,
