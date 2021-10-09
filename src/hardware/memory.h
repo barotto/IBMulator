@@ -248,15 +248,49 @@ private:
 
 
 	// static RAM buffer read/write for mem mapping
-	template<class T>
-	static uint32_t s_read(uint32_t _addr, void *_priv) {
-		return *(T*)(&((Memory*)_priv)->m_ram.buffer[_addr]);
-	}
-	template<class T>
-	static void s_write(uint32_t _addr, uint32_t _value, void *_priv) {
-		*(T*)(&((Memory*)_priv)->m_ram.buffer[_addr]) = _value;
-	}
+	
+	template<typename T>
+	static uint32_t s_read(uint32_t _addr, void *_priv)
+	{ assert(false); return ~0; }
+	
+	template<typename T>
+	static void s_write(uint32_t _addr, uint32_t _value, void *_priv)
+	{ assert(false); }
 };
+
+template<> inline uint32_t Memory::s_read<uint8_t>(uint32_t _addr, void *_priv)
+{
+	return ((Memory*)_priv)->m_ram.buffer[_addr];
+}
+template<> inline uint32_t Memory::s_read<uint16_t>(uint32_t _addr, void *_priv)
+{
+	return ((Memory*)_priv)->m_ram.buffer[_addr] |
+	       ((Memory*)_priv)->m_ram.buffer[_addr + 1] << 8;
+}
+template<> inline uint32_t Memory::s_read<uint32_t>(uint32_t _addr, void *_priv)
+{
+	return ((Memory*)_priv)->m_ram.buffer[_addr] | 
+	       ((Memory*)_priv)->m_ram.buffer[_addr + 1] << 8  |
+	       ((Memory*)_priv)->m_ram.buffer[_addr + 2] << 16 |
+	       ((Memory*)_priv)->m_ram.buffer[_addr + 3] << 24;
+}
+
+template<> inline void Memory::s_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
+{
+	((Memory*)_priv)->m_ram.buffer[_addr] = _value;
+}
+template<> inline void Memory::s_write<uint16_t>(uint32_t _addr, uint32_t _value, void *_priv)
+{
+	((Memory*)_priv)->m_ram.buffer[_addr]     = _value;
+	((Memory*)_priv)->m_ram.buffer[_addr + 1] = _value >> 8;
+}
+template<> inline void Memory::s_write<uint32_t>(uint32_t _addr, uint32_t _value, void *_priv)
+{
+	((Memory*)_priv)->m_ram.buffer[_addr]     = _value;
+	((Memory*)_priv)->m_ram.buffer[_addr + 1] = _value >> 8;
+	((Memory*)_priv)->m_ram.buffer[_addr + 2] = _value >> 16;
+	((Memory*)_priv)->m_ram.buffer[_addr + 3] = _value >> 24;
+}
 
 template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles) const noexcept;
 template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles) const noexcept;
