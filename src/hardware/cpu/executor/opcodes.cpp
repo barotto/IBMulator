@@ -1532,7 +1532,7 @@ void CPUExecutor::IDIV_ed()
  * IMUL-Signed Multiply
  */
 
-inline static int mul_cycles_386(int _m)
+inline static int mul_cycles_386(int64_t _m)
 {
 	/* The 80386 uses an early-out multiply algorithm. The actual number of
 	clocks depends on the position of the most significant bit in the
