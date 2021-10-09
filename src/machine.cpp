@@ -804,7 +804,7 @@ void Machine::cmd_switch_power()
 
 void Machine::cmd_pause(bool _show_notice)
 {
-	m_cmd_queue.push([&] () {
+	m_cmd_queue.push([=] () {
 		if(!m_cpu_single_step) {
 			pause();
 			if(_show_notice) {
@@ -817,7 +817,7 @@ void Machine::cmd_pause(bool _show_notice)
 
 void Machine::cmd_resume(bool _show_notice)
 {
-	m_cmd_queue.push([&] () {
+	m_cmd_queue.push([=] () {
 		if(m_cpu_single_step) {
 			resume();
 			if(_show_notice) {
