@@ -64,12 +64,28 @@ private:
 	int load_file(const std::string &_filename, uint32_t _destaddr);
 	void load_dir(const std::string &_dirname);
 	void load_archive(const std::string &_filename);
-	
 
-	template<class T>
-	static uint32_t s_read(uint32_t _addr, void *_priv) {
-		return *(T*)&(((SystemROM*)_priv)->m_data)[_addr&0x7FFFF];
-	}
+
+	template<typename T>
+	static uint32_t s_read(uint32_t _addr, void *_priv)
+	{ assert(false); return ~0; }
 };
+
+template<> inline uint32_t SystemROM::s_read<uint8_t>(uint32_t _addr, void *_priv)
+{
+	return ((SystemROM*)_priv)->m_data[_addr&0x7FFFF];
+}
+template<> inline uint32_t SystemROM::s_read<uint16_t>(uint32_t _addr, void *_priv)
+{
+	return ((SystemROM*)_priv)->m_data[_addr&0x7FFFF] |
+	       ((SystemROM*)_priv)->m_data[(_addr + 1)&0x7FFFF] << 8;
+}
+template<> inline uint32_t SystemROM::s_read<uint32_t>(uint32_t _addr, void *_priv)
+{
+	return ((SystemROM*)_priv)->m_data[_addr&0x7FFFF] |
+	       ((SystemROM*)_priv)->m_data[(_addr + 1)&0x7FFFF] << 8  |
+	       ((SystemROM*)_priv)->m_data[(_addr + 2)&0x7FFFF] << 16 |
+	       ((SystemROM*)_priv)->m_data[(_addr + 3)&0x7FFFF] << 24;
+}
 
 #endif
