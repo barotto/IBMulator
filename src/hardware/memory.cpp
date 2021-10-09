@@ -634,7 +634,7 @@ void Memory::s_debug_trap_ASCII(uint32_t _address,  // address
 	const char *assign="<-", *read="->";
 	const char *op;
 	uint len = 20;
-	char buf[len+1];
+	char buf[20 + 1];
 	buf[0] = 0;
 	buf[len] = 0;
 	uint32_t addr = _address;

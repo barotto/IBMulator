@@ -97,7 +97,7 @@ const std::string & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _
 	str_format(str, "%04X:%04X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _ip, dline, res);
 
 	return str;
-};
+}
 
 void SysDebugger286::update()
 {

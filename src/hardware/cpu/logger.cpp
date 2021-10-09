@@ -484,7 +484,7 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 	str = str + " " + analize;
 
 	return str;
-};
+}
 
 void CPULogger::dump(const std::string _filename)
 {

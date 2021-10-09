@@ -217,7 +217,7 @@ bool RmlSystemInterface::LogMessage(Rml::Log::Type type, const std::string &mess
 	LOG(logpri,LOG_GUI,verb,"%s\n", message.c_str());
 
 	return true;
-};
+}
 
 
 

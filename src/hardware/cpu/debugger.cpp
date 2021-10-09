@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -134,7 +134,7 @@ uint32_t CPUDebugger::get_hex_value(char *_str, char *&_hex, CPUCore *_core)
 		_hex++;
 	};
 	return (regval + value)*mult;
-};
+}
 
 unsigned CPUDebugger::get_seg_idx(char *_str)
 {
@@ -379,7 +379,7 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 		}
 	}
 	return result;
-};
+}
 
 const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 		CPUCore *core, Memory *mem)

@@ -48,7 +48,7 @@
 #if SER_POSIX
 	extern "C" {
 	#include <termios.h>
-	};
+	}
 	typedef int SOCKET;
 #endif
 

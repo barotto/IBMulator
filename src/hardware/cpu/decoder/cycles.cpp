@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -612,38 +612,38 @@ static const Cycles cycles_0FBA[8*2] = {
 
 const Cycles * CPUDecoder::ms_cycles[CTB_COUNT] = {
 	// main tables
-	[CTB_IDX_NONE] = cycles_none,
-	[CTB_IDX_0F] = cycles_0F,
+	cycles_none, // CTB_IDX_NONE
+	cycles_0F,   // CTB_IDX_0F
 
 	// Group 1
-	[CTB_IDX_80] = cycles_80,
-	[CTB_IDX_81] = cycles_81,
-	[CTB_IDX_83] = cycles_83,
+	cycles_80,   // CTB_IDX_80
+	cycles_81,   // CTB_IDX_81
+	cycles_83,   // CTB_IDX_83
 
 	// Group 2
-	[CTB_IDX_C0] = cycles_C0,
-	[CTB_IDX_C1] = cycles_C1,
-	[CTB_IDX_D0] = cycles_D0,
-	[CTB_IDX_D1] = cycles_D1,
-	[CTB_IDX_D2] = cycles_D2,
-	[CTB_IDX_D3] = cycles_D3,
+	cycles_C0,   // CTB_IDX_C0
+	cycles_C1,   // CTB_IDX_C1
+	cycles_D0,   // CTB_IDX_D0
+	cycles_D1,   // CTB_IDX_D1
+	cycles_D2,   // CTB_IDX_D2
+	cycles_D3,   // CTB_IDX_D3
 
 	// Group 3
-	[CTB_IDX_F6] = cycles_F6,
-	[CTB_IDX_F7] = cycles_F7,
+	cycles_F6,   // CTB_IDX_F6
+	cycles_F7,   // CTB_IDX_F7
 
 	// Group 4
-	[CTB_IDX_FE] = cycles_FE,
+	cycles_FE,   // CTB_IDX_FE
 
 	// Group 5
-	[CTB_IDX_FF] = cycles_FF,
+	cycles_FF,   // CTB_IDX_FF
 
 	// Group 6
-	[CTB_IDX_0F00] = cycles_0F00,
+	cycles_0F00, // CTB_IDX_0F00
 
 	// Group 7
-	[CTB_IDX_0F01] = cycles_0F01,
+	cycles_0F01, // CTB_IDX_0F01
 
 	// Group 8
-	[CTB_IDX_0FBA] = cycles_0FBA
+	cycles_0FBA  // CTB_IDX_0FBA
 };

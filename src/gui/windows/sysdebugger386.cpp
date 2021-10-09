@@ -125,7 +125,7 @@ const std::string & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * 
 	str_format(str, "%04X:%08X &nbsp; %s &nbsp; %s", REG_CS.sel.value, _eip, dline, res);
 
 	return str;
-};
+}
 
 void SysDebugger386::update()
 {
