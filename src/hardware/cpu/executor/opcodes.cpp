@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -590,7 +590,7 @@ void CPUExecutor::BSR_rd_ed()
  * BT-Bit Test
  */
 
-void CPUExecutor::BT_w(uint16_t _op1, uint16_t _op2)
+void CPUExecutor::BT_w(uint32_t _op1, uint16_t _op2)
 {
 	if(CPU_FAMILY <= CPU_386) {
 		//TODO should be the same for 486/586
@@ -603,7 +603,7 @@ void CPUExecutor::BT_w(uint16_t _op1, uint16_t _op2)
 	SET_FLAG(CF, (_op1 >> (_op2 & 0xf)) & 1);
 }
 
-void CPUExecutor::BT_d(uint32_t _op1, uint32_t _op2)
+void CPUExecutor::BT_d(uint64_t _op1, uint32_t _op2)
 {
 	if(CPU_FAMILY <= CPU_386) {
 		//TODO should be the same for 486/586
