@@ -172,7 +172,23 @@ private:
 				m_cycles_ahead = 0;
 			}
 		}
-		T data = *(T*)&m_s.pq[pq_idx()];
+		T data;
+		switch(L) {
+			case 1:
+				data = m_s.pq[pq_idx()];
+				break;
+			case 2:
+				data = m_s.pq[pq_idx()] | 
+				       m_s.pq[pq_idx() + 1] << 8;
+				break;
+			case 4:
+				data = m_s.pq[pq_idx()] | 
+				       m_s.pq[pq_idx() + 1] << 8  |
+				       m_s.pq[pq_idx() + 2] << 16 |
+				       m_s.pq[pq_idx() + 3] << 24;
+				break;
+			default: assert(false); break;
+		}
 		m_s.pq_len -= L;
 		m_s.cseip += L;
 		m_s.eip += L;

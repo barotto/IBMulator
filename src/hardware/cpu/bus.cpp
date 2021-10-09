@@ -205,19 +205,30 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 			assert((PAGE_OFFSET(m_s.pq_tail) + adv) <= 4096);
 			try {
 				switch(adv) {
-					case 2: // word aligned
-						*((uint16_t*)pq_ptr) = mmu_read<2>(m_s.pq_tail, c);
+					default: assert(false); break;
+					case 2: { // word aligned
+						uint16_t v = mmu_read<2>(m_s.pq_tail, c);
+						*pq_ptr = v;
+						*(pq_ptr + 1) = v >> 8;
+
 						break;
+					}
 					case 1: // 1-byte unaligned (right)
 						*pq_ptr = mmu_read<1>(m_s.pq_tail, c);
 						break;
-					case 4: // dword aligned
-						*((uint32_t*)pq_ptr) = mmu_read<4>(m_s.pq_tail, c);
+					case 4: { // dword aligned
+						uint32_t v = mmu_read<4>(m_s.pq_tail, c);
+						*pq_ptr = v;
+						*(pq_ptr + 1) = v >> 8;
+						*(pq_ptr + 2) = v >> 16;
+						*(pq_ptr + 3) = v >> 24;
 						break;
+					}
 					case 3: { // 1-byte unaligned (left)
 						uint32_t v = mmu_read<4>(m_s.pq_tail-1, c);
 						*pq_ptr = v >> 8;
-						*((uint16_t*)(pq_ptr+1)) = v >> 16;
+						*(pq_ptr + 1) = v >> 16;
+						*(pq_ptr + 2) = v >> 24;
 						break;
 					}
 				}
@@ -237,19 +248,29 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 			}
 		} else {
 			switch(adv) {
-				case 2: // word aligned
-					*((uint16_t*)pq_ptr) = g_memory.read<2>(m_s.pq_tail, c);
+				default: assert(false); break;
+				case 2:  { // word aligned
+					uint16_t v = g_memory.read<2>(m_s.pq_tail, c);
+					*pq_ptr = v;
+					*(pq_ptr + 1) = v >> 8;
 					break;
+				}
 				case 1: // 1-byte unaligned (right)
 					*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
 					break;
-				case 4: // dword aligned
-					*((uint32_t*)pq_ptr) = g_memory.read<4>(m_s.pq_tail, c);
+				case 4: { // dword aligned
+					uint32_t v = g_memory.read<4>(m_s.pq_tail, c);
+					*pq_ptr = v;
+					*(pq_ptr + 1) = v >> 8;
+					*(pq_ptr + 2) = v >> 16;
+					*(pq_ptr + 3) = v >> 24;
 					break;
+				}
 				case 3: { // 1-byte unaligned (left)
 					uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
 					*pq_ptr = v >> 8;
-					*((uint16_t*)(pq_ptr+1)) = v >> 16;
+					*(pq_ptr + 1) = v >> 16;
+					*(pq_ptr + 2) = v >> 24;
 					break;
 				}
 			}
