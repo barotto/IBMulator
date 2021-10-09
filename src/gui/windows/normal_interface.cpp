@@ -78,6 +78,10 @@ void NormalInterface::create()
 		m_aspect_ratio = .0;
 		m_aspect_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_ASPECT,
 			GUI::ms_display_aspect);
+		if(m_aspect_mode == DISPLAY_ASPECT_ORIGINAL) {
+			m_aspect_ratio = ORIGINAL_MONITOR_RATIO;
+			m_aspect_mode = DISPLAY_ASPECT_FIXED;
+		}
 	}
 	m_scale_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_SCALE,
 		GUI::ms_display_scale);

@@ -70,8 +70,9 @@ std::map<std::string, uint> GUI::ms_gui_sampler = {
 };
 
 std::map<std::string, uint> GUI::ms_display_aspect = {
-	{ "vga",  DISPLAY_ASPECT_VGA },
-	{ "area", DISPLAY_ASPECT_AREA }
+	{ "vga",      DISPLAY_ASPECT_VGA },
+	{ "area",     DISPLAY_ASPECT_AREA },
+	{ "original", DISPLAY_ASPECT_ORIGINAL },
 };
 
 std::map<std::string, uint> GUI::ms_display_scale = {

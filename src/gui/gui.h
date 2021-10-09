@@ -49,8 +49,11 @@ enum DisplaySampler {
 enum DisplayAspect {
 	DISPLAY_ASPECT_FIXED,
 	DISPLAY_ASPECT_VGA,
-	DISPLAY_ASPECT_AREA
+	DISPLAY_ASPECT_AREA,
+	DISPLAY_ASPECT_ORIGINAL
 };
+
+constexpr double ORIGINAL_MONITOR_RATIO = 4.0 / 3.0;
 
 enum DisplayScale {
 	DISPLAY_SCALE_1X,

@@ -265,7 +265,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 		vga_size  = display_size(_width, _height,
 				ms_vga_left, // x offset
 				1.f, // scale
-				4.f / 3.f // aspect
+				ORIGINAL_MONITOR_RATIO // aspect
 				);
 		mon_size = display_size(_width, _height,
 				0.f, // x offset
@@ -286,7 +286,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 		vga_size = display_size(sys_size.x, sys_size.y,
 					ms_monitor_bezelw + ms_vga_left, // x offset
 					1.f, // scale
-					4.f / 3.f // aspect
+					ORIGINAL_MONITOR_RATIO // aspect
 					);
 		mon_size = display_size(sys_size.x, sys_size.y,
 					ms_monitor_bezelw - 1.f, // x offset
