@@ -126,6 +126,7 @@ void Serial::install()
 	m_s.portmap[SER_COM2] = SER_PORT_DISABLED;
 	m_s.portmap[SER_COM3] = SER_PORT_DISABLED;
 	m_s.portmap[SER_COM4] = SER_PORT_DISABLED;
+	m_s.enabled = false;
 
 	PINFOF(LOG_V0, LOG_COM, "Installed %u Serial port%s\n", SER_PORTS, SER_PORTS>1?"s":"");
 }
