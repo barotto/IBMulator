@@ -110,30 +110,31 @@ void Machine::restore_state(StateBuf &_state)
 	h.data_size = sizeof(Timer) * MAX_TIMERS;
 	_state.check(h);
 
+	Timer savtimer;
 	//for every timer in the savestate
-	for(uint t=0; t<MAX_TIMERS; t++) {
-		Timer *savtimer = (Timer*)_state.get_buf();
-		if(savtimer->in_use) {
-			uint mchtidx;
+	for(unsigned t=0; t<MAX_TIMERS; t++) {
+		memcpy(&savtimer, _state.get_buf(), sizeof(Timer));
+		if(savtimer.in_use) {
+			unsigned mchtidx;
 			//find the correct machine timer, which must be already registered
 			for(mchtidx=0; mchtidx<MAX_TIMERS; mchtidx++) {
-				if(strcmp(m_timers[mchtidx].name, savtimer->name) == 0) {
+				if(strcmp(m_timers[mchtidx].name, savtimer.name) == 0) {
 					break;
 				}
 			}
 			if(mchtidx>=MAX_TIMERS) {
-				PERRF(LOG_MACHINE, "cant find timer %s\n", savtimer->name);
+				PERRF(LOG_MACHINE, "Cannot find timer %s\n", savtimer.name);
 				throw std::exception();
 			}
 			if(!m_timers[mchtidx].in_use) {
-				PERRF(LOG_MACHINE, "timer %s is not in use\n", m_timers[mchtidx].name);
+				PERRF(LOG_MACHINE, "Timer %s is not in use\n", m_timers[mchtidx].name);
 				throw std::exception();
 			}
-			m_timers[mchtidx].period = savtimer->period;
-			m_timers[mchtidx].time_to_fire = savtimer->time_to_fire;
-			m_timers[mchtidx].active = savtimer->active;
-			m_timers[mchtidx].continuous = savtimer->continuous;
-			m_timers[mchtidx].func_name = savtimer->func_name;
+			m_timers[mchtidx].period = savtimer.period;
+			m_timers[mchtidx].time_to_fire = savtimer.time_to_fire;
+			m_timers[mchtidx].active = savtimer.active;
+			m_timers[mchtidx].continuous = savtimer.continuous;
+			m_timers[mchtidx].func_name = savtimer.func_name;
 		}
 		_state.advance(sizeof(Timer));
 	}

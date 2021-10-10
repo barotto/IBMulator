@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -38,14 +38,15 @@ bool StateHeader::check(uint8_t *_raw, size_t _raw_size) const
 		return false;
 	}
 
-	header_raw_t *h = (header_raw_t *)_raw;
-	if(h->header_size != sizeof(header_raw_t) + h->name_len) {
+	header_raw_t h;
+	memcpy(&h, _raw, sizeof(header_raw_t));
+	if(h.header_size != sizeof(header_raw_t) + h.name_len) {
 		return false;
 	}
-	if(_raw_size < h->header_size + h->data_size) {
+	if(_raw_size < h.header_size + h.data_size) {
 		return false;
 	}
-	if(h->name_len) {
+	if(h.name_len) {
 		return (name.compare((const char*)(_raw+sizeof(header_raw_t))) == 0);
 	}
 
@@ -72,25 +73,26 @@ size_t StateHeader::read(uint8_t *_source, size_t _source_size)
 		throw std::exception();
 	}
 
-	header_raw_t *h = (header_raw_t *)_source;
-	if(h->header_size != sizeof(header_raw_t) + h->name_len) {
+	header_raw_t h;
+	memcpy(&h, _source, sizeof(header_raw_t));
+	if(h.header_size != sizeof(header_raw_t) + h.name_len) {
 		PERRF(LOG_MACHINE, "StateHeader::read(): header_size mismatch (%u != %u)\n",
-				h->header_size, sizeof(header_raw_t) + h->name_len);
+				h.header_size, sizeof(header_raw_t) + h.name_len);
 		throw std::exception();
 	}
 
-	data_size = h->data_size;
+	data_size = h.data_size;
 
-	if(_source_size < h->header_size + h->data_size) {
+	if(_source_size < h.header_size + h.data_size) {
 		PERRF(LOG_MACHINE, "StateHeader::read(): state buffer too small (%u < %u)\n",
-				_source_size, h->header_size + h->data_size);
+				_source_size, h.header_size + h.data_size);
 		throw std::exception();
 	}
 
-	if(h->name_len) {
+	if(h.name_len) {
 		//find the null terminator
 		_source += sizeof(header_raw_t);
-		size_t l = h->name_len;
+		size_t l = h.name_len;
 		uint8_t *s = _source;
 		while(*s++!=0 && l--);
 		if(s==0) {
@@ -101,7 +103,7 @@ size_t StateHeader::read(uint8_t *_source, size_t _source_size)
 		name = (char*)_source;
 	}
 
-	return h->header_size;
+	return h.header_size;
 }
 
 size_t StateHeader::write(uint8_t *_dest, size_t _dest_size) const
