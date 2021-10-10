@@ -94,6 +94,8 @@ void Window::close()
 		hide();
 		m_wnd->Close();
 		m_gui->unload_document(m_wnd);
+		m_wnd = nullptr;
+		m_evts_added = false;
 	}
 }
 
