@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -608,7 +608,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			cs_y++;
 			y++;
 		}
-	} while(--text_rows >= 0);
+	} while(--text_rows > 0);
 
 	m_s.h_panning = _tm_info->h_panning;
 	m_s.prev_cursor_x = _cursor_x;
