@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,16 +27,12 @@ struct StateHeader
 	size_t data_size;
 	std::string name;
 
-	size_t read(uint8_t *_source, size_t _source_size);
+	size_t read(const uint8_t *_source, size_t _source_size);
 	size_t write(uint8_t *_dest, size_t _dest_size) const;
-	bool check(uint8_t *_raw, size_t _raw_size) const;
+	bool check(const uint8_t *_raw, size_t _raw_size) const;
 	size_t get_size() const;
 };
 
-/* TODO working with binary blobs is not the best solution.
- * first of all it's not portable, and also it's error prone.
- * maybe I should use something like BSON
- */
 class StateBuf
 {
 private:
@@ -59,17 +55,17 @@ public:
 	void seek(size_t _pos);
 	void advance(size_t _off);
 	void skip();
-	void get_next_lump_header(StateHeader &);
-	std::string get_basename() { return m_basename; }
+	void get_next_lump_header(StateHeader &_header) const;
 
-	inline uint8_t * get_buf() { return m_curptr; }
-	inline size_t get_size() { return m_size; }
-	inline size_t get_bytesleft() {
+	std::string get_basename() const { return m_basename; }
+	constexpr const uint8_t * get_buf() const { return m_curptr; }
+	constexpr size_t get_size() const { return m_size; }
+	constexpr size_t get_bytesleft() const {
 		return m_size - (m_curptr - m_buf);
 	}
 
 	void load(const std::string &_path);
-	void save(const std::string &_path);
+	void save(const std::string &_path) const;
 };
 
 #endif

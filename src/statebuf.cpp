@@ -32,7 +32,7 @@ struct header_raw_t
 	size_t name_len;
 };
 
-bool StateHeader::check(uint8_t *_raw, size_t _raw_size) const
+bool StateHeader::check(const uint8_t *_raw, size_t _raw_size) const
 {
 	if(_raw_size < sizeof(header_raw_t)) {
 		return false;
@@ -62,7 +62,7 @@ size_t StateHeader::get_size() const
 	return sizeof(header_raw_t) + namelen;
 }
 
-size_t StateHeader::read(uint8_t *_source, size_t _source_size)
+size_t StateHeader::read(const uint8_t *_source, size_t _source_size)
 {
 	data_size = 0;
 	name = "";
@@ -93,7 +93,7 @@ size_t StateHeader::read(uint8_t *_source, size_t _source_size)
 		//find the null terminator
 		_source += sizeof(header_raw_t);
 		size_t l = h.name_len;
-		uint8_t *s = _source;
+		const uint8_t *s = _source;
 		while(*s++!=0 && l--);
 		if(s==0) {
 			//terminator not found, we have a problem
@@ -222,7 +222,7 @@ void StateBuf::check(const StateHeader &_header)
 	m_curptr += _header.get_size();
 }
 
-void StateBuf::get_next_lump_header(StateHeader &_header)
+void StateBuf::get_next_lump_header(StateHeader &_header) const
 {
 	_header.read(m_curptr, get_bytesleft());
 }
@@ -259,7 +259,7 @@ void StateBuf::load(const std::string &_path)
 	m_last_restore = true;
 }
 
-void StateBuf::save(const std::string &_path)
+void StateBuf::save(const std::string &_path) const
 {
 	std::ofstream binfile(_path.c_str(), std::ios::binary);
 
