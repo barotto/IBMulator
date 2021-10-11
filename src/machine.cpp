@@ -134,7 +134,7 @@ void Machine::restore_state(StateBuf &_state)
 			m_timers[mchtidx].time_to_fire = savtimer.time_to_fire;
 			m_timers[mchtidx].active = savtimer.active;
 			m_timers[mchtidx].continuous = savtimer.continuous;
-			m_timers[mchtidx].func_name = savtimer.func_name;
+			m_timers[mchtidx].data = savtimer.data;
 		}
 		_state.advance(sizeof(Timer));
 	}
@@ -558,12 +558,12 @@ bool Machine::update_timers(uint64_t _cpu_time)
 				m_s.next_timer_time = m_timers[thistimer].time_to_fire;
 			}
 		}
-		if(m_timers[thistimer].fire != nullptr) {
+		if(m_timer_fn[thistimer] != nullptr) {
 			//the current time is when the timer fires
 			//virt_time must advance in a monotonic way (that's why we use a map)
 			m_s.virt_time = thistimer_time;
 			m_mt_virt_time = thistimer_time;
-			m_timers[thistimer].fire(m_s.virt_time);
+			m_timer_fn[thistimer](m_s.virt_time);
 			if(m_timers[thistimer].time_to_fire <= _cpu_time) {
 				// the timer set itself to fire again before or at the time point
 				// we need to reorder
@@ -580,7 +580,7 @@ void Machine::set_single_step(bool _val)
 	m_cpu_single_step = _val;
 }
 
-int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigned _func_name)
+int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigned _data)
 {
 	unsigned timer = NULL_TIMER_HANDLE;
 
@@ -611,8 +611,8 @@ int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigne
 	m_timers[timer].time_to_fire = 0;
 	m_timers[timer].active = false;
 	m_timers[timer].continuous = false;
-	m_timers[timer].fire = _func;
-	m_timers[timer].func_name = _func_name;
+	m_timers[timer].data = _data;
+	m_timer_fn[timer] = _func;
 	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name.c_str());
 
 	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name.c_str());
@@ -628,7 +628,7 @@ void Machine::unregister_timer(int &_timer)
 	assert(_timer < MAX_TIMERS);
 	m_timers[_timer].in_use = false;
 	m_timers[_timer].active = false;
-	m_timers[_timer].fire = nullptr;
+	m_timer_fn[_timer] = nullptr;
 	_timer = NULL_TIMER_HANDLE;
 }
 
@@ -674,12 +674,12 @@ uint64_t Machine::get_timer_eta(unsigned _timer) const
 	return (m_timers[_timer].time_to_fire - m_s.virt_time);
 }
 
-void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _func_name)
+void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _data)
 {
 	assert(_timer<m_num_timers);
 
-	m_timers[_timer].fire = _func;
-	m_timers[_timer].func_name = _func_name;
+	m_timer_fn[_timer] = _func;
+	m_timers[_timer].data = _data;
 }
 
 void Machine::register_irq(uint8_t _irq, const char* _name)
