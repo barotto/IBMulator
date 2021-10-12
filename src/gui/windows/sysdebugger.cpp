@@ -238,12 +238,12 @@ void SysDebugger::on_es_dump(Rml::Event &)
 
 void SysDebugger::on_cmd_save_state(Rml::Event &)
 {
-	g_program.save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0}, nullptr, nullptr);
+	g_program.save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0,0}, nullptr, nullptr);
 }
 
 void SysDebugger::on_cmd_restore_state(Rml::Event &)
 {
-	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0}, nullptr, nullptr);
+	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0,0}, nullptr, nullptr);
 }
 
 void SysDebugger::on_CPU_step(Rml::Event &)

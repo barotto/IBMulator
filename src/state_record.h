@@ -25,10 +25,11 @@
 #include "filesys.h"
 #include <SDL.h>
 
-#define STATE_RECORD_BASE "savestate_"
-#define STATE_FILE_BASE   "state"
-#define QUICKSAVE_RECORD  STATE_RECORD_BASE "quick"
-#define QUICKSAVE_DESC    "QUICKSAVE"
+#define STATE_RECORD_VERSION 1
+#define STATE_RECORD_BASE    "savestate_"
+#define STATE_FILE_BASE      "state"
+#define QUICKSAVE_RECORD     STATE_RECORD_BASE "quick"
+#define QUICKSAVE_DESC       "QUICKSAVE"
 
 class StateRecord
 {
@@ -38,6 +39,7 @@ public:
 		std::string user_desc;
 		std::string config_desc;
 		time_t mtime;
+		unsigned version;
 	};
 private:
 	std::string m_path;

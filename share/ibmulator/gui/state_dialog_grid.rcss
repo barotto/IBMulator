@@ -146,6 +146,11 @@
 	top: 130dp;
 }
 
+.grid .entry.version_mismatch:hover .action
+{
+	visibility: hidden;
+}
+
 .grid .entry .target
 {
 	position: absolute;

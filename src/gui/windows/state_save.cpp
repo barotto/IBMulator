@@ -42,7 +42,7 @@ void StateSave::update()
 	if(m_dirty) {
 		StateDialog::update();
 		auto newsave = StateDialog::DirEntry::create_element(
-				m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0} );
+				m_wnd, "", {"new_save_entry", "NEW SAVE", "", 0, STATE_RECORD_VERSION} );
 		auto first = m_entries_el->GetFirstChild();
 		if(first) {
 			m_entries_el->InsertBefore(std::move(newsave), first);
@@ -63,7 +63,7 @@ void StateSave::action_on_record(std::string _rec_name)
 		return;
 	}
 	if(_rec_name == QUICKSAVE_RECORD) {
-		m_action_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
+		m_action_callbk({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0});
 	} else if(_rec_name == "new_save" || _rec_name == "new_save_entry") {
 		m_action_callbk({});
 	} else {

@@ -37,6 +37,7 @@ void StateDialog::create()
 	m_panel_screen_el = get_element("panel_screen");
 	m_panel_config_el = get_element("panel_config");
 	m_buttons_entry_el = get_element("buttons_entry");
+	m_action_button_el = get_element("action");
 }
 
 void StateDialog::update()
@@ -134,11 +135,19 @@ void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
 			m_panel_screen_el->SetInnerRML("<img src=\"/" + rec.screen() + "\" />");
 			m_panel_screen_el->SetClass("visible", true);
 		}
-		if(!rec.info().config_desc.empty()) {
+		if(rec.info().version != STATE_RECORD_VERSION) {
+			m_panel_config_el->SetInnerRML("INVALID VERSION");
+			m_panel_config_el->SetClass("visible", true);
+		} else if(!rec.info().config_desc.empty()) {
 			m_panel_config_el->SetInnerRML(rec.info().config_desc);
 			m_panel_config_el->SetClass("visible", true);
 		}
 		m_buttons_entry_el->SetClass("visible", true);
+		if(rec.info().version != STATE_RECORD_VERSION) {
+			m_action_button_el->SetClass("hidden", true);
+		} else {
+			m_action_button_el->SetClass("hidden", false);
+		}
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
 	}
@@ -241,6 +250,9 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
 	child->SetClassNames("entry");
+	if(_info.version != STATE_RECORD_VERSION) {
+		child->SetClass("version_mismatch", true);
+	}
 	child->SetId(_info.name);
 
 	std::string inner;
@@ -259,8 +271,12 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 		if(_info.name != "new_save_entry") {
 			inner += "<div class=\"name\">" + _info.name + "</div>";
 		}
-		if(!_info.config_desc.empty()) {
-			inner += "<div class=\"config\">" + _info.config_desc + "</div>";
+		if(_info.version != STATE_RECORD_VERSION) {
+			inner += "<div class=\"config\">INVALID VERSION</div>";
+		} else {
+			if(!_info.config_desc.empty()) {
+				inner += "<div class=\"config\">" + _info.config_desc + "</div>";
+			}
 		}
 	inner += "</div>";
 	inner += "<div class=\"target\"></div>";

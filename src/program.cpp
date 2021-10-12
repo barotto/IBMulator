@@ -235,6 +235,9 @@ void Program::restore_state(
 		std::optional<StateRecord> sstate;
 		try {
 			sstate.emplace(capture_path, _info.name);
+			if(sstate->info().version != STATE_RECORD_VERSION) {
+				throw std::runtime_error("Invalid savestate version");
+			}
 			sstate->load();
 		} catch(std::runtime_error &e) {
 			PERRF(LOG_PROGRAM, "%s\n", e.what());
@@ -283,9 +286,9 @@ void Program::restore_state(
 		m_machine->cmd_resume(false);
 
 		if(!sstate->state().m_last_restore) {
-			PERRF(LOG_PROGRAM, "The restored state is not valid\n");
+			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart the program\n");
 			if(_on_fail != nullptr) {
-				_on_fail("The restored state is not valid");
+				_on_fail("The restored state is not valid, please restart the program");
 			}
 		} else {
 			PINFOF(LOG_V0, LOG_PROGRAM, "State restored\n");

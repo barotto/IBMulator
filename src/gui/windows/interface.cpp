@@ -577,7 +577,7 @@ void Interface::show_state_dialog(bool _save)
 			[=](StateRecord::Info _info)
 			{
 				if(_info.name == QUICKSAVE_RECORD) {
-					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0});
+					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0});
 					dialog_end();
 				} else {
 					m_state_save_info->set_callbacks(

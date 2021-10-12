@@ -173,3 +173,8 @@
 	right: 0;
 	bottom: 0;
 }
+
+button.hidden
+{
+	visibility: hidden;
+}

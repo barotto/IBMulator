@@ -104,6 +104,7 @@ protected:
 	Rml::Element *m_panel_screen_el = nullptr;
 	Rml::Element *m_panel_config_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
+	Rml::Element *m_action_button_el = nullptr;
 	inline static bool ms_dirty = true;
 	bool m_dirty = true;
 	enum class Order {
