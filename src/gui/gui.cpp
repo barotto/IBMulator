@@ -1933,6 +1933,12 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 			m_rml_sys_interface->TranslateMouseButton(event.button.button),
 			rmlmod
 			);
+		// TODO this is a hack to solve a RmlUi issue where it won't
+		// update the element below the pointer
+		// https://github.com/mikke89/RmlUi/issues/220
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		m_rml_context->ProcessMouseMove(x, y, rmlmod);
 		break;
 	}
 	case SDL_MOUSEWHEEL: {
