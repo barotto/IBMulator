@@ -57,6 +57,8 @@ void StateSaveInfo::set_state(StateRecord::Info _info)
 	m_state_info = _info;
 	if(!_info.name.empty()) {
 		get_element("name")->SetInnerRML(std::string(" for slot ") + _info.name);
+	} else {
+		get_element("name")->SetInnerRML("");
 	}
 }
 
