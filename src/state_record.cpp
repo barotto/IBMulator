@@ -137,7 +137,7 @@ void StateRecord::save()
 	if(!infofile.is_open()) {
 		throw std::runtime_error(str_format("Cannot open '%s' for writing", m_info_path.c_str()).c_str());
 	}
-	infofile << "v" << m_info.version << "\n" << m_info.user_desc << "\n" << m_info.config_desc;
+	infofile << "v" << STATE_RECORD_VERSION << "\n" << m_info.user_desc << "\n" << m_info.config_desc;
 	if(infofile.fail()) {
 		throw std::runtime_error(str_format("Error writing to '%s'", m_info_path.c_str()).c_str());
 	}
