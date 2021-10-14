@@ -23,6 +23,10 @@
 		<input type="radio" name="order" value="title" class="romshell">title</input>
 		<input type="radio" name="order" value="slot" class="romshell">slot</input>
 		</div>
+		<div id="asc_desc">
+		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" />&nbsp;</input>
+		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" />&nbsp;</input>
+		</div>
 	</form>
 	<div id="buttons_right">
 		<div id="buttons_entry">

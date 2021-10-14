@@ -110,6 +110,7 @@ protected:
 	enum class Order {
 		BY_DATE, BY_DESC, BY_SLOT
 	} m_order = Order::BY_DATE;
+	bool m_order_ascending = true;
 	Rml::Element *m_selected_entry = nullptr;
 	std::string m_selected_id;
 
@@ -154,6 +155,7 @@ public:
 	void on_delete(Rml::Event &);
 	void on_mode(Rml::Event &_ev);
 	void on_order(Rml::Event &_ev);
+	void on_asc_desc(Rml::Event &_ev);
 };
 
 

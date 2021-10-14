@@ -52,7 +52,8 @@ div#window
 	visibility: visible;
 }
 
-#mode input
+#mode input,
+#asc_desc input
 {
 	width: 18dp;
 }
@@ -73,7 +74,8 @@ div#window
 	decorator: image(icons/list.png);
 }
 
-#order
+#order,
+#asc_desc
 {
 	display: inline-block;
 }
@@ -81,6 +83,21 @@ div#window
 #order input
 {
 	width: 45dp;
+}
+
+#asc_desc
+{
+	margin-left: 5dp;
+}
+
+.icon_asc
+{
+	decorator: image(icons/ascending.png);
+}
+
+.icon_desc
+{
+	decorator: image(icons/descending.png);
 }
 
 input.radio.romshell:checked btnicon

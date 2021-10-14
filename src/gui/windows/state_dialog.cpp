@@ -52,20 +52,41 @@ void StateDialog::update()
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
 			case Order::BY_DATE: {
-				for(auto &de : ms_cur_dir_date) {
-					m_entries_el->AppendChild(de.create_element(m_wnd));
+				if(m_order_ascending) {
+					for(auto &de : ms_cur_dir_date) {
+						m_entries_el->AppendChild(de.create_element(m_wnd));
+					}
+				} else {
+					auto it = ms_cur_dir_date.rbegin();
+					for(;it != ms_cur_dir_date.rend(); it++) {
+						m_entries_el->AppendChild(it->create_element(m_wnd));
+					}
 				}
 				break;
 			}
 			case Order::BY_DESC: {
-				for(auto &de : ms_cur_dir_desc) {
-					m_entries_el->AppendChild(de.create_element(m_wnd));
+				if(m_order_ascending) {
+					for(auto &de : ms_cur_dir_desc) {
+						m_entries_el->AppendChild(de.create_element(m_wnd));
+					}
+				} else {
+					auto it = ms_cur_dir_desc.rbegin();
+					for(;it != ms_cur_dir_desc.rend(); it++) {
+						m_entries_el->AppendChild(it->create_element(m_wnd));
+					}
 				}
 				break;
 			}
 			case Order::BY_SLOT: {
-				for(auto &de : ms_cur_dir_slot) {
-					m_entries_el->AppendChild(de.create_element(m_wnd));
+				if(m_order_ascending) {
+					for(auto &de : ms_cur_dir_slot) {
+						m_entries_el->AppendChild(de.create_element(m_wnd));
+					}
+				} else {
+					auto it = ms_cur_dir_slot.rbegin();
+					for(;it != ms_cur_dir_slot.rend(); it++) {
+						m_entries_el->AppendChild(it->create_element(m_wnd));
+					}
 				}
 				break;
 			}
@@ -187,6 +208,23 @@ void StateDialog::on_order(Rml::Event &_ev)
 			m_order = Order::BY_DESC;
 		} else if(value == "slot") {
 			m_order = Order::BY_SLOT;
+		} else {
+			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
+			return;
+		}
+		m_dirty = true;
+		update();
+	}
+}
+
+void StateDialog::on_asc_desc(Rml::Event &_ev)
+{
+	std::string value = Window::get_form_input_value(_ev);
+	if(!value.empty()) {
+		if(value == "asc") {
+			m_order_ascending = true;
+		} else if(value == "desc") {
+			m_order_ascending = false;
 		} else {
 			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
 			return;
