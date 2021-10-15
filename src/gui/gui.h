@@ -256,7 +256,7 @@ protected:
 		bool debug_wnds = false;
 		bool status_wnd = false;
 		int windows_count = 0; // debug
-		int docs_count = 0;    // debug
+		std::list<Rml::ElementDocument*> m_docs; // objects are property of RmlUI
 		Rml::ElementDocument *last_focus_doc = nullptr;
 		Rml::ElementDocument *revert_focus = nullptr;
 
@@ -276,6 +276,7 @@ protected:
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void config_changed();
 		void update(uint64_t _current_time);
+		void update_window_size(int _w, int _h);
 		void shutdown();
 		void toggle_status();
 		void toggle_dbg();
@@ -299,10 +300,7 @@ protected:
 	void init_rmlui();
 	void set_window_icon();
 	void show_welcome_screen();
-	void render_vga();
 	void update_window_size(int _w, int _h);
-	void update_display_size();
-	void update_display_size_realistic();
 	
 	virtual void shutdown_SDL();
 	

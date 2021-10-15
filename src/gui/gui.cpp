@@ -1840,7 +1840,7 @@ void GUI::update_window_size(int _w, int _h)
 	m_height = _h;
 	m_rml_context->SetDimensions(Rml::Vector2i(m_width,m_height));
 	m_rml_renderer->SetDimensions(m_width, m_height);
-	m_windows.interface->container_size_changed(m_width, m_height);
+	m_windows.update_window_size(m_width, m_height);
 }
 
 void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
@@ -2733,6 +2733,39 @@ void GUI::WindowManager::update(uint64_t _current_time)
 	revert_focus = nullptr;
 }
 
+void GUI::WindowManager::update_window_size(int _w, int _h)
+{
+	interface->container_size_changed(_w, _h);
+
+	for(auto doc : m_docs) {
+		if(!doc->IsClassSet("window")) {
+			continue;
+		}
+		auto size = doc->GetBox().GetSize();
+		auto offset = doc->GetAbsoluteOffset();
+		if(offset.x < 0 || offset.x + size.x > _w || 
+		   offset.y < 0 || offset.y + size.y > _h)
+		{
+			// this document is out of view.
+			PDEBUGF(LOG_V2, LOG_GUI, "Reset '%s' to initial properties\n", doc->GetTitle().c_str());
+			for(auto p : {
+				Rml::PropertyId::Width,
+				Rml::PropertyId::Height,
+				Rml::PropertyId::MarginTop,
+				Rml::PropertyId::MarginRight,
+				Rml::PropertyId::MarginBottom,
+				Rml::PropertyId::MarginLeft,
+				Rml::PropertyId::Top,
+				Rml::PropertyId::Right,
+				Rml::PropertyId::Bottom,
+				Rml::PropertyId::Left})
+			{
+				doc->RemoveProperty(p);
+			}
+		}
+	}
+}
+
 void GUI::WindowManager::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
@@ -2789,8 +2822,11 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 			break;
 		case Rml::EventId::Unload:
 			if(doc) {
-				docs_count--;
-				PDEBUGF(LOG_V1, LOG_GUI, "  registered docs: %d\n", docs_count);
+				auto doc_it = std::find(m_docs.begin(), m_docs.end(), doc);
+				if(doc_it != m_docs.end()) {
+					m_docs.erase(doc_it);
+				}
+				PDEBUGF(LOG_V1, LOG_GUI, "  registered docs: %d\n", m_docs.size());
 			}
 			break;
 		case Rml::EventId::Focus:
@@ -2814,15 +2850,16 @@ void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
 	for(auto id : listening_evts) {
 		_doc->AddEventListener(id, this);
 	}
-	docs_count++;
-	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %d\n", docs_count);
+	m_docs.push_back(_doc);
+	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %d\n", m_docs.size());
 }
 
 void GUI::WindowManager::shutdown()
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
-	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %d\n", docs_count);
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %d\n", m_docs.size());
+
 	if(status) {
 		status->close();
 		status.reset(nullptr);
@@ -2843,6 +2880,6 @@ void GUI::WindowManager::shutdown()
 		interface.reset(nullptr);
 	}
 
-	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutted down: registered docs: %d\n", docs_count);
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutted down: registered docs: %d\n", m_docs.size());
 }
 
