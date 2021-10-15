@@ -29,6 +29,7 @@
 				min-width: 60dp;
 			}
 			#message {
+				box-sizing: border-box;
 				width: 100%;
 			}
 		</style>

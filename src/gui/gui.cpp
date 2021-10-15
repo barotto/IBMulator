@@ -2127,6 +2127,12 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 		std::function<void()> _on_action1, std::function<void()> _on_action2)
 {
 	// This function can be called by the GUI thread only!
+	if(m_windows.message_box) {
+		m_windows.message_box->close();
+	}
+	m_windows.message_box = std::make_unique<MessageBox>(this);
+	m_windows.message_box->create();
+	m_windows.message_box->set_modal(true);
 	m_windows.message_box->set_title(_title);
 	m_windows.message_box->set_message(_message);
 	m_windows.message_box->set_type(_type);
@@ -2634,10 +2640,6 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 		status->show();
 		status_wnd = true;
 	}
-
-	message_box = std::make_unique<MessageBox>(m_gui);
-	message_box->create();
-	message_box->set_modal(true);
 
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
