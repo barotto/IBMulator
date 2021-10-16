@@ -154,20 +154,20 @@ void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
 			// adding an additional '/' because RmlUI strips it off for unknown reasons
 			// https://github.com/mikke89/RmlUi/issues/161
 			m_panel_screen_el->SetInnerRML("<img src=\"/" + rec.screen() + "\" />");
-			m_panel_screen_el->SetClass("visible", true);
+			m_panel_screen_el->SetClass("invisible", false);
 		}
 		if(rec.info().version != STATE_RECORD_VERSION) {
 			m_panel_config_el->SetInnerRML("INVALID VERSION");
-			m_panel_config_el->SetClass("visible", true);
+			m_panel_config_el->SetClass("invisible", false);
 		} else if(!rec.info().config_desc.empty()) {
 			m_panel_config_el->SetInnerRML(rec.info().config_desc);
-			m_panel_config_el->SetClass("visible", true);
+			m_panel_config_el->SetClass("invisible", false);
 		}
-		m_buttons_entry_el->SetClass("visible", true);
+		m_buttons_entry_el->SetClass("invisible", false);
 		if(rec.info().version != STATE_RECORD_VERSION) {
-			m_action_button_el->SetClass("hidden", true);
+			m_action_button_el->SetClass("invisible", true);
 		} else {
-			m_action_button_el->SetClass("hidden", false);
+			m_action_button_el->SetClass("invisible", false);
 		}
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
@@ -182,10 +182,10 @@ void StateDialog::entry_deselect()
 	}
 	m_selected_entry = nullptr;
 	m_panel_screen_el->SetInnerRML("");
-	m_panel_screen_el->SetClass("visible", false);
+	m_panel_screen_el->SetClass("invisible", true);
 	m_panel_config_el->SetInnerRML("");
-	m_panel_config_el->SetClass("visible", false);
-	m_buttons_entry_el->SetClass("visible", false);
+	m_panel_config_el->SetClass("invisible", true);
+	m_buttons_entry_el->SetClass("invisible", true);
 }
 
 void StateDialog::on_mode(Rml::Event &_ev)

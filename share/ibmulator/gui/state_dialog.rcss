@@ -44,12 +44,6 @@ div#window
 {
 	display: inline-block;
 	margin-right: 10dp;
-	visibility: hidden;
-}
-
-#buttons_entry.visible
-{
-	visibility: visible;
 }
 
 #mode input,

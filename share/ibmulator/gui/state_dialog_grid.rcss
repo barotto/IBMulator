@@ -131,7 +131,7 @@
 	top: 135dp;
 	width: 30dp;
 	height: 30dp;
-	transition: background-color top 0.5s 0 exponential-out;
+	transition: top 0.5s 0 exponential-out;
 }
 
 .grid .entry .delete

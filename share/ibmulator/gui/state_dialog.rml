@@ -29,7 +29,7 @@
 		</div>
 	</form>
 	<div id="buttons_right">
-		<div id="buttons_entry">
+		<div id="buttons_entry" class="invisible">
 			<button id="delete" class="romshell entry_button">Delete</button>
 			<button id="action" class="romshell entry_button"></button>
 		</div>

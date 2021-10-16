@@ -144,8 +144,3 @@ td
 	padding: 0;
 	background-color: #00000000;
 }
-
-.hidden
-{
-	display: none;
-}

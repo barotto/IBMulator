@@ -41,7 +41,7 @@ MessageBox::~MessageBox()
 void MessageBox::create()
 {
 	Window::create();
-	get_element("resize")->SetClass("hidden", true);
+	get_element("resize")->SetClass("d-none", true);
 }
 
 void MessageBox::set_title(const std::string &_title)
@@ -60,12 +60,12 @@ void MessageBox::set_type(Type _type)
 	switch(m_type) {
 		case Type::MSGB_OK:
 			get_element("action1")->SetInnerRML("Ok");
-			get_element("action2")->SetClass("hidden", true);
+			get_element("action2")->SetClass("d-none", true);
 			break;
 		case Type::MSGB_YES_NO:
 			get_element("action1")->SetInnerRML("Yes");
 			get_element("action2")->SetInnerRML("No");
-			get_element("action2")->SetClass("hidden", false);
+			get_element("action2")->SetClass("d-none", false);
 			break;
 	}
 }
