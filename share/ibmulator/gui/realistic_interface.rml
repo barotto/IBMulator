@@ -30,8 +30,9 @@
 			<div class="slider" id="volume_slider"></div>
 			<div class="slider" id="brightness_slider"></div>
 			<div class="slider" id="contrast_slider"></div>
-			<div id="fdd_disk"></div>
-			<div id="fdd_mount"></div>
+			<div id="fdd_mount">
+				<div id="fdd_disk"></div>
+			</div>
 			<div id="fdd_select" class="a"></div>
 			<div id="fdd_eject"></div>
 		</div>

@@ -323,6 +323,9 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	m_system->SetProperty("width",  str_format("%upx", m_size.x));
 	m_system->SetProperty("height", str_format("%upx", m_size.y));
 	m_system->SetProperty("top",    str_format("%dpx", system_top));
+
+	unsigned fontsize = m_size.x / 40;
+	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
 }
 
 void RealisticInterface::update()

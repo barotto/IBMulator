@@ -72,7 +72,7 @@
 	width: 4%;
 	height: 2.7%;
 	position: absolute;
-	left: 16.5%;
+	left: 16.4%;
 	bottom: 9.6%;
 }
 
@@ -176,10 +176,17 @@
 {
 	position: absolute;
 	text-align: center;
-	width: 33.0%;
-	bottom: 14%;
-	left: 12.0%;
+	width: 100.0%;
+	top: 18%;
+	left: 0;
+	height: 25%;
 	background-color: #3F7CB600;
+	color: #00000000;
+}
+
+#fdd_disk:hover
+{
+	color: #ffffffff;
 	font-effect: shadow(-1dp 1dp black);
 }
 
@@ -261,11 +268,10 @@
 #message
 {
 	position: absolute;
-	bottom: 0;
-	margin: 1em;
+	bottom: 7%;
+	left: 1em;
 	padding: 1em;
-	text-align: center;
-	font-size: 12px;
+	font-size: 12dp;
 	background-color: #383938AA;
 	visibility: hidden;
 }
