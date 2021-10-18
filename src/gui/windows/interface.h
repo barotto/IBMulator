@@ -166,8 +166,10 @@ public:
 	
 	virtual void sig_state_restored() {}
 
-private:
-	void update_floppy_disk(std::string _filename);
+protected:
+	virtual void set_floppy_string(std::string _filename);
+	virtual void set_floppy_config(bool _b_present);
+	virtual void set_floppy_active(bool _active);
 
 	void show_state_dialog(bool _save);
 	void show_state_info_dialog(StateRecord::Info _info);

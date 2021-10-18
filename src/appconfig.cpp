@@ -358,8 +358,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     fullscreen: Start directly in fullscreen.\n"
 ";            dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";         bg_XXX: Background window color\n"
-";show_indicators: Show or hide status indicators on the bottom-right of the screen.\n"
-";     ui_scaling: UI scaling factor expressed as a real number.\n"
+";show_indicators: Show status indicators on the top-right corner of the screen.\n"
+";     ui_scaling: UI scaling factor expressed as a real number (eg.: 1.5).\n"
 		},
 
 		{ CAPTURE_SECTION,

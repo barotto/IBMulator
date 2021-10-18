@@ -33,6 +33,11 @@ public:
 		NORMAL, COMPACT
 	};
 
+	enum Actions {
+		ACTION_SHOW_HIDE,
+		ACTION_ZOOM
+	};
+
 private:
 	unsigned m_aspect_mode = 0;
 	double   m_aspect_ratio = .0;
@@ -42,8 +47,10 @@ private:
 
 	Rml::Element *m_sysunit = nullptr, *m_sysbkgd = nullptr;
 	Rml::Element *m_btn_pause = nullptr;
+	Rml::Element *m_btn_visibility = nullptr;
+	Rml::Element *m_fdd_mount_c = nullptr;
+	Rml::Element *m_fdd_select_c = nullptr;
 	bool m_led_pause = false;
-	unsigned m_gui_mode = 0;
 	ZoomMode m_cur_zoom = ZoomMode::NORMAL;
 
 public:
@@ -67,10 +74,21 @@ public:
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 
 private:
+	void set_floppy_string(std::string _filename);
+	void set_floppy_config(bool _b_present);
+	void set_floppy_active(bool _active);
+	void set_zoom(ZoomMode _zoom);
 	void on_pause(Rml::Event &);
 	void on_save(Rml::Event &);
 	void on_restore(Rml::Event &);
 	void on_exit(Rml::Event &);
+	void on_visibility(Rml::Event &);
+	void on_fdd_select(Rml::Event &);
+	void on_fdd_eject(Rml::Event &);
+	void on_fdd_mount(Rml::Event &);
+	void on_fdd_select_c(Rml::Event &);
+	void on_fdd_eject_c(Rml::Event &);
+	void on_fdd_mount_c(Rml::Event &);
 };
 
 #endif

@@ -249,29 +249,39 @@ void Interface::create()
 	}
 }
 
+void Interface::set_floppy_config(bool _b_present)
+{
+	m_buttons.fdd_select->SetClass("d-none", !_b_present);
+
+	m_buttons.fdd_select->SetClass("a", true);
+	m_buttons.fdd_select->SetClass("b", false);
+}
+
+void Interface::set_floppy_active(bool _active)
+{
+	m_leds.fdd = _active;
+	m_status.fdd_led->SetClass("active", _active);
+}
+
 void Interface::config_changed()
 {
-	m_leds.fdd = false;
-	m_status.fdd_led->SetClass("active", false);
-	m_status.fdd_disk->SetInnerRML("");
 	m_floppy_present = false;
 	m_floppy_changed = false;
 	m_curr_drive = 0;
-	m_buttons.fdd_select->SetProperty("visibility", "hidden");
+	
+	set_floppy_string("");
+	set_floppy_active(false);
+	set_floppy_config(false);
+	
 	m_floppy = m_machine->devices().device<FloppyCtrl>();
 	if(m_floppy) {
 		m_floppy_present = g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED);
 		if(m_floppy_present) {
-			update_floppy_disk(g_program.config().get_file(DISK_A_SECTION, DISK_PATH,
+			set_floppy_string(g_program.config().get_file(DISK_A_SECTION, DISK_PATH,
 					FILE_TYPE_USER));
 		}
 		m_floppy_changed = m_floppy->has_disk_changed(0);
-
-		if(m_floppy->drive_type(1) != FDD_NONE) {
-			m_buttons.fdd_select->SetProperty("visibility", "visible");
-			m_buttons.fdd_select->SetClass("a", true);
-			m_buttons.fdd_select->SetClass("b", false);
-		}
+		set_floppy_config(m_floppy->drive_type(1) != FDD_NONE);
 	}
 
 	m_leds.hdd = false;
@@ -284,11 +294,13 @@ void Interface::config_changed()
 	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
 }
 
-void Interface::update_floppy_disk(std::string _filename)
+void Interface::set_floppy_string(std::string _filename)
 {
-	size_t pos = _filename.rfind(FS_SEP);
-	if(pos!=std::string::npos) {
-		_filename = _filename.substr(pos+1);
+	if(!_filename.empty()) {
+		size_t pos = _filename.rfind(FS_SEP);
+		if(pos!=std::string::npos) {
+			_filename = _filename.substr(pos+1);
+		}
 	}
 	m_status.fdd_disk->SetInnerRML(_filename.c_str());
 }
@@ -359,78 +371,76 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 
 void Interface::update()
 {
-	if(is_visible()) {
-		if(m_floppy) {
-			bool motor = m_floppy->is_motor_on(m_curr_drive);
-			if(motor && m_leds.fdd==false) {
-				m_leds.fdd = true;
-				m_status.fdd_led->SetClass("active", true);
-			} else if(!motor && m_leds.fdd==true) {
-				m_leds.fdd = false;
-				m_status.fdd_led->SetClass("active", false);
-			}
-			bool present = m_floppy->is_media_present(m_curr_drive);
-			bool changed = m_floppy->has_disk_changed(m_curr_drive);
-			if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
-				m_floppy_changed = changed;
-				m_floppy_present = true;
-				const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
-				update_floppy_disk(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
-			} else if(!present && m_floppy_present==true) {
-				m_floppy_present = false;
-				m_status.fdd_disk->SetInnerRML("");
-			}
+	if(m_floppy) {
+		bool motor = m_floppy->is_motor_on(m_curr_drive);
+		if(motor && m_leds.fdd==false) {
+			set_floppy_active(true);
+		} else if(!motor && m_leds.fdd==true) {
+			set_floppy_active(false);
 		}
-		if(m_hdd) {
-			bool hdd_busy = m_hdd->is_busy();
-			if(hdd_busy && m_leds.hdd==false) {
-				m_leds.hdd = true;
-				m_status.hdd_led->SetClass("active", true);
-			} else if(!hdd_busy && m_leds.hdd==true) {
-				m_leds.hdd = false;
-				m_status.hdd_led->SetClass("active", false);
-			}
+		bool present = m_floppy->is_media_present(m_curr_drive);
+		bool changed = m_floppy->has_disk_changed(m_curr_drive);
+		if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
+			m_floppy_changed = changed;
+			m_floppy_present = true;
+			const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
+			set_floppy_string(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
+		} else if(!present && m_floppy_present==true) {
+			m_floppy_present = false;
+			set_floppy_string("");
 		}
-		if(m_machine->is_on() && m_leds.power==false) {
-			m_leds.power = true;
-			m_buttons.power->SetClass("active", true);
-		} else if(!m_machine->is_on() && m_leds.power==true) {
-			m_leds.power = false;
-			m_buttons.power->SetClass("active", false);
-		}
+	}
 
-		if(m_machine->is_on()) {
-			if(m_machine->is_paused()) {
+	if(m_hdd) {
+		bool hdd_busy = m_hdd->is_busy();
+		if(hdd_busy && m_leds.hdd==false) {
+			m_leds.hdd = true;
+			m_status.hdd_led->SetClass("active", true);
+		} else if(!hdd_busy && m_leds.hdd==true) {
+			m_leds.hdd = false;
+			m_status.hdd_led->SetClass("active", false);
+		}
+	}
+
+	if(m_machine->is_on() && m_leds.power==false) {
+		m_leds.power = true;
+		m_buttons.power->SetClass("active", true);
+	} else if(!m_machine->is_on() && m_leds.power==true) {
+		m_leds.power = false;
+		m_buttons.power->SetClass("active", false);
+	}
+	
+	if(m_machine->is_on()) {
+		if(m_machine->is_paused()) {
+			m_speed->SetClass("warning", false);
+			m_speed->SetClass("slow", false);
+			m_speed->SetClass("paused", true);
+			m_speed_value->SetInnerRML("paused");
+			m_speed->SetProperty("visibility", "visible");
+		} else {
+			m_speed->SetClass("paused", false);
+			int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
+			static std::string str(10,0);
+			m_speed_value->SetInnerRML(str_format(str, "%d%%", vtime_ratio_1000/10));
+			if(m_machine->cycles_factor() != 1.0) {
 				m_speed->SetClass("warning", false);
-				m_speed->SetClass("slow", false);
-				m_speed->SetClass("paused", true);
-				m_speed_value->SetInnerRML("paused");
+				if(m_machine->get_bench().load > 1.0) {
+					m_speed->SetClass("slow", true);
+				} else {
+					m_speed->SetClass("slow", false);
+				}
 				m_speed->SetProperty("visibility", "visible");
 			} else {
-				m_speed->SetClass("paused", false);
-				int vtime_ratio_1000 = round(m_machine->get_bench().cavg_vtime_ratio * 1000.0);
-				static std::string str(10,0);
-				m_speed_value->SetInnerRML(str_format(str, "%d%%", vtime_ratio_1000/10));
-				if(m_machine->cycles_factor() != 1.0) {
-					m_speed->SetClass("warning", false);
-					if(m_machine->get_bench().load > 1.0) {
-						m_speed->SetClass("slow", true);
-					} else {
-						m_speed->SetClass("slow", false);
-					}
+				if(m_machine->get_bench().is_stressed()) {
+					m_speed->SetClass("warning", true);
 					m_speed->SetProperty("visibility", "visible");
 				} else {
-					if(m_machine->get_bench().is_stressed()) {
-						m_speed->SetClass("warning", true);
-						m_speed->SetProperty("visibility", "visible");
-					} else {
-						m_speed->SetProperty("visibility", "hidden");
-					}
+					m_speed->SetProperty("visibility", "hidden");
 				}
 			}
-		} else {
-			m_speed->SetProperty("visibility", "hidden");
 		}
+	} else {
+		m_speed->SetProperty("visibility", "hidden");
 	}
 }
 
@@ -461,7 +471,7 @@ void Interface::on_fdd_select(Rml::Event &)
 		m_buttons.fdd_select->SetClass("a", false);
 		m_buttons.fdd_select->SetClass("b", true);
 		if(g_program.config().get_bool(DISK_B_SECTION,DISK_INSERTED)) {
-			update_floppy_disk(g_program.config().get_file(DISK_B_SECTION,DISK_PATH, FILE_TYPE_USER));
+			set_floppy_string(g_program.config().get_file(DISK_B_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	} else {
 		m_curr_drive = 0;
@@ -469,7 +479,7 @@ void Interface::on_fdd_select(Rml::Event &)
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
 		if(g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED)) {
-			update_floppy_disk(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
+			set_floppy_string(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	}
 }

@@ -27,16 +27,19 @@
 
 #include <RmlUi/Core.h>
 
-
 event_map_t NormalInterface::ms_evt_map = {
-	GUI_EVT( "power",     "click", Interface::on_power ),
-	GUI_EVT( "pause",     "click", NormalInterface::on_pause ),
-	GUI_EVT( "save",      "click", Interface::on_save_state ),
-	GUI_EVT( "restore",   "click", Interface::on_load_state ),
-	GUI_EVT( "exit",      "click", NormalInterface::on_exit ),
-	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
+	GUI_EVT( "power",    "click", Interface::on_power ),
+	GUI_EVT( "pause",    "click", NormalInterface::on_pause ),
+	GUI_EVT( "save",     "click", Interface::on_save_state ),
+	GUI_EVT( "restore",  "click", Interface::on_load_state ),
+	GUI_EVT( "exit",     "click", NormalInterface::on_exit ),
+	GUI_EVT( "visibility","click", NormalInterface::on_visibility ),
+	GUI_EVT( "fdd_select","click", NormalInterface::on_fdd_select ),
 	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount )
+	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
+	GUI_EVT( "fdd_select_c","click", NormalInterface::on_fdd_select ),
+	GUI_EVT( "fdd_eject_c", "click", Interface::on_fdd_eject ),
+	GUI_EVT( "fdd_mount_c", "click", Interface::on_fdd_mount )
 };
 
 NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
@@ -57,6 +60,10 @@ void NormalInterface::create()
 	m_sysbkgd = get_element("sysbkgd");
 	m_sysbkgd->SetClass("disk", m_floppy_present);
 	m_btn_pause = get_element("pause");
+	m_btn_visibility = get_element("visibility");
+	m_fdd_mount_c = get_element("fdd_mount_c");
+	m_fdd_select_c = get_element("fdd_select_c");
+
 	m_led_pause = false;
 	m_cur_zoom = static_cast<ZoomMode>(g_program.config().get_enum(GUI_SECTION, GUI_MODE, {
 			{ "normal", ec_to_i(ZoomMode::NORMAL) },
@@ -112,9 +119,10 @@ void NormalInterface::create()
 		h += std::min(256, w/4); //the sysunit proportions are 4:1
 	}
 	m_size = vec2i(w,h);
+	set_zoom(m_cur_zoom);
 
 	m_screen = std::make_unique<InterfaceScreen>(m_gui);
-	
+
 	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
 	m_screen->renderer()->load_vga_program(
 		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
@@ -220,11 +228,12 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	m_screen->vga.mvmat.load_translation(xt, yt, 0.0);
 
 	m_size = m_screen->vga.size;
-	if(m_gui_mode == GUI_MODE_NORMAL) {
-		m_size.y += sysunit_h;
-	}
 	m_sysunit->SetProperty("width", str_format("%upx", sysunit_w));
 	m_sysunit->SetProperty("height", str_format("%upx", sysunit_h));
+
+	unsigned fontsize = sysunit_w / 40;
+	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
+	m_fdd_mount_c->GetChild(0)->SetProperty("font-size", str_format("%upx", fontsize));
 }
 
 void NormalInterface::update()
@@ -263,20 +272,19 @@ void NormalInterface::update()
 		m_screen->vga.display.unlock();
 	}
 
-	if(is_visible()) {
+	if(is_system_visible()) {
 		if(m_floppy_present) {
 			m_sysbkgd->SetClass("disk", true);
 		} else {
 			m_sysbkgd->SetClass("disk", false);
 		}
-
-		if(m_machine->is_paused() && m_led_pause==false) {
-			m_led_pause = true;
-			m_btn_pause->SetClass("resume", true);
-		} else if(!m_machine->is_paused() && m_led_pause==true){
-			m_led_pause = false;
-			m_btn_pause->SetClass("resume", false);
-		}
+	}
+	if(m_machine->is_paused() && m_led_pause==false) {
+		m_led_pause = true;
+		m_btn_pause->SetClass("resume", true);
+	} else if(!m_machine->is_paused() && m_led_pause==true){
+		m_led_pause = false;
+		m_btn_pause->SetClass("resume", false);
 	}
 }
 
@@ -284,55 +292,68 @@ void NormalInterface::action(int _action)
 {
 	switch(m_cur_zoom) {
 		case ZoomMode::COMPACT: {
-			if(_action == 0) {
+			if(_action == ACTION_SHOW_HIDE) {
 				if(is_system_visible()) {
 					hide_system();
 				} else {
 					show_system();
 				}
-			} else if(_action == 1) {
-				m_cur_zoom = ZoomMode::NORMAL;
-				show_system();
+			} else if(_action == ACTION_ZOOM) {
+				set_zoom(ZoomMode::NORMAL);
 				m_gui->show_message("Normal interface mode");
 			}
 			break;
 		}
 		case ZoomMode::NORMAL:
-			if(_action == 1) {
-				m_cur_zoom = ZoomMode::COMPACT;
-				if(m_gui->is_input_grabbed()) {
-					hide_system();
-				}
+			if(_action == ACTION_ZOOM) {
+				set_zoom(ZoomMode::COMPACT);
 				m_gui->show_message("Compact interface mode");
 			}
 			break;
 	}
 }
 
+void NormalInterface::set_zoom(ZoomMode _zoom)
+{
+	m_cur_zoom = _zoom;
+	switch(_zoom) {
+		case ZoomMode::COMPACT:
+			m_sysunit->SetClass("compact", true);
+			hide_system();
+			break;
+		case ZoomMode::NORMAL:
+			m_sysunit->SetClass("compact", false);
+			show_system();
+			break;
+	}
+}
+
 void NormalInterface::grab_input(bool _grabbed)
 {
-	if(m_cur_zoom == ZoomMode::COMPACT) {
-		if(_grabbed) {
-			hide_system();
-		} else {
-			show_system();
-		}
+	if(m_cur_zoom == ZoomMode::COMPACT && _grabbed) {
+		hide_system();
 	}
 }
 
 bool NormalInterface::is_system_visible() const
 {
-	return (m_sysunit->GetProperty("visibility")->ToString() != "hidden");
+	return (!m_sysunit->IsClassSet("hidden"));
 }
 
 void NormalInterface::hide_system()
 {
-	m_sysunit->SetProperty("visibility", "hidden");
+	if(is_system_visible()) {
+		m_sysunit->SetClass("hidden", true);
+		get_element("syscompact")->AppendChild(m_sysunit->RemoveChild(get_element("sysctrl")));
+	}
 }
 
 void NormalInterface::show_system()
 {
-	m_sysunit->SetProperty("visibility", "visible");
+	if(!is_system_visible()) {
+		m_sysunit->SetClass("hidden", false);
+		m_sysunit->AppendChild(get_element("syscompact")->RemoveChild(get_element("sysctrl")));
+	}
 }
 
 void NormalInterface::on_pause(Rml::Event &)
@@ -349,4 +370,41 @@ void NormalInterface::on_exit(Rml::Event &)
 	g_program.stop();
 }
 
+void NormalInterface::on_visibility(Rml::Event &)
+{
+	action(ACTION_SHOW_HIDE);
+}
 
+void NormalInterface::on_fdd_select(Rml::Event &_e)
+{
+	m_fdd_mount_c->GetChild(0)->SetInnerRML("");
+	if(m_curr_drive == 0) {
+		m_fdd_select_c->SetClass("a", false);
+		m_fdd_select_c->SetClass("b", true);
+	} else {
+		m_fdd_select_c->SetClass("a", true);
+		m_fdd_select_c->SetClass("b", false);
+	}
+	Interface::on_fdd_select(_e);
+}
+
+void NormalInterface::set_floppy_string(std::string _filename)
+{
+	Interface::set_floppy_string(_filename);
+	auto name = m_status.fdd_disk->GetInnerRML();
+	m_fdd_mount_c->GetChild(0)->SetInnerRML(name);
+}
+
+void NormalInterface::set_floppy_config(bool _b_present)
+{
+	Interface::set_floppy_config(_b_present);
+	m_fdd_select_c->SetClass("d-none", !_b_present);
+	m_fdd_select_c->SetClass("a", true);
+	m_fdd_select_c->SetClass("b", false);
+}
+
+void NormalInterface::set_floppy_active(bool _active)
+{
+	Interface::set_floppy_active(_active);
+	m_fdd_mount_c->SetClass("active", _active);
+}

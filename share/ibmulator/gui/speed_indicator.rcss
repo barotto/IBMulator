@@ -2,8 +2,8 @@
 	position: absolute;
 	text-align: center;
 	font-size: 12dp;
-	top: 1em;
-	right: 1em;
+	top: 16dp;
+	right: 16dp;
 	padding: 0.3em;
 	background-color: #00aa0088;
 	visibility: visible;

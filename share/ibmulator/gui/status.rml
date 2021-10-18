@@ -8,18 +8,19 @@
 				width: 100%;
 				height: 12dp;
 				position: absolute;
-				bottom: 0;
+				top: 0;
 				right: 0;
 			}
 			div
 			{
 				display: inline-block;
 				width: 33dp;
-				height: 12dp;
+				height: 13dp;
 				font-size: 12dp;
 				text-align: center;
 				padding-top: 0;
 				float: right;
+				opacity: 0.8;
 			}
 			.hidden { display: none; }
 			.idle   { background-color: #023b00A0; }

@@ -19,20 +19,39 @@
 	</head>
 	<body>
 		<div id="sysunit">
-			<div id="hdd_led"></div>
-			<div id="fdd_led"></div>
-			<div id="sysbkgd"></div>
-			<div id="fdd_disk"></div>
-			<div id="fdd_mount"></div>
-			<div id="fdd_select" class="a"></div>
-			<div id="fdd_eject"></div>
-
+			<div class="sysoverlay to_hide">
+				<div id="hdd_led"></div>
+				<div id="fdd_led"></div>
+			</div>
+			<div id="sysbkgd" class="sysoverlay to_hide"></div>
+			<div class="sysoverlay to_hide">
+				<div id="fdd_disk"></div>
+				<div id="fdd_mount"></div>
+				<div id="fdd_select" class="a"></div>
+				<div id="fdd_eject"></div>
+			</div>
 			<div id="sysctrl">
 				<btn id="power" />
 				<btn id="pause" />
 				<btn id="save" />
 				<btn id="restore" />
 				<btn id="exit" />
+			</div>
+
+			<div id="syscompact">
+
+				<div id="diskctrl">
+					<btn id="fdd_select_c" class="a" />
+					<div id="fdd_mount_c">
+						<div id="fdd_disk_c"></div>
+					</div>
+					<btn id="fdd_eject_c" />
+				</div>
+
+				<div id="ifcctrl">
+					<btn id="visibility" />
+				</div>
+
 			</div>
 		</div>
 		<div id="speed">

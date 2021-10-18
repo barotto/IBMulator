@@ -2189,13 +2189,7 @@ void GUI::show_welcome_screen()
 "\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
 "\xCD\xCD\xBB",
 0xf, bg, 0);
-	int height = 23;
-	if(m_mode == GUI_MODE_NORMAL &&
-	   dynamic_cast<NormalInterface*>(m_windows.interface.get())->zoom_mode() 
-	       == NormalInterface::ZoomMode::COMPACT)
-	{
-		height = 17;
-	}
+	constexpr int height = 23;
 	for(int i=1; i<=height; i++) {
 		ps("\xBA                                                                              \xBA",
 				0xf, bg, 0);
@@ -2232,11 +2226,7 @@ void GUI::show_welcome_screen()
 	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
 	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
-		if(m_mode == GUI_MODE_NORMAL && height < 23) {
-			ps("\nTo show/hide the interface press ", 0xf, bg, bd);
-			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			ps(" or grab the mouse.\n", 0xf, bg, bd);
-		} else if(m_mode == GUI_MODE_REALISTIC) {
+		if(m_mode == GUI_MODE_REALISTIC) {
 			ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
 			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
 			ps("\nTo switch between the interface styles keep ", 0xf, bg, bd);
