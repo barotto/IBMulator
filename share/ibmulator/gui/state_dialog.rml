@@ -17,8 +17,8 @@
 		<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" />&nbsp;</input>
 		<input type="radio" name="mode" value="list" class="romshell"><btnicon class="icon_list" />&nbsp;</input>
 		</div>
-		<div id="order">
 		by
+		<div id="order">
 		<input type="radio" name="order" value="date" class="romshell" checked>date</input>
 		<input type="radio" name="order" value="title" class="romshell">title</input>
 		<input type="radio" name="order" value="slot" class="romshell">slot</input>

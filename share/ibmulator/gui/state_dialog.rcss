@@ -1,9 +1,9 @@
 body
 {
-	width: 88%;
+	width: 90%;
 	height: 90%;
 	min-width: 640dp;
-	min-height: 450dp;
+	min-height: 370dp;
 	margin: auto;
 }
 
@@ -72,6 +72,7 @@ div#window
 #asc_desc
 {
 	display: inline-block;
+	white-space: nowrap;
 }
 
 #order input
