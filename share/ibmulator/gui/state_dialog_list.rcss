@@ -27,9 +27,9 @@
 {
 	position: absolute;
 	top: -4dp;
+	bottom: 0;
 	left: 6dp;
 	width: 100%;
-	height: 100%;
 }
 
 .list #panel_screen
@@ -48,10 +48,16 @@
 
 .list #panel_config
 {
+	position: absolute;
 	width: 100%;
+	left: 0;
+	top: 182dp;
+	bottom: 0;
 	font-size: 13dp;
 	padding: 4dp;
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
+	box-sizing: border-box;
 }
 
 .list #panel_config.visible
