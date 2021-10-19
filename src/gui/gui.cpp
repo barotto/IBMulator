@@ -2227,11 +2227,19 @@ void GUI::show_welcome_screen()
 	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
 	if(!bindings.empty()) {
 		if(m_mode == GUI_MODE_REALISTIC) {
-			ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
-			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			ps("\nTo switch between the interface styles keep ", 0xf, bg, bd);
-			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			ps(" pressed.\n", 0xf, bg, bd);
+			evt.func.params[0] = 1;
+			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt, true);
+			if(!bindings.empty()) {
+				ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			}
+			evt.func.params[0] = 2;
+			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt, true);
+			if(!bindings.empty()) {
+				ps("\nTo switch between the interface styles press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			}
+			ps("\n", 0xf, bg, bd);
 		} else {
 			cy++;
 		}
@@ -2290,8 +2298,8 @@ void GUI::show_welcome_screen()
 	}
 	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
 	ps(g_program.config().get_parsed_file().c_str(), 0xe, bg, bd);
-	ps("\n\nFor more information read the README file and visit the project page at\n", 0xf, bg, bd);
-	ps("https://barotto.github.io/IBMulator/\n", 0xe, bg, bd);
+	ps("\n\nFor more information read the README file and visit the home page at\n", 0xf, bg, bd);
+	ps(PACKAGE_URL "\n", 0xe, bg, bd);
 
 	m_machine->cmd_print_VGA_text(text);
 }

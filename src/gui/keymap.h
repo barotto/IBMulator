@@ -135,6 +135,9 @@ struct ProgramEvent {
 		bool operator==(const ProgramEvent::Func &_rhs) const {
 			return (name == _rhs.name);
 		}
+		bool has_same_params(const ProgramEvent::Func &_rhs) const {
+			return memcmp(params, _rhs.params, sizeof(params)) == 0;
+		}
 	} func;
 	
 	struct Joy {
@@ -145,6 +148,9 @@ struct ProgramEvent {
 		bool operator==(const ProgramEvent::Joy &_rhs) const {
 			return (which == _rhs.which && button == _rhs.button && axis == _rhs.axis);
 		}
+		bool has_same_params(const ProgramEvent::Joy &_rhs) const {
+			return memcmp(params, _rhs.params, sizeof(params)) == 0;
+		}
 	} joy;
 	
 	struct Mouse {
@@ -154,6 +160,9 @@ struct ProgramEvent {
 		bool operator==(const ProgramEvent::Mouse &_rhs) const {
 			return (button == _rhs.button && axis == _rhs.axis);
 		}
+		bool has_same_params(const ProgramEvent::Mouse &_rhs) const {
+			return memcmp(params, _rhs.params, sizeof(params)) == 0;
+		}
 	} mouse;
 	
 	struct Command {
@@ -161,6 +170,9 @@ struct ProgramEvent {
 		int params[2] = {0,0};
 		bool operator==(const ProgramEvent::Command &_rhs) const {
 			return (name == _rhs.name);
+		}
+		bool has_same_params(const ProgramEvent::Command &_rhs) const {
+			return memcmp(params, _rhs.params, sizeof(params)) == 0;
 		}
 	} command;
 	
@@ -174,7 +186,7 @@ struct ProgramEvent {
 		return (type == _rhs.type && func == _rhs.func && key == _rhs.key &&
 				joy == _rhs.joy && mouse == _rhs.mouse && command == _rhs.command);
 	}
-	
+	bool has_same_params(const ProgramEvent &_rhs) const;
 	bool is_key_modifier() const;
 };
 
@@ -222,7 +234,7 @@ public:
 	const Binding *find_sdl_binding(uint8_t _joyid, const SDL_JoyAxisEvent &_event) const;
 	const Binding *find_sdl_binding(uint8_t _joyid, const SDL_JoyButtonEvent &_event) const;
 	
-	std::vector<const Keymap::Binding *> find_prg_bindings(const ProgramEvent &_event) const;
+	std::vector<const Keymap::Binding *> find_prg_bindings(const ProgramEvent &_event, bool _cmp_params = false) const;
 	
 	static SDL_Keycode get_SDL_Keycode_from_name(const std::string &);
 	static SDL_Scancode get_SDL_Scancode_from_name(const std::string &);

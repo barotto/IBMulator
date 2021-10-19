@@ -386,6 +386,24 @@ static constexpr bool is_key_modifier(Keys key)
 	);
 }
 
+bool ProgramEvent::has_same_params(const ProgramEvent &_rhs) const
+{
+	if(type != _rhs.type) {
+		return false;
+	}
+	switch(type) {
+		default: assert(false);      return false;
+		case Type::EVT_NONE:         return true;
+		case Type::EVT_PROGRAM_FUNC: return func.has_same_params(_rhs.func);
+		case Type::EVT_KEY:          return true;
+		case Type::EVT_JOY_BUTTON:
+		case Type::EVT_JOY_AXIS:     return joy.has_same_params(_rhs.joy);
+		case Type::EVT_MOUSE_BUTTON:
+		case Type::EVT_MOUSE_AXIS:   return mouse.has_same_params(_rhs.mouse);
+		case Type::EVT_COMMAND:      return command.has_same_params(_rhs.command);
+	}
+}
+
 bool ProgramEvent::is_key_modifier() const
 {
 	return (type == Type::EVT_KEY && ::is_key_modifier(key)); 
@@ -520,14 +538,18 @@ const Keymap::Binding *Keymap::find_input_binding(const InputEvent::Key &_kevt) 
 	return nullptr;
 }
 
-std::vector<const Keymap::Binding *> Keymap::find_prg_bindings(const ProgramEvent &_event) const
+std::vector<const Keymap::Binding *> Keymap::find_prg_bindings(const ProgramEvent &_event, bool _cmp_params) const
 {
 	std::vector<const Binding *> result;
 	for(auto & binding : m_bindings) {
 		for(auto & prgevt : binding.pevt) {
-			if(prgevt == _event) {
-				result.push_back(&binding);
+			if(!(prgevt == _event)) {
+				continue;
 			}
+			if(_cmp_params && !prgevt.has_same_params(_event)) {
+				continue;
+			}
+			result.push_back(&binding);
 		}
 	}
 	return result;

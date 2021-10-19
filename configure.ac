@@ -3,7 +3,7 @@
 #######################################################################
 define([IBMULATOR_VERSION],[m4_esyscmd_s([git describe --always --dirty | tr -d '\n'])])
 
-AC_INIT([IBMulator], IBMULATOR_VERSION, [github.com/barotto/IBMulator])
+AC_INIT([IBMulator], IBMULATOR_VERSION, [https://github.com/barotto/IBMulator/issues], [ibmulator], [https://barotto.github.io/IBMulator/])
 AC_PREREQ([2.59])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
