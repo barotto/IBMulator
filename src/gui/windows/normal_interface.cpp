@@ -138,7 +138,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	float xs = 1.f, ys = 1.f;
 	float xt = 0.f, yt = 0.f;
 	uint sysunit_h = _height/4;
-	sysunit_h = std::min(256u, sysunit_h);
+	sysunit_h = std::min(unsigned(256.0 * m_gui->scaling_factor()), sysunit_h);
 	uint sysunit_w = sysunit_h*4;
 	sysunit_w = std::min(sysunit_w, (uint)_width);
 	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
