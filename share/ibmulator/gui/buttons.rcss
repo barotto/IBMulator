@@ -4,13 +4,20 @@ input.checkbox,
 input.radio
 {
 	display: inline-block;
+	box-sizing: border-box;
 	height: 20dp;
-	padding-top: 1dp;
+	min-width: 20dp;
 	font-size: 18dp;
 	text-align: center;
 	tab-index: auto;
 	color: #000000ff;
 	background-color: #FFFFFFA0;
+}
+
+button span,
+input.radio span
+{
+	padding: 0 4dp 0 4dp;
 }
 
 button:hover
@@ -29,9 +36,8 @@ btnicon
 	display: block;
 	width: 16dp;
 	height: 16dp;
-	margin-top: 1dp;
-	margin-left: 6dp;
-	margin-right: 6dp;
+	margin-top: 2dp;
+	margin-left: 2dp;
 }
 
 button.text
@@ -43,54 +49,60 @@ button.text
 }
 
 button.romshell,
-input.checkbox.romshell,
-input.radio.romshell
+input.romshell
 {
 	display: inline-block;
 	font-family: "Nouveau IBM";
 	font-size: 16dp;
-	height: 22dp;
+	height: 23dp;
+	min-width: 24dp;
 	background-color: #FFFFFF00;
 	color: white;
+
+	padding-left: 4dp;
+	padding-top: 2dp;
+	padding-right: 2dp;
+}
+
+input.radio.romshell
+{
+	width: 10dp;
+}
+
+button.romshell btnicon,
+input.romshell btnicon
+{
+	margin-top: 1dp;
+	margin-left: 1dp;
 }
 
 @spritesheet
 {
 	src: images/romshell_button.png;
-	button-l: 0px 0px 4px 23px;
-	button-c: 5px 0px 1px 23px;
-	button-r: 120px 0px 2px 23px;
+	button-l: 0px 0px 8px 46px;
+	button-c: 10px 0px 2px 46px;
+	button-r: 240px 0px 4px 46px;
 }
 
 button.romshell
 {
-	padding-left: 10dp;
-	padding-right: 6dp;
 	decorator: tiled-horizontal( button-l, button-c, button-r );
 }
 
 @spritesheet
 {
 	src: images/romshell_button.png;
-	radio-l: 0px 0px 4px 23px;
-	radio-c: 5px 0px 1px 23px;
-	radio-r: 120px 0px 2px 23px;
-	radio-on-l: 0px 23px 4px 23px;
-	radio-on-c: 5px 23px 1px 23px;
-	radio-on-r: 118px 23px 4px 23px;
+	radio-l: 0px 0px 8px 46px;
+	radio-c: 10px 0px 2px 46px;
+	radio-r: 240px 0px 4px 46px;
+	radio-on-l: 0px 46px 8px 46px;
+	radio-on-c: 10px 46px 2px 46px;
+	radio-on-r: 236px 46px 8px 46px;
 }
 
 input.radio.romshell
 {
-	padding-left: 10dp;
-	padding-right: 6dp;
 	decorator: tiled-horizontal( radio-l, radio-c, radio-r );
-}
-
-input.radio.romshell btnicon
-{
-	margin-left: 0;
-	margin-right: 0;
 }
 
 input.radio.romshell:checked
@@ -102,10 +114,10 @@ input.radio.romshell:checked
 @spritesheet
 {
 	src: images/romshell_button.png;
-	check-l: 122px 0px 21px 23px;
-	check-checked-l: 143px 0px 21px 23px;
-	check-c: 5px 0px 115px 23px;
-	check-r: 120px 0px 2px 23px;
+	check-l: 244px 0px 42px 46px;
+	check-checked-l: 286px 0px 42px 46px;
+	check-c: 10px 0px 230px 46px;
+	check-r: 240px 0px 4px 46px;
 }
 
 input.checkbox.romshell

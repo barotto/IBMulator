@@ -1,44 +1,13 @@
-body
-{
-	width: 90%;
-	height: 90%;
-	min-width: 640dp;
-	min-height: 370dp;
-	margin: auto;
-}
-
-div#window
-{
-	padding: 20dp;
-}
-
 #buttons_right
 {
-	position: absolute;
-	bottom: 20dp;
-	right: 20dp;
 	left: 60%;
-	text-align: right;
 }
 
 #buttons_left
 {
-	position: absolute;
-	bottom: 20dp;
-	left: 20dp;
 	right: 40%;
-	text-align: left;
 }
 
-#buttons_right button.romshell
-{
-	margin-left: 10dp;
-}
-
-#buttons_left button.romshell
-{
-	margin-right: 10dp;
-}
 
 #buttons_entry
 {
@@ -58,16 +27,6 @@ div#window
 	display: inline-block;
 }
 
-.icon_grid
-{
-	decorator: image(icons/grid.png);
-}
-
-.icon_list
-{
-	decorator: image(icons/list.png);
-}
-
 #order,
 #asc_desc
 {
@@ -77,27 +36,12 @@ div#window
 
 #order input
 {
-	width: 45dp;
+	width: 60dp;
 }
 
 #asc_desc
 {
 	margin-left: 5dp;
-}
-
-.icon_asc
-{
-	decorator: image(icons/ascending.png);
-}
-
-.icon_desc
-{
-	decorator: image(icons/descending.png);
-}
-
-input.radio.romshell:checked btnicon
-{
-	image-color: #000000;
 }
 
 .entry .action,

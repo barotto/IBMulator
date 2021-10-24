@@ -1,0 +1,78 @@
+body
+{
+	width: 90%;
+	height: 90%;
+	min-width: 640dp;
+	min-height: 320dp;
+	margin: auto;
+
+	background-color: #3C5464ff;
+	border: 2dp;
+	border-color: #28374d;
+}
+
+div#window
+{
+	padding: 20dp;
+}
+
+#buttons_right
+{
+	position: absolute;
+	bottom: 20dp;
+	right: 20dp;
+	text-align: right;
+}
+
+#buttons_left
+{
+	position: absolute;
+	bottom: 20dp;
+	left: 20dp;
+	text-align: left;
+}
+
+#buttons_right button
+{
+	margin-left: 10dp;
+}
+
+#buttons_left button
+{
+	margin-right: 10dp;
+}
+
+#buttons_right button
+{
+	margin-left: 10dp;
+}
+
+#buttons_left button
+{
+	margin-right: 10dp;
+}
+
+.icon_grid
+{
+	decorator: image(icons/grid.png);
+}
+
+.icon_list
+{
+	decorator: image(icons/list.png);
+}
+
+.icon_asc
+{
+	decorator: image(icons/ascending.png);
+}
+
+.icon_desc
+{
+	decorator: image(icons/descending.png);
+}
+
+input.radio.romshell:checked btnicon
+{
+	image-color: #000000;
+}

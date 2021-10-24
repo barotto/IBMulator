@@ -170,7 +170,9 @@ protected:
 	virtual void set_floppy_string(std::string _filename);
 	virtual void set_floppy_config(bool _b_present);
 	virtual void set_floppy_active(bool _active);
-
+	
+	std::vector<uint64_t> get_floppy_sizes(unsigned _floppy_drive);
+	
 	void show_state_dialog(bool _save);
 	void show_state_info_dialog(StateRecord::Info _info);
 };

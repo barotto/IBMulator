@@ -1,0 +1,263 @@
+#cwd
+{
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	margin: 40dp 20dp 0 80dp;
+	font-size: 18dp;
+	text-align: right;
+	font-effect: shadow(-2dp 2dp black);
+	overflow: hidden auto;
+	white-space: nowrap;
+}
+
+@spritesheet
+{
+	src: icons/file_select.png;
+	directory: 128px 0px 64px 64px;
+	floppy_3_5: 0px 0px 64px 64px;
+	floppy_5_14: 64px 0px 64px 64px;
+	hdd: 192px 0px 64px 64px;
+}
+
+.DIR
+{
+	decorator: image(directory);
+}
+
+.floppy_720,
+.floppy_1_44
+{
+	decorator: image(floppy_3_5);
+}
+
+.floppy_160,
+.floppy_180,
+.floppy_320,
+.floppy_360,
+.floppy_1_20
+{
+	decorator: image(floppy_5_14);
+}
+
+.hdd
+{
+	decorator: image(hdd);
+}
+
+.icon_media
+{
+	decorator: image(icons/disk.png);
+}
+
+#wprotect
+{
+	width: 130dp;
+}
+
+#buttons_entry
+{
+	display: inline-block;
+	margin-right: 10dp;
+}
+
+#mode,
+#order,
+#asc_desc
+{
+	display: inline-block;
+}
+
+#mode
+{
+	margin-right: 10dp;
+}
+
+#order input
+{
+	width: 48dp;
+}
+
+#asc_desc
+{
+	margin-left: 5dp;
+}
+
+#buttons_right
+{
+	width: 300dp;
+}
+
+#buttons_left
+{
+	width: 300dp;
+}
+
+#home btnicon
+{
+	decorator: image(icons/home.png);
+}
+
+#reload btnicon
+{
+	decorator: image(icons/reload.png);
+}
+
+#entries
+{
+	box-sizing: border-box;
+	background-color: #3C5464ff;
+}
+
+#entries_container
+{
+	position: absolute;
+	bottom: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	margin: 80dp 20dp 55dp 20dp;
+	overflow: auto;
+	padding: 0;
+}
+
+.grid
+{
+	padding-bottom: 40dp;
+}
+
+.grid .entry
+{
+	display: inline-block;
+	width: 80dp;
+	height: 80dp;
+	margin: 0 0dp 4dp 0;
+	background-color: #3C5464ff;
+	overflow: hidden;
+}
+
+.grid .entry .icon
+{
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40dp;
+	margin: 4dp 0 4dp 0;
+	text-align: center;
+}
+
+.grid .entry .icon div
+{
+	display: inline-block;
+	width: 32dp;
+	height: 32dp;
+}
+
+.grid .entry .name
+{
+	display: block;
+	position: absolute;
+	top: 40dp;
+	left: 0;
+	right: 0;
+	padding: 4dp;
+	overflow: hidden;
+	font-size: 12dp;
+	word-break: break-word;
+	text-align: center;
+}
+
+.grid .entry:hover .name
+{
+	overflow: visible;
+	background-color: #6795beff;
+	z-index: 99;
+}
+
+.grid .entry .date
+{
+	display: none;
+}
+
+.grid .entry:hover
+{
+	background-color: #6795be;
+}
+
+.grid .entry.selected,
+.grid .entry.selected .name
+{
+	background-color: #fcfca6;
+}
+
+.grid .entry.selected *
+{
+	color: #000000;
+}
+
+
+#entries.list
+{
+	display: table;
+}
+
+.list .entry
+{
+	height: 40dp;
+	box-sizing: border-box;
+	display: table-row;
+}
+
+.list .entry:hover
+{
+	background-color: #6795be;
+}
+
+.list .entry.selected
+{
+	background-color: #fcfca6;
+}
+
+.list .entry.selected *
+{
+	color: #000000;
+}
+
+.list .entry .icon,
+.list .entry .name,
+.list .entry .date
+{
+	box-sizing: border-box;
+	display: table-cell;
+	vertical-align: middle;
+}
+
+.list .entry .name
+{
+	overflow: hidden;
+	max-height: 40dp;
+	font-size: 14dp;
+}
+
+.list .entry .date
+{
+	width: 110dp;
+	font-size: 12dp;
+	text-align: right;
+}
+
+.list .entry .icon
+{
+	width: 40dp;
+	text-align: center;
+}
+
+.list .entry .icon div
+{
+	display: inline-block;
+	width: 32dp;
+	height: 32dp;
+}

@@ -272,6 +272,7 @@ void Interface::config_changed()
 	set_floppy_string("");
 	set_floppy_active(false);
 	set_floppy_config(false);
+	m_fs->hide();
 	
 	m_floppy = m_machine->devices().device<FloppyCtrl>();
 	if(m_floppy) {
@@ -333,27 +334,13 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 
 	uint type;
 	switch(sb.st_size) {
-		case 160*1024:
-			type = FLOPPY_160K;
-			break;
-		case 180*1024:
-			type = FLOPPY_180K;
-			break;
-		case 320*1024:
-			type = FLOPPY_320K;
-			break;
-		case 360*1024:
-			type = FLOPPY_360K;
-			break;
-		case 1200*1024:
-			type = FLOPPY_1_2;
-			break;
-		case 720*1024:
-			type = FLOPPY_720K;
-			break;
-		case 1440*1024:
-			type = FLOPPY_1_44;
-			break;
+		case FLOPPY_160K_BYTES: type = FLOPPY_160K; break;
+		case FLOPPY_180K_BYTES: type = FLOPPY_180K; break;
+		case FLOPPY_320K_BYTES: type = FLOPPY_320K; break;
+		case FLOPPY_360K_BYTES: type = FLOPPY_360K; break;
+		case FLOPPY_1_2_BYTES:  type = FLOPPY_1_2;  break;
+		case FLOPPY_720K_BYTES: type = FLOPPY_720K; break;
+		case FLOPPY_1_44_BYTES: type = FLOPPY_1_44; break;
 		default:
 			PERRF(LOG_GUI, "Unable to determine the type of '%s'\n", _img_path.c_str());
 			m_fs->hide();
@@ -482,6 +469,10 @@ void Interface::on_fdd_select(Rml::Event &)
 			set_floppy_string(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	}
+	if(m_fs->is_visible()) {
+		m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
+		m_fs->reload();
+	}
 }
 
 void Interface::on_fdd_eject(Rml::Event &)
@@ -489,6 +480,24 @@ void Interface::on_fdd_eject(Rml::Event &)
 	m_machine->cmd_eject_media(m_curr_drive);
 	if(m_audio_enabled && m_floppy->is_media_present(m_curr_drive)) {
 		m_audio.use_floppy(false);
+	}
+}
+
+std::vector<uint64_t> Interface::get_floppy_sizes(unsigned _floppy_drive)
+{
+	switch(m_floppy->drive_type(_floppy_drive)) {
+		case FDD_525DD: // 360K  5.25"
+			return { FLOPPY_160K_BYTES, FLOPPY_180K_BYTES, FLOPPY_320K_BYTES, FLOPPY_360K_BYTES };
+		case FDD_525HD: // 1.2M  5.25"
+			return { FLOPPY_160K_BYTES, FLOPPY_180K_BYTES, FLOPPY_320K_BYTES, FLOPPY_360K_BYTES, FLOPPY_1_2_BYTES };
+		case FDD_350DD: // 720K  3.5"
+			return { FLOPPY_720K_BYTES };
+		case FDD_350HD: // 1.44M 3.5"
+			return { FLOPPY_720K_BYTES, FLOPPY_1_44_BYTES };
+		case FDD_350ED: // 2.88M 3.5"
+			return { FLOPPY_720K_BYTES, FLOPPY_1_44_BYTES, FLOPPY_2_88_BYTES };
+		default:
+			return {};
 	}
 }
 
@@ -544,6 +553,8 @@ void Interface::on_fdd_mount(Rml::Event &)
 		}
 	} else {
 		try {
+			m_fs->set_home(floppy_dir);
+			m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
 			m_fs->set_current_dir(floppy_dir);
 		} catch(std::exception &e) {
 			return;

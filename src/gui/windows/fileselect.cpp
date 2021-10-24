@@ -35,15 +35,20 @@
 #endif
 
 event_map_t FileSelect::ms_evt_map = {
-	GUI_EVT( "cancel", "click", FileSelect::on_cancel ),
-	GUI_EVT( "close",  "click", FileSelect::on_cancel ),
-	GUI_EVT( "files",  "click", FileSelect::on_file ),
+	GUI_EVT( "cancel", "click",  FileSelect::on_cancel ),
+	GUI_EVT( "close",  "click",  FileSelect::on_cancel ),
+	GUI_EVT( "entries","click",  FileSelect::on_entry ),
+	GUI_EVT( "insert", "click",  FileSelect::on_insert ),
+	GUI_EVT( "mode",    "click", FileSelect::on_mode ),
+	GUI_EVT( "order",   "click", FileSelect::on_order ),
+	GUI_EVT( "asc_desc","click", FileSelect::on_asc_desc),
+	GUI_EVT( "reload",  "click", FileSelect::on_reload),
+	GUI_EVT( "home",    "click", FileSelect::on_home),
 	GUI_EVT( "*",    "keydown", Window::on_keydown )
 };
 
 FileSelect::FileSelect(GUI * _gui)
 :
-Rml::DataSource("file_select"),
 Window(_gui, "fileselect.rml")
 {
 }
@@ -57,66 +62,242 @@ void FileSelect::create()
 	Window::create();
 
 	m_cwd_el = get_element("cwd");
+	m_entries_el = get_element("entries");
+	//m_panel_el = get_element("panel");
+	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
 }
 
 void FileSelect::update()
 {
+	Window::update();
+
+	if(m_dirty) {
+		entry_deselect();
+		m_entries_el->SetInnerRML("");
+		switch(m_order) {
+			case Order::BY_DATE: {
+				if(m_order_ascending) {
+					for(auto de : m_cur_dir_date) {
+						m_entries_el->AppendChild(de->create_element(m_wnd));
+					}
+				} else {
+					if(m_dotdot) {
+						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
+					}
+					auto it = m_cur_dir_date.rbegin();
+					for(;it != m_cur_dir_date.rend(); it++) {
+						if((*it)->is_dir && (*it)->name != "..") {
+							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+						}
+					}
+					it = m_cur_dir_date.rbegin();
+					for(;it != m_cur_dir_date.rend(); it++) {
+						if(!(*it)->is_dir) {
+							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+						}
+					}
+				}
+				break;
+			}
+			case Order::BY_NAME: {
+				if(m_order_ascending) {
+					for(auto de : m_cur_dir_name) {
+						m_entries_el->AppendChild(de->create_element(m_wnd));
+					}
+				} else {
+					if(m_dotdot) {
+						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
+					}
+					auto it = m_cur_dir_name.rbegin();
+					for(;it != m_cur_dir_name.rend(); it++) {
+						if((*it)->is_dir && (*it)->name != "..") {
+							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+						}
+					}
+					it = m_cur_dir_name.rbegin();
+					for(;it != m_cur_dir_name.rend(); it++) {
+						if(!(*it)->is_dir) {
+							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+						}
+					}
+				}
+				break;
+			}
+		}
+		m_dirty = false;
+	}
 }
 
-void FileSelect::on_file(Rml::Event &_event)
+void FileSelect::on_entry(Rml::Event &_ev)
 {
-	Rml::Element * el = _event.GetTargetElement();
-	Rml::ElementDataGridCell *cell = dynamic_cast<Rml::ElementDataGridCell *>(el);
-	if(cell == nullptr) {
-		//try the parent?
-		cell = dynamic_cast<Rml::ElementDataGridCell *>(el->GetParentNode());
-		if(cell == nullptr) {
-			//give up
-			return;
-		}
+	Rml::Element *entry_el;
+	Rml::Element *target_el = _ev.GetTargetElement();
+	entry_el = target_el;
+	while(entry_el && entry_el->GetId().empty()) {
+		entry_el = entry_el->GetParentNode();
 	}
-	Rml::ElementDataGridRow *row =
-			dynamic_cast<Rml::ElementDataGridRow *>(cell->GetParentNode());
-	if(row == nullptr) {
+	if(!entry_el) {
 		return;
 	}
-	int row_index = row->GetTableRelativeIndex();
-	std::vector<std::string> sl;
 
-	GetRow(sl, "files", row_index, {"name"});
-	PDEBUGF(LOG_V1, LOG_GUI, "clicked on row %u=%s\n", row_index, sl[0].c_str());
-
-	auto it = m_cur_dir.begin();
-	advance(it,row_index);
+	auto pair = m_de_map.find(entry_el->GetId());
+	if(pair == m_de_map.end()) {
+		return;
+	}
+	auto de = &pair->second;
+	
 	std::string path = m_cwd;
-	if(it->is_dir) {
-		if(it->name == "..") {
-			size_t pos = path.rfind(FS_SEP);
-			if(pos == std::string::npos) {
-				return;
-			}
-			if(pos == 0) {
-				// the root on unix
-				pos = 1;
-			}
-			path = path.substr(0, pos);
+	if(de->is_dir) {
+		if(de->name == "..") {
+			on_up(_ev);
 		} else {
 			path += FS_SEP;
-			path += it->name;
+			path += de->name;
+			try {
+				set_current_dir(path);
+			} catch(...) { }
 		}
-		try {
-			set_current_dir(path);
-		} catch(...) { }
 		return;
 	}
+	
+	if(target_el->IsClassSet("action")) {
+		if(m_select_callbk != nullptr) {
+			path += FS_SEP;
+			path += de->name;
+			bool wp = m_wprotect->GetAttribute("checked") != nullptr;
+			m_select_callbk(path, wp);
+		} else {
+			hide();
+		}
+		return;
+	}
+
+	entry_select(de, entry_el);
+
+}
+
+void FileSelect::on_insert(Rml::Event &)
+{
+	if(m_selected_id.empty()) {
+		return;
+	}
+	auto pair = m_de_map.find(m_selected_id);
+	if(pair == m_de_map.end()) {
+		return;
+	}
+	auto de = &pair->second;
+	std::string path = m_cwd;
 	if(m_select_callbk != nullptr) {
 		path += FS_SEP;
-		path += it->name;
+		path += de->name;
 		bool wp = m_wprotect->GetAttribute("checked") != nullptr;
-		m_select_callbk(path,wp);
+		m_select_callbk(path, wp);
 	} else {
 		hide();
+	}
+}
+
+void FileSelect::on_home(Rml::Event &)
+{
+	try {
+		set_current_dir(m_home);
+	} catch(...) {
+		PERRF(LOG_GUI, "Cannot open directory\n");
+	}
+}
+
+void FileSelect::on_reload(Rml::Event &)
+{
+	reload();
+}
+
+void FileSelect::on_up(Rml::Event &)
+{
+	std::string path = m_cwd;
+	size_t pos = path.rfind(FS_SEP);
+	if(pos == std::string::npos) {
+		return;
+	}
+	if(pos == 0) {
+		// the root on unix
+		pos = 1;
+	}
+	path = path.substr(0, pos);
+	try {
+		set_current_dir(path);
+	} catch(...) { }
+}
+
+void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
+{
+	try {
+		entry_deselect();
+
+		m_selected_entry = _entry_el;
+		m_selected_entry->SetClass("selected", true);
+		m_selected_id = _de->id;
+
+		// TODO extract the list of files
+
+		m_buttons_entry_el->SetClass("invisible", false);
+	} catch(std::out_of_range &) {
+		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
+	}
+}
+
+void FileSelect::entry_deselect()
+{
+	if(m_selected_entry) {
+		m_selected_entry->SetClass("selected", false);
+		m_selected_id = "";
+	}
+	m_selected_entry = nullptr;
+
+	m_buttons_entry_el->SetClass("invisible", true);
+}
+
+void FileSelect::on_mode(Rml::Event &_ev)
+{
+	std::string value = Window::get_form_input_value(_ev);
+	if(!value.empty()) {
+		m_entries_el->SetClassNames(value);
+		//m_panel_el->SetClassNames(value);
+	}
+	entry_deselect();
+}
+
+void FileSelect::on_order(Rml::Event &_ev)
+{
+	std::string value = Window::get_form_input_value(_ev);
+	if(!value.empty()) {
+		if(value == "date") {
+			m_order = Order::BY_DATE;
+		} else if(value == "name") {
+			m_order = Order::BY_NAME;
+		} else {
+			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
+			return;
+		}
+		set_dirty();
+		update();
+	}
+}
+
+void FileSelect::on_asc_desc(Rml::Event &_ev)
+{
+	std::string value = Window::get_form_input_value(_ev);
+	if(!value.empty()) {
+		if(value == "asc") {
+			m_order_ascending = true;
+		} else if(value == "desc") {
+			m_order_ascending = false;
+		} else {
+			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
+			return;
+		}
+		set_dirty();
+		update();
 	}
 }
 
@@ -129,86 +310,37 @@ void FileSelect::on_cancel(Rml::Event &)
 	}
 }
 
-void FileSelect::GetRow(std::vector<std::string> &row, const std::string &table, int row_index,
-		const std::vector<std::string> &columns)
+Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc) const
 {
-	if(table != "files") {
-		return;
-	}
-	auto it = m_cur_dir.begin();
-	advance(it,row_index);
-	for(size_t i = 0; i < columns.size(); i++)
-	{
-		if (columns[i] == "name")
-		{
-			row.push_back(str_format("<div class=\"name\">%s</div>", it->name.c_str()));
-		}
-		else if (columns[i] == "label")
-		{
-			//to read the volume label the file must be opened. i don't think
-			//it would be wise
-			row.push_back("");
-		}
-		else if (columns[i] == "type")
-		{
-			std::string formatted = "<div class=\"";
-			if(it->is_dir) {
-				formatted += "DIR";
-			} else {
-				switch(it->size) {
-				case 160*1024:
-					formatted += "floppy_160";
-					break;
-				case 180*1024:
-					formatted += "floppy_180";
-					break;
-				case 320*1024:
-					formatted += "floppy_320";
-					break;
-				case 360*1024:
-					formatted += "floppy_360";
-					break;
-				case 1200*1024:
-					formatted += "floppy_1_20";
-					break;
-				case 720*1024:
-					formatted += "floppy_720";
-					break;
-				case 1440*1024:
-					formatted += "floppy_1_44";
-					break;
-				default:
-					formatted += "hdd";
-					break;
-				}
-			}
-			formatted += "\"></div>";
-			row.push_back(formatted);
-		}
-	}
-}
+	Rml::ElementPtr child = _doc->CreateElement("div");
+	child->SetClassNames("entry");
+	child->SetId(id);
 
-int FileSelect::GetNumRows(const Rml::String &_table)
-{
-	if(_table != "files") {
-		return 0;
-	}
-	return m_cur_dir.size();
-}
+	std::string inner;
 
-bool FileSelect::DirEntry::operator<(const FileSelect::DirEntry &_other) const
-{
+	inner += "<div class=\"icon\"><div class=\"";
 	if(is_dir) {
-		if(_other.is_dir) {
-			return name < _other.name;
-		}
-		return true;
+		inner += "DIR";
 	} else {
-		if(_other.is_dir) {
-			return false;
+		switch(size) {
+			case 160*1024:  inner += "floppy_160"; break;
+			case 180*1024:  inner += "floppy_180"; break;
+			case 320*1024:  inner += "floppy_320"; break;
+			case 360*1024:  inner += "floppy_360"; break;
+			case 1200*1024: inner += "floppy_1_20"; break;
+			case 720*1024:  inner += "floppy_720"; break;
+			case 1440*1024: inner += "floppy_1_44"; break;
+			default: inner += "hdd"; break;
 		}
-		return name < _other.name;
 	}
+	inner += "\"></div></div>";
+	inner += "<div class=\"name\">" + name + "</div>";
+	if(mtime) {
+		inner += "<div class=\"date\">" + str_format_time(mtime, "%x %R") + "</div>";
+	}
+	child->SetInnerRML(inner);
+
+	return child;
 }
 
 void FileSelect::set_current_dir(const std::string &_path)
@@ -224,16 +356,26 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 
 	try {
-		m_cur_dir = read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
+		read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
 	} catch(std::exception &e) {
 		return;
 	}
 	m_cwd = new_cwd;
 	m_cwd_el->SetInnerRML(m_cwd.c_str());
-	NotifyRowChange("files");
+	set_dirty();
+	update();
 }
 
-std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::string _ext)
+void FileSelect::reload()
+{
+	try {
+		set_current_dir(m_cwd);
+	} catch(...) {
+		PERRF(LOG_GUI, "Cannot open directory\n");
+	}
+}
+
+void FileSelect::read_dir(std::string _path, std::string _ext)
 {
 	DIR *dir;
 	struct dirent *ent;
@@ -243,9 +385,13 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 		throw std::exception();
 	}
 
-	std::set<DirEntry> cur_dir;
+	m_cur_dir_date.clear();
+	m_cur_dir_name.clear();
+	m_de_map.clear();
+	m_dotdot = nullptr;
 
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
+	unsigned id = 0;
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		DirEntry de;
@@ -262,7 +408,6 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 			continue;
 		}
 #endif
-		de.size = sb.st_size;
 		if(S_ISDIR(sb.st_mode)) {
 			if(de.name == ".") {
 				continue;
@@ -277,20 +422,36 @@ std::set<FileSelect::DirEntry> FileSelect::read_dir(std::string _path, std::stri
 			if(!_ext.empty() && !std::regex_search(de.name, re)) {
 				continue;
 			}
+
 		}
-		cur_dir.insert(de);
+		FILETIME mtime;
+		if(FileSys::get_file_stats(fullpath.c_str(), &de.size, &mtime) == 0) {
+			de.mtime = FileSys::filetime_to_time_t(mtime);
+		} else {
+			de.mtime = 0;
+		}
+		if(!de.is_dir && !m_compat_sizes.empty()) {
+			if(std::find(m_compat_sizes.begin(), m_compat_sizes.end(), de.size) == std::end(m_compat_sizes)) {
+				continue;
+			}
+		}
+		de.id = str_format("de_%u", id);
+
+		try {
+			auto p = m_de_map.emplace(std::make_pair(de.id, de));
+			if(p.second) {
+				m_cur_dir_date.emplace(&(p.first->second));
+				m_cur_dir_name.emplace(&(p.first->second));
+				id++;
+				if(de.name == "..") {
+					m_dotdot = &(p.first->second);
+				}
+			}
+		} catch(std::runtime_error &e) {
+			PDEBUGF(LOG_V1, LOG_GUI, "  %s\n", e.what());
+		}
 	}
 
-	if(closedir(dir) != 0) {
-		PWARNF(LOG_V1, LOG_GUI, "Cannot close directory '%s'\n", _path.c_str());
-	}
-
-	return cur_dir;
+	closedir(dir);
 }
 
-
-void FileSelectTypeFormatter::FormatData(std::string &formatted_,
-		const std::vector<std::string> &_raw)
-{
-	formatted_ = _raw[0];
-}

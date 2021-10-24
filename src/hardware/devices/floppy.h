@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,6 +46,17 @@ enum FloppyDiskType {
 	FLOPPY_1_44, // 1.44M 3.5"
 	FLOPPY_2_88, // 2.88M 3.5"
 	FLOPPY_TYPE_CNT
+};
+
+enum FloppyDiskSize {
+	FLOPPY_160K_BYTES = 160*1024,  // 160K  5.25"
+	FLOPPY_180K_BYTES = 180*1024,  // 180K  5.25"
+	FLOPPY_320K_BYTES = 320*1024,  // 320K  5.25"
+	FLOPPY_360K_BYTES = 360*1024,  // 360K  5.25"
+	FLOPPY_720K_BYTES = 720*1024,  // 720K  3.5"
+	FLOPPY_1_2_BYTES  = 1200*1024, // 1.2M  5.25"
+	FLOPPY_1_44_BYTES = 1440*1024, // 1.44M 3.5"
+	FLOPPY_2_88_BYTES = 2880*1024  // 2.88M 3.5"
 };
 
 struct FloppyDisk

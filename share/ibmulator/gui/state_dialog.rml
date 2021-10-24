@@ -1,5 +1,6 @@
-<template name="state_dialog" content="action">
+<template name="state_dialog" content="action_label">
 <head>
+	<link type="text/rcss" href="dialog.rcss"/>
 	<link type="text/rcss" href="state_dialog.rcss"/>
 	<link type="text/rcss" href="state_dialog_list.rcss"/>
 	<link type="text/rcss" href="state_dialog_grid.rcss"/>
@@ -14,26 +15,26 @@
 	</div>
 	<form id="buttons_left">
 		<div id="mode">
-		<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" />&nbsp;</input>
-		<input type="radio" name="mode" value="list" class="romshell"><btnicon class="icon_list" />&nbsp;</input>
+		<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" /><span></span></input>
+		<input type="radio" name="mode" value="list" class="romshell"><btnicon class="icon_list" /><span></span></input>
 		</div>
 		by
 		<div id="order">
-		<input type="radio" name="order" value="date" class="romshell" checked>date</input>
-		<input type="radio" name="order" value="title" class="romshell">title</input>
-		<input type="radio" name="order" value="slot" class="romshell">slot</input>
+		<input type="radio" name="order" value="date" class="romshell" checked><span>date</span></input>
+		<input type="radio" name="order" value="title" class="romshell"><span>title</span></input>
+		<input type="radio" name="order" value="slot" class="romshell"><span>slot</span></input>
 		</div>
 		<div id="asc_desc">
-		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" />&nbsp;</input>
-		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" />&nbsp;</input>
+		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
+		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
 		</div>
 	</form>
 	<div id="buttons_right">
 		<div id="buttons_entry" class="invisible">
-			<button id="delete" class="romshell entry_button">Delete</button>
-			<button id="action" class="romshell entry_button"></button>
+			<button id="delete" class="romshell entry_button"><span>Delete</span></button>
+			<button id="action" class="romshell entry_button"><span id="action_label"></span></button>
 		</div>
-		<button id="cancel" class="romshell">Cancel</button>
+		<button id="cancel" class="romshell"><span>Cancel</span></button>
 	</div>
 </body>
 </template>

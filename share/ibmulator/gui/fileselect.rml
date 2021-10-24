@@ -1,152 +1,47 @@
 <rml>
 	<head>
-		<title>File select</title>
+		<title>Floppy disk select</title>
 		<link type="text/template" href="default.rml" />
+		<link type="text/rcss" href="dialog.rcss"/>
+		<link type="text/rcss" href="fileselect.rcss"/>
 		<style>
-			body
-			{
-				width: 90%;
-				max-width: 1024dp;
-				min-width: 640dp;
-				height: 90%;
-				min-height: 440dp;
-				max-height: 768dp;
-				margin: auto;
-				background-color: #3C5464FF;
-			}
-			div#window
-			{
-				padding: 5dp 15dp 5dp 15dp;
-			}
-			#cwd
-			{
-				width: 95%;
-				margin: 0 auto 0 auto;
-				font-size: 20dp;
-				text-align: right;
-				font-effect: shadow(-2dp 2dp black);
-				overflow: hidden auto;
-			}
-			#list
-			{
-				background-color: #FCFCA8FF;
-				width: 100%;
-				height: 85%;
-				margin: 0 auto 20dp auto;
-			}
-			@spritesheet
-			{
-				src: images/romshell_datagrid_rl.png;
 
-				datag-tl: 0px 0px 6px 6px;
-				datag-t:  7px 0px 528px 6px;
-				datag-tr: 528px 0px 7px 6px;
-
-				datag-bl: 0px 184px 28px 7px;
-				datag-b:  28px 184px 500px 7px;
-				datag-br: 528px 184px 7px 7px;
-
-				datag-l: 0px 11px 28px 173px;
-				datag-c: 28px 11px 500px 173px;
-				datag-r: 528px 6px 7px 178px;
-			}
-			datagrid
-			{
-				width: 80%;
-				height: 85%;
-				padding: 20dp 28dp 4dp 4dp;
-				margin: auto;
-				font-size: 20dp;
-				color: black;
-				decorator: tiled-box(
-					datag-tl, datag-t, datag-tr,
-					datag-l,  datag-c, datag-r,
-					datag-bl, datag-b, datag-br
-				);
-			}
-			datagrid datagridheader
-			{
-				height: 0;
-			}
-			@spritesheet
-			{
-				src: images/romshell_datagridcell.png;
-				datarow: 26px 0px 2px 22px;
-			}
-			datagrid datagridrow
-			{
-				padding-left: 26dp;
-				padding-top: 1dp;
-				height: 34dp;
-				decorator: image(datarow);
-			}
-			#buttons {
-				position:absolute;
-				bottom: 2%;
-				right: 40dp;
-				width: 300dp;
-				height: 25dp;
-			}
-			#wprotect {
-				position: absolute;
-				left: 0;
-				width: 150dp;
-			}
-			#cancel {
-				position: absolute;
-				right: 0;
-				width: 80dp;
-			}
-			@spritesheet
-			{
-				src: icons/file_select.png;
-				directory: 64px 0px 32px 32px;
-				floppy_3_5: 0px 0px 32px 32px;
-				floppy_5_14: 32px 0px 32px 32px;
-				hdd: 96px 0px 32px 32px;
-			}
-			.name {
-				padding-left: 5dp;
-			}
-			.DIR {
-				height: 32dp;
-				width: 32dp;
-				decorator: image(directory);
-			}
-			.floppy_720,
-			.floppy_1_44 {
-				height: 32dp;
-				width: 32dp;
-				decorator: image(floppy_3_5);
-			}
-			.floppy_160,
-			.floppy_180,
-			.floppy_320,
-			.floppy_360,
-			.floppy_1_20 {
-				height: 32dp;
-				width: 32dp;
-				decorator: image(floppy_5_14);
-			}
-			.hdd {
-				height: 32dp;
-				width: 32dp;
-				decorator: image(hdd);
-			}
 		</style>
 	</head>
 	<body template="default">
+
+		<button id="home" class="romshell"><btnicon /><span></span></button>
+		<button id="reload" class="romshell"><btnicon /><span></span></button>
+
 		<div id="cwd"></div>
-		<div id="list">
-		<datagrid id="files" source="file_select.files">
-			<col fields="type" formatter="file_type" width="32dp"></col>
-			<col fields="name"></col>
-			<!-- <col fields="label" width="30%"></col> -->
-		</datagrid>
+
+		<div id="entries_container">
+			<div id="entries" class="grid"></div>
 		</div>
-		<div id="buttons">
-			<input id="wprotect" type="checkbox" class="romshell">Write protect</input>
-			<button id="cancel" class="romshell">Cancel</button>
+
+		<form id="buttons_left">
+			<div id="mode">
+			<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" /><span></span></input>
+			<input type="radio" name="mode" value="list" class="romshell"><btnicon class="icon_list" /><span></span></input>
+			</div>
+			by
+			<div id="order">
+			<input type="radio" name="order" value="name" class="romshell" checked><span>name</span></input>
+			<input type="radio" name="order" value="date" class="romshell"><span>date</span></input>
+			</div>
+			<div id="asc_desc">
+			<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
+			<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
+			</div>
+		</form>
+	
+		<div id="buttons_right">
+			<div id="buttons_entry" class="invisible">
+				<input id="wprotect" type="checkbox" class="romshell"><span>Write prot.</span></input>
+				<button id="insert" class="romshell entry_button"><span>Insert</span></button>
+			</div>
+			<button id="cancel" class="romshell"><span>Cancel</span></button>
 		</div>
+
 	</body>
 </rml>
