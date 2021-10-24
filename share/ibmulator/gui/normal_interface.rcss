@@ -146,6 +146,13 @@
 	white-space: nowrap;
 }
 
+#fdd_disk_c:hover
+{
+	overflow: visible;
+	z-index: 99;
+	font-effect: shadow(-2dp 2dp black);
+}
+
 #fdd_mount_c:hover
 {
 	background-color: #a0a0a0a0;
