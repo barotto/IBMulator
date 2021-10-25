@@ -134,6 +134,8 @@ protected:
 	void read_dir(std::string _path, std::string _ext);
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
 	void entry_deselect();
+	
+	std::pair<DirEntry*,Rml::Element*> get_entry(Rml::Event &);
 };
 
 

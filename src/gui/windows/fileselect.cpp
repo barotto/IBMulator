@@ -35,16 +35,17 @@
 #endif
 
 event_map_t FileSelect::ms_evt_map = {
-	GUI_EVT( "cancel", "click",  FileSelect::on_cancel ),
-	GUI_EVT( "close",  "click",  FileSelect::on_cancel ),
-	GUI_EVT( "entries","click",  FileSelect::on_entry ),
-	GUI_EVT( "insert", "click",  FileSelect::on_insert ),
-	GUI_EVT( "mode",    "click", FileSelect::on_mode ),
-	GUI_EVT( "order",   "click", FileSelect::on_order ),
-	GUI_EVT( "asc_desc","click", FileSelect::on_asc_desc),
-	GUI_EVT( "reload",  "click", FileSelect::on_reload),
-	GUI_EVT( "home",    "click", FileSelect::on_home),
-	GUI_EVT( "*",    "keydown", Window::on_keydown )
+	GUI_EVT( "cancel",  "click",   FileSelect::on_cancel ),
+	GUI_EVT( "close",   "click",   FileSelect::on_cancel ),
+	GUI_EVT( "entries", "click",   FileSelect::on_entry ),
+	GUI_EVT( "entries", "dblclick",FileSelect::on_insert ),
+	GUI_EVT( "insert",  "click",   FileSelect::on_insert ),
+	GUI_EVT( "mode",    "click",   FileSelect::on_mode ),
+	GUI_EVT( "order",   "click",   FileSelect::on_order ),
+	GUI_EVT( "asc_desc","click",   FileSelect::on_asc_desc),
+	GUI_EVT( "reload",  "click",   FileSelect::on_reload),
+	GUI_EVT( "home",    "click",   FileSelect::on_home),
+	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
 FileSelect::FileSelect(GUI * _gui)
@@ -129,24 +130,33 @@ void FileSelect::update()
 	}
 }
 
-void FileSelect::on_entry(Rml::Event &_ev)
+std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_entry(Rml::Event &_ev)
 {
-	Rml::Element *entry_el;
+	Rml::Element *entry_el = nullptr;
 	Rml::Element *target_el = _ev.GetTargetElement();
 	entry_el = target_el;
 	while(entry_el && entry_el->GetId().empty()) {
 		entry_el = entry_el->GetParentNode();
 	}
 	if(!entry_el) {
-		return;
+		return std::make_pair(nullptr,nullptr);
 	}
 
 	auto pair = m_de_map.find(entry_el->GetId());
 	if(pair == m_de_map.end()) {
+		return std::make_pair(nullptr,nullptr);
+	}
+
+	return std::make_pair(&pair->second, entry_el);
+}
+
+void FileSelect::on_entry(Rml::Event &_ev)
+{
+	auto [de, entry_el] = get_entry(_ev);
+	if(!de) {
 		return;
 	}
-	auto de = &pair->second;
-	
+
 	std::string path = m_cwd;
 	if(de->is_dir) {
 		if(de->name == "..") {
@@ -160,33 +170,26 @@ void FileSelect::on_entry(Rml::Event &_ev)
 		}
 		return;
 	}
-	
-	if(target_el->IsClassSet("action")) {
-		if(m_select_callbk != nullptr) {
-			path += FS_SEP;
-			path += de->name;
-			bool wp = m_wprotect->GetAttribute("checked") != nullptr;
-			m_select_callbk(path, wp);
-		} else {
-			hide();
-		}
-		return;
-	}
 
 	entry_select(de, entry_el);
-
 }
 
-void FileSelect::on_insert(Rml::Event &)
+void FileSelect::on_insert(Rml::Event &_ev)
 {
-	if(m_selected_id.empty()) {
-		return;
+	auto [de, entry_el] = get_entry(_ev);
+
+	if(_ev.GetType() != "dblclick") {
+		if(m_selected_id.empty()) {
+			return;
+		}
+		auto pair = m_de_map.find(m_selected_id);
+		if(pair == m_de_map.end()) {
+			entry_deselect();
+			return;
+		}
+		de = &pair->second;
 	}
-	auto pair = m_de_map.find(m_selected_id);
-	if(pair == m_de_map.end()) {
-		return;
-	}
-	auto de = &pair->second;
+
 	std::string path = m_cwd;
 	if(m_select_callbk != nullptr) {
 		path += FS_SEP;
