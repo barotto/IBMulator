@@ -290,9 +290,13 @@ bool hdimage_copy_file(const char *src, const char *dst)
 
 MediaImage::MediaImage()
 :
-m_size(0),
-m_mtime(0)
+m_size(0)
 {
+#ifdef _WIN32
+	m_mtime = {0,0};
+#else
+	m_mtime = 0;
+#endif
 }
 
 int MediaImage::open(const char* _pathname)

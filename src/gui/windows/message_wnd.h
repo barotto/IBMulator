@@ -23,13 +23,13 @@
 #include "../window.h"
 #include <RmlUi/Core.h>
 
-class MessageBox : public Window
+class MessageWnd : public Window
 {
 public:
 
 	enum class Type {
-		MSGB_OK,
-		MSGB_YES_NO
+		MSGW_OK,
+		MSGW_YES_NO
 	};
 
 private:
@@ -37,12 +37,12 @@ private:
 	static event_map_t ms_evt_map;
 	std::function<void()> m_action1_clbk = nullptr;
 	std::function<void()> m_action2_clbk = nullptr;
-	Type m_type = Type::MSGB_OK;
+	Type m_type = Type::MSGW_OK;
 
 public:
 
-	MessageBox(GUI * _gui);
-	virtual ~MessageBox();
+	MessageWnd(GUI * _gui);
+	virtual ~MessageWnd();
 
 	void create();
 
@@ -56,7 +56,7 @@ public:
 	void set_title(const std::string &);
 	void set_message(const std::string &);
 
-	event_map_t & get_event_map() { return MessageBox::ms_evt_map; }
+	event_map_t & get_event_map() { return MessageWnd::ms_evt_map; }
 
 private:
 

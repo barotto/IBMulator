@@ -109,7 +109,7 @@ enum MouseTypes {
 extern ini_enum_map_t g_mouse_types;
 
 #include "hardware/devices/vgadisplay.h"
-#include "windows/message_box.h"
+#include "windows/message_wnd.h"
 
 
 class GUI
@@ -264,7 +264,7 @@ protected:
 		std::unique_ptr<Interface>  interface;
 		std::unique_ptr<Status>     status;
 		std::unique_ptr<DebugTools> dbgtools;
-		std::unique_ptr<MessageBox> message_box;
+		std::unique_ptr<MessageWnd> message_wnd;
 
 		std::string last_ifc_mex;
 		std::string last_dbg_mex;
@@ -348,7 +348,7 @@ public:
 	void take_screenshot(bool _with_palette_file = false);
 	void show_message(const char* _mex);
 	void show_dbg_message(const char* _mex);
-	void show_message_box(const std::string &_title, const std::string &_message, MessageBox::Type _type, 
+	void show_message_box(const std::string &_title, const std::string &_message, MessageWnd::Type _type, 
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
 	void toggle_dbg_windows();
 	void grab_input(bool _value);

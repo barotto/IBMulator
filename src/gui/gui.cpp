@@ -2123,21 +2123,21 @@ void GUI::show_dbg_message(const char* _mex)
 }
 
 void GUI::show_message_box(const std::string &_title, const std::string &_message,
-		MessageBox::Type _type, 
+		MessageWnd::Type _type, 
 		std::function<void()> _on_action1, std::function<void()> _on_action2)
 {
 	// This function can be called by the GUI thread only!
-	if(m_windows.message_box) {
-		m_windows.message_box->close();
+	if(m_windows.message_wnd) {
+		m_windows.message_wnd->close();
 	}
-	m_windows.message_box = std::make_unique<MessageBox>(this);
-	m_windows.message_box->create();
-	m_windows.message_box->set_modal(true);
-	m_windows.message_box->set_title(_title);
-	m_windows.message_box->set_message(_message);
-	m_windows.message_box->set_type(_type);
-	m_windows.message_box->set_callbacks(_on_action1, _on_action2);
-	m_windows.message_box->show();
+	m_windows.message_wnd = std::make_unique<MessageWnd>(this);
+	m_windows.message_wnd->create();
+	m_windows.message_wnd->set_modal(true);
+	m_windows.message_wnd->set_title(_title);
+	m_windows.message_wnd->set_message(_message);
+	m_windows.message_wnd->set_type(_type);
+	m_windows.message_wnd->set_callbacks(_on_action1, _on_action2);
+	m_windows.message_wnd->show();
 }
 
 void GUI::toggle_dbg_windows()

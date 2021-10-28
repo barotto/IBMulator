@@ -36,7 +36,7 @@ libgui_a_SOURCES = \
 	windows/state_save.cpp \
 	windows/state_save_info.cpp \
 	windows/state_load.cpp \
-	windows/message_box.cpp \
+	windows/message_wnd.cpp \
 	capture/capture.cpp \
 	capture/capture_imgseq.cpp \
 	capture/capture_videofile.cpp \
@@ -82,7 +82,7 @@ noinst_HEADERS = \
 	windows/state_save.h \
 	windows/state_save_info.h \
 	windows/state_load.h \
-	windows/message_box.h \
+	windows/message_wnd.h \
 	capture/capture.h \
 	capture/capture_imgseq.h \
 	capture/capture_videofile.h \

@@ -18,51 +18,51 @@
  */
 
 #include "ibmulator.h"
-#include "message_box.h"
+#include "message_wnd.h"
 
 
-event_map_t MessageBox::ms_evt_map = {
-	GUI_EVT( "action1", "click",   MessageBox::on_action  ),
-	GUI_EVT( "action2", "click",   MessageBox::on_action  ),
-	GUI_EVT( "close",   "click",   MessageBox::on_action  ),
-	GUI_EVT( "*",       "keydown", MessageBox::on_keydown )
+event_map_t MessageWnd::ms_evt_map = {
+	GUI_EVT( "action1", "click",   MessageWnd::on_action  ),
+	GUI_EVT( "action2", "click",   MessageWnd::on_action  ),
+	GUI_EVT( "close",   "click",   MessageWnd::on_action  ),
+	GUI_EVT( "*",       "keydown", MessageWnd::on_keydown )
 };
 
-MessageBox::MessageBox(GUI * _gui)
+MessageWnd::MessageWnd(GUI * _gui)
 :
-Window(_gui, "message_box.rml")
+Window(_gui, "message_wnd.rml")
 {
 }
 
-MessageBox::~MessageBox()
+MessageWnd::~MessageWnd()
 {
 }
 
-void MessageBox::create()
+void MessageWnd::create()
 {
 	Window::create();
 	get_element("resize")->SetClass("d-none", true);
 }
 
-void MessageBox::set_title(const std::string &_title)
+void MessageWnd::set_title(const std::string &_title)
 {
 	get_element("title")->SetInnerRML(_title);
 }
 
-void MessageBox::set_message(const std::string &_mex)
+void MessageWnd::set_message(const std::string &_mex)
 {
 	get_element("message")->SetInnerRML(_mex);
 }
 
-void MessageBox::set_type(Type _type)
+void MessageWnd::set_type(Type _type)
 {
 	m_type = _type;
 	switch(m_type) {
-		case Type::MSGB_OK:
+		case Type::MSGW_OK:
 			get_element("action1")->SetInnerRML("Ok");
 			get_element("action2")->SetClass("d-none", true);
 			break;
-		case Type::MSGB_YES_NO:
+		case Type::MSGW_YES_NO:
 			get_element("action1")->SetInnerRML("Yes");
 			get_element("action2")->SetInnerRML("No");
 			get_element("action2")->SetClass("d-none", false);
@@ -70,14 +70,14 @@ void MessageBox::set_type(Type _type)
 	}
 }
 
-void MessageBox::on_action(Rml::Event &_ev)
+void MessageWnd::on_action(Rml::Event &_ev)
 {
 	auto el = _ev.GetTargetElement();
 	auto func = m_action1_clbk;
 	switch(m_type) {
-		case Type::MSGB_OK:
+		case Type::MSGW_OK:
 			break;
-		case Type::MSGB_YES_NO:
+		case Type::MSGW_YES_NO:
 			if(el->GetId() == "close" || el->GetId() == "action2") {
 				func = m_action2_clbk;
 			}
@@ -89,11 +89,11 @@ void MessageBox::on_action(Rml::Event &_ev)
 	hide();
 }
 
-void MessageBox::on_keydown(Rml::Event &_ev)
+void MessageWnd::on_keydown(Rml::Event &_ev)
 {
 	switch(get_key_identifier(_ev)) {
 		case Rml::Input::KeyIdentifier::KI_ESCAPE:
-			if(m_type == Type::MSGB_YES_NO && m_action2_clbk) {
+			if(m_type == Type::MSGW_YES_NO && m_action2_clbk) {
 				m_action2_clbk();
 			}
 			hide();

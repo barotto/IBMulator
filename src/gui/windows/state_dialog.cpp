@@ -261,7 +261,7 @@ void StateDialog::delete_record(std::string _name)
 	m_gui->show_message_box(
 		"Delete State",
 		str_format("Do you want to delete slot %s?", _name.c_str()),
-		MessageBox::Type::MSGB_YES_NO,
+		MessageWnd::Type::MSGW_YES_NO,
 		[=]()
 		{
 			PDEBUGF(LOG_V0, LOG_GUI, "Delete record: %s\n", _name.c_str());
