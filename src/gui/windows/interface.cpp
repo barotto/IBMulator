@@ -231,6 +231,11 @@ void Interface::create()
 	m_fs->create();
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
+	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
+	if(home_dir.empty()) {
+		home_dir = g_program.config().get_cfg_home();
+	}
+	m_fs->set_home(home_dir);
 
 	m_state_save = std::make_unique<StateSave>(m_gui);
 	m_state_save->create();
@@ -553,7 +558,6 @@ void Interface::on_fdd_mount(Rml::Event &)
 		}
 	} else {
 		try {
-			m_fs->set_home(floppy_dir);
 			m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
 			m_fs->set_current_dir(floppy_dir);
 		} catch(...) { }
