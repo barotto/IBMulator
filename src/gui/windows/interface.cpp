@@ -556,9 +556,7 @@ void Interface::on_fdd_mount(Rml::Event &)
 			m_fs->set_home(floppy_dir);
 			m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
 			m_fs->set_current_dir(floppy_dir);
-		} catch(std::exception &e) {
-			return;
-		}
+		} catch(...) { }
 		m_fs->show();
 	}
 }

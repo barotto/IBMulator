@@ -71,7 +71,9 @@ void Window::create()
 
 void Window::show()
 {
-	create();
+	if(!m_wnd) {
+		create();
+	}
 	add_events();
 	if(m_wnd && !m_wnd->IsVisible()) {
 		if(m_modal != Rml::ModalFlag::None) {

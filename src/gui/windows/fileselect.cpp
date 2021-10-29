@@ -40,6 +40,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "entries", "click",   FileSelect::on_entry ),
 	GUI_EVT( "entries", "dblclick",FileSelect::on_insert ),
 	GUI_EVT( "insert",  "click",   FileSelect::on_insert ),
+	GUI_EVT( "drive",   "click",   FileSelect::on_drive ),
 	GUI_EVT( "mode",    "click",   FileSelect::on_mode ),
 	GUI_EVT( "order",   "click",   FileSelect::on_order ),
 	GUI_EVT( "asc_desc","click",   FileSelect::on_asc_desc),
@@ -67,6 +68,27 @@ void FileSelect::create()
 	//m_panel_el = get_element("panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
+	
+	auto drive_el = get_element("drive");
+	unsigned drives_mask = 0;
+#ifdef _WIN32
+	drives_mask = GetLogicalDrives();
+#endif
+	m_wnd->SetClass("drives", bool(drives_mask));
+	if(drives_mask) {
+		for(char drvlett = 'A'; drvlett <= 'Z'; drvlett++,drives_mask>>=1) {
+			if(drives_mask & 1) {
+				Rml::ElementPtr btn = m_wnd->CreateElement("input");
+				btn->SetId(str_format("drive_%c", drvlett));
+				btn->SetAttribute("type", "radio");
+				btn->SetAttribute("name", "drive");
+				btn->SetAttribute("value", str_format("%c", drvlett));
+				btn->SetInnerRML(str_format("<span>%c</span>", drvlett));
+				drive_el->AppendChild(std::move(btn));
+				PDEBUGF(LOG_V1, LOG_GUI, "%c\n", drvlett);
+			}
+		}
+	}
 }
 
 void FileSelect::update()
@@ -205,9 +227,7 @@ void FileSelect::on_home(Rml::Event &)
 {
 	try {
 		set_current_dir(m_home);
-	} catch(...) {
-		PERRF(LOG_GUI, "Cannot open directory\n");
-	}
+	} catch(...) { }
 }
 
 void FileSelect::on_reload(Rml::Event &)
@@ -258,6 +278,20 @@ void FileSelect::entry_deselect()
 	m_selected_entry = nullptr;
 
 	m_buttons_entry_el->SetClass("invisible", true);
+}
+
+void FileSelect::on_drive(Rml::Event &_ev)
+{
+	std::string value = Window::get_form_input_value(_ev);
+	if(!value.empty()) {
+		std::string path = value + ":" + FS_SEP;
+		PDEBUGF(LOG_V1, LOG_GUI, "Accessing drive %s\n", path.c_str());
+		try {
+			set_current_dir(path);
+		} catch(...) {
+			PERRF(LOG_GUI, "Cannot open %s\n", path.c_str());
+		}
+	}
 }
 
 void FileSelect::on_mode(Rml::Event &_ev)
@@ -346,36 +380,56 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc)
 	return child;
 }
 
+void FileSelect::clear()
+{
+	m_cur_dir_date.clear();
+	m_cur_dir_name.clear();
+	m_de_map.clear();
+	m_dotdot = nullptr;
+	set_dirty();
+}
+
+void FileSelect::set_cwd(const std::string &_path)
+{
+	m_cwd = _path;
+	m_cwd_el->SetInnerRML(m_cwd.c_str());
+	Rml::Element *drive_el = m_wnd->GetElementById(str_format("drive_%c", std::toupper(m_cwd[0])));
+	if(drive_el) {
+		drive_el->SetAttribute("checked", true);
+	}
+}
+
 void FileSelect::set_current_dir(const std::string &_path)
 {
+	clear();
+	set_cwd(_path);
+	
 	char buf[PATH_MAX];
 	if(realpath(_path.c_str(), buf) == nullptr) {
 		PERRF(LOG_GUI, "The path to '%s' cannot be resolved\n", _path.c_str());
+		update();
 		throw std::exception();
 	}
 	std::string new_cwd = buf;
 	if(new_cwd.size() > FS_PATH_MIN && new_cwd.rfind(FS_SEP) == new_cwd.size()-1) {
 		new_cwd.pop_back();
 	}
+	set_cwd(new_cwd);
 
 	try {
 		read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
-	} catch(std::exception &e) {
-		return;
+		update();
+	} catch(...) {
+		update();
+		throw;
 	}
-	m_cwd = new_cwd;
-	m_cwd_el->SetInnerRML(m_cwd.c_str());
-	set_dirty();
-	update();
 }
 
 void FileSelect::reload()
 {
 	try {
 		set_current_dir(m_cwd);
-	} catch(...) {
-		PERRF(LOG_GUI, "Cannot open directory\n");
-	}
+	} catch(...) { }
 }
 
 void FileSelect::read_dir(std::string _path, std::string _ext)
@@ -387,11 +441,6 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 		PERRF(LOG_GUI, "Cannot open directory '%s' for reading\n", _path.c_str());
 		throw std::exception();
 	}
-
-	m_cur_dir_date.clear();
-	m_cur_dir_name.clear();
-	m_de_map.clear();
-	m_dotdot = nullptr;
 
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
 	unsigned id = 0;

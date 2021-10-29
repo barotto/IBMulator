@@ -1,3 +1,59 @@
+
+#drive
+{
+	display: none;
+	text-align: right;
+	height: 27dp;
+	overflow: hidden;
+	margin-bottom: 2dp;
+}
+
+.drives #drive
+{
+	display: block;
+}
+
+#drive:hover
+{
+	overflow: visible;
+	z-index: 99;
+}
+
+@spritesheet
+{
+	src: images/drives.png;
+	drive_off: 0px 0px 100px 46px;
+	drive_on:  0px 46px 100px 46px;
+}
+
+#drive input.radio
+{
+	box-sizing: content-box;
+	width: 48dp;
+	height: 21dp;
+	padding: 2dp 2dp 0 0;
+	border: 2dp;
+	decorator: image(drive_off);
+	text-align: right;
+	color: #ffff00;
+	font-effect: shadow(-1dp 1dp black);
+	font-size: 15dp;
+	background-color: #00000000;
+	border-color: #00000000;
+}
+
+#drive input.radio:checked
+{
+	border-color: #00ff00ff;
+	background-color: #00ff00ff;
+	decorator: image(drive_on);
+}
+
+#path
+{
+	display: block;
+}
+
 #cwd
 {
 	position: absolute;
@@ -7,9 +63,20 @@
 	margin: 40dp 20dp 0 80dp;
 	font-size: 18dp;
 	text-align: right;
-	font-effect: shadow(-2dp 2dp black);
+	font-effect: shadow(-1dp 1dp black);
 	overflow: hidden auto;
 	white-space: nowrap;
+}
+
+.drives #cwd
+{
+	margin-top: 70dp
+}
+
+#cwd:hover
+{
+	background-color: #3C5464ff;
+	white-space: normal;
 }
 
 @spritesheet
@@ -120,6 +187,11 @@
 	margin: 80dp 20dp 55dp 20dp;
 	overflow: auto;
 	padding: 0;
+}
+
+.drives #entries_container
+{
+	margin-top: 100dp;
 }
 
 .grid

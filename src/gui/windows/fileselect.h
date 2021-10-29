@@ -121,6 +121,7 @@ protected:
 	
 	void on_cancel(Rml::Event &);
 	void on_entry(Rml::Event &);
+	void on_drive(Rml::Event &);
 	void on_mode(Rml::Event &);
 	void on_order(Rml::Event &);
 	void on_asc_desc(Rml::Event &);
@@ -128,7 +129,9 @@ protected:
 	void on_insert(Rml::Event &);
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
-	
+
+	void clear();
+	void set_cwd(const std::string &_path);
 	void set_dirty() { m_dirty = true; }
 	
 	void read_dir(std::string _path, std::string _ext);

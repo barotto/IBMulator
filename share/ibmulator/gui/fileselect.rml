@@ -10,10 +10,13 @@
 	</head>
 	<body template="default">
 
-		<button id="home" class="romshell"><btnicon /><span></span></button>
-		<button id="reload" class="romshell"><btnicon /><span></span></button>
+		<form id="drive"></form>
 
-		<div id="cwd"></div>
+		<div id="path">
+			<button id="home" class="romshell"><btnicon /><span></span></button>
+			<button id="reload" class="romshell"><btnicon /><span></span></button>
+			<div id="cwd"></div>
+		</div>
 
 		<div id="entries_container">
 			<div id="entries" class="grid"></div>
