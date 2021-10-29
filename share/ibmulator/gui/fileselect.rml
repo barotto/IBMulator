@@ -13,6 +13,7 @@
 		<form id="drive"></form>
 
 		<div id="path">
+			<button id="dir_up" class="romshell"><btnicon /><span></span></button>
 			<button id="home" class="romshell"><btnicon /><span></span></button>
 			<button id="reload" class="romshell"><btnicon /><span></span></button>
 			<div id="cwd"></div>

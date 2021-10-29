@@ -46,6 +46,7 @@ share/ibmulator/gui/status.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
+share/ibmulator/gui/icons/arrow_up.png \
 share/ibmulator/gui/icons/ascending.png \
 share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \

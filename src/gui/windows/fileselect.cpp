@@ -46,6 +46,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "asc_desc","click",   FileSelect::on_asc_desc),
 	GUI_EVT( "reload",  "click",   FileSelect::on_reload),
 	GUI_EVT( "home",    "click",   FileSelect::on_home),
+	GUI_EVT( "dir_up",  "click",   FileSelect::on_up),
 	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
@@ -237,6 +238,9 @@ void FileSelect::on_reload(Rml::Event &)
 
 void FileSelect::on_up(Rml::Event &)
 {
+	if(!m_valid_cwd) {
+		return;
+	}
 	std::string path = m_cwd;
 	size_t pos = path.rfind(FS_SEP);
 	if(pos == std::string::npos) {
@@ -245,8 +249,13 @@ void FileSelect::on_up(Rml::Event &)
 	if(pos == 0) {
 		// the root on unix
 		pos = 1;
+	} else if(pos < 3 && FS_PATH_MIN == 3) {
+		pos = 3;
 	}
 	path = path.substr(0, pos);
+	if(path == m_cwd) {
+		return;
+	}
 	try {
 		set_current_dir(path);
 	} catch(...) { }
@@ -393,6 +402,7 @@ void FileSelect::set_cwd(const std::string &_path)
 {
 	m_cwd = _path;
 	m_cwd_el->SetInnerRML(m_cwd.c_str());
+	m_valid_cwd = false;
 	Rml::Element *drive_el = m_wnd->GetElementById(str_format("drive_%c", std::toupper(m_cwd[0])));
 	if(drive_el) {
 		drive_el->SetAttribute("checked", true);
@@ -401,6 +411,7 @@ void FileSelect::set_cwd(const std::string &_path)
 
 void FileSelect::set_current_dir(const std::string &_path)
 {
+	PDEBUGF(LOG_V0, LOG_GUI, "Opening %s\n", _path.c_str());
 	clear();
 	set_cwd(_path);
 	
@@ -418,6 +429,7 @@ void FileSelect::set_current_dir(const std::string &_path)
 
 	try {
 		read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
+		m_valid_cwd = true;
 		update();
 	} catch(...) {
 		update();
@@ -461,10 +473,7 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 		}
 #endif
 		if(S_ISDIR(sb.st_mode)) {
-			if(de.name == ".") {
-				continue;
-			}
-			if(de.name == ".." && _path.length() <= FS_PATH_MIN) {
+			if(de.name == "." || de.name == "..") {
 				continue;
 			}
 			de.is_dir = true;

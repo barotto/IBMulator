@@ -32,6 +32,7 @@ private:
 	
 	std::string m_home;
 	std::string m_cwd;
+	bool m_valid_cwd = false;
 	Rml::Element *m_cwd_el = nullptr;
 	Rml::Element *m_entries_el = nullptr;
 	Rml::Element *m_panel_el = nullptr;
