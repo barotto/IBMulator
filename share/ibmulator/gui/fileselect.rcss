@@ -77,6 +77,8 @@
 {
 	background-color: #3C5464ff;
 	white-space: normal;
+	z-index: 99;
+	word-break: break-word;
 }
 
 @spritesheet
