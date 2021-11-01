@@ -92,6 +92,7 @@ share/ibmulator/gui/icons/debugger/update.png
 
 guiimagesdir = $(pkgdatadir)/gui/images
 dist_guiimages_DATA = \
+share/ibmulator/gui/images/drives.png \
 share/ibmulator/gui/images/romshell_button.png \
 share/ibmulator/gui/images/romshell_datagridcell.png \
 share/ibmulator/gui/images/romshell_datagrid.png \
