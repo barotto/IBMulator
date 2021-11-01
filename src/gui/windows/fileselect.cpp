@@ -381,9 +381,13 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc)
 	}
 	inner += "\"></div></div>";
 	inner += "<div class=\"name\">" + name + "</div>";
-	if(mtime) {
-		inner += "<div class=\"date\">" + str_format_time(mtime, "%x %R") + "</div>";
+	inner += "<div class=\"date\">";
+	if(mtime != 0) {
+		// %R is not implemented in MinGW, don't use.
+		inner += str_format_time(mtime, "%x %H:%M");
 	}
+	inner += "</div>";
+
 	child->SetInnerRML(inner);
 
 	return child;
@@ -489,6 +493,7 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 		if(FileSys::get_file_stats(fullpath.c_str(), &de.size, &mtime) == 0) {
 			de.mtime = FileSys::filetime_to_time_t(mtime);
 		} else {
+			PWARNF(LOG_V2, LOG_GUI, "Error accessing '%s': %s\n", fullpath.c_str(), get_error_string().c_str());
 			de.mtime = 0;
 		}
 		if(!de.is_dir && !m_compat_sizes.empty()) {

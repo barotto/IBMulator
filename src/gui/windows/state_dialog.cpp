@@ -304,7 +304,7 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 		inner += "</div>";
 		inner += "<div class=\"desc\">" + _info.user_desc + "</div>";
 		if(_info.mtime) {
-			inner += "<div class=\"date\">" + str_format_time(_info.mtime, "%x %R") + "</div>";
+			inner += "<div class=\"date\">" + str_format_time(_info.mtime, "%x %H:%M") + "</div>";
 		}
 		if(_info.name != "new_save_entry") {
 			inner += "<div class=\"name\">" + _info.name + "</div>";

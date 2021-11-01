@@ -24,6 +24,9 @@
 #include <regex>
 #include <numeric>
 #include "utils.h"
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
 
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim)
 {
@@ -174,4 +177,43 @@ const char *register_to_string(uint8_t _register,
 		s.pop_back();
 	}
 	return s.c_str();
+}
+
+std::string get_error_string(int _error_id)
+{
+#ifdef _WIN32
+
+	if(_error_id == 0) {
+		_error_id = ::GetLastError();
+		if(_error_id == NO_ERROR) {
+			return std::string("No error");
+		}
+	}
+
+	LPWSTR buff = nullptr;
+	DWORD size = FormatMessageW(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			NULL, //lpSource
+			_error_id, //dwMessageId
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), //dwLanguageId
+			(LPWSTR)&buff, //lpBuffer
+			0, //nSize
+			NULL //Arguments
+		);
+	std::wstring message(buff, size);
+	LocalFree(buff);
+
+	return str_trim(utf8::narrow(buff));
+
+#else
+
+	if(_error_id == 0) {
+		_error_id = errno;
+		if(_error_id == 0) {
+			return std::string("No error");
+		}
+	}
+	return std::string(::strerror(errno));
+
+#endif
 }

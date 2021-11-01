@@ -206,4 +206,6 @@ inline size_t round_to_dword(size_t _bits)
 	return (((_bits + 31) & ~31) >> 3);
 }
 
+std::string get_error_string(int _error_id = 0);
+
 #endif
