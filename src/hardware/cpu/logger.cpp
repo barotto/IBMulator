@@ -21,6 +21,7 @@
 #include "logger.h"
 #include "debugger.h"
 #include "hardware/cpu.h"
+#include "filesys.h"
 #include <cstring>
 
 #define LOG_O32_BIT 30
@@ -140,7 +141,7 @@ int CPULogger::get_opcode_index(const Instruction &_instr)
 void CPULogger::open_file(const std::string _filename)
 {
 	close_file();
-	m_log_file = fopen(_filename.c_str(), "w");
+	m_log_file = FileSys::fopen(_filename, "w");
 	if(!m_log_file) {
 		throw std::exception();
 	}
@@ -488,7 +489,7 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 
 void CPULogger::dump(const std::string _filename)
 {
-	FILE *file = fopen(_filename.c_str(), "w");
+	FILE *file = FileSys::fopen(_filename, "w");
 	if(!file) {
 		PERRF(LOG_CPU, "error opening '%s' for writing\n", _filename.c_str());
 		return;
@@ -946,7 +947,7 @@ static std::vector<std::pair<int,const char*>> oplist = {
 
 void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_t> &_cnt)
 {
-	FILE *file = fopen(_filename.c_str(), "w");
+	FILE *file = FileSys::fopen(_filename, "w");
 	if(!file) {
 		PERRF(LOG_CPU, "error opening '%s' for writing\n", _filename.c_str());
 		return;

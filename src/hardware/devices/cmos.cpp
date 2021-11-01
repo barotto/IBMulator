@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -269,7 +269,7 @@ void CMOS::load_image(std::string _imgpath)
 	}
 	PINFOF(LOG_V0, LOG_CMOS, "Loading CMOS image file '%s'\n", _imgpath.c_str());
 
-	std::ifstream fd(_imgpath.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
+	std::ifstream fd = FileSys::make_ifstream(_imgpath.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
 	if(!fd.is_open()) {
 		PERRF(LOG_CMOS,"Error opening CMOS image file '%s'\n", _imgpath.c_str());
 		throw std::exception();
@@ -293,7 +293,7 @@ void CMOS::load_image(std::string _imgpath)
 
 void CMOS::save_image(std::string _imgpath)
 {
-	std::ofstream fd(_imgpath.c_str(), std::ofstream::binary);
+	std::ofstream fd = FileSys::make_ofstream(_imgpath.c_str(), std::ofstream::binary);
 	if(!fd.is_open()) {
 		PERRF(LOG_CMOS,"Unable to open CMOS image file '%s' for writing\n", _imgpath.c_str());
 		throw std::exception();

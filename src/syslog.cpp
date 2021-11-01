@@ -474,9 +474,9 @@ m_stream(&_stream)
 LogStream::LogStream(const char* _fn, ios_base::openmode _mode, bool _disp)
 :
 Logdev(_disp),
-m_stream(nullptr),
-m_file(_fn,_mode)
+m_stream(nullptr)
 {
+	m_file = FileSys::make_ofstream(_fn, _mode);
 }
 
 

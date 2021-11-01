@@ -21,9 +21,11 @@
 #include "filesys.h"
 #ifdef _WIN32
 #include "wincompat.h"
+#include "utils.h"
 #endif
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sstream>
 #include <vector>
 #include <climits>
@@ -39,7 +41,7 @@ void FileSys::create_dir(const char *_path)
 {
 	if(!file_exists(_path)) {
 		PDEBUGF(LOG_V0, LOG_FS, "Creating '%s'\n", _path);
-		if(mkdir(_path
+		if(::mkdir(to_native(_path).c_str()
 #ifndef _WIN32
 			, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH
 #endif
@@ -58,7 +60,7 @@ bool FileSys::is_directory(const char *_path)
 
 	struct stat sb;
 
-	if(stat(_path, &sb) != 0) {
+	if(::stat(to_native(_path).c_str(), &sb) != 0) {
 		return false;
 	}
 
@@ -68,19 +70,19 @@ bool FileSys::is_directory(const char *_path)
 bool FileSys::is_file_readable(const char *_path)
 {
 	if(_path == nullptr) return false;
-	return (access(_path, R_OK) == 0);
+	return (::access(to_native(_path).c_str(), R_OK) == 0);
 }
 
 bool FileSys::is_file_writeable(const char *_path)
 {
 	if(_path == nullptr) return false;
-	return (access(_path, W_OK) == 0);
+	return (::access(to_native(_path).c_str(), W_OK) == 0);
 }
 
 bool FileSys::file_exists(const char *_path)
 {
 	if(_path == nullptr) return false;
-	return (access(_path, F_OK) == 0);
+	return (::access(to_native(_path).c_str(), F_OK) == 0);
 }
 
 uint64_t FileSys::get_file_size(const char *_path)
@@ -89,7 +91,7 @@ uint64_t FileSys::get_file_size(const char *_path)
 		return 0;
 	}
 	struct stat sb;
-	if(stat(_path, &sb) != 0) {
+	if(::stat(to_native(_path).c_str(), &sb) != 0) {
 		return 0;
 	}
 	return (uint64_t)sb.st_size;
@@ -99,7 +101,7 @@ int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtim
 {
 #ifdef _WIN32
 
-	HANDLE hFile = CreateFile(_path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
+	HANDLE hFile = CreateFile(to_native(_path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
 	if(hFile == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
@@ -120,7 +122,7 @@ int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtim
 #else
 
 	struct stat stat_buf;
-	if(stat(_path, &stat_buf)) {
+	if(::stat(_path, &stat_buf)) {
 		return -1;
 	}
 	if(_fsize != nullptr) {
@@ -162,27 +164,94 @@ std::string FileSys::get_basename(const char *_path)
 	if(path.size() > 1 && path.back() == FS_SEP[0]) {
 		path.resize(path.size() - 1);
 	}
-	return std::string(basename(path.data()));
+	return to_utf8( basename(to_native(path.data()).data()) );
 }
 
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {
 	std::vector<char> rpbuf(PATH_MAX);
-	if(realpath(_path, &rpbuf[0]) == nullptr) {
+	if(::realpath(to_native(_path).c_str(), &rpbuf[0]) == nullptr) {
 		return false;
 	}
 	std::vector<char> dirbuf(rpbuf);
-	_dir = dirname(&dirbuf[0]);
+	_dir = ::dirname(&dirbuf[0]);
 	_base = basename(&rpbuf[0]);
 	_ext = "";
 	const size_t period_idx = _base.rfind('.');
-	if(period_idx != std::string::npos)	{
+	if(period_idx != std::string::npos) {
 		_ext = _base.substr(period_idx);
 		_base.erase(period_idx);
 	}
+	_dir = to_utf8(_dir);
+	_base = to_utf8(_base);
+	_ext = to_utf8(_ext);
 
 	return true;
+}
+
+int FileSys::open(const char *_path, int _flags)
+{
+	return ::open(to_native(_path).c_str(), _flags);
+}
+
+int FileSys::open(const char *_path, int _flags, mode_t _mode)
+{
+	return ::open(to_native(_path).c_str(), _flags, _mode);
+}
+
+DIR * FileSys::opendir(const char *_path)
+{
+	return ::opendir(to_native(_path).c_str());
+}
+
+int FileSys::stat(const char *_path, struct stat *_buf)
+{
+	return ::stat(to_native(_path).c_str(), _buf);
+}
+
+int FileSys::access(const char *_path, int _mode)
+{
+	if(_path == nullptr) return -1;
+	return ::access(to_native(_path).c_str(), _mode);
+}
+
+int FileSys::remove(const char *_path)
+{
+#ifdef _WIN32
+
+	int res;
+	if(is_directory(_path)) {
+		res = RemoveDirectory(to_native(_path).c_str());
+	} else {
+		res = DeleteFile(to_native(_path).c_str());
+	}
+	if(res == 0) {
+		return -1;
+	}
+	return 0;
+
+#else
+
+	return ::remove(to_native(_path).c_str());
+
+#endif
+}
+
+int FileSys::mkostemp(std::string &_template, int _flags)
+{
+	std::string native(to_native(_template));
+	int fd;
+	if((fd = ::mkostemp(native.data(), _flags)) < 0) {
+		return fd;
+	}
+	_template = to_utf8(native);
+	return fd;
+}
+
+char* FileSys::realpath(const char *_path, char *_resolved)
+{
+	return ::realpath(to_native(_path).c_str(), _resolved);
 }
 
 std::string FileSys::get_next_filename(const std::string &_dir,
@@ -240,7 +309,7 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 	ar = archive_read_new();
 	archive_read_support_filter_all(ar);
 	archive_read_support_format_all(ar);
-	res = archive_read_open_filename(ar, _archive, 10240);
+	res = archive_read_open_filename(ar, to_native(_archive).c_str(), 10240);
 	if(res != ARCHIVE_OK) {
 		PERRF(LOG_FS, "Error opening archive '%s'\n", _archive);
 		archive_read_free(ar);
@@ -255,7 +324,7 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 		if(name.compare(fname)==0) {
 			found = true;
-			archive_entry_set_pathname(entry, _extract_to);
+			archive_entry_set_pathname(entry, to_native(_extract_to).c_str());
 			if(archive_read_extract(ar, entry, 0) != 0) {
 				PERRF(LOG_FS, "Error extracting '%s' from archive: %s\n",
 						_filename,
@@ -275,19 +344,91 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 void FileSys::copy_file(const char *_from, const char *_to)
 {
 	// TODO maybe use C++17 copy_file in the future?
-	std::ifstream src(_from, std::ios::binary);
-	std::ofstream dst(_to, std::ios::binary);
+	std::ifstream src(to_native(_from).c_str(), std::ios::binary);
+	std::ofstream dst(to_native(_to).c_str(), std::ios::binary);
 	dst << src.rdbuf();
+}
+
+FILE * FileSys::fopen(const char *_filename, const char *_flags)
+{
+	return ::fopen(to_native(_filename).c_str(), _flags);
+}
+
+FILE * FileSys::fopen(std::string _filename, const char *_flags)
+{
+	return ::fopen(to_native(_filename).c_str(), _flags);
 }
 
 shared_file_ptr FileSys::make_shared_file(const char *_filename, const char *_flags)
 {
-	FILE * const fp = fopen(_filename, _flags);
-	return fp ? shared_file_ptr(fp, fclose) : shared_file_ptr();
+	FILE * const fp = FileSys::fopen(_filename, _flags);
+	return fp ? shared_file_ptr(fp, ::fclose) : shared_file_ptr();
 }
 
 unique_file_ptr FileSys::make_file(const char *_filename, const char *_flags)
 {
 	//unique_ptr only invokes the deleter if the pointer is non-zero
-	return unique_file_ptr(fopen(_filename, _flags), fclose);
+	return unique_file_ptr(FileSys::fopen(_filename, _flags), ::fclose);
 }
+
+std::ifstream FileSys::make_ifstream(const char *_path, std::ios::openmode _mode)
+{
+	return std::move(std::ifstream(to_native(_path), _mode));
+}
+
+std::ofstream FileSys::make_ofstream(const char *_path, std::ios::openmode _mode)
+{
+	return std::move(std::ofstream(to_native(_path), _mode));
+}
+
+#ifdef _WIN32
+
+std::string FileSys::to_utf8(const std::string &_ansi_path)
+{
+	// MinGW readdir() returns ANSI encoded names, so input path is in ANSI encoding
+	if(_ansi_path.empty()) {
+		return std::string();
+	}
+
+	std::wstring widestr(_ansi_path.length()+1, 0);
+	int wsz = MultiByteToWideChar(CP_ACP, 0, &_ansi_path[0], -1, &widestr[0], _ansi_path.length()+1);
+	if(!wsz) {
+		return str_format("conv.error.%d", GetLastError());
+	}
+
+	int nsz = WideCharToMultiByte(CP_UTF8, 0, &widestr[0], -1, 0, 0, 0, 0);
+	if(!nsz) {
+		return str_format("conv.error.%d", GetLastError());
+	}
+	std::string utf8out(nsz, 0);
+	WideCharToMultiByte(CP_UTF8, 0, &widestr[0], -1, &utf8out[0], nsz, 0, 0);
+	utf8out.resize(nsz - 1); // output is null-terminated
+
+	return utf8out;
+}
+
+std::string FileSys::to_native(const std::string &_utf8_path)
+{
+	// input path is in UTF-8: back to ANSI, the encoding of the champions!
+	if(_utf8_path.empty()) {
+		return std::string();
+	}
+
+	int wsz = MultiByteToWideChar(CP_UTF8, 0, &_utf8_path[0], -1, 0, 0);
+	if(!wsz) {
+		return str_format("conv.error.%d", GetLastError());
+	}
+	std::wstring widestr(wsz, 0);
+	MultiByteToWideChar(CP_UTF8, 0, &_utf8_path[0], -1, &widestr[0], wsz);
+	widestr.resize(wsz - 1);
+
+	std::string ansiout(widestr.length()+1, 0);
+	int nsz = WideCharToMultiByte(CP_ACP, 0, &widestr[0], -1, &ansiout[0], widestr.length()+1, 0, 0);
+	if(!nsz) {
+		return str_format("conv.error.%d", GetLastError());
+	}
+
+	return ansiout;
+}
+
+#endif

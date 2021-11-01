@@ -837,7 +837,7 @@ int AppConfig::get_error()
 
 void AppConfig::parse(const string &_filename)
 {
-	m_error = ini_parse(_filename.c_str(), value_handler, this);
+	m_error = ini_parse(FileSys::to_native(_filename).c_str(), value_handler, this);
 	if(m_error != 0) {
 		throw std::exception();
 	}
@@ -1026,7 +1026,7 @@ void AppConfig::set_string(const string &_section, const string &_name, string _
 	m_values[make_key(_section)][make_key(_name)] = _value;
 }
 
-string AppConfig::get_file_path(const string &_filename, FileType _type)
+string AppConfig::get_file_path(string _filename, FileType _type)
 {
 #ifndef _WIN32
 	if(_filename.at(0) == '~') {
@@ -1035,6 +1035,9 @@ string AppConfig::get_file_path(const string &_filename, FileType _type)
 		return _filename;
 	}
 #else
+	if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, &_filename[0], -1, 0, 0)) {
+		_filename = FileSys::to_utf8(_filename);
+	}
 	std::regex re("^([A-Za-z]):(\\\\|\\/)", std::regex::ECMAScript|std::regex::icase);
 	if(std::regex_search(_filename, re)) {
 		return _filename;
@@ -1053,6 +1056,7 @@ string AppConfig::get_file_path(const string &_filename, FileType _type)
 					+ FS_SEP + _filename;
 		}
 	}
+	assert(false);
 	return _filename;
 }
 
@@ -1177,7 +1181,7 @@ int AppConfig::value_handler(void* _user, const char* _section, const char* _nam
 
 void AppConfig::create_file(const std::string &_filename, bool _comments)
 {
-	std::ofstream file(_filename.c_str());
+	std::ofstream file = FileSys::make_ofstream(_filename.c_str());
 	if(!file.is_open()) {
 		PERRF(LOG_FS,"Cannot open '%s' for writing\n",_filename.c_str());
 		throw std::exception();

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -2022,18 +2022,6 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 {
 	struct stat stat_buf;
 	int ret;
-#ifdef __linux__
-	struct floppy_struct floppy_geom;
-#endif
-#ifdef _WIN32
-	char sTemp[1024];
-	bool raw_floppy = 0;
-	HANDLE hFile;
-	DWORD bytes;
-	DISK_GEOMETRY dg;
-	unsigned wtracks = 0, wheads = 0, wspt = 0;
-#endif
-
 	path = _path;
 
 	if(_type == FLOPPY_NONE) {
@@ -2046,53 +2034,18 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		return false;
 	}
 
-	// open media file (image file or device)
-
-#ifdef _WIN32
-	if((isalpha(_path[0])) && (_path[1] == ':') && (strlen(_path) == 2)) {
-		raw_floppy = 1;
-		wsprintf(sTemp, "\\\\.\\%s", _path);
-		hFile = CreateFile(sTemp, GENERIC_READ, FILE_SHARE_WRITE, nullptr,
-				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-		if(hFile == INVALID_HANDLE_VALUE) {
-			PDEBUGF(LOG_V0, LOG_FDC, "Cannot open floppy drive\n");
-			return false;
-		}
-		if(!DeviceIoControl(hFile, IOCTL_DISK_GET_DRIVE_GEOMETRY, nullptr, 0, &dg, sizeof(dg), &bytes, nullptr)) {
-			PDEBUGF(LOG_V0, LOG_FDC, "No media in floppy drive\n");
-			CloseHandle(hFile);
-			return false;
-		} else {
-			wtracks = (unsigned)dg.Cylinders.QuadPart;
-			wheads  = (unsigned)dg.TracksPerCylinder;
-			wspt    = (unsigned)dg.SectorsPerTrack;
-		}
-		CloseHandle(hFile);
-		if(!write_protected)
-			fd = ::open(sTemp, RDWR);
-		else
-			fd = ::open(sTemp, RDONLY);
-	}
-	else
-#endif
-	{
-		if(!write_protected)
-			fd = ::open(_path, RDWR);
-		else
-			fd = ::open(_path, RDONLY);
+	// open media file
+	if(!write_protected) {
+		fd = FileSys::open(_path, RDWR);
+	} else {
+		fd = FileSys::open(_path, RDONLY);
 	}
 
 	if(!write_protected && (fd < 0)) {
 		PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read/write: %s\n", _path, strerror(errno));
 		// try opening the file read-only
 		write_protected = true;
-#ifdef _WIN32
-		if(raw_floppy == 1)
-			fd = ::open(sTemp, RDONLY);
-		else
-#endif
-			fd = ::open(_path, RDONLY);
-
+		fd = FileSys::open(_path, RDONLY);
 		if(fd < 0) {
 			// failed to open read-only too
 			PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read only: %s\n", _path, strerror(errno));
@@ -2101,17 +2054,8 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		}
 	}
 
-#if defined(_WIN32)
-	if(raw_floppy) {
-		memset (&stat_buf, 0, sizeof(stat_buf));
-		stat_buf.st_mode = S_IFCHR;
-		ret = 0;
-	}
-	else
-#endif
-	{ // unix
-		ret = fstat(fd, &stat_buf);
-	}
+	ret = fstat(fd, &stat_buf);
+
 	if(ret) {
 		PERRF_ABORT(LOG_FDC, "fstat floppy 0 drive image file returns error: %s\n", strerror(errno));
 		return false;
@@ -2167,44 +2111,10 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		return (sectors > 0); // success
 	}
 
-	else if(S_ISCHR(stat_buf.st_mode)
-#ifdef S_ISBLK
-            || S_ISBLK(stat_buf.st_mode)
-#endif
-	) {
-		// character or block device
-		// assume media is formatted to typical geometry for drive
-		type = _type;
-#ifdef __linux__
-		if(ioctl(fd, FDGETPRM, &floppy_geom) < 0) {
-			PWARNF(LOG_V1, LOG_FDC, "cannot determine media geometry, trying to use defaults\n");
-			tracks  = floppy_type[_type].trk;
-			heads   = floppy_type[_type].hd;
-			spt     = floppy_type[_type].spt;
-			sectors = floppy_type[_type].sectors;
-			return (sectors > 0);
-		}
-		tracks  = floppy_geom.track;
-		heads   = floppy_geom.head;
-		spt     = floppy_geom.sect;
-		sectors = floppy_geom.size;
-#elif defined(_WIN32)
-		tracks  = wtracks;
-		heads   = wheads;
-		spt     = wspt;
-		sectors = heads * tracks * spt;
-#else
-		tracks  = floppy_type[_type].trk;
-		heads   = floppy_type[_type].hd;
-		spt     = floppy_type[_type].spt;
-		sectors = floppy_type[_type].sectors;
-#endif
-		return (sectors > 0); // success
-	} else {
-		// unknown file type
-		PDEBUGF(LOG_V0, LOG_FDC, "unknown mode type\n");
-		return false;
-	}
+	// TODO vvfat
+	// unknown file type
+	PDEBUGF(LOG_V0, LOG_FDC, "unknown mode type\n");
+	return false;
 }
 
 void FloppyDisk::close()

@@ -2051,7 +2051,7 @@ void GUI::shutdown()
 std::string GUI::load_shader_file(const std::string &_path)
 {
 	std::string shdata;
-	std::ifstream shstream(_path, std::ios::in);
+	std::ifstream shstream = FileSys::make_ifstream(_path.c_str());
 	if(shstream.is_open()){
 		std::string line = "";
 		while(getline(shstream, line)) {

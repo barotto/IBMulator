@@ -62,7 +62,7 @@ int hdimage_open_file(const char *_pathname, int _flags, uint64_t *_fsize, FILET
 		return -1;
 	}
 
-	int fd = ::open(_pathname, _flags
+	int fd = FileSys::open(_pathname, _flags
 #ifdef O_BINARY
 			| O_BINARY
 #endif
@@ -75,14 +75,14 @@ int hdimage_open_file(const char *_pathname, int _flags, uint64_t *_fsize, FILET
 	return fd;
 }
 
-int hdimage_open_temp(const char *_pathname, char *_template, int _flags,
+int hdimage_open_temp(const char *_pathname, std::string &_template, int _flags,
 		uint64_t *_fsize, FILETIME *_mtime)
 {
 	if(FileSys::get_file_stats(_pathname,_fsize,_mtime) < 0) {
 		return -1;
 	}
 
-	int tmpfd = ::mkostemp(_template, _flags
+	int tmpfd = FileSys::mkostemp(_template, _flags
 #ifdef O_BINARY
 			| O_BINARY
 #endif
@@ -187,7 +187,7 @@ bool hdimage_backup_file(int _from_fd, int _backup_fd)
 
 bool hdimage_backup_file(int fd, const char *backup_fname)
 {
-	int backup_fd = ::open(backup_fname, O_RDWR | O_CREAT | O_TRUNC
+	int backup_fd = FileSys::open(backup_fname, O_RDWR | O_CREAT | O_TRUNC
 #ifdef O_BINARY
 	| O_BINARY
 #endif
@@ -209,7 +209,7 @@ bool hdimage_copy_file(const char *src, const char *dst)
 {
 #ifdef _WIN32
 
-	return (bool)CopyFile(src, dst, FALSE);
+	return (bool)CopyFile(FileSys::to_native(src).c_str(), FileSys::to_native(dst).c_str(), FALSE);
 
 #elif defined(__linux__)
 
@@ -344,13 +344,13 @@ int FlatMediaImage::open(const char* _pathname, int _flags)
 	return m_fd;
 }
 
-int FlatMediaImage::open_temp(const char* _pathname, char *_template)
+int FlatMediaImage::open_temp(const char* _pathname, std::string &_template)
 {
 	if((m_fd = hdimage_open_temp(_pathname, _template, O_RDWR, &m_size, &m_mtime)) < 0) {
 		return -1;
 	}
 	if(!is_valid()) {
-		remove(_template);
+		FileSys::remove(_template.c_str());
 		close();
 		return -1;
 	}
@@ -418,7 +418,7 @@ void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
 	if(_sectors == 0) {
 		throw std::exception();
 	}
-	std::ofstream ofs(_pathname, std::ios::binary | std::ios::out);
+	std::ofstream ofs = FileSys::make_ofstream(_pathname, std::ios::binary | std::ios::out);
 	if(!ofs.is_open()) {
 		PERRF(LOG_HDD, "Cannot create '%s'. Does the destination directory exist? Is it writible?\n", _pathname);
 		throw std::exception();

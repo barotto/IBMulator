@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "statebuf.h"
+#include "filesys.h"
 #include <cstring>
 
 /*******************************************************************************
@@ -229,7 +230,7 @@ void StateBuf::get_next_lump_header(StateHeader &_header) const
 
 void StateBuf::load(const std::string &_path)
 {
-	std::ifstream binfile(_path.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
+	std::ifstream binfile = FileSys::make_ifstream(_path.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
 
 	if(!binfile.is_open()) {
 		PERRF(LOG_FS,"unable to open '%s' for reading\n", _path.c_str());
@@ -261,7 +262,7 @@ void StateBuf::load(const std::string &_path)
 
 void StateBuf::save(const std::string &_path) const
 {
-	std::ofstream binfile(_path.c_str(), std::ios::binary);
+	std::ofstream binfile = FileSys::make_ofstream(_path.c_str(), std::ios::binary);
 
 	if(!binfile.is_open()) {
 		PERRF(LOG_FS,"unable to open '%s' for writing\n", _path.c_str());

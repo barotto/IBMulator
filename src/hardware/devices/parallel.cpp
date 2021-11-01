@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -190,7 +190,7 @@ void Parallel::virtual_printer()
 	if(m_s.output == nullptr) {
 		std::string filename = g_program.config().get_file(LPT_SECTION, LPT_FILE, FILE_TYPE_USER);
 		if(!filename.empty()) {
-			m_s.output = fopen(filename.c_str(), "wb");
+			m_s.output = FileSys::fopen(filename, "wb");
 			if(!m_s.output) {
 				PERRF(LOG_LPT, "Could not open '%s' to write output\n", filename.c_str());
 			}

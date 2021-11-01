@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "file_interface.h"
+#include "filesys.h"
 #include <stdio.h>
 
 RmlFileInterface::RmlFileInterface(const std::string &_root)
@@ -34,12 +35,12 @@ Rml::FileHandle RmlFileInterface::Open(const std::string &_path)
 	if(_path == "") return 0;
 
 	// Attempt to open the file relative to the application's root.
-	FILE* fp = fopen((root + _path).c_str(), "rb");
+	FILE* fp = FileSys::fopen((root + _path), "rb");
 	if(fp != nullptr) {
 		return reinterpret_cast<Rml::FileHandle>(fp);
 	}
 	// Attempt to open the file relative to the current working directory.
-	fp = fopen(_path.c_str(), "rb");
+	fp = FileSys::fopen(_path, "rb");
 	return reinterpret_cast<Rml::FileHandle>(fp);
 }
 

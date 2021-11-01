@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "riff.h"
 #include "utils.h"
+#include "filesys.h"
 #include <cstring>
 
 
@@ -55,7 +56,7 @@ RIFFHeader RIFFFile::open_read(const char *_filepath)
 
 	m_write_mode = false;
 	
-	m_file = fopen(_filepath, "rb");
+	m_file = FileSys::fopen(_filepath, "rb");
 	if(!m_file) {
 		throw std::runtime_error("unable to open for reading");
 	}
@@ -72,7 +73,7 @@ void RIFFFile::open_write(const char *_filepath, uint32_t _file_type)
 {
 	assert(!is_open());
 
-	m_file = fopen(_filepath, "wb");
+	m_file = FileSys::fopen(_filepath, "wb");
 	if(!m_file) {
 		throw std::runtime_error("unable to open for writing");
 	}

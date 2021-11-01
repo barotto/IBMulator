@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,6 +21,7 @@
 #include "midifile.h"
 #include "riff.h"
 #include "utils.h"
+#include "filesys.h"
 #include <cstring>
 
 MIDIHeader MIDIHeader::to_file()
@@ -63,7 +64,7 @@ void MIDIFile::open_write(const char *_filepath, uint16_t _format, uint16_t _div
 {
 	assert(!is_open());
 
-	m_file = fopen(_filepath, "wb");
+	m_file = FileSys::fopen(_filepath, "wb");
 	if(!m_file) {
 		throw std::runtime_error("unable to open for writing");
 	}

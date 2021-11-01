@@ -1758,7 +1758,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 			case SER_MODE_FILE:
 				if(m_host[port].output == nullptr) {
 					assert(!m_host[port].filename.empty()); // filename must be set at init!
-					m_host[port].output = fopen(m_host[port].filename.c_str(), "wb");
+					m_host[port].output = FileSys::fopen(m_host[port].filename, "wb");
 					if(m_host[port].output == nullptr) {
 						PERRF(LOG_COM, "%s: could not open file '%s' to write\n",
 								m_host[port].name(), m_host[port].filename.c_str());

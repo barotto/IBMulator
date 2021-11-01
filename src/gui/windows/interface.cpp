@@ -314,7 +314,7 @@ void Interface::set_floppy_string(std::string _filename)
 void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 {
 	struct stat sb;
-	if((stat(_img_path.c_str(), &sb) != 0) || S_ISDIR(sb.st_mode)) {
+	if((FileSys::stat(_img_path.c_str(), &sb) != 0) || S_ISDIR(sb.st_mode)) {
 		PERRF(LOG_GUI, "Unable to read '%s'\n", _img_path.c_str());
 		m_fs->hide();
 		return;
@@ -326,7 +326,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		if(g_program.config().get_bool(section,DISK_INSERTED)) {
 			std::string other = g_program.config().get_file(section,DISK_PATH, FILE_TYPE_USER);
 			struct stat other_s;
-			if(stat(other.c_str(), &other_s) == 0) {
+			if(FileSys::stat(other.c_str(), &other_s) == 0) {
 				if(other_s.st_dev == sb.st_dev && other_s.st_ino == sb.st_ino) {
 					PERRF(LOG_GUI, "Can't mount '%s' on drive %s because it's already mounted on drive %s\n",
 							_img_path.c_str(), m_curr_drive?"B":"A", m_curr_drive?"A":"B");
@@ -545,6 +545,9 @@ void Interface::on_fdd_mount(Rml::Event &)
 			// the user will have to switch back to fullscreen, can't auto do it.
 			m_gui->toggle_fullscreen();
 		}
+#ifdef _WIN32
+		tinyfd_winUtf8 = 1;
+#endif
 		const char *openfile = tinyfd_openFileDialog(
 			"Select floppy image",
 			floppy_dir.c_str(),

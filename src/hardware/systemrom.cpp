@@ -252,7 +252,7 @@ void SystemROM::load_dir(const std::string &_dirname)
 	DIR *dir;
 	struct dirent *ent;
 
-	if((dir = opendir(_dirname.c_str())) == nullptr) {
+	if((dir = FileSys::opendir(_dirname.c_str())) == nullptr) {
 		PERRF(LOG_MACHINE, "Unable to open directory %s\n", _dirname.c_str());
 		throw std::exception();
 	}
@@ -261,9 +261,9 @@ void SystemROM::load_dir(const std::string &_dirname)
 	bool fc0000found = false;
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
-		std::string name = ent->d_name;
+		std::string name = FileSys::to_utf8(ent->d_name);
 		std::string fullpath = dirname + name;
-		if(stat(fullpath.c_str(), &sb) != 0) {
+		if(FileSys::stat(fullpath.c_str(), &sb) != 0) {
 			continue;
 		}
 		if(S_ISDIR(sb.st_mode)) {
@@ -304,7 +304,7 @@ void SystemROM::load_archive(const std::string &_filename)
 	ar = archive_read_new();
 	archive_read_support_filter_all(ar);
 	archive_read_support_format_all(ar);
-	res = archive_read_open_filename(ar, _filename.c_str(), 10240);
+	res = archive_read_open_filename(ar, FileSys::to_native(_filename).c_str(), 10240);
 	if(res != ARCHIVE_OK) {
 		PERRF(LOG_MACHINE, "Error opening ROM set '%s'\n", _filename.c_str());
 		throw std::exception();

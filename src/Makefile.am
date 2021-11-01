@@ -28,7 +28,8 @@ ibmulator_SOURCES = \
 	tinyfiledialogs/tinyfiledialogs.c \
 	wincompat/mkstemp.cpp \
 	wincompat/realpath.cpp \
-	wincompat/asprintf.cpp
+	wincompat/asprintf.cpp \
+	wincompat/utf8.cpp
 	
 noinst_HEADERS = \
 	appconfig.h \
@@ -58,7 +59,8 @@ noinst_HEADERS = \
 	syslog.h \
 	utils.h \
 	tinyfiledialogs/tinyfiledialogs.h \
-	wincompat.h
+	wincompat.h \
+	wincompat/utf8.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a audio/libaudio.a $(BASELIBS) ibmulator.res

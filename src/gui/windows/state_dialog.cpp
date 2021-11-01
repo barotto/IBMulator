@@ -110,7 +110,7 @@ void StateDialog::set_current_dir(const std::string &_path)
 	}
 
 	DIR *dir;
-	if((dir = opendir(ms_cur_path.c_str())) == nullptr) {
+	if((dir = FileSys::opendir(ms_cur_path.c_str())) == nullptr) {
 		throw std::runtime_error(
 			str_format("Cannot open directory '%s' for reading", ms_cur_path.c_str()).c_str()
 		);
@@ -119,7 +119,7 @@ void StateDialog::set_current_dir(const std::string &_path)
 	std::regex re("^" STATE_RECORD_BASE ".*", std::regex::ECMAScript|std::regex::icase);
 	struct dirent *ent;
 	while((ent = readdir(dir)) != nullptr) {
-		std::string dirname = ent->d_name;
+		std::string dirname = FileSys::to_utf8(ent->d_name);
 		if(!std::regex_search(dirname, re)) {
 			continue;
 		}

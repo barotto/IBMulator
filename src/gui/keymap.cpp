@@ -602,7 +602,7 @@ std::string Keymap::get_name_from_SDL_Scancode(SDL_Scancode &_scancode)
 
 void Keymap::load(const std::string &_filename)
 {
-	std::ifstream keymap_file(_filename.c_str(), std::ios::in);
+	std::ifstream keymap_file = FileSys::make_ifstream(_filename.c_str());
 	if(!keymap_file.is_open()) {
 		PERRF(LOG_GUI, "Unable to open keymap file '%s'\n", _filename.c_str());
 		throw std::exception();

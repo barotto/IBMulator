@@ -416,12 +416,12 @@ void FileSelect::set_current_dir(const std::string &_path)
 	set_cwd(_path);
 	
 	char buf[PATH_MAX];
-	if(realpath(_path.c_str(), buf) == nullptr) {
+	if(FileSys::realpath(_path.c_str(), buf) == nullptr) {
 		PERRF(LOG_GUI, "The path to '%s' cannot be resolved\n", _path.c_str());
 		update();
 		throw std::exception();
 	}
-	std::string new_cwd = buf;
+	std::string new_cwd = FileSys::to_utf8(buf);
 	if(new_cwd.size() > FS_PATH_MIN && new_cwd.rfind(FS_SEP) == new_cwd.size()-1) {
 		new_cwd.pop_back();
 	}
@@ -449,7 +449,7 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 	DIR *dir;
 	struct dirent *ent;
 
-	if((dir = opendir(_path.c_str())) == nullptr) {
+	if((dir = FileSys::opendir(_path.c_str())) == nullptr) {
 		PERRF(LOG_GUI, "Cannot open directory '%s' for reading\n", _path.c_str());
 		throw std::exception();
 	}
@@ -459,14 +459,14 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		DirEntry de;
-		de.name = ent->d_name;
+		de.name = FileSys::to_utf8(ent->d_name);
 		std::string fullpath = _path + FS_SEP + de.name;
-		if(stat(fullpath.c_str(), &sb) != 0) {
+		if(FileSys::stat(fullpath.c_str(), &sb) != 0) {
 			continue;
 		}
 #ifndef _WIN32
 		//skip hidden files
-		if(ent->d_name[0]=='.' &&
+		if(de.name[0]=='.' &&
 		  (!S_ISDIR(sb.st_mode) || (S_ISDIR(sb.st_mode) && de.name != "..")))
 		{
 			continue;

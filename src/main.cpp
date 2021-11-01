@@ -20,6 +20,9 @@
 #include "ibmulator.h"
 #include "program.h"
 #include "filesys.h"
+#ifdef _WIN32
+#include "wincompat.h"
+#endif
 
 #include <sstream>
 #include <SDL.h>
@@ -42,11 +45,17 @@ int main(int argc, char** argv)
 	int return_value = 0;
 
 	try {
+#ifdef _WIN32
+		argv = utf8::get_argv(&argc);
+#endif
 		if(!g_program.initialize(argc,argv)) {
 			PINFO(LOG_V0, "Manual configuration required\n");
 			start = false;
 			return_value = 0;
 		}
+#ifdef _WIN32
+		utf8::free_argv(argc, argv);
+#endif
 	} catch(std::exception &e) {
 		std::string message = "A problem occurred during initialisation.\n";
 		std::string logfile = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);

@@ -172,7 +172,7 @@ public:
 	int open(const char* _pathname, int _flags);
 
 	// Open a temporary read-write copy of _pathname image file.
-	int open_temp(const char *_pathname, char *_template);
+	int open_temp(const char *_pathname, std::string &_template);
 
 	// Close the image.
 	void close();

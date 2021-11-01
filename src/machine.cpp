@@ -864,7 +864,7 @@ void Machine::cmd_dtdump(const std::string &_name)
 		filename << std::setw(6) << base << "-" << std::setw(4) << limit;
 		filename << ".csv";
 		try {
-			std::ofstream file(filename.str().c_str());
+			std::ofstream file = FileSys::make_ofstream(filename.str().c_str());
 			if(file.is_open()) {
 				file << CPUDebugger::descriptor_table_to_CSV(g_memory, base, limit).c_str();
 				file.close();

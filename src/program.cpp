@@ -350,12 +350,12 @@ bool Program::initialize(int argc, char** argv)
 		home = str;
 	}
 #else
-	str = getenv("USERPROFILE");
+	str = utf8::getenv("USERPROFILE");
 	if(str) {
 		home = str;
 	} else {
-		str = getenv("HOMEDRIVE");
-		char *hpath = getenv("HOMEPATH");
+		str = utf8::getenv("HOMEDRIVE");
+		char *hpath = utf8::getenv("HOMEPATH");
 		if(str && hpath) {
 			home = str;
 			home += hpath;
@@ -378,7 +378,7 @@ bool Program::initialize(int argc, char** argv)
 		}
 #else
 		//WINDOWS uses LOCALAPPDATA\{DeveloperName\AppName}
-		str = getenv("LOCALAPPDATA");
+		str = utf8::getenv("LOCALAPPDATA");
 		if(str == nullptr) {
 			PERRF(LOG_PROGRAM, "Unable to determine the LOCALAPPDATA directory!\n");
 			throw std::exception();
@@ -386,14 +386,14 @@ bool Program::initialize(int argc, char** argv)
 		m_user_dir = str;
 #endif
 		if(!FileSys::is_directory(m_user_dir.c_str())
-		|| access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
+		|| FileSys::access(m_user_dir.c_str(), R_OK | W_OK | X_OK) != 0) {
 			PERRF(LOG_PROGRAM, "Unable to access the user directory: %s\n", m_user_dir.c_str());
 			throw std::exception();
 		}
 		m_user_dir += FS_SEP PACKAGE;
 	}
 	FileSys::create_dir(m_user_dir.c_str());
-	PINFO(LOG_V1,"User directory: %s\n", m_user_dir.c_str());
+	PINFO(LOG_V1, "User directory: %s\n", FileSys::to_utf8(m_user_dir).c_str());
 	m_config[0].set_cfg_home(m_user_dir);
 
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
@@ -563,10 +563,14 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	std::vector<std::string> paths;
 
 	//1. DATA_PATH env variable
+#ifdef _WIN32
+	const char* envstr = utf8::getenv("IBMULATOR_DATA_PATH");
+#else
 	const char* envstr = getenv("IBMULATOR_DATA_PATH");
+#endif
 	if(envstr) {
-		if(realpath(envstr, rpbuf)) {
-			paths.emplace_back(rpbuf);
+		if(FileSys::realpath(envstr, rpbuf)) {
+			paths.emplace_back(FileSys::to_utf8(rpbuf));
 		} else {
 			PERRF(LOG_PROGRAM, "IBMULATOR_DATA_PATH is set, but '%s' cannot be resolved.\n", envstr);
 			throw std::exception();
@@ -574,11 +578,10 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	}
 
 	//2. dirname(argv[0]) + /../share/PACKAGE
-	if(realpath(argv[0], rpbuf)) {
-		std::string datapath = dirname(rpbuf);
-		datapath += FS_SEP ".." FS_SEP "share" FS_SEP PACKAGE;
-		if(realpath(datapath.c_str(), rpbuf)) {
-			paths.emplace_back(rpbuf);
+	if(FileSys::realpath(argv[0], rpbuf)) {
+		std::string datapath = FileSys::to_utf8(dirname(rpbuf)) + FS_SEP ".." FS_SEP "share" FS_SEP PACKAGE;
+		if(FileSys::realpath(datapath.c_str(), rpbuf)) {
+			paths.emplace_back(FileSys::to_utf8(rpbuf));
 		} else {
 			PWARNF(LOG_V0, LOG_PROGRAM, "The 'share" FS_SEP PACKAGE"' directory cannot be found!\n");
 		}
@@ -600,10 +603,10 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 	}
 #endif
 
-#ifdef DATA_PATH
+#if !defined(NDEBUG) && defined(DATA_PATH)
 	//5. DATA_PATH define
-	if(realpath(DATA_PATH, rpbuf)) {
-		paths.emplace_back(rpbuf);
+	if(FileSys::realpath(DATA_PATH, rpbuf)) {
+		paths.emplace_back(FileSys::to_utf8(rpbuf));
 	}
 #endif
 
@@ -645,7 +648,7 @@ void Program::parse_arguments(int argc, char** argv)
 				}
 				break;
 			case 'u':
-				if(!FileSys::is_directory(optarg) || access(optarg, R_OK | W_OK | X_OK) == -1) {
+				if(!FileSys::is_directory(optarg) || FileSys::access(optarg, R_OK | W_OK | X_OK) == -1) {
 					PERRF(LOG_PROGRAM, "Can't access the specified user directory\n");
 				} else {
 					m_user_dir = optarg;

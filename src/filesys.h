@@ -28,8 +28,9 @@
 	#include <windows.h>
 	#define FS_PATH_MIN 3
 #endif
-
+#include <dirent.h>
 #include <memory>
+#include <utility>
 
 typedef std::unique_ptr<FILE, int (*)(FILE *)> unique_file_ptr;
 typedef std::shared_ptr<FILE> shared_file_ptr;
@@ -37,7 +38,23 @@ typedef std::shared_ptr<FILE> shared_file_ptr;
 class FileSys
 {
 public:
-	static std::string get_next_filename(const std::string &_dir,
+#ifdef _WIN32
+	static std::string to_utf8(const std::string &_path);
+	static std::string to_native(const std::string &_path);
+#else
+	static std::string to_utf8(std::string _path) { return _path; }
+	static std::string to_native(std::string _path) { return _path; }
+#endif
+	static int open(const char *_filename, int _flags);
+	static int open(const char *_filename, int _flags, mode_t _mode);
+	static DIR* opendir(const char *_path);
+	static int stat(const char *_path, struct stat *_buf);
+	static int access(const char *_path, int _mode);
+	static int remove(const char *_path);
+	static int mkostemp(std::string &_template, int _flags);
+	static char* realpath(const char *_path, char *_resolved);
+
+ 	static std::string get_next_filename(const std::string &_dir,
 			const std::string &_basename, const std::string &_ext);
 	static std::string get_next_dirname(const std::string &_basedir,
 			const std::string &_basename, unsigned _limit = 10000);
@@ -56,9 +73,13 @@ public:
 			const char *_extract_to);
 	static void copy_file(const char *_from, const char *_to);
 
+	static FILE* fopen(const char *_filename, const char *_flags);
+	static FILE* fopen(std::string _filename, const char *_flags);
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
-
+	static std::ifstream make_ifstream(const char *_path, std::ios::openmode _mode = std::ios::in);
+	static std::ofstream make_ofstream(const char *_path, std::ios::openmode _mode = std::ios::out);
+	
 	static time_t filetime_to_time_t(const FILETIME &_ftime);
 };
 

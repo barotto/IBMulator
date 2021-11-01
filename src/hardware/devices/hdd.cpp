@@ -583,7 +583,7 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 
 		//opening a temp image
 		//this works in C++11, where strings are guaranteed to be contiguous:
-		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(_imgpath.c_str(), &tpl[0]) < 0) {
+		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(_imgpath.c_str(), tpl) < 0) {
 			PERRF(LOG_HDD, "Can't open the image file\n");
 			throw std::exception();
 		}
@@ -638,7 +638,7 @@ void HardDiskDrive::unmount(bool _save, bool _read_only)
 	m_disk->close();
 	if(m_tmp_disk) {
 		PDEBUGF(LOG_V0, LOG_HDD, "Removing temporary image file '%s'\n", m_disk->get_name().c_str());
-		if(::remove(m_disk->get_name().c_str()) != 0) {
+		if(FileSys::remove(m_disk->get_name().c_str()) != 0) {
 			PERRF(LOG_HDD, "Error removing temporary image file '%s'\n", m_disk->get_name().c_str());
 		}
 	}

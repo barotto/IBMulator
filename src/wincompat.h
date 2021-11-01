@@ -6,6 +6,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include "wincompat/utf8.h"
+
 int mkstemp(char *tmpl);
 int mkostemp(char *tmpl, int flags);
 char * realpath(const char *name, char *resolved);

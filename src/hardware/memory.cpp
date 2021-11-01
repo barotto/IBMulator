@@ -563,7 +563,7 @@ void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)
 		throw std::exception();
 	}
 
-	std::ofstream file(_filename.c_str(), std::ofstream::binary);
+	std::ofstream file = FileSys::make_ofstream(_filename.c_str(), std::ofstream::binary);
 	if(!file.is_open()) {
 		PERRF(LOG_FS,"unable to open %s to write\n",_filename.c_str());
 		throw std::exception();
