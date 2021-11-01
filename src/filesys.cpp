@@ -101,7 +101,14 @@ int FileSys::get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtim
 {
 #ifdef _WIN32
 
-	HANDLE hFile = CreateFile(to_native(_path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
+	HANDLE hFile = CreateFile(to_native(_path).c_str(), 
+			0, //dwDesiredAccess: if this parameter is zero, the application can query certain metadata
+			FILE_SHARE_READ, //dwShareMode
+			nullptr, //lpSecurityAttributes
+			OPEN_EXISTING, //dwCreationDisposition
+			FILE_FLAG_BACKUP_SEMANTICS, //dwFlagsAndAttributes: to open a directory use this
+			nullptr //hTemplateFile
+	);
 	if(hFile == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
