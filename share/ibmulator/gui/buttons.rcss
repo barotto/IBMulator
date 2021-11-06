@@ -76,6 +76,11 @@ input.romshell btnicon
 	margin-left: 1dp;
 }
 
+button.romshell.disabled btnicon
+{
+	image-color: #a0a0a0;
+}
+
 @spritesheet
 {
 	src: images/romshell_button.png;

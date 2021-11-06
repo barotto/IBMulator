@@ -47,6 +47,8 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "reload",  "click",   FileSelect::on_reload),
 	GUI_EVT( "home",    "click",   FileSelect::on_home),
 	GUI_EVT( "dir_up",  "click",   FileSelect::on_up),
+	GUI_EVT( "dir_prev","click",   FileSelect::on_prev),
+	GUI_EVT( "dir_next","click",   FileSelect::on_next),
 	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
@@ -64,7 +66,6 @@ void FileSelect::create()
 {
 	Window::create();
 
-	m_cwd_el = get_element("cwd");
 	m_entries_el = get_element("entries");
 	//m_panel_el = get_element("panel");
 	m_buttons_entry_el = get_element("buttons_entry");
@@ -90,11 +91,21 @@ void FileSelect::create()
 			}
 		}
 	}
+	
+	m_path_el.cwd = get_element("cwd");
+	m_path_el.up = get_element("dir_up");
+	m_path_el.prev = get_element("dir_prev");
+	m_path_el.next = get_element("dir_next");
+	
+	disable(m_path_el.prev);
+	disable(m_path_el.next);
 }
 
 void FileSelect::update()
 {
 	Window::update();
+
+	set_disabled(m_path_el.up, get_up_path().empty());
 
 	if(m_dirty) {
 		entry_deselect();
@@ -153,6 +164,16 @@ void FileSelect::update()
 	}
 }
 
+void FileSelect::show()
+{
+	m_history.clear();
+	m_history_idx = 0;
+	disable(m_path_el.next);
+	disable(m_path_el.prev);
+
+	Window::show();
+}
+
 std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_entry(Rml::Event &_ev)
 {
 	Rml::Element *entry_el = nullptr;
@@ -180,21 +201,20 @@ void FileSelect::on_entry(Rml::Event &_ev)
 		return;
 	}
 
-	std::string path = m_cwd;
 	if(de->is_dir) {
 		if(de->name == "..") {
 			on_up(_ev);
 		} else {
-			path += FS_SEP;
-			path += de->name;
 			try {
-				set_current_dir(path);
+				std::string cwd = m_cwd;
+				set_current_dir(m_cwd + FS_SEP + de->name);
+				set_history(cwd);
 			} catch(...) { }
 		}
 		return;
+	} else {
+		entry_select(de, entry_el);
 	}
-
-	entry_select(de, entry_el);
 }
 
 void FileSelect::on_insert(Rml::Event &_ev)
@@ -226,8 +246,13 @@ void FileSelect::on_insert(Rml::Event &_ev)
 
 void FileSelect::on_home(Rml::Event &)
 {
+	if(m_home == m_cwd) {
+		return;
+	}
 	try {
+		std::string cwd = m_cwd;
 		set_current_dir(m_home);
+		set_history(cwd);
 	} catch(...) { }
 }
 
@@ -236,15 +261,15 @@ void FileSelect::on_reload(Rml::Event &)
 	reload();
 }
 
-void FileSelect::on_up(Rml::Event &)
+std::string FileSelect::get_up_path()
 {
 	if(!m_valid_cwd) {
-		return;
+		return std::string();
 	}
 	std::string path = m_cwd;
 	size_t pos = path.rfind(FS_SEP);
 	if(pos == std::string::npos) {
-		return;
+		return std::string();
 	}
 	if(pos == 0) {
 		// the root on unix
@@ -254,11 +279,81 @@ void FileSelect::on_up(Rml::Event &)
 	}
 	path = path.substr(0, pos);
 	if(path == m_cwd) {
+		return std::string();
+	}
+	return path;
+}
+
+void FileSelect::on_up(Rml::Event &)
+{
+	std::string path = get_up_path();
+	if(path.empty()) {
 		return;
 	}
 	try {
+		std::string cwd = m_cwd;
 		set_current_dir(path);
+		set_history(cwd);
 	} catch(...) { }
+}
+
+void FileSelect::set_history(std::string _path)
+{
+	if(m_history_idx < m_history.size()) {
+		m_history.erase(m_history.begin()+m_history_idx, m_history.end());
+	}
+	if(m_history.empty() || m_history.back() != _path) {
+		m_history.push_back(_path);
+	}
+
+	m_history_idx = m_history.size();
+	disable(m_path_el.next);
+	set_disabled(m_path_el.prev, m_history_idx==0);
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Current history:\n");
+	int h = 0;
+	for(auto &p:m_history) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  %d:%s\n", h++, p.c_str());
+	}
+}
+
+void FileSelect::on_prev(Rml::Event &)
+{
+	if(m_history_idx > 0) {
+		try {
+			if(m_history_idx == m_history.size()) {
+				std::string cwd = m_cwd;
+				unsigned idx = m_history_idx - 1;
+				set_current_dir(m_history[idx]);
+				set_history(cwd);
+				m_history_idx = idx;
+				PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
+			} else {
+				set_current_dir(m_history[m_history_idx-1]);
+				m_history_idx--;
+				PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
+			}
+			set_disabled(m_path_el.prev, m_history_idx==0);
+			enable(m_path_el.next);
+		} catch(...) {
+			return;
+		}
+	}
+}
+
+void FileSelect::on_next(Rml::Event &)
+{
+	if(!m_history.empty() && m_history_idx < m_history.size()-1) {
+		try {
+			set_current_dir(m_history[m_history_idx+1]);
+			m_history_idx++;
+			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
+			set_disabled(m_path_el.next, m_history_idx>=m_history.size()-1);
+			enable(m_path_el.prev);
+		} catch(...) {
+			return;
+		}
+	}
 }
 
 void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
@@ -296,9 +391,11 @@ void FileSelect::on_drive(Rml::Event &_ev)
 		std::string path = value + ":" + FS_SEP;
 		PDEBUGF(LOG_V1, LOG_GUI, "Accessing drive %s\n", path.c_str());
 		try {
+			std::string cwd = m_cwd;
 			set_current_dir(path);
+			set_history(cwd);
 		} catch(...) {
-			PERRF(LOG_GUI, "Cannot open %s\n", path.c_str());
+			PERRF(LOG_GUI, "Cannot open '%s'\n", path.c_str());
 		}
 	}
 }
@@ -405,7 +502,7 @@ void FileSelect::clear()
 void FileSelect::set_cwd(const std::string &_path)
 {
 	m_cwd = _path;
-	m_cwd_el->SetInnerRML(m_cwd.c_str());
+	m_path_el.cwd->SetInnerRML(m_cwd.c_str());
 	m_valid_cwd = false;
 	Rml::Element *drive_el = m_wnd->GetElementById(str_format("drive_%c", std::toupper(m_cwd[0])));
 	if(drive_el) {

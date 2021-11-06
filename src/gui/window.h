@@ -77,6 +77,10 @@ protected:
 
 	static Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &);
 	static std::string get_form_input_value(Rml::Event &);
+	static Rml::Element * disable(Rml::Element *);
+	static Rml::Element * enable(Rml::Element *);
+	static Rml::Element * set_disabled(Rml::Element *_el, bool _disabled);
+	static bool is_disabled(Rml::Element *);
 };
 
 #endif

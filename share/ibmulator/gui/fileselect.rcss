@@ -60,7 +60,7 @@
 	top: 0;
 	right: 0;
 	left: 0;
-	margin: 40dp 20dp 0 100dp;
+	margin: 40dp 20dp 0 145dp;
 	font-size: 18dp;
 	text-align: right;
 	font-effect: shadow(-1dp 1dp black);
@@ -161,6 +161,16 @@
 #buttons_left
 {
 	width: 300dp;
+}
+
+#dir_prev btnicon
+{
+	decorator: image(icons/arrow_left.png);
+}
+
+#dir_next btnicon
+{
+	decorator: image(icons/arrow_right.png);
 }
 
 #dir_up btnicon

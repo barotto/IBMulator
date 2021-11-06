@@ -134,10 +134,12 @@ Rml::Element * Window::get_element(const std::string &_id)
 void Window::ProcessEvent(Rml::Event &_event)
 {
 	Rml::Element *el = _event.GetTargetElement();
+	std::string el_str = el->GetId();
+	std::string fn_el_str = el_str;
 	const std::string &type = _event.GetType();
 	event_map_t & evtmap = get_event_map();
 	auto hit = evtmap.find( event_map_key_t(el->GetId(),type) );
-	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'\n", type.c_str(), el->GetId().c_str());
+	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'", type.c_str(), el_str.c_str());
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
 		fn = hit->second;
@@ -149,6 +151,7 @@ void Window::ProcessEvent(Rml::Event &_event)
 				type
 			));
 			if(hit != evtmap.end()) {
+				fn_el_str = parent->GetId();
 				fn = hit->second;
 				break;
 			}
@@ -157,12 +160,16 @@ void Window::ProcessEvent(Rml::Event &_event)
 	}
 	if(!fn) {
 		hit = evtmap.find(event_map_key_t("*", type));
+		fn_el_str = "*";
 		if(hit != evtmap.end()) {
 			fn = hit->second;
 		}
 	}
 	if(fn) {
+		PDEBUGF(LOG_V1, LOG_GUI, " ('%s')\n", fn_el_str.c_str());
 		(this->*fn)(_event);
+	} else {
+		PDEBUGF(LOG_V1, LOG_GUI, "\n");
 	}
 }
 
@@ -184,6 +191,33 @@ std::string Window::get_form_input_value(Rml::Event &_ev)
 	} while(el);
 
 	return "";
+}
+
+Rml::Element * Window::disable(Rml::Element *_el)
+{
+	assert(_el);
+	_el->SetClass("disabled", true);
+	return _el;
+}
+
+Rml::Element * Window::enable(Rml::Element *_el)
+{
+	assert(_el);
+	_el->SetClass("disabled", false);
+	return _el;
+}
+
+Rml::Element * Window::set_disabled(Rml::Element *_el, bool _disabled)
+{
+	assert(_el);
+	_el->SetClass("disabled", _disabled);
+	return _el;
+}
+
+bool Window::is_disabled(Rml::Element *_el)
+{
+	assert(_el);
+	return (_el->IsClassSet("disabled"));
 }
 
 void Window::on_cancel(Rml::Event &)

@@ -33,11 +33,15 @@ private:
 	std::string m_home;
 	std::string m_cwd;
 	bool m_valid_cwd = false;
-	Rml::Element *m_cwd_el = nullptr;
 	Rml::Element *m_entries_el = nullptr;
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::ElementFormControl *m_wprotect = nullptr;
+	struct {
+		Rml::Element *cwd;
+		Rml::Element *prev,*next,*up;
+	} m_path_el;
+	
 
 	class DirEntry {
 	public:
@@ -99,6 +103,8 @@ private:
 	} m_order = Order::BY_NAME;
 	bool m_order_ascending = true;
 	std::vector<uint64_t> m_compat_sizes;
+	std::vector<std::string> m_history;
+	unsigned m_history_idx = 0;
 
 public:
 
@@ -110,6 +116,7 @@ public:
 
 	virtual void create();
 	virtual void update();
+	virtual void show();
 
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
 
@@ -127,18 +134,22 @@ protected:
 	void on_order(Rml::Event &);
 	void on_asc_desc(Rml::Event &);
 	void on_up(Rml::Event &);
+	void on_prev(Rml::Event &);
+	void on_next(Rml::Event &);
 	void on_insert(Rml::Event &);
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
 
 	void clear();
 	void set_cwd(const std::string &_path);
+	void set_history(std::string _path);
 	void set_dirty() { m_dirty = true; }
 	
 	void read_dir(std::string _path, std::string _ext);
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
 	void entry_deselect();
-	
+	std::string get_up_path();
+
 	std::pair<DirEntry*,Rml::Element*> get_entry(Rml::Event &);
 };
 
