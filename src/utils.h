@@ -174,22 +174,27 @@ template <class callable, class... arguments>
 	}).detach();
 }
 
-inline uint16_t read_16bit(const uint8_t* buf)
+constexpr bool is_power_of_2(unsigned x)
+{
+	return (x != 0) && ((x & (x - 1)) == 0);
+}
+
+constexpr uint16_t read_16bit(const uint8_t* buf)
 {
 	return (buf[0] << 8) | buf[1];
 }
 
-inline uint32_t read_32bit(const uint8_t* buf)
+constexpr uint32_t read_32bit(const uint8_t* buf)
 {
 	return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
 }
 
-inline uint8_t packet_field(uint8_t *packet, unsigned byte, unsigned start, unsigned num_bits)
+constexpr uint8_t packet_field(uint8_t *packet, unsigned byte, unsigned start, unsigned num_bits)
 {
 	return ((packet[byte] >> start) & ((1 << num_bits) - 1));
 }
 
-inline uint16_t packet_word(uint8_t *packet, unsigned byte)
+constexpr uint16_t packet_word(uint8_t *packet, unsigned byte)
 {
 	return ( (uint16_t(packet[byte]) << 8) | packet[byte+1] );
 }

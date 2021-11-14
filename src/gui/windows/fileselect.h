@@ -27,7 +27,8 @@ class FileSelect : public Window
 private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
-
+	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
+	
 	static event_map_t ms_evt_map;
 	
 	std::string m_home;
@@ -113,6 +114,7 @@ public:
 
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
+	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
 	virtual void create();
 	virtual void update();
@@ -139,6 +141,7 @@ protected:
 	void on_insert(Rml::Event &);
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
+	void on_show_panel(Rml::Event &);
 
 	void clear();
 	void set_cwd(const std::string &_path);

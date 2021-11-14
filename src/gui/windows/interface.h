@@ -175,6 +175,8 @@ protected:
 	
 	void show_state_dialog(bool _save);
 	void show_state_info_dialog(StateRecord::Info _info);
+	
+	static std::string get_filesel_info(std::string);
 };
 
 #endif

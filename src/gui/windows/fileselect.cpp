@@ -49,6 +49,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "dir_up",  "click",   FileSelect::on_up),
 	GUI_EVT( "dir_prev","click",   FileSelect::on_prev),
 	GUI_EVT( "dir_next","click",   FileSelect::on_next),
+	GUI_EVT( "show_panel","click", FileSelect::on_show_panel),
 	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
@@ -67,7 +68,7 @@ void FileSelect::create()
 	Window::create();
 
 	m_entries_el = get_element("entries");
-	//m_panel_el = get_element("panel");
+	m_panel_el = get_element("info_panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
 	
@@ -261,6 +262,13 @@ void FileSelect::on_reload(Rml::Event &)
 	reload();
 }
 
+void FileSelect::on_show_panel(Rml::Event &)
+{
+	bool active = !is_active(get_element("show_panel"));
+	get_element("show_panel")->SetClass("active", active);
+	m_wnd->SetClass("wpanel", active);
+}
+
 std::string FileSelect::get_up_path()
 {
 	if(!m_valid_cwd) {
@@ -365,7 +373,9 @@ void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
 		m_selected_entry->SetClass("selected", true);
 		m_selected_id = _de->id;
 
-		// TODO extract the list of files
+		if(m_valid_cwd && m_inforeq_fn) {
+			m_panel_el->SetInnerRML(m_inforeq_fn(m_cwd + FS_SEP + _de->name));
+		}
 
 		m_buttons_entry_el->SetClass("invisible", false);
 	} catch(std::out_of_range &) {
@@ -382,6 +392,9 @@ void FileSelect::entry_deselect()
 	m_selected_entry = nullptr;
 
 	m_buttons_entry_el->SetClass("invisible", true);
+	if(m_inforeq_fn) {
+		m_panel_el->SetInnerRML("Select a file for information");
+	}
 }
 
 void FileSelect::on_drive(Rml::Event &_ev)

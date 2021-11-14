@@ -25,6 +25,8 @@
 			<div id="entries" class="grid"></div>
 		</div>
 
+		<div id="info_panel"></div>
+
 		<form id="buttons_left">
 			<div id="mode">
 			<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" /><span></span></input>
@@ -38,6 +40,9 @@
 			<div id="asc_desc">
 			<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
 			<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
+			</div>
+			<div id="misc">
+			<button id="show_panel" class="romshell"><btnicon /><span></span></button>
 			</div>
 		</form>
 	

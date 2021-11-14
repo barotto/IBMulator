@@ -10,6 +10,7 @@ ibmulator_SOURCES = \
 	chrono.cpp \
 	timers.cpp \
 	filesys.cpp \
+	fatreader.cpp \
 	pacer.cpp \
 	hwbench.cpp \
 	ini/ini.cpp \
@@ -38,6 +39,7 @@ noinst_HEADERS = \
 	timers.h \
 	circular_fifo.h \
 	filesys.h \
+	fatreader.h \
 	pacer.h \
 	hwbench.h \
 	ibmulator.h \

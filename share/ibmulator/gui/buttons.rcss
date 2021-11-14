@@ -87,11 +87,25 @@ button.romshell.disabled btnicon
 	button-l: 0px 0px 8px 46px;
 	button-c: 10px 0px 2px 46px;
 	button-r: 240px 0px 4px 46px;
+	button-on-l: 0px 46px 8px 46px;
+	button-on-c: 10px 46px 2px 46px;
+	button-on-r: 236px 46px 8px 46px;
 }
 
 button.romshell
 {
 	decorator: tiled-horizontal( button-l, button-c, button-r );
+}
+
+button.romshell.active
+{
+	color: #000000;
+	decorator: tiled-horizontal( button-on-l, button-on-c, button-on-r );
+}
+
+button.romshell.active btnicon
+{
+	image-color: #000000;
 }
 
 @spritesheet

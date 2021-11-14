@@ -220,6 +220,19 @@ bool Window::is_disabled(Rml::Element *_el)
 	return (_el->IsClassSet("disabled"));
 }
 
+Rml::Element * Window::Window::set_active(Rml::Element *_el, bool _active)
+{
+	assert(_el);
+	_el->SetClass("active", _active);
+	return _el;
+}
+
+bool Window::is_active(Rml::Element *_el)
+{
+	assert(_el);
+	return (_el->IsClassSet("active"));
+}
+
 void Window::on_cancel(Rml::Event &)
 {
 	hide();

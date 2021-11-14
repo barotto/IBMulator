@@ -26,6 +26,7 @@
 #include "mixer.h"
 #include "program.h"
 #include "utils.h"
+#include "fatreader.h"
 #include <sys/stat.h>
 #include <SDL_image.h>
 #include <RmlUi/Core.h>
@@ -231,6 +232,7 @@ void Interface::create()
 	m_fs->create();
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
+	m_fs->set_inforeq_fn(get_filesel_info);
 	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
 	if(home_dir.empty()) {
 		home_dir = g_program.config().get_cfg_home();
@@ -787,4 +789,77 @@ SDL_Surface * Interface::copy_framebuffer()
 	return surface;
 }
 
+std::string Interface::get_filesel_info(std::string _filepath)
+{
+	FATReader fat;
+	try {
+		fat.read(_filepath);
+	} catch(std::runtime_error & err) {
+		return err.what();
+	}
+	auto boot_sec = fat.get_boot_sector();
+	
+	std::string media_desc;
+	try {
+		media_desc = boot_sec.get_media_str();
+	} catch(std::runtime_error & err) {
+		return err.what();
+	}
 
+	auto to_html = [](std::string _text, bool _nbsp=false) {
+		if(_nbsp) {
+			str_replace_all(_text, " ", "&nbsp;");
+		}
+		str_replace_all(_text, "<", "&lt;");
+		str_replace_all(_text, ">", "&gt;");
+		return _text;
+	};
+	auto to_value = [=](std::string s){
+		return std::string("<span class=\"value\">") + to_html(s,true) + "</span>";
+	};
+
+	std::string info;
+
+	info = std::string("Media: ") + to_html(media_desc) + "\n";
+	//info += "FS type: " + to_value(boot_sec.get_fs_type_str()) + "\n";
+	info += "OEM name: " + to_value(boot_sec.get_oem_str());
+	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
+		info += " (mod. by Win95+)";
+	}
+	info += "\n";
+	info += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "\n";
+	
+	auto root = fat.get_root_entries();
+	if(root.empty() || root[0].is_empty()) {
+		info += "\nEmpty disk";
+	} else {
+		info += "Volume label: " + to_value(fat.get_volume_id()) + "\n";
+		info += "Directory\n\n";
+		info += "<table class=\"directory_listing\">";
+		for(auto &entry : root) {
+			if(entry.is_file() || entry.is_directory()) {
+				auto ext = str_to_upper(entry.get_ext_str());
+				bool exe = (ext == "BAT" || ext == "COM" || ext == "EXE");
+				info += std::string("<tr class=\"") + 
+						(entry.is_file()?"file":"dir") +
+						(exe?" executable":"") +
+						"\">";
+				info += "<td class=\"name\">" + to_html(entry.get_name_str()) + "</td>";
+				info += "<td class=\"extension\">" + to_html(entry.get_ext_str()) + "</td>";
+				if(entry.is_file()) {
+					info += "<td class=\"size\">" + str_format("%u", entry.FileSize) + "</td>";
+					time_t wrtime = entry.get_time_t(entry.WrtDate, entry.WrtTime);
+					info += "<td class=\"date\">" + str_format_time(wrtime, "%x") + "</td>";
+				} else {
+					info += "<td class=\"size\">" + to_html("<DIR>") + "</td>";
+					info += "<td class=\"date\"></td>";
+				}
+				info += "</tr>";
+			}
+		}
+		info += "</table>";
+	}
+
+	str_replace_all(info, "\n", "<br />");
+	return info;
+}

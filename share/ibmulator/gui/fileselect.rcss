@@ -133,7 +133,8 @@
 
 #mode,
 #order,
-#asc_desc
+#asc_desc,
+#misc
 {
 	display: inline-block;
 }
@@ -151,6 +152,11 @@
 #asc_desc
 {
 	margin-left: 5dp;
+}
+
+#misc
+{
+	margin-left: 15dp;
 }
 
 #buttons_right
@@ -188,10 +194,9 @@
 	decorator: image(icons/reload.png);
 }
 
-#entries
+#show_panel btnicon
 {
-	box-sizing: border-box;
-	background-color: #3C5464ff;
+	decorator: image(icons/info.png);
 }
 
 #entries_container
@@ -209,6 +214,85 @@
 .drives #entries_container
 {
 	margin-top: 100dp;
+}
+
+#entries
+{
+	box-sizing: border-box;
+	background-color: #3C5464ff;
+}
+
+#info_panel
+{
+	position: absolute;
+	bottom: 0;
+	top: 0;
+	right: 0;
+	width: 240dp;
+	margin: 80dp 20dp 55dp 0;
+	overflow: auto;
+	padding: 0 5dp 0 5dp;
+	display: none;
+	border-left: 1dp;
+	border-color: #28374d;
+	font-size: 12dp;
+}
+
+#info_panel .value
+{
+	background-color: #456174;
+	padding-left: 3dp;
+}
+
+.directory_listing td
+{
+	text-align: left;
+	padding: 0;
+	background-color: transparent;
+}
+
+.directory_listing tr td.name
+{
+	padding-left: 5dp;
+	width: 60dp;
+}
+
+.directory_listing tr td.extension
+{
+	width: 20dp;
+}
+
+.directory_listing tr.file.executable td.name,
+.directory_listing tr.file.executable td.extension
+{
+	/*background-color: #456174;*/
+	color: #fcfca6;
+}
+
+.directory_listing tr td.extension
+{
+	width: 20dp;
+}
+
+.directory_listing tr.file td.size
+{
+	text-align: right;
+	padding-right: 5dp;
+}
+
+.directory_listing tr.file td.date
+{
+	
+}
+
+.wpanel #info_panel
+{
+	display: block;
+}
+
+.wpanel #entries_container
+{
+	margin-right: 270dp;
 }
 
 .grid
@@ -336,6 +420,7 @@
 	width: 110dp;
 	font-size: 12dp;
 	text-align: right;
+	padding-right: 5dp;
 }
 
 .list .entry .icon

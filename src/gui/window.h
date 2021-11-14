@@ -81,6 +81,8 @@ protected:
 	static Rml::Element * enable(Rml::Element *);
 	static Rml::Element * set_disabled(Rml::Element *_el, bool _disabled);
 	static bool is_disabled(Rml::Element *);
+	static Rml::Element * set_active(Rml::Element *_elm, bool _active);
+	static bool is_active(Rml::Element *);
 };
 
 #endif
