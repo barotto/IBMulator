@@ -145,7 +145,7 @@ protected:
 
 	void clear();
 	void set_cwd(const std::string &_path);
-	void set_history(std::string _path);
+	void set_history();
 	void set_dirty() { m_dirty = true; }
 	
 	void read_dir(std::string _path, std::string _ext);

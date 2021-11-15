@@ -206,10 +206,9 @@ void FileSelect::on_entry(Rml::Event &_ev)
 		if(de->name == "..") {
 			on_up(_ev);
 		} else {
+			set_history();
 			try {
-				std::string cwd = m_cwd;
 				set_current_dir(m_cwd + FS_SEP + de->name);
-				set_history(cwd);
 			} catch(...) { }
 		}
 		return;
@@ -250,10 +249,9 @@ void FileSelect::on_home(Rml::Event &)
 	if(m_home == m_cwd) {
 		return;
 	}
+	set_history();
 	try {
-		std::string cwd = m_cwd;
 		set_current_dir(m_home);
-		set_history(cwd);
 	} catch(...) { }
 }
 
@@ -298,20 +296,19 @@ void FileSelect::on_up(Rml::Event &)
 	if(path.empty()) {
 		return;
 	}
+	set_history();
 	try {
-		std::string cwd = m_cwd;
 		set_current_dir(path);
-		set_history(cwd);
 	} catch(...) { }
 }
 
-void FileSelect::set_history(std::string _path)
+void FileSelect::set_history()
 {
 	if(m_history_idx < m_history.size()) {
 		m_history.erase(m_history.begin()+m_history_idx, m_history.end());
 	}
-	if(m_history.empty() || m_history.back() != _path) {
-		m_history.push_back(_path);
+	if(m_history.empty() || m_history.back() != m_cwd) {
+		m_history.push_back(m_cwd);
 	}
 
 	m_history_idx = m_history.size();
@@ -328,24 +325,23 @@ void FileSelect::set_history(std::string _path)
 void FileSelect::on_prev(Rml::Event &)
 {
 	if(m_history_idx > 0) {
-		try {
-			if(m_history_idx == m_history.size()) {
-				std::string cwd = m_cwd;
-				unsigned idx = m_history_idx - 1;
+		if(m_history_idx == m_history.size()) {
+			unsigned idx = m_history_idx - 1;
+			set_history();
+			try {
 				set_current_dir(m_history[idx]);
-				set_history(cwd);
-				m_history_idx = idx;
-				PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
-			} else {
+			} catch(...) {}
+			m_history_idx = idx;
+			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
+		} else {
+			try {
 				set_current_dir(m_history[m_history_idx-1]);
-				m_history_idx--;
-				PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
-			}
-			set_disabled(m_path_el.prev, m_history_idx==0);
-			enable(m_path_el.next);
-		} catch(...) {
-			return;
+			} catch(...) {}
+			m_history_idx--;
+			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
 		}
+		set_disabled(m_path_el.prev, m_history_idx==0);
+		enable(m_path_el.next);
 	}
 }
 
@@ -354,13 +350,11 @@ void FileSelect::on_next(Rml::Event &)
 	if(!m_history.empty() && m_history_idx < m_history.size()-1) {
 		try {
 			set_current_dir(m_history[m_history_idx+1]);
-			m_history_idx++;
-			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
-			set_disabled(m_path_el.next, m_history_idx>=m_history.size()-1);
-			enable(m_path_el.prev);
-		} catch(...) {
-			return;
-		}
+		} catch(...) {}
+		m_history_idx++;
+		PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
+		set_disabled(m_path_el.next, m_history_idx>=m_history.size()-1);
+		enable(m_path_el.prev);
 	}
 }
 
@@ -403,10 +397,9 @@ void FileSelect::on_drive(Rml::Event &_ev)
 	if(!value.empty()) {
 		std::string path = value + ":" + FS_SEP;
 		PDEBUGF(LOG_V1, LOG_GUI, "Accessing drive %s\n", path.c_str());
+		set_history();
 		try {
-			std::string cwd = m_cwd;
 			set_current_dir(path);
-			set_history(cwd);
 		} catch(...) {
 			PERRF(LOG_GUI, "Cannot open '%s'\n", path.c_str());
 		}
