@@ -30,6 +30,7 @@ event_map_t StateSave::ms_evt_map = {
 	GUI_EVT( "cancel",   "click",     StateDialog::on_cancel ),
 	GUI_EVT( "close",    "click",     StateDialog::on_cancel ),
 	GUI_EVT( "entries",  "click",     StateSave::on_entry ),
+	GUI_EVT( "entries",  "dblclick",  StateDialog::on_action ),
 	GUI_EVT( "mode",     "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",    "click",     StateDialog::on_order),
 	GUI_EVT( "asc_desc", "click",     StateDialog::on_asc_desc),
