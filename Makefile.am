@@ -52,6 +52,7 @@ share/ibmulator/gui/icons/arrow_up.png \
 share/ibmulator/gui/icons/ascending.png \
 share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \
+share/ibmulator/gui/icons/cross.png \
 share/ibmulator/gui/icons/descending.png \
 share/ibmulator/gui/icons/disk.png \
 share/ibmulator/gui/icons/disk_active.png \

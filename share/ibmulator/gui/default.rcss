@@ -52,8 +52,9 @@ body:focus #title_bar
 	position: absolute;
 	top: 0;
 	right: 0;
-	width: 24dp;
-	height: 24dp;
+	width: 25dp;
+	height: 25dp;
+	decorator: image(icons/cross.png);
 }
 
 #title
