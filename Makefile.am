@@ -62,6 +62,7 @@ share/ibmulator/gui/icons/exit.png \
 share/ibmulator/gui/icons/file_select.png \
 share/ibmulator/gui/icons/grid.png \
 share/ibmulator/gui/icons/home.png \
+share/ibmulator/gui/icons/info.png \
 share/ibmulator/gui/icons/list.png \
 share/ibmulator/gui/icons/pause.png \
 share/ibmulator/gui/icons/power.png \
