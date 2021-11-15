@@ -173,7 +173,7 @@ scrollbarvertical
 	margin-top: 0;
 	margin-bottom: 0;
 	margin-right: 0;
-	width: 26dp;
+	width: 19dp;
 	z-index: 99;
 }
 
@@ -181,37 +181,37 @@ scrollbarvertical
 {
 	src: images/romshell_scroller.png;
 
-	sliderbar-t: 0px 35px 26px 2px;
-	sliderbar-c: 0px 40px 26px 2px;
-	sliderbar-b: 0px 57px 26px 4px;
+	sliderbar-t: 0px 66px 38px 4px;
+	sliderbar-c: 0px 72px 38px 4px;
+	sliderbar-b: 0px 110px 38px 8px;
 
-	sliderdec: 0px 0px 26px 26px;
-	sliderinc: 0px 78px 26px 26px;
+	sliderdec: 0px 0px 38px 38px;
+	sliderinc: 0px 144px 38px 38px;
 }
 
 scrollbarvertical slidertrack
 {
-	background-color: #2c3e4aa0;
+	background-color: #00000030;
 }
 
 scrollbarvertical sliderbar
 {
 	margin-left: 0px;
-	width: 26dp;
-	min-height: 26dp;
+	width: 19dp;
+	min-height: 19dp;
 	decorator: tiled-vertical(sliderbar-t, sliderbar-c, sliderbar-b);
 }
 
 scrollbarvertical sliderarrowdec
 {
-	width: 26dp;
-	height: 26dp;
+	width: 19dp;
+	height: 19dp;
 	decorator: image(sliderdec);
 }
 
 scrollbarvertical sliderarrowinc
 {
-	width: 26dp;
-	height: 26dp;
+	width: 19dp;
+	height: 19dp;
 	decorator: image(sliderinc);
 }
