@@ -35,6 +35,7 @@ private:
 	std::string m_cwd;
 	bool m_valid_cwd = false;
 	Rml::Element *m_entries_el = nullptr;
+	Rml::Element *m_entries_cont_el = nullptr;
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::ElementFormControl *m_wprotect = nullptr;

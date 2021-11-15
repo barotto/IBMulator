@@ -68,6 +68,7 @@ void FileSelect::create()
 	Window::create();
 
 	m_entries_el = get_element("entries");
+	m_entries_cont_el = get_element("entries_container");
 	m_panel_el = get_element("info_panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
@@ -161,6 +162,7 @@ void FileSelect::update()
 				break;
 			}
 		}
+		m_entries_cont_el->SetScrollTop(0);
 		m_dirty = false;
 	}
 }
@@ -369,6 +371,7 @@ void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
 
 		if(m_valid_cwd && m_inforeq_fn) {
 			m_panel_el->SetInnerRML(m_inforeq_fn(m_cwd + FS_SEP + _de->name));
+			m_panel_el->SetScrollTop(0);
 		}
 
 		m_buttons_entry_el->SetClass("invisible", false);
@@ -388,6 +391,7 @@ void FileSelect::entry_deselect()
 	m_buttons_entry_el->SetClass("invisible", true);
 	if(m_inforeq_fn) {
 		m_panel_el->SetInnerRML("Select a file for information");
+		m_panel_el->SetScrollTop(0);
 	}
 }
 

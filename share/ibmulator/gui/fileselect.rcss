@@ -228,7 +228,7 @@
 	bottom: 0;
 	top: 0;
 	right: 0;
-	width: 240dp;
+	width: 246dp;
 	margin: 80dp 20dp 55dp 0;
 	overflow: auto;
 	padding: 0 5dp 0 5dp;
@@ -292,7 +292,7 @@
 
 .wpanel #entries_container
 {
-	margin-right: 270dp;
+	margin-right: 276dp;
 }
 
 .grid
