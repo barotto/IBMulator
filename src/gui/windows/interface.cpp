@@ -811,21 +811,13 @@ std::string Interface::get_filesel_info(std::string _filepath)
 		return err.what();
 	}
 
-	auto to_html = [](std::string _text, bool _nbsp=false) {
-		if(_nbsp) {
-			str_replace_all(_text, " ", "&nbsp;");
-		}
-		str_replace_all(_text, "<", "&lt;");
-		str_replace_all(_text, ">", "&gt;");
-		return _text;
-	};
 	auto to_value = [=](std::string s){
-		return std::string("<span class=\"value\">") + to_html(s,true) + "</span>";
+		return std::string("<span class=\"value\">") + str_to_html(s,true) + "</span>";
 	};
 
 	std::string info;
 
-	info = std::string("Media: ") + to_html(media_desc) + "\n";
+	info = std::string("Media: ") + str_to_html(media_desc) + "\n";
 	//info += "FS type: " + to_value(boot_sec.get_fs_type_str()) + "\n";
 	info += "OEM name: " + to_value(boot_sec.get_oem_str());
 	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
@@ -849,14 +841,14 @@ std::string Interface::get_filesel_info(std::string _filepath)
 						(entry.is_file()?"file":"dir") +
 						(exe?" executable":"") +
 						"\">";
-				info += "<td class=\"name\">" + to_html(entry.get_name_str()) + "</td>";
-				info += "<td class=\"extension\">" + to_html(entry.get_ext_str()) + "</td>";
+				info += "<td class=\"name\">" + str_to_html(entry.get_name_str()) + "</td>";
+				info += "<td class=\"extension\">" + str_to_html(entry.get_ext_str()) + "</td>";
 				if(entry.is_file()) {
 					info += "<td class=\"size\">" + str_format("%u", entry.FileSize) + "</td>";
 					time_t wrtime = entry.get_time_t(entry.WrtDate, entry.WrtTime);
 					info += "<td class=\"date\">" + str_format_time(wrtime, "%x") + "</td>";
 				} else {
-					info += "<td class=\"size\">" + to_html("<DIR>") + "</td>";
+					info += "<td class=\"size\">" + str_to_html("<DIR>") + "</td>";
 					info += "<td class=\"date\"></td>";
 				}
 				info += "</tr>";

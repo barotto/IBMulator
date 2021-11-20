@@ -122,6 +122,16 @@ std::string str_format_time(time_t _time, const std::string &_fmt)
 #endif
 }
 
+std::string str_to_html(std::string _text, bool _nbsp)
+{
+	if(_nbsp) {
+		str_replace_all(_text, " ", "&nbsp;");
+	}
+	str_replace_all(_text, "<", "&lt;");
+	str_replace_all(_text, ">", "&gt;");
+	return _text;
+}
+
 std::string bitfield_to_string(uint8_t _bitfield,
 		const std::array<std::string, 8> &_set_names)
 {

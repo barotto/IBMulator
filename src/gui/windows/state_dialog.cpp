@@ -302,18 +302,18 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 			inner += "<img src=\"/" + _screen + "\" />";
 		}
 		inner += "</div>";
-		inner += "<div class=\"desc\">" + _info.user_desc + "</div>";
+		inner += "<div class=\"desc\">" + str_to_html(_info.user_desc) + "</div>";
 		if(_info.mtime) {
 			inner += "<div class=\"date\">" + str_format_time(_info.mtime, "%x %H:%M") + "</div>";
 		}
 		if(_info.name != "new_save_entry") {
-			inner += "<div class=\"name\">" + _info.name + "</div>";
+			inner += "<div class=\"name\">" + str_to_html(_info.name) + "</div>";
 		}
 		if(_info.version != STATE_RECORD_VERSION) {
 			inner += "<div class=\"config\">INVALID VERSION</div>";
 		} else {
 			if(!_info.config_desc.empty()) {
-				inner += "<div class=\"config\">" + _info.config_desc + "</div>";
+				inner += "<div class=\"config\">" + str_to_html(_info.config_desc) + "</div>";
 			}
 		}
 	inner += "</div>";
