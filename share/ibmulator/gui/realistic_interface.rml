@@ -17,6 +17,7 @@
 		</style>
 	</head>
 	<body>
+		<div id="background"></div>
 		<div id="system">
 			<div id="power_led"></div>
 			<div id="fdd_led"></div>

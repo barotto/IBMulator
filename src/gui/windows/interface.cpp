@@ -655,6 +655,11 @@ void Interface::on_load_state(Rml::Event &)
 	show_state_dialog(false);
 }
 
+void Interface::on_dblclick(Rml::Event &)
+{
+	m_gui->toggle_fullscreen();
+}
+
 void Interface::save_state(StateRecord::Info _info)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.user_desc.c_str());
