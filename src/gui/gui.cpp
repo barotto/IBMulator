@@ -2620,6 +2620,7 @@ public:
 void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
 	m_gui = _gui;
+	timers.init();
 
 	desktop = std::make_unique<Desktop>(_gui);
 	desktop->show();
@@ -2627,7 +2628,7 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	if(_mode == GUI_MODE_REALISTIC) {
 		interface = std::make_unique<RealisticInterface>(_machine, _gui, _mixer);
 	} else {
-		interface = std::make_unique<NormalInterface>(_machine, _gui, _mixer);
+		interface = std::make_unique<NormalInterface>(_machine, _gui, _mixer, &timers);
 	}
 	interface->show();
 
@@ -2642,7 +2643,6 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
 
-	timers.init();
 	ifcmex_timer = timers.register_timer([this](uint64_t){
 		if(interface) {
 			interface->show_message("");

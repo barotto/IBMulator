@@ -1,4 +1,4 @@
-#sysunit
+#main_interface
 {
 	width: 100%;
 	height: 33%;
@@ -8,101 +8,84 @@
 	margin-right: auto;
 }
 
-.hidden .to_hide
+.collapsed .collapsed_hidden,
+.normal .normal_hidden,
+.compact .compact_hidden
 {
 	visibility: hidden;
 }
 
-.sysoverlay
+.hidden.compact #system_unit,
+.hidden.collapsed #system_bar,
+.hidden #interface_control
+{
+	visibility: hidden;
+}
+
+.hidden.compact #system_unit:hover,
+.hidden.collapsed #system_bar:hover,
+.hidden #interface_control:hover
+{
+	visibility: visible;
+}
+
+.overlay
 {
 	position: absolute;
 	width: 100%;
 	height: 100%;
 }
 
-#syscompact
+#system_bar
 {
 	position: absolute;
 	width: 100%;
 	height: 23%;
 	bottom: 0;
-	visibility: hidden;
-}
-
-.compact #syscompact
-{
-	visibility: visible;
-}
-
-.hidden #syscompact:hover
-{
 	background-color: #000000e0;
 }
 
-#sysbkgd
+#system_background
 {
 	decorator: image(images/sysunit_no_disk.png);
 }
 
-#sysbkgd.disk
+.with_disk #system_background
 {
 	decorator: image(images/sysunit_disk_r.png);
 }
 
-#sysctrl
+#system_control
 {
+	position: absolute;
 	width: 29%;
 	height: 23%;
-	position: absolute;
 	right: 0;
 	top: 1%;
 }
 
-.hidden #sysctrl
+.collapsed #system_control
 {
-	position: absolute;
-	width: 29%;
 	height: 100%;
-	right: 0;
-	visibility: hidden;
+	top: 0;
 }
 
-.hidden #syscompact:hover #sysctrl
+#interface_control
 {
-	visibility: visible;
-}
-
-#ifcctrl
-{
-	width: 5.8%;
-	height: 100%;
 	position: absolute;
+	bottom: 0;
 	left: 50%;
+	width: 5.8%;
+	height: 23%;
 	text-align: center;
 }
 
-.hidden #ifcctrl
-{
-	visibility: hidden;
-}
-
-.hidden #syscompact:hover #ifcctrl
-{
-	visibility: visible;
-}
-
-#diskctrl
+#disk_control
 {
 	width: 40.0%;
 	height: 100%;
 	position: absolute;
 	left: 0;
-	visibility: hidden;
-}
-
-.hidden #syscompact:hover #diskctrl
-{
-	visibility: visible;
 }
 
 #fdd_select_c.a
@@ -171,26 +154,26 @@ btn
 	transition: image-color 0.2s 0 exponential-out;
 }
 
-#sysctrl btn
+#system_control btn
 {
 	width: 20%;
 	height: 100%;
 	transition: image-color 0.2s 0 exponential-out;
 }
 
-#ifcctrl btn
+#interface_control btn
 {
 	width: 100%;
 	height: 100%;
 }
 
-#diskctrl btn
+#disk_control btn
 {
 	width: 14.5%;
 	height: 100%;
 }
 
-.hidden btn
+.collapsed btn
 {
 	image-color: #a0a0a0a0;
 }
@@ -246,12 +229,12 @@ btn.active:hover
 	image-color: #B63D3F;
 }
 
-#visibility
+.compact #visibility
 {
 	decorator: image(icons/down.png);
 }
 
-.hidden #visibility
+.collapsed #visibility
 {
 	decorator: image(icons/up.png);
 }

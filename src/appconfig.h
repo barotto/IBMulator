@@ -139,6 +139,7 @@ public:
 #define GUI_FULLSCREEN          "fullscreen"
 #define GUI_SHOW_INDICATORS     "show_indicators"
 #define GUI_MODE                "mode"
+#define GUI_COMPACT_TIMEOUT     "compact_timeout"
 #define GUI_REALISTIC_ZOOM      "realistic_zoom"
 #define GUI_REALISTIC_STYLE     "realistic_style"
 #define GUI_BG_R                "bg_red"

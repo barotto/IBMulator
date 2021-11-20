@@ -39,12 +39,15 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
 	GUI_EVT( "fdd_select_c","click", NormalInterface::on_fdd_select ),
 	GUI_EVT( "fdd_eject_c", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount_c", "click", Interface::on_fdd_mount )
+	GUI_EVT( "fdd_mount_c", "click", Interface::on_fdd_mount ),
+	GUI_EVT( "move_target", "mousemove", NormalInterface::on_mouse_move ),
+	GUI_EVT( "main_interface", "mousemove", NormalInterface::on_mouse_move )
 };
 
-NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer)
+NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers)
 :
-Interface(_machine, _gui, _mixer, "normal_interface.rml")
+Interface(_machine, _gui, _mixer, "normal_interface.rml"),
+m_timers(_timers)
 {
 }
 
@@ -56,16 +59,28 @@ void NormalInterface::create()
 {
 	Interface::create();
 
-	m_sysunit = get_element("sysunit");
-	m_sysbkgd = get_element("sysbkgd");
-	m_sysbkgd->SetClass("disk", m_floppy_present);
+	m_main_interface = get_element("main_interface");
+	m_main_interface->SetClass("with_disk", m_floppy_present);
+	m_sysunit = get_element("system_unit");
+	m_sysbar = get_element("system_bar");
+	m_sysctrl = get_element("system_control");
 	m_btn_pause = get_element("pause");
 	m_btn_visibility = get_element("visibility");
 	m_fdd_mount_c = get_element("fdd_mount_c");
 	m_fdd_select_c = get_element("fdd_select_c");
+	m_cur_zoom = ZoomMode::NORMAL;
 
+	m_compact_ifc_timeout = g_program.config().get_real(GUI_SECTION, GUI_COMPACT_TIMEOUT, 0.0)
+			* NSEC_PER_SECOND;
+
+	if(m_compact_ifc_timeout) {
+		m_compact_ifc_timer = m_timers->register_timer(
+				[this](uint64_t) { hide_system(); },
+				"Compact Interface");
+	}
+	
 	m_led_pause = false;
-	m_cur_zoom = static_cast<ZoomMode>(g_program.config().get_enum(GUI_SECTION, GUI_MODE, {
+	ZoomMode zoom = static_cast<ZoomMode>(g_program.config().get_enum(GUI_SECTION, GUI_MODE, {
 			{ "normal", ec_to_i(ZoomMode::NORMAL) },
 			{ "compact", ec_to_i(ZoomMode::COMPACT) }
 	}, ec_to_i(ZoomMode::NORMAL)));
@@ -115,11 +130,11 @@ void NormalInterface::create()
 		h = g_program.config().get_int(GUI_SECTION, GUI_HEIGHT);
 		m_window_scaling = 0;
 	}
-	if(m_cur_zoom == ZoomMode::NORMAL) {
+	if(zoom == ZoomMode::NORMAL) {
 		h += std::min(256, w/4); //the sysunit proportions are 4:1
 	}
 	m_size = vec2i(w,h);
-	set_zoom(m_cur_zoom);
+	set_zoom(zoom);
 
 	m_screen = std::make_unique<InterfaceScreen>(m_gui);
 
@@ -228,8 +243,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	m_screen->vga.mvmat.load_translation(xt, yt, 0.0);
 
 	m_size = m_screen->vga.size;
-	m_sysunit->SetProperty("width", str_format("%upx", sysunit_w));
-	m_sysunit->SetProperty("height", str_format("%upx", sysunit_h));
+	m_main_interface->SetProperty("width", str_format("%upx", sysunit_w));
+	m_main_interface->SetProperty("height", str_format("%upx", sysunit_h));
 
 	unsigned fontsize = sysunit_w / 40;
 	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
@@ -274,9 +289,9 @@ void NormalInterface::update()
 
 	if(is_system_visible()) {
 		if(m_floppy_present) {
-			m_sysbkgd->SetClass("disk", true);
+			m_main_interface->SetClass("with_disk", true);
 		} else {
-			m_sysbkgd->SetClass("disk", false);
+			m_main_interface->SetClass("with_disk", false);
 		}
 	}
 	if(m_machine->is_paused() && m_led_pause==false) {
@@ -292,15 +307,15 @@ void NormalInterface::action(int _action)
 {
 	switch(m_cur_zoom) {
 		case ZoomMode::COMPACT: {
-			if(_action == ACTION_SHOW_HIDE) {
+			if(_action == ACTION_ZOOM) {
+				set_zoom(ZoomMode::NORMAL);
+				m_gui->show_message("Normal interface mode");
+			} else if(_action == ACTION_SHOW_HIDE) {
 				if(is_system_visible()) {
 					hide_system();
 				} else {
 					show_system();
 				}
-			} else if(_action == ACTION_ZOOM) {
-				set_zoom(ZoomMode::NORMAL);
-				m_gui->show_message("Normal interface mode");
 			}
 			break;
 		}
@@ -315,14 +330,21 @@ void NormalInterface::action(int _action)
 
 void NormalInterface::set_zoom(ZoomMode _zoom)
 {
+	if(m_cur_zoom == _zoom) {
+		return;
+	}
 	m_cur_zoom = _zoom;
 	switch(_zoom) {
 		case ZoomMode::COMPACT:
-			m_sysunit->SetClass("compact", true);
-			hide_system();
+			collapse_sysunit(true);
+			if(m_gui->is_input_grabbed()) {
+				hide_system();
+			} else {
+				show_system();
+			}
 			break;
 		case ZoomMode::NORMAL:
-			m_sysunit->SetClass("compact", false);
+			collapse_sysunit(false);
 			show_system();
 			break;
 	}
@@ -330,30 +352,31 @@ void NormalInterface::set_zoom(ZoomMode _zoom)
 
 void NormalInterface::grab_input(bool _grabbed)
 {
-	if(m_cur_zoom == ZoomMode::COMPACT && _grabbed) {
-		hide_system();
+	if(m_cur_zoom == ZoomMode::COMPACT) {
+		if(_grabbed) {
+			hide_system();
+		} else {
+			show_system();
+		}
 	}
 }
 
 bool NormalInterface::is_system_visible() const
 {
-	return (!m_sysunit->IsClassSet("hidden"));
+	return (!m_main_interface->IsClassSet("hidden"));
 }
 
 void NormalInterface::hide_system()
 {
-	if(is_system_visible()) {
-		m_sysunit->SetClass("hidden", true);
-		get_element("syscompact")->AppendChild(m_sysunit->RemoveChild(get_element("sysctrl")));
-	}
+	m_main_interface->SetClass("hidden", true);
 }
 
 void NormalInterface::show_system()
 {
-	if(!is_system_visible()) {
-		m_sysunit->SetClass("hidden", false);
-		m_sysunit->AppendChild(get_element("syscompact")->RemoveChild(get_element("sysctrl")));
+	if(m_compact_ifc_timer != NULL_TIMER_HANDLE) {
+		m_timers->deactivate_timer(m_compact_ifc_timer);
 	}
+	m_main_interface->SetClass("hidden", false);
 }
 
 void NormalInterface::on_pause(Rml::Event &)
@@ -370,9 +393,38 @@ void NormalInterface::on_exit(Rml::Event &)
 	g_program.stop();
 }
 
+void NormalInterface::collapse_sysunit(bool _collapse)
+{
+	if(is_sysunit_collapsed() == _collapse) {
+		return;
+	}
+	if(_collapse) {
+		m_main_interface->SetClass("collapsed", true);
+		m_main_interface->SetClass("compact", false);
+		m_main_interface->SetClass("normal", false);
+		m_sysbar->AppendChild(m_sysunit->RemoveChild(m_sysctrl));
+	} else {
+		m_main_interface->SetClass("collapsed", false);
+		switch(m_cur_zoom) {
+			case ZoomMode::COMPACT: m_main_interface->SetClass("compact", true); break;
+			case ZoomMode::NORMAL: m_main_interface->SetClass("normal", true); break;
+		}
+		m_sysunit->AppendChild(m_sysbar->RemoveChild(m_sysctrl));
+	}
+}
+
+bool NormalInterface::is_sysunit_collapsed()
+{
+	return m_main_interface->IsClassSet("collapsed");
+}
+
 void NormalInterface::on_visibility(Rml::Event &)
 {
-	action(ACTION_SHOW_HIDE);
+	if(is_sysunit_collapsed()) {
+		collapse_sysunit(false);
+	} else {
+		collapse_sysunit(true);
+	}
 }
 
 void NormalInterface::on_fdd_select(Rml::Event &_e)
@@ -407,4 +459,14 @@ void NormalInterface::set_floppy_active(bool _active)
 {
 	Interface::set_floppy_active(_active);
 	m_fdd_mount_c->SetClass("active", _active);
+}
+
+void NormalInterface::on_mouse_move(Rml::Event &_ev)
+{
+	if(m_compact_ifc_timer != NULL_TIMER_HANDLE && m_cur_zoom == ZoomMode::COMPACT) {
+		show_system();
+		if(_ev.GetTargetElement()->GetId() == "move_target" || _ev.GetTargetElement()->GetId() == "main_interface") {
+			m_timers->activate_timer(m_compact_ifc_timer, m_compact_ifc_timeout, false);
+		}
+	}
 }

@@ -18,46 +18,53 @@
 		</style>
 	</head>
 	<body>
-		<div id="sysunit">
-			<div class="sysoverlay to_hide">
-				<div id="hdd_led"></div>
-				<div id="fdd_led"></div>
-			</div>
-			<div id="sysbkgd" class="sysoverlay to_hide"></div>
-			<div class="sysoverlay to_hide">
-				<div id="fdd_disk"></div>
-				<div id="fdd_mount"></div>
-				<div id="fdd_select" class="a"></div>
-				<div id="fdd_eject"></div>
-			</div>
-			<div id="sysctrl">
-				<btn id="power" />
-				<btn id="pause" />
-				<btn id="save" />
-				<btn id="restore" />
-				<btn id="exit" />
+		<div id="move_target" class="overlay"></div>
+		<div id="main_interface">
+			<div id="system_unit" class="overlay collapsed_hidden">
+				<div class="overlay">
+					<div id="hdd_led"></div>
+					<div id="fdd_led"></div>
+				</div>
+
+				<div id="system_background" class="overlay">
+				</div>
+
+				<div class="overlay">
+					<div id="fdd_disk"></div>
+					<div id="fdd_mount"></div>
+					<div id="fdd_select" class="a"></div>
+					<div id="fdd_eject"></div>
+				</div>
+
+				<div id="system_control">
+					<btn id="power" />
+					<btn id="pause" />
+					<btn id="save" />
+					<btn id="restore" />
+					<btn id="exit" />
+				</div>
 			</div>
 
-			<div id="syscompact">
-
-				<div id="diskctrl">
+			<div id="system_bar" class="normal_hidden compact_hidden">
+				<div id="disk_control">
 					<btn id="fdd_select_c" class="a" />
 					<div id="fdd_mount_c">
 						<div id="fdd_disk_c"></div>
 					</div>
 					<btn id="fdd_eject_c" />
 				</div>
+			</div>
 
-				<div id="ifcctrl">
-					<btn id="visibility" />
-				</div>
-
+			<div id="interface_control" class="normal_hidden">
+				<btn id="visibility" class="normal_hidden" />
 			</div>
 		</div>
+
 		<div id="speed">
 			<div class="warning_icon"></div>
 			<div id="speed_value">100%</div>
 		</div>
+
 		<div id="message"></div>
 
 	</body>

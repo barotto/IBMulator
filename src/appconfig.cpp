@@ -53,6 +53,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_FULLSCREEN,         "no"         },
 		{ GUI_SHOW_INDICATORS,    "no"         },
 		{ GUI_MODE,               "normal"     },
+		{ GUI_COMPACT_TIMEOUT,    "1.5"        },
 		{ GUI_REALISTIC_ZOOM,     "cycle"      },
 		{ GUI_REALISTIC_STYLE,    "bright"     },
 		{ GUI_BG_R,               "30"         },
@@ -344,6 +345,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                     normal: the system unit places itself at the bottom of the display and is always visible\n"
 ";                    compact: the system unit disappears when input is grabbed or CTRL+F1 is pressed\n"
 ";                  realistic: the system is rendered in its entirety, monitor included\n"
+";compact_timeout: Number of seconds before hiding the interface in compact mode. 0 to disable.\n"
 "; realistic_zoom: Zoom level to activate when CTRL+F1 is pressed in realistic mode.\n"
 ";                 Possible values: cycle, monitor, bezel, screen.\n"
 ";realistic_style: Initial interface style when in realistic mode.\n"
@@ -596,6 +598,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_RENDERER,
 		GUI_FRAMECAP,
 		GUI_MODE,
+		GUI_COMPACT_TIMEOUT,
 		GUI_REALISTIC_ZOOM,
 		GUI_REALISTIC_STYLE,
 		GUI_KEYMAP,

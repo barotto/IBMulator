@@ -45,7 +45,10 @@ private:
 	unsigned m_scale_mode = 0;
 	bool     m_scale_integer = false;
 
-	Rml::Element *m_sysunit = nullptr, *m_sysbkgd = nullptr;
+	Rml::Element *m_main_interface = nullptr;
+	Rml::Element *m_sysunit = nullptr;
+	Rml::Element *m_sysbar = nullptr;
+	Rml::Element *m_sysctrl = nullptr;
 	Rml::Element *m_btn_pause = nullptr;
 	Rml::Element *m_btn_visibility = nullptr;
 	Rml::Element *m_fdd_mount_c = nullptr;
@@ -53,10 +56,14 @@ private:
 	bool m_led_pause = false;
 	ZoomMode m_cur_zoom = ZoomMode::NORMAL;
 
+	EventTimers *m_timers;
+	unsigned m_compact_ifc_timer = NULL_TIMER_HANDLE;
+	uint64_t m_compact_ifc_timeout = 1_s;
+	
 public:
 	static event_map_t ms_evt_map;
 
-	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
+	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers);
 	~NormalInterface();
 
 	virtual void create();
@@ -84,11 +91,10 @@ private:
 	void on_exit(Rml::Event &);
 	void on_visibility(Rml::Event &);
 	void on_fdd_select(Rml::Event &);
-	void on_fdd_eject(Rml::Event &);
-	void on_fdd_mount(Rml::Event &);
-	void on_fdd_select_c(Rml::Event &);
-	void on_fdd_eject_c(Rml::Event &);
-	void on_fdd_mount_c(Rml::Event &);
+	void on_mouse_move(Rml::Event &);
+
+	void collapse_sysunit(bool _collapsed);
+	bool is_sysunit_collapsed();
 };
 
 #endif
