@@ -332,9 +332,6 @@ void NormalInterface::action(int _action)
 
 void NormalInterface::set_zoom(ZoomMode _zoom)
 {
-	if(m_cur_zoom == _zoom) {
-		return;
-	}
 	m_cur_zoom = _zoom;
 	switch(_zoom) {
 		case ZoomMode::COMPACT:
@@ -344,10 +341,12 @@ void NormalInterface::set_zoom(ZoomMode _zoom)
 			} else {
 				show_system();
 			}
+			m_main_interface->SetClass("normal", false);
 			break;
 		case ZoomMode::NORMAL:
 			collapse_sysunit(false);
 			show_system();
+			m_main_interface->SetClass("normal", true);
 			break;
 	}
 }
