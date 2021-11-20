@@ -234,6 +234,9 @@ void FileSelect::on_insert(Rml::Event &_ev)
 		}
 		de = &pair->second;
 	}
+	if(!de) {
+		return;
+	}
 
 	std::string path = m_cwd;
 	if(m_select_callbk != nullptr) {
