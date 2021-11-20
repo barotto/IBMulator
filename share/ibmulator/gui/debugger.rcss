@@ -144,13 +144,6 @@ td
 	decorator: image(icons/debugger/control_run.png);
 }
 
-#cs_dump,#ds_dump,#ss_dump,#es_dump,
-#fs_dump,#gs_dump,
-#idt_dump,#gdt_dump,#ldt_dump
-{
-	width: 25dp;
-}
-
 #mem_dump btnicon,
 #cs_dump btnicon,
 #ds_dump btnicon,

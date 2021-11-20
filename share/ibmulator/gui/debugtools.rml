@@ -15,10 +15,11 @@
 			}
 			button {
 				width: auto;
-				padding: 2dp 6dp 2dp 6dp;
+				padding: 0 6dp 2dp 6dp;
 			}
 			#close {
 				position: relative;
+				width: 20dp;
 				height: 20dp;
 			}
 		</style>
@@ -29,7 +30,7 @@
 			<button id="debugger">Debugger</button>
 			<button id="devices">Devices</button>
 			<button id="mixer">Mixer</button>
-			<button id="close">X</button>
+			<button id="close">&nbsp;</button>
 		</div>
 	</body>
 </rml>

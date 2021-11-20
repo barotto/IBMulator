@@ -5,15 +5,12 @@
 		<style>
 			body
 			{
-				width: 350dp;
-				height: 560dp;
+				width: 280dp;
+				height: 590dp;
 				position: absolute;
-				top: 32dp;
+				top: 20dp;
 				left: 0;
-			}
-			#cmd_reset
-			{
-				width: 30dp;
+				font-size: 12dp;
 			}
 			#cmd_reset btnicon
 			{
