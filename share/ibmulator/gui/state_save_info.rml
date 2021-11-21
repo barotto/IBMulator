@@ -39,8 +39,8 @@
 			<input type="text" id="desc"/>
 		</div>
 		<div id="buttons">
-			<button id="save" class="romshell">Save</button>
-			<button id="cancel" class="romshell">Cancel</button>
+			<button id="save" class="romshell"><span>Save</span></button>
+			<button id="cancel" class="romshell"><span>Cancel</span></button>
 		</div>
 	</body>
 </rml>

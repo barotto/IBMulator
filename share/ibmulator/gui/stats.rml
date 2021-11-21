@@ -11,6 +11,7 @@
 				top: 20dp;
 				left: 0;
 				font-size: 12dp;
+				max-height: 90%;
 			}
 			#cmd_reset btnicon
 			{

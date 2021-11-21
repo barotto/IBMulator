@@ -10,6 +10,7 @@
 				position: absolute;
 				bottom: 0;
 				right: 0;
+				max-height: 90%;
 			}
 			section
 			{

@@ -257,15 +257,9 @@
 	width: 60dp;
 }
 
-.directory_listing tr td.extension
-{
-	width: 20dp;
-}
-
 .directory_listing tr.file.executable td.name,
 .directory_listing tr.file.executable td.extension
 {
-	/*background-color: #456174;*/
 	color: #fcfca6;
 }
 
@@ -282,7 +276,7 @@
 
 .directory_listing tr.file td.date
 {
-	
+	padding-left: 5dp;
 }
 
 .wpanel #info_panel
