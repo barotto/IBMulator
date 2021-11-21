@@ -407,6 +407,7 @@
 	overflow: hidden;
 	max-height: 40dp;
 	font-size: 14dp;
+	word-break: break-word;
 }
 
 .list .entry .date
