@@ -816,8 +816,8 @@ std::string Interface::get_filesel_info(std::string _filepath)
 	};
 
 	std::string info;
-
-	info = std::string("Media: ") + str_to_html(media_desc) + "\n";
+	info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "\n";
+	info += "Media: " + str_to_html(media_desc) + "\n";
 	//info += "FS type: " + to_value(boot_sec.get_fs_type_str()) + "\n";
 	info += "OEM name: " + to_value(boot_sec.get_oem_str());
 	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
