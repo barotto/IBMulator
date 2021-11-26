@@ -93,22 +93,22 @@ VGADisplay::VGADisplay()
 
 	m_s.line_compare = 1023;
 
-	m_s.palette[0]  = PALETTE_ENTRY(  0,   0,   0); // black
-	m_s.palette[1]  = PALETTE_ENTRY(  0,   0, 170); // blue
-	m_s.palette[2]  = PALETTE_ENTRY(  0, 170,   0); // green
-	m_s.palette[3]  = PALETTE_ENTRY(  0, 170, 170); // cyan
-	m_s.palette[4]  = PALETTE_ENTRY(170,   0,   0); // red
-	m_s.palette[5]  = PALETTE_ENTRY(170,   0, 170); // magenta
-	m_s.palette[6]  = PALETTE_ENTRY(170,  85,   0); // brown
-	m_s.palette[7]  = PALETTE_ENTRY(170, 170, 170); // light gray
-	m_s.palette[8]  = PALETTE_ENTRY( 85,  85,  85); // dark gray
-	m_s.palette[9]  = PALETTE_ENTRY( 85,  85, 255); // light blue
-	m_s.palette[10] = PALETTE_ENTRY( 85, 255,  85); // light green
-	m_s.palette[11] = PALETTE_ENTRY( 85, 255, 255); // light cyan
-	m_s.palette[12] = PALETTE_ENTRY(255,  85,  85); // light red
-	m_s.palette[13] = PALETTE_ENTRY(255,  85, 255); // light magenta
-	m_s.palette[14] = PALETTE_ENTRY(255, 255,  85); // yellow
-	m_s.palette[15] = PALETTE_ENTRY(255, 255, 255); // white
+	palette_change( 0,   0,   0,   0); // black
+	palette_change( 1,   0,   0, 170); // blue
+	palette_change( 2,   0, 170,   0); // green
+	palette_change( 3,   0, 170, 170); // cyan
+	palette_change( 4, 170,   0,   0); // red
+	palette_change( 5, 170,   0, 170); // magenta
+	palette_change( 6, 170,  85,   0); // brown
+	palette_change( 7, 170, 170, 170); // light gray
+	palette_change( 8,  85,  85,  85); // dark gray
+	palette_change( 9,  85,  85, 255); // light blue
+	palette_change(10,  85, 255,  85); // light green
+	palette_change(11,  85, 255, 255); // light cyan
+	palette_change(12, 255,  85,  85); // light red
+	palette_change(13, 255,  85, 255); // light magenta
+	palette_change(14, 255, 255,  85); // yellow
+	palette_change(15, 255, 255, 255); // white
 
 	for(int i=0; i<256; i++) {
 		for(int j=0; j<16; j++) {
@@ -252,12 +252,12 @@ void VGADisplay::enable_AB_charmaps(bool _enable)
 	m_s.charmap_select = _enable;
 }
 
-// palette_change()
-//
-// Allocate a color in the GUI, for this color, and put it in the colormap
-// location 'index'.
 void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue)
 {
+	if(m_monochrome) {
+		_red = _green;
+		_blue = _green;
+	}
 	m_s.palette[_index] = PALETTE_ENTRY(_red, _green, _blue);
 }
 

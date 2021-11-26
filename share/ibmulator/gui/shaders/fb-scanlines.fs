@@ -20,6 +20,7 @@ in vec2 UV;
 out vec4 oColor;
 
 uniform sampler2D iVGAMap;
+uniform int iIsMonochrome;
 
 vec2 res;
 
@@ -303,15 +304,18 @@ void main(void)
 {
 	res = textureSize(iVGAMap, 0);
 	vec2 pos = Warp(UV);
-	vec3 color = Tri(pos) * Mask(gl_FragCoord.xy);
-	
+	vec3 color = Tri(pos);
+	if(iIsMonochrome == 0) {
+		color *= Mask(gl_FragCoord.xy);
+	}
+
 	#if 0
 		// Normalized exposure.
-		color = mix(color, Bloom(pos), bloomAmount);    
+		color = mix(color, Bloom(pos), bloomAmount);
 	#else
 		// Additive bloom.
-		color += Bloom(pos) * bloomAmount;    
+		color += Bloom(pos) * bloomAmount;
 	#endif 
-	   
+
 	oColor = vec4(ToSrgb(color), 1.0);
 }

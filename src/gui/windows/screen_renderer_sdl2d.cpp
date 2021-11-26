@@ -115,12 +115,13 @@ SDL_Rect ScreenRenderer_SDL2D::to_rect(const mat4f &_pmat, const mat4f &_mvmat)
 
 void ScreenRenderer_SDL2D::render_vga(const mat4f &_pmat, const mat4f &_mvmat,
 		const vec2i &_display_size, 
-		float _brightness, float _contrast, float _saturation, 
+		float _brightness, float _contrast, float _saturation, bool _is_monochrome, 
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale)
 {
 	UNUSED(_brightness);
 	UNUSED(_contrast);
 	UNUSED(_saturation);
+	UNUSED(_is_monochrome);
 	UNUSED(_ambient);
 	UNUSED(_vga_scale);
 	UNUSED(_reflection_scale);

@@ -833,7 +833,18 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 		case 0x03c2: { // Input Status Register 0
 			retval = m_s.CRTC.interrupt << 7;
 			// BIOS uses palette entry #0 to detect color monitor
-			uint8_t sense = m_s.dac.palette[0].red & m_s.dac.palette[0].green & m_s.dac.palette[0].blue;
+			uint8_t sense = 0;
+			if(m_display->is_monochrome()) {
+				// TODO the 0x10 value is arbitrary but it works with the PS/1's BIOS
+				if(m_s.dac.palette[0].red < 0x10 && m_s.dac.palette[0].blue < 0x10) {
+					sense = 0x10;
+					if(m_s.dac.palette[0].green > 0x10) {
+						sense &= m_s.dac.palette[0].green;
+					}
+				}
+			} else {
+				sense = m_s.dac.palette[0].red & m_s.dac.palette[0].green & m_s.dac.palette[0].blue;
+			}
 			retval |= (sense & 0x10);
 			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "ISR 0          -> 0x%02X\n", retval);
 			break;

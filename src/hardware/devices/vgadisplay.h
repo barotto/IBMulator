@@ -131,6 +131,8 @@ class VGADisplay
 	
 	static uint8_t ms_font8x16[256][16];
 	static uint8_t ms_font8x8[256][8];
+	
+	bool m_monochrome = false;
 
 public:
 
@@ -180,6 +182,9 @@ public:
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
+	
+	void set_monochrome(bool _value) { m_monochrome = _value; }
+	bool is_monochrome() const { return m_monochrome; }
 };
 
 #endif

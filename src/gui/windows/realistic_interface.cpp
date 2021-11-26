@@ -120,7 +120,7 @@ void RealisticScreen::render()
 	sync_with_device();
 	m_renderer->render_vga(
 		vga.pmat, vga.mvmat, vga.size,
-		vga.brightness, vga.contrast, vga.saturation,
+		vga.brightness, vga.contrast, vga.saturation, vga.display.is_monochrome(),
 		monitor.ambient, vga_image_scale, vga_reflection_scale);
 }
 

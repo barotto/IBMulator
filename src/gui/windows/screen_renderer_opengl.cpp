@@ -144,6 +144,7 @@ void ScreenRenderer_OpenGL::load_vga_program(std::string _vshader, std::string _
 	GLCALL( m_vga.uniforms.ambient = glGetUniformLocation(m_vga.program, "iAmbientLight") );
 	GLCALL( m_vga.uniforms.reflection_map = glGetUniformLocation(m_vga.program, "iReflectionMap") );
 	GLCALL( m_vga.uniforms.reflection_scale = glGetUniformLocation(m_vga.program, "iReflectionScale") );
+	GLCALL( m_vga.uniforms.is_monochrome = glGetUniformLocation(m_vga.program, "iIsMonochrome") );
 }
 
 // Loads the shader program for the monitor (VGA chrome)
@@ -219,7 +220,7 @@ void ScreenRenderer_OpenGL::store_vga_framebuffer(
 }
 
 void ScreenRenderer_OpenGL::render_vga(const mat4f &_pmat, const mat4f &_mvmat, const vec2i &_display_size, 
-		float _brightness, float _contrast, float _saturation, 
+		float _brightness, float _contrast, float _saturation, bool _is_monochrome,
 		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale)
 {
 	// enable VGA shader program and set its uniforms
@@ -236,6 +237,7 @@ void ScreenRenderer_OpenGL::render_vga(const mat4f &_pmat, const mat4f &_mvmat, 
 		GLCALL( glUniform1f(m_vga.uniforms.contrast,   1.f) );
 		GLCALL( glUniform1f(m_vga.uniforms.saturation, 1.f) );
 	}
+	GLCALL( glUniform1i(m_vga.uniforms.is_monochrome, _is_monochrome) );
 	GLCALL( glUniform1f(m_vga.uniforms.ambient, _ambient) );
 	GLCALL( glUniform2fv(m_vga.uniforms.vga_scale, 1, _vga_scale) );
 	GLCALL( glUniform2fv(m_vga.uniforms.reflection_scale, 1, _reflection_scale) );

@@ -154,6 +154,7 @@ public:
 #define CAPTURE_VIDEO_QUALITY   "video_quality"
 
 #define DISPLAY_SECTION          "display"
+#define DISPLAY_TYPE             "type"
 #define DISPLAY_NORMAL_SCALE     "normal_scale"
 #define DISPLAY_NORMAL_ASPECT    "normal_aspect"
 #define DISPLAY_NORMAL_SHADER    "normal_shader"

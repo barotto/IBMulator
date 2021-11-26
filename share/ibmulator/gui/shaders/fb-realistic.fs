@@ -10,6 +10,7 @@ uniform float iAmbientLight;
 uniform float iBrightness;
 uniform float iContrast;
 uniform float iSaturation;
+uniform int iIsMonochrome;
 
 vec4 FetchTexel(sampler2D sampler, vec2 texCoords);
 vec3 BrightnessSaturationContrast(vec4 color, float brt, vec3 brt_tint, float sat, float con);
@@ -24,7 +25,7 @@ const vec3 brt_tint = vec3(1.0,1.0,1.5);
 const vec2 warp = vec2(1.0/80.0, 1.0/64.0); 
 
 // CRT convergence (horiz. chromatic aberrations)
-const float convergence = 0.0006;
+float convergence = 0.0006;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,6 +41,8 @@ vec2 Warp(vec2 pos, vec2 warp_amount)
 
 void main()
 {
+	convergence -= convergence * iIsMonochrome;
+
 	vec2 pos = Warp(UV * (convergence*2.0 + 1.0) - convergence, warp);
 	float chabx = clamp(abs(pos.x*2.0 - 1.0) + 0.5, 0.0, 1.0) * convergence;
 	vec2 rOffset = vec2(-1.0*chabx, 0.0);

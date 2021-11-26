@@ -182,7 +182,11 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ GUI_SECTION, {
 		{ GUI_MOUSE_TYPE, "ps2" },
 	} },
-
+	
+	{ DISPLAY_SECTION, {
+		{ DISPLAY_TYPE, "color" }
+	} },
+	
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET,       ""     },
 		{ SYSTEM_MODEL,        "auto" },
@@ -373,6 +377,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DISPLAY_SECTION,
+"; type: Possible values: color, monochrome\n"
 "; The following parameters are used for normal and compact GUI modes only:\n"
 ";     normal_scale: VGA image scaling mode.\n"
 ";                   Possible values: fill, integer\n"
@@ -619,6 +624,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		CAPTURE_VIDEO_FORMAT,
 	} },
 	{ DISPLAY_SECTION, {
+		DISPLAY_TYPE,
 		DISPLAY_NORMAL_SCALE,
 		DISPLAY_NORMAL_ASPECT,
 		DISPLAY_NORMAL_FILTER,

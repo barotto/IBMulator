@@ -119,7 +119,7 @@ void InterfaceScreen::render()
 	sync_with_device();
 	
 	m_renderer->render_vga(vga.pmat, vga.mvmat, vga.size,
-		vga.brightness, vga.contrast, vga.saturation,
+		vga.brightness, vga.contrast, vga.saturation, vga.display.is_monochrome(),
 		0, 0, 0);
 }
 
@@ -300,6 +300,14 @@ void Interface::config_changed()
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
+	
+	bool is_mono = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_TYPE, {
+			{ "color",     false },
+			{ "mono",       true },
+			{ "monochrome", true }
+	}, false);
+	m_screen->vga.display.set_monochrome(is_mono);
+	PINFOF(LOG_V0, LOG_GUI, "Installed a %s monitor\n", is_mono?"monochrome":"color");
 }
 
 void Interface::set_floppy_string(std::string _filename)
