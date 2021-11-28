@@ -211,11 +211,6 @@
 	padding: 0;
 }
 
-.drives #entries_container
-{
-	margin-top: 100dp;
-}
-
 #entries
 {
 	box-sizing: border-box;
@@ -236,6 +231,12 @@
 	border-left: 1dp;
 	border-color: #28374d;
 	font-size: 12dp;
+}
+
+.drives #entries_container,
+.drives #info_panel
+{
+	margin-top: 100dp;
 }
 
 #info_panel .value

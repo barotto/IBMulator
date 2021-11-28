@@ -25,7 +25,7 @@
 
 void FATReader::read(std::string _filepath)
 {
-	auto infile = FileSys::make_file(FileSys::to_native(_filepath).c_str(), "rb");
+	auto infile = FileSys::make_file(_filepath.c_str(), "rb");
 	if(!infile) {
 		throw std::runtime_error("Cannot access the image file");
 	}
