@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <optional>
 #ifdef _WIN32
 #include "wincompat.h"
 #endif
