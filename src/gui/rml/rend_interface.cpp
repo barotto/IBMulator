@@ -21,7 +21,7 @@
 #include "rend_interface.h"
 #include "gui.h"
 #include <RmlUi/Core.h>
-#include <SDL_image.h>
+#include "stb/stb.h"
 
 RmlRenderer::RmlRenderer(SDL_Renderer * _renderer, SDL_Window * _screen)
 : Rml::RenderInterface(),
@@ -38,34 +38,23 @@ RmlRenderer::~RmlRenderer()
 bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 		Rml::Vector2i &texture_dimensions, const std::string &source)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture %s\n", source.c_str());
+	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture '%s'\n", source.c_str());
+
 	Rml::FileInterface *file_interface = Rml::GetFileInterface();
 	Rml::FileHandle file_handle = file_interface->Open(source);
-	if (!file_handle)
-		return false;
-
-	file_interface->Seek(file_handle, 0, SEEK_END);
-	size_t buffer_size = file_interface->Tell(file_handle);
-	file_interface->Seek(file_handle, 0, SEEK_SET);
-
-	std::vector<uint8_t> buffer(buffer_size);
-	file_interface->Read(&buffer[0], buffer_size, file_handle);
-	file_interface->Close(file_handle);
-
-	size_t i;
-	for(i = source.length() - 1; i > 0; i--) {
-		if(source[i] == '.') {
-			break;
-		}
-	}
-
-	std::string extension = source.substr(i+1, source.length()-i);
-	SDL_Surface *surface = IMG_LoadTyped_RW(SDL_RWFromMem(&buffer[0], buffer_size), 1,
-			extension.c_str());
-
-	if(!surface) {
+	if(!file_handle) {
+		PERRF(LOG_GUI, "Cannot find texture file: '%s'\n", source.c_str());
 		return false;
 	}
+
+	SDL_Surface *surface = nullptr;
+	try {
+		surface = stbi_load_from_file(reinterpret_cast<FILE*>(file_handle));
+	} catch(std::runtime_error &err) {
+		PERRF(LOG_GUI, "Error loading texture '%s': %s\n", err.what());
+		return false;
+	}
+
 	try {
 		texture_handle = GUI::instance()->load_texture(surface);
 	} catch(std::exception &e) {

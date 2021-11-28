@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,7 +48,7 @@ CaptureTarget()
 
 CaptureVideoFile::~CaptureVideoFile()
 {
-	close();
+	CaptureVideoFile::close();
 	if(m_avi_options.video_srcpixels) {
 		SDL_FreeFormat(m_avi_options.video_srcpixels);
 		m_avi_options.video_srcpixels = nullptr;

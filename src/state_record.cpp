@@ -23,7 +23,7 @@
 #include <regex>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <SDL_image.h>
+#include "stb/stb.h"
 
 StateRecord::StateRecord(std::string _basepath, std::string _name)
 :
@@ -158,7 +158,9 @@ void StateRecord::save()
 
 	// FRAMEBUFFER
 	if(m_framebuffer) {
-		if(IMG_SavePNG(m_framebuffer, m_screen_path.c_str()) < 0) {
+		stbi_write_png_compression_level = 9;
+		if(stbi_write_png(m_screen_path.c_str(), m_framebuffer->w, m_framebuffer->h,
+				m_framebuffer->format->BytesPerPixel, m_framebuffer->pixels, m_framebuffer->pitch) < 0) {
 			throw std::runtime_error(str_format("Cannot save the screen to '%s'", m_screen_path.c_str()).c_str());
 		}
 	}

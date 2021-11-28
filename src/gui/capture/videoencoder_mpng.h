@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,17 +27,16 @@
 
 class VideoEncoder_MPNG : public VideoEncoder
 {
-	// I don't want to use yet another library so I'll reuse SDL_Image
 	SDL_Surface *m_sdl_surface;
-	SDL_RWops *m_sdl_rwops;
-	uint8_t *m_sdl_rwops_buf;
-	uint32_t m_sdl_rwops_size;
-	std::vector<uint8_t> m_sdl_rwbuf;
+	uint8_t *m_cur_buf;
+	uint32_t m_cur_buf_len;
+	int m_last_frame_enc;
 	BitmapInfoHeader m_format;
 	int m_linecnt;
+	int m_quality;
 	
 public:
-	VideoEncoder_MPNG();
+	VideoEncoder_MPNG(int _quality);
 	~VideoEncoder_MPNG();
 	
 	const char *name() { return "Motion PNG (MPNG)"; }
@@ -56,8 +55,7 @@ public:
 private:
 	void create_sdl_surface();
 	void free_sdl_surface();
-	void create_sdl_rwops(uint8_t *_buf, uint32_t _bufsize);
-	void free_sdl_rwops();
+	static void png_stbi_callback(void *context, void *data, int size);
 };
 
 #endif

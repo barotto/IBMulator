@@ -21,7 +21,7 @@
 #include "filesys.h"
 #include "capture.h"
 #include "capture_imgseq.h"
-#include <SDL_image.h>
+#include "stb/stb_image_write.h"
 
 
 CaptureImgSeq::CaptureImgSeq(CaptureMode _format, int _quality)
@@ -32,6 +32,9 @@ m_quality(_quality),
 m_surface(nullptr),
 m_framecnt(0)
 {
+	if(m_format == CaptureMode::JPG) {
+		m_quality = (_quality + 1) * 10;
+	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Recording to sequence of files, format:%d quality:%d\n",
 		_format, _quality);
 }
@@ -123,11 +126,14 @@ void CaptureImgSeq::push_video_frame(const VideoFrame &_vf)
 	switch(m_format) {
 		case CaptureMode::PNG:
 			imgfile << ".png";
-			result = IMG_SavePNG(m_surface, imgfile.str().c_str());
+			stbi_write_png_compression_level = m_quality;
+			result = stbi_write_png(imgfile.str().c_str(), m_surface->w, m_surface->h,
+					m_surface->format->BytesPerPixel, m_surface->pixels, m_surface->pitch);
 			break;
 		case CaptureMode::JPG:
 			imgfile << ".jpg";
-			result = IMG_SaveJPG(m_surface, imgfile.str().c_str(), m_quality);
+			result = stbi_write_jpg(imgfile.str().c_str(), m_surface->w, m_surface->h,
+					m_surface->format->BytesPerPixel, m_surface->pixels, m_quality);
 			break;
 		default:
 			PDEBUGF(LOG_V0, LOG_GUI, "Capture: invalid recording format!\n");

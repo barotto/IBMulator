@@ -22,7 +22,7 @@
 #include "rml/rend_interface_opengl.h"
 #include <RmlUi/Core.h>
 #include <SDL.h>
-#include <SDL_image.h>
+#include "stb/stb.h"
 #include <GL/glew.h>
 
 
@@ -283,10 +283,7 @@ uintptr_t GUI_OpenGL::load_texture(SDL_Surface *_surface)
 
 uintptr_t GUI_OpenGL::load_texture(const std::string &_path, vec2i *_texdim)
 {
-	SDL_Surface *surface = IMG_Load(_path.c_str());
-	if(!surface) {
-		throw std::runtime_error("Unable to load image file");
-	}
+	SDL_Surface *surface = stbi_load(_path.c_str());
 	GLuint gltex;
 	try {
 		gltex = load_texture(surface);

@@ -65,7 +65,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ CAPTURE_DIR,           ""     },
 		{ CAPTURE_VIDEO_MODE,    "avi"  },
 		{ CAPTURE_VIDEO_FORMAT,  "zmbv" },
-		{ CAPTURE_VIDEO_QUALITY, "80"   }
+		{ CAPTURE_VIDEO_QUALITY, "3"    }
 	} },
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_NORMAL_SCALE,      "fill" },
@@ -374,6 +374,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                Possible values: zmbv, mpng\n"
 ";                 zmbv: DOSBox Capture Codec\n"
 ";                 mpng: Motion PNG\n"
+"; video_quality: Compression level of the video stream (higher levels have very high load on the CPU).\n"
+";                Possible values: integer between 0 (uncompressed) and 9 (max compression).\n"
 		},
 
 		{ DISPLAY_SECTION,
@@ -622,6 +624,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	{ CAPTURE_SECTION, {
 		CAPTURE_DIR,
 		CAPTURE_VIDEO_FORMAT,
+		CAPTURE_VIDEO_QUALITY
 	} },
 	{ DISPLAY_SECTION, {
 		DISPLAY_TYPE,

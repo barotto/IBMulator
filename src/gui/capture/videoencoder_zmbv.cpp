@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020  Marco Bortolin
+ *  Copyright (C) 2020-2021  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,7 +64,9 @@ enum ZMBV_Masks {
 };
 
 
-VideoEncoder_ZMBV::VideoEncoder_ZMBV()
+VideoEncoder_ZMBV::VideoEncoder_ZMBV(int _quality)
+:
+m_quality(_quality)
 {
 	create_vector_table();
 #ifdef HAVE_ZLIB
@@ -124,7 +126,7 @@ void VideoEncoder_ZMBV::setup_compress(BitmapInfoHeader &_format)
 	m_pitch = m_format.width + 2 * ZMBV_MAX_VECTOR;
 	
 #ifdef HAVE_ZLIB
-	if(deflateInit(&m_zstream, 4) != Z_OK) {
+	if(deflateInit(&m_zstream, m_quality) != Z_OK) {
 		throw std::runtime_error("cannot initialize zlib");
 	}
 #endif

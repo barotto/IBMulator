@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -216,8 +216,8 @@ void Capture::start_capture()
 		g_program.config().get_enum(CAPTURE_SECTION, CAPTURE_VIDEO_MODE, modes, ec_to_i(CaptureMode::AVI))
 	);
 	
-	int video_quality = g_program.config().get_int(CAPTURE_SECTION, CAPTURE_VIDEO_QUALITY, 80);
-	video_quality = clamp(video_quality, 1, 100);
+	int video_quality = g_program.config().get_int(CAPTURE_SECTION, CAPTURE_VIDEO_QUALITY, 3);
+	video_quality = clamp(video_quality, 0, 9);
 	
 	switch(mode) {
 		case CaptureMode::PNG:

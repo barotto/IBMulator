@@ -21,7 +21,7 @@ and follow its installation instructions.
 2. Open the **MSYS2 MSYS** shell and install the toolchain:  
 `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake make autoconf automake libtool git`
 3. Install the libraries needed by RmlUi and IBMulator:  
-`pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
+`pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
 
 You can compile IBMulator with dynamic or static linking; see
 [below](#installation) for more info on the two versions. I suggest static

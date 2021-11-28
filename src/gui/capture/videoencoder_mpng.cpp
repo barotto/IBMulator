@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,16 +20,17 @@
 #include "ibmulator.h"
 #include "videoencoder_mpng.h"
 #include "utils.h"
-#include <SDL_image.h>
 #include <sstream>
+#include "stb/stb.h"
 
-VideoEncoder_MPNG::VideoEncoder_MPNG()
+VideoEncoder_MPNG::VideoEncoder_MPNG(int _quality)
 :
 m_sdl_surface(nullptr),
-m_sdl_rwops(nullptr),
-m_sdl_rwops_buf(nullptr),
-m_sdl_rwops_size(0),
-m_linecnt(0)
+m_cur_buf(nullptr),
+m_cur_buf_len(0),
+m_last_frame_enc(0),
+m_linecnt(0),
+m_quality(_quality)
 {
 	
 }
@@ -37,7 +38,6 @@ m_linecnt(0)
 VideoEncoder_MPNG::~VideoEncoder_MPNG()
 {
 	free_sdl_surface();
-	free_sdl_rwops();
 }
 
 std::string VideoEncoder_MPNG::format_string()
@@ -103,10 +103,9 @@ unsigned VideoEncoder_MPNG::prepare_frame(unsigned _flags, uint8_t *_pal, uint8_
 	if(_bufsize < m_format.sizeImage) {
 		throw std::logic_error("write buffer too small");
 	}
-	if(m_sdl_rwops_buf != _buf || m_sdl_rwops_size != _bufsize) {
-		create_sdl_rwops(_buf, _bufsize);
-	}
-	
+	m_cur_buf = _buf;
+	m_cur_buf_len = _bufsize;
+
 	m_linecnt = 0;
 	
 	return ENC_FLAGS_KEYFRAME;
@@ -129,22 +128,33 @@ void VideoEncoder_MPNG::compress_lines(int _count, const uint8_t *_lines_data[])
 	}
 }
 
+void VideoEncoder_MPNG::png_stbi_callback(void *context, void *data, int size)
+{
+	VideoEncoder_MPNG *me = static_cast<VideoEncoder_MPNG*>(context);
+	assert(size >= 0);
+	if(me->m_cur_buf_len < unsigned(size)) {
+		me->m_last_frame_enc = 0;
+	} else {
+		memcpy(static_cast<VideoEncoder_MPNG*>(context)->m_cur_buf, data, size);
+		me->m_last_frame_enc = size;
+	}
+}
+
 uint32_t VideoEncoder_MPNG::finish_frame()
 {
 	assert(m_sdl_surface);
-	
-	SDL_RWseek(m_sdl_rwops, 0, RW_SEEK_SET);
-	
-	if(IMG_SavePNG_RW(m_sdl_surface, m_sdl_rwops, false) != 0) {
+
+	stbi_write_png_compression_level = m_quality;
+	if(!stbi_write_png_to_func(VideoEncoder_MPNG::png_stbi_callback, this,
+			m_sdl_surface->w, m_sdl_surface->h, m_sdl_surface->format->BytesPerPixel,
+			m_sdl_surface->pixels, m_sdl_surface->pitch)) {
 		throw std::logic_error("error creating PNG frame");
 	}
-	
-	int64_t len = SDL_RWtell(m_sdl_rwops);
-	if(len <= 0) {
+	if(!m_last_frame_enc) {
 		throw std::logic_error("error creating PNG frame");
 	}
-	
-	return len;
+
+	return m_last_frame_enc;
 }
 
 void VideoEncoder_MPNG::create_sdl_surface()
@@ -169,29 +179,5 @@ void VideoEncoder_MPNG::free_sdl_surface()
 	if(m_sdl_surface) {
 		SDL_FreeSurface(m_sdl_surface);
 		m_sdl_surface = nullptr;
-	}
-}
-
-void VideoEncoder_MPNG::create_sdl_rwops(uint8_t *_buf, uint32_t _bufsize)
-{
-	// Can't use SDL_RWFromFP because, according to SDL's wiki, it's not available on Windows. 
-	assert(_bufsize >= m_format.sizeImage);
-	
-	m_sdl_rwops_buf = _buf;
-	m_sdl_rwops_size = _bufsize;
-	
-	m_sdl_rwops = SDL_RWFromMem(_buf, _bufsize);
-	if(!m_sdl_rwops) {
-		throw std::logic_error("error creating screen recording i/o");
-	}
-}
-
-void VideoEncoder_MPNG::free_sdl_rwops()
-{
-	if(m_sdl_rwops) {
-		if(SDL_RWclose(m_sdl_rwops) != 0) {
-			SDL_FreeRW(m_sdl_rwops);
-		}
-		m_sdl_rwops = nullptr;
 	}
 }

@@ -22,7 +22,7 @@
 #include "rml/rend_interface_sdl2d.h"
 #include <RmlUi/Core.h>
 #include <SDL.h>
-#include <SDL_image.h>
+#include "stb/stb.h"
 
 
 GUI_SDL2D::GUI_SDL2D()
@@ -127,13 +127,10 @@ uintptr_t GUI_SDL2D::load_texture(SDL_Surface *_surface)
 
 uintptr_t GUI_SDL2D::load_texture(const std::string &_path, vec2i *_texdim)
 {
-	SDL_Surface *surface = IMG_Load(_path.c_str());
-	if(!surface) {
-		throw std::runtime_error("Unable to load image file");
-	}
+	SDL_Surface *surface = stbi_load(_path.c_str());
 	SDL_Texture *texture;
 	try {
-		texture = (SDL_Texture*)(void*)(load_texture(surface));
+		texture = reinterpret_cast<SDL_Texture*>(load_texture(surface));
 	} catch(std::exception &e) {
 		SDL_FreeSurface(surface);
 		throw;

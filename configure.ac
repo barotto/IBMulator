@@ -97,7 +97,6 @@ AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])
 # Checks for libraries and headers                                    #
 #######################################################################
 AM_PATH_SDL2($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
-AX_CHECK_SDLIMAGE
 AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_RMLUI
@@ -199,7 +198,6 @@ else
 fi
 echo "- OpenGL       : Yes ($OPENGL_LIBS $GLEW_LIBS)"
 echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
-echo "- SDL_image    : Yes ($SDLIMAGE_LIBS)"
 echo "- RmlUi        : Yes ($RMLUI_LIBS)"
 if test "x$LIBARCHIVE_LIBS" = "x"; then
 	echo "- libarchive   : NO (zipped ROM sets loading disabled)"

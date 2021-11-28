@@ -5,7 +5,6 @@
 * Autotools
 * GCC 7.0+
 * SDL 2.0.8+
-* SDL_image 2.0.0+
 * RmlUi (see notes below)
 * GLEW
 * libarchive (optional)

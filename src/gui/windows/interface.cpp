@@ -28,7 +28,7 @@
 #include "utils.h"
 #include "fatreader.h"
 #include <sys/stat.h>
-#include <SDL_image.h>
+#include "stb/stb.h"
 #include <RmlUi/Core.h>
 
 #include "tinyfiledialogs/tinyfiledialogs.h"
@@ -756,7 +756,10 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 		}
 	m_screen->vga.display.unlock();
 
-	int result = IMG_SavePNG(surface, _screenfile.c_str());
+	stbi_write_png_compression_level = 9;
+	int result = stbi_write_png(_screenfile.c_str(), surface->w, surface->h,
+			surface->format->BytesPerPixel, surface->pixels, surface->pitch);
+
 	SDL_FreeSurface(surface);
 	if(result<0) {
 		PERRF(LOG_GUI, "error saving surface to PNG\n");
@@ -766,7 +769,8 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 		throw std::exception();
 	}
 	if(palette) {
-		result = IMG_SavePNG(palette, _palfile.c_str());
+		result = stbi_write_png(_palfile.c_str(), palette->w, palette->h,
+				palette->format->BytesPerPixel, palette->pixels, palette->pitch);
 		SDL_FreeSurface(palette);
 		if(result < 0) {
 			PERRF(LOG_GUI, "error saving palette to PNG\n");

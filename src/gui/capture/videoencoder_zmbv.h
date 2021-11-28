@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020  Marco Bortolin
+ *  Copyright (C) 2020-2021  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ private:
 		int writeDone;
 		uint8_t *writeBuf;
 	} m_compress;
-
+	
 	CodecVector m_vector_table[512];
 	int m_vector_count;
 
@@ -81,13 +81,15 @@ private:
 	int m_pitch;
 	int m_pixelsize;
 	int m_framecnt;
-	
+
 	#if HAVE_ZLIB
 	z_stream m_zstream;
 	#endif
 	
+	int m_quality;
+
 public:
-	VideoEncoder_ZMBV();
+	VideoEncoder_ZMBV(int _quality);
 	~VideoEncoder_ZMBV();
 	
 	const char *name() { return "DOSBox Capture Codec (ZMBV)"; }

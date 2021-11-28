@@ -32,7 +32,7 @@
 #include <RmlUi/Debugger.h>
 #include "rml/sys_interface.h"
 #include "rml/file_interface.h"
-#include <SDL_image.h>
+#include "stb/stb.h"
 
 #include "windows/desktop.h"
 #include "windows/normal_interface.h"
@@ -329,15 +329,14 @@ void GUI::config_changed()
 void GUI::set_window_icon()
 {
 	//this function must be called before SDL_CreateRenderer!
-	
 #ifndef _WIN32
 	std::string iconfile = g_program.config().get_assets_home() + FS_SEP "icon.png";
-	SDL_Surface* icon = IMG_Load(iconfile.c_str());
-	if(icon) {
+	try {
+		SDL_Surface *icon = stbi_load(iconfile.c_str());
 		SDL_SetWindowIcon(m_SDL_window, icon);
 		SDL_FreeSurface(icon);
-	} else {
-		PERRF(LOG_GUI, "unable to load app icon '%s'\n", iconfile.c_str());
+	} catch(std::runtime_error &err) {
+		PERRF(LOG_GUI, "Cannot load app icon '%s'\n", iconfile.c_str());
 	}
 #endif
 }

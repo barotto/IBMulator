@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -90,12 +90,12 @@ void AVIFile::open_write(const char *_filepath, AVIWriteOptions &_options)
 		}
 		case AVI_VIDEO_MPNG: {
 			m_video.chunk_fcc = FOURCC("00dc");
-			m_video.encoder = std::make_unique<VideoEncoder_MPNG>();
+			m_video.encoder = std::make_unique<VideoEncoder_MPNG>(_options.video_quality);
 			break;
 		}
 		case AVI_VIDEO_ZMBV: {
 			m_video.chunk_fcc = FOURCC("00dc");
-			m_video.encoder = std::make_unique<VideoEncoder_ZMBV>();
+			m_video.encoder = std::make_unique<VideoEncoder_ZMBV>(_options.video_quality);
 			break;
 		}
 		default:
