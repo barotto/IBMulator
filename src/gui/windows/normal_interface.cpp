@@ -154,11 +154,17 @@ void NormalInterface::container_size_changed(int _width, int _height)
 {
 	float xs = 1.f, ys = 1.f;
 	float xt = 0.f, yt = 0.f;
-	uint sysunit_h = _height/4;
-	sysunit_h = std::min(unsigned(256.0 * m_gui->scaling_factor()), sysunit_h);
-	uint sysunit_w = sysunit_h*4;
-	sysunit_w = std::min(sysunit_w, (uint)_width);
-	sysunit_h = sysunit_w/4; //the sysunit proportions are 4:1
+
+	unsigned sysunit_w, sysunit_h;
+	sysunit_h = std::min(unsigned(256.0 * m_gui->scaling_factor()), unsigned(_height / 4));
+	if(m_cur_zoom == ZoomMode::COMPACT) {
+		sysunit_w = std::min(
+				std::max(unsigned(640.0 * m_gui->scaling_factor()), sysunit_h * 4),
+				unsigned(_width));
+	} else {
+		sysunit_w = std::min(sysunit_h * 4, unsigned(_width));
+	}
+	sysunit_h = sysunit_w / 4;
 
 	float disp_w, disp_h;
 	int disp_area_w = _width, disp_area_h = _height;
