@@ -178,6 +178,14 @@ int RmlSystemInterface::GetKeyModifiers()
 		retval |= Rml::Input::KM_ALT;
 	}
 
+	if(sdlMods & KMOD_NUM) {
+		retval |= Rml::Input::KM_NUMLOCK;
+	}
+
+	if(sdlMods & KMOD_CAPS) {
+		retval |= Rml::Input::KM_CAPSLOCK;
+	}
+
 	return retval;
 }
 
