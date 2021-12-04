@@ -129,6 +129,7 @@ std::string str_to_html(std::string _text, bool _nbsp)
 	}
 	str_replace_all(_text, "<", "&lt;");
 	str_replace_all(_text, ">", "&gt;");
+	str_replace_all(_text, "\n", "<br />");
 	return _text;
 }
 

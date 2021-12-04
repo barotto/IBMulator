@@ -160,7 +160,7 @@ void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
 			m_panel_config_el->SetInnerRML("INVALID VERSION");
 			m_panel_config_el->SetClass("invisible", false);
 		} else if(!rec.info().config_desc.empty()) {
-			m_panel_config_el->SetInnerRML(rec.info().config_desc);
+			m_panel_config_el->SetInnerRML(str_to_html(rec.info().config_desc));
 			m_panel_config_el->SetClass("invisible", false);
 		}
 		m_buttons_entry_el->SetClass("invisible", false);

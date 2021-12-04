@@ -828,22 +828,21 @@ std::string Interface::get_filesel_info(std::string _filepath)
 	};
 
 	std::string info;
-	info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "\n";
-	info += "Media: " + str_to_html(media_desc) + "\n";
-	//info += "FS type: " + to_value(boot_sec.get_fs_type_str()) + "\n";
+	info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "<br />";
+	info += "Media: " + str_to_html(media_desc) + "<br />";
 	info += "OEM name: " + to_value(boot_sec.get_oem_str());
 	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
 		info += " (mod. by Win95+)";
 	}
-	info += "\n";
-	info += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "\n";
+	info += "<br />";
+	info += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "<br />";
 	
 	auto root = fat.get_root_entries();
 	if(root.empty() || root[0].is_empty()) {
-		info += "\nEmpty disk";
+		info += "<br />Empty disk";
 	} else {
-		info += "Volume label: " + to_value(fat.get_volume_id()) + "\n";
-		info += "Directory\n\n";
+		info += "Volume label: " + to_value(fat.get_volume_id()) + "<br />";
+		info += "Directory<br /><br />";
 		info += "<table class=\"directory_listing\">";
 		for(auto &entry : root) {
 			if(entry.is_file() || entry.is_directory()) {
@@ -869,6 +868,5 @@ std::string Interface::get_filesel_info(std::string _filepath)
 		info += "</table>";
 	}
 
-	str_replace_all(info, "\n", "<br />");
 	return info;
 }

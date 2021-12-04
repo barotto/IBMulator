@@ -72,7 +72,9 @@ m_state(m_basefile)
 			if(infofile.fail()) {
 				throw std::runtime_error(str_format("Error reading from '%s'", m_info_path.c_str()).c_str());
 			}
-			std::getline(infofile, m_info.config_desc);
+			std::stringstream buf;
+			buf << infofile.rdbuf();
+			m_info.config_desc = buf.str();
 		}
 
 		if(!FileSys::is_file_readable(m_ini_path.c_str())) {

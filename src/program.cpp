@@ -140,9 +140,9 @@ void Program::save_state(
 
 	// prepare the configuration description
 	const ModelConfig & mcfg = m_machine->configured_model();
-	sstate->info().config_desc  = "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "<br />";
-	sstate->info().config_desc += "CPU: " + str_format("%s @ %u MHz", mcfg.cpu_model.c_str(), mcfg.cpu_freq) + "<br />";
-	sstate->info().config_desc += "RAM: " + str_format("%u KiB + %u KiB", mcfg.board_ram, mcfg.exp_ram) + "<br />";
+	sstate->info().config_desc  = "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "\n";
+	sstate->info().config_desc += "CPU: " + str_format("%s @ %u MHz", mcfg.cpu_model.c_str(), mcfg.cpu_freq) + "\n";
+	sstate->info().config_desc += "RAM: " + str_format("%u KiB + %u KiB", mcfg.board_ram, mcfg.exp_ram) + "\n";
 	// TODO consider more than 1 controller
 	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
 	if(hddctrl) {
@@ -151,8 +151,8 @@ void Program::save_state(
 			if(dev) {
 				sstate->info().config_desc += str_format("%s: %u MiB %s", 
 						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
-						+ "<br />";
-				sstate->info().config_desc += FileSys::get_basename(dev->path()) + "<br />";
+						+ "\n";
+				sstate->info().config_desc += FileSys::get_basename(dev->path()) + "\n";
 			}
 		}
 	}
