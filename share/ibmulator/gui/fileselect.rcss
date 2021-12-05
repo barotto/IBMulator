@@ -326,6 +326,7 @@
 
 .grid .entry .name
 {
+	font-family: "Ubuntu";
 	display: block;
 	position: absolute;
 	top: 40dp;
@@ -531,6 +532,7 @@
 
 .list .entry .name
 {
+	font-family: "Ubuntu";
 	overflow: hidden;
 	max-height: 40dp;
 	font-size: 14dp;
@@ -539,7 +541,10 @@
 
 .list .entry .date
 {
-	width: 110dp;
+	font-family: "Ubuntu";
+	width: 20%;
+	min-width: 80dp;
+	max-width: 110dp;
 	font-size: 12dp;
 	text-align: right;
 	padding-right: 5dp;
@@ -560,18 +565,19 @@
 
 .list.zoom-0 .entry
 {
-	height: 22dp;
+	height: 24dp;
 }
 
 .list.zoom-0 .entry .name
 {
 	max-height: 22dp;
-	font-size: 10dp;
+	font-size: 9dp;
 }
 
 .list.zoom-0 .entry .date
 {
-	width: 90dp;
+	min-width: 50dp;
+	max-width: 90dp;
 	font-size: 9dp;
 }
 
@@ -599,7 +605,8 @@
 
 .list.zoom-1 .entry .date
 {
-	width: 110dp;
+	min-width: 80dp;
+	max-width: 110dp;
 	font-size: 12dp;
 }
 
@@ -627,7 +634,8 @@
 
 .list.zoom-3 .entry .date
 {
-	width: 165dp;
+	min-width: 110dp;
+	max-width: 165dp;
 	font-size: 18dp;
 }
 
@@ -655,7 +663,8 @@
 
 .list.zoom-4 .entry .date
 {
-	width: 220dp;
+	min-width: 135dp;
+	max-width: 220dp;
 	font-size: 24dp;
 }
 

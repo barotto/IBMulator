@@ -118,6 +118,8 @@
 
 .list .entry .data .desc
 {
+	font-family: "Ubuntu";
+	font-size: 14dp;
 	display: block;
 	position: absolute;
 	top: 0;
