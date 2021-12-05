@@ -366,6 +366,132 @@
 	color: #000000;
 }
 
+.grid.zoom-0
+{
+	padding-right: 20dp;
+}
+
+.grid.zoom-0 .entry
+{
+	width: 20dp;
+	height: 20dp;
+	margin: 0 0 2dp 0;
+}
+
+.grid.zoom-0 .entry .icon
+{
+	height: 20dp;
+	margin: 2dp 0 2dp 0;
+}
+
+.grid.zoom-0 .entry .icon div
+{
+	width: 16dp;
+	height: 16dp;
+}
+
+.grid.zoom-0 .entry .name
+{
+	visibility: hidden;
+	top: 0dp;
+}
+
+.grid.zoom-0 .entry:hover .name
+{
+	visibility: visible;
+	width: 40dp;
+	pointer-events: none;
+	font-size: 9dp;
+}
+
+.grid.zoom-1
+{
+	padding-right: 40dp;
+}
+
+.grid.zoom-1 .entry
+{
+	width: 40dp;
+	height: 40dp;
+	margin: 0 0dp 4dp 0;
+}
+
+.grid.zoom-1 .entry .icon
+{
+	height: 40dp;
+}
+
+.grid.zoom-1 .entry .icon div
+{
+	width: 32dp;
+	height: 32dp;
+}
+
+.grid.zoom-1 .entry .name
+{
+	visibility: hidden;
+	top: 0dp;
+}
+
+.grid.zoom-1 .entry:hover .name
+{
+	visibility: visible;
+	width: 80dp;
+	pointer-events: none;
+}
+
+.grid.zoom-3 .entry
+{
+	width: 120dp;
+	height: 120dp;
+	margin: 0 0 6dp 0;
+}
+
+.grid.zoom-3 .entry .icon
+{
+	height: 60dp;
+	margin: 6dp 0 6dp 0;
+}
+
+.grid.zoom-3 .entry .icon div
+{
+	width: 48dp;
+	height: 48dp;
+}
+
+.grid.zoom-3 .entry .name
+{
+	top: 60dp;
+	padding: 6dp;
+	font-size: 18dp;
+}
+
+.grid.zoom-4 .entry
+{
+	width: 160dp;
+	height: 160dp;
+	margin: 0 0 8dp 0;
+}
+
+.grid.zoom-4 .entry .icon
+{
+	height: 80dp;
+	margin: 8dp 0 8dp 0;
+}
+
+.grid.zoom-4 .entry .icon div
+{
+	width: 64dp;
+	height: 64dp;
+}
+
+.grid.zoom-4 .entry .name
+{
+	top: 80dp;
+	padding: 8dp;
+	font-size: 24dp;
+}
+
 
 #entries.list
 {
@@ -430,4 +556,116 @@
 	display: inline-block;
 	width: 32dp;
 	height: 32dp;
+}
+
+.list.zoom-0 .entry
+{
+	height: 22dp;
+}
+
+.list.zoom-0 .entry .name
+{
+	max-height: 22dp;
+	font-size: 10dp;
+}
+
+.list.zoom-0 .entry .date
+{
+	width: 90dp;
+	font-size: 9dp;
+}
+
+.list.zoom-0 .entry .icon
+{
+	width: 22dp;
+}
+
+.list.zoom-0 .entry .icon div
+{
+	width: 16dp;
+	height: 16dp;
+}
+
+.list.zoom-1 .entry
+{
+	height: 30dp;
+}
+
+.list.zoom-1 .entry .name
+{
+	max-height: 30dp;
+	font-size: 12dp;
+}
+
+.list.zoom-1 .entry .date
+{
+	width: 110dp;
+	font-size: 12dp;
+}
+
+.list.zoom-1 .entry .icon
+{
+	width: 30dp;
+}
+
+.list.zoom-1 .entry .icon div
+{
+	width: 24dp;
+	height: 24dp;
+}
+
+.list.zoom-3 .entry
+{
+	height: 60dp;
+}
+
+.list.zoom-3 .entry .name
+{
+	max-height: 60dp;
+	font-size: 21dp;
+}
+
+.list.zoom-3 .entry .date
+{
+	width: 165dp;
+	font-size: 18dp;
+}
+
+.list.zoom-3 .entry .icon
+{
+	width: 60dp;
+}
+
+.list.zoom-3 .entry .icon div
+{
+	width: 48dp;
+	height: 48dp;
+}
+
+.list.zoom-4 .entry
+{
+	height: 80dp;
+}
+
+.list.zoom-4 .entry .name
+{
+	max-height: 80dp;
+	font-size: 28dp;
+}
+
+.list.zoom-4 .entry .date
+{
+	width: 220dp;
+	font-size: 24dp;
+}
+
+.list.zoom-4 .entry .icon
+{
+	width: 80dp;
+}
+
+.list.zoom-4 .entry .icon div
+{
+	width: 64dp;
+	height: 64dp;
 }

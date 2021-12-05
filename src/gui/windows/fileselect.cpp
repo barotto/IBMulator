@@ -50,7 +50,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "dir_prev","click",   FileSelect::on_prev),
 	GUI_EVT( "dir_next","click",   FileSelect::on_next),
 	GUI_EVT( "show_panel","click", FileSelect::on_show_panel),
-	GUI_EVT( "*",       "keydown", Window::on_keydown )
+	GUI_EVT( "*",       "keydown", FileSelect::on_keydown )
 };
 
 FileSelect::FileSelect(GUI * _gui)
@@ -101,6 +101,8 @@ void FileSelect::create()
 	
 	disable(m_path_el.prev);
 	disable(m_path_el.next);
+	
+	set_zoom(0);
 }
 
 void FileSelect::update()
@@ -417,8 +419,9 @@ void FileSelect::on_mode(Rml::Event &_ev)
 {
 	std::string value = Window::get_form_input_value(_ev);
 	if(!value.empty()) {
-		m_entries_el->SetClassNames(value);
-		//m_panel_el->SetClassNames(value);
+		m_entries_el->SetClass("list", false);
+		m_entries_el->SetClass("grid", false);
+		m_entries_el->SetClass(value, true);
 	}
 	entry_deselect();
 }
@@ -631,3 +634,28 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 	closedir(dir);
 }
 
+void FileSelect::set_zoom(int _amount)
+{
+	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
+	m_zoom += _amount;
+	m_zoom = std::min(4, m_zoom);
+	m_zoom = std::max(0, m_zoom);
+	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
+}
+
+void FileSelect::on_keydown(Rml::Event &_ev)
+{
+	switch(get_key_identifier(_ev)) {
+		case Rml::Input::KeyIdentifier::KI_OEM_MINUS:
+		case Rml::Input::KeyIdentifier::KI_SUBTRACT:
+			set_zoom(-1);
+			break;
+		case Rml::Input::KeyIdentifier::KI_OEM_PLUS:
+		case Rml::Input::KeyIdentifier::KI_ADD:
+			set_zoom(1);
+			break;
+		default:
+			Window::on_keydown(_ev);
+			break;
+	}
+}

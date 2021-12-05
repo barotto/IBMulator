@@ -107,6 +107,7 @@ private:
 	std::vector<uint64_t> m_compat_sizes;
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
+	int m_zoom = 2;
 
 public:
 
@@ -143,11 +144,13 @@ protected:
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
 	void on_show_panel(Rml::Event &);
+	void on_keydown(Rml::Event &_ev);
 
 	void clear();
 	void set_cwd(const std::string &_path);
 	void set_history();
 	void set_dirty() { m_dirty = true; }
+	void set_zoom(int _amount);
 	
 	void read_dir(std::string _path, std::string _ext);
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
