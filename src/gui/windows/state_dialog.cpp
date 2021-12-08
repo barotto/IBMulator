@@ -38,6 +38,8 @@ void StateDialog::create()
 	m_panel_config_el = get_element("panel_config");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_action_button_el = get_element("action");
+	
+	set_zoom(0);
 }
 
 void StateDialog::update()

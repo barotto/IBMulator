@@ -126,14 +126,14 @@
 .list .entry .data .desc
 {
 	font-family: "Ubuntu";
-	font-size: 14dp;
+	font-size: 12dp;
 	display: block;
 	position: absolute;
 	top: 0;
 	left: 60dp;
-	padding: 5dp;
+	padding: 2dp 5dp 0 5dp;
 	right: 0;
-	height: 18dp;
+	height: 30dp;
 	overflow: hidden;
 }
 
@@ -151,9 +151,13 @@
 
 .list .entry .data .name
 {
-	left: 65dp;
 	text-align: left;
 	padding-right: 10dp;
+}
+
+.list.zoom-1 .entry .data .name
+{
+	left: 65dp;
 }
 
 .list .entry .data .date
@@ -213,7 +217,8 @@
 {
 	font-size: 24dp;
 	left: 120dp;
-	height: 55dp;
+	height: 65dp;
+	padding: 5dp 5dp 0 5dp;
 }
 
 .list.zoom-2 .entry .data .name,
@@ -266,26 +271,29 @@
 	font-size: 10dp;
 	top: 0;
 	left: 0;
+	right: 90dp;
 	padding: 2dp 4dp 2dp 4dp;
-	height: 10dp;
+	height: 28dp;
 }
 
 .list.zoom-0 .entry .data .name,
 .list.zoom-0 .entry .data .date
 {
-	bottom: 2dp;
 	height: 14dp;
 	font-size: 10dp;
 }
 
 .list.zoom-0 .entry .data .name
 {
-	left: 4dp;
-	padding-right: 5dp;
+	top: 2dp;
+	right: 4dp;
+	text-align: right;
+	padding-right: 0;
 }
 
 .list.zoom-0 .entry .data .date
 {
+	bottom: 2dp;
 	right: 4dp;
 }
 
