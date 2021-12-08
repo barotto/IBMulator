@@ -1,0 +1,184 @@
+#entries.list
+{
+	display: table;
+}
+
+.list .entry
+{
+	height: 40dp;
+	box-sizing: border-box;
+	display: table-row;
+}
+
+.list .entry:hover
+{
+	background-color: #6795be;
+}
+
+.list .entry.selected
+{
+	background-color: #fcfca6;
+}
+
+.list .entry.selected *
+{
+	color: #000000;
+}
+
+.list .entry .icon,
+.list .entry .name,
+.list .entry .date
+{
+	box-sizing: border-box;
+	display: table-cell;
+	vertical-align: middle;
+}
+
+.list .entry .name
+{
+	font-family: "Ubuntu";
+	overflow: hidden;
+	max-height: 40dp;
+	font-size: 14dp;
+	word-break: break-word;
+}
+
+.list .entry .date
+{
+	font-family: "Ubuntu";
+	width: 20%;
+	min-width: 80dp;
+	max-width: 110dp;
+	font-size: 12dp;
+	text-align: right;
+	padding-right: 5dp;
+}
+
+.list .entry .icon
+{
+	width: 40dp;
+	text-align: center;
+}
+
+.list .entry .icon div
+{
+	display: inline-block;
+	width: 32dp;
+	height: 32dp;
+}
+
+.list.zoom-0 .entry
+{
+	height: 24dp;
+}
+
+.list.zoom-0 .entry .name
+{
+	max-height: 22dp;
+	font-size: 9dp;
+}
+
+.list.zoom-0 .entry .date
+{
+	min-width: 50dp;
+	max-width: 90dp;
+	font-size: 9dp;
+}
+
+.list.zoom-0 .entry .icon
+{
+	width: 22dp;
+}
+
+.list.zoom-0 .entry .icon div
+{
+	width: 16dp;
+	height: 16dp;
+}
+
+.list.zoom-1 .entry
+{
+	height: 30dp;
+}
+
+.list.zoom-1 .entry .name
+{
+	max-height: 30dp;
+	font-size: 12dp;
+}
+
+.list.zoom-1 .entry .date
+{
+	min-width: 80dp;
+	max-width: 110dp;
+	font-size: 12dp;
+}
+
+.list.zoom-1 .entry .icon
+{
+	width: 30dp;
+}
+
+.list.zoom-1 .entry .icon div
+{
+	width: 24dp;
+	height: 24dp;
+}
+
+.list.zoom-3 .entry
+{
+	height: 60dp;
+}
+
+.list.zoom-3 .entry .name
+{
+	max-height: 60dp;
+	font-size: 21dp;
+}
+
+.list.zoom-3 .entry .date
+{
+	min-width: 110dp;
+	max-width: 165dp;
+	font-size: 18dp;
+}
+
+.list.zoom-3 .entry .icon
+{
+	width: 60dp;
+}
+
+.list.zoom-3 .entry .icon div
+{
+	width: 48dp;
+	height: 48dp;
+}
+
+.list.zoom-4 .entry
+{
+	height: 80dp;
+}
+
+.list.zoom-4 .entry .name
+{
+	max-height: 80dp;
+	font-size: 28dp;
+}
+
+.list.zoom-4 .entry .date
+{
+	min-width: 135dp;
+	max-width: 220dp;
+	font-size: 24dp;
+}
+
+.list.zoom-4 .entry .icon
+{
+	width: 80dp;
+}
+
+.list.zoom-4 .entry .icon div
+{
+	width: 64dp;
+	height: 64dp;
+}

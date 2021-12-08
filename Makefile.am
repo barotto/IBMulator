@@ -25,6 +25,8 @@ share/ibmulator/gui/default.rml \
 share/ibmulator/gui/desktop.rml \
 share/ibmulator/gui/devstatus.rml \
 share/ibmulator/gui/dialog.rcss \
+share/ibmulator/gui/fileselect_grid.rcss \
+share/ibmulator/gui/fileselect_list.rcss \
 share/ibmulator/gui/fileselect.rcss \
 share/ibmulator/gui/fileselect.rml \
 share/ibmulator/gui/message_wnd.rml \
