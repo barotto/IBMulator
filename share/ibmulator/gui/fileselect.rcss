@@ -61,7 +61,9 @@
 	right: 0;
 	left: 0;
 	margin: 40dp 20dp 0 145dp;
-	font-size: 18dp;
+	font-family: "Ubuntu";
+	font-size: 16dp;
+	font-weight: bold;
 	text-align: right;
 	font-effect: shadow(-1dp 1dp black);
 	overflow: hidden auto;

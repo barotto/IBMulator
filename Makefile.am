@@ -138,6 +138,7 @@ share/ibmulator/gui/fonts/ProFontWindows-LICENSE \
 share/ibmulator/gui/fonts/ProFontWindows-readme.txt \
 share/ibmulator/gui/fonts/ProFontWindows.ttf \
 share/ibmulator/gui/fonts/Ubuntu-Regular.ttf \
+share/ibmulator/gui/fonts/Ubuntu-Bold.ttf \
 share/ibmulator/gui/fonts/UFL.txt
 
 soundsfloppydir = $(pkgdatadir)/sounds/floppy

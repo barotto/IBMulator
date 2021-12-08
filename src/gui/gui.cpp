@@ -386,6 +386,7 @@ void GUI::init_rmlui()
 	Rml::LoadFontFace("fonts/ProFontWindows.ttf");
 	Rml::LoadFontFace("fonts/Nouveau_IBM.ttf");
 	Rml::LoadFontFace("fonts/Ubuntu-Regular.ttf");
+	Rml::LoadFontFace("fonts/Ubuntu-Bold.ttf");
 	m_rml_context = Rml::CreateContext("default", Rml::Vector2i(m_width, m_height));
 	Rml::Debugger::Initialise(m_rml_context);
 
