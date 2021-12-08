@@ -233,6 +233,30 @@ bool Window::is_active(Rml::Element *_el)
 	return (_el->IsClassSet("active"));
 }
 
+void Window::scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container)
+{
+	assert(_element);
+	if(!_container) {
+		_container = _element->GetParentNode();
+	}
+	assert(_container);
+	auto container_height = _container->GetClientHeight();
+	auto container_top = _container->GetAbsoluteTop();
+	auto element_top = _element->GetAbsoluteTop();
+	auto element_relative_top = element_top - container_top;
+	auto element_relative_bottom = element_relative_top + _element->GetClientHeight();
+	if(element_relative_bottom > container_height) {
+		if(container_height > _element->GetClientHeight()) {
+			_element->ScrollIntoView(false);
+		} else {
+			_element->ScrollIntoView(true);
+		}
+	} else if(element_relative_top < 0) {
+		_element->ScrollIntoView(true);
+	}
+	_container->SetScrollLeft(0);
+}
+
 void Window::on_cancel(Rml::Event &)
 {
 	hide();

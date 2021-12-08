@@ -10,6 +10,11 @@
 	display: table-row;
 }
 
+.list .entry:last-child
+{
+	margin-bottom: 40dp;
+}
+
 .list .entry:hover
 {
 	background-color: #6795be;

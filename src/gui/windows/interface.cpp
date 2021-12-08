@@ -292,6 +292,11 @@ void Interface::config_changed()
 		set_floppy_config(m_floppy->drive_type(1) != FDD_NONE);
 	}
 
+	m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
+	if(m_fs->is_current_dir_valid()) {
+		m_fs->reload();
+	}
+	
 	m_leds.hdd = false;
 	m_status.hdd_led->SetClass("active", false);
 	m_hdd = m_machine->devices().device<StorageCtrl>();
@@ -444,6 +449,10 @@ void Interface::update()
 	} else {
 		m_speed->SetProperty("visibility", "hidden");
 	}
+	
+	m_fs->update();
+	m_state_load->update();
+	m_state_save->update();
 }
 
 void Interface::on_power(Rml::Event &)
@@ -484,10 +493,8 @@ void Interface::on_fdd_select(Rml::Event &)
 			set_floppy_string(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
 		}
 	}
-	if(m_fs->is_visible()) {
-		m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
-		m_fs->reload();
-	}
+	m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
+	m_fs->reload();
 }
 
 void Interface::on_fdd_eject(Rml::Event &)
@@ -571,8 +578,9 @@ void Interface::on_fdd_mount(Rml::Event &)
 		}
 	} else {
 		try {
-			m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
-			m_fs->set_current_dir(floppy_dir);
+			if(m_fs->get_current_dir() != floppy_dir) {
+				m_fs->set_current_dir(floppy_dir);
+			}
 		} catch(...) { }
 		m_fs->show();
 	}

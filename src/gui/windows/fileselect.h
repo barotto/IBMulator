@@ -100,6 +100,7 @@ private:
 	Rml::Element *m_selected_entry = nullptr;
 	std::string m_selected_id;
 	bool m_dirty = true;
+	int m_dirty_scroll = 0;
 	enum class Order {
 		BY_DATE, BY_NAME
 	} m_order = Order::BY_NAME;
@@ -126,6 +127,8 @@ public:
 
 	void set_home(const std::string &_path) { m_home = _path; }
 	void set_current_dir(const std::string &_path);
+	std::string get_current_dir() const { return m_cwd; }
+	bool is_current_dir_valid() const { return m_valid_cwd; }
 	void set_compat_sizes(std::vector<uint64_t> _sizes) { m_compat_sizes = _sizes; }
 	void reload();
 
@@ -149,7 +152,6 @@ protected:
 	void clear();
 	void set_cwd(const std::string &_path);
 	void set_history();
-	void set_dirty() { m_dirty = true; }
 	void set_zoom(int _amount);
 	
 	void read_dir(std::string _path, std::string _ext);

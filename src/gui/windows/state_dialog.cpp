@@ -50,6 +50,7 @@ void StateDialog::update()
 		ms_dirty = false;
 	}
 	if(m_dirty) {
+		auto prev_selected = m_selected_id;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
@@ -94,6 +95,18 @@ void StateDialog::update()
 			}
 		}
 		m_dirty = false;
+		if(prev_selected != "") {
+			auto entry = m_entries_el->GetElementById(prev_selected);
+			if(entry) {
+				entry_select(prev_selected, entry);
+			}
+		}
+	}
+	if(m_dirty_scroll) {
+		if(m_selected_entry) {
+			scroll_vertical_into_view(m_selected_entry);
+		}
+		m_dirty_scroll--;
 	}
 }
 
@@ -171,6 +184,9 @@ void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
 		} else {
 			m_action_button_el->SetClass("invisible", false);
 		}
+
+		scroll_vertical_into_view(_entry);
+
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
 	}
@@ -199,6 +215,15 @@ void StateDialog::on_mode(Rml::Event &_ev)
 		m_entries_el->SetClass(value, true);
 		m_panel_el->SetClassNames(value);
 	}
+	if(m_selected_id != "") {
+		auto el = m_entries_el->GetElementById(m_selected_id);
+		if(el) {
+			m_selected_entry = el;
+			m_selected_entry->SetClass("selected", true);
+			m_dirty_scroll = 2;
+			return;
+		}
+	}
 	entry_deselect();
 }
 
@@ -217,7 +242,7 @@ void StateDialog::on_order(Rml::Event &_ev)
 			return;
 		}
 		m_dirty = true;
-		update();
+		m_dirty_scroll = 2;
 	}
 }
 
@@ -234,7 +259,7 @@ void StateDialog::on_asc_desc(Rml::Event &_ev)
 			return;
 		}
 		m_dirty = true;
-		update();
+		m_dirty_scroll = 2;
 	}
 }
 
@@ -279,7 +304,6 @@ void StateDialog::delete_record(std::string _name)
 			}
 			reload_current_dir();
 			set_dirty();
-			update();
 		}
 	);
 }
@@ -291,6 +315,7 @@ void StateDialog::set_zoom(int _amount)
 	m_zoom = std::min(2, m_zoom);
 	m_zoom = std::max(0, m_zoom);
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
+	m_dirty_scroll = 2;
 }
 
 void StateDialog::on_keydown(Rml::Event &_ev)

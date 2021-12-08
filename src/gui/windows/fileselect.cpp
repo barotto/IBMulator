@@ -109,9 +109,9 @@ void FileSelect::update()
 {
 	Window::update();
 
-	set_disabled(m_path_el.up, get_up_path().empty());
-
 	if(m_dirty) {
+		set_disabled(m_path_el.up, get_up_path().empty());
+		auto prev_selected = m_selected_id;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
@@ -164,8 +164,24 @@ void FileSelect::update()
 				break;
 			}
 		}
-		m_entries_cont_el->SetScrollTop(0);
 		m_dirty = false;
+		if(prev_selected != "") {
+			auto entry_el = m_entries_el->GetElementById(prev_selected);
+			if(entry_el) {
+				auto pair = m_de_map.find(prev_selected);
+				if(pair != m_de_map.end()) {
+					entry_select(&pair->second, entry_el);
+				}
+			}
+		}
+	}
+	if(m_dirty_scroll) {
+		if(m_selected_entry) {
+			scroll_vertical_into_view(m_selected_entry, m_entries_cont_el);
+		} else {
+			m_entries_cont_el->SetScrollTop(0);
+		}
+		m_dirty_scroll--;
 	}
 }
 
@@ -203,6 +219,7 @@ void FileSelect::on_entry(Rml::Event &_ev)
 {
 	auto [de, entry_el] = get_entry(_ev);
 	if(!de) {
+		entry_deselect();
 		return;
 	}
 
@@ -272,6 +289,7 @@ void FileSelect::on_show_panel(Rml::Event &)
 	bool active = !is_active(get_element("show_panel"));
 	get_element("show_panel")->SetClass("active", active);
 	m_wnd->SetClass("wpanel", active);
+	m_dirty_scroll = 2;
 }
 
 std::string FileSelect::get_up_path()
@@ -380,6 +398,9 @@ void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
 		}
 
 		m_buttons_entry_el->SetClass("invisible", false);
+
+		scroll_vertical_into_view(_entry_el, m_entries_cont_el);
+
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
 	}
@@ -423,6 +444,15 @@ void FileSelect::on_mode(Rml::Event &_ev)
 		m_entries_el->SetClass("grid", false);
 		m_entries_el->SetClass(value, true);
 	}
+	if(m_selected_id != "") {
+		auto el = m_entries_el->GetElementById(m_selected_id);
+		if(el) {
+			m_selected_entry = el;
+			m_selected_entry->SetClass("selected", true);
+			m_dirty_scroll = 2;
+			return;
+		}
+	}
 	entry_deselect();
 }
 
@@ -438,8 +468,8 @@ void FileSelect::on_order(Rml::Event &_ev)
 			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
 			return;
 		}
-		set_dirty();
-		update();
+		m_dirty = true;
+		m_dirty_scroll = 2;
 	}
 }
 
@@ -455,8 +485,8 @@ void FileSelect::on_asc_desc(Rml::Event &_ev)
 			PERRF(LOG_GUI, "Invalid order: %s\n", value.c_str());
 			return;
 		}
-		set_dirty();
-		update();
+		m_dirty = true;
+		m_dirty_scroll = 2;
 	}
 }
 
@@ -508,11 +538,13 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc)
 
 void FileSelect::clear()
 {
+	entry_deselect();
 	m_cur_dir_date.clear();
 	m_cur_dir_name.clear();
 	m_de_map.clear();
 	m_dotdot = nullptr;
-	set_dirty();
+	m_dirty = true;
+	m_dirty_scroll = 2;
 }
 
 void FileSelect::set_cwd(const std::string &_path)
@@ -535,7 +567,6 @@ void FileSelect::set_current_dir(const std::string &_path)
 	char buf[PATH_MAX];
 	if(FileSys::realpath(_path.c_str(), buf) == nullptr) {
 		PERRF(LOG_GUI, "The path to '%s' cannot be resolved\n", _path.c_str());
-		update();
 		throw std::exception();
 	}
 	std::string new_cwd = FileSys::to_utf8(buf);
@@ -544,14 +575,9 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 	set_cwd(new_cwd);
 
-	try {
-		read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
-		m_valid_cwd = true;
-		update();
-	} catch(...) {
-		update();
-		throw;
-	}
+	// throws:
+	read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
+	m_valid_cwd = true;
 }
 
 void FileSelect::reload()
@@ -641,6 +667,7 @@ void FileSelect::set_zoom(int _amount)
 	m_zoom = std::min(4, m_zoom);
 	m_zoom = std::max(0, m_zoom);
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
+	m_dirty_scroll = 2;
 }
 
 void FileSelect::on_keydown(Rml::Event &_ev)

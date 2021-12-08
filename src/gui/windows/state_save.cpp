@@ -82,11 +82,19 @@ void StateSave::action_on_record(std::string _rec_name)
 void StateSave::on_entry(Rml::Event &_ev)
 {
 	Rml::Element *el = _ev.GetTargetElement();
+	if(el->GetId() == "entries") {
+		entry_deselect();
+		return;
+	}
 	Rml::Element *entry = el->GetParentNode();
 	std::string id = entry->GetId();
 
 	if(el->IsClassSet("action") || id == "new_save_entry") {
-		entry_deselect();
+		if(id == "new_save_entry") {
+			entry_deselect();
+		} else {
+			entry_select(id, entry);
+		}
 		action_on_record(id);
 		return;
 	}
@@ -94,7 +102,7 @@ void StateSave::on_entry(Rml::Event &_ev)
 		delete_record(id);
 		return;
 	}
-	if(el->IsClassSet("target") && m_entries_el->IsClassSet("list")) {
+	if(el->IsClassSet("target")) {
 		entry_select(id, entry);
 	}
 }

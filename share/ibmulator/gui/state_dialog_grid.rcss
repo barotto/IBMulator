@@ -41,6 +41,11 @@
 	background-color: #6795be;
 }
 
+.grid .entry.selected .data
+{
+	background-color: #fcfca6;
+}
+
 .grid .entry .data .screen
 {
 	display: block;
@@ -86,6 +91,13 @@
 	padding: 0 5dp 0 5dp;
 	overflow: hidden;
 	font-size: 12dp;
+}
+
+.grid .entry.selected .data .name,
+.grid .entry.selected .data .date,
+.grid .entry.selected .data .desc
+{
+	color: #000000;
 }
 
 .grid .entry .data .name

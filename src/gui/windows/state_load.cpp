@@ -57,9 +57,14 @@ void StateLoad::action_on_record(std::string _rec_name)
 void StateLoad::on_entry(Rml::Event &_ev)
 {
 	Rml::Element *el = _ev.GetTargetElement();
+	if(el->GetId() == "entries") {
+		entry_deselect();
+		return;
+	}
 	Rml::Element *entry = el->GetParentNode();
 
 	if(el->IsClassSet("action")) {
+		entry_select(entry->GetId(), entry);
 		action_on_record(entry->GetId());
 		return;
 	}
@@ -67,7 +72,7 @@ void StateLoad::on_entry(Rml::Event &_ev)
 		delete_record(entry->GetId());
 		return;
 	}
-	if(el->IsClassSet("target") && m_entries_el->IsClassSet("list")) {
+	if(el->IsClassSet("target")) {
 		entry_select(entry->GetId(), entry);
 	}
 }

@@ -107,6 +107,7 @@ protected:
 	Rml::Element *m_action_button_el = nullptr;
 	inline static bool ms_dirty = true;
 	bool m_dirty = true;
+	int m_dirty_scroll = 0;
 	enum class Order {
 		BY_DATE, BY_DESC, BY_SLOT
 	} m_order = Order::BY_DATE;

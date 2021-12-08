@@ -83,6 +83,7 @@ protected:
 	static bool is_disabled(Rml::Element *);
 	static Rml::Element * set_active(Rml::Element *_elm, bool _active);
 	static bool is_active(Rml::Element *);
+	static void scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
 };
 
 #endif
