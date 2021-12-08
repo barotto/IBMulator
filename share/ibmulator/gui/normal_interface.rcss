@@ -311,6 +311,7 @@ btn.active:hover
 	left: 6.5%;
 	background-color: #3F7CB600;
 	font-effect: shadow(-1dp 1dp black);
+	word-break: break-word;
 }
 
 #hdd_led
