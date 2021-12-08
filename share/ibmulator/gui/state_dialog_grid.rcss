@@ -161,3 +161,188 @@
 	width: 100%;
 	height: 100%;
 }
+
+
+/* ZOOM IN */
+
+.grid.zoom-2 .entry
+{
+	width: 470dp;
+	height: 480dp;
+	margin: 30dp 30dp 0 0;
+}
+
+.grid.zoom-2 .entry .data
+{
+	top: -8dp;
+	left: 8dp;
+	width: 470dp;
+	height: 480dp;
+}
+
+.grid.zoom-2 .entry .data .screen
+{
+	top: 10dp;
+	left: 10dp;
+	right: 10dp;
+	height: 330dp;
+
+	border: 2dp;
+}
+
+.grid.zoom-2 .entry .data .desc
+{
+	font-size: 24dp;
+	top: 340dp;
+	left: 10dp;
+	right: 10dp;
+	padding: 10dp;
+	height: 80dp;
+}
+
+.grid.zoom-2 .entry .data .name,
+.grid.zoom-2 .entry .data .date
+{
+	top: 445dp;
+	padding: 0 10dp 0 10dp;
+	font-size: 20dp;
+}
+
+.grid.zoom-2 .entry .data .name
+{
+	left: 10dp;
+}
+
+.grid.zoom-2 .entry .data .date
+{
+	right: 10dp;
+}
+
+.grid.zoom-2 .entry .data .config
+{
+	top: 10dp;
+	left: 10dp;
+	right: 10dp;
+	height: 292dp;
+
+	padding: 20dp;
+	font-size: 22dp;
+}
+
+.grid.zoom-2 .entry .action,
+.grid.zoom-2 .entry .delete
+{
+	right: 20dp;
+	top: 270dp;
+	width: 60dp;
+	height: 60dp;
+}
+
+.grid.zoom-2 .entry .delete
+{
+	left: 36dp;
+}
+
+.grid.zoom-2 .entry:hover .action,
+.grid.zoom-2 .entry:hover .delete
+{
+	top: 260dp;
+}
+
+.grid.zoom-2 .entry .target
+{
+	top: -8dp;
+	left: 8dp;
+}
+
+
+/* ZOOM OUT */
+
+.grid.zoom-0 .entry
+{
+	width: 118dp;
+	height: 130dp;
+	margin: 9dp 9dp 0 0;
+}
+
+.grid.zoom-0 .entry .data
+{
+	top: -3dp;
+	left: 3dp;
+	width: 118dp;
+	height: 130dp;
+}
+
+.grid.zoom-0 .entry .data .screen
+{
+	top: 2dp;
+	left: 2dp;
+	right: 2dp;
+	height: 83dp;
+
+	border: 1dp;
+}
+
+.grid.zoom-0 .entry .data .desc
+{
+	font-size: 10dp;
+	top: 85dp;
+	left: 2dp;
+	right: 2dp;
+	padding: 2dp;
+	height: 24dp;
+}
+
+.grid.zoom-0 .entry .data .name
+{
+	top: 116dp;
+	padding: 0 2dp 0 2dp;
+	font-size: 10dp;
+	left: 2dp;
+	width: 100%;
+}
+
+.grid.zoom-0 .entry .data .date
+{
+	display: none;
+}
+
+.grid.zoom-0 .entry .data .config
+{
+	top: 2dp;
+	left: 2dp;
+	right: 2dp;
+	height: 83dp;
+	padding: 0dp;
+}
+
+.grid.zoom-0 .entry .data .config span
+{
+	display: none;
+}
+
+.grid.zoom-0 .entry .action,
+.grid.zoom-0 .entry .delete
+{
+	right: 5dp;
+	top: 50dp;
+	width: 30dp;
+	height: 30dp;
+}
+
+.grid.zoom-0 .entry .delete
+{
+	left: 10dp;
+}
+
+.grid.zoom-0 .entry:hover .action,
+.grid.zoom-0 .entry:hover .delete
+{
+	top: 50dp;
+}
+
+.grid.zoom-0 .entry .target
+{
+	top: -3dp;
+	left: 3dp;
+}

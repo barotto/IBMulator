@@ -84,12 +84,19 @@
 	background-color: #587fa3;
 }
 
-.list .entry:hover .data
+.list .entry .data .name
+{
+	background-color: #587fa3;
+}
+
+.list .entry:hover .data,
+.list .entry:hover .data .name
 {
 	background-color: #6795be;
 }
 
-.list .entry.selected .data
+.list .entry.selected .data,
+.list .entry.selected .data .name
 {
 	background-color: #fcfca6;
 }
@@ -135,21 +142,23 @@
 {
 	display: block;
 	position: absolute;
-	bottom: 0;
-	padding: 5dp;
+	bottom: 5dp;
+	padding: 0;
+	height: 12dp;
 	overflow: hidden;
 	font-size: 12dp;
 }
 
 .list .entry .data .name
 {
-	left: 60dp;
+	left: 65dp;
 	text-align: left;
+	padding-right: 10dp;
 }
 
 .list .entry .data .date
 {
-	right: 0;
+	right: 5dp;
 	text-align: right;
 }
 
@@ -171,4 +180,118 @@
 	left: 0;
 	right: 0;
 	bottom: 0;
+}
+
+
+
+/* ZOOM IN */
+
+.list.zoom-2 .entry
+{
+	height: 100dp;
+	margin: 8dp 0 12dp 0;
+}
+
+.list.zoom-2 .entry .data
+{
+	top: -8dp;
+	left: 8dp;
+	height: 100dp;
+}
+
+.list.zoom-2 .entry .data .screen
+{
+	top: 10dp;
+	left: 10dp;
+	width: 104dp;
+	height: 76dp;
+	border: 2dp;
+}
+
+.list.zoom-2 .entry .data .desc
+{
+	font-size: 24dp;
+	left: 120dp;
+	height: 55dp;
+}
+
+.list.zoom-2 .entry .data .name,
+.list.zoom-2 .entry .data .date
+{
+	bottom: 10dp;
+	height: 20dp;
+	font-size: 20dp;
+}
+
+.list.zoom-2 .entry .data .name
+{
+	left: 130dp;
+	padding-right: 20dp;
+}
+
+.list.zoom-2 .entry .data .date
+{
+	right: 10dp;
+}
+
+
+
+/* ZOOM OUT */
+
+.list.zoom-0 .entry
+{
+	height: 34dp;
+	margin: 2dp 0 3dp 0;
+}
+
+.list.zoom-0 .entry .data
+{
+	top: -2dp;
+	left: 2dp;
+	height: 34dp;
+}
+
+.list.zoom-0 .entry .data .screen,
+.list.zoom-0 .entry .data .screen img
+{
+	display: none;
+}
+
+.list.zoom-0 .entry .data .desc
+{
+	font-size: 10dp;
+	top: 0;
+	left: 0;
+	padding: 2dp 4dp 2dp 4dp;
+	height: 24dp;
+}
+
+.list.zoom-0 .entry .data .name,
+.list.zoom-0 .entry .data .date
+{
+	bottom: 2dp;
+	height: 14dp;
+	font-size: 10dp;
+}
+
+.list.zoom-0 .entry .data .name
+{
+	left: 4dp;
+	padding-right: 5dp;
+}
+
+.list.zoom-0 .entry .data .date
+{
+	right: 4dp;
+}
+
+.list.zoom-0 .entry .data .config
+{
+	display: none;
+}
+
+.list.zoom-0 .entry .action,
+.list.zoom-0 .entry .delete,
+{
+	display: none;
 }

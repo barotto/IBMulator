@@ -117,6 +117,8 @@ protected:
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	
+	int m_zoom = 1;
+	
 public:
 
 	StateDialog(GUI *_gui, const char *_doc) : Window(_gui,_doc) {}
@@ -150,12 +152,16 @@ public:
 
 	void entry_select(std::string _slot_id, Rml::Element *_entry);
 	void entry_deselect();
-
 	void on_action(Rml::Event &);
 	void on_delete(Rml::Event &);
 	void on_mode(Rml::Event &_ev);
 	void on_order(Rml::Event &_ev);
 	void on_asc_desc(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev);
+
+protected:
+
+	void set_zoom(int _amount);
 };
 
 

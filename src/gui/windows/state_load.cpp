@@ -36,7 +36,7 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "asc_desc","click",     StateDialog::on_asc_desc),
 	GUI_EVT( "action",  "click",     StateDialog::on_action ),
 	GUI_EVT( "delete",  "click",     StateDialog::on_delete ),
-	GUI_EVT( "*",       "keydown",   Window::on_keydown )
+	GUI_EVT( "*",       "keydown",   StateDialog::on_keydown )
 };
 
 void StateLoad::action_on_record(std::string _rec_name)

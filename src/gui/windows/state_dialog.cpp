@@ -192,7 +192,9 @@ void StateDialog::on_mode(Rml::Event &_ev)
 {
 	std::string value = Window::get_form_input_value(_ev);
 	if(!value.empty()) {
-		m_entries_el->SetClassNames(value);
+		m_entries_el->SetClass("list", false);
+		m_entries_el->SetClass("grid", false);
+		m_entries_el->SetClass(value, true);
 		m_panel_el->SetClassNames(value);
 	}
 	entry_deselect();
@@ -280,6 +282,32 @@ void StateDialog::delete_record(std::string _name)
 	);
 }
 
+void StateDialog::set_zoom(int _amount)
+{
+	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
+	m_zoom += _amount;
+	m_zoom = std::min(2, m_zoom);
+	m_zoom = std::max(0, m_zoom);
+	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
+}
+
+void StateDialog::on_keydown(Rml::Event &_ev)
+{
+	switch(get_key_identifier(_ev)) {
+		case Rml::Input::KeyIdentifier::KI_OEM_MINUS:
+		case Rml::Input::KeyIdentifier::KI_SUBTRACT:
+			set_zoom(-1);
+			break;
+		case Rml::Input::KeyIdentifier::KI_OEM_PLUS:
+		case Rml::Input::KeyIdentifier::KI_ADD:
+			set_zoom(1);
+			break;
+		default:
+			Window::on_keydown(_ev);
+			break;
+	}
+}
+
 Rml::ElementPtr StateDialog::DirEntry::create_element(
 		Rml::ElementDocument *_doc,
 		const std::string &_screen,
@@ -313,7 +341,7 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 			inner += "<div class=\"config\">INVALID VERSION</div>";
 		} else {
 			if(!_info.config_desc.empty()) {
-				inner += "<div class=\"config\">" + str_to_html(_info.config_desc) + "</div>";
+				inner += "<div class=\"config\"><span>" + str_to_html(_info.config_desc) + "</span></div>";
 			}
 		}
 	inner += "</div>";
