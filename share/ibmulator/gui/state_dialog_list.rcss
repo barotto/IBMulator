@@ -5,7 +5,7 @@
 	top: 0;
 	left: 0;
 	right: 0;
-	margin: 40dp 260dp 55dp 5dp;
+	margin: 40dp 340dp 55dp 5dp;
 	overflow: auto;
 	padding: 0 8dp 0 0;
 }
@@ -15,7 +15,7 @@
 	position: absolute;
 	right: 10dp;
 	top: 40dp;
-	width: 240dp;
+	width: 320dp;
 	bottom: 55dp;
 	margin: 4dp;
 
@@ -34,8 +34,8 @@
 
 .list #panel_screen
 {
-	width: 240dp;
-	height: 180dp;
+	width: 320dp;
+	height: 240dp;
 	border: 1dp;
 	border-color: #28374d;
 }
@@ -51,7 +51,7 @@
 	position: absolute;
 	width: 100%;
 	left: 0;
-	top: 182dp;
+	top: 244dp;
 	bottom: 0;
 	font-size: 13dp;
 	padding: 4dp;
@@ -189,7 +189,7 @@
 .list.zoom-2 .entry
 {
 	height: 100dp;
-	margin: 8dp 0 12dp 0;
+	margin: 8dp 0 8dp 0;
 }
 
 .list.zoom-2 .entry .data
@@ -206,6 +206,7 @@
 	width: 104dp;
 	height: 76dp;
 	border: 2dp;
+	z-index: 2;
 }
 
 .list.zoom-2 .entry .data .desc
@@ -220,13 +221,16 @@
 {
 	bottom: 10dp;
 	height: 20dp;
-	font-size: 20dp;
+	font-size: 19dp;
 }
 
 .list.zoom-2 .entry .data .name
 {
-	left: 130dp;
+	left: 118dp;
 	padding-right: 20dp;
+	padding-left: 10dp;
+	right: 0;
+	max-width: 150dp;
 }
 
 .list.zoom-2 .entry .data .date
@@ -263,7 +267,7 @@
 	top: 0;
 	left: 0;
 	padding: 2dp 4dp 2dp 4dp;
-	height: 24dp;
+	height: 10dp;
 }
 
 .list.zoom-0 .entry .data .name,
