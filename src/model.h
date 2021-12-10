@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,6 +43,7 @@ struct ModelConfig
 	std::string ini;
 	std::string name;
 	unsigned type;
+	std::string machine_name;
 	std::string cpu_model;
 	unsigned cpu_freq;
 	unsigned board_ram;

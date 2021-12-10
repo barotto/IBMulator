@@ -140,7 +140,8 @@ void Program::save_state(
 
 	// prepare the configuration description
 	const ModelConfig & mcfg = m_machine->configured_model();
-	sstate->info().config_desc  = "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "\n";
+	sstate->info().config_desc = "Machine: " + mcfg.machine_name + "\n";
+	sstate->info().config_desc += "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "\n";
 	sstate->info().config_desc += "CPU: " + str_format("%s @ %u MHz", mcfg.cpu_model.c_str(), mcfg.cpu_freq) + "\n";
 	sstate->info().config_desc += "RAM: " + str_format("%u KiB + %u KiB", mcfg.board_ram, mcfg.exp_ram) + "\n";
 	// TODO consider more than 1 controller
