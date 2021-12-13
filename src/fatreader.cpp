@@ -74,23 +74,25 @@ void FATReader::BootSector::read(FILE *_infile)
 	}
 
 	// Derived Values
+	const char *invalid_fat_str = "Invalid FAT volume, unsupported format, or unformatted media.";
+	
 	if(bios_params.tot_sectors != 0) {
 		tot_sectors = bios_params.tot_sectors;
 	} else {
 		tot_sectors = bios_params.tot_sectors_32;
 	}
 	if(!tot_sectors) {
-		throw std::runtime_error("Not a valid FAT volume");
+		throw std::runtime_error(invalid_fat_str);
 	}
 	bytes_per_cluster = bios_params.bps * bios_params.spc;
 	tot_bytes = bios_params.bps * tot_sectors;
 	if(!bios_params.bps) {
-		throw std::runtime_error("Not a valid FAT volume");
+		throw std::runtime_error(invalid_fat_str);
 	}
 	root_dir_sec = ((bios_params.max_entries * 32) + (bios_params.bps - 1)) / bios_params.bps;
 	data_sec_cnt = tot_sectors - (bios_params.reserved_sec + (bios_params.num_fats * bios_params.spfat) + root_dir_sec);
 	if(!bios_params.spc) {
-		throw std::runtime_error("Not a valid FAT volume");
+		throw std::runtime_error(invalid_fat_str);
 	}
 	clusters_cnt = data_sec_cnt / bios_params.spc;
 	first_data_sec = bios_params.reserved_sec + (bios_params.num_fats * bios_params.spfat) + root_dir_sec;
@@ -136,21 +138,21 @@ const char * FATReader::BootSector::get_media_str() const
 {
 	switch(bios_params.media) {
 		case 0xF0: if(bios_params.sptrk > 18) {
-			return "3.5\" DS 80 tps 36 spt (2.88MB)";
+			return "3.5\" DS 80 tps 36 spt (2.88M)";
 		} else {
-			return "3.5\" DS 80 tps 18 spt (1.44MB)";
+			return "3.5\" DS 80 tps 18 spt (1.44M)";
 		}
 		case 0xF8: return "Fixed disk";
 		case 0xF9: if(bios_params.sptrk > 9) {
-			return "5.25\" DS 80 tps 15 spt (1.2MB)";
+			return "5.25\" DS 80 tps 15 spt (1.2M)";
 		} else {
 			return "3.5\" DS 80 tps 9 spt (720K)";
 		}
 		case 0xFA: return "5.25\" SS 80 tps 8 spt (320K)";
 		case 0xFB: return "3.5\" DS 80 tps 8 spt (640K)";
 		case 0xFC: return "5.25\" SS 40 tps 9 spt (180K)";
-		case 0xFD: return "5.25\"/8\" DS 40 tps 9 spt (360K)";
-		case 0xFE: return "5.25\"/8\" SS 40 tps 8 spt (160K)";
+		case 0xFD: return "5.25\" DS 40 tps 9 spt (360K)";
+		case 0xFE: return "5.25\" SS 40 tps 8 spt (160K)";
 		case 0xFF: return "5.25\" DS 40 tps 8 spt (320K)";
 		default:
 			throw std::runtime_error("Unknown media type");
