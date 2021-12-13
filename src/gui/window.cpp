@@ -42,10 +42,10 @@ void Window::add_events()
 		if(evt.first.first == "*") {
 			m_wnd->AddEventListener(evt.first.second, this);
 		} else {
-			Rml::Element * el = get_element(evt.first.first);
-			if(el) {
+			try {
+				Rml::Element *el = get_element(evt.first.first);
 				el->AddEventListener(evt.first.second, this);
-			} else {
+			} catch(std::exception &) {
 				m_wnd->AddEventListener(evt.first.second, this);
 			}
 		}
@@ -125,7 +125,7 @@ Rml::Element * Window::get_element(const std::string &_id)
 	assert(m_wnd);
 	Rml::Element *el = m_wnd->GetElementById(_id);
 	if(!el) {
-		PERRF(LOG_GUI, "element %s not found!\n", _id.c_str());
+		PDEBUGF(LOG_V0, LOG_GUI, "element %s not found!\n", _id.c_str());
 		throw std::exception();
 	}
 	return el;
