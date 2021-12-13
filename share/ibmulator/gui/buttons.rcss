@@ -49,7 +49,8 @@ button.text
 }
 
 button.romshell,
-input.romshell
+input.romshell,
+select.romshell selectvalue
 {
 	display: inline-block;
 	font-family: "Nouveau IBM";
@@ -64,9 +65,32 @@ input.romshell
 	padding-right: 2dp;
 }
 
+select.romshell
+{
+	height: 23dp;
+}
+
+select.romshell selectvalue
+{
+	padding-left: 6dp;
+	height: 21dp;
+}
+
+select.romshell selectarrow
+{
+	width: 19dp;
+	height: 23dp;
+}
+
 input.radio.romshell
 {
 	width: 10dp;
+}
+
+button.romshell.disabled,
+input.radio.romshell:disabled
+{
+	color: #a7a7a7;
 }
 
 button.romshell btnicon,
@@ -149,6 +173,69 @@ input.checkbox.romshell:checked
 {
 	decorator: tiled-horizontal( check-checked-l, check-c, check-r );
 }
+
+@spritesheet
+{
+	src: images/romshell_button.png;
+
+	selectarrow: 248px 46px 38px 46px;
+	selectarrow-active: 290px 46px 38px 46px;
+
+	selectvalue-l: 0px 0px 8px 46px;
+	selectvalue-c: 10px 0px 2px 46px;
+	selectvalue-r: 10px 0px 2px 46px;
+}
+
+select.romshell selectvalue
+{
+	decorator: tiled-horizontal( selectvalue-l, selectvalue-c, selectvalue-r );
+}
+
+select.romshell selectarrow
+{
+	decorator: image( selectarrow );
+}
+
+select.romshell:hover selectarrow
+{
+	decorator: image( selectarrow-active );
+}
+
+select.romshell:active selectarrow,
+select.romshell selectarrow:checked,
+{
+	decorator: image( selectarrow-active );
+}
+
+select.romshell selectbox
+{
+	border: 1dp;
+	border-color: #000000;
+	border-top: 0;
+}
+
+select.romshell selectbox option
+{
+	font-family: "Nouveau IBM";
+	font-size: 16dp;
+	width: auto;
+	background-color: #545454;
+	
+	padding-left: 4dp;
+	padding-top: 2dp;
+	padding-right: 2dp;
+}
+
+select.romshell selectbox option:checked
+{
+}
+
+select.romshell selectbox option:hover
+{
+	background-color: #fcfca8;
+	color: #000000;
+}
+
 
 input.text
 {
