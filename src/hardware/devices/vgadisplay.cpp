@@ -26,7 +26,6 @@
 #include "program.h"
 #include "filesys.h"
 #include "gui/gui.h"
-#include <SDL_image.h>
 #include <cstring>
 #include <sstream>
 

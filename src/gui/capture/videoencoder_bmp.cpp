@@ -20,7 +20,7 @@
 #include "ibmulator.h"
 #include "videoencoder_bmp.h"
 #include "utils.h"
-#include <SDL_image.h>
+#include <cstring>
 #include <sstream>
 
 VideoEncoder_BMP::VideoEncoder_BMP()

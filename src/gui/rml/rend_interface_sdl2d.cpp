@@ -22,7 +22,6 @@
 #include "gui_sdl2d.h"
 #include "program.h"
 #include <RmlUi/Core.h>
-#include <SDL_image.h>
 
 
 RmlRenderer_SDL2D::RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen)

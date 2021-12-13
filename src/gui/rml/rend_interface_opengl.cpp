@@ -22,7 +22,6 @@
 #include "gui_opengl.h"
 #include "program.h"
 #include <RmlUi/Core.h>
-#include <SDL_image.h>
 
 #if !(SDL_VIDEO_RENDER_OGL)
     #error "Only the opengl sdl backend is supported."
