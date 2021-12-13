@@ -44,6 +44,12 @@ void MessageWnd::create()
 	get_element("resize")->SetClass("d-none", true);
 }
 
+void MessageWnd::show()
+{
+	Window::show();
+	get_element("action1")->Focus();
+}
+
 void MessageWnd::set_title(const std::string &_title)
 {
 	get_element("title")->SetInnerRML(_title);
@@ -54,18 +60,29 @@ void MessageWnd::set_message(const std::string &_mex)
 	get_element("message")->SetInnerRML(_mex);
 }
 
+Rml::ElementPtr MessageWnd::create_button(std::string _label, std::string _id, Rml::ElementDocument *_doc) const
+{
+	// <button id="_id" class="romshell"><span>_label</span></button>
+	Rml::ElementPtr button = _doc->CreateElement("button");
+	button->SetClassNames("romshell");
+	button->SetId(_id);
+	button->SetInnerRML("<span>" + _label + "</span>");
+	return button;
+}
+
 void MessageWnd::set_type(Type _type)
 {
 	m_type = _type;
+	auto buttons = get_element("buttons");
+	buttons->SetInnerRML("");
 	switch(m_type) {
-		case Type::MSGW_OK:
-			get_element("action1")->SetInnerRML("Ok");
-			get_element("action2")->SetClass("d-none", true);
+		case Type::MSGW_OK: {
+			buttons->AppendChild(std::move(create_button("Ok", "action1", m_wnd)));
 			break;
+		}
 		case Type::MSGW_YES_NO:
-			get_element("action1")->SetInnerRML("Yes");
-			get_element("action2")->SetInnerRML("No");
-			get_element("action2")->SetClass("d-none", false);
+			buttons->AppendChild(create_button("Yes", "action1", m_wnd));
+			buttons->AppendChild(create_button("No", "action2", m_wnd));
 			break;
 	}
 }
@@ -97,6 +114,22 @@ void MessageWnd::on_keydown(Rml::Event &_ev)
 				m_action2_clbk();
 			}
 			hide();
+			break;
+		case Rml::Input::KeyIdentifier::KI_Y:
+			if(m_type == Type::MSGW_YES_NO) {
+				if(m_action1_clbk) {
+					m_action1_clbk();
+				}
+				hide();
+			}
+			break;
+		case Rml::Input::KeyIdentifier::KI_N:
+			if(m_type == Type::MSGW_YES_NO) {
+				if(m_action2_clbk) {
+					m_action2_clbk();
+				}
+				hide();
+			}
 			break;
 		default:
 			Window::on_keydown(_ev);

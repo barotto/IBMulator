@@ -35,11 +35,7 @@
 		</style>
 	</head>
 	<body template="default">
-		<div id="message">
-		</div>
-		<div id="buttons">
-			<button id="action1" class="romshell"></button>
-			<button id="action2" class="romshell"></button>
-		</div>
+		<div id="message"></div>
+		<div id="buttons"></div>
 	</body>
 </rml>

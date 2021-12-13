@@ -45,6 +45,7 @@ public:
 	virtual ~MessageWnd();
 
 	void create();
+	void show();
 
 	void set_type(Type);
 	void set_callbacks(
@@ -62,6 +63,8 @@ private:
 
 	void on_action(Rml::Event &);
 	void on_keydown(Rml::Event &_ev);
+	
+	Rml::ElementPtr create_button(std::string _label, std::string _id, Rml::ElementDocument *_doc) const;
 };
 
 
