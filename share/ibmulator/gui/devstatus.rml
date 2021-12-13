@@ -142,12 +142,12 @@
 				<button id="cmd_vga_screenshot" class="text">screenshot</button>
 				<button id="cmd_vga_dump_state" class="text">dump state</button>
 			</div>
-			<table>
+			<table class="default">
 				<tr><th class="large" style="width:50dp;">mode</th><td class="large" id="vga_mode">?</td></tr>
 				<tr><th class="large" style="width:50dp;">screen</th><td class="large" id="vga_screen">?</td></tr>
 			</table>
 			<p style="font-size:80%;">CRT Controller</p>
-			<table>
+			<table class="default">
 				<tr>
 					<th class="small">htotal</th> <td class="small" id="vga_htotal">?</td>
 					<th class="small">hdend</th>  <td class="small" id="vga_hdend">?</td>
@@ -155,7 +155,7 @@
 					<th class="small">hretr</th>  <td class="small" id="vga_hretr">?</td>
 				</tr>
 			</table>
-			<table>
+			<table class="default">
 				<tr>
 					<th class="small">vtotal</th> <td class="small" id="vga_vtotal">?</td>
 					<th class="small">vdend</th>  <td class="small" id="vga_vdend">?</td>
@@ -163,7 +163,7 @@
 					<th class="small">vretr</th>  <td class="small" id="vga_vretr">?</td>
 				</tr>
 			</table>
-			<table>
+			<table class="default">
 				<tr>
 					<th class="small" style="width:70dp;">start address</th>
 					<td  class="small" id="vga_startaddr_hi">?</td>
@@ -171,7 +171,7 @@
 					<td  class="small" id="vga_startaddr_latch">?</td>
 				</tr>
 			</table>
-			<table>
+			<table class="default">
 				<tr>
 					<th class="small">scanline</th>
 					<td id="vga_scanl" class="small">?</td>
@@ -182,7 +182,7 @@
 			</table>
 			<div id="vga_stats">
 			<p style="font-size:80%;">Stats</p>
-			<table>
+			<table class="default">
 				<tr>
 					<th class="small">frame</th>
 						<td id="vga_frame_cnt" class="small">0</td>
@@ -202,7 +202,7 @@
 		<section id="pic">
 			<h2>PIC</h2>
 			<button id="cmd_pic_update"><btnicon /></button>
-			<table>
+			<table class="default">
 			<tr>
 				<th>IRQ</th>
 				<td id="pic_irq_0" class="led">0</td><td id="pic_irq_1" class="led">1</td>
@@ -252,7 +252,7 @@
 		<section id="pit">
 			<h2>PIT</h2>
 			<button id="cmd_pit_update"><btnicon /></button>
-			<table>
+			<table class="default">
 				<tr><th class="t"></th>  <th>C0</th>                <th>C1</th>                <th>C2</th></tr>
 				<tr><th>mode</th>    <td id="pit_0_mode">0</td> <td id="pit_1_mode">0</td> <td id="pit_2_mode">0</td> </tr>
 				<tr><th>CNT</th>     <td id="pit_0_cnt">0</td>  <td id="pit_1_cnt">0</td>  <td id="pit_2_cnt">0</td>  </tr>

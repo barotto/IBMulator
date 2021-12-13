@@ -37,7 +37,7 @@
 		</div>
 		<div id="cpucore">
 			<div id="generalregs">
-				<table>
+				<table class="default">
 				<tr><th>AX</th><td id="EAX"></td> <th>BP</th><td id="EBP"></td></tr>
 				<tr><th>BX</th><td id="EBX"></td> <th>SI</th><td id="ESI"></td></tr>
 				<tr><th>CX</th><td id="ECX"></td> <th>DI</th><td id="EDI"></td></tr>
@@ -46,7 +46,7 @@
 			</div>
 
 			<div id="segmentregs">
-				<table>
+				<table class="default">
 				<tr><th>CS</th><td id="CS"></td><td id="CSbase"></td><td id="CSlimit"></td><td class="t"><button id="cs_dump"><btnicon /></button></td></tr>
 				<tr><th>DS</th><td id="DS"></td><td id="DSbase"></td><td id="DSlimit"></td><td class="t"><button id="ds_dump"><btnicon /></button></td></tr>
 				<tr><th>SS</th><td id="SS"></td><td id="SSbase"></td><td id="SSlimit"></td><td class="t"><button id="ss_dump"><btnicon /></button></td></tr>
@@ -56,7 +56,7 @@
 			</div>
 
 			<div id="statusregs">
-				<table>
+				<table class="default">
 				<tr><th>IP</th><td id="EIP"></td></tr>
 				<tr><th>F</th><td id="EFLAGS"></td></tr>
 				<tr><th>MSW</th><td id="MSW"></td></tr>
@@ -64,17 +64,17 @@
 			</div>
 
 			<div id="desctables">
-				<table>
+				<table class="default">
 				<tr><th>IDT</th><td id="IDTbase"></td><td id="IDTlimit"></td><td class="t"><button id="idt_dump"><btnicon /></button></td></tr>
 				<tr><th>GDT</th><td id="GDTbase"></td><td id="GDTlimit"></td><td class="t"><button id="gdt_dump"><btnicon /></button></td></tr>
 				</table>
-				<table>
+				<table class="default">
 				<tr><th>LDT</th><td id="LDT"></td><td id="LDTbase"></td><td id="LDTlimit"></td><td class="t"><button id="ldt_dump"><btnicon /></button></td></tr>
 				</table>
 			</div>
 
 			<div id="flags">
-				<table>
+				<table class="default">
 				<tr><th>CF</th><td id="CF"></td> <th>PF</th><td id="PF"></td> <th>AF</th><td id="AF"></td></tr>
 				<tr><th>ZF</th><td id="ZF"></td> <th>SF</th><td id="SF"></td> <th>TF</th><td id="TF"></td></tr>
 				<tr><th>IF</th><td id="IF"></td> <th>DF</th><td id="DF"></td> <th>OF</th><td id="OF"></td></tr>
@@ -83,14 +83,14 @@
 			</div>
 
 			<div id="extra">
-				<table>
+				<table class="default">
 				<tr><th>CPL</th><td id="CPL"></td> <th>A20</th><td id="A20">0</td></tr>
 				</table>
 			</div>
 		</div>
 
 		<div id="memory">
-			<table>
+			<table class="default">
 			<tr><th>CS:IP</th><td id="CS_EIP"></td> <td id="CS_EIP_str"></td></tr>
 			<tr><th>DS:SI</th><td id="DS_ESI"></td> <td id="DS_ESI_str"></td></tr>
 			<tr><th>ES:DI</th><td id="ES_EDI"></td> <td id="ES_EDI_str"></td></tr>

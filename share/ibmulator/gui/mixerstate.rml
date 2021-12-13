@@ -40,7 +40,7 @@
 	</head>
 	<body template="default">
 		<p id="state"></p>
-		<table id="channels">
+		<table id="channels" class="default">
 		</table>
 	</body>
 </rml>

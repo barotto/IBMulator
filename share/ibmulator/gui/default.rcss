@@ -122,10 +122,6 @@ th
 {
 	box-sizing: border-box;
 	display: table-cell;
-
-	background-color: #FF5555d0;
-	font-weight: bold;
-	text-align: center;
 	vertical-align: middle;
 }
 
@@ -133,11 +129,21 @@ td
 {
 	box-sizing: border-box;
 	display: table-cell;
+	vertical-align: middle;
+}
 
+table.default th
+{
+	background-color: #FF5555d0;
+	font-weight: bold;
+	text-align: center;
+}
+
+table.default td
+{
 	padding: 2dp;
 	background-color: #38A838d0;
 	text-align: center;
-	vertical-align: middle;
 }
 
 .t
