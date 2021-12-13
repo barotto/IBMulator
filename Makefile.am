@@ -31,6 +31,7 @@ share/ibmulator/gui/fileselect.rcss \
 share/ibmulator/gui/fileselect.rml \
 share/ibmulator/gui/message_wnd.rml \
 share/ibmulator/gui/mixerstate.rml \
+share/ibmulator/gui/new_floppy.rml \
 share/ibmulator/gui/normal_interface.rcss \
 share/ibmulator/gui/normal_interface.rml \
 share/ibmulator/gui/realistic_interface.rcss \

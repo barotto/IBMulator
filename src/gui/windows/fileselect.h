@@ -20,6 +20,8 @@
 #ifndef IBMULATOR_GUI_FILESELECT_H
 #define IBMULATOR_GUI_FILESELECT_H
 
+#include "new_floppy.h"
+
 class GUI;
 
 class FileSelect : public Window
@@ -28,12 +30,15 @@ private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
+	std::function<void(std::string, std::string, FloppyDiskType, bool)> m_newfloppy_callbk = nullptr;
 	
 	static event_map_t ms_evt_map;
 	
 	std::string m_home;
+	bool m_writable_home = false;
 	std::string m_cwd;
 	bool m_valid_cwd = false;
+	bool m_writable_cwd = false;
 	Rml::Element *m_entries_el = nullptr;
 	Rml::Element *m_entries_cont_el = nullptr;
 	Rml::Element *m_panel_el = nullptr;
@@ -109,7 +114,9 @@ private:
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
 	int m_zoom = 2;
-
+	Rml::Element *m_new_btn = nullptr;
+	std::unique_ptr<NewFloppy> m_new_floppy;
+	
 public:
 
 	FileSelect(GUI * _gui);
@@ -117,19 +124,21 @@ public:
 
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
+	void set_newfloppy_callbk(std::function<void(std::string, std::string, FloppyDiskType, bool)> _fn) { m_newfloppy_callbk = _fn; }
 	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
 	virtual void create();
 	virtual void update();
 	virtual void show();
+	virtual void close();
 
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
 
-	void set_home(const std::string &_path) { m_home = _path; }
+	void set_home(const std::string &_path);
 	void set_current_dir(const std::string &_path);
 	std::string get_current_dir() const { return m_cwd; }
 	bool is_current_dir_valid() const { return m_valid_cwd; }
-	void set_compat_sizes(std::vector<uint64_t> _sizes) { m_compat_sizes = _sizes; }
+	void set_compat_sizes(std::vector<uint64_t> _sizes);
 	void reload();
 
 protected:
@@ -147,6 +156,7 @@ protected:
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
 	void on_show_panel(Rml::Event &);
+	void on_new_floppy(Rml::Event &);
 	void on_keydown(Rml::Event &_ev);
 
 	void clear();

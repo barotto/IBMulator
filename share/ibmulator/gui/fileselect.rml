@@ -45,13 +45,14 @@
 			</div>
 			<div id="misc">
 			<button id="show_panel" class="romshell"><btnicon /><span></span></button>
+			<button id="new_floppy" class="romshell"><span>New</span></button>
 			</div>
 		</form>
 	
 		<div id="buttons_right">
 			<div id="buttons_entry" class="invisible">
-				<input id="wprotect" type="checkbox" class="romshell"><span>Write prot.</span></input>
-				<button id="insert" class="romshell entry_button"><span>Insert</span></button>
+				<input id="wprotect" type="checkbox" class="romshell"><span>Write p.</span></input>
+				<button id="insert" class="romshell"><span>Insert</span></button>
 			</div>
 			<button id="cancel" class="romshell"><span>Cancel</span></button>
 		</div>

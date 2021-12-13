@@ -124,13 +124,18 @@
 
 #wprotect
 {
-	width: 130dp;
+	width: 100dp;
 }
 
 #buttons_entry
 {
 	display: inline-block;
-	margin-right: 10dp;
+}
+
+#buttons_entry input,
+#buttons_entry button
+{
+	margin-left: 5dp;
 }
 
 #mode,
@@ -158,17 +163,17 @@
 
 #misc
 {
-	margin-left: 15dp;
+	margin-left: 10dp;
 }
 
 #buttons_right
 {
-	width: 300dp;
+	width: 250dp;
 }
 
 #buttons_left
 {
-	width: 300dp;
+	width: 330dp;
 }
 
 #dir_prev btnicon

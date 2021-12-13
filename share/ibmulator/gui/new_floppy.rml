@@ -1,0 +1,73 @@
+<rml>
+	<head>
+		<title>New floppy image</title>
+		<link type="text/template" href="default.rml" />
+			<link type="text/rcss" href="dialog.rcss"/>
+		<style>
+			body
+			{
+				width: 350dp;
+				height: 200dp;
+				min-height: 200dp;
+				min-width: 350dp;
+				max-height: 200dp;
+			}
+			button.romshell
+			{
+				margin-left: 10dp;
+			}
+			form
+			{
+				display: block;
+			}
+			#filename
+			{
+				width: 100%;
+			}
+			#dirinfo input
+			{
+				width: 60dp;
+			}
+			#imageinfo
+			{
+				margin-top: 10dp;
+			}
+			#imageinfo input
+			{
+				width: 120dp;
+			}
+			#imageinfo select
+			{
+				width: 130dp
+			}
+			#imageinfo selectvalue
+			{
+				width: 105dp;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<form id="dirinfo">
+			In which directory:
+			<input type="radio" name="destdir" value="here" class="romshell" id="heredir"><span>here</span></input>
+			<input type="radio" name="destdir" value="media" class="romshell" id="mediadir"><span>media</span></input>
+		</form>
+		<form id="fileinfo">
+			Enter a file name:
+			<input type="text" id="filename" />
+		</form>
+		<form id="imageinfo">
+			<table style="width: 320dp;">
+			<tr>
+			<th style="width: 50dp;">Type:</th>
+			<td><select class="romshell" id="floppy_type"></select></td>
+			<td><input id="formatted" type="checkbox" class="romshell" checked><span>Formatted</span></input></td>
+			</tr>
+			</table>
+		</form>
+		<div id="buttons_right">
+			<button id="create_file" class="romshell"><span>Create</span></button>
+			<button id="cancel" class="romshell"><span>Cancel</span></button>
+		</div>
+	</body>
+</rml>

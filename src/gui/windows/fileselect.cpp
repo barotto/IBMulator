@@ -50,6 +50,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "dir_prev","click",   FileSelect::on_prev),
 	GUI_EVT( "dir_next","click",   FileSelect::on_next),
 	GUI_EVT( "show_panel","click", FileSelect::on_show_panel),
+	GUI_EVT( "new_floppy","click", FileSelect::on_new_floppy),
 	GUI_EVT( "*",       "keydown", FileSelect::on_keydown )
 };
 
@@ -103,6 +104,11 @@ void FileSelect::create()
 	disable(m_path_el.next);
 	
 	set_zoom(0);
+
+	m_new_floppy = std::make_unique<NewFloppy>(m_gui);
+	m_new_floppy->create();
+	m_new_floppy->set_modal(true);
+	m_new_btn = get_element("new_floppy");
 }
 
 void FileSelect::update()
@@ -193,6 +199,14 @@ void FileSelect::show()
 	disable(m_path_el.prev);
 
 	Window::show();
+}
+
+void FileSelect::close()
+{
+	m_new_floppy->close();
+	m_new_floppy.reset(nullptr);
+
+	Window::close();
 }
 
 std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_entry(Rml::Event &_ev)
@@ -290,6 +304,43 @@ void FileSelect::on_show_panel(Rml::Event &)
 	get_element("show_panel")->SetClass("active", active);
 	m_wnd->SetClass("wpanel", active);
 	m_dirty_scroll = 2;
+}
+
+void FileSelect::on_new_floppy(Rml::Event &)
+{
+	if(m_new_btn->IsClassSet("invisible")) {
+		return;
+	}
+	m_new_floppy->set_callbacks(
+		[=](std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
+		{
+			if(m_newfloppy_callbk) {
+				// in case of error should throw
+				m_newfloppy_callbk(_dir, _file, _type, _formatted);
+				if(_dir != m_cwd) {
+					set_history();
+					try {
+						set_current_dir(_dir);
+					} catch(...) { }
+				} else {
+					reload();
+				}
+			}
+		}
+	);
+	auto cwd = m_cwd;
+	auto home = m_home;
+	if(!m_valid_cwd || !m_writable_cwd) {
+		cwd = "";
+	}
+	if(!m_writable_home) {
+		home = "";
+	}
+	if(cwd.empty() && home.empty()) {
+		return;
+	}
+	m_new_floppy->set_dirs(cwd, home);
+	m_new_floppy->show();
 }
 
 std::string FileSelect::get_up_path()
@@ -558,9 +609,21 @@ void FileSelect::set_cwd(const std::string &_path)
 	}
 }
 
+void FileSelect::set_home(const std::string &_path)
+{
+	m_home = _path;
+	m_writable_home = FileSys::is_file_writeable(m_home.c_str());
+	if(!m_writable_home) {
+		m_new_btn->SetClass("invisible", true);
+	} else {
+		m_new_btn->SetClass("invisible", false);
+	}
+}
+
 void FileSelect::set_current_dir(const std::string &_path)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Opening %s\n", _path.c_str());
+	m_writable_cwd = false;
 	clear();
 	set_cwd(_path);
 	
@@ -578,6 +641,18 @@ void FileSelect::set_current_dir(const std::string &_path)
 	// throws:
 	read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
 	m_valid_cwd = true;
+	m_writable_cwd = FileSys::is_file_writeable(m_cwd.c_str());
+	if(!m_writable_home && !m_writable_cwd) {
+		m_new_btn->SetClass("invisible", true);
+	} else {
+		m_new_btn->SetClass("invisible", false);
+	}
+}
+
+void FileSelect::set_compat_sizes(std::vector<uint64_t> _sizes)
+{
+	m_compat_sizes = _sizes;
+	m_new_floppy->set_compat_sizes(m_compat_sizes);
 }
 
 void FileSelect::reload()

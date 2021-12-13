@@ -28,6 +28,7 @@
 #include "state_save_info.h"
 #include "state_load.h"
 #include "hardware/devices/vga.h"
+#include "hardware/devices/floppy.h"
 #include <RmlUi/Core/EventListener.h>
 
 class Machine;
@@ -178,6 +179,9 @@ protected:
 	void show_state_info_dialog(StateRecord::Info _info);
 	
 	static std::string get_filesel_info(std::string);
+
+	void create_new_floppy_image(std::string _dir, std::string _file, 
+			FloppyDiskType _type, bool _formatted);
 };
 
 #endif

@@ -232,6 +232,7 @@ void Interface::create()
 	m_fs->create();
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
+	m_fs->set_newfloppy_callbk(std::bind(&Interface::create_new_floppy_image, this, _1, _2, _3, _4));
 	m_fs->set_inforeq_fn(get_filesel_info);
 	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
 	if(home_dir.empty()) {
@@ -877,4 +878,55 @@ std::string Interface::get_filesel_info(std::string _filepath)
 	}
 
 	return info;
+}
+
+void Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
+{
+	PDEBUGF(LOG_V1, LOG_GUI, "New floppy image: %s, %s, %d, %d\n", _dir.c_str(), _file.c_str(), _type, _formatted);
+
+	if(_file.empty()) {
+		throw std::runtime_error("Empty file name.");
+	}
+	if(!FileSys::is_directory(_dir.c_str())) {
+		throw std::runtime_error("Invalid destination directory.");
+	}
+	if(!FileSys::is_file_writeable(_dir.c_str())) {
+		throw std::runtime_error("You don't have permission to write to the destination directory.");
+	}
+#ifdef _WIN32
+	const std::regex invalid_chars("[<>:\"\\/\\\\|?*]");
+#else
+	const std::regex invalid_chars("[\\/]");
+#endif
+	if(std::regex_search(_file, invalid_chars)) {
+		throw std::runtime_error("Invalid characters used in the file name.");
+	}
+
+	std::string base, ext;
+	FileSys::get_file_parts(_file.c_str(), base, ext);
+#ifdef _WIN32
+	const std::vector<const char*> invalid_names = {
+		"CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8","COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+	};
+	if(std::find(invalid_names.begin(), invalid_names.end(), base) != invalid_names.end()) {
+		throw std::runtime_error("Invalid file name.");
+	}
+#endif
+	ext = str_to_lower(ext);
+	if(ext != ".img" && ext != ".ima") {
+		_file += ".img";
+	}
+	if(_file.size() > 255) {
+		throw std::runtime_error("File name too long.");
+	}
+
+	std::string path = _dir + FS_SEP + _file;
+
+	if(FileSys::file_exists(path.c_str())) {
+		throw std::runtime_error(str_format("The file \"%s\" already exists.", _file.c_str()));
+	}
+
+	FloppyCtrl::create_new_floppy_image(path, FDD_NONE, _type, _formatted);
 }

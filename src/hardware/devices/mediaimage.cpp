@@ -416,12 +416,12 @@ void FlatMediaImage::restore_state(const char *_backup_fname)
 void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
 {
 	if(_sectors == 0) {
-		throw std::exception();
+		throw std::runtime_error("Invalid sector count");
 	}
 	std::ofstream ofs = FileSys::make_ofstream(_pathname, std::ios::binary | std::ios::out);
 	if(!ofs.is_open()) {
-		PERRF(LOG_HDD, "Cannot create '%s'. Does the destination directory exist? Is it writible?\n", _pathname);
-		throw std::exception();
+		PERRF(LOG_HDD, "Cannot create '%s'. Does the destination directory exist? Is it writable?\n", _pathname);
+		throw std::runtime_error("Cannot create file");
 	}
 	unsigned bytes = _sectors * 512;
 	ofs.seekp(bytes - 1);
@@ -429,7 +429,7 @@ void FlatMediaImage::create(const char* _pathname, unsigned _sectors)
 	if(!ofs.good()) {
 		PERRF(LOG_HDD, "Cannot pre-allocate %u bytes for '%s'. Check the available space on the destination drive.\n",
 			bytes, _pathname);
-		throw std::exception();
+		throw std::runtime_error("Cannot allocate data on filesystem");
 	}
 }
 

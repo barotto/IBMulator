@@ -197,6 +197,17 @@ bool FileSys::get_path_parts(const char *_path,
 	return true;
 }
 
+void FileSys::get_file_parts(const char *_filename, std::string &_base, std::string &_ext)
+{
+	_base = _filename;
+	_ext = "";
+	const size_t period_idx = _base.rfind('.');
+	if(period_idx != std::string::npos) {
+		_ext = _base.substr(period_idx);
+		_base.erase(period_idx);
+	}
+}
+
 int FileSys::open(const char *_path, int _flags)
 {
 	return ::open(to_native(_path).c_str(), _flags);
@@ -320,7 +331,7 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 	if(res != ARCHIVE_OK) {
 		PERRF(LOG_FS, "Error opening archive '%s'\n", _archive);
 		archive_read_free(ar);
-		throw std::exception();
+		throw std::runtime_error("Error opening archive");
 	}
 
 	bool found = false;
@@ -337,7 +348,7 @@ bool FileSys::extract_file(const char *_archive, const char *_filename, const ch
 						_filename,
 						archive_error_string(ar));
 				archive_read_free(ar);
-				throw std::exception();
+				throw std::runtime_error("Error extracting file from archive");
 			}
 		}
 	}

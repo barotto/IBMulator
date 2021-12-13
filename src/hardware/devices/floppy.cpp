@@ -83,6 +83,8 @@ IODEVICE_PORTS(FloppyCtrl) = {
 #define FLOPPY_DMA_CHAN 2
 #define FLOPPY_IRQ      6
 
+#define FLOPPY_IMAGES_ARCHIVE "disk_images.zip"
+
 enum FDCInterfaceRegisters {
 
 	// Status Register A (SRA, Model30)
@@ -381,7 +383,7 @@ FloppyDriveType FloppyCtrl::config_drive_type(unsigned drive)
 }
 
 FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
-		FloppyDriveType _devtype, FloppyDiskType _disktype)
+		FloppyDriveType _devtype, FloppyDiskType _disktype, bool _formatted)
 {
 	if(FileSys::file_exists(_imgpath.c_str())) {
 		PERRF(LOG_FDC, "Floppy image file '%s' already exists\n", _imgpath.c_str());
@@ -398,7 +400,7 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 			default:
 				return FLOPPY_NONE;
 		}
-	} else {
+	} else if(_devtype != FDD_NONE){
 		if(!(floppy_type[_disktype].drive_mask & _devtype)) {
 			PERRF(LOG_FDC, "Floppy drive incompatible with disk type '%s'\n", floppy_type[_disktype].str);
 			return FLOPPY_NONE;
@@ -406,29 +408,25 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 	}
 
 	PINFOF(LOG_V0, LOG_FDC, "Creating new image file '%s'...\n", _imgpath.c_str());
-	try {
-		std::string archive = g_program.config().get_file_path("disk_images.zip", FILE_TYPE_ASSET);
+
+	if(_formatted) {
+		std::string archive = g_program.config().get_file_path(FLOPPY_IMAGES_ARCHIVE, FILE_TYPE_ASSET);
 		if(!FileSys::file_exists(archive.c_str())) {
-			PERRF(LOG_FDC, "Cannot find the image file archive 'disk_images.zip'\n");
-			throw std::exception();
+			PERRF(LOG_FDC, "Cannot find the image file archive '%s'\n", FLOPPY_IMAGES_ARCHIVE);
+			throw std::runtime_error("Missing data");
 		}
 		std::string imgname = std::regex_replace(floppy_type[_disktype].str,
 				std::regex("[\\.]"), "_");
 		imgname = "floppy-" + imgname + ".img";
 		if(!FileSys::extract_file(archive.c_str(), imgname.c_str(), _imgpath.c_str())) {
 			PERRF(LOG_FDC, "Cannot extract image file '%s'\n", imgname.c_str());
-			throw std::exception();
+			throw std::runtime_error("Missing data");
 		}
-	} catch(std::exception &) {
+	} else {
 		//create a 0-filled image
-		try {
-			FlatMediaImage image;
-			image.create(_imgpath.c_str(), floppy_type[_disktype].sectors);
-			PINFOF(LOG_V0, LOG_FDC, "The image is not pre-formatted: use FORMAT under DOS\n");
-		} catch(std::exception &e) {
-			PERRF(LOG_FDC, "Unable to create the image file\n");
-			throw;
-		}
+		FlatMediaImage image;
+		image.create(_imgpath.c_str(), floppy_type[_disktype].sectors);
+		PINFOF(LOG_V0, LOG_FDC, "The image is not pre-formatted: use FORMAT under DOS\n");
 	}
 
 	return _disktype;
@@ -471,7 +469,6 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 	if(!diskpath.empty() && g_program.config().get_bool(section, DISK_INSERTED)) {
 		FloppyDiskType disktype = FLOPPY_NONE;
 		std::string typestr = g_program.config().get_string(section, DISK_TYPE);
-		std::string diskpath = g_program.config().find_media(section, DISK_PATH);
 		if(FileSys::is_directory(diskpath.c_str())) {
 			PERRF(LOG_FDC, "The floppy image can't be a directory\n");
 			throw std::exception();
@@ -480,7 +477,9 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 			uint64_t disksize = FileSys::get_file_size(diskpath.c_str());
 			switch(disksize) {
 				case 0:
-					disktype = create_new_floppy_image(diskpath, devtype, FLOPPY_NONE);
+					try {
+						disktype = create_new_floppy_image(diskpath, devtype, FLOPPY_NONE);
+					} catch(...) {}
 					break;
 				case 320*512:  disktype = FLOPPY_160K; break;
 				case 360*512:  disktype = FLOPPY_180K; break;
@@ -512,8 +511,10 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 				disktype = create_new_floppy_image(diskpath, devtype, disktype);
 			}
 		}
-		insert_media(drive, disktype, diskpath.c_str(),
-				g_program.config().get_bool(section, DISK_READONLY));
+		if(disktype != FLOPPY_NONE) {
+			insert_media(drive, disktype, diskpath.c_str(),
+					g_program.config().get_bool(section, DISK_READONLY));
+		}
 	}
 }
 
