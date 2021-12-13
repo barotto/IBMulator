@@ -1202,23 +1202,20 @@ void FloppyCtrl::floppy_command()
 				PERRF(LOG_FDC, "format track: sector size %d not supported\n", 128<<sector_size);
 				return; // Hang controller?
 			}
-			if(m_s.format_count != m_media[drive].spt) {
-				/* On real hardware, when you try to format a 720K floppy as 1.44M,
-				 * the drive will happily do so irregardless of the presence of
-				 * the "format hole". Here we eject the media...
-				 */
-				PERRF(LOG_FDC, "Wrong floppy disk type!\n");
-				PDEBUGF(LOG_V0, LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
-						m_s.format_count, m_media[drive].spt);
-				eject_media(drive);
-			}
 			if(m_media_present[drive] == 0) {
 				PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with media not present\n");
 				return; // Hang controller
 			}
-			if(m_media[drive].write_protected) {
-				// media write-protected, return error
-				PINFOF(LOG_V1, LOG_FDC, "format track: attempt to format track with media write-protected\n");
+			if(m_media[drive].write_protected || m_s.format_count != m_media[drive].spt) {
+				if(m_media[drive].write_protected) {
+					PINFOF(LOG_V0, LOG_FDC, "Attempt to format with media write-protected\n");
+				} else {
+					// On real hardware, when you try to format a 720K floppy as 1.44M the drive will happily
+					// do so regardless of the presence of the "format hole".
+					PERRF(LOG_FDC, "Wrong floppy disk type! Specify the format in the DOS command line.\n");
+					PDEBUGF(LOG_V0, LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
+							m_s.format_count, m_media[drive].spt);
+				}
 				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 				m_s.status_reg1 = FDC_ST1_DE | FDC_ST1_ND | FDC_ST1_NW | FDC_ST1_MA;
 				m_s.status_reg2 = FDC_ST2_DD | FDC_ST2_WC | FDC_ST2_MD;
