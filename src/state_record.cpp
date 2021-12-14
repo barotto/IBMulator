@@ -89,9 +89,6 @@ m_state(m_basefile)
 	} else if(FileSys::file_exists(m_path.c_str())) {
 		throw std::runtime_error("A file with the same archive name already exists");
 	} else {
-		if(!FileSys::is_file_writeable(_basepath.c_str())) {
-			throw std::runtime_error("The base directory cannot be written");
-		}
 		try {
 			FileSys::create_dir(m_path.c_str());
 		} catch(std::exception &) {

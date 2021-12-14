@@ -62,6 +62,7 @@ public:
 	static bool file_exists(const char *_path);
 	static bool is_file_readable(const char *_path);
 	static bool is_file_writeable(const char *_path);
+	static bool is_dir_writeable(const char *_path);
 	static uint64_t get_file_size(const char *_path);
 	static void create_dir(const char *_path);
 	static int get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime);

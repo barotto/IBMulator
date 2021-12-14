@@ -79,6 +79,24 @@ bool FileSys::is_file_writeable(const char *_path)
 	return (::access(to_native(_path).c_str(), W_OK) == 0);
 }
 
+bool FileSys::is_dir_writeable(const char *_path)
+{
+#ifdef _WIN32
+
+	TCHAR szTempFileName[MAX_PATH];
+	if(GetTempFileName(to_native(_path).c_str(), PACKAGE_NAME, 0, szTempFileName) == 0) {
+		return false;
+	}
+	DeleteFile(szTempFileName);
+	return true;
+
+#else
+
+	return is_file_writeable(_path);
+
+#endif
+}
+
 bool FileSys::file_exists(const char *_path)
 {
 	if(_path == nullptr) return false;

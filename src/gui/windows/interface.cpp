@@ -890,7 +890,7 @@ std::string Interface::create_new_floppy_image(std::string _dir, std::string _fi
 	if(!FileSys::is_directory(_dir.c_str())) {
 		throw std::runtime_error("Invalid destination directory.");
 	}
-	if(!FileSys::is_file_writeable(_dir.c_str())) {
+	if(!FileSys::is_dir_writeable(_dir.c_str())) {
 		throw std::runtime_error("You don't have permission to write to the destination directory.");
 	}
 #ifdef _WIN32

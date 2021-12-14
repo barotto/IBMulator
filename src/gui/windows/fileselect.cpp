@@ -627,7 +627,7 @@ void FileSelect::set_cwd(const std::string &_path)
 void FileSelect::set_home(const std::string &_path)
 {
 	m_home = _path;
-	m_writable_home = FileSys::is_file_writeable(m_home.c_str());
+	m_writable_home = FileSys::is_dir_writeable(m_home.c_str());
 	if(!m_writable_home) {
 		m_new_btn->SetClass("invisible", true);
 	} else {
@@ -659,7 +659,7 @@ void FileSelect::set_current_dir(const std::string &_path)
 	// throws:
 	read_dir(new_cwd, "(\\.img|\\.ima)$");
 	m_valid_cwd = true;
-	m_writable_cwd = FileSys::is_file_writeable(m_cwd.c_str());
+	m_writable_cwd = FileSys::is_dir_writeable(m_cwd.c_str());
 	if(!m_writable_home && !m_writable_cwd) {
 		m_new_btn->SetClass("invisible", true);
 	} else {
