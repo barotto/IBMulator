@@ -637,6 +637,9 @@ void FileSelect::set_home(const std::string &_path)
 
 void FileSelect::set_current_dir(const std::string &_path)
 {
+	if(_path.empty()) {
+		return;
+	}
 	PDEBUGF(LOG_V0, LOG_GUI, "Opening %s\n", _path.c_str());
 	m_writable_cwd = false;
 	clear();
