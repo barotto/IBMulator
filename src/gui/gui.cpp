@@ -363,7 +363,9 @@ bool GUI::is_fullscreen()
 void GUI::toggle_fullscreen()
 {
 	Uint32 flags = (SDL_GetWindowFlags(m_SDL_window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP);
-	if(SDL_SetWindowFullscreen(m_SDL_window, flags) != 0) {
+	if(SDL_SetWindowFullscreen(m_SDL_window, flags) == 0) {
+		m_fullscreen_toggled = true;
+	} else {
 		PERRF(LOG_GUI, "Toggling fullscreen mode failed: %s\n", SDL_GetError());
 	}
 }
@@ -1853,6 +1855,15 @@ void GUI::dispatch_window_event(const SDL_WindowEvent &_event)
 			update_window_size(_event.data1, _event.data2);
 			}
 			PDEBUGF(LOG_V1, LOG_GUI, "Window resized to %ux%u\n", _event.data1, _event.data2);
+			if(m_fullscreen_toggled) {
+				m_fullscreen_toggled = false;
+				if(!m_input.grab) {
+					int x = m_width / 2, y = m_height / 2;
+					// double warp so that RmlUi can always receive a mouse event
+					SDL_WarpMouseInWindow(m_SDL_window, x, y);
+					SDL_WarpMouseInWindow(m_SDL_window, x+1, y);
+				}
+			}
 			break;
 		}
 		case SDL_WINDOWEVENT_MINIMIZED:
@@ -1907,6 +1918,16 @@ void GUI::dispatch_user_event(const SDL_UserEvent &_event)
 	}
 }
 
+void GUI::rmlui_mouse_hack()
+{
+	// TODO this is a hack to solve a RmlUi issue where it won't
+	// update the element below the pointer
+	// https://github.com/mikke89/RmlUi/issues/220
+	int x, y;
+	SDL_GetMouseState(&x, &y);
+	m_rml_context->ProcessMouseMove(x, y, m_rml_sys_interface->GetKeyModifiers());
+}
+
 void GUI::dispatch_rml_event(const SDL_Event &event)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
@@ -1934,12 +1955,7 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 			m_rml_sys_interface->TranslateMouseButton(event.button.button),
 			rmlmod
 			);
-		// TODO this is a hack to solve a RmlUi issue where it won't
-		// update the element below the pointer
-		// https://github.com/mikke89/RmlUi/issues/220
-		int x, y;
-		SDL_GetMouseState(&x, &y);
-		m_rml_context->ProcessMouseMove(x, y, rmlmod);
+		rmlui_mouse_hack();
 		break;
 	}
 	case SDL_MOUSEWHEEL: {
@@ -1947,12 +1963,7 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 			-event.wheel.y,
 			rmlmod
 			);
-		// TODO this is a hack to solve a RmlUi issue where it won't
-		// update the element below the pointer
-		// https://github.com/mikke89/RmlUi/issues/220
-		int x, y;
-		SDL_GetMouseState(&x, &y);
-		m_rml_context->ProcessMouseMove(x, y, rmlmod);
+		rmlui_mouse_hack();
 		break;
 	}
 	case SDL_KEYDOWN: {

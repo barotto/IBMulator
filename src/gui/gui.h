@@ -137,6 +137,7 @@ protected:
 	SDL_Color m_backcolor;
 	std::vector<Keymap> m_keymaps;
 	unsigned m_current_keymap;
+	bool m_fullscreen_toggled = false;
 	
 	enum TimedEvents {
 		GUI_TEVT_PEVT = 0,
@@ -417,6 +418,8 @@ private:
 	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
+	
+	void rmlui_mouse_hack();
 };
 
 
