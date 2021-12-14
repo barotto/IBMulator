@@ -142,7 +142,7 @@ void Window::ProcessEvent(Rml::Event &_event)
 	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'", type.c_str(), el_str.c_str());
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
-		fn = hit->second;
+		fn = hit->second.handler;
 	} else {
 		Rml::Element *parent = el->GetParentNode();
 		while(parent) {
@@ -150,9 +150,9 @@ void Window::ProcessEvent(Rml::Event &_event)
 				parent->GetId(),
 				type
 			));
-			if(hit != evtmap.end()) {
+			if(hit != evtmap.end() && !hit->second.target) {
 				fn_el_str = parent->GetId();
-				fn = hit->second;
+				fn = hit->second.handler;
 				break;
 			}
 			parent = parent->GetParentNode();
@@ -162,7 +162,7 @@ void Window::ProcessEvent(Rml::Event &_event)
 		hit = evtmap.find(event_map_key_t("*", type));
 		fn_el_str = "*";
 		if(hit != evtmap.end()) {
-			fn = hit->second;
+			fn = hit->second.handler;
 		}
 	}
 	if(fn) {

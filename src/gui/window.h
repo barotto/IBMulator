@@ -30,8 +30,14 @@ class Window;
 
 typedef void (Rml::EventListener::*event_handler_t)(Rml::Event &);
 typedef std::pair<std::string,std::string> event_map_key_t;
-typedef std::map<event_map_key_t, event_handler_t> event_map_t;
-#define GUI_EVT(id, type, fn) { {id, type}, static_cast<event_handler_t>(&fn) }
+struct event_handler_info {
+	event_handler_t handler;
+	bool target; // handler function is executed only if event's target element is same as id
+};
+typedef std::map<event_map_key_t, event_handler_info> event_map_t;
+
+#define GUI_EVT(id, type, fn) { {id, type}, { static_cast<event_handler_t>(&fn), false } }
+#define GUI_EVT_T(id, type, fn) { {id, type}, { static_cast<event_handler_t>(&fn), true } }
 
 class Window : public Rml::EventListener
 {

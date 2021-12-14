@@ -41,9 +41,9 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT( "fdd_eject_c", "click", Interface::on_fdd_eject ),
 	GUI_EVT( "fdd_mount_c", "click", Interface::on_fdd_mount ),
 	GUI_EVT( "move_target", "mousemove", NormalInterface::on_mouse_move ),
-	GUI_EVT( "move_target", "dblclick", Interface::on_dblclick ),
+	GUI_EVT_T( "move_target", "dblclick", Interface::on_dblclick ),
 	GUI_EVT( "main_interface", "mousemove", NormalInterface::on_mouse_move ),
-	GUI_EVT( "main_interface", "dblclick", Interface::on_dblclick )
+	GUI_EVT_T( "main_interface", "dblclick", Interface::on_dblclick )
 };
 
 NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers)

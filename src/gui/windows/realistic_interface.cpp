@@ -61,7 +61,7 @@ event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT( "contrast_slider",   "drag",      RealisticInterface::on_contrast_drag ),
 	GUI_EVT( "contrast_slider",   "dragstart", RealisticInterface::on_dragstart ),
 	GUI_EVT( "system",     "dblclick", Interface::on_dblclick ),
-	GUI_EVT( "background", "dblclick", Interface::on_dblclick )
+	GUI_EVT_T( "background", "dblclick", Interface::on_dblclick )
 };
 
 const SoundFX::samples_t RealisticFX::ms_samples = {
