@@ -181,6 +181,13 @@ void FileSelect::update()
 			}
 		}
 	}
+	if(m_lazy_select) {
+		auto entry_el = m_entries_el->GetElementById(m_lazy_select->id);
+		if(entry_el) {
+			entry_select(m_lazy_select, entry_el);
+		}
+		m_lazy_select = nullptr;
+	}
 	if(m_dirty_scroll) {
 		if(m_selected_entry) {
 			scroll_vertical_into_view(m_selected_entry, m_entries_cont_el);
@@ -314,17 +321,25 @@ void FileSelect::on_new_floppy(Rml::Event &)
 	m_new_floppy->set_callbacks(
 		[=](std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
 		{
-			if(m_newfloppy_callbk) {
-				// in case of error should throw
-				m_newfloppy_callbk(_dir, _file, _type, _formatted);
-				if(_dir != m_cwd) {
-					set_history();
-					try {
-						set_current_dir(_dir);
-					} catch(...) { }
-				} else {
-					reload();
-				}
+			if(!m_newfloppy_callbk) {
+				return;
+			}
+			// in case of error should throw
+			_file = m_newfloppy_callbk(_dir, _file, _type, _formatted);
+			if(_dir != m_cwd) {
+				set_history();
+				try {
+					set_current_dir(_dir);
+				} catch(...) { return; }
+			} else {
+				reload();
+			}
+			auto direntry = std::find_if(m_cur_dir_name.begin(), m_cur_dir_name.end(),
+				[&](const DirEntry *_de)->bool {
+					return !_de->is_dir && _de->name == _file;
+				});
+			if(direntry != m_cur_dir_name.end()) {
+				m_lazy_select = *direntry;
 			}
 		}
 	);
@@ -639,7 +654,7 @@ void FileSelect::set_current_dir(const std::string &_path)
 	set_cwd(new_cwd);
 
 	// throws:
-	read_dir(new_cwd, "(\\.img|\\.ima|\\.flp)$");
+	read_dir(new_cwd, "(\\.img|\\.ima)$");
 	m_valid_cwd = true;
 	m_writable_cwd = FileSys::is_file_writeable(m_cwd.c_str());
 	if(!m_writable_home && !m_writable_cwd) {

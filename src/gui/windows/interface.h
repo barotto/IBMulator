@@ -180,7 +180,7 @@ protected:
 	
 	static std::string get_filesel_info(std::string);
 
-	void create_new_floppy_image(std::string _dir, std::string _file, 
+	std::string create_new_floppy_image(std::string _dir, std::string _file, 
 			FloppyDiskType _type, bool _formatted);
 };
 

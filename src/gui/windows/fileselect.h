@@ -30,7 +30,8 @@ private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
-	std::function<void(std::string, std::string, FloppyDiskType, bool)> m_newfloppy_callbk = nullptr;
+	std::function<std::string(std::string, std::string, FloppyDiskType, bool)>
+		m_newfloppy_callbk = nullptr;
 	
 	static event_map_t ms_evt_map;
 	
@@ -116,6 +117,7 @@ private:
 	int m_zoom = 2;
 	Rml::Element *m_new_btn = nullptr;
 	std::unique_ptr<NewFloppy> m_new_floppy;
+	const DirEntry *m_lazy_select = nullptr;
 	
 public:
 
@@ -124,7 +126,7 @@ public:
 
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
-	void set_newfloppy_callbk(std::function<void(std::string, std::string, FloppyDiskType, bool)> _fn) { m_newfloppy_callbk = _fn; }
+	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDiskType, bool)> _fn) { m_newfloppy_callbk = _fn; }
 	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
 	virtual void create();

@@ -880,7 +880,7 @@ std::string Interface::get_filesel_info(std::string _filepath)
 	return info;
 }
 
-void Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
+std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
 {
 	PDEBUGF(LOG_V1, LOG_GUI, "New floppy image: %s, %s, %d, %d\n", _dir.c_str(), _file.c_str(), _type, _formatted);
 
@@ -929,4 +929,6 @@ void Interface::create_new_floppy_image(std::string _dir, std::string _file, Flo
 	}
 
 	FloppyCtrl::create_new_floppy_image(path, FDD_NONE, _type, _formatted);
+	
+	return _file;
 }
