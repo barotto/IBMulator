@@ -587,6 +587,14 @@ void Interface::on_fdd_mount(Rml::Event &)
 	}
 }
 
+void Interface::reset_savestate_dialogs(std::string _dir)
+{
+	Rml::ReleaseTextures();
+	StateDialog::set_current_dir(_dir);
+	m_state_save->set_dirty();
+	m_state_load->set_dirty();
+}
+
 void Interface::show_state_dialog(bool _save)
 {
 	try {
@@ -595,9 +603,7 @@ void Interface::show_state_dialog(bool _save)
 			throw std::runtime_error("Capture directory not set!");
 		}
 		if(dir != StateDialog::current_dir()) {
-			StateDialog::set_current_dir(dir);
-			m_state_save->set_dirty();
-			m_state_load->set_dirty();
+			reset_savestate_dialogs(dir);
 		}
 	} catch(std::runtime_error &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
@@ -606,6 +612,25 @@ void Interface::show_state_dialog(bool _save)
 
 	bool machine_was_paused = m_machine->is_paused();
 	bool input_was_grabbed = m_gui->is_input_grabbed();
+	auto dialog_delete = [=](StateRecord::Info _info) {
+		m_gui->show_message_box(
+			"Delete State",
+			str_format("Do you want to delete slot %s?", _info.name.c_str()),
+			MessageWnd::Type::MSGW_YES_NO,
+			[=]()
+			{
+				PDEBUGF(LOG_V0, LOG_GUI, "Delete record: %s\n", _info.name.c_str());
+				try {
+					g_program.delete_state(_info);
+				} catch(std::runtime_error &e) {
+					PERRF(LOG_GUI, "Error deleting state record: %s\n", e.what());
+				} catch(std::out_of_range &) {
+					PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid state id!\n");
+				}
+				reset_savestate_dialogs("");
+			}
+		);
+	};
 	auto dialog_end = [=]() {
 		m_state_save->hide();
 		if(!machine_was_paused) {
@@ -637,6 +662,8 @@ void Interface::show_state_dialog(bool _save)
 					m_state_save_info->show();
 				}
 			},
+			// delete
+			dialog_delete,
 			// cancel
 			dialog_end
 		);
@@ -652,6 +679,9 @@ void Interface::show_state_dialog(bool _save)
 				m_state_load->hide();
 				dialog_end();
 			},
+			// delete
+			dialog_delete,
+			// cancel
 			dialog_end
 		);
 		m_state_load->show();
@@ -681,10 +711,8 @@ void Interface::save_state(StateRecord::Info _info)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.user_desc.c_str());
 	g_program.save_state(_info, [this]() {
+		reset_savestate_dialogs("");
 		m_gui->show_message("State saved");
-		StateDialog::reload_current_dir();
-		m_state_save->set_dirty();
-		m_state_load->set_dirty();
 	}, nullptr);
 }
 

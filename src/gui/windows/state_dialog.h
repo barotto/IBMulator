@@ -105,7 +105,6 @@ protected:
 	Rml::Element *m_panel_config_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::Element *m_action_button_el = nullptr;
-	inline static bool ms_dirty = true;
 	bool m_dirty = true;
 	int m_dirty_scroll = 0;
 	enum class Order {
@@ -116,6 +115,7 @@ protected:
 	std::string m_selected_id;
 
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
+	std::function<void(StateRecord::Info)> m_delete_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	
 	int m_zoom = 1;
@@ -130,15 +130,14 @@ public:
 
 	void set_callbacks(
 		std::function<void(StateRecord::Info)> _on_action,
+		std::function<void(StateRecord::Info)> _on_delete,
 		std::function<void()> _on_cancel) {
 		m_action_callbk = _on_action;
+		m_delete_callbk = _on_delete;
 		m_cancel_callbk = _on_cancel;
 	}
 	
-	void set_dirty() {
-		ms_dirty = true;
-		m_dirty = true;
-	}
+	void set_dirty() { m_dirty = true; }
 
 	static void set_current_dir(const std::string &_path);
 	static void reload_current_dir() {

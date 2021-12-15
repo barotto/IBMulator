@@ -182,6 +182,8 @@ protected:
 
 	std::string create_new_floppy_image(std::string _dir, std::string _file, 
 			FloppyDiskType _type, bool _formatted);
+	
+	void reset_savestate_dialogs(std::string _dir);
 };
 
 #endif

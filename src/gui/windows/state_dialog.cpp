@@ -45,10 +45,7 @@ void StateDialog::create()
 void StateDialog::update()
 {
 	Window::update();
-	if(ms_dirty) {
-		Rml::ReleaseTextures();
-		ms_dirty = false;
-	}
+
 	if(m_dirty) {
 		auto prev_selected = m_selected_id;
 		entry_deselect();
@@ -287,25 +284,15 @@ void StateDialog::on_delete(Rml::Event &)
 
 void StateDialog::delete_record(std::string _name)
 {
-	m_gui->show_message_box(
-		"Delete State",
-		str_format("Do you want to delete slot %s?", _name.c_str()),
-		MessageWnd::Type::MSGW_YES_NO,
-		[=]()
-		{
-			PDEBUGF(LOG_V0, LOG_GUI, "Delete record: %s\n", _name.c_str());
-			entry_deselect();
-			try {
-				g_program.delete_state(ms_rec_map.at(_name).info());
-			} catch(std::runtime_error &e) {
-				PERRF(LOG_GUI, "Error deleting state record: %s\n", e.what());
-			} catch(std::out_of_range &) {
-				PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid state id!\n");
-			}
+	if(m_delete_callbk) {
+		try {
+			auto &rec = ms_rec_map.at(_name);
+			m_delete_callbk(rec.info());
 			reload_current_dir();
-			set_dirty();
+		} catch(std::out_of_range &) {
+			PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid slot id!\n");
 		}
-	);
+	}
 }
 
 void StateDialog::set_zoom(int _amount)
