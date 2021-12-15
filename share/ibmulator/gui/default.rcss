@@ -146,7 +146,7 @@ table.default td
 	text-align: center;
 }
 
-.t
+table.default td.t
 {
 	padding: 0;
 	background-color: #00000000;
