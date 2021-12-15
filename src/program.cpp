@@ -67,7 +67,7 @@ Program::~Program()
 
 void Program::save_state(
 	StateRecord::Info _info,
-	std::function<void()> _on_success,
+	std::function<void(StateRecord::Info)> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
 	if(!m_machine->is_on()) {
@@ -195,7 +195,7 @@ void Program::save_state(
 
 	PINFOF(LOG_V0, LOG_PROGRAM, "State saved\n");
 	if(_on_success != nullptr) {
-		_on_success();
+		_on_success(_info);
 	}
 }
 

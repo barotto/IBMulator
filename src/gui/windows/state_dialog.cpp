@@ -99,6 +99,13 @@ void StateDialog::update()
 			}
 		}
 	}
+	if(!m_lazy_select.empty()) {
+		auto entry_el = m_entries_el->GetElementById(m_lazy_select);
+		if(entry_el) {
+			entry_select(m_lazy_select, entry_el);
+		}
+		m_lazy_select = "";
+	}
 	if(m_dirty_scroll) {
 		if(m_selected_entry) {
 			scroll_vertical_into_view(m_selected_entry);
@@ -148,6 +155,11 @@ void StateDialog::set_current_dir(const std::string &_path)
 	}
 
 	closedir(dir);
+}
+
+void StateDialog::entry_select(std::string _slot_id)
+{
+	m_lazy_select = _slot_id;
 }
 
 void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)

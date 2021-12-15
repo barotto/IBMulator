@@ -113,6 +113,7 @@ protected:
 	bool m_order_ascending = true;
 	Rml::Element *m_selected_entry = nullptr;
 	std::string m_selected_id;
+	std::string m_lazy_select;
 
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
 	std::function<void(StateRecord::Info)> m_delete_callbk = nullptr;
@@ -150,6 +151,7 @@ public:
 
 	virtual void on_cancel(Rml::Event &_ev);
 
+	void entry_select(std::string _slot_id);
 	void entry_select(std::string _slot_id, Rml::Element *_entry);
 	void entry_deselect();
 	void on_action(Rml::Event &);
