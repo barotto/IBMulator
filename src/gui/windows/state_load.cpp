@@ -48,7 +48,10 @@ void StateLoad::action_on_record(std::string _rec_name)
 		return;
 	}
 	try {
-		m_action_callbk(ms_rec_map.at(_rec_name).info());
+		auto &rec = ms_rec_map.at(_rec_name);
+		if(rec.info().version == STATE_RECORD_VERSION) {
+			m_action_callbk(rec.info());
+		}
 	} catch(std::out_of_range &) {
 		PDEBUGF(LOG_V0, LOG_GUI, "StateLoad: invalid slot id!\n");
 	}
