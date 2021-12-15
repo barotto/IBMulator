@@ -89,7 +89,7 @@ void MessageWnd::set_type(Type _type)
 
 void MessageWnd::on_action(Rml::Event &_ev)
 {
-	auto el = _ev.GetTargetElement();
+	auto el = _ev.GetCurrentElement();
 	auto func = m_action1_clbk;
 	switch(m_type) {
 		case Type::MSGW_OK:
