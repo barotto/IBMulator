@@ -59,6 +59,7 @@ share/ibmulator/gui/icons/cross.png \
 share/ibmulator/gui/icons/descending.png \
 share/ibmulator/gui/icons/disk.png \
 share/ibmulator/gui/icons/disk_active.png \
+share/ibmulator/gui/icons/dotted_grip_corner.png \
 share/ibmulator/gui/icons/down.png \
 share/ibmulator/gui/icons/eject.png \
 share/ibmulator/gui/icons/exit.png \

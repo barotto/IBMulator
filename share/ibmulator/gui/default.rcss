@@ -43,8 +43,8 @@ body:focus #title_bar
 	height: 16dp;
 	bottom: 0;
 	right: 0;
-	background-color: #FFFFFFA0;
 	z-index: 9999;
+	decorator: image(icons/dotted_grip_corner.png);
 }
 
 #close
