@@ -32,7 +32,7 @@
 				width: 13%;
 				font-size: 10dp;
 			}
-			.enabled {
+			table.default th.enabled {
 				color: #000000ff;
 				background-color: #FFE600FF;
 			}
