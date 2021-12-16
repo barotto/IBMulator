@@ -5,19 +5,23 @@ body
 
 #buttons_right
 {
-	left: 60%;
+	width: 210dp;
 }
 
 #buttons_left
 {
-	right: 40%;
+	width: 390dp;
 }
 
 
 #buttons_entry
 {
 	display: inline-block;
-	margin-right: 10dp;
+}
+
+#buttons_entry button
+{
+	margin-left: 5dp;
 }
 
 #mode input,
@@ -33,7 +37,8 @@ body
 }
 
 #order,
-#asc_desc
+#asc_desc,
+#extra_btns
 {
 	display: inline-block;
 	white-space: nowrap;
@@ -47,6 +52,7 @@ body
 #asc_desc
 {
 	margin-left: 5dp;
+	margin-right: 10dp;
 }
 
 .entry .action,

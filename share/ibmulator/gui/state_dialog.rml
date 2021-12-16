@@ -28,6 +28,9 @@
 		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
 		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
 		</div>
+		<div id="extra_btns">
+		<button id="new_save" class="romshell"><span>New</span></button>
+		</div>
 	</form>
 	<div id="buttons_right">
 		<div id="buttons_entry" class="invisible">

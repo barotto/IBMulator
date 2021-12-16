@@ -39,6 +39,12 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "*",       "keydown",   StateDialog::on_keydown )
 };
 
+void StateLoad::create()
+{
+	StateDialog::create();
+	get_element("extra_btns")->RemoveChild(get_element("new_save"));
+}
+
 void StateLoad::action_on_record(std::string _rec_name)
 {
 	PDEBUGF(LOG_V2, LOG_GUI, "StateLoad: id:%s\n", _rec_name.c_str());

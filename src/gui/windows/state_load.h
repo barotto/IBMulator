@@ -34,6 +34,8 @@ public:
 	StateLoad(GUI * _gui) : StateDialog(_gui, "state_load.rml") {}
 	virtual ~StateLoad() {}
 
+	void create();
+	
 	void action_on_record(std::string _rec_name);
 
 	event_map_t & get_event_map() { return StateLoad::ms_evt_map; }

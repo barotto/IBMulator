@@ -43,6 +43,7 @@ public:
 private:
 
 	void on_entry(Rml::Event &);
+	void on_new_save(Rml::Event &);
 };
 
 

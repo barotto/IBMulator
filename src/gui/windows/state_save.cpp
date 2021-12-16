@@ -34,6 +34,7 @@ event_map_t StateSave::ms_evt_map = {
 	GUI_EVT( "mode",     "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",    "click",     StateDialog::on_order),
 	GUI_EVT( "asc_desc", "click",     StateDialog::on_asc_desc),
+	GUI_EVT( "new_save", "click",     StateSave::on_new_save),
 	GUI_EVT( "action",   "click",     StateDialog::on_action ),
 	GUI_EVT( "delete",   "click",     StateDialog::on_delete ),
 	GUI_EVT( "*",        "keydown",   StateDialog::on_keydown )
@@ -54,6 +55,11 @@ void StateSave::update()
 	} else {
 		StateDialog::update();
 	}
+}
+
+void StateSave::on_new_save(Rml::Event &)
+{
+	action_on_record("new_save");
 }
 
 void StateSave::action_on_record(std::string _rec_name)
