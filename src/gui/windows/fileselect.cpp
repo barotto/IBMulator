@@ -73,6 +73,7 @@ void FileSelect::create()
 	m_panel_el = get_element("info_panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
+	m_home_btn_el = get_element("home");
 	
 	auto drive_el = get_element("drive");
 	unsigned drives_mask = 0;
@@ -622,6 +623,7 @@ void FileSelect::set_cwd(const std::string &_path)
 	if(drive_el) {
 		drive_el->SetAttribute("checked", true);
 	}
+	m_home_btn_el->SetClass("active", (m_cwd == m_home));
 }
 
 void FileSelect::set_home(const std::string &_path)

@@ -45,6 +45,7 @@ private:
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::ElementFormControl *m_wprotect = nullptr;
+	Rml::Element *m_home_btn_el = nullptr;
 	struct {
 		Rml::Element *cwd;
 		Rml::Element *prev,*next,*up;

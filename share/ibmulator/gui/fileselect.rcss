@@ -168,7 +168,7 @@
 
 #buttons_right
 {
-	width: 250dp;
+	width: 260dp;
 }
 
 #buttons_left
@@ -193,7 +193,7 @@
 
 #home btnicon
 {
-	decorator: image(icons/home.png);
+	decorator: image(icons/disk.png);
 }
 
 #reload btnicon
