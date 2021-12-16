@@ -628,13 +628,19 @@ void FileSelect::set_cwd(const std::string &_path)
 
 void FileSelect::set_home(const std::string &_path)
 {
+	char buf[PATH_MAX];
+	if(FileSys::realpath(_path.c_str(), buf) == nullptr) {
+		throw std::runtime_error("Unresolvable path");
+	}
+	DIR *dir;
+	if((dir = FileSys::opendir(_path.c_str())) == nullptr) {
+		throw std::runtime_error("Directory unreadable");
+	}
+	closedir(dir);
+
 	m_home = _path;
 	m_writable_home = FileSys::is_dir_writeable(m_home.c_str());
-	if(!m_writable_home) {
-		m_new_btn->SetClass("invisible", true);
-	} else {
-		m_new_btn->SetClass("invisible", false);
-	}
+	m_new_btn->SetClass("invisible", !m_writable_home);
 }
 
 void FileSelect::set_current_dir(const std::string &_path)

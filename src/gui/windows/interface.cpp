@@ -235,10 +235,16 @@ void Interface::create()
 	m_fs->set_newfloppy_callbk(std::bind(&Interface::create_new_floppy_image, this, _1, _2, _3, _4));
 	m_fs->set_inforeq_fn(get_filesel_info);
 	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
+	std::string cfg_home = g_program.config().get_cfg_home();
 	if(home_dir.empty()) {
-		home_dir = g_program.config().get_cfg_home();
+		home_dir = cfg_home;
 	}
-	m_fs->set_home(home_dir);
+	try {
+		m_fs->set_home(home_dir);
+	} catch(std::runtime_error &) {
+		// if still not valid then give up
+		m_fs->set_home(cfg_home);
+	}
 
 	m_state_save = std::make_unique<StateSave>(m_gui);
 	m_state_save->create();
@@ -548,10 +554,9 @@ void Interface::on_fdd_mount(Rml::Event &)
 		}
 	}
 	if(floppy_dir.empty()) {
-		floppy_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
-		if(floppy_dir.empty()) {
-			floppy_dir = g_program.config().get_cfg_home();
-		}
+		// the file select dialog contains a valid media/home directory
+		// the file select dialog always exists, even when native dialogs are set
+		floppy_dir = m_fs->get_home();
 	}
 	
 	if(g_program.config().get_string(PROGRAM_SECTION, PROGRAM_FILE_DIALOGS, "custom") == "native") {
@@ -582,7 +587,9 @@ void Interface::on_fdd_mount(Rml::Event &)
 			if(m_fs->get_current_dir() != floppy_dir) {
 				m_fs->set_current_dir(floppy_dir);
 			}
-		} catch(...) { }
+		} catch(...) {
+			m_fs->set_current_dir(m_fs->get_home());
+		}
 		m_fs->show();
 	}
 }

@@ -138,6 +138,7 @@ public:
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
 
 	void set_home(const std::string &_path);
+	std::string get_home() const { return m_home; }
 	void set_current_dir(const std::string &_path);
 	std::string get_current_dir() const { return m_cwd; }
 	bool is_current_dir_valid() const { return m_valid_cwd; }

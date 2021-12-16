@@ -312,7 +312,7 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ PROGRAM_SECTION,
-";     media_dir: The default directory used to search for floppy and hdd images.\n"
+";     media_dir: The default directory used to search for disk images.\n"
 ";  file_dialogs: The type of file select dialogs to use:\n"
 ";                 custom: use the " PACKAGE_NAME "'s custom implementation\n"
 ";                 native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
