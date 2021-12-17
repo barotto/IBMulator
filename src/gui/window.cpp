@@ -39,6 +39,7 @@ void Window::add_events()
 	assert(m_wnd);
 	event_map_t & evtmap = get_event_map();
 	for(auto evt : evtmap) {
+		// model is alway bubbling
 		if(evt.first.first == "*") {
 			m_wnd->AddEventListener(evt.first.second, this);
 		} else {
@@ -139,10 +140,13 @@ void Window::ProcessEvent(Rml::Event &_event)
 	const std::string &type = _event.GetType();
 	event_map_t & evtmap = get_event_map();
 	auto hit = evtmap.find( event_map_key_t(el->GetId(),type) );
-	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'", type.c_str(), el_str.c_str());
+	PDEBUGF(LOG_V1, LOG_GUI, "RmlUi Event '%s' on '%s'", type.c_str(), el_str.c_str());
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
 		fn = hit->second.handler;
+		if(hit->second.target) {
+			_event.StopImmediatePropagation();
+		}
 	} else {
 		Rml::Element *parent = el->GetParentNode();
 		while(parent) {
