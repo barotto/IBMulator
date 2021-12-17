@@ -1296,6 +1296,21 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
 	auto running_evt = m_input.find(_sdl_event);
 
+	std::string mod1 = bitfield_to_string(_sdl_event.key.keysym.mod & 0xff,
+	{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
+
+	std::string mod2 = bitfield_to_string((_sdl_event.key.keysym.mod >> 8) & 0xff,
+	{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
+	if(!mod1.empty()) {
+		mod2 = " " + mod2;
+	}
+
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Key: evt=%s, sym=%s, code=%s, mod=[%s%s]\n",
+			(_sdl_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
+			Keymap::ms_sdl_keycode_str_table.find(_sdl_event.key.keysym.sym)->second.c_str(),
+			Keymap::ms_sdl_scancode_str_table.find(_sdl_event.key.keysym.scancode)->second.c_str(),
+			mod1.c_str(), mod2.c_str());
+
 	// events are not created when gui is active, if one is present skip this
 	if(!running_evt && gui_input) {
 		// do gui stuff
@@ -1306,21 +1321,6 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		dispatch_rml_event(_sdl_event);
 		return;
 	}
-
-	std::string mod1 = bitfield_to_string(_sdl_event.key.keysym.mod & 0xff,
-	{ "KMOD_LSHIFT", "KMOD_RSHIFT", "", "", "", "", "KMOD_LCTRL", "KMOD_RCTRL" });
-
-	std::string mod2 = bitfield_to_string((_sdl_event.key.keysym.mod >> 8) & 0xff,
-	{ "KMOD_LALT", "KMOD_RALT", "KMOD_LGUI", "KMOD_RGUI", "KMOD_NUM", "KMOD_CAPS", "KMOD_MODE", "KMOD_RESERVED" });
-	if(!mod1.empty()) {
-		mod2 = " " + mod2;
-	}
-
-	PDEBUGF(LOG_V2, LOG_GUI, "Key: evt=%s, sym=%s, code=%s, mod=[%s%s]\n",
-			(_sdl_event.type == SDL_KEYDOWN)?"SDL_KEYDOWN":"SDL_KEYUP",
-			Keymap::ms_sdl_keycode_str_table.find(_sdl_event.key.keysym.sym)->second.c_str(),
-			Keymap::ms_sdl_scancode_str_table.find(_sdl_event.key.keysym.scancode)->second.c_str(),
-			mod1.c_str(), mod2.c_str());
 
 	// keyboard events need to account for the special case of key combos triggered by key combos,
 	// where a key combo is modifier + key
@@ -1438,14 +1438,14 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 
 void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 {
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Mouse motion: x:%d,y:%d\n", _sdl_event.motion.xrel, _sdl_event.motion.yrel);
+
 	if(!m_input.grab) {
 		dispatch_rml_event(_sdl_event);
 		return;
 	}
 
 	// mouse motion events are 2-in-1 (X and Y axes)
-
-	PDEBUGF(LOG_V2, LOG_GUI, "Mouse motion: x:%d,y:%d\n", _sdl_event.motion.xrel, _sdl_event.motion.yrel);
 
 	auto on_mouse_axis_event = [&](const char *_axis_name, SDL_Event _axis_evt) {
 		auto binding = m_keymaps[m_current_keymap].find_sdl_binding(_axis_evt.motion);
@@ -1496,6 +1496,9 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
 	auto running_evt = m_input.find(_sdl_event);
 
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Mouse button: %d %s\n", _sdl_event.button.button,
+			_sdl_event.type == SDL_MOUSEBUTTONDOWN ? "down" : "up");
+
 	if(!running_evt && !m_input.grab) {
 		// do gui stuff
 		if(binding_ptr && !m_windows.current_doc()->IsModal()) {
@@ -1505,8 +1508,6 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 		dispatch_rml_event(_sdl_event);
 		return;
 	}
-
-	PDEBUGF(LOG_V2, LOG_GUI, "Mouse button: %d\n", _sdl_event.button.button);
 
 	if(binding_ptr) {
 		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
@@ -1523,7 +1524,7 @@ void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 	// joystick events are for the machine only
 	// TODO add support for GUI navigation with gamepads
 
-	PDEBUGF(LOG_V2, LOG_GUI, "Joystick motion: joy:%d, axis:%d, value:%d\n",
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Joystick motion: joy:%d, axis:%d, value:%d\n",
 			_sdl_evt.jaxis.which, _sdl_evt.jaxis.axis, _sdl_evt.jaxis.value);
 
 	assert(_sdl_evt.jaxis.which < Sint32(m_SDL_joysticks.size()));
@@ -1631,7 +1632,7 @@ void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 	// joystick events are for the machine only
 	// TODO add support for GUI navigation with gamepads
 
-	PDEBUGF(LOG_V2, LOG_GUI, "Joystick button: joy:%d, button:%d, state:%d\n",
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Joystick button: joy:%d, button:%d, state:%d\n",
 			_sdl_event.jbutton.which, _sdl_event.jbutton.button, _sdl_event.jbutton.state);
 
 	assert(_sdl_event.jbutton.which < Sint32(m_SDL_joysticks.size()));
