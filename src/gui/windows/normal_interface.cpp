@@ -346,6 +346,9 @@ void NormalInterface::set_zoom(ZoomMode _zoom)
 				hide_system();
 			} else {
 				show_system();
+				if(m_compact_ifc_timer != NULL_TIMER_HANDLE) {
+					m_timers->activate_timer(m_compact_ifc_timer, m_compact_ifc_timeout, false);
+				}
 			}
 			m_main_interface->SetClass("normal", false);
 			break;
@@ -376,6 +379,9 @@ bool NormalInterface::is_system_visible() const
 void NormalInterface::hide_system()
 {
 	m_main_interface->SetClass("hidden", true);
+	if(!m_gui->are_windows_visible()) {
+		SDL_ShowCursor(false);
+	}
 }
 
 void NormalInterface::show_system()
@@ -383,6 +389,7 @@ void NormalInterface::show_system()
 	if(m_compact_ifc_timer != NULL_TIMER_HANDLE) {
 		m_timers->deactivate_timer(m_compact_ifc_timer);
 	}
+	SDL_ShowCursor(true);
 	m_main_interface->SetClass("hidden", false);
 }
 

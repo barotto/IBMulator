@@ -286,6 +286,7 @@ protected:
 		Rml::ElementDocument * current_doc();
 		bool need_input();
 		void ProcessEvent(Rml::Event &);
+		bool are_visible();
 		void register_document(Rml::ElementDocument *_doc);
 		static constexpr Rml::EventId listening_evts[] = {
 			Rml::EventId::Show,
@@ -351,6 +352,7 @@ public:
 	void show_dbg_message(const char* _mex);
 	void show_message_box(const std::string &_title, const std::string &_message, MessageWnd::Type _type, 
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
+	bool are_windows_visible();
 	void toggle_dbg_windows();
 	void grab_input(bool _value);
 	bool is_input_grabbed();

@@ -2152,6 +2152,11 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 	m_windows.message_wnd->show();
 }
 
+bool GUI::are_windows_visible()
+{
+	return m_windows.are_visible();
+}
+
 void GUI::toggle_dbg_windows()
 {
 	m_windows.toggle_dbg();
@@ -2855,6 +2860,11 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 			break;
 	}
 
+}
+
+bool GUI::WindowManager::are_visible()
+{
+	return windows_count;
 }
 
 void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
