@@ -1,6 +1,12 @@
 #cpucore
 {
-	height: 355dp;
+	height: 320dp;
+}
+
+#segmentregs
+{
+	top: 0;
+	left: 130dp;
 }
 
 #CSbase,#DSbase,
@@ -9,7 +15,7 @@
 #TRbase,
 #LDTbase, #GDTbase, #IDTbase
 {
-	width: 80dp;
+	width: 70dp;
 }
 
 #CSlimit,#DSlimit,
@@ -17,40 +23,40 @@
 #FSlimit,#GSlimit,
 #TRlimit
 {
-	width: 80dp;
+	width: 70dp;
 }
 
 #statusregs
 {
-	top: 190dp;
+	top: 150dp;
 	left: 0;
 }
 
 #flags
 {
-	top: 240dp;
-	left: 260dp;
+	top: 215dp;
+	left: 190dp;
 }
 
 #dr
 {
-	top: 160dp;
-	left: 150dp;
+	top: 150dp;
+	left: 130dp;
 }
 #dr td
 {
-	width: 82dp;
+	width: 70dp;
 }
 
 #extra
 {
-	top: 335dp;
+	top: 280dp;
 	left: 260dp;
 }
 
 #EFLAGS,#EIP,#CR2,#CR3
 {
-	width: 80dp;
+	width: 70dp;
 }
 
 #PE,#PG
@@ -64,7 +70,7 @@
 
 #desctables
 {
-	top: 290dp;
+	top: 255dp;
 	left: 0;
 }
 

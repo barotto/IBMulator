@@ -5,8 +5,8 @@
 		<style>
 			body
 			{
-				width: 380dp;
-				height: 550dp;
+				width: 360dp;
+				height: 540dp;
 				position: absolute;
 				bottom: 0;
 				right: 0;
@@ -23,35 +23,35 @@
 				position: relative;
 				margin-bottom: 8dp;
 			}
-			tr {
+			table.default tr {
 				margin-top: 1dp;
 			}
-			th {
+			table.default th {
 				padding: 5dp;
 			}
-			th.small {
+			table.default th.small {
 				padding: 1dp;
 				font-size: 10dp;
 			}
-			th.large {
+			table.default th.large {
 				font-size: 12dp;
 			}
-			td {
+			table.default td {
 				margin-left: 1dp;
 			}
-			td.small {
+			table.default td.small {
 				padding: 4dp;
 				font-size: 10dp;
 			}
-			td.large {
+			table.default td.large {
 				padding: 4dp 5dp;
 				font-size: 12dp;
 			}
-			td.led {
+			table.default td.led {
 				margin-left: 2dp;
 				background-color: #564300FF;
 			}
-			td.led_active {
+			table.default td.led_active {
 				color: #000000;
 				background-color: #FFE600FF;
 			}
@@ -96,6 +96,9 @@
 			}
 			#vga_saddr_line, #vga_pal_line {
 				width: 30dp;
+			}
+			#vgastats th {
+				width: 70dp;
 			}
 
 			#pic th {
@@ -182,7 +185,7 @@
 			</table>
 			<div id="vga_stats">
 			<p style="font-size:80%;">Stats</p>
-			<table class="default">
+			<table class="default" id="vgastats">
 				<tr>
 					<th class="small">frame</th>
 						<td id="vga_frame_cnt" class="small">0</td>

@@ -1,18 +1,18 @@
 #cpucore
 {
-	height: 245dp;
+	height: 200dp;
 }
 
 #generalregs td
 {
-	width: 50dp;
+	width: 40dp;
 }
 
 #segmentregs
 {
 	position: absolute;
 	top: 0;
-	left: 200dp;
+	left: 170dp;
 }
 
 #CSbase,#DSbase,
@@ -25,24 +25,24 @@
 
 #statusregs
 {
-	top: 100dp;
+	top: 78dp;
 	left: 0;
 }
 
 #flags
 {
-	top: 120dp;
-	left: 250dp;
+	top: 110dp;
+	left: 200dp;
 }
 
 #extra
 {
-	top: 220dp;
-	left: 250dp;
+	top: 185dp;
+	left: 200dp;
 }
 
 #desctables
 {
-	top: 175dp;
+	top: 140dp;
 	left: 0dp;
 }

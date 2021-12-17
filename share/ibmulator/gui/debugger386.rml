@@ -7,12 +7,12 @@
 		<style>
 			body
 			{
-				width: 480dp;
-				height: 620dp;
+				width: 400dp;
+				height: 550dp;
 				position: absolute;
 				top: 0;
 				right: 0;
-				max-height: 90%;
+				max-height: 94%;
 			}
 		</style>
 	</head>
@@ -67,11 +67,13 @@
 				<tr><th>EF</th>  <td id="EFLAGS"></td> </tr>
 				</table>
 				<table class="default">
-				<tr><th>PE</th><td id="PE"></td> <th>TS</th><td id="TS"></td> <th>PG</th><td id="PG"></td> </tr>
+				<tr><th>CR2</th><td id="CR2"></td></tr>
+				<tr><th>CR3</th><td id="CR3"></td></tr>
 				</table>
 				<table class="default">
-				<tr><th>CR2</th><td id="CR2"></td> <th>CR3</th><td id="CR3"></td> </tr>
+				<tr><th>PE</th><td id="PE"></td> <th>TS</th><td id="TS"></td><th>PG</th><td id="PG"></td> </tr>
 				</table>
+
 			</div>
 
 			<div id="desctables">

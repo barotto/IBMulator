@@ -14,6 +14,13 @@
 	margin-bottom: 8dp;
 }
 
+table.default th,
+table.default td
+{
+	font-size: 14dp;
+	padding: 0;
+}
+
 th
 {
 	width: 35dp;
@@ -24,9 +31,9 @@ td
 	width: 50dp;
 }
 
-.t
+td.t
 {
-	width: 40dp;
+	width: 25dp;
 }
 
 #generalregs,
@@ -47,13 +54,24 @@ td
 }
 #generalregs td
 {
-	width: 80dp;
+	width: 70dp;
 }
 
 #segmentregs
 {
 	top: 0;
 	left: 150dp;
+}
+
+#CS,
+#DS,
+#SS,
+#ES,
+#FS,
+#GS,
+#TR
+{
+	width: 40dp;
 }
 
 #flags td
@@ -70,6 +88,12 @@ td
 	width: 20dp;
 }
 
+#GDTlimit, #IDTlimit,
+#LDT, #LDTlimit,
+{
+	width: 40dp;
+}
+
 #memory, #disasm
 {
 	margin-top: 10dp;
@@ -83,9 +107,13 @@ td
 {
 	width: 60dp;
 }
-#memory td
+
+#memory #CS_EIP,
+#memory #DS_ESI,
+#memory #ES_EDI,
+#memory #SS_ESP
 {
-	width: 240dp;
+	width: 215dp;
 }
 
 #memory #CS_EIP_str,
@@ -93,7 +121,7 @@ td
 #memory #ES_EDI_str,
 #memory #SS_ESP_str,
 {
-	width: 130dp;
+	width: 95dp;
 }
 
 #disasm
@@ -101,6 +129,8 @@ td
 	padding: 4dp;
 	font-size: 12dp;
 	background-color: #000000ff;
+	white-space: nowrap;
+	overflow: hidden;
 }
 
 #message
@@ -108,6 +138,8 @@ td
 	padding: 4dp;
 	font-size: 11dp;
 	background-color: #383938FF;
+	white-space: nowrap;
+	overflow: hidden;
 }
 
 #POST
