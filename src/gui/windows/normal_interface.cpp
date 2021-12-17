@@ -28,22 +28,24 @@
 #include <RmlUi/Core.h>
 
 event_map_t NormalInterface::ms_evt_map = {
-	GUI_EVT( "power",    "click", Interface::on_power ),
-	GUI_EVT( "pause",    "click", NormalInterface::on_pause ),
-	GUI_EVT( "save",     "click", Interface::on_save_state ),
-	GUI_EVT( "restore",  "click", Interface::on_load_state ),
-	GUI_EVT( "exit",     "click", NormalInterface::on_exit ),
-	GUI_EVT( "visibility","click", NormalInterface::on_visibility ),
-	GUI_EVT( "fdd_select","click", NormalInterface::on_fdd_select ),
-	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
-	GUI_EVT( "fdd_select_c","click", NormalInterface::on_fdd_select ),
-	GUI_EVT( "fdd_eject_c", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount_c", "click", Interface::on_fdd_mount ),
-	GUI_EVT( "move_target", "mousemove", NormalInterface::on_mouse_move ),
-	GUI_EVT_T( "move_target", "dblclick", Interface::on_dblclick ),
-	GUI_EVT( "main_interface", "mousemove", NormalInterface::on_mouse_move ),
-	GUI_EVT_T( "main_interface", "dblclick", Interface::on_dblclick )
+	GUI_EVT  ( "power",             "click",     Interface::on_power ),
+	GUI_EVT  ( "pause",             "click",     NormalInterface::on_pause ),
+	GUI_EVT  ( "save",              "click",     Interface::on_save_state ),
+	GUI_EVT  ( "restore",           "click",     Interface::on_load_state ),
+	GUI_EVT  ( "exit",              "click",     NormalInterface::on_exit ),
+	GUI_EVT  ( "visibility",        "click",     NormalInterface::on_visibility ),
+	GUI_EVT  ( "fdd_select",        "click",     NormalInterface::on_fdd_select ),
+	GUI_EVT  ( "fdd_eject",         "click",     Interface::on_fdd_eject ),
+	GUI_EVT  ( "fdd_mount",         "click",     Interface::on_fdd_mount ),
+	GUI_EVT  ( "fdd_select_c",      "click",     NormalInterface::on_fdd_select ),
+	GUI_EVT  ( "fdd_eject_c",       "click",     Interface::on_fdd_eject ),
+	GUI_EVT  ( "fdd_mount_c",       "click",     Interface::on_fdd_mount ),
+	GUI_EVT  ( "move_target",       "mousemove", NormalInterface::on_mouse_move ),
+	GUI_EVT_T( "move_target",       "dblclick",  Interface::on_dblclick ),
+	GUI_EVT  ( "main_interface",    "mousemove", NormalInterface::on_mouse_move ),
+	GUI_EVT_T( "main_interface",    "dblclick",  Interface::on_dblclick ),
+	GUI_EVT_T( "system_background", "dblclick",  Interface::on_dblclick ),
+	GUI_EVT_T( "system_bar",        "dblclick",  Interface::on_dblclick )
 };
 
 NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers)

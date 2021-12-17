@@ -60,7 +60,7 @@ event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT( "brightness_slider", "dragstart", RealisticInterface::on_dragstart ),
 	GUI_EVT( "contrast_slider",   "drag",      RealisticInterface::on_contrast_drag ),
 	GUI_EVT( "contrast_slider",   "dragstart", RealisticInterface::on_dragstart ),
-	GUI_EVT( "system",     "dblclick", Interface::on_dblclick ),
+	GUI_EVT_T( "sysbkgd",    "dblclick", Interface::on_dblclick ),
 	GUI_EVT_T( "background", "dblclick", Interface::on_dblclick )
 };
 

@@ -29,12 +29,10 @@
 				<div id="system_background" class="overlay">
 				</div>
 
-				<div class="overlay">
-					<div id="fdd_disk"></div>
-					<div id="fdd_mount"></div>
-					<div id="fdd_select" class="a"></div>
-					<div id="fdd_eject"></div>
-				</div>
+				<div id="fdd_disk"></div>
+				<div id="fdd_mount"></div>
+				<div id="fdd_select" class="a"></div>
+				<div id="fdd_eject"></div>
 
 				<div id="system_control">
 					<btn id="power" />
