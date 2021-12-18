@@ -57,7 +57,7 @@ private:
 	SDL_Surface *m_framebuffer = nullptr;
 
 public:
-	StateRecord(std::string _basepath, std::string _name);
+	StateRecord(std::string _basepath, std::string _name, bool _initialize=true);
 	~StateRecord();
 
 	StateRecord & operator = (const StateRecord &_other) {

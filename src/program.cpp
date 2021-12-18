@@ -98,7 +98,7 @@ void Program::save_state(
 
 	std::optional<StateRecord> sstate;
 	try {
-		sstate.emplace(capture_path, _info.name);
+		sstate.emplace(capture_path, _info.name, false);
 	} catch(std::runtime_error &e) {
 		PERRF(LOG_PROGRAM, "%s\n", e.what());
 		if(_on_fail) {

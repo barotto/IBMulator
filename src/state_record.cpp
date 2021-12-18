@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 #include "stb/stb.h"
 
-StateRecord::StateRecord(std::string _basepath, std::string _name)
+StateRecord::StateRecord(std::string _basepath, std::string _name, bool _initialize)
 :
 m_path(_basepath + FS_SEP + _name),
 m_basefile(m_path + FS_SEP + STATE_FILE_BASE),
@@ -46,6 +46,9 @@ m_state(m_basefile)
 	m_screen_path = m_basefile + ".png";
 
 	if(FileSys::is_directory(m_path.c_str())) {
+		if(!_initialize) {
+			return;
+		}
 		// check state completeness
 		if(!FileSys::is_file_readable(m_info_path.c_str())) {
 			throw std::runtime_error("The info file cannot be read");
