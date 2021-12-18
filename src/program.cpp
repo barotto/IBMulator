@@ -24,7 +24,7 @@
 #include "hardware/devices/sblaster.h"
 #include "hardware/devices/ps1audio.h"
 #include "hardware/devices/adlib.h"
-#include "hardware/devices/pcspeaker.h"
+#include "hardware/devices/mpu401.h"
 #include "hardware/devices/storagectrl.h"
 #include "gui/gui_opengl.h"
 #include "gui/gui_sdl2d.h"
@@ -153,13 +153,16 @@ void Program::save_state(
 				sstate->info().config_desc += str_format("%s: %u MiB %s", 
 						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
 						+ "\n";
-				sstate->info().config_desc += FileSys::get_basename(dev->path()) + "\n";
+				sstate->info().config_desc += "Image: " + FileSys::get_basename(dev->path()) + "\n";
 			}
 		}
 	}
 	// TODO classify expansion cards so that we can ask for all audio cards etc...
 	sstate->info().config_desc  += "Audio: ";
 	std::vector<std::string> audiocards;
+	if(m_machine->devices().device<PS1Audio>()) {
+		audiocards.emplace_back("PS/1");
+	}
 	SBlaster *sb = m_machine->devices().device<SBlaster>();
 	if(sb) {
 		audiocards.emplace_back(sb->short_name());
@@ -167,11 +170,8 @@ void Program::save_state(
 	if(m_machine->devices().device<AdLib>()) {
 		audiocards.emplace_back("AdLib");
 	}
-	if(m_machine->devices().device<PS1Audio>()) {
-		audiocards.emplace_back("PS/1");
-	}
-	if(m_machine->devices().device<PCSpeaker>()) {
-		audiocards.emplace_back("PC-Speaker");
+	if(m_machine->devices().device<MPU401>()) {
+		audiocards.emplace_back("MPU-401");
 	}
 	if(audiocards.empty()) {
 		sstate->info().config_desc  += "none";
