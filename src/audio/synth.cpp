@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2021  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -204,13 +204,14 @@ void Synth::save_state(StateBuf &_state)
 		m_chips[1]->save_state(_state);
 	}
 
-	StateHeader h{m_events.size() * sizeof(Event), "SynthEvents"};
-	if(h.data_size) {
-		typename std::deque<Event>::iterator it;
-		m_events.acquire_iterator(it);
+	typename std::deque<Event>::iterator it;
+	size_t evt_count;
+	evt_count = m_events.acquire_iterator(it);
+	StateHeader h{evt_count * sizeof(Event), "SynthEvents"};
+	if(evt_count) {
 		std::vector<uint8_t> evts(h.data_size);
 		uint8_t *ptr = &evts[0];
-		for(size_t i=0; i<m_events.size(); i++,it++) {
+		for(size_t i=0; i<evt_count; i++,it++) {
 			*((Event*)ptr) = *it;
 			ptr += sizeof(Event);
 		}

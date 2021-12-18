@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2021  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -112,16 +112,15 @@ public:
 		m_deque.clear();
 	}
 
-	//TODO WARNING: these 2 methods are untested and probably not correct.
-	bool acquire_iterator(typename std::deque<T>::iterator &_it)
+	size_t acquire_iterator(typename std::deque<T>::iterator &_it)
 	{
 		m_mutex.lock();
 		if(m_deque.empty()) {
 			m_mutex.unlock();
-			return false;
+			return 0;
 		}
 		_it = m_deque.begin();
-		return true;
+		return m_deque.size();
 	}
 
 	void release_iterator()
