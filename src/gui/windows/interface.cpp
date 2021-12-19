@@ -277,6 +277,12 @@ void Interface::set_floppy_active(bool _active)
 	m_status.fdd_led->SetClass("active", _active);
 }
 
+void Interface::set_hdd_active(bool _active)
+{
+	m_leds.hdd = _active;
+	m_status.hdd_led->SetClass("active", _active);
+}
+
 void Interface::config_changed()
 {
 	m_floppy_present = false;
@@ -304,8 +310,7 @@ void Interface::config_changed()
 		m_fs->reload();
 	}
 	
-	m_leds.hdd = false;
-	m_status.hdd_led->SetClass("active", false);
+	set_hdd_active(false);
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
@@ -408,11 +413,9 @@ void Interface::update()
 	if(m_hdd) {
 		bool hdd_busy = m_hdd->is_busy();
 		if(hdd_busy && m_leds.hdd==false) {
-			m_leds.hdd = true;
-			m_status.hdd_led->SetClass("active", true);
+			set_hdd_active(true);
 		} else if(!hdd_busy && m_leds.hdd==true) {
-			m_leds.hdd = false;
-			m_status.hdd_led->SetClass("active", false);
+			set_hdd_active(false);
 		}
 	}
 

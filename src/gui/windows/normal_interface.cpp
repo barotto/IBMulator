@@ -70,6 +70,7 @@ void NormalInterface::create()
 	m_sysctrl = get_element("system_control");
 	m_btn_pause = get_element("pause");
 	m_btn_visibility = get_element("visibility");
+	m_hdd_led_c = get_element("hdd_led_c");
 	m_fdd_mount_c = get_element("fdd_mount_c");
 	m_fdd_select_c = get_element("fdd_select_c");
 	m_cur_zoom = ZoomMode::NORMAL;
@@ -475,6 +476,12 @@ void NormalInterface::set_floppy_active(bool _active)
 {
 	Interface::set_floppy_active(_active);
 	m_fdd_mount_c->SetClass("active", _active);
+}
+
+void NormalInterface::set_hdd_active(bool _active)
+{
+	Interface::set_hdd_active(_active);
+	m_hdd_led_c->SetClass("active", _active);
 }
 
 void NormalInterface::on_mouse_move(Rml::Event &_ev)

@@ -82,7 +82,7 @@
 
 #disk_control
 {
-	width: 40.0%;
+	width: 48.0%;
 	height: 100%;
 	position: absolute;
 	left: 0;
@@ -102,7 +102,7 @@
 {
 	display: inline-block;
 	left: 15%;
-	width: 70%;
+	width: 60%;
 	height: 100%;
 	margin: 0;
 	background-color: #505050a0;
@@ -113,7 +113,7 @@
 #fdd_mount_c.active
 {
 	decorator: image(icons/disk_active.png none contain left center);
-	image-color: #ffee00ff;
+	image-color: #ffee00e0;
 }
 
 #fdd_disk_c
@@ -169,7 +169,7 @@ btn
 
 #disk_control btn
 {
-	width: 14.5%;
+	width: 12%;
 	height: 100%;
 }
 
@@ -183,6 +183,23 @@ btn.active,
 btn.active:hover
 {
 	image-color: #ffffffa0;
+}
+
+#hdd_led_c
+{
+	decorator: image(icons/hdd-c.png);
+}
+
+#hdd_led_c:hover,
+#hdd_led_c.active:hover
+{
+	image-color: #a0a0a0a0;
+}
+
+#hdd_led_c.active
+{
+	decorator: image(icons/hdd-c-active.png);
+	image-color: #ffee00e0;
 }
 
 #power

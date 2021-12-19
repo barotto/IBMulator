@@ -51,6 +51,7 @@ private:
 	Rml::Element *m_sysctrl = nullptr;
 	Rml::Element *m_btn_pause = nullptr;
 	Rml::Element *m_btn_visibility = nullptr;
+	Rml::Element *m_hdd_led_c = nullptr;
 	Rml::Element *m_fdd_mount_c = nullptr;
 	Rml::Element *m_fdd_select_c = nullptr;
 	bool m_led_pause = false;
@@ -81,6 +82,8 @@ public:
 	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
 
 private:
+	void set_hdd_active(bool _active);
+	
 	void set_floppy_string(std::string _filename);
 	void set_floppy_config(bool _b_present);
 	void set_floppy_active(bool _active);

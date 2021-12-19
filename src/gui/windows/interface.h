@@ -169,6 +169,8 @@ public:
 	virtual void sig_state_restored() {}
 
 protected:
+	virtual void set_hdd_active(bool _active);
+
 	virtual void set_floppy_string(std::string _filename);
 	virtual void set_floppy_config(bool _b_present);
 	virtual void set_floppy_active(bool _active);

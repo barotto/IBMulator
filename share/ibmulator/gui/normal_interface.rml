@@ -50,6 +50,7 @@
 						<div id="fdd_disk_c"></div>
 					</div>
 					<btn id="fdd_eject_c" />
+					<btn id="hdd_led_c"/>
 				</div>
 			</div>
 
