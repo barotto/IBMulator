@@ -86,8 +86,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ DISK_C_SECTION, {
-		{ DISK_READONLY,   "no"  },
-		{ DISK_SAVE,       "yes" }
+		{ DISK_READONLY,   "no" },
+		{ DISK_SAVE,       "no" }
 	} },
 
 	{ MIXER_SECTION, {
@@ -483,9 +483,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     path: Possible values: auto, or the path of the image file to mount.\n"
 ";           If the file doesn't exist a new one will be created.\n"
 "; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
-";     save: When you restore a savestate the disk is restored as well, as a temporary read-write image.\n"
-";           Set this option to 'yes' if you want to make the changes permanent at machine power off in the file specified at 'path' "
-"(unless it is write-protected)\n"
+";     save: When you load a savestate the disk is restored in a temporary image file.\n"
+";           Set this option to 'yes' if you want to make the changes permanent at machine power off (original image will be overwritten).\n"
 "; The following parameters are used only for disk type " STR(HDD_CUSTOM_DRIVE_IDX) " (custom type):\n"
 ";   cylinders: Number of cylinders (max. 1024)\n"
 ";       heads: Number of heads (max. 16)\n"
