@@ -367,7 +367,7 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 			inner += "<div class=\"config\">INVALID VERSION</div>";
 		} else {
 			if(!_info.config_desc.empty()) {
-				inner += "<div class=\"config\"><span>" + str_to_html(_info.config_desc) + "</span></div>";
+				inner += "<div class=\"config\"><div>" + str_to_html(_info.config_desc) + "</div></div>";
 			}
 		}
 	inner += "</div>";

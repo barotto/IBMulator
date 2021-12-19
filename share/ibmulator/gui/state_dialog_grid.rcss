@@ -120,14 +120,20 @@
 	top: 5dp;
 	left: 5dp;
 	right: 5dp;
-	height: 145dp;
+	height: 146dp;
 
 	padding: 10dp;
 	font-size: 12dp;
 	visibility: hidden;
-	overflow: hidden;
 	background-color: #00000000;
 	transition: background-color 0.5s 0 exponential-out;
+}
+
+.grid .entry .data .config div
+{
+	height: 110dp;
+	word-break: break-word;
+	overflow-y: auto;
 }
 
 .grid .entry:hover .data .config
@@ -241,6 +247,11 @@
 	font-size: 22dp;
 }
 
+.grid.zoom-2 .entry .data .config div
+{
+	height: 220dp;
+}
+
 .grid.zoom-2 .entry .action,
 .grid.zoom-2 .entry .delete
 {
@@ -324,11 +335,11 @@
 	top: 2dp;
 	left: 2dp;
 	right: 2dp;
-	height: 83dp;
+	height: 84dp;
 	padding: 0dp;
 }
 
-.grid.zoom-0 .entry .data .config span
+.grid.zoom-0 .entry .data .config div
 {
 	display: none;
 }

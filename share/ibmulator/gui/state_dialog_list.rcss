@@ -58,6 +58,7 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 	box-sizing: border-box;
+	word-break: break-word;
 }
 
 .list #panel_config.visible

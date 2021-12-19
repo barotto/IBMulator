@@ -144,19 +144,7 @@ void Program::save_state(
 	sstate->info().config_desc += "ROM: " + FileSys::get_basename(m_machine->sys_rom().romset().c_str()) + "\n";
 	sstate->info().config_desc += "CPU: " + str_format("%s @ %u MHz", mcfg.cpu_model.c_str(), mcfg.cpu_freq) + "\n";
 	sstate->info().config_desc += "RAM: " + str_format("%u KiB + %u KiB", mcfg.board_ram, mcfg.exp_ram) + "\n";
-	// TODO consider more than 1 controller
-	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
-	if(hddctrl) {
-		for(int i=0; i<hddctrl->installed_devices(); i++) {
-			const StorageDev *dev = hddctrl->get_device(i);
-			if(dev) {
-				sstate->info().config_desc += str_format("%s: %u MiB %s", 
-						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
-						+ "\n";
-				sstate->info().config_desc += "Image: " + FileSys::get_basename(dev->path()) + "\n";
-			}
-		}
-	}
+
 	// TODO classify expansion cards so that we can ask for all audio cards etc...
 	sstate->info().config_desc  += "Audio: ";
 	std::vector<std::string> audiocards;
@@ -177,6 +165,21 @@ void Program::save_state(
 		sstate->info().config_desc  += "none";
 	} else {
 		sstate->info().config_desc  += str_implode(audiocards, ", ");
+	}
+	sstate->info().config_desc  += "\n";
+
+	// TODO consider more than 1 controller
+	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
+	if(hddctrl) {
+		for(int i=0; i<hddctrl->installed_devices(); i++) {
+			const StorageDev *dev = hddctrl->get_device(i);
+			if(dev) {
+				sstate->info().config_desc += str_format("%s: %u MiB %s", 
+						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
+						+ "\n";
+				sstate->info().config_desc += "Image: " + FileSys::get_basename(dev->path());
+			}
+		}
 	}
 
 	try {
