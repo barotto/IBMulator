@@ -72,6 +72,7 @@ void NormalInterface::create()
 	m_btn_visibility = get_element("visibility");
 	m_hdd_led_c = get_element("hdd_led_c");
 	m_fdd_mount_c = get_element("fdd_mount_c");
+	m_fdd_disk_c = get_element("fdd_disk_c");
 	m_fdd_select_c = get_element("fdd_select_c");
 	m_cur_zoom = ZoomMode::NORMAL;
 
@@ -257,9 +258,9 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	m_main_interface->SetProperty("width", str_format("%upx", sysunit_w));
 	m_main_interface->SetProperty("height", str_format("%upx", sysunit_h));
 
-	unsigned fontsize = sysunit_w / 40;
+	unsigned fontsize = sysunit_w / 55;
 	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
-	m_fdd_mount_c->GetChild(0)->SetProperty("font-size", str_format("%upx", fontsize));
+	m_fdd_disk_c->SetProperty("font-size", str_format("%upx", fontsize));
 }
 
 void NormalInterface::update()
@@ -446,7 +447,7 @@ void NormalInterface::on_visibility(Rml::Event &)
 
 void NormalInterface::on_fdd_select(Rml::Event &_e)
 {
-	m_fdd_mount_c->GetChild(0)->SetInnerRML("");
+	m_fdd_disk_c->SetInnerRML("");
 	if(m_curr_drive == 0) {
 		m_fdd_select_c->SetClass("a", false);
 		m_fdd_select_c->SetClass("b", true);
@@ -461,7 +462,7 @@ void NormalInterface::set_floppy_string(std::string _filename)
 {
 	Interface::set_floppy_string(_filename);
 	auto name = m_status.fdd_disk->GetInnerRML();
-	m_fdd_mount_c->GetChild(0)->SetInnerRML(name);
+	m_fdd_disk_c->SetInnerRML(name);
 }
 
 void NormalInterface::set_floppy_config(bool _b_present)

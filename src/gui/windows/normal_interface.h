@@ -53,6 +53,7 @@ private:
 	Rml::Element *m_btn_visibility = nullptr;
 	Rml::Element *m_hdd_led_c = nullptr;
 	Rml::Element *m_fdd_mount_c = nullptr;
+	Rml::Element *m_fdd_disk_c = nullptr;
 	Rml::Element *m_fdd_select_c = nullptr;
 	bool m_led_pause = false;
 	ZoomMode m_cur_zoom = ZoomMode::NORMAL;

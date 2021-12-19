@@ -65,3 +65,34 @@ tabset tabs
 {
 	visibility: hidden;
 }
+
+table
+{
+	box-sizing: border-box;
+	display: table;
+}
+
+thead, tbody, tfoot
+{
+	display: table-row-group;
+}
+
+tr
+{
+	box-sizing: border-box;
+	display: table-row;
+}
+
+th
+{
+	box-sizing: border-box;
+	display: table-cell;
+	vertical-align: middle;
+}
+
+td
+{
+	box-sizing: border-box;
+	display: table-cell;
+	vertical-align: middle;
+}

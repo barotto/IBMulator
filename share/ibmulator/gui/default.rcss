@@ -101,37 +101,6 @@ scrollbarhorizontal
 	height: 0;
 }
 
-table
-{
-	box-sizing: border-box;
-	display: table;
-}
-
-thead, tbody, tfoot
-{
-	display: table-row-group;
-}
-
-tr
-{
-	box-sizing: border-box;
-	display: table-row;
-}
-
-th
-{
-	box-sizing: border-box;
-	display: table-cell;
-	vertical-align: middle;
-}
-
-td
-{
-	box-sizing: border-box;
-	display: table-cell;
-	vertical-align: middle;
-}
-
 table.default th
 {
 	background-color: #FF5555d0;

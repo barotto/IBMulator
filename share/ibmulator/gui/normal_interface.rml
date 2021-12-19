@@ -47,10 +47,12 @@
 				<div id="disk_control">
 					<btn id="fdd_select_c" class="a" />
 					<div id="fdd_mount_c">
-						<div id="fdd_disk_c"></div>
+						<div id="fdd_disk_outer">
+						<table><tr><td id="fdd_disk_c"></td></tr></table>
+						</div>
 					</div>
 					<btn id="fdd_eject_c" />
-					<btn id="hdd_led_c"/>
+					<btn id="hdd_led_c" />
 				</div>
 			</div>
 

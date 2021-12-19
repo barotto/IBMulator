@@ -102,7 +102,7 @@
 {
 	display: inline-block;
 	left: 15%;
-	width: 60%;
+	width: 51%;
 	height: 100%;
 	margin: 0;
 	background-color: #505050a0;
@@ -116,24 +116,34 @@
 	image-color: #ffee00e0;
 }
 
-#fdd_disk_c
+#fdd_disk_outer
 {
 	position: absolute;
-	display: block;
 	width: 77%;
-	height: 70%;
+	height: 100%;
 	margin: 0;
-	top: 24%;
-	left: 23%;
+	top: 0;
+	left: 24%;
+}
+
+#fdd_disk_outer table
+{
+	width: 100%;
+	height: 100%;
+}
+
+#fdd_disk_c
+{
 	overflow: hidden;
-	white-space: nowrap;
+	word-break: break-word;
 }
 
 #fdd_disk_c:hover
 {
+	word-break: normal;
+	white-space: nowrap;
 	overflow: visible;
 	z-index: 99;
-	font-effect: shadow(-2dp 2dp black);
 }
 
 #fdd_mount_c:hover
@@ -145,6 +155,7 @@
 #fdd_eject_c
 {
 	decorator: image(icons/eject.png);
+	background-color: #505050a0;
 }
 
 btn
@@ -356,4 +367,3 @@ btn.active:hover
 	background-color: #383938AA;
 	visibility: hidden;
 }
-
