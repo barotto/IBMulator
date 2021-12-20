@@ -315,6 +315,13 @@ void NormalInterface::update()
 	}
 }
 
+void NormalInterface::config_changed()
+{
+	Interface::config_changed();
+
+	m_hdd_led_c->SetClass("invisible", !m_hdd);
+}
+
 void NormalInterface::action(int _action)
 {
 	switch(m_cur_zoom) {

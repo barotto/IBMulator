@@ -70,6 +70,7 @@ public:
 
 	virtual void create();
 	virtual void update();
+	virtual void config_changed();
 
 	void container_size_changed(int _width, int _height);
 
