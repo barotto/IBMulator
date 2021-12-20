@@ -128,6 +128,8 @@ void SysDebugger::create()
 
 	m_post = get_element("POST");
 	m_message = get_element("message");
+
+	get_element("tools2")->SetClass("invisible", !CPULOG);
 }
 
 void SysDebugger::read_memory(uint32_t _address, uint8_t *_buf, uint _len)
