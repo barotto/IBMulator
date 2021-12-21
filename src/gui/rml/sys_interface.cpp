@@ -400,6 +400,7 @@ const char RmlSystemInterface::ascii_map[4][51] =
 	{
 		0,
 		' ',
+		'0',
 		'1',
 		'2',
 		'3',
@@ -409,7 +410,6 @@ const char RmlSystemInterface::ascii_map[4][51] =
 		'7',
 		'8',
 		'9',
-		'0',
 		'A',
 		'B',
 		'C',
