@@ -328,6 +328,11 @@ void StateDialog::on_keydown(Rml::Event &_ev)
 		case Rml::Input::KeyIdentifier::KI_ADD:
 			set_zoom(1);
 			break;
+		case Rml::Input::KeyIdentifier::KI_RETURN:
+		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
+			// TODO remove when proper keyboard input is implemented
+			_ev.StopImmediatePropagation();
+			break;
 		default:
 			Window::on_keydown(_ev);
 			break;

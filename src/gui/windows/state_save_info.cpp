@@ -83,8 +83,12 @@ void StateSaveInfo::on_keydown(Rml::Event &_ev)
 {
 	switch(get_key_identifier(_ev)) {
 		case Rml::Input::KeyIdentifier::KI_RETURN:
+		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
 			if(_ev.GetTargetElement() == m_desc_el) {
 				on_save(_ev);
+			} else {
+				// TODO remove when proper keyboard input is implemented
+				_ev.StopImmediatePropagation();
 			}
 			break;
 		default:
