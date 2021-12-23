@@ -43,8 +43,8 @@ line) and:
 4. Create the Makefile with cmake:  
 `cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
 for static linking add `-DBUILD_SHARED_LIBS=OFF`
-5. Build and install (change the 8 with the number of your CPU's cores):  
-`make -j8 && make install`
+5. Build and install:  
+`make -j$(nproc) && make install`
 
 
 ## STEP 3. Build IBMulator
@@ -67,8 +67,8 @@ folder of your choosing (see [below](#installation) for more info).
 Example:
 `./configure --prefix=/c/workspace/IBMulator/release --enable-static`
 6. Build:  
-`make -j8`
-7. Install if you used the `--prefix` option:  
+`make -j$(nproc)`
+7. Install only if you used the `--prefix` option:  
 `make install`
 
 

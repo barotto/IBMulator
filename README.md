@@ -1,11 +1,39 @@
 # IBMulator
 
+* [WHAT IS IBMULATOR?](#what-is-ibmulator)
+* [LICENSE](#license)
+* [HARDWARE REQUIREMENTS](#hardware-requirements)
+* [USAGE](#usage)
+  * [Installation](#installation)
+  * [CMOS and system configuration](#cmos-and-system-configuration)
+  * [ROM set](#rom-set)
+  * [HDD image](#hdd-image)
+  * [GUI modes](#gui-modes)
+    * [Integer scaling](#integer-scaling)
+  * [Savestates](#savestates)
+    * [Limitations](#limitations)
+  * [Audio DSP filters](#audio-dsp-filters)
+  * [Joystick](#joystick)
+  * [Emulation speed adjustments](#emulation-speed-adjustments)
+  * [Serial port](#serial-port)
+    * [Null modem connections](#null-modem-connections)
+  * [MIDI output](#midi-output)
+    * [MIDI on Windows](#midi-on-windows)
+    * [MIDI on Linux](#midi-on-linux)
+    * [SysEx delays and the Roland MT-32 "Exc. Buffer overflow" error](#sysex-delays-and-the-roland-mt-32-exc-buffer-overflow-error)
+  * [Keymaps](#keymaps)
+    * [Default key bindings](#default-key-bindings)
+  * [UI related key bindings](#ui-related-key-bindings)
+  * [Command line options](#command-line-options)
+* [COMPILING](#compiling)
+* [THANKS](#thanks)
+
 
 ## WHAT IS IBMULATOR?
 
-IBMulator is a free/libre, open source emulator for the IBM PS/1, able to run 
-with the original ROM. The goal is to create a faithful simulator capable of
-recreating the look and feel of the real machine.
+IBMulator is a free/libre, open source IBM PS/1 emulator, able to run with the
+original ROM. The goal is to create a faithful simulator capable of recreating
+the look and feel of the real machine.
 
 IBMulator can emulate the following systems:
 - IBM PS/1 model 2011 (286 @ 10MHz)
@@ -38,9 +66,11 @@ For shaders support you'll also need an OpenGL 3.3 compatible graphics adapter.
 
 ## USAGE
 
+### Installation
+
 First of all obtain the original ROM. You have the following options:
 
-1. if you have a real PS/1, take the program ROMDUMP.EXE in the 'extra' folder
+1. if you have a real PS/1, take the program `ROMDUMP.EXE` in the 'extra' folder
 and put it in an empty floppy disk; insert the floppy disk in your PS/1 and
 launch the executable: it will create the ROM image on the floppy disk
 2. or open your PS/1, extract the EPROMs and read them with an EPROM 
@@ -48,12 +78,12 @@ reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a
 non-US model)
 3. or scour the Internet (there are various ROM sets available.)
 
-Launch IBMulator. A window will inform you that the file ibmulator.ini has 
+Launch IBMulator. A window will inform you that the file **ibmulator.ini** has 
 been created and where it is placed.
 
 Put the ROM set anywhere you like (inside the same directory of ibmulator.ini is
-a good place) and update ibmulator.ini in the [system] section with the file
-name of the ROM set. 
+a good place) and update the ibmulator.ini `[system]:romset` setting with the
+file name of the ROM set.
 
 From now on IBMulator is ready to run.
 
@@ -61,26 +91,37 @@ You're not required to do anything else but IBMulator is very configurable. For
 more information regarding the various configuration options, see the comments 
 inside ibmulator.ini.
 
-Being a faithful emulator of the PS/1, to configure the system (ie. the PS/1, 
-not the emulator) after a configuration change (for instance, if you add or 
-remove a floppy drive), you need a DOS program called CONFIGUR.EXE, otherwise 
-you'll get various POST errors. Likewise, if you want to customize the way the 
-system works, you need to use the program CUSTOMIZ.EXE. Both files are copyright 
-IBM and you have to search the Internet in order to obtain them.
+### CMOS and system configuration
+
+Being a faithful emulator of the PS/1, after a configuration change (for example
+if you add more RAM) you need to update the PS/1's CMOS data, otherwise you'll
+get various POST errors (162, 164) at boot.  
+Modern PCs have a built-in BIOS menu but unfortunately the PS/1 relies on a two
+DOS programs:
+
+* `CONFIGUR.EXE`: the system configuration updater
+* `CUSTOMIZ.EXE`: used to customize the way the system works
+
+You can usually find these programs inside the DOS directory after you restore
+the IBM's original preloaded software from a backup disk-set.  
+Both files are copyrighted so you won't find them bundled with IBMulator.
 
 ### ROM set
 
-A ROM set can be:
+Unless you download a ready-to-go PS/1 ROM set, you have to prepare ROM files in
+a specific way.
+
+A ROM set can be either:
 
 1. a compressed archive in the ZIP format
-2. a file with the *.BIN extension, named as you like
-3. a directory 
+2. or a file with the *.BIN extension, named as you like
+3. or a directory 
 
 Inside a ZIP file or directory there must be (file names are case insensitive):
 
-* FC0000.BIN : the system BIOS ROM, 256KiB
-* F80000.BIN : the regional ROM, 256KiB, optional, only for non-US versions. For
-international models, this bin file can be merged with FC0000.BIN to form a 
+* `FC0000.BIN`: the system BIOS ROM, 256KiB
+* `F80000.BIN`: the regional ROM, 256KiB, optional, only for non-US versions.
+For international models, this bin file can be merged with FC0000.BIN to form a
 single 512KiB bin file. In this case FC0000.BIN, if present, is ignored.
 
 Any other file present in the archive or directory is ignored.
@@ -89,13 +130,13 @@ Any other file present in the archive or directory is ignored.
 
 The first time you launch IBMulator an empty pre-formatted hard disk image will
 be created.
- 
+
 If you have an original PS/1 backup disk-set you can restore the machine to its 
 factory state. In order to do so:
 
 1. insert a PC-DOS 4.0 floppy disk in drive A
-2. go to the DOS prompt
-4. run "a:restore a: c: /s"
+2. go to the DOS command prompt
+3. run "a:restore a: c: /s"
 
 Under Linux you can mount the HDD image using this command:
 ```
@@ -126,9 +167,9 @@ be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it.
 IBMulator has 3 different GUI modes.
 
 * **Compact**: in this mode the VGA image fills the available window space and 
-the control panel, in the shape of the PS/1 system unit, disappears when input 
-is grabbed or CTRL+F1 is pressed. Use this mode if you want an experience 
-similar to DOSBox.
+the control panel, in the shape of a semi-transparent bar or the PS/1 system
+unit, auto-hides after a while and disappears when input is grabbed. Use this
+mode if you want an experience similar to DOSBox.
 * **Normal**: this is the default mode. The control panel / system unit places 
 itself at the bottom of the VGA display and is always visible.
 * **Realistic**: this is the hardcore mode, for the retro enthusiasts who want 
@@ -140,7 +181,63 @@ the key bindings for any extra function). Two styles are available in this mode:
 to have a better view. See ibmulator.ini and the Key bindings section for more
 info.
 
-You can select the GUI mode under the [gui] section of the ini file.
+You can select the starting GUI mode with the `[gui]:mode` setting of
+ibmulator.ini. You can also switch between Compact and Normal modes while using
+IBMulator (see below for the default key binding).
+
+#### Integer scaling
+
+If you like the pixel art style of the early '90 (who doesn't) you might want to
+enjoy it with the crispiest possible image quality.  
+In order to achieve image perfection, in _Normal_ and _Compact_ GUI modes you
+can use integer scaling.
+
+To enable integer scaling set these variables in ibmulator.ini:
+```
+[gui]
+mode=normal ; or compact
+
+[display]
+normal_scale=integer
+normal_filter=nearest
+normal_aspect=area
+```
+Other options are available for `normal_aspect` to try and force the image to a
+particular shape (see comments in ibmulator.ini for more info).
+
+### Savestates
+
+IBMulator supports multiple savestates. Every savestate is stored in a folder
+(slot) called `savestate_xxxx` where `xxxx` is a number (except for the
+"quick" slot) inside the `capture` folder.
+
+In every folder/slot there are various files that describe the savestate:
+
+* `state.bin`: the actual binary state of the machine (CPU registers, RAM, I/O
+devices, ...)
+* `state.ini`: the machine's configuration (not to be modified)
+* `state.png`: the VGA buffer image
+* `state.txt`: information about the savestate, ie. version, description, and a
+summary of the machine's configuration
+* `state-hdd.img`: the image file of the installed HDD
+
+Only a subset of the settings memorized in `state.ini` are used to load a state,
+specifically those related to the hardware configuration. Any other setting
+pertaining the program (GUI, mixer, ...) are kept from the originally loaded
+ibmulator.ini.
+
+By default any modification to a savestate's HDD image is discarded after a new
+savestate is loaded or when IBMulator is closed.  
+If you want the modifications to be permanent set `[hdd]:save` to `yes` so that
+the currently loaded HDD image can be used to overwrite the original image file,
+the path of which is memorized in `state.ini`.  
+
+#### Limitations
+
+1. Floppy disks are not saved like HDDs are. Saving a state while floppy disks
+are actively written to is not recommended. This will be addressed in a future
+version of IBMulator.
+2. Null modem connections cannot be restored (see below).
 
 ### Audio DSP filters
 
@@ -294,7 +391,7 @@ both client and server.
 
 Network modes have some limitations:
 * changing the emulator's speed will probably result in desynchronization;
-* save states won't work while the serial port is in use, as it's currently not
+* savestates won't work while the serial port is in use, as it's currently not
 possible to save and restore the same state on both the client and the server
 (you can always save just before starting using the port, ie. just before
 establishing a null modem connection in a game).
@@ -306,7 +403,7 @@ software (FluidSynth, Munt, etc.) or hardware.
 
 The MIDI device must be connected to the host system before IBMulator starts.
 
-#### Windows
+#### MIDI on Windows
 
 The `device` key in the `[midi]` ini section should be set either with the MIDI
 device number you want to use or its name.
@@ -323,7 +420,7 @@ device=MT-32 Synth Emulator
 If left empty then the default device #0 is used, which usually is the
 Microsoft GS Wavetable Synth.
 
-#### Linux
+#### MIDI on Linux
 
 On Linux the ALSA subsystem is used. The `[midi]:device` key can be set with the
 ALSA port of the device you want to use. For example:
@@ -546,44 +643,51 @@ keymap file.
 
 #### Default key bindings
 
-* CTRL+F1: GUI mode action 1:
-    * compact mode: toggle the main interface window
-    * realistic mode: toggle zoomed view
-* SHIFT+F1: GUI mode action 2:
-    * normal and compact modes: switch between normal and compact modes
-    * realistic mode: switch between bright and dark styles
-* CTRL+F3: toggle the machine power button
-* SHIFT+F4: show/hide the status indicators
-* CTRL+F4: show/hide the debug windows
-* CTRL+F5: take a screenshot
-* CTRL+F6: start/stop audio capture
-* CTRL+F7: start/stop video capture
-* SHIFT+F8: open the save state dialog
-* SHIFT+F9: open the load state dialog
-* CTRL+F8: quick save state
-* CTRL+F9: quick load state
-* CTRL+F10: grab the mouse
-* CTRL+F11: decrease emulation speed
-* SHIFT+F11: set emulation speed to 10% (press again to reset)
-* CTRL+F12: increase emulation speed
-* SHIFT+F12: set emulation speed to 500% (press again to reset)
-* CTRL+DEL: send CTRL+ALT+DEL to the guest OS
-* CTRL+TAB: send ALT+TAB to the guest OS
-* CTRL+INS: send SysRq to the guest OS
-* CTRL+END: send Break to the guest OS
-* SHIFT+SPACE: change the active keymap to the next available one
-* SHIFT+PAUSE: pause/resume emulation
-* ALT+ENTER: toggle fullscreen mode
-* ALT+F4: exit the program
+* <kbd>CTRL</kbd>+<kbd>F1</kbd>     : GUI mode action 1:
+    * in Compact mode: toggle the main interface window
+    * in Realistic mode: toggle zoomed view
+* <kbd>SHIFT</kbd>+<kbd>F1</kbd>    : GUI mode action 2:
+    * in Normal and Compact modes: switch between Normal and Compact modes
+    * in Realistic mode: switch between bright and dark styles
+* <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
+* <kbd>SHIFT</kbd>+<kbd>F4</kbd>    : show/hide the status indicators
+* <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows
+* <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
+* <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
+* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : start/stop video capture
+* <kbd>SHIFT</kbd>+<kbd>F8</kbd>    : open the save state dialog
+* <kbd>SHIFT</kbd>+<kbd>F9</kbd>    : open the load state dialog
+* <kbd>CTRL</kbd>+<kbd>F8</kbd>     : quick save state
+* <kbd>CTRL</kbd>+<kbd>F9</kbd>     : quick load state
+* <kbd>CTRL</kbd>+<kbd>F10</kbd>    : grab the mouse
+* <kbd>CTRL</kbd>+<kbd>F11</kbd>    : decrease emulation speed
+* <kbd>SHIFT</kbd>+<kbd>F11</kbd>   : set emulation speed to 10% (press again for 100%)
+* <kbd>CTRL</kbd>+<kbd>F12</kbd>    : increase emulation speed
+* <kbd>SHIFT</kbd>+<kbd>F12</kbd>   : set emulation speed to 500% (press again for 100%)
+* <kbd>CTRL</kbd>+<kbd>DEL</kbd>    : send CTRL+ALT+DEL to the guest OS
+* <kbd>CTRL</kbd>+<kbd>TAB</kbd>    : send ALT+TAB to the guest OS
+* <kbd>CTRL</kbd>+<kbd>INS</kbd>    : send SysRq to the guest OS
+* <kbd>CTRL</kbd>+<kbd>END</kbd>    : send Break to the guest OS
+* <kbd>SHIFT</kbd>+<kbd>SPACE</kbd> : change the active keymap to the next available one
+* <kbd>SHIFT</kbd>+<kbd>PAUSE</kbd> : pause/resume emulation
+* <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
+* <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
 The mouse can be grabbed with the central mouse button as well.
 
+### UI related key bindings
+
+These keys apply only to UI dialogs and cannot currently be changed:
+
+* <kbd>+</kbd> / <kbd>-</kbd> : increase/decrease elements size in savestate and floppy select dialogs
+* <kbd>ESC</kbd> : cancel and close dialog
+
 ### Command line options
 
--c PATH  Sets a configuration file to use  
--u PATH  Sets a user directory from where the program reads the ini file and 
-stores new files, like screenshots and savestates  
--v NUM  Sets the logging verbosity level (from 0 to 2)
+* `-c PATH` : Sets a configuration file to use
+* `-u PATH` : Sets a user directory from where the program reads the ini file
+and stores new files, like screenshots and savestates
+* `-v NUM`  : Sets the logging verbosity level (from 0 to 2)
 
 
 ## COMPILING
@@ -597,6 +701,6 @@ For **Linux** instructions see [BUILD_LINUX.md](BUILD_LINUX.md)
 
 I would like to thank the Bochs team. I've taken a huge amount of code from the 
 project. Thank you guys, you made a terrific job! Without your work IBMulator 
-would have taken at least a decade to reach the point where it is now.  
+would have taken at least a century to reach the point where it is now.  
 Also thanks to the DOSBox team. Some code from them as well and a lot of 
 information and inspiration.

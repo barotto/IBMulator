@@ -9,16 +9,20 @@
 * GLEW
 * libarchive (optional)
 * libsamplerate (optional)
+* libasound (optional)
 * zlib (optional)
 
-You need libarchive if you want to use zipped ROM sets.
+Without libarchive you'll not be able to use zipped ROM sets.
 
 Without libsamplerate the PC Speaker will not emit any sound and other audio 
 sources will not be played unless they are at the same rate as the mixer.
 
+Without libasound there'll be no MIDI output support.
+
 Without zlib the ZMBV compressed video capture format will not work.
 
 ## General instructions
+
 First of all run:  
 ```
 $ autoreconf --install
@@ -27,7 +31,7 @@ $ autoreconf --install
 Then configure, build, and install:  
 ```
 $ ./configure --with-rmlui-prefix=PATH/TO/RMLUI  
-$ make  
+$ make -j`nproc`
 $ make install
 ```  
 Use `./configure --help` to read the various compilation options.
@@ -48,7 +52,7 @@ To compile RmlUi you'll need cmake and libfreetype.
 $ git clone https://github.com/mikke89/RmlUi
 $ mkdir RmlUi/build && cd RmlUi/build
 $ cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-$ make
+$ make -j`nproc`
 ```
 
 ## Statically linked version
@@ -56,13 +60,29 @@ $ make
 Static linking is totally unsupported on Linux.  
 Just follow the previous instructions and compile with dynamic linking.
 
+But if you insist on building a "static" version, here's my personal recipe.
+
 This procedure works only on my Ubuntu system with some library recompiled.
-I'll keep these notes here only for my reference and convenience.
+These notes are for my reference and convenience only.
 
-**NOTE:** libSDL2 will always be linked dynamically.
+**NOTE:** this is actually a hybrid and not all libraries will be linked
+statically, specifically:
+- libSDL2-2.0 (SDL2)
+- libasound (ALSA)
+- libGL (OpenGL)
+- libc (C stdlib)
+- libm (C math lib)
+- libpthread (POSIX Threads)
 
-Needed libs:
+To know the needed dynamic libraries:
+```
+$ readelf -d ibmulator | grep NEEDED
+```
 
+### Required libraries
+
+* libsdl2
+* libasound
 * libtiff
 * libjpeg
 * libwebp
@@ -76,8 +96,11 @@ Needed libs:
 
 ```
 $ sudo apt install libtiff-dev libjpeg-dev libwebp-dev liblzma-dev libjbig-dev \
-libzstd-dev libharfbuzz-dev libbz2-dev liblzo2-dev libfreetype6-dev
+libzstd-dev libharfbuzz-dev libbz2-dev liblzo2-dev libfreetype6-dev \
+libsdl2-dev libasound2-dev
 ```
+
+### Compilation
 
 Compile libarchive with lot of stuff removed:
 ```
@@ -87,7 +110,7 @@ $ ./configure --without-bz2lib --without-libb2 --without-iconv --without-lz4 \
 --without-zstd --without-lzma --with-lzo2 --without-cng --without-nettle \
 --without-openssl --without-xml2 --without-expat \
 --prefix=/home/marco/workspace/libarchive/release
-$ make -j24  
+$ make -j`nproc` 
 $ make install
 ```
 
@@ -96,7 +119,7 @@ Compile GLEW:
 $ git clone https://github.com/nigels-com/glew.git  
 $ cd glew/build/cmake  
 $ ccmake  
-$ make -j24  
+$ make -j`nproc`
 $ make install
 ```
 
@@ -105,7 +128,7 @@ Compile RmlUi with the shared libs option disabled:
 $ cd RmlUi/build/  
 $ cmake .. -G "Unix Makefiles" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
 -DCMAKE_INSTALL_PREFIX:PATH=/home/marco/workspace/RmlUi/release
-$ make -j24  
+$ make -j`nproc`
 $ make install
 ```
 
