@@ -156,6 +156,13 @@ hr {
 	margin: 2em 0 2em 0;
 }
 
+.ini {
+	font-family: 'Courier New', monospace;
+	background-color: #222222;
+	font-weight: bold;
+	padding: 4px;
+}
+
 #donations {
 	float: right;
 	font-size: 0.7em;
