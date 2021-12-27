@@ -119,6 +119,8 @@ protected:
 	std::function<void(StateRecord::Info)> m_delete_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	
+	static constexpr int MIN_ZOOM = 0;
+	static constexpr int MAX_ZOOM = 2;
 	int m_zoom = 1;
 	
 public:
@@ -126,7 +128,7 @@ public:
 	StateDialog(GUI *_gui, const char *_doc) : Window(_gui,_doc) {}
 	virtual ~StateDialog() {}
 
-	virtual void create();
+	virtual void create(std::string _mode, std::string _order, int _zoom);
 	virtual void update();
 
 	void set_callbacks(

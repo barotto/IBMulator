@@ -64,7 +64,7 @@ FileSelect::~FileSelect()
 {
 }
 
-void FileSelect::create()
+void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 {
 	Window::create();
 
@@ -103,7 +103,25 @@ void FileSelect::create()
 	
 	disable(m_path_el.prev);
 	disable(m_path_el.next);
-	
+
+	if(_mode != "grid" && _mode != "list") {
+		_mode = "grid";
+	}
+	m_entries_el->SetClass(_mode, true);
+	get_element(str_format("mode_%s",_mode.c_str()))->SetAttribute("checked", true);
+
+	if(_order == "date") {
+		m_order = Order::BY_DATE;
+		get_element("order_date")->SetAttribute("checked", true);
+	} else if(_order == "title" || _order == "desc") {
+		m_order = Order::BY_NAME;
+		get_element("order_name")->SetAttribute("checked", true);
+	} else {
+		m_order = Order::BY_NAME;
+		get_element("order_name")->SetAttribute("checked", true);
+	}
+
+	m_zoom = _zoom;
 	set_zoom(0);
 
 	m_new_floppy = std::make_unique<NewFloppy>(m_gui);
@@ -765,8 +783,8 @@ void FileSelect::set_zoom(int _amount)
 {
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
 	m_zoom += _amount;
-	m_zoom = std::min(4, m_zoom);
-	m_zoom = std::max(0, m_zoom);
+	m_zoom = std::min(MAX_ZOOM, m_zoom);
+	m_zoom = std::max(MIN_ZOOM, m_zoom);
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
 	m_dirty_scroll = 2;
 }

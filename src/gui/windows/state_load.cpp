@@ -39,9 +39,9 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "*",       "keydown",   StateDialog::on_keydown )
 };
 
-void StateLoad::create()
+void StateLoad::create(std::string _mode, std::string _order, int _zoom)
 {
-	StateDialog::create();
+	StateDialog::create(_mode, _order, _zoom);
 	get_element("extra_btns")->RemoveChild(get_element("new_save"));
 }
 

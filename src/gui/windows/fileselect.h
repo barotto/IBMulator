@@ -115,7 +115,11 @@ private:
 	std::vector<uint64_t> m_compat_sizes;
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
+
+	static constexpr int MIN_ZOOM = 0;
+	static constexpr int MAX_ZOOM = 4;
 	int m_zoom = 2;
+
 	Rml::Element *m_new_btn = nullptr;
 	std::unique_ptr<NewFloppy> m_new_floppy;
 	const DirEntry *m_lazy_select = nullptr;
@@ -130,7 +134,7 @@ public:
 	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDiskType, bool)> _fn) { m_newfloppy_callbk = _fn; }
 	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
-	virtual void create();
+	virtual void create(std::string _mode, std::string _order, int _zoom);
 	virtual void update();
 	virtual void show();
 	virtual void close();

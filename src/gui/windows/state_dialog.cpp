@@ -28,7 +28,7 @@
 #include <regex>
 #include <RmlUi/Core.h>
 
-void StateDialog::create()
+void StateDialog::create(std::string _mode, std::string _order, int _zoom)
 {
 	Window::create();
 
@@ -38,7 +38,29 @@ void StateDialog::create()
 	m_panel_config_el = get_element("panel_config");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_action_button_el = get_element("action");
-	
+
+	if(_mode != "grid" && _mode != "list") {
+		_mode = "grid";
+	}
+	m_entries_el->SetClass(_mode, true);
+	m_panel_el->SetClass(_mode, true);
+	get_element(str_format("mode_%s",_mode.c_str()))->SetAttribute("checked", true);
+
+	if(_order == "date") {
+		m_order = Order::BY_DATE;
+		get_element("order_date")->SetAttribute("checked", true);
+	} else if(_order == "title" || _order == "desc") {
+		m_order = Order::BY_DESC;
+		get_element("order_title")->SetAttribute("checked", true);
+	} else if(_order == "slot") {
+		m_order = Order::BY_SLOT;
+		get_element("order_slot")->SetAttribute("checked", true);
+	} else {
+		m_order = Order::BY_DATE;
+		get_element("order_date")->SetAttribute("checked", true);
+	}
+
+	m_zoom = _zoom;
 	set_zoom(0);
 }
 
@@ -311,8 +333,8 @@ void StateDialog::set_zoom(int _amount)
 {
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
 	m_zoom += _amount;
-	m_zoom = std::min(2, m_zoom);
-	m_zoom = std::max(0, m_zoom);
+	m_zoom = std::min(MAX_ZOOM, m_zoom);
+	m_zoom = std::max(MIN_ZOOM, m_zoom);
 	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
 	m_dirty_scroll = 2;
 }

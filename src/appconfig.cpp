@@ -36,7 +36,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 {
 	{ PROGRAM_SECTION, {
 		{ PROGRAM_MEDIA_DIR,    ""       },
-		{ PROGRAM_FILE_DIALOGS, "custom" },
 		{ PROGRAM_WAIT_METHOD,  "auto"   },
 		{ PROGRAM_LOG_FILE,     "log.txt"}
 	} },
@@ -61,12 +60,24 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_BG_B,               "30"         },
 		{ GUI_UI_SCALING,         "1.0"        }
 	} },
+
+	{ DIALOGS_SECTION, {
+		{ DIALOGS_FILE_TYPE,  "custom" },
+		{ DIALOGS_FILE_MODE,  "grid"   },
+		{ DIALOGS_FILE_ORDER, "name"   },
+		{ DIALOGS_FILE_ZOOM,  "2"      },
+		{ DIALOGS_SAVE_MODE,  "grid"   },
+		{ DIALOGS_SAVE_ORDER, "date"   },
+		{ DIALOGS_SAVE_ZOOM,  "1"      }
+	} },
+
 	{ CAPTURE_SECTION, {
 		{ CAPTURE_DIR,           ""     },
 		{ CAPTURE_VIDEO_MODE,    "avi"  },
 		{ CAPTURE_VIDEO_FORMAT,  "zmbv" },
 		{ CAPTURE_VIDEO_QUALITY, "3"    }
 	} },
+
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_NORMAL_SCALE,      "fill" },
 		{ DISPLAY_NORMAL_ASPECT,     "4:3"  },
@@ -312,11 +323,8 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ PROGRAM_SECTION,
-";     media_dir: The default directory used to search for disk images.\n"
-";  file_dialogs: The type of file select dialogs to use:\n"
-";                 custom: use the " PACKAGE_NAME "'s custom implementation\n"
-";                 native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
-";      log_file: path of the log file\n"
+"; media_dir: The default directory used to search for disk images.\n"
+";  log_file: path of the log file\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -366,6 +374,20 @@ ini_filehelp_t AppConfig::ms_help = {
 ";         bg_XXX: Background window color\n"
 ";show_indicators: Show status indicators on the top-right corner of the screen.\n"
 ";     ui_scaling: UI scaling factor expressed as a real number (eg.: 1.5).\n"
+";filedialog_mode: Possible values: grid, list.\n"
+";filedialog_zoom: Possible values: 0,1,2,3,4.\n"
+		},
+
+		{ DIALOGS_SECTION,
+";  file_type: The type of file select dialogs to use:\n"
+";              custom: use the " PACKAGE_NAME "'s custom implementation\n"
+";              native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
+";  file_mode: Custom file dialogs initial view mode: grid, list\n"
+"; file_order: Custom file dialogs initial order: name, date\n"
+";  file_zoom: Custom file dialogs initial zoom level: 0, 1, 2, 3, 4\n"
+";  save_mode: Savestate dialogs initial view mode: grid, list\n"
+"; save_order: Savestate dialogs initial order: date, title, slot\n"
+";  save_zoom: Savestate dialogs initial zoom level: 0, 1, 2\n"
 		},
 
 		{ CAPTURE_SECTION,
@@ -597,7 +619,6 @@ ini_filehelp_t AppConfig::ms_help = {
 std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
 		PROGRAM_MEDIA_DIR,
-		PROGRAM_FILE_DIALOGS,
 		PROGRAM_LOG_FILE
 	} },
 	{ GUI_SECTION, {
@@ -619,6 +640,15 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		GUI_BG_B,
 		GUI_SHOW_INDICATORS,
 		GUI_UI_SCALING
+	} },
+	{ DIALOGS_SECTION, {
+		DIALOGS_FILE_TYPE,
+		DIALOGS_FILE_MODE,
+		DIALOGS_FILE_ORDER,
+		DIALOGS_FILE_ZOOM,
+		DIALOGS_SAVE_MODE,
+		DIALOGS_SAVE_ORDER,
+		DIALOGS_SAVE_ZOOM
 	} },
 	{ CAPTURE_SECTION, {
 		CAPTURE_DIR,

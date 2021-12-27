@@ -6,8 +6,8 @@
 	<link type="text/rcss" href="state_dialog_grid.rcss"/>
 </head>
 <body>
-	<div id="entries" class="grid"></div>
-	<div id="panel" class="grid">
+	<div id="entries"></div>
+	<div id="panel">
 		<div id="panel_data">
 			<div id="panel_screen"></div>
 			<div id="panel_config"></div>
@@ -15,14 +15,14 @@
 	</div>
 	<form id="buttons_left">
 		<div id="mode">
-		<input type="radio" name="mode" value="grid" class="romshell" checked><btnicon class="icon_grid" /><span></span></input>
-		<input type="radio" name="mode" value="list" class="romshell"><btnicon class="icon_list" /><span></span></input>
+		<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell"><btnicon class="icon_grid" /><span></span></input>
+		<input type="radio" name="mode" value="list" id="mode_list" class="romshell"><btnicon class="icon_list" /><span></span></input>
 		</div>
 		by
 		<div id="order">
-		<input type="radio" name="order" value="date" class="romshell" checked><span>date</span></input>
-		<input type="radio" name="order" value="title" class="romshell"><span>title</span></input>
-		<input type="radio" name="order" value="slot" class="romshell"><span>slot</span></input>
+		<input type="radio" name="order" value="date"  id="order_date" class="romshell"><span>date</span></input>
+		<input type="radio" name="order" value="title" id="order_title" class="romshell"><span>title</span></input>
+		<input type="radio" name="order" value="slot"  id="order_slot" class="romshell"><span>slot</span></input>
 		</div>
 		<div id="asc_desc">
 		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>

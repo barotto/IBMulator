@@ -122,7 +122,6 @@ public:
 
 #define PROGRAM_SECTION         "program"
 #define PROGRAM_MEDIA_DIR       "media_dir"
-#define PROGRAM_FILE_DIALOGS    "file_dialogs"
 #define PROGRAM_WAIT_METHOD     "timing"
 #define PROGRAM_LOG_FILE        "log_file"
 
@@ -146,6 +145,15 @@ public:
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"
 #define GUI_UI_SCALING          "ui_scaling"
+
+#define DIALOGS_SECTION         "gui_dialogs"
+#define DIALOGS_FILE_TYPE       "file_type"
+#define DIALOGS_FILE_MODE       "file_mode"
+#define DIALOGS_FILE_ORDER      "file_order"
+#define DIALOGS_FILE_ZOOM       "file_zoom"
+#define DIALOGS_SAVE_MODE       "save_mode"
+#define DIALOGS_SAVE_ORDER      "save_order"
+#define DIALOGS_SAVE_ZOOM       "save_zoom"
 
 #define CAPTURE_SECTION         "capture"
 #define CAPTURE_DIR             "directory"

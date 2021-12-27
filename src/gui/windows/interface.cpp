@@ -228,8 +228,11 @@ void Interface::create()
 
 	m_leds.power = false;
 
+	auto mode = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_MODE, "grid");
+	auto order = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_ORDER, "name");
+	int zoom = g_program.config().get_int(DIALOGS_SECTION, DIALOGS_FILE_ZOOM, 2);
 	m_fs = std::make_unique<FileSelect>(m_gui);
-	m_fs->create();
+	m_fs->create(mode, order, zoom);
 	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
 	m_fs->set_newfloppy_callbk(std::bind(&Interface::create_new_floppy_image, this, _1, _2, _3, _4));
@@ -246,15 +249,20 @@ void Interface::create()
 		m_fs->set_home(cfg_home);
 	}
 
+	mode = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_SAVE_MODE, "grid");
+	order = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_SAVE_ORDER, "date");
+	zoom = g_program.config().get_int(DIALOGS_SECTION, DIALOGS_SAVE_ZOOM, 1);
+
 	m_state_save = std::make_unique<StateSave>(m_gui);
-	m_state_save->create();
+	m_state_save->create(mode, order, zoom);
 	m_state_save->set_modal(true);
+
 	m_state_save_info = std::make_unique<StateSaveInfo>(m_gui);
 	m_state_save_info->create();
 	m_state_save_info->set_modal(true);
 
 	m_state_load = std::make_unique<StateLoad>(m_gui);
-	m_state_load->create();
+	m_state_load->create(mode, order, zoom);
 	m_state_load->set_modal(true);
 
 	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
@@ -562,7 +570,7 @@ void Interface::on_fdd_mount(Rml::Event &)
 		floppy_dir = m_fs->get_home();
 	}
 	
-	if(g_program.config().get_string(PROGRAM_SECTION, PROGRAM_FILE_DIALOGS, "custom") == "native") {
+	if(g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_TYPE, "custom") == "native") {
 		floppy_dir += "/";
 		const char *filter_patterns[2] = { "*.img", "*.ima" };
 		if(m_gui->is_fullscreen()) {

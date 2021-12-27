@@ -34,7 +34,7 @@ public:
 	StateLoad(GUI * _gui) : StateDialog(_gui, "state_load.rml") {}
 	virtual ~StateLoad() {}
 
-	void create();
+	void create(std::string _mode, std::string _order, int _zoom);
 	
 	void action_on_record(std::string _rec_name);
 
