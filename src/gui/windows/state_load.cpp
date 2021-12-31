@@ -31,12 +31,13 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "close",   "click",     StateDialog::on_cancel ),
 	GUI_EVT( "entries", "click",     StateLoad::on_entry ),
 	GUI_EVT( "entries", "dblclick",  StateDialog::on_action ),
+	GUI_EVT( "entries", "keydown",   StateDialog::on_entries ),
 	GUI_EVT( "mode",    "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",   "click",     StateDialog::on_order ),
 	GUI_EVT( "asc_desc","click",     StateDialog::on_asc_desc),
 	GUI_EVT( "action",  "click",     StateDialog::on_action ),
 	GUI_EVT( "delete",  "click",     StateDialog::on_delete ),
-	GUI_EVT( "*",       "keydown",   StateDialog::on_keydown )
+	GUI_EVT( "*",       "keydown",   StateDialog::on_keydown ),
 };
 
 void StateLoad::create(std::string _mode, std::string _order, int _zoom)
@@ -73,7 +74,7 @@ void StateLoad::on_entry(Rml::Event &_ev)
 	Rml::Element *entry = el->GetParentNode();
 
 	if(el->IsClassSet("action")) {
-		entry_select(entry->GetId(), entry);
+		entry_select(entry);
 		action_on_record(entry->GetId());
 		return;
 	}
@@ -82,7 +83,22 @@ void StateLoad::on_entry(Rml::Event &_ev)
 		return;
 	}
 	if(el->IsClassSet("target")) {
-		entry_select(entry->GetId(), entry);
+		entry_select(entry);
 	}
 }
 
+void StateLoad::on_keydown(Rml::Event &_ev)
+{
+	auto id = get_key_identifier(_ev);
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_L:
+			if(!m_selected_name.empty()) {
+				action_on_record(m_selected_name);
+			}
+			break;
+		default:
+			StateDialog::on_keydown(_ev);
+			return;
+	}
+	_ev.StopImmediatePropagation();
+}

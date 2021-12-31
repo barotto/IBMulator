@@ -20,11 +20,12 @@
 #ifndef IBMULATOR_GUI_FILESELECT_H
 #define IBMULATOR_GUI_FILESELECT_H
 
+#include "items_dialog.h"
 #include "new_floppy.h"
 
 class GUI;
 
-class FileSelect : public Window
+class FileSelect : public ItemsDialog
 {
 private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
@@ -40,8 +41,7 @@ private:
 	std::string m_cwd;
 	bool m_valid_cwd = false;
 	bool m_writable_cwd = false;
-	Rml::Element *m_entries_el = nullptr;
-	Rml::Element *m_entries_cont_el = nullptr;
+
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::ElementFormControl *m_wprotect = nullptr;
@@ -104,8 +104,9 @@ private:
 	std::set<const DirEntry*, DirEntryOrderName> m_cur_dir_name;
 	std::map<std::string, DirEntry> m_de_map;
 	const DirEntry *m_dotdot = nullptr;
-	Rml::Element *m_selected_entry = nullptr;
-	std::string m_selected_id;
+
+	const DirEntry *m_selected_de = nullptr;
+
 	bool m_dirty = true;
 	int m_dirty_scroll = 0;
 	enum class Order {
@@ -118,7 +119,6 @@ private:
 
 	static constexpr int MIN_ZOOM = 0;
 	static constexpr int MAX_ZOOM = 4;
-	int m_zoom = 2;
 
 	Rml::Element *m_new_btn = nullptr;
 	std::unique_ptr<NewFloppy> m_new_floppy;
@@ -161,6 +161,7 @@ protected:
 	void on_prev(Rml::Event &);
 	void on_next(Rml::Event &);
 	void on_insert(Rml::Event &);
+	void on_entries(Rml::Event &);
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
 	void on_show_panel(Rml::Event &);
@@ -170,14 +171,20 @@ protected:
 	void clear();
 	void set_cwd(const std::string &_path);
 	void set_history();
+	void set_mode(std::string _mode);
 	void set_zoom(int _amount);
 	
 	void read_dir(std::string _path, std::string _ext);
+	void enter_dir(const DirEntry *_de);
+	void entry_select(Rml::Element *_entry);
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
 	void entry_deselect();
 	std::string get_up_path();
 
-	std::pair<DirEntry*,Rml::Element*> get_entry(Rml::Event &);
+	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Element *target_el);
+	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Event &);
+	
+	void move_selection(Rml::Input::KeyIdentifier _id);
 };
 
 

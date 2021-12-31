@@ -1973,9 +1973,11 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 		if(key != Rml::Input::KI_UNKNOWN) {
 			m_rml_context->ProcessKeyDown(key,rmlmod);
 		}
-		char c = RmlSystemInterface::GetCharacterCode(key, rmlmod);
-		if(c > 0) {
-			m_rml_context->ProcessTextInput(c);
+		if(!(rmlmod & Rml::Input::KM_CTRL)) {
+			char c = RmlSystemInterface::GetCharacterCode(key, rmlmod);
+			if(c > 0) {
+				m_rml_context->ProcessTextInput(c);
+			}
 		}
 		break;
 	}

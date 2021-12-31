@@ -39,6 +39,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "close",   "click",   FileSelect::on_cancel ),
 	GUI_EVT( "entries", "click",   FileSelect::on_entry ),
 	GUI_EVT( "entries", "dblclick",FileSelect::on_insert ),
+	GUI_EVT( "entries", "keydown", FileSelect::on_entries ),
 	GUI_EVT( "insert",  "click",   FileSelect::on_insert ),
 	GUI_EVT( "drive",   "click",   FileSelect::on_drive ),
 	GUI_EVT( "mode",    "click",   FileSelect::on_mode ),
@@ -56,7 +57,7 @@ event_map_t FileSelect::ms_evt_map = {
 
 FileSelect::FileSelect(GUI * _gui)
 :
-Window(_gui, "fileselect.rml")
+ItemsDialog(_gui, "fileselect.rml")
 {
 }
 
@@ -68,8 +69,6 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 {
 	Window::create();
 
-	m_entries_el = get_element("entries");
-	m_entries_cont_el = get_element("entries_container");
 	m_panel_el = get_element("info_panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
@@ -104,11 +103,9 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 	disable(m_path_el.prev);
 	disable(m_path_el.next);
 
-	if(_mode != "grid" && _mode != "list") {
-		_mode = "grid";
-	}
-	m_entries_el->SetClass(_mode, true);
-	get_element(str_format("mode_%s",_mode.c_str()))->SetAttribute("checked", true);
+	m_max_zoom = MAX_ZOOM;
+	m_min_zoom = MIN_ZOOM;
+	ItemsDialog::create(_mode, _zoom, "entries", "entries_container");
 
 	if(_order == "date") {
 		m_order = Order::BY_DATE;
@@ -120,9 +117,6 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 		m_order = Order::BY_NAME;
 		get_element("order_name")->SetAttribute("checked", true);
 	}
-
-	m_zoom = _zoom;
-	set_zoom(0);
 
 	m_new_floppy = std::make_unique<NewFloppy>(m_gui);
 	m_new_floppy->create();
@@ -136,7 +130,7 @@ void FileSelect::update()
 
 	if(m_dirty) {
 		set_disabled(m_path_el.up, get_up_path().empty());
-		auto prev_selected = m_selected_id;
+		const DirEntry *prev_selected = m_selected_de;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
@@ -190,13 +184,10 @@ void FileSelect::update()
 			}
 		}
 		m_dirty = false;
-		if(prev_selected != "") {
-			auto entry_el = m_entries_el->GetElementById(prev_selected);
+		if(prev_selected) {
+			auto entry_el = m_entries_el->GetElementById(prev_selected->id);
 			if(entry_el) {
-				auto pair = m_de_map.find(prev_selected);
-				if(pair != m_de_map.end()) {
-					entry_select(&pair->second, entry_el);
-				}
+				entry_select(prev_selected, entry_el);
 			}
 		}
 	}
@@ -204,6 +195,7 @@ void FileSelect::update()
 		auto entry_el = m_entries_el->GetElementById(m_lazy_select->id);
 		if(entry_el) {
 			entry_select(m_lazy_select, entry_el);
+			m_buttons_entry_el->GetChild(1)->Focus();
 		}
 		m_lazy_select = nullptr;
 	}
@@ -225,6 +217,10 @@ void FileSelect::show()
 	disable(m_path_el.prev);
 
 	Window::show();
+	
+	if(m_selected_entry) {
+		m_entries_el->Focus();
+	}
 }
 
 void FileSelect::close()
@@ -235,14 +231,9 @@ void FileSelect::close()
 	Window::close();
 }
 
-std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_entry(Rml::Event &_ev)
+std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_de_entry(Rml::Element *target_el)
 {
-	Rml::Element *entry_el = nullptr;
-	Rml::Element *target_el = _ev.GetTargetElement();
-	entry_el = target_el;
-	while(entry_el && entry_el->GetId().empty()) {
-		entry_el = entry_el->GetParentNode();
-	}
+	Rml::Element *entry_el = ItemsDialog::get_entry(target_el);
 	if(!entry_el) {
 		return std::make_pair(nullptr,nullptr);
 	}
@@ -255,24 +246,21 @@ std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_entry(Rml::Event 
 	return std::make_pair(&pair->second, entry_el);
 }
 
+std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_de_entry(Rml::Event &_ev)
+{
+	return FileSelect::get_de_entry(_ev.GetTargetElement());
+}
+
 void FileSelect::on_entry(Rml::Event &_ev)
 {
-	auto [de, entry_el] = get_entry(_ev);
+	auto [de, entry_el] = FileSelect::get_de_entry(_ev);
 	if(!de) {
 		entry_deselect();
 		return;
 	}
 
 	if(de->is_dir) {
-		if(de->name == "..") {
-			on_up(_ev);
-		} else {
-			set_history();
-			try {
-				set_current_dir(m_cwd + FS_SEP + de->name);
-			} catch(...) { }
-		}
-		return;
+		enter_dir(de);
 	} else {
 		entry_select(de, entry_el);
 	}
@@ -280,19 +268,16 @@ void FileSelect::on_entry(Rml::Event &_ev)
 
 void FileSelect::on_insert(Rml::Event &_ev)
 {
-	auto [de, entry_el] = get_entry(_ev);
+	const DirEntry *de = nullptr;
+	Rml::Element *entry_el = nullptr;
 
 	if(_ev.GetType() != "dblclick") {
-		if(m_selected_id.empty()) {
-			return;
-		}
-		auto pair = m_de_map.find(m_selected_id);
-		if(pair == m_de_map.end()) {
-			entry_deselect();
-			return;
-		}
-		de = &pair->second;
+		de = m_selected_de;
+		entry_el = m_selected_entry;
+	} else {
+		std::tie(de, entry_el) = FileSelect::get_de_entry(_ev);
 	}
+
 	if(!de) {
 		return;
 	}
@@ -306,6 +291,29 @@ void FileSelect::on_insert(Rml::Event &_ev)
 	} else {
 		hide();
 	}
+}
+
+void FileSelect::on_entries(Rml::Event &_ev)
+{
+	auto id = get_key_identifier(_ev);
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_RETURN:
+		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
+		{
+			if(m_selected_de) {
+				if(m_selected_de->is_dir) {
+					enter_dir(m_selected_de);
+				} else {
+					on_insert(_ev);
+				}
+			}
+			break;
+		}
+		default:
+			on_keydown(_ev);
+			return;
+	}
+	_ev.StopImmediatePropagation();
 }
 
 void FileSelect::on_home(Rml::Event &)
@@ -468,36 +476,53 @@ void FileSelect::on_next(Rml::Event &)
 	}
 }
 
+void FileSelect::enter_dir(const DirEntry *_de)
+{
+	if(_de->name == "..") {
+		Rml::Event ev;
+		on_up(ev);
+	} else {
+		set_history();
+		try {
+			set_current_dir(m_cwd + FS_SEP + _de->name);
+		} catch(...) { }
+	}
+}
+
+void FileSelect::entry_select(Rml::Element *_entry_el)
+{
+	entry_deselect();
+	auto pair = FileSelect::get_de_entry(_entry_el);
+	if(!pair.first) {
+		return;
+	}
+	entry_select(pair.first, pair.second);
+}
+
 void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
 {
-	try {
-		entry_deselect();
+	ItemsDialog::entry_select(_entry_el);
 
-		m_selected_entry = _entry_el;
-		m_selected_entry->SetClass("selected", true);
-		m_selected_id = _de->id;
+	m_selected_de = _de;
 
-		if(m_valid_cwd && m_inforeq_fn) {
+	m_panel_el->SetInnerRML("");
+	if(m_valid_cwd && m_inforeq_fn) {
+		if(!_de->is_dir) {
 			m_panel_el->SetInnerRML(m_inforeq_fn(m_cwd + FS_SEP + _de->name));
-			m_panel_el->SetScrollTop(0);
 		}
+		m_panel_el->SetScrollTop(0);
+	}
 
+	if(!_de->is_dir) {
 		m_buttons_entry_el->SetClass("invisible", false);
-
-		scroll_vertical_into_view(_entry_el, m_entries_cont_el);
-
-	} catch(std::out_of_range &) {
-		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
 	}
 }
 
 void FileSelect::entry_deselect()
 {
-	if(m_selected_entry) {
-		m_selected_entry->SetClass("selected", false);
-		m_selected_id = "";
-	}
-	m_selected_entry = nullptr;
+	ItemsDialog::entry_deselect();
+
+	m_selected_de = nullptr;
 
 	m_buttons_entry_el->SetClass("invisible", true);
 	if(m_inforeq_fn) {
@@ -521,24 +546,18 @@ void FileSelect::on_drive(Rml::Event &_ev)
 	}
 }
 
+void FileSelect::set_mode(std::string _mode)
+{
+	ItemsDialog::set_mode(_mode);
+
+	if(m_selected_de) {
+		m_dirty_scroll = 2;
+	}
+}
+
 void FileSelect::on_mode(Rml::Event &_ev)
 {
-	std::string value = Window::get_form_input_value(_ev);
-	if(!value.empty()) {
-		m_entries_el->SetClass("list", false);
-		m_entries_el->SetClass("grid", false);
-		m_entries_el->SetClass(value, true);
-	}
-	if(m_selected_id != "") {
-		auto el = m_entries_el->GetElementById(m_selected_id);
-		if(el) {
-			m_selected_entry = el;
-			m_selected_entry->SetClass("selected", true);
-			m_dirty_scroll = 2;
-			return;
-		}
-	}
-	entry_deselect();
+	set_mode(Window::get_form_input_value(_ev));
 }
 
 void FileSelect::on_order(Rml::Event &_ev)
@@ -781,32 +800,74 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 
 void FileSelect::set_zoom(int _amount)
 {
-	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
-	m_zoom += _amount;
-	m_zoom = std::min(MAX_ZOOM, m_zoom);
-	m_zoom = std::max(MIN_ZOOM, m_zoom);
-	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
+	ItemsDialog::set_zoom(_amount);
+
 	m_dirty_scroll = 2;
 }
 
 void FileSelect::on_keydown(Rml::Event &_ev)
 {
-	switch(get_key_identifier(_ev)) {
-		case Rml::Input::KeyIdentifier::KI_OEM_MINUS:
-		case Rml::Input::KeyIdentifier::KI_SUBTRACT:
-			set_zoom(-1);
+	auto id = get_key_identifier(_ev);
+	bool handled = true;
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_S:
+			if(_ev.GetParameter<bool>("ctrl_key", false) &&
+			    m_selected_de && !m_selected_de->is_dir)
+			{
+				on_insert(_ev);
+			} else {handled=false;}
 			break;
-		case Rml::Input::KeyIdentifier::KI_OEM_PLUS:
-		case Rml::Input::KeyIdentifier::KI_ADD:
-			set_zoom(1);
+		case Rml::Input::KeyIdentifier::KI_W:
+			if(_ev.GetParameter<bool>("ctrl_key", false) &&
+			    m_selected_de && !m_selected_de->is_dir)
+			{
+				bool wp = m_wprotect->GetAttribute("checked") != nullptr;
+				if(wp) {
+					m_wprotect->RemoveAttribute("checked");
+				} else {
+					m_wprotect->SetAttribute("checked", true);
+				}
+			} else {handled=false;}
 			break;
-		case Rml::Input::KeyIdentifier::KI_RETURN:
-		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
-			// TODO remove when proper keyboard input is implemented
-			_ev.StopImmediatePropagation();
+		case Rml::Input::KeyIdentifier::KI_UP:
+			if(_ev.GetParameter<bool>("alt_key", false)) {
+				on_up(_ev);
+			} else {handled=false;}
 			break;
-		default:
-			Window::on_keydown(_ev);
+		case Rml::Input::KeyIdentifier::KI_LEFT:
+			if(_ev.GetParameter<bool>("alt_key", false)) {
+				on_prev(_ev);
+			} else {handled=false;}
 			break;
+		case Rml::Input::KeyIdentifier::KI_RIGHT:
+			if(_ev.GetParameter<bool>("alt_key", false)) {
+				on_next(_ev);
+			} else {handled=false;}
+			break;
+		case Rml::Input::KeyIdentifier::KI_HOME:
+			if(_ev.GetParameter<bool>("alt_key", false)) {
+				on_home(_ev);
+			} else {handled=false;}
+			break;
+		case Rml::Input::KeyIdentifier::KI_BACK:
+			on_up(_ev);
+			break;
+		case Rml::Input::KeyIdentifier::KI_F5:
+			on_reload(_ev);
+			break;
+		case Rml::Input::KeyIdentifier::KI_F9:
+			on_show_panel(_ev);
+			break;
+		case Rml::Input::KeyIdentifier::KI_N:
+			if(_ev.GetParameter<bool>("ctrl_key", false)) {
+				on_new_floppy(_ev);
+			} else {handled=false;}
+			break;
+		default: handled=false; break;
+	}
+	if(handled) {
+		_ev.StopImmediatePropagation();
+	} else {
+		ItemsDialog::on_keydown(_ev);
 	}
 }

@@ -673,14 +673,46 @@ keymap file.
 * <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
 * <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
-The mouse can be grabbed with the central mouse button as well.
+The mouse can be grabbed with the central mouse button as well.  
+Fullscreen mode can also be activated by double-clicking the display area.
 
 ### UI related key bindings
 
-These keys apply only to UI dialogs and cannot currently be changed:
+These keys apply only to UI dialogs and cannot currently be changed.
 
-* <kbd>+</kbd> / <kbd>-</kbd> : increase/decrease elements size in savestate and floppy select dialogs
-* <kbd>ESC</kbd> : cancel and close dialog
+All dialog windows:
+* <kbd>TAB</kbd>: focus input on next control
+* <kbd>SHIFT</kbd>+<kbd>TAB</kbd>: focus input on previous control
+* <kbd>ENTER</kbd>: click on focused control
+* <kbd>ESC</kbd>: cancel and close dialog
+
+Floppy select and savestate dialogs:
+* <kbd>←</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>→</kbd>,
+<kbd>HOME</kbd>, <kbd>END</kbd>, <kbd>PGUP</kbd>, <kbd>PGDN</kbd>: move item
+selection
+* <kbd>CTRL</kbd>+<kbd>1</kbd>: grid view mode
+* <kbd>CTRL</kbd>+<kbd>2</kbd>: list view mode
+* <kbd>+</kbd>/<kbd>-</kbd>: increase/decrease items size
+
+Floppy select dialog:
+* <kbd>CTRL</kbd>+<kbd>S</kbd>: use selected disk image
+* <kbd>CTRL</kbd>+<kbd>W</kbd>: toggle write protected flag
+* <kbd>CTRL</kbd>+<kbd>N</kbd>: new disk image
+* <kbd>ALT</kbd>+<kbd>HOME</kbd>: go to the media directory
+* <kbd>ALT</kbd>+<kbd>↑</kbd>, <kbd>BACKSPACE</kbd>: go to upper directory
+* <kbd>ALT</kbd>+<kbd>←</kbd>: go to previous path
+* <kbd>ALT</kbd>+<kbd>→</kbd>: go to next path
+* <kbd>F5</kbd>: reload current directory
+* <kbd>F9</kbd>: toggle image info panel
+
+Load machine state dialog:
+* <kbd>CTRL</kbd>+<kbd>L</kbd>: load selected slot
+* <kbd>DELETE</kbd>: delete selected slot
+
+Save machine state dialog:
+* <kbd>CTRL</kbd>+<kbd>S</kbd>: save selected slot
+* <kbd>DELETE</kbd>: delete selected slot
+* <kbd>CTRL</kbd>+<kbd>N</kbd>: new savestate
 
 ### Command line options
 

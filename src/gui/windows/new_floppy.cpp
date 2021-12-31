@@ -164,15 +164,14 @@ void NewFloppy::on_keydown(Rml::Event &_ev)
 		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
 			if(_ev.GetTargetElement() == m_filename_el) {
 				on_create_file(_ev);
-			} else {
-				// TODO remove when proper keyboard input is implemented
-				_ev.StopImmediatePropagation();
+				break;
 			}
-			break;
+			[[fallthrough]];
 		default:
 			Window::on_keydown(_ev);
-			break;
+			return;
 	}
+	_ev.StopImmediatePropagation();
 }
 
 

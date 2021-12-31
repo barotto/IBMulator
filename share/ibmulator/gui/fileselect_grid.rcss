@@ -47,7 +47,8 @@
 	text-align: center;
 }
 
-.grid .entry:hover .name
+.grid .entry:hover .name,
+.grid .entry.hover .name
 {
 	overflow: visible;
 	background-color: #6795beff;
@@ -59,6 +60,7 @@
 	display: none;
 }
 
+.grid .entry.hover,
 .grid .entry:hover
 {
 	background-color: #6795be;
@@ -105,6 +107,7 @@
 	top: 0dp;
 }
 
+.grid.zoom-0 .entry.hover .name,
 .grid.zoom-0 .entry:hover .name
 {
 	visibility: visible;
@@ -142,6 +145,7 @@
 	top: 0dp;
 }
 
+.grid.zoom-1 .entry.hover .name,
 .grid.zoom-1 .entry:hover .name
 {
 	visibility: visible;

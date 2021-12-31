@@ -135,5 +135,6 @@ void MessageWnd::on_keydown(Rml::Event &_ev)
 			Window::on_keydown(_ev);
 			return;
 	}
+	_ev.StopImmediatePropagation();
 }
 

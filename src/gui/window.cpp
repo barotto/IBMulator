@@ -237,6 +237,41 @@ bool Window::is_active(Rml::Element *_el)
 	return (_el->IsClassSet("active"));
 }
 
+std::pair<Rml::Element*,int> Window::get_first_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container, int _starting_at)
+{
+	auto container_top = _outer_container->GetAbsoluteTop();
+	for(int idx = _starting_at; idx < _elem_container->GetNumChildren(); idx++) {
+		auto element = _elem_container->GetChild(idx);
+		auto element_top = element->GetAbsoluteTop();
+		auto element_relative_top = element_top - container_top;
+		if(element_relative_top >= 0) {
+			return std::make_pair(element,idx);
+		}
+	}
+	return std::make_pair(nullptr,-1);
+}
+
+std::pair<Rml::Element*,int> Window::get_last_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container)
+{
+	auto container_top = _outer_container->GetAbsoluteTop();
+	auto container_height = _outer_container->GetClientHeight();
+	for(int idx = _elem_container->GetNumChildren()-1; idx >= 0; idx--) {
+		auto elem = _elem_container->GetChild(idx);
+		auto elem_top = elem->GetAbsoluteTop();
+		auto elem_relative_top = elem_top - container_top;
+		if(elem_relative_top < container_height) {
+			if(elem->GetClientHeight() <= container_height) {
+				if(elem_relative_top + elem->GetClientHeight() <= container_height) {
+					return std::make_pair(elem,idx);
+				}
+			} else {
+				return std::make_pair(elem,idx);
+			}
+		}
+	}
+	return std::make_pair(nullptr,-1);
+}
+
 void Window::scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container)
 {
 	assert(_element);

@@ -32,19 +32,15 @@ void StateDialog::create(std::string _mode, std::string _order, int _zoom)
 {
 	Window::create();
 
-	m_entries_el = get_element("entries");
 	m_panel_el = get_element("panel");
 	m_panel_screen_el = get_element("panel_screen");
 	m_panel_config_el = get_element("panel_config");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_action_button_el = get_element("action");
 
-	if(_mode != "grid" && _mode != "list") {
-		_mode = "grid";
-	}
-	m_entries_el->SetClass(_mode, true);
-	m_panel_el->SetClass(_mode, true);
-	get_element(str_format("mode_%s",_mode.c_str()))->SetAttribute("checked", true);
+	m_max_zoom = MAX_ZOOM;
+	m_min_zoom = MIN_ZOOM;
+	ItemsDialog::create(_mode, _zoom, "entries", "entries");
 
 	if(_order == "date") {
 		m_order = Order::BY_DATE;
@@ -59,9 +55,15 @@ void StateDialog::create(std::string _mode, std::string _order, int _zoom)
 		m_order = Order::BY_DATE;
 		get_element("order_date")->SetAttribute("checked", true);
 	}
+}
 
-	m_zoom = _zoom;
-	set_zoom(0);
+void StateDialog::show()
+{
+	Window::show();
+
+	if(m_selected_entry) {
+		m_entries_el->Focus();
+	}
 }
 
 void StateDialog::update()
@@ -69,7 +71,7 @@ void StateDialog::update()
 	Window::update();
 
 	if(m_dirty) {
-		auto prev_selected = m_selected_id;
+		auto prev_selected = m_selected_name;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
@@ -114,10 +116,10 @@ void StateDialog::update()
 			}
 		}
 		m_dirty = false;
-		if(prev_selected != "") {
-			auto entry = m_entries_el->GetElementById(prev_selected);
-			if(entry) {
-				entry_select(prev_selected, entry);
+		if(!prev_selected.empty()) {
+			auto entry_el = m_entries_el->GetElementById(prev_selected);
+			if(entry_el) {
+				entry_select(prev_selected, entry_el);
 			}
 		}
 	}
@@ -179,83 +181,104 @@ void StateDialog::set_current_dir(const std::string &_path)
 	closedir(dir);
 }
 
-void StateDialog::entry_select(std::string _slot_id)
+void StateDialog::set_selection(std::string _slot_id)
 {
 	m_lazy_select = _slot_id;
 }
 
-void StateDialog::entry_select(std::string _rec_name, Rml::Element *_entry)
+std::pair<const StateRecord*,Rml::Element*> StateDialog::get_sr_entry(Rml::Element *target_el)
 {
-	try {
-		entry_deselect();
+	if(target_el->GetId() == "entries") {
+		return std::make_pair(nullptr,nullptr);
+	}
 
-		auto &rec = ms_rec_map.at(_rec_name);
+	Rml::Element *entry_el = ItemsDialog::get_entry(target_el);
+	if(!entry_el) {
+		return std::make_pair(nullptr,nullptr);
+	}
 
-		m_selected_entry = _entry;
-		m_selected_entry->SetClass("selected", true);
-		m_selected_id = _rec_name;
+	auto pair = ms_rec_map.find(entry_el->GetId());
+	if(pair == ms_rec_map.end()) {
+		return std::make_pair(nullptr,nullptr);
+	}
 
-		m_panel_config_el->SetInnerRML("");
-		if(!rec.screen().empty()) {
-			// adding an additional '/' because RmlUI strips it off for unknown reasons
-			// https://github.com/mikke89/RmlUi/issues/161
-			m_panel_screen_el->SetInnerRML("<img src=\"/" + rec.screen() + "\" />");
-			m_panel_screen_el->SetClass("invisible", false);
-		}
-		if(rec.info().version != STATE_RECORD_VERSION) {
-			m_panel_config_el->SetInnerRML("INVALID VERSION");
-			m_panel_config_el->SetClass("invisible", false);
-		} else if(!rec.info().config_desc.empty()) {
-			m_panel_config_el->SetInnerRML(str_to_html(rec.info().config_desc));
-			m_panel_config_el->SetClass("invisible", false);
-		}
-		m_buttons_entry_el->SetClass("invisible", false);
-		if(rec.info().version != STATE_RECORD_VERSION) {
-			m_action_button_el->SetClass("invisible", true);
-		} else {
-			m_action_button_el->SetClass("invisible", false);
-		}
+	return std::make_pair(&pair->second, entry_el);
+}
 
-		scroll_vertical_into_view(_entry);
+std::pair<const StateRecord*,Rml::Element*> StateDialog::get_sr_entry(Rml::Event &_ev)
+{
+	return StateDialog::get_sr_entry(_ev.GetTargetElement());
+}
 
-	} catch(std::out_of_range &) {
-		PDEBUGF(LOG_V0, LOG_GUI, "StateDialog: invalid id!\n");
+void StateDialog::entry_select(Rml::Element *_entry_el)
+{
+	entry_deselect();
+	auto entry = ItemsDialog::get_entry(_entry_el);
+	entry_select(entry->GetId(), entry);
+}
+
+void StateDialog::entry_select(std::string _name, Rml::Element *_entry)
+{
+	ItemsDialog::entry_select(_entry);
+
+	m_selected_name = _name;
+
+	m_panel_config_el->SetInnerRML("");
+	
+	auto pair = ms_rec_map.find(_name);
+	if(pair == ms_rec_map.end()) {
+		return;
+	}
+	const StateRecord *sr = &pair->second;
+	
+	if(!sr->screen().empty()) {
+		// adding an additional '/' because RmlUI strips it off for unknown reasons
+		// https://github.com/mikke89/RmlUi/issues/161
+		m_panel_screen_el->SetInnerRML("<img src=\"/" + sr->screen() + "\" />");
+		m_panel_screen_el->SetClass("invisible", false);
+	}
+	if(sr->info().version != STATE_RECORD_VERSION) {
+		m_panel_config_el->SetInnerRML("INVALID VERSION");
+		m_panel_config_el->SetClass("invisible", false);
+	} else if(!sr->info().config_desc.empty()) {
+		m_panel_config_el->SetInnerRML(str_to_html(sr->info().config_desc));
+		m_panel_config_el->SetClass("invisible", false);
+	}
+	m_buttons_entry_el->SetClass("invisible", false);
+	if(sr->info().version != STATE_RECORD_VERSION) {
+		m_action_button_el->SetClass("invisible", true);
+	} else {
+		m_action_button_el->SetClass("invisible", false);
 	}
 }
 
 void StateDialog::entry_deselect()
 {
-	if(m_selected_entry) {
-		m_selected_entry->SetClass("selected", false);
-		m_selected_id = "";
-	}
-	m_selected_entry = nullptr;
+	ItemsDialog::entry_deselect();
+
+	m_selected_name = "";
+
+	m_buttons_entry_el->SetClass("invisible", true);
 	m_panel_screen_el->SetInnerRML("");
 	m_panel_screen_el->SetClass("invisible", true);
 	m_panel_config_el->SetInnerRML("");
 	m_panel_config_el->SetClass("invisible", true);
-	m_buttons_entry_el->SetClass("invisible", true);
+}
+
+void StateDialog::set_mode(std::string _mode)
+{
+	ItemsDialog::set_mode(_mode);
+
+	m_panel_el->SetClassNames(_mode);
+
+	if(!m_selected_name.empty()) {
+		m_dirty_scroll = 2;
+	}
 }
 
 void StateDialog::on_mode(Rml::Event &_ev)
 {
-	std::string value = Window::get_form_input_value(_ev);
-	if(!value.empty()) {
-		m_entries_el->SetClass("list", false);
-		m_entries_el->SetClass("grid", false);
-		m_entries_el->SetClass(value, true);
-		m_panel_el->SetClassNames(value);
-	}
-	if(m_selected_id != "") {
-		auto el = m_entries_el->GetElementById(m_selected_id);
-		if(el) {
-			m_selected_entry = el;
-			m_selected_entry->SetClass("selected", true);
-			m_dirty_scroll = 2;
-			return;
-		}
-	}
-	entry_deselect();
+	set_mode(Window::get_form_input_value(_ev));
 }
 
 void StateDialog::on_order(Rml::Event &_ev)
@@ -294,6 +317,43 @@ void StateDialog::on_asc_desc(Rml::Event &_ev)
 	}
 }
 
+void StateDialog::on_entries(Rml::Event &_ev)
+{
+	auto id = get_key_identifier(_ev);
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_RETURN:
+		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
+		{
+			if(!m_selected_name.empty()) {
+				action_on_record(m_selected_name);
+			}
+			break;
+		}
+		default:
+			on_keydown(_ev);
+			return;
+	}
+	_ev.StopImmediatePropagation();
+}
+
+void StateDialog::on_keydown(Rml::Event &_ev)
+{
+	auto id = get_key_identifier(_ev);
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_DELETE:
+		{
+			if(!m_selected_name.empty()) {
+				delete_record(m_selected_name);
+			}
+			break;
+		}
+		default:
+			ItemsDialog::on_keydown(_ev);
+			return;
+	}
+	_ev.StopImmediatePropagation();
+}
+
 void StateDialog::on_cancel(Rml::Event &_ev)
 {
 	if(m_cancel_callbk) {
@@ -304,15 +364,15 @@ void StateDialog::on_cancel(Rml::Event &_ev)
 
 void StateDialog::on_action(Rml::Event &)
 {
-	if(!m_selected_id.empty()) {
-		action_on_record(m_selected_id);
+	if(!m_selected_name.empty()) {
+		action_on_record(m_selected_name);
 	}
 }
 
 void StateDialog::on_delete(Rml::Event &)
 {
-	if(!m_selected_id.empty()) {
-		delete_record(m_selected_id);
+	if(!m_selected_name.empty()) {
+		delete_record(m_selected_name);
 	}
 }
 
@@ -331,34 +391,9 @@ void StateDialog::delete_record(std::string _name)
 
 void StateDialog::set_zoom(int _amount)
 {
-	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), false);
-	m_zoom += _amount;
-	m_zoom = std::min(MAX_ZOOM, m_zoom);
-	m_zoom = std::max(MIN_ZOOM, m_zoom);
-	m_entries_el->SetClass(str_format("zoom-%d", m_zoom), true);
-	m_dirty_scroll = 2;
-}
+	ItemsDialog::set_zoom(_amount);
 
-void StateDialog::on_keydown(Rml::Event &_ev)
-{
-	switch(get_key_identifier(_ev)) {
-		case Rml::Input::KeyIdentifier::KI_OEM_MINUS:
-		case Rml::Input::KeyIdentifier::KI_SUBTRACT:
-			set_zoom(-1);
-			break;
-		case Rml::Input::KeyIdentifier::KI_OEM_PLUS:
-		case Rml::Input::KeyIdentifier::KI_ADD:
-			set_zoom(1);
-			break;
-		case Rml::Input::KeyIdentifier::KI_RETURN:
-		case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
-			// TODO remove when proper keyboard input is implemented
-			_ev.StopImmediatePropagation();
-			break;
-		default:
-			Window::on_keydown(_ev);
-			break;
-	}
+	m_dirty_scroll = 2;
 }
 
 Rml::ElementPtr StateDialog::DirEntry::create_element(

@@ -19,6 +19,7 @@ libgui_a_SOURCES = \
 	window.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
+	windows/items_dialog.cpp \
 	windows/screen_renderer_opengl.cpp \
 	windows/screen_renderer_sdl2d.cpp \
 	windows/normal_interface.cpp \
@@ -65,6 +66,7 @@ noinst_HEADERS = \
 	window.h \
 	windows/desktop.h \
 	windows/interface.h \
+	windows/items_dialog.h \
 	windows/screen_renderer.h \
 	windows/screen_renderer_opengl.h \
 	windows/screen_renderer_sdl2d.h \

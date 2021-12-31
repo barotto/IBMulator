@@ -18,11 +18,22 @@ button span,
 input.radio span
 {
 	padding: 0 4dp 0 4dp;
+	focus: none;
+}
+
+input.checkbox span
+{
+	focus: none;
 }
 
 button:hover
 {
 	background-color: #FFFFFFF0;
+}
+
+button:focus
+{
+	background-color: #FF8000F0;
 }
 
 button:active,
@@ -108,12 +119,20 @@ button.romshell.disabled btnicon
 @spritesheet
 {
 	src: images/romshell_button.png;
+
 	button-l: 0px 0px 8px 46px;
 	button-c: 10px 0px 2px 46px;
 	button-r: 240px 0px 4px 46px;
 	button-on-l: 0px 46px 8px 46px;
 	button-on-c: 10px 46px 2px 46px;
 	button-on-r: 236px 46px 8px 46px;
+
+	button-focus-l:    0px   92px  8px 46px;
+	button-focus-c:    10px  92px  2px 46px;
+	button-focus-r:    240px 92px  4px 46px;
+	button-focus-on-l: 0px   138px 8px 46px;
+	button-focus-on-c: 10px  138px 2px 46px;
+	button-focus-on-r: 236px 138px 8px 46px;
 }
 
 button.romshell
@@ -132,15 +151,33 @@ button.romshell.active btnicon
 	image-color: #000000;
 }
 
+button.romshell:focus
+{
+	decorator: tiled-horizontal( button-focus-l, button-focus-c, button-focus-r );
+}
+
+button.romshell.active:focus
+{
+	decorator: tiled-horizontal( button-focus-on-l, button-focus-on-c, button-focus-on-r );
+}
+
 @spritesheet
 {
 	src: images/romshell_button.png;
+
 	radio-l: 0px 0px 8px 46px;
 	radio-c: 10px 0px 2px 46px;
 	radio-r: 240px 0px 4px 46px;
 	radio-on-l: 0px 46px 8px 46px;
 	radio-on-c: 10px 46px 2px 46px;
 	radio-on-r: 236px 46px 8px 46px;
+	
+	radio-focus-l:    0px   92px  8px 46px;
+	radio-focus-c:    10px  92px  2px 46px;
+	radio-focus-r:    240px 92px  4px 46px;
+	radio-focus-on-l: 0px   138px 8px 46px;
+	radio-focus-on-c: 10px  138px 2px 46px;
+	radio-focus-on-r: 236px 138px 8px 46px;
 }
 
 input.radio.romshell
@@ -154,6 +191,16 @@ input.radio.romshell:checked
 	decorator: tiled-horizontal( radio-on-l, radio-on-c, radio-on-r );
 }
 
+input.radio.romshell:focus
+{
+	decorator: tiled-horizontal( radio-focus-l, radio-focus-c, radio-focus-r );
+}
+
+input.radio.romshell:focus:checked
+{
+	decorator: tiled-horizontal( radio-focus-on-l, radio-focus-on-c, radio-focus-on-r );
+}
+
 @spritesheet
 {
 	src: images/romshell_button.png;
@@ -161,6 +208,11 @@ input.radio.romshell:checked
 	check-checked-l: 286px 0px 42px 46px;
 	check-c: 10px 0px 230px 46px;
 	check-r: 240px 0px 4px 46px;
+	
+	check-focus-l:         244px 92px 42px 46px;
+	check-focus-checked-l: 286px 92px 42px 46px;
+	check-focus-c:         10px  92px 230px 46px;
+	check-focus-r:         240px 92px 4px 46px;
 }
 
 input.checkbox.romshell
@@ -174,6 +226,17 @@ input.checkbox.romshell:checked
 	decorator: tiled-horizontal( check-checked-l, check-c, check-r );
 }
 
+input.checkbox.romshell:focus
+{
+	padding-left: 20dp;
+	decorator: tiled-horizontal( check-focus-l, check-focus-c, check-focus-r );
+}
+
+input.checkbox.romshell:focus:checked
+{
+	decorator: tiled-horizontal( check-focus-checked-l, check-focus-c, check-focus-r );
+}
+
 @spritesheet
 {
 	src: images/romshell_button.png;
@@ -184,6 +247,13 @@ input.checkbox.romshell:checked
 	selectvalue-l: 0px 0px 8px 46px;
 	selectvalue-c: 10px 0px 2px 46px;
 	selectvalue-r: 10px 0px 2px 46px;
+
+	selectarrow-focus:        248px 138px 38px 46px;
+	selectarrow-focus-active: 290px 138px 38px 46px;
+
+	selectvalue-focus-l: 0px  92px 8px 46px;
+	selectvalue-focus-c: 10px 92px 2px 46px;
+	selectvalue-focus-r: 10px 92px 2px 46px;
 }
 
 select.romshell selectvalue
@@ -207,6 +277,27 @@ select.romshell selectarrow:checked,
 	decorator: image( selectarrow-active );
 }
 
+select.romshell:focus selectvalue
+{
+	decorator: tiled-horizontal( selectvalue-focus-l, selectvalue-focus-c, selectvalue-focus-r );
+}
+
+select.romshell:focus selectarrow
+{
+	decorator: image( selectarrow-focus );
+}
+
+select.romshell:focus:hover selectarrow
+{
+	decorator: image( selectarrow-focus-active );
+}
+
+select.romshell:focus:active selectarrow,
+select.romshell:focus selectarrow:checked,
+{
+	decorator: image( selectarrow-focus-active );
+}
+
 select.romshell selectbox
 {
 	border: 1dp;
@@ -226,11 +317,13 @@ select.romshell selectbox option
 	padding-right: 2dp;
 }
 
-select.romshell selectbox option:checked
+select.romshell selectbox option:hover
 {
+	background-color: #606060;
 }
 
-select.romshell selectbox option:hover
+select.romshell selectbox option:checked,
+select.romshell selectbox option:checked:hover
 {
 	background-color: #fcfca8;
 	color: #000000;
@@ -252,7 +345,7 @@ input.text
 
 input.text:focus
 {
-	border-color: #ff9854A0;
+	border-color: #ff8000;
 }
 
 scrollbarvertical

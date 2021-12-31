@@ -26,6 +26,7 @@ Rml::Input::KeyIdentifier RmlSystemInterface::TranslateKey(SDL_Keycode sdlkey)
 {
 	using namespace Rml::Input;
 
+	bool numlock = (GetKeyModifiers() & Rml::Input::KM_NUMLOCK);
 	switch(sdlkey) {
 		case SDLK_UNKNOWN: return KI_UNKNOWN;
 		case SDLK_ESCAPE: return KI_ESCAPE;
@@ -77,21 +78,21 @@ Rml::Input::KeyIdentifier RmlSystemInterface::TranslateKey(SDL_Keycode sdlkey)
 		case SDLK_BACKSLASH: return KI_OEM_5;
 		case SDLK_RIGHTBRACKET: return KI_OEM_6;
 		case SDLK_QUOTEDBL: return KI_OEM_7;
-		case SDLK_KP_0: return KI_NUMPAD0;
-		case SDLK_KP_1: return KI_NUMPAD1;
-		case SDLK_KP_2: return KI_NUMPAD2;
-		case SDLK_KP_3: return KI_NUMPAD3;
-		case SDLK_KP_4: return KI_NUMPAD4;
-		case SDLK_KP_5: return KI_NUMPAD5;
-		case SDLK_KP_6: return KI_NUMPAD6;
-		case SDLK_KP_7: return KI_NUMPAD7;
-		case SDLK_KP_8: return KI_NUMPAD8;
-		case SDLK_KP_9: return KI_NUMPAD9;
+		case SDLK_KP_0: return numlock ? KI_NUMPAD0 : KI_INSERT;
+		case SDLK_KP_1: return numlock ? KI_NUMPAD1 : KI_END;
+		case SDLK_KP_2: return numlock ? KI_NUMPAD2 : KI_DOWN;
+		case SDLK_KP_3: return numlock ? KI_NUMPAD3 : KI_NEXT;
+		case SDLK_KP_4: return numlock ? KI_NUMPAD4 : KI_LEFT;
+		case SDLK_KP_5: return numlock ? KI_NUMPAD5 : KI_UNKNOWN;
+		case SDLK_KP_6: return numlock ? KI_NUMPAD6 : KI_RIGHT;
+		case SDLK_KP_7: return numlock ? KI_NUMPAD7 : KI_HOME;
+		case SDLK_KP_8: return numlock ? KI_NUMPAD8 : KI_UP;
+		case SDLK_KP_9: return numlock ? KI_NUMPAD9 : KI_PRIOR;
+		case SDLK_KP_PERIOD: return numlock ? KI_DECIMAL : KI_DELETE;
 		case SDLK_KP_ENTER: return KI_NUMPADENTER;
 		case SDLK_KP_MULTIPLY: return KI_MULTIPLY;
 		case SDLK_KP_PLUS: return KI_ADD;
 		case SDLK_KP_MINUS: return KI_SUBTRACT;
-		case SDLK_KP_PERIOD: return KI_DECIMAL;
 		case SDLK_KP_DIVIDE: return KI_DIVIDE;
 		case SDLK_KP_EQUALS: return KI_OEM_NEC_EQUAL;
 		case SDLK_BACKSPACE: return KI_BACK;

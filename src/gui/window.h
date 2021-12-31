@@ -89,6 +89,8 @@ protected:
 	static bool is_disabled(Rml::Element *);
 	static Rml::Element * set_active(Rml::Element *_elm, bool _active);
 	static bool is_active(Rml::Element *);
+	static std::pair<Rml::Element*,int> get_first_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container, int _starting_at = 0);
+	static std::pair<Rml::Element*,int> get_last_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container);
 	static void scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
 };
 

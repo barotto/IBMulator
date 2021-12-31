@@ -38,6 +38,8 @@ public:
 
 	void action_on_record(std::string _rec_name);
 
+	virtual void on_keydown(Rml::Event &_ev);
+
 	event_map_t & get_event_map() { return StateSave::ms_evt_map; }
 
 private:

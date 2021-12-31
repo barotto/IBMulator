@@ -13,7 +13,8 @@
 	display: block;
 }
 
-#drive:hover
+#drive:hover,
+#drive:focus
 {
 	overflow: visible;
 	z-index: 99;
@@ -47,6 +48,11 @@
 	border-color: #00ff00ff;
 	background-color: #00ff00ff;
 	decorator: image(drive_on);
+}
+
+#drive input.radio:focus
+{
+	border-color: #ff8000ff;
 }
 
 #path

@@ -31,13 +31,14 @@ event_map_t StateSave::ms_evt_map = {
 	GUI_EVT( "close",    "click",     StateDialog::on_cancel ),
 	GUI_EVT( "entries",  "click",     StateSave::on_entry ),
 	GUI_EVT( "entries",  "dblclick",  StateDialog::on_action ),
+	GUI_EVT( "entries",  "keydown",   StateDialog::on_entries ),
 	GUI_EVT( "mode",     "click",     StateDialog::on_mode ),
 	GUI_EVT( "order",    "click",     StateDialog::on_order),
 	GUI_EVT( "asc_desc", "click",     StateDialog::on_asc_desc),
 	GUI_EVT( "new_save", "click",     StateSave::on_new_save),
 	GUI_EVT( "action",   "click",     StateDialog::on_action ),
 	GUI_EVT( "delete",   "click",     StateDialog::on_delete ),
-	GUI_EVT( "*",        "keydown",   StateDialog::on_keydown )
+	GUI_EVT( "*",        "keydown",   StateSave::on_keydown ),
 };
 
 void StateSave::update()
@@ -99,7 +100,7 @@ void StateSave::on_entry(Rml::Event &_ev)
 		if(id == "new_save_entry") {
 			entry_deselect();
 		} else {
-			entry_select(id, entry);
+			entry_select(entry);
 		}
 		action_on_record(id);
 		return;
@@ -109,6 +110,27 @@ void StateSave::on_entry(Rml::Event &_ev)
 		return;
 	}
 	if(el->IsClassSet("target")) {
-		entry_select(id, entry);
+		entry_select(entry);
 	}
+}
+
+void StateSave::on_keydown(Rml::Event &_ev)
+{
+	auto id = get_key_identifier(_ev);
+	switch(id) {
+		case Rml::Input::KeyIdentifier::KI_N:
+			if(_ev.GetParameter<bool>("ctrl_key", false)) {
+				action_on_record("new_save");
+			}
+			break;
+		case Rml::Input::KeyIdentifier::KI_S:
+			if(!m_selected_name.empty()) {
+				action_on_record(m_selected_name);
+			}
+			break;
+		default:
+			StateDialog::on_keydown(_ev);
+			return;
+	}
+	_ev.StopImmediatePropagation();
 }

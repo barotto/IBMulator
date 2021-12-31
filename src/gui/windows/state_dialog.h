@@ -20,14 +20,14 @@
 #ifndef IBMULATOR_GUI_STATEDIALOG_H
 #define IBMULATOR_GUI_STATEDIALOG_H
 
-#include "../window.h"
+#include "items_dialog.h"
 #include "state_record.h"
 #include <set>
 #include <RmlUi/Core/EventListener.h>
 
 class GUI;
 
-class StateDialog : public Window
+class StateDialog : public ItemsDialog
 {
 protected:
 	class DirEntry {
@@ -99,7 +99,6 @@ protected:
 	inline static std::set<DirEntry, DirEntryOrderSlot> ms_cur_dir_slot;
 	inline static std::map<std::string, StateRecord> ms_rec_map;
 
-	Rml::Element *m_entries_el = nullptr;
 	Rml::Element *m_panel_el = nullptr;
 	Rml::Element *m_panel_screen_el = nullptr;
 	Rml::Element *m_panel_config_el = nullptr;
@@ -111,8 +110,9 @@ protected:
 		BY_DATE, BY_DESC, BY_SLOT
 	} m_order = Order::BY_DATE;
 	bool m_order_ascending = true;
-	Rml::Element *m_selected_entry = nullptr;
-	std::string m_selected_id;
+
+	//const StateRecord *m_selected_sr = nullptr;
+	std::string m_selected_name;
 	std::string m_lazy_select;
 
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
@@ -121,14 +121,14 @@ protected:
 	
 	static constexpr int MIN_ZOOM = 0;
 	static constexpr int MAX_ZOOM = 2;
-	int m_zoom = 1;
 	
 public:
 
-	StateDialog(GUI *_gui, const char *_doc) : Window(_gui,_doc) {}
+	StateDialog(GUI *_gui, const char *_doc) : ItemsDialog(_gui,_doc) {}
 	virtual ~StateDialog() {}
 
 	virtual void create(std::string _mode, std::string _order, int _zoom);
+	virtual void show();
 	virtual void update();
 
 	void set_callbacks(
@@ -150,21 +150,28 @@ public:
 
 	virtual void action_on_record(std::string _rec_name) = 0;
 	virtual void delete_record(std::string _rec_name);
-
+	
+	void set_selection(std::string _slot_name);
+	
 	virtual void on_cancel(Rml::Event &_ev);
+	virtual void on_keydown(Rml::Event &_ev);
 
-	void entry_select(std::string _slot_id);
-	void entry_select(std::string _slot_id, Rml::Element *_entry);
-	void entry_deselect();
 	void on_action(Rml::Event &);
 	void on_delete(Rml::Event &);
 	void on_mode(Rml::Event &_ev);
 	void on_order(Rml::Event &_ev);
 	void on_asc_desc(Rml::Event &_ev);
-	void on_keydown(Rml::Event &_ev);
+	void on_entries(Rml::Event &_ev);
 
 protected:
+	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Element *target_el);
+	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Event &);
 
+	void entry_select(Rml::Element *_entry);
+	void entry_select(std::string _name, Rml::Element *_entry);
+	void entry_deselect();
+	
+	void set_mode(std::string _mode);
 	void set_zoom(int _amount);
 };
 

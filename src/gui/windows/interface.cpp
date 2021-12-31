@@ -695,7 +695,7 @@ void Interface::show_state_dialog(bool _save)
 				g_program.restore_state(_info, [this]() {
 					m_gui->show_message("State restored");
 				}, nullptr);
-				m_state_save->entry_select(_info.name);
+				m_state_save->set_selection(_info.name);
 				dialog_end();
 			},
 			// delete
@@ -731,8 +731,8 @@ void Interface::save_state(StateRecord::Info _info)
 	PDEBUGF(LOG_V0, LOG_GUI, "Saving %s: %s\n", _info.name.c_str(), _info.user_desc.c_str());
 	g_program.save_state(_info, [this](StateRecord::Info _info) {
 		reset_savestate_dialogs("");
-		m_state_save->entry_select(_info.name);
-		m_state_load->entry_select(_info.name);
+		m_state_save->set_selection(_info.name);
+		m_state_load->set_selection(_info.name);
 		m_gui->show_message("State saved");
 	}, nullptr);
 }
