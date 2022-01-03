@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -98,6 +98,9 @@ struct ProgramEvent {
 		FUNC_TAKE_SCREENSHOT,      // take a screenshot
 		FUNC_TOGGLE_AUDIO_CAPTURE, // start / stop audio capture
 		FUNC_TOGGLE_VIDEO_CAPTURE, // start / stop video capture
+		FUNC_INSERT_FLOPPY,        // open the floppy disk select dialog
+		FUNC_EJECT_FLOPPY,         // eject floppy disk from active drive
+		FUNC_CHANGE_FLOPPY_DRIVE,  // change active floppy drive (A↔B)
 		FUNC_SAVE_STATE,           // open the save state dialog
 		FUNC_LOAD_STATE,           // open the load state dialog
 		FUNC_QUICK_SAVE_STATE,     // quick save the current emulator's state

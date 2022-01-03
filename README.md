@@ -577,6 +577,9 @@ Valid `FUNC_* ` functions are:
 * `FUNC_TAKE_SCREENSHOT`: take a screenshot
 * `FUNC_TOGGLE_AUDIO_CAPTURE`: start / stop audio capture
 * `FUNC_TOGGLE_VIDEO_CAPTURE`: start / stop video capture
+* `FUNC_INSERT_FLOPPY`: open the floppy disk select dialog
+* `FUNC_EJECT_FLOPPY`: eject floppy disk from active drive
+* `FUNC_CHANGE_FLOPPY_DRIVE`: change active floppy drive (A↔B)
 * `FUNC_SAVE_STATE`: open the save state dialog
 * `FUNC_LOAD_STATE`: open the load state dialog
 * `FUNC_QUICK_SAVE_STATE`: save the state to the quicksave slot
@@ -654,7 +657,10 @@ keymap file.
 * <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
-* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : start/stop video capture
+* <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture
+* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open floppy select dialog for active drive
+* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject floppy inserted in active drive
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd>: change the active floppy drive (A↔B)
 * <kbd>SHIFT</kbd>+<kbd>F8</kbd>    : open the save state dialog
 * <kbd>SHIFT</kbd>+<kbd>F9</kbd>    : open the load state dialog
 * <kbd>CTRL</kbd>+<kbd>F8</kbd>     : quick save state

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -409,6 +409,9 @@ private:
 	void pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_insert_floppy(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_eject_floppy(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_change_floppy_drive(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_save_state(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_load_state(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_quick_save_state(const ProgramEvent::Func&, EventPhase);

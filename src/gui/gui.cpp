@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -92,6 +92,9 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
+	{ ProgramEvent::FuncName::FUNC_INSERT_FLOPPY,        &GUI::pevt_func_insert_floppy        },
+	{ ProgramEvent::FuncName::FUNC_EJECT_FLOPPY,         &GUI::pevt_func_eject_floppy         },
+	{ ProgramEvent::FuncName::FUNC_CHANGE_FLOPPY_DRIVE,  &GUI::pevt_func_change_floppy_drive  },
 	{ ProgramEvent::FuncName::FUNC_SAVE_STATE,           &GUI::pevt_func_save_state           },
 	{ ProgramEvent::FuncName::FUNC_LOAD_STATE,           &GUI::pevt_func_load_state           },
 	{ ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
@@ -2421,6 +2424,39 @@ void GUI::pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase _
 	PDEBUGF(LOG_V1, LOG_GUI, "Toggle video capture func event\n");
 	
 	m_capture->cmd_toggle_capture();
+}
+
+void GUI::pevt_func_insert_floppy(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Insert floppy func event\n");
+
+	Rml::Event e;
+	m_windows.interface->on_fdd_mount(e);
+}
+
+void GUI::pevt_func_eject_floppy(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Eject floppy func event\n");
+
+	Rml::Event e;
+	m_windows.interface->on_fdd_eject(e);
+}
+
+void GUI::pevt_func_change_floppy_drive(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Change floppy drive func event\n");
+
+	Rml::Event e;
+	m_windows.interface->on_fdd_select(e);
 }
 
 void GUI::pevt_func_save_state(const ProgramEvent::Func&, EventPhase _phase)

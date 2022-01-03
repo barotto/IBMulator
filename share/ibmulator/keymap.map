@@ -82,6 +82,9 @@
 #  FUNC_TAKE_SCREENSHOT      : take a screenshot
 #  FUNC_TOGGLE_AUDIO_CAPTURE : start / stop audio capture
 #  FUNC_TOGGLE_VIDEO_CAPTURE : start / stop video capture
+#  FUNC_INSERT_FLOPPY        : open the floppy disk select dialog
+#  FUNC_EJECT_FLOPPY         : eject floppy disk from active drive
+#  FUNC_CHANGE_FLOPPY_DRIVE  : change active floppy drive (A↔B)
 #  FUNC_SAVE_STATE           : open the save state dialog
 #  FUNC_LOAD_STATE           : open the load state dialog
 #  FUNC_QUICK_SAVE_STATE     : quick save the current emulator's state
@@ -171,7 +174,10 @@ KMOD_SHIFT + SDLK_F4    = FUNC_TOGGLE_STATUS_IND
 KMOD_CTRL + SDLK_F4     = FUNC_TOGGLE_DBG_WND
 KMOD_CTRL + SDLK_F5     = FUNC_TAKE_SCREENSHOT
 KMOD_CTRL + SDLK_F6     = FUNC_TOGGLE_AUDIO_CAPTURE
-KMOD_CTRL + SDLK_F7     = FUNC_TOGGLE_VIDEO_CAPTURE
+KMOD_SHIFT + SDLK_F6    = FUNC_TOGGLE_VIDEO_CAPTURE
+KMOD_SHIFT + SDLK_F7    = FUNC_INSERT_FLOPPY
+KMOD_CTRL + SDLK_F7     = FUNC_EJECT_FLOPPY
+KMOD_CTRL + KMOD_SHIFT + SDLK_F7 = FUNC_CHANGE_FLOPPY_DRIVE
 KMOD_SHIFT + SDLK_F8    = FUNC_SAVE_STATE
 KMOD_SHIFT + SDLK_F9    = FUNC_LOAD_STATE
 KMOD_CTRL + SDLK_F8     = FUNC_QUICK_SAVE_STATE
