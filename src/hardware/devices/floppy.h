@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -61,7 +61,7 @@ enum FloppyDiskSize {
 
 struct FloppyDisk
 {
-	std::string path;    /* the image file or mounted vvfat dir (for saving state) */
+	std::string path;    /* the image file */
 	int         fd;      /* file descriptor of floppy image file */
 	uint        spt;     /* number of sectors per track */
 	uint        sectors; /* number of formatted sectors on diskette */
@@ -69,11 +69,9 @@ struct FloppyDisk
 	uint        heads;   /* number of heads */
 	uint        type;
 	bool        write_protected;
-	bool        vvfat_floppy;
-	MediaImage *vvfat;
 
 	FloppyDisk() : fd(-1) {}
-	bool open(uint devtype, uint type, const char *path);
+	bool open(uint _devtype, uint _type, const char *_path);
 	void close();
 };
 

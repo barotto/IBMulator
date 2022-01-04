@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -266,7 +266,6 @@ void FloppyCtrl::install(void)
 		m_media[i].sectors         = 0;
 		m_media[i].fd              = -1;
 		m_media[i].write_protected = false;
-		m_media[i].vvfat_floppy    = 0;
 		m_media_present[i]         = false;
 		m_device_type[i]           = FDD_NONE;
 		m_disk_changed[i]          = false;
@@ -1391,11 +1390,8 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 	PDEBUGF(LOG_V2, LOG_FDC, "floppy_xfer DRV%u: offset=%u, bytes=%u, direction=%s floppy\n",
 			drive, offset, bytes, (direction==FROM_FLOPPY)? "from" : "to");
 
-	if(m_media[drive].vvfat_floppy) {
-		ret = (int)m_media[drive].vvfat->lseek(offset, SEEK_SET);
-	} else {
-		ret = (int)lseek(m_media[drive].fd, offset, SEEK_SET);
-	}
+	ret = (int)lseek(m_media[drive].fd, offset, SEEK_SET);
+
 	if(ret < 0) {
 		//TODO return proper error code
 		PERRF_ABORT(LOG_FDC, "could not perform lseek() to %d on floppy image file\n", offset);
@@ -1403,11 +1399,9 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 	}
 
 	if(direction == FROM_FLOPPY) {
-		if(m_media[drive].vvfat_floppy) {
-			ret = (int)m_media[drive].vvfat->read(buffer, bytes);
-		} else {
-			ret = ::read(m_media[drive].fd, buffer, bytes);
-		}
+
+		ret = ::read(m_media[drive].fd, buffer, bytes);
+
 		if(ret < int(bytes)) {
 			if(ret > 0) {
 				//TODO return proper error code
@@ -1424,11 +1418,9 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 			//TODO return proper error code
 			PERRF_ABORT(LOG_FDC, "floppy_xfer(): media is write protected");
 		}
-		if(m_media[drive].vvfat_floppy) {
-			ret = (int)m_media[drive].vvfat->write(buffer, bytes);
-		} else {
-			ret = ::write(m_media[drive].fd, buffer, bytes);
-		}
+
+		ret = ::write(m_media[drive].fd, buffer, bytes);
+
 		if(ret < int(bytes)) {
 			//TODO return proper error code
 			PERRF_ABORT(LOG_FDC, "could not perform write() on floppy image file\n");
@@ -2109,7 +2101,6 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 		return (sectors > 0); // success
 	}
 
-	// TODO vvfat
 	// unknown file type
 	PDEBUGF(LOG_V0, LOG_FDC, "unknown mode type\n");
 	return false;
@@ -2118,13 +2109,7 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 void FloppyDisk::close()
 {
 	if(fd >= 0) {
-		if(vvfat_floppy) {
-			vvfat->close();
-			delete vvfat;
-			vvfat_floppy = 0;
-		} else {
-			::close(fd);
-		}
+		::close(fd);
 		fd = -1;
 	}
 }
