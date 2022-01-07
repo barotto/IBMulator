@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -182,6 +182,7 @@ public:
 #define CPU_SECTION             "cpu"
 #define CPU_MODEL               "model"
 #define CPU_FREQUENCY           "frequency"
+#define CPU_HLT_WAIT            "hlt_wait"
 
 #define MEM_SECTION             "memory"
 #define MEM_RAM_EXP             "expansion"

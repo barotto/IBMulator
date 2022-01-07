@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -84,6 +84,7 @@ protected:
 	unsigned m_signature;
 	double   m_frequency;
 	uint32_t m_cycle_time;
+	unsigned m_hlt_state_cycles;
 	Instruction *m_instr;
 	std::function<void(void)> m_shutdown_trap;
 

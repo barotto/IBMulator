@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -89,6 +89,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ DISPLAY_BRIGHTNESS,        "1.0" },
 		{ DISPLAY_CONTRAST,          "1.0" },
 		{ DISPLAY_SATURATION,        "1.0" }
+	} },
+
+	{ CPU_SECTION, {
+		{ CPU_HLT_WAIT, "500" }
 	} },
 
 	{ CMOS_SECTION, {
@@ -340,6 +344,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";            Possible values: auto, 286, 386SX, 386DX.\n"
 "; frequency: Frequency in MHz.\n"
 ";            Possible values: auto, or an integer number.\n"
+";  hlt_wait: Interrupts polling time in nanoseconds when the CPU enters an HALT state.\n"
+";            Affects responsiveness in guest operating systems that use the HLT instruction for idling.\n"
 		},
 
 		{ GUI_SECTION,
@@ -674,7 +680,8 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 	} },
 	{ CPU_SECTION, {
 		CPU_MODEL,
-		CPU_FREQUENCY
+		CPU_FREQUENCY,
+		CPU_HLT_WAIT
 	} },
 	{ MEM_SECTION, {
 		MEM_RAM_EXP,

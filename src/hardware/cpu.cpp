@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -61,6 +61,7 @@ m_family(0),
 m_signature(0),
 m_frequency(.0),
 m_cycle_time(0),
+m_hlt_state_cycles(1),
 m_instr(nullptr)
 {
 	m_shutdown_trap = std::bind(&CPU::default_shutdown_trap,this);
@@ -100,6 +101,10 @@ void CPU::config_changed()
 	m_signature = cpu_signatures[m_model];
 
 	double freq = g_program.config().get_real(CPU_SECTION, CPU_FREQUENCY, g_machine.model().cpu_freq);
+	if(freq < 1) {
+		PERRF(LOG_CPU, "Frequency too low: %.0f MHz\n", freq);
+		throw std::exception();
+	}
 	double cycle = 1000.0 / freq;
 	int icycle = int(cycle);
 	// prefer a faster CPU rounding down at 0.5
@@ -108,12 +113,26 @@ void CPU::config_changed()
 	} else {
 		m_cycle_time = icycle + 1;
 	}
+	if(m_cycle_time == 0) {
+		PERRF(LOG_CPU, "Frequency too high: %.0f MHz\n", freq);
+		throw std::exception();
+	}
 	m_frequency = 1e3 / m_cycle_time; // in MHz
 	g_program.config().set_real(CPU_SECTION, CPU_FREQUENCY, freq);
+
+	int hlt_wait_ns = g_program.config().get_int(CPU_SECTION, CPU_HLT_WAIT, 0);
+	if(hlt_wait_ns <= 0) {
+		hlt_wait_ns = 500;
+	}
+	m_hlt_state_cycles = hlt_wait_ns / m_cycle_time;
+	if(m_hlt_state_cycles == 0) {
+		m_hlt_state_cycles = 1;
+	}
 
 	PINFOF(LOG_V0, LOG_CPU, "Installed CPU: %s @ %.0fMHz\n", m_model.c_str(), freq);
 	PINFOF(LOG_V1, LOG_CPU, "  Family: %d86, Signature: 0x%04x\n", m_family, m_signature);
 	PINFOF(LOG_V1, LOG_CPU, "  Cycle time: %u nsec (%.3fMHz)\n", m_cycle_time, m_frequency);
+	PINFOF(LOG_V1, LOG_CPU, "  HALT state cycles: %d (%d ns)\n", m_hlt_state_cycles, m_hlt_state_cycles * m_cycle_time);
 
 	g_cpubus.config_changed();
 	g_cpuexecutor.config_changed();
@@ -279,7 +298,7 @@ uint CPU::step()
 		// the CPU is idle and waiting for an external event
 		wait_for_event();
 		//we need to spend at least 1 cycle, otherwise the timers will never fire
-		cycles.eu = 1;
+		cycles.eu = m_hlt_state_cycles;
 	}
 
 	if(g_cpubus.pq_is_valid()) {
