@@ -61,19 +61,21 @@ enum FloppyDiskSize {
 
 struct FloppyDisk
 {
-	std::string path;    /* the image file */
-	int         fd;      /* file descriptor of floppy image file */
-	uint        spt;     /* number of sectors per track */
-	uint        sectors; /* number of formatted sectors on diskette */
-	uint        tracks;  /* number of tracks */
-	uint        heads;   /* number of heads */
-	uint        type;
+	std::string path;    // the image file
+	int         fd;      // file descriptor of floppy image file
+	unsigned    spt;     // number of sectors per track
+	unsigned    sectors; // number of formatted sectors on diskette
+	unsigned    tracks;  // number of tracks
+	unsigned    heads;   // number of heads
+	unsigned    type;
 	bool        write_protected;
 
 	FloppyDisk() : fd(-1) {}
-	bool open(uint _devtype, uint _type, const char *_path);
+	bool open(unsigned _devtype, unsigned _type, const char *_path);
 	void close();
 };
+
+#define FDC_CMD_MASK 0x1f
 
 class FloppyCtrl : public IODevice
 {
@@ -85,7 +87,15 @@ private:
 		uint8_t command_index;
 		uint8_t command_size;
 		bool    command_complete;
+
 		uint8_t pending_command;
+		constexpr uint8_t cmd_code() const { return pending_command & FDC_CMD_MASK; }
+		constexpr bool cmd_mtrk() const { return pending_command & 0x80; }
+		constexpr bool cmd_mfm()  const { return pending_command & 0x40; }
+		constexpr bool cmd_skip() const { return pending_command & 0x20; }
+		constexpr bool cmd_rel()  const { return pending_command & 0x80; }
+		constexpr bool cmd_dir()  const { return pending_command & 0x40; }
+		constexpr bool cmd_lock() const { return pending_command & 0x80; }
 
 		bool    multi_track;
 		bool    pending_irq;
@@ -121,8 +131,8 @@ private:
 		uint8_t status_reg2;
 		uint8_t status_reg3;
 
-		uint8_t floppy_buffer[512+2]; // 2 extra for good measure
-		uint    floppy_buffer_index;
+		uint8_t  floppy_buffer[512+2]; // 2 extra for good measure
+		unsigned floppy_buffer_index;
 
 		bool    lock;      // FDC lock status
 		uint8_t SRT;       // step rate time
@@ -140,13 +150,13 @@ private:
 	FloppyDisk m_media[4];
 	bool       m_media_present[4];
 	uint8_t    m_device_type[4];
-	uint       m_num_installed_floppies;
+	unsigned   m_num_installed_floppies;
 	double     m_latency_mult;
 
 	int  m_timer;
 
-	bool m_disk_changed[4]; //!< used by the GUI to know when a disk has been changed
-	std::mutex m_mutex;     //!< for machine-GUI synchronization
+	bool m_disk_changed[4]; // used by the GUI to know when a disk has been changed
+	std::mutex m_mutex;     // for machine-GUI synchronization
 
 	bool m_fx_enabled;
 	FloppyFX m_fx[2];
@@ -157,31 +167,31 @@ public:
 
 	void install();
 	void remove();
-	void reset(uint type);
+	void reset(unsigned type);
 	void power_off();
 	void config_changed();
-	uint16_t read(uint16_t address, uint io_len);
-	void write(uint16_t address, uint16_t value, uint io_len);
+	uint16_t read(uint16_t address, unsigned io_len);
+	void write(uint16_t address, uint16_t value, unsigned io_len);
 
-	bool insert_media(uint _drive, uint _type, const char *_path, bool _write_protected);
-	void eject_media(uint _drive);
-	inline bool is_motor_on(uint _drive) const {
+	bool insert_media(unsigned _drive, unsigned _type, const char *_path, bool _write_protected);
+	void eject_media(unsigned _drive);
+	inline bool is_motor_on(unsigned _drive) const {
 		return (m_device_type[_drive]!=0) && (m_s.DOR & (1 << (_drive+4)));
 	}
-	inline bool is_media_present(uint _drive) const {
+	inline bool is_media_present(unsigned _drive) const {
 		return m_media_present[_drive];
 	}
 	//this is not the DIR bit 7, this is used by the GUI
-	inline bool has_disk_changed(uint _drive) {
+	inline bool has_disk_changed(unsigned _drive) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		bool changed = m_disk_changed[_drive];
 		m_disk_changed[_drive] = false;
 		return changed;
 	}
-	inline uint current_drive() const {
+	inline unsigned current_drive() const {
 		return (m_s.DOR & 0x03);
 	}
-	inline uint8_t drive_type(uint _drive) const {
+	inline uint8_t drive_type(unsigned _drive) const {
 		return m_device_type[_drive%4];
 	}
 
@@ -195,23 +205,25 @@ public:
 private:
 	inline unsigned chs_to_lba(unsigned _d) const;
 	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned _d) const;
+	uint16_t read_data(uint8_t *buffer, uint16_t maxlen, bool drq);
+	uint16_t write_data(uint8_t *buffer, uint16_t maxlen, bool drq);
 	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
 	uint16_t dma_read(uint8_t *buffer, uint16_t maxlen);
-	void floppy_command(void);
 	void floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, uint32_t bytes, uint8_t direction);
-	void raise_interrupt(void);
-	void lower_interrupt(void);
-	void enter_idle_phase(void);
-	void enter_result_phase(void);
+	void raise_interrupt();
+	void lower_interrupt();
+	void enter_execution_phase();
+	void enter_idle_phase();
+	void enter_result_phase();
 	uint32_t calculate_step_delay(uint8_t _drive, int _c0, int _c1);
 	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
-	void reset_changeline(void);
-	bool get_TC(void);
+	void reset_changeline();
+	bool get_TC();
 	void timer(uint64_t);
-	void increment_sector(void);
+	void increment_sector();
 	void play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl);
-	void floppy_drive_setup(uint drive);
-	inline bool is_motor_spinning(uint _drive) const {
+	void floppy_drive_setup(unsigned drive);
+	inline bool is_motor_spinning(unsigned _drive) const {
 		return (is_motor_on(_drive) && is_media_present(_drive));
 	}
 	uint8_t get_drate_for_media(uint8_t _drive);

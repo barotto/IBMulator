@@ -18,21 +18,8 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Switched from AT mode to Model 30 mode.
- */
 
-//
-// Floppy Disk Controller Docs:
-// Intel 82077A Data sheet
-//   ftp://void-core.2y.net/pub/docs/fdc/82077AA_FloppyControllerDatasheet.pdf
-// Intel 82078 Data sheet
-//   ftp://download.intel.com/design/periphrl/datashts/29047403.PDF
-// Other FDC references
-//   http://debs.future.easyspace.com/Programming/Hardware/FDC/floppy.html
-// And a port list:
-//   http://mudlist.eorbit.net/~adam/pickey/ports.html
-//
+// Bochs' code switched from AT mode to Model 30 mode.
 
 extern "C" {
 #include <errno.h>
@@ -71,10 +58,9 @@ extern "C" {
 #include <sstream>
 #include <regex>
 #include <iomanip>
-using namespace std::placeholders;
 
 IODEVICE_PORTS(FloppyCtrl) = {
-	{ 0x03F0, 0x03F1, PORT_8BIT|PORT_R_ }, //Status Register A / B
+	{ 0x03F0, 0x03F1, PORT_8BIT|PORT_R_ }, // Status Register A / B
 	{ 0x03F2, 0x03F2, PORT_8BIT|PORT_RW }, // DOR
 	{ 0x03F4, 0x03F4, PORT_8BIT|PORT_RW }, // MSR R / DSR W
 	{ 0x03F5, 0x03F5, PORT_8BIT|PORT_RW }, // FIFO R/W
@@ -126,11 +112,21 @@ enum FDCInterfaceRegisters {
 	FDC_MSR_DRV1BUSY  = 0x02,
 	FDC_MSR_DRV0BUSY  = 0x01,
 
+	// Datarate Select Register (DSR)
+	FDC_DSR_SW_RESET  = 0x80,
+	FDC_DSR_PWR_DOWN  = 0x40,
+	FDC_DSR_PRECOMP   = 0x1c,
+	FDC_DSR_DRATE_SEL = 0x03,
+
 	// Digital Input Register (DIR)
 	FDC_DIR_NDSKCHG   = 0x80,
 	FDC_DIR_NDMAGATE  = 0x08,
 	FDC_DIR_NOPREC    = 0x04,
-	FDC_DIR_DRATE     = 0x03
+	FDC_DIR_DRATE_SEL = 0x03,
+
+	// Configuration Control Register (CCR)
+	FDC_CCR_NOPREC    = 0x04,
+	FDC_CCR_DRATE_SEL = 0x03
 };
 
 enum FDCStatusRegisters {
@@ -167,6 +163,33 @@ enum FDCStatusRegisters {
 	FDC_ST3_HD = 0x04, // HD Head Address
 	FDC_ST3_DS = 0x03, // DS Drive Select
 	FDC_ST3_BASE = 0x28 // Unused bits 3,5 always '1'
+};
+
+enum FDCCommands {                      // parameters  code
+	FDC_CMD_READ         = 0b00000110,  // MT  MFM SK  0 0 1 1 0
+	FDC_CMD_READ_DEL     = 0b00001100,  // MT  MFM SK  0 1 1 0 0
+	FDC_CMD_WRITE        = 0b00000101,  // MT  MFM 0   0 0 1 0 1
+	FDC_CMD_WRITE_DEL    = 0b00001001,  // MT  MFM 0   0 1 0 0 1
+	FDC_CMD_READ_TRACK   = 0b00000010,  // 0   MFM 0   0 0 0 1 0
+	FDC_CMD_VERIFY       = 0b00010110,  // MT  MFM SK  1 0 1 1 0
+	FDC_CMD_VERSION      = 0b00010000,  // 0   0   0   1 0 0 0 0
+	FDC_CMD_FORMAT_TRACK = 0b00001101,  // 0   MFM 0   0 1 1 0 1
+	FDC_CMD_SCAN_EQ      = 0b00010001,  // MT  MFM SK  1 0 0 0 1
+	FDC_CMD_SCAN_LO_EQ   = 0b00011001,  // MT  MFM SK  1 1 0 0 1
+	FDC_CMD_SCAN_HI_EQ   = 0b00011101,  // MT  MFM SK  1 1 1 0 1
+	FDC_CMD_RECALIBRATE  = 0b00000111,  // 0   0   0   0 0 1 1 1
+	FDC_CMD_SENSE_INT    = 0b00001000,  // 0   0   0   0 1 0 0 0
+	FDC_CMD_SPECIFY      = 0b00000011,  // 0   0   0   0 0 0 1 1
+	FDC_CMD_SENSE_DRIVE  = 0b00000100,  // 0   0   0   0 0 1 0 0
+	FDC_CMD_CONFIGURE    = 0b00010011,  // 0   0   0   1 0 0 1 1
+	FDC_CMD_SEEK         = 0b00001111,  // REL DIR 0   0 1 1 1 1
+	FDC_CMD_DUMPREG      = 0b00001110,  // 0   0   0   0 1 1 1 0
+	FDC_CMD_READ_ID      = 0b00001010,  // 0   MFM 0   0 1 0 1 0
+	FDC_CMD_PERP_MODE    = 0b00010010,  // 0   0   0   1 0 0 1 0
+	FDC_CMD_LOCK         = 0b00010100,  // LCK 0   0   1 0 1 0 0
+
+	FDC_CMD_INVALID      = 0,
+	FDC_CMD_RESET        = 0b00011111   // contrived
 };
 
 #define FDC_ST_HDS(DRIVE) ((m_s.head[DRIVE]<<2) | DRIVE)
@@ -214,13 +237,13 @@ static std::map<unsigned, std::string> drive_type_str = {
 	{ FDD_525HD, "5.25" }
 };
 
-static std::map<std::string, uint> disk_types_350 = {
+static std::map<std::string, unsigned> disk_types_350 = {
 	{ "720K", FLOPPY_720K },
 	{ "1.44M",FLOPPY_1_44 },
 	{ "2.88M",FLOPPY_2_88 }
 };
 
-static std::map<std::string, uint> disk_types_525 = {
+static std::map<std::string, unsigned> disk_types_525 = {
 	{ "160K", FLOPPY_160K },
 	{ "180K", FLOPPY_180K },
 	{ "320K", FLOPPY_320K },
@@ -240,12 +263,13 @@ FloppyCtrl::~FloppyCtrl()
 	}
 }
 
-void FloppyCtrl::install(void)
+void FloppyCtrl::install()
 {
 	IODevice::install();
 
 	memset(&m_s, 0, sizeof(m_s));
 
+	using namespace std::placeholders;
 	m_devices->dma()->register_8bit_channel(
 			FLOPPY_DMA_CHAN,
 			std::bind(&FloppyCtrl::dma_read, this, _1, _2),
@@ -258,7 +282,7 @@ void FloppyCtrl::install(void)
 			name()
 	);
 
-	for(uint i=0; i<4; i++) {
+	for(unsigned i=0; i<4; i++) {
 		m_media[i].type            = FLOPPY_NONE;
 		m_media[i].spt             = 0;
 		m_media[i].tracks          = 0;
@@ -431,7 +455,7 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 	return _disktype;
 }
 
-void FloppyCtrl::floppy_drive_setup(uint drive)
+void FloppyCtrl::floppy_drive_setup(unsigned drive)
 {
 	assert(drive < 2);
 
@@ -448,7 +472,7 @@ void FloppyCtrl::floppy_drive_setup(uint drive)
 	m_device_type[drive] = devtype;
 	g_program.config().set_string(DRIVES_SECTION,
 			drive==0?DRIVES_FDD_A:DRIVES_FDD_B, drive_type_str[devtype]);
-	std::map<std::string, uint> *mediatypes = nullptr;
+	std::map<std::string, unsigned> *mediatypes = nullptr;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;
 		PINFOF(LOG_V0, LOG_FDC, "Installed floppy %s as %s\n",
@@ -523,13 +547,12 @@ uint8_t FloppyCtrl::get_drate_for_media(uint8_t _drive)
 	if(!m_media_present[_drive]) {
 		return 2;
 	}
-	/* There are two standardized bit rates, 250 kb/s and 500 kb/s. DD 5.25" and
-	 * all 3.5" drives spin at 300 rpm, 8" and HD 5.25" drives at 360 rpm. Then
-	 * IBM went clever and let their HD drive spin at 360 rpm all the time using
-	 * the non standard bit rate of 300 kb/s for DD. Foreign format drives must
-	 * of necessity circumvent the standard BIOS routines and may or may not
-	 * encounter trouble at the unusual speed.
-	 */
+	// There are two standardized bit rates, 250 kb/s and 500 kb/s. DD 5.25" and
+	// all 3.5" drives spin at 300 rpm, 8" and HD 5.25" drives at 360 rpm. Then
+	// IBM went clever and let their HD drive spin at 360 rpm all the time using
+	// the non standard bit rate of 300 kb/s for DD. Foreign format drives must
+	// of necessity circumvent the standard BIOS routines and may or may not
+	// encounter trouble at the unusual speed.
 	switch(m_media[_drive].type) {
 		case FLOPPY_160K:
 		case FLOPPY_180K:
@@ -557,16 +580,15 @@ void FloppyCtrl::reset(unsigned type)
 	if(type == MACHINE_POWER_ON) {
 		// DMA is enabled from start
 		memset(&m_s, 0, sizeof(m_s));
-		
+
 		if(m_fx_enabled) {
 			for(int i=0; i<2; i++) {
 				m_fx[i].reset();
 			}
 		}
 	} else {
-		/* Hardware RESET clears all registers except those programmed by
-		 * the SPECIFY command.
-		 */
+		// Hardware RESET clears all registers except those programmed by
+		// the SPECIFY command.
 		m_s.pending_irq     = false;
 		m_s.reset_sensei    = 0;
 		m_s.main_status_reg &= FDC_MSR_NONDMA; // keep ND bit value
@@ -589,7 +611,7 @@ void FloppyCtrl::reset(unsigned type)
 		for(int i=0; i<4; i++) {
 			m_s.DIR[i] |= FDC_DIR_NDSKCHG;
 		}
-		m_s.data_rate = 2; /* 250 Kbps */
+		m_s.data_rate = 2; // 250 Kbps
 		m_s.lock = false;
 	}
 	if(!m_s.lock) {
@@ -600,7 +622,7 @@ void FloppyCtrl::reset(unsigned type)
 
 	for(int i=0; i<4; i++) {
 		m_s.cylinder[i]     = 0;
-	    //m_s.cur_cylinder[i] = 0;
+		//m_s.cur_cylinder[i] = 0;
 		m_s.head[i]         = 0;
 		m_s.sector[i]       = 0;
 		m_s.eot[i]          = 0;
@@ -741,8 +763,8 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 		case 0x3F5: // Data
 		{
 			uint8_t ridx=m_s.result_index+1, rsize=m_s.result_size;
-			if((m_s.main_status_reg & FDC_MSR_NONDMA) && ((m_s.pending_command & 0x4f) == 0x46)) {
-				dma_write(&value, 1);
+			if((m_s.main_status_reg & FDC_MSR_NONDMA) && (m_s.cmd_code() == FDC_CMD_READ)) {
+				read_data(&value, 1, false);
 				lower_interrupt();
 				// don't enter idle phase until we've given CPU last data byte
 				if(m_s.TC) {
@@ -770,24 +792,22 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 				//Model30 mode only
 				// Bit 7 : !DSKCHG
 				// Bochs is in AT mode, invert the value
-				value |= !(bool(m_s.DIR[drive] & 0x80)) << 7;
+				value |= !(bool(m_s.DIR[drive] & FDC_DIR_NDSKCHG)) << 7;
 				// Bit 3 : !DMAGATE (DOR)
-				value |= m_s.DOR & 0x08; //same position
+				value |= m_s.DOR & FDC_DIR_NDMAGATE; //same position
 				// Bit 2 : NOPREC (CCR)
 				value |= (m_s.noprec << 2);
 				// Bit 1-0 : DRATE SEL1-0 (CCR)
 				value |= m_s.data_rate;
-				/*
-				The	STEP bit is latched with the Step output going active
-				and is cleared with a read to the DIR register, Hardware or Software RESET
-				*/
+				// The STEP bit is latched with the Step output going active
+				// and is cleared with a read to the DIR register, Hardware or Software RESET
 				m_s.step[drive] = false;
 			}
 			PDEBUGF(LOG_V2, LOG_FDC, "DIR  -> 0x%02X ", value);
 			if(value & FDC_DIR_NDSKCHG)  {PDEBUGF(LOG_V2, LOG_FDC, "-DSKCHG ");}
 			if(value & FDC_DIR_NDMAGATE) {PDEBUGF(LOG_V2, LOG_FDC, "-DMAGATE ");}
 			if(value & FDC_DIR_NOPREC)   {PDEBUGF(LOG_V2, LOG_FDC, "NOPREC ");}
-			PDEBUGF(LOG_V2, LOG_FDC, "DRATE=%02X\n", value & 0x03);
+			PDEBUGF(LOG_V2, LOG_FDC, "DRATE=%02X\n", value & FDC_DIR_DRATE_SEL);
 			break;
 		}
 		default:
@@ -810,7 +830,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 		{
 			uint8_t normal_op  = _value & FDC_DOR_NRESET;
 			uint8_t drive_sel  = _value & FDC_DOR_DRVSEL;
-			uint8_t prev_normal_op = m_s.DOR & 0x04;
+			uint8_t prev_normal_op = m_s.DOR & FDC_DOR_NRESET;
 			bool was_spinning[2] = { is_motor_spinning(0), is_motor_spinning(1) };
 
 			m_s.DOR = _value;
@@ -821,7 +841,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			} else if(prev_normal_op && normal_op==0) {
 				// transition from NORMAL to RESET
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
-				m_s.pending_command = 0xfe; // RESET pending
+				m_s.pending_command = FDC_CMD_RESET; // RESET pending
 			}
 			PDEBUGF(LOG_V2, LOG_FDC, "DOR  <- 0x%02X ", _value);
 			if(_value & FDC_DOR_MOTEN0)   { PDEBUGF(LOG_V2, LOG_FDC, "MOT0 "); }
@@ -834,6 +854,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 			if(m_device_type[drive_sel] == FDD_NONE) {
 				PDEBUGF(LOG_V0, LOG_FDC, "WARNING: non existing drive selected\n");
 			}
+			// TODO add motor on time delay (3.5=300ms, 5.25=500ms)
 			if(m_fx_enabled) {
 				for(int i=0; i<2; i++) {
 					bool is_spinning = is_motor_spinning(i);
@@ -848,117 +869,114 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 		}
 		case 0x3F4: // Datarate Select Register (DSR)
 		{
-			PDEBUGF(LOG_V0, LOG_FDC, "WARNING: write to Datarate Select Register invalid on Mod30!\n");
-			m_s.data_rate = _value & 0x03;
-			if(_value & 0x80) {
+			m_s.data_rate = _value & FDC_DSR_DRATE_SEL;
+			if(_value & FDC_DSR_SW_RESET) {
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
-				m_s.pending_command = 0xfe; // RESET pending
+				m_s.pending_command = FDC_CMD_RESET; // RESET pending
 				g_machine.activate_timer(m_timer, 250_us, false);
 			}
-			if(_value & 0x7c) {
+			if(_value & (FDC_DSR_PWR_DOWN | FDC_DSR_PRECOMP)) {
 				PDEBUGF(LOG_V0, LOG_FDC, "write to Data Rate Select register: unsupported bits set\n");
 			}
 			break;
 		}
 		case 0x3F5: // Data FIFO
 		{
-			if((m_s.main_status_reg & FDC_MSR_NONDMA) && ((m_s.pending_command & 0x4f) == 0x45)) {
-				// write normal data, MT=0
+			if((m_s.main_status_reg & FDC_MSR_NONDMA) && (m_s.cmd_code() == FDC_CMD_WRITE)) {
 				PDEBUGF(LOG_V2, LOG_FDC, "D  <- 0x%02X\n", _value);
-				dma_read((uint8_t *) &_value, 1);
+				write_data((uint8_t *) &_value, 1, false);
 				lower_interrupt();
 				break;
 			} else if(m_s.command_complete) {
-				if(m_s.pending_command != 0) {
+				if(m_s.pending_command != FDC_CMD_INVALID) {
 					PERRF_ABORT(LOG_FDC, "receiving new command 0x%02x, old one (0x%02x) pending\n",
 							_value, m_s.pending_command);
 				}
 				m_s.command[0] = _value;
 				m_s.command_complete = false;
 				m_s.command_index = 1;
-				/* read/write command in progress */
+				// read/write command in progress
 				m_s.main_status_reg &= ~FDC_MSR_DIO; // leave drive status untouched
 				m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_CMDBUSY;
 				const char* command;
-				switch(_value) {
-					case 0x03:
+				bool valid = true;
+				switch(_value & FDC_CMD_MASK) {
+					case FDC_CMD_SPECIFY:
 						command = "specify";
 						m_s.command_size = 3;
 						break;
-					case 0x04:
+					case FDC_CMD_SENSE_DRIVE:
 						command = "sense drive status";
 						m_s.command_size = 2;
 						break;
-					case 0x07:
+					case FDC_CMD_RECALIBRATE:
 						command = "recalibrate";
 						m_s.command_size = 2;
 						break;
-					case 0x08:
+					case FDC_CMD_SENSE_INT:
 						command = "sense interrupt status";
 						m_s.command_size = 1;
 						break;
-					case 0x0f:
+					case FDC_CMD_SEEK:
+						if(_value & 0x80) {
+							PERRF(LOG_FDC, "relative seek not implemented\n");
+							valid = false;
+							break;
+						}
 						command = "seek";
 						m_s.command_size = 3;
 						break;
-					case 0x4a:
+					case FDC_CMD_READ_ID:
 						command = "read ID";
 						m_s.command_size = 2;
 						break;
-					case 0x4d:
+					case FDC_CMD_FORMAT_TRACK:
 						command = "format track";
 						m_s.command_size = 6;
 						break;
-					case 0x45:
-					case 0xc5:
+					case FDC_CMD_WRITE:
 						command = "write data";
 						m_s.command_size = 9;
 						break;
-					case 0x46:
-					case 0x66:
-					case 0xc6:
-					case 0xe6:
+					case FDC_CMD_READ:
 						command = "read data";
 						m_s.command_size = 9;
 						break;
-					case 0x0e:
+					case FDC_CMD_DUMPREG:
 						command = "dumpreg";
 						m_s.command_size = 0;
 						m_s.pending_command = _value;
 						enter_result_phase();
 						break;
-					case 0x10:
+					case FDC_CMD_VERSION:
 						command = "version";
 						m_s.command_size = 0;
 						m_s.pending_command = _value;
 						enter_result_phase();
 						break;
-					case 0x14:
-						command = "unlock";
+					case FDC_CMD_LOCK:
 						m_s.command_size = 0;
 						m_s.pending_command = _value;
+						command = m_s.cmd_lock() ? "lock" : "unlock";
 						enter_result_phase();
 						break;
-					case 0x94:
-						command = "lock";
-						m_s.command_size = 0;
-						m_s.pending_command = _value;
-						enter_result_phase();
-						break;
-					case 0x13:
+					case FDC_CMD_CONFIGURE:
 						command = "configure";
 						m_s.command_size = 4;
 						break;
-					case 0x12:
+					case FDC_CMD_PERP_MODE:
 						command = "perpendicular mode";
 						m_s.command_size = 2;
 						break;
 					default:
-						command = "INVALID";
-						m_s.command_size = 0;   // make sure we don't try to process this command
-						m_s.status_reg0 = FDC_ST0_IC_INVALID;
-						enter_result_phase();
+						valid = false;
 						break;
+				}
+				if(!valid) {
+					command = "INVALID";
+					m_s.command_size = 0;   // make sure we don't try to process this command
+					m_s.status_reg0 = FDC_ST0_IC_INVALID;
+					enter_result_phase();
 				}
 				PDEBUGF(LOG_V2, LOG_FDC, "D1/%d <- 0x%02X (cmd: %s)\n", m_s.command_size, _value, command);
 			} else {
@@ -966,8 +984,8 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				PDEBUGF(LOG_V2, LOG_FDC, "D%d/%d <- 0x%02X\n", m_s.command_index, m_s.command_size, _value);
 			}
 			if(m_s.command_index == m_s.command_size) {
-				/* read/write command not in progress any more */
-				floppy_command();
+				// read/write command not in progress any more
+				enter_execution_phase();
 				m_s.command_complete = true;
 			}
 			return;
@@ -975,14 +993,15 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 		case 0x3F7: // Configuration Control Register (CCR)
 		{
 			PDEBUGF(LOG_V2, LOG_FDC, "CCR  <- 0x%02X ", _value);
-			m_s.data_rate = _value & 0x03;
+			m_s.data_rate = _value & FDC_CCR_DRATE_SEL;
 			switch (m_s.data_rate) {
 				case 0: PDEBUGF(LOG_V2, LOG_FDC, "500 Kbps"); break;
 				case 1: PDEBUGF(LOG_V2, LOG_FDC, "300 Kbps"); break;
 				case 2: PDEBUGF(LOG_V2, LOG_FDC, "250 Kbps"); break;
 				case 3: PDEBUGF(LOG_V2, LOG_FDC, "1 Mbps"); break;
+				default: assert(false); break;
 			}
-			m_s.noprec = _value & 0x04;
+			m_s.noprec = _value & FDC_CCR_NOPREC;
 			if(m_s.noprec) { PDEBUGF(LOG_V2, LOG_FDC, " NWPC"); }
 			PDEBUGF(LOG_V2, LOG_FDC, "\n");
 			break;
@@ -994,7 +1013,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 	}
 }
 
-void FloppyCtrl::floppy_command()
+void FloppyCtrl::enter_execution_phase()
 {
 	uint8_t motor_on;
 	uint8_t head, drive, cylinder, sector, eot;
@@ -1005,8 +1024,9 @@ void FloppyCtrl::floppy_command()
 	PDEBUGF(LOG_V2, LOG_FDC, "%s ", print_array(m_s.command,m_s.command_size).c_str());
 
 	m_s.pending_command = m_s.command[0];
-	switch (m_s.pending_command) {
-		case 0x03: // specify
+
+	switch (m_s.cmd_code()) {
+		case FDC_CMD_SPECIFY:
 			// execution: specified parameters are loaded
 			// result: no result bytes, no interrupt
 			m_s.SRT = m_s.command[1] >> 4;
@@ -1023,7 +1043,7 @@ void FloppyCtrl::floppy_command()
 			enter_idle_phase();
 			return;
 
-		case 0x04: // sense drive status
+		case FDC_CMD_SENSE_DRIVE:
 			drive = (m_s.command[1] & 0x03);
 
 			PDEBUGF(LOG_V1, LOG_FDC, "get status DRV%u\n", drive);
@@ -1034,14 +1054,14 @@ void FloppyCtrl::floppy_command()
 				m_s.status_reg3 |= FDC_ST3_WP;
 			}
 			if((m_device_type[drive] != FDD_NONE) && (m_s.cur_cylinder[drive] == 0)) {
-				//the head takes time to move to track0; this time is used to determine if 40 or 80 tracks
-				//the value of cur_cylinder for the drive is set in the timer handler
+				// the head takes time to move to track0; this time is used to determine if 40 or 80 tracks
+				// the value of cur_cylinder for the drive is set in the timer handler
 				m_s.status_reg3 |= FDC_ST3_T0;
 			}
 			enter_result_phase();
 			return;
 
-		case 0x07: // recalibrate
+		case FDC_CMD_RECALIBRATE:
 			drive = (m_s.command[1] & 0x03);
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 
@@ -1060,26 +1080,24 @@ void FloppyCtrl::floppy_command()
 			}
 			g_machine.activate_timer(m_timer, uint64_t(step_delay)*1_us, false);
 
-			/* command head to track 0
-			* controller set to non-busy
-			* error condition noted in Status reg 0's equipment check bit
-			* seek end bit set to 1 in Status reg 0 regardless of outcome
-			* The last two are taken care of in timer().
-			*/
+			// command head to track 0
+			// controller set to non-busy
+			// error condition noted in Status reg 0's equipment check bit
+			// seek end bit set to 1 in Status reg 0 regardless of outcome
+			// The last two are taken care of in timer().
 			m_s.direction[drive] = (m_s.cylinder[drive]>0);
 			m_s.cylinder[drive] = 0;
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
 			return;
 
-		case 0x08: // sense interrupt status
-			/* execution:
-			*   get status
-			* result:
-			*   no interupt
-			*   byte0 = status reg0
-			*   byte1 = current cylinder number (0 to 79)
-			*/
+		case FDC_CMD_SENSE_INT:
+			//  execution:
+			//   get status
+			// result:
+			//   no interupt
+			//   byte0 = status reg0
+			//   byte1 = current cylinder number (0 to 79)
 			PDEBUGF(LOG_V1, LOG_FDC, "sense interrupt status\n");
 
 			if(m_s.reset_sensei > 0) {
@@ -1093,17 +1111,16 @@ void FloppyCtrl::floppy_command()
 			enter_result_phase();
 			return;
 
-		case 0x0f: // seek
+		case FDC_CMD_SEEK:
 		{
-			/* command:
-			 *   byte0 = 0F
-			 *   byte1 = drive & head select
-			 *   byte2 = cylinder number
-			 * execution:
-			 *   postion head over specified cylinder
-			 * result:
-			 *   no result bytes, issues an interrupt
-			 */
+			// command:
+			//   byte0 = 0F
+			//   byte1 = drive & head select
+			//   byte2 = cylinder number
+			// execution:
+			//   postion head over specified cylinder
+			// result:
+			//   no result bytes, issues an interrupt
 			drive =  m_s.command[1] & 0x03;
 			head  = (m_s.command[1] >> 2) & 0x01;
 			cylinder = m_s.command[2];
@@ -1114,11 +1131,11 @@ void FloppyCtrl::floppy_command()
 			step_delay = calculate_step_delay(drive, m_s.cylinder[drive], cylinder);
 			PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay);
 			g_machine.activate_timer(m_timer, uint64_t(step_delay)*1_us, false);
-			/* ??? should also check cylinder validity */
+			// ??? should also check cylinder validity
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
 			m_s.cylinder[drive] = cylinder;
 			m_s.head[drive] = head;
-			/* data reg not ready, drive not busy */
+			// data reg not ready, drive not busy
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= (1 << drive);
 
@@ -1127,7 +1144,7 @@ void FloppyCtrl::floppy_command()
 			}
 			return;
 		}
-		case 0x13: // Configure
+		case FDC_CMD_CONFIGURE: // Configure
 			PDEBUGF(LOG_V1, LOG_FDC, "configure\n");
 			PDEBUGF(LOG_V2, LOG_FDC, "  eis     = 0x%02x\n", m_s.command[2] & 0x40);
 			PDEBUGF(LOG_V2, LOG_FDC, "  efifo   = 0x%02x\n", m_s.command[2] & 0x20);
@@ -1139,7 +1156,7 @@ void FloppyCtrl::floppy_command()
 			enter_idle_phase();
 			return;
 
-		case 0x4a: // read ID
+		case FDC_CMD_READ_ID: // read ID
 			drive = m_s.command[1] & 0x03;
 			m_s.head[drive] = (m_s.command[1] >> 2) & 0x01;
 			m_s.DOR = FDC_DOR_DRIVE(drive);
@@ -1174,12 +1191,12 @@ void FloppyCtrl::floppy_command()
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			sector_time = calculate_rw_delay(drive, true);
 			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
-			/* data reg not ready, controller busy */
+			// data reg not ready, controller busy
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 			return;
 
-		case 0x4d: // format track
+		case FDC_CMD_FORMAT_TRACK: // format track
 			drive = m_s.command[1] & 0x03;
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 
@@ -1223,7 +1240,7 @@ void FloppyCtrl::floppy_command()
 				return;
 			}
 
-			/* 4 header bytes per sector are required */
+			// 4 header bytes per sector are required
 			m_s.format_count <<= 2;
 
 			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
@@ -1231,20 +1248,16 @@ void FloppyCtrl::floppy_command()
 			} else {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 			}
-			/* data reg not ready, controller busy */
+			// data reg not ready, controller busy
 			m_s.main_status_reg &= FDC_MSR_NONDMA;
 			m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 			return;
 
-		case 0x46: // read data, MT=0, MFM=1, SK=0
-		case 0x66: // read data, MT=0, MFM=1, SK=1
-		case 0xc6: // read data, MT=1, MFM=1, SK=0
-		case 0xe6: // read data, MT=1, MFM=1, SK=1
-		case 0x45: // write data, MT=0, MFM=1
-		case 0xc5: // write data, MT=1, MFM=1
+		case FDC_CMD_READ:
+		case FDC_CMD_WRITE:
 		{
-			const char *cmd = ((m_s.command[0]&0x4f)==0x46)?"read":"write";
-			m_s.multi_track = (m_s.command[0] >> 7);
+			const char *cmd = (m_s.cmd_code()==FDC_CMD_READ) ? "read" : "write";
+			m_s.multi_track = m_s.cmd_mtrk();
 			if((m_s.DOR & FDC_DOR_NDMAGATE) == 0) {
 				PDEBUGF(LOG_V0, LOG_FDC, "%s command with DMA and INT disabled\n", cmd);
 				return;
@@ -1256,11 +1269,11 @@ void FloppyCtrl::floppy_command()
 				PDEBUGF(LOG_V0, LOG_FDC, "%s: motor not on\n", cmd);
 				return;
 			}
-			cylinder    = m_s.command[2]; /* 0..79 depending */
+			cylinder    = m_s.command[2]; // 0..79 depending
 			head        = m_s.command[3] & 0x01;
-			sector      = m_s.command[4]; /* 1..36 depending */
+			sector      = m_s.command[4]; // 1..36 depending
 			sector_size = m_s.command[5];
-			eot         = m_s.command[6]; /* 1..36 depending */
+			eot         = m_s.command[6]; // 1..36 depending
 			//data_length = m_s.command[8];
 
 			PDEBUGF(LOG_V1, LOG_FDC, "%s data DRV%u, C=%u,H=%u,S=%u,eot=%u\n",
@@ -1290,7 +1303,7 @@ void FloppyCtrl::floppy_command()
 			}
 
 			if(sector_size != 0x02) { // 512 bytes
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: sector size %d not supported\n", cmd, 128<<sector_size);
+				PERRF(LOG_FDC, "%s: sector size %d not supported\n", cmd, 128<<sector_size);
 				return;
 			}
 
@@ -1338,20 +1351,20 @@ void FloppyCtrl::floppy_command()
 
 			play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
 
-			if((m_s.command[0] & 0x4f) == 0x46) { // read
+			if(m_s.cmd_code() == FDC_CMD_READ) {
 				m_s.rddata[drive] = true;
 				floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
-				/* controller busy; if DMA mode, data reg not ready */
+				// controller busy; if DMA mode, data reg not ready
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 					m_s.main_status_reg |= (FDC_MSR_RQM | FDC_MSR_DIO);
 				}
-				uint32_t sector_time = calculate_rw_delay(drive, true);
+				sector_time = calculate_rw_delay(drive, true);
 				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
-			} else if((m_s.command[0] & 0x7f) == 0x45) { // write
+			} else if(m_s.cmd_code() == FDC_CMD_WRITE) {
 				m_s.wrdata[drive] = true;
-				/* controller busy; if DMA mode, data reg not ready */
+				// controller busy; if DMA mode, data reg not ready
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
@@ -1360,26 +1373,25 @@ void FloppyCtrl::floppy_command()
 					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, true);
 				}
 			} else {
-				PERRF_ABORT(LOG_FDC, "unknown read/write command\n");
+				assert(false);
 				return;
 			}
 			break;
 		}
 
-		case 0x12: // Perpendicular mode
+		case FDC_CMD_PERP_MODE:
 			m_s.perp_mode = m_s.command[1];
 			PDEBUGF(LOG_V2, LOG_FDC, "perpendicular mode: config=0x%02X\n", m_s.perp_mode);
 			enter_idle_phase();
 			break;
 
 		default: // invalid or unsupported command; these are captured in write() above
-			PERRF_ABORT(LOG_FDC, "You should never get here! cmd = 0x%02x\n", m_s.command[0]);
+			PERRF_ABORT(LOG_FDC, "You should never get here! cmd = 0x%02x\n", m_s.pending_command);
 			break;
 	}
 }
 
-void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
-            uint32_t bytes, uint8_t direction)
+void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, uint32_t bytes, uint8_t direction)
 {
 	int ret = 0;
 
@@ -1431,8 +1443,8 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer,
 void FloppyCtrl::timer(uint64_t)
 {
 	uint8_t drive = current_drive();
-	switch (m_s.pending_command) {
-		case 0x07: // recalibrate
+	switch (m_s.cmd_code()) {
+		case FDC_CMD_RECALIBRATE:
 		{
 			m_s.status_reg0 = FDC_ST0_SE | drive;
 			if(!is_motor_on(drive)) {
@@ -1447,7 +1459,7 @@ void FloppyCtrl::timer(uint64_t)
 			raise_interrupt();
 			break;
 		}
-		case 0x0f: // seek
+		case FDC_CMD_SEEK:
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST0_SE | FDC_ST_HDS(drive);
 			if(is_motor_on(drive)) {
 				m_s.cur_cylinder[drive] = m_s.cylinder[drive];
@@ -1457,12 +1469,11 @@ void FloppyCtrl::timer(uint64_t)
 			raise_interrupt();
 			break;
 
-		case 0x4a: // read ID
+		case FDC_CMD_READ_ID:
 			enter_result_phase();
 			break;
 
-		case 0x45: // write normal data
-		case 0xc5:
+		case FDC_CMD_WRITE:
 			if(m_s.TC) { // Terminal Count line, done
 				m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 				m_s.status_reg1 = 0;
@@ -1480,10 +1491,7 @@ void FloppyCtrl::timer(uint64_t)
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			break;
 
-		case 0x46: // read normal data
-		case 0x66:
-		case 0xc6:
-		case 0xe6:
+		case FDC_CMD_READ:
 			// transfer next sector
 			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 				m_s.main_status_reg &= ~FDC_MSR_CMDBUSY;  // clear busy bit
@@ -1495,7 +1503,7 @@ void FloppyCtrl::timer(uint64_t)
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			break;
 
-		case 0x4d: // format track
+		case FDC_CMD_FORMAT_TRACK:
 			if((m_s.format_count == 0) || m_s.TC) {
 				m_s.format_count = 0;
 				m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
@@ -1510,16 +1518,17 @@ void FloppyCtrl::timer(uint64_t)
 			m_s.cur_cylinder[drive] = m_s.cylinder[drive];
 			break;
 
-		case 0xfe: // (contrived) RESET
+		case FDC_CMD_RESET: // (contrived) RESET
 			PDEBUGF(LOG_V1, LOG_FDC, "RESET\n");
 			reset(DEVICE_SOFT_RESET);
-			m_s.pending_command = 0;
+			m_s.pending_command = FDC_CMD_INVALID;
 			m_s.status_reg0 = FDC_ST0_IC_POLLING;
 			raise_interrupt();
 			m_s.reset_sensei = 4;
 			break;
 
-		case 0x00: // nothing pending?
+		case FDC_CMD_INVALID: // nothing pending?
+			PDEBUGF(LOG_V0, LOG_FDC, "timer(): nothing pending!\n");
 			break;
 
 		default:
@@ -1528,22 +1537,18 @@ void FloppyCtrl::timer(uint64_t)
 	}
 }
 
-uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
+uint16_t FloppyCtrl::read_data(uint8_t *_buffer_to, uint16_t _maxlen, bool _dma)
 {
-	// A DMA write is from I/O to Memory
-	// We need to return the next data byte(m_s) from the floppy buffer
-	// to be transfered via the DMA to memory. (read block from floppy)
-	//
-	// maxlen is the maximum length of the DMA transfer
-
-	m_devices->sysboard()->set_feedback();
-
 	uint8_t drive = current_drive();
 	uint16_t len = 512 - m_s.floppy_buffer_index;
-	if(len > maxlen) len = maxlen;
-	memcpy(buffer, &m_s.floppy_buffer[m_s.floppy_buffer_index], len);
+	if(len > _maxlen) {
+		len = _maxlen;
+	}
+
+	memcpy(_buffer_to, &m_s.floppy_buffer[m_s.floppy_buffer_index], len);
+
 	m_s.floppy_buffer_index += len;
-	m_s.TC = get_TC() && (len == maxlen);
+	m_s.TC = get_TC() && (len == _maxlen);
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DMA write DRV%u\n", drive);
 
@@ -1560,13 +1565,13 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 			PDEBUGF(LOG_V2, LOG_FDC, "<<READ DONE>> DRV%u C=%u,H=%u,S=%u\n",
 					drive, m_s.cylinder[drive], m_s.head[drive], m_s.sector[drive]);
 
-			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
+			if(_dma) {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			enter_result_phase();
 		} else { // more data to transfer
 			floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
-			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
+			if(_dma) {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			uint32_t sector_time = calculate_rw_delay(drive, false);
@@ -1576,40 +1581,31 @@ uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 	return len;
 }
 
-uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
+uint16_t FloppyCtrl::write_data(uint8_t *_buffer_from, uint16_t _maxlen, bool _dma)
 {
-	// A DMA read is from Memory to I/O
-	// We need to write the data_byte which was already transfered from memory
-	// via DMA to I/O (write block to floppy)
-	//
-	// maxlen is the length of the DMA transfer (not implemented yet)
-
 	uint8_t drive = current_drive();
 	uint32_t sector_time;
 
-	m_devices->sysboard()->set_feedback();
+	if(m_s.cmd_code() == FDC_CMD_FORMAT_TRACK) {
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DMA read DRV%u\n", drive);
-
-	if(m_s.pending_command == 0x4d) { // format track in progress
-		PDEBUGF(LOG_V2, LOG_FDC, "DMA read: format in progress\n");
+		PDEBUGF(LOG_V2, LOG_FDC, "write_data: format in progress\n");
 		m_s.format_count--;
 		switch (3 - (m_s.format_count & 0x03)) {
 			case 0:
 				//TODO seek time should be considered and added to the sector_time below
-				m_s.cylinder[drive] = *buffer;
+				m_s.cylinder[drive] = *_buffer_from;
 				break;
 			case 1:
-				if(*buffer != m_s.head[drive]) {
+				if(*_buffer_from != m_s.head[drive]) {
 					PDEBUGF(LOG_V0, LOG_FDC, "head number does not match head field\n");
 				}
 				break;
 			case 2:
-				m_s.sector[drive] = *buffer;
+				m_s.sector[drive] = *_buffer_from;
 				break;
 			case 3:
-				if(*buffer != 2) {
-					PDEBUGF(LOG_V0, LOG_FDC, "dma_read: sector size %d not supported\n", 128<<(*buffer));
+				if(*_buffer_from != 2) {
+					PDEBUGF(LOG_V0, LOG_FDC, "write_data: sector size %d not supported\n", 128<<(*_buffer_from));
 				}
 				PDEBUGF(LOG_V2, LOG_FDC, "formatting cylinder %u head %u sector %u\n",
 						m_s.cylinder[drive], m_s.head[drive], m_s.sector[drive]);
@@ -1618,24 +1614,28 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 				}
 
 				floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
-				if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
+				if(_dma) {
 					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 				}
 				sector_time = calculate_rw_delay(drive, false);
 				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 				break;
+			default:
+				assert(false); break;
 		}
 		return 1;
 
 	} else { // write normal data
 
 		uint16_t len = 512 - m_s.floppy_buffer_index;
-		if(len > maxlen) {
-			len = maxlen;
+		if(len > _maxlen) {
+			len = _maxlen;
 		}
-		memcpy(&m_s.floppy_buffer[m_s.floppy_buffer_index], buffer, len);
+
+		memcpy(&m_s.floppy_buffer[m_s.floppy_buffer_index], _buffer_from, len);
+
 		m_s.floppy_buffer_index += len;
-		m_s.TC = get_TC() && (len == maxlen);
+		m_s.TC = get_TC() && (len == _maxlen);
 
 		if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
 			if(m_media[drive].write_protected) {
@@ -1654,7 +1654,7 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 			sector_time = calculate_rw_delay(drive, false);
 			increment_sector(); // increment to next sector after writing current one
 			m_s.floppy_buffer_index = 0;
-			if(!(m_s.main_status_reg & FDC_MSR_NONDMA)) {
+			if(_dma) {
 				m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 			}
 			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
@@ -1663,14 +1663,44 @@ uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
 	}
 }
 
-void FloppyCtrl::raise_interrupt(void)
+uint16_t FloppyCtrl::dma_write(uint8_t *buffer, uint16_t maxlen)
 {
-	m_devices->pic()->raise_irq(FLOPPY_IRQ);
-	  m_s.pending_irq = 1;
-	  m_s.reset_sensei = 0;
+	// A DMA write is from I/O to Memory
+	// We need to return the next data byte(s) from the floppy buffer
+	// to be transfered via the DMA to memory. (read block from floppy)
+	//
+	// maxlen is the maximum length of the DMA transfer
+
+	m_devices->sysboard()->set_feedback();
+
+	PDEBUGF(LOG_V2, LOG_FDC, "DMA write DRV%u\n", current_drive());
+
+	return read_data(buffer, maxlen, true);
 }
 
-void FloppyCtrl::lower_interrupt(void)
+uint16_t FloppyCtrl::dma_read(uint8_t *buffer, uint16_t maxlen)
+{
+	// A DMA read is from Memory to I/O
+	// We need to write the data_byte which was already transfered from memory
+	// via DMA to I/O (write block to floppy)
+	//
+	// maxlen is the length of the DMA transfer
+
+	m_devices->sysboard()->set_feedback();
+
+	PDEBUGF(LOG_V2, LOG_FDC, "DMA read DRV%u\n", current_drive());
+
+	return write_data(buffer, maxlen, true);
+}
+
+void FloppyCtrl::raise_interrupt()
+{
+	m_devices->pic()->raise_irq(FLOPPY_IRQ);
+	m_s.pending_irq = 1;
+	m_s.reset_sensei = 0;
+}
+
+void FloppyCtrl::lower_interrupt()
 {
 	if(m_s.pending_irq) {
 		m_devices->pic()->lower_irq(FLOPPY_IRQ);
@@ -1678,7 +1708,7 @@ void FloppyCtrl::lower_interrupt(void)
 	}
 }
 
-void FloppyCtrl::increment_sector(void)
+void FloppyCtrl::increment_sector()
 {
 	uint8_t drive;
 
@@ -1724,7 +1754,7 @@ void FloppyCtrl::play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_
 	}
 }
 
-void FloppyCtrl::eject_media(uint _drive)
+void FloppyCtrl::eject_media(unsigned _drive)
 {
 	const char * drivename;
 	if(_drive == 0) {
@@ -1749,7 +1779,7 @@ void FloppyCtrl::eject_media(uint _drive)
 	g_program.config().set_bool(drivename, DISK_INSERTED, false);
 }
 
-bool FloppyCtrl::insert_media(uint _drive, uint _mediatype, const char *_path, bool _write_protected)
+bool FloppyCtrl::insert_media(unsigned _drive, unsigned _mediatype, const char *_path, bool _write_protected)
 {
 	const char * drivename;
 	if(_drive == 0) {
@@ -1762,7 +1792,7 @@ bool FloppyCtrl::insert_media(uint _drive, uint _mediatype, const char *_path, b
 	}
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	//If media file is already open, close it before reopening.
+	// If media file is already open, close it before reopening.
 	eject_media(_drive);
 
 	m_media[_drive].write_protected = _write_protected;
@@ -1796,33 +1826,33 @@ bool FloppyCtrl::insert_media(uint _drive, uint _mediatype, const char *_path, b
 	return true;
 }
 
-void FloppyCtrl::enter_result_phase(void)
+void FloppyCtrl::enter_result_phase()
 {
 	uint8_t drive = current_drive();
 
-	/* these are always the same */
+	// these are always the same
 	m_s.result_index = 0;
 	// not necessary to clear any status bits, we're about to set them all
 	m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_DIO | FDC_MSR_CMDBUSY;
 
-	/* invalid command */
+	// invalid command
 	if((m_s.status_reg0 & FDC_ST0_IC) == FDC_ST0_IC_INVALID) {
 		m_s.result_size = 1;
 		m_s.result[0] = m_s.status_reg0;
 		return;
 	}
 
-	switch (m_s.pending_command) {
-		case 0x04: // get status
+	switch (m_s.cmd_code()) {
+		case FDC_CMD_SENSE_DRIVE:
 			m_s.result_size = 1;
 			m_s.result[0] = m_s.status_reg3;
 			break;
-		case 0x08: // sense interrupt
+		case FDC_CMD_SENSE_INT:
 			m_s.result_size = 2;
 			m_s.result[0] = m_s.status_reg0;
 			m_s.result[1] = m_s.cylinder[drive];
 			break;
-		case 0x0e: // dump registers
+		case FDC_CMD_DUMPREG:
 			m_s.result_size = 10;
 			for(unsigned i = 0; i < 4; i++) {
 				m_s.result[i] = m_s.cylinder[i];
@@ -1834,24 +1864,19 @@ void FloppyCtrl::enter_result_phase(void)
 			m_s.result[8] = m_s.config;
 			m_s.result[9] = m_s.pretrk;
 			break;
-		case 0x10: // version
+		case FDC_CMD_VERSION:
 			m_s.result_size = 1;
 			m_s.result[0] = 0x90;
 			break;
-		case 0x14: // unlock
-		case 0x94: // lock
-			m_s.lock = (m_s.pending_command >> 7);
+		case FDC_CMD_LOCK:
+			m_s.lock = m_s.cmd_lock();
 			m_s.result_size = 1;
 			m_s.result[0] = (m_s.lock << 4);
 			break;
-		case 0x4a: // read ID
-		case 0x4d: // format track
-		case 0x46: // read data
-		case 0x66:
-		case 0xc6:
-		case 0xe6:
-		case 0x45: // write data
-		case 0xc5:
+		case FDC_CMD_READ_ID:
+		case FDC_CMD_FORMAT_TRACK:
+		case FDC_CMD_READ:
+		case FDC_CMD_WRITE:
 			m_s.result_size = 7;
 			m_s.result[0] = m_s.status_reg0;
 			m_s.result[1] = m_s.status_reg1;
@@ -1859,23 +1884,25 @@ void FloppyCtrl::enter_result_phase(void)
 			m_s.result[3] = m_s.cylinder[drive];
 			m_s.result[4] = m_s.head[drive];
 			m_s.result[5] = m_s.sector[drive];
-			m_s.result[6] = 2; /* sector size code */
+			m_s.result[6] = 2; // sector size code
 			raise_interrupt();
 			break;
+		default:
+			assert(false); break;
 	}
 
 	PDEBUGF(LOG_V2, LOG_FDC, "RESULT: %s\n", print_array(m_s.result,m_s.result_size).c_str());
 }
 
-void FloppyCtrl::enter_idle_phase(void)
+void FloppyCtrl::enter_idle_phase()
 {
 	m_s.main_status_reg &= (FDC_MSR_NONDMA | 0x0f);  // leave drive status untouched
 	m_s.main_status_reg |= FDC_MSR_RQM; // data register ready
 
-	m_s.command_complete = true; /* waiting for new command */
+	m_s.command_complete = true; // waiting for new command
 	m_s.command_index = 0;
 	m_s.command_size = 0;
-	m_s.pending_command = 0;
+	m_s.pending_command = FDC_CMD_INVALID;
 	m_s.result_size = 0;
 
 	m_s.floppy_buffer_index = 0;
@@ -1911,45 +1938,59 @@ uint32_t FloppyCtrl::calculate_step_delay(uint8_t _drive, int _c0, int _c1)
 	}
 
 	const uint32_t settling_time = 15000;
-	return (one_step_delay*steps) + settling_time;
+	return (one_step_delay * steps) + settling_time;
 }
 
 uint32_t FloppyCtrl::calculate_rw_delay(uint8_t _drive, bool _latency)
 {
 	assert(_drive < 4);
-	uint32_t sector_time, max_latency;
-	if(m_device_type[_drive] == FDD_525HD) {
-		max_latency = (60e6 / 360);
-	} else {
-		max_latency = (60e6 / 300);
-	}
-	sector_time = max_latency / m_media[_drive].spt;
-	if(_latency) {
-		//average latency is half the max latency
-		//I reduce it further for better results
-		sector_time += (max_latency / 2.2) * m_latency_mult;
-	}
-	PDEBUGF(LOG_V2, LOG_FDC, "sector time = %d us\n", sector_time);
+	uint32_t sector_time_us, max_latency_us;
+	uint64_t now_us = g_machine.get_virt_time_us();
 
-	uint64_t now = g_machine.get_virt_time_us();
+	if(m_device_type[_drive] == FDD_525HD) {
+		max_latency_us = (60e6 / 360); // 1 min in us / rpm
+	} else {
+		max_latency_us = (60e6 / 300);
+	}
+
+	// us to read 1 sector
+	sector_time_us = max_latency_us / m_media[_drive].spt;
+
+	// Head Load Time
 	uint32_t hlt = m_s.HLT;
 	if(hlt == 0) {
 		hlt = 128;
 	}
-	hlt *= 1000000/drate_in_k[m_s.data_rate];
+	hlt *= 1000000 / drate_in_k[m_s.data_rate];
+
+	if(m_s.last_hut[_drive][m_s.head[_drive]] < now_us) {
+		// if the head has been unloaded, add the load time
+		sector_time_us += hlt;
+	}
+
+	if(_latency) {
+		// add average rotational latency?
+		// average latency is half the max latency
+		// I reduce it further for better results (probably due to HLT happening
+		// concurrently ... ?)
+		sector_time_us += (max_latency_us / 2.2) * m_latency_mult;
+	}
+
+	// Head Unload Time
 	uint32_t hut = m_s.HUT;
 	if(hut == 0) {
 		hut = 128;
 	}
-	hut *= 8000000/drate_in_k[m_s.data_rate];
-	if(m_s.last_hut[_drive][m_s.head[_drive]] < now) {
-		sector_time += hlt;
-	}
-	m_s.last_hut[_drive][m_s.head[_drive]] = now + sector_time + hut;
-	return sector_time;
+	hut *= 8000000 / drate_in_k[m_s.data_rate];
+
+	PDEBUGF(LOG_V2, LOG_FDC, "sector time = %d us\n", sector_time_us);
+
+	m_s.last_hut[_drive][m_s.head[_drive]] = now_us + sector_time_us + hut;
+
+	return sector_time_us;
 }
 
-void FloppyCtrl::reset_changeline(void)
+void FloppyCtrl::reset_changeline()
 {
 	uint8_t drive = current_drive();
 	if(m_media_present[drive]) {
@@ -1957,19 +1998,19 @@ void FloppyCtrl::reset_changeline(void)
 	}
 }
 
-bool FloppyCtrl::get_TC(void)
+bool FloppyCtrl::get_TC()
 {
 	bool terminal_count;
 	if(m_s.main_status_reg & FDC_MSR_NONDMA) {
-		/* figure out if we've sent all the data, in non-DMA mode...
-		* the drive stays on the same cylinder for a read or write, so that's
-		* not going to be an issue. EOT stands for the last sector to be I/Od.
-		* it does all the head 0 sectors first, then the second if any.
-		* now, regarding reaching the end of the sector:
-		*  == 512 would make it more precise, allowing one to spot bugs...
-		*  >= 512 makes it more robust, but allows for sloppy code...
-		*  pick your poison?
-		* note: byte and head are 0-based; eot, sector, and heads are 1-based. */
+		// figure out if we've sent all the data, in non-DMA mode...
+		// the drive stays on the same cylinder for a read or write, so that's
+		// not going to be an issue. EOT stands for the last sector to be I/Od.
+		// it does all the head 0 sectors first, then the second if any.
+		// now, regarding reaching the end of the sector:
+		//  == 512 would make it more precise, allowing one to spot bugs...
+		//  >= 512 makes it more robust, but allows for sloppy code...
+		//  pick your poison?
+		// note: byte and head are 0-based; eot, sector, and heads are 1-based.
 		uint8_t drive = current_drive();
 		terminal_count = ((m_s.floppy_buffer_index == 512) &&
 				(m_s.sector[drive] == m_s.eot[drive]) &&
@@ -2008,7 +2049,7 @@ std::string FloppyCtrl::print_array(uint8_t *_data, unsigned _len)
 #define RDWR O_RDWR
 #endif
 
-bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
+bool FloppyDisk::open(unsigned _devtype, unsigned _type, const char *_path)
 {
 	struct stat stat_buf;
 	int ret;
@@ -2017,7 +2058,7 @@ bool FloppyDisk::open(uint _devtype, uint _type, const char *_path)
 	if(_type == FLOPPY_NONE) {
 		return false;
 	}
-	uint mediacheck = floppy_type[_type].drive_mask & _devtype;
+	unsigned mediacheck = floppy_type[_type].drive_mask & _devtype;
 	if(!mediacheck) {
 		PERRF(LOG_FDC, "media type %s not valid for this floppy drive (%02Xh)\n",
 				floppy_type[_type].str, floppy_type[_type].drive_mask);
@@ -2113,4 +2154,3 @@ void FloppyDisk::close()
 		fd = -1;
 	}
 }
-
