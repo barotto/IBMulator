@@ -231,6 +231,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ DRIVES_FDD_A,   "auto" },
 		{ DRIVES_FDD_B,   "auto" },
 		{ DRIVES_FDD_LAT, "1.0"  },
+		{ DRIVES_FDC_MODE,"auto" },
 		{ DRIVES_HDD,     "auto" }
 	} },
 
@@ -472,7 +473,9 @@ ini_filehelp_t AppConfig::ms_help = {
 "; fdd_latency: A multiplier for the floppy drives rotational latency.\n"
 ";              You can use this parameter to speed up the FDD read/write operations.\n"
 ";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
-";         hdd: The type of fixed disk drive C.\n"
+";    fdc_mode: Mode of operation of the floppy disk controller.\n"
+";              Possible values: auto, pc/at, model30\n"
+";         hdd: The type of the C: hard disk drive.\n"
 ";              Possible values: none, auto, ps1, ata\n"
 ";               none: no hard disk installed\n"
 ";               auto: automatically determined by the system model\n"
@@ -700,6 +703,7 @@ std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys
 		DRIVES_FDD_A,
 		DRIVES_FDD_B,
 		DRIVES_FDD_LAT,
+		DRIVES_FDC_MODE,
 		DRIVES_HDD
 	} },
 	{ DISK_A_SECTION, {

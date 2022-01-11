@@ -82,6 +82,9 @@ class FloppyCtrl : public IODevice
 	IODEVICE(FloppyCtrl, "Floppy Controller");
 
 private:
+	enum Mode {
+		PC_AT, MODEL_30
+	};
 	struct {
 		uint8_t command[10];
 		uint8_t command_index;
@@ -131,7 +134,7 @@ private:
 		uint8_t status_reg2;
 		uint8_t status_reg3;
 
-		uint8_t  floppy_buffer[512+2]; // 2 extra for good measure
+		uint8_t  floppy_buffer[512+2]; // sector buffer (2 extra bytes for good measure?)
 		unsigned floppy_buffer_index;
 
 		bool    lock;      // FDC lock status
@@ -145,6 +148,8 @@ private:
 		uint64_t boot_time[4];
 
 	} m_s;  // state information
+
+	Mode m_mode = Mode::MODEL_30;
 
 	// configurations with more than 2 drives are untested
 	FloppyDisk m_media[4];
@@ -217,7 +222,7 @@ private:
 	void enter_result_phase();
 	uint32_t calculate_step_delay(uint8_t _drive, int _c0, int _c1);
 	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
-	void reset_changeline();
+	void step_head();
 	bool get_TC();
 	void timer(uint64_t);
 	void increment_sector();
