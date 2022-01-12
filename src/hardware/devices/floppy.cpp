@@ -2009,12 +2009,12 @@ void FloppyCtrl::enter_result_phase()
 		case FDC_CMD_SENSE_INT:
 			m_s.result_size = 2;
 			m_s.result[0] = m_s.status_reg0;
-			m_s.result[1] = m_s.cylinder[drive];
+			m_s.result[1] = m_s.cur_cylinder[drive];
 			break;
 		case FDC_CMD_DUMPREG:
 			m_s.result_size = 10;
 			for(unsigned i = 0; i < 4; i++) {
-				m_s.result[i] = m_s.cylinder[i];
+				m_s.result[i] = m_s.cur_cylinder[i];
 			}
 			m_s.result[4] = (m_s.SRT << 4) | m_s.HUT;
 			m_s.result[5] = (m_s.HLT << 1) | ((m_s.main_status_reg & FDC_MSR_NONDMA) ? 1 : 0);
