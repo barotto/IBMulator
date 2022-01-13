@@ -196,6 +196,36 @@ enum FDCCommands {                      // parameters  code
 	FDC_CMD_RESET        = 0b00011111   // contrived
 };
 
+struct FDCCmdDef {
+	unsigned code;
+	unsigned size;
+	const char *name;
+};
+static std::map<unsigned,FDCCmdDef> FDC_CMD_LIST = {
+	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data"} },
+	{ FDC_CMD_READ_DEL    , {FDC_CMD_READ_DEL    , 9, "read deleted data"} },
+	{ FDC_CMD_WRITE       , {FDC_CMD_WRITE       , 9, "write data"} },
+	{ FDC_CMD_WRITE_DEL   , {FDC_CMD_WRITE_DEL   , 9, "write deleted data"} },
+	{ FDC_CMD_READ_TRACK  , {FDC_CMD_READ_TRACK  , 9, "read track"} },
+	{ FDC_CMD_VERIFY      , {FDC_CMD_VERIFY      , 9, "verify"} },
+	{ FDC_CMD_VERSION     , {FDC_CMD_VERSION     , 1, "version"} },
+	{ FDC_CMD_FORMAT_TRACK, {FDC_CMD_FORMAT_TRACK, 6, "format track"} },
+	{ FDC_CMD_SCAN_EQ     , {FDC_CMD_SCAN_EQ     , 9, "scan equal"} },
+	{ FDC_CMD_SCAN_LO_EQ  , {FDC_CMD_SCAN_LO_EQ  , 9, "scan low or equal"} },
+	{ FDC_CMD_SCAN_HI_EQ  , {FDC_CMD_SCAN_HI_EQ  , 9, "scan high or equal"} },
+	{ FDC_CMD_RECALIBRATE , {FDC_CMD_RECALIBRATE , 2, "recalibrate"} },
+	{ FDC_CMD_SENSE_INT   , {FDC_CMD_SENSE_INT   , 1, "sense interrupt"} },
+	{ FDC_CMD_SPECIFY     , {FDC_CMD_SPECIFY     , 3, "specify"} },
+	{ FDC_CMD_SENSE_DRIVE , {FDC_CMD_SENSE_DRIVE , 2, "sense drive status"} },
+	{ FDC_CMD_CONFIGURE   , {FDC_CMD_CONFIGURE   , 4, "configure"} },
+	{ FDC_CMD_SEEK        , {FDC_CMD_SEEK        , 3, "seek"} },
+	{ FDC_CMD_DUMPREG     , {FDC_CMD_DUMPREG     , 1, "dumpreg"} },
+	{ FDC_CMD_READ_ID     , {FDC_CMD_READ_ID     , 2, "read ID"} },
+	{ FDC_CMD_PERP_MODE   , {FDC_CMD_PERP_MODE   , 2, "perpendicular mode"} },
+	{ FDC_CMD_LOCK        , {FDC_CMD_LOCK        , 1, "lock/unlock"} },
+	{ FDC_CMD_INVALID     , {FDC_CMD_INVALID     , 1, "INVALID COMMAND"} }
+};
+
 #define FDC_ST_HDS(DRIVE) ((m_s.head[DRIVE]<<2) | DRIVE)
 #define FDC_DOR_DRIVE(DRIVE) ((m_s.DOR & 0xFC) | DRIVE)
 
@@ -961,92 +991,15 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				//  Indicates that the host can transfer data if set to a 1.
 				//  No access is permitted if set to a 0.
 				m_s.main_status_reg |= FDC_MSR_RQM | FDC_MSR_CMDBUSY;
-				const char* command;
-				bool valid = true;
-				bool result_phase = false;
-				switch(_value & FDC_CMD_MASK) {
-					case FDC_CMD_SPECIFY:
-						command = "specify";
-						m_s.command_size = 3;
-						break;
-					case FDC_CMD_SENSE_DRIVE:
-						command = "sense drive status";
-						m_s.command_size = 2;
-						break;
-					case FDC_CMD_RECALIBRATE:
-						command = "recalibrate";
-						m_s.command_size = 2;
-						break;
-					case FDC_CMD_SENSE_INT:
-						command = "sense interrupt status";
-						m_s.command_size = 1;
-						break;
-					case FDC_CMD_SEEK:
-						if(_value & 0x80) {
-							PERRF(LOG_FDC, "relative seek not implemented\n");
-							valid = false;
-							break;
-						}
-						command = "seek";
-						m_s.command_size = 3;
-						break;
-					case FDC_CMD_READ_ID:
-						command = "read ID";
-						m_s.command_size = 2;
-						break;
-					case FDC_CMD_FORMAT_TRACK:
-						command = "format track";
-						m_s.command_size = 6;
-						break;
-					case FDC_CMD_WRITE:
-						command = "write data";
-						m_s.command_size = 9;
-						break;
-					case FDC_CMD_READ:
-						command = "read data";
-						m_s.command_size = 9;
-						break;
-					case FDC_CMD_DUMPREG:
-						command = "dumpreg";
-						m_s.command_size = 0;
-						m_s.pending_command = _value;
-						result_phase = true;
-						break;
-					case FDC_CMD_VERSION:
-						command = "version";
-						m_s.command_size = 0;
-						m_s.pending_command = _value;
-						result_phase = true;
-						break;
-					case FDC_CMD_LOCK:
-						m_s.command_size = 0;
-						m_s.pending_command = _value;
-						command = m_s.cmd_lock() ? "lock" : "unlock";
-						result_phase = true;
-						break;
-					case FDC_CMD_CONFIGURE:
-						command = "configure";
-						m_s.command_size = 4;
-						break;
-					case FDC_CMD_PERP_MODE:
-						command = "perpendicular mode";
-						m_s.command_size = 2;
-						break;
-					default:
-						valid = false;
-						break;
+				auto cmd_def = FDC_CMD_LIST.find(_value & FDC_CMD_MASK);
+				if(cmd_def == FDC_CMD_LIST.end()) {
+					cmd_def = FDC_CMD_LIST.find(FDC_CMD_INVALID);
 				}
-				if(!valid) {
-					command = "INVALID";
-					m_s.command_size = 0;   // make sure we don't try to process this command
-					m_s.status_reg0 = FDC_ST0_IC_INVALID;
-					result_phase = true;
-				}
-				PDEBUGF(LOG_V2, LOG_FDC, "D1/%d <- 0x%02X (cmd: %s)\n", m_s.command_size, _value, command);
-				if(result_phase) {
-					enter_result_phase();
-				}
+				m_s.command_size = cmd_def->second.size;
+				PDEBUGF(LOG_V2, LOG_FDC, "D1/%d <- 0x%02X (cmd: %s)\n",
+						m_s.command_size, _value, cmd_def->second.name);
 			} else {
+				// in command phase
 				m_s.command[m_s.command_index++] = _value;
 				PDEBUGF(LOG_V2, LOG_FDC, "D%d/%d <- 0x%02X\n", m_s.command_index, m_s.command_size, _value);
 			}
@@ -1100,7 +1053,7 @@ void FloppyCtrl::enter_execution_phase()
 			m_s.HUT = m_s.command[1] & 0x0f;
 			m_s.HLT = m_s.command[2] >> 1;
 
-			PDEBUGF(LOG_V1, LOG_FDC, "specify SRT=%u,HUT=%u,HLT=%u,ND=%u\n",
+			PDEBUGF(LOG_V1, LOG_FDC, "specify, SRT=%u,HUT=%u,HLT=%u,ND=%u\n",
 					m_s.SRT, m_s.HUT, m_s.HLT, m_s.command[2]&1);
 
 			m_s.main_status_reg |= (m_s.command[2] & 0x01) ? FDC_MSR_NONDMA : 0;
@@ -1198,8 +1151,15 @@ void FloppyCtrl::enter_execution_phase()
 			head  = (m_s.command[1] >> 2) & 0x01;
 			cylinder = m_s.command[2];
 
-			PDEBUGF(LOG_V1, LOG_FDC, "seek DRV%u C=%u (cur.C=%u)\n",
+			PDEBUGF(LOG_V1, LOG_FDC, "seek DRV%u, C=%u (cur.C=%u)\n",
 					drive, cylinder, m_s.cur_cylinder[drive]);
+
+			if(m_s.cmd_rel()) {
+				PERRF(LOG_FDC, "relative seek not implemented\n");
+				m_s.status_reg0 = FDC_ST0_IC_INVALID;
+				enter_result_phase();
+				return;
+			}
 
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 
@@ -1361,7 +1321,7 @@ void FloppyCtrl::enter_execution_phase()
 			eot         = m_s.command[6]; // 1..36 depending
 			uint8_t data_length = m_s.command[8];
 
-			PDEBUGF(LOG_V1, LOG_FDC, "%s data DRV%u, %s C=%u,H=%u,S=%u,N=%u,EOT=%u,DTL=%u\n",
+			PDEBUGF(LOG_V1, LOG_FDC, "%s data DRV%u, %s, C=%u,H=%u,S=%u,N=%u,EOT=%u,DTL=%u\n",
 					cmd, drive, m_s.cmd_mtrk()?"MT":"",
 					cylinder, head, sector, sector_size, eot, data_length);
 
@@ -1489,13 +1449,35 @@ void FloppyCtrl::enter_execution_phase()
 
 		case FDC_CMD_PERP_MODE:
 			m_s.perp_mode = m_s.command[1];
-			PDEBUGF(LOG_V2, LOG_FDC, "perpendicular mode: config=0x%02X\n", m_s.perp_mode);
+			PDEBUGF(LOG_V1, LOG_FDC, "perpendicular mode, config=0x%02X\n", m_s.perp_mode);
 			enter_idle_phase();
 			break;
 
-		default: // invalid or unsupported command; these are captured in write() above
-			PERRF_ABORT(LOG_FDC, "You should never get here! cmd = 0x%02x\n", m_s.pending_command);
-			break;
+		case FDC_CMD_DUMPREG:
+			PDEBUGF(LOG_V1, LOG_FDC, "dump registers\n");
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
+			enter_result_phase();
+			return;
+
+		case FDC_CMD_VERSION:
+			PDEBUGF(LOG_V1, LOG_FDC, "version\n");
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
+			enter_result_phase();
+			return;
+
+		case FDC_CMD_LOCK:
+			m_s.lock = m_s.cmd_lock();
+			PDEBUGF(LOG_V1, LOG_FDC, "%slock status\n", !m_s.lock?"un":"");
+			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
+			enter_result_phase();
+			return;
+
+		case FDC_CMD_INVALID:
+		default:
+			PDEBUGF(LOG_V1, LOG_FDC, "INVALID command 0x%02x\n", m_s.pending_command);
+			m_s.status_reg0 = FDC_ST0_IC_INVALID;
+			enter_result_phase();
+			return;
 	}
 }
 
@@ -2028,7 +2010,6 @@ void FloppyCtrl::enter_result_phase()
 			m_s.result[0] = 0x90;
 			break;
 		case FDC_CMD_LOCK:
-			m_s.lock = m_s.cmd_lock();
 			m_s.result_size = 1;
 			m_s.result[0] = (m_s.lock << 4);
 			break;
