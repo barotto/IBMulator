@@ -830,17 +830,18 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 			unsigned ridx = m_s.result_index + 1;
 			unsigned rsize = m_s.result_size;
 			if((m_s.main_status_reg & FDC_MSR_NONDMA) && (m_s.cmd_code() == FDC_CMD_READ)) {
-				// TODO verify this?
-				// on a read INT should be lowered when FIFO gets emptied, ie upon
-				// reaching the end of a sector data area.
-				// INT should be risen again upon entering the result phase
 				if(m_s.floppy_buffer_index >= 512) {
-					lower_interrupt();
 					m_s.floppy_buffer_index = 0;
 				}
 				rsize = 512;
 				ridx = m_s.floppy_buffer_index + 1;
 				read_data(&value, 1, false);
+				if(m_s.floppy_buffer_index >= 512) {
+					// on a read, INT should be lowered when FIFO gets emptied,
+					// ie at the end of a sector data area.
+					// INT should be risen again upon entering the result phase
+					lower_interrupt();
+				}
 			} else if(m_s.result_size == 0) {
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				value = m_s.result[0];
