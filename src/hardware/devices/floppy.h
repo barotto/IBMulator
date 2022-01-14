@@ -233,6 +233,32 @@ private:
 	}
 	uint8_t get_drate_for_media(uint8_t _drive);
 	static std::string print_array(uint8_t*,unsigned);
+
+	struct CmdDef {
+		unsigned code;
+		unsigned size;
+		const char *name;
+		std::function<void(FloppyCtrl&)> fn;
+	};
+	static const std::map<unsigned,CmdDef> ms_cmd_list;
+
+	bool start_read_write_cmd();
+	void cmd_read_data();
+	void cmd_write_data();
+	void cmd_version();
+	void cmd_format_track();
+	void cmd_recalibrate();
+	void cmd_sense_int();
+	void cmd_specify();
+	void cmd_sense_drive();
+	void cmd_configure();
+	void cmd_seek();
+	void cmd_dumpreg();
+	void cmd_read_id();
+	void cmd_perp_mode();
+	void cmd_lock();
+	void cmd_not_implemented();
+	void cmd_invalid();
 };
 
 #endif
