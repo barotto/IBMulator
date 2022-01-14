@@ -355,19 +355,20 @@ void FloppyCtrl::config_changed()
 	m_mode = static_cast<Mode>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FDC_MODE, {
 		{ "at",       Mode::PC_AT },
 		{ "pc",       Mode::PC_AT },
-		{ "pc/at",    Mode::PC_AT },
+		{ "pc-at",    Mode::PC_AT },
 		{ "model30",  Mode::MODEL_30 },
+		{ "model-30", Mode::MODEL_30 },
 		{ "model 30", Mode::MODEL_30 }
 	}, Mode::MODEL_30));
 
 	const char *modestr;
 	switch(m_mode) {
-		case Mode::PC_AT: modestr = "PC/AT"; break;
+		case Mode::PC_AT: modestr = "PC-AT"; break;
 		case Mode::MODEL_30: modestr = "Model 30"; break;
 		default: assert(false); break;
 	}
 	PINFOF(LOG_V1, LOG_FDC, "Controller in %s mode\n", modestr);
-	g_program.config().set_string(DRIVES_SECTION, DRIVES_FDC_MODE, modestr);
+	g_program.config().set_string(DRIVES_SECTION, DRIVES_FDC_MODE, str_to_lower(modestr));
 
 	//ONLY 2 DRIVES
 	//unmount previous media if present

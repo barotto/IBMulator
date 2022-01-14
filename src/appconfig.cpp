@@ -474,7 +474,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";              You can use this parameter to speed up the FDD read/write operations.\n"
 ";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
 ";    fdc_mode: Mode of operation of the floppy disk controller.\n"
-";              Possible values: auto, pc/at, model30\n"
+";              Possible values: auto, pc-at, model30\n"
 ";         hdd: The type of the C: hard disk drive.\n"
 ";              Possible values: none, auto, ps1, ata\n"
 ";               none: no hard disk installed\n"
