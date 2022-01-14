@@ -845,6 +845,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 					lower_interrupt();
 				}
 			} else if(m_s.result_size == 0) {
+				ridx = 0;
 				m_s.main_status_reg &= FDC_MSR_NONDMA;
 				value = m_s.result[0];
 			} else {
@@ -981,7 +982,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				break;
 			} else if(m_s.command_complete) {
 				if(m_s.pending_command != FDC_CMD_INVALID) {
-					PDEBUGF(LOG_V2, LOG_FDC, "D1/0 <- 0x%02X new command with old one (%02X) pending\n",
+					PDEBUGF(LOG_V2, LOG_FDC, "D0/0 <- 0x%02X new command with old one [%02X] pending\n",
 							_value, m_s.pending_command);
 					return;
 				}
@@ -1051,6 +1052,13 @@ void FloppyCtrl::enter_execution_phase()
 
 	PDEBUGF(LOG_V1, LOG_FDC, "COMMAND: ");
 	PDEBUGF(LOG_V2, LOG_FDC, "%s ", print_array(m_s.command,m_s.command_size).c_str());
+
+	// controller is busy, data FIFO is not ready.
+	// this is also the "hang" condition.
+	// fdc hangs should be handled by the host software with a timeout counter.
+	// CMDBUSY will be cleared at the end of the result phase.
+	m_s.main_status_reg &= FDC_MSR_NONDMA;
+	m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 
 	m_s.pending_command = m_s.command[0];
 
@@ -1213,20 +1221,14 @@ void FloppyCtrl::enter_execution_phase()
 
 			if(!is_motor_on(drive)) {
 				PDEBUGF(LOG_V1, LOG_FDC, "read ID: motor not on\n");
-				m_s.main_status_reg &= FDC_MSR_NONDMA;
-				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				return; // Hang controller
 			}
 			if(m_device_type[drive] == FDD_NONE) {
 				PDEBUGF(LOG_V1, LOG_FDC, "read ID: bad drive #%d\n", drive);
-				m_s.main_status_reg &= FDC_MSR_NONDMA;
-				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				return; // Hang controller
 			}
 			if(m_media_present[drive] == 0) {
 				PINFOF(LOG_V1, LOG_FDC, "read ID: attempt to read sector ID with media not present\n");
-				m_s.main_status_reg &= FDC_MSR_NONDMA;
-				m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 				return; // Hang controller
 			}
 			if(m_s.data_rate != get_drate_for_media(drive)) {
@@ -1239,9 +1241,6 @@ void FloppyCtrl::enter_execution_phase()
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
 			sector_time = calculate_rw_delay(drive, true);
 			g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
-			// data reg not ready, controller busy
-			m_s.main_status_reg &= FDC_MSR_NONDMA;
-			m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 			return;
 
 		case FDC_CMD_FORMAT_TRACK:
@@ -1293,9 +1292,6 @@ void FloppyCtrl::enter_execution_phase()
 			// 4 header bytes per sector are required
 			m_s.format_count <<= 2;
 
-			// data reg not ready, controller busy
-			m_s.main_status_reg &= FDC_MSR_NONDMA;
-			m_s.main_status_reg |= FDC_MSR_CMDBUSY;
 			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 				// ready to receive data
 				m_s.main_status_reg |= FDC_MSR_RQM;
@@ -1311,15 +1307,11 @@ void FloppyCtrl::enter_execution_phase()
 			const char *cmd = (m_s.cmd_code()==FDC_CMD_READ) ? "read" : "write";
 			m_s.multi_track = m_s.cmd_mtrk();
 			if((m_s.DOR & FDC_DOR_NDMAGATE) == 0) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s with INT disabled is untested\n", cmd);
+				PWARNF(LOG_V0, LOG_FDC, "%s with INT disabled is untested!\n", cmd);
 			}
 			drive = m_s.command[1] & 0x03;
 			m_s.DOR = FDC_DOR_DRIVE(drive);
 
-			if(!is_motor_on(drive)) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: motor not on\n", cmd);
-				return;
-			}
 			cylinder    = m_s.command[2]; // 0..79 depending
 			head        = m_s.command[3] & 0x01;
 			sector      = m_s.command[4]; // 1..36 depending
@@ -1331,9 +1323,14 @@ void FloppyCtrl::enter_execution_phase()
 					cmd, drive, m_s.cmd_mtrk()?"MT":"",
 					cylinder, head, sector, sector_size, eot, data_length);
 
+			if(!is_motor_on(drive)) {
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: motor not on\n", cmd);
+				return; // Hang controller
+			}
+
 			if(m_device_type[drive] == FDD_NONE) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: bad drive #%d\n", cmd, drive);
-				return;
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: bad drive #%d\n", cmd, drive);
+				return; // Hang controller
 			}
 
 			// check that head number in command[1] bit two matches the head
@@ -1341,7 +1338,7 @@ void FloppyCtrl::enter_execution_phase()
 			// picky about this, as reported in SF bug #439945, (Floppy drive
 			// read input error checking).
 			if(head != ((m_s.command[1]>>2)&1)) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: head number in command[1] doesn't match head field\n", cmd);
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: head number in command[1] doesn't match head field\n", cmd);
 				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 				m_s.status_reg1 = FDC_ST1_ND;
 				m_s.status_reg2 = 0x00;
@@ -1350,23 +1347,27 @@ void FloppyCtrl::enter_execution_phase()
 			}
 
 			if(m_media_present[drive] == 0) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: attempt to read/write sector %u with media not present\n", cmd, sector);
+				// the controller would fail to receive the index pulse and lock-up
+				// since the index pulses are required for termination of the execution phase.
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to read/write sector %u with media not present\n", cmd, sector);
 				return; // Hang controller
 			}
 
 			if(sector_size != 0x02) { // 512 bytes
+				// TODO
 				PERRF(LOG_FDC, "%s: sector size %d not supported\n", cmd, 128<<sector_size);
-				return;
+				return; // Hang controller ?
 			}
 
 			if(cylinder >= m_media[drive].tracks) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: norm r/w parms out of range: sec#%02xh cyl#%02xh eot#%02xh head#%02xh\n",
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: norm r/w parms out of range: sec#%02xh cyl#%02xh eot#%02xh head#%02xh\n",
 						cmd, sector, cylinder, eot, head);
-				return;
+				return; // Hang controller ?
 			}
 
 			// This hack makes older versions of the Bochs BIOS work
 			if(eot == 0) {
+				// TODO should be hang or abnormal termination?
 				eot = m_media[drive].spt;
 			}
 			m_s.direction[drive] = (m_s.cylinder[drive]>cylinder);
@@ -1388,7 +1389,7 @@ void FloppyCtrl::enter_execution_phase()
 			}
 
 			if(cylinder != m_s.cur_cylinder[drive] && !(m_s.config & FDC_CONF_EIS)) {
-				PDEBUGF(LOG_V0, LOG_FDC, "%s: cylinder request != current cylinder, EIS=0\n", cmd);
+				PDEBUGF(LOG_V1, LOG_FDC, "%s: cylinder request != current cylinder, EIS=0\n", cmd);
 				m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 				m_s.status_reg1 = FDC_ST1_ND;
 				m_s.status_reg2 = 0x00;
@@ -1399,7 +1400,7 @@ void FloppyCtrl::enter_execution_phase()
 			uint32_t logical_sector = chs_to_lba(cylinder, head, sector, drive);
 			if(logical_sector >= m_media[drive].sectors) {
 				PDEBUGF(LOG_V0, LOG_FDC, "%s: logical sector out of bounds!\n", cmd);
-				return;
+				return; // Hang controller
 			}
 
 			play_seek_sound(drive, m_s.cur_cylinder[drive], cylinder);
@@ -1415,9 +1416,6 @@ void FloppyCtrl::enter_execution_phase()
 
 				floppy_xfer(drive, logical_sector*512, m_s.floppy_buffer, 512, FROM_FLOPPY);
 
-				// controller busy; data not ready
-				m_s.main_status_reg &= (FDC_MSR_NONDMA | FDC_MSR_CMDBUSY);
-
 				sector_time = calculate_rw_delay(drive, true);
 				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 			}
@@ -1429,8 +1427,7 @@ void FloppyCtrl::enter_execution_phase()
 				//  INT > fill buffer > write image > fill buffer > ... > TC
 
 				m_s.wrdata[drive] = true;
-				// controller busy; data not ready
-				m_s.main_status_reg &= (FDC_MSR_NONDMA | FDC_MSR_CMDBUSY);
+
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 					if(m_s.cur_cylinder[drive] != cylinder) {
 						// do a seek first
