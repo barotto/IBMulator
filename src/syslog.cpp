@@ -61,7 +61,7 @@ const char* Syslog::m_fac_prefixes[] = {
 	" kbd | ",
 	" vga | ",
 	" cmos| ",
-	" flp | ",
+	" fdc | ",
 	" hdd | ",
 	" aud | ",
 	" game| ",
