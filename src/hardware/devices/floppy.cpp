@@ -713,6 +713,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 		case 0x3F0: // Status Register A (SRA)
 		{
 			if(m_mode == Mode::PC_AT) {
+				PDEBUGF(LOG_V2, LOG_FDC, "SRA  -> not accessible in PC-AT mode\n");
 				return ~0;
 			}
 			//Model30 mode:
@@ -754,6 +755,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 		case 0x3F1: // Status Register B (SRB)
 		{
 			if(m_mode == Mode::PC_AT) {
+				PDEBUGF(LOG_V2, LOG_FDC, "SRB  -> not accessible in PC-AT mode\n");
 				return ~0;
 			}
 			//Model30 mode:
@@ -950,9 +952,15 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				m_s.pending_command = FDC_CMD_RESET; // RESET pending
 				g_machine.activate_timer(m_timer, 250_us, false);
 			}
+			PDEBUGF(LOG_V2, LOG_FDC, "DSR  <- 0x%02X ", _value);
+			if(_value & FDC_DSR_SW_RESET) { PDEBUGF(LOG_V2, LOG_FDC, "RESET "); }
+			if(_value & FDC_DSR_PWR_DOWN) { PDEBUGF(LOG_V2, LOG_FDC, "PWRDOWN "); }
+			PDEBUGF(LOG_V2, LOG_FDC, "PRECOMP=%u ", (_value & FDC_DSR_PRECOMP) >> 2);
+			PDEBUGF(LOG_V2, LOG_FDC, "DRATESEL=%u (%ukbit) ", m_s.data_rate, drate_in_k[m_s.data_rate]);
 			if(_value & (FDC_DSR_PWR_DOWN | FDC_DSR_PRECOMP)) {
-				PDEBUGF(LOG_V0, LOG_FDC, "write to Data Rate Select register: unsupported bits set\n");
+				PDEBUGF(LOG_V2, LOG_FDC, "(unsupported bits set)");
 			}
+			PDEBUGF(LOG_V2, LOG_FDC, "\n");
 			break;
 		}
 		case 0x3F5: // Data FIFO
@@ -973,7 +981,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 				break;
 			} else if(m_s.command_complete) {
 				if(m_s.pending_command != FDC_CMD_INVALID) {
-					PERRF(LOG_FDC, "Receiving new command 0x%02x, old one (0x%02x) pending\n",
+					PDEBUGF(LOG_V2, LOG_FDC, "D1/0 <- 0x%02X new command with old one (%02X) pending\n",
 							_value, m_s.pending_command);
 					return;
 				}
@@ -1058,9 +1066,6 @@ void FloppyCtrl::enter_execution_phase()
 					m_s.SRT, m_s.HUT, m_s.HLT, m_s.command[2]&1);
 
 			m_s.main_status_reg |= (m_s.command[2] & 0x01) ? FDC_MSR_NONDMA : 0;
-			if(m_s.main_status_reg & FDC_MSR_NONDMA) {
-				PDEBUGF(LOG_V0, LOG_FDC, "non DMA mode not fully implemented yet\n");
-			}
 			enter_idle_phase();
 			return;
 
