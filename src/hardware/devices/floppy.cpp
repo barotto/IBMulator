@@ -1664,10 +1664,13 @@ void FloppyCtrl::timer(uint64_t)
 			if((m_s.format_count == 0) || m_s.TC) {
 				m_s.format_count = 0;
 				m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST_HDS(drive);
+				PDEBUGF(LOG_V2, LOG_FDC, "<<FORMAT DONE>> - DRV%u C=%u,H=%u,S=%u\n",
+						drive, m_s.cylinder[drive], m_s.head[drive], m_s.sector[drive]);
 				enter_result_phase();
 				return;
 			} else {
 				// transfer next sector
+				// TODO set a timer to force-end command if data is not provided?
 				if(m_s.main_status_reg & FDC_MSR_NONDMA) {
 					m_s.main_status_reg |= FDC_MSR_RQM;
 					raise_interrupt();
@@ -1771,11 +1774,18 @@ uint16_t FloppyCtrl::write_data(uint8_t *_buffer_from, uint16_t _maxlen, bool _d
 				}
 
 				floppy_xfer(drive, chs_to_lba(drive)*512, m_s.floppy_buffer, 512, TO_FLOPPY);
+
+				// can TC be asserted? should it be honored?
+				// documentation doesn't say anything other than termination is when
+				// fdc encounters a pulse on the IDX pin.
 				if(_dma) {
+					m_s.TC = get_TC() && (_maxlen==1);
 					m_devices->dma()->set_DRQ(FLOPPY_DMA_CHAN, false);
 				} else {
+					m_s.TC = false;
 					m_s.main_status_reg &= ~FDC_MSR_RQM;
 				}
+
 				sector_time = calculate_rw_delay(drive, false);
 				g_machine.activate_timer(m_timer, uint64_t(sector_time)*1_us, false);
 				break;
