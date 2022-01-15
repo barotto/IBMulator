@@ -28,7 +28,7 @@
 #include "state_save_info.h"
 #include "state_load.h"
 #include "hardware/devices/vga.h"
-#include "hardware/devices/floppy.h"
+#include "hardware/devices/floppydisk.h"
 #include <RmlUi/Core/EventListener.h>
 
 class Machine;

@@ -52,6 +52,7 @@ libhardware_a_SOURCES = \
 	devices/vgadisplay.cpp \
 	devices/drivefx.cpp \
 	devices/floppy.cpp \
+	devices/floppydisk.cpp \
 	devices/floppyfx.cpp \
 	devices/storagectrl.cpp \
 	devices/storagectrl_ps1.cpp \
@@ -109,6 +110,7 @@ noinst_HEADERS = \
 	devices/vgadisplay.h \
 	devices/drivefx.h \
 	devices/floppy.h \
+	devices/floppydisk.h \
 	devices/floppyfx.h \
 	devices/storagectrl.h \
 	devices/storagectrl_ps1.h \

@@ -22,7 +22,7 @@
 #define IBMULATOR_HW_FLOPPY_H
 
 #include "hardware/iodevice.h"
-#include "mediaimage.h"
+#include "floppydisk.h"
 #include "floppyfx.h"
 
 
@@ -33,46 +33,6 @@ enum FloppyDriveType {
 	FDD_350DD = 0x04, // 720K  3.5"
 	FDD_350HD = 0x08, // 1.44M 3.5"
 	FDD_350ED = 0x10  // 2.88M 3.5"
-};
-
-enum FloppyDiskType {
-	FLOPPY_NONE, // media not present
-	FLOPPY_160K, // 160K  5.25"
-	FLOPPY_180K, // 180K  5.25"
-	FLOPPY_320K, // 320K  5.25"
-	FLOPPY_360K, // 360K  5.25"
-	FLOPPY_720K, // 720K  3.5"
-	FLOPPY_1_2,  // 1.2M  5.25"
-	FLOPPY_1_44, // 1.44M 3.5"
-	FLOPPY_2_88, // 2.88M 3.5"
-	FLOPPY_TYPE_CNT
-};
-
-enum FloppyDiskSize {
-	FLOPPY_160K_BYTES = 160*1024,  // 160K  5.25"
-	FLOPPY_180K_BYTES = 180*1024,  // 180K  5.25"
-	FLOPPY_320K_BYTES = 320*1024,  // 320K  5.25"
-	FLOPPY_360K_BYTES = 360*1024,  // 360K  5.25"
-	FLOPPY_720K_BYTES = 720*1024,  // 720K  3.5"
-	FLOPPY_1_2_BYTES  = 1200*1024, // 1.2M  5.25"
-	FLOPPY_1_44_BYTES = 1440*1024, // 1.44M 3.5"
-	FLOPPY_2_88_BYTES = 2880*1024  // 2.88M 3.5"
-};
-
-struct FloppyDisk
-{
-	std::string path;    // the image file
-	int         fd;      // file descriptor of floppy image file
-	unsigned    spt;     // number of sectors per track
-	unsigned    sectors; // number of formatted sectors on diskette
-	unsigned    tracks;  // number of tracks
-	unsigned    heads;   // number of heads
-	unsigned    type;
-	bool        write_protected;
-
-	FloppyDisk() : fd(-1) {}
-	bool open(unsigned _devtype, unsigned _type, const char *_path);
-	void close();
 };
 
 #define FDC_CMD_MASK 0x1f
@@ -232,7 +192,6 @@ private:
 		return (is_motor_on(_drive) && is_media_present(_drive));
 	}
 	uint8_t get_drate_for_media(uint8_t _drive);
-	static std::string print_array(uint8_t*,unsigned);
 
 	struct CmdDef {
 		unsigned code;

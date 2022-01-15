@@ -121,6 +121,8 @@ std::string bitfield_to_string(uint8_t _bitfield,
 const char* register_to_string(uint8_t _register,
 	const std::vector<std::pair<int, std::string> > &_fields);
 
+std::string bytearray_to_string(uint8_t *_data, unsigned _len);
+
 template<class T>
 inline T clamp(T _value, T _lower, T _upper)
 {

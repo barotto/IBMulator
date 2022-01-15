@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <regex>
 #include <numeric>
+#include <iomanip>
 #include "utils.h"
 #ifdef _WIN32
 #include "wincompat.h"
@@ -188,6 +189,21 @@ const char *register_to_string(uint8_t _register,
 		s.pop_back();
 	}
 	return s.c_str();
+}
+
+std::string bytearray_to_string(uint8_t *_data, unsigned _len)
+{
+	std::stringstream ss;
+	ss << std::setfill('0');
+	ss << "[";
+	for(unsigned i=0; i<_len; i++) {
+		ss << std::hex << std::setw(2) << int(_data[i]);
+		if(i<_len-1) {
+			ss << "|";
+		}
+	}
+	ss << "]";
+	return ss.str();
 }
 
 std::string get_error_string(int _error_id)

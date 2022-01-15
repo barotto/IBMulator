@@ -21,7 +21,7 @@
 #define IBMULATOR_GUI_NEWFLOPPY_H
 
 #include "../window.h"
-#include "hardware/devices/floppy.h"
+#include "hardware/devices/floppydisk.h"
 #include <RmlUi/Core.h>
 
 class NewFloppy : public Window

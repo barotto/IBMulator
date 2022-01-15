@@ -18,28 +18,6 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern "C" {
-#include <errno.h>
-}
-
-#ifdef __linux__
-extern "C" {
-#include <sys/ioctl.h>
-#include <linux/fd.h>
-#include <unistd.h>
-}
-#endif
-
-#ifdef _WIN32
-#include "wincompat.h"
-extern "C" {
-#include <winioctl.h>
-#include <io.h>
-}
-#endif
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include "ibmulator.h"
 #include "program.h"
 #include "filesys.h"
@@ -50,11 +28,8 @@ extern "C" {
 #include "hardware/devices.h"
 #include "hardware/devices/systemboard.h"
 #include "floppy.h"
-#include <cstring>
-#include <functional>
-#include <sstream>
-#include <regex>
-#include <iomanip>
+#include "mediaimage.h"
+#include <unistd.h>
 
 IODEVICE_PORTS(FloppyCtrl) = {
 	{ 0x03F0, 0x03F1, PORT_8BIT|PORT_R_ }, // Status Register A / B
@@ -227,29 +202,6 @@ const std::map<unsigned,FloppyCtrl::CmdDef> FloppyCtrl::ms_cmd_list = {
 #define FROM_FLOPPY 10
 #define TO_FLOPPY   11
 
-
-typedef struct {
-	unsigned id;
-	uint8_t  trk;
-	uint8_t  hd;
-	uint8_t  spt;
-	unsigned sectors;
-	uint8_t  drive_mask;
-	const char *str;
-} floppy_type_t;
-
-static floppy_type_t floppy_type[FLOPPY_TYPE_CNT] = {
-	{ FLOPPY_NONE,  0, 0,  0,    0, 0x00, "none"  },
-	{ FLOPPY_160K, 40, 1,  8,  320, 0x03, "160K"  },
-	{ FLOPPY_180K, 40, 1,  9,  360, 0x03, "180K"  },
-	{ FLOPPY_320K, 40, 2,  8,  640, 0x03, "320K"  },
-	{ FLOPPY_360K, 40, 2,  9,  720, 0x03, "360K"  },
-	{ FLOPPY_720K, 80, 2,  9, 1440, 0x1f, "720K"  },
-	{ FLOPPY_1_2,  80, 2, 15, 2400, 0x02, "1.2M"  },
-	{ FLOPPY_1_44, 80, 2, 18, 2880, 0x18, "1.44M" },
-	{ FLOPPY_2_88, 80, 2, 36, 5760, 0x10, "2.88M" }
-};
-
 static uint16_t drate_in_k[4] = {
 	500, 300, 250, 1000
 };
@@ -266,19 +218,6 @@ static std::map<unsigned, std::string> drive_type_str = {
 	{ FDD_525HD, "5.25" }
 };
 
-static std::map<std::string, unsigned> disk_types_350 = {
-	{ "720K", FLOPPY_720K },
-	{ "1.44M",FLOPPY_1_44 },
-	{ "2.88M",FLOPPY_2_88 }
-};
-
-static std::map<std::string, unsigned> disk_types_525 = {
-	{ "160K", FLOPPY_160K },
-	{ "180K", FLOPPY_180K },
-	{ "320K", FLOPPY_320K },
-	{ "360K", FLOPPY_360K },
-	{ "1.2M", FLOPPY_1_2  }
-};
 
 FloppyCtrl::FloppyCtrl(Devices *_dev)
 : IODevice(_dev)
@@ -312,16 +251,9 @@ void FloppyCtrl::install()
 	);
 
 	for(unsigned i=0; i<4; i++) {
-		m_media[i].type            = FLOPPY_NONE;
-		m_media[i].spt             = 0;
-		m_media[i].tracks          = 0;
-		m_media[i].heads           = 0;
-		m_media[i].sectors         = 0;
-		m_media[i].fd              = -1;
-		m_media[i].write_protected = false;
-		m_media_present[i]         = false;
-		m_device_type[i]           = FDD_NONE;
-		m_disk_changed[i]          = false;
+		m_media_present[i] = false;
+		m_device_type[i]   = FDD_NONE;
+		m_disk_changed[i]  = false;
 	}
 	m_num_installed_floppies = 0;
 
@@ -471,8 +403,9 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 				return FLOPPY_NONE;
 		}
 	} else if(_devtype != FDD_NONE){
-		if(!(floppy_type[_disktype].drive_mask & _devtype)) {
-			PERRF(LOG_FDC, "Floppy drive incompatible with disk type '%s'\n", floppy_type[_disktype].str);
+		if(!(FloppyDisk::std_types[_disktype].drive_mask & _devtype)) {
+			PERRF(LOG_FDC, "Floppy drive incompatible with disk type '%s'\n",
+					FloppyDisk::std_types[_disktype].str);
 			return FLOPPY_NONE;
 		}
 	}
@@ -485,7 +418,7 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 			PERRF(LOG_FDC, "Cannot find the image file archive '%s'\n", FLOPPY_IMAGES_ARCHIVE);
 			throw std::runtime_error("Missing data");
 		}
-		std::string imgname = std::regex_replace(floppy_type[_disktype].str,
+		std::string imgname = std::regex_replace(FloppyDisk::std_types[_disktype].str,
 				std::regex("[\\.]"), "_");
 		imgname = "floppy-" + imgname + ".img";
 		if(!FileSys::extract_file(archive.c_str(), imgname.c_str(), _imgpath.c_str())) {
@@ -495,7 +428,7 @@ FloppyDiskType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 	} else {
 		//create a 0-filled image
 		FlatMediaImage image;
-		image.create(_imgpath.c_str(), floppy_type[_disktype].sectors);
+		image.create(_imgpath.c_str(), FloppyDisk::std_types[_disktype].sectors);
 		PINFOF(LOG_V0, LOG_FDC, "The image is not pre-formatted: use FORMAT under DOS\n");
 	}
 
@@ -519,15 +452,15 @@ void FloppyCtrl::floppy_drive_setup(unsigned drive)
 	m_device_type[drive] = devtype;
 	g_program.config().set_string(DRIVES_SECTION,
 			drive==0?DRIVES_FDD_A:DRIVES_FDD_B, drive_type_str[devtype]);
-	std::map<std::string, unsigned> *mediatypes = nullptr;
+	const std::map<std::string, unsigned> *mediatypes = nullptr;
 	if(devtype != FDD_NONE) {
 		m_num_installed_floppies++;
 		PINFOF(LOG_V0, LOG_FDC, "Installed floppy %s as %s\n",
 				drivename, devtype==FDD_350HD?"3.5\" HD":"5.25\" HD");
 		if(devtype == FDD_350HD) {
-			mediatypes = &disk_types_350;
+			mediatypes = &FloppyDisk::disk_names_350;
 		} else if(devtype == FDD_525HD) {
-			mediatypes = &disk_types_525;
+			mediatypes = &FloppyDisk::disk_names_525;
 		} else {
 			throw std::exception();
 		}
@@ -730,7 +663,7 @@ uint16_t FloppyCtrl::read(uint16_t _address, unsigned)
 				value |= 1<<2;
 			}
 			// Bit 1 : WP
-			if(m_media_present[drive] && m_media[drive].write_protected) {
+			if(m_media_present[drive] && m_media[drive].wprot) {
 				value |= 1<<1;
 			}
 			// Bit 0 : !DIR
@@ -1042,7 +975,7 @@ void FloppyCtrl::write(uint16_t _address, uint16_t _value, unsigned)
 void FloppyCtrl::enter_execution_phase()
 {
 	PDEBUGF(LOG_V1, LOG_FDC, "COMMAND: ");
-	PDEBUGF(LOG_V2, LOG_FDC, "%s ", print_array(m_s.command,m_s.command_size).c_str());
+	PDEBUGF(LOG_V2, LOG_FDC, "%s ", bytearray_to_string(m_s.command,m_s.command_size).c_str());
 
 	// controller is busy, data FIFO is not ready.
 	// this is also the "hang" condition.
@@ -1257,8 +1190,8 @@ void FloppyCtrl::cmd_format_track()
 		PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with media not present\n");
 		return; // Hang controller
 	}
-	if(m_media[drive].write_protected || m_s.format_count != m_media[drive].spt) {
-		if(m_media[drive].write_protected) {
+	if(m_media[drive].wprot || m_s.format_count != m_media[drive].spt) {
+		if(m_media[drive].wprot) {
 			PINFOF(LOG_V0, LOG_FDC, "Attempt to format with media write-protected\n");
 		} else {
 			// On real hardware, when you try to format a 720K floppy as 1.44M the drive will happily
@@ -1367,7 +1300,7 @@ void FloppyCtrl::cmd_sense_drive()
 
 	m_s.head[drive] = (m_s.command[1] >> 2) & 0x01;
 	m_s.status_reg3 = FDC_ST3_BASE | FDC_ST_HDS(drive);
-	if(m_media[drive].write_protected) {
+	if(m_media[drive].wprot) {
 		m_s.status_reg3 |= FDC_ST3_WP;
 	}
 	if((m_device_type[drive] != FDD_NONE) && (m_s.cur_cylinder[drive] == 0)) {
@@ -1513,47 +1446,27 @@ void FloppyCtrl::floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, ui
 	int ret = 0;
 
 	if(m_device_type[drive] == FDD_NONE) {
-		PERRF_ABORT(LOG_FDC, "floppy_xfer: bad drive #%d\n", drive);
+		PERRF(LOG_FDC, "floppy_xfer: bad drive #%d\n", drive);
+		return;
 	}
 
 	PDEBUGF(LOG_V2, LOG_FDC, "floppy_xfer DRV%u: offset=%u, bytes=%u, direction=%s floppy\n",
 			drive, offset, bytes, (direction==FROM_FLOPPY)? "from" : "to");
 
-	ret = (int)lseek(m_media[drive].fd, offset, SEEK_SET);
-
-	if(ret < 0) {
-		//TODO return proper error code
-		PERRF_ABORT(LOG_FDC, "could not perform lseek() to %d on floppy image file\n", offset);
-		return;
-	}
-
-	if(direction == FROM_FLOPPY) {
-
-		ret = ::read(m_media[drive].fd, buffer, bytes);
-
-		if(ret < int(bytes)) {
-			if(ret > 0) {
-				//TODO return proper error code
-				PERRF(LOG_FDC, "partial read() on floppy image returns %u/%u\n", ret, bytes);
-				memset(buffer + ret, 0, bytes - ret);
-			} else {
-				//TODO return proper error code
-				PERRF(LOG_FDC, "read() on floppy image returns 0\n");
-				memset(buffer, 0, bytes);
-			}
+	try {
+		switch(direction) {
+			case FROM_FLOPPY:
+				m_media[drive].read_sector(offset, buffer, bytes);
+				break;
+			case TO_FLOPPY:
+				m_media[drive].write_sector(offset, buffer, bytes);
+				break;
+			default:
+				assert(false);
+				break;
 		}
-	} else { // TO_FLOPPY
-		if(m_media[drive].write_protected) {
-			//TODO return proper error code
-			PERRF_ABORT(LOG_FDC, "floppy_xfer(): media is write protected");
-		}
-
-		ret = ::write(m_media[drive].fd, buffer, bytes);
-
-		if(ret < int(bytes)) {
-			//TODO return proper error code
-			PERRF_ABORT(LOG_FDC, "could not perform write() on floppy image file\n");
-		}
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_FDC, "%s\n", e.what());
 	}
 }
 
@@ -1808,7 +1721,7 @@ uint16_t FloppyCtrl::write_data(uint8_t *_buffer_from, uint16_t _maxlen, bool _d
 		m_s.TC = get_TC() && (len == _maxlen);
 
 		if((m_s.floppy_buffer_index >= 512) || (m_s.TC)) {
-			if(m_media[drive].write_protected) {
+			if(m_media[drive].wprot) {
 				// write protected error
 				PINFOF(LOG_V1, LOG_FDC, "tried to write disk %u, which is write-protected\n", drive);
 				// ST0: IC1,0=01  (abnormal termination: started execution but failed)
@@ -1973,8 +1886,15 @@ bool FloppyCtrl::insert_media(unsigned _drive, unsigned _mediatype, const char *
 	// If media file is already open, close it before reopening.
 	eject_media(_drive);
 
-	m_media[_drive].write_protected = _write_protected;
-	if(!m_media[_drive].open(m_device_type[_drive], _mediatype, _path)) {
+	unsigned mediacheck = FloppyDisk::std_types[_mediatype].drive_mask & m_device_type[_drive];
+	if(!mediacheck) {
+		PERRF(LOG_FDC, "media type %s not valid for this floppy drive (%02Xh)\n",
+				FloppyDisk::std_types[_mediatype].str,
+				FloppyDisk::std_types[_mediatype].drive_mask);
+		return false;
+	}
+
+	if(!m_media[_drive].open(_mediatype, _path, _write_protected)) {
 		PERRF(LOG_FDC, "unable to open media '%s'\n", _path);
 		m_media_present[_drive] = false;
 		m_disk_changed[_drive] = true;
@@ -1986,7 +1906,7 @@ bool FloppyCtrl::insert_media(unsigned _drive, unsigned _mediatype, const char *
 	PINFOF(LOG_V0, LOG_FDC, "Floppy %s: '%s' ro=%d, h=%d,t=%d,spt=%d\n",
 			_drive==0?"A":"B",
 			_path,
-			m_media[_drive].write_protected,
+			m_media[_drive].wprot,
 			m_media[_drive].heads,
 			m_media[_drive].tracks,
 			m_media[_drive].spt);
@@ -1994,7 +1914,7 @@ bool FloppyCtrl::insert_media(unsigned _drive, unsigned _mediatype, const char *
 	g_program.config().set_bool(drivename, DISK_INSERTED, true);
 	g_program.config().set_string(drivename, DISK_PATH, _path);
 	g_program.config().set_bool(drivename, DISK_READONLY, _write_protected);
-	g_program.config().set_string(drivename, DISK_TYPE, floppy_type[_mediatype].str);
+	g_program.config().set_string(drivename, DISK_TYPE, FloppyDisk::std_types[_mediatype].str);
 
 	m_disk_changed[_drive] = true;
 	if(m_fx_enabled) {
@@ -2072,7 +1992,7 @@ void FloppyCtrl::enter_result_phase()
 	// exit execution phase
 	m_s.pending_command = FDC_CMD_INVALID;
 
-	PDEBUGF(LOG_V2, LOG_FDC, "RESULT: %s\n", print_array(m_s.result,m_s.result_size).c_str());
+	PDEBUGF(LOG_V2, LOG_FDC, "RESULT: %s\n", bytearray_to_string(m_s.result,m_s.result_size).c_str());
 
 	if(raise_int) {
 		raise_interrupt();
@@ -2216,136 +2136,3 @@ bool FloppyCtrl::get_TC()
 	return terminal_count;
 }
 
-std::string FloppyCtrl::print_array(uint8_t *_data, unsigned _len)
-{
-	std::stringstream ss;
-	ss << std::setfill('0');
-	ss << "[";
-	for(unsigned i=0; i<_len; i++) {
-		ss << std::hex << std::setw(2) << int(_data[i]);
-		if(i<_len-1) {
-			ss << "|";
-		}
-	}
-	ss << "]";
-	return ss.str();
-}
-
-
-/*******************************************************************************
- * Floppy disk
- */
-
-#ifdef O_BINARY
-#define RDONLY O_RDONLY | O_BINARY
-#define RDWR O_RDWR | O_BINARY
-#else
-#define RDONLY O_RDONLY
-#define RDWR O_RDWR
-#endif
-
-bool FloppyDisk::open(unsigned _devtype, unsigned _type, const char *_path)
-{
-	struct stat stat_buf;
-	int ret;
-	path = _path;
-
-	if(_type == FLOPPY_NONE) {
-		return false;
-	}
-	unsigned mediacheck = floppy_type[_type].drive_mask & _devtype;
-	if(!mediacheck) {
-		PERRF(LOG_FDC, "media type %s not valid for this floppy drive (%02Xh)\n",
-				floppy_type[_type].str, floppy_type[_type].drive_mask);
-		return false;
-	}
-
-	// open media file
-	if(!write_protected) {
-		fd = FileSys::open(_path, RDWR);
-	} else {
-		fd = FileSys::open(_path, RDONLY);
-	}
-
-	if(!write_protected && (fd < 0)) {
-		PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read/write: %s\n", _path, strerror(errno));
-		// try opening the file read-only
-		write_protected = true;
-		fd = FileSys::open(_path, RDONLY);
-		if(fd < 0) {
-			// failed to open read-only too
-			PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read only: %s\n", _path, strerror(errno));
-			type = _type;
-			return false;
-		}
-	}
-
-	ret = fstat(fd, &stat_buf);
-
-	if(ret) {
-		PERRF_ABORT(LOG_FDC, "fstat floppy 0 drive image file returns error: %s\n", strerror(errno));
-		return false;
-	}
-
-	if(S_ISREG(stat_buf.st_mode)) {
-		// regular file
-		switch(_type) {
-			case FLOPPY_160K: // 160K 5.25"
-			case FLOPPY_180K: // 180K 5.25"
-			case FLOPPY_320K: // 320K 5.25"
-			case FLOPPY_360K: // 360K 5.25"
-			case FLOPPY_720K: // 720K 3.5"
-			case FLOPPY_1_2:  // 1.2M 5.25"
-			case FLOPPY_2_88: // 2.88M 3.5"
-				type    = _type;
-				tracks  = floppy_type[_type].trk;
-				heads   = floppy_type[_type].hd;
-				spt     = floppy_type[_type].spt;
-				sectors = floppy_type[_type].sectors;
-				if(stat_buf.st_size > (int)(sectors * 512)) {
-					PDEBUGF(LOG_V0, LOG_FDC, "size of file '%s' (%lu) too large for selected type\n",
-							_path, (unsigned long) stat_buf.st_size);
-					return false;
-				}
-				break;
-			default: // 1.44M 3.5"
-				type = _type;
-				if(stat_buf.st_size <= 1474560) {
-					tracks = floppy_type[_type].trk;
-					heads  = floppy_type[_type].hd;
-					spt    = floppy_type[_type].spt;
-				} else if(stat_buf.st_size == 1720320) {
-					spt    = 21;
-					tracks = 80;
-					heads  = 2;
-				} else if(stat_buf.st_size == 1763328) {
-					spt    = 21;
-					tracks = 82;
-					heads  = 2;
-				} else if(stat_buf.st_size == 1884160) {
-					spt    = 23;
-					tracks = 80;
-					heads  = 2;
-				} else {
-					PDEBUGF(LOG_V0, LOG_FDC, "file '%s' of unknown size %lu\n",
-							_path, (unsigned long) stat_buf.st_size);
-					return false;
-				}
-				sectors = heads * tracks * spt;
-				break;
-		}
-		return (sectors > 0); // success
-	}
-
-	// unknown file type
-	PDEBUGF(LOG_V0, LOG_FDC, "unknown mode type\n");
-	return false;
-}
-
-void FloppyDisk::close()
-{
-	if(fd >= 0) {
-		::close(fd);
-		fd = -1;
-	}
-}
