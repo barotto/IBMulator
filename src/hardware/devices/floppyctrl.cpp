@@ -27,7 +27,7 @@
 #include "hardware/iodevice.h"
 #include "hardware/devices.h"
 #include "hardware/devices/systemboard.h"
-#include "floppy.h"
+#include "floppyctrl.h"
 #include "mediaimage.h"
 #include <unistd.h>
 

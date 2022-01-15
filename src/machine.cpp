@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,9 +26,9 @@
 #include "hardware/memory.h"
 #include "hardware/devices.h"
 #include "hardware/devices/keyboard.h"
-#include "hardware/devices/floppy.h"
 #include "hardware/devices/dma.h"
 #include "hardware/devices/systemboard.h"
+#include "hardware/devices/floppyctrl.h"
 #include "hardware/devices/storagectrl.h"
 #include "hardware/devices/storagectrl_ata.h"
 #include "hardware/devices/storagectrl_ps1.h"

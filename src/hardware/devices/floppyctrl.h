@@ -18,8 +18,8 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_FLOPPY_H
-#define IBMULATOR_HW_FLOPPY_H
+#ifndef IBMULATOR_HW_FLOPPYCTRL_H
+#define IBMULATOR_HW_FLOPPYCTRL_H
 
 #include "hardware/iodevice.h"
 #include "floppydisk.h"

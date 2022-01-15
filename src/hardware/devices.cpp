@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,7 +32,7 @@
 #include "devices/vga.h"
 #include "devices/cf62011bpc.h"
 #include "devices/keyboard.h"
-#include "devices/floppy.h"
+#include "devices/floppyctrl.h"
 #include "devices/storagectrl_ps1.h"
 #include "devices/storagectrl_ata.h"
 #include "devices/serial.h"

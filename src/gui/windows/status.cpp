@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,7 +26,7 @@
 #include <RmlUi/Core.h>
 #include <sstream>
 
-#include "hardware/devices/floppy.h"
+#include "hardware/devices/floppyctrl.h"
 #include "hardware/devices/storagectrl.h"
 #include "hardware/devices/serial.h"
 

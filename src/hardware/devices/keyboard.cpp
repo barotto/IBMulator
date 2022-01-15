@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,7 +49,7 @@
 #include "pic.h"
 #include "hardware/devices.h"
 #include "hardware/devices/cmos.h"
-#include "hardware/devices/floppy.h"
+#include "hardware/devices/floppyctrl.h"
 #include "hardware/memory.h"
 #include "scancodes.h"
 #include "keys.h"

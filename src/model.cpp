@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,7 +21,7 @@
 #include "model.h"
 #include "machine.h"
 #include "hardware/devices/hdd.h"
-#include "hardware/devices/floppy.h"
+#include "hardware/devices/floppyctrl.h"
 #include <sstream>
 
 const bios_db_t g_bios_db = {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,7 +21,7 @@
 #include "machine.h"
 #include "hardware/memory.h"
 #include "systemboard_ps1_2121.h"
-#include "floppy.h"
+#include "floppyctrl.h"
 #include <cstring>
 #include <sstream>
 
