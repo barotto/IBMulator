@@ -96,8 +96,8 @@ The program is still in <a href="#roadmap">active development</a> so expect bugs
 <li>Intel 80286 and 80386 (SX & DX), with undefined behaviours, prefetch queue, and instruction timings</li>
 <li>IBM PS/1 model 2011, 2121 system boards, with POS and other control registers</li>
 <li>Standard PC platform devices: CMOS RTC, 8259 PIC, 8254 PIT, 8237 DMA, 8042 KBD controller</li>
-<li>IBM 8-bit RLL and ATA-1 HDD controllers with timings</li>
-<li>Intel 82077AA Floppy controller (Mod30 mode) with timings</li>
+<li>IBM 8-bit XTA and ATA-1 HDD controllers with timings</li>
+<li>Intel 82077AA Floppy disk controller (Model 30 mode) with timings</li>
 <li>IBM VGA adapter, with per-scanline emulation</li>
 <li>IBM PS/1 Audio Card, AdLib, Creative Sound Blaster 2.01, Roland MPU-401, PC-Speaker (with PWM support)</li>
 <li>Game, Serial (COM), and Parallel (LPT) ports</li>
@@ -353,6 +353,8 @@ Type   Cyl.   Heads    Sect.   Write    Land     Size
 <p>These (still buggy) features are already present in the <a href="https://github.com/barotto/IBMulator/tree/unstable">unstable</a> branch.</p>
 -->
 <ul>
+<li>Better floppy drive emulation (<a href="https://github.com/barotto/IBMulator/tree/floppy">floppy</a> branch)</li>
+<li>Improved GUI usability</li>
 <li><em>TBD</em></li>
 </ul>
 
@@ -433,6 +435,12 @@ The PS/1 2011 has a so-called romdrive in the ROM image, with PC-DOS and the 4-Q
 </dd>
 
 
+<dt>Why should I use IBMulator instead of DOSBox(-X)?</dt>
+<dd>
+Unless you like juggling with disk images or have a specific interest in the IBM PS/1, you shouldn't. That being said, IBMulator currently has better CPU timings emulation, so there's that.
+</dd>
+
+
 <dt>Why an emulator for the IBM PS/1, an overpriced, slow PC compatible that was already absolete at launch?</dt>
 <dd>
 Nostalgia. The PS/1 was my very first PC and I wanted to make it immortal before the machine I still own dies of old age.<br />
@@ -476,7 +484,7 @@ Protected mode DOS program used to test VGA functionality in both text and graph
 
 <a href="#contact"><h2 id="contact">Contact</h2></a>
 <p>
-For bug reporting and feature requests, please use the
+For bug reporting, feature requests, or IBMulator related questions, please use the
 <a href="https://github.com/barotto/IBMulator/issues">
 GitHub tracker</a>.
 </p>
