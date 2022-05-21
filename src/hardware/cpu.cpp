@@ -190,6 +190,8 @@ void CPU::restore_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
+	g_cpuexecutor.reset(MACHINE_HARD_RESET);
+
 	// restore the core before the bus.
 	g_cpucore.restore_state(_state);
 	g_cpubus.restore_state(_state);
