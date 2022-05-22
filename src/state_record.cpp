@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -146,7 +146,7 @@ void StateRecord::save()
 
 	// INI
 	try {
-		m_config.create_file(m_ini_path);
+		m_config.create_file(m_ini_path, true);
 	} catch(...) {
 		throw std::runtime_error(str_format("Cannot create config file '%s'", m_ini_path.c_str()).c_str());
 	}
@@ -179,14 +179,14 @@ void StateRecord::remove()
 	FileSys::remove(m_state_path.c_str());
 	FileSys::remove(m_screen_path.c_str());
 
-	// remove disk images
+	// remove disk images and other sub-state objects
 	DIR *dir;
 	if((dir = FileSys::opendir(m_path.c_str())) == nullptr) {
 		throw std::runtime_error("Cannot open directory for reading\n");
 	}
 
 	struct dirent *ent;
-	std::regex re("^(" STATE_FILE_BASE "-.*\\.img)$", std::regex::ECMAScript|std::regex::icase);
+	std::regex re("^(" STATE_FILE_BASE "-.*(img|bin))$", std::regex::ECMAScript|std::regex::icase);
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		std::string dname = FileSys::to_utf8(ent->d_name);

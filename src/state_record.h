@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,7 @@
 #include "filesys.h"
 #include <SDL.h>
 
-#define STATE_RECORD_VERSION 1
+#define STATE_RECORD_VERSION IBMULATOR_STATE_VERSION
 #define STATE_RECORD_BASE    "savestate_"
 #define STATE_FILE_BASE      "state"
 #define QUICKSAVE_RECORD     STATE_RECORD_BASE "quick"

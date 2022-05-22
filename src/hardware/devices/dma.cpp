@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -16,6 +16,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * Intel 8257A high level emulation based on Boch's implementation.
+ * For lower level emulation see MAME's am9517a device.
  */
 
 #include "ibmulator.h"
@@ -80,7 +85,6 @@ void DMA::reset(unsigned type)
 			}
 		}
 		m_s.HLDA = false;
-		m_s.TC = false;
 
 		for(i=0; i<2; i++) {
 			for(c=0; c<4; c++) {
@@ -558,27 +562,32 @@ void DMA::raise_HLDA(void)
 	phy_addr = (m_s.dma[ma_sl].chan[channel].page_reg << 16) |
 	           (m_s.dma[ma_sl].chan[channel].current_address << ma_sl);
 
+	if(m_h[channel].tc_cb){
+		m_h[channel].tc_cb(false);
+	}
+
+	bool tx_tc = false;
 	if(!m_s.dma[ma_sl].chan[channel].mode.address_decrement) {
 		maxlen = (uint32_t(m_s.dma[ma_sl].chan[channel].current_count) + 1) << ma_sl;
-		m_s.TC = (maxlen <= DMA_BUFFER_SIZE);
+		tx_tc = (maxlen <= DMA_BUFFER_SIZE);
 		if(maxlen > DMA_BUFFER_SIZE) {
 			maxlen = DMA_BUFFER_SIZE;
 		}
 	} else {
 		// address decrement mode, 1 byte at a time
-		m_s.TC = (m_s.dma[ma_sl].chan[channel].current_count == 0);
+		tx_tc = (m_s.dma[ma_sl].chan[channel].current_count == 0);
 		maxlen = 1 << ma_sl;
 	}
 
 	if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 1) { // write
 		// DMA controlled xfer of bytes from I/O to Memory
 
-		PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: writing to memory at %08x max %d bytes fomr ch.%d (count=%04x)\n",
+		PDEBUGF(LOG_V2, LOG_DMA, "DMA-%d: writing to memory at %08x max %d bytes from ch.%d (count=%04x)\n",
 				ma_sl+1, phy_addr, maxlen, channel, m_s.dma[ma_sl].chan[channel].current_count);
 		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
-				len = m_h[channel].dmaWrite8(buffer, maxlen);
+				len = m_h[channel].dmaWrite8(buffer, maxlen, tx_tc);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
@@ -586,7 +595,7 @@ void DMA::raise_HLDA(void)
 
 		} else {
 			if(m_h[channel].dmaWrite16) {
-				len = m_h[channel].dmaWrite16((uint16_t*)buffer, maxlen / 2);
+				len = m_h[channel].dmaWrite16((uint16_t*)buffer, maxlen / 2, tx_tc);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
@@ -603,13 +612,13 @@ void DMA::raise_HLDA(void)
 			g_memory.DMA_read(phy_addr, maxlen, buffer);
 
 			if(m_h[channel].dmaRead8) {
-				len = m_h[channel].dmaRead8(buffer, maxlen);
+				len = m_h[channel].dmaRead8(buffer, maxlen, tx_tc);
 			}
 		} else {
 			g_memory.DMA_read(phy_addr, maxlen, buffer);
 
 			if(m_h[channel].dmaRead16){
-				len = m_h[channel].dmaRead16((uint16_t*)buffer, maxlen / 2);
+				len = m_h[channel].dmaRead16((uint16_t*)buffer, maxlen / 2, tx_tc);
 			}
 		}
 	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 0) { // verify
@@ -618,13 +627,13 @@ void DMA::raise_HLDA(void)
 		
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
-				len = m_h[channel].dmaWrite8(buffer, 1);
+				len = m_h[channel].dmaWrite8(buffer, 1, tx_tc);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
 		} else {
 			if(m_h[channel].dmaWrite16) {
-				len = m_h[channel].dmaWrite16((uint16_t*)buffer, 1);
+				len = m_h[channel].dmaWrite16((uint16_t*)buffer, 1, tx_tc);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
@@ -646,6 +655,9 @@ void DMA::raise_HLDA(void)
 	if(m_s.dma[ma_sl].chan[channel].current_count == 0xffff) {
 		// count expired, done with transfer
 		// assert TC, deassert HRQ & DACK(n) lines
+		if(m_h[channel].tc_cb){
+			m_h[channel].tc_cb(true);
+		}
 		m_s.dma[ma_sl].status_reg |= (1 << channel); // hold TC in status reg
 		if(m_s.dma[ma_sl].chan[channel].mode.autoinit_enable == 0) {
 			// set mask bit if not in autoinit mode
@@ -656,9 +668,8 @@ void DMA::raise_HLDA(void)
 			m_s.dma[ma_sl].chan[channel].current_address = m_s.dma[ma_sl].chan[channel].base_address;
 			m_s.dma[ma_sl].chan[channel].current_count = m_s.dma[ma_sl].chan[channel].base_count;
 		}
-		m_s.TC = false;            // clear TC, adapter card already notified
 		m_s.HLDA = false;
-		g_cpu.set_HRQ(false);           // clear HRQ to CPU
+		g_cpu.set_HRQ(false);             // clear HRQ to CPU
 		m_s.dma[ma_sl].DACK[channel] = 0; // clear DACK to adapter card
 		if(!ma_sl) {
 			set_DRQ(4, 0); // clear DRQ to cascade
@@ -668,7 +679,7 @@ void DMA::raise_HLDA(void)
 }
 
 void DMA::register_8bit_channel(unsigned channel,
-		dma8_fun_t dmaRead, dma8_fun_t dmaWrite, const char *name)
+		dma8_fun_t dmaRead, dma8_fun_t dmaWrite, dmaTC_fun_t tc_cb, const char *name)
 {
 	if(channel > 3) {
 		PERRF(LOG_DMA, "register_8bit_channel: invalid channel number(%u)\n", channel);
@@ -681,12 +692,13 @@ void DMA::register_8bit_channel(unsigned channel,
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by '%s'\n", channel, name);
 	m_h[channel].dmaRead8  = dmaRead;
 	m_h[channel].dmaWrite8 = dmaWrite;
+	m_h[channel].tc_cb = tc_cb;
 	m_channels[channel].used = true;
 	m_channels[channel].device = name;
 }
 
 void DMA::register_16bit_channel(unsigned channel,
-		dma16_fun_t dmaRead, dma16_fun_t dmaWrite, const char *name)
+		dma16_fun_t dmaRead, dma16_fun_t dmaWrite, dmaTC_fun_t tc, const char *name)
 {
 	if((channel < 4) || (channel > 7)) {
 		PERRF(LOG_DMA, "register_16bit_channel: invalid channel number(%u)\n", channel);
@@ -699,6 +711,7 @@ void DMA::register_16bit_channel(unsigned channel,
 	PDEBUGF(LOG_V1, LOG_DMA, "channel %u used by %s", channel, name);
 	m_h[channel&0x03].dmaRead16  = dmaRead;
 	m_h[channel&0x03].dmaWrite16 = dmaWrite;
+	m_h[channel&0x03].tc_cb = tc;
 	m_channels[channel].used = true;
 	m_channels[channel].device = name;
 }

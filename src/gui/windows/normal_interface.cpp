@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,7 +64,7 @@ void NormalInterface::create()
 	Interface::create();
 
 	m_main_interface = get_element("main_interface");
-	m_main_interface->SetClass("with_disk", m_floppy_present);
+	m_main_interface->SetClass("with_disk", m_floppy.present);
 	m_sysunit = get_element("system_unit");
 	m_sysbar = get_element("system_bar");
 	m_sysctrl = get_element("system_control");
@@ -300,7 +300,7 @@ void NormalInterface::update()
 	}
 
 	if(is_system_visible()) {
-		if(m_floppy_present) {
+		if(m_floppy.present) {
 			m_main_interface->SetClass("with_disk", true);
 		} else {
 			m_main_interface->SetClass("with_disk", false);
@@ -315,9 +315,9 @@ void NormalInterface::update()
 	}
 }
 
-void NormalInterface::config_changed()
+void NormalInterface::config_changed(bool _startup)
 {
-	Interface::config_changed();
+	Interface::config_changed(_startup);
 
 	m_hdd_led_c->SetClass("invisible", !m_hdd);
 }
@@ -455,7 +455,7 @@ void NormalInterface::on_visibility(Rml::Event &)
 void NormalInterface::on_fdd_select(Rml::Event &_e)
 {
 	m_fdd_disk_c->SetInnerRML("");
-	if(m_curr_drive == 0) {
+	if(m_floppy.curr_drive == 0) {
 		m_fdd_select_c->SetClass("a", false);
 		m_fdd_select_c->SetClass("b", true);
 	} else {

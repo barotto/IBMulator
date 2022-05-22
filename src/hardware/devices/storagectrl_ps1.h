@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -180,8 +180,8 @@ private:
 	DataBuffer* get_read_data_buffer();
 	DataBuffer* get_write_data_buffer();
 
-	uint16_t dma_write(uint8_t *_buffer, uint16_t _maxlen);
-	uint16_t dma_read(uint8_t *_buffer, uint16_t _maxlen);
+	uint16_t dma_write(uint8_t *_buffer, uint16_t _maxlen, bool _tx_tc);
+	uint16_t dma_read(uint8_t *_buffer, uint16_t _maxlen, bool _tx_tc);
 
 	void increment_sector();
 	void cylinder_error();

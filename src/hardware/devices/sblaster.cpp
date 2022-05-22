@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -276,8 +276,9 @@ void SBlaster::install_dsp()
 	m_dma = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_DMA);
 	m_irq = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IRQ);
 	m_devices->dma()->register_8bit_channel(m_dma,
-			std::bind(&SBlaster::dma_read_8, this, _1, _2),
-			std::bind(&SBlaster::dma_write_8, this, _1, _2),
+			std::bind(&SBlaster::dma_read_8, this, _1, _2, _3),
+			std::bind(&SBlaster::dma_write_8, this, _1, _2, _3),
+			nullptr,
 			name());
 	g_machine.register_irq(m_irq, name());
 	
@@ -962,7 +963,7 @@ int SBlaster::dsp_decode(uint8_t _sample)
 	}
 }
 
-uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 {
 	// From Memory to I/O
 	// DAC
@@ -1038,7 +1039,7 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen)
 	return 1;
 }
 
-uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 {
 	// From I/O to Memory
 	if(m_s.dma.mode == DMA::Mode::NONE || !_maxlen) {

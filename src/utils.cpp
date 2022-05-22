@@ -38,6 +38,15 @@ std::string str_implode(const std::vector<std::string> &_list, const std::string
 		} );
 }
 
+std::string str_implode(const std::vector<const char*> &_list, const std::string &_delim)
+{
+	std::vector<std::string> list;
+	for(auto s : _list) {
+		list.push_back(std::string(s));
+	}
+	return str_implode(list, _delim);
+}
+
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace)
 {
 	std::string::size_type i = _str.find(_search);

@@ -30,6 +30,15 @@ typedef std::map<std::string, uint> ini_enum_map_t;
 typedef std::map<std::string, std::string> ini_section_t;
 typedef std::map<std::string, ini_section_t> ini_file_t;
 typedef std::map<std::string, std::string> ini_filehelp_t;
+typedef std::vector< // lol, what's this crap
+	std::pair<
+		std::string, // section
+		std::vector< std::pair<
+			std::string, // key
+			bool         // hidden?
+			>>
+		>
+	> ini_order_t;
 
 enum FileType {
 	FILE_TYPE_ASSET,
@@ -55,7 +64,7 @@ private:
 	ini_file_t m_values;
 	static ini_file_t ms_def_values[2];
 	static ini_filehelp_t ms_help;
-	static std::vector<std::pair<std::string, std::vector<std::string>>> ms_keys_order;
+	static ini_order_t ms_keys_order;
 
 	static std::string make_key(std::string _name);
 	static int value_handler(void* user, const char* section, const char* name, const char* value);
@@ -80,7 +89,7 @@ public:
 	static bool parse_bool(std::string _str);
 	static std::vector<std::string> parse_tokens(std::string _str, std::string _regex_sep);
 	
-	std::string get_value(const std::string &_section, const std::string &_name);
+	std::string get_value(const std::string &_section, const std::string &_name, bool _quiet=false);
 
 	// Return the result of ini_parse(), i.e., 0 on success, line number of
 	// first error on parse error, or -1 on file open error.
@@ -112,7 +121,7 @@ public:
 	void set_bool(const std::string &section, const std::string &name, bool _value);
 	void set_string(const std::string &_section, const std::string &_name, std::string _value);
 
-	void create_file(const std::string &_filename, bool _comments=false);
+	void create_file(const std::string &_filename, bool _savestate);
 
 	void reset();
 	void merge(const AppConfig &_config, ConfigType _type);
@@ -200,7 +209,9 @@ public:
 #define DRIVES_SECTION          "drives"
 #define DRIVES_FDD_A            "floppy_a"
 #define DRIVES_FDD_B            "floppy_b"
+#define DRIVES_FLOPPY_COMMIT    "floppy_commit"
 #define DRIVES_FDD_LAT          "fdd_latency"
+#define DRIVES_FDC_TYPE         "fdc_type"
 #define DRIVES_FDC_MODE         "fdc_mode"
 #define DRIVES_HDD              "hdd"
 
@@ -212,7 +223,7 @@ public:
 #define DISK_INSERTED           "inserted"
 #define DISK_READONLY           "readonly"
 #define DISK_PATH               "path"
-#define DISK_SAVE		        "save"
+#define DISK_SAVE               "save"
 #define DISK_CYLINDERS          "cylinders"
 #define DISK_HEADS              "heads"
 #define DISK_SPT                "sectors"

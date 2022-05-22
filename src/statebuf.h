@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,6 +45,7 @@ private:
 public:
 
 	bool m_last_restore;
+	bool m_last_save;
 
 	StateBuf(const std::string &_basename);
 	~StateBuf();

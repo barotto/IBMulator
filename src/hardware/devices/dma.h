@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2009  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,8 +26,9 @@
 /* maximum size of the ISA DMA buffer */
 #define DMA_BUFFER_SIZE 512
 
-typedef std::function<uint16_t(uint8_t *data, uint16_t maxlen)> dma8_fun_t;
-typedef std::function<uint16_t(uint16_t *data, uint16_t maxlen)> dma16_fun_t;
+typedef std::function<uint16_t(uint8_t *data, uint16_t maxlen, bool tc)> dma8_fun_t;
+typedef std::function<uint16_t(uint16_t *data, uint16_t maxlen, bool tc)> dma16_fun_t;
+typedef std::function<void(bool state)> dmaTC_fun_t;
 
 class DMA : public IODevice
 {
@@ -60,7 +61,6 @@ private:
 		} dma[2];  // DMA-1 / DMA-2
 
 		bool HLDA;    // Hold Acknowlege
-		bool TC;      // Terminal Count
 		uint8_t ext_page_reg[16]; // Extra page registers (unused)
 
 	} m_s; // state information
@@ -71,11 +71,12 @@ private:
 	} m_channels[8];
 
 	struct {
-		dma8_fun_t dmaRead8;
-		dma8_fun_t dmaWrite8;
-		dma16_fun_t dmaRead16;
-		dma16_fun_t dmaWrite16;
-	} m_h[4]; // DMA read and write handlers
+		dma8_fun_t dmaRead8;    // 8-bit Memory to I/O handler
+		dma8_fun_t dmaWrite8;   // 8-bit I/O to Memory handler
+		dma16_fun_t dmaRead16;  // 16-bit Memory to I/O handler
+		dma16_fun_t dmaWrite16; // 16-bit I/O to Memory handler
+		dmaTC_fun_t tc_cb;      // Terminal Count line callback
+	} m_h[4];
 
 	void control_HRQ(uint8_t ma_sl);
 	void reset_controller(unsigned num);
@@ -93,12 +94,11 @@ public:
 	void raise_HLDA();
 	void set_DRQ(unsigned channel, bool val);
 	bool get_DRQ(uint channel);
-	inline bool get_TC() { return m_s.TC; }
 
 	void register_8bit_channel(unsigned channel,
-			dma8_fun_t dmaRead, dma8_fun_t dmaWrite, const char *name);
+			dma8_fun_t dmaRead, dma8_fun_t dmaWrite, dmaTC_fun_t tc, const char *name);
 	void register_16bit_channel(unsigned channel,
-			dma16_fun_t dmaRead, dma16_fun_t dmaWrite, const char *name);
+			dma16_fun_t dmaRead, dma16_fun_t dmaWrite, dmaTC_fun_t tc, const char *name);
 	void unregister_channel(unsigned channel);
 	std::string get_device_name(unsigned _channel);
 

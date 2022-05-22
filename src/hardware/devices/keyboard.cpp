@@ -554,9 +554,8 @@ void Keyboard::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					uint8_t data = 0x84;
 					FloppyCtrl *floppy = m_devices->device<FloppyCtrl>();
 					if(floppy) {
-						uint drive = floppy->current_drive();
-						uint8_t dtype = floppy->drive_type(drive);
-						if(dtype == FDD_525DD || dtype == FDD_525HD) {
+						auto dtype = floppy->drive_type(floppy->current_drive());
+						if(dtype == FloppyDrive::FDD_525DD || dtype == FloppyDrive::FDD_525HD) {
 							data |= 0x40;
 						}
 					}

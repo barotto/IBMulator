@@ -51,9 +51,17 @@ libhardware_a_SOURCES = \
 	devices/vga_dac.cpp \
 	devices/vgadisplay.cpp \
 	devices/drivefx.cpp \
-	devices/floppy.cpp \
+	devices/floppyctrl.cpp \
+	devices/floppyctrl_raw.cpp \
+	devices/floppyctrl_flux.cpp \
 	devices/floppydisk.cpp \
+	devices/floppydisk_raw.cpp \
+	devices/floppydrive.cpp \
+	devices/floppyfmt.cpp \
+	devices/floppyfmt_img.cpp \
+	devices/floppyfmt_hfe.cpp \
 	devices/floppyfx.cpp \
+	devices/floppyloader.cpp \
 	devices/storagectrl.cpp \
 	devices/storagectrl_ps1.cpp \
 	devices/storagectrl_ata.cpp \
@@ -109,9 +117,17 @@ noinst_HEADERS = \
 	devices/vga.h \
 	devices/vgadisplay.h \
 	devices/drivefx.h \
-	devices/floppy.h \
+	devices/floppyctrl.h \
+	devices/floppyctrl_raw.h \
+	devices/floppyctrl_flux.h \
 	devices/floppydisk.h \
+	devices/floppydisk_raw.h \
+	devices/floppydrive.h \
+	devices/floppyfmt.h \
+	devices/floppyfmt_img.h \
+	devices/floppyfmt_hfe.h \
 	devices/floppyfx.h \
+	devices/floppyloader.h \
 	devices/storagectrl.h \
 	devices/storagectrl_ps1.h \
 	devices/storagectrl_ata.h \

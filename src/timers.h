@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,21 +21,39 @@
 #define IBMULATOR_TIMERS_H
 
 #include "statebuf.h"
+#include "limits.h"
 
 typedef std::function<void(uint64_t)> timer_fun_t;
 
+#define TIME_NEVER ULLONG_MAX
 #define US_TO_NS(us) (us*1000)
-#define USEC_PER_SECOND (1000000)
-#define NSEC_PER_SECOND (1000000000L)
+#define MSEC_PER_SECOND (1'000L)
+#define USEC_PER_SECOND (1'000'000L)
+#define NSEC_PER_SECOND (1'000'000'000L)
 #define INV_USEC_PER_SECOND_D (0.000001)
 #define NSEC_TO_USEC(nsec) (nsec/1000)
+#define NSEC_TO_SEC(nsec) (double((nsec)) / 1'000'000'000.0)
+#define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
 #define MAX_TIMERS 24
 #define NULL_TIMER_HANDLE 10000
 #define TIMER_NAME_LEN 20
 
-constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * 1000L; }
-constexpr uint64_t operator"" _ms ( unsigned long long int _t ) { return _t * 1000000L; }
-constexpr uint64_t operator"" _s  ( unsigned long long int _t ) { return _t * 1000000000L; }
+constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * MSEC_PER_SECOND; }
+constexpr uint64_t operator"" _ms ( unsigned long long int _t ) { return _t * USEC_PER_SECOND; }
+constexpr uint64_t operator"" _s  ( unsigned long long int _t ) { return _t * NSEC_PER_SECOND; }
+constexpr uint64_t operator"" _hz ( unsigned long long int _hz ) { return (NSEC_PER_SECOND / _hz); }
+
+constexpr double hz_to_time(uint64_t _hz) { return (double(NSEC_PER_SECOND) / _hz); }
+
+constexpr uint64_t cycles_to_time(uint64_t _cycles, uint32_t _freq_hz)
+{
+	return _freq_hz ? (_cycles * hz_to_time(_freq_hz)) : TIME_NEVER;
+}
+
+constexpr uint64_t time_to_cycles(uint64_t _time, uint32_t _freq_hz)
+{
+	return _time * (_freq_hz / double(NSEC_PER_SECOND));
+}
 
 struct Timer {
 	bool        in_use;       // Timer is in-use (currently registered)

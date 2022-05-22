@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,7 +41,10 @@ using namespace std;
 const char* Syslog::m_pri_prefixes[LOG_VERBOSITY_MAX][LOG_PRI_COUNT] = {
 	{ "[DBG0]", "[INF0]", "[WRN0]", "[ERR0]" },
 	{ "[DBG1]", "[INF1]", "[WRN1]", "[ERR1]" },
-	{ "[DBG2]", "[INF2]", "[WRN2]", "[ERR2]" }
+	{ "[DBG2]", "[INF2]", "[WRN2]", "[ERR2]" },
+	{ "[DBG3]", "[INF3]", "[WRN3]", "[ERR3]" },
+	{ "[DBG4]", "[INF4]", "[WRN4]", "[ERR4]" },
+	{ "[DBG5]", "[INF5]", "[WRN5]", "[ERR5]" },
 };
 
 const char* Syslog::m_fac_prefixes[] = {
@@ -62,6 +65,7 @@ const char* Syslog::m_fac_prefixes[] = {
 	" vga | ",
 	" cmos| ",
 	" fdc | ",
+	" fdd | ",
 	" hdd | ",
 	" aud | ",
 	" game| ",

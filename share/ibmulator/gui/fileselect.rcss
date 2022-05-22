@@ -94,7 +94,7 @@
 	src: icons/file_select.png;
 	directory: 128px 0px 64px 64px;
 	floppy_3_5: 0px 0px 64px 64px;
-	floppy_5_14: 64px 0px 64px 64px;
+	floppy_5_25: 64px 0px 64px 64px;
 	hdd: 192px 0px 64px 64px;
 }
 
@@ -103,19 +103,14 @@
 	decorator: image(directory);
 }
 
-.floppy_720,
-.floppy_1_44
+.floppy_3_5
 {
 	decorator: image(floppy_3_5);
 }
 
-.floppy_160,
-.floppy_180,
-.floppy_320,
-.floppy_360,
-.floppy_1_20
+.floppy_5_25
 {
-	decorator: image(floppy_5_14);
+	decorator: image(floppy_5_25);
 }
 
 .hdd

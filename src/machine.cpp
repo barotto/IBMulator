@@ -29,6 +29,7 @@
 #include "hardware/devices/dma.h"
 #include "hardware/devices/systemboard.h"
 #include "hardware/devices/floppyctrl.h"
+#include "hardware/devices/floppyfmt_img.h"
 #include "hardware/devices/storagectrl.h"
 #include "hardware/devices/storagectrl_ata.h"
 #include "hardware/devices/storagectrl_ps1.h"
@@ -97,77 +98,87 @@ void Machine::restore_state(StateBuf &_state)
 	 * This method should be called by Program only via cmd_restore_state()
 	 */
 
-	StateHeader h;
+	try {
 
-	//MACHINE state
-	h.name = MACHINE_STATE_NAME;
-	h.data_size = sizeof(m_s);
-	_state.read(&m_s, h);
-	m_mt_virt_time.store(m_s.virt_time);
+		StateHeader h;
 
-	//timers
-	h.name = MACHINE_TIMERS_NAME;
-	h.data_size = sizeof(Timer) * MAX_TIMERS;
-	_state.check(h);
+		//MACHINE state
+		h.name = MACHINE_STATE_NAME;
+		h.data_size = sizeof(m_s);
+		_state.read(&m_s, h);
+		m_mt_virt_time.store(m_s.virt_time);
 
-	Timer savtimer;
-	//for every timer in the savestate
-	for(unsigned t=0; t<MAX_TIMERS; t++) {
-		memcpy(&savtimer, _state.get_buf(), sizeof(Timer));
-		if(savtimer.in_use) {
-			unsigned mchtidx;
-			//find the correct machine timer, which must be already registered
-			for(mchtidx=0; mchtidx<MAX_TIMERS; mchtidx++) {
-				if(strcmp(m_timers[mchtidx].name, savtimer.name) == 0) {
-					break;
+		//timers
+		h.name = MACHINE_TIMERS_NAME;
+		h.data_size = sizeof(Timer) * MAX_TIMERS;
+		_state.check(h);
+
+		Timer savtimer;
+		//for every timer in the savestate
+		for(unsigned t=0; t<MAX_TIMERS; t++) {
+			memcpy(&savtimer, _state.get_buf(), sizeof(Timer));
+			if(savtimer.in_use) {
+				unsigned mchtidx;
+				//find the correct machine timer, which must be already registered
+				for(mchtidx=0; mchtidx<MAX_TIMERS; mchtidx++) {
+					if(strcmp(m_timers[mchtidx].name, savtimer.name) == 0) {
+						break;
+					}
 				}
+				if(mchtidx>=MAX_TIMERS) {
+					PERRF(LOG_MACHINE, "Cannot find timer %s\n", savtimer.name);
+					throw std::exception();
+				}
+				if(!m_timers[mchtidx].in_use) {
+					PERRF(LOG_MACHINE, "Timer %s is not in use\n", m_timers[mchtidx].name);
+					throw std::exception();
+				}
+				m_timers[mchtidx].period = savtimer.period;
+				m_timers[mchtidx].time_to_fire = savtimer.time_to_fire;
+				m_timers[mchtidx].active = savtimer.active;
+				m_timers[mchtidx].continuous = savtimer.continuous;
+				m_timers[mchtidx].data = savtimer.data;
 			}
-			if(mchtidx>=MAX_TIMERS) {
-				PERRF(LOG_MACHINE, "Cannot find timer %s\n", savtimer.name);
-				throw std::exception();
-			}
-			if(!m_timers[mchtidx].in_use) {
-				PERRF(LOG_MACHINE, "Timer %s is not in use\n", m_timers[mchtidx].name);
-				throw std::exception();
-			}
-			m_timers[mchtidx].period = savtimer.period;
-			m_timers[mchtidx].time_to_fire = savtimer.time_to_fire;
-			m_timers[mchtidx].active = savtimer.active;
-			m_timers[mchtidx].continuous = savtimer.continuous;
-			m_timers[mchtidx].data = savtimer.data;
+			_state.advance(sizeof(Timer));
 		}
-		_state.advance(sizeof(Timer));
-	}
 
-	//exceptions will be thrown if the buffer size is smaller than expected
-	try {
-		//CPU state
-		g_cpu.restore_state(_state);
-	} catch(std::exception &e) {
-		PERRF(LOG_MACHINE, "error restoring cpu\n");
+		//exceptions will be thrown if the buffer size is smaller than expected
+		try {
+			//CPU state
+			g_cpu.restore_state(_state);
+		} catch(std::exception &e) {
+			PERRF(LOG_MACHINE, "Error restoring the CPU\n");
+			throw;
+		}
+
+		try {
+			//MEMORY state
+			g_memory.restore_state(_state);
+		} catch(std::exception &e) {
+			PERRF(LOG_MACHINE, "Error restoring the main memory\n");
+			throw;
+		}
+
+		try {
+			//DEVICES state
+			g_devices.restore_state(_state);
+		} catch(std::exception &e) {
+			PERRF(LOG_MACHINE, "Error restoring the I/O devices\n");
+			throw;
+		}
+
+		std::unique_lock<std::mutex> lock(ms_gui_lock);
+		m_curr_prgname_changed = true;
+
+		PINFOF(LOG_V0, LOG_MACHINE, "Machine state restored\n");
+
+	} catch(...) {
+
+		// invalid state will remain until the program is terminated
+		m_valid_state = false;
 		throw;
+
 	}
-
-	try {
-		//MEMORY state
-		g_memory.restore_state(_state);
-	} catch(std::exception &e) {
-		PERRF(LOG_MACHINE, "error restoring memory\n");
-		throw;
-	}
-
-	try {
-		//DEVICES state
-		g_devices.restore_state(_state);
-	} catch(std::exception &e) {
-		PERRF(LOG_MACHINE, "error restoring devices\n");
-		throw;
-	}
-
-	std::unique_lock<std::mutex> lock(ms_gui_lock);
-	m_curr_prgname_changed = true;
-
-	PINFOF(LOG_V0, LOG_MACHINE, "Machine state restored\n");
 }
 
 void Machine::calibrate(const Pacer &_p)
@@ -194,6 +205,15 @@ void Machine::init()
 	g_memory.init();
 	m_sysrom.init();
 	g_devices.init(this);
+
+	// FLOPPY LOADER THREAD
+	m_floppy_loader = std::make_unique<FloppyLoader>(this);
+	m_floppy_loader_thread = std::thread(&FloppyLoader::thread_start, m_floppy_loader.get());
+}
+
+void Machine::register_floppy_loader_state_cb(FloppyLoader::state_cb_t _cb)
+{
+	m_floppy_loader->register_state_cb(_cb);
 }
 
 void Machine::start()
@@ -256,8 +276,30 @@ void Machine::power_off()
 	set_DOS_program_name("");
 }
 
-void Machine::config_changed()
+void Machine::config_changed(bool _startup)
 {
+	if(_startup) {
+		m_floppy_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FLOPPY_COMMIT, {
+			{ "yes",    DISK_COMMIT },
+			{ "commit", DISK_COMMIT },
+			{ "no",      DISK_DISCARD },
+			{ "discard", DISK_DISCARD },
+			{ "discard_states", DISK_DISCARD_STATES },
+			{ "discard states", DISK_DISCARD_STATES }
+		}, DISK_COMMIT));
+
+		if(m_floppy_commit == DISK_DISCARD || m_floppy_commit == DISK_DISCARD_STATES) {
+			PWARN("WARNING: data written to floppy disks will be lost!\n");
+		}
+	} else {
+		// before changing config and restoring state data, commit any media image
+		// that needs to be preserved commit processes will be queued in the the
+		// loader/saver thread this thread can continue safely
+		// config_changed() happens before restore_state()
+		commit_media(nullptr);
+		m_config_id++;
+	}
+
 	PINFOF(LOG_V1, LOG_MACHINE, "Loading the SYSTEM ROM\n");
 	try {
 		std::string romset = g_program.config().find_file(SYSTEM_SECTION, SYSTEM_ROMSET);
@@ -295,8 +337,8 @@ void Machine::config_changed()
 		m_configured_model.floppy_a = flpctrl->drive_type(0);
 		m_configured_model.floppy_b = flpctrl->drive_type(1);
 	} else {
-		m_configured_model.floppy_a = FDD_NONE;
-		m_configured_model.floppy_b = FDD_NONE;
+		m_configured_model.floppy_a = FloppyDrive::FDD_NONE;
+		m_configured_model.floppy_b = FloppyDrive::FDD_NONE;
 	}
 	// TODO what if there's more than 1 storage controller?
 	auto hddctrl = g_devices.device<StorageCtrl>();
@@ -401,9 +443,12 @@ void Machine::main_loop()
 			run_loop();
 		}
 		if(m_quit) {
-			return;
+			break;
 		}
 	}
+
+	m_floppy_loader->cmd_quit();
+	m_floppy_loader_thread.join();
 }
 
 void Machine::run_loop()
@@ -751,7 +796,11 @@ void Machine::cmd_power_on()
 		if(m_on) {
 			return;
 		}
-		reset(MACHINE_POWER_ON);
+		if(!m_valid_state) {
+			GUI::instance()->show_message("Invalid state");
+		} else {
+			reset(MACHINE_POWER_ON);
+		}
 	});
 }
 
@@ -765,7 +814,11 @@ void Machine::cmd_power_off()
 void Machine::cmd_cpu_step()
 {
 	m_cmd_queue.push([this] () {
-		core_step(0);
+		if(!m_valid_state) {
+			GUI::instance()->show_message("Invalid state");
+		} else {
+			core_step(0);
+		}
 	});
 }
 
@@ -798,7 +851,11 @@ void Machine::cmd_switch_power()
 		if(m_on) {
 			power_off();
 		} else {
-			reset(MACHINE_POWER_ON);
+			if(!m_valid_state) {
+				GUI::instance()->show_message("Invalid state");
+			} else {
+				reset(MACHINE_POWER_ON);
+			}
 		}
 	});
 }
@@ -819,7 +876,9 @@ void Machine::cmd_pause(bool _show_notice)
 void Machine::cmd_resume(bool _show_notice)
 {
 	m_cmd_queue.push([=] () {
-		if(m_cpu_single_step) {
+		if(!m_valid_state) {
+			GUI::instance()->show_message("Invalid state");
+		} else if(m_cpu_single_step) {
 			resume();
 			if(_show_notice) {
 				PINFOF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
@@ -909,7 +968,17 @@ void Machine::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::conditio
 {
 	m_cmd_queue.push([&] () {
 		std::unique_lock<std::mutex> lock(_mutex);
-		save_state(_state);
+		if(!m_valid_state) {
+			GUI::instance()->show_message("Invalid state");
+			_state.m_last_save = false;
+		} else {
+			_state.m_last_save = true;
+			try {
+				save_state(_state);
+			} catch(std::exception &e) {
+				_state.m_last_save = false;
+			}
+		}
 		_cv.notify_one();
 	});
 }
@@ -918,31 +987,176 @@ void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condi
 {
 	m_cmd_queue.push([&] () {
 		std::unique_lock<std::mutex> lock(_mutex);
-		_state.m_last_restore = true;
-		try {
-			restore_state(_state);
-			m_bench.start();
-			m_on = true;
-		} catch(std::exception &e) {
-			PERRF(LOG_MACHINE, "error restoring the state\n");
+		if(!m_valid_state) {
+			PERRF(LOG_MACHINE, "Cannot restore a new state while the machine is already in an invalid state\n");
 			_state.m_last_restore = false;
+		} else {
+			_state.m_last_restore = true;
+			try {
+				restore_state(_state);
+				m_bench.start();
+				m_on = true;
+			} catch(std::exception &e) {
+				PERRF(LOG_MACHINE, "Error restoring the machine state\n");
+				_state.m_last_restore = false;
+			}
 		}
 		_cv.notify_one();
 	});
 }
 
-void Machine::cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp)
+void Machine::cmd_insert_floppy(uint8_t _drive, std::string _img_path, bool _wp,
+		std::function<void(bool)> _cb)
 {
+	// called by the GUI
+	if(!g_devices.device<FloppyCtrl>()) {
+		return;
+	}
+	int config_id = m_config_id;
 	m_cmd_queue.push([=] () {
-		g_devices.device<FloppyCtrl>()->insert_media(_drive, _type, _file.c_str(), _wp);
+		auto type = g_devices.device<FloppyCtrl>()->drive_type(_drive);
+		if(type == FloppyDrive::FDD_NONE) {
+			PDEBUGF(LOG_V0, LOG_MACHINE, "cmd_insert_floppy(): invalid drive\n");
+			return;
+		}
+		m_floppy_loader->cmd_load_floppy(_drive, type, _img_path, _wp, _cb, config_id);
 	});
 }
 
-void Machine::cmd_eject_media(uint _drive)
+void Machine::cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy,
+		std::function<void(bool)> _cb, int _config_id)
+{
+	// called by the floppy loader
+	m_cmd_queue.push([=] () {
+		if(_config_id != m_config_id) {
+			// configuration changed after a call to cmd_insert_floppy() by the GUI
+			PDEBUGF(LOG_V1, LOG_MACHINE, "Floppy arrived too late...\n");
+			delete _floppy;
+			return;
+		}
+		if(!_floppy) {
+			if(_cb) {
+				_cb(false);
+			}
+			return;
+		}
+		bool result = g_devices.device<FloppyCtrl>()->insert_media(_drive, _floppy);
+		if(!result) {
+			delete _floppy;
+		}
+		if(_cb) {
+			_cb(result);
+		}
+	});
+}
+
+void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 {
 	m_cmd_queue.push([=] () {
-		g_devices.device<FloppyCtrl>()->eject_media(_drive);
+		auto ctrl = g_devices.device<FloppyCtrl>();
+		if(!ctrl) {
+			if(_cb) { _cb(true); }
+			return;
+		}
+		FloppyDisk *floppy = ctrl->eject_media(_drive, false);
+		if(!floppy) {
+			if(_cb) { _cb(true); }
+			return;
+		}
+		if(floppy->is_dirty()) {
+			if(m_floppy_commit == DISK_DISCARD || 
+			   (m_config_id > 0 && m_floppy_commit == DISK_DISCARD_STATES))
+			{
+				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data has been lost!\n");
+				if(_cb) { _cb(true); }
+				return;
+			}
+			commit_floppy(floppy, _cb);
+		} else {
+			if(_cb) { _cb(true); }
+		}
 	});
+}
+
+void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
+{
+	// this function takes ownership of _floppy
+	assert(_floppy);
+	std::unique_ptr<FloppyDisk> floppy(_floppy);
+
+	auto path = floppy->get_image_path();
+	if(path.empty()) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "Empty media path!\n");
+		if(_cb) {
+			_cb(false);
+		}
+	}
+	auto format = floppy->get_format();
+	if(!format || !format->can_save()) {
+		// fallback format?
+		format = std::make_shared<FloppyFmt_IMG>();
+		PWARNF(LOG_V0, LOG_MACHINE, "Using default floppy format: %s\n", format->name());
+	}
+	std::string base, ext;
+	FileSys::get_file_parts(path.c_str(), base, ext);
+	if(!format->has_file_extension(ext)) {
+		path += format->default_file_extension();
+	}
+	m_floppy_loader->cmd_save_floppy(floppy.release(), path, format, _cb);
+}
+
+void Machine::cmd_commit_media(std::function<void()> _cb)
+{
+	m_cmd_queue.push([=](){
+		commit_media(_cb);
+	});
+}
+
+bool Machine::commit_media(std::function<void()> _cb)
+{
+	// this function can be called by the Program and Machine threads
+
+	auto ctrl = g_devices.device<FloppyCtrl>();
+
+	if(!ctrl || 
+	    m_floppy_commit == DISK_DISCARD || 
+	   (m_config_id > 0 && m_floppy_commit == DISK_DISCARD_STATES))
+	{
+		if(_cb) { _cb(); }
+		return false;
+	}
+
+	// I want the caller to be notified only after the last floppy has been saved.
+	// saving results are not reported.
+	int last_dirty = -1;
+	for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
+		// If the machine is in a savestate, commit floppy only if it has been written
+		// to after the savestate restore. A floppy is committed always only
+		// after an explicit eject (press of the button).
+		if(ctrl->is_media_dirty(i,true) && i > last_dirty) {
+			last_dirty = i;
+		}
+	}
+	if(last_dirty >= 0) {
+		GUI::instance()->show_message("Saving floppy disks...");
+		bool committed = false;
+		for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
+			if(ctrl->is_media_dirty(i,true)) {
+				FloppyDisk *floppy = ctrl->eject_media(i, true);
+				assert(floppy);
+				commit_floppy(floppy, [=](bool){
+					// this is the FloppyLoader thread
+					if(_cb && i == last_dirty) {
+						_cb();
+					}
+				});
+			}
+		}
+		return committed;
+	} else {
+		if(_cb) { _cb(); }
+		return false;
+	}
 }
 
 void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
@@ -966,7 +1180,7 @@ void Machine::sig_config_changed(std::mutex &_mutex, std::condition_variable &_c
 		if(m_on) {
 			power_off();
 		}
-		config_changed();
+		config_changed(false);
 		_cv.notify_one();
 	});
 }

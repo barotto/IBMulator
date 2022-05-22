@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,7 +20,34 @@
 #include "ibmulator.h"
 #include "new_floppy.h"
 #include "gui/gui.h"
-#include <regex>
+
+const std::map<std::string, FloppyDisk::StdType> NewFloppy::std_enums = {
+	{ "FLOPPY_NONE", FloppyDisk::FD_NONE },
+	{ "FLOPPY_160K", FloppyDisk::DD_160K },
+	{ "FLOPPY_180K", FloppyDisk::DD_180K },
+	{ "FLOPPY_320K", FloppyDisk::DD_320K },
+	{ "FLOPPY_360K", FloppyDisk::DD_360K },
+	{ "FLOPPY_720K", FloppyDisk::DD_720K },
+	{ "FLOPPY_1_20", FloppyDisk::HD_1_20 },
+	{ "FLOPPY_1_44", FloppyDisk::HD_1_44 },
+	// { "FLOPPY_1_68", FloppyDisk::HD_1_68 }, not available in raw floppy controller, so don't present as options
+	// { "FLOPPY_1_72", FloppyDisk::HD_1_72 },
+	{ "FLOPPY_2_88", FloppyDisk::ED_2_88 }
+};
+
+const std::map<FloppyDisk::StdType, std::string> NewFloppy::std_names = {
+	{ FloppyDisk::FD_NONE, "FLOPPY_NONE" },
+	{ FloppyDisk::DD_160K, "FLOPPY_160K" },
+	{ FloppyDisk::DD_180K, "FLOPPY_180K" },
+	{ FloppyDisk::DD_320K, "FLOPPY_320K" },
+	{ FloppyDisk::DD_360K, "FLOPPY_360K" },
+	{ FloppyDisk::DD_720K, "FLOPPY_720K" },
+	{ FloppyDisk::HD_1_20, "FLOPPY_1_20" },
+	{ FloppyDisk::HD_1_44, "FLOPPY_1_44" },
+	// { FloppyDisk::HD_1_68, "FLOPPY_1_68" },
+	// { FloppyDisk::HD_1_72, "FLOPPY_1_72" },
+	{ FloppyDisk::ED_2_88, "FLOPPY_2_88" }
+};
 
 event_map_t NewFloppy::ms_evt_map = {
 	GUI_EVT( "cancel",      "click",   NewFloppy::on_cancel ),
@@ -41,25 +68,24 @@ NewFloppy::~NewFloppy()
 {
 }
 
-void NewFloppy::set_compat_sizes(std::vector<uint64_t> _sizes)
+void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes)
 {
-	m_compat_sizes = _sizes;
 	assert(m_type_el);
 	m_type_el->RemoveAll();
 	std::string options;
-	std::sort(_sizes.begin(), _sizes.end(), std::greater<uint64_t>());
-	for(auto size : _sizes) {
-		switch(size) {
-			case FLOPPY_160K_BYTES: m_type_el->Add("5.25\" 160K", "FLOPPY_160K"); break;
-			case FLOPPY_180K_BYTES: m_type_el->Add("5.25\" 180K", "FLOPPY_180K"); break;
-			case FLOPPY_320K_BYTES: m_type_el->Add("5.25\" 320K", "FLOPPY_320K"); break;
-			case FLOPPY_360K_BYTES: m_type_el->Add("5.25\" 360K", "FLOPPY_360K"); break;
-			case FLOPPY_1_2_BYTES : m_type_el->Add("5.25\" 1.2M", "FLOPPY_1_2" ); break;
-			case FLOPPY_720K_BYTES: m_type_el->Add("3.5\" 720K" , "FLOPPY_720K"); break;
-			case FLOPPY_1_44_BYTES: m_type_el->Add("3.5\" 1.44M", "FLOPPY_1_44"); break;
-			case FLOPPY_2_88_BYTES: m_type_el->Add("3.5\" 2.88M", "FLOPPY_2_88"); break;
-			default: continue;
+	// use reverse iterators so bigger floppies are shown first
+	auto it = FloppyDisk::std_types.rbegin();
+	while(it != FloppyDisk::std_types.rend()) {
+		for(auto ctype : _ctypes) {
+			if((it->first & FloppyDisk::DENS_MASK) == (ctype & FloppyDisk::DENS_MASK) &&
+			   (it->first & FloppyDisk::SIZE_MASK) == (ctype & FloppyDisk::SIZE_MASK)) {
+				try {
+					m_type_el->Add(it->second.desc.c_str(), std_names.at(it->first));
+				} catch(std::out_of_range &) {}
+				break;
+			}
 		}
+		it++;
 	}
 }
 
@@ -117,26 +143,19 @@ void NewFloppy::on_destdir(Rml::Event &_ev)
 
 void NewFloppy::on_create_file(Rml::Event &)
 {
-	std::string filename = str_trim(m_filename_el->GetValue());
-	filename.erase(filename.find_last_not_of(".") + 1);
-
-	if(filename.empty()) {
-		return;
-	}
 	if(m_create_clbk) {
+		std::string filename = str_trim(m_filename_el->GetValue());
+		filename.erase(filename.find_last_not_of(".") + 1);
+		if(filename.empty()) {
+			return;
+		}
 		try {
-			std::map<std::string, FloppyDiskType> types = {
-				{ "FLOPPY_160K" , FLOPPY_160K },
-				{ "FLOPPY_180K" , FLOPPY_180K },
-				{ "FLOPPY_320K" , FLOPPY_320K },
-				{ "FLOPPY_360K" , FLOPPY_360K },
-				{ "FLOPPY_1_2"  , FLOPPY_1_2  },
-				{ "FLOPPY_720K" , FLOPPY_720K },
-				{ "FLOPPY_1_44" , FLOPPY_1_44 },
-				{ "FLOPPY_2_88" , FLOPPY_2_88 }
-			};
-			m_create_clbk(m_dest_dir, filename, types[m_type_el->GetValue()],
-					m_formatted_el->GetAttribute("checked"));
+			auto name = m_type_el->GetValue();
+			auto type = std_enums.find(name);
+			if(type == std_enums.end()) {
+				throw std::runtime_error(str_format("Invalid floppy disk type: %s",name).c_str());
+			}
+			m_create_clbk(m_dest_dir, filename, type->second, m_formatted_el->GetAttribute("checked"));
 		} catch(std::runtime_error &e) {
 			m_gui->show_message_box("Error",
 					str_to_html(e.what()), MessageWnd::Type::MSGW_OK,

@@ -123,7 +123,7 @@ void Status::update()
 	}
 }
 
-void Status::config_changed()
+void Status::config_changed(bool)
 {
 	m_floppy = m_machine->devices().device<FloppyCtrl>();
 	m_hdd = m_machine->devices().device<StorageCtrl>();

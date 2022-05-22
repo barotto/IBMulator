@@ -138,13 +138,13 @@ uint16_t SystemBoard_PS1_2121::read(uint16_t _address, unsigned _io_len)
 		case 0x03F3:
 			value = 0;
 			if(m_floppy) {
-				uint8_t type = m_floppy->drive_type(m_floppy->current_drive());
+				auto type = m_floppy->drive_type(m_floppy->current_drive());
 				switch(type) {
-					case FDD_525DD:
-					case FDD_525HD:
+					case FloppyDrive::FDD_525DD:
+					case FloppyDrive::FDD_525HD:
 						value = 0x20;
 						break;
-					case FDD_350ED:
+					case FloppyDrive::FDD_350ED:
 						value = 0x10;
 						break;
 					default:

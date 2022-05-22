@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -62,7 +62,7 @@ public:
 
 	virtual void create();
 	virtual void update();
-	virtual void config_changed();
+	virtual void config_changed(bool);
 
 	void set_indicator(IND _ind, LED _s) {
 		m_indicators[_ind].set(_s);

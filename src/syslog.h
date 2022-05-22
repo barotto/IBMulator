@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -85,6 +85,7 @@ enum e_Syslog_Facilities {
 	LOG_VGA,
 	LOG_CMOS,
 	LOG_FDC,
+	LOG_FDD,
 	LOG_HDD,
 	LOG_AUDIO,
 	LOG_GAMEPORT,
@@ -109,7 +110,10 @@ enum e_Syslog_Priorities {
 enum _Syslog_Verbosity {
 	LOG_VERBOSITY_0 = 0, // informazioni di base, errori critici, eccezioni, ...
 	LOG_VERBOSITY_1,     // informazioni estese
-	LOG_VERBOSITY_2,     // flusso dettagliato delle operazioni svolte (eplosivo)
+	LOG_VERBOSITY_2,     // flusso dettagliato delle operazioni svolte
+	LOG_VERBOSITY_3,     // 
+	LOG_VERBOSITY_4,     // 
+	LOG_VERBOSITY_5,     // explosive diarrhea of messages
 
 	LOG_VERBOSITY_MAX
 };
@@ -117,6 +121,9 @@ enum _Syslog_Verbosity {
 #define LOG_V0 LOG_VERBOSITY_0
 #define LOG_V1 LOG_VERBOSITY_1
 #define LOG_V2 LOG_VERBOSITY_2
+#define LOG_V3 LOG_VERBOSITY_3
+#define LOG_V4 LOG_VERBOSITY_4
+#define LOG_V5 LOG_VERBOSITY_5
 
 class Logdev;
 

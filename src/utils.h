@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,11 @@
 #include <vector>
 #include <array>
 #include <stdexcept>
+
+constexpr uint64_t operator"" _KB ( unsigned long long int _kb ) { return _kb * 1000L; }
+constexpr uint64_t operator"" _MB ( unsigned long long int _mb ) { return _mb * 1000000L; }
+constexpr uint64_t operator"" _KiB ( unsigned long long int _kib ) { return _kib * 1024L; }
+constexpr uint64_t operator"" _MiB ( unsigned long long int _mib ) { return _mib * 1048576L; }
 
 #ifdef __GNUC__
 #define bswap16 __builtin_bswap16
@@ -61,6 +66,7 @@ void size_check()
 }
 
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
+std::string str_implode(const std::vector<const char*> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
 std::string str_to_lower(std::string _str);
 std::string str_to_upper(std::string _str);
@@ -122,6 +128,13 @@ const char* register_to_string(uint8_t _register,
 	const std::vector<std::pair<int, std::string> > &_fields);
 
 std::string bytearray_to_string(uint8_t *_data, unsigned _len);
+
+template<class T>
+std::vector<T> & vector_concat(std::vector<T> &_v1, const std::vector<T> &_v2)
+{
+	_v1.insert(_v1.end(), _v2.begin(), _v2.end());
+	return _v1;
+}
 
 template<class T>
 inline T clamp(T _value, T _lower, T _upper)

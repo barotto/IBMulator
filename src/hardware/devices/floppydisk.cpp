@@ -1,194 +1,277 @@
-/*
- * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
- *
- * This file is part of IBMulator.
- *
- * IBMulator is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * IBMulator is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
- */
+// license:BSD-3-Clause
+// copyright-holders:Olivier Galibert, Marco Bortolin
+
+// Based on MAME's formats/flopimg.cpp
 
 #include "ibmulator.h"
+#include "floppyfmt.h"
 #include "floppydisk.h"
 #include "filesys.h"
-#include "utils.h"
-
-#include <errno.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <cstring>
-#ifdef _WIN32
-#include "wincompat.h"
-#endif
 
 
-const std::map<std::string, unsigned> FloppyDisk::disk_names_350 = {
-	{ "720K",  FLOPPY_720K },
-	{ "1.44M", FLOPPY_1_44 },
-	{ "2.88M", FLOPPY_2_88 }
+const std::map<FloppyDisk::StdType, FloppyDisk::Properties> FloppyDisk::std_types = {
+             //type     trk  s  spt  ssize  secs   capacity   drate       str
+  { FD_NONE, { FD_NONE,   0, 0,   0,     0,    0,         0,  DRATE_250,  "none"           }},
+  { DD_160K, { DD_160K,  40, 1,   8,   512,  320,  160*1024,  DRATE_250,  "5.25\" DD 160K" }},
+  { DD_180K, { DD_180K,  40, 1,   9,   512,  360,  180*1024,  DRATE_250,  "5.25\" DD 180K" }},
+  { DD_320K, { DD_320K,  40, 2,   8,   512,  640,  320*1024,  DRATE_250,  "5.25\" DD 320K" }},
+  { DD_360K, { DD_360K,  40, 2,   9,   512,  720,  360*1024,  DRATE_250,  "5.25\" DD 360K" }},
+// raw images 5.25 QD cannot be distinguished from 3.5 DD 
+// with 3.5 DD images mounted as 5.25 QD, DOS/BIOS incorrectly uses double stepping
+//{ QD_720K, { QD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  "5.25\" QD 720K" }},
+  { DD_720K, { DD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  "3.5\" DD 720K"  }},
+  { HD_1_20, { HD_1_20,  80, 2,  15,   512, 2400, 1200*1024,  DRATE_500,  "5.25\" HD 1.2M" }},
+  { HD_1_44, { HD_1_44,  80, 2,  18,   512, 2880, 1440*1024,  DRATE_500,  "3.5\" HD 1.44M" }},
+  { HD_1_68, { HD_1_68,  80, 2,  21,   512, 3360, 1680*1024,  DRATE_500,  "3.5\" HD 1.68M" }},
+  { HD_1_72, { HD_1_72,  82, 2,  21,   512, 3444, 1722*1024,  DRATE_500,  "3.5\" HD 1.72M" }},
+  { ED_2_88, { ED_2_88,  80, 2,  36,   512, 5760, 2880*1024,  DRATE_1000, "3.5\" ED 2.88M" }}
 };
 
-const std::map<std::string, unsigned> FloppyDisk::disk_names_525 = {
-	{ "160K", FLOPPY_160K },
-	{ "180K", FLOPPY_180K },
-	{ "320K", FLOPPY_320K },
-	{ "360K", FLOPPY_360K },
-	{ "1.2M", FLOPPY_1_2  }
-};
 
-#ifdef O_BINARY
-#define RDONLY O_RDONLY | O_BINARY
-#define RDWR O_RDWR | O_BINARY
-#else
-#define RDONLY O_RDONLY
-#define RDWR O_RDWR
-#endif
-
-bool FloppyDisk::open(unsigned _type, const char *_path, bool _write_prot)
+FloppyDisk::FloppyDisk(const Properties &_props)
 {
-	path = _path;
+	m_props = _props;
 
-	if(_type == FLOPPY_NONE) {
+	track_array.resize(m_props.tracks);
+
+	for(unsigned i=0; i<track_array.size(); i++) {
+		track_array[i].resize(m_props.sides);
+	}
+}
+
+FloppyDisk::~FloppyDisk()
+{
+}
+
+bool FloppyDisk::load(std::string _path, std::shared_ptr<FloppyFmt> _format)
+{
+	if(!_format) {
+		return false;
+	}
+	m_loaded_image = "";
+	m_format = nullptr;
+
+	std::ifstream fstream = FileSys::make_ifstream(_path.c_str());
+	if(!fstream.is_open()){
+		PERRF(LOG_GUI, "Cannot open file '%s' for reading\n", _path.c_str());
 		return false;
 	}
 
-	wprot = _write_prot;
-
-	// open media file
-	if(wprot) {
-		fd = FileSys::open(_path, RDONLY);
-	} else {
-		fd = FileSys::open(_path, RDWR);
+	if(_format->load(fstream, *this)) {
+		m_format = _format;
+		m_loaded_image = _path;
+		return true;
 	}
 
-	if(!wprot && (fd < 0)) {
-		PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read/write: %s\n", _path, strerror(errno));
-		// try opening the file read-only
-		wprot = true;
-		fd = FileSys::open(_path, RDONLY);
-		if(fd < 0) {
-			// failed to open read-only too
-			PINFOF(LOG_V1, LOG_FDC, "tried to open '%s' read only: %s\n", _path, strerror(errno));
-			type = _type;
-			return false;
-		}
-	}
-
-	struct stat stat_buf;
-	int ret = ::fstat(fd, &stat_buf);
-
-	if(ret) {
-		PERRF(LOG_FDC, "fstat() floppy image file returns error: %s\n", strerror(errno));
-		return false;
-	}
-
-	if(S_ISREG(stat_buf.st_mode)) {
-		// regular file
-		switch(_type) {
-			case FLOPPY_160K: // 160K 5.25"
-			case FLOPPY_180K: // 180K 5.25"
-			case FLOPPY_320K: // 320K 5.25"
-			case FLOPPY_360K: // 360K 5.25"
-			case FLOPPY_720K: // 720K 3.5"
-			case FLOPPY_1_2:  // 1.2M 5.25"
-			case FLOPPY_2_88: // 2.88M 3.5"
-				type    = _type;
-				tracks  = std_types[_type].trk;
-				heads   = std_types[_type].hd;
-				spt     = std_types[_type].spt;
-				sectors = std_types[_type].sectors;
-				if(stat_buf.st_size > (int)(sectors * 512)) {
-					PDEBUGF(LOG_V0, LOG_FDC, "size of file '%s' (%lu) too large for selected type\n",
-							_path, (unsigned long) stat_buf.st_size);
-					return false;
-				}
-				break;
-			default: // 1.44M 3.5"
-				type = _type;
-				if(stat_buf.st_size <= 1474560) {
-					tracks = std_types[_type].trk;
-					heads  = std_types[_type].hd;
-					spt    = std_types[_type].spt;
-				} else if(stat_buf.st_size == 1720320) {
-					spt    = 21;
-					tracks = 80;
-					heads  = 2;
-				} else if(stat_buf.st_size == 1763328) {
-					spt    = 21;
-					tracks = 82;
-					heads  = 2;
-				} else if(stat_buf.st_size == 1884160) {
-					spt    = 23;
-					tracks = 80;
-					heads  = 2;
-				} else {
-					PDEBUGF(LOG_V0, LOG_FDC, "file '%s' of unknown size %lu\n",
-							_path, (unsigned long) stat_buf.st_size);
-					return false;
-				}
-				sectors = heads * tracks * spt;
-				break;
-		}
-		return (sectors > 0); // success
-	}
-
-	// unknown file type
-	PDEBUGF(LOG_V0, LOG_FDC, "unknown mode type\n");
 	return false;
 }
 
-void FloppyDisk::close()
+bool FloppyDisk::save(std::string _path, std::shared_ptr<FloppyFmt> _format)
 {
-	if(fd >= 0) {
-		::close(fd);
-		fd = -1;
+	if(!_format) {
+		return false;
 	}
+
+	std::string dir, base, ext;
+	if(!FileSys::get_path_parts(_path.c_str(), dir, base, ext)) {
+		PERRF(LOG_GUI, "Destination path '%s' is not valid\n", _path.c_str());
+		return false;
+	}
+
+	auto tmp = FileSys::get_next_filename_time(_path.c_str());
+	if(tmp.empty()) {
+		PERRF(LOG_GUI, "Cannot write '%s'\n", _path.c_str());
+		return false;
+	}
+
+	std::ofstream fstream = FileSys::make_ofstream(tmp.c_str());
+	if(!fstream.is_open()) {
+		PERRF(LOG_GUI, "Cannot write into directory '%s'\n", dir.c_str());
+		return false;
+	}
+
+	m_dirty = !_format->save(fstream, *this);
+
+	fstream.close();
+
+	if(!m_dirty) {
+		if(FileSys::file_exists(_path.c_str())) {
+			if(FileSys::is_file_writeable(_path.c_str())) {
+				FileSys::remove(_path.c_str());
+				FileSys::rename_file(tmp.c_str(), _path.c_str());
+				if(FileSys::file_exists(tmp.c_str())) {
+					PERRF(LOG_GUI, "Cannot overwrite '%s', creating a copy...\n", _path.c_str());
+				}
+			} else {
+				PERRF(LOG_GUI, "Cannot overwrite '%s', creating a copy...\n", _path.c_str());
+			}
+		} else {
+			FileSys::rename_file(tmp.c_str(), _path.c_str());
+		}
+	} else {
+		PERRF(LOG_GUI, "Cannot save '%s'\n", _path.c_str());
+		FileSys::remove(tmp.c_str());
+	}
+
+	m_dirty_restore = m_dirty;
+
+	return !m_dirty;
 }
 
-void FloppyDisk::read_sector(uint32_t _from_offset, uint8_t *_to_buffer, uint32_t _bytes)
+void FloppyDisk::load_state(std::string _imgpath, std::string _binpath)
 {
-	if(lseek(fd, _from_offset, SEEK_SET) < 0) {
-		throw std::runtime_error(str_format("cannot perform lseek() to %d", _from_offset).c_str());
+	std::ifstream fstream = FileSys::make_ifstream(_binpath.c_str());
+
+	if(!fstream.is_open()){
+		PERRF(LOG_FDC, "Cannot open file '%s' for reading\n", _binpath.c_str());
+		throw std::exception();
 	}
 
-	ssize_t ret = ::read(fd, _to_buffer, _bytes);
+	m_loaded_image = _imgpath;
+	m_format.reset(FloppyFmt::find(_imgpath));
 
-	if(ret < _bytes) {
-		if(ret > 0) {
-			memset(_to_buffer + ret, 0, _bytes - ret);
-			throw std::runtime_error(str_format("partial read() on floppy image returns %u/%u",
-					ret, _bytes).c_str());
-		} else {
-			memset(_to_buffer, 0, _bytes);
-			throw std::runtime_error("read() on floppy image returns 0");
+	// dirty condition
+	// (dirty_restore condition is not saved)
+	fstream.read(reinterpret_cast<char*>(&m_dirty), sizeof m_dirty);
+
+	// track data
+	fstream.exceptions(std::ifstream::badbit);
+	for(int track=0; track < m_props.tracks; track++) {
+		for(int head=0; head < m_props.sides; head++) {
+			track_array[track][head].load_state(fstream);
+		}
+	}
+
+	// caller should set write protected state
+
+	m_dirty_restore = false;
+}
+
+void FloppyDisk::save_state(std::string _binpath)
+{
+	std::ofstream fstream = FileSys::make_ofstream(_binpath.c_str());
+	if(!fstream.is_open()){
+		PERRF(LOG_GUI, "Cannot open file '%s' for writing\n", _binpath.c_str());
+		throw std::exception();
+	}
+	fstream.exceptions(std::ifstream::badbit);
+
+	// dirty condition
+	fstream.write(reinterpret_cast<char*>(&m_dirty), sizeof m_dirty);
+
+	// track data
+	for(int track=0; track < m_props.tracks; track++) {
+		for(int head=0; head < m_props.sides; head++) {
+			track_array[track][head].save_state(fstream);
 		}
 	}
 }
 
-void FloppyDisk::write_sector(uint32_t _to_offset, const uint8_t *_from_buffer, uint32_t _bytes)
+void FloppyDisk::track_info::save_state(std::ofstream &_file)
 {
-	if(lseek(fd, _to_offset, SEEK_SET) < 0) {
-		throw std::runtime_error(str_format("cannot perform lseek() to %d", _to_offset).c_str());
-	}
+	auto size = cell_data.size();
+	_file.write(reinterpret_cast<char const*>(&size), sizeof(size));
+	_file.write(reinterpret_cast<char const*>(cell_data.data()), cell_data.size() * 4);
+	_file.write(reinterpret_cast<char const*>(&write_splice), sizeof(write_splice));
+}
 
-	if(wprot) {
-		throw std::runtime_error("cannot write a write protected floppy");
-	}
+void FloppyDisk::track_info::load_state(std::ifstream &_file)
+{
+	decltype(cell_data.size()) size;
+	_file.read(reinterpret_cast<char*>(&size), sizeof(size));
+	cell_data.resize(size);
+	_file.read(reinterpret_cast<char*>(cell_data.data()), cell_data.size() * 4);
+	_file.read(reinterpret_cast<char*>(&write_splice), sizeof(write_splice));
+}
 
-	ssize_t ret = ::write(fd, _from_buffer, _bytes);
+void FloppyDisk::get_maximal_geometry(int &_tracks, int &_heads) const
+{
+	_tracks = track_array.size();
+	_heads = m_props.sides;
+}
 
-	if(ret < _bytes) {
-		throw std::runtime_error("cannot perform write() on floppy image file");
+void FloppyDisk::get_actual_geometry(int &_tracks, int &_heads) const
+{
+	int maxt = track_array.size() - 1;
+	int maxh = m_props.sides - 1;
+
+	while(maxt >= 0) {
+		for(int i=0; i<=maxh; i++) {
+			if(!track_array[maxt][i].cell_data.empty()) {
+				goto track_done;
+			}
+		}
+		maxt--;
 	}
+	track_done:
+
+	if(maxt >= 0) {
+		while(maxh >= 0) {
+			for(int i=0; i<=maxt; i++) {
+				if(!track_array[i][maxh].cell_data.empty()) {
+					goto head_done;
+				}
+			}
+			maxh--;
+		}
+	} else {
+		maxh = -1;
+	}
+	head_done:
+
+	_tracks = maxt + 1;
+	_heads = maxh + 1;
+}
+
+bool FloppyDisk::track_is_formatted(int track, int head)
+{
+	if(int(track_array.size()) <= track) {
+		return false;
+	}
+	if(int(track_array[track].size()) <= head) {
+		return false;
+	}
+	const auto &data = track_array[track][head].cell_data;
+	if(data.empty()) {
+		return false;
+	}
+	if(data.size() == 1 && (data[0] & MG_MASK) == MG_N) {
+		return false;
+	}
+	return true;
+}
+
+void FloppyDisk::read_sector(uint8_t _c, uint8_t _h, uint8_t _s, uint8_t *buffer, uint32_t bytes)
+{
+	// TODO?
+	UNUSED(_c);
+	UNUSED(_h);
+	UNUSED(_s);
+	UNUSED(buffer);
+	UNUSED(bytes);
+
+	PDEBUGF(LOG_V0, LOG_FDC, "read_sector not implemented for flux-based disks\n");
+}
+
+void FloppyDisk::write_sector(uint8_t _c, uint8_t _h, uint8_t _s, const uint8_t *buffer, uint32_t bytes)
+{
+	// TODO?
+	UNUSED(_c);
+	UNUSED(_h);
+	UNUSED(_s);
+	UNUSED(buffer);
+	UNUSED(bytes);
+
+	PDEBUGF(LOG_V0, LOG_FDC, "write_sector not implemented for flux-based disks\n");
+}
+
+FloppyDisk::Properties FloppyDisk::find_std_type(unsigned _variant)
+{
+	if(_variant & TYPE_MASK) {
+		auto it = std_types.find(StdType(_variant));
+		if(it != std_types.end()) {
+			return it->second;
+		}
+	}
+	return {FD_NONE};
 }

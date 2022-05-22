@@ -117,6 +117,14 @@ bool Window::is_visible()
 	return false;
 }
 
+void Window::set_title(const std::string &_title)
+{
+	Rml::Element *title = m_wnd->GetElementById("title");
+	if(title) {
+		title->SetInnerRML(_title);
+	}
+}
+
 void Window::update()
 {
 }

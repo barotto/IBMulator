@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,8 +66,9 @@ public:
 	void set_modal(bool _modal) {
 		m_modal = _modal ? Rml::ModalFlag::Modal : Rml::ModalFlag::None;
 	}
+	void set_title(const std::string &_title);
 
-	virtual void config_changed() {}
+	virtual void config_changed(bool /*_startup*/) {}
 	virtual void update();
 
 	Rml::ElementDocument *document() { return m_wnd; }

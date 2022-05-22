@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -105,14 +105,14 @@ void DebugTools::create()
 	}
 }
 
-void DebugTools::config_changed()
+void DebugTools::config_changed(bool _startup)
 {
 	create();
 
-	m_debuggerw->config_changed();
-	m_devicesw->config_changed();
-	m_statsw->config_changed();
-	m_mixerw->config_changed();
+	m_debuggerw->config_changed(_startup);
+	m_devicesw->config_changed(_startup);
+	m_statsw->config_changed(_startup);
+	m_mixerw->config_changed(_startup);
 }
 
 void DebugTools::on_stats(Rml::Event &)

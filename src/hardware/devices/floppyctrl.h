@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2001-2012  The Bochs Project
  * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
@@ -22,18 +21,8 @@
 #define IBMULATOR_HW_FLOPPYCTRL_H
 
 #include "hardware/iodevice.h"
-#include "floppydisk.h"
-#include "floppyfx.h"
-
-
-enum FloppyDriveType {
-	FDD_NONE  = 0x00, // floppy not present
-	FDD_525DD = 0x01, // 360K  5.25"
-	FDD_525HD = 0x02, // 1.2M  5.25"
-	FDD_350DD = 0x04, // 720K  3.5"
-	FDD_350HD = 0x08, // 1.44M 3.5"
-	FDD_350ED = 0x10  // 2.88M 3.5"
-};
+#include "floppydrive.h"
+#include "floppyfmt.h"
 
 #define FDC_CMD_MASK 0x1f
 
@@ -41,183 +30,217 @@ class FloppyCtrl : public IODevice
 {
 	IODEVICE(FloppyCtrl, "Floppy Controller");
 
-private:
-	enum Mode {
-		PC_AT, MODEL_30
+public:
+	enum FDCType {
+		RAW  = 1, // raw sector-based emulation
+		FLUX = 2  // flux-based emulation
 	};
-	struct {
-		uint8_t command[10];
-		uint8_t command_index;
-		uint8_t command_size;
-		bool    command_complete;
 
-		uint8_t pending_command;
-		constexpr uint8_t cmd_code() const { return pending_command & FDC_CMD_MASK; }
-		constexpr bool cmd_mtrk() const { return pending_command & 0x80; }
-		constexpr bool cmd_mfm()  const { return pending_command & 0x40; }
-		constexpr bool cmd_skip() const { return pending_command & 0x20; }
-		constexpr bool cmd_rel()  const { return pending_command & 0x80; }
-		constexpr bool cmd_dir()  const { return pending_command & 0x40; }
-		constexpr bool cmd_lock() const { return pending_command & 0x80; }
-
-		bool    multi_track;
-		bool    pending_irq;
-		uint8_t reset_sensei;
-		uint8_t format_count;
-		uint8_t format_fillbyte;
-
-		uint8_t result[10];
-		uint8_t result_index;
-		uint8_t result_size;
-
-		// configurations with more than 2 drives are untested
-		uint8_t DOR;       // Digital Ouput Register
-		uint8_t DIR[4];    // Digital Input Register
-		uint8_t TDR;       // Tape Drive Register
-		uint8_t data_rate; // CCR
-		bool    noprec;    // CCR
-		uint8_t cylinder[4];
-		uint8_t cur_cylinder[4]; // the current head position
-		bool    direction[4];    // to determine the !DIR bit in regA
-		uint8_t head[4];
-		uint8_t sector[4];
-		uint8_t eot[4];
-		uint64_t last_hut[4][2];   // the time when a head was unloaded
-		bool    step[4];   // for status reg A, latched. is it drive dependent?
-		bool    wrdata[4]; // for status reg B, latched. is it drive dependent?
-		bool    rddata[4]; // for status reg B, latched. is it drive dependent?
-		bool    TC;        // Terminal Count status from DMA controller
-
-		uint8_t main_status_reg;
-		uint8_t status_reg0;
-		uint8_t status_reg1;
-		uint8_t status_reg2;
-		uint8_t status_reg3;
-
-		uint8_t  floppy_buffer[512+2]; // sector buffer (2 extra bytes for good measure?)
-		unsigned floppy_buffer_index;
-
-		bool    lock;      // FDC lock status
-		uint8_t SRT;       // step rate time
-		uint8_t HUT;       // head unload time
-		uint8_t HLT;       // head load time
-		uint8_t config;    // configure byte #1
-		uint8_t pretrk;    // precompensation track
-		uint8_t perp_mode; // perpendicular mode
-
-		uint64_t boot_time[4];
-
-	} m_s;  // state information
-
-	Mode m_mode = Mode::MODEL_30;
+	// Creates a compatible FloppyDisk object, the caller will be the pointer's owner
+	virtual FloppyDisk* create_floppy_disk(const FloppyDisk::Properties &_props) const = 0;
+	std::vector<const char*> get_compatible_file_extensions();
 
 	// configurations with more than 2 drives are untested
-	FloppyDisk m_media[4];
-	bool       m_media_present[4];
-	uint8_t    m_device_type[4];
-	unsigned   m_num_installed_floppies;
-	double     m_latency_mult;
+	enum {
+		MAX_DRIVES = 2,
+		DMA_CHAN = 2,
+		IRQ_LINE = 6
+	};
+	static constexpr const char * IMAGES_ARCHIVE = "disk_images.zip";
 
-	int  m_timer;
-
-	bool m_disk_changed[4]; // used by the GUI to know when a disk has been changed
-	std::mutex m_mutex;     // for machine-GUI synchronization
-
-	bool m_fx_enabled;
-	FloppyFX m_fx[2];
+protected:
+	enum Mode {
+		PC_AT, MODEL_30
+	} m_mode = Mode::MODEL_30;
+	std::unique_ptr<FloppyDrive> m_fdd[MAX_DRIVES];
+	unsigned m_installed_fdds = 0;
 
 public:
-	FloppyCtrl(Devices *_dev);
-	~FloppyCtrl();
+	FloppyCtrl(Devices *_dev) : IODevice(_dev) {}
+	virtual ~FloppyCtrl() {}
 
-	void install();
-	void remove();
-	void reset(unsigned type);
-	void power_off();
-	void config_changed();
-	uint16_t read(uint16_t address, unsigned io_len);
-	void write(uint16_t address, uint16_t value, unsigned io_len);
+	virtual void install();
+	virtual void remove();
+	virtual void config_changed();
+	virtual unsigned current_drive() const { return 0; }
 
-	bool insert_media(unsigned _drive, unsigned _type, const char *_path, bool _write_protected);
-	void eject_media(unsigned _drive);
-	inline bool is_motor_on(unsigned _drive) const {
-		return (m_device_type[_drive]!=0) && (m_s.DOR & (1 << (_drive+4)));
-	}
-	inline bool is_media_present(unsigned _drive) const {
-		return m_media_present[_drive];
-	}
-	//this is not the DIR bit 7, this is used by the GUI
-	inline bool has_disk_changed(unsigned _drive) {
-		std::lock_guard<std::mutex> lock(m_mutex);
-		bool changed = m_disk_changed[_drive];
-		m_disk_changed[_drive] = false;
-		return changed;
-	}
-	inline unsigned current_drive() const {
-		return (m_s.DOR & 0x03);
-	}
-	inline uint8_t drive_type(unsigned _drive) const {
-		return m_device_type[_drive%4];
-	}
+	bool insert_media(unsigned _drive, FloppyDisk *_floppy);
+	FloppyDisk* eject_media(unsigned _drive, bool _remove);
 
-	void save_state(StateBuf &_state);
-	void restore_state(StateBuf &_state);
-
-	static FloppyDriveType config_drive_type(unsigned drive);
-	static FloppyDiskType create_new_floppy_image(std::string _imgpath,
-			FloppyDriveType _devtype, FloppyDiskType _disktype, bool _formatted=true);
-
-private:
-	inline unsigned chs_to_lba(unsigned _d) const;
-	inline unsigned chs_to_lba(unsigned _c, unsigned _h, unsigned _s, unsigned _d) const;
-	uint16_t read_data(uint8_t *buffer, uint16_t maxlen, bool drq);
-	uint16_t write_data(uint8_t *buffer, uint16_t maxlen, bool drq);
-	uint16_t dma_write(uint8_t *buffer, uint16_t maxlen);
-	uint16_t dma_read(uint8_t *buffer, uint16_t maxlen);
-	void floppy_xfer(uint8_t drive, uint32_t offset, uint8_t *buffer, uint32_t bytes, uint8_t direction);
-	void raise_interrupt();
-	void lower_interrupt();
-	void enter_execution_phase();
-	void enter_idle_phase();
-	void enter_result_phase();
-	uint32_t calculate_step_delay(uint8_t _drive, int _c0, int _c1);
-	uint32_t calculate_rw_delay(uint8_t _drive, bool _latency);
-	void step_head();
-	bool get_TC();
-	void timer(uint64_t);
-	void increment_sector();
-	void play_seek_sound(uint8_t _drive, uint8_t _from_cyl, uint8_t _to_cyl);
-	void floppy_drive_setup(unsigned drive);
-	inline bool is_motor_spinning(unsigned _drive) const {
+	bool is_drive_present(unsigned _drive) const {
+		return (_drive < MAX_DRIVES && m_fdd[_drive]);
+	}
+	bool is_motor_on(unsigned _drive) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->is_motor_on());
+	}
+	bool is_media_present(unsigned _drive) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_present());
+	}
+	bool is_motor_spinning(unsigned _drive) const {
 		return (is_motor_on(_drive) && is_media_present(_drive));
 	}
-	uint8_t get_drate_for_media(uint8_t _drive);
+	bool is_media_dirty(unsigned _drive, bool _since_restore) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_dirty(_since_restore));
+	}
+	//this is not the DIR bit 7, this is used by the GUI
+	bool has_disk_changed(unsigned _drive) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->has_disk_changed());
+	}
+	inline FloppyDrive::Type drive_type(unsigned _drive) const {
+		if(!is_drive_present(_drive)) return FloppyDrive::FDD_NONE;
+		return m_fdd[_drive]->type();
+	}
 
-	struct CmdDef {
-		unsigned code;
-		unsigned size;
-		const char *name;
-		std::function<void(FloppyCtrl&)> fn;
+	static FloppyDrive::Type config_drive_type(unsigned drive);
+	static FloppyDisk::StdType create_new_floppy_image(std::string _imgpath,
+			FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, bool _formatted=true);
+
+	virtual void fdd_index_pulse(uint8_t _drive, int _state);
+
+protected:
+	std::vector<std::unique_ptr<FloppyFmt>> m_floppy_formats;
+
+	void floppy_drive_setup(unsigned _drive);
+	void floppy_drive_remove(unsigned _drive);
+
+	uint32_t calculate_step_delay_us(uint8_t _drive, int _c0, int _c1);
+	virtual uint32_t get_one_step_delay_time_us() = 0;
+
+	static constexpr uint16_t drate_in_k[4] = {
+		500, 300, 250, 1000
 	};
-	static const std::map<unsigned,CmdDef> ms_cmd_list;
 
-	bool start_read_write_cmd();
-	void cmd_read_data();
-	void cmd_write_data();
-	void cmd_version();
-	void cmd_format_track();
-	void cmd_recalibrate();
-	void cmd_sense_int();
-	void cmd_specify();
-	void cmd_sense_drive();
-	void cmd_configure();
-	void cmd_seek();
-	void cmd_dumpreg();
-	void cmd_read_id();
-	void cmd_perp_mode();
-	void cmd_lock();
-	void cmd_not_implemented();
-	void cmd_invalid();
+	enum InterfaceRegisters {
+
+		// Status Register A (SRA, Model30)
+		FDC_SRA_INT_REQ   = 0x80,
+		FDC_SRA_DRQ       = 0x40,
+		FDC_SRA_STEP_FF   = 0x20,
+		FDC_SRA_TRK0      = 0x10,
+		FDC_SRA_NHDSEL    = 0x08,
+		FDC_SRA_INDEX     = 0x04,
+		FDC_SRA_WP        = 0x02,
+		FDC_SRA_NDIR      = 0x01,
+
+		// Status Register B (SRB, Model30)
+		FDC_SRB_NDRV2     = 0x80,
+		FDC_SRB_NDS1      = 0x40,
+		FDC_SRB_NDS0      = 0x20,
+		FDC_SRB_WRDATA_FF = 0x10,
+		FDC_SRB_RDDATA_FF = 0x08,
+		FDC_SRB_WE_FF     = 0x04,
+		FDC_SRB_NDS3      = 0x02,
+		FDC_SRB_NDS2      = 0x01,
+
+		// Digital Output Register (DOR)
+		FDC_DOR_MOTEN3    = 0x80,
+		FDC_DOR_MOTEN2    = 0x40,
+		FDC_DOR_MOTEN1    = 0x20,
+		FDC_DOR_MOTEN0    = 0x10,
+		FDC_DOR_NDMAGATE  = 0x08,
+		FDC_DOR_NRESET    = 0x04,
+		FDC_DOR_DRVSEL    = 0x03,
+
+		// Main Status Register (MSR)
+		FDC_MSR_RQM       = 0x80,
+		FDC_MSR_DIO       = 0x40,
+		FDC_MSR_NONDMA    = 0x20,
+		FDC_MSR_CMDBUSY   = 0x10,
+		FDC_MSR_DRV3BUSY  = 0x08,
+		FDC_MSR_DRV2BUSY  = 0x04,
+		FDC_MSR_DRV1BUSY  = 0x02,
+		FDC_MSR_DRV0BUSY  = 0x01,
+
+		// Datarate Select Register (DSR)
+		FDC_DSR_SW_RESET  = 0x80,
+		FDC_DSR_PWR_DOWN  = 0x40,
+		FDC_DSR_PRECOMP   = 0x1c,
+		FDC_DSR_DRATE_SEL = 0x03,
+
+		// Digital Input Register (DIR)
+		FDC_DIR_DSKCHG    = 0x80,
+		FDC_DIR_NDMAGATE  = 0x08,
+		FDC_DIR_NOPREC    = 0x04,
+		FDC_DIR_DRATE_SEL = 0x03,
+
+		// Configuration Control Register (CCR)
+		FDC_CCR_NOPREC    = 0x04,
+		FDC_CCR_DRATE_SEL = 0x03
+	};
+
+	enum StatusRegisters {
+
+		// Status Register 0
+		FDC_ST0_IC = 0xC0, //IC Interrupt Code
+			FDC_ST0_IC_NORMAL   = 0x00,
+			FDC_ST0_IC_ABNORMAL = 0x40,
+			FDC_ST0_IC_INVALID  = 0x80,
+			FDC_ST0_IC_POLLING  = 0xC0,
+		FDC_ST0_SE = 0x20, //SE Seek End
+		FDC_ST0_EC = 0x10, //EC Equipment Check
+		FDC_ST0_H  = 0x04, // H Head Address
+		FDC_ST0_DS = 0x03, //DS Drive Select
+
+		// Status Register 1
+		FDC_ST1_EN = 0x80, // EN End of Cylinder
+		FDC_ST1_DE = 0x20, // DE Data Error
+		FDC_ST1_OR = 0x10, // OR Overrun/Underrun
+		FDC_ST1_ND = 0x04, // ND No data
+		FDC_ST1_NW = 0x02, // NW Not Writeable
+		FDC_ST1_MA = 0x01, // MA Missing Address Mark
+
+		// Status Register 2
+		FDC_ST2_CM = 0x40, // CM Control Mark
+		FDC_ST2_DD = 0x20, // DD Data Error in Data Field
+		FDC_ST2_WC = 0x10, // Wrong Cylinder
+		FDC_ST2_SH = 0x08, // Scan Equal Hit
+		FDC_ST2_SN = 0x04, // Scan Not Satisfied
+		FDC_ST2_BC = 0x02, // BC Bad Cylinder
+		FDC_ST2_MD = 0x01, // Missing Data Address Mark
+
+		// Status Register 3
+		FDC_ST3_FT = 0x80, // FT Fault
+		FDC_ST3_WP = 0x40, // WP Write Protect
+		FDC_ST3_RY = 0x20, // RY Ready
+		FDC_ST3_T0 = 0x10, // T0 TRACK 0
+		FDC_ST3_TS = 0x08, // TS Two Side
+		FDC_ST3_HD = 0x04, // HD Head Address
+		FDC_ST3_DS = 0x03  // DS Drive Select
+	};
+
+	enum Config {
+		FDC_CONF_POLL    = 0x10, // Polling Enabled
+		FDC_CONF_EFIFO   = 0x20, // FIFO disabled
+		FDC_CONF_EIS     = 0x40, // No Implied Seeks
+		FDC_CONF_FIFOTHR = 0x0f  // FIFO threshold
+	};
+
+	enum Commands {                         // parameters  code
+		FDC_CMD_READ         = 0b00000110,  // MT  MFM SK  0 0 1 1 0
+		FDC_CMD_READ_DEL     = 0b00001100,  // MT  MFM SK  0 1 1 0 0
+		FDC_CMD_WRITE        = 0b00000101,  // MT  MFM 0   0 0 1 0 1
+		FDC_CMD_WRITE_DEL    = 0b00001001,  // MT  MFM 0   0 1 0 0 1
+		FDC_CMD_READ_TRACK   = 0b00000010,  // 0   MFM 0   0 0 0 1 0
+		FDC_CMD_VERIFY       = 0b00010110,  // MT  MFM SK  1 0 1 1 0
+		FDC_CMD_VERSION      = 0b00010000,  // 0   0   0   1 0 0 0 0
+		FDC_CMD_FORMAT_TRACK = 0b00001101,  // 0   MFM 0   0 1 1 0 1
+		FDC_CMD_SCAN_EQ      = 0b00010001,  // MT  MFM SK  1 0 0 0 1
+		FDC_CMD_SCAN_LO_EQ   = 0b00011001,  // MT  MFM SK  1 1 0 0 1
+		FDC_CMD_SCAN_HI_EQ   = 0b00011101,  // MT  MFM SK  1 1 1 0 1
+		FDC_CMD_RECALIBRATE  = 0b00000111,  // 0   0   0   0 0 1 1 1
+		FDC_CMD_SENSE_INT    = 0b00001000,  // 0   0   0   0 1 0 0 0
+		FDC_CMD_SPECIFY      = 0b00000011,  // 0   0   0   0 0 0 1 1
+		FDC_CMD_SENSE_DRIVE  = 0b00000100,  // 0   0   0   0 0 1 0 0
+		FDC_CMD_CONFIGURE    = 0b00010011,  // 0   0   0   1 0 0 1 1
+		FDC_CMD_SEEK         = 0b00001111,  // REL DIR 0   0 1 1 1 1
+		FDC_CMD_DUMPREG      = 0b00001110,  // 0   0   0   0 1 1 1 0
+		FDC_CMD_READ_ID      = 0b00001010,  // 0   MFM 0   0 1 0 1 0
+		FDC_CMD_PERP_MODE    = 0b00010010,  // 0   0   0   1 0 0 1 0
+		FDC_CMD_LOCK         = 0b00010100,  // LCK 0   0   1 0 1 0 0
+
+		FDC_CMD_INVALID      = 0,
+		FDC_CMD_RESET        = 0b00011111   // contrived
+	};
 };
 
 #endif

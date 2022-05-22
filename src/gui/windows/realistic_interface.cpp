@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -140,7 +140,7 @@ void RealisticInterface::create()
 
 	m_system = get_element("system");
 	m_floppy_disk = get_element("floppy_disk");
-	m_floppy_disk->SetClass("disk", m_floppy_present);
+	m_floppy_disk->SetClass("disk", m_floppy.present);
 	m_led_power = get_element("power_led");
 	m_led_power_bloom = get_element("power_led_bloom");
 	m_led_fdd_bloom = get_element("fdd_led_bloom");
@@ -338,7 +338,7 @@ void RealisticInterface::update()
 	} else {
 		m_led_fdd_bloom->SetClass("active", false);
 	}
-	if(m_floppy_present) {
+	if(m_floppy.present) {
 		m_floppy_disk->SetClass("present", true);
 	} else {
 		m_floppy_disk->SetClass("present", false);

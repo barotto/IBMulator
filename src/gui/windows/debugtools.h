@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2021  Marco Bortolin
+ * Copyright (C) 2017-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -71,7 +71,7 @@ public:
 	virtual void hide();
 	virtual void update();
 	virtual void close();
-	virtual void config_changed();
+	virtual void config_changed(bool);
 	void show_message(const char* _mex);
 
 	event_map_t & get_event_map() { return DebugTools::ms_evt_map; }

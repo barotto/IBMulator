@@ -99,6 +99,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ CMOS_IMAGE_RTC_INIT, "no"  },
 		{ CMOS_IMAGE_SAVE,     "yes" }
 	} },
+	
+	{ DRIVES_SECTION, {
+		{ DRIVES_FLOPPY_COMMIT, "commit" }
+	} },
 
 	{ DISK_C_SECTION, {
 		{ DISK_READONLY,   "no" },
@@ -230,23 +234,28 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ DRIVES_SECTION, {
 		{ DRIVES_FDD_A,   "auto" },
 		{ DRIVES_FDD_B,   "auto" },
-		{ DRIVES_FDD_LAT, "1.0"  },
+		{ DRIVES_FDC_TYPE,"raw"  },
 		{ DRIVES_FDC_MODE,"auto" },
+		{ DRIVES_FDD_LAT, "1.0"  },
 		{ DRIVES_HDD,     "auto" }
 	} },
 
 	{ DISK_A_SECTION, {
-		{ DISK_TYPE,     "auto"  },
-		{ DISK_INSERTED, "no"    },
-		{ DISK_READONLY, "no"    },
-		{ DISK_PATH,     ""      }
+		{ DISK_INSERTED,  "no"   },
+		{ DISK_READONLY,  "no"   },
+		{ DISK_PATH,      ""     },
+		{ DISK_TYPE,      "auto" },
+		{ DISK_CYLINDERS, "auto" },
+		{ DISK_HEADS,     "auto" }
 	} },
 
 	{ DISK_B_SECTION, {
-		{ DISK_TYPE,     "auto"  },
-		{ DISK_INSERTED, "no"    },
-		{ DISK_READONLY, "no"    },
-		{ DISK_PATH,     ""      }
+		{ DISK_INSERTED,  "no"   },
+		{ DISK_READONLY,  "no"   },
+		{ DISK_PATH,      ""     },
+		{ DISK_TYPE,      "auto" },
+		{ DISK_CYLINDERS, "auto" },
+		{ DISK_HEADS,     "auto" }
 	} },
 
 	{ DISK_C_SECTION, {
@@ -466,21 +475,30 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DRIVES_SECTION,
-";    floppy_a: The type of floppy drive A.\n"
-";              Possible values: auto, none, 3.5, 5.25\n"
-";    floppy_b: The type of floppy drive B.\n"
-";              Possible values: auto, none, 3.5, 5.25\n"
-"; fdd_latency: A multiplier for the floppy drives rotational latency.\n"
-";              You can use this parameter to speed up the FDD read/write operations.\n"
-";              Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
-";    fdc_mode: Mode of operation of the floppy disk controller.\n"
-";              Possible values: auto, pc-at, model30\n"
-";         hdd: The type of the C: hard disk drive.\n"
-";              Possible values: none, auto, ps1, ata\n"
-";               none: no hard disk installed\n"
-";               auto: automatically determined by the system model\n"
-";                ps1: IBM's proprietary 8-bit XTA-like controller\n"
-";                ata: IDE/ATA controller\n"
+";      floppy_a: The type of floppy drive A.\n"
+";                Possible values: auto, none, 3.5, 5.25\n"
+";      floppy_b: The type of floppy drive B.\n"
+";                Possible values: auto, none, 3.5, 5.25\n"
+"; floppy_commit: commit floppy images to storage?\n"
+";                Possible values: commit, discard, discard_states\n"
+";                 commit: always commit data when floppies are ejected\n"
+";                 discard: discard written data when floppies are ejected (beware: data loss)\n"
+";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"
+";      fdc_type: Type of the floppy disk controller emulation.\n"
+";                Possible values: raw, flux\n"
+";                  raw: raw sector floppy images only (fastest)\n"
+";                 flux: floppy disk flux-based emulation (most realistic)\n"
+";      fdc_mode: Mode of operation of the floppy disk controller.\n"
+";                Possible values: auto, pc-at, model30\n"
+";   fdd_latency: A multiplier for the floppy drives rotational latency (only for the \"raw\" controller type).\n"
+";                You can use this parameter to speed up the FDD read/write operations.\n"
+";                Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
+";           hdd: The type of the C: hard disk drive.\n"
+";                Possible values: none, auto, ps1, ata\n"
+";                 none: no hard disk installed\n"
+";                 auto: automatically determined by the system model\n"
+";                  ps1: IBM's proprietary 8-bit XTA-like controller\n"
+";                  ata: IDE/ATA controller\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -488,8 +506,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
-";     type: The type of the inserted floppy.\n"
-";           Possible values: auto, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_B_SECTION,
@@ -497,8 +513,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
-";     type: The type of the inserted floppy.\n"
-";           Possible values: auto, 1.44M, 720K, 1.2M, 360K\n"
 		},
 
 		{ DISK_C_SECTION,
@@ -625,181 +639,187 @@ ini_filehelp_t AppConfig::ms_help = {
 		{ LPT_SECTION, "" },
 };
 
-std::vector<std::pair<std::string, std::vector<std::string>>> AppConfig::ms_keys_order = {
+ini_order_t AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
-		PROGRAM_MEDIA_DIR,
-		PROGRAM_LOG_FILE
+		{ PROGRAM_MEDIA_DIR, false },
+		{ PROGRAM_LOG_FILE,  false }
 	} },
 	{ GUI_SECTION, {
-		GUI_RENDERER,
-		GUI_FRAMECAP,
-		GUI_MODE,
-		GUI_COMPACT_TIMEOUT,
-		GUI_REALISTIC_ZOOM,
-		GUI_REALISTIC_STYLE,
-		GUI_KEYMAP,
-		GUI_MOUSE_TYPE,
-		GUI_MOUSE_ACCELERATION,
-		GUI_WIDTH,
-		GUI_HEIGHT,
-		GUI_FULLSCREEN,
-		GUI_SCREEN_DPI,
-		GUI_BG_R,
-		GUI_BG_G,
-		GUI_BG_B,
-		GUI_SHOW_INDICATORS,
-		GUI_UI_SCALING
+		{ GUI_RENDERER,           false },
+		{ GUI_FRAMECAP,           false },
+		{ GUI_MODE,               false },
+		{ GUI_COMPACT_TIMEOUT,    false },
+		{ GUI_REALISTIC_ZOOM,     false },
+		{ GUI_REALISTIC_STYLE,    false },
+		{ GUI_KEYMAP,             false },
+		{ GUI_MOUSE_TYPE,         false },
+		{ GUI_MOUSE_ACCELERATION, false },
+		{ GUI_WIDTH,              false },
+		{ GUI_HEIGHT,             false },
+		{ GUI_FULLSCREEN,         false },
+		{ GUI_SCREEN_DPI,         false },
+		{ GUI_BG_R,               false },
+		{ GUI_BG_G,               false },
+		{ GUI_BG_B,               false },
+		{ GUI_SHOW_INDICATORS,    false },
+		{ GUI_UI_SCALING,         false }
 	} },
 	{ DIALOGS_SECTION, {
-		DIALOGS_FILE_TYPE,
-		DIALOGS_FILE_MODE,
-		DIALOGS_FILE_ORDER,
-		DIALOGS_FILE_ZOOM,
-		DIALOGS_SAVE_MODE,
-		DIALOGS_SAVE_ORDER,
-		DIALOGS_SAVE_ZOOM
+		{ DIALOGS_FILE_TYPE,  false },
+		{ DIALOGS_FILE_MODE,  false },
+		{ DIALOGS_FILE_ORDER, false },
+		{ DIALOGS_FILE_ZOOM,  false },
+		{ DIALOGS_SAVE_MODE,  false },
+		{ DIALOGS_SAVE_ORDER, false },
+		{ DIALOGS_SAVE_ZOOM,  false }
 	} },
 	{ CAPTURE_SECTION, {
-		CAPTURE_DIR,
-		CAPTURE_VIDEO_FORMAT,
-		CAPTURE_VIDEO_QUALITY
+		{ CAPTURE_DIR,           false },
+		{ CAPTURE_VIDEO_FORMAT,  false },
+		{ CAPTURE_VIDEO_QUALITY, false }
 	} },
 	{ DISPLAY_SECTION, {
-		DISPLAY_TYPE,
-		DISPLAY_NORMAL_SCALE,
-		DISPLAY_NORMAL_ASPECT,
-		DISPLAY_NORMAL_FILTER,
-		DISPLAY_NORMAL_SHADER,
-		DISPLAY_REALISTIC_FILTER,
-		DISPLAY_REALISTIC_SHADER,
-		DISPLAY_REALISTIC_AMBIENT,
-		DISPLAY_BRIGHTNESS,
-		DISPLAY_CONTRAST,
-		DISPLAY_SATURATION
+		{ DISPLAY_TYPE,              false },
+		{ DISPLAY_NORMAL_SCALE,      false },
+		{ DISPLAY_NORMAL_ASPECT,     false },
+		{ DISPLAY_NORMAL_FILTER,     false },
+		{ DISPLAY_NORMAL_SHADER,     false },
+		{ DISPLAY_REALISTIC_FILTER,  false },
+		{ DISPLAY_REALISTIC_SHADER,  false },
+		{ DISPLAY_REALISTIC_AMBIENT, false },
+		{ DISPLAY_BRIGHTNESS,        false },
+		{ DISPLAY_CONTRAST,          false },
+		{ DISPLAY_SATURATION,        false }
 	} },
 	{ SYSTEM_SECTION, {
-		SYSTEM_ROMSET,
-		SYSTEM_MODEL
+		{ SYSTEM_ROMSET, false },
+		{ SYSTEM_MODEL,  false }
 	} },
 	{ CPU_SECTION, {
-		CPU_MODEL,
-		CPU_FREQUENCY,
-		CPU_HLT_WAIT
+		{ CPU_MODEL,     false },
+		{ CPU_FREQUENCY, false },
+		{ CPU_HLT_WAIT,  false }
 	} },
 	{ MEM_SECTION, {
-		MEM_RAM_EXP,
-		MEM_RAM_SPEED
+		{ MEM_RAM_EXP,   false },
+		{ MEM_RAM_SPEED, false }
 	} },
 	{ VGA_SECTION, {
-		VGA_ROM,
-		VGA_PS_BIT_BUG
+		{ VGA_ROM,        false },
+		{ VGA_PS_BIT_BUG, false }
 	} },
 	{ CMOS_SECTION, {
-		CMOS_IMAGE_FILE,
-		CMOS_IMAGE_RTC_INIT,
-		CMOS_IMAGE_SAVE
+		{ CMOS_IMAGE_FILE,     false },
+		{ CMOS_IMAGE_RTC_INIT, false },
+		{ CMOS_IMAGE_SAVE,     false }
 	} },
 	{ DRIVES_SECTION, {
-		DRIVES_FDD_A,
-		DRIVES_FDD_B,
-		DRIVES_FDD_LAT,
-		DRIVES_FDC_MODE,
-		DRIVES_HDD
+		{ DRIVES_FDD_A,         false },
+		{ DRIVES_FDD_B,         false },
+		{ DRIVES_FLOPPY_COMMIT, false },
+		{ DRIVES_FDC_TYPE,      false },
+		{ DRIVES_FDC_MODE,      false },
+		{ DRIVES_FDD_LAT,       false },
+		{ DRIVES_HDD,           false }
 	} },
 	{ DISK_A_SECTION, {
-		DISK_PATH,
-		DISK_INSERTED,
-		DISK_READONLY,
-		DISK_TYPE
+		{ DISK_PATH,      false },
+		{ DISK_INSERTED,  false },
+		{ DISK_READONLY,  false },
+		{ DISK_TYPE,      true },
+		{ DISK_CYLINDERS, true },
+		{ DISK_HEADS,     true }
 	} },
 	{ DISK_B_SECTION, {
-		DISK_PATH,
-		DISK_INSERTED,
-		DISK_READONLY,
-		DISK_TYPE
+		{ DISK_PATH,      false },
+		{ DISK_INSERTED,  false },
+		{ DISK_READONLY,  false },
+		{ DISK_TYPE,      true },
+		{ DISK_CYLINDERS, true },
+		{ DISK_HEADS,     true }
 	} },
 	{ DISK_C_SECTION, {
-		DISK_TYPE,
-		DISK_PATH,
-		DISK_READONLY,
-		DISK_SAVE,
-		DISK_CYLINDERS,
-		DISK_HEADS,
-		DISK_SPT,
-		DISK_SEEK_MAX,
-		DISK_SEEK_TRK,
-		DISK_ROT_SPEED,
-		DISK_INTERLEAVE
+		{ DISK_TYPE,       false },
+		{ DISK_PATH,       false },
+		{ DISK_READONLY,   false },
+		{ DISK_SAVE,       false },
+		{ DISK_CYLINDERS,  false },
+		{ DISK_HEADS,      false },
+		{ DISK_SPT,        false },
+		{ DISK_SEEK_MAX,   false },
+		{ DISK_SEEK_TRK,   false },
+		{ DISK_ROT_SPEED,  false },
+		{ DISK_INTERLEAVE, false }
 	} },
 	{ MIXER_SECTION, {
-		MIXER_PREBUFFER,
-		MIXER_RATE,
-		MIXER_SAMPLES,
-		MIXER_VOLUME
+		{ MIXER_PREBUFFER, false },
+		{ MIXER_RATE,      false },
+		{ MIXER_SAMPLES,   false },
+		{ MIXER_VOLUME,    false }
 	} },
 	{ MIDI_SECTION, {
-		MIDI_ENABLED,
-		MIDI_DEVICE,
-		MIDI_DELAY
+		{ MIDI_ENABLED, false },
+		{ MIDI_DEVICE,  false },
+		{ MIDI_DELAY,   false }
 	} },
 	{ PCSPEAKER_SECTION, {
-		PCSPEAKER_ENABLED,
-		PCSPEAKER_RATE,
-		PCSPEAKER_FILTERS,
-		PCSPEAKER_VOLUME
+		{ PCSPEAKER_ENABLED, false },
+		{ PCSPEAKER_RATE,    false },
+		{ PCSPEAKER_FILTERS, false },
+		{ PCSPEAKER_VOLUME,  false }
 	} },
 	{ PS1AUDIO_SECTION, {
-		PS1AUDIO_ENABLED,
-		PS1AUDIO_RATE,
-		PS1AUDIO_FILTERS,
-		PS1AUDIO_VOLUME
+		{ PS1AUDIO_ENABLED, false },
+		{ PS1AUDIO_RATE,    false },
+		{ PS1AUDIO_FILTERS, false },
+		{ PS1AUDIO_VOLUME,  false }
 	} },
 	{ ADLIB_SECTION, {
-		ADLIB_ENABLED,
-		ADLIB_RATE,
-		ADLIB_FILTERS,
-		ADLIB_VOLUME
+		{ ADLIB_ENABLED, false },
+		{ ADLIB_RATE,    false },
+		{ ADLIB_FILTERS, false },
+		{ ADLIB_VOLUME,  false }
 	} },
 	{ SBLASTER_SECTION, {
-		SBLASTER_ENABLED,
-		SBLASTER_IOBASE,
-		SBLASTER_DMA,
-		SBLASTER_IRQ,
-		SBLASTER_DAC_FILTERS,
-		SBLASTER_DAC_VOLUME,
-		SBLASTER_OPL_RATE,
-		SBLASTER_OPL_FILTERS,
-		SBLASTER_OPL_VOLUME
+		{ SBLASTER_ENABLED,     false },
+		{ SBLASTER_IOBASE,      false },
+		{ SBLASTER_DMA,         false },
+		{ SBLASTER_IRQ,         false },
+		{ SBLASTER_DAC_FILTERS, false },
+		{ SBLASTER_DAC_VOLUME,  false },
+		{ SBLASTER_OPL_RATE,    false },
+		{ SBLASTER_OPL_FILTERS, false },
+		{ SBLASTER_OPL_VOLUME,  false }
 	} },
 	{ MPU401_SECTION, {
-		MPU401_ENABLED,
-		MPU401_IOBASE,
-		MPU401_IRQ,
-		MPU401_MODE
+		{ MPU401_ENABLED, false },
+		{ MPU401_IOBASE,  false },
+		{ MPU401_IRQ,     false },
+		{ MPU401_MODE,    false }
 	} },
 	{ GAMEPORT_SECTION, {
-		GAMEPORT_ENABLED
+		{ GAMEPORT_ENABLED, false }
 	} },
 	{ SOUNDFX_SECTION, {
-		SOUNDFX_ENABLED,
-		SOUNDFX_VOLUME,
-		SOUNDFX_FDD_SPIN,
-		SOUNDFX_FDD_SEEK,
-		SOUNDFX_HDD_SPIN,
-		SOUNDFX_HDD_SEEK,
-		SOUNDFX_SYSTEM
+		{ SOUNDFX_ENABLED,  false },
+		{ SOUNDFX_VOLUME,   false },
+		{ SOUNDFX_FDD_SPIN, false },
+		{ SOUNDFX_FDD_SEEK, false },
+		{ SOUNDFX_HDD_SPIN, false },
+		{ SOUNDFX_HDD_SEEK, false },
+		{ SOUNDFX_SYSTEM,   false }
 	} },
 	{ SERIAL_SECTION, {
-		SERIAL_ENABLED,
-		SERIAL_A_MODE,
-		SERIAL_A_DEV,
-		SERIAL_A_TX_DELAY,
-		SERIAL_A_TCP_NODELAY
+		{ SERIAL_ENABLED,       false },
+		{ SERIAL_A_MODE,        false },
+		{ SERIAL_A_DEV,         false },
+		{ SERIAL_A_TX_DELAY,    false },
+		{ SERIAL_A_TCP_NODELAY, false }
 	} },
 	{ LPT_SECTION, {
-		LPT_ENABLED,
-		LPT_PORT,
-		LPT_FILE
+		{ LPT_ENABLED, false },
+		{ LPT_PORT,    false },
+		{ LPT_FILE,    false }
 	} }
 };
 
@@ -906,17 +926,17 @@ string AppConfig::get_value(ini_file_t &_values, const string &section, const st
 		if(sec.count(n)) {
 			value = sec[n];
 		} else {
-			PDEBUGF(LOG_V2, LOG_PROGRAM, "ini value '%s' is section '%s' is not present\n", name.c_str(), section.c_str());
+			PDEBUGF(LOG_V2, LOG_PROGRAM, "ini key '%s' in section [%s] is not present\n", name.c_str(), section.c_str());
 			throw std::exception();
 		}
 	} else {
-		PDEBUGF(LOG_V2, LOG_PROGRAM, "ini section '%s' is not present\n", section.c_str());
+		PDEBUGF(LOG_V2, LOG_PROGRAM, "ini section [%s] is not present\n", section.c_str());
 		throw std::exception();
 	}
 	return value;
 }
 
-string AppConfig::get_value(const string &section, const string &name)
+string AppConfig::get_value(const string &section, const string &name, bool _quiet)
 {
 	string valstr;
 	try {
@@ -928,11 +948,15 @@ string AppConfig::get_value(const string &section, const string &name)
 			try {
 				valstr = get_value(ms_def_values[MACHINE_CONFIG], section, name);
 			} catch(std::exception &) {
-				PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
+				if(!_quiet) {
+					PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
+				}
 				throw;
 			}
 		}
-		PWARNF(LOG_V1, LOG_PROGRAM, "[%s]:%s undefined, using default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
+		if(!_quiet) {
+			PWARNF(LOG_V1, LOG_PROGRAM, "[%s]:%s undefined, using default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
+		}
 	}
 	return valstr;
 }
@@ -1231,24 +1255,37 @@ int AppConfig::value_handler(void* _user, const char* _section, const char* _nam
 	return 1;
 }
 
-void AppConfig::create_file(const std::string &_filename, bool _comments)
+void AppConfig::create_file(const std::string &_filename, bool _savestate)
 {
 	std::ofstream file = FileSys::make_ofstream(_filename.c_str());
 	if(!file.is_open()) {
 		PERRF(LOG_FS,"Cannot open '%s' for writing\n",_filename.c_str());
 		throw std::exception();
 	}
-	if(_comments) {
+	if(!_savestate) {
 		file << ms_help["HEADER"] << std::endl;
 	}
 	for(auto section : ms_keys_order) {
-		file << "[" << section.first << "]" << std::endl;
-		if(_comments) {
-			file << ms_help[section.first];
+		auto sname = section.first;
+		auto keys = section.second;
+		file << "[" << sname << "]" << "\n";
+		if(!_savestate) {
+			file << ms_help[sname];
 		}
 
-		for(auto key : section.second) {
-			file << key << "=" << get_value(section.first, key) << std::endl;
+		for(auto key : keys) {
+			auto kname = key.first;
+			auto hidden = key.second;
+			if(!_savestate && hidden) {
+				continue;
+			}
+			std::string value;
+			try {
+				value = get_value(sname, kname, true);
+			} catch(...) {
+				value = "";
+			}
+			file << kname << "=" << value << "\n";
 		}
 		file << std::endl;
 	}

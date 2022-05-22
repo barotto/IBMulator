@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,6 +30,8 @@
 #include "hardware/systemrom.h"
 #include "hardware/devices.h"
 #include "hardware/devices/keyboard.h"
+#include "hardware/devices/floppydisk.h"
+#include "hardware/devices/floppyloader.h"
 #include "timers.h"
 
 class CPU;
@@ -66,6 +68,8 @@ private:
 	int64_t m_heartbeat;
 	bool m_quit;
 	bool m_on;
+	bool m_valid_state = true;
+	int m_config_id = 0;
 	bool m_cpu_single_step;
 	uint16_t m_breakpoint_cs;
 	uint32_t m_breakpoint_eip;
@@ -125,6 +129,18 @@ private:
 
 	void set_DOS_program_name(const char *_name);
 
+	enum MediaCommit {
+		DISK_COMMIT, DISK_DISCARD, DISK_DISCARD_STATES
+	} m_floppy_commit = DISK_COMMIT;
+	// the floppy loader thread is in the machine object instead of gui, devices,
+	// controller, or drive objects to be in a middle point between all the
+	// entities that have to use its facilities
+	std::unique_ptr<FloppyLoader> m_floppy_loader;
+	std::thread m_floppy_loader_thread;
+
+	void commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb);
+	bool commit_media(std::function<void()> _cb);
+
 public:
 	bool ms_restore_fail;
 	//used for machine-gui synchronization
@@ -138,7 +154,7 @@ public:
 	void init();
 	void calibrate(const Pacer &_p);
 	void start();
-	void config_changed();
+	void config_changed(bool _startup);
 
 	void set_heartbeat(int64_t _ns);
 	inline int64_t get_heartbeat() const { return m_heartbeat; }
@@ -206,10 +222,12 @@ public:
 	void cmd_cycles_adjust(double _factor);
 	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
-	void cmd_insert_media(uint _drive, uint _type, std::string _file, bool _wp);
-	void cmd_eject_media(uint _drive);
+	void cmd_insert_floppy(uint8_t _drive, std::string _file, bool _wp, std::function<void(bool)> _cb);
+	void cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy, std::function<void(bool)> _cb, int _config_id);
+	void cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb);
 	void cmd_print_VGA_text(std::vector<uint16_t> _text);
 	void cmd_reset_bench();
+	void cmd_commit_media(std::function<void()> _cb);
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 
@@ -221,6 +239,8 @@ public:
 	void register_joystick_fun(joystick_mfun_t _motion_fun, joystick_bfun_t _button_fun);
 	void joystick_motion(int _jid, int _axis, int _value);
 	void joystick_button(int _jid, int _button, int _state);
+
+	void register_floppy_loader_state_cb(FloppyLoader::state_cb_t _cb);
 
 	void DOS_program_launch(std::string _name);
 	void DOS_program_start(std::string _name);

@@ -26,7 +26,6 @@
 #include "mixer.h"
 #include "program.h"
 #include "utils.h"
-#include "fatreader.h"
 #include <sys/stat.h>
 #include "stb/stb.h"
 #include <RmlUi/Core.h>
@@ -51,22 +50,18 @@ void InterfaceFX::init(Mixer *_mixer)
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
 }
 
-void InterfaceFX::use_floppy(bool _insert)
+void InterfaceFX::use_floppy(SampleType _how)
 {
 	if(m_channel->volume()<=FLT_MIN) {
 		return;
 	}
-
-	if(_insert) {
-		m_event = FLOPPY_INSERT;
-	} else {
-		m_event = FLOPPY_EJECT;
-	}
+	m_event = _how;
 	m_channel->enable(true);
 }
 
 bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 {
+	// Mixer thread
 	if(m_event == FLOPPY_INSERT) {
 		m_channel->flush();
 		m_channel->play(m_buffers[FLOPPY_INSERT], 0);
@@ -186,6 +181,9 @@ Window(_gui, _rml),
 m_machine(_machine),
 m_mixer(_mixer)
 {
+	_machine->register_floppy_loader_state_cb(
+			std::bind(&Interface::floppy_loader_state_cb, this, _1, _2)
+	);
 }
 
 Interface::~Interface()
@@ -291,29 +289,68 @@ void Interface::set_hdd_active(bool _active)
 	m_status.hdd_led->SetClass("active", _active);
 }
 
-void Interface::config_changed()
+void Interface::floppy_loader_state_cb(FloppyLoader::State _state, int _drive)
 {
-	m_floppy_present = false;
-	m_floppy_changed = false;
-	m_curr_drive = 0;
-	
+	std::lock_guard<std::mutex> lock(m_floppy.mutex);
+	if(_drive >= 0) {
+		m_floppy.loader[_drive] = _state;
+	} else {
+		m_floppy.loader[FloppyCtrl::MAX_DRIVES] = _state;
+	}
+	m_floppy.event = true;
+}
+
+void Interface::config_changed(bool _startup)
+{
+	m_floppy.present = false;
+	m_floppy.changed = false;
+	m_floppy.curr_drive = 0;
+
 	set_floppy_string("");
 	set_floppy_active(false);
 	set_floppy_config(false);
 	m_fs->hide();
-	
-	m_floppy = m_machine->devices().device<FloppyCtrl>();
-	if(m_floppy) {
-		m_floppy_present = g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED);
-		if(m_floppy_present) {
-			set_floppy_string(g_program.config().get_file(DISK_A_SECTION, DISK_PATH,
-					FILE_TYPE_USER));
+
+	m_floppy.ctrl = m_machine->devices().device<FloppyCtrl>();
+	if(m_floppy.ctrl) {
+		auto insert_floppy = [this](unsigned _drive, const char *_cfg_section) {
+			std::string diskpath = g_program.config().find_media(_cfg_section, DISK_PATH);
+			if(!diskpath.empty() && g_program.config().get_bool(_cfg_section, DISK_INSERTED)) {
+				g_program.config().set_bool(_cfg_section, DISK_INSERTED, false);
+				if(!FileSys::file_exists(diskpath.c_str())) {
+					PERRF(LOG_GUI, "The floppy image specified in [%s] doesn't exist\n", _cfg_section);
+					return;
+				}
+				if(FileSys::is_directory(diskpath.c_str())) {
+					PERRF(LOG_GUI, "The floppy image specified in [%s] can't be a directory\n", _cfg_section);
+					return;
+				}
+				bool wp = g_program.config().get_bool(_cfg_section, DISK_READONLY);
+				// don't play "insert" audio sample
+				m_machine->cmd_insert_floppy(_drive, diskpath, wp, nullptr);
+			}
+		};
+		if(_startup) {
+			if(m_floppy.ctrl->drive_type(0) != FloppyDrive::FDD_NONE) {
+				insert_floppy(0, DISK_A_SECTION);
+			}
+			if(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE) {
+				insert_floppy(1, DISK_B_SECTION);
+			}
 		}
-		m_floppy_changed = m_floppy->has_disk_changed(0);
-		set_floppy_config(m_floppy->drive_type(1) != FDD_NONE);
+		set_floppy_config(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE);
 	}
 
-	m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
+	if(!_startup) {
+		std::lock_guard<std::mutex> lock(m_floppy.mutex);
+		// after a restore any pending FloppyLoader command is ignored
+		for(unsigned i=0; i<FloppyCtrl::MAX_DRIVES; i++) {
+			m_floppy.loader[i] = FloppyLoader::State::IDLE;
+		}
+		m_floppy.event = true;
+	}
+
+	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions());
 	if(m_fs->is_current_dir_valid()) {
 		m_fs->reload();
 	}
@@ -348,73 +385,74 @@ void Interface::set_floppy_string(std::string _filename)
 
 void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 {
+	m_fs->hide();
+
 	struct stat sb;
 	if((FileSys::stat(_img_path.c_str(), &sb) != 0) || S_ISDIR(sb.st_mode)) {
 		PERRF(LOG_GUI, "Unable to read '%s'\n", _img_path.c_str());
-		m_fs->hide();
 		return;
 	}
 
-	if(m_floppy->drive_type(1) != FDD_NONE) {
+	const char *drive_section = m_floppy.curr_drive ? DISK_B_SECTION : DISK_A_SECTION;
+	if(g_program.config().get_bool(drive_section, DISK_INSERTED)) {
+		if(FileSys::is_same_file(_img_path.c_str(),
+				g_program.config().get_file(drive_section, DISK_PATH, FILE_TYPE_USER).c_str())) {
+			PINFOF(LOG_V0, LOG_GUI, "The selected floppy image is already mounted\n");
+			return;
+		}
+	}
+
+	if(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE) {
 		//check if the same image file is already mounted on drive A
-		const char *section = m_curr_drive?DISK_A_SECTION:DISK_B_SECTION;
-		if(g_program.config().get_bool(section,DISK_INSERTED)) {
-			std::string other = g_program.config().get_file(section,DISK_PATH, FILE_TYPE_USER);
-			struct stat other_s;
-			if(FileSys::stat(other.c_str(), &other_s) == 0) {
-				if(other_s.st_dev == sb.st_dev && other_s.st_ino == sb.st_ino) {
+		const char *other_section = m_floppy.curr_drive ? DISK_A_SECTION : DISK_B_SECTION;
+		if(g_program.config().get_bool(other_section, DISK_INSERTED)) {
+			if(FileSys::is_same_file(_img_path.c_str(),
+					g_program.config().get_file(other_section, DISK_PATH, FILE_TYPE_USER).c_str())) {
 					PERRF(LOG_GUI, "Can't mount '%s' on drive %s because it's already mounted on drive %s\n",
-							_img_path.c_str(), m_curr_drive?"B":"A", m_curr_drive?"A":"B");
-					m_fs->hide();
+							_img_path.c_str(), m_floppy.curr_drive?"B":"A", m_floppy.curr_drive?"A":"B");
 					return;
-				}
 			}
 		}
 	}
 
-	uint type;
-	switch(sb.st_size) {
-		case FLOPPY_160K_BYTES: type = FLOPPY_160K; break;
-		case FLOPPY_180K_BYTES: type = FLOPPY_180K; break;
-		case FLOPPY_320K_BYTES: type = FLOPPY_320K; break;
-		case FLOPPY_360K_BYTES: type = FLOPPY_360K; break;
-		case FLOPPY_1_2_BYTES:  type = FLOPPY_1_2;  break;
-		case FLOPPY_720K_BYTES: type = FLOPPY_720K; break;
-		case FLOPPY_1_44_BYTES: type = FLOPPY_1_44; break;
-		default:
-			PERRF(LOG_GUI, "Unable to determine the type of '%s'\n", _img_path.c_str());
-			m_fs->hide();
-			return;
-	}
-	PDEBUGF(LOG_V1, LOG_GUI, "mounting '%s' on floppy %s %s\n", _img_path.c_str(),
-			m_curr_drive?"B":"A", _write_protect?"(write protected)":"");
-	m_machine->cmd_insert_media(m_curr_drive, type, _img_path, _write_protect);
-	m_fs->hide();
+	PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on floppy %s %s\n", _img_path.c_str(),
+			m_floppy.curr_drive?"B":"A", _write_protect?"(write protected)":"");
 
-	if(m_audio_enabled) {
-		m_audio.use_floppy(true);
-	}
+	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
+	m_machine->cmd_insert_floppy(m_floppy.curr_drive, _img_path, _write_protect, [=](bool result) {
+		// Machine thread here
+		// "insert" audio sample plays only when floppy is confirmed inserted
+		if(result && m_audio_enabled) {
+			m_audio.use_floppy(InterfaceFX::FLOPPY_INSERT);
+		}
+	});
+
 }
 
 void Interface::update()
 {
-	if(m_floppy) {
-		bool motor = m_floppy->is_motor_on(m_curr_drive);
+	if(m_floppy.ctrl) {
+		bool motor = m_floppy.ctrl->is_motor_on(m_floppy.curr_drive);
 		if(motor && m_leds.fdd==false) {
 			set_floppy_active(true);
 		} else if(!motor && m_leds.fdd==true) {
 			set_floppy_active(false);
 		}
-		bool present = m_floppy->is_media_present(m_curr_drive);
-		bool changed = m_floppy->has_disk_changed(m_curr_drive);
-		if(present && (m_floppy_present==false || m_floppy_changed!=changed)) {
-			m_floppy_changed = changed;
-			m_floppy_present = true;
-			const char *section = m_curr_drive?DISK_B_SECTION:DISK_A_SECTION;
-			set_floppy_string(g_program.config().get_file(section,DISK_PATH,FILE_TYPE_USER));
-		} else if(!present && m_floppy_present==true) {
-			m_floppy_present = false;
-			set_floppy_string("");
+		bool present = m_floppy.ctrl->is_media_present(m_floppy.curr_drive);
+		bool changed = m_floppy.ctrl->has_disk_changed(m_floppy.curr_drive);
+		if(present && (m_floppy.present==false || m_floppy.changed!=changed)) {
+			m_floppy.changed = changed;
+			m_floppy.present = true;
+			update_floppy_string(m_floppy.curr_drive);
+		} else if(!present && m_floppy.present==true) {
+			m_floppy.present = false;
+			update_floppy_string(m_floppy.curr_drive);
+		} else {
+			std::lock_guard<std::mutex> lock(m_floppy.mutex);
+			if(m_floppy.event) {
+				update_floppy_string(m_floppy.curr_drive);
+				m_floppy.event = false;
+			}
 		}
 	}
 
@@ -494,63 +532,80 @@ void Interface::show_message(const char* _mex)
 void Interface::on_fdd_select(Rml::Event &)
 {
 	m_status.fdd_disk->SetInnerRML("");
-	if(m_curr_drive == 0) {
-		m_curr_drive = 1;
-		m_floppy_changed = m_floppy->has_disk_changed(1);
+	if(m_floppy.curr_drive == 0) {
+		m_floppy.curr_drive = 1;
+		m_floppy.changed = m_floppy.ctrl->has_disk_changed(1);
 		m_buttons.fdd_select->SetClass("a", false);
 		m_buttons.fdd_select->SetClass("b", true);
-		if(g_program.config().get_bool(DISK_B_SECTION,DISK_INSERTED)) {
-			set_floppy_string(g_program.config().get_file(DISK_B_SECTION,DISK_PATH, FILE_TYPE_USER));
-		}
 	} else {
-		m_curr_drive = 0;
-		m_floppy_changed = m_floppy->has_disk_changed(0);
+		m_floppy.curr_drive = 0;
+		m_floppy.changed = m_floppy.ctrl->has_disk_changed(0);
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
-		if(g_program.config().get_bool(DISK_A_SECTION,DISK_INSERTED)) {
-			set_floppy_string(g_program.config().get_file(DISK_A_SECTION,DISK_PATH, FILE_TYPE_USER));
-		}
 	}
-	m_fs->set_compat_sizes(get_floppy_sizes(m_curr_drive));
+	m_floppy.event = true;
+	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
+	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions());
 	m_fs->reload();
 }
 
 void Interface::on_fdd_eject(Rml::Event &)
 {
-	m_machine->cmd_eject_media(m_curr_drive);
-	if(m_audio_enabled && m_floppy->is_media_present(m_curr_drive)) {
-		m_audio.use_floppy(false);
+	if(!m_floppy.ctrl->is_media_present(m_floppy.curr_drive)) {
+		return;
+	}
+	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
+	// "eject" audio sample plays now
+	if(m_audio_enabled) {
+		m_audio.use_floppy(InterfaceFX::FLOPPY_EJECT);
 	}
 }
 
-std::vector<uint64_t> Interface::get_floppy_sizes(unsigned _floppy_drive)
+void Interface::update_floppy_string(unsigned _drive)
 {
-	switch(m_floppy->drive_type(_floppy_drive)) {
-		case FDD_525DD: // 360K  5.25"
-			return { FLOPPY_160K_BYTES, FLOPPY_180K_BYTES, FLOPPY_320K_BYTES, FLOPPY_360K_BYTES };
-		case FDD_525HD: // 1.2M  5.25"
-			return { FLOPPY_160K_BYTES, FLOPPY_180K_BYTES, FLOPPY_320K_BYTES, FLOPPY_360K_BYTES, FLOPPY_1_2_BYTES };
-		case FDD_350DD: // 720K  3.5"
-			return { FLOPPY_720K_BYTES };
-		case FDD_350HD: // 1.44M 3.5"
-			return { FLOPPY_720K_BYTES, FLOPPY_1_44_BYTES };
-		case FDD_350ED: // 2.88M 3.5"
-			return { FLOPPY_720K_BYTES, FLOPPY_1_44_BYTES, FLOPPY_2_88_BYTES };
-		default:
-			return {};
+	const char *section = _drive ? DISK_B_SECTION : DISK_A_SECTION;
+
+	if(g_program.config().get_bool(section, DISK_INSERTED)) {
+		set_floppy_string(g_program.config().get_file(section, DISK_PATH, FILE_TYPE_USER));
+	} else {
+		switch(m_floppy.loader[_drive]) {
+			case FloppyLoader::State::LOADING:
+				set_floppy_string("Loading...");
+				break;
+			case FloppyLoader::State::IDLE:
+			default:
+				set_floppy_string("");
+				break;
+		}
 	}
+}
+
+std::vector<unsigned> Interface::get_floppy_types(unsigned _floppy_drive)
+{
+	std::vector<unsigned> types;
+	FloppyDrive::Type drive_type = m_floppy.ctrl->drive_type(_floppy_drive);
+	unsigned dens_drive = (drive_type & FloppyDisk::DENS_MASK) >> FloppyDisk::DENS_SHIFT;
+	unsigned dens_mask = FloppyDisk::DENS_MASK >> FloppyDisk::DENS_SHIFT;
+	unsigned dens_cur = 1;
+	while(dens_cur & dens_mask) {
+		if(dens_drive & dens_cur) {
+			types.push_back((drive_type & FloppyDisk::SIZE_MASK) | (dens_cur << FloppyDisk::DENS_SHIFT));
+		}
+		dens_cur <<= 1;
+	}
+	return types;
 }
 
 void Interface::on_fdd_mount(Rml::Event &)
 {
-	if(m_floppy == nullptr) {
+	if(!m_floppy.ctrl) {
 		show_message("floppy drives not present");
 		return;
 	}
 
 	std::string floppy_dir;
 
-	if(m_curr_drive==0) {
+	if(m_floppy.curr_drive == 0) {
 		floppy_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
 	} else {
 		floppy_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
@@ -572,7 +627,15 @@ void Interface::on_fdd_mount(Rml::Event &)
 	
 	if(g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_TYPE, "custom") == "native") {
 		floppy_dir += "/";
-		const char *filter_patterns[2] = { "*.img", "*.ima" };
+		auto filter_patterns = m_floppy.ctrl->get_compatible_file_extensions();
+		std::vector<std::string> patt;
+		for(auto e : filter_patterns) {
+			patt.push_back(str_format("*%s", e));
+		}
+		filter_patterns.clear();
+		for(auto &p : patt) {
+			filter_patterns.push_back(p.c_str());
+		}
 		if(m_gui->is_fullscreen()) {
 			// native dialogs don't play well when the application they're called by
 			// is rendered fullscreen.
@@ -583,11 +646,11 @@ void Interface::on_fdd_mount(Rml::Event &)
 		tinyfd_winUtf8 = 1;
 #endif
 		const char *openfile = tinyfd_openFileDialog(
-			"Select floppy image",
+			str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A").c_str(),
 			floppy_dir.c_str(),
-			2, // aNumOfFilterPatterns
-			filter_patterns,
-			"Floppy disk (*.img, *.ima)",
+			filter_patterns.size(),
+			&filter_patterns[0],
+			std::string("Floppy disk (" + str_implode(filter_patterns) + ")").c_str(),
 			0 // aAllowMultipleSelects
 		);
 		if(openfile) {
@@ -601,6 +664,7 @@ void Interface::on_fdd_mount(Rml::Event &)
 		} catch(...) {
 			m_fs->set_current_dir(m_fs->get_home());
 		}
+		m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
 		m_fs->show();
 	}
 }
@@ -866,70 +930,19 @@ SDL_Surface * Interface::copy_framebuffer()
 
 std::string Interface::get_filesel_info(std::string _filepath)
 {
-	FATReader fat;
-	try {
-		fat.read(_filepath);
-	} catch(std::runtime_error & err) {
-		return err.what();
-	}
-	auto boot_sec = fat.get_boot_sector();
-	
-	std::string media_desc;
-	try {
-		media_desc = boot_sec.get_media_str();
-	} catch(std::runtime_error & err) {
-		return err.what();
+	std::unique_ptr<FloppyFmt> format(FloppyFmt::find(_filepath));
+
+	if(!format) {
+		return "Invalid floppy image format";
 	}
 
-	auto to_value = [=](std::string s){
-		return std::string("<span class=\"value\">") + str_to_html(s,true) + "</span>";
-	};
-
-	std::string info;
-	info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "<br />";
-	info += "Media: " + str_to_html(media_desc) + "<br />";
-	info += "OEM name: " + to_value(boot_sec.get_oem_str());
-	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
-		info += " (mod. by Win95+)";
-	}
-	info += "<br />";
-	info += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "<br />";
-	
-	auto root = fat.get_root_entries();
-	if(root.empty() || root[0].is_empty()) {
-		info += "<br />Empty disk";
-	} else {
-		info += "Volume label: " + to_value(fat.get_volume_id()) + "<br />";
-		info += "Directory<br /><br />";
-		info += "<table class=\"directory_listing\">";
-		for(auto &entry : root) {
-			if(entry.is_file() || entry.is_directory()) {
-				auto ext = str_to_upper(entry.get_ext_str());
-				bool exe = (ext == "BAT" || ext == "COM" || ext == "EXE");
-				info += std::string("<tr class=\"") + 
-						(entry.is_file()?"file":"dir") +
-						(exe?" executable":"") +
-						"\">";
-				info += "<td class=\"name\">" + str_to_html(entry.get_name_str()) + "</td>";
-				info += "<td class=\"extension\">" + str_to_html(entry.get_ext_str()) + "</td>";
-				if(entry.is_file()) {
-					info += "<td class=\"size\">" + str_format("%u", entry.FileSize) + "</td>";
-					time_t wrtime = entry.get_time_t(entry.WrtDate, entry.WrtTime);
-					info += "<td class=\"date\">" + str_format_time(wrtime, "%x") + "</td>";
-				} else {
-					info += "<td class=\"size\">" + str_to_html("<DIR>") + "</td>";
-					info += "<td class=\"date\"></td>";
-				}
-				info += "</tr>";
-			}
-		}
-		info += "</table>";
-	}
+	std::string info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "<br />";
+	info += format->get_preview_string(_filepath);
 
 	return info;
 }
 
-std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
+std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDisk::StdType _type, bool _formatted)
 {
 	PDEBUGF(LOG_V1, LOG_GUI, "New floppy image: %s, %s, %d, %d\n", _dir.c_str(), _file.c_str(), _type, _formatted);
 
@@ -977,7 +990,7 @@ std::string Interface::create_new_floppy_image(std::string _dir, std::string _fi
 		throw std::runtime_error(str_format("The file \"%s\" already exists.", _file.c_str()));
 	}
 
-	FloppyCtrl::create_new_floppy_image(path, FDD_NONE, _type, _formatted);
+	FloppyCtrl::create_new_floppy_image(path, FloppyDrive::FDD_NONE, _type, _formatted);
 	
 	return _file;
 }

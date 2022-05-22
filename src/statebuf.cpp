@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -145,7 +145,8 @@ m_basename(_basename),
 m_buf(nullptr),
 m_size(0),
 m_curptr(nullptr),
-m_last_restore(false)
+m_last_restore(false),
+m_last_save(false)
 {
 
 }

@@ -1,96 +1,241 @@
-/*
- * Copyright (C) 2015-2022  Marco Bortolin
- *
- * This file is part of IBMulator.
- *
- * IBMulator is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * IBMulator is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
- */
+// license:BSD-3-Clause
+// copyright-holders:Nathan Woods, Marco Bortolin
+
+// Based on MAME's formats/flopimg.h
 
 #ifndef IBMULATOR_HW_FLOPPYDISK_H
 #define IBMULATOR_HW_FLOPPYDISK_H
 
-#include <string>
+#include <memory>
+#include <vector>
 
-enum FloppyDiskType {
-	FLOPPY_NONE, // media not present
-	FLOPPY_160K, // 160K  5.25"
-	FLOPPY_180K, // 180K  5.25"
-	FLOPPY_320K, // 320K  5.25"
-	FLOPPY_360K, // 360K  5.25"
-	FLOPPY_720K, // 720K  3.5"
-	FLOPPY_1_2,  // 1.2M  5.25"
-	FLOPPY_1_44, // 1.44M 3.5"
-	FLOPPY_2_88, // 2.88M 3.5"
-	FLOPPY_TYPE_CNT
-};
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
-enum FloppyDiskSize {
-	FLOPPY_160K_BYTES = 160*1024,  // 160K  5.25"
-	FLOPPY_180K_BYTES = 180*1024,  // 180K  5.25"
-	FLOPPY_320K_BYTES = 320*1024,  // 320K  5.25"
-	FLOPPY_360K_BYTES = 360*1024,  // 360K  5.25"
-	FLOPPY_720K_BYTES = 720*1024,  // 720K  3.5"
-	FLOPPY_1_2_BYTES  = 1200*1024, // 1.2M  5.25"
-	FLOPPY_1_44_BYTES = 1440*1024, // 1.44M 3.5"
-	FLOPPY_2_88_BYTES = 2880*1024  // 2.88M 3.5"
-};
+class FloppyFmt;
+
+//! Class representing a floppy disk
+
+//! Track data consists of a series of 32-bits lsb-first values
+//! representing magnetic cells.  Bits 0-27 indicate the absolute
+//! position of the start of the cell (not the size), and bits
+//! 28-31 the type.  Type can be:
+//! - 0, MG_A -> Magnetic orientation A
+//! - 1, MG_B -> Magnetic orientation B
+//! - 2, MG_N -> Non-magnetized zone (neutral)
+//! - 3, MG_D -> Damaged zone, reads as neutral but cannot be changed by writing
+//!
+//! The position is in angular units of 1/200,000,000th of a turn.
+//! The last cell implicit end position is of course 200,000,000.
+//!
+//! Unformatted tracks are encoded as zero-size.
+//!
+//! The "track splice" information indicates where to start writing
+//! if you try to rewrite a physical disk with the data.  Some
+//! preservation formats encode that information, it is guessed for
+//! others.  The write track function of fdcs should set it.  The
+//! representation is the angular position relative to the index.
 
 class FloppyDisk
 {
 public:
-	std::string path;      // the image file
-	int      fd      = -1; // file descriptor of the image file
-	unsigned spt     = 0;  // number of sectors per track
-	unsigned sectors = 0;  // number of formatted sectors on diskette
-	unsigned tracks  = 0;  // number of tracks
-	unsigned heads   = 0;  // number of heads
-	unsigned type    = FLOPPY_NONE;
-	bool     wprot   = false; // write protected?
-
-	struct TypeDef {
-		unsigned id;
-		uint8_t  trk;
-		uint8_t  hd;
-		uint8_t  spt;
-		unsigned sectors;
-		uint8_t  drive_mask;
-		const char *str;
+	//! Floppy format data
+	enum {
+		TIME_MASK = 0x0fffffff,
+		MG_MASK   = 0xf0000000,
+		MG_SHIFT  = 28, //!< Bitshift constant for magnetic orientation data
+		MG_A      = (0 << MG_SHIFT),    //!< - 0, MG_A -> Magnetic orientation A
+		MG_B      = (1 << MG_SHIFT),    //!< - 1, MG_B -> Magnetic orientation B
+		MG_N      = (2 << MG_SHIFT),    //!< - 2, MG_N -> Non-magnetized zone (neutral)
+		MG_D      = (3 << MG_SHIFT)     //!< - 3, MG_D -> Damaged zone, reads as neutral but cannot be changed by writing
 	};
 
-	static constexpr TypeDef std_types[FLOPPY_TYPE_CNT] = {
-		{ FLOPPY_NONE,  0, 0,  0,    0, 0x00, "none"  },
-		{ FLOPPY_160K, 40, 1,  8,  320, 0x03, "160K"  },
-		{ FLOPPY_180K, 40, 1,  9,  360, 0x03, "180K"  },
-		{ FLOPPY_320K, 40, 2,  8,  640, 0x03, "320K"  },
-		{ FLOPPY_360K, 40, 2,  9,  720, 0x03, "360K"  },
-		{ FLOPPY_720K, 80, 2,  9, 1440, 0x1f, "720K"  },
-		{ FLOPPY_1_2,  80, 2, 15, 2400, 0x02, "1.2M"  },
-		{ FLOPPY_1_44, 80, 2, 18, 2880, 0x18, "1.44M" },
-		{ FLOPPY_2_88, 80, 2, 36, 5760, 0x10, "2.88M" }
+	enum Size {
+		SIZE_MASK = 0x00700,
+		SIZE_8    = 0x00100, // 8 inch disk
+		SIZE_5_25 = 0x00200, // 5.25 inch disk
+		SIZE_3_5  = 0x00400  // 3.5 inch disk
 	};
 
-	static const std::map<std::string, unsigned> disk_names_350;
-	static const std::map<std::string, unsigned> disk_names_525;
+	enum Density {
+		DENS_MASK = 0x1f000,
+		DENS_SHIFT= 12,
+		DENS_SD   = 0x01000, // single-density
+		DENS_DD   = 0x02000, // double-density
+		DENS_QD   = 0x04000, // quad-density
+		DENS_HD   = 0x08000, // high-density
+		DENS_ED   = 0x10000  // extra-density
+	};
 
-	FloppyDisk() {}
+	//! Standard DOS formatted PC floppy disk variants
+	enum StdType {
+		TYPE_MASK = 0xff,
+		FD_NONE   = 0x00, // unknown or invalid media type
+		DD_160K   = 0x01 | SIZE_5_25 | DENS_DD, //  160K 5.25"
+		DD_180K   = 0x02 | SIZE_5_25 | DENS_DD, //  180K 5.25"
+		DD_320K   = 0x03 | SIZE_5_25 | DENS_DD, //  320K 5.25"
+		DD_360K   = 0x04 | SIZE_5_25 | DENS_DD, //  360K 5.25"
+		QD_720K   = 0x05 | SIZE_5_25 | DENS_QD, //  720K 5.25"
+		DD_720K   = 0x06 | SIZE_3_5  | DENS_DD, //  720K 3.5"
+		HD_1_20   = 0x07 | SIZE_5_25 | DENS_HD, // 1.20M 5.25"
+		HD_1_44   = 0x08 | SIZE_3_5  | DENS_HD, // 1.44M 3.5"
+		HD_1_68   = 0x09 | SIZE_3_5  | DENS_HD, // 1.68M DMF 3.5"
+		HD_1_72   = 0x0a | SIZE_3_5  | DENS_HD, // 1.72M DMF 3.5"
+		ED_2_88   = 0x0f | SIZE_3_5  | DENS_ED  // 2.88M 3.5"
+	};
 
-	bool open(unsigned _type, const char *_path, bool _write_prot);
-	void close();
+	// nominal data rates for the media
+	// note: 5.25" High Capacity (1.2M) drives always use 300kbps for DD media.
+	enum DataRate {
+		DRATE_250  = 2,
+		DRATE_300  = 1,
+		DRATE_500  = 0,
+		DRATE_1000 = 3
+	};
 
-	void read_sector(uint32_t _from_offset, uint8_t *_to_buffer, uint32_t _bytes);
-	void write_sector(uint32_t _to_offset, const uint8_t *_from_buffer, uint32_t _bytes);
+	//! Encodings
+	enum Encoding {
+		FM   = 0x2020464D, //!< "  FM", frequency modulation
+		MFM  = 0x204D464D, //!< " MFM", modified frequency modulation
+		M2FM = 0x4D32464D  //!< "M2FM", modified modified frequency modulation
+	};
+
+	// General physical and formatted characteristics.
+	// if type == 0 (FD_NONE), other fields are invalid
+	// if spt == 0 then sec, secsize, cap are also invalid
+	struct Properties {
+		unsigned type    = FD_NONE;   // disk variant as or'd combination of Density and Size,
+		                              // or a value of StdType
+		uint8_t  tracks  = 0;         // number of tracks per side (cylinders)
+		uint8_t  sides   = 0;         // number of sides
+		uint8_t  spt     = 0;         // number of sectors per track
+		unsigned secsize = 0;         // sector size in bytes
+		unsigned sectors = 0;         // number of formatted sectors
+		unsigned cap     = 0;         // formatted capacity in bytes
+		DataRate drate   = DRATE_250; // data rate as a FDC encoded value
+		std::string desc = "";        // logging name
+	};
+
+	//! FloppyDisk constructor
+	/*!
+	  @param type size and density.
+	  @param tracks number of tracks.
+	  @param heads number of heads.
+	*/
+	FloppyDisk(const Properties &_props);
+	virtual ~FloppyDisk();
+
+	bool load(std::string _path, std::shared_ptr<FloppyFmt> _format);
+	bool save(std::string _path, std::shared_ptr<FloppyFmt> _format);
+
+	void load_state(std::string _imgpath, std::string _binpath);
+	void save_state(std::string _binpath);
+
+	void set_dirty() {
+		m_dirty = true;
+		m_dirty_restore = true;
+	}
+	bool is_dirty(bool _since_restore = false) const {
+		// if _since_restore==true then returns a dirty state set after a restore
+		// if a restore never happened returns a general dirty state because
+		// m_dirty and m_dirty_restore are set to true at the same time.
+		return (_since_restore) ? m_dirty_restore : m_dirty;
+	}
+
+	void set_write_protected(bool _wp) { m_wprot = _wp; }
+	bool is_write_protected() const { return m_wprot; }
+
+	std::string get_image_path() const {
+		return m_loaded_image;
+	}
+	std::shared_ptr<FloppyFmt> get_format() const {
+		return m_format;
+	}
+	void set_format(std::shared_ptr<FloppyFmt> _format) {
+		m_format = _format;
+	}
+
+	/*!
+	  @param track
+	  @param head head number
+	  @return a pointer to the data buffer for this track and head
+	*/
+	const std::vector<uint32_t> &get_buffer(uint8_t track, uint8_t head) const {
+		assert(track < track_array.size() && head < m_props.sides);
+		return track_array[track][head].cell_data;
+	}
+	std::vector<uint32_t> &get_buffer(uint8_t track, uint8_t head) {
+		assert(track < track_array.size() && head < m_props.sides);
+		return track_array[track][head].cell_data;
+	}
+
+	//! Sets the write splice position.
+	//! The "track splice" information indicates where to start writing
+	//! if you try to rewrite a physical disk with the data.  Some
+	//! preservation formats encode that information, it is guessed for
+	//! others.  The write track function of fdcs should set it.  The
+	//! representation is the angular position relative to the index.
+
+	/*! @param track
+	    @param head
+	    @param pos the position
+	*/
+	void set_write_splice_position(uint8_t track, uint8_t head, uint32_t pos) {
+		assert(track < track_array.size() && head < m_props.sides);
+		track_array[track][head].write_splice = pos;
+	}
+	//! @return the current write splice position.
+	uint32_t get_write_splice_position(uint8_t track, uint8_t head) const {
+		assert(track < track_array.size() && head < m_props.sides);
+		return track_array[track][head].write_splice;
+	}
+
+	//! @return the maximal geometry supported by this format.
+	void get_maximal_geometry(int &tracks, int &heads) const;
+
+	//! @return the current geometry of the loaded image.
+	void get_actual_geometry(int &tracks, int &heads) const;
+
+	//! @return whether a given track is formatted
+	virtual bool track_is_formatted(int track, int head);
+
+	//! reads and writes a specific formatted sector
+	virtual void read_sector(uint8_t _c, uint8_t _h, uint8_t _s, uint8_t *buffer, uint32_t bytes);
+	virtual void write_sector(uint8_t _c, uint8_t _h, uint8_t _s, const uint8_t *buffer, uint32_t bytes);
+
+	const Properties & props() const { return m_props; }
+	bool double_step() const { return m_props.tracks <= 42; }
+
+public:
+	static const std::map<StdType, Properties> std_types;
+	static Properties find_std_type(unsigned _variant);
+
+protected:
+	std::string m_loaded_image;
+	Properties m_props;
+	bool m_wprot = false; // write protected?
+	bool m_dirty = false; // written since loaded?
+	bool m_dirty_restore = false; // written since restored?
+	std::shared_ptr<FloppyFmt> m_format; // the format that loaded this floppy
+
+	struct track_info
+	{
+		// cell_data can memorize either cell flux or sector byte (for FloppyDisk_RAW)
+		// If it's sector data the space is 4x the necessary.
+		// The pro is I don't need to write special code for FloppyDisk_RAW other than 
+		// slightly more complex data read/write functions 
+		std::vector<uint32_t> cell_data;
+		uint32_t write_splice;
+
+		track_info() { write_splice = 0; }
+		void save_state(std::ofstream &);
+		void load_state(std::ifstream &);
+	};
+
+	// track number then head
+	// last array size may be bigger than actual track size
+	std::vector<std::vector<track_info>> track_array;
 };
-
 
 #endif

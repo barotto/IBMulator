@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,6 +56,7 @@ public:
 
  	static std::string get_next_filename(const std::string &_dir,
 			const std::string &_basename, const std::string &_ext);
+ 	static std::string get_next_filename_time(const std::string &_path);
 	static std::string get_next_dirname(const std::string &_basedir,
 			const std::string &_basename, unsigned _limit = 10000);
 	static bool is_directory(const char *_path);
@@ -66,7 +67,6 @@ public:
 	static uint64_t get_file_size(const char *_path);
 	static void create_dir(const char *_path);
 	static int get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime);
-	static const char* get_temp_dir();
 	static std::string get_basename(const char *_path);
 	static bool get_path_parts(const char *_path,
 			std::string &_dir, std::string &_base, std::string &_ext);
@@ -74,14 +74,19 @@ public:
 	static bool extract_file(const char *_archive, const char *_filename,
 			const char *_extract_to);
 	static void copy_file(const char *_from, const char *_to);
+	static void rename_file(const char *_from, const char *_to);
+	static bool is_same_file(const char *_path1, const char *_path2);
 
 	static FILE* fopen(const char *_filename, const char *_flags);
 	static FILE* fopen(std::string _filename, const char *_flags);
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
+
 	static std::ifstream make_ifstream(const char *_path, std::ios::openmode _mode = std::ios::in);
 	static std::ofstream make_ofstream(const char *_path, std::ios::openmode _mode = std::ios::out);
-	
+	static bool write_at(std::ofstream &_file, std::ofstream::pos_type _pos, const void *_buffer, std::streamsize _length);
+	static bool append(std::ofstream &_file, const void *_buffer, std::streamsize _length);
+
 	static time_t filetime_to_time_t(const FILETIME &_ftime);
 };
 

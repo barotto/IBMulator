@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,7 +31,7 @@ private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
-	std::function<std::string(std::string, std::string, FloppyDiskType, bool)>
+	std::function<std::string(std::string, std::string, FloppyDisk::StdType, bool)>
 		m_newfloppy_callbk = nullptr;
 	
 	static event_map_t ms_evt_map;
@@ -56,6 +56,9 @@ private:
 	public:
 		std::string id;
 		std::string name;
+		std::string base;
+		std::string ext;
+		unsigned type;
 		uint64_t size;
 		time_t mtime;
 		bool is_dir;
@@ -113,7 +116,8 @@ private:
 		BY_DATE, BY_NAME
 	} m_order = Order::BY_NAME;
 	bool m_order_ascending = true;
-	std::vector<uint64_t> m_compat_sizes;
+	std::vector<unsigned> m_compat_types;
+	std::string m_compat_regexp;
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
 
@@ -131,7 +135,7 @@ public:
 
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
-	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDiskType, bool)> _fn) { m_newfloppy_callbk = _fn; }
+	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDisk::StdType, bool)> _fn) { m_newfloppy_callbk = _fn; }
 	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
 	virtual void create(std::string _mode, std::string _order, int _zoom);
@@ -146,7 +150,7 @@ public:
 	void set_current_dir(const std::string &_path);
 	std::string get_current_dir() const { return m_cwd; }
 	bool is_current_dir_valid() const { return m_valid_cwd; }
-	void set_compat_sizes(std::vector<uint64_t> _sizes);
+	void set_compat_types(std::vector<unsigned> _disk_types, const std::vector<const char*> &_extensions);
 	void reload();
 
 protected:

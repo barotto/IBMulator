@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,7 +28,7 @@
 #include "state_save_info.h"
 #include "state_load.h"
 #include "hardware/devices/vga.h"
-#include "hardware/devices/floppydisk.h"
+#include "hardware/devices/floppyctrl.h"
 #include <RmlUi/Core/EventListener.h>
 
 class Machine;
@@ -39,11 +39,13 @@ class StorageCtrl;
 
 class InterfaceFX : public GUIFX
 {
-private:
+public:
 	enum SampleType {
 		FLOPPY_INSERT,
 		FLOPPY_EJECT
 	};
+
+private:
 	std::vector<AudioBuffer> m_buffers;
 	const static SoundFX::samples_t ms_samples;
 	std::atomic<int> m_event;
@@ -51,7 +53,7 @@ private:
 public:
 	InterfaceFX() : GUIFX() {}
 	void init(Mixer *);
-	void use_floppy(bool _insert);
+	void use_floppy(SampleType _how);
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
 };
 
@@ -111,17 +113,21 @@ protected:
 	Rml::Element *m_speed = nullptr, *m_speed_value = nullptr;
 	Rml::Element *m_message = nullptr;
 
-	uint m_curr_drive = 0;
-	bool m_floppy_present = false;
-	bool m_floppy_changed = false;
-
 	Machine *m_machine;
 	Mixer *m_mixer;
 	std::unique_ptr<FileSelect> m_fs;
 	std::unique_ptr<StateSave> m_state_save;
 	std::unique_ptr<StateSaveInfo> m_state_save_info;
 	std::unique_ptr<StateLoad> m_state_load;
-	FloppyCtrl *m_floppy = nullptr;
+	struct {
+		FloppyCtrl *ctrl = nullptr;
+		unsigned curr_drive = 0;
+		bool present = false;
+		bool changed = false;
+		FloppyLoader::State loader[FloppyCtrl::MAX_DRIVES+1] = {FloppyLoader::State::IDLE};
+		bool event = false; // would a proper event system be better suited?
+		std::mutex mutex;
+	} m_floppy;
 	StorageCtrl *m_hdd = nullptr;
 
 	bool m_audio_enabled = false;
@@ -134,7 +140,7 @@ public:
 	virtual void create();
 	virtual void update();
 	virtual void close();
-	virtual void config_changed();
+	virtual void config_changed(bool _startup);
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 
@@ -169,13 +175,17 @@ public:
 	virtual void sig_state_restored() {}
 
 protected:
+	
+	void floppy_loader_state_cb(FloppyLoader::State, int);
+	
 	virtual void set_hdd_active(bool _active);
 
 	virtual void set_floppy_string(std::string _filename);
 	virtual void set_floppy_config(bool _b_present);
 	virtual void set_floppy_active(bool _active);
 	
-	std::vector<uint64_t> get_floppy_sizes(unsigned _floppy_drive);
+	void update_floppy_string(unsigned _drive);
+	std::vector<unsigned> get_floppy_types(unsigned _drive);
 	
 	void show_state_dialog(bool _save);
 	void show_state_info_dialog(StateRecord::Info _info);
@@ -183,7 +193,7 @@ protected:
 	static std::string get_filesel_info(std::string);
 
 	std::string create_new_floppy_image(std::string _dir, std::string _file, 
-			FloppyDiskType _type, bool _formatted);
+			FloppyDisk::StdType _type, bool _formatted);
 	
 	void reset_savestate_dialogs(std::string _dir);
 };

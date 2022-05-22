@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -283,8 +283,8 @@ protected:
 	void dma_start(bool _autoinit);
 	void dma_stop();
 	void dma_timer(uint64_t);
-	uint16_t dma_write_8(uint8_t *_buffer, uint16_t _maxlen);
-	uint16_t dma_read_8(uint8_t *_buffer, uint16_t _maxlen);
+	uint16_t dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool);
+	uint16_t dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool);
 };
 
 class SBlaster2 : public SBlaster

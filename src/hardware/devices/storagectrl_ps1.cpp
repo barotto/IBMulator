@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -171,8 +171,9 @@ void StorageCtrl_PS1::install()
 
 	using namespace std::placeholders;
 	m_devices->dma()->register_8bit_channel(HDC_DMA,
-			std::bind(&StorageCtrl_PS1::dma_read, this, _1, _2),
-			std::bind(&StorageCtrl_PS1::dma_write, this, _1, _2),
+			std::bind(&StorageCtrl_PS1::dma_read, this, _1, _2, _3),
+			std::bind(&StorageCtrl_PS1::dma_write, this, _1, _2, _3),
+			nullptr,
 			name());
 	g_machine.register_irq(HDC_IRQ, name());
 
@@ -627,7 +628,7 @@ StorageCtrl_PS1::DataBuffer* StorageCtrl_PS1::get_read_data_buffer()
 	return &m_s.sect_buffer[bufn];
 }
 
-uint16_t StorageCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t StorageCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen, bool _tx_tc)
 {
 	// A DMA write is from I/O to Memory
 	// We need to return the next data byte(s) from the buffer
@@ -653,7 +654,7 @@ uint16_t StorageCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 
 	memcpy(_buffer, &databuf->stack[databuf->ptr], len);
 	databuf->ptr += len;
-	bool TC = m_devices->dma()->get_TC() && (len == _maxlen);
+	bool TC = _tx_tc && (len == _maxlen);
 
 	if((databuf->ptr >= databuf->size) || TC) {
 		// all data in buffer transferred
@@ -673,7 +674,7 @@ uint16_t StorageCtrl_PS1::dma_write(uint8_t *_buffer, uint16_t _maxlen)
 	return len;
 }
 
-uint16_t StorageCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
+uint16_t StorageCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen, bool _tx_tc)
 {
 	/*
 	 * From Memory to I/O
@@ -692,7 +693,7 @@ uint16_t StorageCtrl_PS1::dma_read(uint8_t *_buffer, uint16_t _maxlen)
 	PDEBUGF(LOG_V2, LOG_HDD, "DMA read: %d / %d bytes\n", _maxlen, len);
 	memcpy(&m_s.sect_buffer[0].stack[m_s.sect_buffer[0].ptr], _buffer, len);
 	m_s.sect_buffer[0].ptr += len;
-	bool TC = m_devices->dma()->get_TC() && (len == _maxlen);
+	bool TC = _tx_tc && (len == _maxlen);
 	if((m_s.sect_buffer[0].ptr >= m_s.sect_buffer[0].size) || TC) {
 		m_s.attch_status_reg &= ~ASR_DATA_REQ;
 		unsigned c = m_s.cur_cylinder;

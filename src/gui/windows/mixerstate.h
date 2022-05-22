@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -51,7 +51,7 @@ public:
 
 	virtual void create();
 	virtual void update();
-	virtual void config_changed();
+	virtual void config_changed(bool);
 	
 	event_map_t & get_event_map() { return MixerState::ms_evt_map; }
 };

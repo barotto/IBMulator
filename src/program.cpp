@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -124,6 +124,13 @@ void Program::save_state(
 
 		m_machine->cmd_save_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(lock);
+		if(!sstate->state().m_last_save) {
+			// keep the machine paused
+			if(_on_fail) {
+				_on_fail("Error saving the state. See logfile.");
+			}
+			return;
+		}
 
 		m_mixer->cmd_save_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(lock);
@@ -274,31 +281,31 @@ void Program::restore_state(
 		m_machine->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		m_mixer->sig_config_changed(ms_lock, ms_cv);
-		ms_cv.wait(restore_lock);
+		if(sstate->state().m_last_restore) {
+			m_mixer->sig_config_changed(ms_lock, ms_cv);
+			ms_cv.wait(restore_lock);
 
-		m_mixer->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
-		ms_cv.wait(restore_lock);
+			m_mixer->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
+			ms_cv.wait(restore_lock);
 
-		// we need to pause the syslog because it'll use the GUI otherwise
-		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
-		ms_cv.wait(restore_lock);
-		m_gui->config_changed();
-		m_gui->sig_state_restored();
-		g_syslog.cmd_resume();
+			// we need to pause the syslog because it'll use the GUI otherwise
+			g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
+			ms_cv.wait(restore_lock);
+			m_gui->config_changed(false);
+			m_gui->sig_state_restored();
+			g_syslog.cmd_resume();
 
-		// mixer resume cmd is issued by the machine
-		m_machine->cmd_resume(false);
+			// mixer resume cmd is issued by the machine
+			m_machine->cmd_resume(false);
 
-		if(!sstate->state().m_last_restore) {
-			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart the program\n");
-			if(_on_fail != nullptr) {
-				_on_fail("The restored state is not valid, please restart the program");
-			}
-		} else {
 			PINFOF(LOG_V0, LOG_PROGRAM, "State restored\n");
 			if(_on_success != nullptr) {
 				_on_success();
+			}
+		} else {
+			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart the program\n");
+			if(_on_fail != nullptr) {
+				_on_fail("The restored state is not valid, please restart the program");
 			}
 		}
 	};
@@ -410,7 +417,7 @@ bool Program::initialize(int argc, char** argv)
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_V0, LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
 		try {
-			m_config[0].create_file(m_cfg_file, true);
+			m_config[0].create_file(m_cfg_file, false);
 			std::string message = "The configuration file " PACKAGE ".ini has been created in " +
 					m_user_dir + "\n";
 			message += "Open it and configure the program as you like.";
@@ -508,7 +515,7 @@ bool Program::initialize(int argc, char** argv)
 	m_machine = &g_machine;
 	m_machine->calibrate(m_pacer);
 	m_machine->init();
-	m_machine->config_changed();
+	m_machine->config_changed(true);
 
 	m_mixer = &g_mixer;
 	m_mixer->calibrate(m_pacer);
@@ -547,7 +554,7 @@ bool Program::initialize(int argc, char** argv)
 		m_mixer->shutdown();
 		throw;
 	}
-	m_gui->config_changed();
+	m_gui->config_changed(true);
 
 	m_pacer.set_external_sync(m_gui->vsync_enabled());
 	
@@ -764,7 +771,14 @@ void Program::start()
 
 void Program::stop()
 {
-	m_quit = true;
+	static bool quitting = false;
+	if(!quitting) {
+		quitting = true;
+		m_machine->cmd_pause(false);
+		m_machine->cmd_commit_media([=](){
+			m_quit = true;
+		});
+	}
 }
 
 void Program::set_heartbeat(int64_t _ns)

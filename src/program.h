@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,7 +37,7 @@ class Program
 	std::string m_datapath;
 
 	std::atomic<int64_t> m_heartbeat;
-	bool m_quit;
+	std::atomic<bool> m_quit;
 	Pacer m_pacer;
 	Bench m_bench;
 

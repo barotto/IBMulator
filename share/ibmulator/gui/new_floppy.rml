@@ -6,10 +6,10 @@
 		<style>
 			body
 			{
-				width: 350dp;
+				width: 375dp;
 				height: 200dp;
 				min-height: 200dp;
-				min-width: 350dp;
+				min-width: 375dp;
 				max-height: 200dp;
 			}
 			button.romshell
@@ -38,11 +38,11 @@
 			}
 			#imageinfo select
 			{
-				width: 130dp
+				width: 145dp
 			}
 			#imageinfo selectvalue
 			{
-				width: 105dp;
+				width: 120dp;
 			}
 		</style>
 	</head>
@@ -57,7 +57,7 @@
 			<input type="text" id="filename" />
 		</form>
 		<form id="imageinfo">
-			<table style="width: 320dp;">
+			<table style="width: 345dp;">
 			<tr>
 			<th style="width: 50dp;">Type:</th>
 			<td><select class="romshell" id="floppy_type"></select></td>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -70,7 +70,7 @@ public:
 
 	virtual void create();
 	virtual void update();
-	virtual void config_changed();
+	virtual void config_changed(bool);
 
 	void container_size_changed(int _width, int _height);
 

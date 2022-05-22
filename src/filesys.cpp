@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,9 +19,9 @@
 
 #include "ibmulator.h"
 #include "filesys.h"
+#include "utils.h"
 #ifdef _WIN32
 #include "wincompat.h"
-#include "utils.h"
 #endif
 #include <unistd.h>
 #include <sys/stat.h>
@@ -35,7 +35,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #endif
-
+#include <string.h>
 
 void FileSys::create_dir(const char *_path)
 {
@@ -195,23 +195,24 @@ std::string FileSys::get_basename(const char *_path)
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {
-	std::vector<char> rpbuf(PATH_MAX);
-	if(::realpath(to_native(_path).c_str(), &rpbuf[0]) == nullptr) {
-		return false;
-	}
-	std::vector<char> dirbuf(rpbuf);
-	_dir = ::dirname(&dirbuf[0]);
-	_base = basename(&rpbuf[0]);
+	auto native = to_native(_path);
+	_dir = ::dirname(&native[0]);
+	native = to_native(_path);
+	_base = basename(&native[0]);
 	_ext = "";
 	const size_t period_idx = _base.rfind('.');
 	if(period_idx != std::string::npos) {
 		_ext = _base.substr(period_idx);
 		_base.erase(period_idx);
 	}
-	_dir = to_utf8(_dir);
 	_base = to_utf8(_base);
 	_ext = to_utf8(_ext);
-
+	std::vector<char> rpbuf(PATH_MAX);
+	if(::realpath(_dir.c_str(), &rpbuf[0]) == nullptr) {
+		_dir = to_utf8(_dir);
+		return false;
+	}
+	_dir = to_utf8(&rpbuf[0]);
 	return true;
 }
 
@@ -288,6 +289,23 @@ int FileSys::mkostemp(std::string &_template, int _flags)
 char* FileSys::realpath(const char *_path, char *_resolved)
 {
 	return ::realpath(to_native(_path).c_str(), _resolved);
+}
+
+std::string FileSys::get_next_filename_time(const std::string &_path)
+{
+	std::string dir, base, ext;
+	if(!get_path_parts(_path.c_str(), dir, base, ext)) {
+		return "";
+	}
+	time_t t = time(NULL);
+	if(t != (time_t)(-1)) {
+		base += str_format_time(t, "-%Y-%m-%d-%H%M%S");
+	}
+	std::string dest = dir + FS_SEP + base + ext;
+	if(!file_exists(dest.c_str())) {
+		return dest;
+	}
+	return get_next_filename(dir, base, ext);
 }
 
 std::string FileSys::get_next_filename(const std::string &_dir,
@@ -385,6 +403,23 @@ void FileSys::copy_file(const char *_from, const char *_to)
 	dst << src.rdbuf();
 }
 
+void FileSys::rename_file(const char *_from, const char *_to)
+{
+	std::rename(to_native(_from).c_str(), to_native(_to).c_str());
+}
+
+bool FileSys::is_same_file(const char *_path1, const char *_path2)
+{
+	struct stat path1_s, path2_s;
+	if(FileSys::stat(_path1, &path1_s) != 0) {
+		return false;
+	}
+	if(FileSys::stat(_path2, &path2_s) != 0) {
+		return false;
+	}
+	return (path1_s.st_dev == path2_s.st_dev && path1_s.st_ino == path2_s.st_ino);
+}
+
 FILE * FileSys::fopen(const char *_filename, const char *_flags)
 {
 	return ::fopen(to_native(_filename).c_str(), _flags);
@@ -415,6 +450,34 @@ std::ifstream FileSys::make_ifstream(const char *_path, std::ios::openmode _mode
 std::ofstream FileSys::make_ofstream(const char *_path, std::ios::openmode _mode)
 {
 	return std::move(std::ofstream(to_native(_path), _mode));
+}
+
+bool FileSys::write_at(std::ofstream &_file, std::ofstream::pos_type _pos,
+		const void *_buffer, std::streamsize _length)
+{
+	_file.seekp(_pos);
+	if(_file.fail()) {
+		return false;
+	}
+	_file.write(reinterpret_cast<const std::ofstream::char_type*>(_buffer), _length);
+	if(_file.fail()) {
+		return false;
+	}
+	return true;
+}
+
+bool FileSys::append(std::ofstream &_file, const void *_buffer,
+		std::streamsize _length)
+{
+	_file.seekp(0, std::ios::end);
+	if(_file.fail()) {
+		return false;
+	}
+	_file.write(reinterpret_cast<const std::ofstream::char_type*>(_buffer), _length);
+	if(_file.fail()) {
+		return false;
+	}
+	return true;
 }
 
 #ifdef _WIN32

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -100,7 +100,7 @@ void MixerState::update()
 	}
 }
 
-void MixerState::config_changed()
+void MixerState::config_changed(bool)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "MixerState\n");
 	auto chs = m_mixer->dbg_get_channels();

@@ -311,9 +311,9 @@ void GUI::load_keymap(const std::string &_filename)
 	}
 }
 
-void GUI::config_changed()
+void GUI::config_changed(bool _startup)
 {
-	m_windows.config_changed();
+	m_windows.config_changed(_startup);
 
 	m_curr_model = m_machine->devices().sysboard()->model_string();
 	m_curr_model += " (" + m_machine->cpu().model() + "@";
@@ -2718,16 +2718,16 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	interface->focus();
 }
 
-void GUI::WindowManager::config_changed()
+void GUI::WindowManager::config_changed(bool _startup)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
-	desktop->config_changed();
-	interface->config_changed();
+	desktop->config_changed(_startup);
+	interface->config_changed(_startup);
 	if(status) {
-		status->config_changed();
+		status->config_changed(_startup);
 	}
-	dbgtools->config_changed();
+	dbgtools->config_changed(_startup);
 }
 
 void GUI::WindowManager::show_ifc_message(const char* _mex)

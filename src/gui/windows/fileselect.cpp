@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -346,7 +346,7 @@ void FileSelect::on_new_floppy(Rml::Event &)
 		return;
 	}
 	m_new_floppy->set_callbacks(
-		[=](std::string _dir, std::string _file, FloppyDiskType _type, bool _formatted)
+		[=](std::string _dir, std::string _file, FloppyDisk::StdType _type, bool _formatted)
 		{
 			if(!m_newfloppy_callbk) {
 				return;
@@ -615,15 +615,12 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc)
 	if(is_dir) {
 		inner += "DIR";
 	} else {
-		switch(size) {
-			case 160*1024:  inner += "floppy_160"; break;
-			case 180*1024:  inner += "floppy_180"; break;
-			case 320*1024:  inner += "floppy_320"; break;
-			case 360*1024:  inner += "floppy_360"; break;
-			case 1200*1024: inner += "floppy_1_20"; break;
-			case 720*1024:  inner += "floppy_720"; break;
-			case 1440*1024: inner += "floppy_1_44"; break;
-			default: inner += "hdd"; break;
+		if(type & FloppyDisk::SIZE_3_5) {
+			inner += "floppy_3_5";
+		} else if(type & FloppyDisk::SIZE_5_25) {
+			inner += "floppy_5_25";
+		} else {
+			inner += "hdd";
 		}
 	}
 	inner += "\"></div></div>";
@@ -701,8 +698,12 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 	set_cwd(new_cwd);
 
+	if(m_compat_types.empty()) {
+		return;
+	}
+
 	// throws:
-	read_dir(new_cwd, "(\\.img|\\.ima)$");
+	read_dir(new_cwd, m_compat_regexp.c_str());
 	m_valid_cwd = true;
 	m_writable_cwd = FileSys::is_dir_writeable(m_cwd.c_str());
 	if(!m_writable_home && !m_writable_cwd) {
@@ -712,10 +713,16 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 }
 
-void FileSelect::set_compat_sizes(std::vector<uint64_t> _sizes)
+void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std::vector<const char*> &_extensions)
 {
-	m_compat_sizes = _sizes;
-	m_new_floppy->set_compat_sizes(m_compat_sizes);
+	m_compat_types = _floppy_types;
+	std::vector<std::string> ext;
+	for(auto e : _extensions) {
+		ext.push_back(std::string("\\") + e);
+	}
+	m_compat_regexp = "(" + str_implode(ext,"|") + ")$";
+
+	m_new_floppy->set_compat_types(m_compat_types);
 }
 
 void FileSelect::reload()
@@ -737,10 +744,12 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
 	unsigned id = 0;
+	std::unique_ptr<FloppyFmt> diskfmt;
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		DirEntry de;
 		de.name = FileSys::to_utf8(ent->d_name);
+		FileSys::get_file_parts(de.name.c_str(), de.base, de.ext);
 		std::string fullpath = _path + FS_SEP + de.name;
 		if(FileSys::stat(fullpath.c_str(), &sb) != 0) {
 			continue;
@@ -773,8 +782,34 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 			PWARNF(LOG_V2, LOG_GUI, "Error accessing '%s': %s\n", fullpath.c_str(), get_error_string().c_str());
 			de.mtime = 0;
 		}
-		if(!de.is_dir && !m_compat_sizes.empty()) {
-			if(std::find(m_compat_sizes.begin(), m_compat_sizes.end(), de.size) == std::end(m_compat_sizes)) {
+		if(!de.is_dir) {
+			bool compatible = false;
+			// this assumes all compat types have same size
+			FloppyDisk::Size dsksize = FloppyDisk::Size(m_compat_types[0] & FloppyDisk::SIZE_MASK);
+
+			diskfmt.reset(FloppyFmt::find(fullpath));
+			if(diskfmt == nullptr) {
+				continue;
+			}
+
+			auto ident = diskfmt->identify(fullpath, de.size, dsksize);
+			if(ident.type == FloppyDisk::FD_NONE) {
+				continue;
+			} 
+			de.type = ident.type;
+			// check density
+			for(auto ctype : m_compat_types ) {
+				if(
+					((ctype & FloppyDisk::SIZE_MASK) & (ident.type & FloppyDisk::SIZE_MASK)) &&
+					(ctype & FloppyDisk::DENS_MASK) == (ident.type & FloppyDisk::DENS_MASK)
+				)
+				{
+					compatible = true;
+				}
+			}
+			if(!compatible) {
+				PDEBUGF(LOG_V2, LOG_GUI, "Incompatible floppy image (type:%u): '%s'\n",
+						ident.type, fullpath.c_str());
 				continue;
 			}
 		}

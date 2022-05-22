@@ -33,6 +33,8 @@
 #include "devices/cf62011bpc.h"
 #include "devices/keyboard.h"
 #include "devices/floppyctrl.h"
+#include "devices/floppyctrl_raw.h"
+#include "devices/floppyctrl_flux.h"
 #include "devices/storagectrl_ps1.h"
 #include "devices/storagectrl_ata.h"
 #include "devices/serial.h"
@@ -124,9 +126,23 @@ void Devices::config_changed()
 	}
 
 	// install or remove optional devices
-	install_only_if<FloppyCtrl>(
-		FloppyCtrl::config_drive_type(0)!=FDD_NONE || FloppyCtrl::config_drive_type(1)!=FDD_NONE
-	);
+
+	unsigned fdc_type = g_program.config().get_enum(DRIVES_SECTION, DRIVES_FDC_TYPE, {
+		{ "raw",  FloppyCtrl::RAW  },
+		{ "flux", FloppyCtrl::FLUX }
+	});
+	bool fdd_present = FloppyCtrl::config_drive_type(0) != FloppyDrive::FDD_NONE ||
+	                   FloppyCtrl::config_drive_type(1) != FloppyDrive::FDD_NONE;
+
+	remove(FloppyCtrl::NAME);
+	if(fdd_present) {
+		if(fdc_type == FloppyCtrl::RAW) {
+			install<FloppyCtrl_Raw>();
+		} else {
+			install<FloppyCtrl_Flux>();
+		}
+	}
+
 	std::string stg_ctrl = g_program.config().get_string(DRIVES_SECTION, DRIVES_HDD);
 	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ps1")) {
 		remove(StorageCtrl_ATA::NAME);
@@ -468,7 +484,9 @@ void Devices::write_dword(uint16_t _port, uint32_t _value)
 
 void Devices::remove(const char *_name)
 {
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Removing device: %s\n", _name);
 	if(m_devices.find(_name) == m_devices.end()) {
+		PDEBUGF(LOG_V1, LOG_MACHINE, "Cannot find device: %s\n", _name);
 		return;
 	}
 	m_devices[_name]->remove();

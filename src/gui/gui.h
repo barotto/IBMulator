@@ -275,7 +275,7 @@ protected:
 		unsigned ifcmex_timer = NULL_TIMER_HANDLE;
 
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
-		void config_changed();
+		void config_changed(bool _startup);
 		void update(uint64_t _current_time);
 		void update_window_size(int _w, int _h);
 		void shutdown();
@@ -330,7 +330,7 @@ public:
 	virtual GUIRenderer renderer() const = 0;
 	
 	void init(Machine *_machine, Mixer *_mixer);
-	void config_changed();
+	void config_changed(bool _startup);
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
