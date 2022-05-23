@@ -169,12 +169,19 @@ protected:
 
 	uint32_t find_position(uint64_t &base_ns, uint64_t when_ns);
 	int find_index(uint32_t position, const std::vector<uint32_t> &buf) const;
-	bool test_track_last_entry_warps(const std::vector<uint32_t> &buf) const;
 	uint64_t position_to_time(uint64_t base_ns, int position) const;
 
 	bool get_cyl_head(int &_cyl, int &_head);
 
-	void write_zone(uint32_t *buf, int &cells, int &index, uint32_t spos, uint32_t epos, uint32_t mg);
+	// Temporary structure storing a write span
+	struct wspan {
+		int start, end;
+		std::vector<int> flux_change_positions;
+	};
+
+	static void wspan_split_on_wrap(std::vector<wspan> &wspans);
+	static void wspan_remove_damaged(std::vector<wspan> &wspans, const std::vector<uint32_t> &track);
+	static void wspan_write(const std::vector<wspan> &wspans, std::vector<uint32_t> &track);
 
 	uint32_t hash32(uint32_t val) const;
 

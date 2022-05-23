@@ -162,8 +162,9 @@ protected:
 	static void generate_track_from_levels(int track, int head, std::vector<uint32_t> &trackbuf,
 			int splice_pos, FloppyDisk &_disk);
 
-	//! Normalize the times in a cell buffer to sum up to 200000000
-	static void normalize_times(std::vector<uint32_t> &buffer);
+	//! Normalize the times in a cell buffer to bring the
+	//! 0..last_position range up to 0..200000000
+	static void normalize_times(std::vector<uint32_t> &buffer, uint32_t last_position);
 
 	// **** Writer helpers ****
 

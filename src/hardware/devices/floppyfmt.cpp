@@ -500,18 +500,11 @@ void FloppyFmt::generate_track(const desc_e *desc, int track, int head, const de
 	generate_track_from_levels(track, head, buffer, 0, image);
 }
 
-void FloppyFmt::normalize_times(std::vector<uint32_t> &buffer)
+void FloppyFmt::normalize_times(std::vector<uint32_t> &buffer, uint32_t last_position)
 {
-	unsigned int total_sum = 0;
-	for(unsigned int i=0; i != buffer.size(); i++) {
-		total_sum += buffer[i] & FloppyDisk::TIME_MASK;
-	}
-
-	unsigned int current_sum = 0;
 	for(unsigned int i=0; i != buffer.size(); i++) {
 		uint32_t time = buffer[i] & FloppyDisk::TIME_MASK;
-		buffer[i] = (buffer[i] & FloppyDisk::MG_MASK) | (200000000ULL * current_sum / total_sum);
-		current_sum += time;
+		buffer[i] = (buffer[i] & FloppyDisk::MG_MASK) | (200'000'000ULL * time / last_position);
 	}
 }
 
@@ -521,44 +514,14 @@ void FloppyFmt::generate_track_from_bitstream(int track, int head, const uint8_t
 	std::vector<uint32_t> &dest = image->get_buffer(track, head);
 	dest.clear();
 
-	// If the bitstream has an odd number of inversions, one needs to be added.
-	// Put in in the middle of the half window after the center inversion, where
-	// any fdc ignores it.
-
-	int inversions = 0;
-	for(int i=0; i != track_size; i++) {
-		if(trackbuf[i >> 3] & (0x80 >> (i & 7))) {
-			inversions++;
-		}
-	}
-	bool need_flux = inversions & 1;
-
-	uint32_t cbit = FloppyDisk::MG_A;
-	uint32_t count = 0;
 	for(int i=0; i != track_size; i++)
-		if(trackbuf[i >> 3] & (0x80 >> (i & 7))) {
-			dest.push_back(cbit | (count+2));
-			cbit = cbit == FloppyDisk::MG_A ? FloppyDisk::MG_B : FloppyDisk::MG_A;
-			if(need_flux) {
-				need_flux = false;
-				dest.push_back(cbit | 1);
-				cbit = cbit == FloppyDisk::MG_A ? FloppyDisk::MG_B : FloppyDisk::MG_A;
-				count = 1;
-			} else {
-				count = 2;
-			}
-		} else {
-			count += 4;
-		}
+		if(trackbuf[i >> 3] & (0x80 >> (i & 7)))
+			dest.push_back(FloppyDisk::MG_F | (i*2+1));
 
-	if(count) {
-		dest.push_back(cbit | count);
-	}
-
-	normalize_times(dest);
+	normalize_times(dest, track_size*2);
 
 	if(splice >= 0 || splice < track_size) {
-		int splpos = uint64_t(200000000) * splice / track_size;
+		int splpos = uint64_t(200'000'000) * splice / track_size;
 		image->set_write_splice_position(track, head, splpos);
 	}
 }
@@ -570,85 +533,24 @@ void FloppyFmt::generate_track_from_levels(int track, int head, std::vector<uint
 	splice_pos = splice_pos % trackbuf.size();
 	uint32_t splice_angular_pos = trackbuf[splice_pos] & FloppyDisk::TIME_MASK;
 
-	// Check if we need to invert a cell to get an even number of
-	// transitions on the whole track
-	//
-	// Also check if all MG values are valid
-
-	int transition_count = 0;
-	for(auto & elem : trackbuf) {
-		switch(elem & FloppyDisk::MG_MASK) {
-		case MG_1:
-			transition_count++;
-			break;
-
-		case MG_W:
-			throw std::runtime_error(str_format("Weak bits not yet handled, track %d head %d", track, head).c_str());
-
-		case MG_0:
-		case FloppyDisk::MG_N:
-		case FloppyDisk::MG_D:
-			break;
-
-		case FloppyDisk::MG_A:
-		case FloppyDisk::MG_B:
-		default:
-			throw std::runtime_error(str_format("Incorrect MG information in generate_track_from_levels, track %d head %d",
-					track, head).c_str());
-		}
-	}
-
-	if(transition_count & 1) {
-		int pos = splice_pos;
-		while((trackbuf[pos] & FloppyDisk::MG_MASK) != MG_0 && (trackbuf[pos] & FloppyDisk::MG_MASK) != MG_1) {
-			pos++;
-			if(pos == int(trackbuf.size())) {
-				pos = 0;
-			}
-			if(pos == splice_pos) {
-				goto meh;
-			}
-		}
-		if((trackbuf[pos] & FloppyDisk::MG_MASK) == MG_0) {
-			trackbuf[pos] = (trackbuf[pos] & FloppyDisk::TIME_MASK) | MG_1;
-		} else {
-			trackbuf[pos] = (trackbuf[pos] & FloppyDisk::TIME_MASK) | MG_0;
-		}
-
-	meh: //wth???
-		;
-
-	}
-
-	// Maximal number of cells which happens when the buffer is all MG_1/MG_N alternated, which would be 3/2
 	std::vector<uint32_t> &dest = _disk.get_buffer(track, head);
 	dest.clear();
 
-	uint32_t cbit = FloppyDisk::MG_A;
-	uint32_t count = 0;
+	uint32_t total_time = 0;
 	for(auto & elem : trackbuf) {
 		uint32_t bit = elem & FloppyDisk::MG_MASK;
 		uint32_t time = elem & FloppyDisk::TIME_MASK;
-		if(bit == MG_0) {
-			count += time;
-			continue;
-		}
 		if(bit == MG_1) {
-			count += time >> 1;
-			dest.push_back(cbit | count);
-			cbit = cbit == FloppyDisk::MG_A ? FloppyDisk::MG_B : FloppyDisk::MG_A;
-			count = time - (time >> 1);
-			continue;
+			dest.push_back(FloppyDisk::MG_F | (total_time + (time >> 1)));
 		}
-		dest.push_back(cbit | count);
-		dest.push_back(elem);
-		count = 0;
+		else if(bit != MG_0) {
+			dest.push_back(bit | total_time);
+		}
+
+		total_time += time;
 	}
 
-	if(count)
-		dest.push_back(cbit | count);
-
-	normalize_times(dest);
+	normalize_times(dest, total_time);
 	_disk.set_write_splice_position(track, head, splice_angular_pos);
 }
 
@@ -657,103 +559,168 @@ std::vector<bool> FloppyFmt::generate_bitstream_from_track(int track, int head,
 {
 	std::vector<bool> trackbuf;
 	const std::vector<uint32_t> &tbuf = _disk.get_buffer(track, head);
-	if(tbuf.size() <= 1) {
+	bool track_has_info = false;
+	for(uint32_t mg : tbuf)
+		if((mg & FloppyDisk::MG_MASK) == FloppyDisk::MG_F) {
+			track_has_info = true;
+			break;
+		}
+
+	if(!track_has_info) {
 		// Unformatted track
 		int track_size = 200'000'000/cell_size;
 		trackbuf.resize(track_size, false);
 		return trackbuf;
 	}
 
-	// Start at the write splice
-	uint32_t splice = _disk.get_write_splice_position(track, head);
-	unsigned cur_pos = splice;
-	unsigned cur_entry = 0;
-	while(cur_entry < tbuf.size()-1 && (tbuf[cur_entry+1] & FloppyDisk::TIME_MASK) < cur_pos) {
-		cur_entry++;
-	}
+	class pll {
+	private:
+		const std::vector<uint32_t> &tbuf;
+		int cur_pos;
+		int cur_entry;
+		int period;
+		int period_adjust_base;
+		int min_period;
+		int max_period;
+		int phase_adjust;
+		int freq_hist;
+		bool next_is_first;
 
-	int period = cell_size;
-	int period_adjust_base = period * 0.05;
+	public:
+		pll(const std::vector<uint32_t> &_tbuf, int cell_size) : tbuf(_tbuf) {
+			period = cell_size;
+			period_adjust_base = period * 0.05;
 
-	int min_period = int(cell_size * 0.75);
-	int max_period = int(cell_size * 1.25);
-	int phase_adjust = 0;
-	int freq_hist = 0;
-
-	uint32_t scanned = 0;
-	while(scanned < 200'000'000) {
-		// Note that all magnetic cell type changes are considered
-		// edges.  No randomness added for neutral/damaged cells
-		int edge = tbuf[cur_entry] & FloppyDisk::TIME_MASK;
-		if(edge < int(cur_pos)) {
-			edge += 200'000'000;
-		}
-		int next = int(cur_pos) + period + phase_adjust;
-		scanned += period + phase_adjust;
-
-		if(edge >= next) {
-			// No transition in the window means 0 and pll in free run mode
-			trackbuf.push_back(false);
+			min_period = int(cell_size*0.75);
+			max_period = int(cell_size*1.25);
 			phase_adjust = 0;
+			freq_hist = 0;
 
-		} else {
-			// Transition in the window means 1, and the pll is adjusted
-			trackbuf.push_back(true);
-
-			int delta = edge - (next - period/2);
-
-			phase_adjust = 0.65 * delta;
-
-			if(delta < 0) {
-				if(freq_hist < 0) {
-					freq_hist--;
-				} else {
-					freq_hist = -1;
+			// Try to go back 16 flux changes from the end of the track, or at most at the start
+			int flux_to_step = 16;
+			cur_entry = tbuf.size()-1;
+			while(cur_entry > 0 && flux_to_step) {
+				if((tbuf[cur_entry] & FloppyDisk::MG_MASK) == FloppyDisk::MG_F) {
+					flux_to_step --;
 				}
-			} else if(delta > 0) {
-				if(freq_hist > 0) {
-					freq_hist++;
-				} else {
-					freq_hist = 1;
-				}
+				cur_entry--;
+			}
+
+			// Go back by half-a-period
+			cur_pos = (tbuf[cur_entry] & FloppyDisk::TIME_MASK) - period/2;
+
+			// Adjust the entry accordingly
+			while(cur_entry > 0 && (cur_pos > (tbuf[cur_entry] & FloppyDisk::TIME_MASK))) {
+				cur_entry --;
+			}
+
+			// Now go to the next flux change from there (the no-MG_F case has been handled earlier)
+			while((tbuf[cur_entry] & FloppyDisk::MG_MASK) != FloppyDisk::MG_F) {
+				cur_entry ++;
+			}
+
+			next_is_first = false;
+		}
+
+		std::pair<bool, bool> get() {
+			bool bit, first;
+			int edge = tbuf[cur_entry] & FloppyDisk::TIME_MASK;
+			if(edge < cur_pos) {
+				edge += 200'000'000;
+			}
+			int next = cur_pos + period + phase_adjust;
+
+			if(edge >= next) {
+				// No transition in the window means 0 and pll in free run mode
+				bit = false;
+				phase_adjust = 0;
+
 			} else {
-				freq_hist = 0;
-			}
+				// Transition in the window means 1, and the pll is adjusted
+				bit = true;
 
-			if(freq_hist) {
-				int afh = freq_hist < 0 ? -freq_hist : freq_hist;
-				if(afh > 1) {
-					int aper = period_adjust_base*delta/period;
-					if(!aper) {
-						aper = freq_hist < 0 ? -1 : 1;
+				int delta = edge - (next - period/2);
+
+				phase_adjust = 0.65*delta;
+
+				if(delta < 0) {
+					if(freq_hist < 0) {
+						freq_hist--;
+					} else {
+						freq_hist = -1;
 					}
-					period += aper;
+				} else if(delta > 0) {
+					if(freq_hist > 0) {
+						freq_hist++;
+					} else {
+						freq_hist = 1;
+					}
+				} else {
+					freq_hist = 0;
+				}
 
-					if(period < min_period) {
-						period = min_period;
-					} else if(period > max_period) {
-						period = max_period;
+				if(freq_hist) {
+					int afh = freq_hist < 0 ? -freq_hist : freq_hist;
+					if(afh > 1) {
+						int aper = period_adjust_base*delta/period;
+						if(!aper) {
+							aper = freq_hist < 0 ? -1 : 1;
+						}
+						period += aper;
+
+						if(period < min_period) {
+							period = min_period;
+						} else if(period > max_period) {
+							period = max_period;
+						}
 					}
 				}
 			}
-		}
 
-		cur_pos = next;
-		if(cur_pos >= 200'000'000) {
-			cur_pos -= 200'000'000;
-			cur_entry = 0;
-		}
-		while(cur_entry < tbuf.size()-1 && (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
-			cur_entry++;
-		}
+			first = next_is_first;
+			next_is_first = false;
 
-		// Wrap around
-		if(cur_entry == tbuf.size()-1 && (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
-			// Wrap to index 0 or 1 depending on whether there is a transition exactly at the index hole
-			cur_entry = (tbuf[tbuf.size()-1] & FloppyDisk::MG_MASK) != (tbuf[0] & FloppyDisk::MG_MASK) ?
-				0 : 1;
+			cur_pos = next;
+			if(cur_pos >= 200000000) {
+				cur_pos -= 200000000;
+				cur_entry = 0;
+
+				if(cur_pos >= period/2) {
+					first = true;
+				} else {
+					next_is_first = true;
+				}
+			}
+			while(cur_entry < int(tbuf.size())-1 && (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
+				cur_entry++;
+			}
+
+			// Wrap around
+			if(cur_entry == int(tbuf.size())-1 &&
+			   (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
+				cur_entry = 0;
+			}
+
+			return std::make_pair(bit, first);
+		}
+	};
+
+	pll cpll(tbuf, cell_size);
+
+	for(;;) {
+		auto r = cpll.get();
+		if(r.second) {
+			trackbuf.push_back(r.first);
+			break;
 		}
 	}
+	for(;;) {
+		auto r = cpll.get();
+		if(r.second)
+			break;
+		trackbuf.push_back(r.first);
+	}
+
 	return trackbuf;
 }
 

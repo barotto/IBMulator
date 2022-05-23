@@ -235,10 +235,12 @@ bool FloppyDisk::track_is_formatted(int track, int head)
 	if(data.empty()) {
 		return false;
 	}
-	if(data.size() == 1 && (data[0] & MG_MASK) == MG_N) {
-		return false;
+	for(uint32_t mg : data) {
+		if((mg & FloppyDisk::MG_MASK) == FloppyDisk::MG_F) {
+			return true;
+		}
 	}
-	return true;
+	return false;
 }
 
 void FloppyDisk::read_sector(uint8_t _c, uint8_t _h, uint8_t _s, uint8_t *buffer, uint32_t bytes)

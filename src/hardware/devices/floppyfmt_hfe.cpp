@@ -322,16 +322,10 @@ void FloppyFmt_HFE::generate_track_from_hfe_bitstream(int cyl, int head, int sam
 	// Note: We do not call normalize_times here because we're doing the job here
 
 	// MG_1 / MG_0 are (logical) levels that indicate transition / no change
-	// MG_A / MG_B are physical flux directions
-	//
-	// Cell: | AAAABBBB | = MG_1 = | BBBBAAAA |
-	//       | AAAAAAAA | = MG_0 = | BBBBBBBB |
+	// MG_F is the position of a flux transition
 
 	std::vector<uint32_t> &dest = image.get_buffer(cyl, head);
 	dest.clear();
-
-	// Start with MG_A
-	uint32_t cbit = FloppyDisk::MG_A;
 
 	int offset = 0x100;
 
@@ -342,10 +336,6 @@ void FloppyFmt_HFE::generate_track_from_hfe_bitstream(int cyl, int head, int sam
 
 	uint8_t current = 0;
 	int time  = 0;
-
-	dest.push_back(cbit | time);
-
-	cbit = FloppyDisk::MG_B;
 
 	// Oversampled FM images (250 kbit/s) start with a 0, where a 1 is
 	// expected for 125 kbit/s.
@@ -385,31 +375,24 @@ void FloppyFmt_HFE::generate_track_from_hfe_bitstream(int cyl, int head, int sam
 	while(time < 200'000'000)   // one rotation in nanosec
 	{
 		current = trackbuf[offset];
-		for(int j=0; j<8; j++)
+		for (int j=0; j < 8; j++)
 		{
 			time += samplelength;
-			if((current & 1) != 0)
-			{
+			if ((current & 1)!=0)
 				// Append another transition to the vector
-				dest.push_back(cbit | time);
-
-				// Toggle the cell level
-				cbit = (cbit == FloppyDisk::MG_A) ? FloppyDisk::MG_B : FloppyDisk::MG_A;
-			}
+				dest.push_back(FloppyDisk::MG_F | time);
 
 			// HFE uses little-endian bit order
 			current >>= 1;
 		}
 		offset++;
-		if((offset & 0xff) == 0) {
+		if ((offset & 0xff)==0) {
 			offset += 0x100;
 		}
 
 		// When we have not reached the track end (after 0.2 sec) but run
 		// out of samples, repeat the last value
-		if(offset >= track_end) {
-			offset = track_end - 1;
-		}
+		if (offset >= track_end) offset = track_end - 1;
 	}
 
 	image.set_write_splice_position(cyl, head, 0);
