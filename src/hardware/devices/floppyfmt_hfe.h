@@ -86,7 +86,6 @@ public:
 	const char *description() const { return "HFE (HxC Floppy Emu)(*.hfe)"; }
 	const char *default_file_extension() const { return ".hfe"; }
 	std::vector<const char *> file_extensions() const { return {".hfe"}; }
-	bool has_file_extension(std::string _ext) const;
 	bool can_save() const  { return true; }
 	FloppyFmt *create() const { return new FloppyFmt_HFE(); }
 

@@ -19,7 +19,6 @@ public:
 	const char *description() const { return "IMG (Raw sector)(*.img)"; }
 	const char *default_file_extension() const { return ".img"; }
 	std::vector<const char *> file_extensions() const { return {".img",".ima"}; }
-	bool has_file_extension(std::string _ext) const;
 	bool can_save() const  { return true; }
 	FloppyFmt *create() const { return new FloppyFmt_IMG(); }
 

@@ -25,7 +25,7 @@ public:
 	virtual const char * description() const = 0;
 	virtual const char * default_file_extension() const = 0;
 	virtual std::vector<const char *> file_extensions() const = 0;
-	virtual bool has_file_extension(std::string _ext) const = 0;
+	virtual bool has_file_extension(std::string _ext) const;
 	virtual bool can_save() const { return false; }
 	virtual FloppyFmt *create() const = 0;
 

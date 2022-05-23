@@ -11,12 +11,6 @@
 #include <cstring>
 
 
-bool FloppyFmt_HFE::has_file_extension(std::string _ext) const
-{
-	_ext = str_to_lower(_ext);
-	return (_ext == ".hfe");
-}
-
 FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 		uint64_t _file_size, FloppyDisk::Size _disk_size)
 {

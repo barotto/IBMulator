@@ -47,6 +47,16 @@ FloppyFmt *FloppyFmt::find_by_name(std::string _name)
 	return nullptr;
 }
 
+bool FloppyFmt::has_file_extension(std::string _ext) const
+{
+	for(auto ext : file_extensions()) {
+		if(_ext.compare(ext) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 bool FloppyFmt::save(std::ofstream &, const FloppyDisk &)
 {
 	return false;

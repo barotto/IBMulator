@@ -13,7 +13,7 @@
 #include <cstring>
 
 const std::map<unsigned, FloppyFmt_IMG::encoding> FloppyFmt_IMG::encodings = {
-// stdtype              encoding         cs    g4a g1  g2  g3
+//  stdtype               encoding         cs    g4a g1  g2  g3
   { FloppyDisk::DD_160K, {FloppyDisk::MFM, 2000, 80, 50, 22, 80  } }, // 160K 5 1/4 inch double density single sided
   { FloppyDisk::DD_180K, {FloppyDisk::MFM, 2000, 80, 50, 22, 80  } }, // 180K 5 1/4 inch double density single sided
   { FloppyDisk::DD_320K, {FloppyDisk::MFM, 2000, 80, 50, 22, 80  } }, // 320K 5 1/4 inch double density
@@ -27,11 +27,6 @@ const std::map<unsigned, FloppyFmt_IMG::encoding> FloppyFmt_IMG::encodings = {
   { FloppyDisk::ED_2_88, {FloppyDisk::MFM,  500, 80, 50, 41, 80  } }, // 2880K 3 1/2 inch extended density - gaps unverified
 };
 
-bool FloppyFmt_IMG::has_file_extension(std::string _ext) const
-{
-	_ext = str_to_lower(_ext);
-	return (_ext == ".img" || _ext == ".ima");
-}
 
 FloppyDisk::Properties FloppyFmt_IMG::identify(std::string file_path,
 		uint64_t file_size, FloppyDisk::Size _disk_size)
