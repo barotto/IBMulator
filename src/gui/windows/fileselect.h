@@ -31,7 +31,7 @@ private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
-	std::function<std::string(std::string, std::string, FloppyDisk::StdType, bool)>
+	std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)>
 		m_newfloppy_callbk = nullptr;
 	
 	static event_map_t ms_evt_map;
@@ -135,7 +135,7 @@ public:
 
 	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
-	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDisk::StdType, bool)> _fn) { m_newfloppy_callbk = _fn; }
+	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)> _fn) { m_newfloppy_callbk = _fn; }
 	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
 
 	virtual void create(std::string _mode, std::string _order, int _zoom);
@@ -150,7 +150,8 @@ public:
 	void set_current_dir(const std::string &_path);
 	std::string get_current_dir() const { return m_cwd; }
 	bool is_current_dir_valid() const { return m_valid_cwd; }
-	void set_compat_types(std::vector<unsigned> _disk_types, const std::vector<const char*> &_extensions);
+	void set_compat_types(std::vector<unsigned> _disk_types, const std::vector<const char*> &_extensions,
+			const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats);
 	void reload();
 
 protected:

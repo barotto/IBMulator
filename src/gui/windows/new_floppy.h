@@ -30,11 +30,11 @@ class NewFloppy : public Window
 private:
 
 	static event_map_t ms_evt_map;
-	std::function<void(std::string, std::string, FloppyDisk::StdType, bool)> m_create_clbk = nullptr;
+	std::function<void(std::string, std::string, FloppyDisk::StdType, std::string)> m_create_clbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
 	Rml::ElementFormControlInput *m_filename_el = nullptr;
 	Rml::ElementFormControlSelect *m_type_el = nullptr;
-	Rml::ElementFormControl *m_formatted_el = nullptr;
+	Rml::ElementFormControlSelect *m_format_el = nullptr;
 	Rml::Element *m_create_el = nullptr;
 	std::string m_cwd;
 	std::string m_media_dir;
@@ -53,9 +53,9 @@ public:
 		m_cwd = _cwd;
 		m_media_dir = _media;
 	}
-	void set_compat_types(std::vector<unsigned> _types);
+	void set_compat_types(std::vector<unsigned> _types, const std::vector<std::unique_ptr<FloppyFmt>> &_formats);
 	void set_callbacks(
-		std::function<void(std::string, std::string, FloppyDisk::StdType, bool)> _create_callback,
+		std::function<void(std::string, std::string, FloppyDisk::StdType, std::string)> _create_callback,
 		std::function<void()> _cancel_callback = nullptr) {
 		m_create_clbk = _create_callback;
 		m_cancel_callbk = _cancel_callback;

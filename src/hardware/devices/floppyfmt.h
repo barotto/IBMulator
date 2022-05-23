@@ -6,7 +6,6 @@
 #ifndef IBMULATOR_FLOPPYFMT_H
 #define IBMULATOR_FLOPPYFMT_H
 
-//#include <stdio.h>
 #include <vector>
 #include <string>
 #include "floppydisk.h"
@@ -16,16 +15,19 @@ class FloppyFmt
 {
 public:
 	static FloppyFmt *find(std::string _image_path);
+	static FloppyFmt *find_by_name(std::string _name);
 
 public:
 
 	virtual ~FloppyFmt() = default;
 
 	virtual const char * name() const = 0;
+	virtual const char * description() const = 0;
 	virtual const char * default_file_extension() const = 0;
 	virtual std::vector<const char *> file_extensions() const = 0;
 	virtual bool has_file_extension(std::string _ext) const = 0;
 	virtual bool can_save() const { return false; }
+	virtual FloppyFmt *create() const = 0;
 
 	virtual FloppyDisk::Properties identify(std::string file_path, uint64_t file_size,
 			FloppyDisk::Size _disk_size) = 0;
@@ -284,6 +286,8 @@ protected:
 	enum { DUMP_THRESHOLD = 2 };
 
 private:
+	static std::vector<std::unique_ptr<FloppyFmt>> ms_formats;
+
 	enum { CRC_NONE, CRC_CCITT, CRC_CCITT_FM };
 	enum { MAX_CRC_COUNT = 64 };
 

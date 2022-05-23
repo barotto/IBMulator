@@ -68,7 +68,8 @@ NewFloppy::~NewFloppy()
 {
 }
 
-void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes)
+void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes,
+		const std::vector<std::unique_ptr<FloppyFmt>> &_formats)
 {
 	assert(m_type_el);
 	m_type_el->RemoveAll();
@@ -86,6 +87,14 @@ void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes)
 			}
 		}
 		it++;
+	}
+
+	assert(m_format_el);
+	m_format_el->RemoveAll();
+	for(auto &f : _formats) {
+		if(f->can_save()) {
+			m_format_el->Add(f->description(), f->name());
+		}
 	}
 }
 
@@ -126,7 +135,7 @@ void NewFloppy::create()
 	Window::create();
 	m_filename_el = dynamic_cast<Rml::ElementFormControlInput*>(get_element("filename"));
 	m_type_el = dynamic_cast<Rml::ElementFormControlSelect*>(get_element("floppy_type"));
-	m_formatted_el = dynamic_cast<Rml::ElementFormControl*>(get_element("formatted"));
+	m_format_el = dynamic_cast<Rml::ElementFormControlSelect*>(get_element("floppy_format"));
 	m_create_el = get_element("create_file");
 	get_element("heredir")->SetAttribute("checked", true);
 }
@@ -155,7 +164,7 @@ void NewFloppy::on_create_file(Rml::Event &)
 			if(type == std_enums.end()) {
 				throw std::runtime_error(str_format("Invalid floppy disk type: %s",name).c_str());
 			}
-			m_create_clbk(m_dest_dir, filename, type->second, m_formatted_el->GetAttribute("checked"));
+			m_create_clbk(m_dest_dir, filename, type->second, m_format_el->GetValue());
 		} catch(std::runtime_error &e) {
 			m_gui->show_message_box("Error",
 					str_to_html(e.what()), MessageWnd::Type::MSGW_OK,

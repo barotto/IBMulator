@@ -21,7 +21,6 @@
 #include "program.h"
 #include "filesys.h"
 #include "floppyctrl.h"
-#include "mediaimage.h"
 
 
 IODEVICE_PORTS(FloppyCtrl) = {
@@ -118,7 +117,7 @@ FloppyDrive::Type FloppyCtrl::config_drive_type(unsigned drive)
 }
 
 FloppyDisk::StdType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
-		FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, bool _formatted)
+		FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, std::string _format_name)
 {
 	if(FileSys::file_exists(_imgpath.c_str())) {
 		PERRF(LOG_FDC, "Floppy image file '%s' already exists\n", _imgpath.c_str());
@@ -148,24 +147,23 @@ FloppyDisk::StdType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 
 	PINFOF(LOG_V0, LOG_FDC, "Creating new image file '%s'...\n", _imgpath.c_str());
 
-	if(_formatted) {
-		std::string archive = g_program.config().get_file_path(IMAGES_ARCHIVE, FILE_TYPE_ASSET);
-		if(!FileSys::file_exists(archive.c_str())) {
-			PERRF(LOG_FDC, "Cannot find the image file archive '%s'\n", IMAGES_ARCHIVE);
-			throw std::runtime_error("Missing required file in archive");
-		}
-		std::string imgname = std::regex_replace(FloppyDisk::std_types.at(_disktype).desc.c_str(),
-				std::regex("[\\.\" ]"), "_");
-		imgname = "floppy-" + imgname + ".img";
-		if(!FileSys::extract_file(archive.c_str(), imgname.c_str(), _imgpath.c_str())) {
-			PERRF(LOG_FDC, "Cannot extract image file '%s'\n", imgname.c_str());
-			throw std::runtime_error("Missing required file in archive");
-		}
-	} else {
-		// create a 0-filled image
-		FlatMediaImage image;
-		image.create(_imgpath.c_str(), FloppyDisk::std_types.at(_disktype).sectors);
-		PINFOF(LOG_V0, LOG_FDC, "The image is not pre-formatted: use FORMAT under DOS\n");
+	std::unique_ptr<FloppyFmt> format(FloppyFmt::find_by_name(_format_name));
+	if(!format) {
+		assert(false);
+		throw std::runtime_error("Invalid image format.");
+	}
+
+	std::string archive = g_program.config().get_file_path(IMAGES_ARCHIVE, FILE_TYPE_ASSET);
+	if(!FileSys::file_exists(archive.c_str())) {
+		PERRF(LOG_FDC, "Cannot find the image file archive '%s'\n", IMAGES_ARCHIVE);
+		throw std::runtime_error("Missing required file in archive");
+	}
+	std::string imgname = std::regex_replace(FloppyDisk::std_types.at(_disktype).desc.c_str(),
+			std::regex("[\\.\" ]"), "_");
+	imgname = std::string("floppy/") + format->name() + "/" + imgname + format->default_file_extension();
+	if(!FileSys::extract_file(archive.c_str(), imgname.c_str(), _imgpath.c_str())) {
+		PERRF(LOG_FDC, "Cannot extract image file '%s'\n", imgname.c_str());
+		throw std::runtime_error("Missing required file in archive");
 	}
 
 	return _disktype;

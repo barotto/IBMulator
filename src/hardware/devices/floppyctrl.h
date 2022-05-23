@@ -39,6 +39,9 @@ public:
 	// Creates a compatible FloppyDisk object, the caller will be the pointer's owner
 	virtual FloppyDisk* create_floppy_disk(const FloppyDisk::Properties &_props) const = 0;
 	std::vector<const char*> get_compatible_file_extensions();
+	const std::vector<std::unique_ptr<FloppyFmt>> &get_compatible_formats() {
+		return m_floppy_formats;
+	}
 
 	// configurations with more than 2 drives are untested
 	enum {
@@ -93,7 +96,7 @@ public:
 
 	static FloppyDrive::Type config_drive_type(unsigned drive);
 	static FloppyDisk::StdType create_new_floppy_image(std::string _imgpath,
-			FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, bool _formatted=true);
+			FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, std::string _format_name);
 
 	virtual void fdd_index_pulse(uint8_t _drive, int _state);
 

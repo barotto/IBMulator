@@ -350,7 +350,8 @@ void Interface::config_changed(bool _startup)
 		m_floppy.event = true;
 	}
 
-	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions());
+	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions(),
+			m_floppy.ctrl->get_compatible_formats());
 	if(m_fs->is_current_dir_valid()) {
 		m_fs->reload();
 	}
@@ -545,7 +546,8 @@ void Interface::on_fdd_select(Rml::Event &)
 	}
 	m_floppy.event = true;
 	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
-	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions());
+	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions(),
+			m_floppy.ctrl->get_compatible_formats());
 	m_fs->reload();
 }
 
@@ -942,9 +944,9 @@ std::string Interface::get_filesel_info(std::string _filepath)
 	return info;
 }
 
-std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDisk::StdType _type, bool _formatted)
+std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDisk::StdType _type, std::string _format)
 {
-	PDEBUGF(LOG_V1, LOG_GUI, "New floppy image: %s, %s, %d, %d\n", _dir.c_str(), _file.c_str(), _type, _formatted);
+	PDEBUGF(LOG_V1, LOG_GUI, "New floppy image: %s, %s, %d, %s\n", _dir.c_str(), _file.c_str(), _type, _format.c_str());
 
 	if(_file.empty()) {
 		throw std::runtime_error("Empty file name.");
@@ -976,10 +978,16 @@ std::string Interface::create_new_floppy_image(std::string _dir, std::string _fi
 		throw std::runtime_error("Invalid file name.");
 	}
 #endif
-	ext = str_to_lower(ext);
-	if(ext != ".img" && ext != ".ima") {
-		_file += ".img";
+
+	std::unique_ptr<FloppyFmt> format(FloppyFmt::find_by_name(_format));
+	if(!format) {
+		throw std::runtime_error("Invalid image format.");
 	}
+	ext = str_to_lower(ext);
+	if(!format->has_file_extension(ext)) {
+		_file += format->default_file_extension();
+	}
+
 	if(_file.size() > 255) {
 		throw std::runtime_error("File name too long.");
 	}
@@ -990,7 +998,7 @@ std::string Interface::create_new_floppy_image(std::string _dir, std::string _fi
 		throw std::runtime_error(str_format("The file \"%s\" already exists.", _file.c_str()));
 	}
 
-	FloppyCtrl::create_new_floppy_image(path, FloppyDrive::FDD_NONE, _type, _formatted);
-	
+	FloppyCtrl::create_new_floppy_image(path, FloppyDrive::FDD_NONE, _type, _format);
+
 	return _file;
 }

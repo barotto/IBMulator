@@ -12,6 +12,13 @@
 #include "floppyfmt_hfe.h"
 #include <cstring>
 
+std::vector<std::unique_ptr<FloppyFmt>> FloppyFmt::ms_formats = [] {
+	// this language is cursed
+	std::vector<std::unique_ptr<FloppyFmt>> fmts;
+	fmts.emplace_back(new FloppyFmt_IMG());
+	fmts.emplace_back(new FloppyFmt_HFE());
+	return fmts;
+}();
 
 FloppyFmt *FloppyFmt::find(std::string _image_path)
 {
@@ -20,17 +27,24 @@ FloppyFmt *FloppyFmt::find(std::string _image_path)
 	std::string base, ext;
 	FileSys::get_file_parts(_image_path.c_str(), base, ext);
 	ext = str_to_lower(ext);
-	std::unique_ptr<FloppyFmt> format;
-	if(ext == ".img" || ext == ".ima") {
-		format = std::make_unique<FloppyFmt_IMG>();
-	} else if(ext == ".hfe") {
-		format = std::make_unique<FloppyFmt_HFE>();
-	} else {
-		PDEBUGF(LOG_V2, LOG_FDC, "Fmt: unknown file type: '%s'\n", _image_path.c_str());
-		return nullptr;
+	for(auto &f : ms_formats) {
+		if(f->has_file_extension(ext)) {
+			return f->create();
+		}
 	}
+	PDEBUGF(LOG_V2, LOG_FDC, "Fmt: unknown file type: '%s'\n", _image_path.c_str());
+	return nullptr;
+}
 
-	return format.release();
+FloppyFmt *FloppyFmt::find_by_name(std::string _name)
+{
+	for(auto &f : ms_formats) {
+		if(f->name() == _name) {
+			return f->create();
+		}
+	}
+	PDEBUGF(LOG_V2, LOG_FDC, "Fmt: unknown format name: '%s'\n", _name.c_str());
+	return nullptr;
 }
 
 bool FloppyFmt::save(std::ofstream &, const FloppyDisk &)

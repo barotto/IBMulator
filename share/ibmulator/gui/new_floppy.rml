@@ -32,17 +32,25 @@
 			{
 				margin-top: 10dp;
 			}
-			#imageinfo input
+			#imageinfo tr
 			{
-				width: 120dp;
+				margin-bottom: 5dp;
 			}
-			#imageinfo select
+			#image_type select
 			{
 				width: 145dp
 			}
-			#imageinfo selectvalue
+			#image_type selectvalue
 			{
 				width: 120dp;
+			}
+			#image_format select
+			{
+				width: 275dp
+			}
+			#image_format selectvalue
+			{
+				width: 250dp;
 			}
 		</style>
 	</head>
@@ -59,9 +67,12 @@
 		<form id="imageinfo">
 			<table style="width: 345dp;">
 			<tr>
-			<th style="width: 50dp;">Type:</th>
-			<td><select class="romshell" id="floppy_type"></select></td>
-			<td><input id="formatted" type="checkbox" class="romshell" checked><span>Formatted</span></input></td>
+			<th style="width: 60dp;">Type:</th>
+			<td id="image_type"><select class="romshell" id="floppy_type"></select></td>
+			</tr>
+			<tr>
+			<th style="width: 60dp;">Format:</th>
+			<td id="image_format"><select class="romshell" id="floppy_format"></select></td>
 			</tr>
 			</table>
 		</form>

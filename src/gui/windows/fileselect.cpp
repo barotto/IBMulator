@@ -346,13 +346,13 @@ void FileSelect::on_new_floppy(Rml::Event &)
 		return;
 	}
 	m_new_floppy->set_callbacks(
-		[=](std::string _dir, std::string _file, FloppyDisk::StdType _type, bool _formatted)
+		[=](std::string _dir, std::string _file, FloppyDisk::StdType _type, std::string _format)
 		{
 			if(!m_newfloppy_callbk) {
 				return;
 			}
 			// in case of error should throw
-			_file = m_newfloppy_callbk(_dir, _file, _type, _formatted);
+			_file = m_newfloppy_callbk(_dir, _file, _type, _format);
 			if(_dir != m_cwd) {
 				set_history();
 				try {
@@ -713,7 +713,8 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 }
 
-void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std::vector<const char*> &_extensions)
+void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std::vector<const char*> &_extensions,
+		const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats)
 {
 	m_compat_types = _floppy_types;
 	std::vector<std::string> ext;
@@ -722,7 +723,7 @@ void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std
 	}
 	m_compat_regexp = "(" + str_implode(ext,"|") + ")$";
 
-	m_new_floppy->set_compat_types(m_compat_types);
+	m_new_floppy->set_compat_types(m_compat_types, _file_formats);
 }
 
 void FileSelect::reload()

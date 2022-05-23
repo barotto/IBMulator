@@ -193,7 +193,7 @@ protected:
 	static std::string get_filesel_info(std::string);
 
 	std::string create_new_floppy_image(std::string _dir, std::string _file, 
-			FloppyDisk::StdType _type, bool _formatted);
+			FloppyDisk::StdType _type, std::string _format);
 	
 	void reset_savestate_dialogs(std::string _dir);
 };
