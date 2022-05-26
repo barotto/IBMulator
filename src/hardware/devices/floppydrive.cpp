@@ -40,7 +40,8 @@ void FloppyDrive::install(FloppyCtrl *_ctrl, int _drive_index, Type _drive_type)
 
 	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_fx_enabled) {
-		m_fx.install(m_drive_name);
+		m_fx.install(m_drive_name,
+			(_drive_type & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25 ? FloppyFX::FDD_5_25 : FloppyFX::FDD_3_5);
 		m_fx.config_changed();
 	}
 
@@ -234,10 +235,10 @@ void FloppyDrive::restore_state(StateBuf &_state)
 void FloppyDrive::recalibrate()
 {
 	if(m_s.boot_time == 0) {
-		if(m_fx_enabled) {
-			m_fx.boot(m_image != nullptr);
+		m_s.boot_time = 1;
+		if(m_fx_enabled && m_fx.boot(m_image != nullptr)) {
+			m_s.boot_time = g_machine.get_virt_time_ns();
 		}
-		m_s.boot_time = g_machine.get_virt_time_ns();
 	}
 }
 

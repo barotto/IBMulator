@@ -64,7 +64,6 @@ void NormalInterface::create()
 	Interface::create();
 
 	m_main_interface = get_element("main_interface");
-	m_main_interface->SetClass("with_disk", m_floppy.present);
 	m_sysunit = get_element("system_unit");
 	m_sysbar = get_element("system_bar");
 	m_sysctrl = get_element("system_control");
@@ -319,6 +318,8 @@ void NormalInterface::config_changed(bool _startup)
 {
 	Interface::config_changed(_startup);
 
+	update_background();
+
 	m_hdd_led_c->SetClass("invisible", !m_hdd);
 }
 
@@ -418,6 +419,24 @@ void NormalInterface::on_exit(Rml::Event &)
 	g_program.stop();
 }
 
+void NormalInterface::update_background()
+{
+	if(m_floppy.ctrl) {
+		auto type = m_floppy.ctrl->drive_type(m_floppy.curr_drive);
+		if(type & FloppyDisk::SIZE_5_25) {
+			m_main_interface->SetClass("fdd_3_5", false);
+			m_main_interface->SetClass("fdd_5_25", true);
+		} else {
+			m_main_interface->SetClass("fdd_3_5", true);
+			m_main_interface->SetClass("fdd_5_25", false);
+		}
+	} else {
+		m_main_interface->SetClass("fdd_3_5", true);
+		m_main_interface->SetClass("fdd_5_25", false);
+	}
+	m_main_interface->SetClass("with_disk", m_floppy.present);
+}
+
 void NormalInterface::collapse_sysunit(bool _collapse)
 {
 	if(is_sysunit_collapsed() == _collapse) {
@@ -452,6 +471,8 @@ void NormalInterface::on_visibility(Rml::Event &)
 	}
 }
 
+
+
 void NormalInterface::on_fdd_select(Rml::Event &_e)
 {
 	m_fdd_disk_c->SetInnerRML("");
@@ -463,6 +484,8 @@ void NormalInterface::on_fdd_select(Rml::Event &_e)
 		m_fdd_select_c->SetClass("b", false);
 	}
 	Interface::on_fdd_select(_e);
+
+	update_background();
 }
 
 void NormalInterface::set_floppy_string(std::string _filename)

@@ -85,7 +85,7 @@ public:
 
 private:
 	void set_hdd_active(bool _active);
-	
+
 	void set_floppy_string(std::string _filename);
 	void set_floppy_config(bool _b_present);
 	void set_floppy_active(bool _active);
@@ -97,6 +97,8 @@ private:
 	void on_visibility(Rml::Event &);
 	void on_fdd_select(Rml::Event &);
 	void on_mouse_move(Rml::Event &);
+
+	void update_background();
 
 	void collapse_sysunit(bool _collapsed);
 	bool is_sysunit_collapsed();

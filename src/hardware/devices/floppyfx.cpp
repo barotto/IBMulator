@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -23,17 +23,30 @@
 #include "floppyfx.h"
 #include "gui/gui.h"
 
-std::vector<AudioBuffer> FloppyFX::ms_buffers;
-const SoundFX::samples_t FloppyFX::ms_samples = {
-	{"FDD spin",          "sounds" FS_SEP "floppy" FS_SEP "drive_spin.wav"},
-	{"FDD spin up",       "sounds" FS_SEP "floppy" FS_SEP "drive_spin_up.wav"},
-	{"HDD spin down",     "sounds" FS_SEP "floppy" FS_SEP "drive_spin_down.wav"},
-	{"FDD seek step",     "sounds" FS_SEP "floppy" FS_SEP "drive_seek_step.wav"},
-	{"FDD seek up",       "sounds" FS_SEP "floppy" FS_SEP "drive_seek_up.wav"},
-	{"FDD seek down",     "sounds" FS_SEP "floppy" FS_SEP "drive_seek_down.wav"},
-	{"FDD snatch",        "sounds" FS_SEP "floppy" FS_SEP "drive_snatch.wav"},
-	{"FDD boot",          "sounds" FS_SEP "floppy" FS_SEP "drive_boot.wav"},
-	{"FDD boot (w/disk)", "sounds" FS_SEP "floppy" FS_SEP "drive_boot_disk.wav"}
+
+std::vector<AudioBuffer> FloppyFX::ms_buffers[2];
+const SoundFX::samples_t FloppyFX::ms_samples[2] = {
+	{ // 5_25
+	{"5.25 drive spin",          FDD_SAMPLES_DIR "5_25_drive_spin.wav"},
+	{"5.25 drive spin start",    FDD_SAMPLES_DIR "5_25_drive_spin_start.wav"},
+	{"5.25 drive spin stop",     FDD_SAMPLES_DIR "5_25_drive_spin_stop.wav"},
+	{"5.25 drive seek step",     FDD_SAMPLES_DIR "5_25_drive_seek_step.wav"},
+	{"5.25 drive seek up",       FDD_SAMPLES_DIR "5_25_drive_seek_up.wav"},
+	{"5.25 drive seek down",     FDD_SAMPLES_DIR "5_25_drive_seek_down.wav"},
+	{"5.25 drive snatch",        nullptr},
+	{"5.25 drive boot",          nullptr},
+	{"5.25 drive boot (w/disk)", nullptr},
+	},{ // 3_5
+	{"3.5 drive spin",          FDD_SAMPLES_DIR "3_5_drive_spin.wav"},
+	{"3.5 drive spin start",    FDD_SAMPLES_DIR "3_5_drive_spin_start.wav"},
+	{"3.5 drive spin stop",     FDD_SAMPLES_DIR "3_5_drive_spin_stop.wav"},
+	{"3.5 drive seek step",     FDD_SAMPLES_DIR "3_5_drive_seek_step.wav"},
+	{"3.5 drive seek up",       FDD_SAMPLES_DIR "3_5_drive_seek_up.wav"},
+	{"3.5 drive seek down",     FDD_SAMPLES_DIR "3_5_drive_seek_down.wav"},
+	{"3.5 drive snatch",        FDD_SAMPLES_DIR "3_5_drive_snatch.wav"},
+	{"3.5 drive boot",          FDD_SAMPLES_DIR "3_5_drive_boot.wav"},
+	{"3.5 drive boot (w/disk)", FDD_SAMPLES_DIR "3_5_drive_boot_disk.wav"}
+	}
 };
 
 FloppyFX::FloppyFX()
@@ -47,23 +60,23 @@ FloppyFX::~FloppyFX()
 {
 }
 
-void FloppyFX::install(const std::string &_drive)
+void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 {
-	std::string spin = "Drive " + _drive + " spin";
-	std::string seek = "Drive " + _drive + " seek";
+	m_fdd_type = _fdd_type;
+
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
 	using namespace std::placeholders;
 	DriveFX::install(
 		std::bind(&FloppyFX::create_spin_samples, this, _1, _2, _3),
-		spin.c_str(),
+		str_format("Drive %s spin (%u)", _drive.c_str(), _fdd_type).c_str(),
 		std::bind(&FloppyFX::create_seek_samples, this, _1, _2, _3),
-		seek.c_str(),
+		str_format("Drive %s seek (%u)", _drive.c_str(), _fdd_type).c_str(),
 		spec
 	);
 
-	if(ms_buffers.empty()) {
-		ms_buffers = SoundFX::load_samples(spec, ms_samples);
+	if(ms_buffers[m_fdd_type].empty()) {
+		ms_buffers[m_fdd_type] = SoundFX::load_samples(spec, ms_samples[m_fdd_type]);
 	}
 }
 
@@ -99,21 +112,30 @@ void FloppyFX::spin(bool _spinning, bool _change_state)
 	DriveFX::spin(_spinning, _change_state);
 }
 
-void FloppyFX::boot(bool _wdisk)
+bool FloppyFX::boot(bool _wdisk)
 {
 	if(m_channels.seek->volume() <= FLT_MIN) {
-		return;
+		return false;
 	}
 	SeekEvent event;
 	event.time = g_machine.get_virt_time_us();
 	event.distance = 0.0;
 	if(_wdisk) {
-		event.userdata = FDD_BOOT_DISK;
+		if(ms_samples[m_fdd_type][FDD_BOOT_DISK].file) {
+			event.userdata = FDD_BOOT_DISK;
+		} else {
+			return false;
+		}
 	} else {
-		event.userdata = FDD_BOOT;
+		if(ms_samples[m_fdd_type][FDD_BOOT].file) {
+			event.userdata = FDD_BOOT;
+		} else {
+			return false;
+		}
 	}
 	m_seek_events.push(event);
 	m_channels.seek->enable(true);
+	return true;
 }
 
 //this method is called by the Mixer thread
@@ -127,8 +149,8 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 		[this](SeekEvent &_evt, uint64_t _time_span) {
 			const AudioBuffer *wave;
 			if(_evt.userdata) {
-				m_channels.seek->play(ms_buffers[_evt.userdata], _time_span);
-				m_booting = _evt.time + round(ms_buffers[_evt.userdata].duration_us());
+				m_channels.seek->play(ms_buffers[m_fdd_type][_evt.userdata], _time_span);
+				m_booting = _evt.time + round(ms_buffers[m_fdd_type][_evt.userdata].duration_us());
 				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu\n",
 						m_channels.seek->name(), m_booting);
 				return;
@@ -142,14 +164,14 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 				absdist = 1.0;
 			}
 			if(_evt.distance > 0.0) {
-				wave = &ms_buffers[FDD_SEEK_UP];
+				wave = &ms_buffers[m_fdd_type][FDD_SEEK_UP];
 			} else {
-				wave = &ms_buffers[FDD_SEEK_DOWN];
+				wave = &ms_buffers[m_fdd_type][FDD_SEEK_DOWN];
 			}
 			unsigned frames = wave->frames() * absdist;
 			uint64_t duration = round(wave->spec().frames_to_us(frames));
 			m_channels.seek->play_frames(*wave, frames, _time_span);
-			m_channels.seek->play(ms_buffers[FDD_SEEK_STEP], 1.0-absdist, _time_span+duration);
+			m_channels.seek->play(ms_buffers[m_fdd_type][FDD_SEEK_STEP], 1.0-absdist, _time_span+duration);
 		});
 }
 
@@ -159,14 +181,14 @@ bool FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
 	AudioBuffer *spinup;
-	if(spin && change_state && m_snatch) {
-		spinup = &ms_buffers[FDD_SNATCH];
+	if(m_fdd_type == FDD_3_5 && spin && change_state && m_snatch) {
+		spinup = &ms_buffers[m_fdd_type][FDD_SNATCH];
 		m_snatch = false;
 	} else {
-		spinup = &ms_buffers[FDD_SPIN_UP];
+		spinup = &ms_buffers[m_fdd_type][FDD_SPIN_UP];
 	}
 	m_spin_change = false;
 
 	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
-			*spinup, ms_buffers[FDD_SPIN], ms_buffers[FDD_SPIN_DOWN]);
+			*spinup, ms_buffers[m_fdd_type][FDD_SPIN], ms_buffers[m_fdd_type][FDD_SPIN_DOWN]);
 }

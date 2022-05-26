@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -29,6 +29,11 @@
 
 class FloppyFX : public DriveFX
 {
+public:
+	enum FDDType {
+		FDD_5_25,
+		FDD_3_5
+	};
 private:
 	std::atomic<bool> m_snatch;
 	enum SampleType {
@@ -42,21 +47,22 @@ private:
 		FDD_BOOT,
 		FDD_BOOT_DISK
 	};
-	static std::vector<AudioBuffer> ms_buffers;
-	const static SoundFX::samples_t ms_samples;
+	static std::vector<AudioBuffer> ms_buffers[2];
+	const static SoundFX::samples_t ms_samples[2];
 	uint64_t m_booting;
 	uint64_t m_spin_time;
+	FloppyFX::FDDType m_fdd_type;
 
 public:
 	FloppyFX();
 	~FloppyFX();
 
-	void install(const std::string &_drive);
+	void install(const std::string &_drive, FloppyFX::FDDType _fdd_type);
 	void reset();
 	void config_changed();
 	void spin(bool _spinning, bool _change_state);
 	void snatch(bool _value=true) { m_snatch = _value; }
-	void boot(bool _wdisk);
+	bool boot(bool _wdisk);
 
 	bool create_seek_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
 	bool create_spin_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);

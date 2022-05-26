@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -23,6 +23,8 @@
 #include "shared_deque.h"
 #include "audio/soundfx.h"
 
+#define HDD_SAMPLES_DIR "sounds" FS_SEP "hdd" FS_SEP
+#define FDD_SAMPLES_DIR "sounds" FS_SEP "floppy" FS_SEP
 
 class DriveFX : public SoundFX
 {

@@ -108,9 +108,11 @@ share/ibmulator/gui/images/romshell_datagridcell.png \
 share/ibmulator/gui/images/romshell_datagrid.png \
 share/ibmulator/gui/images/romshell_datagrid_rl.png \
 share/ibmulator/gui/images/romshell_scroller.png \
-share/ibmulator/gui/images/sysunit_disk_g.png \
-share/ibmulator/gui/images/sysunit_disk_r.png \
-share/ibmulator/gui/images/sysunit_no_disk.png \
+share/ibmulator/gui/images/sysunit_3_5_disk_g.png \
+share/ibmulator/gui/images/sysunit_3_5_disk_r.png \
+share/ibmulator/gui/images/sysunit_3_5_no_disk.png \
+share/ibmulator/gui/images/sysunit_5_25_disk_r.png \
+share/ibmulator/gui/images/sysunit_5_25_no_disk.png \
 share/ibmulator/gui/images/realistic_interface.png \
 share/ibmulator/gui/images/realistic_floppy_r.png \
 share/ibmulator/gui/images/realistic_reflection.png \
@@ -149,17 +151,25 @@ share/ibmulator/gui/fonts/UFL.txt
 
 soundsfloppydir = $(pkgdatadir)/sounds/floppy
 dist_soundsfloppy_DATA = \
-share/ibmulator/sounds/floppy/disk_insert.wav \
-share/ibmulator/sounds/floppy/disk_eject.wav \
-share/ibmulator/sounds/floppy/drive_spin.wav \
-share/ibmulator/sounds/floppy/drive_spin_up.wav \
-share/ibmulator/sounds/floppy/drive_spin_down.wav \
-share/ibmulator/sounds/floppy/drive_seek_step.wav \
-share/ibmulator/sounds/floppy/drive_seek_up.wav \
-share/ibmulator/sounds/floppy/drive_seek_down.wav \
-share/ibmulator/sounds/floppy/drive_snatch.wav \
-share/ibmulator/sounds/floppy/drive_boot.wav \
-share/ibmulator/sounds/floppy/drive_boot_disk.wav
+share/ibmulator/sounds/floppy/5_25_disk_insert.wav \
+share/ibmulator/sounds/floppy/5_25_disk_eject.wav \
+share/ibmulator/sounds/floppy/5_25_drive_spin.wav \
+share/ibmulator/sounds/floppy/5_25_drive_spin_start.wav \
+share/ibmulator/sounds/floppy/5_25_drive_spin_stop.wav \
+share/ibmulator/sounds/floppy/5_25_drive_seek_step.wav \
+share/ibmulator/sounds/floppy/5_25_drive_seek_up.wav \
+share/ibmulator/sounds/floppy/5_25_drive_seek_down.wav \
+share/ibmulator/sounds/floppy/3_5_disk_insert.wav \
+share/ibmulator/sounds/floppy/3_5_disk_eject.wav \
+share/ibmulator/sounds/floppy/3_5_drive_spin.wav \
+share/ibmulator/sounds/floppy/3_5_drive_spin_start.wav \
+share/ibmulator/sounds/floppy/3_5_drive_spin_stop.wav \
+share/ibmulator/sounds/floppy/3_5_drive_seek_step.wav \
+share/ibmulator/sounds/floppy/3_5_drive_seek_up.wav \
+share/ibmulator/sounds/floppy/3_5_drive_seek_down.wav \
+share/ibmulator/sounds/floppy/3_5_drive_snatch.wav \
+share/ibmulator/sounds/floppy/3_5_drive_boot.wav \
+share/ibmulator/sounds/floppy/3_5_drive_boot_disk.wav
 
 soundshdddir = $(pkgdatadir)/sounds/hdd
 dist_soundshdd_DATA = \

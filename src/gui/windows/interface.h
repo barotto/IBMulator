@@ -44,16 +44,20 @@ public:
 		FLOPPY_INSERT,
 		FLOPPY_EJECT
 	};
+	enum FDDType {
+		FDD_5_25,
+		FDD_3_5
+	};
 
 private:
-	std::vector<AudioBuffer> m_buffers;
-	const static SoundFX::samples_t ms_samples;
+	std::vector<AudioBuffer> m_buffers[2];
+	const static SoundFX::samples_t ms_samples[2];
 	std::atomic<int> m_event;
 
 public:
 	InterfaceFX() : GUIFX() {}
 	void init(Mixer *);
-	void use_floppy(SampleType _how);
+	void use_floppy(FDDType _fdd_type, SampleType _how);
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
 };
 
@@ -122,6 +126,7 @@ protected:
 	struct {
 		FloppyCtrl *ctrl = nullptr;
 		unsigned curr_drive = 0;
+		InterfaceFX::FDDType curr_drive_type = InterfaceFX::FDD_5_25;
 		bool present = false;
 		bool changed = false;
 		FloppyLoader::State loader[FloppyCtrl::MAX_DRIVES+1] = {FloppyLoader::State::IDLE};

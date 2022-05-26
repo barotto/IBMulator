@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -25,11 +25,11 @@
 #include <future>
 
 const SoundFX::samples_t HardDriveFX::ms_samples = {
-	{"HDD spin up",   "sounds" FS_SEP "hdd" FS_SEP "drive_spin_up.wav"},
-	{"HDD spin down", "sounds" FS_SEP "hdd" FS_SEP "drive_spin_down.wav"},
-	{"HDD spin",      "sounds" FS_SEP "hdd" FS_SEP "drive_spin.wav"},
-	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek.wav"},
-	{"HDD seek",      "sounds" FS_SEP "hdd" FS_SEP "drive_seek_long.wav"}
+	{"HDD spin up",   HDD_SAMPLES_DIR "drive_spin_up.wav"},
+	{"HDD spin down", HDD_SAMPLES_DIR "drive_spin_down.wav"},
+	{"HDD spin",      HDD_SAMPLES_DIR "drive_spin.wav"},
+	{"HDD seek",      HDD_SAMPLES_DIR "drive_seek.wav"},
+	{"HDD seek",      HDD_SAMPLES_DIR "drive_seek_long.wav"}
 };
 
 

@@ -45,14 +45,24 @@
 	background-color: #000000e0;
 }
 
-#system_background
+.fdd_3_5 #system_background
 {
-	decorator: image(images/sysunit_no_disk.png);
+	decorator: image(images/sysunit_3_5_no_disk.png);
 }
 
-.with_disk #system_background
+.fdd_3_5.with_disk #system_background
 {
-	decorator: image(images/sysunit_disk_r.png);
+	decorator: image(images/sysunit_3_5_disk_r.png);
+}
+
+.fdd_5_25 #system_background
+{
+	decorator: image(images/sysunit_5_25_no_disk.png);
+}
+
+.fdd_5_25.with_disk #system_background
+{
+	decorator: image(images/sysunit_5_25_disk_r.png);
 }
 
 #system_control
@@ -277,6 +287,15 @@ btn.active:hover
 	background-color: #000000FF;
 }
 
+.fdd_5_25 #fdd_led
+{
+	width: 4%;
+	height: 12%;
+	left: 46.5%;
+	top: 7%;
+	background-color: #000000FF;
+}
+
 #fdd_led.active
 {
 	background-color: #FFEE00FF;
@@ -292,6 +311,11 @@ btn.active:hover
 	left: 6.5%;
 	image-color: #505050;
 	transition: image-color 0.2s 0 exponential-out;
+}
+
+.fdd_5_25 #fdd_select
+{
+	top: 38%;
 }
 
 #fdd_select.a
@@ -319,6 +343,22 @@ btn.active:hover
 	background-color: #00000000;
 }
 
+.fdd_5_25 #fdd_eject
+{
+	width: 0;
+	height: 0;
+	background-color: #FF000000;
+}
+
+.fdd_5_25.with_disk #fdd_eject
+{
+	width: 3.6%;
+	height: 50.0%;
+	top: 6%;
+	left: 17.0%;
+	background-color: #FF000000;
+}
+
 #fdd_mount
 {
 	position: absolute;
@@ -326,6 +366,15 @@ btn.active:hover
 	width: 38.0%;
 	height: 57.0%;
 	top: 4.5%;
+	left: 6.5%;
+	background-color: #3F7CB600;
+}
+
+.fdd_5_25 #fdd_mount
+{
+	width: 51.0%;
+	height: 57.0%;
+	top: 3.5%;
 	left: 6.5%;
 	background-color: #3F7CB600;
 }
@@ -338,6 +387,16 @@ btn.active:hover
 	top: 18%;
 	left: 6.5%;
 	background-color: #3F7CB600;
+	font-effect: shadow(-1dp 1dp black);
+	word-break: break-word;
+}
+
+.fdd_5_25 #fdd_disk
+{
+	width: 48.0%;
+	top: 22%;
+	left: 8.0%;
+	background-color: #7C3FB600;
 	font-effect: shadow(-1dp 1dp black);
 	word-break: break-word;
 }

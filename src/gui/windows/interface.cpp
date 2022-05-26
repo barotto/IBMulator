@@ -36,9 +36,15 @@
 #include "hardware/devices/storagectrl.h"
 using namespace std::placeholders;
 
-const SoundFX::samples_t InterfaceFX::ms_samples = {
-	{"Floppy insert", "sounds" FS_SEP "floppy" FS_SEP "disk_insert.wav"},
-	{"Floppy eject",  "sounds" FS_SEP "floppy" FS_SEP "disk_eject.wav"}
+
+const SoundFX::samples_t InterfaceFX::ms_samples[2] = {
+	{
+	{"5.25 disk insert", FDD_SAMPLES_DIR "5_25_disk_insert.wav"},
+	{"5.25 disk eject",  FDD_SAMPLES_DIR "5_25_disk_eject.wav"}
+	},{
+	{"3.5 disk insert", FDD_SAMPLES_DIR "3_5_disk_insert.wav"},
+	{"3.5 disk eject",  FDD_SAMPLES_DIR "3_5_disk_eject.wav"}
+	}
 };
 
 void InterfaceFX::init(Mixer *_mixer)
@@ -47,27 +53,29 @@ void InterfaceFX::init(Mixer *_mixer)
 	GUIFX::init(_mixer,
 		std::bind(&InterfaceFX::create_sound_samples, this, _1, _2, _3),
 		"GUI interface", spec);
-	m_buffers = SoundFX::load_samples(spec, ms_samples);
+	m_buffers[FDD_5_25] = SoundFX::load_samples(spec, ms_samples[FDD_5_25]);
+	m_buffers[FDD_3_5] = SoundFX::load_samples(spec, ms_samples[FDD_3_5]);
 }
 
-void InterfaceFX::use_floppy(SampleType _how)
+void InterfaceFX::use_floppy(FDDType _fdd_type, SampleType _how)
 {
 	if(m_channel->volume()<=FLT_MIN) {
 		return;
 	}
-	m_event = _how;
+	m_event = _fdd_type << 8 | _how;
 	m_channel->enable(true);
 }
 
 bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 {
 	// Mixer thread
-	if(m_event == FLOPPY_INSERT) {
+	unsigned evt = m_event & 0xff;
+	unsigned sub = (m_event >> 8) & 0xff;
+	if(evt != 0xff) {
+		assert(sub < 2);
+		assert(evt < m_buffers[sub].size());
 		m_channel->flush();
-		m_channel->play(m_buffers[FLOPPY_INSERT], 0);
-	} else if(m_event == FLOPPY_EJECT) {
-		m_channel->flush();
-		m_channel->play(m_buffers[FLOPPY_EJECT], 0);
+		m_channel->play(m_buffers[sub][evt], 0);
 	}
 	// possible event miss, but i don't care, they are very slow anyway
 	m_event = -1;
@@ -305,6 +313,7 @@ void Interface::config_changed(bool _startup)
 	m_floppy.present = false;
 	m_floppy.changed = false;
 	m_floppy.curr_drive = 0;
+	m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
 
 	set_floppy_string("");
 	set_floppy_active(false);
@@ -339,6 +348,11 @@ void Interface::config_changed(bool _startup)
 			}
 		}
 		set_floppy_config(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE);
+		if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
+			m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
+		} else {
+			m_floppy.curr_drive_type = InterfaceFX::FDD_3_5;
+		}
 	}
 
 	if(!_startup) {
@@ -424,7 +438,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		// Machine thread here
 		// "insert" audio sample plays only when floppy is confirmed inserted
 		if(result && m_audio_enabled) {
-			m_audio.use_floppy(InterfaceFX::FLOPPY_INSERT);
+			m_audio.use_floppy(m_floppy.curr_drive_type, InterfaceFX::FLOPPY_INSERT);
 		}
 	});
 
@@ -544,6 +558,11 @@ void Interface::on_fdd_select(Rml::Event &)
 		m_buttons.fdd_select->SetClass("a", true);
 		m_buttons.fdd_select->SetClass("b", false);
 	}
+	if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
+		m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
+	} else {
+		m_floppy.curr_drive_type = InterfaceFX::FDD_3_5;
+	}
 	m_floppy.event = true;
 	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
 	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions(),
@@ -559,7 +578,7 @@ void Interface::on_fdd_eject(Rml::Event &)
 	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
 	// "eject" audio sample plays now
 	if(m_audio_enabled) {
-		m_audio.use_floppy(InterfaceFX::FLOPPY_EJECT);
+		m_audio.use_floppy(m_floppy.curr_drive_type, InterfaceFX::FLOPPY_EJECT);
 	}
 }
 
