@@ -153,7 +153,13 @@ void FloppyDrive::reset(unsigned type)
 	if(type != DEVICE_SOFT_RESET) {
 		// HARD reset and power on
 		//  in SOFT reset motor state is unaffected
-		m_s.dskchg = (m_image) ? DOOR_CLOSED : DOOR_OPEN;
+		// During a cold boot, the BIOS tells a 5.25 DD drive from a 5.25 HD one
+		// reading the value of the disk changed line
+		if(m_drive_type == FDD_525DD) {
+			m_s.dskchg = DOOR_CLOSED;
+		} else {
+			m_s.dskchg = DOOR_OPEN;
+		}
 		m_s.step_time = 0;
 		// motor off
 		mon_w(MOT_OFF);
@@ -289,6 +295,8 @@ bool FloppyDrive::insert_floppy(FloppyDisk *_disk)
 		PERRF(LOG_FDC, "The floppy disk size is not compatible with this drive!\n");
 		return false;
 	}
+
+	// TODO: check density!
 
 	PINFOF(LOG_V0, LOG_FDC, "Floppy %s: '%s'%s s=%d,tps=%d\n",
 			m_drive_name.c_str(),
