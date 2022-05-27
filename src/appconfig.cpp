@@ -476,9 +476,12 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ DRIVES_SECTION,
 ";      floppy_a: The type of floppy drive A.\n"
-";                Possible values: auto, none, 3.5, 5.25\n"
+";                Possible values: auto, none, 3.5, 5.25, 5.25 DD\n"
+";                 3.5: install a 3.5\" HD 1.44M drive\n"
+";                 5.25: install a 5.25\" HD 1.2M drive\n"
+";                 5.25 DD: install a 5.25\" DD 360K drive\n"
 ";      floppy_b: The type of floppy drive B.\n"
-";                Possible values: auto, none, 3.5, 5.25\n"
+";                Possible values: auto, none, 3.5, 5.25, 5.25 DD\n"
 "; floppy_commit: commit floppy images to storage?\n"
 ";                Possible values: commit, discard, discard_states\n"
 ";                 commit: always commit data when floppies are ejected\n"

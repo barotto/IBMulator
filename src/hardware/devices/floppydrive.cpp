@@ -292,11 +292,14 @@ bool FloppyDrive::insert_floppy(FloppyDisk *_disk)
 	}
 
 	if(!((m_drive_type & FloppyDisk::SIZE_MASK) & (_disk->props().type & FloppyDisk::SIZE_MASK))) {
-		PERRF(LOG_FDC, "The floppy disk size is not compatible with this drive!\n");
+		PERRF(LOG_FDC, "The floppy disk size is not compatible with drive %s\n", m_drive_name.c_str());
 		return false;
 	}
 
-	// TODO: check density!
+	if(!((m_drive_type & FloppyDisk::DENS_MASK) & (_disk->props().type & FloppyDisk::DENS_MASK))) {
+		PERRF(LOG_FDC, "The floppy disk density is not compatible with drive %s\n", m_drive_name.c_str());
+		return false;
+	}
 
 	PINFOF(LOG_V0, LOG_FDC, "Floppy %s: '%s'%s s=%d,tps=%d\n",
 			m_drive_name.c_str(),
@@ -372,8 +375,10 @@ void FloppyDrive::play_seek_sound(uint8_t _to_cyl)
 		return;
 	}
 	if(is_motor_on()) {
-		// head sound effect is sampled from a 80 tracks disk
-		m_fx.seek(m_s.cyl, _to_cyl, 80);
+		// head seek sound effect has been sampled from a 80 tracks disk
+		// so subtract either 2 or 4 tracks from the maximum
+		int max_cyl = m_tracks - (2 << m_dstep_drive);
+		m_fx.seek(m_s.cyl, _to_cyl, max_cyl);
 	} else {
 		PDEBUGF(LOG_V1, LOG_AUDIO, "FDD %s seek: motor is off\n", name());
 	}
@@ -507,16 +512,15 @@ void FloppyDrive::step_to(uint8_t cyl, uint64_t _time_to_reach)
 	}
 	if(cyl != m_s.cyl) {
 		cache_clear();
+		if(cyl >= m_tracks) {
+			cyl = m_tracks - 1;
+		}
 		auto now = g_machine.get_virt_time_ns();
 		m_s.step_time = now + _time_to_reach;
 		if(m_s.boot_time + 500_ms < now) {
 			play_seek_sound(cyl);
 		}
-		if(cyl >= m_tracks) {
-			m_s.cyl = m_tracks - 1;
-		} else {
-			m_s.cyl = cyl;
-		}
+		m_s.cyl = cyl;
 		// Update disk detection
 		if(m_image) {
 			m_s.dskchg = DOOR_CLOSED;

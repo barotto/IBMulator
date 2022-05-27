@@ -32,15 +32,20 @@ IODEVICE_PORTS(FloppyCtrl) = {
 };
 
 static std::map<std::string, unsigned> drive_str_type = {
-	{ "none", FloppyDrive::FDD_NONE  },
-	{ "3.5",  FloppyDrive::FDD_350HD },
-	{ "5.25", FloppyDrive::FDD_525HD }
+	{ "none",    FloppyDrive::FDD_NONE  },
+	{ "3.5",     FloppyDrive::FDD_350HD },
+	{ "5.25",    FloppyDrive::FDD_525HD },
+	{ "5.25DD",  FloppyDrive::FDD_525DD },
+	{ "5.25HD",  FloppyDrive::FDD_525HD },
+	{ "5.25 DD", FloppyDrive::FDD_525DD },
+	{ "5.25 HD", FloppyDrive::FDD_525HD }
 };
 
 static std::map<unsigned, std::string> drive_type_str = {
-	{ FloppyDrive::FDD_NONE,  "none" },
-	{ FloppyDrive::FDD_350HD, "3.5"  },
-	{ FloppyDrive::FDD_525HD, "5.25" }
+	{ FloppyDrive::FDD_NONE,  "none"    },
+	{ FloppyDrive::FDD_350HD, "3.5"     },
+	{ FloppyDrive::FDD_525DD, "5.25 DD" },
+	{ FloppyDrive::FDD_525HD, "5.25 HD" }
 };
 
 std::vector<const char*> FloppyCtrl::get_compatible_file_extensions()
