@@ -30,7 +30,7 @@ if test "$HAVE_LIBARCHIVE" = "1" ; then
 			# this linker definition depends on a libarchive version with almost everything disabled
 			LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -llzo2"
 		else
-			LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lzstd -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt"
+			LIBARCHIVE_LIBS="$LIBARCHIVE_LIBS -lzstd -lbz2 -llz4 -llzma -llzo2 -lnettle -lexpat -lbcrypt -lb2 -lcrypto"
 		fi
 		LIBARCHIVE_CFLAGS="-DLIBARCHIVE_STATIC"
 	fi
