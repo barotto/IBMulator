@@ -127,6 +127,7 @@ private:
 	Rml::Element *m_new_btn = nullptr;
 	std::unique_ptr<NewFloppy> m_new_floppy;
 	const DirEntry *m_lazy_select = nullptr;
+	bool m_lazy_reload = false;
 	
 public:
 

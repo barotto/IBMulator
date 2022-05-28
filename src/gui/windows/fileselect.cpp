@@ -217,7 +217,12 @@ void FileSelect::show()
 	disable(m_path_el.prev);
 
 	Window::show();
-	
+
+	if(m_lazy_reload) {
+		reload();
+		m_lazy_reload = false;
+	}
+
 	if(m_selected_entry) {
 		m_entries_el->Focus();
 	}
@@ -728,6 +733,13 @@ void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std
 
 void FileSelect::reload()
 {
+	if(!is_current_dir_valid()) {
+		return;
+	}
+	if(!is_visible()) {
+		m_lazy_reload = true;
+		return;
+	}
 	try {
 		set_current_dir(m_cwd);
 	} catch(...) { }
