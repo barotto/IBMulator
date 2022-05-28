@@ -627,9 +627,13 @@ void Interface::on_fdd_mount(Rml::Event &)
 	std::string floppy_dir;
 
 	if(m_floppy.curr_drive == 0) {
-		floppy_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
+		if(g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED)) {
+			floppy_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
+		}
 	} else {
-		floppy_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
+		if(g_program.config().get_bool(DISK_B_SECTION, DISK_INSERTED)) {
+			floppy_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
+		}
 	}
 
 	if(!floppy_dir.empty()) {
@@ -643,7 +647,11 @@ void Interface::on_fdd_mount(Rml::Event &)
 	if(floppy_dir.empty()) {
 		// the file select dialog contains a valid media/home directory
 		// the file select dialog always exists, even when native dialogs are set
-		floppy_dir = m_fs->get_home();
+		if(m_fs->is_current_dir_valid()) {
+			floppy_dir = m_fs->get_current_dir();
+		} else {
+			floppy_dir = m_fs->get_home();
+		}
 	}
 	
 	if(g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_TYPE, "custom") == "native") {
