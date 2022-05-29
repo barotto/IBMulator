@@ -20,7 +20,7 @@ const std::map<unsigned,FloppyCtrl_Flux::CmdDef> FloppyCtrl_Flux::ms_cmd_list = 
 	{ FDC_CMD_READ_DEL    , {FDC_CMD_READ_DEL    , 9, "read deleted data",  &FloppyCtrl_Flux::cmd_not_implemented} },
 	{ FDC_CMD_WRITE       , {FDC_CMD_WRITE       , 9, "write data",         &FloppyCtrl_Flux::cmd_write_data} },
 	{ FDC_CMD_WRITE_DEL   , {FDC_CMD_WRITE_DEL   , 9, "write deleted data", &FloppyCtrl_Flux::cmd_not_implemented} },
-	{ FDC_CMD_READ_TRACK  , {FDC_CMD_READ_TRACK  , 9, "read track",         &FloppyCtrl_Flux::cmd_not_implemented} },
+	{ FDC_CMD_READ_TRACK  , {FDC_CMD_READ_TRACK  , 9, "read track",         &FloppyCtrl_Flux::cmd_read_track} },
 	{ FDC_CMD_VERIFY      , {FDC_CMD_VERIFY      , 9, "verify",             &FloppyCtrl_Flux::cmd_not_implemented} },
 	{ FDC_CMD_VERSION     , {FDC_CMD_VERSION     , 1, "version",            &FloppyCtrl_Flux::cmd_version} },
 	{ FDC_CMD_FORMAT_TRACK, {FDC_CMD_FORMAT_TRACK, 6, "format track",       &FloppyCtrl_Flux::cmd_format_track} },
@@ -613,7 +613,13 @@ unsigned FloppyCtrl_Flux::st_hds_drv(unsigned _drive)
 
 bool FloppyCtrl_Flux::start_read_write_cmd()
 {
-	const char *cmd = (m_s.cmd_code()==FDC_CMD_READ) ? "read" : "write";
+	const char *cmd;
+	switch(m_s.cmd_code()) {
+		case FDC_CMD_READ: cmd = "read data"; break;
+		case FDC_CMD_WRITE: cmd = "write data"; break;
+		case FDC_CMD_READ_TRACK: cmd = "read track"; break;
+		default: assert(false); return false;
+	}
 
 	if((m_s.DOR & FDC_DOR_NDMAGATE) == 0) {
 		PWARNF(LOG_V0, LOG_FDC, "%s with INT disabled is untested!\n", cmd);
@@ -633,7 +639,7 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 	uint8_t gpl         = m_s.command[7];
 	uint8_t data_length = m_s.command[8];
 
-	PDEBUGF(LOG_V1, LOG_FDC, "%s data, DRV%u, %s C=%u,H=%u,S=%u,N=%u,EOT=%u,GPL=%u,DTL=%u, rate=%uk, PCN=%u\n",
+	PDEBUGF(LOG_V1, LOG_FDC, "%s, DRV%u, %s C=%u,H=%u,S=%u,N=%u,EOT=%u,GPL=%u,DTL=%u, rate=%uk, PCN=%u\n",
 			cmd, drive, m_s.cmd_mtrk()?"MT,":"",
 			cylinder, head, sector, sector_size, eot, gpl, data_length,
 			drate_in_k[m_s.data_rate],
@@ -720,6 +726,24 @@ void FloppyCtrl_Flux::cmd_write_data()
 	}
 
 	m_s.flopi[drive].main_state = WRITE_DATA;
+	m_s.flopi[drive].sub_state = SEEK_DONE;
+
+	m_s.flopi[drive].st0 = st_hds_drv(drive);
+	m_s.st1 = FDC_ST1_MA;
+	m_s.st2 = 0;
+}
+
+void FloppyCtrl_Flux::cmd_read_track()
+{
+	if(!start_read_write_cmd()) {
+		return;
+	}
+
+	uint8_t drive = m_s.cmd_drive();
+
+	PWARNF(LOG_V0, LOG_FDC, "read track: command untested!\n");
+
+	m_s.flopi[drive].main_state = READ_TRACK;
 	m_s.flopi[drive].sub_state = SEEK_DONE;
 
 	m_s.flopi[drive].st0 = st_hds_drv(drive);
@@ -1228,8 +1252,7 @@ void FloppyCtrl_Flux::general_continue(unsigned _drive)
 		break;
 
 	case READ_TRACK:
-		//TODO
-		//read_track_continue(_drive);
+		read_track_continue(_drive);
 		break;
 
 	case FORMAT_TRACK:
@@ -1500,6 +1523,99 @@ void FloppyCtrl_Flux::write_data_continue(uint8_t _drive)
 	}
 }
 
+void FloppyCtrl_Flux::read_track_continue(uint8_t _drive)
+{
+	for(;;) {
+		switch(m_s.flopi[_drive].sub_state) {
+		case SEEK_DONE:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SEEK_DONE\n", _drive);
+			if(m_s.flopi[_drive].pcn != m_s.flopi[_drive].seek_c) {
+				m_s.flopi[_drive].st0 |= FDC_ST0_SE;
+				m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
+			}
+			m_s.flopi[_drive].pulse_counter = 0;
+			m_s.flopi[_drive].sub_state = WAIT_INDEX;
+			break;
+
+		case WAIT_INDEX:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: WAIT_INDEX\n", _drive);
+			return;
+
+		case WAIT_INDEX_DONE:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: WAIT_INDEX_DONE\n", _drive);
+			m_s.flopi[_drive].sub_state = SCAN_ID;
+			live_start(_drive, SEARCH_ADDRESS_MARK_HEADER);
+			return;
+
+		case SCAN_ID:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SCAN_ID\n", _drive);
+			if(m_s.cur_live.crc) {
+				m_s.st1 |= FDC_ST1_DE;
+			}
+			m_s.st1 &= ~FDC_ST1_MA;
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: reading sector C:%02u H:%02u S:%02u N:%02u\n",
+						_drive,
+						m_s.cur_live.idbuf[0],
+						m_s.cur_live.idbuf[1],
+						m_s.cur_live.idbuf[2],
+						m_s.cur_live.idbuf[3]);
+			if(!sector_matches(_drive)) {
+				m_s.st1 |= FDC_ST1_ND;
+			} else {
+				m_s.st1 &= ~FDC_ST1_ND;
+			}
+
+			// TODO test?
+			// should the sector size be calculated from the N command parameter or
+			// the value from the ID buffer? read data uses the ID...
+			m_s.sector_size = calc_sector_size(m_s.command[5]);
+			fifo_expect(m_s.sector_size, false);
+			m_s.flopi[_drive].sub_state = SECTOR_READ;
+			live_start(_drive, SEARCH_ADDRESS_MARK_DATA);
+			return;
+
+		case SCAN_ID_FAILED:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SCAN_ID_FAILED\n", _drive);
+			m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL;
+			m_s.flopi[_drive].sub_state = COMMAND_DONE;
+			break;
+
+		case SECTOR_READ: {
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SECTOR_READ\n", _drive);
+			if(m_s.st2 & FDC_ST2_MD) {
+				m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL;
+				m_s.flopi[_drive].sub_state = COMMAND_DONE;
+				break;
+			}
+			if(m_s.cur_live.crc) {
+				m_s.st1 |= FDC_ST1_DE;
+				m_s.st2 |= FDC_ST2_DD;
+			}
+			bool done = increment_sector_regs(_drive);
+			if(!done) {
+				m_s.flopi[_drive].sub_state = WAIT_INDEX_DONE;
+			} else {
+				m_s.flopi[_drive].sub_state = COMMAND_DONE;
+			}
+			break;
+		}
+
+		case COMMAND_DONE:
+			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: COMMAND_DONE (C:%u,H:%u,S:%u,PCN:%u)\n",
+					_drive, m_s.C, m_s.H, m_s.R, m_s.flopi[_drive].pcn);
+			m_s.flopi[_drive].hut = g_machine.get_virt_time_ns() + (get_HUT_us()*1_us);
+			enter_result_phase(_drive);
+			return;
+
+		default:
+			PDEBUGF(LOG_V0, LOG_FDC, "DRV%u: read_track_continue(): unknown sub-state %d\n",
+					_drive,
+					m_s.flopi[_drive].sub_state);
+			return;
+		}
+	}
+}
+
 void FloppyCtrl_Flux::format_track_continue(uint8_t _drive)
 {
 	for(;;) {
@@ -1726,6 +1842,7 @@ void FloppyCtrl_Flux::enter_result_phase(unsigned _drive)
 			break;
 		case FDC_CMD_READ:
 		case FDC_CMD_WRITE:
+		case FDC_CMD_READ_TRACK:
 			m_s.result_size = 7;
 			m_s.result[0] = m_s.flopi[_drive].st0;
 			m_s.result[1] = m_s.st1;

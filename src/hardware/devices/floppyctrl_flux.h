@@ -224,6 +224,7 @@ protected:
 	void cmd_seek();
 	void cmd_dumpreg();
 	void cmd_read_id();
+	void cmd_read_track();
 	void cmd_perp_mode();
 	void cmd_lock();
 	void cmd_not_implemented();
@@ -237,6 +238,7 @@ protected:
 	void general_continue(unsigned _drive);
 	void read_data_continue(uint8_t _drive);
 	void write_data_continue(uint8_t _drive);
+	void read_track_continue(uint8_t _drive);
 	void format_track_continue(uint8_t _drive);
 	void read_id_continue(uint8_t _drive);
 
