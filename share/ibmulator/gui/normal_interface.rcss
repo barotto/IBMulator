@@ -120,10 +120,20 @@
 	image-color: #a0a0a0a0;
 }
 
+.fdd_5_25 #fdd_mount_c
+{
+	decorator: image(icons/floppy-5.25-c.png none contain left center);
+}
+
 #fdd_mount_c.active
 {
 	decorator: image(icons/disk_active.png none contain left center);
 	image-color: #ffee00e0;
+}
+
+.fdd_5_25 #fdd_mount_c.active
+{
+	decorator: image(icons/floppy-5.25-c-active.png none contain left center);
 }
 
 #fdd_disk_outer
