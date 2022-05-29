@@ -65,6 +65,8 @@ share/ibmulator/gui/icons/eject.png \
 share/ibmulator/gui/icons/exit.png \
 share/ibmulator/gui/icons/file_select.png \
 share/ibmulator/gui/icons/grid.png \
+share/ibmulator/gui/icons/floppy-5.25-c.png \
+share/ibmulator/gui/icons/floppy-5.25-c-active.png \
 share/ibmulator/gui/icons/hdd-c.png \
 share/ibmulator/gui/icons/hdd-c-active.png \
 share/ibmulator/gui/icons/home.png \
