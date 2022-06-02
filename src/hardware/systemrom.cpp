@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,14 +24,11 @@
 #include "memory.h"
 #include "cpu.h"
 #include "filesys.h"
+#include "zip.h"
 #include "utils.h"
 #include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
-#if HAVE_LIBARCHIVE
-#include <archive.h>
-#include <archive_entry.h>
-#endif
 #include <algorithm>
 #include <SDL.h>
 
@@ -296,32 +293,28 @@ void SystemROM::load_dir(const std::string &_dirname)
 void SystemROM::load_archive(const std::string &_filename)
 {
 	//TODO add support for splitted 128K EPROMs
-#if HAVE_LIBARCHIVE
-	struct archive *ar;
-	struct archive_entry *entry;
-	int res;
 
-	ar = archive_read_new();
-	archive_read_support_filter_all(ar);
-	archive_read_support_format_all(ar);
-	res = archive_read_open_filename(ar, FileSys::to_native(_filename).c_str(), 10240);
-	if(res != ARCHIVE_OK) {
+	ZipFile zip;
+	try {
+		zip.open(_filename.c_str());
+	} catch(std::exception &) {
 		PERRF(LOG_MACHINE, "Error opening ROM set '%s'\n", _filename.c_str());
-		throw std::exception();
+		throw;
 	}
+
 	bool f80000found = false;
 	bool singlerom = false;
 	bool fc0000found = false;
 	int64_t size;
 	uint8_t *dest;
-	while(archive_read_next_header(ar, &entry) == ARCHIVE_OK) {
-		std::string name = archive_entry_pathname(entry);
+	while(zip.read_next_entry()) {
+		std::string name = zip.get_entry_name();
 		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 		if(!fc0000found && name.compare("fc0000.bin")==0) {
 			fc0000found = true;
-			size = archive_entry_size(entry);
+			size = zip.get_entry_size();
 			if(size != 256*1024) {
-				PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
+				PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size\n", zip.get_entry_name().c_str());
 				throw std::exception();
 			}
 			if(f80000found && singlerom) {
@@ -330,17 +323,17 @@ void SystemROM::load_archive(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_data + (0xFC0000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
-			size = archive_read_data(ar, dest, size);
+			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", zip.get_entry_name().c_str());
+			size = zip.read_entry_data(dest, size);
 			if(size <= 0) {
-				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
+				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", zip.get_entry_name().c_str());
 				throw std::exception();
 			}
 		} else if(!f80000found && name.compare("f80000.bin")==0) {
 			f80000found = true;
-			size = archive_entry_size(entry);
+			size = zip.get_entry_size();
 			if(size != 512*1024 && size != 256*1024) {
-				PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size\n", archive_entry_pathname(entry));
+				PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size\n", zip.get_entry_name().c_str());
 				throw std::exception();
 			}
 			if(size == 512*1024) {
@@ -353,21 +346,16 @@ void SystemROM::load_archive(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_data + (0xF80000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", archive_entry_pathname(entry));
-			size = archive_read_data(ar, dest, size);
+			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", zip.get_entry_name().c_str());
+			size = zip.read_entry_data(dest, size);
 			if(size <= 0) {
-				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", archive_entry_pathname(entry));
+				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", zip.get_entry_name().c_str());
 				throw std::exception();
 			}
 		}
 	}
-	archive_read_free(ar);
 	if(!fc0000found) {
 		PERRF(LOG_MACHINE, "Required file FC0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
-#else
-	PERRF(LOG_MACHINE, "To use a zip archive you need to enable libarchive support.\n");
-	throw std::exception();
-#endif
 }

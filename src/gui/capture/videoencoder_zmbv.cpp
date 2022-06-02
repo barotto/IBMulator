@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020-2021  Marco Bortolin
+ *  Copyright (C) 2020-2022  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,11 +24,7 @@
 
 #define ZMBV_VERSION_HIGH 0
 #define ZMBV_VERSION_LOW  1
-#ifdef HAVE_ZLIB
 #define ZMBV_COMPRESSION  1 // 1=zlib, 0=none
-#else
-#define ZMBV_COMPRESSION  0
-#endif
 #define ZMBV_MAX_VECTOR   16
 
 enum ZMBV_PixelFormat {
@@ -69,9 +65,9 @@ VideoEncoder_ZMBV::VideoEncoder_ZMBV(int _quality)
 m_quality(_quality)
 {
 	create_vector_table();
-#ifdef HAVE_ZLIB
-	memset(&m_zstream, 0, sizeof(m_zstream));
-#endif
+	if(ZMBV_COMPRESSION) {
+		memset(&m_zstream, 0, sizeof(m_zstream));
+	}
 }
 
 VideoEncoder_ZMBV::~VideoEncoder_ZMBV()
@@ -125,11 +121,11 @@ void VideoEncoder_ZMBV::setup_compress(BitmapInfoHeader &_format)
 	m_pixel_fmt = bpp_to_format(m_format.bitCount);
 	m_pitch = m_format.width + 2 * ZMBV_MAX_VECTOR;
 	
-#ifdef HAVE_ZLIB
-	if(deflateInit(&m_zstream, m_quality) != Z_OK) {
-		throw std::runtime_error("cannot initialize zlib");
+	if(ZMBV_COMPRESSION) {
+		if(deflateInit(&m_zstream, m_quality) != Z_OK) {
+			throw std::runtime_error("cannot initialize zlib");
+		}
 	}
-#endif
 	
 	setup_buffers(16, 16);
 	
@@ -216,10 +212,10 @@ unsigned VideoEncoder_ZMBV::prepare_frame(unsigned _flags, uint8_t *_pal, uint8_
 			}
 		}
 		
-#ifdef HAVE_ZLIB
-		// Restart deflate
-		deflateReset(&m_zstream);
-#endif
+		if(ZMBV_COMPRESSION) {
+			// Restart deflate
+			deflateReset(&m_zstream);
+		}
 		
 		ret |= ENC_FLAGS_KEYFRAME;
 		
@@ -291,24 +287,21 @@ uint32_t VideoEncoder_ZMBV::finish_frame()
 		}
 	}
 	
-#ifdef HAVE_ZLIB
-	// Create the actual frame with compression
-	m_zstream.next_in = (Bytef *)(&m_work[0]);
-	m_zstream.avail_in = m_workUsed;
-	m_zstream.total_in = 0;
-
-	m_zstream.next_out = (Bytef *)(m_compress.writeBuf + m_compress.writeDone);
-	m_zstream.avail_out = m_compress.writeSize - m_compress.writeDone;
-	m_zstream.total_out = 0;
-	
-	deflate(&m_zstream, Z_SYNC_FLUSH);
-	
-	return m_compress.writeDone + m_zstream.total_out;
-#else
-	assert(m_workUsed < m_compress.writeSize - m_compress.writeDone);
-	memcpy(m_compress.writeBuf + m_compress.writeDone, &m_work[0], m_workUsed);
-	return m_compress.writeDone + m_workUsed;
-#endif
+	if(ZMBV_COMPRESSION) {
+		// Create the actual frame with compression
+		m_zstream.next_in = (Bytef *)(&m_work[0]);
+		m_zstream.avail_in = m_workUsed;
+		m_zstream.total_in = 0;
+		m_zstream.next_out = (Bytef *)(m_compress.writeBuf + m_compress.writeDone);
+		m_zstream.avail_out = m_compress.writeSize - m_compress.writeDone;
+		m_zstream.total_out = 0;
+		deflate(&m_zstream, Z_SYNC_FLUSH);
+		return m_compress.writeDone + m_zstream.total_out;
+	} else {
+		assert(m_workUsed < m_compress.writeSize - m_compress.writeDone);
+		memcpy(m_compress.writeBuf + m_compress.writeDone, &m_work[0], m_workUsed);
+		return m_compress.writeDone + m_workUsed;
+	}
 }
 
 void VideoEncoder_ZMBV::setup_buffers(int _block_width, int _block_height)

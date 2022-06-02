@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,11 +22,15 @@
 #include "utils.h"
 #include <SDL.h>
 
-#ifdef HAVE_ZLIB
+#if HAVE_ZLIB
 #include <zlib.h>
+#else
+#include "miniz/miniz.h"
+#endif
+
 unsigned char *stbiw_zlib_compress(unsigned char *data, int data_len, int *out_len, int quality);
 #define STBIW_ZLIB_COMPRESS stbiw_zlib_compress
-#endif
+
 #ifdef _WIN32
 #define STBIW_WINDOWS_UTF8
 #endif
@@ -75,50 +79,17 @@ SDL_Surface *stbi_load(char const *filename)
 	return stbi_load_from_file(f.get());
 }
 
-#ifdef HAVE_ZLIB
 unsigned char *stbiw_zlib_compress(unsigned char *data, int data_len, int *out_len, int quality)
 {
-	// not MT compatible
-	static z_stream zstream;
-	static bool init = false;
-	if(!init) {
-		zstream.zalloc = Z_NULL;
-		zstream.zfree = Z_NULL;
-		zstream.opaque = Z_NULL;
-		if(deflateInit(&zstream, quality) != Z_OK) {
-			return nullptr;
-		}
-		init = true;
-	} else {
-		if(deflateReset(&zstream) != Z_OK) {
-			return nullptr;
-		}
-		if(deflateParams(&zstream, quality, Z_DEFAULT_STRATEGY) != Z_OK) {
-			return nullptr;
-		}
-	}
-
-	zstream.next_in = (Bytef *)(data);
-	zstream.avail_in = data_len;
-	zstream.total_in = 0;
-
-	unsigned long buf_size = deflateBound(&zstream, data_len);
+	uLongf buf_size = compressBound(data_len);
 	Bytef *buf = (Bytef *)(malloc(buf_size));
 	if(!buf) {
 		return nullptr;
 	}
 
-	zstream.next_out = buf;
-	zstream.avail_out = buf_size;
-	zstream.total_out = 0;
-
-	if(deflate(&zstream, Z_FINISH) != Z_STREAM_END) {
-		free(buf);
-		return nullptr;
-	}
-	*out_len = zstream.total_out;
+	compress2(buf, &buf_size, (const Bytef *)data, data_len, quality);
+	*out_len = (int)buf_size;
 
 	// caller will free() the buffer
 	return buf;
 }
-#endif

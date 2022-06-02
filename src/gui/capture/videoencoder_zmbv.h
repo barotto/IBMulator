@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020-2021  Marco Bortolin
+ *  Copyright (C) 2020-2022  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,10 @@
 #include "videoencoder.h"
 #include "riff.h"
 #include <vector>
-#ifdef HAVE_ZLIB
+#if HAVE_ZLIB
 #include <zlib.h>
+#else
+#include "miniz/miniz.h"
 #endif
 
 
@@ -82,9 +84,7 @@ private:
 	int m_pixelsize;
 	int m_framecnt;
 
-	#if HAVE_ZLIB
 	z_stream m_zstream;
-	#endif
 	
 	int m_quality;
 

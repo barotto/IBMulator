@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -544,7 +544,7 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 
 	if(!FileSys::file_exists(_imgpath.c_str())) {
 		PINFOF(LOG_V0, LOG_HDD, "Creating new image file '%s'\n", _imgpath.c_str());
-		if(HAVE_LIBARCHIVE && m_type < HDD_DRIVES_TABLE_SIZE) {
+		if(m_type < HDD_DRIVES_TABLE_SIZE) {
 			std::string imgsrc = g_program.config().get_file_path(HDD_IMAGES_ARCHIVE, FILE_TYPE_ASSET);
 			if(!FileSys::file_exists(imgsrc.c_str())) {
 				PERRF(LOG_HDD, "Cannot find the image file archive " HDD_IMAGES_ARCHIVE "\n");

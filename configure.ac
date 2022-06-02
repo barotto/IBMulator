@@ -100,9 +100,9 @@ AM_PATH_SDL2($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
 AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_RMLUI
-AX_CHECK_LIBARCHIVE
+#AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
-AX_CHECK_ZLIB
+#AX_CHECK_ZLIB
 
 if test x$have_windows = xno ; then
 	# ALSA
@@ -199,20 +199,10 @@ fi
 echo "- OpenGL       : Yes ($OPENGL_LIBS $GLEW_LIBS)"
 echo "- SDL          : $sdl_major_version.$sdl_minor_version.$sdl_micro_version ($SDL_LIBS)"
 echo "- RmlUi        : Yes ($RMLUI_LIBS)"
-if test "x$LIBARCHIVE_LIBS" = "x"; then
-	echo "- libarchive   : NO (zipped ROM sets loading disabled)"
-else
-	echo "- libarchive   : Yes ($LIBARCHIVE_LIBS)"
-fi
 if test "x$LIBSAMPLERATE_LIBS" = "x"; then
 	echo "- libsamplerate: NO (samples playback disabled)"
 else
 	echo "- libsamplerate: Yes ($LIBSAMPLERATE_LIBS)"
-fi
-if test "x$ZLIB_LIBS" = "x"; then
-	echo "- zlib         : NO (ZMBV video compression disabled)"
-else
-	echo "- zlib         : Yes ($ZLIB_LIBS)"
 fi
 if test x$have_windows = xno ; then
 	if test "x$ALSA_LIBS" != "x"; then

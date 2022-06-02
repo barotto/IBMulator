@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "filesys.h"
 #include "utils.h"
+#include "zip.h"
 #ifdef _WIN32
 #include "wincompat.h"
 #endif
@@ -31,10 +32,6 @@
 #include <climits>
 #include <libgen.h>
 #include <algorithm>
-#if HAVE_LIBARCHIVE
-#include <archive.h>
-#include <archive_entry.h>
-#endif
 #include <string.h>
 
 void FileSys::create_dir(const char *_path)
@@ -355,44 +352,19 @@ std::string FileSys::get_next_dirname(const std::string &_basedir,
 
 bool FileSys::extract_file(const char *_archive, const char *_filename, const char *_extract_to)
 {
-#if HAVE_LIBARCHIVE
-	struct archive *ar;
-	struct archive_entry *entry;
-	int res;
+	ZipFile zip(_archive);
 
-	ar = archive_read_new();
-	archive_read_support_filter_all(ar);
-	archive_read_support_format_all(ar);
-	res = archive_read_open_filename(ar, to_native(_archive).c_str(), 10240);
-	if(res != ARCHIVE_OK) {
-		PERRF(LOG_FS, "Error opening archive '%s'\n", _archive);
-		archive_read_free(ar);
-		throw std::runtime_error("Error opening archive");
-	}
-
-	bool found = false;
 	std::string fname = _filename;
 	std::transform(fname.begin(), fname.end(), fname.begin(), ::tolower);
-	while(archive_read_next_header(ar, &entry) == ARCHIVE_OK) {
-		std::string name = archive_entry_pathname(entry);
+	while(zip.read_next_entry()) {
+		std::string name = zip.get_entry_name();
 		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 		if(name.compare(fname)==0) {
-			found = true;
-			archive_entry_set_pathname(entry, to_native(_extract_to).c_str());
-			if(archive_read_extract(ar, entry, 0) != 0) {
-				PERRF(LOG_FS, "Error extracting '%s' from archive: %s\n",
-						_filename,
-						archive_error_string(ar));
-				archive_read_free(ar);
-				throw std::runtime_error("Error extracting file from archive");
-			}
+			zip.extract_entry_data(_extract_to);
+			return true;
 		}
 	}
-	archive_read_free(ar);
-	return found;
-#else
-	return throw std::exception();
-#endif
+	return false;
 }
 
 void FileSys::copy_file(const char *_from, const char *_to)

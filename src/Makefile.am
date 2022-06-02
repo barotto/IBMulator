@@ -26,6 +26,8 @@ ibmulator_SOURCES = \
 	statebuf.cpp \
 	syslog.cpp \
 	utils.cpp \
+	zip.cpp \
+	miniz/miniz.c \
 	tinyfiledialogs/tinyfiledialogs.c \
 	wincompat/mkstemp.cpp \
 	wincompat/realpath.cpp \
@@ -61,6 +63,8 @@ noinst_HEADERS = \
 	statebuf.h \
 	syslog.h \
 	utils.h \
+	zip.h \
+	miniz/miniz.h \
 	tinyfiledialogs/tinyfiledialogs.h \
 	wincompat.h \
 	wincompat/utf8.h \
