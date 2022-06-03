@@ -382,6 +382,21 @@ void FileSys::rename_file(const char *_from, const char *_to)
 
 bool FileSys::is_same_file(const char *_path1, const char *_path2)
 {
+#ifdef _WIN32
+
+	// not going to work always but for the sake of this program this will do.
+	// for the current usage failure is inconsequential.
+	char buf1[PATH_MAX], buf2[PATH_MAX];
+	if(!realpath(_path1, buf1)) {
+		return false;
+	}
+	if(!realpath(_path2, buf2)) {
+		return false;
+	}
+	return memcmp(buf1, buf2, strlen(buf1)) == 0;
+
+#else
+
 	struct stat path1_s, path2_s;
 	if(FileSys::stat(_path1, &path1_s) != 0) {
 		return false;
@@ -390,6 +405,8 @@ bool FileSys::is_same_file(const char *_path1, const char *_path2)
 		return false;
 	}
 	return (path1_s.st_dev == path2_s.st_dev && path1_s.st_ino == path2_s.st_ino);
+
+#endif
 }
 
 FILE * FileSys::fopen(const char *_filename, const char *_flags)
