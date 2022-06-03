@@ -51,7 +51,7 @@ bool FloppyDisk::load(std::string _path, std::shared_ptr<FloppyFmt> _format)
 	m_loaded_image = "";
 	m_format = nullptr;
 
-	std::ifstream fstream = FileSys::make_ifstream(_path.c_str());
+	std::ifstream fstream = FileSys::make_ifstream(_path.c_str(), std::ios::binary);
 	if(!fstream.is_open()){
 		PERRF(LOG_GUI, "Cannot open file '%s' for reading\n", _path.c_str());
 		return false;
@@ -120,7 +120,7 @@ bool FloppyDisk::save(std::string _path, std::shared_ptr<FloppyFmt> _format)
 
 void FloppyDisk::load_state(std::string _imgpath, std::string _binpath)
 {
-	std::ifstream fstream = FileSys::make_ifstream(_binpath.c_str());
+	std::ifstream fstream = FileSys::make_ifstream(_binpath.c_str(), std::ios::binary);
 
 	if(!fstream.is_open()){
 		PERRF(LOG_FDC, "Cannot open file '%s' for reading\n", _binpath.c_str());

@@ -17,7 +17,7 @@ FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 	UNUSED(_file_size);
 	UNUSED(_disk_size);
 
-	std::ifstream fstream = FileSys::make_ifstream(_file_path.c_str());
+	std::ifstream fstream = FileSys::make_ifstream(_file_path.c_str(), std::ios::binary);
 	if(!fstream.is_open()){
 		PWARNF(LOG_V1, LOG_FDC, "HFE: cannot open: '%s'\n", _file_path.c_str());
 		return {0};
