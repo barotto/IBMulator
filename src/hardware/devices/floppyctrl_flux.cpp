@@ -17,9 +17,9 @@
 
 const std::map<unsigned,FloppyCtrl_Flux::CmdDef> FloppyCtrl_Flux::ms_cmd_list = {
 	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data",          &FloppyCtrl_Flux::cmd_read_data} },
-	{ FDC_CMD_READ_DEL    , {FDC_CMD_READ_DEL    , 9, "read deleted data",  &FloppyCtrl_Flux::cmd_not_implemented} },
+	{ FDC_CMD_READ_DEL    , {FDC_CMD_READ_DEL    , 9, "read deleted data",  &FloppyCtrl_Flux::cmd_read_data} },
 	{ FDC_CMD_WRITE       , {FDC_CMD_WRITE       , 9, "write data",         &FloppyCtrl_Flux::cmd_write_data} },
-	{ FDC_CMD_WRITE_DEL   , {FDC_CMD_WRITE_DEL   , 9, "write deleted data", &FloppyCtrl_Flux::cmd_not_implemented} },
+	{ FDC_CMD_WRITE_DEL   , {FDC_CMD_WRITE_DEL   , 9, "write deleted data", &FloppyCtrl_Flux::cmd_write_data} },
 	{ FDC_CMD_READ_TRACK  , {FDC_CMD_READ_TRACK  , 9, "read track",         &FloppyCtrl_Flux::cmd_read_track} },
 	{ FDC_CMD_VERIFY      , {FDC_CMD_VERIFY      , 9, "verify",             &FloppyCtrl_Flux::cmd_not_implemented} },
 	{ FDC_CMD_VERSION     , {FDC_CMD_VERSION     , 1, "version",            &FloppyCtrl_Flux::cmd_version} },
@@ -616,7 +616,9 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 	const char *cmd;
 	switch(m_s.cmd_code()) {
 		case FDC_CMD_READ: cmd = "read data"; break;
+		case FDC_CMD_READ_DEL: cmd = "read deleted data"; break;
 		case FDC_CMD_WRITE: cmd = "write data"; break;
+		case FDC_CMD_WRITE_DEL: cmd = "write deleted data"; break;
 		case FDC_CMD_READ_TRACK: cmd = "read track"; break;
 		default: assert(false); return false;
 	}
@@ -644,6 +646,11 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 			cylinder, head, sector, sector_size, eot, gpl, data_length,
 			drate_in_k[m_s.data_rate],
 			m_s.flopi[drive].pcn);
+
+	if(m_s.command[0] & 0x08) {
+		// read/write deleted data
+		PWARNF(LOG_V0, LOG_FDC, "%s: command untested!\n", cmd);
+	}
 
 	if(!is_motor_on(drive)) {
 		PDEBUGF(LOG_V1, LOG_FDC, "%s: motor not on\n", cmd);
