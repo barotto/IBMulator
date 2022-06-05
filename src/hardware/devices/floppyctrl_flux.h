@@ -216,6 +216,7 @@ protected:
 	void cmd_write_data();
 	void cmd_version();
 	void cmd_format_track();
+	void cmd_scan();
 	void cmd_recalibrate();
 	void cmd_sense_int();
 	void cmd_specify();

@@ -24,9 +24,9 @@ const std::map<unsigned,FloppyCtrl_Flux::CmdDef> FloppyCtrl_Flux::ms_cmd_list = 
 	{ FDC_CMD_VERIFY      , {FDC_CMD_VERIFY      , 9, "verify",             &FloppyCtrl_Flux::cmd_not_implemented} },
 	{ FDC_CMD_VERSION     , {FDC_CMD_VERSION     , 1, "version",            &FloppyCtrl_Flux::cmd_version} },
 	{ FDC_CMD_FORMAT_TRACK, {FDC_CMD_FORMAT_TRACK, 6, "format track",       &FloppyCtrl_Flux::cmd_format_track} },
-	{ FDC_CMD_SCAN_EQ     , {FDC_CMD_SCAN_EQ     , 9, "scan equal",         &FloppyCtrl_Flux::cmd_not_implemented} },
-	{ FDC_CMD_SCAN_LO_EQ  , {FDC_CMD_SCAN_LO_EQ  , 9, "scan low or equal",  &FloppyCtrl_Flux::cmd_not_implemented} },
-	{ FDC_CMD_SCAN_HI_EQ  , {FDC_CMD_SCAN_HI_EQ  , 9, "scan high or equal", &FloppyCtrl_Flux::cmd_not_implemented} },
+	{ FDC_CMD_SCAN_EQ     , {FDC_CMD_SCAN_EQ     , 9, "scan equal",         &FloppyCtrl_Flux::cmd_scan} },
+	{ FDC_CMD_SCAN_LO_EQ  , {FDC_CMD_SCAN_LO_EQ  , 9, "scan low or equal",  &FloppyCtrl_Flux::cmd_scan} },
+	{ FDC_CMD_SCAN_HI_EQ  , {FDC_CMD_SCAN_HI_EQ  , 9, "scan high or equal", &FloppyCtrl_Flux::cmd_scan} },
 	{ FDC_CMD_RECALIBRATE , {FDC_CMD_RECALIBRATE , 2, "recalibrate",        &FloppyCtrl_Flux::cmd_recalibrate} },
 	{ FDC_CMD_SENSE_INT   , {FDC_CMD_SENSE_INT   , 1, "sense interrupt",    &FloppyCtrl_Flux::cmd_sense_int} },
 	{ FDC_CMD_SPECIFY     , {FDC_CMD_SPECIFY     , 3, "specify",            &FloppyCtrl_Flux::cmd_specify} },
@@ -613,15 +613,7 @@ unsigned FloppyCtrl_Flux::st_hds_drv(unsigned _drive)
 
 bool FloppyCtrl_Flux::start_read_write_cmd()
 {
-	const char *cmd;
-	switch(m_s.cmd_code()) {
-		case FDC_CMD_READ: cmd = "read data"; break;
-		case FDC_CMD_READ_DEL: cmd = "read deleted data"; break;
-		case FDC_CMD_WRITE: cmd = "write data"; break;
-		case FDC_CMD_WRITE_DEL: cmd = "write deleted data"; break;
-		case FDC_CMD_READ_TRACK: cmd = "read track"; break;
-		default: assert(false); return false;
-	}
+	const char *cmd = FloppyCtrl_Flux::ms_cmd_list.at(m_s.pending_command & FDC_CMD_MASK).name;
 
 	if((m_s.DOR & FDC_DOR_NDMAGATE) == 0) {
 		PWARNF(LOG_V0, LOG_FDC, "%s with INT disabled is untested!\n", cmd);
@@ -646,11 +638,6 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 			cylinder, head, sector, sector_size, eot, gpl, data_length,
 			drate_in_k[m_s.data_rate],
 			m_s.flopi[drive].pcn);
-
-	if(m_s.command[0] & 0x08) {
-		// read/write deleted data
-		PWARNF(LOG_V0, LOG_FDC, "%s: command untested!\n", cmd);
-	}
 
 	if(!is_motor_on(drive)) {
 		PDEBUGF(LOG_V1, LOG_FDC, "%s: motor not on\n", cmd);
@@ -748,8 +735,6 @@ void FloppyCtrl_Flux::cmd_read_track()
 
 	uint8_t drive = m_s.cmd_drive();
 
-	PWARNF(LOG_V0, LOG_FDC, "read track: command untested!\n");
-
 	m_s.flopi[drive].main_state = READ_TRACK;
 	m_s.flopi[drive].sub_state = SEEK_DONE;
 
@@ -810,6 +795,24 @@ void FloppyCtrl_Flux::cmd_format_track()
 	g_machine.activate_timer(m_fdd_timers[drive],
 			next_evt_us*1_us,
 			false);
+}
+
+void FloppyCtrl_Flux::cmd_scan()
+{
+	if(!start_read_write_cmd()) {
+		return;
+	}
+
+	uint8_t drive = m_s.cmd_drive();
+
+	m_s.flopi[drive].main_state = SCAN_DATA;
+	m_s.flopi[drive].sub_state = SEEK_DONE;
+
+	m_s.flopi[drive].st0 = st_hds_drv(drive);
+	m_s.st1 = FDC_ST1_MA;
+	m_s.st2 = 0;
+
+	m_s.scan_done = false;
 }
 
 void FloppyCtrl_Flux::cmd_recalibrate()
