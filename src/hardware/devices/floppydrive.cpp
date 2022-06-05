@@ -787,7 +787,9 @@ void FloppyDrive::write_flux(uint64_t start, uint64_t end, unsigned transition_c
 		buf.push_back(FloppyDisk::MG_E | 199'999'999);
 	}
 
-	wspan_remove_damaged(wspans, buf);
+	if(m_image->track_has_damaged_cells(cyl, head)) {
+		wspan_remove_damaged(wspans, buf);
+	}
 	wspan_write(wspans, buf);
 
 	cache_clear();
@@ -914,12 +916,17 @@ void FloppyDrive::wspan_write(const std::vector<wspan> &wspans, std::vector<uint
 			ei --;
 		}
 
-		// Clear the covered zone
-		track.erase(track.begin() + si, track.begin() + ei);
+		// Adapt the covered zone
+		int zone_size = ei - si;
+		if(ws.flux_change_positions.size() > zone_size) {
+			track.insert(track.begin() + si, ws.flux_change_positions.size() - zone_size, 0);
+		} else if(ws.flux_change_positions.size() < zone_size) {
+			track.erase(track.begin() + si, track.begin() + si + zone_size - ws.flux_change_positions.size());
+		}
 
-		// Insert the flux changes
+		// Update the flux changes
 		for(auto f : ws.flux_change_positions) {
-			track.insert(track.begin() + si, FloppyDisk::MG_F | f);
+			track[si] = FloppyDisk::MG_F | f;
 			si ++;
 		}
 	}

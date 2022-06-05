@@ -193,6 +193,11 @@ public:
 		return track_array[track][head].write_splice;
 	}
 
+	bool track_has_damaged_cells(uint8_t track, uint8_t head) const {
+		assert(track < track_array.size() && head < m_props.sides);
+		return track_array[track][head].has_damaged_cells;
+	}
+
 	//! @return the maximal geometry supported by this format.
 	void get_maximal_geometry(int &tracks, int &heads) const;
 
@@ -229,8 +234,9 @@ protected:
 		// slightly more complex data read/write functions 
 		std::vector<uint32_t> cell_data;
 		uint32_t write_splice;
+		bool has_damaged_cells;
 
-		track_info() { write_splice = 0; }
+		track_info() { write_splice = 0; has_damaged_cells = false; }
 		void save_state(std::ofstream &);
 		void load_state(std::ifstream &);
 	};

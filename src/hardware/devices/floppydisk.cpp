@@ -173,6 +173,7 @@ void FloppyDisk::track_info::save_state(std::ofstream &_file)
 	_file.write(reinterpret_cast<char const*>(&size), sizeof(size));
 	_file.write(reinterpret_cast<char const*>(cell_data.data()), cell_data.size() * 4);
 	_file.write(reinterpret_cast<char const*>(&write_splice), sizeof(write_splice));
+	_file.write(reinterpret_cast<char const*>(&has_damaged_cells), sizeof(has_damaged_cells));
 }
 
 void FloppyDisk::track_info::load_state(std::ifstream &_file)
@@ -182,6 +183,7 @@ void FloppyDisk::track_info::load_state(std::ifstream &_file)
 	cell_data.resize(size);
 	_file.read(reinterpret_cast<char*>(cell_data.data()), cell_data.size() * 4);
 	_file.read(reinterpret_cast<char*>(&write_splice), sizeof(write_splice));
+	_file.read(reinterpret_cast<char*>(&has_damaged_cells), sizeof(has_damaged_cells));
 }
 
 void FloppyDisk::get_maximal_geometry(int &_tracks, int &_heads) const
