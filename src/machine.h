@@ -129,17 +129,17 @@ private:
 
 	void set_DOS_program_name(const char *_name);
 
-	enum MediaCommit {
-		DISK_COMMIT, DISK_DISCARD, DISK_DISCARD_STATES
-	} m_floppy_commit = DISK_COMMIT;
 	// the floppy loader thread is in the machine object instead of gui, devices,
 	// controller, or drive objects to be in a middle point between all the
 	// entities that have to use its facilities
 	std::unique_ptr<FloppyLoader> m_floppy_loader;
 	std::thread m_floppy_loader_thread;
 
+	enum MediaCommit {
+		MEDIA_COMMIT, MEDIA_DISCARD, MEDIA_DISCARD_STATES, MEDIA_ASK
+	} m_media_commit = MEDIA_ASK;
+
 	void commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb);
-	bool commit_media(std::function<void()> _cb);
 
 public:
 	bool ms_restore_fail;

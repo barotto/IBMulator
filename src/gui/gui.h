@@ -252,8 +252,6 @@ protected:
 	class WindowManager : public Rml::EventListener {
 	public:
 		GUI *m_gui;
-		inline static std::mutex s_interface_mutex;
-
 		bool debug_wnds = false;
 		bool status_wnd = false;
 		int windows_count = 0; // debug
@@ -296,6 +294,9 @@ protected:
 		};
 	} m_windows;
 
+	typedef std::function<void()> GUI_fun_t;
+	shared_queue<GUI_fun_t> m_cmd_queue;
+	
 	std::unique_ptr<Capture> m_capture;
 	std::thread m_capture_thread;
 	
@@ -374,6 +375,7 @@ public:
 	inline bool vga_buffering_enabled() const { return m_vga_buffering; }
 	inline bool threads_sync_enabled() const { return m_threads_sync; }
 	
+	void restore_state(StateRecord::Info _info);
 	void sig_state_restored();
 	
 private:

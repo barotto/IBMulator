@@ -353,6 +353,21 @@ vec2i GUI::resize_window(int _w, int _h)
 	return vec2i(m_width, m_height);
 }
 
+void GUI::restore_state(StateRecord::Info _info)
+{
+	// Main thread here
+	m_machine->cmd_pause(false);
+	m_machine->cmd_commit_media([=](){
+		// Machine or FloppyLoader threads here
+		m_cmd_queue.push([=]() {
+			// Main thread here
+			g_program.restore_state(_info, [this]() {
+				show_message("State restored");
+			}, nullptr);
+		});
+	});
+}
+
 void GUI::sig_state_restored()
 {
 	m_windows.interface->sig_state_restored();
@@ -1997,6 +2012,11 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 
 void GUI::update(uint64_t _current_time)
 {
+	GUI_fun_t fn;
+	while(m_cmd_queue.try_and_pop(fn)) {
+		fn();
+	}
+
 	m_mouse.send(m_machine);
 
 	m_windows.update(_current_time);
@@ -2128,34 +2148,35 @@ void GUI::take_screenshot(bool _with_palette_file)
 
 void GUI::show_message(const char* _mex)
 {
-	// Can be called by any thread
-	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
-	m_windows.last_ifc_mex = _mex;
+	m_cmd_queue.push([=]() {
+		m_windows.last_ifc_mex = _mex;
+	});
 }
 
 void GUI::show_dbg_message(const char* _mex)
 {
-	// Can be called by any thread
-	std::lock_guard<std::mutex> lock(m_windows.s_interface_mutex);
-	m_windows.last_dbg_mex = _mex;
+	m_cmd_queue.push([=]() {
+		m_windows.last_dbg_mex = _mex;
+	});
 }
 
 void GUI::show_message_box(const std::string &_title, const std::string &_message,
 		MessageWnd::Type _type, 
 		std::function<void()> _on_action1, std::function<void()> _on_action2)
 {
-	// This function can be called by the GUI thread only!
-	if(m_windows.message_wnd) {
-		m_windows.message_wnd->close();
-	}
-	m_windows.message_wnd = std::make_unique<MessageWnd>(this);
-	m_windows.message_wnd->create();
-	m_windows.message_wnd->set_modal(true);
-	m_windows.message_wnd->set_title(_title);
-	m_windows.message_wnd->set_message(_message);
-	m_windows.message_wnd->set_type(_type);
-	m_windows.message_wnd->set_callbacks(_on_action1, _on_action2);
-	m_windows.message_wnd->show();
+	m_cmd_queue.push([=]() {
+		if(m_windows.message_wnd) {
+			m_windows.message_wnd->close();
+		}
+		m_windows.message_wnd = std::make_unique<MessageWnd>(this);
+		m_windows.message_wnd->create();
+		m_windows.message_wnd->set_modal(true);
+		m_windows.message_wnd->set_title(_title);
+		m_windows.message_wnd->set_message(_message);
+		m_windows.message_wnd->set_type(_type);
+		m_windows.message_wnd->set_callbacks(_on_action1, _on_action2);
+		m_windows.message_wnd->show();
+	});
 }
 
 bool GUI::are_windows_visible()
@@ -2750,7 +2771,6 @@ void GUI::WindowManager::show_dbg_message(const char* _mex)
 
 void GUI::WindowManager::update(uint64_t _current_time)
 {
-	s_interface_mutex.lock();
 	if(!last_ifc_mex.empty()) {
 		show_ifc_message(last_ifc_mex.c_str());
 		last_ifc_mex.clear();
@@ -2759,7 +2779,6 @@ void GUI::WindowManager::update(uint64_t _current_time)
 		show_dbg_message(last_dbg_mex.c_str());
 		last_dbg_mex.clear();
 	}
-	s_interface_mutex.unlock();
 
 	// updates can't call any function that needs a lock on ms_rml_mutex
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);

@@ -101,7 +101,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ DRIVES_SECTION, {
-		{ DRIVES_FLOPPY_COMMIT, "commit" }
+		{ DRIVES_FLOPPY_COMMIT, "ask" }
 	} },
 
 	{ DISK_C_SECTION, {
@@ -483,7 +483,8 @@ ini_filehelp_t AppConfig::ms_help = {
 ";      floppy_b: The type of floppy drive B.\n"
 ";                Possible values: auto, none, 3.5, 5.25, 5.25 DD\n"
 "; floppy_commit: commit floppy images to storage?\n"
-";                Possible values: commit, discard, discard_states\n"
+";                Possible values: ask, commit, discard, discard_states\n"
+";                 ask: a message box will be shown to ask what to do\n"
 ";                 commit: always commit data when floppies are ejected\n"
 ";                 discard: discard written data when floppies are ejected (beware: data loss)\n"
 ";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"

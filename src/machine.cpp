@@ -279,24 +279,20 @@ void Machine::power_off()
 void Machine::config_changed(bool _startup)
 {
 	if(_startup) {
-		m_floppy_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FLOPPY_COMMIT, {
-			{ "yes",    DISK_COMMIT },
-			{ "commit", DISK_COMMIT },
-			{ "no",      DISK_DISCARD },
-			{ "discard", DISK_DISCARD },
-			{ "discard_states", DISK_DISCARD_STATES },
-			{ "discard states", DISK_DISCARD_STATES }
-		}, DISK_COMMIT));
+		m_media_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FLOPPY_COMMIT, {
+			{ "ask",     MEDIA_ASK },
+			{ "yes",     MEDIA_COMMIT },
+			{ "commit",  MEDIA_COMMIT },
+			{ "no",      MEDIA_DISCARD },
+			{ "discard", MEDIA_DISCARD },
+			{ "discard_states", MEDIA_DISCARD_STATES },
+			{ "discard states", MEDIA_DISCARD_STATES }
+		}, MEDIA_COMMIT));
 
-		if(m_floppy_commit == DISK_DISCARD || m_floppy_commit == DISK_DISCARD_STATES) {
+		if(m_media_commit == MEDIA_DISCARD || m_media_commit == MEDIA_DISCARD_STATES) {
 			PWARN("WARNING: data written to floppy disks will be lost!\n");
 		}
 	} else {
-		// before changing config and restoring state data, commit any media image
-		// that needs to be preserved commit processes will be queued in the the
-		// loader/saver thread this thread can continue safely
-		// config_changed() happens before restore_state()
-		commit_media(nullptr);
 		m_config_id++;
 	}
 
@@ -868,6 +864,8 @@ void Machine::cmd_pause(bool _show_notice)
 			if(_show_notice) {
 				PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
 				GUI::instance()->show_message("Emulation paused");
+			} else {
+				PDEBUGF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
 			}
 		}
 	});
@@ -883,6 +881,8 @@ void Machine::cmd_resume(bool _show_notice)
 			if(_show_notice) {
 				PINFOF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
 				GUI::instance()->show_message("Emulation resumed");
+			} else {
+				PDEBUGF(LOG_V0, LOG_MACHINE, "Emulation resumed\n");
 			}
 		}
 	});
@@ -1064,14 +1064,25 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 			return;
 		}
 		if(floppy->is_dirty()) {
-			if(m_floppy_commit == DISK_DISCARD || 
-			   (m_config_id > 0 && m_floppy_commit == DISK_DISCARD_STATES))
+			if(m_media_commit == MEDIA_DISCARD || 
+			   (m_config_id > 0 && m_media_commit == MEDIA_DISCARD_STATES))
 			{
 				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data has been lost!\n");
 				if(_cb) { _cb(true); }
 				return;
 			}
-			commit_floppy(floppy, _cb);
+			if(m_media_commit == MEDIA_ASK) {
+				const char *section = _drive ? DISK_B_SECTION : DISK_A_SECTION;
+				std::string path = g_program.config().get_string(section, DISK_PATH);
+				GUI::instance()->show_message_box(
+						str_format("Save floppy %s image", _drive ? "B" : "A"),
+						str_format("Save %s ?", path.c_str()),
+						MessageWnd::Type::MSGW_YES_NO,
+						[=](){ commit_floppy(floppy, _cb); },
+						[=](){ if(_cb) { _cb(true); } });
+			} else {
+				commit_floppy(floppy, _cb);
+			}
 		} else {
 			if(_cb) { _cb(true); }
 		}
@@ -1080,6 +1091,9 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 
 void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
 {
+	// if called from cmd_eject_floppy() this could be the Main thread,
+	// otherwise it's the Machine thread
+
 	// this function takes ownership of _floppy
 	assert(_floppy);
 	std::unique_ptr<FloppyDisk> floppy(_floppy);
@@ -1107,56 +1121,71 @@ void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
 
 void Machine::cmd_commit_media(std::function<void()> _cb)
 {
+	// The thread may be stopped waiting for user input from the GUI, so the machine
+	// should be paused beforehand.
+
 	m_cmd_queue.push([=](){
-		commit_media(_cb);
-	});
-}
+		auto ctrl = g_devices.device<FloppyCtrl>();
 
-bool Machine::commit_media(std::function<void()> _cb)
-{
-	// this function can be called by the Program and Machine threads
-
-	auto ctrl = g_devices.device<FloppyCtrl>();
-
-	if(!ctrl || 
-	    m_floppy_commit == DISK_DISCARD || 
-	   (m_config_id > 0 && m_floppy_commit == DISK_DISCARD_STATES))
-	{
-		if(_cb) { _cb(); }
-		return false;
-	}
-
-	// I want the caller to be notified only after the last floppy has been saved.
-	// saving results are not reported.
-	int last_dirty = -1;
-	for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
-		// If the machine is in a savestate, commit floppy only if it has been written
-		// to after the savestate restore. A floppy is committed always only
-		// after an explicit eject (press of the button).
-		if(ctrl->is_media_dirty(i,true) && i > last_dirty) {
-			last_dirty = i;
+		if(!ctrl || 
+			m_media_commit == MEDIA_DISCARD || 
+		   (m_config_id > 0 && m_media_commit == MEDIA_DISCARD_STATES))
+		{
+			if(_cb) { _cb(); }
+			return;
 		}
-	}
-	if(last_dirty >= 0) {
-		GUI::instance()->show_message("Saving floppy disks...");
-		bool committed = false;
+
+		// I want the caller to be notified only after the last floppy has been saved.
+		// saving results are not reported.
+		int last_dirty = -1;
 		for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
-			if(ctrl->is_media_dirty(i,true)) {
-				FloppyDisk *floppy = ctrl->eject_media(i, true);
-				assert(floppy);
-				commit_floppy(floppy, [=](bool){
-					// this is the FloppyLoader thread
-					if(_cb && i == last_dirty) {
-						_cb();
-					}
-				});
+			// If the machine is in a savestate, commit floppy only if it has been written
+			// to after the savestate restore. A floppy is committed always only
+			// after an explicit eject (press of the button).
+			if(ctrl->is_media_dirty(i,true) && i > last_dirty) {
+				last_dirty = i;
 			}
 		}
-		return committed;
-	} else {
-		if(_cb) { _cb(); }
-		return false;
-	}
+		std::mutex mtx;
+		std::condition_variable cond;
+		std::unique_lock<std::mutex> save_lock(mtx);
+		if(last_dirty >= 0) {
+			GUI::instance()->show_message("Saving floppy disks...");
+
+			for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
+				if(ctrl->is_media_dirty(i,true)) {
+					bool save_this = true;
+					if(m_media_commit == MEDIA_ASK) {
+						const char *section = i ? DISK_B_SECTION : DISK_A_SECTION;
+						std::string path = g_program.config().get_string(section, DISK_PATH);
+						GUI::instance()->show_message_box(
+								str_format("Save floppy %s image", i ? "B" : "A"),
+								str_format("Save %s ?", path.c_str()),
+								MessageWnd::Type::MSGW_YES_NO,
+								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = true; cond.notify_all(); },
+								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = false; cond.notify_all(); });
+						cond.wait(save_lock);
+					}
+					if(save_this) {
+						FloppyDisk *floppy = ctrl->eject_media(i, true);
+						assert(floppy);
+						commit_floppy(floppy, [=](bool){
+							// this is the FloppyLoader thread
+							if(_cb && i == last_dirty) {
+								_cb();
+							}
+						});
+					} else {
+						if(_cb && i == last_dirty) {
+							_cb();
+						}
+					}
+				}
+			}
+		} else {
+			if(_cb) { _cb(); }
+		}
+	});
 }
 
 void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
