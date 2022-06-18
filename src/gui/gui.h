@@ -349,8 +349,8 @@ public:
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	SDL_Surface * copy_framebuffer();
 	void take_screenshot(bool _with_palette_file = false);
-	void show_message(const char* _mex);
-	void show_dbg_message(const char* _mex);
+	void show_message(std::string _mex);
+	void show_dbg_message(std::string _mex);
 	void show_message_box(const std::string &_title, const std::string &_message, MessageWnd::Type _type, 
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
 	bool are_windows_visible();

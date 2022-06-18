@@ -2146,14 +2146,14 @@ void GUI::take_screenshot(bool _with_palette_file)
 	}
 }
 
-void GUI::show_message(const char* _mex)
+void GUI::show_message(std::string _mex)
 {
 	m_cmd_queue.push([=]() {
 		m_windows.last_ifc_mex = _mex;
 	});
 }
 
-void GUI::show_dbg_message(const char* _mex)
+void GUI::show_dbg_message(std::string _mex)
 {
 	m_cmd_queue.push([=]() {
 		m_windows.last_dbg_mex = _mex;
