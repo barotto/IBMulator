@@ -1356,9 +1356,8 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 				if(binding_ptr->is_ievt_keycombo()) {
 					// this is true only for the main combo key.
 					// terminate any events belonging to modifiers
-					auto modifier_evts = m_input.find_mods(binding_ptr->ievt.key.mod);
-					assert(!modifier_evts.empty());
 					PDEBUGF(LOG_V2, LOG_GUI, "  input combo: %s\n", binding_ptr->ievt.name.c_str());
+					auto modifier_evts = m_input.find_mods(binding_ptr->ievt.key.mod);
 					for(auto & modifier_evt : modifier_evts) {
 						run_event_binding(*modifier_evt, EventPhase::EVT_END);
 						m_input.remove(modifier_evt);
