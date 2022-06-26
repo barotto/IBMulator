@@ -193,6 +193,10 @@ public:
 		return track_array[track][head].write_splice;
 	}
 
+	void set_track_damaged_info(uint8_t track, uint8_t head) {
+		assert(track < track_array.size() && head < m_props.sides);
+		track_array[track][head].has_damaged_cells = true;
+	}
 	bool track_has_damaged_cells(uint8_t track, uint8_t head) const {
 		assert(track < track_array.size() && head < m_props.sides);
 		return track_array[track][head].has_damaged_cells;
@@ -207,11 +211,15 @@ public:
 	//! @return whether a given track is formatted
 	virtual bool track_is_formatted(int track, int head);
 
+	//! changes the number of tracks, new tracks are unformatted.
+	void resize_tracks(unsigned _num_of_tracks);
+
 	//! reads and writes a specific formatted sector
 	virtual void read_sector(uint8_t _c, uint8_t _h, uint8_t _s, uint8_t *buffer, uint32_t bytes);
 	virtual void write_sector(uint8_t _c, uint8_t _h, uint8_t _s, const uint8_t *buffer, uint32_t bytes);
 
 	const Properties & props() const { return m_props; }
+	void set_type(unsigned _type) { m_props.type = _type; }
 	bool double_step() const { return m_props.tracks <= 42; }
 
 public:

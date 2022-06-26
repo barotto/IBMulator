@@ -245,6 +245,19 @@ bool FloppyDisk::track_is_formatted(int track, int head)
 	return false;
 }
 
+void FloppyDisk::resize_tracks(unsigned _num_of_tracks)
+{
+	track_array.resize(_num_of_tracks);
+
+	if(m_props.tracks < _num_of_tracks) {
+		for(unsigned i=m_props.tracks; i<_num_of_tracks; i++) {
+			track_array[i].resize(m_props.sides);
+		}
+	}
+	
+	m_props.tracks = _num_of_tracks;
+}
+
 void FloppyDisk::read_sector(uint8_t _c, uint8_t _h, uint8_t _s, uint8_t *buffer, uint32_t bytes)
 {
 	// TODO?

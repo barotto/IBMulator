@@ -14,6 +14,9 @@
 #include "floppyctrl_flux.h"
 #include "floppyfmt_img.h"
 #include "floppyfmt_hfe.h"
+#include "floppyfmt_ipf.h"
+#include "floppyfmt_td0.h"
+#include "floppyfmt_imd.h"
 
 const std::map<unsigned,FloppyCtrl_Flux::CmdDef> FloppyCtrl_Flux::ms_cmd_list = {
 	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data",          &FloppyCtrl_Flux::cmd_read_data} },
@@ -48,6 +51,9 @@ FloppyCtrl_Flux::FloppyCtrl_Flux(Devices *_dev)
 {
 	m_floppy_formats.emplace_back(new FloppyFmt_IMG());
 	m_floppy_formats.emplace_back(new FloppyFmt_HFE());
+	m_floppy_formats.emplace_back(new FloppyFmt_IPF());
+	m_floppy_formats.emplace_back(new FloppyFmt_TD0());
+	m_floppy_formats.emplace_back(new FloppyFmt_IMD());
 }
 
 void FloppyCtrl_Flux::install()

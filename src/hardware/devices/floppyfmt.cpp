@@ -10,6 +10,9 @@
 #include "filesys.h"
 #include "floppyfmt_img.h"
 #include "floppyfmt_hfe.h"
+#include "floppyfmt_ipf.h"
+#include "floppyfmt_td0.h"
+#include "floppyfmt_imd.h"
 #include <cstring>
 
 std::vector<std::unique_ptr<FloppyFmt>> FloppyFmt::ms_formats = [] {
@@ -17,6 +20,9 @@ std::vector<std::unique_ptr<FloppyFmt>> FloppyFmt::ms_formats = [] {
 	std::vector<std::unique_ptr<FloppyFmt>> fmts;
 	fmts.emplace_back(new FloppyFmt_IMG());
 	fmts.emplace_back(new FloppyFmt_HFE());
+	fmts.emplace_back(new FloppyFmt_IPF());
+	fmts.emplace_back(new FloppyFmt_TD0());
+	fmts.emplace_back(new FloppyFmt_IMD());
 	return fmts;
 }();
 
@@ -1137,6 +1143,11 @@ void FloppyFmt::build_pc_track_mfm(uint8_t track, uint8_t head, FloppyDisk &imag
 		unsigned cell_count, unsigned sector_count, const desc_pc_sector *sects,
 		int gap_3, int gap_4a, int gap_1, int gap_2)
 {
+	// TODO check. fix?
+	// this function seems to create different bitstreams compared to the solution 
+	// used in the IMG format involving generate_track().
+	// not sure why IMG doesn't use this one like IMD and TD0 do.
+
 	std::vector<uint32_t> track_data;
 
 	// gap 4a, IAM and gap 1
@@ -1154,10 +1165,16 @@ void FloppyFmt::build_pc_track_mfm(uint8_t track, uint8_t head, FloppyDisk &imag
 
 	unsigned etpos = track_data.size() + (sector_count*(12+3+5+2+gap_2+12+3+1+2) + total_size)*16;
 
-	if(etpos > cell_count)
-		throw std::runtime_error(str_format("Incorrect layout on track %d head %d, expected_size=%d, current_size=%d",
-				track, head, cell_count, etpos).c_str());
-
+	int gap_4b = -1;
+	if(etpos > cell_count) {
+		// This hack will allow to load copy protected images with incorrect layouts
+		// from high-level formats like TD0. Copy protections will fail though, as those formats 
+		// don't describe the stream and can't be used to recreate the original layout.
+		PDEBUGF(LOG_V2, LOG_FDC, "Incorrect layout on track %d head %d, expected_size=%d, current_size=%d\n",
+				track, head, cell_count, etpos);
+		cell_count = etpos;
+		gap_4b = 0;
+	}
 	if(etpos + gap_3*16*(sector_count-1) > cell_count)
 		gap_3 = (cell_count - etpos) / 16 / (sector_count-1);
 
@@ -1197,9 +1214,10 @@ void FloppyFmt::build_pc_track_mfm(uint8_t track, uint8_t head, FloppyDisk &imag
 	}
 
 	// Gap 4b
-	assert(cell_count >= 15);
-	while(track_data.size() < cell_count-15) mfm_w(track_data, 8, 0x4e);
-	raw_w(track_data, cell_count-int(track_data.size()), 0x9254 >> (16+int(track_data.size())-cell_count));
-
+	if(gap_4b == -1) {
+		assert(cell_count >= 15);
+		while(track_data.size() < cell_count-15) mfm_w(track_data, 8, 0x4e);
+		raw_w(track_data, cell_count-int(track_data.size()), 0x9254 >> (16+int(track_data.size())-cell_count));
+	}
 	generate_track_from_levels(track, head, track_data, 0, image);
 }
