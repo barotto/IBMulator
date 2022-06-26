@@ -7,19 +7,13 @@
 * SDL 2.0.8+
 * RmlUi (see notes below)
 * GLEW
-* libarchive (optional)
 * libsamplerate (optional)
 * libasound (optional)
-* zlib (optional)
-
-Without libarchive you'll not be able to use zipped ROM sets.
 
 Without libsamplerate the PC Speaker will not emit any sound and other audio 
 sources will not be played unless they are at the same rate as the mixer.
 
 Without libasound there'll be no MIDI output support.
-
-Without zlib the ZMBV compressed video capture format will not work.
 
 ## General instructions
 
@@ -102,7 +96,8 @@ libsdl2-dev libasound2-dev
 
 ### Compilation
 
-Compile libarchive with lot of stuff removed:
+Compile libarchive with lot of stuff removed (not required unless you want
+support for other types of archives other than zip):
 ```
 $ git clone https://github.com/libarchive/libarchive.git  
 $ cd libarchive
