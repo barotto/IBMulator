@@ -213,6 +213,7 @@ public:
 #define DRIVES_FDD_LAT          "fdd_latency"
 #define DRIVES_FDC_TYPE         "fdc_type"
 #define DRIVES_FDC_MODE         "fdc_mode"
+#define DRIVES_FDC_OVR          "fdc_overhead"
 #define DRIVES_HDD              "hdd"
 
 #define DISK_A_SECTION          "floppy_a"

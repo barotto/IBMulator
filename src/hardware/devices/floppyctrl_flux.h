@@ -19,10 +19,6 @@
 class FloppyCtrl_Flux : public FloppyCtrl
 {
 private:
-	enum {
-		MIN_CMD_TIME_US = 500
-	};
-
 	struct PLL {
 		int64_t ctime, period, min_period, max_period, period_adjust_base, phase_adjust;
 
@@ -151,6 +147,7 @@ private:
 
 	int m_polling_timer = NULL_TIMER_HANDLE;
 	int m_fdd_timers[MAX_DRIVES] = {NULL_TIMER_HANDLE,NULL_TIMER_HANDLE};
+	uint64_t m_min_cmd_time_us = 0;
 
 public:
 	FloppyCtrl_Flux(Devices *_dev);

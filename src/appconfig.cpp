@@ -236,6 +236,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ DRIVES_FDD_B,   "auto" },
 		{ DRIVES_FDC_TYPE,"raw"  },
 		{ DRIVES_FDC_MODE,"auto" },
+		{ DRIVES_FDC_OVR, "250"  },
 		{ DRIVES_FDD_LAT, "1.0"  },
 		{ DRIVES_HDD,     "auto" }
 	} },
@@ -645,6 +646,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 ini_order_t AppConfig::ms_keys_order = {
 	{ PROGRAM_SECTION, {
+		// key name,         hidden?
 		{ PROGRAM_MEDIA_DIR, false },
 		{ PROGRAM_LOG_FILE,  false }
 	} },
@@ -723,6 +725,7 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ DRIVES_FLOPPY_COMMIT, false },
 		{ DRIVES_FDC_TYPE,      false },
 		{ DRIVES_FDC_MODE,      false },
+		{ DRIVES_FDC_OVR,       true  },
 		{ DRIVES_FDD_LAT,       false },
 		{ DRIVES_HDD,           false }
 	} },

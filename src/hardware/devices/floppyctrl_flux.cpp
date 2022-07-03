@@ -8,6 +8,7 @@
  */
 
 #include "ibmulator.h"
+#include "program.h"
 #include "dma.h"
 #include "pic.h"
 #include "hardware/devices/systemboard.h"
@@ -104,6 +105,9 @@ void FloppyCtrl_Flux::remove()
 void FloppyCtrl_Flux::config_changed()
 {
 	FloppyCtrl::config_changed();
+
+	m_min_cmd_time_us = g_program.config().get_int(DRIVES_SECTION, DRIVES_FDC_OVR, 0);
+	PINFOF(LOG_V2, LOG_FDC, "Controller overhead: %uus\n", m_min_cmd_time_us);
 }
 
 void FloppyCtrl_Flux::save_state(StateBuf &_state)
@@ -679,10 +683,10 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 	}
 
 	uint32_t head_load_us = calculate_head_delay_us(drive);
-	uint64_t next_evt_us = step_time_us + head_load_us + MIN_CMD_TIME_US;
+	uint64_t next_evt_us = step_time_us + head_load_us + m_min_cmd_time_us;
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_DONE in %uus (step=%u, head=%u, ovr=%u)\n",
-			drive, next_evt_us, step_time_us, head_load_us, MIN_CMD_TIME_US);
+			drive, next_evt_us, step_time_us, head_load_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],
 			(next_evt_us)*1_us,
@@ -793,10 +797,10 @@ void FloppyCtrl_Flux::cmd_format_track()
 	m_s.flopi[drive].sub_state = HEAD_LOAD_DONE;
 
 	uint32_t head_load_time_us = calculate_head_delay_us(drive);
-	uint64_t next_evt_us = head_load_time_us + MIN_CMD_TIME_US;
+	uint64_t next_evt_us = head_load_time_us + m_min_cmd_time_us;
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %uus (head=%u, ovr=%u)\n",
-			drive, next_evt_us, head_load_time_us, MIN_CMD_TIME_US);
+			drive, next_evt_us, head_load_time_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],
 			next_evt_us*1_us,
@@ -876,10 +880,10 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 		step_delay_us = calculate_step_delay_us(drive, 79, 0);
 	}
 
-	uint64_t next_evt_us = step_delay_us + MIN_CMD_TIME_US;
+	uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event RECALIBRATE_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
-			drive, next_evt_us, step_delay_us, MIN_CMD_TIME_US);
+			drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
 }
@@ -993,7 +997,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	m_s.main_status_reg |= (1 << drive);
 
 	uint32_t step_delay_us = calculate_step_delay_us(drive, cylinder);
-	uint64_t next_evt_us = step_delay_us + MIN_CMD_TIME_US;
+	uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
 
 	if(m_fdd[drive]) {
 		m_fdd[drive]->dir_w(m_s.flopi[drive].dir);
@@ -1007,7 +1011,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	}
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
-			drive, next_evt_us, step_delay_us, MIN_CMD_TIME_US);
+			drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
 }
@@ -1050,10 +1054,10 @@ void FloppyCtrl_Flux::cmd_read_id()
 	}
 
 	uint32_t head_load_time_us = calculate_head_delay_us(drive);
-	uint64_t next_evt_us = head_load_time_us + MIN_CMD_TIME_US;
+	uint64_t next_evt_us = head_load_time_us + m_min_cmd_time_us;
 
 	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %uus (head=%uus, ovr=%uus)\n",
-			drive, next_evt_us, head_load_time_us, MIN_CMD_TIME_US);
+			drive, next_evt_us, head_load_time_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],
 			uint64_t(next_evt_us)*1_us,
