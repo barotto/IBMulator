@@ -25,6 +25,7 @@
 
 typedef std::function<void(uint64_t)> timer_fun_t;
 
+#define NULL_TIMER_HANDLE 10000
 #define TIME_NEVER ULLONG_MAX
 #define US_TO_NS(us) (us*1000)
 #define MSEC_PER_SECOND (1'000L)
@@ -35,7 +36,6 @@ typedef std::function<void(uint64_t)> timer_fun_t;
 #define NSEC_TO_SEC(nsec) (double((nsec)) / 1'000'000'000.0)
 #define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
 #define MAX_TIMERS 24
-#define NULL_TIMER_HANDLE 10000
 #define TIMER_NAME_LEN 20
 
 constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * MSEC_PER_SECOND; }
@@ -55,26 +55,31 @@ constexpr uint64_t time_to_cycles(uint64_t _time, uint32_t _freq_hz)
 	return _time * (_freq_hz / double(NSEC_PER_SECOND));
 }
 
-struct Timer {
-	bool        in_use;       // Timer is in-use (currently registered)
-	uint64_t    period;       // Timer periodocity
-	uint64_t    time_to_fire; // Time to fire next
-	bool        active;       // false=inactive, true=active.
-	bool        continuous;   // false=one-shot timer, true=continuous periodicity.
-	timer_fun_t fire;         // A callback function for when the timer fires.
-	char        name[TIMER_NAME_LEN];
+typedef unsigned Timer;
+
+struct EventTimer {
+	bool     in_use = false;              // Timer is in-use (currently registered)
+	uint64_t period = TIME_NEVER;         // Timer periodocity
+	uint64_t time_to_fire = TIME_NEVER;   // Time to fire next
+	bool     active = false;              // false=inactive, true=active.
+	bool     continuous = false;          // false=one-shot timer, true=continuous periodicity.
+	unsigned data = 0;                    // Optional data
+	char     name[TIMER_NAME_LEN] = {0};  // A human readable C-string name for this timer
 };
 
 class EventTimers
 {
-private:
+protected:
 	struct {
-		Timer timers[MAX_TIMERS];
+		EventTimer timers[MAX_TIMERS];
 		uint64_t time;
 		uint64_t next_timer_time;
 	} m_s;
 	std::atomic<uint64_t> m_mt_time;
-	uint m_num_timers;
+	unsigned m_last_timer;
+	timer_fun_t m_callbacks[MAX_TIMERS];
+	std::multimap<uint64_t,Timer> m_triggered;
+	unsigned m_log_fac = LOG_MACHINE;
 
 public:
 	EventTimers();
@@ -86,26 +91,28 @@ public:
 	void restore_state(StateBuf &_state);
 	bool update(uint64_t _current_time);
 
-	inline uint64_t get_time() const { return m_s.time; }
-	inline uint64_t get_time_mt() const { return m_mt_time; }
+	void set_time(uint64_t _time);
 
-	unsigned register_timer(timer_fun_t _func, const char *_name);
-	void unregister_timer(unsigned _timer);
-	void activate_timer(unsigned _timer, uint64_t _period, bool _continuous);
-	void activate_timer(unsigned _timer, uint64_t _start, uint64_t _period, bool _continuous);
-	uint64_t get_timer_eta(unsigned _timer) const;
-	void deactivate_timer(unsigned _timer);
-	void set_timer_callback(unsigned _timer, timer_fun_t _func);
-	inline bool is_timer_active(unsigned _timer) const {
-		assert(_timer < m_num_timers);
-		return m_s.timers[_timer].active;
+	uint64_t get_time() const { return m_s.time; }
+	uint64_t get_time_mt() const { return m_mt_time; }
+	uint64_t get_next_timer_time() const { return m_s.next_timer_time; }
+
+	Timer register_timer(timer_fun_t _func, const std::string &_name, unsigned _data = 0);
+	void unregister_timer(Timer &_timer);
+	void activate_timer(Timer _timer, uint64_t _delay, uint64_t _period, bool _continuous);
+	void activate_timer(Timer _timer, uint64_t _period, bool _continuous);
+	uint64_t get_timer_eta(Timer _timer) const;
+	void deactivate_timer(Timer _timer);
+	void set_timer_callback(Timer _timer, timer_fun_t _func, unsigned _data);
+	bool is_timer_active(Timer _timer) const;
+
+	unsigned get_timers_max() const { return m_last_timer; }
+	unsigned get_timers_count() const;
+	const EventTimer & get_event_timer(Timer _timer) const;
+	
+	void set_log_facility(unsigned _fac) {
+		m_log_fac = _fac;
 	}
-/*
-	const Timer & operator[](unsigned _timer) const {
-		assert(_timer < m_num_timers);
-		return m_s.timers(_timer);
-	}
-*/
 };
 
 #endif

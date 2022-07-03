@@ -2696,6 +2696,7 @@ public:
 void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
 	m_gui = _gui;
+	timers.set_log_facility(LOG_GUI);
 	timers.init();
 
 	desktop = std::make_unique<Desktop>(_gui);
@@ -2755,7 +2756,7 @@ void GUI::WindowManager::show_ifc_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(interface != nullptr) {
 		interface->show_message(_mex);
-		timers.activate_timer(ifcmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
+		timers.activate_timer(ifcmex_timer, 3_s, false);
 	}
 }
 
@@ -2764,7 +2765,7 @@ void GUI::WindowManager::show_dbg_message(const char* _mex)
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 	if(dbgtools != nullptr) {
 		dbgtools->show_message(_mex);
-		timers.activate_timer(dbgmex_timer, g_program.pacer().chrono().get_nsec(), 3e9, false);
+		timers.activate_timer(dbgmex_timer, 3_s, false);
 	}
 }
 
