@@ -85,6 +85,9 @@ public:
 	bool is_media_dirty(unsigned _drive, bool _since_restore) const {
 		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_dirty(_since_restore));
 	}
+	bool can_media_be_committed(unsigned _drive) const {
+		return (is_media_present(_drive) && m_fdd[_drive]->can_media_be_committed());
+	}
 	//this is not the DIR bit 7, this is used by the GUI
 	bool has_disk_changed(unsigned _drive) const {
 		return (is_drive_present(_drive) && m_fdd[_drive]->has_disk_changed());

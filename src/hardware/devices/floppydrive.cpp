@@ -369,6 +369,11 @@ FloppyDisk* FloppyDrive::eject_floppy(bool _remove)
 	return floppy;
 }
 
+bool FloppyDrive::can_media_be_committed() const
+{
+	return (m_image != nullptr && m_image->get_format() && m_image->get_format()->can_save());
+}
+
 void FloppyDrive::play_seek_sound(uint8_t _to_cyl)
 {
 	if(!m_fx_enabled) {

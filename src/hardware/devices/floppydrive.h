@@ -116,6 +116,7 @@ public:
 	bool is_media_dirty(bool _since_restore) const {
 		return (m_image != nullptr && m_image->is_dirty(_since_restore));
 	}
+	bool can_media_be_committed() const;
 	bool is_double_step_media() const { return m_dstep; }
 	bool is_motor_on() const { return m_s.mon == MOT_ON; }
 

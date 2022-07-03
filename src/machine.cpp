@@ -1067,11 +1067,13 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 			if(m_media_commit == MEDIA_DISCARD || 
 			   (m_config_id > 0 && m_media_commit == MEDIA_DISCARD_STATES))
 			{
-				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data has been lost!\n");
+				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data discarded.\n");
 				if(_cb) { _cb(true); }
-				return;
-			}
-			if(m_media_commit == MEDIA_ASK) {
+			} else if(!ctrl->can_media_be_committed(_drive)) {
+				PWARNF(LOG_V0, LOG_MACHINE, "Floppy image format doesn't support save. Written data discarded.\n",
+						_drive ? "B" : "A");
+				if(_cb) { _cb(false); }
+			} else if(m_media_commit == MEDIA_ASK) {
 				const char *section = _drive ? DISK_B_SECTION : DISK_A_SECTION;
 				std::string path = g_program.config().get_string(section, DISK_PATH);
 				GUI::instance()->show_message_box(
@@ -1104,12 +1106,19 @@ void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
 		if(_cb) {
 			_cb(false);
 		}
+		return;
 	}
 	auto format = floppy->get_format();
 	if(!format || !format->can_save()) {
-		// fallback format?
-		format = std::make_shared<FloppyFmt_IMG>();
-		PWARNF(LOG_V0, LOG_MACHINE, "Using default floppy format: %s\n", format->name());
+		if(format) {
+			PERRF(LOG_MACHINE, "%s format doesn't support save!\n", format->name());
+		} else {
+			PERRF(LOG_MACHINE, "No format defined!\n");
+		}
+		if(_cb) {
+			_cb(false);
+		}
+		return;
 	}
 	std::string base, ext;
 	FileSys::get_file_parts(path.c_str(), base, ext);
@@ -1155,7 +1164,11 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 			for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
 				if(ctrl->is_media_dirty(i,true)) {
 					bool save_this = true;
-					if(m_media_commit == MEDIA_ASK) {
+					if(!ctrl->can_media_be_committed(i)) {
+						PWARNF(LOG_V0, LOG_MACHINE, "Floppy %s format doesn't support save. Written data discarded.\n",
+								i ? "B" : "A");
+						save_this = false;
+					} else if(m_media_commit == MEDIA_ASK) {
 						const char *section = i ? DISK_B_SECTION : DISK_A_SECTION;
 						std::string path = g_program.config().get_string(section, DISK_PATH);
 						GUI::instance()->show_message_box(
