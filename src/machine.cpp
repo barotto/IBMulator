@@ -625,11 +625,6 @@ int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigne
 {
 	unsigned timer = NULL_TIMER_HANDLE;
 
-	if(m_num_timers >= MAX_TIMERS) {
-		PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
-		throw std::exception();
-	}
-
 	// search for new timer
 	for(unsigned i = 0; i < m_num_timers; i++) {
 		//check if there's another timer with the same name
@@ -644,6 +639,10 @@ int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigne
 	}
 	if(timer == NULL_TIMER_HANDLE) {
 		// If we didn't find a free slot, increment the bound m_num_timers.
+		if(m_num_timers >= MAX_TIMERS) {
+			PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
+			throw std::exception();
+		}
 		timer = m_num_timers;
 		m_num_timers++;
 	}
@@ -664,12 +663,24 @@ int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigne
 void Machine::unregister_timer(int &_timer)
 {
 	if(_timer == NULL_TIMER_HANDLE) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "cannot unregister NULL_TIMER_HANDLE!\n");
 		return;
 	}
 	assert(_timer < MAX_TIMERS);
+	assert(m_num_timers > 0);
+	if(!m_timers[_timer].in_use) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "cannot unregister timer %d: not in use!\n");
+		return;
+	}
+	PDEBUGF(LOG_V2, LOG_MACHINE, "unregistering timer id %d (%s) from pool of %u timers\n",
+			_timer, m_timers[_timer].name, m_num_timers);
 	m_timers[_timer].in_use = false;
 	m_timers[_timer].active = false;
 	m_timer_fn[_timer] = nullptr;
+	if(_timer == int(m_num_timers-1)) {
+		// update timers tail index
+		m_num_timers--;
+	}
 	_timer = NULL_TIMER_HANDLE;
 }
 
