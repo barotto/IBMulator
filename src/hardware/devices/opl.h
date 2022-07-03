@@ -1,13 +1,8 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
- *
- * OPL2/OPL3 emulation library.
- *
- * Adapted for IBMulator.
- */
-
-/*
  * Copyright (C) 2002-2015  The DOSBox Team
+ * Copyright (C) 2016-2022  Marco Bortolin
+ *
+ * This file is part of IBMulator.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,10 +47,10 @@ private:
 		T1, T2
 	};
 
-	struct Timer {
+	struct OPLTimer {
 		int id;
 		int increment;
-		int index;
+		TimerID index;
 		bool masked;
 		uint8_t value;
 		uint8_t overflow;
@@ -137,7 +132,7 @@ private:
 
 	struct {
 		Operator op[OPL_OPERATORS];
-		Timer    timers[2];
+		OPLTimer timers[2];
 		uint32_t reg_index;
 		uint8_t  regs[512];    // register set (including second set for OPL3)
 		uint8_t  wave_sel[44]; // waveform selection

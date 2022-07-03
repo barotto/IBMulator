@@ -96,7 +96,7 @@ private:
 	} m_s;  // state information
 
 	double m_latency_mult = 1.0;
-	int m_timer = NULL_TIMER_HANDLE;
+	TimerID m_timer = NULL_TIMER_ID;
 
 public:
 	FloppyCtrl_Raw(Devices *_dev);

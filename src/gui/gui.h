@@ -269,8 +269,8 @@ protected:
 		std::string last_dbg_mex;
 
 		EventTimers timers;
-		Timer dbgmex_timer = NULL_TIMER_HANDLE;
-		Timer ifcmex_timer = NULL_TIMER_HANDLE;
+		TimerID dbgmex_timer = NULL_TIMER_ID;
+		TimerID ifcmex_timer = NULL_TIMER_ID;
 
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void config_changed(bool _startup);

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -148,7 +148,7 @@ private:
 	} m_channels[ATA_MAX_CHANNEL];
 
 	std::unique_ptr<StorageDev> m_storage[ATA_MAX_CHANNEL][2];
-	int m_cmd_timers[ATA_MAX_CHANNEL][2];
+	TimerID m_cmd_timers[ATA_MAX_CHANNEL][2];
 	int m_devices_cnt = 0;
 
 	std::atomic<bool> m_busy;
@@ -284,7 +284,7 @@ private:
 	inline CDROMDrive * selected_cd(int _ch) {
 		return storage_cd(_ch, m_channels[_ch].drive_select);
 	}
-	inline int & selected_timer(int _ch) {
+	inline TimerID & selected_timer(int _ch) {
 		return m_cmd_timers[_ch][m_channels[_ch].drive_select];
 	}
 

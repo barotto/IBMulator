@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -78,7 +78,7 @@ m_mem_mapping(0),
 m_rom_mapping(0),
 m_vga_timing(VGA_8BIT_SLOW),
 m_bus_timing(1.0),
-m_timer_id(NULL_TIMER_HANDLE),
+m_timer_id(NULL_TIMER_ID),
 m_display(nullptr),
 m_renderer(nullptr),
 m_num_x_tiles(0)
@@ -278,7 +278,7 @@ void VGA::restore_state(StateBuf &_state)
 
 	update_mem_mapping();
 	
-	switch(g_machine.get_timer(m_timer_id).data) {
+	switch(g_machine.get_event_timer(m_timer_id).data) {
 		case VGA_VERTICAL_RETRACE:
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 			break;

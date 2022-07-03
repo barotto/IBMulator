@@ -190,9 +190,9 @@ protected:
 	std::shared_ptr<MixerChannel> m_dac_channel;
 	float m_dac_volume;
 	
-	int m_dsp_timer;
-	int m_dma_timer;
-	int m_dac_timer;
+	TimerID m_dsp_timer;
+	TimerID m_dma_timer;
+	TimerID m_dac_timer;
 	
 public:
 	SBlaster(Devices *_dev);

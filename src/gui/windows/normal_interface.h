@@ -59,7 +59,7 @@ private:
 	ZoomMode m_cur_zoom = ZoomMode::NORMAL;
 
 	EventTimers *m_timers;
-	unsigned m_compact_ifc_timer = NULL_TIMER_HANDLE;
+	TimerID m_compact_ifc_timer = NULL_TIMER_ID;
 	uint64_t m_compact_ifc_timeout = 1_s;
 	
 public:

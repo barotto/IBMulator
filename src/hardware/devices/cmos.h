@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2012  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,9 +40,9 @@ private:
 		uint8_t  reg[CMOS_SIZE];
 	} m_s;  // state information
 
-	int m_periodic_timer;
-	int m_one_second_timer;
-	int m_uip_timer; //Update in Progress timer
+	TimerID m_periodic_timer;
+	TimerID m_one_second_timer;
+	TimerID m_uip_timer; //Update in Progress timer
 
 public:
 	CMOS(Devices *_dev);

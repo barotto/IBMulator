@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,7 +37,7 @@ IODEVICE_PORTS(PIT) = {
 PIT::PIT(Devices* _dev)
 : IODevice(_dev)
 {
-	m_systimer = NULL_TIMER_HANDLE;
+	m_systimer = NULL_TIMER_ID;
 }
 
 PIT::~PIT()

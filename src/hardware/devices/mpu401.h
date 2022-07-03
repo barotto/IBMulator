@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -89,9 +89,9 @@ class MPU401 : public IODevice
 	
 	// TODO: these 3 timers can probably be consolidated into 1
 	// but that would require some major refactoring
-	int m_eoi_timer;
-	int m_event_timer;
-	int m_reset_timer;
+	TimerID m_eoi_timer;
+	TimerID m_event_timer;
+	TimerID m_reset_timer;
 	
 public:
 	MPU401(Devices *_dev);

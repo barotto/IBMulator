@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@
 #include "vga_attrctrl.h"
 #include "vga_dac.h"
 #include "hardware/iodevice.h"
+#include "machine.h"
 
 enum VGATimings {
 	VGA_8BIT_SLOW,
@@ -208,7 +209,7 @@ protected:
 	int m_rom_mapping;       // BIOS mapping ID
 	VGATimings m_vga_timing; // VGA memory timings
 	double m_bus_timing;     // System bus timings
-	int m_timer_id;          // Machine timer ID
+	TimerID m_timer_id;        // Machine timer ID
 	VGADisplay *m_display;   // VGADisplay object
 	VGADrawFn m_renderer;
 	std::vector<uint8_t> m_line_data_buf[VGA_THREAD_POOL_SIZE];

@@ -23,9 +23,7 @@
 #include "statebuf.h"
 #include "limits.h"
 
-typedef std::function<void(uint64_t)> timer_fun_t;
-
-#define NULL_TIMER_HANDLE 10000
+#define NULL_TIMER_ID 10000
 #define TIME_NEVER ULLONG_MAX
 #define US_TO_NS(us) (us*1000)
 #define MSEC_PER_SECOND (1'000L)
@@ -55,7 +53,8 @@ constexpr uint64_t time_to_cycles(uint64_t _time, uint32_t _freq_hz)
 	return _time * (_freq_hz / double(NSEC_PER_SECOND));
 }
 
-typedef unsigned Timer;
+typedef unsigned TimerID;
+typedef std::function<void(uint64_t)> TimerFn;
 
 struct EventTimer {
 	bool     in_use = false;              // Timer is in-use (currently registered)
@@ -76,9 +75,9 @@ protected:
 		uint64_t next_timer_time;
 	} m_s;
 	std::atomic<uint64_t> m_mt_time;
-	unsigned m_last_timer;
-	timer_fun_t m_callbacks[MAX_TIMERS];
-	std::multimap<uint64_t,Timer> m_triggered;
+	unsigned m_next_timer;
+	TimerFn m_callbacks[MAX_TIMERS];
+	std::multimap<uint64_t,TimerID> m_triggered;
 	unsigned m_log_fac = LOG_MACHINE;
 
 public:
@@ -97,19 +96,19 @@ public:
 	uint64_t get_time_mt() const { return m_mt_time; }
 	uint64_t get_next_timer_time() const { return m_s.next_timer_time; }
 
-	Timer register_timer(timer_fun_t _func, const std::string &_name, unsigned _data = 0);
-	void unregister_timer(Timer &_timer);
-	void activate_timer(Timer _timer, uint64_t _delay, uint64_t _period, bool _continuous);
-	void activate_timer(Timer _timer, uint64_t _period, bool _continuous);
-	uint64_t get_timer_eta(Timer _timer) const;
-	void deactivate_timer(Timer _timer);
-	void set_timer_callback(Timer _timer, timer_fun_t _func, unsigned _data);
-	bool is_timer_active(Timer _timer) const;
+	TimerID register_timer(TimerFn _func, const std::string &_name, unsigned _data = 0);
+	void unregister_timer(TimerID &_timer);
+	void activate_timer(TimerID _timer, uint64_t _delay, uint64_t _period, bool _continuous);
+	void activate_timer(TimerID _timer, uint64_t _period, bool _continuous);
+	uint64_t get_timer_eta(TimerID _timer) const;
+	void deactivate_timer(TimerID _timer);
+	void set_timer_callback(TimerID _timer, TimerFn _func, unsigned _data);
+	bool is_timer_active(TimerID _timer) const;
 
-	unsigned get_timers_max() const { return m_last_timer; }
+	unsigned get_timers_max() const { return m_next_timer; }
 	unsigned get_timers_count() const;
-	const EventTimer & get_event_timer(Timer _timer) const;
-	
+	const EventTimer & get_event_timer(TimerID _timer) const;
+
 	void set_log_facility(unsigned _fac) {
 		m_log_fac = _fac;
 	}

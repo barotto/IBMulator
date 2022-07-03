@@ -358,7 +358,7 @@ void NormalInterface::set_zoom(ZoomMode _zoom)
 				hide_system();
 			} else {
 				show_system();
-				if(m_compact_ifc_timer != NULL_TIMER_HANDLE) {
+				if(m_compact_ifc_timer != NULL_TIMER_ID) {
 					m_timers->activate_timer(m_compact_ifc_timer, m_compact_ifc_timeout, false);
 				}
 			}
@@ -398,7 +398,7 @@ void NormalInterface::hide_system()
 
 void NormalInterface::show_system()
 {
-	if(m_compact_ifc_timer != NULL_TIMER_HANDLE) {
+	if(m_compact_ifc_timer != NULL_TIMER_ID) {
 		m_timers->deactivate_timer(m_compact_ifc_timer);
 	}
 	SDL_ShowCursor(true);
@@ -517,7 +517,7 @@ void NormalInterface::set_hdd_active(bool _active)
 
 void NormalInterface::on_mouse_move(Rml::Event &_ev)
 {
-	if(m_compact_ifc_timer != NULL_TIMER_HANDLE && m_cur_zoom == ZoomMode::COMPACT) {
+	if(m_compact_ifc_timer != NULL_TIMER_ID && m_cur_zoom == ZoomMode::COMPACT) {
 		show_system();
 		if(_ev.GetTargetElement()->GetId() == "move_target" || _ev.GetTargetElement()->GetId() == "main_interface") {
 			m_timers->activate_timer(m_compact_ifc_timer, m_compact_ifc_timeout, false);

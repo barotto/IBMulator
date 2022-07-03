@@ -95,7 +95,6 @@ void FloppyCtrl_Flux::remove()
 	for(unsigned drive=0; drive<MAX_DRIVES; drive++) {
 		floppy_drive_remove(drive);
 		g_machine.unregister_timer(m_fdd_timers[drive]);
-		m_fdd_timers[drive] = NULL_TIMER_HANDLE;
 	}
 
 	m_devices->dma()->unregister_channel(DMA_CHAN);

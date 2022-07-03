@@ -36,7 +36,7 @@ void FloppyDrive::install(FloppyCtrl *_ctrl, int _drive_index, Type _drive_type)
 	m_index_timer = g_machine.register_timer(
 			std::bind(&FloppyDrive::index_timer, this, std::placeholders::_1),
 			"FDD " + m_drive_name + " index");
-	assert(m_index_timer != NULL_TIMER_HANDLE);
+	assert(m_index_timer != NULL_TIMER_ID);
 
 	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_fx_enabled) {
@@ -124,7 +124,6 @@ void FloppyDrive::remove()
 	}
 
 	g_machine.unregister_timer(m_index_timer);
-	m_index_timer = NULL_TIMER_HANDLE;
 }
 
 void FloppyDrive::set_rpm(float _rpm)

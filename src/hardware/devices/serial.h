@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -261,9 +261,9 @@ private:
 	struct Port {
 		int port_id;
 
-		int rx_timer;
-		int tx_timer;
-		int fifo_timer;
+		TimerID rx_timer;
+		TimerID tx_timer;
+		TimerID fifo_timer;
 
 		unsigned io_mode;
 

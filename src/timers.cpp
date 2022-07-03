@@ -31,7 +31,7 @@ EventTimers::EventTimers()
 		m_s.timers[i].in_use = false;
 	}
 	m_mt_time = 0;
-	m_last_timer = 0;
+	m_next_timer = 0;
 }
 
 EventTimers::~EventTimers()
@@ -89,7 +89,7 @@ void EventTimers::restore_state(StateBuf &_state)
 
 void EventTimers::init()
 {
-	m_last_timer = 0;
+	m_next_timer = 0;
 }
 
 void EventTimers::reset()
@@ -97,7 +97,7 @@ void EventTimers::reset()
 	m_s.time = 0;
 	m_mt_time = 0;
 	m_s.next_timer_time = TIME_NEVER;
-	for(unsigned i = 0; i < m_last_timer; i++) {
+	for(unsigned i = 0; i < m_next_timer; i++) {
 		if(m_s.timers[i].in_use && m_s.timers[i].active && m_s.timers[i].continuous) {
 			m_s.timers[i].time_to_fire = m_s.timers[i].period;
 		}
@@ -110,7 +110,7 @@ bool EventTimers::update(uint64_t _current_time)
 	// from those timers which have fired.
 	m_s.next_timer_time = TIME_NEVER;
 	m_triggered.clear();
-	for(unsigned i=0; i<m_last_timer; i++) {
+	for(unsigned i=0; i<m_next_timer; i++) {
 		if(m_s.timers[i].in_use && m_s.timers[i].active) {
 			if(m_s.timers[i].time_to_fire <= _current_time) {
 
@@ -178,30 +178,30 @@ void EventTimers::set_time(uint64_t _time)
 	m_mt_time = _time;
 }
 
-Timer EventTimers::register_timer(timer_fun_t _func, const std::string &_name, unsigned _data)
+TimerID EventTimers::register_timer(TimerFn _func, const std::string &_name, unsigned _data)
 {
-	unsigned timer = NULL_TIMER_HANDLE;
+	unsigned timer = NULL_TIMER_ID;
 
 	// search for new timer
-	for(unsigned i = 0; i < m_last_timer; i++) {
+	for(unsigned i = 0; i < m_next_timer; i++) {
 		// check if there's another timer with the same name
 		if(m_s.timers[i].in_use && strcmp(m_s.timers[i].name, _name.c_str())==0) {
 			// cannot be 2 timers with the same name
-			return NULL_TIMER_HANDLE;
+			return NULL_TIMER_ID;
 		}
 		if(!m_s.timers[i].in_use) {
 			// free timer found
 			timer = i;
 		}
 	}
-	if(timer == NULL_TIMER_HANDLE) {
+	if(timer == NULL_TIMER_ID) {
 		// If we didn't find a free slot, increment the bound.
-		if(m_last_timer >= MAX_TIMERS) {
+		if(m_next_timer >= MAX_TIMERS) {
 			PERRF(m_log_fac, "Too many registered timers\n");
 			throw std::exception();
 		}
-		timer = m_last_timer;
-		m_last_timer++;
+		timer = m_next_timer;
+		m_next_timer++;
 	}
 	m_s.timers[timer].in_use = true;
 	m_s.timers[timer].period = 0;
@@ -218,13 +218,10 @@ Timer EventTimers::register_timer(timer_fun_t _func, const std::string &_name, u
 	return timer;
 }
 
-void EventTimers::unregister_timer(Timer &_timer)
+void EventTimers::unregister_timer(TimerID &_timer)
 {
-	assert(_timer < MAX_TIMERS);
-	assert(m_last_timer > 0);
-
-	if(_timer == NULL_TIMER_HANDLE) {
-		PDEBUGF(LOG_V0, m_log_fac, "Cannot unregister NULL_TIMER_HANDLE!\n");
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
 		return;
 	}
 	if(!m_s.timers[_timer].in_use) {
@@ -234,18 +231,23 @@ void EventTimers::unregister_timer(Timer &_timer)
 	m_s.timers[_timer].in_use = false;
 	m_s.timers[_timer].active = false;
 	m_callbacks[_timer] = nullptr;
-	if(_timer == m_last_timer-1) {
+	assert(m_next_timer > 0);
+	if(_timer == m_next_timer-1) {
 		// update timers tail index
-		m_last_timer--;
+		m_next_timer--;
 	}
 	PDEBUGF(LOG_V2, m_log_fac, "Unregistering timer %u '%s'. Remaining timers: %u\n",
 			_timer, m_s.timers[_timer].name, get_timers_count());
-	_timer = NULL_TIMER_HANDLE;
+	_timer = NULL_TIMER_ID;
 }
 
-void EventTimers::activate_timer(Timer _timer, uint64_t _delay, uint64_t _period, bool _continuous)
+void EventTimers::activate_timer(TimerID _timer, uint64_t _delay, uint64_t _period, bool _continuous)
 {
-	assert(_timer<m_last_timer);
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return;
+	}
+
 	if(!m_s.timers[_timer].in_use) {
 		PDEBUGF(LOG_V0, m_log_fac, "Timer %u is activated but not used!\n", _timer);
 		return;
@@ -266,21 +268,27 @@ void EventTimers::activate_timer(Timer _timer, uint64_t _delay, uint64_t _period
 	}
 }
 
-void EventTimers::activate_timer(Timer _timer, uint64_t _period, bool _continuous)
+void EventTimers::activate_timer(TimerID _timer, uint64_t _period, bool _continuous)
 {
 	activate_timer(_timer, _period, _period, _continuous);
 }
 
-void EventTimers::deactivate_timer(Timer _timer)
+void EventTimers::deactivate_timer(TimerID _timer)
 {
-	assert(_timer<m_last_timer);
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return;
+	}
 
 	m_s.timers[_timer].active = false;
 }
 
-uint64_t EventTimers::get_timer_eta(Timer _timer) const
+uint64_t EventTimers::get_timer_eta(TimerID _timer) const
 {
-	assert(_timer < m_last_timer);
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return TIME_NEVER;
+	}
 
 	if(!m_s.timers[_timer].active) {
 		// TODO does it make sense to return 0 (now)?
@@ -290,17 +298,24 @@ uint64_t EventTimers::get_timer_eta(Timer _timer) const
 	return (m_s.timers[_timer].time_to_fire - m_s.time);
 }
 
-void EventTimers::set_timer_callback(Timer _timer, timer_fun_t _func, unsigned _data)
+void EventTimers::set_timer_callback(TimerID _timer, TimerFn _func, unsigned _data)
 {
-	assert(_timer<m_last_timer);
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return;
+	}
 
 	m_callbacks[_timer] = _func;
 	m_s.timers[_timer].data = _data;
 }
 
-bool EventTimers::is_timer_active(Timer _timer) const
+bool EventTimers::is_timer_active(TimerID _timer) const
 {
-	assert(_timer < m_last_timer);
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return false;
+	}
+
 	if(m_s.timers[_timer].in_use) {
 		return m_s.timers[_timer].active;
 	}
@@ -310,7 +325,7 @@ bool EventTimers::is_timer_active(Timer _timer) const
 unsigned EventTimers::get_timers_count() const
 {
 	unsigned count = 0;
-	for(unsigned i = 0; i < m_last_timer; i++) {
+	for(unsigned i = 0; i < m_next_timer; i++) {
 		if(m_s.timers[i].in_use) {
 			count++;
 		}
@@ -318,12 +333,15 @@ unsigned EventTimers::get_timers_count() const
 	return count;
 }
 
-const EventTimer & EventTimers::get_event_timer(Timer _timer) const
+const EventTimer & EventTimers::get_event_timer(TimerID _timer) const
 {
-	assert(_timer!=NULL_TIMER_HANDLE && _timer<m_last_timer);
-	if(m_s.timers[_timer].in_use) {
-		return m_s.timers[_timer];
-	}
 	static EventTimer dummy;
-	return dummy;
+	if(_timer == NULL_TIMER_ID || _timer>=m_next_timer) {
+		PDEBUGF(LOG_V0, m_log_fac, "Invalid TimerID!\n");
+		return dummy;
+	}
+	if(!m_s.timers[_timer].in_use) {
+		return dummy;
+	}
+	return m_s.timers[_timer];
 }

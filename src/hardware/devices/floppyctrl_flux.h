@@ -145,8 +145,8 @@ private:
 
 	} m_s;  // state information
 
-	int m_polling_timer = NULL_TIMER_HANDLE;
-	int m_fdd_timers[MAX_DRIVES] = {NULL_TIMER_HANDLE,NULL_TIMER_HANDLE};
+	TimerID m_polling_timer = NULL_TIMER_ID;
+	TimerID m_fdd_timers[MAX_DRIVES] = {NULL_TIMER_ID,NULL_TIMER_ID};
 	uint64_t m_min_cmd_time_us = 0;
 
 public:

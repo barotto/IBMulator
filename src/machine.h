@@ -22,6 +22,7 @@
 
 #include <functional>
 #include <mutex>
+#include "timers.h"
 #include "shared_queue.h"
 #include "pacer.h"
 #include "hwbench.h"
@@ -32,7 +33,6 @@
 #include "hardware/devices/keyboard.h"
 #include "hardware/devices/floppydisk.h"
 #include "hardware/devices/floppyloader.h"
-#include "timers.h"
 
 class CPU;
 class Memory;
@@ -79,27 +79,12 @@ private:
 	double m_cycles_factor;
 	std::atomic<double> m_vtime_ratio;
 
-	struct Timer {
-		bool        in_use;       // Timer slot is in-use (currently registered).
-		uint64_t    period;       // Timer periodocity in nsecs.
-		uint64_t    time_to_fire; // Time to fire next (in nsecs).
-		bool        active;       // false=inactive, true=active.
-		bool        continuous;   // false=one-shot timer, true=continuous periodicity.
-		unsigned    data;         // Optional data
-		char        name[TIMER_NAME_LEN]; // A human readable name for this timer
-	} m_timers[MAX_TIMERS];
-
-	timer_fun_t m_timer_fn[MAX_TIMERS]; // Timer callback functions
-	uint m_num_timers;
+	EventTimers m_timers;
 
 	struct {
-		uint64_t virt_time;
-		uint64_t next_timer_time;
 		int32_t cycles_left;
 		char curr_prgname[PRG_NAME_LEN];
 	} m_s;
-
-	std::atomic<uint64_t> m_mt_virt_time;
 
 	std::vector<std::string> m_irq_names[16];
 
@@ -158,10 +143,10 @@ public:
 
 	void set_heartbeat(int64_t _ns);
 	inline int64_t get_heartbeat() const { return m_heartbeat; }
-	inline uint64_t get_virt_time_ns() const { return m_s.virt_time; }
-	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_s.virt_time); }
-	inline uint64_t get_virt_time_ns_mt() const { return m_mt_virt_time; }
-	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_mt_virt_time); }
+	inline uint64_t get_virt_time_ns() const { return m_timers.get_time(); }
+	inline uint64_t get_virt_time_us() const { return NSEC_TO_USEC(m_timers.get_time()); }
+	inline uint64_t get_virt_time_ns_mt() const { return m_timers.get_time_mt(); }
+	inline uint64_t get_virt_time_us_mt() const { return NSEC_TO_USEC(m_timers.get_time_mt()); }
 	inline HWBench & get_bench() { return m_bench; }
 
 	inline unsigned type() const { return model().type; }
@@ -172,22 +157,20 @@ public:
 	inline CPU & cpu() { return g_cpu; }
 	inline Devices & devices() { return g_devices; }
 
-	int register_timer(timer_fun_t _func, const std::string &_name, unsigned _data = 0);
-	void unregister_timer(int &_timer);
-	void activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous);
-	void activate_timer(unsigned _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous);
-	uint64_t get_timer_eta(unsigned _timer) const;
-	void deactivate_timer(unsigned _timer);
-	void set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _data = 0);
-	inline bool is_timer_active(unsigned _timer) const {
-		assert(_timer!=0 && _timer<m_num_timers);
-		return m_timers[_timer].active;
+	TimerID register_timer(TimerFn _func, const std::string &_name, unsigned _data = 0);
+	void unregister_timer(TimerID &_timer);
+	void activate_timer(TimerID _timer, uint64_t _nsecs, bool _continuous);
+	void activate_timer(TimerID _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous);
+	uint64_t get_timer_eta(TimerID _timer) const;
+	void deactivate_timer(TimerID _timer);
+	void set_timer_callback(TimerID _timer, TimerFn _func, unsigned _data = 0);
+	bool is_timer_active(TimerID _timer) const {
+		return m_timers.is_timer_active(_timer);
 	}
-	const Timer & get_timer(unsigned _timer) const {
-		assert(_timer!=0 && _timer<m_num_timers);
-		return m_timers[_timer];
+	const EventTimer & get_event_timer(TimerID _timer) const {
+		return m_timers.get_event_timer(_timer);
 	}
-	
+
 	void register_irq(uint8_t irq, const char* name);
 	void unregister_irq(uint8_t _irq, const char* name);
 	std::string get_irq_names(uint8_t irq);

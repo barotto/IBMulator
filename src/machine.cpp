@@ -67,7 +67,6 @@ Machine::~Machine()
 }
 
 #define MACHINE_STATE_NAME "Machine state"
-#define MACHINE_TIMERS_NAME "Machine timers"
 
 void Machine::save_state(StateBuf &_state)
 {
@@ -81,9 +80,7 @@ void Machine::save_state(StateBuf &_state)
 	h.data_size = sizeof(m_s);
 	_state.write(&m_s, h);
 
-	h.name = MACHINE_TIMERS_NAME;
-	h.data_size = sizeof(Timer)*MAX_TIMERS;
-	_state.write(m_timers, h);
+	m_timers.save_state(_state);
 
 	g_cpu.save_state(_state);
 	g_memory.save_state(_state);
@@ -106,41 +103,9 @@ void Machine::restore_state(StateBuf &_state)
 		h.name = MACHINE_STATE_NAME;
 		h.data_size = sizeof(m_s);
 		_state.read(&m_s, h);
-		m_mt_virt_time.store(m_s.virt_time);
 
 		//timers
-		h.name = MACHINE_TIMERS_NAME;
-		h.data_size = sizeof(Timer) * MAX_TIMERS;
-		_state.check(h);
-
-		Timer savtimer;
-		//for every timer in the savestate
-		for(unsigned t=0; t<MAX_TIMERS; t++) {
-			memcpy(&savtimer, _state.get_buf(), sizeof(Timer));
-			if(savtimer.in_use) {
-				unsigned mchtidx;
-				//find the correct machine timer, which must be already registered
-				for(mchtidx=0; mchtidx<MAX_TIMERS; mchtidx++) {
-					if(strcmp(m_timers[mchtidx].name, savtimer.name) == 0) {
-						break;
-					}
-				}
-				if(mchtidx>=MAX_TIMERS) {
-					PERRF(LOG_MACHINE, "Cannot find timer %s\n", savtimer.name);
-					throw std::exception();
-				}
-				if(!m_timers[mchtidx].in_use) {
-					PERRF(LOG_MACHINE, "Timer %s is not in use\n", m_timers[mchtidx].name);
-					throw std::exception();
-				}
-				m_timers[mchtidx].period = savtimer.period;
-				m_timers[mchtidx].time_to_fire = savtimer.time_to_fire;
-				m_timers[mchtidx].active = savtimer.active;
-				m_timers[mchtidx].continuous = savtimer.continuous;
-				m_timers[mchtidx].data = savtimer.data;
-			}
-			_state.advance(sizeof(Timer));
-		}
+		m_timers.restore_state(_state);
 
 		//exceptions will be thrown if the buffer size is smaller than expected
 		try {
@@ -196,7 +161,9 @@ void Machine::init()
 	m_pacer.start();
 	m_bench.init(m_pacer.chrono(), 1000);
 	m_s.curr_prgname[0] = 0;
-	m_num_timers = 0;
+
+	m_timers.set_log_facility(LOG_MACHINE);
+	m_timers.init();
 
 	g_cpu.init();
 	g_cpu.set_shutdown_trap([this] () {
@@ -246,14 +213,7 @@ void Machine::reset(uint _signal)
 			throw std::exception();
 	}
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
-		m_s.virt_time       = 0;
-		m_s.next_timer_time = 0;
-		m_mt_virt_time      = 0;
-		for(unsigned i = 0; i < m_num_timers; i++) {
-			if(m_timers[i].in_use && m_timers[i].active && m_timers[i].continuous) {
-				m_timers[i].time_to_fire = m_timers[i].period;
-			}
-		}
+		m_timers.reset();
 		m_s.cycles_left = 0;
 		set_DOS_program_name("");
 	}
@@ -350,9 +310,11 @@ void Machine::config_changed(bool _startup)
 
 	set_heartbeat(DEFAULT_HEARTBEAT);
 
-	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_num_timers);
-	for(unsigned i=0; i<m_num_timers; i++) {
-		PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers[i].name);
+	PDEBUGF(LOG_V1, LOG_MACHINE, "Registered timers: %u\n", m_timers.get_timers_count());
+	for(unsigned i=0; i<m_timers.get_timers_max(); i++) {
+		if(m_timers.get_event_timer(i).in_use) {
+			PDEBUGF(LOG_V1, LOG_MACHINE, "   %u: %s\n", i, m_timers.get_event_timer(i).name);
+		}
 	}
 	PINFOF(LOG_V0, LOG_MACHINE, "IRQ lines:\n");
 	for(unsigned i=0; i<16; i++) {
@@ -454,9 +416,9 @@ void Machine::run_loop()
 	static double cycles_rem = 0.0;
 	
 	m_bench.reset_values();
-	
+
 	while(true) {
-		uint64_t vstart = m_s.virt_time;
+		uint64_t vstart = m_timers.get_time();
 		m_bench.frame_start(vstart);
 
 		Machine_fun_t fn;
@@ -466,24 +428,28 @@ void Machine::run_loop()
 		if(m_quit || !m_on || m_cpu_single_step) {
 			return;
 		}
-		
+
 		double needed_cycles = m_cpu_cycles * m_cycles_factor;
 		int32_t cycles = round(needed_cycles + cycles_rem);
 		cycles_rem += needed_cycles - cycles;
+
+		// STEPPING THE CORE
+		// everything important happens here
 		core_step(cycles);
+
 		m_bench.cpu_cycles(cycles);
 
-		uint64_t vend = m_s.virt_time;
+		uint64_t vend = m_timers.get_time();
 		double vframe_time = double(vend - vstart);
-		
+
 		m_bench.load_end();
-		
+
 		uint64_t sleep_time = m_pacer.wait(m_bench.load_time, m_bench.frame_time);
-		
+
 		m_bench.frame_end(vend);
-		
+
 		m_vtime_ratio = vframe_time / m_bench.frame_time;
-		
+
 		PDEBUGF(LOG_V2, LOG_MACHINE,
 			"Core step, fstart=%lld, fend=%lld, lend=%lld, sleep_time=%llu, "
 			"cycles=%d, load_time=%d, frame_time=%lld (%lld), vframe_time=%.0f, vratio=%.4f\n",
@@ -513,15 +479,14 @@ void Machine::core_step(int32_t _cpu_cycles)
 			m_bench.cpu_step();
 
 			uint32_t elapsed_ns = c * cycle_time;
-			uint64_t cpu_time = m_s.virt_time + elapsed_ns;
+			uint64_t cpu_time = m_timers.get_time() + elapsed_ns;
 
-			if(cpu_time >= m_s.next_timer_time) {
-				while(!update_timers(cpu_time));
+			if(cpu_time >= m_timers.get_next_timer_time()) {
+				while(!m_timers.update(cpu_time));
 			}
 
 			cycles_left -= c;
-			m_s.virt_time = cpu_time;
-			m_mt_virt_time.store(cpu_time);
+			m_timers.set_time(cpu_time);
 		}
 
 		if(m_breakpoint_cs > 0) {
@@ -552,186 +517,44 @@ void Machine::resume()
 	g_mixer.cmd_resume();
 }
 
-bool Machine::update_timers(uint64_t _cpu_time)
-{
-	// We need to service all the active timers, and invoke callbacks
-	// from those timers which have fired.
-	m_s.next_timer_time = (uint64_t) -1;
-	std::multimap<uint64_t, ushort> triggered;
-	for(uint i = 0; i < m_num_timers; i++) {
-		//triggered[i] = false; // Reset triggered flag.
-		if(m_timers[i].active) {
-			if(m_timers[i].time_to_fire <= _cpu_time) {
-
-				//timers need to fire in an ordered manner
-				triggered.insert(std::pair<uint64_t,ushort>(m_timers[i].time_to_fire,i));
-
-			} else {
-
-				// This timer is not ready to fire yet.
-				if(m_timers[i].time_to_fire < m_s.next_timer_time) {
-					m_s.next_timer_time = m_timers[i].time_to_fire;
-				}
-
-			}
-		}
-	}
-
-	uint64_t prevtimer_time = 0;
-	for(auto timer : triggered) {
-		unsigned thistimer = timer.second;
-		uint64_t thistimer_time = timer.first;
-		uint64_t system_time = m_s.virt_time;
-		assert(thistimer_time >= prevtimer_time);
-		assert(thistimer_time <= _cpu_time);
-		assert(thistimer_time >= system_time);
-
-		// Call requested timer function.  It may request a different
-		// timer period or deactivate etc.
-		// it can even reactivate the same timer and set it to fire BEFORE the next vtime
-		if(!m_timers[thistimer].continuous) {
-			// If triggered timer is one-shot, deactive.
-			m_timers[thistimer].active = false;
-		} else {
-			// Continuous timer, increment time-to-fire by period.
-			m_timers[thistimer].time_to_fire += m_timers[thistimer].period;
-			if(m_timers[thistimer].time_to_fire < m_s.next_timer_time) {
-				m_s.next_timer_time = m_timers[thistimer].time_to_fire;
-			}
-		}
-		if(m_timer_fn[thistimer] != nullptr) {
-			//the current time is when the timer fires
-			//virt_time must advance in a monotonic way (that's why we use a map)
-			m_s.virt_time = thistimer_time;
-			m_mt_virt_time = thistimer_time;
-			m_timer_fn[thistimer](m_s.virt_time);
-			if(m_timers[thistimer].time_to_fire <= _cpu_time) {
-				// the timer set itself to fire again before or at the time point
-				// we need to reorder
-				return false;
-			}
-		}
-		prevtimer_time = thistimer_time;
-	}
-	return true;
-}
-
 void Machine::set_single_step(bool _val)
 {
 	m_cpu_single_step = _val;
 }
 
-int Machine::register_timer(timer_fun_t _func, const std::string &_name, unsigned _data)
+TimerID Machine::register_timer(TimerFn _func, const std::string &_name, unsigned _data)
 {
-	unsigned timer = NULL_TIMER_HANDLE;
-
-	// search for new timer
-	for(unsigned i = 0; i < m_num_timers; i++) {
-		//check if there's another timer with the same name
-		if(m_timers[i].in_use && strcmp(m_timers[i].name, _name.c_str())==0) {
-			//cannot be 2 timers with the same name
-			return NULL_TIMER_HANDLE;
-		}
-		if((!m_timers[i].in_use) && (timer==NULL_TIMER_HANDLE)) {
-			//free timer found
-			timer = i;
-		}
-	}
-	if(timer == NULL_TIMER_HANDLE) {
-		// If we didn't find a free slot, increment the bound m_num_timers.
-		if(m_num_timers >= MAX_TIMERS) {
-			PERRF(LOG_MACHINE, "register_timer: too many registered timers\n");
-			throw std::exception();
-		}
-		timer = m_num_timers;
-		m_num_timers++;
-	}
-	m_timers[timer].in_use = true;
-	m_timers[timer].period = 0;
-	m_timers[timer].time_to_fire = 0;
-	m_timers[timer].active = false;
-	m_timers[timer].continuous = false;
-	m_timers[timer].data = _data;
-	m_timer_fn[timer] = _func;
-	snprintf(m_timers[timer].name, TIMER_NAME_LEN, "%s", _name.c_str());
-
-	PDEBUGF(LOG_V2,LOG_MACHINE,"timer id %d registered for '%s'\n", timer, _name.c_str());
-
-	return timer;
+	return m_timers.register_timer(_func, _name, _data);
 }
 
-void Machine::unregister_timer(int &_timer)
+void Machine::unregister_timer(TimerID &_timer)
 {
-	if(_timer == NULL_TIMER_HANDLE) {
-		PDEBUGF(LOG_V0, LOG_MACHINE, "cannot unregister NULL_TIMER_HANDLE!\n");
-		return;
-	}
-	assert(_timer < MAX_TIMERS);
-	assert(m_num_timers > 0);
-	if(!m_timers[_timer].in_use) {
-		PDEBUGF(LOG_V0, LOG_MACHINE, "cannot unregister timer %d: not in use!\n");
-		return;
-	}
-	PDEBUGF(LOG_V2, LOG_MACHINE, "unregistering timer id %d (%s) from pool of %u timers\n",
-			_timer, m_timers[_timer].name, m_num_timers);
-	m_timers[_timer].in_use = false;
-	m_timers[_timer].active = false;
-	m_timer_fn[_timer] = nullptr;
-	if(_timer == int(m_num_timers-1)) {
-		// update timers tail index
-		m_num_timers--;
-	}
-	_timer = NULL_TIMER_HANDLE;
+	m_timers.unregister_timer(_timer);
 }
 
-void Machine::activate_timer(unsigned _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous)
+void Machine::activate_timer(TimerID _timer, uint64_t _delay_ns, uint64_t _period_ns, bool _continuous)
 {
-	assert(_timer<m_num_timers);
-
-	if(_period_ns == 0) {
-		// use default stored in period field
-		_period_ns = m_timers[_timer].period;
-	}
-
-	m_timers[_timer].active = true;
-	m_timers[_timer].period = _period_ns;
-	m_timers[_timer].time_to_fire = m_s.virt_time + _delay_ns;
-	m_timers[_timer].continuous = _continuous;
-
-	if(m_timers[_timer].time_to_fire < m_s.next_timer_time) {
-		m_s.next_timer_time = m_timers[_timer].time_to_fire;
-	}
+	m_timers.activate_timer(_timer, _delay_ns, _period_ns, _continuous);
 }
 
-void Machine::activate_timer(unsigned _timer, uint64_t _nsecs, bool _continuous)
+void Machine::activate_timer(TimerID _timer, uint64_t _nsecs, bool _continuous)
 {
-	activate_timer(_timer, _nsecs, _nsecs, _continuous);
+	m_timers.activate_timer(_timer, _nsecs, _nsecs, _continuous);
 }
 
-void Machine::deactivate_timer(unsigned _timer)
+void Machine::deactivate_timer(TimerID _timer)
 {
-	assert(_timer<m_num_timers);
-
-	m_timers[_timer].active = false;
+	m_timers.deactivate_timer(_timer);
 }
 
-uint64_t Machine::get_timer_eta(unsigned _timer) const
+uint64_t Machine::get_timer_eta(TimerID _timer) const
 {
-	assert(_timer<m_num_timers);
-
-	if(!m_timers[_timer].active) {
-		return 0;
-	}
-	assert(m_timers[_timer].time_to_fire >= m_s.virt_time);
-	return (m_timers[_timer].time_to_fire - m_s.virt_time);
+	return m_timers.get_timer_eta(_timer);
 }
 
-void Machine::set_timer_callback(unsigned _timer, timer_fun_t _func, unsigned _data)
+void Machine::set_timer_callback(TimerID _timer, TimerFn _func, unsigned _data)
 {
-	assert(_timer<m_num_timers);
-
-	m_timer_fn[_timer] = _func;
-	m_timers[_timer].data = _data;
+	m_timers.set_timer_callback(_timer, _func, _data);
 }
 
 void Machine::register_irq(uint8_t _irq, const char* _name)

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -52,7 +52,7 @@ static const IODevice::IOPorts mpu401_ports = {
 MPU401::MPU401(Devices *_dev)
 : IODevice(_dev),
   m_iobase(0), m_irq(0), m_req_mode(MPU401::Mode::INTELLIGENT),
-  m_eoi_timer(NULL_TIMER_HANDLE), m_event_timer(NULL_TIMER_HANDLE), m_reset_timer(NULL_TIMER_HANDLE)
+  m_eoi_timer(NULL_TIMER_ID), m_event_timer(NULL_TIMER_ID), m_reset_timer(NULL_TIMER_ID)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }
@@ -99,6 +99,7 @@ void MPU401::remove()
 	
 	g_machine.unregister_timer(m_eoi_timer);
 	g_machine.unregister_timer(m_event_timer);
+	g_machine.unregister_timer(m_reset_timer);
 }
 
 void MPU401::config_changed()

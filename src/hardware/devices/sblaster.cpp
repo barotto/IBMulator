@@ -226,9 +226,9 @@ SBlaster::SBlaster(Devices *_dev)
 m_iobase(0), m_irq(0), m_dma(0),
 m_dsp_ver(0x105),
 m_dac_volume(.0f),
-m_dsp_timer(NULL_TIMER_HANDLE),
-m_dma_timer(NULL_TIMER_HANDLE),
-m_dac_timer(NULL_TIMER_HANDLE)
+m_dsp_timer(NULL_TIMER_ID),
+m_dma_timer(NULL_TIMER_ID),
+m_dac_timer(NULL_TIMER_ID)
 {
 	memset(&m_s, 0, sizeof(m_s));
 	m_s.dac.device = this;

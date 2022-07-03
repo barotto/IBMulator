@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -42,7 +42,7 @@ private:
 		uint64_t  pit_ticks;
 	} m_s;
 
-	int m_systimer;
+	TimerID m_systimer;
 	uint32_t m_crnt_emulated_ticks;
 	std::atomic<uint64_t> m_mt_pit_ticks;
 	PCSpeaker *m_pcspeaker;

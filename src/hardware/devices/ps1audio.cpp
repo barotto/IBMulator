@@ -59,7 +59,7 @@ IODEVICE_PORTS(PS1Audio) = {
 
 PS1Audio::PS1Audio(Devices *_dev)
 : IODevice(_dev),
-m_fifo_timer(NULL_TIMER_HANDLE)
+m_fifo_timer(NULL_TIMER_ID)
 {
 }
 

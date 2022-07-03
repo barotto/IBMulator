@@ -1,10 +1,8 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
- * Adapted for IBMulator.
- */
-
-/*
  * Copyright (C) 2002-2015  The DOSBox Team
+ * Copyright (C) 2016-2022  Marco Bortolin
+ *
+ * This file is part of IBMulator.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -186,10 +184,10 @@ static double decrelconst[4] = {
 OPL::OPL()
 : m_irqfn([](bool){})
 {
-	m_s.timers[T1].index = NULL_TIMER_HANDLE;
+	m_s.timers[T1].index = NULL_TIMER_ID;
 	m_s.timers[T1].id = T1;
 	m_s.timers[T1].increment = 80;
-	m_s.timers[T2].index = NULL_TIMER_HANDLE;
+	m_s.timers[T2].index = NULL_TIMER_ID;
 	m_s.timers[T2].id = T2;
 	m_s.timers[T2].increment = 320;
 
@@ -205,13 +203,13 @@ void OPL::install(ChipTypes _type, std::string _name, bool _timers)
 		m_s.timers[T1].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T1),
 				timername.c_str());
-		assert(m_s.timers[T1].index != NULL_TIMER_HANDLE);
+		assert(m_s.timers[T1].index != NULL_TIMER_ID);
 
 		timername = _name + " T2";
 		m_s.timers[T2].index = g_machine.register_timer(
 				std::bind(&OPL::timer,this,T2),
 				timername.c_str());
-		assert(m_s.timers[T2].index != NULL_TIMER_HANDLE);
+		assert(m_s.timers[T2].index != NULL_TIMER_ID);
 	}
 }
 
@@ -325,7 +323,7 @@ uint8_t OPL::read(unsigned _port)
 
 void OPL::write_timers(int _index, uint8_t _value)
 {
-	if(m_s.timers[T1].index == NULL_TIMER_HANDLE) {
+	if(m_s.timers[T1].index == NULL_TIMER_ID) {
 		return;
 	}
 	switch(_index) {
@@ -1820,7 +1818,7 @@ void OPL::Operator::exec()
  * Timer
  */
 
-void OPL::Timer::reset()
+void OPL::OPLTimer::reset()
 {
 	value = 0;
 	overflow = 0;
@@ -1828,7 +1826,7 @@ void OPL::Timer::reset()
 	toggle(false);
 }
 
-void OPL::Timer::toggle(bool _start)
+void OPL::OPLTimer::toggle(bool _start)
 {
 	if(_start) {
 		uint32_t time = (256 - value) * increment;
@@ -1839,12 +1837,12 @@ void OPL::Timer::toggle(bool _start)
 	}
 }
 
-void OPL::Timer::clear()
+void OPL::OPLTimer::clear()
 {
 	overflow = 0;
 }
 
-bool OPL::Timer::timeout()
+bool OPL::OPLTimer::timeout()
 {
 	// reloads the preset value
 	// DOSBox doesn't do this!

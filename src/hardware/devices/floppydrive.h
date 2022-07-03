@@ -32,7 +32,7 @@ protected:
 	std::string m_drive_config;
 	FloppyCtrl *m_floppyctrl = nullptr;
 
-	int m_index_timer = NULL_TIMER_HANDLE;
+	TimerID m_index_timer = NULL_TIMER_ID;
 
 	std::unique_ptr<FloppyDisk> m_image;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -18,10 +18,10 @@
  */
 
 #include "ibmulator.h"
+#include "machine.h"
 #include "pcspeaker.h"
 #include "program.h"
 #include "pit.h"
-#include "machine.h"
 #include <cmath>
 
 #define PC_SPEAKER_LEVEL 0.8

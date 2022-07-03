@@ -134,8 +134,8 @@ private:
 		int reset_phase;
 	} m_s;
 
-	int m_cmd_timer;
-	int m_dma_timer;
+	TimerID m_cmd_timer;
+	TimerID m_dma_timer;
 
 	HardDiskDrive m_disk;
 

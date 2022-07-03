@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2009  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -183,7 +183,7 @@ private:
 	void mouse_enQ(uint8_t mouse_data);
 
 	void timer_handler(uint64_t);
-	int m_timer;
+	TimerID m_timer;
 
 	bool m_mouse_acc;
 	Typematic m_typematic;
