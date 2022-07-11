@@ -2544,10 +2544,8 @@ void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phas
 			send_key_to_machine(key, KEY_RELEASED);
 		}
 	}
-	
-	g_program.restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0}, [this](){
-		show_message("State restored");
-	}, nullptr);
+
+	restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0});
 }
 
 void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
