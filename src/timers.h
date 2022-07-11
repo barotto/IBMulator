@@ -33,7 +33,7 @@
 #define NSEC_TO_USEC(nsec) (nsec/1000)
 #define NSEC_TO_SEC(nsec) (double((nsec)) / 1'000'000'000.0)
 #define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
-#define MAX_TIMERS 24
+#define MAX_TIMERS 28
 #define TIMER_NAME_LEN 20
 
 constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * MSEC_PER_SECOND; }
