@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,7 +36,7 @@ public:
 	virtual ~StorageCtrl();
 
 	virtual int installed_devices() const { return 0; }
-	virtual const StorageDev * get_device(int) { return nullptr; }
+	virtual StorageDev * get_device(int) { return nullptr; }
 
 	virtual bool is_busy() const { return false; }
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -68,7 +68,6 @@ m_track_overhead(0.0),
 m_head_speed_factor(0.0),
 m_head_accel_factor(0.0)
 {
-	memset(&m_s, 0, sizeof(m_s));
 }
 
 int64_t StorageDev::chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const
@@ -129,16 +128,6 @@ double StorageDev::head_position(double _last_pos, uint32_t _elapsed_time_us) co
 double StorageDev::head_position(uint64_t _time_us) const
 {
 	return head_position(0.0, _time_us);
-}
-
-void StorageDev::power_on(uint64_t _time)
-{
-	m_s.power_on_time = _time;
-}
-
-void StorageDev::power_off()
-{
-	memset(&m_s, 0, sizeof(m_s));
 }
 
 void StorageDev::config_changed(const char *)

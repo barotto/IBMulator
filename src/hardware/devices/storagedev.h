@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -102,21 +102,20 @@ protected:
 	MediaGeometry m_geometry;
 	DrivePerformance m_performance;
 
-	struct {
-		uint64_t power_on_time;
-	} m_s;
-
 public:
 	StorageDev();
 	virtual ~StorageDev() {}
 
 	virtual void install(StorageCtrl*) {}
 	virtual void remove() {}
-	virtual void power_on(uint64_t _time);
-	virtual void power_off();
+	virtual void power_on(uint64_t /*_time*/) {}
+	virtual void power_off() {}
 	virtual void config_changed(const char *section);
 	virtual void save_state(StateBuf &) {}
 	virtual void restore_state(StateBuf &) {}
+	virtual bool is_read_only() const { return true; }
+	virtual bool is_dirty(bool /*_since_restore*/) const { return false; }
+	virtual void commit() const {}
 
 	const char * name() const { return m_name.c_str(); }
 	const char * path() const { return m_path.c_str(); }

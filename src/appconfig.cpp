@@ -99,14 +99,10 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ CMOS_IMAGE_RTC_INIT, "no"  },
 		{ CMOS_IMAGE_SAVE,     "yes" }
 	} },
-	
-	{ DRIVES_SECTION, {
-		{ DRIVES_FLOPPY_COMMIT, "ask" }
-	} },
 
-	{ DISK_C_SECTION, {
-		{ DISK_READONLY,   "no" },
-		{ DISK_SAVE,       "no" }
+	{ DRIVES_SECTION, {
+		{ DRIVES_FLOPPY_COMMIT, "yes" },
+		{ DRIVES_HDD_COMMIT,    "yes" }
 	} },
 
 	{ MIXER_SECTION, {
@@ -232,13 +228,13 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,   "auto" },
-		{ DRIVES_FDD_B,   "auto" },
-		{ DRIVES_FDC_TYPE,"raw"  },
-		{ DRIVES_FDC_MODE,"auto" },
-		{ DRIVES_FDC_OVR, "250"  },
-		{ DRIVES_FDD_LAT, "1.0"  },
-		{ DRIVES_HDD,     "auto" }
+		{ DRIVES_FDD_A,    "auto" },
+		{ DRIVES_FDD_B,    "auto" },
+		{ DRIVES_FDC_TYPE, "raw"  },
+		{ DRIVES_FDC_MODE, "auto" },
+		{ DRIVES_FDC_OVR,  "250"  },
+		{ DRIVES_FDD_LAT,  "1.0"  },
+		{ DRIVES_HDC_TYPE, "auto" }
 	} },
 
 	{ DISK_A_SECTION, {
@@ -483,11 +479,11 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                 5.25 DD: install a 5.25\" DD 360K drive\n"
 ";      floppy_b: The type of floppy drive B.\n"
 ";                Possible values: auto, none, 3.5, 5.25, 5.25 DD\n"
-"; floppy_commit: commit floppy images to storage?\n"
-";                Possible values: ask, commit, discard, discard_states\n"
+"; floppy_commit: Commit floppy images to storage when ejected?\n"
+";                Possible values: yes, no, ask, discard_states\n"
+";                 yes: commit data\n"
+";                  no: discard written data (beware: data loss)\n"
 ";                 ask: a message box will be shown to ask what to do\n"
-";                 commit: always commit data when floppies are ejected\n"
-";                 discard: discard written data when floppies are ejected (beware: data loss)\n"
 ";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"
 ";      fdc_type: Type of the floppy disk controller emulation.\n"
 ";                Possible values: raw, flux\n"
@@ -498,12 +494,18 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   fdd_latency: A multiplier for the floppy drives rotational latency (only for the \"raw\" controller type).\n"
 ";                You can use this parameter to speed up the FDD read/write operations.\n"
 ";                Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
-";           hdd: The type of the C: hard disk drive.\n"
+";      hdc_type: The type of hard disk controller.\n"
 ";                Possible values: none, auto, ps1, ata\n"
 ";                 none: no hard disk installed\n"
 ";                 auto: automatically determined by the system model\n"
 ";                  ps1: IBM's proprietary 8-bit XTA-like controller\n"
 ";                  ata: IDE/ATA controller\n"
+";    hdd_commit: Commit hard disk images when program closes or a new state is loaded?\n"
+";                Possible values: yes, no, ask, discard_states\n"
+";                 yes: commit data when program closes or new state gets loaded\n"
+";                  no: discard written data (beware: data loss)\n"
+";                 ask: a message box will be shown to ask what to do\n"
+";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"
 		},
 
 		{ DISK_A_SECTION,
@@ -532,9 +534,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";          custom: same as " STR(HDD_CUSTOM_DRIVE_IDX) "\n"
 ";     path: Possible values: auto, or the path of the image file to mount.\n"
 ";           If the file doesn't exist a new one will be created.\n"
-"; readonly: Yes if the disk image should be write protected (a temporary image will be used)\n"
-";     save: When you load a savestate the disk is restored in a temporary image file.\n"
-";           Set this option to 'yes' if you want to make the changes permanent at machine power off (original image will be overwritten).\n"
 "; The following parameters are used only for disk type " STR(HDD_CUSTOM_DRIVE_IDX) " (custom type):\n"
 ";   cylinders: Number of cylinders (max. 1024)\n"
 ";       heads: Number of heads (max. 16)\n"
@@ -727,7 +726,8 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ DRIVES_FDC_MODE,      false },
 		{ DRIVES_FDC_OVR,       true  },
 		{ DRIVES_FDD_LAT,       false },
-		{ DRIVES_HDD,           false }
+		{ DRIVES_HDC_TYPE,      false },
+		{ DRIVES_HDD_COMMIT,    false }
 	} },
 	{ DISK_A_SECTION, {
 		{ DISK_PATH,      false },
@@ -748,8 +748,6 @@ ini_order_t AppConfig::ms_keys_order = {
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,       false },
 		{ DISK_PATH,       false },
-		{ DISK_READONLY,   false },
-		{ DISK_SAVE,       false },
 		{ DISK_CYLINDERS,  false },
 		{ DISK_HEADS,      false },
 		{ DISK_SPT,        false },

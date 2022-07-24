@@ -239,7 +239,7 @@ void Machine::power_off()
 void Machine::config_changed(bool _startup)
 {
 	if(_startup) {
-		m_media_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FLOPPY_COMMIT, {
+		ini_enum_map_t commit_values = {
 			{ "ask",     MEDIA_ASK },
 			{ "yes",     MEDIA_COMMIT },
 			{ "commit",  MEDIA_COMMIT },
@@ -247,10 +247,14 @@ void Machine::config_changed(bool _startup)
 			{ "discard", MEDIA_DISCARD },
 			{ "discard_states", MEDIA_DISCARD_STATES },
 			{ "discard states", MEDIA_DISCARD_STATES }
-		}, MEDIA_COMMIT));
-
-		if(m_media_commit == MEDIA_DISCARD || m_media_commit == MEDIA_DISCARD_STATES) {
+		};
+		m_floppy_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_FLOPPY_COMMIT, commit_values, MEDIA_COMMIT));
+		if(m_floppy_commit == MEDIA_DISCARD) {
 			PWARN("WARNING: data written to floppy disks will be lost!\n");
+		}
+		m_hdd_commit = static_cast<MediaCommit>(g_program.config().get_enum(DRIVES_SECTION, DRIVES_HDD_COMMIT, commit_values, MEDIA_COMMIT));
+		if(m_hdd_commit == MEDIA_DISCARD) {
+			PWARN("WARNING: data written to the hard disk will be lost!\n");
 		}
 	} else {
 		m_config_id++;
@@ -898,8 +902,8 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 			return;
 		}
 		if(floppy->is_dirty()) {
-			if(m_media_commit == MEDIA_DISCARD || 
-			   (m_config_id > 0 && m_media_commit == MEDIA_DISCARD_STATES))
+			if(m_floppy_commit == MEDIA_DISCARD || 
+			   (m_config_id > 0 && m_floppy_commit == MEDIA_DISCARD_STATES))
 			{
 				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data discarded.\n");
 				if(_cb) { _cb(true); }
@@ -907,7 +911,7 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 				PWARNF(LOG_V0, LOG_MACHINE, "Floppy image format doesn't support save. Written data discarded.\n",
 						_drive ? "B" : "A");
 				if(_cb) { _cb(false); }
-			} else if(m_media_commit == MEDIA_ASK) {
+			} else if(m_floppy_commit == MEDIA_ASK) {
 				const char *section = _drive ? DISK_B_SECTION : DISK_A_SECTION;
 				std::string path = g_program.config().get_string(section, DISK_PATH);
 				GUI::instance()->show_message_box(
@@ -968,11 +972,44 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 	// should be paused beforehand.
 
 	m_cmd_queue.push([=](){
-		auto ctrl = g_devices.device<FloppyCtrl>();
 
-		if(!ctrl || 
-			m_media_commit == MEDIA_DISCARD || 
-		   (m_config_id > 0 && m_media_commit == MEDIA_DISCARD_STATES))
+		std::mutex mtx;
+		std::condition_variable cond;
+		std::unique_lock<std::mutex> save_lock(mtx);
+
+		auto hdc = g_devices.device<StorageCtrl>();
+		if(hdc && (
+		      m_hdd_commit == MEDIA_ASK
+		  ||  m_hdd_commit == MEDIA_COMMIT
+		  || (m_hdd_commit == MEDIA_DISCARD_STATES && m_config_id <= 0)
+		))
+		{
+			for(int i=0; i<hdc->installed_devices(); i++) {
+				const StorageDev *dev = hdc->get_device(i);
+				if(!dev || dev->is_read_only() || !dev->is_dirty(true)) {
+					continue;
+				}
+				bool save_this = true;
+				if(m_hdd_commit == MEDIA_ASK) {
+					GUI::instance()->show_message_box(
+							str_format("Save %s image", dev->name()),
+							str_format("Save to %s ?", dev->path()),
+							MessageWnd::Type::MSGW_YES_NO,
+							[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = true; cond.notify_all(); },
+							[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = false; cond.notify_all(); });
+					cond.wait(save_lock);
+				}
+				if(save_this) {
+					dev->commit();
+				}
+			}
+		}
+
+		auto fdc = g_devices.device<FloppyCtrl>();
+
+		if(!fdc || 
+		    m_floppy_commit == MEDIA_DISCARD || 
+		   (m_config_id > 0 && m_floppy_commit == MEDIA_DISCARD_STATES))
 		{
 			if(_cb) { _cb(); }
 			return;
@@ -985,36 +1022,34 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 			// If the machine is in a savestate, commit floppy only if it has been written
 			// to after the savestate restore. A floppy is committed always only
 			// after an explicit eject (press of the button).
-			if(ctrl->is_media_dirty(i,true) && i > last_dirty) {
+			if(fdc->is_media_dirty(i,true) && i > last_dirty) {
 				last_dirty = i;
 			}
 		}
-		std::mutex mtx;
-		std::condition_variable cond;
-		std::unique_lock<std::mutex> save_lock(mtx);
+
 		if(last_dirty >= 0) {
 			GUI::instance()->show_message("Saving floppy disks...");
 
 			for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
-				if(ctrl->is_media_dirty(i,true)) {
+				if(fdc->is_media_dirty(i,true)) {
 					bool save_this = true;
-					if(!ctrl->can_media_be_committed(i)) {
+					if(!fdc->can_media_be_committed(i)) {
 						PWARNF(LOG_V0, LOG_MACHINE, "Floppy %s format doesn't support save. Written data discarded.\n",
 								i ? "B" : "A");
 						save_this = false;
-					} else if(m_media_commit == MEDIA_ASK) {
+					} else if(m_floppy_commit == MEDIA_ASK) {
 						const char *section = i ? DISK_B_SECTION : DISK_A_SECTION;
 						std::string path = g_program.config().get_string(section, DISK_PATH);
 						GUI::instance()->show_message_box(
 								str_format("Save floppy %s image", i ? "B" : "A"),
-								str_format("Save %s ?", path.c_str()),
+								str_format("Save to %s ?", path.c_str()),
 								MessageWnd::Type::MSGW_YES_NO,
 								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = true; cond.notify_all(); },
 								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = false; cond.notify_all(); });
 						cond.wait(save_lock);
 					}
 					if(save_this) {
-						FloppyDisk *floppy = ctrl->eject_media(i, true);
+						FloppyDisk *floppy = fdc->eject_media(i, true);
 						assert(floppy);
 						commit_floppy(floppy, [=](bool){
 							// this is the FloppyLoader thread

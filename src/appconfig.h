@@ -214,7 +214,8 @@ public:
 #define DRIVES_FDC_TYPE         "fdc_type"
 #define DRIVES_FDC_MODE         "fdc_mode"
 #define DRIVES_FDC_OVR          "fdc_overhead"
-#define DRIVES_HDD              "hdd"
+#define DRIVES_HDC_TYPE         "hdc_type"
+#define DRIVES_HDD_COMMIT       "hdd_commit"
 
 #define DISK_A_SECTION          "floppy_a"
 #define DISK_B_SECTION          "floppy_b"
@@ -224,7 +225,6 @@ public:
 #define DISK_INSERTED           "inserted"
 #define DISK_READONLY           "readonly"
 #define DISK_PATH               "path"
-#define DISK_SAVE               "save"
 #define DISK_CYLINDERS          "cylinders"
 #define DISK_HEADS              "heads"
 #define DISK_SPT                "sectors"

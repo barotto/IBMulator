@@ -210,8 +210,6 @@ HardDiskDrive::HardDiskDrive()
 StorageDev(),
 m_type(0),
 m_spin_up_duration(0.0),
-m_save_on_close(false),
-m_read_only(true),
 m_tmp_disk(false),
 m_ctrl(nullptr),
 m_fx_enabled(false)
@@ -239,7 +237,7 @@ void HardDiskDrive::install(StorageCtrl *_ctrl)
 
 void HardDiskDrive::remove()
 {
-	unmount(m_save_on_close, m_read_only);
+	unmount();
 	
 	if(m_fx_enabled) {
 		m_fx.remove();
@@ -262,7 +260,7 @@ void HardDiskDrive::power_on(uint64_t _time)
 
 void HardDiskDrive::power_off()
 {
-	StorageDev::power_off();
+	m_s.power_on_time = 0;
 
 	if(m_fx_enabled && m_disk) {
 		m_fx.spin(false, true);
@@ -287,11 +285,7 @@ uint64_t HardDiskDrive::power_up_eta_us() const
 
 void HardDiskDrive::config_changed(const char *_section)
 {
-	m_save_on_close = g_program.config().get_bool(_section, DISK_SAVE);
-	m_read_only = g_program.config().get_bool(_section, DISK_READONLY);
-
-	// unmount and save the current image
-	unmount(m_save_on_close, m_read_only);
+	unmount();
 
 	m_section = _section;
 
@@ -352,7 +346,12 @@ void HardDiskDrive::config_changed(const char *_section)
 	get_profile(type, _section, m_geometry, m_performance);
 	StorageDev::config_changed(_section);
 
-	mount(m_path, m_geometry, m_read_only);
+	auto hdd_commit = g_machine.hdd_commit_strategy();
+	bool tmp_img = (
+		   hdd_commit != Machine::MEDIA_COMMIT
+		&& hdd_commit != Machine::MEDIA_DISCARD_STATES
+	);
+	mount(m_path, m_geometry, tmp_img);
 
 	auto model = ms_hdd_models.find(type);
 	if(model != ms_hdd_models.end()) {
@@ -428,10 +427,6 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 		m_fx.clear_events();
 	}
 
-	// restore_state comes after config_changed, so:
-	// 1. the old disk has been serialized and unmounted
-	// 2. a new disk is mounted, with path in m_imgpath
-	// 3. geometry and performance are determined
 	if(m_type > 0) {
 		assert(m_disk != nullptr);
 		std::string imgfile = _state.get_basename() + "-" + m_section + ".img";
@@ -440,8 +435,8 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 			throw std::exception();
 		}
 		MediaGeometry geom = m_disk->geometry();
-		m_disk.reset(nullptr); // this calls the destructor and closes the file
-		//the saved state is read only
+		unmount();
+		// the saved state is read only
 		mount(imgfile, geom, true);
 		if(m_fx_enabled) {
 			m_fx.spin(true, false);
@@ -451,6 +446,8 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 	}
 
 	_state.read(&m_s, {sizeof(m_s), "Hard Disk Drive"});
+
+	m_dirty_restore = false;
 }
 
 void HardDiskDrive::get_profile(int _type_id, const char *_section,
@@ -528,7 +525,7 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 	}
 }
 
-void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_only)
+void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _tmp_img)
 {
 	if(_imgpath.empty()) {
 		PERRF(LOG_HDD, "You need to specify a HDD image file\n");
@@ -570,7 +567,7 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 		PINFOF(LOG_V0, LOG_HDD, "Using image file '%s'\n", _imgpath.c_str());
 	}
 
-	if(_read_only || !FileSys::is_file_writeable(_imgpath.c_str()))	{
+	if(_tmp_img || !FileSys::is_file_writeable(_imgpath.c_str())) {
 		PINFOF(LOG_V1, LOG_HDD, "The image file is read-only, using a replica\n");
 
 		std::string dir, base, ext;
@@ -596,53 +593,42 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _read_
 	}
 }
 
-void HardDiskDrive::unmount(bool _save, bool _read_only)
+void HardDiskDrive::commit() const
+{
+	if(!m_tmp_disk) {
+		return;
+	}
+
+	// make the current disk state permanent.
+	auto path = m_path;
+	if(FileSys::file_exists(m_path.c_str()) && !FileSys::is_file_writeable(m_path.c_str())) {
+		PINFOF(LOG_V0, LOG_HDD, "%s: image file is write protected, a copy will be created.\n",
+				name());
+		path = FileSys::get_next_filename_time(m_path.c_str());
+	}
+	PINFOF(LOG_V0, LOG_HDD, "Saving %s image to '%s'\n", name(), path.c_str());
+	m_disk->save_state(path.c_str());
+}
+
+void HardDiskDrive::unmount()
 {
 	if(!m_disk || !m_disk->is_open()) {
 		return;
 	}
 
-	if(m_tmp_disk) {
-		if(!_save) {
-			PINFOF(LOG_V0, LOG_HDD,
-					"Disk image file for %s not saved because '" DISK_SAVE "' option is set to false in the configuration file\n",
-					name());
-		} else if(_read_only) {
-			PINFOF(LOG_V0, LOG_HDD,
-					"Disk image file for %s not saved because '" DISK_READONLY "' option is set to true in the configuration file\n",
-					name());
-		} else {
-			// make the current disk state permanent.
-			bool save = true;
-			if(FileSys::file_exists(m_path.c_str())) {
-				if(FileSys::get_file_size(m_path.c_str()) != size()) {
-					//TODO this is true only for flat media images
-					PINFOF(LOG_V0, LOG_HDD, "%s: disk geometry mismatch, temporary image not saved!\n",
-							name());
-					save = false;
-				}
-				if(!FileSys::is_file_writeable(m_path.c_str())) {
-					PINFOF(LOG_V0, LOG_HDD, "%s: image file is write protected, temporary image not saved!\n",
-							name());
-					save = false;
-				}
-			}
-			if(save) {
-				PINFOF(LOG_V0, LOG_HDD,
-						"Saving %s image to '%s'\n", name(), m_path.c_str());
-				m_disk->save_state(m_path.c_str());
-			}
-		}
-	}
-
 	m_disk->close();
+
 	if(m_tmp_disk) {
 		PDEBUGF(LOG_V0, LOG_HDD, "Removing temporary image file '%s'\n", m_disk->get_name().c_str());
 		if(FileSys::remove(m_disk->get_name().c_str()) != 0) {
 			PERRF(LOG_HDD, "Error removing temporary image file '%s'\n", m_disk->get_name().c_str());
 		}
 	}
+
 	m_disk.reset(nullptr);
+
+	m_s.dirty = false;
+	m_dirty_restore = false;
 }
 
 void HardDiskDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
@@ -685,6 +671,8 @@ void HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 				name(), offset);
 		throw std::exception();
 	}
+
+	set_dirty();
 }
 
 void HardDiskDrive::seek(unsigned _from_cyl, unsigned _to_cyl)

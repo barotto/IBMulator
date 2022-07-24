@@ -58,6 +58,10 @@ enum MachineReset {
 
 class Machine
 {
+public:
+	enum MediaCommit {
+		MEDIA_ASK, MEDIA_COMMIT, MEDIA_DISCARD, MEDIA_DISCARD_STATES 
+	};
 private:
 	unsigned m_model;
 	ModelConfig m_configured_model;
@@ -120,9 +124,8 @@ private:
 	std::unique_ptr<FloppyLoader> m_floppy_loader;
 	std::thread m_floppy_loader_thread;
 
-	enum MediaCommit {
-		MEDIA_COMMIT, MEDIA_DISCARD, MEDIA_DISCARD_STATES, MEDIA_ASK
-	} m_media_commit = MEDIA_ASK;
+	MediaCommit m_floppy_commit = MEDIA_ASK;
+	MediaCommit m_hdd_commit = MEDIA_ASK;
 
 	void commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb);
 
@@ -186,6 +189,8 @@ public:
 	inline bool is_paused() const { return m_cpu_single_step; }
 	inline double cycles_factor() const { return m_cycles_factor; }
 	inline double vtime_ratio() const { return m_vtime_ratio; }
+
+	MediaCommit hdd_commit_strategy() const { return m_hdd_commit; }
 
 	//inter-thread commands:
 	void cmd_quit();

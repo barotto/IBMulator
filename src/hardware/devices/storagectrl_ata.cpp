@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2017-2021  Marco Bortolin
+ * Copyright (C) 2017-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -397,7 +397,7 @@ void StorageCtrl_ATA::restore_state(StateBuf &_state)
 	update_busy_status();
 }
 
-const StorageDev * StorageCtrl_ATA::get_device(int _dev_idx)
+StorageDev * StorageCtrl_ATA::get_device(int _dev_idx)
 {
 	int idx = 0;
 	for(int ch=0; ch<ATA_MAX_CHANNEL; ch++) {

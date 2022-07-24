@@ -175,9 +175,8 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
-	// these functions are called by the GUI thread.
 	int installed_devices() const { return m_devices_cnt; }
-	const StorageDev * get_device(int);
+	StorageDev * get_device(int);
 	bool is_busy() const {
 		return m_busy;
 	}

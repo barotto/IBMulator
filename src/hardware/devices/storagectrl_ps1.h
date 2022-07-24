@@ -158,7 +158,7 @@ public:
 	void restore_state(StateBuf &_state);
 
 	int installed_devices() const { return 1; }
-	const StorageDev * get_device(int) { return &m_disk; }
+	StorageDev * get_device(int) { return &m_disk; }
 
 	bool is_busy() const {
 		// this function is called by the GUI thread.

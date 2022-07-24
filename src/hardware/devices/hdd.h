@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,10 +36,14 @@ protected:
 	int m_type;
 	uint64_t m_spin_up_duration;
 	std::unique_ptr<MediaImage> m_disk;
-	bool m_save_on_close;
-	bool m_read_only;
 	bool m_tmp_disk;
 	StorageCtrl *m_ctrl;
+
+	struct {
+		uint64_t power_on_time;
+		bool dirty = false;
+	} m_s;
+	bool m_dirty_restore = false;
 
 	static const MediaGeometry ms_hdd_types[HDD_DRIVES_TABLE_SIZE];
 	static const std::map<unsigned, DrivePerformance> ms_hdd_performance;
@@ -60,6 +64,11 @@ public:
 	void config_changed(const char *_section);
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+	bool is_read_only() const { return false; }
+	bool is_dirty(bool _since_restore = false) const {
+		return (_since_restore) ? m_dirty_restore : m_s.dirty;
+	}
+	void commit() const;
 
 	int type() const { return m_type; }
 	uint64_t size() const { return m_disk->size(); }
@@ -74,8 +83,13 @@ public:
 
 private:
 	void get_profile(int _type_id, const char *_section, MediaGeometry &geom_, DrivePerformance &perf_);
-	void mount(std::string _imgpath, MediaGeometry _geom, bool _read_only);
-	void unmount(bool _save, bool _read_only);
+	void mount(std::string _imgpath, MediaGeometry _geom, bool _tmp_img);
+	void unmount();
+
+	void set_dirty() {
+		m_s.dirty = true;
+		m_dirty_restore = true;
+	}
 };
 
 #endif
