@@ -156,6 +156,7 @@ public:
 	FloppyDisk* create_floppy_disk(const FloppyDisk::Properties &_props) const {
 		return new FloppyDisk(_props);
 	}
+	bool can_use_any_floppy() const { return true; }
 
 	void install();
 	void remove();

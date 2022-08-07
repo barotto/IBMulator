@@ -49,6 +49,7 @@ protected:
 
 	std::vector<char> m_header;
 	unsigned m_load_offset = 0;
+	bool m_std_dos = true;
 
 	bool load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk);
 	bool load_flux(std::ifstream &_file, FloppyDisk &_disk);

@@ -31,6 +31,7 @@
 #include "hardware/devices/systemboard.h"
 #include "floppyctrl_raw.h"
 #include "floppyfmt_img.h"
+#include "floppyfmt_imd.h"
 
 const std::map<unsigned,FloppyCtrl_Raw::CmdDef> FloppyCtrl_Raw::ms_cmd_list = {
 	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data",          &FloppyCtrl_Raw::cmd_read_data} },
@@ -65,6 +66,7 @@ FloppyCtrl_Raw::FloppyCtrl_Raw(Devices *_dev)
 : FloppyCtrl(_dev)
 {
 	m_floppy_formats.emplace_back(new FloppyFmt_IMG());
+	m_floppy_formats.emplace_back(new FloppyFmt_IMD());
 }
 
 void FloppyCtrl_Raw::install()

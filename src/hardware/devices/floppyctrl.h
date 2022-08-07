@@ -42,6 +42,7 @@ public:
 	const std::vector<std::unique_ptr<FloppyFmt>> &get_compatible_formats() {
 		return m_floppy_formats;
 	}
+	virtual bool can_use_any_floppy() const = 0;
 
 	// configurations with more than 2 drives are untested
 	enum {

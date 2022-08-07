@@ -118,6 +118,7 @@ private:
 	bool m_order_ascending = true;
 	std::vector<unsigned> m_compat_types;
 	std::string m_compat_regexp;
+	bool m_compat_dos_formats_only;
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
 
@@ -151,8 +152,10 @@ public:
 	void set_current_dir(const std::string &_path);
 	std::string get_current_dir() const { return m_cwd; }
 	bool is_current_dir_valid() const { return m_valid_cwd; }
-	void set_compat_types(std::vector<unsigned> _disk_types, const std::vector<const char*> &_extensions,
-			const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats);
+	void set_compat_types(std::vector<unsigned> _disk_types,
+			const std::vector<const char*> &_extensions,
+			const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats,
+			bool _dos_formats_only);
 	void reload();
 
 protected:

@@ -73,18 +73,19 @@ public:
 	//! Standard DOS formatted PC floppy disk variants
 	enum StdType {
 		TYPE_MASK = 0xff,
+		DOS_FMT   = 0x80,
 		FD_NONE   = 0x00, // unknown or invalid media type
-		DD_160K   = 0x01 | SIZE_5_25 | DENS_DD, //  160K 5.25"
-		DD_180K   = 0x02 | SIZE_5_25 | DENS_DD, //  180K 5.25"
-		DD_320K   = 0x03 | SIZE_5_25 | DENS_DD, //  320K 5.25"
-		DD_360K   = 0x04 | SIZE_5_25 | DENS_DD, //  360K 5.25"
+		DD_160K   = 0x81 | SIZE_5_25 | DENS_DD, //  160K 5.25"
+		DD_180K   = 0x82 | SIZE_5_25 | DENS_DD, //  180K 5.25"
+		DD_320K   = 0x83 | SIZE_5_25 | DENS_DD, //  320K 5.25"
+		DD_360K   = 0x84 | SIZE_5_25 | DENS_DD, //  360K 5.25"
 		QD_720K   = 0x05 | SIZE_5_25 | DENS_QD, //  720K 5.25"
-		DD_720K   = 0x06 | SIZE_3_5  | DENS_DD, //  720K 3.5"
-		HD_1_20   = 0x07 | SIZE_5_25 | DENS_HD, // 1.20M 5.25"
-		HD_1_44   = 0x08 | SIZE_3_5  | DENS_HD, // 1.44M 3.5"
+		DD_720K   = 0x86 | SIZE_3_5  | DENS_DD, //  720K 3.5"
+		HD_1_20   = 0x87 | SIZE_5_25 | DENS_HD, // 1.20M 5.25"
+		HD_1_44   = 0x88 | SIZE_3_5  | DENS_HD, // 1.44M 3.5"
 		HD_1_68   = 0x09 | SIZE_3_5  | DENS_HD, // 1.68M DMF 3.5"
 		HD_1_72   = 0x0a | SIZE_3_5  | DENS_HD, // 1.72M DMF 3.5"
-		ED_2_88   = 0x0f | SIZE_3_5  | DENS_ED  // 2.88M 3.5"
+		ED_2_88   = 0x8f | SIZE_3_5  | DENS_ED  // 2.88M 3.5"
 	};
 
 	// nominal data rates for the media

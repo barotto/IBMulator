@@ -718,8 +718,10 @@ void FileSelect::set_current_dir(const std::string &_path)
 	}
 }
 
-void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std::vector<const char*> &_extensions,
-		const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats)
+void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types,
+		const std::vector<const char*> &_extensions,
+		const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats,
+		bool _dos_formats_only)
 {
 	m_compat_types = _floppy_types;
 	std::vector<std::string> ext;
@@ -727,6 +729,7 @@ void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types, const std
 		ext.push_back(std::string("\\") + e);
 	}
 	m_compat_regexp = "(" + str_implode(ext,"|") + ")$";
+	m_compat_dos_formats_only = _dos_formats_only;
 
 	m_new_floppy->set_compat_types(m_compat_types, _file_formats);
 }
@@ -810,6 +813,9 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 				continue;
 			} 
 			de.type = ident.type;
+			if(m_compat_dos_formats_only && !(ident.type & FloppyDisk::DOS_FMT)) {
+				continue;
+			}
 			// check density
 			for(auto ctype : m_compat_types ) {
 				if(

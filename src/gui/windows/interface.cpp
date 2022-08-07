@@ -364,8 +364,11 @@ void Interface::config_changed(bool _startup)
 		m_floppy.event = true;
 	}
 
-	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions(),
-			m_floppy.ctrl->get_compatible_formats());
+	m_fs->set_compat_types(
+			get_floppy_types(m_floppy.curr_drive),
+			m_floppy.ctrl->get_compatible_file_extensions(),
+			m_floppy.ctrl->get_compatible_formats(),
+			!m_floppy.ctrl->can_use_any_floppy());
 	if(m_fs->is_current_dir_valid()) {
 		m_fs->reload();
 	}
@@ -565,8 +568,11 @@ void Interface::on_fdd_select(Rml::Event &)
 	}
 	m_floppy.event = true;
 	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
-	m_fs->set_compat_types(get_floppy_types(m_floppy.curr_drive), m_floppy.ctrl->get_compatible_file_extensions(),
-			m_floppy.ctrl->get_compatible_formats());
+	m_fs->set_compat_types(
+			get_floppy_types(m_floppy.curr_drive),
+			m_floppy.ctrl->get_compatible_file_extensions(),
+			m_floppy.ctrl->get_compatible_formats(),
+			!m_floppy.ctrl->can_use_any_floppy());
 	m_fs->reload();
 }
 
