@@ -8,6 +8,9 @@
   * [CMOS and system configuration](#cmos-and-system-configuration)
   * [ROM set](#rom-set)
   * [HDD image](#hdd-image)
+  * [Floppy disk images](#floppy-disk-images)
+    * [High-level raw sector based emulation](#high-level-raw-sector-based-emulation)
+    * [Low-level flux based emulation](#low-level-flux-based-emulation)
   * [GUI modes](#gui-modes)
     * [Integer scaling](#integer-scaling)
   * [Savestates](#savestates)
@@ -161,6 +164,53 @@ $ fdisk -l hdd.img
 ```
 *Note*: if you use the custom HDD type 47, the automatically created image will
 be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it.
+
+### Floppy disk images
+
+IBMulator has two types of floppy drive emulations: raw sector based and flux
+based.
+
+You can create new floppy disk images using the floppy disk image selector
+window. The types of images available depend on the type of emulation used.
+All new images are pre-formatted.
+
+#### High-level raw sector based emulation
+
+This is the fastest type and is enabled by default. With this type only stardard
+DOS-formatted images can be used (512 bytes per sector). The supported file
+formats are:
+* Raw sector image (*.img, *.ima) read/write
+* ImageDisk (*.imd) read-only (standard DOS-formatted disks only)
+
+You usually want to use this type unless you need to use copy-protected floppy
+disks or want to experiment with low-level floppy emulation.
+
+This type is enabled by setting the following option in ibmulator.ini:
+```
+[drives]
+fdc_type=raw
+```
+
+#### Low-level flux based emulation
+
+This is the more precise and computationally heavy type. With this type you can 
+use non-standard floppy images with arbitrary layouts and sector sizes. The
+supported file formats are:
+* Raw sector image (*.img, *.ima) read/write
+* HxC Floppy Emulator HFE v.1 (*.hfe) read/write
+* SPS IPF (*.ipf) read-only
+* TeleDisk TD0 (*.td0) read-only
+* ImageDisk (*.imd) read-only
+
+You should use this type to make copy-protected floppy disks work. Except for
+raw sector image, the other supported formats allow to emulate various types of
+copy protection.
+
+This type is enabled by setting the following option in ibmulator.ini:
+```
+[drives]
+fdc_type=flux
+```
 
 ### GUI modes
 
@@ -658,8 +708,8 @@ keymap file.
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
 * <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture
-* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open floppy select dialog for active drive
-* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject floppy inserted in active drive
+* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open floppy select dialog for the active drive
+* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject floppy inserted in the active drive
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd>: change the active floppy drive (A↔B)
 * <kbd>SHIFT</kbd>+<kbd>F8</kbd>    : open the save state dialog
 * <kbd>SHIFT</kbd>+<kbd>F9</kbd>    : open the load state dialog
@@ -737,8 +787,7 @@ For **Linux** instructions see [BUILD_LINUX.md](BUILD_LINUX.md)
 
 ## THANKS
 
-I would like to thank the Bochs team. I've taken a huge amount of code from the 
-project. Thank you guys, you made a terrific job! Without your work IBMulator 
-would have taken at least a century to reach the point where it is now.  
-Also thanks to the DOSBox team. Some code from them as well and a lot of 
-information and inspiration.
+I would like to thank the authors of the following projects:
+* Bochs https://bochs.sourceforge.io
+* DOSBox https://www.dosbox.com
+* MAME https://www.mamedev.org
