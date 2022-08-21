@@ -2286,6 +2286,8 @@ void GUI::show_welcome_screen()
 		} else {
 			cy++;
 		}
+	} else {
+		cy++;
 	}
 
 	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_POWER;
