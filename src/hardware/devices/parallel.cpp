@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,9 +43,9 @@ uint16_t Parallel::ms_irqs[3]  = {7, 7, 5};
 
 
 std::map<std::string, uint> Parallel::ms_lpt_ports = {
-	{ "LPT1", 0 },
-	{ "LPT2", 1 },
-	{ "LPT3", 2 }
+	{ "lpt1", 0 },
+	{ "lpt2", 1 },
+	{ "lpt3", 2 }
 };
 
 Parallel::Parallel(Devices *_dev)

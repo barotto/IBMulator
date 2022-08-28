@@ -1198,7 +1198,7 @@ unsigned AppConfig::get_enum(const string &_section, const string &_name, const 
 		throw;
 	}
 
-	auto enumvalue = _enum_map.find(enumstr);
+	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
 	if(enumvalue == _enum_map.end()) {
 		PERRF(LOG_PROGRAM, "Invalid value '%s' for [%s]:%s\n",
 				enumstr.c_str(), _section.c_str(), _name.c_str());
@@ -1216,7 +1216,7 @@ unsigned AppConfig::get_enum(const string &_section, const string &_name,
 	} catch(std::exception &e) {
 		return _default;
 	}
-	auto enumvalue = _enum_map.find(enumstr);
+	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
 	if(enumvalue == _enum_map.end()) {
 		return _default;
 	}
@@ -1227,7 +1227,7 @@ unsigned AppConfig::get_enum_quiet(const string &_section, const string &_name,
 		const ini_enum_map_t &_enum_map)
 {
 	string enumstr = get_value(_section, _name);
-	auto enumvalue = _enum_map.find(enumstr);
+	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
 	if(enumvalue == _enum_map.end()) {
 		throw std::exception();
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -88,13 +88,20 @@ void Memory::reset(unsigned _signal)
 void Memory::config_changed()
 {
 	static std::map<std::string, unsigned> ram_str_size = {
-		{ "none", 0   },
-		{ "512K", 512 },
-		{ "2M",   2  * KEBIBYTE },
-		{ "4M",   4  * KEBIBYTE },
-		{ "6M",   6  * KEBIBYTE },
-		{ "8M",   8  * KEBIBYTE },
-		{ "16M",  16 * KEBIBYTE },
+		{ "none",  0   },
+		{ "0",     0   },
+		{ "512k",  512 },
+		{ "512kb", 512 },
+		{ "2m",    2  * KEBIBYTE },
+		{ "2mb",   2  * KEBIBYTE },
+		{ "4m",    4  * KEBIBYTE },
+		{ "4mb",   4  * KEBIBYTE },
+		{ "6m",    6  * KEBIBYTE },
+		{ "6mb",   6  * KEBIBYTE },
+		{ "8m",    8  * KEBIBYTE },
+		{ "8mb",   8  * KEBIBYTE },
+		{ "16m",   16 * KEBIBYTE },
+		{ "16mb",  16 * KEBIBYTE },
 	};
 	static std::map<unsigned, std::string> ram_size_str = {
 		{ 0            , "none" },

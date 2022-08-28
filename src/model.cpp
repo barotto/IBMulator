@@ -76,9 +76,9 @@ const std::map<unsigned, std::string> g_machine_type_str = {
 };
 
 const ini_enum_map_t g_ini_model_names = {
-	{ "2011-C34", PS1_2011_C34 },
-	{ "2121-B82", PS1_2121_B82 },
-	{ "2121-A82", PS1_2121_A82 }
+	{ "2011-c34", PS1_2011_C34 },
+	{ "2121-b82", PS1_2121_B82 },
+	{ "2121-a82", PS1_2121_A82 }
 };
 
 const machine_db_t g_machine_db = {

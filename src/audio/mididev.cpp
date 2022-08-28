@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,12 +27,12 @@ MIDIDev::MIDIDev(MIDI *_instance)
 	
 	static std::map<std::string, unsigned> devtypes = {
 		{ "",      Type::UNKNOWN },
-		{ "MT-32", Type::LA      },
-		{ "MT32",  Type::LA      },
-		{ "LA",    Type::LA      },
-		{ "GS",    Type::GS      },
-		{ "GM",    Type::GM      },
-		{ "XG",    Type::XG      }
+		{ "mt-32", Type::LA      },
+		{ "mt32",  Type::LA      },
+		{ "la",    Type::LA      },
+		{ "gs",    Type::GS      },
+		{ "gm",    Type::GM      },
+		{ "xg",    Type::XG      }
 	};
 	m_type = static_cast<Type>(
 		g_program.config().get_enum(MIDI_SECTION, MIDI_DEVTYPE, devtypes, Type::UNKNOWN)
