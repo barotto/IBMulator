@@ -149,7 +149,7 @@ void FloppyDisk::load_state(std::string _imgpath, std::string _binpath)
 
 void FloppyDisk::save_state(std::string _binpath)
 {
-	std::ofstream fstream = FileSys::make_ofstream(_binpath.c_str());
+	std::ofstream fstream = FileSys::make_ofstream(_binpath.c_str(), std::ios::binary);
 	if(!fstream.is_open()){
 		PERRF(LOG_GUI, "Cannot open file '%s' for writing\n", _binpath.c_str());
 		throw std::exception();
