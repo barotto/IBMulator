@@ -84,7 +84,7 @@ bool FloppyDisk::save(std::string _path, std::shared_ptr<FloppyFmt> _format)
 		return false;
 	}
 
-	std::ofstream fstream = FileSys::make_ofstream(tmp.c_str());
+	std::ofstream fstream = FileSys::make_ofstream(tmp.c_str(), std::ios::binary);
 	if(!fstream.is_open()) {
 		PERRF(LOG_GUI, "Cannot write into directory '%s'\n", dir.c_str());
 		return false;
