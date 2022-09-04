@@ -114,9 +114,11 @@ public:
 	FloppyDisk* eject_floppy(bool _remove);
 	bool is_media_present() const { return m_image != nullptr; }
 	bool is_media_dirty(bool _since_restore) const {
-		return (m_image != nullptr && m_image->is_dirty(_since_restore));
+		return (m_image && m_image->is_dirty(_since_restore));
 	}
-	bool can_media_be_committed() const;
+	bool can_media_be_committed() const {
+		return (m_image && m_image->can_be_committed());
+	}
 	bool is_double_step_media() const { return m_dstep; }
 	bool is_motor_on() const { return m_s.mon == MOT_ON; }
 

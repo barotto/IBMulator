@@ -158,6 +158,7 @@ public:
 	void set_format(std::shared_ptr<FloppyFmt> _format) {
 		m_format = _format;
 	}
+	bool can_be_committed() const;
 
 	/*!
 	  @param track

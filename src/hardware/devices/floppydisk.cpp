@@ -167,6 +167,18 @@ void FloppyDisk::save_state(std::string _binpath)
 	}
 }
 
+bool FloppyDisk::can_be_committed() const
+{
+	if(!m_format) {
+		PDEBUGF(LOG_V0, LOG_FDC, "Missing image format!\n");
+		return false;
+	}
+	if(!m_format->can_save()) {
+		PWARNF(LOG_V0, LOG_FDC, "Format %s doesn't support save\n", m_format->name());
+	}
+	return m_format->can_save();
+}
+
 void FloppyDisk::track_info::save_state(std::ofstream &_file)
 {
 	auto size = cell_data.size();

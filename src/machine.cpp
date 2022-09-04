@@ -905,10 +905,10 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 			if(m_floppy_commit == MEDIA_DISCARD || 
 			   (m_config_id > 0 && m_floppy_commit == MEDIA_DISCARD_STATES))
 			{
-				PWARNF(LOG_V0, LOG_MACHINE, "Floppy not saved. Written data discarded.\n");
+				PWARNF(LOG_V0, LOG_MACHINE, "Floppy %s not saved. Written data discarded.\n", _drive ? "B" : "A");
 				if(_cb) { _cb(true); }
-			} else if(!ctrl->can_media_be_committed(_drive)) {
-				PWARNF(LOG_V0, LOG_MACHINE, "Floppy image format doesn't support save. Written data discarded.\n",
+			} else if(!floppy->can_be_committed()) {
+				PWARNF(LOG_V0, LOG_MACHINE, "Floppy %s image can't be committed to storage. Written data discarded.\n",
 						_drive ? "B" : "A");
 				if(_cb) { _cb(false); }
 			} else if(m_floppy_commit == MEDIA_ASK) {
