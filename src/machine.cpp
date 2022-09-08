@@ -916,7 +916,7 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 				std::string path = g_program.config().get_string(section, DISK_PATH);
 				GUI::instance()->show_message_box(
 						str_format("Save floppy %s image", _drive ? "B" : "A"),
-						str_format("Save %s ?", path.c_str()),
+						str_format("Save \"%s\"?", FileSys::get_basename(path.c_str()).c_str()),
 						MessageWnd::Type::MSGW_YES_NO,
 						[=](){ commit_floppy(floppy, _cb); },
 						[=](){ if(_cb) { _cb(true); } });
@@ -993,7 +993,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 				if(m_hdd_commit == MEDIA_ASK) {
 					GUI::instance()->show_message_box(
 							str_format("Save %s image", dev->name()),
-							str_format("Save to %s ?", dev->path()),
+							str_format("Save \"%s\"?", FileSys::get_basename(dev->path()).c_str()),
 							MessageWnd::Type::MSGW_YES_NO,
 							[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = true; cond.notify_all(); },
 							[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = false; cond.notify_all(); });
@@ -1042,7 +1042,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 						std::string path = g_program.config().get_string(section, DISK_PATH);
 						GUI::instance()->show_message_box(
 								str_format("Save floppy %s image", i ? "B" : "A"),
-								str_format("Save to %s ?", path.c_str()),
+								str_format("Save \"%s\"?", FileSys::get_basename(path.c_str()).c_str()),
 								MessageWnd::Type::MSGW_YES_NO,
 								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = true; cond.notify_all(); },
 								[&](){ std::unique_lock<std::mutex> lock(mtx); save_this = false; cond.notify_all(); });
