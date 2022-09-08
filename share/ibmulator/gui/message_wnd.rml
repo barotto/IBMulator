@@ -5,8 +5,8 @@
 		<style>
 			body
 			{
-				width: 400dp;
-				height: 100dp;
+				width: 450dp;
+				height: 120dp;
 				margin: auto;
 				background-color: #3C5464FF;
 			}
