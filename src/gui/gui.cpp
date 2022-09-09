@@ -223,7 +223,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	PINFOF(LOG_V0,LOG_GUI, "Selected video mode: %dx%d\n", m_width, m_height);
 	
 	// INTERFACE INITIALIZATION
-	m_scaling_factor = g_program.config().get_real(GUI_SECTION, GUI_UI_SCALING, 1.0);
+	m_scaling_factor = g_program.config().get_int(GUI_SECTION, GUI_UI_SCALING, 100);
+	m_scaling_factor = std::max(m_scaling_factor, 100.0);
+	m_scaling_factor = std::min(m_scaling_factor, 500.0);
+	m_scaling_factor = std::floor((m_scaling_factor / 100.0) * 4.0) / 4.0;
+	PINFOF(LOG_V0, LOG_GUI, "UI scaling: %.0f%%\n", m_scaling_factor * 100.0);
+
 	try {
 		init_rmlui();
 		m_windows.init(m_machine, this, m_mixer, m_mode);
@@ -1536,6 +1541,35 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	on_button_event(_sdl_event, binding_ptr, phase);
 }
 
+void GUI::on_mouse_wheel_event(const SDL_Event &_sdl_event)
+{
+	// TODO mouse wheel events are not mappable and used by GUI only
+	if(m_input.grab) {
+		return;
+	}
+
+	// TODO GUI scaling is hardcoded to CTRL + wheel up/down
+	SDL_Keymod mod = SDL_GetModState();
+	if(mod & KMOD_CTRL) {
+		if(_sdl_event.wheel.y > 0) {
+			// scroll up
+			if(m_scaling_factor < 5.0) {
+				m_scaling_factor += 0.25;
+			}
+		} else if(_sdl_event.wheel.y < 0) {
+			// scroll down
+			if(m_scaling_factor > 1.0) {
+				m_scaling_factor -= 0.25;
+			}
+		}
+		m_rml_context->SetDensityIndependentPixelRatio(m_scaling_factor);
+		m_windows.interface->container_size_changed(m_width, m_height);
+		show_message(str_format("UI scaling: %.0f%%", m_scaling_factor*100.0));
+	} else {
+		dispatch_rml_event(_sdl_event);
+	}
+}
+
 void GUI::on_joystick_motion_event(const SDL_Event &_sdl_evt)
 {
 	// joystick events are for the machine only
@@ -1830,9 +1864,7 @@ void GUI::dispatch_event(const SDL_Event &_event)
 			on_mouse_button_event(_event);
 			break;
 		case SDL_MOUSEWHEEL:
-			if(!m_input.grab) {
-				dispatch_rml_event(_event);
-			}
+			on_mouse_wheel_event(_event);
 			break;
 		case SDL_JOYAXISMOTION:
 			on_joystick_motion_event(_event);

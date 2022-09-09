@@ -384,6 +384,7 @@ private:
 	void on_keyboard_event(const SDL_Event &_event);
 	void on_mouse_motion_event(const SDL_Event &_event);
 	void on_mouse_button_event(const SDL_Event &_event);
+	void on_mouse_wheel_event(const SDL_Event &_event);
 	void on_joystick_motion_event(const SDL_Event &_event);
 	void on_joystick_button_event(const SDL_Event &_event);
 	void on_joystick_event(const SDL_Event &_event);
