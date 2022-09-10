@@ -387,8 +387,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";         bg_XXX: Background window color\n"
 ";show_indicators: Show status indicators on the top-right corner of the screen.\n"
 ";     ui_scaling: UI scaling, between 100% and 500% with increments every 25% (125%, 150%, 175%, ...)\n"
-";filedialog_mode: Possible values: grid, list.\n"
-";filedialog_zoom: Possible values: 0,1,2,3,4.\n"
 		},
 
 		{ DIALOGS_SECTION,
