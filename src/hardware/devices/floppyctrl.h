@@ -80,6 +80,9 @@ public:
 	bool is_media_present(unsigned _drive) const {
 		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_present());
 	}
+	std::string get_media_path(unsigned _drive) const {
+		return (is_drive_present(_drive)) ? m_fdd[_drive]->get_media_path() : "";
+	}
 	bool is_motor_spinning(unsigned _drive) const {
 		return (is_motor_on(_drive) && is_media_present(_drive));
 	}

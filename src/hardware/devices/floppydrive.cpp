@@ -368,6 +368,14 @@ FloppyDisk* FloppyDrive::eject_floppy(bool _remove)
 	return floppy;
 }
 
+std::string FloppyDrive::get_media_path() const
+{
+	if(m_image) {
+		return m_image->get_image_path();
+	}
+	return "";
+}
+
 void FloppyDrive::play_seek_sound(uint8_t _to_cyl)
 {
 	if(!m_fx_enabled) {

@@ -113,6 +113,7 @@ public:
 	bool insert_floppy(FloppyDisk *_floppy);
 	FloppyDisk* eject_floppy(bool _remove);
 	bool is_media_present() const { return m_image != nullptr; }
+	std::string get_media_path() const;
 	bool is_media_dirty(bool _since_restore) const {
 		return (m_image && m_image->is_dirty(_since_restore));
 	}

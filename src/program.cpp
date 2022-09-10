@@ -175,16 +175,26 @@ void Program::save_state(
 	}
 	sstate->info().config_desc  += "\n";
 
+	FloppyCtrl *fdc = m_machine->devices().device<FloppyCtrl>();
+	if(fdc) {
+		for(int i=0; i<2; i++) {
+			if(fdc->is_media_present(i)) {
+				sstate->info().config_desc += str_format("Drive %s: %s", 
+						i?"B":"A", FileSys::get_basename(fdc->get_media_path(i).c_str()).c_str()) 
+						+ "\n";
+			}
+		}
+	}
+
 	// TODO consider more than 1 controller
 	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
 	if(hddctrl) {
 		for(int i=0; i<hddctrl->installed_devices(); i++) {
 			const StorageDev *dev = hddctrl->get_device(i);
 			if(dev) {
-				sstate->info().config_desc += str_format("%s: %u MiB %s", 
-						dev->name(), unsigned(dev->capacity()/MEBIBYTE), mcfg.hdd_interface.c_str()) 
+				sstate->info().config_desc += str_format("%s: %s", 
+						dev->name(), FileSys::get_basename(dev->path()).c_str()) 
 						+ "\n";
-				sstate->info().config_desc += "Image: " + FileSys::get_basename(dev->path());
 			}
 		}
 	}
