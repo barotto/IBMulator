@@ -209,3 +209,12 @@ void StateRecord::remove()
 
 	m_path = "";
 }
+
+std::string StateRecord::get_version_to_release_string(unsigned _version)
+{
+	switch(_version) {
+		case 1: return "0.14";
+		case 2: return "0.15";
+		default: return "pre-0.14";
+	}
+}

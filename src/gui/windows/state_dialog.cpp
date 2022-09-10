@@ -238,7 +238,7 @@ void StateDialog::entry_select(std::string _name, Rml::Element *_entry)
 		m_panel_screen_el->SetClass("invisible", false);
 	}
 	if(sr->info().version != STATE_RECORD_VERSION) {
-		m_panel_config_el->SetInnerRML("INVALID VERSION");
+		m_panel_config_el->SetInnerRML("INVALID VERSION (" + str_to_html(StateRecord::get_version_to_release_string(sr->info().version)) + ")");
 		m_panel_config_el->SetClass("invisible", false);
 	} else if(!sr->info().config_desc.empty()) {
 		m_panel_config_el->SetInnerRML(str_to_html(sr->info().config_desc));
@@ -426,7 +426,7 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 			inner += "<div class=\"name\">" + str_to_html(_info.name) + "</div>";
 		}
 		if(_info.version != STATE_RECORD_VERSION) {
-			inner += "<div class=\"config\">INVALID VERSION</div>";
+			inner += "<div class=\"config\">INVALID VERSION (" + str_to_html(StateRecord::get_version_to_release_string(_info.version)) + ")</div>";
 		} else {
 			if(!_info.config_desc.empty()) {
 				inner += "<div class=\"config\"><div>" + str_to_html(_info.config_desc) + "</div></div>";

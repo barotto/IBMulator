@@ -91,6 +91,8 @@ public:
 	void save();
 	void load();
 	void remove();
+
+	static std::string get_version_to_release_string(unsigned _version);
 };
 
 #endif
