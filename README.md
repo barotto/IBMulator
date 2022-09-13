@@ -9,12 +9,11 @@
   * [ROM set](#rom-set)
   * [HDD image](#hdd-image)
   * [Floppy disk images](#floppy-disk-images)
-    * [High-level raw sector based emulation](#high-level-raw-sector-based-emulation)
-    * [Low-level flux based emulation](#low-level-flux-based-emulation)
+    * [High-level raw sector data emulation](#high-level-raw-sector-data-emulation)
+    * [Low-level magnetic flux emulation](#low-level-magnetic-flux-emulation)
   * [GUI modes](#gui-modes)
     * [Integer scaling](#integer-scaling)
   * [Savestates](#savestates)
-    * [Limitations](#limitations)
   * [Audio DSP filters](#audio-dsp-filters)
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
@@ -147,7 +146,7 @@ $ udisksctl loop-setup -f hdd.img
 ```
 
 In order to mount partitioned loop devices, you'll probably require to add this
-kernel parameter to your grub configuration:
+kernel parameter to your GRUB configuration:
 ```
 loop.max_part=31
 ```
@@ -167,17 +166,22 @@ be 0-filled and you'll need to use 'fdisk' and 'format' in order to use it.
 
 ### Floppy disk images
 
-IBMulator has two types of floppy drive emulations: raw sector based and flux
-based.
+IBMulator has two types of floppy drive emulation: a fast high-level emulation
+based on raw sector data and a more precise (but slower) low-level one based on
+magnetic flux changes.
 
 You can create new floppy disk images using the floppy disk image selector
-window. The types of images available depend on the type of emulation used.
-All new images are pre-formatted.
+window. The type of the images available depend on the type of FDC emulation
+used. All new images are pre-formatted and ready to use.
 
-#### High-level raw sector based emulation
+The floppy image file selector will show only the image files compatible with
+the active drive (according to its size and supported media density) and
+emulation type.
+
+#### High-level raw sector data emulation
 
 This is the fastest type and is enabled by default. With this type only stardard
-DOS-formatted images can be used (512 bytes per sector). The supported file
+DOS-formatted images can be used (512 bytes per sector). The supported image
 formats are:
 * Raw sector image (*.img, *.ima) read/write
 * ImageDisk (*.imd) read-only (standard DOS-formatted disks only)
@@ -191,20 +195,20 @@ This type is enabled by setting the following option in ibmulator.ini:
 fdc_type=raw
 ```
 
-#### Low-level flux based emulation
+#### Low-level magnetic flux emulation
 
 This is the more precise and computationally heavy type. With this type you can 
-use non-standard floppy images with arbitrary layouts and sector sizes. The
-supported file formats are:
+use non-standard floppy images having arbitrary layouts and sector sizes. The
+supported image formats are:
 * Raw sector image (*.img, *.ima) read/write
 * HxC Floppy Emulator HFE v.1 (*.hfe) read/write
-* SPS IPF (*.ipf) read-only
+* SPS IPF (*.ipf) read-only (limited support)
 * TeleDisk TD0 (*.td0) read-only
 * ImageDisk (*.imd) read-only
 
 You should use this type to make copy-protected floppy disks work. Except for
-raw sector image, the other supported formats allow to emulate various types of
-copy protection.
+raw sector *.img files, the other supported formats allow to emulate various
+types of copy protection schemes.
 
 This type is enabled by setting the following option in ibmulator.ini:
 ```
@@ -237,8 +241,8 @@ IBMulator (see below for the default key binding).
 
 #### Integer scaling
 
-If you like the pixel art style of the early '90 (who doesn't) you might want to
-enjoy it with the crispiest possible image quality.  
+If you like the pixel art style of the 80s and 90s you might want to enjoy it
+with the crispiest possible image quality.  
 In order to achieve image perfection, in _Normal_ and _Compact_ GUI modes you
 can use integer scaling.
 
@@ -261,7 +265,7 @@ IBMulator supports multiple savestates. Every savestate is stored in a folder
 (slot) called `savestate_xxxx` where `xxxx` is a number (except for the
 "quick" slot) inside the `capture` folder.
 
-In every folder/slot there are various files that describe the savestate:
+In every folder there are various files that describe the savestate:
 
 * `state.bin`: the actual binary state of the machine (CPU registers, RAM, I/O
 devices, ...)
@@ -270,24 +274,21 @@ devices, ...)
 * `state.txt`: information about the savestate, ie. version, description, and a
 summary of the machine's configuration
 * `state-hdd.img`: the image file of the installed HDD
+* `state-floppy0.bin`, `state-floppy1.bin`: the state of the floppy disks (if
+they are insterted in their drives)
 
 Only a subset of the settings memorized in `state.ini` are used to load a state,
 specifically those related to the hardware configuration. Any other setting
 pertaining the program (GUI, mixer, ...) are kept from the originally loaded
 ibmulator.ini.
 
-By default any modification to a savestate's HDD image is discarded after a new
-savestate is loaded or when IBMulator is closed.  
-If you want the modifications to be permanent set `[hdd]:save` to `yes` so that
-the currently loaded HDD image can be used to overwrite the original image file,
-the path of which is memorized in `state.ini`.  
+By default any modification to a savestate's HDD or floppy disks is written back
+to the original images after a new savestate is loaded, a floppy is ejected, or
+IBMulator is closed; the paths memorized in `state.ini` will be used.  
+If you don't want this to happen you can use the value `discard_states` or `ask`
+for the `[drives]:hdd_commit` and `[drives]:fdd_commit` ini settings.
 
-#### Limitations
-
-1. Floppy disks are not saved like HDDs are. Saving a state while floppy disks
-are actively written to is not recommended. This will be addressed in a future
-version of IBMulator.
-2. Null modem connections cannot be restored (see below).
+*Note*: null modem connections cannot be restored (see below).
 
 ### Audio DSP filters
 
@@ -696,6 +697,8 @@ keymap file.
 
 #### Default key bindings
 
+These are the default key bindings defined in the `keymap.map` file:
+
 * <kbd>CTRL</kbd>+<kbd>F1</kbd>     : GUI mode action 1:
     * in Compact mode: toggle the main interface window
     * in Realistic mode: toggle zoomed view
@@ -708,8 +711,8 @@ keymap file.
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
 * <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture
-* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open floppy select dialog for the active drive
-* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject floppy inserted in the active drive
+* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open the floppy select dialog for the active drive
+* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject the floppy inserted in the active drive
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd>: change the active floppy drive (A↔B)
 * <kbd>SHIFT</kbd>+<kbd>F8</kbd>    : open the save state dialog
 * <kbd>SHIFT</kbd>+<kbd>F9</kbd>    : open the load state dialog
@@ -734,13 +737,17 @@ Fullscreen mode can also be activated by double-clicking the display area.
 
 ### UI related key bindings
 
-These keys apply only to UI dialogs and cannot currently be changed.
+These keys apply only to UI dialogs and cannot currently be changed. UI key
+bindings are active only when input is not grabbed.
+
+General user interface:
+* <kbd>CTRL</kbd>+Mouse wheel up/down: increase/decrease UI scaling
 
 All dialog windows:
-* <kbd>TAB</kbd>: focus input on next control
-* <kbd>SHIFT</kbd>+<kbd>TAB</kbd>: focus input on previous control
+* <kbd>TAB</kbd>: focus input on the next control
+* <kbd>SHIFT</kbd>+<kbd>TAB</kbd>: focus input on the previous control
 * <kbd>ENTER</kbd>: click on focused control
-* <kbd>ESC</kbd>: cancel and close dialog
+* <kbd>ESC</kbd>: cancel the current operation and close the dialog window
 
 Floppy select and savestate dialogs:
 * <kbd>←</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>→</kbd>,
@@ -751,24 +758,24 @@ selection
 * <kbd>+</kbd>/<kbd>-</kbd>: increase/decrease items size
 
 Floppy select dialog:
-* <kbd>CTRL</kbd>+<kbd>S</kbd>: use selected disk image
-* <kbd>CTRL</kbd>+<kbd>W</kbd>: toggle write protected flag
-* <kbd>CTRL</kbd>+<kbd>N</kbd>: new disk image
+* <kbd>CTRL</kbd>+<kbd>S</kbd>: use the selected disk image
+* <kbd>CTRL</kbd>+<kbd>W</kbd>: toggle the write protected flag
+* <kbd>CTRL</kbd>+<kbd>N</kbd>: create new disk image
 * <kbd>ALT</kbd>+<kbd>HOME</kbd>: go to the media directory
 * <kbd>ALT</kbd>+<kbd>↑</kbd>, <kbd>BACKSPACE</kbd>: go to upper directory
-* <kbd>ALT</kbd>+<kbd>←</kbd>: go to previous path
-* <kbd>ALT</kbd>+<kbd>→</kbd>: go to next path
-* <kbd>F5</kbd>: reload current directory
-* <kbd>F9</kbd>: toggle image info panel
+* <kbd>ALT</kbd>+<kbd>←</kbd>: go to previous path in history
+* <kbd>ALT</kbd>+<kbd>→</kbd>: go to next path in history
+* <kbd>F5</kbd>: reload the current directory
+* <kbd>F9</kbd>: toggle the image info panel
 
 Load machine state dialog:
-* <kbd>CTRL</kbd>+<kbd>L</kbd>: load selected slot
-* <kbd>DELETE</kbd>: delete selected slot
+* <kbd>CTRL</kbd>+<kbd>L</kbd>: load the selected slot
+* <kbd>DELETE</kbd>: delete the selected slot
 
 Save machine state dialog:
-* <kbd>CTRL</kbd>+<kbd>S</kbd>: save selected slot
-* <kbd>DELETE</kbd>: delete selected slot
-* <kbd>CTRL</kbd>+<kbd>N</kbd>: new savestate
+* <kbd>CTRL</kbd>+<kbd>S</kbd>: save the machine's state into the selected slot
+* <kbd>DELETE</kbd>: delete the selected slot
+* <kbd>CTRL</kbd>+<kbd>N</kbd>: save the machine's state into a new slot
 
 ### Command line options
 
