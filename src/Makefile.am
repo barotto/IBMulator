@@ -33,7 +33,8 @@ ibmulator_SOURCES = \
 	wincompat/realpath.cpp \
 	wincompat/asprintf.cpp \
 	wincompat/utf8.cpp \
-	stb/stb.cpp
+	stb/stb.cpp \
+	lodepng/lodepng.cpp
 	
 noinst_HEADERS = \
 	appconfig.h \
@@ -70,7 +71,8 @@ noinst_HEADERS = \
 	wincompat/utf8.h \
 	stb/stb.h \
 	stb/stb_image.h \
-	stb/stb_image_write.h
+	stb/stb_image_write.h \
+	lodepng/lodepng.h
 	
 ibmulator_LDFLAGS = -Wl,-rpath='$$ORIGIN/../lib'
 ibmulator_LDADD = gui/libgui.a hardware/libhardware.a audio/libaudio.a $(BASELIBS) ibmulator.res

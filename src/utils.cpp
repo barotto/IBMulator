@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -200,7 +200,7 @@ const char *register_to_string(uint8_t _register,
 	return s.c_str();
 }
 
-std::string bytearray_to_string(uint8_t *_data, unsigned _len)
+std::string bytearray_to_string(const uint8_t *_data, unsigned _len)
 {
 	std::stringstream ss;
 	ss << std::setfill('0');

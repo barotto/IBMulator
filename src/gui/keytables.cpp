@@ -41,6 +41,7 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE         },
 	{ "FUNC_TOGGLE_STATUS_IND",     ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND    },
 	{ "FUNC_TOGGLE_DBG_WND",        ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND       },
+	{ "FUNC_TOGGLE_PRINTER",        ProgramEvent::FuncName::FUNC_TOGGLE_PRINTER       },
 	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT      },
 	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE },
 	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE },

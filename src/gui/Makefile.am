@@ -39,6 +39,7 @@ libgui_a_SOURCES = \
 	windows/state_load.cpp \
 	windows/message_wnd.cpp \
 	windows/new_floppy.cpp \
+	windows/printer_control.cpp \
 	capture/capture.cpp \
 	capture/capture_imgseq.cpp \
 	capture/capture_videofile.cpp \
@@ -87,6 +88,7 @@ noinst_HEADERS = \
 	windows/state_load.h \
 	windows/message_wnd.h \
 	windows/new_floppy.h \
+	windows/printer_control.h \
 	capture/capture.h \
 	capture/capture_imgseq.h \
 	capture/capture_videofile.h \

@@ -39,6 +39,7 @@
 #include "windows/realistic_interface.h"
 #include "windows/debugtools.h"
 #include "windows/status.h"
+#include "windows/printer_control.h"
 
 #include "capture/capture.h"
 
@@ -89,6 +90,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND,    &GUI::pevt_func_toggle_status_ind    },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND,       &GUI::pevt_func_toggle_dbg_wnd       },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_PRINTER,       &GUI::pevt_func_toggle_printer       },
 	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
@@ -1435,7 +1437,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 			finish = true;
 		}
 	} else {
-		assert(false);
+		return;
 	}
 
 	run_event_binding(*running_evt, phase);
@@ -2149,6 +2151,30 @@ std::string GUI::images_dir()
 	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "images" FS_SEP;
 }
 
+SDL_Surface * GUI::load_surface(const std::string &_name)
+{
+	if(_name == "gui:printer_preview") {
+		if(!m_windows.printer_ctrl) {
+			throw std::runtime_error("Printer not present");
+		}
+		return m_windows.printer_ctrl->get_preview_surface();
+	}
+	throw std::runtime_error(str_format("Invalid internal surface name: %s\n", _name.c_str()));
+}
+
+void GUI::update_surface(const std::string &_name, SDL_Surface *_data)
+{
+	assert(_data);
+	auto texture = m_rml_renderer->GetNamedTexture(_name);
+	if(texture) {
+		try {
+			this->update_texture(texture, _data);
+		} catch(std::exception &e) {
+			PDEBUGF(LOG_V0, LOG_GUI, "Error updating texture data: %s\n", e.what());
+		}
+	}
+}
+
 void GUI::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	m_windows.interface->save_framebuffer(_screenfile, _palfile);
@@ -2218,6 +2244,11 @@ bool GUI::are_windows_visible()
 void GUI::toggle_dbg_windows()
 {
 	m_windows.toggle_dbg();
+}
+
+void GUI::toggle_printer_control()
+{
+	m_windows.toggle_printer();
 }
 
 bool GUI::is_video_recording() const
@@ -2444,6 +2475,15 @@ void GUI::pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase _phase)
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Toggle debugging windows func event\n");
 	toggle_dbg_windows();
+}
+
+void GUI::pevt_func_toggle_printer(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle printer control func event\n");
+	toggle_printer_control();
 }
 
 void GUI::pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase _phase)
@@ -2749,6 +2789,11 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 		status_wnd = true;
 	}
 
+	auto printer = _machine->get_printer();
+	if(printer) {
+		printer_ctrl = std::make_unique<PrinterControl>(_gui, printer);
+	}
+
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
 
@@ -2825,6 +2870,10 @@ void GUI::WindowManager::update(uint64_t _current_time)
 		status->update();
 	}
 
+	if(printer_ctrl && printer_ctrl->is_visible()) {
+		printer_ctrl->update();
+	}
+
 	// timers are where the timed windows events take place
 	// like the interface messages clears
 	while(!timers.update(_current_time));
@@ -2880,6 +2929,19 @@ void GUI::WindowManager::toggle_dbg()
 		dbgtools->show();
 	} else {
 		dbgtools->hide();
+	}
+}
+
+void GUI::WindowManager::toggle_printer()
+{
+	if(!printer_ctrl) {
+		return;
+	}
+
+	if(!printer_ctrl->is_visible()) {
+		printer_ctrl->show();
+	} else {
+		printer_ctrl->hide();
 	}
 }
 

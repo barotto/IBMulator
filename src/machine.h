@@ -33,6 +33,7 @@
 #include "hardware/devices/keyboard.h"
 #include "hardware/devices/floppydisk.h"
 #include "hardware/devices/floppyloader.h"
+#include "hardware/printer/mps_printer.h"
 
 class CPU;
 class Memory;
@@ -129,6 +130,11 @@ private:
 
 	void commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb);
 
+	// the printer thread is here for the same reasons as the floppy loader thread.
+	// the printer is shared between the gui and the parallel port
+	std::shared_ptr<MpsPrinter> m_printer;
+	std::thread m_printer_thread;
+	
 public:
 	bool ms_restore_fail;
 	//used for machine-gui synchronization
@@ -192,6 +198,10 @@ public:
 
 	MediaCommit hdd_commit_strategy() const { return m_hdd_commit; }
 
+	std::shared_ptr<MpsPrinter> get_printer() {
+		return m_printer;
+	}
+	
 	//inter-thread commands:
 	void cmd_quit();
 	void cmd_power_on();

@@ -33,6 +33,7 @@
 #include "hardware/devices/storagectrl.h"
 #include "hardware/devices/storagectrl_ata.h"
 #include "hardware/devices/storagectrl_ps1.h"
+#include "hardware/devices/parallel.h"
 #include "filesys.h"
 
 #include "gui/gui.h"
@@ -176,6 +177,32 @@ void Machine::init()
 	// FLOPPY LOADER THREAD
 	m_floppy_loader = std::make_unique<FloppyLoader>(this);
 	m_floppy_loader_thread = std::thread(&FloppyLoader::thread_start, m_floppy_loader.get());
+	
+	// PRINTER THREAD
+	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
+
+		m_printer = std::make_shared<MpsPrinter>();
+
+		std::string path = g_program.config().find_file(CAPTURE_SECTION, CAPTURE_DIR);
+		m_printer->set_base_dir(path);
+
+		mps_printer_paper paper_size = static_cast<mps_printer_paper>( 
+			g_program.config().get_enum(PRN_SECTION, PRN_PAPER_SIZE, {
+				{ "a4",     MPS_PRINTER_A4 },
+				{ "letter", MPS_PRINTER_LETTER },
+				{ "legal",  MPS_PRINTER_LEGAL }
+			}, MPS_PRINTER_LETTER));
+
+		bool single_sheet = static_cast<bool>( 
+			g_program.config().get_enum(PRN_SECTION, PRN_PAPER_TYPE, {
+				{ "single", 1 }, { "sheet", 1 },
+				{ "continuous", 0 }, { "forms", 0 }
+			}, 0));
+
+		m_printer->cmd_load_paper(paper_size, single_sheet);
+
+		m_printer_thread = std::thread(&MpsPrinter::thread_start, m_printer.get());
+	}
 }
 
 void Machine::register_floppy_loader_state_cb(FloppyLoader::state_cb_t _cb)
@@ -328,6 +355,13 @@ void Machine::config_changed(bool _startup)
 	for(unsigned i=0; i<8; i++) {
 		PINFOF(LOG_V0, LOG_MACHINE, "   %u: %s\n", i, g_devices.dma()->get_device_name(i).c_str());
 	}
+
+	if(m_printer) {
+		auto lpt = g_devices.device<Parallel>();
+		if(lpt) {
+			lpt->connect_printer(m_printer);
+		}
+	}
 }
 
 void Machine::load_bios_patches()
@@ -411,6 +445,11 @@ void Machine::main_loop()
 
 	m_floppy_loader->cmd_quit();
 	m_floppy_loader_thread.join();
+	
+	if(m_printer) {
+		m_printer->cmd_quit();
+		m_printer_thread.join();
+	}
 }
 
 void Machine::run_loop()

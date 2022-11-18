@@ -34,6 +34,15 @@
 #define LPT_STAT   1
 #define LPT_CTRL   2
 
+enum LPTCtrlReg {
+	LPT_STROBE     = 0x01,
+	LPT_AUTO_FD_XT = 0x02,
+	LPT_INIT       = 0x04,
+	LPT_SLCT_IN    = 0x08,
+	LPT_IRQ_EN     = 0x10,
+	LPT_DIR        = 0x20
+};
+
 IODEVICE_PORTS(Parallel) = {
 	{ 0x3BC, 0x3BE, PORT_8BIT|PORT_RW },
 	{ 0x378, 0x37A, PORT_8BIT|PORT_RW },
@@ -69,8 +78,6 @@ void Parallel::install(void)
 	m_enabled = false; // POS determines the general state
 	m_s.port = 0xFF;   // POS will set the port
 	m_s.mode = 0xFF;
-
-	// virtual_printer() opens output file on demand
 }
 
 void Parallel::remove()
@@ -85,15 +92,15 @@ void Parallel::remove()
 void Parallel::reset(unsigned)
 {
 	/* internal state */
-	m_s.STATUS.error = 1;
+	m_s.STATUS.error = 1; // inv
 	m_s.STATUS.slct  = 1;
 	m_s.STATUS.pe    = 0;
-	m_s.STATUS.ack   = 1;
-	m_s.STATUS.busy  = 1;
+	m_s.STATUS.ack   = 1; // inv
+	m_s.STATUS.busy  = 1; // inv
 
 	m_s.CONTROL.strobe   = 0;
 	m_s.CONTROL.autofeed = 0;
-	m_s.CONTROL.init     = 1;
+	m_s.CONTROL.init     = 1; // inv
 	m_s.CONTROL.slct_in  = 1;
 	m_s.CONTROL.irq      = 0;
 	m_s.CONTROL.input    = 0;
@@ -196,25 +203,22 @@ void Parallel::virtual_printer()
 			}
 		}
 	}
-	if(m_s.mode == PARPORT_EXTENDED) {
-		if(m_s.STATUS.slct) {
-			if(m_s.output != nullptr) {
-				fputc(m_s.data, m_s.output);
-				fflush (m_s.output);
-			}
-			if(m_s.CONTROL.irq == 1) {
-				m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
-			}
-			m_s.STATUS.ack = 0;
-			m_s.STATUS.busy = 1;
-		} else {
-			PWARNF(LOG_V1, LOG_LPT, "printer is offline\n");
+
+	if(m_s.STATUS.slct) {
+		if(m_printer) {
+			m_printer->cmd_send_byte(m_s.data);
 		}
-	} else {
 		if(m_s.output != nullptr) {
 			fputc(m_s.data, m_s.output);
 			fflush(m_s.output);
 		}
+		if(m_s.CONTROL.irq == 1) {
+			m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
+		}
+		m_s.STATUS.ack  = 0;
+		m_s.STATUS.busy = 1;
+	} else {
+		PWARNF(LOG_V1, LOG_LPT, "printer is offline\n");
 	}
 }
 
@@ -230,21 +234,32 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 				if(m_s.mode == PARPORT_EXTENDED) {
 					if(!m_s.CONTROL.input) {
 						retval = m_s.data;
+						PDEBUGF(LOG_V2, LOG_LPT, "data -> 0x%02x\n", retval);
 					} else {
-						PWARNF(LOG_V1, LOG_LPT, "read: input mode not supported\n");
+						PWARNF(LOG_V2, LOG_LPT, "data -> 0x%02x (input mode not supported)\n", retval);
 					}
 				} else {
 					retval = m_s.data;
+					PDEBUGF(LOG_V2, LOG_LPT, "data -> 0x%02x\n", retval);
 				}
 			}
 			break;
 		case LPT_STAT: {
 			if(m_enabled) {
-				retval = ((m_s.STATUS.busy<< 7) |
-						(m_s.STATUS.ack   << 6) |
-						(m_s.STATUS.pe    << 5) |
-						(m_s.STATUS.slct  << 4) |
-						(m_s.STATUS.error << 3));
+				if(m_printer) {
+					if(!m_printer->is_online()) {
+						m_s.STATUS.busy = 0;
+						m_s.STATUS.error = 0;
+					} else {
+						m_s.STATUS.busy = !m_s.initmode;
+						m_s.STATUS.error = 1;
+					}
+				}
+				retval = ((m_s.STATUS.busy  << 7) |
+				          (m_s.STATUS.ack   << 6) |
+				          (m_s.STATUS.pe    << 5) |
+				          (m_s.STATUS.slct  << 4) |
+				          (m_s.STATUS.error << 3));
 				if(m_s.STATUS.ack == 0) {
 					m_s.STATUS.ack = 1;
 					if(m_s.CONTROL.irq == 1) {
@@ -252,15 +267,15 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 					}
 				}
 				if(m_s.initmode == 1) {
-					m_s.STATUS.busy  = 1;
-					m_s.STATUS.slct  = 1;
+					m_s.STATUS.busy = 1;
+					m_s.STATUS.slct = 1;
 					m_s.STATUS.ack  = 0;
 					if(m_s.CONTROL.irq == 1) {
 						m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
 					}
 					m_s.initmode = 0;
 				}
-				PDEBUGF(LOG_V2, LOG_LPT, "read: status register returns 0x%02x\n", retval);
+				PDEBUGF(LOG_V2, LOG_LPT, "status -> 0x%02x\n", retval);
 			}
 			break;
 		}
@@ -272,7 +287,7 @@ uint16_t Parallel::read(uint16_t address, unsigned /*io_len*/)
 						(m_s.CONTROL.init     << 2) |
 						(m_s.CONTROL.autofeed << 1) |
 						(m_s.CONTROL.strobe));
-				PDEBUGF(LOG_V2, LOG_LPT, "read: parport%d control register returns 0x%02x", retval);
+				PDEBUGF(LOG_V2, LOG_LPT, "control -> 0x%02x", retval);
 			}
 			break;
 		}
@@ -289,13 +304,11 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 	switch(address) {
 		case LPT_DATA:
 			m_s.data = (uint8_t)value;
-			PDEBUGF(LOG_V2, LOG_LPT, "write: data output register = 0x%02x\n", (uint8_t)value);
-			if(m_s.mode == PARPORT_COMPATIBLE) {
-				virtual_printer();
-			}
+			PDEBUGF(LOG_V2, LOG_LPT, "data <- 0x%02x\n", value);
 			break;
 		case LPT_CTRL: {
-			if((value & 0x01) == 0x01) {
+			PDEBUGF(LOG_V2, LOG_LPT, "ctrl <- 0x%02x\n", value);
+			if((value & LPT_STROBE) == LPT_STROBE) {
 				if(m_s.CONTROL.strobe == 0) {
 					m_s.CONTROL.strobe = 1;
 					virtual_printer(); // data is valid now
@@ -305,58 +318,58 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 					m_s.CONTROL.strobe = 0;
 				}
 			}
-			m_s.CONTROL.autofeed = ((value & 0x02) == 0x02);
-			if((value & 0x04) == 0x04) {
+			m_s.CONTROL.autofeed = ((value & LPT_AUTO_FD_XT) == LPT_AUTO_FD_XT);
+			if((value & LPT_INIT) == LPT_INIT) {
 				if(m_s.CONTROL.init == 0) {
 					m_s.CONTROL.init = 1;
 					m_s.STATUS.busy  = 0;
 					m_s.STATUS.slct  = 0;
 					m_s.initmode = 1;
-					PDEBUGF(LOG_V2, LOG_LPT, "printer init requested\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "printer init requested\n");
 				}
 			} else {
 				if(m_s.CONTROL.init == 1) {
 					m_s.CONTROL.init = 0;
 				}
 			}
-			if((value & 0x08) == 0x08) {
+			if((value & LPT_SLCT_IN) == LPT_SLCT_IN) {
 				if(m_s.CONTROL.slct_in == 0) {
 					m_s.CONTROL.slct_in = 1;
-					PDEBUGF(LOG_V2, LOG_LPT, "printer now online\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "printer now online\n");
 				}
 			} else {
 				if(m_s.CONTROL.slct_in == 1) {
 					m_s.CONTROL.slct_in = 0;
-					PDEBUGF(LOG_V2, LOG_LPT, "printer now offline\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "printer now offline\n");
 				}
 			}
 			m_s.STATUS.slct = m_s.CONTROL.slct_in;
-			if((value & 0x10) == 0x10) {
+			if((value & LPT_IRQ_EN) == LPT_IRQ_EN) {
 				if(m_s.CONTROL.irq == 0) {
 					m_s.CONTROL.irq = 1;
 					g_machine.register_irq(ms_irqs[m_s.port], name());
-					PDEBUGF(LOG_V2, LOG_LPT, "irq mode selected\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "irq mode selected\n");
 				}
 			} else {
 				if(m_s.CONTROL.irq == 1) {
 					m_s.CONTROL.irq = 0;
 					g_machine.unregister_irq(ms_irqs[m_s.port], name());
-					PDEBUGF(LOG_V2, LOG_LPT, "polling mode selected\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "polling mode selected\n");
 				}
 			}
-			if((value & 0x20) == 0x20) {
+			if((value & LPT_DIR) == LPT_DIR) {
 				if(m_s.CONTROL.input == 0) {
 					m_s.CONTROL.input = 1;
-					PDEBUGF(LOG_V2, LOG_LPT, "data input mode selected\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "data input mode selected\n");
 				}
 			} else {
 				if(m_s.CONTROL.input == 1) {
 					m_s.CONTROL.input = 0;
-					PDEBUGF(LOG_V2, LOG_LPT, "data output mode selected\n");
+					PDEBUGF(LOG_V1, LOG_LPT, "data output mode selected\n");
 				}
 			}
 			if((value & 0xC0) > 0) {
-				PDEBUGF(LOG_V0, LOG_LPT, "write: unsupported control bit ignored\n");
+				PDEBUGF(LOG_V0, LOG_LPT, "write: unsupported control bits 6,7 ignored\n");
 			}
 			break;
 		}

@@ -19,6 +19,8 @@
   * [Emulation speed adjustments](#emulation-speed-adjustments)
   * [Serial port](#serial-port)
     * [Null modem connections](#null-modem-connections)
+  * [Parallel port](#parallel-port)
+    * [Virtual printer](#virtual-printer)
   * [MIDI output](#midi-output)
     * [MIDI on Windows](#midi-on-windows)
     * [MIDI on Linux](#midi-on-linux)
@@ -447,6 +449,42 @@ possible to save and restore the same state on both the client and the server
 (you can always save just before starting using the port, ie. just before
 establishing a null modem connection in a game).
 
+### Parallel port
+
+The parallel port can be configured in the `[lpt]` ibmulator.ini section.
+
+You can save whatever is sent to the port to a specified file (see the
+`[lpt]:file` setting) and at the same time send it to a virtual dot-matrix
+printer.
+
+#### Virtual printer
+
+A 9-pin dot-matrix color printer can be connected to the parallel port setting
+```
+[printer]
+connected=yes
+```
+in ibmulator.ini
+
+In order for the printer to work the parallel port must be enabled as well with
+```
+[lpt]
+enabled=yes
+```
+
+The printed pages are saved as PNG files inside `printer_XXXX` directories in
+your capture folder. A new directory is created when IBMulator gets launched.
+
+The virtual printer's interpreter can emulate the following printers:
+* Epson FX-80 (b/w) or JX-80 (color)
+* IBM Proprinter
+* IBM Graphics Printer
+
+If you need 8-bit ASCII support (for example for Dungeon Hack's maps) use an
+IBM interpreter.
+
+_Note_: Custom and proportional fonts are not supported.
+
 ### MIDI output
 
 In order to hear MIDI music you need to use an external sequencer, either
@@ -708,6 +746,7 @@ These are the default key bindings defined in the `keymap.map` file:
 * <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
 * <kbd>SHIFT</kbd>+<kbd>F4</kbd>    : show/hide the status indicators
 * <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F4</kbd>: show/hide the virtual printer window
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
 * <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture

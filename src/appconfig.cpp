@@ -164,6 +164,22 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ LPT_FILE,    ""     }
 	} },
 
+	{ PRN_SECTION, {
+		{ PRN_CONNECTED,     "no"     },
+		{ PRN_MODE,          "epson"  },
+		{ PRN_COLOR,         "no"     },
+		{ PRN_INK,           "medium" },
+		{ PRN_PREVIEW_DIV,   "low"    },
+		{ PRN_EPSON_CSET,    "basic"  },
+		{ PRN_IBM_CSET,      "intl1"  },
+		{ PRN_PAPER_SIZE,    "letter" },
+		{ PRN_PAPER_TYPE,    "forms"  },
+		{ PRN_BOF,           "0"      },
+		{ PRN_TOP_MARGIN,    "auto"   },
+		{ PRN_BOTTOM_MARGIN, "0.1875" },
+		{ PRN_SHOW_HEAD,     "yes"    }
+	} },
+
 	{ LOG_SECTION, {
 		{ LOG_OVERRIDE_VERBOSITY, "no"},
 		{ LOG_PROGRAM_VERBOSITY,  "0" },
@@ -187,6 +203,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ LOG_AUDIO_VERBOSITY,    "0" },
 		{ LOG_GAMEPORT_VERBOSITY, "0" },
 		{ LOG_LPT_VERBOSITY,      "0" },
+		{ LOG_PRN_VERBOSITY,      "0" },
 		{ LOG_COM_VERBOSITY,      "0" },
 		{ LOG_MIDI_VERBOSITY,     "0" }
 	} },
@@ -638,7 +655,46 @@ ini_filehelp_t AppConfig::ms_help = {
 "; tcp_nodelay: use the TCP_NODELAY socket option (net modes only).\n"
 		},
 
-		{ LPT_SECTION, "" },
+		{ LPT_SECTION, ""
+"; enabled: Install the Parallel Port.\n"
+";    port: Sets the port mapping at power on. Be aware though that the PS/1 BIOS sets the mapping according to the saved CMOS setting.\n"
+";          Possible values:\n"
+";           LPT1: port 3BC, IRQ 7\n"
+";           LPT2: port 378, IRQ 7\n"
+";           LPT3: port 278, IRQ 5\n"
+";    file: Save the data sent to the port to the specified file.\n" 
+		},
+
+		{ PRN_SECTION,
+"; Virtual printer configuration.\n"
+";      connected: Connect the printer to the parallel port?\n"
+";    interpreter: Mode of operation of the printer interpreter.\n"
+";                 Possible values:\n"
+";                  epson: Epson ESC/P (FX-80/JX-80)\n"
+";                  ibmpp: IBM Proprinter\n"
+";                  ibmgp: IBM Graphics Printer\n"
+";          color: Enable color support.\n"
+";            ink: How strong is the pin impact on the paper.\n"
+";                 Possible values: low, medium, high\n"
+";        preview: The quality of the page preview image\n"
+";                 Possible values: low, high, max\n"
+";  epson_charset: Charset to use for Epson emulation.\n"
+";                 Possible values: basic, usa, france, germany, england, denmark1, sweden, italy, spain, japan, norway, denmark2\n"
+";   ibm_charset2: Charset to use for Table2 when using IBM emulation.\n"
+";                 Possible values: intl1, intl2, israel, greece, portugal, spain\n"
+";     paper_size: Possible values: Letter, A4, Legal\n"
+";     paper_type: Possible values: single, continuous\n"
+";                  single: single sheet of paper (new sheets are automatically loaded)\n"
+";                   forms: continuous forms\n"
+"; bottom_of_form: bottom-of-form value at power on in PICA lines (a.k.a. skip perforation).\n"
+";                 Possible values: a positive integer number\n" 
+";     top_margin: distance in inches of the printing head from the top of page when the paper is loaded.\n"
+";                 Possible values: a positive real number or auto\n"
+";                  auto: value depends on the type of loaded paper, 0.0 for continuous forms, 0.375 (3/8\") for single sheets\n"
+";  bottom_margin: distance in inches from the bottom of the page that cannot be printed (used with single sheets only).\n"
+";                 Possible values: a positive real number\n"
+";  show_head_pos: Show the current position of the printing head on the page preview image?\n"
+		}
 };
 
 ini_order_t AppConfig::ms_keys_order = {
@@ -823,7 +879,21 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ LPT_ENABLED, false },
 		{ LPT_PORT,    false },
 		{ LPT_FILE,    false }
-	} }
+	} },
+	{ PRN_SECTION, {
+		{ PRN_CONNECTED,     false },
+		{ PRN_MODE,          false },
+		{ PRN_COLOR,         false },
+		{ PRN_INK,           false },
+		{ PRN_PREVIEW_DIV,   false },
+		{ PRN_EPSON_CSET,    false },
+		{ PRN_IBM_CSET,      false },
+		{ PRN_PAPER_SIZE,    false },
+		{ PRN_PAPER_TYPE,    false },
+		{ PRN_BOF,           false },
+		{ PRN_TOP_MARGIN,    false },
+		{ PRN_BOTTOM_MARGIN, false }
+	} },
 };
 
 AppConfig::AppConfig()

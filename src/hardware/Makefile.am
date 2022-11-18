@@ -82,7 +82,13 @@ libhardware_a_SOURCES = \
 	devices/adlib.cpp \
 	devices/cf62011bpc.cpp \
 	devices/sblaster.cpp \
-	devices/mpu401.cpp
+	devices/mpu401.cpp \
+	printer/mps_chargen.cpp \
+	printer/mps_charset.cpp \
+	printer/mps_printer.cpp \
+	printer/mps_printer_epson.cpp \
+	printer/mps_printer_ibmgp.cpp \
+	printer/mps_printer_ibmpp.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -152,4 +158,5 @@ noinst_HEADERS = \
 	devices/adlib.h \
 	devices/cf62011bpc.h \
 	devices/sblaster.h \
-	devices/mpu401.h
+	devices/mpu401.h \
+	printer/mps_printer.h

@@ -92,6 +92,7 @@ class Desktop;
 class Interface;
 class NormalInterface;
 class Status;
+class PrinterControl;
 class DebugTools;
 class TextModeInfo;
 
@@ -264,6 +265,7 @@ protected:
 		std::unique_ptr<Status>     status;
 		std::unique_ptr<DebugTools> dbgtools;
 		std::unique_ptr<MessageWnd> message_wnd;
+		std::unique_ptr<PrinterControl> printer_ctrl;
 
 		std::string last_ifc_mex;
 		std::string last_dbg_mex;
@@ -279,6 +281,7 @@ protected:
 		void shutdown();
 		void toggle_status();
 		void toggle_dbg();
+		void toggle_printer();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();
@@ -341,9 +344,12 @@ public:
 	void unload_document(Rml::ElementDocument *);
 	static std::string shaders_dir();
 	static std::string images_dir();
-	
+	SDL_Surface *load_surface(const std::string &_name);
+	void update_surface(const std::string &_name, SDL_Surface *_data);
+
 	virtual uintptr_t load_texture(SDL_Surface *_surface) = 0;
 	virtual uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr) = 0;
+	virtual void update_texture(uintptr_t _texture, SDL_Surface *_data) = 0;
 	virtual void render() = 0;
 	
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
@@ -355,6 +361,7 @@ public:
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
 	bool are_windows_visible();
 	void toggle_dbg_windows();
+	void toggle_printer_control();
 	void grab_input(bool _value);
 	bool is_input_grabbed();
 	bool is_video_recording() const;
@@ -377,6 +384,8 @@ public:
 	
 	void restore_state(StateRecord::Info _info);
 	void sig_state_restored();
+	
+	EventTimers & timers() { return m_windows.timers; }
 	
 private:
 	void load_keymap(const std::string &_filename);
@@ -409,6 +418,7 @@ private:
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_status_ind(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_printer(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_take_screenshot(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_audio_capture(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase);

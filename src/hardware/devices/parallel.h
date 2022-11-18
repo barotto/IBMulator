@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2009  The Bochs Project
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,6 +22,7 @@
 #define IBMULATOR_HW_PARPORT_H
 
 #include "hardware/iodevice.h"
+#include "hardware/printer/mps_printer.h"
 
 enum ParportModes {
 	PARPORT_EXTENDED = 0,
@@ -31,19 +32,19 @@ enum ParportModes {
 typedef struct {
 	uint8_t data;
 	struct {
-		bool error;
-		bool slct;
-		bool pe;
-		bool ack;
-		bool busy;
+		bool error; // inverted; 0=printer encountered an error 
+		bool slct;  // select; 1=printer selected
+		bool pe;    // paper end; 1=end of the paper
+		bool ack;   // inverted; 0=char received and ready to receive another
+		bool busy;  // inverted; 0=printer busy, cannot receive data
 	} STATUS;
 	struct {
-		bool strobe;
-		bool autofeed;
-		bool init;
-		bool slct_in;
-		bool irq;
-		bool input;
+		bool strobe;   // 1=data is clocked into the printer
+		bool autofeed; // 1=auto line feed
+		bool init;     // inverted; 0=printer starts
+		bool slct_in;  // 1=printer is selected
+		bool irq;      // 1=an interrupt occurs when the -ACK signal changes to inactive.
+		bool input;    // direction
 	} CONTROL;
 	FILE *output;
 	bool initmode;
@@ -59,8 +60,9 @@ class Parallel : public IODevice
 private:
 	parport_t m_s;
 	static uint16_t ms_irqs[3];
-	bool m_enabled;
+	bool m_enabled = false;
 	void virtual_printer();
+	std::shared_ptr<MpsPrinter> m_printer;
 
 public:
 	Parallel(Devices *_dev);
@@ -76,6 +78,10 @@ public:
 	void set_mode(uint8_t _mode);
 	void set_port(uint8_t _port);
 	void set_enabled(bool _enabled);
+	
+	void connect_printer(std::shared_ptr<MpsPrinter> _prn) {
+		m_printer = _prn;
+	}
 
 	static std::map<std::string, uint> ms_lpt_ports;
 

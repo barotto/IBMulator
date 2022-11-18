@@ -34,6 +34,7 @@ share/ibmulator/gui/mixerstate.rml \
 share/ibmulator/gui/new_floppy.rml \
 share/ibmulator/gui/normal_interface.rcss \
 share/ibmulator/gui/normal_interface.rml \
+share/ibmulator/gui/printer_control.rml \
 share/ibmulator/gui/realistic_interface.rcss \
 share/ibmulator/gui/realistic_interface.rml \
 share/ibmulator/gui/speed_indicator.rcss \
@@ -73,6 +74,7 @@ share/ibmulator/gui/icons/home.png \
 share/ibmulator/gui/icons/info.png \
 share/ibmulator/gui/icons/list.png \
 share/ibmulator/gui/icons/pause.png \
+share/ibmulator/gui/icons/printer.png \
 share/ibmulator/gui/icons/power.png \
 share/ibmulator/gui/icons/power_active.png \
 share/ibmulator/gui/icons/reload.png \

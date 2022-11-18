@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021  Marco Bortolin
+ * Copyright (C) 2019-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -140,4 +140,21 @@ uintptr_t GUI_SDL2D::load_texture(const std::string &_path, vec2i *_texdim)
 	}
 	SDL_FreeSurface(surface);
 	return uintptr_t((void*)texture);
+}
+
+void GUI_SDL2D::update_texture(uintptr_t _texture, SDL_Surface *_data)
+{
+	assert(_data);
+	SDL_Texture *texture = reinterpret_cast<SDL_Texture*>(_texture);
+	if(!texture) {
+		throw std::runtime_error("Invalid texture");
+	}
+	int w, h;
+	SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+	if(w != _data->w || h != _data->h) {
+		throw std::runtime_error(str_format("Invalid texture size: %dx%d (exp: %dx%d)", _data->w,_data->h, w,h));
+	}
+	SDL_LockSurface(_data);
+	SDL_UpdateTexture(texture, NULL, _data->pixels, _data->pitch);
+	SDL_UnlockSurface(_data);
 }

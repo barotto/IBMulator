@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021  Marco Bortolin
+ * Copyright (C) 2019-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -296,6 +296,31 @@ uintptr_t GUI_OpenGL::load_texture(const std::string &_path, vec2i *_texdim)
 	}
 	SDL_FreeSurface(surface);
 	return gltex;
+}
+
+void GUI_OpenGL::update_texture(uintptr_t _texture, SDL_Surface *_data)
+{
+	assert(_data);
+	GLuint gltex = static_cast<GLuint>(_texture);
+	int w, h;
+	GLCALL( glActiveTexture(GL_TEXTURE0) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+	if(w != _data->w || h != _data->h) {
+		throw std::runtime_error("Invalid texture size");
+	}
+	SDL_LockSurface(_data);
+	//GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, _data->w) );
+	GLCALL( glTexSubImage2D(
+		GL_TEXTURE_2D, 0,       // target, level
+		0, 0,                   // xoffset, yoffset
+		_data->w, _data->h,     // width, height
+		GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+		_data->pixels
+	) );
+	//GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
+	SDL_UnlockSurface(_data);
 }
 
 const char * GetGLErrorString(GLenum _error_code)

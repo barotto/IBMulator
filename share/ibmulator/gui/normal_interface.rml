@@ -39,6 +39,7 @@
 					<btn id="pause" />
 					<btn id="save" />
 					<btn id="restore" />
+					<btn id="printer" />
 					<btn id="exit" />
 				</div>
 			</div>

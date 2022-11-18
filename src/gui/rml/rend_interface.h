@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@ class RmlRenderer : public Rml::RenderInterface
 protected:
 	SDL_Renderer *m_renderer;
 	SDL_Window *m_screen;
+	std::map<std::string, Rml::TextureHandle> m_named_textures;
 
 public:
 	RmlRenderer(SDL_Renderer * _renderer, SDL_Window * _screen);
@@ -36,8 +37,14 @@ public:
 
 	virtual bool LoadTexture(Rml::TextureHandle &_texture_handle,
 			Rml::Vector2i &_texture_dimensions, const std::string &_source);
-	
+
 	virtual void SetDimensions(int _width, int _height);
+
+	Rml::TextureHandle GetNamedTexture(const std::string &_name);
+
+protected:
+	bool LoadNamedTexture(Rml::TextureHandle &texture_handle_,
+			Rml::Vector2i &texture_dimensions_, const std::string &_source);
 };
 
 #endif

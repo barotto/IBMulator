@@ -32,6 +32,7 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT  ( "pause",             "click",     NormalInterface::on_pause ),
 	GUI_EVT  ( "save",              "click",     Interface::on_save_state ),
 	GUI_EVT  ( "restore",           "click",     Interface::on_load_state ),
+	GUI_EVT  ( "printer",           "click",     Interface::on_printer ),
 	GUI_EVT  ( "exit",              "click",     NormalInterface::on_exit ),
 	GUI_EVT  ( "visibility",        "click",     NormalInterface::on_visibility ),
 	GUI_EVT  ( "fdd_select",        "click",     NormalInterface::on_fdd_select ),
@@ -150,6 +151,12 @@ void NormalInterface::create()
 	);
 	if(!m_scale_integer) {
 		m_screen->vga.pmat = mat4_ortho<float>(0, 1.0, 1.0, 0, 0, 1);
+	}
+	
+	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
+		get_element("system_control")->SetClass("size_6", true);
+	} else {
+		get_element("printer")->SetClass("d-none", true);
 	}
 }
 

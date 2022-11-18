@@ -90,6 +90,7 @@ enum e_Syslog_Facilities {
 	LOG_AUDIO,
 	LOG_GAMEPORT,
 	LOG_LPT,
+	LOG_PRN,
 	LOG_COM,
 	LOG_MIDI,
 

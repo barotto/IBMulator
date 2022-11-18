@@ -819,6 +819,11 @@ void Interface::on_load_state(Rml::Event &)
 	show_state_dialog(false);
 }
 
+void Interface::on_printer(Rml::Event &)
+{
+	m_gui->toggle_printer_control();
+}
+
 void Interface::on_dblclick(Rml::Event &)
 {
 	m_gui->toggle_fullscreen();

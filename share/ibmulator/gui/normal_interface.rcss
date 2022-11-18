@@ -74,6 +74,11 @@
 	top: 1%;
 }
 
+#system_control.size_6
+{
+	width: 34.5%;
+}
+
 .collapsed #system_control
 {
 	height: 100%;
@@ -192,6 +197,11 @@ btn
 	transition: image-color 0.2s 0 exponential-out;
 }
 
+#system_control.size_6 btn
+{
+	width: 16.66666%
+}
+
 #interface_control btn
 {
 	width: 100%;
@@ -265,6 +275,11 @@ btn.active:hover
 #restore
 {
 	decorator: image(icons/restore.png);
+}
+
+#printer
+{
+	decorator: image(icons/printer.png);
 }
 
 #exit

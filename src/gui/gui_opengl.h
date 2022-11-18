@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021  Marco Bortolin
+ * Copyright (C) 2019-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,7 +49,7 @@ public:
 	static GLuint load_program(const std::vector<std::string> _vs_path, std::vector<std::string> _fs_path);
 	uintptr_t load_texture(SDL_Surface *_surface);
 	uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr);
-	
+	void update_texture(uintptr_t _texture, SDL_Surface *_data);
 };
 
 

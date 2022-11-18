@@ -505,6 +505,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_AUDIO_VERBOSITY),    LOG_AUDIO);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GAMEPORT_VERBOSITY), LOG_GAMEPORT);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_LPT_VERBOSITY),      LOG_LPT);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_PRN_VERBOSITY),      LOG_PRN);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_COM_VERBOSITY),      LOG_COM);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIDI_VERBOSITY),     LOG_MIDI);
 	}

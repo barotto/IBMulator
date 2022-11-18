@@ -95,6 +95,7 @@ struct ProgramEvent {
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
 		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators
 		FUNC_TOGGLE_DBG_WND,       // show / hide the debug windows
+		FUNC_TOGGLE_PRINTER,       // show / hide the printer control interface
 		FUNC_TAKE_SCREENSHOT,      // take a screenshot
 		FUNC_TOGGLE_AUDIO_CAPTURE, // start / stop audio capture
 		FUNC_TOGGLE_VIDEO_CAPTURE, // start / stop video capture

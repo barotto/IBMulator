@@ -127,7 +127,7 @@ std::string bitfield_to_string(uint8_t _bitfield,
 const char* register_to_string(uint8_t _register,
 	const std::vector<std::pair<int, std::string> > &_fields);
 
-std::string bytearray_to_string(uint8_t *_data, unsigned _len);
+std::string bytearray_to_string(const uint8_t *_data, unsigned _len);
 
 template<class T>
 std::vector<T> & vector_concat(std::vector<T> &_v1, const std::vector<T> &_v2)

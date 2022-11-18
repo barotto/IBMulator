@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2022  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,6 +40,10 @@ bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 {
 	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture '%s'\n", source.c_str());
 
+	if(source.find("gui:", 0) == 0) {
+		return LoadNamedTexture(texture_handle, texture_dimensions, source);
+	}
+
 	Rml::FileInterface *file_interface = Rml::GetFileInterface();
 	Rml::FileHandle file_handle = file_interface->Open(source);
 	if(!file_handle) {
@@ -67,6 +71,35 @@ bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 	texture_dimensions = Rml::Vector2i(surface->w, surface->h);
 	SDL_FreeSurface(surface);
 	return true;
+}
+
+bool RmlRenderer::LoadNamedTexture(Rml::TextureHandle &texture_handle_,
+		Rml::Vector2i &texture_dimensions_, const std::string &_source)
+{
+	SDL_Surface *surface = nullptr;
+
+	try {
+		surface = GUI::instance()->load_surface(_source);
+		texture_handle_ = GUI::instance()->load_texture(surface);
+	} catch(std::exception &e) {
+		PERRF(LOG_GUI, "%s\n", e.what());
+		return false;
+	}
+
+	texture_dimensions_ = Rml::Vector2i(surface->w, surface->h);
+
+	m_named_textures[_source] = texture_handle_;
+	
+	return true;
+}
+
+Rml::TextureHandle RmlRenderer::GetNamedTexture(const std::string &_name)
+{
+	try {
+		return m_named_textures.at(_name);
+	} catch(...) {
+		return 0;
+	}
 }
 
 void RmlRenderer::SetDimensions(int, int)
