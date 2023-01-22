@@ -46,7 +46,8 @@ share/ibmulator/gui/state_load.rml \
 share/ibmulator/gui/state_save.rml \
 share/ibmulator/gui/state_save_info.rml \
 share/ibmulator/gui/stats.rml \
-share/ibmulator/gui/status.rml
+share/ibmulator/gui/status.rml \
+share/ibmulator/gui/shader_parameters.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
@@ -125,22 +126,39 @@ share/ibmulator/gui/images/realistic_fdd_led_bloom.png \
 share/ibmulator/gui/images/realistic_floppy_r_dark.png \
 share/ibmulator/gui/images/realistic_hdd_led_bloom.png \
 share/ibmulator/gui/images/realistic_interface_dark.png \
+share/ibmulator/gui/images/realistic_interface_nomonitor.png \
+share/ibmulator/gui/images/realistic_interface_nomonitor_dark.png \
 share/ibmulator/gui/images/realistic_power_led_bloom.png \
 share/ibmulator/gui/images/realistic_slider_dark.png
 
-guishadersdir = $(pkgdatadir)/gui/shaders
+guishadersdir = $(pkgdatadir)/shaders
 dist_guishaders_DATA = \
-share/ibmulator/gui/shaders/color_functions.glsl \
-share/ibmulator/gui/shaders/filter_bicubic.fs \
-share/ibmulator/gui/shaders/filter_bilinear.fs \
-share/ibmulator/gui/shaders/fb-normal.fs \
-share/ibmulator/gui/shaders/fb-normal.vs \
-share/ibmulator/gui/shaders/fb-scanlines.fs \
-share/ibmulator/gui/shaders/fb-realistic.fs \
-share/ibmulator/gui/shaders/fb-realistic.vs \
-share/ibmulator/gui/shaders/monitor.fs \
-share/ibmulator/gui/shaders/gui.fs \
-share/ibmulator/gui/shaders/gui.vs
+share/ibmulator/shaders/color_functions.glsl \
+share/ibmulator/shaders/black_fill.slang \
+share/ibmulator/shaders/black_fill.slangp \
+share/ibmulator/shaders/fb_blitter.slang \
+share/ibmulator/shaders/filter_bilinear.fs \
+share/ibmulator/shaders/filter_bicubic.fs \
+share/ibmulator/shaders/filter_bicubic.glsl \
+share/ibmulator/shaders/normal_mode.slangp \
+share/ibmulator/shaders/normal_mode_nearest.slangp \
+share/ibmulator/shaders/normal_mode_bicubic.slangp \
+share/ibmulator/shaders/realistic_mode.slang \
+share/ibmulator/shaders/realistic_mode.slangp \
+share/ibmulator/shaders/stock.slang \
+share/ibmulator/shaders/stock.slangp \
+share/ibmulator/shaders/gui_color.slang \
+share/ibmulator/shaders/gui_texture.slang \
+share/ibmulator/shaders/ps1_monitor.slangp \
+share/ibmulator/shaders/ps1_monitor/functions.glsl \
+share/ibmulator/shaders/ps1_monitor/power_led_bloom.png \
+share/ibmulator/shaders/ps1_monitor/ps1_crt.slang \
+share/ibmulator/shaders/ps1_monitor/ps1_monitor_envmap.png \
+share/ibmulator/shaders/ps1_monitor/ps1_monitor_frame.png \
+share/ibmulator/shaders/ps1_monitor/ps1_monitor.slang \
+share/ibmulator/shaders/ps1_monitor/vga_reflection.slang \
+share/ibmulator/shaders/crt_lottes.slang \
+share/ibmulator/shaders/crt_lottes.slangp
 
 guifontsdir = $(pkgdatadir)/gui/fonts
 dist_guifonts_DATA = \

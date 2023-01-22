@@ -1,0 +1,4 @@
+#reference "stock.slangp"
+
+ibmu_input_size = video_mode
+filter_linear0 = false

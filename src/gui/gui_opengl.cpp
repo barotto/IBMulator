@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,6 @@
 #include <RmlUi/Core.h>
 #include <SDL.h>
 #include "stb/stb.h"
-#include <GL/glew.h>
 
 
 GUI_OpenGL::GUI_OpenGL()
@@ -39,19 +38,22 @@ GUI_OpenGL::~GUI_OpenGL()
 
 void GUI_OpenGL::render()
 {
+	GLCALL( glBindFramebuffer(GL_FRAMEBUFFER, 0) );
 	GLCALL( glViewport(0,0, m_width, m_height) );
 	GLCALL( glClearColor(
 			float(m_backcolor.r)/255.f,
 			float(m_backcolor.g)/255.f,
 			float(m_backcolor.b)/255.f,
-			float(m_backcolor.a)/255.f) );
+			1.f) );
 	GLCALL( glClear(GL_COLOR_BUFFER_BIT) );
-	
-	// this is a rendering of the screen only (which includes the VGA image).
+
+	// this is the rendering of the viewport area (which includes the VGA image).
 	// GUI controls are rendered later by the RmlUi context
 	m_windows.interface->render_screen();
 
 	ms_rml_mutex.lock();
+	GLCALL( glEnable(GL_BLEND) );
+	GLCALL( glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) );
 	m_rml_context->Render();
 	ms_rml_mutex.unlock();
 
@@ -75,6 +77,9 @@ void GUI_OpenGL::create_window(int _flags)
 	
 	set_window_icon();
 
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, GUI_OPENGL_MAJOR_VER);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, GUI_OPENGL_MINOR_VER);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	m_SDL_glcontext = SDL_GL_CreateContext(m_SDL_window);
 	if(!m_SDL_glcontext) {
 		PERRF(LOG_GUI, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
@@ -107,8 +112,8 @@ void GUI_OpenGL::check_device_GL_caps()
 	const GLubyte* version;
 	GLCALL( version = glGetString(GL_VERSION) );
 
-	if(vendor) PINFOF(LOG_V2,LOG_GUI,"Vendor: %s\n", vendor);
-	if(renderer) PINFOF(LOG_V1,LOG_GUI,"Renderer: %s\n", renderer);
+	if(vendor) PINFOF(LOG_V2,LOG_GUI,"OpenGL Vendor: %s\n", vendor);
+	if(renderer) PINFOF(LOG_V1,LOG_GUI,"OpenGL Renderer: %s\n", renderer);
 	if(!version) {
 		PERRF(LOG_GUI, "Unable to determine OpenGL driver version\n");
 		throw std::exception();
@@ -123,7 +128,7 @@ void GUI_OpenGL::check_device_GL_caps()
 		PERRF(LOG_GUI, "This OpenGL version is not supported: minimum %d.%d required\n", GUI_OPENGL_MAJOR_VER, GUI_OPENGL_MINOR_VER);
 		throw std::exception();
 	} else {
-		PINFOF(LOG_V1,LOG_GUI,"Version: %d.%d ", major,minor);
+		PINFOF(LOG_V1,LOG_GUI,"OpenGL Version: %d.%d ", major,minor);
 	}
 
 	int context_mask=0;
@@ -179,139 +184,19 @@ void GUI_OpenGL::create_renderer()
 	m_rml_renderer = std::make_unique<RmlRenderer_OpenGL>(nullptr, m_SDL_window);
 }
 
-std::vector<GLuint> GUI_OpenGL::attach_shaders(
-	const std::vector<std::string> _sh_paths, GLuint _sh_type, GLuint _program)
-{
-	std::vector<GLuint> sh_ids;
-	for(auto sh : _sh_paths) {
-		// Read Shader code from file
-		std::string shcode = load_shader_file(sh);
-		// Create the shader
-		GLuint shid;
-		GLCALL( shid = glCreateShader(_sh_type) );
-		// Compile Vertex Shader
-		char const * source = shcode.c_str();
-		GLCALL( glShaderSource(shid, 1, &source , nullptr) );
-		GLCALL( glCompileShader(shid) );
-		// Check Shader
-		GLint result = GL_FALSE;
-		int infologlen;
-		GLCALL( glGetShaderiv(shid, GL_COMPILE_STATUS, &result) );
-		GLCALL( glGetShaderiv(shid, GL_INFO_LOG_LENGTH, &infologlen) );
-		if(!result && infologlen > 1) {
-			std::vector<char> sherr(infologlen+1);
-			GLCALL( glGetShaderInfoLog(shid, infologlen, nullptr, &sherr[0]) );
-			PERRF(LOG_GUI, "GLSL error in '%s'\n", sh.c_str());
-			PERRF(LOG_GUI, "%s\n", &sherr[0]);
-		}
-		// Attach Vertex Shader to Program
-		GLCALL( glAttachShader(_program, shid) );
-		sh_ids.push_back(shid);
-	}
-	return sh_ids;
-}
-
-GLuint GUI_OpenGL::load_program(
-	const std::vector<std::string> _vs_paths, std::vector<std::string> _fs_paths)
-{
-	PDEBUGF(LOG_V1, LOG_GUI, "Loading GLSL program:\n");
-	for( auto s : _vs_paths ) {
-		PDEBUGF(LOG_V1, LOG_GUI, " %s\n", s.c_str());
-	}
-	for( auto s : _fs_paths ) {
-		PDEBUGF(LOG_V1, LOG_GUI, " %s\n", s.c_str());
-	}
-	
-	// Create the Program
-	GLuint progid;
-	GLCALL( progid = glCreateProgram() );
-
-	// Load and attach Shaders to Program
-	std::vector<GLuint> vsids = attach_shaders(_vs_paths, GL_VERTEX_SHADER, progid);
-	std::vector<GLuint> fsids = attach_shaders(_fs_paths, GL_FRAGMENT_SHADER, progid);
-
-	// Link the Program
-	GLCALL( glLinkProgram(progid) );
-
-	// Delete useless Shaders
-	for(auto shid : vsids) {
-		//a shader won't actually be deleted by glDeleteShader until it's been detached
-		GLCALL( glDetachShader(progid,shid) );
-		GLCALL( glDeleteShader(shid) );
-	}
-	for(auto shid : fsids) {
-		GLCALL( glDetachShader(progid,shid) );
-		GLCALL( glDeleteShader(shid) );
-	}
-
-	// Check the program
-	GLint result = GL_FALSE;
-	int infologlen;
-	GLCALL( glGetProgramiv(progid, GL_LINK_STATUS, &result) );
-	GLCALL( glGetProgramiv(progid, GL_INFO_LOG_LENGTH, &infologlen) );
-	if(!result) {
-		if(infologlen > 1) {
-			std::vector<char> progerr(infologlen+1);
-			GLCALL( glGetProgramInfoLog(progid, infologlen, nullptr, &progerr[0]) );
-			PERRF(LOG_GUI, "Program error: '%s'\n", &progerr[0]);
-		}
-		throw std::exception();
-	}
-
-	return progid;
-}
-
-uintptr_t GUI_OpenGL::load_texture(SDL_Surface *_surface)
-{
-	assert(_surface);
-	if(_surface->format->BytesPerPixel != 4) {
-		throw std::runtime_error("Unsupported image format");
-	}
-	SDL_LockSurface(_surface);
-	GLuint gltex;
-	GLCALL( glGenTextures(1, &gltex) );
-	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
-	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
-		_surface->w, _surface->h,
-		0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-		_surface->pixels
-		)
-	);
-	SDL_UnlockSurface(_surface);
-	return gltex;
-}
-
-uintptr_t GUI_OpenGL::load_texture(const std::string &_path, vec2i *_texdim)
-{
-	SDL_Surface *surface = stbi_load(_path.c_str());
-	GLuint gltex;
-	try {
-		gltex = load_texture(surface);
-	} catch(std::exception &e) {
-		SDL_FreeSurface(surface);
-		throw;
-	}
-	if(_texdim) {
-		*_texdim = vec2i(surface->w, surface->h);
-	}
-	SDL_FreeSurface(surface);
-	return gltex;
-}
-
 void GUI_OpenGL::update_texture(uintptr_t _texture, SDL_Surface *_data)
 {
-	assert(_data);
+	assert(_data && _texture);
 	GLuint gltex = static_cast<GLuint>(_texture);
 	int w, h;
 	GLCALL( glActiveTexture(GL_TEXTURE0) );
 	GLCALL( glBindTexture(GL_TEXTURE_2D, gltex) );
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+	GLCALL( glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w) );
+	GLCALL( glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h) );
 	if(w != _data->w || h != _data->h) {
-		throw std::runtime_error("Invalid texture size");
+		throw std::runtime_error(str_format("Cannot update texture: invalid size %dx%d, must be %dx%d", _data->w, _data->h, w, h));
 	}
 	SDL_LockSurface(_data);
-	//GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, _data->w) );
 	GLCALL( glTexSubImage2D(
 		GL_TEXTURE_2D, 0,       // target, level
 		0, 0,                   // xoffset, yoffset
@@ -319,31 +204,7 @@ void GUI_OpenGL::update_texture(uintptr_t _texture, SDL_Surface *_data)
 		GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
 		_data->pixels
 	) );
-	//GLCALL( glPixelStorei(GL_UNPACK_ROW_LENGTH, 0) );
 	SDL_UnlockSurface(_data);
-}
-
-const char * GetGLErrorString(GLenum _error_code)
-{
-	switch(_error_code) {
-		case GL_INVALID_ENUM:
-			return "GL_INVALID_ENUM An unacceptable value is specified for an enumerated argument.";
-		case GL_INVALID_VALUE:
-			return "GL_INVALID_VALUE A numeric argument is out of range.";
-		case GL_INVALID_OPERATION:
-			return "GL_INVALID_OPERATION The specified operation is not allowed in the current state.";
-		case GL_INVALID_FRAMEBUFFER_OPERATION:
-			return "GL_INVALID_FRAMEBUFFER_OPERATION The framebuffer object is not complete.";
-		case GL_OUT_OF_MEMORY:
-			return "GL_OUT_OF_MEMORY There is not enough memory left to execute the command.";
-		case GL_STACK_UNDERFLOW:
-			return "GL_STACK_UNDERFLOW An attempt has been made to perform an operation that would cause an internal stack to underflow.";
-		case GL_STACK_OVERFLOW:
-			return "GL_STACK_OVERFLOW An attempt has been made to perform an operation that would cause an internal stack to overflow.";
-		default:
-			break;
-	}
-	return "unknown error";
 }
 
 void GUI_OpenGL::GL_debug_output(
@@ -376,6 +237,7 @@ void GUI_OpenGL::GL_debug_output(
 			source = "application";
 			break;
 		case GL_DEBUG_SOURCE_OTHER_ARB:
+		default:
 			source = "other";
 			break;
 	}
@@ -402,6 +264,7 @@ void GUI_OpenGL::GL_debug_output(
 			source += " performance";
 			break;
 		case GL_DEBUG_TYPE_OTHER_ARB:
+		default:
 			type = LOG_DEBUG;
 			source += " other";
 			break;
@@ -418,6 +281,7 @@ void GUI_OpenGL::GL_debug_output(
 			verb = LOG_V1;
 			break;
 		case GL_DEBUG_SEVERITY_LOW_ARB:
+		default:
 			verb = LOG_V2;
 			break;
 	}

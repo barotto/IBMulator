@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -144,20 +144,19 @@ void NormalInterface::create()
 
 	m_screen = std::make_unique<InterfaceScreen>(m_gui);
 
-	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
-	m_screen->renderer()->load_vga_program(
-		GUI::shaders_dir() + "fb-normal.vs", frag_sh,
-		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_FILTER, GUI::ms_gui_sampler)
-	);
-	if(!m_scale_integer) {
-		m_screen->vga.pmat = mat4_ortho<float>(0, 1.0, 1.0, 0, 0, 1);
-	}
-	
+	unsigned s = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_FILTER, GUI::ms_gui_sampler);
+	m_screen->renderer()->set_output_sampler(static_cast<DisplaySampler>(s));
+
+	std::string shader = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
+	m_screen->renderer()->load_vga_shader_preset(shader);
+
 	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
 		get_element("system_control")->SetClass("size_6", true);
 	} else {
 		get_element("printer")->SetClass("d-none", true);
 	}
+
+	set_ambient_light(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_AMBIENT));
 }
 
 void NormalInterface::container_size_changed(int _width, int _height)
@@ -182,8 +181,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		disp_area_h -= sysunit_h;
 	}
 	if(m_window_scaling > 0) {
-		disp_w = m_screen->vga.display.mode().xres * m_window_scaling;
-		disp_h = m_screen->vga.display.mode().yres * m_window_scaling;
+		disp_w = m_screen->display()->mode().xres * m_window_scaling;
+		disp_h = m_screen->display()->mode().yres * m_window_scaling;
 	} else {
 		disp_w = disp_area_w;
 		disp_h = disp_area_h;
@@ -196,9 +195,9 @@ void NormalInterface::container_size_changed(int _width, int _height)
 			break;
 		case DISPLAY_ASPECT_VGA:
 			if(m_scale_integer) {
-				ratio = float(m_screen->vga.display.mode().imgw) / float(m_screen->vga.display.mode().imgh);
+				ratio = float(m_screen->display()->mode().imgw) / float(m_screen->display()->mode().imgh);
 			} else {
-				ratio = float(m_screen->vga.display.mode().xres) / float(m_screen->vga.display.mode().yres);
+				ratio = float(m_screen->display()->mode().xres) / float(m_screen->display()->mode().yres);
 			}
 			break;
 		case DISPLAY_ASPECT_AREA:
@@ -209,8 +208,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 			break;
 	}
 	if(m_scale_mode == DISPLAY_SCALE_1X) {
-		disp_w = m_screen->vga.display.mode().imgw;
-		disp_h = m_screen->vga.display.mode().imgh;
+		disp_w = m_screen->display()->mode().imgw;
+		disp_h = m_screen->display()->mode().imgh;
 	} else {
 		disp_w = disp_h * ratio;
 		xs = disp_w / float(_width);
@@ -228,10 +227,10 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		}
 	}
 	if(m_scale_integer) {
-		int multw = disp_w / m_screen->vga.display.mode().imgw;
-		int multh = disp_h / m_screen->vga.display.mode().imgh;
-		disp_w = m_screen->vga.display.mode().imgw;
-		disp_h = m_screen->vga.display.mode().imgh;
+		int multw = disp_w / m_screen->display()->mode().imgw;
+		int multh = disp_h / m_screen->display()->mode().imgh;
+		disp_w = m_screen->display()->mode().imgw;
+		disp_h = m_screen->display()->mode().imgh;
 		if(multw > 0) {
 			disp_w *= multw;
 		}
@@ -244,7 +243,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		if(m_cur_zoom == ZoomMode::COMPACT) {
 			yt = int((_height - disp_h) / 2);
 		}
-		m_screen->vga.pmat = mat4_ortho<float>(0, _width, _height, 0, 0, 1);
+		m_screen->params.vga.pmat = mat4_ortho<float>(0, _width, _height, 0, 0, 1);
 		PINFOF(LOG_V2, LOG_GUI, "VGA resized to: %dx%d (x:%dx,y:%dx,ratio:%.3f)\n",
 				int(disp_w),int(disp_h), multw, multh, xs/ys);
 	} else {
@@ -254,13 +253,21 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		}
 	}
 
-	m_screen->vga.size.x = disp_w;
-	m_screen->vga.size.y = disp_h;
+	m_screen->params.viewport_size.x = _width;
+	m_screen->params.viewport_size.y = _height;
 
-	m_screen->vga.mvmat.load_scale(xs, ys, 1.0);
-	m_screen->vga.mvmat.load_translation(xt, yt, 0.0);
+	m_screen->params.vga.output_size.x = disp_w;
+	m_screen->params.vga.output_size.y = disp_h;
 
-	m_size = m_screen->vga.size;
+	m_screen->params.vga.mvmat.load_scale(xs, ys, 1.0);
+	m_screen->params.vga.mvmat.load_translation(xt, yt, 0.0);
+	
+	m_screen->params.vga.mvpmat = m_screen->params.vga.pmat;
+	m_screen->params.vga.mvpmat.multiply(m_screen->params.vga.mvmat);
+
+	m_screen->params.updated = true;
+
+	m_size = m_screen->params.vga.output_size;
 	m_main_interface->SetProperty("width", str_format("%upx", sysunit_w));
 	m_main_interface->SetProperty("height", str_format("%upx", sysunit_h));
 
@@ -275,16 +282,16 @@ void NormalInterface::update()
 
 	if(m_scale_integer || m_window_scaling > 0)
 	{
-		m_screen->vga.display.lock();
-		if(m_screen->vga.display.dimension_updated()) {
+		m_screen->display()->lock();
+		if(m_screen->display()->dimension_updated()) {
 			uint32_t wflags = m_gui->window_flags();
 			if(!(wflags & SDL_WINDOW_FULLSCREEN)&&
 			   !(wflags & SDL_WINDOW_MAXIMIZED) &&
 			   m_window_scaling)
 			{
 				// TODO incomplete, will not resize properly when ratio is fixed
-				int w = m_screen->vga.display.mode().xres * m_window_scaling;
-				int h = m_screen->vga.display.mode().yres * m_window_scaling;
+				int w = m_screen->display()->mode().xres * m_window_scaling;
+				int h = m_screen->display()->mode().yres * m_window_scaling;
 				if(m_cur_zoom == ZoomMode::NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}
@@ -300,9 +307,9 @@ void NormalInterface::update()
 					m_gui->window_height()
 				);
 			}
-			m_screen->vga.display.clear_dimension_updated();
+			m_screen->display()->clear_dimension_updated();
 		}
-		m_screen->vga.display.unlock();
+		m_screen->display()->unlock();
 	}
 
 	if(is_system_visible()) {

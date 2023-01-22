@@ -1,0 +1,57 @@
+shaders = 3
+
+ibmu_input_size = crtc
+ibmu_samplers_mode = "pass"
+
+shader0 = ps1_monitor/vga_reflection.slang
+alias0 = Reflection
+filter_linear0 = true
+mipmap_input0 = true
+wrap_mode0 = mirrored_repeat
+scale_type0 = viewport
+
+shader1 = ps1_monitor/ps1_crt.slang
+alias1 = CRT
+filter_linear1 = true
+mipmap_input1 = true
+scale_type1 = viewport
+
+shader2 = ps1_monitor/ps1_monitor.slang
+filter_linear2 = true
+ibmu_blending_output2 = true
+
+textures = "CRTEnv;Monitor;LEDBloom"
+CRTEnv = ps1_monitor/ps1_monitor_envmap.png
+CRTEnv_linear = true
+CRTEnv_wrap_mode = clamp_to_border
+Monitor = ps1_monitor/ps1_monitor_frame.png
+Monitor_linear = true
+Monitor_wrap_mode = clamp_to_border
+LEDBloom = ps1_monitor/power_led_bloom.png
+LEDBloom_linear = true
+LEDBloom_wrap_mode = clamp_to_border
+
+ibmu_defines = "VGA_REFLECTION;CRT_SCALE;BRT_TINT;LED_X;LED_Y;REFL_LINE_SIZE;REFL_LINE_RADIUS;REFL_LINE_DIST;REFL_LINE_SMOOTH"
+VGA_REFLECTION = "1"
+CRT_SCALE = "0.755"
+BRT_TINT = "vec3(1.0,1.0,1.5)"
+LED_X = "0.789091"
+LED_Y = "0.970930"
+REFL_LINE_SIZE   = "vec2((MonitorSize.x)/MonitorSize.y, 1.0)"
+REFL_LINE_RADIUS = "0.35"
+REFL_LINE_DIST   = "0.18"
+REFL_LINE_SMOOTH = "0.012"
+
+vgaScale = 0.85
+crtCurvature = 8.0
+ambientFromCRT = 0.1
+
+
+// realistic GUI mode integration:
+ibmu_rendering_size = monitor
+ibmu_monitor_width = 1100
+ibmu_monitor_height = 860
+ibmu_monitor_bezelw = 119
+ibmu_monitor_bezelh = 105
+ibmu_crt_width = 862
+ibmu_crt_height = 650

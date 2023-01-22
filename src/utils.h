@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include <vector>
 #include <array>
 #include <stdexcept>
+#include <regex>
 
 constexpr uint64_t operator"" _KB ( unsigned long long int _kb ) { return _kb * 1000L; }
 constexpr uint64_t operator"" _MB ( unsigned long long int _mb ) { return _mb * 1000000L; }
@@ -65,6 +66,8 @@ void size_check()
 	static_assert(_expected == _real, "Incorrect size!");
 }
 
+int str_parse_int_num(const std::string &_str);
+double str_parse_real_num(const std::string &_str);
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
 std::string str_implode(const std::vector<const char*> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
@@ -72,7 +75,9 @@ std::string str_to_lower(std::string _str);
 std::string str_to_upper(std::string _str);
 std::string str_trim(std::string _str);
 std::string str_compress_spaces(std::string _str);
+std::vector<std::string> str_parse_tokens_re(std::string _str, const std::regex &_regex);
 std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep);
+std::string::const_iterator str_find_ci(const std::string &_haystack, const std::string &_needle);
 std::string str_format_time(time_t _time, const std::string &_fmt);
 std::string str_to_html(std::string _text, bool _nbsp=false);
 

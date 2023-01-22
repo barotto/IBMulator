@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,26 +32,28 @@ protected:
 		int fb_height; // the framebuffer width
 		SDL_Rect res; // the last VGA image resolution (can be smaller than fb_width/fb_height)
 		SDL_Texture *texture;
+		SDL_Rect vga_rect;
+		SDL_Rect crt_rect;
 	} m_vga;
-	
+
 public:
 	ScreenRenderer_SDL2D();
 	~ScreenRenderer_SDL2D();
-	
+
 	void init(VGADisplay &_vga, SDL_Renderer *_sdl_renderer);
+
+	void set_output_sampler(DisplaySampler _sampler_type);
+	void load_vga_shader_preset(std::string _preset);
+	void load_crt_shader_preset(std::string _preset);
 	
-	void load_vga_program(std::string _vshader, std::string _fshader, unsigned _sampler);
-	void load_monitor_program(std::string _vshader, std::string _fshader, std::string _reflection_map);
-	
-	void store_vga_framebuffer(FrameBuffer &_fb, const vec2i &_vga_res);
-	
-	void render_vga(const mat4f &_pmat, const mat4f &_mvmat, const vec2i &_display_size, 
-		float _brightness, float _contrast, float _saturation, bool _is_monochrome, 
-		float _ambient, const vec2f &_vga_scale, const vec2f &_reflection_scale);
-	void render_monitor(const mat4f &_pmat, const mat4f &_mvmat, float _ambient);
-	
+	void store_screen_params(const ScreenRenderer::Params &);
+	void store_vga_framebuffer(FrameBuffer &_fb, const VideoModeInfo &_mode);
+
+	void render_vga();
+	void render_crt();
+
 private:
-	SDL_Rect to_rect(const mat4f &_pmat, const mat4f &_mvmat);
+	SDL_Rect to_rect(const mat4f &_mvpmat);
 };
 
 #endif

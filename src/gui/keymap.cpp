@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -665,7 +665,7 @@ void Keymap::load(const std::string &_filename)
 				binding->group = "typematic";
 			}
 		}
-		PDEBUGF(LOG_V0, LOG_GUI, "  (%d) %s\n", total, line.c_str());
+		PDEBUGF(LOG_V1, LOG_GUI, "  (%d) %s\n", total, line.c_str());
 	}
 
 	PINFOF(LOG_V0, LOG_GUI, "  loaded %d bindings.\n", total);

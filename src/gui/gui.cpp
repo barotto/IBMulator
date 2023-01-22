@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,6 +40,7 @@
 #include "windows/debugtools.h"
 #include "windows/status.h"
 #include "windows/printer_control.h"
+#include "windows/shader_parameters.h"
 
 #include "capture/capture.h"
 
@@ -85,6 +86,7 @@ std::map<std::string, uint> GUI::ms_display_scale = {
 const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEvent::Func&,GUI::EventPhase)>>
 	GUI::ms_event_funcs = {
 	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
+	{ ProgramEvent::FuncName::FUNC_SHOW_OPTIONS,         &GUI::pevt_func_show_options         },
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
@@ -190,9 +192,9 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_mode = g_program.config().get_enum(GUI_SECTION, GUI_MODE, ms_gui_modes);
 	m_mouse.grab = g_program.config().get_bool(GUI_SECTION,GUI_MOUSE_GRAB);
 	m_backcolor = {
-		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_R)),
-		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_G)),
-		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_B)),
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_R, 0)),
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_G, 0)),
+		Uint8(g_program.config().get_int(GUI_SECTION, GUI_BG_B, 0)),
 		255
 	};
 	
@@ -2119,19 +2121,25 @@ void GUI::shutdown()
 	shutdown_SDL();
 }
 
-std::string GUI::load_shader_file(const std::string &_path)
+std::list<std::string> GUI::load_shader_file(const std::string &_path)
 {
-	std::string shdata;
-	std::ifstream shstream = FileSys::make_ifstream(_path.c_str());
+	std::string path = g_program.config().find_file(_path);
+	if(path.empty() || !FileSys::file_exists(path.c_str())) {
+		throw std::runtime_error("file not found");
+	}
+	std::list<std::string> shdata;
+	std::ifstream shstream = FileSys::make_ifstream(path.c_str());
 	if(shstream.is_open()){
 		std::string line = "";
-		while(getline(shstream, line)) {
-			shdata += "\n" + line;
+		while(std::getline(shstream, line)) {
+			// trimming will force '#' to first place
+			line = str_trim(line);
+			// don't skip empty lines (for shader debugging)
+			shdata.emplace_back(line + "\n");
 		}
 		shstream.close();
 	} else {
-		PERRF(LOG_GUI, "Unable to open '%s'\n", _path.c_str());
-		throw std::exception();
+		throw std::runtime_error("unable to open file for reading");
 	}
 	return shdata;
 }
@@ -2143,7 +2151,7 @@ GUI * GUI::instance()
 
 std::string GUI::shaders_dir()
 {
-	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "shaders" FS_SEP;
+	return g_program.config().get_assets_home() + FS_SEP "shaders" FS_SEP;
 }
 
 std::string GUI::images_dir()
@@ -2239,6 +2247,11 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 bool GUI::are_windows_visible()
 {
 	return m_windows.are_visible();
+}
+
+void GUI::show_options_window()
+{
+	m_windows.show_options();
 }
 
 void GUI::toggle_dbg_windows()
@@ -2405,7 +2418,7 @@ void GUI::show_welcome_screen()
 		ps("\n", 0xe, bg, bd);
 	}
 	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
-	ps(g_program.config().get_parsed_file().c_str(), 0xe, bg, bd);
+	ps(g_program.config().get_path().c_str(), 0xe, bg, bd);
 	ps("\n\nFor more information read the README file and visit the home page at\n", 0xf, bg, bd);
 	ps(PACKAGE_URL "\n", 0xe, bg, bd);
 
@@ -2415,6 +2428,15 @@ void GUI::show_welcome_screen()
 void GUI::pevt_func_none(const ProgramEvent::Func&, EventPhase)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Unknown func event!\n");
+}
+
+void GUI::pevt_func_show_options(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Show options window func event\n");
+	show_options_window();
 }
 
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2793,6 +2815,11 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	if(printer) {
 		printer_ctrl = std::make_unique<PrinterControl>(_gui, printer);
 	}
+	
+	auto renderer = interface->screen_renderer();
+	if(renderer->get_shader_params()) {
+		options_wnd = std::make_unique<ShaderParameters>(_gui, renderer);
+	}
 
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
@@ -2862,6 +2889,10 @@ void GUI::WindowManager::update(uint64_t _current_time)
 
 	interface->update();
 
+	if(options_wnd && options_wnd->is_visible()) {
+		options_wnd->update();
+	}
+
 	if(debug_wnds) {
 		dbgtools->update();
 	}
@@ -2919,6 +2950,13 @@ void GUI::WindowManager::update_window_size(int _w, int _h)
 				doc->RemoveProperty(p);
 			}
 		}
+	}
+}
+
+void GUI::WindowManager::show_options()
+{
+	if(options_wnd && !options_wnd->is_visible()) {
+		options_wnd->show();
 	}
 }
 

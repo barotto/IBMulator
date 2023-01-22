@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -38,11 +38,13 @@ public:
 	virtual bool LoadTexture(Rml::TextureHandle &_texture_handle,
 			Rml::Vector2i &_texture_dimensions, const std::string &_source);
 
+	// called by the GUI
 	virtual void SetDimensions(int _width, int _height);
 
 	Rml::TextureHandle GetNamedTexture(const std::string &_name);
 
 protected:
+	virtual uintptr_t LoadTexture(SDL_Surface *_surface) = 0;
 	bool LoadNamedTexture(Rml::TextureHandle &texture_handle_,
 			Rml::Vector2i &texture_dimensions_, const std::string &_source);
 };

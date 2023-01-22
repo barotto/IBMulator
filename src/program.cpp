@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -489,6 +489,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GFX_VERBOSITY),      LOG_GFX);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_INPUT_VERBOSITY),    LOG_INPUT);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GUI_VERBOSITY),      LOG_GUI);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_OGL_VERBOSITY),      LOG_OGL);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MACHINE_VERBOSITY),  LOG_MACHINE);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIXER_VERBOSITY),    LOG_MIXER);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MEM_VERBOSITY),      LOG_MEM);

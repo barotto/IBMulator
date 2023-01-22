@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,9 +40,7 @@ public:
 	GUIRenderer renderer() const { return GUI_RENDERER_SDL2D; }
 	SDL_Renderer *sdl_renderer() const { return m_SDL_renderer; }
 	void render();
-	
-	uintptr_t load_texture(SDL_Surface *_surface);
-	uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr);
+
 	void update_texture(uintptr_t _texture, SDL_Surface *_data);
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -53,6 +53,7 @@ const char* Syslog::m_fac_prefixes[] = {
 	" gfx | ",
 	" inp | ",
 	" gui | ",
+	" ogl | ",
 	" mch | ",
 	" mix | ",
 	" mem | ",

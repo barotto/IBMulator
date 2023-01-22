@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,6 +37,7 @@ const std::map<std::string, uint32_t> Keymap::ms_sdl_kmod_table = {
 const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table = {
 	{ "FUNC_NONE",                  ProgramEvent::FuncName::FUNC_NONE                 },
 	{ "FUNC_GUI_MODE_ACTION",       ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION      },
+	{ "FUNC_SHOW_OPTIONS",          ProgramEvent::FuncName::FUNC_SHOW_OPTIONS         },
 	{ "FUNC_TOGGLE_POWER",          ProgramEvent::FuncName::FUNC_TOGGLE_POWER         },
 	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE         },
 	{ "FUNC_TOGGLE_STATUS_IND",     ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND    },

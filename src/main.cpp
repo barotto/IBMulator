@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 				".\n"
 				"Use the -v NUM command line switch to enable verbose logging.\n\n"
 				"The log file is here:\n" + logfile + "\n"
-				"The ini file is here:\n" + g_program.config().get_parsed_file();
+				"The ini file is here:\n" + g_program.config().get_path();
 		} else {
 			message += "Log content:\n";
 			message += ss.str();

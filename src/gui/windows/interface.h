@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,7 +22,7 @@
 
 #include "gui/window.h"
 #include "gui/guifx.h"
-#include "screen_renderer.h"
+#include "gui/screen_renderer.h"
 #include "fileselect.h"
 #include "state_save.h"
 #include "state_save_info.h"
@@ -67,27 +67,26 @@ class InterfaceScreen
 protected:
 	std::unique_ptr<ScreenRenderer> m_renderer;
 	GUI *m_gui;
+	VGADisplay m_display; // GUI-Machine interface
 	
 public:
-	struct {
-		VGADisplay display; // GUI-Machine interface
-		
-		vec2i size;         // size in pixels of the vga image inside the interface
-		mat4f mvmat;        // position and size of the vga image inside the interface
-		mat4f pmat;         // projection matrix
-
-		float brightness;
-		float contrast;
-		float saturation;
-	} vga;
+	ScreenRenderer::Params params;
 	
 public:
 	InterfaceScreen(GUI *_gui);
 	virtual ~InterfaceScreen();
+
+	void set_brightness(float);
+	void set_contrast(float);
+	void set_saturation(float);
+	void set_ambient(float);
+	void set_monochrome(bool);
 	
 	ScreenRenderer * renderer() { return m_renderer.get(); }
+	VGADisplay * display() { return &m_display; }
+
 	virtual void render();
-	
+
 protected:
 	void sync_with_device();
 };
@@ -163,8 +162,10 @@ public:
 	void on_printer(Rml::Event &);
 	void on_dblclick(Rml::Event &);
 
-	VGADisplay * vga_display() { return & m_screen->vga.display; }
+	VGADisplay * vga_display() { return m_screen->display(); }
 	void render_screen();
+
+	ScreenRenderer * screen_renderer() const { return m_screen->renderer(); }
 
 	virtual void action(int) {}
 	virtual void switch_power();
@@ -172,6 +173,7 @@ public:
 	virtual void set_video_brightness(float);
 	virtual void set_video_contrast(float);
 	virtual void set_video_saturation(float);
+	virtual void set_ambient_light(float);
 	
 	virtual bool is_system_visible() const { return true; }
 

@@ -7,7 +7,14 @@
 		<link type="text/rcss" href="fileselect_grid.rcss"/>
 		<link type="text/rcss" href="fileselect_list.rcss"/>
 		<style>
-
+			body
+			{
+				width: 90%;
+				height: 90%;
+				min-width: 640dp;
+				min-height: 320dp;
+				margin: auto;
+			}
 		</style>
 	</head>
 	<body template="default">

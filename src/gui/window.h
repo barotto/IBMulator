@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -81,9 +81,11 @@ protected:
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	Rml::Element * get_element(const std::string &_id);
 	void add_events();
+	Rml::ElementPtr create_button();
 
 	static Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &);
 	static std::string get_form_input_value(Rml::Event &);
+	static Rml::Element * get_button_element(Rml::Event &);
 	static Rml::Element * disable(Rml::Element *);
 	static Rml::Element * enable(Rml::Element *);
 	static Rml::Element * set_disabled(Rml::Element *_el, bool _disabled);

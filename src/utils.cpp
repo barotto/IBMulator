@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,6 +28,29 @@
 #ifdef _WIN32
 #include "wincompat.h"
 #endif
+
+int str_parse_int_num(const std::string &_str)
+{
+	const char* value = _str.c_str();
+	char* end;
+	// This parses "1234" (decimal) and also "0x4D2" (hex)
+	int n = strtol(value, &end, 0);
+	if(end <= value) {
+		throw std::runtime_error(str_format("not an integer number: '%s'", _str.c_str()));
+	}
+	return n;
+}
+
+double str_parse_real_num(const std::string &_str)
+{
+	const char *value = _str.c_str();
+	char *end;
+	double n = strtod(value, &end);
+	if(end <= value) {
+		throw std::runtime_error(str_format("not a real number: '%s'", _str.c_str()));
+	}
+	return n;
+}
 
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim)
 {
@@ -80,14 +103,14 @@ std::string str_trim(std::string _str)
 
 std::string str_compress_spaces(std::string _str)
 {
-	return std::regex_replace(_str, std::regex("[' ']{2,}"), " ");
+	static const std::regex spaces_re("[' ']{2,}");
+	return std::regex_replace(_str, spaces_re, " ");
 }
 
-std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep)
+std::vector<std::string> str_parse_tokens_re(std::string _str, const std::regex &_regex)
 {
-	std::regex re(_regex_sep);
 	std::vector<std::string> tokens;
-	std::sregex_token_iterator it{_str.begin(), _str.end(), re, -1}, end;
+	std::sregex_token_iterator it{_str.begin(), _str.end(), _regex, -1}, end;
 	for(; it != end; it++) {
 		auto s = str_trim(*it);
 		if(!s.empty()) {
@@ -95,6 +118,20 @@ std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_s
 		}
 	}
 	return tokens;
+}
+
+std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep)
+{
+	return str_parse_tokens_re(_str, std::regex(_regex_sep));
+}
+
+std::string::const_iterator str_find_ci(const std::string &_haystack, const std::string &_needle)
+{
+	return std::search(
+		_haystack.begin(), _haystack.end(),
+		_needle.begin(), _needle.end(),
+		[](unsigned char ch1, unsigned char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+	);
 }
 
 std::string str_format_time(time_t _time, const std::string &_fmt)

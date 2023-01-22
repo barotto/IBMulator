@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -53,12 +53,14 @@ public:
 	static int remove(const char *_path);
 	static int mkostemp(std::string &_template, int _flags);
 	static char* realpath(const char *_path, char *_resolved);
+	static std::string realpath(const char *_path);
 
  	static std::string get_next_filename(const std::string &_dir,
 			const std::string &_basename, const std::string &_ext);
  	static std::string get_next_filename_time(const std::string &_path);
 	static std::string get_next_dirname(const std::string &_basedir,
 			const std::string &_basename, unsigned _limit = 10000);
+	static bool is_absolute(const char *_path, int _len);
 	static bool is_directory(const char *_path);
 	static bool file_exists(const char *_path);
 	static bool is_file_readable(const char *_path);
@@ -68,6 +70,8 @@ public:
 	static void create_dir(const char *_path);
 	static int get_file_stats(const char *_path, uint64_t *_fsize, FILETIME *_mtime);
 	static std::string get_basename(const char *_path);
+	static std::string get_file_ext(const std::string _path);
+	static std::string get_path_dir(const char *_path);
 	static bool get_path_parts(const char *_path,
 			std::string &_dir, std::string &_base, std::string &_ext);
 	static void get_file_parts(const char *_filename, std::string &_base, std::string &_ext);
@@ -81,6 +85,7 @@ public:
 	static FILE* fopen(std::string _filename, const char *_flags);
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
+	static unique_file_ptr make_tmpfile();
 
 	static std::ifstream make_ifstream(const char *_path, std::ios::openmode _mode = std::ios::in);
 	static std::ofstream make_ofstream(const char *_path, std::ios::openmode _mode = std::ios::out);

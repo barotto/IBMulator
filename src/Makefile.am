@@ -13,6 +13,7 @@ ibmulator_SOURCES = \
 	fatreader.cpp \
 	pacer.cpp \
 	hwbench.cpp \
+	ini.cpp \
 	ini/ini.cpp \
 	machine.cpp \
 	main.cpp \
@@ -48,6 +49,7 @@ noinst_HEADERS = \
 	hwbench.h \
 	ibmulator.h \
 	interval_tree.h \
+	ini.h \
 	ini/ini.h \
 	keys.h \
 	machine.h \

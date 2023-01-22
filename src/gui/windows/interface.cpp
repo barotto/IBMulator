@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -89,13 +89,13 @@ InterfaceScreen::InterfaceScreen(GUI *_gui)
 	switch(_gui->renderer()) {
 		case GUI_RENDERER_OPENGL: {
 			m_renderer = std::make_unique<ScreenRenderer_OpenGL>();
-			dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get())->init(vga.display);
+			dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get())->init(m_display);
 			break;
 		}
 		case GUI_RENDERER_SDL2D: {
 			m_renderer = std::make_unique<ScreenRenderer_SDL2D>();
 			SDL_Renderer *sdlrend = dynamic_cast<GUI_SDL2D*>(_gui)->sdl_renderer();
-			dynamic_cast<ScreenRenderer_SDL2D*>(m_renderer.get())->init(vga.display, sdlrend);
+			dynamic_cast<ScreenRenderer_SDL2D*>(m_renderer.get())->init(m_display, sdlrend);
 			break;
 		}
 		default: {
@@ -104,13 +104,14 @@ InterfaceScreen::InterfaceScreen(GUI *_gui)
 			return;
 		}
 	}
+
+	params.vga.mvmat.load_identity();
+	params.vga.pmat = mat4_ortho<float>(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
+	params.vga.mvpmat = params.vga.pmat;
 	
-	vga.mvmat.load_identity();
-	vga.pmat.load_identity();
-	vga.size = 0;
-	vga.brightness = 1.f;
-	vga.contrast = 1.f;
-	vga.saturation = 1.f;
+	params.crt.mvmat.load_identity();
+	params.crt.pmat = mat4_ortho<float>(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
+	params.crt.mvpmat = params.crt.pmat;
 }
 
 InterfaceScreen::~InterfaceScreen()
@@ -120,10 +121,45 @@ InterfaceScreen::~InterfaceScreen()
 void InterfaceScreen::render()
 {
 	sync_with_device();
-	
-	m_renderer->render_vga(vga.pmat, vga.mvmat, vga.size,
-		vga.brightness, vga.contrast, vga.saturation, vga.display.is_monochrome(),
-		0, 0, 0);
+
+	if(params.updated) {
+		m_renderer->store_screen_params(params);
+		params.updated = false;
+	}
+	m_renderer->render_begin();
+	m_renderer->render_vga();
+	m_renderer->render_end();
+}
+
+void InterfaceScreen::set_brightness(float _v)
+{
+	params.brightness = _v;
+	params.updated = true;
+}
+
+void InterfaceScreen::set_contrast(float _v)
+{
+	params.contrast = _v;
+	params.updated = true;
+}
+
+void InterfaceScreen::set_saturation(float _v)
+{
+	params.saturation = _v;
+	params.updated = true;
+}
+
+void InterfaceScreen::set_ambient(float _v)
+{
+	params.ambient = _v;
+	params.updated = true;
+}
+
+void InterfaceScreen::set_monochrome(bool _v)
+{
+	m_display.set_monochrome(_v);
+	params.monochrome = _v;
+	params.updated = true;
 }
 
 void InterfaceScreen::sync_with_device()
@@ -147,9 +183,9 @@ void InterfaceScreen::sync_with_device()
 				// stuttering, which would happen only in specific and non meaningful
 				// cases like when the user pauses the machine.
 				// I think this is acceptable. 
-				vga.display.wait_for_device(g_program.heartbeat() * 2);
+				m_display.wait_for_device(g_program.heartbeat() * 2);
 			} catch(std::exception &) {}
-			
+
 			g_program.pacer().skip();
 		}
 	}
@@ -159,26 +195,26 @@ void InterfaceScreen::sync_with_device()
 	}
 	
 	if(m_gui->vga_buffering_enabled()) {
-		vga.display.lock();
-		vec2i vga_res = vec2i(vga.display.last_mode().xres, vga.display.last_mode().yres);
+		m_display.lock();
+		VideoModeInfo vga_mode = m_display.last_mode();
 		// this intermediate buffer is to reduce the blocking effect of glTexSubImage2D:
 		// when the program runs with the default shaders, the load on the GPU is very low
 		// so the drivers lower the GPU's clocks to the minimum value;
 		// the result is the GPU's memory controller load goes high and glTexSubImage2D takes
 		// a lot of time to complete, bloking the machine emulation thread.
 		// PBOs are a possible alternative, but a memcpy is way simpler.
-		FrameBuffer vga_buf = vga.display.last_framebuffer();
-		vga.display.unlock();
+		FrameBuffer vga_buf = m_display.last_framebuffer();
+		m_display.unlock();
 		// now the Machine thread is free to continue emulation
 		// meanwhile we start rendering the last VGA image
-		m_renderer->store_vga_framebuffer(vga_buf, vga_res);
-	} else if(vga.display.fb_updated()) {
-		vga.display.lock();
-		vec2i vga_res = vec2i(vga.display.mode().xres, vga.display.mode().yres);
-		FrameBuffer vga_buf = vga.display.framebuffer();
-		vga.display.clear_fb_updated();
-		vga.display.unlock();
-		m_renderer->store_vga_framebuffer(vga_buf, vga_res);
+		m_renderer->store_vga_framebuffer(vga_buf, vga_mode);
+	} else if(m_display.fb_updated() || m_renderer->needs_vga_updates()) {
+		m_display.lock();
+		FrameBuffer vga_buf = m_display.framebuffer();
+		VideoModeInfo vga_mode = m_display.mode();
+		m_display.clear_fb_updated();
+		m_display.unlock();
+		m_renderer->store_vga_framebuffer(vga_buf, vga_mode);
 	}
 }
 
@@ -377,16 +413,17 @@ void Interface::config_changed(bool _startup)
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 
 	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
+
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
-	
+
 	bool is_mono = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_TYPE, {
 			{ "color",     false },
 			{ "mono",       true },
 			{ "monochrome", true }
 	}, false);
-	m_screen->vga.display.set_monochrome(is_mono);
+	m_screen->set_monochrome(is_mono);
 	PINFOF(LOG_V0, LOG_GUI, "Installed a %s monitor\n", is_mono?"monochrome":"color");
 }
 
@@ -485,9 +522,13 @@ void Interface::update()
 
 	if(m_machine->is_on() && m_leds.power==false) {
 		m_leds.power = true;
+		m_screen->params.poweron = true;
+		m_screen->params.updated = true;
 		m_buttons.power->SetClass("active", true);
 	} else if(!m_machine->is_on() && m_leds.power==true) {
 		m_leds.power = false;
+		m_screen->params.poweron = false;
+		m_screen->params.updated = true;
 		m_buttons.power->SetClass("active", false);
 	}
 	
@@ -707,6 +748,7 @@ void Interface::on_fdd_mount(Rml::Event &)
 void Interface::reset_savestate_dialogs(std::string _dir)
 {
 	Rml::ReleaseTextures();
+	Rml::ReleaseCompiledGeometry();
 	StateDialog::set_current_dir(_dir);
 	m_state_save->set_dirty();
 	m_state_load->set_dirty();
@@ -858,25 +900,30 @@ void Interface::set_audio_volume(float _volume)
 
 void Interface::set_video_brightness(float _level)
 {
-	m_screen->vga.brightness = _level;
+	m_screen->set_brightness(_level);
 }
 
 void Interface::set_video_contrast(float _level)
 {
-	m_screen->vga.contrast = _level;
+	m_screen->set_contrast(_level);
 }
 
 void Interface::set_video_saturation(float _level)
 {
-	m_screen->vga.saturation = _level;
+	m_screen->set_saturation(_level);
+}
+
+void Interface::set_ambient_light(float _level)
+{
+	m_screen->set_ambient(_level);
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_screen->vga.display.mode().xres,
-		m_screen->vga.display.mode().yres,
+		m_screen->display()->mode().xres,
+		m_screen->display()->mode().yres,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,
@@ -904,18 +951,18 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 			throw std::exception();
 		}
 	}
-	m_screen->vga.display.lock();
+	m_screen->display()->lock();
 		SDL_LockSurface(surface);
-		m_screen->vga.display.copy_screen((uint8_t*)surface->pixels);
+		m_screen->display()->copy_screen((uint8_t*)surface->pixels);
 		SDL_UnlockSurface(surface);
 		if(palette) {
 			SDL_LockSurface(palette);
 			for(uint i=0; i<256; i++) {
-				((uint32_t*)palette->pixels)[i] = m_screen->vga.display.get_color(i);
+				((uint32_t*)palette->pixels)[i] = m_screen->display()->get_color(i);
 			}
 			SDL_UnlockSurface(palette);
 		}
-	m_screen->vga.display.unlock();
+	m_screen->display()->unlock();
 
 	stbi_write_png_compression_level = 9;
 	int result = stbi_write_png(_screenfile.c_str(), surface->w, surface->h,
@@ -942,11 +989,11 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 
 SDL_Surface * Interface::copy_framebuffer()
 {
-	m_screen->vga.display.lock();
+	m_screen->display()->lock();
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_screen->vga.display.mode().xres,
-		m_screen->vga.display.mode().yres,
+		m_screen->display()->mode().xres,
+		m_screen->display()->mode().yres,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,
@@ -955,10 +1002,10 @@ SDL_Surface * Interface::copy_framebuffer()
 	);
 	if(surface) {
 		SDL_LockSurface(surface);
-		m_screen->vga.display.copy_screen((uint8_t*)surface->pixels);
+		m_screen->display()->copy_screen((uint8_t*)surface->pixels);
 		SDL_UnlockSurface(surface);
 	}
-	m_screen->vga.display.unlock();
+	m_screen->display()->unlock();
 
 	if(!surface) {
 		PERRF(LOG_GUI, "Error creating buffer surface\n");

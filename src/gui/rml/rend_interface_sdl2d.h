@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,6 +48,9 @@ public:
 			const Rml::Vector2i& source_dimensions);
 	// Called by RmlUi when a loaded texture is no longer required.
 	void ReleaseTexture(Rml::TextureHandle texture_handle);
+	
+protected:
+	uintptr_t LoadTexture(SDL_Surface *_surface);
 };
 
 #endif

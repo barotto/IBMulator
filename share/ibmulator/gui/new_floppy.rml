@@ -11,6 +11,7 @@
 				min-height: 200dp;
 				min-width: 375dp;
 				max-height: 200dp;
+				margin: auto;
 			}
 			button.romshell
 			{

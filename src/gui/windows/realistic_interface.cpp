@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,12 +26,6 @@
 #include <sys/stat.h>
 
 #include <RmlUi/Core.h>
-
-#define REALISTIC_MONITOR_VS      "fb-normal.vs"
-#define REALISTIC_MONITOR_FS      "monitor.fs"
-#define REALISTIC_VGA_VS          "fb-realistic.vs"
-#define REALISTIC_REFLECTION_MAP  "realistic_reflection.png"
-#define REALISTIC_VGA_BORDER      1.0f
 
 constexpr float RealisticInterface::ms_zoomin_factors[];
 
@@ -104,24 +98,24 @@ bool RealisticFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 }
 
 RealisticScreen::RealisticScreen(GUI *_gui)
-: InterfaceScreen(_gui),
-vga_image_scale(REALISTIC_VGA_BORDER)
-{
-}
-
-RealisticScreen::~RealisticScreen()
+: InterfaceScreen(_gui)
 {
 }
 
 void RealisticScreen::render()
 {
-	m_renderer->render_monitor(monitor.pmat, monitor.mvmat, monitor.ambient);
-	
 	sync_with_device();
-	m_renderer->render_vga(
-		vga.pmat, vga.mvmat, vga.size,
-		vga.brightness, vga.contrast, vga.saturation, vga.display.is_monochrome(),
-		monitor.ambient, vga_image_scale, vga_reflection_scale);
+
+	if(params.updated) {
+		m_renderer->store_screen_params(params);
+		params.updated = false;
+	}
+	m_renderer->render_begin();
+	if(m_renderer->get_rendering_size() == ShaderPreset::VGA) {
+		m_renderer->render_crt();
+	}
+	m_renderer->render_vga();
+	m_renderer->render_end();
 }
 
 RealisticInterface::RealisticInterface(Machine *_machine, GUI *_gui, Mixer *_mixer)
@@ -162,8 +156,7 @@ void RealisticInterface::create()
 		{ "screen",  ZoomMode::SCREEN  }
 	};
 	m_zoom_mode = g_program.config().get_enum(GUI_SECTION, GUI_REALISTIC_ZOOM, modes, ZoomMode::CYCLE);
-	
-	
+
 	static std::map<std::string, unsigned> dark_val = {
 		{ "",        false },
 		{ "bright",  false },
@@ -197,29 +190,31 @@ void RealisticInterface::create()
 	
 	m_screen = std::make_unique<RealisticScreen>(m_gui);
 	
-	std::string frag_sh = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
-	
-	screen()->renderer()->load_vga_program(
-		GUI::shaders_dir() + REALISTIC_VGA_VS, frag_sh,
-		g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_REALISTIC_FILTER, GUI::ms_gui_sampler)
-	);
-	
-	screen()->renderer()->load_monitor_program(
-		GUI::shaders_dir() + REALISTIC_MONITOR_VS,
-		GUI::shaders_dir() + REALISTIC_MONITOR_FS,
-		GUI::images_dir() + REALISTIC_REFLECTION_MAP
-	);
-	screen()->vga.pmat = mat4_ortho<float>(0, 1.0, 1.0, 0, 0, 1);
+	unsigned s = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_FILTER, GUI::ms_gui_sampler);
+	m_screen->renderer()->set_output_sampler(static_cast<DisplaySampler>(s));
 
-	screen()->monitor.pmat = mat4_ortho<float>(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
-	screen()->monitor.mvmat.load_identity();
-	if(dark_style) {
-		screen()->monitor.ambient = 0.0;
+	std::string preset_path = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
+	screen()->renderer()->load_vga_shader_preset(preset_path);
+
+	const ShaderPreset *vga_shader = screen()->renderer()->get_vga_shader_preset();
+	if(vga_shader) {
+		m_rendering_size = vga_shader->get_rendering_size();
+		m_monitor = vga_shader->get_monitor_geometry();
 	} else {
-		screen()->monitor.ambient = g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
+		m_rendering_size = ShaderPreset::VGA;
+		m_monitor = ShaderPreset::MonitorGeometry();
 	}
-	screen()->vga_reflection_scale = vec2f(1.0,1.0);
-	
+	if(m_rendering_size == ShaderPreset::VGA) {
+		preset_path = g_program.config().find_file("shaders/black_fill.slangp");
+		screen()->renderer()->load_crt_shader_preset(preset_path);
+	}
+
+	if(dark_style) {
+		set_ambient_light(0.4);
+	} else {
+		set_ambient_light(1.0);
+	}
+
 	RealisticInterface::set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	RealisticInterface::set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	RealisticInterface::set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
@@ -259,24 +254,46 @@ vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, 
 void RealisticInterface::container_size_changed(int _width, int _height)
 {
 	// sizes_in pixels
-	vec2f sys_size, vga_size, mon_size;
+	vec2f sys_size, vga_size, crt_size;
 	const float sys_ratio = ms_width / ms_height;
 	int system_top = 0;
-	
+
 	if(m_cur_zoom == ZoomMode::SCREEN) {
-		vga_size  = display_size(_width, _height,
-				ms_vga_left, // x offset
-				1.f, // scale
-				ORIGINAL_MONITOR_RATIO // aspect
+		if(m_rendering_size == ShaderPreset::monitor) {
+			float crt_scale = m_monitor.height / m_monitor.crt_height;
+			crt_size = display_size(
+					_width, _height,
+					0.f, // x offset
+					crt_scale, // scale
+					m_monitor.crt_width / m_monitor.crt_height // aspect
 				);
-		mon_size = display_size(_width, _height,
-				0.f, // x offset
-				1.f, // scale
-				ms_monitor_width / ms_monitor_height // aspect
+			vga_size = crt_size;
+			sys_size.x = ms_width * (crt_size.x / m_monitor.width);
+			sys_size.y = sys_size.x / sys_ratio;
+			system_top = -(m_monitor.bezel_height * crt_scale * (crt_size.y / m_monitor.height));
+		} else {
+			crt_size = display_size(
+					_width, _height,
+					0.f, // x offset
+					1.f, // scale
+					m_monitor.crt_width / m_monitor.crt_height // aspect
 				);
-		sys_size.x = ms_width * (mon_size.x / ms_monitor_width);
-		sys_size.y = sys_size.x / sys_ratio;
-		system_top = -(ms_monitor_bezelh * (mon_size.y / ms_monitor_height));
+			if(m_rendering_size == ShaderPreset::VGA) {
+				float vga_size_factor = m_monitor.vga_scale;
+				float vga_left_offset = (m_monitor.crt_width - (m_monitor.crt_width * vga_size_factor)) / 2.f;
+				vga_size  = display_size(_width, _height,
+						vga_left_offset, // x offset
+						1.f, // scale
+						ORIGINAL_MONITOR_RATIO // aspect
+						);
+			} else {
+				vga_size = crt_size;
+			}
+			sys_size.x = ms_width * (crt_size.x / m_monitor.crt_width);
+			sys_size.y = sys_size.x / sys_ratio;
+			system_top = -(m_monitor.bezel_height * (crt_size.y / m_monitor.crt_height));
+		}
+
 	} else {
 		sys_size.y = _height * m_scale;
 		sys_size.x = sys_size.y * sys_ratio;
@@ -285,42 +302,75 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 			sys_size.y = sys_size.x / sys_ratio;
 		}
 		system_top = 0;
-		vga_size = display_size(sys_size.x, sys_size.y,
-					ms_monitor_bezelw + ms_vga_left, // x offset
+		if(m_rendering_size == ShaderPreset::monitor) {
+			crt_size = display_size(
+					sys_size.x, sys_size.y,
+					0.f, // x offset
 					1.f, // scale
-					ORIGINAL_MONITOR_RATIO // aspect
-					);
-		mon_size = display_size(sys_size.x, sys_size.y,
-					ms_monitor_bezelw - 1.f, // x offset
+					m_monitor.width / m_monitor.height // aspect
+				);
+		} else {
+			crt_size = display_size(
+					sys_size.x, sys_size.y,
+					m_monitor.bezel_width - 1.f, // x offset
 					1.f, // scale
-					ms_monitor_width / ms_monitor_height // aspect
-					);
+					m_monitor.crt_width / m_monitor.crt_height // aspect
+				);
+		}
+		if(m_rendering_size == ShaderPreset::VGA) {
+			float vga_size_factor = m_monitor.vga_scale;
+			float vga_left_offset = (m_monitor.crt_width - (m_monitor.crt_width * vga_size_factor)) / 2.f;
+			vga_size = display_size(sys_size.x, sys_size.y,
+						m_monitor.bezel_width + vga_left_offset, // x offset
+						1.f, // scale
+						ORIGINAL_MONITOR_RATIO // aspect
+						);
+		} else {
+			vga_size = crt_size;
+		}
 	}
-	screen()->vga_reflection_scale = vga_size / mon_size;
 
 	m_size = sys_size;
-	screen()->vga.size.x = round(vga_size.x);
-	screen()->vga.size.y = round(vga_size.y);
+
+	screen()->params.viewport_size.x = _width;
+	screen()->params.viewport_size.y = _height;
+
+	screen()->params.vga.output_size.x = round(vga_size.x);
+	screen()->params.vga.output_size.y = round(vga_size.y);
 
 	vec2f scale, trans;
-	scale.x = mon_size.x / _width;
-	scale.y = mon_size.y / _height;
+	scale.x = crt_size.x / _width;
+	scale.y = crt_size.y / _height;
 	trans.x = (1.f - scale.x) / 2.f;
 	if(m_display_align == DisplayAlign::TOP_NOBEZEL) {
-		trans.y = 0;
+		if(m_rendering_size == ShaderPreset::monitor) {
+			trans.y = -(m_monitor.bezel_height / m_monitor.height) * scale.y;
+		} else {
+			trans.y = 0;
+		}
 	} else {
-		trans.y = (ms_monitor_bezelh / ms_height * sys_size.y) / float(_height);
+		if(m_rendering_size == ShaderPreset::monitor) {
+			trans.y = 0;
+		} else {
+			trans.y = (m_monitor.bezel_height / ms_height * sys_size.y) / float(_height);
+		}
 	}
-	screen()->monitor.mvmat.load_scale(scale.x, scale.y, 1.0);
-	screen()->monitor.mvmat.load_translation(trans.x, trans.y, 0.0);
+	screen()->params.crt.mvmat.load_scale(scale.x, scale.y, 1.0);
+	screen()->params.crt.mvmat.load_translation(trans.x, trans.y, 0.0);
+	screen()->params.crt.mvpmat = screen()->params.crt.pmat;
+	screen()->params.crt.mvpmat.multiply(screen()->params.crt.mvmat);
 	
 	float vga_scale_y = vga_size.y / _height;
 	trans.y = trans.y + scale.y/2.f - vga_scale_y/2.f;
 	scale.x = vga_size.x / _width;
 	scale.y = vga_scale_y;
 	trans.x = (1.f - scale.x) / 2.f;
-	screen()->vga.mvmat.load_scale(scale.x, scale.y, 1.0);
-	screen()->vga.mvmat.load_translation(trans.x, trans.y, 0.0);
+	screen()->params.vga.mvmat.load_scale(scale.x, scale.y, 1.0);
+	screen()->params.vga.mvmat.load_translation(trans.x, trans.y, 0.0);
+	screen()->params.vga.mvpmat = screen()->params.vga.pmat;
+	screen()->params.vga.mvpmat.multiply(screen()->params.vga.mvmat);
+	
+	screen()->params.updated = true;
 
 	m_system->SetProperty("width",  str_format("%upx", m_size.x));
 	m_system->SetProperty("height", str_format("%upx", m_size.y));
@@ -328,6 +378,12 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 
 	unsigned fontsize = m_size.x / 40;
 	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
+	
+	if(m_rendering_size == ShaderPreset::monitor) {
+		m_system->SetClass("nomonitor", true);
+	} else {
+		m_system->SetClass("nomonitor", false);
+	}
 }
 
 void RealisticInterface::update()
@@ -393,12 +449,12 @@ void RealisticInterface::action(int _action)
 	} else if(_action == 1) {
 		if(m_system->IsClassSet("dark")) {
 			m_system->SetClass("dark", false);
-			screen()->monitor.ambient =
-				g_program.config().get_real(DISPLAY_SECTION, DISPLAY_REALISTIC_AMBIENT);
+			set_ambient_light(1.0);
 		} else {
 			m_system->SetClass("dark", true);
-			screen()->monitor.ambient = 0.0;
+			set_ambient_light(0.4);
 		}
+		screen()->params.updated = true;
 	}
 }
 

@@ -1,5 +1,3 @@
-#version 330 core
-
 /*
 	Bicubic filtering.
 
@@ -32,7 +30,7 @@ vec4 cubic(float v)
 	return vec4(x, y, z, w) * (1.0/6.0);
 }
 
-vec4 FetchTexel(sampler2D sampler, vec2 texCoords)
+vec4 FetchTexelBicubic(sampler2D sampler, vec2 texCoords)
 {
 	vec2 texSize = textureSize(sampler, 0);
 	vec2 invTexSize = 1.0 / texSize;

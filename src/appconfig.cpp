@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,9 +26,7 @@
 #include <regex>
 #include <cctype>
 #include <cstdlib>
-#include "ini/ini.h"
 
-using std::string;
 
 ini_file_t AppConfig::ms_def_values[2] = {
 
@@ -55,9 +53,9 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_COMPACT_TIMEOUT,    "1.5"        },
 		{ GUI_REALISTIC_ZOOM,     "cycle"      },
 		{ GUI_REALISTIC_STYLE,    "bright"     },
-		{ GUI_BG_R,               "30"         },
-		{ GUI_BG_G,               "30"         },
-		{ GUI_BG_B,               "30"         },
+		{ GUI_BG_R,               "0"          },
+		{ GUI_BG_G,               "0"          },
+		{ GUI_BG_B,               "0"          },
 		{ GUI_UI_SCALING,         "100%"       }
 	} },
 
@@ -79,16 +77,18 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ DISPLAY_SECTION, {
-		{ DISPLAY_NORMAL_SCALE,      "fill" },
-		{ DISPLAY_NORMAL_ASPECT,     "4:3"  },
-		{ DISPLAY_NORMAL_FILTER,     "bilinear" },
-		{ DISPLAY_NORMAL_SHADER,     "gui/shaders/fb-normal.fs" },
-		{ DISPLAY_REALISTIC_FILTER,  "bicubic"  },
-		{ DISPLAY_REALISTIC_SHADER,  "gui/shaders/fb-realistic.fs" },
-		{ DISPLAY_REALISTIC_AMBIENT, "1.0" },
-		{ DISPLAY_BRIGHTNESS,        "1.0" },
-		{ DISPLAY_CONTRAST,          "1.0" },
-		{ DISPLAY_SATURATION,        "1.0" }
+		{ DISPLAY_NORMAL_SCALE,     "fill" },
+		{ DISPLAY_NORMAL_ASPECT,    "4:3"  },
+		{ DISPLAY_NORMAL_SHADER,    "shaders/normal_mode.slangp" },
+		{ DISPLAY_REALISTIC_SHADER, "shaders/realistic_mode.slangp" },
+		{ DISPLAY_BRIGHTNESS,       "1.0" },
+		{ DISPLAY_CONTRAST,         "1.0" },
+		{ DISPLAY_SATURATION,       "1.0" },
+		{ DISPLAY_AMBIENT,          "1.0" },
+		{ DISPLAY_FILTER,           "bilinear" },
+		{ DISPLAY_SAMPLERS_MODE,    "auto" },
+		{ DISPLAY_SHADER_INPUT,     "auto" },
+		{ DISPLAY_SHADER_OUTPUT,    "native" }
 	} },
 
 	{ CPU_SECTION, {
@@ -429,33 +429,37 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 
 		{ DISPLAY_SECTION,
-"; type: Possible values: color, monochrome\n"
-"; The following parameters are used for normal and compact GUI modes only:\n"
-";     normal_scale: VGA image scaling mode.\n"
-";                   Possible values: fill, integer\n"
-";                       fill: scale to fill the available area\n"
-";                    integer: scale only at integer multiples\n"
-";    normal_aspect: VGA aspect ratio.\n"
-";                   Possible values: W:H, vga, area, original\n"
-";                         W:H: use the specified aspect ratio (4:3, 16:10, ...)\n"
-";                         vga: maintain the current VGA mode ratio\n"
-";                        area: same as the available viewing area\n"
-";                    original: same as 4:3\n"
-";    normal_filter: VGA scaling filter.\n"
-";                   Possible values: nearest, bilinear, bicubic\n"
-";    normal_shader: GLSL fragment shader to use for VGA rendering\n"
-"; The following parameters are used for realistic GUI mode only:\n"
-"; realistic_filter: VGA scaling filter\n"
-";                   Possible values: nearest, bilinear, bicubic\n"
-"; realistic_shader: GLSL fragment shader to use for VGA rendering\n"
-";realistic_ambient: Intensity of the ambient light. It is a weight for the monitor reflection map.\n"
-";                   Use a number between 0.0 and 1.0. 0.0 gives a pitch-black monitor.\n"
-"; The following parameters are used for any GUI mode:\n"
-";       brightness: Monitor brightness.\n"
-";                   When in realistic GUI mode it's clamped to 1.3\n"
-";         contrast: Monitor contrast.\n"
-";                   When in realistic GUI mode it's clamped to 1.3\n"
-";       saturation: Monitor saturation.\n"
+";               type: Possible values: color, monochrome.\n"
+";       normal_scale: The viewport's scaling mode (normal/compact GUI modes).\n"
+";                     Possible values: fill, integer.\n"
+";                         fill: scale to fill the available area.\n"
+";                      integer: scale only at integer multiples.\n"
+";      normal_aspect: Aspect ratio of the viewport (normal/compact GUI modes).\n"
+";                     Possible values: W:H, vga, area, original.\n"
+";                           W:H: use the specified aspect ratio (eg. 4:3, 16:10, ...).\n"
+";                           vga: maintain the current VGA video mode ratio.\n"
+";                          area: same as the available viewing area.\n"
+";                      original: same as 4:3.\n"
+";      normal_shader: Shader to use for rendering in normal and compact GUI modes (OpenGL renderer only).\n"
+";   realistic_shader: Shader to use for rendering in realistic GUI mode (OpenGL renderer only).\n"
+";         brightness: Monitor brightness, as a number from 0.0 to 1.0 (needs support by the shader).\n"
+";           contrast: Monitor contrast, as a number from 0.0 to 1.0 (needs support by the shader).\n"
+";         saturation: Monitor saturation, as a number from 0.0 to 1.0 (needs support by the shader).\n"
+";      ambient_light: Intensity of the ambient light, as a number from 0.0 to 1.0 (needs support by the shader).\n"
+";   upscaling_filter: Stretching filter for the accelerated renderer or for the last pass of OpenGL shaders.\n"
+";                     For OpenGL shaders, it will be used only if the last pass does not render directly to the backbuffer.\n"
+";                     Possible values: nearest, bilinear, bicubic\n"
+";                     The bicubic filter is supported only by the OpenGL renderer.\n"
+";  shader_input_size: Shader's input texture size.\n"
+";                     Possible values: auto, crtc, video_mode.\n"
+";                            auto: as defined by the shader (default is video_mode).\n"
+";                            crtc: same as the video card's CRTC output.\n"
+";                      video_mode: same as the current video mode.\n"
+"; shader_output_size: Shader's rendering resolution.\n" 
+";                     Possible values: native, WxH, max_WxH.\n"
+";                       native: use the native resolution of your monitor.\n"
+";                          WxH: a specific size in pixels, maintaining the viewport's aspect ratio (the final stretching will use `upscaling_filter`).\n"
+";                      max_WxH: a maximum size in pixels, maintaining the viewport's aspect ratio (the final stretching will use `upscaling_filter`).\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -741,14 +745,16 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ DISPLAY_TYPE,              false },
 		{ DISPLAY_NORMAL_SCALE,      false },
 		{ DISPLAY_NORMAL_ASPECT,     false },
-		{ DISPLAY_NORMAL_FILTER,     false },
+		{ DISPLAY_FILTER,            false },
 		{ DISPLAY_NORMAL_SHADER,     false },
-		{ DISPLAY_REALISTIC_FILTER,  false },
 		{ DISPLAY_REALISTIC_SHADER,  false },
-		{ DISPLAY_REALISTIC_AMBIENT, false },
+		{ DISPLAY_AMBIENT,           false },
 		{ DISPLAY_BRIGHTNESS,        false },
 		{ DISPLAY_CONTRAST,          false },
-		{ DISPLAY_SATURATION,        false }
+		{ DISPLAY_SATURATION,        false },
+		{ DISPLAY_SAMPLERS_MODE,     true  },
+		{ DISPLAY_SHADER_INPUT,      false },
+		{ DISPLAY_SHADER_OUTPUT,     false }
 	} },
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET, false },
@@ -896,10 +902,6 @@ ini_order_t AppConfig::ms_keys_order = {
 	} },
 };
 
-AppConfig::AppConfig()
-{
-
-}
 
 void AppConfig::reset()
 {
@@ -931,95 +933,17 @@ void AppConfig::copy(const AppConfig &_config)
 	(*this) = _config;
 }
 
-int AppConfig::parse_int(const string &_str)
+std::string AppConfig::get_value(const std::string &section, const std::string &name, bool _quiet)
 {
-	const char* value = _str.c_str();
-	char* end;
-	// This parses "1234" (decimal) and also "0x4D2" (hex)
-	int n = strtol(value, &end, 0);
-	if(end <= value) {
-		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not an integer\n", value);
-		throw std::exception();
-	}
-	return n;
-}
-
-double AppConfig::parse_real(const string &_str)
-{
-	const char* value = _str.c_str();
-	char* end;
-	double n = strtod(value, &end);
-	if(end <= value) {
-		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a real\n", value);
-		throw std::exception();
-	}
-	return n;
-}
-
-bool AppConfig::parse_bool(string _str)
-{
-	// Convert to lower case to make string comparisons case-insensitive
-	_str = str_to_lower(_str);
-	if (_str == "true" || _str == "yes" || _str == "on" || _str == "1") {
-		return true;
-	} else if (_str == "false" || _str == "no" || _str == "off" || _str == "0") {
-		return false;
-	} else {
-		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a boolean\n", _str.c_str());
-		throw std::exception();
-	}
-}
-
-std::vector<string> AppConfig::parse_tokens(string _str, string _regex_sep)
-{
-	return str_parse_tokens(_str, _regex_sep);
-}
-
-int AppConfig::get_error()
-{
-	return m_error;
-}
-
-void AppConfig::parse(const string &_filename)
-{
-	m_error = ini_parse(FileSys::to_native(_filename).c_str(), value_handler, this);
-	if(m_error != 0) {
-		throw std::exception();
-	}
-	m_parsed_file = _filename;
-}
-
-string AppConfig::get_value(ini_file_t &_values, const string &section, const string &name)
-{
-	string s = make_key(section);
-	string n = make_key(name);
-	string value;
-	if(_values.count(s)) {
-		ini_section_t sec = _values[s];
-		if(sec.count(n)) {
-			value = sec[n];
-		} else {
-			PDEBUGF(LOG_V2, LOG_PROGRAM, "ini key '%s' in section [%s] is not present\n", name.c_str(), section.c_str());
-			throw std::exception();
-		}
-	} else {
-		PDEBUGF(LOG_V2, LOG_PROGRAM, "ini section [%s] is not present\n", section.c_str());
-		throw std::exception();
-	}
-	return value;
-}
-
-string AppConfig::get_value(const string &section, const string &name, bool _quiet)
-{
-	string valstr;
+	std::string valstr;
 	try {
-		valstr = get_value(m_values, section, name);
+		valstr = INIFile::get_value(m_values, section, name);
 	} catch(std::exception &) {
 		try {
-			valstr = get_value(ms_def_values[PROGRAM_CONFIG], section, name);
+			valstr = INIFile::get_value(ms_def_values[PROGRAM_CONFIG], section, name);
 		} catch(std::exception &) {
 			try {
-				valstr = get_value(ms_def_values[MACHINE_CONFIG], section, name);
+				valstr = INIFile::get_value(ms_def_values[MACHINE_CONFIG], section, name);
 			} catch(std::exception &) {
 				if(!_quiet) {
 					PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
@@ -1034,148 +958,7 @@ string AppConfig::get_value(const string &section, const string &name, bool _qui
 	return valstr;
 }
 
-int AppConfig::try_int(const string &_section, const string &_name)
-{
-	string valstr = get_value(_section, _name);
-	int value = parse_int(valstr);
-	return value;
-}
-
-int AppConfig::get_int(const string &_section, const string &_name)
-{
-	int value;
-	try {
-		value = try_int(_section, _name);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to get integer value for [%s]:%s\n", _section.c_str(), _name.c_str());
-		throw;
-	}
-	return value;
-}
-
-int AppConfig::get_int(const string &_section, const string &_name, int _default)
-{
-	try {
-		return try_int(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-}
-
-void AppConfig::set_int(const string &_section, const string &_name, int _value)
-{
-	m_values[make_key(_section)][make_key(_name)] = std::to_string(_value);
-}
-
-double AppConfig::try_real(const string &_section, const string &_name)
-{
-	string valstr = get_value(_section, _name);
-	double value = parse_real(valstr);
-	return value;
-}
-
-double AppConfig::get_real(const string &_section, const string &_name)
-{
-	double value = 0.0;
-	try {
-		value = try_real(_section, _name);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to get real value for [%s]:%s\n", _section.c_str(), _name.c_str());
-		throw;
-	}
-	return value;
-}
-
-double AppConfig::get_real(const string &_section, const string &_name, double _default)
-{
-	try {
-		return try_real(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-}
-
-void AppConfig::set_real(const string &_section, const string &_name, double _value)
-{
-	m_values[make_key(_section)][make_key(_name)] = std::to_string(_value);
-}
-
-bool AppConfig::try_bool(const string &_section, const string &_name)
-{
-	string valstr = get_value(_section, _name);
-	bool value = parse_bool(valstr);
-	return value;
-}
-
-bool AppConfig::get_bool(const string &_section, const string &_name)
-{
-	bool value;
-	try {
-		value = try_bool(_section, _name);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to get bool value for [%s]:%s\n", _section.c_str(), _name.c_str());
-		throw;
-	}
-	return value;
-}
-
-bool AppConfig::get_bool(const string &_section, const string &_name, bool _default)
-{
-	try {
-		return try_bool(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-}
-
-void AppConfig::set_bool(const string &_section, const string &_name, bool _value)
-{
-	m_values[make_key(_section)][make_key(_name)] = _value?"yes":"no";
-}
-
-string AppConfig::get_string(const string &_section, const string &_name)
-{
-	string val;
-	try {
-		val = get_value(_section, _name);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
-		throw;
-	}
-	return val;
-}
-
-string AppConfig::get_string(const string &_section, const string &_name, const string &_default)
-{
-	try {
-		return get_value(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-}
-
-string AppConfig::get_string(const string &_section, const string &_name,
-		const std::set<string> _allowed,
-		const string &_default)
-{
-	string value;
-	try {
-		value = get_value(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-	if(_allowed.find(value) == _allowed.end()) {
-		return _default;
-	}
-	return value;
-}
-
-void AppConfig::set_string(const string &_section, const string &_name, string _value)
-{
-	m_values[make_key(_section)][make_key(_name)] = _value;
-}
-
-string AppConfig::get_file_path(string _filename, FileType _type)
+std::string AppConfig::get_file_path(std::string _filename, FileType _type)
 {
 #ifndef _WIN32
 	if(_filename.at(0) == '~') {
@@ -1209,9 +992,9 @@ string AppConfig::get_file_path(string _filename, FileType _type)
 	return _filename;
 }
 
-string AppConfig::get_file(const string &_section, const string &_name, FileType _type)
+std::string AppConfig::get_file(const std::string &_section, const std::string &_name, FileType _type)
 {
-	string filename;
+	std::string filename;
 	try {
 		filename = get_value(_section, _name);
 	} catch(std::exception &e) {
@@ -1226,106 +1009,52 @@ string AppConfig::get_file(const string &_section, const string &_name, FileType
 	return get_file_path(filename, _type);
 }
 
-string AppConfig::find_file(const string &_section, const string &_name)
+std::string AppConfig::find_file(const std::string &_section, const std::string &_name)
 {
-	string path = get_file(_section, _name, FILE_TYPE_USER);
+	std::string path = get_file(_section, _name, FILE_TYPE_USER);
 	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_ASSET);
 	}
 	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_MEDIA);
 	}
+	if(!FileSys::file_exists(path.c_str())) {
+		path = get_value(_section, _name);
+	}
 	return path;
 }
 
-string AppConfig::find_media(const string &_section, const string &_name)
+std::string AppConfig::find_file(const std::string &_filename)
 {
-	string path = get_file(_section, _name, FILE_TYPE_MEDIA);
+	std::string path = get_file_path(_filename, FILE_TYPE_USER);
+	if(!FileSys::file_exists(path.c_str())) {
+		path = get_file_path(_filename, FILE_TYPE_ASSET);
+	}
+	if(!FileSys::file_exists(path.c_str())) {
+		path = get_file_path(_filename, FILE_TYPE_MEDIA);
+	}
+	if(!FileSys::file_exists(path.c_str())) {
+		path = _filename;
+	}
+	return path;
+}
+
+std::string AppConfig::find_media(const std::string &_section, const std::string &_name)
+{
+	std::string path = get_file(_section, _name, FILE_TYPE_MEDIA);
 	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file(_section, _name, FILE_TYPE_USER);
 	}
 	return path;
 }
 
-string AppConfig::find_media(const string &_filename)
+std::string AppConfig::find_media(const std::string &_filename)
 {
-	string path = get_file_path(_filename, FILE_TYPE_MEDIA);
+	std::string path = get_file_path(_filename, FILE_TYPE_MEDIA);
 	if(!FileSys::file_exists(path.c_str())) {
 		path = get_file_path(_filename, FILE_TYPE_USER);
 	}
 	return path;
-}
-
-unsigned AppConfig::get_enum(const string &_section, const string &_name, const ini_enum_map_t &_enum_map)
-{
-	string enumstr;
-	try {
-		enumstr = get_value(_section, _name);
-	} catch(std::exception &e) {
-		PERRF(LOG_PROGRAM, "Unable to get string for [%s]:%s\n", _section.c_str(), _name.c_str());
-		throw;
-	}
-
-	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
-	if(enumvalue == _enum_map.end()) {
-		PERRF(LOG_PROGRAM, "Invalid value '%s' for [%s]:%s\n",
-				enumstr.c_str(), _section.c_str(), _name.c_str());
-		throw std::exception();
-	}
-	return enumvalue->second;
-}
-
-unsigned AppConfig::get_enum(const string &_section, const string &_name,
-		const ini_enum_map_t &_enum_map, unsigned _default)
-{
-	string enumstr;
-	try {
-		enumstr = get_value(_section, _name);
-	} catch(std::exception &e) {
-		return _default;
-	}
-	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
-	if(enumvalue == _enum_map.end()) {
-		return _default;
-	}
-	return enumvalue->second;
-}
-
-unsigned AppConfig::get_enum_quiet(const string &_section, const string &_name,
-		const ini_enum_map_t &_enum_map)
-{
-	string enumstr = get_value(_section, _name);
-	auto enumvalue = _enum_map.find(str_to_lower(enumstr));
-	if(enumvalue == _enum_map.end()) {
-		throw std::exception();
-	}
-	return enumvalue->second;
-}
-
-string AppConfig::make_key(string name)
-{
-	// Convert to lower case to make section/name lookups case-insensitive
-	// no, don't do this, keep it case sensitive
-	//std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-	return name;
-}
-
-int AppConfig::value_handler(void* _user, const char* _section, const char* _name,
-                            const char* _value)
-{
-	AppConfig* reader = static_cast<AppConfig*>(_user);
-
-	string s = make_key(_section);
-	string n = make_key(_name);
-
-
-	ini_section_t & sec = reader->m_values[s];
-	sec[n] = _value;
-
-	PDEBUGF(LOG_V2, LOG_PROGRAM, "config [%s]:%s=%s\n",
-			_section, _name, _value);
-
-	return 1;
 }
 
 void AppConfig::create_file(const std::string &_filename, bool _savestate)

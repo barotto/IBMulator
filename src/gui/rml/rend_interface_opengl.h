@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,7 +22,9 @@
 
 #include "rend_interface.h"
 #include "gui/matrix.h"
+#include "gui/gl_shader_program.h"
 #include <GL/glew.h>
+#include <list>
 
 #if !(SDL_VIDEO_RENDER_OGL)
 	#error "Only the opengl sdl backend is supported."
@@ -32,15 +34,17 @@
 class RmlRenderer_OpenGL : public RmlRenderer
 {
 protected:
-	GLuint m_program;
-	GLuint m_vb;
-	GLuint m_sampler;
-	mat4f  m_projmat;
+	std::unique_ptr<GLShaderProgram> m_program_color;
+	std::unique_ptr<GLShaderProgram> m_program_texture;
 
-	struct uniforms {
-		GLint textured, guitex, P, MV;
-		uniforms() : textured(-1), guitex(-1), P(-1), MV(-1) {}
-	} m_uniforms;
+	GLuint m_vao;
+	GLuint m_vbo;
+
+	struct CompiledGeometry {
+		GLuint gl_vao = 0, gl_vbo = 0, gl_ibo = 0;
+		GLuint gl_texture = 0;
+		GLsizei draw_count = 0;
+	};
 
 public:
 	RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_screen);
@@ -49,7 +53,11 @@ public:
 	/// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
 	void RenderGeometry(Rml::Vertex *vertices, int num_vertices, int *indices,
 			int num_indices, Rml::TextureHandle texture, const Rml::Vector2f &translation);
-
+	
+	Rml::CompiledGeometryHandle CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture);
+	virtual void RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation);
+	virtual void ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry);
+	
 	/// Called by RmlUi when it wants to enable or disable scissoring to clip content.
 	void EnableScissorRegion(bool enable);
 	/// Called by RmlUi when it wants to change the scissor region.
@@ -62,6 +70,9 @@ public:
 	void ReleaseTexture(Rml::TextureHandle texture_handle);
 
 	void SetDimensions(int _width, int _height);
+
+protected:
+	uintptr_t LoadTexture(SDL_Surface *_surface);
 };
 
 #endif

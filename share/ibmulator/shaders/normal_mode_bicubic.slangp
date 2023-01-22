@@ -1,0 +1,6 @@
+#reference "stock.slangp"
+
+ibmu_input_size = crtc
+ibmu_defines = "BICUBIC_FILTER"
+
+BICUBIC_FILTER = "1"

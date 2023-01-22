@@ -1,11 +1,5 @@
 body
 {
-	width: 90%;
-	height: 90%;
-	min-width: 640dp;
-	min-height: 320dp;
-	margin: auto;
-
 	background-color: #3C5464ff;
 	border: 2dp;
 	border-color: #28374d;

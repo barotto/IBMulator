@@ -3,6 +3,7 @@ AM_CXXFLAGS = @CXX_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@
 
 noinst_LIBRARIES = libgui.a
 libgui_a_SOURCES = \
+	opengl.cpp \
 	gui.cpp \
 	gui_opengl.cpp \
 	gui_sdl2d.cpp \
@@ -10,6 +11,15 @@ libgui_a_SOURCES = \
 	vector.cpp \
 	matrix.cpp \
 	keymap.cpp \
+	shader_preset.cpp \
+	shader_exception.cpp \
+	gl_shader_pass.cpp \
+	gl_shader_chain.cpp \
+	gl_shader_program.cpp \
+	gl_framebuffer.cpp \
+	gl_texture.cpp \
+	screen_renderer_opengl.cpp \
+	screen_renderer_sdl2d.cpp \
 	rml/file_interface.cpp \
 	rml/rend_interface.cpp \
 	rml/rend_interface_opengl.cpp \
@@ -20,8 +30,6 @@ libgui_a_SOURCES = \
 	windows/desktop.cpp \
 	windows/interface.cpp \
 	windows/items_dialog.cpp \
-	windows/screen_renderer_opengl.cpp \
-	windows/screen_renderer_sdl2d.cpp \
 	windows/normal_interface.cpp \
 	windows/realistic_interface.cpp \
 	windows/debugtools.cpp \
@@ -40,6 +48,7 @@ libgui_a_SOURCES = \
 	windows/message_wnd.cpp \
 	windows/new_floppy.cpp \
 	windows/printer_control.cpp \
+	windows/shader_parameters.cpp \
 	capture/capture.cpp \
 	capture/capture_imgseq.cpp \
 	capture/capture_videofile.cpp \
@@ -49,6 +58,7 @@ libgui_a_SOURCES = \
 	capture/videoencoder_zmbv.cpp
 
 noinst_HEADERS = \
+	opengl.h \
 	gui.h \
 	gui_opengl.h \
 	gui_sdl2d.h \
@@ -58,6 +68,16 @@ noinst_HEADERS = \
 	matrix.h \
 	matrix.inl.h \
 	keymap.h \
+	shader_preset.h \
+	shader_exception.h \
+	gl_shader_pass.h \
+	gl_shader_chain.h \
+	gl_shader_program.h \
+	gl_framebuffer.h \
+	gl_texture.h \
+	screen_renderer.h \
+	screen_renderer_opengl.h \
+	screen_renderer_sdl2d.h \
 	rml/file_interface.h \
 	rml/rend_interface.h \
 	rml/rend_interface_opengl.h \
@@ -68,9 +88,6 @@ noinst_HEADERS = \
 	windows/desktop.h \
 	windows/interface.h \
 	windows/items_dialog.h \
-	windows/screen_renderer.h \
-	windows/screen_renderer_opengl.h \
-	windows/screen_renderer_sdl2d.h \
 	windows/normal_interface.h \
 	windows/realistic_interface.h \
 	windows/debugtools.h \
@@ -89,6 +106,7 @@ noinst_HEADERS = \
 	windows/message_wnd.h \
 	windows/new_floppy.h \
 	windows/printer_control.h \
+	windows/shader_parameters.h \
 	capture/capture.h \
 	capture/capture_imgseq.h \
 	capture/capture_videofile.h \

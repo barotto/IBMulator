@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -73,6 +73,7 @@ enum e_Syslog_Facilities {
 	LOG_GFX,
 	LOG_INPUT,
 	LOG_GUI,
+	LOG_OGL,
 	LOG_MACHINE,
 	LOG_MIXER,
 	LOG_MEM,

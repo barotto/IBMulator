@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,6 +20,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <cstddef>
 
 template <class T>
 class vec2 {
@@ -69,6 +70,10 @@ typedef vec2<int> vec2i;
 typedef vec2<float> vec2f;
 typedef vec2<double> vec2d;
 
+static_assert(offsetof(vec2<char>,y) == offsetof(vec2<char>,x)+sizeof(char));
+static_assert(offsetof(vec2<int>,y) == offsetof(vec2<int>,x)+sizeof(int));
+static_assert(offsetof(vec2<float>,y) == offsetof(vec2<float>,x)+sizeof(float));
+static_assert(offsetof(vec2<double>,y) == offsetof(vec2<double>,x)+sizeof(double));
 
 
 //------------------------------------------------------------------------------
@@ -147,9 +152,9 @@ public:
 
 	static const vec3 ZERO;
 	static const vec3 UNIT;
-    static const vec3 UNIT_X;
-    static const vec3 UNIT_Y;
-    static const vec3 UNIT_Z;
+	static const vec3 UNIT_X;
+	static const vec3 UNIT_Y;
+	static const vec3 UNIT_Z;
 
 
 	//--------------------------------------------------------------------------
@@ -179,6 +184,15 @@ typedef vec3<char> vec3b;
 typedef vec3<int> vec3i;
 typedef vec3<float> vec3f;
 typedef vec3<double> vec3d;
+
+static_assert(offsetof(vec3<char>,y) == offsetof(vec3<char>,x)+sizeof(char));
+static_assert(offsetof(vec3<char>,z) == offsetof(vec3<char>,y)+sizeof(char));
+static_assert(offsetof(vec3<int>,y) == offsetof(vec3<int>,x)+sizeof(int));
+static_assert(offsetof(vec3<int>,z) == offsetof(vec3<int>,y)+sizeof(int));
+static_assert(offsetof(vec3<float>,y) == offsetof(vec3<float>,x)+sizeof(float));
+static_assert(offsetof(vec3<float>,z) == offsetof(vec3<float>,y)+sizeof(float));
+static_assert(offsetof(vec3<double>,y) == offsetof(vec3<double>,x)+sizeof(double));
+static_assert(offsetof(vec3<double>,z) == offsetof(vec3<double>,y)+sizeof(double));
 
 
 //-----------------------------------------------------------------------------
@@ -223,6 +237,16 @@ public:
 typedef vec4<int> vec4i;
 typedef vec4<float> vec4f;
 typedef vec4<double> vec4d;
+
+static_assert(offsetof(vec4<int>,y) == offsetof(vec4<int>,x)+sizeof(int));
+static_assert(offsetof(vec4<int>,z) == offsetof(vec4<int>,y)+sizeof(int));
+static_assert(offsetof(vec4<int>,w) == offsetof(vec4<int>,z)+sizeof(int));
+static_assert(offsetof(vec4<float>,y) == offsetof(vec4<float>,x)+sizeof(float));
+static_assert(offsetof(vec4<float>,z) == offsetof(vec4<float>,y)+sizeof(float));
+static_assert(offsetof(vec4<float>,w) == offsetof(vec4<float>,z)+sizeof(float));
+static_assert(offsetof(vec4<double>,y) == offsetof(vec4<double>,x)+sizeof(double));
+static_assert(offsetof(vec4<double>,z) == offsetof(vec4<double>,y)+sizeof(double));
+static_assert(offsetof(vec4<double>,w) == offsetof(vec4<double>,z)+sizeof(double));
 
 //------------------------------------------------------------------------------
 

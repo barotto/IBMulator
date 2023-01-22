@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -91,6 +91,7 @@ struct ProgramEvent {
 	enum class FuncName {
 		FUNC_NONE,
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
+		FUNC_SHOW_OPTIONS,         // opens the options window 
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
 		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators

@@ -22,9 +22,19 @@
 	decorator: image(images/realistic_interface.png);
 }
 
+#system.nomonitor #sysbkgd
+{
+	decorator: image(images/realistic_interface_nomonitor.png none contain center bottom);
+}
+
 #system.dark #sysbkgd
 {
 	decorator: image(images/realistic_interface_dark.png);
+}
+
+#system.dark.nomonitor #sysbkgd
+{
+	decorator: image(images/realistic_interface_nomonitor_dark.png none contain center bottom);
 }
 
 #power
@@ -44,6 +54,12 @@
 	position: absolute;
 	right: 19.5%;
 	bottom: 29.4%;
+}
+
+#system.nomonitor #power_led,
+#system.nomonitor #power_led_bloom
+{
+	display: none;
 }
 
 #power_led

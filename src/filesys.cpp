@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -62,6 +62,39 @@ bool FileSys::is_directory(const char *_path)
 	}
 
 	return (S_ISDIR(sb.st_mode));
+}
+
+bool FileSys::is_absolute(const char *_path, int _len)
+{
+	// this function tells if a path is absolute but
+	// on unix systems it's always correct
+	// on windows it tells if it's not relative
+	// it does not tell if the path exists or is valid
+
+#ifndef _WIN32
+
+	// so simple and effective. always correct. marvelous.
+	return _path && *_path == '/';
+
+#else
+
+	// trying not to use regular expressions as they tend to be rather slow
+	// nor the Windows API as it would require reencoding, as this function can
+	// be used in big loops.
+	// encoding can be either ANSI or UTF-8, but first chars are the same
+
+	if(!_path || _len < 3) {
+		return false;
+	}
+
+	// this function doesn't care about validity, only form, so assume _path[0] is a-z
+	// "C:Foobar\" is relative from the current directory of the C: drive.
+	// "\Foobar\" is relative from the root of the current drive.
+	bool maybe_drive = _path[1] == ':' && (_path[2] == '\\' || _path[2] == '/');
+	bool maybe_unc = _path[0] == '\\' && _path[1] == '\\';
+	return maybe_drive || maybe_unc;
+
+#endif
 }
 
 bool FileSys::is_file_readable(const char *_path)
@@ -189,6 +222,26 @@ std::string FileSys::get_basename(const char *_path)
 	return to_utf8( basename(to_native(path.data()).data()) );
 }
 
+std::string FileSys::get_file_ext(const std::string _path)
+{
+	const size_t period_idx = _path.rfind('.');
+	if(period_idx != std::string::npos) {
+		return _path.substr(period_idx);
+	}
+	return "";
+}
+
+std::string FileSys::get_path_dir(const char *_file_path)
+{
+	auto native = to_native(_file_path);
+	std::string dir = ::dirname(&native[0]);
+	std::vector<char> rpbuf(PATH_MAX);
+	if(::realpath(dir.c_str(), &rpbuf[0]) == nullptr) {
+		throw std::runtime_error("cannot resolve path");
+	}
+	return to_utf8(&rpbuf[0]);
+}
+
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {
@@ -286,6 +339,15 @@ int FileSys::mkostemp(std::string &_template, int _flags)
 char* FileSys::realpath(const char *_path, char *_resolved)
 {
 	return ::realpath(to_native(_path).c_str(), _resolved);
+}
+
+std::string FileSys::realpath(const char *_path)
+{
+	char rpbuf[PATH_MAX];
+	if(realpath(_path, rpbuf)) {
+		return FileSys::to_utf8(rpbuf);
+	}
+	throw std::runtime_error("cannot resolve path");
 }
 
 std::string FileSys::get_next_filename_time(const std::string &_path)
@@ -429,6 +491,11 @@ unique_file_ptr FileSys::make_file(const char *_filename, const char *_flags)
 {
 	//unique_ptr only invokes the deleter if the pointer is non-zero
 	return unique_file_ptr(FileSys::fopen(_filename, _flags), ::fclose);
+}
+
+unique_file_ptr FileSys::make_tmpfile()
+{
+	return unique_file_ptr(::tmpfile(), ::fclose);
 }
 
 std::ifstream FileSys::make_ifstream(const char *_path, std::ios::openmode _mode)

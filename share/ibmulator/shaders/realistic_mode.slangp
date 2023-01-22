@@ -1,0 +1,22 @@
+shaders = 1
+
+ibmu_input_size = crtc
+
+shader0 = ps1_monitor/ps1_crt.slang
+filter_linear0 = true
+ibmu_blending_output0 = true
+
+textures = "CRTEnv"
+CRTEnv = ps1_monitor/ps1_monitor_envmap.png
+CRTEnv_linear = true
+CRTEnv_wrap_mode = clamp_to_border
+
+ibmu_defines = "VGA_REFLECTION;CRT_SCALE;BRT_TINT"
+VGA_REFLECTION = "0"
+CRT_SCALE = "1.0"
+BRT_TINT = "vec3(1.0,1.0,1.5)"
+
+// realistic mode GUI integration:
+ibmu_rendering_size = crt
+ibmu_crt_width = 862.0
+ibmu_crt_height = 650.0

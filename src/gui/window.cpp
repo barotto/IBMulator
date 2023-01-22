@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -38,16 +38,25 @@ void Window::add_events()
 	}
 	assert(m_wnd);
 	event_map_t & evtmap = get_event_map();
-	for(auto evt : evtmap) {
+	for(auto & [evt,handler] : evtmap) {
 		// model is alway bubbling
-		if(evt.first.first == "*") {
-			m_wnd->AddEventListener(evt.first.second, this);
+		if(evt.first == "*") {
+			m_wnd->AddEventListener(evt.second, this);
 		} else {
-			try {
-				Rml::Element *el = get_element(evt.first.first);
-				el->AddEventListener(evt.first.second, this);
-			} catch(std::exception &) {
-				m_wnd->AddEventListener(evt.first.second, this);
+			if(evt.first.find("class:") == 0) {
+				Rml::ElementList elements;
+				m_wnd->GetElementsByClassName(elements, evt.first.substr(6));
+				for(auto & el : elements) {
+					el->AddEventListener(evt.second, this);
+					get_event_map()[{el->GetId(),evt.second}] = handler;
+				}
+			} else {
+				try {
+					Rml::Element *el = get_element(evt.first);
+					el->AddEventListener(evt.second, this);
+				} catch(std::exception &) {
+					m_wnd->AddEventListener(evt.second, this);
+				}
 			}
 		}
 	}
@@ -203,6 +212,23 @@ std::string Window::get_form_input_value(Rml::Event &_ev)
 	} while(el);
 
 	return "";
+}
+
+Rml::ElementPtr Window::create_button()
+{
+	return std::move(m_wnd->CreateElement("button"));
+}
+
+Rml::Element * Window::get_button_element(Rml::Event &_ev)
+{
+	Rml::Element *el = _ev.GetTargetElement();
+	while(el) {
+		if(el->GetTagName() == "button") {
+			return el;
+		}
+		el = el->GetParentNode();
+	};
+	return nullptr;
 }
 
 Rml::Element * Window::disable(Rml::Element *_el)

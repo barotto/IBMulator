@@ -1,0 +1,3 @@
+#reference "stock.slangp"
+
+ibmu_input_size = crtc

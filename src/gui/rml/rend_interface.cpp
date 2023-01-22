@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -62,7 +62,7 @@ bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 	file_interface->Close(file_handle);
 
 	try {
-		texture_handle = GUI::instance()->load_texture(surface);
+		texture_handle = LoadTexture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		SDL_FreeSurface(surface);
@@ -80,7 +80,7 @@ bool RmlRenderer::LoadNamedTexture(Rml::TextureHandle &texture_handle_,
 
 	try {
 		surface = GUI::instance()->load_surface(_source);
-		texture_handle_ = GUI::instance()->load_texture(surface);
+		texture_handle_ = LoadTexture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		return false;

@@ -11,7 +11,11 @@
   * [Floppy disk images](#floppy-disk-images)
     * [High-level raw sector data emulation](#high-level-raw-sector-data-emulation)
     * [Low-level magnetic flux emulation](#low-level-magnetic-flux-emulation)
-  * [GUI modes](#gui-modes)
+  * [The GUI](#the-gui)
+    * [Modes of operation](#modes-of-operation)
+    * [Shaders](#shaders)
+      * [Included shaders](#included-shaders)
+      * [RetroArch shaders](#retroarch-shaders)
     * [Integer scaling](#integer-scaling)
   * [Savestates](#savestates)
   * [Audio DSP filters](#audio-dsp-filters)
@@ -218,7 +222,9 @@ This type is enabled by setting the following option in ibmulator.ini:
 fdc_type=flux
 ```
 
-### GUI modes
+### The GUI
+
+#### Modes of operation
 
 IBMulator has 3 different GUI modes.
 
@@ -241,25 +247,104 @@ You can select the starting GUI mode with the `[gui]:mode` setting of
 ibmulator.ini. You can also switch between Compact and Normal modes while using
 IBMulator (see below for the default key binding).
 
+#### Shaders
+
+IBMulator uses a shader system that implements the new (_draft_) libretro's
+[Vulkan GLSL RetroArch shader system](https://github.com/libretro/slang-shaders)
+specification, with only minor differences and some extension.
+
+For more information about the IBMulator's shader system see
+[SHADER.md](SHADER.md).
+
+Shader files should be installed in the `share/ibmulator/shaders` directory.
+Shader paths are relative to `share/ibmulator`.
+
+A shader is defined by a preset (`.slangp`) and at least one source file
+(`.slang`).  
+To load a shader in IBMulator you need to specify the path of its .slangp preset
+file in ibmulator.ini. You cannot load .slang source files directly.
+
+E.g.:
+```
+[display]
+; shader used in Normal and Compact modes
+normal_shader = shaders/normal_mode.slangp
+; shader used in Realistic mode
+realistic_shader = shaders/realistic_mode.slangp
+```
+
+Some shaders have configurable parameters that can be modified while IBMulator
+is running. See the default key combination to open the configuration window in 
+the [Default key bindings](#default-key-bindings) section.
+
+##### Included shaders
+
+ * `normal_mode.slangp`: stock shader for Normal and Compact modes.
+ * `normal_mode_nearest.slangp`: stock shader with nearest neighbour filtering
+   (pixelated, useful with integer scaling).
+ * `normal_mode_bicubic.slangp`: stock shader with bicubic filtering.
+ * `realistic_mode.slangp`: stock shader for Realistic mode.
+ * `ps1_monitor.slangp`: a realistic representation of the PS/1 monitor with
+   light reflections (for any mode).
+
+##### RetroArch shaders
+
+IBMulator's shader system aims to be fully compatible with the _Vulkan GLSL
+RetroArch shader system_ but keep in mind that:
+ 1. the libretro's specification is still a draft and evolving, so more recent
+    versions of its shaders might fail to load in IBMulator.
+ 2. IBMulator is based on the public specification, so shaders that rely on
+    specific RetroArch behaviours (and bugs) might not work as expected.
+
+A Vulkan GLSL RetroArch shader source is translated to OpenGL GLSL by
+IBMulator and can be used unmodified, assuming your video card supports the
+OpenGL version required by the shader.
+Most RetroArch shaders are created for GLSL version 4.50, so your drivers should
+support at least OpenGL 4.5 in case you want to use any of those.
+
+To install the RetroArch shaders put the RetroArch's `shaders_slang` directory
+into the IBMulator's `shaders` one. Then use a slangp preset with a path like
+`shaders/shaders_slang/foo/bar.slangp`.
+
+To install additional RetroArch shader packs follow their instructions
+considering any reference to the `RetroArch/shaders` directory a reference to
+`share/ibmulator/shaders`.
+
 #### Integer scaling
 
-If you like the pixel art style of the 80s and 90s you might want to enjoy it
-with the crispiest possible image quality.  
-In order to achieve image perfection, in _Normal_ and _Compact_ GUI modes you
-can use integer scaling.
+If you like the pixels of the 80s and 90s you might want to enjoy them with the
+crispiest image quality possible.  
 
-To enable integer scaling set these variables in ibmulator.ini:
+In order to achive that you need:
+ - the viewport dimensions scaled at integer multiples of the video mode.
+ - the VGA image scaled into the viewport with a nearest neighbour filter.
+
+To scale the viewport set:
 ```
-[gui]
-mode=normal ; or compact
-
 [display]
 normal_scale=integer
-normal_filter=nearest
-normal_aspect=area
+normal_aspect=vga
 ```
-Other options are available for `normal_aspect` to try and force the image to a
-particular shape (see comments in ibmulator.ini for more info).
+
+_Note_: integer scaling is available only in Normal and Compact modes.
+
+The `normal_aspect` setting is used to try and force the image to a particular
+shape. The `vga` value will keep both dimensions scaled by the same factor
+(2x, 3x, ...). See comments in ibmulator.ini for more options.
+
+The nearest neighbour filter is enabled with:
+```
+[display]
+normal_filter=nearest
+```
+
+If you are using the `software` or `accelerated` renderers you're set and ready
+to go.
+
+If you are using the `opengl` renderer the actual filtering might depend on the
+shader. If you're not getting the desired result be sure to use a shader
+that supports integer scaling or an unfiltered output, for example the
+`normal_mode_nearest.slangp` shader.
 
 ### Savestates
 
@@ -659,6 +744,7 @@ their mode of operation is not `default` and they are also used in combos (e.g.
 
 Valid `FUNC_* ` functions are:
 * `FUNC_GUI_MODE_ACTION(x)`: GUI Mode action number x (see below)
+* `FUNC_SHOW_OPTIONS`: open the options window
 * `FUNC_TOGGLE_POWER`: toggle the machine's power button
 * `FUNC_TOGGLE_PAUSE`: pause / resume emulation
 * `FUNC_TOGGLE_STATUS_IND`: show / hide the status indicators
@@ -743,6 +829,7 @@ These are the default key bindings defined in the `keymap.map` file:
 * <kbd>SHIFT</kbd>+<kbd>F1</kbd>    : GUI mode action 2:
     * in Normal and Compact modes: switch between Normal and Compact modes
     * in Realistic mode: switch between bright and dark styles
+* <kbd>CTRL</kbd>+<kbd>F2</kbd>     : open the shader parameters window
 * <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
 * <kbd>SHIFT</kbd>+<kbd>F4</kbd>    : show/hide the status indicators
 * <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows

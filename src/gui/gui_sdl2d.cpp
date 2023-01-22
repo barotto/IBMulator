@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -109,37 +109,6 @@ void GUI_SDL2D::shutdown_SDL()
 		m_SDL_renderer = nullptr;
 	}
 	GUI::shutdown_SDL();
-}
-
-uintptr_t GUI_SDL2D::load_texture(SDL_Surface *_surface)
-{
-	assert(_surface);
-	
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-	SDL_Texture *texture = SDL_CreateTextureFromSurface(m_SDL_renderer, _surface);
-
-	if(!texture) {
-		throw std::runtime_error(SDL_GetError());
-	}
-
-	return uintptr_t((void*)texture);
-}
-
-uintptr_t GUI_SDL2D::load_texture(const std::string &_path, vec2i *_texdim)
-{
-	SDL_Surface *surface = stbi_load(_path.c_str());
-	SDL_Texture *texture;
-	try {
-		texture = reinterpret_cast<SDL_Texture*>(load_texture(surface));
-	} catch(std::exception &e) {
-		SDL_FreeSurface(surface);
-		throw;
-	}
-	if(_texdim) {
-		*_texdim = vec2i(surface->w, surface->h);
-	}
-	SDL_FreeSurface(surface);
-	return uintptr_t((void*)texture);
 }
 
 void GUI_SDL2D::update_texture(uintptr_t _texture, SDL_Surface *_data)

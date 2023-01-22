@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021  Marco Bortolin
+ * Copyright (C) 2019-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,7 +43,7 @@ void RmlRenderer_SDL2D::RenderGeometry(
 {
 	UNUSED(_num_vertices);
 	
-	// we're making many assumptions here, but for the sake of this renderer this will do
+	// RmlUi renders everything as triangles. This will always be a multiple of three.
 	int quads = _num_indices / 6;
 	//PDEBUGF(LOG_V2, LOG_GUI, "verts: %d, idx: %d, quads: %d\n", num_vertices, num_indices, quads);
 	assert(quads);
@@ -110,6 +110,20 @@ void RmlRenderer_SDL2D::EnableScissorRegion(bool _enable)
 void RmlRenderer_SDL2D::SetScissorRegion(int _x, int _y, int _width, int _height)
 {
 	m_scissor_region = {_x, _y, _width, _height};
+}
+
+uintptr_t RmlRenderer_SDL2D::LoadTexture(SDL_Surface *_surface)
+{
+	assert(_surface);
+	
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+	SDL_Texture *texture = SDL_CreateTextureFromSurface(m_renderer, _surface);
+
+	if(!texture) {
+		throw std::runtime_error(SDL_GetError());
+	}
+
+	return uintptr_t((void*)texture);
 }
 
 // Called by RmlUi when a texture is required to be built from an

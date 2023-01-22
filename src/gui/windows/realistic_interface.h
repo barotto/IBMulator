@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,6 +21,7 @@
 #define IBMULATOR_GUI_REALISTIC_INTERFACE_H
 
 #include "interface.h"
+#include "gui/shader_preset.h"
 #include "mixer.h"
 #include "audio/soundfx.h"
 #include <RmlUi/Core/EventListener.h>
@@ -51,18 +52,8 @@ public:
 class RealisticScreen : public InterfaceScreen
 {
 public:
-	struct {
-		mat4f pmat;
-		mat4f mvmat;
-		float ambient;
-	} monitor;
-
-	vec2f vga_image_scale;
-	vec2f vga_reflection_scale;
-	
 	RealisticScreen(GUI *_gui);
-	~RealisticScreen();
-	
+
 	void render();
 };
 
@@ -109,19 +100,16 @@ private:
 	static constexpr float ms_min_slider_val = 0.0f;
 	static constexpr float ms_max_slider_val = 1.3f;
 
-	// the following values depend on the machine texture used.
-	// all values are expressed in pixels.
-	static constexpr float ms_width          = 1100.0f; // texture width
-	static constexpr float ms_height         = 1200.0f; // texture height
-	static constexpr float ms_monitor_width  =  862.0f; // monitor width, bezel excluded
-	static constexpr float ms_monitor_height =  652.0f; // monitor height, bezel excluded
-	static constexpr float ms_monitor_bezelw =  119.0f; // monitor bezel width (should be ms_width-ms_monitor_width/2)
-	static constexpr float ms_monitor_bezelh =  105.0f; // monitor bezel height
-	static constexpr float ms_vga_left       =   86.0f; // offset of the VGA image from the left bezel
-	static constexpr float ms_slider_length  =  100.0f; // slider horizontal movement length
-
 	// scale factors at the available zoom levels:
 	static constexpr float ms_zoomin_factors[] = { 1.f, 1.26f, 1.4f, 0.f };
+
+	// the following values depend on the machine texture used (values in pixels)
+	static constexpr float ms_width          = 1100.0f; // texture width
+	static constexpr float ms_height         = 1200.0f; // texture height
+	static constexpr float ms_slider_length  =  100.0f; // vol/brt/cnt slider horizontal movement length
+
+	ShaderPreset::MonitorGeometry m_monitor;
+	ShaderPreset::RenderingSize m_rendering_size;
 
 public:
 

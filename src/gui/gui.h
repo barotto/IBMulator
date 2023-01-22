@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -92,6 +92,7 @@ class Desktop;
 class Interface;
 class NormalInterface;
 class Status;
+class ShaderParameters;
 class PrinterControl;
 class DebugTools;
 class TextModeInfo;
@@ -263,6 +264,7 @@ protected:
 		std::unique_ptr<Desktop>    desktop;
 		std::unique_ptr<Interface>  interface;
 		std::unique_ptr<Status>     status;
+		std::unique_ptr<ShaderParameters> options_wnd;
 		std::unique_ptr<DebugTools> dbgtools;
 		std::unique_ptr<MessageWnd> message_wnd;
 		std::unique_ptr<PrinterControl> printer_ctrl;
@@ -280,6 +282,7 @@ protected:
 		void update_window_size(int _w, int _h);
 		void shutdown();
 		void toggle_status();
+		void show_options();
 		void toggle_dbg();
 		void toggle_printer();
 		void show_ifc_message(const char* _mex);
@@ -314,7 +317,7 @@ protected:
 	void dispatch_window_event(const SDL_WindowEvent &_event);
 	void dispatch_user_event(const SDL_UserEvent &_event);
 	
-	static std::string load_shader_file(const std::string &_path);
+	static std::list<std::string> load_shader_file(const std::string &_path);
 
 	virtual void create_window(int _flags) = 0;
 	virtual void create_renderer() = 0;
@@ -344,14 +347,13 @@ public:
 	void unload_document(Rml::ElementDocument *);
 	static std::string shaders_dir();
 	static std::string images_dir();
+
 	SDL_Surface *load_surface(const std::string &_name);
 	void update_surface(const std::string &_name, SDL_Surface *_data);
 
-	virtual uintptr_t load_texture(SDL_Surface *_surface) = 0;
-	virtual uintptr_t load_texture(const std::string &_path, vec2i *_texdim=nullptr) = 0;
 	virtual void update_texture(uintptr_t _texture, SDL_Surface *_data) = 0;
 	virtual void render() = 0;
-	
+
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	SDL_Surface * copy_framebuffer();
 	void take_screenshot(bool _with_palette_file = false);
@@ -360,6 +362,7 @@ public:
 	void show_message_box(const std::string &_title, const std::string &_message, MessageWnd::Type _type, 
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
 	bool are_windows_visible();
+	void show_options_window();
 	void toggle_dbg_windows();
 	void toggle_printer_control();
 	void grab_input(bool _value);
@@ -413,6 +416,7 @@ private:
 	void send_key_to_machine(Keys _key, uint32_t _event);
 	
 	void pevt_func_none(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_show_options(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
