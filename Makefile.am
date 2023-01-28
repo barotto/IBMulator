@@ -133,32 +133,31 @@ share/ibmulator/gui/images/realistic_slider_dark.png
 
 guishadersdir = $(pkgdatadir)/shaders
 dist_guishaders_DATA = \
-share/ibmulator/shaders/color_functions.glsl \
-share/ibmulator/shaders/black_fill.slang \
-share/ibmulator/shaders/black_fill.slangp \
-share/ibmulator/shaders/fb_blitter.slang \
-share/ibmulator/shaders/filter_bilinear.fs \
-share/ibmulator/shaders/filter_bicubic.fs \
-share/ibmulator/shaders/filter_bicubic.glsl \
-share/ibmulator/shaders/normal_mode.slangp \
-share/ibmulator/shaders/normal_mode_nearest.slangp \
-share/ibmulator/shaders/normal_mode_bicubic.slangp \
-share/ibmulator/shaders/realistic_mode.slang \
-share/ibmulator/shaders/realistic_mode.slangp \
-share/ibmulator/shaders/stock.slang \
-share/ibmulator/shaders/stock.slangp \
-share/ibmulator/shaders/gui_color.slang \
-share/ibmulator/shaders/gui_texture.slang \
-share/ibmulator/shaders/ps1_monitor.slangp \
-share/ibmulator/shaders/ps1_monitor/functions.glsl \
-share/ibmulator/shaders/ps1_monitor/power_led_bloom.png \
-share/ibmulator/shaders/ps1_monitor/ps1_crt.slang \
-share/ibmulator/shaders/ps1_monitor/ps1_monitor_envmap.png \
-share/ibmulator/shaders/ps1_monitor/ps1_monitor_frame.png \
-share/ibmulator/shaders/ps1_monitor/ps1_monitor.slang \
-share/ibmulator/shaders/ps1_monitor/vga_reflection.slang \
-share/ibmulator/shaders/crt_lottes.slang \
-share/ibmulator/shaders/crt_lottes.slangp
+share/ibmulator/shaders/common/color_functions.glsl \
+share/ibmulator/shaders/common/black_fill.slang \
+share/ibmulator/shaders/common/black_fill.slangp \
+share/ibmulator/shaders/common/fb_blitter.slang \
+share/ibmulator/shaders/common/filter_bilinear.slang \
+share/ibmulator/shaders/common/filter_bicubic.slang \
+share/ibmulator/shaders/common/filter_bicubic.glsl \
+share/ibmulator/shaders/normal_mode/stock.slangp \
+share/ibmulator/shaders/normal_mode/stock.slang \
+share/ibmulator/shaders/normal_mode/nearest_filter.slangp \
+share/ibmulator/shaders/normal_mode/bicubic_filter.slangp \
+share/ibmulator/shaders/realistic_mode/stock.slang \
+share/ibmulator/shaders/realistic_mode/stock.slangp \
+share/ibmulator/shaders/gui/color.slang \
+share/ibmulator/shaders/gui/texture.slang \
+share/ibmulator/shaders/ps1/monitor.slangp \
+share/ibmulator/shaders/ps1/monitor.slang \
+share/ibmulator/shaders/ps1/crt.slang \
+share/ibmulator/shaders/ps1/vga_reflection.slang \
+share/ibmulator/shaders/ps1/functions.glsl \
+share/ibmulator/shaders/ps1/texture/power_led_bloom.png \
+share/ibmulator/shaders/ps1/texture/glass_envmap.png \
+share/ibmulator/shaders/ps1/texture/monitor_frame.png \
+share/ibmulator/shaders/crt/lottes.slang \
+share/ibmulator/shaders/crt/lottes.slangp
 
 guifontsdir = $(pkgdatadir)/gui/fonts
 dist_guifonts_DATA = \

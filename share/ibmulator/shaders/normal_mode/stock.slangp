@@ -1,0 +1,5 @@
+shaders = 1
+shader0 = stock.slang
+
+ibmu_input_size = crtc
+

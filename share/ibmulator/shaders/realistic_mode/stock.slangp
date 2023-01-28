@@ -2,12 +2,12 @@ shaders = 1
 
 ibmu_input_size = crtc
 
-shader0 = ps1_monitor/ps1_crt.slang
+shader0 = ../ps1/crt.slang
 filter_linear0 = true
 ibmu_blending_output0 = true
 
 textures = "CRTEnv"
-CRTEnv = ps1_monitor/ps1_monitor_envmap.png
+CRTEnv = ../ps1/texture/glass_envmap.png
 CRTEnv_linear = true
 CRTEnv_wrap_mode = clamp_to_border
 

@@ -193,7 +193,9 @@ void RealisticInterface::create()
 	unsigned s = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_FILTER, GUI::ms_gui_sampler);
 	m_screen->renderer()->set_output_sampler(static_cast<DisplaySampler>(s));
 
-	std::string preset_path = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER);
+	auto preset_path = g_program.config().find_shader_asset(
+		g_program.config().get_string(DISPLAY_SECTION, DISPLAY_REALISTIC_SHADER)
+	);
 	screen()->renderer()->load_vga_shader_preset(preset_path);
 
 	const ShaderPreset *vga_shader = screen()->renderer()->get_vga_shader_preset();
@@ -205,7 +207,7 @@ void RealisticInterface::create()
 		m_monitor = ShaderPreset::MonitorGeometry();
 	}
 	if(m_rendering_size == ShaderPreset::VGA) {
-		preset_path = g_program.config().find_file("shaders/black_fill.slangp");
+		preset_path = g_program.config().find_shader_asset("common/black_fill.slangp");
 		screen()->renderer()->load_crt_shader_preset(preset_path);
 	}
 

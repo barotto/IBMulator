@@ -33,27 +33,27 @@ RmlRenderer_OpenGL::RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_scr
 : RmlRenderer(_renderer, _screen)
 {
 	try {
-		std::vector<std::string> sh{GUI::shaders_dir()+"gui_color.slang"};
+		std::vector<std::string> sh{g_program.config().find_shader_asset("gui/color.slang")};
 		std::list<std::string> defs;
 		m_program_color = std::make_unique<GLShaderProgram>(sh,sh,defs);
 	} catch(ShaderExc &e) {
 		e.log_print(LOG_GUI);
 		throw;
 	} catch(std::runtime_error &e) {
-		PERRF(LOG_GUI, "Error loading 'gui_color.slang': %s\n", e.what());
+		PERRF(LOG_GUI, "Error loading 'gui/color.slang': %s\n", e.what());
 		throw;
 	} catch(std::exception &) {
-		PERRF(LOG_GUI, "Error loading 'gui_color.slang'\n");
+		PERRF(LOG_GUI, "Error loading 'gui/color.slang'\n");
 		throw;
 	}
 
 	try {
-		std::vector<std::string> sh{GUI::shaders_dir()+"gui_texture.slang"};
+		std::vector<std::string> sh{g_program.config().find_shader_asset("gui/texture.slang")};
 		std::list<std::string> defs;
 		m_program_texture = std::make_unique<GLShaderProgram>(sh,sh,defs);
 		m_program_texture->update_samplers({},{});
 		if(!m_program_texture->is_source_needed()) {
-			throw std::runtime_error("gui_texture.slang error: no Source sampler2D found");
+			throw std::runtime_error("gui/texture.slang error: no Source sampler2D found");
 		}
 		for(auto &sampler : m_program_texture->get_samplers()) {
 			if(sampler.category == GLShaderProgram::Sampler2D::Category::Source) {
@@ -69,10 +69,10 @@ RmlRenderer_OpenGL::RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_scr
 		e.log_print(LOG_GUI);
 		throw;
 	} catch(std::runtime_error &e) {
-		PERRF(LOG_GUI, "Error loading 'gui_texture.slang': %s\n", e.what());
+		PERRF(LOG_GUI, "Error loading 'gui/texture.slang': %s\n", e.what());
 		throw;
 	} catch(std::exception &) {
-		PERRF(LOG_GUI, "Error loading 'gui_texture.slang'\n");
+		PERRF(LOG_GUI, "Error loading 'gui/texture.slang'\n");
 		throw;
 	}
 

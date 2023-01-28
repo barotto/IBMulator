@@ -147,8 +147,9 @@ void NormalInterface::create()
 	unsigned s = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_FILTER, GUI::ms_gui_sampler);
 	m_screen->renderer()->set_output_sampler(static_cast<DisplaySampler>(s));
 
-	std::string shader = g_program.config().find_file(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
-	m_screen->renderer()->load_vga_shader_preset(shader);
+	std::string preset_path = std::string("shaders") + FS_SEP + g_program.config().get_string(DISPLAY_SECTION, DISPLAY_NORMAL_SHADER);
+	preset_path = g_program.config().find_file(preset_path);
+	m_screen->renderer()->load_vga_shader_preset(preset_path);
 
 	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
 		get_element("system_control")->SetClass("size_6", true);

@@ -22,7 +22,7 @@
 			#params_cnt
 			{
 				position: absolute;
-				top: 65dp;
+				top: 70dp;
 				left: 10dp;
 				right: 10dp;
 				bottom: 50dp;
@@ -84,6 +84,12 @@
 			{
 				position: absolute;
 				top: 40dp;
+				right: 70dp;
+			}
+			#save
+			{
+				position: absolute;
+				top: 40dp;
 				right: 10dp;
 			}
 		</style>
@@ -93,6 +99,7 @@
 		Search: <input type="text" id="search" />
 		</div>
 		<button id="reset_all" class="romshell invisible"><span>Reset all</span></button>
+		<button id="save" class="romshell"><span>Save</span></button>
 		<div id="params_cnt">
 		</div>
 		<div id="buttons_right">

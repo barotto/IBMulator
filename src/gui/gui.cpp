@@ -2149,16 +2149,6 @@ GUI * GUI::instance()
 	return g_program.gui_instance();
 }
 
-std::string GUI::shaders_dir()
-{
-	return g_program.config().get_assets_home() + FS_SEP "shaders" FS_SEP;
-}
-
-std::string GUI::images_dir()
-{
-	return g_program.config().get_assets_home() + FS_SEP "gui" FS_SEP "images" FS_SEP;
-}
-
 SDL_Surface * GUI::load_surface(const std::string &_name)
 {
 	if(_name == "gui:printer_preview") {
@@ -2242,6 +2232,11 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 		m_windows.message_wnd->set_callbacks(_on_action1, _on_action2);
 		m_windows.message_wnd->show();
 	});
+}
+
+void GUI::show_error_message_box(const std::string &_message)
+{
+	show_message_box("Error", _message, MessageWnd::Type::MSGW_OK, nullptr, nullptr);
 }
 
 bool GUI::are_windows_visible()

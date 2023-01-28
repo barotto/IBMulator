@@ -294,8 +294,6 @@ GLShaderChain::GLShaderChain(std::string _preset)
 		}
 	}
 
-	PINFOF(LOG_V0, LOG_OGL, "Filter chain created successfully.\n");
-
 	// report samplers and parameters to user
 	PINFOF(LOG_V1, LOG_OGL, "Shader configuration:\n");
 	for(auto & pass : m_chain) {
@@ -358,6 +356,8 @@ GLShaderChain::GLShaderChain(std::string _preset)
 			}
 		}
 	}
+
+	PINFOF(LOG_V0, LOG_OGL, "Filter chain created successfully.\n");
 }
 
 void GLShaderChain::init_history(unsigned _width, unsigned _height, GLenum _format, GLenum _type, unsigned _stride, void *_data)

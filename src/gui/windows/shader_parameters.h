@@ -22,6 +22,7 @@
 
 #include "../window.h"
 #include <RmlUi/Core.h>
+#include "shader_save_info.h"
 
 class ShaderParameters : public Window
 {
@@ -33,6 +34,8 @@ private:
 	using ShaderParamsMap = std::map<std::string, size_t>;
 	ShaderParamsMap m_params_map;
 	
+	std::unique_ptr<ShaderSaveInfo> m_save_info;
+	
 	struct {
 		Rml::ElementFormControlInput *search;
 	} m_tools;
@@ -42,7 +45,7 @@ private:
 	std::string m_click_name;
 	bool m_click_inc = false;
 	float m_focus_value = 0.0;
-	int m_modified = 0;
+	std::set<std::string> m_modified;
 	
 public:
 	ShaderParameters(GUI *_gui, ScreenRenderer *_renderer);
@@ -50,6 +53,7 @@ public:
 	void show();
 	void create();
 	void update();
+	void close();
 
 	void on_search(Rml::Event &_ev);
 	void on_reset_all(Rml::Event &_ev);
@@ -58,7 +62,7 @@ public:
 	void on_mousedown(Rml::Event &_ev);
 	void on_value_focus(Rml::Event &_ev);
 	void on_value_keydown(Rml::Event &_ev);
-	void on_save(Rml::Event &_ev) {}
+	void on_save(Rml::Event &_ev);
 	event_map_t & get_event_map() { return ShaderParameters::ms_evt_map; }
 
 private:

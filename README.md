@@ -254,38 +254,43 @@ IBMulator uses a shader system that implements the new (_draft_) libretro's
 specification, with only minor differences and some extension.
 
 For more information about the IBMulator's shader system see
-[SHADER.md](SHADER.md).
+[SHADERS.md](SHADERS.md).
 
-Shader files should be installed in the `share/ibmulator/shaders` directory.
-Shader paths are relative to `share/ibmulator`.
+Shader files should be installed in either:
+ * the `shaders` directory inside the user's directory (takes precedence).
+ * the global assets directory `share/ibmulator/shaders`.
 
 A shader is defined by a preset (`.slangp`) and at least one source file
 (`.slang`).  
 To load a shader in IBMulator you need to specify the path of its .slangp preset
 file in ibmulator.ini. You cannot load .slang source files directly.
 
-E.g.:
+Shader paths must be relative, eg.:
 ```
 [display]
 ; shader used in Normal and Compact modes
-normal_shader = shaders/normal_mode.slangp
+normal_shader = normal_mode/stock.slangp
 ; shader used in Realistic mode
-realistic_shader = shaders/realistic_mode.slangp
+realistic_shader = realistic_mode/stock.slangp
 ```
 
 Some shaders have configurable parameters that can be modified while IBMulator
 is running. See the default key combination to open the configuration window in 
 the [Default key bindings](#default-key-bindings) section.
 
+New presets will be saved inside the user's `shaders` directory.
+
 ##### Included shaders
 
- * `normal_mode.slangp`: stock shader for Normal and Compact modes.
- * `normal_mode_nearest.slangp`: stock shader with nearest neighbour filtering
+ * `normal_mode/stock.slangp`: stock shader for Normal and Compact modes with
+   bilinear filtering.
+ * `normal_mode/nearest.slangp`: stock shader with nearest neighbour filtering
    (pixelated, useful with integer scaling).
- * `normal_mode_bicubic.slangp`: stock shader with bicubic filtering.
- * `realistic_mode.slangp`: stock shader for Realistic mode.
- * `ps1_monitor.slangp`: a realistic representation of the PS/1 monitor with
+ * `normal_mode/bicubic.slangp`: stock shader with bicubic filtering.
+ * `realistic_mode/stock.slangp`: stock shader for Realistic mode.
+ * `ps1/monitor.slangp`: a realistic representation of the PS/1 monitor with
    light reflections (for any mode).
+ * `crt/lottes.slangp`: the CRT shader by Timothy Lottes.
 
 ##### RetroArch shaders
 
@@ -303,12 +308,12 @@ Most RetroArch shaders are created for GLSL version 4.50, so your drivers should
 support at least OpenGL 4.5 in case you want to use any of those.
 
 To install the RetroArch shaders put the RetroArch's `shaders_slang` directory
-into the IBMulator's `shaders` one. Then use a slangp preset with a path like
-`shaders/shaders_slang/foo/bar.slangp`.
+into the IBMulator's `shaders` (either the user's or the global assets' one).
+Then use a slangp preset with a path like `shaders_slang/foo/bar.slangp`.
 
 To install additional RetroArch shader packs follow their instructions
 considering any reference to the `RetroArch/shaders` directory a reference to
-`share/ibmulator/shaders`.
+IBMulator's `shaders`.
 
 #### Integer scaling
 
@@ -344,7 +349,7 @@ to go.
 If you are using the `opengl` renderer the actual filtering might depend on the
 shader. If you're not getting the desired result be sure to use a shader
 that supports integer scaling or an unfiltered output, for example the
-`normal_mode_nearest.slangp` shader.
+`normal_mode/nearest.slangp` shader.
 
 ### Savestates
 

@@ -37,8 +37,8 @@ void main()
 
 #pragma stage fragment
 
-#include "../filter_bicubic.glsl"
-#include "../color_functions.glsl"
+#include "../common/filter_bicubic.glsl"
+#include "../common/color_functions.glsl"
 
 in vec2 vTexCoord;
 uniform sampler2D Original;

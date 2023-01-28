@@ -1,0 +1,61 @@
+<rml>
+	<head>
+		<title>Save shader preset</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 450dp;
+				height: 190dp;
+				min-height: 190dp;
+				min-width: 450dp;
+				max-height: 190dp;
+				margin: auto;
+				background-color: #3C5464FF;
+			}
+			div#window
+			{
+				padding: 20dp;
+			}
+			#buttons {
+				position: absolute;
+				bottom: 20dp;
+				right: 20dp;
+				left: 20dp;
+				text-align: right;
+			}
+			button.romshell
+			{
+				margin-left: 10dp;
+			}
+			#shader_name,
+			#directory {
+				width: 100%;
+			}
+			#save_all {
+				margin-top: 10dp;
+				width: 100dp;
+			}
+			#add_comments {
+				margin-left: 5dp;
+				width: 140dp;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div id="info">
+			Enter the preset name:
+			<input type="text" id="shader_name"/>
+		</div>
+		<div style="margin-top: 10dp">
+		The file will be saved in:
+		<input type="text" id="directory" class="disabled" />
+		<input id="save_all" type="checkbox" class="romshell"><span>Save all</span></input>
+		<input id="add_comments" type="checkbox" class="romshell"><span>Add comments</span></input>
+		</div>
+		<div id="buttons">
+			<button id="save" class="romshell"><span>Save</span></button>
+			<button id="cancel" class="romshell"><span>Cancel</span></button>
+		</div>
+	</body>
+</rml>

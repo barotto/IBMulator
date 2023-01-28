@@ -79,16 +79,16 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_NORMAL_SCALE,     "fill" },
 		{ DISPLAY_NORMAL_ASPECT,    "4:3"  },
-		{ DISPLAY_NORMAL_SHADER,    "shaders/normal_mode.slangp" },
-		{ DISPLAY_REALISTIC_SHADER, "shaders/realistic_mode.slangp" },
+		{ DISPLAY_NORMAL_SHADER,    "normal_mode/stock.slangp" },
+		{ DISPLAY_REALISTIC_SHADER, "realistic_mode/stock.slangp" },
 		{ DISPLAY_BRIGHTNESS,       "1.0" },
 		{ DISPLAY_CONTRAST,         "1.0" },
 		{ DISPLAY_SATURATION,       "1.0" },
 		{ DISPLAY_AMBIENT,          "1.0" },
-		{ DISPLAY_FILTER,           "bilinear" },
 		{ DISPLAY_SAMPLERS_MODE,    "auto" },
 		{ DISPLAY_SHADER_INPUT,     "auto" },
-		{ DISPLAY_SHADER_OUTPUT,    "native" }
+		{ DISPLAY_SHADER_OUTPUT,    "native" },
+		{ DISPLAY_FILTER,           "bilinear" }
 	} },
 
 	{ CPU_SECTION, {
@@ -446,10 +446,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";           contrast: Monitor contrast, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";         saturation: Monitor saturation, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";      ambient_light: Intensity of the ambient light, as a number from 0.0 to 1.0 (needs support by the shader).\n"
-";   upscaling_filter: Stretching filter for the accelerated renderer or for the last pass of OpenGL shaders.\n"
-";                     For OpenGL shaders, it will be used only if the last pass does not render directly to the backbuffer.\n"
-";                     Possible values: nearest, bilinear, bicubic\n"
-";                     The bicubic filter is supported only by the OpenGL renderer.\n"
 ";  shader_input_size: Shader's input texture size.\n"
 ";                     Possible values: auto, crtc, video_mode.\n"
 ";                            auto: as defined by the shader (default is video_mode).\n"
@@ -460,6 +456,10 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                       native: use the native resolution of your monitor.\n"
 ";                          WxH: a specific size in pixels, maintaining the viewport's aspect ratio (the final stretching will use `upscaling_filter`).\n"
 ";                      max_WxH: a maximum size in pixels, maintaining the viewport's aspect ratio (the final stretching will use `upscaling_filter`).\n"
+";   upscaling_filter: Stretching filter for the accelerated renderer or for the last pass of OpenGL shaders.\n"
+";                     For OpenGL shaders, it will be used only if the last pass does not render directly to the backbuffer.\n"
+";                     Possible values: nearest, bilinear, bicubic\n"
+";                     The bicubic filter is supported only by the OpenGL renderer.\n"
 		},
 
 		{ CMOS_SECTION, ""
@@ -956,6 +956,55 @@ std::string AppConfig::get_value(const std::string &section, const std::string &
 		}
 	}
 	return valstr;
+}
+
+void AppConfig::set_user_home(std::string _path)
+{
+	m_user_home = _path;
+}
+
+void AppConfig::set_cfg_home(std::string _path)
+{
+	m_cfg_home = _path;
+	m_user_shaders_path = m_cfg_home + FS_SEP "shaders" FS_SEP;
+}
+
+void AppConfig::set_assets_home(std::string _path)
+{
+	m_assets_home = _path;
+	m_assets_shaders_path = m_assets_home + FS_SEP "shaders" FS_SEP;
+	m_images_path = m_assets_home + FS_SEP "gui" FS_SEP "images" FS_SEP;
+}
+
+std::string AppConfig::find_shader_asset(std::string _relative_file_path)
+{
+	// return find_file(std::string("shaders") + FS_SEP + _relative_file_path);
+	// should be faster:
+	try {
+		return FileSys::realpath((m_user_shaders_path + _relative_file_path).c_str());
+	} catch(std::runtime_error &) {
+		return FileSys::realpath((m_assets_shaders_path + _relative_file_path).c_str());
+	}
+}
+
+std::string AppConfig::find_shader_asset_relative_to(std::string _relative_file_path, std::string _relative_to_abs_file)
+{
+	std::string abs_directory = FileSys::get_path_dir(_relative_to_abs_file.c_str()) + FS_SEP;
+	std::string fullpath = abs_directory + _relative_file_path;
+	try {
+		fullpath = FileSys::realpath(fullpath.c_str());
+	} catch(std::exception &) {
+		std::string reference;
+		if(abs_directory.find(m_user_shaders_path) == 0) {
+			fullpath = m_assets_shaders_path + abs_directory.substr(m_user_shaders_path.size()) + _relative_file_path;
+		} else if(_relative_to_abs_file.find(m_assets_shaders_path) == 0) {
+			fullpath = m_user_shaders_path + abs_directory.substr(m_assets_shaders_path.size()) + _relative_file_path;
+		} else {
+			throw;
+		}
+		fullpath = FileSys::realpath(fullpath.c_str());
+	}
+	return fullpath;
 }
 
 std::string AppConfig::get_file_path(std::string _filename, FileType _type)

@@ -249,6 +249,10 @@ Rml::Element * Window::set_disabled(Rml::Element *_el, bool _disabled)
 {
 	assert(_el);
 	_el->SetClass("disabled", _disabled);
+	auto *ctrl = dynamic_cast<Rml::ElementFormControl*>(_el);
+	if(ctrl) {
+		ctrl->SetDisabled(_disabled);
+	}
 	return _el;
 }
 

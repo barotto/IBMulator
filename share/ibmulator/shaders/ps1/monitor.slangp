@@ -3,31 +3,31 @@ shaders = 3
 ibmu_input_size = crtc
 ibmu_samplers_mode = "pass"
 
-shader0 = ps1_monitor/vga_reflection.slang
+shader0 = vga_reflection.slang
 alias0 = Reflection
 filter_linear0 = true
 mipmap_input0 = true
 wrap_mode0 = mirrored_repeat
 scale_type0 = viewport
 
-shader1 = ps1_monitor/ps1_crt.slang
+shader1 = crt.slang
 alias1 = CRT
 filter_linear1 = true
 mipmap_input1 = true
 scale_type1 = viewport
 
-shader2 = ps1_monitor/ps1_monitor.slang
+shader2 = monitor.slang
 filter_linear2 = true
 ibmu_blending_output2 = true
 
 textures = "CRTEnv;Monitor;LEDBloom"
-CRTEnv = ps1_monitor/ps1_monitor_envmap.png
+CRTEnv = texture/glass_envmap.png
 CRTEnv_linear = true
 CRTEnv_wrap_mode = clamp_to_border
-Monitor = ps1_monitor/ps1_monitor_frame.png
+Monitor = texture/monitor_frame.png
 Monitor_linear = true
 Monitor_wrap_mode = clamp_to_border
-LEDBloom = ps1_monitor/power_led_bloom.png
+LEDBloom = texture/power_led_bloom.png
 LEDBloom_linear = true
 LEDBloom_wrap_mode = clamp_to_border
 

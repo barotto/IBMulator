@@ -23,6 +23,7 @@
 #include "shader_exception.h"
 #include "utils.h"
 #include "filesys.h"
+#include "gui.h"
 #include <regex>
 
 std::list<std::string> ShaderPreset::read_preset_file(std::string _path)
@@ -62,15 +63,13 @@ std::list<std::string> ShaderPreset::read_preset_file(std::string _path)
 	return data;
 }
 
-std::string ShaderPreset::resolve_relative_path(std::string _path, std::string _relative_to)
-{
-	std::string dir = FileSys::get_path_dir(_relative_to.c_str());
-	std::string fullpath(dir + '/' + _path);
-	return FileSys::realpath(fullpath.c_str());
-}
-
 INIFile ShaderPreset::include_preset_file(std::string _preset)
 {
+	if(m_references.find(_preset) != m_references.end()) {
+		throw std::runtime_error("circular dependency");
+	}
+	m_references.insert(_preset);
+
 	// TODO? this mess only because i insist in using the "inih" library
 	auto data = read_preset_file(_preset);
 
@@ -89,15 +88,13 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 			std::regex inclreg("#reference\\s+\"?([^\n\"]*)\"?");
 			std::smatch m;
 			if(std::regex_search(*line, m, inclreg) && m[1].matched) {
-				PDEBUGF(LOG_V1, LOG_OGL, " referencing %s from %s\n", m[1].str().c_str(), _preset.c_str());
-				std::string incldir = FileSys::get_path_dir(_preset.c_str());
-				std::string inclpath = incldir + '/' + m[1].str();
+				PINFOF(LOG_V1, LOG_OGL, " referencing %s from %s\n", m[1].str().c_str(), _preset.c_str());
 				try {
-					inclpath = FileSys::realpath(inclpath.c_str());
+					std::string inclpath = g_program.config().find_shader_asset_relative_to(m[1].str(), _preset);
 					INIFile ref = include_preset_file(inclpath);
 					ini.apply_defaults(ref);
 				} catch(std::runtime_error &e) {
-					throw std::runtime_error(str_format("cannot reference '%s': %s", inclpath.c_str(), e.what()));
+					throw std::runtime_error(str_format("cannot reference '%s': %s", m[1].str().c_str(), e.what()));
 				}
 			} else {
 				throw std::runtime_error(str_format("invalid reference '%s'", line->c_str()));
@@ -108,19 +105,19 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 	int shaders = ini.get_int("", "shaders", 0);
 	for(unsigned s=0; s<unsigned(shaders); s++) {
 		std::string key = str_format("shader%u", s);
-		std::string path = ini.get_string("", key);
-		if(!FileSys::is_absolute(path.c_str(), path.size())) {
-			path = resolve_relative_path(path, _preset);
-			ini.set_string("", key, path);
+		std::string file_path = ini.get_string("", key);
+		if(!FileSys::is_absolute(file_path.c_str(), file_path.size())) {
+			file_path = g_program.config().find_shader_asset_relative_to(file_path, _preset);
+			ini.set_string("", key, file_path);
 		}
 	}
 
 	std::string textures = ini.get_string("", "textures", "");
 	for(auto & name : parse_tokens(textures, "\\;")) {
-		std::string path = ini.get_string("", name);
-		if(!FileSys::is_absolute(path.c_str(), path.size())) {
-			path = resolve_relative_path(path, _preset);
-			ini.set_string("", name, path);
+		std::string file_path = ini.get_string("", name);
+		if(!FileSys::is_absolute(file_path.c_str(), file_path.size())) {
+			file_path = g_program.config().find_shader_asset_relative_to(file_path, _preset);
+			ini.set_string("", name, file_path);
 		}
 	}
 
@@ -129,18 +126,6 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 
 void ShaderPreset::load(std::string _path)
 {
-	//auto content = include_preset_file(_path);
-    //
-	//m_quoted_values = true;
-	//try {
-	//	INIFile::parse_text(content, _path);
-	//} catch(std::runtime_error &e) {
-	//	if(m_error > 0) {
-	//		throw ShaderPresetExc(e.what(), _path, content, m_error);
-	//	}
-	//	throw;
-	//}
-	
 	auto ini = include_preset_file(_path);
 	m_values = std::move(ini.get_values());
 	m_parsed_file = _path;
@@ -371,4 +356,28 @@ ShaderPreset::SamplersMode ShaderPreset::get_samplers_mode()
 	}
 
 	return mode;
+}
+
+void ShaderPreset::write_reference(FILE *_file, std::string _preset)
+{
+	_preset = "#reference " + _preset + "\n\n";
+	if(fwrite(_preset.data(), _preset.size(), 1, _file) != 1) {
+		throw std::runtime_error("Cannot write to file.");
+	}
+}
+
+void ShaderPreset::write_comment(FILE *_file, std::string _comment)
+{
+	_comment = "// " + _comment + "\n";
+	if(fwrite(_comment.data(), _comment.size(), 1, _file) != 1) {
+		throw std::runtime_error("Cannot write to file.");
+	}
+}
+
+void ShaderPreset::write_parameter(FILE *_file, std::string _name, float _value)
+{
+	std::string line = str_format("%s = %f\n", _name.c_str(), _value);
+	if(fwrite(line.data(), line.size(), 1, _file) != 1) {
+		throw std::runtime_error("Cannot write to file.");
+	}
 }

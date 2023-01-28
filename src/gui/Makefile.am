@@ -49,6 +49,7 @@ libgui_a_SOURCES = \
 	windows/new_floppy.cpp \
 	windows/printer_control.cpp \
 	windows/shader_parameters.cpp \
+	windows/shader_save_info.cpp \
 	capture/capture.cpp \
 	capture/capture_imgseq.cpp \
 	capture/capture_videofile.cpp \
@@ -107,6 +108,7 @@ noinst_HEADERS = \
 	windows/new_floppy.h \
 	windows/printer_control.h \
 	windows/shader_parameters.h \
+	windows/shader_save_info.h \
 	capture/capture.h \
 	capture/capture_imgseq.h \
 	capture/capture_videofile.h \

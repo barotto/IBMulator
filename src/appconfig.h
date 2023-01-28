@@ -56,15 +56,18 @@ private:
 	std::string m_user_home;
 	std::string m_cfg_home;
 	std::string m_assets_home;
+	std::string m_assets_shaders_path;
+	std::string m_user_shaders_path;
+	std::string m_images_path;
 
 	static ini_file_t ms_def_values[2];
 	static ini_filehelp_t ms_help;
 	static ini_order_t ms_keys_order;
 
 public:
-	void set_user_home(std::string _path) { m_user_home = _path; }
-	void set_cfg_home(std::string _path) { m_cfg_home = _path; }
-	void set_assets_home(std::string _path) { m_assets_home = _path; }
+	void set_user_home(std::string _path);
+	void set_cfg_home(std::string _path);
+	void set_assets_home(std::string _path);
 	std::string get_assets_home() const { return m_assets_home; }
 	std::string get_user_home() const { return m_user_home; }
 	std::string get_cfg_home() const { return m_cfg_home; }
@@ -83,6 +86,13 @@ public:
 	void reset();
 	void merge(const AppConfig &_config, ConfigType _type);
 	void copy(const AppConfig &_config);
+
+	std::string get_assets_shaders_path() const { return m_assets_shaders_path; }
+	std::string get_users_shaders_path() const { return m_user_shaders_path; }
+	std::string get_images_path() const { return m_images_path; }
+	
+	std::string find_shader_asset(std::string _relative_file_path);
+	std::string find_shader_asset_relative_to(std::string _relative_file_path, std::string _relative_to_abs_file);
 };
 
 

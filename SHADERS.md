@@ -775,7 +775,7 @@ overridden by the same keys in the current preset.
 
 `PRESET` path must always be relative, and it will be relative to the path of
 the current file. Nested references are allowed, but references in a cycle will
-probably result in a program lock-up as there's no preprocessor guards.
+result in an error.
 
 E.g.:
 ```

@@ -345,8 +345,6 @@ public:
 	
 	Rml::ElementDocument * load_document(const std::string &_filename);
 	void unload_document(Rml::ElementDocument *);
-	static std::string shaders_dir();
-	static std::string images_dir();
 
 	SDL_Surface *load_surface(const std::string &_name);
 	void update_surface(const std::string &_name, SDL_Surface *_data);
@@ -361,6 +359,7 @@ public:
 	void show_dbg_message(std::string _mex);
 	void show_message_box(const std::string &_title, const std::string &_message, MessageWnd::Type _type, 
 			std::function<void()> _on_action1 = nullptr, std::function<void()> _on_action2 = nullptr);
+	void show_error_message_box(const std::string &_message);
 	bool are_windows_visible();
 	void show_options_window();
 	void toggle_dbg_windows();

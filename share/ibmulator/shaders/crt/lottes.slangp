@@ -1,6 +1,6 @@
 shaders = 1
 
-shader0 = crt_lottes.slang
+shader0 = lottes.slang
 filter_linear0 = false
 
 shadowMask = 0.0

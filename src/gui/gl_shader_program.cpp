@@ -233,7 +233,7 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 		throw ShaderLinkExc("", m_gl_name);
 	}
 
-	PDEBUGF(LOG_V1, LOG_OGL, " version: %u\n", m_version);
+	PINFOF(LOG_V2, LOG_OGL, " version: %u\n", m_version);
 
 	// Do introspection
 	std::string name_str;
@@ -244,7 +244,7 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 	GLint active_uniforms = 0;
 	GLCALL( glGetProgramiv(m_gl_name, GL_ACTIVE_UNIFORMS, &active_uniforms) );
 
-	PDEBUGF(LOG_V1, LOG_OGL, " uniforms:\n");
+	PINFOF(LOG_V2, LOG_OGL, " uniforms: %d\n", active_uniforms);
 	GLint ubinding = -1;
 	if(m_version < 420) {
 		ubinding = 0;
@@ -257,9 +257,9 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 		auto stduni = ms_builtin_uniform_names.find(uni.member_name);
 		if(stduni != ms_builtin_uniform_names.end()) {
 			m_builtins[stduni->second].push_back(uidx);
-			PDEBUGF(LOG_V1, LOG_OGL, "  [B] %s\n", uni.dbg_str(false).c_str());
+			PINFOF(LOG_V2, LOG_OGL, "  [B] %s\n", uni.dbg_str(false).c_str());
 		} else {
-			PDEBUGF(LOG_V1, LOG_OGL, "  [?] %s\n", uni.dbg_str(false).c_str());
+			PINFOF(LOG_V2, LOG_OGL, "      %s\n", uni.dbg_str(false).c_str());
 		}
 		if(m_uniform_names.find(uni.member_name) != m_uniform_names.end()) {
 			auto *other = &m_uniforms[m_uniform_names[uni.member_name].front()];
@@ -270,7 +270,7 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 		m_uniform_names[uni.member_name].push_back(uidx);
 	}
 
-	PDEBUGF(LOG_V1, LOG_OGL, " uniform blocks:\n");
+	PINFOF(LOG_V2, LOG_OGL, " uniform blocks: %d\n", active_blocks);
 	ubinding = -1;
 	if(m_version < 420) {
 		ubinding = 0;
@@ -280,10 +280,10 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 		if(m_version < 420) {
 			ubinding = block.binding + 1;
 		}
-		PDEBUGF(LOG_V1, LOG_OGL, "  %d: \"%s\", binding=%d, data_size=%d\n",
+		PINFOF(LOG_V2, LOG_OGL, "  %d: \"%s\", binding=%d, data_size=%d\n",
 				m_blocks.back().index, m_blocks.back().name.c_str(), m_blocks.back().binding, m_blocks.back().data_size);
 		for(auto uni : m_blocks.back().uniforms) {
-			PDEBUGF(LOG_V1, LOG_OGL, "     %s\n", m_uniforms[uni].dbg_str(true).c_str());
+			PINFOF(LOG_V2, LOG_OGL, "     %s\n", m_uniforms[uni].dbg_str(true).c_str());
 		}
 	}
 

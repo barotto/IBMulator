@@ -22,7 +22,7 @@ void main()
 #pragma stage fragment
 
 #ifdef BICUBIC_FILTER
-#include "filter_bicubic.glsl"
+#include "../common/filter_bicubic.glsl"
 #define FetchTexel FetchTexelBicubic
 #else
 #define FetchTexel texture

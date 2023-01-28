@@ -106,6 +106,7 @@ public:
 	};
 
 protected:
+	std::set<std::string> m_references;
 	std::vector<ShaderN> m_shaders;
 	std::vector<Texture> m_textures;
 	DefinesList m_defines;
@@ -131,6 +132,10 @@ public:
 
 	InputSize get_input_size();
 	SamplersMode get_samplers_mode();
+	
+	static void write_reference(FILE *_file, std::string _preset);
+	static void write_comment(FILE *_file, std::string _comment);
+	static void write_parameter(FILE *_file, std::string _name, float _value);
 
 protected:
 	INIFile include_preset_file(std::string _path);

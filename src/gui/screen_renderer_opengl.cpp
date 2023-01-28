@@ -116,19 +116,32 @@ void ScreenRenderer_OpenGL::create_blitter()
 		GLCALL( glSamplerParameteri(m_blitter_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
 	}
 
-	std::vector<std::string> vs{GUI::shaders_dir() + "fb_blitter.slang"};
-	std::vector<std::string> fs{GUI::shaders_dir() + "fb_blitter.slang"};
+	std::string shader;
+	try {
+		shader = g_program.config().find_shader_asset("common/fb_blitter.slang");
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_GUI, "Cannot load the common/fb_blitter.slang shader program: %s\n", e.what());
+		throw;
+	}
+	std::vector<std::string> vs{shader};
+	std::vector<std::string> fs{shader};
 	std::list<std::string> defs{};
 
 	// select the sampler program
-	if(m_output_sampler == DISPLAY_SAMPLER_NEAREST || m_output_sampler == DISPLAY_SAMPLER_BILINEAR) {
-		fs.push_back(GUI::shaders_dir() + "filter_bilinear.fs");
-	} else if(m_output_sampler == DISPLAY_SAMPLER_BICUBIC) {
-		fs.push_back(GUI::shaders_dir() + "filter_bicubic.fs");
-	} else {
-		PERRF(LOG_GUI, "Invalid upscaling filter type\n");
-		throw std::exception();
+	try {
+		if(m_output_sampler == DISPLAY_SAMPLER_NEAREST || m_output_sampler == DISPLAY_SAMPLER_BILINEAR) {
+			fs.push_back(g_program.config().find_shader_asset("common/filter_bilinear.slang"));
+		} else if(m_output_sampler == DISPLAY_SAMPLER_BICUBIC) {
+			fs.push_back(g_program.config().find_shader_asset("common/filter_bicubic.slang"));
+		} else {
+			PERRF(LOG_GUI, "Invalid upscaling filter type\n");
+			throw std::exception();
+		}
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_GUI, "Cannot configure the blitter shader: %s\n", e.what());
+		throw;
 	}
+
 	try {
 		m_blitter = std::make_unique<GLShaderProgram>(vs, fs, defs);
 	} catch(ShaderExc &e) {
