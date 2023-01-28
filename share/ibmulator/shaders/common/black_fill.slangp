@@ -1,2 +1,3 @@
 shaders = 1
 shader0 = black_fill.slang
+ibmu_output_size = native

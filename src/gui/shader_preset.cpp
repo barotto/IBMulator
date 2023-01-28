@@ -342,6 +342,15 @@ ShaderPreset::InputSize ShaderPreset::get_input_size()
 	return size;
 }
 
+std::string ShaderPreset::get_output_size()
+{
+	auto viewport_size = get_string("", "ibmu_output_size", "");
+	if(viewport_size.empty()) {
+		viewport_size = g_program.config().get_string(DISPLAY_SECTION, DISPLAY_SHADER_OUTPUT, "native");
+	}
+	return viewport_size;
+}
+
 ShaderPreset::SamplersMode ShaderPreset::get_samplers_mode()
 {
 	ini_enum_map_t samplers_mode{

@@ -121,7 +121,7 @@ GLShaderChain::GLShaderChain(std::string _preset)
 		}
 	}
 
-	auto viewport_size = g_program.config().get_string(DISPLAY_SECTION, DISPLAY_SHADER_OUTPUT, "native");
+	auto viewport_size = m_preset.get_output_size();
 	m_viewport_size_max = false;
 	if(viewport_size.find("max_") == 0) {
 		m_viewport_size_max = true;

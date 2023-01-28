@@ -131,6 +131,7 @@ public:
 	float get_parameter_value(std::string _name, float _initial);
 
 	InputSize get_input_size();
+	std::string get_output_size();
 	SamplersMode get_samplers_mode();
 	
 	static void write_reference(FILE *_file, std::string _preset);
