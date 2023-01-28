@@ -28,7 +28,6 @@ class ScreenRenderer_OpenGL : public ScreenRenderer
 {
 protected:
 
-	
 	struct Shader {
 		std::unique_ptr<GLShaderChain> shader;
 		ScreenRenderer::Params::Matrices geometry;
@@ -36,6 +35,7 @@ protected:
 		bool feedbacks_rotated = false;
 		bool history_rotated = false;
 		ShaderPreset::InputSize input_size = ShaderPreset::input_undef;
+		vec2i last_original_size;
 
 		void update_geometry(const ScreenRenderer::Params::Matrices &_mats);
 		void update_original(unsigned _width, unsigned _height, GLenum _format, GLenum _type, unsigned _stride, void *_data);

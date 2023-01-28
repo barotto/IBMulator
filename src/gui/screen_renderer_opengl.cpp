@@ -245,15 +245,9 @@ void ScreenRenderer_OpenGL::Shader::update_original(unsigned _width, unsigned _h
 	if(!shader) {
 		return;
 	}
-	
-	GLTexture *original = shader->get_original();
-	
-	if(!original) {
-		return;
-	}
-	
+
 	if(shader->are_framebuffers_ready() &&
-	  (_width != unsigned(original->get_size().x) || _height != unsigned(original->get_size().y))) {
+	  (_width != unsigned(last_original_size.x) || _height != unsigned(last_original_size.y))) {
 		// vga resolution changed, update the outputs that depend on it
 		shader->update_size(_width, _height, ShaderPreset::Scale::original);
 		if(shader->has_feedbacks()) {
@@ -262,6 +256,13 @@ void ScreenRenderer_OpenGL::Shader::update_original(unsigned _width, unsigned _h
 			shader->update_size(_width, _height, ShaderPreset::Scale::original);
 			shader->clear_framebuffers();
 		}
+	}
+	last_original_size = vec2i(_width, _height);
+
+	GLTexture *original = shader->get_original();
+
+	if(!original) {
+		return;
 	}
 
 	if(LIKELY(shader->is_history_ready())) {
@@ -292,11 +293,7 @@ void ScreenRenderer_OpenGL::Shader::rotate_feedbacks()
 void ScreenRenderer_OpenGL::Shader::render_begin()
 {
 	if(shader && !shader->are_framebuffers_ready()) {
-		GLTexture *original = shader->get_original();
-		shader->init_framebuffers(
-			vec2i(int(original->get_size().x), int(original->get_size().y)),
-			geometry.output_size
-		);
+		shader->init_framebuffers(last_original_size, geometry.output_size);
 	}
 
 	rotate_feedbacks();
@@ -367,6 +364,7 @@ void ScreenRenderer_OpenGL::render_end()
 
 void ScreenRenderer_OpenGL::run_shader(GLShaderChain *_shader, const ScreenRenderer::Params::Matrices &_geometry)
 {
+	PDEBUGF(LOG_V3, LOG_OGL, "Run: %s\n", _shader->get_name().c_str());
 	for(auto & pass : _shader->get_passes()) {
 		auto prg = pass->get_program();
 		prg->use();
@@ -445,6 +443,7 @@ void ScreenRenderer_OpenGL::run_shader(GLShaderChain *_shader, const ScreenRende
 
 	if(_shader->get_last_pass_output()) {
 		// blit to backbuffer
+		PDEBUGF(LOG_V3, LOG_OGL, "Run: blitter\n");
 		GLCALL( glBindFramebuffer(GL_FRAMEBUFFER, 0) );
 		GLCALL( glViewport(0, 0, m_screen_params.viewport_size.x, m_screen_params.viewport_size.y) );
 		GLCALL( glDisable(GL_FRAMEBUFFER_SRGB) );

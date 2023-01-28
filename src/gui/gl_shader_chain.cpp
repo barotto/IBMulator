@@ -33,6 +33,7 @@ GLShaderChain::GLShaderChain(std::string _preset)
 		PERRF(LOG_OGL, "Error: %s\n", e.what());
 		throw;
 	}
+	m_name = FileSys::get_basename(_preset.c_str());
 
 	PINFOF(LOG_V1, LOG_OGL, " total passes: %u\n", m_preset.get_shaders().size());
 

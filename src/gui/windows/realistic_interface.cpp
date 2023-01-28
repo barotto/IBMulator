@@ -340,6 +340,9 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	screen()->params.vga.output_size.x = round(vga_size.x);
 	screen()->params.vga.output_size.y = round(vga_size.y);
 
+	screen()->params.crt.output_size.x = round(crt_size.x);
+	screen()->params.crt.output_size.y = round(crt_size.y);
+
 	vec2f scale, trans;
 	scale.x = crt_size.x / _width;
 	scale.y = crt_size.y / _height;

@@ -30,6 +30,7 @@ public:
 	using PassList = std::vector<std::unique_ptr<GLShaderPass>>;
 
 protected:
+	std::string m_name;
 	ShaderPreset m_preset;
 	PassList m_chain;
 
@@ -51,6 +52,7 @@ protected:
 public:
 	GLShaderChain(std::string _preset);
 
+	const std::string &get_name() const { return m_name; }
 	ShaderPreset & get_preset() { return m_preset; }
 	PassList & get_passes() { return m_chain; }
 
