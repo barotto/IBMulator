@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -183,7 +183,8 @@ uint16_t SystemBoard::read(uint16_t _address, unsigned _io_len)
 			value = m_s.POST;
 			break;
 		default:
-			PERRF_ABORT(LOG_MACHINE, "Unhandled read from port 0x%04X\n", _address);
+			PWARNF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X\n", _address);
+			break;
 	}
 
 	PDEBUGF(LOG_V2, LOG_MACHINE, "read  0x%03X -> 0x%04X\n", _address, value);
@@ -303,7 +304,8 @@ void SystemBoard::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 #endif
 
 		default:
-			PERRF_ABORT(LOG_MACHINE, "Unhandled write to port 0x%04X\n", _address);
+			PWARNF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X\n", _address);
+			break;
 	}
 }
 
