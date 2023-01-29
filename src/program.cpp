@@ -464,6 +464,11 @@ bool Program::initialize(int argc, char** argv)
 	m_config[0].set_assets_home(m_datapath);
 	PINFO(LOG_V1,"Assets directory: %s\n", m_datapath.c_str());
 
+	// User's shaders dir
+	auto user_shaders = m_config[0].get_users_shaders_path();
+	FileSys::create_dir(user_shaders.c_str());
+	PINFO(LOG_V1, "Shaders directory: %s\n", user_shaders.c_str());
+
 	//Capture dir, create if not exists
 	std::string capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	if(capture_dir_path.empty()) {
