@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -75,7 +75,7 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 
 	INIFile ini;
 	try {
-		ini.parse(data, _preset, true);
+		ini.parse(data, _preset);
 	} catch(std::runtime_error &e) {
 		if(m_error > 0) {
 			throw ShaderPresetExc(e.what(), _preset, data, m_error);

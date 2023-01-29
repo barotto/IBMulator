@@ -37,14 +37,28 @@ static char* lskip(const char* s)
     return (char*)s;
 }
 
-/* Return pointer to first char c or ';','#','/' comment in given string, or pointer to
-   null at end of string if neither found. ';','#','/' must be prefixed by a whitespace
+static bool is_comment_char(char c)
+{
+    return (c == ';' || c == '#' || c == '/');
+}
+
+/* Return pointer to first char c or comment in given string, or pointer to
+   null at end of string if neither found. comments must be prefixed by a whitespace
    character to register as a comment. */
 static char* find_char_or_comment(const char* s, char c)
 {
     int was_whitespace = 0;
-    while (*s && *s != c && !(was_whitespace && (*s == ';' || *s == '#' || *s == '/'))) {
+    while (*s && *s != c && !(was_whitespace && is_comment_char(*s))) {
         was_whitespace = isspace((unsigned char)(*s));
+        s++;
+    }
+    return (char*)s;
+}
+
+/* Return pointer to to first char c or null */
+static char* find_char(const char* s, char c)
+{
+    while (*s && *s != c) {
         s++;
     }
     return (char*)s;
@@ -101,7 +115,7 @@ int ini_parse_file(FILE* file,
 #endif
         start = lskip(rstrip(start));
 
-        if (*start == ';' || *start == '#') {
+        if (is_comment_char(*start)) {
             /* Per Python ConfigParser, allow '#' comments at start of line */
         }
 #if INI_ALLOW_MULTILINE
@@ -125,19 +139,25 @@ int ini_parse_file(FILE* file,
                 error = lineno;
             }
         }
-        else if (*start && (*start != ';' && *start != '#' && *start != '/')) {
+        else if (*start && !is_comment_char(*start)) {
             /* Not a comment, must be a name[=:]value pair */
             end = find_char_or_comment(start, '=');
             if (*end != '=') {
                 end = find_char_or_comment(start, ':');
             }
             if (*end == '=' || *end == ':') {
-                *end = '\0';
+                *end = '\0'; // ends the string at the '=' so that rstrip() will return the key 
                 name = rstrip(start);
                 value = lskip(end + 1);
-                end = find_char_or_comment(value, '\0');
-                if (*end == ';' || *end == '#' || *end == '/')
+                if(*value == '"') {
+                    value = lskip(value + 1);
+                    end = find_char(value, '"');
                     *end = '\0';
+                } else {
+                    end = find_char_or_comment(value, '\0');
+                    if (is_comment_char(*end))
+                        *end = '\0';
+                }
                 rstrip(value);
 
                 /* Valid name[=:]value pair found, call handler */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,9 +29,8 @@
 #include "ini/ini.h"
 
 
-void INIFile::parse(const std::string &_filename, bool _quoted_values)
+void INIFile::parse(const std::string &_filename)
 {
-	m_quoted_values = _quoted_values;
 	m_error = ini_parse(FileSys::to_native(_filename).c_str(), value_handler, this);
 	if(m_error != 0) {
 		throw std::exception();
@@ -39,7 +38,7 @@ void INIFile::parse(const std::string &_filename, bool _quoted_values)
 	m_parsed_file = _filename;
 }
 
-void INIFile::parse(const std::list<std::string> &_content, const std::string &_filename, bool _quoted_values)
+void INIFile::parse(const std::list<std::string> &_content, const std::string &_filename)
 {
 	auto file = FileSys::make_tmpfile();
 
@@ -50,7 +49,6 @@ void INIFile::parse(const std::list<std::string> &_content, const std::string &_
 	}
 	fseek(file.get(), 0, SEEK_SET);
 
-	m_quoted_values = _quoted_values;
 	m_error = ini_parse_file(file.get(), value_handler, this);
 	if(m_error != 0) {
 		throw std::runtime_error(str_format("parse error at line %d", m_error));
@@ -350,14 +348,11 @@ int INIFile::value_handler(void* _user, const char* _section, const char* _name,
 
 	std::string s = make_key(_section);
 	std::string n = make_key(_name);
-	std::string v = _value;
-	if(reader->m_quoted_values && v.front() == '"' && v.back() == '"') {
-		v = v.substr(1, v.length()-2);
-	}
-	ini_section_t & sec = reader->m_values[s];
-	sec[n] = v;
 
-	PDEBUGF(LOG_V2, LOG_PROGRAM, "config [%s]:%s=%s\n", s.c_str(), n.c_str(), v.c_str());
+	ini_section_t & sec = reader->m_values[s];
+	sec[n] = _value;
+
+	PDEBUGF(LOG_V2, LOG_PROGRAM, "config [%s]:%s=%s\n", s.c_str(), n.c_str(), _value);
 
 	return 1;
 }

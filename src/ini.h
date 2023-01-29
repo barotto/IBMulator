@@ -34,7 +34,6 @@ class INIFile
 protected:
 	std::string m_parsed_file;
 	int m_error = 0;
-	bool m_quoted_values = false;
 
 	ini_file_t m_values;
 
@@ -48,8 +47,8 @@ public:
 
 	std::string get_path() const { return m_parsed_file; }
 
-	void parse(const std::string &_filename, bool _quoted_values=false);
-	void parse(const std::list<std::string> &_content, const std::string &_filename, bool _quoted_values=false);
+	void parse(const std::string &_filename);
+	void parse(const std::list<std::string> &_content, const std::string &_filename);
 	
 	static int parse_int(const std::string &_str);
 	static double parse_real(const std::string &_str);
