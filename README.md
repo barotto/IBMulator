@@ -22,7 +22,11 @@
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
   * [Serial port](#serial-port)
+    * [Modem connections](#modem-connections)
+      * [PRODIGY service](#prodigy-service)
+      * [Modem troubleshooting](#modem-troubleshooting)
     * [Null modem connections](#null-modem-connections)
+    * [Network options and limitations](#network-options-and-limitations)
   * [Parallel port](#parallel-port)
     * [Virtual printer](#virtual-printer)
   * [MIDI output](#midi-output)
@@ -482,15 +486,189 @@ paramenter must be set with the address and port to listen to in the form
 * `net-client`: network client that connects to a network server at launch; the 
 `dev` paramenter must be set with the address and port to connect to in the form
 `address:port`, for example `dev=192.168.1.100:6667`.
+* `modem`: virtual modem that connects and receives calls over the network.
 
 If you need to use both a mouse and a serial device, you have to configure a
 PS/2 mouse in `[gui]:mouse` (default).
 
-The serial port will keep connections open when a state is restored. The only
-exception is for the serial mouse, which takes precedence and will always be
-reconnected if the machine is configured with one when a state is saved.
-In this case, any open connection will be closed before the serial mouse is
-reconnected.
+The serial port will keep its mode and connections open when a state is
+restored. The only exceptions are for `modem` and `serial mouse`. Both modes
+always take precedence and will be forced if the machine is configured with one
+of them when a state is saved. The modem will be reset to its default state and
+drop any active connection.
+
+#### Modem connections
+
+IBMulator emulates a Hayes compatible modem allowing one to dial / host a BBS or
+play games across the Internet.
+
+The modem is configured using the `[modem]` section in ibmulator.ini:
+
+* `baud_rate`: the speed of the modem in bits-per-second. Possible values range
+  from 300 to 56000.
+* `listen_addr`: address and port on which to open a listening socket for
+  incoming calls. You need to set this value if you want to host a game or BBS.
+  Setting it to `0.0.0.0:2323` will open a socket listening on any interface for
+  incoming connections on port 2323.
+* `phonebook_file`: a text file containing the mapping between phone numbers and
+  network addresses. If the DOS program / game won't allow you to enter anything
+  else other than numbers, you can associate a phone number to a host:port
+  address in this file. Every line must have the following form:
+  ```
+  55512345 remote.bbs.com:23
+  ```
+  If you omit the port number the default `23` will be used.  
+  An empty file is automatically created in your user folder if the specified
+  file doesn't exist.
+* `telnet_mode`: enable the Telnet protocol interpretation, which is needed if
+  you connect to BBSes behind Telnet servers.
+* `conn_timeout`: a timeout in seconds after which the modem will hang during
+  the dialing process when the remote host won't respond.
+* `warmup_delay`: drop all network traffic for a short period after answering a
+  call (reportedly some games need this).
+* `connect_code`: numeric result code after a successful connect. Some games 
+  need this set to a specific number (usually 10), otherwise keep it to `auto`.
+
+IBMulator can also play tones and other sounds.  
+See the `[soundfx]` section to configure sounds.
+
+To "dial" a BBS:
+
+ 1. Configure IBMulator as follows:
+    ```
+    [serial]
+    mode = modem
+
+    [modem]
+    telnet_mode = yes
+    ```
+    If you're positive that the BBSes you plan to dial are not hosted behind
+    Telnet servers, then configure IBMulator with
+    ```
+    [modem]
+    telnet_mode = no
+    ```
+
+ 2. When asked by the terminal program, set the "phone number" of the BBS to its
+    hostname or IP, optionally followed by the port number, as follows:
+    - BBS on standard Telnet port (23): remote.bbs.com
+    - BBS on a non-standard port: remote.bbs.com:10024
+
+    In case the program won't accept letters, map a number using the
+    `phonebook_file` option in ibmulator.ini.
+
+ 3. If the BBS is hosted behind a Telnet interface and the `telnet_mode`
+    configuration option is not applied, then customize your dial-prefix to
+    enable telnet-mode as follows:
+    ```
+    AT+NET1DT
+    ```
+    If `telnet_mode` is enabled and file-transfers fail or are corrupted for a
+    particular BBS then it's likely hosted directly on the Internet using a
+    TCP-to-serial gateway as used by vintage BBSes (e.g. Commodore, Apple,
+    Atari, etc.). In this case, explicitly disable telnet-mode for this BBS:
+    ```
+    AT+NET0DT
+    ```
+
+To host a BBS:
+
+ 1. Configure IBMulator as follows:
+    ```
+    [serial]
+    mode = modem
+
+    [modem]
+    telnet_mode = yes
+    listen_addr = 0.0.0.0:2323
+    ```
+    A port greater than 1024 allows you to run IBMulator as a normal user
+    instead of requiring administrative rights (**Note**: running IBMulator as
+    the root/Administrator user is not reccomended).
+
+ 2. Launch and configure your preferred DOS-based BBS software.
+
+ 3. To allow someone on the Internet to connect to your IBMulator BBS,
+    you will (likely) need to open a port on your router/firewall and
+    forward it into your IBMulator BBS machine.  We suggest opening port 23,
+    the standard Telnet port, and forwarding it into your IBMulator machine's
+    IP listening on port 2323. Consult your router's manual or a How-to
+    guide for more information regarding port-forwarding and service hosting.
+
+In general, the default communication settings should be left as-is.
+Typically these are:
+
+- COM port 1:
+  - 03F8 address
+  - IRQ4 interrupt
+- 8N1, meaning: data-bits (8), parity (none), and stop-bits (1).
+- 16550 fifo enabled
+- Software flow control (Xon/Xoff) enabled
+- Hardware flow control (CTS/RTS) enabled
+- Hardware flow control (DSR/DTR) disabled
+
+The port baud rate should be set equal or greater than the `baud_rate` setting
+of the modem.
+
+##### PRODIGY service
+
+The IBM PS/1 was preloaded with the PRODIGY client and a direct link to the
+software was available from the 4-quad interface (US version).
+
+The service has since long gone, but an effort to recreate it is ongoing and a
+docker version is now available.
+See the [Prodigy Reloaded](https://www.prodigyreloaded.com/) project site and
+[its GitHub](https://github.com/ProdigyReloaded) for more information.
+
+To connect to Prodigy Reloaded use these settings:
+```
+[modem]
+baud_rate = 2400
+telnet_mode = no
+```
+
+The client preinstalled in the PS/1 was version 6.03.17. If you receive an 
+"API 18" error trying to connect with it, don't call 1-800-759-8000 as suggested
+in the error screen but instead do this:  
+edit `C:\PRODIGY\CONFIG.SM` and change `OBJECT:XTG00000.PG1;` to
+`OBJECT:TLOT0010.PG1;`
+
+##### Modem troubleshooting
+
+Problem: I keep downloading corrupted files from a BBS and/or I see garbled text
+when I connect to one.  
+Solution: enable `telnet_mode`.
+
+Problem: I can successfully host and establish a connection with a videogame,
+but afterward the game won't start or seems to hang.  
+Solution: disable `telnet_mode`.
+
+Problem: the connection seems to work fine but after a short while I start to
+see a bunch of random characters on my terminal instead of cool BBS ASCII art.  
+Solution: it might be that the VM can't keep up with the data and so the DOS
+terminal software's internal buffers are overrun. Try overclocking the emulated
+CPU, or reducing the modem's baud rate, or both.
+
+Problem: I can't connect with the videogame I'm playing, it keeps reporting a
+generic error, but IBMulator tells me the connection is successfully
+established.  
+Solution: the game might expect a specific result code when the connection is 
+established. Try using this:
+```
+[modem]
+connect_code = 10
+```
+
+Problem: when someone "calls" me, nothing happens.  
+Suggestions: check the port forwarding options in your router; check the value
+of `[modem]:listen_addr`; launch IBMulator with the `-v2` option and check the
+`log.txt` file.
+
+Problem: after the handshaking sounds the connection seems to freeze.  
+Solution: disable the handshaking sounds, or try the short 2 seconds version
+(when you hear the handshake the connection is already established but the data
+won't start to flow until the sounds finish playing; this might cause a server
+timeout).
 
 #### Null modem connections
 
@@ -517,6 +695,8 @@ listening again after a client disconnects.
 If IBMulator is configured as a client and it fails to connect to a server, it
 has to be restarted to retry the connection.
 
+#### Network options and limitations
+
 You can enable the status indicators with `[gui]:show_indicators` or `SHIFT+F4`
 to see the current status of the connection. When a connection is successfully
 established the `NET` indicator will appear green.
@@ -537,7 +717,7 @@ Network modes have some limitations:
 * savestates won't work while the serial port is in use, as it's currently not
 possible to save and restore the same state on both the client and the server
 (you can always save just before starting using the port, ie. just before
-establishing a null modem connection in a game).
+establishing a network connection in a game).
 
 ### Parallel port
 

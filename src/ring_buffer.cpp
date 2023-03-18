@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -75,14 +75,22 @@ size_t RingBuffer::read(uint8_t *_data, size_t _len)
 	return _len;
 }
 
+size_t RingBuffer::read(uint8_t *_data)
+{
+	return read(_data, 1);
+}
+
 size_t RingBuffer::write(uint8_t *_data, size_t _len)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	if(_data == nullptr || !_len || m_write_avail == 0) {
+		PDEBUGF(LOG_V0, LOG_COM, "WRITE OVERFLOW (0 of %u)\n", _len);
 		return 0;
 	}
 
+	size_t orig_len = _len;
+	
 	if(_len > m_write_avail) {
 		_len = m_write_avail;
 	}
@@ -101,7 +109,15 @@ size_t RingBuffer::write(uint8_t *_data, size_t _len)
 	m_write_ptr = (m_write_ptr + _len) % m_size;
 	m_write_avail -= _len;
 
+	if(_len != orig_len) {
+		PDEBUGF(LOG_V0, LOG_COM, "WRITE OVERFLOW (%u!=%u)\n", orig_len, _len);
+	}
 	return _len;
+}
+
+size_t RingBuffer::write(uint8_t _data)
+{
+	return write(&_data, 1);
 }
 
 size_t RingBuffer::shrink_data(size_t _limit)
@@ -135,6 +151,13 @@ size_t RingBuffer::get_read_avail() const
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	return (m_size - m_write_avail);
+}
+
+size_t RingBuffer::get_write_avail() const
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	return (m_write_avail);
 }
 
 void RingBuffer::p_clear()

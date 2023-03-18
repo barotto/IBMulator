@@ -75,6 +75,7 @@ public:
 	std::string get_value(const std::string &_section, const std::string &_name, bool _quiet=false);
 
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
+	std::string try_get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string get_file_path(std::string _filename, FileType _type);
 	std::string find_file(const std::string &_section, const std::string &_name);
 	std::string find_file(const std::string &_filename);
@@ -262,6 +263,10 @@ public:
 #define SOUNDFX_HDD_SPIN        "hdd_spin"
 #define SOUNDFX_HDD_SEEK        "hdd_seek"
 #define SOUNDFX_SYSTEM          "system"
+#define SOUNDFX_MODEM           "modem"
+#define SOUNDFX_MODEM_COUNTRY   "modem_country"
+#define SOUNDFX_MODEM_FILTERS   "modem_filters"
+#define SOUNDFX_MODEM_HANDSHAKE "modem_handshake"
 
 #define SERIAL_SECTION          "serial"
 #define SERIAL_ENABLED          "enabled"
@@ -269,18 +274,33 @@ public:
 #define SERIAL_A_DEV            "dev"
 #define SERIAL_A_TX_DELAY       "tx_delay"
 #define SERIAL_A_TCP_NODELAY    "tcp_nodelay"
+#define SERIAL_A_DUMP           "dump_file"
 #define SERIAL_B_MODE           "b_mode"
 #define SERIAL_B_DEV            "b_dev"
 #define SERIAL_B_TX_DELAY       "b_tx_delay"
 #define SERIAL_B_TCP_NODELAY    "b_tcp_nodelay"
+#define SERIAL_B_DUMP           "b_dump_file"
 #define SERIAL_C_MODE           "c_mode"
 #define SERIAL_C_DEV            "c_dev"
 #define SERIAL_C_TX_DELAY       "c_tx_delay"
 #define SERIAL_C_TCP_NODELAY    "c_tcp_nodelay"
+#define SERIAL_C_DUMP           "c_dump_file"
 #define SERIAL_D_MODE           "d_mode"
 #define SERIAL_D_DEV            "d_dev"
 #define SERIAL_D_TX_DELAY       "d_tx_delay"
 #define SERIAL_D_TCP_NODELAY    "d_tcp_nodelay"
+#define SERIAL_D_DUMP           "d_dump_file"
+
+#define MODEM_SECTION           "modem"
+#define MODEM_BAUD_RATE         "baud_rate"
+#define MODEM_LISTEN_ADDR       "listen_addr"
+#define MODEM_PHONEBOOK         "phonebook_file"
+#define MODEM_TELNET_MODE       "telnet_mode"
+#define MODEM_CONN_TIMEOUT      "conn_timeout"
+#define MODEM_WARM_DELAY        "warmup_delay"
+#define MODEM_CONNECT_CODE      "connect_code"
+#define MODEM_ECHO_ON           "echo_on"
+#define MODEM_DUMP              "dump_file"
 
 #define LPT_SECTION             "lpt"
 #define LPT_ENABLED             "enabled"
@@ -329,6 +349,7 @@ public:
 #define LOG_PRN_VERBOSITY       "prn"
 #define LOG_COM_VERBOSITY       "com"
 #define LOG_MIDI_VERBOSITY      "midi"
+#define LOG_NET_VERBOSITY       "net"
 
 #endif
 

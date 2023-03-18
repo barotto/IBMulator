@@ -73,7 +73,8 @@ const char* Syslog::m_fac_prefixes[] = {
 	" lpt | ",
 	" prn | ",
 	" com | ",
-	" midi| "
+	" midi| ",
+	" net | "
 };
 
 

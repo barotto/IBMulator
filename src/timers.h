@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,14 +25,17 @@
 
 #define NULL_TIMER_ID 10000
 #define TIME_NEVER ULLONG_MAX
-#define US_TO_NS(us) (us*1000)
+#define US_TO_NS(us) (us*1'000L)
+#define MS_TO_NS(ms) (ms*1'000'000L)
 #define MSEC_PER_SECOND (1'000L)
 #define USEC_PER_SECOND (1'000'000L)
 #define NSEC_PER_SECOND (1'000'000'000L)
 #define INV_USEC_PER_SECOND_D (0.000001)
 #define NSEC_TO_USEC(nsec) (nsec/1000)
 #define NSEC_TO_SEC(nsec) (double((nsec)) / 1'000'000'000.0)
+#define SEC_TO_USEC(sec) (double(sec) * 1'000'000.0)
 #define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
+#define USEC_TO_SEC(usec) (double(usec) / 1'000'000.0)
 #define MAX_TIMERS 28
 #define TIMER_NAME_LEN 20
 

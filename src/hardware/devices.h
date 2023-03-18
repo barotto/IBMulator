@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -79,6 +79,7 @@ public:
 	void power_off();
 	void config_changed();
 	void destroy_all();
+	void cycles_adjust(double _factor);
 
 	template<class T>
 	inline T* device() {

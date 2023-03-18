@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,31 +33,14 @@
 #include "serial.h"
 
 #if SER_POSIX
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/tcp.h>
-	#include <netinet/in.h>
-	#include <arpa/inet.h>
-	#include <netdb.h>
 	#include <unistd.h>
-	#define closesocket(s) ::close(s)
-	#define INVALID_SOCKET -1
-	#define SD_BOTH SHUT_RDWR
-	inline static int get_neterr() {
-		return errno;
-	}
 #endif
 #if SER_WIN32
 	//#include <winioctl.h>
 	//#include <io.h>
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
 	#if !defined(FILE_FLAG_FIRST_PIPE_INSTANCE)
 		#define FILE_FLAG_FIRST_PIPE_INSTANCE 0
 	#endif
-	inline static int get_neterr() {
-		return WSAGetLastError();
-	}
 #endif
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -82,9 +65,6 @@ IODEVICE_PORTS(Serial) = {
 	{ 0x2E8, 0x2EF, PORT_8BIT|PORT_RW }  // COM4
 };
 
-#define SEND_MAX_DELAY_MS 200
-#define SEND_MAX_DELAY_NS 200_ms
-
 Serial::Serial(Devices *_dev)
 : IODevice(_dev)
 {
@@ -108,9 +88,11 @@ void Serial::install()
 		m_host[p].port_id = p;
 		m_host[p].io_mode = SER_MODE_NONE;
 		m_host[p].tty_id = -1;
-		m_host[p].server_port = 0;
-		m_host[p].server_socket_id = INVALID_SOCKET;
-		m_host[p].client_socket_id = INVALID_SOCKET;
+		m_host[p].network.set_log_name(m_host[p].name());
+		m_host[p].network.set_mex_callback([](std::string _mex){
+			GUI::instance()->show_message(_mex.c_str());
+		});
+		m_host[p].modem.set_MSR_callback(std::bind(&Serial::set_MSR, this, p, _1));
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
 			std::bind(&Serial::tx_timer, this, 0, _1),
@@ -163,10 +145,16 @@ void Serial::config_changed()
 			SERIAL_A_TX_DELAY,SERIAL_B_TX_DELAY,SERIAL_C_TX_DELAY,SERIAL_D_TX_DELAY
 		}, tcp_nodelay_name[] = {
 			SERIAL_A_TCP_NODELAY,SERIAL_B_TCP_NODELAY,SERIAL_C_TCP_NODELAY,SERIAL_D_TCP_NODELAY
+		}, dump_name[] = {
+			SERIAL_A_DUMP,SERIAL_B_DUMP,SERIAL_C_DUMP,SERIAL_D_DUMP
 		};
 
 		auto initial_mode_str = g_program.initial_config().get_string(SERIAL_SECTION, mode_name[p]);
 		auto new_mode_str = g_program.config().get_string(SERIAL_SECTION, mode_name[p]);
+		auto dump_file = g_program.config().get_string(SERIAL_SECTION, dump_name[p]);
+		if(!dump_file.empty()) {
+			m_host[p].dump = FileSys::make_ofstream((g_program.config().get_cfg_home() + FS_SEP + dump_file).c_str(), std::ofstream::binary);
+		}
 
 		unsigned new_mode = g_program.config().get_enum(SERIAL_SECTION, mode_name[p], {
 			{ "none",  SER_MODE_NONE  },
@@ -178,7 +166,8 @@ void Serial::config_changed()
 			{ "net-client",  SER_MODE_NET_CLIENT  },
 			{ "net-server",  SER_MODE_NET_SERVER  },
 			{ "pipe-client", SER_MODE_PIPE_CLIENT },
-			{ "pipe-server", SER_MODE_PIPE_SERVER }
+			{ "pipe-server", SER_MODE_PIPE_SERVER },
+			{ "modem", SER_MODE_MODEM }
 		}, SER_MODE_INVALID);
 
 		std::string dev;
@@ -200,12 +189,14 @@ void Serial::config_changed()
 				throw std::exception();
 			}
 		} else {
-			if(new_mode == m_host[p].io_mode) {
+			if(new_mode == m_host[p].io_mode && new_mode != SER_MODE_MODEM) {
+				// if it's modem it needs to be reset
 				continue;
 			}
-			if(new_mode == SER_MODE_MOUSE) {
-				// mouse mode overrides everything, so close any open connection
-				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing 'mouse' mode\n", m_host[p].name());
+			if(new_mode == SER_MODE_MOUSE || new_mode == SER_MODE_MODEM) {
+				// mouse and modem modes override everything, so close any open connection
+				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing '%s' mode\n", m_host[p].name(),
+						(new_mode == SER_MODE_MOUSE) ? "mouse" : "modem");
 			} else if(initial_mode_str == new_mode_str) {
 				// if mode is different but strings are the same then this is initial config.
 				dev = g_program.initial_config().get_string(SERIAL_SECTION, dev_name[p]);
@@ -227,6 +218,8 @@ void Serial::config_changed()
 		}
 
 		try {
+			double tx_delay = g_program.initial_config().get_real(SERIAL_SECTION, tx_delay_name[p]);
+			bool tcp_nodelay = g_program.initial_config().get_bool(SERIAL_SECTION, tcp_nodelay_name[p]);
 			switch(new_mode) {
 				case SER_MODE_MOUSE:
 					m_host[p].init_mode_mouse();
@@ -256,11 +249,12 @@ void Serial::config_changed()
 					break;
 				case SER_MODE_NET_CLIENT:
 				case SER_MODE_NET_SERVER: {
-					double tx_delay = g_program.initial_config().get_real(SERIAL_SECTION, tx_delay_name[p]);
-					bool tcp_nodelay = g_program.initial_config().get_bool(SERIAL_SECTION, tcp_nodelay_name[p]);
 					m_host[p].init_mode_net(dev, new_mode, tx_delay, tcp_nodelay);
 					break;
 				}
+				case SER_MODE_MODEM:
+					m_host[p].init_mode_modem(tx_delay, tcp_nodelay);
+					break;
 				case SER_MODE_PIPE_CLIENT:
 				case SER_MODE_PIPE_SERVER:
 					m_host[p].init_mode_pipe(dev, new_mode);
@@ -319,20 +313,10 @@ void Serial::close(unsigned _port)
 			break;
 		case SER_MODE_NET_CLIENT:
 		case SER_MODE_NET_SERVER:
-			if(m_host[_port].server_socket_id != INVALID_SOCKET) {
-				// net server may be accepting connections
-				::shutdown(m_host[_port].server_socket_id, SD_BOTH);
-				closesocket(m_host[_port].server_socket_id);
-			}
-			if(m_host[_port].client_socket_id != INVALID_SOCKET) {
-				// net server may be waiting on the client socket to be closed
-				m_host[_port].close_client_socket();
-			}
-			if(m_host[_port].net_thread.joinable()) {
-				PDEBUGF(LOG_V1, LOG_COM, "%s: waiting for net thread...\n", m_host[_port].name());
-				m_host[_port].net_thread.join();
-			}
-			m_host[_port].server_socket_id = INVALID_SOCKET;
+			m_host[_port].network.close();
+			break;
+		case SER_MODE_MODEM:
+			m_host[_port].modem.close();
 			break;
 		case SER_MODE_PIPE_CLIENT:
 		case SER_MODE_PIPE_SERVER:
@@ -369,10 +353,12 @@ void Serial::restore_state(StateBuf &_state)
 	_state.read(&m_s,h);
 
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		if(is_network_mode(p)) {
-			m_host[p].rx_data.clear();
-			m_host[p].tx_data.clear();
-			m_host[p].tx_data.set_threshold(m_s.uart[p].baudrate, m_host[p].tx_delay_ms);
+		if(m_host[p].io_mode == SER_MODE_NET_CLIENT || m_host[p].io_mode == SER_MODE_NET_SERVER) {
+			m_host[p].network.rx_fifo().clear();
+			m_host[p].network.tx_fifo().clear();
+			m_host[p].network.set_tx_threshold(m_host[p].tx_delay_ms, m_s.uart[p].baudrate);
+		} else if(m_host[p].io_mode == SER_MODE_MODEM) {
+			m_host[p].modem.reset();
 		}
 	}
 
@@ -386,6 +372,7 @@ bool Serial::is_network_mode(uint8_t _port) const
 	switch(m_host[_port].io_mode) {
 		case SER_MODE_NET_CLIENT: 
 		case SER_MODE_NET_SERVER:
+		case SER_MODE_MODEM:
 			return true;
 		default:
 			break;
@@ -396,19 +383,19 @@ bool Serial::is_network_mode(uint8_t _port) const
 bool Serial::is_network_connected(uint8_t _port) const
 {
 	assert(_port < SER_PORTS);
-	return (m_host[_port].client_socket_id != INVALID_SOCKET);
+	return (m_host[_port].network.is_connected());
 }
 
 bool Serial::is_network_rx_active(uint8_t _port) const
 {
 	assert(_port < SER_PORTS);
-	return !(m_host[_port].rx_data.was_empty());
+	return m_host[_port].network.is_rx_active();
 }
 
 bool Serial::is_network_tx_active(uint8_t _port) const
 {
 	assert(_port < SER_PORTS);
-	return (m_host[_port].tx_data.get_read_avail());
+	return (m_host[_port].network.is_tx_active());
 }
 
 void Serial::set_port(uint8_t _port, uint8_t _com)
@@ -551,288 +538,25 @@ void Serial::Port::init_mode_mouse()
 	io_mode = SER_MODE_MOUSE;
 }
 
-void Serial::Port::start_net_server()
-{
-	sockaddr addr;
-	socklen_t addrlen = sizeof(sockaddr);
-
-	PDEBUGF(LOG_V0, LOG_COM, "%s: server thread started\n", name());
-
-	while(true) {
-		PINFOF(LOG_V1, LOG_COM, "%s: waiting for client to connect to host:%s, port:%d\n",
-			name(), server_host.c_str(), server_port);
-		SOCKET client_sock = INVALID_SOCKET;
-		if((client_sock = ::accept(server_socket_id, &addr, &addrlen)) == INVALID_SOCKET) {
-			switch(get_neterr()) {
-				#if SER_WIN32
-				case WSAECONNRESET:
-				case WSAENETDOWN:
-					PERRF(LOG_COM, "%s: connection failed\n", name());
-					continue;
-				#else
-				case EPERM:        // firewall rules forbid connection
-				case ECONNABORTED: // connection has been aborted.
-					PERRF(LOG_COM, "%s: connection failed\n", name());
-					continue;
-				case ENETDOWN: case EPROTO: case ENOPROTOOPT: case EHOSTDOWN:
-				case ENONET: case EHOSTUNREACH: case EOPNOTSUPP: case ENETUNREACH:
-					// already-pending network errors, treat them like EAGAIN by retrying
-					PWARNF(LOG_V0, LOG_COM, "%s: retrying connection ...\n", name());
-					continue;
-				#endif
-				default:
-					PINFOF(LOG_V1, LOG_COM, "%s: closing the net server (%d)\n", name(), get_neterr());
-					return;
-			}
-		} else {
-			client_socket_id = client_sock;
-			char ip[INET6_ADDRSTRLEN] = "client";
-			if(addr.sa_family == AF_INET) { 
-				sockaddr_in *saddr_in = (sockaddr_in *)&addr;
-				//char *ip = inet_ntoa(saddr_in->sin_addr);
-				::inet_ntop(AF_INET, &(saddr_in->sin_addr), ip, INET_ADDRSTRLEN);
-			} else if(addr.sa_family == AF_INET6) {
-				sockaddr_in6 *saddr_in6 = (sockaddr_in6 *)&addr;
-				::inet_ntop(AF_INET6, &(saddr_in6->sin6_addr), ip, INET6_ADDRSTRLEN);
-			}
-			client_name = ip;
-			std::stringstream ss;
-			ss << name() << ": " << client_name << " connected";
-			PINFOF(LOG_V0, LOG_COM, "%s\n", ss.str().c_str());
-			GUI::instance()->show_message(ss.str().c_str());
-
-			net_data_loop();
-
-			ss.str("");
-			ss << name() << ": " << client_name << " disconnected";
-			GUI::instance()->show_message(ss.str().c_str());
-		}
-	}
-	PDEBUGF(LOG_V0, LOG_COM, "%s: server thread terminated\n", name());
-}
-
-void Serial::Port::start_net_client()
-{
-	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread started\n", name());
-
-	net_data_loop();
-
-	std::stringstream ss;
-	ss << name() << ": " << server_host << " disconnected";
-	GUI::instance()->show_message(ss.str().c_str());
-	PDEBUGF(LOG_V0, LOG_COM, "%s: client thread terminated\n", name());
-}
-
-void Serial::Port::net_data_loop()
-{
-	if(tcp_nodelay) {
-		PDEBUGF(LOG_V1, LOG_COM, "%s: setting TCP_NODELAY ...\n", name());
-		int one = 1;
-		if(::setsockopt(client_socket_id, IPPROTO_TCP, TCP_NODELAY, (char *) &one, sizeof(one)) != 0) {
-			PERRF(LOG_COM, "%s: error setting TCP_NODELAY option (%d)\n", name(), get_neterr());
-		}
-	}
-
-	PDEBUGF(LOG_V1, LOG_COM, "%s: starting tx thread ...\n", name());
-	auto tx_thread = std::thread(&Serial::Port::net_tx_loop, this);
-
-	while(true) {
-		uint8_t chbuf;
-		if(client_socket_id == INVALID_SOCKET) {
-			break;
-		}
-		ssize_t bytes = (ssize_t)::recv(client_socket_id, (char*)&chbuf, 1, 0);
-		if(bytes > 0) {
-			if(g_machine.is_on()) {
-				if(rx_data.force_push(chbuf)) {
-					PDEBUGF(LOG_V1, LOG_COM, "%s: sock read: [ %02x ]\n", name(), chbuf);
-				} else {
-					PDEBUGF(LOG_V1, LOG_COM, "%s: rx buffer overflow: [ %02x ]\n", name(), chbuf);
-				}
-			}
-		} else {
-			PINFOF(LOG_V0, LOG_COM, "%s: connection terminated", name());
-			if(bytes < 0) {
-				PINFOF(LOG_V0, LOG_COM, " (%u)", get_neterr());
-			}
-			PINFOF(LOG_V0, LOG_COM, "\n");
-			close_client_socket();
-			break;
-		}
-	}
-
-	tx_thread.join();
-	PDEBUGF(LOG_V1, LOG_COM, "%s: tx thread terminated\n", name());
-}
-
-size_t Serial::Port::TXFifo::read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns)
-{
-	if(get_read_avail() < m_threshold) {
-		std::unique_lock<std::mutex> lock(m_mutex);
-		m_data_cond.wait_for(lock, std::chrono::nanoseconds(_max_wait_ns));
-	}
-	return RingBuffer::read(_data, _len);
-}
-
-size_t Serial::Port::TXFifo::write(uint8_t *_data, size_t _len)
-{
-	size_t len = RingBuffer::write(_data, _len);
-	if(get_read_avail() >= m_threshold) {
-		m_data_cond.notify_one();
-	}
-	return len;
-}
-
-void Serial::Port::net_tx_loop()
-{
-	std::vector<uint8_t> tx_buf(tx_data.get_size());
-
-	while(true) {
-		if(client_socket_id == INVALID_SOCKET) {
-			break;
-		}
-		uint64_t wait_ns = SEND_MAX_DELAY_NS;
-		if(tx_delay_ms > 0.0) {
-			wait_ns = tx_delay_ms * 1_ms;
-			if(g_machine.cycles_factor() < 1.0) {
-				// if the machine is slowed down we need to wait more for the same amount of data
-				wait_ns *= (1.0 / g_machine.cycles_factor());
-			}
-			if(wait_ns > SEND_MAX_DELAY_NS) {
-				wait_ns = SEND_MAX_DELAY_NS;
-			}
-		}
-		size_t len = tx_data.get_threshold();
-		len = tx_data.read(&tx_buf[0], len, wait_ns);
-		if(len) {
-			PDEBUGF(LOG_V1, LOG_COM, "%s: sock write (%u): [ ", name(), len);
-			for(size_t i=0; i<len; i++) {
-				PDEBUGF(LOG_V1, LOG_COM, "%02x ", tx_buf[i]);
-			}
-			PDEBUGF(LOG_V1, LOG_COM, "]\n");
-			ssize_t res = (ssize_t)::send(client_socket_id, (const char*)&tx_buf[0], len, 0);
-			if(res < 0) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: send() error: %u\n", name(), get_neterr());
-			} else if(size_t(res) != len) {
-				PDEBUGF(LOG_V0, LOG_COM, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", name(), len, res, get_neterr());
-			}
-		}
-	}
-}
-
-void Serial::Port::close_client_socket()
-{
-	if(client_socket_id == INVALID_SOCKET) {
-		return;
-	}
-	PINFOF(LOG_V1, LOG_COM, "%s: closing the client connection\n", name());
-	::shutdown(client_socket_id, SD_BOTH);
-	closesocket(client_socket_id);
-	client_socket_id = INVALID_SOCKET;
-}
-
 void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms, bool _tcp_nodelay)
 {
 	if(dev.empty()) {
 		throw std::runtime_error("device address not specified");
 	}
 
-	#if SER_WIN32
-	static bool winsock_init = false;
-	if(!winsock_init) {
-		WORD wVersionRequested;
-		WSADATA wsaData;
-		int err;
-		wVersionRequested = MAKEWORD(2, 0);
-		err = WSAStartup(wVersionRequested, &wsaData);
-		if(err != 0) {
-			throw std::runtime_error("WSAStartup failed");
-		}
-		PDEBUGF(LOG_V1, LOG_COM, "WinSock initialized\n");
-		winsock_init = true;
-	}
-	#endif
-
-	server_socket_id = INVALID_SOCKET;
-	client_socket_id = INVALID_SOCKET;
-
-	auto address = str_parse_tokens(dev, ":");
-
-	if(address.size() < 2) {
-		throw std::runtime_error("port number missing");
-	}
-	if(address.size() > 2) {
-		throw std::runtime_error("invalid address, must be 'host:port'");
-	}
-
-	server_host = address[0];
-	server_port = 0;
-	try {
-		server_port = std::stoul(address[1]);
-	} catch(...) {
-		throw std::runtime_error("invalid port number");
-	}
-	if(server_port < 1024 || server_port > 65535) {
-		throw std::runtime_error("port number must be between 1024 and 65535");
-	}
-
-	struct hostent *hp = gethostbyname(server_host.c_str());
-	if(!hp) {
-		throw std::runtime_error("host name lookup failed for '" + server_host + "'");
-	}
-
-	struct sockaddr_in sin;
-	memset((char*)&sin, 0, sizeof(sin));
-	#if HAVE_SOCKADDR_IN_SIN_LEN
-	sin.sin_len = sizeof(sin);
-	#endif
-	memcpy((char*)&(sin.sin_addr), hp->h_addr, hp->h_length);
-	sin.sin_family = hp->h_addrtype;
-	sin.sin_port = htons(server_port);
-
-	SOCKET socket_id = ::socket(AF_INET, SOCK_STREAM, 0);
-	if(socket_id == INVALID_SOCKET) {
-		throw std::runtime_error("socket creation failed for " + dev);
-	}
-
-	if(_tx_delay_ms > SEND_MAX_DELAY_MS) {
-		_tx_delay_ms = SEND_MAX_DELAY_MS;
-	} else if(_tx_delay_ms < 0.0) {
-		_tx_delay_ms = 0.0;
-	}
 	tx_delay_ms = _tx_delay_ms;
-	if(tx_delay_ms > 0.0) {
-		// set an initial threshold for the highest possible speed of 115200 bps
-		// the threshold is adjusted when the baud rate divisor is updated
-		tx_data.set_threshold(115200, tx_delay_ms);
-		tx_data.set_size(tx_data.get_threshold() * 2.0); // TODO: random number?
-	} else {
-		tx_data.set_threshold(0, 0);
-		tx_data.set_size(10); // TODO: random number?
-	}
-	tcp_nodelay = _tcp_nodelay;
-	PINFOF(LOG_V2, LOG_COM, "%s: tx buffer: %u bytes, delay: %.1f ms, tcp_nodelay: %d\n",
-			name(), tx_data.get_size(), tx_delay_ms, tcp_nodelay);
+	
+	network.set_log_name(name());
+	network.set_tcp_nodelay(_tcp_nodelay);
+	network.set_rx_queue(DEFAULT_RX_FIFO_SIZE, true); // allow overflows on read
+	network.set_tx_queue(DEFAULT_TX_FIFO_SIZE);
 
-	bool server_mode = (mode == SER_MODE_NET_SERVER);
-	if(server_mode) {
-		if(::bind(socket_id, (sockaddr*)&sin, sizeof(sin)) < 0 || ::listen(socket_id, SOMAXCONN) < 0) {
-			closesocket(socket_id);
-			throw std::runtime_error("cannot listen to " + dev);
-		}
-		server_socket_id = socket_id;
-		net_thread = std::thread(&Serial::Port::start_net_server, this);
-		PINFOF(LOG_V0, LOG_COM, "%s: net server initialized\n", name());
-	} else {
-		if(::connect(socket_id, (sockaddr*)&sin, sizeof(sin)) < 0) {
-			closesocket(socket_id);
-			throw std::runtime_error("connection to '" + dev + "' failed");
-		}
-		client_socket_id = socket_id;
-		net_thread = std::thread(&Serial::Port::start_net_client, this);
-		PINFOF(LOG_V0, LOG_COM, "%s: net client initialized: connected to %s:%u\n",
-				name(), server_host.c_str(), server_port, socket_id);
-	}
+	auto [host,port] = NetService::parse_address(dev, 2323);
+	network.open(
+		host.c_str(), port,
+		mode == SER_MODE_NET_CLIENT ? NetService::Mode::Client : NetService::Mode::Server,
+		0
+	);
 
 	io_mode = mode;
 }
@@ -884,6 +608,55 @@ void Serial::Port::init_mode_pipe(std::string dev, unsigned mode)
 	#endif
 }
 
+void Serial::Port::init_mode_modem(double _tx_delay_ms, bool _tcp_nodelay)
+{
+	tx_delay_ms = _tx_delay_ms;
+	network.set_log_name("MODEM");
+	network.set_tcp_nodelay(_tcp_nodelay);
+	modem.init(&network, _tx_delay_ms);
+
+	io_mode = SER_MODE_MODEM;
+}
+
+void Serial::set_MSR(uint8_t _port, const ModemStatus &_status)
+{
+	bool gen_int = false;
+
+	if(_status.RI != m_s.uart[_port].modem_status.ri) {
+		m_s.uart[_port].modem_status.ri = _status.RI;
+		if(!m_s.uart[_port].modem_cntl.local_loopback) {
+			if(_status.RI == false) {
+				m_s.uart[_port].modem_status.ri_trailedge = true;
+			}
+			gen_int = true;
+		}
+	}
+	if(_status.DCD != m_s.uart[_port].modem_status.dcd) {
+		m_s.uart[_port].modem_status.dcd = _status.DCD;
+		if(!m_s.uart[_port].modem_cntl.local_loopback) {
+			m_s.uart[_port].modem_status.delta_dcd = true;
+			gen_int = true;
+		}
+	}
+	if(_status.DSR != m_s.uart[_port].modem_status.dsr) {
+		m_s.uart[_port].modem_status.dsr = _status.DSR;
+		if(!m_s.uart[_port].modem_cntl.local_loopback) {
+			m_s.uart[_port].modem_status.delta_dsr = true;
+			gen_int = true;
+		}
+	}
+	if(_status.CTS != m_s.uart[_port].modem_status.cts) {
+		m_s.uart[_port].modem_status.cts = _status.CTS;
+		if(!m_s.uart[_port].modem_cntl.local_loopback) {
+			m_s.uart[_port].modem_status.delta_cts = true;
+			gen_int = true;
+		}
+	}
+	if(gen_int) {
+		raise_interrupt(_port, SER_INT_MODSTAT);
+	}
+}
+
 void Serial::lower_interrupt(uint8_t port)
 {
 	// If there are no more ints pending, clear the irq
@@ -897,21 +670,8 @@ void Serial::lower_interrupt(uint8_t port)
 	}
 }
 
-void Serial::reset(unsigned _type)
+void Serial::reset(unsigned)
 {
-	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
-		for(unsigned p=0; p<SER_PORTS; p++) {
-			m_host[p].rx_data.clear();
-			m_host[p].tx_data.clear();
-		}
-		std::lock_guard<std::mutex> lock(m_mouse.mtx);
-		m_mouse.reset();
-		m_s.mouse.detect = 0;
-		m_s.mouse.buffer.elements = 0;
-		std::memset(m_s.mouse.buffer.data, 0, MOUSE_BUFF_SIZE);
-		m_s.mouse.buffer.head = 0;
-	}
-
 	// Put the UART registers into their RESET state
 
 	for(unsigned i=0; i<SER_PORTS; i++) {
@@ -942,11 +702,12 @@ void Serial::reset(unsigned _type)
 		m_s.uart[i].fifo_cntl.rxtrigger = 0;
 		m_s.uart[i].rx_fifo_end = 0;
 		m_s.uart[i].tx_fifo_end = 0;
+		PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", m_s.uart[i].name());
 
 		// Line Control reg: b0000 0000
-		m_s.uart[i].line_cntl.wordlen_sel = 0;
-		m_s.uart[i].line_cntl.stopbits = 0;
-		m_s.uart[i].line_cntl.parity_enable = 0;
+		m_s.uart[i].line_cntl.wordlen_sel = 3;   // 8 bit
+		m_s.uart[i].line_cntl.stopbits = 0;      // 1 stop
+		m_s.uart[i].line_cntl.parity_enable = 0; // N parity
 		m_s.uart[i].line_cntl.evenparity_sel = 0;
 		m_s.uart[i].line_cntl.stick_parity = 0;
 		m_s.uart[i].line_cntl.break_cntl = 0;
@@ -958,6 +719,7 @@ void Serial::reset(unsigned _type)
 		m_s.uart[i].modem_cntl.out1 = 0;
 		m_s.uart[i].modem_cntl.out2 = 0;
 		m_s.uart[i].modem_cntl.local_loopback = 0;
+		PDEBUGF(LOG_V1, LOG_COM, "%s: INTs disabled\n", m_s.uart[i].name());
 
 		// Line Status register: b0110 0000
 		m_s.uart[i].line_status.rxdata_ready = 0;
@@ -979,20 +741,57 @@ void Serial::reset(unsigned _type)
 		m_s.uart[i].modem_status.ri = 0;
 		m_s.uart[i].modem_status.dcd = 0;
 
-		m_s.uart[i].scratch = 0;      // scratch register
-		m_s.uart[i].divisor_lsb = 1;  // divisor-lsb register
-		m_s.uart[i].divisor_msb = 0;  // divisor-msb register
+		m_s.uart[i].scratch = 0;
+		m_s.uart[i].divisor_lsb = 0xc; // divisor-lsb register (9600)
+		m_s.uart[i].divisor_msb = 0;   // divisor-msb register (9600)
 
-		m_s.uart[i].baudrate = 19200;
-		m_s.uart[i].databyte_usec = 87;
+		set_baudrate(i);
+		set_databyte_time(i);
 
 		memset(m_s.uart[i].rx_fifo, 0, 16);   // receive FIFO (internal)
 		memset(m_s.uart[i].tx_fifo, 0, 16);   // transmit FIFO (internal)
 
-		// simulate device connected
-		if(m_host[i].io_mode != SER_MODE_NONE && m_host[i].io_mode != SER_MODE_RAW) {
-			m_s.uart[i].modem_status.cts = 1;
-			m_s.uart[i].modem_status.dsr = 1;
+		switch(m_host[i].io_mode) {
+			case SER_MODE_NET_CLIENT:
+			case SER_MODE_NET_SERVER:
+				// do not reset the connection
+				m_host[i].network.clear_queues();
+				break;
+			case SER_MODE_MODEM:
+				m_host[i].modem.set_MCR({
+					m_s.uart[i].modem_cntl.dtr,
+					m_s.uart[i].modem_cntl.rts
+				});
+				m_host[i].modem.reset();
+				break;
+			case SER_MODE_NONE:
+			case SER_MODE_RAW:
+				break;
+			default:
+				// simulate device connected
+				m_s.uart[i].modem_status.cts = 1;
+				m_s.uart[i].modem_status.dsr = 1;
+				break;
+		}
+	}
+
+	std::lock_guard<std::mutex> lock(m_mouse.mtx);
+	m_mouse.reset();
+	m_s.mouse.detect = 0;
+	m_s.mouse.buffer.elements = 0;
+	std::memset(m_s.mouse.buffer.data, 0, MOUSE_BUFF_SIZE);
+	m_s.mouse.buffer.head = 0;
+}
+
+void Serial::power_off()
+{
+	for(unsigned i=0; i<SER_PORTS; i++) {
+		switch(m_host[i].io_mode) {
+			case SER_MODE_MODEM:
+				m_host[i].modem.power_off();
+				break;
+			default:
+				break;
 		}
 	}
 }
@@ -1440,13 +1239,15 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			}
 			break;
 
-		case SER_FCR: // FIFO control register
+		case SER_FCR: { // FIFO control register
 			PDEBUGF(LOG_V2, LOG_COM, "FCR %s\n",
 					bitfield_to_string(_value, { "en", "rx", "tx", "", "", "", "", "" }).c_str());
-			if(new_b0 && !m_s.uart[port].fifo_cntl.enable) {
-				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO enabled\n", m_s.uart[port].name());
+			bool enabled = new_b0 && !m_s.uart[port].fifo_cntl.enable;
+			if(enabled) {
 				m_s.uart[port].rx_fifo_end = 0;
 				m_s.uart[port].tx_fifo_end = 0;
+			} else if(!new_b0 && m_s.uart[port].fifo_cntl.enable) {
+				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", m_s.uart[port].name());
 			}
 			m_s.uart[port].fifo_cntl.enable = new_b0;
 			if(new_b1) {
@@ -1456,12 +1257,19 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				m_s.uart[port].tx_fifo_end = 0;
 			}
 			m_s.uart[port].fifo_cntl.rxtrigger = (_value & 0xc0) >> 6;
+			if(enabled) {
+				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO enabled, rxtrigger=%u\n",
+						m_s.uart[port].name(),
+						m_s.uart[port].fifo_cntl.rxtrigger);
+			}
 			break;
+		}
 
 		case SER_LCR: { // Line control register
 			uint8_t new_wordlen = _value & 0x03;
 			PDEBUGF(LOG_V2, LOG_COM, "LCR %s\n", 
 					bitfield_to_string(_value, { "wl0", "wl1", "stop", "par", "epar", "spar", "brk", "dlab" }).c_str());
+
 			#if SER_ENABLE_RAW
 			if(m_host[port].io_mode == SER_MODE_RAW) {
 				if(m_s.uart[port].line_cntl.wordlen_sel != new_wordlen) {
@@ -1488,54 +1296,29 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				}
 			}
 			#endif
-			// These are ignored, but set them up so they can be read back
+
+			m_s.uart[port].line_cntl.wordlen_sel = new_wordlen;
 			m_s.uart[port].line_cntl.stopbits = new_b2;
 			m_s.uart[port].line_cntl.parity_enable = new_b3;
 			m_s.uart[port].line_cntl.evenparity_sel = new_b4;
 			m_s.uart[port].line_cntl.stick_parity = new_b5;
 			m_s.uart[port].line_cntl.break_cntl = new_b6;
+
 			if(m_s.uart[port].modem_cntl.local_loopback && m_s.uart[port].line_cntl.break_cntl) {
 				m_s.uart[port].line_status.break_int = 1;
 				m_s.uart[port].line_status.framing_error = 1;
 				rx_fifo_enq(port, 0x00);
+			} else if(m_host[port].io_mode == SER_MODE_MODEM) {
+				// m_host[port].modem.set_LCR_break(new_b6);
 			}
-			bool restart_timer = false;
+
 			if(!new_b7 && m_s.uart[port].line_cntl.dlab) {
-				if((m_s.uart[port].divisor_lsb | m_s.uart[port].divisor_msb) != 0) {
-					int new_baudrate = (int)(PC_CLOCK_XTL /
-							(16 * ((m_s.uart[port].divisor_msb << 8) | m_s.uart[port].divisor_lsb)));
-					if(new_baudrate != m_s.uart[port].baudrate) {
-						m_s.uart[port].baudrate = new_baudrate;
-						restart_timer = true;
-						PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
-								m_s.uart[port].name(), m_s.uart[port].baudrate);
-						if(is_network_mode(port) && m_host[port].tx_delay_ms > 0.0) {
-							m_host[port].tx_data.set_threshold(new_baudrate, m_host[port].tx_delay_ms);
-							PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
-									m_host[port].name(), m_host[port].tx_data.get_threshold(), m_host[port].tx_delay_ms);
-						}
-						#if SER_ENABLE_RAW
-						if(m_host[port].io_mode == SER_MODE_RAW) {
-							m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
-						}
-						#endif
-					}
-				} else {
-					PWARNF(LOG_V1, LOG_COM, "%s: ignoring invalid baud rate divisor\n", m_s.uart[port].name());
-				}
+				set_baudrate(port);
 			}
 			m_s.uart[port].line_cntl.dlab = new_b7;
-			if(new_wordlen != m_s.uart[port].line_cntl.wordlen_sel) {
-				m_s.uart[port].line_cntl.wordlen_sel = new_wordlen;
-				restart_timer = true;
-			}
-			if(restart_timer) {
-				// Start the receive polling process if not already started
-				// and there is a valid baudrate.
-				m_s.uart[port].databyte_usec = (uint32_t)(1000000.0 / m_s.uart[port].baudrate *
-						(m_s.uart[port].line_cntl.wordlen_sel + 7));
-				PDEBUGF(LOG_V1, LOG_COM, "%s: rx timer set to %u us\n",
-						m_host[port].name(), m_s.uart[port].databyte_usec);
+
+			set_databyte_time(port);
+			if(m_s.uart[port].databyte_usec) {
 				g_machine.activate_timer(m_host[port].rx_timer,
 						uint64_t(m_s.uart[port].databyte_usec)*1_us,
 						false); // not continuous
@@ -1566,6 +1349,9 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			m_s.uart[port].modem_cntl.dtr  = new_b0;
 			m_s.uart[port].modem_cntl.rts  = new_b1;
 			m_s.uart[port].modem_cntl.out1 = new_b2;
+			if(new_b3 != m_s.uart[port].modem_cntl.out2) {
+				PDEBUGF(LOG_V1, LOG_COM, "%s: INTs %sabled\n", m_s.uart[port].name(), new_b3?"en":"dis");
+			}
 			m_s.uart[port].modem_cntl.out2 = new_b3;
 
 			if(new_b4 != m_s.uart[port].modem_cntl.local_loopback) {
@@ -1656,8 +1442,12 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						m_s.mouse.detect = 0;
 					}
 				}
-
-				if(m_host[port].io_mode == SER_MODE_RAW) {
+				if(m_host[port].io_mode == SER_MODE_MODEM) {
+					m_host[port].modem.set_MCR({
+						m_s.uart[port].modem_cntl.dtr,
+						m_s.uart[port].modem_cntl.rts
+					});
+				} else if(m_host[port].io_mode == SER_MODE_RAW) {
 					#if SER_ENABLE_RAW
 					if(mcr_changed) {
 						m_host[port].raw->set_modem_control(value & 0x03);
@@ -1694,9 +1484,115 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	}
 }
 
+void Serial::set_baudrate(uint8_t _port)
+{
+	if((m_s.uart[_port].divisor_lsb | m_s.uart[_port].divisor_msb) != 0) {
+		int new_baudrate = (int)(PC_CLOCK_XTL /
+				(16 * ((m_s.uart[_port].divisor_msb << 8) | m_s.uart[_port].divisor_lsb)));
+		if(new_baudrate != m_s.uart[_port].baudrate) {
+			m_s.uart[_port].baudrate = new_baudrate;
+			PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
+					m_s.uart[_port].name(), m_s.uart[_port].baudrate);
+			if(
+			   ( m_host[_port].io_mode == SER_MODE_NET_CLIENT ||
+			     m_host[_port].io_mode == SER_MODE_NET_SERVER
+			   ) &&
+			   m_host[_port].tx_delay_ms > 0.0
+			)
+			{
+				m_host[_port].network.set_tx_threshold(m_host[_port].tx_delay_ms, new_baudrate);
+				PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
+						m_host[_port].name(), m_host[_port].network.tx_fifo().get_threshold(), m_host[_port].tx_delay_ms);
+			}
+			#if SER_ENABLE_RAW
+			if(m_host[port].io_mode == SER_MODE_RAW) {
+				m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
+			}
+			#endif
+		}
+	} else {
+		PWARNF(LOG_V1, LOG_COM, "%s: ignoring invalid baud rate divisor\n", m_s.uart[_port].name());
+		return;
+	}
+}
+
+void Serial::set_databyte_time(uint8_t _port)
+{
+	if(!m_s.uart[_port].baudrate) {
+		return;
+	}
+	double baud_usec = (1'000'000.0 / m_s.uart[_port].baudrate);
+	double word_len = 5.0 + m_s.uart[_port].line_cntl.wordlen_sel;
+	double stop_bits = m_s.uart[_port].line_cntl.stopbits ? 2.0 : 1.0;
+	if(m_s.uart[_port].line_cntl.stopbits && word_len == 5.0) {
+		stop_bits = 1.5;
+	}
+	const char *parity_str = "N";
+	if(m_s.uart[_port].line_cntl.parity_enable) {
+		uint8_t par = m_s.uart[_port].line_cntl.stick_parity << 1 | m_s.uart[_port].line_cntl.evenparity_sel;
+		switch(par) {
+			case 0: parity_str = "O"; break;
+			case 1: parity_str = "E"; break;
+			case 2: parity_str = "M"; break;
+			case 3: parity_str = "S"; break;
+			default: break;
+		}
+	}
+	double packet_len = 1.0 + word_len + m_s.uart[_port].line_cntl.parity_enable + stop_bits;
+	m_s.uart[_port].databyte_usec = uint32_t(packet_len * baud_usec);
+
+	PDEBUGF(LOG_V1, LOG_COM, "%s: databyte is %u us (%u baud, %g-%s-%g)\n",
+			m_host[_port].name(), m_s.uart[_port].databyte_usec,
+			m_s.uart[_port].baudrate,
+			word_len, parity_str, stop_bits);
+}
+
+static const char * ASCII_control_characters[] = {
+	"NUL",
+	"SOH",
+	"STX",
+	"ETX",
+	"EOT",
+	"ENQ",
+	"ACK",
+	"BEL",
+	"BS",
+	"HT",
+	"LF",
+	"VT",
+	"FF",
+	"CR",
+	"SO",
+	"SI",
+	"DLE",
+	"DC1",
+	"DC2",
+	"DC3",
+	"DC4",
+	"NAK",
+	"SYN",
+	"ETB",
+	"CAN",
+	"EM",
+	"SUB",
+	"ESC",
+	"FS",
+	"GS",
+	"RS",
+	"US"
+};
+
 void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 {
 	bool gen_int = false;
+
+	if(data <= 31) {
+		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd '%s'\n", m_s.uart[port].name(), ASCII_control_characters[data]);
+	} else if(data >= 32 && data <= 126) {
+		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd '%c'\n", m_s.uart[port].name(), data);
+	} else {
+		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd 0x02x\n", m_s.uart[port].name(), data);
+	}
 
 	if(m_s.uart[port].fifo_cntl.enable) {
 		if(m_s.uart[port].rx_fifo_end == 16) {
@@ -1734,6 +1630,9 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 						uint64_t(m_s.uart[port].databyte_usec * 3)*1_us,
 						false); // not continuous
 			}
+			if(m_host[port].dump.is_open()) {
+				m_host[port].dump.write((const char*)(&data), 1);
+			}
 		}
 	} else {
 		if(m_s.uart[port].line_status.rxdata_ready) {
@@ -1744,6 +1643,9 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 		m_s.uart[port].rxbuffer = data;
 		m_s.uart[port].line_status.rxdata_ready = true;
 		raise_interrupt(port, SER_INT_RXDATA);
+		if(m_host[port].dump.is_open()) {
+			m_host[port].dump.write((const char*)(&data), 1);
+		}
 	}
 }
 
@@ -1755,6 +1657,10 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		rx_fifo_enq(port, m_s.uart[port].tsrbuffer);
 	} else {
 		switch (m_host[port].io_mode) {
+			case SER_MODE_MODEM:
+				sent = m_host[port].modem.serial_write_byte(m_s.uart[port].tsrbuffer);
+
+				break;
 			case SER_MODE_FILE:
 				if(m_host[port].output == nullptr) {
 					assert(!m_host[port].filename.empty()); // filename must be set at init!
@@ -1803,8 +1709,8 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 				break;
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				if(m_host[port].client_socket_id != INVALID_SOCKET) {
-					sent = m_host[port].tx_data.write(&m_s.uart[port].tsrbuffer, 1);
+				if(m_host[port].network.is_connected()) {
+					sent = m_host[port].network.tx_fifo().write(&m_s.uart[port].tsrbuffer, 1);
 					if(!sent) {
 						PDEBUGF(LOG_V0, LOG_COM, "%s: tx buffer overflow: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
 					}
@@ -1826,6 +1732,13 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 
 	bool gen_int = false;
 	if(sent) {
+		if(m_s.uart[port].tsrbuffer <= 31) {
+			PDEBUGF(LOG_V3, LOG_COM, "%s: sent '%s'\n", m_s.uart[port].name(), ASCII_control_characters[m_s.uart[port].tsrbuffer]);
+		} else if(m_s.uart[port].tsrbuffer >= 32 && m_s.uart[port].tsrbuffer <= 126) {
+			PDEBUGF(LOG_V3, LOG_COM, "%s: sent '%c'\n", m_s.uart[port].name(), m_s.uart[port].tsrbuffer);
+		} else {
+			PDEBUGF(LOG_V3, LOG_COM, "%s: sent 0x02x\n", m_s.uart[port].name(), m_s.uart[port].tsrbuffer);
+		}
 		m_s.uart[port].line_status.tsr_empty = true;
 		if(m_s.uart[port].fifo_cntl.enable && (m_s.uart[port].tx_fifo_end > 0)) {
 			m_s.uart[port].tsrbuffer = m_s.uart[port].tx_fifo[0];
@@ -1863,10 +1776,13 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 
 	if((!m_s.uart[port].line_status.rxdata_ready) || m_s.uart[port].fifo_cntl.enable) {
 		switch (m_host[port].io_mode) {
+			case SER_MODE_MODEM:
+				data_ready = m_host[port].modem.serial_read_byte(&chbuf);
+				break;
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:
-				if(m_host[port].client_socket_id != INVALID_SOCKET && !m_s.uart[port].line_status.rxdata_ready) {
-					data_ready = m_host[port].rx_data.pop(chbuf);
+				if(m_host[port].network.is_connected() && !m_s.uart[port].line_status.rxdata_ready) {
+					data_ready = m_host[port].network.rx_fifo().pop(chbuf);
 				}
 				break;
 			case SER_MODE_RAW:
@@ -1982,7 +1898,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 	}
 
 	if(db_usec != m_s.uart[port].databyte_usec) {
-		PDEBUGF(LOG_V2, LOG_COM, "%s: next rx timer: %u us\n", m_host[port].name(), db_usec);
+		PDEBUGF(LOG_V3, LOG_COM, "%s: next rx timer: %u us\n", m_host[port].name(), db_usec);
 	}
 	// not continuous
 	g_machine.activate_timer(m_host[port].rx_timer, uint64_t(db_usec)*1_us, false);

@@ -94,6 +94,7 @@ enum e_Syslog_Facilities {
 	LOG_PRN,
 	LOG_COM,
 	LOG_MIDI,
+	LOG_NET,
 
 	LOG_FAC_COUNT,
 	LOG_ALL_FACILITIES = LOG_FAC_COUNT

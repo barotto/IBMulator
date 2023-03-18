@@ -72,7 +72,10 @@ libhardware_a_SOURCES = \
 	devices/hdd.cpp \
 	devices/harddrvfx.cpp \
 	devices/mediaimage.cpp \
+	devices/netservice.cpp \
 	devices/serial.cpp \
+	devices/serialmodem.cpp \
+	devices/serialmodemfx.cpp \
 	devices/parallel.cpp \
 	devices/pcspeaker.cpp \
 	devices/ps1audio.cpp \
@@ -148,7 +151,10 @@ noinst_HEADERS = \
 	devices/harddrvfx.h \
 	devices/hddparams.h \
 	devices/mediaimage.h \
+	devices/netservice.h \
 	devices/serial.h \
+	devices/serialmodem.h \
+	devices/serialmodemfx.h \
 	devices/parallel.h \
 	devices/pcspeaker.h \
 	devices/ps1audio.h \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,7 +64,7 @@ private:
 	SRC_STATE *m_SRC_state;
 	bool m_new_data;
 	std::function<void(bool)> m_capture_clbk;
-	float m_volume;
+	std::atomic<float> m_volume;
 	Category m_category;
 	double m_fr_rem;
 	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
@@ -76,6 +76,8 @@ public:
 	// The machine thread can call only these methods:
 	void enable(bool _enabled);
 	inline bool is_enabled() { return m_enabled; }
+	void set_volume(float _vol) { m_volume = _vol; }
+	float volume() const { return m_volume; }
 
 	void set_filters(std::string _filters_def);
 	void set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters);
@@ -90,6 +92,7 @@ public:
 	void play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist);
 	void play_frames(const AudioBuffer &_wave, unsigned _frames, uint64_t _time_dist);
 	void play_loop(const AudioBuffer &_wave);
+	void play_silence(unsigned _frames, uint64_t _time_dist_us);
 	void input_finish(uint64_t _time_span_us=0);
 	      AudioBuffer & in() { return m_in_buffer; }
 	const AudioBuffer & out() { return m_out_buffer; }
@@ -97,8 +100,6 @@ public:
 	void flush();
 
 	Category category() const { return m_category; }
-	void set_volume(float _vol) { m_volume = _vol; }
-	float volume() const { return m_volume; }
 	const char* name() const { return m_name.c_str(); }
 	int id() const { return m_id; }
 

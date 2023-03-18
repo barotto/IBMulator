@@ -1,0 +1,15 @@
+// Phone number to host name mappings for the virtual modem.
+// Can be used in games and BBS programs that accept only numbers in their dial
+// options.
+//
+// 1 mapping per line.
+// Every line must be in the following format:
+//
+//   NUMBER HOST[:PORT]
+//
+// for example:
+//
+//   55512345 remote.bbs.com:23
+//
+// PORT is optional. If omitted the default 23 will be used.
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -33,9 +33,9 @@ const SoundFX::samples_t FloppyFX::ms_samples[2] = {
 	{"5.25 drive seek step",     FDD_SAMPLES_DIR "5_25_drive_seek_step.wav"},
 	{"5.25 drive seek up",       FDD_SAMPLES_DIR "5_25_drive_seek_up.wav"},
 	{"5.25 drive seek down",     FDD_SAMPLES_DIR "5_25_drive_seek_down.wav"},
-	{"5.25 drive snatch",        nullptr},
-	{"5.25 drive boot",          nullptr},
-	{"5.25 drive boot (w/disk)", nullptr},
+	{"5.25 drive snatch",        ""},
+	{"5.25 drive boot",          ""},
+	{"5.25 drive boot (w/disk)", ""},
 	},{ // 3_5
 	{"3.5 drive spin",          FDD_SAMPLES_DIR "3_5_drive_spin.wav"},
 	{"3.5 drive spin start",    FDD_SAMPLES_DIR "3_5_drive_spin_start.wav"},
@@ -121,13 +121,13 @@ bool FloppyFX::boot(bool _wdisk)
 	event.time = g_machine.get_virt_time_us();
 	event.distance = 0.0;
 	if(_wdisk) {
-		if(ms_samples[m_fdd_type][FDD_BOOT_DISK].file) {
+		if(!ms_samples[m_fdd_type][FDD_BOOT_DISK].file.empty()) {
 			event.userdata = FDD_BOOT_DISK;
 		} else {
 			return false;
 		}
 	} else {
-		if(ms_samples[m_fdd_type][FDD_BOOT].file) {
+		if(!ms_samples[m_fdd_type][FDD_BOOT].file.empty()) {
 			event.userdata = FDD_BOOT;
 		} else {
 			return false;

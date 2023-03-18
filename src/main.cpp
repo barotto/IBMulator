@@ -27,6 +27,31 @@
 #include <sstream>
 #include <SDL.h>
 
+void report_exception(const std::string &_log, const std::string &_exc_mex)
+{
+	std::string message = "A problem occurred during initialisation.\n";
+	std::string logfile = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
+	if(FileSys::file_exists(logfile.c_str())) {
+		if(!_exc_mex.empty()) {
+			PERR("%s\n", _exc_mex.c_str());
+		}
+		PERR("Exception during initialization! Giving up :(\n");
+		message += "See the log file for more info"
+#ifndef _WIN32
+			", or start the program in a terminal"
+#endif
+			".\n"
+			"Use the -v NUM command line switch to enable verbose logging.\n\n"
+			"The log file is here:\n" + logfile + "\n"
+			"The ini file is here:\n" + g_program.config().get_path();
+	} else {
+		message += "Log content:\n";
+		message += _log;
+	}
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
+			message.c_str(),
+			nullptr);
+}
 
 int main(int argc, char** argv)
 {
@@ -56,29 +81,14 @@ int main(int argc, char** argv)
 #ifdef _WIN32
 		utf8::free_argv(argc, argv);
 #endif
-	} catch(std::exception &e) {
-		std::string message = "A problem occurred during initialisation.\n";
-		std::string logfile = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
-		if(FileSys::file_exists(logfile.c_str())) {
-			PERR("exception caught during initialization! giving up :(\n");
-			message += "See the log file for more info"
-#ifndef _WIN32
-				", or start the program in a terminal"
-#endif
-				".\n"
-				"Use the -v NUM command line switch to enable verbose logging.\n\n"
-				"The log file is here:\n" + logfile + "\n"
-				"The ini file is here:\n" + g_program.config().get_path();
-		} else {
-			message += "Log content:\n";
-			message += ss.str();
-		}
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Initialisation error",
-				message.c_str(),
-				nullptr);
-		
+	} catch(std::runtime_error &e) {
+		report_exception(ss.str(), e.what());
 		start = false;
 		return_value = 1;
+	} catch(std::exception &e) {
+		report_exception(ss.str(), "");
+		start = false;
+		return_value = 2;
 	}
 
 	g_syslog.remove(templog, false);

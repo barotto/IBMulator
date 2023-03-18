@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include "ibmulator.h"
 #include "debugger.h"
 #include "hardware/cpu.h"
+#include "utils.h"
 #include <cstring>
 #include <iomanip>
 
@@ -149,16 +150,6 @@ unsigned CPUDebugger::get_seg_idx(char *_str)
 	return REGI_CS;
 }
 
-char * upcase(char * str) {
-    for (char* idx = str; *idx ; idx++) *idx = toupper(*reinterpret_cast<unsigned char*>(idx));
-    return str;
-}
-
-char * lowcase(char * str) {
-	for(char* idx = str; *idx ; idx++)  *idx = tolower(*reinterpret_cast<unsigned char*>(idx));
-	return str;
-}
-
 char * skip_blanks(char * str) {
 	while(*str == ' ' || *str == '\t') {
 		str++;
@@ -176,7 +167,7 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 	unsigned seg;
 
 	strcpy(instu, _dasm_inst);
-	upcase(instu);
+	cstr_to_upper(instu);
 
 	result[0] = 0;
 	char* pos = strchr(instu,'[');

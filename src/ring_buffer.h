@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,10 +46,13 @@ public:
 
 	virtual size_t read(uint8_t *_data, size_t _len);
 	virtual size_t write(uint8_t *_data, size_t _len);
+	size_t read(uint8_t *_data);
+	size_t write(uint8_t _data);
 	size_t shrink_data(size_t _limit);
 
 	void get_status(size_t &_size, size_t &_wr_avail, size_t &_rd_avail) const;
 	size_t get_read_avail() const;
+	size_t get_write_avail() const;
 
 private:
 	void p_clear();

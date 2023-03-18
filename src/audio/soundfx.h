@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -30,8 +30,8 @@ protected:
 
 public:
 	struct sample_def {
-		const char* name;
-		const char* file;
+		std::string name;
+		std::string file;
 	};
 	typedef std::vector<sample_def> samples_t;
 
@@ -67,15 +67,13 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix span: %04llu ns (1st upd:%d), cue time:%lld us, events:%d\n",
 			_channel.name(), _time_span_ns, _first_upd, m_audio_cue_time, _events.size());
 
-	unsigned evtcnt = 0;
-
+	bool empty = true;
 	do {
 		Event event;
-		bool empty = !_events.try_and_copy(event);
+		empty = !_events.try_and_copy(event);
 		if(empty || event.time > mtime_us) {
 			break;
 		} else {
-			evtcnt++;
 			_events.try_and_pop();
 			if(_first_upd) {
 				m_audio_cue_time = event.time;
@@ -100,7 +98,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 	}
 	m_audio_cue_time = mtime_us;
 	_channel.input_finish(_time_span_ns);
-	if(evtcnt == 0) {
+	if(empty) {
 		return _channel.check_disable_time(mtime_us*1000);
 	}
 	_channel.set_disable_time(mtime_us*1000);

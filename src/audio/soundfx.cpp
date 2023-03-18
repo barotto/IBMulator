@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -28,11 +28,11 @@ std::vector<AudioBuffer> SoundFX::load_samples(const AudioSpec &_spec, const sam
 	std::vector<std::future<void>> futures(_samples.size());
 	std::vector<AudioBuffer> buffers(_samples.size());
 	for(unsigned i=0; i<_samples.size(); ++i) {
-		if(_samples[i].file) {
+		if(!_samples[i].file.empty()) {
 			futures[i] = std::async(std::launch::async, [_spec,i,&buffers,&_samples]() {
 				PINFOF(LOG_V2, LOG_AUDIO, "loading %s for %s sound fx\n",
-						_samples[i].file, _samples[i].name);
-				load_audio_file(_samples[i].file, buffers[i], _spec);
+						_samples[i].file.c_str(), _samples[i].name.c_str());
+				load_audio_file(_samples[i].file.c_str(), buffers[i], _spec);
 			});
 		}
 	}
@@ -59,6 +59,7 @@ void SoundFX::load_audio_file(const char *_filename, AudioBuffer &_sample, const
 		}
 	} catch(std::exception &e) {
 		PERRF(LOG_AUDIO, "SoundFX: %s: %s\n", _filename, e.what());
+		_sample.clear();
 	}
 }
 

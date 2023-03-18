@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -192,6 +192,13 @@ void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, u
 			_frames_cnt, _wave.spec().frames_to_us(_frames_cnt),
 			m_in_buffer.samples(), m_in_buffer.duration_us()
 			);
+}
+
+void MixerChannel::play_silence(unsigned _frames, uint64_t _time_dist_us)
+{
+	unsigned inbuf_frames = round(m_in_buffer.spec().us_to_frames(_time_dist_us));
+	m_in_buffer.resize_frames_silence(inbuf_frames);
+	m_in_buffer.fill_frames_silence(_frames);
 }
 
 void MixerChannel::play_loop(const AudioBuffer &_wave)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,7 +46,6 @@
 Machine g_machine;
 std::mutex Machine::ms_gui_lock;
 
-#define US_TO_NS(us) (us*1000)
 
 Machine::Machine()
 :
@@ -493,7 +492,7 @@ void Machine::run_loop()
 
 		m_vtime_ratio = vframe_time / m_bench.frame_time;
 
-		PDEBUGF(LOG_V2, LOG_MACHINE,
+		PDEBUGF(LOG_V3, LOG_MACHINE,
 			"Core step, fstart=%lld, fend=%lld, lend=%lld, sleep_time=%llu, "
 			"cycles=%d, load_time=%d, frame_time=%lld (%lld), vframe_time=%.0f, vratio=%.4f\n",
 			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
@@ -831,6 +830,7 @@ void Machine::cmd_cycles_adjust(double _factor)
 {
 	m_cmd_queue.push([=] () {
 		m_cycles_factor = _factor;
+		devices().cycles_adjust(_factor);
 		std::stringstream ss;
 		ss << "Emulation speed at ";
 		ss << std::setprecision(3);

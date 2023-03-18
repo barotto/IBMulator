@@ -8,7 +8,8 @@ share/ibmulator/icon.png \
 share/ibmulator/cmos_ps1_2011.bin \
 share/ibmulator/cmos_ps1_2121.bin \
 share/ibmulator/disk_images.zip \
-share/ibmulator/keymap.map
+share/ibmulator/keymap.map \
+share/ibmulator/phones.txt
 
 guidir = $(pkgdatadir)/gui
 dist_gui_DATA = \
@@ -205,6 +206,56 @@ dist_soundssys_DATA = \
 share/ibmulator/sounds/system/power_up.wav \
 share/ibmulator/sounds/system/power_down.wav \
 share/ibmulator/sounds/system/power_on.wav
+
+soundsmodemdir = $(pkgdatadir)/sounds/modem
+dist_soundsmodem_DATA = \
+share/ibmulator/sounds/modem/incoming.wav \
+share/ibmulator/sounds/modem/dtmf/0.wav \
+share/ibmulator/sounds/modem/dtmf/1.wav \
+share/ibmulator/sounds/modem/dtmf/2.wav \
+share/ibmulator/sounds/modem/dtmf/3.wav \
+share/ibmulator/sounds/modem/dtmf/4.wav \
+share/ibmulator/sounds/modem/dtmf/5.wav \
+share/ibmulator/sounds/modem/dtmf/6.wav \
+share/ibmulator/sounds/modem/dtmf/7.wav \
+share/ibmulator/sounds/modem/dtmf/8.wav \
+share/ibmulator/sounds/modem/dtmf/9.wav \
+share/ibmulator/sounds/modem/dtmf/a.wav \
+share/ibmulator/sounds/modem/dtmf/b.wav \
+share/ibmulator/sounds/modem/dtmf/c.wav \
+share/ibmulator/sounds/modem/dtmf/d.wav \
+share/ibmulator/sounds/modem/dtmf/pound.wav \
+share/ibmulator/sounds/modem/dtmf/star.wav \
+share/ibmulator/sounds/modem/eu/busy.wav \
+share/ibmulator/sounds/modem/eu/dial.wav \
+share/ibmulator/sounds/modem/eu/disconnect.wav \
+share/ibmulator/sounds/modem/eu/reorder.wav \
+share/ibmulator/sounds/modem/eu/ringing.wav \
+share/ibmulator/sounds/modem/us/busy.wav \
+share/ibmulator/sounds/modem/us/dial.wav \
+share/ibmulator/sounds/modem/us/disconnect.wav \
+share/ibmulator/sounds/modem/us/reorder.wav \
+share/ibmulator/sounds/modem/us/ringing.wav \
+share/ibmulator/sounds/modem/handshake/300.wav \
+share/ibmulator/sounds/modem/handshake/1200.wav \
+share/ibmulator/sounds/modem/handshake/2400.wav \
+share/ibmulator/sounds/modem/handshake/4800.wav \
+share/ibmulator/sounds/modem/handshake/9600.wav \
+share/ibmulator/sounds/modem/handshake/14400.wav \
+share/ibmulator/sounds/modem/handshake/19200.wav \
+share/ibmulator/sounds/modem/handshake/28800.wav \
+share/ibmulator/sounds/modem/handshake/33600.wav \
+share/ibmulator/sounds/modem/handshake/56000.wav \
+share/ibmulator/sounds/modem/handshake/short/300.wav \
+share/ibmulator/sounds/modem/handshake/short/1200.wav \
+share/ibmulator/sounds/modem/handshake/short/2400.wav \
+share/ibmulator/sounds/modem/handshake/short/4800.wav \
+share/ibmulator/sounds/modem/handshake/short/9600.wav \
+share/ibmulator/sounds/modem/handshake/short/14400.wav \
+share/ibmulator/sounds/modem/handshake/short/19200.wav \
+share/ibmulator/sounds/modem/handshake/short/28800.wav \
+share/ibmulator/sounds/modem/handshake/short/33600.wav \
+share/ibmulator/sounds/modem/handshake/short/56000.wav
 
 extraprogsdir = $(pkgdatadir)/extra
 dist_extraprogs_DATA = \

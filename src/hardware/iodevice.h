@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,6 +66,7 @@ public:
 	virtual void write(uint16_t /*_address*/, uint16_t /*_value*/, unsigned /*_io_len*/) {}
 	virtual void save_state(StateBuf &) {}
 	virtual void restore_state(StateBuf &) {}
+	virtual void cycles_adjust(double) {}
 
 protected:
 	void install(const IOPortsInterval *_io, unsigned _len);

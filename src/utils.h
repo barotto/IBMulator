@@ -74,6 +74,11 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 std::string str_to_lower(std::string _str);
 std::string str_to_upper(std::string _str);
 std::string str_trim(std::string _str);
+char * cstr_to_lower(char *_str);
+char * cstr_to_upper(char *_str);
+char * cstr_ltrim(char *_str);
+char * cstr_rtrim(char *_str);
+char * cstr_trim(char *_str);
 std::string str_compress_spaces(std::string _str);
 std::vector<std::string> str_parse_tokens_re(std::string _str, const std::regex &_regex);
 std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_sep);

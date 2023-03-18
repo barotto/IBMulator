@@ -156,7 +156,22 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SOUNDFX_FDD_SEEK, "0.4" },
 		{ SOUNDFX_HDD_SPIN, "0.4" },
 		{ SOUNDFX_HDD_SEEK, "0.4" },
-		{ SOUNDFX_SYSTEM,   "1.0" }
+		{ SOUNDFX_SYSTEM,   "1.0" },
+		{ SOUNDFX_MODEM,    "1.2" },
+		{ SOUNDFX_MODEM_FILTERS, "auto" },
+		{ SOUNDFX_MODEM_COUNTRY, "eu" },
+		{ SOUNDFX_MODEM_HANDSHAKE, "no" }
+	} },
+
+	{ MODEM_SECTION, {
+		{ MODEM_BAUD_RATE,    "2400"      },
+		{ MODEM_LISTEN_ADDR,  ""          },
+		{ MODEM_PHONEBOOK,    "phone.txt" },
+		{ MODEM_TELNET_MODE,  "no"        },
+		{ MODEM_CONN_TIMEOUT, "10"        },
+		{ MODEM_WARM_DELAY,   "no"        },
+		{ MODEM_CONNECT_CODE, "auto"      },
+		{ MODEM_ECHO_ON,      "yes"       },
 	} },
 
 	{ LPT_SECTION, {
@@ -635,13 +650,20 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
-";  enabled: Enable sound effects emulation.\n"
-";   volume: General volume of the sound effects.\n"
-"; fdd_seek: Volume of FDD seeks.\n"
-"; fdd_spin: Volume of FDD spin noise.\n"
-"; hdd_seek: Volume of HDD seeks.\n"
-"; hdd_spin: Volume of HDD spin noise.\n"
-";   system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
+";         enabled: Enable sound effects emulation.\n"
+";          volume: General volume of the sound effects.\n"
+";        fdd_seek: Volume of FDD seeks.\n"
+";        fdd_spin: Volume of FDD spin noise.\n"
+";        hdd_seek: Volume of HDD seeks.\n"
+";        hdd_spin: Volume of HDD spin noise.\n"
+";          system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
+";           modem: Volume of the serial modem's internal speaker.\n"
+";   modem_country: Determines the style of the modem tones.\n"
+";                  Possible values: eu, us.\n"
+"; modem_handshake: Play the modem's handshaking sounds.\n"
+";                  Possible values: no, short, full.\n"
+";                   short: 2 seconds version.\n" 
+";                    full: full version (warning: might cause connection timeouts).\n"
 		},
 
 		{ SERIAL_SECTION,
@@ -654,9 +676,23 @@ ini_filehelp_t AppConfig::ms_help = {
 ";               term: terminal connection (Linux only)\n"
 ";               net-server: network server that accepts incoming connections\n"
 ";               net-client: network client for connecting to a network server\n"
+";               modem: virtual modem that connects and receives calls over the network\n"
 ";         dev: address or path of the attached serial device (see the README).\n"
-";    tx_delay: wait time for network data transmissions in milliseconds (net modes only).\n"
-"; tcp_nodelay: use the TCP_NODELAY socket option (net modes only).\n"
+";    tx_delay: wait time for network data transmissions in milliseconds (network modes only).\n"
+"; tcp_nodelay: use the TCP_NODELAY socket option (network modes only).\n"
+		},
+
+		{ MODEM_SECTION,
+";      baud_rate: Speed of the modem in bits-per-second.\n"
+";                 Possible values: 300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 33600, 56000.\n" 
+";    listen_addr: Address and port on which to open a listening socket for incoming calls.\n"
+"; phonebook_file: The file containing the mapping between phone numbers and network addresses.\n"
+";    telnet_mode: Enable Telnet protocol interpretation (needed when connecting to BBSes behind Telnet servers).\n"
+";   conn_timeout: Connection timeout in seconds when connecting to a remote host.\n"
+";   warmup_delay: Drop all incoming and outgoing traffic for a short period after answering a call.\n"
+";   connect_code: Numeric result code after a successful connect.\n"
+";                 Possible values: auto, or an integer number.\n"
+";                  auto: the modem will report a code that depends on the baud_rate value.\n"
 		},
 
 		{ LPT_SECTION, ""
@@ -872,7 +908,11 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SOUNDFX_FDD_SEEK, false },
 		{ SOUNDFX_HDD_SPIN, false },
 		{ SOUNDFX_HDD_SEEK, false },
-		{ SOUNDFX_SYSTEM,   false }
+		{ SOUNDFX_SYSTEM,   false },
+		{ SOUNDFX_MODEM,    false },
+		{ SOUNDFX_MODEM_FILTERS,   true  },
+		{ SOUNDFX_MODEM_COUNTRY,   false },
+		{ SOUNDFX_MODEM_HANDSHAKE, false },
 	} },
 	{ SERIAL_SECTION, {
 		{ SERIAL_ENABLED,       false },
@@ -880,6 +920,17 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SERIAL_A_DEV,         false },
 		{ SERIAL_A_TX_DELAY,    false },
 		{ SERIAL_A_TCP_NODELAY, false }
+	} },
+	{ MODEM_SECTION, {
+		{ MODEM_BAUD_RATE,    false },
+		{ MODEM_LISTEN_ADDR,  false },
+		{ MODEM_PHONEBOOK,    false },
+		{ MODEM_TELNET_MODE,  false },
+		{ MODEM_CONN_TIMEOUT, false },
+		{ MODEM_WARM_DELAY,   false },
+		{ MODEM_CONNECT_CODE, false },
+		{ MODEM_ECHO_ON,      true  },
+		{ MODEM_DUMP,         true  },
 	} },
 	{ LPT_SECTION, {
 		{ LPT_ENABLED, false },
@@ -1049,6 +1100,22 @@ std::string AppConfig::get_file(const std::string &_section, const std::string &
 	} catch(std::exception &e) {
 		PERRF(LOG_PROGRAM, "unable to get string [%s]:%s\n", _section.c_str(), _name.c_str());
 		throw;
+	}
+
+	if(filename.empty()) {
+		return filename;
+	}
+
+	return get_file_path(filename, _type);
+}
+
+std::string AppConfig::try_get_file(const std::string &_section, const std::string &_name, FileType _type)
+{
+	std::string filename;
+	try {
+		filename = get_value(_section, _name);
+	} catch(std::exception &e) {
+		return "";
 	}
 
 	if(filename.empty()) {

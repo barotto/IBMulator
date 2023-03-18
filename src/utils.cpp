@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*
+ * cstr_*() functions copyright (C) 2022 The DOSBox Staging Team
+ */
 
 #include <string>
 #include <sstream>
@@ -99,6 +102,44 @@ std::string str_trim(std::string _str)
 	_str.erase(_str.find_last_not_of(ws) + 1);
 	
 	return _str;
+}
+
+char * cstr_to_lower(char *_str)
+{
+	for(char *idx = _str; *idx; idx++) {
+		*idx = tolower(*reinterpret_cast<unsigned char*>(idx));
+	}
+	return _str;
+}
+
+char * cstr_to_upper(char *_str)
+{
+	for(char *idx = _str; *idx; idx++) {
+		*idx = toupper(*reinterpret_cast<unsigned char*>(idx));
+	}
+	return _str;
+}
+
+char * cstr_ltrim(char *_str)
+{
+	while (*_str && isspace(*reinterpret_cast<unsigned char *>(_str))) {
+		_str++;
+	}
+	return _str;
+}
+
+char * cstr_rtrim(char *_str)
+{
+	char *p;
+	p = strchr(_str, '\0');
+	while (--p >= _str && isspace(*reinterpret_cast<unsigned char *>(p))) {};
+	p[1] = '\0';
+	return _str;
+}
+
+char * cstr_trim(char *_str)
+{
+	return cstr_ltrim(cstr_rtrim(_str));
 }
 
 std::string str_compress_spaces(std::string _str)

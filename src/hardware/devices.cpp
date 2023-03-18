@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -234,6 +234,13 @@ void Devices::destroy_all()
 	m_pic = nullptr;
 	m_pit = nullptr;
 	m_cmos = nullptr;
+}
+
+void Devices::cycles_adjust(double _factor)
+{
+	for(auto dev : m_devices) {
+		dev.second->cycles_adjust(_factor);
+	}
 }
 
 void Devices::save_state(StateBuf &_state)

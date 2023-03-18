@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,8 +21,8 @@
 #ifndef IBMULATOR_HW_SERIAL_H
 #define IBMULATOR_HW_SERIAL_H
 
-#include "shared_fifo.h"
-#include "ring_buffer.h"
+#include "netservice.h"
+#include "serialmodem.h"
 
 // Peter Grehan (grehan@iprg.nokia.com) coded most of this
 // serial emulation.
@@ -49,12 +49,10 @@
 	extern "C" {
 	#include <termios.h>
 	}
-	typedef int SOCKET;
 #endif
 
 #if SER_WIN32
 	#include "wincompat.h"
-	#include <winsock2.h>
 #endif
 
 #define SER_PORTS       1     // number of serial ports (1 to 4)
@@ -90,10 +88,11 @@ enum SerialPortMode {
 	SER_MODE_TERM,         // tty input/output (Linux only)
 	SER_MODE_RAW,          // raw hardware serial port access (TODO)
 	SER_MODE_MOUSE,        // serial mouse connected
-	SER_MODE_NET_CLIENT,   // network client input/output
-	SER_MODE_NET_SERVER,   // network server input/output
+	SER_MODE_NET_CLIENT,   // null-modem network client input/output
+	SER_MODE_NET_SERVER,   // null-modem network server input/output
 	SER_MODE_PIPE_CLIENT,  // pipe client input/output (Windows only)
-	SER_MODE_PIPE_SERVER   // pipe server input/output (Windows only)
+	SER_MODE_PIPE_SERVER,  // pipe server input/output (Windows only)
+	SER_MODE_MODEM         // hayes compatible modem input/output
 };
 
 enum SerialIntType {
@@ -109,8 +108,6 @@ enum SerialIntType {
 class serial_raw;
 #endif
 
-// TODO this value is arbitrary
-#define SER_RX_BUF_LEN  1024
 
 
 class Serial : public IODevice
@@ -267,35 +264,11 @@ private:
 
 		unsigned io_mode;
 
-		// socket server/client mode
-
-		class TXFifo : public RingBuffer {
-		protected:
-			std::atomic<unsigned> m_threshold;
-			std::condition_variable m_data_cond;
-		public:
-			virtual size_t read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns);
-			virtual size_t write(uint8_t *_data, size_t _len);
-			void set_threshold(int _baudrate, double _delay_ms) {
-				m_threshold = _delay_ms * double(_baudrate)/10000.0 + 1;
-			}
-			unsigned get_threshold() const { return m_threshold; }
-		};
-		std::string server_host;
-		unsigned long server_port;
-		std::string client_name;
-		std::atomic<SOCKET> server_socket_id;
-		std::atomic<SOCKET> client_socket_id;
-		std::thread net_thread;
-		SharedFifo<uint8_t, SER_RX_BUF_LEN> rx_data;
-		TXFifo tx_data;
-		double tx_delay_ms;
-		bool tcp_nodelay;
-		void start_net_server();
-		void start_net_client();
-		void net_data_loop();
-		void net_tx_loop();
-		void close_client_socket();
+		// modem and null-modem (net server/client) modes
+		SerialModem modem;
+		ModemStatus modem_status;
+		NetService network;
+		double tx_delay_ms = 0.0;
 
 		// file mode
 		std::string filename;
@@ -316,12 +289,15 @@ private:
 		serial_raw* raw;
 		#endif
 
+		std::ofstream dump;
+
 		void init_mode_file(std::string dev);
 		void init_mode_term(std::string dev);
 		void init_mode_raw(std::string dev);
 		void init_mode_mouse();
 		void init_mode_net(std::string dev, unsigned mode, double txdelay, bool tcp_nodelay);
 		void init_mode_pipe(std::string dev, unsigned mode);
+		void init_mode_modem(double txdelay, bool tcp_nodelay);
 
 		constexpr const char * name() const {
 			switch(port_id) {
@@ -360,6 +336,7 @@ public:
 	void install();
 	void remove();
 	void reset(unsigned type);
+	void power_off();
 	void config_changed();
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);
@@ -379,12 +356,16 @@ private:
 	void lower_interrupt(uint8_t port);
 	void raise_interrupt(uint8_t port, int type);
 
+	void set_baudrate(uint8_t _port);
+	void set_databyte_time(uint8_t _port);
 	void rx_fifo_enq(uint8_t port, uint8_t data);
 
 	void tx_timer(uint8_t, uint64_t);
 	void rx_timer(uint8_t, uint64_t);
 	void fifo_timer(uint8_t, uint64_t);
 
+	void set_MSR(uint8_t _port, const ModemStatus &_status);
+	
 	void mouse_button(MouseButton _button, bool _state);
 	void mouse_motion(int delta_x, int delta_y, int delta_z);
 	void update_mouse_data(void);
