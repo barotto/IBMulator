@@ -172,6 +172,14 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ MODEM_WARM_DELAY,   "no"        },
 		{ MODEM_CONNECT_CODE, "auto"      },
 		{ MODEM_ECHO_ON,      "yes"       },
+		{ MODEM_DUMP,         ""          }
+	} },
+
+	{ SERIAL_SECTION, {
+		{ SERIAL_A_DUMP, "" },
+		{ SERIAL_B_DUMP, "" },
+		{ SERIAL_C_DUMP, "" },
+		{ SERIAL_D_DUMP, "" }
 	} },
 
 	{ LPT_SECTION, {
@@ -919,7 +927,8 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SERIAL_A_MODE,        false },
 		{ SERIAL_A_DEV,         false },
 		{ SERIAL_A_TX_DELAY,    false },
-		{ SERIAL_A_TCP_NODELAY, false }
+		{ SERIAL_A_TCP_NODELAY, false },
+		{ SERIAL_A_DUMP,        true  }
 	} },
 	{ MODEM_SECTION, {
 		{ MODEM_BAUD_RATE,    false },
@@ -1007,6 +1016,11 @@ std::string AppConfig::get_value(const std::string &section, const std::string &
 		}
 	}
 	return valstr;
+}
+
+std::string AppConfig::get_value(const std::string &_section, const std::string &_name)
+{
+	return get_value(_section, _name, false);
 }
 
 void AppConfig::set_user_home(std::string _path)

@@ -72,7 +72,8 @@ public:
 	std::string get_user_home() const { return m_user_home; }
 	std::string get_cfg_home() const { return m_cfg_home; }
 
-	std::string get_value(const std::string &_section, const std::string &_name, bool _quiet=false);
+	std::string get_value(const std::string &_section, const std::string &_name);
+	std::string get_value(const std::string &_section, const std::string &_name, bool _quiet);
 
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string try_get_file(const std::string &_section, const std::string &_name, FileType _type);
