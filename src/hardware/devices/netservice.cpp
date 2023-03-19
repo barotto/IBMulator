@@ -49,6 +49,7 @@
 	#include <arpa/inet.h>
 	#include <netdb.h>
 	#include <unistd.h>
+	#include <poll.h>
 	#define closesocket(s) ::close(s)
 	#define SOCKET_ERROR -1
 	#define SD_BOTH SHUT_RDWR
@@ -62,7 +63,6 @@
 	}
 #endif
 #include <fcntl.h>
-#include <poll.h>
 
 #define SEND_MAX_DELAY_MS 100
 #define SEND_MAX_DELAY_NS 100_ms
@@ -308,7 +308,7 @@ void NetService::close_client_socket(Error _error, bool _refuse)
 	PINFOF(LOG_V1, LOG_NET, "%s: %s the client connection\n", log_name(), _refuse ? "resetting":"closing");
 	if(_refuse) {
 		struct linger ling = {1, 0};
-		::setsockopt(m_client_socket, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+		::setsockopt(m_client_socket, SOL_SOCKET, SO_LINGER, (char *) &ling, sizeof(ling));
 	}
 	::shutdown(m_client_socket, SD_BOTH);
 	closesocket(m_client_socket);
@@ -383,7 +383,7 @@ void NetService::start_net_server()
 			} else {
 				PINFOF(LOG_V1, LOG_NET, "%s: refusing connection from %s\n", log_name(), ip);
 				struct linger ling = {1, 0};
-				::setsockopt(client_sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+				::setsockopt(client_sock, SOL_SOCKET, SO_LINGER, (char *) &ling, sizeof(ling));
 				closesocket(client_sock);
 			}
 		}
@@ -420,6 +420,17 @@ void NetService::start_net_client_async(uint64_t _conn_timeout_ms)
 		m_error = _error;
 	};
 
+	#ifdef _WIN32
+
+	u_long nonBlockingMode = 1;
+	if(ioctlsocket(socket_id, FIONBIO, &nonBlockingMode) == SOCKET_ERROR) {
+		PERRF(LOG_NET, "%s: net client: connection failed (ioctlsocket(FIONBIO) error %d).\n", log_name(), get_neterr());
+		fail_connection(Error::Socket);
+		return;
+	}
+
+	#else
+
 	int prev_flags = ::fcntl(socket_id, F_GETFL, 0);
 	if(prev_flags < 0) {
 		PERRF(LOG_NET, "%s: net client: connection failed (fcntl(F_GETFL) error %d).\n", log_name(), get_neterr());
@@ -431,6 +442,8 @@ void NetService::start_net_client_async(uint64_t _conn_timeout_ms)
 		fail_connection(Error::Socket);
 		return;
 	}
+
+	#endif
 
 	bool connected = false;
 	bool timeout = false;
@@ -466,8 +479,8 @@ void NetService::start_net_client_async(uint64_t _conn_timeout_ms)
 			ret = ::select(socket_id+1, NULL, &wrset, NULL, &tv);
 		} while(ret == 0);
 
-		if(::getsockopt(socket_id, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
-			fail_connection();
+		if(::getsockopt(socket_id, SOL_SOCKET, SO_ERROR, (char*) &error, &len) != 0) {
+			fail_connection(Error::Socket);
 			PERRF(LOG_NET, "%s: net client: connection failed (unknown error).\n", log_name());
 			return;
 		}
@@ -535,12 +548,26 @@ void NetService::start_net_client_async(uint64_t _conn_timeout_ms)
 		connected = true;
 	}
 
+	#ifdef _WIN32
+
+	nonBlockingMode = 0;
+	if(ioctlsocket(socket_id, FIONBIO, &nonBlockingMode) == SOCKET_ERROR) {
+		fail_connection(Error::Socket);
+		PERRF(LOG_NET, "%s: net client: connection failed (ioctlsocket(FIONBIO) error %d).\n", log_name(), get_neterr());
+		return;
+	}
+
+	#else
+
 	// restore old flags (make socket blocking again)
 	if(::fcntl(socket_id, F_SETFL, prev_flags) < 0) {
 		fail_connection(Error::Socket);
 		PERRF(LOG_NET, "%s: net client: connection failed (fcntl(F_SETFL) error %d).\n", log_name(), get_neterr());
 		return;
 	}
+
+	#endif
+
 	m_client_socket = socket_id;
 
 	m_mex_callback(str_format("%s: connected to %s:%u", log_name(), m_client_host.c_str(), m_client_port));
