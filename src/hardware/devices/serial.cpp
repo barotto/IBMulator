@@ -1591,7 +1591,7 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 	} else if(data >= 32 && data <= 126) {
 		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd '%c'\n", m_s.uart[port].name(), data);
 	} else {
-		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd 0x02x\n", m_s.uart[port].name(), data);
+		PDEBUGF(LOG_V3, LOG_COM, "%s: recvd 0x%02X\n", m_s.uart[port].name(), data);
 	}
 
 	if(m_s.uart[port].fifo_cntl.enable) {
@@ -1737,7 +1737,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		} else if(m_s.uart[port].tsrbuffer >= 32 && m_s.uart[port].tsrbuffer <= 126) {
 			PDEBUGF(LOG_V3, LOG_COM, "%s: sent '%c'\n", m_s.uart[port].name(), m_s.uart[port].tsrbuffer);
 		} else {
-			PDEBUGF(LOG_V3, LOG_COM, "%s: sent 0x02x\n", m_s.uart[port].name(), m_s.uart[port].tsrbuffer);
+			PDEBUGF(LOG_V3, LOG_COM, "%s: sent 0x%02X\n", m_s.uart[port].name(), m_s.uart[port].tsrbuffer);
 		}
 		m_s.uart[port].line_status.tsr_empty = true;
 		if(m_s.uart[port].fifo_cntl.enable && (m_s.uart[port].tx_fifo_end > 0)) {
