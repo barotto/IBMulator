@@ -921,10 +921,10 @@ void SerialModem::do_command()
 				case 'K': {
 					const uint32_t val = scan_number(scanbuf);
 					PINFOF(LOG_V1, LOG_COM, "MODEM: '&K', flow control %u\n", val);
-					if (val == 3) {
+					if (val == 0 || val == 1 || val == 3) {
 						m_flowcontrol = val;
 					} else {
-						PWARNF(LOG_V0, LOG_COM, "MODEM: flow control other than RTS/CTS is not supported\n");
+						PWARNF(LOG_V0, LOG_COM, "MODEM: XON/XOFF flow control not supported\n");
 						send_res_to_serial(ResERROR);
 						return;
 					}
@@ -1110,10 +1110,10 @@ bool SerialModem::serial_read_byte(uint8_t *_byte)
 bool SerialModem::serial_write_byte(uint8_t _byte)
 {
 	if(m_tqueue.write(_byte) != 1) {
-		PWARNF(LOG_V0, LOG_COM, "MODEM: serial tx overflow!\n");
+		PWARNF(LOG_V2, LOG_COM, "MODEM: serial tx overflow!\n");
 		return false;
 	}
-	if(m_tqueue.get_write_avail() < MODEM_BUFFER_CTS_THRESHOLD) {
+	if(m_tqueue.get_write_avail() < MODEM_BUFFER_CTS_THRESHOLD && m_flowcontrol != 0) {
 		set_CTS(false);
 	}
 	return true;
@@ -1280,7 +1280,7 @@ void SerialModem::timer(uint64_t _time)
 			}
 		}
 
-		if(!m_MSR.CTS && m_tqueue.get_write_avail() >= MODEM_BUFFER_CTS_THRESHOLD) {
+		if(!m_MSR.CTS && m_tqueue.get_write_avail() >= MODEM_BUFFER_CTS_THRESHOLD && m_flowcontrol != 0) {
 			set_CTS(true);
 		}
 	}
