@@ -54,18 +54,18 @@ SerialModem::SerialModem()
 
 SerialModem::BaudRate SerialModem::find_baudrate(unsigned _baudrate)
 {
-	if(_baudrate <=   300) return {    300,    30,   1 };
-	if(_baudrate <=  1200) return {   1200,   120,   5 };
-	if(_baudrate <=  2400) return {   2400,   240,  10 };
-	if(_baudrate <=  4800) return {   4800,   480,  11 }; // Hayes code
-	if(_baudrate <=  9600) return {   9600,   960,  12 }; // Hayes code
-	if(_baudrate <= 14400) return {  14400,  1440,  13 }; // Hayes code
-	if(_baudrate <= 19200) return {  19200,  1920,  14 }; // Hayes code
-	if(_baudrate <= 28800) return {  28800,  2880, 107 }; // USR code
-	if(_baudrate <= 33600) return {  33600,  3360, 155 }; // USR code
-	if(_baudrate <= 56000) return {  56000,  5600, 162 }; // USR code
-	if(_baudrate <= 57600) return {  57600,  5760, 316 }; // made up code
-	                  else return { 115200, 11520, 500 }; // made up code
+	if(_baudrate <=   300) return {    300,    30,   1,  3600 };
+	if(_baudrate <=  1200) return {   1200,   120,   5,  2300 };
+	if(_baudrate <=  2400) return {   2400,   240,  10,  5300 };
+	if(_baudrate <=  4800) return {   4800,   480,  11,  6300 }; // Hayes code
+	if(_baudrate <=  9600) return {   9600,   960,  12,  6300 }; // Hayes code
+	if(_baudrate <= 14400) return {  14400,  1440,  13,  5600 }; // Hayes code
+	if(_baudrate <= 19200) return {  19200,  1920,  14,  5600 }; // Hayes code
+	if(_baudrate <= 28800) return {  28800,  2880, 107,  8200 }; // USR code
+	if(_baudrate <= 33600) return {  33600,  3360, 155,  8200 }; // USR code
+	if(_baudrate <= 56000) return {  56000,  5600, 162, 15000 }; // USR code
+	if(_baudrate <= 57600) return {  57600,  5760, 316, 15000 }; // made up code
+	                  else return { 115200, 11520, 500, 15000 }; // made up code
 }
 
 void SerialModem::init(NetService *_network, double _tx_delay_ms)
@@ -180,6 +180,12 @@ void SerialModem::init(NetService *_network, double _tx_delay_ms)
 	} else {
 		PWARNF(LOG_V0, LOG_COM, "MODEM: no phonebook defined\n");
 	}
+
+	m_handshake = static_cast<Handshake>(g_program.config().get_enum(MODEM_SECTION, MODEM_HANDSHAKE, {
+		{ "no",    HANDSHAKE_NO },
+		{ "short", HANDSHAKE_SHORT },
+		{ "full",  HANDSHAKE_FULL },
+	}, HANDSHAKE_NO));
 
 	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED, false);
 	if(m_fx_enabled) {
@@ -413,10 +419,28 @@ void SerialModem::enter_handshaking_state()
 
 	m_state = State::Handshaking;
 
-	if(m_fx_enabled) {
-		m_accept_time = g_machine.get_virt_time_ns() + m_fx.handshake();
-	} else {
-		m_accept_time = g_machine.get_virt_time_ns();
+	m_accept_time = g_machine.get_virt_time_ns();
+
+	switch(m_handshake) {
+		case HANDSHAKE_SHORT:
+			if(m_fx_enabled) {
+				// sound effects take precedence
+				m_accept_time += m_fx.handshake();
+			} else {
+				m_accept_time += 2_s;
+			}
+			break;
+		case HANDSHAKE_FULL:
+			if(m_fx_enabled) {
+				m_accept_time += m_fx.handshake();
+			} else {
+				m_accept_time += MS_TO_NS(m_baudrate.handshake);
+			}
+			break;
+		case HANDSHAKE_NO:
+		default:
+			m_accept_time += MS_TO_NS(MODEM_TICKTIME_MS);
+			break;
 	}
 }
 

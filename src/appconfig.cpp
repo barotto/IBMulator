@@ -159,8 +159,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SOUNDFX_SYSTEM,   "1.0" },
 		{ SOUNDFX_MODEM,    "1.2" },
 		{ SOUNDFX_MODEM_FILTERS, "auto" },
-		{ SOUNDFX_MODEM_COUNTRY, "eu" },
-		{ SOUNDFX_MODEM_HANDSHAKE, "no" }
+		{ SOUNDFX_MODEM_COUNTRY, "eu" }
 	} },
 
 	{ MODEM_SECTION, {
@@ -172,6 +171,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ MODEM_WARM_DELAY,   "no"        },
 		{ MODEM_CONNECT_CODE, "auto"      },
 		{ MODEM_ECHO_ON,      "yes"       },
+		{ MODEM_HANDSHAKE,    "no"        },
 		{ MODEM_DUMP,         ""          }
 	} },
 
@@ -668,10 +668,6 @@ ini_filehelp_t AppConfig::ms_help = {
 ";           modem: Volume of the serial modem's internal speaker.\n"
 ";   modem_country: Determines the style of the modem tones.\n"
 ";                  Possible values: eu, us.\n"
-"; modem_handshake: Play the modem's handshaking sounds.\n"
-";                  Possible values: no, short, full.\n"
-";                   short: 2 seconds version.\n" 
-";                    full: full version (warning: might cause connection timeouts).\n"
 		},
 
 		{ SERIAL_SECTION,
@@ -702,6 +698,10 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                 Possible values: auto, or an integer number.\n"
 ";                  auto: the modem will report a code that depends on the baud_rate value.\n"
 ";        echo_on: Echo is enabled at power-on and after a reset.\n"
+";      handshake: Pretend handshaking happens after establishing a connection. If sound effects are enabled a sound will be played.\n"
+";                  Possible values: no, short, full.\n"
+";                   short: handshake duration is 2 seconds, regardless of the baud rate.\n" 
+";                    full: handshake duration depends on the baud rate (warning: might cause connection timeouts).\n"
 		},
 
 		{ LPT_SECTION, ""
@@ -919,9 +919,8 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SOUNDFX_HDD_SEEK, false },
 		{ SOUNDFX_SYSTEM,   false },
 		{ SOUNDFX_MODEM,    false },
-		{ SOUNDFX_MODEM_FILTERS,   true  },
-		{ SOUNDFX_MODEM_COUNTRY,   false },
-		{ SOUNDFX_MODEM_HANDSHAKE, false },
+		{ SOUNDFX_MODEM_FILTERS, true  },
+		{ SOUNDFX_MODEM_COUNTRY, false }
 	} },
 	{ SERIAL_SECTION, {
 		{ SERIAL_ENABLED,       false },
@@ -940,6 +939,7 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ MODEM_WARM_DELAY,   false },
 		{ MODEM_CONNECT_CODE, false },
 		{ MODEM_ECHO_ON,      false },
+		{ MODEM_HANDSHAKE,    false },
 		{ MODEM_DUMP,         true  },
 	} },
 	{ LPT_SECTION, {

@@ -55,12 +55,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 			}
 		}
 	}
-	auto htype = g_program.config().get_string(SOUNDFX_SECTION, SOUNDFX_MODEM_HANDSHAKE, "short");
-	if(htype != "no") {
-		m_handshakes = true;
-	} else {
-		m_handshakes = false;
-	}
+
 	if(ms_tones.empty()) {
 		// if country dir doesn't exist buffers will be empty, no exceptions thrown
 		std::string path(MODEM_SAMPLES_DIR);
@@ -75,6 +70,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 		tones.push_back({"disconnect tone", path + "disconnect.wav"});
 		tones.push_back({"incoming", MODEM_SAMPLES_DIR "incoming.wav"});
 
+		auto htype = g_program.config().get_string(MODEM_SECTION, MODEM_HANDSHAKE);
 		if(htype != "no") {
 			std::string hdir = MODEM_SAMPLES_HANDSHAKE_DIR;
 			if(htype != "full") {
@@ -227,11 +223,7 @@ uint64_t SerialModemFX::incoming()
 
 uint64_t SerialModemFX::handshake()
 {
-	if(m_handshakes) {
-		return enqueue(HANDSHAKE, 0, 1);
-	} else {
-		return 0;
-	}
+	return enqueue(HANDSHAKE, 0, 1);
 }
 
 void SerialModemFX::set_volume(int level)

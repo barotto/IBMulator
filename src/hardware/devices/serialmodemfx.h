@@ -64,7 +64,6 @@ private:
 	};
 	shared_deque<ModemSound> m_events;
 	bool m_enabled = true;
-	bool m_handshakes = true;
 	
 public:
 	SerialModemFX() : SoundFX() {}

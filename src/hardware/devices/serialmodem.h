@@ -95,6 +95,10 @@ private:
 		DTR_IGNORE, DTR_COMMAND, DTR_HANG, DRT_RESET
 	};
 
+	enum Handshake {
+		HANDSHAKE_NO, HANDSHAKE_SHORT, HANDSHAKE_FULL
+	} m_handshake = HANDSHAKE_NO;
+
 	TimerID m_timer = NULL_TIMER_ID;
 	NetService *m_network = nullptr;
 	double m_txdelay_ms = 50.0;
@@ -102,6 +106,7 @@ private:
 		unsigned bps;
 		unsigned Bps;
 		unsigned code;
+		uint64_t handshake;
 	} m_baudrate;
 	double m_bytes_per_tick = .0;
 	double m_bytes_ready = .0;
@@ -129,8 +134,7 @@ private:
 	bool m_ringing = false;
 	bool m_terse_result = false;
 	unsigned m_rescode_set = 4; // Full messages, dial tone dialing, dial tone timeout, busy detect
-	bool m_telnet_mode = false; // Default to direct null modem connection;
-	                         // Telnet mode interprets IAC
+	bool m_telnet_mode = false; // Telnet mode interprets IAC
 
 	uint32_t m_doresponse = 0;
 	uint32_t m_cmdpause = 0;

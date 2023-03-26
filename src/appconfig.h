@@ -267,7 +267,6 @@ public:
 #define SOUNDFX_MODEM           "modem"
 #define SOUNDFX_MODEM_COUNTRY   "modem_country"
 #define SOUNDFX_MODEM_FILTERS   "modem_filters"
-#define SOUNDFX_MODEM_HANDSHAKE "modem_handshake"
 
 #define SERIAL_SECTION          "serial"
 #define SERIAL_ENABLED          "enabled"
@@ -301,6 +300,7 @@ public:
 #define MODEM_WARM_DELAY        "warmup_delay"
 #define MODEM_CONNECT_CODE      "connect_code"
 #define MODEM_ECHO_ON           "echo_on"
+#define MODEM_HANDSHAKE         "handshake"
 #define MODEM_DUMP              "dump_file"
 
 #define LPT_SECTION             "lpt"
