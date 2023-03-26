@@ -174,6 +174,7 @@ public:
 
 	void set_MSR_callback(StatusFn _fn) { m_MSR_callback = _fn; }
 	void set_MCR(const ModemControl &_mcr);
+	ModemStatus get_MSR() const { return m_MSR; }
 
 	bool serial_read_byte(uint8_t *_byte);
 	bool serial_write_byte(uint8_t _byte);

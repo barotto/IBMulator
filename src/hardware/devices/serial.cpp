@@ -1385,6 +1385,10 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						}
 					}
 					#endif
+					// Modem status is modified in loopback mode
+					if(m_host[port].io_mode == SER_MODE_MODEM) {
+						set_MSR(port, m_host[port].modem.get_MSR());
+					}
 				}
 			}
 
