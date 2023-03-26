@@ -31,8 +31,7 @@ linking to get a more convenient and smaller package.
 ## STEP 2. Build RmlUi
 RmlUi is a C++ GUI toolkit based on the HTML and CSS standards.  
 
-Open the **MSYS2 MinGW 64-bit** shell (you should read MINGW64 on the command
-line) and:
+Open the **MSYS2 MINGW64** shell (you should read MINGW64 on the command line) and:
 
 1. Move inside your workspace:
 `cd /c/workspace`
@@ -48,7 +47,7 @@ for static linking add `-DBUILD_SHARED_LIBS=OFF`
 
 
 ## STEP 3. Build IBMulator
-Open the **MSYS2 MinGW 64-bit** shell and:
+Open the **MSYS2 MINGW64** shell and:
 
 1. Move inside your workspace:  
 `cd /c/workspace`
