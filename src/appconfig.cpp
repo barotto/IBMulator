@@ -701,6 +701,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";   connect_code: Numeric result code after a successful connect.\n"
 ";                 Possible values: auto, or an integer number.\n"
 ";                  auto: the modem will report a code that depends on the baud_rate value.\n"
+";        echo_on: Echo is enabled at power-on and after a reset.\n"
 		},
 
 		{ LPT_SECTION, ""
@@ -938,7 +939,7 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ MODEM_CONN_TIMEOUT, false },
 		{ MODEM_WARM_DELAY,   false },
 		{ MODEM_CONNECT_CODE, false },
-		{ MODEM_ECHO_ON,      true  },
+		{ MODEM_ECHO_ON,      false },
 		{ MODEM_DUMP,         true  },
 	} },
 	{ LPT_SECTION, {
