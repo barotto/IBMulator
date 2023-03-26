@@ -259,9 +259,12 @@ void SerialModem::send_line_to_serial(const char *line)
 
 void SerialModem::send_number_to_serial(uint32_t val)
 {
-	PINFOF(LOG_V1, LOG_COM, "MODEM: response: %u\n", val);
-	
 	auto str = str_format("%u", val);
+
+	if(!LOG_DEBUG_MESSAGES) {
+		PINFOF(LOG_V1, LOG_COM, "MODEM: response: '%s'\n", str.c_str());
+	}
+
 	if(m_terse_result) {
 		str += char(m_reg[MREG_CR_CHAR]);
 	} else {
@@ -270,9 +273,15 @@ void SerialModem::send_number_to_serial(uint32_t val)
 		crlf += char(m_reg[MREG_LF_CHAR]);
 		str = crlf + str + crlf;
 	}
+
+	if(LOG_DEBUG_MESSAGES) {
+		PINFOF(LOG_V1, LOG_COM, "MODEM: response: '%s'\n", str_format_special(str.c_str()).c_str());
+	}
+
 	if(m_rqueue.get_write_avail() < str.length()) {
 		PWARNF(LOG_V1, LOG_COM, "MODEM: serial tx fifo buffer overflow.\n");
 	}
+
 	m_rqueue.write((uint8_t *)str.data(), str.length());
 }
 
@@ -443,7 +452,7 @@ char SerialModem::get_char(char * &_scan) const
 	return ch;
 }
 
-void SerialModem::reset()
+void SerialModem::reset(unsigned _type)
 {
 	m_cmdpos = 0;
 	m_cmdbuf[0] = 0;
@@ -468,7 +477,9 @@ void SerialModem::reset()
 	m_terse_result = false; // verbose
 	m_rescode_set = 4; // all results
 
-	m_rqueue.clear();
+	if(_type != DEVICE_SOFT_RESET) {
+		m_rqueue.clear();
+	}
 
 	enter_idle_state();
 }
@@ -908,10 +919,9 @@ void SerialModem::do_command()
 			// scan the number away, if any
 			PINFOF(LOG_V1, LOG_COM, "MODEM: 'Z', reset %u\n", scan_number(scanbuf));
 			if(m_state == State::Connected) {
-				// useless, as the reset() will flush the in/out serial buffers
-				// send_res_to_serial(ResNOCARRIER);
+				send_res_to_serial(ResNOCARRIER);
 			}
-			reset();
+			reset(DEVICE_SOFT_RESET);
 			return;
 		}
 
@@ -1098,6 +1108,8 @@ void SerialModem::telnet_emulation(uint8_t *data, uint32_t size)
 void SerialModem::echo(uint8_t ch)
 {
 	if(m_echo) {
+		char buf[2] = {char(ch), 0};
+		PDEBUGF(LOG_V1, LOG_COM, "MODEM: echo '%s'\n", str_format_special(buf).c_str());
 		m_rqueue.write(ch);
 	}
 }
@@ -1377,7 +1389,7 @@ void SerialModem::timer(uint64_t _time)
 					// affect the modem's reactions to DTR going OFF-to-ON. There is no
 					// result code.
 					PDEBUGF(LOG_V0, LOG_COM, "MODEM: resetting due to dropped DTR.\n");
-					reset();
+					reset(DEVICE_SOFT_RESET);
 					break;
 				default:
 					PDEBUGF(LOG_V0, LOG_COM, "MODEM: invalid dtrmode (%u).\n", m_dtrmode);

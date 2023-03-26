@@ -358,7 +358,7 @@ void Serial::restore_state(StateBuf &_state)
 			m_host[p].network.tx_fifo().clear();
 			m_host[p].network.set_tx_threshold(m_host[p].tx_delay_ms, m_s.uart[p].baudrate);
 		} else if(m_host[p].io_mode == SER_MODE_MODEM) {
-			m_host[p].modem.reset();
+			m_host[p].modem.reset(MACHINE_POWER_ON);
 		}
 	}
 
@@ -670,7 +670,7 @@ void Serial::lower_interrupt(uint8_t port)
 	}
 }
 
-void Serial::reset(unsigned)
+void Serial::reset(unsigned _type)
 {
 	// Put the UART registers into their RESET state
 
@@ -762,7 +762,7 @@ void Serial::reset(unsigned)
 					m_s.uart[i].modem_cntl.dtr,
 					m_s.uart[i].modem_cntl.rts
 				});
-				m_host[i].modem.reset();
+				m_host[i].modem.reset(_type);
 				break;
 			case SER_MODE_NONE:
 			case SER_MODE_RAW:
@@ -1546,41 +1546,6 @@ void Serial::set_databyte_time(uint8_t _port)
 			m_s.uart[_port].baudrate,
 			word_len, parity_str, stop_bits);
 }
-
-static const char * ASCII_control_characters[] = {
-	"NUL",
-	"SOH",
-	"STX",
-	"ETX",
-	"EOT",
-	"ENQ",
-	"ACK",
-	"BEL",
-	"BS",
-	"HT",
-	"LF",
-	"VT",
-	"FF",
-	"CR",
-	"SO",
-	"SI",
-	"DLE",
-	"DC1",
-	"DC2",
-	"DC3",
-	"DC4",
-	"NAK",
-	"SYN",
-	"ETB",
-	"CAN",
-	"EM",
-	"SUB",
-	"ESC",
-	"FS",
-	"GS",
-	"RS",
-	"US"
-};
 
 void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 {

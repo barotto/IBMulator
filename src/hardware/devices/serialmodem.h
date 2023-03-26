@@ -169,7 +169,7 @@ public:
 
 	void init(NetService *_net, double _tx_delay);
 	void close();
-	void reset();
+	void reset(unsigned _type);
 	void power_off();
 
 	void set_MSR_callback(StatusFn _fn) { m_MSR_callback = _fn; }

@@ -210,6 +210,60 @@ std::string str_format_time(time_t _time, const std::string &_fmt)
 #endif
 }
 
+const char * ASCII_control_characters[32] = {
+	"NUL",
+	"SOH",
+	"STX",
+	"ETX",
+	"EOT",
+	"ENQ",
+	"ACK",
+	"BEL",
+	"BS",
+	"HT",
+	"LF",
+	"VT",
+	"FF",
+	"CR",
+	"SO",
+	"SI",
+	"DLE",
+	"DC1",
+	"DC2",
+	"DC3",
+	"DC4",
+	"NAK",
+	"SYN",
+	"ETB",
+	"CAN",
+	"EM",
+	"SUB",
+	"ESC",
+	"FS",
+	"GS",
+	"RS",
+	"US"
+};
+
+std::string str_format_special(const char *_str)
+{
+	std::string str;
+	char buf[10] = {0};
+	while(_str && *_str) {
+		if(*_str <= 31) {
+			snprintf(&buf[0], 10, "<%s>", ASCII_control_characters[int(*_str)]);
+			str += buf;
+		} else if(*_str >= 32 && *_str <= 126) {
+			str += *_str;
+		} else {
+			snprintf(&buf[0], 10, "<%02X>", *_str);
+			str += buf;
+		}
+		_str++;
+	}
+	return str;
+}
+
 std::string str_to_html(std::string _text, bool _nbsp)
 {
 	if(_nbsp) {

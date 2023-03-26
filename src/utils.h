@@ -60,6 +60,8 @@ inline uint16_t to_bigendian_16(uint16_t _hostval)
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
+extern const char * ASCII_control_characters[32];
+
 template <typename _to_check, std::size_t _expected, std::size_t _real = sizeof(_to_check)>
 void size_check()
 {
@@ -85,6 +87,7 @@ std::vector<std::string> str_parse_tokens(std::string _str, std::string _regex_s
 std::string::const_iterator str_find_ci(const std::string &_haystack, const std::string &_needle);
 std::string str_format_time(time_t _time, const std::string &_fmt);
 std::string str_to_html(std::string _text, bool _nbsp=false);
+std::string str_format_special(const char *_str);
 
 template<typename ... Args>
 std::string str_format(const char *_format, Args ... _args)
