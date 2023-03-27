@@ -42,8 +42,8 @@
 #define MODEM_WARMUP_DELAY_MS 250
 #define MODEM_WARMUP_DELAY_TICKS (MODEM_WARMUP_DELAY_MS / MODEM_TICKTIME_MS)
 
-#define MODEM_PRODUCT_CODE 249 // IBM PS/1 internal modem
-#define MODEM_CHECKSUM 123 // hw/sw level 2.0
+#define MODEM_PRODUCT_CODE "249" // IBM PS/1 internal modem
+#define MODEM_CHECKSUM "123" // hw/sw level 2.0
 
 // The AT command line can consist of a 99-character command sequence
 // including the AT prefix followed by "D<phone/hostname>", where the
@@ -190,8 +190,8 @@ private:
 
 	void timer(uint64_t);
 
-	void send_line_to_serial(const char *line);
-	void send_number_to_serial(uint32_t val);
+	void send_line_to_serial(const char *line, bool _terse);
+	void send_number_to_serial(uint32_t val, bool _terse);
 	void send_res_to_serial(const ResTypes response);
 
 	void echo(uint8_t ch);

@@ -245,25 +245,34 @@ void SerialModem::set_RI(bool _value)
 	});
 }
 
-void SerialModem::send_line_to_serial(const char *line)
+void SerialModem::send_line_to_serial(const char *line, bool _terse)
 {
-	PINFOF(LOG_V1, LOG_COM, "MODEM: response: \"%s\"\n", line);
+	std::string crlf;
+	crlf  = char(m_reg[MREG_CR_CHAR]);
+	crlf += char(m_reg[MREG_LF_CHAR]);
 
-	size_t line_len = strlen(line);
-	if((line_len + 2 + 2*m_terse_result) > m_rqueue.get_write_avail()) {
+	std::string str(line);
+
+	if(_terse) {
+		str = str + crlf;
+	} else {
+		str = crlf + str + crlf;
+	}
+
+	if(LOG_DEBUG_MESSAGES) {
+		PINFOF(LOG_V1, LOG_COM, "MODEM: response: '%s'\n", str_format_special(str.c_str()).c_str());
+	} else {
+		PINFOF(LOG_V1, LOG_COM, "MODEM: response: '%s'\n", line);
+	}
+
+	if(m_rqueue.get_write_avail() < str.length()) {
 		PWARNF(LOG_V1, LOG_COM, "MODEM: serial tx fifo buffer overflow.\n");
 	}
 
-	if(!m_terse_result) {
-		m_rqueue.write(m_reg[MREG_CR_CHAR]);
-		m_rqueue.write(m_reg[MREG_LF_CHAR]);
-	}
-	m_rqueue.write((uint8_t *)line, line_len);
-	m_rqueue.write(m_reg[MREG_CR_CHAR]);
-	m_rqueue.write(m_reg[MREG_LF_CHAR]);
+	m_rqueue.write((uint8_t *)str.data(), str.length());
 }
 
-void SerialModem::send_number_to_serial(uint32_t val)
+void SerialModem::send_number_to_serial(uint32_t val, bool _terse)
 {
 	auto str = str_format("%u", val);
 
@@ -271,7 +280,7 @@ void SerialModem::send_number_to_serial(uint32_t val)
 		PINFOF(LOG_V1, LOG_COM, "MODEM: response: '%s'\n", str.c_str());
 	}
 
-	if(m_terse_result) {
+	if(_terse) {
 		str += char(m_reg[MREG_CR_CHAR]);
 	} else {
 		std::string crlf;
@@ -361,9 +370,9 @@ void SerialModem::send_res_to_serial(const ResTypes response)
 			return;
 		}
 		if(m_terse_result) {
-			send_number_to_serial(code);
+			send_number_to_serial(code, true);
 		} else {
-			send_line_to_serial(str.c_str());
+			send_line_to_serial(str.c_str(), false);
 		}
 	}
 }
@@ -806,11 +815,11 @@ void SerialModem::do_command()
 			uint32_t num = scan_number(scanbuf);
 			PINFOF(LOG_V1, LOG_COM, "MODEM: 'I', info %u\n", num);
 			switch(num) {
-				case 0: send_number_to_serial(MODEM_PRODUCT_CODE); break; // Display Product Code
-				case 1: send_number_to_serial(MODEM_CHECKSUM); break; // Display ROM Checksum
+				case 0: send_line_to_serial(MODEM_PRODUCT_CODE, m_terse_result); break; // Display Product Code
+				case 1: send_line_to_serial(MODEM_CHECKSUM, m_terse_result); break; // Display ROM Checksum
 				case 2: send_res_to_serial(ResOK); break; // Perform ROM Checksum
-				case 3: send_line_to_serial("IBMulator Emulated Modem Firmware V1.00"); break;
-				case 4: send_line_to_serial("Modem compiled for IBMulator " VERSION); break;
+				case 3: send_line_to_serial("IBMulator Emulated Modem Firmware V1.00", m_terse_result); break;
+				case 4: send_line_to_serial("Modem compiled for IBMulator " VERSION, m_terse_result); break;
 				default: break;
 			}
 			break;
@@ -897,7 +906,11 @@ void SerialModem::do_command()
 				} else if (scanbuf[0] == '?') {
 					// get register
 					PINFOF(LOG_V1, LOG_COM, "MODEM: 'S', get register %u = 0x%02x (%u)\n", index, m_reg[index], m_reg[index]);
-					send_number_to_serial(m_reg[index]);
+					// The contents of S-registers are sent to the DTE as three decimal digits. This
+					// informational text response is formatted with <CR><LF> as determined by the
+					// V command currently in effect.
+					auto info = str_format("%03u", m_reg[index]);
+					send_line_to_serial(info.c_str(), m_terse_result);
 					scanbuf++;
 				} else {
 					PINFOF(LOG_V1, LOG_COM, "MODEM: 'S', register %u, unk. op.\n", index);
