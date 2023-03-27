@@ -499,21 +499,24 @@ drop any active connection.
 
 #### Modem connections
 
-IBMulator emulates a Hayes compatible modem allowing one to dial / host a BBS or
-play games across the Internet.
+IBMulator emulates a Hayes compatible modem allowing one to dial a BBS or play
+games across the Internet.
 
-The modem is configured using the `[modem]` section in ibmulator.ini:
+The modem is configured using the `[modem]` section in ibmulator.ini with the
+following options:
 
 * `baud_rate`: the speed of the modem in bits-per-second. Possible values range
-  from 300 to 56000.
+  from 300 to 115200. This will be the speed of the network transfers (line
+  speed) and the speed between the modem and the DTE. The value is reported in
+  the "CONNECT xxxx" result message.
 * `listen_addr`: address and port on which to open a listening socket for
-  incoming calls. You need to set this value if you want to host a game or BBS.
+  incoming calls. You need to set this value if you want to host a game.
   Setting it to `0.0.0.0:2323` will open a socket listening on any interface for
   incoming connections on port 2323.
 * `phonebook_file`: a text file containing the mapping between phone numbers and
-  network addresses. If the DOS program / game won't allow you to enter anything
-  else other than numbers, you can associate a phone number to a host:port
-  address in this file. Every line must have the following form:
+  network addresses. If the DOS program allows you to enter only numbers, you
+  can associate a phone number to a host:port address in this file. Every line
+  must have the following form:
   ```
   55512345 remote.bbs.com:23
   ```
@@ -524,13 +527,21 @@ The modem is configured using the `[modem]` section in ibmulator.ini:
   you connect to BBSes behind Telnet servers.
 * `conn_timeout`: a timeout in seconds after which the modem will hang during
   the dialing process when the remote host won't respond.
-* `warmup_delay`: drop all network traffic for a short period after answering a
-  call (reportedly some games need this).
-* `connect_code`: numeric result code after a successful connect. Some games 
-  need this set to a specific number (usually 10), otherwise keep it to `auto`.
+* `warmup_delay`: drop all incoming and outgoing traffic for a short period
+  after answering a call. This is to simulate real modem behavior where the
+  first packet is usually bad (extra data in the buffer from connecting, noise,
+  random nonsense).
+  Some games are known to break without this (eg: 688 Attack Sub).
+* `connect_code`: numeric result code after a successful connect. Some games
+  might need this set to a specific number (10), otherwise keep it to `auto`.
+* `echo_on`: echo is enabled after a reset (default: yes).
+* `handshake`: enable a fake handshake after a connection; if sound effects
+  are enabled the characteristic sound will be played. It serves no real purpose
+  other than allowing for sound effects.
 
 IBMulator can also play tones and other sounds.  
-See the `[soundfx]` section to configure sounds.
+See the `[soundfx]` section in ibmulator.ini to enable and configure sound
+effects.
 
 To "dial" a BBS:
 
@@ -571,44 +582,18 @@ To "dial" a BBS:
     AT+NET0DT
     ```
 
-To host a BBS:
-
- 1. Configure IBMulator as follows:
-    ```
-    [serial]
-    mode = modem
-
-    [modem]
-    telnet_mode = yes
-    listen_addr = 0.0.0.0:2323
-    ```
-    A port greater than 1024 allows you to run IBMulator as a normal user
-    instead of requiring administrative rights (**Note**: running IBMulator as
-    the root/Administrator user is not reccomended).
-
- 2. Launch and configure your preferred DOS-based BBS software.
-
- 3. To allow someone on the Internet to connect to your IBMulator BBS,
-    you will (likely) need to open a port on your router/firewall and
-    forward it into your IBMulator BBS machine.  We suggest opening port 23,
-    the standard Telnet port, and forwarding it into your IBMulator machine's
-    IP listening on port 2323. Consult your router's manual or a How-to
-    guide for more information regarding port-forwarding and service hosting.
-
 In general, the default communication settings should be left as-is.
 Typically these are:
 
 - COM port 1:
   - 03F8 address
   - IRQ4 interrupt
-- 8N1, meaning: data-bits (8), parity (none), and stop-bits (1).
-- 16550 fifo enabled
-- Software flow control (Xon/Xoff) enabled
+- 8-N-1, meaning: data-bits (8), parity (none), and stop-bits (1).
+- 16550 FIFO enabled
 - Hardware flow control (CTS/RTS) enabled
-- Hardware flow control (DSR/DTR) disabled
 
-The port baud rate should be set equal or greater than the `baud_rate` setting
-of the modem.
+The serial port baud rate should be set equal or greater than the `baud_rate`
+setting of the modem.
 
 ##### PRODIGY service
 
@@ -629,9 +614,8 @@ telnet_mode = no
 
 The client preinstalled in the PS/1 was version 6.03.17. If you receive an 
 "API 18" error trying to connect with it, don't call 1-800-759-8000 as suggested
-in the error screen but instead do this:  
-edit `C:\PRODIGY\CONFIG.SM` and change `OBJECT:XTG00000.PG1;` to
-`OBJECT:TLOT0010.PG1;`
+in the error screen but instead edit `C:\PRODIGY\CONFIG.SM` and change
+`OBJECT:XTG00000.PG1;` to `OBJECT:TLOT0010.PG1;`
 
 ##### Modem troubleshooting
 
@@ -641,34 +625,25 @@ Solution: enable `telnet_mode`.
 
 Problem: I can successfully host and establish a connection with a videogame,
 but afterward the game won't start or seems to hang.  
-Solution: disable `telnet_mode`.
+Solution: disable `telnet_mode`, otherwise enable `warmup_delay`.
 
 Problem: the connection seems to work fine but after a short while I start to
 see a bunch of random characters on my terminal instead of cool BBS ASCII art.  
-Solution: it might be that the VM can't keep up with the data and so the DOS
-terminal software's internal buffers are overrun. Try overclocking the emulated
-CPU, or reducing the modem's baud rate, or both.
+Solution: it might be that the VM can't keep up with the data. Try overclocking
+the emulated CPU, or reducing the modem's baud rate, or both.
 
-Problem: I can't connect with the videogame I'm playing, it keeps reporting a
-generic error, but IBMulator tells me the connection is successfully
-established.  
-Solution: the game might expect a specific result code when the connection is 
-established. Try using this:
-```
-[modem]
-connect_code = 10
-```
+Problem: after the handshaking sounds the connection seems to freeze, or the
+game appears slightly desynchronized.  
+Solution: disable the handshake, or try the short 2 seconds version (at
+handshake the connection is already established but the data won't start flowing
+until the sounds finish playing; this might cause a server timeout).
 
 Problem: when someone "calls" me, nothing happens.  
-Suggestions: check the port forwarding options in your router; check the value
-of `[modem]:listen_addr`; launch IBMulator with the `-v2` option and check the
-`log.txt` file.
-
-Problem: after the handshaking sounds the connection seems to freeze.  
-Solution: disable the handshaking sounds, or try the short 2 seconds version
-(when you hear the handshake the connection is already established but the data
-won't start to flow until the sounds finish playing; this might cause a server
-timeout).
+Suggestions:
+  - check the value of `[modem]:listen_addr`;
+  - check the port forwarding options in your router;
+  - check the firewall configuration in your OS;
+  - launch IBMulator with the `-v2` option and check the `log.txt` file.
 
 #### Null modem connections
 

@@ -688,7 +688,7 @@ ini_filehelp_t AppConfig::ms_help = {
 
 		{ MODEM_SECTION,
 ";      baud_rate: Speed of the modem in bits-per-second.\n"
-";                 Possible values: 300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 33600, 56000.\n" 
+";                 Possible values: 300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 33600, 56000, 57600, 115200.\n" 
 ";    listen_addr: Address and port on which to open a listening socket for incoming calls.\n"
 "; phonebook_file: The file containing the mapping between phone numbers and network addresses.\n"
 ";    telnet_mode: Enable Telnet protocol interpretation (needed when connecting to BBSes behind Telnet servers).\n"
