@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -94,6 +94,8 @@ void CMOS::install()
 	m_uip_timer = g_machine.register_timer(
 			std::bind(&CMOS::uip_timer,this,_1),
 			"CMOS uip");
+
+	m_save_image = g_program.config().get_bool(CMOS_SECTION, CMOS_IMAGE_SAVE);
 }
 
 void CMOS::remove()
@@ -207,12 +209,13 @@ void CMOS::restore_state(StateBuf &_state)
 		update_clock();
 		m_s.timeval_change = 0;
 	}
+
+	m_save_image = false;
 }
 
 void CMOS::power_off()
 {
-	// save CMOS to image file if requested.
-	if(g_program.config().get_bool(CMOS_SECTION, CMOS_IMAGE_SAVE)) {
+	if(m_save_image) {
 		try {
 			save_image(get_image_filepath(FILE_TYPE_USER));
 		} catch(std::exception &) {}

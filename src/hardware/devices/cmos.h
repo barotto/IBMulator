@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2012  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,6 +43,8 @@ private:
 	TimerID m_periodic_timer;
 	TimerID m_one_second_timer;
 	TimerID m_uip_timer; //Update in Progress timer
+
+	bool m_save_image = true;
 
 public:
 	CMOS(Devices *_dev);
