@@ -192,6 +192,7 @@ TimerID EventTimers::register_timer(TimerFn _func, const std::string &_name, uns
 		if(!m_s.timers[i].in_use) {
 			// free timer found
 			timer = i;
+			break;
 		}
 	}
 	if(timer == NULL_TIMER_ID) {
