@@ -145,8 +145,8 @@ void RmlRenderer_OpenGL::RenderGeometry(Rml::Vertex* vertices,
 	GLCALL( glBindVertexArray(m_vao) );
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vbo) );
 	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Rml::Vertex) * num_vertices, vertices, GL_DYNAMIC_DRAW) );
-
 	GLCALL( glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, indices) );
+	GLCALL( glBindVertexArray(0) );
 }
 
 Rml::CompiledGeometryHandle RmlRenderer_OpenGL::CompileGeometry(Rml::Vertex* vertices,
@@ -233,6 +233,7 @@ void RmlRenderer_OpenGL::RenderCompiledGeometry(Rml::CompiledGeometryHandle hand
 
 	GLCALL( glBindVertexArray(geometry->gl_vao) );
 	GLCALL( glDrawElements(GL_TRIANGLES, geometry->draw_count, GL_UNSIGNED_INT, (const GLvoid*)0) );
+	GLCALL( glBindVertexArray(0) );
 }
 
 void RmlRenderer_OpenGL::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle handle)

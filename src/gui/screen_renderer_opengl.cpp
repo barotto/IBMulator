@@ -485,6 +485,7 @@ void ScreenRenderer_OpenGL::render_quad(bool _blending)
 
 	GLCALL( glBindVertexArray(m_vertex_array) );
 	GLCALL( glDrawArrays(GL_TRIANGLES, 0, 6) ); // 2*3 indices starting at 0 -> 2 triangles
+	GLCALL( glBindVertexArray(0) );
 }
 
 void ScreenRenderer_OpenGL::set_shader_param(std::string _name, float _value)
