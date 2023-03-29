@@ -1058,8 +1058,10 @@ std::string AppConfig::find_shader_asset_relative_to(std::string _relative_file_
 	std::string abs_directory = FileSys::get_path_dir(_relative_to_abs_file.c_str()) + FS_SEP;
 	std::string fullpath = abs_directory + _relative_file_path;
 	try {
+		PINFOF(LOG_V2, LOG_OGL, "Resolving '%s'\n", fullpath.c_str());
 		fullpath = FileSys::realpath(fullpath.c_str());
 	} catch(std::exception &) {
+		PWARNF(LOG_V0, LOG_OGL, "Cannot resolve '%s'\n", fullpath.c_str());
 		std::string reference;
 		if(abs_directory.find(m_user_shaders_path) == 0) {
 			fullpath = m_assets_shaders_path + abs_directory.substr(m_user_shaders_path.size()) + _relative_file_path;
@@ -1068,7 +1070,13 @@ std::string AppConfig::find_shader_asset_relative_to(std::string _relative_file_
 		} else {
 			throw;
 		}
-		fullpath = FileSys::realpath(fullpath.c_str());
+		PWARNF(LOG_V0, LOG_OGL, "Trying to resolve '%s'\n", fullpath.c_str());
+		try {
+			fullpath = FileSys::realpath(fullpath.c_str());
+		} catch(std::exception &) {
+			PERRF(LOG_OGL, "Cannot resolve '%s'\n", fullpath.c_str());
+			throw std::runtime_error(str_format("cannot find %s", _relative_file_path.c_str()));
+		}
 	}
 	return fullpath;
 }
