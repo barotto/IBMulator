@@ -422,7 +422,7 @@ bool Program::initialize(int argc, char** argv)
 	if(m_cfg_file.empty()) {
 		m_cfg_file = cfgfile;
 	}
-	PINFO(LOG_V1,"INI file: %s\n", m_cfg_file.c_str());
+	PINFO(LOG_V0,"INI file: %s\n", m_cfg_file.c_str());
 
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_V0, LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
