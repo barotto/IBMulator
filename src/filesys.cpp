@@ -72,6 +72,7 @@ bool FileSys::is_absolute(const char *_path, int _len)
 	// it does not tell if the path exists or is valid
 
 #ifndef _WIN32
+	UNUSED(_len);
 
 	// so simple and effective. always correct. marvelous.
 	return _path && *_path == '/';
@@ -245,9 +246,11 @@ std::string FileSys::get_path_dir(const char *_file_path)
 bool FileSys::get_path_parts(const char *_path,
 		std::string &_dir, std::string &_base, std::string &_ext)
 {
-	auto native = to_native(_path);
+	auto native1 = to_native(_path);
+	auto native = native1;
+	// Both dirname() and basename() may modify the contents of path
 	_dir = ::dirname(&native[0]);
-	native = to_native(_path);
+	native = native1;
 	_base = basename(&native[0]);
 	_ext = "";
 	const size_t period_idx = _base.rfind('.');
@@ -257,13 +260,27 @@ bool FileSys::get_path_parts(const char *_path,
 	}
 	_base = to_utf8(_base);
 	_ext = to_utf8(_ext);
-	std::vector<char> rpbuf(PATH_MAX);
-	if(::realpath(_dir.c_str(), &rpbuf[0]) == nullptr) {
-		_dir = to_utf8(_dir);
-		return false;
+	if(native1.find(_dir) != 0) {
+		// if no directory is defined dirname() returns '.' which resolves to the cwd
+		// the cwd is not what the user wants
+		_dir = "";
+	} else {
+		std::vector<char> rpbuf(PATH_MAX);
+		if(::realpath(_dir.c_str(), &rpbuf[0]) == nullptr) {
+			_dir = to_utf8(_dir);
+			return false;
+		}
+		_dir = to_utf8(&rpbuf[0]);
 	}
-	_dir = to_utf8(&rpbuf[0]);
 	return true;
+}
+
+bool FileSys::get_path_parts(const char *_path, std::string &_dir, std::string &_filename)
+{
+	std::string base, ext;
+	bool result = get_path_parts(_path, _dir, base, ext);
+	_filename = base + ext;
+	return result;
 }
 
 void FileSys::get_file_parts(const char *_filename, std::string &_base, std::string &_ext)

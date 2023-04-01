@@ -421,28 +421,33 @@ bool Program::initialize(int argc, char** argv)
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
 	if(m_cfg_file.empty()) {
 		m_cfg_file = cfgfile;
+	} else if(!FileSys::is_absolute(m_cfg_file.c_str(), m_cfg_file.length())) {
+		m_cfg_file = m_user_dir + FS_SEP + m_cfg_file;
 	}
+
 	PINFO(LOG_V0,"INI file: %s\n", m_cfg_file.c_str());
 
 	if(!FileSys::file_exists(m_cfg_file.c_str())) {
 		PWARNF(LOG_V0, LOG_PROGRAM, "The config file '%s' doesn't exists, creating...\n", m_cfg_file.c_str());
+		std::string inidir, ininame;
+		FileSys::get_path_parts(m_cfg_file.c_str(), inidir, ininame);
 		try {
 			m_config[0].create_file(m_cfg_file, false);
-			std::string message = "The configuration file " PACKAGE ".ini has been created in " +
-					m_user_dir + "\n";
+			std::string message = "The configuration file " + ininame + " has been created in " +
+					inidir + "\n";
 			message += "Open it and configure the program as you like.";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Configuration file",
 					message.c_str(),
 					nullptr);
 			return false;
 		} catch(std::exception &e) {
-			PWARNF(LOG_V0, LOG_PROGRAM, "Unable to create config file, using default\n", m_cfg_file.c_str());
-			std::string message = "A problem occurred trying to create " PACKAGE ".ini in " +
-					m_user_dir + "\n";
+			PERRF(LOG_PROGRAM, "Cannot create the INI file.\n", m_cfg_file.c_str());
+			std::string message = "A problem occurred while trying to create " + ininame + " in " +
+					inidir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",
 					message.c_str(),
 					nullptr);
-			m_cfg_file = cfgfile;
+			return false;
 		}
 	}
 
@@ -670,13 +675,29 @@ void Program::parse_arguments(int argc, char** argv)
 
 	while((c = getopt(argc, argv, "v:c:u:")) != -1) {
 		switch(c) {
-			case 'c':
-				if(!FileSys::file_exists(optarg)) {
-					PERRF(LOG_PROGRAM, "The specified configuration file doesn't exist\n");
-				} else {
-					m_cfg_file = optarg;
+			case 'c': {
+				m_cfg_file = "";
+				PINFOF(LOG_V0, LOG_PROGRAM, "INI file specified from the command line: '%s'\n", optarg);
+				std::string dir, base, ext;
+				FileSys::get_path_parts(optarg, dir, base, ext);
+				if(str_to_lower(ext) != ".ini") {
+					PERRF(LOG_PROGRAM, "The configuration file must be an INI file, '%s' is not a valid extension.\n",
+							str_to_lower(ext).c_str());
+					throw std::exception();
 				}
+				std::string resolved_dir;
+				if(!dir.empty()) {
+					try {
+						resolved_dir = FileSys::realpath(dir.c_str());
+					} catch(std::exception &) {
+						PERRF(LOG_PROGRAM, "The INI file's directory '%s' doesn't exist.\n", dir.c_str());
+						throw;
+					}
+					m_cfg_file = resolved_dir + FS_SEP;
+				}
+				m_cfg_file += base + ext;
 				break;
+			}
 			case 'u':
 				if(!FileSys::is_directory(optarg) || FileSys::access(optarg, R_OK | W_OK | X_OK) == -1) {
 					PERRF(LOG_PROGRAM, "Can't access the specified user directory\n");

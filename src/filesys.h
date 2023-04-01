@@ -74,6 +74,8 @@ public:
 	static std::string get_path_dir(const char *_path);
 	static bool get_path_parts(const char *_path,
 			std::string &_dir, std::string &_base, std::string &_ext);
+	static bool get_path_parts(const char *_path,
+			std::string &_dir, std::string &_filename);
 	static void get_file_parts(const char *_filename, std::string &_base, std::string &_ext);
 	static bool extract_file(const char *_archive, const char *_filename,
 			const char *_extract_to);
