@@ -132,31 +132,43 @@ share/ibmulator/gui/images/realistic_interface_nomonitor_dark.png \
 share/ibmulator/gui/images/realistic_power_led_bloom.png \
 share/ibmulator/gui/images/realistic_slider_dark.png
 
-guishadersdir = $(pkgdatadir)/shaders
-dist_guishaders_DATA = \
+commonshadersdir = $(pkgdatadir)/shaders/common
+dist_commonshaders_DATA = \
 share/ibmulator/shaders/common/color_functions.glsl \
 share/ibmulator/shaders/common/black_fill.slang \
 share/ibmulator/shaders/common/black_fill.slangp \
 share/ibmulator/shaders/common/fb_blitter.slang \
 share/ibmulator/shaders/common/filter_bilinear.slang \
 share/ibmulator/shaders/common/filter_bicubic.slang \
-share/ibmulator/shaders/common/filter_bicubic.glsl \
+share/ibmulator/shaders/common/filter_bicubic.glsl
+normalshadersdir = $(pkgdatadir)/shaders/normal_mode
+dist_normalshaders_DATA = \
 share/ibmulator/shaders/normal_mode/stock.slangp \
 share/ibmulator/shaders/normal_mode/stock.slang \
 share/ibmulator/shaders/normal_mode/nearest_filter.slangp \
-share/ibmulator/shaders/normal_mode/bicubic_filter.slangp \
+share/ibmulator/shaders/normal_mode/bicubic_filter.slangp
+realisticshadersdir = $(pkgdatadir)/shaders/realistic_mode
+dist_realisticshaders_DATA = \
 share/ibmulator/shaders/realistic_mode/stock.slang \
-share/ibmulator/shaders/realistic_mode/stock.slangp \
+share/ibmulator/shaders/realistic_mode/stock.slangp
+guishadersdir = $(pkgdatadir)/shaders/gui
+dist_guishaders_DATA = \
 share/ibmulator/shaders/gui/color.slang \
-share/ibmulator/shaders/gui/texture.slang \
+share/ibmulator/shaders/gui/texture.slang
+ps1shadersdir = $(pkgdatadir)/shaders/ps1
+dist_ps1shaders_DATA = \
 share/ibmulator/shaders/ps1/monitor.slangp \
 share/ibmulator/shaders/ps1/monitor.slang \
 share/ibmulator/shaders/ps1/crt.slang \
 share/ibmulator/shaders/ps1/vga_reflection.slang \
-share/ibmulator/shaders/ps1/functions.glsl \
+share/ibmulator/shaders/ps1/functions.glsl
+ps1texshadersdir = $(pkgdatadir)/shaders/ps1/texture
+dist_ps1texshaders_DATA = \
 share/ibmulator/shaders/ps1/texture/power_led_bloom.png \
 share/ibmulator/shaders/ps1/texture/glass_envmap.png \
-share/ibmulator/shaders/ps1/texture/monitor_frame.png \
+share/ibmulator/shaders/ps1/texture/monitor_frame.png
+crtshadersdir = $(pkgdatadir)/shaders/crt
+dist_crtshaders_DATA = \
 share/ibmulator/shaders/crt/lottes.slang \
 share/ibmulator/shaders/crt/lottes.slangp
 
@@ -207,9 +219,11 @@ share/ibmulator/sounds/system/power_up.wav \
 share/ibmulator/sounds/system/power_down.wav \
 share/ibmulator/sounds/system/power_on.wav
 
-soundsmodemdir = $(pkgdatadir)/sounds/modem
-dist_soundsmodem_DATA = \
-share/ibmulator/sounds/modem/incoming.wav \
+modemdir = $(pkgdatadir)/sounds/modem
+dist_modem_DATA = \
+share/ibmulator/sounds/modem/incoming.wav
+dtmfdir = $(pkgdatadir)/sounds/modem/dtmf
+dist_dtmf_DATA = \
 share/ibmulator/sounds/modem/dtmf/0.wav \
 share/ibmulator/sounds/modem/dtmf/1.wav \
 share/ibmulator/sounds/modem/dtmf/2.wav \
@@ -225,17 +239,23 @@ share/ibmulator/sounds/modem/dtmf/b.wav \
 share/ibmulator/sounds/modem/dtmf/c.wav \
 share/ibmulator/sounds/modem/dtmf/d.wav \
 share/ibmulator/sounds/modem/dtmf/pound.wav \
-share/ibmulator/sounds/modem/dtmf/star.wav \
+share/ibmulator/sounds/modem/dtmf/star.wav
+eutonesdir = $(pkgdatadir)/sounds/modem/eu
+dist_eutones_DATA = \
 share/ibmulator/sounds/modem/eu/busy.wav \
 share/ibmulator/sounds/modem/eu/dial.wav \
 share/ibmulator/sounds/modem/eu/disconnect.wav \
 share/ibmulator/sounds/modem/eu/reorder.wav \
-share/ibmulator/sounds/modem/eu/ringing.wav \
+share/ibmulator/sounds/modem/eu/ringing.wav
+ustonesdir = $(pkgdatadir)/sounds/modem/us
+dist_ustones_DATA = \
 share/ibmulator/sounds/modem/us/busy.wav \
 share/ibmulator/sounds/modem/us/dial.wav \
 share/ibmulator/sounds/modem/us/disconnect.wav \
 share/ibmulator/sounds/modem/us/reorder.wav \
-share/ibmulator/sounds/modem/us/ringing.wav \
+share/ibmulator/sounds/modem/us/ringing.wav
+handshakedir = $(pkgdatadir)/sounds/modem/handshake
+dist_handshake_DATA = \
 share/ibmulator/sounds/modem/handshake/300.wav \
 share/ibmulator/sounds/modem/handshake/1200.wav \
 share/ibmulator/sounds/modem/handshake/2400.wav \
@@ -245,7 +265,9 @@ share/ibmulator/sounds/modem/handshake/14400.wav \
 share/ibmulator/sounds/modem/handshake/19200.wav \
 share/ibmulator/sounds/modem/handshake/28800.wav \
 share/ibmulator/sounds/modem/handshake/33600.wav \
-share/ibmulator/sounds/modem/handshake/56000.wav \
+share/ibmulator/sounds/modem/handshake/56000.wav
+shorthandshakedir = $(pkgdatadir)/sounds/modem/handshake/short
+dist_shorthandshake_DATA = \
 share/ibmulator/sounds/modem/handshake/short/300.wav \
 share/ibmulator/sounds/modem/handshake/short/1200.wav \
 share/ibmulator/sounds/modem/handshake/short/2400.wav \
@@ -274,4 +296,4 @@ share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
 share/ibmulator/extra/MEMDUMP.EXE
 
-EXTRA_DIST = README.md
+EXTRA_DIST = README.md SHADERS.md BUILD_LINUX.md BUILD_WINDOWS.md
