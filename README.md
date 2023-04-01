@@ -288,9 +288,9 @@ New presets will be saved inside the user's `shaders` directory.
 
  * `normal_mode/stock.slangp`: stock shader for Normal and Compact modes with
    bilinear filtering.
- * `normal_mode/nearest.slangp`: stock shader with nearest neighbour filtering
-   (pixelated, useful with integer scaling).
- * `normal_mode/bicubic.slangp`: stock shader with bicubic filtering.
+ * `normal_mode/nearest_filter.slangp`: stock shader with nearest neighbour
+   filtering (pixelated, useful with integer scaling).
+ * `normal_mode/bicubic_filter.slangp`: stock shader with bicubic filtering.
  * `realistic_mode/stock.slangp`: stock shader for Realistic mode.
  * `ps1/monitor.slangp`: a realistic representation of the PS/1 monitor with
    light reflections (for any mode).
