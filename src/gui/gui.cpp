@@ -235,9 +235,15 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 
 	try {
 		init_rmlui();
+	} catch(std::exception &) {
+		shutdown_SDL();
+		throw;
+	}
+
+	try {
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
-		shutdown_SDL();
+		shutdown();
 		throw;
 	}
 
@@ -276,7 +282,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		} catch(std::exception &) {}
 	}
 	if(m_keymaps.empty()) {
-		shutdown_SDL();
+		shutdown();
 		PERRF(LOG_GUI, "No available valid keymaps!\n");
 		throw std::exception();
 	}
@@ -2104,12 +2110,14 @@ void GUI::cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variabl
 
 void GUI::shutdown()
 {
-	m_capture->cmd_quit();
-	m_capture_thread.join();
-	PDEBUGF(LOG_V1, LOG_GUI, "Capture thread stopped\n");
-	
+	if(m_capture) {
+		m_capture->cmd_quit();
+		m_capture_thread.join();
+		PDEBUGF(LOG_V1, LOG_GUI, "Capture thread stopped\n");
+	}
+
 	PDEBUGF(LOG_V1, LOG_GUI, "Shutting down the video subsystem\n");
-	
+
 	m_mouse.disable_timer();
 
 	m_windows.shutdown();

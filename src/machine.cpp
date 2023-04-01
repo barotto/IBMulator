@@ -215,6 +215,18 @@ void Machine::start()
 	PDEBUGF(LOG_V1, LOG_MACHINE, "Machine thread started\n");
 	main_loop();
 	PDEBUGF(LOG_V1, LOG_MACHINE, "Machine thread stopping...\n");
+	shutdown();
+}
+
+void Machine::shutdown()
+{
+	m_floppy_loader->cmd_quit();
+	m_floppy_loader_thread.join();
+
+	if(m_printer) {
+		m_printer->cmd_quit();
+		m_printer_thread.join();
+	}
 	g_devices.destroy_all();
 }
 
@@ -440,14 +452,6 @@ void Machine::main_loop()
 		if(m_quit) {
 			break;
 		}
-	}
-
-	m_floppy_loader->cmd_quit();
-	m_floppy_loader_thread.join();
-	
-	if(m_printer) {
-		m_printer->cmd_quit();
-		m_printer_thread.join();
 	}
 }
 

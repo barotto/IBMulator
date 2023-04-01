@@ -537,14 +537,26 @@ bool Program::initialize(int argc, char** argv)
 	
 	m_machine = &g_machine;
 	m_machine->calibrate(m_pacer);
-	m_machine->init();
-	m_machine->config_changed(true);
+	try {
+		m_machine->init();
+		m_machine->config_changed(true);
+	} catch(...) {
+		m_machine->shutdown();
+		throw;
+	}
 
 	m_mixer = &g_mixer;
 	m_mixer->calibrate(m_pacer);
-	m_mixer->init(m_machine);
-	m_mixer->config_changed();
-	
+	try {
+		m_mixer->init(m_machine);
+		m_mixer->config_changed();
+	} catch(...) {
+		// the Machine and Mixer threads are not started yet, but both manage threads that are already working
+		m_machine->shutdown();
+		m_mixer->shutdown();
+		throw;
+	}
+
 	static std::map<std::string, unsigned> renderers = {
 		{ "", GUI_RENDERER_OPENGL },
 		{ "opengl", GUI_RENDERER_OPENGL },
@@ -573,7 +585,7 @@ bool Program::initialize(int argc, char** argv)
 	try {
 		m_gui->init(m_machine, m_mixer);
 	} catch(...) {
-		// the Machine and Mixer threads are not started yet, but the MIDI thread is
+		m_machine->shutdown();
 		m_mixer->shutdown();
 		throw;
 	}

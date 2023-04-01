@@ -148,6 +148,7 @@ public:
 	void init();
 	void calibrate(const Pacer &_p);
 	void start();
+	void shutdown();
 	void config_changed(bool _startup);
 
 	void set_heartbeat(int64_t _ns);
