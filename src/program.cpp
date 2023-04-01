@@ -661,9 +661,7 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 
 	PERRF(LOG_PROGRAM, "Cannot find the assets directory!\n");
 	PERRF(LOG_PROGRAM, "Please verify that the 'share" FS_SEP PACKAGE "' directory exists\n");
-#ifdef _WIN32
-	PERRF(LOG_PROGRAM, "and that " PACKAGE_NAME "'s installation path has only US characters in it (see bug #43)\n");
-#endif
+
 	throw std::exception();
 }
 
