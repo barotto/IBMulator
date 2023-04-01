@@ -38,6 +38,8 @@ share/ibmulator/gui/normal_interface.rml \
 share/ibmulator/gui/printer_control.rml \
 share/ibmulator/gui/realistic_interface.rcss \
 share/ibmulator/gui/realistic_interface.rml \
+share/ibmulator/gui/shader_parameters.rml \
+share/ibmulator/gui/shader_save_info.rml \
 share/ibmulator/gui/speed_indicator.rcss \
 share/ibmulator/gui/state_dialog.rcss \
 share/ibmulator/gui/state_dialog.rml \
@@ -47,8 +49,7 @@ share/ibmulator/gui/state_load.rml \
 share/ibmulator/gui/state_save.rml \
 share/ibmulator/gui/state_save_info.rml \
 share/ibmulator/gui/stats.rml \
-share/ibmulator/gui/status.rml \
-share/ibmulator/gui/shader_parameters.rml
+share/ibmulator/gui/status.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
