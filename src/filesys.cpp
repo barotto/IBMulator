@@ -510,11 +510,6 @@ unique_file_ptr FileSys::make_file(const char *_filename, const char *_flags)
 	return unique_file_ptr(FileSys::fopen(_filename, _flags), ::fclose);
 }
 
-unique_file_ptr FileSys::make_tmpfile()
-{
-	return unique_file_ptr(::tmpfile(), ::fclose);
-}
-
 std::ifstream FileSys::make_ifstream(const char *_path, std::ios::openmode _mode)
 {
 	return std::move(std::ifstream(to_native(_path), _mode));

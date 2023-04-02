@@ -73,15 +73,30 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 	// TODO? this mess only because i insist in using the "inih" library
 	auto data = read_preset_file(_preset);
 
+	auto tmppath = FileSys::get_next_filename(g_program.config().get_cfg_home(), PACKAGE_NAME "-tmp-", ".ini");
+	if(tmppath.empty()) {
+		throw std::runtime_error("cannot create a temporary file");
+	}
+	auto tmpfile = FileSys::make_ofstream(tmppath.c_str(), std::ios::binary);
+	if(!tmpfile.is_open()) {
+		throw std::runtime_error("cannot create a temporary file");
+	}
+	for(auto & line : data) {
+		tmpfile.write(line.c_str(), line.size());
+	}
+	tmpfile.close();
+
 	INIFile ini;
 	try {
-		ini.parse(data, _preset);
+		ini.parse(tmppath);
 	} catch(std::runtime_error &e) {
+		FileSys::remove(tmppath.c_str());
 		if(m_error > 0) {
 			throw ShaderPresetExc(e.what(), _preset, data, m_error);
 		}
 		throw;
 	}
+	FileSys::remove(tmppath.c_str());
 
 	for(auto line=data.begin(); line!=data.end(); line++) {
 		if(line->at(0) == '#' && line->find("reference", 1) == 1) {

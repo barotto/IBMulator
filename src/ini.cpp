@@ -38,25 +38,6 @@ void INIFile::parse(const std::string &_filename)
 	m_parsed_file = _filename;
 }
 
-void INIFile::parse(const std::list<std::string> &_content, const std::string &_filename)
-{
-	auto file = FileSys::make_tmpfile();
-
-	for(auto & line : _content) {
-		if(fwrite(line.c_str(), line.size(), 1, file.get()) != 1) {
-			throw std::runtime_error("cannot write to temporary file");
-		}
-	}
-	fseek(file.get(), 0, SEEK_SET);
-
-	m_error = ini_parse_file(file.get(), value_handler, this);
-	if(m_error != 0) {
-		throw std::runtime_error(str_format("parse error at line %d", m_error));
-	}
-
-	m_parsed_file = _filename;
-}
-
 int INIFile::get_error()
 {
 	return m_error;

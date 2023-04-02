@@ -87,7 +87,6 @@ public:
 	static FILE* fopen(std::string _filename, const char *_flags);
 	static shared_file_ptr make_shared_file(const char *_filename, const char *_flags);
 	static unique_file_ptr make_file(const char *_filename, const char *_flags);
-	static unique_file_ptr make_tmpfile();
 
 	static std::ifstream make_ifstream(const char *_path, std::ios::openmode _mode = std::ios::in);
 	static std::ofstream make_ofstream(const char *_path, std::ios::openmode _mode = std::ios::out);

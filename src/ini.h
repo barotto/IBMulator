@@ -48,7 +48,6 @@ public:
 	std::string get_path() const { return m_parsed_file; }
 
 	void parse(const std::string &_filename);
-	void parse(const std::list<std::string> &_content, const std::string &_filename);
 	
 	static int parse_int(const std::string &_str);
 	static double parse_real(const std::string &_str);
