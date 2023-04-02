@@ -47,6 +47,9 @@ GLShaderProgram::Uniform::Uniform(GLuint _program, GLuint _index, GLint _binding
 		case GL_UNSIGNED_INT_SAMPLER_2D:
 			if(_binding < 0) {
 				GLCALL( glGetUniformiv(program, index, &binding) );
+				if(binding < 0) {
+					PWARNF(LOG_V0, LOG_OGL, "The returned binding value for sampler '%s' is %d.\n", name.c_str(), binding);
+				}
 			} else {
 				binding = _binding;
 			}
@@ -245,13 +248,10 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 	GLCALL( glGetProgramiv(m_gl_name, GL_ACTIVE_UNIFORMS, &active_uniforms) );
 
 	PINFOF(LOG_V2, LOG_OGL, " uniforms: %d\n", active_uniforms);
-	GLint ubinding = -1;
-	if(m_version < 420) {
-		ubinding = 0;
-	}
+	GLint ubinding = 0;
 	for(GLuint uidx=0; uidx<GLuint(active_uniforms); uidx++) {
 		auto & uni = m_uniforms.emplace_back(m_gl_name, uidx, ubinding);
-		if(m_version < 420 && uni.is_sampler()) {
+		if(uni.is_sampler()) {
 			ubinding = uni.binding + 1;
 		}
 		auto stduni = ms_builtin_uniform_names.find(uni.member_name);
