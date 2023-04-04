@@ -118,6 +118,11 @@ ul.menu {
 	left: 0;
 }
 
+.media .videos img {
+	width: auto;
+	height: 180px;
+}
+
 .contentBlock {
 	clear: both;
 }
