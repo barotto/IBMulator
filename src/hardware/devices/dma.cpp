@@ -588,19 +588,17 @@ void DMA::raise_HLDA(void)
 		if(!ma_sl) {
 			if(m_h[channel].dmaWrite8) {
 				len = m_h[channel].dmaWrite8(buffer, maxlen, tx_tc);
+				g_memory.DMA_write(phy_addr, len, buffer);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
-			g_memory.DMA_write(phy_addr, len, buffer);
-
 		} else {
 			if(m_h[channel].dmaWrite16) {
 				len = m_h[channel].dmaWrite16((uint16_t*)buffer, maxlen / 2, tx_tc);
+				g_memory.DMA_write(phy_addr, len, buffer);
 			} else {
 				PERRF(LOG_DMA, "no dmaWrite handler for channel %u\n", channel);
 			}
-			g_memory.DMA_write(phy_addr, len, buffer);
-
 		}
 	} else if(m_s.dma[ma_sl].chan[channel].mode.transfer_type == 2) { // read
 		// DMA controlled xfer of bytes from Memory to I/O
