@@ -17,3 +17,14 @@ Makefile.in
 /.cproject
 /.project
 /.settings/
+compile
+depcomp
+install-*
+missing
+*.log
+.autotools
+*.xcf
+callgrind*
+/pgo/
+*.pl
+/cov-int
