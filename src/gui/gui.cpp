@@ -2663,7 +2663,10 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	grab_input(!m_input.grab);
 	
 	if(m_mode == GUI_MODE_NORMAL) {
-		dynamic_cast<NormalInterface*>(m_windows.interface.get())->grab_input(m_input.grab);
+		NormalInterface *interface = dynamic_cast<NormalInterface*>(m_windows.interface.get());
+		if(interface) {
+			interface->grab_input(m_input.grab);
+		}
 	}
 }
 
