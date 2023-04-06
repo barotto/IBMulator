@@ -1327,6 +1327,7 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 		phase = EventPhase::EVT_END;
 	} else  {
 		assert(false);
+		return;
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.key);
@@ -1526,6 +1527,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 		phase = EventPhase::EVT_END;
 	} else  {
 		assert(false);
+		return;
 	}
 
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
@@ -1729,6 +1731,7 @@ void GUI::on_joystick_button_event(const SDL_Event &_sdl_event)
 		}
 	} else  {
 		assert(false);
+		return;
 	}
 
 	on_button_event(_sdl_event, binding_ptr, phase);
