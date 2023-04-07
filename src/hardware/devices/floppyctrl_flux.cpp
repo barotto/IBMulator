@@ -1779,7 +1779,7 @@ void FloppyCtrl_Flux::tc_w(bool _tc)
 			live_sync();
 			m_s.tc_done = true;
 			m_s.TC = _tc;
-			if(m_s.cur_live.drive < 4) {
+			if(m_s.cur_live.drive < MAX_DRIVES) {
 				general_continue(m_s.cur_live.drive);
 			}
 		} else {
@@ -2195,7 +2195,7 @@ void FloppyCtrl_Flux::live_delay(int state)
 void FloppyCtrl_Flux::live_sync()
 {
 	uint64_t now = g_machine.get_virt_time_ns();
-	if(m_s.cur_live.tm != TIME_NEVER) {
+	if(m_s.cur_live.tm != TIME_NEVER && m_s.cur_live.drive < MAX_DRIVES) {
 		assert(m_s.cur_live.drive < 4);
 		if(m_s.cur_live.tm > now) {
 			rollback();
@@ -2232,7 +2232,9 @@ void FloppyCtrl_Flux::live_abort()
 	}
 
 	if(m_s.cur_live.drive < 4) {
-		m_s.cur_live.pll.stop_writing(m_fdd[m_s.cur_live.drive].get(), m_s.cur_live.tm);
+		if(m_s.cur_live.drive < MAX_DRIVES) {
+			m_s.cur_live.pll.stop_writing(m_fdd[m_s.cur_live.drive].get(), m_s.cur_live.tm);
+		}
 		m_s.flopi[m_s.cur_live.drive].live = false;
 		m_s.cur_live.drive = -1;
 	}
@@ -2244,12 +2246,12 @@ void FloppyCtrl_Flux::live_abort()
 
 void FloppyCtrl_Flux::live_run(uint64_t limit)
 {
-	if(m_s.cur_live.state == IDLE || m_s.cur_live.next_state != -1) {
+	if(m_s.cur_live.drive >= MAX_DRIVES || m_s.cur_live.state == IDLE || m_s.cur_live.next_state != -1) {
 		return;
 	}
 
 	if(limit == TIME_NEVER) {
-		if(m_s.cur_live.drive < 4) {
+		if(is_drive_present(m_s.cur_live.drive)) {
 			limit = m_fdd[m_s.cur_live.drive]->time_next_index();
 		}
 		if(limit == TIME_NEVER) {
