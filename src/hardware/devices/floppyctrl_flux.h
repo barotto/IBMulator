@@ -216,11 +216,13 @@ protected:
 	void cmd_format_track();
 	void cmd_scan();
 	void cmd_recalibrate();
+	void cmd_recalibrate_result(unsigned _drive);
 	void cmd_sense_int();
 	void cmd_specify();
 	void cmd_sense_drive();
 	void cmd_configure();
 	void cmd_seek();
+	void cmd_seek_result(unsigned _drive);
 	void cmd_dumpreg();
 	void cmd_read_id();
 	void cmd_read_track();

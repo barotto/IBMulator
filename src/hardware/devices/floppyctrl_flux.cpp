@@ -78,7 +78,7 @@ void FloppyCtrl_Flux::install()
 	);
 	for(unsigned drive=0; drive<MAX_DRIVES; drive++) {
 		// keep timers creation here
-		// some commands require timers regardless of drive presence
+		// some commands require timers regardless of drive presence (eg. recalibrate)
 		m_fdd_timers[drive] = g_machine.register_timer(
 				std::bind(&FloppyCtrl_Flux::timer_fdd, this, drive, std::placeholders::_1),
 				str_format("Floppy Drive %u", drive));
@@ -851,7 +851,7 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 
 	uint8_t seek_to_cyl = 0;
 	uint32_t step_delay_us = 0;
-	if(m_fdd[drive]) {
+	if(is_drive_present(drive)) {
 		PDEBUGF(LOG_V1, LOG_FDC, "recalibrate, DRV%u (cur.C=%u)\n", drive,
 				m_fdd[drive]->get_cyl());
 		m_fdd[drive]->recalibrate();
@@ -878,12 +878,40 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 		step_delay_us = calculate_step_delay_us(drive, 79, 0);
 	}
 
-	uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
+	if(drive < MAX_DRIVES) {
+		uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event RECALIBRATE_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
-			drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
+		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event RECALIBRATE_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
+				drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
-	g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
+		g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
+	} else {
+		// not time accurate
+		cmd_recalibrate_result(drive);
+	}
+}
+
+void FloppyCtrl_Flux::cmd_recalibrate_result(unsigned _drive)
+{
+	assert(_drive < 4);
+	_drive &= 0x3;
+
+	//The H (Head Address) bit in ST0 will always return a 0 (p.31)
+	m_s.flopi[_drive].st0 = FDC_ST0_SE | _drive;
+	m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
+	// If the TRK0 pin is still low after 79 step pulses have been
+	// issued, the 82077AA sets the SE and the EC bits of ST0 to 1, and
+	// terminates the command. Disks capable of handling more than 80
+	// tracks per side may require more than one RECALIBRATE command to
+	// return the head back to physical Track 0.
+	if(!is_motor_on(_drive) || m_fdd[_drive]->get_cyl()!=0) {
+		m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL | FDC_ST0_EC;
+	}
+	// clear DRVxBUSY bit
+	m_s.main_status_reg &= ~(1 << _drive);
+	// no result phase (for result use sense int cmd)
+	command_end(_drive, IRQ_OTHER);
+	enter_idle_phase();
 }
 
 void FloppyCtrl_Flux::cmd_sense_int()
@@ -997,7 +1025,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	uint32_t step_delay_us = calculate_step_delay_us(drive, cylinder);
 	uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
 
-	if(m_fdd[drive]) {
+	if(is_drive_present(drive)) {
 		m_fdd[drive]->dir_w(m_s.flopi[drive].dir);
 		if(m_s.flopi[drive].pcn != cylinder) {
 			m_s.flopi[drive].step = true;
@@ -1008,10 +1036,30 @@ void FloppyCtrl_Flux::cmd_seek()
 		m_fdd[drive]->ss_w(m_s.cmd_head());
 	}
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
-			drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
+	if(drive < MAX_DRIVES) {
+		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
+				drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
-	g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
+		g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
+	} else {
+		// not time accurate
+		cmd_seek_result(drive);
+	}
+}
+
+void FloppyCtrl_Flux::cmd_seek_result(unsigned _drive)
+{
+	assert(_drive < 4);
+	_drive &= 0x3;
+
+	// The H (Head Address) bit in ST0 will always return a 0 (p.31)
+	m_s.flopi[_drive].st0 = FDC_ST0_SE | _drive;
+	m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
+	// clear DRVxBUSY bit
+	m_s.main_status_reg &= ~(1 << _drive);
+	// no result phase (for result use sense int cmd)
+	command_end(_drive, IRQ_OTHER);
+	enter_idle_phase();
 }
 
 void FloppyCtrl_Flux::cmd_dumpreg()
@@ -1113,33 +1161,11 @@ void FloppyCtrl_Flux::timer_fdd(unsigned _drive, uint64_t)
 		// 	break;
 		case RECALIBRATE_WAIT_DONE: // recalibrate command
 			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: RECALIBRATE_WAIT_DONE\n", _drive);
-			//The H (Head Address) bit in ST0 will always return a 0 (p.31)
-			m_s.flopi[_drive].st0 = FDC_ST0_SE | _drive;
-			m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
-			// If the TRK0 pin is still low after 79 step pulses have been
-			// issued, the 82077AA sets the SE and the EC bits of ST0 to 1, and
-			// terminates the command. Disks capable of handling more than 80
-			// tracks per side may require more than one RECALIBRATE command to
-			// return the head back to physical Track 0.
-			if(!is_motor_on(_drive) || m_fdd[_drive]->get_cyl()!=0) {
-				m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL | FDC_ST0_EC;
-			}
-			// clear DRVxBUSY bit
-			m_s.main_status_reg &= ~(1 << _drive);
-			// no result phase (for result use sense int cmd)
-			command_end(_drive, IRQ_OTHER);
-			enter_idle_phase();
+			cmd_recalibrate_result(_drive);
 			break;
 		case SEEK_WAIT_DONE: // seek command
 			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SEEK_WAIT_DONE\n", _drive);
-			// The H (Head Address) bit in ST0 will always return a 0 (p.31)
-			m_s.flopi[_drive].st0 = FDC_ST0_SE | _drive;
-			m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
-			// clear DRVxBUSY bit
-			m_s.main_status_reg &= ~(1 << _drive);
-			// no result phase (for result use sense int cmd)
-			command_end(_drive, IRQ_OTHER);
-			enter_idle_phase();
+			cmd_seek_result(_drive);
 			break;
 		default:
 			break;
