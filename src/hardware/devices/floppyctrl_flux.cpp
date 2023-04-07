@@ -613,8 +613,7 @@ void FloppyCtrl_Flux::enter_execution_phase()
 
 unsigned FloppyCtrl_Flux::st_hds_drv(unsigned _drive)
 {
-	assert(_drive < MAX_DRIVES);
-	if(m_fdd[_drive]) {
+	if(is_drive_present(_drive)) {
 		return ((m_s.H << 2) | _drive);
 	}
 	return _drive;
