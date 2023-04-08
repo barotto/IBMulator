@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2015  The DOSBox Team
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -184,6 +184,8 @@ static double decrelconst[4] = {
 OPL::OPL()
 : m_irqfn([](bool){})
 {
+	memset(&m_s, 0, sizeof(m_s));
+
 	m_s.timers[T1].index = NULL_TIMER_ID;
 	m_s.timers[T1].id = T1;
 	m_s.timers[T1].increment = 80;
@@ -529,7 +531,13 @@ void OPL::write(unsigned _port, uint8_t _val)
 			m_s.op[opbase+9].change_frequency(m_s.regs,chanbase,modbase+3);
 			if(m_type == OPL3) {
 				// for 4op channels all four operators are modified to the frequency of the channel
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[second_set?(base+18):base].is_4op) {
+				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+					if(UNLIKELY(opbase > 20)) {
+						// if opbase is > 20 there must be a bug in either reset() or ARC_CONTROL
+						PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
+						assert(false);
+						break;
+					}
 					m_s.op[opbase+3].change_frequency(m_s.regs,chanbase,modbase+8);
 					m_s.op[opbase+3+9].change_frequency(m_s.regs,chanbase,modbase+3+8);
 				}
@@ -599,6 +607,11 @@ void OPL::write(unsigned _port, uint8_t _val)
 				if(m_type == OPL3) {
 					// for 4op channels all four operators are switched on
 					if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+						if(UNLIKELY(opbase > 20)) {
+							PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
+							assert(false);
+							break;
+						}
 						// turn on chan+3 operators as well
 						m_s.op[opbase+3].enable(m_s.wave_sel,modbase+8,OP_ACT_NORMAL);
 						m_s.op[opbase+3+9].enable(m_s.wave_sel,modbase+3+8,OP_ACT_NORMAL);
@@ -611,6 +624,11 @@ void OPL::write(unsigned _port, uint8_t _val)
 				if(m_type == OPL3) {
 					// for 4op channels all four operators are switched off
 					if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+						if(UNLIKELY(opbase > 20)) {
+							PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
+							assert(false);
+							break;
+						}
 						// turn off chan+3 operators as well
 						m_s.op[opbase+3].disable(OP_ACT_NORMAL);
 						m_s.op[opbase+3+9].disable(OP_ACT_NORMAL);
@@ -626,7 +644,12 @@ void OPL::write(unsigned _port, uint8_t _val)
 			m_s.op[opbase+9].change_frequency(m_s.regs,chanbase,modbase+3);
 			if(m_type == OPL3) {
 				// for 4op channels all four operators are modified to the frequency of the channel
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[second_set?(base+18):base].is_4op) {
+				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+					if(UNLIKELY(opbase > 20)) {
+						PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
+						assert(false);
+						break;
+					}
 					// change frequency calculations of chan+3 operators as well
 					m_s.op[opbase+3].change_frequency(m_s.regs,chanbase,modbase+8);
 					m_s.op[opbase+3+9].change_frequency(m_s.regs,chanbase,modbase+3+8);
