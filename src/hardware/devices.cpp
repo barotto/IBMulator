@@ -308,14 +308,13 @@ void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask
 	}
 	if(_mask & 2) {
 		if(_port == PORT_MAX) {
-			PDEBUGF(LOG_V2, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_MACHINE,
 				"Registering 16-bit IO device %s at address 0x%04Xh\n",
 				_iodev->name(),
 				_port
 			);
-		}
-		if(m_read_handlers[_port+1].device != nullptr) {
-			PDEBUGF(LOG_V2, LOG_MACHINE,
+		} else if(m_read_handlers[_port+1].device != nullptr) {
+			PWARNF(LOG_V1, LOG_MACHINE,
 				"IO device %s at address 0x%04Xh is 16-bit but address 0x%04Xh is registered to %s\n",
 				_iodev->name(),
 				_port,
@@ -340,14 +339,13 @@ void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mas
 	}
 	if(_mask & PORT_16BIT) {
 		if(_port == PORT_MAX) {
-			PDEBUGF(LOG_V2, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_MACHINE,
 				"Registering 16-bit IO device %s at address 0x%04Xh\n",
 				_iodev->name(),
 				_port
 			);
-		}
-		if(m_write_handlers[_port+1].device != nullptr) {
-			PDEBUGF(LOG_V2, LOG_MACHINE,
+		} else if(m_write_handlers[_port+1].device != nullptr) {
+			PWARNF(LOG_V1, LOG_MACHINE,
 				"IO device %s at address 0x%04X is 16-bit but address 0x%04X is registered to %s\n",
 				_iodev->name(),
 				_port,
