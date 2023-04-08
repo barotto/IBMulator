@@ -414,7 +414,7 @@ uint8_t * Memory::get_buffer_ptr(uint32_t _addr)
 
 void Memory::DMA_read(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
-	int c;
+	int c = 0;
 	for(uint16_t i=0; i<_len; i++) {
 		_buf[i] = read<1>(_addr+i, c);
 	}
@@ -422,7 +422,7 @@ void Memory::DMA_read(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 
 void Memory::DMA_write(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
-	int c;
+	int c = 0;
 	for(uint16_t i=0; i<_len; i++) {
 		write<1>(_addr+i, _buf[i], c);
 	}
