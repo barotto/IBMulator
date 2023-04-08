@@ -897,7 +897,7 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 					val = m_s.uart[port].rx_fifo[0];
 					PDEBUGF(LOG_V2, LOG_COM, "0x%02x RX fifo\n", val);
 					if(m_s.uart[port].rx_fifo_end > 0) {
-						memcpy(&m_s.uart[port].rx_fifo[0], &m_s.uart[port].rx_fifo[1], 15);
+						memmove(&m_s.uart[port].rx_fifo[0], &m_s.uart[port].rx_fifo[1], 15);
 						m_s.uart[port].rx_fifo_end--;
 					}
 					if(m_s.uart[port].rx_fifo_end == 0) {
@@ -1127,7 +1127,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					if(m_s.uart[port].line_status.tsr_empty) {
 						if(m_s.uart[port].fifo_cntl.enable) {
 							m_s.uart[port].tsrbuffer = m_s.uart[port].tx_fifo[0];
-							memcpy(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
+							memmove(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
 							m_s.uart[port].line_status.thr_empty = (--m_s.uart[port].tx_fifo_end == 0);
 						} else {
 							m_s.uart[port].tsrbuffer = m_s.uart[port].thrbuffer;
@@ -1712,7 +1712,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		if(m_s.uart[port].fifo_cntl.enable && (m_s.uart[port].tx_fifo_end > 0)) {
 			m_s.uart[port].tsrbuffer = m_s.uart[port].tx_fifo[0];
 			m_s.uart[port].line_status.tsr_empty = false;
-			memcpy(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
+			memmove(&m_s.uart[port].tx_fifo[0], &m_s.uart[port].tx_fifo[1], 15);
 			gen_int = (--m_s.uart[port].tx_fifo_end == 0);
 		} else if(!m_s.uart[port].line_status.thr_empty) {
 			m_s.uart[port].tsrbuffer = m_s.uart[port].thrbuffer;
