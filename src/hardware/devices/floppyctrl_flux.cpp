@@ -55,6 +55,9 @@ FloppyCtrl_Flux::FloppyCtrl_Flux(Devices *_dev)
 	m_floppy_formats.emplace_back(new FloppyFmt_IPF());
 	m_floppy_formats.emplace_back(new FloppyFmt_TD0());
 	m_floppy_formats.emplace_back(new FloppyFmt_IMD());
+
+	// state is cleared during install anyway, but keep static analyzers quiet
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 void FloppyCtrl_Flux::install()
@@ -711,11 +714,13 @@ void FloppyCtrl_Flux::cmd_read_data()
 
 void FloppyCtrl_Flux::cmd_write_data()
 {
-	if(!start_read_write_cmd()) {
+	uint8_t drive = m_s.cmd_drive();
+
+	if(!start_read_write_cmd() || UNLIKELY(drive >= MAX_DRIVES)) {
+		// start_read_write_cmd() returns false when drive is not present.
+		// checking the drive index anyway will hopefully keep static analyzers quiet.
 		return;
 	}
-
-	uint8_t drive = m_s.cmd_drive();
 
 	if(m_fdd[drive]->wpt_r()) {
 		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: disk is write protected!\n");
@@ -923,6 +928,7 @@ void FloppyCtrl_Flux::cmd_sense_int()
 	if(fid < 4) {
 		m_s.flopi[fid].st0_filled = false;
 	}
+	// fid can be 0-4
 	enter_result_phase(fid);
 }
 
@@ -1838,7 +1844,7 @@ void FloppyCtrl_Flux::enter_result_phase(unsigned _drive)
 			command_end(_drive);
 			break;
 		case FDC_CMD_SENSE_INT:
-			if(_drive == 4) {
+			if(_drive >= 4) {
 				m_s.result[0] = FDC_ST0_IC_INVALID;
 				m_s.result_size = 1;
 			} else {
@@ -2165,7 +2171,7 @@ void FloppyCtrl_Flux::live_start(unsigned _drive, int _state)
 
 void FloppyCtrl_Flux::checkpoint()
 {
-	if(m_s.cur_live.drive < 4) {
+	if(LIKELY(m_s.cur_live.drive < MAX_DRIVES)) {
 		m_s.cur_live.pll.commit(m_fdd[m_s.cur_live.drive].get(), m_s.cur_live.tm);
 	}
 	std::memcpy(&m_s.checkpoint_live, &m_s.cur_live, sizeof(State::live_info));
@@ -2891,8 +2897,9 @@ void FloppyCtrl_Flux::PLL::stop_writing(FloppyDrive *floppy, uint64_t tm)
 
 void FloppyCtrl_Flux::PLL::commit(FloppyDrive *floppy, uint64_t tm)
 {
-	if(write_start_time == TIME_NEVER || tm == write_start_time)
+	if(write_start_time == TIME_NEVER || tm == write_start_time) {
 		return;
+	}
 
 	if(floppy) {
 		floppy->write_flux(write_start_time, tm, write_position, write_buffer);
