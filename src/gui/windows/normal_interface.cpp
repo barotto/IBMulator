@@ -189,7 +189,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		disp_h = disp_area_h;
 	}
 
-	float ratio;
+	float ratio = 1.f;
 	switch(m_aspect_mode) {
 		case DISPLAY_ASPECT_FIXED:
 			ratio = m_aspect_ratio;
@@ -206,7 +206,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 			break;
 		default:
 			assert(false);
-			break;
+			return;
 	}
 	if(m_scale_mode == DISPLAY_SCALE_1X) {
 		disp_w = m_screen->display()->mode().imgw;
