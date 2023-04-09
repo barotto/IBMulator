@@ -149,6 +149,7 @@ public:
 
 	void stack_push_word(uint16_t _value);
 	void stack_push_dword(uint32_t _value);
+	void stack_push_sr_dword(uint16_t _value);
 	uint16_t stack_pop_word();
 	uint32_t stack_pop_dword();
 	void stack_write_word(uint16_t _value, uint32_t _offset);

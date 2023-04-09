@@ -46,6 +46,28 @@ void CPUExecutor::stack_push_dword(uint32_t _value)
 	}
 }
 
+void CPUExecutor::stack_push_sr_dword(uint16_t _value)
+{
+	// 80386, 80486 perform a 16-bit move, leaving the upper portion of the stack
+	// location unmodified (tested on real hardware). Probably all 32-bit Intel
+	// CPUs behave in this way, but this behaviour is not specified in the docs
+	// for older CPUs and is cited in the most recent docs like this:
+	// "If the source operand is a segment register (16 bits) and the operand
+	// size is 32-bits, either a zero-extended value is pushed on the stack or
+	// the segment selector is written on the stack using a 16-bit move. For the
+	// last case, all recent Core and Atom processors perform a 16-bit move,
+	// leaving the upper portion of the stack location unmodified."
+	if(REG_SS.desc.big) {
+		// StackAddrSize = 32
+		write_word(REG_SS, REG_ESP-4, _value);
+		REG_ESP -= 4;
+	} else {
+		// StackAddrSize = 16
+		write_word(REG_SS, uint16_t(REG_SP-4), _value);
+		REG_SP -= 4;
+	}
+}
+
 uint16_t CPUExecutor::stack_pop_word()
 {
 	uint16_t value;

@@ -3686,7 +3686,7 @@ void CPUExecutor::POPFD()
  */
 
 void CPUExecutor::PUSH_SR_w()  { stack_push_word(SEG_REG(m_instr->reg).sel.value); }
-void CPUExecutor::PUSH_SR_dw() { stack_push_dword(SEG_REG(m_instr->reg).sel.value); }
+void CPUExecutor::PUSH_SR_dw() { stack_push_sr_dword(SEG_REG(m_instr->reg).sel.value); }
 void CPUExecutor::PUSH_rw_op() { stack_push_word(load_rw_op()); }
 void CPUExecutor::PUSH_rd_op() { stack_push_dword(load_rd_op()); }
 void CPUExecutor::PUSH_mw()    { stack_push_word(load_ew()); }
