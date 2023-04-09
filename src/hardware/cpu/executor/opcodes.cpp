@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -874,7 +874,8 @@ void CPUExecutor::CALL_m1632()
 void CPUExecutor::CBW()
 {
 	/* CBW: no flags are effected */
-	REG_AX = int8_t(REG_AL);
+	int16_t value = int8_t(REG_AL);
+	REG_AX = value;
 }
 
 void CPUExecutor::CWD()
@@ -888,7 +889,8 @@ void CPUExecutor::CWD()
 
 void CPUExecutor::CWDE()
 {
-	REG_EAX = int16_t(REG_AX);
+	int32_t value = int16_t(REG_AX);
+	REG_EAX = value;
 }
 
 void CPUExecutor::CDQ()
