@@ -453,7 +453,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 void HardDiskDrive::get_profile(int _type_id, const char *_section,
 		MediaGeometry &_geom, DrivePerformance &_perf)
 {
-	if(ms_hdd_performance.find(_type_id) != ms_hdd_performance.end()) {
+	if(_type_id < HDD_DRIVES_TABLE_SIZE && ms_hdd_performance.find(_type_id) != ms_hdd_performance.end()) {
 		_perf = ms_hdd_performance.at(_type_id);
 		_geom = ms_hdd_types[_type_id];
 		// ATA drives have a typical interleave of 1:1
