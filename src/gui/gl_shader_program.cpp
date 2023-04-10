@@ -411,8 +411,9 @@ std::list<std::string> GLShaderProgram::include_shader_file(const std::string &_
 			if(!version && line->find("version", 1) == 1) {
 				// inject common shader defines
 				auto defines = get_shader_defines(_sh_type, _defines);
+				auto defines_size = defines.size();
 				shcode.splice(std::next(line), std::move(defines));
-				linen += defines.size();
+				linen += defines_size;
 				version = unsigned(str_parse_int_num(line->substr(9,11)));
 				m_version = std::min(version, m_version);
 			} else if(line->find("include", 1) == 1) {
