@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -757,9 +757,10 @@ void Keyboard::controller_enQ(uint8_t data, unsigned source)
 	if(m_s.kbd_ctrl.outb) {
 		if(m_s.kbd_ctrl.Qsize >= KBD_CONTROLLER_QSIZE) {
 			PERRF(LOG_KEYB, "controller_enq(): controller_Q full!\n");
+		} else {
+			m_s.kbd_ctrl.Q[m_s.kbd_ctrl.Qsize++] = data;
+			m_s.kbd_ctrl.Qsource = source;
 		}
-		m_s.kbd_ctrl.Q[m_s.kbd_ctrl.Qsize++] = data;
-		m_s.kbd_ctrl.Qsource = source;
 		return;
 	}
 
