@@ -105,7 +105,7 @@ protected:
 		uint8_t text_buf[TD0_N + TD0_F - 1];
 		uint16_t freq[TD0_T + 1]; // cumulative freq table
 		int16_t prnt[TD0_T + TD0_N_CHAR]; // pointing parent nodes. area [T..(T + N_CHAR - 1)] are pointers for leaves
-		int16_t son[TD0_T]; // pointing children nodes (son[], son[] + 1)
+		int16_t son[TD0_T + 1]; // pointing children nodes (son[], son[] + 1)
 
 		uint16_t getbuf = 0;
 		uint8_t getlen = 0;
