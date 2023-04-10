@@ -70,7 +70,7 @@ IODEVICE_PORTS(Keyboard) = {
 Keyboard::Keyboard(Devices *_dev)
 : IODevice(_dev)
 {
-
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 Keyboard::~Keyboard()
@@ -226,8 +226,9 @@ void Keyboard::reset_internals(bool powerup)
 	std::lock_guard<std::mutex> lock(m_kbd_lock);
 
 	m_s.kbd_buffer.num_elements = 0;
-	for (int i=0; i<KBD_ELEMENTS; i++)
+	for (int i=0; i<KBD_ELEMENTS; i++) {
 		m_s.kbd_buffer.buffer[i] = 0;
+	}
 	m_s.kbd_buffer.head = 0;
 
 	m_s.kbd_buffer.expecting_typematic = false;
@@ -781,21 +782,12 @@ void Keyboard::kbd_enQ_imm(uint8_t val)
 {
 	std::lock_guard<std::mutex> lock(m_kbd_lock);
 
-	if(m_s.kbd_buffer.num_elements >= KBD_ELEMENTS) {
-		PERRF(LOG_KEYB, "[keybd] internal buffer full (imm)\n");
-		return;
-	}
-
-	/* enqueue scancode in multibyte internal keyboard buffer */
-	/*
-	  int tail = ( m_s.kbd_buffer.head +  m_s.kbd_buffer.num_elements) %
-		KBD_ELEMENTS;
-	*/
 	m_s.kbd_ctrl.kbd_output_buffer = val;
 	m_s.kbd_ctrl.outb = true;
 
-	if(m_s.kbd_ctrl.allow_irq1)
+	if(m_s.kbd_ctrl.allow_irq1) {
 		m_s.kbd_ctrl.irq1_requested = true;
+	}
 }
 
 void Keyboard::kbd_enQ(uint8_t scancode)
@@ -1320,14 +1312,15 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 					m_s.mouse.scaling         = 1;   /* 1:1 (default) */
 					m_s.mouse.mode            = MOUSE_MODE_RESET;
 					m_s.mouse.enable = false;
-					if(m_s.mouse.im_mode)
+					if(m_s.mouse.im_mode) {
 						PINFOF(LOG_V1, LOG_KEYB, "[mouse] wheel mouse mode disabled\n");
-						m_s.mouse.im_mode         = 0;
-						/* (mch) NT expects an ack here */
-						controller_enQ(0xFA, 1); // ACK
-						controller_enQ(0xAA, 1); // completion code
-						controller_enQ(0x00, 1); // ID code (standard after reset)
-						PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] mouse reset\n");
+					}
+					m_s.mouse.im_mode         = 0;
+					/* (mch) NT expects an ack here */
+					controller_enQ(0xFA, 1); // ACK
+					controller_enQ(0xAA, 1); // completion code
+					controller_enQ(0x00, 1); // ID code (standard after reset)
+					PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] mouse reset\n");
 				} else {
 					// a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
 					controller_enQ(0xFE, 1); // RESEND
