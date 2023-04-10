@@ -665,13 +665,14 @@ bool FloppyFmt_IPF::IPFDecode::generate_block_gap_0(uint32_t gap_cells, uint8_t 
 		uint32_t ipos, std::vector<uint32_t>::iterator &tpos, bool &context)
 {
 	spos = ipos >= 16 && ipos+16 <= gap_cells ? ipos : gap_cells >> 1;
-	track_write_mfm(tpos, &pattern, 0, 8, spos, context);
+	uint8_t data[1] = {pattern};
+	track_write_mfm(tpos, data, 0, 8, spos, context);
 	uint32_t delta = 0;
 	if(gap_cells & 1) {
 		*tpos++ = MG_0;
 		delta++;
 	}
-	track_write_mfm(tpos, &pattern, spos+delta-gap_cells, 8, gap_cells-spos-delta, context);
+	track_write_mfm(tpos, data, spos+delta-gap_cells, 8, gap_cells-spos-delta, context);
 	return true;
 }
 
