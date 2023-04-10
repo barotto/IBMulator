@@ -1378,8 +1378,6 @@ void Keyboard::kbd_ctrl_to_mouse(uint8_t value)
 
 void Keyboard::create_mouse_packet(bool force_enq)
 {
-	uint8_t b1, b2, b3, b4;
-
 	if(m_s.mouse_buffer.num_elements && !force_enq) {
 		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] packet ignored/dropped, elements in buffer=%d\n",
 				m_s.mouse_buffer.num_elements);
@@ -1388,7 +1386,6 @@ void Keyboard::create_mouse_packet(bool force_enq)
 
 	int16_t delta_x = m_s.mouse.delayed_dx;
 	int16_t delta_y = m_s.mouse.delayed_dy;
-	uint8_t button_state = m_s.mouse.buttons_state | 0x08;
 
 	if(!force_enq && !delta_x && !delta_y) {
 		PDEBUGF(LOG_V2, LOG_KEYB, "[mouse] packet ignored/dropped, delta_x=%d, delta_y=%d\n",
@@ -1396,46 +1393,39 @@ void Keyboard::create_mouse_packet(bool force_enq)
 		return;
 	}
 
-	if(delta_x>254) { delta_x = 254; }
-	if(delta_x<-254) { delta_x = -254; }
-	if(delta_y>254) { delta_y = 254; }
-	if(delta_y<-254) { delta_y = -254; }
+	uint8_t b1 = (m_s.mouse.buttons_state & 0x0f) | 0x08; // bit3 always set;
+	uint8_t b2 = 0;
+	uint8_t b3 = 0;
+	uint8_t b4 = uint8_t(-m_s.mouse.delayed_dz);
 
-	b1 = (button_state & 0x0f) | 0x08; // bit3 always set
-
-	if((delta_x>=0) && (delta_x<=255)) {
-		b2 = (uint8_t) delta_x;
-		m_s.mouse.delayed_dx -= delta_x;
-	} else if(delta_x > 255) {
-		b2 = (uint8_t) 0xff;
-		m_s.mouse.delayed_dx -= 255;
-	} else if(delta_x >= -256) {
-		b2 = (uint8_t) delta_x;
-		b1 |= 0x10;
-		m_s.mouse.delayed_dx -= delta_x;
+	if(delta_x < -256 || delta_x > 255) {
+		b1 |= 0x40; // overflow
+		if(delta_x < -256) {
+			m_s.mouse.delayed_dx += 256;
+		} else {
+			m_s.mouse.delayed_dx -= 255;
+		}
 	} else {
-		b2 = (uint8_t) 0x00;
-		b1 |= 0x10;
-		m_s.mouse.delayed_dx += 256;
+		if(delta_x < 0) {
+			b1 |= 0x10;
+		}
+		b2 = delta_x & 0xFF;
+		m_s.mouse.delayed_dx -= delta_x;
 	}
-
-	if((delta_y>=0) && (delta_y<=255)) {
-		b3 = (uint8_t) delta_y;
-		m_s.mouse.delayed_dy -= delta_y;
-	} else if(delta_y > 255) {
-		b3 = (uint8_t) 0xff;
-		m_s.mouse.delayed_dy -= 255;
-	} else if(delta_y >= -256) {
-		b3 = (uint8_t) delta_y;
-		b1 |= 0x20;
-		m_s.mouse.delayed_dy -= delta_y;
+	if(delta_y < -256 || delta_y > 255) {
+		b1 |= 0x80; // overflow
+		if(delta_y < -256) {
+			m_s.mouse.delayed_dy += 256;
+		} else {
+			m_s.mouse.delayed_dy -= 255;
+		}
 	} else {
-		b3 = (uint8_t) 0x00;
-		b1 |= 0x20;
-		m_s.mouse.delayed_dy += 256;
+		if(delta_y < 0) {
+			b1 |= 0x20;
+		}
+		b3 = delta_y & 0xFF;
+		m_s.mouse.delayed_dy -= delta_y;
 	}
-
-	b4 = uint8_t(-m_s.mouse.delayed_dz);
 
 	mouse_enQ_packet(b1, b2, b3, b4);
 }
@@ -1512,11 +1502,6 @@ void Keyboard::mouse_motion(int delta_x, int delta_y, int delta_z)
 		delta_x = m_s.mouse.resolution_cpmm * x_mm;
 		delta_y = m_s.mouse.resolution_cpmm * y_mm;
 	}
-
-	if(delta_x>255) { delta_x = 255; }
-	if(delta_y>255) { delta_y = 255; }
-	if(delta_x<-256) { delta_x = -256; }
-	if(delta_y<-256) { delta_y = -256; }
 
 	m_s.mouse.delayed_dx += delta_x;
 	m_s.mouse.delayed_dy += delta_y;
