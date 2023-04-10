@@ -109,8 +109,6 @@ public:
 #define GUI_KEYMAP              "keymap"
 #define GUI_MOUSE_TYPE          "mouse"
 #define GUI_MOUSE_GRAB          "grab"
-#define GUI_MOUSE_ACCELERATION  "mouse_accel"
-#define GUI_SCREEN_DPI          "dpi"
 #define GUI_WIDTH               "width"
 #define GUI_HEIGHT              "height"
 #define GUI_FULLSCREEN          "fullscreen"

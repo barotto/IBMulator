@@ -43,8 +43,6 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ GUI_FRAMECAP,           "vga"        },
 		{ GUI_KEYMAP,             "keymap.map" },
 		{ GUI_MOUSE_GRAB,         "yes"        },
-		{ GUI_MOUSE_ACCELERATION, "no"         },
-		{ GUI_SCREEN_DPI,         "96"         },
 		{ GUI_WIDTH,              "640"        },
 		{ GUI_HEIGHT,             "480"        },
 		{ GUI_FULLSCREEN,         "no"         },
@@ -419,11 +417,9 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                 If none specified the default keymap.map file in the 'share' directory will be used.\n"
 ";          mouse: Mouse type.\n"
 ";                 Possible values: none, ps2, serial\n"
-";    mouse_accel: Enable mouse acceleration\n"
 ";          width: Window width in pixel.\n"
 ";         height: Window height in pixel (for normal GUI mode it doesn't include the system unit.)\n"
 ";     fullscreen: Start directly in fullscreen.\n"
-";            dpi: Resolution of the host display in DPI (currently used only for mouse acceleration).\n"
 ";         bg_XXX: Background window color\n"
 ";show_indicators: Show status indicators on the top-right corner of the screen.\n"
 ";     ui_scaling: UI scaling, between 100% and 500% with increments every 25% (125%, 150%, 175%, ...)\n"
@@ -761,11 +757,9 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ GUI_REALISTIC_STYLE,    false },
 		{ GUI_KEYMAP,             false },
 		{ GUI_MOUSE_TYPE,         false },
-		{ GUI_MOUSE_ACCELERATION, false },
 		{ GUI_WIDTH,              false },
 		{ GUI_HEIGHT,             false },
 		{ GUI_FULLSCREEN,         false },
-		{ GUI_SCREEN_DPI,         false },
 		{ GUI_BG_R,               false },
 		{ GUI_BG_G,               false },
 		{ GUI_BG_B,               false },

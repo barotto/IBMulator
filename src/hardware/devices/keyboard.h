@@ -157,7 +157,7 @@ private:
 			int     head;
 		} mouse_buffer;
 
-		float screen_mmpd; // mm per dot
+		float screen_mmpd; // mm per dot (unused)
 
 	} m_s;
 
@@ -185,7 +185,6 @@ private:
 	void timer_handler(uint64_t);
 	TimerID m_timer;
 
-	bool m_mouse_acc;
 	Typematic m_typematic;
 
 public:
