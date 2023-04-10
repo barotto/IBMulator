@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -248,7 +248,7 @@ void MIDIDev_ALSA::close()
 
 void MIDIDev_ALSA::send_event(uint8_t _msg[3])
 {
-	snd_seq_event_t ev;
+	snd_seq_event_t ev{};
 	
 	ev.type = SND_SEQ_EVENT_OSS;
 
@@ -313,7 +313,7 @@ void MIDIDev_ALSA::send_event(uint8_t _msg[3])
 
 void MIDIDev_ALSA::send_sysex(uint8_t *_sysex, int _len)
 {
-	snd_seq_event_t ev;
+	snd_seq_event_t ev{};
 	
 	snd_seq_ev_set_sysex(&ev, _len, _sysex);
 	PDEBUGF(LOG_V2, LOG_MIDI, "%s: SysEx, len: %d bytes\n", name(), _len);
