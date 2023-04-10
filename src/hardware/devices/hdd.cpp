@@ -578,9 +578,13 @@ void HardDiskDrive::mount(std::string _imgpath, MediaGeometry _geom, bool _tmp_i
 		std::string tpl = g_program.config().get_cfg_home()
 		                + FS_SEP + base + "-XXXXXX";
 
-		//opening a temp image
-		//this works in C++11, where strings are guaranteed to be contiguous:
-		if(dynamic_cast<FlatMediaImage*>(m_disk.get())->open_temp(_imgpath.c_str(), tpl) < 0) {
+		// opening a temp image
+		FlatMediaImage *image = dynamic_cast<FlatMediaImage*>(m_disk.get());
+		if(!image) {
+			assert(false);
+			throw std::exception();
+		}
+		if(image->open_temp(_imgpath.c_str(), tpl) < 0) {
 			PERRF(LOG_HDD, "Can't open the image file\n");
 			throw std::exception();
 		}
