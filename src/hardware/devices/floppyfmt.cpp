@@ -535,6 +535,11 @@ void FloppyFmt::generate_track_from_bitstream(int track, int head, const uint8_t
 void FloppyFmt::generate_track_from_levels(int track, int head, std::vector<uint32_t> &trackbuf,
 		int splice_pos, FloppyDisk &_disk)
 {
+	if(trackbuf.empty()) {
+		assert(false);
+		return;
+	}
+
 	// Retrieve the angular splice pos before messing with the data
 	splice_pos = splice_pos % trackbuf.size();
 	uint32_t splice_angular_pos = trackbuf[splice_pos] & FloppyDisk::TIME_MASK;
@@ -554,6 +559,10 @@ void FloppyFmt::generate_track_from_levels(int track, int head, std::vector<uint
 		}
 
 		total_time += time;
+	}
+	if(total_time == 0) {
+		assert(false);
+		return;
 	}
 
 	normalize_times(dest, total_time);
