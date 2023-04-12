@@ -60,7 +60,7 @@ protected:
 		uint8_t  sec;     // 9 Second                    (1 byte)
 	} GCC_ATTRIBUTE(packed);
 
-	Header m_header;
+	Header m_header = {};
 	bool m_adv_comp = false;
 
 	bool load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk);
