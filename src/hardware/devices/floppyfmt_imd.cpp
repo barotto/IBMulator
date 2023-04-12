@@ -35,10 +35,11 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 	}
 
 	do {
-		m_header.push_back(fstream.get());
-		if(!fstream.good()) {
+		auto ch = fstream.get();
+		if(ch == std::ifstream::traits_type::eof()) {
 			return {0};
 		}
+		m_header.push_back(uint8_t(ch));
 	} while(m_header.back() != 0x1a);
 	m_header.pop_back();
 
@@ -331,7 +332,13 @@ bool FloppyFmt_IMD::load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk)
 		PDEBUGF(LOG_V2, LOG_FDC, "IMD: %u: cyl=%u, head=%u\n", j, t.cyl, chead);
 
 		for(unsigned i=0; i<t.spt; i++) {
-			uint8_t stype = _file.get();
+			auto ch = _file.get();
+			if(ch == std::ifstream::traits_type::eof()) {
+				PDEBUGF(LOG_V0, LOG_FDC, "IMD: unexpected end-of-file\n");
+				return false;
+			}
+			uint8_t stype = uint8_t(ch);
+
 			assert(stype == 1 || stype == 2);
 
 			unsigned track  = t.has_cyl_map() ? tnum[i] : t.cyl;
@@ -408,13 +415,21 @@ bool FloppyFmt_IMD::load_flux(std::ifstream &_file, FloppyDisk &_disk)
 				j, t.cyl, t.head, t.spt, t.get_actual_secsize());
 
 		for(unsigned i=0; i<t.spt; i++) {
-			uint8_t stype = _file.get();
+			auto ch = _file.get();
+			if(ch == std::ifstream::traits_type::eof()) {
+				PDEBUGF(LOG_V0, LOG_FDC, "IMD: unexpected end-of-file\n");
+				return false;
+			}
+			uint8_t stype = uint8_t(ch);
 
 			sects[i].track       = t.has_cyl_map() ? tnum[i] : t.cyl;
 			sects[i].head        = t.has_head_map() ? hnum[i] : chead;
 			sects[i].sector      = snum[i];
 			sects[i].size        = t.secsize;
 			sects[i].actual_size = t.get_actual_secsize();
+			sects[i].deleted     = false;
+			sects[i].bad_crc     = false;
+			sects[i].data        = nullptr;
 
 			// sector types:
 			// 00      Sector data unavailable - could not be read
@@ -426,9 +441,7 @@ bool FloppyFmt_IMD::load_flux(std::ifstream &_file, FloppyDisk &_disk)
 			// 06 xx   Compressed  read with data error
 			// 07 .... Deleted data read with data error
 			// 08 xx   Compressed, Deleted read with data error
-			if(stype == 0 || stype > 8) {
-				sects[i].data = nullptr;
-			} else {
+			if(stype > 0 && stype <= 8) {
 				sects[i].deleted = stype == 3 || stype == 4 || stype == 7 || stype == 8;
 				sects[i].bad_crc = stype == 5 || stype == 6 || stype == 7 || stype == 8;
 
