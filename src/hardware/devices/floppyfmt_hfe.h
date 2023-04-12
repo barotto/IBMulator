@@ -14,7 +14,7 @@ class FloppyFmt_HFE : public FloppyFmt
 public:
 	struct HFEHeader
 	{
-		uint8_t  HEADERSIGNATURE[8];   // 00-07 “HXCPICFE” for v1, "HXCHFEV3" for v3
+		uint8_t  HEADERSIGNATURE[8];   // 00-07 "HXCPICFE" for v1, "HXCHFEV3" for v3
 		uint8_t  formatrevision;       //    08 Revision = 0
 		uint8_t  number_of_tracks;     //    09 Number of tracks (cylinders) in the file
 		uint8_t  number_of_sides;      //    10 Number of valid sides
@@ -107,7 +107,7 @@ protected:
 			encoding_t &encoding, uint8_t *trackbuf, int &track_bytes,
 			const FloppyDisk &disk);
 
-	HFEHeader m_header;
+	HFEHeader m_header = {};
 	int m_version = 0;
 	std::vector<s_pictrack> m_cylinders;
 

@@ -408,7 +408,7 @@ bool FloppyFmt_HFE::save(std::ofstream &_file, const FloppyDisk &_disk)
 
 	std::vector<s_pictrack> pictrack;
 	uint8_t header[HEADER_LENGTH];
-	uint8_t track_table[TRACK_TABLE_LENGTH];
+	uint8_t track_table[TRACK_TABLE_LENGTH] = {};
 
 	// Set up header
 	memcpy(header, HFE_FORMAT_HEADER_v1, 8);
@@ -484,10 +484,10 @@ bool FloppyFmt_HFE::save(std::ofstream &_file, const FloppyDisk &_disk)
 	int samplelength = 2000;
 
 	// We won't have more than 200000 cells on the track
+	encoding_t trkenc_s0 = UNKNOWN_ENCODING, trkenc_s1 = UNKNOWN_ENCODING;
 	for(int cyl=0; cyl<cylinders; cyl++)
 	{
 		// After the call, the encoding will be set to FM or MFM
-		encoding_t trkenc_s0, trkenc_s1;
 		if(cyl <= 1) {
 			trkenc_s0 = UNKNOWN_ENCODING;
 			trkenc_s1 = UNKNOWN_ENCODING;
