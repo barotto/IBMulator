@@ -1534,14 +1534,13 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
 	uint16_t line_y;
 	
-	uint8_t pan;
+	uint8_t pan = m_s.attr_ctrl.horiz_pel_panning & 0x7;
 	if((_scanline >= m_s.CRTC.latches.line_compare)) {
 		if(m_s.attr_ctrl.attr_mode.PP == 1) {
 			pan = 0;
 		}
 		line_y = (_scanline - m_s.CRTC.latches.line_compare) >> m_s.CRTC.max_scanline.DSC;
 	} else {
-		pan = m_s.attr_ctrl.horiz_pel_panning & 0x7;
 		line_y = _scanline >> m_s.CRTC.max_scanline.DSC;
 	}
 	
