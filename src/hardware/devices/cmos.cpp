@@ -159,8 +159,8 @@ void CMOS::reset(unsigned type)
 			PERRF_ABORT(LOG_CMOS,"Out of memory\n");
 		}
 		tmptime[strlen(tmptime)-1] = '\0';
-		PINFOF(LOG_V1,LOG_CMOS,"Setting initial clock to: %s (time0=%u)\n",
-				tmptime, (uint32_t) m_s.timeval);
+		PINFOF(LOG_V1,LOG_CMOS,"Setting initial clock to: %s (time0=%llu)\n",
+				tmptime, (uint64_t) m_s.timeval);
 		free(tmptime);
 
 		m_s.timeval_change = 0;
@@ -689,6 +689,8 @@ void CMOS::update_timeval()
 	val_bin = (val_bin - 19) * 100;
 	val_bin += bcd_to_bin(m_s.reg[REG_YEAR], m_s.rtc_mode_binary);
 	time_calendar.tm_year = val_bin;
+
+	time_calendar.tm_isdst = 0;
 
 	m_s.timeval = mktime(& time_calendar);
 }
