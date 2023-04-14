@@ -190,7 +190,7 @@ void VGADisplay::notify_interface()
 		
 	}
 	
-	for(auto sink : m_sinks) {
+	for(auto &sink : m_sinks) {
 		if(sink != nullptr) {
 			try {
 				sink(m_fb, m_s.mode, m_s.timings);
