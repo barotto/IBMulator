@@ -338,7 +338,7 @@ void VGA::load_ROM(const std::string &_filename)
 {
 	uint64_t size = FileSys::get_file_size(_filename.c_str());
 	if(size > 0x10000) {
-		PERRF(LOG_VGA, "ROM file '%s' is too big: %d bytes (64K max)\n", size);
+		PERRF(LOG_VGA, "ROM file '%s' is too big: %llu bytes (64K max)\n", _filename.c_str(), size);
 		throw std::exception();
 	}
 
