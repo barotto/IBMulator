@@ -201,25 +201,24 @@ protected:
 		uint8_t  dac_shift;
 	} m_s;
 
-	uint8_t  *m_memory;      // video memory buffer
-	uint8_t  *m_memory_planes[4];
-	uint8_t  *m_rom;         // BIOS code buffer
-	uint32_t m_memsize;      // size of memory buffer
-	int m_mem_mapping;       // video memory mapping ID
-	int m_rom_mapping;       // BIOS mapping ID
-	VGATimings m_vga_timing; // VGA memory timings
-	double m_bus_timing;     // System bus timings
-	TimerID m_timer_id;        // Machine timer ID
-	VGADisplay *m_display;   // VGADisplay object
-	VGADrawFn m_renderer;
+	uint8_t  *m_memory = nullptr;      // video memory buffer
+	uint8_t  *m_memory_planes[4] = {}; // memory planes pointers
+	uint8_t  *m_rom = nullptr;         // BIOS code buffer
+	uint32_t m_memsize = 0x40000;      // size of memory buffer
+	int m_mem_mapping = 0;             // video memory mapping ID
+	int m_rom_mapping = 0;             // BIOS mapping ID
+	VGATimings m_vga_timing = VGA_8BIT_SLOW;
+	double m_bus_timing = 1.0;
+	TimerID m_timer_id = NULL_TIMER_ID;
+	VGADisplay *m_display = nullptr;
+	VGADrawFn m_renderer = nullptr;
 	std::vector<uint8_t> m_line_data_buf[VGA_THREAD_POOL_SIZE];
 	// tiling system
-	uint16_t m_num_x_tiles;
+	uint16_t m_num_x_tiles = 0;
 	std::vector<uint8_t> m_tile_dirty; // don't use bool, it's not thread safe
 
-
-	VideoStats m_stats;
-	uint32_t m_cur_upd_pix;
+	VideoStats m_stats = {};
+	uint32_t m_cur_upd_pix = 0;
 	
 	// bugs on which some demos depend
 	struct {

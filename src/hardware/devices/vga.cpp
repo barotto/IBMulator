@@ -70,27 +70,15 @@ enum VGATimerFunctionNames {
 };
 
 VGA::VGA(Devices *_dev)
-: IODevice(_dev),
-m_memory(nullptr),
-m_rom(nullptr),
-m_memsize(0x40000),
-m_mem_mapping(0),
-m_rom_mapping(0),
-m_vga_timing(VGA_8BIT_SLOW),
-m_bus_timing(1.0),
-m_timer_id(NULL_TIMER_ID),
-m_display(nullptr),
-m_renderer(nullptr),
-m_num_x_tiles(0)
+: IODevice(_dev)
 {
 	m_line_data_buf[0].reserve(VGA_MAX_XRES);
 	m_line_data_buf[1].reserve(VGA_MAX_XRES);
-	
+
 	unsigned max_x_tiles = VGA_MAX_XRES / VGA_X_TILESIZE + ((VGA_MAX_XRES % VGA_X_TILESIZE) > 0);
 	m_tile_dirty.reserve(max_x_tiles * VGA_MAX_YRES);
-	
+
 	m_s = {};
-	m_cur_upd_pix = 0;
 }
 
 VGA::~VGA()

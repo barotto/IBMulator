@@ -79,7 +79,9 @@ VGADisplay::VGADisplay()
 	m_s.mode.cheight = 16;
 	m_s.mode.nscans = 1;
 	m_s.mode.ndots = 1;
-	
+	m_s.mode.borders = {};
+
+	m_s.timings = {};
 	m_s.timings.vfreq = 70.0;
 
 	m_s.valid_mode = true;
@@ -120,7 +122,9 @@ VGADisplay::VGADisplay()
 
 	m_last_mode = m_s.mode;
 	m_last_timings = m_s.timings;
-	
+
+	m_buffering = false;
+
 	clear_screen();
 	set_fb_updated();
 	set_dimension_updated();
