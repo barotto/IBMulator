@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -321,7 +321,7 @@ void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
 inline void VGA::set_all_tiles(bool _value)
 {
 	assert(m_s.vmode.yres > 0 && m_num_x_tiles > 0);
-	std::fill(&m_tile_dirty[0], &m_tile_dirty[m_s.vmode.yres*m_num_x_tiles], _value);
+	std::fill(&m_tile_dirty[0], &m_tile_dirty[uint32_t(m_s.vmode.yres*m_num_x_tiles)], _value);
 }
 
 inline void VGA::set_tile(unsigned _line_y, unsigned _tile_x, bool _value)

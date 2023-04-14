@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,7 +35,7 @@ m_width(VGA_MAX_XRES),
 m_height(VGA_MAX_YRES),
 m_bypp(4)
 {
-	m_buffer.resize(m_width * m_height);
+	m_buffer.resize(uint32_t(m_width * m_height));
 }
 
 FrameBuffer::~FrameBuffer()

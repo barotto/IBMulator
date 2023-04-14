@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -371,7 +371,7 @@ void VGA::load_ROM(const std::string &_filename)
 void VGA::reset_tiles()
 {
 	m_num_x_tiles = m_s.vmode.imgw / VGA_X_TILESIZE + ((m_s.vmode.imgw % VGA_X_TILESIZE) > 0);
-	m_tile_dirty.resize(m_num_x_tiles * m_s.vmode.yres);
+	m_tile_dirty.resize(uint32_t(m_num_x_tiles * m_s.vmode.yres));
 	redraw_all();
 }
 
@@ -1461,7 +1461,7 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		set_tiles(fb_y, VGA_TILE_CLEAN);
 	} else {
 		m_display->gfx_screen_line_update(fb_y, line_data_, 
-			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
+			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
 	}
 	
 	return tiles_updated * VGA_X_TILESIZE;
@@ -1517,7 +1517,7 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 	}
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_, 
-			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
+			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
@@ -1591,7 +1591,7 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 	}
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_,
-			&m_tile_dirty[fb_y*m_num_x_tiles], m_num_x_tiles);
+			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
 	
 	return tiles_updated * VGA_X_TILESIZE;
 }
@@ -1690,7 +1690,7 @@ void VGA::text_update()
 	m_display->text_update(m_s.text_snapshot, &m_memory[tm_info.start_address], cursor_x, cursor_y, &tm_info);
 	if(m_s.needs_update) {
 		// screen updated, copy new video memory contents into text snapshot
-		memcpy(m_s.text_snapshot, &m_memory[tm_info.start_address], tm_info.line_offset*m_s.vmode.textrows);
+		memcpy(m_s.text_snapshot, &m_memory[tm_info.start_address], uint32_t(tm_info.line_offset*m_s.vmode.textrows));
 	}
 }
 
