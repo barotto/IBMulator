@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,8 +31,6 @@ CPUBus g_cpubus;
 #define MIN_MEM_CYCLES      2
 
 CPUBus::CPUBus()
-: m_cycles_ahead(0),
-  m_wq_idx(-1)
 {
 	memset(&m_s, 0, sizeof(m_s));
 	memset(&m_write_queue, 0, sizeof(m_write_queue));
@@ -441,7 +439,7 @@ void CPUBus::p_mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
 			g_memory.write<2>(_addr+2, _data>>16, c);
 		} else if((_addr&0x3) == 1) {
 			// 1-byte unaligned (left)
-			int t;
+			int t = 0;
 			uint32_t v = g_memory.read<1>(_addr-1, t);
 			v |= (_data<<8);
 			g_memory.write<4>(_addr-1, v,         c);
@@ -449,7 +447,7 @@ void CPUBus::p_mem_write<4>(uint32_t _addr, uint32_t _data, int &_cycles)
 		} else {
 			// 1-byte unaligned (right)
 			g_memory.write<1>(_addr, _data, c);
-			int t;
+			int t = 0;
 			uint32_t v = g_memory.read<1>(_addr+4, t);
 			v = (v<<24) | (_data>>8);
 			g_memory.write<4>(_addr+1, v, c);

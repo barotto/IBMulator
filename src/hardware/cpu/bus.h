@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,17 +45,17 @@ private:
 		int      pq_len;
 	} m_s;
 
-	int m_width;
-	int m_pq_size;
-	int m_pq_thres;
-	int m_paddress; // pipelined address
-	int m_fetch_cycles;
-	int m_mem_r_cycles;
-	int m_mem_w_cycles;
-	int m_mem_w_count;
-	int m_pmem_cycles;   // pipelined memory cycles
-	int m_pfetch_cycles; // pipelined fetch cycles
-	int m_cycles_ahead;
+	int m_width = 0;
+	int m_pq_size = 0;
+	int m_pq_thres = 0;
+	int m_paddress = 0; // pipelined address
+	int m_fetch_cycles = 0;
+	int m_mem_r_cycles = 0;
+	int m_mem_w_cycles = 0;
+	int m_mem_w_count = 0;
+	int m_pmem_cycles = 0;   // pipelined memory cycles
+	int m_pfetch_cycles = 0; // pipelined fetch cycles
+	int m_cycles_ahead = 0;
 
 	struct wq_data {
 		void (CPUBus::*w_fn)(uint32_t _addr, uint32_t _data, int &_cycles);
@@ -63,7 +63,7 @@ private:
 		uint32_t data;
 	};
 	wq_data m_write_queue[CPU_BUS_WQ_SIZE];
-	int m_wq_idx;
+	int m_wq_idx = -1;
 
 public:
 	CPUBus();
