@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -109,6 +109,7 @@ private:
 	unsigned generate(AudioBuffer &_outbuffer, uint64_t _delta_ns);
 	bool is_silent();
 	void on_capture(bool _start);
+	void p_enable_channel();
 };
 
 #endif

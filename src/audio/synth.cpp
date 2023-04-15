@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -259,7 +259,7 @@ void Synth::restore_state(StateBuf &_state)
 		_state.skip();
 	}
 	if(has_events() || !is_silent()) {
-		enable_channel();
+		p_enable_channel();
 	}
 }
 
@@ -294,12 +294,18 @@ void Synth::on_capture(bool _start)
 
 void Synth::enable_channel()
 {
-	if(!m_channel->is_enabled()) {
-		m_last_time = 0;
-		m_new_data = true;
-		m_channel->enable(true);
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: enabled\n", m_name.c_str());
+	if(!m_channel->is_enabled()) { 
+		std::lock_guard<std::mutex> lock(m_evt_lock);
+		p_enable_channel();
 	}
+}
+
+void Synth::p_enable_channel()
+{
+	m_last_time = 0;
+	m_new_data = true;
+	m_channel->enable(true);
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: enabled\n", m_name.c_str());
 }
 
 bool Synth::is_silent()
