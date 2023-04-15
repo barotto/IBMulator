@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Rene Garcia
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1136,7 +1136,10 @@ void MpsPrinter::put_ink(int _x, int _y, uint8_t _c)
 				        add_color(buf, tx, ty, color, 4);
 				break;
 		}
-		uint32_t byteid = get_bitmap_byte(tx, ty);
+		int byteid = get_bitmap_byte(tx, ty);
+		if(byteid < 0) {
+			return;
+		}
 		color = m_page.buffers[buf].bitmap[byteid];
 	}
 	else
