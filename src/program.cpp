@@ -441,7 +441,7 @@ bool Program::initialize(int argc, char** argv)
 					nullptr);
 			return false;
 		} catch(std::exception &e) {
-			PERRF(LOG_PROGRAM, "Cannot create the INI file.\n", m_cfg_file.c_str());
+			PERRF(LOG_PROGRAM, "Cannot create the INI file.\n");
 			std::string message = "A problem occurred while trying to create " + ininame + " in " +
 					inidir + "\n";
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Configuration file",

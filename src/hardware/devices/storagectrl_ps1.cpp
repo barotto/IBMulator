@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -331,7 +331,7 @@ uint16_t StorageCtrl_PS1::read(uint16_t _address, unsigned)
 			//lower_interrupt(); //TODO
 			break;
 		default:
-			PERRF(LOG_HDD, "unhandled read!\n", _address);
+			PERRF(LOG_HDD, "unhandled read!\n");
 			break;
 	}
 	return value;
@@ -448,7 +448,7 @@ void StorageCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 			}
 			break;
 		default:
-			PERRF(LOG_HDD, "unhandled write!\n", _address);
+			PERRF(LOG_HDD, "unhandled write!\n");
 			break;
 	}
 

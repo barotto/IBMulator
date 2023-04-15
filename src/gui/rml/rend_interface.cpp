@@ -55,7 +55,7 @@ bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 	try {
 		surface = stbi_load_from_file(reinterpret_cast<FILE*>(file_handle));
 	} catch(std::runtime_error &err) {
-		PERRF(LOG_GUI, "Error loading texture '%s': %s\n", err.what());
+		PERRF(LOG_GUI, "Error loading texture '%s': %s\n", source.c_str(), err.what());
 		file_interface->Close(file_handle);
 		return false;
 	}

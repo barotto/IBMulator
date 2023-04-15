@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -349,12 +349,12 @@ void PIC::write(i8259 &_pic, uint8_t _address, uint8_t _value)
 						_pic.auto_eoi = (_value & 0x02) >> 1;
 						PDEBUGF(LOG_V1, LOG_PIC, "%s: ICW4: %s\n", _pic.name(), _pic.auto_eoi ? "auto EOI" : "normal EOI");
 						if(!(_value & 0x01)) {
-							PERRF(LOG_PIC, "%s: ICW4: MCS-80/86 mode not supported!\n");
+							PERRF(LOG_PIC, "%s: ICW4: MCS-80/86 mode not supported!\n", _pic.name());
 						}
 						_pic.init.in_init = false;
 						return;
 					default:
-						PERRF(LOG_PIC, "%s expecting bad init command\n", _pic.name());
+						PERRF(LOG_PIC, "%s: expecting bad init command\n", _pic.name());
 						break;
 				}
 			}

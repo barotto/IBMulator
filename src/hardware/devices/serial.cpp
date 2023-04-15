@@ -1645,7 +1645,7 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 					}
 				}
 				if(fputc(m_s.uart[port].tsrbuffer, m_host[port].output) == EOF) {
-					PERRF(LOG_COM, "%s: cannot write to file!\n");
+					PERRF(LOG_COM, "%s: cannot write to file!\n", m_host[port].name());
 					close(port);
 					m_host[port].io_mode = SER_MODE_DUMMY;
 				} else {
