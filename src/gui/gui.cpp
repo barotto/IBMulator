@@ -479,8 +479,8 @@ Uint32 GUI::Mouse::s_sdl_timer_callback(Uint32 interval, void *obj)
 void GUI::Mouse::generate_sdl_event()
 {
 	// this function is called by a different thread
-	SDL_Event event{0};
-	SDL_UserEvent userevent{0};
+	SDL_Event event{};
+	SDL_UserEvent userevent{};
 
 	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_MOUSE;
 	userevent.timestamp = SDL_GetTicks();
@@ -570,8 +570,8 @@ Uint32 GUI::Joystick::s_sdl_timer_callback(Uint32 interval, void *obj)
 void GUI::Joystick::generate_sdl_event()
 {
 	// this function is called by a different thread
-	SDL_Event event{0};
-	SDL_UserEvent userevent{0};
+	SDL_Event event{};
+	SDL_UserEvent userevent{};
 
 	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_JOYSTICK;
 	userevent.timestamp = SDL_GetTicks();
@@ -669,8 +669,8 @@ Uint32 GUI::InputSystem::Event::s_sdl_timer_callback(Uint32 _interval, void *_ob
 
 void GUI::InputSystem::Event::generate_sdl_event()
 {
-	SDL_Event event{0};
-	SDL_UserEvent userevent{0};
+	SDL_Event event{};
+	SDL_UserEvent userevent{};
 
 	userevent.type = GUI::ms_sdl_user_evt_id + GUI::TimedEvents::GUI_TEVT_PEVT;
 	userevent.timestamp = SDL_GetTicks();
