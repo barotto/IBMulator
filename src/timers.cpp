@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -129,7 +129,7 @@ bool EventTimers::update(uint64_t _current_time)
 	}
 
 	uint64_t prevtimer_time = 0;
-	for(auto timer : m_triggered) {
+	for(auto &timer : m_triggered) {
 		unsigned thistimer = timer.second;
 		uint64_t thistimer_time = timer.first;
 

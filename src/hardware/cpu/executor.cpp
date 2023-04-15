@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -93,7 +93,7 @@ void CPUExecutor::execute(Instruction * _instr)
 	if(INT_TRAPS) {
 		auto ret = m_inttraps_ret.find(m_instr->cseip);
 		if(ret != m_inttraps_ret.end()) {
-			for(auto fn : ret->second) {
+			for(auto &fn : ret->second) {
 				fn();
 			}
 			m_inttraps_ret.erase(ret);

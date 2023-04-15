@@ -1942,7 +1942,7 @@ void CPUExecutor::INT(uint8_t _vector, unsigned _type)
 					retaddr, std::vector<std::function<bool()>>()
 				)
 			).first;
-			for(auto t : results) {
+			for(auto &t : results) {
 				res |= t.value(true, _vector, REG_AX, &g_cpucore, &g_memory);
 				auto retfunc = std::bind(t.value, false, _vector, REG_AX, &g_cpucore, &g_memory);
 				retinfo->second.push_back(retfunc);

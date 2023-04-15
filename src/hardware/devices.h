@@ -83,7 +83,7 @@ public:
 
 	template<class T>
 	inline T* device() {
-		for(auto dev : m_devices) {
+		for(auto &dev : m_devices) {
 			T* devptr = dynamic_cast<T*>(dev.second);
 			if(devptr != nullptr) {
 				return devptr;

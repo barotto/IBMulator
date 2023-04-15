@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -586,7 +586,7 @@ const noexcept
 	if(MEMORY_TRAPS) {
 		std::vector<memtrap_interval_t> results;
 		m_traps_tree.findOverlapping(_address, _address, results);
-		for(auto t : results) {
+		for(auto &t : results) {
 			if(t.value.mask & _mask) {
 				t.value.func(_address, _mask, _value, _len);
 				if(STOP_AT_MEM_TRAPS) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -77,7 +77,7 @@ void MixerState::update()
 	
 	m_divs.state->SetInnerRML(ss.str().c_str());
 	
-	for(auto ch : m_channels) {
+	for(auto &ch : m_channels) {
 		if(ch.ch->is_enabled()) {
 			ch.enabled->SetClass("enabled", true);
 		} else {
@@ -124,7 +124,7 @@ void MixerState::config_changed(bool)
 	m_divs.channels->SetInnerRML(ss.str().c_str());
 
 	m_channels.clear();
-	for(auto ch : chs) {
+	for(auto &ch : chs) {
 		m_channels.push_back({
 			ch,
 			get_element(str_format("%d",ch->id())),

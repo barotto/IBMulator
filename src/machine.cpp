@@ -380,7 +380,7 @@ void Machine::load_bios_patches()
 	std::string bios_patches = g_program.config().get_string(SYSTEM_SECTION, SYSTEM_BIOS_PATCHES, "");
 	auto patches_toks = AppConfig::parse_tokens(bios_patches, "\\|");
 	int count = 0;
-	for(auto patch_str : patches_toks) {
+	for(auto &patch_str : patches_toks) {
 		PINFOF(LOG_V0, LOG_MACHINE, "Applying BIOS patch: %s\n", patch_str.c_str());
 		auto patch_toks = AppConfig::parse_tokens(patch_str, "\\,");
 		if(patch_toks.size() != 2) {

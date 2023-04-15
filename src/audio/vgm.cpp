@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -173,7 +173,7 @@ void VGMFile::close()
 	const double samples_per_us = 44100.0 / 1e6;
 	const uint8_t wait_cmd = 0x61;
 	uint32_t total_samples = 0;
-	for(auto e : m_events) {
+	for(auto &e : m_events) {
 
 		uint64_t time_elapsed = e.time - prev_time;
 		if(time_elapsed) {

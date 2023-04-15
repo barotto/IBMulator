@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -139,7 +139,7 @@ void Mixer::start_capture()
 			}
 		}
 	}
-	for(auto ch : m_mix_channels) {
+	for(auto &ch : m_mix_channels) {
 		ch.second->on_capture(true);
 	}
 	m_midi->cmd_start_capture();
@@ -157,7 +157,7 @@ void Mixer::stop_capture()
 		unregister_sink(m_capture_sink);
 	}
 	m_audio_capture = false;
-	for(auto ch : m_mix_channels) {
+	for(auto &ch : m_mix_channels) {
 		ch.second->on_capture(false);
 	}
 	m_midi->cmd_stop_capture();
@@ -222,7 +222,7 @@ void Mixer::config_changed() noexcept
 	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %d bytes\n",
 			prebuf_ms, m_mix_bufsize_by);
 
-	for(auto ch : m_mix_channels) {
+	for(auto &ch : m_mix_channels) {
 		ch.second->flush();
 		ch.second->set_out_spec({AUDIO_FORMAT_F32,
 			unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
@@ -312,7 +312,7 @@ void Mixer::main_loop()
 		m_prev_vtime = cur_vtime;
 
 		if(time_span_ns) {
-			for(auto ch : m_mix_channels) {
+			for(auto &ch : m_mix_channels) {
 				bool active,enabled;
 				uint64_t time_ns = time_span_ns;
 				if(ch.second->category() == MixerChannel::Category::AUDIO) {
@@ -732,7 +732,7 @@ void Mixer::send_to_sinks(const std::vector<int16_t> &_data, int _category)
 	std::lock_guard<std::mutex> lock(m_sinks_mutex);
 	
 	// _category will be MixerChannelCategory::MAX for the global mix
-	for(auto sink : m_sinks) {
+	for(auto &sink : m_sinks) {
 		if(sink != nullptr) {
 			try {
 				PDEBUGF(LOG_V2, LOG_MIXER, "  dumping %d bytes of data for cat %d\n", _data.size(), _category);
@@ -794,7 +794,7 @@ void Mixer::unregister_sink(int _id)
 		m_sinks[_id] = nullptr;
 	}
 	bool empty = false;
-	for(auto sink : m_sinks) {
+	for(auto &sink : m_sinks) {
 		empty |= (sink==nullptr);
 	}
 	m_silence_channel->enable(!empty);
@@ -870,7 +870,7 @@ std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters(double _rate, st
 	
 	auto filters_toks = AppConfig::parse_tokens(_filters_def, "\\|");
 	
-	for(auto filter_str : filters_toks) {
+	for(auto &filter_str : filters_toks) {
 		
 		PDEBUGF(LOG_V2, LOG_MIXER, "Filter definition: %s\n", filter_str.c_str());
 		
@@ -929,7 +929,7 @@ std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters(double _rate, st
 		fparams.clear();
 		fparams[Dsp::idSampleRate] = _rate;
 		
-		for(auto filter_par : filter_toks) {
+		for(auto &filter_par : filter_toks) {
 			
 			auto param_toks = AppConfig::parse_tokens(filter_par, "\\=");
 			if(param_toks.size() != 2) {
@@ -1080,7 +1080,7 @@ std::vector<std::shared_ptr<MixerChannel>> Mixer::dbg_get_channels()
 {
 	// not mt safe.
 	std::vector<std::shared_ptr<MixerChannel>> chs;
-	for(auto ch : m_mix_channels) {
+	for(auto &ch : m_mix_channels) {
 		chs.push_back(ch.second);
 	}
 	return chs;

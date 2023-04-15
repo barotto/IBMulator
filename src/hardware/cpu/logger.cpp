@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -955,7 +955,7 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 	uint64_t totals[4] = {0,0,0,0};
 	PINFOF(LOG_V0, LOG_CPU, "writing counters to '%s' ... ", _filename.c_str());
 	if(fprintf(file, "opcode      op16 ad16     op16 ad32     op32 ad16     op32 ad32  mnemonic\n\n") > 0) {
-		for(auto op : oplist) {
+		for(auto &op : oplist) {
 			int code = op.first;
 			const char* mnemonic = op.second;
 			uint64_t o16a16 = _cnt[code];

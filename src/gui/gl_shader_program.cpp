@@ -193,11 +193,11 @@ GLShaderProgram::GLShaderProgram(std::vector<std::string> _vs_paths, std::vector
 	} else {
 		PINFOF(LOG_V1, LOG_OGL, "Loading GLSL program:\n");
 		PINFOF(LOG_V1, LOG_OGL, " vertex:\n");
-		for(auto s : _vs_paths) {
+		for(auto &s : _vs_paths) {
 			PINFOF(LOG_V1, LOG_OGL, "  %s\n", s.c_str());
 		}
 		PINFOF(LOG_V1, LOG_OGL, " fragment:\n");
-		for(auto s : _fs_paths) {
+		for(auto &s : _fs_paths) {
 			PINFOF(LOG_V1, LOG_OGL, "  %s\n", s.c_str());
 		}
 	}
@@ -504,7 +504,7 @@ std::vector<GLuint> GLShaderProgram::attach_shaders(
 		throw std::logic_error("invalid program id");
 	}
 	std::vector<GLuint> sh_ids;
-	for(auto sh : _sh_paths) {
+	for(auto &sh : _sh_paths) {
 
 		GLenum stage = GL_INVALID_ENUM;
 		auto sourcecode = include_shader_file(sh, _sh_type, stage, _defines);

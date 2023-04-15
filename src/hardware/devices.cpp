@@ -90,7 +90,7 @@ void Devices::reset(uint _signal)
 	if(_signal == CPU_SOFT_RESET) {
 		m_sysboard->reset(_signal);
 	} else {
-		for(auto dev : m_devices) {
+		for(auto &dev : m_devices) {
 			dev.second->reset(_signal);
 		}
 		m_last_io_time = 0;
@@ -203,11 +203,11 @@ void Devices::config_changed()
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));
 
 	PINFOF(LOG_V2, LOG_MACHINE, "Installed devices:\n");
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		PINFOF(LOG_V2, LOG_MACHINE, "  %s\n", dev.first.c_str());
 	}
 
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		dev.second->config_changed();
 	}
 }
@@ -220,10 +220,10 @@ void Devices::destroy_all()
 		m_write_handlers[i].device = nullptr;
 		m_write_handlers[i].mask = 0;
 	}
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		dev.second->remove();
 	}
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		delete dev.second;
 	}
 	m_devices.clear();
@@ -238,14 +238,14 @@ void Devices::destroy_all()
 
 void Devices::cycles_adjust(double _factor)
 {
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		dev.second->cycles_adjust(_factor);
 	}
 }
 
 void Devices::save_state(StateBuf &_state)
 {
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		dev.second->save_state(_state);
 	}
 }
@@ -372,7 +372,7 @@ void Devices::unregister_write_handler(uint16_t _port)
 
 void Devices::power_off()
 {
-	for(auto dev : m_devices) {
+	for(auto &dev : m_devices) {
 		dev.second->power_off();
 	}
 }

@@ -965,13 +965,13 @@ void AppConfig::reset()
 
 void AppConfig::merge(const AppConfig &_other, ConfigType _type)
 {
-	for(auto othersec : _other.m_values) {
+	for(auto &othersec : _other.m_values) {
 		auto secname = othersec.first;
 		if(_type != ANY_CONFIG && ms_def_values[_type].find(secname) == ms_def_values[_type].end()) {
 			PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini section [%s]\n", secname.c_str());
 			continue;
 		}
-		for(auto otherentry : othersec.second) {
+		for(auto &otherentry : othersec.second) {
 			auto key = otherentry.first;
 			if(_type != ANY_CONFIG && ms_def_values[_type][secname].find(key) == ms_def_values[_type][secname].end()) {
 				PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini key [%s]:%s\n", secname.c_str(), key.c_str());
@@ -1200,7 +1200,7 @@ void AppConfig::create_file(const std::string &_filename, bool _savestate)
 	if(!_savestate) {
 		file << ms_help["HEADER"] << std::endl;
 	}
-	for(auto section : ms_keys_order) {
+	for(auto &section : ms_keys_order) {
 		auto sname = section.first;
 		auto keys = section.second;
 		file << "[" << sname << "]" << "\n";
@@ -1208,7 +1208,7 @@ void AppConfig::create_file(const std::string &_filename, bool _savestate)
 			file << ms_help[sname];
 		}
 
-		for(auto key : keys) {
+		for(auto &key : keys) {
 			auto kname = key.first;
 			auto hidden = key.second;
 			if(!_savestate && hidden) {
