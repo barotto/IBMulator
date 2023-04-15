@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -304,7 +304,8 @@ void MIDI::restore_state(const MIDI::State &_state, const std::vector<uint8_t> &
 	{
 		m_device->reset();
 		if(_sysex_data.size()) {
-			PINFOF(LOG_V2, LOG_MIDI, "Uploading %d bytes of SysEx data to device...\n", _sysex_data.size());
+			PINFOF(LOG_V2, LOG_MIDI, "Uploading %u bytes of SysEx data to device...\n",
+					static_cast<unsigned>(_sysex_data.size()));
 			put_bytes(_sysex_data);
 		}
 	}

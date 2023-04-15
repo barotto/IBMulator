@@ -203,7 +203,7 @@ void Mixer::config_changed() noexcept
 	m_pacer.set_heartbeat(m_heartbeat_us * 1000);
 	m_bench.set_heartbeat(m_heartbeat_us * 1000);
 
-	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %u usec\n", m_heartbeat_us);
+	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %llu usec\n", m_heartbeat_us);
 	
 	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
 	m_prebuffer_fr = size_t(us_to_frames(m_prebuffer_us, m_audio_spec.freq));
@@ -219,7 +219,7 @@ void Mixer::config_changed() noexcept
 	}
 	m_out_mix.resize(m_mix_bufsize_sa);
 
-	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %d bytes\n",
+	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %zu bytes\n",
 			prebuf_ms, m_mix_bufsize_by);
 
 	for(auto &ch : m_mix_channels) {

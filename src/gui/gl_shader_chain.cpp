@@ -35,7 +35,7 @@ GLShaderChain::GLShaderChain(std::string _preset)
 	}
 	m_name = FileSys::get_basename(_preset.c_str());
 
-	PINFOF(LOG_V1, LOG_OGL, " total passes: %u\n", m_preset.get_shaders().size());
+	PINFOF(LOG_V1, LOG_OGL, " total passes: %u\n", static_cast<unsigned>(m_preset.get_shaders().size()));
 
 	auto samplers_mode = m_preset.get_samplers_mode();
 	PINFOF(LOG_V2, LOG_OGL, " samplers mode: %d\n", samplers_mode);

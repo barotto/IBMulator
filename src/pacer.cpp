@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -81,12 +81,12 @@ void Pacer::calibrate(PacerWaitMethod _method)
 		case PACER_WAIT_SLEEP:
 			set_forced_sleep();
 			PINFOF(LOG_V0, LOG_PROGRAM, "Timing forced to thread sleep.\n");
-			PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %d ns\n", m_sleep_cost);
+			PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %lld ns\n", m_sleep_cost);
 			return;
 		case PACER_WAIT_BUSYLOOP:
 			set_forced_busyloop();
 			PINFOF(LOG_V0, LOG_PROGRAM, "Timing forced to busy loop.\n");
-			PINFOF(LOG_V1, LOG_PROGRAM, " Loop cost: %d ns\n", m_loop_cost);
+			PINFOF(LOG_V1, LOG_PROGRAM, " Loop cost: %lld ns\n", m_loop_cost);
 			return;
 		case PACER_WAIT_AUTO:
 		default:
@@ -157,9 +157,9 @@ void Pacer::calibrate(PacerWaitMethod _method)
 	PINFOF(LOG_V0, LOG_PROGRAM, "This system has low precision timing.\n");
 
 report:
-	PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %d ns, sleep threshold: %d ns\n",
+	PINFOF(LOG_V1, LOG_PROGRAM, " Sleep cost: %lld ns, sleep threshold: %lld ns\n",
 		m_sleep_cost, m_sleep_thres);
-	PINFOF(LOG_V2, LOG_PROGRAM, " Loop cost: %d\n", m_loop_cost);
+	PINFOF(LOG_V2, LOG_PROGRAM, " Loop cost: %lld\n", m_loop_cost);
 }
 
 void Pacer::calibrate(const Pacer &_p)

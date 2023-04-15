@@ -109,7 +109,7 @@ void FloppyCtrl_Flux::config_changed()
 	FloppyCtrl::config_changed();
 
 	m_min_cmd_time_us = g_program.config().get_int(DRIVES_SECTION, DRIVES_FDC_OVR, 0);
-	PINFOF(LOG_V2, LOG_FDC, "Controller overhead: %uus\n", m_min_cmd_time_us);
+	PINFOF(LOG_V2, LOG_FDC, "Controller overhead: %lluus\n", m_min_cmd_time_us);
 }
 
 void FloppyCtrl_Flux::save_state(StateBuf &_state)

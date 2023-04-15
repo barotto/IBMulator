@@ -268,7 +268,7 @@ void Devices::restore_state(StateBuf &_state)
 		restored++;
 	}
 	if(restored != m_devices.size()) {
-		PERRF(LOG_MACHINE, "restored %u out of %u devices\n", restored, m_devices.size());
+		PERRF(LOG_MACHINE, "restored %u out of %u devices\n", restored, static_cast<unsigned>(m_devices.size()));
 		throw std::exception();
 	}
 }

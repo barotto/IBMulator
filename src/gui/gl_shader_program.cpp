@@ -600,7 +600,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		{
 			sampler.category = Sampler2D::Category::History;
 			if(is_vec4 && !m[1].matched) {
-				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name);
+				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name.c_str());
 				continue;
 			}
 			sampler.number = str_parse_int_num(m[2].str());
@@ -609,7 +609,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		else if(uniform->member_name == "Original" || uniform->member_name == "OriginalSize")
 		{
 			if(is_vec4 && uniform->member_name != "OriginalSize") {
-				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name);
+				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name.c_str());
 				continue;
 			}
 			sampler.category = Sampler2D::Category::Original;
@@ -619,7 +619,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		else if(uniform->member_name == "Source" || uniform->member_name == "SourceSize")
 		{
 			if(is_vec4 && uniform->member_name != "SourceSize") {
-				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name);
+				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name.c_str());
 				continue;
 			}
 			sampler.category = Sampler2D::Category::Source;
@@ -630,7 +630,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		{
 			sampler.category = Sampler2D::Category::Output;
 			if(is_vec4 && !m[1].matched) {
-				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name);
+				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name.c_str());
 				continue;
 			}
 			sampler.number = str_parse_int_num(m[2].str());
@@ -647,7 +647,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		{
 			sampler.category = Sampler2D::Category::Feedback;
 			if(is_vec4 && !m[1].matched) {
-				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name);
+				PWARNF(LOG_V1, LOG_OGL, "    'vec4 %s' doesn't have proper \"Size\" name\n", uniform->member_name.c_str());
 				continue;
 			}
 			sampler.number = str_parse_int_num(m[2].str());

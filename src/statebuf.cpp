@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -69,7 +69,7 @@ size_t StateHeader::read(const uint8_t *_source, size_t _source_size)
 	name = "";
 
 	if(_source_size < sizeof(header_raw_t)) {
-		PERRF(LOG_MACHINE, "StateHeader::read(): state buffer too small (%u < %u)\n",
+		PERRF(LOG_MACHINE, "StateHeader::read(): state buffer too small (%zu < %zu)\n",
 				_source_size, sizeof(header_raw_t));
 		throw std::exception();
 	}
@@ -77,7 +77,7 @@ size_t StateHeader::read(const uint8_t *_source, size_t _source_size)
 	header_raw_t h;
 	memcpy(&h, _source, sizeof(header_raw_t));
 	if(h.header_size != sizeof(header_raw_t) + h.name_len) {
-		PERRF(LOG_MACHINE, "StateHeader::read(): header_size mismatch (%u != %u)\n",
+		PERRF(LOG_MACHINE, "StateHeader::read(): header_size mismatch (%zu != %zu)\n",
 				h.header_size, sizeof(header_raw_t) + h.name_len);
 		throw std::exception();
 	}
@@ -85,7 +85,7 @@ size_t StateHeader::read(const uint8_t *_source, size_t _source_size)
 	data_size = h.data_size;
 
 	if(_source_size < h.header_size + h.data_size) {
-		PERRF(LOG_MACHINE, "StateHeader::read(): state buffer too small (%u < %u)\n",
+		PERRF(LOG_MACHINE, "StateHeader::read(): state buffer too small (%zu < %zu)\n",
 				_source_size, h.header_size + h.data_size);
 		throw std::exception();
 	}

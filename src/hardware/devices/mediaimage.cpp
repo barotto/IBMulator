@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -443,9 +443,9 @@ bool FlatMediaImage::is_valid()
 	}
 
 	unsigned sectors = m_geometry.cylinders * m_geometry.heads * m_geometry.spt;
-	if(m_size != 512 * sectors) {
-		PERRF(LOG_HDD, "The size of the disk image is wrong: %d bytes found, %d bytes expected\n",
-				m_size, (512 * sectors));
+	if(m_size != 512u * sectors) {
+		PERRF(LOG_HDD, "The size of the disk image is wrong: %llu bytes found, %u bytes expected\n",
+				m_size, unsigned(512u * sectors));
 		return false;
 	}
 
