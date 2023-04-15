@@ -107,7 +107,7 @@ private:
 			uint8_t mode;
 			uint8_t saved_mode;  // the mode prior to entering wrap mode
 			bool    enable;
-			uint8_t buttons_state = 0;
+			uint8_t buttons_state;
 			int16_t delayed_dx;
 			int16_t delayed_dy;
 			int16_t delayed_dz;
