@@ -483,6 +483,7 @@ void Disasm::uprintf(char const *s, ...)
 	va_list arg_ptr;
 	va_start(arg_ptr, s);
 	vsnprintf(ubufp, ubuflen, s, arg_ptr);
+	va_end(arg_ptr);
 	while(*ubufp) {
 		ubufp++;
 		ubuflen--;
