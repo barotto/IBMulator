@@ -166,7 +166,8 @@ char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 	char prefix[3];
 	unsigned seg;
 
-	strcpy(instu, _dasm_inst);
+	instu[255] = 0;
+	strncpy(instu, _dasm_inst, 255);
 	cstr_to_upper(instu);
 
 	result[0] = 0;
