@@ -389,6 +389,15 @@ void Interface::config_changed(bool _startup)
 		} else {
 			m_floppy.curr_drive_type = InterfaceFX::FDD_3_5;
 		}
+
+		m_fs->set_compat_types(
+				get_floppy_types(m_floppy.curr_drive),
+				m_floppy.ctrl->get_compatible_file_extensions(),
+				m_floppy.ctrl->get_compatible_formats(),
+				!m_floppy.ctrl->can_use_any_floppy());
+		if(m_fs->is_current_dir_valid()) {
+			m_fs->reload();
+		}
 	}
 
 	if(!_startup) {
@@ -400,15 +409,6 @@ void Interface::config_changed(bool _startup)
 		m_floppy.event = true;
 	}
 
-	m_fs->set_compat_types(
-			get_floppy_types(m_floppy.curr_drive),
-			m_floppy.ctrl->get_compatible_file_extensions(),
-			m_floppy.ctrl->get_compatible_formats(),
-			!m_floppy.ctrl->can_use_any_floppy());
-	if(m_fs->is_current_dir_valid()) {
-		m_fs->reload();
-	}
-	
 	set_hdd_active(false);
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 
@@ -440,6 +440,10 @@ void Interface::set_floppy_string(std::string _filename)
 
 void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 {
+	if(!m_floppy.ctrl) {
+		return;
+	}
+
 	m_fs->hide();
 
 	struct stat sb;
@@ -590,6 +594,9 @@ void Interface::show_message(const char* _mex)
 
 void Interface::on_fdd_select(Rml::Event &)
 {
+	if(!m_floppy.ctrl) {
+		return;
+	}
 	m_status.fdd_disk->SetInnerRML("");
 	if(m_floppy.curr_drive == 0) {
 		m_floppy.curr_drive = 1;
@@ -619,6 +626,9 @@ void Interface::on_fdd_select(Rml::Event &)
 
 void Interface::on_fdd_eject(Rml::Event &)
 {
+	if(!m_floppy.ctrl) {
+		return;
+	}
 	if(!m_floppy.ctrl->is_media_present(m_floppy.curr_drive)) {
 		return;
 	}
