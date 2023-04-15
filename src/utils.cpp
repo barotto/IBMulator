@@ -248,16 +248,16 @@ const char * ASCII_control_characters[32] = {
 std::string str_format_special(const char *_str)
 {
 	std::string str;
-	char buf[10] = {0};
+	char buf[20] = {0};
 	while(_str && *_str) {
-		if(*_str <= 31) {
+		if(*_str < 0 || *_str == 127) {
+			snprintf(&buf[0], 20, "<%02X>", uint8_t(*_str));
+			str += buf;
+		} else if(*_str <= 31) {
 			snprintf(&buf[0], 10, "<%s>", ASCII_control_characters[int(*_str)]);
 			str += buf;
-		} else if(*_str >= 32 && *_str <= 126) {
-			str += *_str;
 		} else {
-			snprintf(&buf[0], 10, "<%02X>", *_str);
-			str += buf;
+			str += *_str;
 		}
 		_str++;
 	}
