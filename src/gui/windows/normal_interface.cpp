@@ -182,10 +182,8 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		disp_area_h -= sysunit_h;
 	}
 	if(m_window_scaling > 0) {
-		disp_w = m_screen->display()->mode().xres * m_window_scaling;
 		disp_h = m_screen->display()->mode().yres * m_window_scaling;
 	} else {
-		disp_w = disp_area_w;
 		disp_h = disp_area_h;
 	}
 
