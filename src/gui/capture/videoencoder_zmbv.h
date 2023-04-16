@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020-2022  Marco Bortolin
+ *  Copyright (C) 2020-2023  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ private:
 	
 	struct CodecVector {
 		int x, y;
-		int slot;
+		// int slot;
 	};
 	
 	struct KeyframeHeader {
@@ -61,28 +61,30 @@ private:
 		int writeSize;
 		int writeDone;
 		uint8_t *writeBuf;
-	} m_compress;
+	} m_compress = {};
 	
 	CodecVector m_vector_table[512];
 	int m_vector_count;
 
-	uint8_t *m_oldframe, *m_newframe;
+	uint8_t *m_oldframe = nullptr;
+	uint8_t *m_newframe = nullptr;
 	std::vector<uint8_t> m_buf1, m_buf2, m_work;
-	int m_bufsize;
+	int m_bufsize = 0;
 
-	int m_blockcount; 
+	int m_blockcount = 0; 
 	std::vector<FrameBlock> m_blocks;
 
-	int m_workUsed, m_workPos;
+	int m_workUsed = 0;
+	int m_workPos = 0;
 
-	int m_palsize;
+	int m_palsize = 0;
 	uint8_t m_palette[256*4];
 	
-	BitmapInfoHeader m_format;
-	uint8_t m_pixel_fmt;
-	int m_pitch;
-	int m_pixelsize;
-	int m_framecnt;
+	BitmapInfoHeader m_format = {};
+	uint8_t m_pixel_fmt = 0;
+	int m_pitch = 0;
+	int m_pixelsize = 0;
+	int m_framecnt = 0;
 
 	z_stream m_zstream;
 	

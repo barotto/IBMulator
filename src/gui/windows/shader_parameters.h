@@ -38,7 +38,7 @@ private:
 	
 	struct {
 		Rml::ElementFormControlInput *search;
-	} m_tools;
+	} m_tools = {};
 	std::string m_cur_search;
 	bool m_do_search = false;
 	TimerID m_click_timer = NULL_TIMER_ID;

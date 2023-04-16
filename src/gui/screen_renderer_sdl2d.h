@@ -34,7 +34,7 @@ protected:
 		SDL_Texture *texture;
 		SDL_Rect vga_rect;
 		SDL_Rect crt_rect;
-	} m_vga;
+	} m_vga = {};
 
 public:
 	ScreenRenderer_SDL2D();

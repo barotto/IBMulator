@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,12 +60,12 @@ class MIDIFile
 {
 protected:
 	std::string m_path;
-	FILE *      m_file;
-	MIDIHeader  m_header;
-	MIDITrack   m_curtrk_h;
-	long int    m_curtrk_pos;
-	unsigned    m_mex_count;
-	unsigned    m_sys_count;
+	FILE *      m_file = nullptr;
+	MIDIHeader  m_header = {};
+	MIDITrack   m_curtrk_h = {};
+	long int    m_curtrk_pos = 0;
+	unsigned    m_mex_count = 0;
+	unsigned    m_sys_count = 0;
 	
 public:
 	MIDIFile();

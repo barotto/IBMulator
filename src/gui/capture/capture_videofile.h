@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,8 +29,8 @@ class CaptureVideoFile : public CaptureTarget
 	std::string m_dir_path;
 	AVIWriteOptions m_avi_options;
 	AVIFile m_avi;
-	VideoModeInfo m_cur_mode;
-	VideoTimings m_cur_timings;
+	VideoModeInfo m_cur_mode = {};
+	VideoTimings m_cur_timings = {};
 	
 public:
 

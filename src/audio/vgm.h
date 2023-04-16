@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -123,7 +123,7 @@ private:
 		uint32_t data;
 	};
 	std::vector<VGMEvent> m_events;
-	VGMHeader m_header;
+	VGMHeader m_header = {};
 	ChipType m_chip;
 	std::string m_filepath;
 	struct {

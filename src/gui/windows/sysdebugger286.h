@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,7 +30,7 @@ class SysDebugger286 : public SysDebugger
 private:
 	struct s_286core {
 		Rml::Element *msw;
-	} m_286core;
+	} m_286core = {};
 
 	struct s_tools {
 

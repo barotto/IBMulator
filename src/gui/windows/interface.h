@@ -102,16 +102,16 @@ protected:
 	struct {
 		Rml::Element *power;
 		Rml::Element *fdd_select;
-	} m_buttons;
+	} m_buttons = {};
 
 	struct {
 		Rml::Element *fdd_led, *hdd_led;
 		Rml::Element *fdd_disk;
-	} m_status;
+	} m_status = {};
 
 	struct {
 		bool power, fdd, hdd;
-	} m_leds;
+	} m_leds = {};
 
 	Rml::Element *m_speed = nullptr, *m_speed_value = nullptr;
 	Rml::Element *m_message = nullptr;

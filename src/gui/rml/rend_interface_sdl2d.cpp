@@ -25,8 +25,7 @@
 
 
 RmlRenderer_SDL2D::RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen)
-: RmlRenderer(_renderer, _screen),
-m_scissor_enabled(false)
+: RmlRenderer(_renderer, _screen)
 {
 }
 

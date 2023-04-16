@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,14 +25,8 @@
 
 VideoEncoder_MPNG::VideoEncoder_MPNG(int _quality)
 :
-m_sdl_surface(nullptr),
-m_cur_buf(nullptr),
-m_cur_buf_len(0),
-m_last_frame_enc(0),
-m_linecnt(0),
 m_quality(_quality)
 {
-	
 }
 
 VideoEncoder_MPNG::~VideoEncoder_MPNG()

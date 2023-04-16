@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,8 +25,6 @@
 
 
 RIFFFile::RIFFFile()
-:
-m_file(nullptr)
 {
 	reset();
 	size_check<RIFFHeader,12>();

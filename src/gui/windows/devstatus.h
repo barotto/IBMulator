@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,20 +43,20 @@ private:
 		// Stats
 		Rml::Element *frame_cnt;
 		Rml::Element *pix_upd, *upd, *saddr_line, *pal_line;
-	} m_vga;
+	} m_vga = {};
 	
 	struct {
 		bool is_running;
 		Rml::Element *btn_update;
 		Rml::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
 		uint16_t irq, irr, imr, isr;
-	} m_pic;
+	} m_pic = {};
 
 	struct {
 		bool is_running;
 		Rml::Element *btn_update;
 		Rml::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
-	} m_pit;
+	} m_pit = {};
 
 	static event_map_t ms_evt_map;
 

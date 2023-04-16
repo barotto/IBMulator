@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,7 +32,7 @@ private:
 
 	struct {
 		Rml::Element *fps, *machine, *mixer;
-	} m_stats;
+	} m_stats = {};
 
 	Machine * m_machine;
 	Mixer * m_mixer;

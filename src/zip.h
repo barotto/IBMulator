@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,7 +31,7 @@
 class ZipFile
 {
 public:
-	ZipFile() {}
+	ZipFile();
 	ZipFile(const char *_archive_path);
 	~ZipFile();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,12 +27,12 @@
 
 class VideoEncoder_MPNG : public VideoEncoder
 {
-	SDL_Surface *m_sdl_surface;
-	uint8_t *m_cur_buf;
-	uint32_t m_cur_buf_len;
-	int m_last_frame_enc;
-	BitmapInfoHeader m_format;
-	int m_linecnt;
+	SDL_Surface *m_sdl_surface = nullptr;
+	uint8_t *m_cur_buf = nullptr;
+	uint32_t m_cur_buf_len = 0;
+	int m_last_frame_enc = 0;
+	BitmapInfoHeader m_format = {};
+	int m_linecnt = 0;
 	int m_quality;
 	
 public:

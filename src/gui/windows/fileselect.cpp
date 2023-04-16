@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -798,7 +798,9 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 			PWARNF(LOG_V2, LOG_GUI, "Error accessing '%s': %s\n", fullpath.c_str(), get_error_string().c_str());
 			de.mtime = 0;
 		}
-		if(!de.is_dir) {
+		if(de.is_dir) {
+			de.type = FloppyDisk::FD_NONE;
+		} else {
 			bool compatible = false;
 			// this assumes all compat types have same size
 			FloppyDisk::Size dsksize = FloppyDisk::Size(m_compat_types[0] & FloppyDisk::SIZE_MASK);

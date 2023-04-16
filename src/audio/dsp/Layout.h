@@ -54,6 +54,7 @@ public:
   LayoutBase ()
     : m_numPoles (0)
     , m_maxPoles (0)
+    , m_pair(nullptr)
   {
   }
 
@@ -145,8 +146,8 @@ private:
   int m_numPoles;
   int m_maxPoles;
   PoleZeroPair* m_pair;
-  double m_normalW;
-  double m_normalGain;
+  double m_normalW = .0;
+  double m_normalGain = .0;
 };
 
 //------------------------------------------------------------------------------

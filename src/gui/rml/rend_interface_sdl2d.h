@@ -27,8 +27,8 @@
 class RmlRenderer_SDL2D : public RmlRenderer
 {
 protected:
-	SDL_Rect m_scissor_region;
-	bool m_scissor_enabled;
+	SDL_Rect m_scissor_region = {};
+	bool m_scissor_enabled = false;
 
 public:
 	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen);

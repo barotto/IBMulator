@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -53,11 +53,7 @@ RIFF avi
 */
 
 AVIFile::AVIFile()
-:
-m_avimain_hdr_pos(0),
-m_movi_list_pos(0)
 {
-	m_video.enc_pixformat = nullptr;
 }
 
 AVIFile::~AVIFile()

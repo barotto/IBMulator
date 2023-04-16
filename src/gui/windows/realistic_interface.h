@@ -109,7 +109,7 @@ private:
 	static constexpr float ms_slider_length  =  100.0f; // vol/brt/cnt slider horizontal movement length
 
 	ShaderPreset::MonitorGeometry m_monitor;
-	ShaderPreset::RenderingSize m_rendering_size;
+	ShaderPreset::RenderingSize m_rendering_size = ShaderPreset::VGA;
 
 public:
 

@@ -176,6 +176,7 @@ public:
         if (depth == 0 || (ivals.size() < minbucket && ivals.size() < maxbucket)) {
             std::sort(ivals.begin(), ivals.end(), intervalStartSorter);
             intervals = ivals;
+            center = 0;
         } else {
             if (leftextent == 0 && rightextent == 0) {
                 // sort intervals by start

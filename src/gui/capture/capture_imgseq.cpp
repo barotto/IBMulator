@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,9 +28,7 @@ CaptureImgSeq::CaptureImgSeq(CaptureMode _format, int _quality)
 :
 CaptureTarget(),
 m_format(_format),
-m_quality(_quality),
-m_surface(nullptr),
-m_framecnt(0)
+m_quality(_quality)
 {
 	if(m_format == CaptureMode::JPG) {
 		m_quality = (_quality + 1) * 10;

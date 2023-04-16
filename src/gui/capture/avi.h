@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -160,20 +160,20 @@ struct AVIWriteOptions {
 
 class AVIFile : public RIFFFile
 {
-	AVIWriteOptions m_write_options;
+	AVIWriteOptions m_write_options = {};
 	
-	AVIMainHeader m_avimain_hdr;
-	long int m_avimain_hdr_pos;
-	long int m_movi_list_pos;
+	AVIMainHeader m_avimain_hdr = {};
+	long int m_avimain_hdr_pos = 0;
+	long int m_movi_list_pos = 0;
 
 	struct {
-		AVIStreamHeader stream_hdr;
-		long int stream_hdr_pos;
-		uint32_t chunk_fcc;
+		AVIStreamHeader stream_hdr = {};
+		long int stream_hdr_pos = 0;
+		uint32_t chunk_fcc = 0;
 		std::unique_ptr<VideoEncoder> encoder;
 		std::vector<uint8_t> enc_buffer;
-		SDL_PixelFormat *enc_pixformat;
-		bool convert;
+		SDL_PixelFormat *enc_pixformat = nullptr;
+		bool convert = false;
 		std::vector<uint8_t> linebuf;
 	} m_video;
 	
@@ -183,7 +183,7 @@ class AVIFile : public RIFFFile
 		uint32_t chunk_fcc;
 		// TODO only PCM, encoder=0
 		unsigned encoder;
-	} m_audio;
+	} m_audio = {};
 	
 	std::vector<AVIOldIndex> m_index;
 	

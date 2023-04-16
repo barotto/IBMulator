@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,11 +36,11 @@ private:
 		Rml::Element *fslimit,*gslimit;
 		Rml::Element *cr2, *cr3;
 		Rml::Element *dr03[4], *dr6, *dr7;
-	} m_386core;
+	} m_386core = {};
 
 	struct s_tools {
-		Rml::ElementFormControl *cs_bp,*eip_bp;
-	} m_386tools;
+		Rml::ElementFormControl *cs_bp, *eip_bp;
+	} m_386tools = {};
 
 	static event_map_t ms_evt_map;
 

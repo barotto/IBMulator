@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -28,9 +28,9 @@ class CaptureImgSeq : public CaptureTarget
 	CaptureMode m_format;
 	int m_quality;
 	std::string m_dir;
-	SDL_Surface *m_surface;
-	VideoModeInfo m_cur_mode;
-	int m_framecnt;
+	SDL_Surface *m_surface = nullptr;
+	VideoModeInfo m_cur_mode = {};
+	int m_framecnt = 0;
 	
 	void free_surface();
 	

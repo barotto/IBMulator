@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -47,14 +47,14 @@ private:
 		             *idtbase, *idtlimit,
 		             *gdtbase, *gdtlimit,
 		             *a20;
-	} m_core;
+	} m_core = {};
 
 	struct s_memory {
 		Rml::Element *cs_eip, *cs_eip_str,
 		             *ds_esi, *ds_esi_str,
 		             *es_edi, *es_edi_str,
 		             *ss_esp, *ss_esp_str;
-	} m_memory;
+	} m_memory = {};
 
 	struct s_tools {
 		Rml::Element *btn_power, *btn_pause, *btn_bp;
@@ -62,11 +62,11 @@ private:
 		Rml::ElementFormControl *log_prg_name;
 		Rml::Element *log_prg_toggle;
 		Rml::ElementFormControl *cs_bp,*eip_bp;
-	} m_tools;
+	} m_tools = {};
 
 	struct s_disasm {
 		Rml::Element *line0;
-	} m_disasm;
+	} m_disasm = {};
 
 	Rml::Element *m_post = nullptr;
 	Rml::Element *m_message = nullptr;

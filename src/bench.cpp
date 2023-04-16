@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -78,7 +78,8 @@ min_fps(0),
 max_fps(0),
 avg_fps(.0),
 
-load(.0)
+load(.0),
+avg_load(.0)
 {
 }
 

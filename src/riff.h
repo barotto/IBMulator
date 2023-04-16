@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -70,19 +70,19 @@ class RIFFFile
 {
 protected:
 
-	RIFFHeader  m_header;
-	FILE       *m_file;
-	bool        m_write_mode;
-	uint64_t    m_write_size;
+	RIFFHeader  m_header = {};
+	FILE       *m_file = nullptr;
+	bool        m_write_mode = false;
+	uint64_t    m_write_size = 0;
 	
-	long int        m_chunk_rpos;
-	RIFFChunkHeader m_chunk_rhead;
+	long int        m_chunk_rpos = 0;
+	RIFFChunkHeader m_chunk_rhead = {};
 	
 	std::stack<long int> m_lists_w; // starting offsets of list headers
 	
-	bool            m_chunk_wstart;
-	long int        m_chunk_wpos;
-	RIFFChunkHeader m_chunk_whead;
+	bool            m_chunk_wstart = false;
+	long int        m_chunk_wpos = 0;
+	RIFFChunkHeader m_chunk_whead = {};
 	
 public:
 

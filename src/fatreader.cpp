@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -213,6 +213,7 @@ time_t FATReader::DIREntry::get_time_t(uint16_t _date, uint16_t _time)
 	get_time(_time, timeinfo.tm_sec, timeinfo.tm_min, timeinfo.tm_hour);
 	timeinfo.tm_year -= 1900;
 	timeinfo.tm_mon -= 1;
+	timeinfo.tm_isdst = false;
 	return mktime(&timeinfo);
 }
 

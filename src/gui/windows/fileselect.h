@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,8 +48,8 @@ private:
 	Rml::Element *m_home_btn_el = nullptr;
 	struct {
 		Rml::Element *cwd;
-		Rml::Element *prev,*next,*up;
-	} m_path_el;
+		Rml::Element *prev, *next, *up;
+	} m_path_el = {};
 	
 
 	class DirEntry {
@@ -118,7 +118,7 @@ private:
 	bool m_order_ascending = true;
 	std::vector<unsigned> m_compat_types;
 	std::string m_compat_regexp;
-	bool m_compat_dos_formats_only;
+	bool m_compat_dos_formats_only = false;
 	std::vector<std::string> m_history;
 	unsigned m_history_idx = 0;
 

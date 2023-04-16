@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -96,6 +96,12 @@ void ZipFile::extract_entry_data(const char *_dest)
 }
 
 #else
+
+ZipFile::ZipFile()
+{
+	mz_zip_zero_struct(&m_archive);
+	memset(&m_cur_entry, 0, sizeof(m_cur_entry));
+}
 
 ZipFile::~ZipFile()
 {

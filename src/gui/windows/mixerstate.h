@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,7 +33,7 @@ private:
 	Mixer *m_mixer;
 	struct {
 		Rml::Element *state, *channels;
-	} m_divs;
+	} m_divs = {};
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;
 		Rml::Element *enabled;

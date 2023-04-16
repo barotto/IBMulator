@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -42,16 +42,7 @@ MIDITrack MIDITrack::to_file()
 		to_bigendian_32(length)
 	};
 }
-	
-MIDIFile::MIDIFile()
-:
-m_file(nullptr),
-m_curtrk_pos(0),
-m_mex_count(0),
-m_sys_count(0)
-{
-	
-}
+
 
 MIDIFile::~MIDIFile()
 {

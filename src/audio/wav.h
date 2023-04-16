@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -67,7 +67,7 @@ struct WAVFormatEx {
 class WAVFile : public RIFFFile
 {
 protected:
-	WAVFormatEx m_format; // format information contained in the fmt chunk
+	WAVFormatEx m_format = {}; // format information contained in the fmt chunk
 
 public:
 
