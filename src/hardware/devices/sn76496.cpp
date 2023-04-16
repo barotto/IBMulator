@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -239,7 +239,7 @@ void SN76496::set_gain(int _gain)
 	_gain &= 0xff;
 
 	/* increase max output basing on gain (0.2 dB per step) */
-	out = SN76496_MAX_OUTPUT / 3;
+	out = (int)(SN76496_MAX_OUTPUT / 3);
 	while(_gain-- > 0) {
 		out *= 1.023292992;	/* = (10 ^ (0.2/20)) */
 	}
@@ -247,8 +247,8 @@ void SN76496::set_gain(int _gain)
 	/* build volume table (2dB per step) */
 	for(i = 0; i < 15; i++)	{
 		/* limit volume to avoid clipping */
-		if(out > SN76496_MAX_OUTPUT / 3) {
-			m_s.VolTable[i] = SN76496_MAX_OUTPUT / 3;
+		if(out > (int)(SN76496_MAX_OUTPUT / 3)) {
+			m_s.VolTable[i] = (int)(SN76496_MAX_OUTPUT / 3);
 		} else {
 			m_s.VolTable[i] = (int)out;
 		}
