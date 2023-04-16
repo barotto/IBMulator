@@ -573,6 +573,8 @@ void Disasm::outhex(char subtype, int extend, int optional, int defsize, int sig
 			}
 			s = true;
 			break;
+		default:
+			break;
 	}
 
 	int i;
@@ -598,6 +600,8 @@ void Disasm::outhex(char subtype, int extend, int optional, int defsize, int sig
 		case 4:
 			delta = le_int32(buff);
 			break;
+		default:
+			break;
 	}
 
 	if(extend > n) {
@@ -618,8 +622,9 @@ void Disasm::outhex(char subtype, int extend, int optional, int defsize, int sig
 		}
 		return;
 	}
+
 	if((n == 4) && !sign) {
-		name = addr_to_hex(delta, 0);
+		name = addr_to_hex(delta, false);
 		uprintf("%s", name);
 		return;
 	}
@@ -652,17 +657,16 @@ void Disasm::outhex(char subtype, int extend, int optional, int defsize, int sig
 			}
 			break;
 		case 4:
-			if(sign && delta<0) {
+			// sign is true
+			if(delta < 0) {
 				delta = -delta;
 				signchar = '-';
 			} else {
 				signchar = '+';
 			}
-			if(sign) {
-				uprintf("%c%08lX", (char)signchar, delta & 0xFFFFFFFFL);
-			} else {
-				uprintf("%08lX", delta & 0xFFFFFFFFL);
-			}
+			uprintf("%c%08lX", (char)signchar, delta & 0xFFFFFFFFL);
+			break;
+		default:
 			break;
 	}
 }
