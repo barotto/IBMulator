@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -988,7 +988,7 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	assert(m_s.dac.sample_time_ns[0] < now);
 	if(m_s.dac.used) {
 		unsigned frames = m_s.dac.used / m_s.dac.spec.frame_size();
-		double avg_diff = (now - m_s.dac.sample_time_ns[0]) / frames;
+		double avg_diff = double(now - m_s.dac.sample_time_ns[0]) / double(frames);
 		avg_rate = ceil(NSEC_PER_SECOND / avg_diff);
 	}
 	m_s.dac.sample_time_ns[m_s.dac.used>0] = now;
@@ -1445,7 +1445,7 @@ void SBlaster::dsp_cmd_direct_dac_8()
 	uint64_t now = g_machine.get_virt_time_ns();
 	assert(m_s.dac.sample_time_ns[0] < now);
 	if(m_s.dac.used) {
-		double avg_diff = (now - m_s.dac.sample_time_ns[0]) / m_s.dac.used;
+		double avg_diff = double(now - m_s.dac.sample_time_ns[0]) / double(m_s.dac.used);
 		double avg_rate = NSEC_PER_SECOND / avg_diff;
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: direct DAC avg.rate=%.2fHz\n",
 				short_name(), avg_rate);
