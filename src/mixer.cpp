@@ -233,7 +233,7 @@ void Mixer::config_changed() noexcept
 	
 	// let the GUI interfaces set the AUDIO category volume
 	m_channels_volume[static_cast<int>(MixerChannel::Category::SOUNDFX)] =
-			g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+			g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0);
 
 	std::mutex m;
 	std::condition_variable cv;
