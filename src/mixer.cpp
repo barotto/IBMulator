@@ -181,7 +181,7 @@ void Mixer::config_changed() noexcept
 	
 	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
 	int prebuf_ms = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); // msec
-	m_prebuffer_us = prebuf_ms * 1000; // usec
+	m_prebuffer_us = prebuf_ms * 1000ull; // usec
 	int samples = g_program.config().get_int(MIXER_SECTION, MIXER_SAMPLES);
 	m_frame_size = 0;
 

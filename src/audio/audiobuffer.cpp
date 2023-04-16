@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -77,7 +77,7 @@ void AudioBuffer::reserve_us(uint64_t _us)
 
 void AudioBuffer::reserve_frames(unsigned _frames)
 {
-	reserve_bytes(frame_size() * _frames);
+	reserve_bytes(frame_size() * uint64_t(_frames));
 }
 
 void AudioBuffer::reserve_bytes(uint64_t _bytes)
