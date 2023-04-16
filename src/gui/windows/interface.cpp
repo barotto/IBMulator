@@ -89,13 +89,27 @@ InterfaceScreen::InterfaceScreen(GUI *_gui)
 	switch(_gui->renderer()) {
 		case GUI_RENDERER_OPENGL: {
 			m_renderer = std::make_unique<ScreenRenderer_OpenGL>();
-			dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get())->init(m_display);
+			ScreenRenderer_OpenGL *renderer = dynamic_cast<ScreenRenderer_OpenGL*>(m_renderer.get());
+			if(!renderer) {
+				assert(false);
+				throw std::exception();
+			}
+			renderer->init(m_display);
 			break;
 		}
 		case GUI_RENDERER_SDL2D: {
 			m_renderer = std::make_unique<ScreenRenderer_SDL2D>();
-			SDL_Renderer *sdlrend = dynamic_cast<GUI_SDL2D*>(_gui)->sdl_renderer();
-			dynamic_cast<ScreenRenderer_SDL2D*>(m_renderer.get())->init(m_display, sdlrend);
+			GUI_SDL2D *gui = dynamic_cast<GUI_SDL2D*>(_gui);
+			if(!gui) {
+				assert(false);
+				throw std::exception();
+			}
+			ScreenRenderer_SDL2D *renderer = dynamic_cast<ScreenRenderer_SDL2D*>(m_renderer.get());
+			if(!renderer) {
+				assert(false);
+				throw std::exception();
+			}
+			renderer->init(m_display, gui->sdl_renderer());
 			break;
 		}
 		default: {

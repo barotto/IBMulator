@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2015  The Bochs Project
- * Copyright (C) 2017-2022  Marco Bortolin
+ * Copyright (C) 2017-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -3035,8 +3035,11 @@ void StorageCtrl_ATA::ata_tx_sectors(int _ch, bool _write, uint8_t *_buffer, uns
 	int sector_count = (_len / 512);
 	assert(sector_count>0);
 	uint8_t *bufptr = _buffer;
-	HardDiskDrive * hdd = dynamic_cast<HardDiskDrive*>(&selected_storage(_ch));
-	assert(hdd != nullptr);
+	HardDiskDrive *hdd = dynamic_cast<HardDiskDrive*>(&selected_storage(_ch));
+	if(!hdd) {
+		assert(false);
+		return;
+	}
 
 	PDEBUGF(LOG_V2, LOG_HDD, "%s %d sector(s) at lba=%lld\n",
 			_write?"writing":"reading",

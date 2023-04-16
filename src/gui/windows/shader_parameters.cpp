@@ -231,7 +231,10 @@ void ShaderParameters::on_value_focus(Rml::Event &_ev)
 	assert(id.size() > 7);
 	auto name = id.substr(0, id.size()-7);
 	auto input = dynamic_cast<Rml::ElementFormControlInput*>(el);
-	assert(input);
+	if(!input) {
+		assert(false);
+		return;
+	}
 	auto &param = m_params[m_params_map[name]];
 	if(_ev.GetId() == Rml::EventId::Focus) {
 		el->SetInnerRML("");
@@ -254,15 +257,24 @@ void ShaderParameters::on_value_keydown(Rml::Event &_ev)
 		assert(id.size() > 7);
 		auto name = id.substr(0, id.size()-7);
 		auto &param = m_params[m_params_map[name]];
-		auto input = dynamic_cast<Rml::ElementFormControlInput*>(el)->GetValue();
+		auto input = dynamic_cast<Rml::ElementFormControlInput*>(el);
+		if(!input) {
+			assert(false);
+			return;
+		}
 		float value = 0.0;
 		try {
-			value = str_parse_real_num(input);
+			value = str_parse_real_num(input->GetValue());
 			value = std::min(value, param.max);
 			value = std::max(value, param.min);
 			update_value(param, value);
 		} catch(...) {}
-		dynamic_cast<Rml::ElementFormControlInput*>(el)->SetValue(param.get_value_str());
+		input = dynamic_cast<Rml::ElementFormControlInput*>(el);
+		if(!input) {
+			assert(false);
+			return;
+		}
+		input->SetValue(param.get_value_str());
 		_ev.StopImmediatePropagation();
 	} else if(key == Rml::Input::KI_ESCAPE) {
 		el->GetParentNode()->Focus();

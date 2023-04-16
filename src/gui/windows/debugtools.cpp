@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -174,7 +174,12 @@ void DebugTools::update()
 void DebugTools::show_message(const char* _mex)
 {
 	if(m_debuggerw) {
-		(dynamic_cast<SysDebugger*>(m_debuggerw.get()))->show_message(_mex);
+		auto debugger = dynamic_cast<SysDebugger*>(m_debuggerw.get());
+		if(!debugger) {
+			assert(false);
+			return;
+		}
+		debugger->show_message(_mex);
 	}
 }
 
