@@ -656,8 +656,7 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 		{
 			// can be a reference to a named Pass or a User texture
 			// is it a PassFeedback?
-			std::regex_search(uniform->member_name, m, named_feedback_re);
-			if(m.size() >= 2) {
+			if(std::regex_search(uniform->member_name, m, named_feedback_re) && m.size() >= 2) {
 				if(is_vec4 && m.size() != 3) {
 					// a uniform declared as "vec4 NAMEFeedback;" ?
 					continue;
@@ -677,10 +676,9 @@ void GLShaderProgram::update_samplers(const std::vector<std::string> &_pass_name
 					// special case, the FinalViewport doesn't have a texture
 					continue;
 				}
-				std::regex_search(uniform->member_name, m, named_pass_re);
 				std::string base_name;
 				if(is_vec4) {
-					if(m.empty()) {
+					if(!std::regex_search(uniform->member_name, m, named_pass_re)) {
 						// a uniform declared as "vec4 NAME;"
 						continue;
 					}
