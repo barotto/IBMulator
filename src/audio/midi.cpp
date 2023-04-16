@@ -700,7 +700,11 @@ void MIDI::put_byte(uint8_t _data, bool _save, uint64_t _time_ns)
 			m_s.sysex.start_ms = get_curtime_ms();
 
 			if(m_midifile.is_open()) {
-				m_midifile.write_sysex(m_s.sysex.buf, m_s.sysex.buf_used, get_delta(_time_ns));
+				try {
+					m_midifile.write_sysex(m_s.sysex.buf, m_s.sysex.buf_used, get_delta(_time_ns));
+				} catch(...) {
+					m_midifile.close_file();
+				}
 			}
 			
 			if(_save) {
@@ -735,7 +739,11 @@ void MIDI::put_byte(uint8_t _data, bool _save, uint64_t _time_ns)
 			}
 			
 			if(m_midifile.is_open()) {
-				m_midifile.write_message(m_s.cmd_buf, m_s.cmd_len, get_delta(_time_ns));
+				try {
+					m_midifile.write_message(m_s.cmd_buf, m_s.cmd_len, get_delta(_time_ns));
+				} catch(...) {
+					m_midifile.close_file();
+				}
 			}
 			
 			m_s.cmd_pos = 1; // Use Running status
