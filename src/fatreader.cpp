@@ -62,13 +62,17 @@ void FATReader::BootSector::read(FILE *_infile)
 	}
 	
 	// OEM Name
-	fseek(_infile, 0x03, SEEK_SET);
+	if(fseek(_infile, 0x03, SEEK_SET) < 0) {
+		throw std::runtime_error("Cannot access the OEM name");
+	}
 	if(fread(oem_name, 8, 1, _infile) != 1) {
 		throw std::runtime_error("Cannot read from file");
 	}
 	
 	// BPB
-	fseek(_infile, 0x0b, SEEK_SET);
+	if(fseek(_infile, 0x0b, SEEK_SET) < 0) {
+		throw std::runtime_error("Cannot access the BPB");
+	}
 	if(fread(&bios_params, sizeof(BPB), 1, _infile) != 1) {
 		throw std::runtime_error("Cannot read the BPB");
 	}
@@ -125,7 +129,9 @@ void FATReader::BootSector::read(FILE *_infile)
 	}
 	
 	if(fat_type != 32) {
-		fseek(_infile, 0x24, SEEK_SET);
+		if(fseek(_infile, 0x24, SEEK_SET) < 0) {
+			throw std::runtime_error("Cannot access the EBPB");
+		}
 		if(fread(&ext_bios_params, sizeof(EBPB), 1, _infile) != 1)  {
 			throw std::runtime_error("Cannot read the EBPB");
 		}
@@ -180,10 +186,10 @@ std::string FATReader::BootSector::get_oem_str() const
 	return FATReader::get_printable_str(oem_name,8,u8"▯");
 }
 
-void FATReader::BootSector::seek_sector(int secnum, FILE *infile) const
+int FATReader::BootSector::seek_sector(int secnum, FILE *infile) const
 {
 	int byte_offset = secnum * bios_params.bps;
-	fseek(infile, byte_offset, SEEK_SET);
+	return fseek(infile, byte_offset, SEEK_SET);
 }
 
 void FATReader::DIREntry::get_time(uint16_t _time, int &sec_, int &min_, int &hour_)
@@ -223,7 +229,9 @@ void FATReader::read_root_dir(FILE *infile)
 
 	int first_root_dir_secnum = m_boot.bios_params.reserved_sec +
 			(m_boot.bios_params.num_fats * m_boot.bios_params.spfat);
-	m_boot.seek_sector(first_root_dir_secnum, infile);
+	if(m_boot.seek_sector(first_root_dir_secnum, infile) < 0) {
+		throw std::runtime_error("Cannot find the root entry");
+	}
 	m_root.resize(m_boot.bios_params.max_entries);
 
 	int entrynum = 0;

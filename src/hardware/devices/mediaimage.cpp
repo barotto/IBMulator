@@ -348,7 +348,9 @@ int FlatMediaImage::open_temp(const char* _pathname, std::string &_template)
 		return -1;
 	}
 	if(!is_valid()) {
-		FileSys::remove(_template.c_str());
+		if(FileSys::remove(_template.c_str()) < 0) {
+			PWARNF(LOG_V0, LOG_HDD, "Cannot remove '%s'!\n", _template.c_str());
+		}
 		close();
 		return -1;
 	}

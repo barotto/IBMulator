@@ -225,7 +225,9 @@ void MIDI::cmd_stop_capture()
 		}
 		if(remove) {
 			PINFOF(LOG_V0, LOG_MIDI, "Deleting empty MIDI file\n");
-			::remove(m_midifile.path());
+			if(FileSys::remove(m_midifile.path()) < 0) {
+				PWARNF(LOG_V0, LOG_MIDI, "Cannot remove '%s'!\n", m_midifile.path());
+			}
 		}
 	});
 }

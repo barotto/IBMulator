@@ -279,7 +279,9 @@ void RIFFFile::write_list_end()
 	}
 	
 	// move to listSize field
-	fseek(m_file, listpos + 4, SEEK_SET);
+	if(fseek(m_file, listpos + 4, SEEK_SET) < 0) {
+		throw std::runtime_error("error accessing the file");
+	}
 	
 	// update listSize field
 	uint32_t s32 = size;
@@ -288,7 +290,9 @@ void RIFFFile::write_list_end()
 	}
 	
 	// move back where we were (should be the end of file but not necessarily)
-	fseek(m_file, curpos, SEEK_SET);
+	if(fseek(m_file, curpos, SEEK_SET) < 0) {
+		throw std::runtime_error("error accessing the file");
+	}
 }
 
 long int RIFFFile::write_chunk(uint32_t _code, const void *_data, uint32_t _len)
@@ -422,7 +426,9 @@ void RIFFFile::write_end()
 		throw std::runtime_error("file is too big");
 	}
 	
-	fseek(m_file, RIFF_HEADER_FILESIZE_POS, SEEK_SET);
+	if(fseek(m_file, RIFF_HEADER_FILESIZE_POS, SEEK_SET) < 0) {
+		throw std::runtime_error("error accessing the file");
+	}
 	// fileSize includes the size of RIFFHeader::fileType plus the size of the data that follows
 	m_header.fileSize = m_write_size - 8;
 	if(fwrite(&m_header.fileSize, 4, 1, m_file) != 1) {

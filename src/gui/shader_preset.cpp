@@ -90,7 +90,9 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 	try {
 		ini.parse(tmppath);
 	} catch(std::runtime_error &e) {
-		FileSys::remove(tmppath.c_str());
+		if(FileSys::remove(tmppath.c_str()) < 0) {
+			PWARNF(LOG_V0, LOG_OGL, "Cannot remove '%s'\n", tmppath.c_str());
+		}
 		if(m_error > 0) {
 			throw ShaderPresetExc(e.what(), _preset, data, m_error);
 		}

@@ -205,20 +205,35 @@ void VGMFile::close()
 
 	// end of sound data command
 	uint8_t endofdata = 0x66;
-	fwrite(&endofdata, 1, 1, file.get());
+	if(fwrite(&endofdata, 1, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 	
 	// tot_num_samples
-	fseek(file.get(), 0x18, SEEK_SET);
-	fwrite(&total_samples, 4, 1, file.get());
+	if(fseek(file.get(), 0x18, SEEK_SET) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
+	if(fwrite(&total_samples, 4, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 
 	// GD3 tag
-	fseek(file.get(), 0, SEEK_END);
+	if(fseek(file.get(), 0, SEEK_END) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
 	uint32_t gd3_pos = ftell(file.get());
 	GD3TagHeader gd3_header;
 	gd3_header.ident = GD3_IDENT;
 	gd3_header.version = GD3_VERSION;
 	gd3_header.datalen = 0;
-	fwrite(&gd3_header, SIZEOF_GD3HEADER, 1, file.get());
+	if(fwrite(&gd3_header, SIZEOF_GD3HEADER, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 	
 	char16_t null = 0;
 	
@@ -254,17 +269,38 @@ void VGMFile::close()
 	// "Notes\0"
 	gd3_header.datalen += fwrite(m_gd3tag.notes.data(), 1, m_gd3tag.notes.size()*2 + 2, file.get());
 	
-	fseek(file.get(), gd3_pos+8, SEEK_SET);
-	fwrite(&gd3_header.datalen, 4, 1, file.get());
+	if(fseek(file.get(), gd3_pos+8, SEEK_SET) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
+	if(fwrite(&gd3_header.datalen, 4, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 	
-	fseek(file.get(), 20, SEEK_SET);
+	if(fseek(file.get(), 20, SEEK_SET) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
 	gd3_pos -= 20;
-	fwrite(&gd3_pos, 4, 1, file.get());
+	if(fwrite(&gd3_pos, 4, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 	
 	// EOF_offset
-	fseek(file.get(), 0, SEEK_END);
+	if(fseek(file.get(), 0, SEEK_END) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
 	uint32_t file_len = ftell(file.get());
 	file_len -= 4;
-	fseek(file.get(), 0x04, SEEK_SET);
-	fwrite(&file_len, 4, 1, file.get());
+	if(fseek(file.get(), 0x04, SEEK_SET) < 0) {
+		PERRF(LOG_FS, "error accessing file\n");
+		throw std::exception();
+	}
+	if(fwrite(&file_len, 4, 1, file.get()) != 1) {
+		PERRF(LOG_FS, "error writing to file\n");
+		throw std::exception();
+	}
 }

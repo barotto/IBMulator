@@ -97,20 +97,22 @@ bool FloppyDisk::save(std::string _path, std::shared_ptr<FloppyFmt> _format)
 	if(!m_dirty) {
 		if(FileSys::file_exists(_path.c_str())) {
 			if(FileSys::is_file_writeable(_path.c_str())) {
-				FileSys::remove(_path.c_str());
-				FileSys::rename_file(tmp.c_str(), _path.c_str());
-				if(FileSys::file_exists(tmp.c_str())) {
+				if(FileSys::remove(_path.c_str()) < 0) {
 					PERRF(LOG_GUI, "Cannot overwrite '%s', creating a copy...\n", _path.c_str());
+				} else if(FileSys::rename_file(tmp.c_str(), _path.c_str()) < 0) {
+					PERRF(LOG_GUI, "Error renaming '%s'\n", tmp.c_str());
 				}
 			} else {
 				PERRF(LOG_GUI, "Cannot overwrite '%s', creating a copy...\n", _path.c_str());
 			}
-		} else {
-			FileSys::rename_file(tmp.c_str(), _path.c_str());
+		} else if(FileSys::rename_file(tmp.c_str(), _path.c_str()) < 0) {
+			PERRF(LOG_GUI, "Error renaming '%s'\n", tmp.c_str());
 		}
 	} else {
 		PERRF(LOG_GUI, "Cannot save '%s'\n", _path.c_str());
-		FileSys::remove(tmp.c_str());
+		if(FileSys::remove(tmp.c_str()) < 0) {
+			PWARNF(LOG_V0, LOG_GUI, "Cannot remove '%s'\n", tmp.c_str());
+		}
 	}
 
 	m_dirty_restore = m_dirty;

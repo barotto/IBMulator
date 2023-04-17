@@ -454,9 +454,9 @@ void FileSys::copy_file(const char *_from, const char *_to)
 	dst << src.rdbuf();
 }
 
-void FileSys::rename_file(const char *_from, const char *_to)
+int FileSys::rename_file(const char *_from, const char *_to)
 {
-	std::rename(to_native(_from).c_str(), to_native(_to).c_str());
+	return std::rename(to_native(_from).c_str(), to_native(_to).c_str());
 }
 
 bool FileSys::is_same_file(const char *_path1, const char *_path2)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022  Marco Bortolin
+ * Copyright (C) 2021-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,14 +56,14 @@ m_state(m_basefile)
 		uint64_t fsize = 0;
 		FILETIME mtime;
 		if(FileSys::get_file_stats(m_info_path.c_str(), &fsize, &mtime) < 0) {
-			throw std::runtime_error(str_format("Error accessing '%s'", m_info_path.c_str()).c_str());
+			throw std::runtime_error(str_format("Error accessing '%s'", m_info_path.c_str()));
 		}
 		m_info.mtime = FileSys::filetime_to_time_t(mtime);
 
 		if(fsize) {
 			std::ifstream infofile = FileSys::make_ifstream(m_info_path.c_str());
 			if(!infofile.is_open()) {
-				throw std::runtime_error(str_format("Cannot open '%s' for reading", m_info_path.c_str()).c_str());
+				throw std::runtime_error(str_format("Cannot open '%s' for reading", m_info_path.c_str()));
 			}
 			std::string verstr;
 			std::getline(infofile, verstr);
@@ -73,7 +73,7 @@ m_state(m_basefile)
 			}
 			std::getline(infofile, m_info.user_desc);
 			if(infofile.fail()) {
-				throw std::runtime_error(str_format("Error reading from '%s'", m_info_path.c_str()).c_str());
+				throw std::runtime_error(str_format("Error reading from '%s'", m_info_path.c_str()));
 			}
 			std::stringstream buf;
 			buf << infofile.rdbuf();
@@ -121,14 +121,14 @@ void StateRecord::load()
 	try {
 		m_config.parse(m_ini_path);
 	} catch(std::exception &e) {
-		throw std::runtime_error(str_format("Cannot parse '%s'", m_ini_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot parse '%s'", m_ini_path.c_str()));
 	}
 
 	// GLOBAL STATE
 	try {
 		m_state.load(m_state_path);
 	} catch(std::exception &) {
-		throw std::runtime_error(str_format("Cannot load '%s'", m_state_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot load '%s'", m_state_path.c_str()));
 	}
 }
 
@@ -137,25 +137,25 @@ void StateRecord::save()
 	// SAVE INFO
 	std::ofstream infofile = FileSys::make_ofstream(m_info_path.c_str());
 	if(!infofile.is_open()) {
-		throw std::runtime_error(str_format("Cannot open '%s' for writing", m_info_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot open '%s' for writing", m_info_path.c_str()));
 	}
 	infofile << "v" << STATE_RECORD_VERSION << "\n" << m_info.user_desc << "\n" << m_info.config_desc;
 	if(infofile.fail()) {
-		throw std::runtime_error(str_format("Error writing to '%s'", m_info_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Error writing to '%s'", m_info_path.c_str()));
 	}
 
 	// INI
 	try {
 		m_config.create_file(m_ini_path, true);
 	} catch(...) {
-		throw std::runtime_error(str_format("Cannot create config file '%s'", m_ini_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot create config file '%s'", m_ini_path.c_str()));
 	}
 
 	// GLOBAL STATE
 	try {
 		m_state.save(m_state_path);
 	} catch(...) {
-		throw std::runtime_error(str_format("Cannot create state file '%s'", m_state_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot create state file '%s'", m_state_path.c_str()));
 	}
 
 	// FRAMEBUFFER
@@ -163,7 +163,7 @@ void StateRecord::save()
 		stbi_write_png_compression_level = 9;
 		if(stbi_write_png(m_screen_path.c_str(), m_framebuffer->w, m_framebuffer->h,
 				m_framebuffer->format->BytesPerPixel, m_framebuffer->pixels, m_framebuffer->pitch) < 0) {
-			throw std::runtime_error(str_format("Cannot save the screen to '%s'", m_screen_path.c_str()).c_str());
+			throw std::runtime_error(str_format("Cannot save the screen to '%s'", m_screen_path.c_str()));
 		}
 	}
 }
@@ -174,10 +174,18 @@ void StateRecord::remove()
 		throw std::runtime_error("The state directory does not exist or is not accessible");
 	}
 
-	FileSys::remove(m_info_path.c_str());
-	FileSys::remove(m_ini_path.c_str());
-	FileSys::remove(m_state_path.c_str());
-	FileSys::remove(m_screen_path.c_str());
+	if(FileSys::remove(m_info_path.c_str()) < 0) {
+		throw std::runtime_error(str_format("Cannot remove '%s'\n", m_info_path.c_str()));
+	}
+	if(FileSys::remove(m_ini_path.c_str()) < 0) {
+		throw std::runtime_error(str_format("Cannot remove '%s'\n", m_ini_path.c_str()));
+	}
+	if(FileSys::remove(m_state_path.c_str()) < 0) {
+		throw std::runtime_error(str_format("Cannot remove '%s'\n", m_state_path.c_str()));
+	}
+	if(FileSys::remove(m_screen_path.c_str()) < 0) {
+		throw std::runtime_error(str_format("Cannot remove '%s'\n", m_screen_path.c_str()));
+	}
 
 	// remove disk images and other sub-state objects
 	DIR *dir;
@@ -195,7 +203,9 @@ void StateRecord::remove()
 			continue;
 		}
 		if(std::regex_search(dname, re)) {
-			FileSys::remove(fullpath.c_str());
+			if(FileSys::remove(fullpath.c_str()) < 0) {
+				throw std::runtime_error(str_format("Cannot remove '%s'\n", fullpath.c_str()));
+			}
 		}
 	}
 
@@ -204,7 +214,7 @@ void StateRecord::remove()
 	}
 
 	if(FileSys::remove(m_path.c_str()) != 0) {
-		throw std::runtime_error(str_format("Cannot remove directory '%s'", m_path.c_str()).c_str());
+		throw std::runtime_error(str_format("Cannot remove directory '%s'", m_path.c_str()));
 	}
 
 	m_path = "";

@@ -85,7 +85,7 @@ public:
 		std::string get_fs_type_str() const;
 		const char *get_media_str() const;
 		std::string get_oem_str() const;
-		void seek_sector(int secnum, FILE *) const;
+		int seek_sector(int secnum, FILE *) const;
 	};
 
 	struct DIREntry {

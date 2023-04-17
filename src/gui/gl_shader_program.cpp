@@ -323,6 +323,8 @@ std::list<std::string> GLShaderProgram::load_shader_file(const std::string &_pat
 
 std::list<std::string> GLShaderProgram::get_shader_defines(GLuint _sh_type, const std::list<std::string> &_defines) const
 {
+	UNUSED(_sh_type);
+
 	std::list<std::string> lines;
 
 	// don't pollute global space with useless defines 

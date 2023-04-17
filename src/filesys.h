@@ -80,7 +80,7 @@ public:
 	static bool extract_file(const char *_archive, const char *_filename,
 			const char *_extract_to);
 	static void copy_file(const char *_from, const char *_to);
-	static void rename_file(const char *_from, const char *_to);
+	static int rename_file(const char *_from, const char *_to);
 	static bool is_same_file(const char *_path1, const char *_path2);
 
 	static FILE* fopen(const char *_filename, const char *_flags);
