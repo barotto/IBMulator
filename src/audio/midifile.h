@@ -68,7 +68,6 @@ protected:
 	unsigned    m_sys_count = 0;
 	
 public:
-	MIDIFile();
 	~MIDIFile();
 
 	inline bool is_open() const { return m_file != nullptr; }
