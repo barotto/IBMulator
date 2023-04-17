@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -80,12 +80,12 @@ class CPU
 {
 protected:
 	std::string m_model;
-	unsigned m_family;
-	unsigned m_signature;
-	double   m_frequency;
-	uint32_t m_cycle_time;
-	unsigned m_hlt_state_cycles;
-	Instruction *m_instr;
+	unsigned m_family = 0;
+	unsigned m_signature = 0;
+	double   m_frequency = .0;
+	uint32_t m_cycle_time = 0;
+	unsigned m_hlt_state_cycles = 1;
+	Instruction *m_instr = nullptr;
 	std::function<void(void)> m_shutdown_trap;
 
 	CPUState m_s;
@@ -96,7 +96,6 @@ protected:
 
 public:
 	CPU();
-	~CPU();
 
 	void init();
 	void reset(uint _signal);

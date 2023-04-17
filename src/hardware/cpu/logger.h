@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -72,12 +72,12 @@ struct CPULogEntry
 class CPULogger
 {
 private:
-	uint m_log_idx;
-	uint m_log_size;
+	uint m_log_idx = 0;
+	uint m_log_size = 0;
 	CPULogEntry m_log[CPULOG_MAX_SIZE];
-	uint32_t m_iret_address;
-	CPULogIRQ m_irq;
-	FILE *m_log_file;
+	uint32_t m_iret_address = 0;
+	CPULogIRQ m_irq = {0xFF,0};
+	FILE *m_log_file = nullptr;
 	std::string m_log_filename;
 	std::map<int,uint64_t> m_global_counters;
 	std::map<int,uint64_t> m_file_counters;
@@ -91,7 +91,6 @@ private:
 
 public:
 
-	CPULogger();
 	~CPULogger();
 
 	void add_entry(

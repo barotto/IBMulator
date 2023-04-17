@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -54,18 +54,18 @@ class CPUExecutor
 {
 public:
 
-	Instruction * m_instr;
-	uint m_base_ds;
-	uint m_base_ss;
-	uint32_t m_addr_mask;
-	unsigned m_max_instr_size;
+	Instruction *m_instr = nullptr;
+	unsigned m_base_ds = REGI_DS;
+	unsigned m_base_ss = REGI_SS;
+	uint32_t m_addr_mask = 0xFFFF;
+	unsigned m_max_instr_size = 10;
 
 	inttrap_intervalTree_t m_inttraps_tree;
 	std::vector<inttrap_interval_t> m_inttraps_intervals;
 	//TODO change this map to a stack
 	std::map<uint32_t, std::vector<std::function<bool()>>> m_inttraps_ret;
 	std::stack<std::pair<uint32_t,std::string>> m_dos_prg;
-	uint32_t m_dos_prg_int_exit; //the exit csip of INT 21/4B (used for CPU logging)
+	uint32_t m_dos_prg_int_exit = 0; // the exit csip of INT 21/4B (used for CPU logging)
 
 	struct {
 		uint32_t lin1;
@@ -75,7 +75,7 @@ public:
 		unsigned len1;
 		unsigned len2;
 		unsigned pages;
-	} m_cached_phy;
+	} m_cached_phy = {};
 
 	uint8_t load_eb();
 	uint8_t load_rb();
@@ -105,8 +105,8 @@ public:
 	uint32_t EA_get_offset_16();
 	SegReg & EA_get_segreg_32();
 	uint32_t EA_get_offset_32();
-	SegReg & (CPUExecutor::*EA_get_segreg)();
-	uint32_t (CPUExecutor::*EA_get_offset)();
+	SegReg & (CPUExecutor::*EA_get_segreg)() = &CPUExecutor::EA_get_segreg_16;
+	uint32_t (CPUExecutor::*EA_get_offset)() = &CPUExecutor::EA_get_offset_16;
 
 	void write_flags(uint16_t _flags, bool _change_IOPL, bool _change_IF, bool _change_NT=true);
 	void write_flags(uint16_t _flags);

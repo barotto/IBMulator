@@ -27,16 +27,6 @@
 #define LOG_O32_BIT 30
 #define LOG_A32_BIT 31
 
-CPULogger::CPULogger()
-:
-m_log_idx(0),
-m_log_size(0),
-m_iret_address(0),
-m_log_file(nullptr)
-{
-	m_irq.irq = 0xFF;
-}
-
 CPULogger::~CPULogger()
 {
 	close_file();

@@ -49,8 +49,6 @@ inline bool rep_string_op(uint16_t _opcode)
 
 
 CPUExecutor::CPUExecutor()
-:
-m_dos_prg_int_exit(0)
 {
 	//register_INT_trap(0x00, 0xFF, &CPUExecutor::INT_debug);
 	register_INT_trap(0x13, 0x13, &CPUExecutor::INT_debug);

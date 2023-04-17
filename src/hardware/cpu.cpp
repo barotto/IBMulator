@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,19 +56,10 @@ const CPUExceptionInfo g_cpu_exceptions[CPU_MAX_INT] = {
 
 
 CPU::CPU()
-:
-m_family(0),
-m_signature(0),
-m_frequency(.0),
-m_cycle_time(0),
-m_hlt_state_cycles(1),
-m_instr(nullptr)
 {
 	m_shutdown_trap = std::bind(&CPU::default_shutdown_trap,this);
-}
 
-CPU::~CPU()
-{
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 void CPU::init()
