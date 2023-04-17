@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -58,9 +58,9 @@ IODEVICE_PORTS(PS1Audio) = {
 #define PS1AUDIO_IRQ 7
 
 PS1Audio::PS1Audio(Devices *_dev)
-: IODevice(_dev),
-m_fifo_timer(NULL_TIMER_ID)
+: IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 PS1Audio::~PS1Audio()

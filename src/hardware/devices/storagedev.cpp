@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,19 +56,6 @@ DriveIdent & DriveIdent::operator=(const DriveIdent &_src)
 	return *this;
 }
 
-
-StorageDev::StorageDev()
-:
-m_sectors(0),
-m_sector_data(0),
-m_sector_size(0.0),
-m_sector_len(0.0),
-m_disk_radius(0.0),
-m_track_overhead(0.0),
-m_head_speed_factor(0.0),
-m_head_accel_factor(0.0)
-{
-}
 
 int64_t StorageDev::chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const
 {

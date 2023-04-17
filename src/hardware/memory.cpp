@@ -36,9 +36,9 @@ Memory g_memory;
 
 
 Memory::Memory()
-:
-m_mappings_namecnt(0)
 {
+	memset(&m_s, 0, sizeof(m_s));
+
 	/* The 286 and the 386SX both have a 24-bit address bus. The 386DX has a
 	 * 32-bit address bus, but the PS/1 was equipped with the SX variant, so the
 	 * system supported only 16MB of RAM, and the ROM BIOS was mapped at
@@ -47,9 +47,6 @@ m_mappings_namecnt(0)
 	m_s.mask = 0x00FFFFFF;
 	m_s.A20_enabled = true;
 	memset(m_s.mapstate, MEM_ANY, sizeof(m_s.mapstate));
-
-	m_ram.buffer = nullptr;
-	m_ram.buffer_size = 0;
 
 	remap(0, 0xFFFFFFFF);
 }

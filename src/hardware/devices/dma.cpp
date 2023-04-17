@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,7 +45,7 @@ IODEVICE_PORTS(DMA) = {
 DMA::DMA(Devices* _dev)
 : IODevice(_dev)
 {
-
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 DMA::~DMA()

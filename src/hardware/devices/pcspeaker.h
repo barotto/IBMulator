@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,13 +41,13 @@ private:
 		size_t events_cnt;
 	} m_s;
 
-	SRC_STATE *m_SRC;
+	SRC_STATE *m_SRC = nullptr;
 	AudioBuffer m_pitbuf;
 	AudioBuffer m_outbuf;
 	std::mutex m_mutex;
 	std::shared_ptr<MixerChannel> m_channel;
-	uint64_t m_last_time;
-	double m_samples_rem;
+	uint64_t m_last_time = 0;
+	double m_samples_rem = 0.0;
 
 public:
 	PCSpeaker(Devices *_dev);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -134,8 +134,8 @@ private:
 		int reset_phase;
 	} m_s;
 
-	TimerID m_cmd_timer;
-	TimerID m_dma_timer;
+	TimerID m_cmd_timer = NULL_TIMER_ID;
+	TimerID m_dma_timer = NULL_TIMER_ID;
 
 	HardDiskDrive m_disk;
 

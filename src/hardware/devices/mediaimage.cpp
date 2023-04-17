@@ -289,8 +289,6 @@ bool hdimage_copy_file(const char *src, const char *dst)
  */
 
 MediaImage::MediaImage()
-:
-m_size(0)
 {
 #ifdef _WIN32
 	m_mtime = {0,0};

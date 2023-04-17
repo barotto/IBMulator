@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,11 +30,9 @@ IODEVICE_PORTS(PCSpeaker) = {};
 
 
 PCSpeaker::PCSpeaker(Devices *_dev)
-: IODevice(_dev),
-m_SRC(nullptr),
-m_last_time(0),
-m_samples_rem(0.0)
+: IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 PCSpeaker::~PCSpeaker()

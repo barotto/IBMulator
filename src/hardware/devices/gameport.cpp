@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -34,6 +34,7 @@ IODEVICE_PORTS(GamePort) = {
 GamePort::GamePort(Devices *_dev)
 : IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 GamePort::~GamePort()

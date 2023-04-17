@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,6 +31,7 @@ IODEVICE_PORTS(AdLib) = {
 AdLib::AdLib(Devices *_dev)
 : IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 AdLib::~AdLib()

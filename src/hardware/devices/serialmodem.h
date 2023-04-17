@@ -107,7 +107,7 @@ private:
 		unsigned Bps;
 		unsigned code;
 		uint64_t handshake;
-	} m_baudrate;
+	} m_baudrate = {};
 	double m_bytes_per_tick = .0;
 	double m_bytes_ready = .0;
 	uint64_t m_conn_timeout_ms = 5000;

@@ -60,15 +60,15 @@ private:
 
 	std::map<std::string, IODevice *> m_devices;
 
-	Machine * m_machine;
-	SystemBoard * m_sysboard;
-	DMA * m_dma;
-	PIC * m_pic;
-	PIT * m_pit;
-	VGA * m_vga;
-	CMOS * m_cmos;
+	Machine *m_machine = nullptr;
+	SystemBoard *m_sysboard = nullptr;
+	DMA *m_dma = nullptr;
+	PIC *m_pic = nullptr;
+	PIT *m_pit = nullptr;
+	VGA *m_vga = nullptr;
+	CMOS *m_cmos = nullptr;
 
-	unsigned m_last_io_time;
+	unsigned m_last_io_time = 0;
 
 public:
 	Devices();

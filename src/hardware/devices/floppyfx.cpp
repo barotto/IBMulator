@@ -53,7 +53,6 @@ FloppyFX::FloppyFX()
 :
 DriveFX()
 {
-	reset();
 }
 
 FloppyFX::~FloppyFX()

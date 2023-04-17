@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -86,7 +86,7 @@ private:
 	DAC     m_dac;
 	SN76496 m_psg;
 
-	TimerID m_fifo_timer;
+	TimerID m_fifo_timer = NULL_TIMER_ID;
 
 public:
 	PS1Audio(Devices *_dev);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005-2014  The Bochs Project
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -94,8 +94,8 @@ class MediaImage
 {
 protected:
 
-	MediaGeometry m_geometry;
-	uint64_t m_size;
+	MediaGeometry m_geometry = {};
+	uint64_t m_size = 0;
 	FILETIME m_mtime;
 
 public:

@@ -51,13 +51,6 @@
 Devices g_devices;
 
 Devices::Devices()
-:
-m_sysboard(nullptr),
-m_dma(nullptr),
-m_pic(nullptr),
-m_pit(nullptr),
-m_vga(nullptr),
-m_cmos(nullptr)
 {
 }
 

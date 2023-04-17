@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -65,6 +65,8 @@ const std::map<unsigned,FloppyCtrl_Raw::CmdDef> FloppyCtrl_Raw::ms_cmd_list = {
 FloppyCtrl_Raw::FloppyCtrl_Raw(Devices *_dev) 
 : FloppyCtrl(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
+
 	m_floppy_formats.emplace_back(new FloppyFmt_IMG());
 	m_floppy_formats.emplace_back(new FloppyFmt_IMD());
 }

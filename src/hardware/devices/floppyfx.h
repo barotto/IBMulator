@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -35,7 +35,6 @@ public:
 		FDD_3_5
 	};
 private:
-	std::atomic<bool> m_snatch;
 	enum SampleType {
 		FDD_SPIN = 0,
 		FDD_SPIN_UP,
@@ -49,9 +48,10 @@ private:
 	};
 	static std::vector<AudioBuffer> ms_buffers[2];
 	const static SoundFX::samples_t ms_samples[2];
-	uint64_t m_booting;
-	uint64_t m_spin_time;
-	FloppyFX::FDDType m_fdd_type;
+	std::atomic<bool> m_snatch = false;
+	uint64_t m_booting = 0;
+	uint64_t m_spin_time = 0;
+	FloppyFX::FDDType m_fdd_type = FDD_3_5;
 
 public:
 	FloppyFX();

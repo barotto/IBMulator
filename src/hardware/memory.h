@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -99,7 +99,7 @@ protected:
 		uint32_t buffer_size;
 		int cycles;
 		unsigned exp;
-	} m_ram;
+	} m_ram = {};
 
 	struct {
 		bool A20_enabled;
@@ -139,7 +139,7 @@ protected:
 	};
 
 	std::list<MemMapping> m_mappings;
-	int m_mappings_namecnt;
+	int m_mappings_namecnt = 0;
 
 	struct MapEntry {
 		MemMapping *read;

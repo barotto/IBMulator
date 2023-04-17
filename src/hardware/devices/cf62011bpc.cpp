@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020  Marco Bortolin
+ * Copyright (C) 2017-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,6 +44,7 @@ IODEVICE_PORTS(CF62011BPC) = {
 CF62011BPC::CF62011BPC(Devices *_dev)
 : VGA(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 CF62011BPC::~CF62011BPC()

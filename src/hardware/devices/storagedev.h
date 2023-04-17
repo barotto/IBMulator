@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -84,26 +84,25 @@ protected:
 	std::string m_name; // Device name (used for logging)
 	std::string m_path; // File system path to data
 
-	int64_t m_sectors;       // Total number of sectors
-	int m_sector_data;       // Data bytes per sector
-	double m_sector_size;    // Total sector size (data + control fields)
-	double m_sector_len;     // Physical length of a sector relative to a track
-	double m_disk_radius;    // Disk radius in mm
-	double m_track_overhead; // Additional control bytes per track
+	int64_t m_sectors = 0;        // Total number of sectors
+	int m_sector_data = 0;        // Data bytes per sector
+	double m_sector_size = .0;    // Total sector size (data + control fields)
+	double m_sector_len = .0;     // Physical length of a sector relative to a track
+	double m_disk_radius = .0;    // Disk radius in mm
+	double m_track_overhead = .0; // Additional control bytes per track
 
 	// Head factors are used to extrapolate the performance characteristics of a
 	// storage device starting from known data measured from real world.
 	// If we know how a disk with a certain geometry performs, we can guess
 	// a similar device but with a different geometry.
-	double m_head_speed_factor; // Used to derive the head max speed
-	double m_head_accel_factor; // Used to derive the head acceleration
+	double m_head_speed_factor = .0; // Used to derive the head max speed
+	double m_head_accel_factor = .0; // Used to derive the head acceleration
 
-	DriveIdent m_ident;
-	MediaGeometry m_geometry;
-	DrivePerformance m_performance;
+	DriveIdent m_ident = {};
+	MediaGeometry m_geometry = {};
+	DrivePerformance m_performance = {};
 
 public:
-	StorageDev();
 	virtual ~StorageDev() {}
 
 	virtual void install(StorageCtrl*) {}
