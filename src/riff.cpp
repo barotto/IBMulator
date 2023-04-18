@@ -226,7 +226,9 @@ RIFFChunkHeader RIFFFile::read_find_chunk(uint32_t _code)
 	
 	RIFFChunkHeader header = read_chunk_header();
 	
-	while(header.chunkID != _code) {
+	const unsigned limit = 1000u; // TODO arbitrary limit?
+	unsigned count = 0;
+	while(header.chunkID != _code && count++ <= limit) {
 		long int offset = get_ckdata_size(header);
 		if(fseek(m_file, offset, SEEK_CUR) != 0) {
 			throw std::runtime_error("invalid chunk");
@@ -234,8 +236,11 @@ RIFFChunkHeader RIFFFile::read_find_chunk(uint32_t _code)
 		try {
 			header = read_chunk_header();
 		} catch(...) {
-			throw std::runtime_error("unable to find chunk");
+			throw std::runtime_error(str_format("cannot find chunk code 0x%04X", _code));
 		}
+	}
+	if(count > limit) {
+		throw std::runtime_error(str_format("cannot find chunk code 0x%04X", _code));
 	}
 	return header;
 }
