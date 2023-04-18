@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -119,7 +119,12 @@ void CaptureVideoFile::close()
 		PINFOF(LOG_V0, LOG_GUI, "Recorded %d frames, duration: %02d:%02d:%02d.%d\n",
 				frames, hours, minutes, seconds, rframes);
 		PINFOF(LOG_V1, LOG_GUI, "AVI file size: %d bytes\n", m_avi.file_size());
-		m_avi.close();
+		try {
+			m_avi.close();
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_GUI, "Error writing to file: %s\n", e.what());
+			m_avi.close_file();
+		}
 	}
 	m_file_path = "";
 }

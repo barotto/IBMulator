@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2002-2015  The DOSBox Team
- *  Copyright (C) 2020-2022  Marco Bortolin
+ *  Copyright (C) 2020-2023  Marco Bortolin
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -295,7 +295,9 @@ uint32_t VideoEncoder_ZMBV::finish_frame()
 		m_zstream.next_out = (Bytef *)(m_compress.writeBuf + m_compress.writeDone);
 		m_zstream.avail_out = m_compress.writeSize - m_compress.writeDone;
 		m_zstream.total_out = 0;
-		deflate(&m_zstream, Z_SYNC_FLUSH);
+		if(deflate(&m_zstream, Z_SYNC_FLUSH) < 0) {
+			throw std::runtime_error("deflate() error");
+		}
 		return m_compress.writeDone + m_zstream.total_out;
 	} else {
 		assert(m_workUsed < m_compress.writeSize - m_compress.writeDone);
