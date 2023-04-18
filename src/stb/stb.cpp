@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022  Marco Bortolin
+ * Copyright (C) 2021-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -87,7 +87,10 @@ unsigned char *stbiw_zlib_compress(unsigned char *data, int data_len, int *out_l
 		return nullptr;
 	}
 
-	compress2(buf, &buf_size, (const Bytef *)data, data_len, quality);
+	if(compress2(buf, &buf_size, (const Bytef *)data, data_len, quality) < 0) {
+		free(buf);
+		return nullptr;
+	}
 	*out_len = (int)buf_size;
 
 	// caller will free() the buffer
