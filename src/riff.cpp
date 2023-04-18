@@ -163,6 +163,11 @@ std::vector<uint8_t> RIFFFile::read_chunk_data() const
 		return data;
 	}
 
+	if(m_chunk_rhead.chunkSize > 0x40000000) {
+		// TODO arbitrary limit?
+		throw std::runtime_error("the chunk is too big");
+	}
+
 	read_rewind_chunk(ChunkPosition::DATA);
 	
 	data.resize(m_chunk_rhead.chunkSize);
