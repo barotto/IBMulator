@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -102,7 +102,7 @@ uint32_t VideoEncoder_BMP::get_stride(const BitmapInfoHeader &_format)
 {
 	// For uncompressed RGB formats, the minimum stride is always the image 
 	// width in bytes, rounded up to the nearest dword.
-	return round_to_dword(_format.width * _format.bitCount);
+	return round_to_dword(uint32_t(_format.width * _format.bitCount));
 }
 
 unsigned VideoEncoder_BMP::prepare_frame(unsigned _flags, uint8_t *_pal, uint8_t *_buf, uint32_t _bufsize)

@@ -331,7 +331,7 @@ void ScreenRenderer_OpenGL::store_vga_framebuffer(FrameBuffer &_fb, const VideoM
 			for(int h=0; h<_mode.yres; h+=_mode.nscans) {
 				x = 0;
 				for(int w=0; w<_mode.xres; w+=_mode.ndots) {
-					m_input_buff[y*_mode.imgw + x] = _fb[h*m_fb_width + w];
+					m_input_buff[uint32_t(y*_mode.imgw) + x] = _fb[uint32_t(h*m_fb_width) + w];
 					x++;
 				}
 				y++;

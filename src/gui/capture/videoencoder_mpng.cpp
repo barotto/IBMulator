@@ -81,7 +81,7 @@ void VideoEncoder_MPNG::setup_compress(BitmapInfoHeader &_format)
 uint32_t VideoEncoder_MPNG::needed_buf_size(const BitmapInfoHeader &_format)
 {
 	// max uncompressed frame size
-	return _format.height * round_to_dword(_format.width * _format.bitCount);
+	return _format.height * round_to_dword(uint32_t(_format.width * _format.bitCount));
 }
 
 unsigned VideoEncoder_MPNG::prepare_frame(unsigned _flags, uint8_t *_pal, uint8_t *_buf, uint32_t _bufsize)
