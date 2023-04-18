@@ -48,15 +48,6 @@ std::mutex Machine::ms_gui_lock;
 
 
 Machine::Machine()
-:
-m_heartbeat(0),
-m_quit(false),
-m_on(false),
-m_cpu_single_step(false),
-m_breakpoint_cs(0),
-m_breakpoint_eip(0),
-m_cycles_factor(1.0),
-m_vtime_ratio(1.0)
 {
 	memset(&m_s, 0, sizeof(m_s));
 }

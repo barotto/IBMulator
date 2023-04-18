@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,25 +64,25 @@ public:
 		MEDIA_ASK, MEDIA_COMMIT, MEDIA_DISCARD, MEDIA_DISCARD_STATES 
 	};
 private:
-	unsigned m_model;
+	unsigned m_model = MDL_UNKNOWN;
 	ModelConfig m_configured_model;
 
 	Pacer m_pacer;
 	HWBench m_bench;
 
-	int64_t m_heartbeat;
-	bool m_quit;
-	bool m_on;
+	int64_t m_heartbeat = 0;
+	bool m_quit = false;
+	bool m_on = false;
 	bool m_valid_state = true;
 	int m_config_id = 0;
-	bool m_cpu_single_step;
-	uint16_t m_breakpoint_cs;
-	uint32_t m_breakpoint_eip;
+	bool m_cpu_single_step = false;
+	uint16_t m_breakpoint_cs = 0;
+	uint32_t m_breakpoint_eip = 0;
 	std::function<void()> m_breakpoint_clbk;
-	double m_cpu_cycles;
-	uint m_cpu_cycle_time;
-	double m_cycles_factor;
-	std::atomic<double> m_vtime_ratio;
+	double m_cpu_cycles = .0;
+	uint m_cpu_cycle_time = 0;
+	double m_cycles_factor = 1.0;
+	std::atomic<double> m_vtime_ratio = 1.0;
 
 	EventTimers m_timers;
 
@@ -96,7 +96,7 @@ private:
 	SystemROM m_sysrom;
 	void load_bios_patches();
 
-	bool m_curr_prgname_changed;
+	bool m_curr_prgname_changed = false;
 
 	void main_loop();
 	void run_loop();
@@ -136,7 +136,7 @@ private:
 	std::thread m_printer_thread;
 	
 public:
-	bool ms_restore_fail;
+	bool ms_restore_fail = false;
 	//used for machine-gui synchronization
 	static std::mutex ms_gui_lock;
 
