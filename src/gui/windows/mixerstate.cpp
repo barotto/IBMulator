@@ -112,7 +112,7 @@ void MixerState::config_changed(bool)
 	ss << "<th class=\"data\">out frames</th>";
 	ss << "<th class=\"data\">out us</th>";
 	ss << "</tr>";
-	for(auto ch : chs) {
+	for(auto &ch : chs) {
 		ss << "<tr><th id=\"" << ch->id() << "\">" << ch->name() << "</th>";
 		ss << "<td id=\"" << ch->id() << "_inf\"></td>";
 		ss << "<td class=\"data\" id=\"" << ch->id() << "_infr\"></td>";
