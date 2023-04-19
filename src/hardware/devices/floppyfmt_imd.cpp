@@ -114,7 +114,12 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 		}
 
 		for(int i=0; i<t.spt; i++) {
-			uint8_t stype = fstream.get();
+			auto ch = fstream.get();
+			if(ch == std::ifstream::traits_type::eof()) {
+				PWARNF(LOG_V1, LOG_FDC, "IMD: unexpected end-of-file: '%s'\n", _file_path.c_str());
+				return {0};
+			}
+			uint8_t stype = uint8_t(ch);
 			if(stype == 0 || stype > 8) {
 				// sector not available
 			} else {
