@@ -78,7 +78,8 @@ VGA::VGA(Devices *_dev)
 	unsigned max_x_tiles = VGA_MAX_XRES / VGA_X_TILESIZE + ((VGA_MAX_XRES % VGA_X_TILESIZE) > 0);
 	m_tile_dirty.reserve(max_x_tiles * VGA_MAX_YRES);
 
-	m_s = {};
+	// Use memset so the compiler will warn if the structure is non-trivial
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 VGA::~VGA()

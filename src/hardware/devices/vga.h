@@ -222,7 +222,7 @@ protected:
 	
 	// bugs on which some demos depend
 	struct {
-		bool ps_bit;
+		bool ps_bit = false;
 	} m_bugs;
 	
 public:
