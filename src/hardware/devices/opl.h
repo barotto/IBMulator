@@ -141,11 +141,11 @@ private:
 	} m_s;
 
 	std::string m_name;
-	ChipTypes   m_type;
-	int         m_samplerate;
-	uint32_t    m_generator_add;
-	uint32_t    m_vibtab_add;
-	uint32_t    m_tremtab_add;
+	ChipTypes   m_type = OPL2;
+	int         m_samplerate = 49716;
+	uint32_t    m_generator_add = 0;
+	uint32_t    m_vibtab_add = 0;
+	uint32_t    m_tremtab_add = 0;
 
 	std::function<void(bool)> m_irqfn;
 
