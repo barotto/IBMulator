@@ -160,7 +160,7 @@ private:
 	uint8_t *move_pq_data();
 	template<int len> uint32_t mmu_read(uint32_t _linear, int &_cycles);
 	template<int bytes, bool paging> int fill_pq(int _amount, int _cycles, bool _paddress);
-	int (CPUBus::*fill_pq_fn)(int, int, bool);
+	int (CPUBus::*fill_pq_fn)(int, int, bool) = nullptr;
 
 	template<class T, int L>
 	T fetch()
