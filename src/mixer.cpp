@@ -179,11 +179,8 @@ void Mixer::config_changed() noexcept
 
 	m_prev_vtime = 0;
 	
-	int frequency = g_program.config().get_int(MIXER_SECTION, MIXER_RATE);
-	int prebuf_ms = g_program.config().get_int(MIXER_SECTION, MIXER_PREBUFFER); // msec
-	m_prebuffer_us = prebuf_ms * 1000ull; // usec
-	int samples = g_program.config().get_int(MIXER_SECTION, MIXER_SAMPLES);
-	m_frame_size = 0;
+	int frequency = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_RATE, 11025, 49716);
+	int samples = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_SAMPLES, 256, 4096);
 
 	try {
 		open_audio_device(frequency, MIXER_FORMAT, MIXER_CHANNELS, samples);
@@ -195,7 +192,7 @@ void Mixer::config_changed() noexcept
 		m_audio_spec.silence = 0;
 	}
 	
-	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %u Hz, %u bit, %u channels, %u samples\n",
+	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %d Hz, %u bit, %u channels, %u samples\n",
 			m_audio_spec.freq, SDL_AUDIO_BITSIZE(m_audio_spec.format), m_audio_spec.channels, m_audio_spec.samples);
 	
 	m_frame_size = m_audio_spec.channels * (SDL_AUDIO_BITSIZE(m_audio_spec.format) / 8);
@@ -204,7 +201,9 @@ void Mixer::config_changed() noexcept
 	m_bench.set_heartbeat(m_heartbeat_us * 1000);
 
 	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %llu usec\n", m_heartbeat_us);
-	
+
+	int prebuf_ms = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_PREBUFFER, 10, 1000); // msec
+	m_prebuffer_us = prebuf_ms * 1000ull; // usec
 	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
 	m_prebuffer_fr = size_t(us_to_frames(m_prebuffer_us, m_audio_spec.freq));
 	
@@ -233,7 +232,7 @@ void Mixer::config_changed() noexcept
 	
 	// let the GUI interfaces set the AUDIO category volume
 	m_channels_volume[static_cast<int>(MixerChannel::Category::SOUNDFX)] =
-			g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0);
+			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
 
 	std::mutex m;
 	std::condition_variable cv;

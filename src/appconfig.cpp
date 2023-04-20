@@ -988,6 +988,20 @@ void AppConfig::copy(const AppConfig &_config)
 	(*this) = _config;
 }
 
+std::string AppConfig::get_value_default(const std::string &section, const std::string &name) noexcept
+{
+	try {
+		return INIFile::get_value(ms_def_values[PROGRAM_CONFIG], section, name);
+	} catch(std::exception &) {
+		try {
+			return INIFile::get_value(ms_def_values[MACHINE_CONFIG], section, name);
+		} catch(std::exception &) {
+			assert(false);
+			return "";
+		}
+	}
+}
+
 std::string AppConfig::get_value(const std::string &section, const std::string &name, bool _quiet)
 {
 	std::string valstr;
@@ -1016,6 +1030,97 @@ std::string AppConfig::get_value(const std::string &section, const std::string &
 std::string AppConfig::get_value(const std::string &_section, const std::string &_name)
 {
 	return get_value(_section, _name, false);
+}
+
+int AppConfig::get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept
+{
+	// will try to parse the user's value string, will return the default if the value is not specified
+	// or isn't valid.
+	int value, def = get_int_default(section, name);
+	try {
+		// try_int() will throw when:
+		// 1. <section,name> isn't a valid config pair (bug)
+		// 2. the value string is not a valid integer
+		// if value string is not specified, the default will be used
+		value = try_int(section, name);
+	} catch(std::exception &) {
+		// assume the user's value string is not a valid integer
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid integer, using default: %d\n",
+				section.c_str(), name.c_str(), def);
+		value = def;
+	}
+	if(value < min || value > max) {
+		// the default must be within range
+		assert(value != def);
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %d\n",
+				section.c_str(), name.c_str(), def);
+		value = def;
+	}
+	return value;
+}
+
+double AppConfig::get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept
+{
+	// see comments for get_int_or_default()
+	double value, def = get_real_default(section, name);
+	try {
+		value = try_real(section, name);
+	} catch(std::exception &) {
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid real number, using default: %.2f\n",
+				section.c_str(), name.c_str(), def);
+		value = def;
+	}
+	if(value < min || value > max) {
+		assert(value != def);
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %.2f\n",
+				section.c_str(), name.c_str(), def);
+		value = def;
+	}
+	return value;
+}
+
+bool AppConfig::get_bool_or_default(const std::string &section, const std::string &name) noexcept
+{
+	// see comments for get_int_or_default()
+	try {
+		return try_bool(section, name);
+	} catch(std::exception &) {
+		bool def = get_bool_default(section, name);
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid boolean, using default: %s\n",
+				section.c_str(), name.c_str(), def ? "yes" : "no");
+		return def;
+	}
+}
+
+int AppConfig::get_int_default(const std::string &section, const std::string &name) noexcept
+{
+	try {
+		return parse_int(get_value_default(section, name));
+	} catch(std::exception &) {
+		// the default value is not a valid integer (bug)
+		assert(false);
+		return 0;
+	}
+}
+
+double AppConfig::get_real_default(const std::string &section, const std::string &name) noexcept
+{
+	try {
+		return parse_real(get_value_default(section, name));
+	} catch(std::exception &) {
+		assert(false);
+		return 0.0;
+	}
+}
+
+bool AppConfig::get_bool_default(const std::string &section, const std::string &name) noexcept
+{
+	try {
+		return parse_bool(get_value_default(section, name));
+	} catch(std::exception &) {
+		assert(false);
+		return false;
+	}
 }
 
 void AppConfig::set_user_home(std::string _path)

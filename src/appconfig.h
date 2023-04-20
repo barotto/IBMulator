@@ -74,6 +74,15 @@ public:
 
 	std::string get_value(const std::string &_section, const std::string &_name);
 	std::string get_value(const std::string &_section, const std::string &_name, bool _quiet);
+	std::string get_value_default(const std::string &_section, const std::string &_name) noexcept;
+
+	int get_int_default(const std::string &section, const std::string &name) noexcept;
+	double get_real_default(const std::string &section, const std::string &name) noexcept;
+	bool get_bool_default(const std::string &section, const std::string &name) noexcept;
+
+	int get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept;
+	double get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept;
+	bool get_bool_or_default(const std::string &section, const std::string &name) noexcept;
 
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string try_get_file(const std::string &_section, const std::string &_name, FileType _type);
