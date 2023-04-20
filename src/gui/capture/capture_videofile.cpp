@@ -42,7 +42,13 @@ CaptureTarget()
 		PERRF(LOG_GUI, "Error creating screen recording target\n");
 		throw std::exception();
 	}
-	
+
+	// these values are set in open_AVI()
+	m_avi_options.video_width = 0;
+	m_avi_options.video_height = 0;
+	m_avi_options.video_rate = 0;
+	m_avi_options.video_scale = 0;
+
 	PDEBUGF(LOG_V1, LOG_GUI, "Recording to AVI file\n");
 }
 
