@@ -98,7 +98,9 @@ INIFile ShaderPreset::include_preset_file(std::string _preset)
 		}
 		throw;
 	}
-	FileSys::remove(tmppath.c_str());
+	if(FileSys::remove(tmppath.c_str()) < 0) {
+		PWARNF(LOG_V0, LOG_OGL, "Cannot remove '%s'\n", tmppath.c_str());
+	}
 
 	for(auto line=data.begin(); line!=data.end(); line++) {
 		if(line->at(0) == '#' && line->find("reference", 1) == 1) {
