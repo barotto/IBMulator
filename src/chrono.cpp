@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,7 +66,7 @@ void Chrono_RDTSC::calibrate()
 	double freq = time1_c - time0_c;
 	freq /= double(elapsed.count()) / 1.0e9;
 	set_freq(freq);
-	PDEBUGF(LOG_V0, LOG_PROGRAM, "%llu Hz\n", freq);
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "%f Hz\n", freq);
 }
 #endif
 

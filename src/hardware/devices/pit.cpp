@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -269,7 +269,7 @@ void PIT::update_emulation(uint64_t _pit_time)
 	assert(elapsed_nsec % PIT_CLK_TIME == 0);
 	uint64_t ticks_amount = elapsed_nsec / PIT_CLK_TIME;
 
-	PDEBUGF(LOG_V2, LOG_PIT, "emulating: elapsed time: %d nsec, %d CLK pulses\n",
+	PDEBUGF(LOG_V2, LOG_PIT, "emulating: elapsed time: %llu nsec, %llu CLK pulses\n",
 			elapsed_nsec, ticks_amount);
 
 	uint64_t prev_pit_time = m_s.pit_time;

@@ -1699,14 +1699,13 @@ uint32_t StorageCtrl_ATA::ata_read_next_block(int _ch, uint32_t _cmd_time)
 	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba, c0,h0,s0);
 	selected_storage(_ch).lba_to_chs(selected_drive(_ch).next_lba+xfer_amount, c1,h1,s1);
 	double hpos = selected_storage(_ch).head_position(g_machine.get_virt_time_us());
-	PDEBUGF(LOG_V2, LOG_HDD, "read %d/%d/%d->%d/%d/%d (%d), hw sect:%d->%d, current=%d/%d/%.2f, seek:%d, tx:%d\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "read %lld/%lld/%lld->%lld/%lld/%lld (%u), hw sect:%d->%d, current=%lld/%lld/%.2f, seek:%u, tx:%u\n",
 			c0,h0,s0, c1,h1,s1, xfer_amount,
 			selected_storage(_ch).chs_to_hw_sector(s0),
 			selected_storage(_ch).chs_to_hw_sector(s1),
 			curr_cyl,
 			selected_storage(_ch).lba_to_head(selected_drive(_ch).curr_lba),
 			selected_storage(_ch).pos_to_hw_sect(hpos),
-			hpos,
 			seek_time, xfer_time);
 #endif
 
@@ -3151,7 +3150,7 @@ uint32_t StorageCtrl_ATA::get_seek_time(int _ch, int64_t _c0, int64_t _c1, int64
 
 	uint32_t total_seek_time = move_time + settling_time + exec_time;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "SEEK %d->%d  exec:%d,settling:%d,total:%d\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "SEEK %lld->%lld  exec:%u,settling:%u,total:%u\n",
 			_c0, _c1, exec_time, settling_time, total_seek_time);
 
 	return total_seek_time;
@@ -3164,7 +3163,7 @@ void StorageCtrl_ATA::activate_command_timer(int _ch, uint32_t _exec_time)
 	}
 	uint64_t power_up = selected_storage(_ch).power_up_eta_us();
 	if(power_up) {
-		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", power_up);
+		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %lluus\n", power_up);
 		_exec_time += power_up;
 	}
 	g_machine.activate_timer(selected_timer(_ch), uint64_t(_exec_time)*1_us, false);

@@ -661,7 +661,7 @@ Uint32 GUI::InputSystem::Event::s_sdl_timer_callback(Uint32 _interval, void *_ob
 	if(event) {
 		event->generate_sdl_event();
 	} else {
-		PDEBUGF(LOG_V2, LOG_GUI, "Event code %d expired\n", evt_code);
+		PDEBUGF(LOG_V2, LOG_GUI, "Event code %llu expired\n", uint64_t(evt_code));
 	}
 	// returning 0 will disable the timer
 	return 0;
@@ -840,7 +840,7 @@ void GUI::pevt_mouse_axis(const ProgramEvent::Mouse &_mouse, const SDL_Event &_s
 
 void GUI::pevt_mouse_button(const ProgramEvent::Mouse &_mouse, EventPhase _phase)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse button %d: \n", ec_to_i(_mouse.button), _phase==EventPhase::EVT_START?"pressed":"released");
+	PDEBUGF(LOG_V2, LOG_GUI, "  pevt: mouse button %d: %s\n", ec_to_i(_mouse.button), _phase==EventPhase::EVT_START?"pressed":"released");
 	m_machine->mouse_button(_mouse.button, _phase==EventPhase::EVT_START);
 }
 
@@ -1295,7 +1295,7 @@ void GUI::InputSystem::remove(std::shared_ptr<Event> _evt)
 		_evt->disable_timer();
 		if(is_active(_evt)) {
 			events.erase(_evt->code);
-			PDEBUGF(LOG_V2, LOG_GUI, "running events: %u\n", events.size());
+			PDEBUGF(LOG_V2, LOG_GUI, "running events: %u\n", static_cast<unsigned>(events.size()));
 		}
 	}
 }
@@ -3045,7 +3045,7 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 				if(doc_it != m_docs.end()) {
 					m_docs.erase(doc_it);
 				}
-				PDEBUGF(LOG_V1, LOG_GUI, "  registered docs: %d\n", m_docs.size());
+				PDEBUGF(LOG_V1, LOG_GUI, "  registered docs: %u\n", static_cast<unsigned>(m_docs.size()));
 			}
 			break;
 		case Rml::EventId::Focus:
@@ -3075,14 +3075,14 @@ void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
 		_doc->AddEventListener(id, this);
 	}
 	m_docs.push_back(_doc);
-	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %d\n", m_docs.size());
+	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %u\n", static_cast<unsigned>(m_docs.size()));
 }
 
 void GUI::WindowManager::shutdown()
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
-	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %d\n", m_docs.size());
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %u\n", static_cast<unsigned>(m_docs.size()));
 
 	if(status) {
 		status->close();
@@ -3104,6 +3104,6 @@ void GUI::WindowManager::shutdown()
 		interface.reset(nullptr);
 	}
 
-	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutted down: registered docs: %d\n", m_docs.size());
+	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shut down: registered docs: %u\n", static_cast<unsigned>(m_docs.size()));
 }
 

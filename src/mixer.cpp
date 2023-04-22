@@ -335,11 +335,11 @@ void Mixer::main_loop()
 				if(m_start_time == 0) {
 					// audio starting to get prebuffered
 					m_start_time = m_pacer.chrono().get_usec();
-					PDEBUGF(LOG_V1, LOG_MIXER, "Prebuffering for %d us\n", m_prebuffer_us);
+					PDEBUGF(LOG_V1, LOG_MIXER, "Prebuffering for %llu us\n", m_prebuffer_us);
 				} else if(get_buffer_read_avail_us() >= m_prebuffer_us) {
 					// audio prebuffered enough, start output to audio device
 					SDL_PauseAudioDevice(m_device, 0);
-					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing: %d us elapsed, %d bytes / %d us of data\n",
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing: %d us elapsed, %zu bytes / %llu us of data\n",
 						elapsed, m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 					m_start_time = 0;
 				} else {
@@ -354,7 +354,7 @@ void Mixer::main_loop()
 				if(read_avail > buf_limit) {
 					// audio device is not reading its buffer fast enough, drop some data
 					buf_limit = m_out_buffer.shrink_data(m_prebuffer_fr*m_frame_size);
-					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun: %u bytes, limited to %d bytes\n",
+					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun: %zu bytes, limited to %zu bytes\n",
 							read_avail, buf_limit);
 				} else {
 					buf_len_s = m_prebuffer_us/1e6 - (m_heartbeat_us*3)/1e6;
@@ -363,12 +363,12 @@ void Mixer::main_loop()
 					if(m_out_buffer.get_read_avail() <= buf_limit) {
 						// we can't keep up with audio device demands so
 						// restart prebuffering
-						PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer underrun\n", buf_limit);
+						PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer underrun (threshold: %zu)\n", buf_limit);
 						SDL_PauseAudioDevice(m_device, 1);
 					}
 				}
 			}
-			PDEBUGF(LOG_V2, LOG_MIXER, "  buffer size: %d bytes / %d us\n",
+			PDEBUGF(LOG_V2, LOG_MIXER, "  buffer size: %zu bytes / %llu us\n",
 					m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 		} else {
 			// there's no active channels
@@ -381,7 +381,7 @@ void Mixer::main_loop()
 				// there's data in the output buffer, but the device is not active.
 				// it happens when channels deactivate before the prebuffering period is over
 				SDL_PauseAudioDevice(m_device, 0);
-				PDEBUGF(LOG_V1, LOG_MIXER, "Device playing (%d bytes/%d us of data)\n",
+				PDEBUGF(LOG_V1, LOG_MIXER, "Device playing (%zu bytes / %llu us of data)\n",
 					m_out_buffer.get_read_avail(), get_buffer_read_avail_us());
 			}
 		}
@@ -396,7 +396,7 @@ void Mixer::main_loop()
 		
 		PDEBUGF(LOG_V2, LOG_MIXER,
 			"Mixer step, fstart=%lld, fend=%lld, lend=%lld, time_span_ns=%llu, sleep_time=%llu, "
-			"load_time=%d, frame_time=%lld (%lld)\n",
+			"load_time=%lld, frame_time=%lld (%lld)\n",
 			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
 			time_span_ns, sleep_time,
 			m_bench.load_time,
@@ -468,7 +468,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	// (constant prebuffering could be fixed with a more precise resampling, but it's not worth it)
 	const bool do_mix_audio_ch = (_vtime_ratio >= 0.01);
 	
-	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %d channels:\n", _channels.size());
+	PDEBUGF(LOG_V2, LOG_MIXER, "Mixing %u channels:\n", static_cast<unsigned>(_channels.size()));
 	for(auto ch : _channels) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames / %d samples / %.3f us avail\n",
 				ch->name(),
@@ -545,8 +545,8 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	size_t samples = frames * m_audio_spec.channels;
 	size_t audio_samples = audio_frames * m_audio_spec.channels;
 	
-	PDEBUGF(LOG_V2, LOG_MIXER, "  mixing frames: %d, samples: %d, "
-			"AUDIO frames: %d, AUDIO samples: %d, AUDIO factor: %.3f, AUDIO mix: %s\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "  mixing frames: %zu, samples: %zu, "
+			"AUDIO frames: %zu, AUDIO samples: %zu, AUDIO factor: %.3f, AUDIO mix: %s\n",
 			frames, samples,
 			audio_frames, audio_samples, 
 			_vtime_ratio, do_mix_audio_ch?"yes":"no");
@@ -576,7 +576,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		}
 		
 		mix_channels(m_ch_mix[cat], _channels, cat, fr);
-		PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %d frames for category %d\n", fr, cat);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for category %d\n", fr, cat);
 		
 		tmpbuf.resize(sa);
 		for(size_t i=0; i<sa; i++) {
@@ -611,7 +611,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		}
 		memcpy(&m_ch_mix[MixerChannel::Category::AUDIO][0], &atmpbuf[0], generated*sizeof(float));
-		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %d frames\n", generated / m_audio_spec.channels);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %zu frames\n", size_t(generated / m_audio_spec.channels));
 	}
 
 	// create the global mix
@@ -640,7 +640,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	// send global mix to output device
 	const size_t bytes = samples * 2;
 	if(m_device && m_audio_status != SDL_AUDIO_STOPPED) {
-		PDEBUGF(LOG_V2, LOG_MIXER, "  sending %d bytes to the output device\n", bytes);
+		PDEBUGF(LOG_V2, LOG_MIXER, "  sending %zu bytes to the output device\n", bytes);
 		if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
 			PERRF(LOG_MIXER, "Audio buffer overflow\n");
 		}
@@ -683,7 +683,7 @@ void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double
 				continue;
 			}
 			ch->pop_out_frames(chframes - maxfr);
-			PDEBUGF(LOG_V1, LOG_MIXER, "Reducing '%s' ch out buf from %d to %d frames\n",
+			PDEBUGF(LOG_V1, LOG_MIXER, "Reducing '%s' ch out buf from %zu to %zu frames\n",
 					ch->name(), chframes, maxfr);
 		}
 	}
@@ -734,7 +734,8 @@ void Mixer::send_to_sinks(const std::vector<int16_t> &_data, int _category)
 	for(auto &sink : m_sinks) {
 		if(sink != nullptr) {
 			try {
-				PDEBUGF(LOG_V2, LOG_MIXER, "  dumping %d bytes of data for cat %d\n", _data.size(), _category);
+				PDEBUGF(LOG_V2, LOG_MIXER, "  dumping %zu bytes of data for cat %d\n",
+						static_cast<size_t>(_data.size()), _category);
 				sink(_data, _category);
 			} catch(...) {}
 		}

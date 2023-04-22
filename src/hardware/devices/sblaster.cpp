@@ -870,7 +870,7 @@ void SBlaster::restore_state(StateBuf &_state)
 		m_dac_channel->set_volume(.0f);
 	}
 	if(m_s.dac.state != DAC::State::STOPPED || m_s.dac.used != 0) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "  DSP mode:%d, DAC state:%d,%d\n", short_name(),
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s  DSP mode:%d, DAC state:%d,%u\n", short_name(),
 				m_s.dsp.mode, m_s.dac.state, m_s.dac.used);
 		m_s.dac.newdata = true;
 		m_dac_channel->enable(true);
@@ -1033,8 +1033,8 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: read 1 of %d bytes, frames=%d, left=%db, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%dns\n", 
-			short_name(), _maxlen, frames,m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: read 1 of %u bytes, frames=%u, left=%ub, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%lluns\n", 
+			short_name(), _maxlen, frames, m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
 	
 	return 1;
 }
@@ -1085,7 +1085,7 @@ uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: written %d of %d bytes, left=%d, drq_time=%lluns, timer_ns=%dns\n", 
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: written %u of %u bytes, left=%u, drq_time=%lluns, timer_ns=%lluns\n", 
 			short_name(), len, _maxlen, m_s.dma.left, drq_time, dma_timer_ns);
 	
 	return len;
@@ -1738,7 +1738,7 @@ void SBlaster::dac_set_state(DAC::State _to_state)
 			m_s.dac.sample_time_ns[0] = g_machine.get_virt_time_ns();
 			// start generating samples now, no delay
 			g_machine.activate_timer(m_dac_timer, 0, m_s.dac.period_ns, true);
-			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: waiting, cycle period=%dns\n", short_name(), m_s.dac.period_ns);
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: waiting, cycle period=%lluns\n", short_name(), m_s.dac.period_ns);
 			break;
 		case DAC::State::STOPPED:
 			if(m_s.dac.state != DAC::State::STOPPED) {
@@ -1794,7 +1794,7 @@ void SBlaster::dsp_update_frequency()
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
 	
 	if(m_s.dac.period_ns != old_period) {
-		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: old rate=%.3f Hz, new rate=%.3f Hz, period=%d ns\n", short_name(),
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: old rate=%.3f Hz, new rate=%.3f Hz, period=%llu ns\n", short_name(),
 				old_rate, m_s.dac.spec.rate, m_s.dac.period_ns);
 		if(m_s.dac.used) {
 			static std::array<uint8_t,DAC::BUFSIZE> tempbuf;
@@ -1802,7 +1802,7 @@ void SBlaster::dsp_update_frequency()
 			size_t generated = Audio::Convert::resample_mono<uint8_t>(
 					m_s.dac.data, m_s.dac.used, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
 			memcpy(m_s.dac.data, &tempbuf[0], generated);
-			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: resampled %u samples at %.3f Hz, to %d samples at %.3f Hz\n",
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: resampled %u samples at %.3f Hz, to %zu samples at %.3f Hz\n",
 					short_name(), m_s.dac.used, old_rate, generated, m_s.dac.spec.rate);
 			m_s.dac.used = generated;
 		}

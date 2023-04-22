@@ -209,7 +209,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 	double needed_frames = double(_time_span_ns) * m_outbuf.rate()/1e9;
 	size_t size = m_events.size();
 
-	PDEBUGF(LOG_V2, LOG_MIXER, "PC-Speaker: update: %04llu nsecs, samples: %.1f, evnts: %d, ",
+	PDEBUGF(LOG_V2, LOG_MIXER, "PC-Speaker: update: %04llu nsecs, samples: %.1f, evnts: %zu, ",
 			_time_span_ns, needed_frames, size);
 
 	if(size==0 || m_events[0].ticks > pit_ticks) {

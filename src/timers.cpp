@@ -226,7 +226,7 @@ void EventTimers::unregister_timer(TimerID &_timer)
 		return;
 	}
 	if(!m_s.timers[_timer].in_use) {
-		PDEBUGF(LOG_V0, m_log_fac, "Cannot unregister timer %u: not in use!\n");
+		PDEBUGF(LOG_V0, m_log_fac, "Cannot unregister timer %u: not in use!\n", _timer);
 		return;
 	}
 	m_s.timers[_timer].in_use = false;

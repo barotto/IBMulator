@@ -768,7 +768,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 			// The VGA responds to a single option select byte at I/O address
 			// hex 0102 and treats the LSB (bit 0) of that byte as the VGA sleep
 			// bit.
-			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "POS register 2 -> 0x02X\n", m_s.gen_regs.video_enable);
+			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "POS register 2 -> 0x%02X\n", m_s.gen_regs.video_enable);
 			retval = m_s.gen_regs.video_enable;
 			break;
 
@@ -1846,7 +1846,7 @@ void VGA::vertical_retrace(uint64_t _time)
 	
 	static uint64_t mch_last_frame_count = 0;
 	if(g_machine.get_bench().tot_frame_count != mch_last_frame_count+1) {
-		PDEBUGF(LOG_V1, LOG_VGA, "frames desync: %d machine beats per VGA frame\n", 
+		PDEBUGF(LOG_V1, LOG_VGA, "frames desync: %llu machine beats per VGA frame\n", 
 			(g_machine.get_bench().tot_frame_count - mch_last_frame_count));
 	}
 	mch_last_frame_count = g_machine.get_bench().tot_frame_count;

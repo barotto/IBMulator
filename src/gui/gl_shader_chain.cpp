@@ -493,7 +493,7 @@ void GLShaderChain::rotate_output_feedbacks()
 			if(prev_size.x != cur_size.x || prev_size.y != cur_size.y) {
 				m_textures.output[pass]->update(cur_size.x, cur_size.y);
 			}
-			PDEBUGF(LOG_V3, LOG_OGL, "Output %u is now GL:%u\n", pass, m_textures.output[pass]->get_gl_name());
+			PDEBUGF(LOG_V3, LOG_OGL, "Output %zu is now GL:%u\n", pass, m_textures.output[pass]->get_gl_name());
 			m_chain[pass]->get_framebuffer()->bind_target();
 		}
 	}

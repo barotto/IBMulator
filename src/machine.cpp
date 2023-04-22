@@ -419,7 +419,7 @@ void Machine::set_heartbeat(int64_t _nsec)
 	m_cpu_cycles = g_cpu.frequency() * ((double)m_heartbeat / 1000.0);
 
 	if(oldbeat != m_heartbeat) {
-		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %u nsec\n", m_heartbeat);
+		PDEBUGF(LOG_V1, LOG_MACHINE, "Machine beat period: %lld nsec\n", m_heartbeat);
 	}
 	if(oldcycles != m_cpu_cycles) {
 		PDEBUGF(LOG_V1, LOG_MACHINE, "CPU cycles per beat: %.3f\n", m_cpu_cycles);
@@ -489,7 +489,7 @@ void Machine::run_loop()
 
 		PDEBUGF(LOG_V3, LOG_MACHINE,
 			"Core step, fstart=%lld, fend=%lld, lend=%lld, sleep_time=%llu, "
-			"cycles=%d, load_time=%d, frame_time=%lld (%lld), vframe_time=%.0f, vratio=%.4f\n",
+			"cycles=%d, load_time=%lld, frame_time=%lld (%lld), vframe_time=%.0f, vratio=%.4f\n",
 			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
 			sleep_time, cycles,
 			m_bench.load_time,

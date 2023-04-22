@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -392,7 +392,7 @@ void HardDiskDrive::config_changed(const char *_section)
 	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %u us/cyl\n", m_performance.seek_avgspeed_us);
 	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
 	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %u us\n", m_performance.sec_read_us);
-	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %u us\n", m_spin_up_duration);
+	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %llu us\n", m_spin_up_duration);
 
 	g_program.config().set_int(_section, DISK_TYPE, m_type);
 

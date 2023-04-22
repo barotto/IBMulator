@@ -511,7 +511,7 @@ void NetService::start_net_client_async(uint64_t _conn_timeout_ms)
 
 		#endif
 
-		PDEBUGF(LOG_V0, LOG_NET, "%s: connect time: %u\n", log_name(), t.elapsed_msec());
+		PDEBUGF(LOG_V0, LOG_NET, "%s: connect time: %llu\n", log_name(), t.elapsed_msec());
 		if(!connected) {
 			std::string cause;
 			if(timeout) {
@@ -603,7 +603,7 @@ void NetService::net_data_loop()
 				m_rx_data.wait_for_space(bytes);
 			}
 			bool result = m_rx_data.force_push(data, bytes);
-			PDEBUGF(LOG_V2, LOG_NET, "%s: sock read (%u): [ ", log_name(), bytes);
+			PDEBUGF(LOG_V2, LOG_NET, "%s: sock read (%d): [ ", log_name(), int(bytes));
 			for(ssize_t i=0; i<bytes; i++) {
 				PDEBUGF(LOG_V2, LOG_NET, "%02x ", data[i]);
 			}
@@ -611,7 +611,7 @@ void NetService::net_data_loop()
 		} else {
 			PINFOF(LOG_V0, LOG_NET, "%s: connection terminated", log_name());
 			if(bytes < 0) {
-				PINFOF(LOG_V0, LOG_NET, " (%u)", get_neterr());
+				PINFOF(LOG_V0, LOG_NET, " (%d)", get_neterr());
 			}
 			PINFOF(LOG_V0, LOG_NET, "\n");
 			break;
@@ -650,7 +650,7 @@ void NetService::net_tx_loop()
 			if(res < 0) {
 				PDEBUGF(LOG_V0, LOG_NET, "%s: send() error: %u\n", log_name(), get_neterr());
 			} else if(size_t(res) != len) {
-				PDEBUGF(LOG_V0, LOG_NET, "%s: tx bytes: %u, sent bytes: %u, errno: %u\n", log_name(), len, res, get_neterr());
+				PDEBUGF(LOG_V0, LOG_NET, "%s: tx bytes: %zu, sent bytes: %d, errno: %d\n", log_name(), len, int(res), get_neterr());
 			}
 		}
 	}

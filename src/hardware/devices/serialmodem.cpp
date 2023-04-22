@@ -1310,7 +1310,7 @@ void SerialModem::timer(uint64_t _time)
 			maxsize = std::min(maxsize, bytesready);
 			size_t usesize = m_network->rx_fifo().pop(m_tmpbuf, maxsize);
 			if(usesize) {
-				PDEBUGF(LOG_V3, LOG_COM, "MODEM: net read: %u bytes\n", usesize);
+				PDEBUGF(LOG_V3, LOG_COM, "MODEM: net read: %zu bytes\n", usesize);
 				if(m_warmup_remain_ticks == 0) {
 					// Filter telnet commands
 					if(m_telnet_mode) {

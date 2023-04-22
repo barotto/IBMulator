@@ -302,7 +302,7 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 		_dest.resize_frames(destframes + srcdata.output_frames_gen);
 		missing = out_frames - srcdata.output_frames_gen;
 	}
-	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert rate: fr-in: %d, req.fr-out: %d, gen: %d, missing: %d\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert rate: fr-in: %u, req.fr-out: %u, gen: %ld, missing: %u\n",
 			_frames_count, out_frames, srcdata.output_frames_gen, missing);
 #else
 	for(unsigned i=destpos; i<_dest.samples(); ++i) {

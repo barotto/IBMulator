@@ -598,7 +598,7 @@ void StorageCtrl_PS1::raise_interrupt()
 		PDEBUGF(LOG_V2, LOG_HDD, "raising IRQ %d\n", HDC_IRQ);
 		m_devices->pic()->raise_irq(HDC_IRQ);
 	} else {
-		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n", HDC_IRQ);
+		PDEBUGF(LOG_V2, LOG_HDD, "flagging INT_REQ in attch status reg\n");
 	}
 }
 
@@ -755,7 +755,7 @@ void StorageCtrl_PS1::activate_command_timer(uint32_t _exec_time, uint32_t _seek
 	}
 	uint64_t spin_up = m_disk.power_up_eta_us();
 	if(spin_up) {
-		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %dus\n", spin_up);
+		PDEBUGF(LOG_V2, LOG_HDD, "drive powering up, command delayed for %lluus\n", spin_up);
 		time_us += spin_up;
 	}
 	g_machine.activate_timer(m_cmd_timer, uint64_t(time_us)*1_us, false);

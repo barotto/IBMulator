@@ -693,7 +693,7 @@ void MpsPrinter::add_page()
 {
 	// a lock must be acquired by the caller
 	m_page.buffers.emplace_back(this, m_paper.width_inch, m_paper.height_inch, m_color_mode);
-	PDEBUGF(LOG_V1, LOG_PRN, "New page added: %u\n", m_page.buffers.size());
+	PDEBUGF(LOG_V1, LOG_PRN, "New page added: %u\n", static_cast<unsigned>(m_page.buffers.size()));
 }
 
 void MpsPrinter::clear_page(PageBuffer &_page)

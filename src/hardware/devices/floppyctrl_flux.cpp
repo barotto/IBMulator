@@ -686,7 +686,7 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 	uint32_t head_load_us = calculate_head_delay_us(drive);
 	uint64_t next_evt_us = step_time_us + head_load_us + m_min_cmd_time_us;
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_DONE in %uus (step=%u, head=%u, ovr=%u)\n",
+	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_DONE in %lluus (step=%u, head=%u, ovr=%llu)\n",
 			drive, next_evt_us, step_time_us, head_load_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],
@@ -723,7 +723,7 @@ void FloppyCtrl_Flux::cmd_write_data()
 	}
 
 	if(m_fdd[drive]->wpt_r()) {
-		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: disk is write protected!\n");
+		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: disk is write protected!\n", drive);
 		g_machine.deactivate_timer(m_fdd_timers[drive]);
 		m_s.flopi[drive].st0 = FDC_ST0_IC_ABNORMAL | st_hds_drv(drive);
 		m_s.st1 = FDC_ST1_NW;
@@ -802,7 +802,7 @@ void FloppyCtrl_Flux::cmd_format_track()
 	uint32_t head_load_time_us = calculate_head_delay_us(drive);
 	uint64_t next_evt_us = head_load_time_us + m_min_cmd_time_us;
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %uus (head=%u, ovr=%u)\n",
+	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %lluus (head=%u, ovr=%llu)\n",
 			drive, next_evt_us, head_load_time_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],
@@ -886,7 +886,7 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 	if(drive < MAX_DRIVES) {
 		uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
 
-		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event RECALIBRATE_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
+		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event RECALIBRATE_WAIT_DONE in %lluus (step=%uus, ovr=%lluus)\n",
 				drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
 		g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
@@ -1006,7 +1006,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	m_s.DOR = FDC_DOR_DRIVE(drive);
 
 	if(m_s.flopi[drive].main_state != IDLE) {
-		PDEBUGF(LOG_V1, LOG_FDC, "Drive %u not in IDLE state!\n");
+		PDEBUGF(LOG_V1, LOG_FDC, "Drive %u not in IDLE state!\n", drive);
 	}
 	uint8_t cylinder = m_s.command[2];
 	uint8_t dir = m_s.flopi[drive].pcn > cylinder;
@@ -1043,7 +1043,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	}
 
 	if(drive < MAX_DRIVES) {
-		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_WAIT_DONE in %uus (step=%uus, ovr=%uus)\n",
+		PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event SEEK_WAIT_DONE in %lluus (step=%uus, ovr=%lluus)\n",
 				drive, next_evt_us, step_delay_us, m_min_cmd_time_us);
 
 		g_machine.activate_timer(m_fdd_timers[drive], uint64_t(next_evt_us)*1_us, false);
@@ -1108,7 +1108,7 @@ void FloppyCtrl_Flux::cmd_read_id()
 	uint32_t head_load_time_us = calculate_head_delay_us(drive);
 	uint64_t next_evt_us = head_load_time_us + m_min_cmd_time_us;
 
-	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %uus (head=%uus, ovr=%uus)\n",
+	PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: next event HEAD_LOAD_DONE in %lluus (head=%uus, ovr=%lluus)\n",
 			drive, next_evt_us, head_load_time_us, m_min_cmd_time_us);
 
 	g_machine.activate_timer(m_fdd_timers[drive],

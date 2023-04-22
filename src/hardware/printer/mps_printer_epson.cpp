@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Rene Garcia
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,7 +40,7 @@ void MpsPrinter::cmd_set_epson_charset(uint8_t _cs)
 		// If charset changed and emulation is for Epson
 		if (_cs != m_config.epson_charset && m_interpreter == MPS_PRINTER_INTERPRETER_EPSON) {
 			m_charset = _cs;
-			PDEBUGF(LOG_V1, LOG_PRN, "Epson: current charset set to %d\n", m_charset);
+			PDEBUGF(LOG_V1, LOG_PRN, "Epson: current charset set to %u\n", m_charset);
 		}
 
 		m_config.epson_charset = _cs;
@@ -236,7 +236,7 @@ void MpsPrinter::interpret_epson(uint8_t _input)
 				default:    // maybe a printable character
 					if (is_printable(_input))
 					{
-						PDEBUGF(LOG_V2, LOG_PRN, "Epson: printable: %d, 0x%02x\n", _input, _input);
+						PDEBUGF(LOG_V2, LOG_PRN, "Epson: printable: %u, 0x%02x\n", _input, _input);
 						m_head_x += print_char(charset2chargen(_input));
 						if(m_head_x > m_margin_right) {
 							line_feed();
@@ -282,7 +282,7 @@ void MpsPrinter::interpret_epson(uint8_t _input)
 					break;
 	
 				case 0x25:  // ESC % : Select RAM (special characters) and ROM (standard characters)
-					PDEBUGF(LOG_V2, LOG_PRN, "Epson: ESC % : Select RAM (special characters) and ROM (standard characters)\n");
+					PDEBUGF(LOG_V2, LOG_PRN, "Epson: ESC %% : Select RAM (special characters) and ROM (standard characters)\n");
 					m_state = MPS_PRINTER_STATE_ESC_PARAM;
 					break;
 	

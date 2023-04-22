@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -182,7 +182,7 @@ void Capture::audio_sink(const std::vector<int16_t> &_data, int _category)
 		size_t data_len = _data.size() * 2;
 		size_t written = m_audio_buffer.write((uint8_t*)(&_data[0]), data_len);
 		if(written < data_len) {
-			PDEBUGF(LOG_V0, LOG_GUI, "Capture: audio buffer overrun: lost data: %d bytes\n", data_len-written);
+			PDEBUGF(LOG_V0, LOG_GUI, "Capture: audio buffer overrun: lost data: %zu bytes\n", size_t(data_len-written));
 		}
 	}
 }

@@ -390,7 +390,7 @@ void PS1Audio::dac_set_state(DAC::State _to_state)
 			dac_update_frequency();
 			if(old_period != m_dac.period_ns) {
 				g_machine.activate_timer(m_fifo_timer, m_dac.period_ns, true);
-				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: FIFO timer period %d ns (%.2f Hz)\n",
+				PDEBUGF(LOG_V2, LOG_AUDIO, "PS/1 DAC: FIFO timer period %llu ns (%.2f Hz)\n",
 						m_dac.period_ns, m_dac.rate);
 			}
 			break;
@@ -421,7 +421,7 @@ void PS1Audio::dac_update_frequency()
 		// "The maximum time is 256 microsecond."
 		// Set 22kHz which is a reasonable value.
 		// F-14 is the only game I know of that uses a reload of 1 to play samples.
-		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: rate out of range: %d us\n", fifo_rate_us);
+		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: rate out of range: %llu us\n", fifo_rate_us);
 		fifo_rate_us = 45;
 	}
 	uint64_t old_period = m_dac.period_ns;

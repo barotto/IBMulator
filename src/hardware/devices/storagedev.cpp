@@ -201,7 +201,7 @@ uint32_t StorageDev::seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl)
 
 	move_time = acc_time + coasting_time;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "%s: SEEK MOVE dist:%.2f,acc_space:%.2f,acc_time:%.0f,co_space:%.2f,co_time:%.0f,tot.move:%.0f\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: SEEK MOVE dist:%.2f,acc_space:%.2f,acc_time:%.0f,co_space:%.2f,co_time:%.0f,tot.move:%u\n",
 			name(), distance, acc_space, acc_time, coasting_space, coasting_time, move_time);
 
 	return move_time;

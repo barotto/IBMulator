@@ -220,7 +220,7 @@ void RmlRenderer_OpenGL::RenderCompiledGeometry(Rml::CompiledGeometryHandle hand
 		m_program_texture->use();
 		for(auto &sampler : m_program_texture->get_samplers()) {
 			if(sampler.category == GLShaderProgram::Sampler2D::Category::Source) {
-				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %llu\n", geometry->gl_texture);
+				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %u\n", geometry->gl_texture);
 				m_program_texture->set_uniform_sampler2D(sampler.tex_uniforms, sampler.gl_sampler, geometry->gl_texture);
 				break;
 			}
@@ -305,7 +305,7 @@ uintptr_t RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
 	);
 	SDL_UnlockSurface(_surface);
 
-	PDEBUGF(LOG_V5, LOG_GUI, "Generated tex %llu\n", gltex);
+	PDEBUGF(LOG_V5, LOG_GUI, "Generated tex %llu\n", uint64_t(gltex));
 
 	return gltex;
 }

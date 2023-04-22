@@ -1867,7 +1867,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 	}
 
 	if(db_usec != m_s.uart[port].databyte_usec) {
-		PDEBUGF(LOG_V3, LOG_COM, "%s: next rx timer: %u us\n", m_host[port].name(), db_usec);
+		PDEBUGF(LOG_V3, LOG_COM, "%s: next rx timer: %llu us\n", m_host[port].name(), db_usec);
 	}
 	// not continuous
 	g_machine.activate_timer(m_host[port].rx_timer, uint64_t(db_usec)*1_us, false);
