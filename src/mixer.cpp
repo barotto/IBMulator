@@ -628,7 +628,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			m_out_mix[i] += m_ch_mix[cat][i] * volume;
 		}
 	}
-	PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %d frames for global mix\n", frames);
+	PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for global mix\n", frames);
 	
 	// send global mix to sinks
 	tmpbuf.resize(samples);

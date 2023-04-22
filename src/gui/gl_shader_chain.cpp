@@ -67,7 +67,7 @@ GLShaderChain::GLShaderChain(std::string _preset)
 		pass_names.push_back(pass->get_name());
 	}
 
-	PINFOF(LOG_V1, LOG_OGL, "Correctly initialized %u shader pass(es)\n", m_chain.size());
+	PINFOF(LOG_V1, LOG_OGL, "Correctly initialized %zu shader pass(es)\n", size_t(m_chain.size()));
 
 	// load user textures
 	std::vector<std::string> texture_names;

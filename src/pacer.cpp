@@ -130,7 +130,7 @@ void Pacer::calibrate(PacerWaitMethod _method)
 		// it'll be no more than 0.5ms
 		m_sleep_thres = m_sleep_cost * 5;
 		std::tie(avg,std) = sample_sleep(m_sleep_thres - m_sleep_cost, 50);
-		PDEBUGF(LOG_V0, LOG_PROGRAM, "Tried to sleep for %d ns: avg %.3f sdev %.3f ns\n", m_sleep_thres, avg, std);
+		PDEBUGF(LOG_V0, LOG_PROGRAM, "Tried to sleep for %lld ns: avg %.3f sdev %.3f ns\n", m_sleep_thres, avg, std);
 		if(is_within(avg, m_sleep_thres, std, 0.1)) {
 			PINFOF(LOG_V0, LOG_PROGRAM, "This system has high precision timing. Impressive, very nice.\n");
 			goto report;

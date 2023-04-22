@@ -641,7 +641,7 @@ void NetService::net_tx_loop()
 		}
 		size_t len = m_tx_data.read(&tx_buf[0], DEFAULT_TX_FIFO_SIZE, wait_ns);
 		if(len) {
-			PDEBUGF(LOG_V2, LOG_NET, "%s: sock write (%u): [ ", log_name(), len);
+			PDEBUGF(LOG_V2, LOG_NET, "%s: sock write (%zu): [ ", log_name(), len);
 			for(size_t i=0; i<len; i++) {
 				PDEBUGF(LOG_V2, LOG_NET, "%02x ", tx_buf[i]);
 			}
