@@ -98,7 +98,7 @@ std::string str_format(const char *_format, Args ... _args)
 
 	int size = std::snprintf(nullptr, 0, _format, _args ...);
 	if(size < 0) {
-		throw std::runtime_error("Error during string formatting.");
+		return _format;
 	}
 	std::string buf;
 	if(size) {
