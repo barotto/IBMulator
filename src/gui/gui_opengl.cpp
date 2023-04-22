@@ -93,8 +93,9 @@ void GUI_OpenGL::create_window(int _flags)
 		throw std::exception();
 	}
 	PINFOF(LOG_V1, LOG_GUI, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
-	glGetError();
-	
+	// reset all GL error flags
+	while(glGetError() != GL_NO_ERROR);
+
 	check_device_GL_caps();
 	
 	// TODO SDL supports adaptive sync passing -1 to this function.
