@@ -101,8 +101,6 @@ void SerialModem::init(NetService *_network, double _tx_delay_ms)
 	m_bytes_per_tick = MODEM_TICKTIME_MS / byte_time_ms;
 	m_bytes_ready = .0;
 
-	g_machine.activate_timer(m_timer, MS_TO_NS(MODEM_TICKTIME_MS), true);
-
 	std::string dump = g_program.config().get_string(MODEM_SECTION, MODEM_DUMP);
 	if(!dump.empty()) {
 		dump = (g_program.config().get_cfg_home() + FS_SEP + dump);
@@ -512,6 +510,7 @@ void SerialModem::reset(unsigned _type)
 
 	if(_type != DEVICE_SOFT_RESET) {
 		m_rqueue.clear();
+		g_machine.activate_timer(m_timer, MS_TO_NS(MODEM_TICKTIME_MS), true);
 	}
 
 	enter_idle_state();

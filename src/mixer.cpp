@@ -299,6 +299,7 @@ void Mixer::main_loop()
 		
 		uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
 		double vtime_ratio = m_machine->vtime_ratio();
+		assert(m_prev_vtime <= cur_vtime);
 		uint64_t audio_time_ns = cur_vtime - m_prev_vtime;
 		if(m_prev_vtime == 0) {
 			audio_time_ns = time_span_ns * vtime_ratio;
