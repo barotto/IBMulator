@@ -169,7 +169,7 @@ void PS1Audio::restore_state(StateBuf &_state)
 	dac_set_state(DAC::State::STOPPED);
 	m_dac.reset();
 
-	if(m_s.fifo.reload_reg != 0) {
+	if(m_s.fifo.read_avail && m_s.fifo.reload_reg) {
 		dac_set_state(DAC::State::ACTIVE);
 	}
 }
