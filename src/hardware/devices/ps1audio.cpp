@@ -419,10 +419,10 @@ void PS1Audio::dac_update_frequency()
 	if(fifo_rate_us < 45) {
 		// Limits are documented as "The FIFO Timer is clocked at 1 MHz", and 
 		// "The maximum time is 256 microsecond."
-		// Set 22kHz which is a reasonable value.
+		// Set 8 kHz which should be the default.
 		// F-14 is the only game I know of that uses a reload of 1 to play samples.
 		PDEBUGF(LOG_V1, LOG_AUDIO, "PS/1 DAC: rate out of range: %llu us\n", fifo_rate_us);
-		fifo_rate_us = 45;
+		fifo_rate_us = 125;
 	}
 	uint64_t old_period = m_dac.period_ns;
 	double old_rate = m_dac.rate;
