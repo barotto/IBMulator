@@ -343,7 +343,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 
 bool MixerChannel::check_disable_time(uint64_t _now_ns)
 {
-	if(m_disable_time && (_now_ns - m_disable_time >= m_disable_timeout)) {
+	if(m_disable_time && (m_disable_time < _now_ns) && (_now_ns - m_disable_time >= m_disable_timeout)) {
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %llu ns of silence\n",
 				m_name.c_str(), (_now_ns - m_disable_time));
 		enable(false);

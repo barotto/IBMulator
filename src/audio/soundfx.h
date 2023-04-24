@@ -67,11 +67,13 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: mix span: %04llu ns (1st upd:%d), cue time:%lld us, events:%d\n",
 			_channel.name(), _time_span_ns, _first_upd, m_audio_cue_time, _events.size());
 
-	bool empty = true;
 	do {
 		Event event;
-		empty = !_events.try_and_copy(event);
-		if(empty || event.time > mtime_us) {
+		bool empty = !_events.try_and_copy(event);
+		if(empty) {
+			break;
+		} else if(event.time > mtime_us) {
+			_channel.set_disable_time(US_TO_NS(event.time));
 			break;
 		} else {
 			_events.try_and_pop();
@@ -82,6 +84,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 			assert(event.time >= m_audio_cue_time);
 			uint64_t time_span = event.time - m_audio_cue_time;
 			_play(event, time_span);
+			_channel.set_disable_time(US_TO_NS(mtime_us));
 		}
 	} while(1);
 
@@ -98,11 +101,8 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 	}
 	m_audio_cue_time = mtime_us;
 	_channel.input_finish(_time_span_ns);
-	if(empty) {
-		return _channel.check_disable_time(mtime_us*1000);
-	}
-	_channel.set_disable_time(mtime_us*1000);
-	return true;
+
+	return _channel.check_disable_time(US_TO_NS(mtime_us));
 }
 
 #endif

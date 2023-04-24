@@ -68,9 +68,9 @@ void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 	using namespace std::placeholders;
 	DriveFX::install(
 		std::bind(&FloppyFX::create_spin_samples, this, _1, _2, _3),
-		str_format("Drive %s spin (%u)", _drive.c_str(), _fdd_type).c_str(),
+		str_format("Drive %s spin (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
 		std::bind(&FloppyFX::create_seek_samples, this, _1, _2, _3),
-		str_format("Drive %s seek (%u)", _drive.c_str(), _fdd_type).c_str(),
+		str_format("Drive %s seek (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
 		spec
 	);
 
