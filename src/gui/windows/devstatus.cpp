@@ -216,12 +216,16 @@ void DevStatus::update_pit()
 
 void DevStatus::update_pit(unsigned cnt)
 {
-	const PIT_82C54 & timer = m_machine->devices().pit()->get_timer();
+	const PIT *pit = m_machine->devices().pit();
+	if(!pit) {
+		assert(false);
+		return;
+	}
 
-	m_pit.mode[cnt]->SetInnerRML(format_uint16(timer.read_mode(cnt)));
-	m_pit.cnt[cnt]->SetInnerRML(format_hex32(timer.read_CNT(cnt)));
-	bool gate = timer.read_GATE(cnt);
-	bool out = timer.read_OUT(cnt);
+	m_pit.mode[cnt]->SetInnerRML(format_uint16(pit->read_mode(cnt)));
+	m_pit.cnt[cnt]->SetInnerRML(format_hex32(pit->read_CNT(cnt)));
+	bool gate = pit->read_GATE(cnt);
+	bool out = pit->read_OUT(cnt);
 	m_pit.gate[cnt]->SetInnerRML(format_bit(gate));
 	m_pit.out[cnt]->SetInnerRML(format_bit(out));
 	if(gate && out) {
@@ -229,7 +233,7 @@ void DevStatus::update_pit(unsigned cnt)
 	} else {
 		m_pit.out[cnt]->SetClass("led_active", false);
 	}
-	m_pit.in[cnt]->SetInnerRML(format_hex16(timer.read_inlatch(cnt)));
+	m_pit.in[cnt]->SetInnerRML(format_hex16(pit->read_inlatch(cnt)));
 }
 
 void DevStatus::update_vga()

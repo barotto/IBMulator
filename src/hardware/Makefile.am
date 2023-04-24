@@ -41,7 +41,6 @@ libhardware_a_SOURCES = \
 	devices/cmos.cpp \
 	devices/dma.cpp \
 	devices/pit.cpp \
-	devices/pit82c54.cpp \
 	devices/vga.cpp \
 	devices/vga_genregs.cpp \
 	devices/vga_crtc.cpp \
@@ -120,7 +119,6 @@ noinst_HEADERS = \
 	devices/cmos.h \
 	devices/dma.h \
 	devices/pit.h \
-	devices/pit82c54.h \
 	devices/vga_attrctrl.h \
 	devices/vga_crtc.h \
 	devices/vga_dac.h \
