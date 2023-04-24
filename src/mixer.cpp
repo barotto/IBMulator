@@ -50,7 +50,6 @@ m_audio_status(SDL_AUDIO_STOPPED),
 m_paused(false),
 m_device(0),
 m_frame_size(512),
-m_audio_capture(false),
 m_global_volume(1.f),
 m_capture_sink(-1)
 {
@@ -95,7 +94,7 @@ void Mixer::init(Machine *_machine)
 	using namespace std::placeholders;
 	m_silence_channel = register_channel(
 		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
-		"Silence", MixerChannel::Category::AUDIO
+		"Silence", MixerChannel::AUDIOCARD
 	);
 	
 	if(SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -143,7 +142,7 @@ void Mixer::start_capture()
 		ch.second->on_capture(true);
 	}
 	m_midi->cmd_start_capture();
-	m_audio_capture = true;
+	m_audiocards_capture = true;
 }
 
 void Mixer::stop_capture()
@@ -156,7 +155,7 @@ void Mixer::stop_capture()
 		}
 		unregister_sink(m_capture_sink);
 	}
-	m_audio_capture = false;
+	m_audiocards_capture = false;
 	for(auto &ch : m_mix_channels) {
 		ch.second->on_capture(false);
 	}
@@ -172,13 +171,10 @@ void Mixer::config_changed() noexcept
 		SDL_PauseAudioDevice(m_device, 0);
 		close_audio_device();
 	}
-	bool capture = m_audio_capture;
-	if(m_audio_capture) {
+	if(m_audiocards_capture) {
 		stop_capture();
 	}
 
-	m_prev_vtime = 0;
-	
 	int frequency = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_RATE, 11025, 49716);
 	int samples = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_SAMPLES, 256, 4096);
 
@@ -230,8 +226,8 @@ void Mixer::config_changed() noexcept
 	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(m_audio_spec.freq)});
 	m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
 	
-	// let the GUI interfaces set the AUDIO category volume
-	m_channels_volume[static_cast<int>(MixerChannel::Category::SOUNDFX)] =
+	// let the GUI interfaces set the AUDIOCARD category volume
+	m_channels_volume[static_cast<int>(MixerChannel::SOUNDFX)] =
 			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
 
 	std::mutex m;
@@ -239,10 +235,6 @@ void Mixer::config_changed() noexcept
 	std::unique_lock<std::mutex> lock(m);
 	m_midi->sig_config_changed(m, cv);
 	cv.wait(lock);
-
-	if(capture) {
-		start_capture();
-	}
 }
 
 void Mixer::start()
@@ -257,7 +249,7 @@ void Mixer::start()
 void Mixer::shutdown()
 {
 	// to be called only by the Mixer thread or before the Mixer thread is started
-	assert(!m_audio_capture);
+	assert(!m_audiocards_capture);
 	close_audio_device();
 	SDL_AudioQuit();
 	stop_midi();
@@ -268,11 +260,11 @@ void Mixer::main_loop()
 	std::vector<MixerChannel*> active_channels;
 
 	m_bench.start();
-	
+
 	uint64_t time_span_ns = 0;
-	
+
 	while(true) {
-		
+
 		m_bench.frame_start(0);
 
 		Mixer_fun_t fn;
@@ -291,34 +283,41 @@ void Mixer::main_loop()
 		if(m_quit) {
 			return;
 		}
-		
+
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
-		
+
 		active_channels.clear();
 		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
-		
-		uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
-		double vtime_ratio = m_machine->vtime_ratio();
-		assert(m_prev_vtime <= cur_vtime);
-		uint64_t audio_time_ns = cur_vtime - m_prev_vtime;
-		if(m_prev_vtime == 0) {
-			audio_time_ns = time_span_ns * vtime_ratio;
+		double vtime_ratio = 1.0;
+		uint64_t audio_time_ns = 0;
+
+		if(m_audiocards_enabled) {
+			assert(m_machine->is_on());
+			uint64_t cur_vtime = m_machine->get_virt_time_ns_mt();
+			vtime_ratio = m_machine->vtime_ratio();
+			if(m_prev_vtime == 0) {
+				audio_time_ns = time_span_ns * vtime_ratio;
+			} else {
+				assert(m_prev_vtime <= cur_vtime);
+				audio_time_ns = cur_vtime - m_prev_vtime;
+			}
+			if((m_machine->cycles_factor() == 1.0 && !m_machine->get_bench().is_stressed()))
+			{
+				vtime_ratio = 1.0;
+			}
+			m_prev_vtime = cur_vtime;
 		}
-		if(!m_machine->is_on() ||
-		  (m_machine->cycles_factor() == 1.0 && !m_machine->get_bench().is_stressed()))
-		{
-			vtime_ratio = 1.0;
-		}
-		m_prev_vtime = cur_vtime;
 
 		if(time_span_ns) {
 			for(auto &ch : m_mix_channels) {
-				bool active,enabled;
 				uint64_t time_ns = time_span_ns;
-				if(ch.second->category() == MixerChannel::Category::AUDIO) {
+				if(ch.second->category() == MixerChannel::AUDIOCARD) {
+					if(!m_audiocards_enabled) {
+						continue;
+					}
 					time_ns = audio_time_ns;
 				}
-				std::tie(active,enabled) = ch.second->update(time_ns, prebuffering);
+				auto [active, enabled] = ch.second->update(time_ns, prebuffering);
 				if(active) {
 					active_channels.push_back(ch.second.get());
 				}
@@ -328,9 +327,9 @@ void Mixer::main_loop()
 		if(!active_channels.empty()) {
 
 			mix_channels(time_span_ns, active_channels, vtime_ratio);
-			
+
 			limit_audio_data(active_channels, vtime_ratio);
-			
+
 			if(m_audio_status == SDL_AUDIO_PAUSED) {
 				int elapsed = m_pacer.chrono().get_usec() - m_start_time;
 				if(m_start_time == 0) {
@@ -388,13 +387,13 @@ void Mixer::main_loop()
 		}
 
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
-		
+
 		m_bench.load_end();
-		
+
 		int64_t sleep_time = m_pacer.wait(m_bench.load_time, m_bench.frame_time);
-		
+
 		m_bench.frame_end(0);
-		
+
 		PDEBUGF(LOG_V2, LOG_MIXER,
 			"Mixer step, fstart=%lld, fend=%lld, lend=%lld, time_span_ns=%llu, sleep_time=%llu, "
 			"load_time=%lld, frame_time=%lld (%lld)\n",
@@ -464,7 +463,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 {
 	assert(!_channels.empty());
 	
-	// do we want to mix AUDIO cards channels with the global mix?
+	// do we want to mix AUDIOCARD cards channels with the global mix?
 	// slower than this is useless, obnoxious, and constantly triggers prebuffering anyway
 	// (constant prebuffering could be fixed with a more precise resampling, but it's not worth it)
 	const bool do_mix_audio_ch = (_vtime_ratio >= 0.01);
@@ -473,8 +472,8 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	for(auto ch : _channels) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "  %s (%s): %d frames / %d samples / %.3f us avail\n",
 				ch->name(),
-				ch->category()==MixerChannel::Category::AUDIO?"audio":
-					ch->category()==MixerChannel::Category::GUI?"GUI":
+				ch->category()==MixerChannel::AUDIOCARD ? "audio":
+					ch->category()==MixerChannel::GUI ? "GUI":
 						"soundfx",
 				ch->out().frames(), ch->out().samples(), ch->out().duration_us());
 	}
@@ -503,7 +502,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		for(auto ch : _channels) {
 			size_t chframes = ch->out().frames();
 			cat_count[ch->category()]++;
-			if(ch->category() == MixerChannel::Category::AUDIO) {
+			if(ch->category() == MixerChannel::AUDIOCARD) {
 				chframes = std::min(resampled_reqframes, chframes);
 				audio_frames = std::min(audio_frames, chframes);
 			} else {
@@ -530,7 +529,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			size_t chframes = ch->out().frames();
 			cat_count[ch->category()]++;
 			chframes = std::min(size_t(reqframes), chframes);
-			if(ch->category() == MixerChannel::Category::AUDIO) {
+			if(ch->category() == MixerChannel::AUDIOCARD) {
 				audio_frames = std::min(audio_frames, chframes);
 			} else {
 				frames = std::min(frames, chframes);
@@ -552,7 +551,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			audio_frames, audio_samples, 
 			_vtime_ratio, do_mix_audio_ch?"yes":"no");
 
-	if(cat_count[MixerChannel::Category::AUDIO] && !audio_frames && do_mix_audio_ch) {
+	if(cat_count[MixerChannel::AUDIOCARD] && !audio_frames && do_mix_audio_ch) {
 		// not enough material to create a mix
 		return;
 	}
@@ -567,7 +566,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		}
 		size_t fr = frames;
 		size_t sa = samples;
-		if(cat == MixerChannel::Category::AUDIO) {
+		if(cat == MixerChannel::AUDIOCARD) {
 			fr = audio_frames;
 			sa = audio_samples;
 		}
@@ -593,25 +592,25 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 			// TODO consider continuing for the global mix sinks
 			return;
 		}
-		// exclude AUDIO cards
-		cat_count[MixerChannel::Category::AUDIO] = 0;
+		// exclude AUDIOCARDs
+		cat_count[MixerChannel::AUDIOCARD] = 0;
 	}
 	
 	// stretch emulated audio cards channels to result size if necessary
-	if(cat_count[MixerChannel::Category::AUDIO] && _vtime_ratio != 1.0) {
+	if(cat_count[MixerChannel::AUDIOCARD] && _vtime_ratio != 1.0) {
 		static std::vector<float> atmpbuf;
 		atmpbuf.resize(samples);
 		size_t generated = 0;
 		if(m_audio_spec.channels == 1) {
 			generated = Audio::Convert::resample_mono<float>(
-				&m_ch_mix[MixerChannel::Category::AUDIO][0], audio_frames,
+				&m_ch_mix[MixerChannel::AUDIOCARD][0], audio_frames,
 				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		} else {
 			generated = Audio::Convert::resample_stereo<float>(
-				&m_ch_mix[MixerChannel::Category::AUDIO][0], audio_frames,
+				&m_ch_mix[MixerChannel::AUDIOCARD][0], audio_frames,
 				&atmpbuf[0], samples, 1.0/_vtime_ratio);
 		}
-		memcpy(&m_ch_mix[MixerChannel::Category::AUDIO][0], &atmpbuf[0], generated*sizeof(float));
+		memcpy(&m_ch_mix[MixerChannel::AUDIOCARD][0], &atmpbuf[0], generated*sizeof(float));
 		PDEBUGF(LOG_V2, LOG_MIXER, "  resampled AUDIO: %zu frames\n", size_t(generated / m_audio_spec.channels));
 	}
 
@@ -652,20 +651,20 @@ void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double
 {
 	// Sometimes samples accumulate in channels' output buffers causing delays.
 	// this happens because:
-	// 1. AUDIO and SOUNDFX channels are on different time domains
-	// 2. Machine (AUDIO) and Mixer are different and unsynchronized threads
+	// 1. AUDIOCARD and SOUNDFX channels are on different time domains
+	// 2. Machine (AUDIOCARDs) and Mixer are different and unsynchronized threads
 	// 3. Mixer works with arbitrary amount of data with no timestamps
 	// 4. When load is high, the Machine can't run in real time and can't produce enough audio data 
 
 	// This function reads how much data there is on output buffers and equalizes the amount of samples
-	// This only works on non-AUDIO class channels, as AUDIO channels can't be trimmed.
+	// This only works on non-AUDIOCARD class channels, as AUDIOCARD channels can't be trimmed.
 	
-	// step 1: determine how much data there is in channels of the AUDIO category.
+	// step 1: determine how much data there is in channels of the AUDIOCARD category.
 	// never trim those channels, assume their content is correct so that audio sinks
 	// can receive full rendering = no desyncs.
 	size_t maxfr = 0, minfr = std::numeric_limits<size_t>::max();
 	for(auto ch : _channels) {
-		if(ch->category() == MixerChannel::Category::AUDIO) {
+		if(ch->category() == MixerChannel::AUDIOCARD) {
 			size_t chframes = size_t(ceil(double(ch->out().frames()) / _audio_factor));
 			maxfr = std::max(maxfr, chframes);
 			minfr = std::min(minfr, chframes);
@@ -676,9 +675,9 @@ void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double
 		return;
 	}
 	
-	// step 2: limit the amount of data on channels not of category AUDIO
+	// step 2: limit the amount of data on channels not of category AUDIOCARD
 	for(auto ch : _channels) {
-		if(ch->is_enabled() && (ch->category() != MixerChannel::Category::AUDIO)) {
+		if(ch->is_enabled() && (ch->category() != MixerChannel::AUDIOCARD)) {
 			size_t chframes = ch->out().frames();
 			if(chframes <= maxfr) {
 				continue;
@@ -745,7 +744,7 @@ void Mixer::send_to_sinks(const std::vector<int16_t> &_data, int _category)
 
 void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
 {
-	if(_category == MixerChannel::Category::AUDIO) {
+	if(_category == MixerChannel::AUDIOCARD) {
 		try {
 			m_wav.write_audio_data(&_data[0], _data.size()*2);
 		} catch(std::exception &e) {
@@ -1013,6 +1012,35 @@ void Mixer::cmd_resume()
 	});
 }
 
+void Mixer::cmd_stop_audiocards_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
+{
+	m_cmd_queue.push([&] () {
+		std::unique_lock<std::mutex> lock(_mutex);
+		if(m_audiocards_capture) {
+			stop_capture();
+		}
+		m_midi->cmd_stop_device();
+		for(auto &ch : m_mix_channels) {
+			if(ch.second->category() == MixerChannel::AUDIOCARD) {
+				ch.second->flush();
+			}
+		}
+		m_audiocards_enabled = false;
+		m_prev_vtime = 0;
+		_cv.notify_one();
+	});
+}
+
+void Mixer::cmd_start_audiocards()
+{
+	m_cmd_queue.push([&] () {
+		if(!m_audiocards_enabled) {
+			m_prev_vtime = 0;
+			m_audiocards_enabled = true;
+		}
+	});
+}
+
 void Mixer::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
 	m_cmd_queue.push([&] () {
@@ -1022,8 +1050,11 @@ void Mixer::cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_
 
 void Mixer::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv)
 {
+	assert(m_paused);
 	m_cmd_queue.push([&] () {
 		m_midi->cmd_restore_state(_state, _mutex, _cv);
+		m_prev_vtime = 0;
+		m_audiocards_enabled = true;
 	});
 }
 
@@ -1046,7 +1077,7 @@ void Mixer::cmd_start_capture()
 void Mixer::cmd_stop_capture()
 {
 	m_cmd_queue.push([this] () {
-		if(m_audio_capture) {
+		if(m_audiocards_capture) {
 			stop_capture();
 		}
 	});
@@ -1055,7 +1086,7 @@ void Mixer::cmd_stop_capture()
 void Mixer::cmd_toggle_capture()
 {
 	m_cmd_queue.push([this] () {
-		if(m_audio_capture) {
+		if(m_audiocards_capture) {
 			stop_capture();
 		} else {
 			start_capture();

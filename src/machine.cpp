@@ -223,6 +223,13 @@ void Machine::shutdown()
 
 void Machine::reset(uint _signal)
 {
+	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+		std::mutex mtx;
+		std::unique_lock<std::mutex> lock(mtx);
+		std::condition_variable cv;
+		g_mixer.cmd_stop_audiocards_and_signal(mtx, cv);
+		cv.wait(lock);
+	}
 	m_on = true;
 	g_cpu.reset(_signal);
 	switch(_signal) {
@@ -231,7 +238,6 @@ void Machine::reset(uint _signal)
 			break;
 		case MACHINE_HARD_RESET:
 			PINFOF(LOG_V1, LOG_MACHINE, "Machine hardware reset\n");
-			g_mixer.midi()->cmd_stop_device();
 			break;
 		case MACHINE_POWER_ON:
 			m_bench.start();
@@ -246,8 +252,13 @@ void Machine::reset(uint _signal)
 		m_s.cycles_left = 0;
 		set_DOS_program_name("");
 	}
+
 	g_memory.reset(_signal);
 	g_devices.reset(_signal);
+
+	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
+		g_mixer.cmd_start_audiocards();
+	}
 }
 
 void Machine::power_off()
@@ -257,10 +268,16 @@ void Machine::power_off()
 		return;
 	}
 	PINFOF(LOG_V0, LOG_MACHINE, "Machine power off\n");
+	{
+		std::mutex mtx;
+		std::unique_lock<std::mutex> lock(mtx);
+		std::condition_variable cv;
+		g_mixer.cmd_stop_audiocards_and_signal(mtx, cv);
+		cv.wait(lock);
+	}
 	m_on = false;
 	g_cpu.power_off();
 	g_devices.power_off();
-	g_mixer.midi()->cmd_stop_device();
 
 	set_DOS_program_name("");
 }

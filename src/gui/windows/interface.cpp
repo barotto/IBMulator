@@ -919,7 +919,7 @@ void Interface::switch_power()
 
 void Interface::set_audio_volume(float _volume)
 {
-	m_mixer->cmd_set_category_volume(MixerChannel::Category::AUDIO, _volume);
+	m_mixer->cmd_set_category_volume(MixerChannel::AUDIOCARD, _volume);
 }
 
 void Interface::set_video_brightness(float _level)

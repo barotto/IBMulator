@@ -178,7 +178,7 @@ void Capture::video_sink(const FrameBuffer &_buffer, const VideoModeInfo &_mode,
 void Capture::audio_sink(const std::vector<int16_t> &_data, int _category)
 {
 	// called bu the Mixer thread
-	if(_category == MixerChannel::Category::AUDIO) {
+	if(_category == MixerChannel::AUDIOCARD) {
 		size_t data_len = _data.size() * 2;
 		size_t written = m_audio_buffer.write((uint8_t*)(&_data[0]), data_len);
 		if(written < data_len) {

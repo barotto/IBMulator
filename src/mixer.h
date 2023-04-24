@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,8 +56,10 @@ private:
 	size_t m_mix_bufsize_by;
 	WAVFile m_wav;
 	int m_start_time;
-	uint64_t m_prev_vtime;
-	
+	uint64_t m_prev_vtime = 0;
+	bool m_audiocards_enabled = false;
+	bool m_audiocards_capture = false;
+
 	uint64_t m_prebuffer_us;
 	size_t   m_prebuffer_fr;
 
@@ -77,7 +79,6 @@ private:
 
 	std::map<std::string, std::shared_ptr<MixerChannel>> m_mix_channels;
 
-	bool m_audio_capture;
 	float m_global_volume;
 	std::array<float,3> m_channels_volume;
 
@@ -119,7 +120,7 @@ public:
 	static std::vector<std::shared_ptr<Dsp::Filter>> create_filters(double _rate, std::string _filters_def);
 	
 	bool is_paused() const { return m_paused; }
-	bool is_recording() const { return m_audio_capture; }
+	bool is_recording() const { return m_audiocards_capture; }
 
 	MIDI * midi() { return m_midi.get(); }
 	
@@ -128,6 +129,8 @@ public:
 	void cmd_pause();
 	void cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_resume();
+	void cmd_stop_audiocards_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
+	void cmd_start_audiocards();
 	void cmd_save_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_start_capture();

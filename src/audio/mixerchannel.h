@@ -40,13 +40,13 @@ class MixerChannel
 public:
 	enum Category
 	{
-		AUDIO   = 0,
-		SOUNDFX = 1,
-		GUI     = 2,
-		
+		AUDIOCARD = 0,
+		SOUNDFX   = 1,
+		GUI       = 2,
+
 		MAX
 	};
-	
+
 private:
 	Mixer *m_mixer;
 	//enabling/disabling can be performed by the machine thread
