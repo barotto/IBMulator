@@ -246,7 +246,7 @@ private:
 		uint8_t portmap[4];
 		struct {
 			// mouse state (on the attached mouse device itself)
-			int detect = 0; // detection protocol state
+			int detect; // detection protocol state
 			struct {
 				uint8_t data[MOUSE_BUFF_SIZE];
 				int head;

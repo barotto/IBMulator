@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,7 +41,7 @@ protected:
 
 	struct {
 		uint64_t power_on_time;
-		bool dirty = false;
+		bool dirty;
 	} m_s;
 	bool m_dirty_restore = false;
 

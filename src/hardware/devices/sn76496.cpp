@@ -50,6 +50,11 @@ Hope that helps the System E stuff, more news on the PSG as and when!
 #define SN76496_NG_PRESET 0x0f35
 
 
+SN76496::SN76496()
+{
+	memset(&m_s, 0, sizeof(m_s));
+}
+
 void SN76496::write(uint16_t _value)
 {
 	/* update the output buffer before changing the registers */

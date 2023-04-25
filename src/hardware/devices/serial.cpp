@@ -68,6 +68,7 @@ IODEVICE_PORTS(Serial) = {
 Serial::Serial(Devices *_dev)
 : IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 Serial::~Serial()

@@ -214,6 +214,8 @@ m_tmp_disk(false),
 m_ctrl(nullptr),
 m_fx_enabled(false)
 {
+	memset(&m_s, 0, sizeof(m_s));
+
 	m_sector_data = 512;
 	m_sector_size = HDD_SECTOR_SIZE;
 	m_track_overhead = HDD_TRACK_OVERHEAD;

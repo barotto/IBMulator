@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,6 +45,8 @@ private:
 	} m_s;
 
 public:
+	SN76496();
+
 	void write(uint16_t _value);
 	void reset();
 	void install(int _clock);

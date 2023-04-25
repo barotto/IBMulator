@@ -38,7 +38,7 @@ private:
 		bool     rtc_mode_12hour;
 		bool     rtc_mode_binary;
 		uint8_t  reg[CMOS_SIZE];
-	} m_s = {};  // state information
+	} m_s;  // state information
 
 	TimerID m_periodic_timer = NULL_TIMER_ID;
 	TimerID m_one_second_timer = NULL_TIMER_ID;

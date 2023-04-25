@@ -235,6 +235,7 @@ enum ASC
 StorageCtrl_ATA::StorageCtrl_ATA(Devices *_dev)
 : StorageCtrl(_dev), m_busy(false)
 {
+	memset(m_channels, 0, sizeof(Channel) * ATA_MAX_CHANNEL);
 }
 
 StorageCtrl_ATA::~StorageCtrl_ATA()

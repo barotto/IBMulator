@@ -73,6 +73,7 @@ uint8_t bin_to_bcd(uint8_t value, bool is_binary)
 CMOS::CMOS(Devices *_dev)
 : IODevice(_dev)
 {
+	memset(&m_s, 0, sizeof(m_s));
 }
 
 CMOS::~CMOS()
