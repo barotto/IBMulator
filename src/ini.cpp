@@ -151,7 +151,10 @@ int INIFile::get_int(const std::string &_section, const std::string &_name)
 int INIFile::get_int(const std::string &_section, const std::string &_name, int _default)
 {
 	try {
-		return try_int(_section, _name);
+		if(is_key_present(_section, _name)) {
+			return try_int(_section, _name);
+		}
+		return _default;
 	} catch(std::exception &e) {
 		return _default;
 	}
@@ -184,7 +187,10 @@ double INIFile::get_real(const std::string &_section, const std::string &_name)
 double INIFile::get_real(const std::string &_section, const std::string &_name, double _default)
 {
 	try {
-		return try_real(_section, _name);
+		if(is_key_present(_section, _name)) {
+			return try_real(_section, _name);
+		}
+		return _default;
 	} catch(std::exception &e) {
 		return _default;
 	}
@@ -216,7 +222,10 @@ bool INIFile::get_bool(const std::string &_section, const std::string &_name)
 bool INIFile::get_bool(const std::string &_section, const std::string &_name, bool _default)
 {
 	try {
-		return try_bool(_section, _name);
+		if(is_key_present(_section, _name)) {
+			return try_bool(_section, _name);
+		}
+		return _default;
 	} catch(std::exception &e) {
 		return _default;
 	}
@@ -242,7 +251,10 @@ std::string INIFile::get_string(const std::string &_section, const std::string &
 std::string INIFile::get_string(const std::string &_section, const std::string &_name, const std::string &_default)
 {
 	try {
-		return get_value(_section, _name);
+		if(is_key_present(_section, _name)) {
+			return get_value(_section, _name);
+		}
+		return _default;
 	} catch(std::exception &e) {
 		return _default;
 	}
@@ -254,7 +266,11 @@ std::string INIFile::get_string(const std::string &_section, const std::string &
 {
 	std::string value;
 	try {
-		value = get_value(_section, _name);
+		if(is_key_present(_section, _name)) {
+			value = get_value(_section, _name);
+		} else {
+			return _default;
+		}
 	} catch(std::exception &e) {
 		return _default;
 	}
@@ -293,7 +309,11 @@ unsigned INIFile::get_enum(const std::string &_section, const std::string &_name
 {
 	std::string enumstr;
 	try {
-		enumstr = get_value(_section, _name);
+		if(is_key_present(_section, _name)) {
+			enumstr = get_value(_section, _name);
+		} else {
+			return _default;
+		}
 	} catch(std::exception &e) {
 		return _default;
 	}

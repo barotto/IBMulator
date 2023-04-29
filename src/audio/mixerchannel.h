@@ -48,25 +48,26 @@ public:
 	};
 
 private:
-	Mixer *m_mixer;
+	Mixer *m_mixer = nullptr;
 	//enabling/disabling can be performed by the machine thread
-	std::atomic<bool> m_enabled;
+	std::atomic<bool> m_enabled = false;
 	std::string m_name;
-	int m_id;
+	int m_id = 0;
 	MixerChannel_handler m_update_clbk;
-	std::atomic<uint64_t> m_disable_time;
-	uint64_t m_disable_timeout;
-	bool m_first_update;
-	uint64_t m_last_time_span_ns;
+	std::atomic<uint64_t> m_disable_time = 0;
+	uint64_t m_disable_timeout = 0;
+	bool m_first_update = true;
+	uint64_t m_last_time_span_ns = 0;
 	AudioBuffer m_in_buffer;
 	AudioBuffer m_out_buffer;
-	uint64_t m_in_time;
-	SRC_STATE *m_SRC_state;
-	bool m_new_data;
+	uint64_t m_in_time = 0;
+	SRC_STATE *m_SRC_state = nullptr;
+	bool m_new_data = true;
 	std::function<void(bool)> m_capture_clbk;
-	std::atomic<float> m_volume;
-	Category m_category;
-	double m_fr_rem;
+	std::atomic<float> m_volume = 1.f;  // 0 .. +1
+	std::atomic<float> m_balance = 0.f; // -1 .. +1
+	Category m_category = AUDIOCARD;
+	double m_fr_rem = 0.0;
 	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
 
 public:
@@ -77,7 +78,9 @@ public:
 	void enable(bool _enabled);
 	inline bool is_enabled() { return m_enabled; }
 	void set_volume(float _vol) { m_volume = _vol; }
+	void set_balance(float _balance) { m_balance = clamp(_balance, -1.f, 1.f); }
 	float volume() const { return m_volume; }
+	float balance() const { return m_balance; }
 
 	void set_filters(std::string _filters_def);
 	void set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters);

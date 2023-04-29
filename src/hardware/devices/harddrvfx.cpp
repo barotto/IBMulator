@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -76,6 +76,10 @@ void HardDriveFX::config_changed()
 
 	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK) * volume);
 	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN) * volume);
+
+	double balance = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE, 0.0);
+	m_channels.seek->set_balance(balance);
+	m_channels.spin->set_balance(balance);
 }
 
 //this method is called by the Mixer thread

@@ -54,6 +54,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 				m_channel->set_filters(filters);
 			}
 		}
+		m_channel->set_balance(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_MODEM_BALANCE, 1.0));
 	}
 
 	if(ms_tones.empty()) {

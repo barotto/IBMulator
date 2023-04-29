@@ -26,21 +26,11 @@ MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
 		const std::string &_name, int _id, Category _cat)
 :
 m_mixer(_mixer),
-m_enabled(false),
 m_name(_name),
 m_id(_id),
 m_update_clbk(_callback),
-m_disable_time(0),
-m_disable_timeout(0),
-m_first_update(true),
-m_last_time_span_ns(0),
-m_in_time(0),
-m_SRC_state(nullptr),
-m_new_data(true),
 m_capture_clbk([](bool){}),
-m_volume(1.f),
-m_category(_cat),
-m_fr_rem(0.0)
+m_category(_cat)
 {
 }
 

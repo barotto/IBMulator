@@ -91,6 +91,10 @@ void FloppyFX::config_changed()
 
 	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_SEEK) * volume);
 	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_SPIN) * volume);
+
+	double balance = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE, 0.0);
+	m_channels.seek->set_balance(balance);
+	m_channels.spin->set_balance(balance);
 }
 
 void FloppyFX::spin(bool _spinning, bool _change_state)

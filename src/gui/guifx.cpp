@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -41,5 +41,6 @@ void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_c
 
 	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
 	m_channel->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_SYSTEM) * volume);
+	m_channel->set_balance(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_SYSTEM_BALANCE, 0.0));
 }
 

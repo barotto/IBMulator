@@ -148,16 +148,20 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 	
 	{ SOUNDFX_SECTION, {
-		{ SOUNDFX_ENABLED,  "yes" },
-		{ SOUNDFX_VOLUME,   "1.0" },
-		{ SOUNDFX_FDD_SPIN, "0.4" },
-		{ SOUNDFX_FDD_SEEK, "0.4" },
-		{ SOUNDFX_HDD_SPIN, "0.4" },
-		{ SOUNDFX_HDD_SEEK, "0.4" },
-		{ SOUNDFX_SYSTEM,   "1.0" },
-		{ SOUNDFX_MODEM,    "1.2" },
-		{ SOUNDFX_MODEM_FILTERS, "auto" },
-		{ SOUNDFX_MODEM_COUNTRY, "eu" }
+		{ SOUNDFX_ENABLED,        "yes"  },
+		{ SOUNDFX_VOLUME,         "1.0"  },
+		{ SOUNDFX_FDD_SPIN,       "0.4"  },
+		{ SOUNDFX_FDD_SEEK,       "0.4"  },
+		{ SOUNDFX_FDD_BALANCE,    "-0.3" },
+		{ SOUNDFX_HDD_SPIN,       "0.4"  },
+		{ SOUNDFX_HDD_SEEK,       "0.4"  },
+		{ SOUNDFX_HDD_BALANCE,    "0.3"  },
+		{ SOUNDFX_SYSTEM,         "1.0"  },
+		{ SOUNDFX_SYSTEM_BALANCE, "0.0"  },
+		{ SOUNDFX_MODEM,          "1.2"  },
+		{ SOUNDFX_MODEM_FILTERS,  "auto" },
+		{ SOUNDFX_MODEM_COUNTRY,  "eu"   },
+		{ SOUNDFX_MODEM_BALANCE,  "-0.5" }
 	} },
 
 	{ MODEM_SECTION, {
@@ -654,16 +658,21 @@ ini_filehelp_t AppConfig::ms_help = {
 		},
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
+"; Balances are real numbers between -1.0 and 1.0, where -1.0 = left, 0.0 = center, 1.0 = right\n"
 ";         enabled: Enable sound effects emulation.\n"
 ";          volume: General volume of the sound effects.\n"
 ";        fdd_seek: Volume of FDD seeks.\n"
 ";        fdd_spin: Volume of FDD spin noise.\n"
+";     fdd_balance: Balance of FDD noises.\n"
 ";        hdd_seek: Volume of HDD seeks.\n"
 ";        hdd_spin: Volume of HDD spin noise.\n"
+";     hdd_balance: Balance of HDD noises.\n"
 ";          system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
+";  system_balance: Balance of system noises.\n"
 ";           modem: Volume of the serial modem's internal speaker.\n"
 ";   modem_country: Determines the style of the modem tones.\n"
 ";                  Possible values: eu, us.\n"
+";   modem_balance: Balance of the serial modem's internal speaker.\n"
 		},
 
 		{ SERIAL_SECTION,
@@ -905,16 +914,20 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ GAMEPORT_ENABLED, false }
 	} },
 	{ SOUNDFX_SECTION, {
-		{ SOUNDFX_ENABLED,  false },
-		{ SOUNDFX_VOLUME,   false },
-		{ SOUNDFX_FDD_SPIN, false },
-		{ SOUNDFX_FDD_SEEK, false },
-		{ SOUNDFX_HDD_SPIN, false },
-		{ SOUNDFX_HDD_SEEK, false },
-		{ SOUNDFX_SYSTEM,   false },
-		{ SOUNDFX_MODEM,    false },
+		{ SOUNDFX_ENABLED,       false },
+		{ SOUNDFX_VOLUME,        false },
+		{ SOUNDFX_FDD_SPIN,      false },
+		{ SOUNDFX_FDD_SEEK,      false },
+		{ SOUNDFX_FDD_BALANCE,   false },
+		{ SOUNDFX_HDD_SPIN,      false },
+		{ SOUNDFX_HDD_SEEK,      false },
+		{ SOUNDFX_HDD_BALANCE,   false },
+		{ SOUNDFX_SYSTEM,        false },
+		{ SOUNDFX_SYSTEM_BALANCE,false },
+		{ SOUNDFX_MODEM,         false },
 		{ SOUNDFX_MODEM_FILTERS, true  },
-		{ SOUNDFX_MODEM_COUNTRY, false }
+		{ SOUNDFX_MODEM_COUNTRY, false },
+		{ SOUNDFX_MODEM_BALANCE, false }
 	} },
 	{ SERIAL_SECTION, {
 		{ SERIAL_ENABLED,       false },

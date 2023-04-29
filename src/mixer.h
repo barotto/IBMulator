@@ -145,7 +145,7 @@ private:
 	void open_audio_device(int _frequency, SDL_AudioFormat _format, int _channels, int _samples);
 	void close_audio_device();
 	void mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*> &_channels, double _vtime_ratio);
-	void mix_channels(std::vector<float> &_buf, const std::vector<MixerChannel*> &_channels, int _chcat, size_t _frames);
+	void mix_stereo(std::vector<float> &_buf, const std::vector<MixerChannel*> &_channels, int _chcat, size_t _frames);
 	void limit_audio_data(const std::vector<MixerChannel*> &_channels, double _audio_factor);
 	void send_to_sinks(const std::vector<int16_t> &_data, int _category);
 	void start_capture();

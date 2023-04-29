@@ -179,6 +179,7 @@ void Mixer::config_changed() noexcept
 	int samples = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_SAMPLES, 256, 4096);
 
 	try {
+		assert(MIXER_CHANNELS == 2);
 		open_audio_device(frequency, MIXER_FORMAT, MIXER_CHANNELS, samples);
 	} catch(std::exception &e) {
 		PERRF(LOG_MIXER, "Audio output disabled\n");
@@ -438,6 +439,10 @@ void Mixer::open_audio_device(int _frequency, SDL_AudioFormat _format, int _chan
 		PWARNF(LOG_V0, LOG_MIXER, "Requested frequency of %d Hz not accepted by the audio driver, using %d Hz\n",
 			want.freq, m_audio_spec.freq);
 	}
+	if(m_audio_spec.channels != want.channels) {
+		PERRF(LOG_MIXER, "Number of channels (%u) not supported\n", m_audio_spec.channels);
+		throw std::exception();
+	}
 
 	SDL_PauseAudioDevice(m_device, 1);
 	m_audio_status = SDL_GetAudioDeviceStatus(m_device);
@@ -574,10 +579,16 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		if(!fr) {
 			continue;
 		}
-		
-		mix_channels(m_ch_mix[cat], _channels, cat, fr);
-		PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for category %d\n", fr, cat);
-		
+
+		if(m_audio_spec.channels == 2) {
+			mix_stereo(m_ch_mix[cat], _channels, cat, fr);
+			PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for category %d\n", fr, cat);
+		} else {
+			// TODO?
+			assert(false);
+			throw std::logic_error("unsupported number of channels");
+		}
+
 		tmpbuf.resize(sa);
 		for(size_t i=0; i<sa; i++) {
 			tmpbuf[i] = AudioBuffer::f32_to_s16(m_ch_mix[cat][i]);
@@ -689,15 +700,29 @@ void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double
 	}
 }
 
-void Mixer::mix_channels(std::vector<float> &_buf,
+void Mixer::mix_stereo(std::vector<float> &_result_buf,
 	const std::vector<MixerChannel*> &_channels,
 	int _chcat, size_t _frames)
 {
-	size_t samples = _frames * m_audio_spec.channels;
-	std::fill(_buf.begin(), _buf.begin()+samples, 0.f);
+	size_t samples = _frames * 2;
+	std::fill(_result_buf.begin(), _result_buf.begin()+samples, 0.f);
+	float balance[2] = {1.f, 1.f};
 	for(auto ch : _channels) {
 		if(ch->category() != _chcat) {
 			continue;
+		}
+		if(ch->balance() < 0.f) {
+			// left channel is full volume
+			balance[0] = 1.f;
+			balance[1] = 1.f + ch->balance();
+		} else if(ch->balance() > 0.f) {
+			// right channel is full volume
+			balance[0] = 1.f - ch->balance();
+			balance[1] = 1.f;
+		} else {
+			// center
+			balance[0] = 1.f;
+			balance[1] = 1.f;
 		}
 		unsigned chsamples = ch->out().samples();
 		if(!chsamples) {
@@ -714,13 +739,13 @@ void Mixer::mix_channels(std::vector<float> &_buf,
 		}
 		for(size_t i=0; i<samples; i++) {
 			float v1,v2;
-			if(i<chsamples) {
-				v1 = chdata[i] * ch_volume * cat_volume;
+			if(i < chsamples) {
+				v1 = chdata[i] * ch_volume * cat_volume * balance[i%2];
 			} else {
 				v1 = 0.f;
 			}
-			v2 = _buf[i];
-			_buf[i] = v1 + v2;
+			v2 = _result_buf[i];
+			_result_buf[i] = v1 + v2;
 		}
 		ch->pop_out_frames(_frames);
 	}
