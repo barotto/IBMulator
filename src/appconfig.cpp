@@ -1045,7 +1045,7 @@ std::string AppConfig::get_value(const std::string &_section, const std::string 
 	return get_value(_section, _name, false);
 }
 
-int AppConfig::get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept
+int AppConfig::get_int_or_default(const std::string &section, const std::string &name) noexcept
 {
 	// will try to parse the user's value string, will return the default if the value is not specified
 	// or isn't valid.
@@ -1062,17 +1062,11 @@ int AppConfig::get_int_or_default(const std::string &section, const std::string 
 				section.c_str(), name.c_str(), def);
 		value = def;
 	}
-	if(value < min || value > max) {
-		// the default must be within range
-		assert(value != def);
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %d\n",
-				section.c_str(), name.c_str(), def);
-		value = def;
-	}
+
 	return value;
 }
 
-double AppConfig::get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept
+double AppConfig::get_real_or_default(const std::string &section, const std::string &name) noexcept
 {
 	// see comments for get_int_or_default()
 	double value, def = get_real_default(section, name);
@@ -1083,11 +1077,35 @@ double AppConfig::get_real_or_default(const std::string &section, const std::str
 				section.c_str(), name.c_str(), def);
 		value = def;
 	}
+
+	return value;
+}
+
+int AppConfig::get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept
+{
+	int value = get_int_or_default(section, name);
 	if(value < min || value > max) {
+		int def = get_int_default(section, name);
+		// the default must be within range
+		assert(value != def);
+		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %d\n",
+				section.c_str(), name.c_str(), def);
+		return def;
+	}
+	return value;
+}
+
+double AppConfig::get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept
+{
+	// see comments for get_int_or_default()
+	double value = get_real_or_default(section, name);
+
+	if(value < min || value > max) {
+		double def = get_real_default(section, name);
 		assert(value != def);
 		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %.2f\n",
 				section.c_str(), name.c_str(), def);
-		value = def;
+		return def;
 	}
 	return value;
 }

@@ -72,12 +72,10 @@ uint64_t HardDriveFX::spin_up_time_us() const
 
 void HardDriveFX::config_changed()
 {
-	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+	m_channels.seek->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK));
+	m_channels.spin->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN));
 
-	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK) * volume);
-	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN) * volume);
-
-	double balance = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE, 0.0);
+	double balance = g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE);
 	m_channels.seek->set_balance(balance);
 	m_channels.spin->set_balance(balance);
 }

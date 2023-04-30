@@ -87,12 +87,10 @@ void FloppyFX::reset()
 
 void FloppyFX::config_changed()
 {
-	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
+	m_channels.seek->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_SEEK));
+	m_channels.spin->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_SPIN));
 
-	m_channels.seek->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_SEEK) * volume);
-	m_channels.spin->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_SPIN) * volume);
-
-	double balance = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE, 0.0);
+	double balance = g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE);
 	m_channels.seek->set_balance(balance);
 	m_channels.spin->set_balance(balance);
 }

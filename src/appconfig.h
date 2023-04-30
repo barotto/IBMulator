@@ -80,6 +80,8 @@ public:
 	double get_real_default(const std::string &section, const std::string &name) noexcept;
 	bool get_bool_default(const std::string &section, const std::string &name) noexcept;
 
+	int get_int_or_default(const std::string &section, const std::string &name) noexcept;
+	double get_real_or_default(const std::string &section, const std::string &name) noexcept;
 	int get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept;
 	double get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept;
 	bool get_bool_or_default(const std::string &section, const std::string &name) noexcept;

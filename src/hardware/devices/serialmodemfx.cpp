@@ -42,8 +42,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 		m_channel->set_disable_timeout(1_s);
 		m_channel->set_in_spec(spec);
 
-		float fxvolume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, 1.0);
-		m_channel->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_MODEM, 1.0) * fxvolume);
+		m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM));
 		std::string filters = g_program.config().get_string(SOUNDFX_SECTION, SOUNDFX_MODEM_FILTERS, "");
 		if(!filters.empty()) {
 			if(filters == "auto") {
@@ -54,7 +53,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 				m_channel->set_filters(filters);
 			}
 		}
-		m_channel->set_balance(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_MODEM_BALANCE, 1.0));
+		m_channel->set_balance(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM_BALANCE));
 	}
 
 	if(ms_tones.empty()) {
@@ -229,8 +228,7 @@ uint64_t SerialModemFX::handshake()
 
 void SerialModemFX::set_volume(int level)
 {
-	float fx = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, 1.0);
-	float modem = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_MODEM, 1.0) * fx;
+	float modem = g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM);
 
 	float volume = 1.0;
 	if(level == 0) volume = .0f;

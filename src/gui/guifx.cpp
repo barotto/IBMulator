@@ -39,8 +39,7 @@ void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_c
 	m_channel->set_disable_timeout(1_s);
 	m_channel->set_in_spec(_spec);
 
-	float volume = g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_VOLUME);
-	m_channel->set_volume(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_SYSTEM) * volume);
-	m_channel->set_balance(g_program.config().get_real(SOUNDFX_SECTION, SOUNDFX_SYSTEM_BALANCE, 0.0));
+	m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_SYSTEM));
+	m_channel->set_balance(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_SYSTEM_BALANCE));
 }
 
