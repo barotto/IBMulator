@@ -22,7 +22,7 @@
 
 #include "gui/guifx.h"
 
-class InterfaceFX : public GUIFX
+class GUIDrivesFX : public GUIFX
 {
 public:
 	enum SampleType {
@@ -40,9 +40,30 @@ private:
 	std::atomic<int> m_event;
 
 public:
-	InterfaceFX() : GUIFX() {}
+	GUIDrivesFX() : GUIFX() {}
 	void init(Mixer *);
 	void use_floppy(FDDType _fdd_type, SampleType _how);
+	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+};
+
+class GUISystemFX : public GUIFX
+{
+private:
+	enum SampleType {
+		POWER_UP,
+		POWER_DOWN,
+		POWER_ON
+	};
+	std::atomic<bool> m_power_on = false;
+	std::atomic<bool> m_change_state = false;
+	std::vector<AudioBuffer> m_buffers;
+	const static SoundFX::samples_t ms_samples;
+
+public:
+	GUISystemFX() : GUIFX() {}
+
+	void init(Mixer *_mixer);
+	void update(bool _power_on, bool _change_state);
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
 };
 

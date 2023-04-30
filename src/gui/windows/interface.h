@@ -72,7 +72,7 @@ protected:
 	struct {
 		FloppyCtrl *ctrl = nullptr;
 		unsigned curr_drive = 0;
-		InterfaceFX::FDDType curr_drive_type = InterfaceFX::FDD_5_25;
+		GUIDrivesFX::FDDType curr_drive_type = GUIDrivesFX::FDD_5_25;
 		bool present = false;
 		bool changed = false;
 		FloppyLoader::State loader[FloppyCtrl::MAX_DRIVES+1] = {FloppyLoader::State::IDLE};
@@ -82,7 +82,8 @@ protected:
 	StorageCtrl *m_hdd = nullptr;
 
 	bool m_audio_enabled = false;
-	InterfaceFX m_audio;
+	GUIDrivesFX m_drives_audio;
+	GUISystemFX m_system_audio;
 
 public:
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
@@ -127,7 +128,7 @@ public:
 	void save_framebuffer(std::string _screenfile, std::string _palfile);
 	SDL_Surface * copy_framebuffer();
 	
-	virtual void sig_state_restored() {}
+	virtual void sig_state_restored();
 
 protected:
 	

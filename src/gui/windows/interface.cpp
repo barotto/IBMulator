@@ -123,7 +123,8 @@ void Interface::create()
 
 	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_audio_enabled) {
-		m_audio.init(m_mixer);
+		m_drives_audio.init(m_mixer);
+		m_system_audio.init(m_mixer);
 	}
 }
 
@@ -163,7 +164,7 @@ void Interface::config_changed(bool _startup)
 	m_floppy.present = false;
 	m_floppy.changed = false;
 	m_floppy.curr_drive = 0;
-	m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
+	m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
 
 	set_floppy_string("");
 	set_floppy_active(false);
@@ -199,9 +200,9 @@ void Interface::config_changed(bool _startup)
 		}
 		set_floppy_config(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE);
 		if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
-			m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
+			m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
 		} else {
-			m_floppy.curr_drive_type = InterfaceFX::FDD_3_5;
+			m_floppy.curr_drive_type = GUIDrivesFX::FDD_3_5;
 		}
 
 		m_fs->set_compat_types(
@@ -296,7 +297,7 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		// Machine thread here
 		// "insert" audio sample plays only when floppy is confirmed inserted
 		if(result && m_audio_enabled) {
-			m_audio.use_floppy(m_floppy.curr_drive_type, InterfaceFX::FLOPPY_INSERT);
+			m_drives_audio.use_floppy(m_floppy.curr_drive_type, GUIDrivesFX::FLOPPY_INSERT);
 		}
 	});
 
@@ -424,9 +425,9 @@ void Interface::on_fdd_select(Rml::Event &)
 		m_buttons.fdd_select->SetClass("b", false);
 	}
 	if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
-		m_floppy.curr_drive_type = InterfaceFX::FDD_5_25;
+		m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
 	} else {
-		m_floppy.curr_drive_type = InterfaceFX::FDD_3_5;
+		m_floppy.curr_drive_type = GUIDrivesFX::FDD_3_5;
 	}
 	m_floppy.event = true;
 	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
@@ -449,7 +450,7 @@ void Interface::on_fdd_eject(Rml::Event &)
 	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
 	// "eject" audio sample plays now
 	if(m_audio_enabled) {
-		m_audio.use_floppy(m_floppy.curr_drive_type, InterfaceFX::FLOPPY_EJECT);
+		m_drives_audio.use_floppy(m_floppy.curr_drive_type, GUIDrivesFX::FLOPPY_EJECT);
 	}
 }
 
@@ -713,6 +714,9 @@ void Interface::render_screen()
 
 void Interface::switch_power()
 {
+	if(m_audio_enabled) {
+		m_system_audio.update(!m_machine->is_on(), true);
+	}
 	m_machine->cmd_switch_power();
 	m_machine->cmd_resume();
 }
@@ -740,6 +744,13 @@ void Interface::set_video_saturation(float _level)
 void Interface::set_ambient_light(float _level)
 {
 	m_screen->set_ambient(_level);
+}
+
+void Interface::sig_state_restored()
+{
+	if(m_audio_enabled) {
+		m_system_audio.update(true, false);
+	}
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)

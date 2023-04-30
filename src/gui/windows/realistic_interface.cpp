@@ -58,44 +58,6 @@ event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT_T( "background", "dblclick", Interface::on_dblclick )
 };
 
-const SoundFX::samples_t RealisticFX::ms_samples = {
-	{"System power up",   "sounds" FS_SEP "system" FS_SEP "power_up.wav"},
-	{"System power down", "sounds" FS_SEP "system" FS_SEP "power_down.wav"},
-	{"System power on",   "sounds" FS_SEP "system" FS_SEP "power_on.wav"}
-};
-
-void RealisticFX::init(Mixer *_mixer)
-{
-	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
-	GUIFX::init(_mixer,
-		std::bind(&RealisticFX::create_sound_samples, this,
-				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		"GUI system", spec);
-	m_buffers = SoundFX::load_samples(spec, ms_samples);
-}
-
-void RealisticFX::update(bool _power_on, bool _change_state)
-{
-	if(m_channel->volume()<=FLT_MIN) {
-		return;
-	}
-	if((_power_on || _change_state)) {
-		m_channel->enable(true);
-	}
-	m_power_on = _power_on;
-	m_change_state = _change_state;
-}
-
-//this method is called by the Mixer thread
-bool RealisticFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
-{
-	bool power_on = m_power_on;
-	bool change_state = m_change_state;
-	m_change_state = false;
-
-	return SoundFX::play_motor(_time_span_ns, *m_channel, power_on, change_state,
-			m_buffers[POWER_UP], m_buffers[POWER_ON], m_buffers[POWER_DOWN]);
-}
 
 RealisticScreen::RealisticScreen(GUI *_gui)
 : InterfaceScreen(_gui)
@@ -220,11 +182,6 @@ void RealisticInterface::create()
 	RealisticInterface::set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	RealisticInterface::set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	RealisticInterface::set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
-
-	m_real_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
-	if(m_real_audio_enabled) {
-		m_real_audio.init(m_mixer);
-	}
 }
 
 vec2f RealisticInterface::display_size(int _width, int _height, float _xoffset, float _scale, float _aspect)
@@ -463,15 +420,6 @@ void RealisticInterface::action(int _action)
 	}
 }
 
-void RealisticInterface::switch_power()
-{
-	bool on = m_machine->is_on();
-	Interface::switch_power();
-	if(m_real_audio_enabled) {
-		m_real_audio.update(!on, true);
-	}
-}
-
 void RealisticInterface::set_audio_volume(float _value)
 {
 	Interface::set_audio_volume(_value);
@@ -488,13 +436,6 @@ void RealisticInterface::set_video_contrast(float _value)
 {
 	Interface::set_video_contrast(_value);
 	set_slider_value(m_contrast_slider, m_contrast_left_min, _value);
-}
-
-void RealisticInterface::sig_state_restored()
-{
-	if(m_real_audio_enabled) {
-		m_real_audio.update(true, false);
-	}
 }
 
 float RealisticInterface::on_slider_drag(Rml::Event &_event, float _xmin)

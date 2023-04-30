@@ -29,25 +29,6 @@
 class Machine;
 class GUI;
 
-class RealisticFX : public GUIFX
-{
-private:
-	std::atomic<bool> m_power_on, m_change_state;
-	enum SampleType {
-		POWER_UP = 0,
-		POWER_DOWN,
-		POWER_ON
-	};
-	std::vector<AudioBuffer> m_buffers;
-	const static SoundFX::samples_t ms_samples;
-
-public:
-	RealisticFX() : GUIFX(), m_power_on(false), m_change_state(false) {}
-	void init(Mixer *_mixer);
-	void update(bool _power_on, bool _change_state);
-	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
-};
-
 
 class RealisticScreen : public InterfaceScreen
 {
@@ -94,9 +75,6 @@ private:
 	
 	static event_map_t ms_evt_map;
 
-	bool m_real_audio_enabled = false;
-	RealisticFX m_real_audio;
-
 	static constexpr float ms_min_slider_val = 0.0f;
 	static constexpr float ms_max_slider_val = 1.3f;
 
@@ -124,12 +102,9 @@ public:
 	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
 
 	void action(int);
-	void switch_power();
 	void set_audio_volume(float _value);
 	void set_video_brightness(float _value);
 	void set_video_contrast(float _value);
-	
-	void sig_state_restored();
 
 private:
 	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);

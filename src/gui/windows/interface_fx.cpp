@@ -21,7 +21,7 @@
 #include "interface_fx.h"
 #include "hardware/devices/drivefx.h"
 
-const SoundFX::samples_t InterfaceFX::ms_samples[2] = {
+const SoundFX::samples_t GUIDrivesFX::ms_samples[2] = {
 	{
 	{"5.25 disk insert", FDD_SAMPLES_DIR "5_25_disk_insert.wav"},
 	{"5.25 disk eject",  FDD_SAMPLES_DIR "5_25_disk_eject.wav"}
@@ -31,18 +31,18 @@ const SoundFX::samples_t InterfaceFX::ms_samples[2] = {
 	}
 };
 
-void InterfaceFX::init(Mixer *_mixer)
+void GUIDrivesFX::init(Mixer *_mixer)
 {
 	using namespace std::placeholders;
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 	GUIFX::init(_mixer,
-		std::bind(&InterfaceFX::create_sound_samples, this, _1, _2, _3),
-		"GUI interface", spec);
+		std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2, _3),
+		"GUI drives", spec);
 	m_buffers[FDD_5_25] = SoundFX::load_samples(spec, ms_samples[FDD_5_25]);
 	m_buffers[FDD_3_5] = SoundFX::load_samples(spec, ms_samples[FDD_3_5]);
 }
 
-void InterfaceFX::use_floppy(FDDType _fdd_type, SampleType _how)
+void GUIDrivesFX::use_floppy(FDDType _fdd_type, SampleType _how)
 {
 	if(m_channel->volume()<=FLT_MIN) {
 		return;
@@ -51,7 +51,7 @@ void InterfaceFX::use_floppy(FDDType _fdd_type, SampleType _how)
 	m_channel->enable(true);
 }
 
-bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
+bool GUIDrivesFX::create_sound_samples(uint64_t, bool, bool)
 {
 	// Mixer thread
 	unsigned evt = m_event & 0xff;
@@ -66,4 +66,44 @@ bool InterfaceFX::create_sound_samples(uint64_t, bool, bool)
 	m_event = -1;
 	m_channel->enable(false);
 	return false;
+}
+
+
+const SoundFX::samples_t GUISystemFX::ms_samples = {
+	{"System power up",   "sounds" FS_SEP "system" FS_SEP "power_up.wav"},
+	{"System power down", "sounds" FS_SEP "system" FS_SEP "power_down.wav"},
+	{"System power on",   "sounds" FS_SEP "system" FS_SEP "power_on.wav"}
+};
+
+void GUISystemFX::init(Mixer *_mixer)
+{
+	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
+	GUIFX::init(_mixer,
+		std::bind(&GUISystemFX::create_sound_samples, this,
+				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+		"GUI system", spec);
+	m_buffers = SoundFX::load_samples(spec, ms_samples);
+}
+
+void GUISystemFX::update(bool _power_on, bool _change_state)
+{
+	if(m_channel->volume()<=FLT_MIN) {
+		return;
+	}
+	if((_power_on || _change_state)) {
+		m_channel->enable(true);
+	}
+	m_power_on = _power_on;
+	m_change_state = _change_state;
+}
+
+//this method is called by the Mixer thread
+bool GUISystemFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
+{
+	bool power_on = m_power_on;
+	bool change_state = m_change_state;
+	m_change_state = false;
+
+	return SoundFX::play_motor(_time_span_ns, *m_channel, power_on, change_state,
+			m_buffers[POWER_UP], m_buffers[POWER_ON], m_buffers[POWER_DOWN]);
 }
