@@ -26,6 +26,27 @@
 #include "hardware/devices/vga.h"
 #include "gl_shader_program.h"
 
+enum DisplaySampler {
+	DISPLAY_SAMPLER_NEAREST,
+	DISPLAY_SAMPLER_BILINEAR,
+	DISPLAY_SAMPLER_BICUBIC,
+};
+
+enum DisplayAspect {
+	DISPLAY_ASPECT_FIXED,
+	DISPLAY_ASPECT_VGA,
+	DISPLAY_ASPECT_AREA,
+	DISPLAY_ASPECT_ORIGINAL
+};
+
+constexpr double ORIGINAL_MONITOR_RATIO = 4.0 / 3.0;
+
+enum DisplayScale {
+	DISPLAY_SCALE_1X,
+	DISPLAY_SCALE_FILL,
+	DISPLAY_SCALE_INTEGER
+};
+
 class ScreenRenderer
 {
 public:

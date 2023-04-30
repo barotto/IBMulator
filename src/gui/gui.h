@@ -24,9 +24,11 @@
 #include <RmlUi/Core/Input.h>
 #include <RmlUi/Core/Types.h>
 #include "rml/rend_interface.h"
+#include "windows/interface.h"
 #include "matrix.h"
 #include "timers.h"
 #include "keymap.h"
+#include "state_record.h"
 #include <atomic>
 #include <climits>
 
@@ -38,27 +40,6 @@ enum GUIRenderer {
 enum GUIMode {
 	GUI_MODE_NORMAL,
 	GUI_MODE_REALISTIC
-};
-
-enum DisplaySampler {
-	DISPLAY_SAMPLER_NEAREST,
-	DISPLAY_SAMPLER_BILINEAR,
-	DISPLAY_SAMPLER_BICUBIC,
-};
-
-enum DisplayAspect {
-	DISPLAY_ASPECT_FIXED,
-	DISPLAY_ASPECT_VGA,
-	DISPLAY_ASPECT_AREA,
-	DISPLAY_ASPECT_ORIGINAL
-};
-
-constexpr double ORIGINAL_MONITOR_RATIO = 4.0 / 3.0;
-
-enum DisplayScale {
-	DISPLAY_SCALE_1X,
-	DISPLAY_SCALE_FILL,
-	DISPLAY_SCALE_INTEGER
 };
 
 enum FrameCapMethods {
@@ -84,13 +65,9 @@ namespace Rml {
 	class ElementFormControl;
 }
 
-#include "windows/interface.h"
-
 class Machine;
 class Mixer;
 class Desktop;
-class Interface;
-class NormalInterface;
 class Status;
 class ShaderParameters;
 class PrinterControl;

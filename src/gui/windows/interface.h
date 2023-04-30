@@ -21,8 +21,9 @@
 #define IBMULATOR_GUI_INTERFACE_H
 
 #include "gui/window.h"
-#include "gui/guifx.h"
 #include "gui/screen_renderer.h"
+#include "interface_fx.h"
+#include "interface_screen.h"
 #include "fileselect.h"
 #include "state_save.h"
 #include "state_save_info.h"
@@ -36,60 +37,6 @@ class GUI;
 class Mixer;
 class FloppyCtrl;
 class StorageCtrl;
-
-class InterfaceFX : public GUIFX
-{
-public:
-	enum SampleType {
-		FLOPPY_INSERT,
-		FLOPPY_EJECT
-	};
-	enum FDDType {
-		FDD_5_25,
-		FDD_3_5
-	};
-
-private:
-	std::vector<AudioBuffer> m_buffers[2];
-	const static SoundFX::samples_t ms_samples[2];
-	std::atomic<int> m_event;
-
-public:
-	InterfaceFX() : GUIFX() {}
-	void init(Mixer *);
-	void use_floppy(FDDType _fdd_type, SampleType _how);
-	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
-};
-
-
-class InterfaceScreen
-{
-protected:
-	std::unique_ptr<ScreenRenderer> m_renderer;
-	GUI *m_gui;
-	VGADisplay m_display; // GUI-Machine interface
-	
-public:
-	ScreenRenderer::Params params;
-	
-public:
-	InterfaceScreen(GUI *_gui);
-	virtual ~InterfaceScreen();
-
-	void set_brightness(float);
-	void set_contrast(float);
-	void set_saturation(float);
-	void set_ambient(float);
-	void set_monochrome(bool);
-	
-	ScreenRenderer * renderer() { return m_renderer.get(); }
-	VGADisplay * display() { return &m_display; }
-
-	virtual void render();
-
-protected:
-	void sync_with_device();
-};
 
 
 class Interface : public Window

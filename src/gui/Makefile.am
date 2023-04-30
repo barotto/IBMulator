@@ -29,6 +29,8 @@ libgui_a_SOURCES = \
 	window.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
+	windows/interface_fx.cpp \
+	windows/interface_screen.cpp \
 	windows/items_dialog.cpp \
 	windows/normal_interface.cpp \
 	windows/realistic_interface.cpp \
@@ -88,6 +90,8 @@ noinst_HEADERS = \
 	window.h \
 	windows/desktop.h \
 	windows/interface.h \
+	windows/interface_fx.h \
+	windows/interface_screen.cpp \
 	windows/items_dialog.h \
 	windows/normal_interface.h \
 	windows/realistic_interface.h \
