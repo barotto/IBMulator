@@ -859,7 +859,6 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 	if(is_drive_present(drive)) {
 		PDEBUGF(LOG_V1, LOG_FDC, "recalibrate, DRV%u (cur.C=%u)\n", drive,
 				m_fdd[drive]->get_cyl());
-		m_fdd[drive]->recalibrate();
 		m_fdd[drive]->dir_w(m_s.flopi[drive].dir);
 		// if head is at cyl 80 or over, EC bit will be set and recalibrate has
 		// to be performed again

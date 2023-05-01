@@ -42,9 +42,9 @@ private:
 		FDD_SEEK_STEP,
 		FDD_SEEK_UP,
 		FDD_SEEK_DOWN,
+		FDD_SEEK_BOOT,
 		FDD_SNATCH,
-		FDD_BOOT,
-		FDD_BOOT_DISK
+		FDD_SNATCH_BOOT
 	};
 	static std::vector<AudioBuffer> ms_buffers[2];
 	const static SoundFX::samples_t ms_samples[2];

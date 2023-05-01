@@ -33,9 +33,9 @@ const SoundFX::samples_t FloppyFX::ms_samples[2] = {
 	{"5.25 drive seek step",     FDD_SAMPLES_DIR "5_25_drive_seek_step.wav"},
 	{"5.25 drive seek up",       FDD_SAMPLES_DIR "5_25_drive_seek_up.wav"},
 	{"5.25 drive seek down",     FDD_SAMPLES_DIR "5_25_drive_seek_down.wav"},
+	{"5.25 drive seek boot",     ""},
 	{"5.25 drive snatch",        ""},
-	{"5.25 drive boot",          ""},
-	{"5.25 drive boot (w/disk)", ""},
+	{"5.25 drive snatch boot",   ""}
 	},{ // 3_5
 	{"3.5 drive spin",          FDD_SAMPLES_DIR "3_5_drive_spin.wav"},
 	{"3.5 drive spin start",    FDD_SAMPLES_DIR "3_5_drive_spin_start.wav"},
@@ -43,9 +43,9 @@ const SoundFX::samples_t FloppyFX::ms_samples[2] = {
 	{"3.5 drive seek step",     FDD_SAMPLES_DIR "3_5_drive_seek_step.wav"},
 	{"3.5 drive seek up",       FDD_SAMPLES_DIR "3_5_drive_seek_up.wav"},
 	{"3.5 drive seek down",     FDD_SAMPLES_DIR "3_5_drive_seek_down.wav"},
+	{"3.5 drive seek boot",     FDD_SAMPLES_DIR "3_5_drive_boot.wav"},
 	{"3.5 drive snatch",        FDD_SAMPLES_DIR "3_5_drive_snatch.wav"},
-	{"3.5 drive boot",          FDD_SAMPLES_DIR "3_5_drive_boot.wav"},
-	{"3.5 drive boot (w/disk)", FDD_SAMPLES_DIR "3_5_drive_boot_disk.wav"}
+	{"3.5 drive snatch boot",   FDD_SAMPLES_DIR "3_5_drive_boot_disk.wav"}
 	}
 };
 
@@ -115,28 +115,26 @@ void FloppyFX::spin(bool _spinning, bool _change_state)
 
 bool FloppyFX::boot(bool _wdisk)
 {
-	if(m_channels.seek->volume() <= FLT_MIN) {
-		return false;
-	}
-	SeekEvent event;
-	event.time = g_machine.get_virt_time_us();
-	event.distance = 0.0;
 	if(_wdisk) {
-		if(!ms_samples[m_fdd_type][FDD_BOOT_DISK].file.empty()) {
-			event.userdata = FDD_BOOT_DISK;
-		} else {
-			return false;
+		if(!ms_samples[m_fdd_type][FDD_SNATCH_BOOT].file.empty()) {
+			// this will run when the drive starts the motor with the disk inserted
+			m_booting = !ms_samples[m_fdd_type][FDD_SNATCH_BOOT].file.empty();
+			spin(true, true);
+			return true;
 		}
 	} else {
-		if(!ms_samples[m_fdd_type][FDD_BOOT].file.empty()) {
-			event.userdata = FDD_BOOT;
-		} else {
-			return false;
+		if(!ms_samples[m_fdd_type][FDD_SEEK_BOOT].file.empty()) {
+			// this will run when the drive starts the recalibrate's first seek without a disk
+			SeekEvent event = {};
+			event.time = g_machine.get_virt_time_us();
+			event.distance = 0.0;
+			event.userdata = FDD_SEEK_BOOT;
+			m_seek_events.push(event);
+			m_channels.seek->enable(true);
+			return true;
 		}
 	}
-	m_seek_events.push(event);
-	m_channels.seek->enable(true);
-	return true;
+	return false;
 }
 
 //this method is called by the Mixer thread
@@ -183,7 +181,13 @@ bool FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 	bool change_state = m_spin_change;
 	AudioBuffer *spinup;
 	if(m_fdd_type == FDD_3_5 && spin && change_state && m_snatch) {
-		spinup = &ms_buffers[m_fdd_type][FDD_SNATCH];
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: snatch\n", m_channels.spin->name());
+		if(m_booting) {
+			spinup = &ms_buffers[m_fdd_type][FDD_SNATCH_BOOT];
+			m_booting = 0;
+		} else {
+			spinup = &ms_buffers[m_fdd_type][FDD_SNATCH];
+		}
 		m_snatch = false;
 	} else {
 		spinup = &ms_buffers[m_fdd_type][FDD_SPIN_UP];

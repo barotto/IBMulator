@@ -160,7 +160,6 @@ public:
 
 	uint8_t get_data_rate() const;
 	const FloppyDisk::Properties & get_media_props() const;
-	void recalibrate(); // for FX
 
 	void read_sector(uint8_t _s, uint8_t *buffer, uint32_t bytes);
 	void write_sector(uint8_t _s, const uint8_t *buffer, uint32_t bytes);

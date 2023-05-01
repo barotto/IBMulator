@@ -860,7 +860,6 @@ void FloppyCtrl_Raw::cmd_recalibrate()
 		m_fdd[drive]->dir_w(m_s.flopi[drive].direction);
 		m_fdd[drive]->step_to(0, step_delay_us*1_us);
 		m_fdd[drive]->ss_w(0);
-		m_fdd[drive]->recalibrate();
 	}
 }
 

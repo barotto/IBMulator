@@ -237,16 +237,6 @@ void FloppyDrive::restore_state(StateBuf &_state)
 	}
 }
 
-void FloppyDrive::recalibrate()
-{
-	if(m_s.boot_time == 0) {
-		m_s.boot_time = 1;
-		if(m_fx_enabled && m_fx.boot(m_image != nullptr)) {
-			m_s.boot_time = g_machine.get_virt_time_ns();
-		}
-	}
-}
-
 bool FloppyDrive::get_cyl_head(int &_cyl, int &_head)
 {
 	if(!m_image) {
@@ -382,6 +372,13 @@ void FloppyDrive::play_seek_sound(uint8_t _to_cyl)
 		return;
 	}
 	if(is_motor_on()) {
+		if(m_s.boot_time == 0) {
+			m_s.boot_time = 1;
+			if(m_fx.boot(m_image != nullptr)) {
+				m_s.boot_time = g_machine.get_virt_time_ns();
+				return;
+			}
+		}
 		// head seek sound effect has been sampled from a 80 tracks disk
 		// so subtract either 2 or 4 tracks from the maximum
 		int max_cyl = m_tracks - (2 << m_dstep_drive);
@@ -409,7 +406,16 @@ void FloppyDrive::mon_w(bool _state)
 			m_s.ready_counter = 2;
 			index_resync();
 			if(m_fx_enabled) {
-				m_fx.spin(true, true);
+				if(m_s.boot_time == 0) {
+					m_s.boot_time = 1;
+					if(m_fx.boot(true)) {
+						m_s.boot_time = g_machine.get_virt_time_ns();
+					} else {
+						m_fx.spin(true, true);
+					}
+				} else {
+					m_fx.spin(true, true);
+				}
 			}
 		}
 	} else {
@@ -420,7 +426,7 @@ void FloppyDrive::mon_w(bool _state)
 		m_s.rev_count = 0;
 		g_machine.deactivate_timer(m_index_timer);
 		ready_w(DRV_NOT_READY);
-		if(m_fx_enabled) {
+		if(m_fx_enabled && m_image) {
 			m_fx.spin(false, true);
 		}
 	}
