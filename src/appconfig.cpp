@@ -152,6 +152,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SOUNDFX_VOLUME,         "1.0"  },
 		{ SOUNDFX_FDD_SPIN,       "0.4"  },
 		{ SOUNDFX_FDD_SEEK,       "0.4"  },
+		{ SOUNDFX_FDD_GUI,        "1.0"  },
 		{ SOUNDFX_FDD_BALANCE,    "-0.3" },
 		{ SOUNDFX_HDD_SPIN,       "0.4"  },
 		{ SOUNDFX_HDD_SEEK,       "0.4"  },
@@ -663,11 +664,12 @@ ini_filehelp_t AppConfig::ms_help = {
 ";          volume: General volume of the sound effects.\n"
 ";        fdd_seek: Volume of FDD seeks.\n"
 ";        fdd_spin: Volume of FDD spin noise.\n"
+";         fdd_gui: Volume of FDD GUI sounds (ie. insert / eject disk).\n"
 ";     fdd_balance: Balance of FDD noises.\n"
 ";        hdd_seek: Volume of HDD seeks.\n"
 ";        hdd_spin: Volume of HDD spin noise.\n"
 ";     hdd_balance: Balance of HDD noises.\n"
-";          system: Volume of system unit's and monitor's noises (realistic GUI mode only.)\n"
+";          system: Volume of system unit's and monitor's noises.\n"
 ";  system_balance: Balance of system noises.\n"
 ";           modem: Volume of the serial modem's internal speaker.\n"
 ";   modem_country: Determines the style of the modem tones.\n"

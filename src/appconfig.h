@@ -270,6 +270,7 @@ public:
 #define SOUNDFX_VOLUME          "volume"
 #define SOUNDFX_FDD_SPIN        "fdd_spin"
 #define SOUNDFX_FDD_SEEK        "fdd_seek"
+#define SOUNDFX_FDD_GUI         "fdd_gui"
 #define SOUNDFX_FDD_BALANCE     "fdd_balance"
 #define SOUNDFX_HDD_SPIN        "hdd_spin"
 #define SOUNDFX_HDD_SEEK        "hdd_seek"

@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "interface_fx.h"
 #include "hardware/devices/drivefx.h"
+#include "program.h"
 
 const SoundFX::samples_t GUIDrivesFX::ms_samples[2] = {
 	{
@@ -40,6 +41,8 @@ void GUIDrivesFX::init(Mixer *_mixer)
 		"GUI drives", spec);
 	m_buffers[FDD_5_25] = SoundFX::load_samples(spec, ms_samples[FDD_5_25]);
 	m_buffers[FDD_3_5] = SoundFX::load_samples(spec, ms_samples[FDD_3_5]);
+	m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_GUI));
+	m_channel->set_balance(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE));
 }
 
 void GUIDrivesFX::use_floppy(FDDType _fdd_type, SampleType _how)
@@ -83,6 +86,8 @@ void GUISystemFX::init(Mixer *_mixer)
 				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
 		"GUI system", spec);
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
+	m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_SYSTEM));
+	m_channel->set_balance(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_SYSTEM_BALANCE));
 }
 
 void GUISystemFX::update(bool _power_on, bool _change_state)
