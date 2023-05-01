@@ -11,7 +11,13 @@
 #include "floppyctrl.h"
 
 FloppyDrive::FloppyDrive()
-{}
+{
+	memset(&m_s, 0, sizeof(m_s));
+	m_s.mon = MOT_OFF;
+	m_s.rev_start_time = TIME_NEVER;
+	m_s.rev_count = 0;
+	m_s.amplifier_freakout_time = 16_us;
+}
 
 void FloppyDrive::install(FloppyCtrl *_ctrl, int _drive_index, Type _drive_type)
 {
@@ -136,10 +142,11 @@ void FloppyDrive::set_rpm(float _rpm)
 void FloppyDrive::reset(unsigned type)
 {
 	if(type == MACHINE_POWER_ON) {
+		m_s.dir = 1; // direction (inv)
 		m_s.idx = 0;
 		m_s.cyl = 0;
 		m_s.ss  = 0;
-		m_s.stp = 1;
+		m_s.stp = 1; // step (inv)
 		if(m_image) {
 			m_s.wpt = m_image->is_write_protected();
 		} else {

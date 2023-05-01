@@ -62,35 +62,35 @@ protected:
 	};
 	struct {
 		// input lines
-		bool dir = 1;  // direction (inv)
-		bool stp = 1;  // step (inv)
-		bool mon = 1;  // motor on (inv)
-		bool ss  = 0;  // side select
+		bool dir; // direction (inv)
+		bool stp; // step (inv)
+		bool mon; // motor on (inv)
+		bool ss;  // side select
 
 		// output lines
-		bool idx    = 0; // index pulse
-		bool wpt    = 1; // write protect
-		bool dskchg = 1; // disk changed (inv)
-		bool ready  = 1; // drive ready (inv)
+		bool idx;    // index pulse
+		bool wpt;    // write protect
+		bool dskchg; // disk changed (inv)
+		bool ready;  // drive ready (inv)
 
-		int cyl = 0; // current head cylinder position
-		uint64_t step_time = 0; // drive is being stepped and cyl will be reached at this point in time
+		int cyl; // current head cylinder position
+		uint64_t step_time; // drive is being stepped and cyl will be reached at this point in time
 
-		uint64_t rev_start_time = TIME_NEVER;
-		uint32_t rev_count = 0;
+		uint64_t rev_start_time;
+		uint32_t rev_count;
 
 		// Current floppy zone cache
-		uint64_t cache_start_time = TIME_NEVER;
-		uint64_t cache_end_time = TIME_NEVER;
-		uint64_t cache_weak_start = TIME_NEVER;
-		uint64_t amplifier_freakout_time = 16_us;
-		int cache_index = 0;
-		uint32_t cache_entry = 0;
-		bool cache_weak = false;
+		uint64_t cache_start_time;
+		uint64_t cache_end_time;
+		uint64_t cache_weak_start;
+		uint64_t amplifier_freakout_time;
+		int cache_index;
+		uint32_t cache_entry;
+		bool cache_weak;
 
-		int  ready_counter = 0;
+		int  ready_counter;
 
-		uint64_t boot_time = 0; // time of the first recalibrate (for FX)
+		uint64_t boot_time; // boot time or event (for SoundFX)
 	} m_s;
 
 public:
