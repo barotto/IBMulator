@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -52,7 +52,7 @@ public:
 	virtual void remove();
 	virtual void seek(int _c0, int _c1, int _tot_cyls);
 	virtual void spin(bool _spinning, bool _change_state);
-	virtual void clear_events();
+	virtual void clear_seek_events();
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2023  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -88,9 +88,10 @@ void DriveFX::spin(bool _spinning, bool _change_state)
 	}
 }
 
-void DriveFX::clear_events()
+void DriveFX::clear_seek_events()
 {
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 	m_seek_events.clear();
+	m_channels.seek->enable(false);
 }
 

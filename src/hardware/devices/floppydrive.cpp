@@ -178,6 +178,10 @@ void FloppyDrive::reset(unsigned type)
 void FloppyDrive::power_off()
 {
 	mon_w(MOT_OFF);
+
+	if(m_fx_enabled) {
+		m_fx.clear_seek_events();
+	}
 }
 
 void FloppyDrive::save_state(StateBuf &_state)

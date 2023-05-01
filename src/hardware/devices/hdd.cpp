@@ -266,6 +266,7 @@ void HardDiskDrive::power_off()
 
 	if(m_fx_enabled && m_disk) {
 		m_fx.spin(false, true);
+		m_fx.clear_seek_events();
 	}
 }
 
@@ -426,7 +427,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 	PINFOF(LOG_V1, LOG_HDD, "%s: restoring state\n", name());
 
 	if(m_fx_enabled) {
-		m_fx.clear_events();
+		m_fx.clear_seek_events();
 	}
 
 	if(m_type > 0) {
