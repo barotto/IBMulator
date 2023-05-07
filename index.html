@@ -356,12 +356,12 @@ Type   Cyl.   Heads    Sect.   Write    Land     Size
 
 <h3>What you'll find in the next version</h3>
 <ul>
-<li>Bug fixes, static analysis, CMake + Clang support, Flatpak version, ...</li>
+<li>Bug fixes, static analysis, Flatpak/AppImage version.</li>
+<li>Sound Blaster Pro & Pro 2 emulation.</li>
 </ul>
 
 <h3>Features likely to be implemented in the not so distant future</h3>
 <ul>
-<li>Sound Blaster Pro & Pro 2 emulation.</li>
 <li>OSD for controlling stuff like audio levels at run time.</li>
 <li>Configurable CPU core, in order to disable unneeded emulated features and speed up the program on slower machines.</li>
 </ul>
@@ -388,6 +388,7 @@ For the current list of known bugs please see the <a href="https://github.com/ba
 <dd>The easiest way is to put the ROM inside the same folder of ibmulator.ini and write its filename in the <span class="ini">[system]:romset</span> setting. 
 If you want to put the ROM somewhere else then write its full path in the ini file.</dd>
 
+
 <dt>I keep my floppy images in a folder in %DISKDRIVE% and I need to navigate there every time. How can I tell IBMulator to look there by default?</dt>
 <dd>
 Specify your floppy images folder path in the <span class="ini">[program]:media_dir</span> ibmulator.ini setting, for example:<bre />
@@ -397,9 +398,18 @@ media_dir=D:\images\
 </pre>
 </dd>
 
+
 <dt>What kind of shaders can I use? What kind of extension? i.e. are .glsl and .fx supported?</dt>
 <dd>
 IBMulator is compatible with RetroArch's Slang shaders (*.slangp). You can download them at <a href="https://github.com/libretro/slang-shaders">https://github.com/libretro/slang-shaders</a>. Follow the instructions in IBMulator's documentation for installation and use.
+</dd>
+
+
+<dt>When I enable Sound Blaster audio the game/program hangs while trying to play sounds. What can I do?</dt>
+<dd>
+Check the IRQ value in the [sblaster] section of ibmulator.ini. The Sound Blaster card should be on its own IRQ line and not sharing it with other devices.
+Open the IBMulator's log file to read the list of IRQ and DMA channels assigned to I/O devices. A good choice would be IRQ 5.
+Also make sure the BLASTER string in the C:\AUTOEXEC.BAT file has the correct Ix (IRQ) and Dx (DMA) values.
 </dd>
 
 
