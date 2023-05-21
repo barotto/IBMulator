@@ -85,6 +85,7 @@ public:
 	int get_int_or_default(const std::string &section, const std::string &name, int min, int max) noexcept;
 	double get_real_or_default(const std::string &section, const std::string &name, double min, double max) noexcept;
 	bool get_bool_or_default(const std::string &section, const std::string &name) noexcept;
+	std::string get_string_or_default(const std::string &section, const std::string &name) noexcept;
 
 	std::string get_file(const std::string &_section, const std::string &_name, FileType _type);
 	std::string try_get_file(const std::string &_section, const std::string &_name, FileType _type);
@@ -250,6 +251,7 @@ public:
 #define SBLASTER_IOBASE         "iobase"
 #define SBLASTER_DMA            "dma"
 #define SBLASTER_IRQ            "irq"
+#define SBLASTER_DAC_RESAMPLING "dac_resampling"
 #define SBLASTER_DAC_FILTERS    "dac_filters"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
 #define SBLASTER_OPL_RATE       "opl_rate"

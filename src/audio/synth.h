@@ -105,6 +105,9 @@ public:
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+protected:
+	MixerChannel * channel() const { return m_channel.get(); }
+
 private:
 	unsigned generate(AudioBuffer &_outbuffer, uint64_t _delta_ns);
 	bool is_silent();

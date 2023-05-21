@@ -203,6 +203,7 @@ void AudioBuffer::convert_format(AudioBuffer &_dest, unsigned _frames_count)
 		return;
 	}
 
+	size_t bytes_in = m_data.size();
 	const unsigned samples_count = m_spec.frames_to_samples(_frames_count);
 	std::vector<uint8_t> buffer, *data=&buffer;
 	switch(m_spec.format) {
@@ -218,6 +219,7 @@ void AudioBuffer::convert_format(AudioBuffer &_dest, unsigned _frames_count)
 		default:
 			throw std::logic_error("unsupported source format");
 	}
+
 	switch(destspec.format) {
 		case AUDIO_FORMAT_S16:
 			f32_to_s16(*data, _dest.m_data, samples_count);
@@ -228,6 +230,10 @@ void AudioBuffer::convert_format(AudioBuffer &_dest, unsigned _frames_count)
 		default:
 			throw std::logic_error("unsupported destination format");
 	}
+	size_t bytes_out = _dest.m_data.size();
+	
+	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert format 0x%x->0x%x: bytes-in: %zu, bytes-out: %zu\n",
+			m_spec.format, destspec.format, bytes_in, bytes_out);
 }
 
 
@@ -244,6 +250,7 @@ void AudioBuffer::convert_channels(AudioBuffer &_dest, unsigned _frames_count)
 		return;
 	}
 
+	unsigned sa_in = samples();
 	switch(m_spec.format) {
 		case AUDIO_FORMAT_U8:
 			convert_channels<uint8_t>(*this,_dest,_frames_count);
@@ -257,6 +264,10 @@ void AudioBuffer::convert_channels(AudioBuffer &_dest, unsigned _frames_count)
 		default:
 			throw std::logic_error("unsupported format");
 	}
+	unsigned sa_out = _dest.samples();
+
+	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert channels %u->%u: sa-in: %u, sa-out: %u\n",
+			m_spec.channels, destspec.channels, sa_in, sa_out);
 }
 
 unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, SRC_STATE *_SRC)
@@ -302,7 +313,8 @@ unsigned AudioBuffer::convert_rate(AudioBuffer &_dest, unsigned _frames_count, S
 		_dest.resize_frames(destframes + srcdata.output_frames_gen);
 		missing = out_frames - srcdata.output_frames_gen;
 	}
-	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert rate: fr-in: %u, req.fr-out: %u, gen: %ld, missing: %u\n",
+	PDEBUGF(LOG_V2, LOG_MIXER, "Audio buf convert rate %.2fHz->%.2fHz: fr-in: %u, req.fr-out: %u, gen: %ld, missing: %u\n",
+			m_spec.rate, destspec.rate,
 			_frames_count, out_frames, srcdata.output_frames_gen, missing);
 #else
 	for(unsigned i=destpos; i<_dest.samples(); ++i) {

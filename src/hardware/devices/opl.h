@@ -175,7 +175,7 @@ private:
 	void advance_drums(Operator* op_pt1, int32_t vib1,
 	                   Operator* op_pt2, int32_t vib2,
 	                   Operator* op_pt3, int32_t vib3);
-	inline bool is_opl3_mode() const { return (m_type==OPL3 && (m_s.regs[0x105] & 1)); }
+	bool is_opl3_mode() const { return (m_type==OPL3 && (m_s.regs[0x105] & 1)); }
 };
 
 #endif

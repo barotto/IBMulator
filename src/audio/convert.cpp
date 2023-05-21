@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,6 +66,15 @@ unsigned resample_mono(
 
 template <typename T>
 unsigned resample_stereo(
+		const T *_in, unsigned _in_frames, double _in_rate,
+		      T *_out, unsigned _out_size, double _out_rate)
+{
+	double rate_ratio = _out_rate / _in_rate;
+	return resample_stereo<T>(_in, _in_frames, _out, _out_size, rate_ratio);
+}
+
+template <typename T>
+unsigned resample_stereo(
 		const T *_in, unsigned _in_frames,
 		      T *_out, unsigned _out_size,
 		      double _ratio)
@@ -98,6 +107,11 @@ unsigned resample_stereo(
 template
 unsigned resample_mono<uint8_t>(
 		const uint8_t *_in, unsigned _in_samples, double _in_rate,
+		      uint8_t *_out, unsigned _out_size, double _out_rate);
+
+template
+unsigned resample_stereo<uint8_t>(
+		const uint8_t *_in, unsigned _in_frames, double _in_rate,
 		      uint8_t *_out, unsigned _out_size, double _out_rate);
 
 template

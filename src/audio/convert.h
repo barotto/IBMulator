@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,6 +36,11 @@ namespace Convert
 			const T *_in, unsigned _in_samples,
 			      T *_out, unsigned _out_size,
 			      double _ratio);
+
+	template<typename T>
+	unsigned resample_stereo(
+			const T *_in, unsigned _in_frames, double _in_rate,
+			      T *_out, unsigned _out_size, double _out_rate);
 	
 	template<typename T>
 	unsigned resample_stereo(

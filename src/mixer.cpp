@@ -395,7 +395,7 @@ void Mixer::main_loop()
 
 		m_bench.frame_end(0);
 
-		PDEBUGF(LOG_V2, LOG_MIXER,
+		PDEBUGF(LOG_V3, LOG_MIXER,
 			"Mixer step, fstart=%lld, fend=%lld, lend=%lld, time_span_ns=%llu, sleep_time=%llu, "
 			"load_time=%lld, frame_time=%lld (%lld)\n",
 			m_bench.get_frame_start(), m_bench.get_frame_end(), m_bench.get_load_end(),
@@ -707,6 +707,7 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 	size_t samples = _frames * 2;
 	std::fill(_result_buf.begin(), _result_buf.begin()+samples, 0.f);
 	float balance[2] = {1.f, 1.f};
+	float volume[2] = {1.f, 1.f};
 	for(auto ch : _channels) {
 		if(ch->category() != _chcat) {
 			continue;
@@ -733,14 +734,18 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 		if(cat_volume > 1.f) {
 			cat_volume = (exp(cat_volume) - 1.f)/(M_E - 1.f);
 		}
-		float ch_volume = ch->volume();
-		if(ch_volume > 1.f) {
-			ch_volume = (exp(ch_volume) - 1.f)/(M_E - 1.f);
+		volume[0] = ch->volume_l();
+		volume[1] = ch->volume_r();
+		if(volume[0] > 1.f) {
+			volume[0] = (exp(volume[0]) - 1.f)/(M_E - 1.f);
+		}
+		if(volume[1] > 1.f) {
+			volume[1] = (exp(volume[1]) - 1.f)/(M_E - 1.f);
 		}
 		for(size_t i=0; i<samples; i++) {
 			float v1,v2;
 			if(i < chsamples) {
-				v1 = chdata[i] * ch_volume * cat_volume * balance[i%2];
+				v1 = chdata[i] * volume[i%2] * cat_volume * balance[i%2];
 			} else {
 				v1 = 0.f;
 			}

@@ -34,6 +34,7 @@ typedef std::function<bool(
 		bool     _first_update
 	)> MixerChannel_handler;
 
+using MixerFilterChain = std::vector<std::shared_ptr<Dsp::Filter>>;
 
 class MixerChannel
 {
@@ -45,6 +46,10 @@ public:
 		GUI       = 2,
 
 		MAX
+	};
+	enum ResamplingType
+	{
+		SINC, LINEAR, ZOH
 	};
 
 private:
@@ -61,14 +66,20 @@ private:
 	AudioBuffer m_in_buffer;
 	AudioBuffer m_out_buffer;
 	uint64_t m_in_time = 0;
-	SRC_STATE *m_SRC_state = nullptr;
 	bool m_new_data = true;
 	std::function<void(bool)> m_capture_clbk;
-	std::atomic<float> m_volume = 1.f;  // 0 .. +1
+	std::atomic<float> m_volume_r = 1.f;  // 0 .. +1
+	std::atomic<float> m_volume_l = 1.f;  // 0 .. +1
 	std::atomic<float> m_balance = 0.f; // -1 .. +1
 	Category m_category = AUDIOCARD;
 	double m_fr_rem = 0.0;
-	std::vector<std::shared_ptr<Dsp::Filter>> m_filters;
+	MixerFilterChain m_filters;
+	std::mutex m_filters_mutex;
+	ResamplingType m_resampling_type = SINC;
+#if HAVE_LIBSAMPLERATE
+	SRC_STATE *m_SRC_state = nullptr;
+	int m_src_converter = SRC_SINC_MEDIUM_QUALITY;
+#endif
 
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id, Category _cat);
@@ -77,14 +88,20 @@ public:
 	// The machine thread can call only these methods:
 	void enable(bool _enabled);
 	inline bool is_enabled() { return m_enabled; }
-	void set_volume(float _vol) { m_volume = _vol; }
+	void set_resampling_type(ResamplingType _type) { m_resampling_type = _type; }
+	void set_volume(float _vol) { m_volume_l = _vol; m_volume_r = _vol; }
+	void set_volume(float _vol_l, float _vol_r) { m_volume_l = _vol_l; m_volume_r = _vol_r; }
 	void set_balance(float _balance) { m_balance = clamp(_balance, -1.f, 1.f); }
-	float volume() const { return m_volume; }
+	float volume() const { return m_volume_l; }
+	float volume_l() const { return m_volume_l; }
+	float volume_r() const { return m_volume_r; }
 	float balance() const { return m_balance; }
 
+	MixerFilterChain create_filters(std::string _filters_def);
 	void set_filters(std::string _filters_def);
-	void set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters);
-	
+	void set_filters(MixerFilterChain _filters);
+	bool are_filters_active() const { return !m_filters.empty(); }
+
 	// The mixer thread can call also these methods:
 	void set_in_spec(const AudioSpec &_spec);
 	void set_out_spec(const AudioSpec &_spec);
@@ -114,7 +131,12 @@ public:
 	void register_capture_clbk(std::function<void(bool _enable)> _fn);
 	void on_capture(bool _enable);
 
+	static float db_to_factor(float _db) {
+		return std::pow(10.0f, _db * 0.05f);
+	}
+
 private:
+	void destroy_resampler();
 	void reset_filters();
 };
 

@@ -163,19 +163,19 @@ void Devices::config_changed()
 			{ "",       SBlaster::SB2,   },
 			{ "sb1",    SBlaster::SB1,   },
 			{ "sb2",    SBlaster::SB2,   },
-			// TODO
-			// { "sbpro1", SBlaster::SBPRO1 },
-			// { "sbpro2", SBlaster::SBPRO2 },
+			{ "sbpro",  SBlaster::SBPRO1 },
+			{ "sbpro2", SBlaster::SBPRO2 },
 		};
-		// TODO
-		// unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
-		unsigned sb_model = SBlaster::SB2;
+		unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
+		SBlaster *sb = device<SBlaster>();
+		if(sb && sb->type() != sb_model) {
+			remove(SBlaster::NAME);
+		}
 		switch(sb_model) {
 			case SBlaster::SB1   : install<SBlaster>(); break;
 			case SBlaster::SB2   : install<SBlaster2>(); break;
-			// TODO
-			// case SBlaster::SBPRO1: install<SBlasterPro>(); break;
-			// case SBlaster::SBPRO2: install<SBlasterPro2>(); break;
+			case SBlaster::SBPRO1: install<SBlasterPro1>(); break;
+			case SBlaster::SBPRO2: install<SBlasterPro2>(); break;
 			default:
 				PERRF(LOG_MACHINE, "Invalid Sound Blaster model\n");
 				break;

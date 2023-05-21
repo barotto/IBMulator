@@ -18,7 +18,8 @@
       * [RetroArch shaders](#retroarch-shaders)
     * [Integer scaling](#integer-scaling)
   * [Savestates](#savestates)
-  * [Audio DSP filters](#audio-dsp-filters)
+  * [Sound Cards](#sound-cards)
+    * [DSP filters](#dsp-filters)
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
   * [Serial port](#serial-port)
@@ -386,7 +387,38 @@ for the `[drives]:hdd_commit` and `[drives]:fdd_commit` ini settings.
 
 *Note*: null modem connections cannot be restored (see below).
 
-### Audio DSP filters
+### Sound Cards
+
+The sound cards currently emulated are:
+
+* IBM PS/1 Audio Card Option
+* AdLib Music Synthesizer Card
+* Creative Sound Blaster 2.0 (DSP 2.01)
+* Creative Sound Blaster Pro (DSP 3.00)
+* Creative Sound Blaster Pro 2 (DSP 3.02)
+
+| Card   | Music                 | DAC           | IRQ   | DMA   | I/O base           |
+| ------ | --------------------- | ------------- | ----- | ----- | ------------------ |
+| PS/1   | PSG 3-voice + noise   | 8-bit, mono   | 7     | no    | 0x200              |
+| AdLib  | FM YM3812 (OPL2)      | no            | no    | no    | 0x388              |
+| SB2    | FM YM3812 (OPL2)      | 8-bit, mono   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SBPro  | FM 2 x YM3812 (OPL2)  | 8-bit, stereo | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SBPro2 | FM YMF262 (OPL3)      | 8-bit, stereo | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+
+All Sound Blaster cards are compatible with and replace the AdLib card, which
+cannot be used when a SB is installed.
+
+Default `auto` values in ibmulator.ini:
+
+| Card   | opl_filter                   | dac_filter                      | dac_resampling |
+| ------ | ---------------------------- | ------------------------------- | -------------- |
+| SB2    | LowPass,order=1,cutoff=12000 | none                            | linear         |
+| SBPro  | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
+| SBPro2 | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
+
+* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
+
+#### DSP filters
 
 Sound cards' channels can be filtered with IIR filters.
 

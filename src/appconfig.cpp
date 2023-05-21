@@ -136,11 +136,12 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	} },
 
 	{ SBLASTER_SECTION, {
-		{ SBLASTER_DAC_FILTERS, ""      },
-		{ SBLASTER_DAC_VOLUME,  "1.0"   },
-		{ SBLASTER_OPL_RATE,    "48000" },
-		{ SBLASTER_OPL_FILTERS, ""      },
-		{ SBLASTER_OPL_VOLUME,  "1.4"   }
+		{ SBLASTER_DAC_RESAMPLING, "auto"  },
+		{ SBLASTER_DAC_FILTERS,    "auto"  },
+		{ SBLASTER_DAC_VOLUME,     "auto"  },
+		{ SBLASTER_OPL_RATE,       "48000" },
+		{ SBLASTER_OPL_FILTERS,    "auto"  },
+		{ SBLASTER_OPL_VOLUME,     "auto"  }
 	} },
 	
 	{ GAMEPORT_SECTION, {
@@ -328,7 +329,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SBLASTER_MODEL,   "sb2"   },
 		{ SBLASTER_IOBASE,  "0x220" },
 		{ SBLASTER_DMA,     "1"     },
-		{ SBLASTER_IRQ,     "7"     }
+		{ SBLASTER_IRQ,     "5"     }
 	} },
 	
 	{ MPU401_SECTION, {
@@ -629,21 +630,36 @@ ini_filehelp_t AppConfig::ms_help = {
 ";  volume: Audio volume.\n"
 		},
 		{ SBLASTER_SECTION,
-";     enabled: Install the Sound Blaster 2.0 audio card.\n"
-";      iobase: The I/O base address, as an hexadecimal number.\n"
-";              Possible values: 0x220, 0x240.\n"
-";         irq: The IRQ line number.\n"
-";              Possible values: 3, 5, 7.\n"
-";         dma: The DMA channel number.\n"
-";              Possible values: 0, 1, 3.\n"
-"; dac_filters: Audio filters for the DAC\n"
-";              Possible values: a list of filter definitions. See the README for more info.\n"
-";  dac_volume: DAC's audio volume.\n"
-";    opl_rate: OPL chip's sample rate. The real hardware uses a frequency of 49716Hz.\n"
-";              Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
-"; opl_filters: Audio filters for the OPL chip\n"
-";              Possible values: a list of filter definitions. See the README for more info.\n"
-";  opl_volume: OPL chip's audio volume.\n"
+";        enabled: Install the Sound Blaster audio card.\n"
+";          model: The type of the Sound Blaster card.\n"
+";                 Possible values: sb2, sbpro, sbpro2\n"
+";                     sb2: Sound Blaster 2.0 (DSP 2.01)\n"
+";                   sbpro: Sound Blaster Pro (DSP 3.00)\n"
+";                  sbpro2: Sound Blaster Pro 2 (DSP 3.02)\n"
+";         iobase: The I/O base address, as an hexadecimal number.\n"
+";                 Possible values: 0x220, 0x240.\n"
+";            irq: The IRQ line number.\n"
+";                 Possible values: 3, 5, 7.\n"
+";            dma: The DMA channel number.\n"
+";                 Possible values: 0, 1, 3.\n"
+"; dac_resampling: The resampling method used.\n"
+";                 Possible values: auto, sinc, linear, zoh\n"
+";                    auto: the method depends on the Sound Blaster model.\n"
+";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
+";                  linear: linear converter.\n"
+";                     zoh: Zero Order Hold converter (interpolated value is equal to the last value).\n"
+";    dac_filters: Audio filters for the DAC\n"
+";                 Possible values: auto, or a list of filter definitions. See the README for more info.\n"
+";     dac_volume: DAC's MASTER audio volume.\n"
+";                 Possible values: auto, or a positive real number.\n"
+";                  auto: let the Sound Blater's Mixer adjust the level.\n"
+";       opl_rate: The OPL chip(s) sample rate. The real hardware uses a frequency of 49716Hz.\n"
+";                 Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
+";    opl_filters: Audio filters for the OPL chip(s)\n"
+";                 Possible values: a list of filter definitions. See the README for more info.\n"
+";     opl_volume: The OPL chip(s) MASTER audio volume.\n"
+";                 Possible values: auto, or a positive real number.\n"
+";                  auto: let the Sound Blater's Mixer adjust the level.\n"
 		},
 		{ GAMEPORT_SECTION, 
 "; enabled: Install the Game Port.\n"
@@ -896,15 +912,17 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ ADLIB_VOLUME,  false }
 	} },
 	{ SBLASTER_SECTION, {
-		{ SBLASTER_ENABLED,     false },
-		{ SBLASTER_IOBASE,      false },
-		{ SBLASTER_DMA,         false },
-		{ SBLASTER_IRQ,         false },
-		{ SBLASTER_DAC_FILTERS, false },
-		{ SBLASTER_DAC_VOLUME,  false },
-		{ SBLASTER_OPL_RATE,    false },
-		{ SBLASTER_OPL_FILTERS, false },
-		{ SBLASTER_OPL_VOLUME,  false }
+		{ SBLASTER_ENABLED,        false },
+		{ SBLASTER_MODEL,          false },
+		{ SBLASTER_IOBASE,         false },
+		{ SBLASTER_DMA,            false },
+		{ SBLASTER_IRQ,            false },
+		{ SBLASTER_DAC_RESAMPLING, false },
+		{ SBLASTER_DAC_FILTERS,    false },
+		{ SBLASTER_DAC_VOLUME,     false },
+		{ SBLASTER_OPL_RATE,       false },
+		{ SBLASTER_OPL_FILTERS,    false },
+		{ SBLASTER_OPL_VOLUME,     false }
 	} },
 	{ MPU401_SECTION, {
 		{ MPU401_ENABLED, false },
@@ -1123,6 +1141,16 @@ bool AppConfig::get_bool_or_default(const std::string &section, const std::strin
 				section.c_str(), name.c_str(), def ? "yes" : "no");
 		return def;
 	}
+}
+
+std::string AppConfig::get_string_or_default(const std::string &_section, const std::string &_name) noexcept
+{
+	try {
+		if(is_key_present(_section, _name)) {
+			return get_value(_section, _name);
+		}
+	} catch(std::exception &) {}
+	return get_value_default(_section, _name);
 }
 
 int AppConfig::get_int_default(const std::string &section, const std::string &name) noexcept

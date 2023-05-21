@@ -91,31 +91,67 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuff
 	return std::make_tuple(active,enabled);
 }
 
+void MixerChannel::destroy_resampler()
+{
+#if HAVE_LIBSAMPLERATE
+	if(m_SRC_state != nullptr) {
+		src_delete(m_SRC_state);
+		m_SRC_state = nullptr;
+	}
+#endif
+}
+
 void MixerChannel::reset_filters()
 {
 	for(auto &f : m_filters) {
 		f->reset();
 	}
-	
+
 #if HAVE_LIBSAMPLERATE
+	int src_type;
+	switch(m_resampling_type) {
+		case SINC: src_type = SRC_SINC_MEDIUM_QUALITY; break;
+		case LINEAR: src_type = SRC_LINEAR; break;
+		case ZOH: src_type = SRC_ZERO_ORDER_HOLD; break;
+	}
+	if(src_type != m_src_converter) {
+		destroy_resampler();
+	}
 	if(m_SRC_state == nullptr) {
 		int err;
-		m_SRC_state = src_new(SRC_SINC_MEDIUM_QUALITY, in_spec().channels, &err);
+		m_SRC_state = src_new(src_type, in_spec().channels, &err);
 		if(m_SRC_state == nullptr) {
 			PERRF(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
+		} else {
+			const char *src_type_str = "UNKNOWN";
+			switch(src_type) {
+				case SRC_SINC_BEST_QUALITY: src_type_str = "SRC_SINC_BEST_QUALITY"; break;
+				case SRC_SINC_MEDIUM_QUALITY: src_type_str = "SRC_SINC_MEDIUM_QUALITY"; break;
+				case SRC_SINC_FASTEST: src_type_str = "SRC_SINC_FASTEST"; break;
+				case SRC_ZERO_ORDER_HOLD: src_type_str = "SRC_ZERO_ORDER_HOLD"; break;
+				case SRC_LINEAR: src_type_str = "SRC_LINEAR"; break;
+				default: break;
+			}
+			PDEBUGF(LOG_V1, LOG_MIXER, "%s: SRC converter type set to %d (%s)\n", m_name.c_str(), src_type, src_type_str);
 		}
+		m_src_converter = src_type;
 	} else {
 		src_reset(m_SRC_state);
 	}
 #endif
-	
+
 	m_new_data = true;
 }
 
 void MixerChannel::set_in_spec(const AudioSpec &_spec)
 {
-	if(m_in_buffer.spec() != _spec)	{
+	if(m_in_buffer.spec() != _spec) {
+		unsigned ch = m_in_buffer.spec().channels;
 		m_in_buffer.set_spec(_spec);
+		if(ch != _spec.channels) {
+			destroy_resampler();
+			reset_filters();
+		}
 		// 5 sec. worth of data, how much is enough?
 		m_in_buffer.reserve_us(5e6);
 	}
@@ -203,15 +239,9 @@ void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
 	m_out_buffer.pop_frames(_frames_to_pop);
 }
 
-void MixerChannel::set_filters(std::string _filters_def)
+MixerFilterChain MixerChannel::create_filters(std::string _filters_def)
 {
-	if(_filters_def.empty()) {
-		m_filters.clear();
-		return;
-	}
-	
-	std::vector<std::shared_ptr<Dsp::Filter>> filters;
-	
+	MixerFilterChain filters;
 	try {
 		// filters are applied after rate and channels conversion
 		if(m_out_buffer.spec().channels == 1) {
@@ -222,25 +252,34 @@ void MixerChannel::set_filters(std::string _filters_def)
 			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
 		}
 	} catch(std::exception &) {
-		return;
+		return MixerFilterChain();
 	}
-	
-	set_filters(filters);
+	return filters;
 }
 
-void MixerChannel::set_filters(std::vector<std::shared_ptr<Dsp::Filter>> _filters)
+void MixerChannel::set_filters(std::string _filters_def)
 {
 	// this is called by the machine thread.
-	// don't alter the filters if the channel is active
-	if(m_enabled) {
-		PDEBUGF(LOG_V0, LOG_MIXER, "%s: filters set while channel active!\n", m_name.c_str());
+	if(_filters_def.empty()) {
+		std::lock_guard<std::mutex> lock(m_filters_mutex);
+		m_filters.clear();
 		return;
 	}
-	
-	m_filters = _filters;
-	
+
+	set_filters(create_filters(_filters_def));
+
 	for(auto &f : m_filters) {
 		PINFOF(LOG_V1, LOG_MIXER, "%s: adding DSP filter '%s'\n", m_name.c_str(), f->getName().c_str());
+	}
+}
+
+void MixerChannel::set_filters(MixerFilterChain _filters)
+{
+	// this is called by the machine thread.
+	std::lock_guard<std::mutex> lock(m_filters_mutex);
+	m_filters = _filters;
+	for(auto &f : m_filters) {
+		f->reset();
 	}
 }
 
@@ -304,19 +343,22 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 	}
 
 	if(frames) {
-		
+
 		// 3. convert channels
 		if(m_in_buffer.channels() != m_out_buffer.channels()) {
 			dest[bufidx].set_spec(m_out_buffer.spec());
 			source->convert_channels(dest[bufidx], frames);
 			source = &dest[bufidx];
 		}
-		
+
 		// 4. process filters
-		for(auto &f : m_filters) {
-			f->process(frames, &(source->at<float>(0)));
+		{
+			std::lock_guard<std::mutex> lock(m_filters_mutex);
+			for(auto &f : m_filters) {
+				f->process(frames, &(source->at<float>(0)));
+			}
 		}
-		
+
 		// 5. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}

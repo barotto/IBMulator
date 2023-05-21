@@ -32,6 +32,8 @@
 #include "machine.h"
 #include "opl.h"
 
+#define OPL_THREADED_RENDERING true
+
 constexpr const char * OPL::ChipNames[];
 
 #define FL05 0.5
@@ -295,6 +297,7 @@ void OPL::timer(int id)
 {
 	bool overflow = m_s.timers[id].timeout();
 	if(overflow) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s T: T%u overflow\n", name(), id+1);
 		m_irqfn(true);
 	}
 }
@@ -305,6 +308,9 @@ uint8_t OPL::read(unsigned _port)
 	assert(_port<=3);
 
 	uint8_t status = m_s.timers[T1].overflow | m_s.timers[T2].overflow;
+
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: %u -> T1:%u, T2:%u\n", name(), _port, m_s.timers[T1].overflow, m_s.timers[T2].overflow);
+
 	if(status) {
 		status |= 0x80;
 	}
@@ -331,9 +337,11 @@ void OPL::write_timers(int _index, uint8_t _value)
 	switch(_index) {
 	case 0x02: // timer 1 preset value
 		m_s.timers[T1].value = _value;
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: T1 <- 0x%02X\n", name(), _value);
 		break;
 	case 0x03: // timer 2 preset value
 		m_s.timers[T2].value = _value;
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: T2 <- 0x%02X\n", name(), _value);
 		break;
 	case 0x04:
 		// IRQ reset, timer mask/start
@@ -343,29 +351,34 @@ void OPL::write_timers(int _index, uint8_t _value)
 			m_irqfn(false);
 			m_s.timers[T1].clear();
 			m_s.timers[T2].clear();
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: T1,T2 clear\n", name());
 		} else {
 			// timer 1 control
 			m_s.timers[T1].masked = _value & 0x40;
 			m_s.timers[T1].toggle(_value & 1);
 			if(m_s.timers[T1].masked) {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: T1 masked\n", name());
 				m_s.timers[T1].clear();
 			}
 			// timer 2 control
 			m_s.timers[T2].masked = _value & 0x20;
 			m_s.timers[T2].toggle(_value & 2);
 			if(m_s.timers[T2].masked) {
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s Tn: T2 masked\n", name());
 				m_s.timers[T2].clear();
 			}
 		}
 		break;
 	default:
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: invalid timer port\n", name());
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: invalid timer port: %d\n", name(), _index);
 		break;
 	}
 }
 
 void OPL::write(unsigned _port, uint8_t _val)
 {
+	// if OPL_THREADED_RENDERING is true this function is called by the Mixer thread
+
 	// base + 0..3
 	assert(_port<=3);
 
@@ -374,22 +387,23 @@ void OPL::write(unsigned _port, uint8_t _val)
 		m_s.reg_index = _val;
 		if(m_type == OPL3 && (_port == 2)) {
 			// possibly second set
-			if((m_s.regs[OPL3_MODE]&1) || (m_s.reg_index==5)) {
+			if(is_opl3_mode() || (m_s.reg_index == 5)) {
 				m_s.reg_index |= ARC_SECONDSET;
 			}
 		}
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %u <- i 0x%02x\n", name(), _port, m_s.reg_index);
 		return;
 	}
 
 	uint32_t second_set = m_s.reg_index & ARC_SECONDSET;
 	if((_port == 1 && second_set) || (_port == 3 && !second_set)) {
-		//???
-		PDEBUGF(LOG_V0, LOG_AUDIO,
-			"%s: invalid data port base+%u for register index %03Xh\n",
+		PDEBUGF(LOG_V3, LOG_AUDIO,
+			"%s: invalid data port %u for register index %03Xh\n",
 			name(), _port, m_s.reg_index);
 	}
 
 	m_s.regs[m_s.reg_index] = _val;
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s: %u <- v 0x%02x\n", name(), _port, _val);
 
 	switch(m_s.reg_index & 0xf0) {
 	case ARC_CONTROL:
@@ -398,7 +412,12 @@ void OPL::write(unsigned _port, uint8_t _val)
 		case 0x02: // timer 1 preset value
 		case 0x03: // timer 2 preset value
 		case 0x04: // IRQ reset, timer mask/start
+#if (OPL_THREADED_RENDERING)
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s: Timer command ignored\n", name());
+#else
+			// timers are operated by the Machine thread
 			write_timers(m_s.reg_index, _val);
+#endif
 			break;
 		case ARC_SECONDSET|0x04:
 			// 4op enable/disable switches for each possible channel
@@ -416,8 +435,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			m_s.op[23].is_4op_attached = m_s.op[20].is_4op;
 			break;
 		case ARC_SECONDSET|0x05:
-			PDEBUGF(LOG_V2, LOG_AUDIO, "%s: OPL3 mode %sabled\n",
-					name(), (_val&1)?"en":"dis");
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s: OPL3 mode %s\n", name(), (_val&1)?"enabled":"disabled");
 			break;
 		case 0x08:
 			// CSW, note select
@@ -444,7 +462,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			// change frequency calculations of this operator as
 			// key scale rate and frequency multiplicator can be changed
 			if(m_type == OPL3) {
-				if((m_s.regs[OPL3_MODE]&1) && (m_s.op[modop].is_4op_attached)) {
+				if(is_opl3_mode() && (m_s.op[modop].is_4op_attached)) {
 					// operator uses frequency of channel
 					op_ptr->change_frequency(m_s.regs,chanbase-3,regbase);
 				} else {
@@ -470,7 +488,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			Operator* op_ptr = &m_s.op[modop+((num<3) ? 0 : 9)];
 			if(m_type == OPL3) {
 				unsigned regbase = base+second_set;
-				if((m_s.regs[OPL3_MODE]&1) && (m_s.op[modop].is_4op_attached)) {
+				if(is_opl3_mode() && (m_s.op[modop].is_4op_attached)) {
 					// operator uses frequency of channel
 					op_ptr->change_frequency(m_s.regs,chanbase-3,regbase);
 				} else {
@@ -518,7 +536,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 		if(base<9) {
 			int opbase = second_set?(base+18):base;
 			if(m_type == OPL3) {
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op_attached) {
+				if(is_opl3_mode() && m_s.op[opbase].is_4op_attached) {
 					break;
 				}
 			}
@@ -531,7 +549,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			m_s.op[opbase+9].change_frequency(m_s.regs,chanbase,modbase+3);
 			if(m_type == OPL3) {
 				// for 4op channels all four operators are modified to the frequency of the channel
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+				if(is_opl3_mode() && m_s.op[opbase].is_4op) {
 					if(UNLIKELY(opbase > 20)) {
 						// if opbase is > 20 there must be a bug in either reset() or ARC_CONTROL
 						PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
@@ -593,7 +611,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 		if(base<9) {
 			int opbase = second_set?(base+18):base;
 			if(m_type == OPL3) {
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op_attached) {
+				if(is_opl3_mode() && m_s.op[opbase].is_4op_attached) {
 					break;
 				}
 			}
@@ -606,7 +624,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 				m_s.op[opbase+9].enable(m_s.wave_sel,modbase+3,OP_ACT_NORMAL); // carrier (if 2op)
 				if(m_type == OPL3) {
 					// for 4op channels all four operators are switched on
-					if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+					if(is_opl3_mode() && m_s.op[opbase].is_4op) {
 						if(UNLIKELY(opbase > 20)) {
 							PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
 							assert(false);
@@ -623,7 +641,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 				m_s.op[opbase+9].disable(OP_ACT_NORMAL);
 				if(m_type == OPL3) {
 					// for 4op channels all four operators are switched off
-					if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+					if(is_opl3_mode() && m_s.op[opbase].is_4op) {
 						if(UNLIKELY(opbase > 20)) {
 							PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
 							assert(false);
@@ -644,7 +662,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			m_s.op[opbase+9].change_frequency(m_s.regs,chanbase,modbase+3);
 			if(m_type == OPL3) {
 				// for 4op channels all four operators are modified to the frequency of the channel
-				if((m_s.regs[OPL3_MODE]&1) && m_s.op[opbase].is_4op) {
+				if(is_opl3_mode() && m_s.op[opbase].is_4op) {
 					if(UNLIKELY(opbase > 20)) {
 						PERRF(LOG_AUDIO, "OPL3: Invalid opbase: %u\n", opbase);
 						assert(false);
@@ -681,7 +699,7 @@ void OPL::write(unsigned _port, uint8_t _val)
 			if(m_type == OPL3) {
 				int wselbase = second_set?(base+22):base; // for easier mapping onto wave_sel[]
 				// change waveform
-				if(m_s.regs[OPL3_MODE]&1) {
+				if(is_opl3_mode()) {
 					m_s.wave_sel[wselbase] = _val&7; // opl3 mode enabled, all waveforms accessible
 				} else {
 					m_s.wave_sel[wselbase] = _val&3;
@@ -956,7 +974,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 
 		unsigned max_channel = OPL_CHANNELS;
 
-		if(m_type==OPL2 || (m_s.regs[OPL3_MODE]&1)==0) {
+		if(!is_opl3_mode()) {
 			max_channel = OPL_CHANNELS/2;
 		}
 
@@ -975,7 +993,7 @@ void OPL::generate(int16_t *_buffer, int _frames, int _stride)
 					k += (-9+256);            // second set uses registers 0x100 onwards
 				}
 				// check if this operator is part of a 4-op
-				if((m_s.regs[OPL3_MODE]&1) && cptr->is_4op_attached) {
+				if(is_opl3_mode() && cptr->is_4op_attached) {
 					continue;
 				}
 			} else {
@@ -1854,7 +1872,8 @@ void OPL::OPLTimer::toggle(bool _start)
 	if(_start) {
 		uint32_t time = (256 - value) * increment;
 		assert(time);
-		g_machine.activate_timer(index, uint64_t(time)*1_us, true);
+		g_machine.activate_timer(index, uint64_t(time)*1_us, false);
+		PDEBUGF(LOG_V2, LOG_AUDIO, "OPLTimer: T%u start, time=%uus\n", id+1, time);
 	} else {
 		g_machine.deactivate_timer(index);
 	}

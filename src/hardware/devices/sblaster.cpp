@@ -17,7 +17,7 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Portions of code Copyright (C) 2002-2015  The DOSBox Team
+ * ADPCM decoders Copyright (C) 2002-2015  The DOSBox Team
  */
 
 #include "ibmulator.h"
@@ -66,10 +66,10 @@ static const char *SB16_COPYRIGHT = "COPYRIGHT (C) CREATIVE TECHNOLOGY LTD, 1992
 // On DSP version >= 4.00 the busy cycle is always active and the DSP busy bit toggles
 // by itself at an unknown clock rate.
 // See https://github.com/joncampbell123/dosbox-x/wiki/Hardware%3ASound-Blaster%3ADSP-busy-cycle
-// This busy time is completely made up, no docs. 
-#define SB_DSP_BUSYTIME_NS  10000
+// These timings are completely made up, no docs. 
+#define SB_DSP_BUSYTIME     10_us
+#define SB_DEFAULT_CMD_TIME 1_us
 #define SB_DAC_TIMEOUT      1_s
-#define SB_DEFAULT_CMD_TIME 1_us // TODO what's the proper value?
 
 enum DSPVMask {
 	DSP1 = 0x1, DSP2 = 0x2, DSP3 = 0x4, DSP4 = 0x8, DSPALL = 0xf
@@ -219,16 +219,11 @@ constexpr uint16_t time_const_to_freq(uint8_t _tc) {
 	return (256000000UL / (65536UL - (uint32_t(_tc) << 8)));
 }
 
+#define SB_MIXER_0VOL false // true will set volumes to 0.0 instead to -46dB when mixer's value is 0.
 
 
 SBlaster::SBlaster(Devices *_dev)
-: IODevice(_dev), Synth(),
-m_iobase(0), m_irq(0), m_dma(0),
-m_dsp_ver(0x105),
-m_dac_volume(.0f),
-m_dsp_timer(NULL_TIMER_ID),
-m_dma_timer(NULL_TIMER_ID),
-m_dac_timer(NULL_TIMER_ID)
+: IODevice(_dev), Synth()
 {
 	memset(&m_s, 0, sizeof(m_s));
 	m_s.dac.device = this;
@@ -244,14 +239,14 @@ SBlaster2::SBlaster2(Devices *_dev)
 	m_dsp_ver = 0x201;
 }
 
-SBlasterPro::SBlasterPro(Devices *_dev)
-: SBlaster(_dev)
+SBlasterPro1::SBlasterPro1(Devices *_dev)
+: SBlasterPro(_dev)
 {
 	m_dsp_ver = 0x300;
 }
 
 SBlasterPro2::SBlasterPro2(Devices *_dev)
-: SBlaster(_dev)
+: SBlasterPro(_dev)
 {
 	m_dsp_ver = 0x302;
 }
@@ -319,7 +314,7 @@ void SBlaster::install()
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
 }
 
-void SBlasterPro::install()
+void SBlasterPro1::install()
 {
 	install_ports(sbpro_ports);
 	install_dsp();
@@ -367,7 +362,7 @@ void SBlasterPro2::install()
 		[this](Event &_event) {
 			m_OPL[0].write(_event.reg_port, _event.reg);
 			m_OPL[0].write(_event.value_port, _event.value);
-			capture_command(0x5E + (_event.reg_port>>1), _event);
+			capture_command(0x5E + ((_event.reg_port >> 1) & 1), _event);
 		},
 		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
 			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 2);
@@ -413,42 +408,111 @@ void SBlaster::install_ports(const IODevice::IOPorts &_ports)
 	IODevice::install();
 }
 
+void SBlaster::configure_dac(unsigned _def_resampling, double _def_level)
+{
+	m_dac_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_DAC_VOLUME, _def_level);
+	if(m_dac_volume < .0f) {
+		PINFOF(LOG_V0, LOG_AUDIO, "%s DAC: volume set by the SB Mixer.\n", short_name());
+	}
+
+	MixerChannel::ResamplingType dac_resampling = static_cast<MixerChannel::ResamplingType>(
+		g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_DAC_RESAMPLING, {
+			{ "auto", _def_resampling },
+			{ "sinc", MixerChannel::SINC },
+			{ "linear", MixerChannel::LINEAR },
+			{ "hold", MixerChannel::ZOH },
+		}, _def_resampling)
+	);
+	m_dac_channel->set_resampling_type(dac_resampling);
+}
+
 void SBlaster::config_changed()
 {
+	// OPL config
 	unsigned opl_rate = clamp(g_program.config().get_int(SBLASTER_SECTION, SBLASTER_OPL_RATE),
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
-	float opl_volume = clamp(g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME),
-			0.0, 10.0);
+	float opl_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME, 1.0);
+
+	configure_synth(opl_rate, opl_volume);
+	
 	std::string opl_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_FILTERS, "");
-	
-	configure_synth(opl_rate, opl_volume, opl_filters);
-	
-	m_dac_volume = clamp(g_program.config().get_real(SBLASTER_SECTION, SBLASTER_DAC_VOLUME),
-			0.0, 10.0);
-	
-	std::string dac_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_FILTERS, "");
-	if(!dac_filters.empty()) {
+	Synth::channel()->set_filters(opl_filters);
+
+	// DAC config
+	configure_dac(MixerChannel::LINEAR, 1.0);
+
+	auto dac_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_DAC_FILTERS);
+	if(dac_filters == "auto") {
+		Synth::channel()->set_filters("LowPass,order=1,cutoff=12000");
+	} else if(!dac_filters.empty()) {
+		// use whatever the user wants
 		m_dac_channel->set_filters(dac_filters);
 	}
-	
 }
 
-void SBlaster::configure_synth(unsigned _rate, float _volume, std::string _filters)
+void SBlasterPro::config_changed()
+{
+	// OPL config
+	unsigned opl_rate = g_program.config().get_int_or_default(SBLASTER_SECTION, SBLASTER_OPL_RATE,
+			MIXER_MIN_RATE, MIXER_MAX_RATE);
+
+	// -1.0 = volume from SB Mixer
+	float opl_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME, -1.0);
+	m_opl_volume = opl_volume;
+	if(opl_volume < 0) {
+		PINFOF(LOG_V0, LOG_AUDIO, "%s FM: volume set by the SB Mixer.\n", short_name());
+		opl_volume = 1.0;
+	}
+
+	configure_synth(opl_rate, opl_volume);
+
+	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
+	if(opl_filters == "auto") {
+		// filter is default lowpass 8k
+		Synth::channel()->set_filters("LowPass,order=1,cutoff=8000");
+	} else {
+		// filters are what the user set in the ini config
+		if(!opl_filters.empty()) {
+			Synth::channel()->set_filters(opl_filters);
+		}
+	}
+
+	// DAC config
+	// -1.0 = volume set by sb mixer
+	configure_dac(MixerChannel::LINEAR, -1.0);
+
+	auto dac_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_DAC_FILTERS);
+	if(dac_filters == "auto") {
+		PINFOF(LOG_V0, LOG_AUDIO, "%s DAC: LPF set by the SB Mixer.\n", short_name());
+		// filter is default low-pass and enabled by the Mixer
+		m_dac_filters = m_dac_channel->create_filters("LowPass,order=2,cutoff=3200");
+		m_forced_dac_filters = false;
+	} else {
+		// filters are what the user set in the ini config and are always active
+		if(!dac_filters.empty()) {
+			m_dac_channel->set_filters(dac_filters);
+		}
+		m_dac_filters.clear();
+		m_forced_dac_filters = true;
+	}
+}
+
+void SBlaster::configure_synth(unsigned _rate, float _volume)
 {
 	// mono
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(_rate)}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(_rate)}, _volume, "");
 }
 
-void SBlasterPro::configure_synth(unsigned _rate, float _volume, std::string _filters)
+void SBlasterPro1::configure_synth(unsigned _rate, float _volume)
 {
 	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, "");
 }
 
-void SBlasterPro2::configure_synth(unsigned _rate, float _volume, std::string _filters)
+void SBlasterPro2::configure_synth(unsigned _rate, float _volume)
 {
 	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, _filters);
+	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, "");
 }
 
 void SBlaster::remove()
@@ -525,12 +589,8 @@ void SBlaster::dsp_reset()
 	m_s.dac.change_format(AUDIO_FORMAT_U8);
 	m_s.dac.speaker = false;
 	m_s.dac.irq_count = 0;
-	m_dac_channel->set_volume(.0f);
-}
 
-void SBlaster::mixer_reset()
-{
-	m_s.mixer.channels = 1;
+	update_volumes();
 }
 
 void SBlaster::power_off()
@@ -545,7 +605,7 @@ uint16_t SBlaster::read(uint16_t _address, unsigned)
 	uint16_t address = _address;
 	
 	if(_address >= 0x388 && _address <= 0x389) {
-		address -= 0x388;
+		address -= 0x380;
 	} else {
 		address -= m_iobase;
 	}
@@ -580,7 +640,7 @@ uint16_t SBlaster::read_fm(uint16_t _address)
 	return value;
 }
 
-uint16_t SBlasterPro::read_fm(uint16_t _address)
+uint16_t SBlasterPro1::read_fm(uint16_t _address)
 {
 	uint8_t chip = (_address>>1) & 1;
 	uint8_t value = m_OPL[chip].read(_address & 3);
@@ -597,6 +657,30 @@ uint16_t SBlaster::read_mixer(uint16_t _address)
 	return ~0;
 }
 
+uint16_t SBlasterPro::read_mixer(uint16_t)
+{
+	// CT1345
+	assert(m_s.mixer.reg_idx < sizeof(m_s.mixer.reg));
+
+	uint8_t value = ~0;
+	switch(m_s.mixer.reg_idx) {
+		case 0x02: // Master CT1335 compat
+			value = (m_s.mixer.reg[0x22] & 0x0e) | 1;
+			break;
+		case 0x06: // FM CT1335 compat
+			value = (m_s.mixer.reg[0x26] & 0x0e) | 1;
+			break;
+		case 0x08: // CD CT1335 compat
+			value = (m_s.mixer.reg[0x28] & 0x0e) | 1;
+			break;
+		default:
+			value = m_s.mixer.reg[m_s.mixer.reg_idx];
+			break;
+	}
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: read  0x5 -> 0x%02X\n", short_name(), value);
+	return value;
+}
+
 uint16_t SBlaster::read_dsp(uint16_t _address)
 {
 	uint8_t value = 0x7f;
@@ -609,12 +693,12 @@ uint16_t SBlaster::read_dsp(uint16_t _address)
 			// receive commands or data.
 			switch(m_s.dsp.state) {
 				case DSP::State::NORMAL: {
-					int busy = g_machine.get_virt_time_ns() % m_s.dac.period_ns;
-					if(m_s.dsp.mode == DSP::Mode::DMA && (m_s.dsp.high_speed || busy<SB_DSP_BUSYTIME_NS)) {
+					unsigned busy = g_machine.get_virt_time_ns() % m_s.dac.period_ns;
+					if(m_s.dsp.mode == DSP::Mode::DMA && (m_s.dsp.high_speed || busy<SB_DSP_BUSYTIME)) {
 						// TODO in SB16 the busy cycle is always active.
 						// with 16bit reads, 8 bits will have the busy bit set, 
 						// and 8 will have the busy bit clear.
-						
+
 						// DSP is busy processing
 						value |= 0x80;
 					} else {
@@ -654,7 +738,7 @@ void SBlaster::write(uint16_t _address, uint16_t _value, unsigned)
 	uint16_t addr = _address;
 
 	if(_address >= 0x388 && _address <= 0x389) {
-		addr -= 0x388;
+		addr -= 0x380;
 	} else {
 		addr -= m_iobase;
 	}
@@ -663,18 +747,20 @@ void SBlaster::write(uint16_t _address, uint16_t _value, unsigned)
 		case 0x0: case 0x1: // CMS or OPL chip/port 0
 		case 0x2: case 0x3: // CMS or OPL chip/port 1
 		case 0x8: case 0x9: // OPL chip/port 0
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s FM: write 0x%x <- 0x%02x\n", short_name(), _address, _value);
 			write_fm(addr, _value);
 			break;
 		case 0x4: case 0x5:
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: write 0x%x <- 0x%02x\n", short_name(), _address, _value);
 			write_mixer(addr, _value);
 			break;
 		case 0x6: case 0x7: // DSP reset
 		case 0xc: case 0xd: // DSP Write Command/Data
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: write 0x%x <- 0x%02x\n", short_name(), _address, _value);
 			write_dsp(addr, _value);
 			break;
 		default:
-			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: unhandled write to port 0x%04X!\n",
-					short_name(), _address);
+			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: unhandled write to port 0x%04X!\n", short_name(), _address);
 			break;
 	}
 }
@@ -695,7 +781,7 @@ void SBlaster2::write_fm(uint16_t _address, uint16_t _value)
 	SBlaster::write_fm(0, _address & 0x3, _value);
 }
 
-void SBlasterPro::write_fm(uint16_t _address, uint16_t _value)
+void SBlasterPro1::write_fm(uint16_t _address, uint16_t _value)
 {
 	switch(_address) {
 		case 0: case 1: // left OPL
@@ -717,9 +803,9 @@ void SBlasterPro::write_fm(uint16_t _address, uint16_t _value)
 void SBlasterPro2::write_fm(uint16_t _address, uint16_t _value)
 {
 	switch(_address) {
-		case 0: case 1: // OPL2 mode / OPL3 mode bank 0
-		case 2: case 3: // OPL3 mode bank 1
-		case 8: case 9: // OPL2 mode
+		case 0: case 1: // OPL2 / OPL3 bank 0
+		case 2: case 3: // OPL3 bank 1
+		case 8: case 9: // OPL2 / OPL3 bank 0
 			SBlaster::write_fm(0, _address, _value);
 			break;
 		default:
@@ -730,8 +816,6 @@ void SBlasterPro2::write_fm(uint16_t _address, uint16_t _value)
 
 void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 {
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: write 0x%x <- 0x%02x", short_name(), _address, _value);
-	
 	switch(_address) {
 		case 0x6: case 0x7: // DSP reset
 		{
@@ -740,16 +824,16 @@ void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 				m_s.dsp.state = DSP::State::RESET_START;
 				// stop any pending operation
 				g_machine.deactivate_timer(m_dsp_timer);
-				PDEBUGF(LOG_V2, LOG_AUDIO, " Reset start\n");
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: Reset start\n", short_name());
 			} else if(!reset && m_s.dsp.state == DSP::State::RESET_START) {
-				PDEBUGF(LOG_V2, LOG_AUDIO, " Reset\n");
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: RESET\n", short_name());
 				// do the reset procedure now and flush the data buffers.
 				dsp_reset();
 				m_s.dsp.state = DSP::State::RESET;
 				// complete the reset successfully with 0xAA result after 20 us.
 				g_machine.activate_timer(m_dsp_timer, 50_us, false);
 			} else {
-				PDEBUGF(LOG_V2, LOG_AUDIO, " Invalid reset procedure?\n");
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: Invalid reset procedure?\n", short_name());
 			}
 			break;
 		}
@@ -757,10 +841,9 @@ void SBlaster::write_dsp(uint16_t _address, uint16_t _value)
 		{
 			if(m_s.dsp.high_speed) {
 				// TODO is this correct?
-				PDEBUGF(LOG_V2, LOG_AUDIO, " write in high speed, ignored\n");
+				PDEBUGF(LOG_V2, LOG_AUDIO, "%s DSP: write in high speed, ignored\n", short_name());
 				break;
 			}
-			PDEBUGF(LOG_V2, LOG_AUDIO, "\n");
 			m_s.dsp.in.write(_value);
 			if(m_s.dsp.state == DSP::State::NORMAL) {
 				dsp_read_in_buffer();
@@ -807,6 +890,57 @@ void SBlaster::write_mixer(uint16_t _address, uint16_t _value)
 	PDEBUGF(LOG_V0, LOG_AUDIO, "%s: Mixer not installed!\n", short_name());
 }
 
+void SBlasterPro::write_mixer(uint16_t _address, uint16_t _value)
+{
+	// CT1345
+
+	if(_address == 0x04) {
+		m_s.mixer.reg[0x01] = m_s.mixer.reg[m_s.mixer.reg_idx];
+		m_s.mixer.reg_idx = _value & 0xff;
+	} else if(_address == 0x05) {
+		assert(m_s.mixer.reg_idx < sizeof(m_s.mixer.reg));
+		switch(m_s.mixer.reg_idx) {
+			case 0x00:
+				mixer_reset();
+				return;
+			case 0x02: // CT1335 Master
+				m_s.mixer.reg[0x22] = _value | _value << 4;
+				break;
+			case 0x06: // CT1335 FM
+				m_s.mixer.reg[0x26] = _value | _value << 4;
+				break;
+			case 0x08: // CT1335 CD
+				m_s.mixer.reg[0x28] = _value | _value << 4;
+				break;
+			case 0x04:
+				m_s.mixer.reg[0x04] = _value;
+				debug_print_volumes(0x04, "DAC");
+				break;
+			case 0x22:
+				m_s.mixer.reg[0x22] = _value;
+				debug_print_volumes(0x22, "MASTER");
+				break;
+			case 0x26:
+				m_s.mixer.reg[0x26] = _value;
+				debug_print_volumes(0x26, "FM");
+				break;
+			case 0x0E:
+				if((m_s.mixer.reg[0x0E] & 0x02) != (_value & 0x02)) {
+					// stereo mode
+					PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: stereo mode %s.\n", short_name(),
+							(_value & 0x02) ? "ENABLED" : "DISABLED");
+				}
+				break;
+			default:
+				break;
+		}
+		m_s.mixer.reg[m_s.mixer.reg_idx] = _value;
+		update_volumes();
+	} else {
+		PDEBUGF(LOG_V0, LOG_AUDIO, "%s Mixer: invalid register %x\n", _address);
+	}
+}
+
 void SBlaster::write_fm(uint8_t _chip, uint16_t _address, uint16_t _value)
 {
 	uint8_t port = _address & 3;
@@ -824,28 +958,25 @@ void SBlaster::write_fm(uint8_t _chip, uint16_t _address, uint16_t _value)
 		case 3:
 		{
 			uint8_t reg = m_s.opl.reg[_chip];
-			switch(reg) {
-				case 0x02: case 0x03: case 0x04:
-					// timers must be written to immediately.
-					m_OPL[_chip].write_timers(reg, _value);
-					break;
-				default:
-					// the Synth will generate audio in another thread.
-					Synth::add_event({
-						g_machine.get_virt_time_ns(),
-						_chip,
-						m_s.opl.reg_port[_chip], reg,
-						port, uint8_t(_value)
-					});
-					Synth::enable_channel();
-					break;
+			if(m_s.opl.reg_port[_chip] == 0 && (reg == 2 || reg == 3 || reg == 4)) {
+				// timers must be written to immediately.
+				m_OPL[_chip].write_timers(reg, _value);
 			}
+			// the Synth will generate audio in another thread.
+			Synth::add_event({
+				g_machine.get_virt_time_ns(),
+				_chip,
+				m_s.opl.reg_port[_chip], reg,
+				port, uint8_t(_value)
+			});
+			Synth::enable_channel();
 			PDEBUGF(LOG_V2, LOG_AUDIO, "%s FM: write c%d:p%d reg %02Xh <- %02Xh\n",
 					short_name(), _chip, _address, reg, _value
 			);
 			break;
 		}
 		default:
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s FM: invalid port %02Xh\n", short_name(), _address);
 			break;
 	}
 }
@@ -863,18 +994,154 @@ void SBlaster::restore_state(StateBuf &_state)
 	_state.read(&m_s, {sizeof(m_s), name()});
 	m_s.dac.device = this;
 	Synth::restore_state(_state);
-	
-	if(m_s.dac.speaker) {
-		m_dac_channel->set_volume(m_dac_volume);
-	} else {
-		m_dac_channel->set_volume(.0f);
-	}
+
+	update_volumes();
+
 	if(m_s.dac.state != DAC::State::STOPPED || m_s.dac.used != 0) {
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s  DSP mode:%d, DAC state:%d,%u\n", short_name(),
 				m_s.dsp.mode, m_s.dac.state, m_s.dac.used);
 		m_s.dac.newdata = true;
 		m_dac_channel->enable(true);
 	}
+}
+
+void SBlasterPro::mixer_reset()
+{
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: RESET\n", short_name());
+	
+	memset(&m_s.mixer, 0, sizeof(m_s.mixer));
+
+	// default values according to "Sound Blaster Programming Information v0.90 by André Baresel - Craig Jackson"
+	// default level = 4
+	// bits 0 and 4 are always 1
+	m_s.mixer.reg[0x04] = 0x99; // DAC
+	m_s.mixer.reg[0x22] = 0x99; // Master
+	m_s.mixer.reg[0x26] = 0x99; // FM
+
+	debug_print_volumes(0x04, "DAC");
+	debug_print_volumes(0x22, "MASTER");
+	debug_print_volumes(0x26, "FM");
+
+	update_volumes();
+}
+
+std::pair<int,int> SBlasterPro::get_mixer_levels(uint8_t _reg)
+{
+	int left = (m_s.mixer.reg[_reg] >> 5) & 0x7;
+	int right = (m_s.mixer.reg[_reg] >> 1) & 0x7;
+
+	return { left, right };
+}
+
+std::pair<float,float> SBlasterPro::get_mixer_volume_db(uint8_t _reg)
+{
+	// These values are derived from DOSBox's code.
+	// Since they don't seem to be documented anywhere I'm assuming they are the results of direct measurements.
+	static const float db_lookup[8] = {
+		-46.f, -27.f, -21.f, -16.f, -11.f, -7.f, -3.f, 0.f
+	};
+	auto [left, right] = get_mixer_levels(_reg);
+
+	return { db_lookup[left], db_lookup[right] };
+}
+
+std::pair<float,float> SBlasterPro::get_mixer_volume(uint8_t _reg)
+{
+	auto [left_db, right_db] = get_mixer_volume_db(_reg);
+	
+	float left = MixerChannel::db_to_factor(left_db);
+	float right = MixerChannel::db_to_factor(right_db);
+
+#if SB_MIXER_0VOL
+	if(left_db <= -46.f) {
+		left = 0.f;
+	}
+	if(right_db <= -46.f) {
+		right = 0.f;
+	}
+#endif
+
+	return { left, right };
+}
+
+void SBlaster::update_volumes()
+{
+	if(m_s.dac.speaker) {
+		m_dac_channel->set_volume(m_dac_volume);
+	} else {
+		m_dac_channel->set_volume(.0f);
+	}
+}
+
+void SBlasterPro::update_volumes()
+{
+	// MASTER
+	auto [master_l, master_r] = get_mixer_volume(0x22);
+
+	float left, right;
+	// DAC
+	if(m_s.dac.speaker) {
+		// SPEAKER on
+		auto [dac_l, dac_r] = get_mixer_volume(0x04);
+		if(m_dac_volume < 0.f) {
+			left = dac_l * master_l;
+			right = dac_r * master_r;
+		} else {
+			// user defined
+			left = dac_l * m_dac_volume;
+			right = dac_r * m_dac_volume;
+		}
+		if(m_dac_channel->volume_l() != left || m_dac_channel->volume_r() != right) {
+			PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: DAC vol L:%.3f - R:%.3f\n", short_name(),
+					left, right);
+		}
+		m_dac_channel->set_volume(left, right);
+	} else {
+		// SPEAKER off
+		m_dac_channel->set_volume(.0f);
+	}
+	if(!m_forced_dac_filters) {
+		// output low-pass filter
+		bool enabled = (m_s.mixer.reg[0x0E] & 0x20) == 0;
+		if(m_dac_channel->are_filters_active() != enabled) {
+			if(enabled) {
+				m_dac_channel->set_filters(m_dac_filters);
+			} else {
+				m_dac_channel->set_filters("");
+			}
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: DAC output low-pass filter %s.\n", short_name(),
+					enabled ? "ENABLED" : "DISABLED");
+		}
+	}
+
+	// FM
+	auto [fm_l, fm_r] = get_mixer_volume(0x26);
+	if(m_opl_volume < 0.f) {
+		left = fm_l * master_l;
+		right = fm_r * master_r;
+	} else {
+		// user defined
+		left = fm_l * m_opl_volume;
+		right = fm_r * m_opl_volume;
+	}
+	if(Synth::channel()->volume_l() != left || Synth::channel()->volume_r() != right) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: FM vol L:%.3f - R:%.3f\n", short_name(),
+				left, right);
+	}
+	Synth::channel()->set_volume(left, right);
+	// TODO reg 0x6 bit 5,6 left-right routing?
+}
+
+void SBlasterPro::debug_print_volumes(uint8_t _reg, const char *_name)
+{
+	auto [l_level,r_level] = get_mixer_levels(_reg);
+	auto [l_db,r_db] = get_mixer_volume_db(_reg);
+	auto [l_fact,r_fact] = get_mixer_volume(_reg);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: %s = L:%d/%.0fdB/%.3f - R:%d/%.0fdB/%.3f\n", short_name(),
+			_name,
+			l_level, l_db, l_fact,
+			r_level, r_db, r_fact
+			);
 }
 
 void SBlaster::raise_interrupt()
@@ -928,7 +1195,6 @@ int SBlaster::dsp_decode(uint8_t _sample)
 	// to arrange that is not worth it.
 	
 	if(m_s.dsp.decoder == DSP::Decoder::PCM) {
-		// TODO stereo
 		m_s.dac.add_sample(_sample);
 		return 1;
 	}
@@ -986,20 +1252,21 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	double avg_rate = m_s.dac.spec.rate;
 #ifdef LOG_DEBUG_MESSAGES
 	assert(m_s.dac.sample_time_ns[0] < now);
-	if(m_s.dac.used) {
-		unsigned frames = m_s.dac.used / m_s.dac.spec.frame_size();
-		double avg_diff = double(now - m_s.dac.sample_time_ns[0]) / double(frames);
+	if(m_s.dac.used >= m_s.dac.spec.channels) {
+		double avg_diff = double(now - m_s.dac.sample_time_ns[0]) / (m_s.dac.used / m_s.dac.spec.channels);
 		avg_rate = ceil(NSEC_PER_SECOND / avg_diff);
 	}
-	m_s.dac.sample_time_ns[m_s.dac.used>0] = now;
+	m_s.dac.sample_time_ns[m_s.dac.used > m_s.dac.spec.channels-1] = now;
 #endif
 
 	m_s.dac.state = DAC::State::ACTIVE;
 	g_machine.deactivate_timer(m_dac_timer);
 	
 	// Real hardware reads 1 sample at a time.
-	// This is computationally more expensive as this func, and all the DMA
-	// procedure (DRQ, HLDA), must be called 512 times instead of only 1.
+	// This function reads 1 frame at a time (1 or 2 samples).
+	// Compared to reading blocks of 512 bytes, this is computationally much more expensive
+	// as this func and all the DMA procedure (DRQ, HLDA) must be called hundreds of times
+	// instead of only a handful.
 	// But doing so is closer to real hardware and solves DAC's overflow when
 	// the guest program restarts the DMA before TC.
 	// A possible alternative for the DAC's overflow problem would be using audio
@@ -1007,9 +1274,21 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	// amount of samples in the dac_create_samples func, but the DMA would still
 	// report an incorrect count value via its status ports (don't know if it would
 	// make any real world difference tho).
-	// TODO SB Pro cards in stereo mode read samples at double the audio frame rate.
-	unsigned frames = dsp_decode(*_buffer);
-	m_s.dma.left--;
+
+	float frames = 0;
+	unsigned bytes = 0;
+	if(m_s.dsp.decoder == DSP::Decoder::PCM) {
+		do {
+			m_s.dac.add_sample(_buffer[bytes++]);
+			m_s.dma.left--;
+		} while ((bytes < _maxlen) && (bytes < m_s.dac.spec.channels) && (m_s.dma.left != 0xffff));
+		frames = float(bytes) / m_s.dac.spec.channels;
+	} else {
+		frames = dsp_decode(*_buffer);
+		m_s.dma.left--;
+		bytes = 1;
+	}
+
 	m_s.dma.drq = true;
 	m_s.dma.irq = false;
 	if(m_s.dma.left == 0xffff) {
@@ -1033,10 +1312,10 @@ uint16_t SBlaster::dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	}
 	g_machine.activate_timer(m_dma_timer, dma_timer_ns, false);
 	
-	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: read 1 of %u bytes, frames=%u, left=%ub, drq_time=%lluns, avg_rate=%.02fHz, timer_ns=%lluns\n", 
-			short_name(), _maxlen, frames, m_s.dma.left, drq_time, avg_rate, dma_timer_ns);
+	PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA8: read %u of %u bytes, frames=%.1f, left=%ub, dac buf.=%u, drq_time=%lluns, avg_rate=%.02fHz, dma_timer_ns=%lluns\n", 
+			short_name(), bytes, _maxlen, frames, m_s.dma.left, m_s.dac.used, drq_time, avg_rate, dma_timer_ns);
 	
-	return 1;
+	return bytes;
 }
 
 uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool)
@@ -1056,7 +1335,7 @@ uint16_t SBlaster::dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool)
 	}
 	
 	// ADC
-	// TODO implmented and tested only for the SB2.0 dos driver DMA initialization procedure.
+	// TODO implemented and tested only for the SB2.0 dos driver DMA initialization procedure.
 	unsigned len = 0;
 	do {
 		_buffer[len++] = m_s.dac.silence;
@@ -1185,6 +1464,7 @@ void SBlaster::dsp_change_mode(DSP::Mode _mode)
 				// only valid format is U8 mono.
 				m_s.dac.change_format(AUDIO_FORMAT_U8);
 				m_s.dac.spec.channels = 1;
+				m_s.dac.flush_data();
 				// rate is dynamic
 				break;
 			case DSP::Mode::DMA:
@@ -1335,7 +1615,14 @@ void SBlaster::dma_start(bool _autoinit)
 	
 	//TODO use a different object for ADC
 	m_s.dac.change_format(AUDIO_FORMAT_U8);
-	m_s.dac.spec.channels = m_s.mixer.channels;
+	//TODO SB16
+	unsigned channels = is_stereo_mode() ? 2 : 1;
+	if(m_s.dac.spec.channels != channels) {
+		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DMA: %u channel(s)\n", short_name(), channels);
+		m_s.dac.flush_data();
+	}
+	m_s.dac.channel = 0;
+	m_s.dac.spec.channels = channels;
 	dsp_update_frequency();
 	
 	//TODO SB16
@@ -1678,6 +1965,7 @@ void SBlaster::DAC::flush_data()
 	used = 0;
 	sample_time_ns[0] = 0;
 	sample_time_ns[1] = 0;
+	channel = 0;
 }
 
 void SBlaster::DAC::add_sample(uint8_t _sample)
@@ -1690,7 +1978,8 @@ void SBlaster::DAC::add_sample(uint8_t _sample)
 	if(spec.channels == 1) {
 		last_value[0] = _sample;
 	} else {
-		//TODO
+		last_value[channel] = _sample;
+		channel = 1 - channel;
 	}
 	if(irq_count) {
 		irq_count--;
@@ -1756,7 +2045,7 @@ void SBlaster::dsp_update_frequency()
 {
 	// caller must lock the dac mutex
 	
-	// TODO SB16 these limits are valid only for DSP ver. <= 3.xx
+	// TODO SB16 these limits (and stereo mode) are valid only for DSP ver. <= 3.xx
 	
 	uint8_t tc = m_s.dsp.time_const;
 	
@@ -1776,31 +2065,38 @@ void SBlaster::dsp_update_frequency()
 	
 	tc = std::min(hilimit, tc);
 	tc = std::max(lolimit, tc);
-	
-	uint16_t freq = time_const_to_freq(tc);
-	
-	if(m_s.dac.spec.channels == 2) {
-		freq >>= 1;
-	}
-	
-	// IBMulator's time is a uint64_t of nanoseconds and that's the resolution of
-	// its internal timers. 
-	// TODO use integer rate if/when IBMulator's timers will switch to double of seconds.
-	uint64_t old_period = m_s.dac.period_ns;
+
+	uint16_t freq = time_const_to_freq(tc) / m_s.dac.spec.channels;
+
 	double old_rate = m_s.dac.spec.rate;
 	// Calculate an integer sample period in ns and derive a sample rate from it.
 	m_s.dac.period_ns = round(1e9 / double(freq));
 	m_s.dac.spec.rate = 1e9 / double(m_s.dac.period_ns);
 	m_s.dac.timeout_ns = SB_DAC_TIMEOUT;
 	
-	if(m_s.dac.period_ns != old_period) {
+	if(m_s.dac.spec.rate != old_rate) {
 		PDEBUGF(LOG_V1, LOG_AUDIO, "%s DSP: old rate=%.3f Hz, new rate=%.3f Hz, period=%llu ns\n", short_name(),
 				old_rate, m_s.dac.spec.rate, m_s.dac.period_ns);
 		if(m_s.dac.used) {
+			// DAC will have no data in case of switching mono-stereo mode
 			static std::array<uint8_t,DAC::BUFSIZE> tempbuf;
-			// TODO stereo, SB16
-			size_t generated = Audio::Convert::resample_mono<uint8_t>(
-					m_s.dac.data, m_s.dac.used, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
+			size_t generated = 0;
+			if(m_s.dac.spec.channels == 1) {
+				generated = Audio::Convert::resample_mono<uint8_t>(
+						m_s.dac.data, m_s.dac.used, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
+			} else {
+				if(m_s.dac.used & 1) {
+					PDEBUGF(LOG_V0, LOG_AUDIO, "%s DSP: unexpected number of samples in stereo mode: %u\n", short_name(),
+							m_s.dac.used);
+					m_s.dac.used--;
+					if(!m_s.dac.used) {
+						return;
+					}
+				}
+				unsigned frames = m_s.dac.used / 2;
+				generated = Audio::Convert::resample_stereo<uint8_t>(
+						m_s.dac.data, frames, old_rate, &tempbuf[0], DAC::BUFSIZE, m_s.dac.spec.rate);
+			}
 			memcpy(m_s.dac.data, &tempbuf[0], generated);
 			PDEBUGF(LOG_V1, LOG_AUDIO, "%s DAC: resampled %u samples at %.3f Hz, to %zu samples at %.3f Hz\n",
 					short_name(), m_s.dac.used, old_rate, generated, m_s.dac.spec.rate);
@@ -1816,8 +2112,7 @@ void SBlaster::dac_timer(uint64_t)
 	if(m_s.dac.state == DAC::State::WAITING) {
 		m_s.dac.add_sample(m_s.dac.last_value[0]);
 		if(m_s.dac.spec.channels == 2) {
-			//TODO
-			//m_s.dac.add_sample(m_s.dac.last_value[1]);
+			m_s.dac.add_sample(m_s.dac.last_value[1]);
 		}
 		PDEBUGF(LOG_V2, LOG_AUDIO, "%s DAC: adding fills\n", short_name());
 		if(!m_s.dac.irq_count && (g_machine.get_virt_time_ns() - m_s.dac.sample_time_ns[0]) > m_s.dac.timeout_ns) {
@@ -1835,9 +2130,9 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 {
 	// TODO SB16
 	// everything here assumes u8 sample data type.
-	
+
 	m_dac_mutex.lock();
-	
+
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 	unsigned pre_frames = 0, post_frames = 0;
 	unsigned dac_frames = m_s.dac.spec.samples_to_frames(m_s.dac.used);
@@ -1846,11 +2141,11 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	static double balance = 0.0;
 
 	m_dac_channel->set_in_spec(m_s.dac.spec);
-	
+
 	if(m_s.dac.newdata) {
 		balance = 0.0;
 	}
-	
+
 	if(m_s.dac.newdata && (dac_frames < needed_frames)) {
 		pre_frames = needed_frames - dac_frames;
 		m_dac_channel->in().fill_frames<uint8_t>(pre_frames, m_s.dac.last_value);
@@ -1858,9 +2153,12 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	}
 
 	if(dac_frames > 0) {
-		// TODO FIXME for stereo use only complete frames
-		m_dac_channel->in().add_samples(m_s.dac.data, m_s.dac.used);
-		m_s.dac.used = 0;
+		unsigned samples = dac_frames * m_s.dac.spec.channels;
+		m_dac_channel->in().add_samples(m_s.dac.data, samples);
+		m_s.dac.used -= samples;
+		if(m_s.dac.used) {
+			memmove(m_s.dac.data, m_s.dac.data + samples, m_s.dac.used);
+		}
 		m_dac_channel->set_disable_time(mtime_ns);
 		balance += dac_frames;
 	}
@@ -1878,7 +2176,9 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	unsigned total = pre_frames + dac_frames + post_frames;
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s DAC: update: %04llu ns, %.2f needed frames at %.2f Hz, rendered %d+%d+%d (%.2f us), balance=%.2f\n",
 			short_name(), _time_span_ns, needed_frames, m_s.dac.spec.rate,
-			pre_frames, dac_frames, post_frames, frames_to_us(total, m_s.dac.spec.rate), balance);
+			pre_frames, dac_frames, post_frames,
+			frames_to_us(total, m_s.dac.spec.rate),
+			balance);
 	
 	m_s.dac.newdata &= (dac_frames == 0);
 	m_dac_mutex.unlock();

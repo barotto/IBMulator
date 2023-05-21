@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,7 @@
  * - Sound Blaster 1.5 (22KHz 8bit mono, OPL2, DSP 1.05)
  * - Sound Blaster Pro (22KHz 8bit stereo or 44KHz 8bit mono, dual OPL2, DSP 3.00)
  * - Sound Blaster 2.0 (44KHz 8bit mono, OPL2, DSP 2.01)
- * - Sound Blaster Pro 2 (44KHz 8bit stereo, OPL3, DSP 3.02)
+ * - Sound Blaster Pro 2 (22KHz 8bit stereo or 44KHz 8bit mono, OPL3, DSP 3.02)
  * 
  * TODO:
  * - Sound Balster 16 (44KHz 16bit stereo, OPL3, DSP 4.05)
@@ -37,8 +37,7 @@
  * - DOSBox-X, by Jonathan Campbell (src/hardware/sblaster.cpp)
  * - DOSBox-X Wiki, by Jonathan Campbell (https://github.com/joncampbell123/dosbox-x/wiki)
  * - Bochs, by The Bochs Project (iodev/sound/sb16.cc)
- * 
- * ADPCM code Copyright (C) 2002-2015  The DOSBox Team
+ * - Sound Blaster Programming Information v0.90 by André Baresel - Craig Jackson
  */
 
 #ifndef IBMULATOR_HW_SBLASTER_H
@@ -63,9 +62,9 @@ public:
 	};
 	
 protected:
-	unsigned m_iobase;
-	unsigned m_irq;
-	unsigned m_dma;
+	unsigned m_iobase = 0;
+	unsigned m_irq = 0;
+	unsigned m_dma = 0;
 	std::string m_blaster_env;
 	
 	OPL m_OPL[2];
@@ -152,15 +151,16 @@ protected:
 		bool speaker;
 		uint32_t irq_count;
 		SBlaster *device;
+		unsigned channel;
 		
 		void flush_data();
 		void add_sample(uint8_t _sample);
 		void change_format(AudioFormat _format);
 	};
-	
-	//TODO STUB
+
 	struct Mixer {
-		bool channels;
+		uint8_t reg_idx;
+		uint8_t reg[256];
 	};
 	
 	struct State {
@@ -175,7 +175,7 @@ protected:
 		bool pending_irq;
 	} m_s;
 
-	int m_dsp_ver;
+	int m_dsp_ver = 0x105;
 		
 	struct DSPCmd {
 		unsigned dsp_vmask;
@@ -188,18 +188,22 @@ protected:
 
 	std::mutex m_dac_mutex;
 	std::shared_ptr<MixerChannel> m_dac_channel;
-	float m_dac_volume;
+
+	float m_dac_volume = -1.f;
+	float m_opl_volume = -1.f;
 	
-	TimerID m_dsp_timer;
-	TimerID m_dma_timer;
-	TimerID m_dac_timer;
+	bool m_forced_dac_filters = false;
+	MixerFilterChain m_dac_filters;
+
+	TimerID m_dsp_timer = NULL_TIMER_ID;
+	TimerID m_dma_timer = NULL_TIMER_ID;
+	TimerID m_dac_timer = NULL_TIMER_ID;
 	
 public:
 	SBlaster(Devices *_dev);
 	virtual ~SBlaster();
 
 	virtual unsigned type() const { return SB1; }
-	virtual const char *type_name() { return "1.5"; }
 	bool is(unsigned _type) { return type() == _type; }
 	virtual const char *full_name() { return "Sound Blaster 1.5"; }
 	virtual const char *short_name() { return "SB1"; }
@@ -210,7 +214,7 @@ public:
 	
 	void reset(unsigned _type);
 	void power_off();
-	void config_changed();
+	virtual void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 	void save_state(StateBuf &_state);
@@ -220,7 +224,8 @@ protected:
 	void install_ports(const IODevice::IOPorts &_ports);
 	void install_dsp();
 	
-	virtual void configure_synth(unsigned _rate, float _volume, std::string _filters);
+	virtual void configure_dac(unsigned _def_resampling, double _def_level);
+	virtual void configure_synth(unsigned _rate, float _volume);
 	
 	virtual uint16_t read_fm(uint16_t _address);
 	virtual uint16_t read_dsp(uint16_t _address);
@@ -234,9 +239,13 @@ protected:
 	
 	void raise_interrupt();
 	void lower_interrupt();
-	
-	void mixer_reset();
-	
+
+	virtual void mixer_reset() {}
+	virtual void update_volumes();
+	virtual bool is_stereo_mode() {
+		return m_s.mixer.reg[0x0E] & 0b10;
+	}
+
 	void dsp_reset();
 	void dsp_read_in_buffer();
 	void dsp_change_mode(DSP::Mode _mode);
@@ -294,7 +303,6 @@ public:
 	~SBlaster2() {}
 	
 	unsigned type() const { return SB2; }
-	const char *type_name() { return "2.0"; }
 	const char *full_name() { return "Sound Blaster 2.0"; }
 	const char *short_name() { return "SB2"; }
 	
@@ -302,43 +310,60 @@ protected:
 	void write_fm(uint16_t _address, uint16_t _value);
 };
 
-// TODO Pro models are stubs, not usable until Mixer is emulated
 class SBlasterPro : public SBlaster
 {
 public:
-	SBlasterPro(Devices *_dev);
-	~SBlasterPro() {}
+	SBlasterPro(Devices *_dev) : SBlaster(_dev) {}
+	virtual ~SBlasterPro() {}
+
+	void config_changed();
+
+protected:
+	uint16_t read_mixer(uint16_t _address);
+	void write_mixer(uint16_t _address, uint16_t _value);
+
+	void mixer_reset();
+	void update_volumes();
+
+	std::pair<int,int> get_mixer_levels(uint8_t _reg);
+	std::pair<float,float> get_mixer_volume_db(uint8_t _reg);
+	std::pair<float,float> get_mixer_volume(uint8_t _reg);
+	void debug_print_volumes(uint8_t _reg, const char *_name);
+};
+
+class SBlasterPro1 : public SBlasterPro
+{
+public:
+	SBlasterPro1(Devices *_dev);
+	~SBlasterPro1() {}
 	
 	unsigned type() const { return SBPRO1; }
-	const char *type_name() { return "Pro"; }
 	const char *full_name() { return "Sound Blaster Pro"; }
-	const char *short_name() { return "SBPro"; }
+	const char *short_name() { return "SBPro1"; }
 	
 	void install();
 	
 protected:
-	void configure_synth(unsigned _rate, float _volume, std::string _filters);
+	void configure_synth(unsigned _rate, float _volume);
 	
 	void write_fm(uint16_t _address, uint16_t _value);
 	uint16_t read_fm(uint16_t _address);
 };
 
-// TODO Pro models are stubs, not usable until Mixer is emulated
-class SBlasterPro2 : public SBlaster
+class SBlasterPro2 : public SBlasterPro
 {
 public:
 	SBlasterPro2(Devices *_dev);
 	~SBlasterPro2() {}
 	
 	unsigned type() const { return SBPRO2; }
-	const char *type_name() { return "Pro 2"; }
 	const char *full_name() { return "Sound Blaster Pro 2"; }
 	const char *short_name() { return "SBPro2"; }
 	
 	void install();
 
 protected:
-	void configure_synth(unsigned _rate, float _volume, std::string _filters);
+	void configure_synth(unsigned _rate, float _volume);
 	
 	void write_fm(uint16_t _address, uint16_t _value);
 };
