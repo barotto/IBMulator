@@ -23,14 +23,15 @@
 
 
 MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
-		const std::string &_name, int _id, Category _cat)
+		const std::string &_name, int _id, Category _cat, AudioType _audiotype)
 :
 m_mixer(_mixer),
 m_name(_name),
 m_id(_id),
 m_update_clbk(_callback),
 m_capture_clbk([](bool){}),
-m_category(_cat)
+m_category(_cat),
+m_audiotype(_audiotype)
 {
 }
 
@@ -49,7 +50,7 @@ void MixerChannel::enable(bool _enabled)
 		m_enabled = _enabled;
 		m_disable_time = 0;
 		if(_enabled) {
-			reset_filters();
+			//reset_filters();
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 		} else {
 			m_first_update = true;
@@ -81,10 +82,13 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuff
 		 * but its input buffer could have some samples left to process
 		 */
 		if(m_in_buffer.frames()) {
-			input_finish(0);
+			input_finish(_time_span_ns);
+			enabled = true;
 		}
 		if(m_out_buffer.frames()) {
 			active = true;
+		} else {
+			reset_filters();
 		}
 	}
 
@@ -105,6 +109,11 @@ void MixerChannel::reset_filters()
 {
 	for(auto &f : m_filters) {
 		f->reset();
+	}
+
+	if(m_reverb.enabled) {
+		m_reverb.highpass[0]->reset();
+		m_reverb.mverb.reset();
 	}
 
 #if HAVE_LIBSAMPLERATE
@@ -227,6 +236,12 @@ void MixerChannel::play_silence(unsigned _frames, uint64_t _time_dist_us)
 	m_in_buffer.fill_frames_silence(_frames);
 }
 
+void MixerChannel::play_silence_us(unsigned _us)
+{
+	unsigned duration_frames = round(m_in_buffer.spec().us_to_frames(_us));
+	m_in_buffer.fill_frames_silence(duration_frames);
+}
+
 void MixerChannel::play_loop(const AudioBuffer &_wave)
 {
 	if(m_in_buffer.duration_us() < m_mixer->heartbeat_us()) {
@@ -287,7 +302,6 @@ void MixerChannel::flush()
 {
 	m_in_buffer.clear();
 	m_out_buffer.clear();
-	reset_filters();
 }
 
 void MixerChannel::input_finish(uint64_t _time_span_ns)
@@ -322,7 +336,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		dest[bufidx].set_spec({AUDIO_FORMAT_F32, m_in_buffer.channels(), m_in_buffer.rate()});
 		source->convert_format(dest[bufidx], in_frames);
 		source = &dest[bufidx];
-		bufidx = (bufidx+1)%2;
+		bufidx = 1 - bufidx;
 	}
 
 	// 2. convert rate, processed frames can be different than in_frames
@@ -336,7 +350,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		}
 		m_new_data = false;
 		source = &dest[bufidx];
-		bufidx = (bufidx+1)%2;
+		bufidx = 1 - bufidx;
 		frames = source->frames();
 	} else {
 		frames = in_frames;
@@ -349,6 +363,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			dest[bufidx].set_spec(m_out_buffer.spec());
 			source->convert_channels(dest[bufidx], frames);
 			source = &dest[bufidx];
+			bufidx = 1 - bufidx;
 		}
 
 		// 4. process filters
@@ -359,7 +374,16 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			}
 		}
 
-		// 5. add to output buffer
+		// 5. apply reverb
+		if(m_reverb.enabled) {
+			std::lock_guard<std::mutex> lock(m_filters_mutex);
+			dest[bufidx].set_spec(m_out_buffer.spec());
+			dest[bufidx].add_frames(*source);
+			m_reverb.highpass[0]->process(frames, &(dest[bufidx].at<float>(0)));
+			m_reverb.mverb.process(frames, &(dest[bufidx].at<float>(0)), &(source->at<float>(0)));
+		}
+
+		// 6. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}
 
@@ -392,4 +416,104 @@ void MixerChannel::register_capture_clbk(std::function<void(bool _enable)> _fn)
 void MixerChannel::on_capture(bool _enable)
 {
 	m_capture_clbk(_enable);
+}
+
+void MixerChannel::set_reverb(std::string _preset)
+{
+	std::lock_guard<std::mutex> lock(m_filters_mutex);
+
+	m_reverb.enabled = false;
+
+	_preset = str_trim(_preset);
+	if(_preset.empty()) {
+		return;
+	}
+
+	auto reverb = str_parse_tokens(_preset, "[\\s,]");
+	if(reverb.empty()) {
+		return;
+	}
+
+	std::string pname = "none";
+	try {
+		if(INIFile::parse_bool(reverb[0])) {
+			pname = "medium";
+		} else {
+			return;
+		}
+	} catch(std::exception &) {
+		pname = str_to_lower(reverb[0]);
+	}
+
+	const std::map<std::string, ReverbPreset> presets = {
+		{ "none", ReverbPreset::None },
+		{ "tiny", ReverbPreset::Tiny },
+		{ "small", ReverbPreset::Small },
+		{ "medium", ReverbPreset::Medium },
+		{ "large", ReverbPreset::Large },
+		{ "huge", ReverbPreset::Huge }
+	};
+
+	auto preset = presets.find(pname);
+	if(preset == presets.end()) {
+		PERRF(LOG_MIXER, "Invalid reverb preset: '%s'\n", pname.c_str());
+		return;
+	}
+
+	float pgain = 0.f;
+	if(reverb.size() > 1) {
+		try {
+			pgain = str_parse_int_num(reverb[1]);
+			pgain = clamp(pgain, 0.f, 100.f);
+			if(pgain == 0) {
+				return;
+			}
+			pgain = pgain / 100.f;
+		} catch(std::runtime_error &) {}
+	}
+
+	Reverb::ReverbConfig config;
+	switch (preset->second) {          // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
+	case ReverbPreset::None:   return;
+	case ReverbPreset::Tiny:   config = { 0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f }; break;
+	case ReverbPreset::Small:  config = { 0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f }; break;
+	case ReverbPreset::Medium: config = { 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f }; break;
+	case ReverbPreset::Large:  config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f }; break;
+	case ReverbPreset::Huge:   config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f }; break;
+	}
+	if(pgain > 0) {
+		switch(m_audiotype) {
+			case SYNTH: config.synth_gain = pgain; break;
+			case DAC: config.pcm_gain = pgain; break;
+			case NOISE: config.noise_gain = pgain; break;
+		}
+	}
+
+	m_reverb.config(config, m_out_buffer.spec().rate, m_audiotype);
+
+	PINFOF(LOG_V1, LOG_MIXER, "%s: reverb set to '%s',%.0f\n", m_name.c_str(),
+			pname.c_str(), m_reverb.mverb.getParameter(EmVerb::GAIN) * 100.f);
+}
+
+void MixerChannel::Reverb::config(ReverbConfig _config, double _rate, AudioType _type)
+{
+	mverb.setParameter(EmVerb::PREDELAY, _config.predelay);
+	mverb.setParameter(EmVerb::EARLYMIX, _config.early_mix);
+	mverb.setParameter(EmVerb::SIZE, _config.size);
+	mverb.setParameter(EmVerb::DENSITY, _config.density);
+	mverb.setParameter(EmVerb::BANDWIDTHFREQ, _config.bandwidth_freq);
+	mverb.setParameter(EmVerb::DECAY, _config.decay);
+	mverb.setParameter(EmVerb::DAMPINGFREQ, _config.dampening_freq);
+	mverb.setParameter(EmVerb::MIX, 1.f);
+	switch(_type) {
+		case SYNTH: mverb.setParameter(EmVerb::GAIN, _config.synth_gain); break;
+		case DAC: mverb.setParameter(EmVerb::GAIN, _config.pcm_gain); break;
+		case NOISE: mverb.setParameter(EmVerb::GAIN, _config.noise_gain); break;
+	}
+
+	mverb.setSampleRate(_rate);
+
+	highpass = Mixer::create_filters<2>(_rate, str_format("highpass,order=1,cutoff=%f",_config.hpf_freq));
+
+	enabled = true;
 }

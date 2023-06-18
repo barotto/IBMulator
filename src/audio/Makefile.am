@@ -35,6 +35,7 @@ noinst_HEADERS = \
 	mididev_win32.h \
 	midifile.h \
 	mixerchannel.h \
+	mverb.h \
 	soundfx.h \
 	synth.h \
 	vgm.h \

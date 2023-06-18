@@ -18,7 +18,9 @@
       * [RetroArch shaders](#retroarch-shaders)
     * [Integer scaling](#integer-scaling)
   * [Savestates](#savestates)
-  * [Sound Cards](#sound-cards)
+  * [Audio](#audio)
+    * [Sound Cards](#sound-cards)
+    * [Reverb](#reverb)
     * [DSP filters](#dsp-filters)
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
@@ -387,7 +389,9 @@ for the `[drives]:hdd_commit` and `[drives]:fdd_commit` ini settings.
 
 *Note*: null modem connections cannot be restored (see below).
 
-### Sound Cards
+### Audio
+
+#### Sound Cards
 
 The sound cards currently emulated are:
 
@@ -416,7 +420,36 @@ Default `auto` values in ibmulator.ini:
 | SBPro  | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
 | SBPro2 | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
 
-* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
+\* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
+
+#### Reverb
+
+Audio channels can be configured with a reverb effect: audio cards
+have per channel configurations whereas sound effects have a common general
+setting.
+
+Reverb settings are enabled with one of the following preset values:
+
+* `tiny`: ideal for small integrated speakers (eg. PC speaker and PS/1 Audio).
+* `small`: ideal for synth channels (eg. OPL).
+* `medium`: a medium sized room.
+* `large`: a large hall.
+* `huge`: stronger variant of the `large` preset.
+* `on`: same as `medium`
+
+On real machines the **PS/1 Audio Card** was wired to the PC speaker inside the
+monitor unit. For this reason the PS/1 audio channel reverb setting also have
+the following value available:
+
+* `auto`: use the same value used in `[pcspeaker]:reverb`.
+
+The level of reverb is automatically set depending on the preset and the type of
+the audio channel. If you want to adjust it, specify a value between 0 and 100
+after the preset name, like so:
+
+```
+reverb = large 80
+```
 
 #### DSP filters
 

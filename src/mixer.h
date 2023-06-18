@@ -101,7 +101,7 @@ public:
 	void shutdown();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
-			const std::string &_name, MixerChannel::Category);
+			const std::string &_name, MixerChannel::Category, MixerChannel::AudioType);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
 	int register_sink(AudioSinkHandler _sink);
@@ -117,7 +117,7 @@ public:
 	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
 
 	template <int Channels>
-	static std::vector<std::shared_ptr<Dsp::Filter>> create_filters(double _rate, std::string _filters_def);
+	static MixerFilterChain create_filters(double _rate, std::string _filters_def);
 	
 	bool is_paused() const { return m_paused; }
 	bool is_recording() const { return m_audiocards_capture; }

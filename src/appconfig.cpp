@@ -120,28 +120,33 @@ ini_file_t AppConfig::ms_def_values[2] = {
 	{ PCSPEAKER_SECTION, {
 		{ PCSPEAKER_RATE,    "48000" },
 		{ PCSPEAKER_FILTERS, ""      },
-		{ PCSPEAKER_VOLUME,  "0.5"   }
+		{ PCSPEAKER_VOLUME,  "0.5"   },
+		{ PCSPEAKER_REVERB,  "no"    }
 	} },
 
 	{ PS1AUDIO_SECTION, {
 		{ PS1AUDIO_RATE,    "48000" },
 		{ PS1AUDIO_FILTERS, ""      },
-		{ PS1AUDIO_VOLUME,  "1.0"   }
+		{ PS1AUDIO_VOLUME,  "1.0"   },
+		{ PS1AUDIO_REVERB,  "auto"  }
 	} },
 
 	{ ADLIB_SECTION, {
 		{ ADLIB_RATE,    "48000" },
 		{ ADLIB_FILTERS, ""      },
-		{ ADLIB_VOLUME,  "1.4"   }
+		{ ADLIB_VOLUME,  "1.4"   },
+		{ ADLIB_REVERB,  "no"    }
 	} },
 
 	{ SBLASTER_SECTION, {
 		{ SBLASTER_DAC_RESAMPLING, "auto"  },
 		{ SBLASTER_DAC_FILTERS,    "auto"  },
 		{ SBLASTER_DAC_VOLUME,     "auto"  },
+		{ SBLASTER_DAC_REVERB,     "no"    },
 		{ SBLASTER_OPL_RATE,       "48000" },
 		{ SBLASTER_OPL_FILTERS,    "auto"  },
-		{ SBLASTER_OPL_VOLUME,     "auto"  }
+		{ SBLASTER_OPL_VOLUME,     "auto"  },
+		{ SBLASTER_OPL_REVERB,     "no"    }
 	} },
 	
 	{ GAMEPORT_SECTION, {
@@ -600,12 +605,14 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number, 1.0 is nominal. When in realistic GUI mode it's clamped to 1.3\n"
 		},
+
 		{ MIDI_SECTION,
 ";     enabled: Enable MIDI output.\n"
 ";      device: MIDI device to use. See the README for more info.\n"
 "; sysex_delay: Minimum amount of delay in milliseconds for SysEx messages. See the README for more info.\n"
 ";              Possible values: auto, or an integer number (0 to disable all delays).\n"
 		},
+
 		{ PCSPEAKER_SECTION,
 "; enabled: Enable PC-Speaker emulation.\n"
 ";    rate: Sample rate.\n"
@@ -614,21 +621,28 @@ ini_filehelp_t AppConfig::ms_help = {
 ";          Possible values: a list of filter definitions. See the README for more info.\n"
 ";          Example: LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500\n"
 ";  volume: Audio volume.\n"
+";  reverb: Reverb effect (see README for more info).\n"
 		},
+
 		{ PS1AUDIO_SECTION,
 "; enabled: Install the PS/1 Audio/Joystick Card.\n"
 ";    rate: Sample rate of the PSG (Programmable Sound Generator). The DAC rate is programmed at run-time.\n"
 ";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters, applied to both the DAC and PSG channels.\n"
 ";  volume: Audio volume.\n"
+";  reverb: Reverb effect.\n"
+";          Possible values: auto, or one of the reverb presets (see README for more info)\n"
 		},
+
 		{ ADLIB_SECTION,
 "; enabled: Install the AdLib Audio Card (cannot be installed with Sound Blaster).\n"
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
 ";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 "; filters: DSP filters.\n"
 ";  volume: Audio volume.\n"
+";  reverb: Reverb effect (see README for more info).\n"
 		},
+
 		{ SBLASTER_SECTION,
 ";        enabled: Install the Sound Blaster audio card.\n"
 ";          model: The type of the Sound Blaster card.\n"
@@ -653,6 +667,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     dac_volume: DAC's MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level.\n"
+";     dac_reverb: Reverb effect for PCM audio (see README for more info).\n"
 ";       opl_rate: The OPL chip(s) sample rate. The real hardware uses a frequency of 49716Hz.\n"
 ";                 Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";    opl_filters: Audio filters for the OPL chip(s)\n"
@@ -660,10 +675,13 @@ ini_filehelp_t AppConfig::ms_help = {
 ";     opl_volume: The OPL chip(s) MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level.\n"
+";     opl_reverb: Reverb effect for FM audio (see README for more info).\n"
 		},
+
 		{ GAMEPORT_SECTION, 
 "; enabled: Install the Game Port.\n"
 		},
+
 		{ MPU401_SECTION,
 "; enabled: Install the MPU-401 interface card.\n"
 ";  iobase: The I/O base address, as an hexadecimal number.\n"
@@ -673,11 +691,13 @@ ini_filehelp_t AppConfig::ms_help = {
 ";    mode: Mode of operation.\n"
 ";          Possible values: intelligent, uart.\n"
 		},
+
 		{ SOUNDFX_SECTION,
 "; Volumes are expressed as positive real numbers.\n"
 "; Balances are real numbers between -1.0 and 1.0, where -1.0 = left, 0.0 = center, 1.0 = right\n"
 ";         enabled: Enable sound effects emulation.\n"
 ";          volume: General volume of the sound effects.\n"
+";          reverb: Reverb effect to apply to all channels (see README for more info).\n"
 ";        fdd_seek: Volume of FDD seeks.\n"
 ";        fdd_spin: Volume of FDD spin noise.\n"
 ";         fdd_gui: Volume of FDD GUI sounds (ie. insert / eject disk).\n"
@@ -897,19 +917,22 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ PCSPEAKER_ENABLED, false },
 		{ PCSPEAKER_RATE,    false },
 		{ PCSPEAKER_FILTERS, false },
-		{ PCSPEAKER_VOLUME,  false }
+		{ PCSPEAKER_VOLUME,  false },
+		{ PCSPEAKER_REVERB,  false }
 	} },
 	{ PS1AUDIO_SECTION, {
 		{ PS1AUDIO_ENABLED, false },
 		{ PS1AUDIO_RATE,    false },
 		{ PS1AUDIO_FILTERS, false },
-		{ PS1AUDIO_VOLUME,  false }
+		{ PS1AUDIO_VOLUME,  false },
+		{ PS1AUDIO_REVERB,  false }
 	} },
 	{ ADLIB_SECTION, {
 		{ ADLIB_ENABLED, false },
 		{ ADLIB_RATE,    false },
 		{ ADLIB_FILTERS, false },
-		{ ADLIB_VOLUME,  false }
+		{ ADLIB_VOLUME,  false },
+		{ ADLIB_REVERB,  false }
 	} },
 	{ SBLASTER_SECTION, {
 		{ SBLASTER_ENABLED,        false },
@@ -920,9 +943,11 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SBLASTER_DAC_RESAMPLING, false },
 		{ SBLASTER_DAC_FILTERS,    false },
 		{ SBLASTER_DAC_VOLUME,     false },
+		{ SBLASTER_DAC_REVERB,     false },
 		{ SBLASTER_OPL_RATE,       false },
 		{ SBLASTER_OPL_FILTERS,    false },
-		{ SBLASTER_OPL_VOLUME,     false }
+		{ SBLASTER_OPL_VOLUME,     false },
+		{ SBLASTER_OPL_REVERB,     false }
 	} },
 	{ MPU401_SECTION, {
 		{ MPU401_ENABLED, false },

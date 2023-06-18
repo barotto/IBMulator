@@ -279,7 +279,7 @@ void SBlaster::install_dsp()
 	
 	m_dac_channel = g_mixer.register_channel(
 		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
-		std::string(short_name()) + " DAC", MixerChannel::AUDIOCARD);
+		std::string(short_name()) + " DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac_channel->set_disable_timeout(5_s);
 }
 
@@ -424,6 +424,9 @@ void SBlaster::configure_dac(unsigned _def_resampling, double _def_level)
 		}, _def_resampling)
 	);
 	m_dac_channel->set_resampling_type(dac_resampling);
+
+	std::string reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_REVERB, "");
+	m_dac_channel->set_reverb(reverb);
 }
 
 void SBlaster::config_changed()
@@ -433,8 +436,11 @@ void SBlaster::config_changed()
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
 	float opl_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME, 1.0);
 
-	configure_synth(opl_rate, opl_volume);
-	
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(opl_rate)}, opl_volume, "");
+
+	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
+	Synth::channel()->set_reverb(opl_reverb);
+
 	std::string opl_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_FILTERS, "");
 	Synth::channel()->set_filters(opl_filters);
 
@@ -464,7 +470,10 @@ void SBlasterPro::config_changed()
 		opl_volume = 1.0;
 	}
 
-	configure_synth(opl_rate, opl_volume);
+	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(opl_rate)}, opl_volume, "");
+
+	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
+	Synth::channel()->set_reverb(opl_reverb);
 
 	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
 	if(opl_filters == "auto") {
@@ -495,24 +504,6 @@ void SBlasterPro::config_changed()
 		m_dac_filters.clear();
 		m_forced_dac_filters = true;
 	}
-}
-
-void SBlaster::configure_synth(unsigned _rate, float _volume)
-{
-	// mono
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(_rate)}, _volume, "");
-}
-
-void SBlasterPro1::configure_synth(unsigned _rate, float _volume)
-{
-	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, "");
-}
-
-void SBlasterPro2::configure_synth(unsigned _rate, float _volume)
-{
-	// stereo
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(_rate)}, _volume, "");
 }
 
 void SBlaster::remove()

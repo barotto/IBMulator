@@ -38,8 +38,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 	if(!m_channel) {
 		using namespace std::placeholders;
 		m_channel = g_mixer.register_channel(std::bind(&SerialModemFX::create_samples, this, _1, _2, _3),
-				"Serial Modem", MixerChannel::Category::SOUNDFX);
-		m_channel->set_disable_timeout(1_s);
+				"Serial Modem", MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 		m_channel->set_in_spec(spec);
 
 		m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM));
@@ -249,7 +248,6 @@ void SerialModemFX::enable(bool _enabled)
 void SerialModemFX::silence()
 {
 	assert(m_channel);
-	m_channel->enable(false);
 	m_events.clear();
 }
 

@@ -94,7 +94,7 @@ void Mixer::init(Machine *_machine)
 	using namespace std::placeholders;
 	m_silence_channel = register_channel(
 		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
-		"Silence", MixerChannel::AUDIOCARD
+		"Silence", MixerChannel::AUDIOCARD, MixerChannel::AudioType::NOISE
 	);
 	
 	if(SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -487,6 +487,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
 	double treqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq);
 	reqframes = std::max(reqframes, treqframes);
+	reqframes = std::min(reqframes, double(m_mix_bufsize_fr));
 	PDEBUGF(LOG_V2, LOG_MIXER, "  curr. buffer size: %d us, req. frames: %.2f\n", avail_us, reqframes);
 	
 	if(reqframes < 1.0) {
@@ -503,7 +504,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	size_t audio_frames = frames;
 	if(do_mix_audio_ch) {
 		assert(_vtime_ratio != 0.0);
-		size_t resampled_reqframes = size_t(ceil(double(reqframes) * _vtime_ratio));
+		size_t resampled_reqframes = size_t(ceil(reqframes * _vtime_ratio));
 		for(auto ch : _channels) {
 			size_t chframes = ch->out().frames();
 			cat_count[ch->category()]++;
@@ -579,6 +580,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		if(!fr) {
 			continue;
 		}
+		assert(fr <= m_mix_bufsize_fr);
 
 		if(m_audio_spec.channels == 2) {
 			mix_stereo(m_ch_mix[cat], _channels, cat, fr);
@@ -653,7 +655,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	if(m_device && m_audio_status != SDL_AUDIO_STOPPED) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "  sending %zu bytes to the output device\n", bytes);
 		if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
-			PERRF(LOG_MIXER, "Audio buffer overflow\n");
+			PERRF(LOG_MIXER, "Device buffer overflow\n");
 		}
 	}
 }
@@ -705,6 +707,7 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 	int _chcat, size_t _frames)
 {
 	size_t samples = _frames * 2;
+	assert(_result_buf.size() >= samples);
 	std::fill(_result_buf.begin(), _result_buf.begin()+samples, 0.f);
 	float balance[2] = {1.f, 1.f};
 	float volume[2] = {1.f, 1.f};
@@ -784,14 +787,28 @@ void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
 }
 
 std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
-		const std::string &_name, MixerChannel::Category _cat)
+		const std::string &_name, MixerChannel::Category _cat, MixerChannel::AudioType _type)
 {
 	static int chcount = 0;
 	chcount++;
-	auto ch = std::make_shared<MixerChannel>(this, _callback, _name, chcount, _cat);
+	auto ch = std::make_shared<MixerChannel>(this, _callback, _name, chcount, _cat, _type);
 	m_mix_channels[_name] = ch;
 	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels),
 		double(m_audio_spec.freq)});
+
+	switch(_cat) {
+		case MixerChannel::Category::SOUNDFX:
+		case MixerChannel::Category::GUI:
+		{
+			std::string reverb = g_program.config().get_string(SOUNDFX_SECTION, SOUNDFX_REVERB, "");
+			ch->set_reverb(reverb);
+			break;
+		}
+		case MixerChannel::Category::AUDIOCARD:
+		default:
+			break;
+	}
+
 	return ch;
 }
 

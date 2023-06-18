@@ -82,6 +82,7 @@ bool SoundFX::play_motor(uint64_t _time_span_ns, MixerChannel &_channel,
 			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: power down\n", _channel.name());
 			_channel.flush();
 			_channel.play(_power_down,0);
+			_channel.play_silence_us(EFFECTS_MIN_DUR_US);
 		}
 		_channel.input_finish(_time_span_ns);
 		_channel.enable(false);

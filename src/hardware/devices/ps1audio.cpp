@@ -83,7 +83,7 @@ void PS1Audio::install()
 	using namespace std::placeholders;
 	m_dac.channel = g_mixer.register_channel(
 		std::bind(&PS1Audio::dac_create_samples, this, _1, _2, _3),
-		"PS/1 DAC", MixerChannel::AUDIOCARD);
+		"PS/1 DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac.channel->set_disable_timeout(3_s);
 	m_dac.state = DAC::State::STOPPED;
 	
@@ -150,6 +150,13 @@ void PS1Audio::config_changed()
 	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
 	m_dac.channel->set_volume(volume);
 	m_dac.channel->set_filters(filters);
+	
+	std::string reverb = g_program.config().get_string(PS1AUDIO_SECTION, PS1AUDIO_REVERB, "");
+	if(reverb == "auto") {
+		reverb = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_REVERB, "");
+	}
+	m_dac.channel->set_reverb(reverb);
+	Synth::channel()->set_reverb(reverb);
 }
 
 void PS1Audio::save_state(StateBuf &_state)

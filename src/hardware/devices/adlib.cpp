@@ -92,6 +92,9 @@ void AdLib::config_changed()
 	std::string filters = g_program.config().get_string(ADLIB_SECTION, ADLIB_FILTERS, "");
 	
 	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
+
+	std::string reverb = g_program.config().get_string(ADLIB_SECTION, ADLIB_REVERB, "");
+	Synth::channel()->set_reverb(reverb);
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

@@ -54,7 +54,7 @@ void GUIDrivesFX::use_floppy(FDDType _fdd_type, SampleType _how)
 	m_channel->enable(true);
 }
 
-bool GUIDrivesFX::create_sound_samples(uint64_t, bool, bool)
+bool GUIDrivesFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 {
 	// Mixer thread
 	unsigned evt = m_event & 0xff;
@@ -64,6 +64,8 @@ bool GUIDrivesFX::create_sound_samples(uint64_t, bool, bool)
 		assert(evt < m_buffers[sub].size());
 		m_channel->flush();
 		m_channel->play(m_buffers[sub][evt], 0);
+		m_channel->play_silence_us(EFFECTS_MIN_DUR_US);
+		m_channel->input_finish(_time_span_ns);
 	}
 	// possible event miss, but i don't care, they are very slow anyway
 	m_event = -1;

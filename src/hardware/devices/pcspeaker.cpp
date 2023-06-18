@@ -49,7 +49,7 @@ void PCSpeaker::install()
 	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
 		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
-		name(), MixerChannel::AUDIOCARD);
+		name(), MixerChannel::AUDIOCARD, MixerChannel::AudioType::SYNTH);
 	m_channel->set_disable_timeout(5_s);
 }
 
@@ -84,6 +84,9 @@ void PCSpeaker::config_changed()
 	
 	m_channel->set_volume(volume);
 	m_channel->set_filters(filters);
+	
+	std::string reverb = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_REVERB, "");
+	m_channel->set_reverb(reverb);
 	
 	reset(0);
 }

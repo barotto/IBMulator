@@ -225,7 +225,6 @@ protected:
 	void install_dsp();
 	
 	virtual void configure_dac(unsigned _def_resampling, double _def_level);
-	virtual void configure_synth(unsigned _rate, float _volume);
 	
 	virtual uint16_t read_fm(uint16_t _address);
 	virtual uint16_t read_dsp(uint16_t _address);
@@ -344,8 +343,6 @@ public:
 	void install();
 	
 protected:
-	void configure_synth(unsigned _rate, float _volume);
-	
 	void write_fm(uint16_t _address, uint16_t _value);
 	uint16_t read_fm(uint16_t _address);
 };
@@ -363,8 +360,6 @@ public:
 	void install();
 
 protected:
-	void configure_synth(unsigned _rate, float _volume);
-	
 	void write_fm(uint16_t _address, uint16_t _value);
 };
 

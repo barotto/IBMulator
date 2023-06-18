@@ -22,8 +22,6 @@
 #include "drivefx.h"
 #include <cfloat>
 
-const uint64_t CHANNELS_TIMEOUT = 1_s;
-
 
 DriveFX::DriveFX()
 :
@@ -41,12 +39,12 @@ void DriveFX::install(MixerChannel_handler _spin_channel, const char *_spin_name
 		MixerChannel_handler _seek_channel, const char *_seek_name,
 		const AudioSpec &_spec)
 {
-	m_channels.spin = g_mixer.register_channel(_spin_channel, _spin_name, MixerChannel::Category::SOUNDFX);
-	m_channels.spin->set_disable_timeout(CHANNELS_TIMEOUT);
+	m_channels.spin = g_mixer.register_channel(_spin_channel, _spin_name,
+			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channels.spin->set_in_spec(_spec);
 
-	m_channels.seek = g_mixer.register_channel(_seek_channel, _seek_name, MixerChannel::Category::SOUNDFX);
-	m_channels.seek->set_disable_timeout(CHANNELS_TIMEOUT);
+	m_channels.seek = g_mixer.register_channel(_seek_channel, _seek_name,
+			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channels.seek->set_in_spec(_spec);
 }
 
