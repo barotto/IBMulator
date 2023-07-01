@@ -20,7 +20,7 @@
   * [Savestates](#savestates)
   * [Audio](#audio)
     * [Sound Cards](#sound-cards)
-    * [Reverb](#reverb)
+    * [Reverb and Chorus](#reverb-and-chorus)
     * [DSP filters](#dsp-filters)
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
@@ -422,9 +422,9 @@ Default `auto` values in ibmulator.ini:
 
 \* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
 
-#### Reverb
+#### Reverb and Chorus
 
-Audio channels can be configured with a reverb effect: audio cards
+All audio channels can be configured with a **reverb effect**: audio cards
 have per channel configurations whereas sound effects have a common general
 setting.
 
@@ -450,6 +450,21 @@ after the preset name, like so:
 ```
 reverb = large 80
 ```
+
+All audio cards' channels can also be configured with a **chorus effect**.
+
+Chorus settings are enabled with one of the following preset values:
+
+ * `light`: light chorus effect, especially suited for synth music that features
+lots of white noise.
+ * `normal`: normal chorus that works well with a wide variety of games.
+ * `strong`: obvious and upfront chorus effect.
+ * `heavy`: over-the-top chorus effect.
+ * `on`: same as `normal`
+
+The PS/1 audio channel reverb setting also have the following value available:
+
+* `auto`: use the same value used in `[pcspeaker]:chorus`.
 
 #### DSP filters
 

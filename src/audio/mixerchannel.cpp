@@ -374,7 +374,13 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			}
 		}
 
-		// 5. apply reverb
+		// 5. apply chorus
+		if(m_chorus.enabled) {
+			std::lock_guard<std::mutex> lock(m_filters_mutex);
+			m_chorus.chorus_engine.process(frames, &(source->at<float>(0)));
+		}
+
+		// 6. apply reverb
 		if(m_reverb.enabled) {
 			std::lock_guard<std::mutex> lock(m_filters_mutex);
 			dest[bufidx].set_spec(m_out_buffer.spec());
@@ -383,7 +389,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			m_reverb.mverb.process(frames, &(dest[bufidx].at<float>(0)), &(source->at<float>(0)));
 		}
 
-		// 6. add to output buffer
+		// 7. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}
 
@@ -515,5 +521,73 @@ void MixerChannel::Reverb::config(ReverbConfig _config, double _rate, AudioType 
 
 	highpass = Mixer::create_filters<2>(_rate, str_format("highpass,order=1,cutoff=%f",_config.hpf_freq));
 
+	enabled = true;
+}
+
+void MixerChannel::set_chorus(std::string _preset)
+{
+	std::lock_guard<std::mutex> lock(m_filters_mutex);
+
+	m_chorus.enabled = false;
+
+	_preset = str_trim(_preset);
+	if(_preset.empty()) {
+		return;
+	}
+
+	auto chorus = str_parse_tokens(_preset, "[\\s,]");
+	if(chorus.empty()) {
+		return;
+	}
+
+	std::string pname = "none";
+	try {
+		if(INIFile::parse_bool(chorus[0])) {
+			pname = "normal";
+		} else {
+			return;
+		}
+	} catch(std::exception &) {
+		pname = str_to_lower(chorus[0]);
+	}
+
+	const std::map<std::string, ChorusPreset> presets = {
+		{ "none",   ChorusPreset::None   },
+		{ "light",  ChorusPreset::Light  },
+		{ "normal", ChorusPreset::Normal },
+		{ "strong", ChorusPreset::Strong },
+		{ "heavy",  ChorusPreset::Heavy  }
+	};
+	auto preset = presets.find(pname);
+	if(preset == presets.end()) {
+		PERRF(LOG_MIXER, "Invalid chorus preset: '%s'\n", pname.c_str());
+		return;
+	}
+
+	Chorus::ChorusConfig config;
+	switch (preset->second) {          // C2EN   SYNTH  PCM  NOISE
+	case ChorusPreset::None:    return;
+	case ChorusPreset::Light:  config = { false, .33f, .20f, 0.f }; break;
+	case ChorusPreset::Normal: config = { false, .54f, .35f, 0.f }; break;
+	case ChorusPreset::Strong: config = { false, .75f, .45f, 0.f }; break;
+	case ChorusPreset::Heavy:  config = { true,  .75f, .65f, 0.f }; break;
+	}
+
+	m_chorus.config(config, m_out_buffer.spec().rate, m_audiotype);
+
+	PINFOF(LOG_V1, LOG_MIXER, "%s: chorus set to '%s'\n", m_name.c_str(), pname.c_str());
+}
+
+void MixerChannel::Chorus::config(ChorusConfig _config, double _rate, AudioType _type)
+{
+	switch(_type) {
+		case SYNTH: chorus_engine.setGain(_config.synth_gain); break;
+		case DAC: chorus_engine.setGain(_config.pcm_gain); break;
+		case NOISE: chorus_engine.setGain(_config.noise_gain); break;
+	}
+
+	chorus_engine.setSampleRate(static_cast<float>(_rate));
+	chorus_engine.setEnablesChorus(true, _config.chorus2_enabled);
+	
 	enabled = true;
 }

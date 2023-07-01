@@ -27,6 +27,7 @@
 #include "dsp/Dsp.h"
 #include "mverb.h"
 #include "timers.h"
+#include "chorus/ChorusEngine.h"
 
 class Mixer;
 
@@ -63,6 +64,10 @@ public:
 	enum class ReverbPreset {
 		// using DOSBox-staging's convenient definitions.
 		None, Tiny, Small, Medium, Large, Huge
+	};
+
+	enum class ChorusPreset {
+		None, Light, Normal, Strong, Heavy
 	};
 
 private:
@@ -116,6 +121,20 @@ private:
 		void config(ReverbConfig _config, double _rate, AudioType _type);
 	} m_reverb;
 
+	struct Chorus {
+		struct ChorusConfig {
+			bool chorus2_enabled;
+			float synth_gain;
+			float pcm_gain;
+			float noise_gain;
+		};
+
+		TAL::ChorusEngine chorus_engine = TAL::ChorusEngine(48000);
+		bool enabled = false;
+
+		void config(ChorusConfig _config, double _rate, AudioType _type);
+	} m_chorus;
+
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id,
 			Category _cat, AudioType _audiotype);
@@ -130,6 +149,8 @@ public:
 	void set_balance(float _balance) { m_balance = clamp(_balance, -1.f, 1.f); }
 	void set_reverb(std::string _preset);
 	bool is_reverb_enabled() const { return m_reverb.enabled; }
+	void set_chorus(std::string _preset);
+	bool is_chorus_enabled() const { return m_chorus.enabled; }
 	float volume() const { return m_volume_l; }
 	float volume_l() const { return m_volume_l; }
 	float volume_r() const { return m_volume_r; }

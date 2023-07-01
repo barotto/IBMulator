@@ -427,6 +427,9 @@ void SBlaster::configure_dac(unsigned _def_resampling, double _def_level)
 
 	std::string reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_REVERB, "");
 	m_dac_channel->set_reverb(reverb);
+	
+	std::string chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_CHORUS, "");
+	m_dac_channel->set_chorus(chorus);
 }
 
 void SBlaster::config_changed()
@@ -440,6 +443,9 @@ void SBlaster::config_changed()
 
 	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
 	Synth::channel()->set_reverb(opl_reverb);
+
+	std::string opl_chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CHORUS, "");
+	Synth::channel()->set_chorus(opl_chorus);
 
 	std::string opl_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_FILTERS, "");
 	Synth::channel()->set_filters(opl_filters);
@@ -474,6 +480,9 @@ void SBlasterPro::config_changed()
 
 	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
 	Synth::channel()->set_reverb(opl_reverb);
+
+	std::string opl_chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CHORUS, "");
+	Synth::channel()->set_chorus(opl_chorus);
 
 	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
 	if(opl_filters == "auto") {

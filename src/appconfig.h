@@ -233,6 +233,7 @@ public:
 #define PCSPEAKER_FILTERS       "filters"
 #define PCSPEAKER_VOLUME        "volume"
 #define PCSPEAKER_REVERB        "reverb"
+#define PCSPEAKER_CHORUS        "chorus"
 
 #define PS1AUDIO_SECTION        "ps1audio"
 #define PS1AUDIO_ENABLED        "enabled"
@@ -240,6 +241,7 @@ public:
 #define PS1AUDIO_FILTERS        "filters"
 #define PS1AUDIO_VOLUME         "volume"
 #define PS1AUDIO_REVERB         "reverb"
+#define PS1AUDIO_CHORUS         "chorus"
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"
@@ -247,6 +249,7 @@ public:
 #define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
 #define ADLIB_REVERB            "reverb"
+#define ADLIB_CHORUS            "chorus"
 
 #define SBLASTER_SECTION        "sblaster"
 #define SBLASTER_ENABLED        "enabled"
@@ -257,10 +260,12 @@ public:
 #define SBLASTER_DAC_RESAMPLING "dac_resampling"
 #define SBLASTER_DAC_FILTERS    "dac_filters"
 #define SBLASTER_DAC_REVERB     "dac_reverb"
+#define SBLASTER_DAC_CHORUS     "dac_chorus"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
 #define SBLASTER_OPL_RATE       "opl_rate"
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_REVERB     "opl_reverb"
+#define SBLASTER_OPL_CHORUS     "opl_chorus"
 #define SBLASTER_OPL_VOLUME     "opl_volume"
 
 #define MPU401_SECTION          "mpu401"

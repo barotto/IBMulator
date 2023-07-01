@@ -95,6 +95,9 @@ void AdLib::config_changed()
 
 	std::string reverb = g_program.config().get_string(ADLIB_SECTION, ADLIB_REVERB, "");
 	Synth::channel()->set_reverb(reverb);
+
+	std::string chorus = g_program.config().get_string(ADLIB_SECTION, ADLIB_CHORUS, "");
+	Synth::channel()->set_chorus(chorus);
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

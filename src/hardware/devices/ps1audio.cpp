@@ -157,6 +157,13 @@ void PS1Audio::config_changed()
 	}
 	m_dac.channel->set_reverb(reverb);
 	Synth::channel()->set_reverb(reverb);
+	
+	std::string chorus = g_program.config().get_string(PS1AUDIO_SECTION, PS1AUDIO_CHORUS, "");
+	if(chorus == "auto") {
+		chorus = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_CHORUS, "");
+	}
+	m_dac.channel->set_chorus(chorus);
+	Synth::channel()->set_chorus(chorus);
 }
 
 void PS1Audio::save_state(StateBuf &_state)

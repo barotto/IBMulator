@@ -87,7 +87,10 @@ void PCSpeaker::config_changed()
 	
 	std::string reverb = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_REVERB, "");
 	m_channel->set_reverb(reverb);
-	
+
+	std::string chorus = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_CHORUS, "");
+	m_channel->set_chorus(chorus);
+
 	reset(0);
 }
 
