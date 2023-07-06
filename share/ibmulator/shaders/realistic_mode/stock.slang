@@ -14,7 +14,7 @@ layout(std140) uniform Push
     float Contrast;
     float Saturation;
     float Ambient;
-    int  Monochrome;
+
 } params;
 
 layout(std140) uniform UBO
