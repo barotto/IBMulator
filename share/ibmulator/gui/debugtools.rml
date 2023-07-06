@@ -3,34 +3,4 @@
 		<title>Debug Tools</title>
 		<link type="text/rcss" href="base.rcss"/>
 		<link type="text/rcss" href="buttons.rcss"/>
-		<link type="text/rcss" href="default.rcss"/>
-		<style>
-			body
-			{
-				width: auto;
-				position: absolute;
-				top: 0;
-				left: 0;
-				background-color: #00000000;
-			}
-			button {
-				width: auto;
-				padding: 0 6dp 2dp 6dp;
-			}
-			#close {
-				position: relative;
-				width: 20dp;
-				height: 20dp;
-			}
-		</style>
-	</head>
-	<body>
-		<div id="tools">
-			<button id="stats">Statistics</button>
-			<button id="debugger">Debugger</button>
-			<button id="devices">Devices</button>
-			<button id="mixer">Mixer</button>
-			<button id="close">&nbsp;</button>
-		</div>
-	</body>
-</rml>
+		
