@@ -20,7 +20,7 @@
   * [Savestates](#savestates)
   * [Audio](#audio)
     * [Sound Cards](#sound-cards)
-    * [Reverb and Chorus](#reverb-and-chorus)
+    * [Reverb, Chorus, Crossfeed](#reverb-chorus-crossfeed)
     * [DSP filters](#dsp-filters)
   * [Joystick](#joystick)
   * [Emulation speed adjustments](#emulation-speed-adjustments)
@@ -422,7 +422,7 @@ Default `auto` values in ibmulator.ini:
 
 \* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
 
-#### Reverb and Chorus
+#### Reverb, Chorus, Crossfeed
 
 All audio channels can be configured with a **reverb effect**: audio cards
 have per channel configurations whereas sound effects have a common general
@@ -465,6 +465,21 @@ lots of white noise.
 The PS/1 audio channel reverb setting also have the following value available:
 
 * `auto`: use the same value used in `[pcspeaker]:chorus`.
+
+Stereo audio card sources can be configured with **crossfeed**, designed to
+improve headphone listening. This is implemented using the Bauer
+stereophonic-to-binaural DSP (bs2b), and so it offers its presets:
+
+ * `on`: same as `bauer`
+ * `bauer`: "Benjamin Bauer" preset (frequency cut 750Hz, feed level 4.5 dB),
+  close to a virtual speaker placement with azimuth 30 degrees and distance of
+  about 3 meters.
+ * `moy`: "Chu Moy" preset (frequency cut 700Hz, feed level 6.0 dB), close to
+  the parameters of a Chu Moy's crossfeeder.
+ * `meier`: "Jan Meier" preset (frequency cut 650Hz, feed level 9.5 dB), making
+  the smallest changes in the original signal for relaxing listening. This is
+  close to the parameters of a crossfeeder implemented in Jan Meier's CORDA
+  amplifiers.
 
 #### DSP filters
 

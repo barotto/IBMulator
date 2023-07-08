@@ -261,11 +261,13 @@ public:
 #define SBLASTER_DAC_FILTERS    "dac_filters"
 #define SBLASTER_DAC_REVERB     "dac_reverb"
 #define SBLASTER_DAC_CHORUS     "dac_chorus"
+#define SBLASTER_DAC_CROSSFEED  "dac_crossfeed"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
 #define SBLASTER_OPL_RATE       "opl_rate"
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_REVERB     "opl_reverb"
 #define SBLASTER_OPL_CHORUS     "opl_chorus"
+#define SBLASTER_OPL_CROSSFEED  "opl_crossfeed"
 #define SBLASTER_OPL_VOLUME     "opl_volume"
 
 #define MPU401_SECTION          "mpu401"

@@ -15,6 +15,8 @@ libaudio_a_SOURCES = \
 	synth.cpp \
 	vgm.cpp \
 	wav.cpp \
+	bs2b/bs2b.c \
+	bs2b/bs2bclass.cpp \
 	chorus/Chorus.cpp \
 	chorus/Lfo.cpp \
 	dsp/Biquad.cpp \
@@ -42,6 +44,10 @@ noinst_HEADERS = \
 	synth.h \
 	vgm.h \
 	wav.h \
+	bs2b/bs2b.h \
+	bs2b/bs2bclass.h \
+	bs2b/bs2btypes.h \
+	bs2b/bs2bversion.h \
 	chorus/Chorus.h \
 	chorus/ChorusEngine.h \
 	chorus/DCBlock.h \

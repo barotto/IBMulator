@@ -430,6 +430,9 @@ void SBlaster::configure_dac(unsigned _def_resampling, double _def_level)
 	
 	std::string chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_CHORUS, "");
 	m_dac_channel->set_chorus(chorus);
+
+	std::string crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_CROSSFEED, "");
+	m_dac_channel->set_crossfeed(crossfeed);
 }
 
 void SBlaster::config_changed()
@@ -449,6 +452,9 @@ void SBlaster::config_changed()
 
 	std::string opl_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_FILTERS, "");
 	Synth::channel()->set_filters(opl_filters);
+
+	std::string opl_crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED, "");
+	Synth::channel()->set_crossfeed(opl_crossfeed);
 
 	// DAC config
 	configure_dac(MixerChannel::LINEAR, 1.0);
@@ -494,6 +500,9 @@ void SBlasterPro::config_changed()
 			Synth::channel()->set_filters(opl_filters);
 		}
 	}
+
+	std::string opl_crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED, "");
+	Synth::channel()->set_crossfeed(opl_crossfeed);
 
 	// DAC config
 	// -1.0 = volume set by sb mixer

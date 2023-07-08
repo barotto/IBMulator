@@ -25,6 +25,7 @@
 #include <memory>
 #include "audiobuffer.h"
 #include "dsp/Dsp.h"
+#include "bs2b/bs2bclass.h"
 #include "mverb.h"
 #include "timers.h"
 #include "chorus/ChorusEngine.h"
@@ -68,6 +69,10 @@ public:
 
 	enum class ChorusPreset {
 		None, Light, Normal, Strong, Heavy
+	};
+
+	enum class CrossfeedPreset {
+		None, Bauer, Moy, Meier 
 	};
 
 private:
@@ -135,6 +140,18 @@ private:
 		void config(ChorusConfig _config, double _rate, AudioType _type);
 	} m_chorus;
 
+	struct Crossfeed {
+		struct CrossfeedConfig {
+			uint32_t freq_cut_hz;
+			uint32_t feed_db; // as dB*10
+		};
+
+		bs2b_base bs2b;
+		bool enabled = false;
+
+		void config(CrossfeedConfig _config, double _rate);
+	} m_crossfeed;
+
 public:
 	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id,
 			Category _cat, AudioType _audiotype);
@@ -151,6 +168,8 @@ public:
 	bool is_reverb_enabled() const { return m_reverb.enabled; }
 	void set_chorus(std::string _preset);
 	bool is_chorus_enabled() const { return m_chorus.enabled; }
+	void set_crossfeed(std::string _preset);
+	bool is_crossfeed_enabled() const { return m_crossfeed.enabled; }
 	float volume() const { return m_volume_l; }
 	float volume_l() const { return m_volume_l; }
 	float volume_r() const { return m_volume_r; }
@@ -198,6 +217,9 @@ public:
 private:
 	void destroy_resampler();
 	void reset_filters();
+	template<typename T>
+	std::pair<T, std::vector<std::string>> parse_preset(std::string _preset_def, 
+			const std::map<std::string, T> _presets, std::string _default_preset);
 };
 
 

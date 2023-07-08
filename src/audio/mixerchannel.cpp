@@ -374,22 +374,30 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			}
 		}
 
-		// 5. apply chorus
-		if(m_chorus.enabled) {
-			std::lock_guard<std::mutex> lock(m_filters_mutex);
-			m_chorus.chorus_engine.process(frames, &(source->at<float>(0)));
+		if(m_out_buffer.spec().channels == 2) {
+			// 5. apply crossfeed
+			if(m_crossfeed.enabled) {
+				float *data = &(source->at<float>(0));
+				m_crossfeed.bs2b.cross_feed(data, frames);
+			}
+
+			// 6. apply chorus
+			if(m_chorus.enabled) {
+				std::lock_guard<std::mutex> lock(m_filters_mutex);
+				m_chorus.chorus_engine.process(frames, &(source->at<float>(0)));
+			}
+
+			// 7. apply reverb
+			if(m_reverb.enabled) {
+				std::lock_guard<std::mutex> lock(m_filters_mutex);
+				dest[bufidx].set_spec(m_out_buffer.spec());
+				dest[bufidx].add_frames(*source);
+				m_reverb.highpass[0]->process(frames, &(dest[bufidx].at<float>(0)));
+				m_reverb.mverb.process(frames, &(dest[bufidx].at<float>(0)), &(source->at<float>(0)));
+			}
 		}
 
-		// 6. apply reverb
-		if(m_reverb.enabled) {
-			std::lock_guard<std::mutex> lock(m_filters_mutex);
-			dest[bufidx].set_spec(m_out_buffer.spec());
-			dest[bufidx].add_frames(*source);
-			m_reverb.highpass[0]->process(frames, &(dest[bufidx].at<float>(0)));
-			m_reverb.mverb.process(frames, &(dest[bufidx].at<float>(0)), &(source->at<float>(0)));
-		}
-
-		// 7. add to output buffer
+		// 8. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}
 
@@ -424,81 +432,92 @@ void MixerChannel::on_capture(bool _enable)
 	m_capture_clbk(_enable);
 }
 
+template<typename T>
+std::pair<T, std::vector<std::string>> MixerChannel::parse_preset(std::string _preset_def, 
+			const std::map<std::string, T> _presets, std::string _default_preset)
+{
+	_preset_def = str_trim(_preset_def);
+	if(_preset_def.empty()) {
+		return {};
+	}
+
+	auto toks = str_parse_tokens(_preset_def, "[\\s,]");
+	if(toks.empty()) {
+		return {};
+	}
+
+	std::string pname = "none";
+	try {
+		if(INIFile::parse_bool(toks[0])) {
+			pname = _default_preset;
+		} else {
+			return {};
+		}
+	} catch(std::exception &) {
+		pname = str_to_lower(toks[0]);
+	}
+
+	toks[0] = pname;
+
+	auto preset = _presets.find(toks[0]);
+	if(preset == _presets.end()) {
+		throw std::runtime_error(str_format("invalid preset '%s'", toks[0].c_str()));
+	}
+
+	return {preset->second, toks};
+}
+
 void MixerChannel::set_reverb(std::string _preset)
 {
 	std::lock_guard<std::mutex> lock(m_filters_mutex);
 
 	m_reverb.enabled = false;
 
-	_preset = str_trim(_preset);
-	if(_preset.empty()) {
-		return;
-	}
-
-	auto reverb = str_parse_tokens(_preset, "[\\s,]");
-	if(reverb.empty()) {
-		return;
-	}
-
-	std::string pname = "none";
 	try {
-		if(INIFile::parse_bool(reverb[0])) {
-			pname = "medium";
-		} else {
-			return;
+		auto [preset, reverb] = parse_preset<ReverbPreset>(_preset, {
+			{ "none", ReverbPreset::None },
+			{ "tiny", ReverbPreset::Tiny },
+			{ "small", ReverbPreset::Small },
+			{ "medium", ReverbPreset::Medium },
+			{ "large", ReverbPreset::Large },
+			{ "huge", ReverbPreset::Huge }
+		}, "medium");
+
+		Reverb::ReverbConfig config;
+		switch (preset) {                  // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
+		case ReverbPreset::None:   return;
+		case ReverbPreset::Tiny:   config = { 0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f }; break;
+		case ReverbPreset::Small:  config = { 0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f }; break;
+		case ReverbPreset::Medium: config = { 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f }; break;
+		case ReverbPreset::Large:  config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f }; break;
+		case ReverbPreset::Huge:   config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f }; break;
 		}
-	} catch(std::exception &) {
-		pname = str_to_lower(reverb[0]);
-	}
-
-	const std::map<std::string, ReverbPreset> presets = {
-		{ "none", ReverbPreset::None },
-		{ "tiny", ReverbPreset::Tiny },
-		{ "small", ReverbPreset::Small },
-		{ "medium", ReverbPreset::Medium },
-		{ "large", ReverbPreset::Large },
-		{ "huge", ReverbPreset::Huge }
-	};
-
-	auto preset = presets.find(pname);
-	if(preset == presets.end()) {
-		PERRF(LOG_MIXER, "Invalid reverb preset: '%s'\n", pname.c_str());
-		return;
-	}
-
-	float pgain = 0.f;
-	if(reverb.size() > 1) {
-		try {
-			pgain = str_parse_int_num(reverb[1]);
-			pgain = clamp(pgain, 0.f, 100.f);
-			if(pgain == 0) {
-				return;
+		float pgain = 0.f;
+		if(reverb.size() > 1) {
+			try {
+				pgain = str_parse_int_num(reverb[1]);
+				pgain = clamp(pgain, 0.f, 100.f);
+				if(pgain == 0) {
+					return;
+				}
+				pgain = pgain / 100.f;
+			} catch(std::runtime_error &) {}
+		}
+		if(pgain > 0) {
+			switch(m_audiotype) {
+				case SYNTH: config.synth_gain = pgain; break;
+				case DAC: config.pcm_gain = pgain; break;
+				case NOISE: config.noise_gain = pgain; break;
 			}
-			pgain = pgain / 100.f;
-		} catch(std::runtime_error &) {}
-	}
-
-	Reverb::ReverbConfig config;
-	switch (preset->second) {          // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
-	case ReverbPreset::None:   return;
-	case ReverbPreset::Tiny:   config = { 0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f }; break;
-	case ReverbPreset::Small:  config = { 0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f }; break;
-	case ReverbPreset::Medium: config = { 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f }; break;
-	case ReverbPreset::Large:  config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f }; break;
-	case ReverbPreset::Huge:   config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f }; break;
-	}
-	if(pgain > 0) {
-		switch(m_audiotype) {
-			case SYNTH: config.synth_gain = pgain; break;
-			case DAC: config.pcm_gain = pgain; break;
-			case NOISE: config.noise_gain = pgain; break;
 		}
+
+		m_reverb.config(config, m_out_buffer.spec().rate, m_audiotype);
+
+		PINFOF(LOG_V1, LOG_MIXER, "%s: reverb set to '%s',%.0f\n", m_name.c_str(),
+				reverb[0].c_str(), m_reverb.mverb.getParameter(EmVerb::GAIN) * 100.f);
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_MIXER, "%s: reverb: %s\n", m_name.c_str(), e.what());
 	}
-
-	m_reverb.config(config, m_out_buffer.spec().rate, m_audiotype);
-
-	PINFOF(LOG_V1, LOG_MIXER, "%s: reverb set to '%s',%.0f\n", m_name.c_str(),
-			pname.c_str(), m_reverb.mverb.getParameter(EmVerb::GAIN) * 100.f);
 }
 
 void MixerChannel::Reverb::config(ReverbConfig _config, double _rate, AudioType _type)
@@ -530,52 +549,30 @@ void MixerChannel::set_chorus(std::string _preset)
 
 	m_chorus.enabled = false;
 
-	_preset = str_trim(_preset);
-	if(_preset.empty()) {
-		return;
-	}
-
-	auto chorus = str_parse_tokens(_preset, "[\\s,]");
-	if(chorus.empty()) {
-		return;
-	}
-
-	std::string pname = "none";
 	try {
-		if(INIFile::parse_bool(chorus[0])) {
-			pname = "normal";
-		} else {
-			return;
+		auto [preset, chorus] = parse_preset<ChorusPreset>(_preset, {
+			{ "none",   ChorusPreset::None   },
+			{ "light",  ChorusPreset::Light  },
+			{ "normal", ChorusPreset::Normal },
+			{ "strong", ChorusPreset::Strong },
+			{ "heavy",  ChorusPreset::Heavy  }
+		}, "normal");
+
+		Chorus::ChorusConfig config;
+		switch (preset) {                  // C2EN   SYNTH  PCM  NOISE
+		case ChorusPreset::None: return;
+		case ChorusPreset::Light:  config = { false, .33f, .20f, 0.f }; break;
+		case ChorusPreset::Normal: config = { false, .54f, .35f, 0.f }; break;
+		case ChorusPreset::Strong: config = { false, .75f, .45f, 0.f }; break;
+		case ChorusPreset::Heavy:  config = { true,  .75f, .65f, 0.f }; break;
 		}
-	} catch(std::exception &) {
-		pname = str_to_lower(chorus[0]);
+
+		m_chorus.config(config, m_out_buffer.spec().rate, m_audiotype);
+
+		PINFOF(LOG_V1, LOG_MIXER, "%s: chorus set to '%s'\n", m_name.c_str(), chorus[0].c_str());
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_MIXER, "%s: chorus: %s\n", m_name.c_str(), e.what());
 	}
-
-	const std::map<std::string, ChorusPreset> presets = {
-		{ "none",   ChorusPreset::None   },
-		{ "light",  ChorusPreset::Light  },
-		{ "normal", ChorusPreset::Normal },
-		{ "strong", ChorusPreset::Strong },
-		{ "heavy",  ChorusPreset::Heavy  }
-	};
-	auto preset = presets.find(pname);
-	if(preset == presets.end()) {
-		PERRF(LOG_MIXER, "Invalid chorus preset: '%s'\n", pname.c_str());
-		return;
-	}
-
-	Chorus::ChorusConfig config;
-	switch (preset->second) {          // C2EN   SYNTH  PCM  NOISE
-	case ChorusPreset::None:    return;
-	case ChorusPreset::Light:  config = { false, .33f, .20f, 0.f }; break;
-	case ChorusPreset::Normal: config = { false, .54f, .35f, 0.f }; break;
-	case ChorusPreset::Strong: config = { false, .75f, .45f, 0.f }; break;
-	case ChorusPreset::Heavy:  config = { true,  .75f, .65f, 0.f }; break;
-	}
-
-	m_chorus.config(config, m_out_buffer.spec().rate, m_audiotype);
-
-	PINFOF(LOG_V1, LOG_MIXER, "%s: chorus set to '%s'\n", m_name.c_str(), pname.c_str());
 }
 
 void MixerChannel::Chorus::config(ChorusConfig _config, double _rate, AudioType _type)
@@ -589,5 +586,45 @@ void MixerChannel::Chorus::config(ChorusConfig _config, double _rate, AudioType 
 	chorus_engine.setSampleRate(static_cast<float>(_rate));
 	chorus_engine.setEnablesChorus(true, _config.chorus2_enabled);
 	
+	enabled = true;
+}
+
+void MixerChannel::set_crossfeed(std::string _preset)
+{
+	std::lock_guard<std::mutex> lock(m_filters_mutex);
+
+	m_crossfeed.enabled = false;
+
+	try {
+		auto [preset, cross] = parse_preset<CrossfeedPreset>(_preset, {
+			{ "none",  CrossfeedPreset::None  },
+			{ "bauer", CrossfeedPreset::Bauer },
+			{ "meier", CrossfeedPreset::Meier },
+			{ "meyer", CrossfeedPreset::Meier },
+			{ "moy",   CrossfeedPreset::Moy   },
+			{ "moi",   CrossfeedPreset::Moy   }
+		}, "bauer");
+
+		Crossfeed::CrossfeedConfig config;
+		switch (preset) {                    // FCUT FEED (dB*10)  
+		case CrossfeedPreset::None: return;
+		case CrossfeedPreset::Bauer: config = { 700, 45 }; break;
+		case CrossfeedPreset::Meier: config = { 650, 95 }; break;
+		case CrossfeedPreset::Moy:   config = { 700, 60 }; break;
+		}
+
+		m_crossfeed.config(config, m_out_buffer.spec().rate);
+
+		PINFOF(LOG_V1, LOG_MIXER, "%s: crossfeed set to '%s'\n", m_name.c_str(), cross[0].c_str());
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_MIXER, "%s: crossfeed: %s\n", m_name.c_str(), e.what());
+	}
+}
+
+void MixerChannel::Crossfeed::config(CrossfeedConfig _config, double _rate)
+{
+	bs2b.set_srate(uint32_t(round(_rate)));
+	bs2b.set_level(( _config.freq_cut_hz | ( _config.feed_db << 16 ) ));
+
 	enabled = true;
 }

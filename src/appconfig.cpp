@@ -147,6 +147,7 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SBLASTER_DAC_VOLUME,     "auto"  },
 		{ SBLASTER_DAC_REVERB,     "no"    },
 		{ SBLASTER_DAC_CHORUS,     "no"    },
+		{ SBLASTER_DAC_CROSSFEED,  "no"    },
 		{ SBLASTER_OPL_RATE,       "48000" },
 		{ SBLASTER_OPL_FILTERS,    "auto"  },
 		{ SBLASTER_OPL_VOLUME,     "auto"  },
@@ -678,6 +679,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  auto: let the Sound Blater's Mixer adjust the level.\n"
 ";     dac_reverb: Reverb effect for PCM audio (see README for more info).\n"
 ";     dac_chorus: Chorus effect for PCM audio (see README for more info).\n"
+";  dac_crossfeed: Crossfeed for PCM audio (see README for more info).\n"
 ";       opl_rate: The OPL chip(s) sample rate. The real hardware uses a frequency of 49716Hz.\n"
 ";                 Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";    opl_filters: Audio filters for the OPL chip(s)\n"
@@ -687,6 +689,7 @@ ini_filehelp_t AppConfig::ms_help = {
 ";                  auto: let the Sound Blater's Mixer adjust the level.\n"
 ";     opl_reverb: Reverb effect for FM audio (see README for more info).\n"
 ";     opl_chorus: Chorus effect for FM audio (see README for more info).\n"
+";  opl_crossfeed: Crossfeed for FM audio (see README for more info).\n"
 		},
 
 		{ GAMEPORT_SECTION, 
@@ -959,11 +962,13 @@ ini_order_t AppConfig::ms_keys_order = {
 		{ SBLASTER_DAC_VOLUME,     false },
 		{ SBLASTER_DAC_REVERB,     false },
 		{ SBLASTER_DAC_CHORUS,     false },
+		{ SBLASTER_DAC_CROSSFEED,  false },
 		{ SBLASTER_OPL_RATE,       false },
 		{ SBLASTER_OPL_FILTERS,    false },
 		{ SBLASTER_OPL_VOLUME,     false },
 		{ SBLASTER_OPL_REVERB,     false },
-		{ SBLASTER_OPL_CHORUS,     false }
+		{ SBLASTER_OPL_CHORUS,     false },
+		{ SBLASTER_OPL_CROSSFEED,  false }
 	} },
 	{ MPU401_SECTION, {
 		{ MPU401_ENABLED, false },
