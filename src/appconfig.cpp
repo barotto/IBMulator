@@ -152,7 +152,8 @@ ini_file_t AppConfig::ms_def_values[2] = {
 		{ SBLASTER_OPL_FILTERS,    "auto"  },
 		{ SBLASTER_OPL_VOLUME,     "auto"  },
 		{ SBLASTER_OPL_REVERB,     "no"    },
-		{ SBLASTER_OPL_CHORUS,     "no"    }
+		{ SBLASTER_OPL_CHORUS,     "no"    },
+		{ SBLASTER_OPL_CROSSFEED,  "no"    }
 	} },
 	
 	{ GAMEPORT_SECTION, {
