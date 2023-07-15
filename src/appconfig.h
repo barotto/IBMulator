@@ -27,16 +27,6 @@
 #include <set>
 #include "ini.h"
 
-typedef std::map<std::string, std::string> ini_filehelp_t;
-typedef std::vector< // lol, what's this crap
-	std::pair<
-		std::string, // section
-		std::vector< std::pair<
-			std::string, // key
-			bool         // hidden?
-			>>
-		>
-	> ini_order_t;
 
 enum FileType {
 	FILE_TYPE_ASSET,
@@ -47,7 +37,13 @@ enum FileType {
 enum ConfigType {
 	PROGRAM_CONFIG,
 	MACHINE_CONFIG,
+	MIXER_CONFIG,
 	ANY_CONFIG
+};
+
+enum ConfigVisibility {
+	PUBLIC_CFGKEY,
+	HIDDEN_CFGKEY,
 };
 
 class AppConfig : public INIFile
@@ -59,12 +55,29 @@ private:
 	std::string m_assets_shaders_path;
 	std::string m_user_shaders_path;
 	std::string m_images_path;
-
-	static ini_file_t ms_def_values[2];
-	static ini_filehelp_t ms_help;
-	static ini_order_t ms_keys_order;
+	
+	struct ConfigKeyInfo {
+		std::string name;
+		ConfigType type;
+		ConfigVisibility visibility;
+		std::string default_value;
+	};
+	struct ConfigSectionInfo {
+		std::string name;
+		std::vector<ConfigKeyInfo> keys;
+	};
+	using ConfigSections = std::vector<ConfigSectionInfo>;
+	using ConfigKeys = std::map<std::string, std::map<std::string, ConfigKeyInfo>>;
+	using ConfigHelp = std::map<std::string, std::string>;
+	
+	static ConfigSections ms_sections;
+	static ConfigKeys ms_keys;
+	static ConfigHelp ms_help;
+	static ini_file_t ms_default_values;
 
 public:
+	AppConfig();
+	
 	void set_user_home(std::string _path);
 	void set_cfg_home(std::string _path);
 	void set_assets_home(std::string _path);
@@ -95,7 +108,7 @@ public:
 	std::string find_media(const std::string &_section, const std::string &_name);
 	std::string find_media(const std::string &_filename);
 
-	void create_file(const std::string &_filename, bool _savestate);
+	void create_file(const std::string &_filename, ConfigType _type, bool _savestate);
 
 	void reset();
 	void merge(const AppConfig &_config, ConfigType _type);

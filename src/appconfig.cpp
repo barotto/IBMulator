@@ -27,357 +27,7 @@
 #include <cctype>
 #include <cstdlib>
 
-
-ini_file_t AppConfig::ms_def_values[2] = {
-
-// PROGRAM_CONFIG
-{
-	{ PROGRAM_SECTION, {
-		{ PROGRAM_MEDIA_DIR,    ""       },
-		{ PROGRAM_WAIT_METHOD,  "auto"   },
-		{ PROGRAM_LOG_FILE,     "log.txt"}
-	} },
-
-	{ GUI_SECTION, {
-		{ GUI_RENDERER,           "opengl"     },
-		{ GUI_FRAMECAP,           "vga"        },
-		{ GUI_KEYMAP,             "keymap.map" },
-		{ GUI_MOUSE_GRAB,         "yes"        },
-		{ GUI_WIDTH,              "640"        },
-		{ GUI_HEIGHT,             "480"        },
-		{ GUI_FULLSCREEN,         "no"         },
-		{ GUI_SHOW_INDICATORS,    "no"         },
-		{ GUI_MODE,               "normal"     },
-		{ GUI_COMPACT_TIMEOUT,    "1.5"        },
-		{ GUI_REALISTIC_ZOOM,     "cycle"      },
-		{ GUI_REALISTIC_STYLE,    "bright"     },
-		{ GUI_BG_R,               "0"          },
-		{ GUI_BG_G,               "0"          },
-		{ GUI_BG_B,               "0"          },
-		{ GUI_UI_SCALING,         "100%"       }
-	} },
-
-	{ DIALOGS_SECTION, {
-		{ DIALOGS_FILE_TYPE,  "custom" },
-		{ DIALOGS_FILE_MODE,  "grid"   },
-		{ DIALOGS_FILE_ORDER, "name"   },
-		{ DIALOGS_FILE_ZOOM,  "2"      },
-		{ DIALOGS_SAVE_MODE,  "grid"   },
-		{ DIALOGS_SAVE_ORDER, "date"   },
-		{ DIALOGS_SAVE_ZOOM,  "1"      }
-	} },
-
-	{ CAPTURE_SECTION, {
-		{ CAPTURE_DIR,           ""     },
-		{ CAPTURE_VIDEO_MODE,    "avi"  },
-		{ CAPTURE_VIDEO_FORMAT,  "zmbv" },
-		{ CAPTURE_VIDEO_QUALITY, "3"    }
-	} },
-
-	{ DISPLAY_SECTION, {
-		{ DISPLAY_NORMAL_SCALE,     "fill" },
-		{ DISPLAY_NORMAL_ASPECT,    "4:3"  },
-		{ DISPLAY_NORMAL_SHADER,    "normal_mode/stock.slangp" },
-		{ DISPLAY_REALISTIC_SHADER, "realistic_mode/stock.slangp" },
-		{ DISPLAY_BRIGHTNESS,       "1.0" },
-		{ DISPLAY_CONTRAST,         "1.0" },
-		{ DISPLAY_SATURATION,       "1.0" },
-		{ DISPLAY_AMBIENT,          "1.0" },
-		{ DISPLAY_SAMPLERS_MODE,    "auto" },
-		{ DISPLAY_SHADER_INPUT,     "auto" },
-		{ DISPLAY_SHADER_OUTPUT,    "native" },
-		{ DISPLAY_FILTER,           "bilinear" }
-	} },
-
-	{ CPU_SECTION, {
-		{ CPU_HLT_WAIT, "500" }
-	} },
-
-	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_RTC_INIT, "no"  },
-		{ CMOS_IMAGE_SAVE,     "yes" }
-	} },
-
-	{ DRIVES_SECTION, {
-		{ DRIVES_FLOPPY_COMMIT, "yes" },
-		{ DRIVES_HDD_COMMIT,    "yes" }
-	} },
-
-	{ MIXER_SECTION, {
-		{ MIXER_RATE,      "48000" },
-		{ MIXER_SAMPLES,   "1024"  },
-		{ MIXER_PREBUFFER, "50"    },
-		{ MIXER_VOLUME,    "1.0"   }
-	} },
-
-	{ MIDI_SECTION, {
-		{ MIDI_ENABLED,      "yes"   },
-		{ MIDI_DEVICE,       ""      },
-		{ MIDI_DEVTYPE,      ""      },
-		{ MIDI_DELAY,        "auto"  }
-	} },
-	
-	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_RATE,    "48000" },
-		{ PCSPEAKER_FILTERS, ""      },
-		{ PCSPEAKER_VOLUME,  "0.5"   },
-		{ PCSPEAKER_REVERB,  "no"    },
-		{ PCSPEAKER_CHORUS,  "no"    }
-	} },
-
-	{ PS1AUDIO_SECTION, {
-		{ PS1AUDIO_RATE,    "48000" },
-		{ PS1AUDIO_FILTERS, ""      },
-		{ PS1AUDIO_VOLUME,  "1.0"   },
-		{ PS1AUDIO_REVERB,  "auto"  },
-		{ PS1AUDIO_CHORUS,  "auto"  },
-	} },
-
-	{ ADLIB_SECTION, {
-		{ ADLIB_RATE,    "48000" },
-		{ ADLIB_FILTERS, ""      },
-		{ ADLIB_VOLUME,  "1.4"   },
-		{ ADLIB_REVERB,  "no"    },
-		{ ADLIB_CHORUS,  "no"    }
-	} },
-
-	{ SBLASTER_SECTION, {
-		{ SBLASTER_DAC_RESAMPLING, "auto"  },
-		{ SBLASTER_DAC_FILTERS,    "auto"  },
-		{ SBLASTER_DAC_VOLUME,     "auto"  },
-		{ SBLASTER_DAC_REVERB,     "no"    },
-		{ SBLASTER_DAC_CHORUS,     "no"    },
-		{ SBLASTER_DAC_CROSSFEED,  "no"    },
-		{ SBLASTER_OPL_RATE,       "48000" },
-		{ SBLASTER_OPL_FILTERS,    "auto"  },
-		{ SBLASTER_OPL_VOLUME,     "auto"  },
-		{ SBLASTER_OPL_REVERB,     "no"    },
-		{ SBLASTER_OPL_CHORUS,     "no"    },
-		{ SBLASTER_OPL_CROSSFEED,  "no"    }
-	} },
-	
-	{ GAMEPORT_SECTION, {
-		{ GAMEPORT_ENABLED,  "yes" }
-	} },
-	
-	{ SOUNDFX_SECTION, {
-		{ SOUNDFX_ENABLED,        "yes"  },
-		{ SOUNDFX_VOLUME,         "1.0"  },
-		{ SOUNDFX_FDD_SPIN,       "0.4"  },
-		{ SOUNDFX_FDD_SEEK,       "0.4"  },
-		{ SOUNDFX_FDD_GUI,        "1.0"  },
-		{ SOUNDFX_FDD_BALANCE,    "-0.3" },
-		{ SOUNDFX_HDD_SPIN,       "0.4"  },
-		{ SOUNDFX_HDD_SEEK,       "0.4"  },
-		{ SOUNDFX_HDD_BALANCE,    "0.3"  },
-		{ SOUNDFX_SYSTEM,         "1.0"  },
-		{ SOUNDFX_SYSTEM_BALANCE, "0.0"  },
-		{ SOUNDFX_MODEM,          "1.2"  },
-		{ SOUNDFX_MODEM_FILTERS,  "auto" },
-		{ SOUNDFX_MODEM_COUNTRY,  "eu"   },
-		{ SOUNDFX_MODEM_BALANCE,  "-0.5" }
-	} },
-
-	{ MODEM_SECTION, {
-		{ MODEM_BAUD_RATE,    "2400"      },
-		{ MODEM_LISTEN_ADDR,  ""          },
-		{ MODEM_PHONEBOOK,    "phone.txt" },
-		{ MODEM_TELNET_MODE,  "no"        },
-		{ MODEM_CONN_TIMEOUT, "10"        },
-		{ MODEM_WARM_DELAY,   "no"        },
-		{ MODEM_CONNECT_CODE, "auto"      },
-		{ MODEM_ECHO_ON,      "yes"       },
-		{ MODEM_HANDSHAKE,    "no"        },
-		{ MODEM_DUMP,         ""          }
-	} },
-
-	{ SERIAL_SECTION, {
-		{ SERIAL_A_DUMP, "" },
-		{ SERIAL_B_DUMP, "" },
-		{ SERIAL_C_DUMP, "" },
-		{ SERIAL_D_DUMP, "" }
-	} },
-
-	{ LPT_SECTION, {
-		{ LPT_PORT,    "LPT1" },
-		{ LPT_FILE,    ""     }
-	} },
-
-	{ PRN_SECTION, {
-		{ PRN_CONNECTED,     "no"     },
-		{ PRN_MODE,          "epson"  },
-		{ PRN_COLOR,         "no"     },
-		{ PRN_INK,           "medium" },
-		{ PRN_PREVIEW_DIV,   "low"    },
-		{ PRN_EPSON_CSET,    "basic"  },
-		{ PRN_IBM_CSET,      "intl1"  },
-		{ PRN_PAPER_SIZE,    "letter" },
-		{ PRN_PAPER_TYPE,    "forms"  },
-		{ PRN_BOF,           "0"      },
-		{ PRN_TOP_MARGIN,    "auto"   },
-		{ PRN_BOTTOM_MARGIN, "0.1875" },
-		{ PRN_SHOW_HEAD,     "yes"    }
-	} },
-
-	{ LOG_SECTION, {
-		{ LOG_OVERRIDE_VERBOSITY, "no"},
-		{ LOG_PROGRAM_VERBOSITY,  "0" },
-		{ LOG_FS_VERBOSITY,       "0" },
-		{ LOG_GFX_VERBOSITY,      "0" },
-		{ LOG_INPUT_VERBOSITY,    "0" },
-		{ LOG_GUI_VERBOSITY,      "0" },
-		{ LOG_MACHINE_VERBOSITY,  "0" },
-		{ LOG_MIXER_VERBOSITY,    "0" },
-		{ LOG_MEM_VERBOSITY,      "0" },
-		{ LOG_CPU_VERBOSITY,      "0" },
-		{ LOG_MMU_VERBOSITY,      "0" },
-		{ LOG_PIT_VERBOSITY,      "0" },
-		{ LOG_PIC_VERBOSITY,      "0" },
-		{ LOG_DMA_VERBOSITY,      "0" },
-		{ LOG_KEYB_VERBOSITY,     "0" },
-		{ LOG_VGA_VERBOSITY,      "0" },
-		{ LOG_CMOS_VERBOSITY,     "0" },
-		{ LOG_FDC_VERBOSITY,      "0" },
-		{ LOG_HDD_VERBOSITY,      "0" },
-		{ LOG_AUDIO_VERBOSITY,    "0" },
-		{ LOG_GAMEPORT_VERBOSITY, "0" },
-		{ LOG_LPT_VERBOSITY,      "0" },
-		{ LOG_PRN_VERBOSITY,      "0" },
-		{ LOG_COM_VERBOSITY,      "0" },
-		{ LOG_MIDI_VERBOSITY,     "0" }
-	} },
-},
-
-//MACHINE_CONFIG
-{
-	{ GUI_SECTION, {
-		{ GUI_MOUSE_TYPE, "ps2" },
-	} },
-	
-	{ DISPLAY_SECTION, {
-		{ DISPLAY_TYPE, "color" }
-	} },
-	
-	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET,       ""     },
-		{ SYSTEM_MODEL,        "auto" },
-		{ SYSTEM_BIOS_PATCHES, ""     }
-	} },
-
-	{ CPU_SECTION, {
-		{ CPU_MODEL,     "auto" },
-		{ CPU_FREQUENCY, "auto" }
-	} },
-
-	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_FILE, "auto" }
-	} },
-
-	{ MEM_SECTION, {
-		{ MEM_RAM_EXP,   "auto" },
-		{ MEM_RAM_SPEED, "auto" }
-	} },
-
-	{ VGA_SECTION, {
-		{ VGA_ROM,           ""   },
-		{ VGA_PS_BIT_BUG,    "no" }
-	} },
-	
-	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,    "auto" },
-		{ DRIVES_FDD_B,    "auto" },
-		{ DRIVES_FDC_TYPE, "raw"  },
-		{ DRIVES_FDC_MODE, "auto" },
-		{ DRIVES_FDC_OVR,  "250"  },
-		{ DRIVES_FDD_LAT,  "1.0"  },
-		{ DRIVES_HDC_TYPE, "auto" }
-	} },
-
-	{ DISK_A_SECTION, {
-		{ DISK_INSERTED,  "no"   },
-		{ DISK_READONLY,  "no"   },
-		{ DISK_PATH,      ""     },
-		{ DISK_TYPE,      "auto" },
-		{ DISK_CYLINDERS, "auto" },
-		{ DISK_HEADS,     "auto" }
-	} },
-
-	{ DISK_B_SECTION, {
-		{ DISK_INSERTED,  "no"   },
-		{ DISK_READONLY,  "no"   },
-		{ DISK_PATH,      ""     },
-		{ DISK_TYPE,      "auto" },
-		{ DISK_CYLINDERS, "auto" },
-		{ DISK_HEADS,     "auto" }
-	} },
-
-	{ DISK_C_SECTION, {
-		{ DISK_TYPE,       "auto" },
-		{ DISK_PATH,       "auto" },
-		{ DISK_CYLINDERS,  "auto" },
-		{ DISK_HEADS,      "auto" },
-		{ DISK_SPT,        "auto" },
-		{ DISK_SEEK_MAX,   "auto" },
-		{ DISK_SEEK_TRK,   "auto" },
-		{ DISK_ROT_SPEED,  "auto" },
-		{ DISK_INTERLEAVE, "auto" },
-		{ DISK_SPINUP_TIME,"auto" }
-	} },
-
-	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_ENABLED, "yes" }
-	} },
-
-	{ PS1AUDIO_SECTION, {
-		{ PS1AUDIO_ENABLED, "yes" }
-	} },
-
-	{ ADLIB_SECTION, {
-		{ ADLIB_ENABLED, "no" }
-	} },
-
-	{ SBLASTER_SECTION, {
-		{ SBLASTER_ENABLED, "no"    },
-		{ SBLASTER_MODEL,   "sb2"   },
-		{ SBLASTER_IOBASE,  "0x220" },
-		{ SBLASTER_DMA,     "1"     },
-		{ SBLASTER_IRQ,     "5"     }
-	} },
-	
-	{ MPU401_SECTION, {
-		{ MPU401_ENABLED,  "no"          },
-		{ MPU401_IOBASE,   "0x330"       },
-		{ MPU401_IRQ,      "3"           },
-		{ MPU401_MODE,     "intelligent" }
-	} },
-	
-	{ SERIAL_SECTION, {
-		{ SERIAL_ENABLED,       "yes"  },
-		{ SERIAL_A_MODE,        "auto" },
-		{ SERIAL_A_DEV,         ""     },
-		{ SERIAL_A_TX_DELAY,    "20"   },
-		{ SERIAL_A_TCP_NODELAY, "yes"  },
-		{ SERIAL_B_MODE,        "auto" },
-		{ SERIAL_B_DEV,         ""     },
-		{ SERIAL_B_TX_DELAY,    "20"   },
-		{ SERIAL_B_TCP_NODELAY, "yes"  },
-		{ SERIAL_C_MODE,        "auto" },
-		{ SERIAL_C_DEV,         ""     },
-		{ SERIAL_C_TX_DELAY,    "20"   },
-		{ SERIAL_C_TCP_NODELAY, "yes"  },
-		{ SERIAL_D_MODE,        "auto" },
-		{ SERIAL_D_DEV,         ""     },
-		{ SERIAL_D_TX_DELAY,    "20"   },
-		{ SERIAL_D_TCP_NODELAY, "yes"  }
-	} },
-
-	{ LPT_SECTION, {
-		{ LPT_ENABLED, "yes" }
-	} }
-}
-};
-
-ini_filehelp_t AppConfig::ms_help = {
+AppConfig::ConfigHelp AppConfig::ms_help = {
 		{ "HEADER",
 "; This is the configuration file for " PACKAGE_STRING "\n"
 "; Lines starting with a ; are comment lines and are ignored. "
@@ -804,239 +454,305 @@ ini_filehelp_t AppConfig::ms_help = {
 		}
 };
 
-ini_order_t AppConfig::ms_keys_order = {
+AppConfig::ConfigSections AppConfig::ms_sections = {
 	{ PROGRAM_SECTION, {
-		// key name,         hidden?
-		{ PROGRAM_MEDIA_DIR, false },
-		{ PROGRAM_LOG_FILE,  false }
+		// key name,           // category     hidden?         default
+		{ PROGRAM_MEDIA_DIR,   PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
+		{ PROGRAM_LOG_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY,  "log.txt" },
+		{ PROGRAM_WAIT_METHOD, PROGRAM_CONFIG, HIDDEN_CFGKEY,  "auto"    },
 	} },
 	{ GUI_SECTION, {
-		{ GUI_RENDERER,           false },
-		{ GUI_FRAMECAP,           false },
-		{ GUI_MODE,               false },
-		{ GUI_COMPACT_TIMEOUT,    false },
-		{ GUI_REALISTIC_ZOOM,     false },
-		{ GUI_REALISTIC_STYLE,    false },
-		{ GUI_KEYMAP,             false },
-		{ GUI_MOUSE_TYPE,         false },
-		{ GUI_WIDTH,              false },
-		{ GUI_HEIGHT,             false },
-		{ GUI_FULLSCREEN,         false },
-		{ GUI_BG_R,               false },
-		{ GUI_BG_G,               false },
-		{ GUI_BG_B,               false },
-		{ GUI_SHOW_INDICATORS,    false },
-		{ GUI_UI_SCALING,         false }
+		{ GUI_RENDERER,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "opengl"     },
+		{ GUI_FRAMECAP,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "vga"        },
+		{ GUI_MODE,            PROGRAM_CONFIG, PUBLIC_CFGKEY, "normal"     },
+		{ GUI_COMPACT_TIMEOUT, PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.5"        },
+		{ GUI_REALISTIC_ZOOM,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "cycle"      },
+		{ GUI_REALISTIC_STYLE, PROGRAM_CONFIG, PUBLIC_CFGKEY, "bright"     },
+		{ GUI_KEYMAP,          PROGRAM_CONFIG, PUBLIC_CFGKEY, "keymap.map" },
+		{ GUI_MOUSE_TYPE,      MACHINE_CONFIG, PUBLIC_CFGKEY, "ps2"        },
+		{ GUI_WIDTH,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "640"        },
+		{ GUI_HEIGHT,          PROGRAM_CONFIG, PUBLIC_CFGKEY, "480"        },
+		{ GUI_FULLSCREEN,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"         },
+		{ GUI_BG_R,            PROGRAM_CONFIG, PUBLIC_CFGKEY, "0"          },
+		{ GUI_BG_G,            PROGRAM_CONFIG, PUBLIC_CFGKEY, "0"          },
+		{ GUI_BG_B,            PROGRAM_CONFIG, PUBLIC_CFGKEY, "0"          },
+		{ GUI_SHOW_INDICATORS, PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"         },
+		{ GUI_UI_SCALING,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "100%"       },
+		{ GUI_MOUSE_GRAB,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "yes"        },
 	} },
 	{ DIALOGS_SECTION, {
-		{ DIALOGS_FILE_TYPE,  false },
-		{ DIALOGS_FILE_MODE,  false },
-		{ DIALOGS_FILE_ORDER, false },
-		{ DIALOGS_FILE_ZOOM,  false },
-		{ DIALOGS_SAVE_MODE,  false },
-		{ DIALOGS_SAVE_ORDER, false },
-		{ DIALOGS_SAVE_ZOOM,  false }
+		{ DIALOGS_FILE_TYPE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "custom" },
+		{ DIALOGS_FILE_MODE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "grid"   },
+		{ DIALOGS_FILE_ORDER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "name"   },
+		{ DIALOGS_FILE_ZOOM,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "2"      },
+		{ DIALOGS_SAVE_MODE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "grid"   },
+		{ DIALOGS_SAVE_ORDER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "date"   },
+		{ DIALOGS_SAVE_ZOOM,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "1"      },
 	} },
 	{ CAPTURE_SECTION, {
-		{ CAPTURE_DIR,           false },
-		{ CAPTURE_VIDEO_FORMAT,  false },
-		{ CAPTURE_VIDEO_QUALITY, false }
+		{ CAPTURE_DIR,           PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ CAPTURE_VIDEO_FORMAT,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "zmbv" },
+		{ CAPTURE_VIDEO_QUALITY, PROGRAM_CONFIG, PUBLIC_CFGKEY, "3"    },
+		{ CAPTURE_VIDEO_MODE,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "avi"  },
 	} },
 	{ DISPLAY_SECTION, {
-		{ DISPLAY_TYPE,              false },
-		{ DISPLAY_NORMAL_SCALE,      false },
-		{ DISPLAY_NORMAL_ASPECT,     false },
-		{ DISPLAY_FILTER,            false },
-		{ DISPLAY_NORMAL_SHADER,     false },
-		{ DISPLAY_REALISTIC_SHADER,  false },
-		{ DISPLAY_AMBIENT,           false },
-		{ DISPLAY_BRIGHTNESS,        false },
-		{ DISPLAY_CONTRAST,          false },
-		{ DISPLAY_SATURATION,        false },
-		{ DISPLAY_SAMPLERS_MODE,     true  },
-		{ DISPLAY_SHADER_INPUT,      false },
-		{ DISPLAY_SHADER_OUTPUT,     false }
+		{ DISPLAY_TYPE,             MACHINE_CONFIG, PUBLIC_CFGKEY, "color"                       },
+		{ DISPLAY_NORMAL_SCALE,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "fill"                        },
+		{ DISPLAY_NORMAL_ASPECT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "4:3"                         },
+		{ DISPLAY_FILTER,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "bilinear"                    },
+		{ DISPLAY_NORMAL_SHADER,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "normal_mode/stock.slangp"    },
+		{ DISPLAY_REALISTIC_SHADER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "realistic_mode/stock.slangp" },
+		{ DISPLAY_AMBIENT,          PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
+		{ DISPLAY_BRIGHTNESS,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
+		{ DISPLAY_CONTRAST,         PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
+		{ DISPLAY_SATURATION,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
+		{ DISPLAY_SAMPLERS_MODE,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "auto"                        },
+		{ DISPLAY_SHADER_INPUT,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"                        },
+		{ DISPLAY_SHADER_OUTPUT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "native"                      },
 	} },
 	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET, false },
-		{ SYSTEM_MODEL,  false }
+		{ SYSTEM_ROMSET,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ SYSTEM_MODEL,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ SYSTEM_BIOS_PATCHES,  MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
 	} },
 	{ CPU_SECTION, {
-		{ CPU_MODEL,     false },
-		{ CPU_FREQUENCY, false },
-		{ CPU_HLT_WAIT,  false }
+		{ CPU_MODEL,     MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ CPU_FREQUENCY, MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ CPU_HLT_WAIT,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "500"  },
 	} },
 	{ MEM_SECTION, {
-		{ MEM_RAM_EXP,   false },
-		{ MEM_RAM_SPEED, false }
+		{ MEM_RAM_EXP,   MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ MEM_RAM_SPEED, MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },
 	{ VGA_SECTION, {
-		{ VGA_ROM,        false },
-		{ VGA_PS_BIT_BUG, false }
+		{ VGA_ROM,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""   },
+		{ VGA_PS_BIT_BUG, MACHINE_CONFIG, PUBLIC_CFGKEY, "no" },
 	} },
 	{ CMOS_SECTION, {
-		{ CMOS_IMAGE_FILE,     false },
-		{ CMOS_IMAGE_RTC_INIT, false },
-		{ CMOS_IMAGE_SAVE,     false }
+		{ CMOS_IMAGE_FILE,     MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ CMOS_IMAGE_RTC_INIT, PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"   },
+		{ CMOS_IMAGE_SAVE,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
 	} },
 	{ DRIVES_SECTION, {
-		{ DRIVES_FDD_A,         false },
-		{ DRIVES_FDD_B,         false },
-		{ DRIVES_FLOPPY_COMMIT, false },
-		{ DRIVES_FDC_TYPE,      false },
-		{ DRIVES_FDC_MODE,      false },
-		{ DRIVES_FDC_OVR,       true  },
-		{ DRIVES_FDD_LAT,       false },
-		{ DRIVES_HDC_TYPE,      false },
-		{ DRIVES_HDD_COMMIT,    false }
+		{ DRIVES_FDD_A,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DRIVES_FDD_B,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DRIVES_FLOPPY_COMMIT, PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ DRIVES_FDC_TYPE,      MACHINE_CONFIG, PUBLIC_CFGKEY, "raw"  },
+		{ DRIVES_FDC_MODE,      MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DRIVES_FDC_OVR,       MACHINE_CONFIG, HIDDEN_CFGKEY, "250"  },
+		{ DRIVES_FDD_LAT,       MACHINE_CONFIG, PUBLIC_CFGKEY, "1.0"  },
+		{ DRIVES_HDC_TYPE,      MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DRIVES_HDD_COMMIT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
 	} },
 	{ DISK_A_SECTION, {
-		{ DISK_PATH,      false },
-		{ DISK_INSERTED,  false },
-		{ DISK_READONLY,  false },
-		{ DISK_TYPE,      true },
-		{ DISK_CYLINDERS, true },
-		{ DISK_HEADS,     true }
+		{ DISK_PATH,      MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ DISK_INSERTED,  MACHINE_CONFIG, PUBLIC_CFGKEY, "no"   },
+		{ DISK_READONLY,  MACHINE_CONFIG, PUBLIC_CFGKEY, "no"   },
+		{ DISK_TYPE,      MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ DISK_CYLINDERS, MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ DISK_HEADS,     MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 	} },
 	{ DISK_B_SECTION, {
-		{ DISK_PATH,      false },
-		{ DISK_INSERTED,  false },
-		{ DISK_READONLY,  false },
-		{ DISK_TYPE,      true },
-		{ DISK_CYLINDERS, true },
-		{ DISK_HEADS,     true }
+		{ DISK_PATH,      MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ DISK_INSERTED,  MACHINE_CONFIG, PUBLIC_CFGKEY, "no"   },
+		{ DISK_READONLY,  MACHINE_CONFIG, PUBLIC_CFGKEY, "no"   },
+		{ DISK_TYPE,      MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ DISK_CYLINDERS, MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ DISK_HEADS,     MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 	} },
 	{ DISK_C_SECTION, {
-		{ DISK_TYPE,       false },
-		{ DISK_PATH,       false },
-		{ DISK_CYLINDERS,  false },
-		{ DISK_HEADS,      false },
-		{ DISK_SPT,        false },
-		{ DISK_SEEK_MAX,   false },
-		{ DISK_SEEK_TRK,   false },
-		{ DISK_ROT_SPEED,  false },
-		{ DISK_INTERLEAVE, false }
+		{ DISK_TYPE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_PATH,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_CYLINDERS,   MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_HEADS,       MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_SPT,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_SEEK_MAX,    MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_SEEK_TRK,    MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_ROT_SPEED,   MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_INTERLEAVE,  MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ DISK_SPINUP_TIME, MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 	} },
 	{ MIXER_SECTION, {
-		{ MIXER_PREBUFFER, false },
-		{ MIXER_RATE,      false },
-		{ MIXER_SAMPLES,   false },
-		{ MIXER_VOLUME,    false }
+		{ MIXER_PREBUFFER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "50"    },
+		{ MIXER_RATE,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ MIXER_SAMPLES,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "1024"  },
+		{ MIXER_VOLUME,    MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
 	} },
 	{ MIDI_SECTION, {
-		{ MIDI_ENABLED, false },
-		{ MIDI_DEVICE,  false },
-		{ MIDI_DELAY,   false }
+		{ MIDI_ENABLED, PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ MIDI_DEVICE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ MIDI_DEVTYPE, PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ MIDI_DELAY,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },
 	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_ENABLED, false },
-		{ PCSPEAKER_RATE,    false },
-		{ PCSPEAKER_FILTERS, false },
-		{ PCSPEAKER_VOLUME,  false },
-		{ PCSPEAKER_REVERB,  false },
-		{ PCSPEAKER_CHORUS,  false }
+		{ PCSPEAKER_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
+		{ PCSPEAKER_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ PCSPEAKER_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, ""      },
+		{ PCSPEAKER_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "0.5"   },
+		{ PCSPEAKER_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ PCSPEAKER_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ PS1AUDIO_SECTION, {
-		{ PS1AUDIO_ENABLED, false },
-		{ PS1AUDIO_RATE,    false },
-		{ PS1AUDIO_FILTERS, false },
-		{ PS1AUDIO_VOLUME,  false },
-		{ PS1AUDIO_REVERB,  false },
-		{ PS1AUDIO_CHORUS,  false }
+		{ PS1AUDIO_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
+		{ PS1AUDIO_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ PS1AUDIO_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, ""      },
+		{ PS1AUDIO_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
+		{ PS1AUDIO_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ PS1AUDIO_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 	} },
 	{ ADLIB_SECTION, {
-		{ ADLIB_ENABLED, false },
-		{ ADLIB_RATE,    false },
-		{ ADLIB_FILTERS, false },
-		{ ADLIB_VOLUME,  false },
-		{ ADLIB_REVERB,  false },
-		{ ADLIB_CHORUS,  false }
+		{ ADLIB_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "no"    },
+		{ ADLIB_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ ADLIB_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, ""      },
+		{ ADLIB_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.4"   },
+		{ ADLIB_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ ADLIB_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ SBLASTER_SECTION, {
-		{ SBLASTER_ENABLED,        false },
-		{ SBLASTER_MODEL,          false },
-		{ SBLASTER_IOBASE,         false },
-		{ SBLASTER_DMA,            false },
-		{ SBLASTER_IRQ,            false },
-		{ SBLASTER_DAC_RESAMPLING, false },
-		{ SBLASTER_DAC_FILTERS,    false },
-		{ SBLASTER_DAC_VOLUME,     false },
-		{ SBLASTER_DAC_REVERB,     false },
-		{ SBLASTER_DAC_CHORUS,     false },
-		{ SBLASTER_DAC_CROSSFEED,  false },
-		{ SBLASTER_OPL_RATE,       false },
-		{ SBLASTER_OPL_FILTERS,    false },
-		{ SBLASTER_OPL_VOLUME,     false },
-		{ SBLASTER_OPL_REVERB,     false },
-		{ SBLASTER_OPL_CHORUS,     false },
-		{ SBLASTER_OPL_CROSSFEED,  false }
+		{ SBLASTER_ENABLED,        MACHINE_CONFIG, PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_MODEL,          MACHINE_CONFIG, PUBLIC_CFGKEY, "sb2"   },
+		{ SBLASTER_IOBASE,         MACHINE_CONFIG, PUBLIC_CFGKEY, "0x220" },
+		{ SBLASTER_DMA,            MACHINE_CONFIG, PUBLIC_CFGKEY, "1"     },
+		{ SBLASTER_IRQ,            MACHINE_CONFIG, PUBLIC_CFGKEY, "5"     },
+		{ SBLASTER_DAC_RESAMPLING, PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_DAC_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_DAC_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_DAC_CROSSFEED,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_OPL_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ SBLASTER_OPL_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_OPL_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_OPL_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_OPL_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ SBLASTER_OPL_CROSSFEED,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ MPU401_SECTION, {
-		{ MPU401_ENABLED, false },
-		{ MPU401_IOBASE,  false },
-		{ MPU401_IRQ,     false },
-		{ MPU401_MODE,    false }
+		{ MPU401_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "no"          },
+		{ MPU401_IOBASE,  MACHINE_CONFIG, PUBLIC_CFGKEY, "0x330"       },
+		{ MPU401_IRQ,     MACHINE_CONFIG, PUBLIC_CFGKEY, "3"           },
+		{ MPU401_MODE,    MACHINE_CONFIG, PUBLIC_CFGKEY, "intelligent" },
 	} },
 	{ GAMEPORT_SECTION, {
-		{ GAMEPORT_ENABLED, false }
+		{ GAMEPORT_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes" },
 	} },
 	{ SOUNDFX_SECTION, {
-		{ SOUNDFX_ENABLED,       false },
-		{ SOUNDFX_VOLUME,        false },
-		{ SOUNDFX_FDD_SPIN,      false },
-		{ SOUNDFX_FDD_SEEK,      false },
-		{ SOUNDFX_FDD_BALANCE,   false },
-		{ SOUNDFX_HDD_SPIN,      false },
-		{ SOUNDFX_HDD_SEEK,      false },
-		{ SOUNDFX_HDD_BALANCE,   false },
-		{ SOUNDFX_SYSTEM,        false },
-		{ SOUNDFX_SYSTEM_BALANCE,false },
-		{ SOUNDFX_MODEM,         false },
-		{ SOUNDFX_MODEM_FILTERS, true  },
-		{ SOUNDFX_MODEM_COUNTRY, false },
-		{ SOUNDFX_MODEM_BALANCE, false }
+		{ SOUNDFX_ENABLED,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ SOUNDFX_VOLUME,         MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"  },
+		{ SOUNDFX_FDD_SPIN,       MIXER_CONFIG,   PUBLIC_CFGKEY, "0.4"  },
+		{ SOUNDFX_FDD_SEEK,       MIXER_CONFIG,   PUBLIC_CFGKEY, "0.4"  },
+		{ SOUNDFX_FDD_GUI,        MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"  },
+		{ SOUNDFX_FDD_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "-0.3" },
+		{ SOUNDFX_HDD_SPIN,       MIXER_CONFIG,   PUBLIC_CFGKEY, "0.4"  },
+		{ SOUNDFX_HDD_SEEK,       MIXER_CONFIG,   PUBLIC_CFGKEY, "0.4"  },
+		{ SOUNDFX_HDD_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0.3"  },
+		{ SOUNDFX_SYSTEM,         MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"  },
+		{ SOUNDFX_SYSTEM_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"  },
+		{ SOUNDFX_MODEM,          MIXER_CONFIG,   PUBLIC_CFGKEY, "1.2"  },
+		{ SOUNDFX_MODEM_FILTERS,  MIXER_CONFIG,   HIDDEN_CFGKEY, "auto" },
+		{ SOUNDFX_MODEM_BALANCE,  MIXER_CONFIG,   PUBLIC_CFGKEY, "-0.5" },
+		{ SOUNDFX_MODEM_COUNTRY,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "eu"   },
 	} },
 	{ SERIAL_SECTION, {
-		{ SERIAL_ENABLED,       false },
-		{ SERIAL_A_MODE,        false },
-		{ SERIAL_A_DEV,         false },
-		{ SERIAL_A_TX_DELAY,    false },
-		{ SERIAL_A_TCP_NODELAY, false },
-		{ SERIAL_A_DUMP,        true  }
+		{ SERIAL_ENABLED,       MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ SERIAL_A_MODE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ SERIAL_A_DEV,         MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ SERIAL_A_TX_DELAY,    MACHINE_CONFIG, PUBLIC_CFGKEY, "20"   },
+		{ SERIAL_A_TCP_NODELAY, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ SERIAL_A_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_B_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ SERIAL_B_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_B_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
+		{ SERIAL_B_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
+		{ SERIAL_B_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_C_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ SERIAL_C_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_C_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
+		{ SERIAL_C_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
+		{ SERIAL_C_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_D_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+		{ SERIAL_D_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_D_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
+		{ SERIAL_D_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
+		{ SERIAL_D_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
 	} },
 	{ MODEM_SECTION, {
-		{ MODEM_BAUD_RATE,    false },
-		{ MODEM_LISTEN_ADDR,  false },
-		{ MODEM_PHONEBOOK,    false },
-		{ MODEM_TELNET_MODE,  false },
-		{ MODEM_CONN_TIMEOUT, false },
-		{ MODEM_WARM_DELAY,   false },
-		{ MODEM_CONNECT_CODE, false },
-		{ MODEM_ECHO_ON,      false },
-		{ MODEM_HANDSHAKE,    false },
-		{ MODEM_DUMP,         true  },
+		{ MODEM_BAUD_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "2400"      },
+		{ MODEM_LISTEN_ADDR,  PROGRAM_CONFIG, PUBLIC_CFGKEY, ""          },
+		{ MODEM_PHONEBOOK,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "phone.txt" },
+		{ MODEM_TELNET_MODE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"        },
+		{ MODEM_CONN_TIMEOUT, PROGRAM_CONFIG, PUBLIC_CFGKEY, "10"        },
+		{ MODEM_WARM_DELAY,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"        },
+		{ MODEM_CONNECT_CODE, PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"      },
+		{ MODEM_ECHO_ON,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"       },
+		{ MODEM_HANDSHAKE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"        },
+		{ MODEM_DUMP,         PROGRAM_CONFIG, HIDDEN_CFGKEY, ""          },
 	} },
 	{ LPT_SECTION, {
-		{ LPT_ENABLED, false },
-		{ LPT_PORT,    false },
-		{ LPT_FILE,    false }
+		{ LPT_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ LPT_PORT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "LPT1" },
+		{ LPT_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },
 	} },
 	{ PRN_SECTION, {
-		{ PRN_CONNECTED,     false },
-		{ PRN_MODE,          false },
-		{ PRN_COLOR,         false },
-		{ PRN_INK,           false },
-		{ PRN_PREVIEW_DIV,   false },
-		{ PRN_EPSON_CSET,    false },
-		{ PRN_IBM_CSET,      false },
-		{ PRN_PAPER_SIZE,    false },
-		{ PRN_PAPER_TYPE,    false },
-		{ PRN_BOF,           false },
-		{ PRN_TOP_MARGIN,    false },
-		{ PRN_BOTTOM_MARGIN, false }
+		{ PRN_CONNECTED,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"     },
+		{ PRN_MODE,          PROGRAM_CONFIG, PUBLIC_CFGKEY, "epson"  },
+		{ PRN_COLOR,         PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"     },
+		{ PRN_INK,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "medium" },
+		{ PRN_PREVIEW_DIV,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "low"    },
+		{ PRN_EPSON_CSET,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "basic"  },
+		{ PRN_IBM_CSET,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "intl1"  },
+		{ PRN_PAPER_SIZE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "letter" },
+		{ PRN_PAPER_TYPE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "forms"  },
+		{ PRN_BOF,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "0"      },
+		{ PRN_TOP_MARGIN,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"   },
+		{ PRN_BOTTOM_MARGIN, PROGRAM_CONFIG, PUBLIC_CFGKEY, "0.1875" },
+		{ PRN_SHOW_HEAD,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"    },
+	} },
+	
+	{ LOG_SECTION, {
+		{ LOG_OVERRIDE_VERBOSITY, PROGRAM_CONFIG, HIDDEN_CFGKEY, "no" },
+		{ LOG_PROGRAM_VERBOSITY,  PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_FS_VERBOSITY,       PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_GFX_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_INPUT_VERBOSITY,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_GUI_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_MACHINE_VERBOSITY,  PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_MIXER_VERBOSITY,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_MEM_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_CPU_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_MMU_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_PIT_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_PIC_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_DMA_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_KEYB_VERBOSITY,     PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_VGA_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_CMOS_VERBOSITY,     PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_FDC_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_HDD_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_AUDIO_VERBOSITY,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_GAMEPORT_VERBOSITY, PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_LPT_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_PRN_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_COM_VERBOSITY,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
+		{ LOG_MIDI_VERBOSITY,     PROGRAM_CONFIG, HIDDEN_CFGKEY, "0"  },
 	} },
 };
 
+ini_file_t AppConfig::ms_default_values;
+AppConfig::ConfigKeys AppConfig::ms_keys;
+
+AppConfig::AppConfig()
+: INIFile()
+{
+	if(ms_keys.empty()) {
+		for(auto &section : ms_sections) {
+			for(auto &key : section.keys) {
+				ms_keys[section.name][key.name] = key;
+				ms_default_values[section.name][key.name] = key.default_value;
+			}
+		}
+	}
+}
 
 void AppConfig::reset()
 {
@@ -1045,20 +761,25 @@ void AppConfig::reset()
 
 void AppConfig::merge(const AppConfig &_other, ConfigType _type)
 {
-	for(auto &othersec : _other.m_values) {
-		auto secname = othersec.first;
-		if(_type != ANY_CONFIG && ms_def_values[_type].find(secname) == ms_def_values[_type].end()) {
-			PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini section [%s]\n", secname.c_str());
-			continue;
-		}
-		for(auto &otherentry : othersec.second) {
-			auto key = otherentry.first;
-			if(_type != ANY_CONFIG && ms_def_values[_type][secname].find(key) == ms_def_values[_type][secname].end()) {
-				PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini key [%s]:%s\n", secname.c_str(), key.c_str());
+	for(auto &other_section : _other.m_values) {
+		auto section = other_section.first;
+		for(auto &other_entry : other_section.second) {
+			auto key = other_entry.first;
+			if(ms_keys.find(section) == ms_keys.end()) {
+				PDEBUGF(LOG_V0, LOG_PROGRAM, "ini section [%s] not found!\n", section.c_str());
+				continue;
+			}
+			if(ms_keys[section].find(key) == ms_keys[section].end()) {
+				PDEBUGF(LOG_V0, LOG_PROGRAM, "ini key [%s]:%s not found!\n", section.c_str(), key.c_str());
+				continue;
+			}
+			ConfigType ktype = ms_keys[section][key].type;
+			if(_type != ANY_CONFIG && ktype != _type) {
+				PDEBUGF(LOG_V2, LOG_PROGRAM, "ignoring ini key [%s]:%s\n", section.c_str(), key.c_str());
 				continue;
 			}
 			// it will insert a new section in the current values if not present
-			m_values[secname][key] = otherentry.second;
+			m_values[section][key] = other_entry.second;
 		}
 	}
 }
@@ -1071,15 +792,11 @@ void AppConfig::copy(const AppConfig &_config)
 std::string AppConfig::get_value_default(const std::string &section, const std::string &name) noexcept
 {
 	try {
-		return INIFile::get_value(ms_def_values[PROGRAM_CONFIG], section, name);
-	} catch(std::exception &) {
-		try {
-			return INIFile::get_value(ms_def_values[MACHINE_CONFIG], section, name);
-		} catch(std::exception &) {
-			assert(false);
-			return "";
-		}
-	}
+		return INIFile::get_value(ms_default_values, section, name);
+	} catch(std::exception &) {}
+
+	assert(false);
+	return "";
 }
 
 std::string AppConfig::get_value(const std::string &section, const std::string &name, bool _quiet)
@@ -1089,16 +806,12 @@ std::string AppConfig::get_value(const std::string &section, const std::string &
 		valstr = INIFile::get_value(m_values, section, name);
 	} catch(std::exception &) {
 		try {
-			valstr = INIFile::get_value(ms_def_values[PROGRAM_CONFIG], section, name);
+			valstr = INIFile::get_value(ms_default_values, section, name);
 		} catch(std::exception &) {
-			try {
-				valstr = INIFile::get_value(ms_def_values[MACHINE_CONFIG], section, name);
-			} catch(std::exception &) {
-				if(!_quiet) {
-					PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(),name.c_str());
-				}
-				throw;
+			if(!_quiet) {
+				PERRF(LOG_PROGRAM, "[%s]:%s is not a valid configuration key!\n", section.c_str(), name.c_str());
 			}
+			throw;
 		}
 		if(!_quiet) {
 			PWARNF(LOG_V1, LOG_PROGRAM, "[%s]:%s undefined, using default: '%s'\n", section.c_str(),name.c_str(), valstr.c_str());
@@ -1403,7 +1116,7 @@ std::string AppConfig::find_media(const std::string &_filename)
 	return path;
 }
 
-void AppConfig::create_file(const std::string &_filename, bool _savestate)
+void AppConfig::create_file(const std::string &_filename, ConfigType _type, bool _savestate)
 {
 	std::ofstream file = FileSys::make_ofstream(_filename.c_str());
 	if(!file.is_open()) {
@@ -1411,31 +1124,30 @@ void AppConfig::create_file(const std::string &_filename, bool _savestate)
 		throw std::exception();
 	}
 	if(!_savestate) {
-		file << ms_help["HEADER"] << std::endl;
+		file << ms_help["HEADER"] << "\n";
 	}
-	for(auto &section : ms_keys_order) {
-		auto sname = section.first;
-		auto keys = section.second;
-		file << "[" << sname << "]" << "\n";
-		if(!_savestate) {
-			file << ms_help[sname];
-		}
-
-		for(auto &key : keys) {
-			auto kname = key.first;
-			auto hidden = key.second;
-			if(!_savestate && hidden) {
+	for(auto &section : ms_sections) {
+		std::string keys_str;
+		for(auto &key : section.keys) {
+			if(key.type != _type || (!_savestate && key.visibility != PUBLIC_CFGKEY)) {
 				continue;
 			}
 			std::string value;
 			try {
-				value = get_value(sname, kname, true);
+				value = get_value(section.name, key.name, true);
 			} catch(...) {
 				value = "";
 			}
-			file << kname << "=" << value << "\n";
+			keys_str += key.name + "=" + value + "\n";
 		}
-		file << std::endl;
+		if(!keys_str.empty()) {
+			file << "[" << section.name << "]" << "\n";
+			if(!_savestate) {
+				file << ms_help[section.name];
+			}
+			file << keys_str << "\n";
+			keys_str = "";
+		}
 	}
 
 	file.close();
