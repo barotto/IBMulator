@@ -450,8 +450,16 @@ void SBlaster::config_changed()
 	std::string opl_chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CHORUS, "");
 	Synth::channel()->set_chorus(opl_chorus);
 
-	std::string opl_filters = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_FILTERS, "");
-	Synth::channel()->set_filters(opl_filters);
+	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
+	if(opl_filters == "auto") {
+		// filter is default lowpass 12k
+		Synth::channel()->set_filters("LowPass,order=1,cutoff=12000");
+	} else {
+		// filters are what the user set in the ini config
+		if(!opl_filters.empty()) {
+			Synth::channel()->set_filters(opl_filters);
+		}
+	}
 
 	std::string opl_crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED, "");
 	Synth::channel()->set_crossfeed(opl_crossfeed);
@@ -461,7 +469,7 @@ void SBlaster::config_changed()
 
 	auto dac_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_DAC_FILTERS);
 	if(dac_filters == "auto") {
-		Synth::channel()->set_filters("LowPass,order=1,cutoff=12000");
+		// no dac filters by default
 	} else if(!dac_filters.empty()) {
 		// use whatever the user wants
 		m_dac_channel->set_filters(dac_filters);
