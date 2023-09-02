@@ -37,12 +37,14 @@ Open the **MSYS2 MINGW64** shell (you should read MINGW64 on the command line) a
 `cd /c/workspace`
 2. Clone the repo:  
 `git clone https://github.com/mikke89/RmlUi`
-3. Create and move inside the build directory:  
-`mkdir RmlUi/build && cd RmlUi/build`
-4. Create the Makefile with cmake:  
+3. Checkout the correct release:
+`cd RmlUi && git checkout 5.1`
+4. Create and move inside the build directory:  
+`mkdir build && cd build`
+5. Create the Makefile with cmake:  
 `cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
 for static linking add `-DBUILD_SHARED_LIBS=OFF`
-5. Build and install:  
+6. Build and install:  
 `make -j$(nproc) && make install`
 
 

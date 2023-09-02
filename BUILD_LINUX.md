@@ -44,7 +44,8 @@ To compile RmlUi you'll need cmake and libfreetype.
 
 ```
 $ git clone https://github.com/mikke89/RmlUi
-$ mkdir RmlUi/build && cd RmlUi/build
+$ cd RmlUi && git checkout 5.1
+$ mkdir build && cd build
 $ cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 $ make -j`nproc`
 ```
