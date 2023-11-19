@@ -22,12 +22,10 @@ libaudio_a_SOURCES = \
 	dsp/Biquad.cpp \
 	dsp/Butterworth.cpp \
 	dsp/Cascade.cpp \
-	dsp/Design.cpp \
 	dsp/Filter.cpp \
 	dsp/Param.cpp \
 	dsp/PoleFilter.cpp \
-	dsp/RootFinder.cpp \
-	dsp/State.cpp
+	dsp/RootFinder.cpp
 
 noinst_HEADERS = \
 	audiobuffer.h \
@@ -58,7 +56,6 @@ noinst_HEADERS = \
 	dsp/Butterworth.h \
 	dsp/Cascade.h \
 	dsp/Common.h \
-	dsp/Design.h \
 	dsp/Dsp.h \
 	dsp/Filter.h \
 	dsp/Layout.h \

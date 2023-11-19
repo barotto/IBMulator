@@ -46,7 +46,7 @@ public:
 
 	void install(const std::string &_name);
 	uint64_t spin_up_time_us() const;
-	void config_changed();
+	void config_changed() {}
 
 	bool create_seek_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
 	bool create_spin_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);

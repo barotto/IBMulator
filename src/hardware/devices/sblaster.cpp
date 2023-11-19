@@ -229,32 +229,12 @@ SBlaster::SBlaster(Devices *_dev)
 	m_s.dac.device = this;
 }
 
-SBlaster::~SBlaster()
+void SBlaster::install_dsp(int _version, std::string _filters)
 {
-}
+	// HARDWARE
+	m_dsp_ver = _version;
 
-SBlaster2::SBlaster2(Devices *_dev)
-: SBlaster(_dev)
-{
-	m_dsp_ver = 0x201;
-}
-
-SBlasterPro1::SBlasterPro1(Devices *_dev)
-: SBlasterPro(_dev)
-{
-	m_dsp_ver = 0x300;
-}
-
-SBlasterPro2::SBlasterPro2(Devices *_dev)
-: SBlasterPro(_dev)
-{
-	m_dsp_ver = 0x302;
-}
-
-void SBlaster::install_dsp()
-{
 	using namespace std::placeholders;
-	
 	m_dsp_timer = g_machine.register_timer(
 		std::bind(&SBlaster::dsp_timer, this, _1),
 		"SBlaster DSP"
@@ -276,107 +256,200 @@ void SBlaster::install_dsp()
 			nullptr,
 			name());
 	g_machine.register_irq(m_irq, name());
-	
+
+	// AUDIO CHANNEL
 	m_dac_channel = g_mixer.register_channel(
 		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
 		std::string(short_name()) + " DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac_channel->set_disable_timeout(5_s);
+	m_dac_filters = _filters;
+
+	unsigned features =
+		MixerChannel::HasVolume |
+		MixerChannel::HasBalance |
+		MixerChannel::HasReverb |
+		MixerChannel::HasChorus | 
+		MixerChannel::HasFilter | 
+		MixerChannel::HasResamplingType |
+		MixerChannel::HasAutoResamplingType;
+	if(_version >= 0x300) {
+		features |=
+			MixerChannel::HasStereoSource |
+			MixerChannel::HasAutoVolume |
+			MixerChannel::HasAutoFilter |
+			MixerChannel::HasCrossfeed;
+	}
+	m_dac_channel->set_features(features);
+
+	m_dac_channel->add_autoval_cb(MixerChannel::ConfigParameter::Volume, std::bind(&SBlaster::update_volumes, this));
+	m_dac_channel->add_autoval_cb(MixerChannel::ConfigParameter::Filter,
+			std::bind(&SBlaster::auto_filter_cb, this, m_dac_channel.get(), m_dac_filters));
+	m_dac_channel->add_autoval_cb(MixerChannel::ConfigParameter::Resampling, std::bind(&SBlaster::auto_resampling_cb, this));
+
+	m_dac_channel->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SBLASTER_SECTION, SBLASTER_DAC_VOLUME }},
+		{ MixerChannel::ConfigParameter::Reverb, { SBLASTER_SECTION, SBLASTER_DAC_REVERB }},
+		{ MixerChannel::ConfigParameter::Chorus, { SBLASTER_SECTION, SBLASTER_DAC_CHORUS }},
+		{ MixerChannel::ConfigParameter::Filter, { SBLASTER_SECTION, SBLASTER_DAC_FILTERS }},
+		{ MixerChannel::ConfigParameter::Crossfeed, { SBLASTER_SECTION, SBLASTER_DAC_CROSSFEED }},
+		{ MixerChannel::ConfigParameter::Resampling, { SBLASTER_SECTION, SBLASTER_DAC_RESAMPLING }},
+	});
+}
+
+void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer, std::string _filters)
+{
+	int channels = 1;
+
+	if(_count == 1) {
+
+		m_OPL[0].install(_chip_type, OPL::ChipNames[_chip_type], true);
+
+		Synth::set_chip(0, &m_OPL[0]);
+
+		if(_chip_type == OPL::OPL2) {
+			Synth::install(std::string(short_name()) + " FM", 5_s,
+				[this](Event &_event) {
+					m_OPL[0].write(0, _event.reg);
+					m_OPL[0].write(1, _event.value);
+					capture_command(0x5A, _event);
+				},
+				[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+					m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 1);
+				},
+				[this](bool _start, VGMFile& _vgm) {
+					if(_start) {
+						_vgm.set_chip(VGMFile::YM3812);
+						_vgm.set_clock(3579545);
+						_vgm.set_tag_system("IBM PC");
+						_vgm.set_tag_notes(full_name());
+					}
+				}
+			);
+		} else {
+			channels = 2;
+			Synth::install(std::string(short_name()) + " FM", 5_s,
+				[this](Event &_event) {
+					m_OPL[0].write(_event.reg_port, _event.reg);
+					m_OPL[0].write(_event.value_port, _event.value);
+					capture_command(0x5E + ((_event.reg_port >> 1) & 1), _event);
+				},
+				[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+					m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 2);
+				},
+				[this](bool _start, VGMFile& _vgm) {
+					if(_start) {
+						_vgm.set_chip(VGMFile::YMF262);
+						_vgm.set_clock(14318180);
+						_vgm.set_tag_system("IBM PC");
+						_vgm.set_tag_notes(full_name());
+					}
+				}
+			);
+		}
+
+	} else if(_count == 2) {
+
+		assert(_chip_type == OPL::OPL2);
+		channels = 2;
+
+		m_OPL[0].install(OPL::OPL2, std::string(OPL::ChipNames[OPL::OPL2]) + " L", true);
+		m_OPL[1].install(OPL::OPL2, std::string(OPL::ChipNames[OPL::OPL2]) + " R", true);
+
+		Synth::set_chip(0, &m_OPL[0]);
+		Synth::set_chip(1, &m_OPL[1]);
+
+		Synth::install(std::string(short_name()) + " FM", 5_s,
+			[this](Event &_event) {
+				m_OPL[_event.chip].write(0, _event.reg);
+				m_OPL[_event.chip].write(1, _event.value);
+				capture_command(0x5A + 0x50*_event.chip, _event);
+			},
+			[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
+				m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset  ), _frames, 2); // left
+				m_OPL[1].generate(&_buffer.operator[]<int16_t>(_sample_offset+1), _frames, 2); // right
+			},
+			[this](bool _start, VGMFile& _vgm) {
+				if(_start) {
+					_vgm.set_chip(VGMFile::YM3812);
+					// enable dual chip (bit 30) and left-right separation (bit 31)
+					_vgm.set_clock(3579545 | 0xC0000000);
+					_vgm.set_tag_system("IBM PC");
+					_vgm.set_tag_notes(full_name());
+				}
+			}
+		);
+
+	} else {
+
+		assert(false);
+		throw std::exception();
+
+	}
+
+	m_opl_filters = _filters;
+
+	unsigned features =
+		MixerChannel::HasVolume |
+		MixerChannel::HasBalance |
+		MixerChannel::HasReverb |
+		MixerChannel::HasChorus |
+		MixerChannel::HasFilter | MixerChannel::HasAutoFilter;
+	if(channels == 2) {
+		features |= 
+			MixerChannel::HasStereoSource |
+			MixerChannel::HasCrossfeed;
+	}
+	if(_has_mixer) {
+		features |= MixerChannel::HasAutoVolume;
+	}
+	Synth::channel()->set_features(features);
+
+	Synth::channel()->add_autoval_cb(MixerChannel::ConfigParameter::Volume, std::bind(&SBlaster::update_volumes, this));
+	Synth::channel()->add_autoval_cb(MixerChannel::ConfigParameter::Filter,
+			std::bind(&SBlaster::auto_filter_cb, this, Synth::channel(), m_opl_filters));
+
+	Synth::channel()->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SBLASTER_SECTION, SBLASTER_OPL_VOLUME }},
+		{ MixerChannel::ConfigParameter::Reverb, { SBLASTER_SECTION, SBLASTER_OPL_REVERB }},
+		{ MixerChannel::ConfigParameter::Chorus, { SBLASTER_SECTION, SBLASTER_OPL_CHORUS }},
+		{ MixerChannel::ConfigParameter::Filter, { SBLASTER_SECTION, SBLASTER_OPL_FILTERS }},
+		{ MixerChannel::ConfigParameter::Crossfeed, { SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED }},
+	});
 }
 
 void SBlaster::install()
 {
 	install_ports(sb_ports);
-	install_dsp();
-	
-	// single YM3812 (OPL2)
-	m_OPL[0].install(OPL::OPL2, OPL::ChipNames[OPL::OPL2], true);
-	
-	Synth::set_chip(0, &m_OPL[0]);
-	Synth::install(std::string(short_name()) + " FM", 5_s,
-		[this](Event &_event) {
-			m_OPL[0].write(0, _event.reg);
-			m_OPL[0].write(1, _event.value);
-			capture_command(0x5A, _event);
-		},
-		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 1);
-		},
-		[this](bool _start, VGMFile& _vgm) {
-			if(_start) {
-				_vgm.set_chip(VGMFile::YM3812);
-				_vgm.set_clock(3579545);
-				_vgm.set_tag_system("IBM PC");
-				_vgm.set_tag_notes(full_name());
-			}
-		}
-	);
-	
+	install_dsp(0x105, "");
+	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
+
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
+}
+
+void SBlaster2::install()
+{
+	install_ports(sb_ports);
+	install_dsp(0x201, "");
+	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
+
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
 }
 
 void SBlasterPro1::install()
 {
 	install_ports(sbpro_ports);
-	install_dsp();
-	
-	// dual YM3812 (OPL2)
-	m_OPL[0].install(OPL::OPL2, std::string(OPL::ChipNames[OPL::OPL2]) + " L", true);
-	m_OPL[1].install(OPL::OPL2, std::string(OPL::ChipNames[OPL::OPL2]) + " R", true);
+	install_dsp(0x300, "LowPass,order=2,fc=3200");
+	install_opl(OPL::OPL2, 2, true, "LowPass,order=1,fc=8000"); // dual YM3812 (OPL2)
 
-	Synth::set_chip(0, &m_OPL[0]);
-	Synth::set_chip(1, &m_OPL[1]);
-	Synth::install(std::string(short_name()) + " FM", 5_s,
-		[this](Event &_event) {
-			m_OPL[_event.chip].write(0, _event.reg);
-			m_OPL[_event.chip].write(1, _event.value);
-			capture_command(0x5A + 0x50*_event.chip, _event);
-		},
-		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset  ), _frames, 2); // left
-			m_OPL[1].generate(&_buffer.operator[]<int16_t>(_sample_offset+1), _frames, 2); // right
-		},
-		[this](bool _start, VGMFile& _vgm) {
-			if(_start) {
-				_vgm.set_chip(VGMFile::YM3812);
-				// enable dual chip (bit 30) and left-right separation (bit 31)
-				_vgm.set_clock(3579545 | 0xC0000000);
-				_vgm.set_tag_system("IBM PC");
-				_vgm.set_tag_notes(full_name());
-			}
-		}
-	);
-	
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
 }
 
 void SBlasterPro2::install()
 {
 	install_ports(sbpro_ports);
-	install_dsp();
-	
-	// single YMF262 (OPL3)
-	m_OPL[0].install(OPL::OPL3, OPL::ChipNames[OPL::OPL3], true);
-	
-	Synth::set_chip(0, &m_OPL[0]);
-	Synth::install(std::string(short_name()) + " FM", 5_s,
-		[this](Event &_event) {
-			m_OPL[0].write(_event.reg_port, _event.reg);
-			m_OPL[0].write(_event.value_port, _event.value);
-			capture_command(0x5E + ((_event.reg_port >> 1) & 1), _event);
-		},
-		[this](AudioBuffer &_buffer, int _sample_offset, int _frames) {
-			m_OPL[0].generate(&_buffer.operator[]<int16_t>(_sample_offset), _frames, 2);
-		},
-		[this](bool _start, VGMFile& _vgm) {
-			if(_start) {
-				_vgm.set_chip(VGMFile::YMF262);
-				_vgm.set_clock(14318180);
-				_vgm.set_tag_system("IBM PC");
-				_vgm.set_tag_notes(full_name());
-			}
-		}
-	);
-	
+	install_dsp(0x302, "LowPass,order=2,fc=3200");
+	install_opl(OPL::OPL3, 1, true, "LowPass,order=1,fc=8000"); // single YMF262 (OPL3)
+
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
 }
 
@@ -408,134 +481,29 @@ void SBlaster::install_ports(const IODevice::IOPorts &_ports)
 	IODevice::install();
 }
 
-void SBlaster::configure_dac(unsigned _def_resampling, double _def_level)
-{
-	m_dac_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_DAC_VOLUME, _def_level);
-	if(m_dac_volume < .0f) {
-		PINFOF(LOG_V0, LOG_AUDIO, "%s DAC: volume set by the SB Mixer.\n", short_name());
-	}
-
-	MixerChannel::ResamplingType dac_resampling = static_cast<MixerChannel::ResamplingType>(
-		g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_DAC_RESAMPLING, {
-			{ "auto", _def_resampling },
-			{ "sinc", MixerChannel::SINC },
-			{ "linear", MixerChannel::LINEAR },
-			{ "hold", MixerChannel::ZOH },
-		}, _def_resampling)
-	);
-	m_dac_channel->set_resampling_type(dac_resampling);
-
-	std::string reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_REVERB, "");
-	m_dac_channel->set_reverb(reverb);
-	
-	std::string chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_CHORUS, "");
-	m_dac_channel->set_chorus(chorus);
-
-	std::string crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_DAC_CROSSFEED, "");
-	m_dac_channel->set_crossfeed(crossfeed);
-}
-
 void SBlaster::config_changed()
 {
-	// OPL config
 	unsigned opl_rate = clamp(g_program.config().get_int(SBLASTER_SECTION, SBLASTER_OPL_RATE),
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
-	float opl_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME, 1.0);
 
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(opl_rate)}, opl_volume, "");
-
-	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
-	Synth::channel()->set_reverb(opl_reverb);
-
-	std::string opl_chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CHORUS, "");
-	Synth::channel()->set_chorus(opl_chorus);
-
-	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
-	if(opl_filters == "auto") {
-		// filter is default lowpass 12k
-		Synth::channel()->set_filters("LowPass,order=1,cutoff=12000");
-	} else {
-		// filters are what the user set in the ini config
-		if(!opl_filters.empty()) {
-			Synth::channel()->set_filters(opl_filters);
-		}
+	unsigned channels = 1;
+	if(m_OPL[0].type() == OPL::OPL3 || Synth::get_chip(1)) {
+		channels = 2;
 	}
+	Synth::config_changed({AUDIO_FORMAT_S16, channels, double(opl_rate)});
 
-	std::string opl_crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED, "");
-	Synth::channel()->set_crossfeed(opl_crossfeed);
-
-	// DAC config
-	configure_dac(MixerChannel::LINEAR, 1.0);
-
-	auto dac_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_DAC_FILTERS);
-	if(dac_filters == "auto") {
-		// no dac filters by default
-	} else if(!dac_filters.empty()) {
-		// use whatever the user wants
-		m_dac_channel->set_filters(dac_filters);
-	}
-}
-
-void SBlasterPro::config_changed()
-{
-	// OPL config
-	unsigned opl_rate = g_program.config().get_int_or_default(SBLASTER_SECTION, SBLASTER_OPL_RATE,
-			MIXER_MIN_RATE, MIXER_MAX_RATE);
-
-	// -1.0 = volume from SB Mixer
-	float opl_volume = g_program.config().get_real(SBLASTER_SECTION, SBLASTER_OPL_VOLUME, -1.0);
-	m_opl_volume = opl_volume;
-	if(opl_volume < 0) {
-		PINFOF(LOG_V0, LOG_AUDIO, "%s FM: volume set by the SB Mixer.\n", short_name());
-		opl_volume = 1.0;
-	}
-
-	Synth::config_changed({AUDIO_FORMAT_S16, 2, double(opl_rate)}, opl_volume, "");
-
-	std::string opl_reverb = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_REVERB, "");
-	Synth::channel()->set_reverb(opl_reverb);
-
-	std::string opl_chorus = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CHORUS, "");
-	Synth::channel()->set_chorus(opl_chorus);
-
-	std::string opl_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_OPL_FILTERS);
-	if(opl_filters == "auto") {
-		// filter is default lowpass 8k
-		Synth::channel()->set_filters("LowPass,order=1,cutoff=8000");
-	} else {
-		// filters are what the user set in the ini config
-		if(!opl_filters.empty()) {
-			Synth::channel()->set_filters(opl_filters);
-		}
-	}
-
-	std::string opl_crossfeed = g_program.config().get_string(SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED, "");
-	Synth::channel()->set_crossfeed(opl_crossfeed);
-
-	// DAC config
-	// -1.0 = volume set by sb mixer
-	configure_dac(MixerChannel::LINEAR, -1.0);
-
-	auto dac_filters = g_program.config().get_string_or_default(SBLASTER_SECTION, SBLASTER_DAC_FILTERS);
-	if(dac_filters == "auto") {
-		PINFOF(LOG_V0, LOG_AUDIO, "%s DAC: LPF set by the SB Mixer.\n", short_name());
-		// filter is default low-pass and enabled by the Mixer
-		m_dac_filters = m_dac_channel->create_filters("LowPass,order=2,cutoff=3200");
-		m_forced_dac_filters = false;
-	} else {
-		// filters are what the user set in the ini config and are always active
-		if(!dac_filters.empty()) {
-			m_dac_channel->set_filters(dac_filters);
-		}
-		m_dac_filters.clear();
-		m_forced_dac_filters = true;
-	}
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODOOO
+	// check and update DSP's iobase, dma channel, and irq line
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 }
 
 void SBlaster::remove()
 {
 	IODevice::remove();
 	Synth::remove();
+
+	g_mixer.unregister_channel(m_dac_channel);
 	
 	m_devices->dma()->unregister_channel(m_dma);
 	g_machine.unregister_irq(m_irq, name());
@@ -1081,71 +1049,88 @@ std::pair<float,float> SBlasterPro::get_mixer_volume(uint8_t _reg)
 	return { left, right };
 }
 
+void SBlaster::auto_filter_cb(MixerChannel *_ch, std::string _filter)
+{
+	// called by the Mixer thread
+	if(_ch->is_filter_auto()) {
+		_ch->set_filter(_filter);
+	}
+	update_volumes();
+}
+
+void SBlaster::auto_resampling_cb()
+{
+	// called by the Mixer thread
+	if(m_dac_channel->is_resampling_auto()) {
+		m_dac_channel->set_resampling_type(MixerChannel::LINEAR);
+	}
+}
+
 void SBlaster::update_volumes()
 {
 	if(m_s.dac.speaker) {
-		m_dac_channel->set_volume(m_dac_volume);
+		m_dac_channel->set_force_muted(false);
 	} else {
-		m_dac_channel->set_volume(.0f);
+		m_dac_channel->set_force_muted(true);
 	}
 }
 
 void SBlasterPro::update_volumes()
 {
+	// called by the Machine and Mixer threads
+	std::lock_guard<std::mutex> lock(m_volume_mutex);
+
 	// MASTER
 	auto [master_l, master_r] = get_mixer_volume(0x22);
 
-	float left, right;
 	// DAC
+	if(m_dac_channel->is_volume_auto()) {
+		// dac levels are used for stereo effects in some games (UW2)
+		// auto (mixer) volume affects the master volume only
+		if(m_dac_channel->volume_master_left() != master_l || m_dac_channel->volume_master_right() != master_r) {
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: DAC master vol L:%.3f - R:%.3f\n", short_name(),
+					master_l, master_r);
+		}
+		m_dac_channel->set_volume_master(master_l, master_r);
+	}
 	if(m_s.dac.speaker) {
 		// SPEAKER on
+		m_dac_channel->set_force_muted(false);
 		auto [dac_l, dac_r] = get_mixer_volume(0x04);
-		if(m_dac_volume < 0.f) {
-			left = dac_l * master_l;
-			right = dac_r * master_r;
-		} else {
-			// user defined
-			left = dac_l * m_dac_volume;
-			right = dac_r * m_dac_volume;
+		if(m_dac_channel->volume_sub_left() != dac_l || m_dac_channel->volume_sub_right() != dac_r) {
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: DAC vol L:%.3f - R:%.3f\n", short_name(),
+					dac_l, dac_r);
 		}
-		if(m_dac_channel->volume_l() != left || m_dac_channel->volume_r() != right) {
-			PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: DAC vol L:%.3f - R:%.3f\n", short_name(),
-					left, right);
-		}
-		m_dac_channel->set_volume(left, right);
+		m_dac_channel->set_volume_sub(dac_l, dac_r);
 	} else {
 		// SPEAKER off
-		m_dac_channel->set_volume(.0f);
+		m_dac_channel->set_force_muted(true);
 	}
-	if(!m_forced_dac_filters) {
+	if(m_dac_channel->is_volume_auto()) {
 		// output low-pass filter
 		bool enabled = (m_s.mixer.reg[0x0E] & 0x20) == 0;
-		if(m_dac_channel->are_filters_active() != enabled) {
-			if(enabled) {
-				m_dac_channel->set_filters(m_dac_filters);
-			} else {
-				m_dac_channel->set_filters("");
-			}
-			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: DAC output low-pass filter %s.\n", short_name(),
+		if(m_dac_channel->is_filter_enabled() != enabled) {
+			m_dac_channel->enable_filter(enabled);
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: DAC output filter %s.\n", short_name(),
 					enabled ? "ENABLED" : "DISABLED");
 		}
 	}
 
 	// FM
 	auto [fm_l, fm_r] = get_mixer_volume(0x26);
-	if(m_opl_volume < 0.f) {
-		left = fm_l * master_l;
-		right = fm_r * master_r;
-	} else {
-		// user defined
-		left = fm_l * m_opl_volume;
-		right = fm_r * m_opl_volume;
+	if(Synth::channel()->is_volume_auto()) {
+		if(Synth::channel()->volume_master_left() != master_l || Synth::channel()->volume_master_right() != master_r) {
+			PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: FM master vol L:%.3f - R:%.3f\n", short_name(),
+					master_l, master_r);
+		}
+		Synth::channel()->set_volume_master(master_l, master_r);
+		Synth::channel()->enable_filter(true);
 	}
-	if(Synth::channel()->volume_l() != left || Synth::channel()->volume_r() != right) {
-		PDEBUGF(LOG_V2, LOG_AUDIO, "%s Mixer: FM vol L:%.3f - R:%.3f\n", short_name(),
-				left, right);
+	if(Synth::channel()->volume_sub_left() != fm_l || Synth::channel()->volume_sub_right() != fm_r) {
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s Mixer: FM vol L:%.3f - R:%.3f\n", short_name(),
+				fm_l, fm_r);
 	}
-	Synth::channel()->set_volume(left, right);
+	Synth::channel()->set_volume_sub(fm_l, fm_r);
 	// TODO reg 0x6 bit 5,6 left-right routing?
 }
 
@@ -1688,13 +1673,13 @@ void SBlaster::dsp_cmd_status()
 void SBlaster::dsp_cmd_speaker_on()
 {
 	m_s.dac.speaker = true;
-	m_dac_channel->set_volume(m_dac_volume);
+	m_dac_channel->set_force_muted(false);
 }
 
 void SBlaster::dsp_cmd_speaker_off()
 {
 	m_s.dac.speaker = false;
-	m_dac_channel->set_volume(.0f);
+	m_dac_channel->set_force_muted(true);
 }
 
 void SBlaster::dsp_cmd_speaker_status()

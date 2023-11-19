@@ -38,5 +38,7 @@ void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_c
 	m_channel = _mixer->register_channel(_channel_fn, _channel_name,
 			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channel->set_in_spec(_spec);
+
+	m_channel->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
 }
 

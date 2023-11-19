@@ -35,83 +35,37 @@ THE SOFTWARE.
 
 #include "Common.h"
 #include "Filter.h"
+#include "utils.h"
 
 namespace Dsp {
 
-Params Filter::getDefaultParams() const
+
+void Filter::setParams(const Params& parameters)
 {
-  Params params;
-
-  params.clear();
-
-  for (int i = 0; i < getNumParams(); ++i)
-    params[i] = getParamInfo(i).getDefaultValue();
-
-  return params;
+	m_params = parameters;
+	doSetParams(parameters);
 }
 
-Filter::~Filter()
+void Filter::setParam(ParamID param, double nativeValue)
 {
+	m_params[param] = nativeValue;
+	doSetParams(m_params);
 }
 
-int Filter::findParamId (int paramId)
+std::string Filter::getDefinitionString() const
 {
-  int index = -1;
+	std::vector<std::string> def = { getSlug() };
 
-  for (int i = getNumParams(); --i >= 0;)
-  {
-    if (getParamInfo (i).getId () == paramId)
-    {
-      index = i;
-      break;
-    }
-  }
+	for(auto paramID : getParamIDs()) {
+		if(paramID == Dsp::idSampleRate) {
+			continue;
+		}
+		auto param_info = Dsp::ParamInfo::defaults(paramID);
+		def.emplace_back(str_format("%s=%g", param_info.getSlug(), m_params[paramID]));
+	}
 
-  return index;
+	return str_implode(def, ",");
 }
 
-void Filter::setParamById (int paramId, double nativeValue)
-{
-  for (int i = getNumParams(); --i >= 0;)
-  {
-    if (getParamInfo (i).getId () == paramId)
-    {
-      setParam (i, nativeValue);
-      return;
-    }
-  }
-  
-  assert (0);
-}
 
-void Filter::copyParamsFrom (Dsp::Filter const* other)
-{
-  // first, set reasonable defaults
-  m_params = getDefaultParams ();
-
-  if (other)
-  {
-    // now loop
-    for (int i = 0; i < getNumParams (); ++i)
-    {
-      const ParamInfo& paramInfo = getParamInfo (i);
-
-      // find a match
-      for (int j = 0; j < other->getNumParams(); ++j)
-      {
-        const ParamInfo& otherParamInfo = other->getParamInfo (j);
-
-        if (paramInfo.getId() == otherParamInfo.getId())
-        {
-          // match!
-          m_params [i] = paramInfo.clamp (other->getParam (j));
-          break;
-        }
-      }
-    }
-  }
-
-  doSetParams (m_params);
-}
-
-}
+} // Dsp

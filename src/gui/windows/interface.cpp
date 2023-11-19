@@ -686,6 +686,11 @@ void Interface::on_load_state(Rml::Event &)
 	show_state_dialog(false);
 }
 
+void Interface::on_sound(Rml::Event &)
+{
+	m_gui->toggle_mixer_control();
+}
+
 void Interface::on_printer(Rml::Event &)
 {
 	m_gui->toggle_printer_control();
@@ -723,7 +728,7 @@ void Interface::switch_power()
 
 void Interface::set_audio_volume(float _volume)
 {
-	m_mixer->cmd_set_category_volume(MixerChannel::AUDIOCARD, _volume);
+	m_mixer->set_volume_cat(MixerChannel::AUDIOCARD, _volume);
 }
 
 void Interface::set_video_brightness(float _level)

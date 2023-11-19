@@ -61,6 +61,7 @@ private:
 
 	int   m_drag_start_x = 0;
 	float m_drag_start_left = .0f;
+	bool  m_is_dragging = false;
 
 	float m_scale = .0f;
 	enum DisplayAlign {
@@ -116,6 +117,7 @@ private:
 	void  on_brightness_drag(Rml::Event &);
 	void  on_contrast_drag(Rml::Event &);
 	void  on_dragstart(Rml::Event &);
+	void  on_dragend(Rml::Event &);
 	void  on_power(Rml::Event &);
 
 	inline RealisticScreen * screen() { return (RealisticScreen *)m_screen.get(); }

@@ -198,7 +198,7 @@ OPL::OPL()
 	init_tables();
 }
 
-void OPL::install(ChipTypes _type, std::string _name, bool _timers)
+void OPL::install(ChipType _type, std::string _name, bool _timers)
 {
 	m_name = _name;
 	m_type = _type;

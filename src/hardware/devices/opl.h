@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2015  The DOSBox Team
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -34,7 +34,7 @@
 class OPL : public SynthChip
 {
 public:
-	enum ChipTypes {
+	enum ChipType {
 		OPL2, OPL3
 	};
 	constexpr static const char * ChipNames[] = {
@@ -103,7 +103,7 @@ private:
 		bool     is_4op, is_4op_attached;// OPL3 base of a 4op channel/part of a 4op channel
 		int32_t  left_pan, right_pan;    // OPL3 stereo panning amount
 
-		ChipTypes type;
+		ChipType  type;
 		double    recipsamp;           // inverse of sampling rate
 
 		void enable(uint8_t *wave_sel, unsigned regbase, uint32_t act_type);
@@ -141,7 +141,7 @@ private:
 	} m_s;
 
 	std::string m_name;
-	ChipTypes   m_type = OPL2;
+	ChipType    m_type = OPL2;
 	int         m_samplerate = 49716;
 	uint32_t    m_generator_add = 0;
 	uint32_t    m_vibtab_add = 0;
@@ -153,7 +153,7 @@ public:
 	OPL();
 	~OPL() {}
 	
-	void install(ChipTypes _type, std::string _name, bool _timers);
+	void install(ChipType _type, std::string _name, bool _timers);
 	void remove();
 	void config_changed(int _samplerate);
 	uint8_t read(unsigned _port);
@@ -168,6 +168,7 @@ public:
 	void set_IRQ_callback(std::function<void(bool)> _fn) {
 		m_irqfn = _fn;
 	}
+	ChipType type() const { return m_type; }
 
 private:
 	void timer(int id);

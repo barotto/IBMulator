@@ -107,6 +107,7 @@ public:
 	void on_floppy_mount(std::string _img_path, bool _write_protect);
 	void on_save_state(Rml::Event &);
 	void on_load_state(Rml::Event &);
+	void on_sound(Rml::Event &);
 	void on_printer(Rml::Event &);
 	void on_dblclick(Rml::Event &);
 

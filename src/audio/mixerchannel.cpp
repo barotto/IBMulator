@@ -20,6 +20,7 @@
 #include "ibmulator.h"
 #include "mixer.h"
 #include "machine.h"
+#include "appconfig.h"
 
 
 MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
@@ -28,20 +29,207 @@ MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
 m_mixer(_mixer),
 m_name(_name),
 m_id(_id),
-m_update_clbk(_callback),
-m_capture_clbk([](bool){}),
 m_category(_cat),
-m_audiotype(_audiotype)
+m_audiotype(_audiotype),
+m_update_clbk(_callback),
+m_capture_clbk([](bool){})
 {
 }
 
 MixerChannel::~MixerChannel()
 {
-#if HAVE_LIBSAMPLERATE
-	if(m_SRC_state != nullptr) {
-		src_delete(m_SRC_state);
+	destroy_resampling();
+}
+
+void MixerChannel::apply_config(AppConfig &_config)
+{
+	if(m_cfg_applied) {
+		return;
 	}
-#endif
+
+	PDEBUGF(LOG_V0, LOG_MIXER, "Applying configuration to channel %s...\n", name());
+
+	for(auto & conf : m_cfg_map) {
+		auto [section, key] = conf.second;
+		switch(conf.first) {
+			case ConfigParameter::Volume: {
+				float level = _config.get_real(section, key, -1.0);
+				if(level < .0) {
+					if(m_features & MixerChannel::HasAutoVolume) {
+						// defer
+					} else {
+						set_volume_master(1.f);
+					}
+				} else {
+					set_volume_master(level);
+				}
+				break;
+			}
+			case ConfigParameter::Balance: {
+				float val = _config.get_real_or_default(section, key);
+				set_balance(val);
+				break;
+			}
+			case ConfigParameter::Filter: {
+				auto filters = _config.get_string_or_default(section, key);
+				if(filters == "auto") {
+					// defer
+				} else if(filters.empty()) {
+					m_filter.config = { FilterPreset::None, "none", "" };
+				} else {
+					set_filter(filters);
+				}
+				enable_filter(true);
+				break;
+			}
+			case ConfigParameter::Reverb: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					// defer
+				} else {
+					set_reverb(preset, true);
+				}
+				break;
+			}
+			case ConfigParameter::Chorus: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					// defer
+				} else {
+					set_chorus(preset, true);
+				}
+				break;
+			}
+			case ConfigParameter::Crossfeed: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					// defer
+				} else {
+					set_crossfeed(preset, true);
+				}
+				break;
+			}
+			case ConfigParameter::Resampling: {
+				auto resampling = _config.get_string_or_default(section, key);
+				if(resampling == "auto") {
+					// defer
+				} else {
+					set_resampling_type(resampling);
+				}
+				break;
+			}
+			case ConfigParameter::FilterParams:
+				break;
+		}
+	}
+}
+
+void MixerChannel::apply_auto_values(AppConfig &_config)
+{
+	if(m_cfg_applied) {
+		return;
+	}
+
+	for(auto & conf : m_cfg_map) {
+		auto [section, key] = conf.second;
+		switch(conf.first) {
+			case ConfigParameter::Volume: {
+				float level = _config.get_real(section, key, -1.0);
+				if(level < .0 && (m_features & MixerChannel::HasAutoVolume)) {
+					set_volume_auto(true);
+				}
+				break;
+			}
+			case ConfigParameter::Balance: {
+				break;
+			}
+			case ConfigParameter::Filter: {
+				auto filters = _config.get_string_or_default(section, key);
+				if(filters == "auto") {
+					set_filter_auto(true);
+				}
+				break;
+			}
+			case ConfigParameter::Reverb: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					set_reverb_auto(true);
+					enable_reverb(true);
+				}
+				break;
+			}
+			case ConfigParameter::Chorus: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					set_chorus_auto(true);
+					enable_chorus(true);
+				}
+				break;
+			}
+			case ConfigParameter::Crossfeed: {
+				auto preset = _config.get_string_or_default(section, key);
+				if(preset == "auto") {
+					set_crossfeed_auto(true);
+					enable_crossfeed(true);
+				}
+				break;
+			}
+			case ConfigParameter::Resampling: {
+				auto resampling = _config.get_string_or_default(section, key);
+				if(resampling == "auto") {
+					set_resampling_auto(true);
+				}
+				break;
+			}
+			case ConfigParameter::FilterParams:
+				break;
+		}
+	}
+
+	m_cfg_applied = true;
+}
+
+void MixerChannel::store_config(INIFile &_config)
+{
+	for(auto & conf : m_cfg_map) {
+		auto [section, key] = conf.second;
+		switch(conf.first) {
+			case ConfigParameter::Volume: {
+				if(is_volume_auto()) {
+					_config.set_string(section, key, "auto");
+				} else {
+					_config.set_real(section, key, m_volume.master_left);
+				}
+				break;
+			}
+			case ConfigParameter::Balance: {
+				_config.set_real(section, key, m_balance);
+				break;
+			}
+			case ConfigParameter::Filter: {
+				_config.set_string(section, key, filter_def());
+				break;
+			}
+			case ConfigParameter::Reverb: {
+				_config.set_string(section, key, reverb_def());
+				break;
+			}
+			case ConfigParameter::Chorus: {
+				_config.set_string(section, key, chorus_def());
+				break;
+			}
+			case ConfigParameter::Crossfeed: {
+				_config.set_string(section, key, crossfeed_def());
+				break;
+			}
+			case ConfigParameter::Resampling: {
+				_config.set_string(section, key, resampling_def());
+				break;
+			}
+			case ConfigParameter::FilterParams:
+				break;
+		}
+	}
 }
 
 void MixerChannel::enable(bool _enabled)
@@ -56,6 +244,47 @@ void MixerChannel::enable(bool _enabled)
 			m_first_update = true;
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
 		}
+	}
+}
+
+void MixerChannel::add_parameter_cb(ConfigParameter _parameter, std::string _name, CfgEventCb _cb)
+{
+	// WARNING:
+	// callbacks can't be used to update the UI, as it would require a locking system that
+	// doesn't exist at the moment.
+	// TODO?
+	for(auto & f : m_parameter_cb[_parameter]) {
+		if(f.first == _name) {
+			f.second = _cb;
+			return;
+		}
+	}
+	m_parameter_cb[_parameter].emplace_back(_name, _cb);
+}
+
+void MixerChannel::remove_parameter_cb(ConfigParameter _parameter, std::string _name)
+{
+	m_parameter_cb[_parameter].remove_if([&](const std::pair<std::string,CfgEventCb> &e){
+		return e.first == _name;
+	});
+}
+
+void MixerChannel::add_autoval_cb(ConfigParameter _parameter, CfgEventCb _cb)
+{
+	m_autoval_cb[_parameter].emplace_back(_cb);
+}
+
+void MixerChannel::run_autoval_cb(ConfigParameter _parameter)
+{
+	for(auto & f : m_autoval_cb[_parameter]) {
+		f();
+	}
+}
+
+void MixerChannel::run_parameter_cb(ConfigParameter _parameter)
+{
+	for(auto & f : m_parameter_cb[_parameter]) {
+		f.second();
 	}
 }
 
@@ -95,41 +324,22 @@ std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuff
 	return std::make_tuple(active,enabled);
 }
 
-void MixerChannel::destroy_resampler()
+void MixerChannel::create_resampling(int _channels)
 {
-#if HAVE_LIBSAMPLERATE
-	if(m_SRC_state != nullptr) {
-		src_delete(m_SRC_state);
-		m_SRC_state = nullptr;
-	}
-#endif
-}
-
-void MixerChannel::reset_filters()
-{
-	for(auto &f : m_filters) {
-		f->reset();
-	}
-
-	if(m_reverb.enabled) {
-		m_reverb.highpass[0]->reset();
-		m_reverb.mverb.reset();
-	}
-
 #if HAVE_LIBSAMPLERATE
 	int src_type;
-	switch(m_resampling_type) {
+	switch(m_resampling.type) {
 		case SINC: src_type = SRC_SINC_MEDIUM_QUALITY; break;
 		case LINEAR: src_type = SRC_LINEAR; break;
 		case ZOH: src_type = SRC_ZERO_ORDER_HOLD; break;
 	}
-	if(src_type != m_src_converter) {
-		destroy_resampler();
+	if(src_type != m_resampling.SRC_converter) {
+		destroy_resampling();
 	}
-	if(m_SRC_state == nullptr) {
+	if(m_resampling.SRC_state == nullptr) {
 		int err;
-		m_SRC_state = src_new(src_type, in_spec().channels, &err);
-		if(m_SRC_state == nullptr) {
+		m_resampling.SRC_state = src_new(src_type, _channels, &err);
+		if(m_resampling.SRC_state == nullptr) {
 			PERRF(LOG_MIXER, "unable to initialize SRC state: %d\n", err);
 		} else {
 			const char *src_type_str = "UNKNOWN";
@@ -143,11 +353,41 @@ void MixerChannel::reset_filters()
 			}
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: SRC converter type set to %d (%s)\n", m_name.c_str(), src_type, src_type_str);
 		}
-		m_src_converter = src_type;
+		m_resampling.SRC_converter = src_type;
 	} else {
-		src_reset(m_SRC_state);
+		src_reset(m_resampling.SRC_state);
 	}
 #endif
+}
+
+void MixerChannel::destroy_resampling()
+{
+#if HAVE_LIBSAMPLERATE
+	if(m_resampling.SRC_state != nullptr) {
+		src_delete(m_resampling.SRC_state);
+		m_resampling.SRC_state = nullptr;
+	}
+#endif
+}
+
+void MixerChannel::reset_filters()
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	for(auto &f : m_filter.chain) {
+		f->reset();
+	}
+
+	if(m_reverb.enabled) {
+		m_reverb.highpass[0]->reset();
+		m_reverb.mverb.reset();
+	}
+
+	if(m_crossfeed.enabled) {
+		m_crossfeed.bs2b.clear();
+	}
+
+	create_resampling(in_spec().channels);
 
 	m_new_data = true;
 }
@@ -158,7 +398,11 @@ void MixerChannel::set_in_spec(const AudioSpec &_spec)
 		unsigned ch = m_in_buffer.spec().channels;
 		m_in_buffer.set_spec(_spec);
 		if(ch != _spec.channels) {
-			destroy_resampler();
+			{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			destroy_resampling();
+			create_resampling(_spec.channels);
+			}
 			reset_filters();
 		}
 		// 5 sec. worth of data, how much is enough?
@@ -254,17 +498,122 @@ void MixerChannel::pop_out_frames(unsigned _frames_to_pop)
 	m_out_buffer.pop_frames(_frames_to_pop);
 }
 
-MixerFilterChain MixerChannel::create_filters(std::string _filters_def)
+template <int Channels>
+MixerFilterChain MixerChannel::create_filter(double _rate, std::string _filters_def)
+{
+	MixerFilterChain filters;
+
+	auto filters_toks = str_parse_tokens(_filters_def, "\\|");
+
+	for(auto &filter_str : filters_toks) {
+
+		PDEBUGF(LOG_V2, LOG_MIXER, "Filter definition: %s\n", filter_str.c_str());
+
+		auto filter_toks = str_parse_tokens(filter_str, "\\,");
+		if(filter_toks.empty()) {
+			PDEBUGF(LOG_V2, LOG_MIXER, "Invalid filter definition: %s\n", filter_str.c_str());
+			continue;
+		}
+
+		std::string fname = str_trim(str_to_lower(filter_toks[0]));
+
+		const std::map<std::string, Dsp::Kind> filter_types = {
+			{ "lowpass",   Dsp::kindLowPass   },
+			{ "highpass",  Dsp::kindHighPass  },
+			{ "bandpass",  Dsp::kindBandPass  },
+			{ "bandstop",  Dsp::kindBandStop  },
+			{ "lowshelf",  Dsp::kindLowShelf  },
+			{ "highshelf", Dsp::kindHighShelf },
+			{ "bandshelf", Dsp::kindBandShelf }
+		};
+
+		if(filter_types.find(fname) == filter_types.end()) {
+			PERRF(LOG_MIXER, "Invalid filter: %s\n", fname.c_str());
+			continue;
+		}
+
+		std::shared_ptr<Dsp::Filter> filter;
+
+		switch(filter_types.at(fname)) {
+			case Dsp::kindLowPass   : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowPass  <50>,Channels>>(); break;
+			case Dsp::kindHighPass  : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighPass <50>,Channels>>(); break;
+			case Dsp::kindBandPass  : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandPass <50>,Channels>>(); break;
+			case Dsp::kindBandStop  : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandStop <50>,Channels>>(); break;
+			case Dsp::kindLowShelf  : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowShelf <50>,Channels>>(); break;
+			case Dsp::kindHighShelf : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighShelf<50>,Channels>>(); break;
+			case Dsp::kindBandShelf : filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandShelf<50>,Channels>>(); break;
+			default: throw std::logic_error("invalid filter kind");
+		}
+
+		PDEBUGF(LOG_V2, LOG_MIXER, "Filter: %s\n", filter->getName().c_str());
+
+		std::map<std::string, Dsp::ParamInfo> param_types = {
+			{ "order",     Dsp::ParamInfo::defaults(Dsp::idOrder) },
+			{ "fc",        Dsp::ParamInfo::defaults(Dsp::idFrequency) },
+			{ "frequency", Dsp::ParamInfo::defaults(Dsp::idFrequency) },
+			{ "cutoff",    Dsp::ParamInfo::defaults(Dsp::idFrequency) },
+			{ "center",    Dsp::ParamInfo::defaults(Dsp::idFrequency) },
+			{ "bw",        Dsp::ParamInfo::defaults(Dsp::idBandwidthHz) },
+			{ "gain",      Dsp::ParamInfo::defaults(Dsp::idGain) }
+		};
+
+		// remove the filter name, parse parameters
+		filter_toks.erase(filter_toks.begin());
+
+		Dsp::Params fparams;
+		fparams.setToDefaults();
+		fparams[Dsp::idSampleRate] = _rate;
+
+		for(auto &filter_par : filter_toks) {
+
+			auto param_toks = str_parse_tokens(filter_par, "\\=");
+			if(param_toks.size() != 2) {
+				PERRF(LOG_MIXER, "invalid filter parameter definition: %s\n", filter_par.c_str());
+				continue;
+			}
+
+			std::string pname = str_trim(str_to_lower(param_toks[0]));
+
+			if(param_types.find(pname) == param_types.end()) {
+				PERRF(LOG_MIXER, "invalid filter parameter name: %s\n", pname.c_str());
+				continue;
+			}
+
+			try {
+				fparams[param_types.at(pname).getId()] = str_parse_real_num(param_toks[1]);
+			} catch(std::exception &) {
+				PERRF(LOG_MIXER, "invalid filter parameter value: %s\n", param_toks[1].c_str());
+				continue;
+			}
+
+			PDEBUGF(LOG_V2, LOG_MIXER, "  %s = %.3f\n",
+					param_types.at(pname).getName(),
+					fparams[param_types.at(pname).getId()]
+					);
+		}
+
+		filter->setParams(fparams);
+
+		filters.push_back(filter);
+	}
+
+	return filters;
+}
+
+template MixerFilterChain MixerChannel::create_filter<1>(double _rate, std::string _filters_def);
+template MixerFilterChain MixerChannel::create_filter<2>(double _rate, std::string _filters_def);
+
+MixerFilterChain MixerChannel::create_filter(std::string _filter_def) noexcept
 {
 	MixerFilterChain filters;
 	try {
 		// filters are applied after rate and channels conversion
-		if(m_out_buffer.spec().channels == 1) {
-			filters = Mixer::create_filters<1>(m_out_buffer.spec().rate, _filters_def);
-		} else if(m_out_buffer.spec().channels == 2) {
-			filters = Mixer::create_filters<2>(m_out_buffer.spec().rate, _filters_def);
+		if(g_mixer.audio_spec().channels == 1) {
+			filters = create_filter<1>(double(g_mixer.audio_spec().freq), _filter_def);
+		} else if(g_mixer.audio_spec().channels == 2) {
+			filters = create_filter<2>(double(g_mixer.audio_spec().freq), _filter_def);
 		} else {
-			PDEBUGF(LOG_V0, LOG_AUDIO, "%s: invalid number of channels: %d\n", m_name.c_str(), m_out_buffer.spec().channels);
+			PDEBUGF(LOG_V0, LOG_MIXER, "Invalid number of audio channels creating filter: %d\n", g_mixer.audio_spec().channels);
 		}
 	} catch(std::exception &) {
 		return MixerFilterChain();
@@ -272,30 +621,211 @@ MixerFilterChain MixerChannel::create_filters(std::string _filters_def)
 	return filters;
 }
 
-void MixerChannel::set_filters(std::string _filters_def)
+const MixerChannel::FilterConfig & MixerChannel::filter()
 {
-	// this is called by the machine thread.
-	if(_filters_def.empty()) {
-		std::lock_guard<std::mutex> lock(m_filters_mutex);
-		m_filters.clear();
+	if(m_filter.config_dirty) {
+		update_filter_config();
+	}
+	return m_filter.config;
+}
+
+void MixerChannel::set_filter(std::string _filter_def) noexcept
+{
+	static const std::map<std::string, FilterPreset> presets {
+		{ "none", FilterPreset::None },
+		{ "pc-speaker", FilterPreset::PCSpeaker },
+		{ "pcspeaker", FilterPreset::PCSpeaker },
+		{ "pcspkr", FilterPreset::PCSpeaker },
+		{ "speaker", FilterPreset::PCSpeaker },
+	};
+	static const std::map<FilterPreset, FilterConfig> configs {
+		{ FilterPreset::None, { FilterPreset::None, "none", "" } },
+		{ FilterPreset::PCSpeaker, {
+			FilterPreset::PCSpeaker,
+			"pc-speaker",
+			"LowPass,order=5,fc=5000|HighPass,order=5,fc=500"
+		} }
+	};
+
+	auto preset = presets.find(_filter_def);
+	if(preset != presets.end()) {
+		m_filter.config = configs.find(preset->second)->second;
+		m_filter.config_dirty = false;
+	} else if(_filter_def == "custom") {
+		m_filter.config = { FilterPreset::Custom, "custom", m_filter.config.definition };
+		run_parameter_cb(ConfigParameter::Filter);
+		return;
+	} else {
+		m_filter.config = { FilterPreset::Custom, "custom", _filter_def };
+		m_filter.config_dirty = false;
+	}
+
+	if(_filter_def.empty()) {
+		{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_filter.chain.clear();
+		}
+		run_parameter_cb(ConfigParameter::Filter);
 		return;
 	}
 
-	set_filters(create_filters(_filters_def));
+	auto chain = create_filter(m_filter.config.definition);
 
-	for(auto &f : m_filters) {
+	if(chain.empty()) {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_filter.chain.clear();
+		m_filter.config = configs.find(FilterPreset::None)->second;
+	} else {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_filter.chain = chain;
+	}
+
+	for(auto & f : m_filter.chain) {
 		PINFOF(LOG_V1, LOG_MIXER, "%s: adding DSP filter '%s'\n", m_name.c_str(), f->getName().c_str());
 	}
+
+	run_parameter_cb(ConfigParameter::Filter);
 }
 
-void MixerChannel::set_filters(MixerFilterChain _filters)
+std::string MixerChannel::filter_def()
 {
-	// this is called by the machine thread.
-	std::lock_guard<std::mutex> lock(m_filters_mutex);
-	m_filters = _filters;
-	for(auto &f : m_filters) {
-		f->reset();
+	if(is_filter_auto()) {
+		return "auto";
 	}
+	if(m_filter.config.preset == FilterPreset::Custom) {
+		if(m_filter.config_dirty) {
+			update_filter_config();
+		}
+		return m_filter.config.definition;
+	}
+	return m_filter.config.name;
+}
+
+void MixerChannel::set_filter(const FilterConfig &_config) noexcept
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		m_filter.config = _config;
+		m_filter.chain = create_filter(m_filter.config.definition);
+		m_filter.enabled = is_filter_set();
+		m_filter.config_dirty = false;
+	} // lock_guard
+
+	for(auto & f : m_filter.chain) {
+		PINFOF(LOG_V1, LOG_MIXER, "%s: adding DSP filter '%s'\n", m_name.c_str(), f->getName().c_str());
+	}
+	
+	run_parameter_cb(ConfigParameter::Filter);
+}
+
+void MixerChannel::copy_filter_params(const MixerFilterChain &_filter) noexcept
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		for(size_t i=0; i<_filter.size(); i++) {
+			if(i >= m_filter.chain.size()) {
+				break;
+			}
+			if(m_filter.chain[i]->getKind() != _filter[i]->getKind()) {
+				PDEBUGF(LOG_V0, LOG_MIXER, "%s: trying to copy parameter values from incompatible filter\n", m_name.c_str());
+				break;
+			}
+			m_filter.chain[i]->setParams(_filter[i]->getParams());
+		}
+	}
+
+	run_parameter_cb(ConfigParameter::FilterParams);
+}
+
+size_t MixerChannel::add_filter(std::string _def)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		MixerFilterChain filter = create_filter(_def);
+		if(filter.empty()) {
+			throw std::logic_error("invalid filter definition");
+		}
+		m_filter.chain.push_back(filter[0]);
+		m_filter.config_dirty = true;
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::Filter);
+
+	return m_filter.chain.size() - 1;
+}
+
+void MixerChannel::remove_filter(size_t _idx)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		if(_idx >= m_filter.chain.size()) {
+			throw std::runtime_error("invalid filter index");
+		}
+		m_filter.chain.erase(m_filter.chain.begin() + _idx);
+		m_filter.config_dirty = true;
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::Filter);
+}
+
+void MixerChannel::set_filter_kind(size_t _idx, std::string _def)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+	
+		if(_idx >= m_filter.chain.size()) {
+			throw std::logic_error("invalid dsp filter index");
+		}
+		MixerFilterChain filter = create_filter(_def);
+		if(filter.empty()) {
+			throw std::logic_error("invalid filter definition");
+		}
+		filter[0]->setParams(m_filter.chain[_idx]->getParams());
+		m_filter.chain[_idx].swap(filter[0]);
+		m_filter.config_dirty = true;
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::Filter);
+}
+
+void MixerChannel::set_filter_param(size_t _idx, Dsp::ParamID _param, double _value)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if(_idx >= m_filter.chain.size()) {
+			throw std::runtime_error("invalid filter index");
+		}
+		m_filter.chain[_idx]->setParam(_param, _value);
+		m_filter.config_dirty = true;
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::FilterParams);
+}
+
+void MixerChannel::update_filter_config()
+{
+	m_filter.config.definition = "";
+	m_filter.config_dirty = false;
+	if(!is_filter_set()) {
+		return;
+	}
+	std::lock_guard<std::mutex> lock(m_mutex);
+	std::vector<std::string> defs(m_filter.chain.size());
+	for(auto & f : m_filter.chain) {
+		defs.emplace_back(f->getDefinitionString());
+	}
+	m_filter.config.definition = str_implode(defs, "|");
+}
+
+double MixerChannel::get_filter_param(size_t _idx, Dsp::ParamID _param)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	if(_idx >= m_filter.chain.size()) {
+		throw std::runtime_error("invalid filter index");
+	}
+	return m_filter.chain[_idx]->getParam(_param);
 }
 
 void MixerChannel::flush()
@@ -342,8 +872,9 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 	// 2. convert rate, processed frames can be different than in_frames
 	int frames;
 	if(m_in_buffer.rate() != m_out_buffer.rate()) {
+		std::lock_guard<std::mutex> lock(m_mutex);
 		dest[bufidx].set_spec({AUDIO_FORMAT_F32, m_in_buffer.channels(), m_out_buffer.rate()});
-		unsigned missing = source->convert_rate(dest[bufidx], in_frames, m_SRC_state);
+		unsigned missing = source->convert_rate(dest[bufidx], in_frames, m_resampling.SRC_state);
 		if(m_new_data && missing>1) {
 			PDEBUGF(LOG_V2, LOG_MIXER, "%s: adding %d samples\n", m_name.c_str(), missing);
 			m_out_buffer.hold_frames<float>(missing);
@@ -367,9 +898,9 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		}
 
 		// 4. process filters
-		{
-			std::lock_guard<std::mutex> lock(m_filters_mutex);
-			for(auto &f : m_filters) {
+		if(m_filter.enabled) {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			for(auto &f : m_filter.chain) {
 				f->process(frames, &(source->at<float>(0)));
 			}
 		}
@@ -377,19 +908,20 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		if(m_out_buffer.spec().channels == 2) {
 			// 5. apply crossfeed
 			if(m_crossfeed.enabled) {
+				std::lock_guard<std::mutex> lock(m_mutex);
 				float *data = &(source->at<float>(0));
 				m_crossfeed.bs2b.cross_feed(data, frames);
 			}
 
 			// 6. apply chorus
 			if(m_chorus.enabled) {
-				std::lock_guard<std::mutex> lock(m_filters_mutex);
-				m_chorus.chorus_engine.process(frames, &(source->at<float>(0)));
+				std::lock_guard<std::mutex> lock(m_mutex);
+				m_chorus.engine.process(frames, &(source->at<float>(0)));
 			}
 
 			// 7. apply reverb
 			if(m_reverb.enabled) {
-				std::lock_guard<std::mutex> lock(m_filters_mutex);
+				std::lock_guard<std::mutex> lock(m_mutex);
 				dest[bufidx].set_spec(m_out_buffer.spec());
 				dest[bufidx].add_frames(*source);
 				m_reverb.highpass[0]->process(frames, &(dest[bufidx].at<float>(0)));
@@ -413,9 +945,11 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 
 bool MixerChannel::check_disable_time(uint64_t _now_ns)
 {
-	if(m_disable_time && (m_disable_time < _now_ns) && (_now_ns - m_disable_time >= m_disable_timeout)) {
-		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %llu ns of silence\n",
-				m_name.c_str(), (_now_ns - m_disable_time));
+	uint64_t diable_time = m_disable_time.load();
+	if(m_disable_time && (diable_time < _now_ns) && (_now_ns - diable_time >= m_disable_timeout)) {
+		PDEBUGF(LOG_V1, LOG_MIXER, "%s: disabling channel after %llu ns of silence (now: %llu, dis.time: %llu, dis.timeout: %llu)\n",
+				m_name.c_str(), (_now_ns - diable_time),
+				_now_ns, diable_time, m_disable_timeout);
 		enable(false);
 		return true;
 	}
@@ -430,6 +964,161 @@ void MixerChannel::register_capture_clbk(std::function<void(bool _enable)> _fn)
 void MixerChannel::on_capture(bool _enable)
 {
 	m_capture_clbk(_enable);
+}
+
+void MixerChannel::set_volume_master(float _both)
+{
+	set_volume_master(_both, _both);
+}
+
+void MixerChannel::set_volume_master(float _left, float _right)
+{
+	m_volume.master_left = _left;
+	m_volume.master_right = _right;
+
+	run_parameter_cb(ConfigParameter::Volume);
+}
+
+void MixerChannel::set_volume_sub(float _left, float _right)
+{
+	m_volume.sub_left = _left;
+	m_volume.sub_right = _right;
+
+	run_parameter_cb(ConfigParameter::Volume);
+}
+
+void MixerChannel::set_volume_auto(bool _enabled)
+{
+	m_volume.auto_set = _enabled;
+
+	run_autoval_cb(ConfigParameter::Volume);
+}
+
+void MixerChannel::set_balance(float _balance)
+{
+	m_balance = clamp(_balance, -1.f, 1.f);
+
+	run_parameter_cb(ConfigParameter::Balance);
+}
+
+void MixerChannel::set_reverb_auto(bool _enabled)
+{
+	m_reverb.auto_set = _enabled;
+	m_reverb.enabled = false;
+
+	run_autoval_cb(ConfigParameter::Reverb);
+}
+
+void MixerChannel::enable_reverb(bool _enable)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	if(m_reverb.config.preset != ReverbPreset::None) {
+		m_reverb.enabled = _enable;
+	}
+}
+
+void MixerChannel::set_chorus_auto(bool _enabled)
+{
+	m_chorus.auto_set = _enabled;
+	m_chorus.enabled = false;
+
+	run_autoval_cb(ConfigParameter::Chorus);
+}
+
+void MixerChannel::enable_chorus(bool _enable)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	if(m_chorus.config.preset != ChorusPreset::None) {
+		m_chorus.enabled = _enable;
+	}
+}
+
+void MixerChannel::set_crossfeed_auto(bool _enabled)
+{
+	m_crossfeed.auto_set = _enabled;
+	m_crossfeed.enabled = false;
+
+	run_autoval_cb(ConfigParameter::Crossfeed);
+}
+
+void MixerChannel::enable_crossfeed(bool _enable)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	if(m_crossfeed.config.preset != CrossfeedPreset::None) {
+		m_crossfeed.enabled = _enable;
+	}
+}
+
+void MixerChannel::set_resampling_auto(bool _enabled)
+{
+	m_resampling.auto_set = _enabled;
+
+	run_autoval_cb(ConfigParameter::Resampling);
+}
+
+void MixerChannel::set_filter_auto(bool _enabled)
+{
+	m_filter.auto_set = _enabled;
+
+	run_autoval_cb(ConfigParameter::Filter);
+}
+
+void MixerChannel::enable_filter(bool _enable)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_filter.enabled = _enable;
+}
+
+void MixerChannel::set_resampling_type(MixerChannel::ResamplingType _type)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	m_resampling.type = _type;
+
+	create_resampling(in_spec().channels);
+
+	run_parameter_cb(ConfigParameter::Resampling);
+}
+
+void MixerChannel::set_resampling_type(std::string _preset)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	m_resampling.type = SINC;
+
+	try {
+		auto [resampler, preset]  = parse_preset<ResamplingType>(_preset, {
+			{ "sinc", MixerChannel::SINC },
+			{ "linear", MixerChannel::LINEAR },
+			{ "hold", MixerChannel::ZOH },
+		}, "sinc");
+
+		m_resampling.type = resampler;
+
+		PINFOF(LOG_V1, LOG_MIXER, "%s: resampling set to '%s'\n", m_name.c_str(), _preset.c_str());
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_MIXER, "%s: resampler: %s\n", m_name.c_str(), e.what());
+	}
+
+	create_resampling(in_spec().channels);
+
+	run_parameter_cb(ConfigParameter::Resampling);
+}
+
+std::string MixerChannel::resampling_def() const
+{
+	if(is_resampling_auto()) {
+		return "auto";
+	}
+	switch(m_resampling.type) {
+		case MixerChannel::SINC: return "sinc";
+		case MixerChannel::LINEAR: return "linear";
+		case MixerChannel::ZOH: return "zoh";
+	}
+	return "";
 }
 
 template<typename T>
@@ -467,61 +1156,125 @@ std::pair<T, std::vector<std::string>> MixerChannel::parse_preset(std::string _p
 	return {preset->second, toks};
 }
 
-void MixerChannel::set_reverb(std::string _preset)
+MixerChannel::ReverbConfig MixerChannel::reverb_preset_to_config(ReverbPreset _preset)
 {
-	std::lock_guard<std::mutex> lock(m_filters_mutex);
+	switch(_preset) {                                                // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
+	case ReverbPreset::None:   return { ReverbPreset::None,   "none",   0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f,   0.0f  };
+	case ReverbPreset::Tiny:   return { ReverbPreset::Tiny,   "tiny",   0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f };
+	case ReverbPreset::Small:  return { ReverbPreset::Small,  "small",  0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f };
+	case ReverbPreset::Medium: return { ReverbPreset::Medium, "medium", 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f };
+	case ReverbPreset::Large:  return { ReverbPreset::Large,  "large",  0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f };
+	case ReverbPreset::Huge:   return { ReverbPreset::Huge,   "huge",   0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f };
+	}
+	assert(false);
+	return {};
+}
 
-	m_reverb.enabled = false;
+MixerChannel::ReverbParams MixerChannel::parse_reverb_def(std::string _reverb_def)
+{
+	ReverbParams params = { ReverbPreset::None, -1.f };
 
+	auto [preset, par_list] = parse_preset<ReverbPreset>(_reverb_def, {
+		{ "none", ReverbPreset::None },
+		{ "tiny", ReverbPreset::Tiny },
+		{ "small", ReverbPreset::Small },
+		{ "medium", ReverbPreset::Medium },
+		{ "large", ReverbPreset::Large },
+		{ "huge", ReverbPreset::Huge }
+	}, "medium");
+
+	params.preset = preset;
+
+	if(par_list.size() > 1) {
+		try {
+			params.gain = str_parse_int_num(par_list[1]);
+			params.gain = clamp(params.gain, 0.f, 100.f);
+			params.gain = params.gain / 100.f;
+		} catch(std::runtime_error &) {}
+	}
+
+	return params;
+}
+
+void MixerChannel::set_reverb(std::string _reverb_def, bool _enable) noexcept
+{
 	try {
-		auto [preset, reverb] = parse_preset<ReverbPreset>(_preset, {
-			{ "none", ReverbPreset::None },
-			{ "tiny", ReverbPreset::Tiny },
-			{ "small", ReverbPreset::Small },
-			{ "medium", ReverbPreset::Medium },
-			{ "large", ReverbPreset::Large },
-			{ "huge", ReverbPreset::Huge }
-		}, "medium");
-
-		Reverb::ReverbConfig config;
-		switch (preset) {                  // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
-		case ReverbPreset::None:   return;
-		case ReverbPreset::Tiny:   config = { 0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f }; break;
-		case ReverbPreset::Small:  config = { 0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f }; break;
-		case ReverbPreset::Medium: config = { 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f }; break;
-		case ReverbPreset::Large:  config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f }; break;
-		case ReverbPreset::Huge:   config = { 0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f }; break;
-		}
-		float pgain = 0.f;
-		if(reverb.size() > 1) {
-			try {
-				pgain = str_parse_int_num(reverb[1]);
-				pgain = clamp(pgain, 0.f, 100.f);
-				if(pgain == 0) {
-					return;
-				}
-				pgain = pgain / 100.f;
-			} catch(std::runtime_error &) {}
-		}
-		if(pgain > 0) {
-			switch(m_audiotype) {
-				case SYNTH: config.synth_gain = pgain; break;
-				case DAC: config.pcm_gain = pgain; break;
-				case NOISE: config.noise_gain = pgain; break;
-			}
-		}
-
-		m_reverb.config(config, m_out_buffer.spec().rate, m_audiotype);
-
-		PINFOF(LOG_V1, LOG_MIXER, "%s: reverb set to '%s',%.0f\n", m_name.c_str(),
-				reverb[0].c_str(), m_reverb.mverb.getParameter(EmVerb::GAIN) * 100.f);
+		ReverbParams params = parse_reverb_def(_reverb_def);
+		set_reverb(params, _enable);
 	} catch(std::runtime_error &e) {
 		PERRF(LOG_MIXER, "%s: reverb: %s\n", m_name.c_str(), e.what());
 	}
 }
 
-void MixerChannel::Reverb::config(ReverbConfig _config, double _rate, AudioType _type)
+void MixerChannel::set_reverb(const ReverbParams &_params, bool _enable) noexcept
 {
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		bool was_enabled = m_reverb.enabled || _enable;
+		m_reverb.enabled = false;
+		m_reverb.config = reverb_preset_to_config(ReverbPreset::None);
+
+		try {
+			ReverbConfig config = reverb_preset_to_config(_params.preset);
+
+			if(config.preset != ReverbPreset::None) {
+				m_reverb.set_config(config, out_spec().rate, m_audiotype);
+				if(_params.gain >= 0) {
+					m_reverb.set_gain(_params.gain);
+				}
+				m_reverb.enabled = was_enabled;
+				PINFOF(LOG_V1, LOG_MIXER, "%s: reverb set to '%s',%.0f\n", m_name.c_str(),
+						config.name, m_reverb.mverb.getParameter(EmVerb::GAIN) * 100.f);
+			} else {
+				PDEBUGF(LOG_V1, LOG_MIXER, "%s: reverb set to None\n", m_name.c_str());
+			}
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_MIXER, "%s: reverb: %s\n", m_name.c_str(), e.what());
+		}
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::Reverb);
+}
+
+void MixerChannel::set_reverb_gain(float _gain) noexcept
+{
+	m_reverb.set_gain(_gain);
+	run_parameter_cb(ConfigParameter::Reverb);
+}
+
+void MixerChannel::reset_reverb_gain()
+{
+	switch(m_audiotype) {
+		case SYNTH: m_reverb.mverb.setParameter(EmVerb::GAIN, m_reverb.config.synth_gain); break;
+		case DAC: m_reverb.mverb.setParameter(EmVerb::GAIN, m_reverb.config.pcm_gain); break;
+		case NOISE: m_reverb.mverb.setParameter(EmVerb::GAIN, m_reverb.config.noise_gain); break;
+	}
+	m_reverb.gain = -1.f;
+}
+
+std::string MixerChannel::reverb_def() const
+{
+	if(is_reverb_auto()) {
+		return "auto";
+	}
+	std::string def;
+	if(m_reverb.config.preset != ReverbPreset::None && m_reverb.gain >= .0f) {
+		return str_format("%s %d", m_reverb.config.name, int(m_reverb.gain * 100.f));
+	} else {
+		return m_reverb.config.name;
+	}
+}
+
+float MixerChannel::reverb_gain() const
+{
+	return m_reverb.mverb.getParameter(EmVerb::GAIN);
+}
+
+void MixerChannel::Reverb::set_config(ReverbConfig _config, double _rate, AudioType _type)
+{
+	config = _config;
+
 	mverb.setParameter(EmVerb::PREDELAY, _config.predelay);
 	mverb.setParameter(EmVerb::EARLYMIX, _config.early_mix);
 	mverb.setParameter(EmVerb::SIZE, _config.size);
@@ -538,93 +1291,143 @@ void MixerChannel::Reverb::config(ReverbConfig _config, double _rate, AudioType 
 
 	mverb.setSampleRate(_rate);
 
-	highpass = Mixer::create_filters<2>(_rate, str_format("highpass,order=1,cutoff=%f",_config.hpf_freq));
-
-	enabled = true;
+	highpass = create_filter<2>(_rate, str_format("highpass,order=1,fc=%f",_config.hpf_freq));
 }
 
-void MixerChannel::set_chorus(std::string _preset)
+void MixerChannel::Reverb::set_gain(float _gain)
 {
-	std::lock_guard<std::mutex> lock(m_filters_mutex);
+	gain = clamp(_gain, 0.f, 1.f);
+	mverb.setParameter(EmVerb::GAIN, _gain);
+}
 
-	m_chorus.enabled = false;
-
-	try {
-		auto [preset, chorus] = parse_preset<ChorusPreset>(_preset, {
-			{ "none",   ChorusPreset::None   },
-			{ "light",  ChorusPreset::Light  },
-			{ "normal", ChorusPreset::Normal },
-			{ "strong", ChorusPreset::Strong },
-			{ "heavy",  ChorusPreset::Heavy  }
-		}, "normal");
-
-		Chorus::ChorusConfig config;
-		switch (preset) {                  // C2EN   SYNTH  PCM  NOISE
-		case ChorusPreset::None: return;
-		case ChorusPreset::Light:  config = { false, .33f, .20f, 0.f }; break;
-		case ChorusPreset::Normal: config = { false, .54f, .35f, 0.f }; break;
-		case ChorusPreset::Strong: config = { false, .75f, .45f, 0.f }; break;
-		case ChorusPreset::Heavy:  config = { true,  .75f, .65f, 0.f }; break;
-		}
-
-		m_chorus.config(config, m_out_buffer.spec().rate, m_audiotype);
-
-		PINFOF(LOG_V1, LOG_MIXER, "%s: chorus set to '%s'\n", m_name.c_str(), chorus[0].c_str());
-	} catch(std::runtime_error &e) {
-		PERRF(LOG_MIXER, "%s: chorus: %s\n", m_name.c_str(), e.what());
+MixerChannel::ChorusConfig MixerChannel::chorus_preset_to_config(ChorusPreset _preset)
+{
+	switch (_preset) {                                               // C2EN   SYNTH  PCM  NOISE
+	case ChorusPreset::None:   return { ChorusPreset::None,   "none",   false, 0.f,   0.f,   0.f };
+	case ChorusPreset::Light:  return { ChorusPreset::Light,  "light",  false, 0.33f, 0.20f, 0.f };
+	case ChorusPreset::Normal: return { ChorusPreset::Normal, "normal", false, 0.54f, 0.35f, 0.f };
+	case ChorusPreset::Strong: return { ChorusPreset::Strong, "strong", false, 0.75f, 0.45f, 0.f };
+	case ChorusPreset::Heavy:  return { ChorusPreset::Heavy,  "heavy",  true,  0.75f, 0.65f, 0.f };
 	}
+	assert(false);
+	return {};
 }
 
-void MixerChannel::Chorus::config(ChorusConfig _config, double _rate, AudioType _type)
+void MixerChannel::set_chorus(std::string _preset, bool _enable) noexcept
 {
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		bool was_enabled = m_chorus.enabled || _enable;
+		m_chorus.enabled = false;
+		m_chorus.config = chorus_preset_to_config(ChorusPreset::None);
+
+		try {
+			auto [preset, chorus] = parse_preset<ChorusPreset>(_preset, {
+				{ "none",   ChorusPreset::None   },
+				{ "light",  ChorusPreset::Light  },
+				{ "normal", ChorusPreset::Normal },
+				{ "strong", ChorusPreset::Strong },
+				{ "heavy",  ChorusPreset::Heavy  }
+			}, "normal");
+
+			ChorusConfig config = chorus_preset_to_config(preset);
+
+			if(config.preset != ChorusPreset::None) {
+				m_chorus.set_config(config, out_spec().rate, m_audiotype);
+				m_chorus.enabled = was_enabled;
+
+				PINFOF(LOG_V1, LOG_MIXER, "%s: chorus set to '%s'\n", m_name.c_str(), chorus[0].c_str());
+			}
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_MIXER, "%s: chorus: %s\n", m_name.c_str(), e.what());
+		}
+	} // lock_guard
+
+	run_parameter_cb(ConfigParameter::Chorus);
+}
+
+void MixerChannel::Chorus::set_config(ChorusConfig _config, double _rate, AudioType _type)
+{
+	config = _config;
+
 	switch(_type) {
-		case SYNTH: chorus_engine.setGain(_config.synth_gain); break;
-		case DAC: chorus_engine.setGain(_config.pcm_gain); break;
-		case NOISE: chorus_engine.setGain(_config.noise_gain); break;
+		case SYNTH: engine.setGain(_config.synth_gain); break;
+		case DAC: engine.setGain(_config.pcm_gain); break;
+		case NOISE: engine.setGain(_config.noise_gain); break;
 	}
 
-	chorus_engine.setSampleRate(static_cast<float>(_rate));
-	chorus_engine.setEnablesChorus(true, _config.chorus2_enabled);
-	
-	enabled = true;
+	engine.setSampleRate(static_cast<float>(_rate));
+	engine.setEnablesChorus(true, _config.chorus2_enabled);
 }
 
-void MixerChannel::set_crossfeed(std::string _preset)
+std::string MixerChannel::chorus_def() const
 {
-	std::lock_guard<std::mutex> lock(m_filters_mutex);
+	if(is_chorus_auto()) {
+		return "auto";
+	}
+	return m_chorus.config.name;
+}
 
-	m_crossfeed.enabled = false;
+MixerChannel::CrossfeedConfig MixerChannel::crossfeed_preset_to_config(CrossfeedPreset _preset)
+{
+	switch (_preset) {                                                 // CFCUT FEED (dB*10)
+	case CrossfeedPreset::None:  return { CrossfeedPreset::None,  "none",    0,  0 };
+	case CrossfeedPreset::Bauer: return { CrossfeedPreset::Bauer, "bauer", 700, 45 };
+	case CrossfeedPreset::Meier: return { CrossfeedPreset::Meier, "meier", 650, 95 };
+	case CrossfeedPreset::Moy:   return { CrossfeedPreset::Moy,   "moy",   700, 60 };
+	}
+	assert(false);
+	return {};
+}
 
-	try {
-		auto [preset, cross] = parse_preset<CrossfeedPreset>(_preset, {
-			{ "none",  CrossfeedPreset::None  },
-			{ "bauer", CrossfeedPreset::Bauer },
-			{ "meier", CrossfeedPreset::Meier },
-			{ "meyer", CrossfeedPreset::Meier },
-			{ "moy",   CrossfeedPreset::Moy   },
-			{ "moi",   CrossfeedPreset::Moy   }
-		}, "bauer");
+void MixerChannel::set_crossfeed(std::string _preset, bool _enable) noexcept
+{
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
 
-		Crossfeed::CrossfeedConfig config;
-		switch (preset) {                    // FCUT FEED (dB*10)  
-		case CrossfeedPreset::None: return;
-		case CrossfeedPreset::Bauer: config = { 700, 45 }; break;
-		case CrossfeedPreset::Meier: config = { 650, 95 }; break;
-		case CrossfeedPreset::Moy:   config = { 700, 60 }; break;
+		bool was_enabled = m_crossfeed.enabled || _enable;
+		m_crossfeed.enabled = false;
+		m_crossfeed.config = crossfeed_preset_to_config(CrossfeedPreset::None);
+
+		try {
+			auto [preset, cross] = parse_preset<CrossfeedPreset>(_preset, {
+				{ "none",  CrossfeedPreset::None  },
+				{ "bauer", CrossfeedPreset::Bauer },
+				{ "meier", CrossfeedPreset::Meier },
+				{ "meyer", CrossfeedPreset::Meier },
+				{ "moy",   CrossfeedPreset::Moy   },
+				{ "moi",   CrossfeedPreset::Moy   }
+			}, "bauer");
+
+			CrossfeedConfig config = crossfeed_preset_to_config(preset);
+
+			if(config.preset != CrossfeedPreset::None) {
+				m_crossfeed.set_config(config, out_spec().rate);
+				m_crossfeed.enabled = was_enabled;
+
+				PINFOF(LOG_V1, LOG_MIXER, "%s: crossfeed set to '%s'\n", m_name.c_str(), cross[0].c_str());
+			}
+		} catch(std::runtime_error &e) {
+			PERRF(LOG_MIXER, "%s: crossfeed: %s\n", m_name.c_str(), e.what());
 		}
+	} // lock_guard
 
-		m_crossfeed.config(config, m_out_buffer.spec().rate);
-
-		PINFOF(LOG_V1, LOG_MIXER, "%s: crossfeed set to '%s'\n", m_name.c_str(), cross[0].c_str());
-	} catch(std::runtime_error &e) {
-		PERRF(LOG_MIXER, "%s: crossfeed: %s\n", m_name.c_str(), e.what());
-	}
+	run_parameter_cb(ConfigParameter::Crossfeed);
 }
 
-void MixerChannel::Crossfeed::config(CrossfeedConfig _config, double _rate)
+void MixerChannel::Crossfeed::set_config(CrossfeedConfig _config, double _rate)
 {
+	config = _config;
+
 	bs2b.set_srate(uint32_t(round(_rate)));
 	bs2b.set_level(( _config.freq_cut_hz | ( _config.feed_db << 16 ) ));
+}
 
-	enabled = true;
+std::string MixerChannel::crossfeed_def() const
+{
+	if(is_crossfeed_auto()) {
+		return "auto";
+	}
+	return m_crossfeed.config.name;
 }

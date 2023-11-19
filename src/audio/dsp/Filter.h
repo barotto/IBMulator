@@ -33,6 +33,11 @@ THE SOFTWARE.
 
 *******************************************************************************/
 
+/*
+ * Modified for IBMulator. Don't use this code for your project, instead use
+ * the original version from https://github.com/vinniefalco/DSPFilters
+ */
+
 #ifndef DSPFILTERS_FILTER_H
 #define DSPFILTERS_FILTER_H
 
@@ -55,62 +60,31 @@ namespace Dsp {
 class Filter
 {
 public:
-  virtual ~Filter();
+  virtual ~Filter() {}
 
-  virtual Kind getKind () const = 0;
+  virtual Kind getKind() const = 0;
+  virtual const std::string getName() const = 0;
+  virtual const std::string getSlug() const = 0;
+  virtual const std::vector<ParamID> getParamIDs() const = 0;
 
-  virtual const std::string getName () const = 0;
+  double getParam(ParamID param) const { return m_params[param]; }
+  const Params& getParams() const { return m_params; }
+  
+  void setParam(ParamID param, double nativeValue);
+  void setParams(const Params& parameters);
 
-  virtual int getNumParams () const = 0;  
-
-  virtual ParamInfo getParamInfo (int index) const = 0;
-
-  Params getDefaultParams() const;
-
-  const Params& getParams() const
-  {
-    return m_params;
-  }
-
-  double getParam (int paramIndex) const
-  {
-    assert (paramIndex >= 0 && paramIndex <= getNumParams());
-    return m_params[paramIndex];
-  }
-
-  void setParam (int paramIndex, double nativeValue)
-  {
-    assert (paramIndex >= 0 && paramIndex <= getNumParams());
-    m_params[paramIndex] = nativeValue;
-    doSetParams (m_params);
-  }
-
-  int findParamId (int paramId);
-
-  void setParamById (int paramId, double nativeValue);
-
-  void setParams (const Params& parameters)
-  {
-    m_params = parameters;
-    doSetParams (parameters);
-  }
-
-  // This makes a best-effort to pick up the values
-  // of matching parameters from another set. It uses
-  // the ParamID information to make the match.
-  void copyParamsFrom (Dsp::Filter const* other);
-
+  virtual std::string getDefinitionString() const;
+  
   virtual std::vector<PoleZeroPair> getPoleZeros() const = 0;
- 
-  virtual complex_t response (double normalizedFrequency) const = 0;
+  virtual complex_t response(double normalizedFrequency) const = 0;
 
   virtual int getNumChannels() = 0;
-  virtual void reset () = 0;
-  virtual void process (int numSamples, float* data) = 0;
-  virtual void process (int numSamples, double* data) = 0;
+  virtual void reset() = 0;
+  virtual void process(int numSamples, float* data) = 0;
+  virtual void process(int numSamples, double* data) = 0;
 
 protected:
-  virtual void doSetParams (const Params& parameters) = 0;
+  virtual void doSetParams(const Params& parameters) = 0;
 
 private:
   Params m_params;
@@ -132,41 +106,24 @@ template <class DesignClass>
 class FilterDesignBase : public Filter
 {
 public:
-  Kind getKind () const
+  Kind getKind() const
   {
-    return m_design.getKind ();
+    return m_design.getKind();
   }
 
-  const std::string getName () const
+  const std::string getName() const
   {
-    return m_design.getName ();
+    return m_design.getName();
   }
-
-  int getNumParams () const
+  
+  const std::string getSlug() const
   {
-    return DesignClass::NumParams;
+    return m_design.getSlug();
   }
-
-  Params getDefaultParams() const
+  
+  const std::vector<ParamID> getParamIDs() const
   {
-    return m_design.getDefaultParams();
-  }
-
-  ParamInfo getParamInfo (int index) const
-  {
-    switch (index)
-    {
-    case 0: return m_design.getParamInfo_0 ();
-    case 1: return m_design.getParamInfo_1 ();
-    case 2: return m_design.getParamInfo_2 ();
-    case 3: return m_design.getParamInfo_3 ();
-    case 4: return m_design.getParamInfo_4 ();
-    case 5: return m_design.getParamInfo_5 ();
-    case 6: return m_design.getParamInfo_6 ();
-    case 7: return m_design.getParamInfo_7 ();
-    };
-
-    return ParamInfo();
+    return m_design.getParamIDs();
   }
 
   std::vector<PoleZeroPair> getPoleZeros() const
@@ -174,15 +131,15 @@ public:
     return m_design.getPoleZeros();
   }
  
-  complex_t response (double normalizedFrequency) const
+  complex_t response(double normalizedFrequency) const
   {
-    return m_design.response (normalizedFrequency);
+    return m_design.response(normalizedFrequency);
   }
 
 protected:
-  void doSetParams (const Params& parameters)
+  void doSetParams(const Params& parameters)
   {
-    m_design.setParams (parameters);
+    m_design.setParams(parameters);
   }
 
 protected:
@@ -197,7 +154,7 @@ template <class DesignClass,
 class FilterDesign : public FilterDesignBase <DesignClass>
 {
 public:
-  FilterDesign ()
+  FilterDesign()
   {
   }
 
@@ -206,18 +163,18 @@ public:
     return Channels;
   }
 
-  void reset ()
+  void reset()
   {
     m_state.reset();
   }
 
-  void process (int numSamples, float* data)
+  void process(int numSamples, float* data)
   {
     m_state.process (numSamples, data,
                      FilterDesignBase<DesignClass>::m_design);
   }
 
-  void process (int numSamples, double* data)
+  void process(int numSamples, double* data)
   {
     m_state.process (numSamples, data,
                      FilterDesignBase<DesignClass>::m_design);
@@ -248,13 +205,13 @@ public:
     return Channels;
   }
 
-  void reset ()
+  void reset()
   {
     m_state.reset();
   }
 
   template <typename Sample>
-  void process (int numSamples, Sample* data)
+  void process(int numSamples, Sample* data)
   {
     m_state.process (numSamples, data, *((FilterClass*)this));
   }

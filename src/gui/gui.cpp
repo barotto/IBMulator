@@ -40,6 +40,7 @@
 #include "windows/debugtools.h"
 #include "windows/status.h"
 #include "windows/printer_control.h"
+#include "windows/mixer_control.h"
 #include "windows/shader_parameters.h"
 
 #include "capture/capture.h"
@@ -87,6 +88,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	GUI::ms_event_funcs = {
 	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
 	{ ProgramEvent::FuncName::FUNC_SHOW_OPTIONS,         &GUI::pevt_func_show_options         },
+	{ ProgramEvent::FuncName::FUNC_TOGGLE_MIXER,         &GUI::pevt_func_toggle_mixer         },
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
@@ -109,7 +111,8 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED,            &GUI::pevt_func_sys_speed            },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
 	{ ProgramEvent::FuncName::FUNC_SWITCH_KEYMAPS,       &GUI::pevt_func_switch_keymaps       },
-	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 }
+	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 },
+	{ ProgramEvent::FuncName::FUNC_RELOAD_RCSS,          &GUI::pevt_func_reload_rcss          },
 };
 
 GUI::GUI()
@@ -326,7 +329,7 @@ void GUI::load_keymap(const std::string &_filename)
 	}
 }
 
-void GUI::config_changed(bool _startup)
+void GUI::config_changed(bool _startup) noexcept
 {
 	m_windows.config_changed(_startup);
 
@@ -2098,6 +2101,8 @@ void GUI::update(uint64_t _current_time)
 		}
 		SDL_SetWindowTitle(m_SDL_window, curr_title.c_str());
 	}
+
+	m_windows.update_after();
 }
 
 void GUI::shutdown_SDL()
@@ -2261,6 +2266,11 @@ bool GUI::are_windows_visible()
 void GUI::show_options_window()
 {
 	m_windows.show_options();
+}
+
+void GUI::toggle_mixer_control()
+{
+	m_windows.toggle_mixer();
 }
 
 void GUI::toggle_dbg_windows()
@@ -2446,6 +2456,15 @@ void GUI::pevt_func_show_options(const ProgramEvent::Func&, EventPhase _phase)
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Show options window func event\n");
 	show_options_window();
+}
+
+void GUI::pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Toggle mixer control func event\n");
+	toggle_mixer_control();
 }
 
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2772,6 +2791,14 @@ void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)
 	SDL_PushEvent(&sdlevent);
 }
 
+void GUI::pevt_func_reload_rcss(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "Reload RCSS func event\n");
+	m_windows.reload_rcss();
+}
 
 class SysDbgMessage : public Logdev
 {
@@ -2833,6 +2860,8 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 		options_wnd = std::make_unique<ShaderParameters>(_gui, renderer);
 	}
 
+	mixer_ctrl = std::make_unique<MixerControl>(_gui, _mixer);
+
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
 
@@ -2865,6 +2894,7 @@ void GUI::WindowManager::config_changed(bool _startup)
 		status->config_changed(_startup);
 	}
 	dbgtools->config_changed(_startup);
+	mixer_ctrl->config_changed(_startup);
 }
 
 void GUI::WindowManager::show_ifc_message(const char* _mex)
@@ -2905,6 +2935,10 @@ void GUI::WindowManager::update(uint64_t _current_time)
 		options_wnd->update();
 	}
 
+	if(mixer_ctrl->is_visible()) {
+		mixer_ctrl->update();
+	}
+
 	if(debug_wnds) {
 		dbgtools->update();
 	}
@@ -2930,6 +2964,34 @@ void GUI::WindowManager::update(uint64_t _current_time)
 		}
 	}
 	revert_focus = nullptr;
+}
+
+void GUI::WindowManager::update_after()
+{
+	// called after the Rml::Context::Update()
+	// should be used to update the DOM during event callbacks
+
+	interface->update_after();
+
+	if(options_wnd) {
+		options_wnd->update_after();
+	}
+
+	if(mixer_ctrl) {
+		mixer_ctrl->update_after();
+	}
+
+	if(debug_wnds) {
+		dbgtools->update_after();
+	}
+
+	if(status) {
+		status->update_after();
+	}
+
+	if(printer_ctrl) {
+		printer_ctrl->update_after();
+	}
 }
 
 void GUI::WindowManager::update_window_size(int _w, int _h)
@@ -2969,6 +3031,15 @@ void GUI::WindowManager::show_options()
 {
 	if(options_wnd && !options_wnd->is_visible()) {
 		options_wnd->show();
+	}
+}
+
+void GUI::WindowManager::toggle_mixer()
+{
+	if(!mixer_ctrl->is_visible()) {
+		mixer_ctrl->show();
+	} else {
+		mixer_ctrl->hide();
 	}
 }
 
@@ -3076,6 +3147,13 @@ void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
 	}
 	m_docs.push_back(_doc);
 	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %u\n", static_cast<unsigned>(m_docs.size()));
+}
+
+void GUI::WindowManager::reload_rcss()
+{
+	for(auto doc : m_docs) {
+		doc->ReloadStyleSheet();
+	}
 }
 
 void GUI::WindowManager::shutdown()

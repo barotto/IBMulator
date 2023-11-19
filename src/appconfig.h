@@ -48,6 +48,9 @@ enum ConfigVisibility {
 
 class AppConfig : public INIFile
 {
+public:
+	using ConfigPair = std::pair<std::string, std::string>;
+
 private:
 	std::string m_user_home;
 	std::string m_cfg_home;
@@ -250,11 +253,15 @@ public:
 
 #define PS1AUDIO_SECTION        "ps1audio"
 #define PS1AUDIO_ENABLED        "enabled"
-#define PS1AUDIO_RATE           "rate"
-#define PS1AUDIO_FILTERS        "filters"
-#define PS1AUDIO_VOLUME         "volume"
-#define PS1AUDIO_REVERB         "reverb"
-#define PS1AUDIO_CHORUS         "chorus"
+#define PS1AUDIO_PSG_RATE       "psg_rate"
+#define PS1AUDIO_PSG_FILTERS    "psg_filters"
+#define PS1AUDIO_PSG_VOLUME     "psg_volume"
+#define PS1AUDIO_PSG_REVERB     "psg_reverb"
+#define PS1AUDIO_PSG_CHORUS     "psg_chorus"
+#define PS1AUDIO_DAC_FILTERS    "dac_filters"
+#define PS1AUDIO_DAC_VOLUME     "dac_volume"
+#define PS1AUDIO_DAC_REVERB     "dac_reverb"
+#define PS1AUDIO_DAC_CHORUS     "dac_chorus"
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"

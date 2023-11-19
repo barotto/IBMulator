@@ -149,15 +149,85 @@ Rml::Element * Window::get_element(const std::string &_id)
 	return el;
 }
 
+void Window::register_lazy_update_fn(std::function<void()> _fn)
+{
+	m_lazy_update_fn.push_back(_fn);
+}
+
+void Window::update_after()
+{
+	for(auto & fn : m_lazy_update_fn) {
+		fn();
+	}
+	m_lazy_update_fn.clear();
+}
+
+void Window::register_target_cb(Rml::Element *_target, const std::string &_event_type, TargetCbFn _fn)
+{
+	assert(_target);
+	if(_target->GetId().empty()) {
+		throw std::runtime_error("cannot listen for events on an element without ID");
+	}
+	PDEBUGF(LOG_V2, LOG_GUI, "Registering target callback on '%s', type '%s'\n",
+					_target->GetId().c_str(), _event_type.c_str());
+	register_target_cb(_target, _target->GetId(), _event_type, _fn);
+}
+
+void Window::register_target_cb(Rml::Element *_target, const std::string &_id, const std::string &_event_type, TargetCbFn _fn)
+{
+	assert(_target);
+	_target->AddEventListener(_event_type, this);
+	auto key = event_map_key_t(_id, _event_type);
+	m_target_cb.funcs[key] = _fn;
+	m_target_cb.elems[_target].insert(key);
+}
+
+void Window::unregister_target_cb(Rml::Element *_target)
+{
+	for(auto & fk : m_target_cb.elems[_target]) {
+		m_target_cb.funcs.erase(fk);
+	}
+	m_target_cb.elems.erase(_target);
+}
+
 void Window::ProcessEvent(Rml::Event &_event)
 {
 	Rml::Element *el = _event.GetTargetElement();
-	std::string el_str = el->GetId();
-	std::string fn_el_str = el_str;
+	std::string elid = el->GetId();
+	std::string fn_elid = elid;
 	const std::string &type = _event.GetType();
+
+	if(!m_handlers_enabled) {
+		PDEBUGF(LOG_V5, LOG_GUI, "RmlUi Event '%s' on '%s' ignored: event handling disabled\n",
+				_event.GetType().c_str(), el->GetId().c_str());
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "RmlUi Event '%s' on '%s'", type.c_str(), elid.c_str());
+
+	auto key = event_map_key_t(el->GetId(), type);
+
+	auto target_cb = m_target_cb.funcs.find(key);
+	if(target_cb == m_target_cb.funcs.end()) {
+		Rml::Element *parent = el->GetParentNode();
+		while(parent) {
+			target_cb = m_target_cb.funcs.find(event_map_key_t(parent->GetId(), type));
+			if(target_cb != m_target_cb.funcs.end()) {
+				break;
+			}
+			parent = parent->GetParentNode();
+		}
+	}
+	if(target_cb != m_target_cb.funcs.end()) {
+		PDEBUGF(LOG_V1, LOG_GUI, " (target cb: '%s')\n", target_cb->first.first.c_str());
+		if(target_cb->second(_event)) {
+			_event.StopImmediatePropagation();
+		}
+		return;
+	}
+
 	event_map_t & evtmap = get_event_map();
-	auto hit = evtmap.find( event_map_key_t(el->GetId(),type) );
-	PDEBUGF(LOG_V1, LOG_GUI, "RmlUi Event '%s' on '%s'", type.c_str(), el_str.c_str());
+	auto hit = evtmap.find(key);
+
 	event_handler_t fn = nullptr;
 	if(hit != evtmap.end()) {
 		fn = hit->second.handler;
@@ -172,7 +242,7 @@ void Window::ProcessEvent(Rml::Event &_event)
 				type
 			));
 			if(hit != evtmap.end() && !hit->second.target) {
-				fn_el_str = parent->GetId();
+				fn_elid = parent->GetId();
 				fn = hit->second.handler;
 				break;
 			}
@@ -181,17 +251,27 @@ void Window::ProcessEvent(Rml::Event &_event)
 	}
 	if(!fn) {
 		hit = evtmap.find(event_map_key_t("*", type));
-		fn_el_str = "*";
+		fn_elid = "*";
 		if(hit != evtmap.end()) {
 			fn = hit->second.handler;
 		}
 	}
+	
 	if(fn) {
-		PDEBUGF(LOG_V1, LOG_GUI, " ('%s')\n", fn_el_str.c_str());
-		(this->*fn)(_event);
+		if(!hit->second.enabled) {
+			PDEBUGF(LOG_V1, LOG_GUI, " ('%s') [DISABLED]\n", fn_elid.c_str());
+		} else {
+			PDEBUGF(LOG_V1, LOG_GUI, " ('%s')\n", fn_elid.c_str());
+			(this->*fn)(_event);
+		}
 	} else {
 		PDEBUGF(LOG_V1, LOG_GUI, "\n");
 	}
+}
+
+void Window::OnAttach(Rml::Element* _element)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "Element '%s' attached to listener '%s'\n", _element->GetId().c_str(), m_rml_docfile.c_str());
 }
 
 Rml::Input::KeyIdentifier Window::get_key_identifier(Rml::Event &_ev)

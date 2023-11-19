@@ -76,6 +76,7 @@
 # Valid FUNC_* functions are:
 #  FUNC_GUI_MODE_ACTION(x)   : GUI Mode action x (see README "Default key bindings")
 #  FUNC_SHOW_OPTIONS         : open the options window
+#  FUNC_TOGGLE_MIXER         : show / hide the mixer control window
 #  FUNC_TOGGLE_POWER         : toggle the machine's power button
 #  FUNC_TOGGLE_PAUSE         : pause / resume emulation
 #  FUNC_TOGGLE_STATUS_IND    : show / hide the status indicators
@@ -171,6 +172,7 @@ JOY_1_BUTTON_1 = JOY_B_BUTTON_2
 KMOD_CTRL + SDLK_F1     = FUNC_GUI_MODE_ACTION(1)
 KMOD_SHIFT + SDLK_F1    = FUNC_GUI_MODE_ACTION(2)
 KMOD_CTRL + SDLK_F2     = FUNC_SHOW_OPTIONS
+KMOD_SHIFT + SDLK_F2    = FUNC_TOGGLE_MIXER
 KMOD_CTRL + SDLK_F3     = FUNC_TOGGLE_POWER
 KMOD_SHIFT + SDLK_F4    = FUNC_TOGGLE_STATUS_IND
 KMOD_CTRL + SDLK_F4     = FUNC_TOGGLE_DBG_WND

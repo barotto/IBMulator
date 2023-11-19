@@ -14,6 +14,11 @@ input.radio
 	background-color: #FFFFFFA0;
 }
 
+input.checkbox
+{
+	width: auto;
+}
+
 button span,
 input.radio span
 {
@@ -61,7 +66,8 @@ button.text
 
 button.romshell,
 input.romshell,
-select.romshell selectvalue
+select.romshell selectvalue,
+tab.romshell
 {
 	display: inline-block;
 	font-family: "Nouveau IBM";
@@ -83,6 +89,7 @@ select.romshell
 
 select.romshell selectvalue
 {
+	display: block;
 	padding-left: 6dp;
 	height: 21dp;
 }
@@ -98,10 +105,15 @@ input.radio.romshell
 	width: 10dp;
 }
 
+input.romshell:disabled
+{
+	color: #a0a0a0;
+}
+
 button.romshell.disabled,
 input.radio.romshell:disabled
 {
-	color: #a7a7a7;
+	color: #a0a0a0;
 }
 
 button.romshell btnicon,
@@ -135,12 +147,14 @@ button.romshell.disabled btnicon
 	button-focus-on-r: 236px 138px 8px 46px;
 }
 
-button.romshell
+button.romshell,
+tab.romshell
 {
 	decorator: tiled-horizontal( button-l, button-c, button-r );
 }
 
-button.romshell.active
+button.romshell.active,
+tab.romshell:selected
 {
 	color: #000000;
 	decorator: tiled-horizontal( button-on-l, button-on-c, button-on-r );
@@ -151,14 +165,22 @@ button.romshell.active btnicon
 	image-color: #000000;
 }
 
-button.romshell:focus
+button.romshell:focus,
+tab.romshell:focus
 {
 	decorator: tiled-horizontal( button-focus-l, button-focus-c, button-focus-r );
 }
 
-button.romshell.active:focus
+button.romshell.active:focus,
+tab.romshell:selected:focus
 {
 	decorator: tiled-horizontal( button-focus-on-l, button-focus-on-c, button-focus-on-r );
+}
+
+tab.romshell
+{
+	padding-left: 8dp;
+	padding-right: 6dp;
 }
 
 @spritesheet
@@ -217,7 +239,7 @@ input.radio.romshell:focus:checked
 
 input.checkbox.romshell
 {
-	padding-left: 20dp;
+	padding-left: 22dp;
 	decorator: tiled-horizontal( check-l, check-c, check-r );
 }
 
@@ -228,7 +250,7 @@ input.checkbox.romshell:checked
 
 input.checkbox.romshell:focus
 {
-	padding-left: 20dp;
+	padding-left: 22dp;
 	decorator: tiled-horizontal( check-focus-l, check-focus-c, check-focus-r );
 }
 
@@ -361,12 +383,19 @@ scrollbarvertical
 {
 	src: images/romshell_scroller.png;
 
-	sliderbar-t: 0px 66px 38px 4px;
-	sliderbar-c: 0px 72px 38px 4px;
-	sliderbar-b: 0px 110px 38px 8px;
+	sliderbar-v-t: 0px 66px 38px 4px;
+	sliderbar-v-c: 0px 72px 38px 4px;
+	sliderbar-v-b: 0px 110px 38px 8px;
 
-	sliderdec: 0px 0px 38px 38px;
-	sliderinc: 0px 144px 38px 38px;
+	sliderdec-v: 0px 0px 38px 38px;
+	sliderinc-v: 0px 144px 38px 38px;
+
+	sliderbar-h-l: 38px 0px 10px 38px;
+	sliderbar-h-c: 47px 0px 2px 38px;
+	sliderbar-h-r: 72px 0px 4px 38px;
+
+	sliderdec-h: 38px 0px 38px 38px;
+	sliderinc-h: 38px 144px 38px 38px;
 }
 
 scrollbarvertical slidertrack
@@ -379,19 +408,52 @@ scrollbarvertical sliderbar
 	margin-left: 0px;
 	width: 19dp;
 	min-height: 19dp;
-	decorator: tiled-vertical(sliderbar-t, sliderbar-c, sliderbar-b);
+	decorator: tiled-vertical(sliderbar-v-t, sliderbar-v-c, sliderbar-v-b);
 }
 
 scrollbarvertical sliderarrowdec
 {
 	width: 19dp;
 	height: 19dp;
-	decorator: image(sliderdec);
+	decorator: image(sliderdec-v);
 }
 
 scrollbarvertical sliderarrowinc
 {
 	width: 19dp;
 	height: 19dp;
-	decorator: image(sliderinc);
+	decorator: image(sliderinc-v);
 }
+
+scrollbarhorizontal
+{
+	height: 19dp;
+	z-index: 99;
+}
+
+scrollbarhorizontal slidertrack
+{
+	background-color: #00000030;
+}
+
+scrollbarhorizontal sliderbar
+{
+	height: 19dp;
+	min-width: 19dp;
+	decorator: tiled-horizontal(sliderbar-h-l, sliderbar-h-c, sliderbar-h-r);
+}
+
+scrollbarhorizontal sliderarrowdec
+{
+	width: 19dp;
+	height: 19dp;
+	decorator: image(sliderdec-h);
+}
+
+scrollbarhorizontal sliderarrowinc
+{
+	width: 19dp;
+	height: 19dp;
+	decorator: image(sliderinc-h);
+}
+

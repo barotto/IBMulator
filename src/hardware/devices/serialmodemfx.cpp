@@ -21,6 +21,7 @@
 #include "program.h"
 #include "machine.h"
 #include "serialmodemfx.h"
+#include "hardware/devices/pcspeaker.h"
 #include <cfloat>
 
 
@@ -40,19 +41,13 @@ void SerialModemFX::install(unsigned _baud_rate)
 		m_channel = g_mixer.register_channel(std::bind(&SerialModemFX::create_samples, this, _1, _2, _3),
 				"Serial Modem", MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 		m_channel->set_in_spec(spec);
-
-		m_channel->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM));
-		std::string filters = g_program.config().get_string(SOUNDFX_SECTION, SOUNDFX_MODEM_FILTERS, "");
-		if(!filters.empty()) {
-			if(filters == "auto") {
-				filters = "LowPass,order=5,cutoff=3000|HighPass,order=5,cutoff=600";
-			}
-			if(!filters.empty()) {
-				PINFOF(LOG_V1, LOG_MIXER, "MODEM: using speaker filters: %s\n", filters.c_str());
-				m_channel->set_filters(filters);
-			}
-		}
-		m_channel->set_balance(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_MODEM_BALANCE));
+		m_channel->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
+		m_channel->add_autoval_cb(MixerChannel::ConfigParameter::Filter, std::bind(&SerialModemFX::auto_filters_cb, this));
+		m_channel->register_config_map({
+			{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_MODEM }},
+			{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_MODEM_BALANCE }},
+			{ MixerChannel::ConfigParameter::Filter, { SOUNDFX_SECTION, SOUNDFX_MODEM_FILTERS }}
+		});
 	}
 
 	if(ms_tones.empty()) {
@@ -110,6 +105,13 @@ void SerialModemFX::install(unsigned _baud_rate)
 				throw std::runtime_error("invalid audio samples");
 			}
 		}
+	}
+}
+
+void SerialModemFX::auto_filters_cb()
+{
+	if(m_channel->is_filter_auto()) {
+		m_channel->set_filter("LowPass,order=5,fc=3000|HighPass,order=5,fc=600");
 	}
 }
 
@@ -234,7 +236,7 @@ void SerialModemFX::set_volume(int level)
 	if(level == 1) volume = .30f;
 	if(level == 2) volume = .60f;
 
-	m_channel->set_volume(modem * volume);
+	m_channel->set_volume_master(modem * volume);
 }
 
 void SerialModemFX::enable(bool _enabled)

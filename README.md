@@ -391,36 +391,31 @@ for the `[drives]:hdd_commit` and `[drives]:fdd_commit` ini settings.
 
 ### Audio
 
+Audio settings like volumes, effects, and filters are loaded from the
+ibmulator.ini file and can be set using a GUI window (default key SHIFT+F2).
+
 #### Sound Cards
 
 The sound cards currently emulated are:
 
+* PC Speaker
 * IBM PS/1 Audio Card Option
 * AdLib Music Synthesizer Card
 * Creative Sound Blaster 2.0 (DSP 2.01)
 * Creative Sound Blaster Pro (DSP 3.00)
 * Creative Sound Blaster Pro 2 (DSP 3.02)
 
-| Card   | Music                 | DAC           | IRQ   | DMA   | I/O base           |
-| ------ | --------------------- | ------------- | ----- | ----- | ------------------ |
-| PS/1   | PSG 3-voice + noise   | 8-bit, mono   | 7     | no    | 0x200              |
-| AdLib  | FM YM3812 (OPL2)      | no            | no    | no    | 0x388              |
-| SB2    | FM YM3812 (OPL2)      | 8-bit, mono   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
-| SBPro  | FM 2 x YM3812 (OPL2)  | 8-bit, stereo | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
-| SBPro2 | FM YMF262 (OPL3)      | 8-bit, stereo | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| Card   | Music                 | DAC             | IRQ   | DMA   | I/O base           |
+| ------ | --------------------- | --------------- | ----- | ----- | ------------------ |
+| PCSpkr | Square Wave Generator | PWM 6-bit, mono | no    | no    | no                 |
+| PS/1   | PSG 3-voice + noise   | 8-bit, mono     | 7     | no    | 0x200              |
+| AdLib  | FM YM3812 (OPL2)      | no              | no    | no    | 0x388              |
+| SB2    | FM YM3812 (OPL2)      | 8-bit, mono     | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SBPro  | FM YM3812 (OPL2) x 2  | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SBPro2 | FM YMF262 (OPL3)      | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
 
 All Sound Blaster cards are compatible with and replace the AdLib card, which
 cannot be used when a SB is installed.
-
-Default `auto` values in ibmulator.ini:
-
-| Card   | opl_filter                   | dac_filter                      | dac_resampling |
-| ------ | ---------------------------- | ------------------------------- | -------------- |
-| SB2    | LowPass,order=1,cutoff=12000 | none                            | linear         |
-| SBPro  | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
-| SBPro2 | LowPass,order=1,cutoff=8000  | LowPass,order=2,cutoff=3200 (*) | linear         |
-
-\* the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
 
 #### Reverb, Chorus, Crossfeed
 
@@ -430,26 +425,18 @@ setting.
 
 Reverb settings are enabled with one of the following preset values:
 
-* `tiny`: ideal for small integrated speakers (eg. PC speaker and PS/1 Audio).
+* `tiny`: ideal for small integrated speakers (eg. PC Speaker and PS/1 Audio).
 * `small`: ideal for synth channels (eg. OPL).
 * `medium`: a medium sized room.
 * `large`: a large hall.
 * `huge`: stronger variant of the `large` preset.
 * `on`: same as `medium`
 
-On real machines the **PS/1 Audio Card** was wired to the PC speaker inside the
+On real hardware the **PS/1 Audio Card** is wired to the PC Speaker inside the
 monitor unit. For this reason the PS/1 audio channel reverb setting also have
 the following value available:
 
 * `auto`: use the same value used in `[pcspeaker]:reverb`.
-
-The level of reverb is automatically set depending on the preset and the type of
-the audio channel. If you want to adjust it, specify a value between 0 and 100
-after the preset name, like so:
-
-```
-reverb = large 80
-```
 
 All audio cards' channels can also be configured with a **chorus effect**.
 
@@ -461,10 +448,6 @@ lots of white noise.
  * `strong`: obvious and upfront chorus effect.
  * `heavy`: over-the-top chorus effect.
  * `on`: same as `normal`
-
-The PS/1 audio channel reverb setting also have the following value available:
-
-* `auto`: use the same value used in `[pcspeaker]:chorus`.
 
 Stereo audio card sources can be configured with **crossfeed**, designed to
 improve headphone listening. This is implemented using the Bauer
@@ -485,50 +468,64 @@ stereophonic-to-binaural DSP (bs2b), and so it offers its presets:
 
 Sound cards' channels can be filtered with IIR filters.
 
-A filter is defined by a string containing the filter name followed by its
-parameters separated by commas, like so:
+A filter is either a named preset or a definition string.
+
+There's only 1 preset currently available:
+
+ * `pc-speaker`: can be used to simulate the sound of a typical PC Speaker and
+   is the same as `LowPass,order=5,fc=5000|HighPass,order=5,fc=500`
+ 
+The `auto` value can also be used for the **PS/1 Audio Card** and
+**Sound Blaster** channels.
+
+For the PS/1 Audio Card, because on real hardware it's wired to the PC Speaker,
+the `auto` value will force the same filter defined in `[pcspeaker]:filters`.
+
+For the Sound Blaster cards, `auto` values are as follows:
+
+| Card   | opl_filter               | dac_filter                  |
+| ------ | ------------------------ | --------------------------- |
+| SB2    | LowPass,order=1,fc=12000 | none                        |
+| SBPro  | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
+| SBPro2 | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
+
+(\*) the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
+
+A definition string is the filter name followed by its parameters separated by
+commas, like so:
 ```
-LowPass,order=5,cutoff=5000
+LowPass,order=2,fc=3200
 ```
 Multiple filters can be concatenated with the '|' character, like so:
 ```
-LowPass,order=3,cutoff=4000|HighPass,order=10,cutoff=500
+LowPass,order=3,fc=4000|HighPass,order=10,fc=500
 ```
+
 A parameter's value is specified by an integer or real number. This is the list
 of available parameters:
 
-| Parameter name | Description           |
-| -------------- | --------------------- |
-| order          | Filter's order (1-50) |
-| cutoff         | Cutoff frequency (Hz) |
-| center         | Center frequency (Hz) |
-| bw             | Bandwidth (Hz)        |
-| gain           | Gain (dB)             |
+| Parameter name | Description                  |
+| -------------- | ---------------------------- |
+| order          | Filter's order (1-50)        |
+| fc             | Center/Cutoff frequency (Hz) |
+| bw             | Bandwidth (Hz)               |
+| gain           | Gain (dB)                    |
 
 This is the list of available filters with their accepted parameters:
 
-| Filter name | Parameters               |
-| ----------- | -------------------------|
-| LowPass     | order, cutoff            |
-| HighPass    | order, cutoff            |
-| BandPass    | order, center, bw        |
-| BandStop    | order, center, bw        |
-| LowShelf    | order, cutoff, gain      |
-| HighShelf   | order, cutoff, gain      |
-| BandShelf   | order, center, bw, gain  |
+| Filter name | Parameters           |
+| ----------- | ---------------------|
+| LowPass     | order, fc            |
+| HighPass    | order, fc            |
+| BandPass    | order, fc, bw        |
+| BandStop    | order, fc, bw        |
+| LowShelf    | order, fc, gain      |
+| HighShelf   | order, fc, gain      |
+| BandShelf   | order, fc, bw, gain  |
 
 The implemented DSP filter type is the Butterworth filter, a description of
 which can be found on
 [Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
-
-A possible filter combination to emulate the response of the typical PC speaker
-could be:
-```
-LowPass,order=5,cutoff=5000|HighPass,order=5,cutoff=500
-```
-
-The most effective values depend on your particular audio setup so you'll have
-to experiment.
 
 ### Joystick
 
@@ -1000,6 +997,7 @@ their mode of operation is not `default` and they are also used in combos (e.g.
 Valid `FUNC_* ` functions are:
 * `FUNC_GUI_MODE_ACTION(x)`: GUI Mode action number x (see below)
 * `FUNC_SHOW_OPTIONS`: open the options window
+* `FUNC_TOGGLE_MIXER`: show/hide the mixer control window
 * `FUNC_TOGGLE_POWER`: toggle the machine's power button
 * `FUNC_TOGGLE_PAUSE`: pause / resume emulation
 * `FUNC_TOGGLE_STATUS_IND`: show / hide the status indicators
@@ -1085,6 +1083,7 @@ These are the default key bindings defined in the `keymap.map` file:
     * in Normal and Compact modes: switch between Normal and Compact modes
     * in Realistic mode: switch between bright and dark styles
 * <kbd>CTRL</kbd>+<kbd>F2</kbd>     : open the shader parameters window
+* <kbd>SHIFT</kbd>+<kbd>F2</kbd>    : show/hide the mixer control window
 * <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
 * <kbd>SHIFT</kbd>+<kbd>F4</kbd>    : show/hide the status indicators
 * <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows

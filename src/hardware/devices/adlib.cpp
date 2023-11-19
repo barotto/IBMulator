@@ -62,7 +62,22 @@ void AdLib::install()
 			}
 		}
 	);
-	
+
+	Synth::channel()->set_features(
+		MixerChannel::HasVolume |
+		MixerChannel::HasBalance |
+		MixerChannel::HasReverb |
+		MixerChannel::HasChorus |
+		MixerChannel::HasFilter
+	);
+
+	Synth::channel()->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { ADLIB_SECTION, ADLIB_VOLUME }},
+		{ MixerChannel::ConfigParameter::Reverb, { ADLIB_SECTION, ADLIB_REVERB }},
+		{ MixerChannel::ConfigParameter::Chorus, { ADLIB_SECTION, ADLIB_CHORUS }},
+		{ MixerChannel::ConfigParameter::Filter, { ADLIB_SECTION, ADLIB_FILTERS }},
+	});
+
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s\n", name());
 }
 
@@ -87,17 +102,7 @@ void AdLib::config_changed()
 {
 	unsigned rate = clamp(g_program.config().get_int(ADLIB_SECTION, ADLIB_RATE),
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
-	float volume = clamp(g_program.config().get_real(ADLIB_SECTION, ADLIB_VOLUME),
-			0.0, 10.0);
-	std::string filters = g_program.config().get_string(ADLIB_SECTION, ADLIB_FILTERS, "");
-	
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)}, volume, filters);
-
-	std::string reverb = g_program.config().get_string(ADLIB_SECTION, ADLIB_REVERB, "");
-	Synth::channel()->set_reverb(reverb);
-
-	std::string chorus = g_program.config().get_string(ADLIB_SECTION, ADLIB_CHORUS, "");
-	Synth::channel()->set_chorus(chorus);
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)});
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

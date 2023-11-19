@@ -50,7 +50,7 @@ class Mixer
 private:
 	RingBuffer m_out_buffer; // the SDL multithread-safe output buffer
 	std::vector<float> m_out_mix;
-	std::vector<float> m_ch_mix[MixerChannel::Category::MAX];
+	std::vector<float> m_ch_mix[MixerChannel::CategoryCount];
 	size_t m_mix_bufsize_fr;
 	size_t m_mix_bufsize_sa;
 	size_t m_mix_bufsize_by;
@@ -79,8 +79,17 @@ private:
 
 	std::map<std::string, std::shared_ptr<MixerChannel>> m_mix_channels;
 
-	float m_global_volume;
-	std::array<float,3> m_channels_volume;
+	struct Volume {
+		std::atomic<float> master = 1.f;
+		std::atomic<float> category[MixerChannel::CategoryCount] = { 1.f, 1.f, 1.f };
+		std::atomic<bool> muted = false;
+		std::atomic<bool> muted_category[MixerChannel::CategoryCount] = { false, false, false };
+	} m_volume;
+	
+	struct Reverb {
+		MixerChannel::ReverbParams params = { MixerChannel::ReverbPreset::None, -1 };
+		bool enabled = false;
+	} m_reverb[MixerChannel::CategoryCount];
 
 	std::array<AudioSinkHandler,2> m_sinks;
 	std::mutex m_sinks_mutex;
@@ -96,13 +105,15 @@ public:
 	~Mixer();
 
 	void init(Machine *);
-	void config_changed() noexcept;
+	void config_changed(bool _launch = false) noexcept;
 	void start();
 	void shutdown();
 
 	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
 			const std::string &_name, MixerChannel::Category, MixerChannel::AudioType);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
+
+	const SDL_AudioSpec & audio_spec() const { return m_audio_spec; }
 
 	int register_sink(AudioSinkHandler _sink);
 	void unregister_sink(int _id);
@@ -116,14 +127,31 @@ public:
 	size_t get_buffer_read_avail_fr() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
 
-	template <int Channels>
-	static MixerFilterChain create_filters(double _rate, std::string _filters_def);
-	
 	bool is_paused() const { return m_paused; }
 	bool is_recording() const { return m_audiocards_capture; }
 
+	std::shared_ptr<MixerChannel> get_channel(const char *_name);
+	std::vector<std::shared_ptr<MixerChannel>> get_channels();
+	std::vector<std::shared_ptr<MixerChannel>> get_channels(MixerChannel::Category _cat);
+
 	MIDI * midi() { return m_midi.get(); }
-	
+
+	float volume_master() const { return m_volume.master; }
+	float volume_cat(MixerChannel::Category _cat) const { return m_volume.category[_cat]; }
+	void set_volume_master(float _level) { m_volume.master = _level; }
+	void set_volume_cat(MixerChannel::Category _cat, float _level) { m_volume.category[_cat] = _level; }
+	void set_muted(bool _muted) { m_volume.muted = _muted; }
+	void set_muted_cat(MixerChannel::Category _cat, bool _muted) { m_volume.muted_category[_cat] = _muted; }
+	bool is_muted() const { return m_volume.muted; }
+
+	const MixerChannel::ReverbParams & reverb(MixerChannel::Category _cat) const { return m_reverb[_cat].params; }
+	float reverb_gain(MixerChannel::Category _cat) const { return m_reverb[_cat].params.gain; }
+	void set_reverb(MixerChannel::Category _cat, std::string _preset);
+	void set_reverb(MixerChannel::Category _cat, const MixerChannel::ReverbParams &);
+	void set_reverb_gain(MixerChannel::Category _cat, float _gain);
+	bool is_reverb_enabled(MixerChannel::Category _cat) const { return m_reverb[_cat].enabled; }
+	void enable_reverb(MixerChannel::Category _cat, bool _enable);
+
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_pause();
@@ -136,8 +164,6 @@ public:
 	void cmd_start_capture();
 	void cmd_stop_capture();
 	void cmd_toggle_capture();
-	void cmd_set_global_volume(float _volume);
-	void cmd_set_category_volume(MixerChannel::Category _cat, float _volume);
 
 private:
 	void main_loop();
@@ -154,14 +180,13 @@ private:
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 	bool create_silence_samples(uint64_t _time_span_us, bool, bool);
 	void stop_midi();
-	
-public:
-	// debugging functions, don't use
-	std::vector<std::shared_ptr<MixerChannel>> dbg_get_channels();
+	static constexpr float get_volume_multiplier(float _value) {
+		if(_value > 1.f) {
+			return (exp(_value) - 1.f) / (M_E - 1.f);
+		}
+		return _value;
+	}
 };
 
-
-extern template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<1>(double _rate, std::string _filters_def);
-extern template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<2>(double _rate, std::string _filters_def);
 
 #endif

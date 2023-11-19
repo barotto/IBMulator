@@ -103,7 +103,7 @@ void MixerState::update()
 void MixerState::config_changed(bool)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "MixerState\n");
-	auto chs = m_mixer->dbg_get_channels();
+	auto chs = m_mixer->get_channels();
 	std::stringstream ss;
 	ss << "<tr><th class=\"normal\">Channels</th>";
 	ss << "<th>in format</th>";

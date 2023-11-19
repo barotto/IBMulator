@@ -70,6 +70,7 @@ class Mixer;
 class Desktop;
 class Status;
 class ShaderParameters;
+class MixerControl;
 class PrinterControl;
 class DebugTools;
 class TextModeInfo;
@@ -241,7 +242,8 @@ protected:
 		std::unique_ptr<Desktop>    desktop;
 		std::unique_ptr<Interface>  interface;
 		std::unique_ptr<Status>     status;
-		std::unique_ptr<ShaderParameters> options_wnd;
+		std::unique_ptr<ShaderParameters> options_wnd; // TODO: ShaderParameters is a placeholder
+		std::unique_ptr<MixerControl> mixer_ctrl;
 		std::unique_ptr<DebugTools> dbgtools;
 		std::unique_ptr<MessageWnd> message_wnd;
 		std::unique_ptr<PrinterControl> printer_ctrl;
@@ -256,12 +258,14 @@ protected:
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void config_changed(bool _startup);
 		void update(uint64_t _current_time);
+		void update_after();
 		void update_window_size(int _w, int _h);
 		void shutdown();
 		void toggle_status();
 		void show_options();
 		void toggle_dbg();
 		void toggle_printer();
+		void toggle_mixer();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();
@@ -269,6 +273,7 @@ protected:
 		void ProcessEvent(Rml::Event &);
 		bool are_visible();
 		void register_document(Rml::ElementDocument *_doc);
+		void reload_rcss();
 		static constexpr Rml::EventId listening_evts[] = {
 			Rml::EventId::Show,
 			Rml::EventId::Hide,
@@ -314,7 +319,7 @@ public:
 	virtual GUIRenderer renderer() const = 0;
 	
 	void init(Machine *_machine, Mixer *_mixer);
-	void config_changed(bool _startup);
+	void config_changed(bool _startup) noexcept;
 	void dispatch_event(const SDL_Event &_event);
 	void update(uint64_t _time);
 	void shutdown();
@@ -340,6 +345,7 @@ public:
 	bool are_windows_visible();
 	void show_options_window();
 	void toggle_dbg_windows();
+	void toggle_mixer_control();
 	void toggle_printer_control();
 	void grab_input(bool _value);
 	bool is_input_grabbed();
@@ -393,6 +399,7 @@ private:
 	
 	void pevt_func_none(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_show_options(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
@@ -416,6 +423,7 @@ private:
 	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_reload_rcss(const ProgramEvent::Func&, EventPhase);
 	
 	void rmlui_mouse_hack();
 };

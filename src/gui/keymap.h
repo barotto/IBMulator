@@ -91,7 +91,8 @@ struct ProgramEvent {
 	enum class FuncName {
 		FUNC_NONE,
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
-		FUNC_SHOW_OPTIONS,         // opens the options window 
+		FUNC_SHOW_OPTIONS,         // opens the options window
+		FUNC_TOGGLE_MIXER,         // show / hide the mixer control window 
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
 		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators
@@ -113,7 +114,8 @@ struct ProgramEvent {
 		FUNC_SYS_SPEED,            // set emulation speed to specified % (2 params: speed,momentary?)
 		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
 		FUNC_SWITCH_KEYMAPS,       // change the active keymap to the next in the keymaps list
-		FUNC_EXIT                  // close program
+		FUNC_EXIT,                 // close program
+		FUNC_RELOAD_RCSS,          // (developing)
 	};
 	
 	enum class CommandName {

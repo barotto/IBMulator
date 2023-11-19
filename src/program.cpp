@@ -291,19 +291,19 @@ void Program::restore_state(
 		m_machine->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
 
-		// we need to pause the syslog because it'll use the GUI otherwise
-		g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
-		ms_cv.wait(restore_lock);
-		m_gui->config_changed(false);
-		m_gui->sig_state_restored();
-		g_syslog.cmd_resume();
-
 		if(sstate->state().m_last_restore) {
 			m_mixer->sig_config_changed(ms_lock, ms_cv);
 			ms_cv.wait(restore_lock);
 
 			m_mixer->cmd_restore_state(sstate->state(), ms_lock, ms_cv);
 			ms_cv.wait(restore_lock);
+
+			// we need to pause the syslog because it'll use the GUI otherwise
+			g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
+			ms_cv.wait(restore_lock);
+			m_gui->config_changed(false);
+			m_gui->sig_state_restored();
+			g_syslog.cmd_resume();
 
 			// mixer resume cmd is issued by the machine
 			m_machine->cmd_resume(false);
@@ -549,7 +549,6 @@ bool Program::initialize(int argc, char** argv)
 	m_mixer->calibrate(m_pacer);
 	try {
 		m_mixer->init(m_machine);
-		m_mixer->config_changed();
 	} catch(...) {
 		// the Machine and Mixer threads are not started yet, but both manage threads that are already working
 		m_machine->shutdown();
@@ -589,6 +588,8 @@ bool Program::initialize(int argc, char** argv)
 		m_mixer->shutdown();
 		throw;
 	}
+
+	m_mixer->config_changed(true);
 	m_gui->config_changed(true);
 
 	m_pacer.set_external_sync(m_gui->vsync_enabled());

@@ -46,6 +46,9 @@ void DriveFX::install(MixerChannel_handler _spin_channel, const char *_spin_name
 	m_channels.seek = g_mixer.register_channel(_seek_channel, _seek_name,
 			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channels.seek->set_in_spec(_spec);
+	
+	m_channels.spin->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
+	m_channels.seek->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
 }
 
 void DriveFX::remove()
@@ -57,7 +60,7 @@ void DriveFX::remove()
 void DriveFX::seek(int _c0, int _c1, int _tot_cyls)
 {
 	assert(_c0>=0 && _c1>=0 && _tot_cyls>0);
-	if((_c0 == _c1) || m_channels.seek->volume()<=FLT_MIN) {
+	if(_c0 == _c1) {
 		return;
 	}
 	SeekEvent event;
@@ -76,12 +79,10 @@ void DriveFX::seek(int _c0, int _c1, int _tot_cyls)
 
 void DriveFX::spin(bool _spinning, bool _change_state)
 {
-	if(m_channels.spin->volume()<=FLT_MIN) {
-		return;
-	}
 	m_spinning = _spinning;
 	m_spin_change = _change_state;
-	if((m_spinning || m_spin_change)) {
+	if(m_spinning || m_spin_change) {
+		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: spinning %s\n", m_channels.spin->name(), _spinning ? "" : "stopped");
 		m_channels.spin->enable(true);
 	}
 }

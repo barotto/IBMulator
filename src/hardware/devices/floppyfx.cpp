@@ -68,31 +68,30 @@ void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 	using namespace std::placeholders;
 	DriveFX::install(
 		std::bind(&FloppyFX::create_spin_samples, this, _1, _2, _3),
-		str_format("Drive %s spin (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
+		str_format("%s: spin (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
 		std::bind(&FloppyFX::create_seek_samples, this, _1, _2, _3),
-		str_format("Drive %s seek (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
+		str_format("%s: seek (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
 		spec
 	);
 
 	if(ms_buffers[m_fdd_type].empty()) {
 		ms_buffers[m_fdd_type] = SoundFX::load_samples(spec, ms_samples[m_fdd_type]);
 	}
+
+	m_channels.seek->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_FDD_SEEK }},
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE }}
+	});
+	m_channels.spin->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_FDD_SPIN }},
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE }}
+	});
 }
 
 void FloppyFX::reset()
 {
 	m_booting = 0;
 	m_snatch = false;
-}
-
-void FloppyFX::config_changed()
-{
-	m_channels.seek->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_SEEK));
-	m_channels.spin->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_SPIN));
-
-	double balance = g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE);
-	m_channels.seek->set_balance(balance);
-	m_channels.spin->set_balance(balance);
 }
 
 void FloppyFX::spin(bool _spinning, bool _change_state)
@@ -147,10 +146,10 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
 			const AudioBuffer *wave;
-			if(_evt.userdata) {
+			if(_evt.userdata == FDD_SEEK_BOOT) {
 				m_channels.seek->play(ms_buffers[m_fdd_type][_evt.userdata], _time_span);
 				m_booting = _evt.time + round(ms_buffers[m_fdd_type][_evt.userdata].duration_us());
-				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu\n",
+				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu us\n",
 						m_channels.seek->name(), m_booting);
 				return;
 			}

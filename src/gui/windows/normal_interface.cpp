@@ -32,6 +32,7 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT  ( "pause",             "click",     NormalInterface::on_pause ),
 	GUI_EVT  ( "save",              "click",     Interface::on_save_state ),
 	GUI_EVT  ( "restore",           "click",     Interface::on_load_state ),
+	GUI_EVT  ( "sound",             "click",     Interface::on_sound ),
 	GUI_EVT  ( "printer",           "click",     Interface::on_printer ),
 	GUI_EVT  ( "exit",              "click",     NormalInterface::on_exit ),
 	GUI_EVT  ( "visibility",        "click",     NormalInterface::on_visibility ),
@@ -152,7 +153,7 @@ void NormalInterface::create()
 	m_screen->renderer()->load_vga_shader_preset(preset_path);
 
 	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
-		get_element("system_control")->SetClass("size_6", true);
+		get_element("system_control")->SetClass("size_7", true);
 	} else {
 		get_element("printer")->SetClass("d-none", true);
 	}

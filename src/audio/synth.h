@@ -64,7 +64,6 @@ private:
 	VGMFile     m_vgm;
 	std::mutex  m_evt_lock;
 	shared_deque<Event> m_events;
-	//AudioBuffer m_buffer;
 	double      m_fr_rem;
 	synthfunc_t m_synthcmd_fn;
 	genfunc_t   m_generate_fn;
@@ -81,8 +80,9 @@ public:
 	void remove();
 	void reset();
 	void power_off();
-	void config_changed(const AudioSpec &_spec, float _volume, std::string _filters);
+	void config_changed(const AudioSpec &_spec);
 	void set_chip(int id, SynthChip *_chip);
+	SynthChip * get_chip(int id);
 	void enable_channel();
 	inline bool is_channel_enabled() {
 		return m_channel->is_enabled();

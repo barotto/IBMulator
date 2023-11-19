@@ -22,6 +22,7 @@
 #include "machine.h"
 #include "program.h"
 #include "realistic_interface.h"
+#include "mixer_control.h"
 #include "utils.h"
 #include <sys/stat.h>
 
@@ -54,8 +55,9 @@ event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT( "brightness_slider", "dragstart", RealisticInterface::on_dragstart ),
 	GUI_EVT( "contrast_slider",   "drag",      RealisticInterface::on_contrast_drag ),
 	GUI_EVT( "contrast_slider",   "dragstart", RealisticInterface::on_dragstart ),
+	GUI_EVT( "class:slider", "dragend", RealisticInterface::on_dragend ),
 	GUI_EVT_T( "sysbkgd",    "dblclick", Interface::on_dblclick ),
-	GUI_EVT_T( "background", "dblclick", Interface::on_dblclick )
+	GUI_EVT_T( "background", "dblclick", Interface::on_dblclick ),
 };
 
 
@@ -373,6 +375,10 @@ void RealisticInterface::update()
 		m_led_power->SetClass("active", false);
 		m_led_power_bloom->SetClass("active", false);
 	}
+	if(!m_is_dragging) {
+		float vol = m_mixer->volume_cat(MixerChannel::AUDIOCARD);
+		set_slider_value(m_volume_slider, m_volume_left_min, vol);
+	}
 }
 
 void RealisticInterface::set_slider_value(Rml::Element *_slider, float _xleft, float _value)
@@ -476,5 +482,10 @@ void RealisticInterface::on_dragstart(Rml::Event &_event)
 	m_drag_start_x = _event.GetParameter("mouse_x",0);
 	m_drag_start_left = slider->GetProperty<float>("left");
 	PDEBUGF(LOG_V2, LOG_GUI, "slider start: x=%d\n",m_drag_start_x);
+	m_is_dragging = true;
 }
 
+void RealisticInterface::on_dragend(Rml::Event &_event)
+{
+	m_is_dragging = false;
+}

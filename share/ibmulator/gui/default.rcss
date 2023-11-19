@@ -95,12 +95,6 @@ h2
 	font-size: 18dp;
 }
 
-scrollbarhorizontal
-{
-	width: 0;
-	height: 0;
-}
-
 table.default th
 {
 	background-color: #FF5555d0;

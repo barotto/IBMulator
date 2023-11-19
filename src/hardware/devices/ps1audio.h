@@ -88,6 +88,8 @@ private:
 
 	TimerID m_fifo_timer = NULL_TIMER_ID;
 
+	std::shared_ptr<MixerChannel> m_pc_speaker_ch;
+
 public:
 	PS1Audio(Devices *_dev);
 	~PS1Audio();
@@ -104,14 +106,21 @@ public:
 	void restore_state(StateBuf &_state);
 
 private:
+	void dac_filter_cb();
+	void dac_filterparams_cb();
+	void dac_reverb_cb();
+	void synth_filter_cb();
+	void synth_filterparams_cb();
+	void synth_reverb_cb();
+
 	void fifo_timer(uint64_t);
 	bool dac_create_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
 	void dac_set_state(DAC::State _state);
 	void dac_update_frequency();
-	
+
 	void raise_interrupt();
 	void lower_interrupt();
-	
+
 	void on_psg_capture(bool _enable);
 };
 

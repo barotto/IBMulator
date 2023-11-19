@@ -38,7 +38,6 @@ THE SOFTWARE.
 
 #include "Cascade.h"
 #include "Common.h"
-#include "Design.h"
 #include "Filter.h"
 #include "PoleFilter.h"
 
@@ -186,90 +185,39 @@ struct BandShelf : PoleFilter <BandShelfBase, MaxOrder, MaxOrder*2>
 
 namespace Design {
 
-struct TypeIBase : DesignBase
-{
-  enum
-  {
-    NumParams = 3
-  };
-
-  static int getNumParams ()
-  {
-    return 3;
-  }
-
-  static const ParamInfo getParamInfo_2 ()
-  {
-    return ParamInfo::defaultFrequencyParam ();
-  }
-};
-
 template <class FilterClass>
-struct TypeI : TypeIBase, FilterClass
+struct TypeI : FilterClass
 {
   void setParams (const Params& params)
   {
-    FilterClass::setup (int(params[idOrder]), params[idSampleRate], params[idFrequency]);
+    FilterClass::setup (int(params[idOrder]),
+                        params[idSampleRate],
+                        params[idFrequency]);
   }
-};
-
-struct TypeIIBase : DesignBase
-{
-  enum
-  {
-    NumParams = 4
-  };
-
-  static int getNumParams ()
-  {
-    return 4;
-  }
-
-  static const ParamInfo getParamInfo_2 ()
-  {
-    return ParamInfo::defaultFrequencyParam ();
-  }
-
-  static const ParamInfo getParamInfo_3 ()
-  {
-    return ParamInfo::defaultBandwidthHzParam ();
+  
+  const std::vector<ParamID> getParamIDs() const {
+    return { idOrder, idSampleRate, idFrequency };
   }
 };
 
 template <class FilterClass>
-struct TypeII : TypeIIBase, FilterClass
+struct TypeII : FilterClass
 {
   void setParams (const Params& params)
   {
-    FilterClass::setup (int(params[idOrder]), params[idSampleRate], params[idFrequency], params[idBandwidthHz]);
+    FilterClass::setup (int(params[idOrder]),
+                        params[idSampleRate],
+                        params[idFrequency], 
+                        params[idBandwidthHz]);
   }
-};
-
-struct TypeIIIBase : DesignBase
-{
-  enum
-  {
-    NumParams = 4
-  };
-
-  static int getNumParams ()
-  {
-    return 4;
-  }
-
-  static const ParamInfo getParamInfo_2 ()
-  {
-    return ParamInfo::defaultFrequencyParam ();
-  }
-
-  static const ParamInfo getParamInfo_3 ()
-  {
-    return ParamInfo::defaultGainParam ();
+  
+  const std::vector<ParamID> getParamIDs() const {
+    return { idOrder, idSampleRate, idFrequency, idBandwidthHz };
   }
 };
 
 template <class FilterClass>
-struct TypeIII : TypeIIIBase, FilterClass
+struct TypeIII : FilterClass
 {
   void setParams (const Params& params)
   {
@@ -278,159 +226,95 @@ struct TypeIII : TypeIIIBase, FilterClass
                         params[idFrequency],
                         params[idGain]);
   }
-};
-
-struct TypeIVBase : DesignBase
-{
-  enum
-  {
-    NumParams = 5
-  };
-
-  static int getNumParams ()
-  {
-    return 5;
-  }
-
-  static const ParamInfo getParamInfo_2 ()
-  {
-    return ParamInfo::defaultFrequencyParam ();
-  }
-
-  static const ParamInfo getParamInfo_3 ()
-  {
-    return ParamInfo::defaultBandwidthHzParam ();
-  }
-
-  static const ParamInfo getParamInfo_4 ()
-  {
-    return ParamInfo::defaultGainParam ();
+  
+  const std::vector<ParamID> getParamIDs() const {
+    return { idOrder, idSampleRate, idFrequency, idGain };
   }
 };
 
 template <class FilterClass>
-struct TypeIV : TypeIVBase, FilterClass
+struct TypeIV : FilterClass
 {
   void setParams (const Params& params)
   {
-    FilterClass::setup (int(params[idOrder]), params[idSampleRate], params[idFrequency], params[idBandwidthHz], params[idGain]);
+    FilterClass::setup (int(params[idOrder]),
+                        params[idSampleRate],
+                        params[idFrequency],
+                        params[idBandwidthHz],
+                        params[idGain]);
+  }
+  
+  const std::vector<ParamID> getParamIDs() const {
+    return { idOrder, idSampleRate, idFrequency, idBandwidthHz, idGain };
   }
 };
 
-// Factored kind and name
-
-struct LowPassDescription
-{
-  static Kind getKind () { return kindLowPass; }
-  static const char* getName() { return "Butterworth Low Pass"; }
-};
-
-struct HighPassDescription
-{
-  static Kind getKind () { return kindHighPass; }
-  static const char* getName() { return "Butterworth High Pass"; }
-};
-
-struct BandPassDescription
-{
-  static Kind getKind () { return kindHighPass; }
-  static const char* getName() { return "Butterworth Band Pass"; }
-};
-
-struct BandStopDescription
-{
-  static Kind getKind () { return kindHighPass; }
-  static const char* getName() { return "Butterworth Band Stop"; }
-};
-
-struct LowShelfDescription
-{
-  static Kind getKind () { return kindLowShelf; }
-  static const char* getName() { return "Butterworth Low Shelf"; }
-};
-
-struct HighShelfDescription
-{
-  static Kind getKind () { return kindHighShelf; }
-  static const char* getName() { return "Butterworth High Shelf"; }
-};
-
-struct BandShelfDescription
-{
-  static Kind getKind () { return kindBandShelf; }
-  static const char* getName() { return "Butterworth Band Shelf"; }
-};
-
-// This glues on the Order parameter
-template <int MaxOrder,
-          template <class> class TypeClass,
-          template <int> class FilterClass>
-struct OrderBase : TypeClass <FilterClass <MaxOrder> >
-{
-  const ParamInfo getParamInfo_1 () const
-  {
-    return ParamInfo (idOrder, "order", "Order", "Order",
-                       1, MaxOrder, 2,
-                       &ParamInfo::Int_toControlValue,
-                       &ParamInfo::Int_toNativeValue,
-                       &ParamInfo::Int_toString);
-
-  }
-};
-
-//------------------------------------------------------------------------------
 
 //
 // Design filters
 //
 
 template <int MaxOrder>
-struct LowPass : OrderBase <MaxOrder, TypeI, Butterworth::LowPass>,
-                 LowPassDescription
+struct LowPass : TypeI<Butterworth::LowPass<MaxOrder>>
 {
+  static Kind getKind () { return kindLowPass; }
+  static const char* getName() { return "Low Pass"; }
+  static const char* getSlug() { return "lowpass"; }
 };
 
 template <int MaxOrder>
-struct HighPass : OrderBase <MaxOrder, TypeI, Butterworth::HighPass>,
-                  HighPassDescription
+struct HighPass : TypeI<Butterworth::HighPass<MaxOrder>>
 {
+  static Kind getKind () { return kindHighPass; }
+  static const char* getName() { return "High Pass"; }
+  static const char* getSlug() { return "highpass"; }
 };
 
 template <int MaxOrder>
-struct BandPass : OrderBase <MaxOrder, TypeII, Butterworth::BandPass>,
-                  BandPassDescription
+struct BandPass : TypeII<Butterworth::BandPass<MaxOrder>>
 {
+  static Kind getKind () { return kindHighPass; }
+  static const char* getName() { return "Band Pass"; }
+  static const char* getSlug() { return "bandpass"; }
 };
 
 template <int MaxOrder>
-struct BandStop : OrderBase <MaxOrder, TypeII, Butterworth::BandStop>,
-                  BandStopDescription
+struct BandStop : TypeII<Butterworth::BandStop<MaxOrder>>
 {
+  static Kind getKind () { return kindHighPass; }
+  static const char* getName() { return "Band Stop"; }
+  static const char* getSlug() { return "bandstop"; }
 };
 
 template <int MaxOrder>
-struct LowShelf : OrderBase <MaxOrder, TypeIII, Butterworth::LowShelf>,
-                  LowShelfDescription
+struct LowShelf : TypeIII<Butterworth::LowShelf<MaxOrder>>
 {
+  static Kind getKind () { return kindLowShelf; }
+  static const char* getName() { return "Low Shelf"; }
+  static const char* getSlug() { return "lowshelf"; }
 };
 
 template <int MaxOrder>
-struct HighShelf : OrderBase <MaxOrder, TypeIII, Butterworth::HighShelf>,
-                   HighShelfDescription
+struct HighShelf : TypeIII<Butterworth::HighShelf<MaxOrder>>
 {
+  static Kind getKind () { return kindHighShelf; }
+  static const char* getName() { return "High Shelf"; }
+  static const char* getSlug() { return "highshelf"; }
 };
 
 template <int MaxOrder>
-struct BandShelf : OrderBase <MaxOrder, TypeIV, Butterworth::BandShelf>,
-                   BandShelfDescription
+struct BandShelf : TypeIV<Butterworth::BandShelf<MaxOrder>>
 {
+  static Kind getKind () { return kindBandShelf; }
+  static const char* getName() { return "Band Shelf"; }
+  static const char* getSlug() { return "bandshelf"; }
 };
 
-}
+} // Design
 
-}
+} // Butterworth
 
-}
+} // Dsp
 
 #endif
 

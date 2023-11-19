@@ -51,20 +51,21 @@ void PCSpeaker::install()
 		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
 		name(), MixerChannel::AUDIOCARD, MixerChannel::AudioType::SYNTH);
 	m_channel->set_disable_timeout(5_s);
-}
 
-void PCSpeaker::remove()
-{
-	g_mixer.unregister_channel(m_channel);
-}
+	m_channel->set_features(
+		MixerChannel::HasVolume |
+		MixerChannel::HasBalance |
+		MixerChannel::HasReverb |
+		MixerChannel::HasChorus |
+		MixerChannel::HasFilter
+	);
 
-void PCSpeaker::config_changed()
-{
-	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
-	
-	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(rate)});
-	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, double(rate)});
-	m_outbuf.reserve_us(50000);
+	m_channel->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { PCSPEAKER_SECTION, PCSPEAKER_VOLUME }},
+		{ MixerChannel::ConfigParameter::Reverb, { PCSPEAKER_SECTION, PCSPEAKER_REVERB }},
+		{ MixerChannel::ConfigParameter::Chorus, { PCSPEAKER_SECTION, PCSPEAKER_CHORUS }},
+		{ MixerChannel::ConfigParameter::Filter, { PCSPEAKER_SECTION, PCSPEAKER_FILTERS }}
+	});
 
 #if HAVE_LIBSAMPLERATE
 	if(m_SRC == nullptr) {
@@ -77,19 +78,20 @@ void PCSpeaker::config_changed()
 		m_pitbuf.reserve_us(50000);
 	}
 #endif
-	
-	float volume = clamp(g_program.config().get_real(PCSPEAKER_SECTION, PCSPEAKER_VOLUME),
-			0.0, 10.0);
-	std::string filters = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_FILTERS, "");
-	
-	m_channel->set_volume(volume);
-	m_channel->set_filters(filters);
-	
-	std::string reverb = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_REVERB, "");
-	m_channel->set_reverb(reverb);
+}
 
-	std::string chorus = g_program.config().get_string(PCSPEAKER_SECTION, PCSPEAKER_CHORUS, "");
-	m_channel->set_chorus(chorus);
+void PCSpeaker::remove()
+{
+	g_mixer.unregister_channel(m_channel);
+}
+
+void PCSpeaker::config_changed()
+{
+	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
+
+	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(rate)});
+	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, double(rate)});
+	m_outbuf.reserve_us(50000);
 
 	reset(0);
 }

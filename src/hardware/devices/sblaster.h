@@ -152,7 +152,7 @@ protected:
 		uint32_t irq_count;
 		SBlaster *device;
 		unsigned channel;
-		
+
 		void flush_data();
 		void add_sample(uint8_t _sample);
 		void change_format(AudioFormat _format);
@@ -175,8 +175,8 @@ protected:
 		bool pending_irq;
 	} m_s;
 
-	int m_dsp_ver = 0x105;
-		
+	int m_dsp_ver = 0x0;
+
 	struct DSPCmd {
 		unsigned dsp_vmask;
 		unsigned len;
@@ -189,19 +189,18 @@ protected:
 	std::mutex m_dac_mutex;
 	std::shared_ptr<MixerChannel> m_dac_channel;
 
-	float m_dac_volume = -1.f;
-	float m_opl_volume = -1.f;
-	
-	bool m_forced_dac_filters = false;
-	MixerFilterChain m_dac_filters;
+	std::string m_dac_filters;
+	std::string m_opl_filters;
 
 	TimerID m_dsp_timer = NULL_TIMER_ID;
 	TimerID m_dma_timer = NULL_TIMER_ID;
 	TimerID m_dac_timer = NULL_TIMER_ID;
-	
+
+	std::mutex m_volume_mutex;
+
 public:
 	SBlaster(Devices *_dev);
-	virtual ~SBlaster();
+	virtual ~SBlaster() {}
 
 	virtual unsigned type() const { return SB1; }
 	bool is(unsigned _type) { return type() == _type; }
@@ -214,7 +213,7 @@ public:
 	
 	void reset(unsigned _type);
 	void power_off();
-	virtual void config_changed();
+	void config_changed();
 	uint16_t read(uint16_t _address, unsigned _io_len);
 	void write(uint16_t _address, uint16_t _value, unsigned _io_len);
 	void save_state(StateBuf &_state);
@@ -222,10 +221,9 @@ public:
 
 protected:
 	void install_ports(const IODevice::IOPorts &_ports);
-	void install_dsp();
-	
-	virtual void configure_dac(unsigned _def_resampling, double _def_level);
-	
+	void install_dsp(int _version, std::string _filters);
+	void install_opl(OPL::ChipType _type, int _count, bool _mixer, std::string _filters);
+
 	virtual uint16_t read_fm(uint16_t _address);
 	virtual uint16_t read_dsp(uint16_t _address);
 	virtual uint16_t read_mixer(uint16_t _address);
@@ -293,18 +291,24 @@ protected:
 	void dma_timer(uint64_t);
 	uint16_t dma_write_8(uint8_t *_buffer, uint16_t _maxlen, bool);
 	uint16_t dma_read_8(uint8_t *_buffer, uint16_t _maxlen, bool);
+
+	// Mixer callback functions
+	void auto_filter_cb(MixerChannel *_ch, std::string _filter);
+	void auto_resampling_cb();
 };
 
 class SBlaster2 : public SBlaster
 {
 public:
-	SBlaster2(Devices *_dev);
+	SBlaster2(Devices *_dev) : SBlaster(_dev) {}
 	~SBlaster2() {}
 	
 	unsigned type() const { return SB2; }
 	const char *full_name() { return "Sound Blaster 2.0"; }
 	const char *short_name() { return "SB2"; }
-	
+
+	void install();
+
 protected:
 	void write_fm(uint16_t _address, uint16_t _value);
 };
@@ -314,8 +318,6 @@ class SBlasterPro : public SBlaster
 public:
 	SBlasterPro(Devices *_dev) : SBlaster(_dev) {}
 	virtual ~SBlasterPro() {}
-
-	void config_changed();
 
 protected:
 	uint16_t read_mixer(uint16_t _address);
@@ -333,7 +335,7 @@ protected:
 class SBlasterPro1 : public SBlasterPro
 {
 public:
-	SBlasterPro1(Devices *_dev);
+	SBlasterPro1(Devices *_dev) : SBlasterPro(_dev) {}
 	~SBlasterPro1() {}
 	
 	unsigned type() const { return SBPRO1; }
@@ -350,7 +352,7 @@ protected:
 class SBlasterPro2 : public SBlasterPro
 {
 public:
-	SBlasterPro2(Devices *_dev);
+	SBlasterPro2(Devices *_dev) : SBlasterPro(_dev) {}
 	~SBlasterPro2() {}
 	
 	unsigned type() const { return SBPRO2; }

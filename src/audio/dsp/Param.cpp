@@ -34,7 +34,7 @@ THE SOFTWARE.
 *******************************************************************************/
 
 #include "Common.h"
-#include "Design.h"
+#include "Params.h"
 #include <stdexcept>
 #include <sstream>
 #include <iostream>
@@ -42,10 +42,6 @@ THE SOFTWARE.
 
 namespace Dsp {
 
-ParamInfo::ParamInfo ()
-{
-  throw std::logic_error ("invalid usage of ParamInfo");
-}
 
 double ParamInfo::clamp (double nativeValue) const
 {
@@ -152,157 +148,33 @@ std::string ParamInfo::Db_toString (double nativeValue) const
 
 //------------------------------------------------------------------------------
 
-ParamInfo ParamInfo::defaultSampleRateParam ()
-{
-  return ParamInfo (idSampleRate, "fs", "Fs", "Sample Rate",
-                     11025, 192000, 44100,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Hz_toString);
-}
+ParamInfo ParamInfo::ms_defaults[maxParameters] = {
+	ParamInfo(idSampleRate, "fs", "Fs", "Sample Rate",
+			 11025, 192000, 44100,
+			 &ParamInfo::Real_toControlValue,
+			 &ParamInfo::Real_toNativeValue,
+			 &ParamInfo::Hz_toString),
+	ParamInfo(idFrequency, "fc", "Fc", "Frequency (Hz)",
+			 10, 22040, 2000,
+			 &ParamInfo::Log_toControlValue,
+			 &ParamInfo::Log_toNativeValue,
+			 &ParamInfo::Hz_toString),
+	ParamInfo(idBandwidthHz, "bw", "BW", "Bandwidth (Hz)",
+			 10, 22040, 1720,
+			 &ParamInfo::Log_toControlValue,
+			 &ParamInfo::Log_toNativeValue,
+			 &ParamInfo::Hz_toString),
+	ParamInfo(idGain, "gain", "Gain", "Gain (dB)",
+			 -24, 24, -6,
+			 &ParamInfo::Real_toControlValue,
+			 &ParamInfo::Real_toNativeValue,
+			 &ParamInfo::Db_toString),
+	ParamInfo(idOrder, "order", "Order", "Order",
+			 1, 50, 3,
+			 &ParamInfo::Real_toControlValue,
+			 &ParamInfo::Real_toNativeValue,
+			 &ParamInfo::Real_toString),
+};
 
-ParamInfo ParamInfo::defaultFrequencyParam ()
-{
-  return ParamInfo (idFrequency, "fc", "Fc", "Frequency",
-                     10, 22040, 2000,
-                     &ParamInfo::Log_toControlValue,
-                     &ParamInfo::Log_toNativeValue,
-                     &ParamInfo::Hz_toString);
-}
-
-ParamInfo ParamInfo::defaultQParam ()
-{
-  return ParamInfo (idQ, "q", "Q", "Resonance",
-                     -4, 4, 1,
-                     &ParamInfo::Pow2_toControlValue,
-                     &ParamInfo::Pow2_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultBandwidthParam ()
-{
-  return ParamInfo (idBandwidth, "bw", "BW", "Bandwidth (Octaves)",
-                     -4, 4, 1,
-                     &ParamInfo::Pow2_toControlValue,
-                     &ParamInfo::Pow2_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultBandwidthHzParam ()
-{
-  return ParamInfo (idBandwidthHz, "bw", "BW", "Bandwidth (Hz)",
-                     10, 22040, 1720,
-                     &ParamInfo::Log_toControlValue,
-                     &ParamInfo::Log_toNativeValue,
-                     &ParamInfo::Hz_toString);
-}
-
-ParamInfo ParamInfo::defaultGainParam ()
-{
-  return ParamInfo (idGain, "gain", "Gain", "Gain",
-                     -24, 24, -6,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Db_toString);
-}
-
-ParamInfo ParamInfo::defaultSlopeParam ()
-{
-  return ParamInfo (idSlope, "slope", "Slope", "Slope",
-                     -2, 2, 1,
-                     &ParamInfo::Pow2_toControlValue,
-                     &ParamInfo::Pow2_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultOrderParam ()
-{
-  return ParamInfo (idOrder, "order", "Order", "Order",
-                     1, 50, 3,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultRippleDbParam ()
-{
-  return ParamInfo (idRippleDb, "ripple", "Ripple", "Ripple dB",
-                     0.001, 12, 0.01,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Db_toString);
-}
-
-ParamInfo ParamInfo::defaultStopDbParam ()
-{
-  return ParamInfo (idStopDb, "stop", "Stop", "Stopband dB",
-                     3, 60, 48,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Db_toString);
-}
-
-ParamInfo ParamInfo::defaultRolloffParam ()
-{
-  return ParamInfo (idRolloff, "w", "W", "Transition Width",
-                     -16, 4, 0,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultPoleRhoParam ()
-{
-  return ParamInfo (idPoleRho, "pd", "Pd", "Pole Distance",
-                     0, 1, 0.5,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultPoleThetaParam ()
-{
-  return ParamInfo (idPoleTheta, "pa", "Pa", "Pole Angle",
-                     0, doublePi, doublePi/2,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultZeroRhoParam ()
-{
-  return ParamInfo (idZeroRho, "pd", "Pd", "Zero Distance",
-                     0, 1, 0.5,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultZeroThetaParam ()
-{
-  return ParamInfo (idZeroTheta, "pa", "Pa", "Zero Angle",
-                     0, doublePi, doublePi/2,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultPoleRealParam ()
-{
-  return ParamInfo (idPoleReal, "a1", "A1", "Pole Real",
-                     -1, 1, 0.25,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-
-ParamInfo ParamInfo::defaultZeroRealParam ()
-{
-  return ParamInfo (idZeroReal, "b1", "B1", "Zero Real",
-                     -1, 1, -0.25,
-                     &ParamInfo::Real_toControlValue,
-                     &ParamInfo::Real_toNativeValue,
-                     &ParamInfo::Real_toString);
-}
-}
+} // Dsp
 

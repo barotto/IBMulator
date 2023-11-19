@@ -64,11 +64,12 @@ private:
 	};
 	shared_deque<ModemSound> m_events;
 	bool m_enabled = true;
-	
+
 public:
 	SerialModemFX() : SoundFX() {}
 
 	void install(unsigned _baud_rate);
+	void auto_filters_cb();
 	void remove();
 	void silence();
 	uint64_t dial(const std::string _str, int _ringing_ms);

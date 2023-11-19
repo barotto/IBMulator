@@ -1,0 +1,460 @@
+<rml>
+	<head>
+		<title>Mixer</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 90%;
+				min-width: 640dp;
+				height: 440dp;
+				max-height: 440dp;
+				min-height: 440dp;
+				margin: auto;
+			}
+			.enabled
+			{
+				color: #000000;
+				background-color: #FFE600;
+			}
+			#master_container
+			{
+				position: absolute;
+				left: 20dp;
+				top: 30dp;
+				bottom: 40dp;
+				width: 160dp;
+				border-color: #28374d;
+				border-right: 2dp;
+			}
+			#channels
+			{
+				position: absolute;
+				left: 190dp;
+				right: 20dp;
+				top: 60dp;
+				bottom: 20dp;
+			}
+			tabs
+			{
+				position: fixed;
+				clip: none;
+				top: -30dp;
+			}
+			.channels_container
+			{
+				overflow-x: auto;
+				white-space: nowrap;
+				position: absolute;
+				left: 155dp;
+				right: 0dp;
+				top: 0dp;
+				bottom: 20dp;
+			}
+			.channels_container scrollbarhorizontal
+			{
+				margin-bottom: -19dp;
+			}
+
+			.ch_block_container
+			{
+				display: inline-block;
+				height: 99%;
+				width: 150dp;
+				margin: 4dp 6dp 0 0;
+				background-color: #28374d;
+			}
+			.ch_block
+			{
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				top: -4dp;
+				left: 4dp;
+				background-color: #587fa3;
+			}
+
+			.category_container
+			{
+				position: absolute;
+				left: 0dp;
+				top: 0dp;
+				bottom: 20dp;
+				height: auto;
+			}
+			#master
+			{
+				position: absolute;
+				top: 30dp;
+				bottom: 0dp;
+				height: auto;
+			}
+
+			.ch_label
+			{
+				text-align: center;
+			}
+
+
+			/* NAME AND ACTIVITY */
+			.ch_name
+			{
+				position: absolute;
+				bottom: 0;
+				padding: 4dp 0;
+				width: 100%;
+				height: 20dp;
+				text-align: center;
+				background-color: #3e5a73;
+			}
+			.ch_name.enabled 
+			{
+				color: #ffff00;
+				font-effect: glow( 0px 8dp -1dp 0dp #ffff00 );
+			}
+
+
+			/* BALANCE */
+			.ch_balance_container
+			{
+				position: absolute;
+				width: 136dp;
+				top: 30dp;
+				margin: 0 auto;
+			}
+			.ch_balance_slider
+			{
+				display: block;
+				height: 20dp;
+				width: 100%;
+				margin: 5dp auto 0 auto;
+				z-index: 1;
+			}
+			.ch_balance_progress
+			{
+				position: absolute;
+				bottom: 8dp;
+				display: block;
+				width: 58dp;
+				height: 2dp;
+				background-color: #466581;
+				border: 1dp;
+				border-color: #2d4254;
+			}
+			.ch_balance_progress_left
+			{
+				left: 9dp;
+				border-right: 0;
+			}
+			.ch_balance_progress_right
+			{
+				right: 9dp;
+				border-left: 0;
+			}
+			.ch_balance_progress fill
+			{
+				background-color: #00f000;
+			}
+			.ch_balance_notch
+			{
+				position: absolute;
+				bottom: 16dp;
+				left: 0;
+				width: 50%;
+				height: 8dp;
+				border-right: 1dp;
+				border-color: #2d4254;
+				z-index: 0;
+			}
+
+
+			/* SLIDERS */
+			.ch_volume_slider sliderbar,
+			.ch_balance_slider sliderbar
+			{
+				visibility: visible;
+				width: 18dp;
+				height: 18dp;
+				border-radius: 10dp;
+				border: 1dp;
+				border-color:  #a8a8a8;
+				background-color: #545454;
+			}
+			.ch_volume_slider sliderbar:focus,
+			.ch_balance_slider sliderbar:focus
+			{
+				border-color: #ff8000;
+			}
+			.ch_volume_slider:disabled sliderbar,
+			{
+				display: none;
+			}
+			.ch_volume_slider sliderarrowdec,
+			.ch_volume_slider sliderarrowdec,
+			.ch_balance_slider sliderarrowdec,
+			.ch_balance_slider sliderarrowdec
+			{
+				width: 0;
+				height: 0;
+			}
+
+
+			/* VOLUME */
+			.ch_volume_container
+			{
+				position: absolute;
+				top: 95dp;
+				width: 100%;
+			}
+			.category_container .ch_volume_container,
+			#master .ch_volume_container
+			{
+				top: 30dp;
+			}
+			.ch_volume_slider_container
+			{
+				position: relative;
+				width: 20dp;
+				height: 147dp;
+				margin: 12dp auto 0 auto;
+			}
+			.category_container .ch_volume_slider_container,
+			#master .ch_volume_slider_container
+			{
+				height: 212dp;
+			}
+			.ch_volume_slider
+			{
+				position: absolute;
+				display: block;
+				width: 20dp;
+				height: 167dp; /* compensate for sliderbar size */
+				top: -9dp;
+			}
+			.category_container .ch_volume_slider,
+			#master .ch_volume_slider
+			{
+				height: 232dp;
+			}
+			.ch_volume_progress
+			{
+				position: absolute;
+				display: block;
+				width: 2dp;
+				height: 100%;
+				margin: 0 auto;
+				background-color: #466581;
+				border: 1dp;
+				border-color: #2d4254;
+			}
+			.ch_volume_progress fill
+			{
+				background-color: #00f000;
+			}
+			.ch_volume_notch
+			{
+				position: absolute;
+				bottom: -2dp;
+				right: -4dp;
+				width: 8dp;
+				height: 76.5%;
+				border-top: 1dp;
+				border-bottom: 1dp;
+				border-color: #2d4254;
+			}
+			.ch_volume_container .ch_setting
+			{
+				position: absolute;
+				bottom: 0;
+				left: 25dp;
+			}
+
+
+			/* AUTO, MUTE & SOLO */
+			.ch_AMS
+			{
+				position: absolute;
+				bottom: 35dp;
+				width: 100%;
+				text-align: center;
+			}
+
+
+			/* SETTINGS PANEL */
+			.ch_setting_btn
+			{
+				position: absolute;
+				top: 4dp;
+				margin: 0 auto;
+				width: 80%;
+			}
+			.ch_setting_container
+			{
+				position: absolute;
+				top: 30dp;
+				bottom: 60dp;
+				width: 100%;
+			}
+			.ch_subsetting_container
+			{
+				width: 100%;
+				margin-bottom: 8dp;
+			}
+			.ch_subsetting_container select
+			{
+				display: block;
+				width: 80dp;
+				margin: 0 auto;
+			}
+			.ch_subsetting_container > .ch_label
+			{
+				margin-bottom: 4dp;
+			}
+			.ch_setting
+			{
+				display: inline-block;
+			}
+			.ch_setting btnicon
+			{
+				decorator: image(icons/gear.png);
+			}
+			input.checkbox.ch_feature_enable
+			{
+				width: 85dp;
+				text-align: left;
+			}
+
+
+			/* FILTERS */
+			.filter_setting_active .ch_subsetting_container
+			{
+				display: none;
+			}
+			.filter_setting_active .ch_subsetting_container.ch_filter
+			{
+				display: block;
+			}
+			.ch_filter
+			{
+				text-align: center;
+			}
+			.filter_setting_active .ch_filter
+			{
+				position: absolute;
+				left: 0;
+				width: 100%;
+				height: 100%;
+			}
+			select.ch_filters_preset
+			{
+				width: 110dp;
+			}
+			select.ch_filter_preset
+			{
+				width: 110dp;
+			}
+			.ch_filter_custom
+			{
+				position: absolute;
+				top: 90dp;
+				bottom: 0dp;
+				width: 100%;
+				border: 0dp;
+				border-color: #c4c4c4;
+				overflow-y: auto;
+			}
+			.filter_dsp
+			{
+				border-top: 0dp;
+				margin-bottom: 2dp;
+				margin-top: 4dp;
+			}
+			.filter_dsp_kind
+			{
+				position: relative;
+				width: 124dp;
+				min-height: 23dp;
+				margin: auto;
+			}
+			.filter_dsp_kind select
+			{
+				position: absolute;
+				left: 0dp;
+				margin: 0;
+				width: 100dp;
+			}
+			.filter_dsp_remove
+			{
+				position: absolute;
+				right: 0;
+			}
+			.filter_dsp_remove btnicon
+			{
+				decorator: image(icons/trashcan.png);
+			}
+			.filter_dsp_parameter
+			{
+				margin-top: 2dp;
+				margin-bottom: 2dp;
+			}
+
+			.spinner
+			{
+				position: relative;
+				min-height: 27dp;
+				width: 114dp;
+				margin: auto;
+			}
+			.spinner button
+			{
+				position: absolute;
+				top: 2dp;
+				width: 23dp;
+				height: 23dp;
+			}
+			.spinner .decrease
+			{
+				left: 0dp;
+			}
+			.spinner .increase
+			{
+				right: 0dp;
+			}
+			.spinner input
+			{
+				position: absolute;
+				right: 24dp;
+				top: 2dp;
+				vertical-align: middle;
+				width: 66dp;
+				height: 23dp;
+				text-align: center;
+				background-color: #3d5576ff;
+			}
+
+		</style>
+	</head>
+	<body template="default">
+
+		<div id="master_container">
+			<div id="master" class="ch_block_container"></div>
+		</div>
+
+		<tabset id="channels">
+
+			<tab class="romshell">Audio cards</tab>
+			<panel>
+				<div id="audiocards" class="ch_block_container category_container"></div>
+				<div id="audiocards_channels" class="channels_container"></div>
+			</panel>
+
+			<tab class="romshell">Sound FX</tab>
+			<panel>
+				<div id="soundfx" class="ch_block_container category_container"></div>
+				<div id="soundfx_channels" class="channels_container"></div>
+			</panel>
+
+		</tabset>
+
+	</body>
+</rml>

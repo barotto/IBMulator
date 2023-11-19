@@ -41,17 +41,9 @@
 			{
 				width: 145dp
 			}
-			#image_type selectvalue
-			{
-				width: 120dp;
-			}
 			#image_format select
 			{
 				width: 275dp
-			}
-			#image_format selectvalue
-			{
-				width: 250dp;
 			}
 		</style>
 	</head>

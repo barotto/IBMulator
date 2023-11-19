@@ -63,21 +63,20 @@ void HardDriveFX::install(const std::string &_name)
 	);
 
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
+
+	m_channels.seek->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_HDD_SEEK }},
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE }}
+	});
+	m_channels.spin->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_HDD_SPIN }},
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE }}
+	});
 }
 
 uint64_t HardDriveFX::spin_up_time_us() const
 {
 	return round(m_buffers[HDD_SPIN_UP].duration_us());
-}
-
-void HardDriveFX::config_changed()
-{
-	m_channels.seek->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_SEEK));
-	m_channels.spin->set_volume(g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_SPIN));
-
-	double balance = g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_HDD_BALANCE);
-	m_channels.seek->set_balance(balance);
-	m_channels.spin->set_balance(balance);
 }
 
 //this method is called by the Mixer thread

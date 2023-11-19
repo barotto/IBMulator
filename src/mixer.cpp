@@ -50,7 +50,6 @@ m_audio_status(SDL_AUDIO_STOPPED),
 m_paused(false),
 m_device(0),
 m_frame_size(512),
-m_global_volume(1.f),
 m_capture_sink(-1)
 {
 	SDL_zero(m_audio_spec);
@@ -85,25 +84,21 @@ void Mixer::calibrate(const Pacer &_p)
 
 void Mixer::init(Machine *_machine)
 {
+	// launch-time configs are set here.
+
 	m_machine = _machine;
 	m_pacer.start();
 	m_bench.init(m_pacer.chrono(), 1000);
 
 	m_paused = true;
 
-	using namespace std::placeholders;
-	m_silence_channel = register_channel(
-		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
-		"Silence", MixerChannel::AUDIOCARD, MixerChannel::AudioType::NOISE
-	);
-	
 	if(SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
 		PERRF(LOG_MIXER, "Unable to init SDL audio: %s\n", SDL_GetError());
 		throw std::exception();
 	}
 
 	m_paused = false;
-	
+
 	int i, count = SDL_GetNumAudioDevices(0);
 	if(count == 0) {
 		PERRF(LOG_MIXER, "Unable to find any audio device\n");
@@ -113,7 +108,58 @@ void Mixer::init(Machine *_machine)
 		PINFOF(LOG_V1, LOG_MIXER, "Audio device %d: %s\n", i, SDL_GetAudioDeviceName(i, 0));
 		PINFOF(LOG_V1, LOG_MIXER, "  Driver: %s\n", SDL_GetAudioDriver(i));
 	}
-	
+
+	int frequency = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_RATE, 11025, 49716);
+	int samples = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_SAMPLES, 256, 4096);
+
+	try {
+		assert(MIXER_CHANNELS == 2);
+		open_audio_device(frequency, MIXER_FORMAT, MIXER_CHANNELS, samples);
+	} catch(std::exception &e) {
+		PERRF(LOG_MIXER, "Audio output disabled\n");
+		m_audio_spec.freq = MIXER_FREQUENCY;
+		m_audio_spec.format = MIXER_FORMAT;
+		m_audio_spec.channels = MIXER_CHANNELS;
+		m_audio_spec.silence = 0;
+	}
+
+	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %d Hz, %u bit, %u channels, %u samples\n",
+			m_audio_spec.freq, SDL_AUDIO_BITSIZE(m_audio_spec.format), m_audio_spec.channels, m_audio_spec.samples);
+
+	m_frame_size = m_audio_spec.channels * (SDL_AUDIO_BITSIZE(m_audio_spec.format) / 8);
+	m_heartbeat_us = round(1e6 / (double(m_audio_spec.freq) / 512.0));
+	m_pacer.set_heartbeat(m_heartbeat_us * 1000);
+	m_bench.set_heartbeat(m_heartbeat_us * 1000);
+
+	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %llu usec\n", m_heartbeat_us);
+
+	int prebuf_ms = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_PREBUFFER, 10, 1000); // msec
+	m_prebuffer_us = prebuf_ms * 1000ull; // usec
+	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
+	m_prebuffer_fr = size_t(us_to_frames(m_prebuffer_us, m_audio_spec.freq));
+
+	int64_t buf_len_us = std::max(m_prebuffer_us*2, uint64_t(1000000U));
+	m_mix_bufsize_fr = (m_audio_spec.freq * buf_len_us) / 1000000;
+	m_mix_bufsize_by = m_mix_bufsize_fr * m_frame_size;
+	m_mix_bufsize_sa = m_mix_bufsize_fr * m_audio_spec.channels;
+
+	m_out_buffer.set_size(m_mix_bufsize_by);
+	for(auto &buf : m_ch_mix) {
+		buf.resize(m_mix_bufsize_sa);
+	}
+	m_out_mix.resize(m_mix_bufsize_sa);
+
+	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %zu bytes\n",
+			prebuf_ms, m_mix_bufsize_by);
+
+	using namespace std::placeholders;
+	m_silence_channel = register_channel(
+		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
+		"Silence", MixerChannel::AUDIOCARD, MixerChannel::AudioType::NOISE
+	);
+	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(m_audio_spec.freq)});
+	m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
+
 	// MIDI THREAD
 	m_midi = std::make_unique<MIDI>();
 	m_midi_thread = std::thread(&MIDI::thread_start, m_midi.get());
@@ -164,72 +210,50 @@ void Mixer::stop_capture()
 	GUI::instance()->show_message("audio recording stopped");
 }
 
-void Mixer::config_changed() noexcept
+void Mixer::config_changed(bool _launch) noexcept
 {
-	//before the config can change the audio playback must be stopped
-	if(m_device) {
-		SDL_PauseAudioDevice(m_device, 0);
-		close_audio_device();
-	}
+	// this function is responsible for updating run-time config
+	// this happens at 1.launch, 2.savestate load
+
 	if(m_audiocards_capture) {
 		stop_capture();
 	}
 
-	int frequency = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_RATE, 11025, 49716);
-	int samples = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_SAMPLES, 256, 4096);
+	if(_launch) {
+		// let the GUI interfaces set the AUDIOCARD category volume
+		m_volume.category[MixerChannel::SOUNDFX] =
+			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
 
-	try {
-		assert(MIXER_CHANNELS == 2);
-		open_audio_device(frequency, MIXER_FORMAT, MIXER_CHANNELS, samples);
-	} catch(std::exception &e) {
-		PERRF(LOG_MIXER, "Audio output disabled\n");
-		m_audio_spec.freq = MIXER_FREQUENCY;
-		m_audio_spec.format = MIXER_FORMAT;
-		m_audio_spec.channels = MIXER_CHANNELS;
-		m_audio_spec.silence = 0;
+		m_reverb[MixerChannel::SOUNDFX].params = MixerChannel::parse_reverb_def(
+			g_program.config().get_string_or_default(SOUNDFX_SECTION, SOUNDFX_REVERB)
+		);
+		if(m_reverb[MixerChannel::SOUNDFX].params.preset != MixerChannel::ReverbPreset::None) {
+			m_reverb[MixerChannel::SOUNDFX].enabled = true;
+		}
 	}
-	
-	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %d Hz, %u bit, %u channels, %u samples\n",
-			m_audio_spec.freq, SDL_AUDIO_BITSIZE(m_audio_spec.format), m_audio_spec.channels, m_audio_spec.samples);
-	
-	m_frame_size = m_audio_spec.channels * (SDL_AUDIO_BITSIZE(m_audio_spec.format) / 8);
-	m_heartbeat_us = round(1e6 / (double(m_audio_spec.freq) / 512.0));
-	m_pacer.set_heartbeat(m_heartbeat_us * 1000);
-	m_bench.set_heartbeat(m_heartbeat_us * 1000);
-
-	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %llu usec\n", m_heartbeat_us);
-
-	int prebuf_ms = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_PREBUFFER, 10, 1000); // msec
-	m_prebuffer_us = prebuf_ms * 1000ull; // usec
-	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
-	m_prebuffer_fr = size_t(us_to_frames(m_prebuffer_us, m_audio_spec.freq));
-	
-	int64_t buf_len_us = std::max(m_prebuffer_us*2, uint64_t(1000000U));
-	m_mix_bufsize_fr = (m_audio_spec.freq * buf_len_us) / 1000000;
-	m_mix_bufsize_by = m_mix_bufsize_fr * m_frame_size;
-	m_mix_bufsize_sa = m_mix_bufsize_fr * m_audio_spec.channels;
-	
-	m_out_buffer.set_size(m_mix_bufsize_by);
-	for(auto &buf : m_ch_mix) {
-		buf.resize(m_mix_bufsize_sa);
-	}
-	m_out_mix.resize(m_mix_bufsize_sa);
-
-	PINFOF(LOG_V1, LOG_MIXER, "  Prebuffer: %d msec., ring buffer: %zu bytes\n",
-			prebuf_ms, m_mix_bufsize_by);
 
 	for(auto &ch : m_mix_channels) {
 		ch.second->flush();
-		ch.second->set_out_spec({AUDIO_FORMAT_F32,
-			unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
+		ch.second->apply_config(g_program.config());
+		switch(ch.second->category()) {
+			case MixerChannel::Category::SOUNDFX:
+			{
+				if(m_reverb[MixerChannel::SOUNDFX].enabled) {
+					ch.second->set_reverb(m_reverb[MixerChannel::SOUNDFX].params, true);
+				}
+				break;
+			}
+			case MixerChannel::Category::GUI:
+			case MixerChannel::Category::AUDIOCARD:
+			default:
+				break;
+		}
 	}
-	
-	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(m_audio_spec.freq)});
-	m_silence_channel->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
-	
-	// let the GUI interfaces set the AUDIOCARD category volume
-	m_channels_volume[static_cast<int>(MixerChannel::SOUNDFX)] =
-			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
+
+	for(auto &ch : m_mix_channels) {
+		// auto values are applied last as channels might create auto callbacks in the first configure
+		ch.second->apply_auto_values(g_program.config());
+	}
 
 	std::mutex m;
 	std::condition_variable cv;
@@ -494,8 +518,8 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		PDEBUGF(LOG_V2, LOG_MIXER, "  no frames required, skipping mix.\n");
 		return;
 	}
-	int cat_count[MixerChannel::Category::MAX];
-	for(int cat=0; cat<MixerChannel::Category::MAX; cat++) {
+	int cat_count[MixerChannel::CategoryCount];
+	for(int cat=0; cat<MixerChannel::CategoryCount; cat++) {
 		cat_count[cat] = 0;
 	}
 	
@@ -566,7 +590,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	static std::vector<int16_t> tmpbuf;
 	tmpbuf.reserve(samples>audio_samples?samples:audio_samples);
 	
-	for(int cat=0; cat<MixerChannel::Category::MAX; cat++) {
+	for(int cat=0; cat<MixerChannel::CategoryCount; cat++) {
 		if(!cat_count[cat]) {
 			continue;
 		}
@@ -628,12 +652,9 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 
 	// create the global mix
-	float volume = m_global_volume;
-	if(volume > 1.f) {
-		volume = (exp(volume) - 1.f)/(M_E - 1.f);
-	}
+	float volume = get_volume_multiplier(m_volume.master) * !m_volume.muted;
 	std::fill(m_out_mix.begin(), m_out_mix.begin()+samples, 0.f);
-	for(int cat=0; cat<MixerChannel::Category::MAX; cat++) {
+	for(int cat=0; cat<MixerChannel::CategoryCount; cat++) {
 		if(!cat_count[cat]) {
 			continue;
 		}
@@ -648,7 +669,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	for(size_t i=0; i<samples; i++) {
 		tmpbuf[i] = AudioBuffer::f32_to_s16(m_out_mix[i]);
 	}
-	send_to_sinks(tmpbuf, MixerChannel::Category::MAX);
+	send_to_sinks(tmpbuf, MixerChannel::CategoryCount);
 	
 	// send global mix to output device
 	const size_t bytes = samples * 2;
@@ -715,6 +736,10 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 		if(ch->category() != _chcat) {
 			continue;
 		}
+		unsigned chsamples = ch->out().samples();
+		if(!chsamples) {
+			continue;
+		}
 		if(ch->balance() < 0.f) {
 			// left channel is full volume
 			balance[0] = 1.f;
@@ -728,32 +753,23 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 			balance[0] = 1.f;
 			balance[1] = 1.f;
 		}
-		unsigned chsamples = ch->out().samples();
-		if(!chsamples) {
-			continue;
-		}
 		const float *chdata = &ch->out().at<float>(0);
-		float cat_volume = m_channels_volume[ch->category()];
-		if(cat_volume > 1.f) {
-			cat_volume = (exp(cat_volume) - 1.f)/(M_E - 1.f);
-		}
-		volume[0] = ch->volume_l();
-		volume[1] = ch->volume_r();
-		if(volume[0] > 1.f) {
-			volume[0] = (exp(volume[0]) - 1.f)/(M_E - 1.f);
-		}
-		if(volume[1] > 1.f) {
-			volume[1] = (exp(volume[1]) - 1.f)/(M_E - 1.f);
-		}
-		for(size_t i=0; i<samples; i++) {
-			float v1,v2;
-			if(i < chsamples) {
-				v1 = chdata[i] * volume[i%2] * cat_volume * balance[i%2];
-			} else {
-				v1 = 0.f;
+		float cat_volume = get_volume_multiplier(m_volume.category[ch->category()]) * !m_volume.muted_category[ch->category()];
+		volume[0] = get_volume_multiplier(ch->volume_sub_left() * ch->volume_master_left()) * !ch->is_muted() * !ch->is_force_muted();
+		volume[1] = get_volume_multiplier(ch->volume_sub_right() * ch->volume_master_right()) * !ch->is_muted() * !ch->is_force_muted();
+		volume[0] *= cat_volume * balance[0];
+		volume[1] *= cat_volume * balance[1];
+		if(volume[0] > .0f || volume[1] > .0f) {
+			for(size_t i=0; i<samples; i++) {
+				float v1, v2;
+				if(i < chsamples) {
+					v1 = chdata[i] * volume[i % 2];
+				} else {
+					v1 = 0.f;
+				}
+				v2 = _result_buf[i];
+				_result_buf[i] = v1 + v2;
 			}
-			v2 = _result_buf[i];
-			_result_buf[i] = v1 + v2;
 		}
 		ch->pop_out_frames(_frames);
 	}
@@ -789,25 +805,12 @@ void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
 std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
 		const std::string &_name, MixerChannel::Category _cat, MixerChannel::AudioType _type)
 {
-	static int chcount = 0;
+	static int chcount = MixerChannel::CategoryCount - 1;
 	chcount++;
+
 	auto ch = std::make_shared<MixerChannel>(this, _callback, _name, chcount, _cat, _type);
 	m_mix_channels[_name] = ch;
-	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels),
-		double(m_audio_spec.freq)});
-
-	switch(_cat) {
-		case MixerChannel::Category::SOUNDFX:
-		case MixerChannel::Category::GUI:
-		{
-			std::string reverb = g_program.config().get_string(SOUNDFX_SECTION, SOUNDFX_REVERB, "");
-			ch->set_reverb(reverb);
-			break;
-		}
-		case MixerChannel::Category::AUDIOCARD:
-		default:
-			break;
-	}
+	ch->set_out_spec({AUDIO_FORMAT_F32, unsigned(m_audio_spec.channels), double(m_audio_spec.freq)});
 
 	return ch;
 }
@@ -910,110 +913,90 @@ bool Mixer::create_silence_samples(uint64_t _time_span_ns, bool _prebuf, bool _f
 	return true;
 }
 
-template <int Channels>
-std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters(double _rate, std::string _filters_def)
+std::shared_ptr<MixerChannel> Mixer::get_channel(const char *_name)
 {
-	std::vector<std::shared_ptr<Dsp::Filter>> filters;
-	
-	auto filters_toks = AppConfig::parse_tokens(_filters_def, "\\|");
-	
-	for(auto &filter_str : filters_toks) {
-		
-		PDEBUGF(LOG_V2, LOG_MIXER, "Filter definition: %s\n", filter_str.c_str());
-		
-		auto filter_toks = AppConfig::parse_tokens(filter_str, "\\,");
-		if(filter_toks.empty()) {
-			PDEBUGF(LOG_V2, LOG_MIXER, "Invalid filter definition: %s\n", filter_str.c_str());
-			continue;
-		}
-		
-		std::string fname = str_trim(str_to_lower(filter_toks[0]));
-		
-		const std::map<std::string, int> filter_types = {
-			{"lowpass",   1},
-			{"highpass",  2}, 
-			{"bandpass",  3},
-			{"bandstop",  4}, 
-			{"lowshelf",  5}, 
-			{"highshelf", 6},
-			{"bandshelf", 7}
-		};
-		
-		if(filter_types.find(fname) == filter_types.end()) {
-			PERRF(LOG_MIXER, "Invalid filter: %s\n", fname.c_str());
-			continue;
-		}
-		
-		std::shared_ptr<Dsp::Filter> filter;
-
-		switch(filter_types.at(fname)) {
-			case 1: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowPass  <50>,Channels>>(); break;
-			case 2: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighPass <50>,Channels>>(); break;
-			case 3: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandPass <50>,Channels>>(); break;
-			case 4: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandStop <50>,Channels>>(); break;
-			case 5: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::LowShelf <50>,Channels>>(); break;
-			case 6: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::HighShelf<50>,Channels>>(); break;
-			case 7: filter = std::make_shared<Dsp::FilterDesign<Dsp::Butterworth::Design::BandShelf<50>,Channels>>(); break;
-			default:
-				PERRF(LOG_MIXER, "Invalid filter: %s\n", fname.c_str());
-				continue;
-		}
-		
-		PDEBUGF(LOG_V1, LOG_MIXER, "Filter: %s\n", filter->getName().c_str());
-		
-		std::map<std::string, Dsp::ParamInfo> param_types = {
-			{"order",  Dsp::ParamInfo::defaultOrderParam()},
-			{"cutoff", Dsp::ParamInfo::defaultFrequencyParam()},
-			{"center", Dsp::ParamInfo::defaultFrequencyParam()},
-			{"bw",     Dsp::ParamInfo::defaultBandwidthHzParam()},
-			{"gain",   Dsp::ParamInfo::defaultGainParam()}
-		};
-		
-		// remove the filter name, parse parameters
-		filter_toks.erase(filter_toks.begin());
-		
-		Dsp::Params fparams;
-		fparams.clear();
-		fparams[Dsp::idSampleRate] = _rate;
-		
-		for(auto &filter_par : filter_toks) {
-			
-			auto param_toks = AppConfig::parse_tokens(filter_par, "\\=");
-			if(param_toks.size() != 2) {
-				PERRF(LOG_MIXER, "invalid filter parameter definition: %s\n", filter_par.c_str());
-				continue;
-			}
-			
-			std::string pname = str_trim(str_to_lower(param_toks[0]));
-			
-			if(param_types.find(pname) == param_types.end()) {
-				PERRF(LOG_MIXER, "invalid filter parameter name: %s\n", pname.c_str());
-				continue;
-			}
-			
-			try {
-				fparams[param_types[pname].getId()] = AppConfig::parse_real(param_toks[1]);
-			} catch(std::exception &) {
-				PERRF(LOG_MIXER, "invalid filter parameter value: %s\n", param_toks[1].c_str());
-				continue;
-			}
-			
-			PDEBUGF(LOG_V1, LOG_MIXER, "  %s = %.3f\n",
-					param_types[pname].getName(),
-					fparams[param_types[pname].getId()]
-					);
-		}
-		
-		filter->setParams(fparams);
-		
-		filters.push_back(filter);
+	// not mt safe.
+	// call only when the Machine is stopped, as the MixerChannel's are created by the Machine thread
+	auto ch = m_mix_channels.find(_name);
+	if(ch != m_mix_channels.end()) {
+		return ch->second;
 	}
-	
-	return filters;
+	return nullptr;
 }
 
-template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<1>(double _rate, std::string _filters_def);
-template std::vector<std::shared_ptr<Dsp::Filter>> Mixer::create_filters<2>(double _rate, std::string _filters_def);
+std::vector<std::shared_ptr<MixerChannel>> Mixer::get_channels(MixerChannel::Category _cat)
+{
+	// not mt safe.
+	// call only when the Machine is stopped, as the MixerChannel's are created by the Machine thread
+	std::vector<std::shared_ptr<MixerChannel>> chs;
+	for(auto &ch : m_mix_channels) {
+		if(ch.second->category() == _cat) {
+			chs.push_back(ch.second);
+		}
+	}
+	return chs;
+}
+
+std::vector<std::shared_ptr<MixerChannel>> Mixer::get_channels()
+{
+	// not mt safe.
+	// call only when the Machine is stopped, as the MixerChannel's are created by the Machine thread
+	std::vector<std::shared_ptr<MixerChannel>> chs;
+	for(auto &ch : m_mix_channels) {
+		chs.push_back(ch.second);
+	}
+	return chs;
+}
+
+void Mixer::set_reverb(MixerChannel::Category _cat, std::string _preset)
+{
+	try {
+		MixerChannel::ReverbParams params = MixerChannel::parse_reverb_def(_preset);
+		set_reverb(_cat, params);
+	} catch(std::runtime_error &e) {
+		PERRF(LOG_MIXER, "Reverb: %s\n", e.what());
+	}
+}
+
+void Mixer::set_reverb(MixerChannel::Category _cat, const MixerChannel::ReverbParams &_params)
+{
+	for(auto &ch : m_mix_channels) {
+		if(ch.second->category() != _cat) {
+			continue;
+		}
+		// mt: mutex is in the channel
+		ch.second->set_reverb_auto(false);
+		ch.second->set_reverb(_params, true);
+		m_reverb[_cat].params = ch.second->reverb();
+		m_reverb[_cat].enabled = ch.second->is_reverb_enabled();
+	}
+}
+
+void Mixer::set_reverb_gain(MixerChannel::Category _cat, float _gain)
+{
+	m_reverb[_cat].params.gain = _gain;
+
+	for(auto &ch : m_mix_channels) {
+		if(ch.second->category() != _cat) {
+			continue;
+		}
+		// mt: mutex is in the channel
+		ch.second->set_reverb_gain(_gain);
+	}
+}
+
+void Mixer::enable_reverb(MixerChannel::Category _cat, bool _enable)
+{
+	m_reverb[_cat].enabled = _enable;
+
+	for(auto &ch : m_mix_channels) {
+		if(ch.second->category() != _cat) {
+			continue;
+		}
+		// mt: mutex is in the channel
+		ch.second->enable_reverb(_enable);
+	}
+}
 
 void Mixer::pause()
 {
@@ -1038,6 +1021,13 @@ void Mixer::cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_c
 	m_cmd_queue.push([&](){
 		std::unique_lock<std::mutex> lock(_mutex);
 		pause();
+		// audio channels here have the opportunity to store their current config
+		// before a possible state restore
+		for(auto &ch : m_mix_channels) {
+			if(ch.second->category() == MixerChannel::Category::AUDIOCARD) {
+				ch.second->store_config(g_program.config());
+			}
+		}
 		_cv.notify_one();
 	});
 }
@@ -1139,28 +1129,4 @@ void Mixer::cmd_toggle_capture()
 			start_capture();
 		}
 	});
-}
-
-void Mixer::cmd_set_global_volume(float _volume)
-{
-	m_cmd_queue.push([=] () {
-		m_global_volume = _volume;
-	});
-}
-
-void Mixer::cmd_set_category_volume(MixerChannel::Category _cat, float _volume)
-{
-	m_cmd_queue.push([=] () {
-		m_channels_volume[static_cast<int>(_cat)] = std::max(0.f,_volume);
-	});
-}
-
-std::vector<std::shared_ptr<MixerChannel>> Mixer::dbg_get_channels()
-{
-	// not mt safe.
-	std::vector<std::shared_ptr<MixerChannel>> chs;
-	for(auto &ch : m_mix_channels) {
-		chs.push_back(ch.second);
-	}
-	return chs;
 }

@@ -23,6 +23,10 @@
 #include "hardware/iodevice.h"
 #include "mixer.h"
 
+#define DEFAULT_PCSPEAKER_FILTER "pc-speaker"
+#define DEFAULT_PCSPEAKER_REVERB "tiny"
+
+
 class PCSpeaker : public IODevice
 {
 	IODEVICE(PCSpeaker, "PC-Speaker")

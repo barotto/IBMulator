@@ -88,7 +88,7 @@ void Synth::power_off()
 	m_channel->enable(false);
 }
 
-void Synth::config_changed(const AudioSpec &_spec, float _volume, std::string _filters)
+void Synth::config_changed(const AudioSpec &_spec)
 {
 	m_channel->set_in_spec(_spec);
 	m_frames_per_ns = _spec.rate / 1e9;
@@ -98,14 +98,18 @@ void Synth::config_changed(const AudioSpec &_spec, float _volume, std::string _f
 	if(m_chips[1]) {
 		m_chips[1]->config_changed(_spec.rate);
 	}
-	m_channel->set_volume(_volume);
-	m_channel->set_filters(_filters);
 }
 
 void Synth::set_chip(int _id, SynthChip *_chip)
 {
 	assert(_id == 0 || _id == 1);
 	m_chips[_id] = _chip;
+}
+
+SynthChip * Synth::get_chip(int _id)
+{
+	assert(_id == 0 || _id == 1);
+	return m_chips[_id];
 }
 
 unsigned Synth::generate(AudioBuffer &_outbuffer, uint64_t _delta_ns)

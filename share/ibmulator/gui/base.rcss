@@ -46,7 +46,17 @@ select, dataselect, datacombo
 	text-align: left;
 }
 
-tabset tabs
+tabset
+{
+	display: block;
+}
+
+tabs
+{
+	display: block;
+}
+
+panels
 {
 	display: block;
 }
