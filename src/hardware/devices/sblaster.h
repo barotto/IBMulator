@@ -65,7 +65,6 @@ protected:
 	unsigned m_iobase = 0;
 	unsigned m_irq = 0;
 	unsigned m_dma = 0;
-	std::string m_blaster_env;
 	
 	OPL m_OPL[2];
 	
@@ -206,7 +205,6 @@ public:
 	bool is(unsigned _type) { return type() == _type; }
 	virtual const char *full_name() { return "Sound Blaster 1.5"; }
 	virtual const char *short_name() { return "SB1"; }
-	const char *blaster_env();
 	
 	virtual void install();
 	virtual void remove();
@@ -220,9 +218,14 @@ public:
 	void restore_state(StateBuf &_state);
 
 protected:
+	std::string blaster_env();
+
 	void install_ports(const IODevice::IOPorts &_ports);
 	void install_dsp(int _version, std::string _filters);
 	void install_opl(OPL::ChipType _type, int _count, bool _mixer, std::string _filters);
+	void register_ports(unsigned _old_base, unsigned _new_base);
+	void register_dma(unsigned _channel);
+	void register_irq(unsigned _line);
 
 	virtual uint16_t read_fm(uint16_t _address);
 	virtual uint16_t read_dsp(uint16_t _address);

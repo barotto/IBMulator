@@ -247,15 +247,9 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 		std::bind(&SBlaster::dac_timer, this, _1),
 		"SBlaster DAC"
 	);
-	
-	m_dma = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_DMA);
-	m_irq = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IRQ);
-	m_devices->dma()->register_8bit_channel(m_dma,
-			std::bind(&SBlaster::dma_read_8, this, _1, _2, _3),
-			std::bind(&SBlaster::dma_write_8, this, _1, _2, _3),
-			nullptr,
-			name());
-	g_machine.register_irq(m_irq, name());
+
+	register_dma(g_program.config().get_int(SBLASTER_SECTION, SBLASTER_DMA));
+	register_irq(g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IRQ));
 
 	// AUDIO CHANNEL
 	m_dac_channel = g_mixer.register_channel(
@@ -423,7 +417,7 @@ void SBlaster::install()
 	install_dsp(0x105, "");
 	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
 
-	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
 }
 
 void SBlaster2::install()
@@ -432,7 +426,7 @@ void SBlaster2::install()
 	install_dsp(0x201, "");
 	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
 
-	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
 }
 
 void SBlasterPro1::install()
@@ -441,7 +435,7 @@ void SBlasterPro1::install()
 	install_dsp(0x300, "LowPass,order=2,fc=3200");
 	install_opl(OPL::OPL2, 2, true, "LowPass,order=1,fc=8000"); // dual YM3812 (OPL2)
 
-	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
 }
 
 void SBlasterPro2::install()
@@ -450,22 +444,12 @@ void SBlasterPro2::install()
 	install_dsp(0x302, "LowPass,order=2,fc=3200");
 	install_opl(OPL::OPL3, 1, true, "LowPass,order=1,fc=8000"); // single YMF262 (OPL3)
 
-	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env());
+	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
 }
 
-const char * SBlaster::blaster_env()
+std::string SBlaster::blaster_env()
 {
-	if(m_blaster_env.empty()) {
-		// I'm sick and tired of the std::stringstream verbose abomination.
-		// I'll use this other abominable printf based solution. At least it's not abominably verbose.
-		char *env;
-		if(asprintf(&env, "A%03X I%u D%u T%u", m_iobase, m_irq, m_dma, type()) > 0) {
-			m_blaster_env = env;
-			free(env);
-		}
-	}
-	
-	return m_blaster_env.c_str();
+	return str_format("A%03X I%u D%u T%u", m_iobase, m_irq, m_dma, type());
 }
 
 void SBlaster::install_ports(const IODevice::IOPorts &_ports)
@@ -474,11 +458,30 @@ void SBlaster::install_ports(const IODevice::IOPorts &_ports)
 	ms_ioports.insert(ms_ioports.end(), adlib_ports.begin(), adlib_ports.end());
 	ms_ioports.insert(ms_ioports.end(), _ports.begin(), _ports.end());
 
-	m_iobase = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IOBASE);
-	
-	rebase_ports(ms_ioports.begin()+1, ms_ioports.end(), 0, m_iobase);
-	
+	register_ports(0, g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IOBASE));
+}
+
+void SBlaster::register_ports(unsigned _old_base, unsigned _new_base)
+{
+	rebase_ports(ms_ioports.begin()+1, ms_ioports.end(), _old_base, _new_base);
 	IODevice::install();
+	m_iobase = _new_base;
+}
+
+void SBlaster::register_dma(unsigned _channel)
+{
+	m_devices->dma()->register_8bit_channel(_channel,
+			std::bind(&SBlaster::dma_read_8, this, _1, _2, _3),
+			std::bind(&SBlaster::dma_write_8, this, _1, _2, _3),
+			nullptr,
+			name());
+	m_dma = _channel;
+}
+
+void SBlaster::register_irq(unsigned _line)
+{
+	g_machine.register_irq(_line, name());
+	m_irq = _line;
 }
 
 void SBlaster::config_changed()
@@ -492,10 +495,28 @@ void SBlaster::config_changed()
 	}
 	Synth::config_changed({AUDIO_FORMAT_S16, channels, double(opl_rate)});
 
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODOOO
-	// check and update DSP's iobase, dma channel, and irq line
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	bool updated = false;
+	unsigned new_base = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IOBASE);
+	if(new_base != m_iobase) {
+		IODevice::remove();
+		register_ports(m_iobase, new_base);
+		updated = true;
+	}
+	unsigned new_dma = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_DMA);
+	if(new_dma != m_dma) {
+		m_devices->dma()->unregister_channel(m_dma);
+		register_dma(new_dma);
+		updated = true;
+	}
+	unsigned new_irq = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IRQ);
+	if(new_irq != m_irq) {
+		g_machine.unregister_irq(m_irq, name());
+		register_irq(new_irq);
+		updated = true;
+	}
+	if(updated) {
+		PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
+	}
 }
 
 void SBlaster::remove()
