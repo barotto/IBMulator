@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -109,6 +109,9 @@ public:
 	void restore_state(StateBuf &_state);
 	
 private:
+	void register_ports(unsigned _old_base, unsigned _new_base);
+	void register_irq(unsigned _line);
+
 	void raise_interrupt();
 	void lower_interrupt();
 	void clear_queue();

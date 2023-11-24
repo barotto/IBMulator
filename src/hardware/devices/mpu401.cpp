@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020-2022  Marco Bortolin
+ * Copyright (C) 2020-2023  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,16 +64,11 @@ MPU401::~MPU401()
 
 void MPU401::install()
 {
-	m_iobase = g_program.config().get_int(MPU401_SECTION, MPU401_IOBASE);
 	ms_ioports.clear();
 	ms_ioports.insert(ms_ioports.end(), mpu401_ports.begin(), mpu401_ports.end());
-	rebase_ports(ms_ioports.begin(), ms_ioports.end(), 0, m_iobase);
-	
-	IODevice::install();
-	
-	m_irq = g_program.config().get_int(MPU401_SECTION, MPU401_IRQ);
-	g_machine.register_irq(m_irq, name());
-	
+	register_ports(0, g_program.config().get_int(MPU401_SECTION, MPU401_IOBASE));
+	register_irq(g_program.config().get_int(MPU401_SECTION, MPU401_IRQ));
+
 	using namespace std::placeholders;
 	m_eoi_timer = g_machine.register_timer(
 		std::bind(&MPU401::eoi_timer, this, _1),
@@ -104,12 +99,37 @@ void MPU401::remove()
 
 void MPU401::config_changed()
 {
+	unsigned new_base = g_program.config().get_int(MPU401_SECTION, MPU401_IOBASE);
+	if(new_base != m_iobase) {
+		IODevice::remove();
+		register_ports(m_iobase, new_base);
+	}
+
+	unsigned new_irq = g_program.config().get_int(MPU401_SECTION, MPU401_IRQ);
+	if(new_irq != m_irq) {
+		g_machine.unregister_irq(m_irq, name());
+		register_irq(new_irq);
+	}
+
 	static std::map<std::string, unsigned> modes = {
 		{ "",            MPU401::Mode::INTELLIGENT },
 		{ "intelligent", MPU401::Mode::INTELLIGENT },
 		{ "uart",        MPU401::Mode::UART }
 	};
 	m_req_mode = static_cast<MPU401::Mode>(g_program.config().get_enum(MPU401_SECTION, MPU401_MODE, modes, true));
+}
+
+void MPU401::register_ports(unsigned _old_base, unsigned _new_base)
+{
+	rebase_ports(ms_ioports.begin()+1, ms_ioports.end(), _old_base, _new_base);
+	IODevice::install();
+	m_iobase = _new_base;
+}
+
+void MPU401::register_irq(unsigned _line)
+{
+	g_machine.register_irq(_line, name());
+	m_irq = _line;
 }
 
 void MPU401::reset(unsigned _type)
