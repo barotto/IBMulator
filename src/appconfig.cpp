@@ -253,6 +253,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ MIXER_SECTION,
+"; Volumes are expressed as positive real numbers where 1.0 is nominal.\n"
+"; Balances are real numbers between -1.0 and 1.0, where -1.0 = left, 0.0 = center, 1.0 = right\n"
 "; prebuffer: How many milliseconds of data to prebuffer before audio starts to be emitted. A larger value might help sound stuttering, but will introduce latency.\n"
 ";            Possible values: any positive integer number between 10 and 1000.\n"
 ";      rate: Sample rate. Use the value which is more compatible with your sound card. Any emulated device with a rate different than this will be resampled.\n"
@@ -260,8 +262,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
 ";            Possible values: 1024, 2048, 4096, 512, 256.\n"
 ";   profile: Name of a INI file containing the volumes, effects, and filters of audio channels. You can use the Mixer GUI window to create one.\n"
-";    volume: Audio volume of the emulated sound cards.\n"
-";            Possible values: any positive real number, 1.0 is nominal. When in realistic GUI mode it's clamped to 1.3\n"
+";    volume: General audio volume for the emulated sound cards.\n"
 		},
 
 		{ MIDI_SECTION,
@@ -276,6 +277,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";    rate: Sample rate.\n"
 ";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
+"; balance: Audio balance.\n"
 "; filters: DSP filters (see README for more info).\n"
 ";  reverb: Reverb effect (see README for more info).\n"
 ";  chorus: Chorus effect (see README for more info).\n"
@@ -284,6 +286,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		{ PS1AUDIO_SECTION,
 ";     enabled: Install the PS/1 Audio/Joystick Card.\n"
 ";  dac_volume: Audio volume of the DAC.\n"
+"; dac_balance: Audio balance of the DAC.\n"
 "; dac_filters: DSP filters for the DAC.\n"
 ";              Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
 ";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
@@ -294,6 +297,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";    psg_rate: Sample rate of the PSG (Programmable Sound Generator).\n"
 ";              Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 ";  psg_volume: Audio volume of the PSG.\n"
+"; psg_balance: Audio balance of the PSG.\n"
 "; psg_filters: DSP filters for the PSG.\n"
 ";              Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
 ";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
@@ -308,6 +312,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
 ";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
+"; balance: Audio balance.\n"
 "; filters: DSP filters (see README for more info).\n"
 ";  reverb: Reverb effect (see README for more info).\n"
 ";  chorus: Chorus effect (see README for more info).\n"
@@ -335,7 +340,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";     dac_volume: DAC's MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level (SBPro+ only).\n"
-";    dac_filters: Audio filters for the DAC\n"
+"     dac_balance: DAC's audio balance.\n"
+";    dac_filters: DAC's audio filters.\n"
 ";                 Possible values: auto, a preset, or a list of filter definitions (see the README for more info).\n"
 ";     dac_reverb: Reverb effect for PCM audio (see README for more info).\n"
 ";     dac_chorus: Chorus effect for PCM audio (see README for more info).\n"
@@ -345,6 +351,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";     opl_volume: The OPL chip(s) MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level (SBPro or later only).\n"
+";    opl_balance: The OPL chip(s) audio balance.\n"
 ";    opl_filters: Audio filters for the OPL chip(s)\n"
 ";                 Possible values: auto, a preset, or a list of filter definitions (see the README for more info).\n"
 ";     opl_reverb: Reverb effect for FM audio (see README for more info).\n"
@@ -367,8 +374,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ SOUNDFX_SECTION,
-"; Volumes are expressed as positive real numbers.\n"
-"; Balances are real numbers between -1.0 and 1.0, where -1.0 = left, 0.0 = center, 1.0 = right\n"
 ";         enabled: Enable sound effects emulation.\n"
 ";          volume: General volume of the sound effects.\n"
 ";          reverb: Reverb effect to apply to all channels (see README for more info).\n"
@@ -597,19 +602,22 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	{ PCSPEAKER_SECTION, {
 		{ PCSPEAKER_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
 		{ PCSPEAKER_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
-		{ PCSPEAKER_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "pc-speaker" },
 		{ PCSPEAKER_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "0.5"   },
+		{ PCSPEAKER_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
+		{ PCSPEAKER_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "pc-speaker" },
 		{ PCSPEAKER_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ PCSPEAKER_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ PS1AUDIO_SECTION, {
 		{ PS1AUDIO_ENABLED,     MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
 		{ PS1AUDIO_DAC_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
+		{ PS1AUDIO_DAC_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
 		{ PS1AUDIO_DAC_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_DAC_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_DAC_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ PS1AUDIO_PSG_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ PS1AUDIO_PSG_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
+		{ PS1AUDIO_PSG_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
 		{ PS1AUDIO_PSG_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_PSG_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_PSG_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
@@ -618,7 +626,8 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ ADLIB_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "no"    },
 		{ ADLIB_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ ADLIB_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, ""      },
-		{ ADLIB_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.4"   },
+		{ ADLIB_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
+		{ ADLIB_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
 		{ ADLIB_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ ADLIB_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
@@ -631,12 +640,14 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ SBLASTER_DAC_RESAMPLING, PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_DAC_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_DAC_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_DAC_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
 		{ SBLASTER_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_DAC_CROSSFEED,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_OPL_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ SBLASTER_OPL_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_OPL_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_OPL_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0.0"   },
 		{ SBLASTER_OPL_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_OPL_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_OPL_CROSSFEED,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },

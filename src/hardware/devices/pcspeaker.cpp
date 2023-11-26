@@ -62,6 +62,7 @@ void PCSpeaker::install()
 
 	m_channel->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { PCSPEAKER_SECTION, PCSPEAKER_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ PCSPEAKER_SECTION, PCSPEAKER_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { PCSPEAKER_SECTION, PCSPEAKER_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { PCSPEAKER_SECTION, PCSPEAKER_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { PCSPEAKER_SECTION, PCSPEAKER_FILTERS }}

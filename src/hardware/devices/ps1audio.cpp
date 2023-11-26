@@ -100,6 +100,7 @@ void PS1Audio::install()
 
 	m_dac.channel->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { PS1AUDIO_SECTION, PS1AUDIO_DAC_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ PS1AUDIO_SECTION, PS1AUDIO_DAC_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { PS1AUDIO_SECTION, PS1AUDIO_DAC_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { PS1AUDIO_SECTION, PS1AUDIO_DAC_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { PS1AUDIO_SECTION, PS1AUDIO_DAC_FILTERS }}
@@ -134,6 +135,7 @@ void PS1Audio::install()
 	Synth::channel()->add_autoval_cb(MixerChannel::ConfigParameter::Filter, std::bind(&PS1Audio::synth_filter_cb, this));
 	Synth::channel()->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { PS1AUDIO_SECTION, PS1AUDIO_PSG_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ PS1AUDIO_SECTION, PS1AUDIO_PSG_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { PS1AUDIO_SECTION, PS1AUDIO_PSG_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { PS1AUDIO_SECTION, PS1AUDIO_PSG_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { PS1AUDIO_SECTION, PS1AUDIO_PSG_FILTERS }}

@@ -73,6 +73,7 @@ void AdLib::install()
 
 	Synth::channel()->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { ADLIB_SECTION, ADLIB_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ ADLIB_SECTION, ADLIB_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { ADLIB_SECTION, ADLIB_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { ADLIB_SECTION, ADLIB_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { ADLIB_SECTION, ADLIB_FILTERS }},

@@ -366,14 +366,12 @@ void MixerControl::set_balance(int _id, float _value, bool _update_links)
 		auto cfg = channel->config_map().find(MixerChannel::ConfigParameter::Balance);
 		if(_update_links && cfg != channel->config_map().end()) {
 			auto links = m_ch_links.find(cfg->second);
-			if(links == m_ch_links.end()) {
-				PDEBUGF(LOG_V0, LOG_MIXER, "Links for balance not defined\n");
-				return;
-			}
-			for(auto & linked_ch : links->second) {
-				if(linked_ch->id() != _id) {
-					set_balance(linked_ch->id(), _value, false);
-					set_balance_slider(linked_ch->id(), _value);
+			if(links != m_ch_links.end()) {
+				for(auto & linked_ch : links->second) {
+					if(linked_ch->id() != _id) {
+						set_balance(linked_ch->id(), _value, false);
+						set_balance_slider(linked_ch->id(), _value);
+					}
 				}
 			}
 		}

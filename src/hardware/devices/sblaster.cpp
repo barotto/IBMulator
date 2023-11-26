@@ -282,6 +282,7 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 
 	m_dac_channel->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { SBLASTER_SECTION, SBLASTER_DAC_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ SBLASTER_SECTION, SBLASTER_DAC_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { SBLASTER_SECTION, SBLASTER_DAC_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { SBLASTER_SECTION, SBLASTER_DAC_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { SBLASTER_SECTION, SBLASTER_DAC_FILTERS }},
@@ -404,6 +405,7 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 
 	Synth::channel()->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { SBLASTER_SECTION, SBLASTER_OPL_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,{ SBLASTER_SECTION, SBLASTER_OPL_BALANCE }},
 		{ MixerChannel::ConfigParameter::Reverb, { SBLASTER_SECTION, SBLASTER_OPL_REVERB }},
 		{ MixerChannel::ConfigParameter::Chorus, { SBLASTER_SECTION, SBLASTER_OPL_CHORUS }},
 		{ MixerChannel::ConfigParameter::Filter, { SBLASTER_SECTION, SBLASTER_OPL_FILTERS }},

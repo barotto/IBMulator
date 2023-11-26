@@ -249,6 +249,7 @@ public:
 #define PCSPEAKER_RATE          "rate"
 #define PCSPEAKER_FILTERS       "filters"
 #define PCSPEAKER_VOLUME        "volume"
+#define PCSPEAKER_BALANCE       "balance"
 #define PCSPEAKER_REVERB        "reverb"
 #define PCSPEAKER_CHORUS        "chorus"
 
@@ -257,10 +258,12 @@ public:
 #define PS1AUDIO_PSG_RATE       "psg_rate"
 #define PS1AUDIO_PSG_FILTERS    "psg_filters"
 #define PS1AUDIO_PSG_VOLUME     "psg_volume"
+#define PS1AUDIO_PSG_BALANCE    "psg_balance"
 #define PS1AUDIO_PSG_REVERB     "psg_reverb"
 #define PS1AUDIO_PSG_CHORUS     "psg_chorus"
 #define PS1AUDIO_DAC_FILTERS    "dac_filters"
 #define PS1AUDIO_DAC_VOLUME     "dac_volume"
+#define PS1AUDIO_DAC_BALANCE    "dac_balance"
 #define PS1AUDIO_DAC_REVERB     "dac_reverb"
 #define PS1AUDIO_DAC_CHORUS     "dac_chorus"
 
@@ -269,6 +272,7 @@ public:
 #define ADLIB_RATE              "rate"
 #define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
+#define ADLIB_BALANCE           "balence"
 #define ADLIB_REVERB            "reverb"
 #define ADLIB_CHORUS            "chorus"
 
@@ -284,12 +288,14 @@ public:
 #define SBLASTER_DAC_CHORUS     "dac_chorus"
 #define SBLASTER_DAC_CROSSFEED  "dac_crossfeed"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
+#define SBLASTER_DAC_BALANCE    "dac_balance"
 #define SBLASTER_OPL_RATE       "opl_rate"
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_REVERB     "opl_reverb"
 #define SBLASTER_OPL_CHORUS     "opl_chorus"
 #define SBLASTER_OPL_CROSSFEED  "opl_crossfeed"
 #define SBLASTER_OPL_VOLUME     "opl_volume"
+#define SBLASTER_OPL_BALANCE    "opl_balance"
 
 #define MPU401_SECTION          "mpu401"
 #define MPU401_ENABLED          "enabled"
