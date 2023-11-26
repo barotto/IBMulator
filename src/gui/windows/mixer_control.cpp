@@ -27,6 +27,7 @@
 event_map_t MixerControl::ms_evt_map = {
 	GUI_EVT( "class:ch_volume_slider", "dragstart", MixerControl::on_slider_dragstart ),
 	GUI_EVT( "class:ch_volume_slider", "dragend", MixerControl::on_slider_dragend ),
+	GUI_EVT( "save", "click", MixerControl::on_save ),
 	GUI_EVT( "close", "click", Window::on_cancel ),
 	GUI_EVT( "*", "keydown", Window::on_keydown )
 };
@@ -56,6 +57,10 @@ void MixerControl::create()
 
 	m_divs.master_vol_progress = get_element("ch_vol_progress_-1");
 	m_divs.audiocards_vol_progress = get_element(str_format("ch_vol_progress_%d", MixerChannel::AUDIOCARD));
+
+	m_save_info = std::make_unique<MixerSaveInfo>(m_gui);
+	m_save_info->create();
+	m_save_info->set_modal(true);
 
 	m_click_timer = m_gui->timers().register_timer([this](uint64_t){
 		if(!m_click_cb) {
@@ -173,6 +178,15 @@ void MixerControl::config_changed(bool)
 	max_w_dp += right;
 
 	m_wnd->SetProperty("max-width", str_format("%gdp", max_w_dp));
+}
+
+void MixerControl::close()
+{
+	if(m_save_info) {
+		m_save_info->close();
+		m_save_info.reset(nullptr);
+	}
+	Window::close();
 }
 
 void MixerControl::init_channel_values(MixerChannel *_ch)
@@ -1255,4 +1269,38 @@ void MixerControl::on_slider_dragstart(Rml::Event &)
 void MixerControl::on_slider_dragend(Rml::Event &)
 {
 	m_is_sliding = false;
+}
+
+void MixerControl::on_save(Rml::Event &)
+{
+	m_save_info->set_callbacks(
+		[=]()
+		{
+			if(m_save_info->values.name.empty()) {
+				return;
+			}
+
+			if(FileSys::is_absolute(m_save_info->values.name.c_str(), m_save_info->values.name.size())) {
+				m_gui->show_error_message_box("Cannot use absolute paths.");
+				return;
+			}
+
+			std::string profile_path = m_save_info->values.directory + FS_SEP + m_save_info->values.name;
+			std::string dir, base, ext;
+			if(!FileSys::get_path_parts(profile_path.c_str(), dir, base, ext)) {
+				m_gui->show_error_message_box("The destination directory is not valid.");
+				return;
+			}
+
+			PINFOF(LOG_V0, LOG_GUI, "Saving mixer profile '%s'\n", profile_path.c_str());
+
+			try {
+				m_mixer->save_profile(profile_path);
+			} catch(std::runtime_error &e) {
+				m_gui->show_error_message_box(e.what());
+			}
+		}
+	);
+
+	m_save_info->show();
 }

@@ -431,6 +431,21 @@ void GUI::init_rmlui()
 	m_rml_context->SetDensityIndependentPixelRatio(m_scaling_factor);
 }
 
+Rml::DataModelConstructor GUI::create_data_model(const std::string &_model_name)
+{
+	auto constructor = m_rml_context->CreateDataModel(_model_name);
+	if(!constructor) {
+		PERRF(LOG_GUI, "Cannot create data model %s\n", _model_name.c_str());
+		throw std::exception();
+	}
+	return constructor;
+}
+
+void GUI::remove_data_model(const std::string &_model_name)
+{
+	m_rml_context->RemoveDataModel(_model_name);
+}
+
 Rml::ElementDocument * GUI::load_document(const std::string &_filename)
 {
 	Rml::ElementDocument * document = m_rml_context->LoadDocument(_filename.c_str());

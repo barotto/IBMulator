@@ -70,6 +70,7 @@ void Window::create()
 		throw std::exception();
 	}
 	if(!m_wnd) {
+		setup_data_bindings();
 		m_wnd = m_gui->load_document(m_rml_docfile);
 		if(!m_wnd) {
 			PERRF(LOG_GUI, "Cannot load the '%s' document file\n", m_rml_docfile.c_str());

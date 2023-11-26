@@ -90,6 +90,8 @@ public:
 	struct ReverbParams {
 		ReverbPreset preset;
 		float gain;
+
+		std::string definition();
 	};
 
 	enum class ChorusPreset

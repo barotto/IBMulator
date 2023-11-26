@@ -220,6 +220,8 @@ void Mixer::config_changed(bool _launch) noexcept
 	}
 
 	if(_launch) {
+		load_profile(g_program.config().get_file(MIXER_SECTION, MIXER_PROFILE, FILE_TYPE_USER));
+
 		// let the GUI interfaces set the AUDIOCARD category volume
 		m_volume.category[MixerChannel::SOUNDFX] =
 			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
@@ -260,6 +262,35 @@ void Mixer::config_changed(bool _launch) noexcept
 	std::unique_lock<std::mutex> lock(m);
 	m_midi->sig_config_changed(m, cv);
 	cv.wait(lock);
+}
+
+void Mixer::load_profile(const std::string &_path)
+{
+	try {
+		auto path = FileSys::realpath(_path.c_str());
+		if(FileSys::is_file_readable(_path.c_str()) && !FileSys::is_directory(_path.c_str())) {
+			AppConfig config;
+			config.parse(path);
+			g_program.config().merge(config, MIXER_CONFIG);
+		}
+	} catch(std::exception &) {}
+}
+
+void Mixer::save_profile(const std::string &_path)
+{
+	// mt: called by the main thread, writes to the main app config object
+	for(auto &ch : m_mix_channels) {
+		ch.second->store_config(g_program.config());
+	}
+
+	g_program.config().set_real(MIXER_SECTION, MIXER_VOLUME, volume_cat(MixerChannel::AUDIOCARD));
+
+	g_program.config().set_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, m_volume.category[MixerChannel::SOUNDFX]);
+	g_program.config().set_string(SOUNDFX_SECTION, SOUNDFX_REVERB, m_reverb[MixerChannel::SOUNDFX].params.definition());
+
+	try {
+		g_program.config().create_file(_path, MIXER_CONFIG, false, false);
+	} catch(std::exception &) {}
 }
 
 void Mixer::start()

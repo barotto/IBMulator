@@ -1,0 +1,54 @@
+<rml>
+	<head>
+		<title>Save Mixer profile</title>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				width: 450dp;
+				height: 190dp;
+				min-height: 190dp;
+				min-width: 450dp;
+				max-height: 190dp;
+				margin: auto;
+				background-color: #3C5464FF;
+			}
+			div#window
+			{
+				padding: 20dp;
+			}
+			#buttons {
+				position: absolute;
+				bottom: 20dp;
+				right: 20dp;
+				left: 20dp;
+				text-align: right;
+			}
+			button.romshell
+			{
+				margin-left: 10dp;
+			}
+			#profile_name,
+			#directory
+			{
+				width: 100%;
+			}
+		</style>
+	</head>
+	<body template="default">
+		<div data-model="MixerProfileInfo">
+			<div id="info">
+				Enter the profile name:
+				<input data-value="name" type="text" id="profile_name"/>
+			</div>
+			<div style="margin-top: 10dp">
+				The file will be saved in:
+				<input data-value="directory" type="text" id="directory" class="disabled" disabled/>
+			</div>
+		</div>
+		<div id="buttons">
+			<button id="save" class="romshell"><span>Save</span></button>
+			<button id="cancel" class="romshell"><span>Cancel</span></button>
+		</div>
+	</body>
+</rml>

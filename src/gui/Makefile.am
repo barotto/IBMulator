@@ -42,6 +42,7 @@ libgui_a_SOURCES = \
 	windows/stats.cpp \
 	windows/devstatus.cpp \
 	windows/mixer_control.cpp \
+	windows/mixer_save_info.cpp \
 	windows/mixerstate.cpp \
 	windows/fileselect.cpp \
 	windows/state_dialog.cpp \
@@ -104,6 +105,7 @@ noinst_HEADERS = \
 	windows/stats.h \
 	windows/devstatus.h \
 	windows/mixer_control.h \
+	windows/mixer_save_info.h \
 	windows/mixerstate.h \
 	windows/fileselect.h \
 	windows/state_dialog.h \

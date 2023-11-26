@@ -82,6 +82,7 @@ public:
 	}
 	void set_title(const std::string &_title);
 
+	virtual void setup_data_bindings() {}
 	virtual void config_changed(bool /*_startup*/) {}
 	virtual void update();
 

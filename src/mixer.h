@@ -152,6 +152,9 @@ public:
 	bool is_reverb_enabled(MixerChannel::Category _cat) const { return m_reverb[_cat].enabled; }
 	void enable_reverb(MixerChannel::Category _cat, bool _enable);
 
+	void load_profile(const std::string &_path);
+	void save_profile(const std::string &_path);
+
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 	void cmd_quit();
 	void cmd_pause();

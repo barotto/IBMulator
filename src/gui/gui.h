@@ -324,7 +324,9 @@ public:
 	void update(uint64_t _time);
 	void shutdown();
 	void cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_variable &_cv);
-	
+
+	Rml::DataModelConstructor create_data_model(const std::string &_model_name);
+	void remove_data_model(const std::string &_model_name);
 	Rml::ElementDocument * load_document(const std::string &_filename);
 	void unload_document(Rml::ElementDocument *);
 

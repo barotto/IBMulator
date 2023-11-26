@@ -432,7 +432,7 @@ bool Program::initialize(int argc, char** argv)
 		std::string inidir, ininame;
 		FileSys::get_path_parts(m_cfg_file.c_str(), inidir, ininame);
 		try {
-			m_config[0].create_file(m_cfg_file, ANY_CONFIG, false);
+			m_config[0].create_file(m_cfg_file, ANY_CONFIG, true, false);
 			std::string message = "The configuration file " + ininame + " has been created in " +
 					inidir + "\n";
 			message += "Open it and configure the program as you like.";

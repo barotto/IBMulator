@@ -259,6 +259,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";            Possible values: 48000, 44100, 49716.\n"
 ";   samples: Audio samples buffer size; a larger buffer might help sound stuttering.\n"
 ";            Possible values: 1024, 2048, 4096, 512, 256.\n"
+";   profile: Name of a INI file containing the volumes, effects, and filters of audio channels. You can use the Mixer GUI window to create one.\n"
 ";    volume: Audio volume of the emulated sound cards.\n"
 ";            Possible values: any positive real number, 1.0 is nominal. When in realistic GUI mode it's clamped to 1.3\n"
 		},
@@ -581,10 +582,11 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DISK_SPINUP_TIME, MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 	} },
 	{ MIXER_SECTION, {
-		{ MIXER_PREBUFFER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "50"    },
-		{ MIXER_RATE,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
-		{ MIXER_SAMPLES,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "1024"  },
-		{ MIXER_VOLUME,    MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"   },
+		{ MIXER_PREBUFFER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "50"                },
+		{ MIXER_RATE,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000"             },
+		{ MIXER_SAMPLES,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "1024"              },
+		{ MIXER_PROFILE,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "mixer-profile.ini" },
+		{ MIXER_VOLUME,    MIXER_CONFIG,   PUBLIC_CFGKEY, "1.0"               },
 	} },
 	{ MIDI_SECTION, {
 		{ MIDI_ENABLED, PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
@@ -1129,14 +1131,14 @@ std::string AppConfig::find_media(const std::string &_filename)
 	return path;
 }
 
-void AppConfig::create_file(const std::string &_filename, ConfigType _type, bool _savestate)
+void AppConfig::create_file(const std::string &_filename, ConfigType _type, bool _comments, bool _savestate)
 {
 	std::ofstream file = FileSys::make_ofstream(_filename.c_str());
 	if(!file.is_open()) {
-		PERRF(LOG_FS,"Cannot open '%s' for writing\n",_filename.c_str());
-		throw std::exception();
+		PERRF(LOG_FS, "Cannot open '%s' for writing\n", _filename.c_str());
+		throw std::runtime_error("Cannot open file for writing");
 	}
-	if(!_savestate) {
+	if(_comments) {
 		file << ms_help["HEADER"] << "\n";
 	}
 	for(auto &section : ms_sections) {
@@ -1155,7 +1157,7 @@ void AppConfig::create_file(const std::string &_filename, ConfigType _type, bool
 		}
 		if(!keys_str.empty()) {
 			file << "[" << section.name << "]" << "\n";
-			if(!_savestate) {
+			if(_comments) {
 				file << ms_help[section.name];
 			}
 			file << keys_str << "\n";

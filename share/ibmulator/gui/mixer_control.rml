@@ -431,10 +431,18 @@
 				text-align: center;
 				background-color: #3d5576ff;
 			}
-
+			#save
+			{
+				position: absolute;
+				top: 30dp;
+				left: 20dp;
+				z-index: 9999;
+			}
 		</style>
 	</head>
 	<body template="default">
+
+		<button id="save" class="romshell"><span>Save profile</span></button>
 
 		<div id="master_container">
 			<div id="master" class="ch_block_container"></div>

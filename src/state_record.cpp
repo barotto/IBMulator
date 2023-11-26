@@ -146,7 +146,7 @@ void StateRecord::save()
 
 	// INI
 	try {
-		m_config.create_file(m_ini_path, MACHINE_CONFIG, true);
+		m_config.create_file(m_ini_path, MACHINE_CONFIG, false, true);
 	} catch(...) {
 		throw std::runtime_error(str_format("Cannot create config file '%s'", m_ini_path.c_str()));
 	}

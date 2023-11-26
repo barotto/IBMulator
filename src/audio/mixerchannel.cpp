@@ -1258,11 +1258,16 @@ std::string MixerChannel::reverb_def() const
 	if(is_reverb_auto()) {
 		return "auto";
 	}
-	std::string def;
-	if(m_reverb.config.preset != ReverbPreset::None && m_reverb.gain >= .0f) {
-		return str_format("%s %d", m_reverb.config.name, int(m_reverb.gain * 100.f));
+	return reverb().definition();
+}
+
+std::string MixerChannel::ReverbParams::definition()
+{
+	auto config = MixerChannel::reverb_preset_to_config(preset);
+	if(preset != ReverbPreset::None && gain >= .0f) {
+		return str_format("%s %d", config.name, int(gain * 100.f));
 	} else {
-		return m_reverb.config.name;
+		return config.name;
 	}
 }
 

@@ -21,6 +21,7 @@
 #define IBMULATOR_GUI_MIXER_CONTROL_H
 
 #include "window.h"
+#include "mixer_save_info.h"
 
 class Mixer;
 class MixerChannel;
@@ -43,6 +44,7 @@ private:
 	std::map<AppConfig::ConfigPair, std::vector<MixerChannel*>> m_ch_links;
 	TimerID m_click_timer = NULL_TIMER_ID;
 	std::function<void()> m_click_cb;
+	std::unique_ptr<MixerSaveInfo> m_save_info;
 
 	static event_map_t ms_evt_map;
 
@@ -52,10 +54,13 @@ public:
 	virtual void create();
 	virtual void update();
 	virtual void config_changed(bool);
+	virtual void close();
 
 	event_map_t & get_event_map() { return MixerControl::ms_evt_map; }
 
 private:
+	void on_save(Rml::Event &);
+
 	bool m_is_sliding = false;
 	void on_slider_dragstart(Rml::Event &);
 	void on_slider_dragend(Rml::Event &);

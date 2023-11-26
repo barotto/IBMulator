@@ -111,7 +111,7 @@ public:
 	std::string find_media(const std::string &_section, const std::string &_name);
 	std::string find_media(const std::string &_filename);
 
-	void create_file(const std::string &_filename, ConfigType _type, bool _savestate);
+	void create_file(const std::string &_filename, ConfigType _type, bool _comments, bool _savestate);
 
 	void reset();
 	void merge(const AppConfig &_config, ConfigType _type);
@@ -235,6 +235,7 @@ public:
 #define MIXER_RATE              "rate"
 #define MIXER_SAMPLES           "samples"
 #define MIXER_PREBUFFER         "prebuffer"
+#define MIXER_PROFILE           "profile"
 #define MIXER_VOLUME            "volume"
 
 #define MIDI_SECTION            "midi"
