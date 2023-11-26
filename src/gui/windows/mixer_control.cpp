@@ -259,6 +259,17 @@ void MixerControl::init_channel_values(MixerChannel *_ch)
 			set_control_value(chorus_preset, MixerChannel::chorus_preset_to_config(_ch->chorus().preset).name);
 		}
 	}
+
+	if(_ch->features() & MixerChannel::Feature::HasCrossfeed) {
+		auto crossfeed_preset = get_element(str_format("ch_crossfeed_preset_%d", _ch->id()));
+		if(!_ch->is_crossfeed_enabled()) {
+			set_control_value(crossfeed_preset, "none");
+		} else if(_ch->is_crossfeed_auto()) {
+			set_control_value(crossfeed_preset, "auto");
+		} else {
+			set_control_value(crossfeed_preset, MixerChannel::crossfeed_preset_to_config(_ch->crossfeed().preset).name);
+		}
+	}
 }
 
 void MixerControl::set_volume(int _id, float _value)
