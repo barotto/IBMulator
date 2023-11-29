@@ -1156,7 +1156,7 @@ void AppConfig::create_file(const std::string &_filename, ConfigType _type, bool
 	for(auto &section : ms_sections) {
 		std::string keys_str;
 		for(auto &key : section.keys) {
-			if(key.type != _type || (!_savestate && key.visibility != PUBLIC_CFGKEY)) {
+			if((_type != ANY_CONFIG && key.type != _type) || (!_savestate && key.visibility != PUBLIC_CFGKEY)) {
 				continue;
 			}
 			std::string value;
