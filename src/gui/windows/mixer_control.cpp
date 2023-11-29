@@ -297,7 +297,7 @@ void MixerControl::set_volume_slider(int _id, float _master)
 
 void MixerControl::set_volume_slider(int _id, float _master, float _left, float _right)
 {
-	int slider_value = 130 - _master * 100;
+	int slider_value = int(ms_max_volume) - _master * 100;
 	auto slider = get_element(str_format("ch_vol_%d", _id));
 	set_control_value(slider, slider_value);
 	set_volume_label(_id, _left, _right);
@@ -305,7 +305,7 @@ void MixerControl::set_volume_slider(int _id, float _master, float _left, float 
 
 void MixerControl::set_volume_slider(Rml::Element *_slider, Rml::Element *_progress, int _id, float _value)
 {
-	int slider_value = 130 - _value * 100;
+	int slider_value = int(ms_max_volume) - _value * 100;
 	set_control_value(_slider, slider_value);
 	set_control_value(_slider, _value, "real_value");
 	set_control_value(_progress, _value * 100);
@@ -328,7 +328,7 @@ bool MixerControl::on_volume_change(Rml::Event &_evt, int _chid)
 {
 	std::string val = _evt.GetParameter("value", std::string());
 	double value = str_parse_real_num(val);
-	value = (130.0 - value) / 100.0;
+	value = (ms_max_volume - value) / 100.0;
 	set_volume(_chid, value);
 	set_volume_label(_chid, value);
 	return true;
@@ -346,7 +346,7 @@ bool MixerControl::on_volume_auto(Rml::Event &_evt, int _chid)
 	set_active(tgt, autovol);
 	if(!autovol) {
 		float value = slider->GetAttribute("value", 1.0);
-		value = (130.0 - value) / 100.0;
+		value = (ms_max_volume - value) / 100.0;
 		set_volume(_chid, value);
 		set_volume_label(_chid, value);
 	}
@@ -997,7 +997,7 @@ Rml::ElementPtr MixerControl::create_volume_slider(int _id)
 		slider->SetClassNames("ch_volume_slider");
 		slider->SetAttribute("type", "range");
 		slider->SetAttribute("min", "0");
-		slider->SetAttribute("max", "130");
+		slider->SetAttribute("max", str_format("%d", int(ms_max_volume)));
 		slider->SetAttribute("step", "1");
 		slider->SetAttribute("orientation", "vertical");
 		slider->SetAttribute("value", "100");
@@ -1006,11 +1006,12 @@ Rml::ElementPtr MixerControl::create_volume_slider(int _id)
 		progress->SetId(str_format("ch_vol_progress_%d", _id));
 		progress->SetClassNames("ch_volume_progress");
 		progress->SetAttribute("direction", "top");
-		progress->SetAttribute("max", "130");
+		progress->SetAttribute("max", str_format("%d", int(ms_max_volume)));
 		progress->SetAttribute("value", "100");
 
 	Rml::ElementPtr notch = m_wnd->CreateElement("div");
 		notch->SetClassNames("ch_volume_notch");
+		notch->SetProperty("height", str_format("%f%%", 100.f / (ms_max_volume / 100.f)));
 
 	register_target_cb(slider.get(), "change", std::bind(&MixerControl::on_volume_change, this, _1, _id));
 

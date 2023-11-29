@@ -257,7 +257,6 @@
 				bottom: -2dp;
 				right: -4dp;
 				width: 8dp;
-				height: 76.5%;
 				border-top: 1dp;
 				border-bottom: 1dp;
 				border-color: #2d4254;

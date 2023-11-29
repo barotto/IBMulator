@@ -22,6 +22,7 @@
 #include "filesys.h"
 #include "appconfig.h"
 #include "program.h"
+#include "mixer.h"
 #include <algorithm>
 #include <regex>
 #include <cctype>
@@ -253,7 +254,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ MIXER_SECTION,
-"; Volumes are expressed as positive real numbers where 1.0 is nominal.\n"
+"; Volumes are expressed as positive real numbers between 0.0 and " MIXER_MAX_VOLUME_STR ", where 1.0 is nominal.\n"
 "; Balances are real numbers between -1.0 and 1.0, where -1.0 = left, 0.0 = center, 1.0 = right\n"
 "; prebuffer: How many milliseconds of data to prebuffer before audio starts to be emitted. A larger value might help sound stuttering, but will introduce latency.\n"
 ";            Possible values: any positive integer number between 10 and 1000.\n"

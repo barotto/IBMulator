@@ -222,9 +222,8 @@ void Mixer::config_changed(bool _launch) noexcept
 	if(_launch) {
 		load_profile(g_program.config().get_file(MIXER_SECTION, MIXER_PROFILE, FILE_TYPE_USER));
 
-		// let the GUI interfaces set the AUDIOCARD category volume
-		m_volume.category[MixerChannel::SOUNDFX] =
-			g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME, 0.0, 10.0);
+		set_volume_cat(MixerChannel::AUDIOCARD, g_program.config().get_real_or_default(MIXER_SECTION, MIXER_VOLUME));
+		set_volume_cat(MixerChannel::SOUNDFX, g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME));
 
 		m_reverb[MixerChannel::SOUNDFX].params = MixerChannel::parse_reverb_def(
 			g_program.config().get_string_or_default(SOUNDFX_SECTION, SOUNDFX_REVERB)
@@ -977,6 +976,16 @@ std::vector<std::shared_ptr<MixerChannel>> Mixer::get_channels()
 		chs.push_back(ch.second);
 	}
 	return chs;
+}
+
+void Mixer::set_volume_master(float _level)
+{
+	m_volume.master = std::max(0.f, std::min(_level, MIXER_MAX_VOLUME));
+}
+
+void Mixer::set_volume_cat(MixerChannel::Category _cat, float _level)
+{
+	m_volume.category[_cat] = std::max(0.f, std::min(_level, MIXER_MAX_VOLUME));
 }
 
 void Mixer::set_reverb(MixerChannel::Category _cat, std::string _preset)

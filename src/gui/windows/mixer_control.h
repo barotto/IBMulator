@@ -45,7 +45,7 @@ private:
 	TimerID m_click_timer = NULL_TIMER_ID;
 	std::function<void()> m_click_cb;
 	std::unique_ptr<MixerSaveInfo> m_save_info;
-
+	static constexpr float ms_max_volume = MIXER_MAX_VOLUME * 100.f;
 	static event_map_t ms_evt_map;
 
 public:

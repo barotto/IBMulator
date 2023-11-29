@@ -181,7 +181,6 @@ void RealisticInterface::create()
 		set_ambient_light(1.0);
 	}
 
-	RealisticInterface::set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
 	RealisticInterface::set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	RealisticInterface::set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 }
@@ -377,14 +376,14 @@ void RealisticInterface::update()
 	}
 	if(!m_is_dragging) {
 		float vol = m_mixer->volume_cat(MixerChannel::AUDIOCARD);
-		set_slider_value(m_volume_slider, m_volume_left_min, vol);
+		set_slider_value(m_volume_slider, m_volume_left_min, vol, MIXER_MAX_VOLUME);
 	}
 }
 
-void RealisticInterface::set_slider_value(Rml::Element *_slider, float _xleft, float _value)
+void RealisticInterface::set_slider_value(Rml::Element *_slider, float _xleft, float _value, float _max_value)
 {
-	_value = clamp(_value,ms_min_slider_val,ms_max_slider_val);
-	_value = (_value - ms_min_slider_val) / (ms_max_slider_val - ms_min_slider_val);
+	_value = clamp(_value, ms_min_slider_val, _max_value);
+	_value = (_value - ms_min_slider_val) / (_max_value - ms_min_slider_val);
 	float slider_left = _xleft + m_slider_len_p*_value;
 	_slider->SetProperty("left", str_format("%.1f%%", slider_left));
 }
@@ -429,19 +428,19 @@ void RealisticInterface::action(int _action)
 void RealisticInterface::set_audio_volume(float _value)
 {
 	Interface::set_audio_volume(_value);
-	set_slider_value(m_volume_slider, m_volume_left_min, _value);
+	set_slider_value(m_volume_slider, m_volume_left_min, _value, MIXER_MAX_VOLUME);
 }
 
 void RealisticInterface::set_video_brightness(float _value)
 {
 	Interface::set_video_brightness(_value);
-	set_slider_value(m_brightness_slider, m_brightness_left_min, _value);
+	set_slider_value(m_brightness_slider, m_brightness_left_min, _value, ms_max_slider_val);
 }
 
 void RealisticInterface::set_video_contrast(float _value)
 {
 	Interface::set_video_contrast(_value);
-	set_slider_value(m_contrast_slider, m_contrast_left_min, _value);
+	set_slider_value(m_contrast_slider, m_contrast_left_min, _value, ms_max_slider_val);
 }
 
 float RealisticInterface::on_slider_drag(Rml::Event &_event, float _xmin)
@@ -458,7 +457,7 @@ float RealisticInterface::on_slider_drag(Rml::Event &_event, float _xmin)
 void RealisticInterface::on_volume_drag(Rml::Event &_event)
 {
 	float value = on_slider_drag(_event, m_volume_left_min);
-	value = lerp(ms_min_slider_val, ms_max_slider_val, value);
+	value = lerp(ms_min_slider_val, MIXER_MAX_VOLUME, value);
 	set_audio_volume(value);
 }
 

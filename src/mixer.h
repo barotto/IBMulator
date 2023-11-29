@@ -40,7 +40,8 @@ extern Mixer g_mixer;
 #define MIXER_FORMAT    AUDIO_S16
 #define MIXER_MIN_RATE  8000
 #define MIXER_MAX_RATE  49716
-
+#define MIXER_MAX_VOLUME 1.3f
+#define MIXER_MAX_VOLUME_STR "1.3"
 
 typedef std::function<void()> Mixer_fun_t;
 typedef std::function<void(const std::vector<int16_t> &_data, int _category)> AudioSinkHandler;
@@ -138,8 +139,8 @@ public:
 
 	float volume_master() const { return m_volume.master; }
 	float volume_cat(MixerChannel::Category _cat) const { return m_volume.category[_cat]; }
-	void set_volume_master(float _level) { m_volume.master = _level; }
-	void set_volume_cat(MixerChannel::Category _cat, float _level) { m_volume.category[_cat] = _level; }
+	void set_volume_master(float _level);
+	void set_volume_cat(MixerChannel::Category _cat, float _level);
 	void set_muted(bool _muted) { m_volume.muted = _muted; }
 	void set_muted_cat(MixerChannel::Category _cat, bool _muted) { m_volume.muted_category[_cat] = _muted; }
 	bool is_muted() const { return m_volume.muted; }

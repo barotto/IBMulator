@@ -54,6 +54,7 @@ void MixerChannel::apply_config(AppConfig &_config)
 		switch(conf.first) {
 			case ConfigParameter::Volume: {
 				float level = _config.get_real(section, key, -1.0);
+				level = std::min(level, MIXER_MAX_VOLUME);
 				if(level < .0) {
 					if(m_features & MixerChannel::HasAutoVolume) {
 						// defer
@@ -973,8 +974,8 @@ void MixerChannel::set_volume_master(float _both)
 
 void MixerChannel::set_volume_master(float _left, float _right)
 {
-	m_volume.master_left = _left;
-	m_volume.master_right = _right;
+	m_volume.master_left = std::max(0.f, std::min(_left, MIXER_MAX_VOLUME));
+	m_volume.master_right = std::max(0.f, std::min(_right, MIXER_MAX_VOLUME));
 
 	run_parameter_cb(ConfigParameter::Volume);
 }

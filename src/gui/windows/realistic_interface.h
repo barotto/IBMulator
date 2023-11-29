@@ -110,7 +110,7 @@ public:
 private:
 	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);
 
-	void set_slider_value(Rml::Element *_slider, float _xmin, float _value);
+	void set_slider_value(Rml::Element *_slider, float _xmin, float _value, float _max_value);
 
 	float on_slider_drag(Rml::Event &_event, float _xmin);
 	void  on_volume_drag(Rml::Event &);
