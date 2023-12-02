@@ -247,6 +247,7 @@ public:
 #define PCSPEAKER_SECTION       "pcspeaker"
 #define PCSPEAKER_ENABLED       "enabled"
 #define PCSPEAKER_RATE          "rate"
+#define PCSPEAKER_LEVEL         "level"
 #define PCSPEAKER_FILTERS       "filters"
 #define PCSPEAKER_VOLUME        "volume"
 #define PCSPEAKER_BALANCE       "balance"

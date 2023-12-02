@@ -24,7 +24,6 @@
 #include "pit.h"
 #include <cmath>
 
-#define PC_SPEAKER_LEVEL 0.8
 
 IODEVICE_PORTS(PCSpeaker) = {};
 
@@ -93,6 +92,8 @@ void PCSpeaker::config_changed()
 	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(rate)});
 	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, double(rate)});
 	m_outbuf.reserve_us(50000);
+
+	m_level = g_program.config().get_real_or_default(PCSPEAKER_SECTION, PCSPEAKER_LEVEL) / 2.0;
 
 	reset(0);
 }
@@ -277,7 +278,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 			end = pit_ticks;
 		}
 
-		m_s.level = (front.out)?PC_SPEAKER_LEVEL:0.0;
+		m_s.level = (front.out) ? m_level : -m_level;
 		m_pitbuf.fill_samples<float>(end - begin, m_s.level);
 
 		if(end == pit_ticks) {

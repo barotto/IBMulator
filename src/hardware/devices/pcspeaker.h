@@ -52,6 +52,7 @@ private:
 	std::shared_ptr<MixerChannel> m_channel;
 	uint64_t m_last_time = 0;
 	double m_samples_rem = 0.0;
+	double m_level = 0.0;
 
 public:
 	PCSpeaker(Devices *_dev);
