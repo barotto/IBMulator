@@ -158,6 +158,7 @@ public:
 #define DIALOGS_SAVE_MODE       "save_mode"
 #define DIALOGS_SAVE_ORDER      "save_order"
 #define DIALOGS_SAVE_ZOOM       "save_zoom"
+#define DIALOGS_OSD_TIMEOUT     "osd_timeout"
 
 #define CAPTURE_SECTION         "capture"
 #define CAPTURE_DIR             "directory"

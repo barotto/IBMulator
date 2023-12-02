@@ -54,9 +54,11 @@ void MixerControl::create()
 
 	m_divs.master_vol = get_element("ch_vol_-1");
 	m_divs.audiocards_vol = get_element(str_format("ch_vol_%d", MixerChannel::AUDIOCARD));
+	m_divs.soundfx_vol = get_element(str_format("ch_vol_%d", MixerChannel::SOUNDFX));
 
 	m_divs.master_vol_progress = get_element("ch_vol_progress_-1");
 	m_divs.audiocards_vol_progress = get_element(str_format("ch_vol_progress_%d", MixerChannel::AUDIOCARD));
+	m_divs.soundfx_vol_progress = get_element(str_format("ch_vol_progress_%d", MixerChannel::SOUNDFX));
 
 	m_save_info = std::make_unique<MixerSaveInfo>(m_gui);
 	m_save_info->create();
@@ -96,15 +98,19 @@ void MixerControl::update()
 				set_control_value(check, ch.ch->is_filter_enabled(), "checked");
 			}
 		}
-		if(!m_is_sliding) {
-			float val = m_divs.master_vol->GetAttribute("real_value")->Get(1.f);
-			if(val != m_mixer->volume_master()) {
-				set_volume_slider(m_divs.master_vol, m_divs.master_vol_progress, -1, m_mixer->volume_master());
-			}
-			val = m_divs.audiocards_vol->GetAttribute("real_value")->Get(1.f);
-			if(val != m_mixer->volume_cat(MixerChannel::AUDIOCARD)) {
-				set_volume_slider(m_divs.audiocards_vol, m_divs.audiocards_vol_progress, MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
-			}
+	}
+	if(!m_is_sliding) {
+		float val = m_divs.master_vol->GetAttribute("real_value")->Get(1.f);
+		if(val != m_mixer->volume_master()) {
+			set_volume_slider(m_divs.master_vol, m_divs.master_vol_progress, -1, m_mixer->volume_master());
+		}
+		val = m_divs.audiocards_vol->GetAttribute("real_value")->Get(1.f);
+		if(val != m_mixer->volume_cat(MixerChannel::AUDIOCARD)) {
+			set_volume_slider(m_divs.audiocards_vol, m_divs.audiocards_vol_progress, MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
+		}
+		val = m_divs.soundfx_vol->GetAttribute("real_value")->Get(1.f);
+		if(val != m_mixer->volume_cat(MixerChannel::SOUNDFX)) {
+			set_volume_slider(m_divs.soundfx_vol, m_divs.soundfx_vol_progress, MixerChannel::SOUNDFX, m_mixer->volume_cat(MixerChannel::SOUNDFX));
 		}
 	}
 }

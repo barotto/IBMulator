@@ -1019,6 +1019,8 @@ Valid `FUNC_* ` functions are:
 0=latched)
 * `FUNC_TOGGLE_FULLSCREEN`: toggle fullscreen mode
 * `FUNC_SWITCH_KEYMAPS`: change the active keymap to the next available one
+* `FUNC_SET_AUDIO_VOLUME(c,a)`: change audio volume for category 'c' (0=master,
+1=audio cards, 2=sfx) by amount 'a' (%)
 * `FUNC_EXIT`: close IBMulator
 
 `MOUSE_AXIS_n` events can have 3 arguments when mapped to joystick axes or
@@ -1110,6 +1112,12 @@ These are the default key bindings defined in the `keymap.map` file:
 * <kbd>SHIFT</kbd>+<kbd>SPACE</kbd> : change the active keymap to the next available one
 * <kbd>SHIFT</kbd>+<kbd>PAUSE</kbd> : pause/resume emulation
 * <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
+* <kbd>L-CTRL</kbd>+<kbd>UP</kbd>   : increase master volume by 5%
+* <kbd>L-CTRL</kbd>+<kbd>DOWN</kbd> : decrease master volume by 5%
+* <kbd>R-CTRL</kbd>+<kbd>UP</kbd>   : increase sound cards volume by 5%
+* <kbd>R-CTRL</kbd>+<kbd>DOWN</kbd> : decrease sound cards volume by 5%
+* <kbd>R-SHIFT</kbd>+<kbd>UP</kbd>  : increase sound FX volume by 5%
+* <kbd>R-SHIFT</kbd>+<kbd>DOWN</kbd>: decrease sound FX volume by 5%
 * <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
 The mouse can be grabbed with the central mouse button as well.  

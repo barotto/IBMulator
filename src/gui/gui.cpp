@@ -42,6 +42,7 @@
 #include "windows/printer_control.h"
 #include "windows/mixer_control.h"
 #include "windows/shader_parameters.h"
+#include "windows/audio_osd.h"
 
 #include "capture/capture.h"
 
@@ -89,6 +90,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
 	{ ProgramEvent::FuncName::FUNC_SHOW_OPTIONS,         &GUI::pevt_func_show_options         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_MIXER,         &GUI::pevt_func_toggle_mixer         },
+	{ ProgramEvent::FuncName::FUNC_SET_AUDIO_VOLUME,     &GUI::pevt_func_set_audio_volume     },
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
@@ -2482,6 +2484,33 @@ void GUI::pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase _phase)
 	toggle_mixer_control();
 }
 
+void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase == EventPhase::EVT_END) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Set Mixer volume event\n");
+
+	int channel = _func.params[0] - 1;
+	if(channel < -1 || channel >= MixerChannel::CategoryCount) {
+		PERRF(LOG_GUI, "Invalid Mixer category: %d\n", channel+1);
+		return;
+	}
+	float amount = float(_func.params[1]) / 100.f;
+
+	m_windows.show_audio_volume_osd(channel);
+
+	if(channel < 0) {
+		float current = m_mixer->volume_master();
+		m_mixer->set_volume_master(current + amount);
+	} else {
+		MixerChannel::Category category = static_cast<MixerChannel::Category>(channel);
+		float current = m_mixer->volume_cat(category);
+		m_mixer->set_volume_cat(category, current + amount);
+	}
+}
+
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
@@ -2877,6 +2906,8 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 
 	mixer_ctrl = std::make_unique<MixerControl>(_gui, _mixer);
 
+	audio_osd = std::make_unique<AudioOSD>(_gui, _mixer);
+
 	//debug
 	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
 
@@ -2964,6 +2995,10 @@ void GUI::WindowManager::update(uint64_t _current_time)
 
 	if(printer_ctrl && printer_ctrl->is_visible()) {
 		printer_ctrl->update();
+	}
+
+	if(audio_osd->is_visible()) {
+		audio_osd->update();
 	}
 
 	// timers are where the timed windows events take place
@@ -3058,6 +3093,12 @@ void GUI::WindowManager::toggle_mixer()
 	}
 }
 
+void GUI::WindowManager::show_audio_volume_osd(int _channel_id)
+{
+	audio_osd->set_channel_id(_channel_id);
+	audio_osd->show();
+}
+
 void GUI::WindowManager::toggle_dbg()
 {
 	debug_wnds = !debug_wnds;
@@ -3098,7 +3139,7 @@ Rml::ElementDocument * GUI::WindowManager::current_doc()
 
 bool GUI::WindowManager::need_input()
 {
-	return (current_doc() != interface->m_wnd);
+	return (current_doc() != interface->m_wnd || audio_osd->is_visible());
 }
 
 void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)

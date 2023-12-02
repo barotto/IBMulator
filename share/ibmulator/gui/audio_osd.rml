@@ -1,0 +1,80 @@
+<rml>
+	<head>
+		<link type="text/template" href="default.rml" />
+		<style>
+			body
+			{
+				position: absolute;
+				right: 10dp;
+				width: 150dp;
+				height: 90%;
+				margin-top: auto;
+				margin-bottom: auto;
+				background-color: #00000000;
+			}
+			#ch_vol_progress
+			{
+				position: absolute;
+				top: 0;
+				right: 0;
+				width: 8dp;
+				height: 100%;
+
+				border-radius: 20dp;
+				background-color: #466581;
+				border: 1dp;
+				border-color: #2d4254;
+			}
+			#ch_vol_progress fill
+			{
+				border-radius: 20dp;
+				background-color: #00f000;
+			}
+			#ch_vol_container
+			{
+				position: absolute;
+				left: 0;
+				width: 130dp;
+				height: 110dp;
+				margin-top: auto;
+				margin-bottom: auto;
+				background-color: #000000a0;
+				border-radius: 20dp;
+			}
+			#ch_vol_container img
+			{
+				width: 30dp;
+				height: 30dp;
+				position: absolute;
+				top: 20dp;
+				left: 20dp;
+			}
+			#ch_vol_value
+			{
+				position: absolute;
+				top: 20dp;
+				right: 20dp;
+				font-size: 30dp;
+			}
+			#ch_vol_name
+			{
+				position: absolute;
+				bottom: 20dp;
+				width: 100%;
+				text-align: center;
+				white-space: nowrap;
+				font-size: 20dp;
+			}
+		</style>
+	</head>
+	<body>
+
+		<progress id="ch_vol_progress" direction="top" />
+		<div id="ch_vol_container">
+			<img src="icons/audio_on.png" />
+			<div id="ch_vol_value"></div>
+			<div id="ch_vol_name"></div>
+		</div>
+
+	</body>
+</rml>

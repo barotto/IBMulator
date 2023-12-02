@@ -27,6 +27,7 @@ libgui_a_SOURCES = \
 	rml/sys_interface.cpp \
 	format.cpp \
 	window.cpp \
+	windows/audio_osd.cpp \
 	windows/desktop.cpp \
 	windows/interface.cpp \
 	windows/interface_fx.cpp \
@@ -90,6 +91,7 @@ noinst_HEADERS = \
 	rml/sys_interface.h \
 	format.h \
 	window.h \
+	windows/audio_osd.h \
 	windows/desktop.h \
 	windows/interface.h \
 	windows/interface_fx.h \

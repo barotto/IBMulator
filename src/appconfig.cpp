@@ -104,6 +104,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";  save_mode: Savestate dialogs initial view mode: grid, list\n"
 "; save_order: Savestate dialogs initial order: date, title, slot\n"
 ";  save_zoom: Savestate dialogs initial zoom level: 0, 1, 2\n"
+";osd_timeout: Number of seconds before hiding the OSD.\n"
 		},
 
 		{ CAPTURE_SECTION,
@@ -503,6 +504,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DIALOGS_SAVE_MODE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "grid"   },
 		{ DIALOGS_SAVE_ORDER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "date"   },
 		{ DIALOGS_SAVE_ZOOM,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "1"      },
+		{ DIALOGS_OSD_TIMEOUT,PROGRAM_CONFIG, PUBLIC_CFGKEY, "1"      },
 	} },
 	{ CAPTURE_SECTION, {
 		{ CAPTURE_DIR,           PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },

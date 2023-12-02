@@ -33,8 +33,8 @@ private:
 	Mixer *m_mixer;
 	struct {
 		Rml::Element *audiocards_channels, *soundfx_channels;
-		Rml::Element *master_vol, *audiocards_vol;
-		Rml::Element *master_vol_progress, *audiocards_vol_progress;
+		Rml::Element *master_vol, *audiocards_vol, *soundfx_vol;
+		Rml::Element *master_vol_progress, *audiocards_vol_progress, *soundfx_vol_progress;
 	} m_divs = {};
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;

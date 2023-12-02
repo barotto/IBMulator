@@ -97,6 +97,7 @@
 #  FUNC_SYS_SPEED(x)         : set the emulation speed to x% (whole system)
 #  FUNC_TOGGLE_FULLSCREEN    : toggle fullscreen mode
 #  FUNC_SWITCH_KEYMAPS       : change the active keymap to the next available one
+#  FUNC_SET_AUDIO_VOLUME(c,a): change audio volume for category 'c' (0=master, 1=audio cards, 2=sfx) by amount 'a' (%)
 #  FUNC_EXIT                 : close IBMulator
 #
 #
@@ -195,6 +196,16 @@ KMOD_SHIFT + SDLK_SPACE = FUNC_SWITCH_KEYMAPS
 KMOD_SHIFT + SDLK_PAUSE = FUNC_TOGGLE_PAUSE
 KMOD_ALT + SDLK_RETURN  = FUNC_TOGGLE_FULLSCREEN
 KMOD_ALT + SDLK_F4      = FUNC_EXIT
+
+# Master volume (0)
+KMOD_LCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(0,5)
+KMOD_LCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(0,-5)
+# Sound cards volume (1)
+KMOD_RCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(1,5)
+KMOD_RCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(1,-5)
+# SoundFX (2)
+KMOD_RSHIFT + SDLK_UP   = FUNC_SET_AUDIO_VOLUME(2,5)
+KMOD_RSHIFT + SDLK_DOWN = FUNC_SET_AUDIO_VOLUME(2,-5)
 
 
 ### Keyboard bindings

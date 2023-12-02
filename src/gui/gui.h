@@ -74,6 +74,7 @@ class MixerControl;
 class PrinterControl;
 class DebugTools;
 class TextModeInfo;
+class AudioOSD;
 
 #include "appconfig.h"
 
@@ -244,6 +245,7 @@ protected:
 		std::unique_ptr<Status>     status;
 		std::unique_ptr<ShaderParameters> options_wnd; // TODO: ShaderParameters is a placeholder
 		std::unique_ptr<MixerControl> mixer_ctrl;
+		std::unique_ptr<AudioOSD> audio_osd;
 		std::unique_ptr<DebugTools> dbgtools;
 		std::unique_ptr<MessageWnd> message_wnd;
 		std::unique_ptr<PrinterControl> printer_ctrl;
@@ -266,6 +268,7 @@ protected:
 		void toggle_dbg();
 		void toggle_printer();
 		void toggle_mixer();
+		void show_audio_volume_osd(int _channel_id);
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();
@@ -402,6 +405,7 @@ private:
 	void pevt_func_none(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_show_options(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_audio_volume(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
