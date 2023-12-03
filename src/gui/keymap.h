@@ -205,7 +205,7 @@ public:
 		InputEvent ievt;
 		std::vector<ProgramEvent> pevt;
 		enum class Mode {
-			DEFAULT, ONE_SHOT, LATCHED
+			DEFAULT, ONE_SHOT, LATCHED, REPEAT
 		} mode = Mode::DEFAULT;
 		std::string name;
 		std::string group;
@@ -221,6 +221,7 @@ public:
 		void parse_option(std::string);
 		bool has_prg_event(const ProgramEvent&) const;
 		bool has_cmd_event(ProgramEvent::CommandName _cmd, size_t _idx_from = 0) const;
+		bool has_events_of_type(ProgramEvent::Type) const;
 		bool is_ievt_keycombo() const;
 		bool is_pevt_keycombo() const;
 		void mask_pevt_kmods(bool _mask = true);

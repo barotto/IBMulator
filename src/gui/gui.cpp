@@ -1371,12 +1371,11 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	// events are not created when gui is active, if one is present skip this
 	if(!running_evt && gui_input) {
 		// do gui stuff
-		if(binding_ptr && !m_windows.current_doc()->IsModal()) {
-			// but first run any FUNC_*
-			run_event_functions(binding_ptr, phase);
+		if(m_windows.current_doc()->IsModal() || 
+				!binding_ptr || !binding_ptr->has_events_of_type(ProgramEvent::Type::EVT_PROGRAM_FUNC)) {
+			dispatch_rml_event(_sdl_event);
+			return;
 		}
-		dispatch_rml_event(_sdl_event);
-		return;
 	}
 
 	// keyboard events need to account for the special case of key combos triggered by key combos,
@@ -2486,7 +2485,7 @@ void GUI::pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase _phase)
 
 void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase _phase)
 {
-	if(_phase == EventPhase::EVT_END) {
+	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
 
@@ -3139,7 +3138,7 @@ Rml::ElementDocument * GUI::WindowManager::current_doc()
 
 bool GUI::WindowManager::need_input()
 {
-	return (current_doc() != interface->m_wnd || audio_osd->is_visible());
+	return (current_doc() != interface->m_wnd);
 }
 
 void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)

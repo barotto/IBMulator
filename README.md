@@ -954,6 +954,8 @@ is activated and ends when deactivated
 their completion (endless macros will run forever)
     * `latched`: macro starts when the binding is activated and ends when it's
 activated again
+    * `repeat`: macro repeats after a 250ms delay, with a 20 repetitions per
+second frequency
 * `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run
 concurrently
 * `TYPEMATIC:NO`: disables the typematic keyboard feature
@@ -1015,12 +1017,11 @@ Valid `FUNC_* ` functions are:
 * `FUNC_GRAB_MOUSE`: lock / unlock mouse to emulator
 * `FUNC_SYS_SPEED_UP`: increase emulation speed (whole system)
 * `FUNC_SYS_SPEED_DOWN`: decrease emulation speed (whole system)
-* `FUNC_SYS_SPEED(x,m)`: set the emulation speed to x%, mode m (1=momentary,
-0=latched)
+* `FUNC_SYS_SPEED(x)`: set the emulation speed to `x`%
 * `FUNC_TOGGLE_FULLSCREEN`: toggle fullscreen mode
 * `FUNC_SWITCH_KEYMAPS`: change the active keymap to the next available one
-* `FUNC_SET_AUDIO_VOLUME(c,a)`: change audio volume for category 'c' (0=master,
-1=audio cards, 2=sfx) by amount 'a' (%)
+* `FUNC_SET_AUDIO_VOLUME(c,a)`: change audio volume for category `c` (0=master,
+1=audio cards, 2=sfx) by amount `a` (%)
 * `FUNC_EXIT`: close IBMulator
 
 `MOUSE_AXIS_n` events can have 3 arguments when mapped to joystick axes or

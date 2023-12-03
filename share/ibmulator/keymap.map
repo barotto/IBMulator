@@ -41,6 +41,7 @@
 #                         default: default mode of execution, macro starts when the binding is activated and ends when deactivated
 #                         1shot: macro starts and ends immediately; timed macros will run until their completion (endless macros will run forever)
 #                         latched: macro starts when the binding is activated and ends when it's activated again
+#                         repeat: repeats the macro after a 250ms delay, with a 20 repetitions per second frequency
 #  GROUP:g             : timed macros belonging to the same group `g` can't run concurrently
 #  TYPEMATIC:NO        : disables the typematic keyboard feature
 #
@@ -188,9 +189,9 @@ KMOD_SHIFT + SDLK_F9    = FUNC_LOAD_STATE
 KMOD_CTRL + SDLK_F8     = FUNC_QUICK_SAVE_STATE
 KMOD_CTRL + SDLK_F9     = FUNC_QUICK_LOAD_STATE
 KMOD_CTRL + SDLK_F10    = FUNC_GRAB_MOUSE
-KMOD_CTRL + SDLK_F11    = FUNC_SYS_SPEED_DOWN
+KMOD_CTRL + SDLK_F11    = FUNC_SYS_SPEED_DOWN; mode:repeat
 KMOD_SHIFT + SDLK_F11   = FUNC_SYS_SPEED(10); mode:latched group:sysspeed
-KMOD_CTRL + SDLK_F12    = FUNC_SYS_SPEED_UP
+KMOD_CTRL + SDLK_F12    = FUNC_SYS_SPEED_UP; mode:repeat
 KMOD_SHIFT + SDLK_F12   = FUNC_SYS_SPEED(500); mode:latched group:sysspeed
 KMOD_SHIFT + SDLK_SPACE = FUNC_SWITCH_KEYMAPS
 KMOD_SHIFT + SDLK_PAUSE = FUNC_TOGGLE_PAUSE
@@ -198,14 +199,14 @@ KMOD_ALT + SDLK_RETURN  = FUNC_TOGGLE_FULLSCREEN
 KMOD_ALT + SDLK_F4      = FUNC_EXIT
 
 # Master volume (0)
-KMOD_LCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(0,5)
-KMOD_LCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(0,-5)
+KMOD_LCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(0,5); mode:repeat
+KMOD_LCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(0,-5); mode:repeat
 # Sound cards volume (1)
-KMOD_RCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(1,5)
-KMOD_RCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(1,-5)
+KMOD_RCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(1,5); mode:repeat
+KMOD_RCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(1,-5); mode:repeat
 # SoundFX (2)
-KMOD_RSHIFT + SDLK_UP   = FUNC_SET_AUDIO_VOLUME(2,5)
-KMOD_RSHIFT + SDLK_DOWN = FUNC_SET_AUDIO_VOLUME(2,-5)
+KMOD_RSHIFT + SDLK_UP   = FUNC_SET_AUDIO_VOLUME(2,5); mode:repeat
+KMOD_RSHIFT + SDLK_DOWN = FUNC_SET_AUDIO_VOLUME(2,-5); mode:repeat
 
 
 ### Keyboard bindings

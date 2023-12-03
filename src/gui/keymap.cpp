@@ -325,6 +325,8 @@ void Keymap::Binding::parse_option(std::string _tok)
 			mode = Mode::ONE_SHOT;
 		} else if(match[1].str() == "LATCHED") {
 			mode = Mode::LATCHED;
+		} else if(match[1].str() == "REPEAT") {
+			mode = Mode::REPEAT;
 		} else if(match[1].str() == "DEFAULT") {
 			mode = Mode::DEFAULT;
 		} else {
@@ -366,6 +368,16 @@ bool Keymap::Binding::has_cmd_event(ProgramEvent::CommandName _cmd_name, size_t 
 	size_t idx = std::min(pevt.size()-1, _start_idx);
 	for(; idx<pevt.size(); idx++) {
 		if(pevt[idx].type == ProgramEvent::Type::EVT_COMMAND && pevt[idx].command.name == _cmd_name) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Keymap::Binding::has_events_of_type(ProgramEvent::Type _type) const
+{
+	for(auto & pe : pevt) {
+		if(pe.type == _type) {
 			return true;
 		}
 	}
@@ -659,7 +671,19 @@ void Keymap::load(const std::string &_filename)
 				continue;
 			}
 		}
-		if(binding->typematic && binding->mode != Binding::Mode::ONE_SHOT) {
+		if(binding->mode == Binding::Mode::REPEAT) {
+			try {
+				size_t len = binding->pevt.size();
+				binding->pevt.insert(binding->pevt.end(), "wait(250)");
+				binding->pevt.insert(binding->pevt.end(), binding->pevt.begin(), binding->pevt.begin() + len);
+				binding->pevt.insert(binding->pevt.end(), {
+					"wait(50)",
+					"skip_to(" + std::to_string(len+2) + ")"
+				});
+			} catch(std::runtime_error &e) {
+				PDEBUGF(LOG_V2, LOG_GUI, "%s\n", e.what());
+			}
+		} else if(binding->typematic && binding->mode != Binding::Mode::ONE_SHOT) {
 			binding->typematic = apply_typematic(binding->pevt);
 			if(binding->typematic && binding->group.empty()) {
 				binding->group = "typematic";
