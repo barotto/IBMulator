@@ -40,7 +40,9 @@ void AudioOSD::create()
 	m_timeout = g_program.config().get_real_or_default(DIALOGS_SECTION, DIALOGS_OSD_TIMEOUT) * NSEC_PER_SECOND;
 
 	m_timeout_timer = m_gui->timers().register_timer(
-		[this](uint64_t) { hide(); },
+		[this](uint64_t) { 
+			m_wnd->SetClass("hidden", true);
+		},
 		"Audio OSD"
 	);
 
@@ -49,49 +51,188 @@ void AudioOSD::create()
 	m_divs.volume_name = get_element("ch_vol_name");
 
 	m_divs.volume_progress->SetAttribute("max", str_format("%d", int(MIXER_MAX_VOLUME * 100)));
+
+	update_channel_name();
+}
+
+void AudioOSD::config_changed(bool)
+{
+	m_channels.clear();
+
+	for(auto &ch : m_mixer->get_channels(MixerChannel::AUDIOCARD)) {
+		if(!ch->features() || !(ch->features() & MixerChannel::Feature::HasVolume)) {
+			continue;
+		}
+		m_channels.push_back(ch);
+	}
+
+	for(auto &ch : m_mixer->get_channels(MixerChannel::SOUNDFX)) {
+		if(!ch->features() || !(ch->features() & MixerChannel::Feature::HasVolume)) {
+			continue;
+		}
+		m_channels.push_back(ch);
+	}
+
+	m_channel_id = -1;
+}
+
+void AudioOSD::update_channel_name()
+{
+	if(m_channel_id < 0) {
+		m_divs.volume_name->SetInnerRML("Master");
+		m_divs.volume_name->SetClassNames("master");
+	} else {
+		switch(m_channel_id) {
+			case MixerChannel::Category::AUDIOCARD: { 
+				m_divs.volume_name->SetInnerRML("Audio cards");
+				m_divs.volume_name->SetClassNames("category audiocard");
+				break;
+			}
+			case MixerChannel::Category::SOUNDFX: {
+				m_divs.volume_name->SetInnerRML("Sound FX");
+				m_divs.volume_name->SetClassNames("category soundfx");
+				break;
+			}
+			case MixerChannel::Category::GUI: {
+				m_divs.volume_name->SetInnerRML("GUI");
+				m_divs.volume_name->SetClassNames("category gui");
+				break;
+			}
+			default: {
+				int id = m_channel_id - MixerChannel::CategoryCount;
+				if(id >= int(m_channels.size())) {
+					return;
+				}
+				m_divs.volume_name->SetInnerRML(m_channels[id]->name());
+				if(m_channels[id]->category() == MixerChannel::Category::AUDIOCARD) {
+					m_divs.volume_name->SetClassNames("audiocard");
+				} else {
+					m_divs.volume_name->SetClassNames("soundfx");
+				}
+				break;
+			}
+		}
+	}
+}
+
+void AudioOSD::next_channel()
+{
+	m_channel_id++;
+	if(m_channel_id == MixerChannel::Category::GUI) {
+		m_channel_id++;
+	}
+	m_channel_id = std::min(m_channel_id, MixerChannel::CategoryCount + (int(m_channels.size()) - 1));
+	update_channel_name();
+}
+
+void AudioOSD::prev_channel()
+{
+	m_channel_id--;
+	if(m_channel_id == MixerChannel::Category::GUI) {
+		m_channel_id--;
+	}
+	m_channel_id = std::max(-1, m_channel_id);
+	update_channel_name();
+}
+
+MixerChannel * AudioOSD::current_channel() const
+{
+	int id = m_channel_id - MixerChannel::CategoryCount;
+	if(id < 0 || id >= int(m_channels.size())) {
+		return nullptr;
+	}
+	return m_channels[id].get();
+}
+
+void AudioOSD::set_channel(int _id)
+{
+	m_channel_id = _id;
+	if(m_channel_id < 0) {
+		m_channel_id = -1;
+	} else {
+		m_channel_id = std::min(m_channel_id, MixerChannel::CategoryCount + (int(m_channels.size()) - 1));
+		m_channel_id = std::max(-1, m_channel_id);
+	}
+	update_channel_name();
 }
 
 void AudioOSD::show()
 {
 	Window::show();
+	m_wnd->SetClass("hidden", false);
 	m_gui->timers().activate_timer(m_timeout_timer, m_timeout, false);
-}
-
-void AudioOSD::hide()
-{
-	Window::hide();
-	m_gui->timers().deactivate_timer(m_timeout_timer);
 }
 
 void AudioOSD::update()
 {
 	float mix_value;
+	bool auto_vol = false;
 	if(m_channel_id < 0) {
 		mix_value = m_mixer->volume_master();
-	} else {
+	} else if(m_channel_id < MixerChannel::CategoryCount) {
 		mix_value = m_mixer->volume_cat(static_cast<MixerChannel::Category>(m_channel_id));
+	} else {
+		int id = m_channel_id - MixerChannel::CategoryCount;
+		if(id >= int(m_channels.size())) {
+			return;
+		}
+		if(m_channels[id]->is_volume_auto()) {
+			auto_vol = true;
+			m_divs.volume_value->SetInnerRML("auto");
+			if(m_channels[id]->features() & MixerChannel::HasStereoSource) {
+				mix_value = (m_channels[id]->volume_master_left() + m_channels[id]->volume_master_right()) / 2.0;
+			} else {
+				mix_value = m_channels[id]->volume_master_left();
+			}
+		}
+		mix_value = m_channels[id]->volume_master_left();
+		if(m_channels[id]->is_enabled() || m_channels[id]->out().frames() || m_channels[id]->in().frames()) {
+			m_divs.volume_name->SetClass("active", true);
+		} else {
+			m_divs.volume_name->SetClass("active", false);
+		}
 	}
-	if(m_cur_volume != mix_value) {
-		m_cur_volume = mix_value;
-		int val_shown = round(mix_value * 100.0);
+
+	int val_shown = round(mix_value * 100.0);
+	if(!auto_vol) {
 		m_divs.volume_value->SetInnerRML(str_format("%d", val_shown));
-		m_divs.volume_progress->SetAttribute("value", val_shown);
 	}
+	m_divs.volume_progress->SetAttribute("value", val_shown);
 }
 
-void AudioOSD::set_channel_id(int _id)
+bool AudioOSD::is_visible()
 {
-	if(!m_wnd) {
-		create();
+	if(m_wnd && m_wnd->IsVisible()) {
+		float opacity = m_wnd->GetProperty(Rml::PropertyId::Opacity)->Get<float>();
+		return opacity > 0.1;
 	}
-	m_channel_id = _id;
-	if(m_channel_id < 0) {
-		m_divs.volume_name->SetInnerRML("Master");
+	return false;
+}
+
+void AudioOSD::change_volume(float _amount)
+{
+	MixerChannel *channel = current_channel();
+	if(channel) {
+		float current = channel->volume_master_left();
+		if(channel->is_volume_auto()) {
+			channel->set_volume_auto(false);
+			if(channel->features() & MixerChannel::HasStereoSource) {
+				current = (channel->volume_master_left() + channel->volume_master_right()) / 2.0;
+			}
+		}
+		channel->set_volume_master(current + _amount);
 	} else {
-		switch(m_channel_id) {
-			case MixerChannel::Category::AUDIOCARD: m_divs.volume_name->SetInnerRML("Audio cards"); break;
-			case MixerChannel::Category::SOUNDFX: m_divs.volume_name->SetInnerRML("Sound FX"); break;
-			default: m_divs.volume_name->SetInnerRML(""); break;
+		int id = current_channel_id();
+		if(id >= MixerChannel::CategoryCount) {
+			return;
+		}
+		if(id < 0) {
+			float current = m_mixer->volume_master();
+			m_mixer->set_volume_master(current + _amount);
+		} else {
+			MixerChannel::Category category = static_cast<MixerChannel::Category>(id);
+			float current = m_mixer->volume_cat(category);
+			m_mixer->set_volume_cat(category, current + _amount);
 		}
 	}
 }

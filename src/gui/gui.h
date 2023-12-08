@@ -268,7 +268,6 @@ protected:
 		void toggle_dbg();
 		void toggle_printer();
 		void toggle_mixer();
-		void show_audio_volume_osd(int _channel_id);
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();
@@ -405,6 +404,9 @@ private:
 	void pevt_func_none(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_show_options(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_audio_ch(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_next_audio_ch(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_prev_audio_ch(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_set_audio_volume(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);

@@ -405,17 +405,26 @@ The sound cards currently emulated are:
 * Creative Sound Blaster Pro (DSP 3.00)
 * Creative Sound Blaster Pro 2 (DSP 3.02)
 
-| Card   | Music                 | DAC             | IRQ   | DMA   | I/O base           |
-| ------ | --------------------- | --------------- | ----- | ----- | ------------------ |
-| PCSpkr | Square Wave Generator | PWM 6-bit, mono | no    | no    | no                 |
-| PS/1   | PSG 3-voice + noise   | 8-bit, mono     | 7     | no    | 0x200              |
-| AdLib  | FM YM3812 (OPL2)      | no              | no    | no    | 0x388              |
-| SB2    | FM YM3812 (OPL2)      | 8-bit, mono     | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
-| SBPro  | FM YM3812 (OPL2) x 2  | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
-| SBPro2 | FM YMF262 (OPL3)      | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| Card       | Music                 | DAC             | IRQ   | DMA   | I/O base           |
+| ---------- | --------------------- | --------------- | ----- | ----- | ------------------ |
+| PC Speaker | Square Wave Generator | no (*)          | no    | no    | no                 |
+| PS/1       | PSG 3-voice + noise   | 8-bit, mono     | 7     | no    | 0x200              |
+| AdLib      | FM YM3812 (OPL2)      | no (**)         | no    | no    | 0x388              |
+| SB 2       | FM YM3812 (OPL2)      | 8-bit, mono     | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SB Pro     | FM YM3812 (OPL2) x 2  | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
+| SB Pro 2   | FM YMF262 (OPL3)      | 8-bit, stereo   | 3/5/7 | 0/1/3 | 0x388, 0x220/0x240 |
 
 All Sound Blaster cards are compatible with and replace the AdLib card, which
 cannot be used when a SB is installed.
+
+(*) The PC Speaker can output 6-bit mono audio saples using a PWM technique
+(RealSound), which consists in toggling the speaker faster than it can
+physically move to simulate positions between fully on and fully off.
+
+(**) Similar to the PC Speaker, the AdLib card can also output sampled audio via
+a special technique. The oscillator is triggered and then stopped at its maximum
+amplitude, so it effectively outputs a signal of 0 Hz. This can then be
+manipulated by the 6-bit volume control to get pseudo PCM sample playback.
 
 #### Reverb, Chorus, Crossfeed
 
@@ -1020,8 +1029,10 @@ Valid `FUNC_* ` functions are:
 * `FUNC_SYS_SPEED(x)`: set the emulation speed to `x`%
 * `FUNC_TOGGLE_FULLSCREEN`: toggle fullscreen mode
 * `FUNC_SWITCH_KEYMAPS`: change the active keymap to the next available one
-* `FUNC_SET_AUDIO_VOLUME(c,a)`: change audio volume for category `c` (0=master,
-1=audio cards, 2=sfx) by amount `a` (%)
+* `FUNC_SET_PREV_AUDIO_CH`: previous OSD audio channel
+* `FUNC_SET_NEXT_AUDIO_CH`: next OSD audio channel
+* `FUNC_SET_AUDIO_VOLUME(a)`: change audio volume for currently active OSD
+audio channel by amount 'a' (%)
 * `FUNC_EXIT`: close IBMulator
 
 `MOUSE_AXIS_n` events can have 3 arguments when mapped to joystick axes or
@@ -1113,12 +1124,10 @@ These are the default key bindings defined in the `keymap.map` file:
 * <kbd>SHIFT</kbd>+<kbd>SPACE</kbd> : change the active keymap to the next available one
 * <kbd>SHIFT</kbd>+<kbd>PAUSE</kbd> : pause/resume emulation
 * <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
-* <kbd>L-CTRL</kbd>+<kbd>UP</kbd>   : increase master volume by 5%
-* <kbd>L-CTRL</kbd>+<kbd>DOWN</kbd> : decrease master volume by 5%
-* <kbd>R-CTRL</kbd>+<kbd>UP</kbd>   : increase sound cards volume by 5%
-* <kbd>R-CTRL</kbd>+<kbd>DOWN</kbd> : decrease sound cards volume by 5%
-* <kbd>R-SHIFT</kbd>+<kbd>UP</kbd>  : increase sound FX volume by 5%
-* <kbd>R-SHIFT</kbd>+<kbd>DOWN</kbd>: decrease sound FX volume by 5%
+* <kbd>R-CTRL</kbd>+<kbd>UP</kbd>   : increase volume by 5%
+* <kbd>R-CTRL</kbd>+<kbd>DOWN</kbd> : decrease volume by 5%
+* <kbd>R-CTRL</kbd>+<kbd>LEFT</kbd> : next OSD audio channel 
+* <kbd>R-CTRL</kbd>+<kbd>RIGHT</kbd>: previous OSD audio channel
 * <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
 The mouse can be grabbed with the central mouse button as well.  

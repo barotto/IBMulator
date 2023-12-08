@@ -6,11 +6,12 @@
 			{
 				position: absolute;
 				right: 10dp;
-				width: 150dp;
-				height: 90%;
+				width: 180dp;
+				height: 50%;
 				margin-top: auto;
 				margin-bottom: auto;
 				background-color: #00000000;
+				pointer-events: none;
 			}
 			#ch_vol_progress
 			{
@@ -34,12 +35,14 @@
 			{
 				position: absolute;
 				left: 0;
-				width: 130dp;
+				width: 160dp;
 				height: 110dp;
 				margin-top: auto;
 				margin-bottom: auto;
 				background-color: #000000a0;
 				border-radius: 20dp;
+				border: 1dp;
+				border-color: #505050;
 			}
 			#ch_vol_container img
 			{
@@ -47,23 +50,42 @@
 				height: 30dp;
 				position: absolute;
 				top: 20dp;
-				left: 20dp;
+				left: 30dp;
 			}
 			#ch_vol_value
 			{
 				position: absolute;
 				top: 20dp;
-				right: 20dp;
+				right: 30dp;
 				font-size: 30dp;
 			}
 			#ch_vol_name
 			{
+				box-sizing: border-box;
 				position: absolute;
 				bottom: 20dp;
 				width: 100%;
+				padding: 0 20dp 0 20dp;
 				text-align: center;
-				white-space: nowrap;
-				font-size: 20dp;
+				font-size: 16dp;
+				font-weight: bold;
+				background-color: #3871aa50;
+			}
+			#ch_vol_name.master,
+			#ch_vol_name.category.audiocard,
+			#ch_vol_name.category.soundfx
+			{
+				background-color: #3871aaa0;
+			}
+			#ch_vol_name.active
+			{
+				color: #000000;
+				background-color: #FFE600;
+			}
+			.hidden
+			{
+				opacity: 0;
+				transition: opacity 0.25s;
 			}
 		</style>
 	</head>

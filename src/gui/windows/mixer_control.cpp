@@ -52,14 +52,6 @@ void MixerControl::create()
 	get_element("audiocards")->AppendChild(create_category_block(MixerChannel::AUDIOCARD));
 	get_element("soundfx")->AppendChild(create_category_block(MixerChannel::SOUNDFX));
 
-	m_divs.master_vol = get_element("ch_vol_-1");
-	m_divs.audiocards_vol = get_element(str_format("ch_vol_%d", MixerChannel::AUDIOCARD));
-	m_divs.soundfx_vol = get_element(str_format("ch_vol_%d", MixerChannel::SOUNDFX));
-
-	m_divs.master_vol_progress = get_element("ch_vol_progress_-1");
-	m_divs.audiocards_vol_progress = get_element(str_format("ch_vol_progress_%d", MixerChannel::AUDIOCARD));
-	m_divs.soundfx_vol_progress = get_element(str_format("ch_vol_progress_%d", MixerChannel::SOUNDFX));
-
 	m_save_info = std::make_unique<MixerSaveInfo>(m_gui);
 	m_save_info->create();
 	m_save_info->set_modal(true);
@@ -76,6 +68,10 @@ void MixerControl::create()
 void MixerControl::update()
 {
 	for(auto & [chid, ch] : m_channels) {
+		if(!ch.ch) {
+			// master or category
+			continue;
+		}
 		if(ch.ch->is_enabled() || ch.ch->out().frames() || ch.ch->in().frames()) {
 			ch.activity->SetClass("enabled", true);
 		} else {
@@ -85,34 +81,57 @@ void MixerControl::update()
 		// TODO? this garbage exists because we're lacking a locking system in the GUI required to
 		// use MixerChannel's callbacks (see MixerChannel::add_parameter_cb())
 		// voglio morire
-		if(ch.ch->is_volume_auto()) {
-			if(ch.ch->features() & MixerChannel::HasStereoSource) {
+		// there's code in various functions that update the same attributes updated here, but i'll keep
+		// the redundant code in the event i'll create the locking system some day (lol will never happen)
+		if(!m_is_sliding) {
+			if(ch.ch->is_volume_auto() && (ch.ch->features() & MixerChannel::HasStereoSource)) {
 				set_volume_slider(chid, (ch.ch->volume_master_left() + ch.ch->volume_master_right()) / 2.0);
 				set_volume_label(chid, ch.ch->volume_master_left(), ch.ch->volume_master_right());
 			} else {
 				set_volume_slider(chid, ch.ch->volume_master_left());
 				set_volume_label(chid, ch.ch->volume_master_left());
 			}
-			if(ch.ch->features() & MixerChannel::HasFilter) {
-				auto check = get_element(str_format("ch_filter_en_%d", chid));
-				set_control_value(check, ch.ch->is_filter_enabled(), "checked");
+		}
+		if(ch.volume_auto_btn) {
+			if(is_active(ch.volume_auto_btn) != ch.ch->is_volume_auto()) {
+				set_disabled(ch.vol_slider, ch.ch->is_volume_auto());
+				set_active(ch.volume_auto_btn, ch.ch->is_volume_auto());
+				if(ch.filter_en_check) {
+					set_disabled(ch.filter_en_check, ch.ch->is_volume_auto());
+				}
+			}
+			if(ch.filter_en_check) {
+				set_control_value(ch.filter_en_check, ch.ch->is_filter_enabled(), "checked");
 			}
 		}
 	}
 	if(!m_is_sliding) {
-		float val = m_divs.master_vol->GetAttribute("real_value")->Get(1.f);
-		if(val != m_mixer->volume_master()) {
-			set_volume_slider(m_divs.master_vol, m_divs.master_vol_progress, -1, m_mixer->volume_master());
+		if(m_channels[-1].vol_last_value != m_mixer->volume_master()) {
+			set_volume_slider(-1, m_mixer->volume_master());
 		}
-		val = m_divs.audiocards_vol->GetAttribute("real_value")->Get(1.f);
-		if(val != m_mixer->volume_cat(MixerChannel::AUDIOCARD)) {
-			set_volume_slider(m_divs.audiocards_vol, m_divs.audiocards_vol_progress, MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
+		if(m_channels[MixerChannel::AUDIOCARD].vol_last_value != m_mixer->volume_cat(MixerChannel::AUDIOCARD)) {
+			set_volume_slider(MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
 		}
-		val = m_divs.soundfx_vol->GetAttribute("real_value")->Get(1.f);
-		if(val != m_mixer->volume_cat(MixerChannel::SOUNDFX)) {
-			set_volume_slider(m_divs.soundfx_vol, m_divs.soundfx_vol_progress, MixerChannel::SOUNDFX, m_mixer->volume_cat(MixerChannel::SOUNDFX));
+		if(m_channels[MixerChannel::SOUNDFX].vol_last_value != m_mixer->volume_cat(MixerChannel::SOUNDFX)) {
+			set_volume_slider( MixerChannel::SOUNDFX, m_mixer->volume_cat(MixerChannel::SOUNDFX));
 		}
 	}
+}
+
+MixerControl::Channel::Channel(std::shared_ptr<MixerChannel> _ch, Rml::ElementDocument *_wnd)
+{
+	ch = _ch;
+	set(_ch->id(), _wnd);
+}
+
+void MixerControl::Channel::set(int _id, Rml::ElementDocument *_wnd)
+{
+	activity = _wnd->GetElementById(str_format("ch_name_%d", _id));
+	vol_slider = _wnd->GetElementById(str_format("ch_vol_%d", _id));
+	vol_progress = _wnd->GetElementById(str_format("ch_vol_progress_%d", _id));
+	vol_value = _wnd->GetElementById(str_format("ch_vol_value_%d", _id));
+	volume_auto_btn = _wnd->GetElementById(str_format("ch_volume_auto_%d", _id));
+	filter_en_check = _wnd->GetElementById(str_format("ch_filter_en_%d", _id));
 }
 
 void MixerControl::config_changed(bool)
@@ -125,6 +144,10 @@ void MixerControl::config_changed(bool)
 	m_divs.soundfx_channels->SetInnerRML("");
 
 	m_channels.clear();
+	m_channels[-1].set(-1, m_wnd);
+	m_channels[MixerChannel::AUDIOCARD].set(MixerChannel::AUDIOCARD, m_wnd);
+	m_channels[MixerChannel::SOUNDFX].set(MixerChannel::SOUNDFX, m_wnd);
+
 	m_ch_links.clear();
 
 	size_t audioc_count = 0;
@@ -135,7 +158,7 @@ void MixerControl::config_changed(bool)
 			continue;
 		}
 		m_divs.audiocards_channels->AppendChild(create_channel_block(ch.get()));
-		m_channels[ch->id()] = { ch, nullptr };
+		m_channels[ch->id()] = Channel(ch, m_wnd);
 		init_channel_values(ch.get());
 		audioc_count++;
 	}
@@ -145,13 +168,9 @@ void MixerControl::config_changed(bool)
 			continue;
 		}
 		m_divs.soundfx_channels->AppendChild(create_channel_block(ch.get()));
-		m_channels[ch->id()] = { ch, nullptr };
+		m_channels[ch->id()] = Channel(ch, m_wnd);
 		init_channel_values(ch.get());
 		sfx_count++;
-	}
-
-	for(auto &ch : m_channels) {
-		ch.second.activity = get_element(str_format("ch_name_%d", ch.first));
 	}
 
 	set_volume_slider(-1, m_mixer->volume_master());
@@ -200,16 +219,15 @@ void MixerControl::init_channel_values(MixerChannel *_ch)
 	set_volume_slider(_ch->id(), _ch->volume_master_left());
 
 	if(_ch->is_volume_auto()) {
-		set_active(get_element(str_format("ch_volume_auto_%d", _ch->id())), true);
-		set_disabled(get_element(str_format("ch_vol_%d", _ch->id())), true);
+		set_active(m_channels[_ch->id()].volume_auto_btn, true);
+		set_disabled(m_channels[_ch->id()].vol_slider, true);
 		if(_ch->features() & MixerChannel::HasStereoSource) {
 			set_volume_label(_ch->id(), _ch->volume_master_left(), _ch->volume_master_right());
 		} else {
 			set_volume_label(_ch->id(), _ch->volume_master_left());
 		}
 		if(_ch->features() & MixerChannel::Feature::HasAutoFilter) {
-			auto check = get_element(str_format("ch_filter_en_%d", _ch->id()));
-			set_disabled(check, true);
+			set_disabled(m_channels[_ch->id()].filter_en_check, true);
 		}
 	} else {
 		set_volume_slider(_ch->id(), _ch->volume_master_left());
@@ -224,8 +242,7 @@ void MixerControl::init_channel_values(MixerChannel *_ch)
 
 	if(_ch->features() & MixerChannel::Feature::HasFilter) {
 		if(_ch->is_filter_enabled()) {
-			auto filter_enabled = get_element(str_format("ch_filter_en_%d", _ch->id()));
-			set_control_value(filter_enabled, 1, "checked");
+			set_control_value(m_channels[_ch->id()].filter_en_check, 1, "checked");
 		}
 		auto filter_preset = get_element(str_format("ch_filter_preset_%d", _ch->id()));
 		if(!_ch->is_filter_set()) {
@@ -289,45 +306,26 @@ void MixerControl::set_volume(int _id, float _value)
 	} else {
 		m_mixer->set_volume_cat(static_cast<MixerChannel::Category>(_id), _value);
 	}
-	set_control_value(get_element(str_format("ch_vol_progress_%d", _id)), _value * 100.0);
+	set_control_value(m_channels[_id].vol_progress, _value * 100.0);
 }
 
-void MixerControl::set_volume_slider(int _id, float _master)
-{
-	set_volume_slider(
-		get_element(str_format("ch_vol_%d", _id)),
-		get_element(str_format("ch_vol_progress_%d", _id)),
-		_id, _master
-	);
-}
-
-void MixerControl::set_volume_slider(int _id, float _master, float _left, float _right)
-{
-	int slider_value = int(ms_max_volume) - _master * 100;
-	auto slider = get_element(str_format("ch_vol_%d", _id));
-	set_control_value(slider, slider_value);
-	set_volume_label(_id, _left, _right);
-}
-
-void MixerControl::set_volume_slider(Rml::Element *_slider, Rml::Element *_progress, int _id, float _value)
+void MixerControl::set_volume_slider(int _id, float _value)
 {
 	int slider_value = int(ms_max_volume) - _value * 100;
-	set_control_value(_slider, slider_value);
-	set_control_value(_slider, _value, "real_value");
-	set_control_value(_progress, _value * 100);
+	set_control_value(m_channels[_id].vol_slider, slider_value);
+	m_channels[_id].vol_last_value = _value;
+	set_control_value(m_channels[_id].vol_progress, _value * 100);
 	set_volume_label(_id, _value);
 }
 
 void MixerControl::set_volume_label(int _id, float _master)
 {
-	auto value_label = get_element(str_format("ch_vol_value_%d", _id));
-	value_label->SetInnerRML(str_format("%.2f", _master));
+	m_channels[_id].vol_value->SetInnerRML(str_format("%.2f", _master));
 }
 
 void MixerControl::set_volume_label(int _id, float _left, float _right)
 {
-	auto value_label = get_element(str_format("ch_vol_value_%d", _id));
-	value_label->SetInnerRML(str_format("L:%.2f R:%.2f", _left, _right));
+	m_channels[_id].vol_value->SetInnerRML(str_format("L:%.2f R:%.2f", _left, _right));
 }
 
 bool MixerControl::on_volume_change(Rml::Event &_evt, int _chid)
@@ -346,19 +344,17 @@ bool MixerControl::on_volume_auto(Rml::Event &_evt, int _chid)
 	bool autovol = !is_active(tgt);
 	auto channel = m_channels[_chid].ch.get();
 	assert(channel);
-	auto slider = get_element(str_format("ch_vol_%d", _chid));
-	set_disabled(slider, autovol);
+	set_disabled(m_channels[_chid].vol_slider, autovol);
 	channel->set_volume_auto(autovol);
 	set_active(tgt, autovol);
 	if(!autovol) {
-		float value = slider->GetAttribute("value", 1.0);
+		float value = m_channels[_chid].vol_slider->GetAttribute("value", 1.0);
 		value = (ms_max_volume - value) / 100.0;
 		set_volume(_chid, value);
 		set_volume_label(_chid, value);
 	}
 	if(channel->features() & MixerChannel::Feature::HasAutoFilter) {
-		auto check = get_element(str_format("ch_filter_en_%d", _chid));
-		set_disabled(check, autovol);
+		set_disabled(m_channels[_chid].filter_en_check, autovol);
 	}
 	return true;
 }

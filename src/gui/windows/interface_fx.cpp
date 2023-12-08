@@ -38,7 +38,7 @@ void GUIDrivesFX::init(Mixer *_mixer)
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 	GUIFX::init(_mixer,
 		std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2, _3),
-		"GUI drives", spec);
+		"FDD GUI", spec);
 
 	m_buffers[FDD_5_25] = SoundFX::load_samples(spec, ms_samples[FDD_5_25]);
 	m_buffers[FDD_3_5] = SoundFX::load_samples(spec, ms_samples[FDD_3_5]);
@@ -87,7 +87,7 @@ void GUISystemFX::init(Mixer *_mixer)
 	GUIFX::init(_mixer,
 		std::bind(&GUISystemFX::create_sound_samples, this,
 				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		"GUI system", spec);
+		"System", spec);
 
 	m_buffers = SoundFX::load_samples(spec, ms_samples);
 

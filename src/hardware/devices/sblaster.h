@@ -205,6 +205,7 @@ public:
 	bool is(unsigned _type) { return type() == _type; }
 	virtual const char *full_name() { return "Sound Blaster 1.5"; }
 	virtual const char *short_name() { return "SB1"; }
+	virtual const char *mixer_name() { return "SB"; }
 	
 	virtual void install();
 	virtual void remove();
@@ -309,6 +310,7 @@ public:
 	unsigned type() const { return SB2; }
 	const char *full_name() { return "Sound Blaster 2.0"; }
 	const char *short_name() { return "SB2"; }
+	const char *mixer_name() { return "SB 2"; }
 
 	void install();
 
@@ -344,6 +346,7 @@ public:
 	unsigned type() const { return SBPRO1; }
 	const char *full_name() { return "Sound Blaster Pro"; }
 	const char *short_name() { return "SBPro1"; }
+	const char *mixer_name() { return "SB Pro"; }
 	
 	void install();
 	
@@ -361,7 +364,8 @@ public:
 	unsigned type() const { return SBPRO2; }
 	const char *full_name() { return "Sound Blaster Pro 2"; }
 	const char *short_name() { return "SBPro2"; }
-	
+	const char *mixer_name() { return "SB Pro 2"; }
+
 	void install();
 
 protected:

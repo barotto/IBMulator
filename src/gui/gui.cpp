@@ -90,6 +90,9 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
 	{ ProgramEvent::FuncName::FUNC_SHOW_OPTIONS,         &GUI::pevt_func_show_options         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_MIXER,         &GUI::pevt_func_toggle_mixer         },
+	{ ProgramEvent::FuncName::FUNC_SET_AUDIO_CH,         &GUI::pevt_func_set_audio_ch         },
+	{ ProgramEvent::FuncName::FUNC_SET_NEXT_AUDIO_CH,    &GUI::pevt_func_set_next_audio_ch    },
+	{ ProgramEvent::FuncName::FUNC_SET_PREV_AUDIO_CH,    &GUI::pevt_func_set_prev_audio_ch    },
 	{ ProgramEvent::FuncName::FUNC_SET_AUDIO_VOLUME,     &GUI::pevt_func_set_audio_volume     },
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
@@ -2483,6 +2486,55 @@ void GUI::pevt_func_toggle_mixer(const ProgramEvent::Func&, EventPhase _phase)
 	toggle_mixer_control();
 }
 
+void GUI::pevt_func_set_audio_ch(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Set Mixer channel event\n");
+
+	int channel = _func.params[0];
+	if(channel < 0) {
+		PERRF(LOG_GUI, "Invalid Mixer channel: %d\n", channel);
+		return;
+	}
+	channel--;
+	if(channel == MixerChannel::Category::GUI) {
+		channel++;
+	}
+
+	m_windows.audio_osd->show();
+	m_windows.audio_osd->set_channel(channel);
+}
+
+void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Set next Mixer channel event\n");
+	if(m_windows.audio_osd->is_visible()) {
+		m_windows.audio_osd->next_channel();
+	}
+	m_windows.audio_osd->show();
+}
+
+void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "Set prev Mixer channel event\n");
+
+	if(m_windows.audio_osd->is_visible()) {
+		m_windows.audio_osd->prev_channel();
+	}
+	m_windows.audio_osd->show();
+}
+
 void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
@@ -2491,23 +2543,10 @@ void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Set Mixer volume event\n");
 
-	int channel = _func.params[0] - 1;
-	if(channel < -1 || channel >= MixerChannel::CategoryCount) {
-		PERRF(LOG_GUI, "Invalid Mixer category: %d\n", channel+1);
-		return;
-	}
-	float amount = float(_func.params[1]) / 100.f;
+	float amount = float(_func.params[0]) / 100.f;
 
-	m_windows.show_audio_volume_osd(channel);
-
-	if(channel < 0) {
-		float current = m_mixer->volume_master();
-		m_mixer->set_volume_master(current + amount);
-	} else {
-		MixerChannel::Category category = static_cast<MixerChannel::Category>(channel);
-		float current = m_mixer->volume_cat(category);
-		m_mixer->set_volume_cat(category, current + amount);
-	}
+	m_windows.audio_osd->show();
+	m_windows.audio_osd->change_volume(amount);
 }
 
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2940,6 +2979,7 @@ void GUI::WindowManager::config_changed(bool _startup)
 	}
 	dbgtools->config_changed(_startup);
 	mixer_ctrl->config_changed(_startup);
+	audio_osd->config_changed(_startup);
 }
 
 void GUI::WindowManager::show_ifc_message(const char* _mex)
@@ -3090,12 +3130,6 @@ void GUI::WindowManager::toggle_mixer()
 	} else {
 		mixer_ctrl->hide();
 	}
-}
-
-void GUI::WindowManager::show_audio_volume_osd(int _channel_id)
-{
-	audio_osd->set_channel_id(_channel_id);
-	audio_osd->show();
 }
 
 void GUI::WindowManager::toggle_dbg()

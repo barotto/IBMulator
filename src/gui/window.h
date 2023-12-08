@@ -73,8 +73,8 @@ public:
 	virtual void hide();
 	virtual void close();
 	virtual void focus();
+	virtual bool is_visible();
 
-	bool is_visible();
 	bool is_loaded() const { return m_wnd; }
 
 	void set_modal(bool _modal) {

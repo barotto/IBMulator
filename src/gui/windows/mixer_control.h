@@ -33,12 +33,21 @@ private:
 	Mixer *m_mixer;
 	struct {
 		Rml::Element *audiocards_channels, *soundfx_channels;
-		Rml::Element *master_vol, *audiocards_vol, *soundfx_vol;
-		Rml::Element *master_vol_progress, *audiocards_vol_progress, *soundfx_vol_progress;
 	} m_divs = {};
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;
-		Rml::Element *activity;
+		Rml::Element *activity = nullptr;
+		Rml::Element *vol_slider = nullptr;
+		Rml::Element *vol_progress = nullptr;
+		Rml::Element *vol_value = nullptr;
+		Rml::Element *volume_auto_btn = nullptr;
+		Rml::Element *filter_en_check = nullptr;
+		float vol_last_value = 0.f;
+
+		Channel() {}
+		Channel(std::shared_ptr<MixerChannel> _ch, Rml::ElementDocument *_wnd);
+
+		void set(int _id, Rml::ElementDocument *_wnd);
 	};
 	std::map<int,Channel> m_channels;
 	std::map<AppConfig::ConfigPair, std::vector<MixerChannel*>> m_ch_links;
@@ -76,8 +85,6 @@ private:
 
 	void set_volume(int _id, float _value);
 	void set_volume_slider(int _id, float _master);
-	void set_volume_slider(int _id, float _master, float _left, float _right);
-	void set_volume_slider(Rml::Element *_slider, Rml::Element *_progress, int _id, float _value);
 	void set_volume_label(int _id, float _master);
 	void set_volume_label(int _id, float _left, float _right);
 	bool on_volume_change(Rml::Event &, int _chid);

@@ -28,8 +28,8 @@ class AudioOSD : public Window
 {
 private:
 	Mixer *m_mixer;
+	std::vector<std::shared_ptr<MixerChannel>> m_channels;
 	int m_channel_id = -1;
-	float m_cur_volume = 0.f;
 	uint64_t m_timeout = 0;
 	TimerID m_timeout_timer = NULL_TIMER_ID;
 	struct {
@@ -44,14 +44,25 @@ private:
 public:
 	AudioOSD(GUI *_gui, Mixer *_mixer);
 
-	virtual void create();
-	virtual void show();
-	virtual void hide();
-	virtual void update();
-	
-	void set_channel_id(int _id);
+	void create();
+	void config_changed(bool);
+	void show();
+	void hide() {}
+	void update();
+	bool is_visible();
+
+	void set_channel(int _id);
+	void next_channel();
+	void prev_channel();
+	MixerChannel * current_channel() const;
+	int current_channel_id() const { return m_channel_id; }
+
+	void change_volume(float _amount);
 
 	event_map_t & get_event_map() { return AudioOSD::ms_evt_map; }
+
+private:
+	void update_channel_name();
 };
 
 

@@ -98,7 +98,9 @@
 #  FUNC_SYS_SPEED(x)         : set the emulation speed to x% (whole system)
 #  FUNC_TOGGLE_FULLSCREEN    : toggle fullscreen mode
 #  FUNC_SWITCH_KEYMAPS       : change the active keymap to the next available one
-#  FUNC_SET_AUDIO_VOLUME(c,a): change audio volume for category 'c' (0=master, 1=audio cards, 2=sfx) by amount 'a' (%)
+#  FUNC_SET_PREV_AUDIO_CH    : previous OSD audio channel
+#  FUNC_SET_NEXT_AUDIO_CH    : next OSD audio channel
+#  FUNC_SET_AUDIO_VOLUME(a)  : change audio volume for currently active OSD audio channel by amount 'a' (%)
 #  FUNC_EXIT                 : close IBMulator
 #
 #
@@ -198,15 +200,10 @@ KMOD_SHIFT + SDLK_PAUSE = FUNC_TOGGLE_PAUSE
 KMOD_ALT + SDLK_RETURN  = FUNC_TOGGLE_FULLSCREEN
 KMOD_ALT + SDLK_F4      = FUNC_EXIT
 
-# Master volume (0)
-KMOD_LCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(0,5); mode:repeat
-KMOD_LCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(0,-5); mode:repeat
-# Sound cards volume (1)
-KMOD_RCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(1,5); mode:repeat
-KMOD_RCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(1,-5); mode:repeat
-# SoundFX (2)
-KMOD_RSHIFT + SDLK_UP   = FUNC_SET_AUDIO_VOLUME(2,5); mode:repeat
-KMOD_RSHIFT + SDLK_DOWN = FUNC_SET_AUDIO_VOLUME(2,-5); mode:repeat
+KMOD_RCTRL + SDLK_LEFT  = FUNC_SET_PREV_AUDIO_CH; mode:repeat
+KMOD_RCTRL + SDLK_RIGHT = FUNC_SET_NEXT_AUDIO_CH; mode:repeat
+KMOD_RCTRL + SDLK_UP    = FUNC_SET_AUDIO_VOLUME(5); mode:repeat
+KMOD_RCTRL + SDLK_DOWN  = FUNC_SET_AUDIO_VOLUME(-5); mode:repeat
 
 
 ### Keyboard bindings

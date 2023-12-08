@@ -93,7 +93,10 @@ struct ProgramEvent {
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
 		FUNC_SHOW_OPTIONS,         // opens the options window
 		FUNC_TOGGLE_MIXER,         // show / hide the mixer control window
-		FUNC_SET_AUDIO_VOLUME,     // set audio volume for master or category
+		FUNC_SET_AUDIO_CH,         // set current audio channel that receives FUNC_SET_AUDIO_VOLUME commands
+		FUNC_SET_NEXT_AUDIO_CH,    // set current audio channel that receives FUNC_SET_AUDIO_VOLUME commands
+		FUNC_SET_PREV_AUDIO_CH,    // set current audio channel that receives FUNC_SET_AUDIO_VOLUME commands
+		FUNC_SET_AUDIO_VOLUME,     // change audio volume for the active channel 
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
 		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators

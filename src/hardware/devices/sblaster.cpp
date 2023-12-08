@@ -254,7 +254,7 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 	// AUDIO CHANNEL
 	m_dac_channel = g_mixer.register_channel(
 		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
-		std::string(short_name()) + " DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
+		std::string(mixer_name()) + " DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac_channel->set_disable_timeout(5_s);
 	m_dac_filters = _filters;
 
@@ -302,7 +302,7 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 		Synth::set_chip(0, &m_OPL[0]);
 
 		if(_chip_type == OPL::OPL2) {
-			Synth::install(std::string(short_name()) + " FM", 5_s,
+			Synth::install(std::string(mixer_name()) + " FM", 5_s,
 				[this](Event &_event) {
 					m_OPL[0].write(0, _event.reg);
 					m_OPL[0].write(1, _event.value);
@@ -322,7 +322,7 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 			);
 		} else {
 			channels = 2;
-			Synth::install(std::string(short_name()) + " FM", 5_s,
+			Synth::install(std::string(mixer_name()) + " FM", 5_s,
 				[this](Event &_event) {
 					m_OPL[0].write(_event.reg_port, _event.reg);
 					m_OPL[0].write(_event.value_port, _event.value);
@@ -353,7 +353,7 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 		Synth::set_chip(0, &m_OPL[0]);
 		Synth::set_chip(1, &m_OPL[1]);
 
-		Synth::install(std::string(short_name()) + " FM", 5_s,
+		Synth::install(std::string(mixer_name()) + " FM", 5_s,
 			[this](Event &_event) {
 				m_OPL[_event.chip].write(0, _event.reg);
 				m_OPL[_event.chip].write(1, _event.value);
