@@ -320,12 +320,16 @@ void MixerControl::set_volume_slider(int _id, float _value)
 
 void MixerControl::set_volume_label(int _id, float _master)
 {
-	m_channels[_id].vol_value->SetInnerRML(str_format("%.2f", _master));
+	m_channels[_id].vol_value->SetInnerRML(str_format("%.0f", std::round(_master * 100.f)));
 }
 
 void MixerControl::set_volume_label(int _id, float _left, float _right)
 {
-	m_channels[_id].vol_value->SetInnerRML(str_format("L:%.2f R:%.2f", _left, _right));
+	m_channels[_id].vol_value->SetInnerRML(
+		str_format("L:%.0f R:%.0f",
+			std::round(_left * 100.f),
+			std::round(_right * 100.f)
+	));
 }
 
 bool MixerControl::on_volume_change(Rml::Event &_evt, int _chid)
@@ -406,7 +410,7 @@ void MixerControl::set_balance_slider(int _id, float _value)
 void MixerControl::set_balance_label(int _id, float _value)
 {
 	auto value_label = get_element(str_format("ch_bal_value_%d", _id));
-	value_label->SetInnerRML(str_format("%.2f", _value));
+	value_label->SetInnerRML(str_format("%.0f", std::round(_value * 100.f)));
 }
 
 bool MixerControl::on_balance_change(Rml::Event &_evt, int _chid)

@@ -222,8 +222,8 @@ void Mixer::config_changed(bool _launch) noexcept
 	if(_launch) {
 		load_profile(g_program.config().get_file(MIXER_SECTION, MIXER_PROFILE, FILE_TYPE_USER));
 
-		set_volume_cat(MixerChannel::AUDIOCARD, g_program.config().get_real_or_default(MIXER_SECTION, MIXER_VOLUME));
-		set_volume_cat(MixerChannel::SOUNDFX, g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME));
+		set_volume_cat(MixerChannel::AUDIOCARD, g_program.config().get_real_or_default(MIXER_SECTION, MIXER_VOLUME) / 100.f);
+		set_volume_cat(MixerChannel::SOUNDFX, g_program.config().get_real_or_default(SOUNDFX_SECTION, SOUNDFX_VOLUME) / 100.f);
 
 		m_reverb[MixerChannel::SOUNDFX].params = MixerChannel::parse_reverb_def(
 			g_program.config().get_string_or_default(SOUNDFX_SECTION, SOUNDFX_REVERB)

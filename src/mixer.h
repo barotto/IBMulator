@@ -41,7 +41,7 @@ extern Mixer g_mixer;
 #define MIXER_MIN_RATE  8000
 #define MIXER_MAX_RATE  49716
 #define MIXER_MAX_VOLUME 1.3f
-#define MIXER_MAX_VOLUME_STR "1.3"
+#define MIXER_MAX_VOLUME_STR "130"
 
 typedef std::function<void()> Mixer_fun_t;
 typedef std::function<void(const std::vector<int16_t> &_data, int _category)> AudioSinkHandler;

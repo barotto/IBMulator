@@ -53,7 +53,7 @@ void MixerChannel::apply_config(AppConfig &_config)
 		auto [section, key] = conf.second;
 		switch(conf.first) {
 			case ConfigParameter::Volume: {
-				float level = _config.get_real(section, key, -1.0);
+				float level = _config.get_real(section, key, -1.0) / 100.f;
 				level = std::min(level, MIXER_MAX_VOLUME);
 				if(level < .0) {
 					if(m_features & MixerChannel::HasAutoVolume) {
@@ -67,7 +67,7 @@ void MixerChannel::apply_config(AppConfig &_config)
 				break;
 			}
 			case ConfigParameter::Balance: {
-				float val = _config.get_real_or_default(section, key);
+				float val = _config.get_real_or_default(section, key) / 100.f;
 				set_balance(val);
 				break;
 			}

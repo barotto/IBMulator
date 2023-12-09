@@ -227,8 +227,6 @@ void Interface::config_changed(bool _startup)
 	set_hdd_active(false);
 	m_hdd = m_machine->devices().device<StorageCtrl>();
 
-	set_audio_volume(g_program.config().get_real(MIXER_SECTION, MIXER_VOLUME));
-
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
 	set_video_saturation(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_SATURATION));
