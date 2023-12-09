@@ -274,7 +274,7 @@ public:
 #define ADLIB_RATE              "rate"
 #define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
-#define ADLIB_BALANCE           "balence"
+#define ADLIB_BALANCE           "balance"
 #define ADLIB_REVERB            "reverb"
 #define ADLIB_CHORUS            "chorus"
 
