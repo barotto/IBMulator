@@ -276,9 +276,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ PCSPEAKER_SECTION,
-"; enabled: Enable PC-Speaker emulation.\n"
-";    rate: Sample rate.\n"
-";          Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
 "; balance: Audio balance.\n"
 "; filters: DSP filters (see README for more info).\n"
@@ -604,8 +601,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ MIDI_DELAY,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },
 	{ PCSPEAKER_SECTION, {
-		{ PCSPEAKER_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
-		{ PCSPEAKER_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ PCSPEAKER_LEVEL,   PROGRAM_CONFIG, HIDDEN_CFGKEY, "0.25"  },
 		{ PCSPEAKER_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
 		{ PCSPEAKER_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },

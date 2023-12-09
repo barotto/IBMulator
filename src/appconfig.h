@@ -246,8 +246,6 @@ public:
 #define MIDI_DELAY              "sysex_delay"
 
 #define PCSPEAKER_SECTION       "pcspeaker"
-#define PCSPEAKER_ENABLED       "enabled"
-#define PCSPEAKER_RATE          "rate"
 #define PCSPEAKER_LEVEL         "level"
 #define PCSPEAKER_FILTERS       "filters"
 #define PCSPEAKER_VOLUME        "volume"

@@ -150,7 +150,7 @@ void Devices::config_changed()
 		remove(StorageCtrl_PS1::NAME);
 	}
 	
-	install_only_if<PCSpeaker>(g_program.config().get_bool(PCSPEAKER_SECTION, PCSPEAKER_ENABLED));
+	install<PCSpeaker>();
 	
 	install_only_if<GamePort>(g_program.config().get_bool(GAMEPORT_SECTION, GAMEPORT_ENABLED, true));
 	

@@ -87,10 +87,10 @@ void PCSpeaker::remove()
 
 void PCSpeaker::config_changed()
 {
-	unsigned rate = g_program.config().get_int(PCSPEAKER_SECTION, PCSPEAKER_RATE);
+	double rate = double(g_mixer.get_audio_spec().freq);
 
-	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(rate)});
-	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, double(rate)});
+	m_channel->set_in_spec({AUDIO_FORMAT_F32, 1, rate});
+	m_outbuf.set_spec({AUDIO_FORMAT_F32, 1, rate});
 	m_outbuf.reserve_us(50000);
 
 	m_level = g_program.config().get_real_or_default(PCSPEAKER_SECTION, PCSPEAKER_LEVEL) / 2.0;
