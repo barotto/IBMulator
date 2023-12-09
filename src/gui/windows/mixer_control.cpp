@@ -100,7 +100,7 @@ void MixerControl::update()
 					set_disabled(ch.filter_en_check, ch.ch->is_volume_auto());
 				}
 			}
-			if(ch.filter_en_check) {
+			if(ch.ch->is_volume_auto() && ch.filter_en_check) {
 				set_control_value(ch.filter_en_check, ch.ch->is_filter_enabled(), "checked");
 			}
 		}
