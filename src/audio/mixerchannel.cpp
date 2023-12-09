@@ -199,12 +199,14 @@ void MixerChannel::store_config(INIFile &_config)
 				if(is_volume_auto()) {
 					_config.set_string(section, key, "auto");
 				} else {
-					_config.set_real(section, key, m_volume.master_left);
+					double value = std::round(m_volume.master_left * 100.f);
+					_config.set_real(section, key, value);
 				}
 				break;
 			}
 			case ConfigParameter::Balance: {
-				_config.set_real(section, key, m_balance);
+				double value = std::round(m_balance * 100.f);
+				_config.set_real(section, key, value);
 				break;
 			}
 			case ConfigParameter::Filter: {

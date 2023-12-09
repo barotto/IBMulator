@@ -282,9 +282,9 @@ void Mixer::save_profile(const std::string &_path)
 		ch.second->store_config(g_program.config());
 	}
 
-	g_program.config().set_real(MIXER_SECTION, MIXER_VOLUME, volume_cat(MixerChannel::AUDIOCARD));
+	g_program.config().set_real(MIXER_SECTION, MIXER_VOLUME, std::round(volume_cat(MixerChannel::AUDIOCARD) * 100.f));
 
-	g_program.config().set_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, m_volume.category[MixerChannel::SOUNDFX]);
+	g_program.config().set_real(SOUNDFX_SECTION, SOUNDFX_VOLUME, std::round(m_volume.category[MixerChannel::SOUNDFX] * 100.f));
 	g_program.config().set_string(SOUNDFX_SECTION, SOUNDFX_REVERB, m_reverb[MixerChannel::SOUNDFX].params.definition());
 
 	try {
