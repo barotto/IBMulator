@@ -49,8 +49,14 @@ void AudioOSD::create()
 	m_divs.volume_progress = get_element("ch_vol_progress");
 	m_divs.volume_value = get_element("ch_vol_value");
 	m_divs.volume_name = get_element("ch_vol_name");
+	m_divs.vu_left = get_element("ch_vu_left");
+	m_divs.vu_right = get_element("ch_vu_right");
+	m_divs.vu_left->SetAttribute("max", MixerChannel::VUMeter::range);
+	m_divs.vu_left->SetAttribute("value", 0);
+	m_divs.vu_right->SetAttribute("max", MixerChannel::VUMeter::range);
+	m_divs.vu_right->SetAttribute("value", 0);
 
-	m_divs.volume_progress->SetAttribute("max", str_format("%d", int(MIXER_MAX_VOLUME * 100)));
+	m_divs.volume_progress->SetAttribute("max", int(MIXER_MAX_VOLUME * 100));
 
 	update_channel_name();
 }
@@ -73,7 +79,14 @@ void AudioOSD::config_changed(bool)
 		m_channels.push_back(ch);
 	}
 
-	m_channel_id = -1;
+	m_channel_id = MixerChannel::MASTER;
+
+	if(m_divs.vu_left) {
+		update_vu_meter(m_divs.vu_left, MixerChannel::VUMeter::min);
+	}
+	if(m_divs.vu_right) {
+		update_vu_meter(m_divs.vu_right, MixerChannel::VUMeter::min);
+	}
 }
 
 void AudioOSD::update_channel_name()
@@ -131,7 +144,7 @@ void AudioOSD::prev_channel()
 	if(m_channel_id == MixerChannel::Category::GUI) {
 		m_channel_id--;
 	}
-	m_channel_id = std::max(-1, m_channel_id);
+	m_channel_id = std::max(int(MixerChannel::MASTER), m_channel_id);
 	update_channel_name();
 }
 
@@ -148,10 +161,10 @@ void AudioOSD::set_channel(int _id)
 {
 	m_channel_id = _id;
 	if(m_channel_id < 0) {
-		m_channel_id = -1;
+		m_channel_id = MixerChannel::MASTER;
 	} else {
 		m_channel_id = std::min(m_channel_id, MixerChannel::CategoryCount + (int(m_channels.size()) - 1));
-		m_channel_id = std::max(-1, m_channel_id);
+		m_channel_id = std::max(int(MixerChannel::MASTER), m_channel_id);
 	}
 	update_channel_name();
 }
@@ -161,21 +174,27 @@ void AudioOSD::show()
 	Window::show();
 	m_wnd->SetClass("hidden", false);
 	m_gui->timers().activate_timer(m_timeout_timer, m_timeout, false);
+	m_vu_meter = g_program.config().get_bool_or_default(DIALOGS_SECTION, DIALOGS_VU_METERS);
+	m_wnd->SetClass("with_vu_meter", m_vu_meter);
 }
 
 void AudioOSD::update()
 {
 	float mix_value;
+	const MixerChannel::VUMeter *vu = nullptr;
 	bool auto_vol = false;
 	if(m_channel_id < 0) {
 		mix_value = m_mixer->volume_master();
+		vu = &m_mixer->vu_meter();
 	} else if(m_channel_id < MixerChannel::CategoryCount) {
 		mix_value = m_mixer->volume_cat(static_cast<MixerChannel::Category>(m_channel_id));
+		vu = &m_mixer->vu_meter_cat(static_cast<MixerChannel::Category>(m_channel_id));
 	} else {
 		int id = m_channel_id - MixerChannel::CategoryCount;
 		if(id >= int(m_channels.size())) {
 			return;
 		}
+		vu = &m_channels[id]->vu_meter();
 		if(m_channels[id]->is_volume_auto()) {
 			auto_vol = true;
 			m_divs.volume_value->SetInnerRML("auto");
@@ -192,12 +211,30 @@ void AudioOSD::update()
 			m_divs.volume_name->SetClass("active", false);
 		}
 	}
+	if(m_vu_meter && vu) {
+		update_vu_meter(m_divs.vu_left, vu->db[0]);
+		update_vu_meter(m_divs.vu_right, vu->db[1]);
+	}
 
 	int val_shown = round(mix_value * 100.0);
 	if(!auto_vol) {
 		m_divs.volume_value->SetInnerRML(str_format("%d", val_shown));
 	}
 	m_divs.volume_progress->SetAttribute("value", val_shown);
+}
+
+void AudioOSD::update_vu_meter(Rml::Element *_meter, double _db)
+{
+	int db = int(std::round(clamp(_db, MixerChannel::VUMeter::min, MixerChannel::VUMeter::max)));
+	_meter->SetAttribute("value", db + int(std::abs(MixerChannel::VUMeter::min)));
+	if(db >= 0) {
+		_meter->SetClass("over", true);
+	} else if(db >= -6) {
+		_meter->SetClass("edge", true);
+	} else {
+		_meter->SetClass("edge", false);
+		_meter->SetClass("over", false);
+	}
 }
 
 bool AudioOSD::is_visible()

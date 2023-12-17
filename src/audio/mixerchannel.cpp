@@ -245,6 +245,8 @@ void MixerChannel::enable(bool _enabled)
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 		} else {
 			m_first_update = true;
+			m_volume.meter.db[0] = VUMeter::min;
+			m_volume.meter.db[1] = VUMeter::min;
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
 		}
 	}
@@ -422,6 +424,7 @@ void MixerChannel::set_out_spec(const AudioSpec &_spec)
 		m_out_buffer.reserve_us(5e6);
 		reset_filters();
 	}
+	m_volume.meter.set_rate(_spec.rate);
 }
 
 void MixerChannel::play(const AudioBuffer &_wave)
@@ -932,7 +935,16 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			}
 		}
 
-		// 8. add to output buffer
+		// 8. apply volume
+		float volume[2] = { m_volume.factor_left, m_volume.factor_right };
+		float *chdata = &(source->at<float>(0));
+		for(size_t i=0; i<source->samples(); i++) {
+			int c = i % m_out_buffer.spec().channels;
+			chdata[i] *= volume[c];
+			m_volume.meter.update(c, std::abs(chdata[i]));
+		}
+
+		// 9. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}
 
@@ -969,6 +981,43 @@ void MixerChannel::on_capture(bool _enable)
 	m_capture_clbk(_enable);
 }
 
+void MixerChannel::VUMeter::set_rate(double _rate)
+{
+	gain_rate = std::abs(min) / (_rate / 1000.0 * increase_ms);
+	leak_rate = std::abs(min) / (_rate / 1000.0 * decay_ms);
+}
+
+void MixerChannel::VUMeter::update(int _channel, float _amplitude)
+{
+	double value = factor_to_db(_amplitude);
+	if(value > db[_channel]) {
+		db[_channel] += gain_rate;
+	} else if(value < db[_channel]) {
+		db[_channel] -= leak_rate;
+	}
+	db[_channel] = clamp(db[_channel], min, max);
+}
+
+void MixerChannel::update_volume_factors()
+{
+	if(m_balance < 0.f) {
+		// left channel is full volume
+		m_volume.factor_left = 1.f;
+		m_volume.factor_right = 1.f + m_balance;
+	} else if(m_balance > 0.f) {
+		// right channel is full volume
+		m_volume.factor_left = 1.f - m_balance;
+		m_volume.factor_right = 1.f;
+	} else {
+		// center
+		m_volume.factor_left = 1.f;
+		m_volume.factor_right = 1.f;
+	}
+
+	m_volume.factor_left = m_volume.factor_left * volume_multiplier(m_volume.sub_left * m_volume.master_left);
+	m_volume.factor_right = m_volume.factor_right * volume_multiplier(m_volume.sub_right * m_volume.master_right);
+}
+
 void MixerChannel::set_volume_master(float _both)
 {
 	set_volume_master(_both, _both);
@@ -978,6 +1027,7 @@ void MixerChannel::set_volume_master(float _left, float _right)
 {
 	m_volume.master_left = std::max(0.f, std::min(_left, MIXER_MAX_VOLUME));
 	m_volume.master_right = std::max(0.f, std::min(_right, MIXER_MAX_VOLUME));
+	update_volume_factors();
 
 	run_parameter_cb(ConfigParameter::Volume);
 }
@@ -986,6 +1036,7 @@ void MixerChannel::set_volume_sub(float _left, float _right)
 {
 	m_volume.sub_left = _left;
 	m_volume.sub_right = _right;
+	update_volume_factors();
 
 	run_parameter_cb(ConfigParameter::Volume);
 }
@@ -1000,6 +1051,7 @@ void MixerChannel::set_volume_auto(bool _enabled)
 void MixerChannel::set_balance(float _balance)
 {
 	m_balance = clamp(_balance, -1.f, 1.f);
+	update_volume_factors();
 
 	run_parameter_cb(ConfigParameter::Balance);
 }

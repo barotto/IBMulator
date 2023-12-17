@@ -50,6 +50,7 @@ class MixerChannel
 public:
 	enum Category
 	{
+		MASTER = -1,
 		AUDIOCARD,
 		SOUNDFX,
 		GUI
@@ -161,6 +162,22 @@ public:
 	using ConfigMap = std::map<ConfigParameter, AppConfig::ConfigPair>; 
 	using CfgEventCb = std::function<void()>;
 
+	struct VUMeter {
+		static constexpr double step = 6.0;
+		static constexpr double min = -48.0;
+		static constexpr double range = step * 9.0;
+		static constexpr double max = min + range;
+		static constexpr double increase_ms = 30.0;
+		static constexpr double decay_ms = 300.0;
+
+		double db[2] = { min, min };
+		double gain_rate = 0.0;
+		double leak_rate = 0.0;
+
+		void set_rate(double _rate);
+		void update(int _channel, float _amplitude);
+	};
+
 private:
 	Mixer *m_mixer = nullptr;
 	std::string m_name;
@@ -188,9 +205,12 @@ private:
 		std::atomic<float> master_right = 1.f;
 		std::atomic<float> sub_left = 1.f;  // 0 .. +1
 		std::atomic<float> sub_right = 1.f;  // 0 .. +1
+		std::atomic<float> factor_left = 1.f;
+		std::atomic<float> factor_right = 1.f;
 		bool auto_set = false;
 		bool muted = false;
 		bool force_muted = false;
+		VUMeter meter;
 	} m_volume;
 
 	std::atomic<float> m_balance = 0.f; // -1 .. +1
@@ -300,6 +320,7 @@ public:
 	bool is_force_muted() const { return m_volume.force_muted; }
 	void set_volume_auto(bool _enabled);
 	bool is_volume_auto() const { return m_volume.auto_set; }
+	const VUMeter & vu_meter() const { return m_volume.meter; }
 
 	// balance
 	float balance() const { return m_balance; }
@@ -390,7 +411,20 @@ public:
 		return std::pow(10.0f, _db * 0.05f);
 	}
 
+	static float factor_to_db(float _factor) {
+		return 20.f * std::log10(_factor);
+	}
+
+	static constexpr float volume_multiplier(float _value) {
+		if(_value > 1.f) {
+			return (exp(_value) - 1.f) / (M_E - 1.f);
+		}
+		return _value;
+	}
+
 private:
+	void update_volume_factors();
+
 	void run_autoval_cb(ConfigParameter _parameter);
 	void run_parameter_cb(ConfigParameter _parameter);
 

@@ -13,7 +13,12 @@
 				background-color: #00000000;
 				pointer-events: none;
 			}
-			#ch_vol_progress
+			body.with_vu_meter
+			{
+				width: 190dp;
+			}
+			#ch_vol_progress,
+			#ch_vu_meter_container
 			{
 				position: absolute;
 				top: 0;
@@ -30,6 +35,43 @@
 			{
 				border-radius: 20dp;
 				background-color: #00f000;
+			}
+			#ch_vu_meter_container
+			{
+				display: none;
+			}
+			.with_vu_meter #ch_vu_meter_container
+			{
+				display: block;
+			}
+			.with_vu_meter #ch_vol_progress
+			{
+				right: 10dp;
+			}
+			#ch_vu_meter_container
+			{
+				background-color: #000000;
+				border: 1dp;
+				border-color: #2d4254;
+			}
+			.ch_vu_meter
+			{
+				display: inline-block;
+				width: 4dp;
+				height: 100%;
+			}
+			.ch_vu_meter fill
+			{
+				border-radius: 20dp;
+				background-color: #a6ff00;
+			}
+			.ch_vu_meter.edge fill
+			{
+				background-color: #ffef38;
+			}
+			.ch_vu_meter.over fill
+			{
+				background-color: #ee3700;
 			}
 			#ch_vol_container
 			{
@@ -92,6 +134,10 @@
 	<body>
 
 		<progress id="ch_vol_progress" direction="top" />
+		<div id="ch_vu_meter_container">
+			<progress id="ch_vu_left" class="ch_vu_meter" direction="top" />
+			<progress id="ch_vu_right" class="ch_vu_meter" direction="top" />
+		</div>
 		<div id="ch_vol_container">
 			<img src="icons/audio_on.png" />
 			<div id="ch_vol_value"></div>

@@ -32,10 +32,13 @@ private:
 	int m_channel_id = -1;
 	uint64_t m_timeout = 0;
 	TimerID m_timeout_timer = NULL_TIMER_ID;
+	bool m_vu_meter = false;
 	struct {
-		Rml::Element *volume_progress;
-		Rml::Element *volume_value;
-		Rml::Element *volume_name;
+		Rml::Element *volume_progress = nullptr;
+		Rml::Element *volume_value = nullptr;
+		Rml::Element *volume_name = nullptr;
+		Rml::Element *vu_left = nullptr;
+		Rml::Element *vu_right = nullptr;
 	} m_divs = {};
 	static constexpr float ms_max_volume = MIXER_MAX_VOLUME * 100.f;
 
@@ -63,6 +66,7 @@ public:
 
 private:
 	void update_channel_name();
+	void update_vu_meter(Rml::Element *_meter, double _db);
 };
 
 

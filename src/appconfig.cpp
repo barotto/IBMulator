@@ -105,6 +105,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 "; save_order: Savestate dialogs initial order: date, title, slot\n"
 ";  save_zoom: Savestate dialogs initial zoom level: 0, 1, 2\n"
 ";osd_timeout: Number of seconds before hiding the OSD.\n"
+";  vu_meters: Show VU meters next to volume controls.\n"
 		},
 
 		{ CAPTURE_SECTION,
@@ -503,6 +504,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DIALOGS_SAVE_ORDER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "date"   },
 		{ DIALOGS_SAVE_ZOOM,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "1"      },
 		{ DIALOGS_OSD_TIMEOUT,PROGRAM_CONFIG, PUBLIC_CFGKEY, "2"      },
+		{ DIALOGS_VU_METERS,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "true"   },
 	} },
 	{ CAPTURE_SECTION, {
 		{ CAPTURE_DIR,           PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },

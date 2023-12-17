@@ -123,6 +123,11 @@ void Mixer::init(Machine *_machine)
 		m_audio_spec.silence = 0;
 	}
 
+	m_volume.meter.set_rate(m_audio_spec.freq);
+	for(int c = 0; c < MixerChannel::CategoryCount; c++) {
+		m_volume.meter_category[c].set_rate(m_audio_spec.freq);
+	}
+
 	PINFOF(LOG_V0, LOG_MIXER, "Mixing at %d Hz, %u bit, %u channels, %u samples\n",
 			m_audio_spec.freq, SDL_AUDIO_BITSIZE(m_audio_spec.format), m_audio_spec.channels, m_audio_spec.samples);
 
@@ -682,15 +687,22 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 
 	// create the global mix
-	float volume = get_volume_multiplier(m_volume.master) * !m_volume.muted;
+	float volume = MixerChannel::volume_multiplier(m_volume.master) * !m_volume.muted;
 	std::fill(m_out_mix.begin(), m_out_mix.begin()+samples, 0.f);
 	for(int cat=0; cat<MixerChannel::CategoryCount; cat++) {
 		if(!cat_count[cat]) {
 			continue;
 		}
 		for(size_t i=0; i<samples; i++) {
+			int c = i % m_audio_spec.channels;
+			m_volume.meter_category[cat].update(c, std::abs(m_ch_mix[cat][i]));
+
 			m_out_mix[i] += m_ch_mix[cat][i] * volume;
 		}
+	}
+	for(size_t i=0; i<samples; i++) {
+		int c = i % m_audio_spec.channels;
+		m_volume.meter.update(c, std::abs(m_out_mix[i]));
 	}
 	PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for global mix\n", frames);
 	
@@ -760,7 +772,6 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 	size_t samples = _frames * 2;
 	assert(_result_buf.size() >= samples);
 	std::fill(_result_buf.begin(), _result_buf.begin()+samples, 0.f);
-	float balance[2] = {1.f, 1.f};
 	float volume[2] = {1.f, 1.f};
 	for(auto ch : _channels) {
 		if(ch->category() != _chcat) {
@@ -770,36 +781,20 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 		if(!chsamples) {
 			continue;
 		}
-		if(ch->balance() < 0.f) {
-			// left channel is full volume
-			balance[0] = 1.f;
-			balance[1] = 1.f + ch->balance();
-		} else if(ch->balance() > 0.f) {
-			// right channel is full volume
-			balance[0] = 1.f - ch->balance();
-			balance[1] = 1.f;
-		} else {
-			// center
-			balance[0] = 1.f;
-			balance[1] = 1.f;
-		}
 		const float *chdata = &ch->out().at<float>(0);
-		float cat_volume = get_volume_multiplier(m_volume.category[ch->category()]) * !m_volume.muted_category[ch->category()];
-		volume[0] = get_volume_multiplier(ch->volume_sub_left() * ch->volume_master_left()) * !ch->is_muted() * !ch->is_force_muted();
-		volume[1] = get_volume_multiplier(ch->volume_sub_right() * ch->volume_master_right()) * !ch->is_muted() * !ch->is_force_muted();
-		volume[0] *= cat_volume * balance[0];
-		volume[1] *= cat_volume * balance[1];
-		if(volume[0] > .0f || volume[1] > .0f) {
-			for(size_t i=0; i<samples; i++) {
-				float v1, v2;
-				if(i < chsamples) {
-					v1 = chdata[i] * volume[i % 2];
-				} else {
-					v1 = 0.f;
-				}
-				v2 = _result_buf[i];
-				_result_buf[i] = v1 + v2;
+		float cat_volume = MixerChannel::volume_multiplier(m_volume.category[_chcat]) * !m_volume.muted_category[_chcat];
+		volume[0] = !ch->is_muted() * !ch->is_force_muted() * cat_volume;
+		volume[1] = !ch->is_muted() * !ch->is_force_muted() * cat_volume;
+		for(size_t i=0; i<samples; i++) {
+			float v1, v2;
+			int c = i % 2;
+			if(i < chsamples) {
+				v1 = chdata[i] * volume[c];
+			} else {
+				v1 = 0.f;
 			}
+			v2 = _result_buf[i];
+			_result_buf[i] = v1 + v2;
 		}
 		ch->pop_out_frames(_frames);
 	}

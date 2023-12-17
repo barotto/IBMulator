@@ -36,10 +36,13 @@ private:
 	} m_divs = {};
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;
+		int id = -1;
 		Rml::Element *activity = nullptr;
 		Rml::Element *vol_slider = nullptr;
 		Rml::Element *vol_progress = nullptr;
 		Rml::Element *vol_value = nullptr;
+		Rml::Element *vu_left = nullptr;
+		Rml::Element *vu_right = nullptr;
 		Rml::Element *volume_auto_btn = nullptr;
 		Rml::Element *filter_en_check = nullptr;
 		float vol_last_value = 0.f;
@@ -54,7 +57,9 @@ private:
 	TimerID m_click_timer = NULL_TIMER_ID;
 	std::function<void()> m_click_cb;
 	std::unique_ptr<MixerSaveInfo> m_save_info;
+	bool m_vu_meters = true;
 	static constexpr float ms_max_volume = MIXER_MAX_VOLUME * 100.f;
+
 	static event_map_t ms_evt_map;
 
 public:
@@ -68,7 +73,11 @@ public:
 	event_map_t & get_event_map() { return MixerControl::ms_evt_map; }
 
 private:
+	void update_vu_meter(Rml::Element *meter, double db);
+
 	void on_save(Rml::Event &);
+	void on_vu_meters(Rml::Event &);
+	void enable_vu_meters(bool _enabled);
 
 	bool m_is_sliding = false;
 	void on_slider_dragstart(Rml::Event &);
@@ -128,6 +137,7 @@ private:
 	Rml::ElementPtr create_channel_block(const MixerChannel *_ch);
 	Rml::ElementPtr create_AMS_buttons(int _id, bool _auto, bool _mute, bool _solo);
 	Rml::ElementPtr create_volume_slider(int _id);
+	Rml::ElementPtr create_vu_meter(int _id, bool _stereo);
 	Rml::ElementPtr create_balance_slider(int _id);
 	Rml::ElementPtr create_filters_setting(int _id, bool _has_auto);
 	Rml::ElementPtr create_filters_container(int _id, bool _has_auto);

@@ -85,8 +85,10 @@ private:
 		std::atomic<float> category[MixerChannel::CategoryCount] = { 1.f, 1.f, 1.f };
 		std::atomic<bool> muted = false;
 		std::atomic<bool> muted_category[MixerChannel::CategoryCount] = { false, false, false };
+		MixerChannel::VUMeter meter;
+		MixerChannel::VUMeter meter_category[MixerChannel::CategoryCount];
 	} m_volume;
-	
+
 	struct Reverb {
 		MixerChannel::ReverbParams params = { MixerChannel::ReverbPreset::None, -1 };
 		bool enabled = false;
@@ -144,6 +146,8 @@ public:
 	void set_muted(bool _muted) { m_volume.muted = _muted; }
 	void set_muted_cat(MixerChannel::Category _cat, bool _muted) { m_volume.muted_category[_cat] = _muted; }
 	bool is_muted() const { return m_volume.muted; }
+	const MixerChannel::VUMeter & vu_meter() const { return m_volume.meter; }
+	const MixerChannel::VUMeter & vu_meter_cat(MixerChannel::Category _cat) const { return m_volume.meter_category[_cat]; }
 
 	const MixerChannel::ReverbParams & reverb(MixerChannel::Category _cat) const { return m_reverb[_cat].params; }
 	float reverb_gain(MixerChannel::Category _cat) const { return m_reverb[_cat].params.gain; }
@@ -184,12 +188,6 @@ private:
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
 	bool create_silence_samples(uint64_t _time_span_us, bool, bool);
 	void stop_midi();
-	static constexpr float get_volume_multiplier(float _value) {
-		if(_value > 1.f) {
-			return (exp(_value) - 1.f) / (M_E - 1.f);
-		}
-		return _value;
-	}
 };
 
 

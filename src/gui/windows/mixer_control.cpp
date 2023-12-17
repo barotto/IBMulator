@@ -28,6 +28,7 @@ event_map_t MixerControl::ms_evt_map = {
 	GUI_EVT( "class:ch_volume_slider", "dragstart", MixerControl::on_slider_dragstart ),
 	GUI_EVT( "class:ch_volume_slider", "dragend", MixerControl::on_slider_dragend ),
 	GUI_EVT( "save", "click", MixerControl::on_save ),
+	GUI_EVT( "vu_meters", "click", MixerControl::on_vu_meters ),
 	GUI_EVT( "close", "click", Window::on_cancel ),
 	GUI_EVT( "*", "keydown", Window::on_keydown )
 };
@@ -70,12 +71,36 @@ void MixerControl::update()
 	for(auto & [chid, ch] : m_channels) {
 		if(!ch.ch) {
 			// master or category
+			double vu_left, vu_right;
+			if(ch.id == MixerChannel::MASTER) {
+				vu_left = m_mixer->vu_meter().db[0];
+				vu_right = m_mixer->vu_meter().db[1];
+			} else {
+				auto &vu = m_mixer->vu_meter_cat(static_cast<MixerChannel::Category>(ch.id));
+				vu_left = vu.db[0];
+				vu_right = vu.db[1];
+			}
+			update_vu_meter(ch.vu_left, vu_left);
+			if(ch.vu_right) {
+				update_vu_meter(ch.vu_right, vu_right);
+			}
 			continue;
 		}
+
 		if(ch.ch->is_enabled() || ch.ch->out().frames() || ch.ch->in().frames()) {
 			ch.activity->SetClass("enabled", true);
+			update_vu_meter(ch.vu_left, ch.ch->vu_meter().db[0]);
+			if(ch.vu_right) {
+				update_vu_meter(ch.vu_right, ch.ch->vu_meter().db[1]);
+			}
 		} else {
-			ch.activity->SetClass("enabled", false);
+			if(ch.activity->IsClassSet("enabled")) {
+				ch.activity->SetClass("enabled", false);
+				set_control_value(ch.vu_left, 0);
+				if(ch.vu_right) {
+					set_control_value(ch.vu_right, 0);
+				}
+			}
 		}
 
 		// TODO? this garbage exists because we're lacking a locking system in the GUI required to
@@ -106,8 +131,8 @@ void MixerControl::update()
 		}
 	}
 	if(!m_is_sliding) {
-		if(m_channels[-1].vol_last_value != m_mixer->volume_master()) {
-			set_volume_slider(-1, m_mixer->volume_master());
+		if(m_channels[MixerChannel::MASTER].vol_last_value != m_mixer->volume_master()) {
+			set_volume_slider(MixerChannel::MASTER, m_mixer->volume_master());
 		}
 		if(m_channels[MixerChannel::AUDIOCARD].vol_last_value != m_mixer->volume_cat(MixerChannel::AUDIOCARD)) {
 			set_volume_slider(MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
@@ -115,6 +140,20 @@ void MixerControl::update()
 		if(m_channels[MixerChannel::SOUNDFX].vol_last_value != m_mixer->volume_cat(MixerChannel::SOUNDFX)) {
 			set_volume_slider( MixerChannel::SOUNDFX, m_mixer->volume_cat(MixerChannel::SOUNDFX));
 		}
+	}
+}
+
+void MixerControl::update_vu_meter(Rml::Element *_meter, double _db)
+{
+	int db = int(std::round(clamp(_db, MixerChannel::VUMeter::min, MixerChannel::VUMeter::max)));
+	set_control_value(_meter, db + int(std::abs(MixerChannel::VUMeter::min)));
+	if(db >= 0) {
+		_meter->SetClass("over", true);
+	} else if(db >= -6) {
+		_meter->SetClass("edge", true);
+	} else {
+		_meter->SetClass("edge", false);
+		_meter->SetClass("over", false);
 	}
 }
 
@@ -126,10 +165,13 @@ MixerControl::Channel::Channel(std::shared_ptr<MixerChannel> _ch, Rml::ElementDo
 
 void MixerControl::Channel::set(int _id, Rml::ElementDocument *_wnd)
 {
+	id = _id;
 	activity = _wnd->GetElementById(str_format("ch_name_%d", _id));
 	vol_slider = _wnd->GetElementById(str_format("ch_vol_%d", _id));
 	vol_progress = _wnd->GetElementById(str_format("ch_vol_progress_%d", _id));
 	vol_value = _wnd->GetElementById(str_format("ch_vol_value_%d", _id));
+	vu_left = _wnd->GetElementById(str_format("ch_vu_left_%d", _id));
+	vu_right = _wnd->GetElementById(str_format("ch_vu_right_%d", _id));
 	volume_auto_btn = _wnd->GetElementById(str_format("ch_volume_auto_%d", _id));
 	filter_en_check = _wnd->GetElementById(str_format("ch_filter_en_%d", _id));
 }
@@ -144,7 +186,7 @@ void MixerControl::config_changed(bool)
 	m_divs.soundfx_channels->SetInnerRML("");
 
 	m_channels.clear();
-	m_channels[-1].set(-1, m_wnd);
+	m_channels[MixerChannel::MASTER].set(MixerChannel::MASTER, m_wnd);
 	m_channels[MixerChannel::AUDIOCARD].set(MixerChannel::AUDIOCARD, m_wnd);
 	m_channels[MixerChannel::SOUNDFX].set(MixerChannel::SOUNDFX, m_wnd);
 
@@ -173,7 +215,7 @@ void MixerControl::config_changed(bool)
 		sfx_count++;
 	}
 
-	set_volume_slider(-1, m_mixer->volume_master());
+	set_volume_slider(MixerChannel::MASTER, m_mixer->volume_master());
 	set_volume_slider(MixerChannel::AUDIOCARD, m_mixer->volume_cat(MixerChannel::AUDIOCARD));
 	set_volume_slider(MixerChannel::SOUNDFX, m_mixer->volume_cat(MixerChannel::SOUNDFX));
 
@@ -203,6 +245,9 @@ void MixerControl::config_changed(bool)
 	max_w_dp += right;
 
 	m_wnd->SetProperty("max-width", str_format("%gdp", max_w_dp));
+
+	m_vu_meters = g_program.config().get_bool_or_default(DIALOGS_SECTION, DIALOGS_VU_METERS);
+	enable_vu_meters(m_vu_meters);
 }
 
 void MixerControl::close()
@@ -807,11 +852,12 @@ Rml::ElementPtr MixerControl::create_master_block()
 
 	Rml::ElementPtr ch_sliders_container = m_wnd->CreateElement("div");
 		ch_sliders_container->SetClassNames("ch_sliders_container");
-		ch_sliders_container->AppendChild(create_volume_slider(-1));
+		ch_sliders_container->AppendChild(create_volume_slider(MixerChannel::MASTER));
+		ch_sliders_container->AppendChild(create_vu_meter(MixerChannel::MASTER, true));
 
 	ch_block->AppendChild(std::move(ch_sliders_container));
 
-	ch_block->AppendChild(create_AMS_buttons(-1, false, true, false));
+	ch_block->AppendChild(create_AMS_buttons(MixerChannel::MASTER, false, true, false));
 
 	Rml::ElementPtr ch_name = m_wnd->CreateElement("div");
 		ch_name->SetClassNames("ch_name");
@@ -849,6 +895,7 @@ Rml::ElementPtr MixerControl::create_category_block(MixerChannel::Category _id)
 		ch_sliders_container->SetClassNames("ch_sliders_container");
 		ch_sliders_container->SetId(str_format("ch_sliders_%d", _id));
 		ch_sliders_container->AppendChild(create_volume_slider(_id));
+		ch_sliders_container->AppendChild(create_vu_meter(_id, true));
 
 	ch_block->AppendChild(std::move(ch_sliders_container));
 
@@ -919,6 +966,8 @@ Rml::ElementPtr MixerControl::create_channel_block(const MixerChannel *_ch)
 		}
 
 	ch_sliders_container->AppendChild(create_volume_slider(_ch->id()));
+
+	ch_sliders_container->AppendChild(create_vu_meter(_ch->id(), true));
 
 	ch_block->AppendChild(std::move(ch_sliders_container));
 
@@ -1029,6 +1078,65 @@ Rml::ElementPtr MixerControl::create_volume_slider(int _id)
 	return container;
 }
 
+Rml::ElementPtr MixerControl::create_vu_meter(int _id, bool _stereo)
+{
+	Rml::ElementPtr container = m_wnd->CreateElement("div");
+		container->SetId(str_format("ch_vu_container_%d", _id));
+		container->SetClassNames("ch_vu_container");
+
+	Rml::ElementPtr progress_container = m_wnd->CreateElement("div");
+		progress_container->SetClassNames("ch_vu_progress_container");
+
+	Rml::ElementPtr progress = m_wnd->CreateElement("progress");
+		progress->SetId(str_format("ch_vu_left_%d", _id));
+		progress->SetClassNames("ch_vu_progress ch_vu_left");
+		progress->SetAttribute("direction", "top");
+		progress->SetAttribute("max", MixerChannel::VUMeter::range);
+		progress->SetAttribute("value", 0);
+
+	container->AppendChild(std::move(progress));
+
+	Rml::ElementPtr notches_container = m_wnd->CreateElement("div");
+		notches_container->SetClassNames("ch_vu_notches_container");
+		if(_stereo) {
+			notches_container->SetClass("ch_vu_stereo", true);
+		}
+
+	for(int level = 0; level <= int(MixerChannel::VUMeter::range); level += int(MixerChannel::VUMeter::step)) {
+		Rml::ElementPtr notch = m_wnd->CreateElement("div");
+		notch->SetClassNames("ch_vu_notch");
+		Rml::ElementPtr label = m_wnd->CreateElement("div");
+		label->SetClassNames("ch_vu_label");
+		int label_val = int(MixerChannel::VUMeter::min) + level;
+		label->SetInnerRML(label_val==0 ? "0" : str_format("%+d", label_val));
+		double k = (double(level) / MixerChannel::VUMeter::range);
+		if(k > 0.0) {
+			notch->SetProperty("bottom", str_format("%f%%", k * 100.0));
+			label->SetProperty("bottom", str_format("%f%%", k * 100.0));
+		} else {
+			notch->SetProperty("bottom", "0");
+			label->SetProperty("bottom", "0");
+		}
+		notches_container->AppendChild(std::move(notch));
+		notches_container->AppendChild(std::move(label));
+	}
+
+	container->AppendChild(std::move(notches_container));
+
+	if(_stereo) {
+		Rml::ElementPtr progress = m_wnd->CreateElement("progress");
+			progress->SetId(str_format("ch_vu_right_%d", _id));
+			progress->SetClassNames("ch_vu_progress ch_vu_right");
+			progress->SetAttribute("direction", "top");
+			progress->SetAttribute("max", MixerChannel::VUMeter::range);
+			progress->SetAttribute("value", 0);
+
+		container->AppendChild(std::move(progress));
+	}
+
+	return container;
+}
+
 Rml::ElementPtr MixerControl::create_balance_slider(int _id)
 {
 	Rml::ElementPtr container = m_wnd->CreateElement("div");
@@ -1065,7 +1173,7 @@ Rml::ElementPtr MixerControl::create_balance_slider(int _id)
 		progress_r->SetAttribute("direction", "right");
 		progress_r->SetAttribute("max", "1.0");
 		progress_r->SetAttribute("value", "0.0");
-			
+
 	Rml::ElementPtr notch = m_wnd->CreateElement("div");
 		notch->SetClassNames("ch_balance_notch");
 
@@ -1086,7 +1194,7 @@ Rml::ElementPtr MixerControl::create_filters_setting(int _chid, bool _has_auto)
 	Rml::ElementPtr container = m_wnd->CreateElement("div");
 	container->SetClassNames("ch_subsetting_container ch_filter");
 	container->SetId(str_format("ch_filter_%d", _chid));
-	
+
 	Rml::ElementPtr label = m_wnd->CreateElement("div");
 		label->SetClassNames("ch_label");
 		label->SetInnerRML("Filters");
@@ -1319,4 +1427,18 @@ void MixerControl::on_save(Rml::Event &)
 	);
 
 	m_save_info->show();
+}
+
+void MixerControl::on_vu_meters(Rml::Event &)
+{
+	m_vu_meters = !m_vu_meters;
+	enable_vu_meters(m_vu_meters);
+}
+
+void MixerControl::enable_vu_meters(bool _enabled)
+{
+	get_element("blocks")->SetClass("with_vu_meters", _enabled);
+	auto btn = get_element("vu_meters");
+	set_active(btn, _enabled);
+	g_program.config().set_bool(DIALOGS_SECTION, DIALOGS_VU_METERS, _enabled);
 }

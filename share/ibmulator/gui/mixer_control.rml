@@ -204,7 +204,12 @@
 			{
 				position: absolute;
 				top: 95dp;
+				left: 0dp;
 				width: 100%;
+			}
+			.with_vu_meters .ch_volume_container
+			{
+				width: 80%;
 			}
 			.category_container .ch_volume_container,
 			#master .ch_volume_container
@@ -266,6 +271,79 @@
 				position: absolute;
 				bottom: 0;
 				left: 25dp;
+			}
+
+			/* VU METER */
+			.ch_vu_container
+			{
+				pointer-events: none;
+				position: absolute;
+				bottom: 74dp;
+				right: 0dp;
+				width: 60%;
+				height: 150dp;
+				text-align: center;
+				display: none;
+			}
+			.with_vu_meters .ch_vu_container
+			{
+				display: block;
+			}
+			#master_container .ch_vu_container,
+			.category_container .ch_vu_container
+			{
+				height: 214dp;
+			}
+			.ch_vu_progress,
+			.ch_vu_notches_container
+			{
+				display: inline-block;
+				height: 100%;
+				margin-right: 2dp;
+				background-color: #2d4254;
+			}
+			.ch_vu_progress
+			{
+				width: 4dp;
+			}
+			.ch_vu_progress fill
+			{
+				background-color: #a6ff00;
+			}
+			.ch_vu_progress.edge fill
+			{
+				background-color: #ffef38;
+			}
+			.ch_vu_progress.over fill
+			{
+				background-color: #ee3700;
+			}
+			.ch_vu_notches_container
+			{
+				background-color: transparent;
+				width: 22dp;
+			}
+			.ch_vu_notch
+			{
+				position: absolute;
+				left: 0;
+				width: 50%;
+				height: 1dp;
+				background-color: #2d4254;
+			}
+			.ch_vu_stereo .ch_vu_notch
+			{
+				width: 100%;
+			}
+			.ch_vu_label
+			{
+				position: absolute;
+				left: 0;
+				width: 18dp;
+				height: 8dp;
+				margin: 0 auto -2dp auto;
+				font-size: 8dp;
+				background-color: #587fa3;
 			}
 
 
@@ -437,11 +515,21 @@
 				left: 20dp;
 				z-index: 9999;
 			}
+			#vu_meters
+			{
+				position: absolute;
+				bottom: 10dp;
+				left: 20dp;
+				z-index: 9999;
+			}
 		</style>
 	</head>
 	<body template="default">
 
 		<button id="save" class="romshell"><span>Save profile</span></button>
+		<button id="vu_meters" class="romshell"><span>VU meters</span></button>
+
+		<div id="blocks">
 
 		<div id="master_container">
 			<div id="master" class="ch_block_container"></div>
@@ -463,5 +551,7 @@
 
 		</tabset>
 
+		</div>
+		
 	</body>
 </rml>
