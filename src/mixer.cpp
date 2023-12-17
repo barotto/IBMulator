@@ -1059,9 +1059,7 @@ void Mixer::cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_c
 		// audio channels here have the opportunity to store their current config
 		// before a possible state restore
 		for(auto &ch : m_mix_channels) {
-			if(ch.second->category() == MixerChannel::Category::AUDIOCARD) {
-				ch.second->store_config(g_program.config());
-			}
+			ch.second->store_config(g_program.config());
 		}
 		_cv.notify_one();
 	});
