@@ -1243,7 +1243,12 @@ Rml::ElementPtr MixerControl::create_filters_container(int _chid, bool _has_auto
 		if(_has_auto) {
 			select->Add("auto", "auto");
 		}
-		select->Add("pc-speaker", "pc-speaker");
+		for(auto & fp : MixerChannel::FilterPresetConfigs) {
+			if(fp.first == MixerChannel::FilterPreset::None) {
+				continue;
+			}
+			select->Add(fp.second.name, fp.second.name);
+		}
 		select->Add("custom", "custom");
 
 	Rml::ElementPtr custom = m_wnd->CreateElement("div");

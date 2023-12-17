@@ -635,27 +635,50 @@ const MixerChannel::FilterConfig & MixerChannel::filter()
 	return m_filter.config;
 }
 
+const std::map<MixerChannel::FilterPreset, MixerChannel::FilterConfig> MixerChannel::FilterPresetConfigs = {
+	{ FilterPreset::None, { FilterPreset::None, "none", "" } },
+	{ FilterPreset::PC_Speaker_1, {
+		FilterPreset::PC_Speaker_1,
+		"pc-speaker-1",
+		"LowPass,order=2,fc=6000|HighPass,order=2,fc=300"
+	} },
+	{ FilterPreset::PC_Speaker_2, {
+		FilterPreset::PC_Speaker_2,
+		"pc-speaker-2",
+		"LowPass,order=5,fc=5000|HighPass,order=5,fc=500"
+	} },
+	{ FilterPreset::LPF_3_2k, {
+		FilterPreset::LPF_3_2k,
+		"lpf-3.2k",
+		"LowPass,order=2,fc=3200"
+	} },
+	{ FilterPreset::LPF_8k, {
+		FilterPreset::LPF_8k,
+		"lpf-8k",
+		"LowPass,order=1,fc=8000"
+	} },
+	{ FilterPreset::LPF_12k, {
+		FilterPreset::LPF_12k,
+		"lpf-12k",
+		"LowPass,order=1,fc=12000"
+	} }
+};
+
 void MixerChannel::set_filter(std::string _filter_def) noexcept
 {
 	static const std::map<std::string, FilterPreset> presets {
 		{ "none", FilterPreset::None },
-		{ "pc-speaker", FilterPreset::PCSpeaker },
-		{ "pcspeaker", FilterPreset::PCSpeaker },
-		{ "pcspkr", FilterPreset::PCSpeaker },
-		{ "speaker", FilterPreset::PCSpeaker },
-	};
-	static const std::map<FilterPreset, FilterConfig> configs {
-		{ FilterPreset::None, { FilterPreset::None, "none", "" } },
-		{ FilterPreset::PCSpeaker, {
-			FilterPreset::PCSpeaker,
-			"pc-speaker",
-			"LowPass,order=5,fc=5000|HighPass,order=5,fc=500"
-		} }
+		{ "pc-speaker-1", FilterPreset::PC_Speaker_1 }, { "pc-speaker", FilterPreset::PC_Speaker_1 }, { "pcspeaker", FilterPreset::PC_Speaker_1 },
+		{ "pc-speaker-2", FilterPreset::PC_Speaker_2 }, { "pcspeaker2", FilterPreset::PC_Speaker_2 },
+		{ "lpf-3.2k", FilterPreset::LPF_3_2k }, { "lpf3.2k", FilterPreset::LPF_3_2k },
+		{ "lpf-8k", FilterPreset::LPF_8k }, { "lpf8k", FilterPreset::LPF_8k },
+		{ "lpf-12k", FilterPreset::LPF_12k }, { "lpf12k", FilterPreset::LPF_12k },
+		{ "lpf", FilterPreset::LPF_8k },
 	};
 
 	auto preset = presets.find(_filter_def);
 	if(preset != presets.end()) {
-		m_filter.config = configs.find(preset->second)->second;
+		m_filter.config = FilterPresetConfigs.find(preset->second)->second;
 		m_filter.config_dirty = false;
 	} else if(_filter_def == "custom") {
 		m_filter.config = { FilterPreset::Custom, "custom", m_filter.config.definition };
@@ -680,7 +703,7 @@ void MixerChannel::set_filter(std::string _filter_def) noexcept
 	if(chain.empty()) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_filter.chain.clear();
-		m_filter.config = configs.find(FilterPreset::None)->second;
+		m_filter.config = FilterPresetConfigs.find(FilterPreset::None)->second;
 	} else {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_filter.chain = chain;

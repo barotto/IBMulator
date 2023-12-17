@@ -123,7 +123,7 @@ public:
 
 	enum class FilterPreset
 	{
-		None, PCSpeaker, Custom
+		None, PC_Speaker_1, PC_Speaker_2, LPF_3_2k, LPF_8k, LPF_12k, Custom
 	};
 
 	struct FilterConfig {
@@ -131,6 +131,8 @@ public:
 		const char *name;
 		std::string definition;
 	};
+
+	static const std::map<FilterPreset, FilterConfig> FilterPresetConfigs;
 
 	enum Feature {
 		HasVolume = 1,

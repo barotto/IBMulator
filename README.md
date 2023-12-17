@@ -479,11 +479,23 @@ Sound cards' channels can be filtered with IIR filters.
 
 A filter is either a named preset or a definition string.
 
-There's only 1 preset currently available:
+A definition string is the filter name followed by its parameters separated by
+commas, e.g.:
+```
+LowPass,order=2,fc=3200
+```
+Multiple filters can be concatenated with the '|' character.
 
- * `pc-speaker`: can be used to simulate the sound of a typical PC Speaker and
-   is the same as `LowPass,order=5,fc=5000|HighPass,order=5,fc=500`
- 
+The following presets are available:
+
+| Preset name    | Equivalent definition                            |
+| -------------- | ------------------------------------------------ |
+| `pc-speaker-1` | LowPass,order=2,fc=6000\|HighPass,order=2,fc=300 |
+| `pc-speaker-2` | LowPass,order=5,fc=5000\|HighPass,order=5,fc=500 |
+| `lpf-3.2k`     | LowPass,order=2,fc=3200                          |
+| `lpf-8k`       | LowPass,order=1,fc=8000                          |
+| `lpf-12k`      | LowPass,order=1,fc=12000                         |
+
 The `auto` value can also be used for the **PS/1 Audio Card** and
 **Sound Blaster** channels.
 
@@ -492,23 +504,13 @@ the `auto` value will force the same filter defined in `[pcspeaker]:filters`.
 
 For the Sound Blaster cards, `auto` values are as follows:
 
-| Card   | opl_filter               | dac_filter                  |
-| ------ | ------------------------ | --------------------------- |
-| SB2    | LowPass,order=1,fc=12000 | none                        |
-| SBPro  | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
-| SBPro2 | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
+| Card     | opl_filter               | dac_filter                  |
+| -------- | ------------------------ | --------------------------- |
+| SB 2     | LowPass,order=1,fc=12000 | none                        |
+| SB Pro   | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
+| SB Pro 2 | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
 
-(\*) the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
-
-A definition string is the filter name followed by its parameters separated by
-commas, like so:
-```
-LowPass,order=2,fc=3200
-```
-Multiple filters can be concatenated with the '|' character, like so:
-```
-LowPass,order=3,fc=4000|HighPass,order=10,fc=500
-```
+(*) the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
 
 A parameter's value is specified by an integer or real number. This is the list
 of available parameters:
@@ -1126,8 +1128,8 @@ These are the default key bindings defined in the `keymap.map` file:
 * <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
 * <kbd>R-CTRL</kbd>+<kbd>UP</kbd>   : increase volume by 5%
 * <kbd>R-CTRL</kbd>+<kbd>DOWN</kbd> : decrease volume by 5%
-* <kbd>R-CTRL</kbd>+<kbd>LEFT</kbd> : next OSD audio channel 
-* <kbd>R-CTRL</kbd>+<kbd>RIGHT</kbd>: previous OSD audio channel
+* <kbd>R-CTRL</kbd>+<kbd>RIGHT</kbd>: next OSD audio channel
+* <kbd>R-CTRL</kbd>+<kbd>LEFT</kbd> : previous OSD audio channel 
 * <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
 The mouse can be grabbed with the central mouse button as well.  
