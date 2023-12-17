@@ -495,6 +495,9 @@ void MixerControl::set_solo(int _chid, bool _soloed)
 		set_mute(_chid, false);
 	}
 	for(auto & ch : m_channels) {
+		if(ch.second.id < MixerChannel::CategoryCount) {
+			continue;
+		}
 		if(ch.first != _chid) {
 			set_mute(ch.first, _soloed);
 		}
