@@ -275,7 +275,6 @@ void Program::restore_state(
 		//machine inconsistent and it should be terminated
 		//TODO the config object needs a mutex!
 		//TODO create a revert mechanism?
-		m_config[1].copy(m_config[0]);
 		m_config[1].merge(sstate->config(), MACHINE_CONFIG);
 
 		std::unique_lock<std::mutex> restore_lock(ms_lock);
