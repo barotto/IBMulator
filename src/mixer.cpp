@@ -687,22 +687,33 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 
 	// create the global mix
-	float volume = MixerChannel::volume_multiplier(m_volume.master) * !m_volume.muted;
+	float master_volume = MixerChannel::volume_multiplier(m_volume.master);
 	std::fill(m_out_mix.begin(), m_out_mix.begin()+samples, 0.f);
 	for(int cat=0; cat<MixerChannel::CategoryCount; cat++) {
 		if(!cat_count[cat]) {
 			continue;
 		}
+		float cat_volume = MixerChannel::volume_multiplier(m_volume.category[cat]);
 		for(size_t i=0; i<samples; i++) {
+			m_ch_mix[cat][i] *= cat_volume;
+
 			int c = i % m_audio_spec.channels;
 			m_volume.meter_category[cat].update(c, std::abs(m_ch_mix[cat][i]));
 
-			m_out_mix[i] += m_ch_mix[cat][i] * volume;
+			if(m_volume.muted_category[cat]) {
+				m_ch_mix[cat][i] = .0f;
+			}
+
+			m_out_mix[i] += m_ch_mix[cat][i] * master_volume;
 		}
 	}
 	for(size_t i=0; i<samples; i++) {
 		int c = i % m_audio_spec.channels;
 		m_volume.meter.update(c, std::abs(m_out_mix[i]));
+
+		if(m_volume.muted) {
+			m_out_mix[i] = .0f;
+		}
 	}
 	PDEBUGF(LOG_V2, LOG_MIXER, "  mixed %zu frames for global mix\n", frames);
 	
@@ -772,7 +783,6 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 	size_t samples = _frames * 2;
 	assert(_result_buf.size() >= samples);
 	std::fill(_result_buf.begin(), _result_buf.begin()+samples, 0.f);
-	float volume[2] = {1.f, 1.f};
 	for(auto ch : _channels) {
 		if(ch->category() != _chcat) {
 			continue;
@@ -782,14 +792,11 @@ void Mixer::mix_stereo(std::vector<float> &_result_buf,
 			continue;
 		}
 		const float *chdata = &ch->out().at<float>(0);
-		float cat_volume = MixerChannel::volume_multiplier(m_volume.category[_chcat]) * !m_volume.muted_category[_chcat];
-		volume[0] = !ch->is_muted() * !ch->is_force_muted() * cat_volume;
-		volume[1] = !ch->is_muted() * !ch->is_force_muted() * cat_volume;
+		bool muted = ch->is_muted() || ch->is_force_muted();
 		for(size_t i=0; i<samples; i++) {
 			float v1, v2;
-			int c = i % 2;
-			if(i < chsamples) {
-				v1 = chdata[i] * volume[c];
+			if(i < chsamples && !muted) {
+				v1 = chdata[i];
 			} else {
 				v1 = 0.f;
 			}
