@@ -245,8 +245,7 @@ void MixerChannel::enable(bool _enabled)
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 		} else {
 			m_first_update = true;
-			m_volume.meter.db[0] = VUMeter::min;
-			m_volume.meter.db[1] = VUMeter::min;
+			m_volume.meter.reset();
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel disabled\n", m_name.c_str());
 		}
 	}
@@ -1019,6 +1018,12 @@ void MixerChannel::VUMeter::update(int _channel, float _amplitude)
 		db[_channel] -= leak_rate;
 	}
 	db[_channel] = clamp(db[_channel], min, max);
+}
+
+void MixerChannel::VUMeter::reset()
+{
+	db[0] = min;
+	db[1] = min;
 }
 
 void MixerChannel::update_volume_factors()

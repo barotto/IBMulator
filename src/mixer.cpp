@@ -261,6 +261,11 @@ void Mixer::config_changed(bool _launch) noexcept
 		ch.second->apply_auto_values(g_program.config());
 	}
 
+	m_volume.meter.reset();
+	for(int c = 0; c < MixerChannel::CategoryCount; c++) {
+		m_volume.meter_category[c].reset();
+	}
+
 	std::mutex m;
 	std::condition_variable cv;
 	std::unique_lock<std::mutex> lock(m);

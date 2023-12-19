@@ -178,6 +178,7 @@ public:
 
 		void set_rate(double _rate);
 		void update(int _channel, float _amplitude);
+		void reset();
 	};
 
 private:
