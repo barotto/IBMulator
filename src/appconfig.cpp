@@ -285,27 +285,32 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ PS1AUDIO_SECTION,
-";     enabled: Install the PS/1 Audio/Joystick Card.\n"
-";  dac_volume: Audio volume of the DAC.\n"
-"; dac_balance: Audio balance of the DAC.\n"
-"; dac_filters: DSP filters for the DAC.\n"
-";              Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
-";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
-";  dac_reverb: Reverb effect for the DAC.\n"
-";              Possible values: auto, or one of the reverb presets (see README for more info)\n"
-";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
-";  dac_chorus: Chorus effect for the DAC (see README for more info).\n"
-";    psg_rate: Sample rate of the PSG (Programmable Sound Generator).\n"
-";              Possible values: 48000, 44100, 32000, 22050, 11025.\n"
-";  psg_volume: Audio volume of the PSG.\n"
-"; psg_balance: Audio balance of the PSG.\n"
-"; psg_filters: DSP filters for the PSG.\n"
-";              Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
-";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
-";  psg_reverb: Reverb effect for the PSG.\n"
-";              Possible values: auto, or one of the reverb presets (see README for more info)\n"
-";               auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
-";  psg_chorus: Chorus effect for the PSG (see README for more info).\n"
+";        enabled: Install the PS/1 Audio/Joystick Card.\n"
+";     dac_volume: Audio volume of the DAC.\n"
+";    dac_balance: Audio balance of the DAC.\n"
+";    dac_filters: DSP filters for the DAC.\n"
+";                 Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
+";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
+";     dac_reverb: Reverb effect for the DAC.\n"
+";                 Possible values: auto, or one of the reverb presets (see README for more info)\n"
+";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
+";     dac_chorus: Chorus effect for the DAC (see README for more info).\n"
+"; dac_resampling: The resampling method used.\n"
+";                 Possible values: sinc, linear, hold\n"
+";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
+";                  linear: linear converter.\n"
+";                    hold: Zero Order Hold converter (interpolated value is equal to the last value).\n"
+";       psg_rate: Sample rate of the PSG (Programmable Sound Generator).\n"
+";                 Possible values: 48000, 44100, 32000, 22050, 11025.\n"
+";     psg_volume: Audio volume of the PSG.\n"
+";    psg_balance: Audio balance of the PSG.\n"
+";    psg_filters: DSP filters for the PSG.\n"
+";                 Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
+";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
+";     psg_reverb: Reverb effect for the PSG.\n"
+";                 Possible values: auto, or one of the reverb presets (see README for more info)\n"
+";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
+";     psg_chorus: Chorus effect for the PSG (see README for more info).\n"
 		},
 
 		{ ADLIB_SECTION,
@@ -333,7 +338,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";            dma: The DMA channel number.\n"
 ";                 Possible values: 0, 1, 3.\n"
 "; dac_resampling: The resampling method used.\n"
-";                 Possible values: auto, sinc, linear, zoh\n"
+";                 Possible values: auto, sinc, linear, hold\n"
 ";                    auto: the method depends on the Sound Blaster model.\n"
 ";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
 ";                  linear: linear converter.\n"
@@ -611,18 +616,19 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ PCSPEAKER_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ PS1AUDIO_SECTION, {
-		{ PS1AUDIO_ENABLED,     MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
-		{ PS1AUDIO_DAC_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
-		{ PS1AUDIO_DAC_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
-		{ PS1AUDIO_DAC_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
-		{ PS1AUDIO_DAC_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
-		{ PS1AUDIO_DAC_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
-		{ PS1AUDIO_PSG_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
-		{ PS1AUDIO_PSG_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
-		{ PS1AUDIO_PSG_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
-		{ PS1AUDIO_PSG_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
-		{ PS1AUDIO_PSG_REVERB,  MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
-		{ PS1AUDIO_PSG_CHORUS,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ PS1AUDIO_ENABLED,        MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"   },
+		{ PS1AUDIO_DAC_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
+		{ PS1AUDIO_DAC_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
+		{ PS1AUDIO_DAC_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ PS1AUDIO_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ PS1AUDIO_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
+		{ PS1AUDIO_DAC_RESAMPLING, MIXER_CONFIG,   PUBLIC_CFGKEY, "sinc"  },
+		{ PS1AUDIO_PSG_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
+		{ PS1AUDIO_PSG_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
+		{ PS1AUDIO_PSG_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
+		{ PS1AUDIO_PSG_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ PS1AUDIO_PSG_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
+		{ PS1AUDIO_PSG_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 	} },
 	{ ADLIB_SECTION, {
 		{ ADLIB_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "no"    },

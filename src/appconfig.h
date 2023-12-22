@@ -267,6 +267,7 @@ public:
 #define PS1AUDIO_DAC_BALANCE    "dac_balance"
 #define PS1AUDIO_DAC_REVERB     "dac_reverb"
 #define PS1AUDIO_DAC_CHORUS     "dac_chorus"
+#define PS1AUDIO_DAC_RESAMPLING "dac_resampliung"
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"
