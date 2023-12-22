@@ -64,7 +64,7 @@ public:
 
 	enum ResamplingType
 	{
-		SINC, LINEAR, ZOH
+		SINC, LINEAR, HOLD
 	};
 
 	enum class ReverbPreset
@@ -308,6 +308,7 @@ public:
 	void set_resampling_type(MixerChannel::ResamplingType _type);
 	void set_resampling_auto(bool _enabled);
 	bool is_resampling_auto() const { return m_resampling.auto_set; }
+	std::string resampling_def() const;
 
 	// volume
 	float volume_master_left() const { return m_volume.master_left; }
@@ -435,7 +436,6 @@ private:
 	std::string chorus_def() const;
 	std::string crossfeed_def() const;
 	std::string filter_def();
-	std::string resampling_def() const;
 
 	void create_resampling(int _channels);
 	void destroy_resampling();

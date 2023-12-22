@@ -335,7 +335,7 @@ void MixerChannel::create_resampling(int _channels)
 	switch(m_resampling.type) {
 		case SINC: src_type = SRC_SINC_MEDIUM_QUALITY; break;
 		case LINEAR: src_type = SRC_LINEAR; break;
-		case ZOH: src_type = SRC_ZERO_ORDER_HOLD; break;
+		case HOLD: src_type = SRC_ZERO_ORDER_HOLD; break;
 	}
 	if(src_type != m_resampling.SRC_converter) {
 		destroy_resampling();
@@ -1170,13 +1170,14 @@ void MixerChannel::set_resampling_type(std::string _preset)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
+	m_resampling.auto_set = false;
 	m_resampling.type = SINC;
 
 	try {
 		auto [resampler, preset]  = parse_preset<ResamplingType>(_preset, {
 			{ "sinc", MixerChannel::SINC },
 			{ "linear", MixerChannel::LINEAR },
-			{ "hold", MixerChannel::ZOH },
+			{ "hold", MixerChannel::HOLD },
 		}, "sinc");
 
 		m_resampling.type = resampler;
@@ -1199,7 +1200,7 @@ std::string MixerChannel::resampling_def() const
 	switch(m_resampling.type) {
 		case MixerChannel::SINC: return "sinc";
 		case MixerChannel::LINEAR: return "linear";
-		case MixerChannel::ZOH: return "zoh";
+		case MixerChannel::HOLD: return "hold";
 	}
 	return "";
 }

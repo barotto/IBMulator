@@ -337,7 +337,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";                    auto: the method depends on the Sound Blaster model.\n"
 ";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
 ";                  linear: linear converter.\n"
-";                     zoh: Zero Order Hold converter (interpolated value is equal to the last value).\n"
+";                    hold: Zero Order Hold converter (interpolated value is equal to the last value).\n"
 ";     dac_volume: DAC's MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level (SBPro+ only).\n"
@@ -639,7 +639,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ SBLASTER_IOBASE,         MACHINE_CONFIG, PUBLIC_CFGKEY, "0x220" },
 		{ SBLASTER_DMA,            MACHINE_CONFIG, PUBLIC_CFGKEY, "1"     },
 		{ SBLASTER_IRQ,            MACHINE_CONFIG, PUBLIC_CFGKEY, "5"     },
-		{ SBLASTER_DAC_RESAMPLING, PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"  },
+		{ SBLASTER_DAC_RESAMPLING, MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_DAC_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_DAC_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_DAC_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },

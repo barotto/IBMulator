@@ -338,6 +338,11 @@ void MixerControl::init_channel_values(MixerChannel *_ch)
 			set_control_value(crossfeed_preset, MixerChannel::crossfeed_preset_to_config(_ch->crossfeed().preset).name);
 		}
 	}
+
+	if(_ch->features() & MixerChannel::Feature::HasResamplingType) {
+		auto resampling_mode = get_element(str_format("ch_resampling_mode_%d", _ch->id()));
+		set_control_value(resampling_mode, _ch->resampling_def());
+	}
 }
 
 void MixerControl::set_volume(int _id, float _value)
