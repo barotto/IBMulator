@@ -164,6 +164,7 @@ void Devices::config_changed()
 			{ "sb1",    SBlaster::SB1,   },
 			{ "sb2",    SBlaster::SB2,   },
 			{ "sbpro",  SBlaster::SBPRO1 },
+			{ "sbpro1", SBlaster::SBPRO1 },
 			{ "sbpro2", SBlaster::SBPRO2 },
 		};
 		unsigned sb_model = g_program.config().get_enum(SBLASTER_SECTION, SBLASTER_MODEL, sbmodels);
