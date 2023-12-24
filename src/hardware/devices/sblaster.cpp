@@ -488,14 +488,11 @@ void SBlaster::register_irq(unsigned _line)
 
 void SBlaster::config_changed()
 {
-	unsigned opl_rate = clamp(g_program.config().get_int(SBLASTER_SECTION, SBLASTER_OPL_RATE),
-			MIXER_MIN_RATE, MIXER_MAX_RATE);
-
 	unsigned channels = 1;
 	if(m_OPL[0].type() == OPL::OPL3 || Synth::get_chip(1)) {
 		channels = 2;
 	}
-	Synth::config_changed({AUDIO_FORMAT_S16, channels, double(opl_rate)});
+	Synth::config_changed({AUDIO_FORMAT_S16, channels, double(OPL_SAMPLERATE)});
 
 	bool updated = false;
 	unsigned new_base = g_program.config().get_int(SBLASTER_SECTION, SBLASTER_IOBASE);

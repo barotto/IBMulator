@@ -315,8 +315,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 		{ ADLIB_SECTION,
 "; enabled: Install the AdLib Audio Card (cannot be installed with Sound Blaster).\n"
-";    rate: Sample rate. The real AdLib uses a frequency of 49716Hz.\n"
-";          Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";  volume: Audio volume.\n"
 "; balance: Audio balance.\n"
 "; filters: DSP filters (see README for more info).\n"
@@ -352,8 +350,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";     dac_reverb: Reverb effect for PCM audio (see README for more info).\n"
 ";     dac_chorus: Chorus effect for PCM audio (see README for more info).\n"
 ";  dac_crossfeed: Crossfeed for PCM audio (see README for more info).\n"
-";       opl_rate: The OPL chip(s) sample rate. The real hardware uses a frequency of 49716Hz.\n"
-";                 Possible values: 48000, 49716, 44100, 32000, 22050, 11025.\n"
 ";     opl_volume: The OPL chip(s) MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level (SBPro or later only).\n"
@@ -632,7 +628,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ ADLIB_SECTION, {
 		{ ADLIB_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "no"    },
-		{ ADLIB_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ ADLIB_FILTERS, MIXER_CONFIG,   PUBLIC_CFGKEY, ""      },
 		{ ADLIB_VOLUME,  MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
 		{ ADLIB_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
@@ -652,7 +647,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ SBLASTER_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ SBLASTER_DAC_CROSSFEED,  MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
-		{ SBLASTER_OPL_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ SBLASTER_OPL_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_OPL_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ SBLASTER_OPL_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },

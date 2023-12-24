@@ -81,6 +81,7 @@ libhardware_a_SOURCES = \
 	devices/sn76496.cpp \
 	devices/gameport.cpp \
 	devices/opl.cpp \
+	devices/opl3.c \
 	devices/adlib.cpp \
 	devices/cf62011bpc.cpp \
 	devices/sblaster.cpp \
@@ -159,6 +160,7 @@ noinst_HEADERS = \
 	devices/sn76496.h \
 	devices/gameport.h \
 	devices/opl.h \
+	devices/opl3.h \
 	devices/adlib.h \
 	devices/cf62011bpc.h \
 	devices/sblaster.h \

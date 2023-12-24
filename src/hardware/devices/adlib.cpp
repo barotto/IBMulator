@@ -101,9 +101,7 @@ void AdLib::power_off()
 
 void AdLib::config_changed()
 {
-	unsigned rate = clamp(g_program.config().get_int(ADLIB_SECTION, ADLIB_RATE),
-			MIXER_MIN_RATE, MIXER_MAX_RATE);
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)});
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(OPL_SAMPLERATE)});
 }
 
 uint16_t AdLib::read(uint16_t _address, unsigned)

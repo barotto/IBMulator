@@ -271,7 +271,6 @@ public:
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"
-#define ADLIB_RATE              "rate"
 #define ADLIB_FILTERS           "filters"
 #define ADLIB_VOLUME            "volume"
 #define ADLIB_BALANCE           "balance"
@@ -291,7 +290,6 @@ public:
 #define SBLASTER_DAC_CROSSFEED  "dac_crossfeed"
 #define SBLASTER_DAC_VOLUME     "dac_volume"
 #define SBLASTER_DAC_BALANCE    "dac_balance"
-#define SBLASTER_OPL_RATE       "opl_rate"
 #define SBLASTER_OPL_FILTERS    "opl_filters"
 #define SBLASTER_OPL_REVERB     "opl_reverb"
 #define SBLASTER_OPL_CHORUS     "opl_chorus"
