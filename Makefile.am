@@ -13,6 +13,7 @@ share/ibmulator/phones.txt
 
 guidir = $(pkgdatadir)/gui
 dist_gui_DATA = \
+share/ibmulator/gui/audio_osd.rml \
 share/ibmulator/gui/base.rcss \
 share/ibmulator/gui/buttons.rcss \
 share/ibmulator/gui/debugger.rcss \
@@ -31,6 +32,8 @@ share/ibmulator/gui/fileselect_list.rcss \
 share/ibmulator/gui/fileselect.rcss \
 share/ibmulator/gui/fileselect.rml \
 share/ibmulator/gui/message_wnd.rml \
+share/ibmulator/gui/mixer_control.rml \
+share/ibmulator/gui/mixer_save_info.rml \
 share/ibmulator/gui/mixerstate.rml \
 share/ibmulator/gui/new_floppy.rml \
 share/ibmulator/gui/normal_interface.rcss \
@@ -57,6 +60,7 @@ share/ibmulator/gui/icons/arrow_left.png \
 share/ibmulator/gui/icons/arrow_right.png \
 share/ibmulator/gui/icons/arrow_up.png \
 share/ibmulator/gui/icons/ascending.png \
+share/ibmulator/gui/icons/audio_on.png \
 share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \
 share/ibmulator/gui/icons/cross.png \
@@ -68,6 +72,7 @@ share/ibmulator/gui/icons/down.png \
 share/ibmulator/gui/icons/eject.png \
 share/ibmulator/gui/icons/exit.png \
 share/ibmulator/gui/icons/file_select.png \
+share/ibmulator/gui/icons/gear.png \
 share/ibmulator/gui/icons/grid.png \
 share/ibmulator/gui/icons/floppy-5.25-c.png \
 share/ibmulator/gui/icons/floppy-5.25-c-active.png \
@@ -297,4 +302,4 @@ share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
 share/ibmulator/extra/MEMDUMP.EXE
 
-EXTRA_DIST = README.md SHADERS.md BUILD_LINUX.md BUILD_WINDOWS.md
+EXTRA_DIST = README.md SHADERS.md KEYMAPS.md BUILD_LINUX.md BUILD_WINDOWS.md
