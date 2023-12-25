@@ -126,7 +126,11 @@ void MixerControl::update()
 				}
 			}
 			if(ch.ch->is_volume_auto() && ch.filter_en_check) {
-				set_control_value(ch.filter_en_check, ch.ch->is_filter_enabled(), "checked");
+				if(ch.ch->is_filter_enabled()) {
+					set_control_value(ch.filter_en_check, true, "checked");
+				} else {
+					remove_control_attr(ch.filter_en_check, "checked");
+				}
 			}
 		}
 	}

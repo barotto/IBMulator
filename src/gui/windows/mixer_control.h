@@ -90,6 +90,12 @@ private:
 		enable_handlers(true);
 	}
 
+	void remove_control_attr(Rml::Element *_control, std::string _attr) {
+		enable_handlers(false);
+		_control->RemoveAttribute(_attr);
+		enable_handlers(true);
+	}
+
 	void init_channel_values(MixerChannel *_ch);
 
 	void set_volume(int _id, float _value);
