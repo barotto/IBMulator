@@ -639,7 +639,7 @@ const std::map<MixerChannel::FilterPreset, MixerChannel::FilterConfig> MixerChan
 	{ FilterPreset::PC_Speaker_1, {
 		FilterPreset::PC_Speaker_1,
 		"pc-speaker-1",
-		"LowPass,order=2,fc=6000|HighPass,order=2,fc=300"
+		"LowPass,order=2,fc=6000|HighPass,order=2,fc=500"
 	} },
 	{ FilterPreset::PC_Speaker_2, {
 		FilterPreset::PC_Speaker_2,
