@@ -224,7 +224,7 @@ private:
 
 	struct Filter {
 		MixerFilterChain chain;
-		FilterConfig config;
+		FilterConfig config = { FilterPreset::None, "none", "" };
 		std::atomic<bool> enabled = false;
 		bool auto_set = false;
 		bool config_dirty = false;

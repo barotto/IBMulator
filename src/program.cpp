@@ -312,6 +312,11 @@ void Program::restore_state(
 				_on_success();
 			}
 		} else {
+			g_syslog.cmd_pause_and_signal(ms_lock, ms_cv);
+			ms_cv.wait(restore_lock);
+			m_gui->config_changed(false);
+			g_syslog.cmd_resume();
+
 			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart the program\n");
 			if(_on_fail != nullptr) {
 				_on_fail("The restored state is not valid, please restart the program");

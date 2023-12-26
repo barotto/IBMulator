@@ -47,6 +47,9 @@ bool StateHeader::check(const uint8_t *_raw, size_t _raw_size) const
 	if(_raw_size < h.header_size + h.data_size) {
 		return false;
 	}
+	if(data_size != h.data_size) {
+		return false;
+	}
 	if(h.name_len) {
 		return (name.compare((const char*)(_raw+sizeof(header_raw_t))) == 0);
 	}
