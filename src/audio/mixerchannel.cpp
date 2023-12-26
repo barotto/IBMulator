@@ -1249,12 +1249,12 @@ std::pair<T, std::vector<std::string>> MixerChannel::parse_preset(std::string _p
 MixerChannel::ReverbConfig MixerChannel::reverb_preset_to_config(ReverbPreset _preset)
 {
 	switch(_preset) {                                                // DELAY  MIX    SIZE   DEN    BWFREQ DECAY  DAMP   SYNTH  PCM    NOISE  HIPASS
-	case ReverbPreset::None:   return { ReverbPreset::None,   "none",   0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f,   0.0f  };
+	case ReverbPreset::None:   return { ReverbPreset::None,   "none",   0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f,   0.0f };
 	case ReverbPreset::Tiny:   return { ReverbPreset::Tiny,   "tiny",   0.00f, 1.00f, 0.05f, 0.50f, 0.50f, 0.00f, 1.00f, 0.87f, 0.87f, 0.87f, 200.0f };
-	case ReverbPreset::Small:  return { ReverbPreset::Small,  "small",  0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.08f, 0.40f, 200.0f };
-	case ReverbPreset::Medium: return { ReverbPreset::Medium, "medium", 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.07f, 0.54f, 170.0f };
-	case ReverbPreset::Large:  return { ReverbPreset::Large,  "large",  0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.05f, 0.70f, 140.0f };
-	case ReverbPreset::Huge:   return { ReverbPreset::Huge,   "huge",   0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.05f, 0.85f, 140.0f };
+	case ReverbPreset::Small:  return { ReverbPreset::Small,  "small",  0.00f, 1.00f, 0.17f, 0.42f, 0.50f, 0.50f, 0.70f, 0.40f, 0.40f, 0.40f, 200.0f };
+	case ReverbPreset::Medium: return { ReverbPreset::Medium, "medium", 0.00f, 0.75f, 0.50f, 0.50f, 0.95f, 0.42f, 0.21f, 0.54f, 0.54f, 0.54f, 170.0f };
+	case ReverbPreset::Large:  return { ReverbPreset::Large,  "large",  0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.70f, 0.70f, 0.70f, 140.0f };
+	case ReverbPreset::Huge:   return { ReverbPreset::Huge,   "huge",   0.00f, 0.75f, 0.75f, 0.50f, 0.95f, 0.52f, 0.21f, 0.85f, 0.85f, 0.85f, 140.0f };
 	}
 	assert(false);
 	return {};
