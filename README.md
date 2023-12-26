@@ -490,9 +490,10 @@ The following presets are available:
 
 | Preset name    | Equivalent definition                            |
 | -------------- | ------------------------------------------------ |
-| `pc-speaker-1` | LowPass,order=2,fc=6000\|HighPass,order=2,fc=300 |
+| `pc-speaker-1` | LowPass,order=2,fc=6000\|HighPass,order=2,fc=500 |
 | `pc-speaker-2` | LowPass,order=5,fc=5000\|HighPass,order=5,fc=500 |
 | `lpf-3.2k`     | LowPass,order=2,fc=3200                          |
+| `lpf-4.8k`     | LowPass,order=2,fc=4800                          |
 | `lpf-8k`       | LowPass,order=1,fc=8000                          |
 | `lpf-12k`      | LowPass,order=1,fc=12000                         |
 
@@ -504,16 +505,17 @@ the `auto` value will force the same filter defined in `[pcspeaker]:filters`.
 
 For the Sound Blaster cards, `auto` values are as follows:
 
-| Card     | opl_filter               | dac_filter                  |
-| -------- | ------------------------ | --------------------------- |
-| SB 2     | LowPass,order=1,fc=12000 | none                        |
-| SB Pro   | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
-| SB Pro 2 | LowPass,order=1,fc=8000  | LowPass,order=2,fc=3200 (*) |
+| Card     | opl_filter | dac_filter     |
+| -------- | ---------- | -------------- |
+| SB 2     | `lpf-12k`  | `lpf-4.8k`     |
+| SB Pro   | `lpf-8k`   | `lpf-3.2k` (*) |
+| SB Pro 2 | `lpf-8k`   | `lpf-3.2k` (*) |
 
-(*) the DAC's LPF is enabled by the Sound Blaster's Mixer (active by default).
+(*) on Pro models the DAC's LPF is enabled by the Sound Blaster's Mixer (active
+by default).
 
-A parameter's value is specified by an integer or real number. This is the list
-of available parameters:
+A parameter's value is specified by a decimal number. This is the list of
+available parameters:
 
 | Parameter name | Description                  |
 | -------------- | ---------------------------- |

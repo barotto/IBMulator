@@ -123,7 +123,10 @@ public:
 
 	enum class FilterPreset
 	{
-		None, PC_Speaker_1, PC_Speaker_2, LPF_3_2k, LPF_8k, LPF_12k, Custom
+		None,
+		PC_Speaker_1, PC_Speaker_2,
+		LPF_3_2k, LPF_4_8k, LPF_8k, LPF_12k,
+		Custom
 	};
 
 	struct FilterConfig {

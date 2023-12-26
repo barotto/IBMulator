@@ -263,14 +263,13 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 		MixerChannel::HasBalance |
 		MixerChannel::HasReverb |
 		MixerChannel::HasChorus | 
-		MixerChannel::HasFilter | 
+		MixerChannel::HasFilter | MixerChannel::HasAutoFilter | 
 		MixerChannel::HasResamplingType |
 		MixerChannel::HasAutoResamplingType;
 	if(_version >= 0x300) {
 		features |=
 			MixerChannel::HasStereoSource |
 			MixerChannel::HasAutoVolume |
-			MixerChannel::HasAutoFilter |
 			MixerChannel::HasCrossfeed;
 	}
 	m_dac_channel->set_features(features);
@@ -416,7 +415,7 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 void SBlaster::install()
 {
 	install_ports(sb_ports);
-	install_dsp(0x105, "");
+	install_dsp(0x105, "LowPass,order=2,fc=3800");
 	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
 
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
@@ -425,7 +424,7 @@ void SBlaster::install()
 void SBlaster2::install()
 {
 	install_ports(sb_ports);
-	install_dsp(0x201, "");
+	install_dsp(0x201, "LowPass,order=2,fc=4800");
 	install_opl(OPL::OPL2, 1, false, "LowPass,order=1,fc=12000"); // single YM3812 (OPL2)
 
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s (%s)\n", full_name(), blaster_env().c_str());
@@ -1082,7 +1081,8 @@ void SBlaster::auto_resampling_cb()
 {
 	// called by the Mixer thread
 	if(m_dac_channel->is_resampling_auto()) {
-		m_dac_channel->set_resampling_type(MixerChannel::LINEAR);
+		// TODO SB16 should use SINC
+		m_dac_channel->set_resampling_type(MixerChannel::HOLD);
 	}
 }
 

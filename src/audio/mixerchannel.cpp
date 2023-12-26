@@ -651,6 +651,11 @@ const std::map<MixerChannel::FilterPreset, MixerChannel::FilterConfig> MixerChan
 		"lpf-3.2k",
 		"LowPass,order=2,fc=3200"
 	} },
+	{ FilterPreset::LPF_4_8k, {
+		FilterPreset::LPF_4_8k,
+		"lpf-4.8k",
+		"LowPass,order=2,fc=4800"
+	} },
 	{ FilterPreset::LPF_8k, {
 		FilterPreset::LPF_8k,
 		"lpf-8k",
@@ -670,6 +675,7 @@ void MixerChannel::set_filter(std::string _filter_def) noexcept
 		{ "pc-speaker-1", FilterPreset::PC_Speaker_1 }, { "pc-speaker", FilterPreset::PC_Speaker_1 }, { "pcspeaker", FilterPreset::PC_Speaker_1 },
 		{ "pc-speaker-2", FilterPreset::PC_Speaker_2 }, { "pcspeaker2", FilterPreset::PC_Speaker_2 },
 		{ "lpf-3.2k", FilterPreset::LPF_3_2k }, { "lpf3.2k", FilterPreset::LPF_3_2k },
+		{ "lpf-4.8k", FilterPreset::LPF_4_8k }, { "lpf4.8k", FilterPreset::LPF_4_8k },
 		{ "lpf-8k", FilterPreset::LPF_8k }, { "lpf8k", FilterPreset::LPF_8k },
 		{ "lpf-12k", FilterPreset::LPF_12k }, { "lpf12k", FilterPreset::LPF_12k },
 		{ "lpf", FilterPreset::LPF_8k },
