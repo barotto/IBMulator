@@ -146,11 +146,12 @@ public:
 		HasAutoChorus = 32,
 		HasFilter = 64,
 		HasAutoFilter = 128,
-		HasCrossfeed = 256,
-		HasBalance = 512,
-		HasResamplingType = 1024,
-		HasAutoResamplingType = 2048,
-		HasStereoSource = 4096
+		HasAutoEnableFilter = 256,
+		HasCrossfeed = 512,
+		HasBalance = 1024,
+		HasResamplingType = 2048,
+		HasAutoResamplingType = 4096,
+		HasStereoSource = 8192
 	};
 
 	enum class ConfigParameter {

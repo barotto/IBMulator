@@ -121,11 +121,11 @@ void MixerControl::update()
 			if(is_active(ch.volume_auto_btn) != ch.ch->is_volume_auto()) {
 				set_disabled(ch.vol_slider, ch.ch->is_volume_auto());
 				set_active(ch.volume_auto_btn, ch.ch->is_volume_auto());
-				if(ch.filter_en_check) {
+				if((ch.ch->features() & MixerChannel::HasAutoEnableFilter) && ch.filter_en_check) {
 					set_disabled(ch.filter_en_check, ch.ch->is_volume_auto());
 				}
 			}
-			if(ch.ch->is_volume_auto() && ch.filter_en_check) {
+			if((ch.ch->features() & MixerChannel::HasAutoEnableFilter) && ch.ch->is_volume_auto() && ch.filter_en_check) {
 				if(ch.ch->is_filter_enabled()) {
 					set_control_value(ch.filter_en_check, true, "checked");
 				} else {
@@ -275,7 +275,7 @@ void MixerControl::init_channel_values(MixerChannel *_ch)
 		} else {
 			set_volume_label(_ch->id(), _ch->volume_master_left());
 		}
-		if(_ch->features() & MixerChannel::Feature::HasAutoFilter) {
+		if(_ch->features() & MixerChannel::Feature::HasAutoEnableFilter) {
 			set_disabled(m_channels[_ch->id()].filter_en_check, true);
 		}
 	} else {
@@ -411,7 +411,7 @@ bool MixerControl::on_volume_auto(Rml::Event &_evt, int _chid)
 		set_volume(_chid, value);
 		set_volume_label(_chid, value);
 	}
-	if(channel->features() & MixerChannel::Feature::HasAutoFilter) {
+	if(channel->features() & MixerChannel::Feature::HasAutoEnableFilter) {
 		set_disabled(m_channels[_chid].filter_en_check, autovol);
 	}
 	return true;

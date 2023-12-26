@@ -270,6 +270,7 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 		features |=
 			MixerChannel::HasStereoSource |
 			MixerChannel::HasAutoVolume |
+			MixerChannel::HasAutoEnableFilter |
 			MixerChannel::HasCrossfeed;
 	}
 	m_dac_channel->set_features(features);
