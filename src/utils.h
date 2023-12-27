@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_UTILS_H
 #define IBMULATOR_UTILS_H
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <array>
