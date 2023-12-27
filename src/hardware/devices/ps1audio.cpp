@@ -185,9 +185,7 @@ void PS1Audio::power_off()
 
 void PS1Audio::config_changed()
 {
-	unsigned rate = clamp(g_program.config().get_int(PS1AUDIO_SECTION, PS1AUDIO_PSG_RATE),
-			MIXER_MIN_RATE, MIXER_MAX_RATE);
-	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)});
+	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(g_mixer.get_audio_spec().freq)});
 }
 
 void PS1Audio::save_state(StateBuf &_state)

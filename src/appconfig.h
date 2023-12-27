@@ -256,7 +256,6 @@ public:
 
 #define PS1AUDIO_SECTION        "ps1audio"
 #define PS1AUDIO_ENABLED        "enabled"
-#define PS1AUDIO_PSG_RATE       "psg_rate"
 #define PS1AUDIO_PSG_FILTERS    "psg_filters"
 #define PS1AUDIO_PSG_VOLUME     "psg_volume"
 #define PS1AUDIO_PSG_BALANCE    "psg_balance"

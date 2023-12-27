@@ -297,8 +297,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
 ";                  linear: linear converter.\n"
 ";                    hold: Zero Order Hold converter (interpolated value is equal to the last value).\n"
-";       psg_rate: Sample rate of the PSG (Programmable Sound Generator).\n"
-";                 Possible values: 48000, 44100, 32000, 22050, 11025.\n"
 ";     psg_volume: Audio volume of the PSG.\n"
 ";    psg_balance: Audio balance of the PSG.\n"
 ";    psg_filters: DSP filters for the PSG.\n"
@@ -613,7 +611,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ PS1AUDIO_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
 		{ PS1AUDIO_DAC_RESAMPLING, MIXER_CONFIG,   PUBLIC_CFGKEY, "hold"  },
-		{ PS1AUDIO_PSG_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ PS1AUDIO_PSG_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
 		{ PS1AUDIO_PSG_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },
 		{ PS1AUDIO_PSG_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
