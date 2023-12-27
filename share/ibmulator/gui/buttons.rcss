@@ -325,6 +325,7 @@ select.romshell selectbox
 	border: 1dp;
 	border-color: #000000;
 	border-top: 0;
+	background-color: #545454;
 }
 
 select.romshell selectbox option
@@ -428,7 +429,6 @@ scrollbarvertical sliderarrowinc
 scrollbarhorizontal
 {
 	height: 19dp;
-	z-index: 99;
 }
 
 scrollbarhorizontal slidertrack
