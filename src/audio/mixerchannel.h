@@ -155,6 +155,7 @@ public:
 	};
 
 	enum class ConfigParameter {
+		Gain,
 		Volume,
 		Balance,
 		Filter,
@@ -206,6 +207,11 @@ private:
 	std::function<void(bool)> m_capture_clbk;
 
 	std::mutex m_mutex;
+
+	struct Gain {
+		std::atomic<float> left = 1.f;
+		std::atomic<float> right = 1.f;
+	} m_gain;
 
 	struct Volume {
 		std::atomic<float> master_left = 1.f;
@@ -306,6 +312,9 @@ public:
 	//
 	void enable(bool _enabled);
 	bool is_enabled() const { return m_enabled; }
+
+	// gain
+	void set_gain(float _left, float _right);
 
 	// resampling
 	void set_resampling_type(std::string _preset);

@@ -79,6 +79,8 @@ void AdLib::install()
 		{ MixerChannel::ConfigParameter::Filter, { ADLIB_SECTION, ADLIB_FILTERS }},
 	});
 
+	Synth::channel()->set_gain(2.f, 2.f);
+
 	PINFOF(LOG_V0, LOG_AUDIO, "Installed %s\n", name());
 }
 

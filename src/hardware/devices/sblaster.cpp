@@ -411,6 +411,8 @@ void SBlaster::install_opl(OPL::ChipType _chip_type, int _count, bool _has_mixer
 		{ MixerChannel::ConfigParameter::Filter, { SBLASTER_SECTION, SBLASTER_OPL_FILTERS }},
 		{ MixerChannel::ConfigParameter::Crossfeed, { SBLASTER_SECTION, SBLASTER_OPL_CROSSFEED }},
 	});
+
+	Synth::channel()->set_gain(2.f, 2.f);
 }
 
 void SBlaster::install()

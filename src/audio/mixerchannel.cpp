@@ -923,7 +923,17 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 
 	if(frames) {
 
-		// 3. convert channels
+		// 3. apply gain
+		if(m_gain.left != 1.f || m_gain.right != 1.f) {
+			float gain[2] = { m_gain.left, m_gain.right };
+			float *chdata = &(source->at<float>(0));
+			for(size_t i=0; i<source->samples(); i++) {
+				int c = i % source->spec().channels;
+				chdata[i] *= gain[c];
+			}
+		}
+
+		// 4. convert channels
 		if(m_in_buffer.channels() != m_out_buffer.channels()) {
 			dest[bufidx].set_spec(m_out_buffer.spec());
 			source->convert_channels(dest[bufidx], frames);
@@ -931,7 +941,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			bufidx = 1 - bufidx;
 		}
 
-		// 4. process filters
+		// 5. process filters
 		if(m_filter.enabled) {
 			std::lock_guard<std::mutex> lock(m_mutex);
 			for(auto &f : m_filter.chain) {
@@ -940,20 +950,20 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		}
 
 		if(m_out_buffer.spec().channels == 2) {
-			// 5. apply crossfeed
+			// 6. apply crossfeed
 			if(m_crossfeed.enabled) {
 				std::lock_guard<std::mutex> lock(m_mutex);
 				float *data = &(source->at<float>(0));
 				m_crossfeed.bs2b.cross_feed(data, frames);
 			}
 
-			// 6. apply chorus
+			// 7. apply chorus
 			if(m_chorus.enabled) {
 				std::lock_guard<std::mutex> lock(m_mutex);
 				m_chorus.engine.process(frames, &(source->at<float>(0)));
 			}
 
-			// 7. apply reverb
+			// 8. apply reverb
 			if(m_reverb.enabled) {
 				std::lock_guard<std::mutex> lock(m_mutex);
 				dest[bufidx].set_spec(m_out_buffer.spec());
@@ -963,7 +973,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			}
 		}
 
-		// 8. apply volume
+		// 9. apply volume
 		float volume[2] = { m_volume.factor_left, m_volume.factor_right };
 		float *chdata = &(source->at<float>(0));
 		for(size_t i=0; i<source->samples(); i++) {
@@ -972,7 +982,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 			m_volume.meter.update(c, std::abs(chdata[i]));
 		}
 
-		// 9. add to output buffer
+		// 10. add to output buffer
 		m_out_buffer.add_frames(*source, frames);
 	}
 
@@ -1007,6 +1017,14 @@ void MixerChannel::register_capture_clbk(std::function<void(bool _enable)> _fn)
 void MixerChannel::on_capture(bool _enable)
 {
 	m_capture_clbk(_enable);
+}
+
+void MixerChannel::set_gain(float _left, float _right)
+{
+	m_gain.left = std::max(0.f, _left);
+	m_gain.right = std::max(0.f, _right);
+
+	run_parameter_cb(ConfigParameter::Gain);
 }
 
 void MixerChannel::VUMeter::set_rate(double _rate)
