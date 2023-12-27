@@ -290,13 +290,10 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";    dac_balance: Audio balance of the DAC.\n"
 ";    dac_filters: DSP filters for the DAC.\n"
 ";                 Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
-";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
 ";     dac_reverb: Reverb effect for the DAC.\n"
-";                 Possible values: auto, or one of the reverb presets (see README for more info)\n"
-";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
 ";     dac_chorus: Chorus effect for the DAC (see README for more info).\n"
 "; dac_resampling: The resampling method used.\n"
-";                 Possible values: sinc, linear, hold\n"
+";                 Possible values: sinc, linear, hold (default)\n"
 ";                    sinc: a bandlimited interpolator derived from the sinc function (SNR of 97dB, bandwidth of 90%).\n"
 ";                  linear: linear converter.\n"
 ";                    hold: Zero Order Hold converter (interpolated value is equal to the last value).\n"
@@ -306,10 +303,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";    psg_balance: Audio balance of the PSG.\n"
 ";    psg_filters: DSP filters for the PSG.\n"
 ";                 Possible values: auto, a preset name, or a list of filter definitions (see the README for more info).\n"
-";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:filters\n"
-";     psg_reverb: Reverb effect for the PSG.\n"
-";                 Possible values: auto, or one of the reverb presets (see README for more info)\n"
-";                  auto: use the same value defined for [" PCSPEAKER_SECTION "]:reverb\n"
+";     psg_reverb: Reverb effect for the PSG (see README for more info).\n"
 ";     psg_chorus: Chorus effect for the PSG (see README for more info).\n"
 		},
 
@@ -618,7 +612,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ PS1AUDIO_DAC_FILTERS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_DAC_REVERB,     MIXER_CONFIG,   PUBLIC_CFGKEY, "auto"  },
 		{ PS1AUDIO_DAC_CHORUS,     MIXER_CONFIG,   PUBLIC_CFGKEY, "no"    },
-		{ PS1AUDIO_DAC_RESAMPLING, MIXER_CONFIG,   PUBLIC_CFGKEY, "sinc"  },
+		{ PS1AUDIO_DAC_RESAMPLING, MIXER_CONFIG,   PUBLIC_CFGKEY, "hold"  },
 		{ PS1AUDIO_PSG_RATE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "48000" },
 		{ PS1AUDIO_PSG_VOLUME,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"   },
 		{ PS1AUDIO_PSG_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "0"     },

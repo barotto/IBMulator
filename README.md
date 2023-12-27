@@ -441,12 +441,6 @@ Reverb settings are enabled with one of the following preset values:
 * `huge`: stronger variant of the `large` preset.
 * `on`: same as `medium`
 
-On real hardware the **PS/1 Audio Card** is wired to the PC Speaker inside the
-monitor unit. For this reason the PS/1 audio channel reverb setting also have
-the following value available:
-
-* `auto`: use the same value used in `[pcspeaker]:reverb`.
-
 All audio cards' channels can also be configured with a **chorus effect**.
 
 Chorus settings are enabled with one of the following preset values:
@@ -500,16 +494,17 @@ The following presets are available:
 The `auto` value can also be used for the **PS/1 Audio Card** and
 **Sound Blaster** channels.
 
-For the PS/1 Audio Card, because on real hardware it's wired to the PC Speaker,
-the `auto` value will force the same filter defined in `[pcspeaker]:filters`.
+For the PS/1 Audio Card channels, `auto` values are equivalent to:
+ * `dac_filters`: `lpf-3.2k`
+ * `psg_filters`: `lpf-8k`
 
 For the Sound Blaster cards, `auto` values are as follows:
 
-| Card     | opl_filter | dac_filter     |
-| -------- | ---------- | -------------- |
-| SB 2     | `lpf-12k`  | `lpf-4.8k`     |
-| SB Pro   | `lpf-8k`   | `lpf-3.2k` (*) |
-| SB Pro 2 | `lpf-8k`   | `lpf-3.2k` (*) |
+| Card     | opl_filters | dac_filters    |
+| -------- | ----------- | -------------- |
+| SB 2     | `lpf-12k`   | `lpf-4.8k`     |
+| SB Pro   | `lpf-8k`    | `lpf-3.2k` (*) |
+| SB Pro 2 | `lpf-8k`    | `lpf-3.2k` (*) |
 
 (*) on Pro models the DAC's LPF is enabled by the Sound Blaster's Mixer (active
 by default).

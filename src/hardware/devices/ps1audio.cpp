@@ -84,7 +84,7 @@ void PS1Audio::install()
 	unsigned ch_features =
 		MixerChannel::HasVolume |
 		MixerChannel::HasBalance |
-		MixerChannel::HasReverb | MixerChannel::HasAutoReverb |
+		MixerChannel::HasReverb |
 		MixerChannel::HasChorus |
 		MixerChannel::HasFilter | MixerChannel::HasAutoFilter;
 
@@ -95,7 +95,6 @@ void PS1Audio::install()
 	m_dac.channel->set_disable_timeout(3_s);
 	m_dac.channel->set_features(ch_features | MixerChannel::HasResamplingType);
 
-	m_dac.channel->add_autoval_cb(MixerChannel::ConfigParameter::Reverb, std::bind(&PS1Audio::dac_reverb_cb, this));
 	m_dac.channel->add_autoval_cb(MixerChannel::ConfigParameter::Filter, std::bind(&PS1Audio::dac_filter_cb, this));
 
 	m_dac.channel->register_config_map({
@@ -132,7 +131,6 @@ void PS1Audio::install()
 		}
 	);
 	Synth::channel()->set_features(ch_features);
-	Synth::channel()->add_autoval_cb(MixerChannel::ConfigParameter::Reverb, std::bind(&PS1Audio::synth_reverb_cb, this));
 	Synth::channel()->add_autoval_cb(MixerChannel::ConfigParameter::Filter, std::bind(&PS1Audio::synth_filter_cb, this));
 	Synth::channel()->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { PS1AUDIO_SECTION, PS1AUDIO_PSG_VOLUME }},
@@ -146,58 +144,14 @@ void PS1Audio::install()
 void PS1Audio::dac_filter_cb()
 {
 	if(m_dac.channel->is_filter_auto()) {
-		if(m_pc_speaker_ch) {
-			m_dac.channel->set_filter(m_pc_speaker_ch->filter());
-		} else {
-			m_dac.channel->set_filter(DEFAULT_PCSPEAKER_FILTER);
-		}
-	}
-}
-
-void PS1Audio::dac_filterparams_cb()
-{
-	if(m_dac.channel->is_filter_auto()) {
-		m_dac.channel->copy_filter_params(m_pc_speaker_ch->filter_chain());
-	}
-}
-
-void PS1Audio::dac_reverb_cb()
-{
-	if(m_dac.channel->is_reverb_auto()) {
-		if(m_pc_speaker_ch) {
-			m_dac.channel->set_reverb(m_pc_speaker_ch->reverb());
-		} else {
-			m_dac.channel->set_reverb(DEFAULT_PCSPEAKER_REVERB);
-		}
+		m_dac.channel->set_filter("LowPass,order=2,fc=3200");
 	}
 }
 
 void PS1Audio::synth_filter_cb()
 {
 	if(Synth::channel()->is_filter_auto()) {
-		if(m_pc_speaker_ch) {
-			Synth::channel()->set_filter(m_pc_speaker_ch->filter());
-		} else {
-			Synth::channel()->set_filter(DEFAULT_PCSPEAKER_FILTER);
-		}
-	}
-}
-
-void PS1Audio::synth_filterparams_cb()
-{
-	if(Synth::channel()->is_filter_auto()) {
-		Synth::channel()->copy_filter_params(m_pc_speaker_ch->filter_chain());
-	}
-}
-
-void PS1Audio::synth_reverb_cb()
-{
-	if(Synth::channel()->is_reverb_auto()) {
-		if(m_pc_speaker_ch) {
-			Synth::channel()->set_reverb(m_pc_speaker_ch->reverb());
-		} else {
-			Synth::channel()->set_reverb(DEFAULT_PCSPEAKER_REVERB);
-		}
+		Synth::channel()->set_filter("LowPass,order=1,fc=8000");
 	}
 }
 
@@ -207,15 +161,6 @@ void PS1Audio::remove()
 	Synth::remove();
 	g_machine.unregister_irq(PS1AUDIO_IRQ, name());
 	g_machine.unregister_timer(m_fifo_timer);
-	if(m_pc_speaker_ch) {
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::Reverb, "ps1-dac-reverb");
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::Reverb, "ps1-synth-reverb");
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::Filter, "ps1-dac-filter");
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::Filter, "ps1-synth-filter");
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::FilterParams, "ps1-dac-filterparam");
-		m_pc_speaker_ch->remove_parameter_cb(MixerChannel::ConfigParameter::FilterParams, "ps1-synth-filterparam");
-	}
-	m_pc_speaker_ch.reset();
 	g_mixer.unregister_channel(m_dac.channel);
 }
 
@@ -243,16 +188,6 @@ void PS1Audio::config_changed()
 	unsigned rate = clamp(g_program.config().get_int(PS1AUDIO_SECTION, PS1AUDIO_PSG_RATE),
 			MIXER_MIN_RATE, MIXER_MAX_RATE);
 	Synth::config_changed({AUDIO_FORMAT_S16, 1, double(rate)});
-
-	m_pc_speaker_ch = g_mixer.get_channel(PCSpeaker::NAME);
-	if(m_pc_speaker_ch) {
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::Reverb, "ps1-dac-reverb", std::bind(&PS1Audio::dac_reverb_cb, this));
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::Reverb, "ps1-synth-reverb", std::bind(&PS1Audio::synth_reverb_cb, this));
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::Filter, "ps1-dac-filter", std::bind(&PS1Audio::dac_filter_cb, this));
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::Filter, "ps1-synth-filter", std::bind(&PS1Audio::synth_filter_cb, this));
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::FilterParams, "ps1-dac-filterparam", std::bind(&PS1Audio::dac_filterparams_cb, this));
-		m_pc_speaker_ch->add_parameter_cb(MixerChannel::ConfigParameter::FilterParams, "ps1-synth-filterparam", std::bind(&PS1Audio::synth_filterparams_cb, this));
-	}
 }
 
 void PS1Audio::save_state(StateBuf &_state)
