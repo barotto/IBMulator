@@ -336,7 +336,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";     dac_volume: DAC's MASTER audio volume.\n"
 ";                 Possible values: auto, or a positive real number.\n"
 ";                  auto: let the Sound Blater's Mixer adjust the level (SBPro+ only).\n"
-"     dac_balance: DAC's audio balance.\n"
+";    dac_balance: DAC's audio balance.\n"
 ";    dac_filters: DAC's audio filters.\n"
 ";                 Possible values: auto, a preset, or a list of filter definitions (see the README for more info).\n"
 ";     dac_reverb: Reverb effect for PCM audio (see README for more info).\n"
@@ -762,6 +762,10 @@ AppConfig::ConfigKeys AppConfig::ms_keys;
 
 AppConfig::AppConfig()
 : INIFile()
+{
+}
+
+void AppConfig::init()
 {
 	if(ms_keys.empty()) {
 		for(auto &section : ms_sections) {

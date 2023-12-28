@@ -77,10 +77,12 @@ private:
 	static ConfigKeys ms_keys;
 	static ConfigHelp ms_help;
 	static ini_file_t ms_default_values;
+	
 
 public:
 	AppConfig();
-	
+	static void init();
+
 	void set_user_home(std::string _path);
 	void set_cfg_home(std::string _path);
 	void set_assets_home(std::string _path);
@@ -266,7 +268,7 @@ public:
 #define PS1AUDIO_DAC_BALANCE    "dac_balance"
 #define PS1AUDIO_DAC_REVERB     "dac_reverb"
 #define PS1AUDIO_DAC_CHORUS     "dac_chorus"
-#define PS1AUDIO_DAC_RESAMPLING "dac_resampliung"
+#define PS1AUDIO_DAC_RESAMPLING "dac_resampling"
 
 #define ADLIB_SECTION           "adlib"
 #define ADLIB_ENABLED           "enabled"

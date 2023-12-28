@@ -55,10 +55,11 @@ void report_exception(const std::string &_log, const std::string &_exc_mex)
 
 int main(int argc, char** argv)
 {
-	// start the SysLog thread as the very first operation so the user can be
-	// notified of possible errors.
+	AppConfig::init(); // <- don't move this!
+
+	// start the SysLog thread now so the user can be notified of possible errors.
 	std::thread syslog(&Syslog::start, &g_syslog);
-	
+
 	std::stringstream ss;
 	LogStream * templog = new LogStream(ss, true);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, templog);
