@@ -29,9 +29,10 @@ class RmlRenderer_SDL2D : public RmlRenderer
 protected:
 	SDL_Rect m_scissor_region = {};
 	bool m_scissor_enabled = false;
+	bool m_accelerated = true;
 
 public:
-	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen);
+	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen, unsigned _flags);
 	~RmlRenderer_SDL2D();
 
 	// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
@@ -51,6 +52,11 @@ public:
 	
 protected:
 	uintptr_t LoadTexture(SDL_Surface *_surface);
+
+	void render_accelerated(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
+			int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation);
+	void render_software(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
+			int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation);
 };
 
 #endif

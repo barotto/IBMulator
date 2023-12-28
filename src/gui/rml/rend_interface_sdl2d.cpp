@@ -24,8 +24,9 @@
 #include <RmlUi/Core.h>
 
 
-RmlRenderer_SDL2D::RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen)
-: RmlRenderer(_renderer, _screen)
+RmlRenderer_SDL2D::RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen, unsigned _flags)
+: RmlRenderer(_renderer, _screen),
+  m_accelerated(_flags & SDL_RENDERER_ACCELERATED)
 {
 }
 
@@ -40,20 +41,67 @@ void RmlRenderer_SDL2D::RenderGeometry(
 		const Rml::TextureHandle _texture,
 		const Rml::Vector2f &_translation)
 {
-	UNUSED(_num_vertices);
-	
-	// RmlUi renders everything as triangles. This will always be a multiple of three.
-	int quads = _num_indices / 6;
-	//PDEBUGF(LOG_V2, LOG_GUI, "verts: %d, idx: %d, quads: %d\n", num_vertices, num_indices, quads);
-	assert(quads);
-	
+	if(!_num_vertices) {
+		return;
+	}
+
 	SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
 	if(m_scissor_enabled) {
 		SDL_RenderSetClipRect(m_renderer, &m_scissor_region);
 	} else {
 		SDL_RenderSetClipRect(m_renderer, NULL);
 	}
-	
+
+	if(m_accelerated) {
+		render_accelerated(_vertices, _num_vertices, _indices, _num_indices, _texture, _translation);
+	} else {
+		render_software(_vertices, _num_vertices, _indices, _num_indices, _texture, _translation);
+	}
+}
+
+void RmlRenderer_SDL2D::render_accelerated(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
+		int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation)
+{
+	SDL_Texture *sdl_texture = (SDL_Texture*)_texture;
+
+	if(m_accelerated) {
+		static std::vector<SDL_FPoint> positions(4);
+		positions.resize(_num_vertices);
+
+		for(int i = 0; i < _num_vertices; i++) {
+			positions[i].x = _vertices[i].position.x + _translation.x;
+			positions[i].y = _vertices[i].position.y + _translation.y;
+		}
+
+		SDL_RenderGeometryRaw(
+			m_renderer,
+			sdl_texture,
+			&positions[0].x, // xy: Vertex positions
+			sizeof(SDL_FPoint), // xy_stride
+			(const SDL_Color*)&_vertices->colour, // color
+			sizeof(Rml::Vertex), // color_stride
+			&_vertices->tex_coord.x, // uv
+			sizeof(Rml::Vertex), // uv_stride
+			_num_vertices,
+			_indices,
+			_num_indices,
+			4 // size_indices (4=int)
+		);
+
+		return;
+	}
+}
+
+void RmlRenderer_SDL2D::render_software(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
+		int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation)
+{
+	UNUSED(_num_vertices);
+
+	// RmlUi renders everything as triangles. This will always be a multiple of three.
+	int quads = _num_indices / 6;
+	//PDEBUGF(LOG_V2, LOG_GUI, "verts: %d, idx: %d, quads: %d\n", num_vertices, num_indices, quads);
+	assert(quads);
+
 	for(int i=0; i<_num_indices; i+=6) {
 		int id = _indices[i];
 		assert(id < _num_vertices);
@@ -76,7 +124,7 @@ void RmlRenderer_SDL2D::RenderGeometry(
 		rect.h = br->position.y - tl->position.y;
 		rect.x += _translation.x;
 		rect.y += _translation.y;
-		
+
 		if(_texture) {
 			int w,h;
 			SDL_QueryTexture((SDL_Texture*)_texture, NULL, NULL, &w, &h);

@@ -63,12 +63,12 @@ fi
 
 if test x$have_windows = xno ; then
 	separator="/"
-	SDL_VERSION=2.0.4
+	SDL_VERSION=2.0.18
 else
 	separator="\\\\"
 	#-mno-ms-bitfields is required for the __attribute__(packed) to work
 	CXX_DEFAULTS="$CXX_DEFAULTS -mno-ms-bitfields"
-	SDL_VERSION=2.0.8
+	SDL_VERSION=2.0.18
 fi
 
 if test x$static = xyes ; then

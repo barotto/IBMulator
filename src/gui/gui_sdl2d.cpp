@@ -99,7 +99,7 @@ void GUI_SDL2D::create_window(int _flags)
 
 void GUI_SDL2D::create_renderer()
 {
-	m_rml_renderer = std::make_unique<RmlRenderer_SDL2D>(m_SDL_renderer, m_SDL_window);
+	m_rml_renderer = std::make_unique<RmlRenderer_SDL2D>(m_SDL_renderer, m_SDL_window, m_rendflags);
 }
 
 void GUI_SDL2D::shutdown_SDL()

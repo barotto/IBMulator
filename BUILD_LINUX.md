@@ -4,7 +4,7 @@
 
 * Autotools
 * GCC 7.0+
-* SDL 2.0.8+
+* SDL 2.0.18+
 * RmlUi (see notes below)
 * GLEW
 * libsamplerate (optional)
