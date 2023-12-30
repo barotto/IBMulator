@@ -135,7 +135,7 @@ BASELIBS="$BASELIBS $static $RMLUI_LIBS $LIBSAMPLERATE_LIBS $ZLIB_LIBS $SDL_LIBS
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
 else
-	BASELIBS="$BASELIBS -lws2_32 -liconv"
+	BASELIBS="$BASELIBS -lws2_32 -liconv ibmulator.res"
 fi
 AC_SUBST([BASELIBS])
 
