@@ -398,7 +398,14 @@ for the `[drives]:hdd_commit` and `[drives]:fdd_commit` ini settings.
 ### Audio
 
 Audio settings like volumes, effects, and filters are loaded from the
-ibmulator.ini file and can be set using a GUI window (default key SHIFT+F2).
+ibmulator.ini file and can be set using a GUI Mixer window (default key:
+SHIFT+F2).
+
+All the audio settings can be saved in a file using the Mixer window, and then
+loaded at program launch by setting the profile file name in the
+`[mixer]:profile` setting in ibmulator.ini.
+
+The default profile is `mixer-profile.ini` and is saved in the user's directory.
 
 #### Sound Cards
 
@@ -423,7 +430,7 @@ The sound cards currently emulated are:
 All Sound Blaster cards are compatible with and replace the AdLib card, which
 cannot be used when a SB is installed.
 
-(*) The PC Speaker can output 6-bit mono audio saples using a PWM technique
+(*) The PC Speaker can output 6-bit mono audio samples using a PWM technique
 (RealSound), which consists in toggling the speaker faster than it can
 physically move to simulate positions between fully on and fully off.
 
@@ -435,13 +442,13 @@ manipulated by the 6-bit volume control to get pseudo PCM sample playback.
 #### Reverb, Chorus, Crossfeed
 
 All audio channels can be configured with a **reverb effect**: audio cards
-have per channel configurations whereas sound effects have a common general
+have per-channel configurations whereas sound effects have a common general
 setting.
 
 Reverb settings are enabled with one of the following preset values:
 
 * `tiny`: ideal for small integrated speakers (eg. PC Speaker and PS/1 Audio).
-* `small`: ideal for synth channels (eg. OPL).
+* `small`: ideal for synth channels (eg. OPL FM).
 * `medium`: a medium sized room.
 * `large`: a large hall.
 * `huge`: stronger variant of the `large` preset.
@@ -462,7 +469,6 @@ Stereo audio card sources can be configured with **crossfeed**, designed to
 improve headphone listening. This is implemented using the Bauer
 stereophonic-to-binaural DSP (bs2b), and so it offers its presets:
 
- * `on`: same as `bauer`
  * `bauer`: "Benjamin Bauer" preset (frequency cut 750Hz, feed level 4.5 dB),
   close to a virtual speaker placement with azimuth 30 degrees and distance of
   about 3 meters.
@@ -472,6 +478,7 @@ stereophonic-to-binaural DSP (bs2b), and so it offers its presets:
   the smallest changes in the original signal for relaxing listening. This is
   close to the parameters of a crossfeeder implemented in Jan Meier's CORDA
   amplifiers.
+ * `on`: same as `bauer`
 
 #### DSP filters
 
