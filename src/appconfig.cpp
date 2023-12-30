@@ -469,6 +469,11 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ PROGRAM_LOG_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY,  "log.txt" },
 		{ PROGRAM_WAIT_METHOD, PROGRAM_CONFIG, HIDDEN_CFGKEY,  "auto"    },
 	} },
+	{ SYSTEM_SECTION, {
+		{ SYSTEM_ROMSET,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ SYSTEM_MODEL,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ SYSTEM_BIOS_PATCHES,  MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
+	} },
 	{ GUI_SECTION, {
 		{ GUI_RENDERER,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "opengl"     },
 		{ GUI_FRAMECAP,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "vga"        },
@@ -519,11 +524,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DISPLAY_SAMPLERS_MODE,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "auto"                        },
 		{ DISPLAY_SHADER_INPUT,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"                        },
 		{ DISPLAY_SHADER_OUTPUT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "native"                      },
-	} },
-	{ SYSTEM_SECTION, {
-		{ SYSTEM_ROMSET,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
-		{ SYSTEM_MODEL,         MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
-		{ SYSTEM_BIOS_PATCHES,  MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
 	} },
 	{ CPU_SECTION, {
 		{ CPU_MODEL,     MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
