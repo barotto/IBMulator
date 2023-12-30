@@ -77,7 +77,7 @@ if test x$static = xyes ; then
 		# compiled libraries and allows to launch the executable in nautilus by double clicking
 		# (the latter is due to a nautilus bug)
 		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -no-pie"
-		static_sdl="no"
+		static_sdl="yes"
 	else
 		CXX_DEFAULTS=`echo $CXX_DEFAULTS | sed 's/-pthread//'`
 		CXX_DEFAULTS="$CXX_DEFAULTS -static-libgcc -static-libstdc++ -static -pthread"
@@ -100,7 +100,6 @@ AM_PATH_SDL2($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
 AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_RMLUI
-#AX_CHECK_LIBARCHIVE
 AX_CHECK_LIBSAMPLERATE
 #AX_CHECK_ZLIB
 
@@ -131,7 +130,7 @@ if test x$static_sdl = xno ; then
 	SDL_LIBSs=""
 fi
 
-BASELIBS="$BASELIBS $static $SDL_LIBSs $SDLIMAGE_LIBS $RMLUI_LIBS $LIBARCHIVE_LIBS $LIBSAMPLERATE_LIBS $ZLIB_LIBS"
+BASELIBS="$BASELIBS $static $RMLUI_LIBS $LIBSAMPLERATE_LIBS $ZLIB_LIBS $SDL_LIBSs"
 
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
@@ -140,7 +139,7 @@ else
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $SDLIMAGE_CFLAGS $LIBARCHIVE_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
+BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])

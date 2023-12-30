@@ -73,8 +73,8 @@ To obtain the source code go to https://github.com/barotto/IBMulator
 
 A 64-bit Linux or Windows operating system and a 2GHz dual core processor.
 
-At this stage of development optimizations have very low priority, so a
-modern-ish CPU and a discrete graphics card are recommended.
+Optimizations have low priority, so a modern-ish CPU and a discrete graphics
+card are recommended.
 
 For shaders support you'll also need an OpenGL 3.3 compatible graphics adapter.
 
@@ -83,15 +83,17 @@ For shaders support you'll also need an OpenGL 3.3 compatible graphics adapter.
 
 ### Installation
 
-First of all obtain the original ROM. You have the following options:
+First of all obtain the original ROM.  
+You have the following options:
 
-1. if you have a real PS/1, take the program `ROMDUMP.EXE` in the 'extra' folder
-and put it in an empty floppy disk; insert the floppy disk in your PS/1 and
-launch the executable: it will create the ROM image on the floppy disk
-2. or open your PS/1, extract the EPROMs and read them with an EPROM 
-reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have a 
-non-US model)
-3. or scour the Internet (there are various ROM sets available.)
+1. scour the Internet (there are various ROM sets available).
+2. if you have a real PS/1:
+   * take the program `ROMDUMP.EXE` in the 'extra' folder and put it in an empty
+   floppy disk; insert the floppy disk in your PS/1 and launch the executable:
+   it will create the ROM image on the floppy disk
+   * you can also open your PS/1, extract the EPROMs and read them with an EPROM 
+   reader (you also need to merge the 2 halves in 1 file, or 4 in 2 if you have
+   a non-US model)
 
 Launch IBMulator. A window will inform you that the file **ibmulator.ini** has 
 been created and where it is placed.
@@ -105,6 +107,10 @@ From now on IBMulator is ready to run.
 You're not required to do anything else but IBMulator is very configurable. For
 more information regarding the various configuration options, see the comments 
 inside ibmulator.ini.
+
+**Note for the Windows version**: if you have an HiDPI monitor, in order to
+avoid image blurring enable the HiDPI scaling override in the `ibmulator.exe`
+options and use IBMulator's GUI scaling option instead.
 
 ### CMOS and system configuration
 

@@ -302,4 +302,12 @@ share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
 share/ibmulator/extra/MEMDUMP.EXE
 
+desktopdir = $(pkgdatadir)/../applications
+dist_desktop_DATA = \
+share/applications/ibmulator.desktop
+
+pixmapdir = $(pkgdatadir)/../pixmaps
+dist_pixmap_DATA = \
+share/pixmaps/ibmulator.png
+
 EXTRA_DIST = README.md SHADERS.md KEYMAPS.md BUILD_LINUX.md BUILD_WINDOWS.md

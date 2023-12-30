@@ -616,9 +616,11 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 
 	//1. DATA_PATH env variable
 #ifdef _WIN32
-	const char* envstr = utf8::getenv("IBMULATOR_DATA_PATH");
+	const char *envstr = utf8::getenv("IBMULATOR_DATA_PATH");
+	const char *exepath = argv[0];
 #else
-	const char* envstr = getenv("IBMULATOR_DATA_PATH");
+	const char *envstr = getenv("IBMULATOR_DATA_PATH");
+	const char *exepath = "/proc/self/exe";
 #endif
 	if(envstr) {
 		if(FileSys::realpath(envstr, rpbuf)) {
@@ -629,8 +631,8 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 		}
 	}
 
-	//2. dirname(argv[0]) + /../share/PACKAGE
-	if(FileSys::realpath(argv[0], rpbuf)) {
+	//2. dirname(exepath) + /../share/PACKAGE
+	if(FileSys::realpath(exepath, rpbuf)) {
 		std::string datapath = FileSys::to_utf8(dirname(rpbuf)) + FS_SEP ".." FS_SEP "share" FS_SEP PACKAGE;
 		if(FileSys::realpath(datapath.c_str(), rpbuf)) {
 			paths.emplace_back(FileSys::to_utf8(rpbuf));
@@ -638,7 +640,7 @@ std::string Program::get_assets_dir(int /*argc*/, char** argv)
 			PWARNF(LOG_V0, LOG_PROGRAM, "The 'share" FS_SEP PACKAGE"' directory cannot be found!\n");
 		}
 	} else {
-		PWARNF(LOG_V0, LOG_PROGRAM, "Cannot resolve the executable path: %s\n", argv[0]);
+		PWARNF(LOG_V0, LOG_PROGRAM, "Cannot resolve the executable path: %s\n", exepath);
 	}
 
 #ifndef _WIN32

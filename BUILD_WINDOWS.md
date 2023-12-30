@@ -25,25 +25,31 @@ and follow its installation instructions.
 
 You can compile IBMulator with dynamic or static linking; see
 [below](#installation) for more info on the two versions. I suggest static
-linking to get a more convenient and smaller package.  
+linking to get a more convenient and smaller package. The following instructions
+assume static linking.
 
 
 ## STEP 2. Build RmlUi
-RmlUi is a C++ GUI toolkit based on the HTML and CSS standards.  
+[RmlUi](https://github.com/mikke89/RmlUi) is a C++ GUI toolkit based on the HTML
+and CSS standards.  
+IBMulator requires version 5.1 of this library but unfortunately it doesn't
+compile with current versions of MSYS2. For this reason we are going to use my
+patched fork.
 
-Open the **MSYS2 MINGW64** shell (you should read MINGW64 on the command line) and:
+Open the **MSYS2 MINGW64** shell (you should read MINGW64 on the command line)
+and:
 
 1. Move inside your workspace:
 `cd /c/workspace`
 2. Clone the repo:  
-`git clone https://github.com/mikke89/RmlUi`
-3. Checkout the correct release:
-`cd RmlUi && git checkout 5.1`
+`git clone https://github.com/barotto/RmlUi`
+3. Switch to the correct branch:
+`cd RmlUi && git switch 5.1-fix`
 4. Create and move inside the build directory:  
 `mkdir build && cd build`
 5. Create the Makefile with cmake:  
-`cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32`  
-for static linking add `-DBUILD_SHARED_LIBS=OFF`
+`cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32 -DBUILD_SHARED_LIBS=OFF`  
+(for dynamic linking remove `-DBUILD_SHARED_LIBS=OFF`)
 6. Build and install:  
 `make -j$(nproc) && make install`
 
@@ -60,23 +66,22 @@ Open the **MSYS2 MINGW64** shell and:
 4. run autoreconf (only once, not needed if you build again):  
 `autoreconf --install`
 5. Configure IBMulator:  
-`./configure`  
-for static linking add `--enable-static`  
+`./configure --enable-static --prefix=/c/workspace/IBMulator/release`  
+(for dynamic linking remove `--enable-static`)  
 use the `--help` option to see the available build options;  
-use the `--prefix` option to install the program with all its assets inside a
-folder of your choosing (see [below](#installation) for more info).  
-Example:
-`./configure --prefix=/c/workspace/IBMulator/release --enable-static`
+see [below](#installation) for more info about the `--prefix` option.  
 6. Build:  
 `make -j$(nproc)`
-7. Install only if you used the `--prefix` option:  
+7. Install (only if you used the `--prefix` option):  
 `make install`
 
+If you followed the instructions you'll find IBMulator inside the `release`
+folder. You can now move and rename the `release` package.
 
 ### Installation
-In order to use the program you'll need to "install" it. The install process is
-not a Windows program installation. Its purpose is to organize the executable and
-its assets inside a folder from which the program can run. 
+The installation process is not a Windows program installation. Its purpose is
+to organize the executable and its assets inside a folder from where the program
+can run. 
 
 This is the needed directory structure:
 
@@ -96,8 +101,8 @@ You'll need to use an absolute path without spaces. So, for example, to
 create a release package inside the source directory:
 `--prefix="C:\workspace\IBMulator\release"`
 
-You are free to move this package inside `C:\Program Files`  or any other
-folder you like.
+You are free to move this package inside `C:\Program Files`, your desktop, or
+any other folder you like, as IBMulator uses relative paths to load its assets.
 
 If you opted for the **statically linked build** you are now ready to use
 IBMulator.

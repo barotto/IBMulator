@@ -194,14 +194,17 @@ int main(int argc, char *argv[])
      ifelse([$3], , :, [$3])
   fi
   AC_SUBST(SDL_CFLAGS)
+
   if test x$static_sdl = xyes; then
-    # don't trust sdl2-config, force -lSDL2 in the front
-    SDL_LIBS="-lSDL2 $SDL_LIBS"
- # 	SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
- # 	SDL_LIBS="-Wl,-Bstatic -lSDL2 -Wl,-Bdynamic $SDL_LIBS"
+    if test x$have_windows = xno ; then
+      SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
+      SDL_LIBS="-Wl,-Bstatic -lSDL2 -Wl,-Bdynamic $SDL_LIBS"
+    else
+      # don't trust sdl2-config, force -lSDL2 in the front
+      SDL_LIBS="-lSDL2 $SDL_LIBS"
+    fi
   fi
- # SDL_LIBS=`echo $SDL_LIBS | sed 's/-lSDL2//'`
- # SDL_LIBS="-lSDL2 $SDL_LIBS"
+
   AC_SUBST(SDL_LIBS)
   rm -f conf.sdltest
 ])

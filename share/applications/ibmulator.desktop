@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=IBMulator
+Comment=The IBM PS/1 emulator
+Exec=ibmulator
+Icon=ibmulator
+Terminal=false
+Categories=Utility
