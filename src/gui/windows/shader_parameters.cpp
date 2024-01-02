@@ -75,7 +75,7 @@ void ShaderParameters::create()
 			child->SetClassNames("entry");
 			child->SetId(m_params[idx].name);
 			std::string inner;
-			inner += "<div class=\"desc\">" + m_params[idx].desc + "</div>";
+			inner += "<div class=\"desc\">" + str_to_html(m_params[idx].desc, true) + "</div>";
 			if(m_params[idx].used) {
 				if(m_params[idx].step != 0.0) {
 					inner += "<button id=\"" + m_params[idx].name + "__dec\" class=\"romshell decrease\"><span>-</span></button>";
@@ -91,9 +91,13 @@ void ShaderParameters::create()
 			container->AppendChild(std::move(child));
 			if(m_params[idx].used && m_params[idx].step != 0.0) {
 				auto *inc = container->GetElementById(m_params[idx].name + "__inc");
+				if(inc) {
+					Window::set_disabled(inc, m_params[idx].value >= m_params[idx].max);
+				}
 				auto *dec = container->GetElementById(m_params[idx].name + "__dec");
-				Window::set_disabled(inc, m_params[idx].value >= m_params[idx].max);
-				Window::set_disabled(dec, m_params[idx].value <= m_params[idx].min);
+				if(dec) {
+					Window::set_disabled(dec, m_params[idx].value <= m_params[idx].min);
+				}
 			}
 		}
 	}
@@ -180,9 +184,13 @@ void ShaderParameters::update_value(ScreenRenderer::ShaderParam &_param, float _
 	}
 	if(_param.step != 0.0) {
 		auto *inc = cnt->GetElementById(_param.name + "__inc");
+		if(inc) {
+			Window::set_disabled(inc, _param.value >= _param.max);
+		}
 		auto *dec = cnt->GetElementById(_param.name + "__dec");
-		Window::set_disabled(inc, _param.value >= _param.max);
-		Window::set_disabled(dec, _param.value <= _param.min);
+		if(dec) {
+			Window::set_disabled(dec, _param.value <= _param.min);
+		}
 	}
 }
 
