@@ -944,7 +944,7 @@ void SBlasterPro::write_mixer(uint16_t _address, uint16_t _value)
 		m_s.mixer.reg[m_s.mixer.reg_idx] = _value;
 		update_volumes();
 	} else {
-		PDEBUGF(LOG_V0, LOG_AUDIO, "%s Mixer: invalid register %x\n", _address);
+		PDEBUGF(LOG_V0, LOG_AUDIO, "%s Mixer: invalid register %x\n", short_name(), _address);
 	}
 }
 
