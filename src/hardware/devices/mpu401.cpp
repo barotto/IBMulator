@@ -121,7 +121,7 @@ void MPU401::config_changed()
 
 void MPU401::register_ports(unsigned _old_base, unsigned _new_base)
 {
-	rebase_ports(ms_ioports.begin()+1, ms_ioports.end(), _old_base, _new_base);
+	rebase_ports(ms_ioports.begin(), ms_ioports.end(), _old_base, _new_base);
 	IODevice::install();
 	m_iobase = _new_base;
 }
