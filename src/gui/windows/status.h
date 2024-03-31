@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,7 +31,7 @@ class Status : public Window
 {
 public:
 	enum IND {
-		PWR, FLP_A, FLP_B, HDD, NET, AUDREC, VIDREC,
+		PWR, FLP_A, FLP_B, HDD, CDROM, NET, AUDREC, VIDREC,
 		IND_CNT
 	};
 	enum class LED : int {
@@ -55,6 +55,14 @@ private:
 	const FloppyCtrl *m_floppy = nullptr;
 	const StorageCtrl *m_hdd = nullptr;
 	const Serial *m_serial = nullptr;
+
+	// TODO encapsulate all this into an LED class?
+	TimerID m_cdrom_led_timer = NULL_TIMER_ID;
+	int64_t m_cdrom_led_activity = 0;
+	bool m_cdrom_led_on = false;
+	std::mutex m_cdrom_mutex;
+	void cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration);
+	void cdrom_led_timer(uint64_t);
 
 public:
 	Status(GUI * _gui, Machine *_machine);

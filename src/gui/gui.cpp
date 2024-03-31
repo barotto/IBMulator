@@ -103,9 +103,9 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT,      &GUI::pevt_func_take_screenshot      },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, &GUI::pevt_func_toggle_audio_capture },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, &GUI::pevt_func_toggle_video_capture },
-	{ ProgramEvent::FuncName::FUNC_INSERT_FLOPPY,        &GUI::pevt_func_insert_floppy        },
-	{ ProgramEvent::FuncName::FUNC_EJECT_FLOPPY,         &GUI::pevt_func_eject_floppy         },
-	{ ProgramEvent::FuncName::FUNC_CHANGE_FLOPPY_DRIVE,  &GUI::pevt_func_change_floppy_drive  },
+	{ ProgramEvent::FuncName::FUNC_INSERT_MEDIUM,        &GUI::pevt_func_insert_medium        },
+	{ ProgramEvent::FuncName::FUNC_EJECT_MEDIUM,         &GUI::pevt_func_eject_medium         },
+	{ ProgramEvent::FuncName::FUNC_CHANGE_DRIVE,         &GUI::pevt_func_change_drive         },
 	{ ProgramEvent::FuncName::FUNC_SAVE_STATE,           &GUI::pevt_func_save_state           },
 	{ ProgramEvent::FuncName::FUNC_LOAD_STATE,           &GUI::pevt_func_load_state           },
 	{ ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE,     &GUI::pevt_func_quick_save_state     },
@@ -332,6 +332,14 @@ void GUI::load_keymap(const std::string &_filename)
 		PERRF(LOG_GUI, "Unable to load keymap '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
+}
+
+void GUI::config_changing() noexcept
+{
+	m_windows.config_changing();
+
+	m_curr_model = "";
+	m_curr_model_changed = true;
 }
 
 void GUI::config_changed(bool _startup) noexcept
@@ -2652,37 +2660,34 @@ void GUI::pevt_func_toggle_video_capture(const ProgramEvent::Func&, EventPhase _
 	m_capture->cmd_toggle_capture();
 }
 
-void GUI::pevt_func_insert_floppy(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_insert_medium(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
-	PDEBUGF(LOG_V1, LOG_GUI, "Insert floppy func event\n");
+	PDEBUGF(LOG_V1, LOG_GUI, "Insert medium func event\n");
 
-	Rml::Event e;
-	m_windows.interface->on_fdd_mount(e);
+	m_windows.interface->drive_medium_mount();
 }
 
-void GUI::pevt_func_eject_floppy(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_eject_medium(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
-	PDEBUGF(LOG_V1, LOG_GUI, "Eject floppy func event\n");
+	PDEBUGF(LOG_V1, LOG_GUI, "Eject medium func event\n");
 
-	Rml::Event e;
-	m_windows.interface->on_fdd_eject(e);
+	m_windows.interface->drive_medium_eject();
 }
 
-void GUI::pevt_func_change_floppy_drive(const ProgramEvent::Func&, EventPhase _phase)
+void GUI::pevt_func_change_drive(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
 	}
-	PDEBUGF(LOG_V1, LOG_GUI, "Change floppy drive func event\n");
+	PDEBUGF(LOG_V1, LOG_GUI, "Change current drive func event\n");
 
-	Rml::Event e;
-	m_windows.interface->on_fdd_select(e);
+	m_windows.interface->drive_select();
 }
 
 void GUI::pevt_func_save_state(const ProgramEvent::Func&, EventPhase _phase)
@@ -2966,6 +2971,20 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, &ifacemsg);
 	
 	interface->focus();
+}
+
+void GUI::WindowManager::config_changing()
+{
+	std::lock_guard<std::mutex> lock(ms_rml_mutex);
+
+	desktop->config_changing();
+	interface->config_changing();
+	if(status) {
+		status->config_changing();
+	}
+	dbgtools->config_changing();
+	mixer_ctrl->config_changing();
+	audio_osd->config_changing();
 }
 
 void GUI::WindowManager::config_changed(bool _startup)

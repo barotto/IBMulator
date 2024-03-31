@@ -86,6 +86,9 @@ libhardware_a_SOURCES = \
 	devices/cf62011bpc.cpp \
 	devices/sblaster.cpp \
 	devices/mpu401.cpp \
+	devices/cdrom_drive.cpp \
+	devices/cdrom_disc.cpp \
+	devices/cdrom_fx.cpp \
 	printer/mps_chargen.cpp \
 	printer/mps_charset.cpp \
 	printer/mps_printer.cpp \
@@ -142,6 +145,7 @@ noinst_HEADERS = \
 	devices/floppyfmt_imd.h \
 	devices/floppyfx.h \
 	devices/floppyloader.h \
+	devices/floppyevents.h \
 	devices/storagectrl.h \
 	devices/storagectrl_ps1.h \
 	devices/storagectrl_ata.h \
@@ -165,4 +169,7 @@ noinst_HEADERS = \
 	devices/cf62011bpc.h \
 	devices/sblaster.h \
 	devices/mpu401.h \
+	devices/cdrom_drive.h \
+	devices/cdrom_disc.h \
+	devices/cdrom_fx.h \
 	printer/mps_printer.h

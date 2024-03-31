@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -106,6 +106,12 @@ public:
 			FloppyDrive::Type _devtype, FloppyDisk::StdType _disktype, std::string _format_name);
 
 	virtual void fdd_index_pulse(uint8_t _drive, int _state);
+
+	void register_activity_cb(unsigned _drive, FloppyEvents::ActivityCbFn _cb) {
+		if(is_drive_present(_drive)) {
+			m_fdd[_drive]->register_activity_cb(_cb);
+		}
+	}
 
 protected:
 	std::vector<std::unique_ptr<FloppyFmt>> m_floppy_formats;

@@ -19,22 +19,22 @@
 	height: 100%;
 	top: 0;
 	left: 0;
-	decorator: image(images/realistic_interface.png);
+	decorator: image(images/2011/realistic.png);
 }
 
-#system.nomonitor #sysbkgd
+.nomonitor #sysbkgd
 {
-	decorator: image(images/realistic_interface_nomonitor.png none contain center bottom);
+	decorator: image(images/2011/realistic_nomonitor.png none contain center bottom);
 }
 
-#system.dark #sysbkgd
+.dark #sysbkgd
 {
-	decorator: image(images/realistic_interface_dark.png);
+	decorator: image(images/realistic_dark.png);
 }
 
-#system.dark.nomonitor #sysbkgd
+.dark.nomonitor #sysbkgd
 {
-	decorator: image(images/realistic_interface_nomonitor_dark.png none contain center bottom);
+	decorator: image(images/2011/realistic_nomonitor_dark.png none contain center bottom);
 }
 
 #power
@@ -67,13 +67,13 @@
 	background-color: #023104ff;
 }
 
-#system.dark #power_led
+.dark #power_led
 {
 	background-color: #000000ff;
 }
 
-#system.dark #power_led.active,
-#power_led.active
+#power_led.active,
+.dark #power_led.active
 {
 	background-color: #0EFF1AFF;
 }
@@ -84,133 +84,303 @@
 	visibility: hidden;
 }
 
-#system.dark #power_led_bloom.active
+.dark #power_led_bloom.active
 {
 	visibility: visible;
 }
 
-#fdd_led,
-#fdd_led_bloom
+#drive_block
 {
-	width: 4%;
-	height: 2.7%;
 	position: absolute;
-	left: 16.4%;
-	bottom: 9.6%;
+	bottom: 0;
+	width: 58.90909090909091%;
+	height: 20.16666666666667%;
+	border: 0px;
+	border-color: #ffffff;
 }
 
-#fdd_led
+#drive_block .uidrive
+{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+}
+
+#drive_block .uidrive .drive_background
+{
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+#drive_block .drive_led,
+#drive_block .drive_led_bloom
+{
+	position: absolute;
+	background-color: #3f3b0000;
+}
+
+#drive_block .fdd_3_5 .drive_led,
+#drive_block .fdd_3_5 .drive_led_bloom
+{
+	width: 6.94444444444444%;
+	height: 14.0495867768595%;
+	left: 27.77777777777778%;
+	top: 38.84297520661157%;
+}
+
+#drive_block .fdd_5_25 .drive_led,
+#drive_block .fdd_5_25 .drive_led_bloom
+{
+	width: 6.01851851851852%;
+	height: 16.11570247933884%;
+	left: 77.00617283950617%;
+	top: 23.55371900826446%;
+}
+
+#drive_block .cdrom .drive_led,
+#drive_block .cdrom .drive_led_bloom
+{
+	width: 4.62962962962963%;
+	height: 11.98347107438017%;
+	left: 64.35185185185185%;
+	top: 61.15702479338843%;
+}
+
+#drive_block .drive_led
 {
 	background-color: #3f3b00ff;
 }
 
-#system.dark #fdd_led
+.dark #drive_block .drive_led
 {
 	background-color: #000000ff;
 }
 
-#system.dark #fdd_led.active,
-#fdd_led.active
+#drive_block .drive_led.active,
+.dark #drive_block .drive_led.active
 {
 	background-color: #FFEE00FF;
 }
 
-#fdd_led_bloom
+.dark #drive_block .fdd_3_5 .drive_led_bloom
 {
-	decorator: image(images/realistic_fdd_led_bloom.png);
+	decorator: image(images/realistic_fdd_3_5_led_bloom.png);
 	visibility: hidden;
 }
 
-#system.dark #fdd_led_bloom.active
+.dark #drive_block .fdd_5_25 .drive_led_bloom
+{
+	decorator: image(images/realistic_fdd_5_25_led_bloom.png);
+	visibility: hidden;
+}
+
+.dark #drive_block .cdrom .drive_led_bloom
+{
+	decorator: image(images/realistic_cdrom_led_bloom.png);
+	visibility: hidden;
+}
+
+.dark #drive_block .drive_led_bloom.active
 {
 	visibility: visible;
 }
 
-#floppy_disk
+#drive_block .fdd_5_25 .drive_background
 {
+	decorator: image(images/2011/realistic_fdd_5_25.png);
+}
+#drive_block .fdd_5_25.with_medium .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_5_25_disk.png);
+}
+.dark #drive_block .fdd_5_25 .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_5_25_dark.png);
+}
+.dark #drive_block .fdd_5_25.with_medium .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_5_25_disk_dark.png);
+}
+
+#drive_block .fdd_3_5 .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_3_5.png);
+}
+#drive_block .fdd_3_5.with_medium .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_3_5_disk.png);
+}
+.dark #drive_block .fdd_3_5 .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_3_5_dark.png);
+}
+.dark #drive_block .fdd_3_5.with_medium .drive_background
+{
+	decorator: image(images/2011/realistic_fdd_3_5_disk_dark.png);
+}
+
+#drive_block .cdrom .drive_background
+{
+	decorator: image(images/2011/realistic_cdrom.png);
+}
+#drive_block .cdrom.door_open .drive_background
+{
+	decorator: image(images/2011/realistic_cdrom_open.png);
+}
+.dark #drive_block .cdrom .drive_background
+{
+	decorator: image(images/2011/realistic_cdrom_dark.png);
+}
+.dark #drive_block .cdrom.door_open .drive_background
+{
+	decorator: image(images/2011/realistic_cdrom_open_dark.png);
+}
+
+#drive_block .drive_select
+{
+	display: none;
 	position: absolute;
-	text-align: center;
-	width: 33.235%;
-	height: 12.465%;
-	bottom: 7.560%;
-	left: 12.056%;
-	background-color: #3F7CB600;
-}
-
-#floppy_disk.present
-{
-	decorator: image(images/realistic_floppy_r.png);
-}
-
-#system.dark #floppy_disk.present
-{
-	decorator: image(images/realistic_floppy_r_dark.png);
-}
-
-#fdd_select
-{
-	position: absolute;
-	text-align: center;
-	width: 4.5%;
-	height: 4.1%;
-	bottom: 9%;
-	left: 13.0%;
-	image-color: #505050;
+	top: 0;
+	left: 11%;
+	width: 6.48148148148148%;
+	height: 17.35537190082645%;
+	image-color: #004875;
 	transition: image-color 0.2s 0 exponential-out;
+	opacity: 0.8;
 }
 
-#fdd_select.a
+#drive_block.many_drives .drive_select
 {
-	decorator: image(icons/buttonA.png);
+	display: block;
 }
 
-#fdd_select.b
+#drive_block .drive_select:hover
 {
-	decorator: image(icons/buttonB.png);
+	image-color: #0067a1;
 }
 
-#fdd_select:hover
+.dark #drive_block .drive_select
 {
-	image-color: #e0e0e0;
+	image-color: #061923;
 }
 
-#fdd_eject
+.dark #drive_block .drive_select:hover
+{
+	image-color: #0067a1;
+}
+
+#drive_block .drive_select.A
+{
+	decorator: image(icons/drive_letter_A.png);
+}
+
+#drive_block .drive_select.B
+{
+	decorator: image(icons/drive_letter_B.png);
+}
+
+#drive_block .drive_select.CD
+{
+	decorator: image(icons/drive_letter_CD.png);
+}
+
+#drive_block .drive_eject
 {
 	position: absolute;
-	width: 4.5%;
-	height: 2.7%;
-	bottom: 10.4%;
-	left: 36.0%;
 	background-color: #f0000000;
 }
 
-#fdd_mount
+#drive_block .fdd_3_5 .drive_eject
+{
+	width: 7.5%;
+	height: 12%;
+	top: 35.4%;
+	left: 61.5%;
+}
+
+#drive_block .fdd_5_25 .drive_eject
+{
+	width: 5%;
+	height: 50%;
+	top: 22%;
+	left: 34.0%;
+	display: none;
+}
+
+#drive_block .fdd_5_25.with_medium .drive_eject
+{
+	display: block;
+}
+
+#drive_block .cdrom .drive_eject
+{
+	width: 9%;
+	height: 11%;
+	top: 60.0%;
+	left: 80.0%;
+}
+
+#drive_block .drive_mount
 {
 	position: absolute;
-	text-align: center;
-	width: 33.0%;
-	height: 11.0%;
-	bottom: 7.5%;
-	left: 12.0%;
 	background-color: #3F7CB600;
 }
 
-#fdd_disk
+#drive_block .fdd_3_5 .drive_mount
+{
+	top: 0;
+	left: 20.37%;
+	width: 56.79%;
+	height: 62.81%;
+}
+
+#drive_block .fdd_5_25 .drive_mount,
+#drive_block .cdrom .drive_mount
+{
+	top: 19.83%;
+	left: 15.74%;
+	width: 80.6%;
+	height: 59.1%;
+}
+
+#drive_block .drive_medium
 {
 	position: absolute;
 	text-align: center;
-	width: 100.0%;
-	top: 18%;
-	left: 0;
-	height: 25%;
 	background-color: #3F7CB600;
 	color: #00000000;
 }
 
-#fdd_disk:hover
+#drive_block .drive_medium:hover
 {
 	color: #ffffffff;
 	font-effect: shadow(-1dp 1dp black);
+	font-size: 12dp;
+}
+
+#drive_block .fdd_3_5 .drive_medium
+{
+	top: 20%;
+	left: 23%;
+	width: 51.23%;
+	height: 12%;
+}
+
+#drive_block .fdd_5_25 .drive_medium
+{
+	top: 45%;
+	left: 20%;
+	width: 72%;
+	height: 12%;
+}
+
+#drive_block .cdrom .drive_medium
+{
+	top: 32%;
+	left: 20%;
+	width: 72%;
+	height: 12%;
 }
 
 #hdd_led

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -63,6 +63,7 @@ protected:
 	std::vector<LazyUpdateFn> m_lazy_update_fn;
 
 	bool m_handlers_enabled = true;
+	unsigned m_auto_id = 0;
 
 public:
 	Window(GUI * _gui, const char *_rml);
@@ -83,6 +84,7 @@ public:
 	void set_title(const std::string &_title);
 
 	virtual void setup_data_bindings() {}
+	virtual void config_changing() {}
 	virtual void config_changed(bool /*_startup*/) {}
 	virtual void update();
 
@@ -96,6 +98,7 @@ protected:
 	void OnAttach(Rml::Element* _element);
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	Rml::Element * get_element(const std::string &_id);
+	std::string create_id();
 	void add_events();
 	Rml::ElementPtr create_button();
 

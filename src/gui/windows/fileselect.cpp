@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -122,6 +122,29 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 	m_new_floppy->create();
 	m_new_floppy->set_modal(true);
 	m_new_btn = get_element("new_floppy");
+	m_new_btn->SetClass("invisible", true);
+
+	m_inforeq_btn = get_element("show_panel");
+}
+
+void FileSelect::set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_info_cb, bool _wp_option)
+{
+	m_inforeq_fn = _medium_info_cb;
+	if(!m_inforeq_fn) {
+		m_inforeq_btn->SetClass("invisible", true);
+		m_wnd->SetClass("wpanel", false);
+	} else {
+		m_inforeq_btn->SetClass("invisible", false);
+		m_wnd->SetClass("wpanel", is_active(m_inforeq_btn));
+		m_dirty_scroll = 2;
+	}
+
+	m_newfloppy_callbk = _new_medium_cb;
+	if(!m_newfloppy_callbk) {
+		m_new_btn->SetClass("invisible", true);
+	}
+
+	m_wprotect->SetClass("invisible", !_wp_option);
 }
 
 void FileSelect::update()
@@ -339,8 +362,8 @@ void FileSelect::on_reload(Rml::Event &)
 
 void FileSelect::on_show_panel(Rml::Event &)
 {
-	bool active = !is_active(get_element("show_panel"));
-	get_element("show_panel")->SetClass("active", active);
+	bool active = !is_active(m_inforeq_btn);
+	m_inforeq_btn->SetClass("active", active);
 	m_wnd->SetClass("wpanel", active);
 	m_dirty_scroll = 2;
 }
@@ -620,10 +643,16 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc)
 	if(is_dir) {
 		inner += "DIR";
 	} else {
-		if(type & FloppyDisk::SIZE_3_5) {
-			inner += "floppy_3_5";
-		} else if(type & FloppyDisk::SIZE_5_25) {
-			inner += "floppy_5_25";
+		if(type & FILE_FLOPPY_DISK) {
+			if(type & FloppyDisk::SIZE_3_5) {
+				inner += "floppy_3_5";
+			} else if(type & FloppyDisk::SIZE_5_25) {
+				inner += "floppy_5_25";
+			} else {
+				inner += "hdd";
+			}
+		} else if(type & FILE_OPTICAL_DISC) {
+			inner += "cdrom";
 		} else {
 			inner += "hdd";
 		}
@@ -679,7 +708,9 @@ void FileSelect::set_home(const std::string &_path)
 
 	m_home = _path;
 	m_writable_home = FileSys::is_dir_writeable(m_home.c_str());
-	m_new_btn->SetClass("invisible", !m_writable_home);
+	if(m_newfloppy_callbk) {
+		m_new_btn->SetClass("invisible", !m_writable_home);
+	}
 }
 
 void FileSelect::set_current_dir(const std::string &_path)
@@ -711,27 +742,45 @@ void FileSelect::set_current_dir(const std::string &_path)
 	read_dir(new_cwd, m_compat_regexp.c_str());
 	m_valid_cwd = true;
 	m_writable_cwd = FileSys::is_dir_writeable(m_cwd.c_str());
-	if(!m_writable_home && !m_writable_cwd) {
-		m_new_btn->SetClass("invisible", true);
-	} else {
-		m_new_btn->SetClass("invisible", false);
+	if(m_newfloppy_callbk) {
+		if(!m_writable_home && !m_writable_cwd) {
+			m_new_btn->SetClass("invisible", true);
+		} else {
+			m_new_btn->SetClass("invisible", false);
+		}
 	}
 }
 
-void FileSelect::set_compat_types(std::vector<unsigned> _floppy_types,
+void FileSelect::set_compat_types(std::vector<unsigned> _types,
 		const std::vector<const char*> &_extensions,
 		const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats,
 		bool _dos_formats_only)
 {
-	m_compat_types = _floppy_types;
+	set_compat_types(_types, _extensions);
+
+	m_compat_dos_formats_only = _dos_formats_only;
+	if(m_newfloppy_callbk) {
+		m_new_floppy->set_compat_types(m_compat_types, _file_formats);
+		m_new_btn->SetClass("invisible", false);
+	}
+}
+
+void FileSelect::set_compat_types(std::vector<unsigned> _types,
+		const std::vector<const char*> &_extensions)
+{
+	if(_types.empty()) {
+		PDEBUGF(LOG_V0, LOG_GUI, "FileSelect::set_compat_types(): no valid types.\n");
+		m_compat_types = {FILE_NONE};
+	} else {
+		m_compat_types = _types;
+	}
 	std::vector<std::string> ext;
 	for(auto e : _extensions) {
 		ext.push_back(std::string("\\") + e);
 	}
 	m_compat_regexp = "(" + str_implode(ext,"|") + ")$";
-	m_compat_dos_formats_only = _dos_formats_only;
 
-	m_new_floppy->set_compat_types(m_compat_types, _file_formats);
+	m_new_btn->SetClass("invisible", true);
 }
 
 void FileSelect::reload()
@@ -789,7 +838,6 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 			if(!_ext.empty() && !std::regex_search(de.name, re)) {
 				continue;
 			}
-
 		}
 		FILETIME mtime;
 		if(FileSys::get_file_stats(fullpath.c_str(), &de.size, &mtime) == 0) {
@@ -799,39 +847,46 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 			de.mtime = 0;
 		}
 		if(de.is_dir) {
-			de.type = FloppyDisk::FD_NONE;
+			de.type = FILE_NONE;
 		} else {
-			bool compatible = false;
-			// this assumes all compat types have same size
-			FloppyDisk::Size dsksize = FloppyDisk::Size(m_compat_types[0] & FloppyDisk::SIZE_MASK);
+			if(m_compat_types[0] & FILE_FLOPPY_DISK) {
+				bool compatible = false;
+				// this assumes all compat types are floppy disks of the same size
+				FloppyDisk::Size dsksize = FloppyDisk::Size(m_compat_types[0] & FloppyDisk::SIZE_MASK);
 
-			diskfmt.reset(FloppyFmt::find(fullpath));
-			if(diskfmt == nullptr) {
-				continue;
-			}
-
-			auto ident = diskfmt->identify(fullpath, de.size, dsksize);
-			if(ident.type == FloppyDisk::FD_NONE) {
-				continue;
-			} 
-			de.type = ident.type;
-			if(m_compat_dos_formats_only && !(ident.type & FloppyDisk::DOS_FMT)) {
-				continue;
-			}
-			// check density
-			for(auto ctype : m_compat_types ) {
-				if(
-					((ctype & FloppyDisk::SIZE_MASK) & (ident.type & FloppyDisk::SIZE_MASK)) &&
-					(ctype & FloppyDisk::DENS_MASK) == (ident.type & FloppyDisk::DENS_MASK)
-				)
-				{
-					compatible = true;
+				diskfmt.reset(FloppyFmt::find(fullpath));
+				if(diskfmt == nullptr) {
+					continue;
 				}
-			}
-			if(!compatible) {
-				PDEBUGF(LOG_V2, LOG_GUI, "Incompatible floppy image (type:%u): '%s'\n",
-						ident.type, fullpath.c_str());
-				continue;
+
+				auto ident = diskfmt->identify(fullpath, de.size, dsksize);
+				if(ident.type == FloppyDisk::FD_NONE) {
+					continue;
+				} 
+				if(m_compat_dos_formats_only && !(ident.type & FloppyDisk::DOS_FMT)) {
+					continue;
+				}
+				// check density
+				for(auto ctype : m_compat_types ) {
+					if(
+						((ctype & FloppyDisk::SIZE_MASK) & (ident.type & FloppyDisk::SIZE_MASK)) &&
+						(ctype & FloppyDisk::DENS_MASK) == (ident.type & FloppyDisk::DENS_MASK)
+					)
+					{
+						compatible = true;
+					}
+				}
+				if(!compatible) {
+					PDEBUGF(LOG_V2, LOG_GUI, "Incompatible floppy image (type:%u): '%s'\n",
+							ident.type, fullpath.c_str());
+					continue;
+				}
+				de.type = FILE_FLOPPY_DISK | ident.type;
+			} else if(m_compat_types[0] & FILE_OPTICAL_DISC) {
+				// TODO distinguish between different types of optical media?
+				de.type = FILE_OPTICAL_DISC;
+			} else {
+				PDEBUGF(LOG_V0, LOG_GUI, "invalid file type requested: %X.\n", m_compat_types[0]);
 			}
 		}
 		de.id = str_format("de_%u", id);
@@ -912,10 +967,12 @@ void FileSelect::on_keydown(Rml::Event &_ev)
 			on_reload(_ev);
 			break;
 		case Rml::Input::KeyIdentifier::KI_F9:
-			on_show_panel(_ev);
+			if(!m_inforeq_btn->IsClassSet("invisible")) {
+				on_show_panel(_ev);
+			} else {handled=false;}
 			break;
 		case Rml::Input::KeyIdentifier::KI_N:
-			if(_ev.GetParameter<bool>("ctrl_key", false)) {
+			if(!m_new_btn->IsClassSet("invisible") && _ev.GetParameter<bool>("ctrl_key", false)) {
 				on_new_floppy(_ev);
 			} else {handled=false;}
 			break;

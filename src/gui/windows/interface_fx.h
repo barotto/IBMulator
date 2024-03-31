@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,31 +22,35 @@
 
 #include "gui/guifx.h"
 
-class GUIDrivesFX : public GUIFX
+class GUIDrivesFX : public SoundFX
 {
 public:
 	enum SampleType {
-		FLOPPY_INSERT,
-		FLOPPY_EJECT
+		INSERT,
+		EJECT,
 	};
-	enum FDDType {
+	enum DriveType {
 		FDD_5_25,
-		FDD_3_5
+		FDD_3_5,
+		CDROM,
+		NONE
 	};
 
 private:
-	std::vector<AudioBuffer> m_buffers[2];
-	const static SoundFX::samples_t ms_samples[2];
+	std::vector<AudioBuffer> m_buffers[3];
+	const static SoundFX::samples_t ms_samples[3];
+	std::shared_ptr<MixerChannel> m_channel;
 	std::atomic<int> m_event;
 
 public:
-	GUIDrivesFX() : GUIFX() {}
+	GUIDrivesFX() : SoundFX() {}
 	void init(Mixer *);
-	void use_floppy(FDDType _fdd_type, SampleType _how);
+	void use_drive(DriveType _type, SampleType _how);
 	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+	uint64_t duration_us(DriveType, SampleType) const;
 };
 
-class GUISystemFX : public GUIFX
+class GUISystemFX : public SoundFX
 {
 private:
 	enum SampleType {
@@ -58,9 +62,10 @@ private:
 	std::atomic<bool> m_change_state = false;
 	std::vector<AudioBuffer> m_buffers;
 	const static SoundFX::samples_t ms_samples;
+	std::shared_ptr<MixerChannel> m_channel;
 
 public:
-	GUISystemFX() : GUIFX() {}
+	GUISystemFX() : SoundFX() {}
 
 	void init(Mixer *_mixer);
 	void update(bool _power_on, bool _change_state);

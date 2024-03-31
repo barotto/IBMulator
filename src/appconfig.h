@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -217,6 +217,8 @@ public:
 #define DRIVES_FDC_OVR          "fdc_overhead"
 #define DRIVES_HDC_TYPE         "hdc_type"
 #define DRIVES_HDD_COMMIT       "hdd_commit"
+#define DRIVES_CDROM            "cdrom"
+#define DRIVES_CDROM_IDLE       "cdrom_idle"
 
 #define DISK_A_SECTION          "floppy_a"
 #define DISK_B_SECTION          "floppy_b"
@@ -311,10 +313,12 @@ public:
 #define SOUNDFX_ENABLED         "enabled"
 #define SOUNDFX_VOLUME          "volume"
 #define SOUNDFX_REVERB          "reverb"
+#define SOUNDFX_DRIVES_GUI      "drives_gui"
+#define SOUNDFX_DRIVES_BALANCE  "drives_balance"
+#define SOUNDFX_CDROM_SPIN      "cdrom_spin"
+#define SOUNDFX_CDROM_SEEK      "cdrom_seek"
 #define SOUNDFX_FDD_SPIN        "fdd_spin"
 #define SOUNDFX_FDD_SEEK        "fdd_seek"
-#define SOUNDFX_FDD_GUI         "fdd_gui"
-#define SOUNDFX_FDD_BALANCE     "fdd_balance"
 #define SOUNDFX_HDD_SPIN        "hdd_spin"
 #define SOUNDFX_HDD_SEEK        "hdd_seek"
 #define SOUNDFX_HDD_BALANCE     "hdd_balance"

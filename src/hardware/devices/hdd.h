@@ -27,6 +27,15 @@
 #define HDD_DRIVES_TABLE_SIZE 45
 #define HDD_CUSTOM_DRIVE_IDX 47
 
+// The following factors were derived from measurements of a WDL-330P specimen.
+// 0.99378882 = average speed = 32.0 / ((921-1)*35/1000.0), 35=avg speed in us/cyl
+// 1.6240 = maximum speed in mm/ms
+// 0.3328 = acceleration in mm/ms^2
+#define HDD_HEAD_SPEED (1.6240 / 0.99378882)
+#define HDD_HEAD_ACCEL (0.3328 / 0.99378882)
+#define HDD_DISK_RADIUS 32.0
+
+
 class StorageCtrl;
 
 class HardDiskDrive : public StorageDev
@@ -37,7 +46,6 @@ protected:
 	uint64_t m_spin_up_duration;
 	std::unique_ptr<MediaImage> m_disk;
 	bool m_tmp_disk;
-	StorageCtrl *m_ctrl;
 
 	struct {
 		uint64_t power_on_time;
@@ -50,14 +58,13 @@ protected:
 	static const std::map<int, const DriveIdent> ms_hdd_models;
 	static const std::map<uint64_t, int> ms_hdd_sizes;
 
-	bool m_fx_enabled;
 	HardDriveFX m_fx;
 
 public:
 	HardDiskDrive();
 	~HardDiskDrive();
 
-	void install(StorageCtrl*);
+	void install(StorageCtrl* _ctrl, uint8_t _id);
 	void remove();
 	void power_on(uint64_t _time);
 	void power_off();
@@ -75,8 +82,8 @@ public:
 
 	uint64_t power_up_eta_us() const;
 
-	void read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
-	void write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
+	bool read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
+	bool write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
 	void seek(unsigned _from_cyl, unsigned _to_cyl);
 
 	static int64_t get_hdd_type_size(int _hdd_type);

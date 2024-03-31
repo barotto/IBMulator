@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,37 +22,51 @@
 #include "hardware/devices/drivefx.h"
 #include "program.h"
 
-const SoundFX::samples_t GUIDrivesFX::ms_samples[2] = {
+const SoundFX::samples_t GUIDrivesFX::ms_samples[3] = {
 	{
 	{"5.25 disk insert", FDD_SAMPLES_DIR "5_25_disk_insert.wav"},
 	{"5.25 disk eject",  FDD_SAMPLES_DIR "5_25_disk_eject.wav"}
 	},{
 	{"3.5 disk insert", FDD_SAMPLES_DIR "3_5_disk_insert.wav"},
 	{"3.5 disk eject",  FDD_SAMPLES_DIR "3_5_disk_eject.wav"}
+	},{
+	{"CD tray close", CDROM_SAMPLES_DIR "close_tray.wav"},
+	{"CD tray open",  CDROM_SAMPLES_DIR "open_tray.wav"}
 	}
 };
 
 void GUIDrivesFX::init(Mixer *_mixer)
 {
-	using namespace std::placeholders;
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
-	GUIFX::init(_mixer,
-		std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2, _3),
-		"FDD GUI", spec);
+
+	using namespace std::placeholders;
+	m_channel = _mixer->register_channel(std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2, _3),
+			"Drives GUI",
+			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
+	m_channel->set_in_spec(spec);
+	m_channel->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
+	m_channel->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_DRIVES_GUI }},
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_DRIVES_BALANCE }}
+	});
 
 	m_buffers[FDD_5_25] = SoundFX::load_samples(spec, ms_samples[FDD_5_25]);
 	m_buffers[FDD_3_5] = SoundFX::load_samples(spec, ms_samples[FDD_3_5]);
-
-	m_channel->register_config_map({
-		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_FDD_GUI }},
-		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE }}
-	});
+	m_buffers[CDROM] = SoundFX::load_samples(spec, ms_samples[CDROM]);
 }
 
-void GUIDrivesFX::use_floppy(FDDType _fdd_type, SampleType _how)
+uint64_t GUIDrivesFX::duration_us(DriveType _drive, SampleType _sample) const
 {
-	m_event = _fdd_type << 8 | _how;
-	m_channel->enable(true);
+	return round(m_buffers[static_cast<unsigned>(_drive)][static_cast<unsigned>(_sample)].duration_us());
+}
+
+void GUIDrivesFX::use_drive(DriveType _type, SampleType _how)
+{
+	// GUI thread
+	if(_type != NONE) {
+		m_event = _type << 8 | _how;
+		m_channel->enable(true);
+	}
 }
 
 bool GUIDrivesFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
@@ -61,7 +75,7 @@ bool GUIDrivesFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 	unsigned evt = m_event & 0xff;
 	unsigned sub = (m_event >> 8) & 0xff;
 	if(evt != 0xff) {
-		assert(sub < 2);
+		assert(sub < NONE);
 		assert(evt < m_buffers[sub].size());
 		m_channel->flush();
 		m_channel->play(m_buffers[sub][evt], 0);
@@ -84,17 +98,19 @@ const SoundFX::samples_t GUISystemFX::ms_samples = {
 void GUISystemFX::init(Mixer *_mixer)
 {
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
-	GUIFX::init(_mixer,
-		std::bind(&GUISystemFX::create_sound_samples, this,
-				std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		"System", spec);
-
-	m_buffers = SoundFX::load_samples(spec, ms_samples);
-
+	
+	using namespace std::placeholders;
+	m_channel = _mixer->register_channel(std::bind(&GUISystemFX::create_sound_samples, this, _1, _2, _3),
+			"System",
+			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
+	m_channel->set_in_spec(spec);
+	m_channel->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
 	m_channel->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_SYSTEM }},
 		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_SYSTEM_BALANCE }}
 	});
+
+	m_buffers = SoundFX::load_samples(spec, ms_samples);
 }
 
 void GUISystemFX::update(bool _power_on, bool _change_state)
@@ -106,9 +122,9 @@ void GUISystemFX::update(bool _power_on, bool _change_state)
 	m_change_state = _change_state;
 }
 
-//this method is called by the Mixer thread
 bool GUISystemFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
 {
+	// Mixer thread
 	bool power_on = m_power_on;
 	bool change_state = m_change_state;
 	m_change_state = false;

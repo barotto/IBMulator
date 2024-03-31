@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2017  Marco Bortolin
+ * Copyright (C) 2024  Marco Bortolin
  *
- * This file is part of IBMulator.
+ * This file is part of IBMulator
  *
  * IBMulator is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,25 +16,24 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*
- * This class is a STUB.
- */
+#ifndef IBMULATOR_HW_FLOPPYEVENTS_H
+#define IBMULATOR_HW_FLOPPYEVENTS_H
 
-#ifndef IBMULATOR_HW_CDROMDRIVE_H
-#define IBMULATOR_HW_CDROMDRIVE_H
+#include <functional>
 
-#include "storagedev.h"
-
-
-class CDROMDrive : public StorageDev
+class FloppyEvents
 {
 public:
-	CDROMDrive() {}
-	~CDROMDrive() {}
-
-	bool read_toc(uint8_t */*buf*/, int */*length*/, bool /*msf*/, int /*start_track*/, int /*format*/)
-		{ return false; }
+	enum EventType {
+		EVENT_MEDIUM,
+		EVENT_DISK_LOADING,
+		EVENT_DISK_SAVING,
+		EVENT_DISK_INSERTED,
+		EVENT_DISK_EJECTED,
+		EVENT_MOTOR_ON,
+		EVENT_MOTOR_OFF
+	};
+	using ActivityCbFn = std::function<void(EventType,uint8_t)>;
 };
 
 #endif
-

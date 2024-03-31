@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,6 +35,7 @@
 #define NSEC_TO_SEC(nsec) (double((nsec)) / 1'000'000'000.0)
 #define SEC_TO_USEC(sec) (double(sec) * 1'000'000.0)
 #define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
+#define MSEC_TO_NSEC(msec) (double(msec) * 1'000'000.0)
 #define USEC_TO_SEC(usec) (double(usec) / 1'000'000.0)
 #define MAX_TIMERS 28
 #define TIMER_NAME_LEN 20

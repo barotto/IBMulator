@@ -64,14 +64,6 @@
                                  // apparently, there's a BIOS bug that prevents
                                  // the system to correctly format a disk with 63 spt
 
-// The following factors were derived from measurements of a WDL-330P specimen.
-// 0.99378882 = average speed = 32.0 / ((921-1)*35/1000.0), 35=avg speed in us/cyl
-// 1.6240 = maximum speed in mm/ms
-// 0.3328 = acceleration in mm/ms^2
-#define HDD_HEAD_SPEED (1.6240 / 0.99378882)
-#define HDD_HEAD_ACCEL (0.3328 / 0.99378882)
-#define HDD_DISK_RADIUS 32.0
-
 /*
    IBM HDD types 1-44
 
@@ -131,17 +123,17 @@ const MediaGeometry HardDiskDrive::ms_hdd_types[HDD_DRIVES_TABLE_SIZE] = {
  * Type 39 is the Maxtor 7040F1, which was mounted on some later model 2011.
  */
 const std::map<unsigned, DrivePerformance> HardDiskDrive::ms_hdd_performance = {
-{ 35, { 40.0f, 8.0f, 3600, 4, 0,0,0,0,0,0,0 } }, //35 30MB
-{ 38, { 40.0f, 9.0f, 3700, 4, 0,0,0,0,0,0,0 } }, //38 30MB
-//{ 39, {  0.0f, 0.0f,    0, 0, 0,0,0,0,0,0,0 } }, //39 41MB
+{ 35, { 40.0, 8.0, 0.0, 3600, 4, 0,0,0,0,0,0,0,0,0 } }, //35 30MB
+{ 38, { 40.0, 9.0, 0.0, 3700, 4, 0,0,0,0,0,0,0,0,0 } }, //38 30MB
+//{ 39, {  0.0f, 0.0f,    0, 0, 0,0,0,0,0,0,0,0,0 } }, //39 41MB
 };
 
 // TODO this is a stub. implement proper hdd performance characteristics
 static const DrivePerformance default_ps1_perf = {
-	40.0f, 8.0f, 3600, 4, 0,0,0,0,0,0,0   // IBM WDL-330P
+	40.0, 8.0, 0.0, 3600, 4, 0,0,0,0,0,0,0,0,0   // IBM WDL-330P
 };
 static const DrivePerformance default_ata_perf = {
-	17.0f, 6.0f, 3700, 1, 0,0,0,0,0,0,0   // MAXTOR 7080A
+	17.0, 6.0, 0.0, 3700, 1, 0,0,0,0,0,0,0,0,0   // MAXTOR 7080A
 };
 
 const std::map<int, const DriveIdent> HardDiskDrive::ms_hdd_models = {
@@ -207,31 +199,22 @@ const std::map<uint64_t, int> HardDiskDrive::ms_hdd_sizes = {
 
 HardDiskDrive::HardDiskDrive()
 :
-StorageDev(),
+StorageDev(DEV_HDD),
 m_type(0),
 m_spin_up_duration(0.0),
-m_tmp_disk(false),
-m_ctrl(nullptr),
-m_fx_enabled(false)
+m_tmp_disk(false)
 {
 	memset(&m_s, 0, sizeof(m_s));
-
-	m_sector_data = 512;
-	m_sector_size = HDD_SECTOR_SIZE;
-	m_track_overhead = HDD_TRACK_OVERHEAD;
-	m_disk_radius = HDD_DISK_RADIUS;
-	m_head_speed_factor = HDD_HEAD_SPEED;
-	m_head_accel_factor = HDD_HEAD_ACCEL;
 }
 
 HardDiskDrive::~HardDiskDrive()
 {
 }
 
-void HardDiskDrive::install(StorageCtrl *_ctrl)
+void HardDiskDrive::install(StorageCtrl* _ctrl, uint8_t _id)
 {
-	m_ctrl = _ctrl;
-	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+	StorageDev::install(_ctrl, _id);
+
 	if(m_fx_enabled) {
 		m_fx.install(m_name);
 	}
@@ -346,7 +329,16 @@ void HardDiskDrive::config_changed(const char *_section)
 		m_path = g_program.config().get_file_path(imgname, FILE_TYPE_USER);
 	}
 
-	get_profile(type, _section, m_geometry, m_performance);
+	m_sector_data = 512;
+	m_disk_radius = HDD_DISK_RADIUS;
+	m_head_speed_factor = HDD_HEAD_SPEED;
+	m_head_accel_factor = HDD_HEAD_ACCEL;
+
+	MediaGeometry geometry;
+	get_profile(type, _section, geometry, m_performance);
+	set_geometry(geometry, HDD_SECTOR_SIZE, HDD_TRACK_OVERHEAD);
+	m_performance.update(geometry, HDD_SECTOR_SIZE, HDD_TRACK_OVERHEAD);
+
 	StorageDev::config_changed(_section);
 
 	auto hdd_commit = g_machine.hdd_commit_strategy();
@@ -379,22 +371,22 @@ void HardDiskDrive::config_changed(const char *_section)
 	}
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==HDD_CUSTOM_DRIVE_IDX?" (custom)":"");
-	PINFOF(LOG_V0, LOG_HDD, "  Interface: %s\n", m_ctrl->name());
+	PINFOF(LOG_V0, LOG_HDD, "  Interface: %s\n", m_controller->name());
 	PINFOF(LOG_V0, LOG_HDD, "  Capacity: %.1fMB, %.1fMiB, %lu sectors\n",
 			double(size())/(1000.0*1000.0), double(size())/(1024.0*1024.0), m_sectors);
 	PINFOF(LOG_V0, LOG_HDD, "  Geometry: C:%u, H:%u, S:%u\n",
 			m_geometry.cylinders, m_geometry.heads, m_geometry.spt);
 	PINFOF(LOG_V1, LOG_HDD, "  Model: %s\n", m_ident.model);
 	PINFOF(LOG_V2, LOG_HDD, "  Data bits per track: %u\n", m_geometry.spt*512*8);
-	PINFOF(LOG_V1, LOG_HDD, "  Interleave: %u:1\n", m_performance.interleave);
+	PINFOF(LOG_V1, LOG_HDD, "  Interleave: %.0f:1\n", m_performance.interleave);
 	PINFOF(LOG_V1, LOG_HDD, "  Performance characteristics:\n");
-	PINFOF(LOG_V1, LOG_HDD, "    rotational speed: %u rpm\n", m_performance.rot_speed);
-	PINFOF(LOG_V1, LOG_HDD, "    maximum seek time: %.1f ms\n", m_performance.seek_max);
-	PINFOF(LOG_V1, LOG_HDD, "    track-to-track seek time: %.1f ms\n", m_performance.seek_trk);
-	PINFOF(LOG_V2, LOG_HDD, "      seek overhead time: %u us\n", m_performance.seek_overhead_us);
-	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %u us/cyl\n", m_performance.seek_avgspeed_us);
-	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %u us\n", m_performance.trk_read_us);
-	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %u us\n", m_performance.sec_read_us);
+	PINFOF(LOG_V1, LOG_HDD, "    rotational speed: %.0f rpm\n", m_performance.rot_speed);
+	PINFOF(LOG_V1, LOG_HDD, "    maximum seek time: %.1f ms\n", m_performance.seek_max_ms);
+	PINFOF(LOG_V1, LOG_HDD, "    track-to-track seek time: %.1f ms\n", m_performance.seek_trk_ms);
+	PINFOF(LOG_V2, LOG_HDD, "      seek overhead time: %.0f us\n", m_performance.seek_overhead_us);
+	PINFOF(LOG_V2, LOG_HDD, "      seek avgspeed time: %.0f us/cyl\n", m_performance.seek_avgspeed_us);
+	PINFOF(LOG_V2, LOG_HDD, "    track read time (rot.lat.): %.0f us\n", m_performance.trk_read_us);
+	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %.0f us\n", m_performance.sec_read_us);
 	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %llu us\n", m_spin_up_duration);
 
 	g_program.config().set_int(_section, DISK_TYPE, m_type);
@@ -404,8 +396,8 @@ void HardDiskDrive::config_changed(const char *_section)
 	g_program.config().set_int(_section, DISK_HEADS, m_geometry.heads);
 	g_program.config().set_int(_section, DISK_SPT, m_geometry.spt);
 
-	g_program.config().set_real(_section, DISK_SEEK_MAX, m_performance.seek_max);
-	g_program.config().set_real(_section, DISK_SEEK_TRK, m_performance.seek_trk);
+	g_program.config().set_real(_section, DISK_SEEK_MAX, m_performance.seek_max_ms);
+	g_program.config().set_real(_section, DISK_SEEK_TRK, m_performance.seek_trk_ms);
 	g_program.config().set_int(_section, DISK_ROT_SPEED, m_performance.rot_speed);
 	g_program.config().set_int(_section, DISK_INTERLEAVE, m_performance.interleave);
 }
@@ -414,7 +406,7 @@ void HardDiskDrive::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "%s: saving state\n", name());
 
-	_state.write(&m_s, {sizeof(m_s), "Hard Disk Drive"});
+	_state.write(&m_s, {sizeof(m_s), str_format("HDD%u", m_drive_index).c_str()});
 
 	if(m_disk) {
 		std::string path = _state.get_basename() + "-" + m_section + ".img";
@@ -448,7 +440,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 		m_fx.spin(false, false);
 	}
 
-	_state.read(&m_s, {sizeof(m_s), "Hard Disk Drive"});
+	_state.read(&m_s, {sizeof(m_s), str_format("HDD%u", m_drive_index).c_str()});
 
 	m_dirty_restore = false;
 }
@@ -461,7 +453,7 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 		_geom = ms_hdd_types[_type_id];
 		// ATA drives have a typical interleave of 1:1
 		// TODO this is a stub. implement proper hdd performance characteristics
-		if(dynamic_cast<StorageCtrl_ATA*>(m_ctrl) != nullptr) {
+		if(dynamic_cast<StorageCtrl_ATA*>(m_controller) != nullptr) {
 			_perf.interleave = 1;
 		}
 	} else if(_type_id>0 && _type_id!=15 && _type_id<=HDD_CUSTOM_DRIVE_IDX) {
@@ -479,7 +471,7 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 			PERRF(LOG_HDD, "%s: invalid drive type: %d\n", name(), _type_id);
 			throw std::exception();
 		}
-		bool is_ata = (dynamic_cast<StorageCtrl_ATA*>(m_ctrl) != nullptr);
+		bool is_ata = (dynamic_cast<StorageCtrl_ATA*>(m_controller) != nullptr);
 		if(is_ata) {
 			_perf = default_ata_perf;
 		} else {
@@ -495,10 +487,10 @@ void HardDiskDrive::get_profile(int _type_id, const char *_section,
 	unsigned rot_speed = g_program.config().get_int(_section, DISK_ROT_SPEED, 0);
 	unsigned interleave = g_program.config().get_int(_section, DISK_INTERLEAVE, 0);
 	if(seek_max > 0.) {
-		_perf.seek_max = seek_max;
+		_perf.seek_max_ms = seek_max;
 	}
 	if(seek_trk > 0.) {
-		_perf.seek_trk = seek_trk;
+		_perf.seek_trk_ms = seek_trk;
 	}
 	if(rot_speed > 0) {
 		_perf.rot_speed = rot_speed;
@@ -638,7 +630,7 @@ void HardDiskDrive::unmount()
 	m_dirty_restore = false;
 }
 
-void HardDiskDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
+bool HardDiskDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 {
 	assert(_lba < m_sectors);
 	assert(_buffer != nullptr);
@@ -657,9 +649,10 @@ void HardDiskDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 				name(), offset);
 		throw std::exception();
 	}
+	return true;
 }
 
-void HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
+bool HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 {
 	assert(_lba < m_sectors);
 	assert(_buffer != nullptr);
@@ -680,6 +673,8 @@ void HardDiskDrive::write_sector(int64_t _lba, uint8_t *_buffer, unsigned _len)
 	}
 
 	set_dirty();
+
+	return true;
 }
 
 void HardDiskDrive::seek(unsigned _from_cyl, unsigned _to_cyl)

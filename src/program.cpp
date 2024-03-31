@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -186,11 +186,10 @@ void Program::save_state(
 		}
 	}
 
-	// TODO consider more than 1 controller
-	StorageCtrl *hddctrl = m_machine->devices().device<StorageCtrl>();
-	if(hddctrl) {
-		for(int i=0; i<hddctrl->installed_devices(); i++) {
-			const StorageDev *dev = hddctrl->get_device(i);
+	auto storage_ctrls = m_machine->devices().devices<StorageCtrl>();
+	for(auto ctrl : storage_ctrls) {
+		for(int i=0; i<ctrl->installed_devices(); i++) {
+			const StorageDev *dev = ctrl->get_device(i);
 			if(dev) {
 				sstate->info().config_desc += str_format("%s: %s", 
 						dev->name(), FileSys::get_basename(dev->path()).c_str()) 
@@ -283,6 +282,8 @@ void Program::restore_state(
 
 		m_mixer->cmd_pause_and_signal(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);
+
+		m_gui->config_changing();
 
 		m_machine->sig_config_changed(ms_lock, ms_cv);
 		ms_cv.wait(restore_lock);

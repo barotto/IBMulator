@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -84,7 +84,7 @@ bool INIFile::parse_bool(std::string _str)
 	_str = str_to_lower(_str);
 	if (_str == "true" || _str == "yes" || _str == "on" || _str == "1") {
 		return true;
-	} else if (_str == "false" || _str == "no" || _str == "off" || _str == "0") {
+	} else if (_str == "false" || _str == "no" || _str == "none" || _str == "off" || _str == "0") {
 		return false;
 	} else {
 		PDEBUGF(LOG_V1, LOG_PROGRAM, "'%s' is not a boolean\n", _str.c_str());
@@ -157,6 +157,19 @@ int INIFile::get_int(const std::string &_section, const std::string &_name, int 
 		return _default;
 	} catch(std::exception &e) {
 		return _default;
+	}
+}
+
+int INIFile::get_int_or_bool(const std::string &_section, const std::string &_name)
+{
+	try {
+		return try_int(_section, _name);
+	} catch(std::exception &) {
+		try {
+			return try_bool(_section, _name);
+		} catch(std::exception &) { }
+		PERRF(LOG_PROGRAM, "unable to get integer/bool value for [%s]:%s\n", _section.c_str(), _name.c_str());
+		throw;
 	}
 }
 

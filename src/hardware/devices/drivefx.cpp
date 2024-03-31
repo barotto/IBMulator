@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -18,7 +18,7 @@
  */
 
 #include "ibmulator.h"
-#include "machine.h"
+//#include "machine.h"
 #include "drivefx.h"
 #include <cfloat>
 
@@ -59,16 +59,21 @@ void DriveFX::remove()
 
 void DriveFX::seek(int _c0, int _c1, int _tot_cyls)
 {
+	seek(g_machine.get_virt_time_us(), _c0, _c1, _tot_cyls);
+}
+
+void DriveFX::seek(uint64_t _at_time, int _c0, int _c1, int _tot_cyls)
+{
 	assert(_c0>=0 && _c1>=0 && _tot_cyls>0);
 	if(_c0 == _c1) {
 		return;
 	}
 	SeekEvent event;
-	event.time = g_machine.get_virt_time_us();
+	event.time = _at_time;
 	event.distance = double(_c1 - _c0)/(_tot_cyls-1);
 	event.userdata = 0;
 	m_seek_events.push(event);
-	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: seek dist:%.4f (%d sect.), time:%lld\n",
+	PDEBUGF(LOG_V1, LOG_AUDIO, "%s: seek dist:%.4f (%d cyls), time:%lld\n",
 			m_channels.seek->name(),
 			event.distance,
 			(_c1 - _c0),

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -136,6 +136,7 @@ void Devices::config_changed()
 		}
 	}
 
+	bool ata_ctrl_present = false;
 	std::string stg_ctrl = g_program.config().get_string(DRIVES_SECTION, DRIVES_HDC_TYPE);
 	if(stg_ctrl == "ps1" || (stg_ctrl == "auto" && m_machine->model().hdd_interface == "ps1")) {
 		remove(StorageCtrl_ATA::NAME);
@@ -145,11 +146,15 @@ void Devices::config_changed()
 		remove(StorageCtrl_PS1::NAME);
 		install<StorageCtrl_ATA>();
 		g_program.config().set_string(DRIVES_SECTION, DRIVES_HDC_TYPE, "ata");
+		ata_ctrl_present = true;
 	} else {
 		remove(StorageCtrl_ATA::NAME);
 		remove(StorageCtrl_PS1::NAME);
 	}
-	
+	if(g_program.config().get_int_or_bool(DRIVES_SECTION, DRIVES_CDROM) && !ata_ctrl_present) {
+		install<StorageCtrl_ATA>();
+	}
+
 	install<PCSpeaker>();
 	
 	install_only_if<GamePort>(g_program.config().get_bool(GAMEPORT_SECTION, GAMEPORT_ENABLED, true));

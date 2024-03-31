@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,9 +29,10 @@
 #include "tinyfiledialogs/tinyfiledialogs.h"
 
 #include "hardware/devices/floppyctrl.h"
-#include "hardware/devices/storagectrl.h"
+#include "hardware/devices/storagectrl_ata.h"
 using namespace std::placeholders;
 
+#define CDROM_LED_BLINK_TIME 250_ms
 
 Interface::Interface(Machine *_machine, GUI *_gui, Mixer *_mixer, const char *_rml)
 :
@@ -40,7 +41,7 @@ m_machine(_machine),
 m_mixer(_mixer)
 {
 	_machine->register_floppy_loader_state_cb(
-			std::bind(&Interface::floppy_loader_state_cb, this, _1, _2)
+		std::bind(&Interface::floppy_activity_cb, this, _1, _2, nullptr)
 	);
 }
 
@@ -50,6 +51,8 @@ Interface::~Interface()
 
 void Interface::close()
 {
+	remove_drives();
+
 	if(m_fs) {
 		m_fs->close();
 		m_fs.reset(nullptr);
@@ -66,18 +69,17 @@ void Interface::close()
 		m_state_save_info->close();
 		m_state_save_info.reset(nullptr);
 	}
+
 	Window::close();
 }
 
 void Interface::create()
 {
 	Window::create();
-	
+
 	m_buttons.power = get_element("power");
-	m_buttons.fdd_select = get_element("fdd_select");
-	m_status.fdd_led = get_element("fdd_led");
 	m_status.hdd_led = get_element("hdd_led");
-	m_status.fdd_disk = get_element("fdd_disk");
+
 	m_speed = get_element("speed");
 	m_speed_value = get_element("speed_value");
 	m_message = get_element("message");
@@ -89,10 +91,7 @@ void Interface::create()
 	int zoom = g_program.config().get_int(DIALOGS_SECTION, DIALOGS_FILE_ZOOM, 2);
 	m_fs = std::make_unique<FileSelect>(m_gui);
 	m_fs->create(mode, order, zoom);
-	m_fs->set_select_callbk(std::bind(&Interface::on_floppy_mount, this, _1, _2));
 	m_fs->set_cancel_callbk(nullptr);
-	m_fs->set_newfloppy_callbk(std::bind(&Interface::create_new_floppy_image, this, _1, _2, _3, _4));
-	m_fs->set_inforeq_fn(get_filesel_info);
 	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
 	std::string cfg_home = g_program.config().get_cfg_home();
 	if(home_dir.empty()) {
@@ -128,18 +127,22 @@ void Interface::create()
 	}
 }
 
-void Interface::set_floppy_config(bool _b_present)
+void Interface::UIDrive::hide()
 {
-	m_buttons.fdd_select->SetClass("d-none", !_b_present);
-
-	m_buttons.fdd_select->SetClass("a", true);
-	m_buttons.fdd_select->SetClass("b", false);
+	uidrive_el->SetClass("d-none", true);
 }
 
-void Interface::set_floppy_active(bool _active)
+void Interface::UIDrive::show()
 {
-	m_leds.fdd = _active;
-	m_status.fdd_led->SetClass("active", _active);
+	uidrive_el->SetClass("d-none", false);
+}
+
+void Interface::UIDrive::set_led(bool _active)
+{
+	activity_led->SetClass("active", _active);
+	if(activity_led_bloom) {
+		activity_led_bloom->SetClass("active", _active);
+	}
 }
 
 void Interface::set_hdd_active(bool _active)
@@ -148,80 +151,309 @@ void Interface::set_hdd_active(bool _active)
 	m_status.hdd_led->SetClass("active", _active);
 }
 
-void Interface::floppy_loader_state_cb(FloppyLoader::State _state, int _drive)
+Interface::UIDriveBlock * Interface::create_uidrive_block(Rml::Element *_uidrive_block_el)
 {
-	std::lock_guard<std::mutex> lock(m_floppy.mutex);
-	if(_drive >= 0) {
-		m_floppy.loader[_drive] = _state;
+	return &m_drive_blocks.emplace_back(_uidrive_block_el);
+}
+
+Interface::UIDrive * Interface::UIDriveBlock::create_uidrive(Interface::MachineDrive *_drive,
+		Rml::Element *uidrive_el, Rml::Element *activity_led, Rml::Element *activity_led_bloom,
+		Rml::Element *medium_string, Rml::Element *drive_select)
+{
+	UIDrive *uidrive = &uidrives.emplace_back(this, _drive, uidrive_el,
+			activity_led, activity_led_bloom, medium_string, drive_select);
+	_drive->add_uidrive(uidrive);
+	if(curr_drive == uidrives.end()) {
+		curr_drive = uidrives.begin();
+		uidrive->show();
 	} else {
-		m_floppy.loader[FloppyCtrl::MAX_DRIVES] = _state;
+		uidrive->hide();
 	}
-	m_floppy.event = true;
+	block_el->SetClass("many_drives", (uidrives.size() > 1));
+
+	return uidrive;
+}
+
+void Interface::MachineDrive::add_uidrive(UIDrive *_uidrive)
+{
+	uidrives.push_back(_uidrive);
+}
+
+void Interface::UIDriveBlock::change_drive()
+{
+	if(uidrives.size() < 2) {
+		return;
+	}
+	curr_drive->hide();
+	curr_drive = std::next(curr_drive);
+	if(curr_drive == uidrives.end()) {
+		curr_drive = uidrives.begin();
+	}
+	curr_drive->show();
+}
+
+void Interface::UIDriveBlock::change_drive(std::list<UIDrive>::iterator _to_drive)
+{
+	if(uidrives.size() < 2) {
+		return;
+	}
+	if(curr_drive == _to_drive) {
+		return;
+	}
+	std::list<UIDrive>::iterator uidrive = uidrives.begin();
+	for(; uidrive != uidrives.end(); uidrive++) {
+		if(uidrive->drive == _to_drive->drive) {
+			curr_drive->hide();
+			curr_drive = uidrive;
+			curr_drive->show();
+			break;
+		}
+	}
+}
+
+void Interface::UIDriveBlock::change_drive(std::list<MachineDrive>::iterator _to_drive)
+{
+	if(uidrives.size() < 2) {
+		return;
+	}
+	if(curr_drive->drive == &*_to_drive) {
+		return;
+	}
+	std::list<UIDrive>::iterator uidrive = uidrives.begin();
+	for(; uidrive != uidrives.end(); uidrive++) {
+		if(uidrive->drive == &*_to_drive) {
+			curr_drive->hide();
+			curr_drive = uidrive;
+			curr_drive->show();
+			break;
+		}
+	}
+}
+
+Interface::MachineDrive * Interface::config_floppy(int _id)
+{
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+
+	FloppyCtrl *floppy_ctrl = m_machine->devices().device<FloppyCtrl>();
+	if(!floppy_ctrl) {
+		PDEBUGF(LOG_V0, LOG_GUI, "Interface::config_floppy(): floppy controller not installed.\n");
+		return nullptr;
+	}
+	if(floppy_ctrl->drive_type(_id) == FloppyDrive::FDD_NONE) {
+		return nullptr;
+	}
+
+	MachineDrive *drive = &m_drives.emplace_back();
+	drive->floppy_ctrl = floppy_ctrl;
+	drive->drive_id = _id;
+	drive->label = _id ==  0 ? "A" : "B";
+	if((floppy_ctrl->drive_type(_id) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
+		drive->drive_type = GUIDrivesFX::FDD_5_25;
+	} else {
+		drive->drive_type = GUIDrivesFX::FDD_3_5;
+	}
+
+	floppy_ctrl->register_activity_cb(_id, std::bind(&Interface::floppy_activity_cb, this,
+			_1, _2, drive));
+
+	return &m_drives.back();
+}
+
+Interface::MachineDrive * Interface::config_cdrom(int _num)
+{
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+
+	StorageCtrl *ata = m_machine->devices().device<StorageCtrl_ATA>();
+	if(!ata) {
+		return nullptr;
+	}
+	int num = 0;
+	for(int id = 0; id < ata->installed_devices(); id++) {
+		StorageDev *dev = ata->get_device(id);
+		if(dev->category() == StorageDev::DEV_CDROM) {
+			if(num == _num) {
+				MachineDrive *drive = &m_drives.emplace_back();
+				drive->storage_ctrl = ata;
+				drive->drive_id = id;
+				drive->drive_type = GUIDrivesFX::CDROM;
+				drive->cdrom = dynamic_cast<CdRomDrive*>(dev);
+				if(m_audio_enabled) {
+					drive->cdrom->set_durations(
+						m_drives_audio.duration_us(GUIDrivesFX::CDROM, GUIDrivesFX::EJECT),
+						m_drives_audio.duration_us(GUIDrivesFX::CDROM, GUIDrivesFX::INSERT)
+					);
+				}
+				assert(drive->cdrom);
+				if(_num == 0) {
+					drive->label = "CD";
+				} else {
+					drive->label = str_format("CD%d", _num+1);
+				}
+				drive->cdrom->register_activity_cb(uintptr_t(this), std::bind(&Interface::cdrom_activity_cb, this,
+						std::placeholders::_1, std::placeholders::_2, drive));
+				drive->led_on_timer = m_gui->timers().register_timer(std::bind(&Interface::cdrom_led_timer, this, _1, drive),
+						str_format("CD-ROM %d LED", _num));
+				return &m_drives.back();
+			}
+			num++;
+		}
+	}
+	return nullptr;
+}
+
+void Interface::floppy_activity_cb(FloppyEvents::EventType _what, uint8_t _drive_idx, MachineDrive *_drive)
+{
+	assert(!m_drives.empty());
+	// FDDs: LED turns on when the drive's motor is on
+	// 1. the drive sets activity according to motor, 
+	// 2. in the update(): if led_activity then LED on, otherwise off
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+	MachineDrive *drive = _drive;
+	if(!drive) {
+		for(auto &d : m_drives) {
+			if(d.floppy_ctrl && d.drive_id == _drive_idx) {
+				drive = &d;
+				break;
+			}
+		}
+	}
+	if(drive) {
+		switch(_what) {
+			case FloppyEvents::EVENT_MOTOR_ON:
+				drive->led_activity = 1;
+				break;
+			case FloppyEvents::EVENT_MOTOR_OFF:
+				drive->led_activity = 0;
+				break;
+			default:
+				break;
+		}
+		drive->floppy_event_type = _what;
+		drive->event = true;
+	}
+}
+
+void Interface::cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration, MachineDrive *_drive)
+{
+	assert(!m_drives.empty());
+	// CD-ROMs: blinking LED with a 0.5s cycle
+	// 1. the drive sets led_activity when a sector is read
+	// 2. in the update(): LED on, timer is started with a 0.25s timeout 
+	// first timer timeout: LED off, timer restart with 0.25s sec
+	// second timeout: led_activity reduced by 0.5s, check if there's led_activity, if true repeat
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+	if(int64_t(_duration) > _drive->led_activity) {
+		_drive->led_activity += _duration;
+	} else if(_what == CdRomDrive::EVENT_POWER_OFF) {
+		_drive->led_activity = 0;
+	}
+	_drive->event = true;
+	if(_drive->cd_event_type == CdRomDrive::EVENT_MEDIUM) {
+		// EVENT_MEDIUM has the lowest priority
+		_drive->cd_event_type = _what;
+	}
+	// this is the Machine thread, don't play sounds here 
+}
+
+std::vector<const char*> Interface::MachineDrive::compatible_file_extensions()
+{
+	if(floppy_ctrl) {
+		return floppy_ctrl->get_compatible_file_extensions();
+	} else {
+		return CdRomDisc_Image::get_compatible_file_extensions();
+	}
+}
+
+std::vector<unsigned> Interface::MachineDrive::compatible_file_types()
+{
+	std::vector<unsigned> filetypes;
+	switch(drive_type) {
+		case GUIDrivesFX::FDD_3_5:
+		case GUIDrivesFX::FDD_5_25: {
+			FloppyDrive::Type floppy_drive = floppy_ctrl->drive_type(drive_id);
+			unsigned dens_drive = (floppy_drive & FloppyDisk::DENS_MASK) >> FloppyDisk::DENS_SHIFT;
+			unsigned dens_mask = FloppyDisk::DENS_MASK >> FloppyDisk::DENS_SHIFT;
+			unsigned dens_cur = 1;
+			while(dens_cur & dens_mask) {
+				if(dens_drive & dens_cur) {
+					unsigned type_value = (floppy_drive & FloppyDisk::SIZE_MASK) | (dens_cur << FloppyDisk::DENS_SHIFT);
+					type_value |= FileSelect::FILE_FLOPPY_DISK;
+					filetypes.push_back(type_value);
+				}
+				dens_cur <<= 1;
+			}
+			break;
+		}
+		case GUIDrivesFX::CDROM:
+			filetypes.push_back(FileSelect::FILE_OPTICAL_DISC);
+			break;
+		default:
+			break;
+	}
+	return filetypes;
+}
+
+void Interface::config_changing()
+{
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+
+	for(auto &block : m_drive_blocks) {
+		if(block.block_el) {
+			block.block_el->SetInnerRML("");
+		}
+	}
+	m_drive_blocks.clear();
+
+	remove_drives();
+}
+
+void Interface::remove_drives()
+{
+	for(auto &drive : m_drives) {
+		if(drive.led_on_timer != NULL_TIMER_ID) {
+			m_gui->timers().unregister_timer(drive.led_on_timer);
+		}
+	}
+	m_drives.clear();
+	m_curr_drive = m_drives.end();
 }
 
 void Interface::config_changed(bool _startup)
 {
-	m_floppy.present = false;
-	m_floppy.changed = false;
-	m_floppy.curr_drive = 0;
-	m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
-
-	set_floppy_string("");
-	set_floppy_active(false);
-	set_floppy_config(false);
 	m_fs->hide();
 
-	m_floppy.ctrl = m_machine->devices().device<FloppyCtrl>();
-	if(m_floppy.ctrl) {
-		auto insert_floppy = [this](unsigned _drive, const char *_cfg_section) {
-			std::string diskpath = g_program.config().find_media(_cfg_section, DISK_PATH);
-			if(!diskpath.empty() && g_program.config().get_bool(_cfg_section, DISK_INSERTED)) {
-				g_program.config().set_bool(_cfg_section, DISK_INSERTED, false);
-				if(!FileSys::file_exists(diskpath.c_str())) {
-					PERRF(LOG_GUI, "The floppy image specified in [%s] doesn't exist\n", _cfg_section);
-					return;
-				}
-				if(FileSys::is_directory(diskpath.c_str())) {
-					PERRF(LOG_GUI, "The floppy image specified in [%s] can't be a directory\n", _cfg_section);
-					return;
-				}
-				bool wp = g_program.config().get_bool(_cfg_section, DISK_READONLY);
-				// don't play "insert" audio sample
-				m_machine->cmd_insert_floppy(_drive, diskpath, wp, nullptr);
-			}
-		};
-		if(_startup) {
-			if(m_floppy.ctrl->drive_type(0) != FloppyDrive::FDD_NONE) {
-				insert_floppy(0, DISK_A_SECTION);
-			}
-			if(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE) {
-				insert_floppy(1, DISK_B_SECTION);
-			}
-		}
-		set_floppy_config(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE);
-		if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
-			m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
-		} else {
-			m_floppy.curr_drive_type = GUIDrivesFX::FDD_3_5;
-		}
+	MachineDrive *drive_a = config_floppy(0);
+	MachineDrive *drive_b = config_floppy(1);
+	MachineDrive *drive_d = config_cdrom(0);
 
-		m_fs->set_compat_types(
-				get_floppy_types(m_floppy.curr_drive),
-				m_floppy.ctrl->get_compatible_file_extensions(),
-				m_floppy.ctrl->get_compatible_formats(),
-				!m_floppy.ctrl->can_use_any_floppy());
-		if(m_fs->is_current_dir_valid()) {
-			m_fs->reload();
-		}
-	}
+	m_curr_drive = m_drives.begin();
 
-	if(!_startup) {
-		std::lock_guard<std::mutex> lock(m_floppy.mutex);
-		// after a restore any pending FloppyLoader command is ignored
-		for(unsigned i=0; i<FloppyCtrl::MAX_DRIVES; i++) {
-			m_floppy.loader[i] = FloppyLoader::State::IDLE;
+	auto insert_floppy = [this](unsigned _drive, const char *_cfg_section) {
+		std::string diskpath = g_program.config().find_media(_cfg_section, DISK_PATH);
+		if(!diskpath.empty() && g_program.config().get_bool(_cfg_section, DISK_INSERTED)) {
+			g_program.config().set_bool(_cfg_section, DISK_INSERTED, false);
+			if(!FileSys::file_exists(diskpath.c_str())) {
+				PERRF(LOG_GUI, "The floppy image specified in [%s] doesn't exist\n", _cfg_section);
+				return;
+			}
+			if(FileSys::is_directory(diskpath.c_str())) {
+				PERRF(LOG_GUI, "The floppy image specified in [%s] can't be a directory\n", _cfg_section);
+				return;
+			}
+			bool wp = g_program.config().get_bool(_cfg_section, DISK_READONLY);
+			// don't play "insert" audio sample
+			m_machine->cmd_insert_floppy(_drive, diskpath, wp, nullptr);
 		}
-		m_floppy.event = true;
+	};
+
+	if(_startup) {
+		// floppy disks are inserted by the GUI, cdroms by the drive
+		if(drive_a) {
+			insert_floppy(0, DISK_A_SECTION);
+		}
+		if(drive_b) {
+			insert_floppy(1, DISK_B_SECTION);
+		}
 	}
 
 	set_hdd_active(false);
@@ -240,7 +472,7 @@ void Interface::config_changed(bool _startup)
 	PINFOF(LOG_V0, LOG_GUI, "Installed a %s monitor\n", is_mono?"monochrome":"color");
 }
 
-void Interface::set_floppy_string(std::string _filename)
+void Interface::UIDrive::set_medium_string(std::string _filename)
 {
 	if(!_filename.empty()) {
 		size_t pos = _filename.rfind(FS_SEP);
@@ -248,14 +480,120 @@ void Interface::set_floppy_string(std::string _filename)
 			_filename = _filename.substr(pos+1);
 		}
 	}
-	m_status.fdd_disk->SetInnerRML(_filename.c_str());
+	medium_string->SetInnerRML(_filename.c_str());
 }
 
-void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
+void Interface::UIDrive::update_medium_status()
 {
-	if(!m_floppy.ctrl) {
-		return;
+	if(drive->drive_type == GUIDrivesFX::CDROM) {
+		if(g_program.config().get_bool(DISK_CD_SECTION, DISK_INSERTED)) {
+			uidrive_el->SetClass("door_open", false);
+			set_medium_string(g_program.config().get_file(DISK_CD_SECTION, DISK_PATH, FILE_TYPE_USER));
+		} else {
+			assert(drive->cdrom);
+			set_medium_string("");
+			uidrive_el->SetClass("door_open", drive->cdrom->is_door_open());
+		}
+	} else {
+		switch(drive->floppy_event_type) {
+			case FloppyEvents::EVENT_DISK_LOADING:
+				uidrive_el->SetClass("with_medium", false);
+				set_medium_string("Loading...");
+				break;
+			case FloppyEvents::EVENT_DISK_SAVING:
+				uidrive_el->SetClass("with_medium", false);
+				set_medium_string("Saving...");
+				break;
+			default:
+				const char *section = drive->drive_id ? DISK_B_SECTION : DISK_A_SECTION;
+				if(g_program.config().get_bool(section, DISK_INSERTED)) {
+					uidrive_el->SetClass("with_medium", true);
+					set_medium_string(g_program.config().get_file(section, DISK_PATH, FILE_TYPE_USER));
+				} else {
+					uidrive_el->SetClass("with_medium", false);
+					set_medium_string("");
+				}
+				break;
+		}
 	}
+}
+
+Rml::ElementPtr Interface::create_uidrive_el(MachineDrive *_drive, UIDriveBlock *_block)
+{
+	/*
+	 <div class="uidrive">
+		<div class="drive_led"></div>
+		<div class="drive_background"></div>
+		<div class="drive_led_bloom"></div>
+		<div class="drive_select"></div>
+		<div class="drive_medium"></div>
+		<div class="drive_mount"></div>
+		<div class="drive_eject"></div>
+	</div>
+	 */
+	Rml::ElementPtr uidrive_el = m_wnd->CreateElement("div");
+	uidrive_el->SetClassNames("uidrive");
+	switch(_drive->drive_type) {
+		case GUIDrivesFX::FDD_5_25:
+			uidrive_el->SetClass("fdd_5_25", true);
+			break;
+		case GUIDrivesFX::FDD_3_5:
+			uidrive_el->SetClass("fdd_3_5", true);
+			break;
+		case GUIDrivesFX::CDROM:
+			uidrive_el->SetClass("cdrom", true);
+			break;
+		default:
+			break;
+	}
+
+	Rml::ElementPtr drive_led = m_wnd->CreateElement("div");
+	drive_led->SetClassNames("drive_led");
+	Rml::ElementPtr drive_background = m_wnd->CreateElement("div");
+	drive_background->SetClassNames("drive_background");
+	Rml::ElementPtr drive_led_bloom = m_wnd->CreateElement("div");
+	drive_led_bloom->SetClassNames("drive_led_bloom");
+	Rml::ElementPtr drive_select = m_wnd->CreateElement("div");
+	drive_select->SetClassNames(str_format("drive_select %s", _drive->label.c_str()));
+	Rml::ElementPtr drive_medium = m_wnd->CreateElement("div");
+	drive_medium->SetClassNames("drive_medium");
+	Rml::ElementPtr drive_mount = m_wnd->CreateElement("div");
+	drive_mount->SetClassNames("drive_mount");
+	Rml::ElementPtr drive_eject = m_wnd->CreateElement("div");
+	drive_eject->SetClassNames("drive_eject");
+
+	_block->create_uidrive(
+		_drive,
+		uidrive_el.get(),
+		drive_led.get(),
+		drive_led_bloom.get(),
+		drive_medium.get(),
+		drive_select.get()
+	);
+
+	register_target_cb(drive_select.get(), "click",
+		std::bind(&Interface::on_drive_select, this, _1, _block));
+	register_target_cb(drive_mount.get(), "click",
+		std::bind(&Interface::on_medium_mount, this, _1, _drive));
+	register_target_cb(drive_medium.get(), "click",
+		std::bind(&Interface::on_medium_mount, this, _1, _drive));
+	register_target_cb(drive_eject.get(), "click",
+		std::bind(&Interface::on_medium_button, this, _1, _drive));
+
+	uidrive_el->AppendChild(std::move(drive_led));
+	uidrive_el->AppendChild(std::move(drive_background));
+	uidrive_el->AppendChild(std::move(drive_led_bloom));
+	uidrive_el->AppendChild(std::move(drive_select));
+	uidrive_el->AppendChild(std::move(drive_mount));
+	uidrive_el->AppendChild(std::move(drive_medium));
+	uidrive_el->AppendChild(std::move(drive_eject));
+
+	return uidrive_el;
+}
+
+void Interface::on_medium_select(std::string _img_path, bool _write_protect, MachineDrive *_drive)
+{
+	// called after the user selects an image to mount from the file selector
 
 	m_fs->hide();
 
@@ -265,7 +603,12 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		return;
 	}
 
-	const char *drive_section = m_floppy.curr_drive ? DISK_B_SECTION : DISK_A_SECTION;
+	const char *drive_section;
+	if(_drive->drive_type == GUIDrivesFX::CDROM) {
+		drive_section = DISK_CD_SECTION;
+	} else {
+		drive_section = _drive->drive_id ? DISK_B_SECTION : DISK_A_SECTION;
+	}
 	if(g_program.config().get_bool(drive_section, DISK_INSERTED)) {
 		if(FileSys::is_same_file(_img_path.c_str(),
 				g_program.config().get_file(drive_section, DISK_PATH, FILE_TYPE_USER).c_str())) {
@@ -274,61 +617,106 @@ void Interface::on_floppy_mount(std::string _img_path, bool _write_protect)
 		}
 	}
 
-	if(m_floppy.ctrl->drive_type(1) != FloppyDrive::FDD_NONE) {
-		//check if the same image file is already mounted on drive A
-		const char *other_section = m_floppy.curr_drive ? DISK_A_SECTION : DISK_B_SECTION;
+	if(_drive->floppy_ctrl && _drive->floppy_ctrl->drive_type(1) != FloppyDrive::FDD_NONE) {
+		// check if the same image file is already mounted on drive A
+		const char *other_section = _drive->drive_id ? DISK_A_SECTION : DISK_B_SECTION;
 		if(g_program.config().get_bool(other_section, DISK_INSERTED)) {
 			if(FileSys::is_same_file(_img_path.c_str(),
 					g_program.config().get_file(other_section, DISK_PATH, FILE_TYPE_USER).c_str())) {
 					PERRF(LOG_GUI, "Can't mount '%s' on drive %s because it's already mounted on drive %s\n",
-							_img_path.c_str(), m_floppy.curr_drive?"B":"A", m_floppy.curr_drive?"A":"B");
+							_img_path.c_str(), _drive->drive_id?"B":"A", _drive->drive_id?"A":"B");
 					return;
 			}
 		}
 	}
 
-	PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on floppy %s %s\n", _img_path.c_str(),
-			m_floppy.curr_drive?"B":"A", _write_protect?"(write protected)":"");
+	if(_drive->drive_type == GUIDrivesFX::CDROM) {
+		PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on CD-ROM drive %s\n", _img_path.c_str(), _drive->label.c_str());
+		m_machine->cmd_insert_cdrom(_drive->drive_id, _img_path);
+	} else {
+		PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on floppy %s %s\n", _img_path.c_str(),
+				_drive->drive_id?"B":"A", _write_protect?"(write protected)":"");
+		m_machine->cmd_eject_floppy(_drive->drive_id, nullptr);
+		m_machine->cmd_insert_floppy(_drive->drive_id, _img_path, _write_protect, [=](bool result) {
+			// Machine thread here
+			// "insert" audio sample plays only when floppy is confirmed inserted
+			if(result && m_audio_enabled) {
+				m_drives_audio.use_drive(_drive->drive_type, GUIDrivesFX::INSERT);
+			}
+			floppy_activity_cb(FloppyEvents::EVENT_MEDIUM, -1, _drive);
+		});
+	}
+}
 
-	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
-	m_machine->cmd_insert_floppy(m_floppy.curr_drive, _img_path, _write_protect, [=](bool result) {
-		// Machine thread here
-		// "insert" audio sample plays only when floppy is confirmed inserted
-		if(result && m_audio_enabled) {
-			m_drives_audio.use_floppy(m_floppy.curr_drive_type, GUIDrivesFX::FLOPPY_INSERT);
+void Interface::cdrom_led_timer(uint64_t, MachineDrive *_drive)
+{
+	// first timer timeout: LED off, timer restart with 0.25 sec
+	if(_drive->led_on) {
+		for(auto uidrive : _drive->uidrives) {
+			uidrive->set_led(false);
 		}
-	});
-
+		m_gui->timers().activate_timer(_drive->led_on_timer, CDROM_LED_BLINK_TIME, false);
+		_drive->led_on = false;
+	} else {
+		// second timeout: check the activity, if positive repeat
+		std::lock_guard<std::mutex> lock(m_drives_mutex);
+		_drive->led_activity -= CDROM_LED_BLINK_TIME * 2;
+		if(_drive->led_activity > 0) {
+			m_gui->timers().activate_timer(_drive->led_on_timer, CDROM_LED_BLINK_TIME, false);
+			for(auto uidrive : _drive->uidrives) {
+				uidrive->set_led(true);
+			}
+			_drive->led_on = true;
+		} else {
+			_drive->led_activity = 0;
+		}
+	}
 }
 
 void Interface::update()
 {
-	if(m_floppy.ctrl) {
-		bool motor = m_floppy.ctrl->is_motor_on(m_floppy.curr_drive);
-		if(motor && m_leds.fdd==false) {
-			set_floppy_active(true);
-		} else if(!motor && m_leds.fdd==true) {
-			set_floppy_active(false);
-		}
-		bool present = m_floppy.ctrl->is_media_present(m_floppy.curr_drive);
-		bool changed = m_floppy.ctrl->has_disk_changed(m_floppy.curr_drive);
-		if(present && (m_floppy.present==false || m_floppy.changed!=changed)) {
-			m_floppy.changed = changed;
-			m_floppy.present = true;
-			update_floppy_string(m_floppy.curr_drive);
-		} else if(!present && m_floppy.present==true) {
-			m_floppy.present = false;
-			update_floppy_string(m_floppy.curr_drive);
+	{ // removable media drives
+	std::lock_guard<std::mutex> lock(m_drives_mutex);
+	for(auto &drive : m_drives) {
+		if(drive.drive_type == GUIDrivesFX::CDROM) {
+			// LED on, a timer is started with a 0.25s timeout,
+			if(drive.led_activity && !m_gui->timers().is_timer_active(drive.led_on_timer)) {
+				for(auto uidrive : drive.uidrives) {
+					uidrive->set_led(true);
+				}
+				m_gui->timers().activate_timer(drive.led_on_timer, CDROM_LED_BLINK_TIME, false);
+				drive.led_on = true;
+			}
 		} else {
-			std::lock_guard<std::mutex> lock(m_floppy.mutex);
-			if(m_floppy.event) {
-				update_floppy_string(m_floppy.curr_drive);
-				m_floppy.event = false;
+			// floppy drive, LED on/off by motor activity
+			if(drive.led_on != drive.led_activity) {
+				for(auto uidrive : drive.uidrives) {
+					uidrive->set_led(drive.led_activity);
+				}
+				drive.led_on = drive.led_activity;
 			}
 		}
+		if(drive.event) {
+			// medium and drive events
+			for(auto uidrive : drive.uidrives) {
+				if(drive.cd_event_type != CdRomDrive::EVENT_MEDIUM && m_audio_enabled) {
+					if(drive.cd_event_type == CdRomDrive::EVENT_DOOR_CLOSING) {
+						m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::INSERT);
+					} else if(drive.cd_event_type == CdRomDrive::EVENT_DOOR_OPENING) {
+						m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::EJECT);
+					}
+				}
+				uidrive->update_medium_status();
+			}
+			drive.event = false;
+			drive.cd_event_type = CdRomDrive::EVENT_MEDIUM;
+			drive.floppy_event_type = FloppyEvents::EVENT_MEDIUM;
+		}
 	}
+	} // lock_guard
 
 	if(m_hdd) {
+		// Hard Disc Drive
 		bool hdd_busy = m_hdd->is_busy();
 		if(hdd_busy && m_leds.hdd==false) {
 			set_hdd_active(true);
@@ -337,6 +725,7 @@ void Interface::update()
 		}
 	}
 
+	// Power LED
 	if(m_machine->is_on() && m_leds.power==false) {
 		m_leds.power = true;
 		m_screen->params.poweron = true;
@@ -348,7 +737,8 @@ void Interface::update()
 		m_screen->params.updated = true;
 		m_buttons.power->SetClass("active", false);
 	}
-	
+
+	// Speed indicator
 	if(m_machine->is_on()) {
 		if(m_machine->is_paused()) {
 			m_speed->SetClass("warning", false);
@@ -381,7 +771,8 @@ void Interface::update()
 	} else {
 		m_speed->SetProperty("visibility", "hidden");
 	}
-	
+
+	// Child windows
 	m_fs->update();
 	m_state_load->update();
 	m_state_save->update();
@@ -405,128 +796,91 @@ void Interface::show_message(const char* _mex)
 	}
 }
 
-void Interface::on_fdd_select(Rml::Event &)
+bool Interface::on_drive_select(Rml::Event &, UIDriveBlock *_block)
 {
-	if(!m_floppy.ctrl) {
-		return;
-	}
-	m_status.fdd_disk->SetInnerRML("");
-	if(m_floppy.curr_drive == 0) {
-		m_floppy.curr_drive = 1;
-		m_floppy.changed = m_floppy.ctrl->has_disk_changed(1);
-		m_buttons.fdd_select->SetClass("a", false);
-		m_buttons.fdd_select->SetClass("b", true);
-	} else {
-		m_floppy.curr_drive = 0;
-		m_floppy.changed = m_floppy.ctrl->has_disk_changed(0);
-		m_buttons.fdd_select->SetClass("a", true);
-		m_buttons.fdd_select->SetClass("b", false);
-	}
-	if((m_floppy.ctrl->drive_type(m_floppy.curr_drive) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
-		m_floppy.curr_drive_type = GUIDrivesFX::FDD_5_25;
-	} else {
-		m_floppy.curr_drive_type = GUIDrivesFX::FDD_3_5;
-	}
-	m_floppy.event = true;
-	m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
-	m_fs->set_compat_types(
-			get_floppy_types(m_floppy.curr_drive),
-			m_floppy.ctrl->get_compatible_file_extensions(),
-			m_floppy.ctrl->get_compatible_formats(),
-			!m_floppy.ctrl->can_use_any_floppy());
-	m_fs->reload();
-}
+	assert(_block);
+	_block->change_drive();
 
-void Interface::on_fdd_eject(Rml::Event &)
-{
-	if(!m_floppy.ctrl) {
-		return;
-	}
-	if(!m_floppy.ctrl->is_media_present(m_floppy.curr_drive)) {
-		return;
-	}
-	m_machine->cmd_eject_floppy(m_floppy.curr_drive, nullptr);
-	// "eject" audio sample plays now
-	if(m_audio_enabled) {
-		m_drives_audio.use_floppy(m_floppy.curr_drive_type, GUIDrivesFX::FLOPPY_EJECT);
-	}
-}
-
-void Interface::update_floppy_string(unsigned _drive)
-{
-	const char *section = _drive ? DISK_B_SECTION : DISK_A_SECTION;
-
-	if(g_program.config().get_bool(section, DISK_INSERTED)) {
-		set_floppy_string(g_program.config().get_file(section, DISK_PATH, FILE_TYPE_USER));
-	} else {
-		switch(m_floppy.loader[_drive]) {
-			case FloppyLoader::State::LOADING:
-				set_floppy_string("Loading...");
-				break;
-			case FloppyLoader::State::IDLE:
-			default:
-				set_floppy_string("");
-				break;
-		}
-	}
-}
-
-std::vector<unsigned> Interface::get_floppy_types(unsigned _floppy_drive)
-{
-	std::vector<unsigned> types;
-	FloppyDrive::Type drive_type = m_floppy.ctrl->drive_type(_floppy_drive);
-	unsigned dens_drive = (drive_type & FloppyDisk::DENS_MASK) >> FloppyDisk::DENS_SHIFT;
-	unsigned dens_mask = FloppyDisk::DENS_MASK >> FloppyDisk::DENS_SHIFT;
-	unsigned dens_cur = 1;
-	while(dens_cur & dens_mask) {
-		if(dens_drive & dens_cur) {
-			types.push_back((drive_type & FloppyDisk::SIZE_MASK) | (dens_cur << FloppyDisk::DENS_SHIFT));
-		}
-		dens_cur <<= 1;
-	}
-	return types;
-}
-
-void Interface::on_fdd_mount(Rml::Event &)
-{
-	if(!m_floppy.ctrl) {
-		show_message("floppy drives not present");
-		return;
+	for(auto &block : m_drive_blocks) {
+		block.change_drive(_block->curr_drive);
 	}
 
-	std::string floppy_dir;
-
-	if(m_floppy.curr_drive == 0) {
-		if(g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED)) {
-			floppy_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
-		}
-	} else {
-		if(g_program.config().get_bool(DISK_B_SECTION, DISK_INSERTED)) {
-			floppy_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
+	std::list<MachineDrive>::iterator drive = m_drives.begin();
+	for(; drive != m_drives.end(); drive++) {
+		if(&*drive == _block->curr_drive->drive) {
+			m_curr_drive = drive;
 		}
 	}
 
-	if(!floppy_dir.empty()) {
-		size_t pos = floppy_dir.rfind(FS_SEP);
-		if(pos == std::string::npos) {
-			floppy_dir = "";
+	return true;
+}
+
+bool Interface::on_medium_button(Rml::Event &, MachineDrive *_drive)
+{
+	switch(_drive->drive_type) {
+		case GUIDrivesFX::FDD_5_25:
+		case GUIDrivesFX::FDD_3_5:
+			if(!g_program.config().get_bool(
+					_drive->drive_id == 0 ? DISK_A_SECTION : DISK_B_SECTION, DISK_INSERTED)) {
+				return true;
+			}
+			m_machine->cmd_eject_floppy(_drive->drive_id, [=](bool) {
+				floppy_activity_cb(FloppyEvents::EVENT_DISK_EJECTED, -1, _drive);
+			});
+			// "eject" audio sample plays now
+			if(m_audio_enabled) {
+				m_drives_audio.use_drive(_drive->drive_type, GUIDrivesFX::EJECT);
+			}
+			break;
+		case GUIDrivesFX::CDROM:
+			// door open fx will play in the update()
+			m_machine->cmd_toggle_cdrom_door(_drive->drive_id);
+			break;
+		default:
+			break;
+	}
+	return true;
+}
+
+bool Interface::on_medium_mount(Rml::Event &, MachineDrive *_drive)
+{
+	std::string media_dir;
+
+	if(_drive->drive_type == GUIDrivesFX::CDROM) {
+		media_dir = g_program.config().find_media(DISK_CD_SECTION, DISK_PATH);
+	} else {
+		if(_drive->drive_id == 0) {
+			if(g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED)) {
+				media_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
+			}
 		} else {
-			floppy_dir = floppy_dir.substr(0,pos);
+			if(g_program.config().get_bool(DISK_B_SECTION, DISK_INSERTED)) {
+				media_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
+			}
 		}
 	}
-	if(floppy_dir.empty()) {
+
+	if(!media_dir.empty()) {
+		size_t pos = media_dir.rfind(FS_SEP);
+		if(pos == std::string::npos) {
+			media_dir = "";
+		} else {
+			media_dir = media_dir.substr(0,pos);
+		}
+	}
+	if(media_dir.empty()) {
 		// the file select dialog contains a valid media/home directory
 		// the file select dialog always exists, even when native dialogs are set
 		if(m_fs->is_current_dir_valid()) {
-			floppy_dir = m_fs->get_current_dir();
+			media_dir = m_fs->get_current_dir();
 		} else {
-			floppy_dir = m_fs->get_home();
+			media_dir = m_fs->get_home();
 		}
 	}
-	
+
 	if(g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_TYPE, "custom") == "native") {
-		floppy_dir += "/";
-		auto filter_patterns = m_floppy.ctrl->get_compatible_file_extensions();
+		media_dir += "/";
+		auto filter_patterns = _drive->compatible_file_extensions();
 		std::vector<std::string> patt;
 		for(auto e : filter_patterns) {
 			patt.push_back(str_format("*%s", e));
@@ -545,27 +899,50 @@ void Interface::on_fdd_mount(Rml::Event &)
 		tinyfd_winUtf8 = 1;
 #endif
 		const char *openfile = tinyfd_openFileDialog(
-			str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A").c_str(),
-			floppy_dir.c_str(),
+			str_format("Image for drive %s", _drive->label.c_str()).c_str(),
+			media_dir.c_str(),
 			filter_patterns.size(),
 			&filter_patterns[0],
-			std::string("Floppy disk (" + str_implode(filter_patterns) + ")").c_str(),
+			std::string("Disc image (" + str_implode(filter_patterns) + ")").c_str(),
 			0 // aAllowMultipleSelects
 		);
 		if(openfile) {
-			on_floppy_mount(openfile, false);
+			on_medium_select(openfile, false, _drive);
 		}
 	} else {
+		if(_drive->drive_type == GUIDrivesFX::CDROM) {
+			m_fs->set_features(nullptr, nullptr, false);
+			m_fs->set_compat_types(
+				_drive->compatible_file_types(),
+				_drive->compatible_file_extensions()
+			);
+		} else {
+			m_fs->set_features(
+				std::bind(&Interface::create_new_floppy_image, this, _1, _2, _3, _4),
+				get_filesel_info,
+				true
+			);
+			m_fs->set_compat_types(
+				_drive->compatible_file_types(),
+				_drive->compatible_file_extensions(),
+				_drive->floppy_ctrl->get_compatible_formats(),
+				!_drive->floppy_ctrl->can_use_any_floppy()
+			);
+		}
 		try {
-			if(m_fs->get_current_dir() != floppy_dir) {
-				m_fs->set_current_dir(floppy_dir);
+			if(m_fs->get_current_dir() != media_dir) {
+				m_fs->set_current_dir(media_dir);
 			}
 		} catch(...) {
 			m_fs->set_current_dir(m_fs->get_home());
 		}
-		m_fs->set_title(str_format("Floppy image for drive %s", m_floppy.curr_drive?"B":"A"));
+		m_fs->set_title(str_format("Image for drive %s", _drive->label.c_str()));
+		m_fs->set_select_callbk(std::bind(&Interface::on_medium_select, this, _1, _2, _drive));
+		m_fs->reload();
 		m_fs->show();
 	}
+
+	return true;
 }
 
 void Interface::reset_savestate_dialogs(std::string _dir)
@@ -697,6 +1074,39 @@ void Interface::on_printer(Rml::Event &)
 void Interface::on_dblclick(Rml::Event &)
 {
 	m_gui->toggle_fullscreen();
+}
+
+void Interface::drive_medium_mount()
+{
+	if(m_curr_drive != m_drives.end()) {
+		Rml::Event e;
+		on_medium_mount(e, &*m_curr_drive);
+	}
+}
+
+void Interface::drive_medium_eject()
+{
+	if(m_curr_drive != m_drives.end()) {
+		Rml::Event e;
+		on_medium_button(e, &*m_curr_drive);
+	}
+}
+
+void Interface::drive_select()
+{
+	if(m_drives.size() < 2) {
+		return;
+	}
+	if(m_curr_drive != m_drives.end()) {
+		m_curr_drive = std::next(m_curr_drive);
+		if(m_curr_drive == m_drives.end()) {
+			m_curr_drive = m_drives.begin();
+		}
+	}
+	for(auto &block : m_drive_blocks) {
+		block.change_drive(m_curr_drive);
+	}
+	m_gui->show_message(str_format("Drive %s selected", m_curr_drive->label.c_str()));
 }
 
 void Interface::save_state(StateRecord::Info _info)

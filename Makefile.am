@@ -65,35 +65,38 @@ share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \
 share/ibmulator/gui/icons/cross.png \
 share/ibmulator/gui/icons/descending.png \
-share/ibmulator/gui/icons/disk.png \
-share/ibmulator/gui/icons/disk_active.png \
 share/ibmulator/gui/icons/dotted_grip_corner.png \
 share/ibmulator/gui/icons/down.png \
+share/ibmulator/gui/icons/drive_letter_A.png \
+share/ibmulator/gui/icons/drive_letter_B.png \
+share/ibmulator/gui/icons/drive_letter_CD.png \
 share/ibmulator/gui/icons/eject.png \
 share/ibmulator/gui/icons/exit.png \
 share/ibmulator/gui/icons/file_select.png \
+share/ibmulator/gui/icons/floppy_3_5_active.png \
+share/ibmulator/gui/icons/floppy_3_5.png \
+share/ibmulator/gui/icons/floppy_5_25_active.png \
+share/ibmulator/gui/icons/floppy_5_25.png \
 share/ibmulator/gui/icons/gear.png \
 share/ibmulator/gui/icons/grid.png \
-share/ibmulator/gui/icons/floppy-5.25-c.png \
-share/ibmulator/gui/icons/floppy-5.25-c-active.png \
-share/ibmulator/gui/icons/hdd-c.png \
-share/ibmulator/gui/icons/hdd-c-active.png \
+share/ibmulator/gui/icons/hdd_active.png \
+share/ibmulator/gui/icons/hdd.png \
 share/ibmulator/gui/icons/home.png \
 share/ibmulator/gui/icons/info.png \
 share/ibmulator/gui/icons/list.png \
 share/ibmulator/gui/icons/pause.png \
-share/ibmulator/gui/icons/printer.png \
-share/ibmulator/gui/icons/power.png \
 share/ibmulator/gui/icons/power_active.png \
+share/ibmulator/gui/icons/power.png \
+share/ibmulator/gui/icons/printer.png \
 share/ibmulator/gui/icons/reload.png \
 share/ibmulator/gui/icons/restore.png \
 share/ibmulator/gui/icons/restore_up.png \
-share/ibmulator/gui/icons/resume.png \
 share/ibmulator/gui/icons/resume_active.png \
-share/ibmulator/gui/icons/save.png \
+share/ibmulator/gui/icons/resume.png \
 share/ibmulator/gui/icons/save_down.png \
-share/ibmulator/gui/icons/trashcan.png \
+share/ibmulator/gui/icons/save.png \
 share/ibmulator/gui/icons/trashcan_open.png \
+share/ibmulator/gui/icons/trashcan.png \
 share/ibmulator/gui/icons/up.png \
 share/ibmulator/gui/icons/warning.png
 
@@ -115,28 +118,42 @@ share/ibmulator/gui/icons/debugger/update.png
 guiimagesdir = $(pkgdatadir)/gui/images
 dist_guiimages_DATA = \
 share/ibmulator/gui/images/drives.png \
-share/ibmulator/gui/images/romshell_button.png \
-share/ibmulator/gui/images/romshell_datagridcell.png \
-share/ibmulator/gui/images/romshell_datagrid.png \
-share/ibmulator/gui/images/romshell_datagrid_rl.png \
-share/ibmulator/gui/images/romshell_scroller.png \
-share/ibmulator/gui/images/sysunit_3_5_disk_g.png \
-share/ibmulator/gui/images/sysunit_3_5_disk_r.png \
-share/ibmulator/gui/images/sysunit_3_5_no_disk.png \
-share/ibmulator/gui/images/sysunit_5_25_disk_r.png \
-share/ibmulator/gui/images/sysunit_5_25_no_disk.png \
-share/ibmulator/gui/images/realistic_interface.png \
-share/ibmulator/gui/images/realistic_floppy_r.png \
-share/ibmulator/gui/images/realistic_reflection.png \
-share/ibmulator/gui/images/realistic_slider.png \
-share/ibmulator/gui/images/realistic_fdd_led_bloom.png \
-share/ibmulator/gui/images/realistic_floppy_r_dark.png \
+share/ibmulator/gui/images/realistic_cdrom_led_bloom.png \
+share/ibmulator/gui/images/realistic_fdd_3_5_led_bloom.png \
+share/ibmulator/gui/images/realistic_fdd_5_25_led_bloom.png \
 share/ibmulator/gui/images/realistic_hdd_led_bloom.png \
-share/ibmulator/gui/images/realistic_interface_dark.png \
-share/ibmulator/gui/images/realistic_interface_nomonitor.png \
-share/ibmulator/gui/images/realistic_interface_nomonitor_dark.png \
 share/ibmulator/gui/images/realistic_power_led_bloom.png \
-share/ibmulator/gui/images/realistic_slider_dark.png
+share/ibmulator/gui/images/realistic_reflection.png \
+share/ibmulator/gui/images/realistic_slider_dark.png \
+share/ibmulator/gui/images/realistic_slider.png \
+share/ibmulator/gui/images/romshell_button.png \
+share/ibmulator/gui/images/romshell_scroller.png
+
+guiimages2011dir = $(pkgdatadir)/gui/images/2011
+dist_guiimages2011_DATA = \
+share/ibmulator/gui/images/2011/normal_cdrom_open.png \
+share/ibmulator/gui/images/2011/normal_cdrom.png \
+share/ibmulator/gui/images/2011/normal_fdd_3_5_disk.png \
+share/ibmulator/gui/images/2011/normal_fdd_3_5.png \
+share/ibmulator/gui/images/2011/normal_fdd_5_25_disk.png \
+share/ibmulator/gui/images/2011/normal_fdd_5_25.png \
+share/ibmulator/gui/images/2011/normal.png \
+share/ibmulator/gui/images/2011/realistic_cdrom_dark.png \
+share/ibmulator/gui/images/2011/realistic_cdrom_open_dark.png \
+share/ibmulator/gui/images/2011/realistic_cdrom_open.png \
+share/ibmulator/gui/images/2011/realistic_cdrom.png \
+share/ibmulator/gui/images/2011/realistic_dark.png \
+share/ibmulator/gui/images/2011/realistic_fdd_3_5_dark.png \
+share/ibmulator/gui/images/2011/realistic_fdd_3_5_disk_dark.png \
+share/ibmulator/gui/images/2011/realistic_fdd_3_5_disk.png \
+share/ibmulator/gui/images/2011/realistic_fdd_3_5.png \
+share/ibmulator/gui/images/2011/realistic_fdd_5_25_dark.png \
+share/ibmulator/gui/images/2011/realistic_fdd_5_25_disk_dark.png \
+share/ibmulator/gui/images/2011/realistic_fdd_5_25_disk.png \
+share/ibmulator/gui/images/2011/realistic_fdd_5_25.png \
+share/ibmulator/gui/images/2011/realistic_nomonitor_dark.png \
+share/ibmulator/gui/images/2011/realistic_nomonitor.png \
+share/ibmulator/gui/images/2011/realistic.png
 
 commonshadersdir = $(pkgdatadir)/shaders/common
 dist_commonshaders_DATA = \
@@ -188,6 +205,17 @@ share/ibmulator/gui/fonts/ProFontWindows.ttf \
 share/ibmulator/gui/fonts/Ubuntu-Regular.ttf \
 share/ibmulator/gui/fonts/Ubuntu-Bold.ttf \
 share/ibmulator/gui/fonts/UFL.txt
+
+soundscdromdir = $(pkgdatadir)/sounds/cdrom
+dist_soundscdrom_DATA = \
+share/ibmulator/sounds/cdrom/close_tray.wav \
+share/ibmulator/sounds/cdrom/open_tray.wav \
+share/ibmulator/sounds/cdrom/seek_in.wav \
+share/ibmulator/sounds/cdrom/seek_out.wav \
+share/ibmulator/sounds/cdrom/seek_step.wav \
+share/ibmulator/sounds/cdrom/spin_start.wav \
+share/ibmulator/sounds/cdrom/spin_stop.wav \
+share/ibmulator/sounds/cdrom/spin.wav
 
 soundsfloppydir = $(pkgdatadir)/sounds/floppy
 dist_soundsfloppy_DATA = \
@@ -300,7 +328,8 @@ share/ibmulator/extra/SPKRWAV.EXE \
 share/ibmulator/extra/HDDTEST.C \
 share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
-share/ibmulator/extra/MEMDUMP.EXE
+share/ibmulator/extra/MEMDUMP.EXE \
+share/ibmulator/extra/CD-ROM_drivers.img
 
 desktopdir = $(pkgdatadir)/../applications
 dist_desktop_DATA = \

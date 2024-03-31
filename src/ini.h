@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,6 +66,7 @@ public:
 	int try_int(const std::string &section, const std::string &name);
 	int get_int(const std::string &section, const std::string &name);
 	int get_int(const std::string &section, const std::string &name, int _default);
+	int get_int_or_bool(const std::string &section, const std::string &name);
 	double try_real(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name);
 	double get_real(const std::string &section, const std::string &name, double _default);

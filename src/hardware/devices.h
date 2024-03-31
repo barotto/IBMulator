@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -91,6 +91,19 @@ public:
 		}
 		return nullptr;
 	}
+
+	template<class T>
+	std::vector<T*> devices() {
+		std::vector<T*> devs;
+		for(auto &dev : m_devices) {
+			T* devptr = dynamic_cast<T*>(dev.second);
+			if(devptr != nullptr) {
+				devs.push_back(devptr);
+			}
+		}
+		return devs;
+	}
+
 	inline SystemBoard* sysboard() { return m_sysboard; }
 	inline DMA* dma() { return m_dma; }
 	inline PIC* pic() { return m_pic; }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -51,9 +51,12 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_TAKE_SCREENSHOT",       ProgramEvent::FuncName::FUNC_TAKE_SCREENSHOT      },
 	{ "FUNC_TOGGLE_AUDIO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_AUDIO_CAPTURE },
 	{ "FUNC_TOGGLE_VIDEO_CAPTURE",  ProgramEvent::FuncName::FUNC_TOGGLE_VIDEO_CAPTURE },
-	{ "FUNC_INSERT_FLOPPY",         ProgramEvent::FuncName::FUNC_INSERT_FLOPPY        },
-	{ "FUNC_EJECT_FLOPPY",          ProgramEvent::FuncName::FUNC_EJECT_FLOPPY         },
-	{ "FUNC_CHANGE_FLOPPY_DRIVE",   ProgramEvent::FuncName::FUNC_CHANGE_FLOPPY_DRIVE  },
+	{ "FUNC_INSERT_FLOPPY",         ProgramEvent::FuncName::FUNC_INSERT_MEDIUM        },
+	{ "FUNC_EJECT_FLOPPY",          ProgramEvent::FuncName::FUNC_EJECT_MEDIUM         },
+	{ "FUNC_CHANGE_FLOPPY_DRIVE",   ProgramEvent::FuncName::FUNC_CHANGE_DRIVE         },
+	{ "FUNC_INSERT_MEDIUM",         ProgramEvent::FuncName::FUNC_INSERT_MEDIUM        },
+	{ "FUNC_EJECT_MEDIUM",          ProgramEvent::FuncName::FUNC_EJECT_MEDIUM         },
+	{ "FUNC_CHANGE_DRIVE",          ProgramEvent::FuncName::FUNC_CHANGE_DRIVE         },
 	{ "FUNC_SAVE_STATE",            ProgramEvent::FuncName::FUNC_SAVE_STATE           },
 	{ "FUNC_LOAD_STATE",            ProgramEvent::FuncName::FUNC_LOAD_STATE           },
 	{ "FUNC_QUICK_SAVE_STATE",      ProgramEvent::FuncName::FUNC_QUICK_SAVE_STATE     },

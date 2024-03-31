@@ -11,6 +11,7 @@
   * [Floppy disk images](#floppy-disk-images)
     * [High-level raw sector data emulation](#high-level-raw-sector-data-emulation)
     * [Low-level magnetic flux emulation](#low-level-magnetic-flux-emulation)
+  * [CD-ROM drive](#cd-rom-drive)
   * [The GUI](#the-gui)
     * [Modes of operation](#modes-of-operation)
     * [Shaders](#shaders)
@@ -234,6 +235,42 @@ This type is enabled by setting the following option in ibmulator.ini:
 [drives]
 fdc_type=flux
 ```
+
+### CD-ROM drive
+
+IBMulator can emulate an ATAPI CD-ROM drive (PIO mode).
+To install the drive, specify its speed using the following option in
+ibmulator.ini:
+```
+[drives]
+cdrom=4x
+```
+The value of the speed is a multiplicative factor relative to the original
+"1x" speed of 150KB/s (the value is capped to 72x for practical reasons).
+
+The following disc image formats are supported:
+
+* ISO 9660 optical disc image (*.iso)
+
+If you want to insert a CD-ROM disc at program launch use the `[cdrom]` ini
+section.
+
+In order to use the drive under DOS or Windows (pre-95), you also need:
+1. an ATAPI CD-ROM driver loaded in CONFIG.SYS (like VIDE-CDD.SYS),
+2. a CD-ROM extension application run in AUTOEXEC.BAT (such as MSCDEX).
+
+Here's an example configuration that maps the CD-ROM drive to the letter D:
+```
+CONFIG.SYS
+DEVICE=C:\CDROM\VIDE-CDD.SYS /D:MSCD001
+
+AUTOEXEC.BAT
+C:\DOS\MSCDEX.EXE /D:MSCD001 /M:10 /L:D
+```
+
+In the `share/ibmulator/extra` directory of the IBMulator package you can find
+the `CD-ROM_drivers.img` floppy image file with various device drivers you can
+use.
 
 ### The GUI
 
@@ -956,9 +993,9 @@ These are the key bindings defined in the default `keymap.map` file:
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
 * <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture
-* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open the floppy select dialog for the active drive
-* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject the floppy inserted in the active drive
-* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd>: change the active floppy drive (A↔B)
+* <kbd>SHIFT</kbd>+<kbd>F7</kbd>    : open the medium select dialog for the active drive
+* <kbd>CTRL</kbd>+<kbd>F7</kbd>     : eject the medium inserted in the active drive
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd>: change the active drive (A->B->CD)
 * <kbd>SHIFT</kbd>+<kbd>F8</kbd>    : open the save state dialog
 * <kbd>SHIFT</kbd>+<kbd>F9</kbd>    : open the load state dialog
 * <kbd>CTRL</kbd>+<kbd>F8</kbd>     : quick save state

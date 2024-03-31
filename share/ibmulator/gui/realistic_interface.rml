@@ -20,22 +20,21 @@
 		<div id="background"></div>
 		<div id="system">
 			<div id="power_led"></div>
-			<div id="fdd_led"></div>
 			<div id="hdd_led"></div>
 			<div id="sysbkgd"></div>
+
+			<div id="drive_block"></div>
+
 			<div id="hdd_led_bloom"></div>
-			<div id="fdd_led_bloom"></div>
 			<div id="power_led_bloom"></div>
 			<div id="power"></div>
-			<div id="floppy_disk"></div>
+
 			<div class="slider" id="volume_slider"></div>
 			<div class="slider" id="brightness_slider"></div>
 			<div class="slider" id="contrast_slider"></div>
-			<div id="fdd_mount">
-				<div id="fdd_disk"></div>
+			<div id="drive_mount">
+				<div id="drive_disk"></div>
 			</div>
-			<div id="fdd_select" class="a"></div>
-			<div id="fdd_eject"></div>
 		</div>
 		<div id="speed">
 			<div class="warning_icon"></div>

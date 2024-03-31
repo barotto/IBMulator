@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -150,6 +150,12 @@ Rml::Element * Window::get_element(const std::string &_id)
 	return el;
 }
 
+std::string Window::create_id()
+{
+	m_auto_id++;
+	return str_format("Window-%u", m_auto_id);
+}
+
 void Window::register_lazy_update_fn(std::function<void()> _fn)
 {
 	m_lazy_update_fn.push_back(_fn);
@@ -167,7 +173,9 @@ void Window::register_target_cb(Rml::Element *_target, const std::string &_event
 {
 	assert(_target);
 	if(_target->GetId().empty()) {
-		throw std::runtime_error("cannot listen for events on an element without ID");
+		_target->SetId(create_id());
+		PDEBUGF(LOG_V2, LOG_GUI, "Cannot listen for events on an element without an ID, using '%s'\n",
+				_target->GetId().c_str());
 	}
 	PDEBUGF(LOG_V2, LOG_GUI, "Registering target callback on '%s', type '%s'\n",
 					_target->GetId().c_str(), _event_type.c_str());

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,9 +46,6 @@ constexpr float RealisticInterface::ms_zoomin_factors[];
 
 event_map_t RealisticInterface::ms_evt_map = {
 	GUI_EVT( "power",     "click", Interface::on_power ),
-	GUI_EVT( "fdd_select","click", Interface::on_fdd_select ),
-	GUI_EVT( "fdd_eject", "click", Interface::on_fdd_eject ),
-	GUI_EVT( "fdd_mount", "click", Interface::on_fdd_mount ),
 	GUI_EVT( "volume_slider",     "drag",      RealisticInterface::on_volume_drag ),
 	GUI_EVT( "volume_slider",     "dragstart", RealisticInterface::on_dragstart ),
 	GUI_EVT( "brightness_slider", "drag",      RealisticInterface::on_brightness_drag ),
@@ -97,11 +94,8 @@ void RealisticInterface::create()
 	Interface::create();
 
 	m_system = get_element("system");
-	m_floppy_disk = get_element("floppy_disk");
-	m_floppy_disk->SetClass("disk", m_floppy.present);
 	m_led_power = get_element("power_led");
 	m_led_power_bloom = get_element("power_led_bloom");
-	m_led_fdd_bloom = get_element("fdd_led_bloom");
 	m_led_hdd_bloom = get_element("hdd_led_bloom");
 
 	m_volume_slider = get_element("volume_slider");
@@ -339,9 +333,13 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 	m_system->SetProperty("height", str_format("%upx", m_size.y));
 	m_system->SetProperty("top",    str_format("%dpx", system_top));
 
-	unsigned fontsize = m_size.x / 40;
-	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
-	
+	unsigned fontsize = m_size.x / 60;
+	for(auto &block : m_drive_blocks) {
+		for(auto &drive : block.uidrives) {
+			drive.medium_string->SetProperty("font-size", str_format("%upx", fontsize));
+		}
+	}
+
 	if(m_rendering_size == ShaderPreset::monitor) {
 		m_system->SetClass("nomonitor", true);
 	} else {
@@ -352,16 +350,7 @@ void RealisticInterface::container_size_changed(int _width, int _height)
 void RealisticInterface::update()
 {
 	Interface::update();
-	if(m_leds.fdd) {
-		m_led_fdd_bloom->SetClass("active", true);
-	} else {
-		m_led_fdd_bloom->SetClass("active", false);
-	}
-	if(m_floppy.present) {
-		m_floppy_disk->SetClass("present", true);
-	} else {
-		m_floppy_disk->SetClass("present", false);
-	}
+
 	if(m_leds.hdd) {
 		m_led_hdd_bloom->SetClass("active", true);
 	} else {
@@ -377,6 +366,23 @@ void RealisticInterface::update()
 	if(!m_is_dragging) {
 		float vol = m_mixer->volume_cat(MixerChannel::AUDIOCARD);
 		set_slider_value(m_volume_slider, m_volume_left_min, vol, MIXER_MAX_VOLUME);
+	}
+}
+
+void RealisticInterface::config_changed(bool _startup)
+{
+	Interface::config_changed(_startup);
+
+	m_drive_blocks.clear();
+
+	Rml::Element *drive_block_el = get_element("drive_block");
+	drive_block_el->SetInnerRML("");
+
+	UIDriveBlock *drive_block = create_uidrive_block(drive_block_el);
+
+	for(auto &drive : m_drives) {
+		auto uidrive_el = create_uidrive_el(&drive, drive_block);
+		drive_block_el->AppendChild(std::move(uidrive_el));
 	}
 }
 
@@ -484,7 +490,7 @@ void RealisticInterface::on_dragstart(Rml::Event &_event)
 	m_is_dragging = true;
 }
 
-void RealisticInterface::on_dragend(Rml::Event &_event)
+void RealisticInterface::on_dragend(Rml::Event &)
 {
 	m_is_dragging = false;
 }

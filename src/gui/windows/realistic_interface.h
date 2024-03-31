@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,10 +44,8 @@ class RealisticInterface : public Interface
 private:
 
 	Rml::Element *m_system = nullptr,
-	             *m_floppy_disk = nullptr,
 	             *m_led_power = nullptr,
 	             *m_led_power_bloom = nullptr,
-	             *m_led_fdd_bloom = nullptr,
 	             *m_led_hdd_bloom = nullptr;
 
 	Rml::Element *m_volume_slider = nullptr,
@@ -97,6 +95,7 @@ public:
 
 	virtual void create();
 	virtual void update();
+	virtual void config_changed(bool);
 
 	void container_size_changed(int _width, int _height);
 

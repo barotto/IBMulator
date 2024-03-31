@@ -8,7 +8,7 @@
 
 #include "floppydisk.h"
 #include "floppyfx.h"
-
+#include "floppyevents.h"
 
 class FloppyCtrl;
 
@@ -93,13 +93,14 @@ protected:
 		uint64_t boot_time; // boot time or event (for SoundFX)
 	} m_s;
 
+	FloppyEvents::ActivityCbFn m_activity_cb;
+
 public:
 	FloppyDrive();
 	virtual ~FloppyDrive() {}
 
 	void install(FloppyCtrl *_ctrl, int _drive_index, Type _drive_type);
 	void remove();
-	void config_changed();
 	void reset(unsigned _type);
 	void power_off();
 
@@ -163,6 +164,10 @@ public:
 
 	void read_sector(uint8_t _s, uint8_t *buffer, uint32_t bytes);
 	void write_sector(uint8_t _s, const uint8_t *buffer, uint32_t bytes);
+
+	void register_activity_cb(FloppyEvents::ActivityCbFn _cb) {
+		m_activity_cb = _cb;
+	}
 
 protected:
 	void set_type(Type _drive_type);

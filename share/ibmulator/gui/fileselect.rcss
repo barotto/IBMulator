@@ -96,6 +96,7 @@
 	floppy_3_5: 0px 0px 64px 64px;
 	floppy_5_25: 64px 0px 64px 64px;
 	hdd: 192px 0px 64px 64px;
+	cdrom: 256px 0px 64px 64px;
 }
 
 .DIR
@@ -118,9 +119,14 @@
 	decorator: image(hdd);
 }
 
+.cdrom
+{
+	decorator: image(cdrom);
+}
+
 .icon_media
 {
-	decorator: image(icons/disk.png);
+	decorator: image(icons/floppy_3_5.png);
 }
 
 #wprotect
@@ -194,7 +200,7 @@
 
 #home btnicon
 {
-	decorator: image(icons/disk.png);
+	decorator: image(icons/floppy_3_5.png);
 }
 
 #reload btnicon

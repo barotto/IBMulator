@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -52,9 +52,6 @@ private:
 	Rml::Element *m_btn_pause = nullptr;
 	Rml::Element *m_btn_visibility = nullptr;
 	Rml::Element *m_hdd_led_c = nullptr;
-	Rml::Element *m_fdd_mount_c = nullptr;
-	Rml::Element *m_fdd_disk_c = nullptr;
-	Rml::Element *m_fdd_select_c = nullptr;
 	bool m_led_pause = false;
 	ZoomMode m_cur_zoom = ZoomMode::NORMAL;
 
@@ -86,19 +83,13 @@ public:
 private:
 	void set_hdd_active(bool _active);
 
-	void set_floppy_string(std::string _filename);
-	void set_floppy_config(bool _b_present);
-	void set_floppy_active(bool _active);
 	void set_zoom(ZoomMode _zoom);
 	void on_pause(Rml::Event &);
 	void on_save(Rml::Event &);
 	void on_restore(Rml::Event &);
 	void on_exit(Rml::Event &);
 	void on_visibility(Rml::Event &);
-	void on_fdd_select(Rml::Event &);
 	void on_mouse_move(Rml::Event &);
-
-	void update_background();
 
 	void collapse_sysunit(bool _collapsed);
 	bool is_sysunit_collapsed();

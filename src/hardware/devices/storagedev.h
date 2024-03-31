@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,19 +27,24 @@ class StorageCtrl;
 
 struct DrivePerformance
 {
-	float    seek_max;   // Maximum seek time in milliseconds
-	float    seek_trk;   // Track to track seek time in milliseconds
-	unsigned rot_speed;  // Rotational speed in RPM
-	unsigned interleave; // Interleave ratio
+	double seek_max_ms;   // Full stroke (maximum) seek time in milliseconds
+	double seek_trk_ms;   // Track to track seek time in milliseconds
+	double seek_third_ms; // 1/3 stroke seek time in milliseconds
+	double rot_speed;     // Rotational speed in RPM
+	double interleave;    // Interleave ratio
 
 	// these are derived values in microseconds calculated from the above:
-	uint32_t seek_avgspeed_us; // Seek average speed
-	uint32_t seek_overhead_us; // Seek overhead time
-	uint32_t trk2trk_us;  // Seek track to track time
-	uint32_t trk_read_us; // Full track read time
-	uint32_t sec_read_us; // Sector read time
-	uint32_t sec_xfer_us; // Sector transfer time, taking interleave into account
-	uint32_t sec2sec_us;  // Time needed to pass from a sector to the next
+	double seek_avgspeed_us; // Seek average speed
+	double seek_overhead_us; // Seek overhead time
+	double trk2trk_us;       // Seek track to track time
+	double trk_read_us;      // Full track read time
+	double avg_rot_lat_us;   // Average rotational latency
+	double sec_read_us;      // Sector read time
+	double sec_xfer_us;      // Sector transfer time, taking interleave into account
+	double sec2sec_us;       // Time needed to pass from a sector to the next
+	double bytes_per_us;     // Bytes read per microsecond
+
+	void update(const MediaGeometry &_geometry, double _raw_sector_bytes, double _track_overhead_bytes);
 };
 
 /**
@@ -70,23 +75,29 @@ struct DriveIdent
 };
 
 /**
- * Disk storage device class.
- * Can be used to model hard drives, floppy drives and cd-rom drives.
+ * Disk storage device (hard drives, cd-rom drives).
  *
  * Timings are for CAV devices with a constant number of sectors per track.
- * TODO To model a CD-ROM this class must be expanded to consider the CLV mode
- * of operation. MediaGeometry and DrivePerformance also need to be refactored
- * to implement a single linear track.
  */
 class StorageDev
 {
+public:
+	enum DeviceCategory {
+		DEV_NONE,
+		DEV_HDD,
+		DEV_CDROM
+	};
+
 protected:
+	StorageCtrl *m_controller = nullptr;
+	uint8_t m_drive_index = 0;
+	DeviceCategory m_category = DEV_NONE;
 	std::string m_name; // Device name (used for logging)
 	std::string m_path; // File system path to data
 
 	int64_t m_sectors = 0;        // Total number of sectors
 	int m_sector_data = 0;        // Data bytes per sector
-	double m_sector_size = .0;    // Total sector size (data + control fields)
+	double m_sector_size = .0;    // Total sector byte size (data + control fields)
 	double m_sector_len = .0;     // Physical length of a sector relative to a track
 	double m_disk_radius = .0;    // Disk radius in mm
 	double m_track_overhead = .0; // Additional control bytes per track
@@ -102,20 +113,26 @@ protected:
 	MediaGeometry m_geometry = {};
 	DrivePerformance m_performance = {};
 
+	void set_geometry(const MediaGeometry &_geometry, double _raw_sector_bytes, double _track_overhead_bytes);
+
+	bool m_fx_enabled = false;
+
 public:
+	StorageDev(DeviceCategory _category) : m_category(_category) {}
 	virtual ~StorageDev() {}
 
-	virtual void install(StorageCtrl*) {}
+	virtual void install(StorageCtrl *_ctrl, uint8_t _id);
 	virtual void remove() {}
 	virtual void power_on(uint64_t /*_time*/) {}
 	virtual void power_off() {}
-	virtual void config_changed(const char *section);
+	virtual void config_changed(const char * /*ini_section*/) {}
 	virtual void save_state(StateBuf &) {}
 	virtual void restore_state(StateBuf &) {}
 	virtual bool is_read_only() const { return true; }
 	virtual bool is_dirty(bool /*_since_restore*/) const { return false; }
 	virtual void commit() const {}
 
+	DeviceCategory category() const { return m_category; }
 	const char * name() const { return m_name.c_str(); }
 	const char * path() const { return m_path.c_str(); }
 	const char * vendor() const { return m_ident.vendor; }
@@ -125,30 +142,26 @@ public:
 	const char * serial() const { return m_ident.serial; }
 	const char * firmware() const { return m_ident.firmware; }
 
-	bool insert_media(const char */*_path*/) { return false; }
-	void eject_media() {}
-	bool is_media_present() { return false; }
-
 	const MediaGeometry & geometry() const { return m_geometry; }
 	const DrivePerformance & performance() const { return m_performance; }
 
 	virtual int64_t sectors() const { return m_sectors; }
-	virtual int64_t capacity() const { return m_sectors*m_sector_data; }
+	virtual int64_t max_lba() const { return m_sectors - 1; }
 
 	virtual void set_name(const char *_name) { m_name = _name; }
 	virtual uint32_t seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl);
 	virtual uint32_t rotational_latency_us(double _start_hw_sector, unsigned _dest_log_sector);
 	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector, int64_t _xfer_amount);
 	virtual uint32_t transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector,
-			int64_t _xfer_amount, uint64_t &_look_ahead_time);
+			int64_t _xfer_amount, uint64_t &_look_ahead_time, bool _rot_latency=true);
 	virtual double head_position(double _last_pos, uint32_t _elapsed_time_us) const;
 	virtual double head_position(uint64_t _time_us) const;
 
 	virtual uint64_t power_up_eta_us() const { return 0; }
 	virtual bool is_powering_up() const { return (power_up_eta_us() > 0); }
 
-	virtual void read_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}
-	virtual void write_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) {}
+	virtual bool read_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) { return false; }
+	virtual bool write_sector(int64_t /*_lba*/, uint8_t * /*_buffer*/, unsigned /*_len*/) { return false; }
 	virtual void seek(unsigned /*_from_cyl*/, unsigned /*_to_cyl*/) {}
 	virtual void seek(int64_t /*_lba*/) {}
 

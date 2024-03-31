@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,6 +30,8 @@
 #include "hardware/devices/storagectrl.h"
 #include "hardware/devices/serial.h"
 
+#define CDROM_LED_BLINK_TIME 250_ms
+
 Status::Status(GUI * _gui, Machine *_machine)
 :
 Window(_gui, "status.rml"),
@@ -49,6 +51,7 @@ void Status::create()
 	m_indicators[IND::FLP_A ].el = get_element("floppy_a");
 	m_indicators[IND::FLP_B ].el = get_element("floppy_b");
 	m_indicators[IND::HDD   ].el = get_element("hdd");
+	m_indicators[IND::CDROM ].el = get_element("cdrom");
 	m_indicators[IND::NET   ].el = get_element("net");
 	m_indicators[IND::AUDREC].el = get_element("audrec");
 	m_indicators[IND::VIDREC].el = get_element("vidrec");
@@ -97,6 +100,16 @@ void Status::update()
 		}
 	}
 
+	//CD-ROM
+	if(!m_indicators[IND::CDROM].is(LED::HIDDEN)) {
+		std::lock_guard<std::mutex> lock(m_cdrom_mutex);
+		if(m_cdrom_led_activity && !m_gui->timers().is_timer_active(m_cdrom_led_timer)) {
+			m_indicators[IND::CDROM].set(LED::ACTIVE);
+			m_gui->timers().activate_timer(m_cdrom_led_timer, CDROM_LED_BLINK_TIME, false);
+			m_cdrom_led_on = true;
+		}
+	}
+
 	//Network
 	if(m_serial && m_serial->is_network_mode(0)) {
 		if(m_serial->is_network_connected(0)) {
@@ -123,16 +136,87 @@ void Status::update()
 	}
 }
 
+void Status::cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration)
+{
+	// Machine thread
+	std::lock_guard<std::mutex> lock(m_cdrom_mutex);
+	if(int64_t(_duration) > m_cdrom_led_activity) {
+		m_cdrom_led_activity += _duration;
+	} else if(_what == CdRomDrive::EVENT_POWER_OFF) {
+		m_cdrom_led_activity = 0;
+	}
+}
+
+void Status::cdrom_led_timer(uint64_t)
+{
+	// first timer timeout: LED off, timer restart with 0.25 sec
+	if(m_cdrom_led_on) {
+		m_indicators[IND::CDROM].set(LED::IDLE);
+		m_gui->timers().activate_timer(m_cdrom_led_timer, CDROM_LED_BLINK_TIME, false);
+		m_cdrom_led_on = false;
+	} else {
+		// second timeout: check the activity, if positive repeat
+		std::lock_guard<std::mutex> lock(m_cdrom_mutex);
+		m_cdrom_led_activity -= CDROM_LED_BLINK_TIME * 2;
+		if(m_cdrom_led_activity > 0) {
+			m_gui->timers().activate_timer(m_cdrom_led_timer, CDROM_LED_BLINK_TIME, false);
+			m_indicators[IND::CDROM].set(LED::ACTIVE);
+			m_cdrom_led_on = true;
+		} else {
+			m_cdrom_led_activity = 0;
+		}
+	}
+}
+
 void Status::config_changed(bool)
 {
 	m_floppy = m_machine->devices().device<FloppyCtrl>();
-	m_hdd = m_machine->devices().device<StorageCtrl>();
+
+	if(m_cdrom_led_timer != NULL_TIMER_ID) {
+		m_gui->timers().unregister_timer(m_cdrom_led_timer);
+		m_cdrom_led_timer = NULL_TIMER_ID;
+		m_cdrom_led_activity = 0;
+	}
+
+	m_hdd = nullptr;
+
+	auto storage_ctrl = m_machine->devices().devices<StorageCtrl>();
+	for(auto ctrl : storage_ctrl) {
+		for(int i=0; i<ctrl->installed_devices(); i++) {
+			switch(ctrl->get_device(i)->category()) {
+				case StorageDev::DEV_HDD:
+					m_hdd = ctrl;
+					break;
+				case StorageDev::DEV_CDROM: {
+					if(m_cdrom_led_timer != NULL_TIMER_ID) {
+						continue;
+					}
+					auto *cdrom = dynamic_cast<CdRomDrive *>(ctrl->get_device(i));
+					cdrom->register_activity_cb(uintptr_t(this), std::bind(&Status::cdrom_activity_cb, this,
+							std::placeholders::_1, std::placeholders::_2));
+					m_cdrom_led_timer = m_gui->timers().register_timer(
+							std::bind(&Status::cdrom_led_timer, this, std::placeholders::_1),
+							"CD-ROM LED (status)");
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+
 	m_serial = m_machine->devices().device<Serial>();
 
 	if(m_hdd) {
 		m_indicators[IND::HDD].set(LED::IDLE);
 	} else {
 		m_indicators[IND::HDD].set(LED::HIDDEN);
+	}
+
+	if(m_cdrom_led_timer != NULL_TIMER_ID) {
+		m_indicators[IND::CDROM].set(LED::IDLE);
+	} else {
+		m_indicators[IND::CDROM].set(LED::HIDDEN);
 	}
 
 	if(m_floppy && m_floppy->drive_type(0)) {

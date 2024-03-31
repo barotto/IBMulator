@@ -21,10 +21,9 @@
 #define IBMULATOR_HW_FLOPPYLOADER_H
 
 #include "shared_queue.h"
-
+#include "floppyevents.h"
 
 class Machine;
-class FloppyDisk;
 
 /* Conceptually the FloppyLoader is the equivalent of your hand that takes a
  * floppy disk from the box and inserts it into the drive (load), and then
@@ -37,25 +36,19 @@ class FloppyDisk;
 
 class FloppyLoader
 {
-public:
-	enum class State {
-		IDLE, LOADING, SAVING
-	};
-	typedef std::function<void(FloppyLoader::State, int drive)> state_cb_t;
-
 private:
 	bool m_quit = false;
 	Machine *m_machine;
 	shared_queue<std::function<void()>> m_cmd_queue;
-	state_cb_t m_state_cb = nullptr;
+	FloppyEvents::ActivityCbFn m_activity_cb = nullptr;
 
 public:
 	FloppyLoader(Machine *_machine) : m_machine(_machine) {}
 
 	void thread_start();
 
-	void register_state_cb(state_cb_t _cb) {
-		m_state_cb = _cb;
+	void register_activity_cb(FloppyEvents::ActivityCbFn _cb) {
+		m_activity_cb = _cb;
 	}
 
 	void cmd_quit();
@@ -63,7 +56,7 @@ public:
 			std::string _path, bool _write_protected, std::function<void(bool)> _cb,
 			int _config_id);
 	void cmd_save_floppy(FloppyDisk *_floppy, std::string _path, std::shared_ptr<FloppyFmt> _format,
-			std::function<void(bool)> _cb);
+			uint8_t _drive, std::function<void(bool)> _cb);
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,6 +27,18 @@ class GUI;
 
 class FileSelect : public ItemsDialog
 {
+public:
+	enum FileType {
+		FILE_TYPE_MASK = 0xF0000000,
+		FILE_NONE = 0,
+		FILE_FLOPPY_DISK = 0x80000000,
+		FILE_OPTICAL_DISC = 0x40000000
+	};
+	using FileSelectCb = std::function<void(std::string,bool)>;
+	using CancelCb = std::function<void()>;
+	using NewMediumCb = std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)>;
+	using MediumInfoCb = std::function<std::string(std::string)>;
+
 private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
@@ -50,7 +62,6 @@ private:
 		Rml::Element *cwd;
 		Rml::Element *prev, *next, *up;
 	} m_path_el = {};
-	
 
 	class DirEntry {
 	public:
@@ -116,7 +127,7 @@ private:
 		BY_DATE, BY_NAME
 	} m_order = Order::BY_NAME;
 	bool m_order_ascending = true;
-	std::vector<unsigned> m_compat_types;
+	std::vector<unsigned> m_compat_types = {FILE_NONE};
 	std::string m_compat_regexp;
 	bool m_compat_dos_formats_only = false;
 	std::vector<std::string> m_history;
@@ -125,6 +136,7 @@ private:
 	static constexpr int MIN_ZOOM = 0;
 	static constexpr int MAX_ZOOM = 4;
 
+	Rml::Element *m_inforeq_btn = nullptr;
 	Rml::Element *m_new_btn = nullptr;
 	std::unique_ptr<NewFloppy> m_new_floppy;
 	const DirEntry *m_lazy_select = nullptr;
@@ -135,10 +147,9 @@ public:
 	FileSelect(GUI * _gui);
 	~FileSelect();
 
-	void set_select_callbk(std::function<void(std::string,bool)> _fn) { m_select_callbk = _fn; }
-	void set_cancel_callbk(std::function<void()> _fn) { m_cancel_callbk = _fn; }
-	void set_newfloppy_callbk(std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)> _fn) { m_newfloppy_callbk = _fn; }
-	void set_inforeq_fn(std::function<std::string(std::string)> _fn) { m_inforeq_fn = _fn; }
+	void set_select_callbk(FileSelectCb _fn) { m_select_callbk = _fn; }
+	void set_cancel_callbk(CancelCb _fn) { m_cancel_callbk = _fn; }
+	void set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_info_cb, bool _wp_option);
 
 	virtual void create(std::string _mode, std::string _order, int _zoom);
 	virtual void update();
@@ -156,6 +167,8 @@ public:
 			const std::vector<const char*> &_extensions,
 			const std::vector<std::unique_ptr<FloppyFmt>> &_file_formats,
 			bool _dos_formats_only);
+	void set_compat_types(std::vector<unsigned> _disk_types,
+			const std::vector<const char*> &_extensions);
 	void reload();
 
 protected:

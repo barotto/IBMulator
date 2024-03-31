@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -195,9 +195,9 @@ void Machine::init()
 	}
 }
 
-void Machine::register_floppy_loader_state_cb(FloppyLoader::state_cb_t _cb)
+void Machine::register_floppy_loader_state_cb(FloppyEvents::ActivityCbFn _cb)
 {
-	m_floppy_loader->register_state_cb(_cb);
+	m_floppy_loader->register_activity_cb(_cb);
 }
 
 void Machine::start()
@@ -338,7 +338,7 @@ void Machine::config_changed(bool _startup)
 	m_configured_model.cpu_model = g_cpu.model();
 	m_configured_model.cpu_freq = unsigned(g_cpu.frequency());
 	m_configured_model.exp_ram = g_memory.dram_exp();
-	auto flpctrl = g_devices.device<FloppyCtrl>();
+	auto flpctrl = devices().device<FloppyCtrl>();
 	if(flpctrl) {
 		m_configured_model.floppy_a = flpctrl->drive_type(0);
 		m_configured_model.floppy_b = flpctrl->drive_type(1);
@@ -346,15 +346,29 @@ void Machine::config_changed(bool _startup)
 		m_configured_model.floppy_a = FloppyDrive::FDD_NONE;
 		m_configured_model.floppy_b = FloppyDrive::FDD_NONE;
 	}
-	// TODO what if there's more than 1 storage controller?
-	auto hddctrl = g_devices.device<StorageCtrl>();
+
 	m_configured_model.hdd_interface = "";
-	if(hddctrl) {
-		if(strcmp(hddctrl->name(), StorageCtrl_ATA::NAME) == 0) {
-			m_configured_model.hdd_interface = "ata";
-		}
-		else if(strcmp(hddctrl->name(), StorageCtrl_PS1::NAME) == 0) {
+	m_configured_model.cdrom = 0;
+	auto storage_ctrls = devices().devices<StorageCtrl>();
+	for(auto ctrl : storage_ctrls) {
+		if(strcmp(ctrl->name(), StorageCtrl_PS1::NAME) == 0) {
 			m_configured_model.hdd_interface = "ps1";
+		} else if(strcmp(ctrl->name(), StorageCtrl_ATA::NAME) == 0) {
+			for(int i=0; i<ctrl->installed_devices(); i++) {
+				switch(ctrl->get_device(i)->category()) {
+					case StorageDev::DEV_HDD:
+						m_configured_model.hdd_interface = "ata";
+						break;
+					case StorageDev::DEV_CDROM: {
+						CdRomDrive *cd = dynamic_cast<CdRomDrive *>(ctrl->get_device(i));
+						assert(cd);
+						m_configured_model.cdrom = cd->max_speed_x();
+						break;
+					}
+					default:
+						break;
+				}
+			}
 		}
 	}
 
@@ -882,6 +896,7 @@ void Machine::cmd_restore_state(StateBuf &_state, std::mutex &_mutex, std::condi
 		} else {
 			_state.m_last_restore = true;
 			try {
+				m_on = false;
 				restore_state(_state);
 				m_bench.start();
 				m_on = true;
@@ -969,10 +984,10 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 						str_format("Save floppy %s image", _drive ? "B" : "A"),
 						str_format("Save \"%s\"?", FileSys::get_basename(path.c_str()).c_str()),
 						MessageWnd::Type::MSGW_YES_NO,
-						[=](){ commit_floppy(floppy, _cb); },
+						[=](){ commit_floppy(floppy, _drive, _cb); },
 						[=](){ if(_cb) { _cb(true); } });
 			} else {
-				commit_floppy(floppy, _cb);
+				commit_floppy(floppy, _drive, _cb);
 			}
 		} else {
 			if(_cb) { _cb(true); }
@@ -980,7 +995,43 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 	});
 }
 
-void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
+CdRomDrive * Machine::find_cdrom_drive(uint8_t _drive)
+{
+	auto ctrl = g_devices.device<StorageCtrl>();
+	if(!ctrl) {
+		return nullptr;
+	}
+	StorageDev *dev = ctrl->get_device(_drive);
+	if(!dev) {
+		return nullptr;
+	}
+	CdRomDrive *cdrom = dynamic_cast<CdRomDrive*>(dev);
+
+	return cdrom;
+}
+
+void Machine::cmd_insert_cdrom(uint8_t _drive, std::string _file)
+{
+	m_cmd_queue.push([=] () {
+		CdRomDrive *cdrom = find_cdrom_drive(_drive);
+		if(cdrom) {
+			cdrom->insert_medium(_file);
+		}
+	});
+}
+
+void Machine::cmd_toggle_cdrom_door(uint8_t _drive)
+{
+	m_cmd_queue.push([=] () {
+		CdRomDrive *cdrom = find_cdrom_drive(_drive);
+		if(cdrom) {
+			// if the machine is off it will remove the disc without opening the tray
+			cdrom->toggle_door_button();
+		}
+	});
+}
+
+void Machine::commit_floppy(FloppyDisk *_floppy, uint8_t _drive, std::function<void(bool)> _cb)
 {
 	// if called from cmd_eject_floppy() this could be the Main thread,
 	// otherwise it's the Machine thread
@@ -1014,7 +1065,7 @@ void Machine::commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb)
 	if(!format->has_file_extension(ext)) {
 		path += format->default_file_extension();
 	}
-	m_floppy_loader->cmd_save_floppy(floppy.release(), path, format, _cb);
+	m_floppy_loader->cmd_save_floppy(floppy.release(), path, format, _drive, _cb);
 }
 
 void Machine::cmd_commit_media(std::function<void()> _cb)
@@ -1102,7 +1153,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 					if(save_this) {
 						FloppyDisk *floppy = fdc->eject_media(i, true);
 						assert(floppy);
-						commit_floppy(floppy, [=](bool){
+						commit_floppy(floppy, i, [=](bool){
 							// this is the FloppyLoader thread
 							if(_cb && i == last_dirty) {
 								_cb();

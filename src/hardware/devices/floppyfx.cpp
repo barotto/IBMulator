@@ -80,11 +80,11 @@ void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 
 	m_channels.seek->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_FDD_SEEK }},
-		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE }}
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_DRIVES_BALANCE }}
 	});
 	m_channels.spin->register_config_map({
 		{ MixerChannel::ConfigParameter::Volume, { SOUNDFX_SECTION, SOUNDFX_FDD_SPIN }},
-		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_FDD_BALANCE }}
+		{ MixerChannel::ConfigParameter::Balance, { SOUNDFX_SECTION, SOUNDFX_DRIVES_BALANCE }}
 	});
 }
 

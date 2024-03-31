@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -85,12 +85,12 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 
 		std::unique_ptr<FloppyDisk> image(fdc->create_floppy_disk(props));
 
-		if(m_state_cb) {
-			m_state_cb(State::LOADING, _drive_idx);
+		if(m_activity_cb) {
+			m_activity_cb(FloppyEvents::EVENT_DISK_LOADING, _drive_idx);
 		}
 		bool result = image->load(_path, fmt);
-		if(m_state_cb) {
-			m_state_cb(State::IDLE, _drive_idx);
+		if(m_activity_cb) {
+			m_activity_cb(FloppyEvents::EVENT_MEDIUM, _drive_idx);
 		}
 		if(!result) {
 			PERRF(LOG_MACHINE, "Cannot load media file '%s'\n", _path.c_str());
@@ -105,17 +105,17 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 }
 
 void FloppyLoader::cmd_save_floppy(FloppyDisk *_floppy, std::string _path, std::shared_ptr<FloppyFmt> _format,
-		std::function<void(bool)> _cb)
+		uint8_t _drive_idx, std::function<void(bool)> _cb)
 {
 	m_cmd_queue.push([=] () {
 		PINFOF(LOG_V0, LOG_MACHINE, "Saving '%s'...\n", _path.c_str());
 
-		if(m_state_cb) {
-			m_state_cb(State::SAVING, -1);
+		if(m_activity_cb) {
+			m_activity_cb(FloppyEvents::EVENT_DISK_SAVING, _drive_idx);
 		}
 		bool result = _floppy->save(_path, _format);
-		if(m_state_cb) {
-			m_state_cb(State::IDLE, -1);
+		if(m_activity_cb) {
+			m_activity_cb(FloppyEvents::EVENT_MEDIUM, _drive_idx);
 		}
 		if(_cb) {
 			_cb(result);

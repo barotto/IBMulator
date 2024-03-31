@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,12 +36,6 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT  ( "printer",           "click",     Interface::on_printer ),
 	GUI_EVT  ( "exit",              "click",     NormalInterface::on_exit ),
 	GUI_EVT  ( "visibility",        "click",     NormalInterface::on_visibility ),
-	GUI_EVT  ( "fdd_select",        "click",     NormalInterface::on_fdd_select ),
-	GUI_EVT  ( "fdd_eject",         "click",     Interface::on_fdd_eject ),
-	GUI_EVT  ( "fdd_mount",         "click",     Interface::on_fdd_mount ),
-	GUI_EVT  ( "fdd_select_c",      "click",     NormalInterface::on_fdd_select ),
-	GUI_EVT  ( "fdd_eject_c",       "click",     Interface::on_fdd_eject ),
-	GUI_EVT  ( "fdd_mount_c",       "click",     Interface::on_fdd_mount ),
 	GUI_EVT  ( "move_target",       "mousemove", NormalInterface::on_mouse_move ),
 	GUI_EVT_T( "move_target",       "dblclick",  Interface::on_dblclick ),
 	GUI_EVT  ( "main_interface",    "mousemove", NormalInterface::on_mouse_move ),
@@ -72,9 +66,6 @@ void NormalInterface::create()
 	m_btn_pause = get_element("pause");
 	m_btn_visibility = get_element("visibility");
 	m_hdd_led_c = get_element("hdd_led_c");
-	m_fdd_mount_c = get_element("fdd_mount_c");
-	m_fdd_disk_c = get_element("fdd_disk_c");
-	m_fdd_select_c = get_element("fdd_select_c");
 	m_cur_zoom = ZoomMode::NORMAL;
 
 	m_compact_ifc_timeout = g_program.config().get_real(GUI_SECTION, GUI_COMPACT_TIMEOUT, 0.0)
@@ -272,8 +263,11 @@ void NormalInterface::container_size_changed(int _width, int _height)
 	m_main_interface->SetProperty("height", str_format("%upx", sysunit_h));
 
 	unsigned fontsize = sysunit_w / 55;
-	m_status.fdd_disk->SetProperty("font-size", str_format("%upx", fontsize));
-	m_fdd_disk_c->SetProperty("font-size", str_format("%upx", fontsize));
+	for(auto &block : m_drive_blocks) {
+		for(auto &drive : block.uidrives) {
+			drive.medium_string->SetProperty("font-size", str_format("%upx", fontsize));
+		}
+	}
 }
 
 void NormalInterface::update()
@@ -312,13 +306,6 @@ void NormalInterface::update()
 		m_screen->display()->unlock();
 	}
 
-	if(is_system_visible()) {
-		if(m_floppy.present) {
-			m_main_interface->SetClass("with_disk", true);
-		} else {
-			m_main_interface->SetClass("with_disk", false);
-		}
-	}
 	if(m_machine->is_paused() && m_led_pause==false) {
 		m_led_pause = true;
 		m_btn_pause->SetClass("resume", true);
@@ -332,7 +319,101 @@ void NormalInterface::config_changed(bool _startup)
 {
 	Interface::config_changed(_startup);
 
-	update_background();
+	m_drive_blocks.clear();
+
+	Rml::Element *drive_block_el = get_element("drive_block");
+	drive_block_el->SetInnerRML("");
+	Rml::Element *drive_block_c_el = get_element("drive_block_c");
+	drive_block_c_el->SetInnerRML("");
+
+	UIDriveBlock *drive_block = create_uidrive_block(drive_block_el);
+	UIDriveBlock *drive_block_c = create_uidrive_block(drive_block_c_el);
+
+	for(auto &drive : m_drives) {
+		// for the system unit interface
+		auto uidrive_el = create_uidrive_el(&drive, drive_block);
+		drive_block_el->AppendChild(std::move(uidrive_el));
+
+		// for the compact mode bar
+		/*
+		<div class="uidrive">
+			<btn class="drive_select" />
+			<div class="drive_mount">
+				<div class="drive_led"></div>
+				<div class="drive_medium_outer">
+					<table><tr><td class="drive_medium"></td></tr></table>
+				</div>
+			</div>
+			<btn class="drive_eject" />
+		</div>
+		*/
+
+		uidrive_el = m_wnd->CreateElement("div");
+		uidrive_el->SetClassNames("uidrive");
+		switch(drive.drive_type) {
+			case GUIDrivesFX::FDD_5_25:
+				uidrive_el->SetClass("fdd_5_25", true);
+				break;
+			case GUIDrivesFX::FDD_3_5:
+				uidrive_el->SetClass("fdd_3_5", true);
+				break;
+			case GUIDrivesFX::CDROM:
+				uidrive_el->SetClass("cdrom", true);
+				break;
+			default:
+				break;
+		}
+
+		Rml::ElementPtr drive_select = m_wnd->CreateElement("btn");
+		drive_select->SetClassNames(str_format("drive_select %s", drive.label.c_str()));
+
+		Rml::ElementPtr drive_mount = m_wnd->CreateElement("div");
+		drive_mount->SetClassNames("drive_mount");
+
+		Rml::ElementPtr drive_led = m_wnd->CreateElement("div");
+		drive_led->SetClassNames("drive_led");
+
+		Rml::ElementPtr drive_disk_outer = m_wnd->CreateElement("div");
+		drive_disk_outer->SetClassNames("drive_medium_outer");
+
+		Rml::ElementPtr drive_medium_table = m_wnd->CreateElement("table");
+		Rml::ElementPtr drive_medium_tr = m_wnd->CreateElement("tr");
+		Rml::ElementPtr drive_medium_td = m_wnd->CreateElement("td");
+		drive_medium_td->SetClassNames("drive_medium");
+
+		Rml::ElementPtr drive_eject = m_wnd->CreateElement("btn");
+		drive_eject->SetClassNames("drive_eject");
+
+		drive_block_c->create_uidrive(
+			&drive,
+			uidrive_el.get(),
+			drive_led.get(),
+			nullptr,
+			drive_medium_td.get(),
+			drive_select.get()
+		);
+
+		register_target_cb(drive_select.get(), "click",
+			std::bind(&Interface::on_drive_select, this, std::placeholders::_1, drive_block_c));
+		register_target_cb(drive_mount.get(), "click",
+			std::bind(&Interface::on_medium_mount, this, std::placeholders::_1, &drive));
+		register_target_cb(drive_eject.get(), "click",
+			std::bind(&Interface::on_medium_button, this, std::placeholders::_1, &drive));
+
+		uidrive_el->AppendChild(std::move(drive_select));
+
+		drive_medium_tr->AppendChild(std::move(drive_medium_td));
+		drive_medium_table->AppendChild(std::move(drive_medium_tr));
+		drive_disk_outer->AppendChild(std::move(drive_medium_table));
+
+		drive_mount->AppendChild(std::move(drive_led));
+		drive_mount->AppendChild(std::move(drive_disk_outer));
+
+		uidrive_el->AppendChild(std::move(drive_mount));
+		uidrive_el->AppendChild(std::move(drive_eject));
+
+		drive_block_c_el->AppendChild(std::move(uidrive_el));
+	}
 
 	m_hdd_led_c->SetClass("invisible", !m_hdd);
 }
@@ -433,24 +514,6 @@ void NormalInterface::on_exit(Rml::Event &)
 	g_program.stop();
 }
 
-void NormalInterface::update_background()
-{
-	if(m_floppy.ctrl) {
-		auto type = m_floppy.ctrl->drive_type(m_floppy.curr_drive);
-		if(type & FloppyDisk::SIZE_5_25) {
-			m_main_interface->SetClass("fdd_3_5", false);
-			m_main_interface->SetClass("fdd_5_25", true);
-		} else {
-			m_main_interface->SetClass("fdd_3_5", true);
-			m_main_interface->SetClass("fdd_5_25", false);
-		}
-	} else {
-		m_main_interface->SetClass("fdd_3_5", true);
-		m_main_interface->SetClass("fdd_5_25", false);
-	}
-	m_main_interface->SetClass("with_disk", m_floppy.present);
-}
-
 void NormalInterface::collapse_sysunit(bool _collapse)
 {
 	if(is_sysunit_collapsed() == _collapse) {
@@ -483,44 +546,6 @@ void NormalInterface::on_visibility(Rml::Event &)
 	} else {
 		collapse_sysunit(true);
 	}
-}
-
-
-
-void NormalInterface::on_fdd_select(Rml::Event &_e)
-{
-	m_fdd_disk_c->SetInnerRML("");
-	if(m_floppy.curr_drive == 0) {
-		m_fdd_select_c->SetClass("a", false);
-		m_fdd_select_c->SetClass("b", true);
-	} else {
-		m_fdd_select_c->SetClass("a", true);
-		m_fdd_select_c->SetClass("b", false);
-	}
-	Interface::on_fdd_select(_e);
-
-	update_background();
-}
-
-void NormalInterface::set_floppy_string(std::string _filename)
-{
-	Interface::set_floppy_string(_filename);
-	auto name = m_status.fdd_disk->GetInnerRML();
-	m_fdd_disk_c->SetInnerRML(name);
-}
-
-void NormalInterface::set_floppy_config(bool _b_present)
-{
-	Interface::set_floppy_config(_b_present);
-	m_fdd_select_c->SetClass("d-none", !_b_present);
-	m_fdd_select_c->SetClass("a", true);
-	m_fdd_select_c->SetClass("b", false);
-}
-
-void NormalInterface::set_floppy_active(bool _active)
-{
-	Interface::set_floppy_active(_active);
-	m_fdd_mount_c->SetClass("active", _active);
 }
 
 void NormalInterface::set_hdd_active(bool _active)

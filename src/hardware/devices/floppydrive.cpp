@@ -441,6 +441,10 @@ void FloppyDrive::mon_w(bool _state)
 			m_fx.spin(false, true);
 		}
 	}
+
+	if(m_activity_cb) {
+		m_activity_cb(m_s.mon == MOT_ON ? FloppyEvents::EVENT_MOTOR_ON : FloppyEvents::EVENT_MOTOR_OFF, -1);
+	}
 }
 
 uint64_t FloppyDrive::time_next_index()

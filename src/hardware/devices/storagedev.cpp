@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "storagedev.h"
+#include "program.h"
 #include <cstring>
 #include <cmath>
 
@@ -56,6 +57,12 @@ DriveIdent & DriveIdent::operator=(const DriveIdent &_src)
 	return *this;
 }
 
+void StorageDev::install(StorageCtrl *_ctrl, uint8_t _id)
+{
+	m_controller = _ctrl;
+	m_drive_index = _id;
+	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
+}
 
 int64_t StorageDev::chs_to_lba(int64_t _c, int64_t _h, int64_t _s) const
 {
@@ -102,7 +109,7 @@ double StorageDev::hw_sect_to_pos(double _hw_sector) const
  */
 int StorageDev::chs_to_hw_sector(int _sector) const
 {
-	return (((_sector-1)*m_performance.interleave) % m_geometry.spt);
+	return unsigned((_sector-1)*m_performance.interleave) % m_geometry.spt;
 }
 
 double StorageDev::head_position(double _last_pos, uint32_t _elapsed_time_us) const
@@ -117,16 +124,25 @@ double StorageDev::head_position(uint64_t _time_us) const
 	return head_position(0.0, _time_us);
 }
 
-void StorageDev::config_changed(const char *)
+void StorageDev::set_geometry(const MediaGeometry &_geometry, double _raw_sector_bytes, double _track_overhead_bytes)
 {
-	m_sectors = uint64_t(m_geometry.spt) * m_geometry.cylinders * m_geometry.heads;
+	m_geometry = _geometry;
 
-	m_performance.trk_read_us = round(6.0e7 / m_performance.rot_speed);
-	m_performance.trk2trk_us = m_performance.seek_trk * 1000.0;
+	m_sectors = uint64_t(_geometry.spt) * _geometry.cylinders * _geometry.heads;
 
+	m_sector_size = _raw_sector_bytes;
+	m_track_overhead = _track_overhead_bytes;
+
+	double track_bytes = (_geometry.spt * _raw_sector_bytes + _track_overhead_bytes);
+	m_sector_len = (1.0 / track_bytes) * _raw_sector_bytes;
+}
+
+void DrivePerformance::update(const MediaGeometry &_geometry, double _raw_sector_bytes, double _track_overhead_bytes)
+{
 	/* See comment for seek_move_time_us().
 	 * Here we divide the total seek time in 2 values: avgspeed and overhead,
-	 * derived from the only 2 values given in HDD specifications:
+	 * (where avgspeed is the time to traverse 1 cylinder and overhead are all
+	 * the latencies) derived from the only 2 values given in HDD specifications:
 	 * track-to-track and maximum (full stroke).
 	 *
 	 * trk2trk = overhead + avgspeed
@@ -136,16 +152,37 @@ void StorageDev::config_changed(const char *)
 	 * avgspeed = (maximum - trk2trk) / (ncyls-2)
 	 *
 	 * So the average speed includes phases 1, 2, and 3.
+	 * 
+	 * CD-ROM drives have 1/3 stroke and full stroke info:
+	 * (1) third = overhead + avgspeed*(ncyls/3)
+	 * (2) maximum = overhead + avgspeed*ncyls   [the -1 doesn't matter]
+	 * 
+	 * (1) overhead = third - avgspeed*(ncyls/3)
+	 * (2) maximum = third - 1/3*avgspeed*ncyls + avgspeed*ncyls
+	 * (2)  maximum - third = avgspeed*ncyls * (1 - 1/3)
+	 * (2)  avgspeed = (maximum - third) / (2/3 * ncyls)
 	 */
-	m_performance.seek_avgspeed_us = round(((m_performance.seek_max-m_performance.seek_trk) / double(m_geometry.cylinders-2)) * 1000.0);
-	m_performance.seek_overhead_us = m_performance.trk2trk_us - m_performance.seek_avgspeed_us;
+	trk_read_us = round(6.0e7 / rot_speed);
+	avg_rot_lat_us = trk_read_us / 2.0;
 
-	double bytes_pt = (m_geometry.spt*m_sector_size + m_track_overhead);
-	double bytes_us = bytes_pt / double(m_performance.trk_read_us);
-	m_performance.sec_read_us = round(m_sector_size / bytes_us);
-	m_sector_len = (1.0 / bytes_pt) * m_sector_size;
-	m_performance.sec_xfer_us = double(m_performance.sec_read_us) * std::max(1.0,(double(m_performance.interleave) * 0.8f));
-	m_performance.sec2sec_us = m_performance.sec_read_us * m_performance.interleave;
+	if(seek_trk_ms > 0.f) {
+		// HDD performance data
+		trk2trk_us = seek_trk_ms * 1000.0;
+		seek_avgspeed_us = round(((seek_max_ms - seek_trk_ms) / double(_geometry.cylinders-2)) * 1000.0);
+		seek_overhead_us = trk2trk_us - seek_avgspeed_us;
+	} else {
+		// CD-ROM drives do not have track to track penalty when reading sequentially (it's a spiral)
+		trk2trk_us = 0; 
+		seek_avgspeed_us = round(((seek_max_ms - seek_third_ms) / ((2.0/3.0) * _geometry.cylinders)) * 1000.0);
+		seek_overhead_us = (seek_third_ms * 1000.0) - seek_avgspeed_us * (double(_geometry.cylinders) / 3.0);
+	}
+
+	double track_bytes = (_geometry.spt * _raw_sector_bytes + _track_overhead_bytes);
+	bytes_per_us = track_bytes / trk_read_us;
+	sec_read_us = round(_raw_sector_bytes / bytes_per_us);
+
+	sec_xfer_us = sec_read_us * std::max(1.0, (interleave * 0.8));
+	sec2sec_us = sec_read_us * interleave;
 }
 
 /**
@@ -309,10 +346,11 @@ uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sec
  * @param _xfer_amount       the number of sectors to transfer.
  * @param _look_ahead_time   the time of the initial cache operation on the
  *                           current track (us)
+ * @param _rot_latency       add the rotational latency
  * @return  the tranfer time in microseconds.
  */
 uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sector,
-		int64_t _xfer_amount, uint64_t &_look_ahead_time)
+		int64_t _xfer_amount, uint64_t &_look_ahead_time, bool _rot_latency)
 {
 	uint32_t tot_xfer_time = 0;
 	bool cache_is_empty = (_look_ahead_time >= _curr_time);
@@ -375,7 +413,10 @@ uint32_t StorageDev::transfer_time_us(uint64_t _curr_time, int64_t _xfer_lba_sec
 				double frac_hwc2 = hw_cache2 - int(hw_cache2);
 				sec_xfer_time = m_performance.sec_read_us - m_performance.sec_read_us*frac_hwc2;
 			} else {
-				sec_xfer_time = rotational_latency_us(curr_head, s0) + m_performance.sec_read_us;
+				sec_xfer_time = m_performance.sec_read_us;
+				if(_rot_latency) {
+					sec_xfer_time += rotational_latency_us(curr_head, s0);
+				}
 			}
 		}
 

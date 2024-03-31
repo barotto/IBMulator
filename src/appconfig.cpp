@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -203,7 +203,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";   fdd_latency: A multiplier for the floppy drives rotational latency (only for the \"raw\" controller type).\n"
 ";                You can use this parameter to speed up the FDD read/write operations.\n"
 ";                Possible values: a real number between 0.0 (no latency) and 1.0 (normal latency.)\n"
-";      hdc_type: The type of hard disk controller.\n"
+";      hdc_type: The type of controller the hard disk drive is attached to.\n"
 ";                Possible values: none, auto, ps1, ata\n"
 ";                 none: no hard disk installed\n"
 ";                 auto: automatically determined by the system model\n"
@@ -215,20 +215,33 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";                  no: discard written data (beware: data loss)\n"
 ";                 ask: a message box will be shown to ask what to do\n"
 ";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"
+";         cdrom: Install the CD-ROM drive (ATAPI).\n"
+";                Possible values: an integer number representing the speed of the drive as a multiplicative factor (up to 72x).\n"
+";                  no: don't install the drive.\n"
+";                  1x: install a single speed drive (150KB/s)\n"
+";                  2x: install a double speed drive (300KB/s)\n"
+";                 ...\n"
+";                 72x: install a 72x drive (10MB/s)\n"
 		},
 
 		{ DISK_A_SECTION,
-"; These options are used to insert a floppy disk at program launch.\n"
+"; These options are used to insert a floppy disk at program launch. General options are in the [" DRIVES_SECTION "] section.\n"
 ";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
 		},
 
 		{ DISK_B_SECTION,
-"; These options are used to insert a floppy disk at program launch.\n"
+"; These options are used to insert a floppy disk at program launch. General options are in the [" DRIVES_SECTION "] section.\n"
 ";     path: Path of a floppy image file; if the file doesn't exist a new one will be created.\n"
 "; inserted: Yes if the floppy is inserted at program lauch\n"
 "; readonly: Yes if the floppy image should be write protected\n"
+		},
+
+		{ DISK_CD_SECTION,
+"; These options are used to insert a CD-ROM disc at program launch. General options are in the [" DRIVES_SECTION "] section.\n"
+";     path: Path of a disc image file.\n"
+"; inserted: Yes if the disc is inserted in the drive at program launch.\n"
 		},
 
 		{ DISK_C_SECTION,
@@ -371,10 +384,12 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";         enabled: Enable sound effects emulation.\n"
 ";          volume: General volume of the sound effects.\n"
 ";          reverb: Reverb effect to apply to all channels (see README for more info).\n"
+";      drives_gui: Volume of removable disc drives GUI sounds (ie. insert / eject medium).\n"
+";  drives_balance: Balance of removable disc drives noises.\n"
 ";        fdd_seek: Volume of FDD seeks.\n"
 ";        fdd_spin: Volume of FDD spin noise.\n"
-";         fdd_gui: Volume of FDD GUI sounds (ie. insert / eject disk).\n"
-";     fdd_balance: Balance of FDD noises.\n"
+";      cdrom_seek: Volume of CD-ROM seeks.\n"
+";      cdrom_spin: Volume of CD-ROM spin noise.\n"
 ";        hdd_seek: Volume of HDD seeks.\n"
 ";        hdd_spin: Volume of HDD spin noise.\n"
 ";     hdd_balance: Balance of HDD noises.\n"
@@ -464,7 +479,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 AppConfig::ConfigSections AppConfig::ms_sections = {
 	{ PROGRAM_SECTION, {
-		// key name,           // category     hidden?         default
+		// key name,           category        hidden?         default
 		{ PROGRAM_MEDIA_DIR,   PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
 		{ PROGRAM_LOG_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY,  "log.txt" },
 		{ PROGRAM_WAIT_METHOD, PROGRAM_CONFIG, HIDDEN_CFGKEY,  "auto"    },
@@ -553,6 +568,8 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DRIVES_FDD_LAT,       MACHINE_CONFIG, PUBLIC_CFGKEY, "1.0"  },
 		{ DRIVES_HDC_TYPE,      MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 		{ DRIVES_HDD_COMMIT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
+		{ DRIVES_CDROM,         MACHINE_CONFIG, PUBLIC_CFGKEY, "none" },
+		{ DRIVES_CDROM_IDLE,    MACHINE_CONFIG, HIDDEN_CFGKEY, "30"   },
 	} },
 	{ DISK_A_SECTION, {
 		{ DISK_PATH,      MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
@@ -569,6 +586,10 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DISK_TYPE,      MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 		{ DISK_CYLINDERS, MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 		{ DISK_HEADS,     MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
+	} },
+	{ DISK_CD_SECTION, {
+		{ DISK_PATH,         MACHINE_CONFIG, PUBLIC_CFGKEY, ""    },
+		{ DISK_INSERTED,     MACHINE_CONFIG, PUBLIC_CFGKEY, "no"  },
 	} },
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
@@ -658,10 +679,12 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ SOUNDFX_ENABLED,        PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
 		{ SOUNDFX_VOLUME,         MIXER_CONFIG,   PUBLIC_CFGKEY, "100"  },
 		{ SOUNDFX_REVERB,         MIXER_CONFIG,   PUBLIC_CFGKEY, "no"   },
+		{ SOUNDFX_DRIVES_GUI,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"  },
+		{ SOUNDFX_DRIVES_BALANCE, MIXER_CONFIG,   PUBLIC_CFGKEY, "-30"  },
+		{ SOUNDFX_CDROM_SPIN,     MIXER_CONFIG,   PUBLIC_CFGKEY, "100"  },
+		{ SOUNDFX_CDROM_SEEK,     MIXER_CONFIG,   PUBLIC_CFGKEY, "80"   },
 		{ SOUNDFX_FDD_SPIN,       MIXER_CONFIG,   PUBLIC_CFGKEY, "40"   },
 		{ SOUNDFX_FDD_SEEK,       MIXER_CONFIG,   PUBLIC_CFGKEY, "40"   },
-		{ SOUNDFX_FDD_GUI,        MIXER_CONFIG,   PUBLIC_CFGKEY, "100"  },
-		{ SOUNDFX_FDD_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "-30"  },
 		{ SOUNDFX_HDD_SPIN,       MIXER_CONFIG,   PUBLIC_CFGKEY, "40"   },
 		{ SOUNDFX_HDD_SEEK,       MIXER_CONFIG,   PUBLIC_CFGKEY, "40"   },
 		{ SOUNDFX_HDD_BALANCE,    MIXER_CONFIG,   PUBLIC_CFGKEY, "30"   },

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -55,6 +55,7 @@ struct ModelConfig
 	unsigned floppy_b;
 	std::string hdd_interface;
 	unsigned hdd_type;
+	unsigned cdrom;
 
 	std::string print() const;
 };

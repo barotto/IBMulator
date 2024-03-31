@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -39,6 +39,7 @@ class CPU;
 class Memory;
 class IODevice;
 class Machine;
+class CdRomDrive;
 extern Machine g_machine;
 
 typedef std::function<void()> Machine_fun_t;
@@ -128,7 +129,7 @@ private:
 	MediaCommit m_floppy_commit = MEDIA_ASK;
 	MediaCommit m_hdd_commit = MEDIA_ASK;
 
-	void commit_floppy(FloppyDisk *_floppy, std::function<void(bool)> _cb);
+	void commit_floppy(FloppyDisk *_floppy, uint8_t _drive, std::function<void(bool)> _cb);
 
 	// the printer thread is here for the same reasons as the floppy loader thread.
 	// the printer is shared between the gui and the parallel port
@@ -224,6 +225,8 @@ public:
 	void cmd_insert_floppy(uint8_t _drive, std::string _file, bool _wp, std::function<void(bool)> _cb);
 	void cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy, std::function<void(bool)> _cb, int _config_id);
 	void cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb);
+	void cmd_insert_cdrom(uint8_t _drive, std::string _file);
+	void cmd_toggle_cdrom_door(uint8_t _drive);
 	void cmd_print_VGA_text(std::vector<uint16_t> _text);
 	void cmd_reset_bench();
 	void cmd_commit_media(std::function<void()> _cb);
@@ -239,7 +242,7 @@ public:
 	void joystick_motion(int _jid, int _axis, int _value);
 	void joystick_button(int _jid, int _button, int _state);
 
-	void register_floppy_loader_state_cb(FloppyLoader::state_cb_t _cb);
+	void register_floppy_loader_state_cb(FloppyEvents::ActivityCbFn _cb);
 
 	void DOS_program_launch(std::string _name);
 	void DOS_program_start(std::string _name);
@@ -254,6 +257,10 @@ public:
 		// caller must gain a lock on ms_gui_lock
 		return m_s.curr_prgname;
 	}
+
+private:
+
+	CdRomDrive * find_cdrom_drive(uint8_t _drive);
 };
 
 #endif

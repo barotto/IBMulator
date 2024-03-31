@@ -26,10 +26,10 @@
 			.idle   { background-color: #023b00A0; }
 			.active { background-color: #94E400A0; }
 			.attn   { background-color: #ff2020A0; }
-			#floppy_a.idle, #floppy_b.idle, #hdd.idle {
+			#floppy_a.idle, #floppy_b.idle, #cdrom.idle, #hdd.idle {
 				background-color: #564300A0;
 			}
-			#floppy_a.active, #floppy_b.active, #hdd.active {
+			#floppy_a.active, #floppy_b.active, #cdrom.active, #hdd.active {
 				background-color: #FFE600A0;
 			}
 		</style>
@@ -39,6 +39,7 @@
 		<div id="vidrec">VREC</div>
 		<div id="audrec">AREC</div>
 		<div id="hdd">C</div>
+		<div id="cdrom">CD</div>
 		<div id="floppy_b">B</div>
 		<div id="floppy_a">A</div>
 		<div id="power">PWR</div>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -25,6 +25,7 @@
 
 #define HDD_SAMPLES_DIR "sounds" FS_SEP "hdd" FS_SEP
 #define FDD_SAMPLES_DIR "sounds" FS_SEP "floppy" FS_SEP
+#define CDROM_SAMPLES_DIR "sounds" FS_SEP "cdrom" FS_SEP
 
 class DriveFX : public SoundFX
 {
@@ -51,6 +52,7 @@ public:
 			const AudioSpec &_spec);
 	virtual void remove();
 	virtual void seek(int _c0, int _c1, int _tot_cyls);
+	virtual void seek(uint64_t _at_time, int _c0, int _c1, int _tot_cyls);
 	virtual void spin(bool _spinning, bool _change_state);
 	virtual void clear_seek_events();
 };
