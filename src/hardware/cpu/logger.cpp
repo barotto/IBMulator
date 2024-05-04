@@ -428,7 +428,7 @@ const std::string & CPULogger::disasm(CPULogEntry &_log_entry)
 {
 	CPUDebugger debugger;
 
-	const unsigned dline_len = 37;
+	const unsigned dline_len = 40;
 	const unsigned an_len = 11;
 
 	static std::string str;

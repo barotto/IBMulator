@@ -482,8 +482,15 @@ void Disasm::uprintf(char const *s, ...)
 	}
 	va_list arg_ptr;
 	va_start(arg_ptr, s);
-	vsnprintf(ubufp, ubuflen, s, arg_ptr);
+	int result = vsnprintf(ubufp, ubuflen, s, arg_ptr);
 	va_end(arg_ptr);
+	if(result >= ubuflen) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "Disasm::uprintf: string buffer overflow: "
+				"fmt='%s', needed=%d, avail=%d.\n",
+				s, result, ubuflen-1);
+	} else if(result < 0) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "Disasm::uprintf: string buffer print error.\n");
+	}
 	while(*ubufp) {
 		ubufp++;
 		ubuflen--;
@@ -497,6 +504,7 @@ void Disasm::uputchar(char c)
 	}
 	*ubufp++ = c;
 	*ubufp = 0;
+	ubuflen--;
 }
 
 int Disasm::bytes(char c)
@@ -1181,6 +1189,7 @@ uint32_t Disasm::disasm(char *_buffer, unsigned _buffer_len, uint32_t _cs, uint3
 	if(invalid_opcode) {
 		// restart output buffer
 		ubufp = _buffer;
+		ubuflen = _buffer_len;
 		// invalid instruction, use db xx
 		uprintf("db %02X", (unsigned)c);
 		return 1;

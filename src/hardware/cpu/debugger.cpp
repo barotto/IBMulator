@@ -160,7 +160,7 @@ char * skip_blanks(char * str) {
 char * CPUDebugger::analyze_instruction(char *_dasm_inst, CPUCore *_core,
 		Memory *_memory, uint _opsize)
 {
-	static char result[256];
+	static thread_local char result[256];
 
 	char instu[256];
 	char prefix[3];
@@ -377,7 +377,7 @@ const char * CPUDebugger::INT_decode(bool call, uint8_t vector, uint16_t ax,
 		CPUCore *core, Memory *mem)
 {
 	int reslen = 512;
-	static char result[512];
+	static thread_local char result[512];
 
 	//uint8_t ah = ax>>8;
 	//uint8_t al = ax&0xFF;
