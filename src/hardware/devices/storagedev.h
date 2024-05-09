@@ -89,6 +89,7 @@ public:
 	};
 
 protected:
+	std::string m_ini_section;
 	StorageCtrl *m_controller = nullptr;
 	uint8_t m_drive_index = 0;
 	DeviceCategory m_category = DEV_NONE;
@@ -121,11 +122,11 @@ public:
 	StorageDev(DeviceCategory _category) : m_category(_category) {}
 	virtual ~StorageDev() {}
 
-	virtual void install(StorageCtrl *_ctrl, uint8_t _id);
+	virtual void install(StorageCtrl *_ctrl, uint8_t _id, const char * _ini_section);
 	virtual void remove() {}
 	virtual void power_on(uint64_t /*_time*/) {}
 	virtual void power_off() {}
-	virtual void config_changed(const char * /*ini_section*/) {}
+	virtual void config_changed() {}
 	virtual void save_state(StateBuf &) {}
 	virtual void restore_state(StateBuf &) {}
 	virtual bool is_read_only() const { return true; }
@@ -145,8 +146,8 @@ public:
 	const MediaGeometry & geometry() const { return m_geometry; }
 	const DrivePerformance & performance() const { return m_performance; }
 
-	virtual int64_t sectors() const { return m_sectors; }
-	virtual int64_t max_lba() const { return m_sectors - 1; }
+	virtual int64_t sectors() const { return m_sectors; } // total count of sectors 
+	virtual int64_t max_lba() const { return m_sectors - 1; } // max addressable LBA
 
 	virtual void set_name(const char *_name) { m_name = _name; }
 	virtual uint32_t seek_move_time_us(unsigned _cur_cyl, unsigned _dest_cyl);

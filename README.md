@@ -243,34 +243,57 @@ To install the drive, specify its speed using the following option in
 ibmulator.ini:
 ```
 [drives]
-cdrom=4x
+cdrom=2x
 ```
 The value of the speed is a multiplicative factor relative to the original
 "1x" speed of 150KB/s (the value is capped to 72x for practical reasons).
 
+If you want to insert a CD-ROM disc at program launch, you can specify the image
+path in the `[cdrom]` ini section. Otherwise you can insert a new CD-ROM disc
+using the graphical interface:
+1. make the CD-ROM drive active by clicking the drive selection button or with
+   the <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F7</kbd> key combination.
+2. click on the drive or press <kbd>SHIFT</kbd>+<kbd>F7</kbd>
+
 The following disc image formats are supported:
 
 * ISO 9660 optical disc image (*.iso)
+* CUE/BIN (*.cue)
 
-If you want to insert a CD-ROM disc at program launch use the `[cdrom]` ini
-section.
+Audio tracks in CUE/BIN images can be of the following formats:
 
-In order to use the drive under DOS or Windows (pre-95), you also need:
-1. an ATAPI CD-ROM driver loaded in CONFIG.SYS (like VIDE-CDD.SYS),
-2. a CD-ROM extension application run in AUTOEXEC.BAT (such as MSCDEX).
+* Raw binary (*.bin) (16-bit signed, 2-channel, 44100 Hz)
+* FLAC (*.flac)
+* WAV (*.wav)
+* Vorbis (*.ogg)
+* MP3 (*.mp3)
 
-Here's an example configuration that maps the CD-ROM drive to the letter D:
+*Note:* audio formats other then raw binary and WAV might result in slightly
+incorrect track lengths (especially with MP3). As a result programs that expect
+a specific disc TOC might fail their disc presence check (eg. Monkey Island CD).
+
+*Note:* depending on how fast your system is, using audio formats other than raw
+binary may result in longer seek times, which may cause audio stuttering in some
+games.
+
+In order to use the drive under DOS and Windows 3 you also need:
+1. an ATAPI CD-ROM driver loaded in CONFIG.SYS (like XCDROM.SYS or VIDE-CDD.SYS)
+2. a CD-ROM extension application run in AUTOEXEC.BAT (such as MSCDEX.EXE)
+
+Here's an example configuration that maps the CD-ROM drive to the letter `D:`
 ```
 CONFIG.SYS
-DEVICE=C:\CDROM\VIDE-CDD.SYS /D:MSCD001
+DEVICE=C:\CDROM\XCDROM.SYS /D:MSCD001
 
 AUTOEXEC.BAT
 C:\DOS\MSCDEX.EXE /D:MSCD001 /M:10 /L:D
 ```
 
 In the `share/ibmulator/extra` directory of the IBMulator package you can find
-the `CD-ROM_drivers.img` floppy image file with various device drivers you can
-use.
+the `XCDROM-driver.img` floppy image file with the GPL licensed XCDROM driver
+you can use.  
+Otherwise if you want a floppy image with the VIDE-CDD driver you can try this:
+https://archive.org/details/mscdex-2.23-installer-incl.-vide-cdd
 
 ### The GUI
 

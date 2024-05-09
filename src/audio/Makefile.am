@@ -1,5 +1,6 @@
 AM_CXXFLAGS = @CXX_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@
-	
+AM_CFLAGS = @CC_DEFAULTS@ -I$(top_srcdir)/src @BASECFLAGS@
+
 noinst_LIBRARIES = libaudio.a
 libaudio_a_SOURCES = \
 	audiobuffer.cpp \
@@ -25,7 +26,12 @@ libaudio_a_SOURCES = \
 	dsp/Filter.cpp \
 	dsp/Param.cpp \
 	dsp/PoleFilter.cpp \
-	dsp/RootFinder.cpp
+	dsp/RootFinder.cpp \
+	decoders/SDL_sound.c \
+	decoders/SDL_sound_flac.c \
+	decoders/SDL_sound_mp3.c \
+	decoders/SDL_sound_vorbis.c \
+	decoders/SDL_sound_wav.c
 
 noinst_HEADERS = \
 	audiobuffer.h \
@@ -65,4 +71,9 @@ noinst_HEADERS = \
 	dsp/RootFinder.h \
 	dsp/State.h \
 	dsp/Types.h \
-	dsp/Utilities.h
+	dsp/Utilities.h \
+	decoders/SDL_sound.h \
+	decoders/SDL_sound_internal.h \
+	decoders/dr_flac.h \
+	decoders/dr_mp3.h \
+	decoders/stb_vorbis.h

@@ -189,7 +189,7 @@ void StorageCtrl_PS1::install()
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s\n", name());
 
 	m_disk.set_name("Drive C");
-	m_disk.install(this, 0);
+	m_disk.install(this, 0, DISK_C_SECTION);
 }
 
 void StorageCtrl_PS1::remove()
@@ -221,7 +221,7 @@ void StorageCtrl_PS1::reset(unsigned _type)
 
 void StorageCtrl_PS1::config_changed()
 {
-	m_disk.config_changed(DISK_C_SECTION);
+	m_disk.config_changed();
 
 	if(m_disk.type() == HDD_CUSTOM_DRIVE_IDX) {
 		HDDParams params;

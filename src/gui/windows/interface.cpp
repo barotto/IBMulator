@@ -333,7 +333,7 @@ void Interface::floppy_activity_cb(FloppyEvents::EventType _what, uint8_t _drive
 	}
 }
 
-void Interface::cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration, MachineDrive *_drive)
+void Interface::cdrom_activity_cb(CdRomEvents::EventType _what, uint64_t _duration, MachineDrive *_drive)
 {
 	assert(!m_drives.empty());
 	// CD-ROMs: blinking LED with a 0.5s cycle
@@ -344,12 +344,13 @@ void Interface::cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duratio
 	std::lock_guard<std::mutex> lock(m_drives_mutex);
 	if(int64_t(_duration) > _drive->led_activity) {
 		_drive->led_activity += _duration;
-	} else if(_what == CdRomDrive::EVENT_POWER_OFF) {
+	} else if(_what == CdRomEvents::POWER_OFF) {
 		_drive->led_activity = 0;
 	}
 	_drive->event = true;
-	if(_drive->cd_event_type == CdRomDrive::EVENT_MEDIUM) {
-		// EVENT_MEDIUM has the lowest priority
+	if(_drive->cd_event_type == CdRomEvents::MEDIUM || _drive->cd_event_type == CdRomEvents::MEDIUM_LOADING)
+	{
+		// EVENT_MEDIUM* have the lowest priority
 		_drive->cd_event_type = _what;
 	}
 	// this is the Machine thread, don't play sounds here 
@@ -360,7 +361,7 @@ std::vector<const char*> Interface::MachineDrive::compatible_file_extensions()
 	if(floppy_ctrl) {
 		return floppy_ctrl->get_compatible_file_extensions();
 	} else {
-		return CdRomDisc_Image::get_compatible_file_extensions();
+		return CdRomDisc::get_compatible_file_extensions();
 	}
 }
 
@@ -428,31 +429,38 @@ void Interface::config_changed(bool _startup)
 
 	m_curr_drive = m_drives.begin();
 
-	auto insert_floppy = [this](unsigned _drive, const char *_cfg_section) {
+	auto insert_medium = [this](MachineDrive *_drive, const char *_cfg_section) {
 		std::string diskpath = g_program.config().find_media(_cfg_section, DISK_PATH);
 		if(!diskpath.empty() && g_program.config().get_bool(_cfg_section, DISK_INSERTED)) {
 			g_program.config().set_bool(_cfg_section, DISK_INSERTED, false);
 			if(!FileSys::file_exists(diskpath.c_str())) {
-				PERRF(LOG_GUI, "The floppy image specified in [%s] doesn't exist\n", _cfg_section);
+				PERRF(LOG_GUI, "The image specified in [%s] doesn't exist.\n", _cfg_section);
 				return;
 			}
 			if(FileSys::is_directory(diskpath.c_str())) {
-				PERRF(LOG_GUI, "The floppy image specified in [%s] can't be a directory\n", _cfg_section);
+				PERRF(LOG_GUI, "The image specified in [%s] cannot be a directory.\n", _cfg_section);
 				return;
 			}
-			bool wp = g_program.config().get_bool(_cfg_section, DISK_READONLY);
-			// don't play "insert" audio sample
-			m_machine->cmd_insert_floppy(_drive, diskpath, wp, nullptr);
+			// don't play audio samples here
+			if(_drive->cdrom) {
+				m_machine->cmd_insert_cdrom(_drive->cdrom, diskpath, nullptr);
+			} else {
+				bool wp = g_program.config().get_bool(_cfg_section, DISK_READONLY);
+				m_machine->cmd_insert_floppy(_drive->drive_id, diskpath, wp, nullptr);
+			}
 		}
 	};
 
 	if(_startup) {
-		// floppy disks are inserted by the GUI, cdroms by the drive
+		// media are inserted by the GUI
 		if(drive_a) {
-			insert_floppy(0, DISK_A_SECTION);
+			insert_medium(drive_a, DISK_A_SECTION);
 		}
 		if(drive_b) {
-			insert_floppy(1, DISK_B_SECTION);
+			insert_medium(drive_b, DISK_B_SECTION);
+		}
+		if(drive_d) {
+			insert_medium(drive_d, DISK_CD_SECTION);
 		}
 	}
 
@@ -486,14 +494,15 @@ void Interface::UIDrive::set_medium_string(std::string _filename)
 void Interface::UIDrive::update_medium_status()
 {
 	if(drive->drive_type == GUIDrivesFX::CDROM) {
-		if(g_program.config().get_bool(DISK_CD_SECTION, DISK_INSERTED)) {
-			uidrive_el->SetClass("door_open", false);
+		if(drive->cd_event_type == CdRomEvents::MEDIUM_LOADING) {
+			set_medium_string("Loading...");
+		} else if(g_program.config().get_bool(DISK_CD_SECTION, DISK_INSERTED)) {
 			set_medium_string(g_program.config().get_file(DISK_CD_SECTION, DISK_PATH, FILE_TYPE_USER));
 		} else {
-			assert(drive->cdrom);
 			set_medium_string("");
-			uidrive_el->SetClass("door_open", drive->cdrom->is_door_open());
 		}
+		assert(drive->cdrom);
+		uidrive_el->SetClass("door_open", drive->cdrom->is_door_open());
 	} else {
 		switch(drive->floppy_event_type) {
 			case FloppyEvents::EVENT_DISK_LOADING:
@@ -632,7 +641,7 @@ void Interface::on_medium_select(std::string _img_path, bool _write_protect, Mac
 
 	if(_drive->drive_type == GUIDrivesFX::CDROM) {
 		PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on CD-ROM drive %s\n", _img_path.c_str(), _drive->label.c_str());
-		m_machine->cmd_insert_cdrom(_drive->drive_id, _img_path);
+		m_machine->cmd_insert_cdrom(_drive->cdrom, _img_path, [](bool){});
 	} else {
 		PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on floppy %s %s\n", _img_path.c_str(),
 				_drive->drive_id?"B":"A", _write_protect?"(write protected)":"");
@@ -699,17 +708,22 @@ void Interface::update()
 		if(drive.event) {
 			// medium and drive events
 			for(auto uidrive : drive.uidrives) {
-				if(drive.cd_event_type != CdRomDrive::EVENT_MEDIUM && m_audio_enabled) {
-					if(drive.cd_event_type == CdRomDrive::EVENT_DOOR_CLOSING) {
-						m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::INSERT);
-					} else if(drive.cd_event_type == CdRomDrive::EVENT_DOOR_OPENING) {
-						m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::EJECT);
+				if(m_audio_enabled) {
+					switch(drive.cd_event_type) {
+						case CdRomEvents::DOOR_CLOSING:
+							m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::INSERT);
+							break;
+						case CdRomEvents::DOOR_OPENING:
+							m_drives_audio.use_drive(GUIDrivesFX::CDROM, GUIDrivesFX::EJECT);
+							break;
+						default:
+							break;
 					}
 				}
 				uidrive->update_medium_status();
 			}
 			drive.event = false;
-			drive.cd_event_type = CdRomDrive::EVENT_MEDIUM;
+			drive.cd_event_type = CdRomEvents::MEDIUM;
 			drive.floppy_event_type = FloppyEvents::EVENT_MEDIUM;
 		}
 	}
@@ -834,7 +848,7 @@ bool Interface::on_medium_button(Rml::Event &, MachineDrive *_drive)
 			break;
 		case GUIDrivesFX::CDROM:
 			// door open fx will play in the update()
-			m_machine->cmd_toggle_cdrom_door(_drive->drive_id);
+			m_machine->cmd_toggle_cdrom_door(_drive->cdrom);
 			break;
 		default:
 			break;

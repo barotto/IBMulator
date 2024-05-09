@@ -17,6 +17,12 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * Portions of code
+ * Copyright (C) 2020-2023  The DOSBox Staging Team
+ * Copyright (C) 2002-2021  The DOSBox Team
+ */
+
 #include "ibmulator.h"
 #include "filesys.h"
 #include "cdrom_drive.h"
@@ -42,9 +48,9 @@ StorageDev(DEV_CDROM)
 	m_cur_speed_x = 1;
 }
 
-void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id)
+void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id, const char *_ini_section)
 {
-	StorageDev::install(_ctrl, _id);
+	StorageDev::install(_ctrl, _id, _ini_section);
 
 	m_disc_timer = g_machine.register_timer(
 		std::bind(&CdRomDrive::timer_handler, this, std::placeholders::_1),
@@ -63,11 +69,47 @@ void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id)
 		m_durations.spin_up = US_TO_NS(m_fx.duration_us(CdRomFX::CD_SPIN_UP));
 		m_durations.spin_down = US_TO_NS(m_fx.duration_us(CdRomFX::CD_SPIN_DOWN));
 	}
+
+	using namespace std::placeholders;
+	m_audio.channel = g_mixer.register_channel(
+		std::bind(&CdRomDrive::create_audio_samples, this, _1, _2, _3),
+		"CD Audio", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
+	m_audio.channel->set_disable_timeout(EFFECTS_MIN_DUR_NS);
+	m_audio.channel->set_features(
+		MixerChannel::HasVolume |
+		MixerChannel::HasBalance |
+		MixerChannel::HasReverb |
+		MixerChannel::HasChorus |
+		MixerChannel::HasFilter |
+		MixerChannel::HasCrossfeed
+	);
+	m_audio.channel->register_config_map({
+		{ MixerChannel::ConfigParameter::Volume,    { _ini_section, CDROM_VOLUME }},
+		{ MixerChannel::ConfigParameter::Balance,   { _ini_section, CDROM_BALANCE }},
+		{ MixerChannel::ConfigParameter::Reverb,    { _ini_section, CDROM_REVERB }},
+		{ MixerChannel::ConfigParameter::Chorus,    { _ini_section, CDROM_CHORUS }},
+		{ MixerChannel::ConfigParameter::Crossfeed, { _ini_section, CDROM_CROSSFEED }},
+		{ MixerChannel::ConfigParameter::Filter,    { _ini_section, CDROM_FILTERS }},
+	});
+	m_audio.channel->set_in_spec({AUDIO_FORMAT_S16, 2u, 44100.0});
+
+	// Some programs have 2 different mono audio tracks encoded in the L/R channels
+	// and use per channel volume to disable one of the two (eg. grolier encyclopedia)
+	// Volumes are set by the guest using the sub adjustment.
+	// m_audio.channel->add_autoval_cb(MixerChannel::ConfigParameter::Volume, std::bind(&CdRomDrive::update_volumes, this));
 }
 
 void CdRomDrive::power_on(uint64_t)
 {
-	m_s.door_locked = false;
+	m_cur_speed_x = m_max_speed_x;
+	m_s.disc_changed = false;
+	set_timeout_mult(0);
+	set_audio_port(0, 1, 0xff);
+	set_audio_port(1, 2, 0xff);
+	update_volumes();
+	set_sotc(false);
+	lock_door(false);
+
 	if(m_disc) {
 		m_s.disc = DISC_DOOR_CLOSING;
 		update_disc_state();
@@ -78,7 +120,9 @@ void CdRomDrive::power_on(uint64_t)
 
 void CdRomDrive::power_off()
 {
-	signal_activity(EVENT_POWER_OFF, 0);
+	stop_audio();
+
+	signal_activity(CdRomEvents::POWER_OFF, 0);
 
 	if(m_fx_enabled) {
 		m_fx.clear_seek_events();
@@ -107,6 +151,8 @@ void CdRomDrive::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "%s: saving state\n", name());
 
+	std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+
 	_state.write(&m_s, {sizeof(m_s), str_format("CDROM%u", m_drive_index).c_str()});
 }
 
@@ -114,15 +160,32 @@ void CdRomDrive::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_HDD, "%s: restoring state\n", name());
 
+	remove_disc();
+
 	_state.read(&m_s, {sizeof(m_s), str_format("CDROM%u", m_drive_index).c_str()});
+
+	if(g_program.config().get_bool(m_ini_section, DISK_INSERTED)) {
+		std::string diskpath = g_program.config().find_media(m_ini_section, DISK_PATH);
+		if(diskpath.empty()) {
+			PERRF(LOG_GUI, "A CD-ROM disc is inserted but the image path is not set.\n");
+			throw std::runtime_error("cannot restore CD-ROM state");
+		}
+		CdRomDisc *disc = CdRomLoader::load_cdrom(diskpath);
+		if(!disc) {
+			// error log messages are printed by the loader
+			throw std::runtime_error("cannot restore CD-ROM state");
+		}
+		insert_disc(disc, diskpath);
+	}
 
 	switch(m_s.disc) {
 		case DISC_NO_DISC:
 		case DISC_DOOR_OPEN:
 		case DISC_EJECTING:
 			if(m_disc) {
+				// this is a bug
 				PERRF(LOG_HDD, "CD-ROM: Invalid disc state on restore: %u\n", m_s.disc);
-				remove_medium();
+				throw std::runtime_error("invalid state");
 			}
 			break;
 		case DISC_DOOR_CLOSING:
@@ -131,10 +194,12 @@ void CdRomDrive::restore_state(StateBuf &_state)
 		case DISC_READY:
 		case DISC_IDLE:
 			if(!m_disc) {
+				// this is a bug
 				PERRF(LOG_HDD, "CD-ROM: Invalid disc state on restore: %u\n", m_s.disc);
+				throw std::runtime_error("invalid state");
 			} else if(m_s.disc == DISC_SPINNING_UP || m_s.disc == DISC_READY) {
 				if(m_fx_enabled) {
-					m_fx.spin(true, true);
+					m_fx.spin(true, false);
 				}
 			}
 			break;
@@ -142,13 +207,35 @@ void CdRomDrive::restore_state(StateBuf &_state)
 	if(m_fx_enabled) {
 		m_fx.clear_seek_events();
 	}
+
+	update_volumes();
+
+	if(m_s.audio.is_playing) {
+		auto curr_sector = curr_audio_lba();
+		m_audio.track = m_disc->get_track(curr_sector);
+		if(m_audio.track == m_disc->tracks().end() || !m_audio.track->is_audio()) {
+			PERRF(LOG_GUI, "Invalid audio track at sector %lld\n", curr_sector);
+			throw std::runtime_error("cannot restore CD-ROM state");
+		}
+		auto byte_offset = m_audio.track->sector_to_byte(curr_sector);
+		if(byte_offset < 0 ||
+		   !m_audio.track->file->seek(byte_offset, false)
+		) {
+			PERRF(LOG_HDD, "CD-ROM: failed to seek track %u to sector %lld, byte offset: %lld\n",
+					m_audio.track->number, curr_sector, byte_offset);
+			throw std::runtime_error("cannot restore CD-ROM state");
+		}
+		m_audio.channel->enable(true);
+	}
 }
 
-void CdRomDrive::config_changed(const char *_section)
+void CdRomDrive::config_changed()
 {
 	// Program thread (Startup) and Machine thread (restore state)
 
-	m_ini_section = _section;
+	// At program launch, the Program interface is responsible for media insertions
+	// At restore state, media is inserted in the restore_state() function
+
 	m_activity_cb.clear();
 
 	m_max_speed_x = g_program.config().get_int_or_bool(DRIVES_SECTION, DRIVES_CDROM);
@@ -232,76 +319,42 @@ void CdRomDrive::config_changed(const char *_section)
 	PDEBUGF(LOG_V1, LOG_HDD, "  Read speed (net): %.1f bytes per sec (%.2fX)\n", read_speed_bytes_sec, read_speed_factor);
 
 	set_timeout_mult(0);
-
-	if(g_program.config().get_bool(_section, DISK_INSERTED)) {
-		if(insert_medium(g_program.config().get_string(_section, DISK_PATH))) {
-			m_s.disc = DISC_IDLE;
-			m_s.disc_changed = true;
-			g_machine.deactivate_timer(m_disc_timer);
-		}
-	} else {
-		remove_medium();
-	}
 }
 
-bool CdRomDrive::insert_medium(const std::string &_path)
+void CdRomDrive::insert_disc(CdRomDisc *_disc, std::string _path)
 {
+	assert(!m_disc);
+	assert(m_path.empty());
+
+	m_path = _path;
+	m_disc.reset(_disc);
+
+	auto geometry = m_disc->geometry();
+	set_geometry(geometry, BYTES_PER_RAW_REDBOOK_FRAME, 0);
+	m_sectors = m_disc->sectors();
+	m_disk_radius = double(geometry.cylinders) * CdRomDisc::track_width_mm;
+}
+
+void CdRomDrive::insert_medium(CdRomDisc *_disc, std::string _path)
+{
+	assert(_disc);
+
 	remove_medium();
 
-	PINFOF(LOG_V0, LOG_HDD, "CD-ROM: loading image '%s'...\n", _path.c_str());
-
-	auto path = g_program.config().find_media(_path);
-	if(FileSys::file_exists(path.c_str())) {
-		m_disc = std::make_shared<CdRomDisc_Image>();
-		try {
-			m_disc->load(path);
-		} catch(std::runtime_error &e) {
-			PERRF(LOG_HDD, "CD-ROM: %s\n", e.what());
-			remove_medium();
-			return false;
-		}
-		m_path = path;
-	} else {
-		PERRF(LOG_HDD, "CD-ROM: cannot find image file '%s'.\n");
-		return false;
-	}
-
-	uint8_t first, last;
-	TMSF leadOut;
-	if(!m_disc->get_audio_tracks(first, last, leadOut)) {
-		PERRF(LOG_HDD, "CD-ROM: cannot get tracks information.\n");
-		remove_medium();
-		return false;
-	}
-
-	double sectors = leadOut.to_frames() - REDBOOK_FRAME_PADDING;
-
-	MediaGeometry geometry;
-	geometry.heads = 1;
-	geometry.spt = CdRomDisc::sectors_per_track;
-	geometry.cylinders = std::ceil(sectors / CdRomDisc::sectors_per_track);
-	set_geometry(geometry, BYTES_PER_RAW_REDBOOK_FRAME, 0);
-
-	m_sectors = sectors; // make it precise
-	m_disk_radius = double(geometry.cylinders) * CdRomDisc::track_width_mm;
-
-	PINFOF(LOG_V1, LOG_HDD,  "CD-ROM:   tracks: %u, sectors: %lld\n", m_disc->tracks_count(), m_sectors);
-	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM:   C/S: %u/%u, radius: %.1f mm\n",
-			m_geometry.cylinders, m_geometry.spt, m_disk_radius);
+	insert_disc(_disc, _path);
+	m_s.disc_changed = true;
 
 	if(g_machine.is_on()) {
 		// somebody will play sound fx for this
 		do_close_door(true);
 	} else {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: disc is inserted and IDLE.\n");
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: disc is inserted and IDLE.\n");
 		m_s.disc = DISC_IDLE;
-		signal_activity(EVENT_MEDIUM, 0);
+		signal_activity(CdRomEvents::MEDIUM, 0);
 	}
 
 	g_program.config().set_bool(m_ini_section, DISK_INSERTED, true);
 	g_program.config().set_string(m_ini_section, DISK_PATH, _path);
-
-	return true;
 }
 
 bool CdRomDrive::is_motor_on() const
@@ -321,23 +374,25 @@ void CdRomDrive::open_door()
 	}
 	if(!g_machine.is_on()) {
 		remove_medium();
-		signal_activity(EVENT_MEDIUM, 0);
+		signal_activity(CdRomEvents::MEDIUM, 0);
 	} else {
 		if(m_s.door_locked) {
 			PINFOF(LOG_V0, LOG_HDD, "CD-ROM: cannot open: the door is soft-locked.\n");
 			return;
 		}
 
+		stop_audio();
+
 		if(is_motor_on()) {
 			m_s.disc = DISC_EJECTING;
-			signal_activity(EVENT_MEDIUM, m_durations.spin_down);
-			g_machine.activate_timer(m_disc_timer, m_durations.spin_down, false);
+			signal_activity(CdRomEvents::MEDIUM, m_durations.spin_down);
+			activate_timer(m_durations.spin_down, "to state DISC_DOOR_OPEN");
 			if(m_fx_enabled) {
 				m_fx.spin(false, true);
 			}
 		} else {
 			m_s.disc = DISC_EJECTING;
-			g_machine.deactivate_timer(m_disc_timer);
+			deactivate_timer("open door");
 			update_disc_state();
 		}
 	}
@@ -356,7 +411,7 @@ uint64_t CdRomDrive::do_close_door(bool _force)
 {
 	if(m_s.disc != DISC_DOOR_OPEN) {
 		if(_force) {
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: close_door(): the door is NOT open: forcing it open...\n");
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: close_door(): the door is NOT open: forcing it open...\n");
 			m_s.disc = DISC_DOOR_OPEN;
 		} else {
 			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: close_door(): the door is not open.\n");
@@ -364,16 +419,17 @@ uint64_t CdRomDrive::do_close_door(bool _force)
 		}
 	}
 
-	signal_activity(EVENT_DOOR_CLOSING, m_durations.close_door);
+	signal_activity(CdRomEvents::DOOR_CLOSING, m_durations.close_door);
 
 	m_s.disc = DISC_DOOR_CLOSING;
-	PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: door open -> door closing \n");
-	g_machine.activate_timer(m_disc_timer, m_durations.close_door, false);
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: door open -> door closing \n");
+
+	activate_timer(m_durations.close_door, "to state DISC_SPINNING_UP");
 
 	return m_durations.close_door;
 }
 
-void CdRomDrive::signal_activity(EventType _what, uint64_t _led_duration)
+void CdRomDrive::signal_activity(CdRomEvents::EventType _what, uint64_t _led_duration)
 {
 	for(auto cb : m_activity_cb) {
 		cb.second(_what, _led_duration);
@@ -389,16 +445,28 @@ void CdRomDrive::toggle_door_button()
 	}
 }
 
+void CdRomDrive::remove_disc()
+{
+	CdRomDisc * disc = m_disc.release();
+	if(disc) {
+		g_machine.cmd_dispose_cdrom(disc);
+	}
+	m_path.clear();
+}
+
 void CdRomDrive::remove_medium()
 {
-	m_disc.reset();
-	m_path.clear();
+	remove_disc();
+
 	m_s.disc = DISC_NO_DISC;
 	m_s.disc_changed = true;
 	m_s.disc_loaded = false;
-	g_machine.deactivate_timer(m_disc_timer);
+
+	m_s.audio.completed = false;
+
+	deactivate_timer("remove medium");
 	g_program.config().set_bool(m_ini_section, DISK_INSERTED, false);
-	signal_activity(EVENT_MEDIUM, 0);
+	signal_activity(CdRomEvents::MEDIUM, 0);
 }
 
 bool CdRomDrive::is_medium_present()
@@ -431,6 +499,52 @@ void CdRomDrive::set_timeout_mult(uint8_t _mult)
 		m_durations.to_idle = MSEC_TO_NSEC(1000 * pow(2,m_s.timeout_mult-0xA));
 	}
 	PINFOF(LOG_V1, LOG_HDD, "CD-ROM: idle timeout: %gs\n", NSEC_TO_SEC(m_durations.to_idle));
+}
+
+void CdRomDrive::set_sotc(bool _sotc)
+{
+	m_s.audio.sotc = _sotc;
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: Stop On Track Crossing (SOTC): %d\n", _sotc);
+}
+
+void CdRomDrive::set_audio_port(uint8_t _port, uint8_t _ch, uint8_t _vol)
+{
+	// Machine thread
+
+	std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: Audio port %u: channel=%u, volume=%u\n", _port, _ch, _vol);
+	if(_port == 0) {
+		m_s.audio.port0_ch = _ch;
+		m_s.audio.port0_vol = _vol;
+	} else {
+		m_s.audio.port1_ch = _ch;
+		m_s.audio.port1_vol = _vol;
+	}
+	update_volumes();
+}
+
+std::pair<uint8_t,uint8_t> CdRomDrive::get_audio_port(uint8_t _port)
+{
+	if(_port == 0) {
+		return std::make_pair(m_s.audio.port0_ch, m_s.audio.port0_vol);
+	} else {
+		return std::make_pair(m_s.audio.port1_ch, m_s.audio.port1_vol);
+	}
+}
+
+void CdRomDrive::update_volumes()
+{
+	// Machine and Mixer threads
+
+	std::lock_guard<std::mutex> lock(m_audio.channel_mutex);
+
+	float left = float(m_s.audio.port0_vol) / 255.f;
+	float right = float(m_s.audio.port1_vol) / 255.f;
+	if(m_audio.channel->volume_sub_left() != left || m_audio.channel->volume_sub_right() != right) {
+		PDEBUGF(LOG_V1, LOG_AUDIO, "CD-ROM: audio volume L:%.3f - R:%.3f\n", left, right);
+	}
+	m_audio.channel->set_volume_sub(left, right);
 }
 
 uint8_t CdRomDrive::disc_type()
@@ -471,8 +585,7 @@ bool CdRomDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _bytes)
 			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_sector while disc is IDLE!\n");
 			return false;
 		case DISC_READY:
-			// next state: IDLE
-			g_machine.activate_timer(m_disc_timer, m_durations.to_idle, false);
+			activate_timer(m_durations.to_idle, "to state DISC_IDLE");
 			break;
 		case DISC_SPINNING_UP: // valid state for sector read in the future
 			break;
@@ -480,21 +593,22 @@ bool CdRomDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _bytes)
 			break;
 	}
 
-	if(!m_disc) {
-		assert(false);
-		PERRF(LOG_HDD, "CD-ROM: cannot read from medium: not present.\n");
+	if(!is_medium_present()) {
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: cannot read from medium: not present.\n");
 		return false;
 	}
+
+	// duration is not relevant
+	signal_activity(CdRomEvents::READ_DATA, 1);
+	m_s.audio.completed = false;
+	m_s.audio.head_pos_valid = false;
 
 	try {
 		m_disc->read_sector(_buffer, _lba, _bytes);
 	} catch(std::exception &e) {
 		PERRF(LOG_HDD, "CD-ROM: cannot read from medium: %s\n", e.what());
-		return false;
+		throw;
 	}
-
-	// duration is not relevant
-	signal_activity(EVENT_READ, 1);
 
 	return true;
 }
@@ -514,7 +628,7 @@ void CdRomDrive::seek(unsigned _from_track, unsigned _to_track)
 			return;
 		case DISC_READY:
 			// next state: IDLE
-			g_machine.activate_timer(m_disc_timer, m_durations.to_idle, false);
+			activate_timer(m_durations.to_idle, "to state DISC_IDLE");
 			break;
 		case DISC_SPINNING_UP: // valid state for sector read in the future
 			// delay the sample to not overlap with the spin-up sound
@@ -527,6 +641,25 @@ void CdRomDrive::seek(unsigned _from_track, unsigned _to_track)
 		uint64_t time = g_machine.get_virt_time_us() + delay_us;
 		m_fx.seek(time, _from_track, _to_track, CdRomDisc::max_tracks);
 	}
+	m_s.audio.completed = false;
+	m_s.audio.head_pos_valid = false;
+}
+
+void CdRomDrive::activate_timer(uint64_t _nsecs, const char *_reason)
+{
+	if(g_machine.is_timer_active(m_disc_timer)) {
+		PDEBUGF(LOG_V3, LOG_HDD, "CD-ROM: timer cancelled, ETA: %llu ns\n", g_machine.get_timer_eta(m_disc_timer));
+	}
+	PDEBUGF(LOG_V3, LOG_HDD, "CD-ROM: new timer set: %s, ETA: %llu ns\n", _reason, _nsecs);
+	g_machine.activate_timer(m_disc_timer, _nsecs, false);
+}
+
+void CdRomDrive::deactivate_timer(const char *_reason)
+{
+	if(g_machine.is_timer_active(m_disc_timer)) {
+		PDEBUGF(LOG_V3, LOG_HDD, "CD-ROM: timer cancelled: %s\n", _reason);
+		g_machine.deactivate_timer(m_disc_timer);
+	}
 }
 
 void CdRomDrive::timer_handler(uint64_t)
@@ -536,7 +669,6 @@ void CdRomDrive::timer_handler(uint64_t)
 
 void CdRomDrive::update_disc_state()
 {
-	uint64_t next_event = 0;
 	switch(m_s.disc) {
 		case DISC_NO_DISC:
 			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: NO_DISC: INVALID DISC STATE\n");
@@ -546,44 +678,55 @@ void CdRomDrive::update_disc_state()
 			break;
 		case DISC_DOOR_CLOSING:
 			if(m_disc) {
-				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: state: door closed -> spinning up & reading TOC\n");
+				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: door closed -> spinning up & reading TOC\n");
 				m_s.disc = DISC_SPINNING_UP;
 				m_s.disc_loaded = true; // keep it here
-				next_event = m_durations.spin_up + m_durations.read_toc; // next event is READY
 				if(m_fx_enabled) {
 					m_fx.spin(true, true);
 				}
-				signal_activity(EVENT_SPINNING_UP, next_event);
+				uint64_t next_event = m_durations.spin_up + m_durations.read_toc; // next event is READY
+				signal_activity(CdRomEvents::SPINNING_UP, next_event);
+				activate_timer(next_event, "to state DISC_SPINNING_UP");
 			} else {
-				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: state: door closed -> no disc\n");
+				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: door closed -> no disc\n");
 				m_s.disc = DISC_NO_DISC;
 			}
 			break;
-		case DISC_SPINNING_UP:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: state: disc spinned up -> ready\n");
+		case DISC_SPINNING_UP: {
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: state: disc spinned up -> ready\n");
 			m_s.disc = DISC_READY;
-			next_event = m_durations.to_idle; // next event is IDLE
+			if(m_s.audio.seek_delay_ns) {
+				activate_timer(m_s.audio.seek_delay_ns, "to audio start");
+			} else {
+				activate_timer(m_durations.to_idle, "to state DISC_IDLE");
+			}
 			break;
+		}
 		case DISC_READY:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: state: ready -> idle\n");
-			m_s.disc = DISC_IDLE;
-			if(m_fx_enabled) {
-				m_fx.spin(false, true);
+			if(m_s.audio.seek_delay_ns) {
+				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: starting audio ...\n");
+				start_audio(true);
+				activate_timer(m_durations.to_idle, "state polling");
+			} else if(!m_s.audio.is_playing) {
+				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: ready -> idle\n");
+				m_s.disc = DISC_IDLE;
+				if(m_fx_enabled) {
+					m_fx.spin(false, true);
+				}
+			} else {
+				activate_timer(m_durations.to_idle, "state polling");
 			}
 			break;
 		case DISC_IDLE:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: state: idle -> ready\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: idle -> ready\n");
 			m_s.disc = DISC_READY;
-			next_event = m_durations.to_idle; // next event is IDLE
+			activate_timer(m_durations.to_idle, "to state DISC_IDLE");
 			break;
 		case DISC_EJECTING:
-			signal_activity(EVENT_DOOR_OPENING, m_durations.open_door);
+			signal_activity(CdRomEvents::DOOR_OPENING, m_durations.open_door);
 			remove_medium();
 			m_s.disc = DISC_DOOR_OPEN;
 			break;
-	}
-	if(next_event) {
-		g_machine.activate_timer(m_disc_timer, next_event, false);
 	}
 }
 
@@ -591,35 +734,35 @@ void CdRomDrive::spin_up()
 {
 	switch(m_s.disc) {
 		case DISC_NO_DISC:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: no disc!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: no disc!\n");
 			break;
 		case DISC_DOOR_OPEN:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: door is open!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: door is open!\n");
 			break;
 		case DISC_DOOR_CLOSING:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: door is closing!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: door is closing!\n");
 			break;
 		case DISC_READY:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: disc already spinning.\n");
-			// reset IDLE timer
-			// next state: IDLE
-			g_machine.activate_timer(m_disc_timer, m_durations.to_idle, false);
+			if(!m_s.audio.is_playing) {
+				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: disc already spinning.\n");
+				// reset IDLE timer
+				activate_timer(m_durations.to_idle, "to state DISC_IDLE");
+			}
 			break;
 		case DISC_SPINNING_UP:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: already spinning up!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: already spinning up!\n");
 			break;
 		case DISC_IDLE:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: idle -> spinning up...\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: idle -> spinning up...\n");
 			m_s.disc = DISC_SPINNING_UP;
 			if(m_fx_enabled) {
 				m_fx.spin(true, true);
 			}
-			// next state: DISC_READY
-			g_machine.activate_timer(m_disc_timer, m_durations.spin_up, false);
-			signal_activity(EVENT_SPINNING_UP, m_durations.spin_up);
+			activate_timer(m_durations.spin_up, "to state DISC_READY");
+			signal_activity(CdRomEvents::SPINNING_UP, m_durations.spin_up);
 			break;
 		case DISC_EJECTING:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin up: the disc is getting ejected!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: the disc is getting ejected!\n");
 			break;
 	}
 }
@@ -628,28 +771,29 @@ void CdRomDrive::spin_down()
 {
 	switch(m_s.disc) {
 		case DISC_NO_DISC:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin down: no disc!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin down: no disc!\n");
 			break;
 		case DISC_DOOR_OPEN:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin down: door is open!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin down: door is open!\n");
 			break;
 		case DISC_DOOR_CLOSING:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin down: door is closing!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin down: door is closing!\n");
 			break;
 		case DISC_SPINNING_UP:
 		case DISC_READY:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spinning down...\n");
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: spinning down...\n");
+			stop_audio();
 			m_s.disc = DISC_IDLE;
 			if(m_fx_enabled) {
 				m_fx.spin(false, true);
 			}
-			g_machine.deactivate_timer(m_disc_timer);
+			deactivate_timer("spin down");
 			break;
 		case DISC_IDLE:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin down: already idle\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin down: already idle!\n");
 			break;
 		case DISC_EJECTING:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: spin down: the disc is already spinning down!\n");
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin down: the disc is already spinning down!\n");
 			break;
 	}
 }
@@ -670,18 +814,371 @@ CdRomDrive::DiscState CdRomDrive::disc_state()
 	return m_s.disc;
 }
 
-bool CdRomDrive::get_audio_status(bool &_playing, bool &_pause)
+bool CdRomDrive::check_play_audio(int64_t &_start_lba_, int64_t _end_lba, uint8_t &sense_, uint8_t &asc_)
 {
-	// TODO
-	_playing = false;
-	_pause = false;
+	// check track validity
+	auto track = m_disc->get_track(_start_lba_);
+	if(track == m_disc->tracks().end() || !track->file || track->is_data()) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio_check(): invalid start track.\n");
+		sense_ = 0x05;
+		asc_ = 0x64; // ILLEGAL MODE FOR THIS TRACK
+		return false;
+	}
+
+	// If the request falls into the pregap, which is prior to the track's
+	// actual start but not so earlier that it falls into the prior track's
+	// audio, then we simply skip the pre-gap (beacuse we can't negatively
+	// seek into the track) and instead start playback at the actual track
+	// start.
+	if(_start_lba_ < track->start) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio_check(): start LBA (%lld) is in track %d pregap, moving to sector %lld.\n",
+				_start_lba_, track->number, track->start);
+		_start_lba_ = track->start;
+	}
+
+	// If the Starting MSF address is greater than the Ending MSF address,
+	// the command shall be terminated with CHECK CONDITION status.
+	// The sense key shall be set to ILLEGAL REQUEST.
+	if(_start_lba_ > _end_lba) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio_check(): invalid start/end LBA sectors: %lld < %lld.\n",
+				_start_lba_, _end_lba);
+		sense_ = 0x05;
+		asc_ = 0x24; // ASC_INVALID_FIELD_IN_CMD_PACKET
+		return false;
+	}
+
+	if(_start_lba_ > max_lba() || _end_lba > sectors()) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio_check(): start (%lld), end (%lld) LBA sectors out-of-range.\n",
+				_start_lba_, _end_lba);
+		sense_ = 0x05;
+		asc_ = 0x33; // ASC_LOGICAL_BLOCK_OOR
+		return false;
+	}
+
 	return true;
 }
 
-bool CdRomDrive::stop_audio()
+bool CdRomDrive::start_audio_track(int64_t _start_lba, int64_t _end_lba, bool _do_seek)
 {
-	// TODO
+	// Machine and Mixer threads
+	// lock to be acquired beforehand
+
+	if(_start_lba > _end_lba) {
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: start_audio_track_play: invalid starting point!\n");
+		return false;
+	}
+
+	m_s.audio.start_sector = _start_lba;
+	m_s.audio.end_sector = _end_lba;
+
+	m_s.audio.total_redbook_frames = _end_lba - _start_lba;
+	m_s.audio.total_pcm_frames = m_s.audio.total_redbook_frames * PCM_FRAMES_PER_REDBOOK_FRAME;
+
+	if(!m_s.audio.total_redbook_frames) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: start_audio_track_play: nothing to play.\n");
+		return false;
+	}
+
+	if(_do_seek) {
+		m_audio.track = m_disc->get_track(_start_lba);
+		if(m_audio.track == m_disc->tracks().end() || !m_audio.track->is_audio()) { 
+			return false;
+		}
+
+		m_s.audio.played_pcm_frames = 0;
+
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: start_audio_track_play: track=%u, from=%lld, to=%lld, frames=%u\n",
+				m_audio.track->number, m_s.audio.start_sector, m_s.audio.end_sector, m_s.audio.total_redbook_frames);
+
+		int64_t byte_offset = m_audio.track->sector_to_byte(m_s.audio.start_sector);
+
+		if(byte_offset < 0 ||
+		   !m_audio.track->file->seek(byte_offset, static_cast<bool>(m_s.audio.seek_delay_ns))
+		) {
+			PERRF(LOG_HDD, "CD-ROM: failed to seek track %u to sector: %lld, byte offset: %lld\n",
+					m_audio.track->number, m_s.audio.start_sector, byte_offset);
+			return false;
+		}
+	}
+
+	m_s.audio.to_start_state();
+
 	return true;
+}
+
+void CdRomDrive::play_audio(int64_t _start_lba, int64_t _end_lba, uint64_t _seek_delay_us)
+{
+	// Machine thread, called from the disc controller
+	// a call to play_audio_check() shall be done beforehand to check values
+
+	std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+
+	bool do_seek = false;
+	if(_seek_delay_us) {
+		// a seek stops audio play 
+		stop_audio(false, false);
+		do_seek = true;
+	} else {
+		// head is already on desired position
+		// seek audio file only if not currently playing
+		do_seek = !m_s.audio.is_playing;
+	}
+
+	m_s.audio.seek_delay_ns = US_TO_NS(_seek_delay_us);
+
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio: start: %s (%lld), end: %s (%lld), seek: %llu ns\n",
+			TMSF(_start_lba).to_string().c_str(), _start_lba,
+			TMSF(_end_lba).to_string().c_str(), _end_lba,
+			m_s.audio.seek_delay_ns);
+
+	if(!start_audio_track(_start_lba, _end_lba, do_seek)) {
+		stop_audio(true, false);
+		return;
+	}
+
+	switch(m_s.disc) {
+		case DISC_READY:
+			if(m_s.audio.seek_delay_ns) {
+				PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: play_audio: seeking to sector %lld, ETA: %llu ns\n",
+						_start_lba, m_s.audio.seek_delay_ns);
+				activate_timer(m_s.audio.seek_delay_ns, "to audio start");
+			} else {
+				start_audio(false);
+			}
+			break;
+		case DISC_SPINNING_UP:
+			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: audio will be started when disc becomes ready and seek is completed (if req.)\n");
+			break;
+		default:
+			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: play_audio(): invalid disc state: %d\n", m_s.disc);
+			break;
+	}
+}
+
+bool CdRomDrive::pause_resume_audio(bool _resume)
+{
+	// Machine thread
+
+	if(m_s.audio.is_paused) {
+		// audio is playing but paused
+		if(_resume) {
+			std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+			m_s.audio.is_paused = false;
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: audio unpaused.\n");
+			m_audio.channel->enable(true);
+		} else {
+			// It shall not be considered an error to request a PAUSE when a pause is already in effect
+			// or to request a RESUME when a play operation is in progress.
+			stop_audio();
+		}
+		return true;
+	} else if(m_s.audio.is_playing || m_s.audio.seek_delay_ns) {
+		if(!_resume) {
+			std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+			m_s.audio.is_paused = true;
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: audio paused.\n");
+		}
+		return true;
+	} else {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: no active audio play operation.\n");
+		return false;
+	}
+}
+
+void CdRomDrive::start_audio(bool _audio_lock)
+{
+	// Machine thread
+
+	if(_audio_lock) {
+		m_audio.player_mutex.lock();
+	}
+
+	m_s.audio.to_start_state();
+	m_s.audio.seek_delay_ns = 0;
+	m_s.audio.head_pos_valid = true;
+
+	m_audio.channel->enable(true);
+
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: audio started.\n");
+
+	if(_audio_lock) {
+		m_audio.player_mutex.unlock();
+	}
+}
+
+void CdRomDrive::stop_audio(bool _error, bool _audio_lock)
+{
+	// Machine thread
+
+	if(_audio_lock) {
+		m_audio.player_mutex.lock();
+	}
+
+	if(m_s.audio.is_playing) {
+		m_s.audio.to_stop_state(_error);
+		m_s.audio.seek_delay_ns = 0;
+
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: audio stopped.\n");
+		// if mixer channel is active it will be stopped by the mixer
+	}
+
+	if(_audio_lock) {
+		m_audio.player_mutex.unlock();
+	}
+}
+
+int64_t CdRomDrive::curr_audio_lba() const
+{
+	double fraction_played = static_cast<double>(m_s.audio.played_pcm_frames) / m_s.audio.total_pcm_frames;
+	int64_t played_redbook_frames = static_cast<int64_t>(ceil(fraction_played * m_s.audio.total_redbook_frames));
+	int64_t curr_lba = m_s.audio.start_sector + played_redbook_frames;
+
+	return curr_lba;
+}
+
+CdRomDrive::AudioStatus CdRomDrive::get_audio_status(bool _reset, int64_t *curr_lba_)
+{
+	// audio lock shall be acquired
+
+	if(curr_lba_) {
+		if(m_s.audio.head_pos_valid) {
+			*curr_lba_ = curr_audio_lba();
+		} else {
+			*curr_lba_ = -1;
+		}
+	}
+
+	if(m_s.audio.is_playing) {
+		// play operation active
+		// Mixer channel might not be enabled yet if drive is seeking
+		if(m_s.audio.is_paused) {
+			return AUDIO_PAUSED;
+		}
+		return AUDIO_PLAYING;
+	}
+	if(m_s.audio.completed) {
+		if(_reset) {
+			m_s.audio.completed = false;
+		}
+		if(m_s.audio.error) {
+			return AUDIO_ERROR_STOP;
+		}
+		return AUDIO_SUCCESS_STOP;
+	}
+	return AUDIO_NO_STATUS;
+}
+
+bool CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd)
+{
+	// Mixer thread
+
+	UNUSED(_prebuf);
+
+	std::lock_guard<std::mutex> lock(m_audio.player_mutex);
+
+	static uint64_t prev_mtime_ns = 0;
+	static double gen_frames_rem = .0;
+
+	uint64_t cur_mtime_ns = g_machine.get_virt_time_ns_mt();
+	uint64_t elapsed_ns = 0;
+
+	if(_first_upd) {
+		elapsed_ns = _time_span_ns;
+	} else {
+		assert(cur_mtime_ns >= prev_mtime_ns);
+		elapsed_ns = cur_mtime_ns - prev_mtime_ns;
+	}
+	prev_mtime_ns = cur_mtime_ns;
+
+	int req_frames = static_cast<int>(m_audio.channel->in_spec().ns_to_frames(elapsed_ns) + gen_frames_rem);
+	int gen_frames = 0;
+
+	int64_t curr_lba = curr_audio_lba();
+	if(curr_lba >= m_s.audio.end_sector) {
+		m_s.audio.to_stop_state();
+	}
+
+	bool active = true;
+	if(!m_s.audio.is_playing || m_s.audio.is_paused) {
+		PDEBUGF(LOG_V2, LOG_MIXER, "CD-ROM: audio paused, creating silence.\n");
+		gen_frames = req_frames;
+		m_audio.channel->in().fill_frames_silence(req_frames);
+		active = !m_audio.channel->check_disable_time(cur_mtime_ns);
+	} else if(req_frames) {
+		static AudioBuffer buff({ AUDIO_FORMAT_S16, REDBOOK_CHANNELS, REDBOOK_PCM_FRAMES_PER_SECOND });
+		buff.resize_frames(req_frames);
+
+		gen_frames = m_audio.track->file->decode(buff.data(), req_frames);
+		if(gen_frames == CdRomDisc::DECODE_EOF) {
+			// EOF, this track has come to an end
+			if(!m_s.audio.sotc) {
+				// proceed to the next
+				uint8_t sense, asc;
+				if(
+				   !check_play_audio(curr_lba, m_s.audio.end_sector, sense, asc) ||
+				   !start_audio_track(curr_lba, m_s.audio.end_sector, true)
+				)
+				{
+					gen_frames = CdRomDisc::DECODE_ERROR;
+				} else {
+					// try again
+					gen_frames = m_audio.track->file->decode(buff.data(), req_frames);
+					if(gen_frames == CdRomDisc::DECODE_EOF) {
+						PDEBUGF(LOG_V0, LOG_MIXER, "CD-ROM: unexpected EOF\n");
+						m_s.audio.to_stop_state(true);
+					}
+				}
+			} else {
+				m_s.audio.to_stop_state();
+			}
+		}
+		if(gen_frames == CdRomDisc::DECODE_ERROR) {
+			// decoding error
+			PDEBUGF(LOG_V0, LOG_MIXER, "CD-ROM: audio decoding error, stopping.\n");
+			m_s.audio.to_stop_state(true);
+		} else if(gen_frames == CdRomDisc::DECODE_NOT_READY) {
+			// data not ready / seek in progress
+			PDEBUGF(LOG_V1, LOG_MIXER, "CD-ROM: data not ready.\n");
+		}
+		if(gen_frames > 0) {
+			buff.resize_frames(gen_frames);
+			if(m_s.audio.port0_ch != 1 || m_s.audio.port1_ch != 2) {
+				int16_t *data = &(buff.at<int16_t>(0));
+				for(size_t i=0; i<buff.frames(); i++) {
+					int16_t ch[2] = { data[i*2 + 0], data[i*2 + 1] };
+					if(m_s.audio.port0_ch == 0) {
+						data[i*2 + 0] = 0;
+					} else if(m_s.audio.port0_ch <= 2) {
+						data[i*2 + 0] = ch[m_s.audio.port0_ch - 1];
+					}
+					if(m_s.audio.port1_ch == 0) {
+						data[i*2 + 1] = 0;
+					} else if(m_s.audio.port1_ch <= 2) {
+						data[i*2 + 1] = ch[m_s.audio.port1_ch - 1];
+					}
+				}
+			}
+			m_audio.channel->in().add_frames(buff);
+			m_s.audio.played_pcm_frames += gen_frames;
+		} else {
+			gen_frames = req_frames;
+			m_audio.channel->in().fill_frames_silence(req_frames);
+		}
+
+		m_audio.channel->set_disable_time(cur_mtime_ns);
+
+		signal_activity(CdRomEvents::READ_DATA, 1);
+	}
+
+	gen_frames_rem = req_frames - double(gen_frames);
+
+	m_audio.channel->input_finish();
+
+	unsigned needed_frames = round(m_audio.channel->in_spec().ns_to_frames(_time_span_ns));
+	PDEBUGF(LOG_V2, LOG_MIXER, "CD-ROM: mix time: %04llu ns, frames: %d, machine time: %llu ns, gen.frames: %d, curr.LBA: %lld\n",
+			_time_span_ns, needed_frames, elapsed_ns, gen_frames, curr_audio_lba());
+
+	return active;
 }
 
 bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool _msf, unsigned _start_track, unsigned _format)
@@ -695,8 +1192,8 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 
 	uint8_t first, last;
 	TMSF leadOut;
-	if(!m_disc->get_audio_tracks(first, last, leadOut)) {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: failed to get track info\n");
+	if(!m_disc->get_tracks_info(first, last, leadOut)) {
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: failed to get tracks info.\n");
 		return false;
 	}
 
@@ -709,27 +1206,26 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 			buf[2] = first;
 			buf[3] = last;
 
-			for (unsigned track = first; track <= last; track++) {
-				uint8_t attr;
-				TMSF start;
-
-				if(!m_disc->get_audio_track_info(track, start, attr)) {
-					PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: unable to read track %u information\n", track);
-					attr = 0x41; // ADR=1 CONTROL=4
-					start.min = 0;
-					start.sec = 0;
-					start.fr = 0;
-				}
-
+			for(unsigned track = first; track <= last; track++) {
 				if(track < _start_track) {
 					continue;
 				}
 
-				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: playing Track %u (attr=0x%02x %02u:%02u:%02u)\n",
-						first, attr, start.min, start.sec, start.fr);
+				uint8_t attr;
+				TMSF start;
+				if(!m_disc->get_track_info(track, start, attr)) {
+					PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: unable to read track %u information.\n", track);
+					attr = 0x40;
+					start.min = 0;
+					start.sec = 0;
+					start.fr = 0;
+				} else {
+					PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_toc: Track %u (attr=0x%02x %s)\n",
+							track, attr, start.to_string().c_str());
+				}
 
 				buf.push_back(0x00);               // entry+0 RESERVED
-				buf.push_back((attr >> 4) | 0x10); // entry+1 ADR=1 CONTROL=4 (DATA)
+				buf.push_back(0x10 | (attr >> 4)); // entry+1 ADR (1) | CONTROL
 				buf.push_back(track);              // entry+2 TRACK
 				buf.push_back(0x00);               // entry+3 RESERVED
 				if(_msf) {
@@ -738,7 +1234,7 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 					buf.push_back(start.sec);
 					buf.push_back(start.fr);
 				} else {
-					uint32_t sec = start.to_frames() - 150u;
+					uint32_t sec = start.to_frames();
 					buf.push_back( (uint8_t)(sec >> 24u) );
 					buf.push_back( (uint8_t)(sec >> 16u) );
 					buf.push_back( (uint8_t)(sec >> 8u) );
@@ -746,9 +1242,10 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 				}
 			}
 
+			// Lead-out
 			buf.push_back(0x00);
-			buf.push_back(0x14);
-			buf.push_back(0xAA); // TRACK
+			buf.push_back(0x14); // ADR (1) | CONTROL (4)
+			buf.push_back(0xAA); // TRACK (Lead-out track number is defined as 0AAh)
 			buf.push_back(0x00);
 			if(_msf) {
 				buf.push_back(0x00);
@@ -756,12 +1253,15 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 				buf.push_back(leadOut.sec);
 				buf.push_back(leadOut.fr);
 			} else {
-				uint32_t sec = leadOut.to_frames() - 150u;
+				uint32_t sec = leadOut.to_frames();
 				buf.push_back( (uint8_t)(sec >> 24u) );
 				buf.push_back( (uint8_t)(sec >> 16u) );
 				buf.push_back( (uint8_t)(sec >> 8u) );
 				buf.push_back( (uint8_t)(sec >> 0u) );
 			}
+			PDEBUGF(LOG_V2, LOG_HDD,
+				"CD-ROM: read_toc: lead-out => MSF %s, logical sector %lld\n",
+				leadOut.to_string().c_str(), leadOut.to_frames());
 
 			break;
 		}
@@ -773,30 +1273,30 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 			buf[2] = 1u; // first complete session
 			buf[3] = 1u; // last complete session 
 
-			if (!m_disc->get_audio_track_info(first, start, attr)) {
-				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: unable to read track %u information\n", first);
-				attr = 0x41; // ADR=1 CONTROL=4
+			if (!m_disc->get_track_info(first, start, attr)) {
+				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: unable to read track %u information.\n", first);
+				attr = 0x40;
 				start.min = 0;
 				start.sec = 0;
 				start.fr = 0;
 			}
 
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: playing Track %u (attr=0x%02x %02u:%02u:%02u)\n", first, attr, start.min,
-				start.sec, start.fr);
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_toc: Track %u (attr=0x%02x %s)\n",
+					first, attr, start.to_string().c_str());
 
 			buf.push_back(0x00);               // entry+0 RESERVED
-			buf.push_back((attr >> 4) | 0x10); // entry+1 ADR=1 CONTROL=4 (DATA)
+			buf.push_back(0x10 | (attr >> 4)); // entry+1 ADR (1) | CONTROL
 			buf.push_back(first);              // entry+2 TRACK
 			buf.push_back(0x00);               // entry+3 RESERVED
 
 			// then, start address of first track in session
 			if(_msf) {
-				buf.push_back(0x00 );
+				buf.push_back(0x00);
 				buf.push_back(start.min);
 				buf.push_back(start.sec);
 				buf.push_back(start.fr);
 			} else {
-				uint32_t sec = start.to_frames() - 150u;
+				uint32_t sec = start.to_frames();
 				buf.push_back( (uint8_t)(sec >> 24u) );
 				buf.push_back( (uint8_t)(sec >> 16u) );
 				buf.push_back( (uint8_t)(sec >> 8u) );
@@ -828,15 +1328,16 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 				} else if (i == 2) {
 					uint32_t blocks = sectors();
 					if(_msf) {
-						buf.push_back(0); // reserved
-						buf.push_back( (uint8_t)(((blocks + 150) / 75) / 60) ); // minute
-						buf.push_back( (uint8_t)(((blocks + 150) / 75) % 60) ); // second
-						buf.push_back( (uint8_t)((blocks + 150) % 75) ); // frame;
+						TMSF msf(blocks);
+						buf.push_back(0x00);
+						buf.push_back(msf.min);
+						buf.push_back(msf.sec);
+						buf.push_back(msf.fr);
 					} else {
-						buf.push_back( (blocks >> 24) & 0xff );
-						buf.push_back( (blocks >> 16) & 0xff );
-						buf.push_back( (blocks >> 8) & 0xff );
-						buf.push_back( (blocks >> 0) & 0xff );
+						buf.push_back( (uint8_t)((blocks >> 24)) );
+						buf.push_back( (uint8_t)((blocks >> 16)) );
+						buf.push_back( (uint8_t)((blocks >> 8)) );
+						buf.push_back( (uint8_t)((blocks >> 0)) );
 					}
 				} else {
 					buf.push_back(0);
@@ -849,7 +1350,7 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 			break;
 		}
 		default:
-			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: invalid TOC format requested\n");
+			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: invalid TOC format requested.\n");
 			assert(false);
 			return false;
 	}
@@ -859,7 +1360,7 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 	buf[1] = (length_-2) & 0xff;
 
 	if(length_ > _bufsize) {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_toc: TOC exceeds available buffer size: %u > %u bytes\n", length_, _bufsize);
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_toc: TOC exceeds available buffer size: %u > %u bytes\n", length_, _bufsize);
 		length_ = _bufsize;
 	}
 	std::memcpy(buf_, &buf[0], length_);
@@ -867,30 +1368,37 @@ bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool 
 	return true;
 }
 
-bool CdRomDrive::read_sub_channel(uint8_t *buf_, size_t _bufsize, size_t &length_, bool _msf, bool _subq, unsigned _format)
+bool CdRomDrive::read_sub_channel(uint8_t *buf_, size_t _bufsize, size_t &length_,
+	bool _msf, bool _subq, unsigned _format, int64_t _abs_lba, uint8_t &sense_, uint8_t &asc_)
 {
-	if(!m_disc) {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_sub_channel: no disc in the drive!\n");
+	// audio lock shall be acquired
+
+	if(!m_disc || !m_disc->sectors()) {
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: NO REFERENCE POSITION FOUND.\n");
+		sense_ = 0x02;
+		asc_ = 0x06;
 		return false;
 	}
 
-	uint8_t audio_status = 0;
-	bool playing, pause;
-	if(!get_audio_status(playing, pause)) {
-		playing = pause = false;
-	}
-	if(playing) {
-		audio_status = pause ? 0x12 : 0x11;
-	} else {
-		audio_status = 0x13;
-	}
+	auto curr_audio_status = get_audio_status(true);
 
 	std::vector<uint8_t> buf{
 		0, // 0 reserved
-		audio_status, // 1 audio status
+		curr_audio_status, // 1 audio status
 		0, // 2 data len MSB
 		0, // 3 data len LSB
 	};
+
+	static const std::map<AudioStatus, const char*> s_audio_status_str{
+		{ AUDIO_PLAYING, "Play operation in progress" },
+		{ AUDIO_PAUSED, "Play operation paused" },
+		{ AUDIO_SUCCESS_STOP, "Play operation successfully completed" },
+		{ AUDIO_ERROR_STOP, "Play operation stopped due to error" },
+		{ AUDIO_NO_STATUS, "No current audio status to return" }
+	};
+
+	PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: audio status: %s (0x%02x)\n",
+			s_audio_status_str.find(curr_audio_status)->second, curr_audio_status);
 
 	// When the sub Q bit is Zero, only the Sub-Channel data header is returned.
 	if(_subq) {
@@ -898,46 +1406,81 @@ bool CdRomDrive::read_sub_channel(uint8_t *buf_, size_t _bufsize, size_t &length
 		buf.push_back(_format); // 4
 		if(_format == 1) {
 			// Current Position
-			uint8_t attr, track, index;
-			TMSF rel, abs;
-			if(!m_disc->get_audio_sub(attr, track, index, rel, abs)) {
-				PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_sub_channel: unable to read current position.\n");
+			if(_abs_lba > m_disc->sectors()) {
+				PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: LOGICAL BLOCK ADDRESS OUT OF RANGE.\n");
+				sense_ = 0x05;
+				asc_ = 0x21;
 				return false;
 			}
-			buf.push_back((attr >> 4) | 0x10); // 5 ADR / Control
-			buf.push_back(track); // 6
-			buf.push_back(index); // 7
+			if(_abs_lba == m_disc->sectors()) {
+				_abs_lba = m_disc->sectors() - 1;
+			}
+			auto track = m_disc->get_track(_abs_lba);
+			if(track == m_disc->tracks().end()) {
+				PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: ILLEGAL MODE FOR THIS TRACK OR INCOMPATIBLE MEDIUM.\n");
+				sense_ = 0x05;
+				asc_ = 0x64;
+				return false;
+			}
+			int64_t rel_lba = _abs_lba - track->start;
+			TMSF abs_msf(_abs_lba);
+			TMSF rel_msf(rel_lba, 0);
+			buf.push_back(0x10 | (track->attr >> 4)); // 5 ADR / Control
+			buf.push_back(track->number); // 6
+			buf.push_back(1); // 7
 			if(_msf) {
-				buf.push_back(0x00);    // 8
-				buf.push_back(abs.min); // 9
-				buf.push_back(abs.sec); // 10
-				buf.push_back(abs.fr);  // 11
-				buf.push_back(0x00);    // 12
-				buf.push_back(rel.min); // 13
-				buf.push_back(rel.sec); // 14
-				buf.push_back(rel.fr);  // 15
+				// absolute
+				buf.push_back(0x00);        // 8
+				buf.push_back(abs_msf.min); // 9
+				buf.push_back(abs_msf.sec); // 10
+				buf.push_back(abs_msf.fr);  // 11
+				// relative
+				buf.push_back(0x00);        // 12
+				buf.push_back(rel_msf.min); // 13
+				buf.push_back(rel_msf.sec); // 14
+				buf.push_back(rel_msf.fr);  // 15
 			} else {
-				uint32_t sec;
-				sec = abs.to_frames() - 150u;
-				buf.push_back((uint8_t)(sec >> 24u)); // 8
-				buf.push_back((uint8_t)(sec >> 16u)); // 9
-				buf.push_back((uint8_t)(sec >> 8u));  // 10
-				buf.push_back((uint8_t)(sec >> 0u));  // 11
-				sec = rel.to_frames() - 150u;
-				buf.push_back((uint8_t)(sec >> 24u)); // 12
-				buf.push_back((uint8_t)(sec >> 16u)); // 13
-				buf.push_back((uint8_t)(sec >> 8u));  // 14
-				buf.push_back((uint8_t)(sec >> 0u));  // 15
+				// absolute
+				buf.push_back( (uint8_t)(_abs_lba >> 24u) ); // 8
+				buf.push_back( (uint8_t)(_abs_lba >> 16u) ); // 9
+				buf.push_back( (uint8_t)(_abs_lba >> 8u) );  // 10
+				buf.push_back( (uint8_t)(_abs_lba >> 0u) );  // 11
+				// relative
+				buf.push_back( (uint8_t)(rel_lba >> 24u) ); // 12
+				buf.push_back( (uint8_t)(rel_lba >> 16u) ); // 13
+				buf.push_back( (uint8_t)(rel_lba >> 8u) );  // 14
+				buf.push_back( (uint8_t)(rel_lba >> 0u) );  // 15
 			}
-		} else {
-			// UPC or ISRC (not implemented)
+			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: "
+				"position at %s (absolute sector %lld), "
+				"track %u at %s (relative sector %lld)\n",
+				abs_msf.to_string().c_str(), _abs_lba,
+				track->number, rel_msf.to_string().c_str(), rel_lba);
+		} else if(_format == 2) {
+			// UPC
 			buf.resize(24);
-			if(_format == 3) {
-				// ISRC
-				buf[5] = 0x14; // ADR / Control
-				buf[6] = 0x01;
+			if(!m_disc->MCN().empty()) {
+				// TODO untested
+				buf[8] = 0x80; // MCVal=1 (UPC valid)
+				for(int i=0; i<14; i++) {
+					if(i < m_disc->MCN().size()) {
+						buf[9+i] = m_disc->MCN()[i];
+					} else {
+						buf[9+i] = 0;
+					}
+				}
+			} else {
+				buf[8] = 0; // MCVal=0 (no UPC)
 			}
-			buf[8] = 0; // MCVal=0 (no UPC) / TCVal=0 (no ISRC)
+		} else if(_format == 3) {
+			// ISRC (not implemented)
+			buf.resize(24);
+			buf[5] = 0x14; // ADR / Control
+			buf[6] = 0x01;
+			buf[8] = 0; // TCVal=0 (no ISRC)
+		} else {
+			// invalid format
+			PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: invalid sub channel data format: %u\n", _format);
 		}
 	}
 
@@ -946,7 +1489,7 @@ bool CdRomDrive::read_sub_channel(uint8_t *buf_, size_t _bufsize, size_t &length
 	buf[3] = (length_-4) & 0xff;
 
 	if(length_ > _bufsize) {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: read_sub_channel: data exceeds available buffer size: %u > %u bytes\n", length_, _bufsize);
+		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: read_sub_channel: data exceeds available buffer size: %u > %u bytes\n", length_, _bufsize);
 		length_ = _bufsize;
 	}
 	std::memcpy(buf_, &buf[0], length_);

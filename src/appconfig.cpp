@@ -239,9 +239,14 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ DISK_CD_SECTION,
-"; These options are used to insert a CD-ROM disc at program launch. General options are in the [" DRIVES_SECTION "] section.\n"
+"; To install the drive use the [" DRIVES_SECTION "]:" DRIVES_CDROM " option.\n"
 ";     path: Path of a disc image file.\n"
 "; inserted: Yes if the disc is inserted in the drive at program launch.\n"
+";   volume: Audio CD volume (see the [" MIXER_SECTION "] for more info).\n"
+";  balance: Audio CD balance (see the [" MIXER_SECTION "] for more info).\n"
+";  filters: Audio CD DSP filters (see README for more info).\n"
+";   reverb: Audio CD reverb effect (see README for more info).\n"
+";   chorus: Audio CD chorus effect (see README for more info).\n"
 		},
 
 		{ DISK_C_SECTION,
@@ -588,8 +593,14 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DISK_HEADS,     MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 	} },
 	{ DISK_CD_SECTION, {
-		{ DISK_PATH,         MACHINE_CONFIG, PUBLIC_CFGKEY, ""    },
-		{ DISK_INSERTED,     MACHINE_CONFIG, PUBLIC_CFGKEY, "no"  },
+		{ DISK_PATH,       MACHINE_CONFIG, PUBLIC_CFGKEY, ""    },
+		{ DISK_INSERTED,   MACHINE_CONFIG, PUBLIC_CFGKEY, "no"  },
+		{ CDROM_VOLUME,    MIXER_CONFIG,   PUBLIC_CFGKEY, "100" },
+		{ CDROM_BALANCE,   MIXER_CONFIG,   PUBLIC_CFGKEY, "0"   },
+		{ CDROM_FILTERS,   MIXER_CONFIG,   PUBLIC_CFGKEY, ""    },
+		{ CDROM_REVERB,    MIXER_CONFIG,   PUBLIC_CFGKEY, "no"  },
+		{ CDROM_CHORUS,    MIXER_CONFIG,   PUBLIC_CFGKEY, "no"  },
+		{ CDROM_CROSSFEED, MIXER_CONFIG,   PUBLIC_CFGKEY, "no"  },
 	} },
 	{ DISK_C_SECTION, {
 		{ DISK_TYPE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },

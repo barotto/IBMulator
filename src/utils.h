@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -178,6 +178,27 @@ template<class T>
 {
 	_x = clamp((_x - _edge0) / (_edge1 - _edge0), T(0.0), T(1.0));
 	return _x * _x * _x * (_x * (_x * 6 - 15) + 10);
+}
+
+// Unsigned-only integer division with ceiling
+// https://stackoverflow.com/a/2745086
+template<typename T1, typename T2>
+inline constexpr T1 ceil_udivide(const T1 x, const T2 y) noexcept
+{
+	static_assert(std::is_unsigned<T1>::value, "First parameter should be unsigned");
+	static_assert(std::is_unsigned<T2>::value, "Second parameter should be unsigned");
+	return (x != 0) ? 1 + ((x - 1) / y) : 0;
+	
+}
+
+// Signed-only integer division with ceiling
+// https://stackoverflow.com/a/33790603
+template<typename T1, typename T2>
+inline constexpr T1 ceil_sdivide(const T1 x, const T2 y) noexcept
+{
+	static_assert(std::is_signed<T1>::value, "First parameter should be signed");
+	static_assert(std::is_signed<T2>::value, "Second parameter should be signed.");
+	return x / y + (((x < 0) ^ (y > 0)) && (x % y));
 }
 
 #include <functional>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -168,6 +168,9 @@ void Mixer::init(Machine *_machine)
 	// MIDI THREAD
 	m_midi = std::make_unique<MIDI>();
 	m_midi_thread = std::thread(&MIDI::thread_start, m_midi.get());
+
+	// SDL_Sound decoders
+	Sound_Init();
 }
 
 void Mixer::start_capture()
@@ -318,6 +321,7 @@ void Mixer::shutdown()
 	close_audio_device();
 	SDL_AudioQuit();
 	stop_midi();
+	Sound_Quit();
 }
 
 void Mixer::main_loop()

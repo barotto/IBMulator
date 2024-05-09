@@ -329,7 +329,7 @@ share/ibmulator/extra/HDDTEST.C \
 share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
 share/ibmulator/extra/MEMDUMP.EXE \
-share/ibmulator/extra/CD-ROM_drivers.img
+share/ibmulator/extra/XCDROM-driver.img
 
 desktopdir = $(pkgdatadir)/../applications
 dist_desktop_DATA = \

@@ -88,6 +88,7 @@ libhardware_a_SOURCES = \
 	devices/mpu401.cpp \
 	devices/cdrom_drive.cpp \
 	devices/cdrom_disc.cpp \
+	devices/cdrom_loader.cpp \
 	devices/cdrom_fx.cpp \
 	printer/mps_chargen.cpp \
 	printer/mps_charset.cpp \
@@ -171,5 +172,7 @@ noinst_HEADERS = \
 	devices/mpu401.h \
 	devices/cdrom_drive.h \
 	devices/cdrom_disc.h \
+	devices/cdrom_loader.h \
+	devices/cdrom_events.h \
 	devices/cdrom_fx.h \
 	printer/mps_printer.h

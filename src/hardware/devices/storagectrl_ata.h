@@ -125,7 +125,7 @@ private:
 		int64_t next_lba;
 		int status_changed;
 
-		uint32_t atapi_check_seek_completion(uint64_t _time);
+		uint32_t atapi_check_seek_completion(uint64_t _time = 0);
 	};
 
 	struct Channel {
@@ -217,6 +217,9 @@ private:
 	uint32_t atapi_cmd_inquiry(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_mode_select(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_mode_sense(int _ch, uint8_t _cmd);
+	uint32_t atapi_cmd_pause_resume(int _ch, uint8_t _cmd);
+	uint32_t atapi_cmd_play_audio(int _ch, uint8_t _cmd);
+	uint32_t atapi_cmd_play_audio_msf(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_prevent_allow_medium_removal(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_read(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_read_cdrom_capacity(int _ch, uint8_t _cmd);
@@ -225,6 +228,7 @@ private:
 	uint32_t atapi_cmd_request_sense(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_seek(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_start_stop_unit(int _ch, uint8_t _cmd);
+	uint32_t atapi_cmd_stop_play_scan(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_test_unit_ready(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_read_disc_info(int _ch, uint8_t _cmd);
 	uint32_t atapi_cmd_get_event_status_notification(int _ch, uint8_t _cmd);
@@ -234,17 +238,19 @@ private:
 	bool atapi_init_receive(int _ch, int _tx_len);
 	void atapi_ready_to_transfer(int _ch, unsigned _type, unsigned _direction, bool _interrupt = true);
 
+	void atapi_update_head_pos(int _ch, bool _stop_audio);
 	bool atapi_check_transitions(int _ch);
 	bool atapi_access_drive(int _ch, bool _spin_up = false, bool _blocking = false,
 			uint32_t *_time_to_ready = nullptr);
 	void atapi_set_sense(int _ch, uint8_t _key, uint8_t _asc = 0, uint8_t _ascq = 0);
 	void atapi_success(int _ch, bool _raise_int = true);
 	void atapi_error(int _ch, bool _raise_int = true);
+	uint32_t atapi_play_audio(int _ch, int64_t _start_lba, int64_t _end_lba, int _len);
 	uint32_t atapi_read_next_block(int _ch, bool _rot_latency);
 	uint32_t atapi_seek(int _ch);
 	void atapi_init_mode_sense_single(int _ch, const void *_src, size_t _size);
-	void atapi_mode_select(int _ch);
-
+	void atapi_mode_select(int _ch, uint16_t _param_len);
+	
 	Drive & drive(int _ch, int _dev) {
 		return m_channels[_ch].drives[_dev];
 	}

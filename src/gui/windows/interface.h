@@ -85,7 +85,7 @@ protected:
 
 		bool event = true;
 		FloppyEvents::EventType floppy_event_type = FloppyEvents::EVENT_MEDIUM;
-		CdRomDrive::EventType cd_event_type = CdRomDrive::EVENT_MEDIUM;
+		CdRomEvents::EventType cd_event_type = CdRomEvents::MEDIUM;
 		int64_t led_activity = 0; // tells how long the led should be on; set by Mch thread, reset by GUI thread.
 		bool led_on = false;
 		TimerID led_on_timer = NULL_TIMER_ID;
@@ -171,7 +171,7 @@ protected:
 	MachineDrive * config_cdrom(int _id);
 
 	void floppy_activity_cb(FloppyEvents::EventType _what, uint8_t _drive_id, MachineDrive *_drive);
-	void cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration, MachineDrive *_drive);
+	void cdrom_activity_cb(CdRomEvents::EventType _what, uint64_t _duration, MachineDrive *_drive);
 	void cdrom_led_timer(uint64_t, MachineDrive *_drive);
 
 	std::mutex m_drives_mutex; // to be acquired for every access to UIDrive

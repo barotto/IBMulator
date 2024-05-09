@@ -88,6 +88,9 @@ else
 	static=""
 fi
 
+CC_DEFAULTS="$CXX_DEFAULTS"
+
+AC_SUBST(CC_DEFAULTS)
 AC_SUBST(CXX_DEFAULTS)
 AC_SUBST(separator)
 AC_DEFINE_UNQUOTED([FS_SEP],["$separator"],[File system separator])

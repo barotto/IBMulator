@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -41,7 +41,6 @@ class StorageCtrl;
 class HardDiskDrive : public StorageDev
 {
 protected:
-	std::string m_section;
 	int m_type;
 	uint64_t m_spin_up_duration;
 	std::unique_ptr<MediaImage> m_disk;
@@ -64,11 +63,11 @@ public:
 	HardDiskDrive();
 	~HardDiskDrive();
 
-	void install(StorageCtrl* _ctrl, uint8_t _id);
+	void install(StorageCtrl* _ctrl, uint8_t _id, const char * _ini_section);
 	void remove();
 	void power_on(uint64_t _time);
 	void power_off();
-	void config_changed(const char *_section);
+	void config_changed();
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 	bool is_read_only() const { return false; }

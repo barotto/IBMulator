@@ -167,7 +167,11 @@ void Machine::init()
 	// FLOPPY LOADER THREAD
 	m_floppy_loader = std::make_unique<FloppyLoader>(this);
 	m_floppy_loader_thread = std::thread(&FloppyLoader::thread_start, m_floppy_loader.get());
-	
+
+	// CD-ROM LOADER THREAD
+	m_cdrom_loader = std::make_unique<CdRomLoader>(this);
+	m_cdrom_loader_thread = std::thread(&CdRomLoader::thread_start, m_cdrom_loader.get());
+
 	// PRINTER THREAD
 	if(g_program.config().get_bool(PRN_SECTION, PRN_CONNECTED)) {
 
@@ -214,10 +218,14 @@ void Machine::shutdown()
 	m_floppy_loader->cmd_quit();
 	m_floppy_loader_thread.join();
 
+	m_cdrom_loader->cmd_quit();
+	m_cdrom_loader_thread.join();
+
 	if(m_printer) {
 		m_printer->cmd_quit();
 		m_printer_thread.join();
 	}
+
 	g_devices.destroy_all();
 }
 
@@ -995,40 +1003,51 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 	});
 }
 
-CdRomDrive * Machine::find_cdrom_drive(uint8_t _drive)
+void Machine::cmd_insert_cdrom(CdRomDrive *_drive, std::string _img_path, std::function<void(bool)> _cb)
 {
-	auto ctrl = g_devices.device<StorageCtrl>();
-	if(!ctrl) {
-		return nullptr;
-	}
-	StorageDev *dev = ctrl->get_device(_drive);
-	if(!dev) {
-		return nullptr;
-	}
-	CdRomDrive *cdrom = dynamic_cast<CdRomDrive*>(dev);
+	// GUI thread -> CD Loader
 
-	return cdrom;
+	int config_id = m_config_id;
+	m_cmd_queue.push([=] () {
+		_drive->signal_activity(CdRomEvents::MEDIUM_LOADING, 0);
+		m_cdrom_loader->cmd_load_cdrom(_drive, _img_path, _cb, config_id);
+	});
 }
 
-void Machine::cmd_insert_cdrom(uint8_t _drive, std::string _file)
+void Machine::cmd_insert_cdrom(CdRomDrive *_drive, CdRomDisc *_cdrom, std::string _img_path,
+		std::function<void(bool)> _cb, int _config_id)
 {
+	// CD loader -> CdRomDrive
+
 	m_cmd_queue.push([=] () {
-		CdRomDrive *cdrom = find_cdrom_drive(_drive);
-		if(cdrom) {
-			cdrom->insert_medium(_file);
+		if(_config_id != m_config_id) {
+			// configuration changed after a call to cmd_insert_cdrom() by the GUI
+			PDEBUGF(LOG_V1, LOG_MACHINE, "CD-ROM arrived too late...\n");
+			delete _cdrom;
+		} else {
+			if(_cdrom) {
+				_drive->insert_medium(_cdrom, _img_path);
+			} else {
+				_drive->signal_activity(CdRomEvents::MEDIUM, 0);
+			}
+			if(_cb) {
+				_cb(_cdrom != nullptr);
+			}
 		}
 	});
 }
 
-void Machine::cmd_toggle_cdrom_door(uint8_t _drive)
+void Machine::cmd_toggle_cdrom_door(CdRomDrive *_drive)
 {
 	m_cmd_queue.push([=] () {
-		CdRomDrive *cdrom = find_cdrom_drive(_drive);
-		if(cdrom) {
-			// if the machine is off it will remove the disc without opening the tray
-			cdrom->toggle_door_button();
-		}
+		// if the machine is off it will remove the disc without opening the tray
+		_drive->toggle_door_button();
 	});
+}
+
+void Machine::cmd_dispose_cdrom(CdRomDisc *_disc)
+{
+	m_cdrom_loader->cmd_dispose_cdrom(_disc);
 }
 
 void Machine::commit_floppy(FloppyDisk *_floppy, uint8_t _drive, std::function<void(bool)> _cb)

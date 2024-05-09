@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -211,9 +211,9 @@ HardDiskDrive::~HardDiskDrive()
 {
 }
 
-void HardDiskDrive::install(StorageCtrl* _ctrl, uint8_t _id)
+void HardDiskDrive::install(StorageCtrl* _ctrl, uint8_t _id, const char * _ini_section)
 {
-	StorageDev::install(_ctrl, _id);
+	StorageDev::install(_ctrl, _id, _ini_section);
 
 	if(m_fx_enabled) {
 		m_fx.install(m_name);
@@ -269,22 +269,20 @@ uint64_t HardDiskDrive::power_up_eta_us() const
 	return 0;
 }
 
-void HardDiskDrive::config_changed(const char *_section)
+void HardDiskDrive::config_changed()
 {
 	unmount();
 
-	m_section = _section;
-
-	std::string path_string = g_program.config().get_string(_section, DISK_PATH);
+	std::string path_string = g_program.config().get_string(m_ini_section, DISK_PATH);
 	if(path_string != "auto") {
-		m_path = g_program.config().find_media(_section, DISK_PATH);
+		m_path = g_program.config().find_media(m_ini_section, DISK_PATH);
 	}
 
 	int type = 0;
 	try {
-		type = g_program.config().try_int(_section, DISK_TYPE);
+		type = g_program.config().try_int(m_ini_section, DISK_TYPE);
 	} catch(std::exception &) {
-		std::string type_string = g_program.config().get_string(_section, DISK_TYPE);
+		std::string type_string = g_program.config().get_string(m_ini_section, DISK_TYPE);
 		if(type_string == "custom") {
 			type = HDD_CUSTOM_DRIVE_IDX;
 		} else if(type_string == "auto") {
@@ -335,11 +333,11 @@ void HardDiskDrive::config_changed(const char *_section)
 	m_head_accel_factor = HDD_HEAD_ACCEL;
 
 	MediaGeometry geometry;
-	get_profile(type, _section, geometry, m_performance);
+	get_profile(type, m_ini_section.c_str(), geometry, m_performance);
 	set_geometry(geometry, HDD_SECTOR_SIZE, HDD_TRACK_OVERHEAD);
 	m_performance.update(geometry, HDD_SECTOR_SIZE, HDD_TRACK_OVERHEAD);
 
-	StorageDev::config_changed(_section);
+	StorageDev::config_changed();
 
 	auto hdd_commit = g_machine.hdd_commit_strategy();
 	bool tmp_img = (
@@ -364,10 +362,10 @@ void HardDiskDrive::config_changed(const char *_section)
 
 	if(m_fx_enabled) {
 		m_fx.config_changed();
-		m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME,
+		m_spin_up_duration = g_program.config().get_real(m_ini_section, DISK_SPINUP_TIME,
 				m_fx.spin_up_time_us()/1e6) * 1e6;
 	} else {
-		m_spin_up_duration = g_program.config().get_real(_section, DISK_SPINUP_TIME, 10) * USEC_PER_SECOND;
+		m_spin_up_duration = g_program.config().get_real(m_ini_section, DISK_SPINUP_TIME, 10) * USEC_PER_SECOND;
 	}
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s as type %d%s\n", name(), m_type, m_type==HDD_CUSTOM_DRIVE_IDX?" (custom)":"");
@@ -389,17 +387,17 @@ void HardDiskDrive::config_changed(const char *_section)
 	PINFOF(LOG_V2, LOG_HDD, "    sector read time: %.0f us\n", m_performance.sec_read_us);
 	PDEBUGF(LOG_V2, LOG_HDD,"    spin up time: %llu us\n", m_spin_up_duration);
 
-	g_program.config().set_int(_section, DISK_TYPE, m_type);
+	g_program.config().set_int(m_ini_section, DISK_TYPE, m_type);
 
-	g_program.config().set_string(_section, DISK_PATH, m_path);
-	g_program.config().set_int(_section, DISK_CYLINDERS, m_geometry.cylinders);
-	g_program.config().set_int(_section, DISK_HEADS, m_geometry.heads);
-	g_program.config().set_int(_section, DISK_SPT, m_geometry.spt);
+	g_program.config().set_string(m_ini_section, DISK_PATH, m_path);
+	g_program.config().set_int(m_ini_section, DISK_CYLINDERS, m_geometry.cylinders);
+	g_program.config().set_int(m_ini_section, DISK_HEADS, m_geometry.heads);
+	g_program.config().set_int(m_ini_section, DISK_SPT, m_geometry.spt);
 
-	g_program.config().set_real(_section, DISK_SEEK_MAX, m_performance.seek_max_ms);
-	g_program.config().set_real(_section, DISK_SEEK_TRK, m_performance.seek_trk_ms);
-	g_program.config().set_int(_section, DISK_ROT_SPEED, m_performance.rot_speed);
-	g_program.config().set_int(_section, DISK_INTERLEAVE, m_performance.interleave);
+	g_program.config().set_real(m_ini_section, DISK_SEEK_MAX, m_performance.seek_max_ms);
+	g_program.config().set_real(m_ini_section, DISK_SEEK_TRK, m_performance.seek_trk_ms);
+	g_program.config().set_int(m_ini_section, DISK_ROT_SPEED, m_performance.rot_speed);
+	g_program.config().set_int(m_ini_section, DISK_INTERLEAVE, m_performance.interleave);
 }
 
 void HardDiskDrive::save_state(StateBuf &_state)
@@ -409,7 +407,7 @@ void HardDiskDrive::save_state(StateBuf &_state)
 	_state.write(&m_s, {sizeof(m_s), str_format("HDD%u", m_drive_index).c_str()});
 
 	if(m_disk) {
-		std::string path = _state.get_basename() + "-" + m_section + ".img";
+		std::string path = _state.get_basename() + "-" + m_ini_section + ".img";
 		m_disk->save_state(path.c_str());
 	}
 }
@@ -424,7 +422,7 @@ void HardDiskDrive::restore_state(StateBuf &_state)
 
 	if(m_type > 0) {
 		assert(m_disk != nullptr);
-		std::string imgfile = _state.get_basename() + "-" + m_section + ".img";
+		std::string imgfile = _state.get_basename() + "-" + m_ini_section + ".img";
 		if(!FileSys::file_exists(imgfile.c_str())) {
 			PERRF(LOG_HDD, "%s: unable to find state image %s\n", name(), imgfile.c_str());
 			throw std::exception();

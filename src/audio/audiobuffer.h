@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -85,6 +85,9 @@ public:
 	double us_to_samples(uint64_t _us);
 	void apply_volume(float _volume);
 
+	// direct data access no checks
+	uint8_t * data() { return m_data.data(); }
+
 	// direct sample access no checks
 	template<typename T> const T& operator[](unsigned _pos) const;
 	template<typename T> T& operator[](unsigned _pos);
@@ -108,7 +111,7 @@ public:
 	inline static int16_t f32_to_s16(float _s) {
 		return int16_t(clamp((_s*32768.f), -32768.f, 32767.f));
 	}
-	
+
 private:
 	static void u8_to_f32(const std::vector<uint8_t> &_source,
 			std::vector<uint8_t> &_dest, unsigned _samples);

@@ -177,9 +177,9 @@ const std::map<int, StorageCtrl_ATA::atapi_command_fn> StorageCtrl_ATA::ms_atapi
 	ATAPI_CMD_FN(0x55, "MODE SELECT (10)",              mode_select                  ),
 	ATAPI_CMD_FN(0x1a, "MODE SENSE (6)",                mode_sense                   ),
 	ATAPI_CMD_FN(0x5a, "MODE SENSE (10)",               mode_sense                   ),
-	ATAPI_CMD_FN(0x4b, "PAUSE/RESUME",                  not_implemented              ),
-	ATAPI_CMD_FN(0x45, "PLAY AUDIO",                    not_implemented              ),
-	ATAPI_CMD_FN(0x47, "PLAY AUDIO MSF",                not_implemented              ),
+	ATAPI_CMD_FN(0x4b, "PAUSE/RESUME",                  pause_resume                 ),
+	ATAPI_CMD_FN(0x45, "PLAY AUDIO",                    play_audio                   ),
+	ATAPI_CMD_FN(0x47, "PLAY AUDIO MSF",                play_audio_msf               ),
 	ATAPI_CMD_FN(0xbc, "PLAY CD",                       not_implemented              ),
 	ATAPI_CMD_FN(0x1e, "PREVENT/ALLOW MEDIUM REMOVAL",  prevent_allow_medium_removal ),
 	ATAPI_CMD_FN(0x28, "READ (10)",                     read                         ),
@@ -194,7 +194,7 @@ const std::map<int, StorageCtrl_ATA::atapi_command_fn> StorageCtrl_ATA::ms_atapi
 	ATAPI_CMD_FN(0xba, "SCAN",                          not_implemented              ),
 	ATAPI_CMD_FN(0x2b, "SEEK",                          seek                         ),
 	ATAPI_CMD_FN(0xbb, "SET CD SPEED",                  not_implemented              ),
-	ATAPI_CMD_FN(0x4e, "STOP PLAY/SCAN",                not_implemented              ),
+	ATAPI_CMD_FN(0x4e, "STOP PLAY/SCAN",                stop_play_scan               ),
 	ATAPI_CMD_FN(0x1b, "START/STOP UNIT",               start_stop_unit              ),
 	ATAPI_CMD_FN(0x00, "TEST UNIT READY",               test_unit_ready              ),
 	// MMC-3
@@ -213,14 +213,16 @@ enum SenseKey
 	SENSE_NONE            = 0,
 	SENSE_NOT_READY       = 2,
 	SENSE_ILLEGAL_REQUEST = 5,
-	SENSE_UNIT_ATTENTION  = 6
+	SENSE_UNIT_ATTENTION  = 6,
+	SENSE_ABORTED         = 0xb
 };
 
 static const std::map<int, const char*> s_sense_key_str{
 	{ SENSE_NONE, "SENSE_NONE" },
 	{ SENSE_NOT_READY, "SENSE_NOT_READY" },
 	{ SENSE_ILLEGAL_REQUEST, "SENSE_ILLEGAL_REQUEST" },
-	{ SENSE_UNIT_ATTENTION, "SENSE_UNIT_ATTENTION" }
+	{ SENSE_UNIT_ATTENTION, "SENSE_UNIT_ATTENTION" },
+	{ SENSE_ABORTED, "SENSE_ABORTED_COMMAND" }
 };
 
 enum ASC
@@ -333,16 +335,16 @@ void StorageCtrl_ATA::config_changed()
 	if(g_program.config().get_string(DRIVES_SECTION, DRIVES_HDC_TYPE) == "ata") {
 		m_storage[0][0] = std::make_unique<HardDiskDrive>();
 		m_storage[0][0]->set_name("Drive C");
-		m_storage[0][0]->install(this, m_devices_cnt);
-		m_storage[0][0]->config_changed(DISK_C_SECTION);
+		m_storage[0][0]->install(this, m_devices_cnt, DISK_C_SECTION);
+		m_storage[0][0]->config_changed();
 		m_devices_cnt++;
 	}
 
 	if(g_program.config().get_int_or_bool(DRIVES_SECTION, DRIVES_CDROM)) {
 		m_storage[0][m_devices_cnt] = std::make_unique<CdRomDrive>();
 		m_storage[0][m_devices_cnt]->set_name("CD-ROM");
-		m_storage[0][m_devices_cnt]->install(this, m_devices_cnt);
-		m_storage[0][m_devices_cnt]->config_changed(DISK_CD_SECTION);
+		m_storage[0][m_devices_cnt]->install(this, m_devices_cnt, DISK_CD_SECTION);
+		m_storage[0][m_devices_cnt]->config_changed();
 		m_devices_cnt++;
 	}
 }
@@ -536,7 +538,9 @@ void StorageCtrl_ATA::command_timer(int _ch, int _dev, uint64_t /*_time*/)
 			case 0x1e: // prevent allow medium removal
 			case 0x2b: // seek
 			case 0x1b: // start/stop unit
-				// if seek this is the cmd time, the head is still moving 
+			case 0x45: // play audio
+			case 0x47: // play audio msf
+				// if seek or play audio this is the cmd time, the head is still moving 
 				atapi_success(_ch);
 				break;
 			case 0x28: // read (10)
@@ -1016,7 +1020,7 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 							// command mode
 							switch(drive.atapi.command) {
 								case 0x55: // MODE SELECT
-									atapi_mode_select(channel);
+									atapi_mode_select(channel, controller->buffer_size);
 									atapi_success(channel);
 									break;
 								default:
@@ -1172,7 +1176,11 @@ void StorageCtrl_ATA::write(uint16_t _address, uint16_t _value, unsigned _len)
 			uint32_t exec_time = 0;
 			auto command_fn = ms_ata_commands.find(cmd);
 			if(command_fn != ms_ata_commands.end()) {
-				PDEBUGF(LOG_V1, LOG_HDD, "%s: cmd %s\n", selected_string(channel), command_fn->second.first);
+				if(cmd == 0xa0) {
+					PDEBUGF(LOG_V2, LOG_HDD, "%s: cmd SEND ATAPI PACKET\n", selected_string(channel));
+				} else {
+					PDEBUGF(LOG_V1, LOG_HDD, "%s: cmd %s\n", selected_string(channel), command_fn->second.first);
+				}
 				exec_time = command_fn->second.second(*this, channel, cmd);
 				if(!controller->status.err && exec_time>0) {
 					activate_command_timer(channel, exec_time);
@@ -2356,6 +2364,9 @@ void StorageCtrl_ATA::atapi_init_send(int _ch, uint8_t _cmd, int _req_len, int _
 
 uint32_t StorageCtrl_ATA::Drive::atapi_check_seek_completion(uint64_t _now_us)
 {
+	if(!_now_us) {
+		_now_us = g_machine.get_virt_time_us();
+	}
 	if(atapi.seek_completion_time) {
 		if(atapi.seek_completion_time <= _now_us) {
 			controller.status.seek_complete = true;
@@ -2398,15 +2409,26 @@ void StorageCtrl_ATA::atapi_success(int _ch, bool _int)
 
 void StorageCtrl_ATA::atapi_error(int _ch, bool _int)
 {
-	PDEBUGF(LOG_V1, LOG_HDD, "%s: ATAPI: cmd error key=0x%02x (%s), asc=0x%02x (%s), ascq=0x%02x\n",
+	auto &drive = selected_drive(_ch);
+
+	std::string sense_str, asc_str;
+	auto sense_str_it = s_sense_key_str.find(drive.sense.sense_key);
+	if(sense_str_it != s_sense_key_str.end()) {
+		sense_str = str_format(" (%s)", sense_str_it->second);
+	}
+	auto asc_str_it = s_asc_str.find(drive.sense.asc);
+	if(asc_str_it != s_asc_str.end()) {
+		asc_str = str_format(" (%s)", asc_str_it->second);
+	}
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: cmd error key=0x%02x%s, asc=0x%02x%s, ascq=0x%02x\n",
 		selected_string(_ch), 
-		selected_drive(_ch).sense.sense_key, s_sense_key_str.at(selected_drive(_ch).sense.sense_key),
-		selected_drive(_ch).sense.asc, s_asc_str.at(selected_drive(_ch).sense.asc),
-		selected_drive(_ch).sense.ascq
+		drive.sense.sense_key, sense_str.c_str(),
+		drive.sense.asc, asc_str.c_str(),
+		drive.sense.ascq
 	);
 
 	Controller &controller = selected_ctrl(_ch);
-	controller.error_register = selected_drive(_ch).sense.sense_key << 4;
+	controller.error_register = drive.sense.sense_key << 4;
 	controller.interrupt_reason.c_d = ATAPI_INT_CMD;
 	controller.interrupt_reason.i_o = ATAPI_INT_TO_HOST;
 	controller.interrupt_reason.rel = 0;
@@ -2420,14 +2442,33 @@ void StorageCtrl_ATA::atapi_error(int _ch, bool _int)
 		raise_interrupt(_ch);
 	}
 
-	selected_drive(_ch).atapi.command = 0;
+	drive.atapi.command = 0;
+}
+
+void StorageCtrl_ATA::atapi_update_head_pos(int _ch, bool _stop_audio)
+{
+	auto *drive = selected_cd(_ch);
+
+	int64_t curr_audio_lba;
+	CdRomDrive::AudioStatus status = drive->get_audio_status(false, &curr_audio_lba);
+	if(_stop_audio && (status == CdRomDrive::AUDIO_PLAYING || status == CdRomDrive::AUDIO_PAUSED)) {
+		PDEBUGF(LOG_V1, LOG_HDD, "%s: ATAPI: Interrupting CD audio playback.\n",
+				selected_string(_ch));
+		// Audio lock must be acquired beforehand
+		drive->stop_audio(false, false);
+	}
+	if(curr_audio_lba >= 0) {
+		// head position is only valid during a play operation
+		// remains valid until the next seek/read on the drive
+		selected_drive(_ch).curr_lba = curr_audio_lba;
+	}
 }
 
 bool StorageCtrl_ATA::atapi_check_transitions(int _ch)
 {
 	CdRomDrive *drive = selected_cd(_ch);
 
-	if(drive->has_medium_changed(true)) {
+	if(drive->has_medium_changed(true) && drive->is_disc_accessible()) {
 		// Going from medium not ready to medium ready states is
 		// communicated by throwing an error.
 		atapi_set_sense(_ch, SENSE_UNIT_ATTENTION, ASC_NOT_READY_TO_READY);
@@ -2540,9 +2581,11 @@ uint32_t StorageCtrl_ATA::atapi_cmd_start_stop_unit(int _ch, uint8_t _cmd)
 	uint32_t time_to_complete = 0;
 	if(!LoEj && !Start) {
 		// stop the disc
+		PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: stopping the disc ...\n", selected_string(_ch));
 		drive->spin_down();
 	} else if(!LoEj && Start) {
 		// start (spin up) the disc (go to ready state)
+		PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: going to ready state ...\n", selected_string(_ch));
 		if(!atapi_access_drive(_ch, true, true, &time_to_complete)) {
 			atapi_error(_ch);
 			return 0;
@@ -2554,10 +2597,12 @@ uint32_t StorageCtrl_ATA::atapi_cmd_start_stop_unit(int _ch, uint8_t _cmd)
 			atapi_error(_ch);
 			return 0;
 		}
+		PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: ejecting the disc ...\n", selected_string(_ch));
 		drive->open_door();
 	} else {
 		// close the door
-		time_to_complete = drive->close_door();
+		PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: closing the door ...\n", selected_string(_ch));
+		time_to_complete = NSEC_TO_USEC(drive->close_door());
 	}
 
 	if(Immed) {
@@ -2565,6 +2610,19 @@ uint32_t StorageCtrl_ATA::atapi_cmd_start_stop_unit(int _ch, uint8_t _cmd)
 	}
 
 	return DEFAULT_CMD_US + time_to_complete;
+}
+
+uint32_t StorageCtrl_ATA::atapi_cmd_stop_play_scan(int _ch, uint8_t _cmd)
+{
+	CdRomDrive *cd = selected_cd(_ch);
+	assert(cd);
+
+	cd->lock_audio();
+	atapi_update_head_pos(_ch, true);
+	cd->unlock_audio();
+
+	atapi_success(_ch);
+	return 0;
 }
 
 uint32_t StorageCtrl_ATA::atapi_cmd_mode_select(int _ch, uint8_t _cmd)
@@ -2604,52 +2662,110 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_select(int _ch, uint8_t _cmd)
 	return DEFAULT_CMD_US;
 }
 
-void StorageCtrl_ATA::atapi_mode_select(int _ch)
+void StorageCtrl_ATA::atapi_mode_select(int _ch, uint16_t _param_len)
 {
 	Controller &controller = selected_ctrl(_ch);
 	CdRomDrive *cd = selected_cd(_ch);
-	
-	uint16_t param_len = read_16bit(&controller.buffer[7]);
-	if(param_len > sizeof(controller.buffer)) {
+
+	if(_param_len == 0) {
+		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: invalid param length of 0.\n", selected_string(_ch));
+		return;
+	}
+	if(_param_len > sizeof(controller.buffer)) {
 		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: param length > buffer data size\n", selected_string(_ch));
-		param_len = sizeof(controller.buffer);
+		_param_len = sizeof(controller.buffer);
 	}
 
-	// the first 8 bytes are a mode parameter header.
-	// Windows 95 seems to send all zeros there, so ignore it.
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SELECT: total data len: %u\n", selected_string(_ch), _param_len);
+
+	// The first 8 bytes are the Mode Parameter Header.
+	// When using the MODE SELECT command these fields are reserved.
+	// Windows 95 sends all zeros there.
 	uint8_t *scan = &controller.buffer[8];
-	uint8_t *fence = &controller.buffer[param_len];
+	uint8_t *fence = &controller.buffer[_param_len];
+
+	struct ATAPIModePage {
+		uint8_t len;
+		const char *name;
+	};
+	static const std::map<uint8_t, ATAPIModePage> pages{
+		{ 0x1,  {0x6,  "Read Error Recovery Parameters"} },
+		{ 0xD,  {0x6,  "CD-ROM Parameters"} },
+		{ 0xE,  {0xE,  "CD-ROM Audio Control Mode"} },
+		{ 0x2A, {0x12, "CD-ROM Capabilities and Mechanical Status"} },
+	};
 
 	while((scan + 2) < fence) {
-		int PAGE = scan[0];
-		int LEN = scan[1];
+		int page_code = scan[0] & 0x1F;
+		bool ps = scan[0] & 0x80;
+		int page_len = scan[1];
+		int total_len = page_len + 2;
 
-		if((scan + LEN) > fence) {
-			PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: mode_select: page_0 length extends %u bytes past buffer.\n",
-				selected_string(_ch), unsigned(scan + LEN - fence)
+		auto page = pages.find(page_code);
+
+		if(page == pages.end()) {
+			PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: unknown page: %x\n",
+				selected_string(_ch), page
+			);
+			scan += total_len;
+			continue;
+		}
+
+		PDEBUGF(LOG_V1, LOG_HDD, "%s: ATAPI: MODE SELECT: PAGE=0x%X (%s), LEN=0x%X, PS=%u\n",
+			selected_string(_ch), page_code, page->second.name, page->second.len, ps
+		);
+
+		if(page->second.len != page_len) {
+			PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: invalid page length: 0x%X, expected: 0x%X\n",
+				selected_string(_ch), page_len, page->second.len
+			);
+			scan += total_len;
+			continue;
+		}
+
+		if((scan + total_len) > fence) {
+			PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: current page length extends %d bytes past buffer.\n",
+				selected_string(_ch), (scan + total_len - fence)
 			);
 			break;
 		}
 
-		switch(PAGE) {
+		switch(page_code) {
 			case 0xD:
-				PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: PAGE='CD-ROM Parameters Page Format' (0xD) LEN=%u: ",
-					selected_string(_ch), LEN
-				);
-				cd->set_timeout_mult(scan[3]);
+				cd->set_timeout_mult(scan[3] & 0xF);
 				break;
-			default:
-				PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SELECT: PAGE=0x%02x LEN=%u: ",
-					selected_string(_ch), PAGE, LEN
-				);
-				break;
-		}
-		for(int i = 0; i < LEN; i++) {
-			PDEBUGF(LOG_V0, LOG_HDD, "%02x ", scan[i]);
-		}
-		PDEBUGF(LOG_V0, LOG_HDD, "\n");
+			case 0xE: {
+				bool sotc = scan[2] & 0x02;
+				PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SELECT: [2] SOTC: %u\n", selected_string(_ch), sotc);
 
-		scan += LEN;
+				cd->set_sotc(sotc);
+
+				uint8_t port0_ch = scan[8] & 0xF;
+				uint8_t port0_vol = scan[9];
+				PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SELECT: [8-9] Port 0: 0x%X, volume: 0x%X\n",
+						selected_string(_ch), port0_ch, port0_vol);
+
+				cd->set_audio_port(0, port0_ch, port0_vol);
+
+				uint8_t port1_ch = scan[10] & 0xF;
+				uint8_t port1_vol = scan[11];
+				PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SELECT: [10-11] Port 1: 0x%X, volume: 0x%X\n",
+						selected_string(_ch), port1_ch, port1_vol);
+
+				cd->set_audio_port(1, port1_ch, port1_vol);
+
+				break;
+			}
+			default:
+				PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SELECT: PAGE DATA: ", selected_string(_ch));
+				for(int i = 2; i < total_len; i++) {
+					PDEBUGF(LOG_V2, LOG_HDD, "%02x ", scan[i]);
+				}
+				PDEBUGF(LOG_V2, LOG_HDD, "\n");
+				break;
+		}
+
+		scan += total_len;
 	}
 }
 
@@ -2694,7 +2810,7 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 	uint8_t page_control = controller.buffer[2] >> 6;
 	uint8_t page_code = controller.buffer[2] & 0x3f;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: page_control=%u, page_code=%u\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: page_control=%u, page_code=0x%02X\n",
 			selected_string(_ch), atapi_cmd_string(_cmd),
 			page_control, page_code);
 
@@ -2706,7 +2822,7 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 		{
 			switch(page_code) {
 				case 0x01: // Error Recovery Parameters (SFF-8020i p.114)
-					PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SENSE code=%x: Error Recovery Parameters.\n",
+					PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SENSE: PAGE=0x%X (Error Recovery Parameters)\n",
 							selected_string(_ch), page_code);
 					atapi_init_mode_sense_single(_ch, &drive.atapi.error_recovery,
 						sizeof(Drive::Atapi::error_recovery)
@@ -2718,7 +2834,7 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 					return DEFAULT_CMD_US;
 
 				case 0x2a: // CD-ROM Capabilities and Mechanical Status (SFF-8020i p.118)
-					PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SENSE code=%x: CD-ROM Capabilities and Mechanical Status.\n",
+					PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SENSE: PAGE=0x%X (CD-ROM Capabilities and Mechanical Status)\n",
 							selected_string(_ch), page_code);
 					atapi_init_mode_sense_single(_ch, nullptr, 20);
 					controller.buffer[8] = 0x2a;  // 0 Page Code (2Ah)
@@ -2755,7 +2871,8 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 					return DEFAULT_CMD_US;
 
 				case 0x0e: // CD-ROM Audio Control Mode
-					PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SENSE code=%x: CD-ROM Audio Control Mode.\n",
+				{
+					PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SENSE: PAGE=0x%X (CD-ROM Audio Control Mode)\n",
 							selected_string(_ch), page_code);
 					atapi_init_mode_sense_single(_ch, nullptr, 16);
 					controller.buffer[8] = 0x0e; // 0 Page Code (0Eh)
@@ -2764,21 +2881,23 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 					controller.buffer[11] = 0; // 3 Reserved
 					controller.buffer[12] = 0; // 4 Reserved
 					controller.buffer[13] = 0; // 5 Reserved
-					controller.buffer[14] = 0;  // 6 Logical Block Per Second of Audio Playback
-					controller.buffer[15] = 75; // 7 Logical Block Per Second of Audio Playback
-					controller.buffer[16] = 1;   // 8 Output port 0 selection (1 = channel 0)
+					controller.buffer[14] = 0;  // 6 Logical Block Per Second of Audio Playback (MSB)
+					controller.buffer[15] = 75; // 7 Logical Block Per Second of Audio Playback (LSB)
 					if(current_values) {
-						// TODO audio volume?
-						controller.buffer[17] = 255; // 9 Output port 0 volume (0xFF = 0dB atten.)
+						auto [ch, vol] = cd->get_audio_port(0);
+						controller.buffer[16] = ch;  // 8 Output port 0 selection (1 = channel 0)
+						controller.buffer[17] = vol; // 9 Output port 0 volume (0xFF = 0dB atten.)
 					} else {
-						controller.buffer[17] = 255; // 9 Output port 0 volume (0xFF = 0dB atten.)
+						controller.buffer[16] = 1;    // 8 Output port 0 selection (1 = channel 0)
+						controller.buffer[17] = 0xFF; // 9 Output port 0 volume (0xFF = 0dB atten.)
 					}
-					controller.buffer[18] = 2;   // 10 Output port 1 selection (2 = channel 1)
 					if(current_values) {
-						// TODO audio volume?
-						controller.buffer[19] = 255; // 11 Output port 1 volume (0xFF = 0dB atten.)
+						auto [ch, vol] = cd->get_audio_port(1);
+						controller.buffer[18] = ch;  // 10 Output port 1 selection (2 = channel 1)
+						controller.buffer[19] = vol; // 11 Output port 1 volume (0xFF = 0dB atten.)
 					} else {
-						controller.buffer[19] = 255; // 11 Output port 1 volume (0xFF = 0dB atten.)
+						controller.buffer[18] = 2;   // 10 Output port 1 selection (2 = channel 1)
+						controller.buffer[19] = 0xFF; // 11 Output port 1 volume (0xFF = 0dB atten.)
 					}
 					controller.buffer[20] = 0; // 12 Output port 2 selection (none)
 					controller.buffer[21] = 0; // 13 Output port 2 volume (0 = mute)
@@ -2786,9 +2905,9 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 					controller.buffer[23] = 0; // 15 Output port 3 volume (0 = mute)
 					atapi_init_send(_ch, _cmd, header_size + 16, alloc_length);
 					return DEFAULT_CMD_US;
-
+				}
 				case 0x0d: // CD-ROM Parameters
-					PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: MODE SENSE code=%x: CD-ROM Parameters.\n",
+					PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: MODE SENSE: PAGE=0x%X (CD-ROM Parameters)\n",
 							selected_string(_ch), page_code);
 					atapi_init_mode_sense_single(_ch, nullptr, 8);
 					controller.buffer[8] = 0x0d; // 0 Page Code (0Dh)
@@ -2805,8 +2924,8 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 				case 0x3f: // All
 				default:
 					// not implemeted by this device
-					PDEBUGF(LOG_V0, LOG_HDD,
-							"%s: ATAPI: MODE SENSE PC=%x, PageCode=%x, not implemented by device.\n",
+					PDEBUGF(LOG_V2, LOG_HDD,
+							"%s: ATAPI: MODE SENSE: PC=0x%X, PAGE=0x%X: not implemented by device.\n",
 							selected_string(_ch), page_control, page_code);
 					atapi_set_sense(_ch, SENSE_ILLEGAL_REQUEST, ASC_INVALID_FIELD_IN_CMD_PACKET);
 					atapi_error(_ch);
@@ -2815,7 +2934,7 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 		}
 		case 0x1: // changeable values
 		{
-			PDEBUGF(LOG_V0, LOG_HDD,
+			PDEBUGF(LOG_V2, LOG_HDD,
 					"%s: ATAPI: MODE SENSE PC=%x, PageCode=%x, not implemented.\n",
 					selected_string(_ch), page_control, page_code);
 			atapi_set_sense(_ch, SENSE_ILLEGAL_REQUEST, ASC_INVALID_FIELD_IN_CMD_PACKET);
@@ -2830,6 +2949,150 @@ uint32_t StorageCtrl_ATA::atapi_cmd_mode_sense(int _ch, uint8_t _cmd)
 	}
 
 	assert(false);
+}
+
+uint32_t StorageCtrl_ATA::atapi_cmd_pause_resume(int _ch, uint8_t _cmd)
+{
+	Controller &controller = selected_ctrl(_ch);
+	CdRomDrive *cd = selected_cd(_ch);
+
+	if(!atapi_access_drive(_ch, true, false, nullptr)) {
+		atapi_error(_ch);
+		return 0;
+	}
+
+	bool resume = controller.buffer[8] & 1;
+
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: resume=%d\n",
+			selected_string(_ch), atapi_cmd_string(_cmd),
+			resume);
+
+	if(!cd->pause_resume_audio(resume)) {
+		atapi_set_sense(_ch, SENSE_ABORTED, 0xB9);
+		atapi_error(_ch);
+		return 0;
+	}
+
+	atapi_success(_ch);
+	return 0;
+}
+
+uint32_t StorageCtrl_ATA::atapi_cmd_play_audio(int _ch, uint8_t _cmd)
+{
+	Controller &controller = selected_ctrl(_ch);
+
+	int64_t start_lba = read_32bit(&controller.buffer[2]);
+	uint16_t len = read_16bit(&controller.buffer[7]);
+
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: start=%lld, len=%u\n",
+			selected_string(_ch), atapi_cmd_string(_cmd),
+			start_lba, len);
+
+	if(start_lba == 0xffffffff) {
+		start_lba = -1;
+	}
+
+	return atapi_play_audio(_ch, start_lba, -1, len);
+}
+
+uint32_t StorageCtrl_ATA::atapi_cmd_play_audio_msf(int _ch, uint8_t _cmd)
+{
+	Controller &controller = selected_ctrl(_ch);
+
+	TMSF start(&controller.buffer[3]);
+	TMSF end(&controller.buffer[6]);
+
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: start=%s, end=%s\n",
+			selected_string(_ch), atapi_cmd_string(_cmd),
+			start.to_string().c_str(), end.to_string().c_str());
+
+	int64_t start_lba; 
+	if(start.min == 0xff && start.sec == 0xff && start.fr == 0xff) {
+		start_lba = -1;
+	} else {
+		start_lba = start.to_frames();
+	}
+
+	int64_t end_lba = end.to_frames();
+
+	return atapi_play_audio(_ch, start_lba, end_lba, -1);
+}
+
+uint32_t StorageCtrl_ATA::atapi_play_audio(int _ch, int64_t _start_lba, int64_t _end_lba, int _len)
+{
+	uint32_t time_to_ready = 0;
+	if(!atapi_access_drive(_ch, true, true, &time_to_ready)) {
+		atapi_error(_ch);
+		return 0;
+	}
+
+	Controller &controller = selected_ctrl(_ch);
+	Drive &drive = selected_drive(_ch);
+	CdRomDrive *cd = selected_cd(_ch);
+	assert(cd);
+
+	if(!atapi_access_drive(_ch)) {
+		atapi_error(_ch);
+		return 0;
+	}
+
+	// a SEEK might be happening concurrently
+	// check the destination, if it's not the same LBA of our start value,
+	// we need to cancel it and perform another
+
+	uint32_t time_to_seek_complete = drive.atapi_check_seek_completion();
+	int64_t head_position;
+
+	cd->lock_audio();
+
+	if(time_to_seek_complete) {
+		head_position = selected_drive(_ch).next_lba;
+	} else {
+		// head is not moving
+		// update current head position from player if audio is playing
+		atapi_update_head_pos(_ch, false);
+		head_position = selected_drive(_ch).curr_lba;
+	}
+
+	if(_start_lba == -1) {
+		// current head position is assumed
+		_start_lba = head_position;
+	}
+	if(_end_lba == -1) {
+		// if _len is < 0 the check_play_audio() will return error
+		_end_lba = _start_lba + _len;
+	}
+
+	uint8_t sense, asc;
+	if(!cd->check_play_audio(_start_lba, _end_lba, sense, asc)) {
+		cd->unlock_audio();
+		atapi_set_sense(_ch, sense, asc);
+		atapi_error(_ch);
+		return 0;
+	}
+
+	if(_start_lba == _end_lba) {
+		// A Starting MSF address equal to an ending MSF address causes no audio
+		// play operation to occur. This shall not be considered an error.
+		cd->stop_audio(false, false);
+		cd->unlock_audio();
+		return DEFAULT_CMD_US;
+	}
+
+	if(head_position != _start_lba) {
+		// perform a seek
+		selected_drive(_ch).curr_lba = head_position;
+		selected_drive(_ch).next_lba = _start_lba;
+		time_to_seek_complete = atapi_seek(_ch);
+		selected_ctrl(_ch).status.seek_complete = false;
+		selected_drive(_ch).atapi.seek_completion_time = g_machine.get_virt_time_us() + time_to_ready + time_to_seek_complete;
+	}
+
+	cd->unlock_audio();
+	cd->play_audio(_start_lba, _end_lba, time_to_seek_complete);
+
+	// This command responds with immediate status
+	return DEFAULT_CMD_US;
 }
 
 uint32_t StorageCtrl_ATA::atapi_cmd_inquiry(int _ch, uint8_t _cmd)
@@ -2905,14 +3168,21 @@ uint32_t StorageCtrl_ATA::atapi_cmd_read_toc(int _ch, uint8_t _cmd)
 	uint8_t starting_track = controller.buffer[6];
 	uint8_t msf = (controller.buffer[1] >> 1) & 1;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: format=%x, starting_track=%x, msf=%x\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: format=%x, starting_track=%u, msf=%x\n",
 			selected_string(_ch), atapi_cmd_string(_cmd),
 			format, starting_track, msf);
+
+	if(starting_track > 99 && starting_track != 0xaa) {
+		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: READ TOC: invalid starting track.\n", selected_string(_ch));
+		atapi_set_sense(_ch, SENSE_ILLEGAL_REQUEST, ASC_INVALID_FIELD_IN_CMD_PACKET);
+		atapi_error(_ch);
+		return 0;
+	}
 
 	size_t toc_length = 0;
 
 	if(format == 3) {
-		PERRF(LOG_HDD, "ATAPI: READ TOC: format %u not supported\n", format);
+		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: READ TOC: format %u not supported\n", selected_string(_ch), format);
 		atapi_set_sense(_ch, SENSE_ILLEGAL_REQUEST, ASC_INVALID_FIELD_IN_CMD_PACKET);
 		atapi_error(_ch);
 		return 0;
@@ -3012,10 +3282,18 @@ uint32_t StorageCtrl_ATA::atapi_cmd_read(int _ch, uint8_t _cmd)
 
 	// make it a multiple of the sector size
 	selected_drive(_ch).atapi.drq_sectors = (controller.byte_count / selected_drive(_ch).atapi.sector_size);
-	/*
-	controller.byte_count = selected_drive(_ch).atapi.drq_sectors * selected_drive(_ch).atapi.sector_size;
-	selected_drive(_ch).atapi.drq_bytes = controller.byte_count;
-	*/
+
+	uint32_t time_to_seek = 0;
+	int64_t cur_seek_target = selected_drive(_ch).next_lba;
+
+	// stop current audio operation and update head position
+	uint64_t next_point_in_time = g_machine.get_virt_time_us() + DEFAULT_CMD_US;
+	time_to_seek = drive.atapi_check_seek_completion(next_point_in_time);
+	if(!time_to_seek) {
+		cd->lock_audio();
+		atapi_update_head_pos(_ch, true);
+		cd->unlock_audio();
+	}
 
 	selected_drive(_ch).atapi.bytes_total = total_bytes;
 	selected_drive(_ch).atapi.bytes_remaining = total_bytes;
@@ -3032,14 +3310,10 @@ uint32_t StorageCtrl_ATA::atapi_cmd_read(int _ch, uint8_t _cmd)
 	controller.buffer_index = 0;
 	controller.drq_index = 0;
 
-	int64_t cur_seek_target = selected_drive(_ch).next_lba;
 	selected_drive(_ch).next_lba = lba;
 
-	uint32_t time_to_seek = 0;
 	if(time_to_ready == 0) {
 		// CD is ready, it might be seeking (executing SEEK cmd)
-		uint64_t next_point_in_time = g_machine.get_virt_time_us() + DEFAULT_CMD_US;
-		time_to_seek = drive.atapi_check_seek_completion(next_point_in_time);
 		if(time_to_seek) {
 			// it's seeking
 			if(lba != cur_seek_target) {
@@ -3160,7 +3434,7 @@ uint32_t StorageCtrl_ATA::atapi_cmd_seek(int _ch, uint8_t _cmd)
 	Controller &controller = selected_ctrl(_ch);
 	auto *drive = selected_cd(_ch);
 
-	uint32_t lba = read_32bit(controller.buffer + 2);
+	uint32_t lba = read_32bit(&controller.buffer[2]);
 
 	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: %s: lba=%u\n",
 			selected_string(_ch), atapi_cmd_string(_cmd),
@@ -3172,25 +3446,17 @@ uint32_t StorageCtrl_ATA::atapi_cmd_seek(int _ch, uint8_t _cmd)
 		return 0;
 	}
 
+	// stop audio and update current head position
+	drive->lock_audio();
+	atapi_update_head_pos(_ch, true);
+	drive->unlock_audio();
+
 	uint64_t next_time_point = g_machine.get_virt_time_us() + SEEK_CMD_US + time_to_ready;
 
 	selected_drive(_ch).next_lba = lba;
 	uint32_t seek_time = atapi_seek(_ch);
 	selected_ctrl(_ch).status.seek_complete = false;
 	selected_drive(_ch).atapi.seek_completion_time = next_time_point + seek_time;
-
-	// Windows 95's CD player expects the SEEK command to interrupt CD audio playback.
-	// It depends on it to the exclusion of explicitly standardized commands.
-	// Microsoft, please never stop being such geniuses... 
-	bool playing, pause;
-	if(!drive->get_audio_status(playing, pause)) {
-		playing = true;
-	}
-	if(playing) {
-		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: %s: Interrupting CD audio playback.\n",
-				selected_string(_ch), atapi_cmd_string(_cmd));
-		drive->stop_audio();
-	}
 
 	// The SEEK Command will always be executed as an immediate command.
 	// The command will return completion stations as soon as the seek operation has been started.
@@ -3220,8 +3486,9 @@ uint32_t StorageCtrl_ATA::atapi_cmd_read_subchannel(int _ch, uint8_t _cmd)
 	}
 
 	Controller &controller = selected_ctrl(_ch);
-	CdRomDrive *drive = selected_cd(_ch);
-	assert(drive);
+	CdRomDrive *cd = selected_cd(_ch);
+	assert(cd);
+	Drive & drive = selected_drive(_ch);
 
 	bool msf = packet_field(controller.buffer, 1, 1, 1);
 	bool sub_q = packet_field(controller.buffer, 2, 6, 1);
@@ -3233,22 +3500,45 @@ uint32_t StorageCtrl_ATA::atapi_cmd_read_subchannel(int _ch, uint8_t _cmd)
 			selected_string(_ch), atapi_cmd_string(_cmd),
 			msf, sub_q, data_format, track_number);
 
-	size_t req_len = 0;
 	if(data_format == 0 || data_format > 3) {
-		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: Read sub-channel with invalid SubQ format: %u\n",
-				selected_string(_ch), data_format);
+		PDEBUGF(LOG_V0, LOG_HDD, "%s: ATAPI: %s: invalid SubQ format: %u\n",
+				selected_string(_ch), atapi_cmd_string(_cmd), data_format);
 		atapi_set_sense(_ch, SENSE_ILLEGAL_REQUEST, ASC_INVALID_FIELD_IN_CMD_PACKET);
 		atapi_error(_ch);
 		return 0;
-	} if(!drive->read_sub_channel(controller.buffer, sizeof(controller.buffer), req_len, msf, sub_q, data_format)) {
-		atapi_set_sense(_ch, 0x03, 0x02); // NO SEEK COMPLETE?
+	}
+
+	uint32_t time_to_seek_complete = drive.atapi_check_seek_completion();
+	int64_t head_position;
+
+	cd->lock_audio();
+	if(time_to_seek_complete) {
+		head_position = selected_drive(_ch).next_lba;
+	} else {
+		// head is not moving
+		// update current head position from player if audio is playing
+		atapi_update_head_pos(_ch, false);
+		head_position = selected_drive(_ch).curr_lba;
+	}
+
+	size_t req_len = 0;
+	uint8_t sense, asc;
+	bool result = cd->read_sub_channel(
+		controller.buffer, sizeof(controller.buffer), req_len,
+		msf, sub_q, data_format, head_position,
+		sense, asc
+	);
+	cd->unlock_audio();
+
+	if(!result) {
+		atapi_set_sense(_ch, sense, asc);
 		atapi_error(_ch);
 		return 0;
 	}
 
 	atapi_init_send(_ch, _cmd, int(req_len), alloc_length);
 
-	return DEFAULT_CMD_US + time_to_ready;
+	return DEFAULT_CMD_US + time_to_ready + time_to_seek_complete;
 }
 
 uint32_t StorageCtrl_ATA::atapi_cmd_read_disc_info(int _ch, uint8_t _cmd)
@@ -3550,6 +3840,9 @@ uint32_t StorageCtrl_ATA::atapi_seek(int _ch)
 	StorageDev &storage = selected_storage(_ch);
 	Drive &drive = selected_drive(_ch);
 
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: ATAPI: SEEK LBA:%lld -> LBA:%lld\n",
+			selected_string(_ch), drive.curr_lba, drive.next_lba);
+
 	int64_t c0,h0,s0;
 	int64_t c1,h1,s1;
 	storage.lba_to_chs(drive.curr_lba, c0, h0, s0);
@@ -3617,7 +3910,7 @@ uint32_t StorageCtrl_ATA::get_seek_time(int _ch, int64_t _c0, int64_t _c1, int64
 
 	uint32_t total_seek_time = move_time + settling_time + exec_time;
 
-	PDEBUGF(LOG_V2, LOG_HDD, "%s: SEEK C:%lld->C:%lld  exec:%u,settling:%u,total:%u\n",
+	PDEBUGF(LOG_V2, LOG_HDD, "%s: SEEK C:%lld->C:%lld  exec:%u, settling:%u, total:%u\n",
 			selected_string(_ch),
 			_c0, _c1, exec_time, settling_time, total_seek_time);
 

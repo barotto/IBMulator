@@ -237,6 +237,13 @@ public:
 #define DISK_INTERLEAVE         "interleave"
 #define DISK_SPINUP_TIME        "spin_up_time"
 
+#define CDROM_VOLUME            "volume"
+#define CDROM_BALANCE           "balance"
+#define CDROM_REVERB            "reverb"
+#define CDROM_CHORUS            "chorus"
+#define CDROM_CROSSFEED         "crossfeed"
+#define CDROM_FILTERS           "filters"
+
 #define MIXER_SECTION           "mixer"
 #define MIXER_RATE              "rate"
 #define MIXER_SAMPLES           "samples"

@@ -33,6 +33,8 @@
 #include "hardware/devices/keyboard.h"
 #include "hardware/devices/floppydisk.h"
 #include "hardware/devices/floppyloader.h"
+#include "hardware/devices/cdrom_disc.h"
+#include "hardware/devices/cdrom_loader.h"
 #include "hardware/printer/mps_printer.h"
 
 class CPU;
@@ -126,6 +128,10 @@ private:
 	std::unique_ptr<FloppyLoader> m_floppy_loader;
 	std::thread m_floppy_loader_thread;
 
+	// moving the loader into the CdRomDrive would require a mutex for the timers
+	std::unique_ptr<CdRomLoader> m_cdrom_loader;
+	std::thread m_cdrom_loader_thread;
+
 	MediaCommit m_floppy_commit = MEDIA_ASK;
 	MediaCommit m_hdd_commit = MEDIA_ASK;
 
@@ -151,6 +157,8 @@ public:
 	void start();
 	void shutdown();
 	void config_changed(bool _startup);
+
+	int config_id() const { return m_config_id; }
 
 	void set_heartbeat(int64_t _ns);
 	inline int64_t get_heartbeat() const { return m_heartbeat; }
@@ -225,8 +233,10 @@ public:
 	void cmd_insert_floppy(uint8_t _drive, std::string _file, bool _wp, std::function<void(bool)> _cb);
 	void cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy, std::function<void(bool)> _cb, int _config_id);
 	void cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb);
-	void cmd_insert_cdrom(uint8_t _drive, std::string _file);
-	void cmd_toggle_cdrom_door(uint8_t _drive);
+	void cmd_insert_cdrom(CdRomDrive *_drive, std::string _file, std::function<void(bool)> _cb);
+	void cmd_insert_cdrom(CdRomDrive *_drive, CdRomDisc *_cdrom, std::string _file, std::function<void(bool)> _cb, int _config_id);
+	void cmd_dispose_cdrom(CdRomDisc *_disc);
+	void cmd_toggle_cdrom_door(CdRomDrive *_drive);
 	void cmd_print_VGA_text(std::vector<uint16_t> _text);
 	void cmd_reset_bench();
 	void cmd_commit_media(std::function<void()> _cb);
@@ -257,10 +267,6 @@ public:
 		// caller must gain a lock on ms_gui_lock
 		return m_s.curr_prgname;
 	}
-
-private:
-
-	CdRomDrive * find_cdrom_drive(uint8_t _drive);
 };
 
 #endif

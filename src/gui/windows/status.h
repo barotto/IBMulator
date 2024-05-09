@@ -61,7 +61,7 @@ private:
 	int64_t m_cdrom_led_activity = 0;
 	bool m_cdrom_led_on = false;
 	std::mutex m_cdrom_mutex;
-	void cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration);
+	void cdrom_activity_cb(CdRomEvents::EventType _what, uint64_t _duration);
 	void cdrom_led_timer(uint64_t);
 
 public:

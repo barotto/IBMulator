@@ -136,13 +136,13 @@ void Status::update()
 	}
 }
 
-void Status::cdrom_activity_cb(CdRomDrive::EventType _what, uint64_t _duration)
+void Status::cdrom_activity_cb(CdRomEvents::EventType _what, uint64_t _duration)
 {
 	// Machine thread
 	std::lock_guard<std::mutex> lock(m_cdrom_mutex);
 	if(int64_t(_duration) > m_cdrom_led_activity) {
 		m_cdrom_led_activity += _duration;
-	} else if(_what == CdRomDrive::EVENT_POWER_OFF) {
+	} else if(_what == CdRomEvents::POWER_OFF) {
 		m_cdrom_led_activity = 0;
 	}
 }

@@ -57,8 +57,9 @@ DriveIdent & DriveIdent::operator=(const DriveIdent &_src)
 	return *this;
 }
 
-void StorageDev::install(StorageCtrl *_ctrl, uint8_t _id)
+void StorageDev::install(StorageCtrl *_ctrl, uint8_t _id, const char * _ini_section)
 {
+	m_ini_section = _ini_section;
 	m_controller = _ctrl;
 	m_drive_index = _id;
 	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
