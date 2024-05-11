@@ -303,7 +303,11 @@ Interface::MachineDrive * Interface::config_cdrom(int _num)
 
 void Interface::floppy_activity_cb(FloppyEvents::EventType _what, uint8_t _drive_idx, MachineDrive *_drive)
 {
-	assert(!m_drives.empty());
+	if(m_drives.empty()) {
+		// this condition happens when a state is being restored. the drives are already gone, but the
+		// machine is executing a power off, during which the machine's drives notify the activity.
+		return;
+	}
 	// FDDs: LED turns on when the drive's motor is on
 	// 1. the drive sets activity according to motor, 
 	// 2. in the update(): if led_activity then LED on, otherwise off
@@ -335,7 +339,10 @@ void Interface::floppy_activity_cb(FloppyEvents::EventType _what, uint8_t _drive
 
 void Interface::cdrom_activity_cb(CdRomEvents::EventType _what, uint64_t _duration, MachineDrive *_drive)
 {
-	assert(!m_drives.empty());
+	if(m_drives.empty()) {
+		// see the comment above.
+		return;
+	}
 	// CD-ROMs: blinking LED with a 0.5s cycle
 	// 1. the drive sets led_activity when a sector is read
 	// 2. in the update(): LED on, timer is started with a 0.25s timeout 
