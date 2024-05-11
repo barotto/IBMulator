@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,7 +19,7 @@
 
 #include "ibmulator.h"
 #include "hardware/cpu/decoder.h"
-#include "hardware/cpu/executor.h"
+
 
 #define PREFIX_0F prefix_0F(_opcode, ctb_idx_, ctb_op_); return;
 
@@ -53,22 +53,22 @@ case 0x01:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::SGDT;
+			m_instr.fn = CPUExecutorFn::SGDT;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::SIDT;
+			m_instr.fn = CPUExecutorFn::SIDT;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::LGDT_o32;
+			m_instr.fn = CPUExecutorFn::LGDT_o32;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::LIDT_o32;
+			m_instr.fn = CPUExecutorFn::LIDT_o32;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::SMSW_ew;
+			m_instr.fn = CPUExecutorFn::SMSW_ew;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::LMSW_ew;
+			m_instr.fn = CPUExecutorFn::LMSW_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -82,7 +82,7 @@ case 0x01:
 case 0x02:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LAR_rd_ew;
+	m_instr.fn = CPUExecutorFn::LAR_rd_ew;
 	break;
 }
 
@@ -90,7 +90,7 @@ case 0x02:
 case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LSL_rd_ew;
+	m_instr.fn = CPUExecutorFn::LSL_rd_ew;
 	break;
 }
 
@@ -109,7 +109,7 @@ case 0x26: /* 0F 26 /r   MOV TR6/TR7,r32        Move (register) to (test registe
 case 0x80:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JO_cd;
+	m_instr.fn = CPUExecutorFn::JO_cd;
 	break;
 }
 
@@ -117,7 +117,7 @@ case 0x80:
 case 0x81:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNO_cd;
+	m_instr.fn = CPUExecutorFn::JNO_cd;
 	break;
 }
 
@@ -125,7 +125,7 @@ case 0x81:
 case 0x82:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JC_cd;
+	m_instr.fn = CPUExecutorFn::JC_cd;
 	break;
 }
 
@@ -133,7 +133,7 @@ case 0x82:
 case 0x83:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNC_cd;
+	m_instr.fn = CPUExecutorFn::JNC_cd;
 	break;
 }
 
@@ -141,7 +141,7 @@ case 0x83:
 case 0x84:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JE_cd;
+	m_instr.fn = CPUExecutorFn::JE_cd;
 	break;
 }
 
@@ -149,7 +149,7 @@ case 0x84:
 case 0x85:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNE_cd;
+	m_instr.fn = CPUExecutorFn::JNE_cd;
 	break;
 }
 
@@ -157,7 +157,7 @@ case 0x85:
 case 0x86:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JBE_cd;
+	m_instr.fn = CPUExecutorFn::JBE_cd;
 	break;
 }
 
@@ -165,7 +165,7 @@ case 0x86:
 case 0x87:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JA_cd;
+	m_instr.fn = CPUExecutorFn::JA_cd;
 	break;
 }
 
@@ -173,7 +173,7 @@ case 0x87:
 case 0x88:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JS_cd;
+	m_instr.fn = CPUExecutorFn::JS_cd;
 	break;
 }
 
@@ -181,7 +181,7 @@ case 0x88:
 case 0x89:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNS_cd;
+	m_instr.fn = CPUExecutorFn::JNS_cd;
 	break;
 }
 
@@ -189,7 +189,7 @@ case 0x89:
 case 0x8A:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JPE_cd;
+	m_instr.fn = CPUExecutorFn::JPE_cd;
 	break;
 }
 
@@ -197,7 +197,7 @@ case 0x8A:
 case 0x8B:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JPO_cd;
+	m_instr.fn = CPUExecutorFn::JPO_cd;
 	break;
 }
 
@@ -205,7 +205,7 @@ case 0x8B:
 case 0x8C:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JL_cd;
+	m_instr.fn = CPUExecutorFn::JL_cd;
 	break;
 }
 
@@ -213,7 +213,7 @@ case 0x8C:
 case 0x8D:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNL_cd;
+	m_instr.fn = CPUExecutorFn::JNL_cd;
 	break;
 }
 
@@ -221,7 +221,7 @@ case 0x8D:
 case 0x8E:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JLE_cd;
+	m_instr.fn = CPUExecutorFn::JLE_cd;
 	break;
 }
 
@@ -229,7 +229,7 @@ case 0x8E:
 case 0x8F:
 {
 	m_instr.id1 = fetchdw();
-	m_instr.fn = &CPUExecutor::JNLE_cd;
+	m_instr.fn = CPUExecutorFn::JNLE_cd;
 	break;
 }
 
@@ -255,7 +255,7 @@ case 0x9F: /* 0F 9F   SETNLE r/m8   Set byte if not less or equal (ZF=0 and SF=O
 case 0xA0:
 {
 	m_instr.reg = REGI_FS;
-	m_instr.fn = &CPUExecutor::PUSH_SR_dw;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_dw;
 	break;
 }
 
@@ -263,7 +263,7 @@ case 0xA0:
 case 0xA1:
 {
 	m_instr.reg = REGI_FS;
-	m_instr.fn = &CPUExecutor::POP_SR_dw;
+	m_instr.fn = CPUExecutorFn::POP_SR_dw;
 	break;
 }
 
@@ -271,7 +271,7 @@ case 0xA1:
 case 0xA3:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BT_ed_rd;
+	m_instr.fn = CPUExecutorFn::BT_ed_rd;
 	break;
 }
 
@@ -280,7 +280,7 @@ case 0xA4:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SHLD_ed_rd_ib;
+	m_instr.fn = CPUExecutorFn::SHLD_ed_rd_ib;
 	break;
 }
 
@@ -288,7 +288,7 @@ case 0xA4:
 case 0xA5:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SHLD_ed_rd_CL;
+	m_instr.fn = CPUExecutorFn::SHLD_ed_rd_CL;
 	break;
 }
 
@@ -296,7 +296,7 @@ case 0xA5:
 case 0xA8:
 {
 	m_instr.reg = REGI_GS;
-	m_instr.fn = &CPUExecutor::PUSH_SR_dw;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_dw;
 	break;
 }
 
@@ -304,7 +304,7 @@ case 0xA8:
 case 0xA9:
 {
 	m_instr.reg = REGI_GS;
-	m_instr.fn = &CPUExecutor::POP_SR_dw;
+	m_instr.fn = CPUExecutorFn::POP_SR_dw;
 	break;
 }
 
@@ -312,7 +312,7 @@ case 0xA9:
 case 0xAB:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTS_ed_rd;
+	m_instr.fn = CPUExecutorFn::BTS_ed_rd;
 	break;
 }
 
@@ -321,7 +321,7 @@ case 0xAC:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SHRD_ed_rd_ib;
+	m_instr.fn = CPUExecutorFn::SHRD_ed_rd_ib;
 	break;
 }
 
@@ -329,7 +329,7 @@ case 0xAC:
 case 0xAD:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SHRD_ed_rd_CL;
+	m_instr.fn = CPUExecutorFn::SHRD_ed_rd_CL;
 	break;
 }
 
@@ -337,7 +337,7 @@ case 0xAD:
 case 0xAF:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::IMUL_rd_ed;
+	m_instr.fn = CPUExecutorFn::IMUL_rd_ed;
 	break;
 }
 
@@ -345,7 +345,7 @@ case 0xAF:
 case 0xB2:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LSS_rd_mp;
+	m_instr.fn = CPUExecutorFn::LSS_rd_mp;
 	break;
 }
 
@@ -353,7 +353,7 @@ case 0xB2:
 case 0xB3:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTR_ed_rd;
+	m_instr.fn = CPUExecutorFn::BTR_ed_rd;
 	break;
 }
 
@@ -361,7 +361,7 @@ case 0xB3:
 case 0xB4:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LFS_rd_mp;
+	m_instr.fn = CPUExecutorFn::LFS_rd_mp;
 	break;
 }
 
@@ -369,7 +369,7 @@ case 0xB4:
 case 0xB5:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LGS_rd_mp;
+	m_instr.fn = CPUExecutorFn::LGS_rd_mp;
 	break;
 }
 
@@ -377,7 +377,7 @@ case 0xB5:
 case 0xB6:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVZX_rd_eb;
+	m_instr.fn = CPUExecutorFn::MOVZX_rd_eb;
 	break;
 }
 
@@ -385,7 +385,7 @@ case 0xB6:
 case 0xB7:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVZX_rd_ew;
+	m_instr.fn = CPUExecutorFn::MOVZX_rd_ew;
 	break;
 }
 
@@ -399,16 +399,16 @@ case 0xBA:
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 4:
-			m_instr.fn = &CPUExecutor::BT_ed_ib;
+			m_instr.fn = CPUExecutorFn::BT_ed_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::BTS_ed_ib;
+			m_instr.fn = CPUExecutorFn::BTS_ed_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::BTR_ed_ib;
+			m_instr.fn = CPUExecutorFn::BTR_ed_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::BTC_ed_ib;
+			m_instr.fn = CPUExecutorFn::BTC_ed_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -423,7 +423,7 @@ case 0xBA:
 case 0xBB:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTC_ed_rd;
+	m_instr.fn = CPUExecutorFn::BTC_ed_rd;
 	break;
 }
 
@@ -431,7 +431,7 @@ case 0xBB:
 case 0xBC:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BSF_rd_ed;
+	m_instr.fn = CPUExecutorFn::BSF_rd_ed;
 	break;
 }
 
@@ -439,7 +439,7 @@ case 0xBC:
 case 0xBD:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BSR_rd_ed;
+	m_instr.fn = CPUExecutorFn::BSR_rd_ed;
 	break;
 }
 
@@ -447,7 +447,7 @@ case 0xBD:
 case 0xBE:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVSX_rd_eb;
+	m_instr.fn = CPUExecutorFn::MOVSX_rd_eb;
 	break;
 }
 
@@ -455,13 +455,14 @@ case 0xBE:
 case 0xBF:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVSX_rd_ew;
+	m_instr.fn = CPUExecutorFn::MOVSX_rd_ew;
 	break;
 }
 
 default:
 {
 	illegal_opcode();
+	break;
 }
 
 } //switch

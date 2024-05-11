@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,10 +64,7 @@ CPU::CPU()
 
 void CPU::init()
 {
-	static Instruction nullinstr;
-	nullinstr.valid = false;
-	nullinstr.eip = 0;
-	m_instr = &nullinstr;
+	m_instr = &m_s.instr;
 
 	g_cpubus.init();
 }
@@ -164,6 +161,8 @@ void CPU::reset(uint _signal)
 void CPU::save_state(StateBuf &_state)
 {
 	//CPU state
+	m_s.instr = *m_instr;
+
 	StateHeader h;
 	h.name = CPU_STATE_NAME;
 	h.data_size = sizeof(m_s);
@@ -171,7 +170,8 @@ void CPU::save_state(StateBuf &_state)
 
 	g_cpucore.save_state(_state);
 	g_cpubus.save_state(_state);
-	//decoder and executor don't have a state to save and restore
+
+	// decoder and executor don't have a state to save and restore
 }
 
 void CPU::restore_state(StateBuf &_state)
@@ -180,6 +180,8 @@ void CPU::restore_state(StateBuf &_state)
 	h.name = CPU_STATE_NAME;
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
+
+	m_instr = &m_s.instr;
 
 	g_cpuexecutor.reset(MACHINE_HARD_RESET);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,7 +19,6 @@
 
 #include "ibmulator.h"
 #include "hardware/cpu/decoder.h"
-#include "hardware/cpu/executor.h"
 
 
 void CPUDecoder::prefix_none(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_)
@@ -33,7 +32,7 @@ switch(_opcode) {
 case 0x00:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADD_eb_rb;
+	m_instr.fn = CPUExecutorFn::ADD_eb_rb;
 	break;
 }
 
@@ -41,7 +40,7 @@ case 0x00:
 case 0x01:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADD_ew_rw;
+	m_instr.fn = CPUExecutorFn::ADD_ew_rw;
 	break;
 }
 
@@ -49,7 +48,7 @@ case 0x01:
 case 0x02:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADD_rb_eb;
+	m_instr.fn = CPUExecutorFn::ADD_rb_eb;
 	break;
 }
 
@@ -57,7 +56,7 @@ case 0x02:
 case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADD_rw_ew;
+	m_instr.fn = CPUExecutorFn::ADD_rw_ew;
 	break;
 }
 
@@ -65,7 +64,7 @@ case 0x03:
 case 0x04:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::ADD_AL_ib;
+	m_instr.fn = CPUExecutorFn::ADD_AL_ib;
 	break;
 }
 
@@ -73,14 +72,14 @@ case 0x04:
 case 0x05:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::ADD_AX_iw;
+	m_instr.fn = CPUExecutorFn::ADD_AX_iw;
 	break;
 }
 
 /* 06         PUSH ES      Push ES */
 case 0x06:
 {
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	m_instr.reg = REGI_ES;
 	break;
 }
@@ -88,7 +87,7 @@ case 0x06:
 /* 07          POP ES      Pop top of stack into ES */
 case 0x07:
 {
-	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.fn = CPUExecutorFn::POP_SR_w;
 	m_instr.reg = REGI_ES;
 	break;
 }
@@ -97,7 +96,7 @@ case 0x07:
 case 0x08:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::OR_eb_rb;
+	m_instr.fn = CPUExecutorFn::OR_eb_rb;
 	break;
 }
 
@@ -105,7 +104,7 @@ case 0x08:
 case 0x09:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::OR_ew_rw;
+	m_instr.fn = CPUExecutorFn::OR_ew_rw;
 	break;
 }
 
@@ -113,7 +112,7 @@ case 0x09:
 case 0x0A:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::OR_rb_eb;
+	m_instr.fn = CPUExecutorFn::OR_rb_eb;
 	break;
 }
 
@@ -121,7 +120,7 @@ case 0x0A:
 case 0x0B:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::OR_rw_ew;
+	m_instr.fn = CPUExecutorFn::OR_rw_ew;
 	break;
 }
 
@@ -129,7 +128,7 @@ case 0x0B:
 case 0x0C:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::OR_AL_ib;
+	m_instr.fn = CPUExecutorFn::OR_AL_ib;
 	break;
 }
 
@@ -137,14 +136,14 @@ case 0x0C:
 case 0x0D:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::OR_AX_iw;
+	m_instr.fn = CPUExecutorFn::OR_AX_iw;
 	break;
 }
 
 /* 0E         PUSH CS      Push CS */
 case 0x0E:
 {
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	m_instr.reg = REGI_CS;
 	break;
 }
@@ -155,7 +154,7 @@ case 0x0E:
 case 0x10:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADC_eb_rb;
+	m_instr.fn = CPUExecutorFn::ADC_eb_rb;
 	break;
 }
 
@@ -163,7 +162,7 @@ case 0x10:
 case 0x11:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADC_ew_rw;
+	m_instr.fn = CPUExecutorFn::ADC_ew_rw;
 	break;
 }
 
@@ -171,7 +170,7 @@ case 0x11:
 case 0x12:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADC_rb_eb;
+	m_instr.fn = CPUExecutorFn::ADC_rb_eb;
 	break;
 }
 
@@ -179,7 +178,7 @@ case 0x12:
 case 0x13:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ADC_rw_ew;
+	m_instr.fn = CPUExecutorFn::ADC_rw_ew;
 	break;
 }
 
@@ -187,7 +186,7 @@ case 0x13:
 case 0x14:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::ADC_AL_ib;
+	m_instr.fn = CPUExecutorFn::ADC_AL_ib;
 	break;
 }
 
@@ -195,14 +194,14 @@ case 0x14:
 case 0x15:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::ADC_AX_iw;
+	m_instr.fn = CPUExecutorFn::ADC_AX_iw;
 	break;
 }
 
 /* 16         PUSH SS      Push SS */
 case 0x16:
 {
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	m_instr.reg = REGI_SS;
 	break;
 }
@@ -210,7 +209,7 @@ case 0x16:
 /* 17          POP SS       Pop top of stack into SS */
 case 0x17:
 {
-	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.fn = CPUExecutorFn::POP_SR_w;
 	m_instr.reg = REGI_SS;
 	break;
 }
@@ -219,7 +218,7 @@ case 0x17:
 case 0x18:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SBB_eb_rb;
+	m_instr.fn = CPUExecutorFn::SBB_eb_rb;
 	break;
 }
 
@@ -227,7 +226,7 @@ case 0x18:
 case 0x19:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SBB_ew_rw;
+	m_instr.fn = CPUExecutorFn::SBB_ew_rw;
 	break;
 }
 
@@ -235,7 +234,7 @@ case 0x19:
 case 0x1A:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SBB_rb_eb;
+	m_instr.fn = CPUExecutorFn::SBB_rb_eb;
 	break;
 }
 
@@ -243,7 +242,7 @@ case 0x1A:
 case 0x1B:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SBB_rw_ew;
+	m_instr.fn = CPUExecutorFn::SBB_rw_ew;
 	break;
 }
 
@@ -251,7 +250,7 @@ case 0x1B:
 case 0x1C:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SBB_AL_ib;
+	m_instr.fn = CPUExecutorFn::SBB_AL_ib;
 	break;
 }
 
@@ -259,14 +258,14 @@ case 0x1C:
 case 0x1D:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::SBB_AX_iw;
+	m_instr.fn = CPUExecutorFn::SBB_AX_iw;
 	break;
 }
 
 /* 1E         PUSH DS      Push DS */
 case 0x1E:
 {
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	m_instr.reg = REGI_DS;
 	break;
 }
@@ -274,7 +273,7 @@ case 0x1E:
 /* 1F          POP DS       Pop top of stack into DS */
 case 0x1F:
 {
-	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.fn = CPUExecutorFn::POP_SR_w;
 	m_instr.reg = REGI_DS;
 	break;
 }
@@ -283,7 +282,7 @@ case 0x1F:
 case 0x20:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::AND_eb_rb;
+	m_instr.fn = CPUExecutorFn::AND_eb_rb;
 	break;
 }
 
@@ -291,7 +290,7 @@ case 0x20:
 case 0x21:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::AND_ew_rw;
+	m_instr.fn = CPUExecutorFn::AND_ew_rw;
 	break;
 }
 
@@ -299,7 +298,7 @@ case 0x21:
 case 0x22:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::AND_rb_eb;
+	m_instr.fn = CPUExecutorFn::AND_rb_eb;
 	break;
 }
 
@@ -307,7 +306,7 @@ case 0x22:
 case 0x23:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::AND_rw_ew;
+	m_instr.fn = CPUExecutorFn::AND_rw_ew;
 	break;
 }
 
@@ -315,7 +314,7 @@ case 0x23:
 case 0x24:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::AND_AL_ib;
+	m_instr.fn = CPUExecutorFn::AND_AL_ib;
 	break;
 }
 
@@ -323,7 +322,7 @@ case 0x24:
 case 0x25:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::AND_AX_iw;
+	m_instr.fn = CPUExecutorFn::AND_AX_iw;
 	break;
 }
 
@@ -332,7 +331,7 @@ case 0x25:
 /* 27      DAA            Decimal adjust AL after addition */
 case 0x27:
 {
-	m_instr.fn = &CPUExecutor::DAA;
+	m_instr.fn = CPUExecutorFn::DAA;
 	break;
 }
 
@@ -340,7 +339,7 @@ case 0x27:
 case 0x28:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SUB_eb_rb;
+	m_instr.fn = CPUExecutorFn::SUB_eb_rb;
 	break;
 }
 
@@ -348,7 +347,7 @@ case 0x28:
 case 0x29:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SUB_ew_rw;
+	m_instr.fn = CPUExecutorFn::SUB_ew_rw;
 	break;
 }
 
@@ -356,7 +355,7 @@ case 0x29:
 case 0x2A:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SUB_rb_eb;
+	m_instr.fn = CPUExecutorFn::SUB_rb_eb;
 	break;
 }
 
@@ -364,7 +363,7 @@ case 0x2A:
 case 0x2B:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SUB_rw_ew;
+	m_instr.fn = CPUExecutorFn::SUB_rw_ew;
 	break;
 }
 
@@ -372,7 +371,7 @@ case 0x2B:
 case 0x2C:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SUB_AL_ib;
+	m_instr.fn = CPUExecutorFn::SUB_AL_ib;
 	break;
 }
 
@@ -380,7 +379,7 @@ case 0x2C:
 case 0x2D:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::SUB_AX_iw;
+	m_instr.fn = CPUExecutorFn::SUB_AX_iw;
 	break;
 }
 
@@ -389,7 +388,7 @@ case 0x2D:
 /* 2F        DAS             Decimal adjust AL after subtraction */
 case 0x2F:
 {
-	m_instr.fn = &CPUExecutor::DAS;
+	m_instr.fn = CPUExecutorFn::DAS;
 	break;
 }
 
@@ -397,7 +396,7 @@ case 0x2F:
 case 0x30:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XOR_eb_rb;
+	m_instr.fn = CPUExecutorFn::XOR_eb_rb;
 	break;
 }
 
@@ -405,7 +404,7 @@ case 0x30:
 case 0x31:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XOR_ew_rw;
+	m_instr.fn = CPUExecutorFn::XOR_ew_rw;
 	break;
 }
 
@@ -413,7 +412,7 @@ case 0x31:
 case 0x32:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XOR_rb_eb;
+	m_instr.fn = CPUExecutorFn::XOR_rb_eb;
 	break;
 }
 
@@ -421,7 +420,7 @@ case 0x32:
 case 0x33:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XOR_rw_ew;
+	m_instr.fn = CPUExecutorFn::XOR_rw_ew;
 	break;
 }
 
@@ -429,7 +428,7 @@ case 0x33:
 case 0x34:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::XOR_AL_ib;
+	m_instr.fn = CPUExecutorFn::XOR_AL_ib;
 	break;
 }
 
@@ -437,7 +436,7 @@ case 0x34:
 case 0x35:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::XOR_AX_iw;
+	m_instr.fn = CPUExecutorFn::XOR_AX_iw;
 	break;
 }
 
@@ -446,7 +445,7 @@ case 0x35:
 /* 37        AAA         ASCII adjust AL after addition */
 case 0x37:
 {
-	m_instr.fn = &CPUExecutor::AAA;
+	m_instr.fn = CPUExecutorFn::AAA;
 	break;
 }
 
@@ -454,7 +453,7 @@ case 0x37:
 case 0x38:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::CMP_eb_rb;
+	m_instr.fn = CPUExecutorFn::CMP_eb_rb;
 	break;
 }
 
@@ -462,7 +461,7 @@ case 0x38:
 case 0x39:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::CMP_ew_rw;
+	m_instr.fn = CPUExecutorFn::CMP_ew_rw;
 	break;
 }
 
@@ -470,7 +469,7 @@ case 0x39:
 case 0x3A:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::CMP_rb_eb;
+	m_instr.fn = CPUExecutorFn::CMP_rb_eb;
 	break;
 }
 
@@ -478,7 +477,7 @@ case 0x3A:
 case 0x3B:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::CMP_rw_ew;
+	m_instr.fn = CPUExecutorFn::CMP_rw_ew;
 	break;
 }
 
@@ -486,7 +485,7 @@ case 0x3B:
 case 0x3C:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::CMP_AL_ib;
+	m_instr.fn = CPUExecutorFn::CMP_AL_ib;
 	break;
 }
 
@@ -494,7 +493,7 @@ case 0x3C:
 case 0x3D:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::CMP_AX_iw;
+	m_instr.fn = CPUExecutorFn::CMP_AX_iw;
 	break;
 }
 
@@ -503,7 +502,7 @@ case 0x3D:
 /* 3F        AAS       ASCII adjust AL after subtraction */
 case 0x3F:
 {
-	m_instr.fn = &CPUExecutor::AAS;
+	m_instr.fn = CPUExecutorFn::AAS;
 	break;
 }
 
@@ -518,7 +517,7 @@ case 0x46: //SI
 case 0x47: //DI
 {
 	m_instr.reg = _opcode - 0x40;
-	m_instr.fn = &CPUExecutor::INC_rw_op;
+	m_instr.fn = CPUExecutorFn::INC_rw_op;
 	break;
 }
 
@@ -533,7 +532,7 @@ case 0x4E: //SI
 case 0x4F: //DI
 {
 	m_instr.reg = _opcode - 0x48;
-	m_instr.fn = &CPUExecutor::DEC_rw_op;
+	m_instr.fn = CPUExecutorFn::DEC_rw_op;
 	break;
 }
 
@@ -548,7 +547,7 @@ case 0x56: //SI
 case 0x57: //DI
 {
 	m_instr.reg = _opcode - 0x50;
-	m_instr.fn = &CPUExecutor::PUSH_rw_op;
+	m_instr.fn = CPUExecutorFn::PUSH_rw_op;
 	break;
 }
 
@@ -563,21 +562,21 @@ case 0x5E: //SI
 case 0x5F: //DI
 {
 	m_instr.reg = _opcode - 0x58;
-	m_instr.fn = &CPUExecutor::POP_rw_op;
+	m_instr.fn = CPUExecutorFn::POP_rw_op;
 	break;
 }
 
 /* 60        PUSHA      Push in order: AX,CX,DX,BX,original SP,BP,SI,DI */
 case 0x60:
 {
-	m_instr.fn = &CPUExecutor::PUSHA;
+	m_instr.fn = CPUExecutorFn::PUSHA;
 	break;
 }
 
 /* 61        POPA         Pop in order: DI,SI,BP,SP,BX,DX,CX,AX */
 case 0x61:
 {
-	m_instr.fn = &CPUExecutor::POPA ;
+	m_instr.fn = CPUExecutorFn::POPA ;
 	break;
 }
 
@@ -585,7 +584,7 @@ case 0x61:
 case 0x62:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BOUND_rw_md ;
+	m_instr.fn = CPUExecutorFn::BOUND_rw_md ;
 	break;
 }
 
@@ -593,7 +592,7 @@ case 0x62:
 case 0x63:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::ARPL_ew_rw;
+	m_instr.fn = CPUExecutorFn::ARPL_ew_rw;
 	break;
 }
 
@@ -612,7 +611,7 @@ case 0x63:
 case 0x68:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::PUSH_iw;
+	m_instr.fn = CPUExecutorFn::PUSH_iw;
 	break;
 }
 
@@ -621,7 +620,7 @@ case 0x69:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew_iw;
+	m_instr.fn = CPUExecutorFn::IMUL_rw_ew_iw;
 	break;
 }
 
@@ -629,7 +628,7 @@ case 0x69:
 case 0x6A:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::PUSH_ib_w;
+	m_instr.fn = CPUExecutorFn::PUSH_ib_w;
 	break;
 }
 
@@ -638,7 +637,7 @@ case 0x6B:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew_ib;
+	m_instr.fn = CPUExecutorFn::IMUL_rw_ew_ib;
 	break;
 }
 
@@ -646,9 +645,9 @@ case 0x6B:
 case 0x6C:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::INSB_a32;
+		m_instr.fn = CPUExecutorFn::INSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::INSB_a16;
+		m_instr.fn = CPUExecutorFn::INSB_a16;
 	}
 	break;
 }
@@ -657,9 +656,9 @@ case 0x6C:
 case 0x6D:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::INSW_a32;
+		m_instr.fn = CPUExecutorFn::INSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::INSW_a16;
+		m_instr.fn = CPUExecutorFn::INSW_a16;
 	}
 	break;
 }
@@ -668,9 +667,9 @@ case 0x6D:
 case 0x6E:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::OUTSB_a32;
+		m_instr.fn = CPUExecutorFn::OUTSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::OUTSB_a16;
+		m_instr.fn = CPUExecutorFn::OUTSB_a16;
 	}
 	break;
 }
@@ -679,9 +678,9 @@ case 0x6E:
 case 0x6F:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::OUTSW_a32;
+		m_instr.fn = CPUExecutorFn::OUTSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::OUTSW_a16;
+		m_instr.fn = CPUExecutorFn::OUTSW_a16;
 	}
 	break;
 }
@@ -690,7 +689,7 @@ case 0x6F:
 case 0x70:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JO_cb;
+	m_instr.fn = CPUExecutorFn::JO_cb;
 	break;
 }
 
@@ -698,7 +697,7 @@ case 0x70:
 case 0x71:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNO_cb;
+	m_instr.fn = CPUExecutorFn::JNO_cb;
 	break;
 }
 
@@ -706,7 +705,7 @@ case 0x71:
 case 0x72:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JC_cb;
+	m_instr.fn = CPUExecutorFn::JC_cb;
 	break;
 }
 
@@ -714,7 +713,7 @@ case 0x72:
 case 0x73:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNC_cb;
+	m_instr.fn = CPUExecutorFn::JNC_cb;
 	break;
 }
 
@@ -722,7 +721,7 @@ case 0x73:
 case 0x74:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JE_cb;
+	m_instr.fn = CPUExecutorFn::JE_cb;
 	break;
 }
 
@@ -730,7 +729,7 @@ case 0x74:
 case 0x75:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNE_cb;
+	m_instr.fn = CPUExecutorFn::JNE_cb;
 	break;
 }
 
@@ -738,7 +737,7 @@ case 0x75:
 case 0x76:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JBE_cb;
+	m_instr.fn = CPUExecutorFn::JBE_cb;
 	break;
 }
 
@@ -746,7 +745,7 @@ case 0x76:
 case 0x77:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JA_cb;
+	m_instr.fn = CPUExecutorFn::JA_cb;
 	break;
 }
 
@@ -754,7 +753,7 @@ case 0x77:
 case 0x78:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JS_cb;
+	m_instr.fn = CPUExecutorFn::JS_cb;
 	break;
 }
 
@@ -762,7 +761,7 @@ case 0x78:
 case 0x79:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNS_cb;
+	m_instr.fn = CPUExecutorFn::JNS_cb;
 	break;
 }
 
@@ -770,7 +769,7 @@ case 0x79:
 case 0x7A:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JPE_cb;
+	m_instr.fn = CPUExecutorFn::JPE_cb;
 	break;
 }
 
@@ -778,7 +777,7 @@ case 0x7A:
 case 0x7B:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JPO_cb;
+	m_instr.fn = CPUExecutorFn::JPO_cb;
 	break;
 }
 
@@ -786,7 +785,7 @@ case 0x7B:
 case 0x7C:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JL_cb;
+	m_instr.fn = CPUExecutorFn::JL_cb;
 	break;
 }
 
@@ -794,7 +793,7 @@ case 0x7C:
 case 0x7D:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNL_cb;
+	m_instr.fn = CPUExecutorFn::JNL_cb;
 	break;
 }
 
@@ -802,7 +801,7 @@ case 0x7D:
 case 0x7E:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JLE_cb;
+	m_instr.fn = CPUExecutorFn::JLE_cb;
 	break;
 }
 
@@ -810,7 +809,7 @@ case 0x7E:
 case 0x7F:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JNLE_cb;
+	m_instr.fn = CPUExecutorFn::JNLE_cb;
 	break;
 }
 
@@ -831,28 +830,28 @@ case 0x82:
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_eb_ib;
+			m_instr.fn = CPUExecutorFn::ADD_eb_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_eb_ib;
+			m_instr.fn = CPUExecutorFn::OR_eb_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_eb_ib;
+			m_instr.fn = CPUExecutorFn::ADC_eb_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_eb_ib;
+			m_instr.fn = CPUExecutorFn::SBB_eb_ib;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_eb_ib;
+			m_instr.fn = CPUExecutorFn::AND_eb_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_eb_ib;
+			m_instr.fn = CPUExecutorFn::SUB_eb_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_eb_ib;
+			m_instr.fn = CPUExecutorFn::XOR_eb_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_eb_ib;
+			m_instr.fn = CPUExecutorFn::CMP_eb_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -878,28 +877,28 @@ case 0x81:
 	m_instr.iw1 = fetchw();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_ew_iw;
+			m_instr.fn = CPUExecutorFn::ADD_ew_iw;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_ew_iw;
+			m_instr.fn = CPUExecutorFn::OR_ew_iw;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_ew_iw;
+			m_instr.fn = CPUExecutorFn::ADC_ew_iw;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_ew_iw;
+			m_instr.fn = CPUExecutorFn::SBB_ew_iw;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_ew_iw;
+			m_instr.fn = CPUExecutorFn::AND_ew_iw;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_ew_iw;
+			m_instr.fn = CPUExecutorFn::SUB_ew_iw;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_ew_iw;
+			m_instr.fn = CPUExecutorFn::XOR_ew_iw;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_ew_iw;
+			m_instr.fn = CPUExecutorFn::CMP_ew_iw;
 			break;
 		default:
 			illegal_opcode();
@@ -927,28 +926,28 @@ case 0x83:
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ADD_ew_ib;
+			m_instr.fn = CPUExecutorFn::ADD_ew_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::OR_ew_ib;
+			m_instr.fn = CPUExecutorFn::OR_ew_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::ADC_ew_ib;
+			m_instr.fn = CPUExecutorFn::ADC_ew_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::SBB_ew_ib;
+			m_instr.fn = CPUExecutorFn::SBB_ew_ib;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::AND_ew_ib;
+			m_instr.fn = CPUExecutorFn::AND_ew_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SUB_ew_ib;
+			m_instr.fn = CPUExecutorFn::SUB_ew_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::XOR_ew_ib;
+			m_instr.fn = CPUExecutorFn::XOR_ew_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::CMP_ew_ib;
+			m_instr.fn = CPUExecutorFn::CMP_ew_ib;
 			break;
 		default:
 			// according to the Intel's 286 user manual and http://ref.x86asm.net
@@ -965,7 +964,7 @@ case 0x83:
 case 0x84:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::TEST_eb_rb;
+	m_instr.fn = CPUExecutorFn::TEST_eb_rb;
 	break;
 }
 
@@ -973,7 +972,7 @@ case 0x84:
 case 0x85:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::TEST_ew_rw;
+	m_instr.fn = CPUExecutorFn::TEST_ew_rw;
 	break;
 }
 
@@ -981,7 +980,7 @@ case 0x85:
 case 0x86:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XCHG_eb_rb;
+	m_instr.fn = CPUExecutorFn::XCHG_eb_rb;
 	break;
 }
 
@@ -989,7 +988,7 @@ case 0x86:
 case 0x87:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::XCHG_ew_rw;
+	m_instr.fn = CPUExecutorFn::XCHG_ew_rw;
 	break;
 }
 
@@ -997,7 +996,7 @@ case 0x87:
 case 0x88:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_eb_rb;
+	m_instr.fn = CPUExecutorFn::MOV_eb_rb;
 	break;
 }
 
@@ -1005,7 +1004,7 @@ case 0x88:
 case 0x89:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_ew_rw;
+	m_instr.fn = CPUExecutorFn::MOV_ew_rw;
 	break;
 }
 
@@ -1013,7 +1012,7 @@ case 0x89:
 case 0x8A:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_rb_eb;
+	m_instr.fn = CPUExecutorFn::MOV_rb_eb;
 	break;
 }
 
@@ -1021,7 +1020,7 @@ case 0x8A:
 case 0x8B:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_rw_ew;
+	m_instr.fn = CPUExecutorFn::MOV_rw_ew;
 	break;
 }
 
@@ -1032,7 +1031,7 @@ case 0x8C:
 	if(m_instr.modrm.r > REGI_GS) {
 		illegal_opcode();
 	} else {
-		m_instr.fn = &CPUExecutor::MOV_ew_SR;
+		m_instr.fn = CPUExecutorFn::MOV_ew_SR;
 	}
 	break;
 }
@@ -1041,7 +1040,7 @@ case 0x8C:
 case 0x8D:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LEA_rw_m;
+	m_instr.fn = CPUExecutorFn::LEA_rw_m;
 	break;
 }
 
@@ -1052,7 +1051,7 @@ case 0x8E:
 	if(m_instr.modrm.r > REGI_GS || m_instr.modrm.r == REGI_CS) {
 		illegal_opcode();
 	} else {
-		m_instr.fn = &CPUExecutor::MOV_SR_ew;
+		m_instr.fn = CPUExecutorFn::MOV_SR_ew;
 	}
 	break;
 }
@@ -1061,7 +1060,7 @@ case 0x8E:
 case 0x8F:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::POP_mw;
+	m_instr.fn = CPUExecutorFn::POP_mw;
 	if(m_instr.modrm.n != 0) {
 		illegal_opcode();
 	}
@@ -1071,7 +1070,7 @@ case 0x8F:
 /* 90            NOP            No OPERATION */
 case 0x90:
 {
-	m_instr.fn = &CPUExecutor::NOP;
+	m_instr.fn = CPUExecutorFn::NOP;
 	break;
 }
 
@@ -1085,21 +1084,21 @@ case 0x96: //SI
 case 0x97: //DI
 {
 	m_instr.reg = _opcode - 0x90;
-	m_instr.fn = &CPUExecutor::XCHG_AX_rw;
+	m_instr.fn = CPUExecutorFn::XCHG_AX_rw;
 	break;
 }
 
 /* 98       CBW           Convert byte into word (AH = top bit of AL) */
 case 0x98:
 {
-	m_instr.fn = &CPUExecutor::CBW;
+	m_instr.fn = CPUExecutorFn::CBW;
 	break;
 }
 
 /* 99       CWD            Convert word to doubleword (DX:AX = AX) */
 case 0x99:
 {
-	m_instr.fn = &CPUExecutor::CWD;
+	m_instr.fn = CPUExecutorFn::CWD;
 	break;
 }
 
@@ -1108,42 +1107,42 @@ case 0x9A:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.iw2 = fetchw();
-	m_instr.fn = &CPUExecutor::CALL_ptr1616;
+	m_instr.fn = CPUExecutorFn::CALL_ptr1616;
 	break;
 }
 
 /* 9B        WAIT           Wait until BUSY pin is inactive (HIGH) */
 case 0x9B:
 {
-	m_instr.fn = &CPUExecutor::WAIT;
+	m_instr.fn = CPUExecutorFn::WAIT;
 	break;
 }
 
 /* 9C         PUSHF         Push flags register */
 case 0x9C:
 {
-	m_instr.fn = &CPUExecutor::PUSHF;
+	m_instr.fn = CPUExecutorFn::PUSHF;
 	break;
 }
 
 /* 9D         POPF           Pop top of stack into flags register */
 case 0x9D:
 {
-	m_instr.fn = &CPUExecutor::POPF ;
+	m_instr.fn = CPUExecutorFn::POPF ;
 	break;
 }
 
 /* 9E - SAHF     Store AH into flags */
 case 0x9E:
 {
-	m_instr.fn = &CPUExecutor::SAHF;
+	m_instr.fn = CPUExecutorFn::SAHF;
 	break;
 }
 
 /* 9F - LAHF     Load flags into AH */
 case 0x9F:
 {
-	m_instr.fn = &CPUExecutor::LAHF;
+	m_instr.fn = CPUExecutorFn::LAHF;
 	break;
 }
 
@@ -1155,7 +1154,7 @@ case 0xA0:
 	} else {
 		m_instr.offset = fetchw();
 	}
-	m_instr.fn = &CPUExecutor::MOV_AL_xb;
+	m_instr.fn = CPUExecutorFn::MOV_AL_xb;
 	break;
 }
 
@@ -1167,7 +1166,7 @@ case 0xA1:
 	} else {
 		m_instr.offset = fetchw();
 	}
-	m_instr.fn = &CPUExecutor::MOV_AX_xw;
+	m_instr.fn = CPUExecutorFn::MOV_AX_xw;
 	break;
 }
 
@@ -1179,7 +1178,7 @@ case 0xA2:
 	} else {
 		m_instr.offset = fetchw();
 	}
-	m_instr.fn = &CPUExecutor::MOV_xb_AL;
+	m_instr.fn = CPUExecutorFn::MOV_xb_AL;
 	break;
 }
 
@@ -1191,7 +1190,7 @@ case 0xA3:
 	} else {
 		m_instr.offset = fetchw();
 	}
-	m_instr.fn = &CPUExecutor::MOV_xw_AX;
+	m_instr.fn = CPUExecutorFn::MOV_xw_AX;
 	break;
 }
 
@@ -1199,9 +1198,9 @@ case 0xA3:
 case 0xA4:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::MOVSB_a32;
+		m_instr.fn = CPUExecutorFn::MOVSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::MOVSB_a16;
+		m_instr.fn = CPUExecutorFn::MOVSB_a16;
 	}
 	break;
 }
@@ -1210,9 +1209,9 @@ case 0xA4:
 case 0xA5:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::MOVSW_a32;
+		m_instr.fn = CPUExecutorFn::MOVSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::MOVSW_a16;
+		m_instr.fn = CPUExecutorFn::MOVSW_a16;
 	}
 	break;
 }
@@ -1222,9 +1221,9 @@ case 0xA6:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::CMPSB_a32;
+		m_instr.fn = CPUExecutorFn::CMPSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::CMPSB_a16;
+		m_instr.fn = CPUExecutorFn::CMPSB_a16;
 	}
 	break;
 }
@@ -1234,9 +1233,9 @@ case 0xA7:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::CMPSW_a32;
+		m_instr.fn = CPUExecutorFn::CMPSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::CMPSW_a16;
+		m_instr.fn = CPUExecutorFn::CMPSW_a16;
 	}
 	break;
 }
@@ -1245,7 +1244,7 @@ case 0xA7:
 case 0xA8:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::TEST_AL_ib;
+	m_instr.fn = CPUExecutorFn::TEST_AL_ib;
 	break;
 }
 
@@ -1253,7 +1252,7 @@ case 0xA8:
 case 0xA9:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::TEST_AX_iw;
+	m_instr.fn = CPUExecutorFn::TEST_AX_iw;
 	break;
 }
 
@@ -1261,9 +1260,9 @@ case 0xA9:
 case 0xAA:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::STOSB_a32;
+		m_instr.fn = CPUExecutorFn::STOSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::STOSB_a16;
+		m_instr.fn = CPUExecutorFn::STOSB_a16;
 	}
 	break;
 }
@@ -1272,9 +1271,9 @@ case 0xAA:
 case 0xAB:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::STOSW_a32;
+		m_instr.fn = CPUExecutorFn::STOSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::STOSW_a16;
+		m_instr.fn = CPUExecutorFn::STOSW_a16;
 	}
 	break;
 }
@@ -1283,9 +1282,9 @@ case 0xAB:
 case 0xAC:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LODSB_a32;
+		m_instr.fn = CPUExecutorFn::LODSB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LODSB_a16;
+		m_instr.fn = CPUExecutorFn::LODSB_a16;
 	}
 	break;
 }
@@ -1294,9 +1293,9 @@ case 0xAC:
 case 0xAD:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LODSW_a32;
+		m_instr.fn = CPUExecutorFn::LODSW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LODSW_a16;
+		m_instr.fn = CPUExecutorFn::LODSW_a16;
 	}
 	break;
 }
@@ -1306,9 +1305,9 @@ case 0xAE:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::SCASB_a32;
+		m_instr.fn = CPUExecutorFn::SCASB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::SCASB_a16;
+		m_instr.fn = CPUExecutorFn::SCASB_a16;
 	}
 	break;
 }
@@ -1318,9 +1317,9 @@ case 0xAF:
 {
 	m_instr.rep_zf = true;
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::SCASW_a32;
+		m_instr.fn = CPUExecutorFn::SCASW_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::SCASW_a16;
+		m_instr.fn = CPUExecutorFn::SCASW_a16;
 	}
 	break;
 }
@@ -1337,7 +1336,7 @@ case 0xB7: //BH
 {
 	m_instr.ib = fetchb();
 	m_instr.reg = _opcode - 0xB0;
-	m_instr.fn = &CPUExecutor::MOV_rb_ib;
+	m_instr.fn = CPUExecutorFn::MOV_rb_ib;
 	break;
 }
 
@@ -1353,7 +1352,7 @@ case 0xBF: //DI
 {
 	m_instr.iw1 = fetchw();
 	m_instr.reg = _opcode - 0xB8;
-	m_instr.fn = &CPUExecutor::MOV_rw_iw;
+	m_instr.fn = CPUExecutorFn::MOV_rw_iw;
 	break;
 }
 
@@ -1372,26 +1371,26 @@ case 0xC0: //eb,ib
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_eb_ib;
+			m_instr.fn = CPUExecutorFn::ROL_eb_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_eb_ib;
+			m_instr.fn = CPUExecutorFn::ROR_eb_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_eb_ib;
+			m_instr.fn = CPUExecutorFn::RCL_eb_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_eb_ib;
+			m_instr.fn = CPUExecutorFn::RCR_eb_ib;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_eb_ib;
+			m_instr.fn = CPUExecutorFn::SAL_eb_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_eb_ib;
+			m_instr.fn = CPUExecutorFn::SHR_eb_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_eb_ib;
+			m_instr.fn = CPUExecutorFn::SAR_eb_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -1416,26 +1415,26 @@ case 0xC1:
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_ew_ib;
+			m_instr.fn = CPUExecutorFn::ROL_ew_ib;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_ew_ib;
+			m_instr.fn = CPUExecutorFn::ROR_ew_ib;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_ew_ib;
+			m_instr.fn = CPUExecutorFn::RCL_ew_ib;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_ew_ib;
+			m_instr.fn = CPUExecutorFn::RCR_ew_ib;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_ew_ib;
+			m_instr.fn = CPUExecutorFn::SAL_ew_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_ew_ib;
+			m_instr.fn = CPUExecutorFn::SHR_ew_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_ew_ib;
+			m_instr.fn = CPUExecutorFn::SAR_ew_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -1449,7 +1448,7 @@ case 0xC1:
 case 0xC2:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::RET_near_o16;
+	m_instr.fn = CPUExecutorFn::RET_near_o16;
 	break;
 }
 
@@ -1457,7 +1456,7 @@ case 0xC2:
 case 0xC3:
 {
 	m_instr.iw1 = 0;
-	m_instr.fn = &CPUExecutor::RET_near_o16;
+	m_instr.fn = CPUExecutorFn::RET_near_o16;
 	break;
 }
 
@@ -1465,7 +1464,7 @@ case 0xC3:
 case 0xC4:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LES_rw_mp;
+	m_instr.fn = CPUExecutorFn::LES_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}
@@ -1476,7 +1475,7 @@ case 0xC4:
 case 0xC5:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LDS_rw_mp;
+	m_instr.fn = CPUExecutorFn::LDS_rw_mp;
 	if(m_instr.modrm.mod_is_reg()) {
 		illegal_opcode();
 	}
@@ -1488,7 +1487,7 @@ case 0xC6:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::MOV_eb_ib;
+	m_instr.fn = CPUExecutorFn::MOV_eb_ib;
 	if(m_instr.modrm.n != 0) {
 		illegal_opcode();
 	}
@@ -1500,7 +1499,7 @@ case 0xC7:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::MOV_ew_iw;
+	m_instr.fn = CPUExecutorFn::MOV_ew_iw;
 	if(m_instr.modrm.n != 0) {
 		illegal_opcode();
 	}
@@ -1512,14 +1511,14 @@ case 0xC8:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::ENTER_o16;
+	m_instr.fn = CPUExecutorFn::ENTER_o16;
 	break;
 }
 
 /* C9         LEAVE      Set (E)SP to (E)BP, then POP (E)BP */
 case 0xC9:
 {
-	m_instr.fn = &CPUExecutor::LEAVE_o16;
+	m_instr.fn = CPUExecutorFn::LEAVE_o16;
 	break;
 }
 
@@ -1527,7 +1526,7 @@ case 0xC9:
 case 0xCA:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::RET_far_o16;
+	m_instr.fn = CPUExecutorFn::RET_far_o16;
 	break;
 }
 
@@ -1535,14 +1534,14 @@ case 0xCA:
 case 0xCB:
 {
 	m_instr.iw1 = 0;
-	m_instr.fn = &CPUExecutor::RET_far_o16;
+	m_instr.fn = CPUExecutorFn::RET_far_o16;
 	break;
 }
 
 /* CC      INT 3         Interrupt 3 (trap to debugger) */
 case 0xCC:
 {
-	m_instr.fn = &CPUExecutor::INT3;
+	m_instr.fn = CPUExecutorFn::INT3;
 	break;
 }
 
@@ -1550,21 +1549,21 @@ case 0xCC:
 case 0xCD:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::INT_ib;
+	m_instr.fn = CPUExecutorFn::INT_ib;
 	break;
 }
 
 /* CE      INTO      Interrupt 4  */
 case 0xCE:
 {
-	m_instr.fn = &CPUExecutor::INTO;
+	m_instr.fn = CPUExecutorFn::INTO;
 	break;
 }
 
 /* CF        IRET    Interrupt return (far return and pop flags) */
 case 0xCF:
 {
-	m_instr.fn = &CPUExecutor::IRET;
+	m_instr.fn = CPUExecutorFn::IRET;
 	break;
 }
 
@@ -1582,26 +1581,26 @@ case 0xD0:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_eb_1;
+			m_instr.fn = CPUExecutorFn::ROL_eb_1;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_eb_1;
+			m_instr.fn = CPUExecutorFn::ROR_eb_1;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_eb_1;
+			m_instr.fn = CPUExecutorFn::RCL_eb_1;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_eb_1;
+			m_instr.fn = CPUExecutorFn::RCR_eb_1;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_eb_1;
+			m_instr.fn = CPUExecutorFn::SAL_eb_1;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_eb_1;
+			m_instr.fn = CPUExecutorFn::SHR_eb_1;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_eb_1;
+			m_instr.fn = CPUExecutorFn::SAR_eb_1;
 			break;
 		default:
 			illegal_opcode();
@@ -1625,26 +1624,26 @@ case 0xD1:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_ew_1;
+			m_instr.fn = CPUExecutorFn::ROL_ew_1;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_ew_1;
+			m_instr.fn = CPUExecutorFn::ROR_ew_1;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_ew_1;
+			m_instr.fn = CPUExecutorFn::RCL_ew_1;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_ew_1;
+			m_instr.fn = CPUExecutorFn::RCR_ew_1;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_ew_1;
+			m_instr.fn = CPUExecutorFn::SAL_ew_1;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_ew_1;
+			m_instr.fn = CPUExecutorFn::SHR_ew_1;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_ew_1;
+			m_instr.fn = CPUExecutorFn::SAR_ew_1;
 			break;
 		default:
 			illegal_opcode();
@@ -1668,26 +1667,26 @@ case 0xD2:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_eb_CL;
+			m_instr.fn = CPUExecutorFn::ROL_eb_CL;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_eb_CL;
+			m_instr.fn = CPUExecutorFn::ROR_eb_CL;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_eb_CL;
+			m_instr.fn = CPUExecutorFn::RCL_eb_CL;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_eb_CL;
+			m_instr.fn = CPUExecutorFn::RCR_eb_CL;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_eb_CL;
+			m_instr.fn = CPUExecutorFn::SAL_eb_CL;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_eb_CL;
+			m_instr.fn = CPUExecutorFn::SHR_eb_CL;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_eb_CL;
+			m_instr.fn = CPUExecutorFn::SAR_eb_CL;
 			break;
 		default:
 			illegal_opcode();
@@ -1711,26 +1710,26 @@ case 0xD3:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::ROL_ew_CL;
+			m_instr.fn = CPUExecutorFn::ROL_ew_CL;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::ROR_ew_CL;
+			m_instr.fn = CPUExecutorFn::ROR_ew_CL;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::RCL_ew_CL;
+			m_instr.fn = CPUExecutorFn::RCL_ew_CL;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::RCR_ew_CL;
+			m_instr.fn = CPUExecutorFn::RCR_ew_CL;
 			break;
 		case 4:
 		case 6: //SAL and SHL are the same
-			m_instr.fn = &CPUExecutor::SAL_ew_CL;
+			m_instr.fn = CPUExecutorFn::SAL_ew_CL;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::SHR_ew_CL;
+			m_instr.fn = CPUExecutorFn::SHR_ew_CL;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::SAR_ew_CL;
+			m_instr.fn = CPUExecutorFn::SAR_ew_CL;
 			break;
 		default:
 			illegal_opcode();
@@ -1744,7 +1743,7 @@ case 0xD3:
 case 0xD4:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::AAM;
+	m_instr.fn = CPUExecutorFn::AAM;
 	break;
 }
 
@@ -1752,14 +1751,14 @@ case 0xD4:
 case 0xD5:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::AAD;
+	m_instr.fn = CPUExecutorFn::AAD;
 	break;
 }
 
 /* D6         SALC        Set AL If Carry */
 case 0xD6:
 {
-	m_instr.fn = &CPUExecutor::SALC;
+	m_instr.fn = CPUExecutorFn::SALC;
 	break;
 }
 
@@ -1767,9 +1766,9 @@ case 0xD6:
 case 0xD7:
 {
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::XLATB_a32;
+		m_instr.fn = CPUExecutorFn::XLATB_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::XLATB_a16;
+		m_instr.fn = CPUExecutorFn::XLATB_a16;
 	}
 	break;
 }
@@ -1786,7 +1785,7 @@ case 0xDF:
 {
 	//TODO fpu support?
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::FPU_ESC;
+	m_instr.fn = CPUExecutorFn::FPU_ESC;
 	break;
 }
 
@@ -1795,9 +1794,9 @@ case 0xE0:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOPNZ_a32;
+		m_instr.fn = CPUExecutorFn::LOOPNZ_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOPNZ_a16;
+		m_instr.fn = CPUExecutorFn::LOOPNZ_a16;
 	}
 	break;
 }
@@ -1807,9 +1806,9 @@ case 0xE1:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOPZ_a32;
+		m_instr.fn = CPUExecutorFn::LOOPZ_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOPZ_a16;
+		m_instr.fn = CPUExecutorFn::LOOPZ_a16;
 	}
 	break;
 }
@@ -1819,9 +1818,9 @@ case 0xE2:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::LOOP_a32;
+		m_instr.fn = CPUExecutorFn::LOOP_a32;
 	} else {
-		m_instr.fn = &CPUExecutor::LOOP_a16;
+		m_instr.fn = CPUExecutorFn::LOOP_a16;
 	}
 	break;
 }
@@ -1832,9 +1831,9 @@ case 0xE3:
 {
 	m_instr.ib = fetchb();
 	if(m_instr.addr32) {
-		m_instr.fn = &CPUExecutor::JECXZ_cb;
+		m_instr.fn = CPUExecutorFn::JECXZ_cb;
 	} else {
-		m_instr.fn = &CPUExecutor::JCXZ_cb;
+		m_instr.fn = CPUExecutorFn::JCXZ_cb;
 	}
 	break;
 }
@@ -1843,7 +1842,7 @@ case 0xE3:
 case 0xE4:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::IN_AL_ib;
+	m_instr.fn = CPUExecutorFn::IN_AL_ib;
 	break;
 }
 
@@ -1851,7 +1850,7 @@ case 0xE4:
 case 0xE5:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::IN_AX_ib;
+	m_instr.fn = CPUExecutorFn::IN_AX_ib;
 	break;
 }
 
@@ -1859,7 +1858,7 @@ case 0xE5:
 case 0xE6:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::OUT_ib_AL;
+	m_instr.fn = CPUExecutorFn::OUT_ib_AL;
 	break;
 }
 
@@ -1867,7 +1866,7 @@ case 0xE6:
 case 0xE7:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::OUT_ib_AX;
+	m_instr.fn = CPUExecutorFn::OUT_ib_AX;
 	break;
 }
 
@@ -1875,7 +1874,7 @@ case 0xE7:
 case 0xE8:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::CALL_rel16;
+	m_instr.fn = CPUExecutorFn::CALL_rel16;
 	break;
 }
 
@@ -1883,7 +1882,7 @@ case 0xE8:
 case 0xE9:
 {
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JMP_rel16;
+	m_instr.fn = CPUExecutorFn::JMP_rel16;
 	break;
 }
 
@@ -1892,7 +1891,7 @@ case 0xEA:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.iw2 = fetchw();
-	m_instr.fn = &CPUExecutor::JMP_ptr1616;
+	m_instr.fn = CPUExecutorFn::JMP_ptr1616;
 	break;
 }
 
@@ -1900,35 +1899,35 @@ case 0xEA:
 case 0xEB:
 {
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::JMP_rel8;
+	m_instr.fn = CPUExecutorFn::JMP_rel8;
 	break;
 }
 
 /* EC        IN AL,DX       Input byte from port DX into AL */
 case 0xEC:
 {
-	m_instr.fn = &CPUExecutor::IN_AL_DX;
+	m_instr.fn = CPUExecutorFn::IN_AL_DX;
 	break;
 }
 
 /* ED        IN AX,DX       Input word from port DX into AX */
 case 0xED:
 {
-	m_instr.fn = &CPUExecutor::IN_AX_DX;
+	m_instr.fn = CPUExecutorFn::IN_AX_DX;
 	break;
 }
 
 /* EE       OUT DX,AL       Output byte AL to port number DX */
 case 0xEE:
 {
-	m_instr.fn = &CPUExecutor::OUT_DX_AL;
+	m_instr.fn = CPUExecutorFn::OUT_DX_AL;
 	break;
 }
 
 /* EF       OUT DX,AX     Output word AX to port number DX */
 case 0xEF:
 {
-	m_instr.fn = &CPUExecutor::OUT_DX_AX;
+	m_instr.fn = CPUExecutorFn::OUT_DX_AX;
 	break;
 }
 
@@ -1937,7 +1936,7 @@ case 0xEF:
 /* F1  Undocumented ICEBP on 386+ */
 case 0xF1:
 {
-	m_instr.fn = &CPUExecutor::INT1;
+	m_instr.fn = CPUExecutorFn::INT1;
 	break;
 }
 
@@ -1948,14 +1947,14 @@ case 0xF1:
 /* F4        HLT            Halt */
 case 0xF4:
 {
-	m_instr.fn = &CPUExecutor::HLT;
+	m_instr.fn = CPUExecutorFn::HLT;
 	break;
 }
 
 /* F5         CMC            Complement carry flag */
 case 0xF5:
 {
-	m_instr.fn = &CPUExecutor::CMC;
+	m_instr.fn = CPUExecutorFn::CMC;
 	break;
 }
 
@@ -1976,26 +1975,26 @@ case 0xF6:
 		case 1: // 1: undocumented alias
 		{
 			m_instr.ib = fetchb();
-			m_instr.fn = &CPUExecutor::TEST_eb_ib;
+			m_instr.fn = CPUExecutorFn::TEST_eb_ib;
 			break;
 		}
 		case 2:
-			m_instr.fn = &CPUExecutor::NOT_eb;
+			m_instr.fn = CPUExecutorFn::NOT_eb;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::NEG_eb;
+			m_instr.fn = CPUExecutorFn::NEG_eb;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::MUL_eb;
+			m_instr.fn = CPUExecutorFn::MUL_eb;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::IMUL_eb;
+			m_instr.fn = CPUExecutorFn::IMUL_eb;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::DIV_eb;
+			m_instr.fn = CPUExecutorFn::DIV_eb;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::IDIV_eb;
+			m_instr.fn = CPUExecutorFn::IDIV_eb;
 			break;
 		default:
 			illegal_opcode();
@@ -2022,26 +2021,26 @@ case 0xF7:
 		case 1: // 1: undocumented alias
 		{
 			m_instr.iw1 = fetchw();
-			m_instr.fn = &CPUExecutor::TEST_ew_iw;
+			m_instr.fn = CPUExecutorFn::TEST_ew_iw;
 			break;
 		}
 		case 2:
-			m_instr.fn = &CPUExecutor::NOT_ew;
+			m_instr.fn = CPUExecutorFn::NOT_ew;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::NEG_ew;
+			m_instr.fn = CPUExecutorFn::NEG_ew;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::MUL_ew;
+			m_instr.fn = CPUExecutorFn::MUL_ew;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::IMUL_ew;
+			m_instr.fn = CPUExecutorFn::IMUL_ew;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::DIV_ew;
+			m_instr.fn = CPUExecutorFn::DIV_ew;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::IDIV_ew;
+			m_instr.fn = CPUExecutorFn::IDIV_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -2054,42 +2053,42 @@ case 0xF7:
 /* F8         CLC            Clear carry flag */
 case 0xF8:
 {
-	m_instr.fn = &CPUExecutor::CLC;
+	m_instr.fn = CPUExecutorFn::CLC;
 	break;
 }
 
 /* F9         STC             Set carry flag */
 case 0xF9:
 {
-	m_instr.fn = &CPUExecutor::STC;
+	m_instr.fn = CPUExecutorFn::STC;
 	break;
 }
 
 /* FA      CLI          Clear interrupt flag; interrupts disabled */
 case 0xFA:
 {
-	m_instr.fn = &CPUExecutor::CLI;
+	m_instr.fn = CPUExecutorFn::CLI;
 	break;
 }
 
 /* FB        STI        Set interrupt enable flag, interrupts enabled */
 case 0xFB:
 {
-	m_instr.fn = &CPUExecutor::STI;
+	m_instr.fn = CPUExecutorFn::STI;
 	break;
 }
 
 /* FC      CLD          Clear direction flag, SI and DI will increment */
 case 0xFC:
 {
-	m_instr.fn = &CPUExecutor::CLD;
+	m_instr.fn = CPUExecutorFn::CLD;
 	break;
 }
 
 /* FD       STD         Set direction flag so SI and DI will decrement */
 case 0xFD:
 {
-	m_instr.fn = &CPUExecutor::STD;
+	m_instr.fn = CPUExecutorFn::STD;
 	break;
 }
 
@@ -2102,10 +2101,10 @@ case 0xFE:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::INC_eb;
+			m_instr.fn = CPUExecutorFn::INC_eb;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::DEC_eb;
+			m_instr.fn = CPUExecutorFn::DEC_eb;
 			break;
 		default:
 			illegal_opcode();
@@ -2130,29 +2129,29 @@ case 0xFF:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::INC_ew;
+			m_instr.fn = CPUExecutorFn::INC_ew;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::DEC_ew;
+			m_instr.fn = CPUExecutorFn::DEC_ew;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::CALL_ew;
+			m_instr.fn = CPUExecutorFn::CALL_ew;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::CALL_m1616;
+			m_instr.fn = CPUExecutorFn::CALL_m1616;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::JMP_ew;
+			m_instr.fn = CPUExecutorFn::JMP_ew;
 			break;
 		case 5:
 			if(m_instr.modrm.mod == 3) {
 				illegal_opcode();
 				break;
 			}
-			m_instr.fn = &CPUExecutor::JMP_m1616;
+			m_instr.fn = CPUExecutorFn::JMP_m1616;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::PUSH_mw;
+			m_instr.fn = CPUExecutorFn::PUSH_mw;
 			break;
 		default:
 			illegal_opcode();
@@ -2166,6 +2165,7 @@ case 0xFF:
 default:
 {
 	illegal_opcode();
+	break;
 }
 
 

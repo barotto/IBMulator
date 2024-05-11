@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,7 +20,6 @@
 #include "ibmulator.h"
 #include "decoder.h"
 #include "core.h"
-#include "executor.h"
 #include "../memory.h"
 #include "hardware/cpu.h"
 
@@ -34,7 +33,7 @@ Instruction * CPUDecoder::decode()
 	unsigned cycles_op = 0;
 
 	m_ilen = 0;
-	m_instr.valid = true;
+	m_instr.fn = CPUExecutorFn::INVALID;
 	m_instr.op32 = REG_CS.desc.big;
 	m_instr.addr32 = REG_CS.desc.big;
 	m_instr.rep = false;
@@ -168,7 +167,7 @@ void CPUDecoder::illegal_opcode()
 	/*
 	 * illegal opcodes throw an exception only when executed.
 	 */
-	m_instr.valid = false;
+	m_instr.fn = CPUExecutorFn::INVALID;
 }
 
 bool CPUDecoder::is_lockable()

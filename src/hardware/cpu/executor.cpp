@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -58,6 +58,7 @@ CPUExecutor::CPUExecutor()
 void CPUExecutor::reset(uint _signal)
 {
 	m_instr = nullptr;
+	m_reset = true;
 	m_base_ds = REGI_DS;
 	m_base_ss = REGI_SS;
 
@@ -120,7 +121,7 @@ void CPUExecutor::execute(Instruction * _instr)
 	 */
 	SET_FLAG(RF, false);
 
-	if(!m_instr->valid) {
+	if(m_instr->fn == CPUExecutorFn::INVALID) {
 		// Priority 8:
 		//   Illegal opcode
 		illegal_opcode();
@@ -145,9 +146,9 @@ void CPUExecutor::execute(Instruction * _instr)
 		}
 	}
 
-	static CPUExecutor_fun exec_fn;
+	static FnPtr exec_fn;
 
-	if(!m_instr->rep || m_instr->rep_first) {
+	if(!m_instr->rep || UNLIKELY(m_instr->rep_first) || UNLIKELY(m_reset)) {
 
 		if(m_instr->seg != REGI_NONE) {
 			m_base_ds = m_instr->seg;
@@ -157,7 +158,7 @@ void CPUExecutor::execute(Instruction * _instr)
 			m_base_ss = REGI_SS;
 		}
 
-		exec_fn = m_instr->fn;
+		exec_fn = ms_functions[ec_to_i(m_instr->fn)];
 
 		if(m_instr->addr32) {
 			EA_get_segreg = &CPUExecutor::EA_get_segreg_32;
@@ -174,6 +175,8 @@ void CPUExecutor::execute(Instruction * _instr)
 				exec_fn = &CPUExecutor::rep_16;
 			}
 		}
+
+		m_reset = false;
 	}
 
 	(this->*exec_fn)();
@@ -191,7 +194,7 @@ void CPUExecutor::rep_16()
 
 	try {
 		// Perform the string operation once.
-		(this->*(m_instr->fn))();
+		(this->*(ms_functions[ec_to_i(m_instr->fn)]))();
 	} catch(CPUException &e) {
 		/* A repeating string operation can be suspended by an exception.
 		 * 1. The source and destination registers point to the next string
@@ -240,7 +243,7 @@ void CPUExecutor::rep_32()
 	}
 
 	try {
-		(this->*(m_instr->fn))();
+		(this->*(ms_functions[ec_to_i(m_instr->fn)]))();
 	} catch(CPUException &e) {
 		RESTORE_EIP();
 		throw;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,22 +43,22 @@ case 0x00:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::SLDT_ew;
+			m_instr.fn = CPUExecutorFn::SLDT_ew;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::STR_ew;
+			m_instr.fn = CPUExecutorFn::STR_ew;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::LLDT_ew;
+			m_instr.fn = CPUExecutorFn::LLDT_ew;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::LTR_ew;
+			m_instr.fn = CPUExecutorFn::LTR_ew;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::VERR_ew;
+			m_instr.fn = CPUExecutorFn::VERR_ew;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::VERW_ew;
+			m_instr.fn = CPUExecutorFn::VERW_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -81,22 +81,22 @@ case 0x01:
 	m_instr.modrm.load(m_instr.addr32);
 	switch(m_instr.modrm.n) {
 		case 0:
-			m_instr.fn = &CPUExecutor::SGDT;
+			m_instr.fn = CPUExecutorFn::SGDT;
 			break;
 		case 1:
-			m_instr.fn = &CPUExecutor::SIDT;
+			m_instr.fn = CPUExecutorFn::SIDT;
 			break;
 		case 2:
-			m_instr.fn = &CPUExecutor::LGDT_o16;
+			m_instr.fn = CPUExecutorFn::LGDT_o16;
 			break;
 		case 3:
-			m_instr.fn = &CPUExecutor::LIDT_o16;
+			m_instr.fn = CPUExecutorFn::LIDT_o16;
 			break;
 		case 4:
-			m_instr.fn = &CPUExecutor::SMSW_ew;
+			m_instr.fn = CPUExecutorFn::SMSW_ew;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::LMSW_ew;
+			m_instr.fn = CPUExecutorFn::LMSW_ew;
 			break;
 		default:
 			illegal_opcode();
@@ -110,7 +110,7 @@ case 0x01:
 case 0x02:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LAR_rw_ew;
+	m_instr.fn = CPUExecutorFn::LAR_rw_ew;
 	break;
 }
 
@@ -118,7 +118,7 @@ case 0x02:
 case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LSL_rw_ew;
+	m_instr.fn = CPUExecutorFn::LSL_rw_ew;
 	break;
 }
 
@@ -126,7 +126,7 @@ case 0x03:
 case 0x05:
 {
 	if(CPU_FAMILY == CPU_286) {
-		m_instr.fn = &CPUExecutor::LOADALL_286;
+		m_instr.fn = CPUExecutorFn::LOADALL_286;
 	} else {
 		illegal_opcode();
 	}
@@ -136,7 +136,7 @@ case 0x05:
 /*  0F 06      CLTS            Clear task switched flag */
 case 0x06:
 {
-	m_instr.fn = &CPUExecutor::CLTS;
+	m_instr.fn = CPUExecutorFn::CLTS;
 	break;
 }
 
@@ -145,7 +145,7 @@ case 0x07:
 {
 	if(CPU_FAMILY == CPU_386) {
 		//TODO
-		//m_instr.fn = &CPUExecutor::LOADALL_386;
+		//m_instr.fn = CPUExecutorFn::LOADALL_386;
 		PERRF_ABORT(LOG_CPU, "LOADALL 386 not implemented\n");
 		illegal_opcode();
 	} else {
@@ -165,7 +165,7 @@ case 0x20:
 	} else {
 		/* For MOVs from/to CRx/DRx/TRx, mod=00b/01b/10b is aliased to 11b. */
 		m_instr.modrm.mod = 3;
-		m_instr.fn = &CPUExecutor::MOV_rd_CR;
+		m_instr.fn = CPUExecutorFn::MOV_rd_CR;
 	}
 	break;
 }
@@ -176,7 +176,7 @@ case 0x21:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.modrm.mod = 3;
-	m_instr.fn = &CPUExecutor::MOV_rd_DR;
+	m_instr.fn = CPUExecutorFn::MOV_rd_DR;
 	break;
 }
 
@@ -190,7 +190,7 @@ case 0x22:
 		illegal_opcode();
 	} else {
 		m_instr.modrm.mod = 3;
-		m_instr.fn = &CPUExecutor::MOV_CR_rd;
+		m_instr.fn = CPUExecutorFn::MOV_CR_rd;
 	}
 	break;
 }
@@ -201,7 +201,7 @@ case 0x23:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.modrm.mod = 3;
-	m_instr.fn = &CPUExecutor::MOV_DR_rd;
+	m_instr.fn = CPUExecutorFn::MOV_DR_rd;
 	break;
 }
 
@@ -211,7 +211,7 @@ case 0x24:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.modrm.mod = 3;
-	m_instr.fn = &CPUExecutor::MOV_rd_TR;
+	m_instr.fn = CPUExecutorFn::MOV_rd_TR;
 	break;
 }
 
@@ -221,7 +221,7 @@ case 0x26:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.modrm.mod = 3;
-	m_instr.fn = &CPUExecutor::MOV_TR_rd;
+	m_instr.fn = CPUExecutorFn::MOV_TR_rd;
 	break;
 }
 
@@ -230,7 +230,7 @@ case 0x80:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JO_cw;
+	m_instr.fn = CPUExecutorFn::JO_cw;
 	break;
 }
 
@@ -239,7 +239,7 @@ case 0x81:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNO_cw;
+	m_instr.fn = CPUExecutorFn::JNO_cw;
 	break;
 }
 
@@ -248,7 +248,7 @@ case 0x82:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JC_cw;
+	m_instr.fn = CPUExecutorFn::JC_cw;
 	break;
 }
 
@@ -257,7 +257,7 @@ case 0x83:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNC_cw;
+	m_instr.fn = CPUExecutorFn::JNC_cw;
 	break;
 }
 
@@ -266,7 +266,7 @@ case 0x84:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JE_cw;
+	m_instr.fn = CPUExecutorFn::JE_cw;
 	break;
 }
 
@@ -275,7 +275,7 @@ case 0x85:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNE_cw;
+	m_instr.fn = CPUExecutorFn::JNE_cw;
 	break;
 }
 
@@ -284,7 +284,7 @@ case 0x86:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JBE_cw;
+	m_instr.fn = CPUExecutorFn::JBE_cw;
 	break;
 }
 
@@ -293,7 +293,7 @@ case 0x87:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JA_cw;
+	m_instr.fn = CPUExecutorFn::JA_cw;
 	break;
 }
 
@@ -302,7 +302,7 @@ case 0x88:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JS_cw;
+	m_instr.fn = CPUExecutorFn::JS_cw;
 	break;
 }
 
@@ -311,7 +311,7 @@ case 0x89:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNS_cw;
+	m_instr.fn = CPUExecutorFn::JNS_cw;
 	break;
 }
 
@@ -320,7 +320,7 @@ case 0x8A:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JPE_cw;
+	m_instr.fn = CPUExecutorFn::JPE_cw;
 	break;
 }
 
@@ -329,7 +329,7 @@ case 0x8B:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JPO_cw;
+	m_instr.fn = CPUExecutorFn::JPO_cw;
 	break;
 }
 
@@ -338,7 +338,7 @@ case 0x8C:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JL_cw;
+	m_instr.fn = CPUExecutorFn::JL_cw;
 	break;
 }
 
@@ -347,7 +347,7 @@ case 0x8D:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNL_cw;
+	m_instr.fn = CPUExecutorFn::JNL_cw;
 	break;
 }
 
@@ -356,7 +356,7 @@ case 0x8E:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JLE_cw;
+	m_instr.fn = CPUExecutorFn::JLE_cw;
 	break;
 }
 
@@ -365,7 +365,7 @@ case 0x8F:
 {
 	ILLEGAL_286
 	m_instr.iw1 = fetchw();
-	m_instr.fn = &CPUExecutor::JNLE_cw;
+	m_instr.fn = CPUExecutorFn::JNLE_cw;
 	break;
 }
 
@@ -374,7 +374,7 @@ case 0x90:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETO_eb;
+	m_instr.fn = CPUExecutorFn::SETO_eb;
 	break;
 }
 
@@ -383,7 +383,7 @@ case 0x91:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNO_eb;
+	m_instr.fn = CPUExecutorFn::SETNO_eb;
 	break;
 }
 
@@ -392,7 +392,7 @@ case 0x92:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETB_eb;
+	m_instr.fn = CPUExecutorFn::SETB_eb;
 	break;
 }
 
@@ -401,7 +401,7 @@ case 0x93:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNB_eb;
+	m_instr.fn = CPUExecutorFn::SETNB_eb;
 	break;
 }
 
@@ -410,7 +410,7 @@ case 0x94:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETE_eb;
+	m_instr.fn = CPUExecutorFn::SETE_eb;
 	break;
 }
 
@@ -419,7 +419,7 @@ case 0x95:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNE_eb;
+	m_instr.fn = CPUExecutorFn::SETNE_eb;
 	break;
 }
 
@@ -428,7 +428,7 @@ case 0x96:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETBE_eb;
+	m_instr.fn = CPUExecutorFn::SETBE_eb;
 	break;
 }
 
@@ -437,7 +437,7 @@ case 0x97:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNBE_eb;
+	m_instr.fn = CPUExecutorFn::SETNBE_eb;
 	break;
 }
 
@@ -446,7 +446,7 @@ case 0x98:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETS_eb;
+	m_instr.fn = CPUExecutorFn::SETS_eb;
 	break;
 }
 
@@ -455,7 +455,7 @@ case 0x99:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNS_eb;
+	m_instr.fn = CPUExecutorFn::SETNS_eb;
 	break;
 }
 
@@ -464,7 +464,7 @@ case 0x9A:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETP_eb;
+	m_instr.fn = CPUExecutorFn::SETP_eb;
 	break;
 }
 
@@ -473,7 +473,7 @@ case 0x9B:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNP_eb;
+	m_instr.fn = CPUExecutorFn::SETNP_eb;
 	break;
 }
 
@@ -482,7 +482,7 @@ case 0x9C:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETL_eb;
+	m_instr.fn = CPUExecutorFn::SETL_eb;
 	break;
 }
 
@@ -491,7 +491,7 @@ case 0x9D:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNL_eb;
+	m_instr.fn = CPUExecutorFn::SETNL_eb;
 	break;
 }
 
@@ -500,7 +500,7 @@ case 0x9E:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETLE_eb;
+	m_instr.fn = CPUExecutorFn::SETLE_eb;
 	break;
 }
 
@@ -509,7 +509,7 @@ case 0x9F:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SETNLE_eb;
+	m_instr.fn = CPUExecutorFn::SETNLE_eb;
 	break;
 }
 
@@ -518,7 +518,7 @@ case 0xA0:
 {
 	ILLEGAL_286
 	m_instr.reg = REGI_FS;
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	break;
 }
 
@@ -527,7 +527,7 @@ case 0xA1:
 {
 	ILLEGAL_286
 	m_instr.reg = REGI_FS;
-	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.fn = CPUExecutorFn::POP_SR_w;
 	break;
 }
 
@@ -536,7 +536,7 @@ case 0xA3:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BT_ew_rw;
+	m_instr.fn = CPUExecutorFn::BT_ew_rw;
 	break;
 }
 
@@ -546,7 +546,7 @@ case 0xA4:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SHLD_ew_rw_ib;
+	m_instr.fn = CPUExecutorFn::SHLD_ew_rw_ib;
 	break;
 }
 
@@ -555,7 +555,7 @@ case 0xA5:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SHLD_ew_rw_CL;
+	m_instr.fn = CPUExecutorFn::SHLD_ew_rw_CL;
 	break;
 }
 
@@ -564,7 +564,7 @@ case 0xA8:
 {
 	ILLEGAL_286
 	m_instr.reg = REGI_GS;
-	m_instr.fn = &CPUExecutor::PUSH_SR_w;
+	m_instr.fn = CPUExecutorFn::PUSH_SR_w;
 	break;
 }
 
@@ -573,7 +573,7 @@ case 0xA9:
 {
 	ILLEGAL_286
 	m_instr.reg = REGI_GS;
-	m_instr.fn = &CPUExecutor::POP_SR_w;
+	m_instr.fn = CPUExecutorFn::POP_SR_w;
 	break;
 }
 
@@ -582,7 +582,7 @@ case 0xAB:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTS_ew_rw;
+	m_instr.fn = CPUExecutorFn::BTS_ew_rw;
 	break;
 }
 
@@ -592,7 +592,7 @@ case 0xAC:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.ib = fetchb();
-	m_instr.fn = &CPUExecutor::SHRD_ew_rw_ib;
+	m_instr.fn = CPUExecutorFn::SHRD_ew_rw_ib;
 	break;
 }
 
@@ -601,7 +601,7 @@ case 0xAD:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::SHRD_ew_rw_CL;
+	m_instr.fn = CPUExecutorFn::SHRD_ew_rw_CL;
 	break;
 }
 
@@ -610,7 +610,7 @@ case 0xAF:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::IMUL_rw_ew;
+	m_instr.fn = CPUExecutorFn::IMUL_rw_ew;
 	break;
 }
 
@@ -619,7 +619,7 @@ case 0xB2:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LSS_rw_mp;
+	m_instr.fn = CPUExecutorFn::LSS_rw_mp;
 	break;
 }
 
@@ -628,7 +628,7 @@ case 0xB3:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTR_ew_rw;
+	m_instr.fn = CPUExecutorFn::BTR_ew_rw;
 	break;
 }
 
@@ -637,7 +637,7 @@ case 0xB4:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LFS_rw_mp;
+	m_instr.fn = CPUExecutorFn::LFS_rw_mp;
 	break;
 }
 
@@ -646,7 +646,7 @@ case 0xB5:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::LGS_rw_mp;
+	m_instr.fn = CPUExecutorFn::LGS_rw_mp;
 	break;
 }
 
@@ -655,7 +655,7 @@ case 0xB6:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVZX_rw_eb;
+	m_instr.fn = CPUExecutorFn::MOVZX_rw_eb;
 	break;
 }
 
@@ -664,7 +664,7 @@ case 0xB7:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_rw_ew;
+	m_instr.fn = CPUExecutorFn::MOV_rw_ew;
 	break;
 }
 
@@ -679,16 +679,16 @@ case 0xBA:
 	m_instr.ib = fetchb();
 	switch(m_instr.modrm.n) {
 		case 4:
-			m_instr.fn = &CPUExecutor::BT_ew_ib;
+			m_instr.fn = CPUExecutorFn::BT_ew_ib;
 			break;
 		case 5:
-			m_instr.fn = &CPUExecutor::BTS_ew_ib;
+			m_instr.fn = CPUExecutorFn::BTS_ew_ib;
 			break;
 		case 6:
-			m_instr.fn = &CPUExecutor::BTR_ew_ib;
+			m_instr.fn = CPUExecutorFn::BTR_ew_ib;
 			break;
 		case 7:
-			m_instr.fn = &CPUExecutor::BTC_ew_ib;
+			m_instr.fn = CPUExecutorFn::BTC_ew_ib;
 			break;
 		default:
 			illegal_opcode();
@@ -704,7 +704,7 @@ case 0xBB:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BTC_ew_rw;
+	m_instr.fn = CPUExecutorFn::BTC_ew_rw;
 	break;
 }
 
@@ -713,7 +713,7 @@ case 0xBC:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BSF_rw_ew;
+	m_instr.fn = CPUExecutorFn::BSF_rw_ew;
 	break;
 }
 
@@ -722,7 +722,7 @@ case 0xBD:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::BSR_rw_ew;
+	m_instr.fn = CPUExecutorFn::BSR_rw_ew;
 	break;
 }
 
@@ -731,7 +731,7 @@ case 0xBE:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOVSX_rw_eb;
+	m_instr.fn = CPUExecutorFn::MOVSX_rw_eb;
 	break;
 }
 
@@ -740,13 +740,14 @@ case 0xBF:
 {
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = &CPUExecutor::MOV_rw_ew;
+	m_instr.fn = CPUExecutorFn::MOV_rw_ew;
 	break;
 }
 
 default:
 {
 	illegal_opcode();
+	break;
 }
 
 } //switch

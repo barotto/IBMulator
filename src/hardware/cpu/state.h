@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -68,6 +68,8 @@ struct CPUState
 	           * caused the interrupt; 0 if not (ie., an INT instruction or
 	           * other exceptions) (cfr. B-50)
 	           */
+
+	Instruction instr; // last executed instruction (used only after state restore) 
 };
 
 struct CPUCycles

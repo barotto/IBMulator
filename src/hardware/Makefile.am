@@ -106,6 +106,7 @@ noinst_HEADERS = \
 	cpu/descriptor.h \
 	cpu/selector.h \
 	cpu/executor.h \
+	cpu/executor_fn.h \
 	cpu/exception.h \
 	cpu/logger.h \
 	cpu/disasm.h \

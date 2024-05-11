@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -116,12 +116,12 @@ struct Cycles
 	              //   this is a hack, to account for proper bu operations ordering
 };
 
-typedef void (CPUExecutor::*CPUExecutor_fun)();
+
+#include "executor_fn.h"
 
 struct Instruction
 {
-	bool valid;         // true if instruction is valid
-	CPUExecutor_fun fn; // executor function
+	CPUExecutorFn fn;   // executor function
 	uint8_t  ib;        // byte immediate data
 	uint16_t iw1, iw2;  // word immediate data
 	uint32_t id1, id2;  // dword immediate data
