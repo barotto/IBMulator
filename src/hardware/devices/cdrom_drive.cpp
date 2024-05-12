@@ -980,10 +980,11 @@ bool CdRomDrive::pause_resume_audio(bool _resume)
 			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: audio paused.\n");
 		}
 		return true;
-	} else {
+	} else if(_resume) {
 		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: no active audio play operation.\n");
 		return false;
 	}
+	return true;
 }
 
 void CdRomDrive::start_audio(bool _audio_lock)
