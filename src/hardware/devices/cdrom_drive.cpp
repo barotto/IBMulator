@@ -121,6 +121,7 @@ void CdRomDrive::power_on(uint64_t)
 void CdRomDrive::power_off()
 {
 	stop_audio();
+	m_audio.channel->enable(false);
 
 	signal_activity(CdRomEvents::POWER_OFF, 0);
 
