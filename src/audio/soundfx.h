@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -27,6 +27,7 @@ class SoundFX
 {
 protected:
 	uint64_t m_audio_cue_time;
+	uint64_t m_spinup_time_us;
 
 public:
 	struct sample_def {
@@ -38,10 +39,10 @@ public:
 	static std::vector<AudioBuffer> load_samples(const AudioSpec &_spec,
 		const samples_t &_samples);
 
-	static bool play_motor(uint64_t _time_span_us, MixerChannel &_channel,
+	bool play_motor(uint64_t _time_span_us, MixerChannel &_channel,
 		bool _is_on, bool _is_changing_state,
 		const AudioBuffer &_power_up, const AudioBuffer &_running,
-		const AudioBuffer &_power_down);
+		const AudioBuffer &_power_down, bool _symmetric = false);
 
 	template<class Event, class EventQueue>
 	bool play_timed_events(uint64_t _time_span_ns, bool _first_upd,
@@ -49,7 +50,7 @@ public:
 		std::function<void(Event&,uint64_t)> _play);
 
 protected:
-	SoundFX() : m_audio_cue_time(0) {}
+	SoundFX() : m_audio_cue_time(0), m_spinup_time_us(0) {}
 	virtual ~SoundFX() {}
 
 	static void load_audio_file(const char *_filename, AudioBuffer &_sample,

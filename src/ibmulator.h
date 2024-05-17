@@ -82,10 +82,10 @@
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
 
-	#define LOG_DEBUG_MESSAGES    true
-	#define LOG_MACHINE_TIME      true
-	#define LOG_MACHINE_TIME_NS   true
-	#define LOG_CSIP              true
+	#define LOG_DEBUG_MESSAGES    false
+	#define LOG_MACHINE_TIME      false
+	#define LOG_MACHINE_TIME_NS   false
+	#define LOG_CSIP              false
 	#define DEFAULT_LOG_VERBOSITY LOG_V0
 
 	#define SHOW_CURRENT_PROGRAM_NAME false

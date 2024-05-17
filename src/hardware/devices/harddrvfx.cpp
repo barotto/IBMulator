@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -93,7 +93,7 @@ bool HardDriveFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, 
 			if(absdist>0.2) {
 				wave = &m_buffers[HDD_SEEK_LONG];
 			}
-			m_channels.seek->play(*wave, lerp(0.8,1.4,absdist), _time_span);
+			m_channels.seek->play_with_vol_adj(*wave, lerp(0.8,1.4,absdist), _time_span);
 		});
 }
 

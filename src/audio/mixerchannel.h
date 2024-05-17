@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -404,9 +404,10 @@ public:
 	const AudioSpec & in_spec() const { return m_in_buffer.spec(); }
 	const AudioSpec & out_spec() const { return m_out_buffer.spec(); }
 	void play(const AudioBuffer &_wave);
-	void play(const AudioBuffer &_wave, uint64_t _time_dist);
-	void play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist);
-	void play_frames(const AudioBuffer &_wave, unsigned _frames, uint64_t _time_dist);
+	void play(const AudioBuffer &_wave, uint64_t _time_dist_us);
+	void play_from_offset_us(const AudioBuffer &_wave, uint64_t _src_offset_us, uint64_t _time_dist_us);
+	void play_with_vol_adj(const AudioBuffer &_wave, float _volume, uint64_t _time_dist);
+	void play_frames(const AudioBuffer &_wave, unsigned _src_offset, unsigned _frames_cnt, uint64_t _time_dist);
 	void play_loop(const AudioBuffer &_wave);
 	void play_silence(unsigned _frames, uint64_t _time_dist_us);
 	void play_silence_us(unsigned _us);

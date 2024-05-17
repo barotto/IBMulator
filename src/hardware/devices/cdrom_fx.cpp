@@ -88,8 +88,8 @@ bool CdRomFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool
 			}
 			unsigned frames = wave->frames() * absdist;
 			uint64_t duration = round(wave->spec().frames_to_us(frames));
-			m_channels.seek->play_frames(*wave, frames, _time_span);
-			m_channels.seek->play(ms_buffers[CD_SEEK_STEP], (1.0 - absdist), (_time_span + duration));
+			m_channels.seek->play_frames(*wave, 0, frames, _time_span);
+			m_channels.seek->play_with_vol_adj(ms_buffers[CD_SEEK_STEP], (1.0 - absdist), (_time_span + duration));
 		});
 }
 
@@ -98,10 +98,8 @@ bool CdRomFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 	// Mixer thread
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
-	AudioBuffer *spinup = &ms_buffers[CD_SPIN_UP];
-
 	m_spin_change = false;
 
 	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
-			*spinup, ms_buffers[CD_SPIN], ms_buffers[CD_SPIN_DOWN]);
+			ms_buffers[CD_SPIN_UP], ms_buffers[CD_SPIN], ms_buffers[CD_SPIN_DOWN], true);
 }

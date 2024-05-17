@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -443,10 +443,24 @@ void MixerChannel::play(const AudioBuffer &_wave)
 
 void MixerChannel::play(const AudioBuffer &_wave, uint64_t _time_dist_us)
 {
-	play_frames(_wave, _wave.frames(), _time_dist_us);
+	play_frames(_wave, 0, _wave.frames(), _time_dist_us);
 }
 
-void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_dist_us)
+void MixerChannel::play_from_offset_us(const AudioBuffer &_wave, uint64_t _src_offset_us, uint64_t _time_dist_us)
+{
+	unsigned frames_cnt = _wave.frames();
+	unsigned offset_frames = 0;
+	if(_src_offset_us) {
+		offset_frames = round(_wave.spec().us_to_frames(_src_offset_us));
+		if(frames_cnt <= offset_frames) {
+			return;
+		}
+		frames_cnt -= offset_frames;
+	}
+	play_frames(_wave, offset_frames, frames_cnt, _time_dist_us);
+}
+
+void MixerChannel::play_with_vol_adj(const AudioBuffer &_wave, float _volume, uint64_t _time_dist_us)
 {
 	/* this work buffers can be static only because the current implementation
 	 * of the mixer is single threaded.
@@ -454,13 +468,14 @@ void MixerChannel::play(const AudioBuffer &_wave, float _volume, uint64_t _time_
 	static AudioBuffer temp;
 	temp = _wave;
 	temp.apply_volume(_volume);
-	play_frames(temp, temp.frames(), _time_dist_us);
+	play_frames(temp, 0, temp.frames(), _time_dist_us);
 }
 
-void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, uint64_t _time_dist_us)
+void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _src_offset, unsigned _frames_cnt,
+		uint64_t _time_dist_us)
 {
-	/* This function plays the given sound sample at the specified time distance
-	 * from the start of the samples input buffer, filling with silence if needed.
+	/* Adds a subset of the given audio buffer to the input buffer at the specified
+	 * time distance, filling with silence if needed.
 	 */
 	if(_wave.spec() != m_in_buffer.spec()) {
 		PDEBUGF(LOG_V1, LOG_MIXER, "%s: can't play, incompatible audio format\n",
@@ -469,7 +484,7 @@ void MixerChannel::play_frames(const AudioBuffer &_wave, unsigned _frames_cnt, u
 	}
 	unsigned inbuf_frames = round(m_in_buffer.spec().us_to_frames(_time_dist_us));
 	m_in_buffer.resize_frames_silence(inbuf_frames);
-	m_in_buffer.add_frames(_wave, _frames_cnt);
+	m_in_buffer.add_frames(_wave, _src_offset, _frames_cnt);
 	PDEBUGF(LOG_V1, LOG_MIXER, "%s: wave play: dist: %u frames (%lluus), wav: %u frames (%.2fus), in buf: %u samples (%.2fus)\n",
 			m_name.c_str(),
 			inbuf_frames, _time_dist_us,
@@ -983,7 +998,7 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 		}
 
 		// 10. add to output buffer
-		m_out_buffer.add_frames(*source, frames);
+		m_out_buffer.add_frames(*source, 0, frames);
 	}
 
 	// remove processed frames from input buffer

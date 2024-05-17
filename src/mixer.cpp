@@ -45,6 +45,7 @@ m_prebuffer_us(50000),
 m_prebuffer_fr(2400),
 m_machine(nullptr),
 m_heartbeat_us(10000),
+m_elapsed_time_us(0),
 m_quit(false),
 m_audio_status(SDL_AUDIO_STOPPED),
 m_paused(false),
@@ -345,9 +346,10 @@ void Mixer::main_loop()
 				m_cmd_queue.wait_and_pop(fn);
 				fn();
 			}
-			time_span_ns = m_heartbeat_us * 1000;
+			time_span_ns = US_TO_NS(m_heartbeat_us);
 		} else {
 			time_span_ns = m_bench.frame_time;
+			m_elapsed_time_us += NSEC_TO_USEC(time_span_ns);
 		}
 		if(m_quit) {
 			return;

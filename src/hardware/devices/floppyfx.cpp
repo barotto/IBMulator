@@ -168,8 +168,8 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 			}
 			unsigned frames = wave->frames() * absdist;
 			uint64_t duration = round(wave->spec().frames_to_us(frames));
-			m_channels.seek->play_frames(*wave, frames, _time_span);
-			m_channels.seek->play(ms_buffers[m_fdd_type][FDD_SEEK_STEP], 1.0-absdist, _time_span+duration);
+			m_channels.seek->play_frames(*wave, 0, frames, _time_span);
+			m_channels.seek->play_with_vol_adj(ms_buffers[m_fdd_type][FDD_SEEK_STEP], 1.0-absdist, _time_span+duration);
 		});
 }
 

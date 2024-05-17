@@ -64,7 +64,7 @@ public:
 	template<typename T> void add_samples(const std::vector<T> &_data, unsigned _count);
 	template<typename T> void add_samples(const T *_data, unsigned _count);
 	void add_frames(const AudioBuffer &_source);
-	void add_frames(const AudioBuffer &_source, unsigned _frames_count);
+	void add_frames(const AudioBuffer &_source, unsigned _src_offset, unsigned _frames_count);
 	void pop_frames(unsigned _frames_to_pop);
 	template<typename T> unsigned fill_samples(unsigned _samples, T _value);
 	template<typename T> unsigned fill_samples_us(uint64_t _duration_us, T _value);

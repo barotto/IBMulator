@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -269,9 +269,9 @@ bool SerialModemFX::create_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 			if(_evt.code == NO_TONE) {
 				m_channel->play_silence(frames, _time_pos);
 			} else if(_evt.code < ' ') {
-				m_channel->play_frames(ms_tones[_evt.code], frames, _time_pos);
+				m_channel->play_frames(ms_tones[_evt.code], 0, frames, _time_pos);
 			} else {
-				m_channel->play_frames(ms_dtmf[_evt.code - ' '], frames, _time_pos);
+				m_channel->play_frames(ms_dtmf[_evt.code - ' '], 0, frames, _time_pos);
 			}
 		});
 }

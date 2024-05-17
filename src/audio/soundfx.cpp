@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -66,22 +66,33 @@ void SoundFX::load_audio_file(const char *_filename, AudioBuffer &_sample, const
 bool SoundFX::play_motor(uint64_t _time_span_ns, MixerChannel &_channel,
 		bool _is_on, bool _is_changing_state,
 		const AudioBuffer &_power_up, const AudioBuffer &_running,
-		const AudioBuffer &_power_down)
+		const AudioBuffer &_power_down, bool _symmetric)
 {
+	// Mixer thread
 	if(_is_on) {
 		if(_is_changing_state) {
 			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: power up\n", _channel.name());
 			_channel.flush();
-			_channel.play(_power_up,0);
+			_channel.play(_power_up);
+			m_spinup_time_us = g_mixer.elapsed_time_us();
+		} else {
+			_channel.play_loop(_running);
 		}
-		_channel.play_loop(_running);
 		_channel.input_finish(_time_span_ns);
 		return true;
 	} else {
 		if(_is_changing_state) {
 			PDEBUGF(LOG_V1, LOG_AUDIO, "%s: power down\n", _channel.name());
+			uint64_t offset_us = 0;
+			if(_symmetric) {
+				uint64_t current_time_us = g_mixer.elapsed_time_us();
+				uint64_t spinup_elapsed_us = current_time_us - m_spinup_time_us;
+				if(spinup_elapsed_us < _power_down.duration_us()) {
+					offset_us = _power_down.duration_us() - spinup_elapsed_us;
+				}
+			}
 			_channel.flush();
-			_channel.play(_power_down,0);
+			_channel.play_from_offset_us(_power_down, offset_us, 0);
 			_channel.play_silence_us(EFFECTS_MIN_DUR_US);
 		}
 		_channel.input_finish(_time_span_ns);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -87,21 +87,22 @@ void AudioBuffer::reserve_bytes(uint64_t _bytes)
 
 void AudioBuffer::add_frames(const AudioBuffer &_source)
 {
-	add_frames(_source, _source.frames());
+	add_frames(_source, 0, _source.frames());
 }
 
-void AudioBuffer::add_frames(const AudioBuffer &_source, unsigned _frames_count)
+void AudioBuffer::add_frames(const AudioBuffer &_source, unsigned _src_frame_offset, unsigned _frames_count)
 {
 	if(_source.spec() != m_spec) {
 		throw std::logic_error("sound buffers must have the same spec");
 	}
 	_frames_count = std::min(_frames_count, _source.frames());
-	if(_frames_count == 0) {
+	if(_frames_count == 0 || (_src_frame_offset + _frames_count > _source.frames())) {
 		return;
 	}
-	unsigned datalen = _frames_count * frame_size();
-	auto srcstart = _source.m_data.begin();
-	m_data.insert(m_data.end(), srcstart, srcstart+datalen);
+	unsigned bytes_count = _frames_count * frame_size();
+	auto byte_offset = _src_frame_offset * frame_size();
+	auto src_start = _source.m_data.begin() + byte_offset;
+	m_data.insert(m_data.end(), src_start, src_start + bytes_count);
 }
 
 void AudioBuffer::pop_frames(unsigned _frames_to_pop)
@@ -199,7 +200,7 @@ void AudioBuffer::convert_format(AudioBuffer &_dest, unsigned _frames_count)
 	_frames_count = std::min(frames(),_frames_count);
 
 	if(m_spec.format == destspec.format) {
-		_dest.add_frames(*this,_frames_count);
+		_dest.add_frames(*this, 0, _frames_count);
 		return;
 	}
 
@@ -246,7 +247,7 @@ void AudioBuffer::convert_channels(AudioBuffer &_dest, unsigned _frames_count)
 
 	_frames_count = std::min(frames(),_frames_count);
 	if(m_spec.channels == destspec.channels) {
-		_dest.add_frames(*this,_frames_count);
+		_dest.add_frames(*this, 0, _frames_count);
 		return;
 	}
 

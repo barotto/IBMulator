@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -68,6 +68,7 @@ private:
 	Pacer m_pacer;
 	HWBench m_bench;
 	uint64_t m_heartbeat_us;
+	uint64_t m_elapsed_time_us;
 
 	bool m_quit; //how about an std::atomic?
 	SDL_AudioStatus m_audio_status;
@@ -123,6 +124,7 @@ public:
 	
 	void calibrate(const Pacer &_c);
 	unsigned heartbeat_us() const { return m_heartbeat_us; }
+	uint64_t elapsed_time_us() const { return m_elapsed_time_us; }
 	inline HWBench & get_bench() { return m_bench; }
 	inline size_t get_buffer_read_avail() const { return m_out_buffer.get_read_avail(); }
 	inline SDL_AudioStatus get_audio_status() const { return SDL_GetAudioDeviceStatus(m_device); }

@@ -45,7 +45,6 @@ StorageDev(DEV_CDROM)
 	};
 	memset(&m_s, 0, sizeof(m_s));
 	m_max_speed_x = 1;
-	m_cur_speed_x = 1;
 }
 
 void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id, const char *_ini_section)
@@ -63,6 +62,7 @@ void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id, const char *_ini_secti
 	m_durations.close_door = 1400_ms;
 	m_durations.read_toc = 1_s; // made up
 	m_durations.to_idle = 30_s;
+	m_durations.to_max_speed = 2_s;
 
 	if(m_fx_enabled) {
 		m_fx.install(m_name);
@@ -101,7 +101,8 @@ void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id, const char *_ini_secti
 
 void CdRomDrive::power_on(uint64_t)
 {
-	m_cur_speed_x = m_max_speed_x;
+	m_s.cur_speed_x = m_max_speed_x;
+	m_s.speed_change_time = 0;
 	m_s.disc_changed = false;
 	set_timeout_mult(0);
 	set_audio_port(0, 1, 0xff);
@@ -127,7 +128,7 @@ void CdRomDrive::power_off()
 
 	if(m_fx_enabled) {
 		m_fx.clear_seek_events();
-		if(is_motor_on()) {
+		if(is_motor_on() && m_s.cur_speed_x > 1) {
 			m_fx.spin(false, true);
 		}
 	}
@@ -199,7 +200,7 @@ void CdRomDrive::restore_state(StateBuf &_state)
 				PERRF(LOG_HDD, "CD-ROM: Invalid disc state on restore: %u\n", m_s.disc);
 				throw std::runtime_error("invalid state");
 			} else if(m_s.disc == DISC_SPINNING_UP || m_s.disc == DISC_READY) {
-				if(m_fx_enabled) {
+				if(m_fx_enabled && m_s.cur_speed_x > 1) {
 					m_fx.spin(true, false);
 				}
 			}
@@ -242,7 +243,6 @@ void CdRomDrive::config_changed()
 	m_max_speed_x = g_program.config().get_int_or_bool(DRIVES_SECTION, DRIVES_CDROM);
 	m_max_speed_x = std::max(m_max_speed_x, 1);
 	m_max_speed_x = std::min(m_max_speed_x, 72);
-	m_cur_speed_x = m_max_speed_x;
 
 	memset(m_ident.model, 0, sizeof(m_ident.model));
 	snprintf(m_ident.model, sizeof(m_ident.model), "IBMULATOR %uX CD-ROM DRIVE", uint8_t(m_max_speed_x));
@@ -388,7 +388,7 @@ void CdRomDrive::open_door()
 			m_s.disc = DISC_EJECTING;
 			signal_activity(CdRomEvents::MEDIUM, m_durations.spin_down);
 			activate_timer(m_durations.spin_down, "to state DISC_DOOR_OPEN");
-			if(m_fx_enabled) {
+			if(m_fx_enabled && m_s.cur_speed_x > 1) {
 				m_fx.spin(false, true);
 			}
 		} else {
@@ -599,6 +599,17 @@ bool CdRomDrive::read_sector(int64_t _lba, uint8_t *_buffer, unsigned _bytes)
 		return false;
 	}
 
+	if(m_max_speed_x > 1 && m_s.cur_speed_x == 1) {
+		if(m_s.speed_change_time == 0) {
+			m_s.speed_change_time = g_machine.get_virt_time_ns();
+		} else if(g_machine.get_virt_time_ns() - m_s.speed_change_time >= m_durations.to_max_speed) {
+			m_s.cur_speed_x = m_max_speed_x;
+			if(m_fx_enabled) {
+				m_fx.spin(true, true);
+			}
+		}
+	}
+
 	// duration is not relevant
 	signal_activity(CdRomEvents::READ_DATA, 1);
 	m_s.audio.completed = false;
@@ -682,7 +693,8 @@ void CdRomDrive::update_disc_state()
 				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: door closed -> spinning up & reading TOC\n");
 				m_s.disc = DISC_SPINNING_UP;
 				m_s.disc_loaded = true; // keep it here
-				if(m_fx_enabled) {
+				m_s.cur_speed_x = m_max_speed_x;
+				if(m_fx_enabled && m_s.cur_speed_x > 1) {
 					m_fx.spin(true, true);
 				}
 				uint64_t next_event = m_durations.spin_up + m_durations.read_toc; // next event is READY
@@ -711,7 +723,7 @@ void CdRomDrive::update_disc_state()
 			} else if(!m_s.audio.is_playing) {
 				PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: state: ready -> idle\n");
 				m_s.disc = DISC_IDLE;
-				if(m_fx_enabled) {
+				if(m_fx_enabled && m_s.cur_speed_x > 1) {
 					m_fx.spin(false, true);
 				}
 			} else {
@@ -756,7 +768,7 @@ void CdRomDrive::spin_up()
 		case DISC_IDLE:
 			PDEBUGF(LOG_V2, LOG_HDD, "CD-ROM: spin up: idle -> spinning up...\n");
 			m_s.disc = DISC_SPINNING_UP;
-			if(m_fx_enabled) {
+			if(m_fx_enabled && m_s.cur_speed_x > 1) {
 				m_fx.spin(true, true);
 			}
 			activate_timer(m_durations.spin_up, "to state DISC_READY");
@@ -785,7 +797,7 @@ void CdRomDrive::spin_down()
 			PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: spinning down...\n");
 			stop_audio();
 			m_s.disc = DISC_IDLE;
-			if(m_fx_enabled) {
+			if(m_fx_enabled && m_s.cur_speed_x > 1) {
 				m_fx.spin(false, true);
 			}
 			deactivate_timer("spin down");
@@ -994,6 +1006,13 @@ void CdRomDrive::start_audio(bool _audio_lock)
 	if(_audio_lock) {
 		m_audio.player_mutex.lock();
 	}
+
+	if(m_fx_enabled && m_s.cur_speed_x > 1) {
+		m_fx.spin(false, true);
+	}
+
+	m_s.cur_speed_x = 1;
+	m_s.speed_change_time = 0;
 
 	m_s.audio.to_start_state();
 	m_s.audio.seek_delay_ns = 0;

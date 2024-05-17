@@ -57,6 +57,8 @@ private:
 		bool disc_changed; // for the controller
 		bool disc_loaded; // has the PVD been read? (timed)
 		bool door_locked;
+		int cur_speed_x;
+		uint64_t speed_change_time;
 		uint8_t timeout_mult;
 		struct Audio {
 			int64_t start_sector;
@@ -93,7 +95,6 @@ private:
 	std::unique_ptr<CdRomDisc> m_disc;
 	TimerID m_disc_timer = NULL_TIMER_ID;
 	int m_max_speed_x = 1;
-	int m_cur_speed_x = 1;
 
 	struct {
 		// all times in ns
@@ -103,6 +104,7 @@ private:
 		uint64_t spin_down;
 		uint64_t read_toc;
 		uint64_t to_idle;
+		uint64_t to_max_speed;
 	} m_durations;
 
 	struct Audio {
@@ -128,9 +130,9 @@ public:
 	void set_durations(uint64_t _open_door_us, uint64_t _close_door_us);
 
 	int max_speed_x() const { return m_max_speed_x; }
-	int cur_speed_x() const { return m_cur_speed_x; }
+	int cur_speed_x() const { return m_s.cur_speed_x; }
 	int max_speed_kb() const { return m_max_speed_x * 176; }
-	int cur_speed_kb() const { return m_cur_speed_x * 176; }
+	int cur_speed_kb() const { return m_s.cur_speed_x * 176; }
 
 	void save_state(StateBuf &);
 	void restore_state(StateBuf &);
