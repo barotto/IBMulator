@@ -52,13 +52,10 @@ void HardDriveFX::install(const std::string &_name)
 
 	std::string spin_name = _name + " spin";
 	std::string seek_name = _name + " seek";
+	using namespace std::placeholders;
 	DriveFX::install(
-		std::bind(&HardDriveFX::create_spin_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		spin_name.c_str(),
-		std::bind(&HardDriveFX::create_seek_samples, this,
-		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-		seek_name.c_str(),
+		std::bind(&HardDriveFX::create_spin_samples, this, _1, _2), spin_name.c_str(),
+		std::bind(&HardDriveFX::create_seek_samples, this, _1, _2), seek_name.c_str(),
 		spec
 	);
 
@@ -79,12 +76,13 @@ uint64_t HardDriveFX::spin_up_time_us() const
 	return round(m_buffers[HDD_SPIN_UP].duration_us());
 }
 
-//this method is called by the Mixer thread
-bool HardDriveFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
+void HardDriveFX::create_seek_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
-	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
+	SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
 		_time_span_ns, _first_upd,
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
@@ -97,13 +95,16 @@ bool HardDriveFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, 
 		});
 }
 
-//this method is called by the Mixer thread
-bool HardDriveFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
+void HardDriveFX::create_spin_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
 	m_spin_change = false;
 
-	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
+	SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
 		m_buffers[HDD_SPIN_UP], m_buffers[HDD_SPIN], m_buffers[HDD_SPIN_DOWN]);
 }

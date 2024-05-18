@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -81,7 +81,7 @@ public:
 	void set_volume(int _level);
 	void enable(bool _enabled);
 
-	bool create_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void create_samples(uint64_t _time_span_ns, bool _first_upd);
 	
 private:
 	uint64_t enqueue(ToneType _tone, double _duration, int _repeats);

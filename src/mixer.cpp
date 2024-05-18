@@ -160,7 +160,7 @@ void Mixer::init(Machine *_machine)
 
 	using namespace std::placeholders;
 	m_silence_channel = register_channel(
-		std::bind(&Mixer::create_silence_samples, this, _1, _2, _3),
+		std::bind(&Mixer::create_silence_samples, this, _1, _2),
 		"Silence", MixerChannel::AUDIOCARD, MixerChannel::AudioType::NOISE
 	);
 	m_silence_channel->set_in_spec({AUDIO_FORMAT_F32, 1, double(m_audio_spec.freq)});
@@ -388,8 +388,8 @@ void Mixer::main_loop()
 					}
 					time_ns = audio_time_ns;
 				}
-				auto [active, enabled] = ch.second->update(time_ns, prebuffering);
-				if(active) {
+				ch.second->update(time_ns);
+				if(ch.second->is_active()) {
 					active_channels.push_back(ch.second.get());
 				}
 			}
@@ -845,7 +845,7 @@ void Mixer::audio_sink(const std::vector<int16_t> &_data, int _category)
 	}
 }
 
-std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannel_handler _callback,
+std::shared_ptr<MixerChannel> Mixer::register_channel(MixerChannelHandler _callback,
 		const std::string &_name, MixerChannel::Category _cat, MixerChannel::AudioType _type)
 {
 	static int chcount = MixerChannel::CategoryCount - 1;
@@ -918,21 +918,19 @@ size_t Mixer::get_buffer_read_avail_fr() const
 	return size_t (bytes / m_frame_size);
 }
 
-bool Mixer::create_silence_samples(uint64_t _time_span_ns, bool _prebuf, bool _firstupd)
+void Mixer::create_silence_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// this channel will render silence basing its timing on the machine.
 	// it's active when there are sinks registered, so that they can record
 	// audio cards output with a constant passage of time.
-	
-	UNUSED(_prebuf);
-	
+
 	static uint64_t prev_mtime_ns = 0;
 	static double gen_frames_rem = .0;
 	
 	uint64_t cur_mtime_ns = g_machine.get_virt_time_ns_mt();
 	uint64_t elapsed_ns = 0;
 	
-	if(_firstupd) {
+	if(_first_upd) {
 		elapsed_ns = _time_span_ns;
 	} else {
 		assert(cur_mtime_ns >= prev_mtime_ns);
@@ -952,8 +950,6 @@ bool Mixer::create_silence_samples(uint64_t _time_span_ns, bool _prebuf, bool _f
 	
 	PDEBUGF(LOG_V2, LOG_MIXER, "Silence: mix time: %04llu ns, frames: %d, machine time: %llu ns, created frames: %d\n",
 			_time_span_ns, needed_frames, elapsed_ns, gen_frames);
-
-	return true;
 }
 
 std::shared_ptr<MixerChannel> Mixer::get_channel(const char *_name)

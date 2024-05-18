@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -33,7 +33,7 @@ public:
 	virtual ~GUIFX();
 
 	virtual void init(Mixer *_mixer,
-			MixerChannel_handler _channel_fn, const char *_channel_name,
+			MixerChannelHandler _channel_fn, const char *_channel_name,
 			const AudioSpec &_spec);
 };
 

@@ -197,7 +197,7 @@ private:
 	void remove_medium();
 	void update_disc_state();
 	uint64_t do_close_door(bool _force);
-	bool create_audio_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void create_audio_samples(uint64_t _time_span_ns, bool _first_upd);
 	void update_volumes();
 };
 

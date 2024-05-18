@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -49,7 +49,7 @@ void Synth::install(std::string _name, uint64_t _chtimeout_ns,
 
 	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
-		std::bind(&Synth::create_samples, this, _1, _2, _3),
+		std::bind(&Synth::create_samples, this, _1, _2),
 		m_name, MixerChannel::AUDIOCARD, MixerChannel::SYNTH);
 	m_channel->set_disable_timeout(_chtimeout_ns);
 	if(_capture) {
@@ -129,10 +129,12 @@ unsigned Synth::generate(AudioBuffer &_outbuffer, uint64_t _delta_ns)
 	return frames;
 }
 
-bool Synth::create_samples(uint64_t _time_span_ns, bool, bool)
+bool Synth::create_samples(uint64_t _time_span_ns, bool _first_upd)
 {
-	// called by the Mixer thread
-	
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	// this lock is to prevent a sudden queue clear on reset
 	std::lock_guard<std::mutex> lock(m_evt_lock);
 

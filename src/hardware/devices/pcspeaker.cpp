@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -47,7 +47,7 @@ void PCSpeaker::install()
 {
 	using namespace std::placeholders;
 	m_channel = g_mixer.register_channel(
-		std::bind(&PCSpeaker::create_samples, this, _1, _2, _3),
+		std::bind(&PCSpeaker::create_samples, this, _1, _2),
 		"PC Speaker", MixerChannel::AUDIOCARD, MixerChannel::AudioType::SYNTH);
 	m_channel->set_disable_timeout(5_s);
 
@@ -209,9 +209,12 @@ void PCSpeaker::add_event(uint64_t _ticks, bool _active, bool _out)
 #endif
 }
 
-// this function is called by the Mixer thread
-bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
+void PCSpeaker::create_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	m_mutex.lock();
 
 	uint64_t pit_ticks = g_devices.pit()->get_pit_ticks_mt();
@@ -228,7 +231,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 		if(m_channel->check_disable_time(pit_ticks*PIT_CLK_TIME)) {
 			m_last_time = 0;
 			PDEBUGF(LOG_V2, LOG_MIXER, "ch disable\n");
-			return false;
+			return;
 		} else if(m_last_time) {
 			assert(m_last_time <= pit_ticks);
 			double ratio = m_outbuf.spec().rate / m_pitbuf.spec().rate;
@@ -240,7 +243,7 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 		m_samples_rem += needed_frames - samples;
 		PDEBUGF(LOG_V2, LOG_MIXER, ", new.rem: %.4f\n", m_samples_rem);
 		m_channel->input_finish();
-		return true;
+		return;
 	}
 
 	m_pitbuf.clear();
@@ -322,7 +325,4 @@ bool PCSpeaker::create_samples(uint64_t _time_span_ns, bool, bool)
 	}
 
 	m_last_time = pit_ticks;
-
-	return true;
 }
-

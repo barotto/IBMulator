@@ -23,7 +23,7 @@
 #include "appconfig.h"
 
 
-MixerChannel::MixerChannel(Mixer *_mixer, MixerChannel_handler _callback,
+MixerChannel::MixerChannel(Mixer *_mixer, MixerChannelHandler _callback,
 		const std::string &_name, int _id, Category _cat, AudioType _audiotype)
 :
 m_mixer(_mixer),
@@ -120,6 +120,7 @@ void MixerChannel::apply_config(AppConfig &_config)
 				break;
 			}
 			case ConfigParameter::FilterParams:
+			case ConfigParameter::Gain:
 				break;
 		}
 	}
@@ -183,6 +184,7 @@ void MixerChannel::apply_auto_values(AppConfig &_config)
 				break;
 			}
 			case ConfigParameter::FilterParams:
+			case ConfigParameter::Gain:
 				break;
 		}
 	}
@@ -230,6 +232,7 @@ void MixerChannel::store_config(INIFile &_config)
 				break;
 			}
 			case ConfigParameter::FilterParams:
+			case ConfigParameter::Gain:
 				break;
 		}
 	}
@@ -292,40 +295,30 @@ void MixerChannel::run_parameter_cb(ConfigParameter _parameter)
 	}
 }
 
-std::tuple<bool,bool> MixerChannel::update(uint64_t _time_span_ns, bool _prebuffering)
+void MixerChannel::update(uint64_t _time_span_ns)
 {
 	assert(m_update_clbk);
-	m_last_time_span_ns = _time_span_ns;
-	bool active=false,enabled=false;
 	if(m_enabled) {
 		bool first_upd = m_first_update;
 		/* channel can be disabled in the callback, so I update m_first_update
 		 * before calling the update
 		 */
 		m_first_update = false;
-		enabled = m_update_clbk(_time_span_ns, _prebuffering, first_upd);
-		if(enabled || m_out_buffer.frames()>0) {
-			active = true;
-		}
+		m_update_clbk(_time_span_ns, first_upd);
+
 		PDEBUGF(LOG_V2, LOG_MIXER, "%s: updated, enabled=%d, active=%d\n",
-				m_name.c_str(), enabled, active);
+				m_name.c_str(), is_enabled(), is_active());
 	} else {
-		enabled = false;
 		/* On the previous iteration the channel could have been disabled
 		 * but its input buffer could have some samples left to process
 		 */
 		if(m_in_buffer.frames()) {
 			input_finish(_time_span_ns);
-			enabled = true;
 		}
-		if(m_out_buffer.frames()) {
-			active = true;
-		} else {
+		if(!is_active() && !m_new_data) {
 			reset_filters();
 		}
 	}
-
-	return std::make_tuple(active,enabled);
 }
 
 void MixerChannel::create_resampling(int _channels)

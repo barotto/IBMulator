@@ -41,9 +41,9 @@ void CdRomFX::install(const std::string &_drive)
 
 	using namespace std::placeholders;
 	DriveFX::install(
-		std::bind(&CdRomFX::create_spin_samples, this, _1, _2, _3),
+		std::bind(&CdRomFX::create_spin_samples, this, _1, _2),
 		str_format("%s: spin", _drive.c_str()).c_str(),
-		std::bind(&CdRomFX::create_seek_samples, this, _1, _2, _3),
+		std::bind(&CdRomFX::create_seek_samples, this, _1, _2),
 		str_format("%s: seek", _drive.c_str()).c_str(),
 		spec
 	);
@@ -67,12 +67,12 @@ uint64_t CdRomFX::duration_us(SampleType _sample) const
 	return round(ms_buffers[static_cast<unsigned>(_sample)].duration_us());
 }
 
-bool CdRomFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
+void CdRomFX::create_seek_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// Mixer thread
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
-	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
+	SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
 		_time_span_ns, _first_upd,
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
@@ -93,13 +93,16 @@ bool CdRomFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool
 		});
 }
 
-bool CdRomFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
+void CdRomFX::create_spin_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
 	m_spin_change = false;
 
-	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
+	SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
 			ms_buffers[CD_SPIN_UP], ms_buffers[CD_SPIN], ms_buffers[CD_SPIN_DOWN], true);
 }

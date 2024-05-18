@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -66,7 +66,7 @@ public:
 
 	void add_event(uint64_t _ticks, bool _active, bool _out);
 	void activate();
-	bool create_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void create_samples(uint64_t _time_span_ns, bool _first_upd);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);

@@ -49,8 +49,8 @@ public:
 
 	uint64_t duration_us(SampleType _sample) const;
 
-	bool create_seek_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
-	bool create_spin_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void create_seek_samples(uint64_t _time_span_ns, bool _first_upd);
+	void create_spin_samples(uint64_t _time_span_ns, bool _first_upd);
 };
 
 #endif

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2024  Marco Bortolin
  *
- * This file is part of IBMulator
+ * This file is part of IBMulator.
  *
  * IBMulator is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ public:
 			m_vgm.command(NSEC_TO_USEC(_e.time), _cmd, _e.chip, _e.reg, _e.value);
 		}
 	}
-	bool create_samples(uint64_t _time_span_us, bool _prebuf, bool);
+	bool create_samples(uint64_t _time_span_us, bool _first_upd);
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 

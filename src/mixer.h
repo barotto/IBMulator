@@ -113,7 +113,7 @@ public:
 	void start();
 	void shutdown();
 
-	std::shared_ptr<MixerChannel> register_channel(MixerChannel_handler _callback,
+	std::shared_ptr<MixerChannel> register_channel(MixerChannelHandler _callback,
 			const std::string &_name, MixerChannel::Category, MixerChannel::AudioType);
 	void unregister_channel(std::shared_ptr<MixerChannel> _channel);
 
@@ -188,7 +188,7 @@ private:
 	void stop_capture();
 	void audio_sink(const std::vector<int16_t> &_data, int _category);
 	static void sdl_callback(void *userdata, Uint8 *stream, int len);
-	bool create_silence_samples(uint64_t _time_span_us, bool, bool);
+	void create_silence_samples(uint64_t _time_span_us, bool _first_upd);
 	void stop_midi();
 };
 

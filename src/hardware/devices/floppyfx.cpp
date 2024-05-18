@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -67,9 +67,9 @@ void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 
 	using namespace std::placeholders;
 	DriveFX::install(
-		std::bind(&FloppyFX::create_spin_samples, this, _1, _2, _3),
+		std::bind(&FloppyFX::create_spin_samples, this, _1, _2),
 		str_format("%s: spin (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
-		std::bind(&FloppyFX::create_seek_samples, this, _1, _2, _3),
+		std::bind(&FloppyFX::create_seek_samples, this, _1, _2),
 		str_format("%s: seek (%s)", _drive.c_str(), _fdd_type == FDD_5_25 ? "5.25\"" : "3.5\"").c_str(),
 		spec
 	);
@@ -136,12 +136,13 @@ bool FloppyFX::boot(bool _wdisk)
 	return false;
 }
 
-//this method is called by the Mixer thread
-bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
+void FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
 	std::lock_guard<std::mutex> clr_lock(m_clear_mutex);
 
-	return SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
+	SoundFX::play_timed_events<SeekEvent, shared_deque<SeekEvent>>(
 		_time_span_ns, _first_upd,
 		*m_channels.seek, m_seek_events,
 		[this](SeekEvent &_evt, uint64_t _time_span) {
@@ -173,9 +174,12 @@ bool FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool /*_prebuf*/, boo
 		});
 }
 
-//this method is called by the Mixer thread
-bool FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
+void FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	bool spin = m_spinning;
 	bool change_state = m_spin_change;
 	AudioBuffer *spinup;
@@ -193,6 +197,6 @@ bool FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool, bool)
 	}
 	m_spin_change = false;
 
-	return SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
+	SoundFX::play_motor(_time_span_ns, *m_channels.spin, spin, change_state,
 			*spinup, ms_buffers[m_fdd_type][FDD_SPIN], ms_buffers[m_fdd_type][FDD_SPIN_DOWN]);
 }

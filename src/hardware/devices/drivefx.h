@@ -47,8 +47,8 @@ public:
 	DriveFX();
 	virtual ~DriveFX();
 
-	virtual void install(MixerChannel_handler _spin_channel, const char *_spin_name,
-			MixerChannel_handler _seek_channel, const char *_seek_name,
+	virtual void install(MixerChannelHandler _spin_channel, const char *_spin_name,
+			MixerChannelHandler _seek_channel, const char *_seek_name,
 			const AudioSpec &_spec);
 	virtual void remove();
 	virtual void seek(int _c0, int _c1, int _tot_cyls);

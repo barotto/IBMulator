@@ -40,7 +40,7 @@ void GUIDrivesFX::init(Mixer *_mixer)
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 
 	using namespace std::placeholders;
-	m_channel = _mixer->register_channel(std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2, _3),
+	m_channel = _mixer->register_channel(std::bind(&GUIDrivesFX::create_sound_samples, this, _1, _2),
 			"Drives GUI",
 			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channel->set_in_spec(spec);
@@ -69,9 +69,12 @@ void GUIDrivesFX::use_drive(DriveType _type, SampleType _how)
 	}
 }
 
-bool GUIDrivesFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
+bool GUIDrivesFX::create_sound_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	unsigned evt = m_event & 0xff;
 	unsigned sub = (m_event >> 8) & 0xff;
 	if(evt != 0xff) {
@@ -100,7 +103,7 @@ void GUISystemFX::init(Mixer *_mixer)
 	AudioSpec spec({AUDIO_FORMAT_F32, 1, 48000});
 	
 	using namespace std::placeholders;
-	m_channel = _mixer->register_channel(std::bind(&GUISystemFX::create_sound_samples, this, _1, _2, _3),
+	m_channel = _mixer->register_channel(std::bind(&GUISystemFX::create_sound_samples, this, _1, _2),
 			"System",
 			MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 	m_channel->set_in_spec(spec);
@@ -122,9 +125,12 @@ void GUISystemFX::update(bool _power_on, bool _change_state)
 	m_change_state = _change_state;
 }
 
-bool GUISystemFX::create_sound_samples(uint64_t _time_span_ns, bool, bool)
+bool GUISystemFX::create_sound_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	bool power_on = m_power_on;
 	bool change_state = m_change_state;
 	m_change_state = false;

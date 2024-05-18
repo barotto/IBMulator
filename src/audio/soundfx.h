@@ -45,7 +45,7 @@ public:
 		const AudioBuffer &_power_down, bool _symmetric = false);
 
 	template<class Event, class EventQueue>
-	bool play_timed_events(uint64_t _time_span_ns, bool _first_upd,
+	void play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play);
 
@@ -59,7 +59,7 @@ protected:
 
 
 template<class Event, class EventQueue>
-bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
+void SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 		MixerChannel &_channel, EventQueue &_events,
 		std::function<void(Event&,uint64_t)> _play)
 {
@@ -102,8 +102,7 @@ bool SoundFX::play_timed_events(uint64_t _time_span_ns, bool _first_upd,
 	}
 	m_audio_cue_time = mtime_us;
 	_channel.input_finish(_time_span_ns);
-
-	return _channel.check_disable_time(US_TO_NS(mtime_us));
+	_channel.check_disable_time(US_TO_NS(mtime_us));
 }
 
 #endif

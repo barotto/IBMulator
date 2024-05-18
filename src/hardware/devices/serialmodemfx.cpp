@@ -38,7 +38,7 @@ void SerialModemFX::install(unsigned _baud_rate)
 
 	if(!m_channel) {
 		using namespace std::placeholders;
-		m_channel = g_mixer.register_channel(std::bind(&SerialModemFX::create_samples, this, _1, _2, _3),
+		m_channel = g_mixer.register_channel(std::bind(&SerialModemFX::create_samples, this, _1, _2),
 				"Serial Modem", MixerChannel::Category::SOUNDFX, MixerChannel::AudioType::NOISE);
 		m_channel->set_in_spec(spec);
 		m_channel->set_features(MixerChannel::HasVolume | MixerChannel::HasBalance);
@@ -253,15 +253,15 @@ void SerialModemFX::silence()
 	m_events.clear();
 }
 
-bool SerialModemFX::create_samples(uint64_t _time_span_ns, bool /*_prebuf*/, bool _first_upd)
+void SerialModemFX::create_samples(uint64_t _time_span_ns, bool _first_upd)
 {
-	// This function is called by the Mixer thread
+	// Mixer thread
 
 	if(_first_upd) {
 		m_channel->flush();
 	}
 
-	return SoundFX::play_timed_events<ModemSound, shared_deque<ModemSound>>(
+	SoundFX::play_timed_events<ModemSound, shared_deque<ModemSound>>(
 		_time_span_ns, _first_upd,
 		*m_channel, m_events,
 		[this](ModemSound &_evt, uint64_t _time_pos) {

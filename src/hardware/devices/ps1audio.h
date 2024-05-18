@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -108,7 +108,7 @@ private:
 	void synth_filter_cb();
 
 	void fifo_timer(uint64_t);
-	bool dac_create_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void dac_create_samples(uint64_t _time_span_ns, bool _first_upd);
 	void dac_set_state(DAC::State _state);
 	void dac_update_frequency();
 

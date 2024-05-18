@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -253,7 +253,7 @@ void SBlaster::install_dsp(int _version, std::string _filters)
 
 	// AUDIO CHANNEL
 	m_dac_channel = g_mixer.register_channel(
-		std::bind(&SBlaster::dac_create_samples, this, _1, _2, _3),
+		std::bind(&SBlaster::dac_create_samples, this, _1, _2),
 		std::string(mixer_name()) + " DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac_channel->set_disable_timeout(5_s);
 	m_dac_filters = _filters;
@@ -912,12 +912,15 @@ void SBlasterPro::write_mixer(uint16_t _address, uint16_t _value)
 				return;
 			case 0x02: // CT1335 Master
 				m_s.mixer.reg[0x22] = _value | _value << 4;
+				debug_print_volumes(0x22, "MASTER");
 				break;
 			case 0x06: // CT1335 FM
 				m_s.mixer.reg[0x26] = _value | _value << 4;
+				debug_print_volumes(0x26, "FM");
 				break;
 			case 0x08: // CT1335 CD
 				m_s.mixer.reg[0x28] = _value | _value << 4;
+				debug_print_volumes(0x28, "CD");
 				break;
 			case 0x04:
 				m_s.mixer.reg[0x04] = _value;
@@ -930,6 +933,10 @@ void SBlasterPro::write_mixer(uint16_t _address, uint16_t _value)
 			case 0x26:
 				m_s.mixer.reg[0x26] = _value;
 				debug_print_volumes(0x26, "FM");
+				break;
+			case 0x28:
+				m_s.mixer.reg[0x28] = _value;
+				debug_print_volumes(0x28, "CD");
 				break;
 			case 0x0E:
 				if((m_s.mixer.reg[0x0E] & 0x02) != (_value & 0x02)) {
@@ -2150,9 +2157,12 @@ void SBlaster::dac_timer(uint64_t)
 	}
 }
 
-//this method is called by the Mixer thread
-bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
+void SBlaster::dac_create_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	// TODO SB16
 	// everything here assumes u8 sample data type.
 
@@ -2162,7 +2172,6 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	unsigned pre_frames = 0, post_frames = 0;
 	unsigned dac_frames = m_s.dac.spec.samples_to_frames(m_s.dac.used);
 	double needed_frames = ns_to_frames(_time_span_ns, m_s.dac.spec.rate);
-	bool chactive = true;
 	static double balance = 0.0;
 
 	m_dac_channel->set_in_spec(m_s.dac.spec);
@@ -2191,7 +2200,7 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	balance -= needed_frames;
 	
 	if(m_s.dac.state == DAC::State::STOPPED && (balance <= 0) && pre_frames==0) {
-		chactive = !m_dac_channel->check_disable_time(mtime_ns);
+		m_dac_channel->check_disable_time(mtime_ns);
 		post_frames = balance * -1.0;
 		m_dac_channel->in().fill_samples<uint8_t>(post_frames*m_s.dac.spec.channels, m_s.dac.silence);
 		m_s.dac.last_value[0] = m_s.dac.last_value[1] = m_s.dac.silence;
@@ -2209,6 +2218,4 @@ bool SBlaster::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	m_dac_mutex.unlock();
 
 	m_dac_channel->input_finish();
-
-	return chactive;
 }

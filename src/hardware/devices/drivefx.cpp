@@ -35,8 +35,8 @@ DriveFX::~DriveFX()
 {
 }
 
-void DriveFX::install(MixerChannel_handler _spin_channel, const char *_spin_name,
-		MixerChannel_handler _seek_channel, const char *_seek_name,
+void DriveFX::install(MixerChannelHandler _spin_channel, const char *_spin_name,
+		MixerChannelHandler _seek_channel, const char *_seek_name,
 		const AudioSpec &_spec)
 {
 	m_channels.spin = g_mixer.register_channel(_spin_channel, _spin_name,

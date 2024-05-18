@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -287,7 +287,7 @@ protected:
 	void dsp_cmd_midi_out();
 	
 	void dac_timer(uint64_t);
-	bool dac_create_samples(uint64_t _time_span_us, bool, bool);
+	void dac_create_samples(uint64_t _time_span_us, bool _first_upd);
 	void dac_set_state(DAC::State _to_state);
 	
 	void dma_start(bool _autoinit);

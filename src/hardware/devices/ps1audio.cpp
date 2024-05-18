@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -90,7 +90,7 @@ void PS1Audio::install()
 
 	using namespace std::placeholders;
 	m_dac.channel = g_mixer.register_channel(
-		std::bind(&PS1Audio::dac_create_samples, this, _1, _2, _3),
+		std::bind(&PS1Audio::dac_create_samples, this, _1, _2),
 		"PS/1 DAC", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_dac.channel->set_disable_timeout(3_s);
 	m_dac.channel->set_features(ch_features | MixerChannel::HasResamplingType);
@@ -503,16 +503,18 @@ void PS1Audio::fifo_timer(uint64_t)
 	}
 }
 
-//this method is called by the Mixer thread
-bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
+void PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool _first_upd)
 {
+	// Mixer thread
+
+	UNUSED(_first_upd);
+
 	m_dac.mutex.lock();
-	
+
 	uint64_t mtime_ns = g_machine.get_virt_time_ns_mt();
 	unsigned presamples = 0, postsamples = 0;
 	double needed_samples = ns_to_frames(_time_span_ns, m_dac.rate);
 	unsigned samples = m_dac.used;
-	bool chactive = true;
 	static double balance = 0.0;
 
 	m_dac.channel->set_in_spec({AUDIO_FORMAT_U8, 1, m_dac.rate});
@@ -543,7 +545,7 @@ bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	balance -= needed_samples;
 	
 	if(m_dac.state == DAC::State::STOPPED && (balance <= 0) && presamples==0) {
-		chactive = !m_dac.channel->check_disable_time(mtime_ns);
+		m_dac.channel->check_disable_time(mtime_ns);
 		postsamples = balance * -1.0;
 		// See the comment above
 		m_dac.channel->in().fill_frames_fade<uint8_t>(postsamples, m_dac.last_value, 128);
@@ -560,8 +562,6 @@ bool PS1Audio::dac_create_samples(uint64_t _time_span_ns, bool, bool)
 	PDEBUGF(LOG_V2, LOG_MIXER, "PS/1 DAC: mix time: %04llu ns, samples at %.2f Hz: %d+%d+%d (%.2f ns), balance: %.2f\n",
 			_time_span_ns, m_dac.rate, presamples, samples, postsamples, frames_to_ns(total, m_dac.rate),
 			balance);
-
-	return chactive;
 }
 
 void PS1Audio::DAC::reset()

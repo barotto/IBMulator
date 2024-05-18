@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -64,8 +64,8 @@ public:
 	void snatch(bool _value=true) { m_snatch = _value; }
 	bool boot(bool _wdisk);
 
-	bool create_seek_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
-	bool create_spin_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd);
+	void create_seek_samples(uint64_t _time_span_ns, bool _first_upd);
+	void create_spin_samples(uint64_t _time_span_ns, bool _first_upd);
 };
 
 #endif

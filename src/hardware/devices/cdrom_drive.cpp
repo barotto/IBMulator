@@ -72,7 +72,7 @@ void CdRomDrive::install(StorageCtrl *_ctrl, uint8_t _id, const char *_ini_secti
 
 	using namespace std::placeholders;
 	m_audio.channel = g_mixer.register_channel(
-		std::bind(&CdRomDrive::create_audio_samples, this, _1, _2, _3),
+		std::bind(&CdRomDrive::create_audio_samples, this, _1, _2),
 		"CD Audio", MixerChannel::AUDIOCARD, MixerChannel::AudioType::DAC);
 	m_audio.channel->set_disable_timeout(EFFECTS_MIN_DUR_NS);
 	m_audio.channel->set_features(
@@ -1089,11 +1089,9 @@ CdRomDrive::AudioStatus CdRomDrive::get_audio_status(bool _reset, int64_t *curr_
 	return AUDIO_NO_STATUS;
 }
 
-bool CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _prebuf, bool _first_upd)
+void CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _first_upd)
 {
 	// Mixer thread
-
-	UNUSED(_prebuf);
 
 	std::lock_guard<std::mutex> lock(m_audio.player_mutex);
 
@@ -1119,12 +1117,11 @@ bool CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _prebuf, bool
 		m_s.audio.to_stop_state();
 	}
 
-	bool active = true;
 	if(!m_s.audio.is_playing || m_s.audio.is_paused) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "CD-ROM: audio paused, creating silence.\n");
 		gen_frames = req_frames;
 		m_audio.channel->in().fill_frames_silence(req_frames);
-		active = !m_audio.channel->check_disable_time(cur_mtime_ns);
+		m_audio.channel->check_disable_time(cur_mtime_ns);
 	} else if(req_frames) {
 		static AudioBuffer buff({ AUDIO_FORMAT_S16, REDBOOK_CHANNELS, REDBOOK_PCM_FRAMES_PER_SECOND });
 		buff.resize_frames(req_frames);
@@ -1198,8 +1195,6 @@ bool CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _prebuf, bool
 	unsigned needed_frames = round(m_audio.channel->in_spec().ns_to_frames(_time_span_ns));
 	PDEBUGF(LOG_V2, LOG_MIXER, "CD-ROM: mix time: %04llu ns, frames: %d, machine time: %llu ns, gen.frames: %d, curr.LBA: %lld\n",
 			_time_span_ns, needed_frames, elapsed_ns, gen_frames, curr_audio_lba());
-
-	return active;
 }
 
 bool CdRomDrive::read_toc(uint8_t *buf_, size_t _bufsize, size_t &length_, bool _msf, unsigned _start_track, unsigned _format)

@@ -36,11 +36,10 @@ class Mixer;
 #define EFFECTS_MIN_DUR_US SEC_TO_USEC(2)
 #define EFFECTS_MIN_DUR_NS SEC_TO_NSEC(2)
 
-typedef std::function<bool(
+using MixerChannelHandler = std::function<void(
 		uint64_t _time_span_us,
-		bool     _prebuffering,
 		bool     _first_update
-	)> MixerChannel_handler;
+	)>;
 
 using MixerFilterChain = std::vector<std::shared_ptr<Dsp::Filter>>;
 using EmVerb = MVerb<float>;
@@ -194,12 +193,12 @@ private:
 	AudioType m_audiotype = DAC;
 	uint32_t m_features = 0;
 	std::atomic<bool> m_enabled = false;
-	MixerChannel_handler m_update_clbk;
+	bool m_active = false;
+	MixerChannelHandler m_update_clbk;
 	std::atomic<uint64_t> m_disable_time = 0;
 	uint64_t m_disable_timeout = EFFECTS_MIN_DUR_NS;
 	bool m_first_update = true;
 	double m_fr_rem = 0.0;
-	uint64_t m_last_time_span_ns = 0;
 	AudioBuffer m_in_buffer;
 	AudioBuffer m_out_buffer;
 	uint64_t m_in_time = 0;
@@ -288,7 +287,7 @@ private:
 	std::map<ConfigParameter, std::list<std::pair<std::string,CfgEventCb>>> m_parameter_cb;
 
 public:
-	MixerChannel(Mixer *_mixer, MixerChannel_handler _callback, const std::string &_name, int _id,
+	MixerChannel(Mixer *_mixer, MixerChannelHandler _callback, const std::string &_name, int _id,
 			Category _cat, AudioType _audiotype);
 	~MixerChannel();
 
@@ -399,6 +398,7 @@ public:
 	//
 	// The mixer thread can call also these methods:
 	//
+	bool is_active() const { return (m_enabled || m_out_buffer.frames() > 0); }
 	void set_in_spec(const AudioSpec &_spec);
 	void set_out_spec(const AudioSpec &_spec);
 	const AudioSpec & in_spec() const { return m_in_buffer.spec(); }
@@ -417,7 +417,7 @@ public:
 	void pop_out_frames(unsigned _count);
 	void flush();
 
-	std::tuple<bool,bool> update(uint64_t _time_span_ns, bool _prebuffering);
+	void update(uint64_t _time_span_ns);
 	void set_disable_time(uint64_t _time) { m_disable_time = _time; }
 	bool check_disable_time(uint64_t _now_ns);
 	void set_disable_timeout(uint64_t _timeout_ns) { m_disable_timeout = _timeout_ns; }

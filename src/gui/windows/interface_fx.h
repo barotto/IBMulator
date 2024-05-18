@@ -46,7 +46,7 @@ public:
 	GUIDrivesFX() : SoundFX() {}
 	void init(Mixer *);
 	void use_drive(DriveType _type, SampleType _how);
-	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+	bool create_sound_samples(uint64_t _time_span_us, bool _first_upd);
 	uint64_t duration_us(DriveType, SampleType) const;
 };
 
@@ -69,7 +69,7 @@ public:
 
 	void init(Mixer *_mixer);
 	void update(bool _power_on, bool _change_state);
-	bool create_sound_samples(uint64_t _time_span_us, bool, bool);
+	bool create_sound_samples(uint64_t _time_span_us, bool _first_upd);
 };
 
 #endif

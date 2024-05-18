@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -32,7 +32,7 @@ GUIFX::~GUIFX()
 {
 }
 
-void GUIFX::init(Mixer *_mixer, MixerChannel_handler _channel_fn, const char *_channel_name,
+void GUIFX::init(Mixer *_mixer, MixerChannelHandler _channel_fn, const char *_channel_name,
 		const AudioSpec &_spec)
 {
 	m_channel = _mixer->register_channel(_channel_fn, _channel_name,
