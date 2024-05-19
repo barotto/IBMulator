@@ -1109,7 +1109,8 @@ void CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _first_upd)
 	}
 	prev_mtime_ns = cur_mtime_ns;
 
-	int req_frames = static_cast<int>(m_audio.channel->in_spec().ns_to_frames(elapsed_ns) + gen_frames_rem);
+	double req_frames_d = m_audio.channel->in_spec().ns_to_frames(elapsed_ns) + gen_frames_rem;
+	int req_frames = static_cast<int>(req_frames_d);
 	int gen_frames = 0;
 
 	int64_t curr_lba = curr_audio_lba();
@@ -1188,7 +1189,7 @@ void CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _first_upd)
 		signal_activity(CdRomEvents::READ_DATA, 1);
 	}
 
-	gen_frames_rem = req_frames - double(gen_frames);
+	gen_frames_rem = req_frames_d - double(gen_frames);
 
 	m_audio.channel->input_finish();
 
