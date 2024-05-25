@@ -61,8 +61,12 @@ private:
 	bool m_audiocards_enabled = false;
 	bool m_audiocards_capture = false;
 
-	uint64_t m_prebuffer_us;
-	size_t   m_prebuffer_fr;
+	struct {
+		uint64_t main_us = 0;
+		size_t   main_fr = 0;
+		uint64_t ch_us = 0;
+		size_t   ch_fr = 0;
+	} m_prebuffer;
 
 	Machine *m_machine;
 	Pacer m_pacer;
@@ -131,6 +135,8 @@ public:
 	uint64_t get_buffer_read_avail_us() const;
 	size_t get_buffer_read_avail_fr() const;
 	inline const SDL_AudioSpec & get_audio_spec() { return m_audio_spec; }
+
+	size_t ch_prebuffer_fr() const { return m_prebuffer.ch_fr; }
 
 	bool is_paused() const { return m_paused; }
 	bool is_recording() const { return m_audiocards_capture; }

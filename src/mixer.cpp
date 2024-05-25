@@ -41,8 +41,6 @@ m_mix_bufsize_sa(0),
 m_mix_bufsize_by(0),
 m_start_time(0),
 m_prev_vtime(0),
-m_prebuffer_us(50000),
-m_prebuffer_fr(2400),
 m_machine(nullptr),
 m_heartbeat_us(10000),
 m_elapsed_time_us(0),
@@ -140,11 +138,13 @@ void Mixer::init(Machine *_machine)
 	PINFOF(LOG_V1, LOG_MIXER, "Mixer beat period: %llu usec\n", m_heartbeat_us);
 
 	int prebuf_ms = g_program.config().get_int_or_default(MIXER_SECTION, MIXER_PREBUFFER, 10, 1000); // msec
-	m_prebuffer_us = prebuf_ms * 1000ull; // usec
-	m_prebuffer_us = clamp(m_prebuffer_us, m_heartbeat_us, m_heartbeat_us*10);
-	m_prebuffer_fr = size_t(us_to_frames(m_prebuffer_us, m_audio_spec.freq));
+	m_prebuffer.main_us = double(prebuf_ms) * 1000.0 * 0.666; // usec
+	m_prebuffer.main_us = clamp(m_prebuffer.main_us, m_heartbeat_us, m_heartbeat_us*10);
+	m_prebuffer.main_fr = size_t(us_to_frames(m_prebuffer.main_us, m_audio_spec.freq));
+	m_prebuffer.ch_us = m_prebuffer.main_us / 2;
+	m_prebuffer.ch_fr = size_t(us_to_frames(m_prebuffer.ch_us, m_audio_spec.freq));
 
-	int64_t buf_len_us = std::max(m_prebuffer_us*2, uint64_t(1000000U));
+	int64_t buf_len_us = std::max(m_prebuffer.main_us * 2, uint64_t(1000000U));
 	m_mix_bufsize_fr = (m_audio_spec.freq * buf_len_us) / 1000000;
 	m_mix_bufsize_by = m_mix_bufsize_fr * m_frame_size;
 	m_mix_bufsize_sa = m_mix_bufsize_fr * m_audio_spec.channels;
@@ -406,8 +406,8 @@ void Mixer::main_loop()
 				if(m_start_time == 0) {
 					// audio starting to get prebuffered
 					m_start_time = m_pacer.chrono().get_usec();
-					PDEBUGF(LOG_V1, LOG_MIXER, "Prebuffering for %llu us\n", m_prebuffer_us);
-				} else if(get_buffer_read_avail_us() >= m_prebuffer_us) {
+					PDEBUGF(LOG_V1, LOG_MIXER, "Prebuffering for %llu us\n", m_prebuffer.main_us);
+				} else if(get_buffer_read_avail_us() >= m_prebuffer.main_us) {
 					// audio prebuffered enough, start output to audio device
 					SDL_PauseAudioDevice(m_device, 0);
 					PDEBUGF(LOG_V1, LOG_MIXER, "Device playing: %d us elapsed, %zu bytes / %llu us of data\n",
@@ -419,16 +419,16 @@ void Mixer::main_loop()
 				}
 			} else if(m_audio_status == SDL_AUDIO_PLAYING) {
 				assert(m_start_time==0);
-				double buf_len_s = m_prebuffer_us/1e6 + (m_heartbeat_us*3)/1e6;
+				double buf_len_s = m_prebuffer.main_us/1e6 + (m_heartbeat_us*3)/1e6;
 				size_t buf_limit = size_t(buf_len_s*m_audio_spec.freq) * m_frame_size;
 				size_t read_avail = m_out_buffer.get_read_avail();
 				if(read_avail > buf_limit) {
 					// audio device is not reading its buffer fast enough, drop some data
-					buf_limit = m_out_buffer.shrink_data(m_prebuffer_fr*m_frame_size);
+					buf_limit = m_out_buffer.shrink_data(m_prebuffer.main_fr*m_frame_size);
 					PDEBUGF(LOG_V1, LOG_MIXER, "Device buffer overrun: %zu bytes, limited to %zu bytes\n",
 							read_avail, buf_limit);
 				} else {
-					buf_len_s = m_prebuffer_us/1e6 - (m_heartbeat_us*3)/1e6;
+					buf_len_s = m_prebuffer.main_us/1e6 - (m_heartbeat_us*3)/1e6;
 					buf_len_s = std::max(m_heartbeat_us/1e6, buf_len_s);
 					buf_limit = size_t(buf_len_s*m_audio_spec.freq) * m_frame_size;
 					if(m_out_buffer.get_read_avail() <= buf_limit) {
@@ -554,7 +554,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	}
 	
 	int avail_us = get_buffer_read_avail_us();
-	double reqframes = us_to_frames((m_prebuffer_us - avail_us), m_audio_spec.freq);
+	double reqframes = us_to_frames((m_prebuffer.main_us - avail_us), m_audio_spec.freq);
 	double treqframes = ns_to_frames(_time_span_ns, m_audio_spec.freq);
 	reqframes = std::max(reqframes, treqframes);
 	reqframes = std::min(reqframes, double(m_mix_bufsize_fr));
@@ -576,6 +576,9 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		assert(_vtime_ratio != 0.0);
 		size_t resampled_reqframes = size_t(ceil(reqframes * _vtime_ratio));
 		for(auto ch : _channels) {
+			if(ch->is_prebuffering()) {
+				continue;
+			}
 			size_t chframes = ch->out().frames();
 			cat_count[ch->category()]++;
 			if(ch->category() == MixerChannel::AUDIOCARD) {
@@ -602,6 +605,9 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 		}
 	} else {
 		for(auto ch : _channels) {
+			if(ch->is_prebuffering()) {
+				continue;
+			}
 			size_t chframes = ch->out().frames();
 			cat_count[ch->category()]++;
 			chframes = std::min(size_t(reqframes), chframes);
@@ -768,11 +774,11 @@ void Mixer::limit_audio_data(const std::vector<MixerChannel*> &_channels, double
 			minfr = std::min(minfr, chframes);
 		}
 	}
-	maxfr = std::max(maxfr, m_prebuffer_fr);
+	maxfr = std::max(maxfr, m_prebuffer.main_fr);
 	if(minfr == std::numeric_limits<size_t>::max()) {
 		return;
 	}
-	
+
 	// step 2: limit the amount of data on channels not of category AUDIOCARD
 	for(auto ch : _channels) {
 		if(ch->is_enabled() && (ch->category() != MixerChannel::AUDIOCARD)) {

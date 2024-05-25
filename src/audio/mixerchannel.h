@@ -203,6 +203,7 @@ private:
 	AudioBuffer m_out_buffer;
 	uint64_t m_in_time = 0;
 	bool m_new_data = true;
+	bool m_prebuffering = true;
 	std::function<void(bool)> m_capture_clbk;
 
 	std::mutex m_mutex;
@@ -399,6 +400,7 @@ public:
 	// The mixer thread can call also these methods:
 	//
 	bool is_active() const { return (m_enabled || m_out_buffer.frames() > 0); }
+	bool is_prebuffering() const { return m_prebuffering; }
 	void set_in_spec(const AudioSpec &_spec);
 	void set_out_spec(const AudioSpec &_spec);
 	const AudioSpec & in_spec() const { return m_in_buffer.spec(); }

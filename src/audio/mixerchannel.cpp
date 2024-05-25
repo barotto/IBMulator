@@ -244,7 +244,7 @@ void MixerChannel::enable(bool _enabled)
 		m_enabled = _enabled;
 		m_disable_time = 0;
 		if(_enabled) {
-			//reset_filters();
+			m_prebuffering = true;
 			PDEBUGF(LOG_V1, LOG_MIXER, "%s: channel enabled\n", m_name.c_str());
 		} else {
 			m_first_update = true;
@@ -996,6 +996,10 @@ void MixerChannel::input_finish(uint64_t _time_span_ns)
 
 	// remove processed frames from input buffer
 	m_in_buffer.pop_frames(in_frames);
+
+	if(m_prebuffering && m_out_buffer.frames() >= m_mixer->ch_prebuffer_fr()) {
+		m_prebuffering = false;
+	}
 
 	PDEBUGF(LOG_V2, LOG_MIXER, "%s: finish (%lluns): in: %d frames (%.2fus), out: %d frames (%.2fus), rem: %.2f\n",
 			m_name.c_str(), _time_span_ns,
