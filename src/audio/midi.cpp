@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -139,6 +139,7 @@ void MIDI::open_device(std::string _conf)
 	
 	PINFOF(LOG_V0, LOG_MIDI, "MIDI output enabled with the '%s' driver.\n", m_device->name());
 
+	memset( &m_s, 0, sizeof(m_s) );
 	memset( &m_s.ch, 0xff, sizeof(m_s.ch) );
 	m_s.sysex.buf_used = 0;
 	m_s.sysex.delay_ms = 0;
@@ -234,6 +235,10 @@ void MIDI::cmd_stop_capture()
 
 void MIDI::stop_and_silence_device()
 {
+	if(!is_device_open()) {
+		return;
+	}
+
 	PDEBUGF(LOG_V0, LOG_MIDI, "Silencing the device...\n");
 	
 	// flush data buffer - throw invalid midi message

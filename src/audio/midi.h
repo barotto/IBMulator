@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -42,7 +42,7 @@ private:
 		uint8_t status;
 		int     cmd_len;
 		int     cmd_pos;
-		uint8_t cmd_buf[8] = {};
+		uint8_t cmd_buf[8];
 		
 		// TODO should this stuff go into MIDIDev?
 		struct Channels {
@@ -60,11 +60,11 @@ private:
 		} ch[16];
 		
 		struct SysEx {
-			uint8_t  buf[SYSEX_SIZE] = {};
+			uint8_t  buf[SYSEX_SIZE];
 			unsigned buf_used;
 			int delay_ms;
 			uint64_t start_ms;
-			SysEx() : buf_used(0), delay_ms(0), start_ms(0) { }
+
 			bool is_mt_32() const {
 				return (buf[1] == 0x41 && buf[3] == 0x16);
 			}
