@@ -375,6 +375,7 @@ std::list<std::string> GLShaderProgram::include_shader_file(const std::string &_
 						throw ShaderCompileExc(str_format("invalid stage type: %s", toks[2].c_str()), _path, result_code, result_code.size());
 					}
 				}
+				continue;
 			}
 		}
 		// then skip all the lines of different stages than the current one
@@ -444,13 +445,13 @@ std::list<std::string> GLShaderProgram::include_shader_file(const std::string &_
 							throw ShaderCompileExc(str_format("cannot include '%s': %s\n", inclpath.c_str(), e.what()), _path, result_code, result_code.size());
 						}
 						result_code.splice(result_code.end(), std::move(include));
-						continue;
 					}
+					continue;
 				} else if(toks[1] == "name") {
-					if(toks.size() < 3) {
-						continue;
+					if(toks.size() >= 3) {
+						m_name = toks[2];
 					}
-					m_name = toks[2];
+					continue;
 				} else if(toks[1] == "parameter") {
 					if(toks.size() < 7) {
 						continue;
@@ -477,17 +478,16 @@ std::list<std::string> GLShaderProgram::include_shader_file(const std::string &_
 						}
 						m_parameters.push_back(p);
 						m_parameters_map[p.name] = &m_parameters.back();
-					} else {
-						continue;
 					}
+					continue;
 				} else if(toks[1] == "format") {
-					if(toks.size() < 3) {
-						continue;
+					if(toks.size() >= 3) {
+						m_fbformat = GLTexture::find_format(toks[2]);
+						if(m_fbformat == GLTexture::Format::UNDEFINED) {
+							throw std::runtime_error(str_format("invalid output format '%s'", toks[2].c_str()));
+						}
 					}
-					m_fbformat = GLTexture::find_format(toks[2]);
-					if(m_fbformat == GLTexture::Format::UNDEFINED) {
-						throw std::runtime_error(str_format("invalid output format '%s'", toks[2].c_str()));
-					}
+					continue;
 				}
 			}
 		}
