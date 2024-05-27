@@ -223,7 +223,9 @@ void Program::restore_state(
 	std::function<void()> _on_success,
 	std::function<void(std::string)> _on_fail)
 {
-	m_gui->show_message("Restoring state...");
+	if(m_gui) {
+		m_gui->show_message("Restoring state...");
+	}
 
 	/* The actual restore needs to be executed outside RmlUi's event manager,
 	 * otherwise a deadlock on the RmlUi mutex caused by the SysLog will occur.
@@ -691,7 +693,7 @@ void Program::parse_arguments(int argc, char** argv)
 
 	opterr = 0;
 
-	while((c = getopt(argc, argv, "v:c:u:")) != -1) {
+	while((c = getopt(argc, argv, "v:c:u:s:")) != -1) {
 		switch(c) {
 			case 'c': {
 				m_cfg_file = "";
@@ -728,6 +730,22 @@ void Program::parse_arguments(int argc, char** argv)
 				level = std::min(level,LOG_VERBOSITY_MAX-1);
 				level = std::max(level,0);
 				g_syslog.set_verbosity(level);
+				break;
+			}
+			case 's': {
+				std::string state = optarg;
+				if(state.find(STATE_RECORD_BASE, 0) != 0) {
+					if(std::regex_match(state, std::regex("^[0-9]*"))) {
+						unsigned s = atol(state.c_str());
+						state = str_format(STATE_RECORD_BASE"%04u", s);
+					} else {
+						PERRF(LOG_PROGRAM, "'%s' is not a valid savestate.\n", state.c_str());
+						state = "";
+					}
+				}
+				if(!state.empty()) {
+					restore_state({state, "","",0,0}, nullptr, nullptr);
+				}
 				break;
 			}
 			case '?':
