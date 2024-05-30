@@ -472,7 +472,7 @@ void Interface::config_changed(bool _startup)
 	}
 
 	set_hdd_active(false);
-	m_hdd = m_machine->devices().device<StorageCtrl>();
+	m_storage_ctrls = m_machine->devices().devices<StorageCtrl>();
 
 	set_video_brightness(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_BRIGHTNESS));
 	set_video_contrast(g_program.config().get_real(DISPLAY_SECTION, DISPLAY_CONTRAST));
@@ -736,12 +736,15 @@ void Interface::update()
 	}
 	} // lock_guard
 
-	if(m_hdd) {
-		// Hard Disc Drive
-		bool hdd_busy = m_hdd->is_busy();
-		if(hdd_busy && m_leds.hdd==false) {
+	if(!m_storage_ctrls.empty()) {
+		// Hard Disc Drives
+		bool busy = false;
+		for(const auto & ctrl : m_storage_ctrls) {
+			busy = busy || ctrl->is_busy();
+		}
+		if(busy && m_leds.hdd==false) {
 			set_hdd_active(true);
-		} else if(!hdd_busy && m_leds.hdd==true) {
+		} else if(!busy && m_leds.hdd==true) {
 			set_hdd_active(false);
 		}
 	}

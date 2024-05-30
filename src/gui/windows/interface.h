@@ -176,7 +176,7 @@ protected:
 
 	std::mutex m_drives_mutex; // to be acquired for every access to UIDrive
 
-	StorageCtrl *m_hdd = nullptr;
+	std::vector<StorageCtrl*> m_storage_ctrls;
 
 	bool m_audio_enabled = false;
 	GUIDrivesFX m_drives_audio;

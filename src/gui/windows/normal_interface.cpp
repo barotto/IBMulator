@@ -415,7 +415,7 @@ void NormalInterface::config_changed(bool _startup)
 		drive_block_c_el->AppendChild(std::move(uidrive_el));
 	}
 
-	m_hdd_led_c->SetClass("invisible", !m_hdd);
+	m_hdd_led_c->SetClass("invisible", m_storage_ctrls.empty());
 }
 
 void NormalInterface::action(int _action)
