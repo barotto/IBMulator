@@ -153,7 +153,8 @@ void FloppyDrive::reset(unsigned type)
 			m_s.wpt = WRITE_PROT;
 		}
 		m_s.ready_counter = 0;
-		m_s.boot_time = 0;
+		m_s.spin_boot_time = 0;
+		m_s.seek_boot_time = 0;
 	}
 
 	if(type != DEVICE_SOFT_RESET) {
@@ -383,10 +384,10 @@ void FloppyDrive::play_seek_sound(uint8_t _to_cyl)
 		return;
 	}
 	if(is_motor_on()) {
-		if(m_s.boot_time == 0) {
-			m_s.boot_time = 1;
-			if(m_fx.boot(m_image != nullptr)) {
-				m_s.boot_time = g_machine.get_virt_time_ns();
+		if(m_s.seek_boot_time == 0) {
+			m_s.seek_boot_time = 1;
+			if(m_fx.seek_boot(m_image != nullptr)) {
+				m_s.seek_boot_time = g_machine.get_virt_time_ns();
 				return;
 			}
 		}
@@ -417,12 +418,10 @@ void FloppyDrive::mon_w(bool _state)
 			m_s.ready_counter = 2;
 			index_resync();
 			if(m_fx_enabled) {
-				if(m_s.boot_time == 0) {
-					m_s.boot_time = 1;
-					if(m_fx.boot(true)) {
-						m_s.boot_time = g_machine.get_virt_time_ns();
-					} else {
-						m_fx.spin(true, true);
+				if(m_s.spin_boot_time == 0) {
+					m_s.spin_boot_time = 1;
+					if(m_fx.spin_boot(true)) {
+						m_s.spin_boot_time = g_machine.get_virt_time_ns();
 					}
 				} else {
 					m_fx.spin(true, true);
@@ -545,7 +544,7 @@ void FloppyDrive::step_to(uint8_t cyl, uint64_t _time_to_reach)
 		}
 		auto now = g_machine.get_virt_time_ns();
 		m_s.step_time = now + _time_to_reach;
-		if(m_s.boot_time + 500_ms < now) {
+		if(m_s.seek_boot_time + 500_ms < now) {
 			play_seek_sound(cyl);
 		}
 		m_s.cyl = cyl;

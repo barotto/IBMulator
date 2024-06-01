@@ -43,13 +43,14 @@ private:
 		FDD_SEEK_UP,
 		FDD_SEEK_DOWN,
 		FDD_SEEK_BOOT,
-		FDD_SNATCH,
-		FDD_SNATCH_BOOT
+		FDD_SPIN_BOOT,
+		FDD_SNATCH
 	};
 	static std::vector<AudioBuffer> ms_buffers[2];
 	const static SoundFX::samples_t ms_samples[2];
 	std::atomic<bool> m_snatch = false;
-	uint64_t m_booting = 0;
+	uint64_t m_seek_boot_time = 0;
+	bool m_spin_boot = false;
 	uint64_t m_spin_time = 0;
 	FloppyFX::FDDType m_fdd_type = FDD_3_5;
 
@@ -62,7 +63,8 @@ public:
 	void config_changed() {}
 	void spin(bool _spinning, bool _change_state);
 	void snatch(bool _value=true) { m_snatch = _value; }
-	bool boot(bool _wdisk);
+	bool spin_boot(bool _wdisk);
+	bool seek_boot(bool _wdisk);
 
 	void create_seek_samples(uint64_t _time_span_ns, bool _first_upd);
 	void create_spin_samples(uint64_t _time_span_ns, bool _first_upd);

@@ -90,7 +90,8 @@ protected:
 
 		int  ready_counter;
 
-		uint64_t boot_time; // boot time or event (for SoundFX)
+		uint64_t spin_boot_time; // boot time or event (for SoundFX)
+		uint64_t seek_boot_time; // boot time or event (for SoundFX)
 	} m_s;
 
 	FloppyEvents::ActivityCbFn m_activity_cb;

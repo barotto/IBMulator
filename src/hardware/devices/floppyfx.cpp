@@ -33,9 +33,9 @@ const SoundFX::samples_t FloppyFX::ms_samples[2] = {
 	{"5.25 drive seek step",     FDD_SAMPLES_DIR "5_25_drive_seek_step.wav"},
 	{"5.25 drive seek up",       FDD_SAMPLES_DIR "5_25_drive_seek_up.wav"},
 	{"5.25 drive seek down",     FDD_SAMPLES_DIR "5_25_drive_seek_down.wav"},
-	{"5.25 drive seek boot",     ""},
-	{"5.25 drive snatch",        ""},
-	{"5.25 drive snatch boot",   ""}
+	{"5.25 drive seek boot",     FDD_SAMPLES_DIR "5_25_drive_boot.wav"},
+	{"5.25 drive spin boot",     ""},
+	{"5.25 drive snatch",        ""}
 	},{ // 3_5
 	{"3.5 drive spin",          FDD_SAMPLES_DIR "3_5_drive_spin.wav"},
 	{"3.5 drive spin start",    FDD_SAMPLES_DIR "3_5_drive_spin_start.wav"},
@@ -44,8 +44,8 @@ const SoundFX::samples_t FloppyFX::ms_samples[2] = {
 	{"3.5 drive seek up",       FDD_SAMPLES_DIR "3_5_drive_seek_up.wav"},
 	{"3.5 drive seek down",     FDD_SAMPLES_DIR "3_5_drive_seek_down.wav"},
 	{"3.5 drive seek boot",     FDD_SAMPLES_DIR "3_5_drive_boot.wav"},
-	{"3.5 drive snatch",        FDD_SAMPLES_DIR "3_5_drive_snatch.wav"},
-	{"3.5 drive snatch boot",   FDD_SAMPLES_DIR "3_5_drive_boot_disk.wav"}
+	{"3.5 drive spin boot",     FDD_SAMPLES_DIR "3_5_drive_boot_disk.wav"},
+	{"3.5 drive snatch",        FDD_SAMPLES_DIR "3_5_drive_snatch.wav"}
 	}
 };
 
@@ -90,7 +90,8 @@ void FloppyFX::install(const std::string &_drive, FloppyFX::FDDType _fdd_type)
 
 void FloppyFX::reset()
 {
-	m_booting = 0;
+	m_spin_boot = false;
+	m_seek_boot_time = 0;
 	m_snatch = false;
 }
 
@@ -112,26 +113,24 @@ void FloppyFX::spin(bool _spinning, bool _change_state)
 	DriveFX::spin(_spinning, _change_state);
 }
 
-bool FloppyFX::boot(bool _wdisk)
+bool FloppyFX::spin_boot(bool _wdisk)
 {
-	if(_wdisk) {
-		if(!ms_samples[m_fdd_type][FDD_SNATCH_BOOT].file.empty()) {
-			// this will run when the drive starts the motor with the disk inserted
-			m_booting = !ms_samples[m_fdd_type][FDD_SNATCH_BOOT].file.empty();
-			spin(true, true);
-			return true;
-		}
-	} else {
-		if(!ms_samples[m_fdd_type][FDD_SEEK_BOOT].file.empty()) {
-			// this will run when the drive starts the recalibrate's first seek without a disk
-			SeekEvent event = {};
-			event.time = g_machine.get_virt_time_us();
-			event.distance = 0.0;
-			event.userdata = FDD_SEEK_BOOT;
-			m_seek_events.push(event);
-			m_channels.seek->enable(true);
-			return true;
-		}
+	m_spin_boot = (_wdisk && !ms_samples[m_fdd_type][FDD_SPIN_BOOT].file.empty());
+	spin(true, true);
+	return m_spin_boot;
+}
+
+bool FloppyFX::seek_boot(bool _wdisk)
+{
+	bool spin_boot = (_wdisk && !ms_samples[m_fdd_type][FDD_SPIN_BOOT].file.empty());
+	if(!spin_boot && !ms_samples[m_fdd_type][FDD_SEEK_BOOT].file.empty()) {
+		SeekEvent event = {};
+		event.time = g_machine.get_virt_time_us();
+		event.distance = 0.0;
+		event.userdata = FDD_SEEK_BOOT;
+		m_seek_events.push(event);
+		m_channels.seek->enable(true);
+		return true;
 	}
 	return false;
 }
@@ -149,12 +148,12 @@ void FloppyFX::create_seek_samples(uint64_t _time_span_ns, bool _first_upd)
 			const AudioBuffer *wave;
 			if(_evt.userdata == FDD_SEEK_BOOT) {
 				m_channels.seek->play(ms_buffers[m_fdd_type][_evt.userdata], _time_span);
-				m_booting = _evt.time + round(ms_buffers[m_fdd_type][_evt.userdata].duration_us());
+				m_seek_boot_time = _evt.time + round(ms_buffers[m_fdd_type][_evt.userdata].duration_us());
 				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: booting until %llu us\n",
-						m_channels.seek->name(), m_booting);
+						m_channels.seek->name(), m_seek_boot_time);
 				return;
 			}
-			if(_evt.time < m_booting) {
+			if(_evt.time < m_seek_boot_time) {
 				PDEBUGF(LOG_V1, LOG_AUDIO, "%s: seek event ignored\n", m_channels.seek->name());
 				return;
 			}
@@ -185,9 +184,9 @@ void FloppyFX::create_spin_samples(uint64_t _time_span_ns, bool _first_upd)
 	AudioBuffer *spinup;
 	if(m_fdd_type == FDD_3_5 && spin && change_state && m_snatch) {
 		PDEBUGF(LOG_V1, LOG_AUDIO, "%s: snatch\n", m_channels.spin->name());
-		if(m_booting) {
-			spinup = &ms_buffers[m_fdd_type][FDD_SNATCH_BOOT];
-			m_booting = 0;
+		if(m_spin_boot) {
+			spinup = &ms_buffers[m_fdd_type][FDD_SPIN_BOOT];
+			m_spin_boot = 0;
 		} else {
 			spinup = &ms_buffers[m_fdd_type][FDD_SNATCH];
 		}
