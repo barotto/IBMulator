@@ -227,6 +227,7 @@ share/ibmulator/sounds/floppy/5_25_drive_spin_stop.wav \
 share/ibmulator/sounds/floppy/5_25_drive_seek_step.wav \
 share/ibmulator/sounds/floppy/5_25_drive_seek_up.wav \
 share/ibmulator/sounds/floppy/5_25_drive_seek_down.wav \
+share/ibmulator/sounds/floppy/5_25_drive_boot.wav \
 share/ibmulator/sounds/floppy/3_5_disk_insert.wav \
 share/ibmulator/sounds/floppy/3_5_disk_eject.wav \
 share/ibmulator/sounds/floppy/3_5_drive_spin.wav \
