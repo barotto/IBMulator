@@ -29,7 +29,7 @@
 
 .dark #sysbkgd
 {
-	decorator: image(images/realistic_dark.png);
+	decorator: image(images/2011/realistic_dark.png);
 }
 
 .dark.nomonitor #sysbkgd
