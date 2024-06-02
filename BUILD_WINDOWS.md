@@ -18,7 +18,7 @@ We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
 1. Go to the [MSYS2 website](http://www.msys2.org), download the x86_64 package
 and follow its installation instructions.
-2. Open the **MSYS2 MSYS** shell and install the toolchain:  
+2. Launch the **MSYS2 MSYS** shell from the `MSYS2 64bit` folder and install the toolchain:  
 `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake make autoconf automake libtool git`
 3. Install the libraries needed by RmlUi and IBMulator:  
 `pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
@@ -36,8 +36,8 @@ IBMulator requires version 5.1 of this library but unfortunately it doesn't
 compile with current versions of MSYS2. For this reason we are going to use my
 patched fork.
 
-Open the **MSYS2 MINGW64** shell (you should read MINGW64 on the command line)
-and:
+Launch the **MSYS2 MINGW64** shell from the `MSYS2 64bit` folder (you should
+read MINGW64 on the command line) and:
 
 1. Move inside your workspace:
 `cd /c/workspace`

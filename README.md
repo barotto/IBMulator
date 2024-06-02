@@ -295,6 +295,11 @@ you can use.
 Otherwise if you want a floppy image with the VIDE-CDD driver you can try this:
 https://archive.org/details/mscdex-2.23-installer-incl.-vide-cdd
 
+*Note:* ATAPI drivers are not all the same and you can have different results
+depending on the running program. For example with XCDROM.SYS the stock
+Media Player included in Windows 3 won't play mixed mode CDs, while it works
+properly with VIDE-CDD.SYS.
+
 ### The GUI
 
 #### Modes of operation
@@ -1088,10 +1093,12 @@ Save machine state dialog:
 
 ### Command line options
 
-* `-c PATH` : Sets a configuration file to use
+* `-c PATH` : Sets a configuration file to use.
 * `-u PATH` : Sets a user directory from where the program reads the ini file
-and stores new files, like screenshots and savestates
-* `-v NUM`  : Sets the logging verbosity level (from 0 to 2)
+and stores new files, like screenshots and savestates.
+* `-v NUM`  : Sets the logging verbosity level. `NUM` can be `0`, `1`, or `2`.
+* `-s NAME` : Load the specified savestate. `NAME` can be a number, or the
+full savesate name, eg. `-s 1` is the ssame as `-s savestate_0001`.
 
 
 ## COMPILING

@@ -217,11 +217,11 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";                 discard_states: discard data if current state is from a savestate, otherwise commit\n"
 ";         cdrom: Install the CD-ROM drive (ATAPI).\n"
 ";                Possible values: an integer number representing the speed of the drive as a multiplicative factor (up to 72x).\n"
-";                  no: don't install the drive.\n"
-";                  1x: install a single speed drive (150KB/s)\n"
-";                  2x: install a double speed drive (300KB/s)\n"
-";                 ...\n"
-";                 72x: install a 72x drive (10MB/s)\n"
+";                 none: don't install the drive.\n"
+";                   1x: install a single speed drive (150KB/s)\n"
+";                   2x: install a double speed drive (300KB/s)\n"
+";                  ...\n"
+";                  72x: install a 72x drive (10MB/s)\n"
 		},
 
 		{ DISK_A_SECTION,
