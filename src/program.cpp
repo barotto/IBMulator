@@ -420,9 +420,15 @@ bool Program::initialize(int argc, char** argv)
 			throw std::exception();
 		}
 		m_user_dir += FS_SEP PACKAGE;
+		FileSys::create_dir(m_user_dir.c_str());
 	}
-	FileSys::create_dir(m_user_dir.c_str());
-	PINFO(LOG_V1, "User directory: %s\n", FileSys::to_utf8(m_user_dir).c_str());
+	try {
+		// the User dir might have been specified in the CLI as a relative path, we need the absolute 
+		m_user_dir = FileSys::realpath(m_user_dir.c_str());
+	} catch(std::runtime_error &e) {
+		throw std::runtime_error(str_format("Error initilizing the user directory: %s", e.what()));
+	}
+	PINFO(LOG_V0, "User directory: %s\n", m_user_dir.c_str());
 	m_config[0].set_cfg_home(m_user_dir);
 
 	cfgfile = m_user_dir + FS_SEP PACKAGE ".ini";
@@ -474,12 +480,12 @@ bool Program::initialize(int argc, char** argv)
 
 	m_datapath = get_assets_dir(argc,argv);
 	m_config[0].set_assets_home(m_datapath);
-	PINFO(LOG_V1,"Assets directory: %s\n", m_datapath.c_str());
+	PINFO(LOG_V0,"Assets directory: %s\n", m_datapath.c_str());
 
 	// User's shaders dir
 	auto user_shaders = m_config[0].get_users_shaders_path();
 	FileSys::create_dir(user_shaders.c_str());
-	PINFO(LOG_V1, "Shaders directory: %s\n", user_shaders.c_str());
+	PINFO(LOG_V0, "Shaders directory: %s\n", user_shaders.c_str());
 
 	//Capture dir, create if not exists
 	std::string capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
@@ -489,7 +495,7 @@ bool Program::initialize(int argc, char** argv)
 		capture_dir_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 	}
 	FileSys::create_dir(capture_dir_path.c_str());
-	PINFO(LOG_V1,"Capture directory: %s\n", capture_dir_path.c_str());
+	PINFO(LOG_V0,"Capture directory: %s\n", capture_dir_path.c_str());
 
 	std::string dumplog = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
@@ -719,8 +725,9 @@ void Program::parse_arguments(int argc, char** argv)
 				break;
 			}
 			case 'u':
+				PINFOF(LOG_V0, LOG_PROGRAM, "User directory specified from the command line: '%s'\n", optarg);
 				if(!FileSys::is_directory(optarg) || FileSys::access(optarg, R_OK | W_OK | X_OK) == -1) {
-					PERRF(LOG_PROGRAM, "Can't access the specified user directory\n");
+					PERRF(LOG_PROGRAM, "Can't access the specified directory! Using the default.\n");
 				} else {
 					m_user_dir = optarg;
 				}
