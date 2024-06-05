@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,6 +49,7 @@ class Program
 	std::string m_cfg_file; // the full path of ibmulator.ini
 	AppConfig m_config[2];  // 0: the start up program config, 1: the current config
 
+	bool m_start_machine;
 	std::function<void()> m_restore_fn;
 
 	void init_SDL();

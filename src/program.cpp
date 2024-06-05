@@ -55,6 +55,7 @@ m_quit(false),
 m_machine(nullptr),
 m_mixer(nullptr),
 m_gui(nullptr),
+m_start_machine(false),
 m_restore_fn(nullptr)
 {
 
@@ -606,7 +607,12 @@ bool Program::initialize(int argc, char** argv)
 	m_gui->config_changed(true);
 
 	m_pacer.set_external_sync(m_gui->vsync_enabled());
-	
+
+	if(m_start_machine) {
+		m_machine->cmd_power_on();
+		m_start_machine = false;
+	}
+
 	return true;
 }
 
@@ -699,7 +705,7 @@ void Program::parse_arguments(int argc, char** argv)
 
 	opterr = 0;
 
-	while((c = getopt(argc, argv, "v:c:u:s:")) != -1) {
+	while((c = getopt(argc, argv, "v:c:u:r:s")) != -1) {
 		switch(c) {
 			case 'c': {
 				m_cfg_file = "";
@@ -739,7 +745,7 @@ void Program::parse_arguments(int argc, char** argv)
 				g_syslog.set_verbosity(level);
 				break;
 			}
-			case 's': {
+			case 'r': {
 				std::string state = optarg;
 				if(state.find(STATE_RECORD_BASE, 0) != 0) {
 					if(std::regex_match(state, std::regex("^[0-9]*"))) {
@@ -753,6 +759,10 @@ void Program::parse_arguments(int argc, char** argv)
 				if(!state.empty()) {
 					restore_state({state, "","",0,0}, nullptr, nullptr);
 				}
+				break;
+			}
+			case 's': {
+				m_start_machine = true;
 				break;
 			}
 			case '?':

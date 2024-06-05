@@ -1093,12 +1093,13 @@ Save machine state dialog:
 
 ### Command line options
 
-* `-c PATH` : Sets a configuration file to use.
-* `-u PATH` : Sets a user directory from where the program reads the ini file
-and stores new files, like screenshots and savestates.
+* `-c PATH` : Sets a INI configuration file to use.
+* `-u PATH` : Sets the directory from where the program reads user files and
+stores screenshots and savestates.
 * `-v NUM`  : Sets the logging verbosity level. `NUM` can be `0`, `1`, or `2`.
-* `-s NAME` : Load the specified savestate. `NAME` can be a number, or the
-full savesate name, eg. `-s 1` is the ssame as `-s savestate_0001`.
+* `-r NAME` : Restore the specified savestate. `NAME` can be a number, or the
+full savesate name, eg. `-r 1` is the ssame as `-r savestate_0001`.
+* `-s`      : Start the machine.
 
 
 ## COMPILING
