@@ -494,6 +494,7 @@ void CdRomDisc::BinaryFile::load(std::string _path)
 		throw std::runtime_error(str_format("cannot open file: '%s'", _path.c_str()));
 	}
 	FileSys::get_file_stats(_path.c_str(), &m_length, nullptr);
+	m_audio_pos = 0;
 	PINFOF(LOG_V1, LOG_HDD, "CD-ROM:   loaded '%s'\n", _path.c_str());
 }
 
@@ -551,6 +552,10 @@ int CdRomDisc::BinaryFile::decode(uint8_t *_buffer, uint32_t _req_pcm_frames)
 	assert(_buffer);
 	assert(_req_pcm_frames <= MAX_REDBOOK_FRAMES);
 	assert(m_file.is_open() && m_length);
+
+	if(m_file.eof()) {
+		return DECODE_EOF;
+	}
 
 	if(static_cast<size_t>(m_file.tellg()) != m_audio_pos) {
 		if(!seek(m_audio_pos, false)) {
