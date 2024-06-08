@@ -73,7 +73,7 @@ static void MP3_quit(void)
     /* it's a no-op. */
 } /* MP3_quit */
 
-static int MP3_open(Sound_Sample *sample, const char *ext)
+static int MP3_open(Sound_Sample *sample, SDL_UNUSED const char *ext)
 {
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     drmp3 *dr = (drmp3 *) SDL_calloc(1, sizeof (drmp3));

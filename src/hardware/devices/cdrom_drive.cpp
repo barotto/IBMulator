@@ -1479,7 +1479,7 @@ bool CdRomDrive::read_sub_channel(uint8_t *buf_, size_t _bufsize, size_t &length
 			if(!m_disc->MCN().empty()) {
 				// TODO untested
 				buf[8] = 0x80; // MCVal=1 (UPC valid)
-				for(int i=0; i<14; i++) {
+				for(unsigned i=0; i<14; i++) {
 					if(i < m_disc->MCN().size()) {
 						buf[9+i] = m_disc->MCN()[i];
 					} else {

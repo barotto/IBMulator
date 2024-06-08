@@ -240,8 +240,11 @@ static Uint32 read_sample_fmt_normal(Sound_Sample *sample)
     if ((retval == 0) || (w->bytesLeft == 0))
         sample->flags |= SOUND_SAMPLEFLAG_EOF;
 
-    else if (retval == -1) /** FIXME: this error check is broken **/
+    /* FIXME: this error check is broken: retval cannot be < 0.
+     * SDL_RWread returns 0 for errors, error condition should be checked differently...
+    else if (retval == -1) 
         sample->flags |= SOUND_SAMPLEFLAG_ERROR;
+    */
 
         /* (next call this EAGAIN may turn into an EOF or error.) */
     else if (retval < internal->buffer_size)
@@ -254,8 +257,8 @@ static Uint32 read_sample_fmt_normal(Sound_Sample *sample)
         Uint32 *dst = (Uint32 *) (((Uint8 *)internal->buffer + (total * 4)) - 4);
         Uint32 i;
         for (i = 0; i < total; i++, dst--, src -= 3) {
-            const Uint32 sample = ((Uint32) src[0]) | (((Uint32) src[1]) << 8) | (((Uint32) src[2]) << 16);
-            *dst = sample << 8;  /* shift it up so the most significant bits cover the 32-bit space. */
+            const Uint32 ssample = ((Uint32) src[0]) | (((Uint32) src[1]) << 8) | (((Uint32) src[2]) << 16);
+            *dst = ssample << 8;  /* shift it up so the most significant bits cover the 32-bit space. */
         }
         retval = total * 4;
     }
@@ -278,14 +281,14 @@ static int seek_sample_fmt_normal(Sound_Sample *sample, Uint32 ms)
 } /* seek_sample_fmt_normal */
 
 
-static int rewind_sample_fmt_normal(Sound_Sample *sample)
+static int rewind_sample_fmt_normal(SDL_UNUSED Sound_Sample *sample)
 {
     /* no-op. */
     return 1;
 } /* rewind_sample_fmt_normal */
 
 
-static int read_fmt_normal(SDL_RWops *rw, fmt_t *fmt)
+static int read_fmt_normal(SDL_UNUSED SDL_RWops *rw, fmt_t *fmt)
 {
     /* (don't need to read more from the RWops...) */
     fmt->free = NULL;
@@ -665,7 +668,7 @@ static int find_chunk(SDL_RWops *rw, Uint32 id)
 } /* find_chunk */
 
 
-static int WAV_open_internal(Sound_Sample *sample, const char *ext, fmt_t *fmt)
+static int WAV_open_internal(Sound_Sample *sample, SDL_UNUSED const char *ext, fmt_t *fmt)
 {
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     SDL_RWops *rw = internal->rw;

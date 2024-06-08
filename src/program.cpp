@@ -616,8 +616,11 @@ bool Program::initialize(int argc, char** argv)
 	return true;
 }
 
-std::string Program::get_assets_dir(int /*argc*/, char** argv)
+std::string Program::get_assets_dir(int argc, char** argv)
 {
+	UNUSED(argc);
+	UNUSED(argv);
+
 	/*
 	 * DATA dir priorities:
 	 * 1. IBMULATOR_DATA_PATH env variable

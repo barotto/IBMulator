@@ -81,7 +81,7 @@ static void FLAC_quit(void)
 } /* FLAC_quit */
 
 
-static int FLAC_open(Sound_Sample *sample, const char *ext)
+static int FLAC_open(Sound_Sample *sample, SDL_UNUSED const char *ext)
 {
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     drflac *dr = drflac_open(flac_read, flac_seek, sample, NULL);

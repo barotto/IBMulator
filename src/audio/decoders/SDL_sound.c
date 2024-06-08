@@ -582,7 +582,7 @@ int Sound_SetBufferSize(Sound_Sample *sample, Uint32 newSize)
 Uint32 Sound_Decode(Sound_Sample *sample)
 {
     Sound_SampleInternal *internal = NULL;
-    int available;
+    Uint32 available;
 
         /* a boatload of sanity checks... */
     BAIL_IF_MACRO(!initialized, ERR_NOT_INITIALIZED, 0);
@@ -606,7 +606,7 @@ Uint32 Sound_Decode(Sound_Sample *sample)
     } /* if */
 
     /* call into the decoder several times until we have enough data. */
-    while ((available = SDL_AudioStreamAvailable(internal->stream)) < internal->buffer_size)
+    while ((available = (Uint32)SDL_AudioStreamAvailable(internal->stream)) < internal->buffer_size)
     {
         SDL_bool flush_stream = SDL_FALSE;
         Uint32 br;

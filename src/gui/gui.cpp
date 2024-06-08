@@ -2516,7 +2516,7 @@ void GUI::pevt_func_set_audio_ch(const ProgramEvent::Func &_func, EventPhase _ph
 	m_windows.audio_osd->set_channel(channel);
 }
 
-void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &_func, EventPhase _phase)
+void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;
@@ -2529,7 +2529,7 @@ void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &_func, EventPhas
 	m_windows.audio_osd->show();
 }
 
-void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &_func, EventPhase _phase)
+void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
 		return;

@@ -2614,6 +2614,8 @@ uint32_t StorageCtrl_ATA::atapi_cmd_start_stop_unit(int _ch, uint8_t _cmd)
 
 uint32_t StorageCtrl_ATA::atapi_cmd_stop_play_scan(int _ch, uint8_t _cmd)
 {
+	UNUSED(_cmd);
+
 	CdRomDrive *cd = selected_cd(_ch);
 	assert(cd);
 
@@ -3026,7 +3028,6 @@ uint32_t StorageCtrl_ATA::atapi_play_audio(int _ch, int64_t _start_lba, int64_t 
 		return 0;
 	}
 
-	Controller &controller = selected_ctrl(_ch);
 	Drive &drive = selected_drive(_ch);
 	CdRomDrive *cd = selected_cd(_ch);
 	assert(cd);

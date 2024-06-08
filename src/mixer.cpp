@@ -358,7 +358,7 @@ void Mixer::main_loop()
 		m_audio_status = SDL_GetAudioDeviceStatus(m_device);
 
 		active_channels.clear();
-		bool prebuffering = m_audio_status == SDL_AUDIO_PAUSED;
+
 		double vtime_ratio = 1.0;
 		uint64_t audio_time_ns = 0;
 

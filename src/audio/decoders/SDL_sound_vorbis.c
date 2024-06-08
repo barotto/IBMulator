@@ -106,7 +106,7 @@ static void VORBIS_quit(void)
     /* it's a no-op. */
 } /* VORBIS_quit */
 
-static int VORBIS_open(Sound_Sample *sample, const char *ext)
+static int VORBIS_open(Sound_Sample *sample, SDL_UNUSED const char *ext)
 {
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     SDL_RWops *rw = internal->rw;
