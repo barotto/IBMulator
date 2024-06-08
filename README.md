@@ -268,10 +268,6 @@ Audio tracks in CUE/BIN images can be of the following formats:
 * Vorbis (*.ogg)
 * MP3 (*.mp3)
 
-*Note:* audio formats other then raw binary and WAV might result in slightly
-incorrect track lengths (especially with MP3). As a result programs that expect
-a specific disc TOC might fail their disc presence check (eg. Monkey Island CD).
-
 *Note:* depending on how fast your system is, using audio formats other than raw
 binary may result in longer seek times, which may cause audio stuttering in some
 games.
@@ -1098,8 +1094,8 @@ Save machine state dialog:
 stores screenshots and savestates.
 * `-v NUM`  : Sets the logging verbosity level. `NUM` can be `0`, `1`, or `2`.
 * `-r NAME` : Restore the specified savestate. `NAME` can be a number, or the
-full savesate name, eg. `-r 1` is the ssame as `-r savestate_0001`.
-* `-s`      : Start the machine.
+full savesate name, eg. `-r 1` is the same as `-r savestate_0001`.
+* `-s`      : Starts the machine immediately after launch.
 
 
 ## COMPILING

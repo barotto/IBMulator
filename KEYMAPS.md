@@ -141,9 +141,9 @@ Valid `FUNC_* ` functions are:
 | `FUNC_TAKE_SCREENSHOT`      | take a screenshot.
 | `FUNC_TOGGLE_AUDIO_CAPTURE` | start / stop audio capture.
 | `FUNC_TOGGLE_VIDEO_CAPTURE` | start / stop video capture.
-| `FUNC_INSERT_FLOPPY`        | open the floppy disk select dialog.
-| `FUNC_EJECT_FLOPPY`         | eject floppy disk from the active floppy drive.
-| `FUNC_CHANGE_FLOPPY_DRIVE`  | change the active floppy drive (A↔B).
+| `FUNC_INSERT_MEDIUM`        | open the medium select dialog for the active drive.
+| `FUNC_EJECT_MEDIUM`         | eject the medium inserted in the active drive.
+| `FUNC_CHANGE_DRIVE`         | change the active drive (A->B->CD)
 | `FUNC_SAVE_STATE`           | open the save state dialog.
 | `FUNC_LOAD_STATE`           | open the load state dialog.
 | `FUNC_QUICK_SAVE_STATE`     | save the state to the quicksave slot.
