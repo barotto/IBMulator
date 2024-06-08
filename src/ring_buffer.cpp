@@ -82,10 +82,19 @@ size_t RingBuffer::read(uint8_t *_data)
 
 size_t RingBuffer::write(uint8_t *_data, size_t _len)
 {
+	if(!_data) {
+		return 0;
+	}
+
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	if(_data == nullptr || !_len || m_write_avail == 0) {
-		PDEBUGF(LOG_V0, LOG_COM, "WRITE OVERFLOW (0 of %zu)\n", _len);
+	if(!_len) {
+		PDEBUGF(LOG_V0, LOG_PROGRAM, "RingBuffer: nothing to write (0)\n");
+		return 0;
+	}
+
+	if(m_write_avail == 0) {
+		PDEBUGF(LOG_V0, LOG_PROGRAM, "RingBuffer: WRITE OVERFLOW: 0 of %zu\n", _len);
 		return 0;
 	}
 
@@ -110,7 +119,7 @@ size_t RingBuffer::write(uint8_t *_data, size_t _len)
 	m_write_avail -= _len;
 
 	if(_len != orig_len) {
-		PDEBUGF(LOG_V0, LOG_COM, "WRITE OVERFLOW (%zu!=%zu)\n", orig_len, _len);
+		PDEBUGF(LOG_V0, LOG_PROGRAM, "RingBuffer: WRITE OVERFLOW: %zu of %zu\n", _len, orig_len);
 	}
 	return _len;
 }
