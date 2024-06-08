@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,7 +20,7 @@
 #ifndef IBMULATOR_H
 #define IBMULATOR_H
 
-#define IBMULATOR_STATE_VERSION 3
+#define IBMULATOR_STATE_VERSION 4
 
 #define DEFAULT_HEARTBEAT    16683333
 #define CHRONO_RDTSC         false

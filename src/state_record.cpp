@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2023  Marco Bortolin
+ * Copyright (C) 2021-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -226,6 +226,7 @@ std::string StateRecord::get_version_to_release_string(unsigned _version)
 		case 1: return "0.14";
 		case 2: return "0.15-0.16";
 		case 3: return "0.17";
+		case 4: return "0.18";
 		default: return "pre-0.14";
 	}
 }
