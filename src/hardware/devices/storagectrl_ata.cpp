@@ -2494,6 +2494,7 @@ bool StorageCtrl_ATA::atapi_access_drive(int _ch, bool _spin_up, bool _blocking,
 		case CdRomDrive::DISC_NO_DISC:
 		case CdRomDrive::DISC_DOOR_OPEN:
 		case CdRomDrive::DISC_DOOR_CLOSING:
+		case CdRomDrive::DISC_EJECTING:
 			atapi_set_sense(_ch, SENSE_NOT_READY, ASC_MEDIUM_NOT_PRESENT);
 			return false;
 		case CdRomDrive::DISC_SPINNING_UP:
