@@ -1143,6 +1143,7 @@ void CdRomDrive::create_audio_samples(uint64_t _time_span_ns, bool _first_upd)
 					// try again
 					gen_frames = m_audio.track->file->decode(buff.data(), req_frames);
 					if(gen_frames == CdRomDisc::DECODE_EOF) {
+						// this case should not happen!
 						PDEBUGF(LOG_V0, LOG_MIXER, "CD-ROM: unexpected EOF\n");
 						m_s.audio.to_stop_state(true);
 					}

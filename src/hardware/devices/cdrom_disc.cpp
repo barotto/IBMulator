@@ -534,15 +534,18 @@ bool CdRomDisc::BinaryFile::seek(uint32_t _offset, bool _async)
 	assert(_offset <= MAX_REDBOOK_BYTES);
 
 	if(_offset >= m_length) {
-		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: seek: offset=%u beyond the disc size.\n", _offset);
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: seek: offset=%u beyond the track end.\n", _offset);
 		return false;
 	}
 
 	m_file.seekg(_offset, std::ios::beg);
 
+	if(m_file.fail()) {
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: seek fail: offset=%u.\n", _offset);
+		return false;
+	}
 	m_audio_pos = _offset;
-
-	return !m_file.fail();
+	return true;
 }
 
 int CdRomDisc::BinaryFile::decode(uint8_t *_buffer, uint32_t _req_pcm_frames)
@@ -553,7 +556,7 @@ int CdRomDisc::BinaryFile::decode(uint8_t *_buffer, uint32_t _req_pcm_frames)
 	assert(_req_pcm_frames <= MAX_REDBOOK_FRAMES);
 	assert(m_file.is_open() && m_length);
 
-	if(m_file.eof()) {
+	if(m_audio_pos >= m_length) {
 		return DECODE_EOF;
 	}
 
@@ -563,21 +566,21 @@ int CdRomDisc::BinaryFile::decode(uint8_t *_buffer, uint32_t _req_pcm_frames)
 		}
 	}
 
-	m_file.read(reinterpret_cast<char*>(_buffer), _req_pcm_frames * BYTES_PER_REDBOOK_PCM_FRAME);
+	uint32_t request = _req_pcm_frames * BYTES_PER_REDBOOK_PCM_FRAME;
+	uint32_t avail = m_length - m_audio_pos;
+	uint32_t to_read = std::min(request, avail);
+
+	m_file.read(reinterpret_cast<char*>(_buffer), to_read);
 
 	// Except in the constructors of std::strstreambuf, negative values of std::streamsize are never used.
 	const uint32_t bytes_read = static_cast<uint32_t>(m_file.gcount());
 
-	if(bytes_read == 0) {
-		if(m_file.eof()) {
-			return DECODE_EOF;
-		}
-		if(m_file.fail()) {
-			return DECODE_ERROR;
-		}
-	}
-
 	m_audio_pos += bytes_read;
+
+	if(m_file.fail()) {
+		PDEBUGF(LOG_V0, LOG_HDD, "CD-ROM: file read fail: read %u of %u requested.\n", bytes_read, to_read);
+		return DECODE_ERROR;
+	}
 
 	const auto dec_pcm_frames = ceil_udivide(bytes_read, BYTES_PER_REDBOOK_PCM_FRAME);
 	PDEBUGF(LOG_V3, LOG_MIXER, "CD-ROM: PCM frames decoded: %u of %u requested.\n", dec_pcm_frames, _req_pcm_frames);
