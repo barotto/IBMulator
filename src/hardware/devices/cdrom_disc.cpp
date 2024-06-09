@@ -92,7 +92,7 @@ void CdRomDisc::load(std::string _path)
 
 	for(auto & track : m_tracks) {
 		if(track.is_data()) {
-			PINFOF(LOG_V1, LOG_HDD, "CD-ROM:   "
+			PINFOF(LOG_V2, LOG_HDD, "CD-ROM:   "
 				"track %u: DATA (%s/%u), "
 				"start sector: %u, end sector: %u, "
 				"total sectors: %u (%llu bytes)\n",
@@ -101,7 +101,7 @@ void CdRomDisc::load(std::string _path)
 				track.length, track.length_bytes()
 			);
 		} else if(track.is_audio()) {
-			PINFOF(LOG_V1, LOG_HDD, "CD-ROM:   "
+			PINFOF(LOG_V2, LOG_HDD, "CD-ROM:   "
 				"track %u: AUDIO, "
 				"start: %s (%u), end: %s (%u), "
 				"total: %s (%u)\n",
