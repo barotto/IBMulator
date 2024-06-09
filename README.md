@@ -925,8 +925,11 @@ or
 device=MT-32 Synth Emulator
 ```
 
-If left empty then the default device #0 is used, which usually is the
-Microsoft GS Wavetable Synth.
+If you set the `device` key value to `auto` or empty, IBMulator will use the
+default device #0 is used, which usually is the Microsoft GS Wavetable Synth.
+
+To get the list of available devices you can launch IBMulator and look at the
+log file.
 
 #### MIDI on Linux
 
@@ -944,12 +947,11 @@ or if you want to use a specific port add its number after the name string:
 device=My Synth:1
 ```
 
-If you leave the `device` key value empty, IBMulator will use the first suitable
-port it will find.
+If you set the `device` key value to `auto` or empty, IBMulator will use the
+first suitable port it will find.
 
 To get the list of valid name strings and available ports you can launch
-IBMulator with the `device` configuration empty and look at the log file, or use
-the `pmidi` program:
+IBMulator and look at the log file, or use the `pmidi` program:
 ```
 $ pmidi -l
 ```

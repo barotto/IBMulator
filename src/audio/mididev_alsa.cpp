@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -128,12 +128,17 @@ void MIDIDev_ALSA::open(std::string _conf)
 	
 	bool show_list = true;
 	bool found = false;
-	if(_conf.empty()) {
-		PWARNF(LOG_V0, LOG_MIDI, "%s: Device configuration is missing in [%s]:%s.\n", name(), MIDI_SECTION, MIDI_DEVICE);
+	if(_conf.empty() || _conf == "auto") {
+		if(_conf.empty()) {
+			PINFOF(LOG_V0, LOG_MIDI,
+				"%s: Device configuration is missing in `[%s]:%s`.\n",
+				name(), MIDI_SECTION, MIDI_DEVICE);
+		}
+		PINFOF(LOG_V0, LOG_MIDI, "%s: Looking for a suitable port.\n", name());
 		PINFOF(LOG_V0, LOG_MIDI, "%s: Available ports:\n", name());
 		list_available_ports();
 		show_list = false;
-		
+
 		// search for the first available write capable port, except the kernel provided "Midi Through"
 		cycle_ports([this](int _cid, int _pid, const char *_cname, const char *_pname) {
 			if(std::string(_cname) != "Midi Through") {

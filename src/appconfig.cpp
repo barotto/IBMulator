@@ -289,8 +289,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 		{ MIDI_SECTION,
 ";     enabled: Enable MIDI output.\n"
-";      device: MIDI device to use. See the README for more info.\n"
-"; sysex_delay: Minimum amount of delay in milliseconds for SysEx messages. See the README for more info.\n"
+";      device: MIDI device to use. (See the README for more info).\n"
+"; sysex_delay: Minimum amount of delay in milliseconds for SysEx messages. (See the README for more info).\n"
 ";              Possible values: auto, or an integer number (0 to disable all delays).\n"
 		},
 
@@ -623,7 +623,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ MIDI_SECTION, {
 		{ MIDI_ENABLED, PROGRAM_CONFIG, PUBLIC_CFGKEY, "yes"  },
-		{ MIDI_DEVICE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ MIDI_DEVICE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto" },
 		{ MIDI_DEVTYPE, PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
 		{ MIDI_DELAY,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },

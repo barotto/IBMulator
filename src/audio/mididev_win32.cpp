@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020  Marco Bortolin
+ * Copyright (C) 2020-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -92,19 +92,22 @@ void MIDIDev_Win32::list_available_devices()
 void MIDIDev_Win32::open(std::string _conf)
 {
 	assert(!is_open());
-	
+
 	bool list_devs = true;
-	if(_conf.empty()) {
-		PWARNF(LOG_V0, LOG_MIDI, "%s: Device configuration is missing in [%s]:%s.\n", name(), MIDI_SECTION, MIDI_DEVICE);
-		
+	if(_conf.empty() || _conf == "auto") {
+		if(_conf.empty()) {
+			PINFOF(LOG_V0, LOG_MIDI,
+				"%s: Device configuration is missing in `[%s]:%s`.\n",
+				name(), MIDI_SECTION, MIDI_DEVICE);
+		}
 		PINFOF(LOG_V0, LOG_MIDI, "%s: Available devices:\n", name());
 		list_available_devices();
 		list_devs = false;
-		
-		PWARNF(LOG_V0, LOG_MIDI, "%s: Trying with default device #0 ...\n", name());
+
+		PINFOF(LOG_V0, LOG_MIDI, "%s: Trying with default device #0 ...\n", name());
 		_conf = "#0";
 	}
-	
+
 	try {
 		find_device(_conf);
 	} catch(std::exception &) {
