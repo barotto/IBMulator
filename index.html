@@ -27,7 +27,7 @@
 <li><a href="#disclaimer">Disclaimer</a>
 </li>
 </ul>
-<div style="text-align:center;">Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.17.1">v0.17.1</a></div>
+<div style="text-align:center;">Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.18">v0.18</a></div>
 
 <div>
 <a class="github-fork-ribbon" href="https://github.com/barotto/IBMulator" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
@@ -99,8 +99,9 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 <li>Intel 80286 and 80386 (SX & DX), with undefined behaviours, prefetch queue, and instruction timings</li>
 <li>IBM PS/1 model 2011, 2121 system boards, with POS and other control registers</li>
 <li>Standard PC platform devices: CMOS RTC, 8259 PIC, 8254 PIT, 8237 DMA, 8042 KBD controller</li>
-<li>IBM 8-bit XTA and ATA-1 HDD controllers with timings</li>
+<li>IBM 8-bit XTA and ATA HDD controllers with timings</li>
 <li>Intel 82077AA Floppy disk controller (Model 30 mode) with timings and magnetic flux of floppy disks</li>
+<li>ATAPI CD-ROM drive (PIO mode)</li>
 <li>IBM VGA adapter, with per-scanline emulation</li>
 <li>IBM PS/1 Audio Card, AdLib, Creative Sound Blaster (2.01, Pro, Pro 2), Roland MPU-401, PC Speaker</li>
 <li>Game, Serial (COM), and Parallel (LPT) ports</li>
@@ -128,6 +129,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 <a href="media/13-printing.png"><img src="media/thumbs/13-printing.png" title="Epson JX-80 printing a color banner" /></a>
 <a href="media/14-shaders.png"><img src="media/thumbs/14-shaders.png" title="RetroArch slang CRT shader in action with parameters window open" /></a>
 <a href="media/15-mixer.png"><img src="media/thumbs/15-mixer.png" title="The Mixer Control GUI window" /></a>
+<a href="media/16-cdrom.png"><img src="media/thumbs/16-cdrom.png" title="The CD-ROM interface with Monkey Island CD running" /></a>
 </div>
 <div class="videos">
 <a href="https://youtu.be/wm4E_qZfT6M" target="_blank"><img src="media/thumbs/video_04_monkey.png" title="IBMulator 0.14 - System boot and The Secret of Monkey Island intro with PC-Speaker and DSP filters" /></a></li>
@@ -146,7 +148,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 
 <a href="#download"><h2 id="download">Download</h2></a>
 <p>
-Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.17.1">v0.17.1</a> (released 7/jan/2024)
+Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.18">v0.18</a> (released 11/jun/2024)
 <br /><br />
 </p>
 
@@ -357,7 +359,6 @@ Type   Cyl.   Heads    Sect.   Write    Land     Size
 
 <h3>What you'll find in the next major version</h3>
 <ul>
-<li>CD-ROM emulation</li>
 <li><em>TBD</em></li>
 </ul>
 
