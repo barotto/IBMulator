@@ -63,6 +63,8 @@ share/ibmulator/gui/icons/ascending.png \
 share/ibmulator/gui/icons/audio_on.png \
 share/ibmulator/gui/icons/buttonA.png \
 share/ibmulator/gui/icons/buttonB.png \
+share/ibmulator/gui/icons/cdrom_active.png \
+share/ibmulator/gui/icons/cdrom.png \
 share/ibmulator/gui/icons/cross.png \
 share/ibmulator/gui/icons/descending.png \
 share/ibmulator/gui/icons/dotted_grip_corner.png \
