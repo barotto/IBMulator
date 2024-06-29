@@ -1,11 +1,11 @@
 <rml>
 	<head>
 		<title>Devices</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<style>
 			body
 			{
-				width: 360dp;
+				width: 390dp;
 				height: 540dp;
 				position: absolute;
 				bottom: 0;
@@ -18,9 +18,8 @@
 				margin-bottom: 10dp;
 				padding-top: 5dp;
 			}
-			.tools
+			.toolbar
 			{
-				position: relative;
 				margin-bottom: 8dp;
 			}
 			table.default tr {
@@ -133,14 +132,12 @@
 			{
 				decorator: image(icons/debugger/update.png);
 			}
-
-
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<section id="vga">
 			<h2>VGA</h2>
-			<div class="tools">
+			<div class="toolbar">
 				<button id="cmd_vga_update"><btnicon /></button>
 				<button id="cmd_vga_screenshot" class="text">screenshot</button>
 				<button id="cmd_vga_dump_state" class="text">dump state</button>

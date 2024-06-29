@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1001,17 +1001,19 @@ Rml::ElementPtr MixerControl::create_AMS_buttons(int _id, bool _auto, bool _mute
 {
 	Rml::ElementPtr container = m_wnd->CreateElement("div");
 		container->SetClassNames("ch_AMS");
+	Rml::ElementPtr toolb = m_wnd->CreateElement("div");
+		toolb->SetClassNames("toolbar");
 
 	if(_auto) {
-		Rml::ElementPtr setting = m_wnd->CreateElement("button");
-			setting->SetClassNames("ch_volume_auto romshell");
-			setting->SetId(str_format("ch_volume_auto_%d", _id));
-			setting->SetInnerRML("<span>A</span>");
+		Rml::ElementPtr autovol = m_wnd->CreateElement("button");
+			autovol->SetClassNames("ch_volume_auto romshell");
+			autovol->SetId(str_format("ch_volume_auto_%d", _id));
+			autovol->SetInnerRML("<span>A</span>");
 
-		register_target_cb(setting.get(), setting->GetId(), "click",
+		register_target_cb(autovol.get(), autovol->GetId(), "click",
 				std::bind(&MixerControl::on_volume_auto, this, _1, _id));
 
-		container->AppendChild(std::move(setting));
+		toolb->AppendChild(std::move(autovol));
 	}
 	if(_mute) {
 		Rml::ElementPtr mute = m_wnd->CreateElement("button");
@@ -1021,7 +1023,7 @@ Rml::ElementPtr MixerControl::create_AMS_buttons(int _id, bool _auto, bool _mute
 
 		register_target_cb(mute.get(), "click", std::bind(&MixerControl::on_mute, this, _1, _id));
 
-		container->AppendChild(std::move(mute));
+		toolb->AppendChild(std::move(mute));
 	}
 
 	if(_solo) {
@@ -1032,8 +1034,10 @@ Rml::ElementPtr MixerControl::create_AMS_buttons(int _id, bool _auto, bool _mute
 
 		register_target_cb(solo.get(), "click", std::bind(&MixerControl::on_solo, this, _1, _id));
 
-		container->AppendChild(std::move(solo));
+		toolb->AppendChild(std::move(solo));
 	}
+
+	container->AppendChild(std::move(toolb));
 
 	return container;
 }
@@ -1211,6 +1215,9 @@ Rml::ElementPtr MixerControl::create_filters_setting(int _chid, bool _has_auto)
 		label->SetClassNames("ch_label");
 		label->SetInnerRML("Filters");
 
+	Rml::ElementPtr toolb = m_wnd->CreateElement("div");
+		toolb->SetClassNames("toolbar");
+
 	Rml::ElementPtr enable = m_wnd->CreateElement("input");
 		enable->SetId(str_format("ch_filter_en_%d", _chid));
 		enable->SetClassNames("ch_feature_enable romshell");
@@ -1225,9 +1232,11 @@ Rml::ElementPtr MixerControl::create_filters_setting(int _chid, bool _has_auto)
 	register_target_cb(enable.get(), "change", std::bind(&MixerControl::on_filter_enable, this, _1, _chid));
 	register_target_cb(setting.get(), "click", std::bind(&MixerControl::on_filter_setting, this, _1, _chid));
 
+	toolb->AppendChild(std::move(enable));
+	toolb->AppendChild(std::move(setting));
+
 	container->AppendChild(std::move(label));
-	container->AppendChild(std::move(enable));
-	container->AppendChild(std::move(setting));
+	container->AppendChild(std::move(toolb));
 
 	container->AppendChild(create_filters_container(_chid, _has_auto));
 

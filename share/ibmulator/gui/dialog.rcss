@@ -5,25 +5,28 @@ body
 	border-color: #28374d;
 }
 
-div#window
-{
-	padding: 20dp;
-}
-
 #buttons_right
 {
 	position: absolute;
-	bottom: 20dp;
-	right: 20dp;
+	bottom: 0;
+	right: 0;
 	text-align: right;
 }
 
 #buttons_left
 {
 	position: absolute;
-	bottom: 20dp;
-	left: 20dp;
+	bottom: 0;
+	left: 0;
 	text-align: left;
+}
+
+#buttons_center
+{
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	text-align: center;
 }
 
 #buttons_right button

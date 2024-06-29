@@ -573,26 +573,20 @@ bool Program::initialize(int argc, char** argv)
 	static std::map<std::string, unsigned> renderers = {
 		{ "", GUI_RENDERER_OPENGL },
 		{ "opengl", GUI_RENDERER_OPENGL },
-		{ "accelerated", GUI_RENDERER_SDL2D },
-		{ "software", GUI_RENDERER_SDL2D },
+		{ "accelerated", GUI_RENDERER_SDL2D }
 	};
-	unsigned renderer = m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers);
+	unsigned renderer = m_config[0].get_enum(GUI_SECTION, GUI_RENDERER, renderers, GUI_RENDERER_SDL2D);
 	switch(renderer) {
-		case GUI_RENDERER_OPENGL:
+		case GUI_RENDERER_OPENGL: {
 			m_gui = std::make_unique<GUI_OpenGL>();
 			break;
+		}
 		case GUI_RENDERER_SDL2D: {
-			std::string flavor = m_config[0].get_string(GUI_SECTION, GUI_RENDERER);
-			if(flavor == "accelerated") {
-				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_ACCELERATED);
-			} else {
-				m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_SOFTWARE);
-			}
+			m_gui = std::make_unique<GUI_SDL2D>(SDL_RENDERER_ACCELERATED);
 			break;
 		}
 		default:
-			assert(false);
-			break;
+			throw std::logic_error("invalid renderer value");
 	}
 
 	try {

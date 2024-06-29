@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -65,6 +65,7 @@ RmlRenderer_OpenGL::RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_scr
 				break;
 			}
 		}
+		m_mult_alpha_uniform = m_program_texture->find_uniform("uMultAlpha");
 	} catch(ShaderExc &e) {
 		e.log_print(LOG_GUI);
 		throw;
@@ -118,39 +119,7 @@ RmlRenderer_OpenGL::~RmlRenderer_OpenGL()
 {
 }
 
-// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
-void RmlRenderer_OpenGL::RenderGeometry(Rml::Vertex* vertices,
-		int num_vertices, int* indices, int num_indices,
-		const Rml::TextureHandle texture,
-		const Rml::Vector2f &translation)
-{
-	mat4f mv = mat4f::I;
-	mv.load_translation(translation.x, translation.y, 0);
-
-	if(texture) {
-		m_program_texture->use();
-		for(auto &sampler : m_program_texture->get_samplers()) {
-			if(sampler.category == GLShaderProgram::Sampler2D::Category::Source) {
-				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %llu\n", texture);
-				m_program_texture->set_uniform_sampler2D(sampler.tex_uniforms, sampler.gl_sampler, texture);
-				break;
-			}
-		}
-		m_program_texture->set_uniform_mat4f(m_program_texture->get_builtin(GLShaderProgram::ModelView), mv);
-	} else {
-		m_program_color->use();
-		m_program_color->set_uniform_mat4f(m_program_color->get_builtin(GLShaderProgram::ModelView), mv);
-	}
-
-	GLCALL( glBindVertexArray(m_vao) );
-	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, m_vbo) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Rml::Vertex) * num_vertices, vertices, GL_DYNAMIC_DRAW) );
-	GLCALL( glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, indices) );
-	GLCALL( glBindVertexArray(0) );
-}
-
-Rml::CompiledGeometryHandle RmlRenderer_OpenGL::CompileGeometry(Rml::Vertex* vertices,
-		int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture)
+Rml::CompiledGeometryHandle RmlRenderer_OpenGL::CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices)
 {
 	GLuint vao = 0;
 	GLuint vbo = 0;
@@ -162,7 +131,7 @@ Rml::CompiledGeometryHandle RmlRenderer_OpenGL::CompileGeometry(Rml::Vertex* ver
 	GLCALL( glBindVertexArray(vao) );
 
 	GLCALL( glBindBuffer(GL_ARRAY_BUFFER, vbo) );
-	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Rml::Vertex) * num_vertices, (const void*)vertices, GL_STATIC_DRAW) );
+	GLCALL( glBufferData(GL_ARRAY_BUFFER, sizeof(Rml::Vertex) * vertices.size(), (const void*)vertices.data(), GL_STATIC_DRAW) );
 
 	GLCALL( glVertexAttribPointer(
 		0,        // attribute 0 = vertices
@@ -194,34 +163,43 @@ Rml::CompiledGeometryHandle RmlRenderer_OpenGL::CompileGeometry(Rml::Vertex* ver
 	GLCALL( glEnableVertexAttribArray(2) );
 
 	GLCALL( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo) );
-	GLCALL( glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * num_indices, (const void*)indices, GL_STATIC_DRAW) );
+	GLCALL( glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * indices.size(),
+			(const void*)indices.data(), GL_STATIC_DRAW) );
 	GLCALL( glBindVertexArray(0) );
 
 	PDEBUGF(LOG_V5, LOG_GUI, "Compiled geometry\n");
 
 	CompiledGeometry *geometry = new CompiledGeometry;
-	geometry->gl_texture = texture;
 	geometry->gl_vao = vao;
 	geometry->gl_vbo = vbo;
 	geometry->gl_ibo = ibo;
-	geometry->draw_count = num_indices;
+	geometry->draw_count = (GLsizei)indices.size();
 
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(geometry);
 }
 
-void RmlRenderer_OpenGL::RenderCompiledGeometry(Rml::CompiledGeometryHandle handle, const Rml::Vector2f& translation)
+void RmlRenderer_OpenGL::RenderGeometry(Rml::CompiledGeometryHandle _geometry,
+		Rml::Vector2f _translation, Rml::TextureHandle _texture)
 {
-	CompiledGeometry *geometry = reinterpret_cast<CompiledGeometry*>(handle);
+	CompiledGeometry *geometry = reinterpret_cast<CompiledGeometry*>(_geometry);
 
 	mat4f mv = mat4f::I;
-	mv.load_translation(translation.x, translation.y, 0);
+	mv.load_translation(_translation.x, _translation.y, 0);
 
-	if(geometry->gl_texture) {
+	if(_texture) {
+		auto tex = m_textures.find(_texture);
+		if(tex == m_textures.end()) {
+			PDEBUGF(LOG_V0, LOG_GUI, "Cannot find texture %llu!\n", _texture);
+			return;
+		}
 		m_program_texture->use();
 		for(auto &sampler : m_program_texture->get_samplers()) {
 			if(sampler.category == GLShaderProgram::Sampler2D::Category::Source) {
-				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %u\n", geometry->gl_texture);
-				m_program_texture->set_uniform_sampler2D(sampler.tex_uniforms, sampler.gl_sampler, geometry->gl_texture);
+				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %u\n", _texture);
+				m_program_texture->set_uniform_sampler2D(sampler.tex_uniforms, sampler.gl_sampler, tex->second.gl_texture);
+				if(m_mult_alpha_uniform) {
+					m_program_texture->set_uniform_int(m_mult_alpha_uniform, tex->second.mult_alpha);
+				}
 				break;
 			}
 		}
@@ -236,18 +214,17 @@ void RmlRenderer_OpenGL::RenderCompiledGeometry(Rml::CompiledGeometryHandle hand
 	GLCALL( glBindVertexArray(0) );
 }
 
-void RmlRenderer_OpenGL::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle handle)
+void RmlRenderer_OpenGL::ReleaseGeometry(Rml::CompiledGeometryHandle handle)
 {
 	CompiledGeometry *geometry = reinterpret_cast<CompiledGeometry*>(handle);
-	
-	glDeleteVertexArrays(1, &geometry->gl_vao);
-	glDeleteBuffers(1, &geometry->gl_vbo);
-	glDeleteBuffers(1, &geometry->gl_ibo);
+
+	GLCALL( glDeleteVertexArrays(1, &geometry->gl_vao) );
+	GLCALL( glDeleteBuffers(1, &geometry->gl_vbo) );
+	GLCALL( glDeleteBuffers(1, &geometry->gl_ibo) );
 
 	delete geometry;
 }
 
-// Called by RmlUi when it wants to enable or disable scissoring to clip content.
 void RmlRenderer_OpenGL::EnableScissorRegion(bool enable)
 {
 	if(enable) {
@@ -257,18 +234,22 @@ void RmlRenderer_OpenGL::EnableScissorRegion(bool enable)
 	}
 }
 
-// Called by RmlUi when it wants to change the scissor region.
-void RmlRenderer_OpenGL::SetScissorRegion(int x, int y, int width, int height)
+void RmlRenderer_OpenGL::SetScissorRegion(Rml::Rectanglei region)
 {
-	int w_width, w_height;
-	SDL_GetWindowSize(m_screen, &w_width, &w_height);
-	GLCALL( glScissor(x, w_height - (y + height), width, height) );
+	if(region.Valid()) {
+		GLCALL( glEnable(GL_SCISSOR_TEST) );
+		int w_width, w_height;
+		SDL_GetWindowSize(m_screen, &w_width, &w_height);
+		const int x = Rml::Math::Clamp(region.Left(), 0, w_width);
+		const int y = Rml::Math::Clamp(w_height - region.Bottom(), 0, w_height);
+		GLCALL( glScissor(x, y, region.Width(), region.Height()) );
+	} else {
+		GLCALL( glDisable(GL_SCISSOR_TEST) );
+	}
 }
 
-// Called by RmlUi when a texture is required to be built from an
-// internally-generated sequence of pixels.
-bool RmlRenderer_OpenGL::GenerateTexture(Rml::TextureHandle &texture_handle,
-		const Rml::byte *source, const Rml::Vector2i &source_dimensions)
+Rml::TextureHandle RmlRenderer_OpenGL::GenerateTexture(
+		Rml::Span<const Rml::byte> source_data, Rml::Vector2i source_dimensions)
 {
 	GLuint gltex;
 	GLCALL( glGenTextures(1, &gltex) );
@@ -276,17 +257,24 @@ bool RmlRenderer_OpenGL::GenerateTexture(Rml::TextureHandle &texture_handle,
 	GLCALL( glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
 			source_dimensions.x, source_dimensions.y,
 			0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-			source
+			source_data.data()
 			)
 	);
-	texture_handle = gltex;
+	GLCALL( glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR) );
+	GLCALL( glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR) );
+	GLCALL( glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT) );
+	GLCALL( glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT) );
+	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 
-	PDEBUGF(LOG_V5, LOG_GUI, "Generated ephemeral tex %llu\n", texture_handle);
+	Rml::TextureHandle handle = static_cast<Rml::TextureHandle>(gltex);
+	m_textures[handle] = CompiledTexture{ gltex, false };
 
-	return true;
+	PDEBUGF(LOG_V4, LOG_GUI, "Generated ephemeral tex %llu, count: %llu\n", gltex, m_textures.size());
+
+	return gltex;
 }
 
-uintptr_t RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
+Rml::TextureHandle RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
 {
 	assert(_surface);
 	if(_surface->format->BytesPerPixel != 4) {
@@ -305,16 +293,24 @@ uintptr_t RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
 	);
 	SDL_UnlockSurface(_surface);
 
-	PDEBUGF(LOG_V5, LOG_GUI, "Generated tex %llu\n", uint64_t(gltex));
+	Rml::TextureHandle handle = static_cast<Rml::TextureHandle>(gltex);
+	m_textures[handle] = CompiledTexture{ gltex, true };
 
-	return gltex;
+	PDEBUGF(LOG_V4, LOG_GUI, "Generated tex %llu, count: %llu\n", handle, m_textures.size());
+
+	return handle;
 }
 
-// Called by RmlUi when a loaded texture is no longer required.
-void RmlRenderer_OpenGL::ReleaseTexture(Rml::TextureHandle texture_handle)
+void RmlRenderer_OpenGL::ReleaseTexture(Rml::TextureHandle _handle)
 {
-	PDEBUGF(LOG_V5, LOG_GUI, "Releasing tex %llu\n", texture_handle);
-	GLCALL( glDeleteTextures(1, (GLuint*)&texture_handle) );
+	auto tex = m_textures.find(_handle);
+	if(tex == m_textures.end()) {
+		PDEBUGF(LOG_V0, LOG_GUI, "Cannot release texture %llu: not found!\n", _handle);
+		return;
+	}
+	GLCALL( glDeleteTextures(1, &tex->second.gl_texture) );
+	m_textures.erase(tex);
+	PDEBUGF(LOG_V4, LOG_GUI, "Released texture %llu, count: %llu\n", _handle, m_textures.size());
 }
 
 void RmlRenderer_OpenGL::SetDimensions(int _width, int _height)

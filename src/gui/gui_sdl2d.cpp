@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include <SDL.h>
 #include "stb/stb.h"
 
+SDL_BlendMode GUI_SDL2D::ms_blend_mode = SDL_BLENDMODE_BLEND;
 
 GUI_SDL2D::GUI_SDL2D()
 : GUI(),
@@ -37,6 +38,14 @@ GUI_SDL2D::GUI_SDL2D(unsigned _rendflags)
   m_SDL_renderer(nullptr),
   m_rendflags(_rendflags)
 {
+	ms_blend_mode = SDL_ComposeCustomBlendMode(
+		SDL_BLENDFACTOR_ONE,
+		SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+		SDL_BLENDOPERATION_ADD,
+		SDL_BLENDFACTOR_ONE,
+		SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+		SDL_BLENDOPERATION_ADD
+	);
 }
 
 GUI_SDL2D::~GUI_SDL2D()
@@ -47,13 +56,15 @@ void GUI_SDL2D::render()
 {
 	SDL_Rect rect{0,0,m_width,m_height};
 	SDL_RenderSetViewport(m_SDL_renderer, &rect);
-	
+
 	SDL_SetRenderDrawColor(m_SDL_renderer, m_backcolor.r, m_backcolor.g, m_backcolor.b, m_backcolor.a);
 	SDL_RenderClear(m_SDL_renderer);
-	
+
 	// this is a rendering of the screen only (which includes the VGA image).
 	// GUI controls are rendered later by the RmlUi context
 	m_windows.interface->render_screen();
+
+	SDL_SetRenderDrawBlendMode(m_SDL_renderer, ms_blend_mode);
 
 	ms_rml_mutex.lock();
 	m_rml_context->Render();
@@ -64,17 +75,8 @@ void GUI_SDL2D::render()
 
 void GUI_SDL2D::create_window(int _flags)
 {
-	if(m_rendflags & SDL_RENDERER_ACCELERATED) {
-		PINFOF(LOG_V0, LOG_GUI, "Using the hardware accelerated renderer\n");
-	} else {
-		PINFOF(LOG_V0, LOG_GUI, "Using the software renderer\n");
-		if(m_vsync) {
-			// force vsync disabled or the renderer creation will fail
-			m_vsync = false;
-			PINFOF(LOG_V0, LOG_GUI, "VSync is unsupported by this renderer and will be disabled\n");
-		}
-	}
-	
+	PINFOF(LOG_V0, LOG_GUI, "Using the accelerated 2D renderer.\n");
+
 	m_SDL_window = SDL_CreateWindow(m_wnd_title.c_str(), 
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
 		m_width, m_height, _flags);
@@ -99,7 +101,7 @@ void GUI_SDL2D::create_window(int _flags)
 
 void GUI_SDL2D::create_renderer()
 {
-	m_rml_renderer = std::make_unique<RmlRenderer_SDL2D>(m_SDL_renderer, m_SDL_window, m_rendflags);
+	m_rml_renderer = std::make_unique<RmlRenderer_SDL2D>(m_SDL_renderer, m_SDL_window);
 }
 
 void GUI_SDL2D::shutdown_SDL()

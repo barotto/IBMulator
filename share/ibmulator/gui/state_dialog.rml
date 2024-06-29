@@ -10,7 +10,7 @@
 			width: 90%;
 			height: 90%;
 			min-width: 640dp;
-			min-height: 320dp;
+			min-height: 400dp;
 			margin: auto;
 		}
 	</style>
@@ -24,30 +24,30 @@
 		</div>
 	</div>
 	<form id="buttons_left">
-		<div id="mode">
+		<div id="mode" class="toolbar">
 		<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell"><btnicon class="icon_grid" /><span></span></input>
 		<input type="radio" name="mode" value="list" id="mode_list" class="romshell"><btnicon class="icon_list" /><span></span></input>
 		</div>
-		by
-		<div id="order">
-		<input type="radio" name="order" value="date"  id="order_date" class="romshell"><span>date</span></input>
-		<input type="radio" name="order" value="title" id="order_title" class="romshell"><span>title</span></input>
-		<input type="radio" name="order" value="slot"  id="order_slot" class="romshell"><span>slot</span></input>
+		<div id="order" class="toolbar">
+		<span>by</span>
+		<input type="radio" name="order" value="date"  id="order_date" class="romshell texty"><span>date</span></input>
+		<input type="radio" name="order" value="title" id="order_title" class="romshell texty"><span>title</span></input>
+		<input type="radio" name="order" value="slot"  id="order_slot" class="romshell texty"><span>slot</span></input>
 		</div>
-		<div id="asc_desc">
+		<div id="asc_desc" class="toolbar">
 		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
 		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
 		</div>
-		<div id="extra_btns">
-		<button id="new_save" class="romshell"><span>New</span></button>
+		<div id="extra_btns" class="toolbar">
+		<button id="new_save" class="romshell text"><span>New</span></button>
 		</div>
 	</form>
-	<div id="buttons_right">
-		<div id="buttons_entry" class="invisible">
-			<button id="delete" class="romshell entry_button"><span>Delete</span></button>
-			<button id="action" class="romshell entry_button"><span id="action_label"></span></button>
+	<div id="buttons_right" class="toolbar">
+		<div id="buttons_entry" class="invisible toolbar">
+			<button id="delete" class="romshell text entry_button"><span>Delete</span></button>
+			<button id="action" class="romshell text entry_button"><span id="action_label"></span></button>
 		</div>
-		<button id="cancel" class="romshell"><span>Cancel</span></button>
+		<button id="cancel" class="romshell text"><span>Cancel</span></button>
 	</div>
 </body>
 </template>

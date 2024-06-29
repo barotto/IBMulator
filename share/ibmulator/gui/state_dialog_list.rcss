@@ -5,7 +5,7 @@
 	top: 0;
 	left: 0;
 	right: 0;
-	margin: 40dp 340dp 55dp 5dp;
+	margin: 0dp 330dp 30dp 0dp;
 	overflow: auto;
 	padding: 0 8dp 0 0;
 }
@@ -13,10 +13,10 @@
 #panel.list 
 {
 	position: absolute;
-	right: 10dp;
-	top: 40dp;
+	right: 0dp;
+	top: 0dp;
 	width: 320dp;
-	bottom: 55dp;
+	bottom: 30dp;
 	margin: 4dp;
 
 	border-left: 1dp;
@@ -68,11 +68,12 @@
 
 .list .entry
 {
+	position: relative;
 	display: inline-block;
 	width: 100%;
 	height: 50dp;
 	background-color: #28374d;
-	margin: 4dp 0 6dp 0;
+	margin: 4dp 0 0dp 0;
 }
 
 .list .entry .data

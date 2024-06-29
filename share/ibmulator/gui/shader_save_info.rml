@@ -1,61 +1,55 @@
 <rml>
 	<head>
 		<title>Save shader preset</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
+		<link type="text/rcss" href="dialog.rcss"/>
 		<style>
 			body
 			{
 				width: 450dp;
-				height: 190dp;
-				min-height: 190dp;
+				height: 220dp;
+				min-height: 220dp;
 				min-width: 450dp;
-				max-height: 190dp;
+				max-height: 220dp;
 				margin: auto;
 				background-color: #3C5464FF;
 			}
-			div#window
-			{
-				padding: 20dp;
-			}
-			#buttons {
-				position: absolute;
-				bottom: 20dp;
-				right: 20dp;
-				left: 20dp;
-				text-align: right;
-			}
-			button.romshell
-			{
-				margin-left: 10dp;
-			}
 			#shader_name,
-			#directory {
+			#directory
+			{
 				width: 100%;
 			}
-			#save_all {
-				margin-top: 10dp;
+			#save_all
+			{
 				width: 100dp;
+				margin-right: 10dp;
 			}
-			#add_comments {
-				margin-left: 5dp;
+			#add_comments
+			{
 				width: 140dp;
+			}
+			#preset_options
+			{
+				margin-top: 5dp;
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<div id="info">
 			Enter the preset name:
 			<input type="text" id="shader_name"/>
 		</div>
-		<div style="margin-top: 10dp">
-		The file will be saved in:
-		<input type="text" id="directory" class="disabled" />
-		<input id="save_all" type="checkbox" class="romshell"><span>Save all</span></input>
-		<input id="add_comments" type="checkbox" class="romshell"><span>Add comments</span></input>
+		<div>
+			The file will be saved in:
+			<input type="text" id="directory" class="disabled" />
 		</div>
-		<div id="buttons">
-			<button id="save" class="romshell"><span>Save</span></button>
-			<button id="cancel" class="romshell"><span>Cancel</span></button>
+		<div id="preset_options" class="toolbar">
+			<input id="save_all" type="checkbox" class="romshell"><span>Save all</span></input>
+			<input id="add_comments" type="checkbox" class="romshell"><span>Add comments</span></input>
+		</div>
+		<div id="buttons_right" class="toolbar">
+			<button id="save" class="romshell text"><span>Save</span></button>
+			<button id="cancel" class="romshell text"><span>Cancel</span></button>
 		</div>
 	</body>
 </rml>

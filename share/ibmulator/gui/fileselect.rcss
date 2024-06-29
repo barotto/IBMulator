@@ -1,7 +1,12 @@
+#buttons_left
+{
+	margin-bottom: -5dp;
+}
 
 #drive
 {
 	display: none;
+	margin-top: -10dp;
 	text-align: right;
 	height: 27dp;
 	overflow: hidden;
@@ -29,6 +34,7 @@
 
 #drive input.radio
 {
+	display: inline-block;
 	box-sizing: content-box;
 	width: 48dp;
 	height: 21dp;
@@ -66,7 +72,7 @@
 	top: 0;
 	right: 0;
 	left: 0;
-	margin: 40dp 20dp 0 145dp;
+	margin-left: 145dp;
 	font-family: "Ubuntu";
 	font-size: 16dp;
 	font-weight: bold;
@@ -78,7 +84,7 @@
 
 .drives #cwd
 {
-	margin-top: 70dp
+	margin-top: 20dp
 }
 
 #cwd:hover
@@ -134,25 +140,6 @@
 	width: 100dp;
 }
 
-#buttons_entry
-{
-	display: inline-block;
-}
-
-#buttons_entry input,
-#buttons_entry button
-{
-	margin-left: 5dp;
-}
-
-#mode,
-#order,
-#asc_desc,
-#misc
-{
-	display: inline-block;
-}
-
 #mode
 {
 	margin-right: 10dp;
@@ -171,16 +158,6 @@
 #misc
 {
 	margin-left: 10dp;
-}
-
-#buttons_right
-{
-	width: 260dp;
-}
-
-#buttons_left
-{
-	width: 330dp;
 }
 
 #dir_prev btnicon
@@ -220,7 +197,8 @@
 	top: 0;
 	left: 0;
 	right: 0;
-	margin: 80dp 20dp 55dp 20dp;
+	margin-top: 40dp;
+	margin-bottom: 30dp;
 	overflow: auto;
 	padding: 0;
 }
@@ -238,7 +216,8 @@
 	top: 0;
 	right: 0;
 	width: 246dp;
-	margin: 80dp 20dp 55dp 0;
+	margin-top: 40dp;
+	margin-bottom: 30dp;
 	overflow: auto;
 	padding: 0 5dp 0 5dp;
 	display: none;
@@ -250,7 +229,7 @@
 .drives #entries_container,
 .drives #info_panel
 {
-	margin-top: 100dp;
+	margin-top: 50dp;
 }
 
 #info_panel .value
@@ -301,5 +280,5 @@
 
 .wpanel #entries_container
 {
-	margin-right: 276dp;
+	margin-right: 256dp;
 }

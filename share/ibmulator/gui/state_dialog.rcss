@@ -3,25 +3,13 @@ body
 	min-height: 360dp;
 }
 
-#buttons_right
-{
-	width: 210dp;
-}
-
 #buttons_left
 {
-	width: 390dp;
+	margin-bottom: -5dp;
 }
 
-
-#buttons_entry
+#buttons_right
 {
-	display: inline-block;
-}
-
-#buttons_entry button
-{
-	margin-left: 5dp;
 }
 
 #mode input,
@@ -34,14 +22,6 @@ body
 {
 	margin-right: 10dp;
 	display: inline-block;
-}
-
-#order,
-#asc_desc,
-#extra_btns
-{
-	display: inline-block;
-	white-space: nowrap;
 }
 
 #order input

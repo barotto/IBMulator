@@ -1,7 +1,7 @@
 <rml>
 	<head>
 		<title>Save state</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<link type="text/template" href="state_dialog.rml" />
 		<style>
 			.entry .action
@@ -19,7 +19,7 @@
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<template src="state_dialog">Save</template>
 	</body>
 </rml>

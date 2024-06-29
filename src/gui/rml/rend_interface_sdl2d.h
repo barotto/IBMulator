@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,34 +29,27 @@ class RmlRenderer_SDL2D : public RmlRenderer
 protected:
 	SDL_Rect m_scissor_region = {};
 	bool m_scissor_enabled = false;
-	bool m_accelerated = true;
+	struct GeometryView {
+		Rml::Span<const Rml::Vertex> vertices;
+		Rml::Span<const int> indices;
+	};
 
 public:
-	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen, unsigned _flags);
+	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen);
 	~RmlRenderer_SDL2D();
 
-	// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
-	void RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices,
-			int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation);
+	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices);
+	void ReleaseGeometry(Rml::CompiledGeometryHandle geometry);
+	void RenderGeometry(Rml::CompiledGeometryHandle handle, Rml::Vector2f translation, Rml::TextureHandle texture);
 
-	// Called by RmlUi when it wants to enable or disable scissoring to clip content.
 	void EnableScissorRegion(bool enable);
-	// Called by RmlUi when it wants to change the scissor region.
-	void SetScissorRegion(int x, int y, int width, int height);
+	void SetScissorRegion(Rml::Rectanglei region);
 
-	// Called by RmlUi when a texture is required to be built from an internally-generated sequence of pixels.
-	bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source,
-			const Rml::Vector2i& source_dimensions);
-	// Called by RmlUi when a loaded texture is no longer required.
+	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions);
 	void ReleaseTexture(Rml::TextureHandle texture_handle);
 	
 protected:
 	uintptr_t LoadTexture(SDL_Surface *_surface);
-
-	void render_accelerated(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
-			int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation);
-	void render_software(Rml::Vertex *_vertices, int _num_vertices, int *_indices,
-			int _num_indices, Rml::TextureHandle _texture, const Rml::Vector2f &_translation);
 };
 
 #endif

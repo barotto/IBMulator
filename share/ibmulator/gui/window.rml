@@ -1,19 +1,17 @@
-<template name="default" content="content">
+<template name="window" content="content">
 <head>
+	<link type="text/rcss" href="window.rcss"/>
 	<link type="text/rcss" href="base.rcss"/>
 	<link type="text/rcss" href="buttons.rcss"/>
-	<link type="text/rcss" href="default.rcss"/>
 </head>
-<body class="window">
+<body class="window"> <!-- window class needed for code to work! -->
 	<div id="title_bar">
 		<handle move_target="#document">
 			<div id="title">ibmulator</div>
 		</handle>
 		<button id="close"></button>
 	</div>
-	<div id="window">
-		<div id="content">
-		</div>
+	<div id="content">
 	</div>
 	<handle id="resize" size_target="#document">
 	</handle>

@@ -64,14 +64,13 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 		{ GUI_SECTION,
 ";       renderer: What video system to use for rendering. Use the one most compatible with your system.\n"
-";                 Possible values: opengl, accelerated, software.\n"
-";                       opengl: default 3D accelerated renderer with shaders support\n"
+";                 Possible values: opengl, accelerated.\n"
+";                       opengl: 3D accelerated renderer with shaders support\n"
 ";                  accelerated: hardware accelerated renderer without shaders support\n"
-";                     software: software renderer without shaders support\n"
 ";       framecap: Method to use to limit the number of displayed frames per second.\n"
 ";                 Possible values:\n"
 ";                    vga: limited by the emulated VGA frequency\n"
-";                  vsync: limited by the host monitor frequency (incompatible with the software renderer)\n"
+";                  vsync: limited by the host monitor frequency\n"
 ";                     no: no limits\n"
 ";           mode: Possible values: normal, compact, realistic.\n"
 ";                     normal: the system unit places itself at the bottom of the display and is always visible\n"

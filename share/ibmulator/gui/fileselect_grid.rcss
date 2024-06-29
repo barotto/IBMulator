@@ -5,6 +5,7 @@
 
 .grid .entry
 {
+	position: relative;
 	display: inline-block;
 	width: 80dp;
 	height: 80dp;

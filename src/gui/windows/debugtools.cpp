@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,12 +26,14 @@
 #include "mixerstate.h"
 #include "hardware/cpu.h"
 #include <RmlUi/Core.h>
+#include <RmlUi/Debugger.h>
 
 event_map_t DebugTools::ms_evt_map = {
 	GUI_EVT( "stats",    "click", DebugTools::on_stats ),
 	GUI_EVT( "debugger", "click", DebugTools::on_debugger ),
 	GUI_EVT( "devices",  "click", DebugTools::on_devices ),
 	GUI_EVT( "mixer",    "click", DebugTools::on_mixer ),
+	GUI_EVT( "rmlui",    "click", DebugTools::on_rmlui ),
 	GUI_EVT( "close",    "click", DebugTools::on_close )
 };
 
@@ -135,6 +137,11 @@ void DebugTools::on_mixer(Rml::Event &)
 	m_mixerw->toggle();
 }
 
+void DebugTools::on_rmlui(Rml::Event &)
+{
+	Rml::Debugger::SetVisible(true);
+}
+
 void DebugTools::on_close(Rml::Event &)
 {
 	m_gui->toggle_dbg_windows();
@@ -146,6 +153,7 @@ void DebugTools::hide()
 	m_statsw->hide();
 	m_devicesw->hide();
 	m_mixerw->hide();
+	Rml::Debugger::SetVisible(false);
 	Window::hide();
 }
 

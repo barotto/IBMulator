@@ -32,15 +32,12 @@ Then follow the general instructions.
 
 [RmlUi](https://github.com/mikke89/RmlUi) is a C++ user interface library based
 on the HTML and CSS standards.  
-IBMulator requires version 5.1 of this library but it might fail to compile on
-current versions of GCC, so we are going to use my patched fork.
 
 To compile RmlUi you need **cmake** and **libfreetype**.
 
 ```
-$ git clone https://github.com/barotto/RmlUi
-$ cd RmlUi && git switch 5.1-fix
-$ mkdir build && cd build
+$ git clone https://github.com/mikke89/RmlUi
+$ cd RmlUi && mkdir build && cd build
 $ cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 $ make -j`nproc` && make install
 ```

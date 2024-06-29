@@ -67,9 +67,9 @@
 
 .list .entry .icon div
 {
-	display: inline-block;
 	width: 32dp;
 	height: 32dp;
+	margin: auto;
 }
 
 .list.zoom-0 .entry

@@ -22,8 +22,6 @@ share/ibmulator/gui/debugger286.rml \
 share/ibmulator/gui/debugger386.rcss \
 share/ibmulator/gui/debugger386.rml \
 share/ibmulator/gui/debugtools.rml \
-share/ibmulator/gui/default.rcss \
-share/ibmulator/gui/default.rml \
 share/ibmulator/gui/desktop.rml \
 share/ibmulator/gui/devstatus.rml \
 share/ibmulator/gui/dialog.rcss \
@@ -52,7 +50,9 @@ share/ibmulator/gui/state_load.rml \
 share/ibmulator/gui/state_save.rml \
 share/ibmulator/gui/state_save_info.rml \
 share/ibmulator/gui/stats.rml \
-share/ibmulator/gui/status.rml
+share/ibmulator/gui/status.rml \
+share/ibmulator/gui/window.rml \
+share/ibmulator/gui/window.rcss
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \

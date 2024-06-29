@@ -3,15 +3,36 @@ input.submit,
 input.checkbox,
 input.radio
 {
-	display: inline-block;
+	display: block;
 	box-sizing: border-box;
 	height: 20dp;
-	min-width: 20dp;
+	width: 20dp;
 	font-size: 18dp;
 	text-align: center;
 	tab-index: auto;
 	color: #000000ff;
 	background-color: #FFFFFFA0;
+	padding: 0;
+}
+
+.toolbar
+{
+	display: inline-block;
+	overflow: hidden;
+	margin-bottom: -4dp;
+}
+
+.toolbar > div,
+.toolbar > button,
+.toolbar > input,
+.toolbar > span
+{
+	float: left;
+}
+
+.toolbar > span
+{
+	padding: 2dp 4dp 0 0;
 }
 
 input.checkbox
@@ -58,10 +79,11 @@ btnicon
 
 button.text
 {
-	vertical-align: 7dp;
+	vertical-align: 5dp;
 	width: auto;
 	padding: 0 4dp 1dp 4dp;
 	margin: 0 0 0 1dp;
+	white-space: nowrap;
 }
 
 button.romshell,
@@ -69,7 +91,7 @@ input.romshell,
 select.romshell selectvalue,
 tab.romshell
 {
-	display: inline-block;
+	display: block;
 	font-family: "Nouveau IBM";
 	font-size: 16dp;
 	height: 23dp;
@@ -80,6 +102,11 @@ tab.romshell
 	padding-left: 4dp;
 	padding-top: 2dp;
 	padding-right: 2dp;
+}
+
+tab.romshell
+{
+	display: inline-block;
 }
 
 select.romshell
@@ -98,11 +125,6 @@ select.romshell selectarrow
 {
 	width: 19dp;
 	height: 23dp;
-}
-
-input.radio.romshell
-{
-	width: 10dp;
 }
 
 input.romshell:disabled
@@ -352,10 +374,8 @@ select.romshell selectbox option:checked:hover
 	color: #000000;
 }
 
-
 input.text
 {
-	display: inline-block;
 	box-sizing: border-box;
 	background-color: #5555FFA0;
 	padding-top: 2dp;
@@ -364,6 +384,11 @@ input.text
 	line-height: 14dp;
 	border: 1dp;
 	border-color: #5555FFA0;
+}
+
+.toolbar input.text
+{
+	height: 20dp;
 }
 
 input.text:focus

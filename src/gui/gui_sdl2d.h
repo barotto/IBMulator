@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,21 +27,26 @@ class GUI_SDL2D : public GUI
 protected:
 	SDL_Renderer * m_SDL_renderer;
 	unsigned m_rendflags;
-	
+	static SDL_BlendMode ms_blend_mode;
+
 	void create_window(int _flags);
 	void create_renderer();
 	void shutdown_SDL();
-	
+
 public:
 	GUI_SDL2D();
 	GUI_SDL2D(unsigned _rendflags);
 	~GUI_SDL2D();
-	
+
 	GUIRenderer renderer() const { return GUI_RENDERER_SDL2D; }
 	SDL_Renderer *sdl_renderer() const { return m_SDL_renderer; }
 	void render();
 
 	void update_texture(uintptr_t _texture, SDL_Surface *_data);
+
+	static SDL_BlendMode blend_mode() {
+		return ms_blend_mode;
+	}
 };
 
 #endif

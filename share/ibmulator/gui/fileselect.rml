@@ -1,7 +1,7 @@
 <rml>
 	<head>
 		<title>Floppy disk select</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="dialog.rcss"/>
 		<link type="text/rcss" href="fileselect.rcss"/>
 		<link type="text/rcss" href="fileselect_grid.rcss"/>
@@ -12,21 +12,23 @@
 				width: 90%;
 				height: 90%;
 				min-width: 640dp;
-				min-height: 320dp;
+				min-height: 400dp;
 				margin: auto;
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 
 		<form id="drive"></form>
 
 		<div id="path">
+			<div class="toolbar">
 			<button id="dir_prev" class="romshell"><btnicon /><span></span></button>
 			<button id="dir_next" class="romshell"><btnicon /><span></span></button>
 			<button id="dir_up" class="romshell"><btnicon /><span></span></button>
 			<button id="home" class="romshell"><btnicon /><span></span></button>
 			<button id="reload" class="romshell"><btnicon /><span></span></button>
+			</div>
 			<div id="cwd"></div>
 		</div>
 
@@ -37,31 +39,31 @@
 		<div id="info_panel"></div>
 
 		<form id="buttons_left">
-			<div id="mode">
+			<div id="mode" class="toolbar">
 			<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell"><btnicon class="icon_grid" /><span></span></input>
 			<input type="radio" name="mode" value="list" id="mode_list" class="romshell"><btnicon class="icon_list" /><span></span></input>
 			</div>
-			by
-			<div id="order">
+			<div id="order" class="toolbar">
+			<span>by</span>
 			<input type="radio" name="order" value="name" id="order_name" class="romshell"><span>name</span></input>
 			<input type="radio" name="order" value="date" id="order_date" class="romshell"><span>date</span></input>
 			</div>
-			<div id="asc_desc">
+			<div id="asc_desc" class="toolbar">
 			<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
 			<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
 			</div>
-			<div id="misc">
+			<div id="misc" class="toolbar">
 			<button id="show_panel" class="romshell"><btnicon /><span></span></button>
-			<button id="new_floppy" class="romshell"><span>New</span></button>
+			<button id="new_floppy" class="romshell text"><span>New</span></button>
 			</div>
 		</form>
-	
-		<div id="buttons_right">
-			<div id="buttons_entry" class="invisible">
+
+		<div id="buttons_right" class="toolbar">
+			<div id="buttons_entry" class="invisible toolbar">
 				<input id="wprotect" type="checkbox" class="romshell"><span>Write p.</span></input>
-				<button id="insert" class="romshell"><span>Insert</span></button>
+				<button id="insert" class="romshell text"><span>Insert</span></button>
 			</div>
-			<button id="cancel" class="romshell"><span>Cancel</span></button>
+			<button id="cancel" class="romshell text"><span>Cancel</span></button>
 		</div>
 
 	</body>

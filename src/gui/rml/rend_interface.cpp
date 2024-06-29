@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -34,14 +34,12 @@ RmlRenderer::~RmlRenderer()
 {
 }
 
-// Called by RmlUi when a texture is required by the library.
-bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
-		Rml::Vector2i &texture_dimensions, const std::string &source)
+Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i &texture_dimensions_, const std::string &source)
 {
 	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture '%s'\n", source.c_str());
 
 	if(source.find("gui:", 0) == 0) {
-		return LoadNamedTexture(texture_handle, texture_dimensions, source);
+		return LoadNamedTexture(texture_dimensions_, source);
 	}
 
 	Rml::FileInterface *file_interface = Rml::GetFileInterface();
@@ -61,36 +59,36 @@ bool RmlRenderer::LoadTexture(Rml::TextureHandle &texture_handle,
 	}
 	file_interface->Close(file_handle);
 
+	Rml::TextureHandle texture = 0;
 	try {
-		texture_handle = LoadTexture(surface);
+		texture = LoadTexture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		SDL_FreeSurface(surface);
-		return false;
+		return 0;
 	}
-	texture_dimensions = Rml::Vector2i(surface->w, surface->h);
+	texture_dimensions_ = Rml::Vector2i(surface->w, surface->h);
 	SDL_FreeSurface(surface);
-	return true;
+	return texture;
 }
 
-bool RmlRenderer::LoadNamedTexture(Rml::TextureHandle &texture_handle_,
-		Rml::Vector2i &texture_dimensions_, const std::string &_source)
+Rml::TextureHandle RmlRenderer::LoadNamedTexture(Rml::Vector2i &texture_dimensions_, const std::string &_source)
 {
 	SDL_Surface *surface = nullptr;
+	Rml::TextureHandle texture = 0;
 
 	try {
 		surface = GUI::instance()->load_surface(_source);
-		texture_handle_ = LoadTexture(surface);
+		texture = LoadTexture(surface);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
-		return false;
+		return 0;
 	}
 
 	texture_dimensions_ = Rml::Vector2i(surface->w, surface->h);
 
-	m_named_textures[_source] = texture_handle_;
-	
-	return true;
+	m_named_textures[_source] = texture;
+	return texture;
 }
 
 Rml::TextureHandle RmlRenderer::GetNamedTexture(const std::string &_name)

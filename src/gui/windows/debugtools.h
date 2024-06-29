@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2022  Marco Bortolin
+ * Copyright (C) 2017-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,8 +60,9 @@ private:
 	void on_debugger(Rml::Event &);
 	void on_devices(Rml::Event &);
 	void on_mixer(Rml::Event &);
+	void on_rmlui(Rml::Event &);
 	void on_close(Rml::Event &);
-	
+
 public:
 	DebugTools(GUI * _gui, Machine *_machine, Mixer *_mixer);
 	~DebugTools();

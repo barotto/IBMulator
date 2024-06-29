@@ -1,7 +1,7 @@
 <rml>
 	<head>
 		<title>Mixer</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<style>
 			body
 			{
@@ -38,7 +38,7 @@
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<p id="state"></p>
 		<table id="channels" class="default">
 		</table>

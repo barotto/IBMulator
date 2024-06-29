@@ -1,15 +1,15 @@
 <rml>
 	<head>
 		<title>Mixer</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<style>
 			body
 			{
 				width: 90%;
 				min-width: 640dp;
-				height: 440dp;
-				max-height: 440dp;
-				min-height: 440dp;
+				height: 470dp;
+				max-height: 470dp;
+				min-height: 470dp;
 				margin: auto;
 			}
 			.enabled
@@ -20,9 +20,9 @@
 			#master_container
 			{
 				position: absolute;
-				left: 20dp;
-				top: 30dp;
-				bottom: 40dp;
+				left: 0dp;
+				top: -10dp;
+				bottom: 20dp;
 				width: 160dp;
 				border-color: #28374d;
 				border-right: 2dp;
@@ -30,10 +30,10 @@
 			#channels
 			{
 				position: absolute;
-				left: 190dp;
-				right: 20dp;
-				top: 60dp;
-				bottom: 20dp;
+				left: 170dp;
+				right: 0dp;
+				top: 20dp;
+				bottom: 0dp;
 			}
 			tabs
 			{
@@ -44,6 +44,7 @@
 			.channels_container
 			{
 				overflow-x: auto;
+				overflow-y: hidden;
 				white-space: nowrap;
 				position: absolute;
 				left: 155dp;
@@ -51,6 +52,7 @@
 				top: 0dp;
 				bottom: 20dp;
 			}
+
 			.channels_container scrollbarhorizontal
 			{
 				margin-bottom: -19dp;
@@ -58,12 +60,19 @@
 
 			.ch_block_container
 			{
+				position: relative;
 				display: inline-block;
 				height: 99%;
 				width: 150dp;
 				margin: 4dp 6dp 0 0;
 				background-color: #28374d;
 			}
+
+			.channels_container .ch_block_container
+			{
+				margin-bottom: -6dp;
+			}
+
 			.ch_block
 			{
 				position: absolute;
@@ -94,7 +103,6 @@
 			{
 				text-align: center;
 			}
-
 
 			/* NAME AND ACTIVITY */
 			.ch_name
@@ -278,7 +286,7 @@
 			{
 				pointer-events: none;
 				position: absolute;
-				bottom: 74dp;
+				bottom: 77dp;
 				right: 0dp;
 				width: 60%;
 				height: 150dp;
@@ -320,6 +328,7 @@
 			}
 			.ch_vu_notches_container
 			{
+				position: relative;
 				background-color: transparent;
 				width: 22dp;
 			}
@@ -351,9 +360,9 @@
 			.ch_AMS
 			{
 				position: absolute;
-				bottom: 35dp;
-				width: 100%;
+				bottom: 34dp;
 				text-align: center;
+				width: 100%;
 			}
 
 
@@ -428,7 +437,7 @@
 			}
 			select.ch_filter_preset
 			{
-				width: 110dp;
+				width: 130dp;
 			}
 			.ch_filter_custom
 			{
@@ -436,9 +445,11 @@
 				top: 90dp;
 				bottom: 0dp;
 				width: 100%;
-				border: 0dp;
-				border-color: #c4c4c4;
 				overflow-y: auto;
+			}
+			.ch_filter_custom button.ch_add_filter
+			{
+				margin: 0 auto 0 auto;
 			}
 			.filter_dsp
 			{
@@ -511,23 +522,23 @@
 			#save
 			{
 				position: absolute;
-				top: 30dp;
-				left: 20dp;
+				top: -10dp;
+				left: 0dp;
 				z-index: 9999;
 			}
 			#vu_meters
 			{
 				position: absolute;
-				bottom: 10dp;
-				left: 20dp;
+				bottom: -10dp;
+				left: 0dp;
 				z-index: 9999;
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 
-		<button id="save" class="romshell"><span>Save profile</span></button>
-		<button id="vu_meters" class="romshell"><span>VU meters</span></button>
+		<button id="save" class="romshell text"><span>Save profile</span></button>
+		<button id="vu_meters" class="romshell text"><span>VU meters</span></button>
 
 		<div id="blocks">
 

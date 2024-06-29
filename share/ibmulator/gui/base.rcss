@@ -26,6 +26,12 @@ h1
 	display: block;
 }
 
+h2
+{
+	display: block;
+	font-size: 18dp;
+}
+
 em
 {
 	font-style: italic;
@@ -105,4 +111,29 @@ td
 	box-sizing: border-box;
 	display: table-cell;
 	vertical-align: middle;
+}
+
+.clear
+{
+	clear: both;
+}
+
+table.default th
+{
+	background-color: #FF5555d0;
+	font-weight: bold;
+	text-align: center;
+}
+
+table.default td
+{
+	padding: 2dp;
+	background-color: #38A838d0;
+	text-align: center;
+}
+
+table.default td.t
+{
+	padding: 0;
+	background-color: #00000000;
 }

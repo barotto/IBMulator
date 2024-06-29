@@ -1,7 +1,8 @@
 <rml>
 	<head>
 		<title></title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
+		<link type="text/rcss" href="dialog.rcss"/>
 		<style>
 			body
 			{
@@ -14,28 +15,23 @@
 			{
 				padding: 20dp;
 			}
-			#buttons
-			{
-				position: absolute;
-				bottom: 20dp;
-				right: 20dp;
-				left: 20dp;
-				text-align: center;
-			}
 			button.romshell
 			{
 				margin-left: 5dp;
 				margin-right: 5dp;
 				min-width: 60dp;
 			}
-			#message {
+			#message
+			{
 				box-sizing: border-box;
 				width: 100%;
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<div id="message"></div>
-		<div id="buttons"></div>
+		<div id="buttons_center">
+			<div id="buttons" class="toolbar"></div>
+		</div>
 	</body>
 </rml>

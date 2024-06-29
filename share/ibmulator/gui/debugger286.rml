@@ -1,14 +1,14 @@
 <rml>
 	<head>
 		<title>Debugger 80286</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="debugger.rcss"/>
 		<link type="text/rcss" href="debugger286.rcss"/>
 		<style>
 			body
 			{
-				width: 400dp;
-				height: 430dp;
+				width: 403dp;
+				height: 475dp;
 				position: absolute;
 				top: 0;
 				right: 0;
@@ -16,9 +16,9 @@
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<div id="POST"></div>
-		<div id="tools">
+		<div id="tools" class="toolbar">
 			<button id="cmd_switch_power"><btnicon /></button>
 			<button id="cmd_pause"><btnicon /></button>
 			<button id="CPU_step"><btnicon /></button>
@@ -30,11 +30,12 @@
 			<button id="cmd_save_state"><btnicon /></button>
 			<button id="cmd_restore_state"><btnicon /></button>
 		</div>
-		<div id="tools2">
+		<div id="tools2" class="toolbar">
 			<input type="text" id="log_prg_name" size=20 />
 			<button id="log_prg_toggle"><btnicon /></button>
 			<button id="log_write"><btnicon /></button>
 		</div>
+		<div class="clear"></div>
 		<div id="cpucore">
 			<div id="generalregs">
 				<table class="default">

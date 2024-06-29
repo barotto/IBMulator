@@ -6,12 +6,13 @@ body
 	font-size: 15dp;
 	color: white;
 	background-color: #3C5464A0;
+	min-width: 64dp;
+	min-height: 128dp;
 }
 
-body.window
+body:focus
 {
-	padding-top: 20dp;
-	padding-bottom: 10dp;
+	background-color: #3C5464ff;
 }
 
 body.modal
@@ -27,6 +28,7 @@ body.modal
 	position: absolute;
 	top: 0;
 	left: 0;
+	width: 100%;
 	text-align: center;
 	background-color: #FFFFFFA0;
 }
@@ -43,7 +45,7 @@ body:focus #title_bar
 	height: 16dp;
 	bottom: 0;
 	right: 0;
-	z-index: 9999;
+	/*z-index: 9999;*/
 	decorator: image(icons/dotted_grip_corner.png);
 }
 
@@ -71,46 +73,17 @@ body:focus #title_bar
 	height: 25dp;
 }
 
-div#window
+#content
 {
-	width: auto;
-	padding: 10dp 15dp;
-}
+	position: absolute;
+	top: 41dp;
+	bottom: 16dp;
+	left: 16dp;
+	right: 16dp;
 
-div#content
-{
-	z-index: 2;
-
-	width: auto;
-	height: 100%;
+	/*z-index: 2;*/
 
 	overflow: hidden auto;
 
 	text-align: left;
-}
-
-h2
-{
-	display: block;
-	font-size: 18dp;
-}
-
-table.default th
-{
-	background-color: #FF5555d0;
-	font-weight: bold;
-	text-align: center;
-}
-
-table.default td
-{
-	padding: 2dp;
-	background-color: #38A838d0;
-	text-align: center;
-}
-
-table.default td.t
-{
-	padding: 0;
-	background-color: #00000000;
 }

@@ -32,9 +32,6 @@ assume static linking.
 ## STEP 2. Build RmlUi
 [RmlUi](https://github.com/mikke89/RmlUi) is a C++ GUI toolkit based on the HTML
 and CSS standards.  
-IBMulator requires version 5.1 of this library but unfortunately it doesn't
-compile with current versions of MSYS2. For this reason we are going to use my
-patched fork.
 
 Launch the **MSYS2 MINGW64** shell from the `MSYS2 64bit` folder (you should
 read MINGW64 on the command line) and:
@@ -42,15 +39,13 @@ read MINGW64 on the command line) and:
 1. Move inside your workspace:
 `cd /c/workspace`
 2. Clone the repo:  
-`git clone https://github.com/barotto/RmlUi`
-3. Switch to the correct branch:
-`cd RmlUi && git switch 5.1-fix`
-4. Create and move inside the build directory:  
-`mkdir build && cd build`
-5. Create the Makefile with cmake:  
+`git clone https://github.com/mikke89/RmlUi`
+3. Create and move inside the build directory:  
+`cd RmlUi && mkdir build && cd build`
+4. Create the Makefile with cmake:  
 `cmake .. -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/x86_64-w64-mingw32 -DBUILD_SHARED_LIBS=OFF`  
 (for dynamic linking remove `-DBUILD_SHARED_LIBS=OFF`)
-6. Build and install:  
+5. Build and install:  
 `make -j$(nproc) && make install`
 
 

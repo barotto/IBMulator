@@ -31,7 +31,7 @@ if test "$HAVE_RMLUI" = "no" ; then
 ]) 
 fi
 
-RMLUI_LIBS="$RMLUI_LIBS -lRmlDebugger -lRmlCore"
+RMLUI_LIBS="$RMLUI_LIBS -lrmlui_debugger -lrmlui"
 
 if test x$static != x ; then
 	if test x$have_windows = xyes ; then

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -53,7 +53,8 @@ void GUI_OpenGL::render()
 
 	ms_rml_mutex.lock();
 	GLCALL( glEnable(GL_BLEND) );
-	GLCALL( glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) );
+	GLCALL( glBlendEquation(GL_FUNC_ADD) );
+	GLCALL( glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA) );
 	m_rml_context->Render();
 	ms_rml_mutex.unlock();
 

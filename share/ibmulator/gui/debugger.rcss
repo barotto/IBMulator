@@ -8,9 +8,10 @@
 	position: relative;
 }
 
-#tools, #tools2
+#tools,
+#tools2
 {
-	height: 20dp;
+	float: left;
 	margin-bottom: 8dp;
 }
 
@@ -144,7 +145,6 @@ td.t
 
 #POST
 {
-	position: relative;
 	float: right;
 	width: 15dp;
 	padding: 5dp;

@@ -1,7 +1,7 @@
 <rml>
 	<head>
 		<title>Shader parameters</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="dialog.rcss"/>
 		<style>
 			body
@@ -15,17 +15,13 @@
 				min-width: 400dp;
 				min-height: 350dp;
 			}
-			button.romshell
-			{
-				margin-left: 10dp;
-			}
 			#params_cnt
 			{
 				position: absolute;
-				top: 70dp;
-				left: 10dp;
-				right: 10dp;
-				bottom: 50dp;
+				top: 30dp;
+				left: 0dp;
+				right: 0dp;
+				bottom: 30dp;
 				overflow-y: auto;
 			}
 			.entry
@@ -74,36 +70,28 @@
 			{
 				right: 129dp;
 			}
+			#buttons_top_right
+			{
+				float: right;
+			}
 			#search_cnt
 			{
-				position: absolute;
-				top: 38dp;
-				left: 10dp;
-			}
-			#reset_all
-			{
-				position: absolute;
-				top: 40dp;
-				right: 70dp;
-			}
-			#save
-			{
-				position: absolute;
-				top: 40dp;
-				right: 10dp;
+				float: left;
 			}
 		</style>
 	</head>
-	<body template="default">
-		<div id="search_cnt">
-		Search: <input type="text" id="search" />
+	<body template="window">
+		<div id="search_cnt" class="toolbar">
+			<span>Search:</span><input type="text" id="search" />
 		</div>
-		<button id="reset_all" class="romshell invisible"><span>Reset all</span></button>
-		<button id="save" class="romshell"><span>Save</span></button>
+		<div id="buttons_top_right" class="toolbar">
+			<button id="reset_all" class="romshell invisible text"><span>Reset all</span></button>
+			<button id="save" class="romshell text"><span>Save</span></button>
+		</div>
 		<div id="params_cnt">
 		</div>
 		<div id="buttons_right">
-			<button id="cancel" class="romshell"><span>Close</span></button>
+			<button id="cancel" class="romshell text"><span>Close</span></button>
 		</div>
 	</body>
 </rml>

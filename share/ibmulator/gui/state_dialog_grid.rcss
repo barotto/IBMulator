@@ -7,9 +7,9 @@
 	top: 0;
 	left: 0;
 	right: 0;
-	margin: 40dp 5dp 55dp 5dp;
+	margin: 0dp 0dp 30dp 0dp;
 	overflow: auto;
-	padding: 0dp 10dp 0 10dp;
+	padding: 0dp 0dp 0 0dp;
 }
 
 #panel.grid
@@ -19,11 +19,12 @@
 
 .grid .entry
 {
+	position: relative;
 	display: inline-block;
 	width: 235dp;
 	height: 240dp;
 	background-color: #28374d;
-	margin: 15dp 15dp 0 0;
+	margin: 5dp 10dp 0dp 0dp;
 }
 
 .grid .entry .data

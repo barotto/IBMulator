@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2024  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,37 +36,34 @@ class RmlRenderer_OpenGL : public RmlRenderer
 protected:
 	std::unique_ptr<GLShaderProgram> m_program_color;
 	std::unique_ptr<GLShaderProgram> m_program_texture;
+	const GLShaderProgram::UniformList *m_mult_alpha_uniform;
 
 	GLuint m_vao;
 	GLuint m_vbo;
 
 	struct CompiledGeometry {
 		GLuint gl_vao = 0, gl_vbo = 0, gl_ibo = 0;
-		GLuint gl_texture = 0;
 		GLsizei draw_count = 0;
 	};
+	struct CompiledTexture {
+		GLuint gl_texture;
+		bool mult_alpha;
+	};
 
+	std::map<Rml::TextureHandle, CompiledTexture> m_textures;
+	
 public:
 	RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_screen);
 	~RmlRenderer_OpenGL();
 
-	/// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
-	void RenderGeometry(Rml::Vertex *vertices, int num_vertices, int *indices,
-			int num_indices, Rml::TextureHandle texture, const Rml::Vector2f &translation);
-	
-	Rml::CompiledGeometryHandle CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture);
-	virtual void RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation);
-	virtual void ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry);
-	
-	/// Called by RmlUi when it wants to enable or disable scissoring to clip content.
-	void EnableScissorRegion(bool enable);
-	/// Called by RmlUi when it wants to change the scissor region.
-	void SetScissorRegion(int x, int y, int width, int height);
+	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices);
+	virtual void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture);
+	virtual void ReleaseGeometry(Rml::CompiledGeometryHandle geometry);
 
-	/// Called by RmlUi when a texture is required to be built from an internally-generated sequence of pixels.
-	bool GenerateTexture(Rml::TextureHandle &texture_handle, const Rml::byte *source,
-			const Rml::Vector2i &source_dimensions);
-	/// Called by RmlUi when a loaded texture is no longer required.
+	void EnableScissorRegion(bool enable);
+	void SetScissorRegion(Rml::Rectanglei region);
+
+	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source_data, Rml::Vector2i source_dimensions);
 	void ReleaseTexture(Rml::TextureHandle texture_handle);
 
 	void SetDimensions(int _width, int _height);

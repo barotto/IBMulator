@@ -1,21 +1,17 @@
 <rml>
 	<head>
 		<title>New floppy image</title>
-		<link type="text/template" href="default.rml" />
-			<link type="text/rcss" href="dialog.rcss"/>
+		<link type="text/template" href="window.rml" />
+		<link type="text/rcss" href="dialog.rcss"/>
 		<style>
 			body
 			{
-				width: 375dp;
-				height: 200dp;
-				min-height: 200dp;
-				min-width: 375dp;
-				max-height: 200dp;
+				width: 382dp;
+				height: 220dp;
+				min-height: 220dp;
+				min-width: 382dp;
+				max-height: 220dp;
 				margin: auto;
-			}
-			button.romshell
-			{
-				margin-left: 10dp;
 			}
 			form
 			{
@@ -43,11 +39,11 @@
 			}
 			#image_format select
 			{
-				width: 275dp
+				width: 290dp
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<form id="dirinfo">
 			In which directory:
 			<input type="radio" name="destdir" value="here" class="romshell" id="heredir"><span>here</span></input>
@@ -69,9 +65,9 @@
 			</tr>
 			</table>
 		</form>
-		<div id="buttons_right">
-			<button id="create_file" class="romshell"><span>Create</span></button>
-			<button id="cancel" class="romshell"><span>Cancel</span></button>
+		<div id="buttons_right" class="toolbar">
+			<button id="create_file" class="romshell text"><span>Create</span></button>
+			<button id="cancel" class="romshell text"><span>Cancel</span></button>
 		</div>
 	</body>
 </rml>

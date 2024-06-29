@@ -417,8 +417,7 @@ The nearest neighbour filter is enabled with:
 normal_filter=nearest
 ```
 
-If you are using the `software` or `accelerated` renderers you're set and ready
-to go.
+If you are using the `accelerated` renderer you're set and ready to go.
 
 If you are using the `opengl` renderer the actual filtering might depend on the
 shader. If you're not getting the desired result be sure to use a shader

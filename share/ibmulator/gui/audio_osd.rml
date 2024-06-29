@@ -1,6 +1,6 @@
 <rml>
 	<head>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<style>
 			body
 			{

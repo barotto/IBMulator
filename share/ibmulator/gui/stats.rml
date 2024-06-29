@@ -1,12 +1,13 @@
 <rml>
 	<head>
 		<title>Stats</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 		<style>
 			body
 			{
 				width: 280dp;
-				height: 590dp;
+				max-width: 280dp;
+				height: 660dp;
 				position: absolute;
 				top: 20dp;
 				left: 0;
@@ -17,10 +18,16 @@
 			{
 				decorator: image(icons/debugger/update.png);
 			}
+			#tools
+			{
+				border: 1px;
+				border-color: #ff0000;
+				padding-bottom: -4dp;
+			}
 		</style>
 	</head>
-	<body template="default">
-		<div id="tools">
+	<body template="window">
+		<div class="toolbar">
 			<button id="cmd_reset"><btnicon /></button>
 		</div>
 		<h2>Main process</h2>

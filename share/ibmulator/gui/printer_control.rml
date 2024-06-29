@@ -1,7 +1,7 @@
 <rml>
 	<head>
 		<title>Printer</title>
-		<link type="text/template" href="default.rml" />
+		<link type="text/template" href="window.rml" />
 			<link type="text/rcss" href="dialog.rcss"/>
 		<style>
 			body
@@ -79,7 +79,7 @@
 			}
 		</style>
 	</head>
-	<body template="default">
+	<body template="window">
 		<div id="preview_cnt">
 			<img id="preview_img" src="gui:printer_preview" />
 			<div id="head"></div>

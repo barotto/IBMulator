@@ -283,25 +283,41 @@ btn
 
 #disk_control
 {
+	position: relative;
 	width: 48.0%;
+	height: 100%;
+	overflow: hidden;
 }
 
 #disk_control btn
 {
+	display: block;
+	float: left;
 	width: 12%;
 	height: 100%;
 }
 
 #drive_block_c
 {
+	display: block;
+	position: relative;
+	float: left;
+	background-color: #ffffff00;
 	width: 80.0%;
 	height: 100%;
-	display: inline-block;
-	left: 0;
+	overflow: hidden;
+}
+
+#drive_block_c .uidrive
+{
+	position: absolute;
+	width: 100%;
+	height: 100%;
 }
 
 #drive_block_c btn
 {
+	float: left;
 	width: 15%;
 	height: 100%;
 }
@@ -313,7 +329,7 @@ btn
 
 #drive_block_c.many_drives .drive_select
 {
-	display: inline-block;
+	display: block;
 }
 
 #drive_block_c .drive_select.A
@@ -333,8 +349,9 @@ btn
 
 #drive_block_c .drive_mount
 {
-	display: inline-block;
-	left: 15%;
+	position: relative;
+	display: block;
+	float: left;
 	width: 70%;
 	height: 100%;
 	margin: 0;
@@ -345,7 +362,7 @@ btn
 {
 	width: 25%;
 	height: 100%;
-	image-color: #a0a0a0a0;
+	image-color: #a0a0a0e0;
 }
 
 #drive_block_c .fdd_3_5 .drive_led
@@ -414,7 +431,11 @@ btn
 #drive_block_c .drive_mount:hover
 {
 	background-color: #a0a0a0a0;
-	image-color: #ffffffa0;
+}
+
+#drive_block_c .drive_mount:hover .drive_led
+{
+	image-color: #ffffffd5;
 }
 
 #drive_block_c .drive_eject
@@ -481,14 +502,14 @@ btn
 
 .collapsed btn
 {
-	image-color: #a0a0a0a0;
+	image-color: #ffffffa0;
 }
 
 btn:hover,
 btn.active,
 btn.active:hover
 {
-	image-color: #ffffffa0;
+	image-color: #ffffffd5;
 }
 
 #hdd_led_c
@@ -496,10 +517,9 @@ btn.active:hover
 	decorator: image(icons/hdd.png);
 }
 
-#hdd_led_c:hover,
-#hdd_led_c.active:hover
+#hdd_led_c:hover
 {
-	image-color: #a0a0a0a0;
+	image-color: #ffffffa0;
 }
 
 #hdd_led_c.active
