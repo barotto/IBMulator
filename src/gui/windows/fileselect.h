@@ -201,7 +201,7 @@ protected:
 	void entry_select(Rml::Element *_entry);
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
 	void entry_deselect();
-	std::string get_up_path();
+	std::pair<std::string,std::string> get_up_path();
 	const DirEntry * find_de(const std::string _name);
 
 	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Element *target_el);

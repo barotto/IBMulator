@@ -152,7 +152,7 @@ void FileSelect::update()
 	Window::update();
 
 	if(m_dirty) {
-		set_disabled(m_path_el.up, get_up_path().empty());
+		set_disabled(m_path_el.up, get_up_path().first.empty());
 		const DirEntry *prev_selected = m_selected_de;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
@@ -413,38 +413,47 @@ void FileSelect::on_new_floppy(Rml::Event &)
 	m_new_floppy->show();
 }
 
-std::string FileSelect::get_up_path()
+std::pair<std::string,std::string> FileSelect::get_up_path()
 {
 	if(!m_valid_cwd) {
-		return std::string();
+		return std::make_pair("", "");
 	}
-	std::string path = m_cwd;
-	size_t pos = path.rfind(FS_SEP);
+
+	size_t pos = m_cwd.rfind(FS_SEP);
 	if(pos == std::string::npos) {
-		return std::string();
+		return std::make_pair("", "");
 	}
 	if(pos == 0) {
 		// the root on unix
 		pos = 1;
 	} else if(pos < 3 && FS_PATH_MIN == 3) {
+		// the drive on windows
 		pos = 3;
 	}
-	path = path.substr(0, pos);
-	if(path == m_cwd) {
-		return std::string();
+
+	std::string up_path, up_dir;
+
+	up_path = m_cwd.substr(0, pos);
+	if(up_path == m_cwd) {
+		return std::make_pair("", "");
 	}
-	return path;
+	if(pos == 1 || (pos == 3 && FS_PATH_MIN == 3)) {
+		pos--;
+	}
+	up_dir = m_cwd.substr(pos+1);
+	return std::make_pair(up_path, up_dir);
 }
 
 void FileSelect::on_up(Rml::Event &)
 {
-	std::string path = get_up_path();
+	auto [path, dir] = get_up_path();
 	if(path.empty()) {
 		return;
 	}
 	set_history();
 	try {
 		set_current_dir(path);
+		m_lazy_select = find_de(dir);
 	} catch(...) { }
 }
 
