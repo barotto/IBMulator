@@ -153,7 +153,7 @@ public:
 
 	virtual void create(std::string _mode, std::string _order, int _zoom);
 	virtual void update();
-	virtual void show();
+	virtual void show(const std::string &_curr_file);
 	virtual void close();
 
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
@@ -202,6 +202,7 @@ protected:
 	void entry_select(const DirEntry *_de, Rml::Element *_entry);
 	void entry_deselect();
 	std::string get_up_path();
+	const DirEntry * find_de(const std::string _name);
 
 	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Element *target_el);
 	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Event &);

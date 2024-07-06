@@ -218,7 +218,7 @@ void FileSelect::update()
 		auto entry_el = m_entries_el->GetElementById(m_lazy_select->id);
 		if(entry_el) {
 			entry_select(m_lazy_select, entry_el);
-			m_buttons_entry_el->GetChild(1)->Focus();
+			m_entries_el->Focus();
 		}
 		m_lazy_select = nullptr;
 	}
@@ -232,7 +232,7 @@ void FileSelect::update()
 	}
 }
 
-void FileSelect::show()
+void FileSelect::show(const std::string &_filename)
 {
 	m_history.clear();
 	m_history_idx = 0;
@@ -246,8 +246,8 @@ void FileSelect::show()
 		m_lazy_reload = false;
 	}
 
-	if(m_selected_entry) {
-		m_entries_el->Focus();
+	if(!_filename.empty()) {
+		m_lazy_select = find_de(_filename);
 	}
 }
 
@@ -914,6 +914,16 @@ void FileSelect::set_zoom(int _amount)
 	ItemsDialog::set_zoom(_amount);
 
 	m_dirty_scroll = 2;
+}
+
+const FileSelect::DirEntry * FileSelect::find_de(const std::string _name)
+{
+	for(auto & entry : m_de_map) {
+		if(entry.second.name == _name) {
+			return &(entry.second);
+		}
+	}
+	return nullptr;
 }
 
 void FileSelect::on_keydown(Rml::Event &_ev)

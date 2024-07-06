@@ -868,28 +868,27 @@ bool Interface::on_medium_button(Rml::Event &, MachineDrive *_drive)
 
 bool Interface::on_medium_mount(Rml::Event &, MachineDrive *_drive)
 {
-	std::string media_dir;
+	std::string curr_file, media_dir;
 
 	if(_drive->drive_type == GUIDrivesFX::CDROM) {
-		media_dir = g_program.config().find_media(DISK_CD_SECTION, DISK_PATH);
+		curr_file = g_program.config().find_media(DISK_CD_SECTION, DISK_PATH);
 	} else {
 		if(_drive->drive_id == 0) {
-			if(g_program.config().get_bool(DISK_A_SECTION, DISK_INSERTED)) {
-				media_dir = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
-			}
+			curr_file = g_program.config().find_media(DISK_A_SECTION, DISK_PATH);
 		} else {
-			if(g_program.config().get_bool(DISK_B_SECTION, DISK_INSERTED)) {
-				media_dir = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
-			}
+			curr_file = g_program.config().find_media(DISK_B_SECTION, DISK_PATH);
 		}
 	}
+	media_dir = curr_file;
 
-	if(!media_dir.empty()) {
-		size_t pos = media_dir.rfind(FS_SEP);
+	if(!curr_file.empty()) {
+		size_t pos = curr_file.rfind(FS_SEP);
 		if(pos == std::string::npos) {
+			curr_file = "";
 			media_dir = "";
 		} else {
-			media_dir = media_dir.substr(0,pos);
+			media_dir = curr_file.substr(0,pos);
+			curr_file = curr_file.substr(pos+1);
 		}
 	}
 	if(media_dir.empty()) {
@@ -963,7 +962,7 @@ bool Interface::on_medium_mount(Rml::Event &, MachineDrive *_drive)
 		m_fs->set_title(str_format("Image for drive %s", _drive->label.c_str()));
 		m_fs->set_select_callbk(std::bind(&Interface::on_medium_select, this, _1, _2, _drive));
 		m_fs->reload();
-		m_fs->show();
+		m_fs->show(curr_file);
 	}
 
 	return true;
