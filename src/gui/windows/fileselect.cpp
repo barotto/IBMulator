@@ -421,10 +421,6 @@ void FileSelect::on_new_floppy(Rml::Event &)
 
 std::pair<std::string,std::string> FileSelect::get_up_path()
 {
-	if(!m_valid_cwd) {
-		return std::make_pair("", "");
-	}
-
 	size_t pos = m_cwd.rfind(FS_SEP);
 	if(pos == std::string::npos) {
 		return std::make_pair("", "");
