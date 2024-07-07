@@ -12,6 +12,8 @@
 	margin: 0 0dp 4dp 0;
 	background-color: #3C5464ff;
 	overflow: hidden;
+	border: 1dp;
+	border-color: #3c5464;
 }
 
 .grid .entry .icon
@@ -65,12 +67,18 @@
 .grid .entry:hover
 {
 	background-color: #6795be;
+	border-color: #6795be;
 }
 
 .grid .entry.selected,
 .grid .entry.selected .name
 {
 	background-color: #fcfca6;
+}
+
+#entries.grid:focus .entry.selected
+{
+	border-color: #FF8000;
 }
 
 .grid .entry.selected *

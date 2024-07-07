@@ -8,6 +8,8 @@
 	height: 40dp;
 	box-sizing: border-box;
 	display: table-row;
+	border: 1dp;
+	border-color: #3c5464;
 }
 
 .list .entry:last-child
@@ -18,11 +20,17 @@
 .list .entry:hover
 {
 	background-color: #6795be;
+	border-color: #6795be;
 }
 
 .list .entry.selected
 {
 	background-color: #fcfca6;
+}
+
+#entries.list:focus .entry.selected
+{
+	border-color: #FF8000;
 }
 
 .list .entry.selected *
