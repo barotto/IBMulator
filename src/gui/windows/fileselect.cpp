@@ -166,13 +166,10 @@ void FileSelect::update()
 						m_entries_el->AppendChild(de->create_element(m_wnd));
 					}
 				} else {
-					if(m_dotdot) {
-						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
-					}
 					auto it = m_cur_dir_date.rbegin();
 					first_entry = (*it);
 					for(;it != m_cur_dir_date.rend(); it++) {
-						if((*it)->is_dir && (*it)->name != "..") {
+						if((*it)->is_dir) {
 							m_entries_el->AppendChild((*it)->create_element(m_wnd));
 						}
 					}
@@ -192,13 +189,10 @@ void FileSelect::update()
 						m_entries_el->AppendChild(de->create_element(m_wnd));
 					}
 				} else {
-					if(m_dotdot) {
-						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
-					}
 					auto it = m_cur_dir_name.rbegin();
 					first_entry = (*it);
 					for(;it != m_cur_dir_name.rend(); it++) {
-						if((*it)->is_dir && (*it)->name != "..") {
+						if((*it)->is_dir) {
 							m_entries_el->AppendChild((*it)->create_element(m_wnd));
 						}
 					}
@@ -527,15 +521,10 @@ void FileSelect::on_next(Rml::Event &)
 
 void FileSelect::enter_dir(const DirEntry *_de)
 {
-	if(_de->name == "..") {
-		Rml::Event ev;
-		on_up(ev);
-	} else {
-		set_history();
-		try {
-			set_current_dir(m_cwd + FS_SEP + _de->name);
-		} catch(...) { }
-	}
+	set_history();
+	try {
+		set_current_dir(m_cwd + FS_SEP + _de->name);
+	} catch(...) { }
 }
 
 void FileSelect::entry_select(Rml::Element *_entry_el)
@@ -698,7 +687,6 @@ void FileSelect::clear()
 	m_cur_dir_date.clear();
 	m_cur_dir_name.clear();
 	m_de_map.clear();
-	m_dotdot = nullptr;
 	m_dirty = true;
 	m_dirty_scroll = 2;
 }
@@ -918,9 +906,6 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 				m_cur_dir_date.emplace(&(p.first->second));
 				m_cur_dir_name.emplace(&(p.first->second));
 				id++;
-				if(de.name == "..") {
-					m_dotdot = &(p.first->second);
-				}
 			}
 		} catch(std::runtime_error &e) {
 			PDEBUGF(LOG_V1, LOG_GUI, "  %s\n", e.what());

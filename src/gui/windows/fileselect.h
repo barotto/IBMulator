@@ -117,7 +117,6 @@ private:
 	std::set<const DirEntry*, DirEntryOrderDate> m_cur_dir_date;
 	std::set<const DirEntry*, DirEntryOrderName> m_cur_dir_name;
 	std::map<std::string, DirEntry> m_de_map;
-	const DirEntry *m_dotdot = nullptr;
 
 	const DirEntry *m_selected_de = nullptr;
 
