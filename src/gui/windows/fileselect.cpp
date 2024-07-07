@@ -151,14 +151,17 @@ void FileSelect::update()
 {
 	Window::update();
 
+	const DirEntry *prev_selected = nullptr;
+	const DirEntry *first_entry = nullptr;
 	if(m_dirty) {
 		set_disabled(m_path_el.up, get_up_path().first.empty());
-		const DirEntry *prev_selected = m_selected_de;
+		prev_selected = m_selected_de;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
 			case Order::BY_DATE: {
 				if(m_order_ascending) {
+					first_entry = *m_cur_dir_date.begin();
 					for(auto de : m_cur_dir_date) {
 						m_entries_el->AppendChild(de->create_element(m_wnd));
 					}
@@ -167,6 +170,7 @@ void FileSelect::update()
 						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
 					}
 					auto it = m_cur_dir_date.rbegin();
+					first_entry = (*it);
 					for(;it != m_cur_dir_date.rend(); it++) {
 						if((*it)->is_dir && (*it)->name != "..") {
 							m_entries_el->AppendChild((*it)->create_element(m_wnd));
@@ -183,6 +187,7 @@ void FileSelect::update()
 			}
 			case Order::BY_NAME: {
 				if(m_order_ascending) {
+					first_entry = *m_cur_dir_name.begin();
 					for(auto de : m_cur_dir_name) {
 						m_entries_el->AppendChild(de->create_element(m_wnd));
 					}
@@ -191,6 +196,7 @@ void FileSelect::update()
 						m_entries_el->AppendChild(m_dotdot->create_element(m_wnd));
 					}
 					auto it = m_cur_dir_name.rbegin();
+					first_entry = (*it);
 					for(;it != m_cur_dir_name.rend(); it++) {
 						if((*it)->is_dir && (*it)->name != "..") {
 							m_entries_el->AppendChild((*it)->create_element(m_wnd));
@@ -221,6 +227,12 @@ void FileSelect::update()
 			m_entries_el->Focus();
 		}
 		m_lazy_select = nullptr;
+	} else if(!prev_selected && first_entry) {
+		auto entry_el = m_entries_el->GetElementById(first_entry->id);
+		if(entry_el) {
+			entry_select(first_entry, entry_el);
+			m_entries_el->Focus();
+		}
 	}
 	if(m_dirty_scroll) {
 		if(m_selected_entry) {
