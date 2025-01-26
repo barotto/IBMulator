@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,6 +27,7 @@
 #include <regex>
 #include <numeric>
 #include <iomanip>
+#include <cstring>
 #include "utils.h"
 #ifdef _WIN32
 #include "wincompat.h"

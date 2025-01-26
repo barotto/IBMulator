@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,6 +22,7 @@
 #include "utils.h"
 #include "timers.h"
 #include "chrono.h"
+#include <cstring>
 
 #ifdef _WIN32
 	#include <winsock2.h>
