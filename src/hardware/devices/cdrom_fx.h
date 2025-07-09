@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  Marco Bortolin
+ * Copyright (C) 2024-2025  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -45,6 +45,7 @@ private:
 public:
 	CdRomFX() : DriveFX() {}
 
+	using DriveFX::install;
 	void install(const std::string &_drive);
 
 	uint64_t duration_us(SampleType _sample) const;

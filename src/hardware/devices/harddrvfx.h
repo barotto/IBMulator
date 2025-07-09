@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -44,6 +44,7 @@ public:
 	HardDriveFX();
 	~HardDriveFX();
 
+	using DriveFX::install;
 	void install(const std::string &_name);
 	uint64_t spin_up_time_us() const;
 	void config_changed() {}

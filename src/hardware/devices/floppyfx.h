@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator
  *
@@ -58,6 +58,7 @@ public:
 	FloppyFX();
 	~FloppyFX();
 
+	using DriveFX::install;
 	void install(const std::string &_drive, FloppyFX::FDDType _fdd_type);
 	void reset();
 	void config_changed() {}
