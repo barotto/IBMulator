@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  Marco Bortolin
+ * Copyright (C) 2024-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -161,7 +161,9 @@ public:
 
 	bool read_sector(int64_t _lba, uint8_t *_buffer, unsigned _len);
 	void seek(unsigned _from_cyl, unsigned _to_cyl);
+	using StorageDev::transfer_time_us;
 	uint32_t transfer_time_us(int64_t _xfer_amount);
+	using StorageDev::rotational_latency_us;
 	uint32_t rotational_latency_us();
 
 	bool check_play_audio(int64_t &_start_lba_, int64_t _end_lba, uint8_t &sense_, uint8_t &asc_);

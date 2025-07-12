@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002-2020  The DOSBox Team
- * Copyright (C) 2020-2024  Marco Bortolin
+ * Copyright (C) 2020-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -56,7 +56,7 @@ void MIDIDev_Win32::find_device(std::string _arg)
 	std::smatch match;
 	if(std::regex_match(_arg, match, re)) {
 		int midiid = std::stoi(match[1].str());
-		if(midiid >= availdevs) {
+		if(unsigned(midiid) >= availdevs) {
 			throw std::exception();
 		}
 		midiOutGetDevCaps(midiid, &mididev, sizeof(MIDIOUTCAPS));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -238,7 +238,7 @@ const char* CPULogger::decode_eflags(uint32_t _eflags, bool _32bit)
 int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 {
 	if(CPULOG_WRITE_TIME) {
-		if(fprintf(_dest, "%010lu ", _entry.time) < 0)
+		if(fprintf(_dest, "%010llu ", _entry.time) < 0)
 			return -1;
 	}
 
@@ -952,7 +952,7 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 			uint64_t o32a16 = _cnt[code|(1<<LOG_O32_BIT)];
 			uint64_t o16a32 = _cnt[code|(1<<LOG_A32_BIT)];
 			uint64_t o32a32 = _cnt[(code|(1<<LOG_O32_BIT))|(1<<LOG_A32_BIT)];
-			if(fprintf(file, "0x%05X: %12lu  %12lu  %12lu  %12lu  %s\n", code,
+			if(fprintf(file, "0x%05X: %12llu  %12llu  %12llu  %12llu  %s\n", code,
 					o16a16, o16a32, o32a16, o32a32, mnemonic) < 0)
 			{
 				PERRF(LOG_CPU, "error writing to file\n");
@@ -963,7 +963,7 @@ void CPULogger::write_counters(const std::string _filename, std::map<int,uint64_
 			totals[2] += o32a16;
 			totals[3] += o32a32;
 		}
-		fprintf(file, "\n totals: %12lu  %12lu  %12lu  %12lu\n",
+		fprintf(file, "\n totals: %12llu  %12llu  %12llu  %12llu\n",
 				totals[0], totals[1], totals[2], totals[3]);
 	}
 	PINFOF(LOG_V0, LOG_CPU, "done\n");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -75,6 +75,7 @@ public:
 	~WAVFile();
 
 	RIFFHeader open_read(const char *_filepath);
+	using RIFFFile::open_write;
 	void open_write(const char *_filepath, uint32_t _rate, uint16_t _bits, uint16_t _channels);
 
 	std::vector<uint8_t> read_audio_data() const;

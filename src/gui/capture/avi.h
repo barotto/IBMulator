@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -193,6 +193,7 @@ public:
 	~AVIFile();
 
 	RIFFHeader open_read(const char *) { throw std::exception(); }
+	using RIFFFile::open_write;
 	void open_write(const char *_filepath, AVIWriteOptions &_options);
 
 	void write_video_frame(const void *_data, uint32_t _stride);
