@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2024  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,7 +37,7 @@
 #define SEC_TO_NSEC(sec) (double(sec) * 1'000'000'000.0)
 #define MSEC_TO_NSEC(msec) (double(msec) * 1'000'000.0)
 #define USEC_TO_SEC(usec) (double(usec) / 1'000'000.0)
-#define MAX_TIMERS 28
+#define MAX_TIMERS 32
 #define TIMER_NAME_LEN 20
 
 constexpr uint64_t operator"" _us ( unsigned long long int _t ) { return _t * MSEC_PER_SECOND; }
