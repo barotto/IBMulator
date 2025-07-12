@@ -164,15 +164,15 @@ FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 	return m_geom;
 }
 
-std::string FloppyFmt_HFE::get_preview_string(std::string _filepath)
+MediumInfoData FloppyFmt_HFE::get_preview_string(std::string _filepath)
 {
 	identify(_filepath, 0, FloppyDisk::SIZE_8);
 	if(!m_version) {
-		return "Not a valid HFE file";
+		std::string err("Not a valid HFE file");
+		return { err, err };
 	}
-	std::string info = str_format("Format: HxC Floppy Emulator HFE File v.%u<br />", m_version);
-	std::string media_desc = str_format("%s %u tracks", m_geom.desc.c_str(), m_geom.tracks);
-	info += "Media: " + str_to_html(media_desc) + "<br />";
+	std::string info = str_format("Format: HxC Floppy Emulator HFE File v.%u\n", m_version);
+	info += str_format("Medium: %s %u tracks\n", m_geom.desc.c_str(), m_geom.tracks);
 	info += "Encoding: ";
 	switch(m_header.track_encoding) {
 		case ISOIBM_MFM_ENCODING: info += "IBM MFM"; break;
@@ -182,9 +182,9 @@ std::string FloppyFmt_HFE::get_preview_string(std::string _filepath)
 		case UNKNOWN_ENCODING:
 		default:  info += "unknown"; break;
 	}
-	info += "<br />";
-	info += str_format("Bitrate: %u Kbps<br />", m_header.bitRate);
-	info += str_format("RPM: %u<br />", m_header.floppyRPM);
+	info += "\n";
+	info += str_format("Bitrate: %u Kbps\n", m_header.bitRate);
+	info += str_format("RPM: %u\n", m_header.floppyRPM);
 	//info += str_format("Single Step: 0x%x<br />", m_header.single_step);
 	if(m_header.track0s0_altencoding == 0) {
 		info += "Track 0 side 0 Encoding: ";
@@ -196,7 +196,7 @@ std::string FloppyFmt_HFE::get_preview_string(std::string _filepath)
 			case UNKNOWN_ENCODING:
 			default:  info += "unknown"; break;
 		}
-		info += "<br />";
+		info += "\n";
 	}
 	if(m_header.track0s1_altencoding == 0) {
 		info += "Track 0 side 1 Encoding: ";
@@ -208,10 +208,10 @@ std::string FloppyFmt_HFE::get_preview_string(std::string _filepath)
 			case UNKNOWN_ENCODING:
 			default:  info += "unknown"; break;
 		}
-		info += "<br />";
+		info += "\n";
 	}
 
-	return info;
+	return { info, str_to_html(info) };
 }
 
 bool FloppyFmt_HFE::load(std::ifstream &_file, FloppyDisk &_disk)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -96,6 +96,7 @@ public:
 	virtual void create();
 	virtual void update();
 	virtual void config_changed(bool);
+	virtual bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
 
 	void container_size_changed(int _width, int _height);
 

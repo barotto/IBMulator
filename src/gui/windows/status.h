@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -68,9 +68,10 @@ public:
 	Status(GUI * _gui, Machine *_machine);
 	~Status();
 
-	virtual void create();
-	virtual void update();
-	virtual void config_changed(bool);
+	void create();
+	void update();
+	void config_changed(bool);
+	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
 
 	void set_indicator(IND _ind, LED _s) {
 		m_indicators[_ind].set(_s);

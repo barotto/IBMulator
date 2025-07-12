@@ -44,16 +44,16 @@ FloppyDisk::Properties FloppyFmt_IMG::identify(std::string file_path,
 	return {FloppyDisk::FD_NONE};
 }
 
-std::string FloppyFmt_IMG::get_preview_string(std::string _filepath)
+MediumInfoData FloppyFmt_IMG::get_preview_string(std::string _filepath)
 {
-	std::string info;
-	info = "Format: RAW sector image file<br />";
+	std::string info_plain = "Format: RAW sector image file\n";
 
 	FATReader fat;
 	try {
 		fat.read(_filepath);
 	} catch(std::runtime_error & err) {
-		return info + err.what();
+		info_plain += err.what();
+		return { info_plain, str_to_html(info_plain) };
 	}
 
 	auto &boot_sec = fat.get_boot_sector();
@@ -62,53 +62,80 @@ std::string FloppyFmt_IMG::get_preview_string(std::string _filepath)
 	try {
 		media_desc = boot_sec.get_media_str();
 	} catch(std::runtime_error & err) {
-		return info + err.what();
+		info_plain += err.what();
+		return { info_plain, str_to_html(info_plain) };
 	}
 
 	auto to_value = [=](std::string s){
 		return std::string("<span class=\"value\">") + str_to_html(s,true) + "</span>";
 	};
 
-	info += "Media: " + str_to_html(media_desc) + "<br />";
-	info += "OEM name: " + to_value(boot_sec.get_oem_str());
+	std::string info_html = str_to_html(info_plain);
+
+	info_plain += "Medium: " + media_desc + "\n";
+	info_html += "Medium: " + str_to_html(media_desc) + "<br />";
+
+	info_plain += "OEM name: " + boot_sec.get_oem_str();
+	info_html += "OEM name: " + to_value(boot_sec.get_oem_str());
 	if(boot_sec.oem_name[5]=='I' && boot_sec.oem_name[6]=='H' && boot_sec.oem_name[7]=='C') {
-		info += " (mod. by Win95+)";
+		info_plain += " (mod. by Win95+)";
+		info_html += " (mod. by Win95+)";
 	}
-	info += "<br />";
-	info += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "<br />";
+	info_plain += "\n";
+	info_html += "<br />";
+
+	info_plain += "Disk label: " + boot_sec.get_vol_label_str() + "\n";
+	info_html += "Disk label: " + to_value(boot_sec.get_vol_label_str()) + "<br />";
 
 	auto root = fat.get_root_entries();
 	if(root.empty() || root[0].is_empty()) {
-		info += "<br />Empty disk";
+		info_plain += "\nEmpty disk";
+		info_html += "<br />Empty disk";
 	} else {
-		info += "Volume label: " + to_value(fat.get_volume_id()) + "<br />";
-		info += "Directory<br /><br />";
-		info += "<table class=\"directory_listing\">";
+		info_plain += "Volume label: " + fat.get_volume_id() + "\n";
+		info_html += "Volume label: " + to_value(fat.get_volume_id()) + "<br />";
+
+		info_plain += "Directory\n\n";
+		info_html += "Directory<br /><br />";
+
+		info_html += "<table class=\"directory_listing\">";
 		for(auto &entry : root) {
 			if(entry.is_file() || entry.is_directory()) {
 				auto ext = str_to_upper(entry.get_ext_str());
 				bool exe = (ext == "BAT" || ext == "COM" || ext == "EXE");
-				info += std::string("<tr class=\"") + 
+
+				info_html += std::string("<tr class=\"") + 
 						(entry.is_file()?"file":"dir") +
 						(exe?" executable":"") +
 						"\">";
-				info += "<td class=\"name\">" + str_to_html(entry.get_name_str()) + "</td>";
-				info += "<td class=\"extension\">" + str_to_html(entry.get_ext_str()) + "</td>";
+
+				info_plain += entry.get_name_str();
+				info_html += "<td class=\"name\">" + str_to_html(entry.get_name_str()) + "</td>";
+
 				if(entry.is_file()) {
-					info += "<td class=\"size\">" + str_format("%u", entry.FileSize) + "</td>";
+					info_plain += "." + entry.get_ext_str();
+					info_html += "<td class=\"extension\">" + str_to_html(entry.get_ext_str()) + "</td>";
+
+					info_plain += ", " + str_format("%u", entry.FileSize);
+					info_html += "<td class=\"size\">" + str_format("%u", entry.FileSize) + "</td>";
+
 					time_t wrtime = entry.get_time_t(entry.WrtDate, entry.WrtTime);
-					info += "<td class=\"date\">" + str_format_time(wrtime, "%x") + "</td>";
+					info_plain += ", " + str_format_time(wrtime, "%x");
+					info_html += "<td class=\"date\">" + str_format_time(wrtime, "%x") + "</td>";
 				} else {
-					info += "<td class=\"size\">" + str_to_html("<DIR>") + "</td>";
-					info += "<td class=\"date\"></td>";
+					info_plain += " <DIR>";
+					info_html += "<td class=\"extension\"></td>";
+					info_html += "<td class=\"size\">" + str_to_html("<DIR>") + "</td>";
+					info_html += "<td class=\"date\"></td>";
 				}
-				info += "</tr>";
+				info_plain += "\n";
+				info_html += "</tr>";
 			}
 		}
-		info += "</table>";
+		info_html += "</table>";
 	}
 
-	return info;
+	return { info_plain, info_html };
 }
 
 bool FloppyFmt_IMG::load(std::ifstream &_file, FloppyDisk &_disk)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -321,9 +321,9 @@ void Program::restore_state(
 			m_gui->config_changed(false);
 			g_syslog.cmd_resume();
 
-			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart the program\n");
+			PERRF(LOG_PROGRAM, "The restored state is not valid, please restart " PACKAGE_NAME "\n");
 			if(_on_fail != nullptr) {
-				_on_fail("The restored state is not valid, please restart the program");
+				_on_fail("The restored state is not valid, please restart" PACKAGE_NAME);
 			}
 		}
 	};

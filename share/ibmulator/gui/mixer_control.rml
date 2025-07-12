@@ -41,6 +41,10 @@
 				clip: none;
 				top: -30dp;
 			}
+			tab
+			{
+				tab-index: auto;
+			}
 			.channels_container
 			{
 				overflow-x: auto;
@@ -499,6 +503,7 @@
 				top: 2dp;
 				width: 23dp;
 				height: 23dp;
+				tab-index: none;
 			}
 			.spinner .decrease
 			{
@@ -508,6 +513,7 @@
 			{
 				right: 0dp;
 			}
+			.spinner spinbutton,
 			.spinner input
 			{
 				position: absolute;
@@ -518,6 +524,7 @@
 				height: 23dp;
 				text-align: center;
 				background-color: #3d5576ff;
+				tab-index: auto;
 			}
 			#save
 			{
@@ -537,8 +544,8 @@
 	</head>
 	<body template="window">
 
-		<button id="save" class="romshell text"><span>Save profile</span></button>
-		<button id="vu_meters" class="romshell text"><span>VU meters</span></button>
+		<button id="save" class="romshell text" aria-label="Save profile"><span>Save profile</span></button>
+		<button id="vu_meters" class="romshell text" aria-label="Show VU meters"><span>VU meters</span></button>
 
 		<div id="blocks">
 
@@ -546,15 +553,15 @@
 			<div id="master" class="ch_block_container"></div>
 		</div>
 
-		<tabset id="channels">
+		<tabset id="channels" aria-label="Channels">
 
-			<tab class="romshell">Audio cards</tab>
+			<tab class="romshell" aria-label="Audio cards">Audio cards</tab>
 			<panel>
 				<div id="audiocards" class="ch_block_container category_container"></div>
 				<div id="audiocards_channels" class="channels_container"></div>
 			</panel>
 
-			<tab class="romshell">Sound FX</tab>
+			<tab class="romshell" aria-label="Sound effects">Sound FX</tab>
 			<panel>
 				<div id="soundfx" class="ch_block_container category_container"></div>
 				<div id="soundfx_channels" class="channels_container"></div>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,6 +31,8 @@ class Desktop : public Window
 public:
 	Desktop(GUI * _gui);
 	~Desktop();
+
+	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,6 +35,7 @@ public:
 	virtual ~StateLoad() {}
 
 	void create(std::string _mode, std::string _order, int _zoom);
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 	
 	void action_on_record(std::string _rec_name);
 

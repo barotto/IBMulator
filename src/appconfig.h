@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -132,6 +132,18 @@ public:
 #define PROGRAM_MEDIA_DIR       "media_dir"
 #define PROGRAM_WAIT_METHOD     "timing"
 #define PROGRAM_LOG_FILE        "log_file"
+
+#define TTS_SECTION             "tts"
+#define TTS_GUI_ENABLED         "gui_enabled"
+#define TTS_GUEST_ENABLED       "guest_enabled"
+#define TTS_GUI_DEV             "gui_dev"
+#define TTS_VOICE               "voice"
+#define TTS_FILE                "file"
+#define TTS_FORMAT              "file_format"
+#define TTS_VOLUME              "volume"
+#define TTS_RATE                "rate"
+#define TTS_GUEST_DEV           "guest_dev"
+#define TTS_CODEPAGE            "codepage"
 
 #define GUI_SECTION             "gui"
 #define GUI_RENDERER            "renderer"
@@ -375,6 +387,7 @@ public:
 #define LPT_ENABLED             "enabled"
 #define LPT_PORT                "port"
 #define LPT_FILE                "file"
+#define LPT_SPEAK               "speak"
 
 #define PRN_SECTION             "printer"
 #define PRN_CONNECTED           "connected"

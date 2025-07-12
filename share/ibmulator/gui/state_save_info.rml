@@ -33,11 +33,11 @@
 	<body template="window">
 		<div id="info">
 			Enter a description<span id="name"></span>:
-			<input type="text" id="desc"/>
+			<input type="text" id="desc" aria-label="enter a description" />
 		</div>
 		<div id="buttons_right" class="toolbar">
-			<button id="save" class="romshell text"><span>Save</span></button>
-			<button id="cancel" class="romshell text"><span>Cancel</span></button>
+			<button id="save" class="romshell text" aria-label="save"><span>Save</span></button>
+			<button id="cancel" class="romshell text" aria-label="cancel"><span>Cancel</span></button>
 		</div>
 	</body>
 </rml>

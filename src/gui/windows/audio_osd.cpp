@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -91,24 +91,25 @@ void AudioOSD::config_changed(bool)
 
 void AudioOSD::update_channel_name()
 {
+	std::string ch_name, ch_classes;
 	if(m_channel_id < 0) {
-		m_divs.volume_name->SetInnerRML("Master");
-		m_divs.volume_name->SetClassNames("master");
+		ch_name = "Master";
+		ch_classes = "master";
 	} else {
 		switch(m_channel_id) {
 			case MixerChannel::Category::AUDIOCARD: { 
-				m_divs.volume_name->SetInnerRML("Audio cards");
-				m_divs.volume_name->SetClassNames("category audiocard");
+				ch_name = "Audio cards";
+				ch_classes = "category audiocard";
 				break;
 			}
 			case MixerChannel::Category::SOUNDFX: {
-				m_divs.volume_name->SetInnerRML("Sound FX");
-				m_divs.volume_name->SetClassNames("category soundfx");
+				ch_name = "Sound FX";
+				ch_classes = "category soundfx";
 				break;
 			}
 			case MixerChannel::Category::GUI: {
-				m_divs.volume_name->SetInnerRML("GUI");
-				m_divs.volume_name->SetClassNames("category gui");
+				ch_name = "GUI";
+				ch_classes = "category gui";
 				break;
 			}
 			default: {
@@ -116,16 +117,18 @@ void AudioOSD::update_channel_name()
 				if(id >= int(m_channels.size())) {
 					return;
 				}
-				m_divs.volume_name->SetInnerRML(m_channels[id]->name());
+				ch_name = m_channels[id]->name();
 				if(m_channels[id]->category() == MixerChannel::Category::AUDIOCARD) {
-					m_divs.volume_name->SetClassNames("audiocard");
+					ch_classes = "audiocard";
 				} else {
-					m_divs.volume_name->SetClassNames("soundfx");
+					ch_classes = "soundfx";
 				}
 				break;
 			}
 		}
 	}
+	m_divs.volume_name->SetInnerRML(ch_name);
+	m_divs.volume_name->SetClassNames(ch_classes);
 }
 
 void AudioOSD::next_channel()
@@ -134,8 +137,11 @@ void AudioOSD::next_channel()
 	if(m_channel_id == MixerChannel::Category::GUI) {
 		m_channel_id++;
 	}
-	m_channel_id = std::min(m_channel_id, MixerChannel::CategoryCount + (int(m_channels.size()) - 1));
-	update_channel_name();
+	int max_ch = MixerChannel::CategoryCount + (int(m_channels.size()) - 1);
+	if(m_channel_id > max_ch) {
+		m_channel_id = max_ch;
+		m_tts_channel = true;
+	}
 }
 
 void AudioOSD::prev_channel()
@@ -144,8 +150,11 @@ void AudioOSD::prev_channel()
 	if(m_channel_id == MixerChannel::Category::GUI) {
 		m_channel_id--;
 	}
-	m_channel_id = std::max(int(MixerChannel::MASTER), m_channel_id);
-	update_channel_name();
+	int min_ch = int(MixerChannel::MASTER);
+	if(m_channel_id < min_ch) {
+		m_channel_id = min_ch;
+		m_tts_channel = true;
+	}
 }
 
 MixerChannel * AudioOSD::current_channel() const
@@ -166,16 +175,33 @@ void AudioOSD::set_channel(int _id)
 		m_channel_id = std::min(m_channel_id, MixerChannel::CategoryCount + (int(m_channels.size()) - 1));
 		m_channel_id = std::max(int(MixerChannel::MASTER), m_channel_id);
 	}
-	update_channel_name();
+	m_tts_channel = true;
 }
 
 void AudioOSD::show()
 {
+	bool was_visible = is_visible();
+
 	Window::show();
+
 	m_wnd->SetClass("hidden", false);
 	m_gui->timers().activate_timer(m_timeout_timer, m_timeout, false);
 	m_vu_meter = g_program.config().get_bool_or_default(DIALOGS_SECTION, DIALOGS_VU_METERS);
 	m_wnd->SetClass("with_vu_meter", m_vu_meter);
+
+	auto old_ch_name = m_divs.volume_name->GetInnerRML();
+	update_channel_name();
+	update();
+	auto ch_name = m_divs.volume_name->GetInnerRML();
+	auto vol_val = m_divs.volume_value->GetInnerRML();
+	std::string message;
+	if(!was_visible || old_ch_name != ch_name || m_tts_channel) {
+		message = str_format("Volume %s %s", ch_name.c_str(), vol_val.c_str());
+		m_tts_channel = false;
+	} else {
+		message = str_format("%s", vol_val.c_str());
+	}
+	m_gui->tts().enqueue(message, TTS::Priority::High);
 }
 
 void AudioOSD::update()
@@ -197,7 +223,6 @@ void AudioOSD::update()
 		vu = &m_channels[id]->vu_meter();
 		if(m_channels[id]->is_volume_auto()) {
 			auto_vol = true;
-			m_divs.volume_value->SetInnerRML("auto");
 			if(m_channels[id]->features() & MixerChannel::HasStereoSource) {
 				mix_value = (m_channels[id]->volume_master_left() + m_channels[id]->volume_master_right()) / 2.0;
 			} else {

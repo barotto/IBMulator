@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -418,6 +418,15 @@ void ShaderParameters::on_click(Rml::Event &_ev)
 		reset_value(name);
 		_ev.StopImmediatePropagation();
 	}
+}
+
+bool ShaderParameters::would_handle(Rml::Input::KeyIdentifier _key, int _mod)
+{
+	return (
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_RETURN ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_NUMPADENTER ) ||
+		Window::would_handle(_key, _mod)
+	);
 }
 
 void ShaderParameters::on_keydown(Rml::Event &_ev)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,6 +22,7 @@
 
 #include "items_dialog.h"
 #include "new_floppy.h"
+#include "gui/medium_info.h"
 
 class GUI;
 
@@ -37,12 +38,11 @@ public:
 	using FileSelectCb = std::function<void(std::string,bool)>;
 	using CancelCb = std::function<void()>;
 	using NewMediumCb = std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)>;
-	using MediumInfoCb = std::function<std::string(std::string)>;
 
 private:
 	std::function<void(std::string,bool)> m_select_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
-	std::function<std::string(std::string)> m_inforeq_fn = nullptr;
+	MediumInfoCb m_inforeq_fn = nullptr;
 	std::function<std::string(std::string, std::string, FloppyDisk::StdType, std::string)>
 		m_newfloppy_callbk = nullptr;
 	
@@ -62,6 +62,7 @@ private:
 		Rml::Element *cwd;
 		Rml::Element *prev, *next, *up;
 	} m_path_el = {};
+	unsigned m_drives_mask = 0;
 
 	class DirEntry {
 	public:
@@ -74,7 +75,7 @@ private:
 		time_t mtime;
 		bool is_dir;
 
-		Rml::ElementPtr create_element(Rml::ElementDocument *_doc) const;
+		Rml::ElementPtr create_element(Rml::ElementDocument *_doc, unsigned _idx, unsigned _count) const;
 	};
 	struct DirEntryOrderDate {
 		bool operator()(const DirEntry *_first, const DirEntry *_other) const {
@@ -117,9 +118,13 @@ private:
 	std::set<const DirEntry*, DirEntryOrderDate> m_cur_dir_date;
 	std::set<const DirEntry*, DirEntryOrderName> m_cur_dir_name;
 	std::map<std::string, DirEntry> m_de_map;
+	unsigned m_de_folders = 0;
+	unsigned m_de_files = 0;
 
 	const DirEntry *m_selected_de = nullptr;
+	MediumInfoData m_selected_de_info;
 
+	bool m_shown = false;
 	bool m_dirty = true;
 	int m_dirty_scroll = 0;
 	enum class Order {
@@ -140,6 +145,8 @@ private:
 	std::unique_ptr<NewFloppy> m_new_floppy;
 	const DirEntry *m_lazy_select = nullptr;
 	bool m_lazy_reload = false;
+	bool m_lazy_tts = true;
+	bool m_entries_focus = true;
 	
 public:
 
@@ -154,6 +161,7 @@ public:
 	virtual void update();
 	virtual void show(const std::string &_curr_file);
 	virtual void close();
+	virtual bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
 	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
 
@@ -170,11 +178,15 @@ public:
 			const std::vector<const char*> &_extensions);
 	void reload();
 
+	void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
+
 protected:
 	
 	void on_cancel(Rml::Event &);
 	void on_entry(Rml::Event &);
 	void on_drive(Rml::Event &);
+	void on_prev_drive(Rml::Event &);
+	void on_next_drive(Rml::Event &);
 	void on_mode(Rml::Event &);
 	void on_order(Rml::Event &);
 	void on_asc_desc(Rml::Event &);
@@ -183,30 +195,40 @@ protected:
 	void on_next(Rml::Event &);
 	void on_insert(Rml::Event &);
 	void on_entries(Rml::Event &);
+	void on_entries_focus(Rml::Event &);
 	void on_home(Rml::Event &);
 	void on_reload(Rml::Event &);
 	void on_show_panel(Rml::Event &);
 	void on_new_floppy(Rml::Event &);
 	void on_keydown(Rml::Event &_ev);
+	void on_keyup(Rml::Event &_ev);
+	void on_focus(Rml::Event &_ev);
 
 	void clear();
 	void set_cwd(const std::string &_path);
 	void set_history();
 	void set_mode(std::string _mode);
 	void set_zoom(int _amount);
-	
+
+	void enter_drive(char _letter);
 	void read_dir(std::string _path, std::string _ext);
-	void enter_dir(const DirEntry *_de);
+	void enter_dir(const std::string &_path, bool _tts_selection = true, bool _tts_speak_path = false);
+	void enter_dir(const DirEntry *_de, bool _tts_selection = true, bool _tts_speak_path = false);
 	void entry_select(Rml::Element *_entry);
-	void entry_select(const DirEntry *_de, Rml::Element *_entry);
+	void entry_select(const DirEntry *_de, Rml::Element *_entry, bool _tts = true, bool _tts_append = true);
 	void entry_deselect();
+	std::pair<std::string,std::string> get_path_parts(const std::string &_path);
 	std::pair<std::string,std::string> get_up_path();
 	const DirEntry * find_de(const std::string _name);
 
 	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Element *target_el);
 	std::pair<DirEntry*,Rml::Element*> get_de_entry(Rml::Event &);
-	
-	void move_selection(Rml::Input::KeyIdentifier _id);
+
+	bool is_empty() const;
+	void speak_path(const std::string &_path);
+	void speak_entries(bool _describe);
+	void speak_entry(const DirEntry *_de, const MediumInfoData &_de_info, Rml::Element *_entry_el, bool _append);
+	void speak_content(bool _append);
 };
 
 

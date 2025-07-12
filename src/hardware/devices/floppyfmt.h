@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include "floppydisk.h"
+#include "gui/medium_info.h"
 
 //! Class representing a floppy image format.
 class FloppyFmt
@@ -38,7 +39,7 @@ public:
 	const std::string &loaded_file() const { return m_imgfile; }
 	const FloppyDisk::Properties &loaded_props() const { return m_geom; }
 
-	virtual std::string get_preview_string(std::string) { return ""; }
+	virtual MediumInfoData get_preview_string(std::string) { return { "","" }; }
 
 protected:
 

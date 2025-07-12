@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -161,33 +161,38 @@ int RmlSystemInterface::TranslateMouseButton(Uint8 button)
 	}
 }
 
-int RmlSystemInterface::GetKeyModifiers()
+int RmlSystemInterface::GetKeyModifiers(Uint16 _sdl_mods)
 {
-	SDL_Keymod sdlMods = SDL_GetModState();
-
 	int retval = 0;
 
-	if(sdlMods & KMOD_CTRL) {
+	if(_sdl_mods & KMOD_CTRL) {
 		retval |= Rml::Input::KM_CTRL;
 	}
 
-	if(sdlMods & KMOD_SHIFT) {
+	if(_sdl_mods & KMOD_SHIFT) {
 		retval |= Rml::Input::KM_SHIFT;
 	}
 
-	if(sdlMods & KMOD_ALT) {
+	if(_sdl_mods & KMOD_ALT) {
 		retval |= Rml::Input::KM_ALT;
 	}
 
-	if(sdlMods & KMOD_NUM) {
+	if(_sdl_mods & KMOD_NUM) {
 		retval |= Rml::Input::KM_NUMLOCK;
 	}
 
-	if(sdlMods & KMOD_CAPS) {
+	if(_sdl_mods & KMOD_CAPS) {
 		retval |= Rml::Input::KM_CAPSLOCK;
 	}
 
 	return retval;
+}
+
+int RmlSystemInterface::GetKeyModifiers()
+{
+	SDL_Keymod sdlMods = SDL_GetModState();
+
+	return GetKeyModifiers(sdlMods);
 }
 
 double RmlSystemInterface::GetElapsedTime()

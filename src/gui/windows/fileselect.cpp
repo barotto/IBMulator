@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,6 +40,7 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "entries", "click",   FileSelect::on_entry ),
 	GUI_EVT( "entries", "dblclick",FileSelect::on_insert ),
 	GUI_EVT( "entries", "keydown", FileSelect::on_entries ),
+	GUI_EVT( "entries", "focus",   FileSelect::on_entries_focus ),
 	GUI_EVT( "insert",  "click",   FileSelect::on_insert ),
 	GUI_EVT( "drive",   "click",   FileSelect::on_drive ),
 	GUI_EVT( "mode",    "click",   FileSelect::on_mode ),
@@ -52,7 +53,8 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "dir_next","click",   FileSelect::on_next),
 	GUI_EVT( "show_panel","click", FileSelect::on_show_panel),
 	GUI_EVT( "new_floppy","click", FileSelect::on_new_floppy),
-	GUI_EVT( "*",       "keydown", FileSelect::on_keydown )
+	GUI_EVT( "*",       "keydown", FileSelect::on_keydown ),
+	GUI_EVT( "*",       "keyup",   FileSelect::on_keyup )
 };
 
 FileSelect::FileSelect(GUI * _gui)
@@ -75,19 +77,20 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 	m_home_btn_el = get_element("home");
 	
 	auto drive_el = get_element("drive");
-	unsigned drives_mask = 0;
+	m_drives_mask = 0;
 #ifdef _WIN32
-	drives_mask = GetLogicalDrives();
+	m_drives_mask = GetLogicalDrives();
 #endif
-	m_wnd->SetClass("drives", bool(drives_mask));
-	if(drives_mask) {
-		for(char drvlett = 'A'; drvlett <= 'Z'; drvlett++,drives_mask>>=1) {
-			if(drives_mask & 1) {
+	m_wnd->SetClass("drives", bool(m_drives_mask));
+	if(m_drives_mask) {
+		for(char drvlett = 'A'; drvlett <= 'Z'; drvlett++) {
+			if((m_drives_mask >> (drvlett-'A')) & 1) {
 				Rml::ElementPtr btn = m_wnd->CreateElement("input");
 				btn->SetId(str_format("drive_%c", drvlett));
 				btn->SetAttribute("type", "radio");
 				btn->SetAttribute("name", "drive");
 				btn->SetAttribute("value", str_format("%c", drvlett));
+				btn->SetAttribute("aria-label", str_format("%c drive", drvlett));
 				btn->SetInnerRML(str_format("<span>%c</span>", drvlett));
 				drive_el->AppendChild(std::move(btn));
 				PDEBUGF(LOG_V1, LOG_GUI, "%c\n", drvlett);
@@ -154,48 +157,52 @@ void FileSelect::update()
 	const DirEntry *prev_selected = nullptr;
 	bool first_focus = m_dirty;
 	if(m_dirty) {
-		set_disabled(m_path_el.up, get_up_path().first.empty());
+		set_disabled(m_path_el.up, get_up_path().second.empty());
 		prev_selected = m_selected_de;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
 		switch(m_order) {
 			case Order::BY_DATE: {
+				unsigned count = m_cur_dir_date.size();
+				unsigned curr = 0;
 				if(m_order_ascending) {
 					for(auto de : m_cur_dir_date) {
-						m_entries_el->AppendChild(de->create_element(m_wnd));
+						m_entries_el->AppendChild(de->create_element(m_wnd, curr++, count));
 					}
 				} else {
 					auto it = m_cur_dir_date.rbegin();
 					for(;it != m_cur_dir_date.rend(); it++) {
 						if((*it)->is_dir) {
-							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+							m_entries_el->AppendChild((*it)->create_element(m_wnd, curr++, count));
 						}
 					}
 					it = m_cur_dir_date.rbegin();
 					for(;it != m_cur_dir_date.rend(); it++) {
 						if(!(*it)->is_dir) {
-							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+							m_entries_el->AppendChild((*it)->create_element(m_wnd, curr++, count));
 						}
 					}
 				}
 				break;
 			}
 			case Order::BY_NAME: {
+				unsigned count = m_cur_dir_name.size();
+				unsigned curr = 0;
 				if(m_order_ascending) {
 					for(auto de : m_cur_dir_name) {
-						m_entries_el->AppendChild(de->create_element(m_wnd));
+						m_entries_el->AppendChild(de->create_element(m_wnd, curr++, count));
 					}
 				} else {
 					auto it = m_cur_dir_name.rbegin();
 					for(;it != m_cur_dir_name.rend(); it++) {
 						if((*it)->is_dir) {
-							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+							m_entries_el->AppendChild((*it)->create_element(m_wnd, curr++, count));
 						}
 					}
 					it = m_cur_dir_name.rbegin();
 					for(;it != m_cur_dir_name.rend(); it++) {
 						if(!(*it)->is_dir) {
-							m_entries_el->AppendChild((*it)->create_element(m_wnd));
+							m_entries_el->AppendChild((*it)->create_element(m_wnd, curr++, count));
 						}
 					}
 				}
@@ -213,11 +220,14 @@ void FileSelect::update()
 	if(m_lazy_select) {
 		auto entry_el = m_entries_el->GetElementById(m_lazy_select->id);
 		if(entry_el) {
-			entry_select(m_lazy_select, entry_el);
-			m_entries_el->Focus();
+			entry_select(m_lazy_select, entry_el, m_lazy_tts);
+			if(m_entries_focus) {
+				m_entries_el->Focus();
+			}
 		}
+		m_lazy_tts = true;
 		m_lazy_select = nullptr;
-	} else if(!prev_selected && first_focus) {
+	} else if(!prev_selected && first_focus && m_entries_focus) {
 		m_entries_el->Focus();
 	}
 	if(m_dirty_scroll) {
@@ -228,6 +238,7 @@ void FileSelect::update()
 		}
 		m_dirty_scroll--;
 	}
+	m_entries_focus = true;
 }
 
 void FileSelect::show(const std::string &_filename)
@@ -246,6 +257,19 @@ void FileSelect::show(const std::string &_filename)
 
 	if(!_filename.empty()) {
 		m_lazy_select = find_de(_filename);
+		m_lazy_tts = false;
+	}
+}
+
+void FileSelect::on_focus(Rml::Event &_ev)
+{
+	Window::on_focus(_ev);
+
+	if(_ev.GetTargetElement() == m_wnd) {
+		if(!m_shown) {
+			speak_path(m_cwd);
+			m_shown = true;
+		}
 	}
 }
 
@@ -342,14 +366,22 @@ void FileSelect::on_entries(Rml::Event &_ev)
 	_ev.StopImmediatePropagation();
 }
 
+void FileSelect::on_entries_focus(Rml::Event &)
+{
+	speak_entries(m_shown);
+}
+
 void FileSelect::on_home(Rml::Event &)
 {
 	if(m_home == m_cwd) {
+		m_gui->tts().enqueue("You're already in your media folder.");
 		return;
 	}
 	set_history();
 	try {
-		set_current_dir(m_home);
+		enter_dir(m_home, false, true);
+		m_lazy_tts = false;
+		m_entries_focus = false;
 	} catch(...) { }
 }
 
@@ -364,6 +396,11 @@ void FileSelect::on_show_panel(Rml::Event &)
 	m_inforeq_btn->SetClass("active", active);
 	m_wnd->SetClass("wpanel", active);
 	m_dirty_scroll = 2;
+	if(active) {
+		m_gui->tts().enqueue("File information panel is open.");
+	} else {
+		m_gui->tts().enqueue("File information panel is closed.");
+	}
 }
 
 void FileSelect::on_new_floppy(Rml::Event &)
@@ -411,11 +448,11 @@ void FileSelect::on_new_floppy(Rml::Event &)
 	m_new_floppy->show();
 }
 
-std::pair<std::string,std::string> FileSelect::get_up_path()
+std::pair<std::string,std::string> FileSelect::get_path_parts(const std::string &_path)
 {
-	size_t pos = m_cwd.rfind(FS_SEP);
+	size_t pos = _path.rfind(FS_SEP);
 	if(pos == std::string::npos) {
-		return std::make_pair("", "");
+		return std::make_pair(_path, "");
 	}
 	if(pos == 0) {
 		// the root on unix
@@ -425,29 +462,37 @@ std::pair<std::string,std::string> FileSelect::get_up_path()
 		pos = 3;
 	}
 
-	std::string up_path, up_dir;
+	std::string path, dir;
 
-	up_path = m_cwd.substr(0, pos);
-	if(up_path == m_cwd) {
-		return std::make_pair("", "");
+	path = _path.substr(0, pos);
+	if(path == _path) {
+		return std::make_pair(path, "");
 	}
 	if(pos == 1 || (pos == 3 && FS_PATH_MIN == 3)) {
 		pos--;
 	}
-	up_dir = m_cwd.substr(pos+1);
-	return std::make_pair(up_path, up_dir);
+	dir = _path.substr(pos+1);
+	return std::make_pair(path, dir);
+}
+
+std::pair<std::string,std::string> FileSelect::get_up_path()
+{
+	return get_path_parts(m_cwd);
 }
 
 void FileSelect::on_up(Rml::Event &)
 {
-	auto [path, dir] = get_up_path();
-	if(path.empty()) {
+	auto [up_path, up_dir] = get_up_path();
+	if(up_dir.empty()) {
+		m_gui->tts().enqueue("You can't go any higher.");
 		return;
 	}
 	set_history();
 	try {
-		set_current_dir(path);
-		m_lazy_select = find_de(dir);
+		enter_dir(up_path, false);
+		m_lazy_select = find_de(up_dir);
+		m_lazy_tts = true;
+		m_entries_focus = false;
 	} catch(...) { }
 }
 
@@ -478,19 +523,25 @@ void FileSelect::on_prev(Rml::Event &)
 			unsigned idx = m_history_idx - 1;
 			set_history();
 			try {
-				set_current_dir(m_history[idx]);
+				enter_dir(m_history[idx], true);
+				m_lazy_tts = false;
+				m_entries_focus = false;
 			} catch(...) {}
 			m_history_idx = idx;
 			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
 		} else {
 			try {
-				set_current_dir(m_history[m_history_idx-1]);
+				enter_dir(m_history[m_history_idx-1], true);
+				m_lazy_tts = false;
+				m_entries_focus = false;
 			} catch(...) {}
 			m_history_idx--;
 			PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
 		}
 		set_disabled(m_path_el.prev, m_history_idx==0);
 		enable(m_path_el.next);
+	} else {
+		m_gui->tts().enqueue("No previous folder in browsing history.");
 	}
 }
 
@@ -498,21 +549,128 @@ void FileSelect::on_next(Rml::Event &)
 {
 	if(!m_history.empty() && m_history_idx < m_history.size()-1) {
 		try {
-			set_current_dir(m_history[m_history_idx+1]);
+			enter_dir(m_history[m_history_idx+1], true);
+			m_lazy_tts = false;
+			m_entries_focus = false;
 		} catch(...) {}
 		m_history_idx++;
 		PDEBUGF(LOG_V1, LOG_GUI, "  history idx: %u\n", m_history_idx);
 		set_disabled(m_path_el.next, m_history_idx>=m_history.size()-1);
 		enable(m_path_el.prev);
+	} else {
+		m_gui->tts().enqueue("No next folder in browsing history.");
 	}
 }
 
-void FileSelect::enter_dir(const DirEntry *_de)
+void FileSelect::speak_path(const std::string &_path)
+{
+	std::string cwd(_path);
+	auto [path, dir] = get_path_parts(_path);
+	if(dir.empty()) {
+		if(path.length() == 1) {
+			cwd = "the root.";
+		} else {
+			cwd = str_format("the root of drive %c.", path[0]);
+		}
+	}
+	m_gui->tts().enqueue(str_format("Current folder is %s", cwd.c_str()));
+}
+
+bool FileSelect::is_empty() const
+{
+	return m_de_folders == 0 && m_de_files == 0;
+}
+
+void FileSelect::speak_entries(bool _describe)
+{
+	m_gui->tts().enqueue(get_mode() + " file view.");
+	if(_describe) {
+		speak_content(true);
+	}
+	if(m_selected_entry && m_selected_de) {
+		speak_entry(m_selected_de, m_selected_de_info, m_selected_entry, true);
+	} else if(!is_empty()) {
+		m_gui->tts().enqueue("None selected.", TTS::Priority::Low);
+	}
+}
+
+void FileSelect::speak_entry(const DirEntry *_de, const MediumInfoData &_de_info, Rml::Element *_entry_el, bool _append)
+{
+	unsigned idx = _entry_el->GetAttribute("data-index")->Get<unsigned>(0);
+	unsigned count = _entry_el->GetAttribute("data-count")->Get<unsigned>(0);
+	std::string text;
+	if(_de->is_dir) {
+		text = str_format("%u of %u, folder: %s", idx+1, count, m_gui->tts().get_format()->fmt_value(_de->name).c_str());
+	} else {
+		std::string base, ext;
+		FileSys::get_file_parts(_de->name.c_str(), base, ext);
+		base = m_gui->tts().get_format()->fmt_value(base);
+		if(!ext.empty()) {
+			ext = m_gui->tts().get_format()->fmt_spell( m_gui->tts().get_format()->fmt_value(ext) );
+		}
+		text = str_format("%u of %u, file: %s%s", idx+1, count, base.c_str(), ext.c_str());
+	}
+	m_gui->tts().enqueue(
+		text,
+		_append ? TTS::Priority::Low : TTS::Priority::Normal, TTS::IS_SENTENCE | TTS::IS_MARKUP
+	);
+	if(m_wnd->IsClassSet("wpanel") && !_de->is_dir && !_de_info.plain.empty()) {
+		m_gui->tts().enqueue(_de_info.plain, TTS::Priority::Low, TTS::BREAK_LINES);
+	}
+}
+
+void FileSelect::speak_content(bool _append)
+{
+	std::string folders, files, content;
+	if(m_de_folders) {
+		folders = str_format("%u %s", m_de_folders, m_de_folders>1 ? "folders" : "folder");
+	}
+	if(m_de_files) {
+		files = str_format("%u %s", m_de_files, m_de_files>1 ? "images" : "image");
+	}
+	if(m_de_folders && m_de_files) {
+		content = str_format("%u items: %s and %s.", (m_de_folders + m_de_files), folders.c_str(), files.c_str());
+	} else if(m_de_folders || m_de_files) {
+		content = str_format("%s%s.", folders.c_str(), files.c_str());
+	} else {
+		content = "Empty.";
+	}
+	m_gui->tts().enqueue(content, _append ? TTS::Priority::Low : TTS::Priority::Normal);
+}
+
+void FileSelect::enter_dir(const std::string &_path, bool _tts_selection, bool _tts_speak_path)
+{
+	auto [path, dir] = get_path_parts(_path);
+	if(dir.empty()) {
+		if(path.length() == 1) {
+			m_gui->tts().enqueue("In the root folder.");
+		} else {
+			m_gui->tts().enqueue(str_format("In %s.", path.c_str()));
+		}
+	} else {
+		if(_tts_speak_path) {
+			speak_path(_path);
+		} else {
+			m_gui->tts().enqueue(str_format("In folder %s.", dir.c_str()));
+		}
+	}
+	try {
+		set_current_dir(_path);
+		speak_content(true);
+		if(_tts_selection && !is_empty()) {
+			m_gui->tts().enqueue("None selected.", TTS::Priority::Low);
+		}
+	} catch(std::runtime_error &e) {
+		m_gui->tts().enqueue(e.what());
+	} catch(...) {
+		m_gui->tts().enqueue("Error accessing the folder.");
+	}
+}
+
+void FileSelect::enter_dir(const DirEntry *_de, bool _tts_selection, bool _tts_speak_path)
 {
 	set_history();
-	try {
-		set_current_dir(m_cwd + FS_SEP + _de->name);
-	} catch(...) { }
+	enter_dir(m_cwd + FS_SEP + _de->name, _tts_selection, _tts_speak_path);
 }
 
 void FileSelect::entry_select(Rml::Element *_entry_el)
@@ -522,25 +680,35 @@ void FileSelect::entry_select(Rml::Element *_entry_el)
 	if(!pair.first) {
 		return;
 	}
-	entry_select(pair.first, pair.second);
+	entry_select(pair.first, pair.second, true, false);
 }
 
-void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el)
+void FileSelect::entry_select(const DirEntry *_de, Rml::Element *_entry_el, bool _tts, bool _tts_append)
 {
 	ItemsDialog::entry_select(_entry_el);
 
 	m_selected_de = _de;
+	m_selected_de_info = {"",""};
 
 	m_panel_el->SetInnerRML("");
 	if(m_valid_cwd && m_inforeq_fn) {
 		if(!_de->is_dir) {
-			m_panel_el->SetInnerRML(m_inforeq_fn(m_cwd + FS_SEP + _de->name));
+			m_selected_de_info = m_inforeq_fn(m_cwd + FS_SEP + _de->name);
+			m_panel_el->SetInnerRML(m_selected_de_info.html);
 		}
 		m_panel_el->SetScrollTop(0);
 	}
 
 	if(!_de->is_dir) {
 		m_buttons_entry_el->SetClass("invisible", false);
+	}
+
+	if(_tts && m_entries_el->IsPseudoClassSet("focus")) {
+		if(m_moving_selection) {
+			m_gui->tts().stop();
+		} else {
+			speak_entry(_de, m_selected_de_info, _entry_el, _tts_append);
+		}
 	}
 }
 
@@ -549,6 +717,7 @@ void FileSelect::entry_deselect()
 	ItemsDialog::entry_deselect();
 
 	m_selected_de = nullptr;
+	m_selected_de_info = {"",""};
 
 	m_buttons_entry_el->SetClass("invisible", true);
 	if(m_inforeq_fn) {
@@ -557,27 +726,74 @@ void FileSelect::entry_deselect()
 	}
 }
 
+void FileSelect::enter_drive(char _letter)
+{
+	m_entries_focus = false;
+	std::string path = str_format("%c:" FS_SEP, _letter);
+	PDEBUGF(LOG_V1, LOG_GUI, "Accessing drive %s\n", path.c_str());
+	m_gui->tts().enqueue(str_format("Drive %c selected.", _letter));
+	set_history();
+	try {
+		set_current_dir(path);
+		speak_content(true);
+		if(!is_empty()) {
+			m_gui->tts().enqueue("None selected.", TTS::Priority::Low);
+		}
+	} catch(std::runtime_error &e) {
+		m_gui->tts().enqueue(e.what(), TTS::Priority::Low);
+	} catch(...) {
+		PERRF(LOG_GUI, "Cannot open '%s'\n", path.c_str());
+		m_gui->tts().enqueue("Error accessing the drive.", TTS::Priority::Low);
+	}
+}
+
 void FileSelect::on_drive(Rml::Event &_ev)
 {
 	std::string value = Window::get_form_input_value(_ev);
 	if(!value.empty()) {
-		std::string path = value + ":" + FS_SEP;
-		PDEBUGF(LOG_V1, LOG_GUI, "Accessing drive %s\n", path.c_str());
-		set_history();
-		try {
-			set_current_dir(path);
-		} catch(...) {
-			PERRF(LOG_GUI, "Cannot open '%s'\n", path.c_str());
+		enter_drive(value[0]);
+	}
+}
+
+void FileSelect::on_prev_drive(Rml::Event &)
+{
+	if(!m_drives_mask) {
+		return;
+	}
+	char cur_drvlett = std::toupper(m_cwd[0]);
+	for(char drvlett = cur_drvlett-1; drvlett >= 'A'; drvlett--) {
+		if((m_drives_mask >> (drvlett-'A')) & 1) {
+			enter_drive(drvlett);
+			return;
+		}
+	}
+}
+
+void FileSelect::on_next_drive(Rml::Event &)
+{
+	if(!m_drives_mask) {
+		return;
+	}
+	char cur_drvlett = std::toupper(m_cwd[0]);
+	for(char drvlett = cur_drvlett+1; drvlett <= 'Z'; drvlett++) {
+		if((m_drives_mask >> (drvlett-'A')) & 1) {
+			enter_drive(drvlett);
+			return;
 		}
 	}
 }
 
 void FileSelect::set_mode(std::string _mode)
 {
+	auto old_mode = get_mode();
 	ItemsDialog::set_mode(_mode);
 
 	if(m_selected_de) {
 		m_dirty_scroll = 2;
+	}
+
+	if(is_visible() && old_mode != _mode) {
+		m_gui->tts().enqueue(get_mode() + " file view active.");
 	}
 }
 
@@ -627,13 +843,17 @@ void FileSelect::on_cancel(Rml::Event &)
 	} else {
 		hide();
 	}
+	m_shown = false;
 }
 
-Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc) const
+Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc,
+		unsigned _idx, unsigned _count) const
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
 	child->SetClassNames("entry");
 	child->SetId(id);
+	child->SetAttribute("data-index", _idx); 
+	child->SetAttribute("data-count", _count);
 
 	std::string inner;
 
@@ -675,6 +895,8 @@ void FileSelect::clear()
 	m_cur_dir_date.clear();
 	m_cur_dir_name.clear();
 	m_de_map.clear();
+	m_de_folders = 0;
+	m_de_files = 0;
 	m_dirty = true;
 	m_dirty_scroll = 2;
 }
@@ -801,7 +1023,7 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 
 	if((dir = FileSys::opendir(_path.c_str())) == nullptr) {
 		PERRF(LOG_GUI, "Cannot open directory '%s' for reading\n", _path.c_str());
-		throw std::exception();
+		throw std::runtime_error("can't read content");
 	}
 
 	std::regex re(_ext, std::regex::ECMAScript|std::regex::icase);
@@ -893,6 +1115,11 @@ void FileSelect::read_dir(std::string _path, std::string _ext)
 			if(p.second) {
 				m_cur_dir_date.emplace(&(p.first->second));
 				m_cur_dir_name.emplace(&(p.first->second));
+				if(de.is_dir) {
+					m_de_folders++;
+				} else {
+					m_de_files++;
+				}
 				id++;
 			}
 		} catch(std::runtime_error &e) {
@@ -918,6 +1145,55 @@ const FileSelect::DirEntry * FileSelect::find_de(const std::string _name)
 		}
 	}
 	return nullptr;
+}
+
+void FileSelect::speak_element(Rml::Element *_el, bool _with_label, bool _describe, TTS::Priority _pri)
+{
+	assert(_el);
+
+	Window::speak_element(_el, _with_label, _describe, _pri);
+
+	if(_el->GetId() == "entries") {
+		if(_describe) {
+			speak_path(m_cwd);
+		}
+		speak_entries(_describe);
+	}
+}
+
+bool FileSelect::would_handle(Rml::Input::KeyIdentifier _key, int _mod)
+{
+#ifdef _WIN32
+	bool windows_only =
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_LEFT ) ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_RIGHT );
+#else
+	bool windows_only = false;
+#endif
+	return (
+		windows_only ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_S ) ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_W ) ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_N ) ||
+		( _mod == Rml::Input::KM_ALT && _key == Rml::Input::KeyIdentifier::KI_UP ) ||
+		( _mod == Rml::Input::KM_ALT && _key == Rml::Input::KeyIdentifier::KI_LEFT ) ||
+		( _mod == Rml::Input::KM_ALT && _key == Rml::Input::KeyIdentifier::KI_RIGHT ) ||
+		( _mod == Rml::Input::KM_ALT && _key == Rml::Input::KeyIdentifier::KI_HOME ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_BACK ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_F5 ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_F9 ) ||
+		ItemsDialog::would_handle(_key, _mod)
+	);
+}
+
+void FileSelect::on_keyup(Rml::Event &_ev)
+{
+	if(m_moving_selection) {
+		if(m_selected_entry && m_selected_de) {
+			speak_entry(m_selected_de, m_selected_de_info, m_selected_entry, true);
+		}
+	}
+	ItemsDialog::on_keyup(_ev);
 }
 
 void FileSelect::on_keydown(Rml::Event &_ev)
@@ -950,11 +1226,23 @@ void FileSelect::on_keydown(Rml::Event &_ev)
 			} else {handled=false;}
 			break;
 		case Rml::Input::KeyIdentifier::KI_LEFT:
+#ifdef _WIN32
+			if(_ev.GetParameter<bool>("ctrl_key", false)) {
+				on_prev_drive(_ev);
+				break;
+			}
+#endif
 			if(_ev.GetParameter<bool>("alt_key", false)) {
 				on_prev(_ev);
 			} else {handled=false;}
 			break;
 		case Rml::Input::KeyIdentifier::KI_RIGHT:
+#ifdef _WIN32
+			if(_ev.GetParameter<bool>("ctrl_key", false)) {
+				on_next_drive(_ev);
+				break;
+			}
+#endif
 			if(_ev.GetParameter<bool>("alt_key", false)) {
 				on_next(_ev);
 			} else {handled=false;}

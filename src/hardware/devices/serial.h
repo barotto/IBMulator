@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,6 +23,7 @@
 
 #include "netservice.h"
 #include "serialmodem.h"
+#include "serialspeech.h"
 
 // Peter Grehan (grehan@iprg.nokia.com) coded most of this
 // serial emulation.
@@ -92,7 +93,8 @@ enum SerialPortMode {
 	SER_MODE_NET_SERVER,   // null-modem network server input/output
 	SER_MODE_PIPE_CLIENT,  // pipe client input/output (Windows only)
 	SER_MODE_PIPE_SERVER,  // pipe server input/output (Windows only)
-	SER_MODE_MODEM         // hayes compatible modem input/output
+	SER_MODE_MODEM,        // hayes compatible modem input/output
+	SER_MODE_SPEAK         // Braille 'n Speak device
 };
 
 enum SerialIntType {
@@ -270,6 +272,9 @@ private:
 		NetService network;
 		double tx_delay_ms = 0.0;
 
+		// serial speech device
+		SerialSpeech speech;
+
 		// file mode
 		std::string filename;
 		FILE *output;
@@ -298,6 +303,7 @@ private:
 		void init_mode_net(std::string dev, unsigned mode, double txdelay, bool tcp_nodelay);
 		void init_mode_pipe(std::string dev, unsigned mode);
 		void init_mode_modem(double txdelay, bool tcp_nodelay);
+		void init_mode_speech(std::string dev);
 
 		constexpr const char * name() const {
 			switch(port_id) {

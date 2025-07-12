@@ -9,7 +9,7 @@
 		<handle move_target="#document">
 			<div id="title">ibmulator</div>
 		</handle>
-		<button id="close"></button>
+		<button id="close" aria-label="close window"></button>
 	</div>
 	<div id="content">
 	</div>

@@ -100,17 +100,18 @@ FloppyDisk::Properties FloppyFmt_TD0::identify(std::string _file_path, uint64_t 
 	return m_geom;
 }
 
-std::string FloppyFmt_TD0::get_preview_string(std::string _filepath)
+MediumInfoData FloppyFmt_TD0::get_preview_string(std::string _filepath)
 {
 	auto props = identify(_filepath, 0, FloppyDisk::SIZE_8);
 	if(!props.type) {
-		return "Unknown or unsupported file type";
+		std::string err("Unknown or unsupported file type");
+		return { err, err };
 	}
-	std::string info = "Format: TeleDisk TD0 File<br />";
-	info += "Media: " + str_to_html(m_geom.desc) + "<br />";
-	info += "TeleDisk version: " + str_format("%u.%u", m_header.ver>>4, m_header.ver&0xf) + "<br />";
+	std::string info = "Format: TeleDisk TD0 File\n";
+	info += "Medium: " + m_geom.desc + "\n";
+	info += "TeleDisk version: " + str_format("%u.%u", m_header.ver>>4, m_header.ver&0xf) + "\n";
 	if(m_adv_comp) {
-		info += "Compression: LZSS-Huffman<br />";
+		info += "Compression: LZSS-Huffman\n";
 	} else {
 		if(m_header.has_comment_block()) {
 			std::ifstream fstream = FileSys::make_ifstream(_filepath.c_str(), std::ios::binary);
@@ -122,7 +123,7 @@ std::string FloppyFmt_TD0::get_preview_string(std::string _filepath)
 			} else {
 				info += "Date: " + str_format("%u-%02u-%02u %02u:%02u:%02u", 
 						1900u + comblk.year, comblk.month, comblk.day,
-						comblk.hour, comblk.min, comblk.sec) + "<br />";
+						comblk.hour, comblk.min, comblk.sec) + "\n";
 				if(comblk.datalen) {
 					info += "Comments: <br />";
 					unsigned len = std::min(comblk.datalen, uint16_t(1_KB));
@@ -134,14 +135,14 @@ std::string FloppyFmt_TD0::get_preview_string(std::string _filepath)
 						while(off < len) {
 							comment = &comments[off];
 							off += comment.length() + 1;
-							info += str_to_html(comment) + "<br />";
+							info += str_to_html(comment) + "\n";
 						}
 					}
 				}
 			}
 		}
 	}
-	return info;
+	return { info, str_to_html(info) };
 }
 
 bool FloppyFmt_TD0::load(std::ifstream &_file, FloppyDisk &_disk)

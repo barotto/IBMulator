@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -126,6 +126,14 @@ bool INIFile::is_key_present(const std::string &_section, const std::string &_na
 {
 	if(m_values.find(_section) != m_values.end()) {
 		return m_values[_section].find(_name) != m_values[_section].end();
+	}
+	return false;
+}
+
+bool INIFile::is_value_set(const std::string &_section, const std::string &_name)
+{
+	if(is_key_present(_section, _name)) {
+		return !m_values[_section][_name].empty();
 	}
 	return false;
 }

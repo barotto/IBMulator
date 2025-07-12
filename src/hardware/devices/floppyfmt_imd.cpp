@@ -251,21 +251,22 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 	return m_geom;
 }
 
-std::string FloppyFmt_IMD::get_preview_string(std::string _filepath)
+MediumInfoData FloppyFmt_IMD::get_preview_string(std::string _filepath)
 {
 	auto props = identify(_filepath, 0, FloppyDisk::SIZE_8);
 	if(!props.type) {
-		return "Unknown or unsupported file type";
+		std::string err("Unknown or unsupported file type");
+		return { err, err };
 	}
-	std::string info = "Format: ImageDisk IMD File<br />";
-	info += "Media: " + str_to_html(m_geom.desc) + str_format(" %u tracks", m_geom.tracks) + "<br />";
-	info += "ImageDisk version: " + str_format("%.*s", 4, &m_header[0]) + "<br />";
-	info += "Date: " + str_format("%.*s", 19, &m_header[6]) + "<br />";
+	std::string info = "Format: ImageDisk IMD File\n";
+	info += "Medium: " + m_geom.desc + str_format(" %u tracks", m_geom.tracks) + "\n";
+	info += "ImageDisk version: " + str_format("%.*s", 4, &m_header[0]) + "\n";
+	info += "Date: " + str_format("%.*s", 19, &m_header[6]) + "\n";
 	if(m_header.size() > 25) {
-		info += "Comments: <br />";
+		info += "Comments: \n";
 		info += str_to_html(str_format("%.*s", m_header.size()-25, &m_header[25]));
 	}
-	return info;
+	return { info, str_to_html(info) };
 }
 
 bool FloppyFmt_IMD::load(std::ifstream &_file, FloppyDisk &_disk)

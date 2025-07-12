@@ -154,6 +154,15 @@ Valid `FUNC_* ` functions are:
 | `FUNC_SYS_SPEED(x)`         | set the emulation speed to `x`%.
 | `FUNC_TOGGLE_FULLSCREEN`    | toggle fullscreen mode.
 | `FUNC_SWITCH_KEYMAPS`       | change the active keymap to the next available one.
+| `FUNC_TTS_GUI_TOGGLE`       | toggle TTS for the GUI.
+| `FUNC_TTS_GUEST_TOGGLE`     | toggle TTS for the guest OS.
+| `FUNC_TTS_DESCRIBE`         | describe the currently in focus UI element with TTS.
+| `FUNC_TTS_READ_CHARS`       | speak characters typed in text controls with TTS.
+| `FUNC_TTS_READ_WORDS`       | speak words typed in text controls with TTS.
+| `FUNC_TTS_STOP`             | stop the TTS speaking.
+| `FUNC_TTS_WINDOW_TITLE`     | announce title of the current foreground window with TTS.
+| `FUNC_TTS_ADJ_RATE`         | adjust the speaking rate of the TTS.
+| `FUNC_TTS_ADJ_VOLUME`       | adjust the speaking volume of the TTS.
 | `FUNC_SET_PREV_AUDIO_CH`    | switch to previous OSD audio channel.
 | `FUNC_SET_NEXT_AUDIO_CH`    | switch to next OSD audio channel.
 | `FUNC_SET_AUDIO_VOLUME(a)`  | change audio volume for the active OSD audio channel by `a`%.

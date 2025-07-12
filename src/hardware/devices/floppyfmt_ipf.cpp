@@ -89,21 +89,22 @@ FloppyDisk::Properties FloppyFmt_IPF::identify(std::string _file_path,
 	return m_geom;
 }
 
-std::string FloppyFmt_IPF::get_preview_string(std::string _filepath)
+MediumInfoData FloppyFmt_IPF::get_preview_string(std::string _filepath)
 {
 	auto props = identify(_filepath, 0, FloppyDisk::SIZE_8);
 	if(!props.type) {
-		return "Unknown or unsupported file type";
+		std::string err("Unknown or unsupported file type");
+		return { err, err };
 	}
-	std::string info = "Format: SPS IPF File<br />";
-	info += "Media: " + str_to_html(str_format("%s %u tracks", m_geom.desc.c_str(), m_geom.tracks)) + "<br />";
+	std::string info = "Format: SPS IPF File\n";
+	info += "Medium: " + str_format("%s %u tracks", m_geom.desc.c_str(), m_geom.tracks) + "\n";
 	const std::string encs[4] = {
 		"Unknown", "CAPS", "SPS", "(invalid)"
 	};
 	info += "Encoder: " + encs[m_ipf.info.encoder_type & 0x3] +
-			str_format(" rev.%u", m_ipf.info.encoder_revision) + "<br />";
-	info += "File: " + str_format("%u rev.%u", m_ipf.info.release, m_ipf.info.revision) + "<br />";
-	info += "Origin: " + str_format("0x%08x", m_ipf.info.origin) + "<br />";
+			str_format(" rev.%u", m_ipf.info.encoder_revision) + "\n";
+	info += "File: " + str_format("%u rev.%u", m_ipf.info.release, m_ipf.info.revision) + "\n";
+	info += "Origin: " + str_format("0x%08x", m_ipf.info.origin) + "\n";
 	std::string day = str_format("%08u", m_ipf.info.credit_day);
 	day.insert(4, "-");
 	day.insert(7, "-");
@@ -111,10 +112,11 @@ std::string FloppyFmt_IPF::get_preview_string(std::string _filepath)
 	time.insert(2, ":");
 	time.insert(5, ":");
 	time.insert(8, ".");
-	info += "Creation: " + day + " " + time + "<br />";
-	info += "Disk: " + str_format("%u", m_ipf.info.disk_num) + "<br />";
-	info += "Creator ID: " + str_format("%u", m_ipf.info.creator) + "<br />";
-	return info;
+	info += "Creation: " + day + " " + time + "\n";
+	info += "Disk: " + str_format("%u", m_ipf.info.disk_num) + "\n";
+	info += "Creator ID: " + str_format("%u", m_ipf.info.creator) + "\n";
+
+	return { info, str_to_html(info) };
 }
 
 bool FloppyFmt_IPF::load(std::ifstream &_file, FloppyDisk &_disk)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,7 +19,7 @@
 
 #include "ibmulator.h"
 #include "message_wnd.h"
-
+#include "gui.h"
 
 event_map_t MessageWnd::ms_evt_map = {
 	GUI_EVT( "action1", "click",   MessageWnd::on_action  ),
@@ -47,6 +47,8 @@ void MessageWnd::create()
 void MessageWnd::show()
 {
 	Window::show();
+	get_element("message")->SetInnerRML(str_to_html(m_message));
+	m_gui->tts().enqueue(m_message);
 	get_element("action1")->Focus();
 }
 
@@ -57,7 +59,7 @@ void MessageWnd::set_title(const std::string &_title)
 
 void MessageWnd::set_message(const std::string &_mex)
 {
-	get_element("message")->SetInnerRML(_mex);
+	m_message = _mex;
 }
 
 Rml::ElementPtr MessageWnd::create_button(std::string _label, std::string _id, Rml::ElementDocument *_doc) const
@@ -67,6 +69,7 @@ Rml::ElementPtr MessageWnd::create_button(std::string _label, std::string _id, R
 	button->SetClassNames("romshell");
 	button->SetId(_id);
 	button->SetInnerRML("<span>" + _label + "</span>");
+	button->SetAttribute("aria-label", _label);
 	return button;
 }
 
@@ -77,7 +80,7 @@ void MessageWnd::set_type(Type _type)
 	buttons->SetInnerRML("");
 	switch(m_type) {
 		case Type::MSGW_OK: {
-			buttons->AppendChild(std::move(create_button("Ok", "action1", m_wnd)));
+			buttons->AppendChild(create_button("Ok", "action1", m_wnd));
 			break;
 		}
 		case Type::MSGW_YES_NO:
@@ -104,6 +107,16 @@ void MessageWnd::on_action(Rml::Event &_ev)
 		func();
 	}
 	hide();
+}
+
+bool MessageWnd::would_handle(Rml::Input::KeyIdentifier _key, int _mod)
+{
+	return (
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_ESCAPE ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_Y ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_N ) ||
+		Window::would_handle(_key, _mod)
+	);
 }
 
 void MessageWnd::on_keydown(Rml::Event &_ev)

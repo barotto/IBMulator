@@ -1,6 +1,6 @@
 <rml>
 	<head>
-		<title>Floppy disk select</title>
+		<title>File select</title>
 		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="dialog.rcss"/>
 		<link type="text/rcss" href="fileselect.rcss"/>
@@ -19,15 +19,15 @@
 	</head>
 	<body template="window">
 
-		<form id="drive"></form>
+		<form id="drive" aria-label="System drives toolbar"></form>
 
 		<div id="path">
-			<div class="toolbar">
-			<button id="dir_prev" class="romshell"><btnicon /><span></span></button>
-			<button id="dir_next" class="romshell"><btnicon /><span></span></button>
-			<button id="dir_up" class="romshell"><btnicon /><span></span></button>
-			<button id="home" class="romshell"><btnicon /><span></span></button>
-			<button id="reload" class="romshell"><btnicon /><span></span></button>
+			<div class="toolbar" aria-label="Top toolbar">
+			<button id="dir_prev" class="romshell" aria-label="history previous folder"><btnicon /><span></span></button>
+			<button id="dir_next" class="romshell" aria-label="history next folder"><btnicon /><span></span></button>
+			<button id="dir_up" class="romshell" aria-label="up a folder"><btnicon /><span></span></button>
+			<button id="home" class="romshell" aria-label="media folder shortcut"><btnicon /><span></span></button>
+			<button id="reload" class="romshell" aria-label="reload current folder"><btnicon /><span></span></button>
 			</div>
 			<div id="cwd"></div>
 		</div>
@@ -36,34 +36,36 @@
 			<div id="entries"></div>
 		</div>
 
-		<div id="info_panel"></div>
+		<div id="info_panel" aria-label="Information panel"></div>
 
-		<form id="buttons_left">
-			<div id="mode" class="toolbar">
-			<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell"><btnicon class="icon_grid" /><span></span></input>
-			<input type="radio" name="mode" value="list" id="mode_list" class="romshell"><btnicon class="icon_list" /><span></span></input>
-			</div>
-			<div id="order" class="toolbar">
-			<span>by</span>
-			<input type="radio" name="order" value="name" id="order_name" class="romshell"><span>name</span></input>
-			<input type="radio" name="order" value="date" id="order_date" class="romshell"><span>date</span></input>
-			</div>
-			<div id="asc_desc" class="toolbar">
-			<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
-			<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
-			</div>
-			<div id="misc" class="toolbar">
-			<button id="show_panel" class="romshell"><btnicon /><span></span></button>
-			<button id="new_floppy" class="romshell text"><span>New</span></button>
-			</div>
-		</form>
+		<div aria-label="Bottom toolbar">
+			<form id="buttons_left">
+				<div id="mode" class="toolbar">
+				<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell" aria-label="file view mode: grid"><btnicon class="icon_grid" /><span></span></input>
+				<input type="radio" name="mode" value="list" id="mode_list" class="romshell" aria-label="file view mode: list"><btnicon class="icon_list" /><span></span></input>
+				</div>
+				<div id="order" class="toolbar">
+				<span>by</span>
+				<input type="radio" name="order" value="name" id="order_name" class="romshell" aria-label="file order: by name"><span>name</span></input>
+				<input type="radio" name="order" value="date" id="order_date" class="romshell" aria-label="file order: by date"><span>date</span></input>
+				</div>
+				<div id="asc_desc" class="toolbar">
+				<input type="radio" name="asc_desc" value="asc" class="romshell" aria-label="file order: ascending" checked><btnicon class="icon_asc" /><span></span></input>
+				<input type="radio" name="asc_desc" value="desc" class="romshell" aria-label="file order: descending"><btnicon class="icon_desc" /><span></span></input>
+				</div>
+				<div id="misc" class="toolbar">
+				<button id="show_panel" class="romshell" aria-label="show file information panel"><btnicon /><span></span></button>
+				<button id="new_floppy" class="romshell text" aria-label="new disc image"><span>New</span></button>
+				</div>
+			</form>
 
-		<div id="buttons_right" class="toolbar">
-			<div id="buttons_entry" class="invisible toolbar">
-				<input id="wprotect" type="checkbox" class="romshell"><span>Write p.</span></input>
-				<button id="insert" class="romshell text"><span>Insert</span></button>
+			<div id="buttons_right" class="toolbar">
+				<div id="buttons_entry" class="invisible toolbar">
+					<input id="wprotect" type="checkbox" class="romshell" aria-label="write protect disc"><span>Write p.</span></input>
+					<button id="insert" class="romshell text" aria-label="insert disc in drive"><span>Insert</span></button>
+				</div>
+				<button id="cancel" class="romshell text" aria-label="cancel"><span>Cancel</span></button>
 			</div>
-			<button id="cancel" class="romshell text"><span>Cancel</span></button>
 		</div>
 
 	</body>

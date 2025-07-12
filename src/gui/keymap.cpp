@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,6 +27,49 @@
 #include <regex>
 
 #include "keytables.cpp"
+
+const std::map<ProgramEvent::FuncName, ProgramEvent::FuncCategory> ProgramEvent::ms_func_classes = {
+	{ FuncName::FUNC_NONE,                 FuncCategory::None },
+	{ FuncName::FUNC_GUI_MODE_ACTION,      FuncCategory::GUI },
+	{ FuncName::FUNC_SHOW_OPTIONS,         FuncCategory::GUI },
+	{ FuncName::FUNC_TOGGLE_MIXER,         FuncCategory::GUI },
+	{ FuncName::FUNC_SET_AUDIO_CH,         FuncCategory::Audio },
+	{ FuncName::FUNC_SET_NEXT_AUDIO_CH,    FuncCategory::Audio },
+	{ FuncName::FUNC_SET_PREV_AUDIO_CH,    FuncCategory::Audio },
+	{ FuncName::FUNC_SET_AUDIO_VOLUME,     FuncCategory::Audio },
+	{ FuncName::FUNC_TOGGLE_POWER,         FuncCategory::Emulation },
+	{ FuncName::FUNC_TOGGLE_PAUSE,         FuncCategory::Emulation },
+	{ FuncName::FUNC_TOGGLE_STATUS_IND,    FuncCategory::GUI },
+	{ FuncName::FUNC_TOGGLE_DBG_WND,       FuncCategory::GUI },
+	{ FuncName::FUNC_TOGGLE_PRINTER,       FuncCategory::GUI },
+	{ FuncName::FUNC_TAKE_SCREENSHOT,      FuncCategory::GUI },
+	{ FuncName::FUNC_TOGGLE_AUDIO_CAPTURE, FuncCategory::GUI },
+	{ FuncName::FUNC_TOGGLE_VIDEO_CAPTURE, FuncCategory::GUI },
+	{ FuncName::FUNC_INSERT_MEDIUM,        FuncCategory::GUI },
+	{ FuncName::FUNC_EJECT_MEDIUM,         FuncCategory::Emulation },
+	{ FuncName::FUNC_CHANGE_DRIVE,         FuncCategory::GUI },
+	{ FuncName::FUNC_SAVE_STATE,           FuncCategory::GUI },
+	{ FuncName::FUNC_LOAD_STATE,           FuncCategory::GUI },
+	{ FuncName::FUNC_QUICK_SAVE_STATE,     FuncCategory::GUI },
+	{ FuncName::FUNC_QUICK_LOAD_STATE,     FuncCategory::GUI },
+	{ FuncName::FUNC_GRAB_MOUSE,           FuncCategory::GUI },
+	{ FuncName::FUNC_SYS_SPEED_UP,         FuncCategory::Emulation },
+	{ FuncName::FUNC_SYS_SPEED_DOWN,       FuncCategory::Emulation },
+	{ FuncName::FUNC_SYS_SPEED,            FuncCategory::Emulation },
+	{ FuncName::FUNC_TOGGLE_FULLSCREEN,    FuncCategory::GUI },
+	{ FuncName::FUNC_SWITCH_KEYMAPS,       FuncCategory::GUI },
+	{ FuncName::FUNC_TTS_ADJ_RATE,         FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_ADJ_VOLUME,       FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_DESCRIBE,         FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_READ_CHARS,       FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_READ_WORDS,       FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_STOP,             FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_WINDOW_TITLE,     FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_GUI_TOGGLE,       FuncCategory::TTS },
+	{ FuncName::FUNC_TTS_GUEST_TOGGLE,     FuncCategory::TTS },
+	{ FuncName::FUNC_EXIT,                 FuncCategory::GUI },
+	{ FuncName::FUNC_RELOAD_RCSS,          FuncCategory::Devel }
+};
 
 void InputEvent::parse_token(const std::string &_tok)
 {
@@ -378,6 +421,16 @@ bool Keymap::Binding::has_events_of_type(ProgramEvent::Type _type) const
 {
 	for(auto & pe : pevt) {
 		if(pe.type == _type) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Keymap::Binding::has_funcs_of_category(ProgramEvent::FuncCategory _cat) const
+{
+	for(auto & pe : pevt) {
+		if(pe.type == ProgramEvent::Type::EVT_PROGRAM_FUNC && pe.func.category() == _cat) {
 			return true;
 		}
 	}

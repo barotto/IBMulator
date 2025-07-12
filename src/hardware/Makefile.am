@@ -75,6 +75,7 @@ libhardware_a_SOURCES = \
 	devices/serial.cpp \
 	devices/serialmodem.cpp \
 	devices/serialmodemfx.cpp \
+	devices/serialspeech.cpp \
 	devices/parallel.cpp \
 	devices/pcspeaker.cpp \
 	devices/ps1audio.cpp \
@@ -160,6 +161,7 @@ noinst_HEADERS = \
 	devices/serial.h \
 	devices/serialmodem.h \
 	devices/serialmodemfx.h \
+	devices/serialspeech.h \
 	devices/parallel.h \
 	devices/pcspeaker.h \
 	devices/ps1audio.h \

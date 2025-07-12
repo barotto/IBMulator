@@ -28,10 +28,21 @@
 #include <numeric>
 #include <iomanip>
 #include <cstring>
+#include <iconv.h>
 #include "utils.h"
 #ifdef _WIN32
 #include "wincompat.h"
 #endif
+
+bool is_ascii_digit(uint8_t _byte)
+{
+	return (_byte >= '0' && _byte <= '9');
+}
+
+bool is_ascii_letter(uint8_t _byte)
+{
+	return (_byte >= 'A' && _byte <= 'Z') || (_byte >= 'a' && _byte <= 'z');
+}
 
 int str_parse_int_num(const std::string &_str)
 {
@@ -81,6 +92,13 @@ void str_replace_all(std::string &_str, const std::string &_search, const std::s
 		_str.replace(i, _search.length(), _replace);
 		i = _str.find(_search, i+_replace.length());
 	}
+}
+
+std::string str_replace_all_const(const std::string &_str, const std::string &_search, const std::string &_replace)
+{
+	std::string subj = _str;
+	str_replace_all(subj, _search, _replace);
+	return subj;
 }
 
 std::string str_to_lower(std::string _str)
@@ -212,38 +230,38 @@ std::string str_format_time(time_t _time, const std::string &_fmt)
 }
 
 const char * ASCII_control_characters[32] = {
-	"NUL",
-	"SOH",
-	"STX",
-	"ETX",
-	"EOT",
-	"ENQ",
-	"ACK",
-	"BEL",
-	"BS",
-	"HT",
-	"LF",
-	"VT",
-	"FF",
-	"CR",
-	"SO",
-	"SI",
-	"DLE",
-	"DC1",
-	"DC2",
-	"DC3",
-	"DC4",
-	"NAK",
-	"SYN",
-	"ETB",
-	"CAN",
-	"EM",
-	"SUB",
-	"ESC",
-	"FS",
-	"GS",
-	"RS",
-	"US"
+	"NUL", // 00
+	"SOH", // 01
+	"STX", // 02
+	"ETX", // 03
+	"EOT", // 04
+	"ENQ", // 05
+	"ACK", // 06
+	"BEL", // 07
+	"BS",  // 08
+	"HT",  // 09
+	"LF",  // 0A
+	"VT",  // 0B
+	"FF",  // 0C
+	"CR",  // 0D
+	"SO",  // 0E
+	"SI",  // 0F
+	"DLE", // 10
+	"DC1", // 11
+	"DC2", // 12
+	"DC3", // 13
+	"DC4", // 14
+	"NAK", // 15
+	"SYN", // 16
+	"ETB", // 17
+	"CAN", // 18
+	"EM",  // 19
+	"SUB", // 1A
+	"ESC", // 1B
+	"FS",  // 1C
+	"GS",  // 1D
+	"RS",  // 1E
+	"US"   // 1F
 };
 
 std::string str_format_special(const char *_str)
@@ -263,6 +281,56 @@ std::string str_format_special(const char *_str)
 		_str++;
 	}
 	return str;
+}
+
+std::string str_format_special(char _ch)
+{
+	std::string str;
+	char buf[20] = {0};
+	if(_ch < 0 || _ch == 127) {
+		snprintf(&buf[0], 20, "<%02X>", uint8_t(_ch));
+		return std::string(buf);
+	} else if(_ch <= 31) {
+		snprintf(&buf[0], 10, "<%s>", ASCII_control_characters[int(_ch)]);
+		return std::string(buf);
+	} else {
+		return std::string(1, _ch);
+	}
+}
+
+std::string str_convert(std::string _str, const char *_to_code, const char *_from_code)
+{
+	std::string buf;
+	buf.resize(_str.size() * 2);
+
+	iconv_t cd = iconv_open(_to_code, _from_code);
+	if(cd == (iconv_t)(-1)) {
+		return "";
+	}
+
+	size_t inbytes = _str.size();
+	size_t outbytes = buf.size();
+	char *in = _str.data();
+	char *out = buf.data();
+	size_t rc = iconv(cd, &in, &inbytes, &out, &outbytes);
+
+	iconv_close(cd);
+
+	if(rc == (size_t)(-1)) {
+		return "";
+	}
+
+	buf.resize(outbytes);
+
+	return buf;
+}
+
+bool str_convert_is_valid(const char *_to_code, const char *_from_code)
+{
+	iconv_t cd = iconv_open(_to_code, _from_code);
+	bool valid = cd != (iconv_t)(-1);
+	iconv_close(cd);
+	return valid;
 }
 
 std::string str_to_html(std::string _text, bool _nbsp)

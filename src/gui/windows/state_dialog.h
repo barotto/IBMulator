@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,11 +49,12 @@ protected:
 			}
 		}
 
-		Rml::ElementPtr create_element(Rml::ElementDocument *_doc) const;
+		Rml::ElementPtr create_element(Rml::ElementDocument *_doc, unsigned _idx, unsigned _count) const;
 		static Rml::ElementPtr create_element(
 			Rml::ElementDocument *_doc,
 			const std::string &_screen,
-			const StateRecord::Info &_info
+			const StateRecord::Info &_info,
+			unsigned _idx, unsigned _count
 		);
 	};
 	struct DirEntryOrderDate {
@@ -104,6 +105,8 @@ protected:
 	Rml::Element *m_panel_config_el = nullptr;
 	Rml::Element *m_buttons_entry_el = nullptr;
 	Rml::Element *m_action_button_el = nullptr;
+	bool m_shown = false;
+	bool m_entries_focus = true;
 	bool m_dirty = true;
 	int m_dirty_scroll = 0;
 	enum class Order {
@@ -111,9 +114,9 @@ protected:
 	} m_order = Order::BY_DATE;
 	bool m_order_ascending = true;
 
-	//const StateRecord *m_selected_sr = nullptr;
 	std::string m_selected_name;
 	std::string m_lazy_select;
+	StateRecord::Info m_top_entry {"", "", "", 0, 0};
 
 	std::function<void(StateRecord::Info)> m_action_callbk = nullptr;
 	std::function<void(StateRecord::Info)> m_delete_callbk = nullptr;
@@ -127,9 +130,11 @@ public:
 	StateDialog(GUI *_gui, const char *_doc) : ItemsDialog(_gui,_doc) {}
 	virtual ~StateDialog() {}
 
+	using ItemsDialog::create;
 	virtual void create(std::string _mode, std::string _order, int _zoom);
 	virtual void show();
 	virtual void update();
+	virtual bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
 	void set_callbacks(
 		std::function<void(StateRecord::Info)> _on_action,
@@ -152,9 +157,12 @@ public:
 	virtual void delete_record(std::string _rec_name);
 	
 	void set_selection(std::string _slot_name);
-	
+
+	void on_focus(Rml::Event &_ev);
+
 	virtual void on_cancel(Rml::Event &_ev);
 	virtual void on_keydown(Rml::Event &_ev);
+	virtual void on_keyup(Rml::Event &_ev);
 
 	void on_action(Rml::Event &);
 	void on_delete(Rml::Event &);
@@ -162,17 +170,25 @@ public:
 	void on_order(Rml::Event &_ev);
 	void on_asc_desc(Rml::Event &_ev);
 	void on_entries(Rml::Event &_ev);
+	void on_entries_focus(Rml::Event &_ev);
 
 protected:
 	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Element *target_el);
 	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Event &);
 
-	void entry_select(Rml::Element *_entry);
-	void entry_select(std::string _name, Rml::Element *_entry);
-	void entry_deselect();
-	
+	bool is_empty() const { return ms_rec_map.empty() && m_top_entry.version==0; }
+
+	virtual void entry_select(Rml::Element *_entry);
+	virtual void entry_select(std::string _name, Rml::Element *_entry, bool _tts_append = true);
+	virtual void entry_deselect();
+
 	void set_mode(std::string _mode);
 	void set_zoom(int _amount);
+
+	virtual void speak_entries(bool _describe);
+	virtual void speak_entry(const StateRecord* _sr, Rml::Element *_entry_el, bool _append);
+	virtual void speak_content(bool _append);
+	virtual void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
 };
 
 

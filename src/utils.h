@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -69,11 +69,15 @@ void size_check()
 	static_assert(_expected == _real, "Incorrect size!");
 }
 
+bool is_ascii_digit(uint8_t _byte);
+bool is_ascii_letter(uint8_t _byte);
+
 int str_parse_int_num(const std::string &_str);
 double str_parse_real_num(const std::string &_str);
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
 std::string str_implode(const std::vector<const char*> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);
+std::string str_replace_all_const(const std::string &_str, const std::string &_search, const std::string &_replace);
 std::string str_to_lower(std::string _str);
 std::string str_to_upper(std::string _str);
 std::string str_trim(std::string _str);
@@ -89,6 +93,9 @@ std::string::const_iterator str_find_ci(const std::string &_haystack, const std:
 std::string str_format_time(time_t _time, const std::string &_fmt);
 std::string str_to_html(std::string _text, bool _nbsp=false);
 std::string str_format_special(const char *_str);
+std::string str_format_special(char _ch);
+std::string str_convert(std::string _str, const char *_to_code, const char *_from_code);
+bool str_convert_is_valid(const char *_to_code, const char *_from_code);
 
 template<typename ... Args>
 std::string str_format(const char *_format, Args ... _args)

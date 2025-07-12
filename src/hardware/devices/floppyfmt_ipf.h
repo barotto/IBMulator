@@ -24,7 +24,7 @@ public:
 
 	bool load(std::ifstream &_file, FloppyDisk &_disk);
 
-	std::string get_preview_string(std::string _filepath);
+	MediumInfoData get_preview_string(std::string _filepath);
 
 private:
 	bool load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk);

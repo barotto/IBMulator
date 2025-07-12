@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -35,7 +35,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 " They are used to document the effect of each option.\n"
 "; Paths can be absolute or relative.\n"
 "; Relative paths are searched in this order:\n"
-"; 1. the media directory (in case of floppy/hdd images)\n"
+"; 1. the media directory (in case of disc images)\n"
 "; 2. the user directory (the folder where this file is normally located)\n"
 "; 3. the program's assets directory\n"
 		},
@@ -43,6 +43,27 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		{ PROGRAM_SECTION,
 "; media_dir: The default directory used to search for disk images.\n"
 ";  log_file: path of the log file\n"
+		},
+
+		{ TTS_SECTION,
+";   gui_enabled: Enable Text-To-Speech for the GUI.\n"
+"; guest_enabled: Enable Text-To-Speech for the guest OS.\n"
+";       gui_dev: The device to use for the GUI.\n"
+";                 Possible values: synth, file\n"
+";                  synth: use a voice synthetizer.\n"
+";                   file: redirect to a file.\n"
+";     guest_dev: The device to use for the guest OS.\n"
+";                 Possible values: auto, or one of the values of the 'gui_dev' setting.\n"
+";                  auto: use the same value used in the 'gui_dev' setting.\n"
+";         voice: The synthesizer's voice (see the README for more info).\n"
+";          file: The file name to use for the file mode.\n"
+";   file_format: The text format to use when file mode is used.\n"
+";                 Possible values: simple, ssml, msxml.\n"
+";                  simple: simple text.\n"
+";                    ssml: W3C's Speech Synthesis Markup Language.\n"
+";                   msxml: Microsoft's SAPI 5 synthesis markup.\n"
+";      codepage: The code page of the guest OS.\n"
+";                 Common DOS code pages are 437 and 850. The default is 437.\n"
 		},
 
 		{ SYSTEM_SECTION,
@@ -416,6 +437,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";               net-server: network server that accepts incoming connections\n"
 ";               net-client: network client for connecting to a network server\n"
 ";               modem: virtual modem that connects and receives calls over the network\n"
+";               speak: Braille 'n Speak synthetizer.\n"
 ";         dev: address or path of the attached serial device (see the README).\n"
 ";    tx_delay: wait time for network data transmissions in milliseconds (network modes only).\n"
 "; tcp_nodelay: use the TCP_NODELAY socket option (network modes only).\n"
@@ -446,7 +468,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";           LPT1: port 3BC, IRQ 7\n"
 ";           LPT2: port 378, IRQ 7\n"
 ";           LPT3: port 278, IRQ 5\n"
-";    file: Save the data sent to the port to the specified file.\n" 
+";    file: Save the data sent to the port to the specified file.\n"
+";   speak: Send all the ASCII characters to the TTS system.\n"
 		},
 
 		{ PRN_SECTION,
@@ -487,6 +510,18 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ PROGRAM_MEDIA_DIR,   PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
 		{ PROGRAM_LOG_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY,  "log.txt" },
 		{ PROGRAM_WAIT_METHOD, PROGRAM_CONFIG, HIDDEN_CFGKEY,  "auto"    },
+	} },
+	{ TTS_SECTION, {
+		{ TTS_GUI_ENABLED,   PROGRAM_CONFIG, PUBLIC_CFGKEY,  "no"      },
+		{ TTS_GUEST_ENABLED, PROGRAM_CONFIG, PUBLIC_CFGKEY,  "no"      },
+		{ TTS_GUI_DEV,       PROGRAM_CONFIG, PUBLIC_CFGKEY,  "synth"   },
+		{ TTS_GUEST_DEV,     PROGRAM_CONFIG, PUBLIC_CFGKEY,  "auto"    },
+		{ TTS_VOICE,         PROGRAM_CONFIG, PUBLIC_CFGKEY,  "default" },
+		{ TTS_FILE,          PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
+		{ TTS_FORMAT,        PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
+		{ TTS_VOLUME,        PROGRAM_CONFIG, HIDDEN_CFGKEY,  "0"       },
+		{ TTS_RATE,          PROGRAM_CONFIG, HIDDEN_CFGKEY,  ""        },
+		{ TTS_CODEPAGE,      PROGRAM_CONFIG, PUBLIC_CFGKEY,  "437"     },
 	} },
 	{ SYSTEM_SECTION, {
 		{ SYSTEM_ROMSET,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
@@ -744,6 +779,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ LPT_ENABLED, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
 		{ LPT_PORT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "LPT1" },
 		{ LPT_FILE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, ""     },
+		{ LPT_SPEAK,   PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"   }
 	} },
 	{ PRN_SECTION, {
 		{ PRN_CONNECTED,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"     },

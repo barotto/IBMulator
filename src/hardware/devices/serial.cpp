@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -168,7 +168,8 @@ void Serial::config_changed()
 			{ "net-server",  SER_MODE_NET_SERVER  },
 			{ "pipe-client", SER_MODE_PIPE_CLIENT },
 			{ "pipe-server", SER_MODE_PIPE_SERVER },
-			{ "modem", SER_MODE_MODEM }
+			{ "modem", SER_MODE_MODEM },
+			{ "speak", SER_MODE_SPEAK }
 		}, SER_MODE_INVALID);
 
 		std::string dev;
@@ -190,16 +191,17 @@ void Serial::config_changed()
 				throw std::exception();
 			}
 		} else {
-			if(new_mode == m_host[p].io_mode && new_mode != SER_MODE_MODEM) {
-				// if it's modem it needs to be reset
+			if(new_mode == m_host[p].io_mode && new_mode != SER_MODE_MODEM && new_mode != SER_MODE_SPEAK) {
+				// the mode has not changed, continue except for modem/speech 
 				continue;
 			}
-			if(new_mode == SER_MODE_MOUSE || new_mode == SER_MODE_MODEM) {
-				// mouse and modem modes override everything, so close any open connection
-				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing '%s' mode\n", m_host[p].name(),
-						(new_mode == SER_MODE_MOUSE) ? "mouse" : "modem");
+			// either a different mode or it's modem/speech
+			if(new_mode == SER_MODE_MOUSE || new_mode == SER_MODE_MODEM || new_mode == SER_MODE_SPEAK) {
+				// mouse and modem/speech modes override everything, so close any open connection
+				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing '%s' mode\n", m_host[p].name(), new_mode_str.c_str());
 			} else if(initial_mode_str == new_mode_str) {
-				// if mode is different but strings are the same then this is initial config.
+				// if mode is different but strings are the same then
+				// this is the initial config.
 				dev = g_program.initial_config().get_string(SERIAL_SECTION, dev_name[p]);
 			} else {
 				// this is a state restore, current host port config will not be changed
@@ -255,6 +257,9 @@ void Serial::config_changed()
 				}
 				case SER_MODE_MODEM:
 					m_host[p].init_mode_modem(tx_delay, tcp_nodelay);
+					break;
+				case SER_MODE_SPEAK:
+					m_host[p].init_mode_speech(dev);
 					break;
 				case SER_MODE_PIPE_CLIENT:
 				case SER_MODE_PIPE_SERVER:
@@ -619,6 +624,13 @@ void Serial::Port::init_mode_modem(double _tx_delay_ms, bool _tcp_nodelay)
 	io_mode = SER_MODE_MODEM;
 }
 
+void Serial::Port::init_mode_speech(std::string)
+{
+	speech.init();
+
+	io_mode = SER_MODE_SPEAK;
+}
+
 void Serial::set_MSR(uint8_t _port, const ModemStatus &_status)
 {
 	bool gen_int = false;
@@ -765,6 +777,9 @@ void Serial::reset(unsigned _type)
 				});
 				m_host[i].modem.reset(_type);
 				break;
+			case SER_MODE_SPEAK:
+				m_host[i].speech.reset(_type);
+				break;
 			case SER_MODE_NONE:
 			case SER_MODE_RAW:
 				break;
@@ -790,6 +805,9 @@ void Serial::power_off()
 		switch(m_host[i].io_mode) {
 			case SER_MODE_MODEM:
 				m_host[i].modem.power_off();
+				break;
+			case SER_MODE_SPEAK:
+				m_host[i].speech.power_off();
 				break;
 			default:
 				break;
@@ -1629,7 +1647,9 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		switch (m_host[port].io_mode) {
 			case SER_MODE_MODEM:
 				sent = m_host[port].modem.serial_write_byte(m_s.uart[port].tsrbuffer);
-
+				break;
+			case SER_MODE_SPEAK:
+				sent = m_host[port].speech.serial_write_byte(m_s.uart[port].tsrbuffer);
 				break;
 			case SER_MODE_FILE:
 				if(m_host[port].output == nullptr) {
@@ -1748,6 +1768,9 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 		switch (m_host[port].io_mode) {
 			case SER_MODE_MODEM:
 				data_ready = m_host[port].modem.serial_read_byte(&chbuf);
+				break;
+			case SER_MODE_SPEAK:
+				data_ready = m_host[port].speech.serial_read_byte(&chbuf);
 				break;
 			case SER_MODE_NET_CLIENT:
 			case SER_MODE_NET_SERVER:

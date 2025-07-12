@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,11 +20,10 @@
 #ifndef IBMULATOR_GUI_WINDOW_H
 #define IBMULATOR_GUI_WINDOW_H
 
-
+#include "tts.h"
 #include <RmlUi/Core.h>
 #include <set>
 #include <functional>
-
 
 class GUI;
 class Window;
@@ -81,6 +80,7 @@ public:
 	void set_modal(bool _modal) {
 		m_modal = _modal ? Rml::ModalFlag::Modal : Rml::ModalFlag::None;
 	}
+	std::string title() const;
 	void set_title(const std::string &_title);
 
 	virtual void setup_data_bindings() {}
@@ -92,6 +92,12 @@ public:
 
 	virtual void on_cancel(Rml::Event &);
 	virtual void on_keydown(Rml::Event &);
+	virtual void on_show(Rml::Event &);
+	virtual void on_focus(Rml::Event &);
+	virtual void on_change(Rml::Event &_ev);
+
+	virtual bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
+	virtual void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
 
 protected:
 	void ProcessEvent(Rml::Event &);
@@ -100,12 +106,18 @@ protected:
 	Rml::Element * get_element(const std::string &_id);
 	std::string create_id();
 	void add_events();
+	using AriaEventsExclusions = std::vector<std::pair<std::string, std::string>>;
+	void add_aria_events(Rml::Element *_elem, const AriaEventsExclusions &_exclusions);
 	Rml::ElementPtr create_button();
 
 	void enable_handlers(bool _enabled) { m_handlers_enabled = _enabled; }
+	void register_handler(Rml::Element *_target, const std::string &_event_type, bool _is_targeted, event_handler_t _fn);
+	void register_handler(Rml::Element *_target, const std::string &_event_type, const event_handler_info &_handler);
+	void unregister_all_handlers(Rml::Element *_root);
 	void register_target_cb(Rml::Element *_target, const std::string &_event_type, TargetCbFn _fn);
 	void register_target_cb(Rml::Element *_target, const std::string &_id, const std::string &_event_type, TargetCbFn _fn);
 	void unregister_target_cb(Rml::Element *_target);
+	void unregister_all_target_cb(Rml::Element *_root);
 
 	void register_lazy_update_fn(std::function<void()> _fn);
 	void update_after();
@@ -122,6 +134,7 @@ protected:
 	static std::pair<Rml::Element*,int> get_first_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container, int _starting_at = 0);
 	static std::pair<Rml::Element*,int> get_last_visible_element(Rml::Element *_elem_container, Rml::Element *_outer_container);
 	static void scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
+	static void scroll_horizontal_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@
 #include "timers.h"
 #include "keymap.h"
 #include "state_record.h"
+#include "tts.h"
 #include <atomic>
 #include <climits>
 
@@ -232,17 +233,17 @@ protected:
 
 	class WindowManager : public Rml::EventListener {
 	public:
-		GUI *m_gui;
+		GUI *m_gui = nullptr;
 		bool debug_wnds = false;
 		bool status_wnd = false;
 		int windows_count = 0; // debug
-		std::list<Rml::ElementDocument*> m_docs; // objects are property of RmlUI
+		std::list<std::pair<Rml::ElementDocument*, Window*>> m_docs; // ElementDocument objects are property of RmlUI
 		Rml::ElementDocument *last_focus_doc = nullptr;
 		Rml::ElementDocument *revert_focus = nullptr;
 
-		std::unique_ptr<Desktop>    desktop;
-		std::unique_ptr<Interface>  interface;
-		std::unique_ptr<Status>     status;
+		std::unique_ptr<Desktop> desktop;
+		std::unique_ptr<Interface> interface;
+		std::unique_ptr<Status> status;
 		std::unique_ptr<ShaderParameters> options_wnd; // TODO: ShaderParameters is a placeholder
 		std::unique_ptr<MixerControl> mixer_ctrl;
 		std::unique_ptr<AudioOSD> audio_osd;
@@ -256,6 +257,8 @@ protected:
 		EventTimers timers;
 		TimerID dbgmex_timer = NULL_TIMER_ID;
 		TimerID ifcmex_timer = NULL_TIMER_ID;
+
+		WindowManager();
 
 		void init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode);
 		void config_changing();
@@ -272,10 +275,11 @@ protected:
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();
+		Window * current_window();
 		bool need_input();
 		void ProcessEvent(Rml::Event &);
 		bool are_visible();
-		void register_document(Rml::ElementDocument *_doc);
+		void register_document(Rml::ElementDocument *_doc, Window *_owner_wnd);
 		void reload_rcss();
 		static constexpr Rml::EventId listening_evts[] = {
 			Rml::EventId::Show,
@@ -290,10 +294,11 @@ protected:
 	
 	std::unique_ptr<Capture> m_capture;
 	std::thread m_capture_thread;
-	
+
+	TTS m_tts;
+
 	void init_rmlui();
 	void set_window_icon();
-	void show_welcome_screen();
 	void update_window_size(int _w, int _h);
 	
 	virtual void shutdown_SDL();
@@ -331,7 +336,7 @@ public:
 
 	Rml::DataModelConstructor create_data_model(const std::string &_model_name);
 	void remove_data_model(const std::string &_model_name);
-	Rml::ElementDocument * load_document(const std::string &_filename);
+	Rml::ElementDocument * load_document(const std::string &_filename, Window *_owner_wnd);
 	void unload_document(Rml::ElementDocument *);
 
 	SDL_Surface *load_surface(const std::string &_name);
@@ -377,7 +382,9 @@ public:
 	void sig_state_restored();
 	
 	EventTimers & timers() { return m_windows.timers; }
-	
+
+	TTS & tts() { return m_tts; }
+
 private:
 	void load_keymap(const std::string &_filename);
 
@@ -432,6 +439,15 @@ private:
 	void pevt_func_sys_speed_down(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_fullscreen(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_adj_rate(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_adj_volume(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_describe(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_read_chars(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_read_words(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_stop(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_window_title(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_gui_toggle(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_tts_guest_toggle(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_reload_rcss(const ProgramEvent::Func&, EventPhase);
 	

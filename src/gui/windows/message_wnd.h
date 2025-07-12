@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -38,6 +38,7 @@ private:
 	std::function<void()> m_action1_clbk = nullptr;
 	std::function<void()> m_action2_clbk = nullptr;
 	Type m_type = Type::MSGW_OK;
+	std::string m_message;
 
 public:
 
@@ -46,6 +47,7 @@ public:
 
 	void create();
 	void show();
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
 	void set_type(Type);
 	void set_callbacks(

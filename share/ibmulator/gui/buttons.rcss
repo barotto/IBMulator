@@ -374,6 +374,7 @@ select.romshell selectbox option:checked:hover
 	color: #000000;
 }
 
+spinbutton,
 input.text
 {
 	box-sizing: border-box;
@@ -391,6 +392,7 @@ input.text
 	height: 20dp;
 }
 
+spinbutton:focus,
 input.text:focus
 {
 	border-color: #ff8000;

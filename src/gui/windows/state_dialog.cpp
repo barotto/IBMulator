@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,9 +60,15 @@ void StateDialog::create(std::string _mode, std::string _order, int _zoom)
 void StateDialog::show()
 {
 	Window::show();
+	m_entries_focus = true;
+}
 
-	if(m_selected_entry) {
-		m_entries_el->Focus();
+void StateDialog::on_focus(Rml::Event &_ev)
+{
+	Window::on_focus(_ev);
+
+	if(_ev.GetTargetElement() == m_wnd) {
+		m_shown = true;
 	}
 }
 
@@ -70,49 +76,69 @@ void StateDialog::update()
 {
 	Window::update();
 
+	std::string prev_selected;
+	bool first_focus = m_dirty;
 	if(m_dirty) {
-		auto prev_selected = m_selected_name;
+		prev_selected = m_selected_name;
 		entry_deselect();
 		m_entries_el->SetInnerRML("");
+		unsigned count = 0;
+		unsigned extra_entry = m_top_entry.version != 0;
 		switch(m_order) {
 			case Order::BY_DATE: {
+				count = ms_cur_dir_date.size() + extra_entry;
+				unsigned curr = extra_entry;
 				if(m_order_ascending) {
 					for(auto &de : ms_cur_dir_date) {
-						m_entries_el->AppendChild(de.create_element(m_wnd));
+						m_entries_el->AppendChild(de.create_element(m_wnd, curr++, count));
 					}
 				} else {
 					auto it = ms_cur_dir_date.rbegin();
 					for(;it != ms_cur_dir_date.rend(); it++) {
-						m_entries_el->AppendChild(it->create_element(m_wnd));
+						m_entries_el->AppendChild(it->create_element(m_wnd, curr++, count));
 					}
 				}
 				break;
 			}
 			case Order::BY_DESC: {
+				count = ms_cur_dir_desc.size() + extra_entry;
+				unsigned curr = extra_entry;
 				if(m_order_ascending) {
 					for(auto &de : ms_cur_dir_desc) {
-						m_entries_el->AppendChild(de.create_element(m_wnd));
+						m_entries_el->AppendChild(de.create_element(m_wnd, curr++, count));
 					}
 				} else {
 					auto it = ms_cur_dir_desc.rbegin();
 					for(;it != ms_cur_dir_desc.rend(); it++) {
-						m_entries_el->AppendChild(it->create_element(m_wnd));
+						m_entries_el->AppendChild(it->create_element(m_wnd, curr++, count));
 					}
 				}
 				break;
 			}
 			case Order::BY_SLOT: {
+				count = ms_cur_dir_slot.size() + extra_entry;
+				unsigned curr = extra_entry;
 				if(m_order_ascending) {
 					for(auto &de : ms_cur_dir_slot) {
-						m_entries_el->AppendChild(de.create_element(m_wnd));
+						m_entries_el->AppendChild(de.create_element(m_wnd, curr++, count));
 					}
 				} else {
 					auto it = ms_cur_dir_slot.rbegin();
 					for(;it != ms_cur_dir_slot.rend(); it++) {
-						m_entries_el->AppendChild(it->create_element(m_wnd));
+						m_entries_el->AppendChild(it->create_element(m_wnd, curr++, count));
 					}
 				}
 				break;
+			}
+		}
+		if(m_top_entry.version) {
+			auto top_entry = StateDialog::DirEntry::create_element(
+					m_wnd, "", m_top_entry, 0, count );
+			auto first = m_entries_el->GetFirstChild();
+			if(first) {
+				m_entries_el->InsertBefore(std::move(top_entry), first);
+			} else {
+				m_entries_el->AppendChild(std::move(top_entry));
 			}
 		}
 		m_dirty = false;
@@ -127,15 +153,21 @@ void StateDialog::update()
 		auto entry_el = m_entries_el->GetElementById(m_lazy_select);
 		if(entry_el) {
 			entry_select(m_lazy_select, entry_el);
+			m_entries_el->Focus();
 		}
 		m_lazy_select = "";
+	} else if(prev_selected.empty() && (first_focus || m_entries_focus)) {
+		m_entries_el->Focus();
 	}
 	if(m_dirty_scroll) {
 		if(m_selected_entry) {
 			scroll_vertical_into_view(m_selected_entry);
+		} else {
+			m_entries_cont_el->SetScrollTop(0);
 		}
 		m_dirty_scroll--;
 	}
+	m_entries_focus = false;
 }
 
 void StateDialog::set_current_dir(const std::string &_path)
@@ -214,10 +246,10 @@ void StateDialog::entry_select(Rml::Element *_entry_el)
 {
 	entry_deselect();
 	auto entry = ItemsDialog::get_entry(_entry_el);
-	entry_select(entry->GetId(), entry);
+	entry_select(entry->GetId(), entry, false);
 }
 
-void StateDialog::entry_select(std::string _name, Rml::Element *_entry)
+void StateDialog::entry_select(std::string _name, Rml::Element *_entry, bool _tts_append)
 {
 	ItemsDialog::entry_select(_entry);
 
@@ -229,8 +261,9 @@ void StateDialog::entry_select(std::string _name, Rml::Element *_entry)
 	if(pair == ms_rec_map.end()) {
 		return;
 	}
+
 	const StateRecord *sr = &pair->second;
-	
+
 	if(!sr->screen().empty()) {
 		// adding an additional '/' because RmlUI strips it off for unknown reasons
 		// https://github.com/mikke89/RmlUi/issues/161
@@ -250,6 +283,14 @@ void StateDialog::entry_select(std::string _name, Rml::Element *_entry)
 	} else {
 		m_action_button_el->SetClass("invisible", false);
 	}
+
+	if(m_entries_el->IsPseudoClassSet("focus")) {
+		if(m_moving_selection) {
+			m_gui->tts().stop();
+		} else {
+			speak_entry(sr, _entry, _tts_append);
+		}
+	}
 }
 
 void StateDialog::entry_deselect()
@@ -267,12 +308,17 @@ void StateDialog::entry_deselect()
 
 void StateDialog::set_mode(std::string _mode)
 {
+	auto old_mode = get_mode();
 	ItemsDialog::set_mode(_mode);
 
 	m_panel_el->SetClassNames(_mode);
 
 	if(!m_selected_name.empty()) {
 		m_dirty_scroll = 2;
+	}
+
+	if(is_visible() && old_mode != _mode) {
+		m_gui->tts().enqueue(get_mode() + " view active.");
 	}
 }
 
@@ -336,6 +382,19 @@ void StateDialog::on_entries(Rml::Event &_ev)
 	_ev.StopImmediatePropagation();
 }
 
+void StateDialog::on_entries_focus(Rml::Event &)
+{
+	speak_entries(m_shown);
+}
+
+bool StateDialog::would_handle(Rml::Input::KeyIdentifier _key, int _mod)
+{
+	return (
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_DELETE ) ||
+		ItemsDialog::would_handle(_key, _mod)
+	);
+}
+
 void StateDialog::on_keydown(Rml::Event &_ev)
 {
 	auto id = get_key_identifier(_ev);
@@ -354,12 +413,21 @@ void StateDialog::on_keydown(Rml::Event &_ev)
 	_ev.StopImmediatePropagation();
 }
 
+void StateDialog::on_keyup(Rml::Event &_ev)
+{
+	if(m_moving_selection && m_selected_entry) {
+		speak_entry(get_sr_entry(m_selected_entry).first, m_selected_entry, true);
+	}
+	ItemsDialog::on_keyup(_ev);
+}
+
 void StateDialog::on_cancel(Rml::Event &_ev)
 {
 	if(m_cancel_callbk) {
 		m_cancel_callbk();
 	}
 	Window::on_cancel(_ev);
+	m_shown = false;
 }
 
 void StateDialog::on_action(Rml::Event &)
@@ -396,10 +464,74 @@ void StateDialog::set_zoom(int _amount)
 	m_dirty_scroll = 2;
 }
 
+void StateDialog::speak_entries(bool _describe)
+{
+	m_gui->tts().enqueue(get_mode() + " view.");
+	if(_describe) {
+		speak_content(true);
+	}
+	if(m_selected_entry) {
+		speak_entry(get_sr_entry(m_selected_entry).first, m_selected_entry, true);
+	} else if(!is_empty()) {
+		m_gui->tts().enqueue("none selected.", TTS::Priority::Low);
+	}
+}
+
+void StateDialog::speak_entry(const StateRecord *_sr, Rml::Element *_entry_el, bool _append)
+{
+	if(!_sr) {
+		return;
+	}
+
+	unsigned idx = _entry_el->GetAttribute("data-index")->Get<unsigned>(0);
+	unsigned count = _entry_el->GetAttribute("data-count")->Get<unsigned>(0);
+	std::string text;
+	if(!_sr->user_desc().empty()) {
+		// the user provided description
+		text += "Title: " + _sr->user_desc() + "\n";
+	}
+	// the slot name
+	text += "Slot: " + _sr->name() + "\n";
+	// the slot time
+	text += str_format_time(_sr->mtime(), "Date: %x at %H:%M") + "\n";
+	// the slot description
+	if(_sr->info().version != STATE_RECORD_VERSION) {
+		text += "Invalid version.";
+	} else {
+		text += _sr->info().config_desc;
+	}
+	m_gui->tts().enqueue(
+		str_format("%u of %u:\n%s", idx+1, count, text.c_str()),
+			_append ? TTS::Priority::Low : TTS::Priority::Normal, TTS::BREAK_LINES);
+}
+
+void StateDialog::speak_content(bool _append)
+{
+	std::string content;
+	if(!ms_rec_map.empty()) {
+		content = str_format("%u %s", ms_rec_map.size(), ms_rec_map.size()>1 ? "items" : "item");
+	} else {
+		content = "empty";
+	}
+	m_gui->tts().enqueue(content, _append ? TTS::Priority::Low : TTS::Priority::Normal);
+}
+
+void StateDialog::speak_element(Rml::Element *_el, bool _with_label, bool _describe, TTS::Priority _pri)
+{
+	assert(_el);
+
+	Window::speak_element(_el, _with_label, _describe, _pri);
+
+	if(_el->GetId() == "entries") {
+		speak_entries(_describe);
+	}
+}
+
 Rml::ElementPtr StateDialog::DirEntry::create_element(
 		Rml::ElementDocument *_doc,
 		const std::string &_screen,
-		const StateRecord::Info &_info
+		const StateRecord::Info &_info,
+		unsigned _idx, unsigned _count
 )
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
@@ -408,6 +540,8 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 		child->SetClass("version_mismatch", true);
 	}
 	child->SetId(_info.name);
+	child->SetAttribute("data-index", _idx); 
+	child->SetAttribute("data-count", _count);
 
 	std::string inner;
 	inner += "<div class=\"data\">";
@@ -441,11 +575,12 @@ Rml::ElementPtr StateDialog::DirEntry::create_element(
 	return child;
 }
 
-Rml::ElementPtr StateDialog::DirEntry::create_element(Rml::ElementDocument *_doc) const
+Rml::ElementPtr StateDialog::DirEntry::create_element(Rml::ElementDocument *_doc, unsigned _idx, unsigned _count) const
 {
 	return create_element(
 		_doc,
 		rec->screen(),
-		rec->info()
+		rec->info(),
+		_idx, _count
 	);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -50,6 +50,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <codecvt>
 
 ini_enum_map_t g_mouse_types = {
 	{ "none", MOUSE_TYPE_NONE },
@@ -116,6 +117,15 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_SYS_SPEED,            &GUI::pevt_func_sys_speed            },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN,    &GUI::pevt_func_toggle_fullscreen    },
 	{ ProgramEvent::FuncName::FUNC_SWITCH_KEYMAPS,       &GUI::pevt_func_switch_keymaps       },
+	{ ProgramEvent::FuncName::FUNC_TTS_ADJ_RATE,         &GUI::pevt_func_tts_adj_rate         },
+	{ ProgramEvent::FuncName::FUNC_TTS_ADJ_VOLUME,       &GUI::pevt_func_tts_adj_volume       },
+	{ ProgramEvent::FuncName::FUNC_TTS_READ_CHARS,       &GUI::pevt_func_tts_read_chars       },
+	{ ProgramEvent::FuncName::FUNC_TTS_READ_WORDS,       &GUI::pevt_func_tts_read_words       },
+	{ ProgramEvent::FuncName::FUNC_TTS_DESCRIBE,         &GUI::pevt_func_tts_describe         },
+	{ ProgramEvent::FuncName::FUNC_TTS_STOP,             &GUI::pevt_func_tts_stop             },
+	{ ProgramEvent::FuncName::FUNC_TTS_WINDOW_TITLE,     &GUI::pevt_func_tts_window_title     },
+	{ ProgramEvent::FuncName::FUNC_TTS_GUI_TOGGLE,       &GUI::pevt_func_tts_gui_toggle       },
+	{ ProgramEvent::FuncName::FUNC_TTS_GUEST_TOGGLE,     &GUI::pevt_func_tts_guest_toggle     },
 	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 },
 	{ ProgramEvent::FuncName::FUNC_RELOAD_RCSS,          &GUI::pevt_func_reload_rcss          },
 };
@@ -248,6 +258,9 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		throw;
 	}
 
+	// Text-To-Speech
+	m_tts.init(this);
+
 	try {
 		m_windows.init(m_machine, this, m_mixer, m_mode);
 	} catch(std::exception &e) {
@@ -319,7 +332,7 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	}
 	
 	// DONE
-	show_welcome_screen();
+	m_windows.interface->show_welcome_screen(&m_keymaps[m_current_keymap], m_mode);
 }
 
 void GUI::load_keymap(const std::string &_filename)
@@ -459,7 +472,7 @@ void GUI::remove_data_model(const std::string &_model_name)
 	m_rml_context->RemoveDataModel(_model_name);
 }
 
-Rml::ElementDocument * GUI::load_document(const std::string &_filename)
+Rml::ElementDocument * GUI::load_document(const std::string &_filename, Window *_owner_wnd)
 {
 	Rml::ElementDocument * document = m_rml_context->LoadDocument(_filename.c_str());
 
@@ -469,7 +482,7 @@ Rml::ElementDocument * GUI::load_document(const std::string &_filename)
 			title->SetInnerRML(document->GetTitle());
 		}
 		PDEBUGF(LOG_V1, LOG_GUI, "Document \"%s\" loaded\n", _filename.c_str());
-		m_windows.register_document(document);
+		m_windows.register_document(document, _owner_wnd);
 	} else {
 		PERRF(LOG_GUI, "Cannot load document file: '%s'\n", _filename.c_str());
 	}
@@ -1382,8 +1395,35 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 	// events are not created when gui is active, if one is present skip this
 	if(!running_evt && gui_input) {
 		// do gui stuff
-		if(m_windows.current_doc()->IsModal() || 
-				!binding_ptr || !binding_ptr->has_events_of_type(ProgramEvent::Type::EVT_PROGRAM_FUNC)) {
+		bool window_is_modal = m_windows.current_doc()->IsModal();
+		bool window_would_handle = false;
+		bool has_pfunc_events = (binding_ptr && binding_ptr->has_events_of_type(ProgramEvent::Type::EVT_PROGRAM_FUNC));
+		bool has_tts_funcs = (binding_ptr && binding_ptr->has_funcs_of_category(ProgramEvent::FuncCategory::TTS));
+		if(m_windows.current_window()) {
+			Rml::Input::KeyIdentifier rml_key = m_rml_sys_interface->TranslateKey(_sdl_event.key.keysym.sym);
+			int rml_mod = m_rml_sys_interface->GetKeyModifiers(_sdl_event.key.keysym.mod);
+			rml_mod &= ~Rml::Input::KM_NUMLOCK;
+			rml_mod &= ~Rml::Input::KM_CAPSLOCK;
+			window_would_handle = m_windows.current_window()->would_handle(rml_key, rml_mod);
+		}
+		if(
+		  !binding_ptr
+		  ||
+		  (
+		    (
+		      window_is_modal
+		      ||
+		      window_would_handle
+		      ||
+		      !has_pfunc_events
+		    )
+		    &&
+		    !has_tts_funcs
+		  )
+		)
+		{
+			PDEBUGF(LOG_V2, LOG_GUI, "  is_modal:%d, would handle:%d, pfuncs evt:%d, tts funcs:%d\n",
+					window_is_modal, window_would_handle, has_pfunc_events, has_tts_funcs);
 			dispatch_rml_event(_sdl_event);
 			return;
 		}
@@ -1504,12 +1544,12 @@ void GUI::on_keyboard_event(const SDL_Event &_sdl_event)
 
 void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "SDL Mouse motion: x:%d,y:%d\n", _sdl_event.motion.xrel, _sdl_event.motion.yrel);
-
 	if(!m_input.grab) {
 		dispatch_rml_event(_sdl_event);
 		return;
 	}
+
+	PDEBUGF(LOG_V3, LOG_GUI, "SDL Mouse motion: x:%d,y:%d\n", _sdl_event.motion.xrel, _sdl_event.motion.yrel);
 
 	// mouse motion events are 2-in-1 (X and Y axes)
 
@@ -1517,7 +1557,7 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 		auto binding = m_keymaps[m_current_keymap].find_sdl_binding(_axis_evt.motion);
 		if(binding) {
 			// events are ONE SHOT only because mouse motion is relative and there's no END condition
-			PDEBUGF(LOG_V2, LOG_GUI, "  match for axis %s: %s\n", _axis_name, binding->name.c_str());
+			PDEBUGF(LOG_V3, LOG_GUI, "  match for axis %s: %s\n", _axis_name, binding->name.c_str());
 			auto running_evt = m_input.start_evt(_axis_evt, binding);
 			run_event_binding(*running_evt, EventPhase::EVT_START);
 			if(!running_evt->is_running()) {
@@ -1525,7 +1565,7 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 				m_input.remove(running_evt);
 			}
 		} else {
-			PDEBUGF(LOG_V2, LOG_GUI, "  no match for axis %s\n", _axis_name);
+			PDEBUGF(LOG_V3, LOG_GUI, "  no match for axis %s\n", _axis_name);
 		}
 	};
 
@@ -1563,7 +1603,7 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	auto binding_ptr = m_keymaps[m_current_keymap].find_sdl_binding(_sdl_event.button);
 	auto running_evt = m_input.find(_sdl_event);
 
-	PDEBUGF(LOG_V2, LOG_GUI, "SDL Mouse button: %d %s\n", _sdl_event.button.button,
+	PDEBUGF(LOG_V3, LOG_GUI, "SDL Mouse button: %d %s\n", _sdl_event.button.button,
 			_sdl_event.type == SDL_MOUSEBUTTONDOWN ? "down" : "up");
 
 	if(!running_evt && !m_input.grab) {
@@ -1577,9 +1617,9 @@ void GUI::on_mouse_button_event(const SDL_Event &_sdl_event)
 	}
 
 	if(binding_ptr) {
-		PDEBUGF(LOG_V2, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
+		PDEBUGF(LOG_V3, LOG_GUI, "  match: %s\n", binding_ptr->name.c_str());
 	} else {
-		PDEBUGF(LOG_V2, LOG_GUI, "  no match\n");
+		PDEBUGF(LOG_V3, LOG_GUI, "  no match\n");
 		return;
 	}
 
@@ -2130,6 +2170,8 @@ void GUI::update(uint64_t _current_time)
 	}
 
 	m_windows.update_after();
+	
+	m_tts.speak();
 }
 
 void GUI::shutdown_SDL()
@@ -2163,6 +2205,8 @@ void GUI::shutdown()
 	ms_rml_mutex.lock();
 	Rml::Shutdown();
 	ms_rml_mutex.unlock();
+
+	m_tts.close();
 
 	shutdown_SDL();
 }
@@ -2320,157 +2364,6 @@ bool GUI::is_audio_recording() const
 	return m_mixer->is_recording();
 }
 
-void GUI::show_welcome_screen()
-{
-	std::vector<uint16_t> text(80*25,0x0000);
-	int cx = 0, cy = 0;
-	const int bg = 0x8;
-	const int bd = 2;
-
-	auto ps = [&](const char *_str, uint8_t _foreg, uint8_t _backg, int _border) {
-		do {
-			unsigned char c = *_str++;
-			if(cx >= 80-_border || c == '\n') {
-				cx = _border;
-				cy++;
-				if(c == '\n') {
-					continue;
-				}
-			}
-			if(cy >= 25) {
-				cy = 0;
-			}
-			uint16_t attrib = (_backg << 4) | (_foreg & 0x0F);
-			text[cy*80 + cx++] = (attrib << 8) | c;
-
-		} while(*_str);
-	};
-
-	ps(
-"\xC9"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xBB",
-0xf, bg, 0);
-	constexpr int height = 23;
-	for(int i=1; i<=height; i++) {
-		ps("\xBA                                                                              \xBA",
-				0xf, bg, 0);
-	}
-	ps(
-"\xC8"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xBC",
-0xf, bg, 0);
-
-	cx = bd; cy = 1;
-	ps("Welcome to ", 0xf, bg, bd); ps(PACKAGE_STRING "\n\n", 0xa, 0x9, bd);
-	ps(PACKAGE_NAME " is free software, you can redistribute it and/or modify it"
-			" under\nthe terms of the GNU GPL v.3+\n\n", 0x7, bg, bd);
-
-	cx = 0;
-	ps(
-"\xCC"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
-"\xCD\xCD\xB9",
-0xf, bg, 0);
-
-	ProgramEvent evt;
-	evt.type = ProgramEvent::Type::EVT_PROGRAM_FUNC;
-	std::vector<const Keymap::Binding *> bindings;
-
-	cx = bd;
-	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
-	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-	if(!bindings.empty()) {
-		if(m_mode == GUI_MODE_REALISTIC) {
-			evt.func.params[0] = 1;
-			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt, true);
-			if(!bindings.empty()) {
-				ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
-				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			}
-			evt.func.params[0] = 2;
-			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt, true);
-			if(!bindings.empty()) {
-				ps("\nTo switch between the interface styles press ", 0xf, bg, bd);
-				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			}
-			ps("\n", 0xf, bg, bd);
-		} else {
-			cy++;
-		}
-	} else {
-		cy++;
-	}
-
-	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_POWER;
-	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-	if(!bindings.empty()) {
-		ps("To start/stop the machine press ", 0xf, bg, bd);
-		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-		ps("\n", 0xe, bg, bd);
-	}
-	
-	evt.func.name = ProgramEvent::FuncName::FUNC_GRAB_MOUSE;
-	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-	if(!bindings.empty()) {
-		ps("To grab the mouse press ", 0xf, bg, bd);
-		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-		ps("\n", 0xe, bg, bd);
-	}
-	if(m_mode == GUI_MODE_REALISTIC) {
-		evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE;
-		bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-		if(!bindings.empty()) {
-			ps("To pause the machine press ", 0xf, bg, bd);
-			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			ps("\n", 0xe, bg, bd);
-		}
-		evt.func.name = ProgramEvent::FuncName::FUNC_SAVE_STATE;
-		bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-		if(!bindings.empty()) {
-			ps("To save the machine's state press ", 0xf, bg, bd);
-			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-			evt.func.name = ProgramEvent::FuncName::FUNC_LOAD_STATE;
-			bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-			if(!bindings.empty()) {
-				ps("\nTo load a saved state press ", 0xf, bg, bd);
-				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-				ps("\n", 0xe, bg, bd);
-			}
-		}
-	}
-	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN;
-	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-	if(!bindings.empty()) {
-		ps("To toggle fullscreen mode press ", 0xf, bg, bd);
-		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-		ps("\n", 0xe, bg, bd);
-	}
-	evt.func.name = ProgramEvent::FuncName::FUNC_EXIT;
-	bindings = m_keymaps[m_current_keymap].find_prg_bindings(evt);
-	if(!bindings.empty()) {
-		ps("To close the emulator press ", 0xf, bg, bd);
-		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
-		ps("\n", 0xe, bg, bd);
-	}
-	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
-	ps(g_program.config().get_path().c_str(), 0xe, bg, bd);
-	ps("\n\nFor more information read the README file and visit the home page at\n", 0xf, bg, bd);
-	ps(PACKAGE_URL "\n", 0xe, bg, bd);
-
-	m_machine->cmd_print_VGA_text(text);
-}
-
 void GUI::pevt_func_none(const ProgramEvent::Func&, EventPhase)
 {
 	PDEBUGF(LOG_V0, LOG_GUI, "Unknown func event!\n");
@@ -2512,20 +2405,20 @@ void GUI::pevt_func_set_audio_ch(const ProgramEvent::Func &_func, EventPhase _ph
 		channel++;
 	}
 
-	m_windows.audio_osd->show();
 	m_windows.audio_osd->set_channel(channel);
+	m_windows.audio_osd->show();
 }
 
 void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
+		PDEBUGF(LOG_V0, LOG_GUI, "pevt_func_set_next_audio_ch END\n");
 		return;
 	}
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Set next Mixer channel event\n");
-	if(m_windows.audio_osd->is_visible()) {
-		m_windows.audio_osd->next_channel();
-	}
+
+	m_windows.audio_osd->next_channel();
 	m_windows.audio_osd->show();
 }
 
@@ -2537,9 +2430,7 @@ void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &, EventPhase _ph
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Set prev Mixer channel event\n");
 
-	if(m_windows.audio_osd->is_visible()) {
-		m_windows.audio_osd->prev_channel();
-	}
+	m_windows.audio_osd->prev_channel();
 	m_windows.audio_osd->show();
 }
 
@@ -2553,8 +2444,8 @@ void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase
 
 	float amount = float(_func.params[0]) / 100.f;
 
-	m_windows.audio_osd->show();
 	m_windows.audio_osd->change_volume(amount);
+	m_windows.audio_osd->show();
 }
 
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2867,6 +2758,208 @@ void GUI::pevt_func_switch_keymaps(const ProgramEvent::Func&, EventPhase _phase)
 	show_message(mex.c_str());
 }
 
+void GUI::pevt_func_tts_adj_volume(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS adjust volume\n");
+	if(!m_tts.is_open()) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	if(m_tts.adj_volume(TTS::ChannelID::GUI, _func.params[0])) {
+		show_message(str_format("GUI speak volume %+d", m_tts.volume(TTS::ChannelID::GUI)));
+		PDEBUGF(LOG_V1, LOG_GUI, "  adj.vol=%d, new vol=%d\n", _func.params[0], m_tts.volume(TTS::ChannelID::GUI));
+	}
+}
+
+void GUI::pevt_func_tts_adj_rate(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS adjust rate\n");
+	if(!m_tts.is_open()) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	if(m_tts.adj_rate(TTS::ChannelID::GUI, _func.params[0])) {
+		show_message(str_format("GUI speak rate %+d", m_tts.rate(TTS::ChannelID::GUI)));
+		PDEBUGF(LOG_V1, LOG_GUI, "  adj.rate=%d, new rate=%d\n", _func.params[0], m_tts.rate(TTS::ChannelID::GUI));
+	}
+}
+
+void GUI::pevt_func_tts_describe(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS speak func event\n");
+	if(!m_tts.is_open()) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	if(!m_windows.need_input()) {
+		m_windows.interface->tts_describe();
+	} else {
+		auto *el = m_rml_context->GetFocusElement();
+		PDEBUGF(LOG_V0, LOG_GUI, "speak element '%s'\n", el->GetId().c_str());
+		auto *wnd = m_windows.current_window();
+		if(wnd) {
+			wnd->speak_element(el, true, true);
+		} else {
+			PDEBUGF(LOG_V1, LOG_GUI, "no current window!");
+		}
+	}
+}
+
+void GUI::pevt_func_tts_read_chars(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	if(!m_windows.need_input()) {
+		return;
+	}
+
+	auto *el = m_rml_context->GetFocusElement();
+	if(!el || el->GetTagName() != "input") {
+		return;
+	}
+
+	auto type = el->GetAttribute("type", std::string());
+	if(type != "text") {
+		return;
+	}
+
+	auto input = dynamic_cast<Rml::ElementFormControl*>(el);
+	if(!input || input->GetValue().empty()) {
+		return;
+	}
+
+	m_tts.enqueue(
+		m_tts.get_format()->fmt_spell(
+			m_tts.get_format()->fmt_value( input->GetValue() )
+		),
+		TTS::Priority::Normal,
+		TTS::IS_SENTENCE | TTS::IS_MARKUP
+	);
+}
+
+void GUI::pevt_func_tts_read_words(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	if(!m_windows.need_input()) {
+		return;
+	}
+
+	auto *el = m_rml_context->GetFocusElement();
+	if(!el || el->GetTagName() != "input") {
+		return;
+	}
+
+	auto type = el->GetAttribute("type", std::string());
+	if(type != "text") {
+		return;
+	}
+
+	auto input = dynamic_cast<Rml::ElementFormControl*>(el);
+	if(!input || input->GetValue().empty()) {
+		return;
+	}
+	m_tts.enqueue(input->GetValue());
+}
+
+void GUI::pevt_func_tts_stop(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS stop func event\n");
+	if(!m_tts.is_open()) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	m_tts.stop();
+}
+
+void GUI::pevt_func_tts_window_title(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS window title func event\n");
+	if(!m_tts.is_open()) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	if(!m_windows.need_input()) {
+		m_tts.enqueue(m_wnd_title.c_str());
+	} else {
+		auto *wnd = m_windows.current_window();
+		if(wnd) {
+			if(!wnd->title().empty()) {
+				m_tts.enqueue(wnd->title().c_str());
+			} else {
+				m_tts.enqueue("The current window has no title.");
+			}
+		} else {
+			PDEBUGF(LOG_V1, LOG_GUI, "no current window!");
+		}
+	}
+}
+
+void GUI::pevt_func_tts_gui_toggle(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS GUI toggle func event\n");
+	if(!m_tts.is_channel_open(TTS::ChannelID::GUI)) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	if(m_tts.is_channel_enabled(TTS::ChannelID::GUI)) {
+		m_tts.enqueue("TTS for the GUI disabled.");
+		m_tts.enable_channel(TTS::ChannelID::GUI, false);
+		show_message("TTS for the GUI disabled.");
+	} else {
+		m_tts.enable_channel(TTS::ChannelID::GUI, true);
+		show_message("TTS for the GUI enabled.");
+	}
+}
+
+void GUI::pevt_func_tts_guest_toggle(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+
+	PDEBUGF(LOG_V1, LOG_GUI, "TTS Guest toggle func event\n");
+	if(!m_tts.is_channel_open(TTS::ChannelID::Guest)) {
+		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
+		return;
+	}
+
+	m_tts.enable_channel(TTS::ChannelID::Guest, !m_tts.is_channel_enabled(TTS::ChannelID::Guest));
+	show_message(str_format("TTS for the guest OS %s.", m_tts.is_channel_enabled(TTS::ChannelID::Guest) ? "enabled" : "disabled"));
+}
+
 void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)
 {
 	if(_phase != EventPhase::EVT_START) {
@@ -2913,11 +3006,15 @@ public:
 	}
 };
 
+GUI::WindowManager::WindowManager()
+{
+	timers.set_log_facility(LOG_GUI);
+	timers.init();
+}
+
 void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint _mode)
 {
 	m_gui = _gui;
-	timers.set_log_facility(LOG_GUI);
-	timers.init();
 
 	desktop = std::make_unique<Desktop>(_gui);
 	desktop->show();
@@ -3106,17 +3203,17 @@ void GUI::WindowManager::update_window_size(int _w, int _h)
 {
 	interface->container_size_changed(_w, _h);
 
-	for(auto doc : m_docs) {
-		if(!doc->IsClassSet("window")) {
+	for(auto &doc : m_docs) {
+		if(!doc.first->IsClassSet("window")) {
 			continue;
 		}
-		auto size = doc->GetBox().GetSize();
-		auto offset = doc->GetAbsoluteOffset();
+		auto size = doc.first->GetBox().GetSize();
+		auto offset = doc.first->GetAbsoluteOffset();
 		if(offset.x < 0 || offset.x + size.x > _w || 
 		   offset.y < 0 || offset.y + size.y > _h)
 		{
 			// this document is out of view.
-			PDEBUGF(LOG_V2, LOG_GUI, "Reset '%s' to initial properties\n", doc->GetTitle().c_str());
+			PDEBUGF(LOG_V2, LOG_GUI, "Reset '%s' to initial properties\n", doc.first->GetTitle().c_str());
 			for(auto p : {
 				Rml::PropertyId::Width,
 				Rml::PropertyId::Height,
@@ -3129,7 +3226,7 @@ void GUI::WindowManager::update_window_size(int _w, int _h)
 				Rml::PropertyId::Bottom,
 				Rml::PropertyId::Left})
 			{
-				doc->RemoveProperty(p);
+				doc.first->RemoveProperty(p);
 			}
 		}
 	}
@@ -3189,6 +3286,19 @@ Rml::ElementDocument * GUI::WindowManager::current_doc()
 	return m_gui->m_rml_context->GetFocusElement()->GetOwnerDocument();
 }
 
+Window * GUI::WindowManager::current_window()
+{
+	auto *doc = current_doc();
+	auto doc_it = std::find_if(m_docs.begin(), m_docs.end(),
+			[&doc](const std::pair<Rml::ElementDocument*, Window*> &elem) {
+				return elem.first == doc;
+			});
+	if(doc_it != m_docs.end()) {
+		return doc_it->second;
+	}
+	return nullptr;
+}
+
 bool GUI::WindowManager::need_input()
 {
 	return (current_doc() != interface->m_wnd);
@@ -3202,7 +3312,8 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 		title = doc->GetTitle();
 	}
 	bool is_window = _ev.GetTargetElement()->IsClassSet("window");
-	PDEBUGF(LOG_V1, LOG_GUI, "Event '%s' on '%s'\n", _ev.GetType().c_str(), title.c_str());
+	PDEBUGF(LOG_V1, LOG_GUI, "WindowManager: RmlUi Event '%s' on '%s' ('%s')\n", _ev.GetType().c_str(),
+			_ev.GetTargetElement()->GetId().c_str(), title.c_str());
 	switch(_ev.GetId()) {
 		case Rml::EventId::Show:
 			if(is_window) {
@@ -3220,7 +3331,10 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 			break;
 		case Rml::EventId::Unload:
 			if(doc) {
-				auto doc_it = std::find(m_docs.begin(), m_docs.end(), doc);
+				auto doc_it = std::find_if(m_docs.begin(), m_docs.end(),
+						[&doc](const std::pair<Rml::ElementDocument*, Window*> &elem) {
+							return elem.first == doc;
+						});
 				if(doc_it != m_docs.end()) {
 					m_docs.erase(doc_it);
 				}
@@ -3228,6 +3342,7 @@ void GUI::WindowManager::ProcessEvent(Rml::Event &_ev)
 			}
 			break;
 		case Rml::EventId::Focus:
+			PDEBUGF(LOG_V1, LOG_GUI, "  element '%s' focus \n", _ev.GetTargetElement()->GetId().c_str());
 			if(!is_window && title != "Interface") {
 				if(last_focus_doc) {
 					revert_focus = last_focus_doc;
@@ -3248,19 +3363,19 @@ bool GUI::WindowManager::are_visible()
 	return windows_count;
 }
 
-void GUI::WindowManager::register_document(Rml::ElementDocument *_doc)
+void GUI::WindowManager::register_document(Rml::ElementDocument *_doc, Window *_owner_wnd)
 {
 	for(auto id : listening_evts) {
 		_doc->AddEventListener(id, this);
 	}
-	m_docs.push_back(_doc);
+	m_docs.emplace_back(_doc, _owner_wnd);
 	PDEBUGF(LOG_V1, LOG_GUI, "Registered documents: %u\n", static_cast<unsigned>(m_docs.size()));
 }
 
 void GUI::WindowManager::reload_rcss()
 {
-	for(auto doc : m_docs) {
-		doc->ReloadStyleSheet();
+	for(auto &doc : m_docs) {
+		doc.first->ReloadStyleSheet();
 	}
 }
 

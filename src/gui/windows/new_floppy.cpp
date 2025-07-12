@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -81,7 +81,7 @@ void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes,
 			if((it->first & FloppyDisk::DENS_MASK) == (ctype & FloppyDisk::DENS_MASK) &&
 			   (it->first & FloppyDisk::SIZE_MASK) == (ctype & FloppyDisk::SIZE_MASK)) {
 				try {
-					m_type_el->Add(it->second.desc.c_str(), std_names.at(it->first));
+					m_type_el->Add(it->second.desc, std_names.at(it->first));
 				} catch(std::out_of_range &) {}
 				break;
 			}
@@ -166,8 +166,7 @@ void NewFloppy::on_create_file(Rml::Event &)
 			}
 			m_create_clbk(m_dest_dir, filename, type->second, m_format_el->GetValue());
 		} catch(std::runtime_error &e) {
-			m_gui->show_message_box("Error",
-					str_to_html(e.what()), MessageWnd::Type::MSGW_OK,
+			m_gui->show_message_box("Error", e.what(), MessageWnd::Type::MSGW_OK,
 			[=](){
 				m_filename_el->Focus();
 			});

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,14 +36,19 @@ protected:
 	int m_max_zoom = 0;
 	int m_zoom = 0;
 
+	bool m_moving_selection = false;
+
 public:
 	ItemsDialog(GUI *_gui, const char *_rml);
 	virtual ~ItemsDialog();
 
+	using Window::create;
 	virtual void create(std::string _mode, int _zoom,
 			const std::string &_entries_el, const std::string &_entries_cont_el);
 
+	virtual bool would_handle(Rml::Input::KeyIdentifier, int);
 	virtual void on_keydown(Rml::Event &);
+	virtual void on_keyup(Rml::Event &);
 
 protected:
 	virtual Rml::Element* get_entry(Rml::Element *target_el);

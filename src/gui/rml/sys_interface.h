@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,6 +48,7 @@ public:
 
 	Rml::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
 	int TranslateMouseButton(Uint8 button);
+	int GetKeyModifiers(Uint16 _sdl_mods);
 	int GetKeyModifiers();
 };
 

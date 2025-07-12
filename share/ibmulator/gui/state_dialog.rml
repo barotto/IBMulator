@@ -25,29 +25,29 @@
 	</div>
 	<form id="buttons_left">
 		<div id="mode" class="toolbar">
-		<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell"><btnicon class="icon_grid" /><span></span></input>
-		<input type="radio" name="mode" value="list" id="mode_list" class="romshell"><btnicon class="icon_list" /><span></span></input>
+		<input type="radio" name="mode" value="grid" id="mode_grid" class="romshell" aria-label="state view mode: grid"><btnicon class="icon_grid" /><span></span></input>
+		<input type="radio" name="mode" value="list" id="mode_list" class="romshell" aria-label="state view mode: list"><btnicon class="icon_list" /><span></span></input>
 		</div>
 		<div id="order" class="toolbar">
 		<span>by</span>
-		<input type="radio" name="order" value="date"  id="order_date" class="romshell texty"><span>date</span></input>
-		<input type="radio" name="order" value="title" id="order_title" class="romshell texty"><span>title</span></input>
-		<input type="radio" name="order" value="slot"  id="order_slot" class="romshell texty"><span>slot</span></input>
+		<input type="radio" name="order" value="date"  id="order_date" class="romshell texty" aria-label="state order: by date"><span>date</span></input>
+		<input type="radio" name="order" value="title" id="order_title" class="romshell texty" aria-label="state order: by title"><span>title</span></input>
+		<input type="radio" name="order" value="slot"  id="order_slot" class="romshell texty" aria-label="state order: by slot"><span>slot</span></input>
 		</div>
 		<div id="asc_desc" class="toolbar">
-		<input type="radio" name="asc_desc" value="asc" class="romshell" checked><btnicon class="icon_asc" /><span></span></input>
-		<input type="radio" name="asc_desc" value="desc" class="romshell"><btnicon class="icon_desc" /><span></span></input>
+		<input type="radio" name="asc_desc" value="asc" class="romshell" aria-label="state order: ascending" checked><btnicon class="icon_asc" /><span></span></input>
+		<input type="radio" name="asc_desc" value="desc" class="romshell" aria-label="state order: descending"><btnicon class="icon_desc" /><span></span></input>
 		</div>
 		<div id="extra_btns" class="toolbar">
-		<button id="new_save" class="romshell text"><span>New</span></button>
+		<button id="new_save" class="romshell text" aria-label="new save state"><span>New</span></button>
 		</div>
 	</form>
 	<div id="buttons_right" class="toolbar">
 		<div id="buttons_entry" class="invisible toolbar">
-			<button id="delete" class="romshell text entry_button"><span>Delete</span></button>
-			<button id="action" class="romshell text entry_button"><span id="action_label"></span></button>
+			<button id="delete" class="romshell text entry_button" aria-label="delete save state"><span>Delete</span></button>
+			<button id="action" class="romshell text entry_button" aria-label=""><span id="action_label"></span></button>
 		</div>
-		<button id="cancel" class="romshell text"><span>Cancel</span></button>
+		<button id="cancel" class="romshell text" aria-label="cancel"><span>Cancel</span></button>
 	</div>
 </body>
 </template>

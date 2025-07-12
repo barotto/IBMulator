@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2014  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,6 +27,7 @@
 #include "hardware/devices.h"
 #include "hardware/devices/pic.h"
 #include "parallel.h"
+#include "gui/gui.h"
 #include <cstring>
 
 #define LPT_MAXDEV 3
@@ -91,7 +92,6 @@ void Parallel::remove()
 
 void Parallel::reset(unsigned)
 {
-	/* internal state */
 	m_s.STATUS.error = 1; // inv
 	m_s.STATUS.slct  = 1;
 	m_s.STATUS.pe    = 0;
@@ -106,6 +106,8 @@ void Parallel::reset(unsigned)
 	m_s.CONTROL.input    = 0;
 
 	m_s.initmode = 0;
+
+	m_tts_buf = "";
 }
 
 void Parallel::config_changed()
@@ -114,6 +116,8 @@ void Parallel::config_changed()
 		fclose(m_s.output);
 		m_s.output = nullptr;
 	}
+
+	m_tts_enabled = g_program.config().get_bool_or_default(LPT_SECTION, LPT_SPEAK);
 }
 
 void Parallel::save_state(StateBuf &_state)
@@ -136,6 +140,8 @@ void Parallel::restore_state(StateBuf &_state)
 	_state.read(&m_s,h);
 
 	m_s.output = nullptr;
+
+	m_tts_buf = "";
 }
 
 void Parallel::set_mode(uint8_t _mode)
@@ -188,7 +194,7 @@ void Parallel::set_enabled(bool _enabled)
 	}
 }
 
-void Parallel::virtual_printer()
+void Parallel::send_byte()
 {
 	if(!m_enabled) {
 		return;
@@ -212,6 +218,23 @@ void Parallel::virtual_printer()
 			fputc(m_s.data, m_s.output);
 			fflush(m_s.output);
 		}
+
+		if(m_tts_enabled) {
+			if(m_s.data == 0x0D) {
+				if(!m_tts_buf.empty()) {
+					GUI::instance()->tts().enqueue(m_tts_buf,
+						TTS::Priority::Normal,
+						TTS::BREAK_LINES | TTS::NOT_UTF8,
+						m_tts_buf.size() == 1,
+						TTS::ChannelID::Guest
+					);
+					m_tts_buf.clear();
+				}
+			} else if(m_s.data >= 0x20 && m_s.data != 0x7f && m_tts_buf.size() < 120) {
+				m_tts_buf.push_back(m_s.data);
+			}
+		}
+
 		if(m_s.CONTROL.irq == 1) {
 			m_devices->pic()->raise_irq(ms_irqs[m_s.port]);
 		}
@@ -311,7 +334,7 @@ void Parallel::write(uint16_t address, uint16_t value, unsigned /*io_len*/)
 			if((value & LPT_STROBE) == LPT_STROBE) {
 				if(m_s.CONTROL.strobe == 0) {
 					m_s.CONTROL.strobe = 1;
-					virtual_printer(); // data is valid now
+					send_byte(); // data is valid now
 				}
 			} else {
 				if(m_s.CONTROL.strobe == 1) {

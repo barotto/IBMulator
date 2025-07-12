@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -797,9 +797,15 @@ void Interface::update()
 	}
 
 	// Child windows
-	m_fs->update();
-	m_state_load->update();
-	m_state_save->update();
+	if(m_fs->is_visible()) {
+		m_fs->update();
+	}
+	if(m_state_load->is_visible()) {
+		m_state_load->update();
+	}
+	if(m_state_save->is_visible()) {
+		m_state_save->update();
+	}
 }
 
 void Interface::on_power(Rml::Event &)
@@ -807,7 +813,7 @@ void Interface::on_power(Rml::Event &)
 	switch_power();
 }
 
-void Interface::show_message(const char* _mex)
+void Interface::show_message(const char *_mex)
 {
 	std::string str(_mex);
 	str_replace_all(str, "\n", "<br />");
@@ -817,6 +823,7 @@ void Interface::show_message(const char* _mex)
 		m_message->SetProperty("visibility", "hidden");
 	} else {
 		m_message->SetProperty("visibility", "visible");
+		m_gui->tts().enqueue(_mex, TTS::Priority::Normal, TTS::BREAK_LINES);
 	}
 }
 
@@ -1024,7 +1031,6 @@ void Interface::show_state_dialog(bool _save)
 	m_machine->cmd_pause(false);
 	m_gui->grab_input(false);
 	if(_save) {
-		m_state_save->update();
 		m_state_save->set_callbacks(
 			// save
 			[=](StateRecord::Info _info)
@@ -1052,7 +1058,6 @@ void Interface::show_state_dialog(bool _save)
 		);
 		m_state_save->show();
 	} else {
-		m_state_load->update();
 		m_state_load->set_callbacks(
 			[=](StateRecord::Info _info)
 			{
@@ -1155,6 +1160,7 @@ void Interface::switch_power()
 	}
 	m_machine->cmd_switch_power();
 	m_machine->cmd_resume();
+	m_welcome_string = "";
 }
 
 void Interface::set_audio_volume(float _volume)
@@ -1187,6 +1193,185 @@ void Interface::sig_state_restored()
 	if(m_audio_enabled) {
 		m_system_audio.update(true, false);
 	}
+}
+
+void Interface::tts_describe()
+{
+	m_gui->tts().enqueue(m_machine->model().machine_name.c_str());
+	if(m_machine->is_on()) {
+		std::string str = "The machine is powered on";
+		if(m_machine->is_paused()) {
+			str += ", emulation is paused";
+		}
+		str += ".";
+		m_gui->tts().enqueue(str);
+	} else {
+		m_gui->tts().enqueue("The machine is powered off.");
+		if(!m_welcome_string.empty()) {
+			m_gui->tts().enqueue(m_welcome_string, TTS::Priority::Normal, TTS::BREAK_LINES);
+		}
+	}
+}
+
+void Interface::show_welcome_screen(const Keymap *_keymap, unsigned _mode)
+{
+	std::vector<uint16_t> text(80*25,0x0000);
+	int cx = 0, cy = 0;
+	const int bg = 0x8;
+	const int bd = 2;
+
+	auto ps = [&](const char *_str, uint8_t _foreg, uint8_t _backg, int _border) {
+		if(_str[0] == '\n' || (_str[0] >= 32 && _str[0] <= 126)) {
+			std::string str(_str);
+			bool newline = str.back() == '\n';
+			str_replace_all(str, "\n", " ");
+			m_welcome_string += str;
+			if(newline) {
+				m_welcome_string += "\n";
+			}
+		}
+		do {
+			unsigned char c = *_str++;
+			if(cx >= 80-_border || c == '\n') {
+				cx = _border;
+				cy++;
+				if(c == '\n') {
+					continue;
+				}
+			}
+			if(cy >= 25) {
+				cy = 0;
+			}
+			uint16_t attrib = (_backg << 4) | (_foreg & 0x0F);
+			text[cy*80 + cx++] = (attrib << 8) | c;
+		} while(*_str);
+	};
+
+	ps(
+"\xC9"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xBB",
+0xf, bg, 0);
+	constexpr int height = 23;
+	for(int i=1; i<=height; i++) {
+		ps("\xBA                                                                              \xBA",
+				0xf, bg, 0);
+	}
+	ps(
+"\xC8"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xBC",
+0xf, bg, 0);
+
+	cx = bd; cy = 1;
+	ps("Welcome to ", 0xf, bg, bd);
+	ps(PACKAGE_STRING "\n\n", 0xa, 0x9, bd);
+	ps(PACKAGE_NAME " is free software, you can redistribute it and/or modify it"
+			" under\nthe terms of the GNU GPL v.3+\n\n", 0x7, bg, bd);
+
+	cx = 0;
+	ps(
+"\xCC"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD"
+"\xCD\xCD\xB9",
+0xf, bg, 0);
+
+	ProgramEvent evt;
+	evt.type = ProgramEvent::Type::EVT_PROGRAM_FUNC;
+	std::vector<const Keymap::Binding *> bindings;
+
+	cx = bd;
+	evt.func.name = ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION;
+	bindings = _keymap->find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		if(_mode == GUI_MODE_REALISTIC) {
+			evt.func.params[0] = 1;
+			bindings = _keymap->find_prg_bindings(evt, true);
+			if(!bindings.empty()) {
+				ps("\nTo zoom in on the monitor press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			}
+			evt.func.params[0] = 2;
+			bindings = _keymap->find_prg_bindings(evt, true);
+			if(!bindings.empty()) {
+				ps("\nTo switch between the interface styles press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			}
+			ps("\n", 0xf, bg, bd);
+		} else {
+			cy++;
+		}
+	} else {
+		cy++;
+	}
+
+	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_POWER;
+	bindings = _keymap->find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To start/stop the machine press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	
+	evt.func.name = ProgramEvent::FuncName::FUNC_GRAB_MOUSE;
+	bindings = _keymap->find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To grab the mouse press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	if(_mode == GUI_MODE_REALISTIC) {
+		evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE;
+		bindings = _keymap->find_prg_bindings(evt);
+		if(!bindings.empty()) {
+			ps("To pause the machine press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			ps("\n", 0xe, bg, bd);
+		}
+		evt.func.name = ProgramEvent::FuncName::FUNC_SAVE_STATE;
+		bindings = _keymap->find_prg_bindings(evt);
+		if(!bindings.empty()) {
+			ps("To save the machine's state press ", 0xf, bg, bd);
+			ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+			evt.func.name = ProgramEvent::FuncName::FUNC_LOAD_STATE;
+			bindings = _keymap->find_prg_bindings(evt);
+			if(!bindings.empty()) {
+				ps("\nTo load a saved state press ", 0xf, bg, bd);
+				ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+				ps("\n", 0xe, bg, bd);
+			}
+		}
+	}
+	evt.func.name = ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN;
+	bindings = _keymap->find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To toggle fullscreen mode press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	evt.func.name = ProgramEvent::FuncName::FUNC_EXIT;
+	bindings = _keymap->find_prg_bindings(evt);
+	if(!bindings.empty()) {
+		ps("To close the emulator press ", 0xf, bg, bd);
+		ps(bindings[0]->ievt.name.c_str(), 0xe, bg, bd);
+		ps("\n", 0xe, bg, bd);
+	}
+	ps("\nYou can find the configuration file here:\n", 0xf, bg, bd);
+	ps(g_program.config().get_path().c_str(), 0xe, bg, bd);
+	ps("\n\n", 0xf, bg, bd);
+	ps("For more information read the README file and visit the home page at\n", 0xf, bg, bd);
+	ps(PACKAGE_URL "\n", 0xe, bg, bd);
+
+	m_machine->cmd_print_VGA_text(text);
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
@@ -1285,18 +1470,21 @@ SDL_Surface * Interface::copy_framebuffer()
 	return surface;
 }
 
-std::string Interface::get_filesel_info(std::string _filepath)
+MediumInfoData Interface::get_filesel_info(std::string _filepath)
 {
 	std::unique_ptr<FloppyFmt> format(FloppyFmt::find(_filepath));
 
 	if(!format) {
-		return "Invalid floppy image format";
+		std::string err("Invalid floppy image format");
+		return { err, err };
 	}
 
-	std::string info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "<br />";
-	info += format->get_preview_string(_filepath);
+	std::string html_info = std::string("File: ") + str_to_html(FileSys::get_basename(_filepath.c_str())) + "<br />";
 
-	return info;
+	auto info = format->get_preview_string(_filepath);
+	html_info += info.html;
+
+	return { info.plain, html_info };
 }
 
 std::string Interface::create_new_floppy_image(std::string _dir, std::string _file, FloppyDisk::StdType _type, std::string _format)

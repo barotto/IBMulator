@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,11 +32,15 @@ class MixerControl : public Window
 private:
 	Mixer *m_mixer;
 	struct {
+		Rml::ElementTabSet *channels;
 		Rml::Element *audiocards_channels, *soundfx_channels;
 	} m_divs = {};
 	struct Channel {
 		std::shared_ptr<MixerChannel> ch;
 		int id = -1;
+		unsigned order = 0;
+		std::string name;
+		Rml::Element *block_container = nullptr;
 		Rml::Element *activity = nullptr;
 		Rml::Element *vol_slider = nullptr;
 		Rml::Element *vol_progress = nullptr;
@@ -45,14 +49,20 @@ private:
 		Rml::Element *vu_right = nullptr;
 		Rml::Element *volume_auto_btn = nullptr;
 		Rml::Element *filter_en_check = nullptr;
+		Rml::Element *setting_button = nullptr;
+		Rml::Element *setting_panel = nullptr;
+		Rml::Element *sliders_panel = nullptr;
 		float vol_last_value = 0.f;
 
 		Channel() {}
-		Channel(std::shared_ptr<MixerChannel> _ch, Rml::ElementDocument *_wnd);
+		Channel(std::shared_ptr<MixerChannel> _ch, int _order, Rml::ElementDocument *_wnd);
 
-		void set(int _id, Rml::ElementDocument *_wnd);
+		void set(int _id, int _order, Rml::ElementDocument *_wnd);
 	};
 	std::map<int,Channel> m_channels;
+	std::vector<Channel*> m_channels_order;
+	unsigned m_current_channel_idx = 0;
+	bool m_update_focus = true;
 	std::map<AppConfig::ConfigPair, std::vector<MixerChannel*>> m_ch_links;
 	TimerID m_click_timer = NULL_TIMER_ID;
 	std::function<void()> m_click_cb;
@@ -65,11 +75,16 @@ private:
 public:
 	MixerControl(GUI *_gui, Mixer *_mixer);
 
-	virtual void create();
-	virtual void update();
-	virtual void config_changed(bool);
-	virtual void close();
+	void create();
+	void show();
+	void update();
+	void config_changed(bool _startup);
+	void close();
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
+	void on_focus(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev);
+	
 	event_map_t & get_event_map() { return MixerControl::ms_evt_map; }
 
 private:
@@ -115,21 +130,26 @@ private:
 	bool on_mute(Rml::Event &, int _chid);
 	bool on_solo(Rml::Event &, int _chid);
 
+	void toggle_channel_setting(int _chid, bool _tts);
 	bool on_setting(Rml::Event &, int _chid);
 
 	void set_filter(int _chid, std::string _preset);
-	void add_filter(int _chid, const Dsp::Filter *_filter, size_t _filter_idx);
-	void update_filter_chain(int _chid);
+	void add_filter(int _chid, const Dsp::Filter *_filter, size_t _filter_idx, size_t _filter_count);
+	enum class ChainOperation {
+		Create, Add, Change, Remove 
+	};
+	void update_filter_chain(int _chid, ChainOperation _op, int _filter_idx);
 	bool on_filter_preset(Rml::Event &, int _chid);
 	bool on_filter_change(Rml::Event &, int _chid, size_t _filter_idx);
 	bool on_filter_add(Rml::Event &, int _chid);
 	bool on_filter_remove(Rml::Event &, int _chid, size_t _filter_idx);
 	bool on_filter_enable(Rml::Event &, int _chid);
 	bool on_filter_setting(Rml::Event &, int _chid);
-	void incdec_filter_param(Rml::Element *_spinner, Dsp::ParamID _param_id, int _chid, int _dspid, bool _increase);
+	void incdec_filter_param(Rml::Element *_spinner, Dsp::ParamID _param_id, int _chid, int _dspid, double _mult);
 
-	Rml::ElementPtr create_spinner(std::string _param_name, Dsp::ParamID _param_id, double _value, int _chid, int _dspid);
-	bool on_spinner_btn(Rml::Event &, Rml::Element *_spinner, Dsp::ParamID _param_id, int _chid, int _dspid, bool _increase);
+	Rml::ElementPtr create_spinner(std::string _param_name, Dsp::ParamID _param_id, double _value, int _chid, int _dspid, std::string _label);
+	bool on_spinner_val(Rml::Event &, Rml::Element *_spinner, Dsp::ParamID _param_id, int _chid, int _dspid);
+	bool on_spinner_btn(Rml::Event &, Rml::Element *_spinner, Dsp::ParamID _param_id, int _chid, int _dspid, double _mult);
 	void set_spinner_value(Rml::Element *_spinner, double _value);
 
 	bool on_reverb_preset(Rml::Event &, int _chid);
@@ -151,6 +171,8 @@ private:
 	Rml::ElementPtr create_chorus_setting(int _id, bool _has_auto);
 	Rml::ElementPtr create_crossfeed_setting(int _id);
 	Rml::ElementPtr create_resampling_setting(int _id, bool _has_auto);
+
+	int find_ch_id(Rml::Element *_el);
 };
 
 #endif

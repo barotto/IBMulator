@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -112,6 +112,27 @@ void ItemsDialog::entry_deselect()
 	m_selected_entry = nullptr;
 }
 
+bool ItemsDialog::would_handle(Rml::Input::KeyIdentifier _key, int _mod)
+{
+	return (
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_OEM_MINUS ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_SUBTRACT ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_OEM_PLUS ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_ADD ) ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_1 ) ||
+		( _mod == Rml::Input::KM_CTRL && _key == Rml::Input::KeyIdentifier::KI_2 ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_LEFT ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_RIGHT ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_UP ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_DOWN ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_NEXT ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_PRIOR ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_END ) ||
+		( _mod == 0 && _key == Rml::Input::KeyIdentifier::KI_HOME ) ||
+		Window::would_handle(_key, _mod)
+	);
+}
+
 void ItemsDialog::on_keydown(Rml::Event &_ev)
 {
 	auto id = get_key_identifier(_ev);
@@ -155,6 +176,11 @@ void ItemsDialog::on_keydown(Rml::Event &_ev)
 			return;
 	}
 	_ev.StopImmediatePropagation();
+}
+
+void ItemsDialog::on_keyup(Rml::Event &)
+{
+	m_moving_selection = false;
 }
 
 void ItemsDialog::move_selection(Rml::Input::KeyIdentifier _key_id)
@@ -275,6 +301,7 @@ void ItemsDialog::move_selection(Rml::Input::KeyIdentifier _key_id)
 
 	if(entry) {
 		if(entry != m_selected_entry) {
+			m_moving_selection = true;
 			entry_select(entry);
 			if(scroll_top) {
 				entry->ScrollIntoView(true);

@@ -3,6 +3,11 @@ body
 	min-height: 360dp;
 }
 
+#entries
+{
+	tab-index: auto;
+}
+
 #buttons_left
 {
 	margin-bottom: -5dp;

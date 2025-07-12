@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2024  Marco Bortolin
+ * Copyright (C) 2019-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -67,6 +67,15 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_SYS_SPEED_DOWN",        ProgramEvent::FuncName::FUNC_SYS_SPEED_DOWN       },
 	{ "FUNC_TOGGLE_FULLSCREEN",     ProgramEvent::FuncName::FUNC_TOGGLE_FULLSCREEN    },
 	{ "FUNC_SWITCH_KEYMAPS",        ProgramEvent::FuncName::FUNC_SWITCH_KEYMAPS       },
+	{ "FUNC_TTS_ADJ_RATE",          ProgramEvent::FuncName::FUNC_TTS_ADJ_RATE         },
+	{ "FUNC_TTS_ADJ_VOLUME",        ProgramEvent::FuncName::FUNC_TTS_ADJ_VOLUME       },
+	{ "FUNC_TTS_DESCRIBE",          ProgramEvent::FuncName::FUNC_TTS_DESCRIBE         },
+	{ "FUNC_TTS_READ_CHARS",        ProgramEvent::FuncName::FUNC_TTS_READ_CHARS       },
+	{ "FUNC_TTS_READ_WORDS",        ProgramEvent::FuncName::FUNC_TTS_READ_WORDS       },
+	{ "FUNC_TTS_STOP",              ProgramEvent::FuncName::FUNC_TTS_STOP             },
+	{ "FUNC_TTS_WINDOW_TITLE",      ProgramEvent::FuncName::FUNC_TTS_WINDOW_TITLE     },
+	{ "FUNC_TTS_GUI_TOGGLE",        ProgramEvent::FuncName::FUNC_TTS_GUI_TOGGLE       },
+	{ "FUNC_TTS_GUEST_TOGGLE",      ProgramEvent::FuncName::FUNC_TTS_GUEST_TOGGLE     },
 	{ "FUNC_EXIT",                  ProgramEvent::FuncName::FUNC_EXIT                 },
 	{ "FUNC_RELOAD_RCSS",           ProgramEvent::FuncName::FUNC_RELOAD_RCSS          },
 };

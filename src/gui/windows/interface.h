@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -39,7 +39,7 @@ class GUI;
 class Mixer;
 class FloppyCtrl;
 class StorageCtrl;
-
+class Keymap;
 
 class Interface : public Window
 {
@@ -182,6 +182,8 @@ protected:
 	GUIDrivesFX m_drives_audio;
 	GUISystemFX m_system_audio;
 
+	std::string m_welcome_string;
+
 public:
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
 	virtual ~Interface();
@@ -191,6 +193,7 @@ public:
 	virtual void close();
 	virtual void config_changing();
 	virtual void config_changed(bool _startup);
+	virtual bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
 
@@ -232,6 +235,9 @@ public:
 	SDL_Surface * copy_framebuffer();
 	
 	virtual void sig_state_restored();
+	
+	void tts_describe();
+	void show_welcome_screen(const Keymap *_keymap, unsigned _mode);
 
 protected:
 	virtual void set_hdd_active(bool _active);
@@ -241,7 +247,7 @@ protected:
 	void show_state_dialog(bool _save);
 	void show_state_info_dialog(StateRecord::Info _info);
 	
-	static std::string get_filesel_info(std::string);
+	static MediumInfoData get_filesel_info(std::string);
 
 	std::string create_new_floppy_image(std::string _dir, std::string _file, 
 			FloppyDisk::StdType _type, std::string _format);

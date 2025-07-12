@@ -3,7 +3,7 @@
 #######################################################################
 define([IBMULATOR_VERSION],[m4_esyscmd_s([git describe --always --dirty | tr -d '\n'])])
 
-AC_INIT([IBMulator], IBMULATOR_VERSION, [https://github.com/barotto/IBMulator/issues], [ibmulator], [https://barotto.github.io/IBMulator/])
+AC_INIT([IBMulator], IBMULATOR_VERSION, [https://github.com/barotto/IBMulator/issues], [ibmulator], [https://www.ibmulator.org])
 AC_PREREQ([2.59])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
@@ -104,6 +104,7 @@ AX_CHECK_OPENGL
 AX_CHECK_GLEW
 AX_CHECK_RMLUI
 AX_CHECK_LIBSAMPLERATE
+AX_CHECK_LIBESPEAKNG
 #AX_CHECK_ZLIB
 
 if test x$have_windows = xno ; then
@@ -133,16 +134,16 @@ if test x$static_sdl = xno ; then
 	SDL_LIBSs=""
 fi
 
-BASELIBS="$BASELIBS $static $RMLUI_LIBS $LIBSAMPLERATE_LIBS $ZLIB_LIBS $SDL_LIBSs"
+BASELIBS="$BASELIBS $static $RMLUI_LIBS $LIBSAMPLERATE_LIBS $LIBESPEAKNG_LIBS $ZLIB_LIBS $SDL_LIBSs"
 
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
 else
-	BASELIBS="$BASELIBS -lws2_32 -liconv ibmulator.res"
+	BASELIBS="$BASELIBS -lws2_32 -liconv -lole32 -lsapi ibmulator.res"
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $LIBSAMPLERATE_CFLAGS $ZLIB_CFLAGS"
+BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $LIBSAMPLERATE_CFLAGS $LIBESPEAKNG_CFLAGS $ZLIB_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -211,6 +212,15 @@ if test x$have_windows = xno ; then
 		echo "- ALSA         : Yes ($ALSA_LIBS)"
 	else
 		echo "- ALSA         : NO (MIDI output disabled)"
+	fi
+fi
+if test "x$LIBESPEAKNG_LIBS" != "x"; then
+	echo "- eSpeak       : Yes ($LIBESPEAKNG_LIBS)"
+else
+	if test x$have_windows = xno ; then
+	echo "- eSpeak       : NO (Text-to-Speech disabled)"
+	else
+	echo "- eSpeak       : NO"
 	fi
 fi
 

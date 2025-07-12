@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -87,7 +87,11 @@ struct ProgramEvent {
 		EVT_MOUSE_AXIS = 32,
 		EVT_COMMAND = 64
 	};
-	
+
+	enum class FuncCategory {
+		None, GUI, TTS, Audio, Emulation, Devel
+	};
+
 	enum class FuncName {
 		FUNC_NONE,
 		FUNC_GUI_MODE_ACTION,      // GUI Mode action (see README); can be binded to keyboard events only!
@@ -118,10 +122,21 @@ struct ProgramEvent {
 		FUNC_SYS_SPEED,            // set emulation speed to specified % (2 params: speed,momentary?)
 		FUNC_TOGGLE_FULLSCREEN,    // toggle fullscreen mode
 		FUNC_SWITCH_KEYMAPS,       // change the active keymap to the next in the keymaps list
+		FUNC_TTS_ADJ_RATE,         // adjusts the speaking rate of the TTS
+		FUNC_TTS_ADJ_VOLUME,       // adjusts the speaking volume of the TTS
+		FUNC_TTS_DESCRIBE,         // describes the currently in focus UI element with TTS
+		FUNC_TTS_READ_CHARS,       // speak characters typed in text controls with TTS
+		FUNC_TTS_READ_WORDS,       // speak words typed in text controls with TTS
+		FUNC_TTS_STOP,             // stops the TTS speaking
+		FUNC_TTS_WINDOW_TITLE,     // announce title of the current foreground window with TTS
+		FUNC_TTS_GUI_TOGGLE,       // toggles TTS for the GUI
+		FUNC_TTS_GUEST_TOGGLE,     // toggles TTS for text coming from the guest OS
 		FUNC_EXIT,                 // close program
 		FUNC_RELOAD_RCSS,          // (developing)
 	};
-	
+
+	const static std::map<FuncName, FuncCategory> ms_func_classes;
+
 	enum class CommandName {
 		CMD_NONE,
 		CMD_WAIT,
@@ -139,7 +154,7 @@ struct ProgramEvent {
 	bool masked = false;
 	
 	Keys key = KEY_NONE;
-	
+
 	struct Func {
 		FuncName name = FuncName::FUNC_NONE;
 		int params[2] = {0,0};
@@ -148,6 +163,9 @@ struct ProgramEvent {
 		}
 		bool has_same_params(const ProgramEvent::Func &_rhs) const {
 			return memcmp(params, _rhs.params, sizeof(params)) == 0;
+		}
+		FuncCategory category() const {
+			return ProgramEvent::ms_func_classes.find(name)->second;
 		}
 	} func;
 	
@@ -188,7 +206,7 @@ struct ProgramEvent {
 	} command;
 	
 	std::string name;
-	
+
 	ProgramEvent() {}
 	ProgramEvent(const std::string &_tok);
 	ProgramEvent(const char *_tok);
@@ -225,6 +243,7 @@ public:
 		bool has_prg_event(const ProgramEvent&) const;
 		bool has_cmd_event(ProgramEvent::CommandName _cmd, size_t _idx_from = 0) const;
 		bool has_events_of_type(ProgramEvent::Type) const;
+		bool has_funcs_of_category(ProgramEvent::FuncCategory _cat) const;
 		bool is_ievt_keycombo() const;
 		bool is_pevt_keycombo() const;
 		void mask_pevt_kmods(bool _mask = true);

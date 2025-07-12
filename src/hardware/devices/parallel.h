@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2009  The Bochs Project
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -61,8 +61,9 @@ private:
 	parport_t m_s;
 	static uint16_t ms_irqs[3];
 	bool m_enabled = false;
-	void virtual_printer();
 	std::shared_ptr<MpsPrinter> m_printer;
+	bool m_tts_enabled = false;
+	std::string m_tts_buf;
 
 public:
 	Parallel(Devices *_dev);
@@ -87,6 +88,9 @@ public:
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
+
+private:
+	void send_byte();
 };
 
 #endif

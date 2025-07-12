@@ -46,28 +46,30 @@
 	<body template="window">
 		<form id="dirinfo">
 			In which directory:
-			<input type="radio" name="destdir" value="here" class="romshell" id="heredir"><span>here</span></input>
-			<input type="radio" name="destdir" value="media" class="romshell" id="mediadir"><span>media</span></input>
+			<div class="toolbar">
+			<input type="radio" name="destdir" value="here" class="romshell" id="heredir" aria-label="create file here"><span>here</span></input>
+			<input type="radio" name="destdir" value="media" class="romshell" id="mediadir" aria-label="create file in the media directory"><span>media</span></input>
+			</div>
 		</form>
 		<form id="fileinfo">
 			Enter a file name:
-			<input type="text" id="filename" />
+			<input type="text" id="filename" aria-label="enter a file name" />
 		</form>
 		<form id="imageinfo">
 			<table style="width: 345dp;">
 			<tr>
 			<th style="width: 60dp;">Type:</th>
-			<td id="image_type"><select class="romshell" id="floppy_type"></select></td>
+			<td id="image_type"><select aria-label="image type" class="romshell" id="floppy_type"></select></td>
 			</tr>
 			<tr>
 			<th style="width: 60dp;">Format:</th>
-			<td id="image_format"><select class="romshell" id="floppy_format"></select></td>
+			<td id="image_format"><select aria-label="image format" class="romshell" id="floppy_format"></select></td>
 			</tr>
 			</table>
 		</form>
 		<div id="buttons_right" class="toolbar">
-			<button id="create_file" class="romshell text"><span>Create</span></button>
-			<button id="cancel" class="romshell text"><span>Cancel</span></button>
+			<button id="create_file" aria-label="create file" class="romshell text"><span>Create</span></button>
+			<button id="cancel" aria-label="cancel" class="romshell text"><span>Cancel</span></button>
 		</div>
 	</body>
 </rml>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -62,6 +62,7 @@ public:
 	int get_error();
 
 	bool is_key_present(const std::string &section, const std::string &name);
+	bool is_value_set(const std::string &section, const std::string &name);
 
 	int try_int(const std::string &section, const std::string &name);
 	int get_int(const std::string &section, const std::string &name);

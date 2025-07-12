@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -54,6 +54,7 @@ public:
 	void create();
 	void update();
 	void close();
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
 	void on_search(Rml::Event &_ev);
 	void on_reset_all(Rml::Event &_ev);

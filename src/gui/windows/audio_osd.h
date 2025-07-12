@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,6 +30,7 @@ private:
 	Mixer *m_mixer;
 	std::vector<std::shared_ptr<MixerChannel>> m_channels;
 	int m_channel_id = -1;
+	bool m_tts_channel = true;
 	uint64_t m_timeout = 0;
 	TimerID m_timeout_timer = NULL_TIMER_ID;
 	bool m_vu_meter = false;
@@ -53,6 +54,7 @@ public:
 	void hide() {}
 	void update();
 	bool is_visible();
+	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
 
 	void set_channel(int _id);
 	void next_channel();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,16 +31,23 @@ private:
 
 public:
 
-	StateSave(GUI * _gui) : StateDialog(_gui, "state_save.rml") {}
+	StateSave(GUI * _gui);
 	virtual ~StateSave() {}
 
-	virtual void update();
+	void create(std::string _mode, std::string _order, int _zoom);
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
 
+	void entry_select(Rml::Element *_entry);
+	void entry_select(std::string _name, Rml::Element *_entry, bool _tts_append);
+	
 	void action_on_record(std::string _rec_name);
 
-	virtual void on_keydown(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev);
 
 	event_map_t & get_event_map() { return StateSave::ms_evt_map; }
+
+protected:
+	virtual void speak_entry(const StateRecord* _sr, Rml::Element *_entry_el, bool _append);
 
 private:
 

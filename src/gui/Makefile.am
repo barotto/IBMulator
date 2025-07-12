@@ -20,6 +20,13 @@ libgui_a_SOURCES = \
 	gl_texture.cpp \
 	screen_renderer_opengl.cpp \
 	screen_renderer_sdl2d.cpp \
+	tts.cpp \
+	tts_dev_sapi.cpp \
+	tts_dev_espeak.cpp \
+	tts_dev_file.cpp \
+	tts_format.cpp \
+	tts_format_ssml.cpp \
+	tts_format_msxml.cpp \
 	rml/file_interface.cpp \
 	rml/rend_interface.cpp \
 	rml/rend_interface_opengl.cpp \
@@ -84,6 +91,14 @@ noinst_HEADERS = \
 	screen_renderer.h \
 	screen_renderer_opengl.h \
 	screen_renderer_sdl2d.h \
+	tts.h \
+	tts_dev.h \
+	tts_dev_sapi.h \
+	tts_dev_espeak.h \
+	tts_dev_file.h \
+	tts_format.h \
+	tts_format_ssml.h \
+	tts_format_msxml.h \
 	rml/file_interface.h \
 	rml/rend_interface.h \
 	rml/rend_interface_opengl.h \

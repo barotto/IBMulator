@@ -1,48 +1,58 @@
 # IBMulator
 
-* [WHAT IS IBMULATOR?](#what-is-ibmulator)
-* [LICENSE](#license)
-* [HARDWARE REQUIREMENTS](#hardware-requirements)
-* [USAGE](#usage)
-  * [Installation](#installation)
-  * [CMOS and system configuration](#cmos-and-system-configuration)
-  * [ROM set](#rom-set)
-  * [HDD image](#hdd-image)
-  * [Floppy disk images](#floppy-disk-images)
-    * [High-level raw sector data emulation](#high-level-raw-sector-data-emulation)
-    * [Low-level magnetic flux emulation](#low-level-magnetic-flux-emulation)
-  * [CD-ROM drive](#cd-rom-drive)
-  * [The GUI](#the-gui)
-    * [Modes of operation](#modes-of-operation)
-    * [Shaders](#shaders)
-      * [Included shaders](#included-shaders)
-      * [RetroArch shaders](#retroarch-shaders)
-    * [Integer scaling](#integer-scaling)
-  * [Savestates](#savestates)
-  * [Audio](#audio)
-    * [Sound Cards](#sound-cards)
-    * [Reverb, Chorus, Crossfeed](#reverb-chorus-crossfeed)
-    * [DSP filters](#dsp-filters)
-  * [Joystick](#joystick)
-  * [Emulation speed adjustments](#emulation-speed-adjustments)
-  * [Serial port](#serial-port)
-    * [Modem connections](#modem-connections)
-      * [PRODIGY service](#prodigy-service)
-      * [Modem troubleshooting](#modem-troubleshooting)
-    * [Null modem connections](#null-modem-connections)
-    * [Network options and limitations](#network-options-and-limitations)
-  * [Parallel port](#parallel-port)
-    * [Virtual printer](#virtual-printer)
-  * [MIDI output](#midi-output)
-    * [MIDI on Windows](#midi-on-windows)
-    * [MIDI on Linux](#midi-on-linux)
-    * [SysEx delays and the Roland MT-32 "Exc. Buffer overflow" error](#sysex-delays-and-the-roland-mt-32-exc-buffer-overflow-error)
-  * [Keymaps](#keymaps)
-    * [Default key bindings](#default-key-bindings)
-  * [UI related key bindings](#ui-related-key-bindings)
-  * [Command line options](#command-line-options)
-* [COMPILING](#compiling)
-* [THANKS](#thanks)
+- [WHAT IS IBMULATOR?](#what-is-ibmulator)
+- [LICENSE](#license)
+- [HARDWARE REQUIREMENTS](#hardware-requirements)
+- [USAGE](#usage)
+  - [Installation](#installation)
+  - [Accessibility](#accessibility)
+    - [Text-To-Speach (TTS)](#text-to-speach-tts)
+      - [Text-To-Speech under DOS](#text-to-speech-under-dos)
+        - [Notes for ASAP](#notes-for-asap)
+    - [File select dialog window](#file-select-dialog-window)
+    - [Key bindings](#key-bindings)
+  - [CMOS and system configuration](#cmos-and-system-configuration)
+  - [ROM set](#rom-set)
+  - [HDD image](#hdd-image)
+  - [Floppy disk images](#floppy-disk-images)
+    - [High-level raw sector data emulation](#high-level-raw-sector-data-emulation)
+    - [Low-level magnetic flux emulation](#low-level-magnetic-flux-emulation)
+  - [CD-ROM drive](#cd-rom-drive)
+  - [The GUI](#the-gui)
+    - [Modes of operation](#modes-of-operation)
+    - [Shaders](#shaders)
+      - [Included shaders](#included-shaders)
+      - [RetroArch shaders](#retroarch-shaders)
+    - [Integer scaling](#integer-scaling)
+  - [Savestates](#savestates)
+  - [Audio](#audio)
+    - [Sound Cards](#sound-cards)
+    - [Reverb, Chorus, Crossfeed](#reverb-chorus-crossfeed)
+    - [DSP filters](#dsp-filters)
+  - [Joystick](#joystick)
+  - [Emulation speed adjustments](#emulation-speed-adjustments)
+  - [Serial port](#serial-port)
+    - [Modem connections](#modem-connections)
+      - [PRODIGY service](#prodigy-service)
+      - [Modem troubleshooting](#modem-troubleshooting)
+    - [Null modem connections](#null-modem-connections)
+    - [Network options and limitations](#network-options-and-limitations)
+  - [Parallel port](#parallel-port)
+    - [Virtual printer](#virtual-printer)
+  - [MIDI output](#midi-output)
+    - [MIDI on Windows](#midi-on-windows)
+    - [MIDI on Linux](#midi-on-linux)
+    - [SysEx delays and the Roland MT-32 "Exc. Buffer overflow" error](#sysex-delays-and-the-roland-mt-32-exc-buffer-overflow-error)
+  - [Keymaps](#keymaps)
+    - [Default key bindings](#default-key-bindings)
+      - [Interface](#interface)
+      - [Machine](#machine)
+      - [Audio](#audio-1)
+      - [Text-To-Speech system](#text-to-speech-system)
+  - [UI related key bindings](#ui-related-key-bindings)
+  - [Command line options](#command-line-options)
+- [COMPILING](#compiling)
+- [THANKS](#thanks)
 
 
 ## WHAT IS IBMULATOR?
@@ -112,6 +122,104 @@ inside ibmulator.ini.
 **Note for the Windows version**: if you have an HiDPI monitor, in order to
 avoid image blurring enable the HiDPI scaling override in the `ibmulator.exe`
 options and use IBMulator's GUI scaling option instead.
+
+### Accessibility
+
+#### Text-To-Speach (TTS)
+
+IBMulator has a TTS system that can be enabled to assist you in using its
+custom user interface and to act as an external syntetizer for DOS programs.
+
+By default the TTS is disabled for both the GUI and the guest OS. To enable it
+either set `[tts]:gui_enabled` and `[tts]:guest_enabled` in ibmulator.ini, or at
+run-time use the following default key bindings:
+
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>3</kbd> : toggle TTS for the GUI
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>4</kbd> : toggle TTS for the guest OS 
+
+Key bindings can be customized: see [Keymaps](#keymaps) for more info.
+
+You can specify the device to use with `[tts]:gui_dev` for the GUI and 
+`[tts]:guest_dev` for the guest OS, with the following values:
+ * `synth` to use a voice synthesizer.
+ * `file` to redirect voice text to an external file.
+
+For the synthesizer, IBMulator will use the SAPI 5 interface on Windows and the
+eSpeak NG library on Linux. Be sure to have voices installed and configured for
+your system.
+
+You can specify the voice to use with the `[tts]:voice` parameter. With SAPI you
+can use either a voice name string or a voice number; with eSpeak only a voice
+name is accepted.  
+To use the default system voice specify the value `default` or leave it empty.
+
+To get the list of available voices leave the setting empty and search
+IBMulator's log file for TTS, SAPI, or eSpeak related messages.
+
+If you want to use a `file`, you must specify its name with the `[tts]:file`
+setting. You can also specify the markup format to use with the
+`[tts]:file_format` setting, in case you intend to redirect the speech data to
+an external synthesizer.
+
+For the list of key bindings used to control the TTS system see the 
+[Text-To-Speech system](#text-to-speech-system) section down below.
+
+##### Text-To-Speech under DOS
+
+In order to get speech for DOS programs a TTS system must be installed in the
+guest DOS operating system. Some TTS systems are JAWS, Vocal-Eyes, and Automatic
+Screen Access Program (ASAP).
+
+DOS speech systems rely on external synthesizer devices usually connected on the
+serial port.
+
+IBMulator can emulate a Braille 'n Speak synthesizer (without indexing) 
+connected to the serial port (COM). To enable the Braille 'n Speak emulation set
+the `[serial]:mode` setting to the value `speak`.
+
+IBMulator can also be configured to speak ASCII text printed to the parallel
+port (LPT). To enable TTS from the parallel port set the `[lpt]:speak` setting
+to `yes`.
+
+The DOS environment uses code pages to format text. This text must be converted
+to unicode by IBMulator before it is spoken. The `[tts]:codepage` setting allows
+you to specify the DOS code page in use. The default is 437, which is the
+original one used for the IBM PC. The other common code page used
+internationally is 850.
+
+###### Notes for ASAP
+
+If you use a ROM set with the internal ROM drive, the ASAPINST.EXE program will
+complain about the impossibility of writing to the `D:` drive and the
+installation will fail. To solve this problem use a ROM set without the ROM
+drive.
+
+The "Other" synthesizer device option lets you select the LPT port. Use it if
+you want to keep the COM port free to be used for something else like for
+example a modem connection.
+
+#### File select dialog window
+
+IBMulator implements a custom file selector dialog that integrates in its GUI's
+look & feel, works in full screen mode, and has additional features like the
+floppy image creator.
+
+Alternatively you can use the standard file selector of your operating system.
+To do so set the `[gui_dialogs]:file_type` setting in ibmulator.ini to `native`.
+
+#### Key bindings
+
+All of IBMulator's functions and UI elements can be operated with the keyboard.
+
+For the full list of key bindings see the [Keymaps](#keymaps) and
+[UI related key bindings](#ui-related-key-bindings) sections down below.
+
+#### GUI scaling
+
+The GUI can be scaled up to 500% either using the `[gui]:ui_scaling` option in
+ibmulator.ini or, at run-time, with the same method used by web browsers:
+
+* <kbd>CTRL</kbd> + Mouse wheel up/down
 
 ### CMOS and system configuration
 
@@ -1001,7 +1109,13 @@ For more information about keymap files see [KEYMAPS.md](KEYMAPS.md).
 
 #### Default key bindings
 
-These are the key bindings defined in the default `keymap.map` file:
+All the key bindings in this section are defined in the default `keymap.map`
+file and can be redefined.
+
+The mouse can be grabbed with the central mouse button too.  
+Fullscreen mode can also be activated by double-clicking the display area.
+
+##### Interface
 
 * <kbd>CTRL</kbd>+<kbd>F1</kbd>     : GUI mode action 1:
     * in Compact mode: toggle the main interface window
@@ -1011,10 +1125,11 @@ These are the key bindings defined in the default `keymap.map` file:
     * in Realistic mode: switch between bright and dark styles
 * <kbd>CTRL</kbd>+<kbd>F2</kbd>     : open the shader parameters window
 * <kbd>SHIFT</kbd>+<kbd>F2</kbd>    : show/hide the mixer control window
-* <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
 * <kbd>SHIFT</kbd>+<kbd>F4</kbd>    : show/hide the status indicators
 * <kbd>CTRL</kbd>+<kbd>F4</kbd>     : show/hide the debug windows
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>F4</kbd>: show/hide the virtual printer window
+* <kbd>SHIFT</kbd>+<kbd>SPACE</kbd> : change the active keymap to the next available one
+* <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
 * <kbd>CTRL</kbd>+<kbd>F5</kbd>     : take a screenshot
 * <kbd>CTRL</kbd>+<kbd>F6</kbd>     : start/stop audio capture
 * <kbd>SHIFT</kbd>+<kbd>F6</kbd>    : start/stop video capture
@@ -1026,6 +1141,11 @@ These are the key bindings defined in the default `keymap.map` file:
 * <kbd>CTRL</kbd>+<kbd>F8</kbd>     : quick save state
 * <kbd>CTRL</kbd>+<kbd>F9</kbd>     : quick load state
 * <kbd>CTRL</kbd>+<kbd>F10</kbd>    : grab the mouse
+* <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
+
+##### Machine
+
+* <kbd>CTRL</kbd>+<kbd>F3</kbd>     : toggle the machine power button
 * <kbd>CTRL</kbd>+<kbd>F11</kbd>    : decrease emulation speed
 * <kbd>SHIFT</kbd>+<kbd>F11</kbd>   : set emulation speed to 10% (press again for 100%)
 * <kbd>CTRL</kbd>+<kbd>F12</kbd>    : increase emulation speed
@@ -1034,17 +1154,28 @@ These are the key bindings defined in the default `keymap.map` file:
 * <kbd>CTRL</kbd>+<kbd>TAB</kbd>    : send ALT+TAB to the guest OS
 * <kbd>CTRL</kbd>+<kbd>INS</kbd>    : send SysRq to the guest OS
 * <kbd>CTRL</kbd>+<kbd>END</kbd>    : send Break to the guest OS
-* <kbd>SHIFT</kbd>+<kbd>SPACE</kbd> : change the active keymap to the next available one
 * <kbd>SHIFT</kbd>+<kbd>PAUSE</kbd> : pause/resume emulation
-* <kbd>ALT</kbd>+<kbd>ENTER</kbd>   : toggle fullscreen mode
+
+##### Audio
+
 * <kbd>R-CTRL</kbd>+<kbd>UP</kbd>   : increase volume by 5%
 * <kbd>R-CTRL</kbd>+<kbd>DOWN</kbd> : decrease volume by 5%
 * <kbd>R-CTRL</kbd>+<kbd>RIGHT</kbd>: next OSD audio channel
 * <kbd>R-CTRL</kbd>+<kbd>LEFT</kbd> : previous OSD audio channel 
-* <kbd>ALT</kbd>+<kbd>F4</kbd>      : exit the program
 
-The mouse can be grabbed with the central mouse button as well.  
-Fullscreen mode can also be activated by double-clicking the display area.
+##### Text-To-Speech system
+
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>X</kbd> : stop the TTS synthesizer speaking
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>B</kbd> : describe the current element in focus using TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>T</kbd> : announce title of the current foreground window with TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>1</kbd> : when a GUI text input control is in focus, read its value as characters
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>2</kbd> : when a GUI text input control is in focus, read its value as words
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>3</kbd> : toggle TTS for the GUI
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>4</kbd> : toggle TTS for the guest OS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>A</kbd> : increase the speaking volume of the TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>Z</kbd> : decrease the speaking volume of the TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>D</kbd> : increase the speaking rate of the TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>C</kbd> : decrease the speaking rate of the TTS
 
 ### UI related key bindings
 
@@ -1052,32 +1183,34 @@ These keys apply only to UI dialogs and cannot currently be changed. UI key
 bindings are active only when input is not grabbed.
 
 General user interface:
-* <kbd>CTRL</kbd>+Mouse wheel up/down: increase/decrease UI scaling
+* <kbd>CTRL</kbd> + Mouse wheel up/down: increase/decrease UI scaling
 
 All dialog windows:
 * <kbd>TAB</kbd>: focus input on the next control
 * <kbd>SHIFT</kbd>+<kbd>TAB</kbd>: focus input on the previous control
-* <kbd>ENTER</kbd>: click on focused control
+* <kbd>ENTER</kbd> or <kbd>SPACE</kbd>: click on focused control
 * <kbd>ESC</kbd>: cancel the current operation and close the dialog window
 
-Floppy select and savestate dialogs:
-* <kbd>←</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>→</kbd>,
+Media select and savestate dialogs:
+* <kbd>LEFT</kbd>, <kbd>UP</kbd>, <kbd>DOWN</kbd>, <kbd>RIGHT</kbd>,
 <kbd>HOME</kbd>, <kbd>END</kbd>, <kbd>PGUP</kbd>, <kbd>PGDN</kbd>: move item
 selection
 * <kbd>CTRL</kbd>+<kbd>1</kbd>: grid view mode
 * <kbd>CTRL</kbd>+<kbd>2</kbd>: list view mode
 * <kbd>+</kbd>/<kbd>-</kbd>: increase/decrease items size
 
-Floppy select dialog:
-* <kbd>CTRL</kbd>+<kbd>S</kbd>: use the selected disk image
+Media select dialog:
+* <kbd>CTRL</kbd>+<kbd>S</kbd>: use the selected disc image
 * <kbd>CTRL</kbd>+<kbd>W</kbd>: toggle the write protected flag
-* <kbd>CTRL</kbd>+<kbd>N</kbd>: create new disk image
+* <kbd>CTRL</kbd>+<kbd>N</kbd>: create a new floppy disk image (floppy drives only)
 * <kbd>ALT</kbd>+<kbd>HOME</kbd>: go to the media directory
-* <kbd>ALT</kbd>+<kbd>↑</kbd>, <kbd>BACKSPACE</kbd>: go to upper directory
-* <kbd>ALT</kbd>+<kbd>←</kbd>: go to previous path in history
-* <kbd>ALT</kbd>+<kbd>→</kbd>: go to next path in history
+* <kbd>ALT</kbd>+<kbd>UP</kbd>, <kbd>BACKSPACE</kbd>: go to upper directory
+* <kbd>ALT</kbd>+<kbd>LEFT</kbd>: go to previous path in history
+* <kbd>ALT</kbd>+<kbd>RIGHT</kbd>: go to next path in history
 * <kbd>F5</kbd>: reload the current directory
 * <kbd>F9</kbd>: toggle the image info panel
+* <kbd>CTRL</kbd>+<kbd>RIGHT</kbd>: open the next system drive (Windows only)
+* <kbd>CTRL</kbd>+<kbd>LEFT</kbd>: open the previous system drive (Windows only)
 
 Load machine state dialog:
 * <kbd>CTRL</kbd>+<kbd>L</kbd>: load the selected slot
@@ -1087,6 +1220,10 @@ Save machine state dialog:
 * <kbd>CTRL</kbd>+<kbd>S</kbd>: save the machine's state into the selected slot
 * <kbd>DELETE</kbd>: delete the selected slot
 * <kbd>CTRL</kbd>+<kbd>N</kbd>: save the machine's state into a new slot
+
+Mixer dialog:
+* <kbd>CTRL</kbd>+<kbd>RIGHT</kbd>: focus on the volume control of the next audio channel
+* <kbd>CTRL</kbd>+<kbd>LEFT</kbd>: focus on the volume control of the previous audio channel
 
 ### Command line options
 
