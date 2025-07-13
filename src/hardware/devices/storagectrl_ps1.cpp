@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -300,6 +300,7 @@ uint16_t StorageCtrl_PS1::read(uint16_t _address, unsigned)
 				m_s.attch_status_reg &= ~ASR_DATA_REQ;
 				m_s.attch_status_reg &= ~ASR_DIR;
 				databuf->clear();
+				raise_interrupt();
 				//TODO PIO sector data transfer is incomplete (no software available)
 			}
 			break;
@@ -316,6 +317,7 @@ uint16_t StorageCtrl_PS1::read(uint16_t _address, unsigned)
 			if(value & ASR_DIR)     { PDEBUGF(LOG_V2, LOG_HDD, "DIR "); }
 			if(value & ASR_DATA_REQ){ PDEBUGF(LOG_V2, LOG_HDD, "DATA_REQ "); }
 			PDEBUGF(LOG_V2, LOG_HDD, "\n");
+			lower_interrupt();
 			break;
 		case 0x324:
 			//Interrupt Status Reg
@@ -326,9 +328,6 @@ uint16_t StorageCtrl_PS1::read(uint16_t _address, unsigned)
 			value = m_s.int_status_reg;
 			PDEBUGF(LOG_V2, LOG_HDD, "int status   -> 0x%04X\n", value);
 			m_s.int_status_reg = 0; //<--- TODO is it correct?
-			//Int req bit is cleared when this register is read:
-			m_s.attch_status_reg &= ~ASR_INT_REQ;
-			//lower_interrupt(); //TODO
 			break;
 		default:
 			PERRF(LOG_HDD, "unhandled read!\n");
@@ -398,9 +397,7 @@ void StorageCtrl_PS1::write(uint16_t _address, uint16_t _value, unsigned)
 			if(_value & ACR_RESET)  { PDEBUGF(LOG_V2, LOG_HDD, "RESET "); }
 			PDEBUGF(LOG_V2, LOG_HDD, "\n");
 			m_s.attch_ctrl_reg = _value;
-			if(!(_value & ACR_INT_EN)) {
-				lower_interrupt();
-			}
+			lower_interrupt();
 			if(m_s.reset_phase) {
 				m_s.reset_phase++;
 				if(m_s.reset_phase == 3) {
@@ -604,7 +601,10 @@ void StorageCtrl_PS1::raise_interrupt()
 
 void StorageCtrl_PS1::lower_interrupt()
 {
-	m_devices->pic()->lower_irq(HDC_IRQ);
+	m_s.attch_status_reg &= ~ASR_INT_REQ;
+	if(m_s.attch_ctrl_reg & ACR_INT_EN) {
+		m_devices->pic()->lower_irq(HDC_IRQ);
+	}
 }
 
 void StorageCtrl_PS1::fill_data_stack(unsigned _buf, unsigned _len)
