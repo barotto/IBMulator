@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -367,34 +367,10 @@ void Syslog::set_verbosity(uint _level, uint _facility)
 	m_verbosity[_facility] = _level;
 }
 
-/* this function seems useless...
-const char* Syslog::convert(const char *from_charset, const char *to_charset,
-		char *instr, size_t inlen)
+uint Syslog::get_verbosity(uint _facility)
 {
-	char m_iconvbuf[LOG_BUFFER_SIZE];
-	std::lock_guard<std::mutex> lock(m_mutex);
-
-	size_t inleft = inlen;
-	size_t outleft = LOG_BUFFER_SIZE;
-	char * pIn = instr;
-	char * pOut = m_iconvbuf;
-
-	memset(m_iconvbuf, 0, LOG_BUFFER_SIZE);
-
-	iconv_t cd = iconv_open(to_charset, from_charset);
-	if(cd == iconv_t(-1)) {
-		return "?";
-	}
-
-	size_t rc = iconv(cd, &pIn, &inleft, &pOut, &outleft);
-	if(rc == size_t(-1)) {
-		iconv_close(cd);
-		return "?";
-	}
-	iconv_close(cd);
-	return m_iconvbuf;
+	return m_verbosity[_facility];
 }
-*/
 
 void Syslog::cmd_pause_and_signal(std::mutex &_mutex, std::condition_variable &_cv)
 {

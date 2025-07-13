@@ -505,7 +505,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			// check if char needs to be updated
 			if(forceUpdate || (_old_text[0] != _new_text[0]) || (_old_text[1] != _new_text[1]))
 			{
-				//PDEBUGF(LOG_V2, LOG_VGA, "%s", ICONV("IBM850", "UTF-8", (char*)(&_new_text[0]), 1));
+				//PDEBUGF(LOG_V2, LOG_VGA, "%s", str_convert(std::string(1, char(_new_text[0])), "UTF-8", "IBM850").c_str());
 
 				// Get Foreground/Background pixel colors
 				uint32_t fgcolor = text_palette[_new_text[1] & 0x0F];

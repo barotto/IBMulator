@@ -28,3 +28,4 @@ callgrind*
 /pgo/
 *.pl
 /cov-int
+*_test.*
