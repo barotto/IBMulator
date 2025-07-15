@@ -368,7 +368,8 @@ public:
 	void toggle_fullscreen();
 	
 	inline VGADisplay * vga_display() const {
-		assert(m_windows.interface); return m_windows.interface->vga_display();
+		assert(m_windows.interface);
+		return m_windows.interface->vga_display();
 	}
 	inline int window_width() const { return m_width; }
 	inline int window_height() const { return m_height; }
@@ -448,6 +449,9 @@ private:
 	void pevt_func_tts_window_title(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_tts_gui_toggle(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_tts_guest_toggle(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_color_mode(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_prev_color_mode(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_set_next_color_mode(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_exit(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_reload_rcss(const ProgramEvent::Func&, EventPhase);
 	

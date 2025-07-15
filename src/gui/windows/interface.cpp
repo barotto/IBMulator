@@ -485,6 +485,19 @@ void Interface::config_changed(bool _startup)
 	}, false);
 	m_screen->set_monochrome(is_mono);
 	PINFOF(LOG_V0, LOG_GUI, "Installed a %s monitor\n", is_mono?"monochrome":"color");
+
+	ini_enum_map_t color_modes = {
+		{ "",         VGADisplay::COLOR_MODE_RGB },
+		{ "auto",     VGADisplay::COLOR_MODE_RGB },
+		{ "default",  VGADisplay::COLOR_MODE_RGB },
+		{ "rgb",      VGADisplay::COLOR_MODE_RGB },
+		{ "gbr",      VGADisplay::COLOR_MODE_GBR },
+		{ "brg",      VGADisplay::COLOR_MODE_BRG },
+		{ "bgr",      VGADisplay::COLOR_MODE_BGR },
+		{ "inverted", VGADisplay::COLOR_MODE_INVERTED },
+	};
+	int color_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_COLOR_MODE, color_modes);
+	set_vga_color_mode(color_mode, 0);
 }
 
 void Interface::UIDrive::set_medium_string(std::string _filename)
@@ -1188,6 +1201,36 @@ void Interface::set_ambient_light(float _level)
 	m_screen->set_ambient(_level);
 }
 
+void Interface::set_vga_color_mode(int _mode, int _cycle)
+{
+	VGADisplay::ColorMode mode = VGADisplay::COLOR_MODE_RGB;
+
+	if(_mode >= 0) {
+		mode = VGADisplay::ColorMode(std::clamp(_mode, 0, VGADisplay::COLOR_MODE_COUNT - 1));
+	} else if(_cycle != 0) {
+		int imode = static_cast<int>(vga_display()->color_mode());
+		imode += _cycle;
+		if(imode < 0) {
+			imode = VGADisplay::COLOR_MODE_COUNT - 1;
+		} else if(imode > VGADisplay::COLOR_MODE_COUNT - 1) {
+			imode = 0;
+		}
+		mode = static_cast<VGADisplay::ColorMode>(imode);
+	}
+
+	vga_display()->set_color_mode(mode);
+
+	if(m_machine->is_on()) {
+		m_machine->devices().vga()->force_redraw();
+	} else {
+		if(!m_welcome_string.empty()) {
+			m_machine->cmd_print_VGA_text(m_welcome_data);
+		}
+	}
+
+	PINFOF(LOG_V1, LOG_GUI, "VGA color mode: %s\n", VGADisplay::ColorModeName[mode]);
+}
+
 void Interface::sig_state_restored()
 {
 	if(m_audio_enabled) {
@@ -1215,7 +1258,8 @@ void Interface::tts_describe()
 
 void Interface::show_welcome_screen(const Keymap *_keymap, unsigned _mode)
 {
-	std::vector<uint16_t> text(80*25,0x0000);
+	m_welcome_data.resize(80*25);
+
 	int cx = 0, cy = 0;
 	const int bg = 0x8;
 	const int bd = 2;
@@ -1243,7 +1287,7 @@ void Interface::show_welcome_screen(const Keymap *_keymap, unsigned _mode)
 				cy = 0;
 			}
 			uint16_t attrib = (_backg << 4) | (_foreg & 0x0F);
-			text[cy*80 + cx++] = (attrib << 8) | c;
+			m_welcome_data[cy*80 + cx++] = (attrib << 8) | c;
 		} while(*_str);
 	};
 
@@ -1371,7 +1415,7 @@ void Interface::show_welcome_screen(const Keymap *_keymap, unsigned _mode)
 	ps("For more information read the README file and visit the home page at\n", 0xf, bg, bd);
 	ps(PACKAGE_URL "\n", 0xe, bg, bd);
 
-	m_machine->cmd_print_VGA_text(text);
+	m_machine->cmd_print_VGA_text(m_welcome_data);
 }
 
 void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)

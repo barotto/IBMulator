@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -98,14 +98,31 @@ typedef std::function<void(
 
 class VGADisplay
 {
+public:
+
+	enum ColorMode {
+		COLOR_MODE_RGB,
+		COLOR_MODE_GBR,
+		COLOR_MODE_BRG,
+		COLOR_MODE_BGR,
+		COLOR_MODE_INVERTED,
+
+		COLOR_MODE_COUNT
+	};
+	static constexpr const char *ColorModeName[COLOR_MODE_COUNT]{
+		"RGB", "GBR", "BRG", "BGR", "INVERTED",
+	};
+
 	FrameBuffer m_fb; // the current framebuffer, constantly updating
-	
+
+private:
+
 	struct {
 		VideoModeInfo mode;
 		VideoTimings timings;
 		bool valid_mode;
 
-		uint32_t palette[256];
+		uint32_t palette[COLOR_MODE_COUNT][256];
 
 		uint8_t charmap[2][0x2000];
 		bool charmap_updated;
@@ -132,6 +149,7 @@ class VGADisplay
 	static uint8_t ms_font8x16[256][16];
 	static uint8_t ms_font8x8[256][8];
 	
+	ColorMode m_color_mode = COLOR_MODE_RGB;
 	bool m_monochrome = false;
 
 public:
@@ -182,7 +200,9 @@ public:
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
-	
+
+	void set_color_mode(ColorMode _mode) { m_color_mode = _mode; }
+	ColorMode color_mode() const { return m_color_mode; }
 	void set_monochrome(bool _value) { m_monochrome = _value; }
 	bool is_monochrome() const { return m_monochrome; }
 };

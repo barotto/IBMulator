@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -224,7 +224,9 @@ protected:
 	struct {
 		bool ps_bit = false;
 	} m_bugs;
-	
+
+	std::atomic<bool> m_force_redraw;
+
 public:
 	VGA(Devices *_dev);
 	virtual ~VGA();
@@ -256,6 +258,8 @@ public:
 	
 	void print_text(std::vector<uint16_t> _text);
 	
+	void force_redraw() { m_force_redraw = true; }
+
 protected:
 	virtual void update_mem_mapping();
 	void load_ROM(const std::string &_filename);

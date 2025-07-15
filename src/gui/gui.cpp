@@ -126,6 +126,9 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_TTS_WINDOW_TITLE,     &GUI::pevt_func_tts_window_title     },
 	{ ProgramEvent::FuncName::FUNC_TTS_GUI_TOGGLE,       &GUI::pevt_func_tts_gui_toggle       },
 	{ ProgramEvent::FuncName::FUNC_TTS_GUEST_TOGGLE,     &GUI::pevt_func_tts_guest_toggle     },
+	{ ProgramEvent::FuncName::FUNC_SET_COLOR_MODE,       &GUI::pevt_func_set_color_mode       },
+	{ ProgramEvent::FuncName::FUNC_SET_PREV_COLOR_MODE,  &GUI::pevt_func_set_prev_color_mode  },
+	{ ProgramEvent::FuncName::FUNC_SET_NEXT_COLOR_MODE,  &GUI::pevt_func_set_next_color_mode  },
 	{ ProgramEvent::FuncName::FUNC_EXIT,                 &GUI::pevt_func_exit                 },
 	{ ProgramEvent::FuncName::FUNC_RELOAD_RCSS,          &GUI::pevt_func_reload_rcss          },
 };
@@ -2958,6 +2961,33 @@ void GUI::pevt_func_tts_guest_toggle(const ProgramEvent::Func&, EventPhase _phas
 
 	m_tts.enable_channel(TTS::ChannelID::Guest, !m_tts.is_channel_enabled(TTS::ChannelID::Guest));
 	show_message(str_format("TTS for the guest OS %s.", m_tts.is_channel_enabled(TTS::ChannelID::Guest) ? "enabled" : "disabled"));
+}
+
+void GUI::pevt_func_set_color_mode(const ProgramEvent::Func &_func, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	m_windows.interface->set_vga_color_mode(_func.params[0], 0);
+	show_message(str_format("VGA color mode: %s\n", VGADisplay::ColorModeName[vga_display()->color_mode()]));
+}
+
+void GUI::pevt_func_set_prev_color_mode(const ProgramEvent::Func &, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	m_windows.interface->set_vga_color_mode(-1, -1);
+	show_message(str_format("VGA color mode: %s\n", VGADisplay::ColorModeName[vga_display()->color_mode()]));
+}
+
+void GUI::pevt_func_set_next_color_mode(const ProgramEvent::Func &, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) {
+		return;
+	}
+	m_windows.interface->set_vga_color_mode(-1, 1);
+	show_message(str_format("VGA color mode: %s\n", VGADisplay::ColorModeName[vga_display()->color_mode()]));
 }
 
 void GUI::pevt_func_exit(const ProgramEvent::Func&, EventPhase _phase)

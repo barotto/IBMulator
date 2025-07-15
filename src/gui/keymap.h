@@ -131,6 +131,9 @@ struct ProgramEvent {
 		FUNC_TTS_WINDOW_TITLE,     // announce title of the current foreground window with TTS
 		FUNC_TTS_GUI_TOGGLE,       // toggles TTS for the GUI
 		FUNC_TTS_GUEST_TOGGLE,     // toggles TTS for text coming from the guest OS
+		FUNC_SET_COLOR_MODE,       // set the VGA color mode.
+		FUNC_SET_PREV_COLOR_MODE,  // set the previous VGA color mode.
+		FUNC_SET_NEXT_COLOR_MODE,  // set the next VGA color mode.
 		FUNC_EXIT,                 // close program
 		FUNC_RELOAD_RCSS,          // (developing)
 	};

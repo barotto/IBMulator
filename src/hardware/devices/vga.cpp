@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1744,7 +1744,11 @@ void VGA::frame_start(uint64_t _time)
 	// this is time 0, the start of the 1st scan line
 	
 	PDEBUGF(LOG_V2, LOG_VGA, "frame start\n");
-	
+
+	if(m_force_redraw) {
+		redraw_all();
+	}
+
 	m_s.frame_start_time_nsec = _time;
 	m_cur_upd_pix = 0;
 	m_stats.frame_cnt++;
@@ -2076,6 +2080,8 @@ void VGA::redraw_all()
 		// graphics mode
 		set_all_tiles(VGA_TILE_DIRTY);
 	}
+
+	m_force_redraw = false;
 }
 
 void VGA::print_text(std::vector<uint16_t> _text)

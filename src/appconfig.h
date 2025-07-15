@@ -191,6 +191,7 @@ public:
 #define DISPLAY_BRIGHTNESS       "brightness"
 #define DISPLAY_CONTRAST         "contrast"
 #define DISPLAY_SATURATION       "saturation"
+#define DISPLAY_COLOR_MODE       "color_mode"
 #define DISPLAY_AMBIENT          "ambient_light"
 #define DISPLAY_SAMPLERS_MODE    "samplers_mode"
 #define DISPLAY_SHADER_INPUT     "shader_input_size"

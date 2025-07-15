@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -261,7 +261,12 @@ void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, ui
 		_red = _green;
 		_blue = _green;
 	}
-	m_s.palette[_index] = PALETTE_ENTRY(_red, _green, _blue);
+
+	m_s.palette[COLOR_MODE_RGB][_index] = PALETTE_ENTRY(_red, _green, _blue);
+	m_s.palette[COLOR_MODE_GBR][_index] = PALETTE_ENTRY(_green, _blue, _red);
+	m_s.palette[COLOR_MODE_BRG][_index] = PALETTE_ENTRY(_blue, _red, _green);
+	m_s.palette[COLOR_MODE_BGR][_index] = PALETTE_ENTRY(_blue, _green, _red);
+	m_s.palette[COLOR_MODE_INVERTED][_index] = PALETTE_ENTRY((255-_red), (255-_green), (255-_blue));
 }
 
 // set_mode()
@@ -336,7 +341,7 @@ void VGADisplay::gfx_screen_line_update(
 				// the last tile could be wider than needed
 				break;
 			}
-			uint32_t color = m_s.palette[_linedata[pixel_x]];
+			uint32_t color = m_s.palette[m_color_mode][_linedata[pixel_x]];
 			uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
 			*fb_point_ptr = color;
 			if(dc) {
@@ -365,7 +370,7 @@ void VGADisplay::gfx_screen_line_update(unsigned _fbline,
 	bool dc = (m_s.mode.ndots == 2);
 	
 	for(unsigned pixel_x=0; pixel_x<m_s.mode.imgw; pixel_x++) {
-		uint32_t color = m_s.palette[_linedata[pixel_x]];
+		uint32_t color = m_s.palette[m_color_mode][_linedata[pixel_x]];
 		uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
 		*fb_point_ptr = color;
 		if(dc) {
@@ -413,7 +418,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	uint32_t text_palette[16];
 	unsigned i;
 	for(i=0; i<16; i++) {
-		text_palette[i] = m_s.palette[_tm_info->actl_palette[i]];
+		text_palette[i] = m_s.palette[m_color_mode][_tm_info->actl_palette[i]];
 	}
 
 	if((_tm_info->h_panning != m_s.h_panning) || (_tm_info->v_panning != m_s.v_panning)) {
@@ -633,5 +638,5 @@ void VGADisplay::copy_screen(uint8_t *_dest)
 // Returns the color at the given index
 uint32_t VGADisplay::get_color(uint8_t _index)
 {
-	return m_s.palette[_index];
+	return m_s.palette[m_color_mode][_index];
 }

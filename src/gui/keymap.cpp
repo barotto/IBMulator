@@ -67,6 +67,9 @@ const std::map<ProgramEvent::FuncName, ProgramEvent::FuncCategory> ProgramEvent:
 	{ FuncName::FUNC_TTS_WINDOW_TITLE,     FuncCategory::TTS },
 	{ FuncName::FUNC_TTS_GUI_TOGGLE,       FuncCategory::TTS },
 	{ FuncName::FUNC_TTS_GUEST_TOGGLE,     FuncCategory::TTS },
+	{ FuncName::FUNC_SET_COLOR_MODE,       FuncCategory::Emulation },
+	{ FuncName::FUNC_SET_PREV_COLOR_MODE,  FuncCategory::Emulation },
+	{ FuncName::FUNC_SET_NEXT_COLOR_MODE,  FuncCategory::Emulation },
 	{ FuncName::FUNC_EXIT,                 FuncCategory::GUI },
 	{ FuncName::FUNC_RELOAD_RCSS,          FuncCategory::Devel }
 };

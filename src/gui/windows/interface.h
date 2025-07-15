@@ -183,6 +183,7 @@ protected:
 	GUISystemFX m_system_audio;
 
 	std::string m_welcome_string;
+	std::vector<uint16_t> m_welcome_data;
 
 public:
 	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
@@ -228,7 +229,9 @@ public:
 	virtual void set_video_contrast(float);
 	virtual void set_video_saturation(float);
 	virtual void set_ambient_light(float);
-	
+
+	void set_vga_color_mode(int _mode, int _cycle);
+
 	virtual bool is_system_visible() const { return true; }
 
 	void save_framebuffer(std::string _screenfile, std::string _palfile);

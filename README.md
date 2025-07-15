@@ -10,7 +10,9 @@
       - [Text-To-Speech under DOS](#text-to-speech-under-dos)
         - [Notes for ASAP](#notes-for-asap)
     - [File select dialog window](#file-select-dialog-window)
+    - [VGA color mode](#vga-color-mode)
     - [Key bindings](#key-bindings)
+    - [GUI scaling](#gui-scaling)
   - [CMOS and system configuration](#cmos-and-system-configuration)
   - [ROM set](#rom-set)
   - [HDD image](#hdd-image)
@@ -48,7 +50,7 @@
       - [Interface](#interface)
       - [Machine](#machine)
       - [Audio](#audio-1)
-      - [Text-To-Speech system](#text-to-speech-system)
+      - [Accessibility related](#accessibility-related)
   - [UI related key bindings](#ui-related-key-bindings)
   - [Command line options](#command-line-options)
 - [COMPILING](#compiling)
@@ -207,6 +209,24 @@ floppy image creator.
 Alternatively you can use the standard file selector of your operating system.
 To do so set the `[gui_dialogs]:file_type` setting in ibmulator.ini to `native`.
 
+#### VGA color mode
+
+The VGA image can be displayed using different color modes to try to solve
+issues related to color blindness.  
+The available color modes are:
+
+ * RGB: Red - Green - Blue channel order (the default)
+ * GBR: Green - Blue - Red channel order
+ * BRG: Blue - Red - Green channel order
+ * BGR: Blue - Green - Red channel order
+ * inverted: color inversion
+
+You can set a color mode at start-up using the `[display]:color_mode` setting or
+using the following default key bindings at run-time:
+
+ * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>8</kbd> : cycle to previous VGA color mode
+ * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>9</kbd> : cycle to next VGA color mode
+ 
 #### Key bindings
 
 All of IBMulator's functions and UI elements can be operated with the keyboard.
@@ -1163,19 +1183,21 @@ Fullscreen mode can also be activated by double-clicking the display area.
 * <kbd>R-CTRL</kbd>+<kbd>RIGHT</kbd>: next OSD audio channel
 * <kbd>R-CTRL</kbd>+<kbd>LEFT</kbd> : previous OSD audio channel 
 
-##### Text-To-Speech system
+##### Accessibility related
 
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>3</kbd> : toggle TTS for the GUI
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>4</kbd> : toggle TTS for the guest OS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>X</kbd> : stop the TTS synthesizer speaking
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>B</kbd> : describe the current element in focus using TTS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>T</kbd> : announce title of the current foreground window with TTS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>1</kbd> : when a GUI text input control is in focus, read its value as characters
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>2</kbd> : when a GUI text input control is in focus, read its value as words
-* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>3</kbd> : toggle TTS for the GUI
-* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>4</kbd> : toggle TTS for the guest OS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>A</kbd> : increase the speaking volume of the TTS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>Z</kbd> : decrease the speaking volume of the TTS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>D</kbd> : increase the speaking rate of the TTS
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>C</kbd> : decrease the speaking rate of the TTS
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>8</kbd> : cycle to previous VGA color mode
+* <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>9</kbd> : cycle to next VGA color mode
 
 ### UI related key bindings
 

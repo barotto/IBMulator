@@ -161,8 +161,11 @@ Valid `FUNC_* ` functions are:
 | `FUNC_TTS_READ_WORDS`       | speak words typed in text controls with TTS.
 | `FUNC_TTS_STOP`             | stop the TTS speaking.
 | `FUNC_TTS_WINDOW_TITLE`     | announce title of the current foreground window with TTS.
-| `FUNC_TTS_ADJ_RATE`         | adjust the speaking rate of the TTS.
-| `FUNC_TTS_ADJ_VOLUME`       | adjust the speaking volume of the TTS.
+| `FUNC_TTS_ADJ_RATE(x)`      | adjust the speaking rate of the TTS by `x`.
+| `FUNC_TTS_ADJ_VOLUME(x)`    | adjust the speaking volume of the TTS by `x`.
+| `FUNC_SET_COLOR_MODE(x)`    | set the VGA color mode number `x`.
+| `FUNC_SET_PREV_COLOR_MODE`  | set the previous VGA color mode.
+| `FUNC_SET_NEXT_COLOR_MODE`  | set the next VGA color mode.
 | `FUNC_SET_PREV_AUDIO_CH`    | switch to previous OSD audio channel.
 | `FUNC_SET_NEXT_AUDIO_CH`    | switch to next OSD audio channel.
 | `FUNC_SET_AUDIO_VOLUME(a)`  | change audio volume for the active OSD audio channel by `a`%.

@@ -76,6 +76,9 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_TTS_WINDOW_TITLE",      ProgramEvent::FuncName::FUNC_TTS_WINDOW_TITLE     },
 	{ "FUNC_TTS_GUI_TOGGLE",        ProgramEvent::FuncName::FUNC_TTS_GUI_TOGGLE       },
 	{ "FUNC_TTS_GUEST_TOGGLE",      ProgramEvent::FuncName::FUNC_TTS_GUEST_TOGGLE     },
+	{ "FUNC_SET_COLOR_MODE",        ProgramEvent::FuncName::FUNC_SET_COLOR_MODE       },
+	{ "FUNC_SET_PREV_COLOR_MODE",   ProgramEvent::FuncName::FUNC_SET_PREV_COLOR_MODE  },
+	{ "FUNC_SET_NEXT_COLOR_MODE",   ProgramEvent::FuncName::FUNC_SET_NEXT_COLOR_MODE  },
 	{ "FUNC_EXIT",                  ProgramEvent::FuncName::FUNC_EXIT                 },
 	{ "FUNC_RELOAD_RCSS",           ProgramEvent::FuncName::FUNC_RELOAD_RCSS          },
 };
