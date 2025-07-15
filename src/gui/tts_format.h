@@ -20,6 +20,8 @@
 #ifndef IBMULATOR_TTS_FORMAT_H
 #define IBMULATOR_TTS_FORMAT_H
 
+#include "utils.h"
+
 class TTSFormat
 {
 public:

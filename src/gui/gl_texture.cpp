@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,6 +21,7 @@
 #include "gl_texture.h"
 #include <SDL.h>
 #include "stb/stb.h"
+#include "utils.h"
 
 
 GLTexture::GLTexture(std::string _name, GLTexture::Format _format, bool _mipmap)

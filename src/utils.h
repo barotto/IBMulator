@@ -26,6 +26,7 @@
 #include <array>
 #include <stdexcept>
 #include <regex>
+#include <algorithm>
 
 constexpr uint64_t operator"" _KB ( unsigned long long int _kb ) { return _kb * 1000L; }
 constexpr uint64_t operator"" _MB ( unsigned long long int _mb ) { return _mb * 1000000L; }
