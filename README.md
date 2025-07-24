@@ -13,6 +13,7 @@
     - [VGA color mode](#vga-color-mode)
     - [Key bindings](#key-bindings)
     - [GUI scaling](#gui-scaling)
+    - [GUI theme](#gui-theme)
   - [CMOS and system configuration](#cmos-and-system-configuration)
   - [ROM set](#rom-set)
   - [HDD image](#hdd-image)
@@ -240,6 +241,12 @@ The GUI can be scaled up to 500% either using the `[gui]:ui_scaling` option in
 ibmulator.ini or, at run-time, with the same method used by web browsers:
 
 * <kbd>CTRL</kbd> + Mouse wheel up/down
+
+#### GUI theme
+
+The custom dialog windows have a default dark theme inspired by the IBM ROMSHELL
+look and feel. A light theme with black text is also available: set the
+value of `[gui_dialogs]:theme` to `light` to use it.
 
 ### CMOS and system configuration
 

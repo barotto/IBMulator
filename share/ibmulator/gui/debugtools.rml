@@ -4,26 +4,7 @@
 		<link type="text/rcss" href="base.rcss"/>
 		<link type="text/rcss" href="buttons.rcss"/>
 		<link type="text/rcss" href="window.rcss"/>
-		<style>
-			body
-			{
-				width: auto;
-				min-width: 0;
-				min-height: 0;
-				position: absolute;
-				top: 0;
-				left: 0;
-				background-color: #00000000;
-			}
-			button.text {
-				margin-left: 0;
-			}
-			#close {
-				position: relative;
-				width: 20dp;
-				height: 20dp;
-			}
-		</style>
+		<link type="text/rcss" href="debugtools.rcss"/>
 	</head>
 	<body>
 		<div class="toolbar" id="tools">

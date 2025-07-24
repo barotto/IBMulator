@@ -1,0 +1,29 @@
+body
+{
+	width: 400dp;
+	height: 130dp;
+	min-height: 130dp;
+	min-width: 400dp;
+	max-height: 130dp;
+	margin: auto;
+	background-color: #3C5464FF;
+}
+
+#buttons
+{
+	position: absolute;
+	bottom: 20dp;
+	right: 20dp;
+	left: 20dp;
+	text-align: right;
+}
+
+button.romshell
+{
+	margin-left: 10dp;
+}
+
+#desc
+{
+	width: 100%;
+}

@@ -1,0 +1,25 @@
+body
+{
+	width: 450dp;
+	height: 120dp;
+	margin: auto;
+	background-color: #3C5464FF;
+}
+
+div#window
+{
+	padding: 20dp;
+}
+
+button.romshell
+{
+	margin-left: 5dp;
+	margin-right: 5dp;
+	min-width: 60dp;
+}
+
+#message
+{
+	box-sizing: border-box;
+	width: 100%;
+}

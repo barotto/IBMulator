@@ -3,17 +3,7 @@
 		<title>Load state</title>
 		<link type="text/template" href="window.rml" />
 		<link type="text/template" href="state_dialog.rml" />
-		<style>
-			.entry .action
-			{
-				background-color: #00aa00;
-				decorator: image(icons/restore.png);
-			}
-			.entry .action:hover
-			{
-				decorator: image(icons/restore_up.png);
-			}
-		</style>
+		<link type="text/rcss" href="state_load.rcss" />
 	</head>
 	<body template="window">
 		<template src="state_dialog">Load</template>

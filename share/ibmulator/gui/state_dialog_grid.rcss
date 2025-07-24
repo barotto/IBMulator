@@ -23,8 +23,16 @@
 	display: inline-block;
 	width: 235dp;
 	height: 240dp;
-	background-color: #28374d;
 	margin: 5dp 10dp 0dp 0dp;
+	background-color: #28374d;
+}
+
+@media (theme: light)
+{
+	.grid .entry
+	{
+		background-color: #494949;
+	}
 }
 
 .grid .entry .data
@@ -37,14 +45,48 @@
 	background-color: #587fa3;
 }
 
+@media (theme: light)
+{
+	.grid .entry .data
+	{
+		width: 233dp;
+		height: 238dp;
+		border: 1dp;
+		border-color: #dbdbdb;
+		background-color: #dbdbdb;
+	}
+}
+
 .grid .entry:hover .data
 {
 	background-color: #6795be;
 }
 
+@media (theme: light)
+{
+	.grid .entry:hover .data
+	{
+		background-color: #f0f0f0;
+	}
+}
+
 .grid .entry.selected .data
 {
 	background-color: #fcfca6;
+}
+
+@media (theme: light)
+{
+	.grid .entry.selected .data
+	{
+		background-color: #204d6e;
+	}
+
+	.grid:focus .entry.selected .data
+	{
+		border-color: #204d6e;
+		background-color: #82b3d4;
+	}
 }
 
 .grid .entry .data .screen
@@ -101,6 +143,16 @@
 	color: #000000;
 }
 
+@media (theme: light)
+{
+	.grid .entry.selected .data .name,
+	.grid .entry.selected .data .date,
+	.grid .entry.selected .data .desc
+	{
+		color: #ffffff;
+	}
+}
+
 .grid .entry .data .name
 {
 	left: 5dp;
@@ -118,10 +170,10 @@
 .grid .entry .data .config
 {
 	position: absolute;
-	top: 5dp;
-	left: 5dp;
-	right: 5dp;
-	height: 146dp;
+	top: 6dp;
+	left: 6dp;
+	right: 6dp;
+	height: 145dp;
 
 	padding: 10dp;
 	font-size: 12dp;
@@ -141,6 +193,14 @@
 {
 	background-color: #000000b0;
 	visibility: visible;
+}
+
+@media (theme: light)
+{
+	.grid .entry:hover .data .config
+	{
+		background-color: #ffffffff;
+	}
 }
 
 .grid .entry .action,
@@ -333,11 +393,19 @@
 
 .grid.zoom-0 .entry .data .config
 {
-	top: 2dp;
-	left: 2dp;
-	right: 2dp;
-	height: 84dp;
+	top: 3dp;
+	left: 3dp;
+	right: 3dp;
+	height: 83dp;
 	padding: 0dp;
+}
+
+@media (theme: light)
+{
+	.grid.zoom-0 .entry:hover .data .config
+	{
+		background-color: #ffffffb0;
+	}
 }
 
 .grid.zoom-0 .entry .data .config div

@@ -3,45 +3,7 @@
 		<title>New floppy image</title>
 		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="dialog.rcss"/>
-		<style>
-			body
-			{
-				width: 382dp;
-				height: 220dp;
-				min-height: 220dp;
-				min-width: 382dp;
-				max-height: 220dp;
-				margin: auto;
-			}
-			form
-			{
-				display: block;
-			}
-			#filename
-			{
-				width: 100%;
-			}
-			#dirinfo input
-			{
-				width: 60dp;
-			}
-			#imageinfo
-			{
-				margin-top: 10dp;
-			}
-			#imageinfo tr
-			{
-				margin-bottom: 5dp;
-			}
-			#image_type select
-			{
-				width: 145dp
-			}
-			#image_format select
-			{
-				width: 290dp
-			}
-		</style>
+		<link type="text/rcss" href="new_floppy.rcss"/>
 	</head>
 	<body template="window">
 		<form id="dirinfo">

@@ -10,10 +10,19 @@
 	width: 80dp;
 	height: 80dp;
 	margin: 0 0dp 4dp 0;
-	background-color: #3C5464ff;
 	overflow: hidden;
 	border: 1dp;
 	border-color: #3c5464;
+	background-color: #3C5464ff;
+}
+
+@media (theme: light)
+{
+	.grid .entry
+	{
+		border-color: #fafafa;
+		background-color: #fafafaff;
+	}
 }
 
 .grid .entry .icon
@@ -53,9 +62,18 @@
 .grid .entry:hover .name,
 .grid .entry.hover .name
 {
+	z-index: 99;
 	overflow: visible;
 	background-color: #6795beff;
-	z-index: 99;
+}
+
+@media (theme: light)
+{
+	.grid .entry:hover .name,
+	.grid .entry.hover .name
+	{
+		background-color: #dbdbdbff;
+	}
 }
 
 .grid .entry .date
@@ -68,6 +86,16 @@
 {
 	background-color: #6795be;
 	border-color: #6795be;
+}
+
+@media (theme: light)
+{
+	.grid .entry.hover,
+	.grid .entry:hover
+	{
+		background-color: #dbdbdb;
+		border-color: #dbdbdb;
+	}
 }
 
 .grid .entry.selected,
@@ -84,6 +112,31 @@
 .grid .entry.selected *
 {
 	color: #000000;
+}
+
+@media (theme: light)
+{
+	.grid .entry.selected,
+	.grid .entry.selected .name
+	{
+		background-color: #204d6e;
+	}
+	
+	#entries.grid:focus .entry.selected
+	{
+		border-color: #204d6e;
+		background-color: #82b3d4;
+	}
+	
+	#entries.grid:focus .entry.selected .name
+	{
+		background-color: #82b3d4;
+	}
+	
+	.grid .entry.selected *
+	{
+		color: #ffffff;
+	}
 }
 
 .grid.zoom-0

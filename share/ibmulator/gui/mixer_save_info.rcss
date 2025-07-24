@@ -1,0 +1,16 @@
+body
+{
+	width: 450dp;
+	height: 190dp;
+	min-height: 190dp;
+	min-width: 450dp;
+	max-height: 190dp;
+	margin: auto;
+	background-color: #3C5464FF;
+}
+
+#profile_name,
+#directory
+{
+	width: 100%;
+}

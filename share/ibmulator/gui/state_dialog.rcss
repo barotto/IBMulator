@@ -1,6 +1,10 @@
 body
 {
-	min-height: 360dp;
+	width: 90%;
+	height: 90%;
+	min-width: 640dp;
+	min-height: 400dp;
+	margin: auto;
 }
 
 #entries

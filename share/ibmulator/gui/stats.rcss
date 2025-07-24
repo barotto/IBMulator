@@ -1,0 +1,23 @@
+body
+{
+	width: 280dp;
+	max-width: 280dp;
+	height: 660dp;
+	position: absolute;
+	top: 20dp;
+	left: 0;
+	font-size: 12dp;
+	max-height: 90%;
+}
+
+#cmd_reset btnicon
+{
+	decorator: image(icons/debugger/update.png);
+}
+
+#tools
+{
+	border: 1px;
+	border-color: #ff0000;
+	padding-bottom: -4dp;
+}

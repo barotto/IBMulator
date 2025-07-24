@@ -143,12 +143,37 @@ td.t
 	overflow: hidden;
 }
 
+@media (theme: light)
+{
+	#disasm
+	{
+		background-color: #ffffff;
+		border: 1dp;
+		border-color: #000000;
+	}
+
+	#message
+	{
+		background-color: #d8d8d8;
+	}
+}
+
 #POST
 {
 	float: right;
 	width: 15dp;
 	padding: 5dp;
 	background-color: #000000ff;
+}
+
+@media (theme: light)
+{
+	#POST
+	{
+		background-color: #ffffffff;
+		border: 1dp;
+		border-color: #000000;
+	}
 }
 
 #CPU_step btnicon

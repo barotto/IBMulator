@@ -11,6 +11,14 @@ body
 	color: white;
 }
 
+@media (theme: light)
+{
+	body
+	{
+		color: black;
+	}
+}
+
 div
 {
 	display: block;
@@ -136,4 +144,44 @@ table.default td.t
 {
 	padding: 0;
 	background-color: #00000000;
+}
+
+table.default td.led
+{
+	margin-left: 2dp;
+	background-color: #564300FF;
+}
+
+table.default td.led_active
+{
+	color: #000000;
+	background-color: #FFE600FF;
+}
+
+@media (theme: light)
+{
+	table.default th
+	{
+		background-color: #c9c9c8ff;
+	}
+
+	table.default td
+	{
+		background-color: #e7e8e6ff;
+	}
+
+	table.default td.t
+	{
+		background-color: #00000000;
+	}
+
+	table.default td.led
+	{
+		color: #a3a3a2;
+	}
+
+	table.default td.led_active
+	{
+		color: #000000;
+	}
 }

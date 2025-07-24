@@ -317,6 +317,7 @@ public:
 	static std::map<std::string, uint> ms_gui_sampler;
 	static std::map<std::string, uint> ms_display_aspect;
 	static std::map<std::string, uint> ms_display_scale;
+	static std::vector<std::string> ms_themes;
 
 public:
 	GUI();

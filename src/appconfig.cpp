@@ -115,6 +115,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ DIALOGS_SECTION,
+";      theme: The name of the GUI dialogs theme.\n"
+";             Possible values: default, light\n"
 ";  file_type: The type of file select dialogs to use:\n"
 ";              custom: use the " PACKAGE_NAME "'s custom implementation\n"
 ";              native: use your OS native file dialogs (won't play nice when in fullscreen mode)\n"
@@ -550,6 +552,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ GUI_MOUSE_GRAB,      PROGRAM_CONFIG, HIDDEN_CFGKEY, "yes"        },
 	} },
 	{ DIALOGS_SECTION, {
+		{ DIALOGS_THEME,      PROGRAM_CONFIG, PUBLIC_CFGKEY, "default" },
 		{ DIALOGS_FILE_TYPE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "custom" },
 		{ DIALOGS_FILE_MODE,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "grid"   },
 		{ DIALOGS_FILE_ORDER, PROGRAM_CONFIG, PUBLIC_CFGKEY, "name"   },

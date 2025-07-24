@@ -5,6 +5,15 @@ body
 	border-color: #28374d;
 }
 
+@media (theme: light)
+{
+	body
+	{
+		background-color: #fafafaff;
+		border-color: #c7c7c7;
+	}
+}
+
 #buttons_right
 {
 	position: absolute;
@@ -67,9 +76,4 @@ body
 .icon_desc
 {
 	decorator: image(icons/descending.png);
-}
-
-input.radio.romshell:checked btnicon
-{
-	image-color: #000000;
 }

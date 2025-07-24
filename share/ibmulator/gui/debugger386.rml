@@ -4,17 +4,6 @@
 		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="debugger.rcss"/>
 		<link type="text/rcss" href="debugger386.rcss"/>
-		<style>
-			body
-			{
-				width: 432dp;
-				height: 600dp;
-				position: absolute;
-				top: 0;
-				right: 0;
-				max-height: 94%;
-			}
-		</style>
 	</head>
 	<body template="window">
 		<div id="POST"></div>

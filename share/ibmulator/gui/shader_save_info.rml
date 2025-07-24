@@ -2,37 +2,8 @@
 	<head>
 		<title>Save shader preset</title>
 		<link type="text/template" href="window.rml" />
-		<link type="text/rcss" href="dialog.rcss"/>
-		<style>
-			body
-			{
-				width: 450dp;
-				height: 220dp;
-				min-height: 220dp;
-				min-width: 450dp;
-				max-height: 220dp;
-				margin: auto;
-				background-color: #3C5464FF;
-			}
-			#shader_name,
-			#directory
-			{
-				width: 100%;
-			}
-			#save_all
-			{
-				width: 100dp;
-				margin-right: 10dp;
-			}
-			#add_comments
-			{
-				width: 140dp;
-			}
-			#preset_options
-			{
-				margin-top: 5dp;
-			}
-		</style>
+		<link type="text/rcss" href="dialog.rcss" />
+		<link type="text/rcss" href="shader_save_info.rcss" />
 	</head>
 	<body template="window">
 		<div id="info">

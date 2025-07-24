@@ -15,6 +15,19 @@ input.radio
 	padding: 0;
 }
 
+@media (theme: light)
+{
+	button,
+	input.submit,
+	input.checkbox,
+	input.radio
+	{
+		border: 1dp;
+		border-color: #e7e8e6ff;
+		background-color: #e7e8e6ff;
+	}
+}
+
 .toolbar
 {
 	display: inline-block;
@@ -62,6 +75,15 @@ button:focus
 	background-color: #FF8000F0;
 }
 
+@media (theme: light)
+{
+	button:focus
+	{
+		border-color: #204d6e;
+		background-color: #82b3d4ff;
+	}
+}
+
 button:active,
 button.on
 {
@@ -75,6 +97,15 @@ btnicon
 	height: 16dp;
 	margin-top: 2dp;
 	margin-left: 2dp;
+}
+
+@media (theme: light)
+{
+	btnicon
+	{
+		margin-top: 1dp;
+		margin-left: 1dp;
+	}
 }
 
 button.text
@@ -98,10 +129,22 @@ tab.romshell
 	min-width: 24dp;
 	background-color: #FFFFFF00;
 	color: white;
+	border: 0;
 
 	padding-left: 4dp;
 	padding-top: 2dp;
 	padding-right: 2dp;
+}
+
+@media (theme: light)
+{
+	button.romshell,
+	input.romshell,
+	select.romshell selectvalue,
+	tab.romshell
+	{
+		color: black;
+	}
 }
 
 tab.romshell
@@ -145,6 +188,15 @@ input.romshell btnicon
 	margin-left: 1dp;
 }
 
+@media (theme: light)
+{
+	button.romshell btnicon,
+	input.romshell btnicon
+	{
+		image-color: #000000;
+	}
+}
+
 button.romshell.disabled btnicon
 {
 	image-color: #a0a0a0;
@@ -169,6 +221,28 @@ button.romshell.disabled btnicon
 	button-focus-on-r: 236px 138px 8px 46px;
 }
 
+@media (theme: light)
+{
+	@spritesheet
+	{
+		src: images/romshell_button_light.png;
+
+		button-l: 0px 0px 8px 46px;
+		button-c: 10px 0px 2px 46px;
+		button-r: 240px 0px 4px 46px;
+		button-on-l: 0px 46px 8px 46px;
+		button-on-c: 10px 46px 2px 46px;
+		button-on-r: 236px 46px 8px 46px;
+
+		button-focus-l:    0px   92px  8px 46px;
+		button-focus-c:    10px  92px  2px 46px;
+		button-focus-r:    240px 92px  4px 46px;
+		button-focus-on-l: 0px   138px 8px 46px;
+		button-focus-on-c: 10px  138px 2px 46px;
+		button-focus-on-r: 236px 138px 8px 46px;
+	}
+}
+
 button.romshell,
 tab.romshell
 {
@@ -187,6 +261,20 @@ button.romshell.active btnicon
 	image-color: #000000;
 }
 
+@media (theme: light)
+{
+	button.romshell.active,
+	tab.romshell:selected
+	{
+		color: #e7e8e6;
+	}
+
+	button.romshell.active btnicon
+	{
+		image-color: #e7e8e6;
+	}
+}
+
 button.romshell:focus,
 tab.romshell:focus
 {
@@ -197,6 +285,14 @@ button.romshell.active:focus,
 tab.romshell:selected:focus
 {
 	decorator: tiled-horizontal( button-focus-on-l, button-focus-on-c, button-focus-on-r );
+}
+
+@media (theme: light)
+{
+	button.romshell.active:focus btnicon
+	{
+		image-color: #ffffff;
+	}
 }
 
 tab.romshell
@@ -224,6 +320,28 @@ tab.romshell
 	radio-focus-on-r: 236px 138px 8px 46px;
 }
 
+@media (theme: light)
+{
+	@spritesheet
+	{
+		src: images/romshell_button_light.png;
+
+		radio-l: 0px 0px 8px 46px;
+		radio-c: 10px 0px 2px 46px;
+		radio-r: 240px 0px 4px 46px;
+		radio-on-l: 0px 46px 8px 46px;
+		radio-on-c: 10px 46px 2px 46px;
+		radio-on-r: 236px 46px 8px 46px;
+
+		radio-focus-l:    0px   92px  8px 46px;
+		radio-focus-c:    10px  92px  2px 46px;
+		radio-focus-r:    240px 92px  4px 46px;
+		radio-focus-on-l: 0px   138px 8px 46px;
+		radio-focus-on-c: 10px  138px 2px 46px;
+		radio-focus-on-r: 236px 138px 8px 46px;
+	}
+}
+
 input.radio.romshell
 {
 	decorator: tiled-horizontal( radio-l, radio-c, radio-r );
@@ -233,6 +351,11 @@ input.radio.romshell:checked
 {
 	color: #000000;
 	decorator: tiled-horizontal( radio-on-l, radio-on-c, radio-on-r );
+}
+
+input.radio.romshell:checked btnicon
+{
+	image-color: #000000;
 }
 
 input.radio.romshell:focus
@@ -245,18 +368,50 @@ input.radio.romshell:focus:checked
 	decorator: tiled-horizontal( radio-focus-on-l, radio-focus-on-c, radio-focus-on-r );
 }
 
+@media (theme: light)
+{
+	input.radio.romshell:checked
+	{
+		color: #e7e8e6;
+	}
+
+	input.radio.romshell:checked btnicon
+	{
+		image-color: #e7e8e6;
+	}
+}
+
 @spritesheet
 {
 	src: images/romshell_button.png;
-	check-l: 244px 0px 42px 46px;
+
+	check-l:         244px 0px 42px 46px;
 	check-checked-l: 286px 0px 42px 46px;
-	check-c: 10px 0px 230px 46px;
-	check-r: 240px 0px 4px 46px;
+	check-c:         10px 0px 230px 46px;
+	check-r:         240px 0px 4px 46px;
 	
 	check-focus-l:         244px 92px 42px 46px;
 	check-focus-checked-l: 286px 92px 42px 46px;
 	check-focus-c:         10px  92px 230px 46px;
 	check-focus-r:         240px 92px 4px 46px;
+}
+
+@media (theme: light)
+{
+	@spritesheet
+	{
+		src: images/romshell_button_light.png;
+
+		check-l:         244px 0px 42px 46px;
+		check-checked-l: 286px 0px 42px 46px;
+		check-c:         10px 0px 230px 46px;
+		check-r:         240px 0px 4px 46px;
+
+		check-focus-l:         244px 92px 42px 46px;
+		check-focus-checked-l: 286px 92px 42px 46px;
+		check-focus-c:         10px  92px 230px 46px;
+		check-focus-r:         240px 92px 4px 46px;
+	}
 }
 
 input.checkbox.romshell
@@ -285,19 +440,41 @@ input.checkbox.romshell:focus:checked
 {
 	src: images/romshell_button.png;
 
-	selectarrow: 248px 46px 38px 46px;
+	selectarrow:        248px 46px 38px 46px;
 	selectarrow-active: 290px 46px 38px 46px;
 
 	selectvalue-l: 0px 0px 8px 46px;
 	selectvalue-c: 10px 0px 2px 46px;
-	selectvalue-r: 10px 0px 2px 46px;
+	selectvalue-r: 240px 0px 4px 46px;
 
 	selectarrow-focus:        248px 138px 38px 46px;
 	selectarrow-focus-active: 290px 138px 38px 46px;
 
 	selectvalue-focus-l: 0px  92px 8px 46px;
 	selectvalue-focus-c: 10px 92px 2px 46px;
-	selectvalue-focus-r: 10px 92px 2px 46px;
+	selectvalue-focus-r: 240px 92px 4px 46px;
+}
+
+@media (theme: light)
+{
+	@spritesheet
+	{
+		src: images/romshell_button_light.png;
+
+		selectarrow:        248px 46px 38px 46px;
+		selectarrow-active: 290px 46px 38px 46px;
+
+		selectvalue-l: 0px 0px 8px 46px;
+		selectvalue-c: 10px 0px 2px 46px;
+		selectvalue-r: 240px 0px 4px 46px;
+
+		selectarrow-focus:        248px 138px 38px 46px;
+		selectarrow-focus-active: 290px 138px 38px 46px;
+
+		selectvalue-focus-l: 0px  92px 8px 46px;
+		selectvalue-focus-c: 10px 92px 2px 46px;
+		selectvalue-focus-r: 240px 92px 4px 46px;
+	}
 }
 
 select.romshell selectvalue
@@ -350,6 +527,14 @@ select.romshell selectbox
 	background-color: #545454;
 }
 
+@media (theme: light)
+{
+	select.romshell selectbox
+	{
+		background-color: #e7e8e6;
+	}
+}
+
 select.romshell selectbox option
 {
 	font-family: "Nouveau IBM";
@@ -362,6 +547,14 @@ select.romshell selectbox option
 	padding-right: 2dp;
 }
 
+@media (theme: light)
+{
+	select.romshell selectbox option
+	{
+		background-color: #e7e8e6;
+	}
+}
+
 select.romshell selectbox option:hover
 {
 	background-color: #606060;
@@ -372,6 +565,21 @@ select.romshell selectbox option:checked:hover
 {
 	background-color: #fcfca8;
 	color: #000000;
+}
+
+@media (theme: light)
+{
+	select.romshell selectbox option:hover
+	{
+		background-color: #dbdbdb;
+	}
+
+	select.romshell selectbox option:checked,
+	select.romshell selectbox option:checked:hover
+	{
+		color: #ffffff;
+		background-color: #204d6e;
+	}
 }
 
 spinbutton,
@@ -387,6 +595,16 @@ input.text
 	border-color: #5555FFA0;
 }
 
+@media (theme: light)
+{
+	spinbutton,
+	input.text
+	{
+		background-color: #e7e8e6;
+		border-color: #a8a8a8;
+	}
+}
+
 .toolbar input.text
 {
 	height: 20dp;
@@ -396,6 +614,73 @@ spinbutton:focus,
 input.text:focus
 {
 	border-color: #ff8000;
+}
+
+@media (theme: light)
+{
+	spinbutton:focus,
+	input.text:focus
+	{
+		background-color: #ffffff;
+		border-color: #204d6e;
+	}
+}
+
+.spinner
+{
+	position: relative;
+	min-height: 27dp;
+	width: 114dp;
+	margin: auto;
+}
+
+.spinner button
+{
+	position: absolute;
+	top: 2dp;
+	width: 23dp;
+	height: 23dp;
+	tab-index: none;
+}
+
+.spinner .decrease
+{
+	left: 0dp;
+}
+
+.spinner .increase
+{
+	right: 0dp;
+}
+
+.spinner spinbutton,
+.spinner input
+{
+	position: absolute;
+	right: 24dp;
+	top: 2dp;
+	vertical-align: middle;
+	width: 66dp;
+	height: 23dp;
+	text-align: center;
+	background-color: #3d5576ff;
+	tab-index: auto;
+}
+
+@media (theme: light)
+{
+	.spinner spinbutton,
+	.spinner input
+	{
+		background-color: #e7e8e6ff;
+	}
+
+	.spinner spinbutton:focus,
+	.spinner input:focus
+	{
+		background-color: #82b3d4;
+		border-color: #204d6e;
+	}
 }
 
 scrollbarvertical
@@ -424,6 +709,28 @@ scrollbarvertical
 
 	sliderdec-h: 38px 0px 38px 38px;
 	sliderinc-h: 38px 144px 38px 38px;
+}
+
+@media (theme: light)
+{
+	@spritesheet
+	{
+		src: images/romshell_scroller_light.png;
+
+		sliderbar-v-t: 0px 66px 38px 4px;
+		sliderbar-v-c: 0px 72px 38px 4px;
+		sliderbar-v-b: 0px 110px 38px 8px;
+
+		sliderdec-v: 0px 0px 38px 38px;
+		sliderinc-v: 0px 144px 38px 38px;
+
+		sliderbar-h-l: 38px 0px 10px 38px;
+		sliderbar-h-c: 47px 0px 2px 38px;
+		sliderbar-h-r: 72px 0px 4px 38px;
+
+		sliderdec-h: 38px 0px 38px 38px;
+		sliderinc-h: 38px 144px 38px 38px;
+	}
 }
 
 scrollbarvertical slidertrack

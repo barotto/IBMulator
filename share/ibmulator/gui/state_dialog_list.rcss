@@ -72,8 +72,16 @@
 	display: inline-block;
 	width: 100%;
 	height: 50dp;
-	background-color: #28374d;
 	margin: 4dp 0 0dp 0;
+	background-color: #28374d;
+}
+
+@media (theme: light)
+{
+	.list .entry
+	{
+		background-color: #494949;
+	}
 }
 
 .list .entry .data
@@ -91,10 +99,35 @@
 	background-color: #587fa3;
 }
 
+@media (theme: light)
+{
+	.list .entry .data
+	{
+		height: 48dp;
+		border: 1dp;
+		border-color: #dbdbdb;
+		background-color: #dbdbdb;
+	}
+
+	.list .entry .data .name
+	{
+		background-color: #dbdbdb;
+	}
+}
+
 .list .entry:hover .data,
 .list .entry:hover .data .name
 {
 	background-color: #6795be;
+}
+
+@media (theme: light)
+{
+	.list .entry:hover .data,
+	.list .entry:hover .data .name
+	{
+		background-color: #f0f0f0;
+	}
 }
 
 .list .entry.selected .data,
@@ -103,9 +136,41 @@
 	background-color: #fcfca6;
 }
 
+@media (theme: light)
+{
+	.list .entry.selected .data
+	{
+		background-color: #204d6e;
+	}
+
+	.list .entry.selected .data .name
+	{
+		background-color: #204d6e;
+	}
+
+	.list:focus .entry.selected .data
+	{
+		border-color: #204d6e;
+		background-color: #82b3d4;
+	}
+
+	.list:focus .entry.selected .data .name
+	{
+		background-color: #82b3d4;
+	}
+}
+
 .list .entry.selected *
 {
 	color: #000000;
+}
+
+@media (theme: light)
+{
+	.list .entry.selected *
+	{
+		color: #ffffff;
+	}
 }
 
 .list .entry .data .screen

@@ -1,0 +1,15 @@
+.entry .action
+{
+	background-color: #3F7CB6;
+	decorator: image(icons/save.png);
+}
+
+.entry .action:hover
+{
+	decorator: image(icons/save_down.png);
+}
+
+#new_save_entry .delete
+{
+	display: none;
+}

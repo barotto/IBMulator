@@ -1,19 +1,9 @@
 <template name="state_dialog" content="action_label">
 <head>
 	<link type="text/rcss" href="dialog.rcss"/>
-	<link type="text/rcss" href="state_dialog.rcss"/>
-	<link type="text/rcss" href="state_dialog_list.rcss"/>
-	<link type="text/rcss" href="state_dialog_grid.rcss"/>
-	<style>
-		body
-		{
-			width: 90%;
-			height: 90%;
-			min-width: 640dp;
-			min-height: 400dp;
-			margin: auto;
-		}
-	</style>
+	<link type="text/rcss" href="state_dialog.rcss" />
+	<link type="text/rcss" href="state_dialog_list.rcss" />
+	<link type="text/rcss" href="state_dialog_grid.rcss" />
 </head>
 <body>
 	<div id="entries"></div>

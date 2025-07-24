@@ -3,21 +3,7 @@
 		<title>Save state</title>
 		<link type="text/template" href="window.rml" />
 		<link type="text/template" href="state_dialog.rml" />
-		<style>
-			.entry .action
-			{
-				background-color: #3F7CB6;
-				decorator: image(icons/save.png);
-			}
-			.entry .action:hover
-			{
-				decorator: image(icons/save_down.png);
-			}
-			#new_save_entry .delete
-			{
-				display: none;
-			}
-		</style>
+		<link type="text/rcss" href="state_save.rcss" />
 	</head>
 	<body template="window">
 		<template src="state_dialog">Save</template>

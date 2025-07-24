@@ -1,38 +1,8 @@
 <rml>
 	<head>
 		<title>Status leds</title>
-		<link type="text/rcss" href="base.rcss"/>
-		<style>
-			body
-			{
-				width: 100%;
-				height: 12dp;
-				position: absolute;
-				top: 0;
-				right: 0;
-			}
-			div
-			{
-				display: inline-block;
-				width: 33dp;
-				height: 13dp;
-				font-size: 12dp;
-				text-align: center;
-				padding-top: 0;
-				float: right;
-				opacity: 0.8;
-			}
-			.hidden { display: none; }
-			.idle   { background-color: #023b00A0; }
-			.active { background-color: #94E400A0; }
-			.attn   { background-color: #ff2020A0; }
-			#floppy_a.idle, #floppy_b.idle, #cdrom.idle, #hdd.idle {
-				background-color: #564300A0;
-			}
-			#floppy_a.active, #floppy_b.active, #cdrom.active, #hdd.active {
-				background-color: #FFE600A0;
-			}
-		</style>
+		<link type="text/rcss" href="base.rcss" />
+		<link type="text/rcss" href="status.rcss" />
 	</head>
 	<body>
 		<div id="net">NET</div>

@@ -1,0 +1,97 @@
+body
+{
+	width: 345dp;
+	height: 300dp;
+	min-height: 300dp;
+	min-width: 345dp;
+	margin: auto;
+}
+
+#control_panel
+{
+	position: absolute;
+	right: 10dp;
+	top: 0;
+	display: block;
+	width: 100dp;
+	height: 150dp;
+	border: 1dp;
+	border-color: #d4d4d4;
+}
+
+@media (theme: light)
+{
+	#control_panel
+	{
+		background-color: #dbdbdb;
+		border-color: #000000;
+	}
+}
+
+button.romshell
+{
+	margin-left: 10dp;
+}
+
+button.control
+{
+	margin: 5dp;
+	display: block;
+}
+
+#power,
+#ready
+{
+	display: block;
+	height: 15dp;
+	border-right: 5dp;
+	border-color: #00ff00;
+	margin: 10dp;
+}
+
+#power.no_power,
+#ready.not_ready
+{
+	border-color: #000000;
+}
+
+#preview_cnt
+{
+	position: absolute;
+	top: 0;
+	left: 10dp;
+	right: 120dp;
+	bottom: 10dp;
+}
+
+#preview_img
+{
+	border: 1dp;
+	border-color: #000000;
+}
+
+#head
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 2dp;
+	height: 4dp;
+	background-color: #0000ff;
+}
+
+#head_y
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 1px;
+	background-color: #4d4d4d;
+}
+
+#preview_cnt.no_head #head,
+#preview_cnt.no_head #head_y
+{
+	visibility: hidden;
+}

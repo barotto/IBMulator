@@ -1,3 +1,12 @@
+body
+{
+	width: 90%;
+	height: 90%;
+	min-width: 640dp;
+	min-height: 400dp;
+	margin: auto;
+}
+
 #buttons_left
 {
 	margin-bottom: -5dp;
@@ -61,6 +70,20 @@
 	border-color: #ff8000ff;
 }
 
+@media (theme: light)
+{
+	#drive input.radio:checked
+	{
+		border-color: #204d6eff;
+		background-color: #204d6eff;
+	}
+
+	#drive input.radio:focus
+	{
+		border-color: #82b3d4ff;
+	}
+}
+
 #path
 {
 	display: block;
@@ -82,6 +105,14 @@
 	white-space: nowrap;
 }
 
+@media (theme: light)
+{
+	#cwd
+	{
+		font-effect: shadow(0dp 0dp black);
+	}
+}
+
 .drives #cwd
 {
 	margin-top: 20dp
@@ -93,6 +124,14 @@
 	white-space: normal;
 	z-index: 99;
 	word-break: break-word;
+}
+
+@media (theme: light)
+{
+	#cwd:hover
+	{
+		background-color: #fafafaff;
+	}
 }
 
 @spritesheet
@@ -206,8 +245,16 @@
 #entries
 {
 	box-sizing: border-box;
-	background-color: #3C5464ff;
 	tab-index: auto;
+	background-color: #3C5464ff;
+}
+
+@media (theme: light)
+{
+	#entries
+	{
+		background-color: #fafafaff;
+	}
 }
 
 #info_panel
@@ -239,6 +286,14 @@
 	padding-left: 3dp;
 }
 
+@media (theme: light)
+{
+	#info_panel .value
+	{
+		background-color: #e7e8e6ff;
+	}
+}
+
 .directory_listing td
 {
 	text-align: left;
@@ -256,6 +311,15 @@
 .directory_listing tr.file.executable td.extension
 {
 	color: #fcfca6;
+}
+
+@media (theme: light)
+{
+	.directory_listing tr.file.executable td.name,
+	.directory_listing tr.file.executable td.extension
+	{
+		color: #454bb0;
+	}
 }
 
 .directory_listing tr td.extension

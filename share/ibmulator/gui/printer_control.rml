@@ -2,82 +2,8 @@
 	<head>
 		<title>Printer</title>
 		<link type="text/template" href="window.rml" />
-			<link type="text/rcss" href="dialog.rcss"/>
-		<style>
-			body
-			{
-				width: 345dp;
-				height: 300dp;
-				min-height: 300dp;
-				min-width: 345dp;
-				margin: auto;
-			}
-			#control_panel
-			{
-				position: absolute;
-				right: 10dp;
-				top: 35dp;
-				display: block;
-				width: 100dp;
-				height: 150dp;
-				border: 1dp;
-				border-color: #d4d4d4;
-			}
-			button.romshell
-			{
-				margin-left: 10dp;
-			}
-			button.control
-			{
-				margin: 5dp;
-				display: block;
-			}
-			#power,
-			#ready
-			{
-				display: block;
-				height: 15dp;
-				border-right: 5dp;
-				border-color: #00ff00;
-				margin: 10dp;
-			}
-			#power.no_power,
-			#ready.not_ready,
-			{
-				border-color: #000000;
-			}
-			#preview_cnt
-			{
-				position: absolute;
-				top: 35dp;
-				left: 10dp;
-				right: 120dp;
-				bottom: 10dp;
-			}
-			#head
-			{
-				position: absolute;
-				top: 0;
-				left: 0;
-				width: 2dp;
-				height: 4dp;
-				background-color: #0000ff;
-			}
-			#head_y
-			{
-				position: absolute;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 1px;
-				background-color: #4d4d4d;
-			}
-			#preview_cnt.no_head #head,
-			#preview_cnt.no_head #head_y
-			{
-				visibility: hidden;
-			}
-		</style>
+		<link type="text/rcss" href="dialog.rcss"/>
+		<link type="text/rcss" href="printer_control.rcss"/>
 	</head>
 	<body template="window">
 		<div id="preview_cnt">
@@ -88,9 +14,9 @@
 		<div id="control_panel">
 			<div id="power">POWER</div>
 			<div id="ready">READY</div>
-			<button id="on_line" class="romshell control active"><span>ON LINE</span></button>
-			<button id="form_feed" class="romshell control disabled"><span>FF</span></button>
-			<button id="line_feed" class="romshell control disabled"><span>LF</span></button>
+			<button id="on_line" class="romshell text control active" aria-label="on line"><span>ON LINE</span></button>
+			<button id="form_feed" class="romshell text control disabled" aria-label="form feed"><span>FF</span></button>
+			<button id="line_feed" class="romshell text control disabled" aria-label="line feed"><span>LF</span></button>
 		</div>
 	</body>
 </rml>

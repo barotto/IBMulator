@@ -3,23 +3,7 @@
 		<title>Save Mixer profile</title>
 		<link type="text/template" href="window.rml" />
 		<link type="text/rcss" href="dialog.rcss"/>
-		<style>
-			body
-			{
-				width: 450dp;
-				height: 190dp;
-				min-height: 190dp;
-				min-width: 450dp;
-				max-height: 190dp;
-				margin: auto;
-				background-color: #3C5464FF;
-			}
-			#profile_name,
-			#directory
-			{
-				width: 100%;
-			}
-		</style>
+		<link type="text/rcss" href="mixer_save_info.rcss"/>
 	</head>
 	<body template="window">
 		<div data-model="MixerProfileInfo">

@@ -86,6 +86,8 @@ std::map<std::string, uint> GUI::ms_display_scale = {
 	{ "integer", DISPLAY_SCALE_INTEGER }
 };
 
+std::vector<std::string> GUI::ms_themes = {"light"};
+
 const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEvent::Func&,GUI::EventPhase)>>
 	GUI::ms_event_funcs = {
 	{ ProgramEvent::FuncName::FUNC_NONE,                 &GUI::pevt_func_none                 },
@@ -458,6 +460,13 @@ void GUI::init_rmlui()
 	Rml::Debugger::Initialise(m_rml_context);
 
 	m_rml_context->SetDensityIndependentPixelRatio(m_scaling_factor);
+
+	auto theme = str_to_lower(g_program.config().get_string_or_default(DIALOGS_SECTION, DIALOGS_THEME));
+	if(std::find(ms_themes.begin(), ms_themes.end(), theme) != ms_themes.end()) {
+		m_rml_context->ActivateTheme(theme, true);
+	} else {
+		PERRF(LOG_GUI, "The theme '%s' is not valid.\n", theme.c_str());
+	}
 }
 
 Rml::DataModelConstructor GUI::create_data_model(const std::string &_model_name)

@@ -4,10 +4,19 @@ body
 	font-weight: normal;
 	font-style: normal;
 	font-size: 15dp;
-	color: white;
-	background-color: #3C5464A0;
 	min-width: 64dp;
 	min-height: 128dp;
+	color: white;
+	background-color: #3C5464ff;
+}
+
+@media (theme: light)
+{
+	body
+	{
+		color: black;
+		background-color: #fafafaff;
+	}
 }
 
 body:focus
@@ -15,11 +24,28 @@ body:focus
 	background-color: #3C5464ff;
 }
 
+@media (theme: light)
+{
+	body:focus
+	{
+		background-color: #fafafaff;
+	}
+}
+
 body.modal
 {
-	background-color: #3C5464ff;
 	border: 2dp;
 	border-color: #28374d;
+	background-color: #3C5464ff;
+}
+
+@media (theme: light)
+{
+	body.modal
+	{
+		border-color: #b8b8b8;
+		background-color: #fafafaff;
+	}
 }
 
 #title_bar
@@ -33,9 +59,27 @@ body.modal
 	background-color: #FFFFFFA0;
 }
 
+@media (theme: light)
+{
+	#title_bar
+	{
+		background-color: #dbdbdb00;
+		border-bottom: 2dp;
+		border-color: #dbdbdb;
+	}
+}
+
 body:focus #title_bar
 {
 	background-color: #FFFFFFFF;
+}
+
+@media (theme: light)
+{
+	body:focus #title_bar
+	{
+		background-color: #dbdbdbff;
+	}
 }
 
 #resize
@@ -49,6 +93,14 @@ body:focus #title_bar
 	decorator: image(icons/dotted_grip_corner.png);
 }
 
+@media (theme: light)
+{
+	#resize
+	{
+		image-color: #000000;
+	}
+}
+
 #close
 {
 	position: absolute;
@@ -57,6 +109,21 @@ body:focus #title_bar
 	width: 25dp;
 	height: 25dp;
 	decorator: image(icons/cross.png);
+	background-color: #00000000;
+	border: 0;
+}
+
+#close:focus
+{
+	background-color: #FF8000ff;
+}
+
+@media (theme: light)
+{
+	#close:focus
+	{
+		background-color: #82b3d4ff;
+	}
 }
 
 #title

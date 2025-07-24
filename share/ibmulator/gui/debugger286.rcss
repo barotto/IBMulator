@@ -1,3 +1,13 @@
+body
+{
+	width: 403dp;
+	height: 475dp;
+	position: absolute;
+	top: 0;
+	right: 0;
+	max-height: 94%;
+}
+
 #cpucore
 {
 	height: 200dp;

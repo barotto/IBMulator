@@ -165,6 +165,7 @@ public:
 #define GUI_UI_SCALING          "ui_scaling"
 
 #define DIALOGS_SECTION         "gui_dialogs"
+#define DIALOGS_THEME           "theme"
 #define DIALOGS_FILE_TYPE       "file_type"
 #define DIALOGS_FILE_MODE       "file_mode"
 #define DIALOGS_FILE_ORDER      "file_order"

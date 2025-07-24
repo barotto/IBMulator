@@ -13,46 +13,63 @@ share/ibmulator/phones.txt
 
 guidir = $(pkgdatadir)/gui
 dist_gui_DATA = \
+share/ibmulator/gui/audio_osd.rcss \
 share/ibmulator/gui/audio_osd.rml \
 share/ibmulator/gui/base.rcss \
 share/ibmulator/gui/buttons.rcss \
-share/ibmulator/gui/debugger.rcss \
 share/ibmulator/gui/debugger286.rcss \
 share/ibmulator/gui/debugger286.rml \
 share/ibmulator/gui/debugger386.rcss \
 share/ibmulator/gui/debugger386.rml \
+share/ibmulator/gui/debugger.rcss \
+share/ibmulator/gui/debugtools.rcss \
 share/ibmulator/gui/debugtools.rml \
+share/ibmulator/gui/desktop.rcss \
 share/ibmulator/gui/desktop.rml \
+share/ibmulator/gui/devstatus.rcss \
 share/ibmulator/gui/devstatus.rml \
 share/ibmulator/gui/dialog.rcss \
 share/ibmulator/gui/fileselect_grid.rcss \
 share/ibmulator/gui/fileselect_list.rcss \
 share/ibmulator/gui/fileselect.rcss \
 share/ibmulator/gui/fileselect.rml \
+share/ibmulator/gui/message_wnd.rcss \
 share/ibmulator/gui/message_wnd.rml \
+share/ibmulator/gui/mixer_control.rcss \
 share/ibmulator/gui/mixer_control.rml \
+share/ibmulator/gui/mixer_save_info.rcss \
 share/ibmulator/gui/mixer_save_info.rml \
+share/ibmulator/gui/mixerstate.rcss \
 share/ibmulator/gui/mixerstate.rml \
+share/ibmulator/gui/new_floppy.rcss \
 share/ibmulator/gui/new_floppy.rml \
 share/ibmulator/gui/normal_interface.rcss \
 share/ibmulator/gui/normal_interface.rml \
+share/ibmulator/gui/printer_control.rcss \
 share/ibmulator/gui/printer_control.rml \
 share/ibmulator/gui/realistic_interface.rcss \
 share/ibmulator/gui/realistic_interface.rml \
+share/ibmulator/gui/shader_parameters.rcss \
 share/ibmulator/gui/shader_parameters.rml \
+share/ibmulator/gui/shader_save_info.rcss \
 share/ibmulator/gui/shader_save_info.rml \
 share/ibmulator/gui/speed_indicator.rcss \
-share/ibmulator/gui/state_dialog.rcss \
-share/ibmulator/gui/state_dialog.rml \
 share/ibmulator/gui/state_dialog_grid.rcss \
 share/ibmulator/gui/state_dialog_list.rcss \
+share/ibmulator/gui/state_dialog.rcss \
+share/ibmulator/gui/state_dialog.rml \
+share/ibmulator/gui/state_load.rcss \
 share/ibmulator/gui/state_load.rml \
-share/ibmulator/gui/state_save.rml \
+share/ibmulator/gui/state_save_info.rcss \
 share/ibmulator/gui/state_save_info.rml \
+share/ibmulator/gui/state_save.rcss \
+share/ibmulator/gui/state_save.rml \
+share/ibmulator/gui/stats.rcss \
 share/ibmulator/gui/stats.rml \
+share/ibmulator/gui/status.rcss \
 share/ibmulator/gui/status.rml \
-share/ibmulator/gui/window.rml \
-share/ibmulator/gui/window.rcss
+share/ibmulator/gui/window.rcss \
+share/ibmulator/gui/window.rml
 
 guiiconsdir = $(pkgdatadir)/gui/icons
 dist_guiicons_DATA = \
@@ -128,7 +145,9 @@ share/ibmulator/gui/images/realistic_power_led_bloom.png \
 share/ibmulator/gui/images/realistic_reflection.png \
 share/ibmulator/gui/images/realistic_slider_dark.png \
 share/ibmulator/gui/images/realistic_slider.png \
+share/ibmulator/gui/images/romshell_button_light.png \
 share/ibmulator/gui/images/romshell_button.png \
+share/ibmulator/gui/images/romshell_scroller_light.png \
 share/ibmulator/gui/images/romshell_scroller.png
 
 guiimages2011dir = $(pkgdatadir)/gui/images/2011

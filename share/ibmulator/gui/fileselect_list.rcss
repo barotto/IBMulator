@@ -12,6 +12,14 @@
 	border-color: #3c5464;
 }
 
+@media (theme: light)
+{
+	.list .entry
+	{
+		border-color: #fafafa;
+	}
+}
+
 .list .entry:last-child
 {
 	margin-bottom: 40dp;
@@ -23,9 +31,26 @@
 	border-color: #6795be;
 }
 
+@media (theme: light)
+{
+	.list .entry:hover
+	{
+		background-color: #dbdbdb;
+		border-color: #dbdbdb;
+	}
+}
+
 .list .entry.selected
 {
 	background-color: #fcfca6;
+}
+
+@media (theme: light)
+{
+	.list .entry.selected
+	{
+		background-color: #204d6e;
+	}
 }
 
 #entries.list:focus .entry.selected
@@ -33,9 +58,26 @@
 	border-color: #FF8000;
 }
 
+@media (theme: light)
+{
+	#entries.list:focus .entry.selected
+	{
+		background-color: #82b3d4;
+		border-color: #204d6e;
+	}
+}
+
 .list .entry.selected *
 {
 	color: #000000;
+}
+
+@media (theme: light)
+{
+	.list .entry.selected *
+	{
+		color: #ffffff;
+	}
 }
 
 .list .entry .icon,

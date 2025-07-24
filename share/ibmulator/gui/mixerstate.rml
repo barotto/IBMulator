@@ -2,41 +2,7 @@
 	<head>
 		<title>Mixer</title>
 		<link type="text/template" href="window.rml" />
-		<style>
-			body
-			{
-				width: 490dp;
-				height: 400dp;
-				position: absolute;
-				bottom: 0;
-				left: 0;
-				max-height: 90%;
-			}
-			tr {
-				margin-top: 1dp;
-			}
-			th {
-				width: 20%;
-				padding: 4dp;
-				text-align: center;
-				margin: 1dp;
-				font-size: 10dp;
-			}
-			td {
-				width: 20%;
-				padding: 4dp;
-				margin: 1dp;
-				font-size: 10dp;
-			}
-			th.data, td.data {
-				width: 13%;
-				font-size: 10dp;
-			}
-			table.default th.enabled {
-				color: #000000ff;
-				background-color: #FFE600FF;
-			}
-		</style>
+		<link type="text/rcss" href="mixerstate.rcss"/>
 	</head>
 	<body template="window">
 		<p id="state"></p>

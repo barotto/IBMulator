@@ -1,0 +1,10 @@
+.entry .action
+{
+	background-color: #00aa00;
+	decorator: image(icons/restore.png);
+}
+
+.entry .action:hover
+{
+	decorator: image(icons/restore_up.png);
+}

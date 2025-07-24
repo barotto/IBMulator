@@ -1,0 +1,101 @@
+body
+{
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+
+	width: 640dp;
+	min-width: 400dp;
+	min-height: 350dp;
+}
+
+#params_cnt
+{
+	position: absolute;
+	top: 30dp;
+	left: 0dp;
+	right: 0dp;
+	bottom: 30dp;
+	overflow-y: auto;
+}
+
+.entry
+{
+	position: relative;
+	margin: 5dp 0 5dp 0;
+	min-height: 27dp;
+	background-color: #587fa3ff;
+}
+
+@media (theme: light)
+{
+	.entry
+	{
+		background-color: #cecfcd;
+	}
+}
+
+.entry .desc
+{
+	font-family: "Nouveau IBM";
+	white-space: pre-wrap;
+	margin-right: 120dp;
+	min-height: 5dp;
+	padding: 2dp;
+}
+
+.entry input.text
+{
+	position: absolute;
+	right: 26dp;
+	top: 2dp;
+	width: 79dp;
+	height: 23dp;
+	text-align: center;
+	background-color: #3d5576ff;
+}
+
+@media (theme: light)
+{
+	.entry input.text
+	{
+		background-color: #e7e8e6ff;
+	}
+}
+
+.entry .decrease,
+.entry .increase,
+.entry .reset
+{
+	position: absolute;
+	top: 2dp;
+	width: 23dp;
+	height: 23dp;
+}
+
+.entry .decrease
+{
+	right: 105dp;
+}
+
+.entry .increase
+{
+	right: 2dp;
+}
+
+.entry .reset
+{
+	right: 129dp;
+}
+
+#buttons_top_right
+{
+	float: right;
+}
+
+#search_cnt
+{
+	float: left;
+}
+

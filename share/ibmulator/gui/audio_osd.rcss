@@ -1,0 +1,145 @@
+body
+{
+	position: absolute;
+	right: 10dp;
+	width: 180dp;
+	height: 50%;
+	margin-top: auto;
+	margin-bottom: auto;
+	background-color: #00000000;
+	pointer-events: none;
+}
+
+body.with_vu_meter
+{
+	width: 190dp;
+}
+
+#ch_vol_progress,
+#ch_vu_meter_container
+{
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 8dp;
+	height: 100%;
+
+	border-radius: 20dp;
+	background-color: #466581;
+	border: 1dp;
+	border-color: #2d4254;
+}
+
+#ch_vol_progress fill
+{
+	border-radius: 20dp;
+	background-color: #00f000;
+}
+
+#ch_vu_meter_container
+{
+	display: none;
+}
+
+.with_vu_meter #ch_vu_meter_container
+{
+	display: block;
+}
+
+.with_vu_meter #ch_vol_progress
+{
+	right: 10dp;
+}
+
+#ch_vu_meter_container
+{
+	background-color: #000000;
+	border: 1dp;
+	border-color: #2d4254;
+}
+
+.ch_vu_meter
+{
+	display: inline-block;
+	width: 4dp;
+	height: 100%;
+}
+
+.ch_vu_meter fill
+{
+	border-radius: 20dp;
+	background-color: #a6ff00;
+}
+
+.ch_vu_meter.edge fill
+{
+	background-color: #ffef38;
+}
+
+.ch_vu_meter.over fill
+{
+	background-color: #ee3700;
+}
+
+#ch_vol_container
+{
+	position: absolute;
+	left: 0;
+	width: 160dp;
+	height: 110dp;
+	margin-top: auto;
+	margin-bottom: auto;
+	background-color: #000000a0;
+	border-radius: 20dp;
+	border: 1dp;
+	border-color: #505050;
+}
+
+#ch_vol_container img
+{
+	width: 30dp;
+	height: 30dp;
+	position: absolute;
+	top: 20dp;
+	left: 30dp;
+}
+
+#ch_vol_value
+{
+	position: absolute;
+	top: 20dp;
+	right: 30dp;
+	font-size: 30dp;
+}
+
+#ch_vol_name
+{
+	box-sizing: border-box;
+	position: absolute;
+	bottom: 20dp;
+	width: 100%;
+	padding: 0 20dp 0 20dp;
+	text-align: center;
+	font-size: 16dp;
+	font-weight: bold;
+	background-color: #3871aa50;
+}
+
+#ch_vol_name.master,
+#ch_vol_name.category.audiocard,
+#ch_vol_name.category.soundfx
+{
+	background-color: #3871aaa0;
+}
+
+#ch_vol_name.active
+{
+	color: #000000;
+	background-color: #FFE600;
+}
+
+.hidden
+{
+	opacity: 0;
+	transition: opacity 0.25s;
+}
