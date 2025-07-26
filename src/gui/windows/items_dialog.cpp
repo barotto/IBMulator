@@ -302,12 +302,12 @@ void ItemsDialog::move_selection(Rml::Input::KeyIdentifier _key_id)
 	if(entry) {
 		if(entry != m_selected_entry) {
 			m_moving_selection = true;
-			entry_select(entry);
 			if(scroll_top) {
 				entry->ScrollIntoView(true);
 			} else if(scroll_bottom) {
 				entry->ScrollIntoView(false);
 			}
+			entry_select(entry);
 		}
 		m_entries_el->Focus();
 	}
