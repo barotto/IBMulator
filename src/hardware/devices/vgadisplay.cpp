@@ -267,6 +267,21 @@ void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, ui
 	m_s.palette[COLOR_MODE_BRG][_index] = PALETTE_ENTRY(_blue, _red, _green);
 	m_s.palette[COLOR_MODE_BGR][_index] = PALETTE_ENTRY(_blue, _green, _red);
 	m_s.palette[COLOR_MODE_INVERTED][_index] = PALETTE_ENTRY((255-_red), (255-_green), (255-_blue));
+
+	const vec3f luma_coeff = vec3f(0.299f, 0.587f, 0.114f);
+	const vec3f color = vec3f(float(_red)/255.f, float(_green)/255.f, float(_blue)/255.f);
+	float value = color.dot(luma_coeff);
+	int mono;
+	if(value > 0.35f) {
+		mono = int(value * 2.0f * 255.f);
+	} else {
+		mono = int(value * 0.5f * 255.f);
+	}
+	mono = clamp(mono, 0, 255);
+	int mono_inv = 255 - mono;
+
+	m_s.palette[COLOR_MODE_MONO][_index] = PALETTE_ENTRY(mono, mono, mono);
+	m_s.palette[COLOR_MODE_MONO_INVERTED][_index] = PALETTE_ENTRY(mono_inv, mono_inv, mono_inv);
 }
 
 // set_mode()

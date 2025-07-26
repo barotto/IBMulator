@@ -106,11 +106,13 @@ public:
 		COLOR_MODE_BRG,
 		COLOR_MODE_BGR,
 		COLOR_MODE_INVERTED,
+		COLOR_MODE_MONO,
+		COLOR_MODE_MONO_INVERTED,
 
 		COLOR_MODE_COUNT
 	};
 	static constexpr const char *ColorModeName[COLOR_MODE_COUNT]{
-		"RGB", "GBR", "BRG", "BGR", "INVERTED",
+		"RGB", "GBR", "BRG", "BGR", "INVERTED", "MONO", "MONO INVERTED"
 	};
 
 	FrameBuffer m_fb; // the current framebuffer, constantly updating

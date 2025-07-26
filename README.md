@@ -213,17 +213,20 @@ To do so set the `[gui_dialogs]:file_type` setting in ibmulator.ini to `native`.
 #### VGA color mode
 
 The VGA image can be displayed using different color modes to try to solve
-issues related to color blindness.  
-The available color modes are:
+issues related to color blindness.
 
- * RGB: Red - Green - Blue channel order (the default)
- * GBR: Green - Blue - Red channel order
- * BRG: Blue - Red - Green channel order
- * BGR: Blue - Green - Red channel order
- * inverted: color inversion
+You can set the color mode at start-up setting the `[display]:color_mode` to one
+of the following values:
 
-You can set a color mode at start-up using the `[display]:color_mode` setting or
-using the following default key bindings at run-time:
+ * `rgb`: Red - Green - Blue channel order (the default)
+ * `gbr`: Green - Blue - Red channel order
+ * `brg`: Blue - Red - Green channel order
+ * `bgr`: Blue - Green - Red channel order
+ * `inverted`: color inversion
+ * `mono`: high contrast black-and-white monochromatic
+ * `mono inverted`: inverted monochromatic
+
+At run-time you can use the following default key bindings:
 
  * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>8</kbd> : cycle to previous VGA color mode
  * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>9</kbd> : cycle to next VGA color mode

@@ -158,7 +158,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";           contrast: Monitor contrast, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";         saturation: Monitor saturation, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";         color_mode: Color mode of the VGA image.\n"
-";                     Possible values: rgb, gbr, brg, bgr, inverted\n"
+";                     Possible values: rgb, gbr, brg, bgr, inverted, mono, mono inverted\n"
 ";      ambient_light: Intensity of the ambient light, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";  shader_input_size: Shader's input texture size.\n"
 ";                     Possible values: auto, crtc, video_mode.\n"

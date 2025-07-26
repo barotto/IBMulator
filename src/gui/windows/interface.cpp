@@ -487,14 +487,17 @@ void Interface::config_changed(bool _startup)
 	PINFOF(LOG_V0, LOG_GUI, "Installed a %s monitor\n", is_mono?"monochrome":"color");
 
 	ini_enum_map_t color_modes = {
-		{ "",         VGADisplay::COLOR_MODE_RGB },
-		{ "auto",     VGADisplay::COLOR_MODE_RGB },
-		{ "default",  VGADisplay::COLOR_MODE_RGB },
-		{ "rgb",      VGADisplay::COLOR_MODE_RGB },
-		{ "gbr",      VGADisplay::COLOR_MODE_GBR },
-		{ "brg",      VGADisplay::COLOR_MODE_BRG },
-		{ "bgr",      VGADisplay::COLOR_MODE_BGR },
-		{ "inverted", VGADisplay::COLOR_MODE_INVERTED },
+		{ "",              VGADisplay::COLOR_MODE_RGB },
+		{ "default",       VGADisplay::COLOR_MODE_RGB },
+		{ "rgb",           VGADisplay::COLOR_MODE_RGB },
+		{ "gbr",           VGADisplay::COLOR_MODE_GBR },
+		{ "brg",           VGADisplay::COLOR_MODE_BRG },
+		{ "bgr",           VGADisplay::COLOR_MODE_BGR },
+		{ "inv",           VGADisplay::COLOR_MODE_INVERTED },
+		{ "inverted",      VGADisplay::COLOR_MODE_INVERTED },
+		{ "mono",          VGADisplay::COLOR_MODE_MONO },
+		{ "mono inv",      VGADisplay::COLOR_MODE_MONO_INVERTED },
+		{ "mono inverted", VGADisplay::COLOR_MODE_MONO_INVERTED },
 	};
 	int color_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_COLOR_MODE, color_modes);
 	set_vga_color_mode(color_mode, 0);
@@ -1228,7 +1231,7 @@ void Interface::set_vga_color_mode(int _mode, int _cycle)
 		}
 	}
 
-	PINFOF(LOG_V1, LOG_GUI, "VGA color mode: %s\n", VGADisplay::ColorModeName[mode]);
+	PINFOF(LOG_V2, LOG_GUI, "VGA color mode: %s\n", VGADisplay::ColorModeName[mode]);
 }
 
 void Interface::sig_state_restored()
@@ -1315,7 +1318,7 @@ void Interface::show_welcome_screen(const Keymap *_keymap, unsigned _mode)
 
 	cx = bd; cy = 1;
 	ps("Welcome to ", 0xf, bg, bd);
-	ps(PACKAGE_STRING "\n\n", 0xa, 0x9, bd);
+	ps(PACKAGE_STRING "\n\n", 0xb, 0x1, bd);
 	ps(PACKAGE_NAME " is free software, you can redistribute it and/or modify it"
 			" under\nthe terms of the GNU GPL v.3+\n\n", 0x7, bg, bd);
 
