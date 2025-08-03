@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,8 @@
 class Machine;
 class GUI;
 
-class SysDebugger386 : public SysDebugger
+
+class SysDebugger386 final : public SysDebugger
 {
 private:
 	struct s_386core {
@@ -44,22 +45,23 @@ private:
 
 	static event_map_t ms_evt_map;
 
+public:
+	SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_button);
+
+	void update() override;
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return SysDebugger386::ms_evt_map; }
+
+private:
 	void on_CPU_skip(Rml::Event &);
 	void on_CPU_bp_btn(Rml::Event &);
 	void on_fs_dump(Rml::Event &);
 	void on_gs_dump(Rml::Event &);
 
 	const std::string & disasm(uint32_t _eip, bool _analyze, uint * _size);
-
-public:
-
-	SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_button);
-	~SysDebugger386();
-
-	virtual void create();
-	virtual void update();
-
-	event_map_t & get_event_map() { return SysDebugger386::ms_evt_map; }
 };
+
 
 #endif

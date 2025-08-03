@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,10 +32,6 @@ event_map_t StateSaveInfo::ms_evt_map = {
 StateSaveInfo::StateSaveInfo(GUI * _gui)
 :
 Window(_gui, "state_save_info.rml")
-{
-}
-
-StateSaveInfo::~StateSaveInfo()
 {
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -44,14 +44,10 @@ event_map_t NormalInterface::ms_evt_map = {
 	GUI_EVT_T( "system_bar",        "dblclick",  Interface::on_dblclick )
 };
 
-NormalInterface::NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers)
+NormalInterface::NormalInterface(GUI * _gui, Machine *_machine, Mixer *_mixer, EventTimers *_timers)
 :
-Interface(_machine, _gui, _mixer, "normal_interface.rml"),
+Interface(_gui, _machine, _mixer, "normal_interface.rml"),
 m_timers(_timers)
-{
-}
-
-NormalInterface::~NormalInterface()
 {
 }
 

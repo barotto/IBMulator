@@ -28,6 +28,7 @@
 class GUI;
 class Window;
 
+
 typedef void (Rml::EventListener::*event_handler_t)(Rml::Event &);
 typedef std::pair<std::string,std::string> event_map_key_t;
 struct event_handler_info {
@@ -39,6 +40,7 @@ typedef std::map<event_map_key_t, event_handler_info> event_map_t;
 
 #define GUI_EVT(id, type, fn) { {id, type}, { true, static_cast<event_handler_t>(&fn), false } }
 #define GUI_EVT_T(id, type, fn) { {id, type}, { true, static_cast<event_handler_t>(&fn), true } }
+
 
 class Window : public Rml::EventListener
 {
@@ -55,6 +57,7 @@ protected:
 	static event_map_t ms_event_map;
 	bool m_evts_added = false;
 	Rml::ModalFlag m_modal = Rml::ModalFlag::None;
+	std::list<std::unique_ptr<Window>> m_children;
 	struct TargetCb {
 		std::map<Rml::Element*, std::set<event_map_key_t>> elems;
 		std::map<event_map_key_t, TargetCbFn> funcs;
@@ -63,17 +66,49 @@ protected:
 
 	bool m_handlers_enabled = true;
 	unsigned m_auto_id = 0;
+	bool m_to_show = false;
 
 public:
 	Window(GUI * _gui, const char *_rml);
 	virtual ~Window() {}
 
-	virtual void create();
 	virtual void show();
 	virtual void hide();
 	virtual void close();
 	virtual void focus();
 	virtual bool is_visible();
+
+	template <class WinClass, class... args>
+	WinClass* new_child_window(args&&... _args) {
+		Window *win = m_children.emplace_back(new WinClass(m_gui, std::forward<args>(_args)...)).get();
+		win->create();
+		return dynamic_cast<WinClass*>(win);
+	}
+
+	template <class WinClass>
+	std::vector<WinClass*> get_child_windows() const {
+		std::vector<WinClass*> wins;
+		for(auto &child : m_children) {
+			auto win = dynamic_cast<WinClass*>(child.get());
+			if(win) {
+				wins.push_back(win);
+			}
+		}
+		return wins;
+	}
+
+	template <class WinClass>
+	void close_child_windows() {
+		for(auto child = m_children.begin(); child != m_children.end();) {
+			auto win = dynamic_cast<WinClass*>(child->get());
+			if(win) {
+				win->close();
+				child = m_children.erase(child);
+			} else {
+				child++;
+			}
+		}
+	}
 
 	bool is_loaded() const { return m_wnd; }
 
@@ -84,9 +119,10 @@ public:
 	void set_title(const std::string &_title);
 
 	virtual void setup_data_bindings() {}
-	virtual void config_changing() {}
-	virtual void config_changed(bool /*_startup*/) {}
+	virtual void config_changing();
+	virtual void config_changed(bool _startup);
 	virtual void update();
+	virtual void update_after();
 
 	Rml::ElementDocument *document() { return m_wnd; }
 
@@ -100,8 +136,12 @@ public:
 	virtual void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
 
 protected:
-	void ProcessEvent(Rml::Event &);
-	void OnAttach(Rml::Element* _element);
+	virtual void create();
+
+	void show_children();
+
+	void ProcessEvent(Rml::Event &) override;
+	void OnAttach(Rml::Element* _element) override;
 	virtual event_map_t & get_event_map() { return ms_event_map; }
 	Rml::Element * get_element(const std::string &_id);
 	std::string create_id();
@@ -120,7 +160,6 @@ protected:
 	void unregister_all_target_cb(Rml::Element *_root);
 
 	void register_lazy_update_fn(std::function<void()> _fn);
-	void update_after();
 
 	static Rml::Input::KeyIdentifier get_key_identifier(Rml::Event &);
 	static std::string get_form_input_value(Rml::Event &);
@@ -136,5 +175,6 @@ protected:
 	static void scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
 	static void scroll_horizontal_into_view(Rml::Element *_element, Rml::Element *_container = nullptr);
 };
+
 
 #endif

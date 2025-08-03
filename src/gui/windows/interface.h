@@ -24,10 +24,7 @@
 #include "gui/screen_renderer.h"
 #include "interface_fx.h"
 #include "interface_screen.h"
-#include "fileselect.h"
-#include "state_save.h"
-#include "state_save_info.h"
-#include "state_load.h"
+#include "state_record.h"
 #include "hardware/devices/vga.h"
 #include "hardware/devices/floppyevents.h"
 #include "hardware/devices/floppyctrl.h"
@@ -40,6 +37,11 @@ class Mixer;
 class FloppyCtrl;
 class StorageCtrl;
 class Keymap;
+class FileSelect;
+class StateSave;
+class StateSaveInfo;
+class StateLoad;
+
 
 class Interface : public Window
 {
@@ -66,10 +68,10 @@ protected:
 
 	Machine *m_machine;
 	Mixer *m_mixer;
-	std::unique_ptr<FileSelect> m_fs;
-	std::unique_ptr<StateSave> m_state_save;
-	std::unique_ptr<StateSaveInfo> m_state_save_info;
-	std::unique_ptr<StateLoad> m_state_load;
+	FileSelect *m_fs = nullptr;
+	StateSave *m_state_save = nullptr;
+	StateSaveInfo *m_state_save_info = nullptr;
+	StateLoad *m_state_load = nullptr;
 
 	struct UIDrive;
 	struct UIDriveBlock;
@@ -186,18 +188,16 @@ protected:
 	std::vector<uint16_t> m_welcome_data;
 
 public:
-	Interface(Machine *_machine, GUI * _gui, Mixer *_mixer, const char *_rml);
-	virtual ~Interface();
+	Interface(GUI * _gui, Machine *_machine, Mixer *_mixer, const char *_rml);
 
-	virtual void create();
-	virtual void update();
-	virtual void close();
-	virtual void config_changing();
-	virtual void config_changed(bool _startup);
-	virtual bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	void update() override;
+	void close() override;
+	void config_changing() override;
+	void config_changed(bool _startup) override;
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
+
 	virtual void container_size_changed(int /*_width*/, int /*_height*/) {}
 	vec2i get_size() { return m_size; }
-
 	void show_message(const char* _mex);
 
 	void save_state(StateRecord::Info _info);
@@ -243,6 +243,8 @@ public:
 	void show_welcome_screen(const Keymap *_keymap, unsigned _mode);
 
 protected:
+	void create() override;
+
 	virtual void set_hdd_active(bool _active);
 
 	std::vector<unsigned> get_floppy_types(unsigned _drive);
@@ -257,5 +259,6 @@ protected:
 	
 	void reset_savestate_dialogs(std::string _dir);
 };
+
 
 #endif

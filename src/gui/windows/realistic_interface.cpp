@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -79,13 +79,9 @@ void RealisticScreen::render()
 	m_renderer->render_end();
 }
 
-RealisticInterface::RealisticInterface(Machine *_machine, GUI *_gui, Mixer *_mixer)
+RealisticInterface::RealisticInterface(GUI * _gui, Machine *_machine, Mixer *_mixer)
 :
-Interface(_machine, _gui, _mixer, "realistic_interface.rml")
-{
-}
-
-RealisticInterface::~RealisticInterface()
+Interface(_gui, _machine, _mixer, "realistic_interface.rml")
 {
 }
 

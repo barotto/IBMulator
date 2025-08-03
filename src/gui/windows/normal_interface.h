@@ -26,7 +26,8 @@
 class Machine;
 class GUI;
 
-class NormalInterface : public Interface
+
+class NormalInterface final : public Interface
 {
 public:
 	enum class ZoomMode: unsigned {
@@ -58,31 +59,31 @@ private:
 	EventTimers *m_timers;
 	TimerID m_compact_ifc_timer = NULL_TIMER_ID;
 	uint64_t m_compact_ifc_timeout = 1_s;
-	
+
 public:
 	static event_map_t ms_evt_map;
 
-	NormalInterface(Machine *_machine, GUI * _gui, Mixer *_mixer, EventTimers *_timers);
-	~NormalInterface();
+	NormalInterface(GUI * _gui, Machine *_machine, Mixer *_mixer, EventTimers *_timers);
 
-	virtual void create();
-	virtual void update();
-	virtual void config_changed(bool);
-	virtual bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	void update() override;
+	void config_changed(bool) override;
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 
-	void container_size_changed(int _width, int _height);
+	void container_size_changed(int _width, int _height) override;
 
-	void action(int);
+	void action(int) override;
 	void grab_input(bool _grabbed);
-	bool is_system_visible() const;
+	bool is_system_visible() const override;
 	void hide_system();
 	void show_system();
 	ZoomMode zoom_mode() const { return m_cur_zoom; }
 
-	event_map_t & get_event_map() { return NormalInterface::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return NormalInterface::ms_evt_map; }
 
 private:
-	void set_hdd_active(bool _active);
+	void set_hdd_active(bool _active) override;
 
 	void set_zoom(ZoomMode _zoom);
 	void on_pause(Rml::Event &);
@@ -95,5 +96,6 @@ private:
 	void collapse_sysunit(bool _collapsed);
 	bool is_sysunit_collapsed();
 };
+
 
 #endif

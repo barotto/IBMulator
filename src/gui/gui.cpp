@@ -2254,10 +2254,11 @@ GUI * GUI::instance()
 SDL_Surface * GUI::load_surface(const std::string &_name)
 {
 	if(_name == "gui:printer_preview") {
-		if(!m_windows.printer_ctrl) {
+		auto printer_ctrl = m_windows.get_window<PrinterControl>();
+		if(!printer_ctrl) {
 			throw std::runtime_error("Printer not present");
 		}
-		return m_windows.printer_ctrl->get_preview_surface();
+		return printer_ctrl->get_preview_surface();
 	}
 	throw std::runtime_error(str_format("Invalid internal surface name: %s\n", _name.c_str()));
 }
@@ -2322,17 +2323,14 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 		std::function<void()> _on_action1, std::function<void()> _on_action2)
 {
 	m_cmd_queue.push([=]() {
-		if(m_windows.message_wnd) {
-			m_windows.message_wnd->close();
-		}
-		m_windows.message_wnd = std::make_unique<MessageWnd>(this);
-		m_windows.message_wnd->create();
-		m_windows.message_wnd->set_modal(true);
-		m_windows.message_wnd->set_title(_title);
-		m_windows.message_wnd->set_message(_message);
-		m_windows.message_wnd->set_type(_type);
-		m_windows.message_wnd->set_callbacks(_on_action1, _on_action2);
-		m_windows.message_wnd->show();
+		m_windows.root->close_child_windows<MessageWnd>();
+		auto message_wnd = m_windows.root->new_child_window<MessageWnd>();
+		message_wnd->set_modal(true);
+		message_wnd->set_title(_title);
+		message_wnd->set_message(_message);
+		message_wnd->set_type(_type);
+		message_wnd->set_callbacks(_on_action1, _on_action2);
+		message_wnd->show();
 	});
 }
 
@@ -2348,22 +2346,22 @@ bool GUI::are_windows_visible()
 
 void GUI::show_options_window()
 {
-	m_windows.show_options();
+	m_windows.show_window<ShaderParameters>();
 }
 
 void GUI::toggle_mixer_control()
 {
-	m_windows.toggle_mixer();
+	m_windows.toggle_window<MixerControl>();
 }
 
 void GUI::toggle_dbg_windows()
 {
-	m_windows.toggle_dbg();
+	m_windows.toggle_window<DebugTools>();
 }
 
 void GUI::toggle_printer_control()
 {
-	m_windows.toggle_printer();
+	m_windows.toggle_window<PrinterControl>();
 }
 
 bool GUI::is_video_recording() const
@@ -2417,8 +2415,9 @@ void GUI::pevt_func_set_audio_ch(const ProgramEvent::Func &_func, EventPhase _ph
 		channel++;
 	}
 
-	m_windows.audio_osd->set_channel(channel);
-	m_windows.audio_osd->show();
+	auto audio_osd = m_windows.get_window<AudioOSD>();
+	audio_osd->set_channel(channel);
+	audio_osd->show();
 }
 
 void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &, EventPhase _phase)
@@ -2430,8 +2429,9 @@ void GUI::pevt_func_set_next_audio_ch(const ProgramEvent::Func &, EventPhase _ph
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Set next Mixer channel event\n");
 
-	m_windows.audio_osd->next_channel();
-	m_windows.audio_osd->show();
+	auto audio_osd = m_windows.get_window<AudioOSD>();
+	audio_osd->next_channel();
+	audio_osd->show();
 }
 
 void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &, EventPhase _phase)
@@ -2442,8 +2442,9 @@ void GUI::pevt_func_set_prev_audio_ch(const ProgramEvent::Func &, EventPhase _ph
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Set prev Mixer channel event\n");
 
-	m_windows.audio_osd->prev_channel();
-	m_windows.audio_osd->show();
+	auto audio_osd = m_windows.get_window<AudioOSD>();
+	audio_osd->prev_channel();
+	audio_osd->show();
 }
 
 void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2456,8 +2457,9 @@ void GUI::pevt_func_set_audio_volume(const ProgramEvent::Func &_func, EventPhase
 
 	float amount = float(_func.params[0]) / 100.f;
 
-	m_windows.audio_osd->change_volume(amount);
-	m_windows.audio_osd->show();
+	auto audio_osd = m_windows.get_window<AudioOSD>();
+	audio_osd->change_volume(amount);
+	audio_osd->show();
 }
 
 void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase _phase)
@@ -2508,7 +2510,7 @@ void GUI::pevt_func_toggle_status_ind(const ProgramEvent::Func&, EventPhase _pha
 		return;
 	}
 	PDEBUGF(LOG_V1, LOG_GUI, "Toggle status indicators func event\n");
-	m_windows.toggle_status();
+	m_windows.toggle_window<Status>();
 }
 
 void GUI::pevt_func_toggle_dbg_wnd(const ProgramEvent::Func&, EventPhase _phase)
@@ -2672,7 +2674,7 @@ void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)
 	grab_input(!m_input.grab);
 	
 	if(m_mode == GUI_MODE_NORMAL) {
-		NormalInterface *interface = dynamic_cast<NormalInterface*>(m_windows.interface.get());
+		NormalInterface *interface = dynamic_cast<NormalInterface*>(m_windows.interface);
 		if(interface) {
 			interface->grab_input(m_input.grab);
 		}
@@ -3055,40 +3057,36 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 {
 	m_gui = _gui;
 
-	desktop = std::make_unique<Desktop>(_gui);
-	desktop->show();
+	root = std::make_unique<Desktop>(_gui);
+	root->create();
+	root->show();
 
 	if(_mode == GUI_MODE_REALISTIC) {
-		interface = std::make_unique<RealisticInterface>(_machine, _gui, _mixer);
+		interface = root->new_child_window<RealisticInterface>(_machine, _mixer);
 	} else {
-		interface = std::make_unique<NormalInterface>(_machine, _gui, _mixer, &timers);
+		interface = root->new_child_window<NormalInterface>(_machine, _mixer, &timers);
 	}
 	interface->show();
 
-	status = std::make_unique<Status>(_gui, _machine);
-	status->create();
-	status_wnd = false;
-	if(g_program.config().get_bool(GUI_SECTION, GUI_SHOW_INDICATORS)) {
+	auto status = root->new_child_window<Status>(_machine);
+	if(g_program.config().get_bool_or_default(GUI_SECTION, GUI_SHOW_INDICATORS)) {
 		status->show();
-		status_wnd = true;
 	}
 
 	auto printer = _machine->get_printer();
 	if(printer) {
-		printer_ctrl = std::make_unique<PrinterControl>(_gui, printer);
+		root->new_child_window<PrinterControl>(printer);
 	}
-	
+
 	auto renderer = interface->screen_renderer();
 	if(renderer->get_shader_params()) {
-		options_wnd = std::make_unique<ShaderParameters>(_gui, renderer);
+		root->new_child_window<ShaderParameters>(renderer);
 	}
 
-	mixer_ctrl = std::make_unique<MixerControl>(_gui, _mixer);
+	root->new_child_window<MixerControl>(_mixer);
+	root->new_child_window<AudioOSD>(_mixer);
 
-	audio_osd = std::make_unique<AudioOSD>(_gui, _mixer);
-
-	//debug
-	dbgtools = std::make_unique<DebugTools>(_gui, _machine, _mixer);
+	root->new_child_window<DebugTools>(_machine, _mixer);
 
 	ifcmex_timer = timers.register_timer([this](uint64_t){
 		if(interface) {
@@ -3096,45 +3094,27 @@ void GUI::WindowManager::init(Machine *_machine, GUI *_gui, Mixer *_mixer, uint 
 		}
 	}, "main interface messages");
 	dbgmex_timer = timers.register_timer([this](uint64_t){
-		if(dbgtools) {
-			dbgtools->show_message("");
-		}
+		root->get_child_windows<DebugTools>()[0]->show_message("");
 	}, "debug messages");
 
 	static SysDbgMessage sysdbgmsg(_gui, false);
 	static IfaceMessage ifacemsg(_gui, false);
 	g_syslog.add_device(LOG_INFO, LOG_MACHINE, &sysdbgmsg);
 	g_syslog.add_device(LOG_ERROR, LOG_ALL_FACILITIES, &ifacemsg);
-	
+
 	interface->focus();
 }
 
 void GUI::WindowManager::config_changing()
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
-
-	desktop->config_changing();
-	interface->config_changing();
-	if(status) {
-		status->config_changing();
-	}
-	dbgtools->config_changing();
-	mixer_ctrl->config_changing();
-	audio_osd->config_changing();
+	root->config_changing();
 }
 
 void GUI::WindowManager::config_changed(bool _startup)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
-
-	desktop->config_changed(_startup);
-	interface->config_changed(_startup);
-	if(status) {
-		status->config_changed(_startup);
-	}
-	dbgtools->config_changed(_startup);
-	mixer_ctrl->config_changed(_startup);
-	audio_osd->config_changed(_startup);
+	root->config_changed(_startup);
 }
 
 void GUI::WindowManager::show_ifc_message(const char* _mex)
@@ -3149,8 +3129,9 @@ void GUI::WindowManager::show_ifc_message(const char* _mex)
 void GUI::WindowManager::show_dbg_message(const char* _mex)
 {
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
-	if(dbgtools != nullptr) {
-		dbgtools->show_message(_mex);
+	auto win = root->get_child_windows<DebugTools>();
+	if(!win.empty() && !win[0]->is_visible()) {
+		win[0]->show_message(_mex);
 		timers.activate_timer(dbgmex_timer, 3_s, false);
 	}
 }
@@ -3169,31 +3150,7 @@ void GUI::WindowManager::update(uint64_t _current_time)
 	// updates can't call any function that needs a lock on ms_rml_mutex
 	std::lock_guard<std::mutex> lock(ms_rml_mutex);
 
-	interface->update();
-
-	if(options_wnd && options_wnd->is_visible()) {
-		options_wnd->update();
-	}
-
-	if(mixer_ctrl->is_visible()) {
-		mixer_ctrl->update();
-	}
-
-	if(debug_wnds) {
-		dbgtools->update();
-	}
-
-	if(status) {
-		status->update();
-	}
-
-	if(printer_ctrl && printer_ctrl->is_visible()) {
-		printer_ctrl->update();
-	}
-
-	if(audio_osd->is_visible()) {
-		audio_osd->update();
-	}
+	root->update();
 
 	// timers are where the timed windows events take place
 	// like the interface messages clears
@@ -3214,28 +3171,7 @@ void GUI::WindowManager::update_after()
 {
 	// called after the Rml::Context::Update()
 	// should be used to update the DOM during event callbacks
-
-	interface->update_after();
-
-	if(options_wnd) {
-		options_wnd->update_after();
-	}
-
-	if(mixer_ctrl) {
-		mixer_ctrl->update_after();
-	}
-
-	if(debug_wnds) {
-		dbgtools->update_after();
-	}
-
-	if(status) {
-		status->update_after();
-	}
-
-	if(printer_ctrl) {
-		printer_ctrl->update_after();
-	}
+	root->update_after();
 }
 
 void GUI::WindowManager::update_window_size(int _w, int _h)
@@ -3271,52 +3207,36 @@ void GUI::WindowManager::update_window_size(int _w, int _h)
 	}
 }
 
-void GUI::WindowManager::show_options()
+template <class WinClass>
+WinClass* GUI::WindowManager::get_window()
 {
-	if(options_wnd && !options_wnd->is_visible()) {
-		options_wnd->show();
+	auto win = root->get_child_windows<WinClass>();
+	if(win.empty()) {
+		return nullptr;
 	}
+	return win[0];
 }
 
-void GUI::WindowManager::toggle_mixer()
+template <class WinClass>
+void GUI::WindowManager::toggle_window()
 {
-	if(!mixer_ctrl->is_visible()) {
-		mixer_ctrl->show();
-	} else {
-		mixer_ctrl->hide();
-	}
-}
-
-void GUI::WindowManager::toggle_dbg()
-{
-	debug_wnds = !debug_wnds;
-	if(debug_wnds) {
-		dbgtools->show();
-	} else {
-		dbgtools->hide();
-	}
-}
-
-void GUI::WindowManager::toggle_printer()
-{
-	if(!printer_ctrl) {
+	auto win = root->get_child_windows<WinClass>();
+	if(win.empty()) {
 		return;
 	}
-
-	if(!printer_ctrl->is_visible()) {
-		printer_ctrl->show();
+	if(!win[0]->is_visible()) {
+		win[0]->show();
 	} else {
-		printer_ctrl->hide();
+		win[0]->hide();
 	}
 }
 
-void GUI::WindowManager::toggle_status()
+template <class WinClass>
+void GUI::WindowManager::show_window()
 {
-	status_wnd = !status_wnd;
-	if(status_wnd) {
-		status->show();
-	} else {
-		status->hide();
+	auto win = root->get_child_windows<WinClass>();
+	if(!win.empty() && !win[0]->is_visible()) {
+		win[0]->show();
 	}
 }
 
@@ -3424,25 +3344,8 @@ void GUI::WindowManager::shutdown()
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shutting down, registered docs: %u\n", static_cast<unsigned>(m_docs.size()));
 
-	if(status) {
-		status->close();
-		status.reset(nullptr);
-	}
-
-	if(dbgtools) {
-		dbgtools->close();
-		dbgtools.reset(nullptr);
-	}
-
-	if(desktop) {
-		desktop->close();
-		desktop.reset(nullptr);
-	}
-
-	if(interface) {
-		interface->close();
-		interface.reset(nullptr);
-	}
+	root->close();
+	root.reset(nullptr);
 
 	PDEBUGF(LOG_V1, LOG_GUI, "Window manager shut down: registered docs: %u\n", static_cast<unsigned>(m_docs.size()));
 }

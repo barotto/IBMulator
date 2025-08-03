@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,12 +25,12 @@
 class Machine;
 class GUI;
 
-class DevStatus : public DebugTools::DebugWindow
+
+class DevStatus final : public DebugTools::DebugWindow
 {
 private:
-
 	Machine *m_machine;
-	
+
 	struct {
 		bool is_running;
 		Rml::Element *btn_update;
@@ -72,13 +72,14 @@ private:
 	void update_vga();
 
 public:
-
 	DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine);
-	~DevStatus();
 
-	virtual void create();
-	virtual void update();
-	event_map_t & get_event_map() { return DevStatus::ms_evt_map; }
+	void update() override;
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return DevStatus::ms_evt_map; }
 };
+
 
 #endif

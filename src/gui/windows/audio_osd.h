@@ -24,7 +24,7 @@
 #include "mixer.h"
 
 
-class AudioOSD : public Window
+class AudioOSD final : public Window
 {
 private:
 	Mixer *m_mixer;
@@ -48,13 +48,12 @@ private:
 public:
 	AudioOSD(GUI *_gui, Mixer *_mixer);
 
-	void create();
-	void config_changed(bool);
-	void show();
-	void hide() {}
-	void update();
-	bool is_visible();
-	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	void config_changed(bool) override;
+	void show() override;
+	void hide() override {}
+	void update() override;
+	bool is_visible() override;
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 
 	void set_channel(int _id);
 	void next_channel();
@@ -64,7 +63,9 @@ public:
 
 	void change_volume(float _amount);
 
-	event_map_t & get_event_map() { return AudioOSD::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return AudioOSD::ms_evt_map; }
 
 private:
 	void update_channel_name();

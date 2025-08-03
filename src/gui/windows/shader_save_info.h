@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -23,7 +23,8 @@
 #include "../window.h"
 #include <RmlUi/Core.h>
 
-class ShaderSaveInfo : public Window
+
+class ShaderSaveInfo final : public Window
 {
 private:
 	static event_map_t ms_evt_map;
@@ -47,9 +48,7 @@ public:
 public:
 	ShaderSaveInfo(GUI * _gui);
 
-	void show();
-
-	virtual void create();
+	void show() override;
 
 	void set_shader_path(std::string);
 	void set_callbacks(
@@ -59,15 +58,15 @@ public:
 		m_cancel_callbk = _cancel_callback;
 	}
 
-	event_map_t & get_event_map() { return ShaderSaveInfo::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return ShaderSaveInfo::ms_evt_map; }
 
 private:
-
 	void on_save(Rml::Event &);
-	void on_cancel(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
+	void on_cancel(Rml::Event &) override;
+	void on_keydown(Rml::Event &_ev) override;
 };
-
 
 
 #endif

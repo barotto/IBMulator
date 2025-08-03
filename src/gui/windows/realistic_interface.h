@@ -30,19 +30,18 @@ class Machine;
 class GUI;
 
 
-class RealisticScreen : public InterfaceScreen
+class RealisticScreen final : public InterfaceScreen
 {
 public:
 	RealisticScreen(GUI *_gui);
 
-	void render();
+	void render() override;
 };
 
 
-class RealisticInterface : public Interface
+class RealisticInterface final : public Interface
 {
 private:
-
 	Rml::Element *m_system = nullptr,
 	             *m_led_power = nullptr,
 	             *m_led_power_bloom = nullptr,
@@ -89,23 +88,22 @@ private:
 	ShaderPreset::RenderingSize m_rendering_size = ShaderPreset::VGA;
 
 public:
+	RealisticInterface(GUI * _gui, Machine *_machine, Mixer *_mixer);
 
-	RealisticInterface(Machine *_machine, GUI * _gui, Mixer *_mixer);
-	~RealisticInterface();
+	void update() override;
+	void config_changed(bool) override;
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 
-	virtual void create();
-	virtual void update();
-	virtual void config_changed(bool);
-	virtual bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	void container_size_changed(int _width, int _height) override;
 
-	void container_size_changed(int _width, int _height);
+	void action(int) override;
+	void set_audio_volume(float _value) override;
+	void set_video_brightness(float _value) override;
+	void set_video_contrast(float _value) override;
 
-	event_map_t & get_event_map() { return RealisticInterface::ms_evt_map; }
-
-	void action(int);
-	void set_audio_volume(float _value);
-	void set_video_brightness(float _value);
-	void set_video_contrast(float _value);
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return RealisticInterface::ms_evt_map; }
 
 private:
 	vec2f display_size(int _width, int _height, float _xoffset, float _scale, float _aspect);
@@ -118,9 +116,9 @@ private:
 	void  on_contrast_drag(Rml::Event &);
 	void  on_dragstart(Rml::Event &);
 	void  on_dragend(Rml::Event &);
-	void  on_power(Rml::Event &);
 
 	inline RealisticScreen * screen() { return (RealisticScreen *)m_screen.get(); }
 };
+
 
 #endif

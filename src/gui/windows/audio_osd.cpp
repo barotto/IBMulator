@@ -264,7 +264,7 @@ void AudioOSD::update_vu_meter(Rml::Element *_meter, double _db)
 
 bool AudioOSD::is_visible()
 {
-	if(m_wnd && m_wnd->IsVisible()) {
+	if(Window::is_visible()) {
 		float opacity = m_wnd->GetProperty(Rml::PropertyId::Opacity)->Get<float>();
 		return opacity > 0.1;
 	}

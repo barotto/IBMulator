@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,16 +36,12 @@ event_map_t Stats::ms_evt_map = {
 	GUI_EVT( "*",       "keydown", Window::on_keydown )
 };
 
-Stats::Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, Rml::Element *_button)
+Stats::Stats(GUI * _gui, Machine *_machine, Mixer *_mixer, Rml::Element *_button)
 :
 DebugTools::DebugWindow(_gui, "stats.rml", _button),
 m_machine(_machine), m_mixer(_mixer)
 {
 
-}
-
-Stats::~Stats()
-{
 }
 
 void Stats::create()

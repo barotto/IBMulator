@@ -21,6 +21,7 @@
 #include "gui/gui.h"
 #include "shader_parameters.h"
 #include "program.h"
+#include "shader_save_info.h"
 
 event_map_t ShaderParameters::ms_evt_map = {
 	GUI_EVT("close", "click", Window::on_cancel),
@@ -47,15 +48,6 @@ m_params(*_renderer->get_shader_params())
 void ShaderParameters::show()
 {
 	Window::show();
-}
-
-void ShaderParameters::close()
-{
-	if(m_save_info) {
-		m_save_info->close();
-		m_save_info.reset(nullptr);
-	}
-	Window::close();
 }
 
 void ShaderParameters::create()
@@ -104,8 +96,7 @@ void ShaderParameters::create()
 
 	m_tools.search = dynamic_cast<Rml::ElementFormControlInput*>(get_element("search"));
 
-	m_save_info = std::make_unique<ShaderSaveInfo>(m_gui);
-	m_save_info->create();
+	m_save_info = new_child_window<ShaderSaveInfo>();
 	m_save_info->set_modal(true);
 
 	m_click_timer = m_gui->timers().register_timer([this](uint64_t){
@@ -124,6 +115,7 @@ void ShaderParameters::create()
 void ShaderParameters::update()
 {
 	Window::update();
+
 	if(m_do_search) {
 		auto search_for = str_trim(m_tools.search->GetValue());
 		if(search_for == m_cur_search) {

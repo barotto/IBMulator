@@ -22,9 +22,11 @@
 
 #include "../window.h"
 #include <RmlUi/Core.h>
-#include "shader_save_info.h"
 
-class ShaderParameters : public Window
+class ShaderSaveInfo;
+
+
+class ShaderParameters final : public Window
 {
 private:
 	static event_map_t ms_evt_map;
@@ -33,9 +35,8 @@ private:
 	ScreenRenderer::ShaderParamsList m_params;
 	using ShaderParamsMap = std::map<std::string, size_t>;
 	ShaderParamsMap m_params_map;
-	
-	std::unique_ptr<ShaderSaveInfo> m_save_info;
-	
+	ShaderSaveInfo *m_save_info = nullptr;
+
 	struct {
 		Rml::ElementFormControlInput *search;
 	} m_tools = {};
@@ -50,21 +51,22 @@ private:
 public:
 	ShaderParameters(GUI *_gui, ScreenRenderer *_renderer);
 
-	void show();
-	void create();
-	void update();
-	void close();
-	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
+	void show() override;
+	void update() override;
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
 	void on_search(Rml::Event &_ev);
 	void on_reset_all(Rml::Event &_ev);
-	void on_keydown(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev) override;
 	void on_click(Rml::Event &_ev);
 	void on_mousedown(Rml::Event &_ev);
 	void on_value_focus(Rml::Event &_ev);
 	void on_value_keydown(Rml::Event &_ev);
 	void on_save(Rml::Event &_ev);
-	event_map_t & get_event_map() { return ShaderParameters::ms_evt_map; }
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return ShaderParameters::ms_evt_map; }
 
 private:
 	void increase_value(std::string _name);
@@ -72,7 +74,6 @@ private:
 	void reset_value(std::string _name);
 	void update_value(ScreenRenderer::ShaderParam &, float _new_value);
 };
-
 
 
 #endif

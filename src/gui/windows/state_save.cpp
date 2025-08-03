@@ -44,15 +44,17 @@ event_map_t StateSave::ms_evt_map = {
 	GUI_EVT( "*",        "keyup",     StateDialog::on_keyup )
 };
 
-StateSave::StateSave(GUI * _gui)
-: StateDialog(_gui, "state_save.rml")
+StateSave::StateSave(GUI * _gui, std::string _mode, std::string _order, int _zoom)
+:
+StateDialog(_gui, "state_save.rml", _mode, _order, _zoom)
 {
 	m_top_entry = {"new_save_entry", "NEW SAVE", "", 0, STATE_RECORD_VERSION};
 }
 
-void StateSave::create(std::string _mode, std::string _order, int _zoom)
+void StateSave::create()
 {
-	StateDialog::create(_mode, _order, _zoom);
+	StateDialog::create();
+
 	m_action_button_el->SetAttribute("aria-label", "save state");
 }
 

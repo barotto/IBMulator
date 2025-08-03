@@ -24,33 +24,36 @@
 
 class GUI;
 
+
 class ItemsDialog : public Window
 {
 protected:
+	std::string m_entries_el_id;
 	Rml::Element *m_entries_el = nullptr;
+	std::string m_entries_cont_el_id;
 	Rml::Element *m_entries_cont_el = nullptr;
 
 	Rml::Element *m_selected_entry = nullptr;
 
+	std::string m_mode;
 	int m_min_zoom = 0;
 	int m_max_zoom = 0;
-	int m_zoom = 0;
+	int m_zoom;
 
 	bool m_moving_selection = false;
 
 public:
-	ItemsDialog(GUI *_gui, const char *_rml);
-	virtual ~ItemsDialog();
+	ItemsDialog(GUI *_gui, const char *_rml,
+		std::string _mode, int _zoom,
+		const std::string &_entries_el, const std::string &_entries_cont_el);
 
-	using Window::create;
-	virtual void create(std::string _mode, int _zoom,
-			const std::string &_entries_el, const std::string &_entries_cont_el);
-
-	virtual bool would_handle(Rml::Input::KeyIdentifier, int);
-	virtual void on_keydown(Rml::Event &);
+	bool would_handle(Rml::Input::KeyIdentifier, int) override;
+	void on_keydown(Rml::Event &) override;
 	virtual void on_keyup(Rml::Event &);
 
 protected:
+	void create() override;
+
 	virtual Rml::Element* get_entry(Rml::Element *target_el);
 	virtual Rml::Element* get_entry(Rml::Event &_ev);
 	virtual void entry_select(Rml::Element *_entry_el);
@@ -62,7 +65,6 @@ protected:
 
 	void move_selection(Rml::Input::KeyIdentifier _id);
 };
-
 
 
 #endif

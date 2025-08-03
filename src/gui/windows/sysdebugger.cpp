@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,10 +37,6 @@ SysDebugger::SysDebugger(GUI * _gui, const char *_rml, Machine *_machine,
 :
 DebugWindow(_gui, _rml, _button),
 m_machine(_machine)
-{
-}
-
-SysDebugger::~SysDebugger()
 {
 }
 

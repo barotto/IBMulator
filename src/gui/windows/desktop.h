@@ -23,16 +23,16 @@
 
 #include <RmlUi/Core/EventListener.h>
 
-
 class GUI;
 
-class Desktop : public Window
+
+class Desktop final : public Window
 {
 public:
 	Desktop(GUI * _gui);
-	~Desktop();
 
-	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 };
+
 
 #endif

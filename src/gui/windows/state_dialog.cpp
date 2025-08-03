@@ -28,9 +28,24 @@
 #include <regex>
 #include <RmlUi/Core.h>
 
-void StateDialog::create(std::string _mode, std::string _order, int _zoom)
+StateDialog::StateDialog(GUI *_gui, const char *_doc, std::string _mode, std::string _order, int _zoom)
+:
+ItemsDialog(_gui, _doc, _mode, _zoom, "entries", "entries")
 {
-	Window::create();
+	if(_order == "date") {
+		m_order = Order::BY_DATE;
+	} else if(_order == "title" || _order == "desc") {
+		m_order = Order::BY_DESC;
+	} else if(_order == "slot") {
+		m_order = Order::BY_SLOT;
+	} else {
+		m_order = Order::BY_DATE;
+	}
+}
+
+void StateDialog::create()
+{
+	ItemsDialog::create();
 
 	m_panel_el = get_element("panel");
 	m_panel_screen_el = get_element("panel_screen");
@@ -40,20 +55,20 @@ void StateDialog::create(std::string _mode, std::string _order, int _zoom)
 
 	m_max_zoom = MAX_ZOOM;
 	m_min_zoom = MIN_ZOOM;
-	ItemsDialog::create(_mode, _zoom, "entries", "entries");
 
-	if(_order == "date") {
-		m_order = Order::BY_DATE;
-		get_element("order_date")->SetAttribute("checked", true);
-	} else if(_order == "title" || _order == "desc") {
-		m_order = Order::BY_DESC;
-		get_element("order_title")->SetAttribute("checked", true);
-	} else if(_order == "slot") {
-		m_order = Order::BY_SLOT;
-		get_element("order_slot")->SetAttribute("checked", true);
-	} else {
-		m_order = Order::BY_DATE;
-		get_element("order_date")->SetAttribute("checked", true);
+	set_mode(m_mode);
+	set_zoom(0);
+
+	switch(m_order) {
+		case Order::BY_DATE:
+			get_element("order_date")->SetAttribute("checked", true);
+			break;
+		case Order::BY_DESC:
+			get_element("order_title")->SetAttribute("checked", true);
+			break;
+		case Order::BY_SLOT:
+			get_element("order_slot")->SetAttribute("checked", true);
+			break;
 	}
 }
 

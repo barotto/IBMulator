@@ -21,13 +21,14 @@
 #define IBMULATOR_GUI_MIXER_CONTROL_H
 
 #include "window.h"
-#include "mixer_save_info.h"
 
 class Mixer;
 class MixerChannel;
 class GUI;
+class MixerSaveInfo;
 
-class MixerControl : public Window
+
+class MixerControl final : public Window
 {
 private:
 	Mixer *m_mixer;
@@ -66,7 +67,7 @@ private:
 	std::map<AppConfig::ConfigPair, std::vector<MixerChannel*>> m_ch_links;
 	TimerID m_click_timer = NULL_TIMER_ID;
 	std::function<void()> m_click_cb;
-	std::unique_ptr<MixerSaveInfo> m_save_info;
+	MixerSaveInfo *m_save_info = nullptr;
 	bool m_vu_meters = true;
 	static constexpr float ms_max_volume = MIXER_MAX_VOLUME * 100.f;
 
@@ -75,17 +76,17 @@ private:
 public:
 	MixerControl(GUI *_gui, Mixer *_mixer);
 
-	void create();
-	void show();
-	void update();
-	void config_changed(bool _startup);
-	void close();
-	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
+	void show() override;
+	void update() override;
+	void config_changed(bool _startup) override;
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
-	void on_focus(Rml::Event &_ev);
-	void on_keydown(Rml::Event &_ev);
-	
-	event_map_t & get_event_map() { return MixerControl::ms_evt_map; }
+	void on_focus(Rml::Event &_ev) override;
+	void on_keydown(Rml::Event &_ev) override;
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return MixerControl::ms_evt_map; }
 
 private:
 	void update_vu_meter(Rml::Element *meter, double db);
@@ -174,5 +175,6 @@ private:
 
 	int find_ch_id(Rml::Element *_el);
 };
+
 
 #endif

@@ -34,10 +34,6 @@ Window(_gui, "message_wnd.rml")
 {
 }
 
-MessageWnd::~MessageWnd()
-{
-}
-
 void MessageWnd::create()
 {
 	Window::create();

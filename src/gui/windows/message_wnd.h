@@ -23,17 +23,16 @@
 #include "../window.h"
 #include <RmlUi/Core.h>
 
-class MessageWnd : public Window
+
+class MessageWnd final : public Window
 {
 public:
-
 	enum class Type {
 		MSGW_OK,
 		MSGW_YES_NO
 	};
 
 private:
-
 	static event_map_t ms_evt_map;
 	std::function<void()> m_action1_clbk = nullptr;
 	std::function<void()> m_action2_clbk = nullptr;
@@ -41,13 +40,10 @@ private:
 	std::string m_message;
 
 public:
-
 	MessageWnd(GUI * _gui);
-	virtual ~MessageWnd();
 
-	void create();
-	void show();
-	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
+	void show() override;
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
 	void set_type(Type);
 	void set_callbacks(
@@ -59,16 +55,16 @@ public:
 	void set_title(const std::string &);
 	void set_message(const std::string &);
 
-	event_map_t & get_event_map() { return MessageWnd::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return MessageWnd::ms_evt_map; }
 
 private:
-
 	void on_action(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
-	
+	void on_keydown(Rml::Event &_ev) override;
+
 	Rml::ElementPtr create_button(std::string _label, std::string _id, Rml::ElementDocument *_doc) const;
 };
-
 
 
 #endif

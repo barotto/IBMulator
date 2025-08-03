@@ -23,32 +23,29 @@
 #include "state_dialog.h"
 
 
-class StateLoad : public StateDialog
+class StateLoad final : public StateDialog
 {
 private:
-
 	static event_map_t ms_evt_map;
 
 public:
+	StateLoad(GUI * _gui, std::string _mode, std::string _order, int _zoom);
 
-	StateLoad(GUI * _gui) : StateDialog(_gui, "state_load.rml") {}
-	virtual ~StateLoad() {}
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
-	void create(std::string _mode, std::string _order, int _zoom);
-	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
-	
 	void action_on_record(std::string _rec_name);
 
-	virtual void on_keydown(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev) override;
 
-	event_map_t & get_event_map() { return StateLoad::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return StateLoad::ms_evt_map; }
 
 private:
 
 	void on_entry(Rml::Event &);
 	void on_entry_blur(Rml::Event &);
 };
-
 
 
 #endif

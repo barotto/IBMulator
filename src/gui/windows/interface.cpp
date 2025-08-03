@@ -25,16 +25,20 @@
 #include "utils.h"
 #include <sys/stat.h>
 #include "stb/stb.h"
-
 #include "tinyfiledialogs/tinyfiledialogs.h"
-
 #include "hardware/devices/floppyctrl.h"
 #include "hardware/devices/storagectrl_ata.h"
+#include "fileselect.h"
+#include "state_save.h"
+#include "state_save_info.h"
+#include "state_load.h"
+
 using namespace std::placeholders;
 
 #define CDROM_LED_BLINK_TIME 250_ms
 
-Interface::Interface(Machine *_machine, GUI *_gui, Mixer *_mixer, const char *_rml)
+
+Interface::Interface(GUI *_gui, Machine *_machine, Mixer *_mixer, const char *_rml)
 :
 Window(_gui, _rml),
 m_machine(_machine),
@@ -45,30 +49,9 @@ m_mixer(_mixer)
 	);
 }
 
-Interface::~Interface()
-{
-}
-
 void Interface::close()
 {
 	remove_drives();
-
-	if(m_fs) {
-		m_fs->close();
-		m_fs.reset(nullptr);
-	}
-	if(m_state_save) {
-		m_state_save->close();
-		m_state_save.reset(nullptr);
-	}
-	if(m_state_load) {
-		m_state_load->close();
-		m_state_load.reset(nullptr);
-	}
-	if(m_state_save_info) {
-		m_state_save_info->close();
-		m_state_save_info.reset(nullptr);
-	}
 
 	Window::close();
 }
@@ -89,8 +72,7 @@ void Interface::create()
 	auto mode = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_MODE, "grid");
 	auto order = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_FILE_ORDER, "name");
 	int zoom = g_program.config().get_int(DIALOGS_SECTION, DIALOGS_FILE_ZOOM, 2);
-	m_fs = std::make_unique<FileSelect>(m_gui);
-	m_fs->create(mode, order, zoom);
+	m_fs = new_child_window<FileSelect>(mode, order, zoom);
 	m_fs->set_cancel_callbk(nullptr);
 	std::string home_dir = g_program.config().get_file(PROGRAM_SECTION, PROGRAM_MEDIA_DIR, FILE_TYPE_USER);
 	std::string cfg_home = g_program.config().get_cfg_home();
@@ -108,16 +90,13 @@ void Interface::create()
 	order = g_program.config().get_string(DIALOGS_SECTION, DIALOGS_SAVE_ORDER, "date");
 	zoom = g_program.config().get_int(DIALOGS_SECTION, DIALOGS_SAVE_ZOOM, 1);
 
-	m_state_save = std::make_unique<StateSave>(m_gui);
-	m_state_save->create(mode, order, zoom);
+	m_state_save = new_child_window<StateSave>(mode, order, zoom);
 	m_state_save->set_modal(true);
 
-	m_state_save_info = std::make_unique<StateSaveInfo>(m_gui);
-	m_state_save_info->create();
+	m_state_save_info = new_child_window<StateSaveInfo>();
 	m_state_save_info->set_modal(true);
 
-	m_state_load = std::make_unique<StateLoad>(m_gui);
-	m_state_load->create(mode, order, zoom);
+	m_state_load = new_child_window<StateLoad>(mode, order, zoom);
 	m_state_load->set_modal(true);
 
 	m_audio_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
@@ -501,6 +480,8 @@ void Interface::config_changed(bool _startup)
 	};
 	int color_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_COLOR_MODE, color_modes);
 	set_vga_color_mode(color_mode, 0);
+
+	Window::config_changed(_startup);
 }
 
 void Interface::UIDrive::set_medium_string(std::string _filename)
@@ -812,16 +793,7 @@ void Interface::update()
 		m_speed->SetProperty("visibility", "hidden");
 	}
 
-	// Child windows
-	if(m_fs->is_visible()) {
-		m_fs->update();
-	}
-	if(m_state_load->is_visible()) {
-		m_state_load->update();
-	}
-	if(m_state_save->is_visible()) {
-		m_state_save->update();
-	}
+	Window::update();
 }
 
 void Interface::on_power(Rml::Event &)

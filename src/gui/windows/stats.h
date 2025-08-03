@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,10 +26,10 @@ class Machine;
 class GUI;
 class Mixer;
 
-class Stats : public DebugTools::DebugWindow
+
+class Stats final : public DebugTools::DebugWindow
 {
 private:
-
 	struct {
 		Rml::Element *fps, *machine, *mixer;
 	} m_stats = {};
@@ -42,18 +42,18 @@ private:
 	void on_cmd_reset(Rml::Event &);
 	
 public:
+	Stats(GUI * _gui, Machine *_machine, Mixer *_mixer, Rml::Element *_button);
 
-	Stats(Machine *_machine, GUI * _gui, Mixer *_mixer, Rml::Element *_button);
-	~Stats();
-	
-	virtual void create();
-	virtual void update();
+	void update() override;
 
-	event_map_t & get_event_map() { return Stats::ms_evt_map; }
-	
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return Stats::ms_evt_map; }
+
 private:
 	void print(std::ostream &_os, const Bench &_bench);
 	void print(std::ostream &_os, const HWBench &_bench);
 };
+
 
 #endif

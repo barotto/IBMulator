@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,10 +25,10 @@
 #include "hardware/devices/floppyfmt.h"
 #include <RmlUi/Core.h>
 
-class NewFloppy : public Window
+
+class NewFloppy final : public Window
 {
 private:
-
 	static event_map_t ms_evt_map;
 	std::function<void(std::string, std::string, FloppyDisk::StdType, std::string)> m_create_clbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
@@ -41,13 +41,9 @@ private:
 	std::string m_dest_dir;
 
 public:
-
 	NewFloppy(GUI *_gui);
-	virtual ~NewFloppy();
 
-	void show();
-
-	virtual void create();
+	void show() override;
 
 	void set_dirs(std::string _cwd, std::string _media) {
 		m_cwd = _cwd;
@@ -61,18 +57,19 @@ public:
 		m_cancel_callbk = _cancel_callback;
 	}
 
-	event_map_t & get_event_map() { return NewFloppy::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return NewFloppy::ms_evt_map; }
 
 private:
 	static const std::map<FloppyDisk::StdType, std::string> std_names;
 	static const std::map<std::string, FloppyDisk::StdType> std_enums;
-	
+
 	void on_destdir(Rml::Event &);
 	void on_create_file(Rml::Event &);
-	void on_cancel(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
+	void on_cancel(Rml::Event &) override;
+	void on_keydown(Rml::Event &_ev) override;
 };
-
 
 
 #endif

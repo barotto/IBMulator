@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -71,6 +71,17 @@ private:
 	Rml::Element *m_post = nullptr;
 	Rml::Element *m_message = nullptr;
 
+public:
+	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine, Rml::Element *_button);
+
+	void update() override;
+
+	void show_message(const char* _mex);
+
+protected:
+	void create() override;
+
+private:
 	void on_cmd_switch_power(Rml::Event &);
 	void on_cmd_pause(Rml::Event &);
 	void on_cmd_resume(Rml::Event &);
@@ -91,16 +102,7 @@ private:
 	void on_close(Rml::Event &);
 
 	void read_memory(uint32_t _address, uint8_t *_buf, uint _len);
-
-public:
-
-	SysDebugger(GUI * _gui, const char *_rml, Machine *_machine, Rml::Element *_button);
-	virtual ~SysDebugger();
-
-	virtual void create();
-	virtual void update();
-
-	void show_message(const char* _mex);
 };
+
 
 #endif

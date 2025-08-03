@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,7 +24,8 @@
 #include "hardware/printer/mps_printer.h"
 #include <RmlUi/Core.h>
 
-class PrinterControl : public Window
+
+class PrinterControl final : public Window
 {
 private:
 	static event_map_t ms_evt_map;
@@ -40,21 +41,22 @@ private:
 	
 public:
 	PrinterControl(GUI *_gui, std::shared_ptr<MpsPrinter> _printer);
-	virtual ~PrinterControl();
+	~PrinterControl() override;
 
-	void show();
-	void create();
-	void update();
+	void show() override;
+	void update() override;
 
 	SDL_Surface * get_preview_surface();
-	event_map_t & get_event_map() { return PrinterControl::ms_evt_map; }
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return PrinterControl::ms_evt_map; }
 
 private:
 	void on_online(Rml::Event &);
 	void on_form_feed(Rml::Event &);
 	void on_line_feed(Rml::Event &);
 };
-
 
 
 #endif

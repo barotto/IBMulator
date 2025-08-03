@@ -27,6 +27,7 @@
 
 class GUI;
 
+
 class StateDialog : public ItemsDialog
 {
 protected:
@@ -126,15 +127,11 @@ protected:
 	static constexpr int MAX_ZOOM = 2;
 	
 public:
+	StateDialog(GUI *_gui, const char *_doc, std::string _mode, std::string _order, int _zoom);
 
-	StateDialog(GUI *_gui, const char *_doc) : ItemsDialog(_gui,_doc) {}
-	virtual ~StateDialog() {}
-
-	using ItemsDialog::create;
-	virtual void create(std::string _mode, std::string _order, int _zoom);
-	virtual void show();
-	virtual void update();
-	virtual bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
+	void show() override;
+	void update() override;
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
 	void set_callbacks(
 		std::function<void(StateRecord::Info)> _on_action,
@@ -158,11 +155,11 @@ public:
 	
 	void set_selection(std::string _slot_name);
 
-	void on_focus(Rml::Event &_ev);
+	void on_focus(Rml::Event &_ev) override;
 
-	virtual void on_cancel(Rml::Event &_ev);
-	virtual void on_keydown(Rml::Event &_ev);
-	virtual void on_keyup(Rml::Event &_ev);
+	void on_cancel(Rml::Event &_ev) override;
+	void on_keydown(Rml::Event &_ev) override;
+	void on_keyup(Rml::Event &_ev) override;
 
 	void on_action(Rml::Event &);
 	void on_delete(Rml::Event &);
@@ -173,24 +170,25 @@ public:
 	void on_entries_focus(Rml::Event &_ev);
 
 protected:
+	void create() override;
+
 	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Element *target_el);
 	std::pair<const StateRecord*,Rml::Element*> get_sr_entry(Rml::Event &);
 
 	bool is_empty() const { return ms_rec_map.empty() && m_top_entry.version==0; }
 
-	virtual void entry_select(Rml::Element *_entry);
-	virtual void entry_select(std::string _name, Rml::Element *_entry, bool _tts_append = true);
-	virtual void entry_deselect();
+	void entry_select(Rml::Element *_entry) override;
+	void entry_select(std::string _name, Rml::Element *_entry, bool _tts_append = true);
+	void entry_deselect() override;
 
-	void set_mode(std::string _mode);
-	void set_zoom(int _amount);
+	void set_mode(std::string _mode) override;
+	void set_zoom(int _amount) override;
 
 	virtual void speak_entries(bool _describe);
 	virtual void speak_entry(const StateRecord* _sr, Rml::Element *_entry_el, bool _append);
 	virtual void speak_content(bool _append);
-	virtual void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
+	virtual void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal) override;
 };
-
 
 
 #endif

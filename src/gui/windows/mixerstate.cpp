@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,10 +33,6 @@ MixerState::MixerState(GUI *_gui, Rml::Element *_button, Mixer *_mixer)
 :
 DebugTools::DebugWindow(_gui, "mixerstate.rml", _button),
 m_mixer(_mixer)
-{
-}
-
-MixerState::~MixerState()
 {
 }
 

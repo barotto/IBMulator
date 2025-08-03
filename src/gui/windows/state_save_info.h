@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021  Marco Bortolin
+ * Copyright (C) 2021-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,10 +24,10 @@
 #include "state_record.h"
 #include <RmlUi/Core.h>
 
-class StateSaveInfo : public Window
+
+class StateSaveInfo final : public Window
 {
 private:
-
 	static event_map_t ms_evt_map;
 	std::function<void(StateRecord::Info)> m_save_callbk = nullptr;
 	std::function<void()> m_cancel_callbk = nullptr;
@@ -35,13 +35,9 @@ private:
 	StateRecord::Info m_state_info;
 
 public:
-
 	StateSaveInfo(GUI * _gui);
-	virtual ~StateSaveInfo();
 
-	void show();
-
-	virtual void create();
+	void show() override;
 
 	void set_state(StateRecord::Info _info);
 	void set_callbacks(
@@ -51,15 +47,15 @@ public:
 		m_cancel_callbk = _cancel_callback;
 	}
 
-	event_map_t & get_event_map() { return StateSaveInfo::ms_evt_map; }
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return StateSaveInfo::ms_evt_map; }
 
 private:
-
 	void on_save(Rml::Event &);
-	void on_cancel(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
+	void on_cancel(Rml::Event &) override;
+	void on_keydown(Rml::Event &_ev) override;
 };
-
 
 
 #endif

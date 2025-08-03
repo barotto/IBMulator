@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,10 +36,6 @@ Status::Status(GUI * _gui, Machine *_machine)
 :
 Window(_gui, "status.rml"),
 m_machine(_machine)
-{
-}
-
-Status::~Status()
 {
 }
 

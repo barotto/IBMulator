@@ -234,22 +234,13 @@ protected:
 	class WindowManager : public Rml::EventListener {
 	public:
 		GUI *m_gui = nullptr;
-		bool debug_wnds = false;
-		bool status_wnd = false;
 		int windows_count = 0; // debug
 		std::list<std::pair<Rml::ElementDocument*, Window*>> m_docs; // ElementDocument objects are property of RmlUI
 		Rml::ElementDocument *last_focus_doc = nullptr;
 		Rml::ElementDocument *revert_focus = nullptr;
 
-		std::unique_ptr<Desktop> desktop;
-		std::unique_ptr<Interface> interface;
-		std::unique_ptr<Status> status;
-		std::unique_ptr<ShaderParameters> options_wnd; // TODO: ShaderParameters is a placeholder
-		std::unique_ptr<MixerControl> mixer_ctrl;
-		std::unique_ptr<AudioOSD> audio_osd;
-		std::unique_ptr<DebugTools> dbgtools;
-		std::unique_ptr<MessageWnd> message_wnd;
-		std::unique_ptr<PrinterControl> printer_ctrl;
+		std::unique_ptr<Desktop> root;
+		Interface *interface = nullptr;
 
 		std::string last_ifc_mex;
 		std::string last_dbg_mex;
@@ -267,11 +258,9 @@ protected:
 		void update_after();
 		void update_window_size(int _w, int _h);
 		void shutdown();
-		void toggle_status();
-		void show_options();
-		void toggle_dbg();
-		void toggle_printer();
-		void toggle_mixer();
+		template <class WinClass> WinClass* get_window();
+		template <class WinClass> void toggle_window();
+		template <class WinClass> void show_window();
 		void show_ifc_message(const char* _mex);
 		void show_dbg_message(const char* _mex);
 		Rml::ElementDocument * current_doc();

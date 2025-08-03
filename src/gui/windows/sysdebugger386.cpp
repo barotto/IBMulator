@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -58,10 +58,6 @@ event_map_t SysDebugger386::ms_evt_map = {
 
 SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_button)
 : SysDebugger(_gui, "debugger386.rml", _machine, _button)
-{
-}
-
-SysDebugger386::~SysDebugger386()
 {
 }
 
@@ -130,6 +126,13 @@ const std::string & SysDebugger386::disasm(uint32_t _eip, bool _analyze, uint * 
 void SysDebugger386::update()
 {
 	if(!m_enabled) {
+		return;
+	}
+
+	// quick hack to limit the update freq
+	static bool upd = true;
+	upd = !upd;
+	if(!upd) {
 		return;
 	}
 

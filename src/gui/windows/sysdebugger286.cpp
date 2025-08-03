@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,10 +60,6 @@ SysDebugger(_gui, "debugger286.rml", _machine,  _button)
 {
 }
 
-SysDebugger286::~SysDebugger286()
-{
-}
-
 void SysDebugger286::create()
 {
 	SysDebugger::create();
@@ -102,6 +98,13 @@ const std::string & SysDebugger286::disasm(uint16_t _ip, bool _analyze, uint * _
 void SysDebugger286::update()
 {
 	if(!m_enabled) {
+		return;
+	}
+
+	// quick hack to limit the update freq
+	static bool upd = true;
+	upd = !upd;
+	if(!upd) {
 		return;
 	}
 

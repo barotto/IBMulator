@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,10 +45,6 @@ DevStatus::DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine)
 :
 DebugTools::DebugWindow(_gui, "devstatus.rml", _button),
 m_machine(_machine)
-{
-}
-
-DevStatus::~DevStatus()
 {
 }
 

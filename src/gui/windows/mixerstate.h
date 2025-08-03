@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,10 +26,10 @@ class Mixer;
 class MixerChannel;
 class GUI;
 
-class MixerState : public DebugTools::DebugWindow
+
+class MixerState final : public DebugTools::DebugWindow
 {
 private:
-
 	Mixer *m_mixer;
 	struct {
 		Rml::Element *state, *channels;
@@ -45,15 +45,15 @@ private:
 	static event_map_t ms_evt_map;
 
 public:
-
 	MixerState(GUI *_gui, Rml::Element *_button, Mixer *_mixer);
-	~MixerState();
 
-	virtual void create();
-	virtual void update();
-	virtual void config_changed(bool);
-	
-	event_map_t & get_event_map() { return MixerState::ms_evt_map; }
+	void update() override;
+	void config_changed(bool) override;
+
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return MixerState::ms_evt_map; }
 };
+
 
 #endif

@@ -23,38 +23,32 @@
 #include "state_dialog.h"
 
 
-class StateSave : public StateDialog
+class StateSave final : public StateDialog
 {
 private:
-
 	static event_map_t ms_evt_map;
 
 public:
+	StateSave(GUI * _gui, std::string _mode, std::string _order, int _zoom);
 
-	StateSave(GUI * _gui);
-	virtual ~StateSave() {}
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
-	void create(std::string _mode, std::string _order, int _zoom);
-	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
-
-	void entry_select(Rml::Element *_entry);
+	void entry_select(Rml::Element *_entry) override;
 	void entry_select(std::string _name, Rml::Element *_entry, bool _tts_append);
-	
-	void action_on_record(std::string _rec_name);
 
-	void on_keydown(Rml::Event &_ev);
+	void action_on_record(std::string _rec_name) override;
 
-	event_map_t & get_event_map() { return StateSave::ms_evt_map; }
+	void on_keydown(Rml::Event &_ev) override;
 
 protected:
-	virtual void speak_entry(const StateRecord* _sr, Rml::Element *_entry_el, bool _append);
+	void create() override;
+	event_map_t & get_event_map() override { return StateSave::ms_evt_map; }
+	void speak_entry(const StateRecord* _sr, Rml::Element *_entry_el, bool _append) override;
 
 private:
-
 	void on_entry(Rml::Event &);
 	void on_new_save(Rml::Event &);
 };
-
 
 
 #endif

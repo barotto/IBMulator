@@ -22,6 +22,7 @@
 #include "gui.h"
 #include "mixer.h"
 #include "mixer_control.h"
+#include "mixer_save_info.h"
 #include <RmlUi/Core.h>
 
 event_map_t MixerControl::ms_evt_map = {
@@ -54,8 +55,7 @@ void MixerControl::create()
 	get_element("audiocards")->AppendChild(create_category_block(MixerChannel::AUDIOCARD));
 	get_element("soundfx")->AppendChild(create_category_block(MixerChannel::SOUNDFX));
 
-	m_save_info = std::make_unique<MixerSaveInfo>(m_gui);
-	m_save_info->create();
+	m_save_info = new_child_window<MixerSaveInfo>();
 	m_save_info->set_modal(true);
 
 	m_click_timer = m_gui->timers().register_timer([this](uint64_t){
@@ -341,15 +341,6 @@ void MixerControl::config_changed(bool _startup)
 		add_aria_events(m_divs.audiocards_channels, {});
 		add_aria_events(m_divs.soundfx_channels, {});
 	}
-}
-
-void MixerControl::close()
-{
-	if(m_save_info) {
-		m_save_info->close();
-		m_save_info.reset(nullptr);
-	}
-	Window::close();
 }
 
 void MixerControl::init_channel_values(MixerChannel *_ch)

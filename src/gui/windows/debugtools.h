@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2024  Marco Bortolin
+ * Copyright (C) 2017-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -27,7 +27,7 @@ class Stats;
 class DevStatus;
 
 
-class DebugTools : public Window
+class DebugTools final : public Window
 {
 public:
 	class DebugWindow : public Window
@@ -39,22 +39,20 @@ public:
 		Rml::Element *m_button;
 
 	public:
-		virtual void show();
+		void show() override;
 		void enable(bool _value = true);
 		void toggle();
-		void on_cancel(Rml::Event &);
+		void on_cancel(Rml::Event &) override;
 
 		DebugWindow(GUI * _gui, const char *_rml, Rml::Element *_button);
+		virtual ~DebugWindow() {}
 	};
 
 private:
 	static event_map_t ms_evt_map;
-	Machine *m_machine;
-	Mixer *m_mixer;
-	std::unique_ptr<DebugWindow> m_statsw;
-	std::unique_ptr<DebugWindow> m_debuggerw;
-	std::unique_ptr<DebugWindow> m_devicesw;
-	std::unique_ptr<DebugWindow> m_mixerw;
+	Machine *m_machine = nullptr;
+	Mixer *m_mixer = nullptr;
+	SysDebugger *m_debuggerw = nullptr;
 
 	void on_stats(Rml::Event &);
 	void on_debugger(Rml::Event &);
@@ -65,22 +63,17 @@ private:
 
 public:
 	DebugTools(GUI * _gui, Machine *_machine, Mixer *_mixer);
-	~DebugTools();
 
-	virtual void create();
-	virtual void show();
-	virtual void hide();
-	virtual void update();
-	virtual void close();
-	virtual void config_changed(bool);
+	void show() override;
+	void hide() override;
+	void config_changed(bool) override;
+
 	void show_message(const char* _mex);
 
-	event_map_t & get_event_map() { return DebugTools::ms_evt_map; }
-	
 protected:
-	
+	void create() override;
+	event_map_t & get_event_map() override { return DebugTools::ms_evt_map; }
 };
-
 
 
 #endif

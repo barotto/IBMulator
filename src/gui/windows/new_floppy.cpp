@@ -64,10 +64,6 @@ Window(_gui, "new_floppy.rml")
 {
 }
 
-NewFloppy::~NewFloppy()
-{
-}
-
 void NewFloppy::set_compat_types(std::vector<unsigned> _ctypes,
 		const std::vector<std::unique_ptr<FloppyFmt>> &_formats)
 {

@@ -108,7 +108,7 @@ void Window::create()
 		setup_data_bindings();
 		m_wnd = m_gui->load_document(m_rml_docfile, this);
 		if(!m_wnd) {
-			PERRF(LOG_GUI, "Cannot load the '%s' document file\n", m_rml_docfile.c_str());
+			PERRF(LOG_GUI, "Cannot load the '%s' document file.\n", m_rml_docfile.c_str());
 			m_rml_docfile.clear();
 			throw std::exception();
 		}
@@ -118,6 +118,7 @@ void Window::create()
 void Window::show()
 {
 	if(!m_wnd) {
+		PDEBUGF(LOG_V0, LOG_GUI, "%s: Window should be created first!\n", m_rml_docfile.c_str());
 		create();
 	}
 	add_events();
@@ -126,19 +127,35 @@ void Window::show()
 			m_wnd->SetClass("modal", true);
 		}
 		m_wnd->Show(m_modal);
+		m_to_show = true; 
+	}
+}
+
+void Window::show_children()
+{
+	for(auto &child : m_children) {
+		child->show();
 	}
 }
 
 void Window::hide()
 {
+	for(auto &child : m_children) {
+		child->hide();
+	}
 	if(m_wnd && m_wnd->IsVisible()) {
 		m_gui->tts().enqueue("dialog window closed", TTS::Priority::Top);
 		m_wnd->Hide();
 	}
+	m_to_show = false;
 }
 
 void Window::close()
 {
+	for(auto &child : m_children) {
+		child->close();
+	}
+	m_children.clear();
 	if(m_wnd) {
 		hide();
 		m_wnd->Close();
@@ -158,6 +175,9 @@ void Window::focus()
 bool Window::is_visible()
 {
 	if(m_wnd) {
+		if(m_to_show) {
+			return false;
+		}
 		return m_wnd->IsVisible();
 	}
 	return false;
@@ -180,8 +200,27 @@ void Window::set_title(const std::string &_title)
 	}
 }
 
+void Window::config_changing()
+{
+	for(auto &child : m_children) {
+		child->config_changing();
+	}
+}
+
+void Window::config_changed(bool _startup)
+{
+	for(auto &child : m_children) {
+		child->config_changed(_startup);
+	}
+}
+
 void Window::update()
 {
+	for(auto &child : m_children) {
+		if(child->is_visible()) {
+			child->update();
+		}
+	}
 }
 
 Rml::Element * Window::get_element(const std::string &_id)
@@ -212,6 +251,11 @@ void Window::update_after()
 		fn();
 	}
 	m_lazy_update_fn.clear();
+	m_to_show = false;
+
+	for(auto &child : m_children) {
+		child->update_after();
+	}
 }
 
 void Window::register_handler(Rml::Element *_target, const std::string &_event_type, bool _is_targeted, event_handler_t _fn)
@@ -505,6 +549,11 @@ std::pair<Rml::Element*,int> Window::get_last_visible_element(Rml::Element *_ele
 void Window::scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_container)
 {
 	assert(_element);
+	auto element_height = _element->GetClientHeight();
+	if(element_height == 0) {
+		PDEBUGF(LOG_V1, LOG_GUI, "Cannot scroll into view a 0-height element.\n");
+		return;
+	}
 	if(!_container) {
 		_container = _element->GetParentNode();
 	}
@@ -513,12 +562,12 @@ void Window::scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_co
 	auto container_top = _container->GetAbsoluteTop();
 	auto element_top = _element->GetAbsoluteTop();
 	auto element_relative_top = element_top - container_top;
-	auto element_relative_bottom = element_relative_top + _element->GetClientHeight();
+	auto element_relative_bottom = element_relative_top + element_height;
 	Rml::ScrollIntoViewOptions options;
 	options.behavior = Rml::ScrollBehavior::Smooth;
 	options.horizontal = Rml::ScrollAlignment::Nearest;
 	if(element_relative_bottom > container_height) {
-		if(container_height > _element->GetClientHeight()) {
+		if(container_height > element_height) {
 			options.vertical = Rml::ScrollAlignment::End;
 		} else {
 			options.vertical = Rml::ScrollAlignment::Start;
@@ -534,6 +583,11 @@ void Window::scroll_vertical_into_view(Rml::Element *_element, Rml::Element *_co
 void Window::scroll_horizontal_into_view(Rml::Element *_element, Rml::Element *_container)
 {
 	assert(_element);
+	auto element_width = _element->GetClientWidth();
+	if(element_width == 0) {
+		PDEBUGF(LOG_V1, LOG_GUI, "Cannot scroll into view a 0-width element.\n");
+		return;
+	}
 	if(!_container) {
 		_container = _element->GetParentNode();
 	}
@@ -542,12 +596,12 @@ void Window::scroll_horizontal_into_view(Rml::Element *_element, Rml::Element *_
 	auto container_left = _container->GetAbsoluteLeft();
 	auto element_left = _element->GetAbsoluteLeft();
 	auto element_relative_left = element_left - container_left;
-	auto element_relative_right = element_relative_left + _element->GetClientWidth();
+	auto element_relative_right = element_relative_left + element_width;
 	Rml::ScrollIntoViewOptions options;
 	options.behavior = Rml::ScrollBehavior::Smooth;
 	options.vertical = Rml::ScrollAlignment::Nearest;
 	if(element_relative_right > container_width) {
-		if(container_width > _element->GetClientWidth()) {
+		if(container_width > element_width) {
 			options.horizontal = Rml::ScrollAlignment::End;
 		} else {
 			options.horizontal = Rml::ScrollAlignment::Start;

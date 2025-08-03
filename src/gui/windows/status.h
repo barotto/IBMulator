@@ -27,7 +27,8 @@ class FloppyCtrl;
 class StorageCtrl;
 class Serial;
 
-class Status : public Window
+
+class Status final : public Window
 {
 public:
 	enum IND {
@@ -66,18 +67,20 @@ private:
 
 public:
 	Status(GUI * _gui, Machine *_machine);
-	~Status();
 
-	void create();
-	void update();
-	void config_changed(bool);
-	bool would_handle(Rml::Input::KeyIdentifier, int) { return false; }
+	void update() override;
+	void config_changed(bool) override;
+	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 
 	void set_indicator(IND _ind, LED _s) {
 		m_indicators[_ind].set(_s);
 	}
 
 	void ProcessEvent(Rml::Event &) {}
+
+protected:
+	void create() override;
 };
+
 
 #endif

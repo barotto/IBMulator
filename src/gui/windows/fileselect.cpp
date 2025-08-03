@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include "fileselect.h"
 #include "gui.h"
 #include "filesys.h"
 #include <algorithm>
@@ -57,25 +58,26 @@ event_map_t FileSelect::ms_evt_map = {
 	GUI_EVT( "*",       "keyup",   FileSelect::on_keyup )
 };
 
-FileSelect::FileSelect(GUI * _gui)
+FileSelect::FileSelect(GUI * _gui, std::string _mode, std::string _order, int _zoom)
 :
-ItemsDialog(_gui, "fileselect.rml")
+ItemsDialog(_gui, "fileselect.rml", _mode, _zoom, "entries", "entries_container")
 {
+	if(_order == "date") {
+		m_order = Order::BY_DATE;
+	} else {
+		m_order = Order::BY_NAME;
+	}
 }
 
-FileSelect::~FileSelect()
+void FileSelect::create()
 {
-}
-
-void FileSelect::create(std::string _mode, std::string _order, int _zoom)
-{
-	Window::create();
+	ItemsDialog::create();
 
 	m_panel_el = get_element("info_panel");
 	m_buttons_entry_el = get_element("buttons_entry");
 	m_wprotect = dynamic_cast<Rml::ElementFormControl*>(get_element("wprotect"));
 	m_home_btn_el = get_element("home");
-	
+
 	auto drive_el = get_element("drive");
 	m_drives_mask = 0;
 #ifdef _WIN32
@@ -108,26 +110,26 @@ void FileSelect::create(std::string _mode, std::string _order, int _zoom)
 
 	m_max_zoom = MAX_ZOOM;
 	m_min_zoom = MIN_ZOOM;
-	ItemsDialog::create(_mode, _zoom, "entries", "entries_container");
 
-	if(_order == "date") {
-		m_order = Order::BY_DATE;
-		get_element("order_date")->SetAttribute("checked", true);
-	} else if(_order == "title" || _order == "desc") {
-		m_order = Order::BY_NAME;
-		get_element("order_name")->SetAttribute("checked", true);
-	} else {
-		m_order = Order::BY_NAME;
-		get_element("order_name")->SetAttribute("checked", true);
+	switch(m_order) {
+		case Order::BY_DATE:
+			get_element("order_date")->SetAttribute("checked", true);
+			break;
+		case  Order::BY_NAME:
+			get_element("order_name")->SetAttribute("checked", true);
+			break;
 	}
 
-	m_new_floppy = std::make_unique<NewFloppy>(m_gui);
-	m_new_floppy->create();
+	m_new_floppy = new_child_window<NewFloppy>();
 	m_new_floppy->set_modal(true);
+
 	m_new_btn = get_element("new_floppy");
 	m_new_btn->SetClass("invisible", true);
 
 	m_inforeq_btn = get_element("show_panel");
+
+	set_mode(m_mode);
+	set_zoom(0);
 }
 
 void FileSelect::set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_info_cb, bool _wp_option)
@@ -152,7 +154,7 @@ void FileSelect::set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_i
 
 void FileSelect::update()
 {
-	Window::update();
+	ItemsDialog::update();
 
 	const DirEntry *prev_selected = nullptr;
 	bool first_focus = m_dirty;
@@ -248,7 +250,7 @@ void FileSelect::show(const std::string &_filename)
 	disable(m_path_el.next);
 	disable(m_path_el.prev);
 
-	Window::show();
+	ItemsDialog::show();
 
 	if(m_lazy_reload) {
 		reload();
@@ -271,14 +273,6 @@ void FileSelect::on_focus(Rml::Event &_ev)
 			m_shown = true;
 		}
 	}
-}
-
-void FileSelect::close()
-{
-	m_new_floppy->close();
-	m_new_floppy.reset(nullptr);
-
-	Window::close();
 }
 
 std::pair<FileSelect::DirEntry*,Rml::Element*> FileSelect::get_de_entry(Rml::Element *target_el)

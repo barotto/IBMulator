@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,7 +24,7 @@
 #include <RmlUi/Core.h>
 
 
-class MixerSaveInfo : public Window
+class MixerSaveInfo final : public Window
 {
 private:
 	static event_map_t ms_evt_map;
@@ -44,10 +44,9 @@ public:
 public:
 	MixerSaveInfo(GUI * _gui);
 
-	void create();
-	void show();
-	void close();
-	void setup_data_bindings();
+	void show() override;
+	void close() override;
+	void setup_data_bindings() override;
 
 	void set_callbacks(
 		std::function<void()> _save_callback,
@@ -56,12 +55,14 @@ public:
 		m_cancel_callbk = _cancel_callback;
 	}
 
-	event_map_t & get_event_map() { return MixerSaveInfo::ms_evt_map; }
-	
+protected:
+	void create() override;
+	event_map_t & get_event_map() override { return MixerSaveInfo::ms_evt_map; }
+
 private:
 	void on_save(Rml::Event &);
-	void on_cancel(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
+	void on_cancel(Rml::Event &) override;
+	void on_keydown(Rml::Event &_ev) override;
 };
 
 

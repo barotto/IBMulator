@@ -26,7 +26,8 @@
 
 class GUI;
 
-class FileSelect : public ItemsDialog
+
+class FileSelect final : public ItemsDialog
 {
 public:
 	enum FileType {
@@ -142,28 +143,22 @@ private:
 
 	Rml::Element *m_inforeq_btn = nullptr;
 	Rml::Element *m_new_btn = nullptr;
-	std::unique_ptr<NewFloppy> m_new_floppy;
+	NewFloppy *m_new_floppy = nullptr;
 	const DirEntry *m_lazy_select = nullptr;
 	bool m_lazy_reload = false;
 	bool m_lazy_tts = true;
 	bool m_entries_focus = true;
-	
-public:
 
-	FileSelect(GUI * _gui);
-	~FileSelect();
+public:
+	FileSelect(GUI * _gui, std::string _mode, std::string _order, int _zoom);
 
 	void set_select_callbk(FileSelectCb _fn) { m_select_callbk = _fn; }
 	void set_cancel_callbk(CancelCb _fn) { m_cancel_callbk = _fn; }
 	void set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_info_cb, bool _wp_option);
 
-	virtual void create(std::string _mode, std::string _order, int _zoom);
-	virtual void update();
-	virtual void show(const std::string &_curr_file);
-	virtual void close();
-	virtual bool would_handle(Rml::Input::KeyIdentifier _key, int _mod);
-
-	event_map_t & get_event_map() { return FileSelect::ms_evt_map; }
+	void update() override;
+	void show(const std::string &_curr_file);
+	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 
 	void set_home(const std::string &_path);
 	std::string get_home() const { return m_home; }
@@ -181,8 +176,10 @@ public:
 	void speak_element(Rml::Element *_el, bool _with_label, bool _describe = false, TTS::Priority _pri = TTS::Priority::Normal);
 
 protected:
-	
-	void on_cancel(Rml::Event &);
+	void create() override;
+	event_map_t & get_event_map() override { return FileSelect::ms_evt_map; }
+
+	void on_cancel(Rml::Event &) override;
 	void on_entry(Rml::Event &);
 	void on_drive(Rml::Event &);
 	void on_prev_drive(Rml::Event &);
@@ -200,23 +197,23 @@ protected:
 	void on_reload(Rml::Event &);
 	void on_show_panel(Rml::Event &);
 	void on_new_floppy(Rml::Event &);
-	void on_keydown(Rml::Event &_ev);
-	void on_keyup(Rml::Event &_ev);
-	void on_focus(Rml::Event &_ev);
+	void on_keydown(Rml::Event &_ev) override;
+	void on_keyup(Rml::Event &_ev) override;
+	void on_focus(Rml::Event &_ev) override;
 
 	void clear();
 	void set_cwd(const std::string &_path);
 	void set_history();
-	void set_mode(std::string _mode);
-	void set_zoom(int _amount);
+	void set_mode(std::string _mode) override;
+	void set_zoom(int _amount) override;
 
 	void enter_drive(char _letter);
 	void read_dir(std::string _path, std::string _ext);
 	void enter_dir(const std::string &_path, bool _tts_selection = true, bool _tts_speak_path = false);
 	void enter_dir(const DirEntry *_de, bool _tts_selection = true, bool _tts_speak_path = false);
-	void entry_select(Rml::Element *_entry);
+	void entry_select(Rml::Element *_entry) override;
 	void entry_select(const DirEntry *_de, Rml::Element *_entry, bool _tts = true, bool _tts_append = true);
-	void entry_deselect();
+	void entry_deselect() override;
 	std::pair<std::string,std::string> get_path_parts(const std::string &_path);
 	std::pair<std::string,std::string> get_up_path();
 	const DirEntry * find_de(const std::string _name);
@@ -230,7 +227,6 @@ protected:
 	void speak_entry(const DirEntry *_de, const MediumInfoData &_de_info, Rml::Element *_entry_el, bool _append);
 	void speak_content(bool _append);
 };
-
 
 
 #endif

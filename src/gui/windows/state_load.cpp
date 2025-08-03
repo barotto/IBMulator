@@ -42,9 +42,16 @@ event_map_t StateLoad::ms_evt_map = {
 	GUI_EVT( "*",       "keyup",     StateDialog::on_keyup )
 };
 
-void StateLoad::create(std::string _mode, std::string _order, int _zoom)
+StateLoad::StateLoad(GUI * _gui, std::string _mode, std::string _order, int _zoom)
+:
+StateDialog(_gui, "state_load.rml", _mode, _order, _zoom)
 {
-	StateDialog::create(_mode, _order, _zoom);
+}
+
+void StateLoad::create()
+{
+	StateDialog::create();
+
 	get_element("extra_btns")->RemoveChild(get_element("new_save"));
 	m_action_button_el->SetAttribute("aria-label", "load state");
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,10 +26,6 @@
 Desktop::Desktop(GUI * _gui)
 :
 Window(_gui, "desktop.rml")
-{
-}
-
-Desktop::~Desktop()
 {
 }
 

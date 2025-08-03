@@ -22,26 +22,24 @@
 #include "gui.h"
 
 
-ItemsDialog::ItemsDialog(GUI * _gui, const char *_rml)
+ItemsDialog::ItemsDialog(GUI * _gui, const char *_rml,
+	std::string _mode, int _zoom,
+	const std::string &_entries_el, const std::string &_entries_cont_el)
 :
-Window(_gui, _rml)
+Window(_gui, _rml),
+m_entries_el_id(_entries_el),
+m_entries_cont_el_id(_entries_cont_el),
+m_mode(_mode),
+m_zoom(_zoom)
 {
 }
 
-ItemsDialog::~ItemsDialog()
+void ItemsDialog::create()
 {
-}
+	Window::create();
 
-void ItemsDialog::create(std::string _mode, int _zoom,
-		const std::string &_entries_el, const std::string &_entries_cont_el)
-{
-	m_entries_el = get_element(_entries_el);
-	m_entries_cont_el = get_element(_entries_cont_el);
-
-	set_mode(_mode);
-
-	m_zoom = _zoom;
-	set_zoom(0);
+	m_entries_el = get_element(m_entries_el_id);
+	m_entries_cont_el = get_element(m_entries_cont_el_id);
 }
 
 void ItemsDialog::set_mode(std::string _mode)
@@ -58,6 +56,7 @@ void ItemsDialog::set_mode(std::string _mode)
 	m_entries_el->SetClass("list", false);
 	m_entries_el->SetClass("grid", false);
 	m_entries_el->SetClass(_mode, true);
+	m_mode = _mode;
 }
 
 std::string ItemsDialog::get_mode()
