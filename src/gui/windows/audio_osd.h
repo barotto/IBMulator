@@ -52,7 +52,7 @@ public:
 	void show() override;
 	void hide() override {}
 	void update() override;
-	bool is_visible() override;
+	bool is_visible(bool _truly = false) override;
 	bool would_handle(Rml::Input::KeyIdentifier, int) override { return false; }
 
 	void set_channel(int _id);

@@ -232,7 +232,7 @@ void FileSelect::update()
 	} else if(!prev_selected && first_focus && m_entries_focus) {
 		m_entries_el->Focus();
 	}
-	if(m_dirty_scroll) {
+	if(m_dirty_scroll && is_visible(true)) {
 		if(m_selected_entry) {
 			scroll_vertical_into_view(m_selected_entry, m_entries_cont_el);
 		} else {

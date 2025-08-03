@@ -75,7 +75,9 @@ void StateDialog::create()
 void StateDialog::show()
 {
 	Window::show();
+
 	m_entries_focus = true;
+	m_dirty_scroll = 2;
 }
 
 void StateDialog::on_focus(Rml::Event &_ev)
@@ -174,7 +176,7 @@ void StateDialog::update()
 	} else if(prev_selected.empty() && (first_focus || m_entries_focus)) {
 		m_entries_el->Focus();
 	}
-	if(m_dirty_scroll) {
+	if(m_dirty_scroll && is_visible(true)) {
 		if(m_selected_entry) {
 			scroll_vertical_into_view(m_selected_entry);
 		} else {

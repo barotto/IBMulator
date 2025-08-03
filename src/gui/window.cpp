@@ -172,10 +172,10 @@ void Window::focus()
 	}
 }
 
-bool Window::is_visible()
+bool Window::is_visible(bool _truly)
 {
 	if(m_wnd) {
-		if(m_to_show) {
+		if(_truly && m_to_show) {
 			return false;
 		}
 		return m_wnd->IsVisible();

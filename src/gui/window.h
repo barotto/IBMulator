@@ -76,7 +76,7 @@ public:
 	virtual void hide();
 	virtual void close();
 	virtual void focus();
-	virtual bool is_visible();
+	virtual bool is_visible(bool _truly = false);
 
 	template <class WinClass, class... args>
 	WinClass* new_child_window(args&&... _args) {
