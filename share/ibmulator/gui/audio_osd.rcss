@@ -8,6 +8,7 @@ body
 	margin-bottom: auto;
 	background-color: #00000000;
 	pointer-events: none;
+	color: #ffffff;
 }
 
 body.with_vu_meter
