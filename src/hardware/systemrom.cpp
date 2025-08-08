@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -236,8 +236,8 @@ int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
 		throw std::exception();
 	}
 	PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' ...\n", _filename.c_str());
-	size = fread((void*)(m_data + _phyaddr), size, 1, file.get());
-	if(size != 1) {
+	auto result = fread((void*)(m_data + _phyaddr), size, 1, file.get());
+	if(result != 1) {
 		PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
@@ -246,6 +246,9 @@ int SystemROM::load_file(const std::string &_filename, uint32_t _phyaddr)
 
 void SystemROM::load_dir(const std::string &_dirname)
 {
+	//TODO this function should be refactored to remove special cases and load
+	// whatever ROM is present. let the caller complain in case of error.
+
 	DIR *dir;
 	struct dirent *ent;
 
@@ -256,6 +259,7 @@ void SystemROM::load_dir(const std::string &_dirname)
 	std::string dirname = _dirname + FS_SEP;
 	bool f80000found = false;
 	bool fc0000found = false;
+	bool fe0000found = false;
 	while((ent = readdir(dir)) != nullptr) {
 		struct stat sb;
 		std::string name = FileSys::to_utf8(ent->d_name);
@@ -266,8 +270,19 @@ void SystemROM::load_dir(const std::string &_dirname)
 		if(S_ISDIR(sb.st_mode)) {
 			continue;
 		} else {
-			std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-			if(!fc0000found && name.compare("fc0000.bin")==0) {
+			name = str_to_lower(name);
+			if(!fe0000found && name.compare("fe0000.bin")==0) {
+				// special case where only a 128K ROM is present (PS/1 2121 20MHz)
+				fe0000found = true;
+				int size = load_file(fullpath, 0xFE0000);
+				if(size != 128*1024) {
+					PERRF(LOG_MACHINE, "The file '%s' size (%d) is different from expected (%d).\n", name.c_str(), size, 128*1024);
+					throw std::exception();
+				}
+				// It seems the 2121 386-20 maps the 0xFE0000-0xFFFFFF range into 0xFC0000-0xFDFFFF as well.
+				// I'll just reload the same data.
+				load_file(fullpath, 0xFC0000);
+			} else if(!fc0000found && name.compare("fc0000.bin")==0) {
 				fc0000found = true;
 				load_file(fullpath, 0xFC0000);
 			} else if(!f80000found && name.compare("f80000.bin")==0) {
@@ -278,14 +293,14 @@ void SystemROM::load_dir(const std::string &_dirname)
 					break;
 				}
 			}
-			if(fc0000found && f80000found) {
+			if(fe0000found || (fc0000found && f80000found)) {
 				break;
 			}
 		}
 	}
 	closedir(dir);
-	if(!fc0000found) {
-		PERRF(LOG_MACHINE, "Required file FC0000.BIN missing in '%s'\n", _dirname.c_str());
+	if(!fc0000found && !fe0000found) {
+		PERRF(LOG_MACHINE, "Required file FC0000.BIN / FE0000.BIN missing in '%s'\n", _dirname.c_str());
 		throw std::exception();
 	}
 }
@@ -293,6 +308,9 @@ void SystemROM::load_dir(const std::string &_dirname)
 void SystemROM::load_archive(const std::string &_filename)
 {
 	//TODO add support for splitted 128K EPROMs
+
+	//TODO this function should be refactored to remove special cases and load
+	// whatever ROM is present. let the caller complain in case of error.
 
 	ZipFile zip;
 	try {
@@ -302,15 +320,35 @@ void SystemROM::load_archive(const std::string &_filename)
 		throw;
 	}
 
+	bool fe0000found = false;
 	bool f80000found = false;
 	bool singlerom = false;
 	bool fc0000found = false;
 	int64_t size;
 	uint8_t *dest;
 	while(zip.read_next_entry()) {
-		std::string name = zip.get_entry_name();
-		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-		if(!fc0000found && name.compare("fc0000.bin")==0) {
+		std::string name = str_to_lower(zip.get_entry_name());
+		if(!fe0000found && name.compare("fe0000.bin")==0) {
+			fe0000found = true;
+			size = zip.get_entry_size();
+			if(size != 128*1024) {
+				PERRF(LOG_MACHINE, "ROM file '%s' is of wrong size.\n", zip.get_entry_name().c_str());
+				throw std::exception();
+			}
+			dest = m_data + (0xFE0000 - SYS_ROM_ADDR);
+			PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' at 0xFE0000-0xFFFFFF ...\n", zip.get_entry_name().c_str());
+			size = zip.read_entry_data(dest, size);
+			if(size <= 0) {
+				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", zip.get_entry_name().c_str());
+				throw std::exception();
+			}
+			// It seems the 2121 386-20 maps the 0xFE0000-0xFFFFFF range into 0xFC0000-0xFDFFFF as well.
+			// I'll just copy the data.
+			PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' at 0xFC0000-0xFDFFFF ...\n", zip.get_entry_name().c_str());
+			auto from = dest;
+			dest = m_data + (0xFC0000 - SYS_ROM_ADDR);
+			std::memcpy(dest, from, size);
+		} else if(!fc0000found && name.compare("fc0000.bin")==0) {
 			fc0000found = true;
 			size = zip.get_entry_size();
 			if(size != 256*1024) {
@@ -323,7 +361,7 @@ void SystemROM::load_archive(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_data + (0xFC0000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", zip.get_entry_name().c_str());
+			PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' at 0xFC0000-0xFFFFFF ...\n", zip.get_entry_name().c_str());
 			size = zip.read_entry_data(dest, size);
 			if(size <= 0) {
 				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", zip.get_entry_name().c_str());
@@ -346,7 +384,8 @@ void SystemROM::load_archive(const std::string &_filename)
 			}
 			//read the rom
 			dest = m_data + (0xF80000 - SYS_ROM_ADDR);
-			PINFOF(LOG_MACHINE, LOG_V1, "Loading %s ...\n", zip.get_entry_name().c_str());
+			PINFOF(LOG_V1, LOG_MACHINE, "Loading '%s' at 0xF80000-0x%X ...\n", zip.get_entry_name().c_str(),
+					0xF80000 + size);
 			size = zip.read_entry_data(dest, size);
 			if(size <= 0) {
 				PERRF(LOG_MACHINE, "Error reading ROM file '%s'\n", zip.get_entry_name().c_str());
@@ -354,8 +393,8 @@ void SystemROM::load_archive(const std::string &_filename)
 			}
 		}
 	}
-	if(!fc0000found) {
-		PERRF(LOG_MACHINE, "Required file FC0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
+	if(!fc0000found && !fe0000found) {
+		PERRF(LOG_MACHINE, "Required file FC0000.BIN / FE0000.BIN missing in the ROM set '%s'\n", _filename.c_str());
 		throw std::exception();
 	}
 }
