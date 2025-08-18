@@ -431,8 +431,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ SERIAL_SECTION,
-";     enabled: Install the Serial Port.\n"
-";        mode: Mode of operation.\n"
+";     enabled: Install the Serial Port adapter.\n"
+";      port_a: Mode of operation of port A.\n"
 ";              Possible values:\n"
 ";               auto: let the system decide (depends on the [gui]:mouse setting and restored states)\n"
 ";               dummy: no input/output, dummy serial device attached\n" 
@@ -440,11 +440,13 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";               term: terminal connection (Linux only)\n"
 ";               net-server: network server that accepts incoming connections\n"
 ";               net-client: network client for connecting to a network server\n"
-";               modem: virtual modem that connects and receives calls over the network\n"
+";               modem: virtual Hayes modem that connects and receives calls over the network\n"
 ";               speak: Braille 'n Speak synthetizer.\n"
-";         dev: address or path of the attached serial device (see the README).\n"
-";    tx_delay: wait time for network data transmissions in milliseconds (network modes only).\n"
-"; tcp_nodelay: use the TCP_NODELAY socket option (network modes only).\n"
+";       dev_a: Address or path of the attached serial device in port A (see the README).\n"
+";      port_b: Mode of operation of port B.\n"
+";       dev_b: Address or path of the attached serial device in port B (see the README).\n"
+";    tx_delay: Wait time for network data transmissions in milliseconds (network modes only).\n"
+"; tcp_nodelay: Use the TCP_NODELAY socket option (network modes only).\n"
 		},
 
 		{ MODEM_SECTION,
@@ -750,24 +752,18 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ SERIAL_ENABLED,       MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
 		{ SERIAL_A_MODE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 		{ SERIAL_A_DEV,         MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
-		{ SERIAL_A_TX_DELAY,    MACHINE_CONFIG, PUBLIC_CFGKEY, "20"   },
-		{ SERIAL_A_TCP_NODELAY, MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
 		{ SERIAL_A_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
-		{ SERIAL_B_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
-		{ SERIAL_B_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
-		{ SERIAL_B_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
-		{ SERIAL_B_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
+		{ SERIAL_B_MODE,        MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
+		{ SERIAL_B_DEV,         MACHINE_CONFIG, PUBLIC_CFGKEY, ""     },
 		{ SERIAL_B_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
 		{ SERIAL_C_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 		{ SERIAL_C_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
-		{ SERIAL_C_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
-		{ SERIAL_C_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
 		{ SERIAL_C_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
 		{ SERIAL_D_MODE,        MACHINE_CONFIG, HIDDEN_CFGKEY, "auto" },
 		{ SERIAL_D_DEV,         MACHINE_CONFIG, HIDDEN_CFGKEY, ""     },
-		{ SERIAL_D_TX_DELAY,    MACHINE_CONFIG, HIDDEN_CFGKEY, "20"   },
-		{ SERIAL_D_TCP_NODELAY, MACHINE_CONFIG, HIDDEN_CFGKEY, "yes"  },
 		{ SERIAL_D_DUMP,        PROGRAM_CONFIG, HIDDEN_CFGKEY, ""     },
+		{ SERIAL_TX_DELAY,      MACHINE_CONFIG, PUBLIC_CFGKEY, "20"   },
+		{ SERIAL_TCP_NODELAY,   MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"  },
 	} },
 	{ MODEM_SECTION, {
 		{ MODEM_BAUD_RATE,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "2400"      },

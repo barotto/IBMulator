@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2024  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,6 +22,7 @@
 #include "machine.h"
 #include "hardware/devices/hdd.h"
 #include "hardware/devices/floppyctrl.h"
+#include "hardware/devices/serial.h"
 #include <sstream>
 
 const bios_db_t g_bios_db = {
@@ -83,12 +84,12 @@ const ini_enum_map_t g_ini_model_names = {
 
 const machine_db_t g_machine_db = {
 //
-// Model ID       Model ini   Model string     Machine   Machine      CPU      CPU RAM   RAM  RAM   ROM   ROM  Floppy A                Floppy B               HDD     HDD  CD-ROM
+// Model ID       Model ini   Model string     Machine   Machine      CPU      CPU RAM   RAM  RAM   ROM   ROM  Floppy A                Floppy B               HDD     HDD  CD-ROM Serial          Parallel
 //                                             type      name         model    MHz board exp  speed speed bit                                                 ctrl    type 
-{ MDL_UNKNOWN,  { "unknown",  "Unknown Model", MCH_UNK,  "IBM",       "386SX", 20, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0   } },
-{ PS1_2011_C34, { "2011-C34", "PS/1 2011-C34", PS1_2011, "PS/1 2011", "286",   10, 512,  512, 120,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ps1",  35,  0   } },
-{ PS1_2121_B82, { "2121-B82", "PS/1 2121-B82", PS1_2121, "PS/1 2121", "386SX", 16, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0   } },
-{ PS1_2121_A82, { "2121-A82", "PS/1 2121-A82", PS1_2121, "PS/1 2121", "386SX", 20, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0   } }
+{ MDL_UNKNOWN,  { "unknown",  "Unknown Model", MCH_UNK,  "IBM",       "386SX", 20, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0,     Serial::PORT_A, 1   } },
+{ PS1_2011_C34, { "2011-C34", "PS/1 2011-C34", PS1_2011, "PS/1 2011", "286",   10, 512,  512, 120,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ps1",  35,  0,     Serial::PORT_A, 1   } },
+{ PS1_2121_B82, { "2121-B82", "PS/1 2121-B82", PS1_2121, "PS/1 2121", "386SX", 16, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0,     Serial::PORT_A, 1   } },
+{ PS1_2121_A82, { "2121-A82", "PS/1 2121-A82", PS1_2121, "PS/1 2121", "386SX", 20, 2048, 0,   100,  200,  16,  FloppyDrive::FDD_350HD, FloppyDrive::FDD_NONE, "ata",  43,  0,     Serial::PORT_A, 1   } }
 };
 
 std::string ModelConfig::print() const

@@ -128,7 +128,16 @@ void SystemBoard::update_POS2_state()
 	}
 	if(m_serial) {
 		m_serial->set_enabled(COM_enabled);
-		m_serial->set_port(0, COM_port?0:1);
+		uint8_t port_a_com, port_b_com;
+		if(COM_port == 1) {
+			port_a_com = Serial::COM1;
+			port_b_com = Serial::COM2;
+		} else {
+			port_a_com = Serial::COM2;
+			port_b_com = Serial::COM_DISABLED;
+		}
+		m_serial->bind_port(Serial::PORT_A, port_a_com);
+		m_serial->bind_port(Serial::PORT_B, port_b_com);
 	}
 }
 

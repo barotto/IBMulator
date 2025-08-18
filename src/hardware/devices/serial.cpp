@@ -84,10 +84,11 @@ void Serial::install()
 
 	using namespace std::placeholders;
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		m_s.uart[p].com = SER_COM_DISABLED; // POS determines the COM port number
+		m_s.uart[p].com = COM_DISABLED; // POS determines the COM port number
 
-		m_host[p].port_id = p;
-		m_host[p].io_mode = SER_MODE_NONE;
+		m_host[p].port_id = 1 << p;
+		m_host[p].present = p == 0; // presence is determined in config_change(), port A default present
+		m_host[p].io_mode = MODE_NONE;
 		m_host[p].tty_id = -1;
 		m_host[p].network.set_log_name(m_host[p].name());
 		m_host[p].network.set_mex_callback([](std::string _mex){
@@ -96,29 +97,29 @@ void Serial::install()
 		m_host[p].modem.set_MSR_callback(std::bind(&Serial::set_MSR, this, p, _1));
 		m_host[p].output = nullptr;
 		m_host[p].tx_timer = g_machine.register_timer(
-			std::bind(&Serial::tx_timer, this, 0, _1),
-			std::string(m_host[p].name()) + " TX");
+			std::bind(&Serial::tx_timer, this, p, _1),
+			std::string(name()) + m_host[p].name() + " TX");
 		m_host[p].rx_timer = g_machine.register_timer(
-			std::bind(&Serial::rx_timer, this, 0, _1),
-			std::string(m_host[p].name()) + " RX");
+			std::bind(&Serial::rx_timer, this, p, _1),
+			std::string(name()) + m_host[p].name() + " RX");
 		m_host[p].fifo_timer = g_machine.register_timer(
-			std::bind(&Serial::fifo_timer, this, 0, _1),
-			std::string(m_host[p].name()) + " FIFO");
+			std::bind(&Serial::fifo_timer, this, p, _1),
+			std::string(name()) + m_host[p].name() + " FIFO");
 	}
-	m_s.portmap[SER_COM1] = SER_PORT_DISABLED;
-	m_s.portmap[SER_COM2] = SER_PORT_DISABLED;
-	m_s.portmap[SER_COM3] = SER_PORT_DISABLED;
-	m_s.portmap[SER_COM4] = SER_PORT_DISABLED;
+	m_s.portmap[COM1] = PORT_DISABLED;
+	m_s.portmap[COM2] = PORT_DISABLED;
+	m_s.portmap[COM3] = PORT_DISABLED;
+	m_s.portmap[COM4] = PORT_DISABLED;
 	m_s.enabled = false;
 
-	PINFOF(LOG_V0, LOG_COM, "Installed %u Serial port%s\n", SER_PORTS, SER_PORTS>1?"s":"");
+	PINFOF(LOG_V0, LOG_COM, "Installed serial interface.\n");
 }
 
 void Serial::remove()
 {
 	for(unsigned port=0; port<SER_PORTS; port++) {
 		close(port);
-		set_port(port, SER_COM_DISABLED);
+		bind_port(1 << port, COM_DISABLED);
 		g_machine.unregister_timer(m_host[port].tx_timer);
 		g_machine.unregister_timer(m_host[port].rx_timer);
 		g_machine.unregister_timer(m_host[port].fifo_timer);
@@ -133,19 +134,25 @@ void Serial::config_changed()
 		(mouse_type == MOUSE_TYPE_SERIAL_WHEEL) || 
 		(mouse_type == MOUSE_TYPE_SERIAL_MSYS);
 
-	if(m_mouse.port != SER_PORT_DISABLED) {
+	if(m_mouse.port != PORT_DISABLED) {
 		close(m_mouse.port);
 	}
+
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		m_host[p].present = (g_machine.model().serial >> p) & 1;
+	}
+
+	unsigned modem_port = PORT_DISABLED;
+	unsigned speak_port = PORT_DISABLED;
+
+	double tx_delay = g_program.initial_config().get_real_or_default(SERIAL_SECTION, SERIAL_TX_DELAY);
+	bool tcp_nodelay = g_program.initial_config().get_bool_or_default(SERIAL_SECTION, SERIAL_TCP_NODELAY);
 
 	for(unsigned p=0; p<SER_PORTS; p++) {
 		const std::string mode_name[] = {
 			SERIAL_A_MODE,SERIAL_B_MODE,SERIAL_C_MODE,SERIAL_D_MODE
 		}, dev_name[] = {
 			SERIAL_A_DEV,SERIAL_B_DEV,SERIAL_C_DEV,SERIAL_D_DEV
-		}, tx_delay_name[] = {
-			SERIAL_A_TX_DELAY,SERIAL_B_TX_DELAY,SERIAL_C_TX_DELAY,SERIAL_D_TX_DELAY
-		}, tcp_nodelay_name[] = {
-			SERIAL_A_TCP_NODELAY,SERIAL_B_TCP_NODELAY,SERIAL_C_TCP_NODELAY,SERIAL_D_TCP_NODELAY
 		}, dump_name[] = {
 			SERIAL_A_DUMP,SERIAL_B_DUMP,SERIAL_C_DUMP,SERIAL_D_DUMP
 		};
@@ -158,50 +165,70 @@ void Serial::config_changed()
 		}
 
 		unsigned new_mode = g_program.config().get_enum(SERIAL_SECTION, mode_name[p], {
-			{ "none",  SER_MODE_NONE  },
-			{ "dummy", SER_MODE_DUMMY },
-			{ "mouse", SER_MODE_MOUSE },
-			{ "file",  SER_MODE_FILE  },
-			{ "term",  SER_MODE_TERM  },
-			// TODO { "raw", SER_MODE_RAW },
-			{ "net-client",  SER_MODE_NET_CLIENT  },
-			{ "net-server",  SER_MODE_NET_SERVER  },
-			{ "pipe-client", SER_MODE_PIPE_CLIENT },
-			{ "pipe-server", SER_MODE_PIPE_SERVER },
-			{ "modem", SER_MODE_MODEM },
-			{ "speak", SER_MODE_SPEAK }
-		}, SER_MODE_INVALID);
+			{ "none",  MODE_NONE  },
+			{ "dummy", MODE_DUMMY },
+			{ "mouse", MODE_MOUSE },
+			{ "file",  MODE_FILE  },
+			{ "term",  MODE_TERM  },
+			// TODO { "raw", MODE_RAW },
+			{ "net-client",  MODE_NET_CLIENT  },
+			{ "net-server",  MODE_NET_SERVER  },
+			{ "pipe-client", MODE_PIPE_CLIENT },
+			{ "pipe-server", MODE_PIPE_SERVER },
+			{ "modem", MODE_MODEM },
+			{ "speak", MODE_SPEAK }
+		}, MODE_INVALID);
 
 		std::string dev;
 
-		if(new_mode == SER_MODE_INVALID) {
+		if(new_mode == MODE_INVALID) {
 			if(new_mode_str.empty() || new_mode_str == "auto") {
 				// empty and "auto" are valid in initial config
-				// assuming initial config
-				if(mouse_serial && m_mouse.port == SER_PORT_DISABLED) {
-					new_mode = SER_MODE_MOUSE;
+				// assuming initial config, because restore state has this setting resolved and valid
+				if(mouse_serial && m_mouse.port == PORT_DISABLED) {
+					new_mode = MODE_MOUSE;
 					new_mode_str = "mouse";
 				} else {
-					new_mode = SER_MODE_DUMMY;
-					new_mode_str = "dummy";
+					if(m_host[p].present) {
+						new_mode = MODE_DUMMY;
+						new_mode_str = "dummy";
+					} else {
+						new_mode = MODE_NONE;
+						new_mode_str = "none";
+					}
 				}
 			} else {
-				// either non initial config or invalid
 				PERRF(LOG_COM, "%s: mode '%s' is invalid\n", m_host[p].name(), new_mode_str.c_str());
 				throw std::exception();
 			}
 		} else {
-			if(new_mode == m_host[p].io_mode && new_mode != SER_MODE_MODEM && new_mode != SER_MODE_SPEAK) {
+			if(new_mode == MODE_MODEM && modem_port != PORT_DISABLED) {
+				// only 1 modem allowed
+				new_mode = MODE_DUMMY;
+				PWARNF(LOG_V0, LOG_COM, "Modem already installed in %s\n", m_host[modem_port].name());
+			}
+			if(new_mode == MODE_SPEAK && speak_port != PORT_DISABLED) {
+				// only 1 speech device allowed
+				new_mode = MODE_DUMMY;
+				PWARNF(LOG_V0, LOG_COM, "Speech device already installed in %s\n", m_host[speak_port].name());
+			}
+			if(new_mode == MODE_MOUSE && m_mouse.port != PORT_DISABLED) {
+				// only 1 mouse allowed
+				new_mode = MODE_DUMMY;
+				PWARNF(LOG_V0, LOG_COM, "Mouse already installed in %s\n", m_host[m_mouse.port].name());
+			}
+			if(new_mode == m_host[p].io_mode && new_mode != MODE_MODEM && new_mode != MODE_SPEAK) {
 				// the mode has not changed, continue except for modem/speech 
 				continue;
 			}
 			// either a different mode or it's modem/speech
-			if(new_mode == SER_MODE_MOUSE || new_mode == SER_MODE_MODEM || new_mode == SER_MODE_SPEAK) {
+			if(new_mode == MODE_MOUSE || new_mode == MODE_MODEM || new_mode == MODE_SPEAK) {
 				// mouse and modem/speech modes override everything, so close any open connection
+				// and go through initialization again
 				PDEBUGF(LOG_V0, LOG_COM, "%s: forcing '%s' mode\n", m_host[p].name(), new_mode_str.c_str());
 			} else if(initial_mode_str == new_mode_str) {
-				// if mode is different but strings are the same then
-				// this is the initial config.
+				// if strings are the same then this is the initial config.
+				// read the device configuration
 				dev = g_program.initial_config().get_string(SERIAL_SECTION, dev_name[p]);
 			} else {
 				// this is a state restore, current host port config will not be changed
@@ -212,19 +239,17 @@ void Serial::config_changed()
 
 		close(p);
 
-		if(new_mode != SER_MODE_NONE) {
+		if(new_mode != MODE_NONE) {
 			PINFOF(LOG_V0, LOG_COM, "%s: initializing mode '%s'", m_host[p].name(), new_mode_str.c_str());
-			if(!dev.empty() && new_mode != SER_MODE_MOUSE && new_mode != SER_MODE_DUMMY ) {
+			if(!dev.empty() && new_mode != MODE_MOUSE && new_mode != MODE_DUMMY) {
 				PINFOF(LOG_V0, LOG_COM, " on device '%s'", dev.c_str());
 			}
 			PINFOF(LOG_V0, LOG_COM, "\n");
 		}
 
 		try {
-			double tx_delay = g_program.initial_config().get_real(SERIAL_SECTION, tx_delay_name[p]);
-			bool tcp_nodelay = g_program.initial_config().get_bool(SERIAL_SECTION, tcp_nodelay_name[p]);
 			switch(new_mode) {
-				case SER_MODE_MOUSE:
+				case MODE_MOUSE:
 					m_host[p].init_mode_mouse();
 					m_mouse.port = p;
 					m_mouse.type = mouse_type;
@@ -241,34 +266,36 @@ void Serial::config_changed()
 					}
 					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "mouse");
 					break;
-				case SER_MODE_FILE:
+				case MODE_FILE:
 					m_host[p].init_mode_file(dev);
 					break;
-				case SER_MODE_TERM:
+				case MODE_TERM:
 					m_host[p].init_mode_term(dev);
 					break;
-				case SER_MODE_RAW:
+				case MODE_RAW:
 					m_host[p].init_mode_raw(dev);
 					break;
-				case SER_MODE_NET_CLIENT:
-				case SER_MODE_NET_SERVER: {
+				case MODE_NET_CLIENT:
+				case MODE_NET_SERVER: {
 					m_host[p].init_mode_net(dev, new_mode, tx_delay, tcp_nodelay);
 					break;
 				}
-				case SER_MODE_MODEM:
+				case MODE_MODEM:
 					m_host[p].init_mode_modem(tx_delay, tcp_nodelay);
+					modem_port = p;
 					break;
-				case SER_MODE_SPEAK:
+				case MODE_SPEAK:
 					m_host[p].init_mode_speech(dev);
+					speak_port = p;
 					break;
-				case SER_MODE_PIPE_CLIENT:
-				case SER_MODE_PIPE_SERVER:
+				case MODE_PIPE_CLIENT:
+				case MODE_PIPE_SERVER:
 					m_host[p].init_mode_pipe(dev, new_mode);
 					break;
-				case SER_MODE_DUMMY:
+				case MODE_DUMMY:
 					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "dummy");
 					break;
-				case SER_MODE_NONE:
+				case MODE_NONE:
 					g_program.config().set_string(SERIAL_SECTION, mode_name[p], "none");
 					break;
 				default:
@@ -276,10 +303,10 @@ void Serial::config_changed()
 			}
 		} catch(std::runtime_error &e) {
 			PERRF(LOG_COM, "%s: initialization error: %s\n", m_host[p].name(), e.what());
-			m_host[p].io_mode = SER_MODE_NONE;
+			m_host[p].io_mode = MODE_NONE;
 		}
 	}
-	if(mouse_serial && m_mouse.port == SER_PORT_DISABLED) {
+	if(mouse_serial && m_mouse.port == PORT_DISABLED) {
 		PWARNF(LOG_V0, LOG_COM, "Mouse type is set to 'serial' but there are no serial ports available\n");
 	}
 }
@@ -287,7 +314,7 @@ void Serial::config_changed()
 void Serial::close(unsigned _port)
 {
 	switch(m_host[_port].io_mode) {
-		case SER_MODE_MOUSE:
+		case MODE_MOUSE:
 			if((m_mouse.type == MOUSE_TYPE_SERIAL) ||
 			   (m_mouse.type == MOUSE_TYPE_SERIAL_WHEEL) ||
 			   (m_mouse.type == MOUSE_TYPE_SERIAL_MSYS))
@@ -295,15 +322,15 @@ void Serial::close(unsigned _port)
 				g_machine.register_mouse_fun(nullptr, nullptr);
 			}
 			m_mouse.type = MOUSE_TYPE_NONE;
-			m_mouse.port = SER_PORT_DISABLED;
+			m_mouse.port = PORT_DISABLED;
 			break;
-		case SER_MODE_FILE:
+		case MODE_FILE:
 			if(m_host[_port].output != nullptr) {
 				fclose(m_host[_port].output);
 				m_host[_port].output = nullptr;
 			}
 			break;
-		case SER_MODE_TERM:
+		case MODE_TERM:
 			#if SERIAL_ENABLE && !SER_WIN32
 			if(m_host[_port].tty_id >= 0) {
 				tcsetattr(m_host[_port].tty_id, TCSAFLUSH, &m_host[_port].term_orig);
@@ -311,21 +338,21 @@ void Serial::close(unsigned _port)
 			}
 			#endif
 			break;
-		case SER_MODE_RAW:
+		case MODE_RAW:
 			#if SER_ENABLE_RAW
 			delete m_host[i].raw;
 			m_host[i].raw = nullptr;
 			#endif
 			break;
-		case SER_MODE_NET_CLIENT:
-		case SER_MODE_NET_SERVER:
+		case MODE_NET_CLIENT:
+		case MODE_NET_SERVER:
 			m_host[_port].network.close();
 			break;
-		case SER_MODE_MODEM:
+		case MODE_MODEM:
 			m_host[_port].modem.close();
 			break;
-		case SER_MODE_PIPE_CLIENT:
-		case SER_MODE_PIPE_SERVER:
+		case MODE_PIPE_CLIENT:
+		case MODE_PIPE_SERVER:
 			#if SER_WIN32
 			if(m_host[_port].pipe) {
 				CloseHandle(m_host[_port].pipe);
@@ -336,7 +363,7 @@ void Serial::close(unsigned _port)
 		default:
 			break;
 	}
-	m_host[_port].io_mode = SER_MODE_NONE;
+	m_host[_port].io_mode = MODE_NONE;
 }
 
 void Serial::save_state(StateBuf &_state)
@@ -353,17 +380,25 @@ void Serial::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_COM, "Restoring state\n");
 
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		// the saved state has the correct port binding info
+		remove_com(p);
+	}
+
 	StateHeader h;
 	h.name = name();
 	h.data_size = sizeof(m_s);
 	_state.read(&m_s,h);
 
 	for(unsigned p=0; p<SER_PORTS; p++) {
-		if(m_host[p].io_mode == SER_MODE_NET_CLIENT || m_host[p].io_mode == SER_MODE_NET_SERVER) {
+		if(m_s.uart[p].com != COM_DISABLED) {
+			install_com(p, m_s.uart[p].com);
+		}
+		if(m_host[p].io_mode == MODE_NET_CLIENT || m_host[p].io_mode == MODE_NET_SERVER) {
 			m_host[p].network.rx_fifo().clear();
 			m_host[p].network.tx_fifo().clear();
 			m_host[p].network.set_tx_threshold(m_host[p].tx_delay_ms, m_s.uart[p].baudrate);
-		} else if(m_host[p].io_mode == SER_MODE_MODEM) {
+		} else if(m_host[p].io_mode == MODE_MODEM) {
 			m_host[p].modem.reset(MACHINE_POWER_ON);
 		}
 	}
@@ -372,13 +407,53 @@ void Serial::restore_state(StateBuf &_state)
 	m_mouse.reset();
 }
 
+bool Serial::has_network_modes() const
+{
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		if(is_network_mode(p)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Serial::is_network_connected() const
+{
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		if(is_network_connected(p)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Serial::is_network_rx_active() const
+{
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		if(is_network_rx_active(p)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Serial::is_network_tx_active() const
+{
+	for(unsigned p=0; p<SER_PORTS; p++) {
+		if(is_network_tx_active(p)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 bool Serial::is_network_mode(uint8_t _port) const
 {
 	assert(_port < SER_PORTS);
 	switch(m_host[_port].io_mode) {
-		case SER_MODE_NET_CLIENT: 
-		case SER_MODE_NET_SERVER:
-		case SER_MODE_MODEM:
+		case MODE_NET_CLIENT: 
+		case MODE_NET_SERVER:
+		case MODE_MODEM:
 			return true;
 		default:
 			break;
@@ -404,48 +479,89 @@ bool Serial::is_network_tx_active(uint8_t _port) const
 	return (m_host[_port].network.is_tx_active());
 }
 
-void Serial::set_port(uint8_t _port, uint8_t _com)
+void Serial::install_com(uint8_t _port, uint8_t _com)
 {
-	if(_port >= SER_PORTS) {
-		PWARNF(LOG_V0, LOG_COM, "Invalid serial port\n");
-		return;
-	}
-	if(_com >= 4 && _com != SER_COM_DISABLED) {
-		PWARNF(LOG_V0, LOG_COM, "Invalid serial COM\n");
-		return;
-	}
+	IODevice::install(&ioports()->at(_com), 1);
+	constexpr uint8_t com_irqs[4] = { COM1_IRQ, COM2_IRQ, COM3_IRQ, COM4_IRQ };
+	m_s.uart[_port].IRQ = com_irqs[_com];
+	m_s.uart[_port].com = _com;
+	m_s.portmap[_com] = _port;
+	g_machine.register_irq(m_s.uart[_port].IRQ, m_s.uart[_port].name());
+	PINFOF(LOG_V0, LOG_COM, "%s -> %s, I/O 0x%04x, IRQ %u\n",
+		m_host[_port].name(),
+		m_s.uart[_port].name(),
+		ioports()->at(_com).from,
+		m_s.uart[_port].IRQ
+	);
+};
 
-	if(m_s.uart[_port].com == _com) {
-		return;
-	}
-
-	if(m_s.uart[_port].com != SER_COM_DISABLED) {
+void Serial::remove_com(uint8_t _port)
+{
+	if(m_s.uart[_port].com != COM_DISABLED) {
+		PDEBUGF(LOG_V1, LOG_COM, "Removing COM%u ...\n", m_s.uart[_port].com + 1);
 		IODevice::remove(&ioports()->at(m_s.uart[_port].com), 1);
 		g_machine.unregister_irq(m_s.uart[_port].IRQ, m_s.uart[_port].name());
-		m_s.portmap[m_s.uart[_port].com] = SER_PORT_DISABLED;
-		m_s.uart[_port].com = SER_COM_DISABLED;
+		m_s.portmap[m_s.uart[_port].com] = PORT_DISABLED;
+		m_s.uart[_port].com = COM_DISABLED;
+	}
+};
+
+void Serial::swap_com(uint8_t _port, uint8_t _com)
+{
+	PDEBUGF(LOG_V1, LOG_COM, "COM%u is bound to %s, swapping.\n",
+			_com+1, m_host[m_s.portmap[_com]].name());
+
+	// the port currently bound to _com ...
+	uint8_t old_port = m_s.portmap[_com];
+
+	// ... will receive my COM ...
+	m_s.uart[old_port].com = m_s.uart[_port].com;
+	m_s.portmap[m_s.uart[_port].com] = old_port;
+
+	// ... and I will reveive its COM
+	m_s.uart[_port].com = _com;
+	m_s.portmap[_com] = _port;
+};
+
+void Serial::bind_port(uint8_t _port_name, uint8_t _com)
+{
+	unsigned port = PORT_DISABLED;
+	for(uint8_t p=0; p<3; p++) {
+		if((_port_name >> p) & 1) {
+			port = p;
+			break;
+		}
 	}
 
-	if(_com != SER_COM_DISABLED) {
-		if(m_s.portmap[_com] != SER_COM_DISABLED) {
-			PWARNF(LOG_V0, LOG_COM, "COM%u is already binded to %s\n",
-					_com+1, m_host[m_s.portmap[_com]].name());
-			return;
+	if(port == PORT_DISABLED || port >= SER_PORTS) {
+		PDEBUGF(LOG_V0, LOG_COM, "Invalid serial port name.\n");
+		return;
+	}
+
+	if(_com >= 4 && _com != COM_DISABLED) {
+		PWARNF(LOG_V0, LOG_COM, "Invalid serial COM.\n");
+		return;
+	}
+
+	if(m_s.uart[port].com == _com) {
+		return;
+	}
+
+	if(_com == COM_DISABLED) {
+		remove_com(port);
+	} else {
+		if(m_s.portmap[_com] != PORT_DISABLED) {
+			swap_com(port, _com);
+		} else {
+			if(!m_host[port].present && m_host[port].io_mode == MODE_NONE) {
+				if(m_s.uart[port].com != COM_DISABLED) {
+					PDEBUGF(LOG_V1, LOG_COM, "%s: no device connected, disabling COM binding.\n", m_host[port].name());
+					remove_com(port);
+				}
+			} else {
+				install_com(port, _com);
+			}
 		}
-		m_s.portmap[_com] = _port;
-		m_s.uart[_port].com = _com;
-
-		IODevice::install(&ioports()->at(_com), 1);
-		constexpr uint8_t com_irqs[4] = { COM1_IRQ, COM2_IRQ, COM3_IRQ, COM4_IRQ };
-		m_s.uart[_port].IRQ = com_irqs[_com];
-		g_machine.register_irq(m_s.uart[_port].IRQ, m_s.uart[_port].name());
-
-		PINFOF(LOG_V0, LOG_COM, "%s at 0x%04x, irq %u (%s)\n",
-			m_host[_port].name(),
-			ioports()->at(_com).from,
-			m_s.uart[_port].IRQ,
-			m_s.uart[_port].name()
-		);
 	}
 }
 
@@ -467,7 +583,7 @@ void Serial::Port::init_mode_file(std::string dev)
 	}
 
 	// tx_timer() opens the output file on demand
-	io_mode = SER_MODE_FILE;
+	io_mode = MODE_FILE;
 	filename = g_program.config().get_file_path(dev, FILE_TYPE_USER);
 }
 
@@ -509,7 +625,7 @@ void Serial::Port::init_mode_term(std::string dev)
 		//term_new.c_iflag |= IXOFF;
 		tcsetattr(tty_id, TCSAFLUSH, &term_new);
 
-		io_mode = SER_MODE_TERM;
+		io_mode = MODE_TERM;
 		PINFOF(LOG_V0, LOG_COM, "%s: opened tty on device '%s' (id:%d)\n", name(), dev.c_str(), tty_id);
 	}
 
@@ -529,7 +645,7 @@ void Serial::Port::init_mode_raw(std::string dev)
 		throw std::runtime_error("device name not specified");
 	}
 	raw = new serial_raw(dev.c_str());
-	io_mode = SER_MODE_RAW;
+	io_mode = MODE_RAW;
 
 	#else
 
@@ -541,7 +657,7 @@ void Serial::Port::init_mode_raw(std::string dev)
 
 void Serial::Port::init_mode_mouse()
 {
-	io_mode = SER_MODE_MOUSE;
+	io_mode = MODE_MOUSE;
 }
 
 void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_delay_ms, bool _tcp_nodelay)
@@ -560,7 +676,7 @@ void Serial::Port::init_mode_net(std::string dev, unsigned mode, double _tx_dela
 	auto [host,port] = NetService::parse_address(dev, 2323);
 	network.open(
 		host.c_str(), port,
-		mode == SER_MODE_NET_CLIENT ? NetService::Mode::Client : NetService::Mode::Server,
+		mode == MODE_NET_CLIENT ? NetService::Mode::Client : NetService::Mode::Server,
 		0
 	);
 
@@ -575,7 +691,7 @@ void Serial::Port::init_mode_pipe(std::string dev, unsigned mode)
 		throw std::runtime_error("pipe device name not specified");
 	}
 	HANDLE hpipe;
-	bool server = (mode == SER_MODE_PIPE_SERVER);
+	bool server = (mode == MODE_PIPE_SERVER);
 	if(server) {
 		hpipe = CreateNamedPipe(dev.c_str(),
 				PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
@@ -621,14 +737,14 @@ void Serial::Port::init_mode_modem(double _tx_delay_ms, bool _tcp_nodelay)
 	network.set_tcp_nodelay(_tcp_nodelay);
 	modem.init(&network, _tx_delay_ms);
 
-	io_mode = SER_MODE_MODEM;
+	io_mode = MODE_MODEM;
 }
 
 void Serial::Port::init_mode_speech(std::string)
 {
 	speech.init();
 
-	io_mode = SER_MODE_SPEAK;
+	io_mode = MODE_SPEAK;
 }
 
 void Serial::set_MSR(uint8_t _port, const ModemStatus &_status)
@@ -666,7 +782,7 @@ void Serial::set_MSR(uint8_t _port, const ModemStatus &_status)
 		}
 	}
 	if(gen_int) {
-		raise_interrupt(_port, SER_INT_MODSTAT);
+		raise_interrupt(_port, INT_MODSTAT);
 	}
 }
 
@@ -715,7 +831,7 @@ void Serial::reset(unsigned _type)
 		m_s.uart[i].fifo_cntl.rxtrigger = 0;
 		m_s.uart[i].rx_fifo_end = 0;
 		m_s.uart[i].tx_fifo_end = 0;
-		PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", m_s.uart[i].name());
+		PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", port_name(i));
 
 		// Line Control reg: b0000 0000
 		m_s.uart[i].line_cntl.wordlen_sel = 3;   // 8 bit
@@ -732,7 +848,7 @@ void Serial::reset(unsigned _type)
 		m_s.uart[i].modem_cntl.out1 = 0;
 		m_s.uart[i].modem_cntl.out2 = 0;
 		m_s.uart[i].modem_cntl.local_loopback = 0;
-		PDEBUGF(LOG_V1, LOG_COM, "%s: INTs disabled\n", m_s.uart[i].name());
+		PDEBUGF(LOG_V1, LOG_COM, "%s: INTs disabled\n", port_name(i));
 
 		// Line Status register: b0110 0000
 		m_s.uart[i].line_status.rxdata_ready = 0;
@@ -765,23 +881,23 @@ void Serial::reset(unsigned _type)
 		memset(m_s.uart[i].tx_fifo, 0, 16);   // transmit FIFO (internal)
 
 		switch(m_host[i].io_mode) {
-			case SER_MODE_NET_CLIENT:
-			case SER_MODE_NET_SERVER:
+			case MODE_NET_CLIENT:
+			case MODE_NET_SERVER:
 				// do not reset the connection
 				m_host[i].network.clear_queues();
 				break;
-			case SER_MODE_MODEM:
+			case MODE_MODEM:
 				m_host[i].modem.set_MCR({
 					m_s.uart[i].modem_cntl.dtr,
 					m_s.uart[i].modem_cntl.rts
 				});
 				m_host[i].modem.reset(_type);
 				break;
-			case SER_MODE_SPEAK:
+			case MODE_SPEAK:
 				m_host[i].speech.reset(_type);
 				break;
-			case SER_MODE_NONE:
-			case SER_MODE_RAW:
+			case MODE_NONE:
+			case MODE_RAW:
 				break;
 			default:
 				// simulate device connected
@@ -803,10 +919,10 @@ void Serial::power_off()
 {
 	for(unsigned i=0; i<SER_PORTS; i++) {
 		switch(m_host[i].io_mode) {
-			case SER_MODE_MODEM:
+			case MODE_MODEM:
 				m_host[i].modem.power_off();
 				break;
-			case SER_MODE_SPEAK:
+			case MODE_SPEAK:
 				m_host[i].speech.power_off();
 				break;
 			default:
@@ -820,10 +936,10 @@ void Serial::raise_interrupt(uint8_t port, int type)
 	bool gen_int = false;
 
 	switch(type) {
-		case SER_INT_IER: // IER has changed
+		case INT_IER: // IER has changed
 			gen_int = true;
 			break;
-		case SER_INT_RXDATA:
+		case INT_RXDATA:
 			if(m_s.uart[port].int_enable.rxdata_enable) {
 				m_s.uart[port].rx_interrupt = true;
 				gen_int = true;
@@ -831,13 +947,13 @@ void Serial::raise_interrupt(uint8_t port, int type)
 				m_s.uart[port].rx_ipending = true;
 			}
 			break;
-		case SER_INT_TXHOLD:
+		case INT_TXHOLD:
 			if(m_s.uart[port].int_enable.txhold_enable) {
 				m_s.uart[port].tx_interrupt = true;
 				gen_int = true;
 			}
 			break;
-		case SER_INT_RXLSTAT:
+		case INT_RXLSTAT:
 			if(m_s.uart[port].int_enable.rxlstat_enable) {
 				m_s.uart[port].ls_interrupt = true;
 				gen_int = true;
@@ -845,14 +961,14 @@ void Serial::raise_interrupt(uint8_t port, int type)
 				m_s.uart[port].ls_ipending = true;
 			}
 			break;
-		case SER_INT_MODSTAT:
+		case INT_MODSTAT:
 			if((m_s.uart[port].ms_ipending) && (m_s.uart[port].int_enable.modstat_enable)) {
 				m_s.uart[port].ms_interrupt = true;
 				m_s.uart[port].ms_ipending = false;
 				gen_int = true;
 			}
 			break;
-		case SER_INT_FIFO:
+		case INT_FIFO:
 			if(m_s.uart[port].int_enable.rxdata_enable) {
 				m_s.uart[port].fifo_interrupt = true;
 				gen_int = true;
@@ -890,14 +1006,14 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 
 	uint8_t com = 0;
 	switch(_address & 0x03f8) {
-		case 0x03f8: com = SER_COM1; break;
-		case 0x02f8: com = SER_COM2; break;
-		case 0x03e8: com = SER_COM3; break;
-		case 0x02e8: com = SER_COM4; break;
+		case 0x03f8: com = COM1; break;
+		case 0x02f8: com = COM2; break;
+		case 0x03e8: com = COM3; break;
+		case 0x02e8: com = COM4; break;
 		default: return 0;
 	}
 	uint8_t port = m_s.portmap[com];
-	if(port == SER_PORT_DISABLED) {
+	if(port == PORT_DISABLED) {
 		PDEBUGF(LOG_V0, LOG_COM, "invalid port 0x%x\n", _address);
 		return 0;
 	}
@@ -1031,7 +1147,7 @@ uint16_t Serial::read(uint16_t _address, unsigned _io_len)
 
 		case SER_MSR: // MODEM status register
 			#if SER_ENABLE_RAW
-			if(m_host[port].io_mode == SER_MODE_RAW) {
+			if(m_host[port].io_mode == MODE_RAW) {
 				bool prev_cts = m_s.uart[port].modem_status.cts;
 				bool prev_dsr = m_s.uart[port].modem_status.dsr;
 				bool prev_ri  = m_s.uart[port].modem_status.ri;
@@ -1100,14 +1216,14 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 
 	uint8_t com = 0;
 	switch(_address & 0x03f8) {
-		case 0x03f8: com = SER_COM1; break;
-		case 0x02f8: com = SER_COM2; break;
-		case 0x03e8: com = SER_COM3; break;
-		case 0x02e8: com = SER_COM4; break;
+		case 0x03f8: com = COM1; break;
+		case 0x02f8: com = COM2; break;
+		case 0x03e8: com = COM3; break;
+		case 0x02e8: com = COM4; break;
 		default: return;
 	}
 	uint8_t port = m_s.portmap[com];
-	if(port == SER_PORT_DISABLED) {
+	if(port == PORT_DISABLED) {
 		PDEBUGF(LOG_V0, LOG_COM, "invalid port 0x%x\n", _address);
 		return;
 	}
@@ -1154,8 +1270,9 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						}
 						m_s.uart[port].line_status.tsr_empty = 0;
 						if(m_s.uart[port].line_status.thr_empty) {
-							raise_interrupt(port, SER_INT_TXHOLD);
+							raise_interrupt(port, INT_TXHOLD);
 						}
+						PDEBUGF(LOG_V2, LOG_COM, "%s: activating TX timer: %u us.\n", port_name(port), m_s.uart[port].databyte_usec);
 						g_machine.activate_timer(m_host[port].tx_timer,
 								uint64_t(m_s.uart[port].databyte_usec)*1_us,
 								false); // not continuous
@@ -1253,7 +1370,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					}
 				}
 				if(gen_int) {
-					raise_interrupt(port, SER_INT_IER);
+					raise_interrupt(port, INT_IER);
 				}
 			}
 			break;
@@ -1266,7 +1383,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				m_s.uart[port].rx_fifo_end = 0;
 				m_s.uart[port].tx_fifo_end = 0;
 			} else if(!new_b0 && m_s.uart[port].fifo_cntl.enable) {
-				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", m_s.uart[port].name());
+				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO disabled\n", port_name(port));
 			}
 			m_s.uart[port].fifo_cntl.enable = new_b0;
 			if(new_b1) {
@@ -1278,7 +1395,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			m_s.uart[port].fifo_cntl.rxtrigger = (_value & 0xc0) >> 6;
 			if(enabled) {
 				PDEBUGF(LOG_V1, LOG_COM, "%s: FIFO enabled, rxtrigger=%u\n",
-						m_s.uart[port].name(),
+						port_name(port),
 						m_s.uart[port].fifo_cntl.rxtrigger);
 			}
 			break;
@@ -1290,7 +1407,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					bitfield_to_string(_value, { "wl0", "wl1", "stop", "par", "epar", "spar", "brk", "dlab" }).c_str());
 
 			#if SER_ENABLE_RAW
-			if(m_host[port].io_mode == SER_MODE_RAW) {
+			if(m_host[port].io_mode == MODE_RAW) {
 				if(m_s.uart[port].line_cntl.wordlen_sel != new_wordlen) {
 					m_host[port].raw->set_data_bits(new_wordlen + 5);
 				}
@@ -1327,7 +1444,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				m_s.uart[port].line_status.break_int = 1;
 				m_s.uart[port].line_status.framing_error = 1;
 				rx_fifo_enq(port, 0x00);
-			} else if(m_host[port].io_mode == SER_MODE_MODEM) {
+			} else if(m_host[port].io_mode == MODE_MODEM) {
 				// m_host[port].modem.set_LCR_break(new_b6);
 			}
 
@@ -1338,6 +1455,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 
 			set_databyte_time(port);
 			if(m_s.uart[port].databyte_usec) {
+				PDEBUGF(LOG_V2, LOG_COM, "%s: activating RX timer: %u us.\n", port_name(port), m_s.uart[port].databyte_usec);
 				g_machine.activate_timer(m_host[port].rx_timer,
 						uint64_t(m_s.uart[port].databyte_usec)*1_us,
 						false); // not continuous
@@ -1348,7 +1466,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		case SER_MCR: // MODEM control register
 			PDEBUGF(LOG_V2, LOG_COM, "MCR %s\n",
 					bitfield_to_string(_value, { "dtr", "rts", "out1", "out2", "loop", "", "", "" }).c_str());
-			if(m_host[port].io_mode == SER_MODE_MOUSE && 
+			if(m_host[port].io_mode == MODE_MOUSE && 
 			  (m_s.uart[port].line_cntl.wordlen_sel == 2 || m_s.uart[port].line_cntl.wordlen_sel == 3))
 			{
 				if(!m_s.uart[port].modem_cntl.dtr && new_b0) {
@@ -1360,7 +1478,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			}
 			#if SER_ENABLE_RAW
 			bool mcr_changed = false;
-			if(m_host[port].io_mode == SER_MODE_RAW) {
+			if(m_host[port].io_mode == MODE_RAW) {
 				mcr_changed = (m_s.uart[port].modem_cntl.dtr != new_b0) |
 						(m_s.uart[port].modem_cntl.rts != new_b1);
 			}
@@ -1369,7 +1487,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			m_s.uart[port].modem_cntl.rts  = new_b1;
 			m_s.uart[port].modem_cntl.out1 = new_b2;
 			if(new_b3 != m_s.uart[port].modem_cntl.out2) {
-				PDEBUGF(LOG_V1, LOG_COM, "%s: INTs %sabled\n", m_s.uart[port].name(), new_b3?"en":"dis");
+				PDEBUGF(LOG_V1, LOG_COM, "%s: INTs %sabled\n", port_name(port), new_b3?"en":"dis");
 			}
 			m_s.uart[port].modem_cntl.out2 = new_b3;
 
@@ -1378,7 +1496,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				if(m_s.uart[port].modem_cntl.local_loopback) {
 					// transition to loopback mode
 					#if SER_ENABLE_RAW
-					if(m_host[port].io_mode == SER_MODE_RAW) {
+					if(m_host[port].io_mode == MODE_RAW) {
 						if(m_s.uart[port].modem_cntl.dtr || m_s.uart[port].modem_cntl.rts) {
 							m_host[port].raw->set_modem_control(0);
 						}
@@ -1386,7 +1504,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					#endif
 					if(m_s.uart[port].line_cntl.break_cntl) {
 						#if SER_ENABLE_RAW
-						if(m_host[port].io_mode == SER_MODE_RAW) {
+						if(m_host[port].io_mode == MODE_RAW) {
 							m_host[port].raw->set_break(0);
 						}
 						#endif
@@ -1397,7 +1515,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				} else {
 					// transition to normal mode
 					#if SER_ENABLE_RAW
-					if(m_host[port].io_mode == SER_MODE_RAW) {
+					if(m_host[port].io_mode == MODE_RAW) {
 						mcr_changed = true;
 						if(m_s.uart[port].line_cntl.break_cntl) {
 							m_host[port].raw->set_break(0);
@@ -1405,7 +1523,7 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					}
 					#endif
 					// Modem status is modified in loopback mode
-					if(m_host[port].io_mode == SER_MODE_MODEM) {
+					if(m_host[port].io_mode == MODE_MODEM) {
 						set_MSR(port, m_host[port].modem.get_MSR());
 					}
 				}
@@ -1436,12 +1554,11 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					m_s.uart[port].modem_status.delta_dcd = 1;
 					m_s.uart[port].ms_ipending = 1;
 				}
-				raise_interrupt(port, SER_INT_MODSTAT);
+				raise_interrupt(port, INT_MODSTAT);
 			} else {
-				if(m_host[port].io_mode == SER_MODE_MOUSE) {
+				if(m_host[port].io_mode == MODE_MOUSE) {
 					if(m_s.mouse.detect == 2) {
-						PDEBUGF(LOG_V1, LOG_COM, "%s: mouse detection mode\n",
-								m_host[port].name());
+						PDEBUGF(LOG_V1, LOG_COM, "%s: mouse detection mode\n", port_name(port));
 						std::lock_guard<std::mutex> lock(m_mouse.mtx);
 						if((m_mouse.type == MOUSE_TYPE_SERIAL) || 
 						   (m_mouse.type == MOUSE_TYPE_SERIAL_MSYS))
@@ -1459,24 +1576,25 @@ void Serial::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							m_s.mouse.buffer.data[4] = '\0';
 							m_s.mouse.buffer.data[5] = '\0';
 						}
+						PDEBUGF(LOG_V2, LOG_COM, "%s: activating RX timer: %u us.\n", port_name(port), m_s.uart[port].databyte_usec);
 						g_machine.activate_timer(m_host[port].rx_timer,
 								uint64_t(m_s.uart[port].databyte_usec)*1_us,
 								false); // not continuous
 						m_s.mouse.detect = 0;
 					}
 				}
-				if(m_host[port].io_mode == SER_MODE_MODEM) {
+				if(m_host[port].io_mode == MODE_MODEM) {
 					m_host[port].modem.set_MCR({
 						m_s.uart[port].modem_cntl.dtr,
 						m_s.uart[port].modem_cntl.rts
 					});
-				} else if(m_host[port].io_mode == SER_MODE_RAW) {
+				} else if(m_host[port].io_mode == MODE_RAW) {
 					#if SER_ENABLE_RAW
 					if(mcr_changed) {
 						m_host[port].raw->set_modem_control(value & 0x03);
 					}
 					#endif
-				} else if(m_host[port].io_mode != SER_MODE_NONE) {
+				} else if(m_host[port].io_mode != MODE_NONE) {
 					// simulate device connected
 					m_s.uart[port].modem_status.cts = 1;
 					m_s.uart[port].modem_status.dsr = 1;
@@ -1515,20 +1633,20 @@ void Serial::set_baudrate(uint8_t _port)
 		if(new_baudrate != m_s.uart[_port].baudrate) {
 			m_s.uart[_port].baudrate = new_baudrate;
 			PDEBUGF(LOG_V1, LOG_COM, "%s: baud rate set to %d\n",
-					m_s.uart[_port].name(), m_s.uart[_port].baudrate);
+					port_name(_port), m_s.uart[_port].baudrate);
 			if(
-			   ( m_host[_port].io_mode == SER_MODE_NET_CLIENT ||
-			     m_host[_port].io_mode == SER_MODE_NET_SERVER
+			   ( m_host[_port].io_mode == MODE_NET_CLIENT ||
+			     m_host[_port].io_mode == MODE_NET_SERVER
 			   ) &&
 			   m_host[_port].tx_delay_ms > 0.0
 			)
 			{
 				m_host[_port].network.set_tx_threshold(m_host[_port].tx_delay_ms, new_baudrate);
 				PDEBUGF(LOG_V1, LOG_COM, "%s: tx buffer threshold set to %u bytes (%.1f ms)\n",
-						m_host[_port].name(), m_host[_port].network.tx_fifo().get_threshold(), m_host[_port].tx_delay_ms);
+						port_name(_port), m_host[_port].network.tx_fifo().get_threshold(), m_host[_port].tx_delay_ms);
 			}
 			#if SER_ENABLE_RAW
-			if(m_host[port].io_mode == SER_MODE_RAW) {
+			if(m_host[port].io_mode == MODE_RAW) {
 				m_host[port].raw->set_baudrate(m_s.uart[port].baudrate);
 			}
 			#endif
@@ -1565,7 +1683,7 @@ void Serial::set_databyte_time(uint8_t _port)
 	m_s.uart[_port].databyte_usec = uint32_t(packet_len * baud_usec);
 
 	PDEBUGF(LOG_V1, LOG_COM, "%s: databyte is %u us (%u baud, %g-%s-%g)\n",
-			m_host[_port].name(), m_s.uart[_port].databyte_usec,
+			port_name(_port), m_s.uart[_port].databyte_usec,
 			m_s.uart[_port].baudrate,
 			word_len, parity_str, stop_bits);
 }
@@ -1586,7 +1704,7 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 		if(m_s.uart[port].rx_fifo_end == 16) {
 			PWARNF(LOG_V2, LOG_COM, "%s: receive FIFO overflow\n", m_s.uart[port].name());
 			m_s.uart[port].line_status.overrun_error = true;
-			raise_interrupt(port, SER_INT_RXLSTAT);
+			raise_interrupt(port, INT_RXLSTAT);
 		} else {
 			m_s.uart[port].rx_fifo[m_s.uart[port].rx_fifo_end++] = data;
 			switch (m_s.uart[port].fifo_cntl.rxtrigger) {
@@ -1610,10 +1728,12 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 					break;
 			}
 			if(gen_int) {
+				PDEBUGF(LOG_V2, LOG_COM, "%s: deactivating FIFO timer.\n", m_s.uart[port].name());
 				g_machine.deactivate_timer(m_host[port].fifo_timer);
 				m_s.uart[port].line_status.rxdata_ready = true;
-				raise_interrupt(port, SER_INT_RXDATA);
+				raise_interrupt(port, INT_RXDATA);
 			} else {
+				PDEBUGF(LOG_V2, LOG_COM, "%s: activating FIFO timer: %u us.\n", m_s.uart[port].name(), m_s.uart[port].databyte_usec*3);
 				g_machine.activate_timer(m_host[port].fifo_timer,
 						uint64_t(m_s.uart[port].databyte_usec * 3)*1_us,
 						false); // not continuous
@@ -1626,11 +1746,11 @@ void Serial::rx_fifo_enq(uint8_t port, uint8_t data)
 		if(m_s.uart[port].line_status.rxdata_ready) {
 			PWARNF(LOG_V2, LOG_COM, "%s: overrun error\n", m_s.uart[port].name());
 			m_s.uart[port].line_status.overrun_error = true;
-			raise_interrupt(port, SER_INT_RXLSTAT);
+			raise_interrupt(port, INT_RXLSTAT);
 		}
 		m_s.uart[port].rxbuffer = data;
 		m_s.uart[port].line_status.rxdata_ready = true;
-		raise_interrupt(port, SER_INT_RXDATA);
+		raise_interrupt(port, INT_RXDATA);
 		if(m_host[port].dump.is_open()) {
 			m_host[port].dump.write((const char*)(&data), 1);
 		}
@@ -1645,69 +1765,69 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 		rx_fifo_enq(port, m_s.uart[port].tsrbuffer);
 	} else {
 		switch (m_host[port].io_mode) {
-			case SER_MODE_MODEM:
+			case MODE_MODEM:
 				sent = m_host[port].modem.serial_write_byte(m_s.uart[port].tsrbuffer);
 				break;
-			case SER_MODE_SPEAK:
+			case MODE_SPEAK:
 				sent = m_host[port].speech.serial_write_byte(m_s.uart[port].tsrbuffer);
 				break;
-			case SER_MODE_FILE:
+			case MODE_FILE:
 				if(m_host[port].output == nullptr) {
 					assert(!m_host[port].filename.empty()); // filename must be set at init!
 					m_host[port].output = FileSys::fopen(m_host[port].filename, "wb");
 					if(m_host[port].output == nullptr) {
 						PERRF(LOG_COM, "%s: could not open file '%s' to write\n",
-								m_host[port].name(), m_host[port].filename.c_str());
-						m_host[port].io_mode = SER_MODE_DUMMY;
+								port_name(port), m_host[port].filename.c_str());
+						m_host[port].io_mode = MODE_DUMMY;
 						break;
 					} else {
 						PINFOF(LOG_V0, LOG_COM, "%s: opened output file '%s'\n",
-								m_host[port].name(), m_host[port].filename.c_str());
+								port_name(port), m_host[port].filename.c_str());
 					}
 				}
 				if(fputc(m_s.uart[port].tsrbuffer, m_host[port].output) == EOF) {
-					PERRF(LOG_COM, "%s: cannot write to file!\n", m_host[port].name());
+					PERRF(LOG_COM, "%s: cannot write to file!\n", port_name(port));
 					close(port);
-					m_host[port].io_mode = SER_MODE_DUMMY;
+					m_host[port].io_mode = MODE_DUMMY;
 				} else {
 					fflush(m_host[port].output);
 				}
 				break;
-			case SER_MODE_TERM:
+			case MODE_TERM:
 				#if SER_POSIX
 				if(m_host[port].tty_id >= 0) {
 					ssize_t res = ::write(m_host[port].tty_id, (void*) & m_s.uart[port].tsrbuffer, 1);
 					if(res == 1) {
-						PDEBUGF(LOG_V1, LOG_COM, "%s: term write: '%c'\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
+						PDEBUGF(LOG_V1, LOG_COM, "%s: term write: '%c'\n", port_name(port), m_s.uart[port].tsrbuffer);
 					} else {
-						PWARNF(LOG_V1, LOG_COM, "%s: term write failed!\n", m_host[port].name());
+						PWARNF(LOG_V1, LOG_COM, "%s: term write failed!\n", port_name(port));
 					}
 				}
 				#endif
 				break;
-			case SER_MODE_RAW:
+			case MODE_RAW:
 				#if SER_ENABLE_RAW
 				if(m_host[port].raw->ready_transmit()) {
 					m_host[port].raw->transmit(m_s.uart[port].tsrbuffer);
 				} else {
-					PWARNF(LOG_V0, LOG_COM, "%s: not ready to transmit\n", m_host[port].name());
+					PWARNF(LOG_V0, LOG_COM, "%s: not ready to transmit\n", port_name(port));
 				}
 				#endif
 				break;
-			case SER_MODE_MOUSE:
-				PDEBUGF(LOG_V1, LOG_COM, "%s: write to mouse ignored: 0x%02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
+			case MODE_MOUSE:
+				PDEBUGF(LOG_V1, LOG_COM, "%s: write to mouse ignored: 0x%02x\n", port_name(port), m_s.uart[port].tsrbuffer);
 				break;
-			case SER_MODE_NET_CLIENT:
-			case SER_MODE_NET_SERVER:
+			case MODE_NET_CLIENT:
+			case MODE_NET_SERVER:
 				if(m_host[port].network.is_connected()) {
 					sent = m_host[port].network.tx_fifo().write(&m_s.uart[port].tsrbuffer, 1);
 					if(!sent) {
-						PDEBUGF(LOG_V0, LOG_COM, "%s: tx buffer overflow: %02x\n", m_host[port].name(), m_s.uart[port].tsrbuffer);
+						PDEBUGF(LOG_V0, LOG_COM, "%s: tx buffer overflow: %02x\n", port_name(port), m_s.uart[port].tsrbuffer);
 					}
 				}
 				break;
-			case SER_MODE_PIPE_CLIENT:
-			case SER_MODE_PIPE_SERVER:
+			case MODE_PIPE_CLIENT:
+			case MODE_PIPE_SERVER:
 				#if SER_WIN32
 				if(m_host[port].pipe) {
 					DWORD written;
@@ -1744,19 +1864,21 @@ void Serial::tx_timer(uint8_t port, uint64_t)
 	if(!m_s.uart[port].line_status.tsr_empty) {
 		if(gen_int) {
 			m_s.uart[port].line_status.thr_empty = true;
-			raise_interrupt(port, SER_INT_TXHOLD);
+			raise_interrupt(port, INT_TXHOLD);
 		}
 		// not continuous
 		g_machine.activate_timer(m_host[port].tx_timer,
 				uint64_t(m_s.uart[port].databyte_usec)*1_us,
 				false);
+	} else {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: deactivating TX timer.\n", port_name(port));
 	}
 }
 
 void Serial::rx_timer(uint8_t port, uint64_t)
 {
-	if(!m_s.enabled || m_host[port].io_mode == SER_MODE_NONE || m_host[port].io_mode == SER_MODE_DUMMY) {
-		PDEBUGF(LOG_V2, LOG_COM, "%s: rx timer disabled\n", m_host[port].name());
+	if(!m_s.enabled || m_host[port].io_mode == MODE_NONE || m_host[port].io_mode == MODE_DUMMY) {
+		PDEBUGF(LOG_V2, LOG_COM, "%s: rx timer disabled\n", port_name(port));
 		return;
 	}
 
@@ -1766,19 +1888,19 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 
 	if((!m_s.uart[port].line_status.rxdata_ready) || m_s.uart[port].fifo_cntl.enable) {
 		switch (m_host[port].io_mode) {
-			case SER_MODE_MODEM:
+			case MODE_MODEM:
 				data_ready = m_host[port].modem.serial_read_byte(&chbuf);
 				break;
-			case SER_MODE_SPEAK:
+			case MODE_SPEAK:
 				data_ready = m_host[port].speech.serial_read_byte(&chbuf);
 				break;
-			case SER_MODE_NET_CLIENT:
-			case SER_MODE_NET_SERVER:
+			case MODE_NET_CLIENT:
+			case MODE_NET_SERVER:
 				if(m_host[port].network.is_connected() && !m_s.uart[port].line_status.rxdata_ready) {
 					data_ready = m_host[port].network.rx_fifo().pop(chbuf);
 				}
 				break;
-			case SER_MODE_RAW:
+			case MODE_RAW:
 				#if SER_ENABLE_RAW
 				int data;
 				if((data_ready = m_host[port].raw->ready_receive())) {
@@ -1788,19 +1910,19 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 						switch (data) {
 							case RAW_EVENT_BREAK:
 								m_s.uart[port].line_status.break_int = 1;
-								raise_interrupt(port, SER_INT_RXLSTAT);
+								raise_interrupt(port, INT_RXLSTAT);
 								break;
 							case RAW_EVENT_FRAME:
 								m_s.uart[port].line_status.framing_error = 1;
-								raise_interrupt(port, SER_INT_RXLSTAT);
+								raise_interrupt(port, INT_RXLSTAT);
 								break;
 							case RAW_EVENT_OVERRUN:
 								m_s.uart[port].line_status.overrun_error = 1;
-								raise_interrupt(port, SER_INT_RXLSTAT);
+								raise_interrupt(port, INT_RXLSTAT);
 								break;
 							case RAW_EVENT_PARITY:
 								m_s.uart[port].line_status.parity_error = 1;
-								raise_interrupt(port, SER_INT_RXLSTAT);
+								raise_interrupt(port, INT_RXLSTAT);
 								break;
 							case RAW_EVENT_CTS_ON:
 							case RAW_EVENT_CTS_OFF:
@@ -1810,7 +1932,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 							case RAW_EVENT_RING_OFF:
 							case RAW_EVENT_RLSD_ON:
 							case RAW_EVENT_RLSD_OFF:
-								raise_interrupt(port, SER_INT_MODSTAT);
+								raise_interrupt(port, INT_MODSTAT);
 								break;
 							default:
 								break;
@@ -1822,7 +1944,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				}
 				#endif
 				break;
-			case SER_MODE_TERM:
+			case MODE_TERM:
 				#if HAVE_SYS_SELECT_H && SER_POSIX
 				if(m_host[port].tty_id >= 0) {
 					struct timeval tval = {0,0};
@@ -1832,16 +1954,16 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 					if(select(m_host[port].tty_id + 1, &fds, nullptr, nullptr, &tval) == 1) {
 						ssize_t res = ::read(m_host[port].tty_id, &chbuf, 1);
 						if(res == 1) {
-							PDEBUGF(LOG_V1, LOG_COM, "%s: term read: '%c'\n", m_host[port].name(), chbuf);
+							PDEBUGF(LOG_V1, LOG_COM, "%s: term read: '%c'\n", port_name(port), chbuf);
 							data_ready = true;
 						} else {
-							PWARNF(LOG_V0, LOG_COM, "%s: error reading from term\n", m_host[port].name());
+							PWARNF(LOG_V0, LOG_COM, "%s: error reading from term\n", port_name(port));
 						}
 					}
 				}
 				#endif
 				break;
-			case SER_MODE_MOUSE: {
+			case MODE_MOUSE: {
 				std::lock_guard<std::mutex> lock(m_mouse.mtx);
 				if(m_mouse.update && (m_s.mouse.buffer.elements == 0)) {
 					update_mouse_data();
@@ -1850,13 +1972,13 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 					chbuf = m_s.mouse.buffer.data[m_s.mouse.buffer.head];
 					m_s.mouse.buffer.head = (m_s.mouse.buffer.head + 1) % MOUSE_BUFF_SIZE;
 					m_s.mouse.buffer.elements--;
-					PDEBUGF(LOG_V1, LOG_COM, "%s: mouse read: 0x%02x\n", m_host[port].name(), chbuf);
+					PDEBUGF(LOG_V1, LOG_COM, "%s: mouse read: 0x%02x\n", port_name(port), chbuf);
 					data_ready = true;
 				}
 				break;
 			}
-			case SER_MODE_PIPE_CLIENT:
-			case SER_MODE_PIPE_SERVER: {
+			case MODE_PIPE_CLIENT:
+			case MODE_PIPE_SERVER: {
 				#if SER_WIN32
 				DWORD avail = 0;
 				if(m_host[port].pipe &&
@@ -1877,7 +1999,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 				rx_fifo_enq(port, chbuf);
 			}
 		} else {
-			if(!m_s.uart[port].fifo_cntl.enable && m_host[port].io_mode != SER_MODE_MOUSE) {
+			if(!m_s.uart[port].fifo_cntl.enable && m_host[port].io_mode != MODE_MOUSE) {
 				// why does Bochs use this particular value?
 				// idk but it has the effect of making the mouse motion stuttery.
 				db_usec = 100000; // Poll frequency is 100ms
@@ -1891,7 +2013,7 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 	}
 
 	if(db_usec != m_s.uart[port].databyte_usec) {
-		PDEBUGF(LOG_V3, LOG_COM, "%s: next rx timer: %llu us\n", m_host[port].name(), db_usec);
+		PDEBUGF(LOG_V5, LOG_COM, "%s: next RX timer: %llu us\n", port_name(port), db_usec);
 	}
 	// not continuous
 	g_machine.activate_timer(m_host[port].rx_timer, uint64_t(db_usec)*1_us, false);
@@ -1900,14 +2022,14 @@ void Serial::rx_timer(uint8_t port, uint64_t)
 void Serial::fifo_timer(uint8_t port, uint64_t)
 {
 	m_s.uart[port].line_status.rxdata_ready = 1;
-	raise_interrupt(port, SER_INT_FIFO);
+	raise_interrupt(port, INT_FIFO);
 }
 
 void Serial::mouse_button(MouseButton _button, bool _state)
 {
 	// This function is called by the GUI thread
 
-	if(m_mouse.port == SER_PORT_DISABLED) {
+	if(m_mouse.port == PORT_DISABLED) {
 		// This condition should not happen. Evts are fired only if mouse is enabled at init.
 		assert(false);
 		PERRF(LOG_COM, "Mouse not connected to a serial port\n");
@@ -1917,7 +2039,7 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
 	if(!m_s.uart[m_mouse.port].modem_cntl.dtr || !m_s.uart[m_mouse.port].modem_cntl.rts) {
 		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse button: ignored (dtr/rts not up)\n",
-			m_host[m_mouse.port].name());
+			port_name(m_mouse.port));
 		return;
 	}
 
@@ -1928,7 +2050,7 @@ void Serial::mouse_button(MouseButton _button, bool _state)
 	m_mouse.buttons |= (_state << btnid);
 	m_mouse.update = true;
 
-	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse button: id=%u, state=%u\n", m_host[m_mouse.port].name(),
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse button: id=%u, state=%u\n", port_name(m_mouse.port),
 		ec_to_i(_button), _state);
 }
 
@@ -1936,7 +2058,7 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 {
 	// This function is called by the GUI thread
 
-	if(m_mouse.port == SER_PORT_DISABLED) {
+	if(m_mouse.port == PORT_DISABLED) {
 		// This condition should not happen. Evts are fired only if mouse is enabled at init.
 		assert(false);
 		PERRF(LOG_COM, "Mouse not connected to a serial port\n");
@@ -1946,18 +2068,18 @@ void Serial::mouse_motion(int delta_x, int delta_y, int delta_z)
 	if((delta_x==0) && (delta_y==0) && (delta_z==0))
 	{
 		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: useless call. ignoring.\n",
-			m_host[m_mouse.port].name());
+			port_name(m_mouse.port));
 		return;
 	}
 
 	// if the DTR and RTS lines aren't up, the mouse doesn't have any power to send packets.
 	if(!m_s.uart[m_mouse.port].modem_cntl.dtr || !m_s.uart[m_mouse.port].modem_cntl.rts) {
 		PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: ignored (dtr/rts not up)\n",
-			m_host[m_mouse.port].name());
+			port_name(m_mouse.port));
 		return;
 	}
 
-	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: d:[%d,%d,%d]->", m_host[m_mouse.port].name(),
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse motion: d:[%d,%d,%d]->", port_name(m_mouse.port),
 		delta_x, delta_y, delta_z);
 
 	// scale down the motion
@@ -2013,8 +2135,8 @@ void Serial::update_mouse_data()
 	}
 	button_state = m_mouse.buttons;
 
-	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse d:[%d,%d", m_host[m_mouse.port].name(),
-		delta_x, delta_y);
+	PDEBUGF(LOG_V2, LOG_COM, "%s: mouse d:[%d,%d", port_name(m_mouse.port), delta_x, delta_y);
+
 	int nbytes;
 	uint8_t mouse_data[5];
 	if(m_mouse.type != MOUSE_TYPE_SERIAL_MSYS) {
@@ -2059,4 +2181,16 @@ void Serial::update_mouse_data()
 	PDEBUGF(LOG_V2, LOG_COM, "]\n");
 
 	m_mouse.update = false;
+}
+
+const char * Serial::port_name(unsigned _port) const
+{
+	assert(_port < SER_PORTS);
+	static thread_local std::string str_name;
+	if(m_s.uart[_port].com != COM_DISABLED) {
+		str_name = str_format("%s (%s)", m_host[_port].name(), m_s.uart[_port].name());
+	} else {
+		str_name = m_host[_port].name();
+	}
+	return str_name.c_str();
 }

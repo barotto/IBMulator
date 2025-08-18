@@ -107,9 +107,9 @@ void Status::update()
 	}
 
 	//Network
-	if(m_serial && m_serial->is_network_mode(0)) {
-		if(m_serial->is_network_connected(0)) {
-			if(m_serial->is_network_rx_active(0) || m_serial->is_network_tx_active(0)) {
+	if(m_serial && m_serial->has_network_modes()) {
+		if(m_serial->is_network_connected()) {
+			if(m_serial->is_network_rx_active() || m_serial->is_network_tx_active()) {
 				m_indicators[IND::NET].set(LED::ACTIVE);
 			} else {
 				m_indicators[IND::NET].set(LED::IDLE);

@@ -56,7 +56,7 @@
 	#include "wincompat.h"
 #endif
 
-#define SER_PORTS       1     // number of serial ports (1 to 4)
+#define SER_PORTS       2     // number of serial ports (1 to 4)
 #define SER_ENABLE_RAW  false // enable raw serial port access (TODO NOT IMPLEMENTED)
 #define SER_TERM_BRKINT false // if true when in term mode CTRL-C will cause SIGINT
 
@@ -81,58 +81,59 @@
 #define SER_MSR  6   // 3fe MODEM Status Register
 #define SER_SCR  7   // 3ff Scratch Register
 
-enum SerialPortMode {
-	SER_MODE_INVALID,
-	SER_MODE_NONE,         // no i/o, no device connected
-	SER_MODE_DUMMY,        // no i/o, dummy device connected (CTS and DSR asserted)
-	SER_MODE_FILE,         // file output
-	SER_MODE_TERM,         // tty input/output (Linux only)
-	SER_MODE_RAW,          // raw hardware serial port access (TODO)
-	SER_MODE_MOUSE,        // serial mouse connected
-	SER_MODE_NET_CLIENT,   // null-modem network client input/output
-	SER_MODE_NET_SERVER,   // null-modem network server input/output
-	SER_MODE_PIPE_CLIENT,  // pipe client input/output (Windows only)
-	SER_MODE_PIPE_SERVER,  // pipe server input/output (Windows only)
-	SER_MODE_MODEM,        // hayes compatible modem input/output
-	SER_MODE_SPEAK         // Braille 'n Speak device
-};
-
-enum SerialIntType {
-	SER_INT_IER,
-	SER_INT_RXDATA,
-	SER_INT_TXHOLD,
-	SER_INT_RXLSTAT,
-	SER_INT_MODSTAT,
-	SER_INT_FIFO
-};
 
 #if USE_RAW_SERIAL
 class serial_raw;
 #endif
 
 
-
 class Serial : public IODevice
 {
 	IODEVICE(Serial, "Serial")
 
-private:
-	enum ComName {
-		SER_COM1 = 0,
-		SER_COM2 = 1,
-		SER_COM3 = 2,
-		SER_COM4 = 3,
-		SER_COM_DISABLED = 0xFF
-	};
+public:
+	enum ComIndex {
+		COM1 = 0,
+		COM2 = 1,
+		COM3 = 2,
+		COM4 = 3,
+		COM_DISABLED = 0xFF
+};
 
 	enum PortName {
-		SER_PORT_A = 0,
-		SER_PORT_B = 1,
-		SER_PORT_C = 2,
-		SER_PORT_D = 3,
-		SER_PORT_DISABLED = 0xFF
+		PORT_A = 1,
+		PORT_B = 2,
+		PORT_C = 4,
+		PORT_D = 8,
+		PORT_DISABLED = 0xFF
 	};
 
+	enum PortMode {
+		MODE_INVALID,
+		MODE_NONE,         // no i/o, no device connected
+		MODE_DUMMY,        // no i/o, dummy device connected (CTS and DSR asserted)
+		MODE_FILE,         // file output
+		MODE_TERM,         // tty input/output (Linux only)
+		MODE_RAW,          // raw hardware serial port access (TODO)
+		MODE_MOUSE,        // serial mouse connected
+		MODE_NET_CLIENT,   // null-modem network client input/output
+		MODE_NET_SERVER,   // null-modem network server input/output
+		MODE_PIPE_CLIENT,  // pipe client input/output (Windows only)
+		MODE_PIPE_SERVER,  // pipe server input/output (Windows only)
+		MODE_MODEM,        // hayes compatible modem input/output
+		MODE_SPEAK         // Braille 'n Speak device
+	};
+
+	enum IntType {
+		INT_IER,
+		INT_RXDATA,
+		INT_TXHOLD,
+		INT_RXLSTAT,
+		INT_MODSTAT,
+		INT_FIFO
+	};
+
+private:
 	struct UART16550A {
 		//
 		// UART internal state
@@ -227,10 +228,10 @@ private:
 
 		constexpr const char * name() const {
 			switch(com) {
-				case SER_COM1: return "COM1";
-				case SER_COM2: return "COM2";
-				case SER_COM3: return "COM3";
-				case SER_COM4: return "COM4";
+				case COM1: return "COM1";
+				case COM2: return "COM2";
+				case COM3: return "COM3";
+				case COM4: return "COM4";
 				default: return "COM?";
 			}
 		}
@@ -245,7 +246,7 @@ private:
 	struct {
 		bool enabled; // TODO this should probably go inside uart or removed; reevaluate for 2133
 		UART16550A uart[SER_PORTS];
-		uint8_t portmap[4];
+		uint8_t portmap[4]; // COM to port binding
 		struct {
 			// mouse state (on the attached mouse device itself)
 			int detect; // detection protocol state
@@ -258,7 +259,8 @@ private:
 	} m_s;
 
 	struct Port {
-		int port_id;
+		int port_id; // the name of the port (one of PortName)
+		bool present; // if the port is supposed to be present in the machine's model
 
 		TimerID rx_timer;
 		TimerID tx_timer;
@@ -307,17 +309,17 @@ private:
 
 		constexpr const char * name() const {
 			switch(port_id) {
-				case SER_PORT_A: return "Serial port A";
-				case SER_PORT_B: return "Serial port B";
-				case SER_PORT_C: return "Serial port C";
-				case SER_PORT_D: return "Serial port D";
-				default: return "Serial port ?";
+				case PORT_A: return "Port A";
+				case PORT_B: return "Port B";
+				case PORT_C: return "Port C";
+				case PORT_D: return "Port D";
+				default: return "Port ?";
 			}
 		}
 	} m_host[SER_PORTS];
 
 	struct {
-		int port = SER_PORT_DISABLED;
+		int port = PORT_DISABLED;
 		int type = 0;
 		int delayed_dx = 0;
 		int delayed_dy = 0;
@@ -347,18 +349,26 @@ public:
 	uint16_t read(uint16_t address, unsigned io_len);
 	void write(uint16_t address, uint16_t value, unsigned io_len);
 
-	void set_port(uint8_t _port, uint8_t _com);
+	void bind_port(uint8_t _port, uint8_t _com);
 	void set_enabled(bool _enabled);
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
+	bool has_network_modes() const;
+	bool is_network_connected() const;
+	bool is_network_rx_active() const;
+	bool is_network_tx_active() const;
 	bool is_network_mode(uint8_t _port) const;
 	bool is_network_connected(uint8_t _port) const;
 	bool is_network_rx_active(uint8_t _port) const;
 	bool is_network_tx_active(uint8_t _port) const;
 
 private:
+	void install_com(uint8_t _port, uint8_t _com);
+	void remove_com(uint8_t _port);
+	void swap_com(uint8_t _port, uint8_t _com);
+
 	void lower_interrupt(uint8_t port);
 	void raise_interrupt(uint8_t port, int type);
 
@@ -371,12 +381,14 @@ private:
 	void fifo_timer(uint8_t, uint64_t);
 
 	void set_MSR(uint8_t _port, const ModemStatus &_status);
-	
+
 	void mouse_button(MouseButton _button, bool _state);
 	void mouse_motion(int delta_x, int delta_y, int delta_z);
 	void update_mouse_data(void);
 
 	void close(unsigned _port);
+
+	const char * port_name(unsigned _port) const;
 };
 
 #endif

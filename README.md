@@ -34,7 +34,7 @@
     - [DSP filters](#dsp-filters)
   - [Joystick](#joystick)
   - [Emulation speed adjustments](#emulation-speed-adjustments)
-  - [Serial port](#serial-port)
+  - [Serial ports](#serial-ports)
     - [Modem connections](#modem-connections)
       - [PRODIGY service](#prodigy-service)
       - [Modem troubleshooting](#modem-troubleshooting)
@@ -178,7 +178,7 @@ serial port.
 
 IBMulator can emulate a Braille 'n Speak synthesizer (without indexing) 
 connected to the serial port (COM). To enable the Braille 'n Speak emulation set
-the `[serial]:mode` setting to the value `speak`.
+the `[serial]:mode_a` or `[serial]:mode_b` setting to the value `speak`.
 
 IBMulator can also be configured to speak ASCII text printed to the parallel
 port (LPT). To enable TTS from the parallel port set the `[lpt]:speak` setting
@@ -778,13 +778,28 @@ The speed actually achievable depends on how fast your PC is. Keep in mind that
 the higher the emulated CPU core frequency is, the hardest it is to then
 accelerate it.
 
-### Serial port
+### Serial ports
 
-The serial port can be configured to connect to various devices via the
-`[serial]:mode` configuration option:
+The PS/1 2011 and 2121 models can manage only 1 serial port. Using CONFIGUR.EXE
+the BIOS can configure the port to be `Serial_1` (COM1) or `Serial_2` (COM2).
 
-* `auto`: the attached device is either a mouse or a dummy device without
-input/output; to connect a serial mouse set `[gui]:mouse` to `serial`.
+* COM1 is at I/O port 0x3F8 and IRQ 4
+* COM2 is at I/O port 0x2F8 and IRQ 3
+
+IBMulator can manage up to 2 ports, serial port A and B:
+
+* if BIOS is set to `Serial_1`, port A is COM1 and port B is COM2 (default).
+* if BIOS is set to `Serial_2`, port A is COM2 and port B is DISABLED.
+* if BIOS is set to `Disabled`, ports A and B are both DISABLED.
+
+A DISABLED serial port won't be installed at any I/O port or IRQ line.
+
+The serial ports can be configured to connect to various devices via the
+`[serial]:port_a` and `[serial]:port_b` configuration options:
+
+* `auto`: the port is configured with a mouse, a dummy device without
+input/output, or nothing depending on the machine configuration; to connect a
+serial mouse set `[gui]:mouse` to `serial`.
 * `dummy`: dummy connection with no I/O.
 * `file`: dump the serial output to a file; the `dev` parameter must be set with
 the path to the file.
@@ -798,15 +813,19 @@ paramenter must be set with the address and port to listen to in the form
 `dev` paramenter must be set with the address and port to connect to in the form
 `address:port`, for example `dev=192.168.1.100:6667`.
 * `modem`: virtual modem that connects and receives calls over the network.
+* `speak`: Braille 'n Speak synthetizer.
 
-If you need to use both a mouse and a serial device, you have to configure a
-PS/2 mouse in `[gui]:mouse` (default).
+If port B is configured as `auto` and no device is connected, it will be
+DISABLED.
 
-The serial port will keep its mode and connections open when a state is
-restored. The only exceptions are for `modem` and `serial mouse`. Both modes
-always take precedence and will be forced if the machine is configured with one
-of them when a state is saved. The modem will be reset to its default state and
-drop any active connection.
+The serial ports will keep their mode and connections open when a state is
+restored. The only exceptions are for `modem` and mouse (via the `[gui]:mouse`
+setting) modes. Both modes always take precedence and will be forced if the
+machine is configured with one of them when a state is saved.
+The modem will be reset to its default state and it'll drop any active
+connection.
+
+*Note*: Only one mouse and one modem can be installed at a time.
 
 #### Modem connections
 
@@ -859,7 +878,7 @@ To "dial" a BBS:
  1. Configure IBMulator as follows:
     ```
     [serial]
-    mode = modem
+    port_a = modem
 
     [modem]
     telnet_mode = yes
@@ -940,8 +959,8 @@ Solution: disable `telnet_mode`, otherwise enable `warmup_delay`.
 
 Problem: the connection seems to work fine but after a short while I start to
 see a bunch of random characters on my terminal instead of cool BBS ASCII art.  
-Solution: it might be that the VM can't keep up with the data. Try overclocking
-the emulated CPU, or reducing the modem's baud rate, or both.
+Solution: it might be that the VM can't keep up with the data. Try reducing the
+modem's baud rate, or overclocking the emulated CPU, or both.
 
 Problem: after the handshaking sounds the connection seems to freeze, or the
 game appears slightly desynchronized.  
