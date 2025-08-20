@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -29,6 +29,7 @@
 
 #include "config.h"
 #include <cstdint>
+#include <cinttypes>
 #include <cstdlib>
 #include <ctime>
 #include <sys/types.h>
