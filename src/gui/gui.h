@@ -387,6 +387,7 @@ private:
 	void on_joystick_button_event(const SDL_Event &_event);
 	void on_joystick_event(const SDL_Event &_event);
 	void on_button_event(const SDL_Event &, const Keymap::Binding *, EventPhase);
+	void on_text_event(const SDL_Event &_event);
 
 	void run_event_binding(InputSystem::Event &, EventPhase, uint32_t _mask = 0);
 	void run_event_functions(const Keymap::Binding *_binding, EventPhase _phase);

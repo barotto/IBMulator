@@ -335,7 +335,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 		ms_sdl_user_evt_id = SDL_RegisterEvents(TimedEvents::GUI_TEVT_COUNT);
 		PDEBUGF(LOG_V2, LOG_GUI, "Registered %d SDL user events\n", TimedEvents::GUI_TEVT_COUNT);
 	}
-	
+
+	if(SDL_IsTextInputActive()) {
+		PDEBUGF(LOG_V0, LOG_GUI, "Stopping text input.\n");
+		SDL_StopTextInput();
+	}
+
 	// DONE
 	m_windows.interface->show_welcome_screen(&m_keymaps[m_current_keymap], m_mode);
 }
@@ -1868,6 +1873,13 @@ void GUI::on_button_event(const SDL_Event &_sdl_event, const Keymap::Binding *_b
 	}
 }
 
+void GUI::on_text_event(const SDL_Event &_event)
+{
+	// text events are enabled and fired only when a RML text widget has focus
+	PDEBUGF(LOG_V2, LOG_GUI, "SDL Text: '%s'\n", _event.text.text);
+	dispatch_rml_event(_event);
+}
+
 void GUI::on_joystick_event(const SDL_Event &_event)
 {
 	auto print_joy_message = [this](SDL_Joystick *joy, int jid, bool forced = false) {
@@ -1953,6 +1965,9 @@ void GUI::dispatch_event(const SDL_Event &_event)
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
 			on_keyboard_event(_event);
+			break;
+		case SDL_TEXTINPUT:
+			on_text_event(_event);
 			break;
 		case SDL_MOUSEMOTION:
 			on_mouse_motion_event(_event);
@@ -2120,12 +2135,6 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 		if(key != Rml::Input::KI_UNKNOWN) {
 			m_rml_context->ProcessKeyDown(key,rmlmod);
 		}
-		if(!(rmlmod & Rml::Input::KM_CTRL)) {
-			char c = RmlSystemInterface::GetCharacterCode(key, rmlmod);
-			if(c > 0) {
-				m_rml_context->ProcessTextInput(c);
-			}
-		}
 		break;
 	}
 	case SDL_KEYUP:
@@ -2133,6 +2142,9 @@ void GUI::dispatch_rml_event(const SDL_Event &event)
 			m_rml_sys_interface->TranslateKey(event.key.keysym.sym),
 			rmlmod
 			);
+		break;
+	case SDL_TEXTINPUT:
+		m_rml_context->ProcessTextInput(Rml::String(&event.text.text[0]));
 		break;
 	default:
 		break;

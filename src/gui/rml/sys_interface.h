@@ -27,9 +27,6 @@
 
 class RmlSystemInterface : public Rml::SystemInterface
 {
-	static const char ascii_map[4][51];
-	static const char keypad_map[2][18];
-
 public:
 
 	/// Get the number of seconds elapsed since the start of the application.
@@ -42,14 +39,13 @@ public:
 	/// @return True to continue execution, false to break into the debugger.
 	bool LogMessage(Rml::Log::Type _type, const std::string &_message);
 
-	static char GetCharacterCode(
-			Rml::Input::KeyIdentifier key_identifier,
-			int key_modifier_state);
-
 	Rml::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
 	int TranslateMouseButton(Uint8 button);
 	int GetKeyModifiers(Uint16 _sdl_mods);
 	int GetKeyModifiers();
+
+	void ActivateKeyboard(Rml::Vector2f _caret_position, float _line_height);
+	void DeactivateKeyboard();
 };
 
 #endif
