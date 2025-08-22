@@ -844,7 +844,11 @@ Rml::ElementPtr FileSelect::DirEntry::create_element(Rml::ElementDocument *_doc,
 		unsigned _idx, unsigned _count) const
 {
 	Rml::ElementPtr child = _doc->CreateElement("div");
-	child->SetClassNames("entry");
+	if(is_dir) {
+		child->SetClassNames("entry directory");
+	} else {
+		child->SetClassNames("entry file");
+	}
 	child->SetId(id);
 	child->SetAttribute("data-index", _idx); 
 	child->SetAttribute("data-count", _count);

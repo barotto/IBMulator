@@ -27,25 +27,38 @@
 
 class RmlSystemInterface : public Rml::SystemInterface
 {
+	struct Cursors {
+		SDL_Cursor *dflt = nullptr;
+		SDL_Cursor *move = nullptr;
+		SDL_Cursor *pointer = nullptr;
+		SDL_Cursor *resize = nullptr;
+		SDL_Cursor *cross = nullptr;
+		SDL_Cursor *text = nullptr;
+		SDL_Cursor *unavail = nullptr;
+		Cursors();
+		~Cursors();
+	} m_cursors;
+
 public:
+	void SetMouseCursor(const Rml::String &_cursor_name) override;
 
 	/// Get the number of seconds elapsed since the start of the application.
 	/// @return Elapsed time, in seconds.
-	double GetElapsedTime();
+	double GetElapsedTime() override;
 	
 	/// Log the specified message.
 	/// @param[in] type Type of log message, ERROR, WARNING, etc.
 	/// @param[in] message Message to log.
 	/// @return True to continue execution, false to break into the debugger.
-	bool LogMessage(Rml::Log::Type _type, const std::string &_message);
+	bool LogMessage(Rml::Log::Type _type, const std::string &_message) override;
 
 	Rml::Input::KeyIdentifier TranslateKey(SDL_Keycode sdlkey);
 	int TranslateMouseButton(Uint8 button);
 	int GetKeyModifiers(Uint16 _sdl_mods);
 	int GetKeyModifiers();
 
-	void ActivateKeyboard(Rml::Vector2f _caret_position, float _line_height);
-	void DeactivateKeyboard();
+	void ActivateKeyboard(Rml::Vector2f _caret_position, float _line_height) override;
+	void DeactivateKeyboard() override;
 };
 
 #endif

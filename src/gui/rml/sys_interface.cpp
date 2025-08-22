@@ -22,6 +22,49 @@
 #include <RmlUi/Core.h>
 #include "sys_interface.h"
 
+RmlSystemInterface::Cursors::Cursors()
+{
+	dflt = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);;
+	move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+	pointer = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+	resize = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+	cross = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
+	text = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	unavail = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+}
+
+RmlSystemInterface::Cursors::~Cursors()
+{
+	SDL_FreeCursor(dflt);
+	SDL_FreeCursor(move);
+	SDL_FreeCursor(pointer);
+	SDL_FreeCursor(resize);
+	SDL_FreeCursor(cross);
+	SDL_FreeCursor(text);
+	SDL_FreeCursor(unavail);
+}
+
+void RmlSystemInterface::SetMouseCursor(const Rml::String &_cursor_name)
+{
+	if(_cursor_name.empty() || _cursor_name == "arrow") {
+		SDL_SetCursor(m_cursors.dflt);
+	} else if(_cursor_name == "move") {
+		SDL_SetCursor(m_cursors.move);
+	} else if(_cursor_name == "pointer") {
+		SDL_SetCursor(m_cursors.pointer);
+	} else if(_cursor_name == "resize") {
+		SDL_SetCursor(m_cursors.resize);
+	} else if(_cursor_name == "cross") {
+		SDL_SetCursor(m_cursors.cross);
+	} else if(_cursor_name == "text") {
+		SDL_SetCursor(m_cursors.text);
+	} else if(_cursor_name == "unavailable") {
+		SDL_SetCursor(m_cursors.unavail);
+	} else if(Rml::StringUtilities::StartsWith(_cursor_name, "rmlui-scroll")) {
+		SDL_SetCursor(m_cursors.move);
+	}
+}
+
 Rml::Input::KeyIdentifier RmlSystemInterface::TranslateKey(SDL_Keycode sdlkey)
 {
 	using namespace Rml::Input;

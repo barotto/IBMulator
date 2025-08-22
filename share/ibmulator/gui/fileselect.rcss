@@ -134,6 +134,11 @@ body
 	}
 }
 
+.entry.directory
+{
+	cursor: pointer;
+}
+
 @spritesheet
 {
 	src: icons/file_select.png;

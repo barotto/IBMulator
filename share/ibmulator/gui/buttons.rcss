@@ -582,6 +582,18 @@ select.romshell selectbox option:checked:hover
 	}
 }
 
+input.text,
+textarea
+{
+	cursor: text;
+}
+
+input.text:disabled,
+textarea:disabled
+{
+	cursor: unavailable;
+}
+
 spinbutton,
 input.text
 {
