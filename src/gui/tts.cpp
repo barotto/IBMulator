@@ -23,6 +23,7 @@
 #include "gui.h"
 #include "tts.h"
 #include "tts_dev_sapi.h"
+#include "tts_dev_nvda.h"
 #include "tts_dev_espeak.h"
 #include "tts_dev_file.h"
 
@@ -33,19 +34,13 @@ void TTS::init(GUI *_gui)
 
 	static std::map<std::string, unsigned> modes = {
 		{ "synth", SYNTH },
+		{ "espeak", ESPEAK },
+		{ "sapi", SAPI },
+		{ "nvda", NVDA },
 		{ "file",  FILE  }
 	};
 
-	unsigned mode = Mode::SYNTH;
-	unsigned guest_mode = Mode::SYNTH;
-
-	mode = g_program.config().get_enum(TTS_SECTION, TTS_GUI_DEV, modes, SYNTH);
-
-	if(g_program.config().get_string_or_default(TTS_SECTION, TTS_GUEST_DEV) == "auto") {
-		guest_mode = mode;
-	} else {
-		guest_mode = g_program.config().get_enum(TTS_SECTION, TTS_GUEST_DEV, modes, SYNTH);
-	}
+	unsigned mode = g_program.config().get_enum(TTS_SECTION, TTS_DEV, modes, SYNTH);
 
 	m_channels[ec_to_i(ChannelID::GUI)].enabled = false;
 	m_channels[ec_to_i(ChannelID::Guest)].enabled = false;
@@ -56,19 +51,13 @@ void TTS::init(GUI *_gui)
 		return;
 	}
 
+	// multiple devices/synths are possible, but are currently not allowed as they would speak on top of each other
 	m_devices.push_back({dev, {}});
+
 	m_channels[ec_to_i(ChannelID::GUI)] = ChannelState(ChannelID::GUI, "GUI", dev);
 	m_channels[ec_to_i(ChannelID::GUI)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUI_ENABLED);
 	m_devices.back().channels.push_back(&m_channels[ec_to_i(ChannelID::GUI)]);
 
-	if(guest_mode != mode) {
-		dev.reset(create_device((Mode)guest_mode));
-		if(!dev) {
-			dev = m_devices.back().device;
-		} else {
-			m_devices.push_back({dev, {}});
-		}
-	}
 	m_channels[ec_to_i(ChannelID::Guest)] = ChannelState(ChannelID::Guest, "Guest", dev);
 	m_channels[ec_to_i(ChannelID::Guest)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUEST_ENABLED);
 	m_devices.back().channels.push_back(&m_channels[ec_to_i(ChannelID::Guest)]);
@@ -85,6 +74,8 @@ TTSDev * TTS::create_device(Mode _mode) const
 		codepage = "437";
 	}
 
+	auto voice = g_program.config().get_string(TTS_SECTION, TTS_VOICE, "");
+
 	switch(_mode) {
 		case SYNTH: {
 			#ifdef _WIN32
@@ -95,9 +86,43 @@ TTSDev * TTS::create_device(Mode _mode) const
 				PERRF(LOG_GUI, "TTS synthetizers are not supported on this platform!\n");
 				return nullptr;
 			#endif
-			auto voice = g_program.config().get_string(TTS_SECTION, TTS_VOICE, "");
 			params = {voice, codepage};
 			break;
+		}
+		case ESPEAK: {
+			#if HAVE_LIBESPEAKNG
+				device = std::make_unique<TTSDev_eSpeak>();
+				params = {voice, codepage};
+				break;
+			#else
+				PERRF(LOG_GUI, "TTS eSpeak synthetizer is not supported.\n");
+				return nullptr;
+			#endif
+		}
+		case SAPI: {
+			#if _WIN32
+				device = std::make_unique<TTSDev_SAPI>();
+				params = {voice, codepage};
+				break;
+			#else
+				PERRF(LOG_GUI, "TTS SAPI synthetizer is not supported.\n");
+				return nullptr;
+			#endif
+		}
+		case NVDA: {
+			#if HAVE_NVDA
+				device = std::make_unique<TTSDev_NVDA>();
+				params = {codepage};
+				if(!dynamic_cast<TTSDev_NVDA*>(device.get())->is_nvda_running()) {
+					PERRF(LOG_GUI, "NVDA is not running or cannot be found. Using SAPI instead.\n");
+					device = std::make_unique<TTSDev_SAPI>();
+					params = {voice, codepage};
+				}
+				break;
+			#else
+				PERRF(LOG_GUI, "TTS NVDA Controller is not supported.\n");
+				return nullptr;
+			#endif
 		}
 		case FILE: {
 			device = std::make_unique<TTSDev_File>();
@@ -432,10 +457,10 @@ void TTS::close()
 
 const TTSFormat * TTS::get_format(ChannelID _ch) const
 {
-	if(!m_channels[ec_to_i(_ch)].device || !m_channels[ec_to_i(_ch)].device->format()) {
+	if(!m_channels[ec_to_i(_ch)].device || !m_channels[ec_to_i(_ch)].device->format(ec_to_i(_ch))) {
 		return &m_default_fmt;
 	}
-	return m_channels[ec_to_i(_ch)].device->format();
+	return m_channels[ec_to_i(_ch)].device->format(ec_to_i(_ch));
 }
 
 bool TTS::is_channel_open(ChannelID _ch) const

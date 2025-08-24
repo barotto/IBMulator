@@ -106,6 +106,9 @@ AX_CHECK_RMLUI
 AX_CHECK_LIBSAMPLERATE
 AX_CHECK_LIBESPEAKNG
 #AX_CHECK_ZLIB
+if test x$have_windows = xyes ; then
+	AX_CHECK_NVDA
+fi
 
 if test x$have_windows = xno ; then
 	# ALSA
@@ -139,11 +142,11 @@ BASELIBS="$BASELIBS $static $RMLUI_LIBS $LIBSAMPLERATE_LIBS $LIBESPEAKNG_LIBS $Z
 if test x$have_windows = xno ; then
 	BASELIBS="$BASELIBS -lrt"
 else
-	BASELIBS="$BASELIBS -lws2_32 -liconv -lole32 -lsapi ibmulator.res"
+	BASELIBS="$BASELIBS $NVDA_LIBS -lws2_32 -liconv -lole32 -lsapi ibmulator.res"
 fi
 AC_SUBST([BASELIBS])
 
-BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $LIBSAMPLERATE_CFLAGS $LIBESPEAKNG_CFLAGS $ZLIB_CFLAGS"
+BASECFLAGS="$ALSA_CFLAGS $FREETYPE_CFLAGS $RMLUI_CFLAGS $GLEW_CFLAGS $SDL_CFLAGS $LIBSAMPLERATE_CFLAGS $LIBESPEAKNG_CFLAGS $ZLIB_CFLAGS $NVDA_CFLAGS"
 AC_SUBST([BASECFLAGS])
 
 AC_DEFINE_UNQUOTED([SDL_MAJ_VER],[$sdl_major_version],[The SDL maj version you are compiling with])
@@ -221,6 +224,13 @@ else
 	echo "- eSpeak       : NO (Text-to-Speech disabled)"
 	else
 	echo "- eSpeak       : NO"
+	fi
+fi
+if test x$have_windows = xyes ; then
+	if test "x$NVDA_LIBS" != "x"; then
+		echo "- NVDA         : Yes ($NVDA_LIBS)"
+	else
+		echo "- NVDA         : NO"
 	fi
 fi
 

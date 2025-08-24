@@ -75,6 +75,9 @@ bool is_ascii_letter(uint8_t _byte);
 
 int str_parse_int_num(const std::string &_str);
 double str_parse_real_num(const std::string &_str);
+bool str_is_int_num(const std::string &_str);
+bool str_is_real_num(const std::string &_str);
+bool str_is_numeric(const std::string &_str);
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim = ", ");
 std::string str_implode(const std::vector<const char*> &_list, const std::string &_delim = ", ");
 void str_replace_all(std::string &_str, const std::string &_search, const std::string &_replace);

@@ -74,7 +74,7 @@ void TTSDev_eSpeak::speak(const std::string &_text, bool _purge)
 	}
 
 	std::string text = _text; // "<p>" + _text + "</p>";
-	PDEBUGF(LOG_V1, LOG_GUI, "%s:\n%s\n", name(), text.c_str());
+	PDEBUGF(LOG_V1, LOG_GUI, "%s%s:\n%s\n", name(), _purge ? " (purge)" : "", text.c_str());
 	espeak_Synth(text.c_str(), text.size()+1, 0, POS_CHARACTER, 0, espeakCHARS_UTF8|espeakSSML, NULL, NULL);
 }
 

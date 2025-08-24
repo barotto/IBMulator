@@ -33,6 +33,20 @@ std::string TTSFormat_SSML::fmt_value(std::string _text) const
 
 std::string TTSFormat_SSML::fmt_sentence(std::string _text) const
 {
+	if(m_dot_required) {
+		// NVDA SSML is very annoying: it doesn't support <s>,<break/> and so it
+		//  needs a dot to add a pause at the end of a sentence.
+		//  but it also spells out "dot" when it doesn't make any sense,
+		//  like when the sentence is a number or a single letter.
+		auto text = str_trim(_text);
+		if(text.length() > 1 &&
+		  text.back() != '.' &&
+		  !str_is_numeric(text) &&
+		  !std::regex_search(text, std::regex("<\\/say-as>$"))
+		) {
+			_text += ".";
+		}
+	}
 	return "<s>" + _text + "</s>";
 }
 
@@ -81,4 +95,15 @@ std::string TTSFormat_SSML::fmt_pitch(int _pitch, std::string _text) const
 std::string TTSFormat_SSML::fmt_spell(std::string _text) const
 {
 	return "<say-as interpret-as=\"characters\">" + _text + "</say-as>";
+}
+
+std::string TTSFormat_SSML::spell_symbols(std::string _text) const
+{
+	// mainly to fix paths speaking for NVDA SSML
+	str_replace_all(_text, ":", " colon ");
+	str_replace_all(_text, "/", " slash ");
+	str_replace_all(_text, "\\", " back slash ");
+	str_replace_all(_text, ".", " dot ");
+	str_replace_all(_text, "-", " dash ");
+	return _text;
 }

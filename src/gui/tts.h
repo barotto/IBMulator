@@ -49,7 +49,7 @@ public:
 
 private:
 	enum Mode {
-		SYNTH, FILE
+		SYNTH, ESPEAK, SAPI, NVDA, FILE
 	};
 	struct Message {
 		std::string text;

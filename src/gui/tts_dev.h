@@ -61,7 +61,7 @@ public:
 	virtual const char * name() const { return m_name.c_str(); };
 	virtual const std::string & conf() const { return m_conf; }
 	virtual Type type() const { return m_type; }
-	virtual const TTSFormat * format() const { return m_format.get(); }
+	virtual const TTSFormat * format(int) const { return m_format.get(); }
 };
 
 #endif

@@ -22,6 +22,7 @@ libgui_a_SOURCES = \
 	screen_renderer_sdl2d.cpp \
 	tts.cpp \
 	tts_dev_sapi.cpp \
+	tts_dev_nvda.cpp \
 	tts_dev_espeak.cpp \
 	tts_dev_file.cpp \
 	tts_format.cpp \
@@ -94,6 +95,7 @@ noinst_HEADERS = \
 	tts.h \
 	tts_dev.h \
 	tts_dev_sapi.h \
+	tts_dev_nvda.h \
 	tts_dev_espeak.h \
 	tts_dev_file.h \
 	tts_format.h \

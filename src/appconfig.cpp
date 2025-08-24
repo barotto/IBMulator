@@ -48,13 +48,13 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		{ TTS_SECTION,
 ";   gui_enabled: Enable Text-To-Speech for the GUI.\n"
 "; guest_enabled: Enable Text-To-Speech for the guest OS.\n"
-";       gui_dev: The device to use for the GUI.\n"
-";                 Possible values: synth, file\n"
-";                  synth: use a voice synthetizer.\n"
+";           dev: The device to use.\n"
+";                 Possible values: synth, sapi, nvda, espeak, file\n"
+";                  synth: use the default voice synthetizer.\n"
+";                   sapi: use SAPI (Windows).\n"
+";                   nvda: use NVDA Controller Client API (Windows).\n"
+";                 espeak: use eSpeak (Linux).\n"
 ";                   file: redirect to a file.\n"
-";     guest_dev: The device to use for the guest OS.\n"
-";                 Possible values: auto, or one of the values of the 'gui_dev' setting.\n"
-";                  auto: use the same value used in the 'gui_dev' setting.\n"
 ";         voice: The synthesizer's voice (see the README for more info).\n"
 ";          file: The file name to use for the file mode.\n"
 ";   file_format: The text format to use when file mode is used.\n"
@@ -520,8 +520,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	{ TTS_SECTION, {
 		{ TTS_GUI_ENABLED,   PROGRAM_CONFIG, PUBLIC_CFGKEY,  "no"      },
 		{ TTS_GUEST_ENABLED, PROGRAM_CONFIG, PUBLIC_CFGKEY,  "no"      },
-		{ TTS_GUI_DEV,       PROGRAM_CONFIG, PUBLIC_CFGKEY,  "synth"   },
-		{ TTS_GUEST_DEV,     PROGRAM_CONFIG, PUBLIC_CFGKEY,  "auto"    },
+		{ TTS_DEV,           PROGRAM_CONFIG, PUBLIC_CFGKEY,  "synth"   },
 		{ TTS_VOICE,         PROGRAM_CONFIG, PUBLIC_CFGKEY,  "default" },
 		{ TTS_FILE,          PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },
 		{ TTS_FORMAT,        PROGRAM_CONFIG, PUBLIC_CFGKEY,  ""        },

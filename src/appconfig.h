@@ -136,7 +136,7 @@ public:
 #define TTS_SECTION             "tts"
 #define TTS_GUI_ENABLED         "gui_enabled"
 #define TTS_GUEST_ENABLED       "guest_enabled"
-#define TTS_GUI_DEV             "gui_dev"
+#define TTS_DEV                 "dev"
 #define TTS_VOICE               "voice"
 #define TTS_FILE                "file"
 #define TTS_FORMAT              "file_format"

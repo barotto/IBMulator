@@ -244,7 +244,7 @@ void TTSDev_SAPI::speak(const std::string &_text, bool _purge)
 	PDEBUGF(LOG_V1, LOG_GUI, "%s:\n%s\n", name(), _text.c_str());
 	HRESULT hr = m_voice->Speak(wtext.data(), flags, NULL);
 	if(FAILED(hr)) {
-		throw std::runtime_error(str_format("cannot speak \"%s\"\n", name(), _text.c_str()));
+		throw std::runtime_error(str_format("cannot speak \"%s\"", _text.c_str()));
 	}
 }
 

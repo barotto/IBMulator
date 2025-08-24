@@ -566,6 +566,9 @@ void FileSelect::speak_path(const std::string &_path)
 		} else {
 			cwd = str_format("the root of drive %c.", path[0]);
 		}
+	} else {
+		// NVDA has problems recognizing and speaking paths so spell out all the symbols
+		cwd = m_gui->tts().get_format()->spell_symbols(cwd);
 	}
 	m_gui->tts().enqueue(str_format("Current folder is %s", cwd.c_str()));
 }

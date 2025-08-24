@@ -142,20 +142,24 @@ run-time use the following default key bindings:
 
 Key bindings can be customized: see [Keymaps](#keymaps) for more info.
 
-You can specify the device to use with `[tts]:gui_dev` for the GUI and 
-`[tts]:guest_dev` for the guest OS, with the following values:
- * `synth` to use a voice synthesizer.
+You can specify the device to use with `[tts]:dev` with the following values:
+ * `synth` to use the default voice synthesizer for your system (SAPI on
+Windows, eSpeak on Linux).
+ * `sapi` to use the SAPI interface (Windows only).
+ * `nvda` to use the NVDA Controller Client API (Windows only).
+ * `espeak` to use the eSpeak library (Linux only).
  * `file` to redirect voice text to an external file.
 
-For the synthesizer, IBMulator will use the SAPI 5 interface on Windows and the
-eSpeak NG library on Linux. Be sure to have voices installed and configured for
-your system.
+If the TTS device is configured with `nvda`, the NVDA program must be running
+before launching IBMulator. If NVDA cannot be found SAPI will be used instead.  
+The minimum NVDA supported version is 2024.1
 
+For SAPI and eSpeak be sure to have voices installed and configured for your
+system.  
 You can specify the voice to use with the `[tts]:voice` parameter. With SAPI you
 can use either a voice name string or a voice number; with eSpeak only a voice
 name is accepted.  
-To use the default system voice specify the value `default` or leave it empty.
-
+To use the default system voice specify the value `default` or leave it empty.  
 To get the list of available voices leave the setting empty and search
 IBMulator's log file for TTS, SAPI, or eSpeak related messages.
 
@@ -178,7 +182,8 @@ serial port.
 
 IBMulator can emulate a Braille 'n Speak synthesizer (without indexing) 
 connected to the serial port (COM). To enable the Braille 'n Speak emulation set
-the `[serial]:mode_a` or `[serial]:mode_b` setting to the value `speak`.
+the `[serial]:mode_a` (port A) or `[serial]:mode_b` (port B) settings to the
+value `speak`. Under DOS, port A is normally COM1 and port B is COM2.
 
 IBMulator can also be configured to speak ASCII text printed to the parallel
 port (LPT). To enable TTS from the parallel port set the `[lpt]:speak` setting

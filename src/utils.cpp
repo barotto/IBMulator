@@ -67,6 +67,27 @@ double str_parse_real_num(const std::string &_str)
 	return n;
 }
 
+bool str_is_int_num(const std::string &_str)
+{
+	const char *value = _str.c_str();
+	char *end;
+	strtol(value, &end, 0);
+	return (end > value);
+}
+
+bool str_is_real_num(const std::string &_str)
+{
+	const char *value = _str.c_str();
+	char *end;
+	strtod(value, &end);
+	return (end > value);
+}
+
+bool str_is_numeric(const std::string &_str)
+{
+	return str_is_int_num(_str) || str_is_real_num(_str);
+}
+
 std::string str_implode(const std::vector<std::string> &_list, const std::string &_delim)
 {
 	// thanks, random internet stranger @stackoverflow!

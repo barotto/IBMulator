@@ -24,17 +24,21 @@
 
 class TTSFormat_SSML : public TTSFormat
 {
+	bool m_dot_required = false;
+
 public:
 	TTSFormat_SSML() : TTSFormat() {}
-	TTSFormat_SSML(std::string _codepage) : TTSFormat(_codepage) {}
+	TTSFormat_SSML(std::string _codepage, bool _dot_required = false)
+		: TTSFormat(_codepage), m_dot_required(_dot_required) {}
 	~TTSFormat_SSML() {}
 
-	std::string fmt_value(std::string _text) const;
-	std::string fmt_sentence(std::string _text) const;
-	std::string fmt_volume(int, std::string _text) const;
-	std::string fmt_rate(int, std::string _text) const;
-	std::string fmt_pitch(int, std::string _text) const;
-	std::string fmt_spell(std::string _text) const;
+	std::string fmt_value(std::string _text) const override;
+	std::string fmt_sentence(std::string _text) const override;
+	std::string fmt_volume(int, std::string _text) const override;
+	std::string fmt_rate(int, std::string _text) const override;
+	std::string fmt_pitch(int, std::string _text) const override;
+	std::string fmt_spell(std::string _text) const override;
+	std::string spell_symbols(std::string _text) const override;
 };
 
 #endif
