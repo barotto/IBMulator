@@ -8,6 +8,7 @@
   - [Accessibility](#accessibility)
     - [Text-To-Speach (TTS)](#text-to-speach-tts)
       - [Text-To-Speech under DOS](#text-to-speech-under-dos)
+        - [Connection to external synthesizer emulators](#connection-to-external-synthesizer-emulators)
         - [Notes for ASAP](#notes-for-asap)
     - [File select dialog window](#file-select-dialog-window)
     - [VGA color mode](#vga-color-mode)
@@ -40,6 +41,7 @@
       - [Modem troubleshooting](#modem-troubleshooting)
     - [Null modem connections](#null-modem-connections)
     - [Network options and limitations](#network-options-and-limitations)
+    - [Named pipe and virtual COM port connections](#named-pipe-and-virtual-com-port-connections)
   - [Parallel port](#parallel-port)
     - [Virtual printer](#virtual-printer)
   - [MIDI output](#midi-output)
@@ -148,7 +150,7 @@ Windows, eSpeak on Linux).
  * `sapi` to use the SAPI interface (Windows only).
  * `nvda` to use the NVDA Controller Client API (Windows only).
  * `espeak` to use the eSpeak library (Linux only).
- * `file` to redirect voice text to an external file.
+ * `file` to redirect voice text to a regular file.
 
 If the TTS device is configured with `nvda`, the NVDA program must be running
 before launching IBMulator. If NVDA cannot be found SAPI will be used instead.  
@@ -194,6 +196,16 @@ to unicode by IBMulator before it is spoken. The `[tts]:codepage` setting allows
 you to specify the DOS code page in use. The default is 437, which is the
 original one used for the IBM PC. The other common code page used
 internationally is 850.
+
+###### Connection to external synthesizer emulators
+
+If you want to use an external emulator to synthesize the TTS coming from DOS
+instead of the included Braille 'n Speak emulator, you can configure the serial
+port with the `pipe-client` mode.
+
+See the
+[Named pipe and virtual COM port connections](#named-pipe-and-virtual-com-port-connections)
+section for more information.
 
 ###### Notes for ASAP
 
@@ -817,6 +829,10 @@ paramenter must be set with the address and port to listen to in the form
 * `net-client`: network client that connects to a network server at launch; the 
 `dev` paramenter must be set with the address and port to connect to in the form
 `address:port`, for example `dev=192.168.1.100:6667`.
+* `pipe-server`: named pipe server that accepts incoming named pipe connections
+(Windows only). See below for more info.
+* `pipe-client`: named pipe client that connects to named pipe servers or
+virtual COM ports (Windows only). See below for more info.
 * `modem`: virtual modem that connects and receives calls over the network.
 * `speak`: Braille 'n Speak synthetizer.
 
@@ -1028,6 +1044,40 @@ Network modes have some limitations:
 possible to save and restore the same state on both the client and the server
 (you can always save just before starting using the port, ie. just before
 establishing a network connection in a game).
+
+#### Named pipe and virtual COM port connections
+
+On Windows it's possible to use the `pipe-server` and `pipe-client` modes to
+create a connection between two instances of IBMulator or with another program
+that can use named pipes.
+
+Using the `pipe-client` mode it's also possible to connect IBMulator to a
+virtual COM port. Virtual COM ports can be created with Null-modem emulators
+like [com0com](https://com0com.sourceforge.net/).
+
+*Note*: using `pipe-client` to connect to a COM port does not fully emulate a
+serial connection and it's not possible to use programs that rely on hardware
+handshaking to operate. Real COM ports are untested.
+
+When a port is configured with `pipe-server`, on launch IBMulator will wait for
+an incoming connection before starting. It is necessary to start the server
+before the client.
+
+To configure a named pipe mode, the `dev_X` settings must be set with the path
+of the pipe in the following form:
+
+```
+dev_a=\\.\pipe\pipename
+```
+where `pipename` is the name of the pipe.
+
+To connect to a virtual COM port use:
+```
+dev_a=\\.\COM#
+```
+where `#` is the number of the port.
+
+*Note*: named pipe modes are incompatible with savestates.
 
 ### Parallel port
 
