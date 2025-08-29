@@ -361,4 +361,22 @@ pixmapdir = $(pkgdatadir)/../pixmaps
 dist_pixmap_DATA = \
 share/pixmaps/ibmulator.png
 
-EXTRA_DIST = README.md SHADERS.md KEYMAPS.md BUILD_LINUX.md BUILD_WINDOWS.md
+EXTRA_DIST = \
+README.md \
+docs/USAGE.md \
+docs/SHADERS.md \
+docs/KEYMAPS.md \
+docs/BUILD_LINUX.md \
+docs/BUILD_WINDOWS.md \
+docs/images/compact-mode.png \
+docs/images/compact-mode-thumb.png \
+docs/images/normal-mode.png \
+docs/images/normal-mode-thumb.png \
+docs/images/realistic-mode-dark.png \
+docs/images/realistic-mode-dark-thumb.png \
+docs/images/realistic-mode.png \
+docs/images/realistic-mode-thumb.png \
+docs/images/shaders-crt-lottes.png \
+docs/images/shaders-crt-lottes-thumb.png \
+docs/images/shaders-retroarch.png \
+docs/images/shaders-retroarch-thumb.png

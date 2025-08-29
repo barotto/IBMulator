@@ -1,5 +1,5 @@
 /release*
-/docs/
+/info/
 /debug/
 /autom4te.cache/
 /ibmulator-*.tar.gz
@@ -29,3 +29,4 @@ callgrind*
 *.pl
 /cov-int
 *_test.*
+*.cap

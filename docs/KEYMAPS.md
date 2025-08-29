@@ -6,8 +6,7 @@ Along with simple key presses or axes motion, a keymap allows you to specify mac
 
 ## Bindings
 
-For keyboard events IBMulator uses the SDL library's identifiers.
-Refer to [libsdl.org](https://wiki.libsdl.org/SDL_Keycode) for the list of SDL symbols.
+For keyboard events IBMulator uses the SDL library's identifiers. Refer to [libsdl.org](https://wiki.libsdl.org/SDL_Keycode) for the list of SDL symbols.
 
 The general syntax for a binding line in the keymap file is:  
 `INPUT_EVENT = IBMULATOR_EVENT [+IBMULATOR_EVENT...] [; OPTION...]`
@@ -42,13 +41,13 @@ The general syntax for a binding line in the keymap file is:
 
 `OPTION` can be:
 
-* `MODE:m`: macro execution mode; possible values for `m` are:
-    * `default`: default mode of execution, i.e. macro starts when the binding is activated and ends when deactivated.
-    * `1shot`: macro starts and ends immediately; timed macros will run until their completion (endless macros will run forever).
-    * `latched`: macro starts when the binding is activated and ends when it's activated again.
-    * `repeat`: macro repeats after a 250ms delay, with a 20 repetitions per second frequency.
-* `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run concurrently.
-* `TYPEMATIC:NO`: disables the typematic keyboard feature.
+ * `MODE:m`: macro execution mode; possible values for `m` are:
+     * `default`: default mode of execution, i.e. macro starts when the binding is activated and ends when deactivated.
+     * `1shot`: macro starts and ends immediately; timed macros will run until their completion (endless macros will run forever).
+     * `latched`: macro starts when the binding is activated and ends when it's activated again.
+     * `repeat`: macro repeats after a 250ms delay, with a 20 repetitions per second frequency.
+ * `GROUP:g`: timed macros belonging to the same group `g` (a string) can't run concurrently.
+ * `TYPEMATIC:NO`: disables the typematic keyboard feature.
 
 To specify multiple _binding options_ separate them with spaces.
 
@@ -59,35 +58,40 @@ SDL scancodes represent physical keyboard keys and are not affected by any OS re
 To avoid event spamming, they should be used in conjunction with `WAIT`.
 
 Valid `KMOD_*` keyboard modifiers are:
-* `KMOD_SHIFT`: any shift
-* `KMOD_LSHIFT`: left shift
-* `KMOD_RSHIFT`: right shift
-* `KMOD_CTRL`: any control
-* `KMOD_LCTRL`: left control
-* `KMOD_RCTRL`: right control
-* `KMOD_ALT`: any alt
-* `KMOD_LALT`: left alt
-* `KMOD_RALT`: right alt
-* `KMOD_GUI`: any meta (the "Win" key)
-* `KMOD_LGUI`: left meta
-* `KMOD_RGUI`: right meta
+
+ * `KMOD_SHIFT`: any shift
+ * `KMOD_LSHIFT`: left shift
+ * `KMOD_RSHIFT`: right shift
+ * `KMOD_CTRL`: any control
+ * `KMOD_LCTRL`: left control
+ * `KMOD_RCTRL`: right control
+ * `KMOD_ALT`: any alt
+ * `KMOD_LALT`: left alt
+ * `KMOD_RALT`: right alt
+ * `KMOD_GUI`: any meta (the "Win" key)
+ * `KMOD_LGUI`: left meta
+ * `KMOD_RGUI`: right meta
 
 Key modifiers bindings have some limitations:
-* you must specify combos with the modifier(s) first, for example: `KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB`.
-* SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when their mode of operation is not `default` and they are also used in combos (e.g. `KMOD_CTRL + SDLK_TAB`).
-* on keyboards with the `AltGr` key the `KMOD_RALT` modifier might not work, as `AltGr` could be translated with `LCTRL+RALT` by the host OS.
+
+ * you must specify combos with the modifier(s) first, for example: `KMOD_CTRL + SDLK_TAB = KEY_ALT_L + KEY_TAB`.
+ * SDL key bindings for modifiers (e.g. `SDLK_LCTRL`) won't work as expected when their mode of operation is not `default` and they are also used in combos (e.g. `KMOD_CTRL + SDLK_TAB`).
+ * on keyboards with the `AltGr` key the `KMOD_RALT` modifier might not work, as `AltGr` could be translated with `LCTRL+RALT` by the host OS.
 
 ### Keyboard mappings
 
 `KEY_*` events have an implicit chain of commands at the end to emulate typematic repeats, but only when the key event is not part of a macro (except when combined with key modifiers).
 
 For example `SDLK_a = KEY_A` is automatically translated to:
+
 ```
 SDLK_a = KEY_A + wait(tmd) + KEY_A + wait(tmr) + skip_to(3)
 ```
+
 where:
-* `tmd`: typematic delay
-* `tmr`: typematic repeat rate
+
+ * `tmd`: typematic delay
+ * `tmr`: typematic repeat rate
 
 Both `tmd` and `tmr` values are set by the guest OS at run-time (see the `MODE` DOS command).
 
@@ -96,34 +100,38 @@ Keywords and identifiers are case insensitive, so for example `SDLK_a` is the sa
 ### Mouse mappings
 
 `MOUSE_AXIS_n` events can have 3 arguments when mapped to joystick axes or buttons, all optional:
-* argument 1 (`p`): amount of pixels / maximum speed of the mouse pointer (per 10ms, default 10).
-* argument 2 (`t`): type of movement, 0=continuous/proportional, 1=accelerated, 2=single shot (default 0).
-* argument 3 (`a`): amount of acceleration (default 5, applied only when t=1).
+
+ * argument 1 (`p`): amount of pixels / maximum speed of the mouse pointer (per 10ms, default 10).
+ * argument 2 (`t`): type of movement, 0=continuous/proportional, 1=accelerated, 2=single shot (default 0).
+ * argument 3 (`a`): amount of acceleration (default 5, applied only when t=1).
 
 For buttons to mouse axis you must specify the direction with the sign of `p`; for joystick / gamepad axes to mouse axes the direction is auto determined and a negative `p` value will invert the direction.
 These parameters won't apply when a mouse axis is mapped to a mouse axis; in that case a direct (relative movement) translation will be applied (only exception is the first parameter `p` that can be set to `-1` to invert the axis).
 
 Examples:
-* `SDLK_UP = MOUSE_AXIS_Y(10,1)`: accelerated movement with a max. speed of 10pix per 10ms.
-* `SDLK_LEFT = MOUSE_AXIS_X(-5,0)`: -5pix per 10ms constant speed.
-* `JOY_0_AXIS_0 = MOUSE_AXIS_X(10,0)`: proportional speed (smoothstep), 0 to +10/-10 pix per 10ms.
-* `JOY_0_AXIS_1 = MOUSE_AXIS_Y(-10,0)`: the same as previous example, but with inverted axis.
-* `JOY_0_AXIS_2 = MOUSE_AXIS_X(5,1)`: accelerated movement 0 to 5pix, useful for d-pads.
+
+ * `SDLK_UP = MOUSE_AXIS_Y(10,1)`: accelerated movement with a max. speed of 10pix per 10ms.
+ * `SDLK_LEFT = MOUSE_AXIS_X(-5,0)`: -5pix per 10ms constant speed.
+ * `JOY_0_AXIS_0 = MOUSE_AXIS_X(10,0)`: proportional speed (smoothstep), 0 to +10/-10 pix per 10ms.
+ * `JOY_0_AXIS_1 = MOUSE_AXIS_Y(-10,0)`: the same as previous example, but with inverted axis.
+ * `JOY_0_AXIS_2 = MOUSE_AXIS_X(5,1)`: accelerated movement 0 to 5pix, useful for d-pads.
 
 ### Joystick mappings
 
 `JOY_j_AXIS_n` events can have 3 arguments:
-* argument 1 (`v`): stop value, from -32768 to 32767 (sign sets the direction); you can also use `-max` and `max` strings (no default).
-* argument 2 (`t`): type of stick movement, 0=immediate, 1=constant speed (default 0).
-* argument 3 (`a`): speed of stick movement (default 500, applied only when t=1).
+
+ * argument 1 (`v`): stop value, from -32768 to 32767 (sign sets the direction); you can also use `-max` and `max` strings (no default).
+ * argument 2 (`t`): type of stick movement, 0=immediate, 1=constant speed (default 0).
+ * argument 3 (`a`): speed of stick movement (default 500, applied only when t=1).
 
 Parameters `t` and `a` are applied only for keys and buttons; movement is automatically determined when you map mouse and joystick axes (a negative `v` value will invert the direction).
 
 Examples:
-* `SDLK_KP_2 = JOY_A_AXIS_Y(max,1)`: stick movement at constant speed from 0 to 32767.
-* `SDLK_KP_4 = JOY_A_AXIS_X(-max,0)`: immediate stick movement to -32768.
-* `SDLK_KP_6 = JOY_A_AXIS_X(max,1)`
-* `SDLK_KP_8 = JOY_A_AXIS_Y(-max,1)`
+
+ * `SDLK_KP_2 = JOY_A_AXIS_Y(max,1)`: stick movement at constant speed from 0 to 32767.
+ * `SDLK_KP_4 = JOY_A_AXIS_X(-max,0)`: immediate stick movement to -32768.
+ * `SDLK_KP_6 = JOY_A_AXIS_X(max,1)`
+ * `SDLK_KP_8 = JOY_A_AXIS_Y(-max,1)`
 
 ### Function mappings
 
@@ -172,22 +180,24 @@ Valid `FUNC_* ` functions are:
 | `FUNC_EXIT`                 | exit IBMulator.
 
 For `FUNC_GUI_MODE_ACTION(x)`, the value of `x` determines the action:
-* `x`=1:
-  * in Compact mode: toggle the main interface window
-  * in Realistic mode: toggle zoomed view
-* `x`=2:
-  * in Normal and Compact modes: switch between Normal and Compact modes
-  * in Realistic mode: switch between bright and dark styles
+
+ * `x`=1:
+   * in Compact mode: toggle the main interface window
+   * in Realistic mode: toggle zoomed view
+ * `x`=2:
+   * in Normal and Compact modes: switch between Normal and Compact modes
+   * in Realistic mode: switch between bright and dark styles
 
 ## Macro examples
 
 Joystick autofire with a 500ms delay and ~20 clicks per second:
+
 ```
 JOY_0_BUTTON_0 = JOY_A_BUTTON_1 + wait(500) + release + wait(25) + JOY_A_BUTTON_1 + wait(25) + skip_to(3)
 ```
 
 Normal 'D' key press, but if kept pressed for >250ms runs the DOS `dir` command instead of typematic repeats:
+
 ```
 SDLK_d = KEY_D + wait(250) + KEY_I + KEY_R + KEY_ENTER
 ```
-
