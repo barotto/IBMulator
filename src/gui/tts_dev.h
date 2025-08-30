@@ -20,6 +20,7 @@
 #ifndef IBMULATOR_TTS_DEV_H
 #define IBMULATOR_TTS_DEV_H
 
+#include "tts_channel.h"
 #include "tts_format.h"
 
 class TTSDev
@@ -35,7 +36,7 @@ protected:
 	Type m_type;
 	std::string m_name;
 	std::string m_conf;
-	std::unique_ptr<TTSFormat> m_format;
+	std::unique_ptr<TTSFormat> m_format[TTSChannel::Count];
 	int m_volume; // -10 .. +10
 	int m_rate; // -10 .. +10
 	int m_pitch; // -10 .. +10
@@ -61,7 +62,14 @@ public:
 	virtual const char * name() const { return m_name.c_str(); };
 	virtual const std::string & conf() const { return m_conf; }
 	virtual Type type() const { return m_type; }
-	virtual const TTSFormat * format(int) const { return m_format.get(); }
+
+	virtual const TTSFormat * format(unsigned _ch) const
+	{
+		if(_ch < TTSChannel::Count && m_format[_ch].get()) {
+			return m_format[_ch].get();
+		}
+		return m_format[0].get();
+	}
 };
 
 #endif

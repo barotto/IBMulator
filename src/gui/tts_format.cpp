@@ -25,3 +25,14 @@ std::string TTSFormat::convert(std::string _text) const
 {
 	return str_convert(_text, m_codepage.c_str(), "UTF-8");
 }
+
+std::string TTSFormat::spell_symbols(std::string _text) const
+{
+	str_replace_all(_text, ":", " colon ");
+	str_replace_all(_text, "/", " slash ");
+	str_replace_all(_text, "\\", " back slash ");
+	str_replace_all(_text, ".", " dot ");
+	str_replace_all(_text, "-", " dash ");
+
+	return _text;
+}

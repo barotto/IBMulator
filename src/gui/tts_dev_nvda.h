@@ -26,8 +26,6 @@
 
 class TTSDev_NVDA : public TTSDev
 {
-	std::unique_ptr<TTSFormat> m_format_guest;
-
 public:
 	TTSDev_NVDA() : TTSDev(Type::SYNTH, "NVDA") {}
 	~TTSDev_NVDA() {}
@@ -36,7 +34,6 @@ public:
 	bool is_open() const override;
 	void speak(const std::string &_text, bool _purge = true) override;
 	void stop() override;
-	const TTSFormat * format(int _ch) const override;
 	bool is_nvda_running() const;
 
 private:

@@ -2795,9 +2795,9 @@ void GUI::pevt_func_tts_adj_volume(const ProgramEvent::Func &_func, EventPhase _
 		return;
 	}
 
-	if(m_tts.adj_volume(TTS::ChannelID::GUI, _func.params[0])) {
-		show_message(str_format("GUI speak volume %+d", m_tts.volume(TTS::ChannelID::GUI)));
-		PDEBUGF(LOG_V1, LOG_GUI, "  adj.vol=%d, new vol=%d\n", _func.params[0], m_tts.volume(TTS::ChannelID::GUI));
+	if(m_tts.adj_volume(TTSChannel::ID::GUI, _func.params[0])) {
+		show_message(str_format("GUI speak volume %+d", m_tts.volume(TTSChannel::ID::GUI)));
+		PDEBUGF(LOG_V1, LOG_GUI, "  adj.vol=%d, new vol=%d\n", _func.params[0], m_tts.volume(TTSChannel::ID::GUI));
 	}
 }
 
@@ -2812,9 +2812,9 @@ void GUI::pevt_func_tts_adj_rate(const ProgramEvent::Func &_func, EventPhase _ph
 		return;
 	}
 
-	if(m_tts.adj_rate(TTS::ChannelID::GUI, _func.params[0])) {
-		show_message(str_format("GUI speak rate %+d", m_tts.rate(TTS::ChannelID::GUI)));
-		PDEBUGF(LOG_V1, LOG_GUI, "  adj.rate=%d, new rate=%d\n", _func.params[0], m_tts.rate(TTS::ChannelID::GUI));
+	if(m_tts.adj_rate(TTSChannel::ID::GUI, _func.params[0])) {
+		show_message(str_format("GUI speak rate %+d", m_tts.rate(TTSChannel::ID::GUI)));
+		PDEBUGF(LOG_V1, LOG_GUI, "  adj.rate=%d, new rate=%d\n", _func.params[0], m_tts.rate(TTSChannel::ID::GUI));
 	}
 }
 
@@ -2955,17 +2955,17 @@ void GUI::pevt_func_tts_gui_toggle(const ProgramEvent::Func&, EventPhase _phase)
 	}
 
 	PDEBUGF(LOG_V1, LOG_GUI, "TTS GUI toggle func event\n");
-	if(!m_tts.is_channel_open(TTS::ChannelID::GUI)) {
+	if(!m_tts.is_channel_open(TTSChannel::ID::GUI)) {
 		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
 		return;
 	}
 
-	if(m_tts.is_channel_enabled(TTS::ChannelID::GUI)) {
+	if(m_tts.is_channel_enabled(TTSChannel::ID::GUI)) {
 		m_tts.enqueue("TTS for the GUI disabled.");
-		m_tts.enable_channel(TTS::ChannelID::GUI, false);
+		m_tts.enable_channel(TTSChannel::ID::GUI, false);
 		show_message("TTS for the GUI disabled.");
 	} else {
-		m_tts.enable_channel(TTS::ChannelID::GUI, true);
+		m_tts.enable_channel(TTSChannel::ID::GUI, true);
 		show_message("TTS for the GUI enabled.");
 	}
 }
@@ -2977,13 +2977,13 @@ void GUI::pevt_func_tts_guest_toggle(const ProgramEvent::Func&, EventPhase _phas
 	}
 
 	PDEBUGF(LOG_V1, LOG_GUI, "TTS Guest toggle func event\n");
-	if(!m_tts.is_channel_open(TTS::ChannelID::Guest)) {
+	if(!m_tts.is_channel_open(TTSChannel::ID::Guest)) {
 		PDEBUGF(LOG_V1, LOG_GUI, "  TTS device not open\n");
 		return;
 	}
 
-	m_tts.enable_channel(TTS::ChannelID::Guest, !m_tts.is_channel_enabled(TTS::ChannelID::Guest));
-	show_message(str_format("TTS for the guest OS %s.", m_tts.is_channel_enabled(TTS::ChannelID::Guest) ? "enabled" : "disabled"));
+	m_tts.enable_channel(TTSChannel::ID::Guest, !m_tts.is_channel_enabled(TTSChannel::ID::Guest));
+	show_message(str_format("TTS for the guest OS %s.", m_tts.is_channel_enabled(TTSChannel::ID::Guest) ? "enabled" : "disabled"));
 }
 
 void GUI::pevt_func_set_color_mode(const ProgramEvent::Func &_func, EventPhase _phase)

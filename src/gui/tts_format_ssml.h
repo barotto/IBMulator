@@ -38,7 +38,6 @@ public:
 	std::string fmt_rate(int, std::string _text) const override;
 	std::string fmt_pitch(int, std::string _text) const override;
 	std::string fmt_spell(std::string _text) const override;
-	std::string spell_symbols(std::string _text) const override;
 };
 
 #endif

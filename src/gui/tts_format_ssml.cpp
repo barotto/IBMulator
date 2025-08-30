@@ -96,14 +96,3 @@ std::string TTSFormat_SSML::fmt_spell(std::string _text) const
 {
 	return "<say-as interpret-as=\"characters\">" + _text + "</say-as>";
 }
-
-std::string TTSFormat_SSML::spell_symbols(std::string _text) const
-{
-	// mainly to fix paths speaking for NVDA SSML
-	str_replace_all(_text, ":", " colon ");
-	str_replace_all(_text, "/", " slash ");
-	str_replace_all(_text, "\\", " back slash ");
-	str_replace_all(_text, ".", " dot ");
-	str_replace_all(_text, "-", " dash ");
-	return _text;
-}

@@ -37,13 +37,13 @@ void TTS::init(GUI *_gui)
 		{ "espeak", ESPEAK },
 		{ "sapi", SAPI },
 		{ "nvda", NVDA },
-		{ "file",  FILE  }
+		{ "file", FILE  }
 	};
 
 	unsigned mode = g_program.config().get_enum(TTS_SECTION, TTS_DEV, modes, SYNTH);
 
-	m_channels[ec_to_i(ChannelID::GUI)].enabled = false;
-	m_channels[ec_to_i(ChannelID::Guest)].enabled = false;
+	m_channels[ec_to_i(TTSChannel::ID::GUI)].enabled = false;
+	m_channels[ec_to_i(TTSChannel::ID::Guest)].enabled = false;
 
 	std::shared_ptr<TTSDev> dev { create_device((Mode)mode) };
 	if(!dev) {
@@ -54,13 +54,13 @@ void TTS::init(GUI *_gui)
 	// multiple devices/synths are possible, but are currently not allowed as they would speak on top of each other
 	m_devices.push_back({dev, {}});
 
-	m_channels[ec_to_i(ChannelID::GUI)] = ChannelState(ChannelID::GUI, "GUI", dev);
-	m_channels[ec_to_i(ChannelID::GUI)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUI_ENABLED);
-	m_devices.back().channels.push_back(&m_channels[ec_to_i(ChannelID::GUI)]);
+	m_channels[ec_to_i(TTSChannel::ID::GUI)] = ChannelState(TTSChannel::ID::GUI, "GUI", dev);
+	m_channels[ec_to_i(TTSChannel::ID::GUI)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUI_ENABLED);
+	m_devices.back().channels.push_back(&m_channels[ec_to_i(TTSChannel::ID::GUI)]);
 
-	m_channels[ec_to_i(ChannelID::Guest)] = ChannelState(ChannelID::Guest, "Guest", dev);
-	m_channels[ec_to_i(ChannelID::Guest)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUEST_ENABLED);
-	m_devices.back().channels.push_back(&m_channels[ec_to_i(ChannelID::Guest)]);
+	m_channels[ec_to_i(TTSChannel::ID::Guest)] = ChannelState(TTSChannel::ID::Guest, "Guest", dev);
+	m_channels[ec_to_i(TTSChannel::ID::Guest)].enabled = g_program.config().get_bool_or_default(TTS_SECTION, TTS_GUEST_ENABLED);
+	m_devices.back().channels.push_back(&m_channels[ec_to_i(TTSChannel::ID::Guest)]);
 }
 
 TTSDev * TTS::create_device(Mode _mode) const
@@ -231,7 +231,7 @@ void TTS::speak()
 
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	for(int ch=0; ch<Channels; ch++) {
+	for(int ch=0; ch<TTSChannel::Count; ch++) {
 		if(m_channels[ch].queue.empty()) {
 			continue;
 		}
@@ -270,12 +270,12 @@ void TTS::speak()
 		}
 	}
 
-	for(int ch=0; ch<Channels; ch++) {
+	for(int ch=0; ch<TTSChannel::Count; ch++) {
 		m_channels[ch].text_buf.clear();
 	}
 }
 
-void TTS::enqueue(const std::string &_text, Priority _pri, unsigned _fmt, bool _purge, ChannelID _ch)
+void TTS::enqueue(const std::string &_text, Priority _pri, unsigned _fmt, bool _purge, TTSChannel::ID _ch)
 {
 	if(!m_channels[ec_to_i(_ch)].device) {
 		return;
@@ -310,7 +310,7 @@ void TTS::enqueue(const std::string &_text, Priority _pri, unsigned _fmt, bool _
 	}
 }
 
-int TTS::volume(ChannelID _ch) const
+int TTS::volume(TTSChannel::ID _ch) const
 {
 	if(!m_channels[ec_to_i(_ch)].device) {
 		return 0;
@@ -318,7 +318,7 @@ int TTS::volume(ChannelID _ch) const
 	return m_channels[ec_to_i(_ch)].volume;
 }
 
-int TTS::rate(ChannelID _ch) const
+int TTS::rate(TTSChannel::ID _ch) const
 {
 	if(!m_channels[ec_to_i(_ch)].device) {
 		return 0;
@@ -326,7 +326,7 @@ int TTS::rate(ChannelID _ch) const
 	return m_channels[ec_to_i(_ch)].rate;
 }
 
-int TTS::pitch(ChannelID _ch) const
+int TTS::pitch(TTSChannel::ID _ch) const
 {
 	if(!m_channels[ec_to_i(_ch)].device) {
 		return 0;
@@ -334,7 +334,7 @@ int TTS::pitch(ChannelID _ch) const
 	return m_channels[ec_to_i(_ch)].pitch;
 }
 
-bool TTS::adj_volume(ChannelID _ch, int _vol_adj_offset)
+bool TTS::adj_volume(TTSChannel::ID _ch, int _vol_adj_offset)
 {
 	// _vol_adj_offset is an offset relative to the current volume value, which is
 	// an adjustment in the -10 .. 10 range relative to the system's volume 
@@ -347,7 +347,7 @@ bool TTS::adj_volume(ChannelID _ch, int _vol_adj_offset)
 	return (new_vol != cur_vol);
 }
 
-bool TTS::adj_rate(ChannelID _ch, int _rate_adj_offset)
+bool TTS::adj_rate(TTSChannel::ID _ch, int _rate_adj_offset)
 {
 	// see comment for adj_volume
 	if(!m_channels[ec_to_i(_ch)].device) {
@@ -359,7 +359,7 @@ bool TTS::adj_rate(ChannelID _ch, int _rate_adj_offset)
 	return (new_rate != cur_rate);
 }
 
-bool TTS::adj_pitch(ChannelID _ch, int _pitch_adj_offset)
+bool TTS::adj_pitch(TTSChannel::ID _ch, int _pitch_adj_offset)
 {
 	// see comment for adj_volume
 	if(!m_channels[ec_to_i(_ch)].device) {
@@ -371,7 +371,7 @@ bool TTS::adj_pitch(ChannelID _ch, int _pitch_adj_offset)
 	return (new_pitch != cur_pitch);
 }
 
-bool TTS::set_volume(ChannelID _ch, int _vol)
+bool TTS::set_volume(TTSChannel::ID _ch, int _vol)
 {
 	// _vol is an absolute value in the -10 .. +10 range
 	_vol = get_format(_ch)->get_volume(_vol);
@@ -382,7 +382,7 @@ bool TTS::set_volume(ChannelID _ch, int _vol)
 	return true;
 }
 
-bool TTS::set_rate(ChannelID _ch, int _rate)
+bool TTS::set_rate(TTSChannel::ID _ch, int _rate)
 {
 	_rate = get_format(_ch)->get_volume(_rate);
 	if(!m_channels[ec_to_i(_ch)].device || m_channels[ec_to_i(_ch)].rate == _rate) {
@@ -392,7 +392,7 @@ bool TTS::set_rate(ChannelID _ch, int _rate)
 	return true;
 }
 
-bool TTS::set_pitch(ChannelID _ch, int _pitch)
+bool TTS::set_pitch(TTSChannel::ID _ch, int _pitch)
 {
 	_pitch = get_format(_ch)->get_volume(_pitch);
 	if(!m_channels[ec_to_i(_ch)].device || m_channels[ec_to_i(_ch)].pitch == _pitch) {
@@ -428,14 +428,14 @@ void TTS::adj_pitch(int _pitch_adj_offset)
 
 void TTS::stop()
 {
-	for(int ch=0; ch<Channels; ch++) {
+	for(int ch=0; ch<TTSChannel::Count; ch++) {
 		if(m_channels[ch].device && m_channels[ch].device->is_open()) {
 			m_channels[ch].device->stop();
 		}
 	}
 }
 
-void TTS::stop(ChannelID _ch)
+void TTS::stop(TTSChannel::ID _ch)
 {
 	for(auto &dev : m_devices) {
 		if(dev.speaking_ch == _ch) {
@@ -446,7 +446,7 @@ void TTS::stop(ChannelID _ch)
 
 void TTS::close()
 {
-	for(int ch=0; ch<Channels; ch++) {
+	for(int ch=0; ch<TTSChannel::Count; ch++) {
 		m_channels[ch].device.reset();
 	}
 	for(auto &dev : m_devices) {
@@ -455,7 +455,7 @@ void TTS::close()
 	}
 }
 
-const TTSFormat * TTS::get_format(ChannelID _ch) const
+const TTSFormat * TTS::get_format(TTSChannel::ID _ch) const
 {
 	if(!m_channels[ec_to_i(_ch)].device || !m_channels[ec_to_i(_ch)].device->format(ec_to_i(_ch))) {
 		return &m_default_fmt;
@@ -463,17 +463,17 @@ const TTSFormat * TTS::get_format(ChannelID _ch) const
 	return m_channels[ec_to_i(_ch)].device->format(ec_to_i(_ch));
 }
 
-bool TTS::is_channel_open(ChannelID _ch) const
+bool TTS::is_channel_open(TTSChannel::ID _ch) const
 {
 	return m_channels[ec_to_i(_ch)].device && m_channels[ec_to_i(_ch)].device->is_open();
 }
 
-bool TTS::is_channel_enabled(ChannelID _ch) const
+bool TTS::is_channel_enabled(TTSChannel::ID _ch) const
 {
 	return m_channels[ec_to_i(_ch)].enabled;
 }
 
-bool TTS::enable_channel(ChannelID _ch, bool _enabled)
+bool TTS::enable_channel(TTSChannel::ID _ch, bool _enabled)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	if(m_channels[ec_to_i(_ch)].device) {

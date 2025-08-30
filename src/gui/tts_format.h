@@ -43,7 +43,7 @@ public:
 	virtual std::string fmt_pitch(int, std::string _text) const { return _text; }
 	virtual std::string fmt_spell(std::string _text) const { return _text; }
 
-	virtual std::string spell_symbols(std::string _text) const { return _text; };
+	virtual std::string spell_symbols(std::string _text) const;
 
 	std::string convert(std::string _text) const;
 };

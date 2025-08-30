@@ -33,8 +33,14 @@ std::string TTSFormat_MSXML::fmt_value(std::string _text) const
 
 std::string TTSFormat_MSXML::fmt_sentence(std::string _text) const
 {
-	if(str_trim(_text).back() != '.') {
-		_text += ".";
+	if(m_dot_required) {
+		auto text = str_trim(_text);
+		if(text.length() > 1 &&
+		  text.back() != '.' &&
+		  !str_is_numeric(text)
+		) {
+			_text += ".";
+		}
 	}
 	return _text;
 }

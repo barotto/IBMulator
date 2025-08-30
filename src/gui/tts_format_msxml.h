@@ -24,9 +24,12 @@
 
 class TTSFormat_MSXML : public TTSFormat
 {
+	bool m_dot_required = false;
+
 public:
 	TTSFormat_MSXML() : TTSFormat() {}
-	TTSFormat_MSXML(std::string _codepage) : TTSFormat(_codepage) {}
+	TTSFormat_MSXML(std::string _codepage, bool _dot_required = false)
+		: TTSFormat(_codepage), m_dot_required(_dot_required) {}
 	~TTSFormat_MSXML() {}
 
 	int get_volume(int _volume) const { return std::clamp(_volume, -10, 0); }

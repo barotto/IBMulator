@@ -17,25 +17,24 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_TTS_DEV_FILE_H
-#define IBMULATOR_TTS_DEV_FILE_H
+#ifndef IBMULATOR_TTS_CHANNEL_H
+#define IBMULATOR_TTS_CHANNEL_H
 
-#include "tts_dev.h"
-#include <fstream>
-
-class TTSDev_File : public TTSDev
+class TTSChannel
 {
-	std::ofstream m_file;
-
 public:
-	TTSDev_File() : TTSDev(Type::FILE, "FILE") {};
-	~TTSDev_File() {}
+	enum class ID : int {
+		GUI,
+		Guest
+	};
+	static constexpr int Count = 2;
 
-	void open(const std::vector<std::string> &_conf) override;
-	bool is_open() const override { return m_file.is_open(); }
-	void speak(const std::string &_text, bool _purge = true) override;
-	void close() override;
+	ID id = ID::GUI;
+	const char *name = "GUI";
+
+	TTSChannel() {}
+	TTSChannel(ID _id, const char *_name) : id(_id), name(_name) {}
+	virtual ~TTSChannel() {}
 };
-
 
 #endif

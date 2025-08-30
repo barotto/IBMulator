@@ -37,11 +37,11 @@ void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 	}
 
 	espeak_ERROR result = EE_OK;
-	
+
 	if(_params.size() < 2) {
 		throw std::logic_error("invalid number of parameters");
 	}
-	
+
 	if(_params[0].empty() || _params[0] == "default" || _params[0] == "auto") {
 		PINFOF(LOG_V0, LOG_GUI, "%s: Using the default voice.\n", name());
 		result = use_default_voice();
@@ -60,7 +60,7 @@ void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 
 	PINFOF(LOG_V0, LOG_GUI, "%s: Current voice: \"%s\"\n", name(), cur_voice->name);
 
-	m_format = std::make_unique<TTSFormat_SSML>(_params[1]);
+	m_format[ec_to_i(TTSChannel::ID::GUI)] = std::make_unique<TTSFormat_SSML>(_params[1]);
 
 	m_initialized = true;
 }

@@ -226,7 +226,7 @@ void Parallel::send_byte()
 						TTS::Priority::Normal,
 						TTS::BREAK_LINES | TTS::NOT_UTF8,
 						m_tts_buf.size() == 1,
-						TTS::ChannelID::Guest
+						TTSChannel::ID::Guest
 					);
 					m_tts_buf.clear();
 				}

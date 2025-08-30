@@ -28,11 +28,6 @@ class GUI;
 class TTS
 {
 public:
-	enum class ChannelID : int {
-		GUI, Guest
-	};
-	static constexpr int Channels = 2;
-
 	enum class Priority {
 		Low,    // will append
 		Normal, // will append, discards all Low messages
@@ -51,6 +46,7 @@ private:
 	enum Mode {
 		SYNTH, ESPEAK, SAPI, NVDA, FILE
 	};
+
 	struct Message {
 		std::string text;
 		unsigned text_format;
@@ -68,9 +64,8 @@ private:
 		std::string format(const TTSFormat *);
 		std::string format_words(const TTSFormat *, const std::string &);
 	};
-	struct ChannelState {
-		ChannelID id = ChannelID::GUI;
-		const char *name = "GUI";
+
+	struct ChannelState : public TTSChannel {
 		bool enabled = false;
 		std::list<Message> queue;
 		std::shared_ptr<TTSDev> device;
@@ -80,18 +75,19 @@ private:
 		int pitch = 0; // -10 .. +10
 		int rate = 0; // -10 .. +10
 
-		ChannelState() {}
-		ChannelState(ChannelID _id, const char *_name, std::shared_ptr<TTSDev> _device) :
-			id(_id), name(_name), enabled(true), device(_device) {}
+		ChannelState() : TTSChannel() {}
+		ChannelState(TTSChannel::ID _id, const char *_name, std::shared_ptr<TTSDev> _device) :
+			TTSChannel(_id, _name), enabled(true), device(_device) {}
 	};
+
 	struct DeviceData {
 		std::shared_ptr<TTSDev> device;
 		std::vector<ChannelState*> channels;
-		ChannelID speaking_ch = ChannelID::GUI;
+		TTSChannel::ID speaking_ch = TTSChannel::ID::GUI;
 	};
 
 	std::vector<DeviceData> m_devices;
-	ChannelState m_channels[Channels];
+	ChannelState m_channels[TTSChannel::Count];
 	TTSFormat m_default_fmt;
 	GUI *m_gui;
 	std::mutex m_mutex;
@@ -102,30 +98,30 @@ public:
 	void init(GUI *_gui);
 	void enqueue(const std::string &_text,
 			Priority _pri = Priority::Normal, unsigned _fmt = IS_SENTENCE,
-			bool _purge = true, ChannelID _ch = ChannelID::GUI);
+			bool _purge = true, TTSChannel::ID _ch = TTSChannel::ID::GUI);
 	void stop();
-	void stop(ChannelID);
-	int volume(ChannelID) const;
-	int rate(ChannelID) const;
-	int pitch(ChannelID) const;
-	bool adj_volume(ChannelID, int);
-	bool adj_rate(ChannelID, int);
-	bool adj_pitch(ChannelID, int);
-	bool set_volume(ChannelID, int);
-	bool set_rate(ChannelID, int);
-	bool set_pitch(ChannelID, int);
+	void stop(TTSChannel::ID);
+	int volume(TTSChannel::ID) const;
+	int rate(TTSChannel::ID) const;
+	int pitch(TTSChannel::ID) const;
+	bool adj_volume(TTSChannel::ID, int);
+	bool adj_rate(TTSChannel::ID, int);
+	bool adj_pitch(TTSChannel::ID, int);
+	bool set_volume(TTSChannel::ID, int);
+	bool set_rate(TTSChannel::ID, int);
+	bool set_pitch(TTSChannel::ID, int);
 	void adj_volume(int);
 	void adj_rate(int);
 	void adj_pitch(int);
 	void close();
 	bool is_open() const { return !m_devices.empty(); }
-	bool is_channel_open(ChannelID) const;
-	bool is_channel_enabled(ChannelID) const;
-	bool enable_channel(ChannelID, bool);
+	bool is_channel_open(TTSChannel::ID) const;
+	bool is_channel_enabled(TTSChannel::ID) const;
+	bool enable_channel(TTSChannel::ID, bool);
 	void speak();
 
-	const TTSFormat * get_format(ChannelID _ch) const;
-	const TTSFormat * get_format() const { return get_format(ChannelID::GUI); }
+	const TTSFormat * get_format(TTSChannel::ID _ch) const;
+	const TTSFormat * get_format() const { return get_format(TTSChannel::ID::GUI); }
 
 private:
 	TTSDev * create_device(Mode _mode) const;

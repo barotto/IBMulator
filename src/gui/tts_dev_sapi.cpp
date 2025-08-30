@@ -55,8 +55,8 @@ void TTSDev_SAPI::open(const std::vector<std::string> &_params)
 		throw std::runtime_error("cannot create the voice");
 	}
 
-	m_format = std::make_unique<TTSFormat_MSXML>(_params[1]);
-
+	m_format[ec_to_i(TTSChannel::ID::GUI)] = std::make_unique<TTSFormat_MSXML>(_params[1], true);
+	m_format[ec_to_i(TTSChannel::ID::Guest)] = std::make_unique<TTSFormat_MSXML>(_params[1], false);
 
 	if(_params[0].empty() || _params[0] == "default" || _params[0] == "auto") {
 		PINFOF(LOG_V0, LOG_GUI, "%s: Using the default system voice.\n", name());

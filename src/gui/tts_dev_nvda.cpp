@@ -45,8 +45,8 @@ void TTSDev_NVDA::open(const std::vector<std::string> &_params)
 		PINFOF(LOG_V0, LOG_GUI, "%s: process id: %ul\n", name(), pid);
 	}
 
-	m_format = std::make_unique<TTSFormat_SSML>(_params[0], true);
-	m_format_guest = std::make_unique<TTSFormat_SSML>(_params[0], false);
+	m_format[ec_to_i(TTSChannel::ID::GUI)] = std::make_unique<TTSFormat_SSML>(_params[0], true);
+	m_format[ec_to_i(TTSChannel::ID::Guest)] = std::make_unique<TTSFormat_SSML>(_params[0], false);
 }
 
 bool TTSDev_NVDA::is_open() const
@@ -80,14 +80,6 @@ void TTSDev_NVDA::stop()
 	check_open();
 
 	nvdaController_cancelSpeech();
-}
-
-const TTSFormat * TTSDev_NVDA::format(int _ch) const
-{
-	if(_ch > 0) {
-		return m_format_guest.get();
-	}
-	return TTSDev::format(_ch);
 }
 
 void TTSDev_NVDA::check_open() const

@@ -46,11 +46,11 @@ void TTSDev_File::open(const std::vector<std::string> &_params)
 	}
 
 	if(_params[1] == "ssml") {
-		m_format = std::make_unique<TTSFormat_SSML>(_params[2]);
+		m_format[0] = std::make_unique<TTSFormat_SSML>(_params[2]);
 	} else if(_params[1] == "msxml") {
-		m_format = std::make_unique<TTSFormat_MSXML>(_params[2]);
+		m_format[0] = std::make_unique<TTSFormat_MSXML>(_params[2]);
 	} else {
-		m_format = std::make_unique<TTSFormat>(_params[2]);
+		m_format[0] = std::make_unique<TTSFormat>(_params[2]);
 	}
 }
 

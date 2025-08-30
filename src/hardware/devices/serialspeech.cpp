@@ -58,15 +58,15 @@ void SerialSpeech::reset(unsigned)
 
 	m_rx = -1;
 
-	tts()->set_volume(TTS::ChannelID::Guest, 0);
-	tts()->set_rate(TTS::ChannelID::Guest, 0);
-	tts()->set_pitch(TTS::ChannelID::Guest, 0);
-	tts()->stop(TTS::ChannelID::Guest);
+	tts()->set_volume(TTSChannel::ID::Guest, 0);
+	tts()->set_rate(TTSChannel::ID::Guest, 0);
+	tts()->set_pitch(TTSChannel::ID::Guest, 0);
+	tts()->stop(TTSChannel::ID::Guest);
 }
 
 void SerialSpeech::power_off()
 {
-	tts()->stop(TTS::ChannelID::Guest);
+	tts()->stop(TTSChannel::ID::Guest);
 }
 
 bool SerialSpeech::serial_read_byte(uint8_t *_byte)
@@ -87,7 +87,7 @@ bool SerialSpeech::serial_write_byte(uint8_t _byte)
 
 	if(_byte == 0x18) {
 		clear();
-		tts()->stop(TTS::ChannelID::Guest);
+		tts()->stop(TTSChannel::ID::Guest);
 	} else if(_byte == 0x05) {
 		m_in_command = true;
 		PDEBUGF(LOG_V2, LOG_COM, " command");
@@ -157,7 +157,7 @@ void SerialSpeech::process()
 			TTS::Priority::Normal,
 			TTS::IS_SENTENCE | TTS::NOT_UTF8,
 			false,
-			TTS::ChannelID::Guest
+			TTSChannel::ID::Guest
 		);
 	}
 }
@@ -167,7 +167,7 @@ void SerialSpeech::cmd_volume(int _val)
 	_val = std::clamp(_val, 1, 15) - 1;
 	int volume = int(lerp(-10.0, 10.0, double(_val) / 15.0));
 	PDEBUGF(LOG_V2, LOG_COM, "SPEECH:   volume=%d\n", volume);
-	tts()->set_volume(TTS::ChannelID::Guest, volume);
+	tts()->set_volume(TTSChannel::ID::Guest, volume);
 }
 
 void SerialSpeech::cmd_rate(int _val)
@@ -175,7 +175,7 @@ void SerialSpeech::cmd_rate(int _val)
 	_val = std::clamp(_val, 1, 15) - 1;
 	int rate = int(lerp(-10.0, 10.0, double(_val) / 15.0));
 	PDEBUGF(LOG_V2, LOG_COM, "SPEECH:   rate=%d\n", rate);
-	tts()->set_rate(TTS::ChannelID::Guest, rate);
+	tts()->set_rate(TTSChannel::ID::Guest, rate);
 }
 
 void SerialSpeech::cmd_pitch(int _val)
@@ -183,7 +183,7 @@ void SerialSpeech::cmd_pitch(int _val)
 	_val = std::clamp(_val, 1, 29) - 1;
 	int pitch = int(lerp(-10.0, 10.0, double(_val) / 29.0));
 	PDEBUGF(LOG_V2, LOG_COM, "SPEECH:   pitch=%d\n", pitch);
-	tts()->set_pitch(TTS::ChannelID::Guest, pitch);
+	tts()->set_pitch(TTSChannel::ID::Guest, pitch);
 }
 
 void SerialSpeech::cmd_tone(int)
