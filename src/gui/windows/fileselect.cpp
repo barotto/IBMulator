@@ -597,7 +597,7 @@ void FileSelect::speak_entry(const DirEntry *_de, const MediumInfoData &_de_info
 	unsigned count = _entry_el->GetAttribute("data-count")->Get<unsigned>(0);
 	std::string text;
 	if(_de->is_dir) {
-		text = str_format("%u of %u, folder: %s", idx+1, count, m_gui->tts().get_format()->fmt_value(_de->name).c_str());
+		text = str_format("%s, folder, %u of %u", m_gui->tts().get_format()->fmt_value(_de->name).c_str(), idx+1, count);
 	} else {
 		std::string base, ext;
 		FileSys::get_file_parts(_de->name.c_str(), base, ext);
@@ -605,7 +605,7 @@ void FileSelect::speak_entry(const DirEntry *_de, const MediumInfoData &_de_info
 		if(!ext.empty()) {
 			ext = m_gui->tts().get_format()->fmt_spell( m_gui->tts().get_format()->fmt_value(ext) );
 		}
-		text = str_format("%u of %u, file: %s%s", idx+1, count, base.c_str(), ext.c_str());
+		text = str_format("%s%s, file, %u of %u", base.c_str(), ext.c_str(), idx+1, count);
 	}
 	m_gui->tts().enqueue(
 		text,
