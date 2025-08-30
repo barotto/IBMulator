@@ -46,7 +46,7 @@ public:
 private:
 	void check_open() const;
 	espeak_ERROR use_default_voice();
-	void display_voices(const char *_language, bool _verbose) const;
+	void display_voices(const char *_language, int _verb) const;
 };
 
 #endif

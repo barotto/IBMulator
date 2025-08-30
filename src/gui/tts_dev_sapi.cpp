@@ -60,6 +60,9 @@ void TTSDev_SAPI::open(const std::vector<std::string> &_params)
 
 	if(_params[0].empty() || _params[0] == "default" || _params[0] == "auto") {
 		PINFOF(LOG_V0, LOG_GUI, "%s: Using the default system voice.\n", name());
+		if(_params[0].empty()) {
+			display_voices();
+		}
 		return;
 	}
 	int voice_num = -1;
@@ -354,20 +357,22 @@ void TTSDev_SAPI::check_open() const
 
 void TTSDev_SAPI::display_voices() noexcept
 {
+	PINFOF(LOG_V0, LOG_GUI, "%s: List of available voices:\n", name());
+
 	ISpObjectTokenCategory *pCategory;
 	HRESULT hr = SpGetCategoryFromId(SPCAT_VOICES, &pCategory);
 	if(FAILED(hr) || !pCategory) {
+		PERRF(LOG_GUI, "  error accessing the voices category!\n");
 		return;
 	}
 
 	IEnumSpObjectTokens *pEnum;
 	hr = pCategory->EnumTokens(nullptr, nullptr, &pEnum);
 	if(FAILED(hr) || !pEnum) {
+		PERRF(LOG_GUI, "  error accessing the voices list!\n");
 		pCategory->Release();
 		return;
 	}
-
-	PINFOF(LOG_V0, LOG_GUI, "%s: List of available voices:\n", name());
 
 	ULONG count = 0;
 	hr = pEnum->GetCount(&count);
@@ -387,7 +392,7 @@ void TTSDev_SAPI::display_voices() noexcept
 			ISpDataKey *pAttributesKey;
 			hr = pToken->OpenKey(L"Attributes", &pAttributesKey);
 			if(FAILED(hr)) {
-				PERRF(LOG_GUI, "  error accessing the voices attributes!\n");
+				PERRF(LOG_GUI, "  error accessing the voice attributes!\n");
 				pToken->Release();
 				break;
 			}

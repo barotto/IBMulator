@@ -45,6 +45,9 @@ void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 	if(_params[0].empty() || _params[0] == "default" || _params[0] == "auto") {
 		PINFOF(LOG_V0, LOG_GUI, "%s: Using the default voice.\n", name());
 		result = use_default_voice();
+		if(_params[0].empty()) {
+			display_voices("en", 0);
+		}
 	} else {
 		result = espeak_SetVoiceByName(_params[0].c_str());
 	}
@@ -173,7 +176,7 @@ espeak_ERROR TTSDev_eSpeak::use_default_voice()
 	return espeak_SetVoiceByProperties(&voice);
 }
 
-void TTSDev_eSpeak::display_voices(const char *_language, bool _verbose) const
+void TTSDev_eSpeak::display_voices(const char *_language, int _verb) const
 {
 	const espeak_VOICE **voices;
 	espeak_VOICE voice_select;
@@ -192,9 +195,9 @@ void TTSDev_eSpeak::display_voices(const char *_language, bool _verbose) const
 	}
 
 	PINFOF(LOG_V0, LOG_GUI, "%s: List of available voices:\n", name());
-	if(_verbose) {
+	if(_verb > 1) {
 		PINFOF(LOG_V0, LOG_GUI, "Pty Language        Age/Gender Name                             File                 Other Languages\n");
-	} else {
+	} else if(_verb > 0) {
 		PINFOF(LOG_V0, LOG_GUI, "Gen.  Name\n");
 	}
 	const espeak_VOICE *v;
@@ -204,15 +207,21 @@ void TTSDev_eSpeak::display_voices(const char *_language, bool _verbose) const
 		while(*p != 0) {
 			const char *lang_name = p+1;
 			int len = strlen(lang_name);
-			if(_verbose) {
+			if(_verb > 1) {
 				if(count == 0) {
 					PINFOF(LOG_V0, LOG_GUI, "%2d  %-15s %3d/%c      %-32s %-20s ",
 							p[0], lang_name, v->age, genders[v->gender], v->name, v->identifier);
 				} else {
 					PINFOF(LOG_V0, LOG_GUI, "(%s %d)", lang_name, p[0]);
 				}
-			} else if(count == 0) {
-				PINFOF(LOG_V0, LOG_GUI, "%c     %s", genders[v->gender], v->name);
+			} else if(_verb > 0) {
+				if(count == 0) {
+					PINFOF(LOG_V0, LOG_GUI, "%c     %s", genders[v->gender], v->name);
+				}
+			} else {
+				if(count == 0) {
+					PINFOF(LOG_V0, LOG_GUI, "  %s", v->name);
+				}
 			}
 			count++;
 			p += len+2;
