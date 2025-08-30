@@ -15,7 +15,7 @@ AC_ARG_WITH([libespeakng-prefix],
             [libespeakng_prefix=""])
 
 if test x$libespeakng_prefix != x ; then
-	AC_CHECK_HEADER($libespeakng_prefix/include/speak_lib.h,, [HAVE_LIBESPEAKNG=0])
+	AC_CHECK_HEADER($libespeakng_prefix/include/espeak-ng/speak_lib.h,, [HAVE_LIBESPEAKNG=0])
 else
 	AC_CHECK_HEADER(espeak-ng/speak_lib.h,, [HAVE_LIBESPEAKNG=0])
 fi
@@ -25,7 +25,11 @@ AC_DEFINE_UNQUOTED([HAVE_LIBESPEAKNG],[$HAVE_LIBESPEAKNG],[Define to 1 if you ha
 if test "$HAVE_LIBESPEAKNG" = "1" ; then
 	if test x$libespeakng_prefix != x ; then
 		LIBESPEAKNG_CFLAGS="-I$libespeakng_prefix/include"
-		LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.a"
+		if test x$have_windows = xno ; then
+			LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.a"
+		else
+			LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.dll.a"
+		fi
 	else
 		LIBESPEAKNG_LIBS="-lespeak-ng"
 	fi
