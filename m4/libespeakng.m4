@@ -26,7 +26,10 @@ if test "$HAVE_LIBESPEAKNG" = "1" ; then
 	if test x$libespeakng_prefix != x ; then
 		LIBESPEAKNG_CFLAGS="-I$libespeakng_prefix/include"
 		if test x$have_windows = xno ; then
-			LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.a"
+			LIBESPEAKNG_LIBS="-L$libespeakng_prefix/lib/ -lespeak-ng -lsonic -lpcaudio"
+			if test x$static != x ; then
+				LIBESPEAKNG_LIBS="$LIBESPEAKNG_LIBS -Wl,-Bdynamic -lpulse-simple -lpulse -Wl,-Bstatic"
+			fi
 		else
 			LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.dll.a"
 		fi
