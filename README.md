@@ -98,11 +98,42 @@ For **Linux** instructions see [BUILD_LINUX.md](./docs/BUILD_LINUX.md)
 
 ## Thanks
 
-I would like to thank the authors of the following projects:
+I would like to thank the authors of the following open-source projects.
 
-* Bochs https://bochs.sourceforge.io
-* DOSBox https://www.dosbox.com
-* MAME https://www.mamedev.org
+**GUI & Rendering**
+
+ - **Simple DirectMedia Layer**, https://libsdl.org
+ - **RmlUi**, https://github.com/mikke89/RmlUi
+ - **GLEW**, https://github.com/nigels-com/glew
+
+**Emulation**
+
+ - **Bochs**, https://bochs.sourceforge.io
+ - **DOSBox**, https://www.dosbox.com
+ - **MAME**, https://www.mamedev.org
+ - **Nuked OPL3**, https://github.com/nukeykt/Nuked-OPL3
+ - **MPS Emulator**, https://github.com/GideonZ/1541ultimate
+
+**Audio processing**
+
+ - **libsamplerate**, https://github.com/libsndfile/libsamplerate
+ - **bs2b**, https://bs2b.sourceforge.net
+ - **Tal-NoiseMaker**, https://sourceforge.net/projects/tal-noisemak3r
+ - **MVerb**, https://github.com/martineastwood/mverb
+ - **DSPFilters**, https://github.com/vinniefalco/DSPFilters
+ - **SDL_sound**, https://icculus.org/SDL_sound/
+ - **dr_libs**, https://github.com/mackron/dr_libs
+
+**Other**
+
+ - **LodePNG**, https://lodev.org/lodepng/
+ - **stb_image**, https://github.com/nothings/stb
+ - **miniz**, https://github.com/richgel999/miniz
+ - **tiny file dialogs**, http://tinyfiledialogs.sourceforge.net
+ - **intervaltree**, https://github.com/ekg/intervaltree
+ - **inih**, https://github.com/benhoyt/inih
+
+IBMulator stands on the shoulders of giants.
 
 
 ## License
