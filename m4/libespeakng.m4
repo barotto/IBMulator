@@ -30,11 +30,13 @@ if test "$HAVE_LIBESPEAKNG" = "1" ; then
 			if test x$static != x ; then
 				LIBESPEAKNG_LIBS="$LIBESPEAKNG_LIBS -Wl,-Bdynamic -lpulse-simple -lpulse -Wl,-Bstatic"
 			fi
-		else
-			LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.dll.a"
+		# else
+			# don't dynamically link, use dynamic load instead
+			# LIBESPEAKNG_LIBS="$libespeakng_prefix/lib/libespeak-ng.dll.a"
 		fi
-	else
-		LIBESPEAKNG_LIBS="-lespeak-ng"
+	# else
+		# don't dynamically link, use dynamic load instead
+		# LIBESPEAKNG_LIBS="-lespeak-ng"
 	fi
 fi
 

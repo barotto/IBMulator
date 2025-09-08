@@ -27,12 +27,72 @@
 #include "tts_format_ssml.h"
 #include <cstring>
 #include <cmath>
+#include <SDL2/SDL_loadso.h>
+
+decltype(espeak_Initialize) *espeak_Initialize_fn;
+decltype(espeak_SetVoiceByName) *espeak_SetVoiceByName_fn;
+decltype(espeak_GetCurrentVoice) *espeak_GetCurrentVoice_fn;
+decltype(espeak_Synth) *espeak_Synth_fn;
+decltype(espeak_IsPlaying) *espeak_IsPlaying_fn;
+decltype(espeak_Cancel) *espeak_Cancel_fn;
+decltype(espeak_GetParameter) *espeak_GetParameter_fn;
+decltype(espeak_SetParameter) *espeak_SetParameter_fn;
+decltype(espeak_Terminate) *espeak_Terminate_fn;
+decltype(espeak_SetVoiceByProperties) *espeak_SetVoiceByProperties_fn;
+decltype(espeak_ListVoices) *espeak_ListVoices_fn;
+
+TTSDev_eSpeak::~TTSDev_eSpeak()
+{
+	if(m_lib_obj) {
+		SDL_UnloadObject(m_lib_obj);
+	}
+}
 
 void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 {
 	PINFOF(LOG_V0, LOG_GUI, "TTS: Initializing eSpeak NG.\n");
 
-	if(espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 0, NULL, 0) == EE_INTERNAL_ERROR) {
+#if _WIN32
+	const char *obj_name = "libespeak-ng.dll";
+#else
+	const char *obj_name = "libespeak-ng.so.1";
+#endif
+
+	m_lib_obj = SDL_LoadObject(obj_name);
+	if(!m_lib_obj) {
+		throw std::runtime_error(str_format("cannot load %s", obj_name));
+	}
+
+	espeak_Initialize_fn = (decltype(espeak_Initialize)*)SDL_LoadFunction(m_lib_obj, "espeak_Initialize");
+	espeak_SetVoiceByName_fn = (decltype(espeak_SetVoiceByName)*)SDL_LoadFunction(m_lib_obj, "espeak_SetVoiceByName");
+	espeak_GetCurrentVoice_fn = (decltype(espeak_GetCurrentVoice)*)SDL_LoadFunction(m_lib_obj, "espeak_GetCurrentVoice");
+	espeak_Synth_fn = (decltype(espeak_Synth)*)SDL_LoadFunction(m_lib_obj, "espeak_Synth");
+	espeak_IsPlaying_fn = (decltype(espeak_IsPlaying)*)SDL_LoadFunction(m_lib_obj, "espeak_IsPlaying");
+	espeak_Cancel_fn = (decltype(espeak_Cancel)*)SDL_LoadFunction(m_lib_obj, "espeak_Cancel");
+	espeak_GetParameter_fn = (decltype(espeak_GetParameter)*)SDL_LoadFunction(m_lib_obj, "espeak_GetParameter");
+	espeak_SetParameter_fn = (decltype(espeak_SetParameter)*)SDL_LoadFunction(m_lib_obj, "espeak_SetParameter");
+	espeak_Terminate_fn = (decltype(espeak_Terminate)*)SDL_LoadFunction(m_lib_obj, "espeak_Terminate");;
+	espeak_SetVoiceByProperties_fn = (decltype(espeak_SetVoiceByProperties)*)SDL_LoadFunction(m_lib_obj, "espeak_SetVoiceByProperties");
+	espeak_ListVoices_fn = (decltype(espeak_ListVoices)*)SDL_LoadFunction(m_lib_obj, "espeak_ListVoices");
+
+	if(
+	  !espeak_Initialize_fn || 
+	  !espeak_SetVoiceByName_fn ||
+	  !espeak_GetCurrentVoice_fn ||
+	  !espeak_Synth_fn ||
+	  !espeak_IsPlaying_fn ||
+	  !espeak_Cancel_fn ||
+	  !espeak_GetParameter_fn ||
+	  !espeak_SetParameter_fn ||
+	  !espeak_Terminate_fn ||
+	  !espeak_SetVoiceByProperties_fn ||
+	  !espeak_ListVoices_fn
+	)
+	{
+		throw std::runtime_error("error loading espeak functions from library");
+	}
+
+	if(espeak_Initialize_fn(AUDIO_OUTPUT_PLAYBACK, 0, NULL, 0) == EE_INTERNAL_ERROR) {
 		throw std::runtime_error("cannot initialize the library");
 	}
 
@@ -49,7 +109,7 @@ void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 			display_voices("en", 0);
 		}
 	} else {
-		result = espeak_SetVoiceByName(_params[0].c_str());
+		result = espeak_SetVoiceByName_fn(_params[0].c_str());
 	}
 
 	if(result != EE_OK) {
@@ -59,7 +119,7 @@ void TTSDev_eSpeak::open(const std::vector<std::string> &_params)
 		throw std::runtime_error(str_format("cannot set the voice (error: %d)", result));
 	}
 
-	auto cur_voice = espeak_GetCurrentVoice();
+	auto cur_voice = espeak_GetCurrentVoice_fn();
 
 	PINFOF(LOG_V0, LOG_GUI, "%s: Current voice: \"%s\"\n", name(), cur_voice->name);
 
@@ -78,12 +138,12 @@ void TTSDev_eSpeak::speak(const std::string &_text, bool _purge)
 
 	std::string text = _text; // "<p>" + _text + "</p>";
 	PDEBUGF(LOG_V1, LOG_GUI, "%s%s:\n%s\n", name(), _purge ? " (purge)" : "", text.c_str());
-	espeak_Synth(text.c_str(), text.size()+1, 0, POS_CHARACTER, 0, espeakCHARS_UTF8|espeakSSML, NULL, NULL);
+	espeak_Synth_fn(text.c_str(), text.size()+1, 0, POS_CHARACTER, 0, espeakCHARS_UTF8|espeakSSML, NULL, NULL);
 }
 
 bool TTSDev_eSpeak::is_speaking() const
 {
-	return espeak_IsPlaying();
+	return espeak_IsPlaying_fn();
 }
 
 void TTSDev_eSpeak::stop()
@@ -91,7 +151,7 @@ void TTSDev_eSpeak::stop()
 	check_open();
 
 	if(is_speaking()) {
-		espeak_Cancel();
+		espeak_Cancel_fn();
 	}
 }
 
@@ -104,12 +164,12 @@ bool TTSDev_eSpeak::set_volume(int _volume)
 
 	stop();
 
-	int default_vol = espeak_GetParameter(espeakVOLUME, 0);
+	int default_vol = espeak_GetParameter_fn(espeakVOLUME, 0);
 	const double vol_step = 200.0 / 20.0;
 	int new_vol = default_vol + round(double(_volume) * vol_step);
 	m_volume = _volume;
 
-	espeak_SetParameter(espeakVOLUME, new_vol, 0);
+	espeak_SetParameter_fn(espeakVOLUME, new_vol, 0);
 
 	PDEBUGF(LOG_V1, LOG_GUI, "%s: def.vol.=%d, vol.adj.=%d, new.vol.=%d\n", name(),
 			default_vol, _volume, new_vol);
@@ -126,12 +186,12 @@ bool TTSDev_eSpeak::set_rate(int _rate)
 
 	stop();
 
-	int default_rate = espeak_GetParameter(espeakRATE, 0);
+	int default_rate = espeak_GetParameter_fn(espeakRATE, 0);
 	const double rate_step = double(espeakRATE_MAXIMUM - espeakRATE_MINIMUM) / 20.0;
 	int new_rate = default_rate + round(double(_rate) * rate_step);
 	m_rate = _rate;
 
-	espeak_SetParameter(espeakRATE, new_rate, 0);
+	espeak_SetParameter_fn(espeakRATE, new_rate, 0);
 
 	PDEBUGF(LOG_V1, LOG_GUI, "%s: def.rate=%d, rate adj.=%d, new.rate=%d\n", name(),
 			default_rate, _rate, new_rate);
@@ -148,12 +208,12 @@ bool TTSDev_eSpeak::set_pitch(int _pitch)
 
 	stop();
 
-	int default_pitch = espeak_GetParameter(espeakPITCH, 0);
+	int default_pitch = espeak_GetParameter_fn(espeakPITCH, 0);
 	const double pitch_step = 100.0 / 20.0;
 	int new_pitch = default_pitch + round(double(_pitch) * pitch_step);
 	m_rate = _pitch;
 
-	espeak_SetParameter(espeakRATE, new_pitch, 0);
+	espeak_SetParameter_fn(espeakRATE, new_pitch, 0);
 
 	PDEBUGF(LOG_V1, LOG_GUI, "%s: def.pitch=%d, pitch adj.=%d, new.pitch=%d\n", name(),
 			default_pitch, _pitch, new_pitch);
@@ -164,7 +224,7 @@ bool TTSDev_eSpeak::set_pitch(int _pitch)
 void TTSDev_eSpeak::close()
 {
 	if(is_open()) {
-		espeak_Terminate();
+		espeak_Terminate_fn();
 	}
 }
 
@@ -173,7 +233,7 @@ espeak_ERROR TTSDev_eSpeak::use_default_voice()
 	espeak_VOICE voice;
 	memset(&voice, 0, sizeof(espeak_VOICE));
 	voice.languages = "en";
-	return espeak_SetVoiceByProperties(&voice);
+	return espeak_SetVoiceByProperties_fn(&voice);
 }
 
 void TTSDev_eSpeak::display_voices(const char *_language, int _verb) const
@@ -189,9 +249,9 @@ void TTSDev_eSpeak::display_voices(const char *_language, int _verb) const
 		voice_select.age = 0;
 		voice_select.gender = 0;
 		voice_select.name = NULL;
-		voices = espeak_ListVoices(&voice_select);
+		voices = espeak_ListVoices_fn(&voice_select);
 	} else {
-		voices = espeak_ListVoices(NULL);
+		voices = espeak_ListVoices_fn(NULL);
 	}
 
 	PINFOF(LOG_V0, LOG_GUI, "%s: List of available voices:\n", name());

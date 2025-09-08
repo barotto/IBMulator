@@ -27,11 +27,12 @@
 
 class TTSDev_eSpeak : public TTSDev
 {
+	void *m_lib_obj;
 	bool m_initialized;
 
 public:
-	TTSDev_eSpeak() : TTSDev(Type::SYNTH, "eSpeak"), m_initialized(false) {};
-	~TTSDev_eSpeak() {}
+	TTSDev_eSpeak() : TTSDev(Type::SYNTH, "eSpeak"), m_lib_obj(nullptr), m_initialized(false) {};
+	~TTSDev_eSpeak();
 
 	void open(const std::vector<std::string> &_conf);
 	bool is_open() const { return m_initialized; }
