@@ -37,7 +37,7 @@ if test x$static != x ; then
 	if test x$have_windows = xyes ; then
 		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -ldwrite -lgraphite2 -lglib-2.0 -lpng -lz -lbz2 -lfreetype -lrpcrt4 -lbrotlidec -lbrotlicommon"
 	else
-		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -lglib-2.0 -lpcre -lpng -lz -lbz2 -lfreetype"
+		RMLUI_LIBS="$RMLUI_LIBS -lfreetype -lharfbuzz -lglib-2.0 -lpcre -lpng -lz -lbz2 -lfreetype -lbrotlidec -lbrotlicommon"
 	fi
 	RMLUI_CFLAGS="$RMLUI_CFLAGS -DRMLUI_STATIC_LIB"
 else
