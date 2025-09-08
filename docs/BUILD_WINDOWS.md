@@ -19,7 +19,7 @@ We will use mingw-w64 (mingw-w64.org) under **MSYS2** (www.msys2.org)
 
  1. Go to the [MSYS2 website](http://www.msys2.org), download the x86_64 package and follow its installation instructions.
  2. Open the Windows Start menu, select the "All" button, find the `MSYS2` folder, launch the **MSYS2 MSYS** shell and install the toolchain with:  
- `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake make autoconf automake libtool git`
+ `pacman -S mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake make autoconf automake libtool git unzip`
  3. Install the libraries needed by RmlUi and IBMulator:  
  `pacman -S mingw-w64-x86_64-SDL2 mingw-w64-x86_64-glew mingw-w64-x86_64-libsamplerate mingw-w64-x86_64-freetype mingw-w64-x86_64-lzo2`
 
@@ -51,12 +51,13 @@ Open the **MSYS2 MINGW64** shell and:
 
  1. Move inside your workspace:  
  `cd /c/workspace`
- 2. Clone the repo:  
+ 2. Clone the repository:  
  `git clone https://github.com/barotto/IBMulator.git`
  3. Move inside the IBMulator directory:  
  `cd IBMulator`
- 4. run autoreconf (only once, not needed if you build again):  
+ 4. Run autoreconf:  
  `autoreconf --install`
+ The `--install` option is needed only the first time after the initial cloning.
  5. Configure IBMulator:  
  `./configure --enable-static --prefix=/c/workspace/IBMulator/release`  
  (for dynamic linking remove `--enable-static`)  
@@ -68,6 +69,23 @@ Open the **MSYS2 MINGW64** shell and:
  `make install`
 
 If you followed the instructions you'll find IBMulator inside the `release` folder. You can now move and rename the `release` package.
+
+If you update the sources from the remote repository with `git pull` you then need to run `autoreconf` and `configure` again.
+
+### Optional packages
+
+To enable support for **NVDA** you need to:
+ 
+ 1. Move inside your workspace:
+ `cd /c/workspace`
+ 2. Download the NVDA controller client software:
+ `curl https://download.nvaccess.org/releases/stable/nvda_2025.2_controllerClient.zip --output nvda.zip`
+ 3. Unzip the package:
+ `unzip nvda.zip -d nvda`
+ 4. Move into the IBMulator source directory and add the following `configure` option:
+ `--with-nvda-prefix=C:/workspace/nvda`
+ 5. Build and install IBMulator.
+ 6. Copy the `nvda/x64/nvdaControllerClient.dll` file into the `bin` directory with `ibmulator.exe`.
 
 ### Installation
 
