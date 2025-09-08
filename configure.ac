@@ -4,6 +4,7 @@
 define([IBMULATOR_VERSION],[m4_esyscmd_s([git describe --always --dirty | tr -d '\n'])])
 
 AC_INIT([IBMulator], IBMULATOR_VERSION, [https://github.com/barotto/IBMulator/issues], [ibmulator], [https://www.ibmulator.org])
+AM_SILENT_RULES([yes])
 AC_PREREQ([2.59])
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
@@ -217,13 +218,13 @@ if test x$have_windows = xno ; then
 		echo "- ALSA         : NO (MIDI output disabled)"
 	fi
 fi
-if test "x$LIBESPEAKNG_LIBS" != "x"; then
-	echo "- eSpeak       : Yes ($LIBESPEAKNG_LIBS)"
+if test "$HAVE_LIBESPEAKNG" = "1" ; then
+	echo "- eSpeak NG    : Yes ($LIBESPEAKNG_LIBS)"
 else
 	if test x$have_windows = xno ; then
-	echo "- eSpeak       : NO (Text-to-Speech disabled)"
+	echo "- eSpeak NG    : NO (Text-to-Speech disabled)"
 	else
-	echo "- eSpeak       : NO"
+	echo "- eSpeak NG    : NO"
 	fi
 fi
 if test x$have_windows = xyes ; then
