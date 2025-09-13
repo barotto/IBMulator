@@ -306,8 +306,9 @@ void MIDI::restore_state(const MIDI::State &_state, const std::vector<uint8_t> &
 	
 	stop_and_silence_device();
 	
-	if(m_sysex_data.size() != _sysex_data.size() ||
-	  memcmp(&m_sysex_data[0], &_sysex_data[0], m_sysex_data.size()) != 0)
+	if(m_sysex_data.size() != _sysex_data.size() || 
+	  (!m_sysex_data.empty() && memcmp(&m_sysex_data[0], &_sysex_data[0], m_sysex_data.size()) != 0)
+	)
 	{
 		m_device->reset();
 		if(_sysex_data.size()) {

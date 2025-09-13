@@ -743,7 +743,7 @@ void Mixer::mix_channels(uint64_t _time_span_ns, const std::vector<MixerChannel*
 	
 	// send global mix to output device
 	const size_t bytes = samples * 2;
-	if(m_device && m_audio_status != SDL_AUDIO_STOPPED) {
+	if(bytes && m_device && m_audio_status != SDL_AUDIO_STOPPED) {
 		PDEBUGF(LOG_V2, LOG_MIXER, "  sending %zu bytes to the output device\n", bytes);
 		if(m_out_buffer.write((uint8_t*)&tmpbuf[0], bytes) < bytes) {
 			PERRF(LOG_MIXER, "Device buffer overflow\n");
