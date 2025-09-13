@@ -324,7 +324,8 @@ void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
 inline void VGA::set_all_tiles(bool _value)
 {
 	assert(m_s.vmode.yres > 0 && m_num_x_tiles > 0);
-	std::fill(&m_tile_dirty[0], &m_tile_dirty[uint32_t(m_s.vmode.yres*m_num_x_tiles)], _value);
+	assert(m_tile_dirty.size() >= uint32_t(m_s.vmode.yres*m_num_x_tiles));
+	std::fill(&m_tile_dirty[0], &m_tile_dirty[uint32_t(m_s.vmode.yres*m_num_x_tiles)-1], _value);
 }
 
 inline void VGA::set_tile(unsigned _line_y, unsigned _tile_x, bool _value)
