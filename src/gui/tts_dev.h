@@ -49,7 +49,6 @@ public:
 	virtual void open(const std::vector<std::string> &_conf) = 0;
 	virtual bool is_open() const { return false; }
 	virtual void speak(const std::string &_text, bool _purge) = 0;
-	virtual bool is_speaking() const { return false; }
 	virtual void stop() {}
 	virtual int volume() const { return m_volume; }
 	virtual int rate() const { return m_rate; }

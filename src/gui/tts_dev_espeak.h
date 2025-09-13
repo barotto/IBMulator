@@ -34,17 +34,17 @@ public:
 	TTSDev_eSpeak() : TTSDev(Type::SYNTH, "eSpeak"), m_lib_obj(nullptr), m_initialized(false) {};
 	~TTSDev_eSpeak();
 
-	void open(const std::vector<std::string> &_conf);
-	bool is_open() const { return m_initialized; }
-	void speak(const std::string &_text, bool _purge = true);
-	bool is_speaking() const;
-	void stop();
-	bool set_volume(int _volume);
-	bool set_rate(int _rate);
-	bool set_pitch(int _pitch);
-	void close();
+	void open(const std::vector<std::string> &_conf) override;
+	bool is_open() const override { return m_initialized; }
+	void speak(const std::string &_text, bool _purge = true) override;
+	void stop() override;
+	bool set_volume(int _volume) override;
+	bool set_rate(int _rate) override;
+	bool set_pitch(int _pitch) override;
+	void close() override;
 
 private:
+	bool is_speaking() const;
 	void check_open() const;
 	espeak_ERROR use_default_voice();
 	void display_voices(const char *_language, int _verb) const;

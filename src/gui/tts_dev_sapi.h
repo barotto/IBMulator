@@ -23,29 +23,34 @@
 #ifdef _WIN32
 
 #include "tts_dev.h"
+#include "shared_queue.h"
 
 class ISpVoice;
 
 class TTSDev_SAPI : public TTSDev
 {
+	std::thread m_thread;
 	ISpVoice *m_voice = nullptr;
 	int m_default_vol = 0;
+	std::atomic<bool> m_is_open = false;
+	shared_queue<std::function<void()>> m_cmd_queue;
 
 public:
 	TTSDev_SAPI() : TTSDev(Type::SYNTH, "SAPI") {};
 	~TTSDev_SAPI() {}
 
-	void open(const std::vector<std::string> &_conf);
-	bool is_open() const { return static_cast<bool>(m_voice); }
-	void speak(const std::string &_text, bool _purge = true);
-	bool is_speaking() const;
-	void stop();
-	bool set_volume(int);
-	bool set_rate(int);
-	bool set_pitch(int) { return false; }
-	void close();
+	void open(const std::vector<std::string> &_conf) override;
+	bool is_open() const override { return m_is_open; }
+	void speak(const std::string &_text, bool _purge = true) override;
+	void stop() override;
+	bool set_volume(int) override;
+	bool set_rate(int) override;
+	bool set_pitch(int) override { return false; }
+	void close() override;
 
 private:
+	void thread_init(const std::vector<std::string> &_params, std::promise<bool> _init_promise);
+	bool is_speaking() const;
 	void set_voice(int _num);
 	void set_voice(const std::string &_name);
 	void check_open() const;
