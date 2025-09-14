@@ -478,3 +478,11 @@ body
 	background-color: #383938AA;
 	visibility: hidden;
 }
+
+@media (theme: light)
+{
+	#message
+	{
+		background-color: #fffffff0;
+	}
+}
