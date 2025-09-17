@@ -41,8 +41,12 @@ void CPULogger::add_entry(
 		const CPUBus &_bus,
 		const CPUCycles &_cycles)
 {
-	//don't log outside fixed boundaries
-	if(_instr.cseip>=CPULOG_START_ADDR && _instr.cseip<=CPULOG_END_ADDR) {
+	// don't log outside fixed boundaries
+#if CPULOG_START_ADDR > 0
+	if(_instr.cseip >= CPULOG_START_ADDR && _instr.cseip <= CPULOG_END_ADDR) {
+#else
+	if(_instr.cseip <= CPULOG_END_ADDR) {
+#endif
 		m_log_size = std::min(m_log_size+1, CPULOG_MAX_SIZE);
 		m_log[m_log_idx].time = _time;
 		m_log[m_log_idx].instr = _instr;
@@ -73,8 +77,14 @@ void CPULogger::add_entry(
 
 void CPULogger::set_prev_i_exc(const CPUException &_exc, uint32_t _cseip)
 {
-	//don't log outside fixed boundaries
-	if(_cseip<CPULOG_START_ADDR || _cseip>CPULOG_END_ADDR) {
+	UNUSED(_cseip);
+
+	// don't log outside fixed boundaries
+#if CPULOG_START_ADDR > 0
+	if(_cseip < CPULOG_START_ADDR || _cseip > CPULOG_END_ADDR) {
+#else
+	if(_cseip > CPULOG_END_ADDR) {
+#endif
 		return;
 	}
 	unsigned idx;

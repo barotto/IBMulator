@@ -625,7 +625,7 @@ std::vector<bool> FloppyFmt::generate_bitstream_from_track(int track, int head,
 			cur_pos = (tbuf[cur_entry] & FloppyDisk::TIME_MASK) - period/2;
 
 			// Adjust the entry accordingly
-			while(cur_entry > 0 && (cur_pos > (tbuf[cur_entry] & FloppyDisk::TIME_MASK))) {
+			while(cur_entry > 0 && (cur_pos > int(tbuf[cur_entry] & FloppyDisk::TIME_MASK))) {
 				cur_entry --;
 			}
 
@@ -706,13 +706,13 @@ std::vector<bool> FloppyFmt::generate_bitstream_from_track(int track, int head,
 					next_is_first = true;
 				}
 			}
-			while(cur_entry < int(tbuf.size())-1 && (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
+			while(cur_entry < int(tbuf.size())-1 && int(tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
 				cur_entry++;
 			}
 
 			// Wrap around
 			if(cur_entry == int(tbuf.size())-1 &&
-			   (tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
+			   int(tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
 				cur_entry = 0;
 			}
 

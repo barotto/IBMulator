@@ -944,7 +944,7 @@ void FloppyDrive::wspan_write(const std::vector<wspan> &wspans, std::vector<uint
 		}
 
 		// Adapt the covered zone
-		int zone_size = ei - si;
+		unsigned zone_size = ei - si;
 		if(ws.flux_change_positions.size() > zone_size) {
 			track.insert(track.begin() + si, ws.flux_change_positions.size() - zone_size, 0);
 		} else if(ws.flux_change_positions.size() < zone_size) {

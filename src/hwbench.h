@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -45,13 +45,15 @@ public:
 	HWBench();
 	virtual ~HWBench();
 
-	void start();
-	void reset_values();
+	void start() override;
+	void reset_values() override;
+	using Bench::frame_start;
+	using Bench::frame_end;
 	void frame_start(uint64_t _virt_ns);
 	void frame_end(uint64_t _virt_ns);
 	
-	inline void cpu_step() { m_icount++; }
-	inline void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }
+	void cpu_step() { m_icount++; }
+	void cpu_cycles(unsigned _cycles) { m_ccount += _cycles; }
 	
 	bool is_stressed();
 	

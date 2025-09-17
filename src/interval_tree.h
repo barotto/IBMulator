@@ -121,13 +121,13 @@ public:
     intervalTree* right;
     int center;
 
-    IntervalTree<T,K>(void)
+    IntervalTree(void)
         : left(nullptr)
         , right(nullptr)
         , center(0)
     { }
 
-    IntervalTree<T,K>(const intervalTree& other)
+    IntervalTree(const intervalTree& other)
         : left(nullptr)
         , right(nullptr)
     {
@@ -159,7 +159,7 @@ public:
         return *this;
     }
 
-    IntervalTree<T,K>(
+    IntervalTree(
             intervalVector& ivals,
             unsigned int depth = 16,
             unsigned int minbucket = 64,

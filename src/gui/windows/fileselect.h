@@ -157,6 +157,7 @@ public:
 	void set_features(NewMediumCb _new_medium_cb, MediumInfoCb _medium_info_cb, bool _wp_option);
 
 	void update() override;
+	using Window::show;
 	void show(const std::string &_curr_file);
 	bool would_handle(Rml::Input::KeyIdentifier _key, int _mod) override;
 

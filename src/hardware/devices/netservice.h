@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 202-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -50,8 +50,9 @@ public:
 		std::atomic<unsigned> m_threshold = 1;
 		std::condition_variable m_data_cond;
 	public:
-		virtual size_t read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns);
-		virtual size_t write(uint8_t *_data, size_t _len);
+		using RingBuffer::read;
+		size_t read(uint8_t *_data, size_t _len, uint64_t _max_wait_ns);
+		size_t write(uint8_t *_data, size_t _len) override;
 		static unsigned ms_to_bytes(double _ms, unsigned _bps) {
 			return _ms * double(_bps) / 10000.0;
 		}
