@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Olivier Galibert, Marco Bortolin
 
-// Based on MAME's lib/formats/upd765_dsk.cpp
+// Based on MAME's lib/formats/upd765_dsk.cpp, lib/formats/pc_dsk.cpp
 
 #include "ibmulator.h"
 #include "floppydisk_raw.h"
@@ -12,7 +12,7 @@
 
 #include <cstring>
 
-const std::map<unsigned, FloppyFmt_IMG::encoding> FloppyFmt_IMG::encodings = {
+const std::map<unsigned, FloppyFmt_IMG::encoding> FloppyFmt_IMG::ms_encodings = {
 //  stdtype               encoding         cs    g4a g1  g2  g3
   { FloppyDisk::DD_160K, {FloppyDisk::MFM, 2000, 80, 50, 22, 80  } }, // 160K 5 1/4 inch double density single sided
   { FloppyDisk::DD_180K, {FloppyDisk::MFM, 2000, 80, 50, 22, 80  } }, // 180K 5 1/4 inch double density single sided
@@ -33,7 +33,7 @@ FloppyDisk::Properties FloppyFmt_IMG::identify(std::string file_path,
 {
 	for(auto const &fmt : FloppyDisk::std_types) {
 		if((fmt.first & FloppyDisk::SIZE_MASK) == _disk_size && fmt.second.cap == file_size) {
-			m_enc = encodings.at(fmt.first);
+			m_enc = ms_encodings.at(fmt.first);
 			assert(m_enc.type);
 			m_geom = FloppyDisk::std_types.at(fmt.first);
 			assert(m_geom.type == fmt.first);
@@ -375,7 +375,7 @@ bool FloppyFmt_IMG::save_flux(std::ofstream &_file, const FloppyDisk &_disk)
 	std::vector<unsigned> candidates;
 
 	// Format we're finally choosing
-	int chosen_candidate = 0;
+	unsigned chosen_candidate = FloppyDisk::FD_NONE;
 
 	// Previously tested cell size
 	int min_cell_size = 0;
@@ -383,7 +383,7 @@ bool FloppyFmt_IMG::save_flux(std::ofstream &_file, const FloppyDisk &_disk)
 		// Build the list of all formats for the immediately superior cell size
 		int cur_cell_size = 0;
 		candidates.clear();
-		for(auto const &enc : encodings) {
+		for(auto const &enc : ms_encodings) {
 			if((_disk.props().type & FloppyDisk::SIZE_MASK) == (enc.first & FloppyDisk::SIZE_MASK)) {
 				if(enc.second.cell_size == cur_cell_size)
 				{
@@ -467,14 +467,13 @@ bool FloppyFmt_IMG::save_flux(std::ofstream &_file, const FloppyDisk &_disk)
 		break;
 	}
 
-	// No match, pick the first one and be done with it
-	if(chosen_candidate == -1) {
-		chosen_candidate = 0;
-		PWARNF(LOG_V0, LOG_FDC, "Cannot find a valid floppy disk format, using default...\n");
+	if(chosen_candidate == FloppyDisk::FD_NONE) {
+		PERRF(LOG_FDC, "Error saving floppy disk: cannot find a valid format.\n");
+		return false;
 	}
 
 	auto f = FloppyDisk::std_types.at(FloppyDisk::StdType(chosen_candidate));
-	auto e = encodings.at(chosen_candidate);
+	auto e = ms_encodings.at(chosen_candidate);
 	std::streampos track_size = f.spt * f.secsize;
 
 	int t,h;
@@ -507,10 +506,10 @@ bool FloppyFmt_IMG::save_flux(std::ofstream &_file, const FloppyDisk &_disk)
 void FloppyFmt_IMG::check_compatibility(const FloppyDisk &_disk, std::vector<unsigned> &candidates)
 {
 	// Extract the sectors
-	auto bitstream = generate_bitstream_from_track(0, 0, encodings.at(candidates[0]).cell_size, _disk);
+	auto bitstream = generate_bitstream_from_track(0, 0, ms_encodings.at(candidates[0]).cell_size, _disk);
 	std::vector<std::vector<uint8_t>> sectors;
 
-	switch(encodings.at(candidates[0]).type) {
+	switch(ms_encodings.at(candidates[0]).type) {
 		case FloppyDisk::FM:
 			sectors = extract_sectors_from_bitstream_fm_pc(bitstream);
 			break;

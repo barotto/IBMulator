@@ -41,7 +41,7 @@ protected:
 		int gap_3;     // number of 4e between sector crc and next IDAM
 	} m_enc; // used by load() only
 
-	static const std::map<unsigned, encoding> encodings;
+	static const std::map<unsigned, encoding> ms_encodings;
 
 	bool load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk);
 	bool load_flux(std::ifstream &_file, FloppyDisk &_disk);
