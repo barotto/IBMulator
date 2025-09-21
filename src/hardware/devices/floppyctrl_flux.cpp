@@ -1412,6 +1412,7 @@ void FloppyCtrl_Flux::read_data_continue(uint8_t _drive)
 				return;
 			}
 			m_s.st1 &= ~FDC_ST1_ND;
+			m_s.st2 &= ~FDC_ST2_WC;
 			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: reading sector C:%02u H:%02u S:%02u N:%02u\n",
 						_drive,
 						m_s.cur_live.idbuf[0],
