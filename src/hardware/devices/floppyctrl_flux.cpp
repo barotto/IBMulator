@@ -206,8 +206,7 @@ void FloppyCtrl_Flux::reset(unsigned type)
 		}
 	}
 
-	m_s.data_irq = false;
-	m_s.other_irq = false;
+	m_s.irq = false;
 	m_s.pending_irq = false;
 	m_devices->pic()->lower_irq(IRQ_LINE);
 
@@ -363,12 +362,6 @@ uint16_t FloppyCtrl_Flux::read(uint16_t _address, unsigned)
 			if(value & FDC_MSR_DRV1BUSY) {PDEBUGF(LOG_V2, LOG_FDC, "DRV1BUSY ");}
 			if(value & FDC_MSR_DRV0BUSY) {PDEBUGF(LOG_V2, LOG_FDC, "DRV0BUSY ");}
 			PDEBUGF(LOG_V2, LOG_FDC, "\n");
-
-			if(m_s.data_irq) {
-				m_s.data_irq = false;
-				check_irq();
-			}
-
 			break;
 		}
 		case 0x3F5: // Data
@@ -382,12 +375,19 @@ uint16_t FloppyCtrl_Flux::read(uint16_t _address, unsigned)
 				if(m_s.result_index >= m_s.result_size) {
 					enter_idle_phase();
 				}
+				m_s.irq = false;
 			} else if(m_s.pending_command != FDC_CMD_INVALID && m_s.internal_drq) {
 				value = fifo_pop(false);
 				PDEBUGF(LOG_V2, LOG_FDC, "FIFO -> 0x%02X\n", value);
+				if(m_s.fifo_pos == 0) {
+					// on a read, INT should be lowered when FIFO gets emptied
+					m_s.irq = false;
+				}
 			} else {
 				PDEBUGF(LOG_V2, LOG_FDC, "FIFO -> 0 (read with no data)\n");
+				m_s.irq = false;
 			}
+			check_irq();
 			break;
 		}
 		case 0x3F7: // Digital Input Register (DIR)
@@ -517,6 +517,10 @@ void FloppyCtrl_Flux::write(uint16_t _address, uint16_t _value, unsigned)
 				PDEBUGF(LOG_V2, LOG_FDC, "FIFO <- 0x%02X write while in RESET state\n", _value);
 				return;
 			}
+
+			m_s.irq = false;
+			check_irq();
+
 			if(m_s.pending_command != FDC_CMD_INVALID) {
 				if(m_s.internal_drq) {
 					PDEBUGF(LOG_V2, LOG_FDC, "FIFO <- 0x%02X\n", _value);
@@ -549,8 +553,6 @@ void FloppyCtrl_Flux::write(uint16_t _address, uint16_t _value, unsigned)
 				assert(m_s.command_size <= 10);
 				PDEBUGF(LOG_V2, LOG_FDC, "D1/%d <- 0x%02X (cmd: %s)\n",
 						m_s.command_size, _value, cmd_def->second.name);
-				m_s.other_irq = false;
-				check_irq();
 			} else {
 				// in command phase
 				assert(m_s.command_index < m_s.command_size);
@@ -1201,7 +1203,7 @@ void FloppyCtrl_Flux::timer_polling(uint64_t)
 		if(!m_s.flopi[fid].st0_filled) {
 			m_s.flopi[fid].st0 = FDC_ST0_IC_POLLING | fid;
 			m_s.flopi[fid].st0_filled = true;
-			m_s.other_irq = true;
+			m_s.irq = true;
 		}
 	}
 
@@ -1815,7 +1817,7 @@ void FloppyCtrl_Flux::lower_interrupt()
 
 void FloppyCtrl_Flux::check_irq()
 {
-	bool cur_irq = m_s.data_irq || m_s.other_irq || m_s.internal_drq;
+	bool cur_irq = m_s.irq || m_s.internal_drq;
 	bool normal_op = (m_s.DOR & FDC_DOR_NRESET);
 	cur_irq = cur_irq && normal_op && (m_s.DOR & FDC_DOR_NDMAGATE);
 	if(cur_irq) {
@@ -1853,8 +1855,6 @@ void FloppyCtrl_Flux::enter_result_phase(unsigned _drive)
 				m_s.result_size = 2;
 			}
 			command_end(_drive);
-			m_s.other_irq = false;
-			check_irq();
 			break;
 		case FDC_CMD_DUMPREG:
 			m_s.result_size = 10;
@@ -1939,12 +1939,12 @@ void FloppyCtrl_Flux::command_end(unsigned _drive, IRQReason _irq)
 		m_s.flopi[_drive].sub_state = IDLE;
 		switch(_irq) {
 			case IRQ_DATA:
-				m_s.data_irq = true;
+				m_s.irq = true;
 				check_irq();
 				break;
 			case IRQ_OTHER:
-				m_s.other_irq = true;
 				m_s.flopi[_drive].st0_filled = true;
+				m_s.irq = true;
 				check_irq();
 				break;
 			case IRQ_NONE:

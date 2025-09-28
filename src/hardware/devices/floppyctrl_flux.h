@@ -112,8 +112,7 @@ private:
 		bool TC; // Terminal Count line
 
 		bool pending_irq;
-		bool data_irq;
-		bool other_irq;
+		bool irq;
 		bool internal_drq;
 
 		int  sector_size;
