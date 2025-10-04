@@ -1390,12 +1390,6 @@ void FloppyCtrl_Flux::read_data_continue(uint8_t _drive)
 
 		case SCAN_ID:
 			PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SCAN_ID\n", _drive);
-			if(m_s.cur_live.crc) {
-				m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL;
-				m_s.st1 |= FDC_ST1_DE|FDC_ST1_ND;
-				m_s.flopi[_drive].sub_state = COMMAND_DONE;
-				break;
-			}
 			// Speedlock requires the ND flag be set when there are valid
 			// sectors on the track, but the desired sector is missing, also
 			// when it has no valid address marks
@@ -1412,6 +1406,13 @@ void FloppyCtrl_Flux::read_data_continue(uint8_t _drive)
 				PDEBUGF(LOG_V2, LOG_FDC, "DRV%u: SEARCH_ADDRESS_MARK_HEADER\n", _drive);
 				live_start(_drive, SEARCH_ADDRESS_MARK_HEADER);
 				return;
+			}
+			if(m_s.cur_live.crc) {
+				m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL;
+				m_s.st1 |= FDC_ST1_DE;
+				m_s.st1 &= ~FDC_ST1_ND;
+				m_s.flopi[_drive].sub_state = COMMAND_DONE;
+				break;
 			}
 			m_s.st1 &= ~FDC_ST1_ND;
 			m_s.st2 &= ~FDC_ST2_WC;
