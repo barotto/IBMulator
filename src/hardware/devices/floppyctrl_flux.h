@@ -267,6 +267,9 @@ protected:
 	void live_write_fm(uint8_t fm);
 	void live_write_raw(uint16_t raw);
 
+	void clr_drive_busy() { m_s.main_status_reg &= 0xF0; }
+	void set_drive_busy(uint8_t _drive) { m_s.main_status_reg |= (1 << _drive); }
+
 	enum {
 		// General "doing nothing" state
 		IDLE,

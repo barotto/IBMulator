@@ -179,6 +179,9 @@ protected:
 	void cmd_lock();
 	void cmd_not_implemented();
 	void cmd_invalid();
+
+	void clr_drive_busy() { m_s.main_status_reg &= 0xF0; }
+	void set_drive_busy(uint8_t _drive) { m_s.main_status_reg |= (1 << _drive); }
 };
 
 #endif

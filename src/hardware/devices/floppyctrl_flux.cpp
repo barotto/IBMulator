@@ -371,7 +371,7 @@ uint16_t FloppyCtrl_Flux::read(uint16_t _address, unsigned)
 				unsigned rsize = m_s.result_size;
 				value = m_s.result[m_s.result_index++];
 				PDEBUGF(LOG_V2, LOG_FDC, "R%d/%d -> 0x%02X\n", ridx, rsize, value);
-				m_s.main_status_reg &= 0xF0;
+				clr_drive_busy();
 				if(m_s.result_index >= m_s.result_size) {
 					enter_idle_phase();
 				}
@@ -845,7 +845,7 @@ void FloppyCtrl_Flux::cmd_recalibrate()
 	//  These bits are set to ones when a drive is in the seek portion of
 	//  a command, including seeks, and recalibrates.
 	m_s.main_status_reg &= FDC_MSR_NONDMA;
-	m_s.main_status_reg |= (1 << drive);
+	set_drive_busy(drive);
 
 	m_s.flopi[drive].main_state = RECALIBRATE;
 	m_s.flopi[drive].sub_state = RECALIBRATE_WAIT_DONE;
@@ -913,9 +913,9 @@ void FloppyCtrl_Flux::cmd_recalibrate_result(unsigned _drive)
 	if(!is_motor_on(_drive) || m_fdd[_drive]->get_cyl()!=0) {
 		m_s.flopi[_drive].st0 |= FDC_ST0_IC_ABNORMAL | FDC_ST0_EC;
 	}
-	// clear DRVxBUSY bit
-	m_s.main_status_reg &= ~(1 << _drive);
-	// no result phase (for result use sense int cmd)
+
+	// there's no result phase, to get the result the caller must use the sense int command.
+	// don't clear DRVxBUSY bit here, it will happen in the read FIFO following a sense int.
 	command_end(_drive, IRQ_OTHER);
 	enter_idle_phase();
 }
@@ -1027,7 +1027,7 @@ void FloppyCtrl_Flux::cmd_seek()
 	m_s.flopi[drive].st0 = 0;
 
 	m_s.main_status_reg &= FDC_MSR_NONDMA;
-	m_s.main_status_reg |= (1 << drive);
+	set_drive_busy(drive);
 
 	uint32_t step_delay_us = calculate_step_delay_us(drive, cylinder);
 	uint64_t next_evt_us = step_delay_us + m_min_cmd_time_us;
@@ -1062,9 +1062,9 @@ void FloppyCtrl_Flux::cmd_seek_result(unsigned _drive)
 	// The H (Head Address) bit in ST0 will always return a 0 (p.31)
 	m_s.flopi[_drive].st0 = FDC_ST0_SE | _drive;
 	m_s.flopi[_drive].pcn = m_s.flopi[_drive].seek_c;
-	// clear DRVxBUSY bit
-	m_s.main_status_reg &= ~(1 << _drive);
-	// no result phase (for result use sense int cmd)
+
+	// there's no result phase, to get the result the caller must use the sense int command.
+	// don't clear DRVxBUSY bit here, it will happen in the read FIFO following a sense int.
 	command_end(_drive, IRQ_OTHER);
 	enter_idle_phase();
 }

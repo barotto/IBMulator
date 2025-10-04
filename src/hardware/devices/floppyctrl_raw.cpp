@@ -375,7 +375,7 @@ uint16_t FloppyCtrl_Raw::read(uint16_t _address, unsigned)
 				value = m_s.result[0];
 			} else {
 				value = m_s.result[m_s.result_index++];
-				m_s.main_status_reg &= 0xF0;
+				clr_drive_busy();
 				lower_interrupt();
 				if(m_s.result_index >= m_s.result_size) {
 					enter_idle_phase();
@@ -850,7 +850,7 @@ void FloppyCtrl_Raw::cmd_recalibrate()
 	//  These bits are set to ones when a drive is in the seek portion of
 	//  a command, including seeks, and recalibrates.
 	m_s.main_status_reg &= FDC_MSR_NONDMA;
-	m_s.main_status_reg |= (1 << drive);
+	set_drive_busy(drive);
 
 	uint32_t step_delay_us = calculate_step_delay_us(drive, m_s.flopi[drive].cur_cylinder, 0);
 	PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay_us);
@@ -972,7 +972,7 @@ void FloppyCtrl_Raw::cmd_seek()
 	//  These bits are set to ones when a drive is in the seek portion of
 	//  a command, including seeks, and recalibrates.
 	m_s.main_status_reg &= FDC_MSR_NONDMA;
-	m_s.main_status_reg |= (1 << drive);
+	set_drive_busy(drive);
 
 	uint32_t step_delay_us = calculate_step_delay_us(drive, m_s.flopi[drive].cur_cylinder, cylinder);
 	PDEBUGF(LOG_V2, LOG_FDC, "step_delay: %u us\n", step_delay_us);
@@ -1096,9 +1096,8 @@ void FloppyCtrl_Raw::timer(uint64_t)
 				m_s.status_reg0 |= FDC_ST0_IC_NORMAL;
 			}
 			m_s.flopi[drive].direction = false;
-			// clear DRVxBUSY bit
-			m_s.main_status_reg &= ~(1 << drive);
-			// no result phase
+			// there's no result phase, to get the result the caller must use the sense int command.
+			// don't clear DRVxBUSY bit here, it will happen in the read FIFO following a sense int.
 			step_head();
 			enter_idle_phase();
 			raise_interrupt();
@@ -1106,9 +1105,8 @@ void FloppyCtrl_Raw::timer(uint64_t)
 		}
 		case FDC_CMD_SEEK:
 			m_s.status_reg0 = FDC_ST0_IC_NORMAL | FDC_ST0_SE | FDC_ST_HDS(drive);
-			// clear DRVxBUSY bit
-			m_s.main_status_reg &= ~(1 << drive);
-			// no result phase
+			// there's no result phase, to get the result the caller must use the sense int command.
+			// don't clear DRVxBUSY bit here, it will happen in the read FIFO following a sense int.
 			step_head();
 			enter_idle_phase();
 			raise_interrupt();
