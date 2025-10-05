@@ -2093,7 +2093,7 @@ uint8_t FloppyCtrl_Flux::fifo_pop(bool internal)
 		disable_transfer();
 	}
 	int thr = (m_s.config & FDC_CONF_FIFOTHR);
-	if(m_s.fifo_write && m_s.fifo_expected && (m_s.fifo_pos <= thr || (m_s.config & FDC_CONF_EFIFO))) {
+	if(m_s.fifo_write && m_s.fifo_expected && (m_s.fifo_pos <= thr || (m_s.config & FDC_CONF_EFIFO)) && !m_s.tc_done) {
 		PDEBUGF(LOG_V2, LOG_FDC, "FIFO: enabling transfer, pos=%u, thres=%u\n", m_s.fifo_pos, thr);
 		enable_transfer();
 	}
