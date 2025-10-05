@@ -473,7 +473,7 @@ void FloppyDrive::index_resync()
 		m_s.rev_count++;
 	}
 	// head position expressed in cells
-	int position = int(ceil(NSEC_TO_SEC(delta_ns) * m_angular_speed));
+	int position = int((NSEC_TO_SEC(delta_ns) * m_angular_speed) + 0.5);
 
 	int new_idx = position < 2'000'000;
 
