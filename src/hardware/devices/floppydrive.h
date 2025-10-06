@@ -177,7 +177,6 @@ protected:
 	void index_timer(uint64_t);
 
 	uint32_t find_position(uint64_t &base_ns, uint64_t when_ns);
-	int find_index(uint32_t position, const std::vector<uint32_t> &buf) const;
 	uint64_t position_to_time(uint64_t base_ns, int position) const;
 
 	bool get_cyl_head(int &_cyl, int &_head);

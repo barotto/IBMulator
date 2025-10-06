@@ -600,29 +600,6 @@ uint32_t FloppyDrive::hash32(uint32_t a) const
 	return a;
 }
 
-int FloppyDrive::find_index(uint32_t position, const std::vector<uint32_t> &buf)const
-{
-	int spos = (buf.size() >> 1)-1;
-	int step;
-	for(step=1; step<int(buf.size()+1); step<<=1) { }
-	step >>= 1;
-
-	for(;;) {
-		if(spos >= int(buf.size()) || (spos > 0 && (buf[spos] & FloppyDisk::TIME_MASK) > position)) {
-			spos -= step;
-			step >>= 1;
-		} else if(spos < 0 || (spos < int(buf.size())-1 && (buf[spos+1] & FloppyDisk::TIME_MASK) <= position)) {
-			spos += step;
-			step >>= 1;
-		} else {
-			return spos;
-		}
-	}
-
-	assert(false);
-	return 0;
-}
-
 uint32_t FloppyDrive::find_position(uint64_t &base, uint64_t when)
 {
 	base = m_s.rev_start_time;
@@ -703,16 +680,16 @@ void FloppyDrive::cache_fill(uint64_t when)
 	uint64_t base;
 	uint32_t position = find_position(base, when);
 
-	int index = find_index(position, buf);
+	auto const it = std::upper_bound(
+			buf.begin(), buf.end(), position,
+			[] (uint32_t a, uint32_t b) { return a < (b & FloppyDisk::TIME_MASK); });
 
-	if(index == -1) {
-		// I suspect this should be an abort(), to check...
-		m_s.cache_start_time = 0;
-		m_s.cache_end_time = TIME_NEVER;
-		m_s.cache_index = 0;
-		m_s.cache_entry = buf[0];
-		cache_weakness_setup();
-		return;
+	int index;
+	if(buf.begin() == it) {
+		base -= m_rev_time;
+		index = buf.size() - 1;
+	} else {
+		index = int(it - buf.begin()) - 1;
 	}
 
 	for(;;) {
