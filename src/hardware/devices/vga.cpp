@@ -39,7 +39,7 @@ IODEVICE_PORTS(VGA) = {
 	{ 0x03B4, 0x03B5, PORT_8BIT|PORT_RW }, //3B4-3B5 CRTC Controller Address / Data
 	{ 0x03BA, 0x03BA, PORT_8BIT|PORT_RW }, //3BA mono Input Status #1 (R) / Feature Control (W)
 	{ 0x03C0, 0x03C0, PORT_8BIT|PORT_RW }, //3C0 Attribute Address/Data
-	{ 0x03C1, 0x03C1, PORT_8BIT|PORT_RW }, //3C1 Attribute Data Read
+	{ 0x03C1, 0x03C1, PORT_8BIT|PORT_R_ }, //3C1 Attribute Data Read
 	{ 0x03C2, 0x03C2, PORT_8BIT|PORT_RW }, //3C2 Input Status #0 (R) / Miscellaneous Output (W)
 	{ 0x03C3, 0x03C3, PORT_8BIT|PORT_RW }, //3C3 Video subsystem enable
 	{ 0x03C4, 0x03C4, PORT_8BIT|PORT_RW }, //3C4 Sequencer Address
@@ -939,7 +939,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 			break;
 
 		default:
-			PERRF(LOG_VGA, "invalid port!\n");
+			PERRF(LOG_VGA, "Read from invalid port: 0x%04X\n", _address);
 			assert(false);
 			break;
 	}
@@ -1332,7 +1332,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			break;
 
 		default:
-			PERRF(LOG_VGA, "invalid port\n");
+			PERRF(LOG_VGA, "Write to invalid port: 0x%04X\n", _address);
 			assert(false);
 			break;
 	}
