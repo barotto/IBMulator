@@ -10,7 +10,6 @@
 #include "utils.h"
 #include <cstring>
 
-
 FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 		uint64_t _file_size, FloppyDisk::Size _disk_size)
 {
@@ -62,7 +61,8 @@ FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 	} else if(m_header.bitRate <= 500*1.1) {
 		m_geom.drate = FloppyDisk::DRATE_500;
 	} else {
-		m_geom.drate = FloppyDisk::DRATE_1000;
+		PWARNF(LOG_V1, LOG_FDC, "HFE: unsupported bit rate: 1000 kbps\n", _file_path.c_str());
+		return {0};
 	}
 
 	// read the pictracks
@@ -249,7 +249,7 @@ bool FloppyFmt_HFE::load(std::ifstream &_file, FloppyDisk &_disk)
 		}
 	}
 
-	if(m_header.bitRate > 500) {
+	if(m_header.bitRate < 250 || m_header.bitRate > 500) {
 		PERRF(LOG_FDC, "HFE: Unsupported bit rate %d.\n", m_header.bitRate);
 		return false;
 	}
@@ -270,31 +270,41 @@ bool FloppyFmt_HFE::load_raw(std::ifstream &, FloppyDisk_Raw &)
 
 bool FloppyFmt_HFE::load_flux(std::ifstream &_file, FloppyDisk &_disk)
 {
-	int samplelength = 500000 / m_header.bitRate;
+	int samplelength = 500'000 / m_header.bitRate;
+
+	int size1track = (CYLTIME / samplelength) / 8;
+	PDEBUGF(LOG_V2, LOG_FDC, "HFE: read %d cylinders:\n", m_geom.tracks);
+	PDEBUGF(LOG_V2, LOG_FDC, "HFE:  bitrate=%u, samplelength=%02d, cyl.size=%d\n", m_header.bitRate, samplelength, size1track * 2);
 
 	// Load the tracks
 	std::vector<uint8_t> cylinder_buffer;
 	for(int cyl=0; cyl < m_geom.tracks; cyl++)
 	{
+		int offset = int(m_cylinders[cyl].offset) << 9;
+		int track_len = m_cylinders[cyl].track_len;
+		int cylbufsize = (track_len + 0x1ff) & ~0x1ff;
+
+		PDEBUGF(LOG_V3, LOG_FDC, "HFE:  C%02d: offset=0x%04x, track_len=%d, cylbufsize=%d\n",
+				cyl, offset, m_cylinders[cyl].track_len, cylbufsize);
+
 		// actual data read
 		// The HFE format defines an interleave of the two sides per cylinder
 		// at every 256 bytes
-		cylinder_buffer.resize(m_cylinders[cyl].track_len);
+		cylinder_buffer.resize(cylbufsize);
 
-		int offset = int(m_cylinders[cyl].offset) << 9;
 		_file.seekg(offset, std::ios::beg);
 		if(_file.bad()) {
 			return false;
 		}
 
-		_file.read(reinterpret_cast<char*>(&cylinder_buffer[0]), m_cylinders[cyl].track_len);
+		_file.read(reinterpret_cast<char*>(&cylinder_buffer[0]), cylbufsize);
 		if(_file.bad()) {
 			return false;
 		}
 
-		generate_track_from_hfe_bitstream(cyl, 0, samplelength, &cylinder_buffer[0], m_cylinders[cyl].track_len, _disk);
+		generate_track_from_hfe_bitstream(cyl, 0, samplelength, &cylinder_buffer[0], cylbufsize, _disk);
 		if(m_geom.sides == 2) {
-			generate_track_from_hfe_bitstream(cyl, 1, samplelength, &cylinder_buffer[0], m_cylinders[cyl].track_len, _disk);
+			generate_track_from_hfe_bitstream(cyl, 1, samplelength, &cylinder_buffer[0], cylbufsize, _disk);
 		}
 	}
 
@@ -304,48 +314,31 @@ bool FloppyFmt_HFE::load_flux(std::ifstream &_file, FloppyDisk &_disk)
 void FloppyFmt_HFE::generate_track_from_hfe_bitstream(int cyl, int head, int samplelength,
 		const uint8_t *trackbuf, int track_end, FloppyDisk &image)
 {
-	// HFE has a minor issue: The track images do not sum up to 200 ms.
-	// Tracks are samples at 250 kbit/s for both FM and MFM, which yields
-	// 50000 data bits (100000 samples) for MFM, while FM is twice oversampled
-	// (4 samples per actual data bit)
-	// Hence, for both FM and MFM, we need 100000 samples.
-
-	// Track length 61B0 (both sides, FM)
-	// 100 + 100 + ... + 100 + (B0+50)    = 3000 + B0 + 50 (pad)
-	//    100 + 100 + .... + 100  +  B0   = 3000 + B0 = 99712 samples   (-288)
-
-	// Track length 61C0 (both sides, MFM)
-	// 100 + 100 + ... + 100 + (C0+40)       = 3000 + C0 + 40 (pad)
-	//    100 + 100 + .... + 100   +   C0    = 3000 + C0 = 99840 samples   (-160)
-
-	// Solution: Repeat the last byte until we have enough samples
-	// Note: We do not call normalize_times here because we're doing the job here
-
-	// MG_1 / MG_0 are (logical) levels that indicate transition / no change
-	// MG_F is the position of a flux transition
-
-	std::vector<uint32_t> &dest = image.get_buffer(cyl, head);
-	dest.clear();
-
-	int offset = 0x100;
-
-	if(head == 0) {
-		offset = 0;
-		track_end -= 0x0100;
-	}
-
-	uint8_t current = 0;
-	int time  = 0;
-
-	// Oversampled FM images (250 kbit/s) start with a 0, where a 1 is
-	// expected for 125 kbit/s.
-	// In order to make an oversampled image look like a normally sampled one,
-	// we position the transition at 500 ns before the cell end.
-	// The HFE format has a 1 us minimum cell size; this means that a normally
-	// sampled FM image with 11111... at the begining means
-	// 125 kbit/s:    1   1   1   1   1...
-	// 250 kbit/s:   01  01  01  01  01...
-	// 500 kbit/s: 00010001000100010001...
+	// HFE has a few peculiarities:
+	//
+	// - "The track images do not always sum up to 200 ms but may be slightly shorter.
+	//   We may assume that the last byte (last 8 samples) are part of the end
+	//   gap, so it should not harm to repeat it until there are enough samples."
+	//   Actually 8 samples are not enough to encode a GAP byte (4E). We will wrap around instead.
+	//   And anyway, it's not always correct to assume the last byte is part of the end GAP...
+	//   FIXME: This function doesn't handle this case correctly.
+	//
+	// - Tracks are sampled at 250 K/s for both FM and MFM, which yields
+	//   50000 data bits (1 sample per cell) for MFM, while FM is twice
+	//   oversampled (2 samples per cell).
+	//   Accordingly, for both FM and MFM, we have 100000 samples, and the
+	//   images are equally long for both recordings.
+	//
+	// - The oversampled FM images of HFE start with a cell 0 (no change),
+	//   where a 1 would be expected for 125 K/s.
+	//   In order to make an oversampled image look like a normally sampled one,
+	//   we position the transition at 500 ns before the cell end.
+	//   The HFE format has a 1 us minimum cell size; this means that a normally
+	//   sampled FM image with 11111... at the begining means
+	//
+	//   125 kbit/s:    1   1   1   1   1...
+	//   250 kbit/s:   01  01  01  01  01...
+	//   500 kbit/s: 00010001000100010001...
 	//
 	//   -500             3500            7500            11500
 	//     +-|---:---|---:-+ |   :   |   : +-|---:---|---:-+ |
@@ -366,288 +359,302 @@ void FloppyFmt_HFE::generate_track_from_hfe_bitstream(int cyl, int head, int sam
 	//  7500 (1)    +samplelength
 	//  9500 (0)    +samplelength
 	// 11500 (1)    +samplelength
+	//
+	// - Subtracks are not supported
 
-	time = -500;
+	std::vector<uint32_t> &dest = image.get_buffer(cyl, head);
+	dest.clear();
 
-	// We are creating a sequence of timestamps with flux info
-	// Note that the flux change occurs in the last quarter of a cell
+	int offset = 0x100;
 
-	while(time < 200'000'000)   // one rotation in nanosec
+	if(head == 0) {
+		offset = 0;
+		// Tracks are assumed to be equally long for both sides, and to switch
+		// sides every 0x100 bytes. So when the final block is c bytes long, and
+		// it is padded to the next 0x100 multiple on the first side,
+		// we skip back by c + (0x100-c) bytes, i.e. by 0x100
+		track_end -= 0x100;
+	}
+
+	uint8_t curcells = 0;
+	int timepos = -500;
+	int track_size = -1;
+
+	// We are creating a sequence of timestamps with flux information
+	// As explained above, we arrange for the flux change to occur in the last
+	// quarter of a cell
+
+	while(timepos < CYLTIME)
 	{
-		current = trackbuf[offset];
+		curcells = trackbuf[offset];
 		for (int j=0; j < 8; j++)
 		{
-			time += samplelength;
-			if ((current & 1)!=0)
+			timepos += samplelength;
+			if ((curcells & 1) != 0) {
 				// Append another transition to the vector
-				dest.push_back(FloppyDisk::MG_F | time);
+				dest.push_back(FloppyDisk::MG_F | timepos);
+			}
 
 			// HFE uses little-endian bit order
-			current >>= 1;
+			curcells >>= 1;
 		}
 		offset++;
-		if ((offset & 0xff)==0) {
+		// We have alternating blocks of 0x100 bytes for each head
+		// If we are at the block end, jump forward to the next block for this head
+		if ((offset & 0xff) == 0) {
 			offset += 0x100;
 		}
 
-		// When we have not reached the track end (after 0.2 sec) but run
-		// out of samples, repeat the last value
-		if (offset >= track_end) offset = track_end - 1;
+		// If we have not reached the track end (after cyltime) but run
+		// out of samples, wrap around.
+		if (offset >= track_end) {
+			PDEBUGF(LOG_V5, LOG_FDC, "HFE:   H%d: wrapping around at timepos=%d ns\n", head, timepos);
+			offset = head * 0x100;
+		}
+		track_size++;
 	}
 
+	// Write splice is always at the start
 	image.set_write_splice_position(cyl, head, 0);
+
+	PDEBUGF(LOG_V5, LOG_FDC, "HFE:   H%d: timepos=%d, offset=%d, track_size=%d, track_end=%d\n", head, timepos, offset, track_size, track_end);
 }
 
 bool FloppyFmt_HFE::save(std::ofstream &_file, const FloppyDisk &_disk)
 {
-	std::vector<uint8_t> cylbuf;
-
-	// Create a buffer that is big enough to handle HD formats. We don't
-	// know the track length until we generate the HFE bitstream.
-	cylbuf.resize(0x10000); // multiple of 512
-
-	std::vector<s_pictrack> pictrack;
-	uint8_t header[HEADER_LENGTH];
-	uint8_t track_table[TRACK_TABLE_LENGTH] = {};
-
-	// Set up header
-	memcpy(header, HFE_FORMAT_HEADER_v1, 8);
-
-	header[8] = 0;
-	// Can we change the number of tracks or heads?
 	int cylinders, heads;
-	_disk.get_actual_geometry(cylinders, heads);
+	_disk.get_maximal_geometry(cylinders, heads);
 
 	if(cylinders * sizeof(s_pictrack) > TRACK_TABLE_LENGTH) {
 		PERRF(LOG_FDC, "HFE: Too many cylinders\n");
 		return false;
 	}
 
-	pictrack.resize(cylinders);
+	// Determine the encoding
+	encoding_t track_encoding = ISOIBM_MFM_ENCODING;
+	encoding_t track0s0_encoding = ISOIBM_MFM_ENCODING;
+	encoding_t track0s1_encoding = ISOIBM_MFM_ENCODING;
 
-	header[9] = cylinders;
-	header[10] = heads;
-	// Floppy RPM is not used
-	header[14] = 0;
-	header[15] = 0;
+	// ISOIBM may change between FM and MFM
+	int cell_size = 0;
+	int samplerate = 250;
 
-	// Bit rate and encoding will be set later
-	encoding_t track0s0_encoding = UNKNOWN_ENCODING;
-	encoding_t track0s1_encoding = UNKNOWN_ENCODING;
-	encoding_t track_encoding = UNKNOWN_ENCODING;
+	const std::vector<uint32_t> &tbuf = _disk.get_buffer(1, 0);  // use track 1; may have to use more or others
+	cell_size = determine_cell_size(tbuf);
+	if(cell_size == 4000) {
+		track_encoding = ISOIBM_FM_ENCODING;
+	}
 
+	// Check for alternative encodings for track 0 side 0 or side 1.
+	const std::vector<uint32_t> &tbuf0 = _disk.get_buffer(0, 0);
+	int cell_size0 = determine_cell_size(tbuf0);
+	if(cell_size0 == 4000) {
+		track0s0_encoding = ISOIBM_FM_ENCODING;
+	}
+
+	const std::vector<uint32_t> &tbuf1 = _disk.get_buffer(0, 1);
+	cell_size0 = determine_cell_size(tbuf1);
+	if(cell_size0 == 4000) {
+		track0s1_encoding = ISOIBM_FM_ENCODING;
+	}
+
+	if(cell_size < 2000) {
+		samplerate = 500;
+	}
+
+	uint8_t floppymode = DISABLE_FLOPPYMODE;
 	switch(_disk.props().type & FloppyDisk::DENS_MASK) {
 		case FloppyDisk::DENS_DD:
-			header[16] = IBMPC_DD_FLOPPYMODE;
+			floppymode = IBMPC_DD_FLOPPYMODE;
 			break;
 		case FloppyDisk::DENS_HD:
-			header[16] = IBMPC_HD_FLOPPYMODE;
+			floppymode = IBMPC_HD_FLOPPYMODE;
 			break;
 		default:
-			header[16] = DISABLE_FLOPPYMODE;
 			break;
 	}
-	header[17] = 0;
 
-	// The track lookup table is located at offset 0x200 (as 512 multiple)
-	header[18] = 1;
-	header[19] = 0;
+	// Set up the header
+	uint8_t header[HEADER_LENGTH];
+	// fill it with the default value 0xff
+	std::fill(std::begin(header), std::end(header), 0xff);
 
-	header[20] = !_disk.is_write_protected() ? 0xff : 0x00;
-	header[21] = !_disk.double_step() ? 0xff : 0x00;
+	std::memcpy(header, HFE_FORMAT_HEADER_v1, 8);
+	header[0x08] = 0;
+	header[0x09] = cylinders;
+	header[0x0a] = heads;
+	header[0x0b] = track_encoding;
+	header[0x0c] = samplerate & 0xff;
+	header[0x0d] = (samplerate >> 8) & 0xff;
+	header[0x0e] = 0; // RPM is not used
+	header[0x0f] = 0; // RPM is not used
+	header[0x10] = floppymode;
+	header[0x11] = 0;
+	header[0x12] = 1;
+	header[0x13] = 0;
+	header[0x14] = !_disk.is_write_protected() ? 0xff : 0x00;
+	header[0x15] = !_disk.double_step() ? 0xff : 0x00;
 
-	header[22] = 0xff;
-	header[23] = track0s0_encoding;
-	header[24] = 0xff;
-	header[25] = track0s1_encoding;
-
-	// Fill the remaining bytes with 0xff
-	for (int i=26; i < HEADER_LENGTH; i++) {
-		header[i] = 0xff;
-	}
-
-	// Header and track table will be finalized at the end
-	// write an incomplete header (1 block)
-	if(!FileSys::append(_file, header, HEADER_LENGTH)) {
-		PERRF(LOG_FDC, "HFE: Cannot write to file\n");
-		return false;
-	}
-	// write a dummy track table (1 block)
-	if(!FileSys::append(_file, track_table, TRACK_TABLE_LENGTH)) {
-		PERRF(LOG_FDC, "HFE: Cannot write to file\n");
-		return false;
-	}
-	// track data start here
-	// start at block 2 (0x200*2=1024)
-	int track_offset = HEADER_LENGTH + TRACK_TABLE_LENGTH;
-
-	int samplelength = 2000;
-
-	// We won't have more than 200000 cells on the track
-	encoding_t trkenc_s0 = UNKNOWN_ENCODING, trkenc_s1 = UNKNOWN_ENCODING;
-	for(int cyl=0; cyl<cylinders; cyl++)
-	{
-		// After the call, the encoding will be set to FM or MFM
-		if(cyl <= 1) {
-			trkenc_s0 = UNKNOWN_ENCODING;
-			trkenc_s1 = UNKNOWN_ENCODING;
-		}
-		int side0_bytes = 0, side1_bytes = 0;
-		generate_hfe_bitstream_from_track(cyl, 0, samplelength, trkenc_s0, &cylbuf[0],
-				side0_bytes, _disk);
-		if(heads == 2) {
-			generate_hfe_bitstream_from_track(cyl, 1, samplelength, trkenc_s1, &cylbuf[0],
-				side1_bytes, _disk);
-		}
-		// hfe allows for different trk0 side encodings, but the track length is common to both
-		int track_len = std::max(side0_bytes, side1_bytes) * 2;
-		track_encoding = trkenc_s0;
-		pictrack[cyl].offset = track_offset >> 9; // in 512 bytes blocks
-		pictrack[cyl].track_len = track_len; // real length in bytes
-		track_len = (track_len + 0x1FF) & 0xfe00; // multiple of 512 bytes
-
-		// Write the current cylinder
-		if(!FileSys::append(_file, &cylbuf[0], track_len)) {
-			PERRF(LOG_FDC, "HFE: Cannot write to file\n");
-			return false;
-		}
-
-		track_offset += track_len;
-
-		if(cyl == 0) {
-			track0s0_encoding = trkenc_s0;
-			track0s1_encoding = trkenc_s1;
-		} else {
-			int bit_rate = 500'000 / samplelength;
-			header[12] = bit_rate & 0xff;
-			header[13] = (bit_rate >> 8) & 0xff;
-		}
-	}
-
-	// Complete and update the header
-	header[11] = track_encoding;
+	// If no difference, keep the filled 0xff
 	if(track0s0_encoding != track_encoding) {
-		header[22] = 0;
-		header[23] = track0s0_encoding;
+		header[0x16] = 0x00;
+		header[0x17] = track0s0_encoding;
 	}
 	if(track0s1_encoding != track_encoding) {
-		header[24] = 0;
-		header[25] = track0s1_encoding;
+		header[0x18] = 0x00;
+		header[0x19] = track0s1_encoding;
 	}
-	if(!FileSys::write_at(_file, 0, header, HEADER_LENGTH)) {
-		PERRF(LOG_FDC, "HFE: Cannot write to file\n");
+
+	if(!FileSys::append(_file, header, HEADER_LENGTH)) {
+		PERRF(LOG_FDC, "HFE: Cannot write to file.\n");
 		return false;
 	}
 
-	// Complete and update the track table
-	for(int i=0; i<cylinders; i++) {
-		track_table[i*4]   =  pictrack[i].offset & 0xff;
-		track_table[i*4+1] = (pictrack[i].offset>>8) & 0xff;
-		track_table[i*4+2] =  pictrack[i].track_len & 0xff;
-		track_table[i*4+3] = (pictrack[i].track_len>>8) & 0xff;
+	// Set up the track list
+	int samplelength = 500'000 / samplerate;
+
+	// Calculate the buffer length for the cylinder
+	int size1track = (CYLTIME / samplelength) / 8;
+
+	// Round up the length of one side to a 0x100 multiple (padding)
+	int cylsize = ((size1track + 0xff) & ~0xff) + size1track;
+	// Buffer size is multiple of 0x200
+	int cylbufsize = (cylsize + 0x1ff) & ~0x1ff;
+
+	PDEBUGF(LOG_V2, LOG_FDC, "HFE: write %d cylinders of %d bytes:\n", cylinders, cylsize);
+	PDEBUGF(LOG_V2, LOG_FDC, "HFE:  cyltime=%d, cell_size=%d, samplelength=%d, trk.size=%d, cylsize=%d, cylbufsize=%d\n",
+			CYLTIME, cell_size, samplelength, size1track, cylsize, cylbufsize);
+
+	// Create the lookup table
+	// Each entry contains two 16-bit values
+	int trackpos = TRACKS_OFFSET;
+	std::vector<s_pictrack> track_table(TRACK_TABLE_ENTRIES);
+	// The HxC program fills it with the default value 0xFF, and so do we.
+	std::fill(std::begin(track_table), std::end(track_table), s_pictrack{0xffff,0xffff});
+
+	for(int cyl = 0; cyl < cylinders; cyl++) {
+		track_table[cyl].offset = trackpos >> 9; // position in 512 bytes blocks
+		track_table[cyl].track_len = cylsize; // 2 tracks but only the first track is multiple of 256
+		trackpos += cylbufsize;
 	}
-	// Set the remainder to 0xff
-	for(int i=cylinders*4; i<TRACK_TABLE_LENGTH; i++) {
-		track_table[i] = 0xff;
-	}
-	if(!FileSys::write_at(_file, HEADER_LENGTH, track_table, TRACK_TABLE_LENGTH)) {
-		PERRF(LOG_FDC, "HFE: Cannot write to file\n");
+
+	if(!FileSys::append(_file, &track_table[0], TRACK_TABLE_LENGTH)) {
+		PERRF(LOG_FDC, "HFE: Cannot write to file.\n");
 		return false;
+	}
+
+	std::vector<uint8_t> cylbuf(cylbufsize);
+
+	for(int cyl = 0; cyl < cylinders; cyl++) {
+		PDEBUGF(LOG_V3, LOG_FDC, "HFE:  C%02d: offset=0x%04x\n", cyl, track_table[cyl].offset << 9);
+
+		// Even when the image is set as single-sided, we write both sides.
+		// 0-fill the cyl buffer to account for unformatted tracks or single side.
+		std::fill(std::begin(cylbuf), std::end(cylbuf), 0);
+		generate_hfe_bitstream_from_track(cyl, 0, CYLTIME, samplelength, cylbuf, _disk);
+		generate_hfe_bitstream_from_track(cyl, 1, CYLTIME, samplelength, cylbuf, _disk);
+
+		// Save each track; get the position and length from the lookup table
+		if(!FileSys::write_at(_file, track_table[cyl].offset << 9, &cylbuf[0], cylbufsize)) {
+			PERRF(LOG_FDC, "HFE: Cannot write to file.\n");
+			return false;
+		}
 	}
 
 	return true;
 }
 
-void FloppyFmt_HFE::generate_hfe_bitstream_from_track(int cyl, int head,
-		int &samplelength, encoding_t &encoding, uint8_t *cylinder_buffer,
-		int &track_bytes, const FloppyDisk &_disk)
+int FloppyFmt_HFE::determine_cell_size(const std::vector<uint32_t> &tbuf) const
 {
-	// We are using an own implementation here because the result of the
-	// parent class method would require some post-processing that we
-	// can easily avoid.
+	// Find out the cell size so we can tell whether this is FM or MFM recording.
+	//
+	// Some systems may have a fixed recording; the size should then be set
+	// on instantiation.
+	// The encoding may have changed by reformatting; we cannot rely on the
+	// header that we loaded.
+	//
+	// The HFE format needs this information for its format header, which is
+	// a bit tricky, because we have to assume a correctly formatted track.
+	// Some flux lengths may appear in different recordings:
+	//
+	//                        Encodings by time in us
+	//  Flux lengths   Dens   2     3     4     5     6      7      8
+	//  Cell size 4us  SD     -     -     1     -     -      -      10
+	//            2us  DD     -     -     10    -     100    -      1000
+	//            1us  HD     10    100   1000  -     -      -      -
+	//
+	// To be sure, we have to find a flux length of 6us (MFM/DD) or 3 us or
+	// 2 us (MFM/HD). A length of 4 us may appear for all densities.
+	// If there is at least one MFM-IDAM on the track, this will deliver
+	// a 6 us length for DD or 3 us for HD (01000[100]1000[100]1).
+	// Otherwise we assume FM (4 us).
 
-	// See floppy_image_format_t::generate_bitstream_from_track
+	// MAME track format:
+	// xlllllll xlllllll xlllllll xlllllll xlllllll xlllllll ...
+	// |\--+--/
+	// |  Area Length in ns (TIME_MASK=0x0fffffff), max: 199999999 ns
+	// +- Area code (0=Flux change, 1=non-magnetized, 2=damaged, 3=end of zone)
+	//
+	// Empty track: zero-length array, equiv to [(non_mag,0ns),(end, 199999999ns)]
+	//
+	// The HFE format only supports flux changes, no demagnetized or defect zones.
+	//
+	int cell_start = -1;
+	int cell_size = 4000;
+
+	// Skip the beginning (may have a short cell)
+	for(unsigned i=2; i < tbuf.size(); i++)
+	{
+		if (cell_start >= 0)
+		{
+			int fluxlen = (tbuf[i] & FloppyDisk::TIME_MASK) - cell_start;
+			// Is this a flux length of less than 3.5us (HD) or of 6 us (DD)?
+			if (fluxlen < 3500)
+			{
+				cell_size = 1000;
+				break;
+			}
+			if ((fluxlen > 5500 && fluxlen < 6500))
+			{
+				cell_size = 2000;
+				break;
+			}
+		}
+		// We only measure from the last flux change
+		if ((tbuf[i] & FloppyDisk::MG_MASK) == FloppyDisk::MG_F) {
+			cell_start = tbuf[i] & FloppyDisk::TIME_MASK;
+		} else {
+			cell_start = -1;
+		}
+	}
+	return cell_size;
+}
+
+void FloppyFmt_HFE::generate_hfe_bitstream_from_track(
+		int cyl, int head, long cyltime,
+		int samplelength, std::vector<uint8_t> &cylinder_buffer,
+		const FloppyDisk &_disk) const
+{
+	// See FloppyFmt::generate_bitstream_from_track
 	// as the original code
-
-	track_bytes = 0;
 
 	const std::vector<uint32_t> &tbuf = _disk.get_buffer(cyl, head);
 	if(tbuf.size() <= 1)
 	{
 		// Unformatted track
-		// TODO must handle that according to HFE
-		int track_size = 200'000'000 / samplelength;
-		track_bytes = (track_size + 7) / 8;
-		int track_blocks = (track_bytes + 0x1FF) >> 9;
-		for(int b=0; b<track_blocks; b++) {
-			int buffoff = b * 0x200 + head * 0x100;
-			memset(&cylinder_buffer[buffoff], 0, 0x100);
-		}
+		// HFE does not support unformatted tracks. Return without changes,
+		// we assume that the track image was initialized with zeros.
 		return;
 	}
 
-	// Find out whether we have FM or MFM recording, and determine the bit rate.
-	// This is needed for the format header.
-	//
-	// The encoding may have changed by reformatting; we cannot rely on the
-	// header when loading.
-	//
-	// FM:   encoding 1    -> flux length = 4 us (min)          ambivalent
-	//       encoding 10   -> flux length = 8 us (max)          ambivalent
-	// MFM:  encoding 10   -> flux length = 4 us (min, DD)      ambivalent
-	//       encoding 100  -> flux length = 6 us (DD)           significant
-	//       encoding 1000 -> flux length = 8 us (max, DD)      ambivalent
-	//       encoding 10   -> flux length = 2 us (min, HD)      significant
-	//       encoding 100  -> flux length = 3 us (max, HD)      significant
+	// We start directly at position 0, as this format does not preserve a
+	// write splice position
+	int cur_time = 0;
+	int buf_pos = 0;
 
-	// If we have MFM, we should very soon detect a flux length of 6 us.
-	// But if we have FM, how long should we search to be sure?
-	// We assume that after 2000 us we should have reached the first IDAM,
-	// which contains a sequence 1001, implying a flux length of 6 us.
-	// If there was no such flux in that area, this can safely be assumed to be FM.
-
-	// Do it only for the first track; the format only supports one encoding.
-	if (encoding == UNKNOWN_ENCODING)
-	{
-		bool mfm_recording = false;
-		int time0 = 0;
-		int minflux = 4000;
-		int fluxlen = 0;
-		// Skip the beginning (may have a short cell)
-		for(size_t i=2; (i < tbuf.size()-1) && (time0 < 2'000'000) && !mfm_recording; i++)
-		{
-			time0 = tbuf[i] & FloppyDisk::TIME_MASK;
-			fluxlen = (tbuf[i+1] & FloppyDisk::TIME_MASK) - time0;
-			if ((fluxlen < 3500) || (fluxlen > 5500 && fluxlen < 6500)) {
-				mfm_recording = true;
-			}
-			if (fluxlen < minflux) {
-				minflux = fluxlen;
-			}
-		}
-		encoding = mfm_recording ? ISOIBM_MFM_ENCODING : ISOIBM_FM_ENCODING;
-
-		// samplelength = 1000ns => 10^6 cells/sec => 500 kbit/s
-		// samplelength = 2000ns => 250 kbit/s
-		// We stay with double sampling at 250 kbit/s for FM
-		if (minflux < 3500) {
-			samplelength = 1000;
-		} else {
-			samplelength = 2000;
-		}
-	}
-
-	// Start at the write splice
-	uint32_t splice = _disk.get_write_splice_position(cyl, head);
-
-	int cur_pos = splice;
-	int cur_entry = 0;
-
-	// Fast-forward to the write splice position (always 0 in this format)
-	while(cur_entry < int(tbuf.size())-1 && int(tbuf[cur_entry+1] & FloppyDisk::TIME_MASK) < cur_pos) {
-		cur_entry++;
-	}
-
+	// The remaining part of this method is very similar to the implementation
+	// of the PLL in FloppyFmt, except that it directly creates the
+	// bytes for the format. Bits are stored from right to left in each byte.
 	int period = samplelength;
 	int period_adjust_base = period * 0.05;
 
@@ -657,31 +664,37 @@ void FloppyFmt_HFE::generate_hfe_bitstream_from_track(int cyl, int head,
 	int freq_hist = 0;
 	int next = 0;
 
+	int track_end = cylinder_buffer.size();
+
 	// Prepare offset for the format storage
 	int offset = 0x100; // side 1
 	if(head == 0) {
 		offset = 0;
+		track_end -= 0x0100;
 	}
 
 	uint8_t bit = 0x01;
 	uint8_t current = 0;
 
-	while (next < 200'000'000) {
-		int edge = tbuf[cur_entry] & FloppyDisk::TIME_MASK;
+	// The HFE format fills all the track buffer, including the padding, regardless of the actual track length.
+	// We will wrap around at the end of track.
+	while(offset < track_end) {
+		int edge = tbuf[buf_pos] & FloppyDisk::TIME_MASK;
 
-		// Start of track? Use next entry.
+		// Edge on start of track? Use next entry.
 		if(edge == 0)
 		{
-			edge = tbuf[++cur_entry] & FloppyDisk::TIME_MASK;
+			cur_time = 0;
+			edge = tbuf[++buf_pos] & FloppyDisk::TIME_MASK;
 		}
 
 		// Wrapped over end?
-		if(edge < cur_pos) {
-			edge += 200'000'000;
+		if(edge < cur_time) {
+			edge += cyltime;
 		}
 
 		// End of cell
-		next = cur_pos + period + phase_adjust;
+		next = cur_time + period + phase_adjust;
 
 		// End of the window is at next; edge is the actual transition
 		if(edge >= next)
@@ -735,35 +748,59 @@ void FloppyFmt_HFE::generate_hfe_bitstream_from_track(int cyl, int head,
 			}
 		}
 
-		cur_pos = next;
+		cur_time = next;
+
+		// Wrap over the start of the track
+		if (cur_time >= cyltime)
+		{
+			cur_time -= cyltime;
+			buf_pos = 0;
+		}
 
 		bit = (bit << 1) & 0xff;
 		if (bit == 0)
 		{
+			// All 8 cells done, write result byte to track image and start
+			// over with the next one
 			bit = 0x01;
 			cylinder_buffer[offset++] = current;
-			track_bytes++;
-			if ((offset & 0xff) == 0) {
+
+			// Do we have a limit for the track end?
+			if((track_end > 0) && (offset >= track_end)) {
+				break;
+			}
+
+			// Skip to next block for this head
+			if((offset & 0xff) == 0) {
 				offset += 0x100;
 			}
 			current = 0;
 		}
 
+		// We may have more entries before the edge that indicates the end of
+		// this cell. But this cell is done, so skip them all.
 		// Fast-forward to next cell
-		while (cur_entry < int(tbuf.size())-1 && int(tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos) {
-			cur_entry++;
+		while (buf_pos < int(tbuf.size())-1 && int(tbuf[buf_pos] & FloppyDisk::TIME_MASK) < cur_time)
+		{
+			buf_pos++;
 		}
 
 		// Reaching the end of the track
-		if (cur_entry == int(tbuf.size())-1 && int(tbuf[cur_entry] & FloppyDisk::TIME_MASK) < cur_pos)
+		// Wrap around
+		if (buf_pos == int(tbuf.size())-1 && int(tbuf[buf_pos] & FloppyDisk::TIME_MASK) < cur_time)
 		{
-			// Wrap to index 0 or 1 depending on whether there is a transition exactly at the index hole
-			cur_entry = (tbuf[int(tbuf.size())-1] & FloppyDisk::MG_MASK) != (tbuf[0] & FloppyDisk::MG_MASK) ?
-			            0 : 1;
+			buf_pos = 0;
 		}
 	}
 	// Write the current byte when not done
 	if (bit != 0x01) {
-		cylinder_buffer[offset] = current;
+		if(offset >= track_end) {
+			// This can happen in case of bugs in track bitstream generation.
+			PWARNF(LOG_V0, LOG_FDC, "HFE:     %d: invalid buffer offset %d >= %d\n", cyl, offset, track_end);
+		} else {
+			cylinder_buffer[offset] = current;
+		}
 	}
+
+	PDEBUGF(LOG_V5, LOG_FDC, "HFE:   H%d: cur_time=%d, bit=%d, offset=%d, track_end=%d\n", head, cur_time, bit, offset, track_end);
 }

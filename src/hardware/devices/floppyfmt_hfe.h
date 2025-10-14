@@ -17,19 +17,19 @@ public:
 		uint8_t  HEADERSIGNATURE[8];   // 00-07 "HXCPICFE" for v1, "HXCHFEV3" for v3
 		uint8_t  formatrevision;       //    08 Revision = 0
 		uint8_t  number_of_tracks;     //    09 Number of tracks (cylinders) in the file
-		uint8_t  number_of_sides;      //    10 Number of valid sides
-		uint8_t  track_encoding;       //    11 Track Encoding mode
-		uint16_t bitRate;              // 12-13 Bitrate in Kbit/s.
-		uint16_t floppyRPM;            // 14-15 Revolutions per minute
-		uint8_t  floppyinterfacemode;  //    16 Floppy interface mode.
-		uint8_t  reserved;             //    17 do not use
-		uint16_t track_list_offset;    // 18-19 Offset of the track list LUT in block of 512 bytes (Ex: 1=0x200)
-		uint8_t  write_allowed;        //    20 The Floppy image is not write protected ?
-		uint8_t  single_step;          //    21 0xFF : Single Step – 0x00 Double Step mode
-		uint8_t  track0s0_altencoding; //    22 0x00 : Use an alternate track_encoding for track 0 Side 0
-		uint8_t  track0s0_encoding;    //    23 alternate track_encoding for track 0 Side 0
-		uint8_t  track0s1_altencoding; //    24 0x00 : Use an alternate track_encoding for track 0 Side 1
-		uint8_t  track0s1_encoding;    //    25 alternate track_encoding for track 0 Side 1
+		uint8_t  number_of_sides;      //    0a Number of valid sides
+		uint8_t  track_encoding;       //    0b Track Encoding mode
+		uint16_t bitRate;              // 0c-0d Bitrate in Kbit/s.
+		uint16_t floppyRPM;            // 0e-0f Revolutions per minute
+		uint8_t  floppyinterfacemode;  //    10 Floppy interface mode.
+		uint8_t  reserved;             //    11 do not use
+		uint16_t track_list_offset;    // 12-13 Offset of the track list LUT in block of 512 bytes (Ex: 1=0x200)
+		uint8_t  write_allowed;        //    14 The Floppy image is not write protected ?
+		uint8_t  single_step;          //    15 0xFF : Single Step – 0x00 Double Step mode
+		uint8_t  track0s0_altencoding; //    16 0x00 : Use an alternate track_encoding for track 0 Side 0
+		uint8_t  track0s0_encoding;    //    17 alternate track_encoding for track 0 Side 0
+		uint8_t  track0s1_altencoding; //    18 0x00 : Use an alternate track_encoding for track 0 Side 1
+		uint8_t  track0s1_encoding;    //    19 alternate track_encoding for track 0 Side 1
 	} GCC_ATTRIBUTE(packed);
 
 	// Byte order is little endian.
@@ -45,11 +45,15 @@ public:
 
 	enum {
 		HEADER_LENGTH = 512,
-		TRACK_TABLE_LENGTH = 512
+		TRACK_TABLE_LENGTH = 512,
+		TRACK_TABLE_ENTRIES = TRACK_TABLE_LENGTH / sizeof(s_pictrack),
+		TRACKS_OFFSET = HEADER_LENGTH + TRACK_TABLE_LENGTH
 	};
 
 	static constexpr const char * HFE_FORMAT_HEADER_v1 = "HXCPICFE";
 	static constexpr const char * HFE_FORMAT_HEADER_v3 = "HXCHFEV3";
+	static constexpr const int RPM = 300;
+	static constexpr long int CYLTIME = (long int)(1'000'000'000LL * 60 / RPM); // one rotation in nanosec
 
 	enum encoding_t
 	{
@@ -101,12 +105,17 @@ protected:
 	bool load_raw(std::ifstream &_file, FloppyDisk_Raw &_disk);
 	bool load_flux(std::ifstream &_file, FloppyDisk &_disk);
 
+	int determine_cell_size(const std::vector<uint32_t> &tbuf) const;
+	
 	void generate_track_from_hfe_bitstream(int cyl, int head, int samplelength,
 			const uint8_t *trackbuf, int track_end, FloppyDisk &image);
-	void generate_hfe_bitstream_from_track(int track, int head, int &samplelength,
-			encoding_t &encoding, uint8_t *trackbuf, int &track_bytes,
-			const FloppyDisk &disk);
-
+	void generate_hfe_bitstream_from_track(
+			int cyl, int head, long cyltime,
+			int samplelength, std::vector<uint8_t> &cylinder_buffer,
+			const FloppyDisk &_disk) const;
+	void generate_hfe_bitstream_from_track(int cyl, int head,
+			int &samplelength, encoding_t &encoding, uint8_t *cylinder_buffer,
+			int &track_bytes, const FloppyDisk &_disk);
 	HFEHeader m_header = {};
 	int m_version = 0;
 	std::vector<s_pictrack> m_cylinders;
