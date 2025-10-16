@@ -140,7 +140,7 @@ void FATReader::BootSector::read(FILE *_infile)
 	}
 }
 
-const char * FATReader::BootSector::get_media_str() const
+const char * FATReader::BootSector::get_medium_str() const
 {
 	switch(bios_params.media) {
 		case 0xF0: if(bios_params.sptrk > 18) {
@@ -161,7 +161,7 @@ const char * FATReader::BootSector::get_media_str() const
 		case 0xFE: return "5.25\" SS 40 tps 8 spt (160K)";
 		case 0xFF: return "5.25\" DS 40 tps 8 spt (320K)";
 		default:
-			throw std::runtime_error("Unknown media type");
+			throw std::runtime_error("Unknown medium type");
 	}
 }
 

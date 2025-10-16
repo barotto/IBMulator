@@ -203,7 +203,7 @@ void FloppyCtrl::floppy_drive_remove(unsigned _drive)
 	}
 }
 
-bool FloppyCtrl::insert_media(unsigned _drive, FloppyDisk *_floppy)
+bool FloppyCtrl::insert_floppy(unsigned _drive, FloppyDisk *_floppy)
 {
 	if(!m_fdd[_drive]) {
 		return false;
@@ -211,7 +211,7 @@ bool FloppyCtrl::insert_media(unsigned _drive, FloppyDisk *_floppy)
 	return m_fdd[_drive]->insert_floppy(_floppy);
 }
 
-FloppyDisk* FloppyCtrl::eject_media(unsigned _drive, bool _remove)
+FloppyDisk* FloppyCtrl::eject_floppy(unsigned _drive, bool _remove)
 {
 	if(!m_fdd[_drive]) {
 		return nullptr;

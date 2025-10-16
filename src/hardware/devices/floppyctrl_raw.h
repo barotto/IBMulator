@@ -152,7 +152,7 @@ protected:
 	bool get_TC(bool _dma_tc);
 	void timer(uint64_t);
 	void increment_sector();
-	uint8_t get_drate_for_media(uint8_t _drive);
+	uint8_t get_drate_for_disk(uint8_t _drive);
 
 	struct CmdDef {
 		unsigned code;

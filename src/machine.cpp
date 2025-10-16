@@ -952,7 +952,7 @@ void Machine::cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy,
 			}
 			return;
 		}
-		bool result = g_devices.device<FloppyCtrl>()->insert_media(_drive, _floppy);
+		bool result = g_devices.device<FloppyCtrl>()->insert_floppy(_drive, _floppy);
 		if(!result) {
 			delete _floppy;
 		}
@@ -970,7 +970,7 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 			if(_cb) { _cb(true); }
 			return;
 		}
-		FloppyDisk *floppy = ctrl->eject_media(_drive, false);
+		FloppyDisk *floppy = ctrl->eject_floppy(_drive, false);
 		if(!floppy) {
 			if(_cb) { _cb(true); }
 			return;
@@ -1143,7 +1143,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 			// If the machine is in a savestate, commit floppy only if it has been written
 			// to after the savestate restore. A floppy is committed always only
 			// after an explicit eject (press of the button).
-			if(fdc->is_media_dirty(i,true) && i > last_dirty) {
+			if(fdc->is_disk_dirty(i,true) && i > last_dirty) {
 				last_dirty = i;
 			}
 		}
@@ -1152,9 +1152,9 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 			GUI::instance()->show_message("Saving floppy disks...");
 
 			for(int i=0; i<int(FloppyCtrl::MAX_DRIVES); i++) {
-				if(fdc->is_media_dirty(i,true)) {
+				if(fdc->is_disk_dirty(i,true)) {
 					bool save_this = true;
-					if(!fdc->can_media_be_committed(i)) {
+					if(!fdc->can_disk_be_committed(i)) {
 						PWARNF(LOG_V0, LOG_MACHINE, "Floppy %s format doesn't support save. Written data discarded.\n",
 								i ? "B" : "A");
 						save_this = false;
@@ -1170,7 +1170,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 						cond.wait(save_lock);
 					}
 					if(save_this) {
-						FloppyDisk *floppy = fdc->eject_media(i, true);
+						FloppyDisk *floppy = fdc->eject_floppy(i, true);
 						assert(floppy);
 						commit_floppy(floppy, i, [=](bool){
 							// this is the FloppyLoader thread

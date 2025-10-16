@@ -145,7 +145,7 @@ void FloppyCtrl_Raw::restore_state(StateBuf &_state)
 	}
 }
 
-uint8_t FloppyCtrl_Raw::get_drate_for_media(uint8_t _drive)
+uint8_t FloppyCtrl_Raw::get_drate_for_disk(uint8_t _drive)
 {
 	if(!is_drive_present(_drive)) {
 		return FloppyDisk::DRATE_250;
@@ -259,7 +259,7 @@ uint16_t FloppyCtrl_Raw::read(uint16_t _address, unsigned)
 				value |= 1<<2;
 			}
 			// Bit 1 : WP
-			if(is_media_present(drive)) {
+			if(is_disk_present(drive)) {
 				value |= m_fdd[drive]->wpt_r() << 1;
 			}
 			// Bit 0 : !DIR
@@ -634,10 +634,10 @@ bool FloppyCtrl_Raw::start_read_write_cmd()
 		return false;
 	}
 
-	if(!is_media_present(drive)) {
+	if(!is_disk_present(drive)) {
 		// the controller would fail to receive the index pulse and lock-up
 		// since the index pulses are required for termination of the execution phase.
-		PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to read/write sector %u with media not present\n", cmd, sector);
+		PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to read/write sector %u with disk not present\n", cmd, sector);
 		return false; // Hang controller
 	}
 
@@ -647,7 +647,7 @@ bool FloppyCtrl_Raw::start_read_write_cmd()
 		return false; // Hang controller ?
 	}
 
-	auto props = m_fdd[drive]->get_media_props();
+	auto props = m_fdd[drive]->get_disk_props();
 
 	if(cylinder >= props.tracks) {
 		PDEBUGF(LOG_V1, LOG_FDC, "%s: norm r/w parms out of range: sec#%02xh cyl#%02xh eot#%02xh head#%02xh\n",
@@ -669,7 +669,7 @@ bool FloppyCtrl_Raw::start_read_write_cmd()
 	bool sec_exists = (cylinder < props.tracks) && 
 	                  (head < props.sides) && 
 	                  (sector <= props.spt);
-	if(!sec_exists || m_s.data_rate != get_drate_for_media(drive)) {
+	if(!sec_exists || m_s.data_rate != get_drate_for_disk(drive)) {
 		if(!sec_exists) {
 			PDEBUGF(LOG_V0, LOG_FDC, "%s: attempt to %s non existant sector chs:%u/%u/%u\n",
 					cmd, cmd, cylinder, head, sector);
@@ -689,7 +689,7 @@ bool FloppyCtrl_Raw::start_read_write_cmd()
 	m_fdd[drive]->dir_w(m_s.flopi[drive].direction);
 	m_fdd[drive]->ss_w(head); // side select
 
-	int phy_cylinder = cylinder << m_fdd[drive]->is_double_step_media();
+	int phy_cylinder = cylinder << m_fdd[drive]->is_double_step_disk();
 	if(phy_cylinder != m_s.flopi[drive].cur_cylinder && !(m_s.config & FDC_CONF_EIS)) {
 		PDEBUGF(LOG_V1, LOG_FDC, "%s: cylinder request (%u) != current cylinder (%u), EIS=0\n",
 				cmd, cylinder, m_s.flopi[drive].cur_cylinder);
@@ -719,7 +719,7 @@ void FloppyCtrl_Raw::cmd_read_data()
 	m_s.flopi[drive].rddata = true;
 	uint32_t step_time_us = 0;
 	if(m_s.config & FDC_CONF_EIS) {
-		int phy_cylinder = m_s.flopi[drive].cylinder << m_fdd[drive]->is_double_step_media();
+		int phy_cylinder = m_s.flopi[drive].cylinder << m_fdd[drive]->is_double_step_disk();
 		if(phy_cylinder != m_s.flopi[drive].cur_cylinder) {
 			step_time_us = calculate_step_delay_us(drive, m_s.flopi[drive].cur_cylinder, phy_cylinder);
 			m_fdd[drive]->step_to(phy_cylinder, step_time_us*1_us);
@@ -745,7 +745,7 @@ void FloppyCtrl_Raw::cmd_write_data()
 	//  INT > fill buffer > write image > fill buffer > ... > TC
 
 	m_s.flopi[drive].wrdata = true;
-	int phy_cylinder = m_s.flopi[drive].cylinder << m_fdd[drive]->is_double_step_media();
+	int phy_cylinder = m_s.flopi[drive].cylinder << m_fdd[drive]->is_double_step_disk();
 	if(m_s.flopi[drive].cur_cylinder != phy_cylinder) {
 		// do a seek first
 		auto step_time_us = calculate_step_delay_us(drive, m_s.flopi[drive].cur_cylinder, phy_cylinder);
@@ -796,19 +796,19 @@ void FloppyCtrl_Raw::cmd_format_track()
 		PERRF(LOG_FDC, "format track: sector size %d not supported\n", 128<<sector_size);
 		return; // Hang controller?
 	}
-	if(!is_media_present(drive)) {
-		PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with media not present\n");
+	if(!is_disk_present(drive)) {
+		PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with disk not present\n");
 		return; // Hang controller
 	}
-	if(m_fdd[drive]->wpt_r() || m_s.format_count != m_fdd[drive]->get_media_props().spt) {
+	if(m_fdd[drive]->wpt_r() || m_s.format_count != m_fdd[drive]->get_disk_props().spt) {
 		if(m_fdd[drive]->wpt_r()) {
-			PINFOF(LOG_V0, LOG_FDC, "Attempt to format with media write-protected\n");
+			PINFOF(LOG_V0, LOG_FDC, "Attempt to format a write-protected disk.\n");
 		} else {
 			// On real hardware, when you try to format a 720K floppy as 1.44M the drive will happily
 			// do so regardless of the presence of the "format hole".
 			PERRF(LOG_FDC, "Wrong floppy disk type! Specify the format in the DOS command line.\n");
 			PDEBUGF(LOG_V0, LOG_FDC, "format track: %d sectors/track requested (%d expected)\n",
-					m_s.format_count, m_fdd[drive]->get_media_props().spt);
+					m_s.format_count, m_fdd[drive]->get_disk_props().spt);
 		}
 		m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 		m_s.status_reg1 = FDC_ST1_DE | FDC_ST1_ND | FDC_ST1_NW | FDC_ST1_MA;
@@ -1009,11 +1009,11 @@ void FloppyCtrl_Raw::cmd_read_id()
 		PDEBUGF(LOG_V1, LOG_FDC, "read ID: bad drive #%d\n", drive);
 		return; // Hang controller
 	}
-	if(!is_media_present(drive)) {
-		PINFOF(LOG_V1, LOG_FDC, "read ID: attempt to read sector ID with media not present\n");
+	if(!is_disk_present(drive)) {
+		PINFOF(LOG_V1, LOG_FDC, "read ID: attempt to read sector ID with disk not present\n");
 		return; // Hang controller
 	}
-	if(m_s.data_rate != get_drate_for_media(drive)) {
+	if(m_s.data_rate != get_drate_for_disk(drive)) {
 		m_s.status_reg0 = FDC_ST0_IC_ABNORMAL | FDC_ST_HDS(drive);
 		m_s.status_reg1 = FDC_ST1_MA;
 		m_s.status_reg2 = 0x00;
@@ -1420,7 +1420,7 @@ void FloppyCtrl_Raw::increment_sector()
 	uint8_t drive = current_drive();
 	assert(is_drive_present(drive));
 
-	auto mprops = m_fdd[drive]->get_media_props();
+	auto mprops = m_fdd[drive]->get_disk_props();
 
 	// values after completion of data xfer
 	// ??? calculation depends on base_count being multiple of 512
@@ -1440,7 +1440,7 @@ void FloppyCtrl_Raw::increment_sector()
 		if(m_s.flopi[drive].cylinder >= mprops.tracks) {
 			// Set to 1 past last possible cylinder value.
 			// I notice if I set it to tracks-1, prama linux won't boot.
-			m_s.flopi[drive].cylinder = m_fdd[drive]->get_media_props().tracks;
+			m_s.flopi[drive].cylinder = m_fdd[drive]->get_disk_props().tracks;
 			PDEBUGF(LOG_V1, LOG_FDC, "increment_sector: clamping cylinder to max\n");
 		}
 	}
@@ -1564,7 +1564,7 @@ uint32_t FloppyCtrl_Raw::calculate_rw_delay(uint8_t _drive, bool _latency)
 	}
 
 	// us to read 1 sector
-	sector_time_us = max_latency_us / m_fdd[_drive]->get_media_props().spt;
+	sector_time_us = max_latency_us / m_fdd[_drive]->get_disk_props().spt;
 
 	// Head Load Time
 	uint32_t hlt = m_s.HLT;
@@ -1627,7 +1627,7 @@ bool FloppyCtrl_Raw::get_TC(bool _dma_tc)
 		terminal_count = ((m_s.floppy_buffer_index == 512) &&
 		                 (m_s.flopi[drive].sector == m_s.flopi[drive].eot));
 		if(m_s.multi_track) {
-			terminal_count &= (m_s.flopi[drive].head == (m_fdd[drive]->get_media_props().sides - 1));
+			terminal_count &= (m_s.flopi[drive].head == (m_fdd[drive]->get_disk_props().sides - 1));
 		}
 	} else {
 		terminal_count = _dma_tc;

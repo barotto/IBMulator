@@ -179,9 +179,9 @@ void Program::save_state(
 	FloppyCtrl *fdc = m_machine->devices().device<FloppyCtrl>();
 	if(fdc) {
 		for(int i=0; i<2; i++) {
-			if(fdc->is_media_present(i)) {
+			if(fdc->is_disk_present(i)) {
 				sstate->info().config_desc += str_format("Drive %s: %s", 
-						i?"B":"A", FileSys::get_basename(fdc->get_media_path(i).c_str()).c_str()) 
+						i?"B":"A", FileSys::get_basename(fdc->get_disk_path(i).c_str()).c_str()) 
 						+ "\n";
 			}
 		}

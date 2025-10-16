@@ -58,9 +58,9 @@ MediumInfoData FloppyFmt_IMG::get_preview_string(std::string _filepath)
 
 	auto &boot_sec = fat.get_boot_sector();
 
-	std::string media_desc;
+	std::string medium_desc;
 	try {
-		media_desc = boot_sec.get_media_str();
+		medium_desc = boot_sec.get_medium_str();
 	} catch(std::runtime_error & err) {
 		info_plain += err.what();
 		return { info_plain, str_to_html(info_plain) };
@@ -72,8 +72,8 @@ MediumInfoData FloppyFmt_IMG::get_preview_string(std::string _filepath)
 
 	std::string info_html = str_to_html(info_plain);
 
-	info_plain += "Medium: " + media_desc + "\n";
-	info_html += "Medium: " + str_to_html(media_desc) + "<br />";
+	info_plain += "Medium: " + medium_desc + "\n";
+	info_html += "Medium: " + str_to_html(medium_desc) + "<br />";
 
 	info_plain += "OEM name: " + boot_sec.get_oem_str();
 	info_html += "OEM name: " + to_value(boot_sec.get_oem_str());

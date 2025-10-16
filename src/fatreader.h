@@ -83,7 +83,7 @@ public:
 		void read(FILE *);
 		std::string get_vol_label_str() const;
 		std::string get_fs_type_str() const;
-		const char *get_media_str() const;
+		const char *get_medium_str() const;
 		std::string get_oem_str() const;
 		int seek_sector(int secnum, FILE *) const;
 	};

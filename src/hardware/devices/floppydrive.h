@@ -114,15 +114,15 @@ public:
 
 	bool insert_floppy(FloppyDisk *_floppy);
 	FloppyDisk* eject_floppy(bool _remove);
-	bool is_media_present() const { return m_image != nullptr; }
-	std::string get_media_path() const;
-	bool is_media_dirty(bool _since_restore) const {
+	bool is_disk_present() const { return m_image != nullptr; }
+	std::string get_disk_path() const;
+	bool is_disk_dirty(bool _since_restore) const {
 		return (m_image && m_image->is_dirty(_since_restore));
 	}
-	bool can_media_be_committed() const {
+	bool can_disk_be_committed() const {
 		return (m_image && m_image->can_be_committed());
 	}
-	bool is_double_step_media() const { return m_dstep; }
+	bool is_double_step_disk() const { return m_dstep; }
 	bool is_motor_on() const { return m_s.mon == MOT_ON; }
 
 	int get_cyl() const { return m_s.cyl; }
@@ -161,7 +161,7 @@ public:
 	}
 
 	uint8_t get_data_rate() const;
-	const FloppyDisk::Properties & get_media_props() const;
+	const FloppyDisk::Properties & get_disk_props() const;
 
 	void read_sector(uint8_t _s, uint8_t *buffer, uint32_t bytes);
 	void write_sector(uint8_t _s, const uint8_t *buffer, uint32_t bytes);

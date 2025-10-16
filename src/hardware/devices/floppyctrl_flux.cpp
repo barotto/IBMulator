@@ -273,7 +273,7 @@ uint16_t FloppyCtrl_Flux::read(uint16_t _address, unsigned)
 				value |= 1<<2;
 			}
 			// Bit 1 : WP
-			if(is_media_present(drive)) {
+			if(is_disk_present(drive)) {
 				value |= m_fdd[drive]->wpt_r() << 1;
 			}
 			// Bit 0 : !DIR
@@ -657,10 +657,10 @@ bool FloppyCtrl_Flux::start_read_write_cmd()
 		return false; // Hang controller
 	}
 
-	if(!is_media_present(drive)) {
+	if(!is_disk_present(drive)) {
 		// the controller would fail to receive the index pulse and lock-up
 		// since the index pulses are required for termination of the execution phase.
-		PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to %s with media not present\n",
+		PDEBUGF(LOG_V1, LOG_FDC, "%s: attempt to %s with disk not present\n",
 				cmd, cmd);
 		return false; // Hang controller
 	}
@@ -777,13 +777,13 @@ void FloppyCtrl_Flux::cmd_format_track()
 		return; // Hang controller
 	}
 
-	if(!is_media_present(drive)) {
-		PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with media not present\n");
+	if(!is_disk_present(drive)) {
+		PDEBUGF(LOG_V0, LOG_FDC, "format track: attempt to format track with disk not present\n");
 		return; // Hang controller
 	}
 
 	if(m_fdd[drive]->wpt_r()) {
-		PINFOF(LOG_V0, LOG_FDC, "Attempt to format disk with media write-protected\n");
+		PINFOF(LOG_V0, LOG_FDC, "Attempt to format a write-protected disk.\n");
 		m_s.flopi[drive].st0 = FDC_ST0_IC_ABNORMAL | st_hds_drv(drive);
 		m_s.st1 = FDC_ST1_NW;
 		m_s.st2 = 0;
@@ -1087,10 +1087,10 @@ void FloppyCtrl_Flux::cmd_read_id()
 		PDEBUGF(LOG_V1, LOG_FDC, "read ID: motor not on\n");
 		return; // Hang controller
 	}
-	if(!is_media_present(drive)) {
+	if(!is_disk_present(drive)) {
 		// the controller would fail to receive the index pulse and lock-up
 		// since the index pulses are required for termination of the execution phase.
-		PDEBUGF(LOG_V1, LOG_FDC, "read ID: attempt to read with media not present\n");
+		PDEBUGF(LOG_V1, LOG_FDC, "read ID: attempt to read with disk not present\n");
 		return; // Hang controller
 	}
 

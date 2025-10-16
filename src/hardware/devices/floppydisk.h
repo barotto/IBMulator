@@ -74,7 +74,7 @@ public:
 	enum StdType {
 		TYPE_MASK = 0xff,
 		DOS_FMT   = 0x80,
-		FD_NONE   = 0x00, // unknown or invalid media type
+		FD_NONE   = 0x00, // unknown or invalid medium type
 		DD_160K   = 0x81 | SIZE_5_25 | DENS_DD, //  160K 5.25"
 		DD_180K   = 0x82 | SIZE_5_25 | DENS_DD, //  180K 5.25"
 		DD_320K   = 0x83 | SIZE_5_25 | DENS_DD, //  320K 5.25"
@@ -88,7 +88,7 @@ public:
 		ED_2_88   = 0x8f | SIZE_3_5  | DENS_ED  // 2.88M 3.5"
 	};
 
-	// nominal data rates for the media
+	// nominal data rates for the medium
 	// note: 5.25" High Capacity (1.2M) drives always use 300kbps for DD media.
 	enum DataRate {
 		DRATE_250  = 2,

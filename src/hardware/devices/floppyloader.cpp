@@ -78,7 +78,7 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 			FloppyDisk::Size(_drive_type & FloppyDisk::SIZE_MASK)
 		);
 		if(props.type == FloppyDisk::FD_NONE) {
-			PERRF(LOG_MACHINE, "Media not valid for this floppy drive: '%s'\n", _path.c_str());
+			PERRF(LOG_MACHINE, "Medium not valid for this floppy drive: '%s'\n", _path.c_str());
 			m_machine->cmd_insert_floppy(_drive_idx, nullptr, _cb, _config_id);
 			return;
 		} 
@@ -93,7 +93,7 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 			m_activity_cb(FloppyEvents::EVENT_MEDIUM, _drive_idx);
 		}
 		if(!result) {
-			PERRF(LOG_MACHINE, "Cannot load media file '%s'\n", _path.c_str());
+			PERRF(LOG_MACHINE, "Cannot load image file '%s'\n", _path.c_str());
 			m_machine->cmd_insert_floppy(_drive_idx, nullptr, _cb, _config_id);
 			return;
 		}

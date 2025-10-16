@@ -68,8 +68,8 @@ public:
 	virtual void config_changed();
 	virtual unsigned current_drive() const { return 0; }
 
-	bool insert_media(unsigned _drive, FloppyDisk *_floppy);
-	FloppyDisk* eject_media(unsigned _drive, bool _remove);
+	bool insert_floppy(unsigned _drive, FloppyDisk *_floppy);
+	FloppyDisk* eject_floppy(unsigned _drive, bool _remove);
 
 	bool is_drive_present(unsigned _drive) const {
 		return (_drive < MAX_DRIVES && m_fdd[_drive]);
@@ -77,20 +77,20 @@ public:
 	bool is_motor_on(unsigned _drive) const {
 		return (is_drive_present(_drive) && m_fdd[_drive]->is_motor_on());
 	}
-	bool is_media_present(unsigned _drive) const {
-		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_present());
+	bool is_disk_present(unsigned _drive) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->is_disk_present());
 	}
-	std::string get_media_path(unsigned _drive) const {
-		return (is_drive_present(_drive)) ? m_fdd[_drive]->get_media_path() : "";
+	std::string get_disk_path(unsigned _drive) const {
+		return (is_drive_present(_drive)) ? m_fdd[_drive]->get_disk_path() : "";
 	}
 	bool is_motor_spinning(unsigned _drive) const {
-		return (is_motor_on(_drive) && is_media_present(_drive));
+		return (is_motor_on(_drive) && is_disk_present(_drive));
 	}
-	bool is_media_dirty(unsigned _drive, bool _since_restore) const {
-		return (is_drive_present(_drive) && m_fdd[_drive]->is_media_dirty(_since_restore));
+	bool is_disk_dirty(unsigned _drive, bool _since_restore) const {
+		return (is_drive_present(_drive) && m_fdd[_drive]->is_disk_dirty(_since_restore));
 	}
-	bool can_media_be_committed(unsigned _drive) const {
-		return (is_media_present(_drive) && m_fdd[_drive]->can_media_be_committed());
+	bool can_disk_be_committed(unsigned _drive) const {
+		return (is_disk_present(_drive) && m_fdd[_drive]->can_disk_be_committed());
 	}
 	//this is not the DIR bit 7, this is used by the GUI
 	bool has_disk_changed(unsigned _drive) const {

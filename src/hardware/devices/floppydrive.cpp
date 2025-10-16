@@ -370,7 +370,7 @@ FloppyDisk* FloppyDrive::eject_floppy(bool _remove)
 	return floppy;
 }
 
-std::string FloppyDrive::get_media_path() const
+std::string FloppyDrive::get_disk_path() const
 {
 	if(m_image) {
 		return m_image->get_image_path();
@@ -959,12 +959,12 @@ uint8_t FloppyDrive::get_data_rate() const
 		return FloppyDisk::DRATE_300;
 	}
 
-	// return the media nominal data rate
+	// return the medium nominal data rate
 	auto &props = m_image->props();
 	return props.drate;
 }
 
-const FloppyDisk::Properties & FloppyDrive::get_media_props() const
+const FloppyDisk::Properties & FloppyDrive::get_disk_props() const
 {
 	if(m_image) {
 		return m_image->props();
