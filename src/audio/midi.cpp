@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2024  Marco Bortolin
+ * Copyright (C) 2020-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -264,7 +264,7 @@ void MIDI::save_state(StateBuf &_state)
 	
 	h.name = "MIDISysExData";
 	h.data_size = m_sysex_data.size();
-	_state.write(&m_sysex_data[0], h);
+	_state.write(h.data_size ? &m_sysex_data[0] : nullptr, h);
 }
 
 void MIDI::restore_state(StateBuf &_state)

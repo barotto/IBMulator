@@ -352,10 +352,11 @@ void VGADisplay::gfx_screen_line_update(
 		}
 		unsigned pixel_x = tile_id * VGA_X_TILESIZE;
 		for(int tile_x=0; tile_x<VGA_X_TILESIZE; tile_x++,pixel_x++) {
-			if(pixel_x > m_s.mode.imgw) {
+			if(pixel_x >= m_s.mode.imgw) {
 				// the last tile could be wider than needed
 				break;
 			}
+			assert(pixel_x < _linedata.size());
 			uint32_t color = m_s.palette[m_color_mode][_linedata[pixel_x]];
 			uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
 			*fb_point_ptr = color;

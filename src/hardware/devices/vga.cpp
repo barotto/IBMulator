@@ -303,7 +303,10 @@ void VGA::restore_state(StateBuf &_state)
 		default:
 			throw std::exception();
 	};
-	
+
+	m_line_data_buf[0].resize(m_s.vmode.imgw);
+	m_line_data_buf[1].resize(m_s.vmode.imgw);
+
 	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
 	g_machine.set_heartbeat(m_s.timings_ns.vtotal);
 	g_program.set_heartbeat(m_s.timings_ns.vtotal);

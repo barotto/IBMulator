@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -179,6 +179,7 @@ void StateBuf::write(const void *_data, const StateHeader &_header)
 	m_curptr += _header.write(m_curptr, bleft);
 
 	if(_header.data_size) {
+		assert(_data);
 		bleft = get_bytesleft();
 		assert(bleft>=_header.data_size);
 		memcpy(m_curptr, _data, _header.data_size);
