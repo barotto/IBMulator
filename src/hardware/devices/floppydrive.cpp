@@ -480,8 +480,12 @@ void FloppyDrive::index_resync()
 	uint64_t next_evt_ns = TIME_NEVER;
 	if(new_idx) {
 		const uint64_t index_up_time_ns = SEC_TO_NSEC(2'000'000.0 / m_angular_speed);
-		assert(index_up_time_ns > delta_ns);
-		next_evt_ns = index_up_time_ns - delta_ns;
+		assert(index_up_time_ns >= delta_ns);
+		if(index_up_time_ns == delta_ns) {
+			next_evt_ns = index_up_time_ns;
+		} else {
+			next_evt_ns = index_up_time_ns - delta_ns;
+		}
 	} else {
 		next_evt_ns = m_rev_time - delta_ns;
 	}
