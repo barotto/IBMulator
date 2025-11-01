@@ -251,6 +251,16 @@ constexpr uint32_t read_32bit(const uint8_t* buf)
 	return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
 }
 
+constexpr uint16_t read_16bit_le(const uint8_t* buf)
+{
+	return (buf[1] << 8) | buf[0];
+}
+
+constexpr uint32_t read_32bit_le(const uint8_t* buf)
+{
+	return (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
+}
+
 constexpr uint8_t packet_field(uint8_t *packet, unsigned byte, unsigned start, unsigned num_bits)
 {
 	return ((packet[byte] >> start) & ((1 << num_bits) - 1));

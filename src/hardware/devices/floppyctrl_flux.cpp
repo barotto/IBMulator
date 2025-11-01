@@ -18,6 +18,7 @@
 #include "floppyfmt_ipf.h"
 #include "floppyfmt_td0.h"
 #include "floppyfmt_imd.h"
+#include "floppyfmt_86f.h"
 
 const std::map<unsigned,FloppyCtrl_Flux::CmdDef> FloppyCtrl_Flux::ms_cmd_list = {
 	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data",          &FloppyCtrl_Flux::cmd_read_data} },
@@ -55,6 +56,7 @@ FloppyCtrl_Flux::FloppyCtrl_Flux(Devices *_dev)
 	m_floppy_formats.emplace_back(new FloppyFmt_IPF());
 	m_floppy_formats.emplace_back(new FloppyFmt_TD0());
 	m_floppy_formats.emplace_back(new FloppyFmt_IMD());
+	m_floppy_formats.emplace_back(new FloppyFmt_86F());
 
 	// state is cleared during install anyway, but keep static analyzers quiet
 	memset(&m_s, 0, sizeof(m_s));
@@ -2280,8 +2282,8 @@ void FloppyCtrl_Flux::live_run(uint64_t limit)
 				return;
 			}
 
-			PDEBUGF(LOG_V5, LOG_FDC, "DRV%u: SEARCH_ADDRESS_MARK_HEADER shift=%04x data=%02x cnt=%d\n",
-					m_s.cur_live.drive,
+			PDEBUGF(LOG_V5, LOG_FDC, "DRV%u[c%dh%d]: SEARCH_ADDRESS_MARK_HEADER shift=%04x data=%02x cnt=%d\n",
+					m_s.cur_live.drive, m_fdd[m_s.cur_live.drive]->get_cyl(), m_fdd[m_s.cur_live.drive]->ss_r(),
 					m_s.cur_live.shift_reg,
 					(m_s.cur_live.shift_reg & 0x4000 ? 0x80 : 0x00) |
 					(m_s.cur_live.shift_reg & 0x1000 ? 0x40 : 0x00) |
@@ -2298,7 +2300,7 @@ void FloppyCtrl_Flux::live_run(uint64_t limit)
 				m_s.cur_live.data_separator_phase = false;
 				m_s.cur_live.bit_counter = 0;
 				m_s.cur_live.state = READ_HEADER_BLOCK_HEADER;
-				PDEBUGF(LOG_V3, LOG_FDC, "%s: Found A1\n", m_fdd[m_s.cur_live.drive]->name());
+				PDEBUGF(LOG_V3, LOG_FDC, "DRV%u: Found A1\n", m_s.cur_live.drive);
 			}
 
 			if(!m_s.cmd_mfm() && m_s.cur_live.shift_reg == 0xf57e) {
@@ -2306,7 +2308,7 @@ void FloppyCtrl_Flux::live_run(uint64_t limit)
 				m_s.cur_live.data_separator_phase = false;
 				m_s.cur_live.bit_counter = 0;
 				m_s.cur_live.state = READ_ID_BLOCK;
-				PDEBUGF(LOG_V3, LOG_FDC, "%s: Found IDAM\n", m_fdd[m_s.cur_live.drive]->name());
+				PDEBUGF(LOG_V3, LOG_FDC, "DRV%u: Found IDAM\n", m_s.cur_live.drive);
 			}
 			break;
 
@@ -2315,8 +2317,8 @@ void FloppyCtrl_Flux::live_run(uint64_t limit)
 				return;
 			}
 
-			PDEBUGF(LOG_V5, LOG_FDC, "DRV%u: READ_HEADER_BLOCK_HEADER shift=%04x data=%02x cnt=%d\n",
-					m_s.cur_live.drive,
+			PDEBUGF(LOG_V5, LOG_FDC, "DRV%u[c%dh%d]: READ_HEADER_BLOCK_HEADER shift=%04x data=%02x cnt=%d\n",
+					m_s.cur_live.drive, m_fdd[m_s.cur_live.drive]->get_cyl(), m_fdd[m_s.cur_live.drive]->ss_r(),
 					m_s.cur_live.shift_reg,
 					(m_s.cur_live.shift_reg & 0x4000 ? 0x80 : 0x00) |
 					(m_s.cur_live.shift_reg & 0x1000 ? 0x40 : 0x00) |

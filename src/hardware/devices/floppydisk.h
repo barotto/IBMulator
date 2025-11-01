@@ -94,14 +94,16 @@ public:
 		DRATE_250  = 2,
 		DRATE_300  = 1,
 		DRATE_500  = 0,
-		DRATE_1000 = 3
+		DRATE_1000 = 3,
+		DRATE_2000 = 4
 	};
 
 	//! Encodings
 	enum Encoding {
 		FM   = 0x2020464D, //!< "  FM", frequency modulation
 		MFM  = 0x204D464D, //!< " MFM", modified frequency modulation
-		M2FM = 0x4D32464D  //!< "M2FM", modified modified frequency modulation
+		M2FM = 0x4D32464D, //!< "M2FM", modified modified frequency modulation
+		GCR  = 0x20474352  //!< " GCR", group code recording
 	};
 
 	// General physical and formatted characteristics.
@@ -117,6 +119,7 @@ public:
 		unsigned sectors = 0;         // number of formatted sectors
 		unsigned cap     = 0;         // formatted capacity in bytes
 		DataRate drate   = DRATE_250; // data rate as a FDC encoded value
+		bool     wprot   = false;     // write protected (hole/notch)
 		std::string desc = "";        // logging name
 	};
 
@@ -146,8 +149,8 @@ public:
 		return (_since_restore) ? m_dirty_restore : m_dirty;
 	}
 
-	void set_write_protected(bool _wp) { m_wprot = _wp; }
-	bool is_write_protected() const { return m_wprot; }
+	void set_write_protected(bool _wp) { m_props.wprot = _wp; }
+	bool is_write_protected() const { return m_props.wprot; }
 
 	std::string get_image_path() const {
 		return m_loaded_image;
@@ -231,7 +234,6 @@ public:
 protected:
 	std::string m_loaded_image;
 	Properties m_props;
-	bool m_wprot = false; // write protected?
 	bool m_dirty = false; // written since loaded?
 	bool m_dirty_restore = false; // written since restored?
 	std::shared_ptr<FloppyFmt> m_format; // the format that loaded this floppy

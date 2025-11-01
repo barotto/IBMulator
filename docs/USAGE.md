@@ -363,6 +363,7 @@ The supported image formats are:
  * SPS IPF (*.ipf) read-only (limited support)
  * TeleDisk TD0 (*.td0) read-only
  * ImageDisk (*.imd) read-only
+ * 86Box 86F (*.86f) read-only
 
 You should use this type to make copy-protected floppy disks work. Except for raw sector *.img files, the other supported formats allow to emulate various types of copy protection schemes.
 

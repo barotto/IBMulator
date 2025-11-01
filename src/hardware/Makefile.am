@@ -62,6 +62,7 @@ libhardware_a_SOURCES = \
 	devices/floppyfmt_ipf.cpp \
 	devices/floppyfmt_td0.cpp \
 	devices/floppyfmt_imd.cpp \
+	devices/floppyfmt_86f.cpp \
 	devices/floppyfx.cpp \
 	devices/floppyloader.cpp \
 	devices/storagectrl.cpp \
@@ -146,6 +147,7 @@ noinst_HEADERS = \
 	devices/floppyfmt_ipf.h \
 	devices/floppyfmt_td0.h \
 	devices/floppyfmt_imd.h \
+	devices/floppyfmt_86f.h \
 	devices/floppyfx.h \
 	devices/floppyloader.h \
 	devices/floppyevents.h \

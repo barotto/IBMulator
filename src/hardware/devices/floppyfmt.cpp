@@ -13,6 +13,7 @@
 #include "floppyfmt_ipf.h"
 #include "floppyfmt_td0.h"
 #include "floppyfmt_imd.h"
+#include "floppyfmt_86f.h"
 #include <cstring>
 
 std::vector<std::unique_ptr<FloppyFmt>> FloppyFmt::ms_formats = [] {
@@ -23,6 +24,7 @@ std::vector<std::unique_ptr<FloppyFmt>> FloppyFmt::ms_formats = [] {
 	fmts.emplace_back(new FloppyFmt_IPF());
 	fmts.emplace_back(new FloppyFmt_TD0());
 	fmts.emplace_back(new FloppyFmt_IMD());
+	fmts.emplace_back(new FloppyFmt_86F());
 	return fmts;
 }();
 

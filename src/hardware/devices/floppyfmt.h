@@ -204,11 +204,13 @@ protected:
 	 3.5" ED          0.5     300     500
 	 @endverbatim
 	 */
-
+public:
 	static std::vector<bool> generate_bitstream_from_track(int track, int head, int cell_size,
 			const FloppyDisk &_disk);
 	static std::vector<uint8_t> generate_nibbles_from_bitstream(const std::vector<bool> &bitstream);
+	static uint8_t sbyte_mfm_r(const std::vector<bool> &bitstream, uint32_t &pos);
 
+protected:
 	struct desc_pc_sector
 	{
 		uint8_t track, head, sector, size;
@@ -281,8 +283,6 @@ protected:
 	static void mfm_w(std::vector<uint32_t> &buffer, int n, uint32_t val, uint32_t size, int offset);
 	//! MFM-encode every two bits and write
 	static void mfm_half_w(std::vector<uint32_t> &buffer, int start_bit, uint32_t val, uint32_t size = 1000);
-
-	static uint8_t sbyte_mfm_r(const std::vector<bool> &bitstream, uint32_t &pos);
 
 	//! Max number of excess tracks to be discarded from disk image to fit floppy drive
 	enum { DUMP_THRESHOLD = 2 };

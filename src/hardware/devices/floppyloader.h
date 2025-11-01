@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -57,6 +57,9 @@ public:
 			int _config_id);
 	void cmd_save_floppy(FloppyDisk *_floppy, std::string _path, std::shared_ptr<FloppyFmt> _format,
 			uint8_t _drive, std::function<void(bool)> _cb);
+
+private:
+	void dump_image_tracks(FloppyDisk *_floppy, std::string _path);
 };
 
 #endif

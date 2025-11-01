@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022-2024  Marco Bortolin
+ * Copyright (C) 2022-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -98,7 +98,13 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 			return;
 		}
 
-		image->set_write_protected(_write_protected);
+		if(_write_protected) {
+			image->set_write_protected(_write_protected);
+		}
+
+		if(LOG_DEBUG_MESSAGES && g_syslog.get_verbosity(LOG_FDC) >= LOG_V5) {
+			dump_image_tracks(image.get(), _path);
+		}
 
 		m_machine->cmd_insert_floppy(_drive_idx, image.release(), _cb, _config_id);
 	});
@@ -121,4 +127,72 @@ void FloppyLoader::cmd_save_floppy(FloppyDisk *_floppy, std::string _path, std::
 			_cb(result);
 		}
 	});
+}
+
+void FloppyLoader::dump_image_tracks(FloppyDisk *_floppy, std::string _floppy_path)
+{
+	int cell_size;
+	if(_floppy->props().type & FloppyDisk::DENS_SD) {
+		cell_size = 4000;
+	} if(_floppy->props().type & FloppyDisk::DENS_DD) {
+		cell_size = 2000;
+	} else if(_floppy->props().type & FloppyDisk::DENS_HD) {
+		if(_floppy->props().type & FloppyDisk::SIZE_5_25) {
+			cell_size = 1200;
+		} else {
+			cell_size = 1000;
+		}
+	} else if(_floppy->props().type & FloppyDisk::DENS_ED) {
+		cell_size = 500;
+	} else {
+		return;
+	}
+
+	std::string dir, filename;
+	if(!FileSys::get_path_parts(_floppy_path.c_str(), dir, filename)) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "FloppyLoader: invalid filename.\n");
+		return;
+	}
+	std::string basename, ext;
+	FileSys::get_file_parts(filename.c_str(), basename, ext);
+	std::string dest_dir = dir + "/" + basename + "_TRACKS";
+	try {
+		FileSys::create_dir(dest_dir.c_str());
+	} catch(std::exception &e) {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "FloppyLoader: cannot create '%s'\n", dest_dir.c_str());
+		return;
+	}
+
+	PDEBUGF(LOG_V0, LOG_MACHINE,"FloppyLoader: dumping floppy data into '%s'\n", dest_dir.c_str());
+
+	std::vector<uint8_t> track_data;
+	for(unsigned cyl = 0; cyl < _floppy->props().tracks; cyl++) {
+		for(unsigned head = 0; head < _floppy->props().sides; head++) {
+			track_data.clear();
+
+			auto track_name = str_format("c%uh%u", cyl, head);
+			PDEBUGF(LOG_V0, LOG_MACHINE,"FloppyLoader:   track %s\n", track_name.c_str());
+
+			auto bitstream = FloppyFmt::generate_bitstream_from_track(cyl, head, cell_size, *_floppy);
+
+			uint32_t pos = 0;
+			do {
+				track_data.push_back(FloppyFmt::sbyte_mfm_r(bitstream, pos));
+			} while(pos);
+
+			std::string track_file_path = dest_dir + "/" + track_name + ".data";
+
+			auto track_file = FileSys::make_ofstream(track_file_path.c_str(), std::ofstream::binary);
+			if(!track_file.is_open()) {
+				PDEBUGF(LOG_V0, LOG_MACHINE,"FloppyLoader: cannot open file.\n", track_file_path.c_str());
+				return;
+			}
+			track_file.write(reinterpret_cast<char*>(&track_data[0]), track_data.size());
+			if(track_file.bad()) {
+				PDEBUGF(LOG_V0, LOG_MACHINE,"FloppyLoader: cannot write to file.\n");
+				return;
+			}
+			track_file.close();
+		}
+	}
 }

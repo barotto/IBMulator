@@ -10,21 +10,21 @@
 
 
 const std::map<FloppyDisk::StdType, FloppyDisk::Properties> FloppyDisk::std_types = {
-             //type     trk  s  spt  ssize  secs   capacity   drate       str
-  { FD_NONE, { FD_NONE,   0, 0,   0,     0,    0,         0,  DRATE_250,  "none"           }},
-  { DD_160K, { DD_160K,  40, 1,   8,   512,  320,  160*1024,  DRATE_250,  "5.25\" DD 160K" }},
-  { DD_180K, { DD_180K,  40, 1,   9,   512,  360,  180*1024,  DRATE_250,  "5.25\" DD 180K" }},
-  { DD_320K, { DD_320K,  40, 2,   8,   512,  640,  320*1024,  DRATE_250,  "5.25\" DD 320K" }},
-  { DD_360K, { DD_360K,  40, 2,   9,   512,  720,  360*1024,  DRATE_250,  "5.25\" DD 360K" }},
+             //type     trk  s  spt  ssize  secs   capacity   drate       wprot  str
+  { FD_NONE, { FD_NONE,   0, 0,   0,     0,    0,         0,  DRATE_250,  false, "none"           }},
+  { DD_160K, { DD_160K,  40, 1,   8,   512,  320,  160*1024,  DRATE_250,  false, "5.25\" DD 160K" }},
+  { DD_180K, { DD_180K,  40, 1,   9,   512,  360,  180*1024,  DRATE_250,  false, "5.25\" DD 180K" }},
+  { DD_320K, { DD_320K,  40, 2,   8,   512,  640,  320*1024,  DRATE_250,  false, "5.25\" DD 320K" }},
+  { DD_360K, { DD_360K,  40, 2,   9,   512,  720,  360*1024,  DRATE_250,  false, "5.25\" DD 360K" }},
 // raw images 5.25 QD cannot be distinguished from 3.5 DD 
 // with 3.5 DD images mounted as 5.25 QD, DOS/BIOS incorrectly uses double stepping
-//{ QD_720K, { QD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  "5.25\" QD 720K" }},
-  { DD_720K, { DD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  "3.5\" DD 720K"  }},
-  { HD_1_20, { HD_1_20,  80, 2,  15,   512, 2400, 1200*1024,  DRATE_500,  "5.25\" HD 1.2M" }},
-  { HD_1_44, { HD_1_44,  80, 2,  18,   512, 2880, 1440*1024,  DRATE_500,  "3.5\" HD 1.44M" }},
-  { HD_1_68, { HD_1_68,  80, 2,  21,   512, 3360, 1680*1024,  DRATE_500,  "3.5\" HD 1.68M" }},
-  { HD_1_72, { HD_1_72,  82, 2,  21,   512, 3444, 1722*1024,  DRATE_500,  "3.5\" HD 1.72M" }},
-  { ED_2_88, { ED_2_88,  80, 2,  36,   512, 5760, 2880*1024,  DRATE_1000, "3.5\" ED 2.88M" }}
+//{ QD_720K, { QD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  false, "5.25\" QD 720K" }},
+  { DD_720K, { DD_720K,  80, 2,   9,   512, 1440,  720*1024,  DRATE_250,  false, "3.5\" DD 720K"  }},
+  { HD_1_20, { HD_1_20,  80, 2,  15,   512, 2400, 1200*1024,  DRATE_500,  false, "5.25\" HD 1.2M" }},
+  { HD_1_44, { HD_1_44,  80, 2,  18,   512, 2880, 1440*1024,  DRATE_500,  false, "3.5\" HD 1.44M" }},
+  { HD_1_68, { HD_1_68,  80, 2,  21,   512, 3360, 1680*1024,  DRATE_500,  false, "3.5\" HD 1.68M" }},
+  { HD_1_72, { HD_1_72,  82, 2,  21,   512, 3444, 1722*1024,  DRATE_500,  false, "3.5\" HD 1.72M" }},
+  { ED_2_88, { ED_2_88,  80, 2,  36,   512, 5760, 2880*1024,  DRATE_1000, false, "3.5\" ED 2.88M" }}
 };
 
 
