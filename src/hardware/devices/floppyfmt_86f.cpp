@@ -279,7 +279,7 @@ FloppyDisk::Properties FloppyFmt_86F::identify(std::string _file_path,
 			m_geom.type |= FloppyDisk::DENS_HD;
 			if(ti.get_rpm() == 360) {
 				m_geom.type |= FloppyDisk::SIZE_5_25;
-				m_geom.desc = str_format("5.25\" DSHD");
+				m_geom.desc = "5.25\" DSHD";
 			} else {
 				m_geom.type |= FloppyDisk::SIZE_3_5;
 				m_geom.desc = "3.5\" DSHD";
