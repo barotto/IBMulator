@@ -56,7 +56,7 @@ Open the **MSYS2 MINGW64** shell and:
  3. Move inside the IBMulator directory:  
  `cd IBMulator`
  4. Run autoreconf:  
- `autoreconf --install`
+ `autoreconf --install`  
  The `--install` option is needed only the first time after the initial cloning.
  5. Configure IBMulator:  
  `./configure --enable-static --prefix=/c/workspace/IBMulator/release`  
@@ -68,7 +68,7 @@ Open the **MSYS2 MINGW64** shell and:
  7. Install (only if you used the `--prefix` option):  
  `make install`
 
-If you followed the instructions you'll find IBMulator inside the `release` folder. You can now move and rename the `release` package.
+If you followed the instructions you'll find IBMulator inside the `release` folder. You can now move and rename the entire `release` directory.
 
 If you update the sources from the remote repository with `git pull` you then need to run `autoreconf` and `configure` again.
 
@@ -76,13 +76,13 @@ If you update the sources from the remote repository with `git pull` you then ne
 
 To enable support for **NVDA** you need to:
  
- 1. Move inside your workspace:
+ 1. Move inside your workspace:  
  `cd /c/workspace`
- 2. Download the NVDA controller client software:
- `curl https://download.nvaccess.org/releases/stable/nvda_2025.2_controllerClient.zip --output nvda.zip`
- 3. Unzip the package:
+ 2. Download the NVDA controller client software:  
+ `curl https://download.nvaccess.org/releases/2025.3.1/nvda_2025.3.1_controllerClient.zip --output nvda.zip`  
+ 3. Unzip the package:  
  `unzip nvda.zip -d nvda`
- 4. Move into the IBMulator source directory and add the following `configure` option:
+ 4. Move into the IBMulator source directory and run `configure` adding the following option:  
  `--with-nvda-prefix=C:/workspace/nvda`
  5. Build and install IBMulator.
  6. Copy the `nvda/x64/nvdaControllerClient.dll` file into the `bin` directory with `ibmulator.exe`.
