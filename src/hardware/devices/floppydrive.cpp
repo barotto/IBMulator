@@ -542,6 +542,7 @@ void FloppyDrive::step_to(uint8_t cyl, uint64_t _time_to_reach)
 		return;
 	}
 	if(cyl != m_s.cyl) {
+		PDEBUGF(LOG_V3, LOG_FDC, "DRV%u: step to cylinder: %u, eta: %lluns.\n", m_drive_index, cyl, _time_to_reach);
 		cache_clear();
 		if(cyl >= m_tracks) {
 			cyl = m_tracks - 1;
@@ -680,6 +681,10 @@ void FloppyDrive::cache_fill(uint64_t when)
 		cache_weakness_setup();
 		return;
 	}
+
+	PDEBUGF(LOG_V5, LOG_FDC, "DRV%u: reading track c%uh%u (c%uh%u)\n",
+			m_drive_index,
+			cyl, head, m_s.cyl, m_s.ss);
 
 	uint64_t base;
 	uint32_t position = find_position(base, when);
