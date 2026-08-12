@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
-/* The first version of this code is from almost 20 years ago, in the dark
+/* The first version of this code is from 25+ years ago, in the dark
  * ages of C++.
  * 
  * TODO I really need to rewrite this over engineered stinking pile of dog turd.
@@ -55,6 +55,7 @@ const char* Syslog::m_fac_prefixes[] = {
 	" gui | ",
 	" ogl | ",
 	" mch | ",
+	" dev | ",
 	" mix | ",
 	" mem | ",
 	" cpu | ",

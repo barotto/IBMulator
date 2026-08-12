@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -183,12 +183,12 @@ void Devices::config_changed()
 			case SBlaster::SBPRO1: install<SBlasterPro1>(); break;
 			case SBlaster::SBPRO2: install<SBlasterPro2>(); break;
 			default:
-				PERRF(LOG_MACHINE, "Invalid Sound Blaster model\n");
+				PERRF(LOG_DEVICES, "Invalid Sound Blaster model\n");
 				break;
 		}
 		// AdLib can't be installed with Sound Blaster
 		if(adlib) {
-			PINFOF(LOG_V0, LOG_MACHINE, "Cannot install AdLib card with Sound Blaster card\n");
+			PINFOF(LOG_V0, LOG_DEVICES, "Cannot install AdLib card with Sound Blaster card\n");
 		}
 		adlib = false;
 	} else {
@@ -201,9 +201,9 @@ void Devices::config_changed()
 	install_only_if<Serial>(g_program.config().get_bool(SERIAL_SECTION, SERIAL_ENABLED));
 	install_only_if<Parallel>(g_program.config().get_bool(LPT_SECTION, LPT_ENABLED));
 
-	PINFOF(LOG_V2, LOG_MACHINE, "Installed devices:\n");
+	PINFOF(LOG_V2, LOG_DEVICES, "Installed devices:\n");
 	for(auto &dev : m_devices) {
-		PINFOF(LOG_V2, LOG_MACHINE, "  %s\n", dev.first.c_str());
+		PINFOF(LOG_V2, LOG_DEVICES, "  %s\n", dev.first.c_str());
 	}
 
 	for(auto &dev : m_devices) {
@@ -256,18 +256,18 @@ void Devices::restore_state(StateBuf &_state)
 		StateHeader h;
 		_state.get_next_lump_header(h);
 		if(h.name.length() == 0) {
-			PERRF(LOG_MACHINE, "unknown device state %u\n", restored);
+			PERRF(LOG_DEVICES, "unknown device state %u\n", restored);
 			throw std::exception();
 		}
 		if(m_devices.find(h.name) == m_devices.end()) {
-			PERRF(LOG_MACHINE, "can't find device '%s'\n", h.name.c_str());
+			PERRF(LOG_DEVICES, "can't find device '%s'\n", h.name.c_str());
 			throw std::exception();
 		}
 		m_devices[h.name]->restore_state(_state);
 		restored++;
 	}
 	if(restored != m_devices.size()) {
-		PERRF(LOG_MACHINE, "restored %u out of %u devices\n", restored, static_cast<unsigned>(m_devices.size()));
+		PERRF(LOG_DEVICES, "restored %u out of %u devices\n", restored, static_cast<unsigned>(m_devices.size()));
 		throw std::exception();
 	}
 }
@@ -276,7 +276,7 @@ template<class T>
 T* Devices::install()
 {
 	if(m_devices[T::NAME] != nullptr) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "device '%s' is already installed\n", T::NAME);
+		PDEBUGF(LOG_V2, LOG_DEVICES, "device '%s' is already installed\n", T::NAME);
 		return dynamic_cast<T*>(m_devices[T::NAME]);
 	}
 	T *device = new T(this);
@@ -301,19 +301,19 @@ void Devices::register_read_handler(IODevice *_iodev, uint16_t _port, uint _mask
 	assert(_iodev);
 
 	if(m_read_handlers[_port].device != nullptr) {
-		PERRF(LOG_MACHINE, "IO device %s address conflict(read) with %s at address 0x%04X\n",
+		PERRF(LOG_DEVICES, "IO device %s address conflict(read) with %s at address 0x%04X\n",
 				_iodev->name(), m_read_handlers[_port].device->name(), _port);
 		return;
 	}
 	if(_mask & 2) {
 		if(_port == PORT_MAX) {
-			PWARNF(LOG_V1, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_DEVICES,
 				"Registering 16-bit IO device %s at address 0x%04Xh\n",
 				_iodev->name(),
 				_port
 			);
 		} else if(m_read_handlers[_port+1].device != nullptr) {
-			PWARNF(LOG_V1, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_DEVICES,
 				"IO device %s at address 0x%04Xh is 16-bit but address 0x%04Xh is registered to %s\n",
 				_iodev->name(),
 				_port,
@@ -332,19 +332,19 @@ void Devices::register_write_handler(IODevice *_iodev, uint16_t _port, uint _mas
 	assert(_iodev);
 
 	if(m_write_handlers[_port].device != nullptr) {
-		PERRF(LOG_MACHINE, "IO device %s address conflict(write) with %s at address 0x%04X\n",
+		PERRF(LOG_DEVICES, "IO device %s address conflict(write) with %s at address 0x%04X\n",
 				_iodev->name(), m_write_handlers[_port].device->name(), _port);
 		return;
 	}
 	if(_mask & PORT_16BIT) {
 		if(_port == PORT_MAX) {
-			PWARNF(LOG_V1, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_DEVICES,
 				"Registering 16-bit IO device %s at address 0x%04Xh\n",
 				_iodev->name(),
 				_port
 			);
 		} else if(m_write_handlers[_port+1].device != nullptr) {
-			PWARNF(LOG_V1, LOG_MACHINE,
+			PWARNF(LOG_V1, LOG_DEVICES,
 				"IO device %s at address 0x%04X is 16-bit but address 0x%04X is registered to %s\n",
 				_iodev->name(),
 				_port,
@@ -382,10 +382,15 @@ uint8_t Devices::read_byte(uint16_t _port)
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled read from port 0x%04X\n", _port);
+		PDEBUGF(LOG_V2, LOG_DEVICES, "r [1] 0x%04X -> 0xFF (unhandled)\n", _port);
 		return 0xFF;
 	}
-	return uint8_t(iohdl.device->read(_port, 1));
+
+	uint8_t value = uint8_t(iohdl.device->read(_port, 1));
+
+	PDEBUGF(LOG_V5, LOG_DEVICES, "r [1] 0x%04X -> 0x%02X, io=%uns\n", _port, value, m_last_io_time);
+
+	return value; 
 }
 
 uint16_t Devices::read_word(uint16_t _port)
@@ -401,8 +406,10 @@ uint16_t Devices::read_word(uint16_t _port)
 		uint16_t b1 = read_byte(_port + 1);
 		m_last_io_time += io_time;
 		value = b0 | (b1<<8);
+		PDEBUGF(LOG_V5, LOG_DEVICES, "r [1+1] 0x%04X -> 0x%04X, io=%uns\n", _port, value, m_last_io_time);
 	} else if(iohdl.mask & PORT_16BIT) {
 		value = iohdl.device->read(_port, 2);
+		PDEBUGF(LOG_V5, LOG_DEVICES, "r [2] 0x%04X -> 0x%04X, io=%uns\n", _port, value, m_last_io_time);
 	}
 	return value;
 }
@@ -419,6 +426,7 @@ uint32_t Devices::read_dword(uint16_t _port)
 		uint32_t w0 = iohdl.device->read(_port, 2);
 		uint32_t w1 = iohdl.device->read(_port, 2); // not _port+2, change this with proper 32bit support
 		value = w0 | (w1<<16);
+		PDEBUGF(LOG_V5, LOG_DEVICES, "r [4] 0x%04X -> 0x%08X, io=%uns\n", _port, value, m_last_io_time);
 	} else {
 		uint32_t w0 = read_word(_port);
 		unsigned io_time = m_last_io_time;
@@ -426,6 +434,7 @@ uint32_t Devices::read_dword(uint16_t _port)
 		uint32_t w1 = read_word(_port + 2);
 		m_last_io_time += io_time;
 		value = w0 | (w1<<16);
+		PDEBUGF(LOG_V5, LOG_DEVICES, "r [2+2] 0x%04X -> 0x%08X, io=%uns\n", _port, value, m_last_io_time);
 	}
 	return value;
 }
@@ -436,9 +445,12 @@ void Devices::write_byte(uint16_t _port, uint8_t _value)
 
 	m_last_io_time = 0;
 	if(!(iohdl.mask & PORT_8BIT)) {
-		PDEBUGF(LOG_V2, LOG_MACHINE, "Unhandled write to port 0x%04X\n", _port);
+		PDEBUGF(LOG_V2, LOG_DEVICES, "w [1] 0x%04X <- 0x%02X (unhandled)\n", _port, _value);
 		return;
 	}
+
+	PDEBUGF(LOG_V5, LOG_DEVICES, "w [1] 0x%04X <- 0x%02X, io=%uns\n", _port, _value, m_last_io_time);
+
 	iohdl.device->write(_port, _value, 1);
 }
 
@@ -462,8 +474,10 @@ void Devices::write_word(uint16_t _port, uint16_t _value)
 		m_last_io_time = 0;
 		write_byte(_port+1, uint8_t(_value>>8));
 		m_last_io_time += io_time;
+		PDEBUGF(LOG_V5, LOG_DEVICES, "w [1+1] 0x%04X <- 0x%04X, io=%uns\n", _port, _value, m_last_io_time);
 	} else if(iohdl.mask & PORT_16BIT) {
 		iohdl.device->write(_port, _value, 2);
+		PDEBUGF(LOG_V5, LOG_DEVICES, "w [2] 0x%04X <- 0x%04X, io=%uns\n", _port, _value, m_last_io_time);
 	}
 }
 
@@ -477,20 +491,22 @@ void Devices::write_dword(uint16_t _port, uint32_t _value)
 		// TODO this implementation requires that the device uses a buffer index
 		iohdl.device->write(_port, _value, 2);
 		iohdl.device->write(_port, _value>>16, 2); // not _port+2, change this with proper 32bit support
+		PDEBUGF(LOG_V5, LOG_DEVICES, "w [4] 0x%04X <- 0x%08X\n", _port, _value);
 	} else {
 		write_word(_port, _value);
 		unsigned io_time = m_last_io_time;
 		m_last_io_time = 0;
 		write_word(_port+2, _value>>16);
 		m_last_io_time += io_time;
+		PDEBUGF(LOG_V5, LOG_DEVICES, "w [2+2] 0x%04X <- 0x%08X\n", _port, _value, m_last_io_time);
 	}
 }
 
 void Devices::remove(const char *_name)
 {
-	PDEBUGF(LOG_V1, LOG_MACHINE, "Removing device: %s\n", _name);
+	PDEBUGF(LOG_V1, LOG_DEVICES, "Removing device: %s\n", _name);
 	if(m_devices.find(_name) == m_devices.end()) {
-		PDEBUGF(LOG_V1, LOG_MACHINE, "Cannot find device: %s\n", _name);
+		PDEBUGF(LOG_V1, LOG_DEVICES, "Cannot find device: %s\n", _name);
 		return;
 	}
 	m_devices[_name]->remove();

@@ -414,6 +414,7 @@ public:
 #define LOG_GUI_VERBOSITY       "gui"
 #define LOG_OGL_VERBOSITY       "ogl"
 #define LOG_MACHINE_VERBOSITY   "machine"
+#define LOG_DEVICES_VERBOSITY   "devices"
 #define LOG_MIXER_VERBOSITY     "mixer"
 #define LOG_MEM_VERBOSITY       "mem"
 #define LOG_CPU_VERBOSITY       "cpu"

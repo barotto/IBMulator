@@ -73,6 +73,7 @@ enum e_Syslog_Facilities {
 	LOG_GUI,
 	LOG_OGL,
 	LOG_MACHINE,
+	LOG_DEVICES,
 	LOG_MIXER,
 	LOG_MEM,
 	LOG_CPU,
