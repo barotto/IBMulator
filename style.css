@@ -17,14 +17,6 @@ html, body {
 	background-color: #333333;
 }
 
-/*
-html, body {
-	color: #000;
-	background-color: #fff;
-	text-shadow: 2px 2px 3px #ccc;
-}
-*/
-
 h1, h2, h3, h4 {
 	text-shadow: 2px 2px 3px #000;
 }
@@ -70,6 +62,17 @@ body {
 	font-family: arial, sans-serif;
 	font-size: .4cm;
 	margin: 1% 8% 8% 8%;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	border: 0;
 }
 
 .center {
