@@ -37,6 +37,7 @@ h1 {
 }
 
 h2 {
+	color: #ececb8;
 	font-family: 'perfect_dos_vga_437_winRg',courier;
 	font-size: .7cm;
 	font-weight: normal;
@@ -53,7 +54,7 @@ pre {
 }
 
 a {
-	color: #466bb0;
+	color: #7ACCF5;
 	font-family: courier;
 	text-decoration: none;
 	font-weight: bold;
@@ -98,9 +99,9 @@ ul.menu {
 	content:'';
 	position: absolute;
 	display: block;
-    	left: 50%;
-    	top: 50%;
-    	transform: translate(-50%,-90%);
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%,-90%);
 	width: 60px;
 	height: 42px;
 	background-image: url(media/yt_logo.png); 
@@ -121,6 +122,15 @@ ul.menu {
 .media .videos img {
 	width: auto;
 	height: 180px;
+}
+
+figure {
+	display: flex;
+	flex-direction: column;
+	max-width: min-content;
+	margin: 20px;
+	font-size: 90%;
+	font-style: oblique;
 }
 
 .contentBlock {

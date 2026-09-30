@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" type="text/css" href="style.css" />
@@ -9,11 +9,17 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <title>IBMULATOR - The IBM PS/1 Emulator</title>
 </head>
+
 <body>
+
+<header>
 <div class="center">
-<img src="ibmulator.png" alt="IBMulator"/>
+	<img src="ibmulator.png" alt="" />
 </div>
+
 <h1 id="top">IBMulator - The IBM PS/1 Emulator</h1>
+
+<nav>
 <ul class="menu">
 <li><a href="#about">About</a></li>
 <li><a href="#features">Features</a></li>
@@ -24,8 +30,11 @@
 <li><a href="#tools">Tools</a></li>
 <li><a href="#contact">Contact</a></li>
 <li><a href="#disclaimer">Disclaimer</a>
+<li><a href="#noai">No-AI</a>
 </li>
 </ul>
+</nav>
+
 <div style="text-align:center;">Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.20">v0.20</a></div>
 
 <div>
@@ -34,12 +43,14 @@
 
 <hr />
 <div id="donations">
-<a href='https://ko-fi.com/W7W74HZP4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi2.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+<a href="https://ko-fi.com/W7W74HZP4" target="_blank"><img style="border:0px; width: 150px;" src="https://cdn.ko-fi.com/cdn/kofi2.png?v=2" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
 <br />
-<img src="media/ps1_love.png" style="padding: 1em 0 0 0" />
+<img src="media/ps1_love.png" style="padding: 1em 0 0 0" alt="PS/1 Love pixel art from the PS/1 Tutorial program"/>
 </div>
+</header>
 
-<a href="#about"><h2 id="about">About</h2></a>
+<main>
+<h2 id="about">About</h2>
 
 <p>
 IBMulator is a free/libre and open source PC emulator focused on the <a href="https://en.wikipedia.org/wiki/IBM_PS/1">IBM PS/1</a> line of computers, 
@@ -59,7 +70,7 @@ IBMulator can emulate the following systems:
 
 <hr />
 
-<a href="#features"><h2 id="features">Features</h2></a>
+<h2 id="features">Features</h2>
 
 <ul>
 <li><strong>Text-To-Speech system and Accessibility</strong><br />TTS for both the GUI and DOS, with serial Braille 'n Speak synthetizer emulation. Fully usable with the keyboard with customizable key bindings.</li>
@@ -100,33 +111,122 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 
 <hr />
 
-<a href="#media"><h2 id="media">Media</h2></a>
+<h2 id="media">Media</h2>
 <div class="media">
+
 <div class="images">
-<a href="media/01-normal-mode.png"><img src="media/thumbs/01-normal-mode.png" title="GUI in Normal mode with the 4-Quad ROMSHELL running" /></a>
-<a href="media/02-compact-mode.png"><img src="media/thumbs/02-compact-mode.png" title="Compact mode" /></a>
-<a href="media/03-compact-mode.png"><img src="media/thumbs/03-compact-mode.png" title="Compact mode with the system unit visible" /></a>
-<a href="media/04-realistic-mode.png"><img src="media/thumbs/04-realistic-mode.png" title="Realistic mode (daytime)" /></a>
-<a href="media/05-realistic-mode.png"><img src="media/thumbs/05-realistic-mode.png" title="Realistic mode zoom-in" /></a>
-<a href="media/06-realistic-mode.png"><img src="media/thumbs/06-realistic-mode.png" title="Realistic mode zoom-in" /></a>
-<a href="media/07-realistic-mode.png"><img src="media/thumbs/07-realistic-mode.png" title="Realistic mode zoom-in" /></a>
-<a href="media/08b-realistic-dark.png"><img src="media/thumbs/08b-realistic-dark.png" title="Realistic mode (nighttime), monitor shader with reflections" /></a>
-<a href="media/09-savestates.png"><img src="media/thumbs/09-savestates.png" title="Multiple savestates!" /></a>
-<a href="media/10-floppy.png"><img src="media/thumbs/10-floppy.png" title="Floppy disk image select dialog" /></a>
-<a href="media/11-new-floppy.png"><img src="media/thumbs/11-new-floppy.png" title="New floppy image dialog" /></a>
-<a href="media/12-debug.png"><img src="media/thumbs/12-debug.png" title="Debug windows" /></a>
-<a href="media/13-printing.png"><img src="media/thumbs/13-printing.png" title="Epson JX-80 printing a color banner" /></a>
-<a href="media/14-shaders.png"><img src="media/thumbs/14-shaders.png" title="RetroArch slang CRT shader in action with parameters window open" /></a>
-<a href="media/15-mixer.png"><img src="media/thumbs/15-mixer.png" title="The Mixer Control GUI window" /></a>
-<a href="media/16-cdrom.png"><img src="media/thumbs/16-cdrom.png" title="The CD-ROM interface with Monkey Island CD running" /></a>
-<a href="media/17-overscan.png"><img src="media/thumbs/17-overscan.png" title="Catacomb 3D with the red overscan border of pain" /></a>
+
+<figure>
+<a href="media/01-normal-mode.png"><img src="media/thumbs/01-normal-mode.png" /></a>
+<figcaption>GUI in Normal mode with the 4-Quad ROMSHELL running</figcaption>
+</figure>
+
+<figure>
+<a href="media/02-compact-mode.png"><img src="media/thumbs/02-compact-mode.png" /></a>
+<figcaption>Compact mode</figcaption>
+</figure>
+
+<figure>
+<a href="media/03-compact-mode.png"><img src="media/thumbs/03-compact-mode.png" /></a>
+<figcaption>Compact mode with the system unit visible</figcaption>
+</figure>
+
+<figure>
+<a href="media/04-realistic-mode.png"><img src="media/thumbs/04-realistic-mode.png" /></a>
+<figcaption>Realistic mode (daytime)</figcaption>
+</figure>
+
+<figure>
+<a href="media/05-realistic-mode.png"><img src="media/thumbs/05-realistic-mode.png" /></a>
+<figcaption>Realistic mode zoom-in</figcaption>
+</figure>
+
+<figure>
+<a href="media/06-realistic-mode.png"><img src="media/thumbs/06-realistic-mode.png" /></a>
+<figcaption>Realistic mode zoom-in</figcaption>
+</figure>
+
+<figure>
+<a href="media/07-realistic-mode.png"><img src="media/thumbs/07-realistic-mode.png" /></a>
+<figcaption>Realistic mode zoom-in</figcaption>
+</figure>
+
+<figure>
+<a href="media/08b-realistic-dark.png"><img src="media/thumbs/08b-realistic-dark.png" /></a>
+<figcaption>Realistic mode (nighttime), monitor shader with reflections</figcaption>
+</figure>
+
+<figure>
+<a href="media/09-savestates.png"><img src="media/thumbs/09-savestates.png" /></a>
+<figcaption>Savestates</figcaption>
+</figure>
+
+<figure>
+<a href="media/10-floppy.png"><img src="media/thumbs/10-floppy.png" /></a>
+<figcaption>Floppy disk image select dialog</figcaption>
+</figure>
+
+<figure>
+<a href="media/11-new-floppy.png"><img src="media/thumbs/11-new-floppy.png" /></a>
+<figcaption>New floppy image dialog</figcaption>
+</figure>
+
+<figure>
+<a href="media/12-debug.png"><img src="media/thumbs/12-debug.png" /></a>
+<figcaption>Debug windows</figcaption>
+</figure>
+
+<figure>
+<a href="media/13-printing.png"><img src="media/thumbs/13-printing.png" /></a>
+<figcaption>Epson JX-80 printing a color banner</figcaption>
+</figure>
+
+<figure>
+<a href="media/14-shaders.png"><img src="media/thumbs/14-shaders.png" /></a>
+<figcaption>RetroArch slang CRT shader in action with parameters window open</figcaption>
+</figure>
+
+<figure>
+<a href="media/15-mixer.png"><img src="media/thumbs/15-mixer.png" /></a>
+<figcaption>The Mixer Control GUI window</figcaption>
+</figure>
+
+<figure>
+<a href="media/16-cdrom.png"><img src="media/thumbs/16-cdrom.png" /></a>
+<figcaption>The CD-ROM interface with Monkey Island CD running</figcaption>
+</figure>
+
+<figure>
+<a href="media/17-overscan.png"><img src="media/thumbs/17-overscan.png" /></a>
+<figcaption>Catacomb 3D with the red overscan border of pain</figcaption>
+</figure>
+
 </div>
+
 <div class="videos">
-<a href="https://youtu.be/wm4E_qZfT6M" target="_blank"><img src="media/thumbs/video_04_monkey.png" title="IBMulator 0.14 - System boot and The Secret of Monkey Island intro with PC-Speaker and DSP filters" /></a></li>
-<a href="https://youtu.be/dUTZuc2F9kU" target="_blank"><img src="media/thumbs/video_03_bards3.png" title="IBMulator 0.10 - System boot and The Bard's Tale 3 intro with the PS/1 Audio Card in Realistic GUI mode" /></a></li>
-<a href="https://youtu.be/jLwYFnGgHcI" target="_blank"><img src="media/thumbs/video_01_prince.png" title="IBMulator 0.9 - Prince of Persia with the PS/1 Audio Card in Normal GUI mode" /></a></li>
-<a href="https://youtu.be/zR63VmJoXHY" target="_blank"><img src="media/thumbs/video_05_modem_prodigy.png" title="IBMulator 0.16 - connecting to PRODIGY with a 2400 baud modem, compact GUI mode with PS/1 monitor shader" /></a></li>
+
+<figure>
+<a href="https://youtu.be/wm4E_qZfT6M" target="_blank"><img src="media/thumbs/video_04_monkey.png" /></a>
+<figcaption>System boot and The Secret of Monkey Island intro with PC-Speaker and DSP filters</figcaption>
+</figure>
+
+<figure>
+<a href="https://youtu.be/dUTZuc2F9kU" target="_blank"><img src="media/thumbs/video_03_bards3.png" /></a>
+<figcaption>System boot and The Bard's Tale 3 intro with the PS/1 Audio Card in Realistic GUI mode</figcaption>
+</figure>
+
+<figure>
+<a href="https://youtu.be/jLwYFnGgHcI" target="_blank"><img src="media/thumbs/video_01_prince.png" /></a>
+<figcaption>Prince of Persia with the PS/1 Audio Card in Normal GUI mode (OLD)</figcaption>
+</figure>
+
+<figure>
+<a href="https://youtu.be/zR63VmJoXHY" target="_blank"><img src="media/thumbs/video_05_modem_prodigy.png" /></a>
+<figcaption>Connecting to PRODIGY with a 2400 baud modem, compact GUI mode with PS/1 monitor shader</figcaption>
+</figure>
+
 </div>
+
 </div>
 
 
@@ -136,7 +236,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 
 <hr />
 
-<a href="#download"><h2 id="download">Download</h2></a>
+<h2 id="download">Download</h2>
 <p>
 Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.20">v0.20</a> (released 24/may/2026)
 <br /><br />
@@ -160,13 +260,12 @@ If you're feeling brave and want to try bleeding edge code (or you want to contr
 
 <p>
 <br /><br />
-ROMs and disk images are copyrighted material and must be downloaded elsewhere 
-(<a href="https://www.google.com/search?q=ibm+ps%2F1+rom+images">hint</a>).
+ROMs and disk images are copyrighted material and must be downloaded elsewhere.
 </p>
 
 <hr />
 
-<a href="#usage"><h2 id="usage">Usage</h2></a>
+<h2 id="usage">Usage</h2>
 <h3>TL;DR version</h3>
 <ol>
 <li><a href="https://www.google.com/search?q=ibm+ps%2F1+rom+images">Obtain</a> a ROM set</li>
@@ -181,7 +280,7 @@ Please read the <a href="https://github.com/barotto/IBMulator/blob/master/docs/U
 
 <hr />
 
-<a href="#FAQ"><h2 id="FAQ">FAQ</h2></a>
+<h2 id="FAQ">FAQ</h2>
 
 For the current list of known bugs please see the <a href="https://github.com/barotto/IBMulator/issues">GitHub's issue tracker</a>.
 
@@ -265,43 +364,68 @@ Yes, as long as you abide by the license's terms and conditions. Also, feel free
 
 <hr />
 
-<a href="#tools"><h2 id="tools">Tools</h2></a>
+<h2 id="tools">Tools</h2>
 <p>
 I've created some tools to aid the development of IBMulator. Maybe you'll find them useful too.
 </p>
-<h3>test386.asm</h3>
-<p>
-CPU tester for emulators, written in NASM assembly. It runs as a BIOS replacement and does not depend on any OS or external library.
-</p>
-<p><a href="https://github.com/barotto/test386.asm">GitHub's repository</a></p>
 
-<h3>VGATEST</h3>
-<p>
-Protected mode DOS program used to test VGA functionality in both text and graphics modes. It gives the ability to test all the standard BIOS modes plus many non standard ones like Mode X or Mode Y.
-</p>
-<p><a href="https://github.com/barotto/VGATEST">GitHub's repository</a></p>
+<dl>
+<dt>test386.asm</dt>
+<dd>
+CPU tester for emulators, written in NASM assembly.
+It runs as a BIOS replacement and does not depend on any OS or external library.
+<br />
+<a href="https://github.com/barotto/test386.asm">GitHub's repository</a>
+</dd>
+
+<dt>VGATEST</dt>
+<dd>
+DOS program used to test VGA functionality in both text and graphics modes.
+It gives the ability to test all the standard BIOS modes plus many non standard ones like Mode X or Mode Y.
+<br />
+<a href="https://github.com/barotto/VGATEST">GitHub's repository</a>
+</dd>
+
+</dl>
 
 <hr />
 
-<a href="#contact"><h2 id="contact">Contact</h2></a>
+<h2 id="contact">Contact</h2>
 <p>
-For bug reporting, feature requests, or IBMulator related questions, please use the
-<a href="https://github.com/barotto/IBMulator/issues">
-GitHub tracker</a>.
+For bug reporting please use the
+<a href="https://github.com/barotto/IBMulator/issues">issue tracker</a>.
+</p>
+<p>
+For IBMulator related questions or feature requests use the 
+<a href="https://github.com/barotto/IBMulator/discussions">forum</a>.
 </p>
 
 <hr />
 
-<a href="#disclaimer"><h2 id="disclaimer">Disclaimer</h2></a>
+<h2 id="disclaimer">Disclaimer</h2>
 <p>
 IBMulator is not a product of IBM Corporation nor is it sponsored by IBM Corporation in any way.
-<br />
+</p>
+<p>
 All trademarks and registered trademarks are the property of their respective owners.
 </p>
 
-<p style="text-align: center; margin-top: 2cm;">
-<img src="c.gif" />
+<hr />
+<h2 id="noai">No-AI</h2>
+<p>
+IBMulator is an artisanal, 100% human-made piece of software, made for passion.
 </p>
+<p>
+No GenAI tools have been used for the creation of it and never will be.
+If you want to contribute any code it mustn't be generated using slop extruders.
+</p>
+
+<p style="text-align: center; margin-top: 2cm;">
+<img src="c.gif" alt="The C:\ DOS prompt" />
+</p>
+
+</main>
+
 </body>
 </html>
 
