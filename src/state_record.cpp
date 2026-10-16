@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2024  Marco Bortolin
+ * Copyright (C) 2021-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include "stb/stb.h"
+#include <sstream>
+
 
 StateRecord::StateRecord(std::string _basepath, std::string _name, bool _initialize)
 :
