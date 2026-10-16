@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -34,6 +34,14 @@ class Devices;
 
 #define IODEVICE_PORTS(_CLASSNAME_) \
 		IODevice::IOPorts _CLASSNAME_::ms_ioports
+
+#define IODEVICE_ID(_CLASSNAME_, _ADAPTERID_) \
+	public: \
+		static constexpr uint16_t ADAPTER_ID = _ADAPTERID_; \
+		virtual uint8_t adapter_id(uint8_t b) { \
+			return (_CLASSNAME_::ADAPTER_ID >> (b*8)) & 0xFF; \
+		}
+
 
 class IODevice
 {

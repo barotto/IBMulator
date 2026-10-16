@@ -51,6 +51,7 @@ enum VGAModes {
 	VGA_M_CGA4,
 	VGA_M_EGA,
 	VGA_M_256COL,
+	VGA_M_SVGA8,
 	VGA_M_TEXT
 };
 
@@ -176,7 +177,7 @@ struct TextModeInfo
 };
 
 class VGA;
-typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
+typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
 
 #include "vgadisplay.h"
 
@@ -185,6 +186,7 @@ typedef unsigned (VGA::*VGADrawFn)(unsigned _scanline, uint16_t _scanaddr, std::
 class VGA : public IODevice
 {
 	IODEVICE(VGA, "VGA")
+	IODEVICE_ID(VGA, 0x0000)
 
 protected:
 	// state information
@@ -215,16 +217,19 @@ protected:
 		VideoTimings timings;
 		// current mode
 		VideoModeInfo vmode;
-		// shift values for VBE (TODO)
-		uint8_t  plane_shift;
-		uint32_t plane_offset;
-		uint8_t  dac_shift;
+
+		uint8_t dac_shift;
+
+		uint32_t memory_offset;
+		uint32_t memory_aperture;
+		uint32_t memory_bank;
 	} m_s;
 
-	uint8_t  *m_memory = nullptr;      // video memory buffer
-	uint8_t  *m_memory_planes[4] = {}; // memory planes pointers
-	uint8_t  *m_rom = nullptr;         // BIOS code buffer
+	uint8_t *m_memory = nullptr;       // video memory buffer (TODO use std container)
+	uint8_t *m_memory_planes[4] = {};  // memory planes pointers
+	uint8_t *m_rom = nullptr;          // BIOS code buffer (TODO use std container)
 	uint32_t m_memsize = 0x40000;      // size of memory buffer
+	uint32_t m_planesize = 0x10000;    // size of the memory planes
 	int m_mem_mapping = 0;             // video memory mapping ID
 	int m_rom_mapping = 0;             // BIOS mapping ID
 	VGATimings m_vga_timing = VGA_8BIT_SLOW;
@@ -301,12 +306,15 @@ public:
 	void dbg_frame_step() { m_dbg_frame_step = true; }
 
 protected:
+	virtual uint32_t default_memsize_kb() const { return 256u; }
 	virtual void update_mem_mapping();
+	virtual double clock_freq_hz() const;
 	void load_ROM(const std::string &_filename);
 	void redraw_all();
 	void init_iohandlers();
 	void init_systemtimer();
 	void update_video_mode();
+	virtual void update_rendering_mode();
 	
 	void horizontal_retrace(uint64_t _time);
 	void frame_start(uint64_t _time);
@@ -328,9 +336,9 @@ protected:
 	unsigned gfx_update_thread(int _thread_id, uint16_t _line_compare);
 	
 	//unsigned draw_gfx_cga2(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_cga(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_ega(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
-	unsigned draw_gfx_vga256(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_cga(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_ega(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
+	unsigned draw_gfx_vga256(unsigned _scanline, uint32_t _scanaddr, std::vector<uint8_t> &line_data_);
 	unsigned draw_blank_line(unsigned _scanline);
 	
 	template<class T>
@@ -345,20 +353,49 @@ protected:
 };
 
 template<> uint32_t VGA::s_mem_read<uint8_t> (uint32_t _addr, void *_priv);
+
 template<> inline
 uint32_t VGA::s_mem_read<uint16_t>(uint32_t _addr, void *_priv)
 {
-	return (s_mem_read<uint8_t>(_addr,   _priv) |
-	        s_mem_read<uint8_t>(_addr+1, _priv) << 8
+	uint16_t value = (
+		( s_mem_read<uint8_t>(_addr    , _priv) & 0xFF)       |
+		((s_mem_read<uint8_t>(_addr + 1, _priv) & 0xFF) << 8)
 	);
+	PDEBUGF(LOG_V3, LOG_VGA, "mem r2 0x%04X -> 0x%04X\n", _addr, value);
+	return value;
+}
+
+template<> inline
+uint32_t VGA::s_mem_read<uint32_t>(uint32_t _addr, void *_priv)
+{
+	uint32_t value = (
+		( s_mem_read<uint8_t>(_addr    , _priv) & 0xFF)        |
+		((s_mem_read<uint8_t>(_addr + 1, _priv) & 0xFF) << 8)  |
+		((s_mem_read<uint8_t>(_addr + 2, _priv) & 0xFF) << 16) |
+		((s_mem_read<uint8_t>(_addr + 3, _priv) & 0xFF) << 24)
+	);
+	PDEBUGF(LOG_V3, LOG_VGA, "mem r4 0x%04X -> 0x%08X\n", _addr, value);
+	return value;
 }
 
 template<> void VGA::s_mem_write<uint8_t> (uint32_t _addr, uint32_t _data, void *_priv);
+
 template<> inline
 void VGA::s_mem_write<uint16_t>(uint32_t _addr, uint32_t _data, void *_priv)
 {
-	s_mem_write<uint8_t>(_addr,   _data,    _priv);
-	s_mem_write<uint8_t>(_addr+1, _data>>8, _priv);
+	PDEBUGF(LOG_V3, LOG_VGA, "mem w2 0x%04X <- 0x%04X\n", _addr, _data);
+	s_mem_write<uint8_t>(_addr,      _data       & 0xFF, _priv);
+	s_mem_write<uint8_t>(_addr + 1, (_data >> 8) & 0xFF, _priv);
+}
+
+template<> inline
+void VGA::s_mem_write<uint32_t>(uint32_t _addr, uint32_t _data, void *_priv)
+{
+	PDEBUGF(LOG_V3, LOG_VGA, "mem w4 0x%04X <- 0x%08X\n", _addr, _data);
+	s_mem_write<uint8_t>(_addr,      _data        & 0xFF, _priv);
+	s_mem_write<uint8_t>(_addr + 1, (_data >> 8)  & 0xFF, _priv);
+	s_mem_write<uint8_t>(_addr + 2, (_data >> 16) & 0xFF, _priv);
+	s_mem_write<uint8_t>(_addr + 3, (_data >> 24) & 0xFF, _priv);
 }
 
 inline void VGA::set_all_tiles(bool _value)

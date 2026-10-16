@@ -26,8 +26,8 @@
 #include <chrono>
 #include <SDL.h>
 
-#define VGA_MAX_XRES 832
-#define VGA_MAX_YRES 600
+#define VGA_MAX_XRES 1056
+#define VGA_MAX_YRES 800
 #define VGA_MAX_HFREQ 0 //31.5 TODO add ini file setting
 
 #define VGA_X_TILESIZE 16 // should be divisible by 2

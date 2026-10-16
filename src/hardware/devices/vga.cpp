@@ -112,7 +112,6 @@ void VGA::install()
 {
 	IODevice::install();
 	g_machine.register_irq(VGA_IRQ, name());
-	m_memory = new uint8_t[m_memsize];
 	m_rom = new uint8_t[0x10000];
 	m_timer_id = g_machine.register_timer(nullptr, name());
 	/*
@@ -132,6 +131,26 @@ void VGA::install()
 
 void VGA::config_changed()
 {
+	if(m_memory) {
+		delete[] m_memory;
+		m_memory = nullptr;
+	}
+	uint32_t new_memsize;
+	try {
+		new_memsize = g_program.config().try_int(VGA_SECTION, VGA_MEMSIZE);
+	} catch(std::exception &) {
+		new_memsize = default_memsize_kb();
+	}
+	// vram goes from 256K to 4M in multiples of 256K
+	m_memsize = std::max(256u, new_memsize);
+	m_memsize = std::min(new_memsize, 4096u);
+	m_memsize -= m_memsize % 256;
+	PINFOF(LOG_V0, LOG_VGA, "VRAM size: %d KB\n", m_memsize);
+	m_memsize *= KEBIBYTE;
+	m_memory = new uint8_t[m_memsize];
+	m_planesize = m_memsize >> 2;
+	PINFOF(LOG_V2, LOG_VGA, "   planes: 4 x %d bytes\n", m_planesize);
+
 	const int video_timings[8][3] = {
 		//B   W   D
 		{10, 20, 40 }, // Slow 8-bit
@@ -228,19 +247,18 @@ void VGA::reset(unsigned _type)
 		m_s.attr_ctrl.set_registers(VGA_AttrCtrl::modes[0x03]);
 		m_s.attr_ctrl.address.IPAS = 1;
 		m_s.gfx_ctrl.set_registers(VGA_GfxCtrl::modes[0x03]);
-		m_s.gfx_ctrl.memory_offset = 0xB8000;
-		m_s.gfx_ctrl.memory_aperture = 0x8000;
 		m_s.sequencer.set_registers(VGA_Sequencer::modes[0x03]);
 		m_s.dac.state = 0x01;
 		m_s.dac.pel_mask = 0xff;
 
-		// TODO this stuff should be removed until VBE support is added
-		m_s.plane_offset = 0;
-		m_s.plane_shift = 16;
+		m_s.memory_offset = 0xB8000;
+		m_s.memory_aperture = 0x8000;
+		m_s.memory_bank = 0;
+
 		m_s.dac_shift = 2;
-		
+
 		m_stats = {};
-		
+
 		m_s.render_mode = VGA_RENDER_FRAME;
 	}
 	
@@ -355,8 +373,7 @@ void VGA::restore_state(StateBuf &_state)
 
 void VGA::update_mem_mapping()
 {
-	g_memory.resize_mapping(m_mem_mapping, m_s.gfx_ctrl.memory_offset,
-		m_s.gfx_ctrl.memory_aperture);
+	g_memory.resize_mapping(m_mem_mapping, m_s.memory_offset, m_s.memory_aperture);
 	g_memory.set_mapping_funcs(m_mem_mapping,
 		VGA::s_mem_read<uint8_t>,
 		VGA::s_mem_read<uint16_t>,
@@ -367,13 +384,14 @@ void VGA::update_mem_mapping()
 		nullptr,
 		this);
 	PDEBUGF(LOG_V1, LOG_VGA, "memory mapping: 0x%X .. 0x%X\n",
-		m_s.gfx_ctrl.memory_offset,
-		m_s.gfx_ctrl.memory_offset+m_s.gfx_ctrl.memory_aperture-1);
-	
-	m_memory_planes[0] = &m_memory[(0 << m_s.plane_shift) + m_s.plane_offset];
-	m_memory_planes[1] = &m_memory[(1 << m_s.plane_shift) + m_s.plane_offset];
-	m_memory_planes[2] = &m_memory[(2 << m_s.plane_shift) + m_s.plane_offset];
-	m_memory_planes[3] = &m_memory[(3 << m_s.plane_shift) + m_s.plane_offset];
+		m_s.memory_offset,
+		m_s.memory_offset + m_s.memory_aperture - 1);
+
+	assert(m_planesize >= 0x10000);
+	m_memory_planes[0] = &m_memory[0 * m_planesize];
+	m_memory_planes[1] = &m_memory[1 * m_planesize];
+	m_memory_planes[2] = &m_memory[2 * m_planesize];
+	m_memory_planes[3] = &m_memory[3 * m_planesize];
 }
 
 void VGA::load_ROM(const std::string &_filename)
@@ -403,6 +421,18 @@ void VGA::reset_tiles()
 	m_num_x_tiles = m_s.vmode.imgw / VGA_X_TILESIZE + ((m_s.vmode.imgw % VGA_X_TILESIZE) > 0);
 	m_tile_dirty.resize(uint32_t(m_num_x_tiles * m_s.vmode.yres) + 1);
 	redraw_all();
+}
+
+double VGA::clock_freq_hz() const
+{
+	switch(m_s.gen_regs.misc_output.CS & 3) {
+		case 0:
+			return 25175000.0;
+		case 1:
+		default:
+			return 28322000.0;
+	}
+	assert(false);
 }
 
 void VGA::calculate_timings()
@@ -502,16 +532,8 @@ void VGA::calculate_timings()
 
 	// DOT CLOCK FREQUENCIES
 
-	double clock;
-	switch(m_s.gen_regs.misc_output.CS & 3) {
-	case 0:
-		clock = 25175000.0;
-		break;
-	case 1:
-	default:
-		clock = 28322000.0;
-		break;
-	}
+	double clock = clock_freq_hz();
+
 	m_s.timings.clock = clock;
 
 	// Adjust the horizontal frequency if in pixel doubling mode
@@ -649,7 +671,70 @@ void VGA::update_video_mode()
 	}
 
 	// VIDEO MODE
+	update_rendering_mode();
 
+	if(m_use_overscan) {
+		m_s.vmode.overscan.left = m_s.timings.overscan.left * m_s.timings.cwidth;
+		m_s.vmode.overscan.right = m_s.timings.overscan.right * m_s.timings.cwidth;
+		m_s.vmode.overscan.top = m_s.timings.overscan.top;
+		m_s.vmode.overscan.bottom = m_s.timings.overscan.bottom;
+		m_s.vmode.overscan.present = true;
+	
+		m_s.vmode.framew = m_s.vmode.overscan.left + m_s.vmode.xres + m_s.vmode.overscan.right;
+		// There are some rarely used modes (eg: mode Q 256x256x256) that need proper blank area 
+		// calculation to keep the correct aspect ratio. Because we only care about overscan border,
+		// to compensate we force a minimum frame width, the display will then keep the image 
+		// ratio while centering it. It's a hack but it's enough for such edge cases.
+		int minw = (m_s.vmode.overscan.left ? 8 : 0) + 640 + (m_s.vmode.overscan.right ? 8 : 0);
+		if(m_s.timings.hfreq < 32.0 && m_s.vmode.framew < minw) {
+			m_s.vmode.framew = minw;
+		}
+		m_s.vmode.frameh = m_s.timings.vblank_skip + 
+				m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
+	} else {
+		m_s.vmode.overscan.left = 0;
+		m_s.vmode.overscan.right = 0;
+		m_s.vmode.overscan.top = 0;
+		m_s.vmode.overscan.bottom = 0;
+		m_s.vmode.overscan.present = false;
+
+		m_s.vmode.framew = m_s.vmode.xres;
+		m_s.vmode.frameh = m_s.vmode.yres;
+	}
+
+	// some sanity checks
+	unsigned height = m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
+	unsigned top_blank = m_s.vmode.frameh - height;
+	assert(m_s.vmode.frameh >= height);
+	assert(top_blank <= m_s.timings.vblank_skip);
+
+	if(!(oldmode == m_s.vmode)) {
+		if(!m_s.sequencer.clocking.SO) {
+			if(m_s.vmode.mode == VGA_M_TEXT) {
+				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
+					m_s.vmode.imgw, m_s.vmode.imgh, current_video_mode_string(),
+					m_s.vmode.textcols, m_s.vmode.textrows,
+					m_s.vmode.cwidth, m_s.vmode.cheight);
+			} else {
+				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s\n",
+					m_s.vmode.imgw, m_s.vmode.imgh, current_video_mode_string());
+				PDEBUGF(LOG_V1, LOG_VGA, "renderer: %s\n",
+					m_s.render_mode==VGA_RENDER_LINE?"scanlines":"frame");
+			}
+		}
+
+		reset_tiles();
+		m_display->lock();
+		m_display->set_mode(m_s.vmode, m_s.timings);
+		m_display->unlock();
+
+		m_line_data_buf[0].resize(m_s.vmode.imgw);
+		m_line_data_buf[1].resize(m_s.vmode.imgw);
+	}
+}
+
+void VGA::update_rendering_mode()
+{
 	m_s.vmode.imgw = m_s.vmode.xres;
 	m_s.vmode.imgh = m_s.vmode.yres;
 	if(m_s.gfx_ctrl.misc.GM) {
@@ -734,65 +819,6 @@ void VGA::update_video_mode()
 		m_s.render_mode = VGA_RENDER_FRAME;
 		m_renderer = nullptr;
 	}
-
-	if(m_use_overscan) {
-		m_s.vmode.overscan.left = m_s.timings.overscan.left * m_s.timings.cwidth;
-		m_s.vmode.overscan.right = m_s.timings.overscan.right * m_s.timings.cwidth;
-		m_s.vmode.overscan.top = m_s.timings.overscan.top;
-		m_s.vmode.overscan.bottom = m_s.timings.overscan.bottom;
-		m_s.vmode.overscan.present = true;
-	
-		m_s.vmode.framew = m_s.vmode.overscan.left + m_s.vmode.xres + m_s.vmode.overscan.right;
-		// There are some rarely used modes (eg: mode Q 256x256x256) that need proper blank area 
-		// calculation to keep the correct aspect ratio. Because we only care about overscan border,
-		// to compensate we force a minimum frame width, the display will then keep the image 
-		// ratio while centering it. It's a hack but it's enough for such edge cases.
-		int minw = (m_s.vmode.overscan.left ? 8 : 0) + 640 + (m_s.vmode.overscan.right ? 8 : 0);
-		if(m_s.timings.hfreq < 32.0 && m_s.vmode.framew < minw) {
-			m_s.vmode.framew = minw;
-		}
-		m_s.vmode.frameh = m_s.timings.vblank_skip + 
-				m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
-	} else {
-		m_s.vmode.overscan.left = 0;
-		m_s.vmode.overscan.right = 0;
-		m_s.vmode.overscan.top = 0;
-		m_s.vmode.overscan.bottom = 0;
-		m_s.vmode.overscan.present = false;
-
-		m_s.vmode.framew = m_s.vmode.xres;
-		m_s.vmode.frameh = m_s.vmode.yres;
-	}
-
-	// some sanity checks
-	unsigned height = m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
-	unsigned top_blank = m_s.vmode.frameh - height;
-	assert(m_s.vmode.frameh >= height);
-	assert(top_blank <= m_s.timings.vblank_skip);
-
-	if(!(oldmode == m_s.vmode)) {
-		if(!m_s.sequencer.clocking.SO) {
-			if(m_s.vmode.mode == VGA_M_TEXT) {
-				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s %ux%u %ux%u\n",
-					m_s.vmode.imgw, m_s.vmode.imgh, current_video_mode_string(),
-					m_s.vmode.textcols, m_s.vmode.textrows,
-					m_s.vmode.cwidth, m_s.vmode.cheight);
-			} else {
-				PDEBUGF(LOG_V1, LOG_VGA, "mode: %ux%u %s\n",
-					m_s.vmode.imgw, m_s.vmode.imgh, current_video_mode_string());
-				PDEBUGF(LOG_V1, LOG_VGA, "renderer: %s\n",
-					m_s.render_mode==VGA_RENDER_LINE?"scanlines":"frame");
-			}
-		}
-
-		reset_tiles();
-		m_display->lock();
-		m_display->set_mode(m_s.vmode, m_s.timings);
-		m_display->unlock();
-
-		m_line_data_buf[0].resize(m_s.vmode.imgw);
-		m_line_data_buf[1].resize(m_s.vmode.imgw);
-	}
 }
 
 double VGA::current_scanline()
@@ -844,8 +870,10 @@ double VGA::current_scanline(bool &disp_, bool &hretr_, bool &vretr_)
 
 #if LOG_DEBUG_MESSAGES
 #define VGA_LOG_READS true &&
+#define VGA_LOG_ISR false
 #else
 #define VGA_LOG_READS
+#define VGA_LOG_ISR
 #endif
 
 uint16_t VGA::read(uint16_t _address, unsigned _io_len)
@@ -853,7 +881,9 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 	UNUSED(_io_len);
 	uint8_t retval = 0;
 
-	VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "r %03Xh ", _address);
+	if(VGA_LOG_ISR || _address != 0x03da) {
+		VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "r %03Xh ", _address);
+	}
 
 	if((_address >= 0x03b0) && (_address <= 0x03bf) && (m_s.gen_regs.misc_output.IOS)) {
 		VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "mono addr in color mode -> 0xFF\n");
@@ -867,10 +897,14 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 	switch(_address) {
 		case 0x0100: // adapter ID low byte
 		case 0x0101: // adapter ID high byte
+			retval = adapter_id(_address & 1);
+			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "POS register %d -> 0x%02X\n", _address & 7, retval);
+			break;
+
 		case 0x0103:
 		case 0x0104:
 		case 0x0105:
-			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "POS register %d-> 0x00\n", _address&7);
+			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "POS register %d -> 0x00\n", _address & 7);
 			retval = 0;
 			break;
 
@@ -885,7 +919,9 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 		case 0x03ba: // Input Status 1 (monochrome emulation modes)
 		case 0x03da: // Input Status 1 (color emulation modes)
 		{
-			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "ISR 1          -> ");
+			if(VGA_LOG_ISR) {
+				VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "ISR 1          -> ");
+			}
 
 			// needed to pass the VGA BIOS self-test:
 			static uint8_t sys_diag = 0;
@@ -912,12 +948,15 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 				mode = "vret";
 			}
 
-			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "0x%02X %s line=%.2f\n", retval, mode, scanline);
+			if(VGA_LOG_ISR) {
+				VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "0x%02X %s line=%.2f\n", retval, mode, scanline);
+			}
 
 			// reading this port resets the attribute controller flip-flop to address mode
 			m_s.attr_ctrl.flip_flop = false;
 			break;
 		}
+
 		case 0x03c0: // Attribute Controller
 			retval = m_s.attr_ctrl.address;
 			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "ATTR CTRL ADDR  -> 0%02X\n", retval);
@@ -948,6 +987,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "ISR 0          -> 0x%02X\n", retval);
 			break;
 		}
+
 		case 0x03c3: // VGA Enable Register
 			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "VGA ENABLE     -> 0%02X\n", m_s.gen_regs.video_enable);
 			retval = m_s.gen_regs.video_enable;
@@ -1029,7 +1069,7 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 
 		case 0x03cf: // Graphics Controller Registers 00..08
 			retval = m_s.gfx_ctrl;
-			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "CTRL REG[%02x]    -> 0x%02X %s\n",
+			VGA_LOG_READS PDEBUGF(LOG_V2, LOG_VGA, "CTRL REG[%02x]   -> 0x%02X %s\n",
 					m_s.gfx_ctrl.address, retval, (const char*)m_s.gfx_ctrl);
 			break;
 
@@ -1057,18 +1097,24 @@ uint16_t VGA::read(uint16_t _address, unsigned _io_len)
 	return retval;
 }
 
+#if LOG_DEBUG_MESSAGES
+#define VGA_LOG_WRITES true &&
+#else
+#define VGA_LOG_WRITES
+#endif
+
 void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 {
 	UNUSED(_io_len);
 
-	PDEBUGF(LOG_V2, LOG_VGA, "w %03Xh ", _address);
+	VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "w %03Xh ", _address);
 
 	if((_address >= 0x03b0) && (_address <= 0x03bf) && (m_s.gen_regs.misc_output.IOS)) {
-		PDEBUGF(LOG_V2, LOG_VGA, "mono emulation addr in color mode, ignored\n");
+		VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "mono emulation addr in color mode, ignored\n");
 		return;
 	}
 	if((_address >= 0x03d0) && (_address <= 0x03df) && (!m_s.gen_regs.misc_output.IOS)) {
-		PDEBUGF(LOG_V2, LOG_VGA, "color addr in mono emulation, ignored\n");
+		VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "color addr in mono emulation, ignored\n");
 		return;
 	}
 
@@ -1078,20 +1124,21 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	switch(_address) {
 		case 0x0102:
 			m_s.gen_regs.video_enable = _value & 1;
-			PDEBUGF(LOG_V2, LOG_VGA, "POS register 2 <- 0x%02X sleep=%d\n", _value, m_s.gen_regs.video_enable);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "POS register 2 <- 0x%02X sleep=%d\n", _value, m_s.gen_regs.video_enable);
 			break;
+
 		case 0x0103:
 		case 0x0104:
 		case 0x0105:
-			PDEBUGF(LOG_V2, LOG_VGA, "POS register %d <- 0x%02X ignored\n", _address&7, _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "POS register %d <- 0x%02X ignored\n", _address&7, _value);
 			break;
 
 		case 0x03ba: // Feature Control (monochrome emulation modes)
-			PDEBUGF(LOG_V2, LOG_VGA, "FEATURE CTRL   <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "FEATURE CTRL   <- 0x%02X\n", _value);
 			break;
 
 		case 0x03c0: // Attribute Controller
-			PDEBUGF(LOG_V2, LOG_VGA, "ATTR CTRL");
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "ATTR CTRL");
 			if(!m_s.attr_ctrl.flip_flop) {
 				// address mode
 				bool prev_ipas = m_s.attr_ctrl.address.IPAS;
@@ -1103,13 +1150,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				if(prev_ipas != m_s.attr_ctrl.address.IPAS) {
 					needs_redraw = true;
 				}
-				PDEBUGF(LOG_V2, LOG_VGA, "      <- 0x%02X Address [%s]\n",
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "      <- 0x%02X Address [%s]\n",
 					_value, (const char*)m_s.attr_ctrl.address);
 			} else {
 				// data-write mode
-				PDEBUGF(LOG_V2, LOG_VGA, "[%02x]  <- 0x%02X", m_s.attr_ctrl.address.index, _value);
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "[%02x]  <- 0x%02X", m_s.attr_ctrl.address.index, _value);
 				if(m_s.attr_ctrl.address.index >= ATTC_REGCOUNT) {
-					PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
+					VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
 					return;
 				}
 				uint8_t oldval = m_s.attr_ctrl;
@@ -1141,14 +1188,14 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					}
 					m_s.attr_ctrl = _value;
 				}
-				PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.attr_ctrl);
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.attr_ctrl);
 			}
 			m_s.attr_ctrl.flip_flop = !m_s.attr_ctrl.flip_flop;
 			break;
 
 		case 0x03c2: // Miscellaneous Output Register
 			m_s.gen_regs.misc_output = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, "MISC OUTPUT    <- 0x%02X [%s]\n", _value,
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "MISC OUTPUT    <- 0x%02X [%s]\n", _value,
 				(const char*)m_s.gen_regs.misc_output
 			);
 			calculate_timings();
@@ -1157,23 +1204,23 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		case 0x03c3: // VGA enable
 			// bit0: enables VGA display if set
 			m_s.gen_regs.video_enable = _value & 0x01;
-			PDEBUGF(LOG_V2, LOG_VGA, "VGA ENABLE     <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "VGA ENABLE     <- 0x%02X\n", _value);
 			break;
 
 		case 0x03c4: // Sequencer Address Register
-			PDEBUGF(LOG_V2, LOG_VGA, "SEQ ADDRESS    <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "SEQ ADDRESS    <- 0x%02X\n", _value);
 			m_s.sequencer.address = _value;
 			break;
 
 		case 0x03c5: { // Sequencer Registers
-			PDEBUGF(LOG_V2, LOG_VGA, "SEQ REG[%02x]    <- 0x%02X", m_s.sequencer.address, _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "SEQ REG[%02x]    <- 0x%02X", m_s.sequencer.address, _value);
 			if(m_s.sequencer.address >= SEQ_REGCOUNT) {
-				PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
 				return;
 			}
 			uint8_t oldval = m_s.sequencer;
 			m_s.sequencer = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.sequencer);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.sequencer);
 			switch (m_s.sequencer.address) {
 				case SEQ_RESET:
 					if(((oldval & SEQ_ASR) == 1) && (m_s.sequencer.reset.ASR == 0)) {
@@ -1188,7 +1235,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					if(bool(oldval & SEQ_SO) != m_s.sequencer.clocking.SO) {
 						if(prev_SO != m_s.sequencer.clocking.SO)  {
 							needs_redraw = true;
-							PDEBUGF(LOG_V2, LOG_VGA, "Screen %s\n", m_s.sequencer.clocking.SO ? "off" : "on");
+							VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "Screen %s\n", m_s.sequencer.clocking.SO ? "off" : "on");
 						}
 						prev_SO = m_s.sequencer.clocking.SO;
 						oldval &= ~SEQ_SO;
@@ -1212,8 +1259,17 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						0x0000, 0x4000, 0x8000, 0xc000,
 						0x2000, 0x6000, 0xa000, 0xe000
 					};
+
+					if(charmap_offset[charmapB] != m_s.charmap_address[0]) {
+						PDEBUGF(LOG_V0, LOG_VGA, "Character map 0 = 0x%04X\n", charmap_offset[charmapB]);
+					}
 					m_s.charmap_address[0] = charmap_offset[charmapB];
+
+					if(charmap_offset[charmapA] != m_s.charmap_address[1]) {
+						PDEBUGF(LOG_V0, LOG_VGA, "Character map 1 = 0x%04X\n", charmap_offset[charmapA]);
+					}
 					m_s.charmap_address[1] = charmap_offset[charmapA];
+
 					charmap_update = true;
 					break;
 				}
@@ -1222,20 +1278,20 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		}
 
 		case 0x03c6: // PEL mask
-			PDEBUGF(LOG_V2, LOG_VGA, "PEL MASK       <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "PEL MASK       <- 0x%02X\n", _value);
 			m_s.dac.pel_mask = _value;
 			// TODO This register is AND'd with the palette index sent for each dot.
 			break;
 
 		case 0x03c7: // PEL address, read mode
-			PDEBUGF(LOG_V2, LOG_VGA, "PEL ADDR read  <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "PEL ADDR read  <- 0x%02X\n", _value);
 			m_s.dac.read_data_register = _value;
 			m_s.dac.read_data_cycle = 0;
 			m_s.dac.state = 0x03;
 			break;
 
 		case 0x03c8: // PEL address write mode
-			PDEBUGF(LOG_V2, LOG_VGA, "PEL ADDR write <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "PEL ADDR write <- 0x%02X\n", _value);
 			m_s.dac.write_data_register = _value;
 			m_s.dac.write_data_cycle = 0;
 			m_s.dac.state = 0x00;
@@ -1243,7 +1299,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 
 		case 0x03c9: { // PEL Data Register, colors 00..FF
 			uint8_t reg = m_s.dac.write_data_register;
-			PDEBUGF(LOG_V2, LOG_VGA, "PEL DATA[%03u:%u]<- 0x%02X", reg, m_s.dac.write_data_cycle, _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "PEL DATA[%03u:%u]<- 0x%02X", reg, m_s.dac.write_data_cycle, _value);
 			switch (m_s.dac.write_data_cycle) {
 				case 0:
 					m_s.dac.palette[reg].red = _value;
@@ -1261,13 +1317,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 					m_display->palette_change(reg, r,g,b);
 					m_display->unlock();
 					needs_redraw = true;
-					
-					PDEBUGF(LOG_V2, LOG_VGA, " palette[%u] = (%u,%u,%u)", reg,r,g,b);
+
+					VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " palette[%u] = (%u,%u,%u)", reg,r,g,b);
 					m_stats.last_pal_line = current_scanline();
 					break;
 				}
 			}
-			PDEBUGF(LOG_V2, LOG_VGA, "\n");
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "\n");
 			m_s.dac.write_data_cycle++;
 			if(m_s.dac.write_data_cycle >= 3) {
 				m_s.dac.write_data_cycle = 0;
@@ -1275,15 +1331,16 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			}
 			break;
 		}
+
 		case 0x03ce: // Graphics Controller Address Register
-			PDEBUGF(LOG_V2, LOG_VGA, "CTRL ADDRESS   <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "CTRL ADDRESS   <- 0x%02X\n", _value);
 			m_s.gfx_ctrl.address = _value;
 			break;
 
 		case 0x03cf: // Graphics Controller Registers
-			PDEBUGF(LOG_V2, LOG_VGA, "CTRL REG[%x]    <- 0x%02X ", m_s.gfx_ctrl.address, _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "CTRL REG[%x]    <- 0x%02X ", m_s.gfx_ctrl.address, _value);
 			if(m_s.gfx_ctrl.address >= GFXC_REGCOUNT) {
-				PDEBUGF(LOG_V2, LOG_VGA, "invalid register, ignored\n");
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "invalid register, ignored\n");
 				return;
 			}
 			if(m_s.gfx_ctrl.address == GFXC_MISC) {
@@ -1291,26 +1348,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				uint8_t prev_memory_mapping = m_s.gfx_ctrl.misc.MM;
 
 				m_s.gfx_ctrl.misc = _value;
-				PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
 
-				switch(m_s.gfx_ctrl.misc.MM) {
-					case MM_A0000_128K: // 0xA0000 .. 0xBFFFF
-						m_s.gfx_ctrl.memory_offset = 0xA0000;
-						m_s.gfx_ctrl.memory_aperture = 0x20000;
-						break;
-					case MM_A0000_64K: // 0xA0000 .. 0xAFFFF, EGA/VGA graphics modes
-						m_s.gfx_ctrl.memory_offset = 0xA0000;
-						m_s.gfx_ctrl.memory_aperture = 0x10000;
-						break;
-					case MM_B0000_32K: // 0xB0000 .. 0xB7FFF, Monochrome modes
-						m_s.gfx_ctrl.memory_offset = 0xB0000;
-						m_s.gfx_ctrl.memory_aperture = 0x8000;
-						break;
-					case MM_B8000_32K: // 0xB8000 .. 0xBFFFF, CGA modes
-						m_s.gfx_ctrl.memory_offset = 0xB8000;
-						m_s.gfx_ctrl.memory_aperture = 0x8000;
-						break;
-				}
+				m_s.gfx_ctrl.get_memory_conf(
+					m_s.memory_offset,
+					m_s.memory_aperture,
+					m_s.memory_bank
+				);
 				if(prev_memory_mapping != m_s.gfx_ctrl.misc.MM) {
 					update_mem_mapping();
 				}
@@ -1324,13 +1368,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				uint8_t oldvalue = m_s.gfx_ctrl;
 				
 				m_s.gfx_ctrl = _value;
-				PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "%s\n", (const char*)m_s.gfx_ctrl);
 				
 				if(m_s.gfx_ctrl.address == GFXC_GFX_MODE && (
 					 (m_s.gfx_ctrl.gfx_mode.C256) != bool(oldvalue & GFXC_C256)
 				  || (m_s.gfx_ctrl.gfx_mode.SR)   != bool(oldvalue & GFXC_SR)
 				)) {
-					PDEBUGF(LOG_V1, LOG_VGA, "mode setting: GFXC_GFX_MODE\n");
+					VGA_LOG_WRITES PDEBUGF(LOG_V1, LOG_VGA, "mode setting: GFXC_GFX_MODE\n");
 					update_video_mode();
 				}
 			}
@@ -1341,7 +1385,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		case 0x03d0: // CGA mirror port of 3d4
 		case 0x03d2: // CGA mirror port of 3d4
 			m_s.CRTC.address = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, "CRTC ADDRESS   <- 0x%02X\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "CRTC ADDRESS   <- 0x%02X\n", _value);
 			break;
 
 		case 0x03b5: // CRTC Registers (monochrome emulation modes)
@@ -1349,24 +1393,24 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		case 0x03d1: // CGA mirror port of 3d5
 		case 0x03d3: // CGA mirror port of 3d5
 		{
-			PDEBUGF(LOG_V2, LOG_VGA, "CRTC REG[%02x]   <- 0x%02X", m_s.CRTC.address, _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "CRTC REG[%02x]   <- 0x%02X", m_s.CRTC.address, _value);
 			if(m_s.CRTC.address >= CRTC_REGCOUNT) {
-				PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
 				return;
 			}
 			uint8_t oldvalue = m_s.CRTC;
 			if(m_s.CRTC.is_write_protected() && (m_s.CRTC.address <= CRTC_OVERFLOW)) {
-				PDEBUGF(LOG_V2, LOG_VGA, " write protected");
+				VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " write protected");
 				if(m_s.CRTC.address == CRTC_OVERFLOW) {
 					// The line compare bit in the Overflow register is not protected.
-					PDEBUGF(LOG_V2, LOG_VGA, ", except LC8");
+					VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, ", except LC8");
 					_value = (oldvalue & ~CRTC_LC8) | (_value & CRTC_LC8);
 				} else {
 					_value = oldvalue;
 				}
 			}
 			m_s.CRTC = _value;
-			PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.CRTC);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.CRTC);
 			if(_value != oldvalue) {
 				switch(m_s.CRTC.address) {
 					case CRTC_HTOTAL:          // 0x00
@@ -1418,7 +1462,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							   bool(oldvalue & CRTC_DSC) != m_s.CRTC.max_scanline.DSC
 							||     (oldvalue & CRTC_MSL) != m_s.CRTC.max_scanline.MSL
 						) {
-							PDEBUGF(LOG_V1, LOG_VGA, "mode setting: CRTC_MAX_SCANLINE\n");
+							VGA_LOG_WRITES PDEBUGF(LOG_V1, LOG_VGA, "mode setting: CRTC_MAX_SCANLINE\n");
 							update_video_mode();
 						}
 						break;
@@ -1432,7 +1476,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						break;
 					case CRTC_STARTADDR_HI:    // 0x0C
 					case CRTC_STARTADDR_LO:    // 0x0D
-						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
+						VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
 						m_stats.last_saddr_line = current_scanline();
 						break;
@@ -1445,7 +1489,7 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 		}
 
 		case 0x03da: // Feature Control (color emulation modes)
-			PDEBUGF(LOG_V2, LOG_VGA, "FEATURE CTRL   <- 0x%02X ignored\n", _value);
+			VGA_LOG_WRITES PDEBUGF(LOG_V2, LOG_VGA, "FEATURE CTRL   <- 0x%02X ignored\n", _value);
 			break;
 
 		default:
@@ -1455,8 +1499,8 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	}
 
 	if(charmap_update) {
-		m_display->set_text_charmap(0, &m_memory[0x20000 + m_s.charmap_address[0]]);
-		m_display->set_text_charmap(1, &m_memory[0x20000 + m_s.charmap_address[1]]);
+		m_display->set_text_charmap(0, &m_memory_planes[2][m_s.charmap_address[0]]);
+		m_display->set_text_charmap(1, &m_memory_planes[2][m_s.charmap_address[1]]);
 		m_display->enable_AB_charmaps(m_s.charmap_address[0] != m_s.charmap_address[1]);
 		m_s.needs_update = true;
 	}
@@ -1514,7 +1558,7 @@ unsigned VGA::draw_blank_line(unsigned _scanline)
 	return img_pixels + ovsc_pixels;
 }
 
-unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_ega(unsigned _scanline, uint32_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
 {
 	// Multiplane 16 colour mode, standard EGA/VGA format.
 	// Output data in serial fashion with each display plane
@@ -1549,7 +1593,7 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		{
 			uint16_t pixel_x = img_x + pan;
 			uint8_t  bit_no = 7 - (pixel_x % 8);
-			uint16_t byte_offset = _row_addr_cnt + pixel_x / 8;
+			uint32_t byte_offset = _row_addr_cnt + pixel_x / 8;
 
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, 0);
 
@@ -1604,7 +1648,7 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 	return img_pixels + ovsc_pixels;
 }
 
-unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint32_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
 {
 	// Packed pixel 256 colour mode.
 	// Output the data eight bits at a time from the 4 bit plane
@@ -1669,7 +1713,7 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 	return img_pixels + ovsc_pixels;
 }
 
-unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
+unsigned VGA::draw_gfx_cga(unsigned _scanline, uint32_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
 {
 	// Output the data in a CGA-compatible 640x200x2 and 320x200x4 color graphics
 	// modes (modes 4, 5, and 6).
@@ -1730,7 +1774,7 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,dot_x++)
 		{
 			uint32_t pixel_x = dot_x + pan;
-			uint16_t byte_offset = _row_addr_cnt + (pixel_x / (pix_per_byte*planes));
+			uint32_t byte_offset = _row_addr_cnt + (pixel_x / (pix_per_byte*planes));
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, line_y);
 
 			uint8_t byte = m_memory_planes[(pixel_x/pix_per_byte) & plane_mask][byte_offset];
@@ -1867,10 +1911,10 @@ void VGA::text_update()
 		cursor_x = ((cursor_address - tm_info.start_address)/2) % m_s.vmode.textcols;
 		cursor_y = ((cursor_address - tm_info.start_address)/2) / m_s.vmode.textcols;
 	}
-	m_display->text_update(m_s.text_snapshot, &m_memory[tm_info.start_address], cursor_x, cursor_y, &tm_info);
+	m_display->text_update(m_s.text_snapshot, &m_memory_planes[0][tm_info.start_address], cursor_x, cursor_y, &tm_info);
 	if(m_s.needs_update) {
 		// screen updated, copy new video memory contents into text snapshot
-		memcpy(m_s.text_snapshot, &m_memory[tm_info.start_address], uint32_t(tm_info.line_offset*m_s.vmode.textrows));
+		memcpy(m_s.text_snapshot, &m_memory_planes[0][tm_info.start_address], uint32_t(tm_info.line_offset*m_s.vmode.textrows));
 	}
 
 	if(m_s.force_redraw_overs) {
@@ -1948,7 +1992,7 @@ void VGA::frame_start(uint64_t _time)
 {
 	// this is time 0, the start of the 1st scan line
 	
-	PDEBUGF(LOG_V2, LOG_VGA, "frame start\n");
+	PDEBUGF(LOG_V5, LOG_VGA, "frame start\n");
 
 	m_stats.updated_pix = m_cur_upd_pix;
 	m_stats.frame_cnt++;
@@ -2060,7 +2104,7 @@ void VGA::vertical_retrace(uint64_t _time)
 
 	UNUSED(_time);
 
-	PDEBUGF(LOG_V2, LOG_VGA, "vertical retrace\n");
+	PDEBUGF(LOG_V5, LOG_VGA, "vertical retrace\n");
 
 	if(m_dbg_frame_step) {
 		g_machine.cmd_pause_imm(false);
@@ -2126,26 +2170,34 @@ template<>
 uint32_t VGA::s_mem_read<uint8_t>(uint32_t _addr, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
-	
-	
-	assert(_addr >= me.m_s.gfx_ctrl.memory_offset && _addr < me.m_s.gfx_ctrl.memory_offset + me.m_s.gfx_ctrl.memory_aperture);
 
-	uint32_t offset = _addr & (me.m_s.gfx_ctrl.memory_aperture - 1);
+	if(_addr < me.m_s.memory_offset || _addr > me.m_s.memory_offset + me.m_s.memory_aperture) {
+		PDEBUGF(LOG_V2, LOG_VGA, "mem r1 0x%04X (out of window)\n", _addr);
+		return 0xFF;
+	}
 
-	PDEBUGF(LOG_V2, LOG_VGA, "mem read 0x%04X\n", offset);
-	
-	uint16_t p_off = offset;
+	uint32_t m_off = _addr & (me.m_s.memory_aperture - 1);
+	uint32_t p_off = m_off;
 	if(me.m_s.gfx_ctrl.misc.GM) {
 		if(me.m_s.sequencer.mem_mode.CH4) {
-			p_off = offset & ~3;
+			p_off = m_off & ~3;
 		} else if(me.m_s.sequencer.mem_mode.OE == 0) {
-			p_off = offset & ~1;
+			p_off = m_off & ~1;
 		}
 	}
+	p_off += me.m_s.memory_bank * (me.m_s.memory_aperture);
+
+	if(p_off >= me.m_planesize) {
+		PDEBUGF(LOG_V2, LOG_VGA, "mem r1 0x%04X [0x%04X] (out of memory)\n", _addr, p_off);
+		return 0xFF;
+	}
+
 	me.m_s.gfx_ctrl.latch[0] = me.m_memory_planes[0][p_off];
 	me.m_s.gfx_ctrl.latch[1] = me.m_memory_planes[1][p_off];
 	me.m_s.gfx_ctrl.latch[2] = me.m_memory_planes[2][p_off];
 	me.m_s.gfx_ctrl.latch[3] = me.m_memory_planes[3][p_off];
+
+	PDEBUGF(LOG_V3, LOG_VGA, "mem r1 0x%04X [0x%04X] -> ", _addr, p_off);
 	
 	// When the Read Mode field (bit 3) is set to 1, the system
 	// reads the results of the comparison of the four memory
@@ -2161,12 +2213,12 @@ uint32_t VGA::s_mem_read<uint8_t>(uint32_t _addr, void *_priv)
 		// memory address (this selection depends on the chain-4 bit in the
 		// Memory Mode register of the sequencer).
 		if(me.m_s.gfx_ctrl.misc.GM && me.m_s.sequencer.mem_mode.CH4) {
-			retval = me.m_s.gfx_ctrl.latch[offset & 3];
+			retval = me.m_s.gfx_ctrl.latch[m_off & 3];
 		} else if(me.m_s.gfx_ctrl.misc.GM && me.m_s.sequencer.mem_mode.OE == 0) {
 			// In odd/even modes, the value can be a binary 00 or 01 to select
 			// the chained maps 0, 1 and the value can be a binary 10 or 11 to
 			// select the chained maps 2, 3.
-			retval = me.m_s.gfx_ctrl.latch[offset & 1];
+			retval = me.m_s.gfx_ctrl.latch[m_off & 1];
 		} else {
 			retval = me.m_s.gfx_ctrl.latch[me.m_s.gfx_ctrl.read_map_select];
 		}
@@ -2194,6 +2246,8 @@ uint32_t VGA::s_mem_read<uint8_t>(uint32_t _addr, void *_priv)
 		retval = ~(latch0 | latch1 | latch2 | latch3);
 	}
 
+	PDEBUGF(LOG_V3, LOG_VGA, "0x%02X\n", retval);
+
 	return retval;
 }
 
@@ -2201,75 +2255,96 @@ template<>
 void VGA::s_mem_write<uint8_t>(uint32_t _addr, uint32_t _value, void *_priv)
 {
 	VGA &me = *(VGA*)_priv;
-	PDEBUGF(LOG_V2, LOG_VGA, "mem write 0x%04X\n", _addr);
 
-	assert((_addr >= me.m_s.gfx_ctrl.memory_offset) && (_addr < me.m_s.gfx_ctrl.memory_offset + me.m_s.gfx_ctrl.memory_aperture));
+	if(_addr < me.m_s.memory_offset || _addr > me.m_s.memory_offset + me.m_s.memory_aperture) {
+		PDEBUGF(LOG_V2, LOG_VGA, "mem w1 0x%04X <- 0x%02X (out of window)\n", _addr, _value);
+		return;
+	}
 
-	_addr &= (me.m_s.gfx_ctrl.memory_aperture - 1);
-	uint8_t new_val[4] = {0,0,0,0};
-	
+	uint32_t m_off = _addr & (me.m_s.memory_aperture - 1);
+	uint32_t p_off = m_off;
+	if(me.m_s.gfx_ctrl.misc.GM) {
+		if(me.m_s.sequencer.mem_mode.CH4) {
+			p_off = m_off & ~3;
+		} else if(me.m_s.sequencer.mem_mode.OE == 0) {
+			p_off = m_off & ~1;
+		}
+	}
+	p_off += me.m_s.memory_bank * (me.m_s.memory_aperture);
+
+	if(p_off >= me.m_planesize) {
+		PDEBUGF(LOG_V2, LOG_VGA, "mem w1 0x%04X [0x%04X] <- 0x%02X (out of memory)\n", _addr, p_off, _value);
+		return;
+	}
+
+	PDEBUGF(LOG_V3, LOG_VGA, "mem w1 0x%04X [0x%04X] <- 0x%02X\n", _addr, p_off, _value);
+
+	uint8_t new_val[4] = { 0, 0, 0, 0 };
 	me.m_s.gfx_ctrl.write_data(_value, new_val);
 
 	// planes update
 	if(me.m_s.gfx_ctrl.misc.GM && me.m_s.sequencer.mem_mode.CH4) {
-		uint8_t plane = _addr & 3;
-		uint16_t offset = _addr & ~3;
-		me.m_memory_planes[plane][offset] = new_val[plane];
+		me.m_memory_planes[m_off & 3][p_off] = new_val[m_off & 3];
 	} else if(me.m_s.gfx_ctrl.misc.GM && me.m_s.sequencer.mem_mode.OE == 0) {
-		bool plane = _addr & 1;
-		uint16_t offset = _addr & ~1;
-		me.m_memory_planes[plane][offset] = new_val[plane];
+		me.m_memory_planes[m_off & 1][p_off] = new_val[m_off & 1];
 	} else {
 		if(me.m_s.sequencer.map_mask.M0E) {
-			me.m_memory_planes[0][_addr] = new_val[0];
+			me.m_memory_planes[0][p_off] = new_val[0];
 		}
 		if(me.m_s.sequencer.map_mask.M1E) {
-			me.m_memory_planes[1][_addr] = new_val[1];
+			me.m_memory_planes[1][p_off] = new_val[1];
 		}
 		if(me.m_s.sequencer.map_mask.M2E) {
 			if(!me.m_s.gfx_ctrl.misc.GM) {
-				uint32_t mapaddr = _addr & 0xe000;
+				uint32_t mapaddr = m_off & 0xe000;
 				if(mapaddr == me.m_s.charmap_address[0] || mapaddr == me.m_s.charmap_address[1]) {
+					PDEBUGF(LOG_V4, LOG_VGA, "  charmap %d @ 0x%04X [0x%04X] <- 0x%02X\n",
+							(mapaddr == me.m_s.charmap_address[0]) ? 0 : 1,
+							mapaddr,
+							(m_off & 0x1fff), new_val[2]);
 					me.m_display->lock();
 					me.m_display->set_text_charbyte(
-							(mapaddr == me.m_s.charmap_address[0])?0:1,
-							(_addr & 0x1fff), new_val[2]);
+							(mapaddr == me.m_s.charmap_address[0]) ? 0 : 1,
+							(m_off & 0x1fff), new_val[2]);
 					me.m_display->unlock();
 				}
 			}
-			me.m_memory_planes[2][_addr] = new_val[2];
+			me.m_memory_planes[2][p_off] = new_val[2];
 		}
 		if(me.m_s.sequencer.map_mask.M3E) {
-			me.m_memory_planes[3][_addr] = new_val[3];
+			me.m_memory_planes[3][p_off] = new_val[3];
 		}
 	}
 	
-	if(me.m_s.vmode.mode != VGA_M_TEXT && me.m_s.render_mode == VGA_RENDER_FRAME && me.m_s.CRTC.latches.line_offset > 0) {
-		// this version does only work for 640x480 mode
-		// and does not take into consideration horizontal pel panning
+	if(me.m_s.vmode.mode == VGA_M_EGA 
+		&& me.m_s.render_mode == VGA_RENDER_FRAME 
+		&& me.m_s.CRTC.latches.line_offset > 0)
+	{
+		// this version works only for planar 640x480 EGA mode and was tested
+		// in Windows 3 only.
+		// it does not take into consideration horizontal pel panning!
 		// TODO still has random problems with splitscreen
-		assert(me.m_s.vmode.mode == VGA_M_EGA);
 		const unsigned pels_per_byte = 2;
 		const unsigned planes = 4;
 		const unsigned scanlines = 1;
 		if(me.m_s.CRTC.latches.line_compare < me.m_s.CRTC.latches.vdisplay_end) {
 			// splitscreen active
-			unsigned y_line = ((_addr / me.m_s.CRTC.latches.line_offset) * scanlines + 
+			unsigned y_line = ((m_off / me.m_s.CRTC.latches.line_offset) * scanlines + 
 					(me.m_s.CRTC.latches.line_compare - me.m_s.timings.vblank_skip)
 					+ 1);
 			if(y_line < me.m_s.vmode.yres) {
-				unsigned x_tileno = ((_addr % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
+				unsigned x_tileno = ((m_off % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
 				if(x_tileno < me.m_num_x_tiles) {
 					me.set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
 					me.m_s.needs_update = true;
 				}
 			}
 		}
-		if(_addr >= me.m_s.CRTC.latches.start_address) {
-			_addr -= me.m_s.CRTC.latches.start_address;
-			unsigned y_line = (_addr / me.m_s.CRTC.latches.line_offset) * scanlines;
+		if(p_off >= me.m_s.CRTC.latches.start_address) {
+			p_off -= me.m_s.CRTC.latches.start_address;
+			unsigned y_line = (p_off / me.m_s.CRTC.latches.line_offset) * scanlines;
 			if(y_line < me.m_s.vmode.yres) {
-				unsigned x_tileno = ((_addr % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
+				unsigned x_tileno = ((p_off % me.m_s.CRTC.latches.line_offset) * (planes*pels_per_byte)) / VGA_X_TILESIZE;
 				if(x_tileno < me.m_num_x_tiles) {
 					me.set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
 					me.m_s.needs_update = true;
@@ -2298,6 +2373,8 @@ const char * VGA::current_video_mode_string()
 				return "VGA 256-Color Chain 4";
 			}
 			return "VGA 256-Color Planar";
+		case VGA_M_SVGA8:
+			return "SVGA 8-bit Packed pixel";
 		case VGA_M_TEXT:
 			return "TEXT";
 		default:
@@ -2381,6 +2458,7 @@ void VGA::state_to_textfile(std::string _filepath)
 	fprintf(file.get(),
 		"mode = %ux%u %s\n"
 		"screen = %ux%u (%ux%u)\n"
+		"  clock = %f MHz\n"
 		"  horiz total = %u chars\n"
 		"  horiz disp end = char %u\n"
 		"  horiz blank start = char %u\n"
@@ -2401,6 +2479,8 @@ void VGA::state_to_textfile(std::string _filepath)
 		m_s.vmode.imgw, m_s.vmode.imgh,
 		current_video_mode_string(),
 		m_s.vmode.xres, m_s.vmode.yres, m_s.vmode.framew, m_s.vmode.frameh,
+
+		m_s.timings.clock / 1'000'000.0,
 
 		m_s.timings.htotal,
 		m_s.timings.hdend,

@@ -57,7 +57,7 @@ struct VGA_GenRegs
 		}
 		operator const char*() const {
 			return register_to_string((uint8_t)(*this),
-			{{1,"IOS"},{1,"ERAM"},{2,"CS"},{1,"PAGE"},{2,"POL"}});
+			{{1,"IOS"},{1,"ERAM"},{2,"CS"},{1,""},{1,"PAGE"},{2,"POL"}});
 		}
 	} misc_output;     // Miscellaneous Output
 

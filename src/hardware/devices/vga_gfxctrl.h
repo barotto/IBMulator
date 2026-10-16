@@ -233,8 +233,6 @@ struct VGA_GfxCtrl
 
 	uint8_t bitmask;           // Index 08h -- Bit Mask
 
-	uint32_t memory_offset;   // current phy start address of video memory
-	uint32_t memory_aperture; // current video memory accessible size
 	uint8_t latch[4];         // data latches
 
 
@@ -252,7 +250,32 @@ struct VGA_GfxCtrl
 	std::array<uint8_t,GFXC_REGCOUNT> get_registers();
 
 	void write_data(uint8_t _value, uint8_t data_[4]);
-	
+
+	void get_memory_conf(uint32_t &offset_, uint32_t &aperture_, uint32_t &bank_) const
+	{
+		bank_ = 0;
+		switch(misc.MM) {
+			case MM_A0000_128K: // 0xA0000 .. 0xBFFFF
+				offset_ = 0xA0000;
+				aperture_ = 0x20000;
+				break;
+			case MM_A0000_64K: // 0xA0000 .. 0xAFFFF, EGA/VGA graphics modes
+				offset_ = 0xA0000;
+				aperture_ = 0x10000;
+				break;
+			case MM_B0000_32K: // 0xB0000 .. 0xB7FFF, Monochrome modes
+				offset_ = 0xB0000;
+				aperture_ = 0x8000;
+				break;
+			case MM_B8000_32K: // 0xB8000 .. 0xBFFFF, CGA modes
+				offset_ = 0xB8000;
+				aperture_ = 0x8000;
+				break;
+			default:
+				break;
+		}
+	}
+
 	// DEBUGGING
 	operator const char*() const { return register_to_string(address); }
 	const char * register_to_string(uint8_t _index) const;

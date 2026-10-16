@@ -337,10 +337,10 @@ const std::string & VGA_CRTC::latches_to_string() const
 	return s;
 }
 
-uint16_t VGA_CRTC::mux_mem_address(uint16_t _row_addr_cnt, uint16_t _row_scan_cnt)
+uint32_t VGA_CRTC::mux_mem_address(uint32_t _row_addr_cnt, uint32_t _row_scan_cnt)
 {
-	uint16_t muxed;
-	
+	uint32_t muxed;
+
 	if(underline.DW) {
 		// doubleword mode
 		muxed = (_row_addr_cnt << 2) | ((_row_addr_cnt >> 14) & 3);
@@ -379,6 +379,6 @@ uint16_t VGA_CRTC::mux_mem_address(uint16_t _row_addr_cnt, uint16_t _row_scan_cn
 		muxed &= ~0x2000;
 		muxed |= (_row_scan_cnt & 1) << 13;
 	}
-	
+
 	return muxed;
 }

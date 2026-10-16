@@ -196,7 +196,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ VGA_SECTION,
-"; Video interface card configuration:\n"
+";       vram: Size of the video RAM memory in KB.\n"
 ";        rom: Path to a binary ROM file to load.\n"
 ";              The PS/1 BIOS won't use it but other BIOSes might require it.\n"
 ";   overscan: Enable overscan borders emulation.\n"
@@ -600,6 +600,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ MEM_RAM_SPEED, MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },
 	{ VGA_SECTION, {
+		{ VGA_MEMSIZE,           MACHINE_CONFIG, PUBLIC_CFGKEY, "auto"},
 		{ VGA_ROM,               MACHINE_CONFIG, PUBLIC_CFGKEY, ""    },
 		{ VGA_OVERSCAN,          MACHINE_CONFIG, PUBLIC_CFGKEY, "yes" },
 		{ VGA_PS_BIT_BUG,        MACHINE_CONFIG, PUBLIC_CFGKEY, "no"  },

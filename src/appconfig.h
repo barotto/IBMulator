@@ -219,6 +219,7 @@ public:
 #define CMOS_IMAGE_SAVE         "image_save"
 
 #define VGA_SECTION             "vga"
+#define VGA_MEMSIZE             "vram"
 #define VGA_ROM                 "rom"
 #define VGA_OVERSCAN            "overscan"
 #define VGA_PS_BIT_BUG          "ps_bit_bug"

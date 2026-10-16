@@ -29,6 +29,8 @@
    - [Sound Cards](#sound-cards)
    - [Reverb, Chorus, Crossfeed](#reverb-chorus-crossfeed)
    - [DSP filters](#dsp-filters)
+ - [Video](#video)
+   - [IBM VGA256C](#ibm-vga256c)
  - [Joystick](#joystick)
  - [Emulation speed adjustments](#emulation-speed-adjustments)
  - [Serial ports](#serial-ports)
@@ -706,6 +708,59 @@ This is the list of available filters with their accepted parameters:
 | BandShelf   | order, fc, bw, gain  |
 
 The implemented DSP filter type is the Butterworth filter, a description of which can be found on [Wikipedia](https://en.wikipedia.org/wiki/Butterworth_filter).
+
+
+## Video
+
+IBMulator can emulate the following video adapters:
+
+ - IBM VGA (PS/1 2011)
+ - IBM VGA256C SuperVGA (PS/1 2121)
+
+### IBM VGA256C
+
+The *IBM VGA256C* (also known as *Speedway*) has no official documentation and the only available drivers are the VESA TSR ones released by IBM for other systems and adapters that use the same chip.
+
+IBMulator has been tested with the VESA TSR only as there's no known application accessing the chip directly.
+
+The known and tested drivers are:
+
+ - IBM PS/2 Model 25SX Graphics Driver VESA TSR (C) 1991,92 IBM Corporation developed for IBM by Tyler Software  
+   Driver version: 1.0  
+   Filename: VESA.EXE
+ - IBM PS/2 VESA Driver for the PS/2 Model 25SX and ThinkPad 700C (C) 1991,92 IBM developed for IBM by Tyler Software  
+   Driver version: 1.5  
+   Filename: 700C120.EXE
+ - IBM SVGA/VGA256C TSR (C) Copyright IBM Corp, 1991, 1993.  
+   Driver version: 2.1  
+   Filename: M95SVGA.EXE
+
+All the available VESA TSR drivers implement VBE 1.2
+
+The combination of video RAM size and driver version determines the available video modes:
+
+| Mode | Resolution | Colors | VRAM req. | Driver req. |
+| ---- | ---------- | ------ | --------- | ----------- |
+| 100h | 640x400    | 256    | 256KB     | v1.0+       |
+| 101h | 640x480    | 256    | 512KB     | v1.0+       |
+| 102h | 800x600    | 16     | 256KB     | v2.1        |
+| 103h | 800x600    | 256    | 512KB     | v2.1        |
+| 104h | 1024x768   | 16     | 512KB     | v2.1        |
+| 105h | 1024x768   | 256    | 1024KB    | v2.1        |
+
+The amount of video RAM, expressed in KB, can be set with:
+```
+[vga]
+vram=512
+```
+
+The VESA TSR Version 2.1 -- released for the PS/2 Server 95 SVGA Adapter/A -- enables all the possible modes under DOS.
+
+The ThinkPad 700C/720C drivers can be used to enable the 640x480x256 mode under Windows 3.1 -- this still depends on the VESA TSR loaded before Windows to function.
+
+*Note*: 132-column x 25-row text mode (present in drivers v1.0 and v2.1 only) is not functional on the real PS/1 2121 and won't work in IBMulator either.
+
+*Note*: the real PS/1 2121 was configured with a 35 MHz RAMDAC and won't go past 640x480 resolution, no matter the driver version.
 
 
 ## Joystick

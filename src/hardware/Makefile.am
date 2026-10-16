@@ -135,6 +135,7 @@ noinst_HEADERS = \
 	devices/vga_gfxctrl.h \
 	devices/vga.h \
 	devices/vgadisplay.h \
+	devices/xga_dispctrl.h \
 	devices/drivefx.h \
 	devices/floppyctrl.h \
 	devices/floppyctrl_raw.h \
