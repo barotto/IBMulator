@@ -85,7 +85,7 @@ libhardware_a_SOURCES = \
 	devices/opl.cpp \
 	devices/opl3.c \
 	devices/adlib.cpp \
-	devices/cf62011bpc.cpp \
+	devices/ibmvga256c.cpp \
 	devices/sblaster.cpp \
 	devices/mpu401.cpp \
 	devices/cdrom_drive.cpp \
@@ -174,7 +174,7 @@ noinst_HEADERS = \
 	devices/opl.h \
 	devices/opl3.h \
 	devices/adlib.h \
-	devices/cf62011bpc.h \
+	devices/ibmvga256c.h \
 	devices/sblaster.h \
 	devices/mpu401.h \
 	devices/cdrom_drive.h \

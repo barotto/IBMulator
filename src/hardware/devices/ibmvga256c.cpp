@@ -56,39 +56,39 @@
  */
 
 #include "ibmulator.h"
-#include "cf62011bpc.h"
+#include "ibmvga256c.h"
 #include "hardware/memory.h"
 #include "hardware/devices.h"
 #include "filesys.h"
 #include <cstring>
 
-IODEVICE_PORTS(CF62011BPC) = {
+IODEVICE_PORTS(IBMVGA256C) = {
 	{ 0x2100, 0x210F, PORT_8BIT|PORT_RW }
 };
 
 
-CF62011BPC::CF62011BPC(Devices *_dev)
+IBMVGA256C::IBMVGA256C(Devices *_dev)
 : VGA(_dev)
 {
 }
 
-CF62011BPC::~CF62011BPC()
+IBMVGA256C::~IBMVGA256C()
 {
 }
 
-void CF62011BPC::install()
+void IBMVGA256C::install()
 {
 	VGA::install();
 	IODevice::install(&VGA::ioports()->at(0), VGA::ioports()->size());
 }
 
-void CF62011BPC::remove()
+void IBMVGA256C::remove()
 {
 	VGA::remove();
 	IODevice::remove(&VGA::ioports()->at(0), VGA::ioports()->size());
 }
 
-void CF62011BPC::reset(unsigned _type)
+void IBMVGA256C::reset(unsigned _type)
 {
 	if(_type == MACHINE_POWER_ON || _type == MACHINE_HARD_RESET) {
 		// Registers are not initialized by soft reset.
@@ -105,7 +105,7 @@ void CF62011BPC::reset(unsigned _type)
 	VGA::reset(_type);
 }
 
-void CF62011BPC::save_state(StateBuf &_state)
+void IBMVGA256C::save_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_VGA, "%s: saving state\n", name());
 
@@ -114,7 +114,7 @@ void CF62011BPC::save_state(StateBuf &_state)
 	VGA::save_state(_state);
 }
 
-void CF62011BPC::restore_state(StateBuf &_state)
+void IBMVGA256C::restore_state(StateBuf &_state)
 {
 	PINFOF(LOG_V1, LOG_VGA, "%s: restoring state\n", name());
 
@@ -123,7 +123,7 @@ void CF62011BPC::restore_state(StateBuf &_state)
 	VGA::restore_state(_state);
 }
 
-double CF62011BPC::clock_freq_hz() const
+double IBMVGA256C::clock_freq_hz() const
 {
 	// from the VESA v2.1 driver
 	switch(m_s.ext_gfx.regs[IBM_CLOCK_SEL] & 0x3) {
@@ -150,19 +150,19 @@ double CF62011BPC::clock_freq_hz() const
 	}
 }
 
-void CF62011BPC::update_mem_mapping()
+void IBMVGA256C::update_mem_mapping()
 {
 	if(m_s.disp_ctrl.op_mode.DM & XGA_OPMODE_EXT) {
 		g_memory.resize_mapping(m_mem_mapping,
 			VGA::m_s.memory_offset,
 			VGA::m_s.memory_aperture);
 		g_memory.set_mapping_funcs(m_mem_mapping,
-			CF62011BPC::s_mem_read<uint8_t>,
-			CF62011BPC::s_mem_read<uint16_t>,
+			IBMVGA256C::s_mem_read<uint8_t>,
+			IBMVGA256C::s_mem_read<uint16_t>,
 			nullptr,
 			this,
-			CF62011BPC::s_mem_write<uint8_t>,
-			CF62011BPC::s_mem_write<uint16_t>,
+			IBMVGA256C::s_mem_write<uint8_t>,
+			IBMVGA256C::s_mem_write<uint16_t>,
 			nullptr,
 			this);
 		PDEBUGF(LOG_V1, LOG_VGA, "XGA: memory mapping: 0x%X .. 0x%X\n",
@@ -174,9 +174,9 @@ void CF62011BPC::update_mem_mapping()
 }
 
 template<class T>
-uint32_t CF62011BPC::s_mem_read(uint32_t _addr, void *_priv)
+uint32_t IBMVGA256C::s_mem_read(uint32_t _addr, void *_priv)
 {
-	CF62011BPC *me = static_cast<CF62011BPC*>(_priv);
+	IBMVGA256C *me = static_cast<IBMVGA256C*>(_priv);
 
 	if(!me->VGA::m_s.sequencer.mem_mode.CH4) {
 		return VGA::s_mem_read<T>(_addr, _priv);
@@ -206,9 +206,9 @@ uint32_t CF62011BPC::s_mem_read(uint32_t _addr, void *_priv)
 }
 
 template<class T>
-void CF62011BPC::s_mem_write(uint32_t _addr, uint32_t _value, void *_priv)
+void IBMVGA256C::s_mem_write(uint32_t _addr, uint32_t _value, void *_priv)
 {
-	CF62011BPC *me = static_cast<CF62011BPC*>(_priv);
+	IBMVGA256C *me = static_cast<IBMVGA256C*>(_priv);
 
 	if(!me->VGA::m_s.sequencer.mem_mode.CH4) {
 		VGA::s_mem_write<T>(_addr, _value, _priv);
@@ -242,7 +242,7 @@ void CF62011BPC::s_mem_write(uint32_t _addr, uint32_t _value, void *_priv)
 	me->VGA::m_s.force_redraw = 2;
 }
 
-uint16_t CF62011BPC::read(uint16_t _address, unsigned _io_len)
+uint16_t IBMVGA256C::read(uint16_t _address, unsigned _io_len)
 {
 	uint16_t retval = 0xFF;
 
@@ -325,7 +325,7 @@ uint16_t CF62011BPC::read(uint16_t _address, unsigned _io_len)
 	return retval;
 }
 
-void CF62011BPC::write(uint16_t _address, uint16_t _value, unsigned _io_len)
+void IBMVGA256C::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 {
 	if(_address < 0x2100) {
 		if((m_s.disp_ctrl.op_mode.DM & 1) || _address <= 0x105) {
@@ -475,7 +475,7 @@ void CF62011BPC::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 	}
 }
 
-void CF62011BPC::update_rendering_mode()
+void IBMVGA256C::update_rendering_mode()
 {
 	if(m_s.disp_ctrl.op_mode.DM & XGA_OPMODE_EXT) {
 		VGA::m_s.vmode.imgw = VGA::m_s.vmode.xres;
@@ -492,11 +492,11 @@ void CF62011BPC::update_rendering_mode()
 		if(VGA::m_s.gfx_ctrl.gfx_mode.C256 == 1) {
 			// Packed 256 colour
 			VGA::m_s.vmode.mode = VGA_M_SVGA8;
-			m_renderer = static_cast<VGADrawFn>(&CF62011BPC::draw_gfx_svga8);
+			m_renderer = static_cast<VGADrawFn>(&IBMVGA256C::draw_gfx_svga8);
 		} else if(VGA::m_s.sequencer.mem_mode.CH4 == 0) {
 			// Planar 16 colour
 			VGA::m_s.vmode.mode = VGA_M_EGA;
-			m_renderer = static_cast<VGADrawFn>(&CF62011BPC::draw_gfx_ega);
+			m_renderer = static_cast<VGADrawFn>(&IBMVGA256C::draw_gfx_ega);
 		} else {
 			PWARNF(LOG_V0, LOG_VGA, "XGA: unsupported Extended Graphics mode.\n");
 			VGA::update_rendering_mode();
@@ -506,7 +506,7 @@ void CF62011BPC::update_rendering_mode()
 	}
 }
 
-unsigned CF62011BPC::draw_gfx_svga8(unsigned _scanline, uint32_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
+unsigned IBMVGA256C::draw_gfx_svga8(unsigned _scanline, uint32_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
 {
 	// Extended Mode Packed pixel 256 colour mode.
 
@@ -557,7 +557,7 @@ unsigned CF62011BPC::draw_gfx_svga8(unsigned _scanline, uint32_t _row_addr_cnt, 
 	return img_pixels + ovsc_pixels;
 }
 
-void CF62011BPC::state_to_textfile(std::string _filepath)
+void IBMVGA256C::state_to_textfile(std::string _filepath)
 {
 	// this function is called by the GUI thread
 	VGA::state_to_textfile(_filepath);
@@ -589,7 +589,7 @@ void CF62011BPC::state_to_textfile(std::string _filepath)
 
 
 
-const char * IBMVGA256c_ExtGfx::register_name(uint8_t _index)
+const char * IBMVGA256C_ExtGfx::register_name(uint8_t _index)
 {
 	switch(_index & 0x7F) {
 		case IBM_DISP_CTRL: return "Display Control 1 ?";
@@ -598,7 +598,7 @@ const char * IBMVGA256c_ExtGfx::register_name(uint8_t _index)
 	return "Unknown";
 }
 
-const char * IBMVGA256c_ExtGfx::register_to_string(uint8_t _index)
+const char * IBMVGA256C_ExtGfx::register_to_string(uint8_t _index)
 {
 	thread_local static std::string s;
 
@@ -621,7 +621,7 @@ const char * IBMVGA256c_ExtGfx::register_to_string(uint8_t _index)
 	return s.c_str();
 }
 
-const std::string & IBMVGA256c_ExtGfx::registers_to_string()
+const std::string & IBMVGA256C_ExtGfx::registers_to_string()
 {
 	thread_local static std::string s;
 	s = "";

@@ -17,20 +17,20 @@
  * along with IBMulator.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IBMULATOR_HW_CF62011BPC_H
-#define IBMULATOR_HW_CF62011BPC_H
+#ifndef IBMULATOR_HW_IBMVGA256C_H
+#define IBMULATOR_HW_IBMVGA256C_H
 
 #include "vga.h"
 #include "xga_dispctrl.h"
 
 
-enum IBMVGA256c_ExtGfxRegisters {
+enum IBMVGA256C_ExtGfxRegisters {
 	// 0x30 to 0x36 are also used by the VESA driver for unknown purposes
 	IBM_DISP_CTRL = 0x50, // Display Control 1 ?
 	IBM_CLOCK_SEL = 0x72, // Clock Frequency Select ?
 };
 
-struct IBMVGA256c_ExtGfx
+struct IBMVGA256C_ExtGfx
 {
 	uint8_t index;       // 21xA - Index register
 	uint8_t regs[0x7F];
@@ -48,10 +48,10 @@ struct IBMVGA256c_ExtGfx
 };
 
 
-class CF62011BPC : public VGA
+class IBMVGA256C : public VGA
 {
-	IODEVICE(CF62011BPC, "TI CF62011BPC")
-	IODEVICE_ID(CF62011BPC, 0xE8FE)
+	IODEVICE(IBMVGA256C, "TI CF62011BPC")
+	IODEVICE_ID(IBMVGA256C, 0xE8FE)
 
 protected:
 	struct {
@@ -59,12 +59,12 @@ protected:
 		// Analyzing the behaviour of the IBM VESA TSR drivers, it looks
 		// like the IBM VGA256C has its own variant of XGA's Extended Graphics registers,
 		// eg. the VESA driver uses index 72h which is not described in IBM's XGA docs,
-		IBMVGA256c_ExtGfx ext_gfx;
+		IBMVGA256C_ExtGfx ext_gfx;
 	} m_s;
 
 public:
-	CF62011BPC(Devices *_dev);
-	~CF62011BPC();
+	IBMVGA256C(Devices *_dev);
+	~IBMVGA256C();
 
 	void install();
 	void remove();

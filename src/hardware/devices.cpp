@@ -30,7 +30,7 @@
 #include "devices/pit.h"
 #include "devices/dma.h"
 #include "devices/vga.h"
-#include "devices/cf62011bpc.h"
+#include "devices/ibmvga256c.h"
 #include "devices/keyboard.h"
 #include "devices/floppyctrl.h"
 #include "devices/floppyctrl_raw.h"
@@ -102,7 +102,7 @@ void Devices::config_changed()
 	double bus_timings = g_cpu.frequency()/8.0; // ISA bus 8MHz
 	switch(m_machine->type()) {
 		case PS1_2121:
-			m_vga = install<CF62011BPC>();
+			m_vga = install<IBMVGA256C>();
 			m_vga->set_bus_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
