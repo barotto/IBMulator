@@ -517,6 +517,7 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_GUI_VERBOSITY),      LOG_GUI);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_OGL_VERBOSITY),      LOG_OGL);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MACHINE_VERBOSITY),  LOG_MACHINE);
+		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_DEVICES_VERBOSITY),  LOG_DEVICES);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIXER_VERBOSITY),    LOG_MIXER);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MEM_VERBOSITY),      LOG_MEM);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_CPU_VERBOSITY),      LOG_CPU);
