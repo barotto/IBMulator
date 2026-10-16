@@ -229,6 +229,7 @@ std::string StateRecord::get_version_to_release_string(unsigned _version)
 		case 4: return "0.18";
 		case 5: return "0.19";
 		case 6: return "0.20";
+		case 7: return "0.21";
 		default: return "pre-0.14";
 	}
 }
