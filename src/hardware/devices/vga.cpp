@@ -873,7 +873,7 @@ double VGA::current_scanline(bool &disp_, bool &hretr_, bool &vretr_)
 #define VGA_LOG_ISR false
 #else
 #define VGA_LOG_READS
-#define VGA_LOG_ISR
+#define VGA_LOG_ISR false
 #endif
 
 uint16_t VGA::read(uint16_t _address, unsigned _io_len)
