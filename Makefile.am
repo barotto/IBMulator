@@ -352,8 +352,7 @@ share/ibmulator/extra/SPKRWAV.EXE \
 share/ibmulator/extra/HDDTEST.C \
 share/ibmulator/extra/FDDTEST.C \
 share/ibmulator/extra/MEMDUMP.C \
-share/ibmulator/extra/MEMDUMP.EXE \
-share/ibmulator/extra/XCDROM-driver.img
+share/ibmulator/extra/MEMDUMP.EXE
 
 desktopdir = $(pkgdatadir)/../applications
 dist_desktop_DATA = \

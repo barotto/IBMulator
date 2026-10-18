@@ -425,8 +425,7 @@ AUTOEXEC.BAT
 C:\DOS\MSCDEX.EXE /D:MSCD001 /M:10 /L:D
 ```
 
-In the `share/ibmulator/extra` directory of the IBMulator package you can find the `XCDROM-driver.img` floppy image file with the GPL licensed XCDROM driver you can use.  
-Otherwise if you want a floppy image with the VIDE-CDD driver you can try this: https://archive.org/details/mscdex-2.23-installer-incl.-vide-cdd
+In the IBMulator's drivers package you can find the `cd-rom.img` floppy image with a collection of CD-ROM drivers you can use.  
 
 *Note:* ATAPI drivers are not all the same and you can have different results depending on the running program. For example with XCDROM.SYS the stock Media Player included in Windows 3.x won't play mixed mode CDs, while it works properly with VIDE-CDD.SYS.
 
