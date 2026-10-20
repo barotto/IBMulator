@@ -237,9 +237,40 @@ void IBMVGA256C::s_mem_write(uint32_t _addr, uint32_t _value, void *_priv)
 
 	*(T*)(&me->m_memory[addr]) = value;
 
-	// TODO FIXME full redraw
-	me->VGA::m_s.needs_update = true;
-	me->VGA::m_s.force_redraw = 2;
+
+	// this is always 8-bit packed graphics, not double scanned
+	// planar and non-svga modes are handled by the standard VGA write function  
+	constexpr unsigned pels_per_byte = 1;
+	constexpr unsigned planes = 1;
+	constexpr unsigned scanlines = 1;
+	// it's always DW addressing
+	const uint32_t line_offset = uint32_t(me->VGA::m_s.CRTC.latches.line_offset) << 2;
+	const uint32_t start_addr = uint32_t(me->VGA::m_s.CRTC.latches.start_address) << 2;
+
+	if(me->VGA::m_s.CRTC.latches.line_compare < me->VGA::m_s.CRTC.latches.vdisplay_end) {
+		// splitscreen active
+		unsigned y_line = ((addr / line_offset) * scanlines + 
+				(me->VGA::m_s.CRTC.latches.line_compare - me->VGA::m_s.timings.vblank_skip)
+				+ 1);
+		if(y_line < me->VGA::m_s.vmode.yres) {
+			unsigned x_tileno = ((addr % line_offset) * (planes * pels_per_byte)) / VGA_X_TILESIZE;
+			if(x_tileno < me->VGA::m_num_x_tiles) {
+				me->VGA::set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
+				me->VGA::m_s.needs_update = true;
+			}
+		}
+	}
+	if(addr >= start_addr) {
+		addr -= start_addr;
+		unsigned y_line = (addr / line_offset) * scanlines;
+		if(y_line < me->VGA::m_s.vmode.yres) {
+			unsigned x_tileno = ((addr % line_offset) * (planes * pels_per_byte)) / VGA_X_TILESIZE;
+			if(x_tileno < me->VGA::m_num_x_tiles) {
+				me->VGA::set_tile(y_line, x_tileno, VGA_TILE_DIRTY);
+				me->VGA::m_s.needs_update = true;
+			}
+		}
+	}
 }
 
 uint16_t IBMVGA256C::read(uint16_t _address, unsigned _io_len)
