@@ -42,9 +42,6 @@ enum VGATimings {
 	VGA_32BIT_FAST
 };
 
-
-#define VGA_WORKERS 4
-
 enum VGAModes {
 	VGA_M_INVALID,
 	VGA_M_CGA2,
@@ -188,6 +185,12 @@ class VGA : public IODevice
 	IODEVICE(VGA, "VGA")
 	IODEVICE_ID(VGA, 0x0000)
 
+	enum Adapters {
+		IBM_VGA_SLOW = 1,
+		IBM_VGA_FAST = 2,
+		IBM_VGA256C  = 3
+	};
+	
 protected:
 	// state information
 	struct {

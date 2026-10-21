@@ -51,6 +51,7 @@ struct ModelConfig
 	unsigned ram_speed;
 	unsigned rom_speed;
 	unsigned rom_bit;
+	std::string video_adapter;
 	unsigned floppy_a;
 	unsigned floppy_b;
 	std::string hdd_interface;

@@ -92,29 +92,53 @@ void Devices::reset(uint _signal)
 
 void Devices::config_changed()
 {
-	// install the system board
+	// install system board and video adapter
+
 	if(m_sysboard) {
 		remove(m_vga->name());
 		m_vga = nullptr;
 		remove(m_sysboard->name());
 		m_sysboard = nullptr;
 	}
-	double bus_timings = g_cpu.frequency()/8.0; // ISA bus 8MHz
+
 	switch(m_machine->type()) {
 		case PS1_2121:
-			m_vga = install<IBMVGA256C>();
-			m_vga->set_bus_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard_PS1_2121>();
 			break;
 		case PS1_2011:
-			m_vga = install<VGA>();
-			m_vga->set_bus_timings(bus_timings, VGA_8BIT_SLOW);
 			m_sysboard = install<SystemBoard_PS1_2011>();
 			break;
 		default:
-			m_vga = install<VGA>();
-			m_vga->set_bus_timings(bus_timings, VGA_16BIT_FAST);
 			m_sysboard = install<SystemBoard>();
+			break;
+	}
+
+	static std::map<std::string, unsigned> video_adapters = {
+		{ "vga",      VGA::IBM_VGA_FAST },
+		{ "vga_slow", VGA::IBM_VGA_SLOW },
+		{ "vga_fast", VGA::IBM_VGA_FAST },
+		{ "vga256c",  VGA::IBM_VGA256C  }
+	};
+	unsigned video = g_program.config().get_enum(VGA_SECTION, VGA_ADAPTER, video_adapters, 0);
+	if(!video) {
+		video = INIFile::get_enum(m_machine->model().video_adapter, video_adapters);
+	}
+	const double isa_timings = g_cpu.frequency() / 8.0; // ISA bus 8MHz
+	switch(video) {
+		case VGA::IBM_VGA_SLOW:
+			m_vga = install<VGA>();
+			m_vga->set_bus_timings(isa_timings, VGA_8BIT_SLOW);
+			g_program.config().set_string(VGA_SECTION, VGA_ADAPTER, "vga_slow");
+			break;
+		case VGA::IBM_VGA_FAST:
+			m_vga = install<VGA>();
+			m_vga->set_bus_timings(isa_timings, VGA_16BIT_FAST);
+			g_program.config().set_string(VGA_SECTION, VGA_ADAPTER, "vga_fast");
+			break;
+		case VGA::IBM_VGA256C:
+			m_vga = install<IBMVGA256C>();
+			m_vga->set_bus_timings(isa_timings, VGA_16BIT_FAST);
+			g_program.config().set_string(VGA_SECTION, VGA_ADAPTER, "vga256c");
 			break;
 	}
 

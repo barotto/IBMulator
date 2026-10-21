@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025  Marco Bortolin
+ * Copyright (C) 2023-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -320,6 +320,16 @@ unsigned INIFile::get_enum(const std::string &_section, const std::string &_name
 	if(enumvalue == _enum_map.end()) {
 		PERRF(LOG_PROGRAM, "Invalid value '%s' for [%s]:%s\n",
 				enumstr.c_str(), _section.c_str(), _name.c_str());
+		throw std::exception();
+	}
+	return enumvalue->second;
+}
+
+unsigned INIFile::get_enum(const std::string &_enumstr, const ini_enum_map_t &_enum_map)
+{
+	auto enumvalue = _enum_map.find(str_to_lower(_enumstr));
+	if(enumvalue == _enum_map.end()) {
+		PERRF(LOG_PROGRAM, "Invalid value '%s'\n", _enumstr.c_str());
 		throw std::exception();
 	}
 	return enumvalue->second;

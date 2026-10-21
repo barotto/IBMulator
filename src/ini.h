@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025  Marco Bortolin
+ * Copyright (C) 2023-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -78,6 +78,7 @@ public:
 	std::string get_string(const std::string &_section, const std::string &_name, const std::string &_default);
 	std::string get_string(const std::string &_section, const std::string &_name, const std::set<std::string> _allowed, const std::string &_default);
 	unsigned get_enum(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map);
+	static unsigned get_enum(const std::string &_enumstr, const ini_enum_map_t &_enum_map);
 	unsigned get_enum(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map, unsigned _default);
 	unsigned get_enum_quiet(const std::string &_section, const std::string &_name, const ini_enum_map_t &_enum_map);
 

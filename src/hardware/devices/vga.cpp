@@ -127,6 +127,8 @@ void VGA::install()
 	m_mem_mapping = g_memory.add_mapping(0xA0000, 0x20000, MEM_MAPPING_EXTERNAL);
 	m_rom_mapping = g_memory.add_mapping(0xC0000, 0x10000, MEM_MAPPING_EXTERNAL,
 		VGA::s_rom_read<uint8_t>, VGA::s_rom_read<uint16_t>, VGA::s_rom_read<uint32_t>, this);
+
+	PINFOF(LOG_V0, LOG_VGA, "Installed %s\n", name());
 }
 
 void VGA::config_changed()

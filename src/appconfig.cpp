@@ -600,6 +600,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ MEM_RAM_SPEED, MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 	} },
 	{ VGA_SECTION, {
+		{ VGA_ADAPTER,           MACHINE_CONFIG, HIDDEN_CFGKEY, "auto"},
 		{ VGA_MEMSIZE,           MACHINE_CONFIG, PUBLIC_CFGKEY, "auto"},
 		{ VGA_ROM,               MACHINE_CONFIG, PUBLIC_CFGKEY, ""    },
 		{ VGA_OVERSCAN,          MACHINE_CONFIG, PUBLIC_CFGKEY, "yes" },
