@@ -130,6 +130,37 @@ void CPUDebugger::INT_10(bool call, uint16_t ax, CPUCore *core, Memory *mem,
 	}
 }
 
+void CPUDebugger::INT_10_4F(bool call, uint16_t ax, CPUCore *, Memory *,
+		char* buf, uint buflen)
+{
+	if(call) {
+		return;
+	}
+
+	uint8_t ah = ax >> 8;
+	uint8_t al = ax & 0xFF;
+	if(al != 0x4F) {
+		snprintf(buf, buflen, " func not supported");
+		return;
+	}
+	switch(ah) {
+		case 0:
+			snprintf(buf, buflen, " success");
+			break;
+		case 1:
+			snprintf(buf, buflen, " failure");
+			break;
+		case 2:
+			snprintf(buf, buflen, " func not supported by hw");
+			break;
+		case 3:
+			snprintf(buf, buflen, " func invalid in video mode");
+			break;
+		default:
+			break;
+	}
+}
+
 void CPUDebugger::INT_10_12(bool call, uint16_t /*ax*/, CPUCore *core, Memory */*mem*/,
 		char* buf, uint buflen)
 {

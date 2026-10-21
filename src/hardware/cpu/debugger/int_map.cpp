@@ -87,6 +87,7 @@ int_map_t CPUDebugger::ms_interrupts = {
 	{ MAKE_INT_SEL(0x10, 0x1F01, 2), { true,  nullptr,                 "VIDEO - XGA - READ DMQS DATA" } },
 	{ MAKE_INT_SEL(0x10, 0x1F02, 2), { true,  nullptr,                 "VIDEO - XGA - GET SVGA DMQS DATA LENGTH" } },
 	{ MAKE_INT_SEL(0x10, 0x1F03, 2), { true,  nullptr,                 "VIDEO - XGA - GET SVGA DMQS DATA" } },
+	{ MAKE_INT_SEL(0x10, 0x4F00, 2), { true,  &CPUDebugger::INT_10_4F, "VIDEO - VESA SuperVGA BIOS (VBE) - GET SuperVGA INFORMATION" } },
 	{ MAKE_INT_SEL(0x10, 0x6F00, 2), { true,  nullptr,                 "VIDEO - Video7 VGA,VEGA VGA - INSTALLATION CHECK" } },
 	{ MAKE_INT_SEL(0x10, 0xF000, 1), { true,  nullptr,                 "EGA - READ ONE REGISTER" } },
 	{ MAKE_INT_SEL(0x10, 0xF100, 1), { true,  nullptr,                 "EGA - WRITE ONE REGISTER" } },
