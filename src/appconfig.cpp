@@ -196,7 +196,8 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 		},
 
 		{ VGA_SECTION,
-";       vram: Size of the video RAM memory in KB.\n"
+";       vram: Size of the video RAM memory.\n"
+";             Possible values: auto, 256K, 512K, 1M, 2M\n"
 ";        rom: Path to a binary ROM file to load.\n"
 ";              The PS/1 BIOS won't use it but other BIOSes might require it.\n"
 ";   overscan: Enable overscan borders emulation.\n"

@@ -128,7 +128,7 @@ void VGA::install()
 	m_rom_mapping = g_memory.add_mapping(0xC0000, 0x10000, MEM_MAPPING_EXTERNAL,
 		VGA::s_rom_read<uint8_t>, VGA::s_rom_read<uint16_t>, VGA::s_rom_read<uint32_t>, this);
 
-	PINFOF(LOG_V0, LOG_VGA, "Installed %s\n", name());
+	PINFOF(LOG_V0, LOG_VGA, "Installed %s video adapter\n", name());
 }
 
 void VGA::config_changed()
@@ -137,13 +137,19 @@ void VGA::config_changed()
 		delete[] m_memory;
 		m_memory = nullptr;
 	}
-	uint32_t new_memsize;
-	try {
-		new_memsize = g_program.config().try_int(VGA_SECTION, VGA_MEMSIZE);
-	} catch(std::exception &) {
-		new_memsize = default_memsize_kb();
-	}
-	// vram goes from 256K to 4M in multiples of 256K
+
+	static std::map<std::string, unsigned> memsizes = {
+		{ "256", 256 }, { "256k", 256 }, { "256kb", 256 },
+		{ "512", 512 }, { "512k", 512 }, { "512kb", 512 },
+		{ "1",  1024 }, { "1m",  1024 }, { "1mb",  1024 },
+		{ "2",  2048 }, { "2m",  2048 }, { "2mb",  2048 },
+	};
+	unsigned new_memsize = g_program.config().get_enum(
+		VGA_SECTION, VGA_MEMSIZE,
+		memsizes,
+		default_memsize_kb()
+	);
+
 	m_memsize = std::max(256u, new_memsize);
 	m_memsize = std::min(new_memsize, 4096u);
 	m_memsize -= m_memsize % 256;

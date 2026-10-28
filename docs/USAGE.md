@@ -740,18 +740,14 @@ The combination of video RAM size and driver version determines the available vi
 
 | Mode | Resolution | Colors | VRAM req. | Driver req. |
 | ---- | ---------- | ------ | --------- | ----------- |
-| 100h | 640x400    | 256    | 256KB     | v1.0+       |
-| 101h | 640x480    | 256    | 512KB     | v1.0+       |
-| 102h | 800x600    | 16     | 256KB     | v2.1        |
-| 103h | 800x600    | 256    | 512KB     | v2.1        |
-| 104h | 1024x768   | 16     | 512KB     | v2.1        |
-| 105h | 1024x768   | 256    | 1024KB    | v2.1        |
+| 100h | 640x400    | 256    | 256K      | v1.0+       |
+| 101h | 640x480    | 256    | 512K      | v1.0+       |
+| 102h | 800x600    | 16     | 256K      | v2.1        |
+| 103h | 800x600    | 256    | 512K      | v2.1        |
+| 104h | 1024x768   | 16     | 512K      | v2.1        |
+| 105h | 1024x768   | 256    | 1M        | v2.1        |
 
-The amount of video RAM, expressed in KB, can be set with:
-```
-[vga]
-vram=512
-```
+The amount of video RAM can be set with the `[vga]:vram` ini setting.
 
 The VESA TSR Version 2.1 -- released for the PS/2 Server 95 SVGA Adapter/A -- enables all the possible modes under DOS.
 
