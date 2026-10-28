@@ -365,7 +365,8 @@ void VGA::restore_state(StateBuf &_state)
 			m_renderer = nullptr;
 			break;
 		default:
-			throw std::exception();
+			// all other values shall be set by derived classes
+			break;
 	};
 
 	m_line_data_buf[0].resize(m_s.vmode.imgw);
@@ -1809,6 +1810,7 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint32_t _row_addr_cnt, std::vect
 unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
 {
 	assert(m_s.vmode.nscans == 1);
+	assert(m_renderer);
 	
 	unsigned pix_updated = 0;
 	uint32_t scanline_addr;
@@ -1834,7 +1836,6 @@ unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
 		} else {
 			scanline_addr += m_s.CRTC.latches.line_offset * VGA_THREAD_POOL_SIZE;
 		}
-		
 	}
 	
 	return pix_updated;
@@ -2072,7 +2073,7 @@ void VGA::frame_end(uint64_t _time)
 		m_display->lock();
 		if(m_s.vmode.mode == VGA_M_TEXT) {
 			text_update();
-		} else if(m_s.render_mode == VGA_RENDER_FRAME) {
+		} else if(m_s.render_mode == VGA_RENDER_FRAME && m_renderer) {
 			// This frame's rendering happens only if rendering mode did not change
 			// since the last frame_start.
 			int lc_first_thread = m_s.CRTC.latches.line_compare % VGA_THREAD_POOL_SIZE;

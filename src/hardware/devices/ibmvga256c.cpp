@@ -121,6 +121,14 @@ void IBMVGA256C::restore_state(StateBuf &_state)
 	_state.read(&m_s, {sizeof(m_s), name()});
 
 	VGA::restore_state(_state);
+
+	switch(VGA::m_s.vmode.mode) {
+		case VGA_M_SVGA8:
+			m_renderer = static_cast<VGADrawFn>(&IBMVGA256C::draw_gfx_svga8);
+			break;
+		default:
+			throw std::exception();
+	};
 }
 
 double IBMVGA256C::clock_freq_hz() const
