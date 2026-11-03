@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025  Marco Bortolin
+ * Copyright (C) 2025-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -300,7 +300,7 @@ void TTSDev_SAPI::set_voice(const std::string &_name)
 void TTSDev_SAPI::speak(const std::string &_text, bool _purge)
 {
 	// GUI thread
-	m_cmd_queue.push([=]() {
+	m_cmd_queue.push([=,this]() {
 		check_open();
 
 		std::wstring wtext = utf8::widen(_text);

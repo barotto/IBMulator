@@ -178,7 +178,7 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 						assert(false);
 					}
 				} else {
-					m_geom.type = FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD;
+					m_geom.type = +FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD;
 					m_geom.desc = str_format("5.25\" %sDD", sides);
 				}
 			} else {
@@ -189,7 +189,7 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 				if(m_std_dos) {
 					m_geom = FloppyDisk::std_types.at(FloppyDisk::DD_720K);
 				} else {
-					m_geom.type = FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_DD;
+					m_geom.type = +FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_DD;
 					m_geom.desc = str_format("3.5\" %sDD", sides);
 				}
 			}
@@ -227,7 +227,7 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 				if(m_std_dos) {
 					m_geom = FloppyDisk::std_types.at(FloppyDisk::HD_1_44);
 				} else {
-					m_geom.type = FloppyDisk::DENS_HD | FloppyDisk::SIZE_3_5;
+					m_geom.type = +FloppyDisk::DENS_HD | FloppyDisk::SIZE_3_5;
 					m_geom.desc = str_format("3.5\" %sHD", sides);
 				}
 			} else {
@@ -235,7 +235,7 @@ FloppyDisk::Properties FloppyFmt_IMD::identify(std::string _file_path,
 				if(m_std_dos) {
 					m_geom = FloppyDisk::std_types.at(FloppyDisk::HD_1_20);
 				} else {
-					m_geom.type = FloppyDisk::DENS_HD | FloppyDisk::SIZE_5_25;
+					m_geom.type = +FloppyDisk::DENS_HD | FloppyDisk::SIZE_5_25;
 					m_geom.desc = str_format("5.25\" %sHD", sides);
 				}
 			}

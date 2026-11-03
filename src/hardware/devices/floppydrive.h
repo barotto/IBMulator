@@ -15,13 +15,16 @@ class FloppyCtrl;
 class FloppyDrive
 {
 public:
+	// C++20 deprecated arithmetic, bitwise and comparison operations between
+	// different enumeration types.
+	// The `+` applies integral promotion.
 	enum Type {
 		FDD_NONE  = 0x00,
-		FDD_525DD = FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD | FloppyDisk::DENS_QD,
-		FDD_525HD = FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD | FloppyDisk::DENS_QD | FloppyDisk::DENS_HD,
-		FDD_350DD = FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD,
-		FDD_350HD = FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD | FloppyDisk::DENS_HD,
-		FDD_350ED = FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD | FloppyDisk::DENS_HD | FloppyDisk::DENS_ED
+		FDD_525DD = +FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD | FloppyDisk::DENS_QD,
+		FDD_525HD = +FloppyDisk::SIZE_5_25 | FloppyDisk::DENS_DD | FloppyDisk::DENS_QD | FloppyDisk::DENS_HD,
+		FDD_350DD = +FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD,
+		FDD_350HD = +FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD | FloppyDisk::DENS_HD,
+		FDD_350ED = +FloppyDisk::SIZE_3_5  | FloppyDisk::DENS_DD | FloppyDisk::DENS_HD | FloppyDisk::DENS_ED
 	};
 
 protected:

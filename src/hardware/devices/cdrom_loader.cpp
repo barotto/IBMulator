@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  Marco Bortolin
+ * Copyright (C) 2024-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -79,14 +79,14 @@ CdRomDisc * CdRomLoader::load_cdrom(std::string _path) noexcept
 
 void CdRomLoader::cmd_load_cdrom(CdRomDrive *_drive, std::string _path, std::function<void(bool)> _cb, int _config_id)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_machine->cmd_insert_cdrom(_drive, load_cdrom(_path), _path, _cb, _config_id);
 	});
 }
 
 void CdRomLoader::cmd_dispose_cdrom(CdRomDisc *_disc)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		std::unique_ptr<CdRomDisc> disc(_disc);
 		PDEBUGF(LOG_V1, LOG_HDD, "CD-ROM: disposing of disc ...\n");
 		disc->dispose(); // blocking

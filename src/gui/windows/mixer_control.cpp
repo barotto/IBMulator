@@ -737,7 +737,7 @@ void MixerControl::add_filter(int _chid, const Dsp::Filter *_filter, size_t _fil
 		remove->SetAttribute("aria-label", str_format("Remove filter %u from the chain", _filter_idx+1));
 
 	register_target_cb(chain_container, kind->GetId(), "change",
-			//[=](Rml::Event &_evt) -> bool { return on_filter_change(_evt, _chid, _filter_idx); }
+			//[=,this](Rml::Event &_evt) -> bool { return on_filter_change(_evt, _chid, _filter_idx); }
 			std::bind(&MixerControl::on_filter_change, this, _1, _chid, _filter_idx)
 	);
 	register_target_cb(chain_container, remove->GetId(), "click",
@@ -781,7 +781,7 @@ void MixerControl::add_filter(int _chid, const Dsp::Filter *_filter, size_t _fil
 
 void MixerControl::update_filter_chain(int _chid, ChainOperation _op, int _filter_idx)
 {
-	register_lazy_update_fn([=](){
+	register_lazy_update_fn([=,this](){
 		auto filters = get_element(str_format("ch_filter_chain_%d", _chid));
 		unregister_target_cb(filters);
 		filters->SetInnerRML("");
@@ -1694,7 +1694,7 @@ void MixerControl::on_slider_dragend(Rml::Event &)
 void MixerControl::on_save(Rml::Event &)
 {
 	m_save_info->set_callbacks(
-		[=]()
+		[=,this]()
 		{
 			if(m_save_info->values.name.empty()) {
 				return;

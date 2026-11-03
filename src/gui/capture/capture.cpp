@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -140,7 +140,7 @@ void Capture::cmd_stop_capture_and_signal(std::mutex &_mutex, std::condition_var
 
 void Capture::cmd_toggle_capture()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(m_recording) {
 			stop_capture();
 		} else {

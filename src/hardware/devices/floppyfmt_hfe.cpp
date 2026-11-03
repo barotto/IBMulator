@@ -83,7 +83,7 @@ FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 
 	if(m_header.track_encoding == ISOIBM_FM_ENCODING) {
 		// FM is for single density
-		m_geom.type |= FloppyDisk::SIZE_8 | FloppyDisk::DENS_SD;
+		m_geom.type |= +FloppyDisk::SIZE_8 | FloppyDisk::DENS_SD;
 		m_geom.desc = str_format("8\" %sSD", m_geom.sides==1?"SS":"DS");
 	} else {
 		// MFM encoding is for everything else
@@ -113,7 +113,7 @@ FloppyDisk::Properties FloppyFmt_HFE::identify(std::string _file_path,
 
 		switch(m_header.floppyinterfacemode) {
 			case IBMPC_ED_FLOPPYMODE:
-				m_geom.type |= FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_ED;
+				m_geom.type |= +FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_ED;
 				m_geom.desc = "3.5\" DSED";
 				break;
 			case IBMPC_HD_FLOPPYMODE:

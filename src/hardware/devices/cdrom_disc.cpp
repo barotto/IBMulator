@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024  Marco Bortolin
+ * Copyright (C) 2024-2026  Marco Bortolin
  * Copyright (C) 2019-2023  The DOSBox Staging Team
  * Copyright (C) 2002-2021  The DOSBox Team
  *
@@ -659,7 +659,7 @@ bool CdRomDisc::AudioFile::seek(uint32_t _byte_offset, bool _async)
 	bool success = true;
 	if(_async) {
 		m_seeking = true;
-		m_seek_result = std::async(std::launch::async, [=] {
+		m_seek_result = std::async(std::launch::async, [=,this] {
 			bool result;
 			if(_byte_offset == 0) {
 				result = static_cast<bool>(Sound_Rewind(m_file));

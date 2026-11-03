@@ -769,7 +769,7 @@ void Machine::cmd_cpu_step()
 
 void Machine::cmd_cpu_breakpoint(uint16_t _cs, uint32_t _eip, std::function<void()> _callback)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_breakpoint_cs = _cs;
 		m_breakpoint_eip = _eip;
 		m_breakpoint_clbk = _callback;
@@ -807,14 +807,14 @@ void Machine::cmd_switch_power()
 
 void Machine::cmd_pause(bool _show_notice)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		cmd_pause_imm(_show_notice);
 	});
 }
 
 void Machine::cmd_resume(bool _show_notice)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(!m_valid_state) {
 			GUI::instance()->show_message("Invalid state");
 		} else if(m_cpu_single_step) {
@@ -831,14 +831,14 @@ void Machine::cmd_resume(bool _show_notice)
 
 void Machine::cmd_memdump(uint32_t _base, uint32_t _len)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		memdump(_base,_len);
 	});
 }
 
 void Machine::cmd_dtdump(const std::string &_name)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		uint32_t base;
 		uint16_t limit;
 		if(_name == "GDT") {
@@ -886,14 +886,14 @@ void Machine::cmd_cpulog()
 
 void Machine::cmd_prg_cpulog(std::string _prg_name)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		g_cpu.enable_prg_log(_prg_name);
 	});
 }
 
 void Machine::cmd_cycles_adjust(double _factor)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_cycles_factor = _factor;
 		devices().cycles_adjust(_factor);
 		std::stringstream ss;
@@ -956,7 +956,7 @@ void Machine::cmd_insert_floppy(uint8_t _drive, std::string _img_path, bool _wp,
 		return;
 	}
 	int config_id = m_config_id;
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		auto type = g_devices.device<FloppyCtrl>()->drive_type(_drive);
 		if(type == FloppyDrive::FDD_NONE) {
 			PDEBUGF(LOG_V0, LOG_MACHINE, "cmd_insert_floppy(): invalid drive\n");
@@ -970,7 +970,7 @@ void Machine::cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy,
 		std::function<void(bool)> _cb, int _config_id)
 {
 	// called by the floppy loader
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(_config_id != m_config_id) {
 			// configuration changed after a call to cmd_insert_floppy() by the GUI
 			PDEBUGF(LOG_V1, LOG_MACHINE, "Floppy arrived too late...\n");
@@ -995,7 +995,7 @@ void Machine::cmd_insert_floppy(uint8_t _drive, FloppyDisk *_floppy,
 
 void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		auto ctrl = g_devices.device<FloppyCtrl>();
 		if(!ctrl) {
 			if(_cb) { _cb(true); }
@@ -1023,8 +1023,8 @@ void Machine::cmd_eject_floppy(uint8_t _drive, std::function<void(bool)> _cb)
 						str_format("Save floppy %s image", _drive ? "B" : "A"),
 						str_format("Save \"%s\"?", FileSys::get_basename(path.c_str()).c_str()),
 						MessageWnd::Type::MSGW_YES_NO,
-						[=](){ commit_floppy(floppy, _drive, _cb); },
-						[=](){ if(_cb) { _cb(true); } });
+						[=,this](){ commit_floppy(floppy, _drive, _cb); },
+						[=,this](){ if(_cb) { _cb(true); } });
 			} else {
 				commit_floppy(floppy, _drive, _cb);
 			}
@@ -1039,7 +1039,7 @@ void Machine::cmd_insert_cdrom(CdRomDrive *_drive, std::string _img_path, std::f
 	// GUI thread -> CD Loader
 
 	int config_id = m_config_id;
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		_drive->signal_activity(CdRomEvents::MEDIUM_LOADING, 0);
 		m_cdrom_loader->cmd_load_cdrom(_drive, _img_path, _cb, config_id);
 	});
@@ -1050,7 +1050,7 @@ void Machine::cmd_insert_cdrom(CdRomDrive *_drive, CdRomDisc *_cdrom, std::strin
 {
 	// CD loader -> CdRomDrive
 
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(_config_id != m_config_id) {
 			// configuration changed after a call to cmd_insert_cdrom() by the GUI
 			PDEBUGF(LOG_V1, LOG_MACHINE, "CD-ROM arrived too late...\n");
@@ -1070,7 +1070,7 @@ void Machine::cmd_insert_cdrom(CdRomDrive *_drive, CdRomDisc *_cdrom, std::strin
 
 void Machine::cmd_toggle_cdrom_door(CdRomDrive *_drive)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		// if the machine is off it will remove the disc without opening the tray
 		_drive->toggle_door_button();
 	});
@@ -1123,7 +1123,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 	// The thread may be stopped waiting for user input from the GUI, so the machine
 	// should be paused beforehand.
 
-	m_cmd_queue.push([=](){
+	m_cmd_queue.push([=,this](){
 
 		std::mutex mtx;
 		std::condition_variable cond;
@@ -1203,7 +1203,7 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 					if(save_this) {
 						FloppyDisk *floppy = fdc->eject_floppy(i, true);
 						assert(floppy);
-						commit_floppy(floppy, i, [=](bool){
+						commit_floppy(floppy, i, [=,this](bool){
 							// this is the FloppyLoader thread
 							if(_cb && i == last_dirty) {
 								_cb();
@@ -1393,14 +1393,14 @@ void Machine::cmd_run_test(const MachineTest &_test, std::promise<MachineTestRes
 
 void Machine::cmd_print_VGA_text(std::vector<uint16_t> _text)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		g_devices.vga()->print_text(_text);
 	});
 }
 
 void Machine::cmd_reset_bench()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_bench.reset_values();
 	});
 }

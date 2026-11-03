@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -403,7 +403,7 @@ void FileSelect::on_new_floppy(Rml::Event &)
 		return;
 	}
 	m_new_floppy->set_callbacks(
-		[=](std::string _dir, std::string _file, FloppyDisk::StdType _type, std::string _format)
+		[=,this](std::string _dir, std::string _file, FloppyDisk::StdType _type, std::string _format)
 		{
 			if(!m_newfloppy_callbk) {
 				return;

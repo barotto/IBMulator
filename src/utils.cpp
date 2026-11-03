@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -352,6 +352,11 @@ bool str_convert_is_valid(const char *_to_code, const char *_from_code)
 	bool valid = cd != (iconv_t)(-1);
 	iconv_close(cd);
 	return valid;
+}
+
+std::string str_u8(const std::u8string &_s)
+{
+	return std::string(_s.begin(), _s.end());
 }
 
 std::string str_to_html(std::string _text, bool _nbsp)

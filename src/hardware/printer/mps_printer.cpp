@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Rene Garcia
- * Copyright (C) 2022-2023  Marco Bortolin
+ * Copyright (C) 2022-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -305,7 +305,7 @@ void MpsPrinter::set_base_dir(std::string _path)
  */
 void MpsPrinter::cmd_set_dot_size(uint8_t _ds)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		set_dot_size(_ds);
 		PDEBUGF(LOG_V1, LOG_PRN, "Dotsize changed to %d\n", m_dot_size);
 	});
@@ -328,7 +328,7 @@ void MpsPrinter::set_dot_size(uint8_t _ds)
 */
 void MpsPrinter::cmd_set_interpreter(mps_printer_interpreter _in)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		set_interpreter(_in);
 		init_interpreter();
 	});
@@ -770,7 +770,7 @@ void MpsPrinter::form_feed(bool _move)
 
 void MpsPrinter::cmd_set_online()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(!is_online()) {
 			while(!m_data_queue.empty()) {
 				interpret(m_data_queue.front());
@@ -783,28 +783,28 @@ void MpsPrinter::cmd_set_online()
 
 void MpsPrinter::cmd_set_offline()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_online = false;
 	});
 }
 
 void MpsPrinter::cmd_form_feed()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		form_feed();
 	});
 }
 
 void MpsPrinter::cmd_line_feed()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		line_feed();
 	});
 }
 
 void MpsPrinter::cmd_load_paper(mps_printer_paper _paper, bool _single_sheet)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		load_paper(ms_paper_types.at(_paper), _single_sheet);
 		init_interpreter();
 	});
@@ -1580,7 +1580,7 @@ void MpsPrinter::interpret(uint8_t _data)
 
 void MpsPrinter::cmd_send_byte(uint8_t _data)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if(is_online()) {
 			interpret(_data);
 		} else {

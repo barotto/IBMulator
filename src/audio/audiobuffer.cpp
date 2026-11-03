@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -342,7 +342,7 @@ double AudioBuffer::us_to_samples(uint64_t _us)
 
 void AudioBuffer::apply_volume(float _volume)
 {
-	auto fn = [=](float _sample) -> float{
+	auto fn = [=,this](float _sample) -> float{
 		return _sample * _volume;
 	};
 	switch(m_spec.format) {

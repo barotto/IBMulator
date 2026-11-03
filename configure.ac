@@ -29,7 +29,7 @@ AC_PROG_RANLIB
 
 AM_CONDITIONAL([GCC], [test x$GXX = xyes])
 
-AX_CXX_COMPILE_STDCXX_17
+AX_CXX_COMPILE_STDCXX([20],[noext],[mandatory])
 
 have_windows="no"
 case "$host_os" in

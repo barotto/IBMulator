@@ -287,7 +287,7 @@ FloppyDisk::Properties FloppyFmt_86F::identify(std::string _file_path,
 			break;
 		case TYPE_ED:
 		case TYPE_ED2000:
-			m_geom.type |= FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_ED;
+			m_geom.type |= +FloppyDisk::SIZE_3_5 | FloppyDisk::DENS_ED;
 			m_geom.desc = "3.5\" DSED";
 			break;
 		default:

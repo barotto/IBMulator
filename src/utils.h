@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -100,6 +100,7 @@ std::string str_format_special(const char *_str);
 std::string str_format_special(char _ch);
 std::string str_convert(std::string _str, const char *_to_code, const char *_from_code);
 bool str_convert_is_valid(const char *_to_code, const char *_from_code);
+std::string str_u8(const std::u8string &_s); // C++20 shenanigans
 
 template<typename ... Args>
 std::string str_format(const char *_format, Args ... _args)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -141,8 +141,8 @@ FloppyDisk::StdType FloppyCtrl::create_new_floppy_image(std::string _imgpath,
 				return FloppyDisk::FD_NONE;
 		}
 	} else if(_devtype != FloppyDrive::FDD_NONE) {
-		if(((_disktype & FloppyDisk::SIZE_MASK) != (_devtype & FloppyDisk::SIZE_MASK)) ||
-		  ( (_disktype & FloppyDisk::DENS_MASK) & _devtype )
+		if(((_disktype & +FloppyDisk::SIZE_MASK) != (_devtype & +FloppyDisk::SIZE_MASK)) ||
+		  ( (_disktype & +FloppyDisk::DENS_MASK) & _devtype )
 		) {
 			PERRF(LOG_FDC, "Floppy drive incompatible with disk '%s'\n",
 					FloppyDisk::std_types.at(_disktype).desc.c_str());

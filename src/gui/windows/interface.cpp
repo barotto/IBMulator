@@ -226,7 +226,7 @@ Interface::MachineDrive * Interface::config_floppy(int _id)
 	drive->floppy_ctrl = floppy_ctrl;
 	drive->drive_id = _id;
 	drive->label = _id ==  0 ? "A" : "B";
-	if((floppy_ctrl->drive_type(_id) & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
+	if((floppy_ctrl->drive_type(_id) & +FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25) {
 		drive->drive_type = GUIDrivesFX::FDD_5_25;
 	} else {
 		drive->drive_type = GUIDrivesFX::FDD_3_5;
@@ -358,12 +358,12 @@ std::vector<unsigned> Interface::MachineDrive::compatible_file_types()
 		case GUIDrivesFX::FDD_3_5:
 		case GUIDrivesFX::FDD_5_25: {
 			FloppyDrive::Type floppy_drive = floppy_ctrl->drive_type(drive_id);
-			unsigned dens_drive = (floppy_drive & FloppyDisk::DENS_MASK) >> FloppyDisk::DENS_SHIFT;
+			unsigned dens_drive = (floppy_drive & +FloppyDisk::DENS_MASK) >> FloppyDisk::DENS_SHIFT;
 			unsigned dens_mask = FloppyDisk::DENS_MASK >> FloppyDisk::DENS_SHIFT;
 			unsigned dens_cur = 1;
 			while(dens_cur & dens_mask) {
 				if(dens_drive & dens_cur) {
-					unsigned type_value = (floppy_drive & FloppyDisk::SIZE_MASK) | (dens_cur << FloppyDisk::DENS_SHIFT);
+					unsigned type_value = (floppy_drive & +FloppyDisk::SIZE_MASK) | (dens_cur << FloppyDisk::DENS_SHIFT);
 					type_value |= FileSelect::FILE_FLOPPY_DISK;
 					filetypes.push_back(type_value);
 				}
@@ -654,7 +654,7 @@ void Interface::on_medium_select(std::string _img_path, bool _write_protect, Mac
 		PDEBUGF(LOG_V1, LOG_GUI, "Mounting '%s' on floppy %s %s\n", _img_path.c_str(),
 				_drive->drive_id?"B":"A", _write_protect?"(write protected)":"");
 		m_machine->cmd_eject_floppy(_drive->drive_id, nullptr);
-		m_machine->cmd_insert_floppy(_drive->drive_id, _img_path, _write_protect, [=](bool result) {
+		m_machine->cmd_insert_floppy(_drive->drive_id, _img_path, _write_protect, [=,this](bool result) {
 			// Machine thread here
 			// "insert" audio sample plays only when floppy is confirmed inserted
 			if(result && m_audio_enabled) {
@@ -847,7 +847,7 @@ bool Interface::on_medium_button(Rml::Event &, MachineDrive *_drive)
 					_drive->drive_id == 0 ? DISK_A_SECTION : DISK_B_SECTION, DISK_INSERTED)) {
 				return true;
 			}
-			m_machine->cmd_eject_floppy(_drive->drive_id, [=](bool) {
+			m_machine->cmd_eject_floppy(_drive->drive_id, [=,this](bool) {
 				floppy_activity_cb(FloppyEvents::EVENT_DISK_EJECTED, -1, _drive);
 			});
 			// "eject" audio sample plays now
@@ -993,12 +993,12 @@ void Interface::show_state_dialog(bool _save)
 
 	bool machine_was_paused = m_machine->is_paused();
 	bool input_was_grabbed = m_gui->is_input_grabbed();
-	auto dialog_delete = [=](StateRecord::Info _info) {
+	auto dialog_delete = [=,this](StateRecord::Info _info) {
 		m_gui->show_message_box(
 			"Delete State",
 			str_format("Do you want to delete slot %s?", _info.name.c_str()),
 			MessageWnd::Type::MSGW_YES_NO,
-			[=]()
+			[=,this]()
 			{
 				PDEBUGF(LOG_V0, LOG_GUI, "Delete record: %s\n", _info.name.c_str());
 				try {
@@ -1012,7 +1012,7 @@ void Interface::show_state_dialog(bool _save)
 			}
 		);
 	};
-	auto dialog_end = [=]() {
+	auto dialog_end = [=,this]() {
 		m_state_save->hide();
 		m_state_load->hide();
 		if(!machine_was_paused) {
@@ -1025,14 +1025,14 @@ void Interface::show_state_dialog(bool _save)
 	if(_save) {
 		m_state_save->set_callbacks(
 			// save
-			[=](StateRecord::Info _info)
+			[=,this](StateRecord::Info _info)
 			{
 				if(_info.name == QUICKSAVE_RECORD) {
 					save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0});
 					dialog_end();
 				} else {
 					m_state_save_info->set_callbacks(
-						[=](StateRecord::Info _info)
+						[=,this](StateRecord::Info _info)
 						{
 							save_state(_info);
 							m_state_save_info->hide();
@@ -1051,7 +1051,7 @@ void Interface::show_state_dialog(bool _save)
 		m_state_save->show();
 	} else {
 		m_state_load->set_callbacks(
-			[=](StateRecord::Info _info)
+			[=,this](StateRecord::Info _info)
 			{
 				m_gui->restore_state(_info, !machine_was_paused);
 				m_state_save->set_selection(_info.name);

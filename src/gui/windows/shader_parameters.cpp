@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025  Marco Bortolin
+ * Copyright (C) 2023-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -288,7 +288,7 @@ void ShaderParameters::on_save(Rml::Event &)
 		return;
 	}
 	m_save_info->set_callbacks(
-		[=]()
+		[=,this]()
 		{
 			if(m_save_info->values.name.empty()) {
 				return;

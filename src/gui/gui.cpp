@@ -412,11 +412,11 @@ void GUI::restore_state(StateRecord::Info _info, bool _resume)
 {
 	// Main thread here
 	m_machine->cmd_pause(false);
-	m_machine->cmd_commit_media([=](){
+	m_machine->cmd_commit_media([=,this](){
 		// Machine or FloppyLoader threads here
-		m_cmd_queue.push([=]() {
+		m_cmd_queue.push([=,this]() {
 			// Main thread here
-			g_program.restore_state(_info, [=]() {
+			g_program.restore_state(_info, [=,this]() {
 				show_message("State restored");
 				if(_resume) {
 					m_machine->cmd_resume(false);
@@ -2333,14 +2333,14 @@ void GUI::take_screenshot(bool _with_palette_file)
 
 void GUI::show_message(std::string _mex)
 {
-	m_cmd_queue.push([=]() {
+	m_cmd_queue.push([=,this]() {
 		m_windows.last_ifc_mex = _mex;
 	});
 }
 
 void GUI::show_dbg_message(std::string _mex)
 {
-	m_cmd_queue.push([=]() {
+	m_cmd_queue.push([=,this]() {
 		m_windows.last_dbg_mex = _mex;
 	});
 }
@@ -2349,7 +2349,7 @@ void GUI::show_message_box(const std::string &_title, const std::string &_messag
 		MessageWnd::Type _type, 
 		std::function<void()> _on_action1, std::function<void()> _on_action2)
 {
-	m_cmd_queue.push([=]() {
+	m_cmd_queue.push([=,this]() {
 		m_windows.root->close_child_windows<MessageWnd>();
 		auto message_wnd = m_windows.root->new_child_window<MessageWnd>();
 		message_wnd->set_modal(true);

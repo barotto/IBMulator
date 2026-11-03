@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022-2025  Marco Bortolin
+ * Copyright (C) 2022-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -55,7 +55,7 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 {
 	assert(_drive_idx < 4);
 
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		PINFOF(LOG_V0, LOG_MACHINE, "Loading '%s'...\n", _path.c_str());
 
 		auto fdc = m_machine->devices().device<FloppyCtrl>();
@@ -113,7 +113,7 @@ void FloppyLoader::cmd_load_floppy(uint8_t _drive_idx, unsigned _drive_type,
 void FloppyLoader::cmd_save_floppy(FloppyDisk *_floppy, std::string _path, std::shared_ptr<FloppyFmt> _format,
 		uint8_t _drive_idx, std::function<void(bool)> _cb)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		PINFOF(LOG_V0, LOG_MACHINE, "Saving '%s'...\n", _path.c_str());
 
 		if(m_activity_cb) {

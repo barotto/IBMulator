@@ -95,7 +95,9 @@ void CPUCore::reset()
 
 void CPUCore::save_state(StateBuf &_state) const
 {
-	static_assert(std::is_pod<CPUCore>::value, "CPUCore must be POD");
+	static_assert(std::is_trivially_copyable_v<CPUCore>);
+	static_assert(std::is_standard_layout_v<CPUCore>);
+
 	StateHeader h;
 	h.name = CPUCORE_STATE_NAME;
 	h.data_size = sizeof(CPUCore);

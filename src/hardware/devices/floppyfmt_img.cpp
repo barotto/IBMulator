@@ -32,7 +32,7 @@ FloppyDisk::Properties FloppyFmt_IMG::identify(std::string file_path,
 		uint64_t file_size, FloppyDisk::Size _disk_size)
 {
 	for(auto const &fmt : FloppyDisk::std_types) {
-		if((fmt.first & FloppyDisk::SIZE_MASK) == _disk_size && fmt.second.cap == file_size) {
+		if((fmt.first & +FloppyDisk::SIZE_MASK) == _disk_size && fmt.second.cap == file_size) {
 			m_enc = ms_encodings.at(fmt.first);
 			assert(m_enc.type);
 			m_geom = FloppyDisk::std_types.at(fmt.first);
@@ -66,7 +66,7 @@ MediumInfoData FloppyFmt_IMG::get_preview_string(std::string _filepath)
 		return { info_plain, str_to_html(info_plain) };
 	}
 
-	auto to_value = [=](std::string s){
+	auto to_value = [=,this](std::string s){
 		return std::string("<span class=\"value\">") + str_to_html(s,true) + "</span>";
 	};
 

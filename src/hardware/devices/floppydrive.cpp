@@ -47,7 +47,7 @@ void FloppyDrive::install(FloppyCtrl *_ctrl, int _drive_index, Type _drive_type)
 	m_fx_enabled = g_program.config().get_bool(SOUNDFX_SECTION, SOUNDFX_ENABLED);
 	if(m_fx_enabled) {
 		m_fx.install(m_drive_name,
-			(_drive_type & FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25 ? FloppyFX::FDD_5_25 : FloppyFX::FDD_3_5);
+			(_drive_type & +FloppyDisk::SIZE_MASK) == FloppyDisk::SIZE_5_25 ? FloppyFX::FDD_5_25 : FloppyFX::FDD_3_5);
 		m_fx.config_changed();
 	}
 
@@ -292,12 +292,12 @@ bool FloppyDrive::insert_floppy(FloppyDisk *_disk)
 		return false;
 	}
 
-	if(!((m_drive_type & FloppyDisk::SIZE_MASK) & (_disk->props().type & FloppyDisk::SIZE_MASK))) {
+	if(!((m_drive_type & +FloppyDisk::SIZE_MASK) & (_disk->props().type & FloppyDisk::SIZE_MASK))) {
 		PERRF(LOG_FDC, "The floppy disk size is not compatible with drive %s\n", m_drive_name.c_str());
 		return false;
 	}
 
-	if(!((m_drive_type & FloppyDisk::DENS_MASK) & (_disk->props().type & FloppyDisk::DENS_MASK))) {
+	if(!((m_drive_type & +FloppyDisk::DENS_MASK) & (_disk->props().type & FloppyDisk::DENS_MASK))) {
 		PERRF(LOG_FDC, "The floppy disk density is not compatible with drive %s\n", m_drive_name.c_str());
 		return false;
 	}

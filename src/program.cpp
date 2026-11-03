@@ -233,7 +233,7 @@ void Program::restore_state(
 	/* The actual restore needs to be executed outside RmlUi's event manager,
 	 * otherwise a deadlock on the RmlUi mutex caused by the SysLog will occur.
 	 */
-	m_restore_fn = [=](){
+	m_restore_fn = [=,this](){
 		std::string capture_path = m_config[0].get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 		if(capture_path.empty()) {
 			PERRF(LOG_PROGRAM, "The capture directory is not set\n");
@@ -1016,7 +1016,7 @@ void Program::stop()
 	if(!quitting) {
 		quitting = true;
 		m_machine->cmd_pause(false);
-		m_machine->cmd_commit_media([=](){
+		m_machine->cmd_commit_media([=,this](){
 			m_quit = true;
 		});
 	}

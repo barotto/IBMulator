@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2025  Marco Bortolin
+ * Copyright (C) 2020-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -161,14 +161,14 @@ void MIDI::close_device()
 
 void MIDI::cmd_put_byte(uint8_t _byte, uint64_t _time_ns)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		put_byte(_byte, true, _time_ns);
 	});
 }
 
 void MIDI::cmd_put_bytes(const std::vector<uint8_t> &_bytes, uint64_t _time_ns)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		put_bytes(_bytes, true, _time_ns);
 	});
 }
@@ -183,14 +183,14 @@ void MIDI::cmd_quit()
 
 void MIDI::cmd_stop_device()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		stop_and_silence_device();
 	});
 }
 
 void MIDI::cmd_start_capture()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		m_midifile.close();
 		std::string path = g_program.config().get_file(CAPTURE_SECTION, CAPTURE_DIR, FILE_TYPE_USER);
 		path = FileSys::get_next_filename(path, "midi_", ".mid");
@@ -211,7 +211,7 @@ void MIDI::cmd_start_capture()
 
 void MIDI::cmd_stop_capture()
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		
 		bool remove = ((m_midifile.mex_count() == 0) && (m_midifile.sys_count() == 0));
 		PINFOF(LOG_V0, LOG_MIDI, "MIDI messages written to file: %u\n",

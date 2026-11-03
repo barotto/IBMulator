@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Rene Garcia
- * Copyright (C) 2022  Marco Bortolin
+ * Copyright (C) 2022-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,7 +32,7 @@
  */
 void MpsPrinter::cmd_set_ibm_charset(uint8_t _cs)
 {
-	m_cmd_queue.push([=] () {
+	m_cmd_queue.push([=,this] () {
 		if (_cs == 0 || _cs > 6) {
 			return;
 		}

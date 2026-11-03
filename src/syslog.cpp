@@ -94,7 +94,7 @@ m_paused(false)
 		}
 	}
 
-	memset(m_linefeed, 1, LOG_PRI_COUNT*LOG_FAC_COUNT);
+	memset(m_linefeed, 1, +LOG_PRI_COUNT * LOG_FAC_COUNT);
 	memset(m_verbosity, 0, sizeof(m_verbosity));
 }
 
@@ -341,7 +341,7 @@ void Syslog::remove(Logdev* _device, bool _erase)
 */
 void Syslog::put_all(list<Logdev*>& _devlist, string _prefix, string _mex)
 {
-	m_cmd_queue.push([=](){
+	m_cmd_queue.push([=,this](){
 		assert(!m_paused);
 		for(auto dev : _devlist) {
 			dev->log_put(_prefix, _mex);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2023  Marco Bortolin
+ * Copyright (C) 2021-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -168,7 +168,7 @@ const char * FATReader::BootSector::get_medium_str() const
 std::string FATReader::BootSector::get_vol_label_str() const
 {
 	if(ext_bios_params.boot_sig == 0x29) {
-		return FATReader::get_printable_str(ext_bios_params.vol_label,11,u8"▯");
+		return FATReader::get_printable_str(ext_bios_params.vol_label, 11, str_u8(u8"▯"));
 	}
 	return std::string(11,' ');
 }
@@ -176,14 +176,14 @@ std::string FATReader::BootSector::get_vol_label_str() const
 std::string FATReader::BootSector::get_fs_type_str() const
 {
 	if(ext_bios_params.boot_sig == 0x29) {
-		return FATReader::get_printable_str(ext_bios_params.fs_type,8,u8"▯");
+		return FATReader::get_printable_str(ext_bios_params.fs_type, 8, str_u8(u8"▯"));
 	}
 	return std::string(8,' ');
 }
 
 std::string FATReader::BootSector::get_oem_str() const
 {
-	return FATReader::get_printable_str(oem_name,8,u8"▯");
+	return FATReader::get_printable_str(oem_name, 8, str_u8(u8"▯"));
 }
 
 int FATReader::BootSector::seek_sector(int secnum, FILE *infile) const
@@ -265,7 +265,7 @@ std::string FATReader::DIREntry::get_name_str() const
 	}
 	// DOS file names are encoded in the currently active OEM charset.
 	// cannot convert to UTF8 without knowing the loaded code page.
-	return (FATReader::get_printable_str(Name, sizeof(Name), u8"▯"));
+	return (FATReader::get_printable_str(Name, sizeof(Name), str_u8(u8"▯")));
 }
 
 std::string FATReader::DIREntry::get_ext_str() const
@@ -275,7 +275,7 @@ std::string FATReader::DIREntry::get_ext_str() const
 	}
 	// DOS file names are encoded in the currently active OEM charset.
 	// cannot convert to UTF8 without knowing the loaded code page.
-	return (FATReader::get_printable_str(Ext, sizeof(Ext), u8"▯"));
+	return (FATReader::get_printable_str(Ext, sizeof(Ext), str_u8(u8"▯")));
 }
 
 std::string FATReader::DIREntry::get_fullname_str(const char *_dot) const
