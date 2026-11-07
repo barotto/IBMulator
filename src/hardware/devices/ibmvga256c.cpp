@@ -127,7 +127,12 @@ void IBMVGA256C::restore_state(StateBuf &_state)
 			m_renderer = static_cast<VGADrawFn>(&IBMVGA256C::draw_gfx_svga8);
 			break;
 		default:
-			throw std::exception();
+			if(VGA::m_s.vmode.mode > VGA_M_SVGA8) {
+				PDEBUGF(LOG_V0, LOG_VGA, "%s: invalid video mode = %d\n",
+						name(), int{VGA::m_s.vmode.mode});
+				throw std::exception();
+			}
+			break;
 	};
 }
 

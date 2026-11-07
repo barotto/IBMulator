@@ -44,12 +44,14 @@ enum VGATimings {
 
 enum VGAModes {
 	VGA_M_INVALID,
+	VGA_M_TEXT,
 	VGA_M_CGA2,
 	VGA_M_CGA4,
 	VGA_M_EGA,
 	VGA_M_256COL,
 	VGA_M_SVGA8,
-	VGA_M_TEXT
+
+	VGA_M_COUNT
 };
 
 enum VGARenderMode {

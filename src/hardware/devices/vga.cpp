@@ -347,8 +347,11 @@ void VGA::restore_state(StateBuf &_state)
 		default:
 			throw std::exception();
 	};
-	
+
 	switch(m_s.vmode.mode) {
+		case VGA_M_TEXT:
+			m_renderer = nullptr;
+			break;
 		case VGA_M_CGA2:
 			m_renderer = &VGA::draw_gfx_cga;
 			break;
@@ -361,10 +364,11 @@ void VGA::restore_state(StateBuf &_state)
 		case VGA_M_256COL:
 			m_renderer = &VGA::draw_gfx_vga256;
 			break;
-		case VGA_M_TEXT:
-			m_renderer = nullptr;
-			break;
 		default:
+			if(m_s.vmode.mode == VGA_M_INVALID || m_s.vmode.mode >= VGA_M_COUNT) {
+				PDEBUGF(LOG_V0, LOG_VGA, "invalid video mode = %d\n", int{m_s.vmode.mode});
+				throw std::exception();
+			}
 			// all other values shall be set by derived classes
 			break;
 	};
